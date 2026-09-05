@@ -18,7 +18,6 @@ ifeq ($(SIM),vcs)
     # Set FSDB=1 by default for VCS (can be overridden by user)
     FSDB ?= 1
 
-    COMPILE_ARGS += +define+COCOTB_SIM=1
     COMPILE_ARGS += -sverilog
     COMPILE_ARGS += -ntb_opts uvm-1.2
     COMPILE_ARGS += -timescale=1ns/1ps

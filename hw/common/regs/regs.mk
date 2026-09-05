@@ -14,12 +14,28 @@ OCAH_REG_DEFAULT_RESET ?= arst_n
 OCAH_REGGEN_WRAPPER ?= $(OCAH_ROOT)/tools/regs/reggen_wrapper.py
 OCAH_REGEN_REG_JOBS ?= 8
 
+# uv-sync creates this environment before every register recipe. Invoke its
+# tools directly so hundreds of parallel recipes do not each repeat uv's
+# project discovery and lock checks. UV_PROJECT_ENVIRONMENT remains honored.
+OCAH_REG_UV_ENV ?= $(if $(UV_PROJECT_ENVIRONMENT),$(UV_PROJECT_ENVIRONMENT),$(OCAH_ROOT)/.venv)
+OCAH_REG_PYTHON ?= $(OCAH_REG_UV_ENV)/bin/python
+OCAH_REG_PEAKRDL ?= $(OCAH_REG_UV_ENV)/bin/peakrdl
+
+# The CI full-regeneration check stamps generated files in batches after Make
+# completes. Normal and individually addressed targets still stamp immediately.
+OCAH_REG_DEFER_STAMP ?= 0
+
+# A forced regeneration would otherwise run the phony uv-sync prerequisite once
+# while rebuilding included depfiles and again after Make restarts. CI syncs
+# explicitly once, then suppresses only those redundant order-only prerequisites.
+OCAH_REG_SKIP_UV_SYNC ?= 0
+OCAH_REG_UV_PREREQ = $(if $(filter 1,$(OCAH_REG_SKIP_UV_SYNC)),,uv-sync)
+
 # Stage-1 feature parity exceptions: these TT-owned blocks intentionally keep
 # the protocol/interface shape used by the DV/coverage-proven RTL.
 # TODO: make register protocol selection uniform in a second cleanup stage and
 # remove these per-block overrides once the RTL/reg generation contract is common.
 OCAH_REG_CPU_IF_NAME_avsbus_controller ?= apb4-flat
-OCAH_REG_CPU_IF_NAME_efuse_bank ?= apb4-flat
 OCAH_REG_CPU_IF_NAME_efuse_interface_ctrl ?= apb4-flat
 OCAH_REG_CPU_IF_NAME_efuse_mmr ?= apb4-flat
 OCAH_REG_CPU_IF_NAME_entropy_source ?= axi4-lite

@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+#
+# Generic testbench top names: each module identifies the driven block.
+waive --rule=module-filename --regex="module cross_trigger_matrix_tb_top" --location=".*hw/ip/cross_trigger/cross_trigger_matrix/dv/tb/tb_top\.sv$"
+waive --rule=module-filename --regex="module cross_trigger_network_tb_top" --location=".*hw/ip/cross_trigger/cross_trigger_network/dv/tb/tb_top\.sv$"
+waive --rule=module-filename --regex="module cross_trigger_port_tb_top" --location=".*hw/ip/cross_trigger/cross_trigger_port/dv/tb/tb_top\.sv$"

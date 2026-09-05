@@ -6,7 +6,7 @@ RISCV_OBJCOPY ?= $(GCC_PREFIX)-objcopy
 PYTHON ?= python3
 
 OUT_DIR := ..
-ROMS := km_rom km_rom_entropy km_rom_coexist
+ROMS := km_rom km_rom_entropy km_rom_coexist km_rom_vault
 PARHEX := $(addprefix $(OUT_DIR)/,$(addsuffix .parhex,$(ROMS)))
 
 .PHONY: all clean rom_main
@@ -17,7 +17,9 @@ all: $(PARHEX)
 # PROD_BOOT_WIPE=0 / PROD_UNREC_WIPE=0 disable the boot/unrecoverable-fault SRAM
 # shred so rom_main's SRAM-scrambler cold-boot does not trip a parity fault --
 # matching the OCAH subsystem tb. The output is gitignored (not a committed blob).
-# Requires the rv32emc/ilp32e toolchain on PATH.
+# SEP DV tests that boot this image declare
+# `firmware = { name = "rom_main", mode = "km_rom_main" }` so run_dv.py
+# c_compile drives this target. Requires the rv32emc/ilp32e toolchain on PATH.
 #
 # The firmware is in-tree at hw/ip/key_manager/dv/fw and builds through the shared
 # DV firmware engine, the same one SEP's own firmware uses; the entry point is
@@ -71,6 +73,12 @@ rom_main: rom_main_stamp
 	@printf '%s' "$(ROM_MAIN_WIPE_DEFINES)" > $(ROM_MAIN_STAMP)
 	cp $(KM_ROM_BUILT) $(OUT_DIR)/rom_main.rom.parhex
 	@echo "[km_fw] staged rom_main.rom.parhex -> $(OUT_DIR)/rom_main.rom.parhex"
+
+# Vault ROM uses RV32E: PicoRV32 is built with ENABLE_REGS_16_31=0.
+$(OUT_DIR)/km_rom_vault.parhex: km_rom_vault.S gen_parhex.py
+	$(RISCV_CC) -nostdlib -march=rv32e -mabi=ilp32e -Ttext=0 -o km_rom_vault.elf $<
+	$(RISCV_OBJCOPY) -O binary km_rom_vault.elf km_rom_vault.bin
+	$(PYTHON) gen_parhex.py km_rom_vault.bin > $@
 
 $(OUT_DIR)/%.parhex: %.S gen_parhex.py
 	$(RISCV_CC) -nostdlib -march=rv32i -mabi=ilp32 -Ttext=0 -o $*.elf $<

@@ -11,14 +11,31 @@ return in the current public Verilator model.
 
 from __future__ import annotations
 
-from .smc_addr_map import smc_addr
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
+# ``_REPO`` / ``_field_mask`` come from the authoritative-map module on purpose:
+# it is the single place that knows the repo layout and how to read a generated
+# PeakRDL C header, and the chip_config block resets live in a block header
+# (misc_wrap.h) that ``smc_addr_map`` exposes no named accessor for.
+from .smc_addr_map import _REPO, _field_mask, smc_addr, smc_indexed_addr
 from .smc_base_test_seq import smc_base_test_seq
 
-CHIP_CONFIG_VERSION_LO = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR")
-CHIP_CONFIG_VERSION_LO_VALUE = 0x0001_00A0
-SCRATCH_COLD_1 = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR") + 0x4
+_MISC_WRAP_H = _REPO / "hw" / "sys" / "smc" / "regs" / "gen" / "c" / "blocks" / "misc_wrap.h"
+
+# Addressed by the PER-REGISTER generated symbol, not the enclosing CHIP_CONFIG
+# block base: both resolve to 0xC0002900 today, but a block base makes the
+# register identity printed in the log depend on VERSION_LO staying at block
+# offset 0 ([ADDRESS-FROM-AUTHORITATIVE-MAP], log-name/symbol agreement clause).
+CHIP_CONFIG_VERSION_LO = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_BASE_ADDR")
+# Expected value from the generated block header rather than a hand literal, so
+# the address and the value come from one regenerated source.
+CHIP_CONFIG_VERSION_LO_VALUE = _field_mask(
+    _MISC_WRAP_H, "CHIP_CONFIG__VERSION_LO__VERSION_LO_reset"
+)
+# Addressed by the generated PeakRDL indexed symbol (smc_addr.h) instead of a
+# hand ``+ 0x4`` off the array base, so the register identity in the log cannot
+# rot away from the map when SCRATCH_COLD is regenerated.
+SCRATCH_COLD_1 = smc_indexed_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_SCRATCH_BASE_ADDR", 1)
 SCRATCH_PATTERN = 0x1A7A_0001
 
 
@@ -49,8 +66,9 @@ class smc_ijtag_basic_test_seq(smc_base_test_seq):
         self.accesses += 1
 
     async def body(self) -> None:
-        await self._read("CHIP_CONFIG_VERSION_LO", CHIP_CONFIG_VERSION_LO,
-                         expected=CHIP_CONFIG_VERSION_LO_VALUE)
+        await self._read(
+            "CHIP_CONFIG_VERSION_LO", CHIP_CONFIG_VERSION_LO, expected=CHIP_CONFIG_VERSION_LO_VALUE
+        )
         await self._write("SCRATCH_COLD_1", SCRATCH_COLD_1, SCRATCH_PATTERN)
         await self._read("SCRATCH_COLD_1", SCRATCH_COLD_1, expected=SCRATCH_PATTERN)
         await self._write("SCRATCH_COLD_1_RESTORE", SCRATCH_COLD_1, 0)

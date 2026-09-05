@@ -3,8 +3,6 @@
 """Structural production-wrapper sequence used before firmware bring-up.
 
 DV-CARD:          SMU_ALL_001   ANCHOR: smu_wrapper_elaboration_sep_rtl_test
-DV-CARD-REVISION: 2   RECORD-SHA256: 4e5e5594db63d991c8012442ba4bd759549b907e0779d3dd1d9b91b93f61b1cb
-DV-CARD-SOURCE:   hw/sys/smu/dv/tb/SMU_ALL_VPLAN_DETAIL.md @ artifact_revision 2   ENV: cocotb
 """
 
 from __future__ import annotations
@@ -67,13 +65,7 @@ class SmuWrapperElaborationSeq:
                 "xbar": self._sample(dut.obs_xbar_clk_o, "obs_xbar_clk_o"),
             }
             last_levels = levels
-            if not (
-                levels["smc"]
-                == levels["sep"]
-                == levels["dtp"]
-                == levels["xbar"]
-                == top
-            ):
+            if not (levels["smc"] == levels["sep"] == levels["dtp"] == levels["xbar"] == top):
                 mismatches += 1
             await FallingEdge(dut.clk_smu_i)
             await Timer(1, unit="ns")
@@ -87,17 +79,10 @@ class SmuWrapperElaborationSeq:
                 "xbar": self._sample(dut.obs_xbar_clk_o, "obs_xbar_clk_o"),
             }
             last_levels = levels
-            if not (
-                levels["smc"]
-                == levels["sep"]
-                == levels["dtp"]
-                == levels["xbar"]
-                == top
-            ):
+            if not (levels["smc"] == levels["sep"] == levels["dtp"] == levels["xbar"] == top):
                 mismatches += 1
         assert mismatches == 0, (
-            "compose hierarchical clk identity fail: "
-            f"mismatches={mismatches} last={last_levels}"
+            f"compose hierarchical clk identity fail: mismatches={mismatches} last={last_levels}"
         )
         assert seen_top == {0, 1}, (
             "compose presence needs toggling clk_smu_i (non-constant identity): "
@@ -111,19 +96,11 @@ class SmuWrapperElaborationSeq:
             await RisingEdge(self.dut.clk_ref_i)
             last = self._sample(signal, name)
             if last == expected:
-                self._timeout_paths.append(
-                    f"{name}: bound={limit} ok last={last} cycle={cycle}"
-                )
-                self.log.info(
-                    "%s reached expected=%d at poll cycle %d", name, expected, cycle
-                )
+                self._timeout_paths.append(f"{name}: bound={limit} ok last={last} cycle={cycle}")
+                self.log.info("%s reached expected=%d at poll cycle %d", name, expected, cycle)
                 return cycle
-        self._timeout_paths.append(
-            f"{name}: bound={limit} EXPIRED last={last}"
-        )
-        raise AssertionError(
-            f"{name} timeout: expected={expected} observed={last} limit={limit}"
-        )
+        self._timeout_paths.append(f"{name}: bound={limit} EXPIRED last={last}")
+        raise AssertionError(f"{name} timeout: expected={expected} observed={last} limit={limit}")
 
     async def _run_legacy_no_sep(self, expected_sep: int) -> None:
         """Legacy no-SEP wrapper smoke evidence (SMU_ALL_008 owns SEP=0 compose)."""
@@ -178,14 +155,11 @@ class SmuWrapperElaborationSeq:
         pairs_ok = sum(
             1
             for a, b in zip(order, order[1:])
-            if a in self._step_ts
-            and b in self._step_ts
-            and self._step_ts[a] < self._step_ts[b]
+            if a in self._step_ts and b in self._step_ts and self._step_ts[a] < self._step_ts[b]
         )
         if pairs_ok != len(order) - 1:
             raise AssertionError(
-                f"CHK-NONVAC ordered fence fail: pairs_ok={pairs_ok} "
-                f"expect={len(order) - 1}"
+                f"CHK-NONVAC ordered fence fail: pairs_ok={pairs_ok} expect={len(order) - 1}"
             )
         self.log.info(
             "CHK-NONVAC: ordered fence S1<S2<S3<PASS (pairs_ok=%d)",
@@ -481,9 +455,7 @@ class SmuWrapperElaborationSeq:
             )
         for i, line in enumerate(self._timeout_paths):
             if "bound=" not in line:
-                raise AssertionError(
-                    f"CHK-TIMEOUT-PATHS[{i}] missing finite bound field: {line}"
-                )
+                raise AssertionError(f"CHK-TIMEOUT-PATHS[{i}] missing finite bound field: {line}")
             if "ok last=" not in line and "EXPIRED last=" not in line:
                 raise AssertionError(
                     f"CHK-TIMEOUT-PATHS[{i}] missing last-state diagnostic: {line}"
@@ -503,9 +475,7 @@ class SmuWrapperElaborationSeq:
         for a, b in zip(order, order[1:]):
             if self._step_ts[a] >= self._step_ts[b]:
                 raise AssertionError(f"CHK-NONVAC order fail: {a} not before {b}")
-        self.log.info(
-            "CHK-NONVAC: Ordered fence S1<S2<S3<S4<S5<S6<S7<S8<PASS all hold"
-        )
+        self.log.info("CHK-NONVAC: Ordered fence S1<S2<S3<S4<S5<S6<S7<S8<PASS all hold")
 
     async def run(self) -> None:
         expected_sep_arg = cocotb.plusargs.get("expected_sep")

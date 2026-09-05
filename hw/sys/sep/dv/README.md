@@ -9,18 +9,14 @@ cocotb/PyUVM and driven by `tools/dv/run_dv.py --dut sep`.
 (`hw/top/sep_ip_integration.sv`: real memory macros and the generic eFuse model).
 The OpenTitan SPI host is inside the `sep` core (`sep_io` / `sep_ot_spi_wrap`);
 its pads come out of the wrapper. There is no SPI pad mux in this build.
-A mux that selects between the OCAH SPI host and a proprietary SPI belongs
-with whichever repo holds that wrapper.
-**Backend** = Verilator (pre-merge acceptance); VCS and
-Xcelium are supported for development iteration. Everything the environment needs
-lives under this tree, so the build, tests, shims, and docs are easy to review and
-reuse.
+**Backend** = Verilator is the reference backend; VCS and Xcelium also run.
+Everything the environment needs lives under this tree.
 
 ## Prerequisites
 
 | Need | Why | Notes |
 |---|---|---|
-| Verilator 5.x | the acceptance backend | developed against 5.046 |
+| Verilator 5.x | the acceptance backend | CI pin 5.050 |
 | g++ ≥ 10 | Verilator `--timing` / `-fcoroutines` | RHEL-8's default g++ 8.5 fails with `unrecognized command line option '-fcoroutines'`; `source /opt/rh/gcc-toolset-11/enable` |
 | Python ≥ 3.11 | launcher | `run_dv.py` bootstraps the locked uv-managed DV env itself (root `uv.lock`, `dv` group → cocotb + pyuvm + cocotbext-axi) |
 | RISC-V bare-metal GCC | firmware-boot tests only | not needed for the `smoke` tag |
@@ -69,22 +65,67 @@ single failing leaf with `--stage sim --seed N`.
 Per-run logs land in `build/runs/<run-id>/` (gitignored).
 
 **PASS/FAIL requires positive evidence from `results.xml` — a clean simulator
-exit alone is not enough.** That rule is the environment's contract, and it
-extends to the verification plans: a test passing is the entry condition for
-reading its checkers, never a substitute for them, and a checker row exists only
-if a run can prove it. A log tag is not the proof; an independent audit of the
-checker is.
+exit alone is not enough.** A test passing is the entry condition for reading
+its checkers, never a substitute for them, and a checker row exists only if a run
+can prove it. A log tag is not the proof.
 
-What each test proves, and the exact log evidence that proves it:
+The contracts themselves:
 
-* [`docs/oss_dv_plan.adoc`](docs/oss_dv_plan.adoc) — the high-level plan: three
-  phases, coverage accounting, quality bar.
-* [`docs/verification_plan_phase1.adoc`](docs/verification_plan_phase1.adoc) —
-  Phase 1 baseline, closed. States the shared contract above.
-* [`docs/verification_plan_phase2.adoc`](docs/verification_plan_phase2.adoc) —
-  Phase 2 iconic-feature contract, active.
-* [`docs/verification_plan_phase3.adoc`](docs/verification_plan_phase3.adoc) —
-  Phase 3 candidates, unscheduled and moving to a new UVM environment.
+* [`docs/index.adoc`](docs/index.adoc) — SEP DV documentation book (entry point)
+* [`docs/SEP_TB_ARCH.adoc`](docs/SEP_TB_ARCH.adoc) — testbench architecture: VIP
+  policy, env hierarchy, HDL top, stimulus and checking. Also the detail the
+  README leaves out — eFuse content selection (the `+sep_efuse_preload` selector,
+  the `SepEfuseImage` golden, the sense-and-compare flow), what backs the memory
+  / eFuse / SPI ports inside `sep_wrapper` and their backdoor plusargs, CPU-trace
+  reconstruction and symbolization, and the Boot ROM image builds.
+* [`docs/SEP_VPLAN.adoc`](docs/SEP_VPLAN.adoc) — verification plan: per-test
+  contracts and checkers, naming rules, VIP policy, iconic feature scorecard.
+
+## Code coverage
+
+`--cov` is collected on VCS. Only `[coverage.vcs]` applies the compile-time
+scope, so that is the graded number. It instruments the build, writes one
+native database per test leaf (`coverage/simv.vdb` under each leaf), and
+merges/reports through the `cov_merge`/`cov_report` stages into
+`<run_dir>/cov/merged.vdb`. That is `-cm line+cond+tgl+fsm+branch+assert` at
+both compile (`{build_cov_dir}`) and sim (`{cov_dir}/simv.vdb`), merged by
+`urg`. `--cov --tool verilator` is not the graded number. Verilator 5.046
+fails that C++ compile (`__PVT__MLKEM_SHARED_KEY` under `VM_COVERAGE=1`);
+5.050 compiles.
+
+```bash
+python3 tools/dv/run_dv.py --dut sep --items all --regress --cov --tool vcs \
+  --target default --sim-jobs 32 --build-jobs 32
+```
+
+`all` is the coverage set: every test the VPLAN grades, which is exactly `no_cpu`
++ `cpu`. Boot ROM firmware (`rom_fw`) is not a member -- another owner, a third
+RTL target, firmware rather than hardware contracts -- so reaching those four
+means naming `rom_fw`. `all`'s `expected_count` fails the run when membership
+drifts from the class groups.
+
+`--target default` compiles the full CPU once. no_cpu leaves force-splice the
+LSU VIP onto the post-remap request; cpu leaves run as firmware. Every leaf is
+one elaboration. Edit `cov/config/vcs/sep_cov_scope.hier` then `--rebuild`.
+
+What the resulting number is not:
+
+* **Not functional coverage.** These are code metrics only. No SV covergroups
+  exist in the cocotb env, so "did we exercise the interesting scenarios" stays
+  with [`docs/SEP_VPLAN.adoc`](docs/SEP_VPLAN.adoc).
+* **The DUT minus the CPU, not the whole DUT.** `cov/config/vcs/sep_cov_scope.hier`
+  excludes the testbench top, the outbound mailbox, the backdoor SMC memory, the
+  AXI SVA module and the CPU subtree at compile time, across both code and
+  assertion coverage (`-cm_hier` with `-cm_common_hier`). Measured on a merged
+  database: the excluded instances leave the hierarchy entirely and `sep_uvm_top`
+  matches `u_dut` in all six columns. So the percentage is the SEP DUT **with the
+  CPU subtree removed** -- quote it that way, never as bare "SEP DUT coverage".
+  `cov/config/vcs/README.md` records the scope and the measurements behind it.
+* **Not a read on assertions.** Assertion coverage counts elaborated assertions
+  only, and SEP gates those through the `prim_assert` shim. Confirm assertions
+  are live before reading that column.
+* **One seed per leaf.** `--regress` takes a fresh seed per leaf, so a randomized
+  test contributes one sample. Pin seeds for any number that gets cited.
 
 ## Two run modes
 
@@ -102,10 +143,10 @@ with a plain `assign` — not a `force`.
 * `sep_axi_smoke_test` — reset-value read of `sep_cpu_ctrl.SEP_LOCAL_BASE_ADDR`
   (`+0x0C8`) for decode sanity, then a masked write/readback walk of
   `SEP_SW_DEBUG`, `SEP_NMI_VEC`, `RAS_BANK_INFO`, and `PKA_CTRL`.
-* `sep_address_map_test` — field-aware `sep_cpu_ctrl` sweep plus a SEP-local
-  fabric walk across the LSU-reachable, OSS-clean blocks (DMA, WDT, reset_ctrl,
-  OTBN/AES/HMAC/KMAC, CSRNG/EDN/entropy, lifecycle, KM/AXIL mailbox, eFuse
-  shadow, alias/output-remap, OT SPI host).
+* `sep_address_map_test` — `sep_cpu_ctrl` sweep plus one CSR per LSU-reachable
+  block (DMA, WDT, scratch, reset, OTBN/AES/HMAC/KMAC, CSRNG/EDN/ESRC, ABR,
+  entropy pool, lifecycle, KM/AXI mailbox, eFuse shadow, inbound filter,
+  alias/outbound remap, SPI). Not CSR bit-bash and not dead-space refuse.
 
 ### CPU firmware boot — `run_modes.cpu`, tag `boot`
 
@@ -127,29 +168,34 @@ bypass and let the RTL fuse-sense FSM finish against the generic eFuse model.
 
 Production Boot ROM firmware tests belong to the ROM-FW owner and need extra
 build steps — see
-[`docs/dv_env_reference.adoc`](docs/dv_env_reference.adoc#_boot_rom_firmware_builds).
+[`docs/SEP_TB_ARCH.adoc`](docs/SEP_TB_ARCH.adoc#_boot_rom_firmware_builds).
+Key Manager `rom_main` tests declare
+`firmware = { name = "rom_main", mode = "km_rom_main" }` so `c_compile` builds
+the gitignored `rom_main.rom.parhex`.
 
 ## Layout
 
 ```
 hw/sys/sep/dv/
 ├── cocotb/              # flow-first: cocotb owns env + stimulus + tests
-│   ├── assertions/      #   (cocotb Python checkers — empty for now)
+│   ├── assertions/      #   cocotb Python checkers
 │   ├── env/             #   PyUVM env: agents, scoreboards, config
 │   ├── seq_lib/         #   sequences (scenarios)
 │   ├── tests/           #   @pyuvm.test() entries, grouped by subsystem
 │   └── dv_sim_prestage.py  # pre-sim hook (stages out/sep_efuse.hex)
-│                        # uvm/  — future sibling, not created
-├── cov/                 # scaffold only -- cov/config/<tool>/ (questa, vcs,
-│                        #   verilator, xcelium) and cov/sv/ hold just .gitkeep.
-│                        #   Verilator coverage flags live in sep_sim_cfg.toml
-│                        #   ([coverage.verilator]); no coverage policy exists yet.
-├── docs/                # verification plans + env reference (AsciiDoc)
+├── cov/                 # cov/config/<tool>/ (questa, vcs, verilator, xcelium)
+│                        #   and cov/sv/. `--cov` is graded on VCS ([coverage.vcs]).
+├── docs/                # testbench architecture + verification plan (AsciiDoc)
 ├── fw/                  # OSS-owned firmware (drivers/ tests/) — see fw/README.md
 │                        # the Boot ROM lives outside DV, at ../bootrom/prod/
-├── models/              # SEP-local SystemRDL: models/regs/sep_external.rdl
-│                        #   plus generated output under models/regs/gen/
-├── shims/               # SEP-local behavioral sim-models (kept, accepted shims)
+├── models/              # SEP-local SystemRDL: models/regs/sep_external.rdl is the
+│                        #   open stand-in that satisfies sep.rdl's sep_external
+│                        #   include -- eFuse SHIM control plus the execute-in-place
+│                        #   window. Excluded for OSS hygiene: proprietary IPs in
+│                        #   nonfree. Firmware includes the open C headers
+│                        #   (models/regs/gen/c/sep_external.h) via sep.h; the
+│                        #   SV addrmap package is the RTL build input.
+├── shims/               # SEP-local behavioral sim-models
 │   ├── prim/            #   prim_sync2 → prim_flop_2sync override, prim_assert
 │   ├── cpu/             #   sep_cpu_stub (no_cpu build: LSU demux, no VeeR)
 │   ├── crypto/          #   abr_wrapper_key_reg_stub (Verilator ABR CSR shim)
@@ -169,18 +215,6 @@ hw/sys/sep/dv/
 ├── build/               # generated: per-tool models + build/runs/<run-id>/ logs (gitignored)
 └── README.md
 ```
-
-## Going deeper
-
-[`docs/dv_env_reference.adoc`](docs/dv_env_reference.adoc) covers what the README
-deliberately leaves out:
-
-* **eFuse content selection** — the `+sep_efuse_preload` selector, the
-  `SepEfuseImage` golden object, and the full sense-and-compare flow.
-* **Memory / eFuse / SPI models** — what backs those ports inside `sep_wrapper`,
-  the backdoor plusargs, and why the SPI pad mux is absent from a pure-open build.
-* **Boot ROM firmware builds** — the submodule prerequisite and the
-  picolibc-dependent two-step ROM build.
 
 ## OSS hygiene
 
@@ -203,15 +237,14 @@ grep TEC_RV_ICG vendor/chipsalliance/Cores-VeeR-EL2/overlay/snapshots/sep/common
 # expect: `define TEC_RV_ICG clockhdr
 ```
 
-Restore it from git rather than regenerating — regeneration is a deliberate,
-reviewed change to tracked collateral. The snapshot is TT-generated collateral
-committed to git (see that package's `Bender.yml`), so a fresh clone builds as
-is; it lives in `overlay/` precisely so `bender vendor init` — which wipes and
-recreates `upstream/` only — never touches it.
+Restore it from git rather than regenerating. The snapshot is committed
+collateral (see that package's `Bender.yml`), so a fresh clone builds as is; it
+lives in `overlay/` so `bender vendor init` — which wipes and recreates
+`upstream/` only — never touches it.
 
 **`unrecognized command line option '-fcoroutines'`** — g++ is too old for
 Verilator `--timing`. See [Prerequisites](#prerequisites).
 
 **`No module named tt_boot_manifest`** — the manifest packer submodule is not
 checked out; only affects Boot ROM builds. See
-[`docs/dv_env_reference.adoc`](docs/dv_env_reference.adoc#_boot_rom_firmware_builds).
+[`docs/SEP_TB_ARCH.adoc`](docs/SEP_TB_ARCH.adoc#_boot_rom_firmware_builds).

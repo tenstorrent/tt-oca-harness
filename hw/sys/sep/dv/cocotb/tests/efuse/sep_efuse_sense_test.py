@@ -10,7 +10,6 @@ shadow registers against the golden via the backdoor probe.
 from __future__ import annotations
 
 import pyuvm
-
 from sep_base_test import sep_base_test
 
 _MAX_SENSE_CYCLES = 20_000

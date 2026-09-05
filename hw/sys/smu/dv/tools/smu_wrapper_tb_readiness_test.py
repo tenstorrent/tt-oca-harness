@@ -11,7 +11,6 @@ import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
-
 DV_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = DV_ROOT.parents[3]
 OSS_DV_TOOLS = REPO_ROOT / "tools" / "dv"
@@ -25,7 +24,6 @@ from check_no_vendor_paths import (  # noqa: E402
     _load_config,
 )
 
-
 SIM_CFG = "smu_wrapper_sim_cfg.toml"
 CATALOG = "testlists/wrapper.toml"
 TARGET_NO_SEP = "compile_smu_chiplet_no_sep"
@@ -36,10 +34,12 @@ SMOKE_TESTS = {
     "smu_smc_smoke_test": TARGET_NO_SEP,
     "smu_sep_smoke_test": TARGET_SEP_RTL,
 }
-# Green merge-gate smoke (no SEP=1 / no TCM shim).
+# Merge-gate smoke covers both wrapper profiles.
 EXPECTED_SMOKE_GROUP = {
     "smu_wrapper_elaboration_no_sep_test",
+    "smu_wrapper_elaboration_sep_rtl_test",
     "smu_smc_smoke_test",
+    "smu_sep_smoke_test",
 }
 
 REQUIRED_SOURCES = (
@@ -158,9 +158,7 @@ def check_sources(result: Readiness) -> None:
             "defined" if target in targets else f"missing from {SIM_CFG}",
         )
 
-    bender_targets = [
-        str(value) for value in config.get("build", {}).get("bender_targets", [])
-    ]
+    bender_targets = [str(value) for value in config.get("build", {}).get("bender_targets", [])]
     result.record(
         "dut:smu_wrapper_bender_target",
         "smu_wrapper" in bender_targets,
@@ -173,11 +171,7 @@ def check_sources(result: Readiness) -> None:
         for test_name, target in SMOKE_TESTS.items():
             test = tests.get(test_name)
             passed = test is not None and test.get("target") == target
-            detail = (
-                f"target={test.get('target')}"
-                if test is not None
-                else "missing from catalog"
-            )
+            detail = f"target={test.get('target')}" if test is not None else "missing from catalog"
             result.record(f"catalog:{test_name}", passed, detail)
         expected_group = EXPECTED_SMOKE_GROUP
         smoke_group = set(groups.get("smoke", []))
@@ -257,9 +251,7 @@ def check_filelists(result: Readiness, filelists: list[Path]) -> None:
                 "absent" if token not in text else "unexpectedly present",
             )
         violations = _check_tokens(tokens, forbidden, allowed)
-        detail = (
-            "vendor-free" if not violations else ", ".join(v.path for v in violations)
-        )
+        detail = "vendor-free" if not violations else ", ".join(v.path for v in violations)
         result.record(f"filelist:{label}:vendor_free", not violations, detail)
 
 

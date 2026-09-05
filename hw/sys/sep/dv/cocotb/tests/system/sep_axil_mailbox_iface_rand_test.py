@@ -21,26 +21,40 @@ RUN-MODE: no_cpu (CPU-LSU master). FUSE-MODE: +skip_fuse_sense (the local mailbo
 no OTP/LC dependency).
 
 ACCEPTED DELTAS: (1) data round-trip readback and (2) read-threshold (RIRQT) need the
-RX FIFO filled from the peer side. A clean VCS repro proved the external smn_inbound
-frontdoor can fill inbound_mailbox_0 at 0x10A0_0800 and the CPU-LSU side can pop that
-value from outbound_mailbox_0. This rep intentionally stays TX-focused because the
-reference suite mailbox data test it ports is TX-focused; the external-inbound closure belongs
-in a separate fabric/mailbox peer-path testcase if we keep it permanently.
+RX FIFO filled from the peer side, which this aperture cannot do, so the read half of
+the threshold pair has no vehicle here. This rep stays TX-focused, matching the
+TX-focused reference test it ports; a peer-path closure needs the external
+smn_inbound master and its own checker contract.
 """
 
 from __future__ import annotations
 
+import cocotb
 import pyuvm
-
+from env.sep_mbox_golden import (
+    ERR_READ,
+    ERR_WRITE,
+    ERROR_FLAGS,
+    IRQ_EIRQ,
+    IRQ_WTIRQ,
+    IRQEN,
+    IRQP,
+    IRQS,
+    READ_EMPTY_SENTINEL,
+    RESP_OKAY,
+    RESP_SLVERR,
+    ST_EMPTY,
+    ST_FULL,
+    ST_RLVL_ABOVE,
+    ST_WLVL_ABOVE,
+    STATUS,
+    WIRQT,
+    WRITE_DATA_RD_SENTINEL,
+    SepMboxCfg,
+    SepMboxGolden,
+)
 from sep_base_test import sep_base_test
 from seq_lib.sep_mailbox_iface_seq import SepMbox
-from env.sep_mbox_golden import (
-    SepMboxCfg, SepMboxGolden,
-    STATUS, ERROR_FLAGS, WIRQT, IRQS, IRQEN, IRQP, CTRL,
-    ST_EMPTY, ST_FULL, ST_WLVL_ABOVE, ST_RLVL_ABOVE,
-    IRQ_WTIRQ, IRQ_EIRQ, ERR_READ, ERR_WRITE,
-    READ_EMPTY_SENTINEL, RESP_OKAY, RESP_SLVERR,
-)
 
 
 @pyuvm.test()
@@ -50,8 +64,12 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
     async def _check_status(self, where: str) -> None:
         st = await self.mb.rd_csr(STATUS)
         g = self.gold.status()
-        got = {"full": bool(st & ST_FULL), "wlvl_above": bool(st & ST_WLVL_ABOVE),
-               "empty": bool(st & ST_EMPTY), "rlvl_above": bool(st & ST_RLVL_ABOVE)}
+        got = {
+            "full": bool(st & ST_FULL),
+            "wlvl_above": bool(st & ST_WLVL_ABOVE),
+            "empty": bool(st & ST_EMPTY),
+            "rlvl_above": bool(st & ST_RLVL_ABOVE),
+        }
         assert got == g, (
             f"[{where}] STATUS {got} != golden {g} "
             f"(tx={self.gold.tx} wirqt={self.gold.wirqt} STATUS=0x{st:08x})"
@@ -73,13 +91,30 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
         await self._check_status("reset")
         self.logger.info("CHK-NONVAC PASS: empty FIFOs reflected in STATUS (not stuck)")
 
+        await self._chk_write_data_readback()
         await self._chk_read_empty_error()
         await self._chk_64b_status_threshold()
         await self._chk_write_full_error()
         await self._chk_flush()
+        await self._chk_subword_push()
         # No CHK-ALL summary: it asserted nothing, and every facet above already
         # logs its own PASS line. A plan row keyed on a bare summary string would
         # record coverage with no checker behind it.
+
+    async def _chk_write_data_readback(self) -> None:
+        """CHK-WDATA-RD: WRITE_DATA is push-only. A read of it returns the
+        0xFEEDC0DE constant with OKAY -- not a FIFO entry, not SLVERR -- and does
+        not disturb the TX occupancy."""
+        resp, data = await self.mb.rd_write_data()
+        assert resp == RESP_OKAY, f"WRITE_DATA read resp={resp}, expected OKAY"
+        assert (data & 0xFFFF_FFFF) == WRITE_DATA_RD_SENTINEL, (
+            f"WRITE_DATA read data=0x{data:016x}, expected constant 0x{WRITE_DATA_RD_SENTINEL:08x}"
+        )
+        await self._check_status("after-wdata-read")
+        self.logger.info(
+            "CHK-WDATA-RD PASS: WRITE_DATA reads 0x%08x + OKAY, TX occupancy unchanged",
+            WRITE_DATA_RD_SENTINEL,
+        )
 
     async def _chk_read_empty_error(self) -> None:
         """CHK-ERR-RD: READ_DATA on the empty RX FIFO -> 0xFEEDDEAD + SLVERR +
@@ -89,16 +124,16 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
         assert (data & 0xFFFF_FFFF) == READ_EMPTY_SENTINEL, (
             f"read-from-empty data=0x{data:016x}, expected sentinel 0x{READ_EMPTY_SENTINEL:08x}"
         )
-        err = await self.mb.rd_csr(ERROR_FLAGS)              # read-clear
+        err = await self.mb.rd_csr(ERROR_FLAGS)  # read-clear
         assert err & ERR_READ, f"ERROR_FLAGS.read_error not set after read-empty (0x{err:08x})"
-        err2 = await self.mb.rd_csr(ERROR_FLAGS)             # read again -> cleared
+        err2 = await self.mb.rd_csr(ERROR_FLAGS)  # read again -> cleared
         assert (err2 & ERR_READ) == 0, f"ERROR_FLAGS.read_error not read-cleared (0x{err2:08x})"
         self.logger.info(
             "CHK-ERR-RD PASS: read-empty -> SLVERR + 0xFEEDDEAD + ERROR_FLAGS.read_error (read-clear)"
         )
         irqs = await self.mb.rd_csr(IRQS)
         assert irqs & IRQ_EIRQ, f"IRQS.eirq not set after read-empty (0x{irqs:08x})"
-        await self.mb.wr_csr(IRQS, IRQ_EIRQ)                 # W1C
+        await self.mb.wr_csr(IRQS, IRQ_EIRQ)  # W1C
         irqs2 = await self.mb.rd_csr(IRQS)
         assert (irqs2 & IRQ_EIRQ) == 0, f"IRQS.eirq not W1C-cleared (0x{irqs2:08x})"
         self.logger.info("CHK-ERR-IRQ PASS: read-empty -> IRQS.eirq set + W1C -> 0")
@@ -108,10 +143,8 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
         golden TX depth, write-threshold IRQ fires when tx>WIRQT (IRQP gated).
 
         Each WRITE_DATA access is a single native 64-bit beat (the CPU-LSU path is
-        64-bit; a 32-bit sub-word write to WRITE_DATA+0x04 SLVERRs -- the 2x32->1x64
-        combine exists only on the external 32-bit-downsized smn_inbound path, not
-        here). The exact 64-bit value is carried per push and the FIFO fills 1 entry
-        per beat, proving the 64-bit WRITE_DATA data path."""
+        64-bit). The exact 64-bit value is carried per push and the FIFO fills 1
+        entry per beat, proving the 64-bit WRITE_DATA data path."""
         await self.mb.wr_csr(IRQEN, IRQ_WTIRQ)
         # Phase 1 -- push a RANDOM first batch (seeded message length) that crosses WIRQT,
         # with RANDOM 64-bit payloads. STATUS tracks the golden TX depth after each push.
@@ -125,10 +158,10 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
             await self._check_status("push64")
         # CHK-WIRQT: tx = first_batch > WIRQT -> wtirq set; IRQP gated by IRQEN; level-held.
         irqs = await self.mb.rd_csr(IRQS)
-        # DUT vs model, not DUT and model. `self.gold.wtirq()` is tx > wirqt, and the
-        # config draws first_batch from randint(wirqt+1, depth), so that conjunct was
-        # always True -- a dead term whose failure message blamed the DUT. As an
-        # equality it also covers the below-threshold direction.
+        # SepMboxCfg draws first_batch from [wirqt+1, depth], so tx > wirqt holds for
+        # every seed at this point and this leg grades the SET direction against the
+        # model. The CLEAR direction is graded in _chk_flush, where the flush drops tx
+        # to 0 and wtirq must W1C to zero.
         assert bool(irqs & IRQ_WTIRQ) == self.gold.wtirq(), (
             f"IRQS.wtirq={bool(irqs & IRQ_WTIRQ)} but golden expects "
             f"{self.gold.wtirq()} at tx={self.gold.tx} wirqt={self.gold.wirqt} "
@@ -136,6 +169,18 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
         )
         irqp = await self.mb.rd_csr(IRQP)
         assert irqp & IRQ_WTIRQ, f"IRQP.wtirq not gated-set by IRQEN+IRQS (0x{irqp:08x})"
+        debug_lane = (self.rd(cocotb.top.ext_debug_bus_o) >> 336) & 0xFFFF
+        assert debug_lane & (1 << 7), (
+            f"mailbox[0] interrupt missing from debug lane bit 7 (lane=0x{debug_lane:04x})"
+        )
+        assert (debug_lane & 1) == 0, (
+            f"interrupt debug lane reserved bit 0 is set (lane=0x{debug_lane:04x})"
+        )
+        self.logger.info(
+            "CHK-DEBUG-BUS PASS: mailbox[0] drives lane[351:336] bit 7; "
+            "reserved bit 0 remains zero (lane=0x%04x)",
+            debug_lane,
+        )
         await self.mb.wr_csr(IRQEN, 0)
         irqp_masked = await self.mb.rd_csr(IRQP)
         irqs_held = await self.mb.rd_csr(IRQS)
@@ -147,13 +192,14 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
             f"IRQS.wtirq dropped when IRQEN was cleared (0x{irqs_held:08x})"
         )
         await self.mb.wr_csr(IRQEN, IRQ_WTIRQ)
-        await self.mb.wr_csr(IRQS, IRQ_WTIRQ)                # W1C while still above
+        await self.mb.wr_csr(IRQS, IRQ_WTIRQ)  # W1C while still above
         reassert = await self.mb.rd_csr(IRQS)
         assert reassert & IRQ_WTIRQ, "wtirq should re-assert after W1C while still above threshold"
         self.logger.info(
             "CHK-WIRQT PASS: write-threshold IRQ set (tx=%d>%d), IRQP gated by IRQEN "
             "(drops when enable is cleared, IRQS stays), level-held re-assert",
-            self.gold.tx, self.gold.wirqt,
+            self.gold.tx,
+            self.gold.wirqt,
         )
         # Phase 2 -- top up to full.
         for i in range(self.cfg_mb.first_batch, self.cfg_mb.depth):
@@ -161,10 +207,14 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
             self.gold.push()
             await self._check_status("push64-fill")
         st = await self.mb.rd_csr(STATUS)
-        assert st & ST_FULL, f"TX FIFO not full after {self.cfg_mb.depth} pushes (STATUS=0x{st:08x})"
+        assert st & ST_FULL, (
+            f"TX FIFO not full after {self.cfg_mb.depth} pushes (STATUS=0x{st:08x})"
+        )
         self.logger.info(
             "CHK-64B PASS: %d native 64-bit WRITE_DATA pushes (random data, first batch=%d) "
-            "-> exactly full (1 entry/beat)", self.cfg_mb.depth, self.cfg_mb.first_batch,
+            "-> exactly full (1 entry/beat)",
+            self.cfg_mb.depth,
+            self.cfg_mb.first_batch,
         )
         # No separate CHK-STATUS line: the STATUS comparison is _check_status, called
         # after every push above, and a bare summary log with no assert behind it reads
@@ -180,10 +230,68 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
         self.logger.info("CHK-ERR-WR PASS: write-to-full -> SLVERR + ERROR_FLAGS.write_error")
         irqs = await self.mb.rd_csr(IRQS)
         assert irqs & IRQ_EIRQ, f"IRQS.eirq not set after write-full (0x{irqs:08x})"
-        await self.mb.wr_csr(IRQS, IRQ_EIRQ)                 # W1C
+        await self.mb.wr_csr(IRQS, IRQ_EIRQ)  # W1C
         irqs2 = await self.mb.rd_csr(IRQS)
         assert (irqs2 & IRQ_EIRQ) == 0, f"write-full IRQS.eirq not W1C-cleared (0x{irqs2:08x})"
         self.logger.info("CHK-ERR-WR-IRQ PASS: write-full -> IRQS.eirq set + W1C -> 0")
+
+    async def _chk_subword_push(self) -> None:
+        """CHK-SUBWORD-PUSH: a 4-byte WRITE_DATA beat is a whole push.
+
+        Write-side contract on this 64-bit aperture: every register owns an
+        8-byte decode range (`axi_lite_mailbox.sv:269-272`) and non-strobed
+        bytes are zeroed (`:302`), so a 4-byte beat at +0x00 and a 4-byte beat
+        at +0x04 each push their own entry. +0x04 is the same register, not a
+        high half. This does not grade the spec's two-word read of an incoming
+        64-bit message -- RX stays empty here.
+
+        STATUS carries no exact depth, so occupancy is read through the write
+        threshold: with WIRQT programmed to 1, `write_level_above` is set only
+        once occupancy exceeds 1. It must be CLEAR after the first beat and
+        SET after the second.
+        """
+        await self.mb.flush_write()
+        self.gold.flush()
+        subword_wirqt = 1
+        await self.mb.wr_csr(WIRQT, subword_wirqt)
+
+        st = await self.mb.rd_csr(STATUS)
+        assert (st & ST_WLVL_ABOVE) == 0, (
+            f"write_level_above set on an empty TX FIFO with WIRQT="
+            f"{subword_wirqt} (STATUS=0x{st:08x})"
+        )
+
+        assert await self.mb.push32(0, 0xAAAA_AAAA) == RESP_OKAY, (
+            "4-byte WRITE_DATA beat at +0x00 did not return OKAY"
+        )
+        st_lo = await self.mb.rd_csr(STATUS)
+        assert (st_lo & ST_WLVL_ABOVE) == 0, (
+            f"occupancy already above WIRQT={subword_wirqt} after ONE 4-byte beat "
+            f"(STATUS=0x{st_lo:08x}) -- a single beat pushed more than one entry"
+        )
+
+        assert await self.mb.push32(4, 0xBBBB_BBBB) == RESP_OKAY, (
+            "4-byte WRITE_DATA beat at +0x04 did not return OKAY -- the push "
+            "register does not answer sub-word beats with an error"
+        )
+        st_hi = await self.mb.rd_csr(STATUS)
+        assert st_hi & ST_WLVL_ABOVE, (
+            f"write_level_above clear after two 4-byte WRITE_DATA beats with "
+            f"WIRQT={subword_wirqt} "
+            f"(STATUS=0x{st_hi:08x}): occupancy is 1, so the second beat did "
+            f"not push. Each 4-byte beat must be its own entry"
+        )
+        self.logger.info(
+            "CHK-SUBWORD-PUSH PASS: 4-byte WRITE_DATA beats at +0x00 and +0x04 "
+            "both OKAY and each pushed an entry (occupancy > WIRQT=%d)",
+            subword_wirqt,
+        )
+
+        # Leave the FIFO and the threshold as the other facets expect.
+        await self.mb.flush_write()
+        self.gold.flush()
+        await self.mb.wr_csr(WIRQT, self.cfg_mb.wirqt)
+        await self.mb.wr_csr(IRQS, IRQ_WTIRQ)
 
     async def _chk_flush(self) -> None:
         """CHK-FLUSH: CTRL.wflush drains the TX FIFO -> STATUS not-full; then the
@@ -191,7 +299,7 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
         await self.mb.flush_write()
         self.gold.flush()
         await self._check_status("after-flush")
-        await self.mb.wr_csr(IRQS, IRQ_WTIRQ)                # W1C, now tx=0<=wirqt
+        await self.mb.wr_csr(IRQS, IRQ_WTIRQ)  # W1C, now tx=0<=wirqt
         irqs = await self.mb.rd_csr(IRQS)
         assert (irqs & IRQ_WTIRQ) == 0, f"wtirq not cleared by W1C after flush (0x{irqs:08x})"
         self.logger.info("CHK-FLUSH PASS: CTRL.wflush drained TX -> not-full + wtirq W1C -> 0")

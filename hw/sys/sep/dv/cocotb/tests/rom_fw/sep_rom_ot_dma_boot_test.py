@@ -43,16 +43,14 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from sep_reg_meta import sym
-
 import cocotb
 import pyuvm
-
-from sep_base_test import sep_base_test
 from env.sep_boot_scoreboard import SepBootScoreboard
-from env.sep_efuse_image import SepEfuseImage, LC_TEST_DEV
-from env.sep_rom_console import rom_console_task, log_scratch_cold
+from env.sep_efuse_image import LC_TEST_DEV, SepEfuseImage
+from env.sep_rom_console import log_scratch_cold, rom_console_task
 from ocah_spi_vip import OcahSpiFlash
+from sep_base_test import sep_base_test
+from sep_reg_meta import sym
 
 _SEP_ROOT = str(Path(__file__).resolve().parents[4])
 # Raw packed image for the flash BFM, from the DEFAULT build/ -- the packed
@@ -60,11 +58,9 @@ _SEP_ROOT = str(Path(__file__).resolve().parents[4])
 # (stub, OT+DMA, OT+PIO) read the same image and it is built once.
 # NOT the .spi_preload variant: that is $readmemh text, while
 # OcahSpiFlash.preload() reads raw binary.
-_FLASH_IMAGE = os.path.join(_SEP_ROOT, "bootrom", "prod", "build",
-                            "non_secure_boot.bin")
+_FLASH_IMAGE = os.path.join(_SEP_ROOT, "bootrom", "prod", "build", "non_secure_boot.bin")
 # Signed sibling, same layout, RSA-3072 over the manifest (make secure_boot_spi).
-SECURE_FLASH_IMAGE = os.path.join(_SEP_ROOT, "bootrom", "prod", "build",
-                                  "secure_boot.bin")
+SECURE_FLASH_IMAGE = os.path.join(_SEP_ROOT, "bootrom", "prod", "build", "secure_boot.bin")
 
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 # A serial flash read of the manifest (1184 B) plus the BL1 payload (5136 B) at

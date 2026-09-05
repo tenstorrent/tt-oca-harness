@@ -24,11 +24,11 @@ from sep_reg_meta import sym
 
 import cocotb
 import pyuvm
-
-from sep_base_test import sep_base_test
 from env.sep_boot_scoreboard import SepBootScoreboard
-from env.sep_efuse_image import SepEfuseImage, LC_TEST_DEV
-from env.sep_rom_console import rom_console_task, log_scratch_cold
+from env.sep_efuse_image import LC_TEST_DEV, SepEfuseImage
+from env.sep_rom_console import log_scratch_cold, rom_console_task
+from sep_base_test import sep_base_test
+from sep_reg_meta import sym
 
 # Reset PC -> Boot ROM base 0x10040000 (SEP_BOOT_ROM_MEM_BASE_ADDR). rst_vec = PC[31:1].
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
@@ -48,7 +48,11 @@ _MAX_RUN_CYCLES = 4_000_000
 # they show the ROM *reports* the check, not that a corrupted manifest would be
 # rejected. Nothing here corrupts one, so the negative direction is untested.
 _REQUIRED_ROM_MARKERS = (
-    "SMC_MEM_CHK", "MANIFEST_HASH_OK", "PLD_HASH_OK", "BL1", "FUSE_CHK",
+    "SMC_MEM_CHK",
+    "MANIFEST_HASH_OK",
+    "PLD_HASH_OK",
+    "BL1",
+    "FUSE_CHK",
 )
 _NO_BOOT_CYCLES = 200_000
 _PROGRESS_EVERY = 5_000
@@ -111,7 +115,8 @@ class sep_rom_non_secure_boot_test(sep_base_test):
             )
             self.logger.info(
                 "CHK-ROM-STAGES PASS: all %d required ROM/BL1 stage markers observed (%s)",
-                len(_REQUIRED_ROM_MARKERS), ", ".join(_REQUIRED_ROM_MARKERS),
+                len(_REQUIRED_ROM_MARKERS),
+                ", ".join(_REQUIRED_ROM_MARKERS),
             )
         finally:
             log_scratch_cold(self.logger)

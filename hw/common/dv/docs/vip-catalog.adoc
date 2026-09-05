@@ -54,10 +54,10 @@ shared SV interface, and UVM agent. iJTAG and DUT TDR maps remain local.
 use single-bit data timing; DDR and vendor timing are deferred.
 
 |`ocah_uart_vip`
-|Experimental / dependency-gated
-|Optional `cocotbext-uart`
-|Console/source-sink wrapper and passive monitor. The backend is intentionally
-not part of the locked default environment.
+|Experimental
+|OCAH-native cocotb model
+|Console wrapper, native 8-N-1 line driver/sampler, and passive monitor. No
+external UART library.
 
 |`ocah_checker`
 |Shared infrastructure

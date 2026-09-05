@@ -20,12 +20,18 @@ transfer up to 64 B to reach t=3 separately surfaces a controller err_status=6
 Confirmed via waveform (gen_i3c_inst[0] flow_active): the controller transmits the
 correct data bytes in all cases — the t=3 issue is not a data-corruption bug.
 """
+
 import cocotb
-from i3c_test_base import (make_env, init_controller, init_target,
-                           DEFAULT_STATIC_ADDR, DEFAULT_DYNAMIC_ADDR)
+from i3c_test_base import (
+    DEFAULT_DYNAMIC_ADDR,
+    DEFAULT_STATIC_ADDR,
+    init_controller,
+    init_target,
+    make_env,
+)
 
 
-@cocotb.test(timeout_time=4000, timeout_unit='us')
+@cocotb.test(timeout_time=4000, timeout_unit="us")
 async def test_threshold_sweep(dut):
     tb, helper, ctrl, tgt = await make_env(dut)
 

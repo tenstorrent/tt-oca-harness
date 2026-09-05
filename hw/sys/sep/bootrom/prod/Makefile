@@ -109,7 +109,8 @@ OTBN_APP_C   := $(OTBN_APP_DIR)/rsa_3072_app_otbn.c
 
 # Optional extra sources injected by a nonfree overlay build (absolute .c paths).
 # Their strong symbols override the weak stubs in src/ at link time (e.g. a
-# Cadence xSPI driver overriding the weak src/sep_spi.c stub).
+# companion-supplied SPI controller driver overriding the weak src/sep_spi.c
+# stub). Same pattern as the SMC prod ROM's NONFREE_DRIVER_SOURCES.
 NONFREE_BOOTCODE_SOURCES ?=
 NONFREE_BOOTCODE_OBJS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(notdir $(NONFREE_BOOTCODE_SOURCES)))
 OBJS += $(NONFREE_BOOTCODE_OBJS)
@@ -153,8 +154,11 @@ ot-pio-toolchain-images:
 	$(MAKE) BUILD_DIR=build_ot_pio BOOT_SPI_CONTROLLER_OT=1 BOOT_OT_SPI_USE_PIO=1 \
 		toolchain-images
 
-# Split by tool dependency: toolchain-images needs the RISC-V/picolibc toolchain
-# container, pack-images needs Python cryptography + ruamel.yaml, which it lacks.
+# Split by tool dependency so callers can run each half in the right environment:
+# toolchain-images needs the RISC-V/picolibc toolchain (i.e. the ocah-toolchain
+# container), while pack-images is pure Python and needs cryptography +
+# ruamel.yaml, which the container image does not carry. The companion's SEP
+# firmware build script drives the two halves this way.
 toolchain-images: $(VMEM) $(ITCM_HEX) $(DTCM_HEX) bl1_test
 pack-images: $(SMC_MEM_HEX)
 

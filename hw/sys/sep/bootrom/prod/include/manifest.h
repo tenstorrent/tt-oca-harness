@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-// Boot manifest and payload structure definitions for OCH SEP ROM.
+// Boot manifest and payload structure definitions for OCAH SEP ROM.
 //
 // manifest_t is 1184 bytes, packed.
 

@@ -1,0 +1,134 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[axi-traffic-filter]]
+=== AXI Traffic Filter
+
+The AXI traffic filter (`axi_filter_wrap`) is the common address and
+attribute filter used on the inbound and outbound AXI paths of both SEP
+and SMC. This section describes the decode algorithm, which is identical
+in every instance; the subsystem chapters describe where each instance
+sits in their fabric and how firmware is expected to program it.
+
+A filter holds a configurable number of independent entries. Each entry
+is one `filter_ctrl` register triple -- `FILTER_CONFIG`, `START_ADDR`,
+`END_ADDR` -- and every entry is evaluated against every transaction.
+
+[[axi-traffic-filter-instances]]
+==== Instances
+
+.Traffic filter instances
+[width="100%",cols="20%,12%,12%,14%,20%,22%",options="header",]
+|=======================================================================
+|Instance |Entries |Address |Data bus |Unmatched traffic |Bypass
+
+|SEP inbound |16 |56-bit |64-bit |Blocked |While SEP-scope debug is
+enabled
+
+|SEP outbound |32 |56-bit |64-bit |Blocked |None
+
+|SMC inbound |16 |56-bit |64-bit |Blocked |None
+
+|SMC outbound |16 |56-bit |64-bit |Permitted |None
+|=======================================================================
+
+NS and source ID matching are enabled on all four instances. Group ID
+matching is disabled at build time on all four, so the `group_id` field
+has no effect.
+
+[[axi-traffic-filter-decode]]
+==== Match, Then Permit
+
+Decode is two distinct steps, and the difference between them governs
+what happens when entries overlap.
+
+First, every entry is evaluated in parallel to produce a *match*. An
+entry matches only when all of the following hold:
+
+* `entry_enabled` is 1. A disabled entry never matches.
+* The transaction address falls inside the entry's address range, after
+the granule widening described below.
+* `prot[1]` equals `allow_ns`. This is an equality test, not a
+permission grant: an entry with `allow_ns = 0` matches secure
+transactions only, and an entry with `allow_ns = 1` matches non-secure
+transactions only.
+* The transaction's source ID equals `src_id`, or `src_id` is 0, which
+is a wildcard matching any source ID.
+* `allow_burst` is 1, or the transaction is a single beat (`AxLEN` = 0).
+
+Second, the *lowest-numbered* matching entry wins, and only that entry's
+permission bit is consulted: `read_allowed` for AR, `write_allowed` for
+AW. If the bit is clear, the transaction is blocked. If no entry matches
+at all, the outcome is the instance's unmatched-traffic policy from the
+table above.
+
+The two steps therefore fail differently:
+
+* A transaction that *fails a match condition* on an entry falls through
+to the remaining entries, and a higher-numbered entry can still admit
+it. A non-secure transaction, a burst, or a foreign source ID is not
+denied by an entry that rejects it; it simply does not select that
+entry.
+* A transaction that *matches* the lowest-numbered entry but finds its
+permission bit clear is blocked outright. Higher-numbered entries are
+never examined, even if one of them would have permitted the access.
+
+Entry index is thus a strict priority and the first match ends the
+search, so program the most specific policy at the lowest index and the
+broader fallback policy above it.
+
+Writes and reads are decoded independently: the AW channel and the AR
+channel each run the full decode against their own address, burst
+length, `prot[1]` and source ID, so a write and a read to the same
+address may select different entries.
+
+[[axi-traffic-filter-granule]]
+==== Address Range Granule
+
+Address comparison ignores the low address bits, so a filter range
+always covers a whole number of granules. `allow_burst` selects the
+granule:
+
+* `allow_burst = 1`: the granule is 4 KB and address bits [11:0] are
+ignored.
+* `allow_burst = 0`: the granule is the data bus width -- 8 bytes on
+every instance in the table above -- and address bits [2:0] are
+ignored.
+
+`START_ADDR` consequently widens *down* to the base of its granule and
+`END_ADDR` widens *up* to the top of its granule, so a range is never
+narrower than one granule. Programming `START_ADDR` equal to `END_ADDR`,
+or any range shorter than the granule, still admits the whole granule,
+and a range that straddles a granule boundary admits both granules.
+
+.Granule widening examples
+[width="100%",cols="15%,20%,20%,45%",options="header",]
+|=======================================================================
+|`allow_burst` |`START_ADDR` |`END_ADDR` |Addresses admitted
+|1 |`0x1001` |`0x1002` |`0x1000`-`0x1FFF`, one 4 KB granule
+|1 |`0x0FFF` |`0x1000` |`0x0000`-`0x1FFF`, two 4 KB granules
+|1 |`0x2000` |`0x2FFF` |`0x2000`-`0x2FFF`, already granule-aligned
+|0 |`0x1001` |`0x1002` |`0x1000`-`0x1007`, one 8-byte granule
+|=======================================================================
+
+Hardware writes the widened values back into `START_ADDR` and `END_ADDR`
+when both land in the same granule, so reading back the first example
+above returns `0x1000` and `0x1FFF`. When the programmed range spans more
+than one granule the write-back does not fire and read-back returns the
+programmed values unchanged, even though address matching still widens
+them. Firmware must not treat read-back as the effective range; derive
+the effective range from the granule instead.
+
+Widening only ever enlarges a range, so a range programmed tighter than
+the granule opens more address space than the programmed numbers
+suggest. Size protected regions in whole granules, and prefer
+`allow_burst = 0` for entries that must guard an object smaller than
+4 KB.
+
+[[axi-traffic-filter-blocked]]
+==== Blocked Transactions
+
+A blocked transaction is not dropped. It is steered to an AXI error
+subordinate that terminates it with a `DECERR` response on `BRESP` or
+`RRESP`, so the initiator always receives a response and the fabric
+never stalls on a filter denial.

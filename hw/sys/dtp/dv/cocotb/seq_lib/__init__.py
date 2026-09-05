@@ -8,16 +8,16 @@ for future random/stress orchestration.
 """
 
 from .dtp_base_test_seq import dtp_base_test_seq
-from .dtp_jtag_base_test_seq import dtp_jtag_base_test_seq
 from .dtp_debug_tdr_base_test_seq import dtp_debug_tdr_base_test_seq
-from .dtp_jtag2axi_base_test_seq import dtp_jtag2axi_base_test_seq
-from .dtp_jtag_cmd_lib_seq import dtp_jtag_cmd_lib_seq
 from .dtp_debug_tdr_cmd_lib_seq import dtp_debug_tdr_cmd_lib_seq
+from .dtp_jtag2axi_base_test_seq import dtp_jtag2axi_base_test_seq
 from .dtp_jtag2axi_cmd_lib_seq import dtp_jtag2axi_cmd_lib_seq
-from .dtp_sanity_test_seq import dtp_sanity_test_seq
-from .dtp_jtag_idcode_test_seq import dtp_jtag_idcode_test_seq
-from .dtp_jtag2axi_smc_axi_wr_test_seq import dtp_jtag2axi_smc_axi_wr_test_seq
 from .dtp_jtag2axi_smc_axi_rd_test_seq import dtp_jtag2axi_smc_axi_rd_test_seq
+from .dtp_jtag2axi_smc_axi_wr_test_seq import dtp_jtag2axi_smc_axi_wr_test_seq
+from .dtp_jtag_base_test_seq import dtp_jtag_base_test_seq
+from .dtp_jtag_cmd_lib_seq import dtp_jtag_cmd_lib_seq
+from .dtp_jtag_idcode_test_seq import dtp_jtag_idcode_test_seq
+from .dtp_sanity_test_seq import dtp_sanity_test_seq
 
 __all__ = [
     "dtp_base_test_seq",

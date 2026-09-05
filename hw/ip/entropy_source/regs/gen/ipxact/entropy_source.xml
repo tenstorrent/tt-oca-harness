@@ -13,18 +13,18 @@
       <ipxact:addressBlock>
         <ipxact:name>entropy_source</ipxact:name>
         <ipxact:displayName>Entropy Source Address Map</ipxact:displayName>
-        <ipxact:description>Configuration and status registers for the entropy source</ipxact:description>
+        <ipxact:description>Entropy-source configuration, status, and data registers.</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
         <ipxact:range>'h17c</ipxact:range>
         <ipxact:width>32</ipxact:width>
         <ipxact:register>
           <ipxact:name>COMPONENT_ID</ipxact:name>
-          <ipxact:description>Component Identification</ipxact:description>
+          <ipxact:description>Identifies the entropy-source register interface.</ipxact:description>
           <ipxact:addressOffset>'h0</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>NAME</ipxact:name>
-            <ipxact:description>Entropy Source</ipxact:description>
+            <ipxact:description>Entropy-source component identifier.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -36,7 +36,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>MINOR_VERSION</ipxact:name>
-            <ipxact:description>Minor Version</ipxact:description>
+            <ipxact:description>Minor interface version.</ipxact:description>
             <ipxact:bitOffset>24</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -48,7 +48,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>MAJOR_VERSION</ipxact:name>
-            <ipxact:description>Major Version</ipxact:description>
+            <ipxact:description>Major interface version.</ipxact:description>
             <ipxact:bitOffset>28</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -61,12 +61,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>CTRL</ipxact:name>
-          <ipxact:description>Entropy Source Control</ipxact:description>
+          <ipxact:description>Controls entropy generation and conditioning.</ipxact:description>
           <ipxact:addressOffset>'h4</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
-            <ipxact:name>RESET</ipxact:name>
-            <ipxact:description>Software controlled reset when asserted high. Resets all internal state including health test counters, FIFO pointers, decorrelator shift registers, and the downsample phase counter. Ring oscillators continue running. Level-sensitive: the reset holds while this bit is 1, so software must write 0 to release it.</ipxact:description>
+            <ipxact:name>RSVD0</ipxact:name>
+            <ipxact:description>Reserved; reads zero and ignores writes.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -74,11 +74,11 @@
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
+            <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>MODULE_ENABLE</ipxact:name>
-            <ipxact:description>Master enable for the OpenTitan entropy_src_main_sm boot/startup gate. Drives main_sm's enable_i. When 0, main_sm stays in Idle and MAIN_SM_STATUS.BOOT_PHASE_DONE never asserts, so no entropy reaches the whitener/FIFO. When 1 (default), main_sm runs the boot health-test window and asserts BOOT_PHASE_DONE once it passes. Locked by FIPS_LOCK.LOCK. See doc/main_sm_boot_gate_functional_compat.md.</ipxact:description>
+            <ipxact:description>Enables startup health testing and entropy output. Clearing this field holds the main state machine idle. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -90,7 +90,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>AUTOTUNE_ENABLE</ipxact:name>
-            <ipxact:description>Enable automatic detuning of individual ring oscillator noise generators when corresponding per-generator health tests fail. When enabled, a failing health test causes the generator's noise RO to switch to its detuned (higher frequency) tap point. The shared sampling RO also detunes if ANY generator requests it. Automatic detuning is disabled by default (manual tuning via RING_OSC_TUNE required). Locked by FIPS_LOCK.LOCK: the lock freezes this field at whatever value it holds when FIPS_LOCK is set (swwel is value-agnostic). The certified flow writes 0 and then locks, so the entropy-source noise geometry cannot silently self-adjust mid-operation (SP 800-90B validated configuration).</ipxact:description>
+            <ipxact:description>Enables per-generator automatic detuning after a lane health-test failure. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
             <ipxact:bitOffset>4</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -102,7 +102,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>BYPASS_ENTROPY_COMPRESSOR</ipxact:name>
-            <ipxact:description>Bypass Entropy Compressor (BIW extractor) when asserted high. When bypassed, all 96 bytes from the 12 generators (8 bytes each) are pushed directly into the FIFO without compression, increasing FIFO fill rate by 3x (96 bytes vs 32 bits per cycle). Used for raw entropy analysis and testing. Disabled by default (32-bit compressed output). Locked by FIPS_LOCK.LOCK: raw (uncompressed, unconditioned) output is not a validated FIPS mode, so firmware locks this at 0 for certified operation.</ipxact:description>
+            <ipxact:description>Bypasses BIW extraction and writes the twelve generator bytes to the FIFO as three 32-bit words. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
             <ipxact:bitOffset>8</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -114,7 +114,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>DOWNSAMPLE_RATE</ipxact:name>
-            <ipxact:description>Downsample Rate for the decorrelator output. Specifies additional clock cycles to wait between entropy byte outputs. Value of N means output every (N+1) cycles. Applied after DECORRELATOR_CTRL.SAMPLE_CLK_DIV. Example: if SAMPLE_CLK_DIV=63 (div64) and DOWNSAMPLE_RATE=3, effective rate is div256 (64*(3+1)). Default=0 (no additional downsampling). Locked by FIPS_LOCK.LOCK (only wired into the push path in BYPASS_ENTROPY_COMPRESSOR mode).</ipxact:description>
+            <ipxact:description>Selects every (N+1)th decorrelator output while BIW extraction is bypassed. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
             <ipxact:bitOffset>16</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -126,7 +126,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>SHA256_WHITENING_ENABLE</ipxact:name>
-            <ipxact:description>Enable SHA-256 whitening stage after BIW compression. When enabled, 16 × 32-bit BIW outputs (512 bits) are accumulated and hashed using SHA-256, producing 8 × 32-bit digest words (256 bits). This provides cryptographic conditioning per NIST SP 800-90B. When disabled, BIW output goes directly to FIFO (passthrough mode). Default=1 (enabled). Locked by FIPS_LOCK.LOCK: the vetted conditioning component must not be disabled during certified operation.</ipxact:description>
+            <ipxact:description>Enables SHA-256 conditioning of each 512-bit BIW input block into a 256-bit digest. When clear, BIW words pass directly to the FIFO. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
             <ipxact:bitOffset>28</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -138,32 +138,13 @@
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
-          <ipxact:name>STATUS</ipxact:name>
-          <ipxact:description>Entropy Source Status (currently unused, reserved for future expansion)</ipxact:description>
-          <ipxact:addressOffset>'h8</ipxact:addressOffset>
-          <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>RSVD</ipxact:name>
-            <ipxact:description>Reserved for future use. Always reads 0.</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-        </ipxact:register>
-        <ipxact:register>
           <ipxact:name>DEBUG_CTRL</ipxact:name>
-          <ipxact:description>Debug control to monitor internal entropy noise source signals.</ipxact:description>
+          <ipxact:description>Controls the external debug observation pin. These fields remain writable after FIPS_LOCK.LOCK; system integration controls access to exposed pre-conditioning entropy.</ipxact:description>
           <ipxact:addressOffset>'hc</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>SELECT_SIGNAL</ipxact:name>
-            <ipxact:description>Select Signal. Selects one of 256 internal signals to route to the external debug monitor pin. Signal mapping: [0-11]: Raw noise bits from generators 0-11 (1 bit per generator). [12-15]: Reserved. [16-27]: Divided sample clocks from generators 0-11 (1 bit per generator). [28-31]: Reserved. [32-63]: Compressed 32-bit entropy stream (BIW extractor output). [64-95]: FIFO input 32-bit entropy stream (pre-FIFO buffering). [96-127]: Reserved. [128-223]: Uncompressed per-generator entropy bytes (96 bits total): Generator 0 byte [135:128], Generator 1 byte [143:136], Generator 2 byte [151:144], Generator 3 byte [159:152], Generator 4 byte [167:160], Generator 5 byte [175:168], Generator 6 byte [183:176], Generator 7 byte [191:184], Generator 8 byte [199:192], Generator 9 byte [207:200], Generator 10 byte [215:208], Generator 11 byte [223:216]. [224-255]: Reserved. Reserved selections drive the signal mux output to 0. With SELECT_FREQ_DIV=0 the external monitor pin is also 0. With SELECT_FREQ_DIV nonzero, the selected ripple-divider stage retains its previous value while the mux output is 0, so the monitor pin can hold 0 or 1 until the divider is reset. Set SELECT_FREQ_DIV=0 before selecting a reserved value when a constant-zero pin output is required.</ipxact:description>
+            <ipxact:description>Selects the observed signal: generator noise bits [11:0], sample clocks [27:16], BIW data [63:32], FIFO input [95:64], or generator bytes [223:128]. Other selections drive the divider input low.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -175,7 +156,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>SELECT_FREQ_DIV</ipxact:name>
-            <ipxact:description>Select Frequency Divider for debug monitor output pin. Division ratios: 0=div1 (no division), 1=div2, 2=div4, 3=div8, 4=div16, 5=div32, 6=div64, 7=div128. Used to slow down high-frequency signals for external observation. Default=0 (no division).</ipxact:description>
+            <ipxact:description>Selects observation division by 1, 2, 4, 8, 16, 32, 64, or 128.</ipxact:description>
             <ipxact:bitOffset>8</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -188,12 +169,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>INTR_STATUS</ipxact:name>
-          <ipxact:description>Interrupt Status (write 1 to clear)</ipxact:description>
+          <ipxact:description>Reports latched interrupt status; write one to clear a bit.</ipxact:description>
           <ipxact:addressOffset>'h10</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>HEALTH_TEST_FAILED</ipxact:name>
-            <ipxact:description>Health Test Failed Interrupt. Set when any enabled health test (Repetition, APT, or Markov) fails on the 32-bit entropy stream or any per-generator test fails. Check HEALTH_TEST_STATUS and GENERATOR_*_HEALTH_STATUS for details. Write 1 to clear.</ipxact:description>
+            <ipxact:description>Indicates a failure in the 32-bit entropy-stream health tests. Write one to clear.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -207,7 +188,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>FIFO_ERROR</ipxact:name>
-            <ipxact:description>FIFO Error Interrupt. Set on FIFO read/write protocol violations. Write 1 to clear.</ipxact:description>
+            <ipxact:description>Indicates a FIFO integrity error. Write one to clear.</ipxact:description>
             <ipxact:bitOffset>4</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -221,7 +202,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>FIFO_OVERFLOW</ipxact:name>
-            <ipxact:description>FIFO Overflow Interrupt. Set when entropy data is pushed to a full FIFO (64 entries deep). Data is discarded on overflow. Write 1 to clear.</ipxact:description>
+            <ipxact:description>Indicates that a main FIFO write was discarded while full. Write one to clear.</ipxact:description>
             <ipxact:bitOffset>8</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -235,7 +216,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>FIFO_UNDERFLOW</ipxact:name>
-            <ipxact:description>FIFO Underflow Interrupt. Set when software reads from an empty FIFO. Read returns stale/undefined data. Write 1 to clear.</ipxact:description>
+            <ipxact:description>Indicates that software read the empty main FIFO. Write one to clear.</ipxact:description>
             <ipxact:bitOffset>12</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -249,7 +230,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>PERSISTENT_FAILURE</ipxact:name>
-            <ipxact:description>Persistent Failure Interrupt. Set when the health-test alert threshold is reached (ALERT_SUMMARY_FAIL_COUNTS.ANY_FAIL_COUNT &gt;= ALERT_THRESHOLD), asserting main_sm.alert_thresh_fail_i and latching MAIN_SM_STATUS.ALERT. Indicates a persistent (not transient) entropy failure requiring firmware attention. Write 1 to clear.</ipxact:description>
+            <ipxact:description>Indicates a persistent health-test failure or health-test counter error. Write one to clear.</ipxact:description>
             <ipxact:bitOffset>16</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -263,7 +244,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>AUTOTUNE_FAIL</ipxact:name>
-            <ipxact:description>Autotune Failure Interrupt. Set when automatic ring-oscillator detuning fires in response to a per-generator health-test failure (CTRL.AUTOTUNE_ENABLE=1). Signals that the noise-source geometry self-adjusted, which is not permitted during FIPS-certified operation. Write 1 to clear.</ipxact:description>
+            <ipxact:description>Indicates a per-generator health-test failure while automatic detuning is enabled. Write one to clear.</ipxact:description>
             <ipxact:bitOffset>20</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -277,7 +258,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>BIW_OBS_OVERFLOW</ipxact:name>
-            <ipxact:description>BIW Observe FIFO Overflow Interrupt. Set when a word is pushed to the full post-BIW diagnostic observe FIFO (BIW_OBS); the word is dropped. A gap in the diagnostic mirror is benign, but indicates software is not draining BIW_OBS_RDATA fast enough. Write 1 to clear.</ipxact:description>
+            <ipxact:description>Indicates that a BIW observe FIFO word was discarded while full. Write one to clear.</ipxact:description>
             <ipxact:bitOffset>24</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -291,7 +272,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>NOISE_OBS_OVERFLOW</ipxact:name>
-            <ipxact:description>Noise Observe FIFO Overflow Interrupt. Set when a word is pushed to the full raw per-lane observe FIFO (NOISE_OBS); the word is dropped. This is a gap in the SP 800-90B raw-noise collection run for the selected lane, so software should drain NOISE_OBS_RDATA before the FIFO fills. Write 1 to clear.</ipxact:description>
+            <ipxact:description>Indicates that a raw-noise observe FIFO word was discarded while full. Write one to clear.</ipxact:description>
             <ipxact:bitOffset>28</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -306,12 +287,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>INTR_ENABLE</ipxact:name>
-          <ipxact:description>Interrupt Enable (individual enable bits for each interrupt source)</ipxact:description>
+          <ipxact:description>Enables individual interrupt sources.</ipxact:description>
           <ipxact:addressOffset>'h14</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>HEALTH_TEST_FAILED</ipxact:name>
-            <ipxact:description>Health Test Failed Interrupt Enable. Set to 1 to enable interrupt generation on health test failures. Default=0 (disabled).</ipxact:description>
+            <ipxact:description>Enables the health-test failure interrupt.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -323,7 +304,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>FIFO_ERROR</ipxact:name>
-            <ipxact:description>FIFO Error Interrupt Enable. Set to 1 to enable interrupt generation on FIFO errors. Default=0 (disabled).</ipxact:description>
+            <ipxact:description>Enables the FIFO integrity-error interrupt.</ipxact:description>
             <ipxact:bitOffset>4</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -335,7 +316,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>FIFO_OVERFLOW</ipxact:name>
-            <ipxact:description>FIFO Overflow Interrupt Enable. Set to 1 to enable interrupt generation on FIFO overflow. Default=0 (disabled).</ipxact:description>
+            <ipxact:description>Enables the main FIFO overflow interrupt.</ipxact:description>
             <ipxact:bitOffset>8</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -347,7 +328,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>FIFO_UNDERFLOW</ipxact:name>
-            <ipxact:description>FIFO Underflow Interrupt Enable. Set to 1 to enable interrupt generation on FIFO underflow. Default=0 (disabled).</ipxact:description>
+            <ipxact:description>Enables the main FIFO underflow interrupt.</ipxact:description>
             <ipxact:bitOffset>12</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -359,7 +340,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>PERSISTENT_FAILURE</ipxact:name>
-            <ipxact:description>Persistent Failure Interrupt Enable. Set to 1 to enable interrupt generation on persistent health-test failure. Default=0 (disabled).</ipxact:description>
+            <ipxact:description>Enables the persistent-failure interrupt.</ipxact:description>
             <ipxact:bitOffset>16</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -371,7 +352,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>AUTOTUNE_FAIL</ipxact:name>
-            <ipxact:description>Autotune Failure Interrupt Enable. Set to 1 to enable interrupt generation on automatic detune events. Default=0 (disabled).</ipxact:description>
+            <ipxact:description>Enables the automatic-detuning failure interrupt.</ipxact:description>
             <ipxact:bitOffset>20</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -383,7 +364,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>BIW_OBS_OVERFLOW</ipxact:name>
-            <ipxact:description>BIW Observe FIFO Overflow Interrupt Enable. Set to 1 to enable interrupt generation when the post-BIW diagnostic observe FIFO overflows. Default=0 (disabled).</ipxact:description>
+            <ipxact:description>Enables the BIW observe FIFO overflow interrupt.</ipxact:description>
             <ipxact:bitOffset>24</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -395,7 +376,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>NOISE_OBS_OVERFLOW</ipxact:name>
-            <ipxact:description>Noise Observe FIFO Overflow Interrupt Enable. Set to 1 to enable interrupt generation when the raw per-lane observe FIFO overflows. Default=0 (disabled).</ipxact:description>
+            <ipxact:description>Enables the raw-noise observe FIFO overflow interrupt.</ipxact:description>
             <ipxact:bitOffset>28</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -408,12 +389,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>INTR_TEST</ipxact:name>
-          <ipxact:description>Interrupt Test (write 1 to manually trigger interrupt for testing)</ipxact:description>
+          <ipxact:description>Triggers individual interrupt sources for testing.</ipxact:description>
           <ipxact:addressOffset>'h18</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>HEALTH_TEST_FAILED</ipxact:name>
-            <ipxact:description>Health Test Failed Interrupt Test. Write 1 to manually set INTR_STATUS.HEALTH_TEST_FAILED for interrupt handler testing. Self-clearing.</ipxact:description>
+            <ipxact:description>Write one to pulse the health-test failure interrupt source.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -426,7 +407,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>FIFO_ERROR</ipxact:name>
-            <ipxact:description>FIFO Error Interrupt Test. Write 1 to manually set INTR_STATUS.FIFO_ERROR for interrupt handler testing. Self-clearing.</ipxact:description>
+            <ipxact:description>Write one to pulse the FIFO integrity-error interrupt source.</ipxact:description>
             <ipxact:bitOffset>4</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -439,7 +420,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>FIFO_OVERFLOW</ipxact:name>
-            <ipxact:description>FIFO Overflow Interrupt Test. Write 1 to manually set INTR_STATUS.FIFO_OVERFLOW for interrupt handler testing. Self-clearing.</ipxact:description>
+            <ipxact:description>Write one to pulse the main FIFO overflow interrupt source.</ipxact:description>
             <ipxact:bitOffset>8</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -452,7 +433,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>FIFO_UNDERFLOW</ipxact:name>
-            <ipxact:description>FIFO Underflow Interrupt Test. Write 1 to manually set INTR_STATUS.FIFO_UNDERFLOW for interrupt handler testing. Self-clearing.</ipxact:description>
+            <ipxact:description>Write one to pulse the main FIFO underflow interrupt source.</ipxact:description>
             <ipxact:bitOffset>12</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -465,7 +446,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>PERSISTENT_FAILURE</ipxact:name>
-            <ipxact:description>Persistent Failure Interrupt Test. Write 1 to manually set INTR_STATUS.PERSISTENT_FAILURE for interrupt handler testing. Self-clearing.</ipxact:description>
+            <ipxact:description>Write one to pulse the persistent-failure interrupt source.</ipxact:description>
             <ipxact:bitOffset>16</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -478,7 +459,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>AUTOTUNE_FAIL</ipxact:name>
-            <ipxact:description>Autotune Failure Interrupt Test. Write 1 to manually set INTR_STATUS.AUTOTUNE_FAIL for interrupt handler testing. Self-clearing.</ipxact:description>
+            <ipxact:description>Write one to pulse the automatic-detuning failure interrupt source.</ipxact:description>
             <ipxact:bitOffset>20</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -491,7 +472,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>BIW_OBS_OVERFLOW</ipxact:name>
-            <ipxact:description>BIW Observe FIFO Overflow Interrupt Test. Write 1 to manually set INTR_STATUS.BIW_OBS_OVERFLOW for interrupt handler testing. Self-clearing.</ipxact:description>
+            <ipxact:description>Write one to pulse the BIW observe FIFO overflow interrupt source.</ipxact:description>
             <ipxact:bitOffset>24</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -504,7 +485,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>NOISE_OBS_OVERFLOW</ipxact:name>
-            <ipxact:description>Noise Observe FIFO Overflow Interrupt Test. Write 1 to manually set INTR_STATUS.NOISE_OBS_OVERFLOW for interrupt handler testing. Self-clearing.</ipxact:description>
+            <ipxact:description>Write one to pulse the raw-noise observe FIFO overflow interrupt source.</ipxact:description>
             <ipxact:bitOffset>28</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -518,12 +499,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>SHA256_STATUS</ipxact:name>
-          <ipxact:description>SHA-256 Whitening Status</ipxact:description>
+          <ipxact:description>Reports SHA-256 conditioner progress.</ipxact:description>
           <ipxact:addressOffset>'h1c</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>BUSY</ipxact:name>
-            <ipxact:description>SHA-256 is actively hashing. Set when accumulating input buffer is complete and hash computation is in progress. Cleared when digest output phase completes.</ipxact:description>
+            <ipxact:description>Indicates that SHA-256 processing or digest output is active.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -536,7 +517,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>INPUT_COUNT</ipxact:name>
-            <ipxact:description>Number of 32-bit words accumulated in SHA-256 input buffer (0-15). When this reaches 15 and the next word arrives, hashing begins. Useful for monitoring whitener activity and throughput.</ipxact:description>
+            <ipxact:description>Number of 32-bit words currently accumulated in the 512-bit input block.</ipxact:description>
             <ipxact:bitOffset>4</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -549,26 +530,26 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>OUTPUT_COUNT</ipxact:name>
-            <ipxact:description>Number of 32-bit digest words remaining to be output (0-7). When hashing completes, 8 words are available for output. This counter decrements as words are consumed by downstream FIFO. 0 indicates all digest words have been output.</ipxact:description>
+            <ipxact:description>Number of 32-bit digest words remaining for output. Reports 8 when a digest becomes available, decrements through 0 as words are accepted, and remains 0 while idle or bypassed.</ipxact:description>
             <ipxact:bitOffset>8</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
                 <ipxact:value>'h0</ipxact:value>
               </ipxact:reset>
             </ipxact:resets>
-            <ipxact:bitWidth>3</ipxact:bitWidth>
+            <ipxact:bitWidth>4</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>FIFO_CTRL</ipxact:name>
-          <ipxact:description>FIFO Control (64-entry x 32-bit entropy collection buffer)</ipxact:description>
+          <ipxact:description>Controls the 64-entry main entropy FIFO.</ipxact:description>
           <ipxact:addressOffset>'h20</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>ENABLE</ipxact:name>
-            <ipxact:description>FIFO write enable control. When enabled (1=default), entropy data flows into FIFO and write pointer updates normally. When disabled (set to 0), write operations are blocked: no entropy pushed, write pointer frozen, data collection paused. IMPORTANT: Read operations remain functional when disabled - software can still drain the FIFO by reading FIFO_RDATA. This allows capturing a snapshot of entropy and reading it out without new data being added. Use case: Stop entropy collection, drain FIFO for analysis, re-enable collection. Default=1 (enabled).</ipxact:description>
+            <ipxact:description>Enables FIFO writes. Reads remain available while writes are disabled.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -580,7 +561,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>ENTROPY_CHURN_ENABLE</ipxact:name>
-            <ipxact:description>Entropy Churning Mode Enable. When asserted high, incoming entropy data is XORed with existing FIFO data located at (write_ptr + DEPTH/2) % DEPTH before being written. This creates a circular feedback churning pattern where new entropy is combined with entropy from halfway around the FIFO buffer (32 entries earlier for DEPTH=64). Churning operation: write_data = incoming_data XOR mem[(wptr + 32) % 64]. Purpose: Enhance entropy quality through continuous churning of fresh randomness with accumulated randomness. Useful for additional conditioning and resistance to entropy source degradation. Default=0 (disabled, direct write without churning).</ipxact:description>
+            <ipxact:description>XORs each incoming word with the FIFO entry 32 positions ahead of the write pointer. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
             <ipxact:bitOffset>4</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -593,12 +574,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>FIFO_STATUS</ipxact:name>
-          <ipxact:description>FIFO Status (real-time buffer occupancy and pointers)</ipxact:description>
+          <ipxact:description>Reports main FIFO occupancy and pointers.</ipxact:description>
           <ipxact:addressOffset>'h24</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>LEVEL</ipxact:name>
-            <ipxact:description>Fill Level. Number of valid 32-bit entropy words currently in FIFO (0-64). Poll this field to determine when data is available for reading. LEVEL=0 means FIFO empty, LEVEL=64 means FIFO full.</ipxact:description>
+            <ipxact:description>Number of valid 32-bit words in the FIFO.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -611,7 +592,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>WPTR</ipxact:name>
-            <ipxact:description>Write Pointer. Current FIFO write address (0-63). Updated by hardware when entropy data is pushed. Read-only for software.</ipxact:description>
+            <ipxact:description>Current FIFO write pointer.</ipxact:description>
             <ipxact:bitOffset>8</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -624,7 +605,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>RPTR</ipxact:name>
-            <ipxact:description>Read Pointer. Current FIFO read address (0-63). Updated by hardware when FIFO_RDATA is read. Read-only for software.</ipxact:description>
+            <ipxact:description>Current FIFO read pointer.</ipxact:description>
             <ipxact:bitOffset>16</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -638,12 +619,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>FIFO_RDATA</ipxact:name>
-          <ipxact:description>FIFO Read Data (auto-incrementing read port)</ipxact:description>
+          <ipxact:description>Provides the next main FIFO word.</ipxact:description>
           <ipxact:addressOffset>'h28</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>RDATA</ipxact:name>
-            <ipxact:description>Data read from the FIFO. Reading this register automatically advances the read pointer and decrements FIFO_STATUS.LEVEL by 1. Returns 32-bit entropy word (compressed BIW output or raw generator bytes depending on CTRL.BYPASS_ENTROPY_COMPRESSOR setting). Reading from empty FIFO triggers INTR_STATUS.FIFO_UNDERFLOW and returns undefined data. Always check FIFO_STATUS.LEVEL before reading.</ipxact:description>
+            <ipxact:description>Returns and removes the next FIFO word. Reading an empty FIFO sets INTR_STATUS.FIFO_UNDERFLOW and returns undefined data.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -658,24 +639,24 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>HEALTH_TEST_CTRL</ipxact:name>
-          <ipxact:description>Health Test Control (NIST SP 800-90B compliant continuous tests)</ipxact:description>
+          <ipxact:description>Controls continuous entropy health tests.</ipxact:description>
           <ipxact:addressOffset>'h30</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>ENABLE</ipxact:name>
-            <ipxact:description>Enable bits for health tests [7:0]. Bit allocation: [0]=Repetition Count Test, [1:2]=Reserved, [3]=Adaptive Proportion Test (APT), [4:7]=Markov Test. Set bit to 1 to enable corresponding test. When a test is disabled (bit=0), its internal state (counters, windows) is reset. Tests run on 32-bit entropy stream. Default=0x7 (Repetition, APT, Markov enabled).</ipxact:description>
+            <ipxact:description>Enables the repetition-count, adaptive-proportion, and Markov tests in bits 0, 1, and 2. Disabling a test clears its state.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
                 <ipxact:value>'h7</ipxact:value>
               </ipxact:reset>
             </ipxact:resets>
-            <ipxact:bitWidth>8</ipxact:bitWidth>
+            <ipxact:bitWidth>3</ipxact:bitWidth>
             <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>REPETITION_LIMIT</ipxact:name>
-            <ipxact:description>Repetition Count Test threshold. Maximum allowed consecutive repetitions of the same value before test fails. NIST SP 800-90B recommends 15-30 for typical entropy sources. Lower values (5-10) increase sensitivity but may cause false alarms. Higher values (20-40) reduce false alarms but may miss stuck-at faults. Default=25 (covers 32 per-bit counters with &lt;1% false positive rate).</ipxact:description>
+            <ipxact:description>Maximum allowed per-lane repetition count before the test fails. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
             <ipxact:bitOffset>8</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -688,12 +669,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>HEALTH_TEST_WINDOW_SIZE</ipxact:name>
-          <ipxact:description>Health Test Window Size (sample count per test window)</ipxact:description>
+          <ipxact:description>Sets the APT and Markov window length.</ipxact:description>
           <ipxact:addressOffset>'h34</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>SIZE</ipxact:name>
-            <ipxact:description>Number of samples per health test window. Health tests (APT, Markov) reset their counters every WINDOW_SIZE samples to provide continuous monitoring. Default=2048 samples. Valid range: 256-8192. Smaller windows (256-1024) provide faster failure detection but may increase false positives. Larger windows (4096-8192) reduce noise but delay failure detection. NIST SP 800-90B recommends 512-2048 for typical entropy sources.</ipxact:description>
+            <ipxact:description>Number of valid entropy words per APT and Markov window. FIPS_LOCK.LOCK requires a value of at least 1024 and prevents software changes.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -706,12 +687,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>MARKOV_TEST_PROB_THRESHOLDS</ipxact:name>
-          <ipxact:description>Markov Test Transition Count Thresholds (16-bit direct count thresholds)</ipxact:description>
+          <ipxact:description>Sets high and low Markov alternation-count thresholds.</ipxact:description>
           <ipxact:addressOffset>'h38</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>PROB_01_THRESHOLD</ipxact:name>
-            <ipxact:description>High transition count threshold (0-&gt;1 transitions). Test fails if transition count exceeds this value. For window_size=2048 with good entropy, expect ~1024 transitions. Default=1200 (59% of window, provides 5σ margin above good noise). 16-bit width supports window sizes up to 8192.</ipxact:description>
+            <ipxact:description>Maximum allowed per-lane alternation count at the window boundary. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -723,7 +704,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>PROB_10_THRESHOLD</ipxact:name>
-            <ipxact:description>Low transition count threshold (1-&gt;0 transitions). Test fails if transition count falls below this value. Detects stuck-at or severely degraded noise (near-zero transitions). Default=100 (5% of window=2048).</ipxact:description>
+            <ipxact:description>Minimum allowed per-lane alternation count at the window boundary. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
             <ipxact:bitOffset>16</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -736,12 +717,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>HEALTH_TEST_STATUS</ipxact:name>
-          <ipxact:description>Health Test Status for 32-bit Entropy Stream (Write-1-to-Clear). Latches health test failures until firmware clears by writing 1. Bit allocation: [0]=Repetition, [1:2]=Reserved, [3]=APT, [4]=Markov-Hi, [5]=Markov-Lo, [6:7]=Reserved.</ipxact:description>
+          <ipxact:description>Latches 32-bit stream health-test failures: repetition [0], APT high or low [3], Markov high [4], and Markov low [5]. Write one to clear.</ipxact:description>
           <ipxact:addressOffset>'h40</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>HEALTH_STATUS</ipxact:name>
-            <ipxact:description>Health test status bits. Latches on failure, write 1 to clear.</ipxact:description>
+            <ipxact:description>Latched health-test failure bits; write one to clear.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -756,12 +737,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>REPETITION_TEST_COUNT</ipxact:name>
-          <ipxact:description>Repetition Test Count (current consecutive repetition streak)</ipxact:description>
+          <ipxact:description>Reports the highest current repetition count.</ipxact:description>
           <ipxact:addressOffset>'h44</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>REPETITION_COUNT</ipxact:name>
-            <ipxact:description>Current count of consecutive identical values observed in the 32-bit entropy stream. Increments on each match, resets to 0 on mismatch. Read this register to monitor real-time repetition behavior. Compare to HEALTH_TEST_CTRL.REPETITION_LIMIT (default 15). If count reaches limit, test fails and INTR_STATUS.HEALTH_TEST_FAILED is set. Widened to 16-bit to support full counter range without wrapping.</ipxact:description>
+            <ipxact:description>Highest current repetition count among the 32 entropy lanes.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -775,12 +756,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>APT_PATTERN_COUNT_1BIT</ipxact:name>
-          <ipxact:description>Adaptive Proportion Test (APT) high one-count statistics. The single APT instance counts ones independently on each lane of the 32-bit entropy stream over HEALTH_TEST_WINDOW_SIZE.SIZE samples (default 2048). PATTERN_COUNT exposes the maximum current per-lane count. TARGET_PATTERN and SAMPLES_PROCESSED are not implemented and read zero.</ipxact:description>
+          <ipxact:description>Reports the highest per-lane APT one-count in the current window.</ipxact:description>
           <ipxact:addressOffset>'h50</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>PATTERN_COUNT</ipxact:name>
-            <ipxact:description>Maximum per-lane ones count in the current APT window (apt_test_cnt_hi). The count updates on each valid sample and clears at the window boundary. For good entropy expect approximately half of HEALTH_TEST_WINDOW_SIZE.SIZE.</ipxact:description>
+            <ipxact:description>Highest current one-count among the 32 entropy lanes.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -788,44 +769,18 @@
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>16</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>TARGET_PATTERN</ipxact:name>
-            <ipxact:description>Not implemented. Reads zero. (RTL ties apt_target_pattern_1bit_o to 4'd0.)</ipxact:description>
-            <ipxact:bitOffset>16</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>4</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>SAMPLES_PROCESSED</ipxact:name>
-            <ipxact:description>Not implemented. Reads zero. (RTL ties apt_samples_processed_1bit_o to 10'd0.)</ipxact:description>
-            <ipxact:bitOffset>20</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>10</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>APT_PATTERN_COUNT_2BIT</ipxact:name>
-          <ipxact:description>Adaptive Proportion Test (APT) low one-count statistics. The single APT instance counts ones independently on each lane of the 32-bit entropy stream over HEALTH_TEST_WINDOW_SIZE.SIZE samples (default 2048). PATTERN_COUNT exposes the minimum current per-lane count. TARGET_PATTERN and SAMPLES_PROCESSED are not implemented and read zero.</ipxact:description>
+          <ipxact:description>Reports the lowest per-lane APT one-count in the current window.</ipxact:description>
           <ipxact:addressOffset>'h54</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>PATTERN_COUNT</ipxact:name>
-            <ipxact:description>Minimum per-lane ones count in the current APT window (apt_test_cnt_lo). The count updates on each valid sample and clears at the window boundary.</ipxact:description>
+            <ipxact:description>Lowest current one-count among the 32 entropy lanes.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -836,131 +791,15 @@
             <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>TARGET_PATTERN</ipxact:name>
-            <ipxact:description>Not implemented. Reads zero. (RTL ties apt_target_pattern_2bit_o to 4'd0.)</ipxact:description>
-            <ipxact:bitOffset>16</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>4</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>SAMPLES_PROCESSED</ipxact:name>
-            <ipxact:description>Not implemented. Reads zero. (RTL ties apt_samples_processed_2bit_o to 10'd0.)</ipxact:description>
-            <ipxact:bitOffset>20</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>10</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-        </ipxact:register>
-        <ipxact:register>
-          <ipxact:name>APT_PATTERN_COUNT_3BIT</ipxact:name>
-          <ipxact:description>APT 3-bit statistics register. PATTERN_COUNT, TARGET_PATTERN, and SAMPLES_PROCESSED are not implemented and all read zero. (RTL ties apt_pattern_count_3bit_o, apt_target_pattern_3bit_o, and apt_samples_processed_3bit_o to 0.)</ipxact:description>
-          <ipxact:addressOffset>'h58</ipxact:addressOffset>
-          <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>PATTERN_COUNT</ipxact:name>
-            <ipxact:description>Not implemented. Reads zero.</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>10</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>TARGET_PATTERN</ipxact:name>
-            <ipxact:description>Not implemented. Reads zero.</ipxact:description>
-            <ipxact:bitOffset>10</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>4</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>SAMPLES_PROCESSED</ipxact:name>
-            <ipxact:description>Not implemented. Reads zero.</ipxact:description>
-            <ipxact:bitOffset>20</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>10</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-        </ipxact:register>
-        <ipxact:register>
-          <ipxact:name>APT_PATTERN_COUNT_4BIT</ipxact:name>
-          <ipxact:description>APT 4-bit statistics register. PATTERN_COUNT, TARGET_PATTERN, and SAMPLES_PROCESSED are not implemented and all read zero. (RTL ties apt_pattern_count_4bit_o, apt_target_pattern_4bit_o, and apt_samples_processed_4bit_o to 0.)</ipxact:description>
-          <ipxact:addressOffset>'h5c</ipxact:addressOffset>
-          <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>PATTERN_COUNT</ipxact:name>
-            <ipxact:description>Not implemented. Reads zero.</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>10</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>TARGET_PATTERN</ipxact:name>
-            <ipxact:description>Not implemented. Reads zero.</ipxact:description>
-            <ipxact:bitOffset>10</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>4</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>SAMPLES_PROCESSED</ipxact:name>
-            <ipxact:description>Not implemented. Reads zero.</ipxact:description>
-            <ipxact:bitOffset>20</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>10</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>APT_PROPORTION_1BIT</ipxact:name>
-          <ipxact:description>Adaptive Proportion Test 1-bit Proportion Limit (16-bit direct count threshold)</ipxact:description>
+          <ipxact:description>Sets the APT high one-count threshold.</ipxact:description>
           <ipxact:addressOffset>'h60</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>LIMIT</ipxact:name>
-            <ipxact:description>APT high count threshold. Test fails if count of ones exceeds this value. For window_size=2048 with good entropy, expect ~1024 ones per lane. Default=1200 (59% of window, provides 5σ margin above good noise). 16-bit width supports window sizes up to 8192. Both 8-bit and 32-bit health test instances use the same threshold value.</ipxact:description>
+            <ipxact:description>Maximum allowed per-lane one-count at the window boundary. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -972,67 +811,13 @@
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
-          <ipxact:name>APT_PROPORTION_2BIT</ipxact:name>
-          <ipxact:description>Legacy unused APT threshold register. RTL does not consume this register; writes have no effect on APT behavior. The active thresholds are APT_PROPORTION_1BIT and APT_PROPORTION_LO, applied to one APT over the 32-bit entropy stream using HEALTH_TEST_WINDOW_SIZE.SIZE.</ipxact:description>
-          <ipxact:addressOffset>'h64</ipxact:addressOffset>
-          <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>LIMIT</ipxact:name>
-            <ipxact:description>Legacy unused field retained for register compatibility. RTL does not read this value.</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h80</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>10</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-        </ipxact:register>
-        <ipxact:register>
-          <ipxact:name>APT_PROPORTION_3BIT</ipxact:name>
-          <ipxact:description>Legacy unused APT threshold register. RTL does not consume this register; writes have no effect on APT behavior. The active thresholds are APT_PROPORTION_1BIT and APT_PROPORTION_LO, applied to one APT over the 32-bit entropy stream using HEALTH_TEST_WINDOW_SIZE.SIZE.</ipxact:description>
-          <ipxact:addressOffset>'h68</ipxact:addressOffset>
-          <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>LIMIT</ipxact:name>
-            <ipxact:description>Legacy unused field retained for register compatibility. RTL does not read this value.</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h40</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>10</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-        </ipxact:register>
-        <ipxact:register>
-          <ipxact:name>APT_PROPORTION_4BIT</ipxact:name>
-          <ipxact:description>Legacy unused APT threshold register. RTL does not consume this register; writes have no effect on APT behavior. The active thresholds are APT_PROPORTION_1BIT and APT_PROPORTION_LO, applied to one APT over the 32-bit entropy stream using HEALTH_TEST_WINDOW_SIZE.SIZE.</ipxact:description>
-          <ipxact:addressOffset>'h6c</ipxact:addressOffset>
-          <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>LIMIT</ipxact:name>
-            <ipxact:description>Legacy unused field retained for register compatibility. RTL does not read this value.</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h20</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>10</ipxact:bitWidth>
-            <ipxact:access>read-write</ipxact:access>
-          </ipxact:field>
-        </ipxact:register>
-        <ipxact:register>
           <ipxact:name>APT_PROPORTION_LO</ipxact:name>
-          <ipxact:description>Adaptive Proportion Test Low Threshold (two-sided NIST SP 800-90B compliance). Detects low-bias noise where too few 1s are observed per bit lane. The APT counts 1s per bit lane over a health test window; if the minimum count across all lanes falls below this threshold, the test fails (apt_test_fail_lo). For window_size=2048 with good entropy, expect ~1024 ones per lane. Default=848 (41.4% of 2048, symmetric 5-sigma margin below mean, matching the high threshold at 1200=58.6%).</ipxact:description>
+          <ipxact:description>Sets the APT low one-count threshold.</ipxact:description>
           <ipxact:addressOffset>'h70</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>LIMIT</ipxact:name>
-            <ipxact:description>APT low count threshold. Test fails if the minimum per-bit-lane ones count falls below this value at window wrap. Set to 0 to disable the low-side test. 16-bit width supports window sizes up to 8192.</ipxact:description>
+            <ipxact:description>Minimum allowed per-lane one-count at the window boundary. Zero disables the low-side test. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1045,12 +830,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>MARKOV_TEST_COUNTS_0</ipxact:name>
-          <ipxact:description>Markov Test Counts 0</ipxact:description>
+          <ipxact:description>Reports the highest and lowest per-lane alternation counts in the current Markov window.</ipxact:description>
           <ipxact:addressOffset>'h80</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>COUNT_01</ipxact:name>
-            <ipxact:description>Count of 0-&gt;1 transitions.</ipxact:description>
+            <ipxact:description>Highest current per-lane alternation count.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1063,7 +848,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>COUNT_10</ipxact:name>
-            <ipxact:description>Count of 1-&gt;0 transitions.</ipxact:description>
+            <ipxact:description>Lowest current per-lane alternation count.</ipxact:description>
             <ipxact:bitOffset>16</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1071,108 +856,18 @@
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>16</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-        </ipxact:register>
-        <ipxact:register>
-          <ipxact:name>MARKOV_TEST_COUNTS_1</ipxact:name>
-          <ipxact:description>Markov Test Counts 1</ipxact:description>
-          <ipxact:addressOffset>'h84</ipxact:addressOffset>
-          <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>COUNT_00</ipxact:name>
-            <ipxact:description>Count of 0-&gt;0 transitions.</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>16</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>COUNT_11</ipxact:name>
-            <ipxact:description>Count of 1-&gt;1 transitions.</ipxact:description>
-            <ipxact:bitOffset>16</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>16</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-        </ipxact:register>
-        <ipxact:register>
-          <ipxact:name>MARKOV_TEST_PROBABILITIES</ipxact:name>
-          <ipxact:description>Markov Test Probabilities (legacy register - values are always 0, not implemented in current RTL)</ipxact:description>
-          <ipxact:addressOffset>'h88</ipxact:addressOffset>
-          <ipxact:size>32</ipxact:size>
-          <ipxact:field>
-            <ipxact:name>PROB_01</ipxact:name>
-            <ipxact:description>Unused - probability calculation not implemented (no division in RTL). Always reads 0. Use MARKOV_TEST_COUNTS_0.COUNT_01 for raw transition count.</ipxact:description>
-            <ipxact:bitOffset>0</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>8</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>PROB_10</ipxact:name>
-            <ipxact:description>Unused - probability calculation not implemented (no division in RTL). Always reads 0. Use MARKOV_TEST_COUNTS_0.COUNT_10 for raw transition count.</ipxact:description>
-            <ipxact:bitOffset>8</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>8</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>PROB_00</ipxact:name>
-            <ipxact:description>Unused - not tracked by OpenTitan Markov test. Always reads 0.</ipxact:description>
-            <ipxact:bitOffset>16</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>8</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>PROB_11</ipxact:name>
-            <ipxact:description>Unused - not tracked by OpenTitan Markov test. Always reads 0.</ipxact:description>
-            <ipxact:bitOffset>24</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>8</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>RING_OSC_ENABLE</ipxact:name>
-          <ipxact:description>Ring Oscillator Enables (independent on/off control for all 12 generators)</ipxact:description>
+          <ipxact:description>Controls noise and sample-clock ring oscillators.</ipxact:description>
           <ipxact:addressOffset>'h90</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>ENABLE</ipxact:name>
-            <ipxact:description>Enable for each of 12 noise generating ring oscillators (one bit per generator [11:0]). Set bit to 1 to enable oscillator, 0 to disable. Disabling stops entropy generation from that generator. RO lengths: Gen0=5, Gen1=7, Gen2=11, Gen3=13, Gen4=17, Gen5=19, Gen6=6, Gen7=8, Gen8=12, Gen9=14, Gen10=18, Gen11=20 stages. All enabled by default (0xFFF).</ipxact:description>
+            <ipxact:description>Enables each generator noise ring oscillator. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1184,7 +879,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>SAMPLE_CLK_ENABLE</ipxact:name>
-            <ipxact:description>Enable for shared sampling ring oscillator (12 bits, one per generator [23:12]). Shared RO (109 stages) is enabled if ANY bit is set (OR-based control). Setting a bit to 0 disables that generator's use of the shared RO (must use external clock via RING_OSC_CTRL.SAMPLE_CLK_SELECT). All enabled by default (0xFFF). Note: This is not 12 separate ROs, but per-generator enable bits for the single shared RO.</ipxact:description>
+            <ipxact:description>Enables the shared sample-clock ring oscillator when any bit is set. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
             <ipxact:bitOffset>12</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1197,12 +892,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>RING_OSC_TUNE</ipxact:name>
-          <ipxact:description>Ring Oscillator Tune Control (frequency adjustment via tap point selection)</ipxact:description>
+          <ipxact:description>Selects detuned ring-oscillator tap points.</ipxact:description>
           <ipxact:addressOffset>'h94</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>DETUNE</ipxact:name>
-            <ipxact:description>Detune control for each of 12 noise generating ring oscillators (one bit per generator [11:0]). Set bit to 1 to detune (increase frequency by selecting shorter tap point in RO chain). Frequency increase: ~40-67% depending on RO length. Example: Gen0 (5-&gt;3 stages) increases from 2.88 GHz to 4.80 GHz. Used for manual tuning when CTRL.AUTOTUNE_ENABLE=0, or automatically set by hardware when AUTOTUNE_ENABLE=1 and health test fails. Default=0x0 (all ROs at normal frequency).</ipxact:description>
+            <ipxact:description>Selects the shorter tap for each noise ring oscillator while automatic tuning is disabled. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1214,7 +909,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>SAMPLE_CLK_DETUNE</ipxact:name>
-            <ipxact:description>Detune control for shared sampling ring oscillator (12 bits, one per generator [23:12]). Shared RO detunes if ANY bit is set (OR-based control). Detuning changes RO from 109-&gt;101 stages, increasing frequency from 264 MHz to 285 MHz (~8% increase). Used to adjust sampling frequency ratio when per-generator health tests indicate issues. Always manual control, independent of CTRL.AUTOTUNE_ENABLE. Default=0x0 (shared RO at normal 109-stage frequency).</ipxact:description>
+            <ipxact:description>Selects the shorter shared sample-clock oscillator tap when any bit is set. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
             <ipxact:bitOffset>12</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1227,12 +922,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>RING_OSC_CTRL</ipxact:name>
-          <ipxact:description>Ring Oscillator Sample Clock Select (per-generator clock source mux)</ipxact:description>
+          <ipxact:description>Selects each generator sample-clock source.</ipxact:description>
           <ipxact:addressOffset>'h98</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>SAMPLE_CLK_SELECT</ipxact:name>
-            <ipxact:description>Select sample clock source for each of 12 generators (one bit per generator [11:0]). Set bit to 1 to use shared internal sampling ring oscillator (109 stages, 264 MHz), set to 0 to use external sampling clock input (rosc_sample_clk_i port, typically 400 MHz). Shared RO provides area/power savings and consistent sampling across generators. External clock useful for characterization and debug. Each generator's clock is further divided by GENERATOR_*_SAMPLE_CLK_CONFIG.SAMPLE_CLK_DIVIDE (div1 to div32). Default=0xFFF (all generators use internal shared RO).</ipxact:description>
+            <ipxact:description>Selects the shared internal sample clock when set and the external sample clock when clear. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1245,12 +940,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>DECORRELATOR_CTRL</ipxact:name>
-          <ipxact:description>Decorrelator Control (LFSR-based entropy conditioning)</ipxact:description>
+          <ipxact:description>Controls generator decorrelation and byte cadence.</ipxact:description>
           <ipxact:addressOffset>'ha0</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>BYPASS</ipxact:name>
-            <ipxact:description>Decorrelator bypass for each of 12 generators (one bit per generator [11:0]). Set bit to 1 to bypass LFSR decorrelator and capture raw noise bits directly. When bypassed, feedback loop is broken and shift register captures raw entropy stream. Useful for raw entropy analysis and NIST test suite validation. Bypass mode recommendation: set SAMPLE_CLK_DIV=7 (div8) to capture one byte every 8 cycles (all raw bits). Normal mode: keep default SAMPLE_CLK_DIV=63 (div64) for LFSR decorrelation. Default=0x0 (all decorrelators enabled).</ipxact:description>
+            <ipxact:description>Bypasses the LFSR feedback path independently for each generator. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1262,7 +957,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>SAMPLE_CLK_DIV</ipxact:name>
-            <ipxact:description>Sample Clock Divider for decorrelator shift registers. Specifies clock cycles between entropy byte captures. Actual division = value + 1. Examples: 63-&gt;div64 (default), 7-&gt;div8 (bypass mode), 127-&gt;div128 (slow). This controls the byte capture rate from each generator's decorrelator. Higher values increase decorrelation but reduce throughput. Lower values capture more raw bits. Applies to all 12 generators. Default=63 (div64, ~4 kHz byte rate per generator at 264 MHz sampling).</ipxact:description>
+            <ipxact:description>Sets the generator byte-output period to this value plus one sample-clock cycles. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
             <ipxact:bitOffset>12</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1275,12 +970,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>DECORRELATOR_MASK</ipxact:name>
-          <ipxact:description>Decorrelator Mask</ipxact:description>
+          <ipxact:description>Masks bits in every generator entropy byte.</ipxact:description>
           <ipxact:addressOffset>'ha4</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>ENTROPY_BYTE_MASK</ipxact:name>
-            <ipxact:description></ipxact:description>
+            <ipxact:description>Enables corresponding entropy-byte bits when set. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1293,12 +988,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>MAIN_SM_STATUS</ipxact:name>
-          <ipxact:description>OpenTitan entropy_src_main_sm Status. Reports the boot/startup gate state machine driven by CTRL.MODULE_ENABLE, the aggregated health test status, and es_cntr_err. See doc/main_sm_boot_gate_functional_compat.md.</ipxact:description>
+          <ipxact:description>Reports the startup health-test gate state machine.</ipxact:description>
           <ipxact:addressOffset>'hb4</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>STATE</ipxact:name>
-            <ipxact:description>Current entropy_src_main_sm state (sparse FSM encoding from entropy_src_main_sm_pkg::state_e). Useful values while bypass_mode_i=1: Idle, BootHTRunning, BootPostHTChk, BootPhaseDone, AlertState, AlertHang, Error.</ipxact:description>
+            <ipxact:description>Current sparse-encoded state-machine state.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1311,7 +1006,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>IDLE</ipxact:name>
-            <ipxact:description>main_sm_idle_o. Set while the FSM is in the Idle state (module disabled or not yet enabled).</ipxact:description>
+            <ipxact:description>Indicates that the state machine is idle.</ipxact:description>
             <ipxact:bitOffset>9</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1324,7 +1019,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>ALERT</ipxact:name>
-            <ipxact:description>main_sm_alert_o, latched. Set when ANY_FAIL_COUNT reaches ALERT_THRESHOLD (alert_thresh_fail_i asserted), which drives the FSM through AlertState into AlertHang, halting entropy output. Signals that the entropy source has accumulated too many consecutive health-test failures and has stopped outputting entropy. Cleared by writing 1 (W1C) or by a CTRL.RESET soft reset; the FSM leaves AlertHang on rst_ni, CTRL.RESET, or CTRL.MODULE_ENABLE=0. See also INTR_STATUS.PERSISTENT_FAILURE and ALERT_THRESHOLD.THRESHOLD.</ipxact:description>
+            <ipxact:description>Latches entry into the persistent-failure alert path, which halts entropy output. Write one or reset the block to clear.</ipxact:description>
             <ipxact:bitOffset>10</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1338,7 +1033,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>ERR</ipxact:name>
-            <ipxact:description>main_sm_err_o, latched. Set if the FSM reaches the illegal Error state, including via local_escalate_i (es_cntr_err health-test-counter integrity error), which unconditionally forces Error regardless of current state. Cleared by writing 1 (W1C) or by a CTRL.RESET soft reset.</ipxact:description>
+            <ipxact:description>Latches an illegal state or health-test counter integrity error. Write one or reset the block to clear.</ipxact:description>
             <ipxact:bitOffset>11</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1352,7 +1047,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>BOOT_PHASE_DONE</ipxact:name>
-            <ipxact:description>boot_phase_done_o. Set once the boot-time health test window has passed; gates entropy_stream_valid_gated. Deasserts on disable, reset, or escalation to Error/AlertHang.</ipxact:description>
+            <ipxact:description>Indicates successful completion of startup health testing and permits entropy output.</ipxact:description>
             <ipxact:bitOffset>12</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1365,7 +1060,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>ALERT_CNTR_CLR_OK</ipxact:name>
-            <ipxact:description>alert_cntr_clr_ok_o. Set when main_sm allows the per-window alert fail counters (ALERT_SUMMARY_FAIL_COUNTS, ALERT_FAIL_COUNTS) to clear on a passing window (replaces the legacy hardcoded alert_cntr_clr_ok=1).</ipxact:description>
+            <ipxact:description>Indicates that a passing window may clear alert failure counters.</ipxact:description>
             <ipxact:bitOffset>13</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1379,12 +1074,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>GENERATOR_0_HEALTH_STATUS</ipxact:name>
-          <ipxact:description>Generator 0 Health Test Status (Write-1-to-Clear)</ipxact:description>
+          <ipxact:description>Latches generator 0 health-test failures; write one to clear.</ipxact:description>
           <ipxact:addressOffset>'hc0</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>STATUS</ipxact:name>
-            <ipxact:description>Generator 0 health test status. Latches on failure, write 1 to clear.</ipxact:description>
+            <ipxact:description>Generator 0 failure bits use the HEALTH_TEST_STATUS allocation.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1399,12 +1094,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>GENERATOR_1_HEALTH_STATUS</ipxact:name>
-          <ipxact:description>Generator 1 Health Test Status (Write-1-to-Clear)</ipxact:description>
+          <ipxact:description>Latches generator 1 health-test failures; write one to clear.</ipxact:description>
           <ipxact:addressOffset>'hc4</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>STATUS</ipxact:name>
-            <ipxact:description>Generator 1 health test status. Latches on failure, write 1 to clear.</ipxact:description>
+            <ipxact:description>Generator 1 failure bits use the HEALTH_TEST_STATUS allocation.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1419,12 +1114,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>GENERATOR_2_HEALTH_STATUS</ipxact:name>
-          <ipxact:description>Generator 2 Health Test Status (Write-1-to-Clear)</ipxact:description>
+          <ipxact:description>Latches generator 2 health-test failures; write one to clear.</ipxact:description>
           <ipxact:addressOffset>'hc8</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>STATUS</ipxact:name>
-            <ipxact:description>Generator 2 health test status. Latches on failure, write 1 to clear.</ipxact:description>
+            <ipxact:description>Generator 2 failure bits use the HEALTH_TEST_STATUS allocation.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1439,12 +1134,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>GENERATOR_3_HEALTH_STATUS</ipxact:name>
-          <ipxact:description>Generator 3 Health Test Status (Write-1-to-Clear)</ipxact:description>
+          <ipxact:description>Latches generator 3 health-test failures; write one to clear.</ipxact:description>
           <ipxact:addressOffset>'hcc</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>STATUS</ipxact:name>
-            <ipxact:description>Generator 3 health test status. Latches on failure, write 1 to clear.</ipxact:description>
+            <ipxact:description>Generator 3 failure bits use the HEALTH_TEST_STATUS allocation.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1459,12 +1154,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>GENERATOR_4_HEALTH_STATUS</ipxact:name>
-          <ipxact:description>Generator 4 Health Test Status (Write-1-to-Clear)</ipxact:description>
+          <ipxact:description>Latches generator 4 health-test failures; write one to clear.</ipxact:description>
           <ipxact:addressOffset>'hd0</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>STATUS</ipxact:name>
-            <ipxact:description>Generator 4 health test status. Latches on failure, write 1 to clear.</ipxact:description>
+            <ipxact:description>Generator 4 failure bits use the HEALTH_TEST_STATUS allocation.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1479,12 +1174,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>GENERATOR_5_HEALTH_STATUS</ipxact:name>
-          <ipxact:description>Generator 5 Health Test Status (Write-1-to-Clear)</ipxact:description>
+          <ipxact:description>Latches generator 5 health-test failures; write one to clear.</ipxact:description>
           <ipxact:addressOffset>'hd4</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>STATUS</ipxact:name>
-            <ipxact:description>Generator 5 health test status. Latches on failure, write 1 to clear.</ipxact:description>
+            <ipxact:description>Generator 5 failure bits use the HEALTH_TEST_STATUS allocation.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1499,12 +1194,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>GENERATOR_6_HEALTH_STATUS</ipxact:name>
-          <ipxact:description>Generator 6 Health Test Status (Write-1-to-Clear)</ipxact:description>
+          <ipxact:description>Latches generator 6 health-test failures; write one to clear.</ipxact:description>
           <ipxact:addressOffset>'hd8</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>STATUS</ipxact:name>
-            <ipxact:description>Generator 6 health test status. Latches on failure, write 1 to clear.</ipxact:description>
+            <ipxact:description>Generator 6 failure bits use the HEALTH_TEST_STATUS allocation.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1519,12 +1214,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>GENERATOR_7_HEALTH_STATUS</ipxact:name>
-          <ipxact:description>Generator 7 Health Test Status (Write-1-to-Clear)</ipxact:description>
+          <ipxact:description>Latches generator 7 health-test failures; write one to clear.</ipxact:description>
           <ipxact:addressOffset>'hdc</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>STATUS</ipxact:name>
-            <ipxact:description>Generator 7 health test status. Latches on failure, write 1 to clear.</ipxact:description>
+            <ipxact:description>Generator 7 failure bits use the HEALTH_TEST_STATUS allocation.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1539,12 +1234,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>GENERATOR_8_HEALTH_STATUS</ipxact:name>
-          <ipxact:description>Generator 8 Health Test Status (Write-1-to-Clear)</ipxact:description>
+          <ipxact:description>Latches generator 8 health-test failures; write one to clear.</ipxact:description>
           <ipxact:addressOffset>'he0</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>STATUS</ipxact:name>
-            <ipxact:description>Generator 8 health test status. Latches on failure, write 1 to clear.</ipxact:description>
+            <ipxact:description>Generator 8 failure bits use the HEALTH_TEST_STATUS allocation.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1559,12 +1254,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>GENERATOR_9_HEALTH_STATUS</ipxact:name>
-          <ipxact:description>Generator 9 Health Test Status (Write-1-to-Clear)</ipxact:description>
+          <ipxact:description>Latches generator 9 health-test failures; write one to clear.</ipxact:description>
           <ipxact:addressOffset>'he4</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>STATUS</ipxact:name>
-            <ipxact:description>Generator 9 health test status. Latches on failure, write 1 to clear.</ipxact:description>
+            <ipxact:description>Generator 9 failure bits use the HEALTH_TEST_STATUS allocation.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1579,12 +1274,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>GENERATOR_10_HEALTH_STATUS</ipxact:name>
-          <ipxact:description>Generator 10 Health Test Status (Write-1-to-Clear)</ipxact:description>
+          <ipxact:description>Latches generator 10 health-test failures; write one to clear.</ipxact:description>
           <ipxact:addressOffset>'he8</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>STATUS</ipxact:name>
-            <ipxact:description>Generator 10 health test status. Latches on failure, write 1 to clear.</ipxact:description>
+            <ipxact:description>Generator 10 failure bits use the HEALTH_TEST_STATUS allocation.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1599,12 +1294,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>GENERATOR_11_HEALTH_STATUS</ipxact:name>
-          <ipxact:description>Generator 11 Health Test Status (Write-1-to-Clear)</ipxact:description>
+          <ipxact:description>Latches generator 11 health-test failures; write one to clear.</ipxact:description>
           <ipxact:addressOffset>'hec</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>STATUS</ipxact:name>
-            <ipxact:description>Generator 11 health test status. Latches on failure, write 1 to clear.</ipxact:description>
+            <ipxact:description>Generator 11 failure bits use the HEALTH_TEST_STATUS allocation.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1619,12 +1314,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>GENERATOR_0_SAMPLE_CLK_CONFIG</ipxact:name>
-          <ipxact:description>Generator 0 Sample Clock Configuration</ipxact:description>
+          <ipxact:description>Controls generator 0 sample-clock division.</ipxact:description>
           <ipxact:addressOffset>'h100</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>SAMPLE_CLK_DIVIDE</ipxact:name>
-            <ipxact:description>Sample clock division factor for generator 0. Values: 0=div1, 1=div2, 2=div4, 3=div8, 4=div16, 5=div32. Default=div1 (ratio: 21.8x).</ipxact:description>
+            <ipxact:description>Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1637,12 +1332,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>GENERATOR_1_SAMPLE_CLK_CONFIG</ipxact:name>
-          <ipxact:description>Generator 1 Sample Clock Configuration</ipxact:description>
+          <ipxact:description>Controls generator 1 sample-clock division.</ipxact:description>
           <ipxact:addressOffset>'h104</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>SAMPLE_CLK_DIVIDE</ipxact:name>
-            <ipxact:description>Sample clock division factor for generator 1. Values: 0=div1, 1=div2, 2=div4, 3=div8, 4=div16, 5=div32. Default=div1 (ratio: 15.6x).</ipxact:description>
+            <ipxact:description>Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1655,12 +1350,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>GENERATOR_2_SAMPLE_CLK_CONFIG</ipxact:name>
-          <ipxact:description>Generator 2 Sample Clock Configuration</ipxact:description>
+          <ipxact:description>Controls generator 2 sample-clock division.</ipxact:description>
           <ipxact:addressOffset>'h108</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>SAMPLE_CLK_DIVIDE</ipxact:name>
-            <ipxact:description>Sample clock division factor for generator 2. Values: 0=div1, 1=div2, 2=div4, 3=div8, 4=div16, 5=div32. Default=div2 (ratio: 19.8x).</ipxact:description>
+            <ipxact:description>Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1673,12 +1368,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>GENERATOR_3_SAMPLE_CLK_CONFIG</ipxact:name>
-          <ipxact:description>Generator 3 Sample Clock Configuration</ipxact:description>
+          <ipxact:description>Controls generator 3 sample-clock division.</ipxact:description>
           <ipxact:addressOffset>'h10c</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>SAMPLE_CLK_DIVIDE</ipxact:name>
-            <ipxact:description>Sample clock division factor for generator 3. Values: 0=div1, 1=div2, 2=div4, 3=div8, 4=div16, 5=div32. Default=div2 (ratio: 16.8x).</ipxact:description>
+            <ipxact:description>Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1691,12 +1386,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>GENERATOR_4_SAMPLE_CLK_CONFIG</ipxact:name>
-          <ipxact:description>Generator 4 Sample Clock Configuration</ipxact:description>
+          <ipxact:description>Controls generator 4 sample-clock division.</ipxact:description>
           <ipxact:addressOffset>'h110</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>SAMPLE_CLK_DIVIDE</ipxact:name>
-            <ipxact:description>Sample clock division factor for generator 4. Values: 0=div1, 1=div2, 2=div4, 3=div8, 4=div16, 5=div32. Default=div4 (ratio: 25.6x).</ipxact:description>
+            <ipxact:description>Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1709,12 +1404,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>GENERATOR_5_SAMPLE_CLK_CONFIG</ipxact:name>
-          <ipxact:description>Generator 5 Sample Clock Configuration</ipxact:description>
+          <ipxact:description>Controls generator 5 sample-clock division.</ipxact:description>
           <ipxact:addressOffset>'h114</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>SAMPLE_CLK_DIVIDE</ipxact:name>
-            <ipxact:description>Sample clock division factor for generator 5. Values: 0=div1, 1=div2, 2=div4, 3=div8, 4=div16, 5=div32. Default=div4 (ratio: 22.8x).</ipxact:description>
+            <ipxact:description>Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1727,12 +1422,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>GENERATOR_6_SAMPLE_CLK_CONFIG</ipxact:name>
-          <ipxact:description>Generator 6 Sample Clock Configuration</ipxact:description>
+          <ipxact:description>Controls generator 6 sample-clock division.</ipxact:description>
           <ipxact:addressOffset>'h118</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>SAMPLE_CLK_DIVIDE</ipxact:name>
-            <ipxact:description>Sample clock division factor for generator 6. Values: 0=div1, 1=div2, 2=div4, 3=div8, 4=div16, 5=div32. Default=div1 (ratio: 18.2x).</ipxact:description>
+            <ipxact:description>Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1745,12 +1440,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>GENERATOR_7_SAMPLE_CLK_CONFIG</ipxact:name>
-          <ipxact:description>Generator 7 Sample Clock Configuration</ipxact:description>
+          <ipxact:description>Controls generator 7 sample-clock division.</ipxact:description>
           <ipxact:addressOffset>'h11c</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>SAMPLE_CLK_DIVIDE</ipxact:name>
-            <ipxact:description>Sample clock division factor for generator 7. Values: 0=div1, 1=div2, 2=div4, 3=div8, 4=div16, 5=div32. Default=div1 (ratio: 13.6x).</ipxact:description>
+            <ipxact:description>Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1763,12 +1458,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>GENERATOR_8_SAMPLE_CLK_CONFIG</ipxact:name>
-          <ipxact:description>Generator 8 Sample Clock Configuration</ipxact:description>
+          <ipxact:description>Controls generator 8 sample-clock division.</ipxact:description>
           <ipxact:addressOffset>'h120</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>SAMPLE_CLK_DIVIDE</ipxact:name>
-            <ipxact:description>Sample clock division factor for generator 8. Values: 0=div1, 1=div2, 2=div4, 3=div8, 4=div16, 5=div32. Default=div2 (ratio: 18.2x).</ipxact:description>
+            <ipxact:description>Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1781,12 +1476,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>GENERATOR_9_SAMPLE_CLK_CONFIG</ipxact:name>
-          <ipxact:description>Generator 9 Sample Clock Configuration</ipxact:description>
+          <ipxact:description>Controls generator 9 sample-clock division.</ipxact:description>
           <ipxact:addressOffset>'h124</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>SAMPLE_CLK_DIVIDE</ipxact:name>
-            <ipxact:description>Sample clock division factor for generator 9. Values: 0=div1, 1=div2, 2=div4, 3=div8, 4=div16, 5=div32. Default=div2 (ratio: 15.6x).</ipxact:description>
+            <ipxact:description>Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1799,12 +1494,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>GENERATOR_10_SAMPLE_CLK_CONFIG</ipxact:name>
-          <ipxact:description>Generator 10 Sample Clock Configuration</ipxact:description>
+          <ipxact:description>Controls generator 10 sample-clock division.</ipxact:description>
           <ipxact:addressOffset>'h128</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>SAMPLE_CLK_DIVIDE</ipxact:name>
-            <ipxact:description>Sample clock division factor for generator 10. Values: 0=div1, 1=div2, 2=div4, 3=div8, 4=div16, 5=div32. Default=div4 (ratio: 24.4x).</ipxact:description>
+            <ipxact:description>Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1817,12 +1512,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>GENERATOR_11_SAMPLE_CLK_CONFIG</ipxact:name>
-          <ipxact:description>Generator 11 Sample Clock Configuration</ipxact:description>
+          <ipxact:description>Controls generator 11 sample-clock division.</ipxact:description>
           <ipxact:addressOffset>'h12c</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>SAMPLE_CLK_DIVIDE</ipxact:name>
-            <ipxact:description>Sample clock division factor for generator 11. Values: 0=div1, 1=div2, 2=div4, 3=div8, 4=div16, 5=div32. Default=div4 (ratio: 21.8x).</ipxact:description>
+            <ipxact:description>Selects division by 1, 2, 4, 8, 16, or 32. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1835,12 +1530,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>HT_WATERMARK_NUM</ipxact:name>
-          <ipxact:description>Health Test Watermark Selector. Selects which health-test counter updates the single shared HT_WATERMARK storage and whether it tracks a maximum or minimum. Writing this selector does not re-arm or clear the shared value, so a selector change alone carries the value recorded by the previous mode. To establish the selected mode's documented baseline, write HT_WATERMARK_NUM first and then pulse CTRL.RESET or toggle CTRL.MODULE_ENABLE from 0 to 1.</ipxact:description>
+          <ipxact:description>Selects the counter and direction for the shared health-test watermark. Changing the selection preserves the current watermark.</ipxact:description>
           <ipxact:addressOffset>'h130</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>WATERMARK_NUM</ipxact:name>
-            <ipxact:description>Shared watermark source selector. Unsupported values are sanitized to REPCNT_HI. A write changes the source but preserves the current shared value until an arming event or qualifying health-test event.</ipxact:description>
+            <ipxact:description>Selects the watermark source. Unsupported values select REPCNT_HI.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1853,27 +1548,27 @@
             <ipxact:enumeratedValues>
               <ipxact:enumeratedValue>
                 <ipxact:name>REPCNT_HI</ipxact:name>
-                <ipxact:description>Repetition count high watermark</ipxact:description>
+                <ipxact:description>Tracks the highest repetition count.</ipxact:description>
                 <ipxact:value>'h0</ipxact:value>
               </ipxact:enumeratedValue>
               <ipxact:enumeratedValue>
                 <ipxact:name>APT_HI</ipxact:name>
-                <ipxact:description>APT high watermark</ipxact:description>
+                <ipxact:description>Tracks the highest APT count.</ipxact:description>
                 <ipxact:value>'h1</ipxact:value>
               </ipxact:enumeratedValue>
               <ipxact:enumeratedValue>
                 <ipxact:name>APT_LO</ipxact:name>
-                <ipxact:description>APT low watermark</ipxact:description>
+                <ipxact:description>Tracks the lowest APT count.</ipxact:description>
                 <ipxact:value>'h2</ipxact:value>
               </ipxact:enumeratedValue>
               <ipxact:enumeratedValue>
                 <ipxact:name>MARKOV_HI</ipxact:name>
-                <ipxact:description>Markov high watermark</ipxact:description>
+                <ipxact:description>Tracks the highest Markov count.</ipxact:description>
                 <ipxact:value>'h3</ipxact:value>
               </ipxact:enumeratedValue>
               <ipxact:enumeratedValue>
                 <ipxact:name>MARKOV_LO</ipxact:name>
-                <ipxact:description>Markov low watermark</ipxact:description>
+                <ipxact:description>Tracks the lowest Markov count.</ipxact:description>
                 <ipxact:value>'h4</ipxact:value>
               </ipxact:enumeratedValue>
             </ipxact:enumeratedValues>
@@ -1881,12 +1576,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>HT_WATERMARK</ipxact:name>
-          <ipxact:description>Health Test Watermark Value. This is one shared storage location for the mode selected by HT_WATERMARK_NUM, not an independent bank per selector. It arms when the entropy source is enabled (MODULE_ENABLE 0 to 1) or on a CTRL.RESET pulse: high modes (REPCNT_HI, APT_HI, MARKOV_HI) arm to 0x0000 and hold the running maximum; low modes (APT_LO, MARKOV_LO) arm to 0xFFFF and hold the running minimum. HT_WATERMARK_NUM persists across CTRL.RESET so the clear uses the selected mode. Changing only HT_WATERMARK_NUM does not re-arm the storage and intentionally carries the previous mode's value. Software must select the mode before an arming event when a deterministic baseline is required. The all-zero reset value shown below is the raw power-on default before the automatic MODULE_ENABLE pulse performs the first mode-aware arm.</ipxact:description>
+          <ipxact:description>Reports one selector-dependent watermark. A CTRL.MODULE_ENABLE rising edge arms high modes to zero and low modes to 0xFFFF.</ipxact:description>
           <ipxact:addressOffset>'h134</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>WATERMARK_VALUE</ipxact:name>
-            <ipxact:description>Current value in the shared selector-dependent watermark storage.</ipxact:description>
+            <ipxact:description>Current shared watermark value.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1900,12 +1595,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>REPCNT_TOTAL_FAILS</ipxact:name>
-          <ipxact:description>Repetition Count Test Total Failures. Counts the total number of test failures since module enable. Increments at health_test_done_pulse when threshold is exceeded. Cleared on health_test_clr.</ipxact:description>
+          <ipxact:description>Counts repetition-test failures since the last CTRL.MODULE_ENABLE rising edge.</ipxact:description>
           <ipxact:addressOffset>'h138</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>FAIL_COUNT</ipxact:name>
-            <ipxact:description>Total repetition test failures</ipxact:description>
+            <ipxact:description>Total repetition-test failure pulses.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1919,12 +1614,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>APT_HI_TOTAL_FAILS</ipxact:name>
-          <ipxact:description>Adaptive Proportion Test High Threshold Total Failures. Counts the total number of APT high test failures since module enable.</ipxact:description>
+          <ipxact:description>Counts APT high-threshold failures since the last CTRL.MODULE_ENABLE rising edge.</ipxact:description>
           <ipxact:addressOffset>'h13c</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>FAIL_COUNT</ipxact:name>
-            <ipxact:description>Total APT high test failures</ipxact:description>
+            <ipxact:description>Total APT high-threshold failure pulses.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1938,12 +1633,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>APT_LO_TOTAL_FAILS</ipxact:name>
-          <ipxact:description>Adaptive Proportion Test Low Threshold Total Failures. Counts the total number of APT low test failures since module enable.</ipxact:description>
+          <ipxact:description>Counts APT low-threshold failures since the last CTRL.MODULE_ENABLE rising edge.</ipxact:description>
           <ipxact:addressOffset>'h140</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>FAIL_COUNT</ipxact:name>
-            <ipxact:description>Total APT low test failures</ipxact:description>
+            <ipxact:description>Total APT low-threshold failure pulses.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1957,12 +1652,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>MARKOV_HI_TOTAL_FAILS</ipxact:name>
-          <ipxact:description>Markov Test High Threshold Total Failures. Counts the total number of Markov high test failures since module enable.</ipxact:description>
+          <ipxact:description>Counts Markov high-threshold failures since the last CTRL.MODULE_ENABLE rising edge.</ipxact:description>
           <ipxact:addressOffset>'h144</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>FAIL_COUNT</ipxact:name>
-            <ipxact:description>Total Markov high test failures</ipxact:description>
+            <ipxact:description>Total Markov high-threshold failure pulses.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1976,12 +1671,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>MARKOV_LO_TOTAL_FAILS</ipxact:name>
-          <ipxact:description>Markov Test Low Threshold Total Failures. Counts the total number of Markov low test failures since module enable.</ipxact:description>
+          <ipxact:description>Counts Markov low-threshold failures since the last CTRL.MODULE_ENABLE rising edge.</ipxact:description>
           <ipxact:addressOffset>'h148</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>FAIL_COUNT</ipxact:name>
-            <ipxact:description>Total Markov low test failures</ipxact:description>
+            <ipxact:description>Total Markov low-threshold failure pulses.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1995,12 +1690,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>ALERT_SUMMARY_FAIL_COUNTS</ipxact:name>
-          <ipxact:description>Alert Summary Fail Counter. Counts the number of health test windows that had any failure. Clears automatically after passing window.</ipxact:description>
+          <ipxact:description>Counts consecutive health-test windows containing any failure and clears after an accepted passing window.</ipxact:description>
           <ipxact:addressOffset>'h14c</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>ANY_FAIL_COUNT</ipxact:name>
-            <ipxact:description>Number of windows with any failure</ipxact:description>
+            <ipxact:description>Number of consecutive failing health-test windows.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2014,12 +1709,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>ALERT_FAIL_COUNTS</ipxact:name>
-          <ipxact:description>Alert Per-Test Fail Counters. 4-bit counters tracking failures in current alert window. Auto-clears after passing window.</ipxact:description>
+          <ipxact:description>Reports saturating per-test failure counts for the current alert sequence.</ipxact:description>
           <ipxact:addressOffset>'h150</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>APT_LO_FAIL_COUNT</ipxact:name>
-            <ipxact:description>APT low test alert failures (4-bit, saturates at 15)</ipxact:description>
+            <ipxact:description>Saturating APT low-threshold failure count.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2032,7 +1727,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>APT_HI_FAIL_COUNT</ipxact:name>
-            <ipxact:description>APT high test alert failures (4-bit, saturates at 15)</ipxact:description>
+            <ipxact:description>Saturating APT high-threshold failure count.</ipxact:description>
             <ipxact:bitOffset>4</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2045,7 +1740,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>MARKOV_LO_FAIL_COUNT</ipxact:name>
-            <ipxact:description>Markov low test alert failures (4-bit, saturates at 15)</ipxact:description>
+            <ipxact:description>Saturating Markov low-threshold failure count.</ipxact:description>
             <ipxact:bitOffset>8</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2058,7 +1753,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>MARKOV_HI_FAIL_COUNT</ipxact:name>
-            <ipxact:description>Markov high test alert failures (4-bit, saturates at 15)</ipxact:description>
+            <ipxact:description>Saturating Markov high-threshold failure count.</ipxact:description>
             <ipxact:bitOffset>12</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2071,7 +1766,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>REPCNT_FAIL_COUNT</ipxact:name>
-            <ipxact:description>Repetition test alert failures (4-bit, saturates at 15)</ipxact:description>
+            <ipxact:description>Saturating repetition-test failure count.</ipxact:description>
             <ipxact:bitOffset>16</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2085,12 +1780,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>FIPS_LOCK</ipxact:name>
-          <ipxact:description>FIPS configuration lock (write-1-only, cleared only by reset). When LOCK=1, all certified-configuration fields (CTRL functional bits, health-test thresholds/window, ring-oscillator enable/tune/select, per-generator sample clock dividers, decorrelator config, FIFO_CTRL.ENTROPY_CHURN_ENABLE) become read-only to software until the next reset. There is intentionally no debug-unlock path. Firmware sets this once, after programming the validated configuration, to enter FIPS operational mode.</ipxact:description>
+          <ipxact:description>Locks entropy generation, conditioning, and health-test configuration against software writes until hardware reset.</ipxact:description>
           <ipxact:addressOffset>'h154</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>LOCK</ipxact:name>
-            <ipxact:description>FIPS configuration lock. Write 1 to lock the certified configuration. Cleared only by reset. Read returns current lock state (1=locked). Drives the swwel enable on every certified-config field and gates the SIZE&gt;=1024 assertion.</ipxact:description>
+            <ipxact:description>Write one to set the configuration lock. Only hardware reset clears it.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2104,12 +1799,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>ALERT_THRESHOLD</ipxact:name>
-          <ipxact:description>Health-test alert threshold. When ALERT_SUMMARY_FAIL_COUNTS.ANY_FAIL_COUNT reaches this value, main_sm.alert_thresh_fail_i is asserted, tripping the persistent-failure path (MAIN_SM_STATUS.ALERT / INTR_STATUS.PERSISTENT_FAILURE). Default=4 windows. Locked by FIPS_LOCK.LOCK.</ipxact:description>
+          <ipxact:description>Sets the failing-window count that enters the persistent-failure alert path.</ipxact:description>
           <ipxact:addressOffset>'h158</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>THRESHOLD</ipxact:name>
-            <ipxact:description>Consecutive/aggregate failing-window count that trips the persistent-failure alert. 0 disables the threshold trip (alert path never fires from this source). Default=4.</ipxact:description>
+            <ipxact:description>Number of consecutive failing windows that triggers the alert; zero disables this trigger. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2122,12 +1817,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>MIN_ENTROPY_H</ipxact:name>
-          <ipxact:description>Assessed per-sample min-entropy H (SP 800-90B), Q4.4 unsigned fixed-point (integer [7:4].fraction [3:0]). Feeds the RECOMMENDED_THRESHOLDS combinational lookup that derives RCT/APT limits. Example: 0x0C = 0.75 bits/sample. Locked by FIPS_LOCK.LOCK so the assessed entropy cannot be altered mid-operation.</ipxact:description>
+          <ipxact:description>Stores assessed per-sample min-entropy in unsigned Q4.4 format for advisory threshold calculation.</ipxact:description>
           <ipxact:addressOffset>'h15c</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>H</ipxact:name>
-            <ipxact:description>Per-sample min-entropy H in Q4.4 unsigned fixed-point. Default=0x0C (0.75 bits/sample).</ipxact:description>
+            <ipxact:description>Assessed min-entropy in bits per sample. FIPS_LOCK.LOCK prevents software changes.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2140,12 +1835,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>RECOMMENDED_THRESHOLDS</ipxact:name>
-          <ipxact:description>SP 800-90B recommended health-test cutoffs derived combinationally from MIN_ENTROPY_H. Read-only. Firmware reads these and programs HEALTH_TEST_CTRL.REPETITION_LIMIT and APT_PROPORTION_* accordingly before setting FIPS_LOCK. Advisory only.</ipxact:description>
+          <ipxact:description>Reports advisory repetition and APT thresholds derived from MIN_ENTROPY_H.</ipxact:description>
           <ipxact:addressOffset>'h160</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>RCT_LIMIT</ipxact:name>
-            <ipxact:description>Recommended Repetition Count Test cutoff C = 1 + ceil(20 / H) (SP 800-90B 4.4.1, alpha=2^-20).</ipxact:description>
+            <ipxact:description>Advisory repetition-count cutoff C = 1 + ceil(20 / H).</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2158,7 +1853,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>APT_LIMIT</ipxact:name>
-            <ipxact:description>Recommended Adaptive Proportion Test cutoff for the 1-bit window (SP 800-90B 4.4.2, Table derived from H and W=1024).</ipxact:description>
+            <ipxact:description>Advisory APT high cutoff derived for a 1024-sample window.</ipxact:description>
             <ipxact:bitOffset>16</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2172,12 +1867,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>BIW_OBS_CTRL</ipxact:name>
-          <ipxact:description>Post-BIW extracted-stream diagnostic observe control. Enables a copy-only fan-out of the post-BIW, pre-SHA entropy stream into the BIW observe FIFO. The main entropy datapath is unaffected (copy only). Gated by boot_phase_done. This is the conditioned/extracted stream (NOT the SP 800-90B raw source; see NOISE_OBS_* for raw per-lane noise).</ipxact:description>
+          <ipxact:description>Controls copy-only capture of the post-BIW, pre-SHA stream.</ipxact:description>
           <ipxact:addressOffset>'h164</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>RAW_ENABLE</ipxact:name>
-            <ipxact:description>Enable post-BIW capture into the BIW observe FIFO. When 1 (and MAIN_SM_STATUS.BOOT_PHASE_DONE=1), each post-BIW entropy word is copied into the observe FIFO. Default=0. Stays writable under FIPS_LOCK so observation can be toggled during certified operation: this copy-only diagnostic tap leaves the certified output path unchanged.</ipxact:description>
+            <ipxact:description>Enables capture after startup health testing completes. This copy-only control remains writable after FIPS_LOCK.LOCK.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2190,12 +1885,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>BIW_OBS_STATUS</ipxact:name>
-          <ipxact:description>Post-BIW observe FIFO status (mirrors FIFO_STATUS layout).</ipxact:description>
+          <ipxact:description>Reports BIW observe FIFO occupancy and pointers.</ipxact:description>
           <ipxact:addressOffset>'h168</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>LEVEL</ipxact:name>
-            <ipxact:description>Fill level. Number of 32-bit words currently held in the BIW observe FIFO (0-64).</ipxact:description>
+            <ipxact:description>Number of valid 32-bit words in the BIW observe FIFO.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2208,7 +1903,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>WPTR</ipxact:name>
-            <ipxact:description>Write pointer. Current BIW observe FIFO write address (0-63). Updated by hardware when a post-BIW word is pushed. Read-only.</ipxact:description>
+            <ipxact:description>Current BIW observe FIFO write pointer.</ipxact:description>
             <ipxact:bitOffset>8</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2221,7 +1916,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>RPTR</ipxact:name>
-            <ipxact:description>Read pointer. Current BIW observe FIFO read address (0-63). Updated by hardware when BIW_OBS_RDATA is read. Read-only.</ipxact:description>
+            <ipxact:description>Current BIW observe FIFO read pointer.</ipxact:description>
             <ipxact:bitOffset>16</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2235,12 +1930,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>BIW_OBS_RDATA</ipxact:name>
-          <ipxact:description>Post-BIW observe FIFO read data (auto-advancing read port). Reading this register pops one 32-bit word from the BIW observe FIFO and decrements BIW_OBS_STATUS.LEVEL. Returns 0/undefined when empty.</ipxact:description>
+          <ipxact:description>Provides the next post-BIW, pre-SHA observe word.</ipxact:description>
           <ipxact:addressOffset>'h16c</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>RDATA</ipxact:name>
-            <ipxact:description>Popped post-BIW word (extracted, pre-SHA entropy stream). Reading advances the BIW observe FIFO read pointer.</ipxact:description>
+            <ipxact:description>Returns and removes the next BIW observe FIFO word.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2255,12 +1950,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>NOISE_OBS_CTRL</ipxact:name>
-          <ipxact:description>Raw per-lane noise observation control (GetNoise). Selects one lane's pre-decorrelator raw sample stream and packs it into the raw-noise observe FIFO for SP 800-90B per-lane raw entropy collection. Copy-only; the main entropy datapath is unaffected. Gated by RAW_ENABLE only (available during startup so it can be used to set health-test thresholds).</ipxact:description>
+          <ipxact:description>Controls copy-only capture of one pre-decorrelator generator lane.</ipxact:description>
           <ipxact:addressOffset>'h170</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>RAW_ENABLE</ipxact:name>
-            <ipxact:description>Enable raw per-lane noise capture into the raw-noise observe FIFO. When 1, the selected lane's pre-decorrelator sample bit is captured once per lane sample-clock edge and packed (LSB-first) into 32-bit words. Default=0. Stays writable under FIPS_LOCK: this copy-only diagnostic tap leaves the certified output path unchanged.</ipxact:description>
+            <ipxact:description>Enables LSB-first packing of selected-lane samples into 32-bit observe words. This copy-only control remains writable after FIPS_LOCK.LOCK.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2272,7 +1967,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>FLUSH</ipxact:name>
-            <ipxact:description>Flush the raw-noise observe FIFO. Write 1 to discard all buffered raw words (e.g. after reconfiguring the lane sample rate) so a subsequent read starts from a clean, current-lane-only buffer. Self-clearing. The FIFO is also auto-flushed by hardware whenever LANE_SEL changes, so a lane switch never requires draining stale words.</ipxact:description>
+            <ipxact:description>Write one to discard buffered raw-noise words. Changing LANE_SEL also flushes the FIFO.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2285,7 +1980,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>LANE_SEL</ipxact:name>
-            <ipxact:description>Lane select. Chooses which generator lane (0-11) supplies the pre-decorrelator raw sample stream. Values &gt;=12 are treated as lane 0 by hardware. Changing LANE_SEL restarts the current word packer and auto-flushes the observe FIFO so words never mix samples from two lanes and LEVEL only ever counts current-lane words. Default=0.</ipxact:description>
+            <ipxact:description>Selects generator lane 0 through 11; other values select lane 0. Changing lanes restarts packing and flushes buffered words.</ipxact:description>
             <ipxact:bitOffset>4</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2298,12 +1993,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>NOISE_OBS_STATUS</ipxact:name>
-          <ipxact:description>Raw per-lane noise observe FIFO status (mirrors FIFO_STATUS layout).</ipxact:description>
+          <ipxact:description>Reports raw-noise observe FIFO occupancy and pointers.</ipxact:description>
           <ipxact:addressOffset>'h174</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>LEVEL</ipxact:name>
-            <ipxact:description>Fill level. Number of 32-bit words currently held in the raw-noise observe FIFO (0-64).</ipxact:description>
+            <ipxact:description>Number of valid 32-bit words in the raw-noise observe FIFO.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2316,7 +2011,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>WPTR</ipxact:name>
-            <ipxact:description>Write pointer. Current raw-noise observe FIFO write address (0-63). Updated by hardware when a packed raw word is pushed. Read-only.</ipxact:description>
+            <ipxact:description>Current raw-noise observe FIFO write pointer.</ipxact:description>
             <ipxact:bitOffset>8</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2329,7 +2024,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>RPTR</ipxact:name>
-            <ipxact:description>Read pointer. Current raw-noise observe FIFO read address (0-63). Updated by hardware when NOISE_OBS_RDATA is read. Read-only.</ipxact:description>
+            <ipxact:description>Current raw-noise observe FIFO read pointer.</ipxact:description>
             <ipxact:bitOffset>16</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2343,12 +2038,12 @@
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>NOISE_OBS_RDATA</ipxact:name>
-          <ipxact:description>Raw per-lane noise observe FIFO read data (auto-advancing read port). Reading this register pops one 32-bit packed raw word from the raw-noise observe FIFO and decrements NOISE_OBS_STATUS.LEVEL. Returns 0/undefined when empty.</ipxact:description>
+          <ipxact:description>Provides the next packed raw-noise observe word.</ipxact:description>
           <ipxact:addressOffset>'h178</ipxact:addressOffset>
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>RDATA</ipxact:name>
-            <ipxact:description>Popped raw-noise word: 32 packed pre-decorrelator samples from the selected lane (SP 800-90B raw source), LSB-first. Reading advances the raw-noise observe FIFO read pointer.</ipxact:description>
+            <ipxact:description>Returns and removes 32 LSB-first pre-decorrelator samples from the selected lane.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>

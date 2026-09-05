@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[cols="1,1,1,3", options="header"]
+[cols="1,4,1,6", options="header"]
 .Register Map
 |===
 | Address | Name | Access | Description
@@ -9,7 +9,7 @@
 | 0x8 | FCR | W a| FIFO Control Register
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .THR Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -19,7 +19,7 @@ field points to the top of the TX FIFO. Otherwise, this field points to a
 single-byte Transmitter Holding Register.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .FCR Register
 |===
 | Bits | Field | Access | Reset | Description

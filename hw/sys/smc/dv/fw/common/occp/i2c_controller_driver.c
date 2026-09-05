@@ -458,11 +458,6 @@ void I2C_release_reset(uint8_t i2c_id) {
         return;
     }
 
-    // SMC_WRAP_RESET_UNIT_MASTER_PERIPHERAL_RESETS_reg_u peripheral_reset_ctrl;
-    // peripheral_reset_ctrl.val = read_reg(RESET_UNIT_PERIPHERAL_RESETS_REG_ADDR);
-    // peripheral_reset_ctrl.f.i2c_reset_n_n0_scan = 1;
-    // write_reg(RESET_UNIT_PERIPHERAL_RESETS_REG_ADDR, peripheral_reset_ctrl.val);
-    // i2c_wrapper disable
     I2C_CTRL_I2C_CTRL_reg_u ctrl_gate = {.val = read_reg(kCtrlGateAddrs[i2c_id])};
     ctrl_gate.f.i2c_en = 0;
     ctrl_gate.f.i2c_controller_mode_en = 1;

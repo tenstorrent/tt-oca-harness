@@ -32,9 +32,23 @@ class SmcI2cItem(uvm_sequence_item):
         self.cg_en: int = -1
         self.debug_lo: int = -1
         self.resolvable: bool = False
+        # --- Optional exact expectations --------------------------------------
+        # cg_en: None => the idle default 0. A sequence that has programmed the
+        # I2C clock gate on sets expect_cg_en=1 so the same probe gets a
+        # positive control ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
+        self.expect_cg_en: int | None = None
+        # debug_lo: None => sampled for diagnostics only, NOT compared. There is
+        # no SPEC/RDL reset value for the probed i2c_debug[0] nibble in this
+        # environment, so the scoreboard refuses to invent one and instead
+        # labels the field OBSERVED-ONLY in its log line. A sequence with an
+        # independently sourced expectation sets it and gets a real compare.
+        self.expect_debug_lo: int | None = None
+
+    def expected_cg_en(self) -> int:
+        return 0 if self.expect_cg_en is None else self.expect_cg_en
 
     def __str__(self) -> str:
         return (
             f"SmcI2cItem(op={self.op.value}, resolvable={self.resolvable}, "
-            f"cg_en={self.cg_en}, debug_lo=0x{self.debug_lo & 0xf:x})"
+            f"cg_en={self.cg_en}, debug_lo=0x{self.debug_lo & 0xF:x})"
         )

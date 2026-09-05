@@ -37,6 +37,11 @@ environment):
 | `OcahAxiMonitor` / `OcahAxiLiteMonitor` | OCAH passive samplers that emit item dataclasses |
 | `OcahAxiChecker` | OCAH item-level protocol checker |
 
+Every driver zeroes its source-channel payload signals at construction
+(`init_signals()`, also callable explicitly), overriding the backend's all-X
+payload init so a bus idles clean from time 0 on 4-state simulators. No
+process-global cocotb or `cocotbext-axi` state is touched.
+
 ---
 
 ## When to use this wrapper vs the legacy VIPs
@@ -81,7 +86,7 @@ ocah_axi_vip/
     ocah_axi_ref_model.py               — OcahAxiRefModel (shadow memory + response policy)
     ocah_axi_scoreboard.py              — OcahAxiScoreboard (evidence-emitting comparator)
     ocah_axi_protocol_watcher.py        — cycle-level protocol-rule watchers
-    ocah_axi_results.py                 — result dataclasses + response-code helpers
+    ocah_axi_types.py                   — response/protection codes + value-conversion helpers
   interface/ocah_axi_if.sv       — flat AXI4/AXI4-Lite monitor interface (SV)
   sva/ocah_axi_sva.sv            — clean-room AXI protocol SVA (OCAH_AXI_* rules)
   sv/ocah_axil_ram_responder.sv  — behavioral AXI-Lite RAM responder (error-injectable)
@@ -89,10 +94,19 @@ ocah_axi_vip/
   uvm/ocah_axi_uvm_pkg.sv        — SV-UVM layer: side-neutral passive stack
                                    (monitor/ref-model/scoreboard/env) + slave
                                    agent (reactive memory-backed responder)
+                                   + master agent/env (active initiator driven
+                                   through ocah_axi_master_sequence)
   cov/ocah_axi_cov.sv            — commercial-simulator functional coverage
   examples/
     example_register_access.py            — annotated usage snippets
     example_axi_scoreboard_selftest.py    — simulator-free checker/model/scoreboard proof
+  dv/                            — simulated VIP selftests on a passive wire
+                                   harness (master <-> fault slave; response-ID
+                                   observation and corruption proofs), one
+                                   scenario set for both frameworks:
+                                   python3 tools/dv/run_dv.py --dut ocah_axi_vip --items smoke
+                                   python3 tools/dv/run_dv.py --dut ocah_axi_vip \
+                                       --framework uvm --tool vcs --items smoke
 ```
 
 ### Side-token naming
@@ -107,6 +121,12 @@ reconstruct traffic from the shared wires regardless of who generated it
 (a VIP master, a VIP responder, or the DUT itself — DTP observes purely
 DUT-generated traffic with no VIP master present), so a side token on them
 would be false labeling.
+
+The package contains only canonical component files, matching the SV-UVM
+flow's basenames one-to-one (flow-only components follow the same pattern):
+shared dataclasses live in `ocah_axi_item.py`, shared constants and value
+conversions in `ocah_axi_types.py`, and behavior lives in the component that
+owns it — support modules outside the taxonomy are not added.
 
 The checker, reference model, and scoreboard follow the shared contract in
 `hw/common/dv/docs/vip-checker-model.adoc`: named
@@ -139,12 +159,12 @@ master = OcahAxiMasterAgent(
 
 | Method | Returns | Notes |
 |---|---|---|
-| `master.init_signals()` | `None` | Drive all outputs to idle; call before first clock edge |
+| `master.init_signals()` | `None` | Re-drive payload signals to 0 idle (already done at construction) |
 | `await master.wait_for_reset()` | `None` | Block until `aresetn` deasserts |
 | `await master.write(addr, data, *, strb, size, burst, id, prot)` | `int` (resp code) | Single-beat write |
 | `await master.read(addr, *, size, burst, id, prot)` | `int` (data) | Single-beat read |
-| `await master.write_result(addr, data, ...)` | `OcahAxiWriteResult` | Response, `ok`, timeout, raw debug object |
-| `await master.read_result(addr, ...)` | `OcahAxiReadResult` | Data bytes/words plus response inspection |
+| `await master.write_result(addr, data, ...)` | `OcahAxiWriteResult` | Response, `ok`, timeout, issued/observed AWID-BID, raw debug object |
+| `await master.read_result(addr, ...)` | `OcahAxiReadResult` | Data bytes/words, response inspection, issued/observed ARID-RID |
 | `master.init_write(...)` / `master.init_read(...)` | cocotb event | Event-style access for explicit timeout flows |
 | `await master.burst_write(addr, data_list, *, strb_list, size, burst, id, prot)` | `int` (resp code) | Multi-beat write; `len(data_list)` determines AWLEN |
 | `await master.burst_read(addr, length, *, size, burst, id, prot)` | `list[int]` | Multi-beat read; `length` = number of beats |
@@ -184,12 +204,14 @@ master = OcahAxiLiteMasterAgent(
 
 | Method | Returns | Notes |
 |---|---|---|
-| `master.init_signals()` | `None` | |
+| `master.init_signals()` | `None` | Re-drive payload signals to 0 idle (already done at construction) |
 | `await master.wait_for_reset()` | `None` | |
 | `await master.write(addr, data, *, strb, prot)` | `int` (resp) | Compatibility helper |
 | `await master.read(addr, *, prot)` | `int` (data) | Compatibility helper |
-| `await master.write_result(addr, data, ...)` | `OcahAxiWriteResult` | Use for non-OKAY inspection |
+| `await master.write_result(addr, data, ...)` | `OcahAxiWriteResult` | Use for non-OKAY inspection; contiguous partial `strb` supported |
 | `await master.read_result(addr, ...)` | `OcahAxiReadResult` | Use for read response inspection |
+| `await master.write_skewed_result(addr, data, *, aw_valid_delay, w_valid_delay, b_ready_delay, ...)` | `OcahAxiWriteResult` | Single-beat write with independent AW/W launch skew and deferred BREADY (SV-UVM parity op) |
+| `await master.read_hold_result(addr, hold_cycles, ...)` | `OcahAxiReadResult` | Read holding RREADY low after RVALID; `hold_stable` reports RDATA/RRESP stability (SV-UVM parity op) |
 | `master.init_write(...)` / `master.init_read(...)` | cocotb event | Event-style access for explicit timeout flows |
 | `master.configure(**kwargs)` | `None` | Same keys as AXI4, minus ID/burst/size |
 | `master.get_statistics()` | `dict` | |

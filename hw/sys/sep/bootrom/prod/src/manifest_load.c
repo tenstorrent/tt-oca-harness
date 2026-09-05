@@ -33,7 +33,7 @@
 #include "manifest_crypto.h"
 #include "sep_helpers.h"
 
-// Generated register map for OCH SEP.
+// Generated register map for OCAH SEP.
 #include "sep.h"
 #include "sep_smc_interface.h"
 

@@ -27,3 +27,21 @@ sim_cfg = "hw/sys/smu/dv/smu_wrapper_sim_cfg.toml"
 
 [duts.dtp]
 root = "hw/sys/dtp/dv"
+
+# Shared AXI VIP wire-harness selftests: the master and fault-slave VIPs
+# exercise each other on passive tb nets (no DUT RTL). Non-conventional root
+# under the shared VIP tree, so it is registered here.
+[duts.ocah_axi_vip]
+root = "hw/common/dv/vip/ocah_axi_vip/dv"
+
+# Cross-trigger IP-level benches: the family nests one level below the
+# hw/ip/<name>/dv convention (hw/ip/cross_trigger/<name>/dv), so each IP is
+# registered here.
+[duts.cross_trigger_port]
+root = "hw/ip/cross_trigger/cross_trigger_port/dv"
+
+[duts.cross_trigger_matrix]
+root = "hw/ip/cross_trigger/cross_trigger_matrix/dv"
+
+[duts.cross_trigger_network]
+root = "hw/ip/cross_trigger/cross_trigger_network/dv"

@@ -22,10 +22,8 @@ paths = ["{run_dir}", "hw/sys/smu/dv/build"]
 top_module = "smu_uvm_top"
 top_file = "hw/sys/smu/dv/tb/tb_top.sv"
 sources = [
-  # Same CPU mem macros as smc_wrapper / smu_wrapper (not a DV behavioral responder).
-  "hw/top/smc_cpu_mem_integration.sv",
-  # External SMN AXI: pulp axi_sim_mem (SEP/SMC posture).
-  "vendor/pulp-platform/axi/upstream/src/axi_sim_mem.sv",
+  # External SMN AXI boundary terminator.
+  "hw/sys/smu/dv/tb/smu_axi_out_sim_slave.sv",
 ]
 filelist = "hw/sys/smu/dv/build/smu_dut_compile.f"
 bender_filelist = "hw/sys/smu/dv/build/smu_bender.f"
@@ -47,9 +45,8 @@ common_bender_targets = [
 # none of its files (padring/pad/SPI/DLL-PHY sim models, OTBN tracer) are in
 # the SMU SEP=0 `smu_uvm_top` hierarchy. Mirrors smu_wrapper_sim_cfg.toml.
 bender_targets = ["smu", "smc", "dtp", "sep", "sep_el2"]
-# Prepend SEP prim_assert shim so `include "prim_assert.sv" resolves to the
-# SYNTHESIS-gated ASSUME/COVER macros (upstream OT leaves ASSUME live under
-# VERILATOR and breaks on sha3pad `##[1:$]`).
+# Prepend SEP prim shims so `include` of prim_* resolves to the OSS overlays
+# (upstream OT leaves ASSUME live under VERILATOR and breaks on sha3pad `##[1:$]`).
 incdirs = [
   "hw/sys/sep/dv/shims/prim",
   "hw/sys/smu/dv/tb",
@@ -97,7 +94,11 @@ build_jobs = 8
 # which does not fit standard CI runner disk; toggle is also the costliest
 # instrumentation at sim time. Replaces the simulator-default `--coverage`
 # (which enables all forms including toggle).
-build_args = ["--coverage-line", "--coverage-expr", "--coverage-user"]
+# --output-groups 0 compiles the generated .cpp files one by one instead of
+# in --build-jobs groups. Verilator groups by file count, and on a
+# coverage-instrumented model one group can become a translation unit of
+# several hundred MB that a hosted runner cannot compile (measured on SMC).
+build_args = ["--coverage-line", "--coverage-expr", "--coverage-user", "--output-groups", "0"]
 
 [frameworks.cocotb]
 python_root = "hw/sys/smu/dv/cocotb"
@@ -116,7 +117,7 @@ cocotb_log = "{run_dir}/{item}/logs/{item}.log"
 description = "Phase-1 smoke: SMC reset/AXI, DTP JTAG IDCODE, no-SEP config"
 timeout_sec = 1800
 # Skip OTP fuse-sense FSM so primary reset can release without a real eFuse model.
-# +rom_hex required by real OCAH4CORECluster_mems (smc_cpu_mem_integration).
+# +rom_hex required by real OCAH4CORECluster_mems (in smc_ip_integration).
 args = [
   "+skip_fuse_sense",
   "+rom_hex={repo_root}/hw/sys/smc/dv/assets/smc_rom_default.hex",
@@ -149,10 +150,6 @@ args = [
 [targets.default]
 description = "SMU Phase-1 SEP=0 cocotb target — primary backend is VCS"
 build_dir = "hw/sys/smu/dv/build/cocotb"
-defines = [
-  # Match SMC OSS: no-op assertion/cover blocks that confuse commercial sims.
-  "SYNTHESIS",
-]
 
 [targets.default.tools.vcs]
 flags = [

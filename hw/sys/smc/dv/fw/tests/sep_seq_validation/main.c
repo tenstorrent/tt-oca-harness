@@ -9,7 +9,7 @@
  * STATUS_SEQ_ERROR sentinel, while continuing to handle subsequent correctly-
  * sequenced requests.
  *
- * Spec basis: OCH Specification §Crypto Key Manager — the KM command message
+ * Spec basis: OCAH Specification §Crypto Key Manager — the KM command message
  * format encodes a sequence_number[7:0] in the header, enabling detection of
  * replayed or lost messages.  This test exercises analogous sequence-number
  * enforcement on the SMC side using scratch registers as the transport.

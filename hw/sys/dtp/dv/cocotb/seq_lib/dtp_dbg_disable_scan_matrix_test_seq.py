@@ -104,7 +104,11 @@ class dtp_dbg_disable_scan_matrix_test_seq(dtp_scan_base_test_seq):
             dbg_disable=mask,
             context=f"{context}.write_3dcrs",
         )
-        watch = [f"{self.stap_signal_prefix(name)}_{sig}" for name in STAP_ORDER for sig in ("tdo_oen", "tms")]
+        watch = [
+            f"{self.stap_signal_prefix(name)}_{sig}"
+            for name in STAP_ORDER
+            for sig in ("tdo_oen", "tms")
+        ]
         watch += list(HOST_SCAN_CONTROLS)
         window = self.start_scan_window(tuple(watch))
         captured = await self.stap_chain_maintain(dbg_disable=mask, context=f"{context}.observe")
@@ -124,11 +128,17 @@ class dtp_dbg_disable_scan_matrix_test_seq(dtp_scan_base_test_seq):
                 result = "no_forwarding+update_ignored"
             else:
                 assert tdo_oen > 0, f"{context}.{name}: tdo_oen never pulsed while enabled"
-                assert 0 < tms < edges, f"{context}.{name}: tms must follow live TMS ({tms}/{edges})"
+                assert 0 < tms < edges, (
+                    f"{context}.{name}: tms must follow live TMS ({tms}/{edges})"
+                )
                 result = "forwarding"
             self.fcov.sample_cell(
-                field, value, BLOCKED if value else ALLOWED,
-                mask=full, operation=f"stap_{name}_select_attempt", result=result,
+                field,
+                value,
+                BLOCKED if value else ALLOWED,
+                mask=full,
+                operation=f"stap_{name}_select_attempt",
+                result=result,
             )
 
         host_value = full["stap_host"]
@@ -145,8 +155,12 @@ class dtp_dbg_disable_scan_matrix_test_seq(dtp_scan_base_test_seq):
             )
             host_result = "scan_controls_active"
         self.fcov.sample_cell(
-            "stap_host", host_value, BLOCKED if host_value else ALLOWED,
-            mask=full, operation="ext_stap_scan_attempt", result=host_result,
+            "stap_host",
+            host_value,
+            BLOCKED if host_value else ALLOWED,
+            mask=full,
+            operation="ext_stap_scan_attempt",
+            result=host_result,
         )
 
         self.check_stap_chain_readback(captured, dbg_disable=mask, context=f"{context}.readback")
@@ -176,7 +190,9 @@ class dtp_dbg_disable_scan_matrix_test_seq(dtp_scan_base_test_seq):
         _, signals = await self.observe_ijtag_controls(0b000, context="release.observe")
         self.check_scan_window(window, quiet=quiet, context="release.window")
         for name in IJTAG_SIB_ORDER:
-            self.check_observable(signals, f"{self.IJTAG_SIGNAL_PREFIX[name]}_select", 0, context=f"release.{name}")
+            self.check_observable(
+                signals, f"{self.IJTAG_SIGNAL_PREFIX[name]}_select", 0, context=f"release.{name}"
+            )
         self.fcov.sample_aux("release_no_replay", context="post_all_disabled_release")
 
         await self.check_ijtag_row({}, context="recovery")
@@ -184,7 +200,7 @@ class dtp_dbg_disable_scan_matrix_test_seq(dtp_scan_base_test_seq):
         self.fcov.sample_aux("recovery", context="all_clear_after_all_disabled")
 
         self.fcov.require_cells(SCAN_FIELDS)
-        self.fcov.write_artifact(seed=self.random_seed())
+        self.fcov.write_artifact(seed=self.scenario_seed)
         self.log_summary(
             "Debug-disable scan matrix",
             rows=len(rows),

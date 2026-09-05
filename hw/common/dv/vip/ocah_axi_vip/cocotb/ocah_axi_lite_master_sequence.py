@@ -6,19 +6,21 @@
 the blocking, checked transaction API tests consume. Compatibility calls keep
 their historical return values: ``write()`` returns a response code and
 ``read()`` returns data; ``write_result()``/``read_result()`` expose response
-codes, data, and timeout state through plain dataclasses. Tests drive the VIP
-through this class (or the agent's ``sequence``), never through the raw
-driver; missing operations get added here first.
+codes, data, and timeout state through plain dataclasses.
+``write_skewed_result()`` and ``read_hold_result()`` are the SV-UVM parity
+protocol-control operations (independent AW/W launch skew, deferred
+BREADY/RREADY with a response-stability check). Tests drive the VIP through
+this class (or the agent's ``sequence``), never through the raw driver;
+missing operations get added here first.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
+from .ocah_axi_item import OcahAxiReadResult, OcahAxiWriteResult
 from .ocah_axi_lite_master_driver import OcahAxiLiteMasterDriver
-from .ocah_axi_results import (
-    OcahAxiReadResult,
-    OcahAxiWriteResult,
+from .ocah_axi_types import (
     axi_resp_ok,
     bytes_to_int,
     normalize_resp_list,
@@ -114,19 +116,31 @@ class OcahAxiLiteMasterSequence:
         timeout_ns: int | None = None,
         allow_timeout: bool = False,
     ) -> OcahAxiWriteResult:
-        """Issue a write and return a plain response object."""
-        self.driver.check_strb(strb)
-        event = self.driver.init_write(addr, data, **self._axkwargs(prot))
+        """Issue a write and return a plain response object.
+
+        A contiguous partial ``strb`` writes only the selected bytes of
+        ``data`` (mapped onto a sub-word access); non-contiguous patterns are
+        rejected by the backend mapping.
+        """
+        offset, payload = self.driver.strb_payload(data, strb)
+        event = self.driver.init_write(int(addr) + offset, payload, **self._axkwargs(prot))
         try:
             raw = await _wait_event(event, self.timeout_ns if timeout_ns is None else timeout_ns)
         except _sim_timeout_error() as exc:
             if allow_timeout:
-                return OcahAxiWriteResult(addr, self.driver.bytes_per_beat, -1, (), False, True, None)
+                return OcahAxiWriteResult(
+                    address=addr,
+                    length=len(payload),
+                    resp=-1,
+                    resp_list=(),
+                    ok=False,
+                    timed_out=True,
+                )
             raise AssertionError(f"{self.name}: write to 0x{addr:08X} timed out") from exc
 
         result = OcahAxiWriteResult(
-            address=int(getattr(raw, "address", addr)),
-            length=int(getattr(raw, "length", self.driver.bytes_per_beat)),
+            address=int(addr),
+            length=int(getattr(raw, "length", len(payload))),
             resp=worst_resp(getattr(raw, "resp", None)),
             resp_list=normalize_resp_list(getattr(raw, "resp", None)),
             ok=axi_resp_ok(getattr(raw, "resp", None)),
@@ -134,6 +148,63 @@ class OcahAxiLiteMasterSequence:
         )
         self._write_count += 1
         self._maybe_raise("write to", addr, result.ok, result.resp, check_response)
+        return result
+
+    async def write_skewed_result(
+        self,
+        addr: int,
+        data: int,
+        *,
+        aw_valid_delay: int = 0,
+        w_valid_delay: int = 0,
+        b_ready_delay: int = 0,
+        strb: int | None = None,
+        prot: int | None = None,
+        check_response: bool = True,
+        timeout_cycles: int | None = None,
+        allow_timeout: bool = False,
+    ) -> OcahAxiWriteResult:
+        """Issue a single-beat write with explicit channel skew (UVM parity op).
+
+        ``aw_valid_delay``/``w_valid_delay`` hold that channel's VALID low for
+        N cycles before it launches — AXI permits either arrival order, so
+        demux and channel-ordering paths are exercised deliberately — and
+        ``b_ready_delay`` defers the BREADY assert after the request phase.
+        """
+        cycles = self.timeout_cycles if timeout_cycles is None else int(timeout_cycles)
+        try:
+            raw = await self.driver.write_skewed(
+                addr,
+                data,
+                strb=strb,
+                aw_valid_delay=aw_valid_delay,
+                w_valid_delay=w_valid_delay,
+                b_ready_delay=b_ready_delay,
+                timeout_cycles=cycles,
+                **self._axkwargs(prot),
+            )
+        except TimeoutError as exc:
+            if allow_timeout:
+                return OcahAxiWriteResult(
+                    address=addr,
+                    length=self.driver.bytes_per_beat,
+                    resp=-1,
+                    resp_list=(),
+                    ok=False,
+                    timed_out=True,
+                )
+            raise AssertionError(f"{self.name}: skewed write to 0x{addr:08X} timed out") from exc
+
+        result = OcahAxiWriteResult(
+            address=int(addr),
+            length=int(getattr(raw, "length", self.driver.bytes_per_beat)),
+            resp=worst_resp(getattr(raw, "resp", None)),
+            resp_list=normalize_resp_list(getattr(raw, "resp", None)),
+            ok=axi_resp_ok(getattr(raw, "resp", None)),
+            raw=raw,
+        )
+        self._write_count += 1
+        self._maybe_raise("skewed write to", addr, result.ok, result.resp, check_response)
         return result
 
     async def write(self, addr: int, data: int, **kwargs: Any) -> int:
@@ -155,7 +226,16 @@ class OcahAxiLiteMasterSequence:
             raw = await _wait_event(event, self.timeout_ns if timeout_ns is None else timeout_ns)
         except _sim_timeout_error() as exc:
             if allow_timeout:
-                return OcahAxiReadResult(addr, 0, b"", (), -1, (), False, True, None)
+                return OcahAxiReadResult(
+                    address=addr,
+                    data=0,
+                    data_bytes=b"",
+                    data_words=(),
+                    resp=-1,
+                    resp_list=(),
+                    ok=False,
+                    timed_out=True,
+                )
             raise AssertionError(f"{self.name}: read from 0x{addr:08X} timed out") from exc
 
         data_bytes = bytes(getattr(raw, "data", b""))
@@ -177,6 +257,60 @@ class OcahAxiLiteMasterSequence:
         """Issue an AXI4-Lite read and return the data word."""
         return (await self.read_result(addr, **kwargs)).data
 
+    async def read_hold_result(
+        self,
+        addr: int,
+        hold_cycles: int,
+        *,
+        prot: int | None = None,
+        check_response: bool = True,
+        timeout_cycles: int | None = None,
+        allow_timeout: bool = False,
+    ) -> OcahAxiReadResult:
+        """Issue a read holding RREADY low for ``hold_cycles`` (UVM parity op).
+
+        RREADY stays low for ``hold_cycles`` after RVALID asserts; the result's
+        ``hold_stable`` reports that RVALID stayed asserted with RDATA/RRESP
+        unchanged across the window, as AXI requires of the responder.
+        """
+        cycles = self.timeout_cycles if timeout_cycles is None else int(timeout_cycles)
+        try:
+            raw, hold_stable = await self.driver.read_hold(
+                addr,
+                hold_cycles=hold_cycles,
+                timeout_cycles=cycles,
+                **self._axkwargs(prot),
+            )
+        except TimeoutError as exc:
+            if allow_timeout:
+                return OcahAxiReadResult(
+                    address=addr,
+                    data=0,
+                    data_bytes=b"",
+                    data_words=(),
+                    resp=-1,
+                    resp_list=(),
+                    ok=False,
+                    timed_out=True,
+                )
+            raise AssertionError(f"{self.name}: held read from 0x{addr:08X} timed out") from exc
+
+        data_bytes = bytes(getattr(raw, "data", b""))
+        result = OcahAxiReadResult(
+            address=int(getattr(raw, "address", addr)),
+            data=bytes_to_int(data_bytes),
+            data_bytes=data_bytes,
+            data_words=(bytes_to_int(data_bytes),),
+            resp=worst_resp(getattr(raw, "resp", None)),
+            resp_list=normalize_resp_list(getattr(raw, "resp", None)),
+            ok=axi_resp_ok(getattr(raw, "resp", None)),
+            hold_stable=hold_stable,
+            raw=raw,
+        )
+        self._read_count += 1
+        self._maybe_raise("held read from", addr, result.ok, result.resp, check_response)
+        return result
+
     def configure(self, **kwargs: Any) -> None:
         """Store wrapper configuration knobs accepted by earlier implementations."""
         if "timeout_cycles" in kwargs:
@@ -185,7 +319,9 @@ class OcahAxiLiteMasterSequence:
             self.timeout_ns = int(kwargs["timeout_ns"])
         unsupported = set(kwargs) - {"timeout_cycles", "timeout_ns"}
         if unsupported:
-            self.log.warning("%s: ignored unsupported cocotbext config keys %s", self.name, sorted(unsupported))
+            raise ValueError(
+                f"{self.name}: unsupported cocotbext config keys {sorted(unsupported)}"
+            )
 
     def get_statistics(self) -> dict[str, int]:
         """Return wrapper-level transaction counters."""

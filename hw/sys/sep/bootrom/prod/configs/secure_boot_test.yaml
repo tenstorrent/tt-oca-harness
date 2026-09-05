@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-# OCH SEP Secure Boot Test — manifest config for tt-boot-manifest.
+# OCAH SEP Secure Boot Test — manifest config for tt-boot-manifest.
 #
-# disable_checks: BL1 loads at ICCM 0xC0000000, outside the packer's built-in
-# address range validation.
+# disable_checks: OCAH SEP uses ICCM at 0xC0000000,
+# so we must disable the built-in address range validation.
 meta:
   disable_checks: true
 
@@ -22,7 +22,7 @@ platform:
 
 primary:
   manifest:
-    description: "OCH SEP secure boot test - signed BL1"
+    description: "OCAH SEP secure boot test - signed BL1"
     timestamp: 946702799
     content_version:
       major: 1
@@ -70,11 +70,11 @@ primary:
       type: 'SEPBL1'
       version: 1
       offset: 0x1000
-      description: "OCH SEP BL1 test (bl1_pass_test)"
+      description: "OCAH SEP BL1 test (bl1_pass_test)"
       entry_point: 0xC0000000  # equals sep_iram_base, so the packed offset is 0
       file_path: "$OCH_ROOT/fw/tests/bl1_pass_test/build/bl1_pass_test.bin"
   spi:
-    description: "SPI TLV for OCH SEP (keep_default_init)"
+    description: "SPI TLV for OCAH SEP (keep_default_init)"
     flags:
       keep_default_init: 1
     spi_freq: 25
@@ -91,7 +91,7 @@ primary:
 
 backup:
   manifest:
-    description: "OCH SEP secure boot test - backup"
+    description: "OCAH SEP secure boot test - backup"
     timestamp: 946702799
     content_version:
       major: 1
@@ -135,11 +135,11 @@ backup:
       type: 'SEPBL1'
       version: 1
       offset: 0x1000
-      description: "OCH SEP BL1 test - backup"
+      description: "OCAH SEP BL1 test - backup"
       entry_point: 0xC0000000  # equals sep_iram_base, so the packed offset is 0
       file_path: "$OCH_ROOT/fw/tests/bl1_pass_test/build/bl1_pass_test.bin"
   spi:
-    description: "SPI TLV for OCH SEP backup (keep_default_init)"
+    description: "SPI TLV for OCAH SEP backup (keep_default_init)"
     flags:
       keep_default_init: 1
     spi_freq: 25

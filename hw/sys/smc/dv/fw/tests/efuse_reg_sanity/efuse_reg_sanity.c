@@ -33,7 +33,7 @@ int main(void) {
     efuse_ctrl_status.f.efuse_req_error = 0x1;
 
     write_reg(SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR,
-              efuse_ctrl_status.w); // magic number targetting read only fields //replace
+              efuse_ctrl_status.w); // magic number targeting read only fields //replace
     read_data =
         read_reg(SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR); // replace
     write_scratch(1, read_data);

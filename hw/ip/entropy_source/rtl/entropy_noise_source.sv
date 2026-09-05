@@ -15,65 +15,65 @@
  */
 
 module entropy_noise_source #(
-    parameter int unsigned TOTAL_LENGTH  = 17,
-    parameter int unsigned TAPPED_LENGTH = 13
+  parameter int unsigned TOTAL_LENGTH  = 17,
+  parameter int unsigned TAPPED_LENGTH = 13
 ) (
-    input       logic clk_i,
-    input       logic rst_ni,
-    input       logic sample_clk_i,
-    input       logic enable_i,
-    input       logic detune_i,
-    output      logic noise_o
+  input       logic clk_i,
+  input       logic rst_ni,
+  input       logic sample_clk_i,
+  input       logic enable_i,
+  input       logic detune_i,
+  output      logic noise_o
 );
 
-    /////////////
-    // Signals
-    /////////////
+  /////////////
+  // Signals
+  /////////////
 
-    logic noise_async;
-    logic noise_sample;
-    logic [1:0] noise_sync;
+  logic noise_async;
+  logic noise_sample;
+  logic [1:0] noise_sync;
 
-    /////////////////
-    // Sub-instances
-    /////////////////
+  /////////////////
+  // Sub-instances
+  /////////////////
 
-    entropy_ring_oscillator #(
-        .TOTAL_LENGTH  (TOTAL_LENGTH),
-        .TAPPED_LENGTH (TAPPED_LENGTH)
-    ) u_ring_oscillator (
-        .enable_i,
-        .detune_i,
-        .noise_o  (noise_async)
-    );
+  entropy_ring_oscillator #(
+    .TOTAL_LENGTH  (TOTAL_LENGTH),
+    .TAPPED_LENGTH (TAPPED_LENGTH)
+  ) u_ring_oscillator (
+    .enable_i,
+    .detune_i,
+    .noise_o  (noise_async)
+  );
 
-    // Metastable sample flip-flop — intentional async capture of RO output
-    gdff u_smpl (
-        .d_i   (noise_async),
-        .cdn_i (rst_ni),
-        .cp_i  (sample_clk_i),
-        .q_o   (noise_sample)
-    );
+  // Metastable sample flip-flop — intentional async capture of RO output
+  prim_dffrxq u_smpl (
+    .i_CK (sample_clk_i),
+    .i_D  (noise_async),
+    .i_RN (rst_ni),
+    .o_Q  (noise_sample)
+  );
 
-    // Two-flop synchroniser
-    gdff u_sync0 (
-        .d_i   (noise_sample),
-        .cdn_i (rst_ni),
-        .cp_i  (clk_i),
-        .q_o   (noise_sync[0])
-    );
+  // Two-flop synchroniser
+  prim_dffrxq u_sync0 (
+    .i_CK (clk_i),
+    .i_D  (noise_sample),
+    .i_RN (rst_ni),
+    .o_Q  (noise_sync[0])
+  );
 
-    gdff u_sync1 (
-        .d_i   (noise_sync[0]),
-        .cdn_i (rst_ni),
-        .cp_i  (clk_i),
-        .q_o   (noise_sync[1])
-    );
+  prim_dffrxq u_sync1 (
+    .i_CK (clk_i),
+    .i_D  (noise_sync[0]),
+    .i_RN (rst_ni),
+    .o_Q  (noise_sync[1])
+  );
 
-    ///////////
-    // Output
-    ///////////
+  ///////////
+  // Output
+  ///////////
 
-    assign noise_o = noise_sync[1];
+  assign noise_o = noise_sync[1];
 
 endmodule

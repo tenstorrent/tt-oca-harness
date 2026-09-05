@@ -44,7 +44,20 @@ class SmcOutputAxiMonitor(uvm_component):
         self.r_resp_tally = {0: 0, 1: 0, 2: 0, 3: 0, None: 0}
         self.b_resp_tally = {0: 0, 1: 0, 2: 0, 3: 0, None: 0}
         # SYS_OUT slave may inject SLVERR (U1-2); DECERR is never expected.
-        self.allow_slverr = True
+        #
+        # DEFAULT CORRECTED False. It was True, which disabled the SLVERR check
+        # on EVERY SMC testcase -- no test could fail on an unexpected SYS_OUT
+        # SLVERR, while DECERR (code 3) has always been a failure two lines
+        # below. The evidence that True was not the intent is
+        # `smc_output_fabric_slverr_inject_test.py:55`, which sets
+        # `mon.allow_slverr = True` explicitly: that opt-in only means something
+        # if the default refuses SLVERR. A testcase that legitimately expects
+        # SYS_OUT SLVERR should opt in the same way. The enrolled opt-in is
+        # `smc_output_fabric_slverr_inject_test`; the `balanced_ip` 98/100
+        # Verilator figure in this branch's test plan was taken with this
+        # default, so no other enrolled test in that group produced a SYS_OUT
+        # SLVERR.
+        self.allow_slverr = False
 
     def snapshot(self) -> dict[str, int]:
         return {
@@ -73,9 +86,7 @@ class SmcOutputAxiMonitor(uvm_component):
             "tb_output_axi_bresp",
         )
         if any(not hasattr(dut, name) for name in required):
-            self.logger.info(
-                "tb_output_axi_* response ports missing; SYS_OUT monitor idle"
-            )
+            self.logger.info("tb_output_axi_* response ports missing; SYS_OUT monitor idle")
             return
 
         await self.cfg.reset_done.wait()
@@ -101,11 +112,7 @@ class SmcOutputAxiMonitor(uvm_component):
                 code = _value(dut.tb_output_axi_rresp)
                 key = code if code in (0, 1, 2, 3) else None
                 self.r_resp_tally[key] += 1
-                where = (
-                    f" @ AR 0x{self.last_araddr:x}"
-                    if self.last_araddr is not None
-                    else ""
-                )
+                where = f" @ AR 0x{self.last_araddr:x}" if self.last_araddr is not None else ""
                 if code == 3:
                     self._fail(f"R beat DECERR on SYS_OUT{where}")
                 elif code == 2 and not self.allow_slverr:
@@ -116,11 +123,7 @@ class SmcOutputAxiMonitor(uvm_component):
                 code = _value(dut.tb_output_axi_bresp)
                 key = code if code in (0, 1, 2, 3) else None
                 self.b_resp_tally[key] += 1
-                where = (
-                    f" @ AW 0x{self.last_awaddr:x}"
-                    if self.last_awaddr is not None
-                    else ""
-                )
+                where = f" @ AW 0x{self.last_awaddr:x}" if self.last_awaddr is not None else ""
                 if code == 3:
                     self._fail(f"B beat DECERR on SYS_OUT{where}")
                 elif code == 2 and not self.allow_slverr:
@@ -135,10 +138,6 @@ class SmcOutputAxiMonitor(uvm_component):
             "SMC SYS_OUT AXI monitor: %d R / %d B; R {%s}; B {%s}; 0 errors",
             self.r_beats,
             self.b_resps,
-            ", ".join(
-                f"{_RESP_NAME[k]}={v}" for k, v in self.r_resp_tally.items() if v
-            ),
-            ", ".join(
-                f"{_RESP_NAME[k]}={v}" for k, v in self.b_resp_tally.items() if v
-            ),
+            ", ".join(f"{_RESP_NAME[k]}={v}" for k, v in self.r_resp_tally.items() if v),
+            ", ".join(f"{_RESP_NAME[k]}={v}" for k, v in self.b_resp_tally.items() if v),
         )

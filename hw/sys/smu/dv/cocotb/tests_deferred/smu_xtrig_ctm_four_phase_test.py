@@ -4,13 +4,12 @@
 
 Product-pin remap is enrolled as smu_xtrig_ctm_remap_test. Full four-phase
 needs DTP-driven src_req or dst_ack (old path Forced internal nets).
-See testlists/deferred.toml.
+Not ported.
 """
 
 from __future__ import annotations
 
 import pyuvm
-
 from smu_base_test import smu_base_test
 
 
@@ -21,5 +20,5 @@ class smu_xtrig_ctm_four_phase_test(smu_base_test):
     async def run_scenario(self) -> None:
         raise AssertionError(
             "smu_xtrig_ctm_four_phase_test deferred: CTM src_req/dst_ack Force inject removed. "
-            "See testlists/deferred.toml (needs_real_stimulus)."
+            "Not ported (needs_real_stimulus)."
         )

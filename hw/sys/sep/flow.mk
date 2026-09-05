@@ -8,7 +8,9 @@ include $(FLOW_DIR)/../../../flows/preamble.mk
 
 FLOW_DESIGN := sep
 FLOW_BENDER_TARGETS := -t sep -t sep_el2
+FLOW_VERILATOR_WAIVERS := hw/sys/sep/lint/sep.verilator.vlt
 
 include $(OCAH_ROOT)/flows/common.mk
 include $(OCAH_ROOT)/flows/lint/slang.mk
+include $(OCAH_ROOT)/flows/lint/verilator.mk
 include $(OCAH_ROOT)/flows/synth/yosys/yosys.mk

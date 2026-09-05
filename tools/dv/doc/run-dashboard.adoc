@@ -16,7 +16,7 @@ or serve the generated pages.
 [NOTE]
 ====
 The product-facing dashboard page in the OCAH TRM is a separate visual
-placeholder. Repository CI publishes normalized nightly data for the external
+placeholder. Repository CI publishes normalized weekly data for the external
 website pipeline, but it does not render or host dashboard HTML.
 ====
 
@@ -1152,16 +1152,19 @@ Recommended CI assertions include:
 == Continuous integration
 
 The `dashboard` GitHub workflow (`.github/workflows/dashboard.yml`) publishes
-the nightly regression results as **data only** — no HTML is rendered or
+the weekly regression results as **data only** — no HTML is rendered or
 hosted by this repository. The website that renders the dashboard is owned
 externally and consumes the published data.
 
-. The `sim` workflow's nightly tier uploads the native run tree as the
-  artifact `dv-run-<dut>-<tool>-nightly` (see the CI section in
-  xref:run-dv.adoc[DV and FV Runner]).
-. `dashboard.yml` triggers on `sim` completion (scheduled nightlies publish
-  automatically; manually dispatched nightlies are published by dispatching
-  `dashboard.yml` with the sim run id), downloads the artifact, and runs
+. The `regress` workflow's weekly tier uploads the native run tree as the
+  artifact `dv-run-<dut>-<tool>-weekly` (see the CI section in
+  xref:run-dv.adoc[DV and FV Runner]). The nightly tier uploads
+  `dv-run-<dut>-<tool>-nightly`, which the dashboard ignores; nightly trees
+  are triage evidence only.
+. `dashboard.yml` triggers on `regress` completion (scheduled weeklies
+  publish automatically; scheduled nightlies find no weekly artifact and
+  publish nothing; manually dispatched weeklies are published by dispatching
+  `dashboard.yml` with the regress run id), downloads the artifact, and runs
   `collect` followed by a data-only `dashboard` aggregate (no `--html-out`)
   with the trend history file.
 . The data is published two ways with identical content.
@@ -1171,10 +1174,10 @@ Consumption interfaces:
 * **Workflow artifact `dv-dashboard-data`** (90-day retention) — the per-run
   consumable bundle for the external website pipeline: the per-DUT
   normalized results (schema `"0.1"`), `summary.json`, the current
-  `history.json` snapshot (schema `"0.2"`), and the night's
+  `history.json` snapshot (schema `"0.2"`), and the week's
   `classification.json`.
 * **Branch `dv-dashboard-data`** — the canonical cross-run store. Trend
-  history must chain across nights indefinitely, and artifacts expire, so
+  history must chain across weeks indefinitely, and artifacts expire, so
   continuity lives here. Layout:
 
 [source,text]
@@ -1182,13 +1185,13 @@ Consumption interfaces:
 latest/                          # <dut>.result.json, summary.json
 data/
 ├── history.json                 # trend store (trimmed to 90 points in CI)
-├── runs/<date>-run<id>.result.json.gz   # per-night archives (90 kept)
-└── classification/<date>.json   # infra/design/flaky split per night
+├── runs/<date>-run<id>.result.json.gz   # per-week archives (90 kept)
+└── classification/<date>.json   # infra/design/flaky split per week
 ----
 
 Operational rules:
 
-* A red nightly still publishes: the workflow gates on the presence of the
+* A red weekly still publishes: the workflow gates on the presence of the
   native `result.json` in the artifact, never on the run's conclusion.
 * The failure classification (infrastructure `ERROR`/`TIMEOUT` vs design/test
   `FAIL` vs `UNKNOWN` evidence gaps) and the mixed-seed flaky list are
@@ -1196,7 +1199,7 @@ Operational rules:
   schema collapses those statuses into `FAIL`.
 * Nothing dashboard-related is published to `gh-pages`; the docs deploy and
   the dashboard pipeline do not interact.
-* An email digest is sent per nightly publication when the
+* An email digest is sent per weekly publication when the
   `OCAH_MAIL_USERNAME`/`OCAH_MAIL_PASSWORD`/`OCAH_MAIL_TO` secrets are
   provisioned; the step self-disables while they are absent, and GitHub's
   native scheduled-workflow failure notification covers the interim.

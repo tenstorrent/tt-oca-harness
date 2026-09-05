@@ -14,9 +14,7 @@ import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 
 from .smc_cpu_vip_utils import (
-    CPU_CTRL_RESET_CTRL,
     CPU_CTRL_RESET_VECTOR_0,
-    CPU_CTRL_SCRATCH_0,
     CPU_FW_SUCCESS_MAGIC,
     CPU_RESET_CTRL_DEFAULT,
     CPU_RESET_VECTOR_ROM,
@@ -25,6 +23,23 @@ from .smc_cpu_vip_utils import (
     check_cpu_firmware_boot_contract,
 )
 from .smc_csr_seq_utils import SmcCsrSeq
+
+
+def _pc_snapshot(signal) -> int | None:
+    """Retired-PC value, or None while the CPU has retired nothing.
+
+    `tb_cpu_wb_pc0` is a writeback-stage register with no reset, so before the
+    first instruction retires it holds no defined value. A two-state simulator
+    shows that as 0 and a four-state one as X, and forcing the X to an int
+    raises out of the sequence. None keeps the two cases the same shape and
+    lets the progress check below say what it actually knows.
+    """
+    value = signal.value
+    return int(value) if value.is_resolvable else None
+
+
+def _pc_text(value: int | None) -> str:
+    return "undefined" if value is None else f"{value:#x}"
 
 
 class smc_cpu_firmware_boot_test_seq(SmcCsrSeq):
@@ -56,12 +71,18 @@ class smc_cpu_firmware_boot_test_seq(SmcCsrSeq):
         # Prefer transition captured during bring-up watcher.
         if self.fuse_saw_low and self.fuse_saw_high:
             self._timeout_note(
-                f"EFUSE_SENSE: bound={self.FUSE_SENSE_BOUND} ok "
-                f"(bring-up watcher saw 0→1)"
+                f"EFUSE_SENSE: bound={self.FUSE_SENSE_BOUND} ok (bring-up watcher saw 0→1)"
             )
             return
 
-        val = int(dut.tb_fuse_sense_done.value) if dut.tb_fuse_sense_done.value.is_resolvable else -1
+        # `is_resolvable` here and at :74 is a 4-state precondition, not a
+        # check: under Verilator (2-state) it is constant-true, so the `-1` /
+        # `continue` branches are unreachable in the retained evidence. The
+        # fail-capable part of this helper is the 0->1 transition requirement
+        # and the bounded expiry raise below ([NO-DUMMY-DEAD-CODE]).
+        val = (
+            int(dut.tb_fuse_sense_done.value) if dut.tb_fuse_sense_done.value.is_resolvable else -1
+        )
         if val == 1 and not self.fuse_saw_low:
             raise AssertionError(
                 "tb_fuse_sense_done already 1 with no observed 0→1 transition "
@@ -78,9 +99,7 @@ class smc_cpu_firmware_boot_test_seq(SmcCsrSeq):
                 self.fuse_saw_low = True
             if v == 1 and self.fuse_saw_low:
                 self.fuse_saw_high = True
-                self._timeout_note(
-                    f"EFUSE_SENSE: bound={self.FUSE_SENSE_BOUND} ok cycles={i+1}"
-                )
+                self._timeout_note(f"EFUSE_SENSE: bound={self.FUSE_SENSE_BOUND} ok cycles={i + 1}")
                 await ClockCycles(clk, 20)
                 return
         raise AssertionError(
@@ -102,6 +121,12 @@ class smc_cpu_firmware_boot_test_seq(SmcCsrSeq):
         self._mark_step("S1", "SETUP clocks/resets; CPU BFM observability")
         await check_cpu_bfm_observability()
         assert int(dut.powergood_stable_o.value) == 1
+        # PRECONDITION, not a check: every retained run of this testcase is
+        # Verilator (2-state), where `is_resolvable` cannot be False, so this
+        # line has no FAIL-ON path in the evidence that exists. It is kept for
+        # the 4-state simulators. The verdict-bearing compares on this path are
+        # the value compares at :104, :113, :148, :155, :166 and :192
+        # ([NO-DUMMY-DEAD-CODE]).
         assert dut.rst_primary_smc_clk_no.value.is_resolvable
 
         # S2 — eFuse sense completion (before vector release)
@@ -119,7 +144,6 @@ class smc_cpu_firmware_boot_test_seq(SmcCsrSeq):
         )
 
         # S3 — program vectors, release, observe fetch + clk_smc progress
-        rom_image = cocotb.plusargs.get("smc_rom_hex")
         scratch_image = cocotb.plusargs.get("smc_scratch_ram_hex")
         boot_from_scratch = scratch_image is not None
         self._mark_step(
@@ -130,32 +154,36 @@ class smc_cpu_firmware_boot_test_seq(SmcCsrSeq):
         baseline_rom = int(dut.tb_cpu_rom_read_count.value)
         baseline_scratch = int(dut.tb_cpu_scratch_read_count.value)
         baseline_dcache = int(dut.tb_cpu_dcache_write_count.value)
-        baseline_pc = int(dut.tb_cpu_wb_pc0.value)
+        baseline_pc = _pc_snapshot(dut.tb_cpu_wb_pc0)
 
-        self.boot = await check_cpu_firmware_boot_contract(
-            self, require_image=True
-        )
-        self.accesses = getattr(self, "accesses", 0) or 4
+        self.boot = await check_cpu_firmware_boot_contract(self, require_image=True)
+        # `self.accesses` is initialised to 0 in __init__ and bumped by the
+        # SmcCsrSeq helpers, so it is already a measured count. An earlier
+        # revision laundered it through `getattr(self, "accesses", 0) or 4`,
+        # which silently reported 4 whenever the measurement was 0 -- a
+        # measured statistic replaced by a constant on the proof path
+        # ([NO-DUMMY-DEAD-CODE]). Removed: whatever the helpers counted is what
+        # the record carries, so a genuinely silent sequence now reports 0 and
+        # fails the testcase's stimulus floor.
 
         assert self.boot.get("boot_checked"), self.boot
         rom_reads = int(self.boot["rom_reads"])
         scratch_reads = int(self.boot.get("scratch_reads", 0))
-        mbox = int(
-            self.boot.get("mailbox_tb")
-            or self.boot.get("mailbox_csr")
-            or 0
-        )
+        mbox = int(self.boot.get("mailbox_tb") or self.boot.get("mailbox_csr") or 0)
         assert mbox == CPU_FW_SUCCESS_MAGIC, f"PASS magic mismatch {mbox:#x}"
 
         # Readback programmed vector (CSR path proves clk_smc fabric S2)
         vec0 = await self.csr_read("CPU_BOOT_VEC0_RDBK", CPU_CTRL_RESET_VECTOR_0)
-        expected_vec = (
-            CPU_RESET_VECTOR_SCRATCH if boot_from_scratch else CPU_RESET_VECTOR_ROM
-        )
+        expected_vec = CPU_RESET_VECTOR_SCRATCH if boot_from_scratch else CPU_RESET_VECTOR_ROM
         assert vec0 == expected_vec, f"vector readback {vec0:#x} != {expected_vec:#x}"
 
         dcache_now = int(dut.tb_cpu_dcache_write_count.value)
-        pc_now = int(dut.tb_cpu_wb_pc0.value)
+        pc_now = _pc_snapshot(dut.tb_cpu_wb_pc0)
+        # A PC that has become readable is itself retire evidence: it can only
+        # resolve once the writeback stage has held a real instruction. While it
+        # is still undefined nothing has retired, so it proves nothing either way
+        # and the dcache counter has to carry the check.
+        pc_advanced = pc_now is not None and pc_now != baseline_pc
 
         if boot_from_scratch:
             assert scratch_reads > baseline_scratch, "no scratch fetch evidence"
@@ -189,14 +217,14 @@ class smc_cpu_firmware_boot_test_seq(SmcCsrSeq):
             f"tb_cpu_rom_read_count {baseline_rom}->{rom_reads} before PASS"
         )
 
-        assert (dcache_now > baseline_dcache) or (pc_now != baseline_pc), (
+        assert (dcache_now > baseline_dcache) or pc_advanced, (
             f"clk_smc LIVE counters static dcache {baseline_dcache}->{dcache_now} "
-            f"wb_pc0 {baseline_pc:#x}->{pc_now:#x}"
+            f"wb_pc0 {_pc_text(baseline_pc)}->{_pc_text(pc_now)}"
         )
         self._log(
             "CHK-CLK-SMC-LIVE: across clk_smc_i release window "
             f"tb_cpu_dcache_write_count {baseline_dcache}->{dcache_now} and "
-            f"tb_cpu_wb_pc0 {baseline_pc:#x}->{pc_now:#x} advanced (S1); "
+            f"tb_cpu_wb_pc0 {_pc_text(baseline_pc)}->{_pc_text(pc_now)} advanced (S1); "
             "CPU_CTRL_RESET_VECTOR_*/RESET_CTRL/SCRATCH_0 AXI-Lite CSR "
             "writes/reads completed through local fabric (S2) while clk_smc_i toggles"
         )
@@ -210,7 +238,7 @@ class smc_cpu_firmware_boot_test_seq(SmcCsrSeq):
             f"last_csr={self.boot.get('mailbox_csr')} "
             f"tb_mbox={self.boot.get('mailbox_tb')} "
             f"rom_reads={rom_reads} scratch_reads={scratch_reads} "
-            f"dcache_writes={dcache_now} wb_pc0={pc_now:#x}"
+            f"dcache_writes={dcache_now} wb_pc0={_pc_text(pc_now)}"
         )
 
         order = ["S1", "S2", "S3"]
@@ -220,7 +248,6 @@ class smc_cpu_firmware_boot_test_seq(SmcCsrSeq):
             "CHK-NONVAC: check_cpu_bfm_observability powergood_stable_o==1 "
             f"precedes boot; PASS magic {CPU_FW_SUCCESS_MAGIC:#x} confirms "
             "non-vacuous execution for RESET-VECTOR-FETCH / ROM-IS-TARGET / "
-            "CLK-SMC-LIVE / EFUSE-SENSE-DONE; "
-            + "; ".join(self._timeout_paths)
+            "CLK-SMC-LIVE / EFUSE-SENSE-DONE; " + "; ".join(self._timeout_paths)
         )
         self._log("SMC_002 scenario PASS")

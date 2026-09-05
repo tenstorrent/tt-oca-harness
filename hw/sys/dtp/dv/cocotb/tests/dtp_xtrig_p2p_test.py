@@ -3,7 +3,6 @@
 """DTP VPLAN scenario `dtp_xtrig_p2p_test`."""
 
 import pyuvm
-
 from dtp_base_test import dtp_base_test
 from seq_lib.dtp_xtrig_base_test_seq import dtp_xtrig_base_test_seq
 
@@ -15,6 +14,6 @@ class dtp_xtrig_p2p_test(dtp_base_test):
             dtp_xtrig_base_test_seq,
             "p2p",
             scenario="p2p",
-            specific_env="DTP_XTRIG_P2P_TEST_LOOPS",
-            group_env="DTP_XTRIG_TEST_LOOPS",
+            specific_knob="DTP_XTRIG_P2P_TEST_LOOPS",
+            group_knob="DTP_XTRIG_TEST_LOOPS",
         )

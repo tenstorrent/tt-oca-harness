@@ -2,18 +2,16 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """
 DV-CARD: SMCCGP0_004 ANCHOR: smc_cg_zeroer_activity_bringup_test
-DV-CARD-REVISION: 1 RECORD-SHA256: 91aeaf4f6e050ebe2fa76dca6013bcfd5a9acee9661d87794a275ceb61954acd
-DV-CARD-SOURCE: hw/sys/smc/dv/tb/SMC_CLOCK_GATING_P0_VPLAN_DETAIL.md @ artifact_revision 1 ENV: cocotb
 """
 
 from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_cg_zeroer_activity_bringup_test_seq import (
     smc_cg_zeroer_activity_bringup_test_seq,
 )
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
@@ -39,6 +37,10 @@ class smc_cg_zeroer_activity_bringup_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.ZEROER_DMA,
             type(self).__name__,
+            # Directed stimulus floor: 15 SEP_IN AXI accesses (CG programming
+            # plus the zeroer descriptor/trigger writes). Literal here, not
+            # read from `seq.accesses`.
+            min_csr_accesses=15,
             csr_accesses=seq.accesses,
             timeouts=seq.timeouts,
             proxy=False,

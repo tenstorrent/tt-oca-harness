@@ -1,0 +1,699 @@
+diff --git b/hw/ip/aes/dv/aes_model_dpi/aes_model_dpi.c a/hw/ip/aes/dv/aes_model_dpi/aes_model_dpi.c
+index d563c9a8..06266e14 100644
+--- b/hw/ip/aes/dv/aes_model_dpi/aes_model_dpi.c
++++ a/hw/ip/aes/dv/aes_model_dpi/aes_model_dpi.c
+@@ -22,8 +22,8 @@ void c_dpi_aes_crypt_block(const unsigned char impl_i, const unsigned char op_i,
+   const unsigned char impl = impl_i & impl_mask;
+   const unsigned char op = op_i & op_mask;
+   const crypto_mode_t mode = (crypto_mode_t)(*mode_i & mode_mask);
+-  if (mode == kCryptoAesNone || mode == kCryptoAesGcm) {
+-    printf("ERROR: Mode not supported by c_dpi_aes_crypt_block");
++  if (mode == kCryptoAesNone) {
++    printf("ERROR: Mode kCryptoAesNone not supported by c_dpi_aes_crypt_block");
+     return;
+   }
+ 
+@@ -101,11 +101,9 @@ void c_dpi_aes_crypt_block(const unsigned char impl_i, const unsigned char op_i,
+     }
+   } else {  // OpenSSL/BoringSSL
+     if (!op) {
+-      crypto_encrypt(ref_out, iv, ref_in, 16, key, key_len, mode, NULL, 0, NULL,
+-                     0);
++      crypto_encrypt(ref_out, iv, ref_in, 16, key, key_len, mode);
+     } else {
+-      crypto_decrypt(ref_out, iv, ref_in, 16, key, key_len, mode, NULL, 0, NULL,
+-                     0);
++      crypto_decrypt(ref_out, iv, ref_in, 16, key, key_len, mode);
+     }
+   }
+ 
+@@ -123,12 +121,9 @@ void c_dpi_aes_crypt_block(const unsigned char impl_i, const unsigned char op_i,
+ void c_dpi_aes_crypt_message(unsigned char impl_i, unsigned char op_i,
+                              const svBitVecVal *mode_i, const svBitVecVal *iv_i,
+                              const svBitVecVal *key_len_i,
+-                             const svBitVecVal *key_i, const int data_len_i,
+-                             const int aad_len_i,
++                             const svBitVecVal *key_i,
+                              const svOpenArrayHandle data_i,
+-                             const svOpenArrayHandle aad_i,
+-                             const svBitVecVal *tag_i, svOpenArrayHandle data_o,
+-                             svBitVecVal *tag_o, int *crypto_res) {
++                             svOpenArrayHandle data_o) {
+   // Mask out unused bits as their value is undetermined.
+   const unsigned char impl = impl_i & impl_mask;
+   const unsigned char op = op_i & op_mask;
+@@ -149,11 +144,6 @@ void c_dpi_aes_crypt_message(unsigned char impl_i, unsigned char op_i,
+     key_len = 32;
+   }
+ 
+-  int tag_len = 16;  // Set tag length to 128-bits. Although other bit sizes are
+-                     // supported, the hardware anyways will always generate the
+-                     // 128-bits tag and the user can decide to only use some
+-                     // a subset of these bits.
+-
+   if (impl == 0) {
+     // The C model is currently not supported.
+     printf(
+@@ -182,78 +172,44 @@ void c_dpi_aes_crypt_message(unsigned char impl_i, unsigned char op_i,
+     memset(iv, 0, 16);
+   }
+ 
+-  unsigned char *tag_in =
+-      (unsigned char *)malloc(tag_len * sizeof(unsigned char));
+-  assert(tag_in);
+-  if (mode == kCryptoAesGcm) {
+-    // tag_i is a 1D array of words (4x32bit), but we need 16 bytes.
+-    svBitVecVal value;
+-    for (int i = 0; i < 4; ++i) {
+-      value = tag_i[i];
+-      tag_in[4 * i + 0] = (unsigned char)(value >> 0);
+-      tag_in[4 * i + 1] = (unsigned char)(value >> 8);
+-      tag_in[4 * i + 2] = (unsigned char)(value >> 16);
+-      tag_in[4 * i + 3] = (unsigned char)(value >> 24);
+-    }
+-  } else {
+-    memset(tag_in, 0, tag_len);
+-  }
++  // Get message length.
++  int data_len = svSize(data_i, 1);
++
++  // Get input data from simulator.
++  unsigned char *ref_in = aes_data_unpacked_get(data_i);
+ 
+-  int pad_len = (16 - (data_len_i % 16)) % 16;
++  // Allocate output buffer.
++  unsigned char *ref_out =
++      (unsigned char *)malloc(data_len * sizeof(unsigned char));
++  assert(ref_out);
+ 
+-  // An incomplete last message block is only allowed in GCM mode.
+-  if (((mode == kCryptoAesEcb) || (mode == kCryptoAesCbc) ||
+-       (mode == kCryptoAesCfb) || (mode == kCryptoAesOfb) ||
+-       (mode == kCryptoAesCtr)) &&
+-      (pad_len != 0)) {
++  // OpenSSL/BoringSSL
++  if ((int)data_len % 16) {
+     printf(
+         "ERROR: Message length must be a multiple of 16 bytes (the block "
+         "size).\n");
+     return;
+   }
+ 
+-  // Get input data from simulator.
+-  unsigned char *ref_in = aes_data_unpacked_get(data_i);
+-  unsigned char *aad_in = aes_data_unpacked_get(aad_i);
+-
+-  // Allocate output buffers.
+-  unsigned char *ref_out =
+-      (unsigned char *)malloc((data_len_i + pad_len) * sizeof(unsigned char));
+-  assert(ref_out);
+-  unsigned char *tag_out =
+-      (unsigned char *)malloc(tag_len * sizeof(unsigned char));
+-  assert(tag_out);
+-  int *crypto_result = (int *)malloc(sizeof(int));
+-  crypto_result[0] = 0;
+-
+   if (impl == 0) {
+     // The C model is currently not supported.
+     printf(
+         "ERROR: c_dpi_aes_crypt_message() currently supports OpenSSL/BoringSSL "
+         "only\n");
+   } else {  // OpenSSL/BoringSSL
+-    int res;
+     if (!op) {
+-      crypto_result[0] =
+-          crypto_encrypt(ref_out, iv, ref_in, data_len_i, key, key_len, mode,
+-                         aad_in, aad_len_i, tag_out, tag_len);
++      crypto_encrypt(ref_out, iv, ref_in, data_len, key, key_len, mode);
+     } else {
+-      crypto_result[0] =
+-          crypto_decrypt(ref_out, iv, ref_in, data_len_i, key, key_len, mode,
+-                         aad_in, aad_len_i, tag_in, tag_len);
++      crypto_decrypt(ref_out, iv, ref_in, data_len, key, key_len, mode);
+     }
+-    memcpy(crypto_res, crypto_result, sizeof(int));
+   }
+ 
+-  // Write output data back to simulator, free ref_out & tag_out.
++  // Write output data back to simulator, free ref_out.
+   aes_data_unpacked_put(data_o, ref_out);
+-  aes_data_put(tag_o, tag_out);
+ 
+   // Free memory.
+   free(iv);
+   free(key);
+-  free(aad_in);
+-  free(tag_in);
+ }
+ 
+ void c_dpi_aes_sub_bytes(const unsigned char op_i, const svBitVecVal *data_i,
+diff --git b/hw/ip/aes/dv/aes_model_dpi/aes_model_dpi.h a/hw/ip/aes/dv/aes_model_dpi/aes_model_dpi.h
+index df8e29d9..78a3cd38 100644
+--- b/hw/ip/aes/dv/aes_model_dpi/aes_model_dpi.h
++++ a/hw/ip/aes/dv/aes_model_dpi/aes_model_dpi.h
+@@ -27,8 +27,7 @@ extern "C" {
+  * @param  op_i      Operation: 0 = encrypt, 1 = decrypt
+  * @param  mode_i    Cipher mode: 6'b00_0001 = ECB, 6'00_b0010 = CBC,
+  *                                6'b00_0100 = CFB, 6'b00_1000 = OFB,
+- *                                6'b01_0000 = CTR, 6'b10_0000 = GCM,
+- *                                6'b11_1111 = NONE
++ *                                6'b01_0000 = CTR, 6'b10_0000 = NONE
+  * @param  iv_i      Initialization vector: 2D matrix (3D packed array in SV)
+  * @param  key_len_i Key length: 3'b001 = 128b, 3'b010 = 192b, 3'b100 = 256b
+  * @param  key_i     Full input key, 1D array of words (2D packed array in SV)
+@@ -48,32 +47,20 @@ void c_dpi_aes_crypt_block(const unsigned char impl_i, const unsigned char op_i,
+  * @param  op_i      Operation: 0 = encrypt, 1 = decrypt
+  * @param  mode_i    Cipher mode: 6'b00_0001 = ECB, 6'00_b0010 = CBC,
+  *                                6'b00_0100 = CFB, 6'b00_1000 = OFB,
+- *                                6'b01_0000 = CTR, 6'b10_0000 = GCM,
+- *                                6'b11_1111 = NONE
+- * @param  iv_i         Initialization vector: 1D array of words (2D packed
+- * array in SV)
+- * @param  key_len_i    Key length: 3'b001 = 128b, 3'b010 = 192b, 3'b100 = 256b
+- * @param  key_i        Full input key, 1D array of words (2D packed array in
+- * SV)
+- * @param  data_len_i   Number of data bytes.
+- * @param  aad_len_i    Number of AAD bytes.
+- * @param  data_i       Input data, 1D byte array (open array in SV)
+- * @param  aad_i        Input AAD, 1D byte array (open array in SV)
+- * @param  tag_i        Input auth. tag, 1D array of words (2D packed array in
+- * SV)
+- * @param  data_o       Output data, 1D byte array (open array in SV)
+- * @param  tag_o        Output auth. tag, 1D array of words (2D packed array in
+- * SV)
+- * @param  crypto_res   Return code of the underlying crypto implementation.
++ *                                6'b01_0000 = CTR, 6'b10_0000 = NONE
++ * @param  iv_i      Initialization vector: 1D array of words (2D packed array
++ *                   in SV)
++ * @param  key_len_i Key length: 3'b001 = 128b, 3'b010 = 192b, 3'b100 = 256b
++ * @param  key_i     Full input key, 1D array of words (2D packed array in SV)
++ * @param  data_i    Input data, 1D byte array (open array in SV)
++ * @param  data_o    Output data, 1D byte array (open array in SV)
+  */
+ void c_dpi_aes_crypt_message(unsigned char impl_i, unsigned char op_i,
+                              const svBitVecVal *mode_i, const svBitVecVal *iv_i,
+                              const svBitVecVal *key_len_i,
+-                             const svBitVecVal *key_i, const int data_len,
+-                             const int aad_len, const svOpenArrayHandle data_i,
+-                             const svOpenArrayHandle aad_i,
+-                             const svBitVecVal *tag_i, svOpenArrayHandle data_o,
+-                             svBitVecVal *tag_o, int *crypto_res);
++                             const svBitVecVal *key_i,
++                             const svOpenArrayHandle data_i,
++                             svOpenArrayHandle data_o);
+ 
+ /**
+  * Perform sub bytes operation for forward/inverse cipher operation.
+diff --git b/hw/ip/aes/dv/aes_model_dpi/aes_model_dpi_pkg.sv a/hw/ip/aes/dv/aes_model_dpi/aes_model_dpi_pkg.sv
+index 4cf074bb..2eeaafa9 100644
+--- b/hw/ip/aes/dv/aes_model_dpi/aes_model_dpi_pkg.sv
++++ a/hw/ip/aes/dv/aes_model_dpi/aes_model_dpi_pkg.sv
+@@ -10,8 +10,7 @@ package aes_model_dpi_pkg;
+     input  bit                impl_i,    // 0 = C model, 1 = OpenSSL/BoringSSL
+     input  bit                op_i,      // 0 = encrypt, 1 = decrypt
+     input  bit          [5:0] mode_i,    // 6'b00_0001 = ECB, 6'00_b0010 = CBC, 6'b00_0100 = CFB,
+-                                         // 6'b00_1000 = OFB, 6'b01_0000 = CTR, 6'b10_0000 = GCM,
+-                                         // 6'b11_1111 = NONE
++                                         // 6'b00_1000 = OFB, 6'b01_0000 = CTR, 6'b10_0000 = NONE
+     input  bit[3:0][3:0][7:0] iv_i,
+     input  bit          [2:0] key_len_i, // 3'b001 = 128b, 3'b010 = 192b, 3'b100 = 256b
+     input  bit    [7:0][31:0] key_i,
+@@ -23,19 +22,12 @@ package aes_model_dpi_pkg;
+     input  bit              impl_i,    // 0 = C model, 1 = OpenSSL/BoringSSL
+     input  bit              op_i,      // 0 = encrypt, 1 = decrypt
+     input  bit        [5:0] mode_i,    // 6'b00_0001 = ECB, 6'00_b0010 = CBC, 6'b00_0100 = CFB,
+-                                       // 6'b00_1000 = OFB, 6'b01_0000 = CTR, 6'b10_0000 = GCM,
+-                                       // 6'b11_1111 = NONE
++                                       // 6'b00_1000 = OFB, 6'b01_0000 = CTR, 6'b10_0000 = NONE
+     input  bit  [3:0][31:0] iv_i,
+     input  bit        [2:0] key_len_i, // 3'b001 = 128b, 3'b010 = 192b, 3'b100 = 256b
+     input  bit  [7:0][31:0] key_i,
+-    input  int              data_len_i,
+-    input  int              aad_len_i,
+     input  bit        [7:0] data_i[],
+-    input  bit        [7:0] aad_i[],
+-    input  bit  [3:0][31:0] tag_i,
+-    output bit        [7:0] data_o[],
+-    output bit  [3:0][31:0] tag_o,
+-    output int              crypto_res
++    output bit        [7:0] data_o[]
+   );
+ 
+   import "DPI-C" context function void c_dpi_aes_sub_bytes(
+@@ -72,8 +64,7 @@ package aes_model_dpi_pkg;
+     input  bit             impl_i,    // 0 = C model, 1 = OpenSSL/BoringSSL
+     input  bit             op_i,      // 0 = encrypt, 1 = decrypt
+     input  bit       [5:0] mode_i,    // 6'b00_0001 = ECB, 6'00_b0010 = CBC, 6'b00_0100 = CFB,
+-                                      // 6'b00_1000 = OFB, 6'b01_0000 = CTR, 6'b10_0000 = GCM,
+-                                      // 6'b11_1111 = NONE
++                                      // 6'b00_1000 = OFB, 6'b01_0000 = CTR, 6'b10_0000 = NONE
+     input  bit [3:0][31:0] iv_i,
+     input  bit       [2:0] key_len_i, // 3'b001 = 128b, 3'b010 = 192b, 3'b100 = 256b
+     input  bit [7:0][31:0] key_i,
+diff --git b/hw/ip/aes/model/README.md a/hw/ip/aes/model/README.md
+index 811549f2..de36f64b 100644
+--- b/hw/ip/aes/model/README.md
++++ a/hw/ip/aes/model/README.md
+@@ -20,7 +20,7 @@ In addition, this directory also contains two example applications.
+ 2. `aes_modes`:
+ - Shows how to interface the OpenSSL/BoringSSL interface functions.
+ - Checks the output of BoringSSL/OpenSSL versus expected results.
+-- Supports ECB, CBC, CTR, CFB, OFB, GCM modes.
++- Supports ECB, CBC, CTR modes.
+ 
+ How to build and run the examples
+ ---------------------------------
+@@ -54,4 +54,4 @@ Details of the model
+ - `aes_example.c/h`: Contains the first example application including test input
+   and expected output for ECB mode.
+ - `aes_modes.c/h`: Contains the second example application including test input
+-  and expected output for ECB, CBC, CTR, CFB, OFB, GCM modes.
++  and expected output for ECB, CBC, CTR modes.
+diff --git b/hw/ip/aes/model/aes_example.c a/hw/ip/aes/model/aes_example.c
+index 35222f1b..d26c8b36 100644
+--- b/hw/ip/aes/model/aes_example.c
++++ a/hw/ip/aes/model/aes_example.c
+@@ -214,7 +214,7 @@ int main(int argc, char *argv[]) {
+ 
+   // check state vs BoringSSL/OpenSSL
+   cipher_text_len = crypto_encrypt(cipher_text, iv, plain_text, 16, key,
+-                                   key_len, kCryptoAesEcb, NULL, 0, NULL, 0);
++                                   key_len, kCryptoAesEcb);
+   if (!check_block(state, cipher_text, 0)) {
+     printf("SUCCESS: state matches %s cipher text\n", crypto_lib);
+   } else {
+@@ -334,7 +334,7 @@ int main(int argc, char *argv[]) {
+ 
+   // check state vs BoringSSL/OpenSSL
+   crypto_decrypt(decrypted_text, iv, cipher_text, cipher_text_len, key, key_len,
+-                 kCryptoAesEcb, NULL, 0, NULL, 0);
++                 kCryptoAesEcb);
+   if (!check_block(state, decrypted_text, 0)) {
+     printf("SUCCESS: state matches %s decrypted text\n", crypto_lib);
+   } else {
+diff --git b/hw/ip/aes/model/aes_modes.c a/hw/ip/aes/model/aes_modes.c
+index 35819bb2..726cafdf 100644
+--- b/hw/ip/aes/model/aes_modes.c
++++ a/hw/ip/aes/model/aes_modes.c
+@@ -37,10 +37,8 @@ static int crypto_compare(const unsigned char *cipher_text,
+                           const unsigned char *iv,
+                           const unsigned char *plain_text, int len,
+                           const unsigned char *key, int key_len,
+-                          crypto_mode_t mode, const unsigned char *aad,
+-                          int aad_len, const unsigned char *tag, int tag_len) {
++                          crypto_mode_t mode) {
+   const unsigned char *data_in;
+-  const unsigned char *aad_in;
+   int ret_len;
+   int ret_len_exp = len;
+ 
+@@ -52,17 +50,8 @@ static int crypto_compare(const unsigned char *cipher_text,
+     return 1;
+   }
+   data_in = plain_text;
+-  aad_in = aad;
+ 
+-  unsigned char *tag_out =
+-      (unsigned char *)malloc(tag_len * sizeof(unsigned char));
+-  if (tag_out == NULL) {
+-    printf("ERROR: malloc() failed\n");
+-    return 1;
+-  }
+-
+-  ret_len = crypto_encrypt(data_out, iv, data_in, len, key, key_len, mode,
+-                           aad_in, aad_len, tag_out, tag_len);
++  ret_len = crypto_encrypt(data_out, iv, data_in, len, key, key_len, mode);
+   if (ret_len != ret_len_exp) {
+     printf("ERROR: ret_len = %i, expected %i. Aborting now\n", ret_len,
+            ret_len_exp);
+@@ -87,22 +76,6 @@ static int crypto_compare(const unsigned char *cipher_text,
+     }
+   }
+ 
+-  if (mode == kCryptoAesGcm) {
+-    for (int j = 0; j < tag_len / 16; ++j) {
+-      if (!check_block(&tag_out[j * 16], &tag[j * 16], 1)) {
+-        printf("SUCCESS: %s tag output matches NIST example tag\n", crypto_lib);
+-      } else {
+-        printf("ERROR: %s tag output does not match NIST example tag\n",
+-               crypto_lib);
+-        printf("Tag output: \t");
+-        aes_print_block(&tag_out[j * 16], 16);
+-        printf("Expected tag: \t");
+-        aes_print_block(&tag[j * 16], 16);
+-        return 1;
+-      }
+-    }
+-  }
+-
+   // Dec
+   unsigned char *data_in_dec =
+       (unsigned char *)malloc(ret_len_exp * sizeof(unsigned char));
+@@ -113,11 +86,9 @@ static int crypto_compare(const unsigned char *cipher_text,
+   for (int j = 0; j < ret_len; ++j) {
+     data_in_dec[j] = data_out[j];
+   }
+-  unsigned char *tag_in;
+-  tag_in = tag_out;
+ 
+-  ret_len = crypto_decrypt(data_out, iv, data_in_dec, ret_len, key, key_len,
+-                           mode, aad_in, aad_len, tag_in, tag_len);
++  ret_len =
++      crypto_decrypt(data_out, iv, data_in_dec, ret_len, key, key_len, mode);
+   if (ret_len != len) {
+     printf("ERROR: ret_len = %i, expected %i. Aborting now\n", ret_len, len);
+     return 1;
+@@ -148,16 +119,12 @@ static int crypto_compare(const unsigned char *cipher_text,
+ }
+ 
+ int main(int argc, char *argv[]) {
+-  int len = 64;
++  const int len = 64;
+   int key_len;
+-  int tag_len = 0;
+-  int aad_len = 0;
+   crypto_mode_t mode;
+   const unsigned char *iv;
+   const unsigned char *key;
+   const unsigned char *cipher_text;
+-  const unsigned char *aad = NULL;
+-  const unsigned char *tag = NULL;
+ 
+   /////////
+   // ECB //
+@@ -184,7 +151,7 @@ int main(int argc, char *argv[]) {
+     }
+ 
+     if (crypto_compare(cipher_text, iv, kAesModesPlainText, len, key, key_len,
+-                       mode, aad, aad_len, tag, tag_len)) {
++                       mode)) {
+       return 1;
+     }
+   }
+@@ -214,7 +181,7 @@ int main(int argc, char *argv[]) {
+     }
+ 
+     if (crypto_compare(cipher_text, iv, kAesModesPlainText, len, key, key_len,
+-                       mode, aad, aad_len, tag, tag_len)) {
++                       mode)) {
+       return 1;
+     }
+   }
+@@ -245,7 +212,7 @@ int main(int argc, char *argv[]) {
+     }
+ 
+     if (crypto_compare(cipher_text, iv, kAesModesPlainText, len, key, key_len,
+-                       mode, aad, aad_len, tag, tag_len)) {
++                       mode)) {
+       return 1;
+     }
+   }
+@@ -275,7 +242,7 @@ int main(int argc, char *argv[]) {
+     }
+ 
+     if (crypto_compare(cipher_text, iv, kAesModesPlainText, len, key, key_len,
+-                       mode, aad, aad_len, tag, tag_len)) {
++                       mode)) {
+       return 1;
+     }
+   }
+@@ -305,44 +272,7 @@ int main(int argc, char *argv[]) {
+     }
+ 
+     if (crypto_compare(cipher_text, iv, kAesModesPlainText, len, key, key_len,
+-                       mode, aad, aad_len, tag, tag_len)) {
+-      return 1;
+-    }
+-  }
+-
+-  /////////
+-  // GCM //
+-  /////////
+-  iv = kAesModesIvGcm;
+-  mode = kCryptoAesGcm;
+-  len = 60;
+-  tag_len = 16;
+-  aad_len = 20;
+-  aad = kAesModesAadGcm;
+-
+-  for (int i = 0; i < 3; ++i) {
+-    if (i == 0) {
+-      printf("GCM AES-128\n");
+-      key_len = 16;
+-      key = kAesModesGcmKey128;
+-      cipher_text = kAesModesCipherTextGcm128;
+-      tag = kAesModesTagGcm128;
+-    } else if (i == 1) {
+-      printf("GCM AES-192\n");
+-      key_len = 24;
+-      key = kAesModesGcmKey192;
+-      cipher_text = kAesModesCipherTextGcm192;
+-      tag = kAesModesTagGcm192;
+-    } else {  // i==2
+-      printf("GCM AES-256\n");
+-      key_len = 32;
+-      key = kAesModesGcmKey256;
+-      cipher_text = kAesModesCipherTextGcm256;
+-      tag = kAesModesTagGcm256;
+-    }
+-
+-    if (crypto_compare(cipher_text, iv, kAesModesPlainTextGcm, len, key,
+-                       key_len, mode, aad, aad_len, tag, tag_len)) {
++                       mode)) {
+       return 1;
+     }
+   }
+diff --git b/hw/ip/aes/model/aes_modes.h a/hw/ip/aes/model/aes_modes.h
+index 3ad309b2..db9f6d34 100644
+--- b/hw/ip/aes/model/aes_modes.h
++++ a/hw/ip/aes/model/aes_modes.h
+@@ -175,69 +175,4 @@ static const unsigned char kAesModesCipherTextCtr256[64] = {
+     0x2d, 0x84, 0x98, 0x8d, 0xdf, 0xc9, 0xc5, 0x8d, 0xb6, 0x7a, 0xad,
+     0xa6, 0x13, 0xc2, 0xdd, 0x08, 0x45, 0x79, 0x41, 0xa6};
+ 
+-// The examples below are extracted from the NIST Publication "The
+-// Galois/Counter Mode of Operation (GCM)" available at
+-// https://csrc.nist.rip/groups/ST/toolkit/BCM/documents/proposedmodes/gcm/gcm-spec.pdf
+-
+-// GCM
+-static const unsigned char kAesModesIvGcm[12] = {
+-    0xca, 0xfe, 0xba, 0xbe, 0xfa, 0xce, 0xdb, 0xad, 0xde, 0xca, 0xf8, 0x88};
+-
+-static const unsigned char kAesModesAadGcm[20] = {
+-    0xfe, 0xed, 0xfa, 0xce, 0xde, 0xad, 0xbe, 0xef, 0xfe, 0xed,
+-    0xfa, 0xce, 0xde, 0xad, 0xbe, 0xef, 0xab, 0xad, 0xda, 0xd2};
+-
+-static const unsigned char kAesModesGcmKey128[16] = {
+-    0xfe, 0xff, 0xe9, 0x92, 0x86, 0x65, 0x73, 0x1c,
+-    0x6d, 0x6a, 0x8f, 0x94, 0x67, 0x30, 0x83, 0x08};
+-
+-static const unsigned char kAesModesGcmKey192[24] = {
+-    0xfe, 0xff, 0xe9, 0x92, 0x86, 0x65, 0x73, 0x1c, 0x6d, 0x6a, 0x8f, 0x94,
+-    0x67, 0x30, 0x83, 0x08, 0xfe, 0xff, 0xe9, 0x92, 0x86, 0x65, 0x73, 0x1c};
+-
+-static const unsigned char kAesModesGcmKey256[32] = {
+-    0xfe, 0xff, 0xe9, 0x92, 0x86, 0x65, 0x73, 0x1c, 0x6d, 0x6a, 0x8f,
+-    0x94, 0x67, 0x30, 0x83, 0x08, 0xfe, 0xff, 0xe9, 0x92, 0x86, 0x65,
+-    0x73, 0x1c, 0x6d, 0x6a, 0x8f, 0x94, 0x67, 0x30, 0x83, 0x08};
+-
+-static const unsigned char kAesModesPlainTextGcm[60] = {
+-    0xd9, 0x31, 0x32, 0x25, 0xf8, 0x84, 0x06, 0xe5, 0xa5, 0x59, 0x09, 0xc5,
+-    0xaf, 0xf5, 0x26, 0x9a, 0x86, 0xa7, 0xa9, 0x53, 0x15, 0x34, 0xf7, 0xda,
+-    0x2e, 0x4c, 0x30, 0x3d, 0x8a, 0x31, 0x8a, 0x72, 0x1c, 0x3c, 0x0c, 0x95,
+-    0x95, 0x68, 0x09, 0x53, 0x2f, 0xcf, 0x0e, 0x24, 0x49, 0xa6, 0xb5, 0x25,
+-    0xb1, 0x6a, 0xed, 0xf5, 0xaa, 0x0d, 0xe6, 0x57, 0xba, 0x63, 0x7b, 0x39};
+-
+-static const unsigned char kAesModesCipherTextGcm128[60] = {
+-    0x42, 0x83, 0x1e, 0xc2, 0x21, 0x77, 0x74, 0x24, 0x4b, 0x72, 0x21, 0xb7,
+-    0x84, 0xd0, 0xd4, 0x9c, 0xe3, 0xaa, 0x21, 0x2f, 0x2c, 0x02, 0xa4, 0xe0,
+-    0x35, 0xc1, 0x7e, 0x23, 0x29, 0xac, 0xa1, 0x2e, 0x21, 0xd5, 0x14, 0xb2,
+-    0x54, 0x66, 0x93, 0x1c, 0x7d, 0x8f, 0x6a, 0x5a, 0xac, 0x84, 0xaa, 0x05,
+-    0x1b, 0xa3, 0x0b, 0x39, 0x6a, 0x0a, 0xac, 0x97, 0x3d, 0x58, 0xe0, 0x91};
+-
+-static const unsigned char kAesModesCipherTextGcm192[60] = {
+-    0x39, 0x80, 0xca, 0x0b, 0x3c, 0x00, 0xe8, 0x41, 0xeb, 0x06, 0xfa, 0xc4,
+-    0x87, 0x2a, 0x27, 0x57, 0x85, 0x9e, 0x1c, 0xea, 0xa6, 0xef, 0xd9, 0x84,
+-    0x62, 0x85, 0x93, 0xb4, 0x0c, 0xa1, 0xe1, 0x9c, 0x7d, 0x77, 0x3d, 0x00,
+-    0xc1, 0x44, 0xc5, 0x25, 0xac, 0x61, 0x9d, 0x18, 0xc8, 0x4a, 0x3f, 0x47,
+-    0x18, 0xe2, 0x44, 0x8b, 0x2f, 0xe3, 0x24, 0xd9, 0xcc, 0xda, 0x27, 0x10};
+-
+-static const unsigned char kAesModesCipherTextGcm256[60] = {
+-    0x52, 0x2d, 0xc1, 0xf0, 0x99, 0x56, 0x7d, 0x07, 0xf4, 0x7f, 0x37, 0xa3,
+-    0x2a, 0x84, 0x42, 0x7d, 0x64, 0x3a, 0x8c, 0xdc, 0xbf, 0xe5, 0xc0, 0xc9,
+-    0x75, 0x98, 0xa2, 0xbd, 0x25, 0x55, 0xd1, 0xaa, 0x8c, 0xb0, 0x8e, 0x48,
+-    0x59, 0x0d, 0xbb, 0x3d, 0xa7, 0xb0, 0x8b, 0x10, 0x56, 0x82, 0x88, 0x38,
+-    0xc5, 0xf6, 0x1e, 0x63, 0x93, 0xba, 0x7a, 0x0a, 0xbc, 0xc9, 0xf6, 0x62};
+-
+-static const unsigned char kAesModesTagGcm128[16] = {
+-    0x5b, 0xc9, 0x4f, 0xbc, 0x32, 0x21, 0xa5, 0xdb,
+-    0x94, 0xfa, 0xe9, 0x5a, 0xe7, 0x12, 0x1a, 0x47};
+-
+-static const unsigned char kAesModesTagGcm192[16] = {
+-    0x25, 0x19, 0x49, 0x8e, 0x80, 0xf1, 0x47, 0x8f,
+-    0x37, 0xba, 0x55, 0xbd, 0x6d, 0x27, 0x61, 0x8c};
+-
+-static const unsigned char kAesModesTagGcm256[16] = {
+-    0x76, 0xfc, 0x6e, 0xce, 0x0f, 0x4e, 0x17, 0x68,
+-    0xcd, 0xdf, 0x88, 0x53, 0xbb, 0x2d, 0x55, 0x1b};
+-
+ #endif  // OPENTITAN_HW_IP_AES_MODEL_AES_MODES_H_
+diff --git b/hw/ip/aes/model/crypto.c a/hw/ip/aes/model/crypto.c
+index 2c211073..9db12b05 100644
+--- b/hw/ip/aes/model/crypto.c
++++ a/hw/ip/aes/model/crypto.c
+@@ -51,14 +51,6 @@ static const EVP_CIPHER *crypto_get_EVP_cipher(int key_len,
+     } else {  // key_len = 16
+       cipher = EVP_aes_128_ctr();
+     }
+-  } else if (mode == kCryptoAesGcm) {
+-    if (key_len == 32) {
+-      cipher = EVP_aes_256_gcm();
+-    } else if (key_len == 24) {
+-      cipher = EVP_aes_192_gcm();
+-    } else {  // key_len = 16
+-      cipher = EVP_aes_128_gcm();
+-    }
+   } else {  // kCryptoAesEcb
+     if (key_len == 32) {
+       cipher = EVP_aes_256_ecb();
+@@ -74,9 +66,7 @@ static const EVP_CIPHER *crypto_get_EVP_cipher(int key_len,
+ 
+ int crypto_encrypt(unsigned char *output, const unsigned char *iv,
+                    const unsigned char *input, int input_len,
+-                   const unsigned char *key, int key_len, crypto_mode_t mode,
+-                   const unsigned char *aad, int aad_len, unsigned char *tag,
+-                   int tag_len) {
++                   const unsigned char *key, int key_len, crypto_mode_t mode) {
+   EVP_CIPHER_CTX *ctx;
+   int ret;
+   int len, output_len;
+@@ -99,18 +89,9 @@ int crypto_encrypt(unsigned char *output, const unsigned char *iv,
+     return -1;
+   }
+ 
+-  // Apply padding for a partial last message block.
+-  int pad = (input_len % 16 != 0) ? 1 : 0;
+-  EVP_CIPHER_CTX_set_padding(ctx, pad);
+-
+-  // Feed AAD into cipher, when in GCM mode.
+-  if (mode == kCryptoAesGcm) {
+-    ret = EVP_EncryptUpdate(ctx, NULL, &output_len, aad, aad_len);
+-    if (ret != 1) {
+-      printf("ERROR: Encryption operation failed\n");
+-      return -1;
+-    }
+-  }
++  // Disable padding - It is safe to do so here because we only ever encrypt
++  // multiples of 16 bytes (the block size).
++  EVP_CIPHER_CTX_set_padding(ctx, 0);
+ 
+   // Provide encryption input, get first output bytes
+   ret = EVP_EncryptUpdate(ctx, output, &output_len, input, input_len);
+@@ -127,11 +108,6 @@ int crypto_encrypt(unsigned char *output, const unsigned char *iv,
+   }
+   output_len += len;
+ 
+-  // Fetch tag, when in GCM mode.
+-  if (mode == kCryptoAesGcm) {
+-    EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG, tag_len, tag);
+-  }
+-
+   // Free
+   EVP_CIPHER_CTX_free(ctx);
+ 
+@@ -140,9 +116,7 @@ int crypto_encrypt(unsigned char *output, const unsigned char *iv,
+ 
+ int crypto_decrypt(unsigned char *output, const unsigned char *iv,
+                    const unsigned char *input, int input_len,
+-                   const unsigned char *key, int key_len, crypto_mode_t mode,
+-                   const unsigned char *aad, int aad_len, unsigned char *tag,
+-                   int tag_len) {
++                   const unsigned char *key, int key_len, crypto_mode_t mode) {
+   EVP_CIPHER_CTX *ctx;
+   int ret;
+   int len, output_len;
+@@ -164,18 +138,9 @@ int crypto_decrypt(unsigned char *output, const unsigned char *iv,
+     return -1;
+   }
+ 
+-  // Apply padding for a partial last message block.
+-  int pad = (input_len % 16 != 0) ? 1 : 0;
+-  EVP_CIPHER_CTX_set_padding(ctx, pad);
+-
+-  // Feed AAD into cipher, when in GCM mode.
+-  if (mode == kCryptoAesGcm) {
+-    ret = EVP_DecryptUpdate(ctx, NULL, &output_len, aad, aad_len);
+-    if (ret != 1) {
+-      printf("ERROR: Encryption operation failed\n");
+-      return -1;
+-    }
+-  }
++  // Disable padding - It is safe to do so here because we only ever decrypt
++  // multiples of 16 bytes (the block size).
++  EVP_CIPHER_CTX_set_padding(ctx, 0);
+ 
+   // Provide decryption input, get first output bytes
+   ret = EVP_DecryptUpdate(ctx, output, &output_len, input, input_len);
+@@ -184,11 +149,6 @@ int crypto_decrypt(unsigned char *output, const unsigned char *iv,
+     return -1;
+   }
+ 
+-  // Set tag, when in GCM mode.
+-  if (mode == kCryptoAesGcm) {
+-    EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG, tag_len, (void *)tag);
+-  }
+-
+   // Finalize decryption, further bytes might be written
+   ret = EVP_DecryptFinal_ex(ctx, output + output_len, &len);
+   if (ret != 1) {
+diff --git b/hw/ip/aes/model/crypto.h a/hw/ip/aes/model/crypto.h
+index 3be5633a..5fd4310c 100644
+--- b/hw/ip/aes/model/crypto.h
++++ a/hw/ip/aes/model/crypto.h
+@@ -14,8 +14,7 @@ typedef enum crypto_mode {
+   kCryptoAesCfb = 1 << 2,
+   kCryptoAesOfb = 1 << 3,
+   kCryptoAesCtr = 1 << 4,
+-  kCryptoAesGcm = 1 << 5,
+-  kCryptoAesNone = 0x3f
++  kCryptoAesNone = 1 << 5
+ } crypto_mode_t;
+ 
+ /**
+@@ -29,17 +28,11 @@ typedef enum crypto_mode {
+  * @param  key       Encryption key
+  * @param  key_len   Encryption key length in bytes (16, 24, 32)
+  * @param  mode      AES cipher mode @see crypto_mode.
+- * @param  aad       Associated data.
+- * @param  aad_len   Length of the associated data.
+- * @param  tag       Output tag for AES GCM.
+- * @param  tag_len   Length of the output tag.
+  * @return Length of the output cipher text in bytes, -1 in case of error
+  */
+ int crypto_encrypt(unsigned char *output, const unsigned char *iv,
+                    const unsigned char *input, int input_len,
+-                   const unsigned char *key, int key_len, crypto_mode_t mode,
+-                   const unsigned char *aad, int aad_len, unsigned char *tag,
+-                   int tag_len);
++                   const unsigned char *key, int key_len, crypto_mode_t mode);
+ 
+ /**
+  * Decrypt using BoringSSL/OpenSSL
+@@ -52,16 +45,10 @@ int crypto_encrypt(unsigned char *output, const unsigned char *iv,
+  * @param  key       Encryption key, decryption key is derived internally
+  * @param  key_len   Encryption key length in bytes (16, 24, 32)
+  * @param  mode      AES cipher mode @see crypto_mode.
+- * @param  aad       Associated data.
+- * @param  aad_len   Length of the associated data.
+- * @param  tag       Tag for AES GCM.
+- * @param  tag_len   Length of the output tag.
+  * @return Length of the output plain text in bytes, -1 in case of error
+  */
+ int crypto_decrypt(unsigned char *output, const unsigned char *iv,
+                    const unsigned char *input, int input_len,
+-                   const unsigned char *key, int key_len, crypto_mode_t mode,
+-                   const unsigned char *aad, int aad_len, unsigned char *tag,
+-                   int tag_len);
++                   const unsigned char *key, int key_len, crypto_mode_t mode);
+ 
+ #endif  // OPENTITAN_HW_IP_AES_MODEL_CRYPTO_H_

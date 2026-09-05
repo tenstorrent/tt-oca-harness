@@ -71,4 +71,4 @@ localparam longint unsigned DMA_CTRL_NUM_REPETITIONS_LO_BASE_ADDR = 64'h130;
 localparam longint unsigned DMA_CTRL_NUM_REPETITIONS_HI_BASE_ADDR = 64'h134;
 
 
-endpackage;
+endpackage

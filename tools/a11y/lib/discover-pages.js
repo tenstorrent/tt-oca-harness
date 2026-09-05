@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 // Walks the built site directory for all .html files, returning them as
 // site-root-relative URL paths (e.g. "/trm/index.html"). Used to build a
 // random sample of pages for the accessibility scan.

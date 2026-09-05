@@ -295,6 +295,14 @@ module km_drbg_sampler_reg (
                 logic next;
                 logic load_next;
             } stream_err;
+            struct {
+                logic [7:0] next;
+                logic load_next;
+            } count_bad;
+            struct {
+                logic [15:0] next;
+                logic load_next;
+            } count_good;
         } STATUS;
     } field_combo_t;
     field_combo_t field_combo;
@@ -318,6 +326,12 @@ module km_drbg_sampler_reg (
             struct {
                 logic value;
             } stream_err;
+            struct {
+                logic [7:0] value;
+            } count_bad;
+            struct {
+                logic [15:0] value;
+            } count_good;
         } STATUS;
     } field_storage_t;
     field_storage_t field_storage;
@@ -448,6 +462,60 @@ module km_drbg_sampler_reg (
         end
     end
     assign hwif_out.STATUS.stream_err.value = field_storage.STATUS.stream_err.value;
+    // Field: km_drbg_sampler.STATUS.count_bad
+    always_comb begin
+        automatic logic [7:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.STATUS.count_bad.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.STATUS && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.STATUS.count_bad.value & ~decoded_wr_biten[15:8]) | (decoded_wr_data[15:8] & decoded_wr_biten[15:8]);
+            load_next_c = '1;
+        end else begin // HW Write
+            next_c = hwif_in.STATUS.count_bad.next;
+            load_next_c = '1;
+        end
+        field_combo.STATUS.count_bad.next = next_c;
+        field_combo.STATUS.count_bad.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(~hwif_in.WARM_RST_N) begin
+            field_storage.STATUS.count_bad.value <= 8'h0;
+        end else begin
+            if(field_combo.STATUS.count_bad.load_next) begin
+                field_storage.STATUS.count_bad.value <= field_combo.STATUS.count_bad.next;
+            end
+        end
+    end
+    assign hwif_out.STATUS.count_bad.value = field_storage.STATUS.count_bad.value;
+    assign hwif_out.STATUS.count_bad.wr_swacc = decoded_reg_strb.STATUS && decoded_req_is_wr;
+    // Field: km_drbg_sampler.STATUS.count_good
+    always_comb begin
+        automatic logic [15:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.STATUS.count_good.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.STATUS && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.STATUS.count_good.value & ~decoded_wr_biten[31:16]) | (decoded_wr_data[31:16] & decoded_wr_biten[31:16]);
+            load_next_c = '1;
+        end else begin // HW Write
+            next_c = hwif_in.STATUS.count_good.next;
+            load_next_c = '1;
+        end
+        field_combo.STATUS.count_good.next = next_c;
+        field_combo.STATUS.count_good.load_next = load_next_c;
+    end
+    always_ff @(posedge clk) begin
+        if(~hwif_in.WARM_RST_N) begin
+            field_storage.STATUS.count_good.value <= 16'h0;
+        end else begin
+            if(field_combo.STATUS.count_good.load_next) begin
+                field_storage.STATUS.count_good.value <= field_combo.STATUS.count_good.next;
+            end
+        end
+    end
+    assign hwif_out.STATUS.count_good.value = field_storage.STATUS.count_good.value;
+    assign hwif_out.STATUS.count_good.wr_swacc = decoded_reg_strb.STATUS && decoded_req_is_wr;
 
     //--------------------------------------------------------------------------
     // Write response
@@ -483,8 +551,8 @@ module km_drbg_sampler_reg (
             readback_data_var[2] = field_storage.STATUS.timeout_err.value;
             readback_data_var[3] = field_storage.STATUS.stream_err.value;
             readback_data_var[7:4] = 4'h0;
-            readback_data_var[15:8] = hwif_in.STATUS.count_bad.next;
-            readback_data_var[31:16] = hwif_in.STATUS.count_good.next;
+            readback_data_var[15:8] = field_storage.STATUS.count_bad.value;
+            readback_data_var[31:16] = field_storage.STATUS.count_good.value;
         end
         if(rd_mux_addr == 4'hc) begin
             readback_data_var[31:0] = hwif_in.PREFETCH_DATA.data.next;

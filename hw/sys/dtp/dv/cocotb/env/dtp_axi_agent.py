@@ -10,8 +10,6 @@ backdoor access for the scoreboard / sequences.
 from __future__ import annotations
 
 import cocotb
-from pyuvm import ConfigDB, uvm_agent
-
 from ocah_axi_vip import (
     OcahAxiLiteMonitor,
     OcahAxiLiteProtocolWatcher,
@@ -21,6 +19,7 @@ from ocah_axi_vip import (
     OcahAxiSlaveAgent,
     OcahAxiSlaveSequence,
 )
+from pyuvm import ConfigDB, uvm_agent
 
 
 class DtpAxiAgent(uvm_agent):
@@ -79,7 +78,7 @@ class DtpAxiAgent(uvm_agent):
             await self._start_shared_monitors(dut)
 
     async def _start_shared_monitors(self, dut) -> None:
-        """Attach shared-VIP monitors/watchers to the scoreboard (issue #3295)."""
+        """Attach shared-VIP monitors/watchers to the scoreboard."""
         scoreboard = self.cfg.axi_scoreboard
         assert scoreboard is not None, "DtpAxiScoreboard did not publish a scoreboard"
         monitors = {
