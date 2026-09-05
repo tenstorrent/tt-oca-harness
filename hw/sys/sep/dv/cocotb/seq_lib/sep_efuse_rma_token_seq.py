@@ -78,6 +78,7 @@ class SepRmaTokenMatchSeq(uvm_sequence):
         self.token = token
         self.matched: bool | None = None
         self.match_code: int | None = None
+        self.timed_out = False
 
     async def _write(self, addr: int, data: int, label: str) -> None:
         item = SepAxiItem(f"{label}_0x{addr:08x}")
@@ -135,11 +136,14 @@ class SepRmaTokenMatchSeq(uvm_sequence):
                     self.matched,
                 )
                 return
-        self.matched = False
-        cocotb.log.info(
-            "[rma] %s token did not settle (last code=0x%02x)",
-            token_name,
-            self.match_code,
+        # A comparator that never reaches a terminal code is a failure, not a
+        # mismatch: reporting it as matched=False lets the negative leg of a
+        # caller's check pass on a DUT whose compare never completed.
+        self.matched = None
+        self.timed_out = True
+        raise AssertionError(
+            f"[rma] {token_name} token never reached a terminal code in "
+            f"{_POLL_CYCLES} cycles (last code=0x{self.match_code:02x})"
         )
 
 

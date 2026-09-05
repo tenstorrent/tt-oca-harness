@@ -18,7 +18,7 @@
 // Distinct from sep_mailbox_plic_test (ONE source) and from
 // sep_irq_ip_to_aggregator_test (no_cpu, aggregate vector, no ISR).
 //
-// Checks (each failure increments errors; main() returns it and start.S turns
+// Checks (each failure increments errors; main() returns it and fw/startup/crt0.s turns
 // 0 -> PASS magic / non-zero -> FAIL magic on the 0x8000_0000 mailbox):
 //   CHK-NONVAC      : before any trigger, no ISR fires (quiet window).
 //   CHK-DELIVER     : each selected source wakes its CPU ISR (WFI, no poll).
@@ -28,7 +28,8 @@
 //   CHK-PIC-COMPLETE: after the ISR clears the source the line de-asserts.
 //   CHK-ONEHOT      : only the asserted source's ISR fires among the selected
 //                     PIC-enabled sources.
-//   CHK-RANDCFG     : firmware consumed the patched MUST + extras list.
+//   CHK-RANDCFG     : graded host-side -- the cocotb test greps the SCENARIO
+//                     line below for the patched source list and count.
 
 #include <stdint.h>
 
@@ -405,7 +406,10 @@ int main(void) {
         sep_mbx_puthex(g_sel[i].pic_src);
     }
     sep_mbx_putc('\n');
-    sep_mbx_puts("CHK-RANDCFG PASS: firmware consumed the patched PIC source list\n");
+    /* Params resolved. Whether the HOST patch actually landed is graded by
+     * the SCENARIO needle the cocotb test greps -- the compiled default
+     * satisfies resolve_params(), so this line is not that proof. */
+    sep_mbx_puts("STEP params resolved from the DTCM block\n");
 
     arm_sources();
 

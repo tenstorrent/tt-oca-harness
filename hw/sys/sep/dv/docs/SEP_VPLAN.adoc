@@ -380,10 +380,10 @@ feature has no legal knob space (a strap, a single named handshake).
 |Prove the PIC delivers a seeded subset of interrupt sources to the CPU with one-hot claim and RW1C clear.
 |`sep_spi_ot_host_csr_irq_rand_test`
 |no_cpu, +skip_fuse_sense
-|ocah_axi_vip, ocah_spi_vip
+|ocah_axi_vip
 |OpenTitan SPI host CSR reset, R/W, interrupt test, and error-status W1C.
 |`sep_locked_field_access_irq_path_test`
-|no_cpu, +skip_fuse_sense
+|no_cpu, real fuse sense
 |ocah_axi_vip
 |Stage the spare field's lock bits in the OTP image (same spare-slot geometry as <<sep_efuse_program_lock_matrix_test>>), sense at `LC_PROD`, then access the *shadow* aperture.
 |`sep_efuse_token_match_fault_pic_test`
@@ -698,6 +698,26 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |KM KPV scrambler
 |GAP
 |Parked: `sep_km_kpv_scrambler_test`
+
+|Mailbox outbox FIFO, threshold interrupt and error flags
+|PROVEN
+|`sep_axil_mailbox_iface_rand_test`. The SEP-host side of the outbound aperture: native 64-bit pushes at one FIFO entry per beat, a 4-byte `WRITE_DATA` beat as a complete push, STATUS compared field-by-field against a golden occupancy model after every push, the write-threshold interrupt gated by its enable and level-held across write-one-to-clear, read-from-empty and write-to-full each answered with their documented response and error flag, control flush, and the write-only decode of the push register. `Mailbox -> PIC` grades delivery on `sep_mailbox_plic_test` and is not re-credited here. The spec's two-word read of an incoming 64-bit message, and the read half of the threshold pair, need the peer side — see <<known-limitations>>.
+
+|Interrupt aggregator packing under simultaneous fan-in
+|PROVEN
+|`sep_irq_simultaneous_fanin_no_alias_test`. Several cross-IP sources asserted at once must produce exactly their own bits in `sep_internal_interrupts[8:33]`, with every bit of that region resolved rather than floating. `PIC source map` grades the source-to-PIC-id map and CPU delivery on `sep_pic_irq_source_map_delivery_test`; this row is the aggregation itself — the place a one-hot map can smear onto a neighbour — and is a distinct contract from delivery.
+
+|SPI host control plane (CSR, interrupt, error status, watermark, enable)
+|PROVEN
+|`sep_spi_ot_host_csr_irq_rand_test`. Documented resets, per-register write/readback with unimplemented bits proven to hold no storage, the interrupt-test path with its enable mask in both directions, all six `ERROR_STATUS` conditions each induced by its own trigger and exclusive of the others, the transmit watermark polarity at the exact threshold, and the enable gate against a calibrated negative window. `SPI-OT flash command set` grades the flash datapath and `CSR reset / RW / RO / reserved` is the generic bit-bash vehicle; neither covers this control plane.
+
+|eFuse locked-field access violation interrupt
+|PROVEN
+|`sep_locked_field_access_irq_path_test`. A write to a write-locked spare and a read of a read-locked spare each raise `sep_internal_interrupts[33]` (PIC source 34) for the duration of the access, answer OKAY rather than an error response, leave the stored value unchanged, and drop the line after the access retires, with an unlocked spare in the same OTP image as the negative control. Real fuse sense at `LC_PROD`.
+
+|Token comparator redundancy fault delivery to the CPU
+|PROVEN
+|`sep_efuse_token_match_fault_pic_test`. EL2 claims PIC source 40, reads the sticky `TOKEN_MATCH_FAULT` bit, and masks `meie[40]`; because the fault bits are software-read-only and clear only on reset, the check requires the source to be still requesting across the quiet window, which is what makes the mask the reason for the quiet. `RMA token match -> LC update` grades the comparator matrix on `sep_efuse_rma_token_rand_test` and is not re-credited here.
 |===
 
 === Test Procedures
@@ -2841,7 +2861,18 @@ immediate neighbour, and nothing records which indices a regression covered.
 |The error interrupt sets and clears on write-one-to-clear; a write to the full FIFO returns SLVERR and sets the write-error flag, with its own interrupt.
 |CHK-FLUSH
 |The control flush drains the transmit FIFO below the write threshold: not-full afterwards, and the threshold interrupt clears. Occupancy to empty is not observable on this aperture.
+|CHK-SUBWORD-PUSH
+|Write-side contract: a 4-byte `WRITE_DATA` beat is a whole push. Two 4-byte beats, at `+0x00` and then `+0x04`, are each answered OKAY and each occupy their own FIFO entry, so occupancy advances by two. `+0x04` is the same 8-byte register, not a high half. STATUS carries no exact depth, so occupancy is read through the write threshold programmed to 1: `write_level_above` must be clear after the first beat and set after the second. This does not grade the spec's two-word read of an incoming 64-bit message — see <<known-limitations>>.
+|CHK-WDATA-RD
+|The push register is write-only: a read of it returns the block's documented `0xFEEDC0DE` constant with an OKAY response — not a FIFO entry and not an error — and leaves the transmit occupancy unchanged, re-compared against the golden afterwards.
 |===
+
+*Deferred*: the read half of the threshold pair. `RIRQT` and
+`STATUS.read_level_above` need the receive FIFO filled from the peer side,
+which this aperture cannot do, so the golden predicts `read_level_above` as
+constant false and no vehicle grades it. Data round-trip readback is deferred
+for the same reason. Both need the external inbound master — see
+<<known-limitations>>.
 
 '''''
 
@@ -2862,7 +2893,9 @@ immediate neighbour, and nothing records which indices a regression covered.
 
 [arabic]
 . Fire a single source and require exactly one aggregate bit.
-. Fire several together; no non-driven bit may rise, and each RW1C-clears.
+. Fire several together; the `[8:33]` region must equal exactly the driven mask.
+. Re-sample the region raw and require every bit in it to be resolved.
+. Write-one-to-clear each source and require the region to return to zero.
 
 *Checkers*:
 
@@ -2874,13 +2907,18 @@ immediate neighbour, and nothing records which indices a regression covered.
 |CHK-FANIN-MAP
 |Several sources asserted together light exactly their own bits, compared as an exact equality against the driven mask, and each source's own IP interrupt-state register reads 1. The per-IP read is independent of the aggregate.
 |CHK-ANTI-ALIAS
-|No non-driven bit in the region is set. This is carried by the exact-equality poll in `CHK-FANIN-MAP`, not by a separate computation — an aggregator smear lights a neighbour bit, which breaks the equality. A standalone mask that is identically zero under legal stimulus is not claimed — see <<audit>>.
+|Every bit of `sep_internal_interrupts[8:33]` is resolved — neither X nor Z — and the resolved region equals exactly the driven set. The X half is the part the other checkers cannot reach: the region polls read through a helper that maps unknown bits to zero per bit, so an undriven aggregator leg is indistinguishable from a quiet source there. This checker re-samples the probe without that mapping and names the offending bit indices on failure.
 |CHK-CLEAR
 |All driven sources clear on write-one-to-clear and the region returns to zero.
 |===
 *Resolution limit*: the region poll matches on *some* sample, so a transient
 smear that clears before a later sample would pass. The checker wording reads as
 an always-property; it is not one.
+
+*Deferred*: CPU-ISR delivery of the simultaneous set, and the full 32-source
+cross-product. One seed asserts one subset of at least two of the four
+cross-IP sources; the `[8:33]` contract is identical for every subset, but no
+single run covers every combination.
 
 
 '''''
@@ -2912,7 +2950,7 @@ an always-property; it is not one.
 |CHK-NONVAC
 |No spurious interrupt service before any trigger, over a quiet window with every selected source's interrupt enable already armed.
 |CHK-DELIVER
-|Each source's interrupt reaches the CPU and its handler runs. This also *carries the source-to-PIC-id map*: with fast interrupt redirect the hardware jumps to the vector table entry indexed by the claim id, so the handler at index N running is the controller having claimed N. There is deliberately no separate map check — see <<audit>>.
+|Each source's interrupt reaches the CPU and its handler runs. This also *carries the source-to-PIC-id map*, but by the claim id rather than by which handler ran: the firmware registers ONE shared service routine for every non-mailbox source, so the identity of the running handler distinguishes nothing among them. The routine reads the claim id out of `meihap` and increments the per-source delivery counter selected by that id, and the test waits on that specific counter. A wrong id therefore resolves to no selected source, or to a different one, and the wait expires either way.
 |CHK-ONEHOT
 |Triggering one source does not fire another *selected* source. Every selected PIC source stays interrupt-enabled throughout, including after the mailbox ISR (WIRQT is raised past occupancy rather than masking IRQEN). Sources outside the per-seed selection are not observed, so this is not a claim about the full aggregator.
 |CHK-IP-RW1C
@@ -2920,8 +2958,17 @@ an always-property; it is not one.
 |CHK-PIC-COMPLETE
 |No source re-fires after its handler cleared it — the claim completed, no storm. The quiet window runs with every selected source still interrupt-enabled.
 |CHK-RANDCFG
-|Firmware consumed the patched MUST trio plus two seed-selected extras (logged `SCENARIO` line matches the Python config).
+|Firmware consumed the patched MUST trio plus two seed-selected extras: the logged `SCENARIO` line must match the Python config exactly, which is what rules out an inert patch running only the compiled-in MUST trio. The firmware's own line here reports only that its parameters resolved — the compiled default satisfies that — so the host-side needle owns this contract.
+|CHK-FW-REPORTED
+|Every firmware checker above appears in the console, AND the per-source checkers appear once per selected source. The pass magic cannot show that a source was skipped or that a check was compiled out; a line count short of the selected-source count can. The pass verdict itself is asserted before any summary line is logged, so a kept log cannot carry a PASS summary under a failing verdict.
 |===
+*Randomization*: RANDCFG — the MUST trio (mailbox, OTBN done, HMAC done) walks
+every seed; two extras are drawn per seed from a five-member pool, so one run
+exercises two of the five and three go untouched. With three seeds a run covers
+at most six draws and is not guaranteed to reach all five. The map contract is
+identical for every draw; which extras are graded is seed-dependent and is not
+tallied.
+
 *Not claimed*: "wake on wait-for-interrupt, not by polling". The wait helper loops
 on a `wfi` and a counter, so a `wfi` implemented as a no-op degenerates to a spin
 poll and yields the same pass.
@@ -3051,7 +3098,7 @@ feature-scorecard hole.
 
 *Run mode*: `no_cpu` (`lsu_stub_all_live`), `+skip_fuse_sense`, 3 seeds
 
-*VIP / Model*: ocah_axi_vip, ocah_spi_vip
+*VIP / Model*: ocah_axi_vip
 
 *Objective*: OpenTitan SPI host CSR reset, R/W, interrupt test, and error-status W1C.
 
@@ -3059,6 +3106,11 @@ feature-scorecard hole.
 
 [arabic]
 . Read the eight control registers at documented reset with STATUS idle.
+. Walk each read/write register: write, read back, then drive its unimplemented bits and require them to read zero without disturbing the writable ones.
+. Drive the interrupt test register with the enable clear and then set.
+. Induce each of the six error conditions in turn and write-one-to-clear it.
+. Fill the transmit FIFO across the programmed watermark.
+. Measure the enabled command drain, then hold the same command off with the core disabled for a multiple of that measurement.
 
 *Checkers*:
 
@@ -3068,17 +3120,17 @@ feature-scorecard hole.
 |CHK-RESET
 |Eight control registers read their documented reset values and the status register reads idle. Five of the eight expect zero, which a tied-off decode would also return — mitigated within this entry by the writability, interrupt and error checks below, each of which drives a register non-zero.
 |CHK-REG-RW
-|Each read/write register accepts a write and reads it back exactly, *and* its reserved bits reject a write of the inverse pattern. The reserved-bit half must present bits the DUT actually sees — masking them to zero in the stimulus before the write makes the reject check vacuous.
+|Each read/write register accepts a write and reads it back exactly. Each register that HAS unimplemented bits additionally has those bits driven to one and confirmed to read back zero, with the writable bits undisturbed. The probe pattern is derived from the register's implemented mask, not from the walk mask: `CTRL.SW_RST` is implemented and deliberately outside the walk, and driving it would soft-reset the core mid-walk. `CSID` implements all 32 bits and so has no unimplemented half to probe.
 |CHK-NONVAC
-|At least one register's readback differs from its *observed* pre-write value. Anchored on a real read rather than a constant table.
+|EVERY walked register's readback differs from its own observed pre-write value. Where a seeded value happens to equal what the register already holds, the test flips the lowest writable bit instead, so no register on any seed can satisfy this by writing back what was already there.
 |CHK-INTR
 |The interrupt test register drives interrupt status, gated by the enable — mask proven in both directions — and clearing the source deasserts it.
 |CHK-ERR-W1C
-|Six error conditions (UNDERFLOW, CMDINVAL, CSIDINVAL, OVERFLOW, CMDBUSY, ACCESSINVAL) are each induced by their own trigger, observed set, and cleared by write-one-to-clear, with a clean precondition asserted first.
+|Six error conditions (UNDERFLOW, CMDINVAL, CSIDINVAL, OVERFLOW, CMDBUSY, ACCESSINVAL) are each induced by their own trigger, observed set, and cleared by write-one-to-clear, with a clean precondition asserted first. Each trigger must set its OWN bit and no other: the clean precondition makes exclusivity checkable, and without it a device that raised every error bit on any stimulus would satisfy all six legs. These are the six bits the generated register block defines; none is left unprovoked.
 |CHK-WATERMARK
 |`STATUS.TXWM` follows the RTL polarity (set while TXQD is below the watermark): set while empty and at occupancy `wm-1`, clear at the exact watermark and after filling past it.
 |CHK-ENABLE
-|Clearing the enable holds the queued command off (`TXQD` stays 1 through the window); setting it drains the transmit FIFO.
+|Clearing the enable holds the queued command off; setting it drains the transmit FIFO. The negative window is not a constant: the test first measures how many polls the same one-word command takes to drain with the core ENABLED, then requires the disabled command to survive a fixed multiple of that measurement, with `TXQD` still 1 and `TXEMPTY` clear at the end of it. A device that ignored the enable but merely executed slowly would pass a hand-picked window; it cannot pass a calibrated one.
 |===
 
 '''''
@@ -3478,7 +3530,8 @@ per-IP clock gate.
 *Test Procedure*:
 
 [arabic]
-. Stage the spare field's lock bits in the OTP image (same spare-slot geometry as <<sep_efuse_program_lock_matrix_test>>), sense at `LC_PROD`, then access the *shadow* aperture.
+. Stage write-lock and read-lock on two seed-selected spare fields, plus an unlocked spare as contrast, in one OTP image, and sense at `LC_PROD`.
+. Access the shadow aperture for each of the three, watching the interrupt probe for the duration of each access beat.
 . This is not an OTP program: the program-lock vehicle already owns `PROGRAM_ERR`.
 . An unlocked spare in the same image is the negative control.
 . Walk write-lock then read-lock every seed — they are two different branches in `efuse_shadow_reg_access_control`.
@@ -3618,7 +3671,7 @@ both lock flavours of one seed-selected spare.
 |CHK-ERROR-CODE
 |A redundancy fault writes `6'b111111` on every match-status bit.
 |CHK-STICKY
-|A valid-token retry and a write-0 leave `TOKEN_MATCH_FAULT` and irq38 asserted (`sw=r` until reset).
+|A valid-token retry and a write-0 leave `TOKEN_MATCH_FAULT` and irq39 asserted (`sw=r` until reset).
 |CHK-IRQ-38
 |`sep_internal_interrupts[39]` (PIC source 40) asserts with the sticky bit.
 |CHK-WHICH-TOKEN
@@ -3645,8 +3698,10 @@ both lock flavours of one seed-selected spare.
 *Test Procedure*:
 
 [arabic]
-. Closes the PIC story the no_cpu RMA vehicle cannot prove: EL2 claims source 40, reads the SEC_DISABLE sticky bit, and masks `meie[40]` so the level-high line does not re-enter.
-. Host injects collapse on the SEC_DISABLE comparator after READY.
+. Firmware arms PIC source 40, publishes READY on the cold-scratch register, then presents a SEC_DISABLE token so a compare is in flight.
+. Host injects a differential-pair collapse on the SEC_DISABLE comparator once READY is observed.
+. The service routine records the claim id and the fault register, then masks `meie[40]`.
+. Firmware holds a quiet window and requires the source to still be requesting throughout it.
 
 *Checkers*:
 
@@ -3654,12 +3709,18 @@ both lock flavours of one seed-selected spare.
 |===
 |Checker |Contract
 |CHK-PIC-CLAIM
-|ISR `meihap` claim id is 39.
+|ISR `meihap` claim id is 40.
 |CHK-PIC-FAULT
 |`TOKEN_MATCH_FAULT` secure-disable bit is set.
 |CHK-PIC-MASK
-|After meie[40] is masked the ISR does not re-enter.
+|After `meie[40]` is masked the service routine does not re-enter, AND the source is still asserting its request throughout the quiet window. `TOKEN_MATCH_FAULT` is software-read-only and clears only on reset, so the line cannot drop by itself; without the still-requesting leg a quiet window would also be satisfied by a request that went away on its own, or by a sticky latch that never set. The check is additionally gated on an interrupt having been delivered at all, so it cannot report a mask result on a run where nothing arrived.
 |===
+
+*Not claimed*: the other two comparators. This entry is the CPU/PIC half only —
+the three-comparator breadth (`RMA_SIP`, `RMA_CHIPLET`, `SEC_DISABLE`), the
+collapse / disagree / common-mode inject matrix, the software-read-only
+behaviour and the JTAG read are graded on
+<<sep_efuse_rma_token_rand_test>>, and are not re-credited here.
 
 '''''
 
@@ -4589,7 +4650,7 @@ Nothing in this section is scheduled work until the UVM bench exists.
 |Phase 2 tests |45
 |Cocotb total |76
 |Phase 3 |T.B.D.
-|Iconic scorecard rows |48 in-scope: 44 PROVEN, 4 GAP (see <<iconic-scorecard>>)
+|Iconic scorecard rows |53 in-scope: 49 PROVEN, 4 GAP (see <<iconic-scorecard>>)
 |Phase 2 parked, not coded |3 (Key Manager vault; graded GAP, outside the Phase 2 count)
 |===
 
@@ -4677,6 +4738,15 @@ constraint is not an open defect.
 
 |Dead-space per-beat refusal on writes (AXI)
 |Read bursts are proven per beat: the bus monitor keeps each beat's `RRESP` in order, so `CHK-DEADSPACE-BEAT` can name the beat that answered. Write bursts cannot be, and no tooling will change it — AXI returns one `BRESP` for a whole write burst, so a write burst that refused only its tail is indistinguishable from one that refused every beat. The write contract stays at burst granularity: the burst is refused and no live register moves.
+
+|Mailbox 32-bit read of a 64-bit entry (specification, unproven)
+|`fabric.adoc` says each 64-bit input word is mapped to two 32-bit words the SEP host can access. That is the consume path: a 32-bit host reads the low word and the high word of an incoming message. This aperture cannot fill RX, so pop-per-read and high-half loss are not graded here. RTL pops the whole 64-bit entry on any successful `READ_DATA` access (`mbox_r_pop_o`), so a 4-byte read would consume the message and drop the other half; that consequence has no DUT log. `CHK-SUBWORD-PUSH` is the write-side contract only (a 4-byte `WRITE_DATA` beat is a complete push). Closing the spec claim needs a peer-path vehicle that places a known 64-bit value in RX and issues two 4-byte `READ_DATA` beats: occupancy must drop by one on the first, and the second must not return the high half of the same entry.
+
+|Mailbox read threshold and data round-trip (testbench reach)
+|`RIRQT` and `STATUS.read_level_above` are the read half of the mailbox threshold pair, and a data round-trip readback needs a value in the receive FIFO. Both require the peer side to write the inbound aperture, which the SEP-host aperture `sep_axil_mailbox_iface_rand_test` drives cannot do; the golden therefore predicts `read_level_above` as constant false. The hardware is not suspected — the gap is testbench reach. Closing it needs the external inbound master at the inbound aperture and belongs in its own peer-path vehicle, not in the TX-path rep.
+
+|Entropy pool pointer fault, PIC source 39 (hardware not built)
+|`sep_internal_interrupts[38]` was given to the entropy pool FIFO's pointer-integrity error so that enabling the check later does not renumber the map. The check is not built in the current configuration, so the source is tied to zero and can never assert, and no vehicle grades it. `interrupts.adoc` documents the same. When it is built it is level-sensitive with no write-one-to-clear, so firmware must mask the source or scrub the pool rather than acknowledge it, and a vehicle will need a pool scrub to clear it.
 
 |Dead-space refusal flavour (specification)
 |`memory_map.adoc` names DECERR for the reserved remainder inside an aperture. `spi_controller` refuses a dead-space write with SLVERR. The access is refused either way, which is the contract `sep_fabric_deadspace_decode_test` asserts, so the flavour is reported as `DEADSPACE-FLAVOUR` for the design owner and is not failed. Which error responses are permitted is the open question.
