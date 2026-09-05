@@ -34,7 +34,8 @@ Checkers:
   CHK-STATUS   per cell: no AES recoverable/fatal alert across enc + round-trip
   CHK1..CHK4   bit-exact entropy golden (strict scoreboard report)
   CHK5_aes     post-adapter AES beats == AXIS1 in order (single live crypto sink)
-  CHK-RAND-REP all 9 discrete cells walked in one invocation (seed logged)
+  CHK-RAND-REP every discrete cell produced its own golden-matching ciphertext,
+               and all ciphertexts are distinct (seed logged)
 """
 
 from __future__ import annotations
@@ -83,6 +84,9 @@ class sep_aes_mode_keysize_rand_test(sep_base_test):
 
         walked = len(results)
         expected = len(MODES) * len(KEY_SIZES)
+        # Construction guard, not a DUT contract: this compares the walk against
+        # the cell list that drove it, so only a table or keying mistake in this
+        # file can trip it. The DUT evidence is the per-cell golden compare.
         assert walked == expected, f"walked {walked} cells != {expected}"
         assert len(set(results.values())) == expected, (
             "AES cells produced duplicate ciphertexts, so they did not all run distinct "

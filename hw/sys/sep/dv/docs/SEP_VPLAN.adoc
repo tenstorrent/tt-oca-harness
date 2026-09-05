@@ -262,7 +262,7 @@ feature has no legal knob space (a strap, a single named handshake).
 |`sep_kmac_mode_strength_rand_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|Eight cells across SHA3-256/512, SHAKE-128/256, cSHAKE-128/256 and KMAC-128/256.
+|Thirteen cells across SHA3-224/256/384/512, SHAKE-128/256, cSHAKE-128/256 and KMAC-128/256 spanning all five key lengths.
 |`sep_crypto_edn_multisink_arbitration_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, entropy golden
@@ -628,8 +628,8 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_nmi_sanity_test`, `sep_reset_wdt_sanity_test`, `sep_wdt_aon_timer_internals_test`
 
 |Per-IP `SW_RESET_N` isolation
-|PROVEN
-|`sep_crypto_per_ip_reset_isolation_test` (includes in-window DECERR). Drain-before-reset is proven for the shared TRNG domain on the `Coordinated TRNG reset and ordered recovery` row; for the four accelerator domains it stays Phase 3.
+|GAP
+|`sep_crypto_per_ip_reset_isolation_test` is red, so this feature has no passing vehicle and cannot hold a credit. The self-reset, neighbour-survives, reverse, in-window DECERR *read*, sibling-OKAY, reopen and reset-default legs all pass; the in-window *write* leg returns SLVERR where the isolate can only answer DECERR — see <<known-limitations>>. The row returns to `PROVEN` when the vehicle is green. Drain-before-reset is proven for the shared TRNG domain on the `Coordinated TRNG reset and ordered recovery` row; for the four accelerator domains it stays Phase 3.
 
 |Scratch bank reset domains (warm vs cold)
 |PROVEN
@@ -2214,7 +2214,7 @@ on this path.
 
 *VIP / Model*: ocah_axi_vip
 
-*Objective*: Eight cells across SHA3-256/512, SHAKE-128/256, cSHAKE-128/256 and KMAC-128/256.
+*Objective*: Thirteen cells across SHA3-224/256/384/512, SHAKE-128/256, cSHAKE-128/256 and KMAC-128/256 spanning all five key lengths.
 
 *Test Procedure*:
 
@@ -2238,7 +2238,7 @@ on this path.
 |CHK1..CHK4
 |Strict entropy scoreboard: the decorrelator, compress, seed and genbits stages each match the chained golden bit-exactly. OTBN, AES and HMAC are parked, so KMAC is the only crypto EDN client.
 |CHK5_kmac
-|Each post-adapter KMAC beat equals the next AXIS1 word — the single-sink routing golden. The Key Manager is unused on this path. The minimum-evidence floor is raised to 16 scored beats.
+|Each post-adapter KMAC beat equals the next AXIS1 word — the single-sink routing golden. The Key Manager is unused on this path. The minimum-evidence floor is 4 scored beats, sized from an observed run: KMAC draws entropy once per operation rather than per block, so this walk scores about six routed beats where the AES sweep scores over a hundred.
 |===
 *Shared-code limit*: the SP800-185 encoders (`right_encode`, `encode_string`) are
 shared between the stimulus and the golden, so an encoder error would program the
@@ -2527,6 +2527,8 @@ source path stays outside the domain, and recovery admits only fresh entropy.
 |A pop from the empty pool does not answer OKAY and returns zero data, so pre-reset entropy cannot be read back.
 |CHK-TRNG-FRESH
 |ESRC produces a fresh seed, `FIPS_LOCK` sets again, and a pool read succeeds, all before the consumer resets are restored to their saved value.
+|CHK-TRNG-RECOVERY
+|Closing summary line over the eleven rows above: the pool went full, emptied and refilled, the stale read was rejected, fresh data was delivered, and the consumer resets were restored to their saved value. It carries no contract of its own.
 |===
 
 *Why the pool is checked from outside the domain*: the entropy pool's AXI
@@ -4209,7 +4211,8 @@ counter-redundancy countermeasure: `prim_count` holds each count twice, up and
 down, and reports an error only when `cnt_q[0] + cnt_q[1]` stops equalling the
 counter maximum. No stimulus can break that invariant — both copies take the same
 enable and the same step — so the path is reachable by a physical fault and by
-nothing else. Proving it therefore requires fault injection, which is Phase 3.
+nothing else. Proving it therefore requires fault injection, which is Phase 3 —
+see the holding note in <<phase-3>>.
 CHK-SM-ERR-ZERO proves the bit is 0 on the alert path, which is what makes
 PERSISTENT_FAILURE attributable to the threshold trip; it does not claim the
 error path works.
@@ -4541,6 +4544,9 @@ Holding notes (candidates, not an execute list)::
 |Health tests / ring oscillator
 |Entropy quality; not the iconic consume path
 
+|ESRC health-test counter redundancy
+|Fault injection on the `prim_count` copies behind the health tests. `prim_count` holds each count twice, up and down, and reports an error only when the two stop summing to the counter maximum; every control reaching them drives both copies, so no stimulus can break the invariant and the path is reachable by a physical fault alone. Inject at the counter state (the vendor's `fpv_force` hook), not at `count_err_o` — forcing the module output proves only that the wire is connected. Monitoring is entirely frontdoor: `MAIN_SM_STATUS.ERR`, `INTR_STATUS.PERSISTENT_FAILURE`, PIC source 16, and `MAIN_SM_STATUS.ALERT` staying 0 to separate a counter fault from an AlertHang trip. Phase 2 proves only that the error bit is clear on the alert path (`CHK-SM-ERR-ZERO`).
+
 |Inbound-filter negative product
 |Negative matrix beyond allow vs block-by-default
 
@@ -4658,6 +4664,9 @@ constraint is not an open defect.
 
 |Dead-space refusal flavour (specification)
 |`memory_map.adoc` names DECERR for the reserved remainder inside an aperture. `spi_controller` refuses a dead-space write with SLVERR. The access is refused either way, which is the contract `sep_fabric_deadspace_decode_test` asserts, so the flavour is reported as `DEADSPACE-FLAVOUR` for the design owner and is not failed. Which error responses are permitted is the open question.
+
+|Isolated write answers SLVERR, not DECERR (hardware)
+|While a crypto domain is held in software reset, an in-window read of that domain returns DECERR and carries the isolate's own `DecErrData` literal, so the read is genuinely terminated by `axi_lite_isolate`. An in-window *write* to the same aperture, same beat shape, same window, returns SLVERR. `axi_lite_isolate` emits only DECERR, on both the B and R channels, and SLVERR appears nowhere on that path, so the write was answered downstream of the isolate — the write leg was not isolated while the read leg was. `sep_crypto_per_ip_reset_isolation_test` fails on this at `CHK-ISOLATE-WR` and is left failing: the expected response set is not widened to accept SLVERR, and it is not converted to an expected failure. The isolate was reworked after that entry's last functional change; the finding is reported against the issue auditing that rework.
 
 |OSS hygiene exclusions
 |No licensed/proprietary IP in the build. Bender targets stay `sep` / `sep_el2` / `sep_wrapper` only.

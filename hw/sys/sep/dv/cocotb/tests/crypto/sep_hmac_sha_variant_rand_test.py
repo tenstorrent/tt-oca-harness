@@ -35,7 +35,8 @@ Checkers:
   CHK-RW1C     per cell: INTR_STATE.hmac_done W1C-clears to 0 (in run_mac)
   CHK-ERR      per cell: ERR_CODE == 0 and INTR_STATE.hmac_err == 0
                of the same message (proves the key was actually consumed)
-  CHK-RAND-REP all required discrete cells walked in one invocation (seed logged)
+  CHK-RAND-REP every legal cell produced its own golden-matching digest, and all
+               digests are distinct (seed logged)
 """
 
 from __future__ import annotations
@@ -107,6 +108,9 @@ class sep_hmac_sha_variant_rand_test(sep_base_test):
 
         walked = len(results)
         expected = sum(len(v) for v in KEYED_MATRIX.values()) + len(SHA_VARIANTS)
+        # Construction guard, not a DUT contract: this compares the walk against
+        # the cell list that drove it, so only a table or keying mistake in this
+        # file can trip it. The DUT evidence is the per-cell golden compare.
         assert walked == expected, f"walked {walked} cells != {expected} required"
         assert len(set(results.values())) == expected, (
             "HMAC cells produced duplicate digests, so they did not all run distinct "

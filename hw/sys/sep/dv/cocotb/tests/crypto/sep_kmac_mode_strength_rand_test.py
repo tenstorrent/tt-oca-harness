@@ -26,7 +26,7 @@ CHK5_kmac is per-sink ROUTING golden. KM is unused.
 
 RAND-REP contract: a SepKmacCfg config object is the single source
 of truth for BOTH DUT programming (CFG + KEY_LEN + PREFIX + key + message tail)
-AND the golden. The 8 discrete (mode, strength) cells are WALKED DETERMINISTICALLY
+AND the golden. The discrete (mode, strength, key length) cells are WALKED DETERMINISTICALLY
 in one invocation; the seed randomizes only the legal continuous knobs (message,
 key content). The digest is read from STATE share0 ^ share1 (masking on).
 
@@ -37,7 +37,8 @@ Checkers:
   CHK-ERR        per cell: ERR_CODE == 0 and INTR_STATE.kmac_err == 0
   CHK1..CHK4     bit-exact entropy golden (strict scoreboard report)
   CHK5_kmac      post-adapter KMAC beats == AXIS1 in order (single live crypto sink)
-  CHK-RAND-REP   all 8 discrete cells walked in one invocation (seed logged)
+  CHK-RAND-REP   every discrete cell produced its own golden-matching digest,
+                 and all digests are distinct (seed logged)
 """
 
 from __future__ import annotations
@@ -110,6 +111,9 @@ class sep_kmac_mode_strength_rand_test(sep_base_test):
             results[cell_key] = await self._run_cell(mode, sec, outb, key_bits, s)
 
         walked = len(results)
+        # Construction guard, not a DUT contract: this compares the walk against
+        # the cell list that drove it, so only a table or keying mistake in this
+        # file can trip it. The DUT evidence is the per-cell golden compare.
         assert walked == len(CELLS), f"walked {walked} cells != {len(CELLS)}"
         assert len(set(results.values())) == len(CELLS), (
             "KMAC cells produced duplicate digests, so they did not all run distinct "
