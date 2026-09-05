@@ -263,16 +263,23 @@ args = [
 # SEP-driven or cocotb-backdoor boot instead: RESET_VECTOR on all four cores and
 # a forced tile-reset pulse, over the DTP's JTAG2AXI, the way
 # hw/sys/smc/dv/cocotb/seq_lib/smc_cpu_vip_utils.py does it over its CSR agent.
-# The writes land (AW launches, status OKAY) and the cores do restart at the
-# programmed entry -- the trace shows them at 0xC006_01B2.
 #
-# What still blocks this test is that they never fetch there. After the pulse the
-# scratch-RAM read counter does not move at all and no instruction retires, so
-# the request is not reaching the RAM rather than being answered wrongly; the
-# image itself is present (the backdoor reports its stripe load). That is the
-# same CPU-private-SRAM limit this group is named for, reached from the other
-# side, and it is what has to be answered before either test in the group can
-# report PASS.
+# That sequence is applied, not merely issued, and was checked against the
+# design's own gating rather than against its own return codes. A JTAG2AXI write
+# to CPU_CTRL lands: writing SCRATCH_0 moves the value the testbench observes on
+# smc_scratch_0_o off the 0xACAFACA1 the ROM left. With the writes landing at the
+# right time, smc_cpu_ctrl_wrap reaches force_apply=1 / withhold=0 -- the cluster
+# never drains, so the RESET_TIMEOUT force is what applies the reset, exactly the
+# path that register exists for -- and all four cores go to core_reset_n=0 and
+# then back to 1. The tile reset really is taken and released.
+#
+# What still blocks this test is that nothing follows the release: neither the
+# ROM nor the scratch read counter moves again, and no further instruction
+# retires, so the cores issue no fetch at all rather than fetching the wrong
+# thing. The image itself is present -- the backdoor reports its stripe load.
+# Whatever answers that also answers smu_sep_smc_xbar_test, which is blocked on
+# the CPU-private-SRAM limit this group is named for; neither test in the group
+# can report PASS until then.
 [[tests]]
 name = "smu_sep_ext_axi_test"
 module = "smu_sep_ext_axi_test"

@@ -278,14 +278,25 @@ jumping from the ROM left the core carrying the ROM's `mtvec`, so its first trap
 went to address 0. `seq_lib/smc_cpu_revector.py` programs `RESET_VECTOR` on all
 four cores and forces a tile-reset pulse over the DTP's JTAG2AXI instead, the
 way `hw/sys/smc/dv/cocotb/seq_lib/smc_cpu_vip_utils.py` does it over its CSR
-agent; the cores restart at the programmed entry.
+agent.
 
-What still blocks it is that they never fetch there: after the pulse the
-scratch-RAM read counter does not move and nothing retires, so the fetch is not
-reaching the RAM at all rather than being answered wrongly. That is the
-CPU-private-SRAM limit `smu_sep_smc_xbar_test` is blocked on, reached from the
-other side, and both tests sit in the `sep_smc_sram_blocked` group until it is
-answered.
+That sequence is applied, not merely issued, and was checked against the
+design's own gating rather than its own return codes. A JTAG2AXI write to
+CPU_CTRL lands: writing `SCRATCH_0` moves the value observed on
+`smc_scratch_0_o` off the `0xACAFACA1` the ROM left. Issued at the right time —
+after the SMC has left reset, since `RESET_VECTOR` resets to its own default and
+vectors programmed earlier are simply thrown away — `smc_cpu_ctrl_wrap` reaches
+`force_apply=1` / `withhold=0`, and all four cores go to `core_reset_n=0` and
+back to 1. The cluster never drains, so the `RESET_TIMEOUT` force is what
+applies the reset, which is what that register exists for. The tile reset really
+is taken and released.
+
+What still blocks it is that nothing follows the release: neither the ROM nor
+the scratch read counter moves again and no further instruction retires, so the
+cores issue no fetch at all rather than fetching the wrong thing. The image
+itself is present; the backdoor reports its stripe load. Whatever answers that
+also answers `smu_sep_smc_xbar_test`, blocked on the CPU-private-SRAM limit, and
+both tests sit in the `sep_smc_sram_blocked` group until then.
 
 The SEP smoke is a boot-readiness anchor mirroring the internal
 `smu_sep_smoke_test` contract; console/STDOUT checking over the external AXI

@@ -67,6 +67,13 @@ SETTLE_CYCLES = 4000
 #: transaction that crossed into a busy SMC.
 BUSY_RETRIES = 20
 
+#: Bound on waiting for the SMC to leave reset, in clk_smu cycles.
+SMC_RESET_TIMEOUT_CYCLES = 200_000
+#: ROM-fetch count is sampled every SMC_BOOT_SETTLE_CYCLES; two equal non-zero
+#: samples mean the boot has stopped fetching and reached its parking loop.
+SMC_BOOT_SETTLE_CYCLES = 2_000
+SMC_BOOT_SETTLE_POLLS = 200
+
 
 async def _single_op(jtag, payload: int, *, settle: int = SETTLE_CYCLES):
     """Launch one SINGLE_OP and capture its result with a second shift.
@@ -107,10 +114,45 @@ async def _write64(jtag, addr: int, value: int, what: str) -> None:
     )
 
 
+async def _wait_smc_out_of_reset(log, timeout_cycles: int = SMC_RESET_TIMEOUT_CYCLES) -> None:
+    """Block until the SMC has left reset and its ROM boot has settled.
+
+    Re-vectoring before this point does nothing at all: RESET_VECTOR resets to
+    its own default, so vectors programmed while the SMC is still in reset are
+    thrown away, and a hold/pulse of a block already held in reset is a no-op.
+    The whole sequence then completes with every write reporting OKAY while
+    changing nothing -- the failure mode this wait exists to prevent.
+    """
+    for _ in range(timeout_cycles):
+        await ClockCycles(cocotb.top.clk_smu_i, 1)
+        if int(cocotb.top.obs_smc_rst_n_o.value) == 1:
+            break
+    else:
+        raise AssertionError(
+            f"SMC still in reset after {timeout_cycles} cycles; there is nothing "
+            "to re-vector"
+        )
+    # Let the ROM boot reach its parking loop, so the pulse below restarts a
+    # settled cluster rather than racing the boot it is meant to replace.
+    rom_reads = -1
+    for _ in range(SMC_BOOT_SETTLE_POLLS):
+        before = rom_reads
+        rom_reads = int(cocotb.top.smc_rom_read_count_o.value)
+        if rom_reads > 0 and rom_reads == before:
+            break
+        await ClockCycles(cocotb.top.clk_smu_i, SMC_BOOT_SETTLE_CYCLES)
+    log.info(
+        "SMC re-vector: SMC out of reset, ROM boot settled at %d ROM fetches",
+        rom_reads,
+    )
+
+
 async def revector_smc_cores(test, jtag, entry: int, *, settle_cycles: int = 64) -> None:
     """Reset all four SMC cores so they start executing at `entry`."""
     log = test.logger
     log.info("SMC re-vector: entry=0x%08x", entry)
+
+    await _wait_smc_out_of_reset(log)
 
     await _write64(jtag, RESET_TIMEOUT, RESET_TIMEOUT_FORCE, "reset timeout force")
 
