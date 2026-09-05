@@ -494,7 +494,9 @@ bare SEP, and deferred items (AGP, local UART/GPIO, ROM patch, next-gen
 DMA-AES, DCLS-in-SEP, PCR vault, ROM-FW contracts).
 
 Feature grades are independent of per-test checkers. `GAP` means no
-vehicle yet. A known RTL defect that the suite still exercises is called
+vehicle yet. `PARTIAL` means a vehicle exists and proves part of the feature,
+with the unproven part named in the row — it is not a softer `PROVEN`, and a
+row may not sit at `PARTIAL` without saying which part is unclaimed and why. A known RTL defect that the suite still exercises is called
 out in <<known-limitations>>, not as a feature credit.
 The architecture spec under `hw/sys/sep/doc/` is the scorecard denominator: a
 feature that spec does not define is not a row. A backlog *name* is not a
@@ -654,6 +656,22 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |eFuse set-only (anti-rollback)
 |PROVEN
 |`sep_efuse_set_only_monotonicity_test`
+
+|eFuse per-spare write-lock slot numbering
+|PROVEN
+|`sep_efuse_program_lock_matrix_test`. Every run walks `SPARE0..SPARE7`: each spare is programmed while unlocked, then its own `LOCKS_SPARE` bit is set and a second bit in the same spare is rejected. The spares are walked in order after each preceding lock, so a lock bit wired past its own slot fails the next spare's unlocked-program cell. Slot coverage does not depend on the seed; only the bit offsets within a spare do.
+
+|Token comparator fail-closed at the lifecycle gate
+|PROVEN
+|`sep_lcc_lc_state_w1s_prod_test` (`CHK-GATE-SIP-FAULT`). A redundancy fault forces the reserved error code onto the token status, and the `LC_STATE` bit[1] advance must not land — the gate compares for equality with the match code, so a gate written as "not a mismatch" would let the fault code through. The cell that follows presents the same token with the fault removed and does advance, so the pair is a contrast rather than a lone negative.
+
+|Token comparator fault latch cleared by reset
+|PROVEN
+|`sep_efuse_rma_token_rand_test` (`CHK-FAULT-RESET`). The set-only phases prove the fault bits survive a valid retry; only this one separates that from a latch that never clears.
+
+|Debug-disable gating ladder (`dbg_disable`)
+|PARTIAL
+|`sep_lcc_demote_feat_ctrl_matrix_test` (`CHK-DBG-DISABLE`). Nine of the eleven bits are checked against the DTP path gating ladder for the same `FEAT_CTRL` the cell just verified, across the whole demote matrix. `dft_secure` and `dfd` are deliberately unclaimed: the path table in the lifecycle chapter and the RTL disagree on both, and in both cases the RTL is the stricter side. See <<known-limitations>>.
 
 |Local-master alias remap datapath
 |PROVEN
@@ -4571,6 +4589,9 @@ constraint is not an open defect.
 [cols="2,4",options="header"]
 |===
 |Topic |Contract
+
+|`dbg_disable` ladder: `dfd` and `dft_secure` (spec-vs-RTL)
+|The DTP path table in the lifecycle chapter and `sep_lifecycle_ctrl.sv` disagree on two of the eleven debug-disable bits. The table puts the DFD iJTAG path at Case 1 (`SIP_DBG` alone) and the secure DFT iJTAG path at Case 3; the RTL gates both at Case 2 (`SIP_DBG` and `CHIPLET_DBG`). In both the RTL is the stricter side, so the divergence closes a path the specification would leave open and is fail-safe rather than a hole. `CHK-DBG-DISABLE` therefore checks the other nine bits and leaves these two unclaimed: asserting either side would turn an open architecture question into a DV opinion. Tracked as issues 450 (`dft_secure`) and 1576 (`dfd`). When arch rules, the golden gains the bit and the scorecard row moves from `PARTIAL` to `PROVEN`.
 
 |Inbound CFG allow-list (firmware constraint)
 |Hardware does not hard-block allow-listing the inbound-filter CFG window, outbound CFG, the remap banks, or `SEP_GLOBAL_BASE_ADDR` / `SEP_REGION_SIZE`, and is correct as built: the filter applies the rules it is given. Firmware must keep those CSRs outside every allow window — allow-listing them is a programming error, not a hardware defect, and nothing is expected to change in the RTL. The suite proves ownership under correct programming (`CHK-OWNERSHIP`).

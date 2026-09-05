@@ -339,12 +339,17 @@ DBG_DISABLE_WIDTH = len(DBG_DISABLE_FIELDS)
 # are left unchecked instead of being asserted either way, because encoding
 # one side would turn an open architecture question into a silent DV opinion.
 #
+# Each is tracked; when arch rules, the bit moves into dbg_disable_expected and
+# out of this tuple, and the plan's scorecard row goes from PARTIAL to PROVEN.
+#
 #   dft_secure  spec: Case 3 (SIP_DBG & CHIPLET_DBG & SEP_DBG)
 #               RTL:  Case 2, flagged in sep_lifecycle_ctrl.sv as an open spec
 #                     confirmation. The secure DFT chain is also subject to the
 #                     command-class rule, which this vector does not describe.
+#               issue 450
 #   dfd         spec: Case 1 (SIP_DBG alone)
-#               RTL:  Case 2. No issue found covering this one.
+#               RTL:  Case 2.
+#               issue 1576
 DBG_DISABLE_UNCLAIMED = ("dft_secure", "dfd")
 
 
