@@ -77,10 +77,16 @@ sources:
       - upstream/hw/ip/prim/rtl/prim_pad_wrapper_pkg.sv
       - upstream/hw/ip/prim_generic/rtl/prim_pad_wrapper.sv
 
-  - target: any(sep_wrapper, smu_wrapper)
+  - target: any(sep_wrapper, smc_wrapper, smu_wrapper)
     files:
       - upstream/hw/ip/prim/rtl/prim_ram_1p.sv
       - upstream/hw/ip/prim/rtl/prim_ram_1p_adv.sv
+
+  # I3C DAT/DCT/RLT table memories instantiated by smc_ip_integration.
+  - target: any(smc_wrapper, smu_wrapper)
+    files:
+      - upstream/hw/ip/prim/rtl/prim_ram_2p_pkg.sv
+      - upstream/hw/ip/prim/rtl/prim_ram_2p.sv
 
   # `opentitan_smu` can still be requested explicitly, but it also auto-activates
   # whenever `sep` or `smu` are requested: SEP's crypto wrappers (aes_wrapper.sv,
