@@ -77,19 +77,6 @@ package sep_cpu_ctrl_reg_pkg;
 
     typedef struct {
         logic next;
-    } sep_cpu_ctrl__SEP_STRAPS__test_en__in_t;
-
-    typedef struct {
-        logic next;
-    } sep_cpu_ctrl__SEP_STRAPS__bypass_mem_repair__in_t;
-
-    typedef struct {
-        sep_cpu_ctrl__SEP_STRAPS__test_en__in_t test_en;
-        sep_cpu_ctrl__SEP_STRAPS__bypass_mem_repair__in_t bypass_mem_repair;
-    } sep_cpu_ctrl__SEP_STRAPS__in_t;
-
-    typedef struct {
-        logic next;
     } sep_cpu_ctrl__DMA_BUS_ERR_STATUS__reg_path_err__in_t;
 
     typedef struct {
@@ -145,7 +132,6 @@ package sep_cpu_ctrl_reg_pkg;
         sep_cpu_ctrl__SEP_TEST_CTRL__in_t SEP_TEST_CTRL;
         sep_cpu_ctrl__SMC_FUSE_SENSE_STATUS__in_t SMC_FUSE_SENSE_STATUS;
         sep_cpu_ctrl__SEP_FUSE_SENSE_STATUS__in_t SEP_FUSE_SENSE_STATUS;
-        sep_cpu_ctrl__SEP_STRAPS__in_t SEP_STRAPS;
         sep_cpu_ctrl__DMA_BUS_ERR_STATUS__in_t DMA_BUS_ERR_STATUS;
         sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS__in_t PERIPH_BUS_ERR_STATUS;
     } sep_cpu_ctrl__in_t;

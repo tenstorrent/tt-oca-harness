@@ -29,6 +29,7 @@ smn_inbound master and its own checker contract.
 
 from __future__ import annotations
 
+import cocotb
 import pyuvm
 from env.sep_mbox_golden import (
     ERR_READ,
@@ -168,6 +169,18 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
         )
         irqp = await self.mb.rd_csr(IRQP)
         assert irqp & IRQ_WTIRQ, f"IRQP.wtirq not gated-set by IRQEN+IRQS (0x{irqp:08x})"
+        debug_lane = (self.rd(cocotb.top.ext_debug_bus_o) >> 336) & 0xFFFF
+        assert debug_lane & (1 << 7), (
+            f"mailbox[0] interrupt missing from debug lane bit 7 (lane=0x{debug_lane:04x})"
+        )
+        assert (debug_lane & 1) == 0, (
+            f"interrupt debug lane reserved bit 0 is set (lane=0x{debug_lane:04x})"
+        )
+        self.logger.info(
+            "CHK-DEBUG-BUS PASS: mailbox[0] drives lane[351:336] bit 7; "
+            "reserved bit 0 remains zero (lane=0x%04x)",
+            debug_lane,
+        )
         await self.mb.wr_csr(IRQEN, 0)
         irqp_masked = await self.mb.rd_csr(IRQP)
         irqs_held = await self.mb.rd_csr(IRQS)

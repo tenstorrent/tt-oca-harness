@@ -213,8 +213,8 @@ PICORV32_IRQ_BUSERR  // Bus error IRQ (bit 2)
 
 - The PicoRV32 uses a custom interrupt controller with `maskirq`/`retirq` instructions
 - Bits 0-2 are latched (edge-triggered) for internal CPU interrupts
-- Bit 3 (KMCSR): aggregated sticky error sources, non-latched (level-sensitive)
-- Bit 4 (Mailbox): direct from mailbox hardware, non-latched (level-sensitive)
+- Bit 3, KMCSR: aggregated sticky error sources, non-latched (level-sensitive)
+- Bit 4, mailbox: direct from mailbox hardware, non-latched (level-sensitive)
 - Non-latched bits track the live level; the CPU re-enters the ISR after `retirq` if the level is still high
 
 ### Printf Support (vuart.h)
@@ -390,7 +390,7 @@ they remain set until firmware writes 1 to clear them (W1C = write-1-to-clear).
 The IRQ_SET register allows firmware to manually trigger interrupts for testing.
 Sticky bits (parity errors, ROM write error, SRAM write-lock, AXI errors, DRBG, wipe, exec_violation) remain set until cleared via IRQ_STATUS W1C.
 
-### Test Protocol Registers (KMCSR)
+### KMCSR test protocol registers
 
 The test framework uses dedicated KMCSR registers for firmware-testbench communication:
 
@@ -501,6 +501,9 @@ tb_sep_mbox_status_write(status_value, timeout_cycles);
 
 // Write SEP mailbox CTRL register
 tb_sep_mbox_ctrl_write(ctrl_value, timeout_cycles);
+
+// Overlap a KM READ_DATA AR with SEP CTRL.FLUSH (R must complete)
+tb_km_mbox_read_during_sep_flush(timeout_cycles);
 ```
 
 #### KM Mailbox Operations

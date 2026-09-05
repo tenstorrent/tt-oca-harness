@@ -23,12 +23,13 @@ class smc_uart_fifo_basic_trigger_reset_test(smc_base_test):
         seq = smc_uart_fifo_basic_trigger_reset_test_seq("uart_fifo_basic_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
         assert seq.reset_ok, "RX/TX FIFO reset phase did not complete"
+        assert seq.above_depth_ok, "above-depth RX FIFO trigger checks did not complete"
         # Gate on the MEASURED interrupt ids of each trigger cell: below the
         # programmed level the RCVR-data-available id must be absent, at the
         # level it must be present, and after popping back below it must be gone
         # again. Both cells run the same three legs against different levels, so
         # a tied-off FCR.RCVR_TRIGGER fails one of them.
-        for label in ("1B", "4B"):
+        for label in ("1B", "4B", "32B"):
             ids = seq.trigger_ids.get(label)
             assert ids is not None, f"trigger cell {label} produced no samples"
             pre_id, trig_id, below_id = ids
@@ -58,7 +59,9 @@ class smc_uart_fifo_basic_trigger_reset_test(smc_base_test):
             csr_accesses=measured_csr,
             proxy=False,
             details=(
-                f"FIFO trigger-level ids {seq.trigger_ids}; RX/TX FIFO reset "
-                f"before/after LSR contrast"
+                f"FIFO trigger-level ids {seq.trigger_ids}; threshold 32 stayed "
+                f"inactive at depth 31 and fired at 32, while thresholds 64 "
+                f"through 4096 stayed inactive for an empty 32-entry FIFO; "
+                f"RX/TX FIFO reset before/after LSR contrast"
             ),
         )

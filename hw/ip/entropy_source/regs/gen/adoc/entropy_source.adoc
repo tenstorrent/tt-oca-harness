@@ -182,8 +182,8 @@
 .SHA256_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:11 | `Reserved` | - | - a| Reserved
-| 10:8 | `OUTPUT_COUNT` | R | 0x0 a| Number of 32-bit digest words remaining for output.
+| 31:12 | `Reserved` | - | - a| Reserved
+| 11:8 | `OUTPUT_COUNT` | R | 0x0 a| Number of 32-bit digest words remaining for output. Reports 8 when a digest becomes available, decrements through 0 as words are accepted, and remains 0 while idle or bypassed.
 | 7:4 | `INPUT_COUNT` | R | 0x0 a| Number of 32-bit words currently accumulated in the 512-bit input block.
 | 3:1 | `Reserved` | - | - a| Reserved
 | 0 | `BUSY` | R | 0x0 a| Indicates that SHA-256 processing or digest output is active.

@@ -14,6 +14,6 @@ class dtp_3dcr_config_hold_test(dtp_base_test):
             dtp_stap_scan_test_seq,
             "config_hold",
             scenario="config_hold",
-            specific_env="DTP_3DCR_CONFIG_HOLD_TEST_LOOPS",
-            group_env="DTP_SCAN_TEST_LOOPS",
+            specific_knob="DTP_3DCR_CONFIG_HOLD_TEST_LOOPS",
+            group_knob="DTP_SCAN_TEST_LOOPS",
         )

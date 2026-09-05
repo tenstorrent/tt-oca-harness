@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: CC-BY-4.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 = Open Chiplet Atlas Harness (OCAH): Integrator Guide
@@ -598,7 +598,7 @@ testing (unless disabled), and system health checks. The `init_mem_done_o`
 signal indicates completion of memory initialization if automatic SRAM zeroing
 is enabled.
 
-For Function Level Reset (FLR) support, assert `cfg_flr_pf_active_i` to trigger
+To support Function Level Reset (FLR), assert `cfg_flr_pf_active_i` to trigger
 a warm reset sequence. The SMC asserts `isolate_req_o` bits for the affected
 subsystem indices. The adopter's power controller drives `ss_reset_complete_i`
 high once the subsystem reset is complete; the SMC synchronizes this into the
@@ -884,11 +884,10 @@ non-volatile public keys before transferring control. Feature controls derived
 from secure boot authentication and lifecycle state govern what operations are
 permitted after boot.
 
-The `sep_straps_i` input provides configuration straps for SEP-specific
-settings. The `jtag_id` input must be tied to an appropriate constant in the
-top-level integration. A `rst_vec_i` port exists on `tb_top.sv` for DV reset
-vector injection; it is not present on `sep.sv` itself and requires no
-integration tie-off.
+The `secure_tm_req_i` input is a secure test mode request. The `jtag_id` input
+must be tied to an appropriate constant in the top-level integration. A
+`rst_vec_i` port exists on `tb_top.sv` for DV reset vector injection; it is not
+present on `sep.sv` itself and requires no integration tie-off.
 
 ==== SEP Port Interface
 
@@ -1879,18 +1878,6 @@ the SEP-to-SMC dedicated AXI connection.
 |`scan_rst_ni` |input |1 |SMU external port
 |===
 
-===== Captured Straps
-
-[cols="<30%,<10%,<15%,<45%",options="header"]
-|===
-|Port |Direction |Width |SMU Connection
-
-|`captured_straps_i` |input |[63:0] |SMU external port
-|===
-
-Please refer to the `reset_unit` STRAPS_LO and STRAPS_HI register descriptions for the decoded
-value of the straps.
-
 [[smc-dtp-interconnection]]
 ==== SMC-DTP Internal Interconnection
 
@@ -2025,10 +2012,9 @@ The define also zeroes the RMA and security-disable token and digest bits in
 X, and routes OpenTitan assertion failures in the SEP `prim_assert` shim to
 `$error` on non-UVM runs.
 
-Three models it enables make simulation deliberately non-deterministic:
-`gdffsync` in the entropy source injects metastability on the second
-synchronizer flop, `prim_flop_2sync` and its Caliptra and Adams Bridge
-equivalents insert `prim_cdc_rand_delay` ahead of the synchronizer, and
+Two model families it enables make simulation deliberately non-deterministic:
+`prim_flop_2sync` and its Caliptra and Adams Bridge equivalents insert
+`prim_cdc_rand_delay` ahead of the synchronizer, and
 `prim_lfsr` and `prim_double_lfsr` randomize their default seed on simulators
 other than Verilator (`+prim_lfsr_use_default_seed=1` pins it). Two runs of one
 test are therefore not identical unless the simulator seed is fixed; record the
