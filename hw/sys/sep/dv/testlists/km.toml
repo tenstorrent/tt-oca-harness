@@ -119,9 +119,11 @@ target = "lsu_stub_all_live"
 args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
 
 [[tests]]
-# KM key/policy vault: slot extent and SRAM write-lock. RANDCFG: slot and
-# lock region from the run seed. Dedicated KM ROM (not rom_main); seal
-# stays on the parked command-set vehicle. no_cpu; +skip_fuse_sense.
+# KM key/policy vault: slot extent, SRAM write-lock and the KPV seal.
+# RANDCFG: slot, lock region and the seal/free slot pair from the run seed.
+# Dedicated KM ROM (not rom_main): the vault is on the KM CPU bus, and no
+# mailbox command seals a slot, so the sealed-erase-retires contract has no
+# vehicle on the command set. no_cpu; +skip_fuse_sense.
 name = "sep_km_key_policy_vault_test"
 module = "km.sep_km_key_policy_vault_test"
 seed = 1
@@ -130,3 +132,52 @@ tags = ["km", "kpv", "sram_lock", "subsystem"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_vault.parhex"]
+
+[[tests]]
+# KM mailbox command set: generate, transfer, revoke-or-shred, illegal-to-error.
+# RANDCFG: generated key size, the out-of-policy destination and the undefined
+# command IDs come from the run seed. Boots the real KM firmware (rom_main) and
+# uses the AES engine as the consume witness, so a transfer is proven by an
+# independent AES-256-ECB golden rather than by a return code alone. Frontdoor
+# throughout. REAL fuse-sense (rom_main reads OTP at boot); +esrc_noise_force
+# makes the ring oscillators alive under Verilator.
+name = "sep_km_command_set_rand_test"
+module = "km.sep_km_command_set_rand_test"
+firmware = { name = "rom_main", mode = "km_rom_main" }
+seed = 1
+timeout_sec = 7200
+tags = ["km", "mailbox", "kpv", "subsystem", "entropy"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
+
+[[tests]]
+# KM CRC co-processor KAT, all three modes (CRC-32C word, CRC-32C byte,
+# CRC-8/ROHC). RANDCFG: the operand set comes from the run seed. The engine has
+# no register interface -- it is a PicoRV32 PCPI co-processor reached by a
+# custom-0 instruction -- so a dedicated service ROM issues the instructions and
+# every golden and cross-check lives in the host test. no_cpu; +skip_fuse_sense.
+name = "sep_km_crc_pcpi_kat_test"
+module = "km.sep_km_crc_pcpi_kat_test"
+seed = 1
+timeout_sec = 1800
+tags = ["km", "crc", "pcpi", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_crc.parhex"]
+
+[[tests]]
+# KPV scrambler: the stored word and the address mapping are both transformed
+# while enabled, and the vault passes through while disabled. RANDCFG: two
+# scrambler keys and three logical key-entry indices from the run seed.
+# Dedicated KM ROM (not rom_main, which locks the scrambler during boot); the
+# ROM reports raw observations and the host holds every verdict. no_cpu;
+# +skip_fuse_sense.
+name = "sep_km_kpv_scrambler_test"
+module = "km.sep_km_kpv_scrambler_test"
+seed = 1
+timeout_sec = 1800
+tags = ["km", "kpv", "scrambler", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_kpv_scrambler.parhex"]
