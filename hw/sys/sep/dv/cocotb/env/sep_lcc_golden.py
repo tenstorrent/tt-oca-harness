@@ -305,6 +305,93 @@ def selftest() -> None:
     assert lc_state_next(0x9, 0xF, sip_match=True, chiplet_match=True) == 0x9
 
 
+# ---------------------------------------------------------------------------
+# dbg_disable
+# ---------------------------------------------------------------------------
+# Field order of sep_lifecycle_ctrl_pkg::dbg_disable_t. A packed struct puts the
+# first-declared field in the most significant bit, so index 0 here is the MSB
+# of the flattened vector the testbench exports.
+DBG_DISABLE_FIELDS = (
+    "stap_io",
+    "stap_smc",
+    "stap_sep",
+    "stap_extra",
+    "stap_host",
+    "dft_secure",
+    "dft_nonsecure",
+    "dfd",
+    "smc_jtag2axi",
+    "smc_otp_jtag2axi",
+    "sep_otp_jtag2axi",
+)
+
+# Bits this golden does NOT claim, and why. Both are places where the DTP path
+# table in the lifecycle chapter and the RTL disagree; in both the RTL is the
+# stricter of the two, so the divergence is fail-safe rather than a hole. They
+# are left unchecked instead of being asserted either way, because encoding
+# one side would turn an open architecture question into a silent DV opinion.
+#
+#   dft_secure  spec: Case 3 (SIP_DBG & CHIPLET_DBG & SEP_DBG)
+#               RTL:  Case 2, flagged in sep_lifecycle_ctrl.sv as an open spec
+#                     confirmation. The secure DFT chain is also subject to the
+#                     command-class rule, which this vector does not describe.
+#   dfd         spec: Case 1 (SIP_DBG alone)
+#               RTL:  Case 2. No issue found covering this one.
+DBG_DISABLE_UNCLAIMED = ("dft_secure", "dfd")
+
+
+def dbg_disable_expected(feat_ctrl: int) -> dict[str, int]:
+    """Expected dbg_disable bits for a FEAT_CTRL value, per the DTP gating ladder.
+
+    The lifecycle chapter states the ladder as three nested cases, composed by
+    AND so that a partial fuse burn fails safe:
+
+        Case 1  SIP_DBG
+        Case 2  SIP_DBG & CHIPLET_DBG
+        Case 3  SIP_DBG & CHIPLET_DBG & SEP_DBG
+
+    ``dbg_disable`` is active-high (1 = interface disabled), so each bit is the
+    negation of its case. SIP_DBG is the mandatory outer gate: no path opens
+    while it is closed, which is what makes SEP_DBG alone insufficient to reach
+    SEP internal state.
+
+    Returns only the bits this golden claims; see ``DBG_DISABLE_UNCLAIMED``.
+    """
+    sep_dbg = (feat_ctrl >> 0) & 1
+    chiplet_dbg = (feat_ctrl >> 1) & 1
+    sip_dbg = (feat_ctrl >> 16) & 1
+
+    case1 = sip_dbg
+    case2 = sip_dbg & chiplet_dbg
+    case3 = case2 & sep_dbg
+
+    exp = {
+        "stap_io": 1 - case1,
+        "stap_smc": 1 - case2,
+        "stap_extra": 1 - case2,
+        "stap_host": 1 - case2,
+        "dft_nonsecure": 1 - case2,
+        "smc_jtag2axi": 1 - case2,
+        "stap_sep": 1 - case3,
+        # The fuse controller enforces OTP JTAG2AXIL access through LOCKS, so
+        # the lifecycle controller ties both bridges open in every LC state.
+        "smc_otp_jtag2axi": 0,
+        "sep_otp_jtag2axi": 0,
+    }
+    assert set(exp) | set(DBG_DISABLE_UNCLAIMED) == set(DBG_DISABLE_FIELDS), (
+        "dbg_disable golden does not account for every field in the struct"
+    )
+    return exp
+
+
+def dbg_disable_unpack(raw: int) -> dict[str, int]:
+    """Split the flattened dbg_disable vector into named bits (MSB first)."""
+    n = len(DBG_DISABLE_FIELDS)
+    return {
+        name: (raw >> (n - 1 - i)) & 1 for i, name in enumerate(DBG_DISABLE_FIELDS)
+    }
+
+
 selftest()
 
 

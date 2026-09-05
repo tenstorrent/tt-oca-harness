@@ -21,6 +21,9 @@ from env.sep_efuse_image import LC_WORD_IDX, SepEfuseImage
 from env.sep_lcc_golden import (
     LC_PROD,
     LC_TEST_DEV,
+    DBG_DISABLE_UNCLAIMED,
+    dbg_disable_expected,
+    dbg_disable_unpack,
     feat_ctrl_expected,
     lc_state_name,
 )
@@ -45,6 +48,37 @@ RESP_OKAY = 0
 @pyuvm.test()
 class sep_lcc_demote_feat_ctrl_matrix_test(sep_base_test):
     """Walk the demote product; feat_ctrl vs golden and one live filter gate."""
+
+    def _check_dbg_disable(self, feat_ctrl: int, tag: str) -> None:
+        """dbg_disable against the DTP gating ladder, for this same FEAT_CTRL.
+
+        The eleven debug-disable outputs are the consumer side of feature
+        control: FEAT_CTRL says which debug scopes are open, dbg_disable is what
+        the DTP, JTAG and SMU paths are actually gated on. Only the two OTP
+        JTAG2AXIL bits were observable here before, and the lifecycle controller
+        ties both of those to zero, so no combination of them could distinguish
+        a correct gating formula from a broken one. This walks the rest against
+        the same FEAT_CTRL the cell above just checked, so the two are one
+        consistent claim rather than two independent guesses.
+        """
+        raw = int(cocotb.top.dbg_disable_all_o.value)
+        got = dbg_disable_unpack(raw)
+        want = dbg_disable_expected(feat_ctrl)
+        for name, exp in want.items():
+            assert got[name] == exp, (
+                f"{tag}: dbg_disable.{name}={got[name]} expected {exp} for "
+                f"FEAT_CTRL=0x{feat_ctrl:016x} "
+                f"(sep_dbg={feat_ctrl & 1} chiplet_dbg={(feat_ctrl >> 1) & 1} "
+                f"sip_dbg={(feat_ctrl >> 16) & 1})"
+            )
+        self.logger.info(
+            "CHK-DBG-DISABLE PASS: %s %d of %d bits match the gating ladder "
+            "(unclaimed: %s)",
+            tag,
+            len(want),
+            len(want) + len(DBG_DISABLE_UNCLAIMED),
+            ", ".join(DBG_DISABLE_UNCLAIMED),
+        )
 
     async def _check_cell(
         self,
@@ -74,6 +108,7 @@ class sep_lcc_demote_feat_ctrl_matrix_test(sep_base_test):
         assert probe.resp_code == want, (
             f"{tag}: ext probe resp={probe.resp_code}, expected {want} (sep_debug={ctl.sep_debug})"
         )
+        self._check_dbg_disable(ctl.feat_ctrl, tag)
         self.logger.info(
             "CHK-FEAT-CTRL PASS: %s FEAT_CTRL=0x%016x sep_debug=%d",
             tag,

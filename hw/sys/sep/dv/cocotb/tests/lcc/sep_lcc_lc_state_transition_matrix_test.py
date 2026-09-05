@@ -80,6 +80,7 @@ from __future__ import annotations
 
 import cocotb
 import pyuvm
+from cocotb.triggers import ClockCycles
 from env.sep_efuse_image import LC_WORD_IDX
 from env.sep_lc_transition import SIP_DIS, SYS_DIS, SepLcTransitionCfg
 from env.sep_lcc_golden import (
@@ -94,6 +95,10 @@ from env.sep_lcc_golden import (
 )
 from sep_base_test import sep_base_test
 from seq_lib.sep_efuse_rma_token_seq import (
+    TOKEN_CMP_INJECT_COLLAPSE,
+    TOKEN_CMP_INJECT_OFF,
+    TOKEN_CMP_SEL_SIP,
+    TOKEN_ERROR,
     TOKEN_RMA_CHIPLET,
     TOKEN_RMA_SIP,
     SepRmaTokenMatchSeq,
@@ -186,6 +191,29 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
             self._chiplet_match = True
         self.logger.info("[lc-w1s] %s token matched", name)
 
+    async def _match_under_fault(self, kind: int) -> int:
+        """Present a good token with the comparator faulted; expect the error code.
+
+        The comparator ORs 6'b111111 onto every status bit on a redundancy
+        fault, and the lifecycle gate compares for equality with the match code.
+        So the token itself is valid and would otherwise open the gate: the only
+        reason the advance must not land is the fault. Returns the status code.
+        """
+        token = (
+            self.cfg_lc.tokens.sip_token
+            if kind == TOKEN_RMA_SIP
+            else self.cfg_lc.tokens.chiplet_token
+        )
+        seq = SepRmaTokenMatchSeq(kind, token)
+        await self.start_seq(seq)
+        assert seq.match_code is not None, "token match status never sampled"
+        return int(seq.match_code)
+
+    async def _set_token_inject(self, mode: int, sel: int = TOKEN_CMP_SEL_SIP) -> None:
+        cocotb.top.token_cmp_fault_sel_i.value = sel
+        cocotb.top.token_cmp_fault_inject_i.value = mode
+        await ClockCycles(cocotb.top.clk_i, 2)
+
     async def _demote(self) -> None:
         for group in (1, 2):
             seq = SepLccDemoteSeq(group, DEMOTE_BIT)
@@ -274,6 +302,21 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         # here with the token gate already open.
         await self._match(TOKEN_RMA_CHIPLET)
         await self._cell(0x4, "CHK-GATE-CHIP-ORD")
+        # A faulted comparator must fail CLOSED at the lifecycle gate, not just
+        # report an error code. self._sip_match stays False, so the golden holds
+        # the state and the cell fails if the DUT advances. This is the cell that
+        # separates a gate written as "== match code" from one written as "not a
+        # mismatch": the fault code 0x3F would pass the latter.
+        await self._set_token_inject(TOKEN_CMP_INJECT_COLLAPSE, TOKEN_CMP_SEL_SIP)
+        code = await self._match_under_fault(TOKEN_RMA_SIP)
+        assert code == TOKEN_ERROR, (
+            "CHK-GATE-SIP-FAULT: a collapsed SIP comparator must report the error "
+            f"code 0x{TOKEN_ERROR:02x}, got 0x{code:02x}; the fail-closed cell "
+            "below would otherwise pass for the wrong reason"
+        )
+        await self._cell(0x2, "CHK-GATE-SIP-FAULT")
+        await self._set_token_inject(TOKEN_CMP_INJECT_OFF, TOKEN_CMP_SEL_SIP)
+
         await self._match(TOKEN_RMA_SIP)
         got = await self._cell(0x2, "CHK-SIP-ADVANCE")
         assert got == 0x3, f"CHK-SIP-ADVANCE: PROD + bit1 must reach 0x3, got 0x{got:x}"
@@ -334,6 +377,15 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         """Transient RMA: the same gates, with no bus request at all."""
         expected = lc_state_next(LC_PROD_END, 0x2, sip_match=True, chiplet_match=False)
         assert is_invalid_lc(expected), "test bug: PROD_END + bit1 should be INVALID"
+
+        # TRANSIENT_RMA_EN is armed but no token has been presented. The state
+        # must hold: the transient path applies the token gates, it does not
+        # bypass them. Without this cell the walk below could pass on a DUT that
+        # moves as soon as the enable bit is sensed.
+        await self._cell(
+            0x0, "CHK-TRANSIENT-NO-TOKEN", do_write=False, expect=LC_PROD_END
+        )
+
         await self._match(TOKEN_RMA_SIP)
         got = await self._cell(0x0, "CHK-TRANSIENT-INVALID", do_write=False, expect=expected)
         assert got == expected, (
