@@ -36,25 +36,22 @@
 
 // Expanded KDF input block: 32-byte header, 32-byte label, 64-byte context,
 // 64-byte entropy.
-#define KDF_BLOCK_BYTES   192u
-#define KDF_LABEL_OFFSET   32u
+#define KDF_BLOCK_BYTES 192u
+#define KDF_LABEL_OFFSET 32u
 #define KDF_CONTEXT_OFFSET 64u
-#define KDF_CONTEXT_BYTES  64u
+#define KDF_CONTEXT_BYTES 64u
 
 // PRF message: be16(counter) || block || be16(L_bits).
 #define KDF_MSG_BYTES (2u + KDF_BLOCK_BYTES + 2u)
 
-static void wipe(uint8_t *p, uint32_t len)
-{
+static void wipe(uint8_t *p, uint32_t len) {
     for (uint32_t i = 0; i < len; ++i) {
         ((volatile uint8_t *)p)[i] = 0u;
     }
 }
 
-int oca_derive_payload_key(const uint8_t *secret, uint32_t secret_len,
-                           const uint8_t *kdf_input, uint32_t key_bits,
-                           uint8_t *out_key)
-{
+int oca_derive_payload_key(const uint8_t *secret, uint32_t secret_len, const uint8_t *kdf_input,
+                           uint32_t key_bits, uint8_t *out_key) {
     if (secret == NULL || kdf_input == NULL || out_key == NULL) {
         return -1;
     }
@@ -72,16 +69,19 @@ int oca_derive_payload_key(const uint8_t *secret, uint32_t secret_len,
     // 32-byte header, little-endian km_kdf_input_t fields. Every value here is
     // fixed by the Key Manager's BL-decrypt flow except out_bits, which is the
     // only field that varies with the cipher.
-    block[0]  = 0x01u; block[1] = 0x00u;                 // version = 0x0001
-    block[2]  = 0x01u;                                   // out_class  = SYMMETRIC
-    block[3]  = 0x00u;                                   // out_type   = SYM_RAW
-    block[4]  = 0x00u;                                   // out_owner  = NONE
-    block[5]  = 0x01u;                                   // out_domain = SW
-    block[6]  = 0x18u; block[7] = 0x00u;                 // flags = ROM_CREATED|ROM_LINEAGE
-    block[8]  = 0x00u; block[9] = 0x00u;                 // purpose = 0
-    block[10] = (uint8_t)(key_bits & 0xFFu);             // out_bits (LE)
+    block[0] = 0x01u;
+    block[1] = 0x00u; // version = 0x0001
+    block[2] = 0x01u; // out_class  = SYMMETRIC
+    block[3] = 0x00u; // out_type   = SYM_RAW
+    block[4] = 0x00u; // out_owner  = NONE
+    block[5] = 0x01u; // out_domain = SW
+    block[6] = 0x18u;
+    block[7] = 0x00u; // flags = ROM_CREATED|ROM_LINEAGE
+    block[8] = 0x00u;
+    block[9] = 0x00u;                        // purpose = 0
+    block[10] = (uint8_t)(key_bits & 0xFFu); // out_bits (LE)
     block[11] = (uint8_t)((key_bits >> 8) & 0xFFu);
-    block[12] = 0x01u;                                   // caps = SYM_AES (LE u32)
+    block[12] = 0x01u; // caps = SYM_AES (LE u32)
     // device_state (16..19) and rsvd (20..31) stay zero.
 
     // Label: "KM_CLASS_BL", NUL-padded to 32 bytes.
@@ -97,7 +97,7 @@ int oca_derive_payload_key(const uint8_t *secret, uint32_t secret_len,
     // Entropy (128..191) stays zero.
 
     // L, big-endian, in the two bytes after the block.
-    msg[2u + KDF_BLOCK_BYTES]      = (uint8_t)((key_bits >> 8) & 0xFFu);
+    msg[2u + KDF_BLOCK_BYTES] = (uint8_t)((key_bits >> 8) & 0xFFu);
     msg[2u + KDF_BLOCK_BYTES + 1u] = (uint8_t)(key_bits & 0xFFu);
 
     const uint32_t out_len = key_bits / 8u;

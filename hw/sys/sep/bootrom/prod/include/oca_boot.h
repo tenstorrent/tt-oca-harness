@@ -24,15 +24,15 @@
 // oca_result_t is 0..34, so 0x000300xx is always "the library said xx" and
 // 0x000301xx is always "this module failed before or after it". That beats
 // collapsing distinct verdicts onto a handful of ROM-local codes.
-#define OCA_BOOT_ERR_BASE      0x00030000u
+#define OCA_BOOT_ERR_BASE 0x00030000u
 #define OCA_BOOT_ERR_RESULT(r) (OCA_BOOT_ERR_BASE | (uint32_t)(r))
 
-#define OCA_BOOT_ERR_DMA            0x00030100u  // storage read failed
-#define OCA_BOOT_ERR_STAGE_OVERFLOW 0x00030101u  // body+payload exceed SEP SRAM
-#define OCA_BOOT_ERR_NO_BL1         0x00030102u  // no BL1 image in the TOC
-#define OCA_BOOT_ERR_BL1_BAD_ADDR   0x00030103u  // BL1 load/entry outside SRAM
-#define OCA_BOOT_ERR_BL1_TOO_LARGE  0x00030104u  // BL1 length implausible
-#define OCA_BOOT_ERR_KEY_UNTRUSTED  0x00030105u  // signing key is not a device root key
+#define OCA_BOOT_ERR_DMA 0x00030100u            // storage read failed
+#define OCA_BOOT_ERR_STAGE_OVERFLOW 0x00030101u // body+payload exceed SEP SRAM
+#define OCA_BOOT_ERR_NO_BL1 0x00030102u         // no BL1 image in the TOC
+#define OCA_BOOT_ERR_BL1_BAD_ADDR 0x00030103u   // BL1 load/entry outside SRAM
+#define OCA_BOOT_ERR_BL1_TOO_LARGE 0x00030104u  // BL1 length implausible
+#define OCA_BOOT_ERR_KEY_UNTRUSTED 0x00030105u  // signing key is not a device root key
 
 // Load, authenticate and stage a manifest + payload into SEP SRAM.
 //
@@ -58,9 +58,9 @@ size_t rom_oca_payload_len(void);
 //   0 BL1_DEMOTION_VALID   1 BL1_DEMOTION_ENABLE
 //   2 BL2_DEMOTION_VALID   3 BL2_DEMOTION_ENABLE
 // Reads the staged body, so it is only meaningful after a successful boot.
-#define OCA_DEMOTE_BL1_VALID  (1u << 0)
+#define OCA_DEMOTE_BL1_VALID (1u << 0)
 #define OCA_DEMOTE_BL1_ENABLE (1u << 1)
-#define OCA_DEMOTE_BL2_VALID  (1u << 2)
+#define OCA_DEMOTE_BL2_VALID (1u << 2)
 #define OCA_DEMOTE_BL2_ENABLE (1u << 3)
 uint32_t rom_oca_demotion_control(void);
 

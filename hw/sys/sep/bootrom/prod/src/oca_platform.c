@@ -53,9 +53,9 @@
 
 // RAW RSA-3072 public key: 384-byte big-endian modulus followed by a 4-byte
 // big-endian exponent (openssl_crypto.c rsa_key_from_raw is the reference).
-#define OCA_RSA3072_MODULUS_BYTES  384u
+#define OCA_RSA3072_MODULUS_BYTES 384u
 #define OCA_RSA3072_EXPONENT_BYTES 4u
-#define OCA_RSA3072_PUBKEY_BYTES   (OCA_RSA3072_MODULUS_BYTES + OCA_RSA3072_EXPONENT_BYTES)
+#define OCA_RSA3072_PUBKEY_BYTES (OCA_RSA3072_MODULUS_BYTES + OCA_RSA3072_EXPONENT_BYTES)
 #define OCA_RSA3072_SIGNATURE_BYTES 384u
 
 // The only exponent the OTBN app implements: it is built as
@@ -71,27 +71,23 @@
 // Read a little-endian byte image out of a 32-bit-word eFuse shadow bank.
 // Matches the existing manifest_crypto.c fuse readers: word[0] holds bits[31:0]
 // and byte 0 is that word's LSB.
-static void fuse_read_bytes(uint32_t base, uint8_t *out, uint32_t len)
-{
+static void fuse_read_bytes(uint32_t base, uint8_t *out, uint32_t len) {
     for (uint32_t i = 0; i < len; i += 4u) {
         uint32_t val = mmio_read32(base + i);
-        out[i]      = (uint8_t)(val);
+        out[i] = (uint8_t)(val);
         out[i + 1u] = (uint8_t)(val >> 8);
         out[i + 2u] = (uint8_t)(val >> 16);
         out[i + 3u] = (uint8_t)(val >> 24);
     }
 }
 
-static uint32_t be32_load(const uint8_t *p)
-{
-    return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16)
-         | ((uint32_t)p[2] << 8)  | (uint32_t)p[3];
+static uint32_t be32_load(const uint8_t *p) {
+    return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) | ((uint32_t)p[2] << 8) | (uint32_t)p[3];
 }
 
 // -- hashing ----------------------------------------------------------------
 
-static oca_result_t plat_sha256(const uint8_t *msg, size_t msg_len, uint8_t out_digest[32])
-{
+static oca_result_t plat_sha256(const uint8_t *msg, size_t msg_len, uint8_t out_digest[32]) {
     if (msg == NULL || out_digest == NULL) {
         return OCA_FAIL_INVALID_ARG;
     }
@@ -119,9 +115,7 @@ static oca_result_t plat_sha256(const uint8_t *msg, size_t msg_len, uint8_t out_
 
 static oca_result_t plat_verify_signature(const oca_crypto_blob_t *signature,
                                           const oca_crypto_blob_t *public_key,
-                                          const uint8_t *signed_region,
-                                          size_t signed_region_len)
-{
+                                          const uint8_t *signed_region, size_t signed_region_len) {
     uint8_t digest[32];
 
     if (signature == NULL || public_key == NULL || signed_region == NULL) {
@@ -139,22 +133,21 @@ static oca_result_t plat_verify_signature(const oca_crypto_blob_t *signature,
     // primitive the ROM has no verifier for, and the PQC variants carry no
     // native signature the library can check either. Refusing here is the clean
     // "unsupported" the format expects -- never a pass.
-    if (signature->primitive_type != OCA_PRIMITIVE_RSA_3072_PKCS1V15_SHA256
-        || public_key->primitive_type != OCA_PRIMITIVE_RSA_3072_PKCS1V15_SHA256) {
+    if (signature->primitive_type != OCA_PRIMITIVE_RSA_3072_PKCS1V15_SHA256 ||
+        public_key->primitive_type != OCA_PRIMITIVE_RSA_3072_PKCS1V15_SHA256) {
         return OCA_FAIL_SIGNATURE;
     }
 
     // RAW only: DER would mean an ASN.1 parser inside a 64 KiB ROM, and the
     // producer configs pin raw encoding for exactly that reason.
-    if (signature->encoding != OCA_ENCODING_RAW
-        || public_key->encoding != OCA_ENCODING_RAW) {
+    if (signature->encoding != OCA_ENCODING_RAW || public_key->encoding != OCA_ENCODING_RAW) {
         return OCA_FAIL_SIGNATURE;
     }
 
     // field_length is the manifest field width, not the encoded length, so this
     // is a "does the field even hold the primitive" check.
-    if (signature->field_length < OCA_RSA3072_SIGNATURE_BYTES
-        || public_key->field_length < OCA_RSA3072_PUBKEY_BYTES) {
+    if (signature->field_length < OCA_RSA3072_SIGNATURE_BYTES ||
+        public_key->field_length < OCA_RSA3072_PUBKEY_BYTES) {
         return OCA_FAIL_SIGNATURE;
     }
 
@@ -196,11 +189,9 @@ static oca_result_t plat_verify_signature(const oca_crypto_blob_t *signature,
 #define OCA_SECRET_SLOT_CLASS_KEY 1u
 
 static oca_result_t plat_decrypt_payload(const oca_decrypt_input_t *in,
-                                         const uint8_t **out_plaintext,
-                                         size_t *out_plaintext_len)
-{
-    if (in == NULL || out_plaintext == NULL || out_plaintext_len == NULL
-        || in->ciphertext == NULL || in->iv == NULL || in->kdf_input == NULL) {
+                                         const uint8_t **out_plaintext, size_t *out_plaintext_len) {
+    if (in == NULL || out_plaintext == NULL || out_plaintext_len == NULL ||
+        in->ciphertext == NULL || in->iv == NULL || in->kdf_input == NULL) {
         return OCA_FAIL_INVALID_ARG;
     }
 
@@ -211,8 +202,12 @@ static oca_result_t plat_decrypt_payload(const oca_decrypt_input_t *in,
 
     uint32_t key_bits;
     switch (in->cipher) {
-    case OCA_ENCRYPTION_TYPE_AES_128_CBC: key_bits = 128u; break;
-    case OCA_ENCRYPTION_TYPE_AES_256_CBC: key_bits = 256u; break;
+    case OCA_ENCRYPTION_TYPE_AES_128_CBC:
+        key_bits = 128u;
+        break;
+    case OCA_ENCRYPTION_TYPE_AES_256_CBC:
+        key_bits = 256u;
+        break;
     default:
         // The library already rejects anything else, so this is belt-and-braces
         // rather than the primary gate.
@@ -230,8 +225,7 @@ static oca_result_t plat_decrypt_payload(const oca_decrypt_input_t *in,
     }
 
     uint8_t secret[OCA_CLASS_KEY_BYTES];
-    fuse_read_bytes(OCH_SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR, secret,
-                    OCA_CLASS_KEY_BYTES);
+    fuse_read_bytes(OCH_SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR, secret, OCA_CLASS_KEY_BYTES);
 
     // An erased CLASS_KEY bank is all zeroes. Deriving from it would produce a
     // deterministic key and "successfully" decrypt to garbage, which then fails
@@ -255,8 +249,7 @@ static oca_result_t plat_decrypt_payload(const oca_decrypt_input_t *in,
     }
 
     uint8_t key[32];
-    int rc = oca_derive_payload_key(secret, OCA_CLASS_KEY_BYTES, in->kdf_input,
-                                    key_bits, key);
+    int rc = oca_derive_payload_key(secret, OCA_CLASS_KEY_BYTES, in->kdf_input, key_bits, key);
     explicit_memzero(secret, sizeof secret);
     if (rc != 0) {
         simputs("KDF_FAIL\n");
@@ -283,7 +276,7 @@ static oca_result_t plat_decrypt_payload(const oca_decrypt_input_t *in,
     report_status(STATUS_TYPE_INFO, SEP_MSG_DECRYPTION_END);
     simputs("DECRYPT_OK\n");
 
-    *out_plaintext     = buf;
+    *out_plaintext = buf;
     *out_plaintext_len = (size_t)plain_len;
     return OCA_OK;
 }
@@ -318,31 +311,40 @@ static oca_result_t plat_decrypt_payload(const oca_decrypt_input_t *in,
 // CHIPLET_PUBK_REVOKE_BASE + 0x100 / + 0x120 arithmetic, which landed on
 // SPI_PHY_DLL_SLAVE and the middle of CHIPLET_PUBK_HASH0. That path was never
 // exercised -- only ROM slot 0 is used by any test -- so the bug sat latent.
-#define OCA_KEY_SLOT_ROM_CLASSICAL_LAST 7u   // [7:0]
-#define OCA_KEY_SLOT_ROM_PQC_LAST      15u   // [15:8]
-#define OCA_KEY_SLOT_MAX               25u   // [31:26] reserved
+#define OCA_KEY_SLOT_ROM_CLASSICAL_LAST 7u // [7:0]
+#define OCA_KEY_SLOT_ROM_PQC_LAST 15u      // [15:8]
+#define OCA_KEY_SLOT_MAX 25u               // [31:26] reserved
 
 // Resolve a classical OTP key slot to its digest bank. Returns false for a slot
 // that is not a classical OTP anchor (PQC, or out of the defined range).
-static bool otp_key_digest_addr(uint32_t slot, uint32_t *out_addr)
-{
+static bool otp_key_digest_addr(uint32_t slot, uint32_t *out_addr) {
     switch (slot) {
-    case 16u: *out_addr = OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_PUBK_HASH0_BASE_ADDR; return true;
-    case 17u: *out_addr = OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_PUBK_HASH1_BASE_ADDR; return true;
-    case 20u: *out_addr = OCH_SEP_TOP_SEP_EFUSE_MAP_SIP_PUBK_HASH0_BASE_ADDR;     return true;
-    case 22u: *out_addr = OCH_SEP_TOP_SEP_EFUSE_MAP_SYS_PUBK_HASH_BASE_ADDR;      return true;
+    case 16u:
+        *out_addr = OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_PUBK_HASH0_BASE_ADDR;
+        return true;
+    case 17u:
+        *out_addr = OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_PUBK_HASH1_BASE_ADDR;
+        return true;
+    case 20u:
+        *out_addr = OCH_SEP_TOP_SEP_EFUSE_MAP_SIP_PUBK_HASH0_BASE_ADDR;
+        return true;
+    case 22u:
+        *out_addr = OCH_SEP_TOP_SEP_EFUSE_MAP_SYS_PUBK_HASH_BASE_ADDR;
+        return true;
     // SIP_PUBK_HASH1 is a real bank in the RDL (@0x260) but the VP eFuse model
     // has no register there yet, so a run selecting slot 24 reads reserved space
     // rather than a provisioned digest. Mapped for correctness against silicon;
     // not exercisable on sep-vp until the model is re-synced.
-    case 24u: *out_addr = OCH_SEP_TOP_SEP_EFUSE_MAP_SIP_PUBK_HASH1_BASE_ADDR;     return true;
-    default:  return false;
+    case 24u:
+        *out_addr = OCH_SEP_TOP_SEP_EFUSE_MAP_SIP_PUBK_HASH1_BASE_ADDR;
+        return true;
+    default:
+        return false;
     }
 }
 
 static oca_result_t plat_is_key_authorized(const oca_crypto_blob_t *public_key,
-                                           const uint8_t select[16])
-{
+                                           const uint8_t select[16]) {
     if (public_key == NULL || select == NULL || public_key->bytes == NULL) {
         return OCA_FAIL_INVALID_ARG;
     }
@@ -403,8 +405,7 @@ static oca_result_t plat_is_key_authorized(const oca_crypto_blob_t *public_key,
         // ROM classical key. The bitmap defines eight of these; key_digests.c
         // ships fewer (NUM_PUBLIC_KEY_DIGESTS), so the upper ones are simply
         // unprovisioned rather than invalid.
-        if ((uint32_t)slot >= NUM_PUBLIC_KEY_DIGESTS
-            || public_key_digests[slot].digest == NULL) {
+        if ((uint32_t)slot >= NUM_PUBLIC_KEY_DIGESTS || public_key_digests[slot].digest == NULL) {
             // An unprovisioned ROM slot authorizes nothing. This deliberately
             // differs from the old ROM, which treated a NULL digest as "skip the
             // hash check" and so accepted any key naming an empty slot.
@@ -469,26 +470,31 @@ static oca_result_t plat_is_key_authorized(const oca_crypto_blob_t *public_key,
 
 // -- OTP identity / lifecycle / version -------------------------------------
 
-static oca_hw_result_t plat_get_identity_bytes(oca_id_kind_t field, uint8_t out[32])
-{
+static oca_hw_result_t plat_get_identity_bytes(oca_id_kind_t field, uint8_t out[32]) {
     uint32_t base;
 
     if (out == NULL) {
         return OCA_HW_ERROR;
     }
     switch (field) {
-    case OCA_ID_CHIPLET: base = OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_CHIPLET_ID_BASE_ADDR; break;
-    case OCA_ID_PACKAGE: base = OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SIP_ID_BASE_ADDR;     break;
-    case OCA_ID_SYSTEM:  base = OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SYS_ID_BASE_ADDR;     break;
-    default:             return OCA_HW_ERROR;
+    case OCA_ID_CHIPLET:
+        base = OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_CHIPLET_ID_BASE_ADDR;
+        break;
+    case OCA_ID_PACKAGE:
+        base = OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SIP_ID_BASE_ADDR;
+        break;
+    case OCA_ID_SYSTEM:
+        base = OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SYS_ID_BASE_ADDR;
+        break;
+    default:
+        return OCA_HW_ERROR;
     }
     fuse_read_bytes(base, out, OCA_IDENTITY_BYTES);
     return OCA_HW_OK;
 }
 
 static oca_hw_result_t plat_get_lifecycle_state(oca_lifecycle_level_t level,
-                                                oca_lifecycle_token_t *out_state)
-{
+                                                oca_lifecycle_token_t *out_state) {
     if (out_state == NULL) {
         return OCA_HW_ERROR;
     }
@@ -538,9 +544,8 @@ static oca_hw_result_t plat_get_lifecycle_state(oca_lifecycle_level_t level,
     return OCA_HW_OK;
 }
 
-static oca_hw_result_t plat_get_version(oca_version_level_t level,
-                                        uint16_t *out_major, uint16_t *out_minor)
-{
+static oca_hw_result_t plat_get_version(oca_version_level_t level, uint16_t *out_major,
+                                        uint16_t *out_minor) {
     (void)level;
     if (out_major == NULL || out_minor == NULL) {
         return OCA_HW_ERROR;
@@ -560,14 +565,12 @@ static oca_hw_result_t plat_get_version(oca_version_level_t level,
 // one, so a value that changes mid-validation is OCA_FAIL_SECURE_BOOT_STATE_
 // CHANGED. Both read fuse shadows that are frozen well before this point.
 
-static oca_secure_bool_t plat_is_secure_boot_active(void)
-{
+static oca_secure_bool_t plat_is_secure_boot_active(void) {
     uint32_t lc = lc_read_state();
     return lc_state_enforces_secure_boot(lc) ? OCA_SECURE_TRUE : OCA_SECURE_FALSE;
 }
 
-static oca_secure_bool_t plat_is_secure_boot_disabled(void)
-{
+static oca_secure_bool_t plat_is_secure_boot_disabled(void) {
     // Same SBOOT_DIS shadow rom_main.c latches into bl0_state, read directly so
     // this stays usable no matter the order callbacks are first invoked in.
     uint32_t sboot_dis = mmio_read32(OCH_SEP_TOP_SEP_EFUSE_MAP_SBOOT_DIS_BASE_ADDR);
@@ -576,8 +579,7 @@ static oca_secure_bool_t plat_is_secure_boot_disabled(void)
 
 // -- device-stored secure-boot state (reads only) ---------------------------
 
-static oca_result_t plat_get_root_key_revocation(oca_key_algorithm_t algo, uint8_t out[16])
-{
+static oca_result_t plat_get_root_key_revocation(oca_key_algorithm_t algo, uint8_t out[16]) {
     if (out == NULL) {
         return OCA_FAIL_INVALID_ARG;
     }
@@ -597,8 +599,7 @@ static oca_result_t plat_get_root_key_revocation(oca_key_algorithm_t algo, uint8
     return OCA_OK;
 }
 
-static oca_result_t plat_get_security_version(uint8_t out[16])
-{
+static oca_result_t plat_get_security_version(uint8_t out[16]) {
     if (out == NULL) {
         return OCA_FAIL_INVALID_ARG;
     }
@@ -629,20 +630,19 @@ static oca_result_t plat_get_security_version(uint8_t out[16])
 // describe_field is diagnostics-only and costs ROM for string tables, so it is
 // left out as well.
 static const oca_callbacks_t sep_callbacks = {
-    .sha256                 = plat_sha256,
-    .verify_signature       = plat_verify_signature,
-    .decrypt_payload        = plat_decrypt_payload,
-    .get_identity_bytes     = plat_get_identity_bytes,
-    .get_lifecycle_state    = plat_get_lifecycle_state,
-    .get_version            = plat_get_version,
-    .is_secure_boot_active  = plat_is_secure_boot_active,
+    .sha256 = plat_sha256,
+    .verify_signature = plat_verify_signature,
+    .decrypt_payload = plat_decrypt_payload,
+    .get_identity_bytes = plat_get_identity_bytes,
+    .get_lifecycle_state = plat_get_lifecycle_state,
+    .get_version = plat_get_version,
+    .is_secure_boot_active = plat_is_secure_boot_active,
     .is_secure_boot_disabled = plat_is_secure_boot_disabled,
-    .is_key_authorized      = plat_is_key_authorized,
+    .is_key_authorized = plat_is_key_authorized,
     .get_root_key_revocation = plat_get_root_key_revocation,
-    .get_security_version   = plat_get_security_version,
+    .get_security_version = plat_get_security_version,
 };
 
-const oca_callbacks_t *sep_oca_callbacks(void)
-{
+const oca_callbacks_t *sep_oca_callbacks(void) {
     return &sep_callbacks;
 }

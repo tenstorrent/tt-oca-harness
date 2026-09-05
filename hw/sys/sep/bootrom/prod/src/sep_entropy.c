@@ -42,47 +42,47 @@
 // --- values ----------------------------------------------------------------
 // Ring oscillators: sample clock on, generators off (PHASE A) then everything
 // on (PHASE B). The generators must not run before the rest is configured.
-#define ESRC_RING_OSC_SAMPLECLK_ONLY  0x00FFF000u
-#define ESRC_RING_OSC_ALL_ON          0x00FFFFFFu
+#define ESRC_RING_OSC_SAMPLECLK_ONLY 0x00FFF000u
+#define ESRC_RING_OSC_ALL_ON 0x00FFFFFFu
 
 // DECORRELATOR_CTRL.SAMPLE_CLK_DIV in [31:12]; 0x3F => divide by 64. The DV
 // default policy; the /8 variant exists for faster smoke runs.
-#define ESRC_DECOR_CTRL_DIV64         0x0003F000u
+#define ESRC_DECOR_CTRL_DIV64 0x0003F000u
 
 // rep_limit=50, repetition/APT/Markov health tests enabled. HEALTH_TEST_WINDOW_SIZE
 // is deliberately left at its 2048-sample reset.
-#define ESRC_HEALTH_CTRL              0x00003207u
+#define ESRC_HEALTH_CTRL 0x00003207u
 
 // MuBi4: true = 0x6, false = 0x9. Every control field below is MuBi4.
-#define MUBI4_TRUE                    0x6u
-#define MUBI4_FALSE                   0x9u
+#define MUBI4_TRUE 0x6u
+#define MUBI4_FALSE 0x9u
 
 // CSRNG: ENABLE only. SW_APP_ENABLE, READ_INT_STATE and FIPS_FORCE_ENABLE are
 // diagnostic interfaces and stay false unless security policy asks for them --
 // the ROM consumes entropy through the hardware EDN path and needs none of them.
-#define CSRNG_CTRL_CONFIGURED                                            \
-    ((uint32_t)((MUBI4_TRUE  << CSRNG__CTRL__ENABLE_bp) |                \
-                (MUBI4_FALSE << CSRNG__CTRL__SW_APP_ENABLE_bp) |         \
-                (MUBI4_FALSE << CSRNG__CTRL__READ_INT_STATE_bp) |        \
+#define CSRNG_CTRL_CONFIGURED \
+    ((uint32_t)((MUBI4_TRUE << CSRNG__CTRL__ENABLE_bp) | \
+                (MUBI4_FALSE << CSRNG__CTRL__SW_APP_ENABLE_bp) | \
+                (MUBI4_FALSE << CSRNG__CTRL__READ_INT_STATE_bp) | \
                 (MUBI4_FALSE << CSRNG__CTRL__FIPS_FORCE_ENABLE_bp)))
 
 // EDN continuous-operation mode. BOOT_REQ_MODE must be FALSE: boot-request mode
 // takes precedence over auto-request and stays in its completed state until
 // firmware clears it, so setting both does NOT give continuous operation.
-#define EDN_CTRL_CONFIGURED                                              \
-    ((uint32_t)((MUBI4_TRUE  << EDN__CTRL__EDN_ENABLE_bp) |              \
-                (MUBI4_TRUE  << EDN__CTRL__AUTO_REQ_MODE_bp) |           \
-                (MUBI4_FALSE << EDN__CTRL__BOOT_REQ_MODE_bp) |           \
+#define EDN_CTRL_CONFIGURED \
+    ((uint32_t)((MUBI4_TRUE << EDN__CTRL__EDN_ENABLE_bp) | \
+                (MUBI4_TRUE << EDN__CTRL__AUTO_REQ_MODE_bp) | \
+                (MUBI4_FALSE << EDN__CTRL__BOOT_REQ_MODE_bp) | \
                 (MUBI4_FALSE << EDN__CTRL__CMD_FIFO_RST_bp)))
 
 // csrng command words: {8'h0, glen[11:0], flag0=9 (use real entropy), clen=0, acmd}
-#define CSRNG_CMD_INSTANTIATE         0x00000901u
-#define CSRNG_CMD_RESEED              0x00000902u
-#define CSRNG_CMD_GENERATE_GLEN32     0x00020903u
-#define EDN_RESEED_INTERVAL           8u
+#define CSRNG_CMD_INSTANTIATE 0x00000901u
+#define CSRNG_CMD_RESEED 0x00000902u
+#define CSRNG_CMD_GENERATE_GLEN32 0x00020903u
+#define EDN_RESEED_INTERVAL 8u
 
 #ifndef SEP_ENTROPY_CMD_TIMEOUT
-#define SEP_ENTROPY_CMD_TIMEOUT       1000000u
+#define SEP_ENTROPY_CMD_TIMEOUT 1000000u
 #endif
 
 // EXT_TRNG_SRC_SEL.sel[2:0] is PER STREAM: bit0 Key Manager, bit1 crypto blocks,
@@ -95,14 +95,14 @@
 // Bounded wait for the boot health-test window. The chain is analog at the
 // bottom, so this must be a timeout, not a spin.
 #ifndef SEP_ENTROPY_SEED_TIMEOUT
-#define SEP_ENTROPY_SEED_TIMEOUT      2000000u
+#define SEP_ENTROPY_SEED_TIMEOUT 2000000u
 #endif
 
 // ESRC_CTRL with every field at its reset value. MODULE_ENABLE and
 // SHA256_WHITENING_ENABLE both reset to 1, which is already what this ROM
 // wants, so the write is an explicit statement of intent rather than a change.
-#define ESRC_CTRL_CONFIGURED                                          \
-    ((uint32_t)(ENTROPY_SOURCE__CTRL__MODULE_ENABLE_bm |              \
+#define ESRC_CTRL_CONFIGURED \
+    ((uint32_t)(ENTROPY_SOURCE__CTRL__MODULE_ENABLE_bm | \
                 ENTROPY_SOURCE__CTRL__SHA256_WHITENING_ENABLE_bm))
 
 // Terminal-failure hook, defined in rom_main.c. Same idiom lifecycle.c uses for
@@ -154,8 +154,8 @@ static int wait_boot_phase_done(void) {
         // Do not spin out the full timeout on a failure the hardware has
         // already reported; alert/err latch, so one check per iteration turns a
         // 2M-iteration wait into an immediate verdict.
-        if (s & (ENTROPY_SOURCE__MAIN_SM_STATUS__ALERT_bm |
-                 ENTROPY_SOURCE__MAIN_SM_STATUS__ERR_bm)) {
+        if (s &
+            (ENTROPY_SOURCE__MAIN_SM_STATUS__ALERT_bm | ENTROPY_SOURCE__MAIN_SM_STATUS__ERR_bm)) {
             simputs("ESRC_HEALTH_FAIL=");
             simputhex32(s);
             simputs("\n");
@@ -224,8 +224,7 @@ static int edn_instantiate(void) {
 static void lock_source_selection(void) {
 #if !SEP_ENTROPY_DEFER_SRC_SEL_LOCK
     if (apply_lock(OCH_SEP_TOP_SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_LOCK_BASE_ADDR,
-                   SEP_CPU_CTRL__EXT_TRNG_SRC_SEL_LOCK__LOCK_bm,
-                   "ENTROPY_SRC_SEL") != 0) {
+                   SEP_CPU_CTRL__EXT_TRNG_SRC_SEL_LOCK__LOCK_bm, "ENTROPY_SRC_SEL") != 0) {
         entropy_fail();
     }
 #endif
@@ -274,11 +273,9 @@ int sep_entropy_init(void) {
 
     mmio_write32(OCH_SEP_TOP_ENTROPY_SOURCE_RING_OSC_ENABLE_BASE_ADDR,
                  ESRC_RING_OSC_SAMPLECLK_ONLY);
-    mmio_write32(OCH_SEP_TOP_ENTROPY_SOURCE_DECORRELATOR_CTRL_BASE_ADDR,
-                 ESRC_DECOR_CTRL_DIV64);
+    mmio_write32(OCH_SEP_TOP_ENTROPY_SOURCE_DECORRELATOR_CTRL_BASE_ADDR, ESRC_DECOR_CTRL_DIV64);
     mmio_write32(OCH_SEP_TOP_ENTROPY_SOURCE_FIFO_CTRL_BASE_ADDR, 0x1u);
-    mmio_write32(OCH_SEP_TOP_ENTROPY_SOURCE_HEALTH_TEST_CTRL_BASE_ADDR,
-                 ESRC_HEALTH_CTRL);
+    mmio_write32(OCH_SEP_TOP_ENTROPY_SOURCE_HEALTH_TEST_CTRL_BASE_ADDR, ESRC_HEALTH_CTRL);
     mmio_write32(OCH_SEP_TOP_ENTROPY_SOURCE_CTRL_BASE_ADDR, ESRC_CTRL_CONFIGURED);
 
     mmio_write32(OCH_SEP_TOP_CSRNG_CTRL_BASE_ADDR, CSRNG_CTRL_CONFIGURED);
@@ -287,12 +284,10 @@ int sep_entropy_init(void) {
     // false. Instantiate is issued through SW_CMD_REQ once EDN is enabled.
     mmio_write32(OCH_SEP_TOP_EDN_RESEED_CMD_BASE_ADDR, CSRNG_CMD_RESEED);
     mmio_write32(OCH_SEP_TOP_EDN_GENERATE_CMD_BASE_ADDR, CSRNG_CMD_GENERATE_GLEN32);
-    mmio_write32(OCH_SEP_TOP_EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_BASE_ADDR,
-                 EDN_RESEED_INTERVAL);
+    mmio_write32(OCH_SEP_TOP_EDN_MAX_NUM_REQS_BETWEEN_RESEEDS_BASE_ADDR, EDN_RESEED_INTERVAL);
 
     // --- PHASE B: start the generators, then wait for a seed ---------------
-    mmio_write32(OCH_SEP_TOP_ENTROPY_SOURCE_RING_OSC_ENABLE_BASE_ADDR,
-                 ESRC_RING_OSC_ALL_ON);
+    mmio_write32(OCH_SEP_TOP_ENTROPY_SOURCE_RING_OSC_ENABLE_BASE_ADDR, ESRC_RING_OSC_ALL_ON);
     __asm__ volatile("fence" ::: "memory");
 
     if (wait_boot_phase_done() != 0) {

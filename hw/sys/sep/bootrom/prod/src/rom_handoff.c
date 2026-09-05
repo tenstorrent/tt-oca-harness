@@ -42,8 +42,7 @@
 
 // oca_image_info_t::type is a NUL-terminated 17-byte buffer holding the 16
 // on-disk bytes, so a plain fixed-length compare is enough; no libc.
-static bool type_matches(const char *type, const char *want)
-{
+static bool type_matches(const char *type, const char *want) {
     for (uint32_t i = 0; i < 16u; ++i) {
         if (type[i] != want[i]) return false;
         if (want[i] == '\0') break;
@@ -52,8 +51,7 @@ static bool type_matches(const char *type, const char *want)
 }
 
 // Scan the TOC for the first image of the wanted type.
-static bool find_bl1(oca_image_info_t *out)
-{
+static bool find_bl1(oca_image_info_t *out) {
     const uint8_t *payload = rom_oca_payload();
     size_t payload_len = rom_oca_payload_len();
     oca_toc_info_t toc;
@@ -74,8 +72,7 @@ static bool find_bl1(oca_image_info_t *out)
 
 // Copy the BL1 image to its SRAM load address. Both src (staged payload) and
 // dst (BL1 link address) are LSU-accessible.
-static void copy_bl1_to_sram(const uint8_t *src, uint32_t dest_addr, uint32_t length)
-{
+static void copy_bl1_to_sram(const uint8_t *src, uint32_t dest_addr, uint32_t length) {
     volatile uint32_t *dst = (volatile uint32_t *)(uintptr_t)dest_addr;
     const uint32_t *src32 = (const uint32_t *)src;
     uint32_t words = length >> 2;
@@ -92,8 +89,7 @@ static void copy_bl1_to_sram(const uint8_t *src, uint32_t dest_addr, uint32_t le
 }
 
 // Jump to BL1 entry point. Does not return.
-__attribute__((noreturn)) static void jump_to_bl1(uint32_t entry_addr)
-{
+__attribute__((noreturn)) static void jump_to_bl1(uint32_t entry_addr) {
     // fence.i flushes the IFU pipeline so freshly written SRAM code is visible;
     // fence completes pending stores.
     simputs("PRE_JUMP\n");
@@ -111,8 +107,7 @@ __attribute__((noreturn)) static void jump_to_bl1(uint32_t entry_addr)
 // Public API
 // ---------------------------------------------------------------------------
 
-uint32_t rom_handoff_bl1(void)
-{
+uint32_t rom_handoff_bl1(void) {
     oca_image_info_t bl1;
 
     report_status(STATUS_TYPE_INFO, SEP_MSG_COPY_AND_EXEC_IMAGE);
@@ -124,9 +119,9 @@ uint32_t rom_handoff_bl1(void)
         return OCA_BOOT_ERR_NO_BL1;
     }
 
-    uint32_t load_addr  = (uint32_t)bl1.load_addr;
+    uint32_t load_addr = (uint32_t)bl1.load_addr;
     uint32_t img_length = (uint32_t)bl1.length;
-    uint32_t entry_off  = (uint32_t)bl1.entry_point;
+    uint32_t entry_off = (uint32_t)bl1.entry_point;
 
     report_status(STATUS_TYPE_INFO, SEP_MSG_BL1_FOUND);
     simputshex32("LOAD=", load_addr);
@@ -136,9 +131,9 @@ uint32_t rom_handoff_bl1(void)
     // The TOC entry's load_addr/entry_point are authenticated but arbitrary:
     // the library checks them for internal consistency, never against this
     // device's memory map. Confining the copy to SEP SRAM is the ROM's job.
-    if (bl1.length > (uint64_t)OCH_SEP_TOP_SEP_SRAM_SIZE
-        || !contains_range(OCH_SEP_TOP_SEP_SRAM_BASE_ADDR, OCH_SEP_TOP_SEP_SRAM_SIZE,
-                           (size_t)bl1.load_addr, (size_t)bl1.length)) {
+    if (bl1.length > (uint64_t)OCH_SEP_TOP_SEP_SRAM_SIZE ||
+        !contains_range(OCH_SEP_TOP_SEP_SRAM_BASE_ADDR, OCH_SEP_TOP_SEP_SRAM_SIZE,
+                        (size_t)bl1.load_addr, (size_t)bl1.length)) {
         simputs("BL1_ADDR_RANGE\n");
         report_status(STATUS_TYPE_ERROR, SEP_MSG_BL1_BAD_ADDR);
         return OCA_BOOT_ERR_BL1_BAD_ADDR;

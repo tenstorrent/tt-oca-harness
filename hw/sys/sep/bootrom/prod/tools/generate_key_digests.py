@@ -33,8 +33,11 @@ def extract_modulus_digest(pem_path):
 def format_digest(name, digest):
     """Format a digest as a C static const array."""
     lines = [f"static const uint8_t {name}[SHA256_DIGEST_SIZE_BYTES] = {{"]
-    for i in range(0, 32, 8):
-        chunk = ", ".join(f"0x{digest[i + j]:02x}" for j in range(8))
+    # 16 bytes per line: 4 indent + 16 * "0xXX, " lands on 99 columns, just inside the
+    # tree's clang-format ColumnLimit of 100. At 8 per line clang-format repacks the array
+    # and `make ocah-format-c-check` reports the generated file as unformatted.
+    for i in range(0, 32, 16):
+        chunk = ", ".join(f"0x{digest[i + j]:02x}" for j in range(16))
         lines.append(f"    {chunk},")
     lines.append("};")
     return "\n".join(lines)
@@ -77,12 +80,10 @@ def main():
             digest = extract_modulus_digest(pem_files[name])
             var = f"digest_{name}"
             digest_defs.append(format_digest(var, digest))
-            entries.append(f"    {{ .digest = {var} }},  // slot {SLOT_NAMES.index(name)}: {name}")
+            entries.append(f"    {{.digest = {var}}}, // slot {SLOT_NAMES.index(name)}: {name}")
             print(f"  slot {SLOT_NAMES.index(name)} ({name}): {pem_files[name]}", file=sys.stderr)
         else:
-            entries.append(
-                f"    {{ .digest = (void *)0 }},     // slot {SLOT_NAMES.index(name)}: {name}"
-            )
+            entries.append(f"    {{.digest = (void *)0}}, // slot {SLOT_NAMES.index(name)}: {name}")
 
     with open(args.output, "w") as f:
         # Emit the licence header the tree-wide OSPO sweep expects. Without it every

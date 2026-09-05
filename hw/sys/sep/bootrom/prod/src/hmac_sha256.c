@@ -184,9 +184,9 @@ int hmac_sha256(const uint8_t *key, uint32_t key_len, const uint8_t *data, uint3
     // nothing exercised hmac_sha256() until the OCA payload KDF.
     uint32_t key_length_field;
     if (key_len <= 16u) {
-        key_length_field = 0x01u;        // Key_128
+        key_length_field = 0x01u; // Key_128
     } else {
-        key_length_field = 0x02u;        // Key_256
+        key_length_field = 0x02u; // Key_256
     }
 
     hmac__CFG_t cfg = {.w = 0};

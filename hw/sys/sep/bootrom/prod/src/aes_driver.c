@@ -180,8 +180,12 @@ int aes_cbc_decrypt(uint8_t *data, uint32_t len, const uint8_t *key, uint32_t ke
 
     uint32_t key_len_field;
     switch (key_bytes) {
-    case 16u: key_len_field = AES_KEYLEN_128; break;
-    case 32u: key_len_field = AES_KEYLEN_256; break;
+    case 16u:
+        key_len_field = AES_KEYLEN_128;
+        break;
+    case 32u:
+        key_len_field = AES_KEYLEN_256;
+        break;
     default:
         // Not defaulted to AES-256 the way the hardware would: a caller passing
         // a width this driver does not know is a bug, and silently using a
@@ -241,8 +245,7 @@ fail:
 // only defence against that is what the caller already did: the OCA library
 // verifies payload_hash over the ciphertext BEFORE decrypting, so an attacker
 // cannot submit chosen ciphertexts to probe this at all.
-int aes_pkcs7_strip(const uint8_t *data, uint32_t len, uint32_t *out_len)
-{
+int aes_pkcs7_strip(const uint8_t *data, uint32_t len, uint32_t *out_len) {
     if (data == NULL || out_len == NULL || len == 0u || (len & 0xFu) != 0u) {
         return -1;
     }
@@ -261,7 +264,7 @@ int aes_pkcs7_strip(const uint8_t *data, uint32_t len, uint32_t *out_len)
         // Bytes beyond the claimed padding are not checked, but the mask is
         // computed rather than branched on.
         const uint32_t in_pad = (i < pad) ? 1u : 0u;
-        const uint8_t  b      = data[len - 1u - i];
+        const uint8_t b = data[len - 1u - i];
         bad |= in_pad & ((b ^ (uint8_t)pad) != 0u ? 1u : 0u);
     }
 
