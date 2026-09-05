@@ -28,6 +28,18 @@ from pathlib import Path
 
 DOCS_SUFFIXES = frozenset({".md", ".adoc", ".svg", ".png", ".jpg", ".jpeg", ".gif", ".webp"})
 
+REGISTER_INFRASTRUCTURE_PATHS = frozenset(
+    {
+        "hw/sys/sep/dv/cocotb/env/sep_reg_meta.py",
+        "ocah.mk",
+        "pyproject.toml",
+        "scripts/ci/check-regen-regs.sh",
+        "scripts/ci/validate-regen-regs.py",
+        "uv.lock",
+    }
+)
+REGISTER_INFRASTRUCTURE_DIRS = ("hw/common/regs/", "tools/regs/")
+
 # Returned when the diff cannot be listed. Not a docs path, so hardware CI runs.
 UNCLASSIFIED = "(unclassified)"
 
@@ -61,6 +73,28 @@ def is_docs_path(path: str) -> bool:
     ):
         return True
     return Path(normalized).suffix.lower() in DOCS_SUFFIXES
+
+
+def is_register_regen_path(path: str) -> bool:
+    """Return True when changing *path* can affect register collateral."""
+    normalized = path.replace("\\", "/").lstrip("./")
+    if normalized == UNCLASSIFIED or normalized.endswith(".rdl"):
+        return True
+    if normalized in REGISTER_INFRASTRUCTURE_PATHS or normalized.startswith(
+        REGISTER_INFRASTRUCTURE_DIRS
+    ):
+        return True
+
+    parts = normalized.split("/")
+    return any(
+        part in {"regs", "registers", "rdl"} and "gen" in parts[index + 1 :]
+        for index, part in enumerate(parts)
+    )
+
+
+def is_register_regen_required(paths: list[str]) -> bool:
+    """Return True when any changed path requires a full register regeneration."""
+    return any(is_register_regen_path(path) for path in paths)
 
 
 def parse_name_status(raw: str) -> list[str]:
@@ -209,6 +243,25 @@ def self_test() -> None:
     assert is_documentation_only(["README.md", "doc/contributing/src/index.adoc"])
     assert not is_documentation_only([])
     assert not is_documentation_only([UNCLASSIFIED])
+
+    for path in (
+        "hw/sys/smc/regs/smc.rdl",
+        "hw/ip/uart/regs/gen/sv/uart_reg.sv",
+        "hw/ip/foo/registers/bar/gen/c/bar.h",
+        "vendor/pulp-platform/idma/overlay/rdl/gen/sv/dma_ctrl_reg.sv",
+        "tools/regs/reggen_wrapper.py",
+        "hw/common/regs/templates/svpkg.mako",
+        "pyproject.toml",
+        "uv.lock",
+        "ocah.mk",
+        UNCLASSIFIED,
+    ):
+        assert is_register_regen_path(path), path
+    for path in ("hw/sys/smc/rtl/smc.sv", "README.md", "doc/trm/src/index.adoc"):
+        assert not is_register_regen_path(path), path
+    assert is_register_regen_required(["README.md", "hw/sys/smc/regs/smc.rdl"])
+    assert not is_register_regen_required([])
+    assert not is_register_regen_required(["README.md", "hw/sys/smc/rtl/smc.sv"])
     print("diff_class self-test ok")
 
 
@@ -230,6 +283,11 @@ def main(argv: list[str] | None = None) -> int:
         metavar="PATH",
         help="write a one-job child pipeline and exit 0 when documentation-only",
     )
+    mode.add_argument(
+        "--is-register-regen-required",
+        action="store_true",
+        help="exit 0 if the diff can affect register collateral, otherwise 1",
+    )
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args(argv)
 
@@ -250,6 +308,10 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         write_documentation_only_child(Path(args.write_documentation_only_child))
         return 0
+    if args.is_register_regen_required:
+        required = is_register_regen_required(paths)
+        print(f"register_regen_required={str(required).lower()}", file=sys.stderr)
+        return 0 if required else 1
     if args.is_documentation_only:
         return 0 if documentation_only else 1
     print("documentation" if documentation_only else "hardware")

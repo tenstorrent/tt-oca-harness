@@ -1124,118 +1124,139 @@ NUM_EXT_DEMUX_PORTS
   assign wdt_timer_rst_req_o  = wdt_timer_rst_req;
   assign security_disable_o   = security_disable;
 
-  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugCpuStatusLaneWidth_A,
-      $bits({sep_cpu_trace.trace_rv_i_valid_ip, sep_cpu_trace.trace_rv_i_exception_ip,
-             sep_cpu_trace.trace_rv_i_interrupt_ip, 13'b0}) == 16)
-  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugEccPerfLaneWidth_A,
-      $bits({cpu_iccm_ecc_single_error, cpu_iccm_ecc_double_error,
-             cpu_dccm_ecc_single_error, cpu_dccm_ecc_double_error,
-             cpu_dec_tlu_perfcnt0, cpu_dec_tlu_perfcnt1,
-             cpu_dec_tlu_perfcnt2, cpu_dec_tlu_perfcnt3, 8'b0}) == 16)
-  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugInterruptLaneWidth_A,
-      $bits({intr_wdog_timer_bark, sep_mailbox_interrupt, km_mbox_irq,
-             entropy_source_irq, ext_trng_irq, intr_dma_done, intr_dma_chunk_done,
-             intr_dma_error, 1'b0}) == 16)
-  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugResetStatusLaneWidth_A,
-      $bits({sep_reset_n, wdt_timer_rst_req, security_disable, 13'b0}) == 16)
-  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugTraceAddressLaneWidth_A,
-      $bits(sep_cpu_trace.trace_rv_i_address_ip[15:0]) == 16)
-  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugTraceInsnLaneWidth_A,
-      $bits(sep_cpu_trace.trace_rv_i_insn_ip[15:0]) == 16)
-  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugTraceExceptionLaneWidth_A,
-      $bits({sep_cpu_trace.trace_rv_i_ecause_ip[3:0],
-             sep_cpu_trace.trace_rv_i_tval_ip[11:0]}) == 16)
-  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugControlLaneWidth_A,
-      $bits({8'b0, o_cpu_run_ack, o_debug_mode_status, o_cpu_halt_status,
-             o_cpu_halt_ack, 1'b0, debug_brkpt_status, mpc_debug_run_ack,
-             mpc_debug_halt_ack}) == 16)
-  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugEfuseLaneWidth_A,
-      $bits({6'b0, sep_efuse_debug}) == 16)
-  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugSipTokenLaneWidth_A,
-      $bits({10'b0, sep_efuse_token_match_sip_debug}) == 16)
-  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugChipletTokenLaneWidth_A,
-      $bits({10'b0, sep_efuse_token_match_chiplet_debug}) == 16)
-  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugRemapLaneWidth_A,
-      $bits({8'b0, local_masters_remap_debug}) == 16)
-  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugOutboundFilterLaneWidth_A,
-      $bits({{(16 - 2*$clog2(sep_pkg::OUTBOUND_FILTER_NUM_FILTERS)){1'b0}},
-             outbound_write_filter_hit_debug,
-             outbound_read_filter_hit_debug}) == 16)
-  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugInboundFilterLaneWidth_A,
-      $bits({{(16 - 2*$clog2(sep_pkg::INBOUND_FILTER_NUM_FILTERS)){1'b0}},
-             inbound_write_filter_hit_debug,
-             inbound_read_filter_hit_debug}) == 16)
-  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugReservedLanesWidth_A,
-      $bits(160'b0) == 10 * 16)
+  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(
+      ExtDebugCpuStatusLaneWidth_A, $bits
+      ({sep_cpu_trace.trace_rv_i_valid_ip, sep_cpu_trace.trace_rv_i_exception_ip, sep_cpu_trace.trace_rv_i_interrupt_ip, 13'b0}
+          ) == 16)
+  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(
+      ExtDebugEccPerfLaneWidth_A, $bits
+      ({cpu_iccm_ecc_single_error, cpu_iccm_ecc_double_error, cpu_dccm_ecc_single_error, cpu_dccm_ecc_double_error, cpu_dec_tlu_perfcnt0, cpu_dec_tlu_perfcnt1, cpu_dec_tlu_perfcnt2, cpu_dec_tlu_perfcnt3, 8'b0}
+          ) == 16)
+  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(
+      ExtDebugInterruptLaneWidth_A, $bits
+      ({intr_wdog_timer_bark, sep_mailbox_interrupt, km_mbox_irq, entropy_source_irq, ext_trng_irq, intr_dma_done, intr_dma_chunk_done, intr_dma_error, 1'b0}
+          ) == 16)
+  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugResetStatusLaneWidth_A, $bits
+                                    ({sep_reset_n, wdt_timer_rst_req, security_disable, 13'b0})
+                                    == 16)
+  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugTraceAddressLaneWidth_A, $bits
+                                    (sep_cpu_trace.trace_rv_i_address_ip[15:0]) == 16)
+  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugTraceInsnLaneWidth_A, $bits
+                                    (sep_cpu_trace.trace_rv_i_insn_ip[15:0]) == 16)
+  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(
+      ExtDebugTraceExceptionLaneWidth_A, $bits
+      ({sep_cpu_trace.trace_rv_i_ecause_ip[3:0], sep_cpu_trace.trace_rv_i_tval_ip[11:0]}) == 16)
+  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(
+      ExtDebugControlLaneWidth_A, $bits
+      ({8'b0, o_cpu_run_ack, o_debug_mode_status, o_cpu_halt_status, o_cpu_halt_ack, 1'b0, debug_brkpt_status, mpc_debug_run_ack, mpc_debug_halt_ack}
+          ) == 16)
+  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugEfuseLaneWidth_A, $bits({6'b0, sep_efuse_debug}) == 16)
+  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugSipTokenLaneWidth_A, $bits
+                                    ({10'b0, sep_efuse_token_match_sip_debug}) == 16)
+  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugChipletTokenLaneWidth_A, $bits
+                                    ({10'b0, sep_efuse_token_match_chiplet_debug}) == 16)
+  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugRemapLaneWidth_A, $bits
+                                    ({8'b0, local_masters_remap_debug}) == 16)
+  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(
+      ExtDebugOutboundFilterLaneWidth_A, $bits
+      ({{(16 - 2 * $clog2(sep_pkg::OUTBOUND_FILTER_NUM_FILTERS)
+       ) {1'b0}}, outbound_write_filter_hit_debug, outbound_read_filter_hit_debug}) == 16)
+  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(
+      ExtDebugInboundFilterLaneWidth_A, $bits
+      ({{(16 - 2 * $clog2(sep_pkg::INBOUND_FILTER_NUM_FILTERS)
+       ) {1'b0}}, inbound_write_filter_hit_debug, inbound_read_filter_hit_debug}) == 16)
+  `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugReservedLanesWidth_A, $bits(160'b0) == 10 * 16)
 
   // External debug bus assignment (24 lanes, 16 bits per lane)
   assign ext_debug_bus_o = {
-            // [383:368] CPU trace valid and exception
-            sep_cpu_trace.trace_rv_i_valid_ip, sep_cpu_trace.trace_rv_i_exception_ip,
-            sep_cpu_trace.trace_rv_i_interrupt_ip, 13'b0,
+    // [383:368] CPU trace valid and exception
+    sep_cpu_trace.trace_rv_i_valid_ip,
+    sep_cpu_trace.trace_rv_i_exception_ip,
+    sep_cpu_trace.trace_rv_i_interrupt_ip,
+    13'b0,
 
-            // [367:352] ECC errors and performance counters
-            cpu_iccm_ecc_single_error, cpu_iccm_ecc_double_error,
-            cpu_dccm_ecc_single_error, cpu_dccm_ecc_double_error,
-            cpu_dec_tlu_perfcnt0, cpu_dec_tlu_perfcnt1, cpu_dec_tlu_perfcnt2, cpu_dec_tlu_perfcnt3,
-            8'b0,
+    // [367:352] ECC errors and performance counters
+    cpu_iccm_ecc_single_error,
+    cpu_iccm_ecc_double_error,
+    cpu_dccm_ecc_single_error,
+    cpu_dccm_ecc_double_error,
+    cpu_dec_tlu_perfcnt0,
+    cpu_dec_tlu_perfcnt1,
+    cpu_dec_tlu_perfcnt2,
+    cpu_dec_tlu_perfcnt3,
+    8'b0,
 
-            // [351:336] Seven scalar interrupts, eight mailbox interrupts, one reserved bit
-            intr_wdog_timer_bark, sep_mailbox_interrupt, km_mbox_irq,
-            entropy_source_irq, ext_trng_irq, intr_dma_done, intr_dma_chunk_done, intr_dma_error,
-            1'b0,                  // [336] Reserved
+    // [351:336] Seven scalar interrupts, eight mailbox interrupts, one reserved bit
+    intr_wdog_timer_bark,
+    sep_mailbox_interrupt,
+    km_mbox_irq,
+    entropy_source_irq,
+    ext_trng_irq,
+    intr_dma_done,
+    intr_dma_chunk_done,
+    intr_dma_error,
+    1'b0,  // [336] Reserved
 
-            // [335:320] Reset and security status
-            sep_reset_n, wdt_timer_rst_req, security_disable, 13'b0,
+    // [335:320] Reset and security status
+    sep_reset_n,
+    wdt_timer_rst_req,
+    security_disable,
+    13'b0,
 
-            // [319:304] CPU trace instruction address [15:0]
-            sep_cpu_trace.trace_rv_i_address_ip[15:0],
+    // [319:304] CPU trace instruction address [15:0]
+    sep_cpu_trace.trace_rv_i_address_ip[15:0],
 
-            // [303:288] CPU trace instruction [15:0]
-            sep_cpu_trace.trace_rv_i_insn_ip[15:0],
+    // [303:288] CPU trace instruction [15:0]
+    sep_cpu_trace.trace_rv_i_insn_ip[15:0],
 
-            // [287:272] CPU trace ecause and tval [15:0]
-            {sep_cpu_trace.trace_rv_i_ecause_ip[3:0], sep_cpu_trace.trace_rv_i_tval_ip[11:0]},
+    // [287:272] CPU trace ecause and tval [15:0]
+    {
+      sep_cpu_trace.trace_rv_i_ecause_ip[3:0], sep_cpu_trace.trace_rv_i_tval_ip[11:0]
+    },
 
-            // [271:256] Debug control signals
-            8'b0,                  // [271:264] Reserved padding
-            o_cpu_run_ack,         // [263]
-            o_debug_mode_status,   // [262]
-            o_cpu_halt_status,     // [261]
-            o_cpu_halt_ack,        // [260]
-            1'b0,
-            debug_brkpt_status,    // [258]
-            mpc_debug_run_ack,     // [257]
-            mpc_debug_halt_ack,    // [256]
+    // [271:256] Debug control signals
+    8'b0,  // [271:264] Reserved padding
+    o_cpu_run_ack,  // [263]
+    o_debug_mode_status,  // [262]
+    o_cpu_halt_status,  // [261]
+    o_cpu_halt_ack,  // [260]
+    1'b0,
+    debug_brkpt_status,  // [258]
+    mpc_debug_run_ack,  // [257]
+    mpc_debug_halt_ack,  // [256]
 
-            // [255:240] SEP eFuse debug
-            6'b0,                  // [255:250] Reserved padding
-            sep_efuse_debug,       // [249:240]
+    // [255:240] SEP eFuse debug
+    6'b0,  // [255:250] Reserved padding
+    sep_efuse_debug,  // [249:240]
 
-            // [239:224] SEP eFuse RMA SiP token match debug
-            10'b0,                 // [239:230] Reserved padding
-            sep_efuse_token_match_sip_debug,      // [229:224]
+    // [239:224] SEP eFuse RMA SiP token match debug
+    10'b0,  // [239:230] Reserved padding
+    sep_efuse_token_match_sip_debug,  // [229:224]
 
-            // [223:208] SEP eFuse RMA chiplet token match debug
-            10'b0,                 // [223:214] Reserved padding
-            sep_efuse_token_match_chiplet_debug,  // [213:208]
+    // [223:208] SEP eFuse RMA chiplet token match debug
+    10'b0,  // [223:214] Reserved padding
+    sep_efuse_token_match_chiplet_debug,  // [213:208]
 
-            // [207:192] Local masters address-remap hit debug
-            8'b0,                         // [207:200] Reserved padding
-            local_masters_remap_debug,    // [199:192]
+    // [207:192] Local masters address-remap hit debug
+    8'b0,  // [207:200] Reserved padding
+    local_masters_remap_debug,  // [199:192]
 
-            // [191:176] Outbound filter hit debug
-            {(16 - 2*$clog2(sep_pkg::OUTBOUND_FILTER_NUM_FILTERS)){1'b0}},
-            outbound_write_filter_hit_debug,
-            outbound_read_filter_hit_debug,
+    // [191:176] Outbound filter hit debug
+    {(16 - 2 * $clog2(
+        sep_pkg::OUTBOUND_FILTER_NUM_FILTERS
+    )) {1'b0}},
+    outbound_write_filter_hit_debug,
+    outbound_read_filter_hit_debug,
 
-            // [175:160] Inbound filter hit debug
-            {(16 - 2*$clog2(sep_pkg::INBOUND_FILTER_NUM_FILTERS)){1'b0}},
-            inbound_write_filter_hit_debug,
-            inbound_read_filter_hit_debug,
+    // [175:160] Inbound filter hit debug
+    {(16 - 2 * $clog2(
+        sep_pkg::INBOUND_FILTER_NUM_FILTERS
+    )) {1'b0}},
+    inbound_write_filter_hit_debug,
+    inbound_read_filter_hit_debug,
 
-            // [159:0] Reserved for future use
-            160'b0
-        };
+    // [159:0] Reserved for future use
+    160'b0
+  };
 
 endmodule
