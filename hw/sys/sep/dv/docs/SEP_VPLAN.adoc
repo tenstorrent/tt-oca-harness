@@ -2190,8 +2190,8 @@ the injection point is real logic and is golden-checked.
 |Per cell: the digest equals the golden, the done interrupt sets and clears on write-one-to-clear, and the error status is clean.
 |CHK-RAND-REP
 |Every legal cell ran, each producing a distinct digest. The matrix is derived from the generated digest-size and key-length banks minus `HMAC_ILLEGAL_KEYED`, which is the single source of truth for legality, so the sequence and this walk cannot drift apart.
-|CHK-SKIP
-|Each digest-size / key-length pair the engine rejects as `invalid_config` is named in the log with its reason, rather than being dropped silently from the matrix.
+|SKIP-ILLEGAL-KEYED
+|Each digest-size / key-length pair the engine rejects as `invalid_config` is named in the log with its reason, rather than being dropped silently from the matrix. A declaration, not a checker: no negative cell is driven, so nothing here provokes `ERR_CODE`.
 |CHK-ERR
 |`ERR_CODE` and the error interrupt bit read zero across the walk. This is a passive observation: nothing in this entry induces an error, so there is no positive control that the register can ever be non-zero on this path.
 |===
@@ -2220,7 +2220,7 @@ on this path.
 
 [arabic]
 . Bring up in `no_cpu` with `+skip_fuse_sense`.
-. Walk the eight SHA3/SHAKE/cSHAKE/KMAC cells against `sep_kmac_golden`.
+. Walk the thirteen SHA3/SHAKE/cSHAKE/KMAC cells against `sep_kmac_golden`.
 
 *Checkers*:
 
@@ -2316,7 +2316,7 @@ custody chain is explicit.
 . Bring up in `no_cpu` mode with fuse sense skipped.
 . Hold AES PRNG reseed and OTBN URND `edn_req` together before EDN is enabled.
 . Bring up the entropy stack (noise force, seed, then enable EDN).
-. Sample `crypto_edn_ack_o` until both clients have been granted and consecutive grants differ.
+. Sample `crypto_edn_ack_o` for a fixed grant budget, then let the checkers decide. Breaking the collection loop on the alternation condition would make the checkers restatements of that guard.
 
 *Checkers*:
 
