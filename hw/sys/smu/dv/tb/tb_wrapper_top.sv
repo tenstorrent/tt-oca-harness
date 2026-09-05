@@ -459,14 +459,14 @@ module smu_wrapper_uvm_top (
   logic        rst_primary_smc_clk_n;
   logic        sep_reset_n;
   sep_pkg::sep_cpu_trace_t sep_cpu_trace;
-  sep_pkg::sep_straps_t    sep_straps;
+  logic                    secure_tm_req;
 
   i3c_pkg::dat_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dat_src;
   i3c_pkg::dct_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dct_src;
   assign i3c_dat_src = '0;
   assign i3c_dct_src = '0;
 
-  assign sep_straps = '0;
+  assign secure_tm_req = 1'b0;
   // ------------------------------------------------------------------
   // ext_in AXI master surface.
   //
@@ -1291,7 +1291,6 @@ module smu_wrapper_uvm_top (
 
     .test_en_i (1'b0),
     .scan_rst_ni (1'b1),
-    .captured_straps_i ('0),
 
     // Without an external BISR/MBIST agent the boot sequencer waits forever
     // if these stay low (CPU never fetches ROM).
@@ -1309,7 +1308,7 @@ module smu_wrapper_uvm_top (
     .lcc_demote_state_2_o (),
     .sep_fuse_sense_done_o,
     .clk_sep_wdt_i,
-    .sep_straps_i (sep_straps),
+    .secure_tm_req_i (secure_tm_req),
 
     .i3c_dat_mem_src_i (i3c_dat_src),
     .i3c_dat_mem_sink_o (),

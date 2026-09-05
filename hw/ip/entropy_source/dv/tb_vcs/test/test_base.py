@@ -53,6 +53,7 @@ from entropy_source_reg import (
     ENTROPY_SOURCE_RING_OSC_CTRL_REG_DEFAULT,
     ENTROPY_SOURCE_RING_OSC_ENABLE_REG_DEFAULT,
     ENTROPY_SOURCE_RING_OSC_TUNE_REG_DEFAULT,
+    ENTROPY_SOURCE_SHA256_STATUS_REG_DEFAULT,
 )
 
 # Legacy constant for backward compatibility
@@ -101,7 +102,13 @@ REG_MAP = {
         ENTROPY_SOURCE_INTR_TEST_REG_DEFAULT,
         0x11111111,
     ),
-    # 0x1C RESERVED
+    "SHA256_STATUS": (
+        0x1C,
+        "RO",
+        "SHA-256 conditioner progress",
+        ENTROPY_SOURCE_SHA256_STATUS_REG_DEFAULT,
+        0x00000000,
+    ),
     "FIFO_CTRL": (0x20, "RW", "FIFO Control", ENTROPY_SOURCE_FIFO_CTRL_REG_DEFAULT, 0x00000011),
     "FIFO_STATUS": (
         0x24,

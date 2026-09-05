@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: CC-BY-4.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[environment_setup]]
@@ -53,12 +53,15 @@ pip install uv
 To clone the repository, ensure that you have `git` installed (`sudo apt install git`), and then run the following commands:
 
 ```bash
-git clone git@github.com:tenstorrent/tt-oca-harness.git
+git clone https://github.com/tenstorrent/tt-oca-harness.git
 
 cd tt-oca-harness
-
-git submodule update --init --recursive
 ```
+
+The repository's open RTL, documentation, register generation, lint, and
+containerized firmware flows do not require submodules. The production SEP boot
+manifest tooling is an optional submodule that requires separate access; do not
+use `--recursive` for the public setup path.
 
 == Package Dependencies
 

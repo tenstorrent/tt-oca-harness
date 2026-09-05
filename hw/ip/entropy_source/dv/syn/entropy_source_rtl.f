@@ -39,6 +39,7 @@
 ../rtl/entropy_ripple_divider.sv
 
 // Entropy generation modules (in dependency order)
+../rtl/entropy_ring_stage_wrappers.sv
 ../rtl/entropy_ring_oscillator.sv
 ../rtl/entropy_rosc_tune_fsm.sv
 ../rtl/entropy_noise_source.sv

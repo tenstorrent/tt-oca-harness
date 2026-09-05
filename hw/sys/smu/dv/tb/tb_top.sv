@@ -71,8 +71,6 @@ module smu_uvm_top
   output logic            lc_sigint_err_o,
   output logic [1:0]      lcc_demote_state_1_o,
   output logic [1:0]      lcc_demote_state_2_o,
-  // GPIO strap capture (reset-unit STRAPS_* readback source)
-  input  wire logic [63:0] captured_straps_i,
   // GPIO boot-stall pad bit[57] drive (OR'd into pad2core; Verilator-safe)
   input  wire logic        gpio_boot_stall_drive_i,
   output logic [31:0] ext_mailbox_interrupts,
@@ -355,8 +353,8 @@ module smu_uvm_top
   assign i3c_dct_src = '0;
 
   // SEP strap / irq idle (SEP=0 paths still exist as ports)
-  sep_pkg::sep_straps_t sep_straps;
-  assign sep_straps = '0;
+  logic secure_tm_req;
+  assign secure_tm_req = 1'b0;
 
   // Observables
   assign sep_global_base_o         = sep_base_w;
@@ -584,7 +582,6 @@ module smu_uvm_top
     .trace_mem_resp_i            (trc_resp),
     .test_en_i                   (1'b0),
     .scan_rst_ni                 (1'b1),
-    .captured_straps_i           (captured_straps_i),
     .mem_repair_done_i           (1'b1),
     .mem_repair_success_i        (1'b1),
     .mem_repair_abort_i          (1'b0),
@@ -619,7 +616,7 @@ module smu_uvm_top
     .lcc_demote_state_2_o        (lcc_demote_state_2_o),
     .sep_fuse_sense_done_o       (),
     .clk_sep_wdt_i               (clk_smu_i),
-    .sep_straps_i                (sep_straps),
+    .secure_tm_req_i             (secure_tm_req),
     .i3c_dat_mem_src_i           (i3c_dat_src),
     .i3c_dat_mem_sink_o          (),
     .i3c_dct_mem_src_i           (i3c_dct_src),
