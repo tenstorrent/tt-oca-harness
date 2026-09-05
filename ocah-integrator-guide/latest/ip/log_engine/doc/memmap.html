@@ -327,7 +327,8 @@ control</p></td>
 <h3 id="LOG_REGION_ADDR">LOG_REGION_ADDR</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>63:32</td><td>LOG_REGION_ADDR_HI</td><td>RW</td><td>0x0</td><td>Log Region Start Address High.</td></tr>
+<tr><td>63:56</td><td>RESERVED</td><td>R</td><td>0x0</td><td>Reserved. Reads as zero; writes are ignored.</td></tr>
+<tr><td>55:32</td><td>LOG_REGION_ADDR_HI</td><td>RW</td><td>0x0</td><td>Log Region Start Address High. Contains fabric address bits [55:32].</td></tr>
 <tr><td>31:0</td><td>LOG_REGION_ADDR_LO</td><td>RW</td><td>0x0</td><td>Log Region Start Address Low.</td></tr>
 </table>
 <h3 id="LOG_WRITE_ADDR">LOG_WRITE_ADDR</h3>

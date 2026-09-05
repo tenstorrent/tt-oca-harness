@@ -298,12 +298,16 @@ pip install uv</code></pre>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">git clone git@github.com:tenstorrent/tt-oca-harness.git
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash">git clone https://github.com/tenstorrent/tt-oca-harness.git
 
-cd tt-oca-harness
-
-git submodule update --init --recursive</code></pre>
+cd tt-oca-harness</code></pre>
 </div>
+</div>
+<div class="paragraph">
+<p>The repository&#8217;s open RTL, documentation, register generation, lint, and
+containerized firmware flows do not require submodules. The production SEP boot
+manifest tooling is an optional submodule that requires separate access; do not
+use <code>--recursive</code> for the public setup path.</p>
 </div>
 </div>
 </div>

@@ -356,11 +356,21 @@ memmap.adoc, index.adoc)</p>
 </div>
 </div>
 <div class="paragraph">
-<p>For AsciiDoc (<code>.adoc</code>), use line comments:</p>
+<p>For AsciiDoc (<code>.adoc</code>), use line comments. Documentation and images are
+licensed under CC-BY-4.0:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-asciidoc hljs" data-lang="asciidoc">// SPDX-License-Identifier: Apache-2.0
+<pre class="highlightjs highlight"><code class="language-asciidoc hljs" data-lang="asciidoc">// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>For JavaScript (<code>.js</code>), use line comments:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-javascript hljs" data-lang="javascript">// SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.</code></pre>
 </div>
 </div>
@@ -368,9 +378,13 @@ memmap.adoc, index.adoc)</p>
 <p>For shell and Python scripts that begin with a <code>#!</code> shebang line, place the header immediately after the shebang. Keep the year current for new files; do not edit the year on files you only modify.</p>
 </div>
 <div class="paragraph">
-<p>Generated register collateral under <code>hw/**/regs/gen/</code> is produced by the
-repository generation flows and carries the same SPDX Apache-2.0 header as
-hand-authored files (emitted by the generators / <code>tools/regs/stamp_spdx.py</code>).</p>
+<p>The CC-BY-4.0 AsciiDoc header above is for hand-authored documentation. Generated
+register collateral under <code>hw/**/regs/gen/</code>&#8201;&#8212;&#8201;including its <code>.adoc</code> and <code>.html</code>
+tables&#8201;&#8212;&#8201;is a mechanical rendering of the Apache-2.0-licensed SystemRDL source it
+is generated from, not hand-authored documentation, so it keeps the Apache-2.0
+header across every emitted extension (<code>.sv</code>, <code>.c</code>, <code>.py</code>, <code>.adoc</code>, <code>.html</code>, &#8230;&#8203;)
+rather than switching to CC-BY-4.0 by file extension. <code>tools/regs/stamp_spdx.py</code>
+stamps this header uniformly; do not hand-edit it into CC-BY-4.0.</p>
 </div>
 </div>
 <div class="sect2">
