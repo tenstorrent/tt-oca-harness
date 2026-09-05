@@ -97,7 +97,7 @@ module idma_${identifier} #(
       dma_ctrl_rsp_o[i].ready =  ( read_happens && arb_ready[i] || ~read_happens && dma_ctrl_req_i[i].valid ) ;
     end
 
-    cnt_width_t [MaxNumStreams-1:0] next_id_re_temp;
+    logic [MaxNumStreams-1:0] next_id_re_temp;
     assign next_id_re_temp[0] = dma_reg2hw[i].next_id_0.re;
     assign next_id_re_temp[1] = dma_reg2hw[i].next_id_1.re;
     assign next_id_re_temp[2] = dma_reg2hw[i].next_id_2.re;
@@ -122,7 +122,7 @@ module idma_${identifier} #(
         for (int c = 0; c < NumStreams; c++) begin
             read_happens |= next_id_re_temp[c];
             if (next_id_re_temp[c]) begin
-                stream_idx_o = c;
+                stream_idx_o = stream_t'(c);
             end
         end
         arb_valid[i] = read_happens;
@@ -139,9 +139,12 @@ module idma_${identifier} #(
       arb_dma_req[i]${sep}src_addr = dma_reg2hw[i].src_addr_low.q;
       arb_dma_req[i]${sep}dst_addr = dma_reg2hw[i].dst_addr_low.q;
 % else:
-      arb_dma_req[i]${sep}length   = {dma_reg2hw[i].length_high.q,   dma_reg2hw[i].length_low.q};
-      arb_dma_req[i]${sep}src_addr = {dma_reg2hw[i].src_addr_high.q, dma_reg2hw[i].src_addr_low.q};
-      arb_dma_req[i]${sep}dst_addr = {dma_reg2hw[i].dst_addr_high.q, dma_reg2hw[i].dst_addr_low.q};
+      arb_dma_req[i]${sep}length   = $bits(arb_dma_req[i]${sep}length)'(
+          {dma_reg2hw[i].length_high.q, dma_reg2hw[i].length_low.q});
+      arb_dma_req[i]${sep}src_addr = $bits(arb_dma_req[i]${sep}src_addr)'(
+          {dma_reg2hw[i].src_addr_high.q, dma_reg2hw[i].src_addr_low.q});
+      arb_dma_req[i]${sep}dst_addr = $bits(arb_dma_req[i]${sep}dst_addr)'(
+          {dma_reg2hw[i].dst_addr_high.q, dma_reg2hw[i].dst_addr_low.q});
 % endif
 
       // Protocols
@@ -171,12 +174,17 @@ module idma_${identifier} #(
       arb_dma_req[i].d_req[${nd}].src_strides = dma_reg2hw[i].src_stride_${nd+2}_low.q;
       arb_dma_req[i].d_req[${nd}].dst_strides = dma_reg2hw[i].dst_stride_${nd+2}_low.q;
 % else:
-      arb_dma_req[i].d_req[${nd}].reps = {dma_reg2hw[i].reps_${nd+2}_high.q,
-                                      dma_reg2hw[i].reps_${nd+2}_low.q };
-      arb_dma_req[i].d_req[${nd}].src_strides = {dma_reg2hw[i].src_stride_${nd+2}_high.q,
-                                             dma_reg2hw[i].src_stride_${nd+2}_low.q};
-      arb_dma_req[i].d_req[${nd}].dst_strides = {dma_reg2hw[i].dst_stride_${nd+2}_high.q,
-                                             dma_reg2hw[i].dst_stride_${nd+2}_low.q};
+      arb_dma_req[i].d_req[${nd}].reps =
+          $bits(arb_dma_req[i].d_req[${nd}].reps)'(
+              {dma_reg2hw[i].reps_${nd+2}_high.q, dma_reg2hw[i].reps_${nd+2}_low.q});
+      arb_dma_req[i].d_req[${nd}].src_strides =
+          $bits(arb_dma_req[i].d_req[${nd}].src_strides)'(
+              {dma_reg2hw[i].src_stride_${nd+2}_high.q,
+               dma_reg2hw[i].src_stride_${nd+2}_low.q});
+      arb_dma_req[i].d_req[${nd}].dst_strides =
+          $bits(arb_dma_req[i].d_req[${nd}].dst_strides)'(
+              {dma_reg2hw[i].dst_stride_${nd+2}_high.q,
+               dma_reg2hw[i].dst_stride_${nd+2}_low.q});
 % endif
 % endfor
 
@@ -199,7 +207,8 @@ module idma_${identifier} #(
     cnt_width_t [MaxNumStreams-1:0] next_id_temp;
     // observational registers
     for (genvar c = 0; c < NumStreams; c++) begin : gen_hw2reg_connections
-        assign dma_hw2reg[i].status[c]  = {midend_busy_i[c], busy_i[c]};
+        assign dma_hw2reg[i].status[c] =
+            $bits(dma_hw2reg[i].status[c])'({midend_busy_i[c], busy_i[c]});
         assign next_id_temp[c] = next_id_i;
         assign dma_hw2reg[i].done_id[c] = done_id_i[c];
     end
