@@ -383,9 +383,7 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
         # must hold: the transient path applies the token gates, it does not
         # bypass them. Without this cell the walk below could pass on a DUT that
         # moves as soon as the enable bit is sensed.
-        await self._cell(
-            0x0, "CHK-TRANSIENT-NO-TOKEN", do_write=False, expect=LC_PROD_END
-        )
+        await self._cell(0x0, "CHK-TRANSIENT-NO-TOKEN", do_write=False, expect=LC_PROD_END)
 
         await self._match(TOKEN_RMA_SIP)
         got = await self._cell(0x0, "CHK-TRANSIENT-INVALID", do_write=False, expect=expected)

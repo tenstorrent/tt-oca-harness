@@ -387,9 +387,7 @@ def dbg_disable_expected(feat_ctrl: int) -> dict[str, int]:
 def dbg_disable_unpack(raw: int) -> dict[str, int]:
     """Split the flattened dbg_disable vector into named bits (MSB first)."""
     n = len(DBG_DISABLE_FIELDS)
-    return {
-        name: (raw >> (n - 1 - i)) & 1 for i, name in enumerate(DBG_DISABLE_FIELDS)
-    }
+    return {name: (raw >> (n - 1 - i)) & 1 for i, name in enumerate(DBG_DISABLE_FIELDS)}
 
 
 selftest()

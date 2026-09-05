@@ -71,8 +71,7 @@ class sep_lcc_demote_feat_ctrl_matrix_test(sep_base_test):
                 f"sip_dbg={(feat_ctrl >> 16) & 1})"
             )
         self.logger.info(
-            "CHK-DBG-DISABLE PASS: %s %d of %d bits match the gating ladder "
-            "(unclaimed: %s)",
+            "CHK-DBG-DISABLE PASS: %s %d of %d bits match the gating ladder (unclaimed: %s)",
             tag,
             len(want),
             len(want) + len(DBG_DISABLE_UNCLAIMED),
