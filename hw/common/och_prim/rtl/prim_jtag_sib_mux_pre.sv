@@ -50,9 +50,10 @@ module prim_jtag_sib_mux_pre
   if (SAFE_SELECT) begin : gen_safe_select
     prim_flop #(
       .Width(1),
-      .ResetValue('0)
+      .ResetValue('0),
+      .Negedge(1'b1)
     ) u_sib_en_flop (
-      .clk_i  (~client_scan_ctrl_i.tck),
+      .clk_i  (client_scan_ctrl_i.tck),
       .rst_ni (client_scan_ctrl_i.rst_n),
       .d_i    (sib_en_masked),
       .q_o    (sib_en_out)

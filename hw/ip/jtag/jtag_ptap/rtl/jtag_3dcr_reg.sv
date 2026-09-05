@@ -38,9 +38,10 @@ module jtag_3dcr_reg
   // state transitions.
   prim_flop #(
     .Width     (1),
-    .ResetValue(1'b0)
+    .ResetValue(1'b0),
+    .Negedge   (1'b1)
   ) u_config_hold_sticky_flop (
-    .clk_i  (~scan_ctrl_i.tck),
+    .clk_i  (scan_ctrl_i.tck),
     .rst_ni (tap_ctrl_i.trst_n),
     .d_i    (config_hold),
     .q_o    (config_hold_sticky)
