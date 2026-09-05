@@ -30,7 +30,7 @@ from __future__ import annotations
 
 import cocotb
 
-from .smc_addr_map import _SMC_BASE_CFG_H, _field_mask, smc_addr
+from .smc_addr_map import _SMC_BASE_CFG_H, HANG_DET_IRQ_TEST, _field_mask, smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
 
@@ -90,7 +90,31 @@ class smc_cpu_ctrl_map_depth_test_seq(SmcCsrSeq):
         # checking zero items while this sequence still passed
         # ([NO-ZERO-ACTIVITY-PASS]). `assert_all_reachable` adds the scoreboard
         # cross-check (`sys_axi_checks_seen >= accesses`) that carries the claim.
-        self.assert_all_reachable(len(CPU_MAP_READS), "CPU_CTRL_MAP")
+
+        # Positive control for the sweep above. Every row compares a reset value,
+        # so a window that answered its reset word from a dead responder, or a
+        # read path stuck at those constants, satisfies all of them. Writing a
+        # non-reset value into one row and reading it back shows the window is
+        # live, then the reset value is restored so the sweep's own compares are
+        # unaffected.
+        probe_addr = dict((n, a) for n, a, _e in CPU_MAP_READS)["HANG_DET_DATA_ACCEL_CTRL"]
+        probe_reset = dict((n, e) for n, _a, e in CPU_MAP_READS)["HANG_DET_DATA_ACCEL_CTRL"]
+        probe_val = probe_reset ^ HANG_DET_IRQ_TEST
+        await self.csr_write("CPU_MAP_PROBE_WRITE", probe_addr, probe_val)
+        await self.csr_read("CPU_MAP_PROBE_READBACK", probe_addr, expected=probe_val)
+        await self.csr_write("CPU_MAP_PROBE_RESTORE", probe_addr, probe_reset)
+        await self.csr_read("CPU_MAP_PROBE_RESTORE_RB", probe_addr, expected=probe_reset)
+        cocotb.log.info(
+            "CHK-CPU-CTRL-MAP-LIVE: HANG_DET_DATA_ACCEL_CTRL@0x%08x took "
+            "0x%x and returned to its reset 0x%x, so the reset compares below "
+            "are read from a live window",
+            probe_addr,
+            probe_val,
+            probe_reset,
+        )
+        self.chk_seen.add("CHK-CPU-CTRL-MAP-LIVE")
+
+        self.assert_all_reachable(len(CPU_MAP_READS) + 4, "CPU_CTRL_MAP")
         # Conditional evidence for the map rows themselves: emitted only after
         # every row's exact reset compare has been enforced by the scoreboard
         # and the reachability cross-check above has passed.
