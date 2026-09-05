@@ -282,7 +282,7 @@ feature has no legal knob space (a strap, a single named handshake).
 |`sep_trng_reset_recovery_test`
 |no_cpu, +skip_fuse_sense, +esrc_noise_force
 |ocah_axi_vip, entropy golden
-|The counterpart for the one reset shared by ESRC, CSRNG and EDN: the pool is filled from the internal chain, every consumer is held, and the reset must wait for all three converted AXI-Lite paths to isolate before it asserts. Proves the pool scrubs its stale and half-packed data, that the isolated paths answer DECERR while the external CSR responder and source-select stay outside the domain, and that recovery is fresh-only and ordered — consumers are released only after fresh pool progress.
+|The counterpart for the one reset shared by ESRC, CSRNG and EDN: the pool is filled from the internal chain, every consumer is held, and the reset must wait for all three converted AXI-Lite paths to isolate before it asserts. Proves the pool scrubs its stale and half-packed data, that the isolated paths answer DECERR while the external source-select register stays outside the domain, and that recovery is fresh-only and ordered — consumers are released only after fresh pool progress.
 |`sep_abr_mldsa_keygen_kat_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -637,7 +637,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 
 |Coordinated TRNG reset and ordered recovery
 |PROVEN
-|`sep_trng_reset_recovery_test`. One `SW_RESET_N` bit resets ESRC, CSRNG and EDN together, and the reset waits for all three converted AXI-Lite paths to report isolated, so drain-before-reset is covered here rather than deferred. Also covers the pool scrub, DECERR while isolated, the external CSR and source-select staying outside the domain, and the JTAG hold/release pair.
+|`sep_trng_reset_recovery_test`. One `SW_RESET_N` bit resets ESRC, CSRNG and EDN together, and the reset waits for all three converted AXI-Lite paths to report isolated, so drain-before-reset is covered here rather than deferred. Also covers the pool scrub, DECERR while isolated, the external source-select register staying outside the domain, and the JTAG hold/release pair. The external TRNG aperture is a permanent DECERR error slave in this build, so its own domain membership is not claimed.
 
 |Clock-gate CSR
 |PROVEN
@@ -2185,7 +2185,7 @@ the injection point is real logic and is golden-checked.
 |===
 |Checker |Contract
 |CHK-CONV
-|The engine honours the *specified* software-key register convention. `hmac.hjson:446-447` defines `key[1023:0] = {KEY0, ... , KEY31}`, so `KEY_0` is the most-significant word and no word reversal is needed; `hmac.sv:219` implements it. The convention is pinned from the specification, not discovered by asking the engine which one it agrees with, and not transcribed from the RTL it checks — see <<audit>>. On mismatch the failure reports whether the reversed order would have matched, which separates a key word-order regression from a general digest fault.
+|The engine honours the *specified* software-key register convention. `hmac.hjson:446-447` defines `key[1023:0] = {KEY0, ... , KEY31}`, so `KEY_0` is the most-significant word and no word reversal is needed; `hmac.sv:219-221` implements it. The convention is pinned from the specification, not discovered by asking the engine which one it agrees with, and not transcribed from the RTL it checks — see <<audit>>. On mismatch the failure reports whether the reversed order would have matched, which separates a key word-order regression from a general digest fault.
 |CHK-CELL
 |Per cell: the digest equals the golden, the done interrupt sets and clears on write-one-to-clear, and the error status is clean.
 |CHK-RAND-REP
@@ -2455,9 +2455,8 @@ write returns SLVERR where the isolate can only answer DECERR
 (`vendor/pulp-platform/axi/upstream/src/axi_lite_isolate.sv`), while the
 isolated read in the same window is correctly terminated — its data is the
 isolate's own `DecErrData` literal. So the write path reached something other
-than the isolate while the read path did not. The isolate RTL was reworked after
-this entry's last functional change, and the mismatch is reported to the open
-issue that audits that rework. It is recorded here as a real failure and is not
+than the isolate while the read path did not. The mismatch is reported to the
+open issue that audits the crypto AXI isolation and reset sequencing. It is recorded here as a real failure and is not
 converted to an expected failure.
 
 *Not claimed*: drain-before-reset for these four domains. The `CHK-ISOLATE-*`
@@ -2567,7 +2566,7 @@ is why they are asserted from Python probes rather than left to the SVA.
 
 [arabic]
 . The aperture is a `sep_crypto` demux rule at `ABR_REG_MAP_BASE_ADDR` (`hw/sys/sep/rtl/sep_crypto_pkg.sv`), reachable from the CPU-LSU master the way the OTBN tests already reach their block.
-. It is *not* behind `sep_crypto_axi_isolate`.
+. It is *not* behind an `axi_lite_isolate` unit: unlike the ESRC, CSRNG and EDN legs, the external TRNG passthrough in `hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv` carries none.
 . Accesses are 32-bit beats (`AxSIZE=2`) because this path has no width converter.
 . `hw/sys/sep/dv/shims/crypto/abr_wrapper_key_reg_stub.sv` replaces the Key-Manager-side key CSR block only; the ABR register block behind this aperture is real RTL.
 . The stub ties every key share and `key_valid` to zero, so only the software-written seed path is honest here.
@@ -2621,14 +2620,14 @@ here.
 
 *VIP / Model*: ocah_axi_vip, entropy golden
 
-*Randomization*: RANDCFG — extra pops past the watermark, and one unique-dead offset, from the run seed (`SepEntropyPoolCfg`).
+*Randomization*: RANDCFG — extra pops past the watermark come from the run seed (`SepEntropyPoolCfg`). The alias set and all three unique-dead offsets are walked every seed, so the decode coverage is seed-independent.
 
-*Objective*: Every seed walks the high-bit mirrors of the three live registers (the offsets that catch a truncated decode).
+*Objective*: The fabric entropy pool answers only its three live registers. Occupancy, low-watermark and fill-stall status reach software and the interrupt aggregator, a pop drains one word, an empty pop is refused, and every write and every unmapped offset inside the 64 KB window is refused with zero data.
 
 *Test Procedure*:
 
 [arabic]
-. Every seed walks the high-bit mirrors of the three live registers (the offsets that catch a truncated decode).
+. Every seed walks the high-bit mirrors of the three live registers, plus all three unique-dead offsets, so a truncated decode cannot hide behind a seeded pick.
 . The block is a 64 KB crossbar target at `entropy_fifo.main` (`0x1095_0000`).
 . It fills from the native EDN endpoint after the shared entropy bring-up.
 
@@ -3738,8 +3737,8 @@ seed.
 |CHK-RANDCFG
 |The set of selectors the DUT actually armed equals the five `HT_WATERMARK_NUM`
 encodings `entropy_source.rdl` defines, plus the seed-selected illegal selector
-and low-mode fall in the same invocation. The bound is the RDL enum, not the
-cardinality of the walk generator.
+and low-mode fall in the same invocation. The bound is a literal set mirroring
+the RDL enum, not the cardinality of the walk generator.
 |===
 
 *Not claimed*: the shared TRNG reset path. It clears the selector and the
@@ -4133,7 +4132,9 @@ reset, otherwise the reset value alone would satisfy the readback.
 |BIW observe enable stays writable under lock.
 |CHK-RANDCFG
 |26 locked registers walked in one invocation, covering 34 of the 35 fields
-`entropy_source.sv` marks `swwel = fips_lock`.
+`entropy_source.sv` marks `swwel = fips_lock`. Every register that locks two
+fields moves both off reset in the pre-lock write, so a field inside the compare
+mask is never left unwritten.
 |===
 
 *Not claimed*: `CTRL.MODULE_ENABLE`. It is locked too, but clearing it stops the
@@ -4156,8 +4157,8 @@ vehicle.
 *Randomization*: RAND-NONE — directed persistent-failure trip.
 
 *Objective*: A short window plus stuck forced noise trips `ALERT_THRESHOLD`,
-and the alert bookkeeping the RDL defines is read at that trip. A closing
-`INTR_TEST` sweep drives every interrupt source the RDL defines.
+and the alert bookkeeping the RDL defines is read at that trip. An opening
+`INTR_TEST` sweep, before the trip, drives every interrupt source the RDL defines.
 
 *Test Procedure*:
 
@@ -4537,7 +4538,7 @@ Holding notes (candidates, not an execute list)::
 |Beyond aperture smoke
 
 |Isolate drain-before-reset
-|Outstanding-transaction drain inside `sep_crypto_axi_isolate`
+|Outstanding-transaction drain inside the per-domain `axi_lite_isolate` units in `sep_crypto_axi_interconnect.sv`
 
 |Locked-field CPU PIC / ISR
 |PIC claim of aggregator `[33]` (aggregator pulse is Phase 2)
@@ -4575,7 +4576,7 @@ Nothing in this section is scheduled work until the UVM bench exists.
 |Phase 2 tests |45
 |Cocotb total |76
 |Phase 3 |T.B.D.
-|Iconic scorecard rows |47 in-scope: 44 PROVEN, 3 GAP (see <<iconic-scorecard>>)
+|Iconic scorecard rows |48 in-scope: 44 PROVEN, 4 GAP (see <<iconic-scorecard>>)
 |Phase 2 parked, not coded |3 (Key Manager vault; graded GAP, outside the Phase 2 count)
 |===
 
@@ -4668,7 +4669,7 @@ constraint is not an open defect.
 |`memory_map.adoc` names DECERR for the reserved remainder inside an aperture. `spi_controller` refuses a dead-space write with SLVERR. The access is refused either way, which is the contract `sep_fabric_deadspace_decode_test` asserts, so the flavour is reported as `DEADSPACE-FLAVOUR` for the design owner and is not failed. Which error responses are permitted is the open question.
 
 |Isolated write answers SLVERR, not DECERR (hardware)
-|While a crypto domain is held in software reset, an in-window read of that domain returns DECERR and carries the isolate's own `DecErrData` literal, so the read is genuinely terminated by `axi_lite_isolate`. An in-window *write* to the same aperture, same beat shape, same window, returns SLVERR. `axi_lite_isolate` emits only DECERR, on both the B and R channels, and SLVERR appears nowhere on that path, so the write was answered downstream of the isolate — the write leg was not isolated while the read leg was. `sep_crypto_per_ip_reset_isolation_test` fails on this at `CHK-ISOLATE-WR` and is left failing: the expected response set is not widened to accept SLVERR, and it is not converted to an expected failure. The isolate was reworked after that entry's last functional change; the finding is reported against the issue auditing that rework.
+|While a crypto domain is held in software reset, an in-window read of that domain returns DECERR and carries the isolate's own `DecErrData` literal, so the read is genuinely terminated by `axi_lite_isolate`. An in-window *write* to the same aperture, same beat shape, same window, returns SLVERR. `axi_lite_isolate` emits only DECERR, on both the B and R channels, and SLVERR appears nowhere on that path, so the write was answered downstream of the isolate — the write leg was not isolated while the read leg was. `sep_crypto_per_ip_reset_isolation_test` fails on this at `CHK-ISOLATE-WR` and is left failing: the expected response set is not widened to accept SLVERR, and it is not converted to an expected failure. The finding is reported against the issue auditing the crypto AXI isolation and reset sequencing.
 
 |OSS hygiene exclusions
 |No licensed/proprietary IP in the build. Bender targets stay `sep` / `sep_el2` / `sep_wrapper` only.

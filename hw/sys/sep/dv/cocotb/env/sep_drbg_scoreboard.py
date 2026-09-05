@@ -270,7 +270,7 @@ class SepDrbgScoreboard:
         # Contention evidence: the sim-time (ns) of every post-adapter crypto-EDN beat
         # per sink, index-aligned with _sink_words. Two sinks whose beat time-spans
         # OVERLAP were being granted EDN words during an overlapping window -- i.e. the
-        # round-robin arbiter (u_axis_edn_crypto) time-multiplexed two live clients
+        # round-robin arbiter (u_axis_edn_crypto_s3c_scan) served two live clients
         # (real contention), not one sink drained fully before the other. Exposed via
         # sink_beat_times(); a stricter same-cycle-req overlap does not occur with this
         # stimulus (brief req pulses separated by long AXI config), so the beat-window

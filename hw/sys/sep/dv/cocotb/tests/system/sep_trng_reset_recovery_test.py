@@ -7,9 +7,11 @@ holds every entropy consumer before resetting TRNG, proves the pool is empty
 and its stale data cannot be read, fully reinitializes the entropy complex while
 consumers remain held, and restores consumers only after fresh pool progress.
 It also proves all three internal CSR ports return DECERR while isolated, then
-resets with all external-source mux legs selected and proves the external TRNG
-CSR responder and source-select register remain outside the reset domain. The
-JTAG reset pair holds and releases the same coordinated reset.
+resets with all external-source mux legs selected and proves the external
+source-select register remains outside the reset domain. The external TRNG
+aperture itself is terminated by a permanent DECERR error slave in this build,
+so its response is a build invariant and its domain membership is not claimed.
+The JTAG reset pair holds and releases the same coordinated reset.
 
 When software clears SW_RESET_N.trng_sw_rst_n, the coordinator stops accepting
 new ESRC/CSRNG/EDN CSR traffic, drains accepted transactions on all three
@@ -114,7 +116,7 @@ class sep_trng_reset_recovery_test(sep_base_test):
             initial_level,
         )
 
-        # V6 traversal: both INTR_ENABLEs reset to 0, so a 0-before/0-after read
+        # Both INTR_ENABLEs reset to 0, so a 0-before/0-after read
         # proves nothing. Drive them to their full implemented masks first, so the
         # post-reset zero is a real 1->0 return to the register-map reset.
         csrng_ie = CSRNG.mask("INTR_ENABLE")

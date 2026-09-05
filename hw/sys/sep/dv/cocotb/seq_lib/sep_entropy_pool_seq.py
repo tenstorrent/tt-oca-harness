@@ -161,7 +161,7 @@ def _selftest() -> None:
     assert STALL_THRESH == 4096
     cfg = SepEntropyPoolCfg(1)
     assert cfg.alias_offs == _ALIAS_UNMAPPED
-    assert cfg.unmapped_offs == _UNIQUE_DEAD
+    assert cfg.unmapped_offs == (0x18, 0x40, 0x80)
     assert 1 <= cfg.extra_pops <= 4
     # The three pinned testlist seeds must all still walk the alias set.
     for pinned in (1, 2, 3):

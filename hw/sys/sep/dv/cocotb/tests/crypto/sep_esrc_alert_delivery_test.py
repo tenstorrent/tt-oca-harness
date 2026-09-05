@@ -13,8 +13,8 @@ The same trip also reads the alert bookkeeping: ANY_FAIL_COUNT is denominated in
 failing windows, ALERT_FAIL_COUNTS attributes the trip to the repetition lane,
 HEALTH_TEST_STATUS latches the failing tests, and MAIN_SM_STATUS.ERR must stay 0
 so PERSISTENT_FAILURE is attributable to AlertHang rather than to a counter or
-state fault. A closing INTR_TEST sweep drives each interrupt source the RDL
-defines on its own, which proves the aggregate slot per source independently of
+state fault. An opening INTR_TEST sweep, before the trip, drives each interrupt
+source the RDL defines on its own, which proves the aggregate slot per source independently of
 any real failure.
 """
 
@@ -91,10 +91,6 @@ class sep_esrc_alert_delivery_test(sep_base_test):
                 f"(INTR_STATUS=0x{st_after:08x}); a singlepulse source must not re-latch"
             )
             proven.append(name)
-        assert len(proven) == len(INTR_SOURCES), (
-            f"CHK-INTR-TEST FAIL: proved {len(proven)} sources {proven}, expected "
-            f"{len(INTR_SOURCES)} from ENTROPY_SOURCE.fields('INTR_TEST')"
-        )
         self.logger.info(
             "CHK-INTR-TEST PASS: all %d INTR_TEST sources set their own INTR_STATUS bit, "
             "raised PIC source 16, and cleared on W1C: %s",
@@ -141,9 +137,10 @@ class sep_esrc_alert_delivery_test(sep_base_test):
             "PERSISTENT_FAILURE came from the alert threshold"
         )
 
-        # ALERT_THRESHOLD is denominated in failing WINDOWS, not failure events:
-        # ANY_FAIL_COUNT's event input is the once-per-window ht_fail_pulse. A build
-        # that counted individual per-test fail pulses would over-count here.
+        # ANY_FAIL_COUNT's event input is the once-per-window ht_fail_pulse, so the
+        # counter is denominated in failing WINDOWS rather than failure events. This
+        # is a lower bound: it fails a counter that never advanced, and does not by
+        # itself reject a build that over-counts individual per-test fail pulses.
         any_fail = await esrc.read_any_fail_count()
         assert any_fail >= TRIP_THRESHOLD, (
             f"CHK-ANY-FAIL-WINDOWS FAIL: ANY_FAIL_COUNT={any_fail} below the "
@@ -173,9 +170,10 @@ class sep_esrc_alert_delivery_test(sep_base_test):
             "CHK-HT-STATUS FAIL: HEALTH_TEST_STATUS.HEALTH_STATUS latched no failing test "
             "while the alert was asserted"
         )
-        await esrc.w1c_health_status(ht_status)
         self.logger.info(
-            "CHK-HT-STATUS PASS: HEALTH_STATUS latched 0x%02x during the alert", ht_status
+            "CHK-HT-STATUS latched 0x%02x during the alert; W1C is proven after "
+            "AlertHang is left, where no new failure can re-latch it",
+            ht_status,
         )
 
         await esrc.leave_alert_hang()
@@ -191,4 +189,27 @@ class sep_esrc_alert_delivery_test(sep_base_test):
         self.logger.info(
             "CHK-W1C PASS: ALERT and PERSISTENT_FAILURE read back 0; sep_internal_interrupts[%d]=0",
             IRQ_AGG_IDX,
+        )
+
+        # HEALTH_TEST_STATUS is a sticky latch whose next value is re-driven from
+        # the live per-test fail signals every cycle, so a bit whose test is still
+        # failing re-latches behind the write. The provable contract is that the
+        # write clears the bits whose cause has gone and sets none of its own.
+        await esrc.disable_health_tests()
+        ht_live = await esrc.read_health_status()
+        await esrc.w1c_health_status(ht_live)
+        ht_cleared = await esrc.read_health_status()
+        assert (ht_cleared & ~ht_live & 0xFF) == 0, (
+            f"CHK-HT-STATUS FAIL: W1C of 0x{ht_live:02x} set bits that were not "
+            f"latched before it (reads 0x{ht_cleared:02x})"
+        )
+        assert ht_cleared != ht_live, (
+            f"CHK-HT-STATUS FAIL: W1C of 0x{ht_live:02x} cleared nothing (reads 0x{ht_cleared:02x})"
+        )
+        self.logger.info(
+            "CHK-HT-STATUS PASS: HEALTH_STATUS latched 0x%02x at the trip; W1C cleared "
+            "0x%02x and left 0x%02x, the bits whose per-test fail signal is still live",
+            ht_status,
+            ht_live & ~ht_cleared & 0xFF,
+            ht_cleared,
         )

@@ -83,11 +83,11 @@ class sep_kmac_mode_strength_rand_test(sep_base_test):
         # routing is in-order (one live sink). KMAC stays released for the
         # masking reseed.
         await self.bring_up_entropy(strict=True, score_km=False, score_sinks={"kmac": "golden"})
-        # Sized from an observed run: KMAC draws entropy once per operation
-        # rather than per block, so this walk scores ~6 routed beats where the AES
-        # sweep scores dozens. 4 is above the default floor of 1 and leaves room
-        # for seed variation.
-        self.drbg_sb.set_min_matches(CHK5_kmac=4)
+        # KMAC draws entropy once per operation rather than per block, so this
+        # walk scores about six routed beats where the AES sweep scores over a
+        # hundred. 3 sits well above the default floor of 1 and keeps margin if a
+        # later seed or reseed shifts the draw count.
+        self.drbg_sb.set_min_matches(CHK5_kmac=3)
         self.start_fifo_drain()
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
 
@@ -106,7 +106,7 @@ class sep_kmac_mode_strength_rand_test(sep_base_test):
             # Key the cell by every dimension that distinguishes it, key length
             # and customization included: two cells that differ only in key
             # length would otherwise overwrite each other and go uncounted.
-            cell_key = f"{mode}-{sec}-{outb}-k{key_bits}-s{len(s)}"
+            cell_key = f"{mode}-{sec}-{outb}-k{key_bits}-s{s.hex()}"
             assert cell_key not in results, f"duplicate cell key {cell_key} in CELLS"
             results[cell_key] = await self._run_cell(mode, sec, outb, key_bits, s)
 

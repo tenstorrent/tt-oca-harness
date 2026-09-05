@@ -182,7 +182,9 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         # that bound here would restate its exit condition. Assert the DUT-side
         # precondition the refused-fill check actually needs instead: the pool is
         # still asking for entropy, which is what keeps req_pending asserted.
-        assert int(cocotb.top.pool_edn_req_o.value) == 1, (
+        req = cocotb.top.pool_edn_req_o.value
+        assert req.is_resolvable, f"pool_edn_req_o is unresolvable ({req})"
+        assert int(req) == 1, (
             f"write-SLVERR arming left no outstanding pool request "
             f"(level={level_room}, pool_edn_req_o=0)"
         )

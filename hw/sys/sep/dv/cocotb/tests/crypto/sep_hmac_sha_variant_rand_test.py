@@ -118,8 +118,9 @@ class sep_hmac_sha_variant_rand_test(sep_base_test):
         )
         for sha_bits, key_bits in EXCLUDED_KEYED:
             self.logger.info(
-                "CHK-SKIP: SHA-%d with a %d-bit key is rejected by the engine as "
-                "invalid_config (hmac.sv invalid_config), so it is not a keyed cell",
+                "SKIP-ILLEGAL-KEYED: SHA-%d with a %d-bit key is rejected by the "
+                "engine as invalid_config (hmac.sv), so it is not a keyed cell. "
+                "Declared, not driven: no negative cell provokes ERR_CODE here",
                 sha_bits,
                 key_bits,
             )

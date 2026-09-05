@@ -130,12 +130,29 @@ class SepEsrcFipsLockCfg:
         win_pre = 1024
         win_poke = 4096
         thresh_pre = 8 if rng.getrandbits(1) else 16
-        decor_pre = DECOR_CTRL_DIV8
+        # Each of these three registers locks two fields. Both fields must leave
+        # their reset in `pre`, or the second one sits inside the compare mask
+        # without ever being written and its lock is not exercised.
+        decor_bypass_pre = 1 << rng.randrange(12)
+        decor_pre = DECOR_CTRL_DIV8 | ENTROPY_SOURCE.value(
+            "DECORRELATOR_CTRL", BYPASS=decor_bypass_pre, SAMPLE_CLK_DIV=0
+        )
         decor_poke = DECOR_CTRL_DIV64
-        ring_pre = RING_OSC_SAMPLECLK_ONLY
+        ring_clk_pre = 0xFFF ^ (1 << rng.randrange(12))
+        ring_pre = RING_OSC_SAMPLECLK_ONLY & ~ENTROPY_SOURCE.fields("RING_OSC_ENABLE")[
+            "SAMPLE_CLK_ENABLE"
+        ]["bm"] | ENTROPY_SOURCE.value("RING_OSC_ENABLE", ENABLE=0, SAMPLE_CLK_ENABLE=ring_clk_pre)
         ring_poke = 0x00FF_FFFF
-        tune_pre = 1 << rng.randrange(12)
-        tune_poke = 1 << ((rng.randrange(11) + 1) % 12)
+        tune_pre = ENTROPY_SOURCE.value(
+            "RING_OSC_TUNE",
+            DETUNE=1 << rng.randrange(12),
+            SAMPLE_CLK_DETUNE=1 << rng.randrange(12),
+        )
+        tune_poke = ENTROPY_SOURCE.value(
+            "RING_OSC_TUNE",
+            DETUNE=1 << rng.randrange(12),
+            SAMPLE_CLK_DETUNE=1 << rng.randrange(12),
+        )
         if tune_poke == tune_pre:
             tune_poke ^= 0x2
         # Both HEALTH_TEST_CTRL fields must move off reset, or the lock on

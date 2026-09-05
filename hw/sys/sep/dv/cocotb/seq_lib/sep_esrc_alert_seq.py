@@ -58,6 +58,13 @@ INTR_SOURCES = tuple(
         key=lambda item: item[1],
     )
 )
+# entropy_source.rdl defines eight INTR_TEST sources. The literal is the contract
+# with the RDL: if a source is added or dropped there, this raises at import
+# rather than letting the sweep silently cover a different set.
+assert len(INTR_SOURCES) == 8, (
+    f"entropy_source.rdl INTR_TEST defines {len(INTR_SOURCES)} sources, expected 8: "
+    f"{[n for n, _ in INTR_SOURCES]}"
+)
 ANY_FAIL_MASK = ENTROPY_SOURCE.fields("ALERT_SUMMARY_FAIL_COUNTS")["ANY_FAIL_COUNT"]["bm"]
 REPCNT_FAIL_MASK = ENTROPY_SOURCE.fields("ALERT_FAIL_COUNTS")["REPCNT_FAIL_COUNT"]["bm"]
 REPCNT_FAIL_LSB = ENTROPY_SOURCE.fields("ALERT_FAIL_COUNTS")["REPCNT_FAIL_COUNT"]["bp"]
@@ -107,6 +114,18 @@ class SepEsrcAlert(SepAxiRegDriver):
 
     async def read_health_status(self) -> int:
         return (await self._rd(ESRC_HEALTH_TEST_STATUS)) & HEALTH_STATUS_MASK
+
+    async def disable_health_tests(self) -> None:
+        """Clear HEALTH_TEST_CTRL.ENABLE so no test can re-latch HEALTH_STATUS.
+
+        The per-test fail signals are cleared by ENABLE, not by MODULE_ENABLE, and
+        HEALTH_TEST_STATUS.next is driven from them every cycle, so a W1C while a
+        test is still failing is undone in the same window.
+        """
+        await self._wr(
+            ESRC_HEALTH_TEST_CTRL,
+            ENTROPY_SOURCE.value("HEALTH_TEST_CTRL", ENABLE=0),
+        )
 
     async def w1c_health_status(self, value: int) -> None:
         await self._wr(ESRC_HEALTH_TEST_STATUS, value)
