@@ -66,8 +66,16 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
     """Match updates LC; mismatch does not; comparator fault path both ways."""
 
     async def _check_lc(self, image: SepEfuseImage, raw: int, tag: str) -> None:
+        # The image pins SEC_DISABLE clear and no SEC_DIS token is presented, so
+        # the value is known ahead of the read. Feeding the probe into the golden
+        # would let a spuriously asserted security-disable move the expectation
+        # with it instead of failing (AGENTS.md section 7).
         sec_dis = int(cocotb.top.lcc_security_disable_probe_o.value) & 0x1
-        seq = sep_lcc_stitch_check_seq(image, sec_dis=sec_dis)
+        assert sec_dis == 0, (
+            f"SEC_DIS asserted ({sec_dis}) but this test presents no token; the "
+            "FEAT_CTRL golden below would follow the DUT rather than grade it"
+        )
+        seq = sep_lcc_stitch_check_seq(image, sec_dis=0)
         await self.start_seq(seq)
         assert seq.observed_lc_raw == raw, (
             f"{tag}: observed LC 0x{seq.observed_lc_raw:x} != {lc_state_name(raw)}"
@@ -92,7 +100,12 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
 
         bad = SepRmaTokenMatchSeq(kind, token ^ 1)
         await self.start_seq(bad)
-        assert bad.matched is False, f"{name} mismatch produced a match code"
+        assert bad.match_code == TOKEN_MISMATCH, (
+            f"{name} wrong token gave code 0x{bad.match_code:02x}, expected the "
+            f"mismatch code 0x{TOKEN_MISMATCH:02x}. Checking only 'not a match' "
+            "would also accept the redundancy-fault code, which is a different "
+            "contract entirely."
+        )
         locked = sep_efuse_otp_program_seq(bit, expect_err=True)
         await self.start_seq(locked)
         assert locked.saw_err, f"{name} mismatch program did not return PROGRAM_ERR"
@@ -132,9 +145,16 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
             op=SepAxiOp.WRITE,
             addr=TOKEN_MATCH_FAULT,
             wdata=data,
-            allow_unverified_write_resp=True,
         )
         await self.start_seq(seq)
+        # The point of the write is that a read-only field ignores it. A write
+        # the fabric DECERRed, or one an address decode dropped, leaves the
+        # register equally unchanged -- so without checking the response, a
+        # broken decode passes the same sticky check as a correct sw=r field.
+        assert seq.resp_ok, (
+            "TOKEN_MATCH_FAULT write did not complete on the bus, so the sticky "
+            "check below cannot tell a read-only field from a rejected write"
+        )
 
     async def _present_sip(self, token: int) -> int:
         return await self._present_kind(TOKEN_RMA_SIP, token)
@@ -142,7 +162,12 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
     async def _present_kind(self, kind: int, token: int) -> int:
         seq = SepRmaTokenMatchSeq(kind, token)
         await self.start_seq(seq)
-        assert seq.match_code is not None, f"token kind {kind} match status never sampled"
+        # The sequence raises if the status never settles, so reaching here means
+        # a terminal code was observed.
+        assert seq.match_code in (TOKEN_MATCH, TOKEN_MISMATCH, TOKEN_ERROR), (
+            f"token kind {kind} settled on 0x{seq.match_code:02x}, which is not a "
+            "defined match status code"
+        )
         return seq.match_code
 
     async def _set_inject(self, mode: int, sel: int = TOKEN_CMP_SEL_SIP) -> None:
@@ -162,14 +187,22 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         code = await self._present_sip(sip_token)
         fault = await self._rd_fault()
         irq = self._irq39()
+        # The inject overwrites the gated comparator outputs, so the presented
+        # token does not reach this code: it is the forced value read back
+        # through the CSR. The contract here is the FAULT half -- three
+        # instances that agree and each drive a legal pair must not raise a
+        # redundancy fault, whatever polarity they agree on. The code read is a
+        # CSR-path liveness check, not a comparison the DUT performed.
         assert code == TOKEN_MISMATCH, (
-            f"common-mode invert of a match must read 6'b101010, got 0x{code:02x}"
+            f"unanimous legal mismatch pair should read back 6'b101010 through "
+            f"the status CSR, got 0x{code:02x}"
         )
         assert fault == 0 and irq == 0, (
-            f"common-mode must not set a sticky bit: FAULT=0x{fault:x} irq39={irq}"
+            f"a unanimous legal pair must not set a sticky fault: FAULT=0x{fault:x} irq39={irq}"
         )
         self.logger.info(
-            "CHK-COMMON-MODE PASS: all-three invert of match -> code=0x%02x, no sticky, irq39=0",
+            "CHK-COMMON-MODE PASS: unanimous legal mismatch pair -> code=0x%02x, "
+            "no sticky fault, irq39=0",
             code,
         )
         await self._set_inject(TOKEN_CMP_INJECT_OFF)
@@ -178,11 +211,15 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         code = await self._present_sip(sip_token ^ 1)
         fault = await self._rd_fault()
         irq = self._irq39()
+        # Same shape as above: the forced value, not a token comparison. What is
+        # under test is that agreement plus legal pairs means no fault -- the
+        # detector must not fire merely because the result is a match.
         assert code == TOKEN_MATCH, (
-            f"common-mode invert of a mismatch must read 6'b010101, got 0x{code:02x}"
+            f"unanimous legal match pair should read back 6'b010101 through the "
+            f"status CSR, got 0x{code:02x}"
         )
         assert fault == 0 and irq == 0, (
-            f"common-mode fake match must not set a sticky bit: FAULT=0x{fault:x} irq39={irq}"
+            f"a unanimous legal pair must not set a sticky fault: FAULT=0x{fault:x} irq39={irq}"
         )
         self.logger.info(
             "CHK-COMMON-MODE-MATCH PASS: all-three invert of mismatch -> "
@@ -306,8 +343,26 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
             "CHK-FAULT-RESET: token-match-fault interrupt still asserted after "
             "cold reset, so the PIC source does not follow the latch"
         )
+        # Two zero reads on their own would also pass if the reset had wedged the
+        # detector or the CSR read path -- a register block that returns 0 for
+        # everything satisfies both. Re-arm once so the phase ends on a zero to
+        # one transition rather than on a pair of zeroes.
+        await self._set_inject(TOKEN_CMP_INJECT_COLLAPSE)
+        await self._present_sip(cfg.sip_token)
+        fault = await self._rd_fault()
+        irq = self._irq39()
+        assert fault != 0 and irq == 1, (
+            f"CHK-FAULT-RESET: the detector did not re-arm after the reset "
+            f"(FAULT=0x{fault:08x} irq={irq}), so the zero reads above could "
+            "have come from a wedged comparator rather than a cleared latch"
+        )
+        await self._set_inject(TOKEN_CMP_INJECT_OFF)
+
         self.logger.info(
-            "CHK-FAULT-RESET PASS: cold reset cleared TOKEN_MATCH_FAULT and released the interrupt"
+            "CHK-FAULT-RESET PASS: cold reset cleared TOKEN_MATCH_FAULT and released "
+            "the interrupt, and the detector re-armed afterwards (0x%08x, irq=%d)",
+            fault,
+            irq,
         )
 
     async def run_scenario(self) -> None:
