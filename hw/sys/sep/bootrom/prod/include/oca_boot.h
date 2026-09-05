@@ -33,6 +33,8 @@
 #define OCA_BOOT_ERR_BL1_BAD_ADDR 0x00030103u   // BL1 load/entry outside SRAM
 #define OCA_BOOT_ERR_BL1_TOO_LARGE 0x00030104u  // BL1 length implausible
 #define OCA_BOOT_ERR_KEY_UNTRUSTED 0x00030105u  // signing key is not a device root key
+#define OCA_BOOT_ERR_READ_OUT_OF_BOUNDS \
+    0x00030106u // storage read refused by boot_flash_bounds_ok()
 
 // Load, authenticate and stage a manifest + payload into SEP SRAM.
 //

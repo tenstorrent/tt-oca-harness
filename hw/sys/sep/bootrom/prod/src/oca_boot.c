@@ -81,12 +81,40 @@ uint32_t rom_oca_demotion_control(void) {
 // flash byte offset read through the SPI host; otherwise `src` is an absolute
 // address (Cadence XIP window or SMC SRAM) copied by the secure DMA.
 static uint32_t manifest_src_read(uint32_t dst, uint32_t src, uint32_t len, bool from_spi) {
+    // Every storage read on the boot path goes through the transport shim's
+    // bounds gate first (SEP-ROM-SPI-010). It is the only check that the SOURCE
+    // stays inside the boot slot being tried: the library bounds the payload's
+    // LOCATION against the slot region, and the OpenTitan driver bounds the
+    // DESTINATION, but neither re-checks the offset a read is finally issued
+    // with. The gate is fault-injection hardened (doubled, laundered evaluation)
+    // and defaults to reject.
+    //
+    // It speaks flash byte offsets on both controllers. The OpenTitan path
+    // already carries one; the Cadence path carries an absolute XIP address, so
+    // the base the caller added is taken back off here. A source below the
+    // window has no offset representation at all, so it is refused rather than
+    // wrapped. Non-SPI sources (a manifest the SMC staged in its SRAM) are not
+    // flash and are bounded by their own region, so the gate does not apply.
+    if (from_spi) {
+#if BOOT_SPI_CONTROLLER_OT
+        const uint32_t flash_off = src;
+#else
+        if (src < (uint32_t)SEP_SPI_BASE) {
+            simputs("FLASH_READ_OOB\n");
+            return OCA_BOOT_ERR_READ_OUT_OF_BOUNDS;
+        }
+        const uint32_t flash_off = src - (uint32_t)SEP_SPI_BASE;
+#endif
+        if (!boot_flash_bounds_ok(flash_off, len, dst, len)) {
+            simputs("FLASH_READ_OOB\n");
+            return OCA_BOOT_ERR_READ_OUT_OF_BOUNDS;
+        }
+    }
+
 #if BOOT_SPI_CONTROLLER_OT
     if (from_spi) {
         return boot_flash_read(dst, src, len);
     }
-#else
-    (void)from_spi;
 #endif
     return sep_dma_copy(dst, src, len);
 }
