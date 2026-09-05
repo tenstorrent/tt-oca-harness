@@ -1353,7 +1353,8 @@ and `fw/drivers/sep_efuse.h` use the same derived table.
 . Write the lifecycle word write-one-to-set, and require both the differentially encoded lifecycle word and the controller's decoded feature-control output to match the specification-derived golden for the expected next state.
 . Re-check the observed step against the transition rules in value form, using the code the device returned rather than the one the test wrote.
 . On the demoted leaf, assert both demotion registers first and prove the demotion is visible in feature control before requiring the transition to succeed.
-. On the transient leaf, present the token and take no bus write at all; the same rules must apply.
+. On the production leaf, present a valid SIP token with the comparator collapsed; the bit must not set. Release the fault and the same write then advances.
+. On the transient leaf, require the state to hold with the enable armed and no token, then present the token and take no bus write at all; the same rules must apply.
 
 *Checkers*:
 
@@ -1364,6 +1365,8 @@ and `fw/drivers/sep_efuse.h` use the same derived table.
 |A write of zero to the lifecycle word clears nothing. Write-one-to-set means a bit never returns to 0, so a controller that treated the write as an assignment fails here.
 |CHK-GATE-SIP
 |The system-in-package bit does not set without a matching token. The write is otherwise identical to the one that succeeds later in the same leaf, so the gate is the only difference between the two outcomes.
+|CHK-GATE-SIP-FAULT
+|A valid SIP token presented with the comparator collapsed must not set the bit. The status is the fault code `6'b111111`, which a gate written as "not a mismatch" would accept. The cell that follows presents the same token with the fault removed and does advance.
 |CHK-GATE-CHIP-ORD
 |The chiplet bit does not set from the production state even with the chiplet token *already matched*, because the system-in-package state is not yet established. This isolates the ordering requirement from the token requirement — with the token gate open, only the ordering gate can hold.
 |CHK-GATE-CHIP-TOK
@@ -1384,6 +1387,8 @@ and `fw/drivers/sep_efuse.h` use the same derived table.
 |From outside the named set, a write of every lifecycle bit with BOTH tokens matched changes nothing. This is the strongest available form of the end-of-life property: every gate that could open is open, and the state still does not move.
 |CHK-PROD-END-INVALID
 |From the terminal product state, the reachable destination is outside the named set — the specification's "the only permitted transition is to INVALID", proven rather than assumed.
+|CHK-TRANSIENT-NO-TOKEN
+|With the transient enable armed and no token presented, the sensed terminal product state holds. The transient path applies the token gates; it does not move on the enable bit alone.
 |CHK-TRANSIENT-INVALID
 |The transient return-material-authorisation path applies the same write-one-to-set and token rules with no bus request at all, including when the result falls outside the named set.
 |CHK-UPPER-MERGE
@@ -3518,6 +3523,7 @@ both lock flavours of one seed-selected spare.
 . Walk TEST_DEV and PROD at DIS=0 through the four demote cells.
 . W1S a seed-pinned DIS pair and walk the four demote cells at PROD.
 . Every cell's inbound probe is OKAY iff `sep_debug=1`, else DECERR.
+. Every cell's `dbg_disable` vector matches the DTP gating ladder for that same `FEAT_CTRL`, except `dft_secure` and `dfd`.
 . Lock one seed-selected `DEMOTE` at 0; a later demote write is ignored.
 . `rst_ni` releases the lock; the same demote write then lands.
 
@@ -3536,6 +3542,8 @@ both lock flavours of one seed-selected spare.
 |With `lock` set and `demote` still 0, a later demote write is ignored and `feat_ctrl` stays at the undemoted golden.
 |CHK-DEMOTE-LOCK-RESET
 |After `rst_ni` the lock is 0 and the same demote write lands.
+|CHK-DBG-DISABLE
+|Nine of the eleven `dbg_disable` bits match the DTP gating ladder for the same `FEAT_CTRL` the cell just verified. `dft_secure` and `dfd` are unclaimed: the path table and the RTL disagree, and in both cases the RTL is stricter.
 |===
 
 '''''
@@ -3562,6 +3570,7 @@ both lock flavours of one seed-selected spare.
 . Common-mode invert of all three RMA_SIP comparators on a valid token: legal mismatch code, no sticky bit, IRQ low.
 . Common-mode invert of all three RMA_SIP comparators on a wrong token: legal match code, no sticky bit, IRQ low (fail-open hole).
 . Collapse instance 0, then two-instance disagree: match status `6'b111111`, SIP sticky bit, `sep_internal_interrupts[39]`. Valid retry plus write-0 leave the bit and IRQ asserted.
+. A cold-reset re-sense clears `TOKEN_MATCH_FAULT` and releases the interrupt.
 
 *Checkers*:
 
@@ -3594,6 +3603,8 @@ both lock flavours of one seed-selected spare.
 |Collapse on CHIPLET and SEC_DISABLE sets bits 8 and 16 (OR with SIP bit 0).
 |CHK-JTAG-FAULT
 |After `RMA_CHIP_1`, a JTAG read of `TOKEN_MATCH_FAULT` matches the AXI read. PROD/RMA_SIP JTAG token-block allow is `sep_efuse_jtag_axil_el2_cpu_mux_test`, not this check.
+|CHK-FAULT-RESET
+|A cold-reset re-sense clears `TOKEN_MATCH_FAULT` and releases `sep_internal_interrupts[39]`. The earlier sticky checks cannot tell a resettable latch from one that never clears.
 |===
 
 '''''

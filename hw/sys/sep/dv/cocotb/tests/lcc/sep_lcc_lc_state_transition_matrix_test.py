@@ -281,11 +281,12 @@ class sep_lcc_lc_state_transition_matrix_test(sep_base_test):
             )
             self._upper = expected_upper
         self._cur = int(observed)
+        action = f"write 0x{wdata:x}" if do_write else "no write"
         self.logger.info(
-            "%s PASS: %s + write 0x%x (sip_match=%d chiplet_match=%d demote=%d%d) -> %s",
+            "%s PASS: %s + %s (sip_match=%d chiplet_match=%d demote=%d%d) -> %s",
             tag,
             lc_state_name(prev),
-            wdata,
+            action,
             int(self._sip_match),
             int(self._chiplet_match),
             self._demote_1,
