@@ -335,7 +335,17 @@ module smu_uvm_top
   sep_pkg::sep_lockstep_ctrl_t   sep_lockstep_ctrl_i = '0;
   sep_pkg::sep_lockstep_status_t sep_lockstep_status_o;
 
+  function automatic smu_pkg::smu_cfg_t make_tb_cfg();
+    smu_pkg::smu_cfg_t cfg = smu_pkg::DefaultCfg;
+    // Exercise the most-significant configured DTP mode bit while [1:0] stay SMC-reserved.
+    cfg.XTRIG_INT_CT_MODE = 8'h80;
+    return cfg;
+  endfunction
+
+  localparam smu_pkg::smu_cfg_t TbCfg = make_tb_cfg();
+
   smu #(
+    .Cfg(TbCfg),
     .SEP(0)
   ) u_dut (
     .clk_smu_i,
