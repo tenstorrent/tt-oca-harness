@@ -7,7 +7,22 @@ set -euo pipefail
 ROOT=$(git rev-parse --show-toplevel)
 cd "$ROOT"
 
+skip_if_unrelated=0
+if [[ ${1:-} == --skip-if-unrelated ]]; then
+  skip_if_unrelated=1
+  shift
+fi
+
 (($# == 0)) && set -- .
+
+if ((skip_if_unrelated)); then
+  if python3 scripts/ci/diff_class.py --is-register-regen-required; then
+    echo "Register inputs or generated collateral changed; running regeneration check."
+  else
+    echo "No register inputs, generated collateral, or generator infrastructure changed; skipping."
+    exit 0
+  fi
+fi
 
 readonly BATCH_SIZE=128
 readonly -a GENERATED_PATHS=(
