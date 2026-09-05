@@ -260,13 +260,13 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         self.logger.info("CHK-JTAG-FAULT PASS: JTAG read 0x%08x == AXI after RMA_CHIP", jtag_data)
 
     async def _fault_clears_on_reset(self, cfg: SepRmaTokenCfg) -> None:
-        """The sticky fault bits clear on cold reset, and only on cold reset.
+        """The sticky fault bits clear on cold reset.
 
         The phases above prove the bits survive a retry with a valid token,
         which is the tamper-evidence property. They cannot tell that apart from
         a latch that never clears at all: a fault bit wired to a non-resettable
-        flop passes every one of them. Re-sensing the part and re-reading is
-        what separates the two.
+        flop passes every one of them. A cold-reset re-sense and a re-read
+        is what separates the two.
         """
         fault = await self._rd_fault()
         assert fault != 0, (

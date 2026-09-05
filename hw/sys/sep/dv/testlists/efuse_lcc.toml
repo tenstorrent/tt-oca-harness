@@ -78,9 +78,8 @@ run_modes = ["cpu"]
 name = "sep_efuse_program_lock_matrix_test"
 module = "efuse.sep_efuse_program_lock_matrix_test"
 seed = 1
-# The walk picks one LOCKS_SPARE slot from the seed. Pinned at a single seed it
-# only ever exercised that one slot, so a mis-numbered lock bit anywhere else in
-# the new 32-bit spare lane passed untouched. Eight runs cover the eight slots.
+# The walk picks one LOCKS_SPARE slot from the seed. Eight reseeds draw
+# independent slots; they do not guarantee every SPARE0..7 cell.
 reseed = 8
 timeout_sec = 1800
 tags = ["efuse", "lock", "subsystem"]
