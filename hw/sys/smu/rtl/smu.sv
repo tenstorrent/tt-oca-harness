@@ -275,9 +275,6 @@ module smu #(
   input  logic  test_en_i,
   input  logic  scan_rst_ni,
 
-  // Captured Straps
-  input  logic [smc_pkg::NUM_BONDED_GPIO-1:0]  captured_straps_i,
-
   // DFT status indicators
   input  logic mem_repair_done_i,
   input  logic mem_repair_success_i,
@@ -351,7 +348,7 @@ module smu #(
   input  logic  clk_sep_wdt_i,
 
   // SEP straps
-  input  sep_pkg::sep_straps_t  sep_straps_i,
+  input  logic                  secure_tm_req_i,
 
   // I3C DAT/DCT memory interfaces
   input  i3c_pkg::dat_mem_src_t  [smc_config_pkg::NUM_I3C-1:0]  i3c_dat_mem_src_i,
@@ -801,7 +798,6 @@ module smu #(
     .ext_debug_bus_i                     (ext_debug_bus),
     .test_en_i                           (test_en_i),
     .scan_rst_ni                         (scan_rst_ni),
-    .captured_straps_i                   (captured_straps_i),
     .mem_repair_done_i                   (mem_repair_done_i),
     .mem_repair_success_i                (mem_repair_success_i),
     .mem_repair_abort_i                  (mem_repair_abort_i),
@@ -972,7 +968,7 @@ module smu #(
       .smc_fuse_sense_done_i         (fuse_sense_done_o),
       .sep_fuse_sense_done_o         (sep_fuse_sense_done_o),
 
-      .sep_straps_i                  (sep_straps_i),
+      .secure_tm_req_i               (secure_tm_req_i),
 
       .sep_external_axi_req_o       (sep_external_req_o),
       .sep_external_axi_resp_i      (sep_external_resp_i),

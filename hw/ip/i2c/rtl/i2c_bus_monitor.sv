@@ -27,7 +27,7 @@ module i2c_bus_monitor
   input  logic [12:0] t_buf_i,                     // Bus free time (< 5 us)
   input  logic [29:0] bus_active_timeout_i,        // SCL held low  (~25 ms)
   input  logic        bus_active_timeout_en_i,
-  input  logic [19:0] bus_inactive_timeout_i,      // SCL held high (~50 us)
+  input  logic [30:0] bus_inactive_timeout_i,      // SCL held high (~50 us)
 
   output logic        bus_free_o,
   output logic        start_detect_o,
@@ -36,6 +36,8 @@ module i2c_bus_monitor
   output logic        event_bus_active_timeout_o,
   output logic        event_host_timeout_o
 );
+
+  `include "prim_assert.sv"
 
   // Only activate this monitor if at least one of the modules is enabled.
   logic monitor_enable, monitor_enable_q;
@@ -131,7 +133,7 @@ module i2c_bus_monitor
   logic bus_idling;
   assign bus_idling = scl_i && (sda_i == sda_i_q);
 
-  logic [29:0] bus_release_cnt, bus_release_cnt_sel;
+  logic [30:0] bus_release_cnt, bus_release_cnt_sel;
   logic bus_release_cnt_load, bus_release_cnt_dec;
 
   // bus_inactive_timeout_det is only high for the case where the bus release
@@ -168,7 +170,7 @@ module i2c_bus_monitor
       if (multi_controller_enable_i) begin
         // For the multi-controller case, wait until the bus isn't busy before
         // transmitting.
-        bus_release_cnt <= 30'(bus_inactive_timeout_i);
+        bus_release_cnt <= bus_inactive_timeout_i;
       end
     end else if (bus_release_cnt_load) begin
       bus_release_cnt <= bus_release_cnt_sel;
@@ -193,7 +195,7 @@ module i2c_bus_monitor
   always_comb begin
     state_d = state_q;
     bus_release_cnt_load = 1'b0;
-    bus_release_cnt_sel = 30'(t_buf_i);
+    bus_release_cnt_sel = 31'(t_buf_i);
     bus_release_cnt_dec = 1'b0;
     bus_inactive_timeout_det = 1'b0;
     bus_active_timeout_det_d = bus_active_timeout_det_q;
@@ -215,11 +217,11 @@ module i2c_bus_monitor
         if (stop_det) begin
           state_d = StBusBusyStop;
           bus_release_cnt_load = 1'b1;
-          bus_release_cnt_sel = 30'(t_buf_i);
+          bus_release_cnt_sel = 31'(t_buf_i);
         end else if (bus_idling && bus_inactive_timeout_en) begin
           state_d = StBusBusyHigh;
           bus_release_cnt_load = 1'b1;
-          bus_release_cnt_sel = 30'(bus_inactive_timeout_i);
+          bus_release_cnt_sel = bus_inactive_timeout_i;
         end else if (scl_i) begin
           bus_release_cnt_load = 1'b1;
           bus_release_cnt_sel = bus_active_timeout_i;
@@ -227,7 +229,7 @@ module i2c_bus_monitor
             // SCL was released due to the bus timeout, so go to BusFree.
             state_d = StBusFree;
           end
-        end else if (bus_release_cnt == 30'd1) begin
+        end else if (bus_release_cnt == 31'd1) begin
           // The active timeout occurs when SCL has been held continuously low
           // for too long. Both the controller and target should respond to
           // this timeout and release the bus. We don't consider the bus free
@@ -242,12 +244,12 @@ module i2c_bus_monitor
         if (stop_det) begin
           state_d = StBusBusyStop;
           bus_release_cnt_load = 1'b1;
-          bus_release_cnt_sel = 30'(t_buf_i);
+          bus_release_cnt_sel = 31'(t_buf_i);
         end else if (!bus_idling) begin
           state_d = StBusBusyLow;
           bus_release_cnt_load = 1'b1;
           bus_release_cnt_sel = bus_active_timeout_i;
-        end else if (bus_release_cnt == 30'd1) begin
+        end else if (bus_release_cnt == 31'd1) begin
           // The host_timeout interrupt occurs regardless of which value of
           // SDA was present, but only transition to StBusFree if we entered
           // this state with SDA high. If SDA is low, a change to SCL will
@@ -265,7 +267,7 @@ module i2c_bus_monitor
 
         if (!scl_i || !sda_i) begin
           state_d = StBusBusyLow;
-        end else if (bus_release_cnt == 30'd1) begin
+        end else if (bus_release_cnt == 31'd1) begin
           state_d = StBusFree;
         end
       end
@@ -307,5 +309,16 @@ module i2c_bus_monitor
 
   assign event_bus_active_timeout_o = bus_active_timeout_det_d && !bus_active_timeout_det_q;
   assign event_host_timeout_o = !target_idle_i && bus_inactive_timeout_det;
+
+  `OCAH_OT_ASSERT_INIT(BusInactiveTimeoutWidthValid_A, $bits(bus_inactive_timeout_i) == 31 && $bits
+                       (bus_release_cnt) == 31)
+  `OCAH_OT_ASSERT(
+      MonitorEnableLoadsHostTimeout_A,
+      monitor_enable && !monitor_enable_q && multi_controller_enable_i |=> bus_release_cnt == $past
+      (bus_inactive_timeout_i))
+  `OCAH_OT_ASSERT(
+      BusReleaseCounterLoadPreserves_A,
+      bus_release_cnt_load && !(monitor_enable && !monitor_enable_q) |=> bus_release_cnt == $past
+      (bus_release_cnt_sel))
 
 endmodule

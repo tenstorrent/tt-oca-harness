@@ -1,6 +1,6 @@
 # Agent Guide for tt-oca-harness
 
-This guide helps AI agents navigate and work with the Tenstorrent Open Chiplet Atlas
+This guide helps AI agents navigate and work with the Open Chiplet Atlas
 Harness (OCAH) repository. It covers environment setup, the container-based firmware
 toolchain, running firmware-driven DV, and how to debug failures without chasing the wrong
 layer. Machine- and site-specific values are left as placeholders; substitute your own.
@@ -532,6 +532,14 @@ to its elaborated top. Use the narrowest diagnostic/path/hierarchy/source match 
 constraint-focused rationale. The CI-pinned Slang v11.0 has no native external-waiver support;
 keep its findings visible rather than substituting whole-file suppression until a release with
 TOML `--waiver-file` support is pinned.
+
+The register generator owns `hw/common/regs/lint/peakrdl.verilator.vlt`, which the shared
+Verilator flow loads for every block. Its exact path and message matches cover only PeakRDL's
+`field_combo` / `field_storage` aggregate `MULTIDRIVEN` reports, including block register
+modules and the copied SPI register module. They must never expand to member names or to
+`WIDTHEXPAND` / `WIDTHTRUNC`. Before changing the exception, run the unwaived integrated-SMU
+zero-overlap audit documented in `CONTRIBUTING.md`; its non-aggregate search must remain empty,
+and the hand-authored findings must remain in the output.
 
 `OCAH_VERIBLE_LINT_EXCLUDES` and `OCAH_VERIBLE_FORMAT_EXCLUDES` are only for documented parser,
 preprocessor or formatter failures. Verible can scope by `LINT_PATH`; Slang and Verilator need

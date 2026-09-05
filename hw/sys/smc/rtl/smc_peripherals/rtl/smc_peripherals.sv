@@ -158,7 +158,6 @@ module smc_peripherals #(
 
   input  smc_pkg::jtag_smc_reset_ctrl_t jtag_reset_ctrl_i,
 
-  input  logic [smc_pkg::NUM_BONDED_GPIO-1:0] captured_straps_i,
 
   input  logic [7:0] sep_mailbox_interrupts_i,
 
@@ -1136,9 +1135,7 @@ module smc_peripherals #(
     .sync_irq_o                 (sync_irq_o),
 
     .test_en_i                  (test_en_i),
-    .scan_rst_ni                (scan_rst_ni),
-
-    .captured_straps_i          (captured_straps_i)
+    .scan_rst_ni                (scan_rst_ni)
   );
 
   assign powergood_stable_o = powergood_stable;

@@ -21,8 +21,8 @@
  * Register Address Definitions
  * These are extracted from registers/smc_top_regs.h to avoid complex includes in assembly
  */
-#define SMC_STRAPS_LO_REG_ADDR 0xC0002090            /* RESET_UNIT_STRAPS_LO_REG_ADDR */
-#define SMC_STRAPS_HI_REG_ADDR 0xC0002094            /* RESET_UNIT_STRAPS_HI_REG_ADDR */
+#define SMC_STRAPS_LO_REG_ADDR 0xC0405800            /* SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_STRAPS_LO_REG_ADDR */
+#define SMC_STRAPS_HI_REG_ADDR 0xC0405804            /* SMC_EXTERNAL_SUPPLEMENTARY_STRAPS_STRAPS_HI_REG_ADDR */
 #define SMC_EFUSE_MAP_RESERVED_0_REG_ADDR 0xC000BAFC /* SMC_EFUSE_MAP_RESERVED_0__REG_ADDR */
 #define SMC_EFUSE_MAP_RESERVED_2_REG_ADDR 0xC000BB04 /* SMC_EFUSE_MAP_RESERVED_2__REG_ADDR */
 
@@ -98,8 +98,7 @@
 
 /* Observation GPIOs routed via the GPIO 2nd HW function override in
  * smc_ip_integration (hw2_ovrd must be set for the function to reach the pad). */
-#define SMC_CAT_THERM_GPIO 52   /* thermal trip output (active low) */
-#define SMC_PVT_CLK_OBS_GPIO 57 /* PVT RO clock observation */
+#define SMC_CAT_THERM_GPIO 52 /* thermal trip output (active low) */
 
 #define SMC_STATUS_GPIO \
     58 /* GPIO used for reset status reporting (pad 61 -> 58 after 68->65 shrink) */
@@ -246,8 +245,8 @@
  */
 #ifdef __ASSEMBLER__
 /* Pre-calculated values for expressions that can't be evaluated by assembler */
-#define SMC_STRAPS_LO_REG_ADDR_VAL 0xC0002090
-#define SMC_STRAPS_HI_REG_ADDR_VAL 0xC0002094
+#define SMC_STRAPS_LO_REG_ADDR_VAL 0xC0405800
+#define SMC_STRAPS_HI_REG_ADDR_VAL 0xC0405804
 /* These mirror generated symbols in smc_top_regs.h, which cannot be included
  * here because its C typedefs do not assemble. Each block below sat 0x4000 high
  * from before the peripherals moved, so the early MBIST check read an address

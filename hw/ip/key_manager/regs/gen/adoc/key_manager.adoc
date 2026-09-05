@@ -711,28 +711,28 @@ all words to 0 when KEY_CTRL.KEY_VALID is cleared (via hwclr).
 .CHIPLET_PUBK_PQC_HASH0 Register
 |===
 | Bits | Field | Access | Reset | Description
-| 255:0 | `key_hash` | R | 0x0 a| Chiplet owner ML-DSA (PQC) authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.
+| 255:0 | `key_hash` | R | 0x0 a| Chiplet owner ML-DSA PQC authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .CHIPLET_PUBK_PQC_HASH1 Register
 |===
 | Bits | Field | Access | Reset | Description
-| 255:0 | `key_hash` | R | 0x0 a| Chiplet owner ML-DSA (PQC) authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.
+| 255:0 | `key_hash` | R | 0x0 a| Chiplet owner ML-DSA PQC authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .SIP_PUBK_PQC_HASH0 Register
 |===
 | Bits | Field | Access | Reset | Description
-| 255:0 | `key_hash` | R | 0x0 a| Hash digest of the SiP owner's ML-DSA (PQC) root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.
+| 255:0 | `key_hash` | R | 0x0 a| Hash digest of the SiP owner's ML-DSA PQC root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .SYS_PUBK_PQC_HASH Register
 |===
 | Bits | Field | Access | Reset | Description
-| 255:0 | `key_hash` | R | 0x0 a| Hash digest of the system owner's ML-DSA (PQC) root public key for secure boot. PQC counterpart of SYS_PUBK_HASH.
+| 255:0 | `key_hash` | R | 0x0 a| Hash digest of the system owner's ML-DSA PQC root public key for secure boot. PQC counterpart of SYS_PUBK_HASH.
 |===
 
 [cols="1,3,1,1,6", options="header"]
@@ -746,7 +746,7 @@ all words to 0 when KEY_CTRL.KEY_VALID is cleared (via hwclr).
 .SIP_PUBK_PQC_HASH1 Register
 |===
 | Bits | Field | Access | Reset | Description
-| 255:0 | `key_hash` | R | 0x0 a| Hash digest of the SiP owner's ML-DSA (PQC) root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.
+| 255:0 | `key_hash` | R | 0x0 a| Hash digest of the SiP owner's ML-DSA PQC root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.
 |===
 
 [cols="1,3,1,1,6", options="header"]
@@ -2136,8 +2136,8 @@ set, so sealing a slot write-locks it without a separate write here.
 .STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:16 | `count_good` | R | 0x0 a| Successful words transferred to CPU. Saturates at 0xFFFF.
-| 15:8 | `count_bad` | R | 0x0 a| Failed transactions (timeout or error). Saturates at 0xFF.
+| 31:16 | `count_good` | RW | 0x0 a| Successful words transferred to CPU. Saturates at 0xFFFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.
+| 15:8 | `count_bad` | RW | 0x0 a| Failed transactions (timeout or error). Saturates at 0xFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.
 | 7:4 | `rsvd` | R | 0x0 a| Reserved
 | 3 | `stream_err` | RW | 0x0 a| Set when there is an error on the DRBG AXI-Stream interface (e.g. TVALID deasserted before TREADY). Write 1 to clear.
 | 2 | `timeout_err` | RW | 0x0 a| Set when a DRBG read from the KM CPU times out. Write 1 to clear.

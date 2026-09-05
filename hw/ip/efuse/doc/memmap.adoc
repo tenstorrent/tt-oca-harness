@@ -38,7 +38,7 @@ endif::backend-pdf[]
 
 ====== MMR Registers
 
-The MMR (Memory-Mapped Registers) provide access to security tokens for
+The MMR (Memory Mapped Register) space provides access to security tokens for
 authentication, including RMA tokens and security disable tokens.
 
 ifdef::backend-html5[]

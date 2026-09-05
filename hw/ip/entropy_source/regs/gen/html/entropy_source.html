@@ -174,8 +174,8 @@
 <h3 id="SHA256_STATUS">SHA256_STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:11</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>10:8</td><td>OUTPUT_COUNT</td><td>R</td><td>0x0</td><td>Number of 32-bit digest words remaining for output.</td></tr>
+<tr><td>31:12</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
+<tr><td>11:8</td><td>OUTPUT_COUNT</td><td>R</td><td>0x0</td><td>Number of 32-bit digest words remaining for output. Reports 8 when a digest becomes available, decrements through 0 as words are accepted, and remains 0 while idle or bypassed.</td></tr>
 <tr><td>7:4</td><td>INPUT_COUNT</td><td>R</td><td>0x0</td><td>Number of 32-bit words currently accumulated in the 512-bit input block.</td></tr>
 <tr><td>3:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>BUSY</td><td>R</td><td>0x0</td><td>Indicates that SHA-256 processing or digest output is active.</td></tr>
