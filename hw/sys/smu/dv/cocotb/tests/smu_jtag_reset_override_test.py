@@ -17,7 +17,6 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
-from env import cocotb_compat as _cocotb_compat
 from seq_lib.smu_jtag_helpers import (
     SMU_IC_RESET_DEFAULT,
     SMU_IC_RESET_EXT_PORT,
@@ -26,8 +25,6 @@ from seq_lib.smu_jtag_helpers import (
     pack_ic_reset_ports,
 )
 from smu_base_test import smu_base_test
-
-_cocotb_compat.apply()
 
 
 def _sample(signal, name: str) -> int:

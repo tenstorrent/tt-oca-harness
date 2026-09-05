@@ -6,11 +6,6 @@ Wraps unified OCAH BFMs in a UVM hierarchy:
 config -> agents (JTAG driver/sequencer + AXI memory) -> scoreboard -> env.
 """
 
-# Apply the cocotb teardown-noise shim as soon as the env package is imported.
-from . import cocotb_compat as _cocotb_compat
-
-_cocotb_compat.apply()
-
 from .dtp_axi_agent import DtpAxiAgent
 from .dtp_env import DtpEnv
 from .dtp_env_cfg import DtpEnvCfg

@@ -178,7 +178,7 @@ hw/sys/dtp/dv/
                   dtp_stap_ds_agent.py, dtp_scoreboard.py, dtp_scan_window_monitor.py,
                   dtp_scan_ref_model.py, dtp_scan_model.py, dtp_jtag_bypass_model.py,
                   dtp_tap_device.py, dtp_dbg_disable.py, dtp_types.py, dtp_xtrig_types.py,
-                  dtp_fcov.py, cocotb_compat.py
+                  dtp_fcov.py
     seq_lib/      dtp_base_test_seq.py, dtp_<family>_base_test_seq.py,
                   dtp_<family>_cmd_lib_seq.py, dtp_<scenario>_test_seq.py
     tests/        dtp_base_test.py, dtp_<scenario>_test.py

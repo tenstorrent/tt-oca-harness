@@ -15,10 +15,7 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import RisingEdge
-from env import cocotb_compat as _cocotb_compat
 from smu_base_test import smu_base_test
-
-_cocotb_compat.apply()
 
 SEP0_LC_STATE = 0xF0
 HOLD_CYCLES = 16

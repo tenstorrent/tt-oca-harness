@@ -1535,10 +1535,24 @@ def target_tool_cfg(target: dict[str, Any], tool: str) -> dict[str, Any]:
 
 
 def target_flags(target: dict[str, Any], tool: str) -> list[str]:
-    return [
+    """Target-level simulator flags: shared ``flags`` then ``tools.<tool>.flags``.
+
+    Each list item is one argv token. The simulators run through cocotb's Python runner
+    and subprocess argv lists, so a token such as ``"-assert svaext"`` reaches the tool as one
+    argument that it silently ignores (VCS: ``Ignoring unknown option '-assert'``) instead of
+    being shell-split; such an item is a config error, not a quiet no-op.
+    """
+    flags = [
         *config_list(target, "flags"),
         *as_str_list(target_tool_cfg(target, tool).get("flags"), f"target.tools.{tool}.flags"),
     ]
+    for flag in flags:
+        if any(ch.isspace() for ch in flag):
+            raise ConfigError(
+                f"target flag {flag!r} contains whitespace; write each argument as its own list "
+                "item (for example [\"-assert\", \"svaext\"])"
+            )
+    return flags
 
 
 # The compile/run target split is gone; both accessors now resolve the one merged target table so

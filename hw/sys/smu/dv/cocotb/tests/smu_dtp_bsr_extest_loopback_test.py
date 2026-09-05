@@ -31,7 +31,6 @@ import random
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
-from env import cocotb_compat as _cocotb_compat
 from ocah_jtag_vip import OcahJtagMasterSequence
 from seq_lib.smu_jtag_helpers import (
     DTP_BSR_MODEL_LEN,
@@ -40,8 +39,6 @@ from seq_lib.smu_jtag_helpers import (
     make_smu_jtag_tap,
 )
 from smu_base_test import smu_base_test
-
-_cocotb_compat.apply()
 
 # Nonzero-only: VIP X/Z->0 would false-pass an all-zero expect.
 _PATTERNS = (0xFF, 0xA5, 0x5A, 0xC3, 0x3C, 0x01)

@@ -404,9 +404,8 @@ _OCAH_RELEASERS: dict = {}
 def _is_high(sig) -> bool:
     """True only when ``sig`` resolves to 1.
 
-    cocotb 1.x hands back a BinaryValue and 2.x a Logic, and only one of them
-    carries ``.integer``. Both render as a single character, and anything that
-    is not "1" -- including X and Z before the driver is up -- is not a VALID
+    The handle value renders as a single character, and anything that is not
+    "1" -- including X and Z before the driver is up -- is not a VALID
     assertion.
     """
     return str(sig.value) == "1"

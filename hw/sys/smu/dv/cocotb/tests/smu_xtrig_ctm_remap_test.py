@@ -16,10 +16,7 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, RisingEdge
-from env import cocotb_compat as _cocotb_compat
 from smu_base_test import smu_base_test
-
-_cocotb_compat.apply()
 
 DEST_PATS = (0x01, 0x80, 0xA5, 0x5A)
 SRC_ACK_PATS = (0x01, 0x80, 0x3C)

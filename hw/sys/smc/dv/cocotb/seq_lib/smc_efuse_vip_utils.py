@@ -171,11 +171,8 @@ def consume_positive_control() -> str | None:
 
 
 def stop_sampler(task) -> None:
-    """Stop a ``count_probe_high_cycles`` task (cocotb 1.x kill / 2.x cancel)."""
-    if hasattr(task, "cancel"):
-        task.cancel()
-    else:  # pragma: no cover - cocotb 1.x fallback
-        task.kill()
+    """Stop a ``count_probe_high_cycles`` task."""
+    task.cancel()
 
 
 async def count_probe_high_cycles(sig, clk, hits: list[int]) -> None:
