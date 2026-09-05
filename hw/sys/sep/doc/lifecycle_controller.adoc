@@ -89,7 +89,7 @@ manifest (BL1). Up to three owners participate: the chiplet creator (root of
 trust; its classical and PQC root digests are embedded in SEP ROM), the SiP
 owner, and the system owner.
 
-Two eFuse policy fields govern the model (see the _Fuse Controller (OTP)_
+Two eFuse policy fields govern the model (see the _OTP fuse controller_
 fuse-field table for field details):
 
 * *`REQUIRED_SIGNERS`* -- owners whose signature a manifest must carry, one bit
@@ -165,7 +165,7 @@ slots, so the SiP owner retains a usable root after revoking one) and
 eFuse; and `CHIPLET_PUBK_HASH0/1` / `CHIPLET_PUBK_PQC_HASH0/1` hold additional
 *chiplet-owner* authentication-key hashes that supplement the chiplet-creator
 digests in SEP ROM. Every such key entry can be revoked individually through
-`CHIPLET_PUBK_REVOKE` (see the _Fuse Controller (OTP)_ fuse-field table in this
+`CHIPLET_PUBK_REVOKE` (see the _OTP fuse controller_ fuse-field table in this
 chapter).
 
 [[signing-model-examples]]
@@ -282,7 +282,7 @@ The LC controller is a stateless decoder of the `LC_STATE` shadow
 register provided by the OTP/Fuse controller. The OTP controller
 initializes the shadow-register *output* to the INVALID encoding
 (4'b1111) and only drives it to the OTP-stored LC state value once
-fuse sensing is complete (see _Fuse Controller (OTP)_ in this chapter).
+fuse sensing is complete (see _OTP fuse controller_ in this chapter).
 The LCC's output therefore tracks fuse sensing automatically: it produces the
 INVALID feature-control profile before fuse sensing completes and the
 per-LC-state profile (TEST_DEV / PROD / PROD_END / RMA_SIP / RMA_CHIPLET)
@@ -456,7 +456,7 @@ The system owner has no successor in the OCAH ownership chain, so
 there is no third DIS vector restricting it. The system owner's
 own fuse fields (`SYS_PUBK_HASH`, `SYS_UID`) are provisioned by
 the system owner directly before transitioning the part from
-TEST_DEV to PROD. See the _Fuse Controller (OTP)_ section in this
+TEST_DEV to PROD. See the _OTP fuse controller_ section in this
 chapter for the full multi-owner provisioning sequence.
 
 [[dis-vector-or-rationale]]
@@ -702,7 +702,7 @@ bits and the LC state, which decide whether the chain is reachable at all.
 . *Blocks lifecycle shadow-register updates.* `LOCKS`, `LC_STATE`, `SIP_DIS`,
 and `SYS_DIS` are locked against updates from every source -- SEP, OTP, JTAG,
 and TRoot -- so a disabled feature cannot be enabled while the part is shiftable
-(see _Fuse Controller (OTP)_).
+(see _OTP fuse controller_).
 
 . *Ties off the fuse program path.* The OTP fuse-write enable inputs are held
 inactive, so no shift sequence can reach the fuse array or trip the program

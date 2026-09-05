@@ -26,6 +26,7 @@ no_cpu, +skip_fuse_sense: the remapper does not depend on sense.
 
 from __future__ import annotations
 
+import cocotb
 import pyuvm
 from sep_base_test import sep_base_test
 from seq_lib.sep_fabric_local_alias_seq import (
@@ -66,9 +67,38 @@ class sep_fabric_local_alias_datapath_test(sep_base_test):
 
         await alias.program(cfg)
 
+        # A write hit places the four-bit region index in remap_debug_t[7:4].
+        # Selecting region 8..15 makes the upper debug bits nonzero.
+        await alias._wr(cfg.access_addr, cfg.marker)
+        debug_lane = (self.rd(cocotb.top.ext_debug_bus_o) >> 192) & 0xFFFF
+        assert (debug_lane >> 8) == 0, (
+            f"remap debug lane reserved [15:8]=0x{debug_lane >> 8:02x}, expected 0"
+        )
+        assert ((debug_lane >> 4) & 0xF) == cfg.region, (
+            f"remap debug AW index=0x{(debug_lane >> 4) & 0xF:x}, "
+            f"expected region 0x{cfg.region:x} (lane=0x{debug_lane:04x})"
+        )
+        self.logger.info(
+            "CHK-DEBUG-BUS PASS: lane[207:192]=0x%04x; reserved[15:8]=0, AW remap index[7:4]=0x%x",
+            debug_lane,
+            cfg.region,
+        )
+
         hit = alias_probe_seq(cfg.access_addr)
         await self.start_seq(hit)
         assert hit.resp_ok, f"remapped 0x{cfg.access_addr:08x} resp not OKAY"
+        debug_lane = (self.rd(cocotb.top.ext_debug_bus_o) >> 192) & 0xFFFF
+        expected_debug_byte = (cfg.region << 4) | cfg.region
+        assert debug_lane == expected_debug_byte, (
+            f"remap debug lane=0x{debug_lane:04x}, expected reserved [15:8]=0, "
+            f"AW index [7:4]=AR index [3:0]=0x{cfg.region:x}"
+        )
+        self.logger.info(
+            "CHK-DEBUG-BUS-BYTE PASS: lane[207:192]=0x%04x; reserved[15:8]=0, "
+            "AW index[7:4]=AR index[3:0]=0x%x",
+            debug_lane,
+            cfg.region,
+        )
         got = hit.rdata & 0xFFFF_FFFF
         assert got == dest_data, (
             f"CHK-OFFSET FAIL: access 0x{cfg.access_addr:08x} read "

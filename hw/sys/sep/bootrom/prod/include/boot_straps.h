@@ -8,12 +8,14 @@
 // access for boot path decisions using OCAH dynamic addresses from
 // sep_smc_interface.h.
 //
-// Strap bits (SEP↔SMC interface contract, see sep_smc_interface.h):
+// Strap bits (SEP↔SMC interface contract, see sep_smc_interface.h). Bit index is
+// the GPIO index; STRAPS_HI[N] is GPIO N+32. Canonical source is
+// hw/sys/smc/regs/blocks/straps/straps.rdl.
+//   STRAPS_LO[19]: boot_recovery       — recovery mode (wait for SMC manifest)
+//   STRAPS_LO[20]: bl0_pll_clk         — use PLL instead of refclk
 //   STRAPS_LO[21]: status_report_disable — disable status ring buffer
 //   STRAPS_LO[25]: primary_chiplet     — primary chiplet (load from SPI)
-//   STRAPS_HI[23]: boot_recovery       — recovery mode (wait for SMC manifest)
-//   STRAPS_HI[24]: bl0_pll_clk         — use PLL instead of refclk
-//   STRAPS_HI[29]: rotate_update       — alternate primary/backup manifest slot
+//   STRAPS_HI[26]: rotate_update       — alternate primary/backup manifest slot (GPIO 58)
 
 #pragma once
 

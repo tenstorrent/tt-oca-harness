@@ -193,6 +193,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="Run mode from the DUT sim config [run_modes.<name>] (default: the test's first run mode)",
     )
     common.add_argument(
+        "--target",
+        metavar="NAME",
+        help=(
+            "Build target from the DUT sim config [targets.<name>]; "
+            "overrides every selected test's target (default: each test's own target)"
+        ),
+    )
+    common.add_argument(
         "--overlay",
         metavar="PATH",
         help=(
@@ -460,6 +468,7 @@ def validate_mode_options(args: argparse.Namespace) -> None:
         "retry": "--retry",
         "max_failures": "--max-failures",
         "run_mode": "--run-mode",
+        "target": "--target",
         "waves": "--waves",
         "waves_on_fail": "--waves-on-fail",
         "wave_start": "--wave-start",
@@ -1729,10 +1738,17 @@ def target_plan(
     catalog: TestCatalog,
     sim_cfg: dict[str, Any],
     items: list[str],
+    override: str | None = None,
 ) -> tuple[dict[str, str], list[str]]:
-    """Resolve a target per selected test and return first-seen unique target order."""
+    """Resolve a target per selected test and return first-seen unique target order.
+
+    ``override`` (``--target``) maps every selected item onto that name.
+    Omitted, each test keeps its own target. ``validate_target_plan`` rejects
+    an unknown name.
+    """
+    chosen = override.strip() if isinstance(override, str) and override.strip() else None
     if not items:
-        target = default_target_name(sim_cfg)
+        target = chosen or default_target_name(sim_cfg)
         return {}, [target]
 
     target_by_item: dict[str, str] = {}
@@ -1742,7 +1758,7 @@ def target_plan(
         test = catalog.tests.get(item)
         if test is None:
             raise ConfigError(f"selected item `{item}` is not a test in the catalog")
-        target = resolved_target_name(sim_cfg, test)
+        target = chosen or resolved_target_name(sim_cfg, test)
         target_by_item[item] = target
         if target not in seen:
             seen.add(target)
@@ -1915,7 +1931,9 @@ def run_flow(
     # Regression/group runs nest every test uniformly; a single explicit test stays flat.
     nest = need_items and bool(items) and scheduler
     label = run_label(catalog, requested, items)
-    target_by_item, build_targets = target_plan(catalog, sim_cfg, items if need_items else [])
+    target_by_item, build_targets = target_plan(
+        catalog, sim_cfg, items if need_items else [], override=getattr(args, "target", None)
+    )
     if flow.kind == "fv":
         explicit_targets = [item for item in items if catalog.tests[item].target]
         if explicit_targets:
@@ -1923,8 +1941,13 @@ def run_flow(
                 "per-test `target` selection is supported for simulation flows only; "
                 f"formal item(s) set target: {', '.join(explicit_targets)}"
             )
-    else:
-        validate_target_plan(sim_cfg, build_targets)
+    validate_target_plan(sim_cfg, build_targets)
+    if args.cov and len(build_targets) > 1:
+        raise ConfigError(
+            "coverage merge accepts one build target; this selection plans "
+            + ", ".join(build_targets)
+            + ". Pass --target <name> to run every selected test on one elaboration"
+        )
     multi_target = len(build_targets) > 1
     setattr(args, "_multi_target_run", multi_target)
     target_cfgs = {

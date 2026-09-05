@@ -595,22 +595,22 @@
 <h3 id="CHIPLET_PUBK_PQC_HASH0">CHIPLET_PUBK_PQC_HASH0</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Chiplet owner ML-DSA (PQC) authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</td></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Chiplet owner ML-DSA PQC authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</td></tr>
 </table>
 <h3 id="CHIPLET_PUBK_PQC_HASH1">CHIPLET_PUBK_PQC_HASH1</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Chiplet owner ML-DSA (PQC) authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</td></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Chiplet owner ML-DSA PQC authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</td></tr>
 </table>
 <h3 id="SIP_PUBK_PQC_HASH0">SIP_PUBK_PQC_HASH0</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of the SiP owner&#x27;s ML-DSA (PQC) root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</td></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of the SiP owner&#x27;s ML-DSA PQC root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</td></tr>
 </table>
 <h3 id="SYS_PUBK_PQC_HASH">SYS_PUBK_PQC_HASH</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of the system owner&#x27;s ML-DSA (PQC) root public key for secure boot. PQC counterpart of SYS_PUBK_HASH.</td></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of the system owner&#x27;s ML-DSA PQC root public key for secure boot. PQC counterpart of SYS_PUBK_HASH.</td></tr>
 </table>
 <h3 id="SIP_PUBK_HASH1">SIP_PUBK_HASH1</h3>
 <table>
@@ -620,7 +620,7 @@
 <h3 id="SIP_PUBK_PQC_HASH1">SIP_PUBK_PQC_HASH1</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of the SiP owner&#x27;s ML-DSA (PQC) root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</td></tr>
+<tr><td>255:0</td><td>key_hash</td><td>R</td><td>0x0</td><td>Hash digest of the SiP owner&#x27;s ML-DSA PQC root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</td></tr>
 </table>
 <h3 id="SEP_CHIPLET_ID">SEP_CHIPLET_ID</h3>
 <table>
@@ -1638,8 +1638,8 @@
 <h3 id="STATUS">STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:16</td><td>count_good</td><td>R</td><td>0x0</td><td>Successful words transferred to CPU. Saturates at 0xFFFF.</td></tr>
-<tr><td>15:8</td><td>count_bad</td><td>R</td><td>0x0</td><td>Failed transactions (timeout or error). Saturates at 0xFF.</td></tr>
+<tr><td>31:16</td><td>count_good</td><td>RW</td><td>0x0</td><td>Successful words transferred to CPU. Saturates at 0xFFFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.</td></tr>
+<tr><td>15:8</td><td>count_bad</td><td>RW</td><td>0x0</td><td>Failed transactions (timeout or error). Saturates at 0xFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.</td></tr>
 <tr><td>7:4</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
 <tr><td>3</td><td>stream_err</td><td>RW</td><td>0x0</td><td>Set when there is an error on the DRBG AXI-Stream interface (e.g. TVALID deasserted before TREADY). Write 1 to clear.</td></tr>
 <tr><td>2</td><td>timeout_err</td><td>RW</td><td>0x0</td><td>Set when a DRBG read from the KM CPU times out. Write 1 to clear.</td></tr>

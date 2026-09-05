@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 // @ts-check
 const { test } = require('@playwright/test');
 const AxeBuilder = require('@axe-core/playwright').default;
