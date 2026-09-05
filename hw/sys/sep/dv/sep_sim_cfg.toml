@@ -61,9 +61,21 @@ sources = [
 exclude_files = [
   "hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_reg.sv",
 ]
-# `stubs` are Verilator/VCS-compat overrides, listed ahead of
-# the bender filelist so -Wno-MODDUP "first definition wins" selects them. prim_sync2 retargets
-# the public prim_flop_2sync (it imports NO packages, so prepending it is safe).
+# `stubs` are OVERRIDE sources. Where the runner puts them is tool-dependent
+# (tools/dv/runlib/stages.py), and the two below only take effect under Verilator:
+#   * Verilator (-Wno-MODDUP, FIRST definition wins) keeps every stub and emits it AHEAD of the
+#     bender filelist, so it shadows the real RTL.
+#   * VCS (LAST definition wins) DROPS any stub whose basename still appears in the bender
+#     filelist -- a stub that has lagged the real port list would otherwise bind silently and
+#     fail elaboration -- and emits the survivors after it. Both stubs below are therefore
+#     inert under VCS, which is intended: the real prim_sync2 and entropy_ring_oscillator
+#     elaborate and simulate correctly there.
+# To make a stub bind under VCS too, drop the real file via `exclude_files`, the way the
+# abr_wrapper_key_reg stub above does.
+#
+# prim_sync2 retargets the public prim_flop_2sync (it imports NO packages, so prepending it is
+# safe). The analog entropy_ring_oscillator supplies a defined idle value under Verilator,
+# which ignores the `#1` stage delays the ring needs to oscillate.
 #
 # The sep_cpu stub is NOT prepended: it imports DUT packages (sep_pkg/el2_pkg) that are declared
 # only inside the bender filelist, so a prepended copy would reference them before declaration.
