@@ -303,6 +303,13 @@ def selftest() -> None:
     # PROD_END's only reachable destinations are outside the named set.
     assert is_invalid_lc(lc_state_next(LC_PROD_END, 0x1, sip_match=True, chiplet_match=True))
     assert lc_state_next(0x9, 0xF, sip_match=True, chiplet_match=True) == 0x9
+    assert dbg_disable_unpack(0, DBG_DISABLE_WIDTH)["stap_io"] == 0
+    try:
+        dbg_disable_unpack(0, DBG_DISABLE_WIDTH + 1)
+    except AssertionError:
+        pass
+    else:
+        raise AssertionError("dbg_disable_unpack must reject a width mismatch")
 
 
 # ---------------------------------------------------------------------------
@@ -324,6 +331,7 @@ DBG_DISABLE_FIELDS = (
     "smc_otp_jtag2axi",
     "sep_otp_jtag2axi",
 )
+DBG_DISABLE_WIDTH = len(DBG_DISABLE_FIELDS)
 
 # Bits this golden does NOT claim, and why. Both are places where the DTP path
 # table in the lifecycle chapter and the RTL disagree; in both the RTL is the
@@ -384,9 +392,18 @@ def dbg_disable_expected(feat_ctrl: int) -> dict[str, int]:
     return exp
 
 
-def dbg_disable_unpack(raw: int) -> dict[str, int]:
-    """Split the flattened dbg_disable vector into named bits (MSB first)."""
-    n = len(DBG_DISABLE_FIELDS)
+def dbg_disable_unpack(raw: int, width: int) -> dict[str, int]:
+    """Split the flattened dbg_disable vector into named bits (MSB first).
+
+    ``width`` is the exported vector's declared width, not ``int.bit_length``:
+    leading zeros are bits. A field added or reordered in the packed struct
+    changes that width and must fail here so the field list is updated.
+    """
+    n = DBG_DISABLE_WIDTH
+    assert width == n, (
+        f"dbg_disable vector is {width} bits, golden lists {n} fields -- "
+        "the packed struct changed and the field list must be updated"
+    )
     return {name: (raw >> (n - 1 - i)) & 1 for i, name in enumerate(DBG_DISABLE_FIELDS)}
 
 
