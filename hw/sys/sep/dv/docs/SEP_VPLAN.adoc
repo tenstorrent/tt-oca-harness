@@ -585,7 +585,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 
 |ESRC lock and alert delivery
 |PROVEN
-|`sep_esrc_fips_lock_test`, `sep_esrc_alert_delivery_test`. HT quality is Phase 3.
+|`sep_esrc_fips_lock_test`, `sep_esrc_alert_delivery_test`. HT quality is Phase 3, as is the health-test counter-redundancy countermeasure (`es_cntr_err` -> `MAIN_SM_STATUS.ERR`), which no stimulus can reach and which needs fault injection.
 
 |ESRC health-test watermark arming
 |PROVEN
@@ -4204,11 +4204,15 @@ asserted, and is W1C.
 |After leaving AlertHang, W1C clears both bits and the PIC line.
 |===
 
-*Not claimed*: `es_cntr_err` -> `MAIN_SM_STATUS.ERR`. Reaching it needs a
-`prim_count` copy corrupted inside the DUT, and Verilator public scope is
-deliberately limited to `sep_uvm_top` (`hw/sys/sep/dv/sep_public_scope.vlt`)
-because widening it collapses the fabric `split_var` optimisation. CHK-SM-ERR-ZERO
-proves the bit is 0 on the alert path; it does not prove the error path.
+*Not claimed*: `es_cntr_err` -> `MAIN_SM_STATUS.ERR`. This is the health-test
+counter-redundancy countermeasure: `prim_count` holds each count twice, up and
+down, and reports an error only when `cnt_q[0] + cnt_q[1]` stops equalling the
+counter maximum. No stimulus can break that invariant — both copies take the same
+enable and the same step — so the path is reachable by a physical fault and by
+nothing else. Proving it therefore requires fault injection, which is Phase 3.
+CHK-SM-ERR-ZERO proves the bit is 0 on the alert path, which is what makes
+PERSISTENT_FAILURE attributable to the threshold trip; it does not claim the
+error path works.
 
 '''''
 
