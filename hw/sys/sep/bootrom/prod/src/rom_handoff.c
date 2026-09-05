@@ -49,8 +49,7 @@
 
 // oca_image_info_t::type is a NUL-terminated 17-byte buffer holding the 16
 // on-disk bytes, so a plain fixed-length compare is enough; no libc.
-static bool type_matches(const char *type, const char *want)
-{
+static bool type_matches(const char *type, const char *want) {
     for (uint32_t i = 0; i < 16u; ++i) {
         if (type[i] != want[i]) return false;
         if (want[i] == '\0') break;
@@ -59,8 +58,7 @@ static bool type_matches(const char *type, const char *want)
 }
 
 // Scan the TOC for the first image of the wanted type.
-static bool find_bl1(oca_image_info_t *out)
-{
+static bool find_bl1(oca_image_info_t *out) {
     const uint8_t *payload = rom_oca_payload();
     size_t payload_len = rom_oca_payload_len();
     oca_toc_info_t toc;
@@ -104,8 +102,7 @@ __attribute__((noreturn)) static void jump_to_bl1(uint32_t entry_addr) {
 // Public API
 // ---------------------------------------------------------------------------
 
-uint32_t rom_handoff_bl1(void)
-{
+uint32_t rom_handoff_bl1(void) {
     oca_image_info_t bl1;
 
     report_status(STATUS_TYPE_INFO, SEP_MSG_COPY_AND_EXEC_IMAGE);
@@ -117,9 +114,9 @@ uint32_t rom_handoff_bl1(void)
         return OCA_BOOT_ERR_NO_BL1;
     }
 
-    uint32_t load_addr  = (uint32_t)bl1.load_addr;
+    uint32_t load_addr = (uint32_t)bl1.load_addr;
     uint32_t img_length = (uint32_t)bl1.length;
-    uint32_t entry_off  = (uint32_t)bl1.entry_point;
+    uint32_t entry_off = (uint32_t)bl1.entry_point;
 
     report_status(STATUS_TYPE_INFO, SEP_MSG_BL1_FOUND);
     simputshex32("LOAD=", load_addr);

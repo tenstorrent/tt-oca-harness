@@ -22,8 +22,8 @@
 #include <stdint.h>
 
 #include "boot_straps.h"
-#include "sep.h"      /* OCH_SEP_TOP_SEP_SRAM_BASE_ADDR / OCH_SEP_TOP_SEP_SRAM_SIZE   */
-#include "harden.h"   /* fault-injection value launder (harden_u32)  */
+#include "sep.h"    /* OCH_SEP_TOP_SEP_SRAM_BASE_ADDR / OCH_SEP_TOP_SEP_SRAM_SIZE   */
+#include "harden.h" /* fault-injection value launder (harden_u32)  */
 
 /* Where the SPI image places its two manifest slots. A property of the flash
  * layout, not of the manifest format -- they outlived the Grendel-to-OCA change

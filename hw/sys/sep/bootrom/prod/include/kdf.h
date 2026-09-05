@@ -19,6 +19,5 @@
 //
 // Returns 0 on success. On failure out_key is wiped rather than left holding a
 // partially derived key.
-int oca_derive_payload_key(const uint8_t *secret, uint32_t secret_len,
-                           const uint8_t *kdf_input, uint32_t key_bits,
-                           uint8_t *out_key);
+int oca_derive_payload_key(const uint8_t *secret, uint32_t secret_len, const uint8_t *kdf_input,
+                           uint32_t key_bits, uint8_t *out_key);

@@ -51,14 +51,19 @@
 // Staged state, valid only after a successful rom_manifest_boot().
 static const uint8_t *g_body;
 static const uint8_t *g_payload;
-static size_t         g_payload_len;
+static size_t g_payload_len;
 
-const uint8_t *rom_oca_body(void)       { return g_body; }
-const uint8_t *rom_oca_payload(void)    { return g_payload; }
-size_t         rom_oca_payload_len(void){ return g_payload_len; }
+const uint8_t *rom_oca_body(void) {
+    return g_body;
+}
+const uint8_t *rom_oca_payload(void) {
+    return g_payload;
+}
+size_t rom_oca_payload_len(void) {
+    return g_payload_len;
+}
 
-uint32_t rom_oca_demotion_control(void)
-{
+uint32_t rom_oca_demotion_control(void) {
     if (g_body == NULL) {
         return 0u;
     }
@@ -75,8 +80,7 @@ uint32_t rom_oca_demotion_control(void)
 // For the OpenTitan controller the flash is not memory-mapped, so `src` is a
 // flash byte offset read through the SPI host; otherwise `src` is an absolute
 // address (Cadence XIP window or SMC SRAM) copied by the secure DMA.
-static uint32_t manifest_src_read(uint32_t dst, uint32_t src, uint32_t len, bool from_spi)
-{
+static uint32_t manifest_src_read(uint32_t dst, uint32_t src, uint32_t len, bool from_spi) {
 #if BOOT_SPI_CONTROLLER_OT
     if (from_spi) {
         return boot_flash_read(dst, src, len);
@@ -89,8 +93,7 @@ static uint32_t manifest_src_read(uint32_t dst, uint32_t src, uint32_t len, bool
 
 // Zero SEP SRAM between retry attempts so a partially staged bad slot cannot be
 // mistaken for the next one's bytes.
-static void clear_sram_region(uint32_t addr, uint32_t size)
-{
+static void clear_sram_region(uint32_t addr, uint32_t size) {
     volatile uint32_t *p = (volatile uint32_t *)(uintptr_t)addr;
     uint32_t words = size / 4u;
     for (uint32_t i = 0; i < words; ++i) {
@@ -108,41 +111,70 @@ static void clear_sram_region(uint32_t addr, uint32_t size)
 // loader, which collapsed nearly every failure into MANIFEST_LOAD_FAILED. The
 // OCA result codes are finer-grained than the old checks were, so wiring them
 // up is what finally makes the status word say which check refused the image.
-static uint16_t status_for_result(oca_result_t r)
-{
+static uint16_t status_for_result(oca_result_t r) {
     switch (r) {
-    case OCA_FAIL_MAGIC:                     return SEP_MSG_INVALID_MANIFEST_ID;
-    case OCA_FAIL_TRAILER:                   return SEP_MSG_INVALID_MANIFEST_ID;
-    case OCA_FAIL_TRUNCATED:                 return SEP_MSG_INVALID_MANIFEST_LENGTH;
-    case OCA_FAIL_MANIFEST_LENGTH:           return SEP_MSG_INVALID_MANIFEST_LENGTH;
-    case OCA_FAIL_FORMAT_VERSION_MISMATCH:   return SEP_MSG_INVALID_MANIFEST_VERSION;
-    case OCA_FAIL_UNSUPPORTED_VARIANT:       return SEP_MSG_INVALID_MANIFEST_VERSION;
-    case OCA_FAIL_MANIFEST_HASH:             return SEP_MSG_INVALID_MANIFEST_HASH;
-    case OCA_FAIL_SIGNATURE:                 return SEP_MSG_INVALID_SIGNATURE;
-    case OCA_FAIL_CRYPTO_FIELD_SIZE:         return SEP_MSG_INVALID_SIGNATURE_TYPE;
-    case OCA_FAIL_ROOT_KEY_REVOKED:          return SEP_MSG_REVOKED_KEY;
-    case OCA_FAIL_ROOT_KEY_UNAUTHORIZED:     return SEP_MSG_INVALID_KEY_HASH;
-    case OCA_FAIL_SECURITY_VERSION:          return SEP_MSG_INVALID_SECURITY_VERSION;
-    case OCA_FAIL_CHIPLET_ID:                return SEP_MSG_INVALID_CHIPLET_ID;
-    case OCA_FAIL_PACKAGE_ID:                return SEP_MSG_INVALID_PACKAGE_ID;
-    case OCA_FAIL_SYSTEM_ID:                 return SEP_MSG_INVALID_PACKAGE_ID;
-    case OCA_FAIL_LIFECYCLE:                 return SEP_MSG_LIFECYCLE_INVALID;
-    case OCA_FAIL_VERSION_RANGE:             return SEP_MSG_INVALID_SECURITY_VERSION;
-    case OCA_FAIL_PAYLOAD_LOCATION:          return SEP_MSG_PAYLOAD_INVALID_LOCATION_FLASH;
-    case OCA_FAIL_PAYLOAD_HASH:              return SEP_MSG_PAYLOAD_HASH_INVALID;
-    case OCA_FAIL_PAYLOAD_HASH_CHAIN:        return SEP_MSG_PAYLOAD_HASH_INVALID;
-    case OCA_FAIL_PAYLOAD_ENTRY_HASH:        return SEP_MSG_TOC_HASH_INVALID;
-    case OCA_FAIL_PAYLOAD_TOC:               return SEP_MSG_TOC_ID_INVALID;
-    case OCA_FAIL_PAYLOAD_TOO_MANY_IMAGES:   return SEP_MSG_PAYLOAD_IMAGE_COUNT_INVALID;
-    case OCA_FAIL_DECRYPT:                   return SEP_MSG_DECRYPTION_FAILED;
-    case OCA_FAIL_NO_PROVISIONED_SECRET:     return SEP_MSG_INVALID_KEY_CONTENTS;
+    case OCA_FAIL_MAGIC:
+        return SEP_MSG_INVALID_MANIFEST_ID;
+    case OCA_FAIL_TRAILER:
+        return SEP_MSG_INVALID_MANIFEST_ID;
+    case OCA_FAIL_TRUNCATED:
+        return SEP_MSG_INVALID_MANIFEST_LENGTH;
+    case OCA_FAIL_MANIFEST_LENGTH:
+        return SEP_MSG_INVALID_MANIFEST_LENGTH;
+    case OCA_FAIL_FORMAT_VERSION_MISMATCH:
+        return SEP_MSG_INVALID_MANIFEST_VERSION;
+    case OCA_FAIL_UNSUPPORTED_VARIANT:
+        return SEP_MSG_INVALID_MANIFEST_VERSION;
+    case OCA_FAIL_MANIFEST_HASH:
+        return SEP_MSG_INVALID_MANIFEST_HASH;
+    case OCA_FAIL_SIGNATURE:
+        return SEP_MSG_INVALID_SIGNATURE;
+    case OCA_FAIL_CRYPTO_FIELD_SIZE:
+        return SEP_MSG_INVALID_SIGNATURE_TYPE;
+    case OCA_FAIL_ROOT_KEY_REVOKED:
+        return SEP_MSG_REVOKED_KEY;
+    case OCA_FAIL_ROOT_KEY_UNAUTHORIZED:
+        return SEP_MSG_INVALID_KEY_HASH;
+    case OCA_FAIL_SECURITY_VERSION:
+        return SEP_MSG_INVALID_SECURITY_VERSION;
+    case OCA_FAIL_CHIPLET_ID:
+        return SEP_MSG_INVALID_CHIPLET_ID;
+    case OCA_FAIL_PACKAGE_ID:
+        return SEP_MSG_INVALID_PACKAGE_ID;
+    case OCA_FAIL_SYSTEM_ID:
+        return SEP_MSG_INVALID_PACKAGE_ID;
+    case OCA_FAIL_LIFECYCLE:
+        return SEP_MSG_LIFECYCLE_INVALID;
+    case OCA_FAIL_VERSION_RANGE:
+        return SEP_MSG_INVALID_SECURITY_VERSION;
+    case OCA_FAIL_PAYLOAD_LOCATION:
+        return SEP_MSG_PAYLOAD_INVALID_LOCATION_FLASH;
+    case OCA_FAIL_PAYLOAD_HASH:
+        return SEP_MSG_PAYLOAD_HASH_INVALID;
+    case OCA_FAIL_PAYLOAD_HASH_CHAIN:
+        return SEP_MSG_PAYLOAD_HASH_INVALID;
+    case OCA_FAIL_PAYLOAD_ENTRY_HASH:
+        return SEP_MSG_TOC_HASH_INVALID;
+    case OCA_FAIL_PAYLOAD_TOC:
+        return SEP_MSG_TOC_ID_INVALID;
+    case OCA_FAIL_PAYLOAD_TOO_MANY_IMAGES:
+        return SEP_MSG_PAYLOAD_IMAGE_COUNT_INVALID;
+    case OCA_FAIL_DECRYPT:
+        return SEP_MSG_DECRYPTION_FAILED;
+    case OCA_FAIL_NO_PROVISIONED_SECRET:
+        return SEP_MSG_INVALID_KEY_CONTENTS;
     case OCA_FAIL_ENCRYPTION_REQUIRES_SECURE_BOOT:
-                                             return SEP_MSG_MANIFEST_INVALID_ENCRYPTION;
-    case OCA_FAIL_SECURE_BOOT_INVARIANT:     return SEP_MSG_MANIFEST_SECURE_BOOT;
-    case OCA_FAIL_SECURE_BOOT_UNDETERMINED:  return SEP_MSG_MANIFEST_SECURE_BOOT;
-    case OCA_FAIL_SECURE_BOOT_STATE_CHANGED: return SEP_MSG_MANIFEST_SECURE_BOOT;
-    case OCA_FAIL_SIGNATURE_CLASS_CONTROL:   return SEP_MSG_MANIFEST_SECURE_BOOT;
-    default:                                 return SEP_MSG_MANIFEST_LOAD_FAILED;
+        return SEP_MSG_MANIFEST_INVALID_ENCRYPTION;
+    case OCA_FAIL_SECURE_BOOT_INVARIANT:
+        return SEP_MSG_MANIFEST_SECURE_BOOT;
+    case OCA_FAIL_SECURE_BOOT_UNDETERMINED:
+        return SEP_MSG_MANIFEST_SECURE_BOOT;
+    case OCA_FAIL_SECURE_BOOT_STATE_CHANGED:
+        return SEP_MSG_MANIFEST_SECURE_BOOT;
+    case OCA_FAIL_SIGNATURE_CLASS_CONTROL:
+        return SEP_MSG_MANIFEST_SECURE_BOOT;
+    default:
+        return SEP_MSG_MANIFEST_LOAD_FAILED;
     }
 }
 
@@ -152,17 +184,16 @@ static uint16_t status_for_result(oca_result_t r)
 
 // Load, authenticate and stage the manifest at `src_addr`, whose storage-space
 // bounds are [region_base, region_limit). Returns 0 on success.
-static uint32_t try_manifest_slot(uint32_t src_addr, bool from_spi,
-                                  int64_t region_base, int64_t region_limit)
-{
+static uint32_t try_manifest_slot(uint32_t src_addr, bool from_spi, int64_t region_base,
+                                  int64_t region_limit) {
     uint8_t *const body = (uint8_t *)(uintptr_t)SRAM_BASE;
 
     // -- peek ---------------------------------------------------------------
     // The head has to be in RAM before the library sees it: on the OpenTitan
     // path storage is not memory-mapped at all, so "peek in place" in the
     // reference CLI becomes "read the first cache line, then peek".
-    if (manifest_src_read((uint32_t)(uintptr_t)body, src_addr,
-                          OCA_MANIFEST_PEEK_MIN, from_spi) != 0u) {
+    if (manifest_src_read((uint32_t)(uintptr_t)body, src_addr, OCA_MANIFEST_PEEK_MIN, from_spi) !=
+        0u) {
         return OCA_BOOT_ERR_DMA;
     }
 
@@ -179,8 +210,8 @@ static uint32_t try_manifest_slot(uint32_t src_addr, bool from_spi,
     }
 
     // -- body ---------------------------------------------------------------
-    if (manifest_src_read((uint32_t)(uintptr_t)body, src_addr,
-                          (uint32_t)pk.body_size, from_spi) != 0u) {
+    if (manifest_src_read((uint32_t)(uintptr_t)body, src_addr, (uint32_t)pk.body_size, from_spi) !=
+        0u) {
         return OCA_BOOT_ERR_DMA;
     }
 
@@ -227,11 +258,11 @@ static uint32_t try_manifest_slot(uint32_t src_addr, bool from_spi,
     // loader carried.
     oca_storage_bounds_t bounds;
     bounds.manifest_addr = (int64_t)src_addr;
-    bounds.region_base   = region_base;
-    bounds.region_limit  = region_limit;
+    bounds.region_base = region_base;
+    bounds.region_limit = region_limit;
 
     int64_t payload_addr = 0;
-    size_t  payload_span = 0u;
+    size_t payload_span = 0u;
     r = oca_locate_payload(body, &bounds, &payload_addr, &payload_span);
     if (r != OCA_OK) {
         report_status(STATUS_TYPE_WARN, status_for_result(r));
@@ -258,8 +289,7 @@ static uint32_t try_manifest_slot(uint32_t src_addr, bool from_spi,
     }
 
     report_status(STATUS_TYPE_DEBUG, SEP_MSG_START_PAYLOAD_VALIDATION);
-    r = oca_check_payload_at(body, payload, payload_span,
-                             sep_oca_callbacks(), &vctx, NULL);
+    r = oca_check_payload_at(body, payload, payload_span, sep_oca_callbacks(), &vctx, NULL);
     if (r != OCA_OK) {
         report_status(STATUS_TYPE_WARN, status_for_result(r));
         return OCA_BOOT_ERR_RESULT(r);
@@ -271,8 +301,8 @@ static uint32_t try_manifest_slot(uint32_t src_addr, bool from_spi,
     // it with nothing to check once the payload hash moved into the library.
     simputs("PAYLOAD_OK\n");
 
-    g_body        = body;
-    g_payload     = payload;
+    g_body = body;
+    g_payload = payload;
     g_payload_len = payload_span;
     get_bl0_state()->sep_sram_manifest_addr = (uint32_t)(uintptr_t)body;
     return 0u;
@@ -282,14 +312,13 @@ static uint32_t try_manifest_slot(uint32_t src_addr, bool from_spi,
 // Public API
 // ---------------------------------------------------------------------------
 
-uint32_t rom_manifest_boot(const struct boot_straps *straps, uint32_t spi_status)
-{
+uint32_t rom_manifest_boot(const struct boot_straps *straps, uint32_t spi_status) {
     const bool from_spi = boot_from_spi(straps);
 
     uint32_t offsets[2];
     uint32_t num_retries;
-    int64_t  region_base;
-    int64_t  region_limit;
+    int64_t region_base;
+    int64_t region_limit;
 
     g_body = NULL;
     g_payload = NULL;
@@ -301,10 +330,10 @@ uint32_t rom_manifest_boot(const struct boot_straps *straps, uint32_t spi_status
         num_retries = 1; // primary, then backup
 #if BOOT_SPI_CONTROLLER_OT
         // Addresses on this path are raw flash byte offsets.
-        region_base  = 0;
+        region_base = 0;
         region_limit = (int64_t)SEP_SPI_MAX_SIZE;
 #else
-        region_base  = (int64_t)SEP_SPI_BASE;
+        region_base = (int64_t)SEP_SPI_BASE;
         region_limit = (int64_t)SEP_SPI_BASE + (int64_t)SEP_SPI_MAX_SIZE;
 #endif
     } else {
@@ -320,7 +349,7 @@ uint32_t rom_manifest_boot(const struct boot_straps *straps, uint32_t spi_status
         offsets[0] = smc_scratch_read(SMC_SCRATCH_MANIFEST_ADDR_IDX);
         offsets[1] = offsets[0];
         num_retries = 0; // single attempt
-        region_base  = (int64_t)sep_get_smc_sram_base();
+        region_base = (int64_t)sep_get_smc_sram_base();
         region_limit = region_base + (int64_t)SMC_SRAM_SIZE_BYTES;
     }
 
@@ -377,8 +406,7 @@ uint32_t rom_manifest_boot(const struct boot_straps *straps, uint32_t spi_status
     // low byte of an OCA_BOOT_ERR_RESULT carries the library's oca_result_t, so
     // the specific reason survives without being tracked separately.
     if ((last_err & 0xFFFFFF00u) == OCA_BOOT_ERR_BASE) {
-        report_status(STATUS_TYPE_ERROR,
-                      status_for_result((oca_result_t)(last_err & 0xFFu)));
+        report_status(STATUS_TYPE_ERROR, status_for_result((oca_result_t)(last_err & 0xFFu)));
     }
     report_status(STATUS_TYPE_ERROR, SEP_MSG_MANIFEST_LOAD_FAILED);
     simputs("MANIFEST_ALL_FAILED\n");
