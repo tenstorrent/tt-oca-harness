@@ -181,14 +181,8 @@ module smc_wrapper (
   input  logic [15:0] smc_cpu_jtag_part_number_i,
   input  logic [3:0]  smc_cpu_jtag_version_i,
 
-  // I3C DAT/DCT/RLT memory interfaces and the gated I3C peripheral clock
-  // (macro interfaces, passed straight through)
-  input  i3c_pkg::dat_mem_src_t [smc_config_pkg::NUM_I3C-1:0]  i3c_dat_mem_src_i,
-  output i3c_pkg::dat_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_dat_mem_sink_o,
-  input  i3c_pkg::dct_mem_src_t [smc_config_pkg::NUM_I3C-1:0]  i3c_dct_mem_src_i,
-  output i3c_pkg::dct_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_dct_mem_sink_o,
-  input  i3c_pkg::rlt_mem_src_t [smc_config_pkg::NUM_I3C-1:0]  i3c_rlt_mem_src_i,
-  output i3c_pkg::rlt_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_rlt_mem_sink_o,
+  // Gated I3C peripheral clock. The table memories it drives are absorbed by
+  // smc_ip_integration, so this leaves the wrapper for observation only.
   output logic                                                 gated_clk_periph_i3c_o,
 
   output logic [smc_pkg::NUM_GPIO_WRAPS-1:0]  gpio_interrupt_o,
@@ -214,6 +208,14 @@ module smc_wrapper (
   logic [smc_pkg::NUM_GPIO_WRAPS-1:0] core2pad;
   logic [smc_pkg::NUM_GPIO_WRAPS-1:0] pad2core_en;
   logic [smc_pkg::NUM_GPIO_WRAPS-1:0] core2pad_en;
+
+  // I3C table memory macros (smc <-> smc_ip_integration)
+  i3c_pkg::dat_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dat_mem_src;
+  i3c_pkg::dat_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_dat_mem_sink;
+  i3c_pkg::dct_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dct_mem_src;
+  i3c_pkg::dct_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_dct_mem_sink;
+  i3c_pkg::rlt_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_rlt_mem_src;
+  i3c_pkg::rlt_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_rlt_mem_sink;
 
   // Trace sink memories (smc <-> smc_ip_integration)
   trace_mem_pkg::SinkMemPktIn_s  [tn_pkg::TRC_RAM_INSTANCES-1:0] trace_mem_req;
@@ -264,6 +266,13 @@ module smc_wrapper (
     .pad2core_en_o (pad2core_en),
     .core2pad_en_o (core2pad_en),
 
+    .i3c_dat_mem_src_i  (i3c_dat_mem_src),
+    .i3c_dat_mem_sink_o (i3c_dat_mem_sink),
+    .i3c_dct_mem_src_i  (i3c_dct_mem_src),
+    .i3c_dct_mem_sink_o (i3c_dct_mem_sink),
+    .i3c_rlt_mem_src_i  (i3c_rlt_mem_src),
+    .i3c_rlt_mem_sink_o (i3c_rlt_mem_sink),
+
     .rom_intf_req_o            (rom_intf_req),
     .rom_intf_rsp_i            (rom_intf_rsp),
     .scratch_ram_intf_req_o    (scratch_ram_intf_req),
@@ -288,6 +297,9 @@ module smc_wrapper (
   smc_ip_integration u_smc_ip_integration (
     .clk_smc_i               (clk_smc_i),
     .rst_primary_smc_clk_ni  (rst_primary_smc_clk_no),
+
+    .gated_clk_periph_i3c_i    (gated_clk_periph_i3c_o),
+    .rst_primary_periph_clk_ni (rst_primary_periph_clk_no),
 
     .smc_external_req_i  (smc_external_req),
     .smc_external_resp_o (smc_external_resp),
@@ -318,6 +330,13 @@ module smc_wrapper (
     .l1_dcache_tag_intf_rsp  (l1_dcache_tag_intf_rsp),
     .l1_dcache_data_intf_req (l1_dcache_data_intf_req),
     .l1_dcache_data_intf_rsp (l1_dcache_data_intf_rsp),
+
+    .i3c_dat_mem_sink_i (i3c_dat_mem_sink),
+    .i3c_dat_mem_src_o  (i3c_dat_mem_src),
+    .i3c_dct_mem_sink_i (i3c_dct_mem_sink),
+    .i3c_dct_mem_src_o  (i3c_dct_mem_src),
+    .i3c_rlt_mem_sink_i (i3c_rlt_mem_sink),
+    .i3c_rlt_mem_src_o  (i3c_rlt_mem_src),
 
     .trace_mem_req  (trace_mem_req),
     .trace_mem_resp (trace_mem_resp),

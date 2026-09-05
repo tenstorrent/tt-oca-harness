@@ -12,8 +12,11 @@ __pycache__/
 /nonfree
 
 # Transient per-block build outputs. The build_ot* variants come from the SEP
-# boot ROM BUILD_DIR overrides (OpenTitan SPI DMA/PIO boot images).
+# boot ROM BUILD_DIR overrides (OpenTitan SPI DMA/PIO boot images); build_dual is
+# the dual-SMC DV tree, kept separate from build/ so concurrent --rebuild runs do
+# not race on bender filelist generation (hw/sys/smc/dv/smc_dual_sim_cfg.toml).
 **/build/
+**/build_dual/
 **/build_ot/
 **/build_ot_pio/
 

@@ -29,9 +29,10 @@ args = ["+skip_fuse_sense"]
 [[tests]]
 # Simultaneous multi-source interrupt fan-in + anti-alias (the reference suite
 # sep_irq_extended_connectivity_test). Host asserts a CROSS-IP set (HMAC/KMAC/CSRNG/
-# EDN INTR_TEST -> sep_internal_interrupts bits 15/18/21/25) AT ONCE and proves the
-# OR-packing assembles exactly those bits with no neighbor alias in [8:31] -- the
-# mailbox-8->1-truncation bug class, re-run for the crypto/KM region. Distinct from
+# EDN INTR_TEST -> sep_internal_interrupts bits 17/20/23/27, per sep.sv) AT ONCE and
+# proves the OR-packing assembles exactly those bits, with no neighbor alias and no
+# unresolved bit in [8:33] -- the mailbox-8->1-truncation bug class, re-run for the
+# crypto/KM region. Distinct from
 # `sep_irq_ip_to_aggregator_test` (one source at a time). Reuses that test's
 # sep_internal_interrupts_probe_o mirror.
 # no_cpu (aggregator read via probe); +skip_fuse_sense (INTR_TEST is functional-state

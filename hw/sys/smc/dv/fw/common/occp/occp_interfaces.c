@@ -6,10 +6,8 @@
 #include "smc_gpio.h"
 
 /* Register offsets within each per-GPIO sub-block.
- * DATA_CTRL is the first register in gpio_intf_t (offset 0x0).
- * CONTROL   is the first register in gpio_ctrl_t  (offset 0x0).*/
+ * DATA_CTRL is the first register in gpio_intf_t (offset 0x0).*/
 static const uint32_t GPIO_INTF_DATA_CTRL_OFFSET = 0x0u;
-static const uint32_t GPIO_CTRL_CONTROL_OFFSET = 0x0u;
 
 /* In DV simulation the clock is driven by the testbench; this stub satisfies
  * the call-site in initialize_i3c/i2c_controller without touching real PLL
@@ -21,6 +19,12 @@ bool is_secure_mode(void) {
     uint32_t lc_state = read_reg(SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_BASE_ADDR) & 0xF;
     return (lc_state == 1) || (lc_state == 8);
 }
+
+#ifndef I3C_USE_HCI_CORE
+/* Only reachable from the Cadence-core branch of enable_i3c_gpio_overrides() below; guarded so an
+ * HCI-core build does not carry -Wunused warnings.
+ * CONTROL is the first register in gpio_ctrl_t (offset 0x0). */
+static const uint32_t GPIO_CTRL_CONTROL_OFFSET = 0x0u;
 
 static bool enable_gpio_hw_override(uint8_t gpio_num) {
     gpio_ctrl__CONTROL_t ctrl;
@@ -35,10 +39,23 @@ static bool enable_gpio_hw_override(uint8_t gpio_num) {
     }
     return true;
 }
+#endif /* !I3C_USE_HCI_CORE */
 
 static bool enable_i3c_gpio_overrides(uint32_t controller_id) {
     (void)controller_id;
 
+#ifdef I3C_USE_HCI_CORE
+    /* I3C_CORE=swap (OCA/HCI i3c-core as the OCCP controller): the OCA core reaches the i3c pads
+     * via the gpio LSIO path (lsio_interface_select, driven by smc_padring), NOT the
+     * smc_ip_integration hw2_ovrd override path that the Cadence core uses. Setting hw2_ovrd here
+     * would force the gpio_shim onto the override path, whose drive/input-enable signals are gated
+     * OFF for the OCA instance -> the pad would be disconnected and the OCA controller never
+     * drives/senses the bus. So leave hw2_ovrd=0 (reset default); the OCA core's LSIO routing
+     * serves the shared bus. Mirrors the target-side gating in
+     * hw/sys/smc/bootrom/prod/lib/src/occp.c. fw.mk defines I3C_USE_HCI_CORE unconditionally, so
+     * today this is the only reachable branch; the #else is kept for a Cadence-core build. */
+    return true;
+#else
     /* Mirror the proven bring-up sequence used by i3c_loop_back:
      * enable hw2_ovrd on all I3C-related GPIOs so the I3C HW function reaches the pads.
      */
@@ -56,6 +73,7 @@ static bool enable_i3c_gpio_overrides(uint32_t controller_id) {
     enable_gpio_hw_override(35); /* I3C5 SCL */
     enable_gpio_hw_override(36); /* I3C5 SDA */
     return ok;
+#endif /* I3C_USE_HCI_CORE */
 }
 
 static void wait_for_target_up_gpio(void) {
