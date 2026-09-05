@@ -1,0 +1,15 @@
+{
+  "date": "2026-09-05",
+  "regress_run_id": "33982997638",
+  "status": "PASS",
+  "leaves": {
+    "total": 151,
+    "pass": 151
+  },
+  "failures": {
+    "infra": 0,
+    "design": 0,
+    "unknown": 0
+  },
+  "flaky_tests": []
+}
