@@ -512,8 +512,9 @@ DMA-AES, DCLS-in-SEP, PCR vault, ROM-FW contracts).
 Feature grades are independent of per-test checkers. `GAP` means no
 vehicle yet. `PARTIAL` means a vehicle exists and proves part of the feature,
 with the unproven part named in the row — it is not a softer `PROVEN`, and a
-row may not sit at `PARTIAL` without saying which part is unclaimed and why. A known RTL defect that the suite still exercises is called
-out in <<known-limitations>>, not as a feature credit.
+row may not sit at `PARTIAL` without saying which part is unclaimed and why.
+A known RTL defect that the suite still exercises is called out in
+<<known-limitations>>, not as a feature credit.
 The architecture spec under `hw/sys/sep/doc/` is the scorecard denominator: a
 feature that spec does not define is not a row. A backlog *name* is not a
 credit, and a `FAILED` spec-gap is honest but is not a feature credit either.
