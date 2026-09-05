@@ -370,6 +370,9 @@ DBG_DISABLE_WIDTH = len(DBG_DISABLE_FIELDS)
 # When arch rules, the bit moves into dbg_disable_expected and out of this
 # tuple.
 #
+# Each is tracked; when arch rules, the bit moves into dbg_disable_expected and
+# out of this tuple, and the plan's scorecard row goes from PARTIAL to PROVEN.
+#
 #   dft_secure  spec: Case 3 (SIP_DBG & CHIPLET_DBG & SEP_DBG)
 #               RTL:  Case 2, flagged in sep_lifecycle_ctrl.sv as an open spec
 #                     confirmation. The secure DFT chain is also subject to the
