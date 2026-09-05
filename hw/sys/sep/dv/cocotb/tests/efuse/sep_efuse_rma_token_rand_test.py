@@ -273,7 +273,7 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
             "reset-clear check needs a latched fault to start from, but "
             "TOKEN_MATCH_FAULT is already 0 -- the phases above left nothing set"
         )
-        assert self._irq38() == 1, (
+        assert self._irq39() == 1, (
             "reset-clear check: a fault is latched but the interrupt is low, so "
             "the release below would prove nothing about the interrupt"
         )
@@ -293,7 +293,7 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         await self.bring_up_and_wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
 
         fault = await self._rd_fault()
-        irq = self._irq38()
+        irq = self._irq39()
         assert fault == 0, (
             f"CHK-FAULT-RESET: TOKEN_MATCH_FAULT=0x{fault:08x} after cold reset, "
             "expected 0 -- the sticky latch is not reset-clearable"

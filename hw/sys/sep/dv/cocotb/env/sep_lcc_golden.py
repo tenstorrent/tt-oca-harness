@@ -311,6 +311,24 @@ def selftest() -> None:
     else:
         raise AssertionError("dbg_disable_unpack must reject a width mismatch")
 
+    # sip=1, chiplet=0, sep=0: Case 1 open, Cases 2 and 3 closed. stap_sep
+    # is Case 3; a Case 1 formula would open it here.
+    sip_only = 1 << 16
+    got = dbg_disable_expected(sip_only)
+    assert got["stap_io"] == 0
+    assert got["stap_smc"] == 1
+    assert got["stap_sep"] == 1
+    assert "dft_secure" not in got and "dfd" not in got
+    assert got["stap_sep"] != (1 - ((sip_only >> 16) & 1)), (
+        "stap_sep Case 3 vs Case 1 must diverge when only SIP_DBG is set"
+    )
+    # sip=1, chiplet=1, sep=0: the dft_secure spec-vs-RTL cell. Case 2 open,
+    # Case 3 still closed.
+    sip_chip = (1 << 16) | (1 << 1)
+    got = dbg_disable_expected(sip_chip)
+    assert got["stap_smc"] == 0
+    assert got["stap_sep"] == 1
+
 
 # ---------------------------------------------------------------------------
 # dbg_disable
@@ -334,17 +352,32 @@ DBG_DISABLE_FIELDS = (
 DBG_DISABLE_WIDTH = len(DBG_DISABLE_FIELDS)
 
 # Bits this golden does NOT claim, and why. Both are places where the DTP path
-# table in the lifecycle chapter and the RTL disagree; in both the RTL is the
-# stricter of the two, so the divergence is fail-safe rather than a hole. They
-# are left unchecked instead of being asserted either way, because encoding
-# one side would turn an open architecture question into a silent DV opinion.
+# table in the lifecycle chapter and the RTL disagree. They are left unchecked
+# instead of being asserted either way, because encoding one side would turn an
+# open architecture question into a silent DV opinion.
+#
+# The two diverge in opposite directions, which matters:
+#
+#   dfd         RTL disables in more states than the spec requires. Stricter,
+#               so the divergence is fail-safe.
+#   dft_secure  RTL disables in fewer states than the spec requires. The spec
+#               puts the secure DFT chain at Case 3; the RTL omits the SEP_DBG
+#               term, so at sip_debug=1, chiplet_dbg=1, sep_debug=0 the spec
+#               says the chain must be closed and the RTL leaves it open. This
+#               one is permissive, not fail-safe, and it is a security-relevant
+#               gap rather than a neutral ambiguity.
+#
+# When arch rules, the bit moves into dbg_disable_expected and out of this
+# tuple.
 #
 #   dft_secure  spec: Case 3 (SIP_DBG & CHIPLET_DBG & SEP_DBG)
 #               RTL:  Case 2, flagged in sep_lifecycle_ctrl.sv as an open spec
 #                     confirmation. The secure DFT chain is also subject to the
 #                     command-class rule, which this vector does not describe.
+#               issue 450
 #   dfd         spec: Case 1 (SIP_DBG alone)
-#               RTL:  Case 2. No issue found covering this one.
+#               RTL:  Case 2.
+#               issue 1576
 DBG_DISABLE_UNCLAIMED = ("dft_secure", "dfd")
 
 

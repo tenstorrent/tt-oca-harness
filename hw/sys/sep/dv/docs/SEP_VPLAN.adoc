@@ -3653,7 +3653,7 @@ both lock flavours of one seed-selected spare.
 |CHK-DEMOTE-LOCK-RESET
 |After `rst_ni` the lock is 0 and the same demote write lands.
 |CHK-DBG-DISABLE
-|Nine of the eleven `dbg_disable` bits match the DTP gating ladder for the same `FEAT_CTRL` the cell just verified. `dft_secure` and `dfd` are unclaimed: the path table and the RTL disagree, and in both cases the RTL is stricter.
+|Nine of the eleven `dbg_disable` bits match the DTP gating ladder for the same `FEAT_CTRL` the cell just verified. `dft_secure` and `dfd` are unclaimed: the path table and the RTL disagree, and they diverge in opposite directions -- `dfd` is stricter in the RTL, `dft_secure` is more permissive.
 |===
 
 '''''
