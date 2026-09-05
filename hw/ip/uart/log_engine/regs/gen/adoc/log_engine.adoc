@@ -51,7 +51,8 @@ A requested LOG_LEN above that capacity is clamped to the capacity.
 .LOG_REGION_ADDR Register
 |===
 | Bits | Field | Access | Reset | Description
-| 63:32 | `LOG_REGION_ADDR_HI` | RW | 0x0 a| Log Region Start Address High.
+| 63:56 | `RESERVED` | R | 0x0 a| Reserved. Reads as zero; writes are ignored.
+| 55:32 | `LOG_REGION_ADDR_HI` | RW | 0x0 a| Log Region Start Address High. Contains fabric address bits [55:32].
 | 31:0 | `LOG_REGION_ADDR_LO` | RW | 0x0 a| Log Region Start Address Low.
 |===
 
