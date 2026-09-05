@@ -60,8 +60,14 @@ class sep_lcc_demote_feat_ctrl_matrix_test(sep_base_test):
         the same FEAT_CTRL the cell above just checked, so the two are one
         consistent claim rather than two independent guesses.
         """
-        raw = int(cocotb.top.dbg_disable_all_o.value)
-        got = dbg_disable_unpack(raw)
+        probe = cocotb.top.dbg_disable_all_o
+        val = probe.value
+        width = getattr(val, "n_bits", None)
+        if width is None:
+            bits = getattr(val, "binstr", None)
+            width = len(bits) if bits is not None else len(probe)
+        raw = int(val)
+        got = dbg_disable_unpack(raw, int(width))
         want = dbg_disable_expected(feat_ctrl)
         for name, exp in want.items():
             assert got[name] == exp, (
