@@ -1550,7 +1550,7 @@ def target_flags(target: dict[str, Any], tool: str) -> list[str]:
         if any(ch.isspace() for ch in flag):
             raise ConfigError(
                 f"target flag {flag!r} contains whitespace; write each argument as its own list "
-                "item (for example [\"-assert\", \"svaext\"])"
+                'item (for example ["-assert", "svaext"])'
             )
     return flags
 
