@@ -1,9 +1,0 @@
-document:
-  schema: 1.0
-
-contents:
-  - tests:
-      tags: ["L0", "SOC_IFC",  "directed", "smoke_test"]
-      paths:
-        - $CALIPTRA_ROOT/src/soc_ifc/uvmf_soc_ifc/uvmf_template_output/project_benches/soc_ifc/tb/tests/src/soc_ifc_cmdline_test.yml
-        - $CALIPTRA_ROOT/src/soc_ifc/uvmf_soc_ifc/uvmf_template_output/project_benches/soc_ifc/tb/tests/src/soc_ifc_rand_test.yml
