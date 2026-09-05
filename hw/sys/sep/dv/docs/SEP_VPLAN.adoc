@@ -2450,7 +2450,7 @@ one word and parks, which is enough for the legality check to execute.
 *Scope limit*: scope walks AES, HMAC, KMAC and OTBN. The Key Manager bit stays at
 its reset default (a different mechanism) and is not claimed.
 
-*Known failure*: `CHK-ISOLATE-WR` fails on this branch. The isolated HMAC `CFG`
+*Parked on an RTL fix* (DV-lead decision): `CHK-ISOLATE-WR` fails. The isolated HMAC `CFG`
 write returns SLVERR where the isolate can only answer DECERR
 (`vendor/pulp-platform/axi/upstream/src/axi_lite_isolate.sv`), while the
 isolated read in the same window is correctly terminated — its data is the
@@ -4512,9 +4512,22 @@ a UVM test whose bins the cocotb suite already hits is rejected.
 
 Parked cocotb scorecard vehicles (still Phase 2 ownership, not Phase 3)::
 
+Not coded:
+
 * `sep_km_command_set_rand_test`
 * `sep_km_crc_pcpi_kat_test`
 * `sep_km_kpv_scrambler_test`
+
+Coded and failing, parked on an RTL fix:
+
+* `sep_crypto_per_ip_reset_isolation_test` — parked by DV-lead decision. Thirteen
+of its fourteen checkers pass; `CHK-ISOLATE-WR` fails because an in-window write
+to an isolated domain answers SLVERR where the isolate emits only DECERR, which
+is a hardware asymmetry and not a DV expectation (see <<known-limitations>>). It
+stays enrolled and stays red: the expected response set is not widened, the entry
+is not converted to an expected failure, and it is not removed from the
+regression group to make the count green. Its scorecard row is `GAP` until the
+hardware is fixed.
 
 Holding notes (candidates, not an execute list)::
 
