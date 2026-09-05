@@ -507,6 +507,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # check-regen-regs.sh --skip-if-unrelated re-derives the PR diff
+          # itself (diff_class.py), the same way the diff-class job above
+          # does. A shallow, single-commit checkout has no merge base to
+          # diff against, so it always falls back to running the full
+          # check; match diff-class's fetch-depth here so the bypass has
+          # real history to work with.
+          fetch-depth: 0
       - name: Install uv
         uses: astral-sh/setup-uv@v6
         with:

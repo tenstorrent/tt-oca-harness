@@ -140,14 +140,30 @@ def _run_git(args: list[str]) -> str | None:
             capture_output=True,
             text=True,
         )
-    except (subprocess.CalledProcessError, FileNotFoundError):
+    except FileNotFoundError as exc:
+        print(f"diff_class: git not runnable: {exc}", file=sys.stderr)
+        return None
+    except subprocess.CalledProcessError as exc:
+        print(f"diff_class: git {' '.join(args)} failed:\n{exc.stderr}", file=sys.stderr)
         return None
     return completed.stdout
 
 
 def _fetch(ref: str) -> bool:
+    """Fetch *ref* into ``origin/<ref>``, retrying once on failure.
+
+    A single attempt is not distinguishable from a transient network error,
+    and a transient failure here silently falls back to treating the diff
+    as unclassified (see ``changed_files``), which always runs the check
+    this function exists to let skip. One retry costs one extra shallow
+    fetch and rules that out before conceding.
+    """
     remote_ref = ref.removeprefix("origin/")
-    return _run_git(["fetch", "--depth=1", "origin", remote_ref]) is not None
+    for attempt in range(2):
+        if _run_git(["fetch", "--depth=1", "origin", remote_ref]) is not None:
+            return True
+        print(f"diff_class: fetch of '{remote_ref}' attempt {attempt + 1} failed", file=sys.stderr)
+    return False
 
 
 def _diff(rev_range: str) -> list[str] | None:
@@ -194,6 +210,15 @@ def changed_files() -> list[str]:
         return paths if paths is not None else [UNCLASSIFIED]
 
     source = os.environ.get("CI_PIPELINE_SOURCE")
+    if source == "parent_pipeline":
+        # GitLab sets CI_PIPELINE_SOURCE to 'parent_pipeline' for every job in
+        # a child pipeline, masking the event that actually triggered it. The
+        # nonfree child runs in the harness project's own parent-child
+        # pipeline (not a separate downstream project), so GitLab forwards
+        # the parent's CI_MERGE_REQUEST_*/CI_COMMIT_* variables unchanged;
+        # only the pipeline-source classification itself needs recovering,
+        # which .gitlab-ci.yml's `nonfree:` job does via PARENT_PIPELINE_SOURCE.
+        source = os.environ.get("PARENT_PIPELINE_SOURCE") or source
     if source == "merge_request_event":
         base = os.environ.get("CI_MERGE_REQUEST_DIFF_BASE_SHA", "")
         if _nonzero_sha(base):
