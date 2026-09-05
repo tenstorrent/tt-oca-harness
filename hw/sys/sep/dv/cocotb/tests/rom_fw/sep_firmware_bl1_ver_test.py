@@ -97,7 +97,7 @@ WHAT ELSE THE RUN MUST SHOW, because "it booted" is not a result:
     is the one testcase whose stimulus IS the version field, so it is asserted here
     rather than assumed. Be honest about its weight: on an ACCEPT path both stages
     run, so this shows SEQUENCE only. The stronger property -- that a rejected
-    version PRE-EMPTS key selection entirely -- is already proven by
+    version PREEMPTS key selection entirely -- is already proven by
     ``sep_firmware_primary_invalid_security_version_test``, which requires the
     primary's ``PUBK_SEL=`` to come after the BACKUP read;
   * ``RSA_VERIFY_START`` -> ``SIG_VALID`` -> ``CRYPTO_VALIDATE_OK``, after the

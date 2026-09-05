@@ -45,7 +45,7 @@
 #
 # BL1_VERSION and SBOOT_DIS stay 0: the rollback check runs before key selection
 # (manifest_crypto.c) and SBOOT_DIS would skip the crypto chain
-# altogether, so either one would pre-empt the path under test.
+# altogether, so either one would preempt the path under test.
 #
 # THE REVOKING MEMBER. Bit 16 refuses CHIPLET fused key 0
 # (manifest_crypto.c) at manifest_crypto.c, which runs BEFORE

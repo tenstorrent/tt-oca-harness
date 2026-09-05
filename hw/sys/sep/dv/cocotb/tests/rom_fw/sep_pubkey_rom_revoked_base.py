@@ -44,7 +44,7 @@ therefore:
 
   * **slot 0** establishes the reference's own property -- revocation refuses an
     otherwise fully valid, correctly signed, bootable image;
-  * **slots 1-5** establish the weaker property that revocation PRE-EMPTS the
+  * **slots 1-5** establish the weaker property that revocation PREEMPTS the
     empty-digest arm, because this tree ships one signing key and populates one
     digest (see :func:`select_backup_rom_slot`).
 

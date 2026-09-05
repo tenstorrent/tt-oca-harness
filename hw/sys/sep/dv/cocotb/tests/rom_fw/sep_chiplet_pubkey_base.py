@@ -114,7 +114,7 @@ is re-run after the re-seal to prove it. Revocation is therefore the SOLE cause 
 the rejection, which is the strict form of the property. Note this is stronger than
 the ROM-slot revoke families of R1/R2, where only slot 0 could be strict
 (``FINDINGS.md`` R01): there, slots 1-5 have no populated digest and their stale
-dev0 signature is never re-signed, so they prove only that revocation pre-empts the
+dev0 signature is never re-signed, so they prove only that revocation preempts the
 empty-digest arm. Here every member is the strict case.
 
 PLATFORM ADAPTATION -- MARKERS. The reference asserts the fused-key path positively

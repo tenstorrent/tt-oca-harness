@@ -191,14 +191,14 @@ class sep_firmware_primary_invalid_signature_type_test(
         # after the type check, so the primary must NOT have echoed a
         # selector at all -- the only occurrence in the run belongs to the booting
         # backup, and it must follow the backup read. A count of 2 would mean the
-        # type check did not pre-empt key selection, which is precisely what
+        # type check did not preempt key selection, which is precisely what
         # separates this testcase from its signature-VALUE sibling.
         n_sel = sum(1 for line in console if "PUBK_SEL=" in line)
         assert n_sel == 1, (
             f"PUBK_SEL= appeared {n_sel} times, expected exactly 1 (the backup's). "
             f"More than one means the primary reached the selector echo at "
             f"manifest_crypto.c:167, so the signature-type check at :162-165 did "
-            f"not pre-empt key selection. Console: {console}"
+            f"not preempt key selection. Console: {console}"
         )
         assert 0 <= i_bsrc < i_bsel, (
             f"{_BACKUP_SEL_ECHO}@{i_bsel} did not follow the backup read@{i_bsrc}: "

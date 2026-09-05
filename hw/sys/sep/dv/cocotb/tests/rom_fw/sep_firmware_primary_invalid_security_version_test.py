@@ -9,7 +9,7 @@ The ``BL1_VERSION`` fuse sets a minimum security version of 1, the PRIMARY carri
 
 THE ORDERING IS ESTABLISHED, NOT ASSUMED, AND IT IS WHY THIS TESTCASE CAN NAME ITS
 REASON. ``check_security_version`` runs at ``manifest_crypto.c``, BEFORE
-``validate_signature`` -- so the rollback verdict pre-empts signature
+``validate_signature`` -- so the rollback verdict preempts signature
 type, key selection, revocation and RSA. That is what makes
 ``MANIFEST_ERR_VERSION_ROLLBACK`` (0x00030014, ``manifest.h``) a DEDICATED code
 rather than another user of the shared ``MANIFEST_ERR_SIG_FAILED``, and it is why
@@ -101,7 +101,7 @@ class sep_firmware_primary_invalid_security_version_test(
     extra_required = (_FUSE_VER_ECHO, _PRIMARY_VER_ECHO, _BACKUP_VER_ECHO)
     # None of these may fire. The primary is rejected upstream of key selection,
     # so every one of them appearing on the primary would mean the rollback check
-    # did not pre-empt it; and the backup is valid, so none may fire there either.
+    # did not preempt it; and the backup is valid, so none may fire there either.
     extra_forbidden = ("BAD_SIG_TYPE=", "BAD_KEY_IDX", "BAD_KEY_SEL",
                        "ROM_KEY_EMPTY", "FUSE_KEY_EMPTY", "PUBK_HASH_MISMATCH",
                        "KEY_REVOKED", "RSA_VERIFY_FAIL")
@@ -201,11 +201,11 @@ class sep_firmware_primary_invalid_security_version_test(
         # asserted rather than argued. validate_signature echoes PUBK_SEL= as its
         # second act (manifest_crypto.c); if the FIRST such echo in the whole
         # run came before the backup read, the primary reached key selection and
-        # the rollback check did not pre-empt it.
+        # the rollback check did not preempt it.
         assert i_psel > i_bsrc, (
             f"PUBK_SEL=@{i_psel} appeared before the backup read@{i_bsrc}: the "
             f"primary reached key selection, so check_security_version did not "
-            f"pre-empt validate_signature. Console: {console}"
+            f"preempt validate_signature. Console: {console}"
         )
         # CHK-BACKUP-ACCEPTED-AT-FLOOR: the recovering slot's version was read and
         # accepted. Equality is the boundary the ROM must pass, so this is the

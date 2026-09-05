@@ -381,7 +381,7 @@ args = [
 # skipping the digest bind would verify a manifest against a modulus it supplied
 # itself. Everything else about the backup is valid, so ROM_KEY_EMPTY is the only
 # available verdict. Same PROD OTP as the sibling key tests -- an unrevoked slot
-# and BL1_VERSION 0, so neither revocation nor rollback pre-empts the check.
+# and BL1_VERSION 0, so neither revocation nor rollback preempts the check.
 name = "sep_firmware_backup_unpopulated_rom_key_slot_test"
 module = "rom_fw.sep_firmware_backup_unpopulated_rom_key_slot_test"
 target = "rom_boot"
@@ -1159,7 +1159,7 @@ args = [
 # It also forbids PUBK_SEL=, which is the load-bearing assertion: the type check
 # is the first arm of validate_signature (manifest_crypto.c), ahead of
 # the selector echo, so an absent echo is what proves the type check
-# pre-empted key selection rather than merely preceding the verdict.
+# preempted key selection rather than merely preceding the verdict.
 #
 # No +sep_crypto_edn_force: OTBN is never driven on either slot.
 name = "sep_firmware_backup_invalid_signature_type_test"
@@ -1362,7 +1362,7 @@ args = [
 # the ORDER -- revocation before the digest table -- by forbidding ROM_KEY_EMPTY.
 # Narrowing vs the reference, disclosed in the module docstring: the reference
 # re-signs its primary with slot 1's own key, which this tree does not ship, so
-# this member proves the weaker "revocation pre-empts the empty-digest arm".
+# this member proves the weaker "revocation preempts the empty-digest arm".
 #
 # Needs +sep_crypto_edn_force: the backup is valid and runs a full RSA-3072
 # modexp on OTBN. It grants OTBN's EDN handshakes only; the RSA assertions are
@@ -1402,7 +1402,7 @@ args = [
 # the ORDER -- revocation before the digest table -- by forbidding ROM_KEY_EMPTY.
 # Narrowing vs the reference, disclosed in the module docstring: the reference
 # re-signs its primary with slot 2's own key, which this tree does not ship, so
-# this member proves the weaker "revocation pre-empts the empty-digest arm".
+# this member proves the weaker "revocation preempts the empty-digest arm".
 #
 # Needs +sep_crypto_edn_force: the backup is valid and runs a full RSA-3072
 # modexp on OTBN. It grants OTBN's EDN handshakes only; the RSA assertions are
@@ -1442,7 +1442,7 @@ args = [
 # the ORDER -- revocation before the digest table -- by forbidding ROM_KEY_EMPTY.
 # Narrowing vs the reference, disclosed in the module docstring: the reference
 # re-signs its primary with slot 3's own key, which this tree does not ship, so
-# this member proves the weaker "revocation pre-empts the empty-digest arm".
+# this member proves the weaker "revocation preempts the empty-digest arm".
 #
 # Needs +sep_crypto_edn_force: the backup is valid and runs a full RSA-3072
 # modexp on OTBN. It grants OTBN's EDN handshakes only; the RSA assertions are
@@ -1482,7 +1482,7 @@ args = [
 # the ORDER -- revocation before the digest table -- by forbidding ROM_KEY_EMPTY.
 # Narrowing vs the reference, disclosed in the module docstring: the reference
 # re-signs its primary with slot 4's own key, which this tree does not ship, so
-# this member proves the weaker "revocation pre-empts the empty-digest arm".
+# this member proves the weaker "revocation preempts the empty-digest arm".
 #
 # Needs +sep_crypto_edn_force: the backup is valid and runs a full RSA-3072
 # modexp on OTBN. It grants OTBN's EDN handshakes only; the RSA assertions are
@@ -1522,7 +1522,7 @@ args = [
 # the ORDER -- revocation before the digest table -- by forbidding ROM_KEY_EMPTY.
 # Narrowing vs the reference, disclosed in the module docstring: the reference
 # re-signs its primary with slot 5's own key, which this tree does not ship, so
-# this member proves the weaker "revocation pre-empts the empty-digest arm".
+# this member proves the weaker "revocation preempts the empty-digest arm".
 #
 # Needs +sep_crypto_edn_force: the backup is valid and runs a full RSA-3072
 # modexp on OTBN. It grants OTBN's EDN handshakes only; the RSA assertions are
@@ -2000,12 +2000,12 @@ args = [
 ]
 
 [[tests]]
-# PROD_END + selector bit 17 set -> the selector is PRE-EMPTED, both locked.
+# PROD_END + selector bit 17 set -> the selector is PREEMPTED, both locked.
 #
 # COVERED-BY-O1 ON THE OUTCOME, but it is the one PROD_END row that is a NEGATIVE
 # CONTROL ON THE SHORT-CIRCUIT ORDER, and that is why it earns its place beside
 # R3's O1 member rather than duplicating it. selector_bits bit 17 is set; if
-# rom_main.c did not pre-empt the ROM would take the manifest-decides
+# rom_main.c did not preempt the ROM would take the manifest-decides
 # arm and produce O3a, which differs on four observables at once -- BL1_DEMOTE=0
 # present, BL2_DEMOTE_DEC=0 present, DEMOTE: PROD_END lock absent, and DEMOTE_2
 # left unwritten. All four are asserted. Neither of the other two PROD_END rows

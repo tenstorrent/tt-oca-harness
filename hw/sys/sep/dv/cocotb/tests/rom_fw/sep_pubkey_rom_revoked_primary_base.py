@@ -76,7 +76,7 @@ ROM used the reference's order, slots 1-5 would return ``ROM_KEY_EMPTY`` /
 ``MANIFEST_ERR_SIG_FAILED`` instead of ``KEY_REVOKED``. Consequently slot 0
 establishes the reference's own property -- revocation refuses a fully valid,
 correctly signed, bootable image -- and slots 1-5 establish the weaker property
-that revocation PRE-EMPTS the empty-digest arm. The same holds for the backup-side
+that revocation PREEMPTS the empty-digest arm. The same holds for the backup-side
 family. Revocation-first is the fail-closed order and is not a defect.
 
 A FURTHER NARROWING, SPECIFIC TO THE PRIMARY SIDE. The reference re-signs the

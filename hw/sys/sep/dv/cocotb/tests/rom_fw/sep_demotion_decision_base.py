@@ -151,7 +151,7 @@ chain and the disclosures in one place for all eight members.
 that R3's ``auth_flag_0_prod_end`` member already covers, so neither adds a ROM path.
 They are not equally weak, and the difference is in what a FAILURE would mean rather
 than in the outcome: with ``sel = 1`` at PROD_END the O1 outcome is reachable only if
-``rom_main.c`` pre-empts the selector-bit arm, so
+``rom_main.c`` preempts the selector-bit arm, so
 ``no_flag_prod_end_sel_bit_set`` is a negative control on the short-circuit ORDER
 that neither ``auth_flag_0_prod_end`` (sel 0) nor ``no_flag_prod_end`` (all inputs
 clear) can provide. ``no_flag_prod_end`` adds no falsifying power at all and its own

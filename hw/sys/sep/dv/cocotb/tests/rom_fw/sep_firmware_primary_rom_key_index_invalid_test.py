@@ -218,7 +218,7 @@ class sep_firmware_primary_rom_key_index_invalid_test(
             f"{_REVOKE_ECHO} appeared {n_revoke} times, expected exactly 1 (the "
             f"backup's). More than one means the primary reached "
             f"check_pubkey_revoked (manifest_crypto.c:181), so the index bound at "
-            f":174-177 did not pre-empt it. Console: {console}"
+            f":174-177 did not preempt it. Console: {console}"
         )
         assert i_bsrc < i_revoke, (
             f"{_REVOKE_ECHO}@{i_revoke} did not follow the backup read@{i_bsrc}: "

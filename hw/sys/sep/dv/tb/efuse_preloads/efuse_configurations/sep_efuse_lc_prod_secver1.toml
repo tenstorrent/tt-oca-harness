@@ -18,7 +18,7 @@
 #
 # Everything else matches sep_efuse_lc_prod.toml: PROD so secure boot is
 # enforced, SBOOT_DIS clear so nothing opts out of it, and CHIPLET_PUBK_REVOKE 0
-# so no revocation verdict can pre-empt the rollback one.
+# so no revocation verdict can preempt the rollback one.
 
 [LC_STATE]
   [LC_STATE.fields.lc_state]

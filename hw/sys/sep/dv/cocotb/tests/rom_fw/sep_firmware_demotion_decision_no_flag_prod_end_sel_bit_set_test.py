@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""PROD_END + selector bit 17 set -> the selector is PRE-EMPTED, both locked.
+"""PROD_END + selector bit 17 set -> the selector is PREEMPTED, both locked.
 
 Outcome **O1** of the [C15] decision table in
 ``rom_fw/sep_demotion_decision_base.py``; the PROD_END stimulus it shares with its
@@ -13,7 +13,7 @@ produces the same observable and batch R3 already covered it with
 ``sep_firmware_demotion_decision_auth_flag_0_prod_end_test``. This row adds no ROM
 path. What it adds is a **negative control on the short-circuit ORDER**:
 
-  * ``selector_bits`` bit 17 is SET. If did not pre-empt, the
+  * ``selector_bits`` bit 17 is SET. If did not preempt, the
     ROM would take the first arm of the ``else``, copy ``usage_constraints.flags``
     bit 0 into ``demotion_reg``, and produce outcome **O3a** -- which differs from
     O1 on four independent observables at once: ``BL1_DEMOTE=0`` present,

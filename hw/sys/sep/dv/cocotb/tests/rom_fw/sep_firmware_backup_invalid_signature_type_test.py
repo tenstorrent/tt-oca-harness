@@ -22,7 +22,7 @@ THAN ASSUMING IT. The type check is the FIRST arm of ``validate_signature``,
 ahead even of the ``PUBK_SEL=`` echo at ``manifest_crypto.c``. So ``PUBK_SEL=``
 is forbidden below: the primary died at BAD_MAGIC before any crypto ran, so if the
 selector is echoed at all it can only be the backup's, which would mean the type
-check did not pre-empt key selection. That single forbid is what turns "the ROM
+check did not preempt key selection. That single forbid is what turns "the ROM
 rejected it" into "the ROM rejected it AT the type check".
 
 WHY THIS IS NOT THE SAME TESTCASE AS ``sep_firmware_backup_invalid_signature_test``.

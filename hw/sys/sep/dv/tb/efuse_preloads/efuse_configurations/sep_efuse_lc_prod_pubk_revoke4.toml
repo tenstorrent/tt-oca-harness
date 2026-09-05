@@ -7,7 +7,7 @@
 #
 # Everything else matches sep_efuse_lc_prod.toml: PROD so secure boot is
 # enforced, SBOOT_DIS clear so nothing opts out of it, and BL1_VERSION 0 so the
-# rollback check (which runs before key selection) cannot pre-empt the
+# rollback check (which runs before key selection) cannot preempt the
 # revocation verdict. Used by
 # sep_firmware_backup_pubkey_rom_4_revoked_key_test and
 # sep_firmware_primary_pubkey_rom_4_revoked_key_test.

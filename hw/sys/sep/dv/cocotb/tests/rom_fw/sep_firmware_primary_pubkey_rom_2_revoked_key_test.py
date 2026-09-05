@@ -33,7 +33,7 @@ slot 2's own private key
 manifest bound to slot 2 and its test proves "revocation refuses a provably good
 image". Only ``rsa_private_key.dev0.pem`` ships here, so the selector write leaves
 the dev0 signature stale and this member proves the weaker property that
-revocation PRE-EMPTS the empty-digest arm. The stale signature is never examined --
+revocation PREEMPTS the empty-digest arm. The stale signature is never examined --
 ``RSA_VERIFY_START`` must not appear before the backup read and the total count is
 pinned to 1 -- so the verdict stays attributable to revocation. Slot 0 carries the
 family's strict form.

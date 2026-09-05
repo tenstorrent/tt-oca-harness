@@ -21,7 +21,7 @@ own docstring and in its status row's ``flow_deviation``.
 
 What still differs between members, and is therefore still declared per member,
 is the STIMULUS -- and with it what a failure would mean. With ``_SEL = 1`` the
-O1 outcome is reachable only if pre-empts the selector-bit arm at
+O1 outcome is reachable only if preempts the selector-bit arm at
 : a ROM that tested the selector bit first would produce O3a, which
 differs on DEMOTE_2 (never written) and prints ``BL1_DEMOTE=0`` and
 ``BL2_DEMOTE_DEC=0`` where O1 prints ``DEMOTE: PROD_END lock``. With all three
