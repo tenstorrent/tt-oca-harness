@@ -91,9 +91,9 @@ class sep_esrc_alert_delivery_test(sep_base_test):
                 f"(INTR_STATUS=0x{st_after:08x}); a singlepulse source must not re-latch"
             )
             proven.append(name)
-        assert len(proven) == 8, (
-            f"CHK-INTR-TEST FAIL: proved {len(proven)} sources {proven}, expected the "
-            f"8 interrupt sources entropy_source.rdl defines"
+        assert len(proven) == len(INTR_SOURCES), (
+            f"CHK-INTR-TEST FAIL: proved {len(proven)} sources {proven}, expected "
+            f"{len(INTR_SOURCES)} from ENTROPY_SOURCE.fields('INTR_TEST')"
         )
         self.logger.info(
             "CHK-INTR-TEST PASS: all %d INTR_TEST sources set their own INTR_STATUS bit, "

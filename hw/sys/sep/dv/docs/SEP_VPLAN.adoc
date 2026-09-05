@@ -4176,10 +4176,11 @@ and the alert bookkeeping the RDL defines is read at that trip. A closing
 |CHK-NO-ALERT
 |ALERT, PERSISTENT_FAILURE, and PIC source 16 are 0 before the trip.
 |CHK-INTR-TEST
-|Each of the eight `INTR_TEST` sources sets only its own `INTR_STATUS` bit,
-raises PIC source 16, and clears on W1C. Swept before the trip: `INTR_STATUS`
-bits are re-driven from their live cause, so a source whose real condition is
-latched cannot clear.
+|Each `INTR_TEST` source `ENTROPY_SOURCE.fields("INTR_TEST")` names sets only
+its own `INTR_STATUS` bit, raises PIC source 16, and clears on W1C. Swept
+before the trip: `INTR_STATUS` bits are re-driven from their live cause, so a
+source whose real condition is latched cannot clear. The expected count is
+that field list, not a literal.
 |CHK-ALERT
 |`MAIN_SM_STATUS.ALERT` asserts after the threshold.
 |CHK-PERSISTENT-FAILURE
