@@ -89,17 +89,30 @@ class sep_esrc_fips_lock_test(sep_base_test):
         assert got == 0, f"CHK-RST-NI FAIL: FIPS_LOCK={got} after rst_ni"
         self.logger.info("CHK-RST-NI PASS: rst_ni cleared FIPS_LOCK.LOCK")
 
-        rel = cfg.targets[0]
+        # cfg.release is chosen so its poke differs from the register reset. On a
+        # target where the two agree, the reset value alone satisfies the readback
+        # and a dropped post-unlock write would still pass.
+        rel = cfg.release
+        at_reset = await esrc.read(rel.addr)
+        assert (at_reset & rel.mask) == (rel.reset & rel.mask), (
+            f"CHK-POST-UNLOCK FAIL: {rel.name} did not return to reset after rst_ni: "
+            f"0x{at_reset:08x} masked 0x{at_reset & rel.mask:08x} "
+            f"want 0x{rel.reset & rel.mask:08x}"
+        )
         await esrc.write(rel.addr, rel.poke)
         got = await esrc.read(rel.addr)
         assert (got & rel.mask) == (rel.poke & rel.mask), (
             f"CHK-POST-UNLOCK FAIL: {rel.name} still frozen 0x{got:08x} "
             f"after rst_ni poke 0x{rel.poke:08x}"
         )
-        self.logger.info("CHK-POST-UNLOCK PASS: %s writable after rst_ni", rel.name)
         self.logger.info(
-            "CHK-RANDCFG PASS: walked %d classes "
-            "(CTRL, WINDOW, HT_ENABLE, DECOR, RING_OSC, RING_TUNE, "
-            "GEN0_DIV, FIFO_CHURN, ALERT_THRESH)",
+            "CHK-POST-UNLOCK PASS: %s moved 0x%08x -> 0x%08x after rst_ni",
+            rel.name,
+            at_reset & rel.mask,
+            got & rel.mask,
+        )
+        self.logger.info(
+            "CHK-RANDCFG PASS: walked %d locked classes: %s",
             cfg.n_cells(),
+            ", ".join(t.name for t in cfg.targets),
         )
