@@ -1244,8 +1244,12 @@ manifest+payload pair (<<sec:retry>>).
 |`0x41000` + `payload_offset` |Backup payload |
 |===
 
-Each slot's readable window spans at most 256 KiB (the size of SEP SRAM — a staged
-manifest+payload cannot exceed what SRAM can hold).
+A slot is `BOOT_SLOT_SIZE` bytes, 256 KiB by default — the size of SEP SRAM, since a staged
+manifest+payload cannot exceed what SRAM can hold. `PRIMARY_MANIFEST_OFFSET` and
+`BACKUP_MANIFEST_OFFSET` are derived from that size in `include/boot_flash.h`
+(slot index × `BOOT_SLOT_SIZE`, plus the manifest's offset within a slot), so the stride
+above is a consequence of the slot size rather than an independent constant. The ROM's
+readable window for a slot runs from its manifest to the end of that slot.
 
 The OCA combined-image configs place the backup manifest at `0x41000`, matching the offsets
 above, and backup-slot rotation is exercised in simulation. The offsets in
