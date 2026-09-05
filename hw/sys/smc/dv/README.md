@@ -139,6 +139,9 @@ predicted by `smc_scratch_csr_ref_model` and paired by the always-on
 # without it the runner selects the cocotb-only scenarios and stops before compiling.
 python3 tools/dv/run_dv.py --dut smc --framework uvm --build-only --skip-unimplemented
 
+# Full regression: every test this package defines.
+python3 tools/dv/run_dv.py --dut smc --items all --tool verilator --regress
+
 # PyUVM (cocotb) and SV-UVM, same logical scenario name
 python3 tools/dv/run_dv.py --dut smc --items smc_register_sanity_test --tool verilator
 python3 tools/dv/run_dv.py --dut smc --framework uvm --items smc_register_sanity_test --seed 1
