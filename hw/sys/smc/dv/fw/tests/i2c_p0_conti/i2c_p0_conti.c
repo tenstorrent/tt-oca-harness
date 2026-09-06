@@ -22,7 +22,7 @@
  *
  * The I2C system uses a two-level architecture:
  *
- * LEVEL 1: Wrapper Control (0xC0009E00)
+ * LEVEL 1: Wrapper Control (0xC0005E00)
  *   - Controls GPIO pad multiplexing
  *   - Selects I2C mode (Controller/Target)
  *   - MUST be configured FIRST before IP-level configuration
@@ -30,13 +30,13 @@
  *     * Bit[0]: I2C_EN - Enable GPIO pad connection
  *     * Bit[4]: I2C_CONTROLLER_MODE_EN - Mode selection
  *
- * LEVEL 2: IP Control (0xC0009000 + 0x200*idx)
+ * LEVEL 2: IP Control (0xC0005000 + 0x200*idx)
  *   - OpenTitan I2C IP protocol layer
  *   - Handles timing, FIFO, interrupts, transactions
- *   - Base addresses:
- *     * I2C_0: 0xC0009000
- *     * I2C_1: 0xC0009200
- *     * I2C_2: 0xC0009400
+ *   - Base addresses (smc_addr.h:54; 0xC0009000 is the telemetry receiver):
+ *     * I2C_0: 0xC0005000
+ *     * I2C_1: 0xC0005200
+ *     * I2C_2: 0xC0005400
  *
  * =============================================================================
  * Test Configuration Details
@@ -181,11 +181,21 @@ static int target_verify_acq_data_and_clear(uint32_t target_idx, uint8_t expecte
         }
     }
     i2c_reset_fifos(target_idx, false, false, false, true);
+
+    /* No second drain here.
+     *
+     * This used to be an unbounded `while` that emptied the ACQ FIFO by hand
+     * whenever ACQRST left entries behind -- re-creating, one frame up, exactly
+     * the software repair the driver was changed to refuse. It made "ACQ empty
+     * after reset" this loop's doing rather than the hardware's, and on a target
+     * that never drains it could only end in a simulator timeout.
+     *
+     * A non-empty ACQ after ACQRST is a real DUT observation, so report it. */
     if (!i2c_target_acq_fifo_empty(target_idx)) {
-        while (!i2c_target_acq_fifo_empty(target_idx)) {
-            (void)read_reg(target_base + (SMC_TOP_SMC_I2C_WRAP_I2C_ACQDATA_BASE_ADDR(0) -
-                                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
-        }
+        simputs("  ERROR: ACQ FIFO not empty after ACQRST, idx=");
+        simputshex32("", target_idx);
+        simputs("\n");
+        return I2C_ERROR;
     }
 
     simputs("    ACQ verified and cleared (extra drained ");
@@ -548,8 +558,17 @@ int main(void) {
     simputs("################################################\n");
     simputs("\n");
     simputs("Summary:\n");
-    simputs("  - I2C_0 (Target):     Addr 0x10 @ 0xC0009000\n");
-    simputs("  - I2C_1 (Controller): @ 0xC0009200\n");
+    /* Print the bases actually used, not literals.
+     *
+     * These lines used to read 0xC0009000/0xC0009200, which is
+     * SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP -- the I2C bases are 0xC0005000 and
+     * 0xC0005200. The accesses were always symbol-derived and correct, so only
+     * the retained evidence asserted a false register identity; deriving the
+     * printed value from the same symbol keeps the two from drifting again. */
+    simputshex32("  - I2C_0 (Target):     Addr 0x10 @ ", i2c_get_base(TARGET_IDX));
+    simputs("\n");
+    simputshex32("  - I2C_1 (Controller): @ ", i2c_get_base(CONTROLLER_IDX));
+    simputs("\n");
     simputshex32("  - Total transactions: ", NUM_TRANSACTIONS);
     simputs("\n");
     simputshex32("  - Bytes per txn:      ", DATA_SIZE);

@@ -507,6 +507,68 @@ module smc_uvm_top
 
     /* verilator public_module */
 
+    // Cocotb drives rst_cold_ni / rst_cool_ni / powergood_i after time 0.
+    // Until then each input wire is Z, and PeakRDL immediate asserts in an
+    // always_ff else treat `if (~arst_n)` as false when arst_n is X/Z. Hold
+    // the safe idle (resets asserted, powergood low) until the port is a
+    // known 0/1, then follow. An X/Z after cocotb has driven the port is a
+    // testbench defect: latching the last good level would hide it, so it
+    // fails here instead.
+    logic rst_cold_n_int = 1'b0;
+    logic rst_cold_n_driven = 1'b0;
+    always @(*) begin
+        if ((rst_cold_ni === 1'b0) || (rst_cold_ni === 1'b1)) begin
+            rst_cold_n_int = rst_cold_ni;
+            rst_cold_n_driven = 1'b1;
+        end else if (rst_cold_n_driven) begin
+            $error("%0t: rst_cold_ni went %b after being driven; the DUT is running on the last known level",
+                   $time, rst_cold_ni);
+        end
+    end
+
+    logic rst_cool_n_int = 1'b0;
+    logic rst_cool_n_driven = 1'b0;
+    always @(*) begin
+        if ((rst_cool_ni === 1'b0) || (rst_cool_ni === 1'b1)) begin
+            rst_cool_n_int = rst_cool_ni;
+            rst_cool_n_driven = 1'b1;
+        end else if (rst_cool_n_driven) begin
+            $error("%0t: rst_cool_ni went %b after being driven; the DUT is running on the last known level",
+                   $time, rst_cool_ni);
+        end
+    end
+
+    logic powergood_int = 1'b0;
+    logic powergood_driven = 1'b0;
+    always @(*) begin
+        if ((powergood_i === 1'b0) || (powergood_i === 1'b1)) begin
+            powergood_int = powergood_i;
+            powergood_driven = 1'b1;
+        end else if (powergood_driven) begin
+            $error("%0t: powergood_i went %b after being driven; the DUT is running on the last known level",
+                   $time, powergood_i);
+        end
+    end
+
+    // Assertion classes held off, and why each is not a DUT contract here.
+    //
+    // noXOnCsI: prim_rom.sv:40 is `assert property (@(posedge clk_i)
+    // disable iff (('0) !== '0) !$isunknown(req_i))`. The disable is never
+    // true, so the reset hold above cannot gate it, and req_i is X until
+    // the TileLink converter leaves reset. Hold this one assertion off
+    // until cold reset has released and one SMC clock edge has sampled a
+    // known req_i, then re-arm by the assertion's own hierarchical name
+    // so a later X still fails. $assertcontrol is not used: the commercial
+    // compile timescale is 1ns/1ps, and Xcelium rejects $assertcontrol(4, 31).
+`ifndef VERILATOR
+    initial begin
+        $assertoff(0, u_dut.u_smc_ip_integration.u_mems.rom_mem.mem.noXOnCsI);
+        wait (rst_cold_n_int === 1'b1);
+        @(posedge clk_smc_i);
+        $asserton(0, u_dut.u_smc_ip_integration.u_mems.rom_mem.mem.noXOnCsI);
+    end
+`endif
+
     localparam logic [31:0] SMC_TEST_PASS = 32'hACAF_ACA1;
     localparam logic [31:0] SMC_TEST_FAIL = 32'hFFFF_FFFF;
 
@@ -995,24 +1057,207 @@ module smc_uvm_top
     assign jtag_axi_in_req.r_ready   = jtag_axi_rready;
 
     // ------------------------------------------------------------------
-    // SYS_OUT AXI slave — same posture as SEP tb_top rom_boot `u_smc_mem`:
-    // pulp axi_sim_mem on the boundary, optional $readmemh preload, no Force,
-    // no custom DV mem module. ApplDelay/AcqDelay match SEP Verilator floor.
+    // SYS_OUT AXI slave — pulp axi_sim_mem backing store (preload / rerr / werr).
+    // Writes are completed by the TB block below; four-state axi_sim_mem does
+    // not accept a one-cycle SYS_OUT AW (w_ready stays 0).
     // ------------------------------------------------------------------
     smc_sys_out_56_64_8_12_axi_req_t  [0:0] output_mem_req;
     smc_sys_out_56_64_8_12_axi_resp_t [0:0] output_mem_resp;
     smc_sys_out_56_64_8_12_axi_req_t        output_mem_req_n;
     smc_sys_out_56_64_8_12_axi_resp_t       output_axi_resp_n;
 
-    always_comb begin
-        output_mem_req_n         = output_axi_req;
-        output_mem_req_n.r_ready = output_axi_req.r_ready & ~tb_output_axi_resp_hold;
-        output_mem_req_n.b_ready = output_axi_req.b_ready & ~tb_output_axi_resp_hold;
+    // axi_sim_mem samples AW/AR at posedge+AcqDelay. On four-state, SYS_OUT's
+    // one-cycle address beat is already gone by then, so the mem never queues
+    // and w_ready/r_valid stay 0. The TB captures AW/AR 1 ns after the edge,
+    // completes W/B and R against mem[] / werr / rerr, and holds address
+    // valids into the mem at 0 so it cannot emit a second response.
+    logic          tb_out_have_aw;
+    logic          tb_out_b_valid;
+    logic [7:0]    tb_out_w_cnt;
+    logic [55:0]   tb_out_aw_addr;
+    logic [7:0]    tb_out_aw_id;
+    logic [7:0]    tb_out_aw_len;
+    logic [2:0]    tb_out_aw_size;
+    logic [1:0]    tb_out_aw_burst;
+    logic [11:0]   tb_out_aw_user;
+    logic [1:0]    tb_out_b_resp;
+    axi_pkg::resp_t tb_out_w_err;
+    logic          tb_out_have_ar;
+    logic          tb_out_r_valid;
+    logic          tb_out_r_last;
+    logic [7:0]    tb_out_r_cnt;
+    logic [55:0]   tb_out_ar_addr;
+    logic [7:0]    tb_out_ar_id;
+    logic [7:0]    tb_out_ar_len;
+    logic [2:0]    tb_out_ar_size;
+    logic [1:0]    tb_out_ar_burst;
+    logic [11:0]   tb_out_ar_user;
+    logic [63:0]   tb_out_r_data;
+    logic [1:0]    tb_out_r_resp;
+
+    always @(posedge clk_smc_i or negedge rst_cold_n_int) begin
+        if (!rst_cold_n_int) begin
+            tb_out_have_aw  <= 1'b0;
+            tb_out_b_valid  <= 1'b0;
+            tb_out_w_cnt    <= '0;
+            tb_out_aw_addr  <= '0;
+            tb_out_aw_id    <= '0;
+            tb_out_aw_len   <= '0;
+            tb_out_aw_size  <= '0;
+            tb_out_aw_burst <= '0;
+            tb_out_aw_user  <= '0;
+            tb_out_b_resp   <= axi_pkg::RESP_OKAY;
+            tb_out_w_err    <= axi_pkg::RESP_OKAY;
+            tb_out_have_ar  <= 1'b0;
+            tb_out_r_valid  <= 1'b0;
+            tb_out_r_last   <= 1'b0;
+            tb_out_r_cnt    <= '0;
+            tb_out_ar_addr  <= '0;
+            tb_out_ar_id    <= '0;
+            tb_out_ar_len   <= '0;
+            tb_out_ar_size  <= '0;
+            tb_out_ar_burst <= '0;
+            tb_out_ar_user  <= '0;
+            tb_out_r_data   <= '0;
+            tb_out_r_resp   <= axi_pkg::RESP_OKAY;
+        end else begin
+            // W at posedge (pre-NBA): the master drops w_valid in this edge's
+            // NBA once w_ready is already 1. AW is sampled 1 ns later, inside
+            // the one-cycle pulse.
+            if (tb_out_have_aw && output_axi_req.w_valid) begin
+                automatic logic [55:0] beat_addr;
+                automatic axi_pkg::resp_t beat_err;
+                beat_addr = axi_pkg::beat_addr(
+                    tb_out_aw_addr, tb_out_aw_size, tb_out_aw_len,
+                    tb_out_aw_burst, tb_out_w_cnt);
+                beat_err = tb_out_w_err;
+                for (int unsigned i_byte = axi_pkg::beat_lower_byte(
+                        tb_out_aw_addr, tb_out_aw_size, tb_out_aw_len,
+                        tb_out_aw_burst, 8, tb_out_w_cnt);
+                        i_byte <= axi_pkg::beat_upper_byte(
+                            tb_out_aw_addr, tb_out_aw_size, tb_out_aw_len,
+                            tb_out_aw_burst, 8, tb_out_w_cnt);
+                        i_byte++) begin
+                    if (output_axi_req.w.strb[i_byte]) begin
+                        automatic logic [55:0] byte_addr;
+                        byte_addr = (beat_addr / 8) * 8 + i_byte;
+                        u_output_mem.mem[byte_addr] =
+                            output_axi_req.w.data[i_byte*8 +: 8];
+                        beat_err = axi_pkg::resp_precedence(
+                            u_output_mem.werr[byte_addr], beat_err);
+                        u_output_mem.werr[byte_addr] = axi_pkg::RESP_OKAY;
+                    end
+                end
+                tb_out_w_err <= beat_err;
+                if (tb_out_w_cnt == tb_out_aw_len) begin
+                    tb_out_have_aw <= 1'b0;
+                    tb_out_b_valid <= 1'b1;
+                    tb_out_b_resp  <= beat_err;
+                    tb_out_w_cnt   <= '0;
+                    tb_out_w_err   <= axi_pkg::RESP_OKAY;
+                end else begin
+                    tb_out_w_cnt <= tb_out_w_cnt + 8'd1;
+                end
+            end
+            if (tb_out_b_valid && output_axi_req.b_ready) begin
+                tb_out_b_valid <= 1'b0;
+            end
+            begin
+                automatic logic do_r;
+                automatic logic [7:0] beat_i;
+                do_r   = 1'b0;
+                beat_i = tb_out_r_cnt;
+                if (tb_out_have_ar && !tb_out_r_valid) begin
+                    do_r   = 1'b1;
+                    beat_i = 8'd0;
+                end else if (tb_out_r_valid && output_axi_req.r_ready) begin
+                    if (tb_out_r_cnt == tb_out_ar_len) begin
+                        tb_out_have_ar <= 1'b0;
+                        tb_out_r_valid <= 1'b0;
+                        tb_out_r_cnt   <= '0;
+                    end else begin
+                        do_r   = 1'b1;
+                        beat_i = tb_out_r_cnt + 8'd1;
+                    end
+                end
+                if (do_r) begin
+                    automatic logic [55:0] beat_addr;
+                    automatic logic [63:0] r_data;
+                    automatic axi_pkg::resp_t r_err;
+                    beat_addr = axi_pkg::beat_addr(
+                        tb_out_ar_addr, tb_out_ar_size, tb_out_ar_len,
+                        tb_out_ar_burst, beat_i);
+                    r_data = '0;
+                    r_err  = axi_pkg::RESP_OKAY;
+                    for (int unsigned i_byte = axi_pkg::beat_lower_byte(
+                            tb_out_ar_addr, tb_out_ar_size, tb_out_ar_len,
+                            tb_out_ar_burst, 8, beat_i);
+                            i_byte <= axi_pkg::beat_upper_byte(
+                                tb_out_ar_addr, tb_out_ar_size, tb_out_ar_len,
+                                tb_out_ar_burst, 8, beat_i);
+                            i_byte++) begin
+                        automatic logic [55:0] byte_addr;
+                        byte_addr = (beat_addr / 8) * 8 + i_byte;
+                        if (u_output_mem.mem.exists(byte_addr)) begin
+                            r_data[i_byte*8 +: 8] = u_output_mem.mem[byte_addr];
+                        end
+                        r_err = axi_pkg::resp_precedence(
+                            u_output_mem.rerr[byte_addr], r_err);
+                        if (output_axi_req.r_ready) begin
+                            u_output_mem.rerr[byte_addr] = axi_pkg::RESP_OKAY;
+                        end
+                    end
+                    tb_out_r_data  <= r_data;
+                    tb_out_r_resp  <= r_err;
+                    tb_out_r_last  <= (beat_i == tb_out_ar_len);
+                    tb_out_r_valid <= 1'b1;
+                    tb_out_r_cnt   <= beat_i;
+                end
+            end
+            #1ns;
+            if (output_axi_req.aw_valid && !tb_out_have_aw) begin
+                tb_out_have_aw  <= 1'b1;
+                tb_out_aw_addr  <= output_axi_req.aw.addr;
+                tb_out_aw_id    <= output_axi_req.aw.id;
+                tb_out_aw_len   <= output_axi_req.aw.len;
+                tb_out_aw_size  <= output_axi_req.aw.size;
+                tb_out_aw_burst <= output_axi_req.aw.burst;
+                tb_out_aw_user  <= output_axi_req.aw.user;
+                tb_out_w_err    <= axi_pkg::RESP_OKAY;
+            end
+            if (output_axi_req.ar_valid && !tb_out_have_ar) begin
+                tb_out_have_ar  <= 1'b1;
+                tb_out_ar_addr  <= output_axi_req.ar.addr;
+                tb_out_ar_id    <= output_axi_req.ar.id;
+                tb_out_ar_len   <= output_axi_req.ar.len;
+                tb_out_ar_size  <= output_axi_req.ar.size;
+                tb_out_ar_burst <= output_axi_req.ar.burst;
+                tb_out_ar_user  <= output_axi_req.ar.user;
+            end
+        end
     end
     always_comb begin
-        output_axi_resp_n         = output_mem_resp[0];
-        output_axi_resp_n.r_valid = output_mem_resp[0].r_valid & ~tb_output_axi_resp_hold;
-        output_axi_resp_n.b_valid = output_mem_resp[0].b_valid & ~tb_output_axi_resp_hold;
+        output_mem_req_n          = output_axi_req;
+        output_mem_req_n.aw_valid = 1'b0;
+        output_mem_req_n.ar_valid = 1'b0;
+        output_mem_req_n.r_ready  = output_axi_req.r_ready & ~tb_output_axi_resp_hold;
+        output_mem_req_n.b_ready  = output_axi_req.b_ready & ~tb_output_axi_resp_hold;
+    end
+    always_comb begin
+        output_axi_resp_n          = output_mem_resp[0];
+        output_axi_resp_n.aw_ready = 1'b1;
+        output_axi_resp_n.ar_ready = 1'b1;
+        output_axi_resp_n.w_ready  = tb_out_have_aw & ~tb_output_axi_resp_hold;
+        output_axi_resp_n.b_valid  = tb_out_b_valid & ~tb_output_axi_resp_hold;
+        output_axi_resp_n.b.id     = tb_out_aw_id;
+        output_axi_resp_n.b.resp   = tb_out_b_resp;
+        output_axi_resp_n.b.user   = tb_out_aw_user;
+        output_axi_resp_n.r_valid  = tb_out_r_valid & ~tb_output_axi_resp_hold;
+        output_axi_resp_n.r.data   = tb_out_r_data;
+        output_axi_resp_n.r.last   = tb_out_r_last;
+        output_axi_resp_n.r.resp   = tb_out_r_resp;
+        output_axi_resp_n.r.id     = tb_out_ar_id;
+        output_axi_resp_n.r.user   = tb_out_ar_user;
     end
     assign output_mem_req[0] = output_mem_req_n;
     assign output_axi_resp   = output_axi_resp_n;
@@ -1033,7 +1278,7 @@ module smc_uvm_top
         .AcqDelay          (2ns)
     ) u_output_mem (
         .clk_i     (clk_smc_i),
-        .rst_ni    (rst_cold_ni),
+        .rst_ni    (rst_cold_n_int),
         .axi_req_i (output_mem_req),
         .axi_rsp_o (output_mem_resp)
     );
@@ -1064,8 +1309,8 @@ module smc_uvm_top
     logic [63:0] output_w_data_q;
     logic [55:0] output_ar_addr_q;
 
-    always_ff @(posedge clk_smc_i or negedge rst_cold_ni) begin
-        if (!rst_cold_ni) begin
+    always_ff @(posedge clk_smc_i or negedge rst_cold_n_int) begin
+        if (!rst_cold_n_int) begin
             output_aw_addr_q          <= '0;
             output_w_data_q           <= '0;
             output_ar_addr_q          <= '0;
@@ -1179,8 +1424,8 @@ module smc_uvm_top
     logic unused_ecc_probe;
     assign unused_ecc_probe = tb_cpu_ecc_inject_probe;
 
-    always_ff @(posedge clk_smc_i or negedge rst_cold_ni) begin
-        if (!rst_cold_ni) begin
+    always_ff @(posedge clk_smc_i or negedge rst_cold_n_int) begin
+        if (!rst_cold_n_int) begin
             ecc_inject_fire_count_q <= '0;
         end else if (cpu_scratch0_inject_fire) begin
             ecc_inject_fire_count_q <= ecc_inject_fire_count_q + 32'd1;
@@ -1197,8 +1442,8 @@ module smc_uvm_top
     logic        cluster_ded_sticky_q;
     logic [31:0] cluster_ded_count_q;
 
-    always_ff @(posedge clk_smc_i or negedge rst_cold_ni) begin
-        if (!rst_cold_ni) begin
+    always_ff @(posedge clk_smc_i or negedge rst_cold_n_int) begin
+        if (!rst_cold_n_int) begin
             cluster_ded_sticky_q <= 1'b0;
             cluster_ded_count_q  <= '0;
         end else if (cluster_ded_lvl) begin
@@ -1233,9 +1478,9 @@ module smc_uvm_top
         .clk_smc_i,
         .clk_ref_i,
         .clk_periph_i,
-        .powergood_i,
+        .powergood_i                (powergood_int),
         .powergood_stable_o,
-        .rst_cold_ni,
+        .rst_cold_ni                (rst_cold_n_int),
         .rst_cold_stable_ref_clk_no,
         .rst_primary_ref_clk_no,
         .rst_primary_smc_clk_no,
@@ -1257,7 +1502,7 @@ module smc_uvm_top
         .shadow_regs_o              (),
         .lsio_interface_select_o    (),
         .gpio_pad_io                (gpio_pad_io),
-        .rst_cool_n_from_pin_i      (rst_cool_ni),
+        .rst_cool_n_from_pin_i      (rst_cool_n_int),
         // SPI octal-flash pads (U2-1). Cocotb drives tb_spi_*; idle default is
         // inactive CS/enable (tests that do not touch SPI leave them at 0).
         .spi_enable_i               (tb_spi_enable),
@@ -1281,7 +1526,7 @@ module smc_uvm_top
         // Telemetry ATB: clock/reset async write domain; receiver 0 driven by
         // tb_telemetry0_* (U4-6); receivers 1/2 remain quiet.
         .clk_telemetry_i            (clk_smc_i),
-        .rst_telemetry_ni           (rst_cold_ni),
+        .rst_telemetry_ni           (rst_cold_n_int),
         .telemetry_atdata_i         (tb_telemetry_atdata),
         .telemetry_atid_i           (tb_telemetry_atid),
         .telemetry_atready_o       (tb_telemetry_atready),
@@ -1468,8 +1713,8 @@ module smc_uvm_top
     // See hw/sys/smc/doc/dv_hack_cleanup_checklist.md Phase 1.1.
     // Hart0 PC can be X before CPU bring-up, so do not sample hierarchical PC
     // into the public capture port (cocotb cannot int() X).
-    always_ff @(posedge clk_smc_i or negedge rst_cold_ni) begin
-        if (!rst_cold_ni) begin
+    always_ff @(posedge clk_smc_i or negedge rst_cold_n_int) begin
+        if (!rst_cold_n_int) begin
             tb_dbs_capture_valid <= 1'b0;
             tb_dbs_capture_data  <= '0;
         end else if (tb_dfd_fault_inject) begin

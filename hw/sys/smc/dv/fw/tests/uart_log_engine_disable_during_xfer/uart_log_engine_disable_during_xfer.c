@@ -39,6 +39,9 @@
 #define LE_WRITE_ADDR_OFF \
     (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_WRITE_ADDR_BASE_ADDR(0) - \
      SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
+#define LE_INTR_ENABLE_OFF \
+    (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_ENABLE_BASE_ADDR(0) - \
+     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
 #define LE_INTR_STATUS_OFF \
     (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_INTR_STATUS_BASE_ADDR(0) - \
      SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
@@ -51,6 +54,15 @@
      SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0))
 #define UART_MCR_OFF \
     (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MCR_BASE_ADDR(0) - \
+     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0))
+#define UART_IER_OFF \
+    (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR(0) - \
+     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0))
+#define UART_IIR_OFF \
+    (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR_BASE_ADDR(0) - \
+     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0))
+#define UART_LCR_OFF \
+    (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LCR_BASE_ADDR(0) - \
      SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0))
 
 #define LOG_BUFFER_BASE (SMC_TOP_SPM_MEMORY_BASE_ADDR + 0x40000u) // SRAM scratch area
@@ -77,11 +89,39 @@ int main(void) {
 
     // Engine to line-loopback through UART RBR/THR: set LOG_WRITE_ADDR to the
     // UART RBR/THR offset and set MCR.LINE_LOOPBACK so TX feeds back into RX.
-    write_reg(WRAP0_UART_BASE + UART_MCR_OFF, 0x20u); // LINE_LOOPBACK = 1
+    /* Configure the UART before pointing the engine at it.
+     *
+     * This test wrote MCR and nothing else. Its two passing siblings
+     * (uart_log_engine_single_entry, uart_log_engine_region_size) program the
+     * divisor and line control first, and skipping that is not cosmetic here:
+     * LOG_WRITE_ADDR is set to UART offset 0 below, which is THR only while
+     * DLAB=0 -- with DLAB left set, all sixteen log bytes land in the divisor
+     * latch instead of the transmit register. The line is also left at whatever
+     * word length and rate reset produced.
+     */
+    write_reg(WRAP0_UART_BASE + UART_LCR_OFF, 0x80u); // DLAB=1
+    write_reg(WRAP0_UART_BASE + UART_RBR_OFF, 0x01u); // DLL = 1 (fastest)
+    write_reg(WRAP0_UART_BASE + UART_IER_OFF, 0x00u); // DLM = 0
+    write_reg(WRAP0_UART_BASE + UART_LCR_OFF, 0x03u); // DLAB=0, 8-bit words
+    write_reg(WRAP0_UART_BASE + UART_IIR_OFF, 0x01u); // FCR: FIFOs on
+    /* MCR.LOOP (bit 4), not LINE_LOOPBACK (bit 5).
+     * uart_16550_main.rdl puts LOOP at [4] and LINE_LOOPBACK at [5]; only LOOP
+     * is the internal TX->RX loop this test needs. LINE_LOOPBACK drives tx_o
+     * from rx_i and pins rx_in to idle, so every RBR drain below was reading a
+     * permanently empty FIFO. The passing sibling uart_log_engine_single_entry
+     * uses 0x10 for the same purpose. */
+    write_reg(WRAP0_UART_BASE + UART_MCR_OFF, 0x10u); // MCR.LOOP = 1
     write_reg(WRAP0_LE_BASE + LE_REGION_SIZE_OFF, LOG_REGION_SIZE);
     write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF, LOG_BUFFER_BASE);
     write_reg(WRAP0_LE_BASE + LE_REGION_ADDR_OFF + 4, 0u);
     write_reg(WRAP0_LE_BASE + LE_WRITE_ADDR_OFF, WRAP0_UART_BASE + UART_RBR_OFF);
+    /* Enable the two error interrupts before asserting that INTR_STATUS is 0.
+     *
+     * log_engine.sv:466-471 ANDs each interrupt source with its INTR_ENABLE bit,
+     * and INTR_ENABLE resets to 0 (log_engine.rdl:85-98). With it left at 0 the
+     * INTR_STATUS checks below read a constant 0 on any RTL, so neither of their
+     * test_fail() branches was reachable -- they asserted nothing. */
+    write_reg(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, 0x11u);
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u); // engine enable
 
     //--------------------------------------------------------------------------
@@ -163,7 +203,18 @@ int main(void) {
     //--------------------------------------------------------------------------
     info_msg_s(0, "scenario B: multi-entry simultaneous trigger");
 
-#define LE_LOG_CTRL_I_OFF(i) (0u + (i)*4u)
+/* From the generated map, not a hand-written base.
+ *
+ * This was `(0u + (i)*4u)`, i.e. offsets 0/4/8/12 from LOG_ENGINE_BASE. The
+ * LOG_CTRL array actually starts at 0x40 (LOG_ENGINE_BASE = 0xC0006200,
+ * LOG_CTRL[j] = 0xC0006240 + j*4), so offset 0 is the CTRL register: scenario B
+ * wrote 16 into CTRL -- clearing EN and disabling the engine it had just
+ * enabled -- then polled CTRL for zero, which never came. The 500000-poll wait
+ * meant the harness timeout fired before the test's own FAIL message could.
+ */
+#define LE_LOG_CTRL_I_OFF(i) \
+    (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_CTRL_BASE_ADDR(0, (i)) - \
+     SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))
 
     // Pre-load all 16 slots' worth of pattern bytes
     for (uint32_t i = 0; i < LOG_REGION_SIZE; i++) {
@@ -184,7 +235,14 @@ int main(void) {
     // natural WAIT → REQ cycles inside each entry and the
     // multi-entry round-robin handoff.
     {
-        uint32_t timeout = 500000u;
+        /* Bound sized to the harness, not to a round number.
+         *
+         * 500000 polls is ~575 ms at the measured ~115 cycles/iteration, against
+         * a ~4 ms harness bound -- so the FAIL diagnostic below could never
+         * reach the log and the loop only ever ended by the run being killed.
+         * The four entries completed in 174 iterations when observed; 4000 is
+         * ~23x that and still finishes inside the harness bound. */
+        uint32_t timeout = 4000u;
         while (timeout > 0u) {
             uint32_t c0 = read_reg(WRAP0_LE_BASE + LE_LOG_CTRL_I_OFF(0)) & 0xFFFFu;
             uint32_t c1 = read_reg(WRAP0_LE_BASE + LE_LOG_CTRL_I_OFF(1)) & 0xFFFFu;
@@ -263,7 +321,16 @@ int main(void) {
 #define WRAP1_UART_MCR UART_MCR_OFF
 
     write_reg(WRAP1_CTRL_REG, 1u);
-    write_reg(WRAP1_UART_BASE + WRAP1_UART_MCR, 0x20u); // line loopback
+    /* Replica 1's UART needs the same configuration as replica 0 (see the
+     * scenario-A setup): LOG_WRITE_ADDR below points at UART offset 0, which is
+     * THR only while DLAB=0. Only MCR was written here, so the log bytes went to
+     * the divisor latch and the transfer never completed. */
+    write_reg(WRAP1_UART_BASE + UART_LCR_OFF, 0x80u); // DLAB=1
+    write_reg(WRAP1_UART_BASE + UART_RBR_OFF, 0x01u); // DLL = 1
+    write_reg(WRAP1_UART_BASE + UART_IER_OFF, 0x00u); // DLM = 0
+    write_reg(WRAP1_UART_BASE + UART_LCR_OFF, 0x03u); // DLAB=0, 8-bit
+    write_reg(WRAP1_UART_BASE + UART_IIR_OFF, 0x01u); // FCR: FIFOs on
+    write_reg(WRAP1_UART_BASE + WRAP1_UART_MCR, 0x10u); // MCR.LOOP = 1 (see wrap 0)
     write_reg(WRAP1_LE_BASE + WRAP1_LE_REGION_SIZE, LOG_REGION_SIZE);
     write_reg(WRAP1_LE_BASE + WRAP1_LE_REGION_ADDR, LOG_BUFFER_BASE);
     write_reg(WRAP1_LE_BASE + WRAP1_LE_REGION_ADDR + 4, 0u);

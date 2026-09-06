@@ -48,14 +48,15 @@ static void timer_init(void) {
     // before the timer is started, so it changes no behaviour downstream.
     {
         const uint32_t probe =
-            (((SYSTEM_TIMER_OCTS__CTRL__STEP_reset ^ 0x2u) << SYSTEM_TIMER_OCTS__CTRL__STEP_bp) &
-             SYSTEM_TIMER_OCTS__CTRL__STEP_bm) |
-            (((SYSTEM_TIMER_OCTS__CTRL__PULSE_WIDTH_reset ^ 0x3u)
-              << SYSTEM_TIMER_OCTS__CTRL__PULSE_WIDTH_bp) &
-             SYSTEM_TIMER_OCTS__CTRL__PULSE_WIDTH_bm) |
-            (((SYSTEM_TIMER_OCTS__CTRL__CREDIT_VAL_reset ^ 0x1Fu)
-              << SYSTEM_TIMER_OCTS__CTRL__CREDIT_VAL_bp) &
-             SYSTEM_TIMER_OCTS__CTRL__CREDIT_VAL_bm);
+            (((SYSTEM_TIMER_OCTS__CTRL__STEP_reset ^ 0x2u)
+              << SYSTEM_TIMER_OCTS__CTRL__STEP_bp)
+             & SYSTEM_TIMER_OCTS__CTRL__STEP_bm)
+          | (((SYSTEM_TIMER_OCTS__CTRL__PULSE_WIDTH_reset ^ 0x3u)
+              << SYSTEM_TIMER_OCTS__CTRL__PULSE_WIDTH_bp)
+             & SYSTEM_TIMER_OCTS__CTRL__PULSE_WIDTH_bm)
+          | (((SYSTEM_TIMER_OCTS__CTRL__CREDIT_VAL_reset ^ 0x1Fu)
+              << SYSTEM_TIMER_OCTS__CTRL__CREDIT_VAL_bp)
+             & SYSTEM_TIMER_OCTS__CTRL__CREDIT_VAL_bm);
         uint32_t got;
         write_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_CTRL_BASE_ADDR, probe);
         got = read_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_CTRL_BASE_ADDR);
@@ -189,6 +190,48 @@ static void test_preset_register(void) {
             __asm__ volatile("nop");
         }
     }
+
+    // Deterministic upper-half data point.
+    //
+    // Every entry of preset_values[] is 0x0, 0x1000, 0x10000 or 0x100000, so
+    // bits [63:32] of whatever the random pick above lands on are always zero.
+    // Both readback compares therefore wrote 0 into TIMER_PRESET_HI and
+    // asserted that 0 came back -- against a register whose reset default is
+    // also 0 -- so the upper half of the 64-bit preset path passed whether it
+    // was implemented, tied off or unmapped. preset_hi is a full 32-bit field
+    // (SYSTEM_TIMER_OCTS_TIMER_PRESET_HI_reg_t), so a value only a working
+    // register can return is a legal thing to ask for.
+    //
+    // Two data points, in this order: a non-zero HI that must read back, then
+    // zero again, which also shows the register is writable back down rather
+    // than stuck at whatever the first write left.
+    static const uint64_t hi_probes[2] = {0x5A3C0F17A1B2C3D4ULL, 0x0ULL};
+    for (uint32_t i = 0; i < 2; i++) {
+        write_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_PRESET_LO_BASE_ADDR,
+                  (uint32_t)(hi_probes[i] & 0xFFFFFFFF));
+        write_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_PRESET_HI_BASE_ADDR,
+                  (uint32_t)(hi_probes[i] >> 32));
+        preset_lo = read_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_PRESET_LO_BASE_ADDR);
+        preset_hi = read_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_PRESET_HI_BASE_ADDR);
+        preset_read = ((uint64_t)preset_hi << 32) | preset_lo;
+        if (preset_read != hi_probes[i]) {
+            simputs("ERROR: PRESET 64-bit readback mismatch\n");
+            simputshex64("Expected: ", hi_probes[i]);
+            simputshex64("Got: ", preset_read);
+            write_scratch(0, 0xBAD10001u);
+            test_fail(0);
+            while (1) {
+                __asm__ volatile("nop");
+            }
+        }
+        simputshex64("PRESET 64-bit readback OK: ", preset_read);
+    }
+
+    // Leave the register where the rest of the test expects to find it.
+    write_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_PRESET_LO_BASE_ADDR,
+              (uint32_t)(preset_value & 0xFFFFFFFF));
+    write_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_TIMER_PRESET_HI_BASE_ADDR,
+              (uint32_t)(preset_value >> 32));
 
     simputs("PRESET register test passed\n");
 }
