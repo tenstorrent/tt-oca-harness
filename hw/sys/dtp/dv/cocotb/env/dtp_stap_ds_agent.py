@@ -5,7 +5,7 @@
 Each DTP STAP host port (I/O, SMC, SEP, extra0) can splice a behavioral IEEE
 1149.1 TAP behind it instead of the default wire loopback: ``tb_top`` routes
 the shared slave device's TDO into the STAP host TDI while the port's
-``jtag_stap_<x>_ds_en`` input is set. The device map is deliberately
+``jtag_stap_<x>_ds_en`` input is set. The device map is
 distinct per port (IDCODE and ``DS_TDR`` width), so a swapped or misaligned
 splice is caught by the chain readback. The SV-UVM ``dtp_env`` builds the
 same four devices from the same values.

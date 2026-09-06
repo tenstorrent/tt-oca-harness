@@ -9,7 +9,7 @@
 // reset through dtp_tb_if, and publishes one dtp_expected_item per
 // instruction load; the scoreboard samples dtp_tb_if.inst_decoded when the
 // item arrives, in the same time step. No comparison, no reporting. The
-// cocotb realization has no twin yet (DTP_TB_ARCH).
+// cocotb realization has no twin (DTP_TB_ARCH).
 
 `uvm_analysis_imp_decl(_dtp_ir_decode_scan)
 

@@ -3,8 +3,7 @@
 """SMC OSS SEP-input AXI UVM agent.
 
 Drives real AXI traffic through the tb_top ``s_axi_*`` bridge into
-``smc.sep_axi_in_req_i``. This mirrors the SEP OSS AXI agent pattern and the
-legacy SMC DV ``sep_in_master`` access path.
+``smc.sep_axi_in_req_i``. This mirrors the SEP OSS AXI agent pattern.
 """
 
 from __future__ import annotations
@@ -127,8 +126,8 @@ class SmcSysAxiItem(uvm_sequence_item):
         self.update_golden: bool = False
         self.check_golden: bool = False
         self.memory_region: str | None = None
-        # AXI AxPROT. Default 0 (unprivileged) matches historical SEP_IN CSR
-        # traffic. GPIO ACCESS_FILTER tests program this to 1 (privileged).
+        # AXI AxPROT. Default 0 (unprivileged); GPIO ACCESS_FILTER tests program
+        # this to 1 (privileged).
         self.prot: int = 0
         # Stamped by the driver that actually drove this item (its `bus_name`),
         # so the scoreboard can keep a MEASURED per-port access tally. A test

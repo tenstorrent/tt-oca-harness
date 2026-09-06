@@ -30,7 +30,7 @@ positive control behind it, or it is declared unchecked in the kept log.
 
 The stimulus that makes a probe read 1 lives in
 ``seq_lib/smc_probe_positive_control.py`` (bounded, fail-capable, frontdoor
-only).  The ledger is deliberately separate from that stimulus so the credit is
+only).  The ledger is separate from that stimulus so the credit is
 an *observation* of the DUT rather than a claim made by the code that drove it.
 
 Probes with no buildable control
@@ -86,7 +86,7 @@ PROBE_SIGNALS: dict[str, str] = {
     "axil_efuse_bank_active": "tb_axil_efuse_bank_active",
     "axil_any_master_active": "tb_axil_any_master_active",
     # GPIO pad-output bus vectors. Non-zero at idle (LSIO pads), so the passive
-    # first-1 credit would be automatic and prove nothing: they are deliberately
+    # first-1 credit would be automatic and prove nothing: they are
     # NOT in WATCHED_PROBES and can only be credited by
     # seq_lib.smc_probe_positive_control.prove_gpio_pad_bus_probe, which drives a
     # real frontdoor CSR change and requires the vector to MOVE.
@@ -230,10 +230,9 @@ async def watch_probe_liveness(dut=None) -> None:
     be credited on the first edge, which would certify nothing and would turn the
     ledger into a rubber stamp.
 
-    A watched probe whose ``tb_top`` handle is missing raises immediately. The
-    previous ``hasattr`` drop removed that probe from the watched set, so an
-    RTL rename failed as an uncredited idle leg (or not at all) instead of
-    naming the absent signal.
+    A watched probe whose ``tb_top`` handle is missing raises immediately, so
+    an RTL rename fails by naming the absent signal rather than as an
+    uncredited idle leg.
     """
     dut = dut if dut is not None else cocotb.top
     clk = dut.clk_smc_i

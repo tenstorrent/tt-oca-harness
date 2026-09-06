@@ -11,9 +11,8 @@ Behavioral / reference / simulation stand-ins for `--dut smc`
 
 SYS_OUT AXI slave is pulp `axi_sim_mem` in `tb/tb_top.sv` (SEP rom_boot style).
 On `--dut smc`, I3C DAT/DCT and DTP CSR boundaries are **not**
-TB-terminated (no placeholder mem/err_slv); dependent tests are deferred.
-(I3C DAT/DCT is a real integration gap; DTP CSR idle is smc_wrapper-only —
-SMU already wires DTP internally.)
+TB-terminated (no placeholder mem/err_slv). DTP CSR idle is smc_wrapper-only:
+SMU wires DTP internally.
 
 CPU ROM/scratch/L1$ live in `hw/top/smc_cpu_mem_integration.sv` (smc_wrapper,
 smu_wrapper TB, and bare SMU TB).

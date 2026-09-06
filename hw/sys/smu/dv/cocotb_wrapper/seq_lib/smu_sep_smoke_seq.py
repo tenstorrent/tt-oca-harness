@@ -16,7 +16,7 @@ class SmuSepSmokeSeq:
     The sequence finishes as soon as the scoreboard has every required
     boot-readiness evidence item (boot-ROM fetch, ICCM execution, DCCM
     stores, SMC arm). Console bytes on the external AXI path are sampled
-    for information only; that path is tracked separately (issue #3939).
+    for information only.
     """
 
     def __init__(self, test, scoreboard) -> None:

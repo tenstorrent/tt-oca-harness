@@ -48,7 +48,7 @@ SEMA_STEP_NEG = (-SEMA_STEP) & SEMA_BM
 # are inside the low 32 bits (mutex[0:0], sema[15:0]) and the SEP_IN AXI CSR
 # path in this bench issues 4-byte beats.  A 4-byte access therefore covers the
 # whole of each field under test; bits 63:32 hold no field in the RDL and are
-# deliberately out of scope for this testcase.
+# out of scope for this testcase.
 ACCESS_BYTES = 4
 
 # Stimulus floor, derived from the body below (loop integrity only -- the
@@ -168,7 +168,7 @@ class smc_mutex_semaphore_test_seq(SmcCsrSeq):
 
         # ---- Reconciliation: the compares must have reached a real checker ----
         # Loop integrity + scoreboard cross-check. This sweep issues no bounded
-        # read, so `assert_all_reachable` deliberately does NOT assert
+        # read, so `assert_all_reachable` does NOT assert
         # `timeouts == 0` (a no-response raises in the AXI driver instead); what
         # it does assert is that the scoreboard actually checked at least as many
         # SYS AXI items as this sequence issued -- which the sequence's own

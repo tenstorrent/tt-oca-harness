@@ -91,7 +91,6 @@ class smu_env extends ocah_env;
     m_scan_builder.scan_ap.connect(m_dtp_bypass_ref_model.analysis_export);
     m_scan_builder.scan_ap.connect(m_scoreboard.dtp_idcode_observed_export);
     m_scan_builder.scan_ap.connect(m_scoreboard.dtp_bypass_observed_export);
-    // Expected streams into the scoreboard.
     m_dtp_ir_decode_ref_model.expected_ap.connect(m_scoreboard.dtp_ir_decode_expected_export);
     m_dtp_idcode_ref_model.expected_ap.connect(m_scoreboard.dtp_idcode_expected_export);
     m_dtp_bypass_ref_model.expected_ap.connect(m_scoreboard.dtp_bypass_expected_export);

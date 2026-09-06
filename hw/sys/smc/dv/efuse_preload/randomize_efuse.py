@@ -13,8 +13,8 @@ from its RANDOM_SEED alone.
 
 Feed the result to generate_efuse_preload.py.
 
-WHAT IS RANDOMIZED TODAY
-------------------------
+WHAT IS RANDOMIZED
+------------------
 RESERVED[1] -- the OCCP transport timeout.
 
   The boot ROM reads SMC_EFUSE_MAP_RESERVED_1 and treats it as the OCCP
@@ -28,17 +28,16 @@ RESERVED[1] -- the OCCP transport timeout.
   --transport-timeout pins the value instead, which is what a test wants when
   it needs the shortest timeout deterministically rather than a random one.
 
-NOT YET RANDOMIZED
-------------------
-The reference environment also varies the fields below. They are listed here
-so the gap is recorded rather than rediscovered; none is implemented, and no
-OSS test depends on them today.
+NOT RANDOMIZED
+--------------
+The reference environment also varies the fields below; none is implemented
+here, and no OSS test depends on them.
 
   rom_flip_endianness    ROM image endianness swap, paired with the matching
                          fuse. Needs the ROM build to emit both endiannesses
                          before the fuse bit means anything, so it is a
                          two-part change.
-  sram_auto_zero_disable SRAM auto-zero on/off. Strap-controlled today in the
+  sram_auto_zero_disable SRAM auto-zero on/off. Strap-controlled in the
                          OSS flow; the fuse path is untested.
   rom_bank_swap          ROM bank swap select.
   mbist_enable /         MBIST enable and its timeout value. The OSS flow has
@@ -85,7 +84,7 @@ def _pick_transport_timeout(rng: random.Random, forced: int | None) -> int:
 def _rewrite(text: str, block: str, field: str, value: int) -> str:
     """Replace one `value = ...` line, scoped to [block.fields.field].
 
-    Line-oriented on purpose: the output stays a readable diff against the base
+    Line-oriented: the output stays a readable diff against the base
     configuration, and comments and ordering survive. A TOML round-trip would
     discard both.
     """

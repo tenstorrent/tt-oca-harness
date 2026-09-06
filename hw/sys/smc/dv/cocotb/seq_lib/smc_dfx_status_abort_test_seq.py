@@ -19,7 +19,7 @@ from .smc_csr_seq_utils import SmcCsrSeq
 # `mem_repair_abort_i` / `mbist_abort_i` -> the STATUS_SMU sticky bit -> one
 # SEP_IN AXI-Lite read; the pins are driven from this coroutine and the bit is
 # sticky, so a healthy DUT shows the new word on the FIRST read after the drive
-# and every stage below costs exactly one access. The bound is deliberately
+# and every stage below costs exactly one access. The bound is
 # tight rather than generous: it is the only check here on how long the pin
 # takes to reach the status word, and its expiry is a FAILURE, never a pass
 # ([TIMEOUT-MUST-FAIL]). The observed poll count is carried into every token so

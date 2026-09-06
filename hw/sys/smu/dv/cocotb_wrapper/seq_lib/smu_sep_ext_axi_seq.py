@@ -63,8 +63,8 @@ SEP_COLD5_G = 0x1480_2028  # SEP_GO          (ext_in -> SEP)
 SEP_COLD6_G = 0x1480_2030  # SEP_PASS        (SEP   -> ext_in)
 SEP_COLD7_G = 0x1480_2038  # ROUTE_DONE_SEP  (ext_in -> SEP)
 
-# Outside BOTH apertures on purpose: the crossbar must answer with an error and
-# the master must stay usable afterwards.
+# Outside BOTH apertures: the crossbar must answer with an error and the master
+# must stay usable afterwards.
 DECERR_ADDR = 0x8000_2000
 
 AXI_RESP_OKAY = 0

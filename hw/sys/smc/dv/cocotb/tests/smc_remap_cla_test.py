@@ -13,7 +13,7 @@ from seq_lib.smc_remap_cla_test_seq import (
 from smc_base_test import smc_base_test
 
 # Directed stimulus floor for the SEP_IN AXI CSR traffic, written out here as an
-# independent constant. It is deliberately NOT read back from the sequence's own
+# independent constant. It is NOT read back from the sequence's own
 # counter: a floor that shrinks with the sequence cannot catch a sequence that
 # silently stops short. Composition: 32 remap-table reset reads + 9 CLA aperture
 # accesses + 18 remap-programming/filter accesses + 57 CLA full-aperture reset

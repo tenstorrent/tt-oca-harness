@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """
 DV-CARD: SMCCGP0_002 ANCHOR: smc_static_cg_sanity_test
-# Also preserves P1 CHK-MODULE-GATING / CHK-ENABLE-THRESHOLD evidence for closed P1 grade.
 """
 
 from __future__ import annotations
@@ -338,9 +337,9 @@ class smc_static_cg_sanity_test_seq(SmcCsrSeq):
             f"zeroer_busy={cg.sample_bit(dut, 'tb_zeroer_busy')}",
         )
         cg.mark_fence(self.fence, "zeroer-gate-disabled-free-run")
-        # Legacy P1 module-gating token. It carries the raw per-module edge
+        # P1 module-gating token. It carries the raw per-module edge
         # counts of the two windows above; a derived "were they as expected"
-        # flag is deliberately absent, because it would be evaluated after the
+        # flag is absent, because it would be evaluated after the
         # asserts that already pin the same relations and would read `1` in
         # every log this sequence can produce ([EXACT-EXPECTATION]).
         cg.emit_chk(
@@ -357,11 +356,11 @@ class smc_static_cg_sanity_test_seq(SmcCsrSeq):
         # land at the same simulation time and `assert_fence_progress` would
         # reject the pair.
 
-        # ---- P1 enable-threshold (=hyst) sweep points (kept for closed P1 grade) ----
+        # ---- P1 enable-threshold (=hyst) sweep points ----
         # The cells are named after the hysteresis value each one measures.
         # CG_HYSTERESIS is a 6-bit field whose true minimum is 0; THRESH_MIN is
         # the lowest point this sequence exercises, not the field's floor, and
-        # the 0..7 band is unproven -- see tenstorrent/tt-oca-harness#1235.
+        # the 0..7 band is unproven.
         d_min = await self._measure_threshold(
             "S3b",
             THRESH_MIN,

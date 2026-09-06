@@ -18,8 +18,8 @@ timeout_sec = 1800
 tags = ["smoke", "ci", "i2c", "pyuvm"]
 run_modes = ["smoke"]
 
-# Nightly Tier A pilot: commercial smc_i2c_p0_rdwr BFM rebuild (I2C0↔I2C1).
-# Requires tb_top +smc_i2c_shared_bus. Not in smoke until Verilator green.
+# Nightly Tier A: commercial smc_i2c_p0_rdwr BFM rebuild (I2C0↔I2C1).
+# Requires tb_top +smc_i2c_shared_bus.
 [[tests]]
 name = "smc_i2c_p0_rdwr_test"
 module = "smc_i2c_p0_rdwr_test"

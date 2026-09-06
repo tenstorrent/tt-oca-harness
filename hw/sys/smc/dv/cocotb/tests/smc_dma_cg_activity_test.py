@@ -25,8 +25,6 @@ class smc_dma_cg_activity_test(smc_base_test):
         seq = smc_dma_cg_activity_test_seq("dma_cg_activity_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
         # Required evidence tokens must already be in the kept log from the seq.
-        # P1 tokens are unchanged (additive extension keeps the closed P1 grade
-        # valid); the P2 (SMC_CG_P2_001) tokens are appended.
         required = (
             "CHK-DMA-GATE-OFF",
             "CHK-DMA-WAKEUP-FRONTEND",

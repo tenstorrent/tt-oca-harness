@@ -11,7 +11,7 @@
 //
 // The SV-UVM tb shape ties the XTRIG CSR bus and the cross-trigger inputs
 // quiescent, so these bins collect only where the stimulus exists (the
-// cocotb flow today); DTP_FCOV.adoc records the simulator scoping.
+// cocotb flow); DTP_FCOV.adoc records the simulator scoping.
 //
 // CONVENTION (see dtp_fcov.sv): every cover-property body and disable-iff
 // argument is a single continuous-assign wire; no declaration initializers

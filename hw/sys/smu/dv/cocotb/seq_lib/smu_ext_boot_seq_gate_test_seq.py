@@ -176,7 +176,7 @@ class smu_ext_boot_seq_gate_test_seq:
 
         self._step_ts["PASS"] = time.monotonic()
         self._log("SMU_006 sequence complete (PASS term recorded for NONVAC fence)")
-        # Measured ordered-fence pairs (not True/True literals).
+        # Ordered-fence pairs from the measured step timestamps.
         order = ["S2", "S3", "S4", "PASS"]
         pairs_ok = sum(
             1

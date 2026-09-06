@@ -5,8 +5,8 @@
 // periods, the test-sequenced power-good and cold-reset pins, the external
 // boot-sequence gate, the reset-unit and fuse-sense observables the
 // sequences read, the cold-reset assertion counter a reference model
-// re-baselines on, and the JTAG SVA enable. Deliberately separate from the
-// shared ocah_jtag_if (protocol pins only) and from dtp_tb_if, which the
+// re-baselines on, and the JTAG SVA enable. Separate from the shared
+// ocah_jtag_if (protocol pins only) and from dtp_tb_if, which the
 // harness also instantiates for the embedded DTP so the DTP bench's own
 // reference models and checkers attach unchanged. Sequences, checkers, and
 // the scoreboard reach SMU-local signals only through this interface. The

@@ -210,7 +210,7 @@ module smu_uvm_top
   assign tb_smc_jtag2axi_security_disable =
         u_dut.u_dtp.u_jtag_intf_unit.u_jtag_ptap.smc_jtag2axi_security_disable;
 
-  // XTRIG: expose CTM req/ack for cocotb (was hard-tied idle)
+  // XTRIG: expose CTM req/ack for cocotb
   logic [7:0] xtrig_src_req_w, xtrig_dst_ack_w;
   assign xtrig_ctm_src_req = xtrig_src_req_w;
   assign xtrig_ctm_dst_ack = xtrig_dst_ack_w;
@@ -315,12 +315,11 @@ module smu_uvm_top
     .rom_cfg_i          (smc_rom_cfg)
   );
 
-  // Macro AXI-Lite activity (OR of aw/w/ar valid). Boundary resp left open —
-  // no TB err_slv placeholder; macro/PLL/PVT tests deferred until real IP.
+  // Macro AXI-Lite activity (OR of aw/w/ar valid).
   assign tb_axil_external_active = smc_external_req.aw_valid
                                    | smc_external_req.w_valid
                                    | smc_external_req.ar_valid;
-  // Leave the boundary response undriven (no TB terminator hack).
+  // Boundary response tied off; nothing answers the macro AXI-Lite window.
   assign smc_external_resp = '0;
 
   // ------------------------------------------------------------------
@@ -408,8 +407,8 @@ module smu_uvm_top
     .xtrig_ctp_ack_out_din_en_o  (),
     .rst_primary_ref_clk_no,
     .rst_primary_smc_clk_no,
-    // rst_primary_periph_clk_no is no longer forwarded by the current smu
-    // top; the TB observes it hierarchically from u_smc below.
+    // The smu top does not forward rst_primary_periph_clk_no; the TB observes
+    // it hierarchically from u_smc below.
     .smu_axi_in_req_i            (smu_axi_in_req),
     .smu_axi_in_resp_o           (smu_axi_in_resp),
     .smu_axi_out_req_o           (smu_axi_out_req),
@@ -529,17 +528,17 @@ module smu_uvm_top
     .sep_lockstep_status_o       (sep_lockstep_status_o)
   );
 
-  // Peripheral-domain reset: the current smu top no longer forwards SMC's
+  // Peripheral-domain reset: the smu top does not forward SMC's
   // rst_primary_periph_clk_no output, so observe it hierarchically.
   assign rst_primary_periph_clk_no = u_dut.u_smc.rst_primary_periph_clk_no;
 
-  // WDT isolate clamp: observe only (no SV Force — inject pin removed).
+  // WDT isolate clamp: observe only.
   assign tb_wdt_reset_raw = u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu
         .wdt_reset_raw[0];
   assign tb_cluster_boundary_isolate = u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu
         .u_smc_cpu.cluster_boundary_isolate;
 
-  // Hierarchical observe of DTP boot-stall / CLA clock-stop (no hw/ edit).
+  // Hierarchical observe of DTP boot-stall / CLA clock-stop.
   assign jtag_boot_stall_ovrd = u_dut.boot_stall_jtag_ovrd;
   assign jtag_boot_stall      = u_dut.boot_stall_jtag_val;
   assign dtp_cla_clock_stop_en = u_dut.dtp_cla_clock_stop_en;

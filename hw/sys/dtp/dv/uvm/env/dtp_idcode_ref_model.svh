@@ -10,11 +10,11 @@
 // per scan item so the scoreboard pairs the two streams in lockstep: IR
 // scans, scans under another instruction, and scans under an unknown
 // instruction carry no contract. No comparison, no reporting. The cocotb
-// realization has no twin yet (DTP_TB_ARCH).
+// realization has no twin (DTP_TB_ARCH).
 //
-// expected_idcode defaults to the public DTP elaboration's value; a system
-// bench that embeds DTP (SMU) sets it from its own configuration before
-// build_phase, so the same model judges the embedded instance.
+// expected_idcode defaults to the public DTP elaboration's value; a bench
+// that embeds DTP sets it from its own configuration before build_phase, so
+// the same model judges the embedded instance.
 
 `uvm_analysis_imp_decl(_dtp_idcode_event)
 

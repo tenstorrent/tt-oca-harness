@@ -49,7 +49,7 @@ CPU_RESET_VECTOR_SCRATCH = 0xC006_0000
 CPU_RESET_CTRL_DEFAULT = CPU_CTRL_RESET_CTRL_REG_DEFAULT & 0xFFFF_FFFF
 # Hold cores (reset_n=0) while keeping uncore out of reset (bit 8).
 CPU_RESET_CTRL_HOLD_CORES = 0x0000_0100
-# Pulse-start bits [7:4] for cores 0-3 (see legacy smc_api.pulse_core_reset).
+# Pulse-start bits [7:4] for cores 0-3.
 CPU_RESET_CTRL_PULSE_ALL = CPU_RESET_CTRL_DEFAULT | 0x0000_00F0  # 0x1FF
 # debug_reset_n_n0_scan[24] defaults to 0 (DM held in reset). DMI/dmstatus
 # needs this bit set; FW and U7-3 release it explicitly.

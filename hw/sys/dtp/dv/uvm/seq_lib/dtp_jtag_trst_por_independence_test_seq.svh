@@ -15,8 +15,8 @@
 // The POR pulse is a pure delay with no TCK edges: the env's always-on
 // dtp_tap_fsm_checker has no POR awareness, so clocking TCK through the
 // asynchronous reset would flag the DUT's legitimate snap to
-// Test-Logic-Reset as an illegal transition. The reset independence proof
-// is unchanged — the TAP state observable is asynchronous to TCK.
+// Test-Logic-Reset as an illegal transition. The TAP state observable is
+// asynchronous to TCK, so the proof needs no TCK edges.
 //
 // The scan-count cross-check is disabled (cocotb use_monitor=False parity):
 // the navigation path into the Pause states crosses Shift -> Exit1, which

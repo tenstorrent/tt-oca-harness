@@ -4,7 +4,7 @@
 
 Feature helpers are split into focused base sequences so concrete tests inherit
 only the helper family they need. Command libraries provide reusable operations
-for future random/stress orchestration.
+for random and stress orchestration.
 """
 
 from .dtp_base_test_seq import dtp_base_test_seq

@@ -349,7 +349,6 @@ class smu_dtp_jtag_smoke_test_seq:
             f"cells=rst=TRST,rst=POR,state=Test-Logic-Reset"
         )
         self._log(f"CHK-DTP-JTAG-PTAP-S3: PASS ({detail_s3})")
-        # Non-tautological integer TAP-state pair (FIND-001): not bool==True.
         tlr = int(OcahJtagState.TEST_LOGIC_RESET)
         sb.expect_eq(
             "CHK-DTP-JTAG-PTAP-S3 TRST+POR → TLR",

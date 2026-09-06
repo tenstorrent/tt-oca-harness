@@ -17,7 +17,7 @@
 //   * named TAP-contract evidence through env.m_jtag_checker:
 //     reset-to-TLR, TLR-selects-IDCODE, IDCODE value/stability/marker, and
 //     reconstructed scan lengths. +DTP_JTAG_TAP_CHECKER_NEGATIVE is the
-//     documented negative-validation hook: it arms a deliberately WRONG
+//     documented negative-validation hook: it arms a WRONG
 //     expected IDCODE so the run must FAIL, proving the named-evidence path
 //     rejects a bad expectation end to end.
 

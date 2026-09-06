@@ -64,12 +64,12 @@ class SmcCsrSeq(smc_base_test_seq):
             await self.csr_read(name, addr, expected)
 
     async def csr_read_many_allow_error(self, regs: list[tuple[str, int, int | None]]) -> None:
-        """Read a list of windows that are intentionally terminated as AXI error
+        """Read a list of windows that are terminated as AXI error
         slaves. ``allow_error`` lets the DECERR/SLVERR response count as a
         completed access, so the sequence still proves the fabric decodes/
         routes to the window and the bus never hangs, without asserting a real
         register value the terminator cannot provide. The per-entry ``expected``
-        field is ignored here on purpose (kept so the reg tables stay uniform)."""
+        field is ignored here (the reg tables stay uniform)."""
         for name, addr, _expected in regs:
             await self.csr_read_allow_error(name, addr)
 
@@ -80,7 +80,7 @@ class SmcCsrSeq(smc_base_test_seq):
     async def csr_read_err_signature(
         self, name: str, addr: int, length: int = 4, prot: int = 0
     ) -> int:
-        """Read a window intentionally terminated by an AXI error slave and
+        """Read a window terminated by an AXI error slave and
         DETERMINISTICALLY assert its known error signature: the access must
         complete with an error response (SLVERR/DECERR) AND return the
         0xBADCAB1E signature (default ``prim_axi_lite_err_slv`` RESP_DATA).
@@ -251,8 +251,7 @@ class SmcCsrSeq(smc_base_test_seq):
     async def _i2c0_check_line(self, name: str, exp_scl: int, exp_sda: int) -> None:
         """Bounded poll of the real I2C0 open-drain pad nets after an OVRD write.
 
-        Replaces a blind ``ClockCycles(clk_smc_i, 100)`` + single sample
-        ([NO-BLIND-DELAY-SYNC]): poll ``tb_i2c0_scl`` / ``tb_i2c0_sda`` (the
+        Polls ``tb_i2c0_scl`` / ``tb_i2c0_sda`` ([NO-BLIND-DELAY-SYNC]; the
         tb_top open-drain resolution of the DUT-driven pads) until they match the
         level the just-written OVRD value demands, then re-sample to confirm the
         level is stable. Expiry raises with the last observed state, so a pad
@@ -438,7 +437,7 @@ class SmcCsrSeq(smc_base_test_seq):
     def assert_reachable_or_gated(
         self, expected_accesses: int, block: str, gated_note: str
     ) -> None:
-        """Reachability gate for windows that are *legitimately* clock-gated or
+        """Reachability gate for windows that are clock-gated or
         absent in the current OSS bring-up (e.g. the CPU cluster before firmware
         boot, a Verilator/vendor-stubbed macro).
 

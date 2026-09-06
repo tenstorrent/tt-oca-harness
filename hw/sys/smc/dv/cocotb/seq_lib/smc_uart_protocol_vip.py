@@ -16,7 +16,6 @@ import logging
 import cocotb
 from ocah_uart_vip import OcahUartConsole, OcahUartError, OcahUartImportError
 
-# Keep historical SMC error name.
 SmcUartVipError = OcahUartError
 
 
@@ -48,7 +47,7 @@ class SmcUartVip:
         self.baud = baud
         self.bits = bits
         self.log = logging.getLogger(name)
-        # Preserve historical attribute names used by helpers/tests.
+        # Attribute names the helpers/tests read.
         self.source = self._console._source
         self.sink = self._console._sink
         self.log.info(

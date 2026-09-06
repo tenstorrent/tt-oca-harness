@@ -7,10 +7,9 @@ driven by `tools/dv/run_dv.py`. See `docs/index.adoc` for the chapter set:
 `docs/SMC_TB_ARCH.adoc` for test development, environment setup and run
 recipes, `docs/SMC_VPLAN.adoc` for the verification plan,
 `docs/SMC_FCOV.adoc` for the coverage pipeline, and
-`docs/SMC_SCOPE_TRACEABILITY.adoc` for the candidate v0.5.0
-requirement-to-test matrix (unsigned; #496).
+`docs/SMC_SCOPE_TRACEABILITY.adoc` for the requirement-to-test matrix.
 
-**Green / signoff policy (2026-07-29):** only claim **real DUT RTL paths**.
+**Green / signoff policy:** only claim **real DUT RTL paths**.
 I3C CCC/IBI / real-core protocol, adopter PLL/PVT OKAY wraps, and TB-glue
 demos (e.g. hardcoded DFD capture token) are not ported
 — not reportable as feature PASS. `smc_i3c_to_fabric_test` is
@@ -26,13 +25,12 @@ cluster helpers — do not add silently in PRs.
 ## Present but not enrolled
 
 These modules exist under `cocotb/tests/` and are not in `testlists/all.toml`.
-The old `testlists/deferred.toml` ledger is gone; the blocker tag lives in
-each file's docstring (`# deferred: <reason>`). SMU's matching catalog is
-`hw/sys/smu/dv/cocotb/tests_deferred/`.
+The blocker tag lives in each file's docstring (`# deferred: <reason>`). SMU's
+matching catalog is `hw/sys/smu/dv/cocotb/tests_deferred/`.
 
 | Test | Reason |
 |------|--------|
-| `smc_i3c_ccc_ibi_full_test` | `needs_i3c_dat_dct` — TB DAT/DCT ram removed |
+| `smc_i3c_ccc_ibi_full_test` | `needs_i3c_dat_dct` — no TB DAT/DCT RAM |
 | `smc_macro_axil_routing_test` | `needs_dtp_csr_sub` / `rtl_placeholder` — DTP CSR idle; pll/pvt OKAY wraps |
 | `smc_pll_pvt_clock_config_test` | `rtl_placeholder` |
 | `smc_pll_dvfs_depth_test` | `rtl_placeholder` |
@@ -40,12 +38,12 @@ each file's docstring (`# deferred: <reason>`). SMU's matching catalog is
 | `smc_pll_awm_freq_sweep_test` | `rtl_placeholder` |
 | `smc_pvt_analog_sensor_test` | `rtl_placeholder` |
 | `smc_pvt_droop_test` | `rtl_placeholder` |
-| `smc_sideband_avsbus_octs_bfm_test` | `fake_bfm` — pad BFM retired |
+| `smc_sideband_avsbus_octs_bfm_test` | `fake_bfm` — no pad BFM |
 | `smc_dfd_dbs_fault_inject_test` | `tb_glue` — hardcoded capture token, not `smc_dfd_wrap` |
 
 Two enrolled carve-outs keep their measured reason next to the stimulus:
-`HYST_LEGAL_LO` in `smc_clk_multi_window_test_seq.py` (0..7; #1235) and the
-`smc_clint_csr_test` docstring (cluster-local fold; #1237 / #1249).
+`HYST_LEGAL_LO` in `smc_clk_multi_window_test_seq.py` (0..7) and the
+`smc_clint_csr_test` docstring (cluster-local fold).
 
 ## Single DUT
 
@@ -64,7 +62,7 @@ so the bare DUT name selects the wrapper-based TB.
 | testlist | `testlists/all.toml` |
 | macros | inside `smc_ip_integration` (pll/pvt/efuse/pads/I3C DAT-DCT-RLT) |
 | CPU mem | inside wrapper via `smc_cpu_mem_integration` |
-| still in TB | SYS_OUT=`axi_sim_mem` (pulp VIP); DTP CSR **idle** on `smc_wrapper` (no TB terminator — tests deferred; DTP CSR is smc_wrapper-only boundary) |
+| in TB | SYS_OUT=`axi_sim_mem` (pulp VIP); DTP CSR **idle** on `smc_wrapper` (no TB terminator; DTP CSR is a smc_wrapper-only boundary) |
 
 ## Verilator stubs policy
 
@@ -72,10 +70,10 @@ so the bare DUT name selects the wrapper-based TB.
 `prim_sync3` for OSS prim port remap + X-init). Product-module overrides
 (`smc_reset_*`, `smc_dfx_*`, …) are forbidden.
 
-| ID | Issue | Status |
-|----|--------|--------|
-| B1 | PeakRDL nested hwif structs historically broke Verilator C++ codegen | Mitigated by `disable_public_flat_rw` + `smc_public_scope.vlt`; real RTL compiles |
-| B2 | Product `och_prim` `prim_sync2/3` use private `.i_CK` ports vs OSS OT-style cells | Retained DV `prim_sync*` tooling stubs; product RTL not modified |
+| Concern | Handling |
+|---------|----------|
+| PeakRDL nested hwif structs break Verilator C++ codegen | `disable_public_flat_rw` + `smc_public_scope.vlt`; the real RTL compiles |
+| Product `och_prim` `prim_sync2/3` use private `.i_CK` ports, unlike the OSS OT-style cells | DV `prim_sync*` tooling stubs remap them; product RTL is untouched |
 
 ## Layout
 
@@ -163,7 +161,7 @@ add `uvm/tests/<name>.svh` on `smc_base_test` (override
 `create_scenario_seq()`, the loop-knob hooks, and `configure_test_cfg()` for
 the scoreboard features it requires), add both `include`s to the package and
 the manifest, and change the scenario's testlist entry to the binding map. A
-pin the scenario needs that the harness ties off today is promoted into
+pin the scenario needs that the harness ties off is promoted into
 `tb/smc_tb_if.sv` first.
 
 PASS/FAIL is classified by the global parser registry

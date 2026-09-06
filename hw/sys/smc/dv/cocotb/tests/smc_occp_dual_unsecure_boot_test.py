@@ -105,7 +105,7 @@ ROM_POLL_CYCLES = 200
 # JUMP. I3C at open-drain init rates dominates the run time: roughly 3.2 ms of
 # sim time per 1024 B chunk on this top, so a 15 KB payload needs ~48 ms and the
 # bound has to leave real headroom above that.
-# The poll interval is deliberately coarse: each poll costs two CSR reads
+# The poll interval is coarse: each poll costs two CSR reads
 # over SEP_IN AXI, and polling faster buys nothing when the thing being waited
 # on takes milliseconds.
 OCCP_POLL_ITERS = 40_000
@@ -118,9 +118,7 @@ OCCP_POLL_CYCLES = 2_000
 # TEST_PASS the moment it is entered, while the controller is still reading the
 # JUMP response -- and if that response fails its header-CRC or status check the
 # controller writes TEST_FAIL, which would otherwise land after this test had
-# already declared success. Without the grace window the controller was observed
-# still waiting on its 16th response header when the test ended, so the JUMP
-# response was never parsed and nobody noticed.
+# already declared success.
 #
 # 60 x 2000 clk_smc_i is 600 us of sim, roughly 20x the observed
 # request-to-response round trip for a JUMP, and a negligible share of the
@@ -483,7 +481,7 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
         """Fail if the CONTROLLER reported failure, whatever the target says.
 
         The controller firmware only ever writes its scratch 0 to say TEST_FAIL;
-        on success it deliberately writes nothing there and leaves the verdict to
+        on success it writes nothing there and leaves the verdict to
         the target. So a read that equals TEST_FAIL is unambiguous, and anything
         else is not a controller failure.
 
@@ -656,7 +654,7 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
     # confirmation that it finished cleanly, only the absence of a
     # rejection. Turning that into a positive gate means waiting for its
     # "Done, waiting for ROM to complete" console line, which changes when the
-    # simulation ends. See docs/occp_dual_boot_equivalence.md risk 1.
+    # simulation ends.
     # bfm_console.lines is the full history; tail() is only the last 40.
     if any("Done, waiting for ROM" in line for line in bfm_console.lines):
         cocotb.log.info("controller also reached its own terminal state (console)")

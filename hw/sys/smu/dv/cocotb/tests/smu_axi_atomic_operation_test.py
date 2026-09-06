@@ -7,8 +7,8 @@ filter/err path. TB ties ``smu_axi_in_req.aw.atop = 0`` (no flat ATOP pin).
 This test proves the supported non-ATOP traffic class completes with a live
 RID==ARID path rather than hanging.
 
-DECERR / err_slv poison deny semantics and ATOP reject stimulus stay deferred
-until a legal ATOP driver and a filter-allow / OKAY positive control exist
+DECERR / err_slv poison deny semantics and ATOP reject stimulus need a legal
+ATOP driver and a filter-allow / OKAY positive control, so they are not covered
 (NEGATIVE-NEEDS-POSITIVE-CONTROL).
 """
 
