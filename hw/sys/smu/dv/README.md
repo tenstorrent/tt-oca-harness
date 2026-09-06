@@ -36,7 +36,9 @@ smu_<scenario>_test
 
 | Path | Role |
 |------|------|
-| `tb/tb_top.sv` | `smu_uvm_top` — bare `smu #(.SEP(0))` density TB |
+| `tb/tb_top.sv` | `smu_uvm_top` — bare `smu #(.SEP(0))` density TB; one module, two shapes (cocotb pins by default, SV-UVM harness under `UVM`) |
+| `tb/smu_tb_signal_list.svh`, `tb/smu_tb_if.sv` | The TB signals declared once for both shapes; the SMU-local TB interface of the SV-UVM view |
+| `uvm/{env,seq_lib,tests}/` | SV-UVM realization (`--framework uvm`, VCS) |
 | `cocotb/{env,seq_lib,tests}/` | Live enrolled PyUVM tests |
 | `cocotb/tests_deferred/` | Force-era raise stubs (catalog only); each body's docstring carries its blocker |
 | `testlists/all.toml` | Enrolled SEP=0 groups (`sep0_all` = 53) |
@@ -77,6 +79,68 @@ python3 tools/dv/run_dv.py --dut smu --items phase1 --tool xcelium --cov
 Groups: `smoke` (4), `top5` (5), `top10` (11), `phase1` (49), `smc` (12),
 `dtp` (29), `fabric` (14), `phase2` (50), `phase3` (5), `phase4_sep0` (19),
 `sep0_all` (53), `sep0_p4_all` (55).
+
+### SystemVerilog UVM framework (`--framework uvm`)
+
+The SV-UVM view shares this DV root, sim config, and testlist with the cocotb
+flow: `smu_sim_cfg.toml` declares it as the `[frameworks.uvm]` overlay (same
+Bender RTL recipe), and `--dut smu --framework uvm` selects it. A testlist
+scenario carries both implementations in its `module` binding map
+(`module = { cocotb = "...", uvm = "..." }`), so the same `--items` name
+selects the same VPLAN scenario in either framework; the UVM class name is
+the `uvm` entry (`+UVM_TESTNAME`). Selecting a scenario with no `uvm` entry
+errors; `--skip-unimplemented` runs a group's UVM-implemented subset instead.
+VCS only: Verilator has no SV-UVM support. The bench architecture is in
+`docs/SMU_TB_ARCH.adoc` ("SystemVerilog UVM Realization"); the framework
+conventions it follows are in `hw/common/dv/docs/uvm-framework.adoc`.
+
+SMU integrates DTP, so the SMU bench checks the embedded DTP with the DTP
+bench's own reference models, TAP FSM checker, and scoreboard
+(`hw/sys/dtp/dv/uvm/env`), attached through a `dtp_tb_if` instance the SMU
+top wires to the DTP instance. The first bound scenario is
+`smu_dtp_jtag_smoke_test` (SMU_ALL_005): TAP reset, IDCODE against the
+`smu_pkg` configuration, BYPASS one-TCK latency (directed plus seeded random
+patterns), TRST and power-on reset back to Test-Logic-Reset, over 16 seeded
+passes; every IDCODE and BYPASS scan is predicted by the DTP reference models
+and paired by the always-on scoreboard, and the sequence records named
+`CHK-*` evidence (`CHECKER_SUMMARY name=smu_scenario`).
+
+```bash
+# SV-UVM build only (VCS). --skip-unimplemented (or an --items selection) is required:
+# without it the runner selects the cocotb-only scenarios and stops before compiling.
+python3 tools/dv/run_dv.py --dut smu --framework uvm --build-only --skip-unimplemented
+
+# PyUVM (cocotb) and SV-UVM, same logical scenario name
+python3 tools/dv/run_dv.py --dut smu --items smu_dtp_jtag_smoke_test --tool verilator
+python3 tools/dv/run_dv.py --dut smu --framework uvm --items smu_dtp_jtag_smoke_test --seed 1
+
+# Smoke group, UVM-implemented subset
+python3 tools/dv/run_dv.py --dut smu --framework uvm --items smoke --skip-unimplemented
+
+# Negative validation: a wrong expected IDCODE in both the reference model and
+# the scenario evidence must FAIL the run
+python3 tools/dv/run_dv.py --dut smu --framework uvm --items smu_dtp_jtag_smoke_test \
+  --plusarg +SMU_PTAP_IDCODE_NEGATIVE
+
+# Loop-count knobs, resolved specific-first (per test, per group, suite-wide);
+# every looped test runs at least 16 seeded passes by default
+python3 tools/dv/run_dv.py --dut smu --framework uvm --items smu_dtp_jtag_smoke_test \
+  --plusarg +SMU_DTP_JTAG_SMOKE_TEST_LOOPS=4
+python3 tools/dv/run_dv.py --dut smu --framework uvm --items smoke --skip-unimplemented \
+  --plusarg +SMU_TEST_LOOPS=1
+```
+
+To port another cocotb scenario: add `uvm/seq_lib/<name>_seq.svh` on
+`smu_base_test_seq` (JTAG operations through `load_ir` / `dr_scan` /
+`step`, named evidence through `attach_evidence` / `check_evidence` /
+`finalize_evidence`), add `uvm/tests/<name>.svh` on `smu_base_test`
+(override `create_scenario_seq()`, the loop-knob hooks, and
+`configure_test_cfg()` for the scoreboard features it requires), add both
+`include`s to the package and the manifest, and change the scenario's
+testlist entry to the binding map. A pin the scenario needs that the harness
+ties off today is promoted into `tb/smu_tb_if.sv` first; a new embedded-IP
+feature reuses that IP bench's reference model and scoreboard through
+`smu_env` and `smu_scoreboard`.
 
 ## Signoff sources (dual TB)
 

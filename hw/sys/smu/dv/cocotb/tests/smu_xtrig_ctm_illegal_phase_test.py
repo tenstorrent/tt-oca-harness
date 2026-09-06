@@ -15,10 +15,7 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, RisingEdge
-from env import cocotb_compat as _cocotb_compat
 from smu_base_test import smu_base_test
-
-_cocotb_compat.apply()
 
 PAT_A = 0x25
 PAT_B = 0x5A

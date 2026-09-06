@@ -95,10 +95,7 @@ class _TckEdgeCounter:
 
     def stop(self) -> int:
         if self._task is not None:
-            if hasattr(self._task, "cancel"):
-                self._task.cancel()
-            else:  # pragma: no cover - cocotb 1.x fallback
-                self._task.kill()
+            self._task.cancel()
             self._task = None
         return self.edges
 

@@ -11,8 +11,7 @@ builds a concrete stage plan, invokes the selected backend, and writes durable
 logs and schema-version-1 result files.
 
 _Native_ means the flow is owned by this runner end to end — stage plan,
-tool invocation, and results — in contrast to wrapped or external flows such
-as the classic VCS Make/VPI path.
+tool invocation, and results — in contrast to wrapped or external flows.
 
 [NOTE]
 ====
@@ -715,7 +714,7 @@ Override them with `--wave-retention {all,failed,none}`. Kept wave directories
 include a copied log and `debug_context.json` with viewer and same-seed replay
 commands.
 
-On VCS (both the cocotb make flow and the standalone UVM flow), dumping is
+On VCS (both the cocotb flow and the standalone UVM flow), dumping is
 driven by a generated UCLI script (`scripts/waves.<test>.ucli`, passed as
 `simv -ucli -i`), so no testbench dump hooks are required. `fsdb` needs Verdi:
 the runner resolves `VERDI_HOME` (explicit env first, then derived from `verdi`
@@ -740,8 +739,8 @@ record the requested range and set `range_supported` to false.
 The standalone UVM/VCS flow gains dump access by elaborating with
 `-debug_access+all` when waves are requested. A waves run that skips
 elaboration (`--stage sim` against a simv built without waves) cannot dump;
-rerun with the elaborate stage included or `--rebuild`. The cocotb make flow
-always compiles with `-debug_access`, so its cached build needs no rebuild.
+rerun with the elaborate stage included or `--rebuild`. cocotb's VCS runner
+always compiles with `-debug_access+all`, so its cached build needs no rebuild.
 If a wave-enabled simulation produces no wave file, the runner prints a
 warning and records it in the run's wave metadata.
 ====
@@ -814,8 +813,8 @@ result files.
 Firmware/model preparation may still occur.
 
 |`--rebuild`
-|Request a fresh cocotb model build for the Verilator/Xcelium Python-runner
-paths. The classic VCS Make path remains dependency-driven and incremental.
+|Request a fresh cocotb model build (Verilator, Xcelium, and VCS all go through
+cocotb's Python runner, so `--rebuild` behaves the same on each).
 
 |`--timeout SEC`
 |Bound supported subprocess stages and override the configured simulation-leaf
@@ -1142,7 +1141,7 @@ run in the same matrix but are not required contexts; the `cross_trigger`
 benches are enrolled in the regression tiers only.
 
 |Configured, not CI-qualified
-|`dtp --framework uvm` + VCS; `smc --framework uvm` + VCS; `smu_wrapper` cocotb flow
+|`dtp --framework uvm` + VCS; `smc --framework uvm` + VCS; `smu --framework uvm` + VCS; `smu_wrapper` cocotb flow
 |Valid configs exercised by maintainers with licensed tools or carrying
 historical local results only. Not run by hosted CI; do not add to the
 workflow matrix without a qualifying run at head.
@@ -1167,6 +1166,7 @@ job maps a group to its UVM-implemented subset:
 python3 tools/dv/run_dv.py --dut dtp --framework uvm --items smoke --skip-unimplemented
 python3 tools/dv/run_dv.py --dut dtp --framework uvm --items jtag2axi --skip-unimplemented
 python3 tools/dv/run_dv.py --dut smc --framework uvm --items smoke --skip-unimplemented
+python3 tools/dv/run_dv.py --dut smu --framework uvm --items smoke --skip-unimplemented
 ----
 
 Each (DUT, framework) pair a DUT implements is one _framework view_: the DUT
@@ -1238,13 +1238,6 @@ structured result and absent positive log summary correctly fail closed.
 scheduler may insert a model prebuild, and a cocotb simulation may build its
 model, but the generated filelist and required firmware outputs must already
 exist. Run the missing preparation stages first, or use the implicit path.
-
-=== VCS cannot load cocotb
-
-The classic VCS Make/VPI path currently requires a cocotb version earlier than
-2.0. The runner checks `<repo>/venv/bin/python` before the active interpreter.
-Provision that environment with a compatible cocotb version before selecting
-VCS.
 
 === Coverage was collected but no report appeared
 

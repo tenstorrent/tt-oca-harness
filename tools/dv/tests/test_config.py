@@ -27,6 +27,7 @@ from runlib.config import (  # noqa: E402
     load_dut,
     load_test_catalog,
     selected_run_mode,
+    target_flags,
     validate_run_mode_request,
 )
 from runlib.models import ConfigError, Dut, TestCatalog, TestEntry  # noqa: E402
@@ -407,3 +408,17 @@ class RuntimeSelectionDefenses(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TargetFlagsTokens(unittest.TestCase):
+    """Every flag item is one argv token; an embedded space is a config error, not a no-op."""
+
+    def test_shared_then_tool_flags(self):
+        target = {"flags": ["+define+X"], "tools": {"vcs": {"flags": ["-assert", "svaext"]}}}
+        self.assertEqual(target_flags(target, "vcs"), ["+define+X", "-assert", "svaext"])
+
+    def test_whitespace_in_a_flag_is_rejected(self):
+        target = {"tools": {"vcs": {"flags": ["-assert svaext"]}}}
+        with self.assertRaises(ConfigError) as ctx:
+            target_flags(target, "vcs")
+        self.assertIn("-assert svaext", str(ctx.exception))

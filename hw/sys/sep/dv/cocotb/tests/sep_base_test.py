@@ -32,16 +32,18 @@ for _log_stream in (sys.stdout, sys.stderr):
 
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge, Timer, with_timeout
+from cocotb.triggers import (
+    ClockCycles,
+    ReadOnly,
+    RisingEdge,
+    SimTimeoutError,
+    Timer,
+    with_timeout,
+)
 
 # Intentional OSS exception: this JTAG AXI-Lite helper must run on the public
 from ocah_axi_vip import OcahAxiLiteMasterAgent
 from pyuvm import ConfigDB, uvm_test
-
-try:  # cocotb < 2.0
-    from cocotb.result import SimTimeoutError
-except ImportError:  # cocotb >= 2.0
-    from cocotb.triggers import SimTimeoutError
 
 # The cocotb runner only puts the test dir on sys.path. Make the cocotb root
 # (env/, seq_lib/) and shared OSS VIP root importable before concrete tests

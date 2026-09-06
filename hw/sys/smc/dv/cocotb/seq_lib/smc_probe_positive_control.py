@@ -242,10 +242,7 @@ async def _count_probe_high(dut, probe: str, hits: list[int]) -> None:
 
 
 def _stop(task) -> None:
-    if hasattr(task, "cancel"):
-        task.cancel()
-    else:  # pragma: no cover - cocotb 1.x fallback
-        task.kill()
+    task.cancel()
 
 
 def _assert_idle_precondition(dut, probe: str, control: str) -> None:
