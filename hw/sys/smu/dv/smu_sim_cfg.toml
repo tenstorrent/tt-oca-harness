@@ -157,7 +157,8 @@ build_dir = "hw/sys/smu/dv/build/cocotb"
 
 [targets.default.tools.vcs]
 flags = [
-  "-assert svaext",
+  "-assert",
+  "svaext",
 ]
 
 [targets.default.tools.verilator]

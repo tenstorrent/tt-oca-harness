@@ -73,10 +73,7 @@ def _logic_int(signal, default: int = 0) -> int:
 
 
 async def _timer(value: float | int, unit: str) -> None:
-    try:
-        await Timer(value, unit=unit)  # cocotb 2.x
-    except TypeError:
-        await Timer(value, units=unit)  # cocotb 1.9.x compatibility
+    await Timer(value, unit=unit)
 
 
 class _JtagIntfProxy:

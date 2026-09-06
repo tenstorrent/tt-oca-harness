@@ -1,6 +1,6 @@
 # Shared profile for DUTs on the native runner — "native" = the flow's stage
 # plan, tool invocation, and results are owned by this runner, not a
-# wrapped/external flow (e.g. the classic VCS Make/VPI path).
+# wrapped/external flow.
 #
 # Framework (cocotb | uvm) is a selectable dimension inside this one profile: shared launch
 # policy lives at the top level, per-framework residue in [frameworks.<fw>], and each DUT
@@ -73,10 +73,10 @@ enabled = true
 status = "active"
 
 # ONE canonical stage graph for both frameworks. The generic kinds dispatch per
-# (tool, framework) at run time: `hdl_compile` builds the cocotb model (Verilator/Xcelium/VCS
-# classic make) or runs the folded VCS analyze+elaborate two-step for SV-UVM; `sim` launches the
-# cocotb test or the built simv (`+UVM_TESTNAME`); `c_compile` runs only for tests that declare
-# firmware.
+# (tool, framework) at run time: `hdl_compile` builds the cocotb model (Verilator/Xcelium/VCS,
+# all through cocotb's Python runner) or runs the folded VCS analyze+elaborate two-step for
+# SV-UVM; `sim` launches the cocotb test or the built simv (`+UVM_TESTNAME`); `c_compile` runs
+# only for tests that declare firmware.
 [native.stages.flist]
 kind = "filelist"
 
