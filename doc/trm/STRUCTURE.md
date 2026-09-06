@@ -4,324 +4,344 @@
 # OCAH TRM Structure and DTP Content Map
 
 Implementation design for the SMU-parent / DTP-pilot restructuring.
-This document records the approved structure, source ownership decisions and the bounded change list for subsequent tasks.
-
-Do not add this file to the Antora nav or the PDF assembly.
+Records the approved structure, source ownership decisions and bounded change
+list. Do not add to the Antora nav or the PDF assembly.
 
 ---
 
 ## 1. Web sidebar hierarchy and PDF outline
 
-### Web navigation (Antora sidebar)
+### Web navigation
 
-The restructured nav exposes SMU directly as a top-level chapter with expandable DTP children. The current architecture-as-hub pattern (where subsystems are only hash-anchors under `architecture.html`) is replaced.
+One nav file (`doc/trm/modules/ROOT/nav/nav.adoc`) nests DTP beneath SMU:
 
 ```
-TRM Home / Landing
-About OCAH
-OCAH Architecture & Platform (architecture.adoc — platform-wide content only)
-System Management Unit
-  ├─ Overview (smu/index.adoc — composition, crossbar, power, clock, reset)
-  ├─ Debug & Test Ports
-  │    ├─ DTP Overview
-  │    ├─ JTAG Interface Unit
-  │    ├─ JTAG PTAP
-  │    ├─ JTAG STAP
-  │    ├─ JTAG Integration
-  │    ├─ Cross Trigger Network
-  │    ├─ Cross Trigger Port
-  │    ├─ Cross Trigger Matrix
-  │    └─ Clock Stop
-  ├─ Security Processor (SEP)
-  └─ System Management Controller (SMC)
-Verification Dashboard
+* TRM Landing
+** System Management Unit
+*** Debug & Test Ports
+**** DTP Overview
+**** JTAG Interface Unit
+**** JTAG PTAP
+**** JTAG STAP
+**** JTAG Integration
+**** Cross Trigger Network
+**** Cross Trigger Port
+**** Cross Trigger Matrix
+**** Clock Stop
+*** Security Processor (SEP)      ← existing, unchanged
+*** System Management Controller (SMC) ← existing, unchanged
 ```
 
-SEP and SMC are already staged via `SUBSYSTEMS="smc sep dtp"` in `doc/stage-docs.sh`. They remain in their current positions; this restructuring does not remove them. SMN and AoU remain as placeholder pages at their current level.
+A single nav file is required; multiple separate nav files render each
+root-level `*` entry at the same sidebar depth, breaking the hierarchy.
+DTP must be a `***` entry under SMU, not a sibling `**`.
 
-### PDF part/chapter outline
+SMC and SEP remain at `***` under SMU once the SMU framework is in place.
+They are not removed during the DTP pilot and must stay reachable throughout.
 
-The PDF assembly uses `:doctype: book` with a part/chapter structure. Each subsystem page is included with `leveloffset` so the page's `= Title` shifts to the chapter heading; no body-tag extraction is needed or used (see AUTHORING.md §3 for why).
+### PDF outline
 
 ```
 = OCAH Technical Reference Manual
 
-[front matter / about OCAH]
+[front matter]
 
 = Part I: OCAH Platform Architecture
-  Chapter 1: Platform Overview and Interconnect (from architecture.adoc)
+  Chapter 1: Platform Overview (architecture.adoc [leveloffset=+1])
 
 = Part II: System Management Unit
-  Chapter 2: System Management Unit (smu/index.adoc [leveloffset=+1])
-  Chapter 3: Debug and Test Ports (dtp/index.adoc [leveloffset=+1])
-    3.1  JTAG Interface Unit         (jtag_intf_unit/index.adoc [leveloffset=+2])
-    3.2  JTAG PTAP                   (jtag_ptap/index.adoc [leveloffset=+2])
-    3.3  JTAG STAP                   (jtag_stap/index.adoc [leveloffset=+2])
-    3.4  JTAG Integration            (dtp/jtag.adoc [leveloffset=+2])
-    3.5  Cross Trigger Network       (cross_trigger_network/index.adoc [leveloffset=+2])
-    3.6  Cross Trigger Port          (cross_trigger_port/index.adoc [leveloffset=+2])
-    3.7  Cross Trigger Matrix        (cross_trigger_matrix/index.adoc [leveloffset=+2])
-    3.8  Clock Stop                  (dtp/clock_stop.adoc [leveloffset=+2])
-  Chapter 4: Security Processor (sep/index.adoc [leveloffset=+1])
-  Chapter 5: System Management Controller (smc/index.adoc [leveloffset=+1])
-
-[appendices: SMN placeholder, AoU placeholder]
+  Chapter 2: SMU (smu/index.adoc [leveloffset=+1])
+  Chapter 3: DTP Overview (dtp/index.adoc [leveloffset=+1])
+    3.1 JTAG Operation (dtp/jtag.adoc [leveloffset=+2])
+    3.2 JTAG Interface Unit (jtag_intf_unit/index.adoc [leveloffset=+2])
+    3.3 JTAG PTAP (jtag_ptap/index.adoc [leveloffset=+2])
+    3.4 JTAG STAP (jtag_stap/index.adoc [leveloffset=+2])
+    3.5 Cross Trigger Network (cross_trigger_network/index.adoc [leveloffset=+2])
+    3.6 Cross Trigger Port (cross_trigger_port/index.adoc [leveloffset=+2])
+    3.7 Cross Trigger Matrix (cross_trigger_matrix/index.adoc [leveloffset=+2])
+    3.8 Clock Stop (dtp/clock_stop.adoc [leveloffset=+2])
+  Chapter 4: SEP (sep/index.adoc [leveloffset=+1])  ← existing, unchanged
+  Chapter 5: SMC (smc/index.adoc [leveloffset=+1])  ← existing, unchanged
 ```
 
-The PDF assembly (`doc/trm/src/index.adoc`) is the single owner of the PDF part/chapter hierarchy. Source pages do not contain assembly-level headings; `leveloffset` handles all heading promotion. This means each source page serves as a self-contained standalone URL in HTML and is promoted to the right chapter/section level in the PDF without duplication.
+The PDF assembly (`doc/trm/src/index.adoc`) is the single owner of this
+hierarchy. Each topic is included exactly once; existing SMC and SEP includes
+are preserved without change during the DTP pilot.
 
-**Prototype result:** A 5-page HTML / 12-section PDF prototype at `/tmp/claude-1000/task-002a/proto/` proved this hierarchy. All HTML pages have correct `<title>` elements (not "Untitled"). PDF TOC: Part "System Management Unit" → Chapter 1 "System Management Unit" → Chapter 2 "Debug and Test Ports (DTP)" → §2.3 "JTAG Operation" / §2.4 "Cross-Trigger Network". No external file-link annotations (`pdfinfo -url` lists none). Cross-topic references resolve in both formats.
-
----
-
-## 2. SMU source ownership
-
-### Current state
-
-SMU content is split across three locations:
-
-| Location | Content | Status |
-|---|---|---|
-| `doc/trm/src/architecture.adoc` §§`[[smu-axi-crossbar]]`–`[[ocah-reset]]` | SMU AXI crossbar, memory map overview, power domains, clock domains, reset hierarchy | Platform-wide; anchors currently in `architecture.adoc` |
-| `hw/sys/smu/doc/SMU_SPEC.md` | Overview, specifications, configuration parameters, architecture, interfaces, operating modes, clock/reset, error handling, security, DV info | Mixed: hardware description + DV/verification detail |
-| `doc/integrator/src/index.adoc` §`smu-top-level-integration` | Integration wiring, module variants, port connections, firmware programming order | Integration guidance; stays in Integrator Guide |
-
-### Proposed ownership after SMU-framework task
-
-| Content | Destination | Notes |
-|---|---|---|
-| SMU composition (what SMC/SEP/DTP are) | `hw/sys/smu/doc/index.adoc` (new) → TRM SMU chapter | Adapt from `SMU_SPEC.md` §Overview and §Architecture §Block Overview |
-| AXI crossbar port table and programming | `hw/sys/smu/doc/crossbar.adoc` (new) or fragment | Move from `architecture.adoc` `[[smu-axi-crossbar]]`; anchor preserved |
-| Power domains, clock domains, reset hierarchy | `hw/sys/smu/doc/index.adoc` or `hw/sys/smu/doc/clk_rst.adoc` | Move from `architecture.adoc`; same anchor IDs (`[[ocah-power-domains]]`, `[[ocah-clock-domains]]`, `[[ocah-reset]]`) |
-| OCAH top block diagram + high-level features | Stay in `architecture.adoc` | Platform-wide introductory content |
-| OCAH memory map overview | Stay in `architecture.adoc` | Platform-wide; SMU-specific apertures move to SMU chapter |
-| Config parameters from `SMU_SPEC.md` §Configuration | `hw/sys/smu/doc/index.adoc` or separate reference page | Select `smu_cfg_t` defaults and AXI parameter summary; omit RTL implementation detail |
-| Features §1–7 from `SMU_SPEC.md` | Adapt selectively into SMU chapter narrative | §DV environment, BFM refs stay out of TRM |
-| DV environment, BFM packages, cocotb flows | Not in TRM — stays in `hw/sys/smu/dv/` README or DV guide | `SMU_SPEC.md` §Verification Alignment, table row "Open-source DV location" |
-| RTL implementation detail | Not in TRM — integrator note only | Already in `doc/integrator/src/index.adoc` §smu-module-variants |
-| Integration wiring, port table | Stay in Integrator Guide; port_table.adoc staged as ROOT partial | SMU port table already staged as ROOT partial; TRM SMU chapter links to Integrator Guide |
-
-`doc/trm/src/architecture.adoc` retains platform-wide introductory content. The SMU-specific subsections (`[[smu-axi-crossbar]]` through `[[ocah-reset]]`) move to the SMU chapter. Anchors must be preserved at their existing IDs to avoid breaking inbound links.
+**Prototype:** `/tmp/claude-1000/task-002b/proto/` proves this hierarchy.
+Nav depth confirmed: `[2] SMU → [3] DTP → [4] JTAG Operation / Cross-Trigger Network`.
+PDF TOC: Part → Ch.1 SMU → Ch.2 DTP → §2.3 JTAG Operation → §2.4 Cross-Trigger.
+Zero external file annotations. Build commands in §7.
 
 ---
 
-## 3. DTP source-to-destination map
+## 2. DTP reading order
 
-### Source files (25 total)
+Both the web sidebar and PDF outline follow this conceptual sequence:
 
-DTP contributes 25 source files: 6 DTP subsystem files, 9 JTAG IP files (3 per IP × 3 IPs), and 10 cross-trigger IP files (CTN ×4 including memmap, CTP ×3, CTM ×3).
+1. **Overview** — purpose, capabilities, block diagram, reading route.
+2. **Architecture and access paths** — the two major blocks (JIU and CTN)
+   and how a reader reaches hardware: JTAG2AXI debug bridges to SMC/SEP via
+   the SMU AXI crossbar; cross-trigger configuration via the same paths.
+3. **JTAG operation** — DTP-level JTAG topology and integration first
+   (`dtp/jtag.adoc`): scan chain wiring, clock domains, reset, lifecycle
+   controls. IP detail (IU/PTAP/STAP) follows as supporting reference;
+   readers who only need topology can stop at step 3.
+4. **Cross-trigger operation** — CTN network behaviour (`cross_trigger_network`)
+   first: routing modes, CSR programming, wire-OR vs P2P. CTN owns the
+   CTM and CTP register maps and includes them in `memmap.adoc`. CTP and
+   CTM individual pages provide architecture and interface detail; they do
+   not re-include the register maps (which would duplicate them in the PDF).
+5. **Clock-stop/reset behaviour** — `dtp/clock_stop.adoc`.
+6. **Configuration and reference** — hardware configuration parameters,
+   port table, routes to generated register material.
 
-| Source | Current role | Destination |
-|---|---|---|
-| `hw/sys/dtp/doc/index.adoc` | DTP chapter assembly | Remains; gains `= Debug and Test Ports (DTP)` as standalone page title |
-| `hw/sys/dtp/doc/overview.adoc` | DTP overview | TRM page: `= DTP Overview`; anchor `[[dtp-overview]]` preserved |
-| `hw/sys/dtp/doc/jtag.adoc` | JTAG integration narrative | TRM page: `= JTAG Integration`; anchor `[[dtp-jtag-integration]]` preserved |
-| `hw/sys/dtp/doc/clock_stop.adoc` | Clock-stop controls | TRM page: `= Clock Stop`; anchor `[[dtp-clock-stop]]` preserved |
-| `hw/sys/dtp/doc/defines.adoc` | DV simulation defines | **Not TRM content** (TRM-B008); excluded from chapter assembly; migrate to `hw/sys/dtp/dv/docs/` |
-| `hw/sys/dtp/doc/port_table.adoc` | Port declaration table | Remains as ROOT partial for both TRM and Integrator Guide |
-| `hw/ip/jtag/jtag_intf_unit/doc/index.adoc` | JTAG IU overview | TRM page: `= JTAG Interface Unit`; anchor `[[jtag-interface-unit]]` preserved |
-| `hw/ip/jtag/jtag_intf_unit/doc/architecture.adoc` | JTAG IU architecture | Fragment included by `jtag_intf_unit/doc/index.adoc` |
-| `hw/ip/jtag/jtag_intf_unit/doc/interface.adoc` | JTAG IU interface | Fragment; anchor `[[jtag-intf-unit-interface]]` |
-| `hw/ip/jtag/jtag_ptap/doc/index.adoc` | PTAP overview | TRM page: `= JTAG PTAP`; anchor `[[jtag-ptap]]` preserved |
-| `hw/ip/jtag/jtag_ptap/doc/architecture.adoc` | PTAP architecture + config params | Fragment; anchor `[[ptap-architecture]]` |
-| `hw/ip/jtag/jtag_ptap/doc/interface.adoc` | PTAP interface | Fragment; anchor `[[ptap-interface]]` |
-| `hw/ip/jtag/jtag_stap/doc/index.adoc` | STAP overview | TRM page: `= JTAG STAP`; anchor `[[jtag-stap]]` preserved |
-| `hw/ip/jtag/jtag_stap/doc/architecture.adoc` | STAP architecture | Fragment |
-| `hw/ip/jtag/jtag_stap/doc/interface.adoc` | STAP interface | Fragment |
-| `hw/ip/cross_trigger/cross_trigger_network/doc/index.adoc` | CTN overview | TRM page: `= Cross Trigger Network`; anchor `[[cross-trigger-network]]` preserved |
-| `hw/ip/cross_trigger/cross_trigger_network/doc/architecture.adoc` | CTN architecture | Fragment |
-| `hw/ip/cross_trigger/cross_trigger_network/doc/interface.adoc` | CTN interface | Fragment |
-| `hw/ip/cross_trigger/cross_trigger_network/doc/memmap.adoc` | CTN register map | Fragment; includes CTM and CTP register maps — see §Register ownership below |
-| `hw/ip/cross_trigger/cross_trigger_port/doc/index.adoc` | CTP overview | TRM page: `= Cross Trigger Port` |
-| `hw/ip/cross_trigger/cross_trigger_port/doc/architecture.adoc` | CTP architecture | Fragment |
-| `hw/ip/cross_trigger/cross_trigger_port/doc/interface.adoc` | CTP interface | Fragment |
-| `hw/ip/cross_trigger/cross_trigger_matrix/doc/index.adoc` | CTM overview | TRM page: `= Cross Trigger Matrix` |
-| `hw/ip/cross_trigger/cross_trigger_matrix/doc/architecture.adoc` | CTM architecture | Fragment |
-| `hw/ip/cross_trigger/cross_trigger_matrix/doc/interface.adoc` | CTM interface | Fragment |
+The IP inventory (IU, PTAP, STAP, CTN, CTP, CTM) appears after the
+integration narrative in both outlines, not before it.
 
-**Nothing is silently dropped.** `defines.adoc` is excluded from the TRM chapter assembly but is preserved in its source file and noted as needing migration to DV guide documentation.
-
-### Register ownership
-
-`cross_trigger_network/doc/memmap.adoc` includes both the CTM register map (`partial$cross_trigger_matrix/regs/gen/html/cross_trigger_matrix.html`) and the CTP register map (`../../cross_trigger_port/regs/gen/adoc/cross_trigger_port.adoc`). The CTN page owns these register maps. The individual CTM and CTP standalone pages must not re-include their own register maps — doing so would duplicate them in the PDF assembly at each sub-section level.
-
-### Staging changes required
-
-`doc/stage-docs.sh` currently lists `SUBSYSTEMS="smc sep dtp"` and `MODULES="ROOT smc sep dtp ip"`. Adding SMU requires:
-
-1. Add `smu` to `SUBSYSTEMS` (controls per-subsystem staging cleanup target)
-2. Add `smu` to `MODULES` (controls which module trees are staged)
-3. Confirm DV content exclusion: `stage_adoc_tree` copies ALL `.adoc` files from the source tree to `modules/<mod>/pages/`. Files that are partials or DV content (e.g., `defines.adoc`, `crossbar-table.adoc`) must either be placed in `partials/` in the source tree or excluded explicitly — they cannot be placed in `pages/` by this function without becoming standalone URLs.
-
-`PORT_TABLE_SYS` already contains `smu`; no change needed for port table staging.
-
-### Existing anchors and URL compatibility
-
-The following anchors are currently reachable in the built site and must be preserved or explicitly redirected:
-
-| Anchor | Location | Status |
-|---|---|---|
-| `[[debug-test-ports]]` | `dtp/index.adoc` | Preserve |
-| `[[dtp-overview]]` | `dtp/overview.adoc` | Preserve |
-| `[[dtp-jtag-integration]]` | `dtp/jtag.adoc` | Preserve |
-| `[[dtp-clock-stop]]` | `dtp/clock_stop.adoc` | Preserve |
-| `[[jtag-interface-unit]]` | `jtag_intf_unit/doc/index.adoc` | Preserve |
-| `[[jtag-intf-unit-architecture]]` | `jtag_intf_unit/doc/architecture.adoc` | Preserve |
-| `[[jtag-intf-unit-interface]]` | `jtag_intf_unit/doc/interface.adoc` | Preserve |
-| `[[jtag-ptap]]` | `jtag_ptap/doc/index.adoc` | Preserve |
-| `[[ptap-architecture]]` | `jtag_ptap/doc/architecture.adoc` | Preserve |
-| `[[ptap-interface]]` | `jtag_ptap/doc/interface.adoc` | Preserve |
-
-Anchors in the SMU material currently in `architecture.adoc` (`[[smu-axi-crossbar]]`, `[[ocah-power-domains]]`, `[[ocah-clock-domains]]`, `[[ocah-reset]]`) must be preserved at the same IDs when content moves to the SMU chapter. If a section moves to a different URL (different page file), the old page must retain a compatibility entry point with the old anchor ID pointing forward to the new location.
+`defines.adoc` is DV content and does not appear in this reading order.
 
 ---
 
-## 4. DTP reading order
+## 3. SMU framework scope
 
-Readers who are new to DTP should proceed in this order:
+The SMU-framework task moves only:
 
-1. **DTP Overview** (`overview.adoc`) — architecture diagram, purpose, the two major blocks (JIU and CTN). Entry point.
-2. **JTAG Interface Unit** (`jtag_intf_unit/doc/index.adoc`) — JTAG topology: PTAP, STAP chain, iJTAG network, JTAG2AXI bridges.
-3. **JTAG PTAP** (`jtag_ptap/doc/index.adoc`) — primary TAP IEEE 1149.1 compliance, configuration, security lockout, boundary scan.
-4. **JTAG STAP** (`jtag_stap/doc/index.adoc`) — secondary TAPs: per-component scan chains, TDI/TDO routing.
-5. **JTAG Integration** (`jtag.adoc`) — DTP-level JTAG integration: clock domains, reset, lifecycle feature control.
-6. **Cross Trigger Network** (`cross_trigger_network/doc/index.adoc`) — CTN controller, CSR apertures, wire-OR and P2P routing modes, register map (includes CTM and CTP registers).
-7. **Cross Trigger Port** (`cross_trigger_port/doc/index.adoc`) — per-port connection and interface.
-8. **Cross Trigger Matrix** (`cross_trigger_matrix/doc/index.adoc`) — CTM routing table, address map.
-9. **Clock Stop** (`clock_stop.adoc`) — CLA clock-stop aggregation, cross-trigger clock stop coordination.
-10. **Port Reference** (`port_table.adoc`) — SMU-level DTP port declaration.
+- A short **composition introduction** adapted from `hw/sys/smu/doc/SMU_SPEC.md`
+  §Overview and §Block Overview: what SMC, SEP and DTP are, the AXI crossbar role.
+- The discrete **`[[smu-axi-crossbar]]` section** from `doc/trm/src/architecture.adoc`,
+  ending before `[[ocah-memory-map]]`.
 
-`defines.adoc` is not in the reading order; it is DV content (see §3).
+Platform-wide sections — memory map, power domains (`[[ocah-power-domains]]`),
+clock domains (`[[ocah-clock-domains]]`), reset hierarchy (`[[ocah-reset]]`) —
+**stay in `architecture.adoc`** and are linked from the SMU chapter.
+Further SMU-specific narrative (operating modes, error handling) belongs to the
+later SMU completion task.
 
-The PDF assembly presents IP detail (JTAG topology, PTAP/STAP) before integration narrative (JTAG Integration, clock-stop) because IP reference is needed to understand the integration. The web site provides the same sequence via the sidebar nav order. Both outlines match; a reader navigating from a printed TOC and a reader following web links reach the same sequence.
+`architecture.adoc` retains its platform-wide role. After the framework move:
+- `[[smu-axi-crossbar]]` lives in `hw/sys/smu/doc/crossbar.adoc` with
+  the same anchor ID.
+- `architecture.adoc` keeps a compatibility anchor `[[smu-axi-crossbar]]`
+  for backward compatibility until all inbound links are updated.
+- SMC and SEP assembly includes in `src/index.adoc` are unchanged.
 
 ---
 
-## 5. Bounded change list for subsequent tasks
+## 4. DTP source-to-destination map (25 files)
 
-### SMU-framework task (Step 3)
+**Prefix legend:**
 
-**Files to author or modify:**
-
-| File | Change |
+| Prefix | Expands to |
 |---|---|
-| `hw/sys/smu/doc/index.adoc` | New — SMU chapter page (`= System Management Unit`) |
-| `hw/sys/smu/doc/crossbar.adoc` | New — SMU AXI crossbar detail (moved from `architecture.adoc`) |
-| `doc/trm/src/architecture.adoc` | Remove `[[smu-axi-crossbar]]` through `[[ocah-reset]]` sections; add aliases for moved anchors |
-| `doc/trm/src/index.adoc` | Add SMU includes (HTML xref + PDF filesystem include with `leveloffset=+1`) |
-| `doc/trm/modules/ROOT/nav.adoc` | Add SMU entry and child chapter entries |
-| `doc/stage-docs.sh` | Add `smu` to `SUBSYSTEMS` and `MODULES` |
+| `S/dtp` | `hw/sys/dtp/doc/` |
+| `S/smu` | `hw/sys/smu/doc/` |
+| `IP/jiu` | `hw/ip/jtag/jtag_intf_unit/doc/` |
+| `IP/ptap` | `hw/ip/jtag/jtag_ptap/doc/` |
+| `IP/stap` | `hw/ip/jtag/jtag_stap/doc/` |
+| `IP/ctn` | `hw/ip/cross_trigger/cross_trigger_network/doc/` |
+| `IP/ctp` | `hw/ip/cross_trigger/cross_trigger_port/doc/` |
+| `IP/ctm` | `hw/ip/cross_trigger/cross_trigger_matrix/doc/` |
 
-**Checks after SMU-framework task:**
-- All moved anchors resolve in both HTML and PDF.
-- `architecture.adoc` hash-anchor subitems in the current nav are updated.
-- Integrator Guide builds without errors after `stage-docs.sh` change.
-- SMU standalone pages have correct `<title>` elements.
+Staged destinations use `<mod>/pages/` for standalone pages and
+`<mod>/partials/` for fragments. The `ip` Antora module uses the path
+`ip:partial$<ip>/regs/gen/html/<name>.html` for HTML register includes;
+PDF uses the filesystem path relative to the canonical source file.
 
-### DTP pilot task (Step 4)
+### DTP subsystem files (6)
 
-**Files to modify:**
-
-| File | Change |
-|---|---|
-| `hw/sys/dtp/doc/index.adoc` | Add `= Debug and Test Ports (DTP)` as standalone page title |
-| `hw/sys/dtp/doc/overview.adoc` | Add `= DTP Overview`; address SVG diagram fallback text |
-| `hw/sys/dtp/doc/jtag.adoc` | Add `= JTAG Integration`; fix intra-page fragment links — replace `#jtag-interface-unit` etc. with `xref:` cross-page links (see §6) |
-| `hw/sys/dtp/doc/clock_stop.adoc` | Add `= Clock Stop` |
-| `hw/sys/dtp/doc/defines.adoc` | Remove from chapter assembly include; leave file for DV guide migration |
-| `hw/ip/jtag/*/doc/index.adoc` (3 files) | Add `= [IP name]` as page title |
-| `hw/ip/cross_trigger/*/doc/index.adoc` (3 files) | Add `= [IP name]` as page title |
-| `doc/trm/src/architecture.adoc` | Update DTP includes if source paths change |
-| `doc/trm/modules/ROOT/nav.adoc` | Add DTP child page entries under SMU |
-
-**Checks after DTP pilot task:**
-- All DTP pages have correct `<title>` (not "Untitled").
-- `dtp/jtag.html` cross-page links (`xref:jtag_intf_unit:index.adoc[…]` etc.) resolve.
-- DTP block diagram renders without SVG fallback text.
-- `defines.adoc` is absent from the built DTP chapter.
-- CTM and CTP register maps appear exactly once in the PDF (owned by CTN memmap, not re-included by CTM/CTP standalone pages).
-- PDF TOC shows DTP at chapter depth under the SMU part.
-
----
-
-## 6. Baseline issues the pilot will address
-
-From `doc/trm/meta/beta-issues.adoc` and `reviews/001b/REVIEW.md`:
-
-| Issue | Source | DTP pilot action |
+| Canonical source | Staged destination | Role |
 |---|---|---|
-| Missing standalone page titles — 121 of 128 pages | TRM-B011 | Add `= Title` to all DTP source page files |
-| DTP `jtag.html` links `#jtag-interface-unit`, `#jtag-ptap`, `#jtag-stap` show `[#id]` placeholder text | Codex review | Replace with `xref:` cross-page links to the standalone IP pages |
-| DTP block diagram SVG fallback text visible in PDF | Codex review | Regenerate SVG from source tool; or provide PNG alternative |
-| DTP diagram labels small at mobile viewport (390 px) | Codex review | Address in DTP pilot; note as known limitation if out of scope |
-| Register-field table column wrapping in PDF | Codex review | Note as a generator template follow-up; do not edit generated output directly |
-| `defines.adoc` included in TRM chapter assembly | TRM-B008 | Remove from assembly |
+| `S/dtp/index.adoc` | `dtp/pages/index.adoc` | Page: DTP Overview — gains `= Debug and Test Ports (DTP)` |
+| `S/dtp/overview.adoc` | `dtp/pages/overview.adoc` | Page: DTP architecture narrative; repair SVG fallback text |
+| `S/dtp/jtag.adoc` | `dtp/pages/jtag.adoc` | Page: JTAG integration (topology, clocks, reset) |
+| `S/dtp/clock_stop.adoc` | `dtp/pages/clock_stop.adoc` | Page: clock-stop behaviour |
+| `S/dtp/defines.adoc` | **Excluded** — DV content | Source preserved; not staged; migrate to `hw/sys/dtp/dv/docs/` |
+| `S/dtp/port_table.adoc` | `ROOT/partials/hw/dtp/doc/port_table.adoc` | Fragment: port table for TRM and Integrator Guide |
+
+### JTAG IP files (9: 3 per IP × 3 IPs)
+
+| Canonical source | Staged destination | Role |
+|---|---|---|
+| `IP/jiu/index.adoc` | `ip/pages/jtag_intf_unit/doc/index.adoc` | Page: JTAG Interface Unit |
+| `IP/jiu/architecture.adoc` | `ip/pages/jtag_intf_unit/doc/architecture.adoc` | Fragment included by JIU index |
+| `IP/jiu/interface.adoc` | `ip/pages/jtag_intf_unit/doc/interface.adoc` | Fragment; anchor `[[jtag-intf-unit-interface]]` |
+| `IP/ptap/index.adoc` | `ip/pages/jtag_ptap/doc/index.adoc` | Page: JTAG PTAP |
+| `IP/ptap/architecture.adoc` | `ip/pages/jtag_ptap/doc/architecture.adoc` | Fragment; anchor `[[ptap-architecture]]` |
+| `IP/ptap/interface.adoc` | `ip/pages/jtag_ptap/doc/interface.adoc` | Fragment; anchor `[[ptap-interface]]` |
+| `IP/stap/index.adoc` | `ip/pages/jtag_stap/doc/index.adoc` | Page: JTAG STAP |
+| `IP/stap/architecture.adoc` | `ip/pages/jtag_stap/doc/architecture.adoc` | Fragment |
+| `IP/stap/interface.adoc` | `ip/pages/jtag_stap/doc/interface.adoc` | Fragment |
+
+### Cross-trigger IP files (10: CTN ×4, CTP ×3, CTM ×3)
+
+| Canonical source | Staged destination | Role |
+|---|---|---|
+| `IP/ctn/index.adoc` | `ip/pages/cross_trigger_network/doc/index.adoc` | Page: Cross Trigger Network |
+| `IP/ctn/architecture.adoc` | `ip/pages/cross_trigger_network/doc/architecture.adoc` | Fragment |
+| `IP/ctn/interface.adoc` | `ip/pages/cross_trigger_network/doc/interface.adoc` | Fragment |
+| `IP/ctn/memmap.adoc` | `ip/pages/cross_trigger_network/doc/memmap.adoc` | Fragment: **CTN owns CTM and CTP register maps** |
+| `IP/ctp/index.adoc` | `ip/pages/cross_trigger_port/doc/index.adoc` | Page: Cross Trigger Port |
+| `IP/ctp/architecture.adoc` | `ip/pages/cross_trigger_port/doc/architecture.adoc` | Fragment |
+| `IP/ctp/interface.adoc` | `ip/pages/cross_trigger_port/doc/interface.adoc` | Fragment |
+| `IP/ctm/index.adoc` | `ip/pages/cross_trigger_matrix/doc/index.adoc` | Page: Cross Trigger Matrix |
+| `IP/ctm/architecture.adoc` | `ip/pages/cross_trigger_matrix/doc/architecture.adoc` | Fragment |
+| `IP/ctm/interface.adoc` | `ip/pages/cross_trigger_matrix/doc/interface.adoc` | Fragment |
+
+**Register ownership:** `IP/ctn/memmap.adoc` includes both the CTM register
+map (`ip:partial$cross_trigger_matrix/regs/gen/html/cross_trigger_matrix.html`
+for HTML; `../../cross_trigger_matrix/regs/gen/adoc/cross_trigger_matrix.adoc`
+for PDF) and the CTP register map. CTM and CTP individual pages must not
+re-include their own register maps.
 
 ---
 
-## 7. Prototype
+## 5. Staging contract
 
-A disposable prototype proving the SMU parent / DTP chapter hierarchy is at `/tmp/claude-1000/task-002a/proto/`.
-
-### Source layout
+### What stage-docs.sh must change for SMU
 
 ```
-proto/
-  antora-playbook.yml
-  book.adoc                         — PDF assembly (leveloffset, no tag::body)
-  doc/
-    antora.yml
-    modules/
-      ROOT/
-        nav.adoc
-        pages/index.adoc
-      smu/
-        nav.adoc
-        pages/index.adoc            — = System Management Unit
-        partials/crossbar-table.adoc — fragment, no = Title
-      dtp/
-        nav.adoc
-        pages/
-          index.adoc                — = Debug and Test Ports (DTP)
-          jtag.adoc                 — = JTAG Operation
-          cross-trigger.adoc        — = Cross-Trigger Network
-        assets/images/
-          dtp_arch_diagram.drawio.svg — real DTP SVG from hw/sys/dtp/doc/assets/
+SUBSYSTEMS="smc sep dtp"   →   SUBSYSTEMS="smc sep dtp smu"
+MODULES="ROOT smc sep dtp ip"  →  MODULES="ROOT smc sep dtp smu ip"
+```
+
+The `clean()` function hard-codes `for m in smc sep dtp ip`. Adding `smu` to
+`MODULES` does not automatically add it to `clean()` — that loop must also be
+updated. `PORT_TABLE_SYS` already contains `smu`; no change needed.
+
+Image staging uses the `MODULES` list via `stage_module_assets`. Adding `smu`
+to `MODULES` will create `smu/assets/images/` and populate it from the
+aggregated `doc/assets/` tree — no separate image-staging change required.
+
+Changes to `stage-docs.sh` are shared across all documentation products.
+After any change: rebuild the Integrator Guide and verify it still exits 0.
+
+### Fragment and DV exclusion
+
+`stage_adoc_tree` copies **all** `.adoc` files from a source directory tree
+into `<mod>/pages/`. Files that must not become standalone pages (fragments,
+DV content) require explicit handling:
+
+| File | Action |
+|---|---|
+| `hw/sys/smu/doc/crossbar-table.adoc` | Copy explicitly to `smu/partials/`; exclude from `stage_adoc_tree` path, or stage only the non-fragment files |
+| `hw/sys/dtp/doc/defines.adoc` | Exclude from staging; source preserved at `hw/sys/dtp/doc/defines.adoc`; migrate content to DV guide |
+| Architecture/interface fragments under `hw/ip/*/doc/` | Currently staged into `ip/pages/` by the IP loop — acceptable if they have `= Title`; fragments-without-title need `= Title` added |
+
+The fixture at `/tmp/claude-1000/task-002b/fixture/` demonstrates the three
+routing outcomes (page, partial, excluded DV) with explicit staging logic and
+clean/verify checks. Run `bash stage.sh` to reproduce.
+
+---
+
+## 6. URL and anchor compatibility
+
+Old URLs include fragment IDs. Both the old anchor and any new destination
+anchor must exist at their respective locations.
+
+| Old URL | Old anchor | New page | New anchor | Action |
+|---|---|---|---|---|
+| `architecture.html#smu-subsystem-overview` | `[[smu-subsystem-overview]]` | `smu/index.html` | `[[smu-subsystem-overview]]` | Add compat anchor at top of SMU index |
+| `architecture.html#smu-axi-crossbar` | `[[smu-axi-crossbar]]` | `smu/index.html` | `[[smu-axi-crossbar]]` | Move section; keep compat anchor in architecture.adoc |
+| `dtp/index.html#debug-test-ports` | `[[debug-test-ports]]` | `dtp/index.html` | `[[debug-test-ports]]` | Keep anchor at same page — no change needed |
+| `dtp/jtag.html#dtp-jtag-integration` | `[[dtp-jtag-integration]]` | `dtp/jtag.html` | `[[dtp-jtag-integration]]` | Keep anchor at same page |
+| `ip/jtag_ptap/doc/index.html#jtag-ptap` | `[[jtag-ptap]]` | same | same | Keep anchor — no URL change |
+| `ip/jtag_ptap/doc/architecture.html#ptap-architecture` | `[[ptap-architecture]]` | same | same | Keep anchor |
+| `ip/jtag_stap/doc/index.html#jtag-stap` | `[[jtag-stap]]` | same | same | Keep anchor |
+| `ip/cross_trigger_network/doc/index.html#cross-trigger-network` | `[[cross-trigger-network]]` | same | same | Keep anchor |
+| `ip/cross_trigger_port/doc/index.html` | — | same | — | No existing anchor; add `[[cross-trigger-port]]` |
+| `ip/cross_trigger_matrix/doc/index.html` | — | same | — | No existing anchor; add `[[cross-trigger-matrix]]` |
+
+**Prototype proof:** The 002b prototype demonstrates the `[[smu-subsystem-overview]]`
+compatibility anchor. HTML: `id="smu-subsystem-overview"` present on `smu/index.html`.
+PDF: named destination `smu-subsystem-overview` confirmed by `pdfinfo -dests`.
+
+---
+
+## 7. Prototype and fixture evidence
+
+### 002b prototype
+
+Location: `/tmp/claude-1000/task-002b/proto/`, HEAD `e43a607`.
+
+Source files committed (no build output in git):
+
+```
+doc/modules/ROOT/nav/nav.adoc         ← single nested nav file
+doc/modules/ROOT/pages/index.adoc
+doc/modules/smu/pages/index.adoc      ← [[smu-subsystem-overview]] compat anchor
+doc/modules/smu/partials/crossbar-table.adoc
+doc/modules/dtp/pages/index.adoc      ← [[debug-test-ports]] compat anchor
+doc/modules/dtp/pages/jtag.adoc       ← [[dtp-jtag]] target
+doc/modules/dtp/pages/cross-trigger.adoc  ← [[dtp-ctn]] target; CTN reg stub
+doc/modules/dtp/partials/ctn-reg-stub.adoc
+doc/modules/dtp/assets/images/dtp_arch.svg  ← illustrative SVG, no text fallback
+book.adoc                             ← PDF assembly (leveloffset, no tag::body)
 ```
 
 ### Build commands
 
 ```bash
-cd /tmp/claude-1000/task-002a/proto
+cd /tmp/claude-1000/task-002b/proto
 
-# HTML
+# HTML (clean first)
+find _build -mindepth 1 -delete 2>/dev/null; true
 node /tmp/claude-1000/npm-cache/_npx/def697450dda4c3a/node_modules/@antora/cli/bin/antora \
-  antora-playbook.yml
+  --log-failure-level error antora-playbook.yml
 
 # PDF
-GEM_HOME=$TMPDIR/gems $TMPDIR/gems/bin/asciidoctor-pdf \
-  -D _build/pdf book.adoc
+GEM_HOME=$TMPDIR/gems $TMPDIR/gems/bin/asciidoctor-pdf -D _build/pdf book.adoc
+
+# Check PDF annotations (must be empty)
+pdfinfo -url _build/pdf/book.pdf
+
+# Check PDF named destinations
+pdfinfo -dests _build/pdf/book.pdf
 ```
 
-Both exit 0, zero errors.
+Both exit 0, zero errors. The clean step is required; Antora does not remove
+stale pages from a previous build.
 
-### Results
+### Measured results
 
-**HTML** — 5 pages, all with correct `<title>` (zero "Untitled"):
+**HTML** — 5 pages, all with correct `<title>`:
 
 | URL | `<title>` |
 |---|---|
-| `index.html` | `OCAH Prototype :: OCAH Prototype` |
-| `smu/index.html` | `System Management Unit :: OCAH Prototype` |
-| `dtp/index.html` | `Debug and Test Ports (DTP) :: OCAH Prototype` |
-| `dtp/jtag.html` | `JTAG Operation :: OCAH Prototype` |
-| `dtp/cross-trigger.html` | `Cross-Trigger Network :: OCAH Prototype` |
+| `index.html` | `OCAH Prototype TRM :: OCAH Prototype TRM` |
+| `smu/index.html` | `System Management Unit :: OCAH Prototype TRM` |
+| `dtp/index.html` | `Debug and Test Ports (DTP) :: OCAH Prototype TRM` |
+| `dtp/jtag.html` | `JTAG Operation :: OCAH Prototype TRM` |
+| `dtp/cross-trigger.html` | `Cross-Trigger Network :: OCAH Prototype TRM` |
 
-Sidebar hierarchy: OCAH Prototype → System Management Unit → Debug & Test Ports → JTAG Operation / Cross-Trigger Network.
+**Nav depth** (measured from `data-depth` attributes in rendered HTML):
 
-**PDF** — Asciidoctor PDF 2.3.27. TOC:
-- Part "System Management Unit" (unnumbered)
-- Chapter 1 "System Management Unit" (§1.1 Subsystem Composition, §1.2 AXI Crossbar)
-- Chapter 2 "Debug and Test Ports (DTP)" (§2.1 Architecture Overview, §2.2 Chapter Contents, §2.3 JTAG Operation, §2.4 Cross-Trigger Network)
+```
+[2] System Management Unit
+  [3] Debug & Test Ports
+    [4] JTAG Operation
+    [4] Cross-Trigger Network
+```
 
-`pdfinfo -url book.pdf` lists no external file-link annotations. Real DTP architecture SVG renders as a figure in the PDF. Internal `<<smu-axi-crossbar,…>>` references appear as linked text.
+DTP is at depth 3, nested under SMU. JTAG/cross-trigger are at depth 4.
+
+**PDF TOC:** Part "System Management Unit" → Ch.1 SMU (§1.1 Composition, §1.2 AXI Crossbar) → Ch.2 DTP (§2.1 Architecture Overview, §2.2 Reading Route, §2.3 JTAG Operation, §2.4 Cross-Trigger Network).
+
+**PDF annotations:** `pdfinfo -url` table is empty — no external file links.
+
+**Named destinations confirmed:** `smu-axi-crossbar`, `smu-subsystem-overview`,
+`debug-test-ports`, `dtp-jtag`, `dtp-ctn`, `dtp-jtag-ptap`, `dtp-jtag-stap`.
+
+**Illustrative SVG:** `dtp_arch.svg` is a hand-authored SVG with native SVG
+text elements. It renders legibly in HTML and PDF with no fallback text.
+Repair of the production DTP diagram remains a later task.
+
+### Staging fixture
+
+Location: `/tmp/claude-1000/task-002b/fixture/`. Run `bash stage.sh`.
+
+Demonstrates: `hw/sys/smu/doc/index.adoc` → `staged/modules/smu/pages/` (page);
+`hw/sys/smu/doc/crossbar-table.adoc` → `staged/modules/smu/partials/` (partial);
+`hw/sys/smu/dv/defines.adoc` → excluded (DV content, not staged);
+`hw/sys/smu/assets/smu_block.svg` → `staged/modules/smu/assets/images/` (image).
+
+Both exclusion checks exit 0 (verified by script `PASS:` output).
