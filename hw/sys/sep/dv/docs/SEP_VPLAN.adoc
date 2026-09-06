@@ -19,7 +19,7 @@
 |Register export |`hw/sys/sep/regs/gen/` (via `env/sep_reg_meta.py`)
 |How to run |`README.md` in this DV tree (`tools/dv/run_dv.py --dut sep`)
 |Phase 1 test cases |31
-|Phase 2 test cases |45
+|Phase 2 test cases |49
 |Phase 3 |T.B.D. (new UVM bench)
 |===
 
@@ -482,6 +482,22 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, KM path / golden
 |The key/policy vault refuses what it should: a store to a locked SRAM region is dropped with the readback unchanged, the matching `SRAM_WRITE_LOCK_VIOLATION` bit sets, `IRQ_STATUS` raises AXI_SLVERR or AXI_DECERR, and the status bit clears W1C. The seal walk is here too: the same erase must retire a sealed slot and free an unsealed one.
+|`sep_km_command_set_rand_test`
+|no_cpu, real fuse sense
+|ocah_axi_vip, KM path / golden
+|Produce, move and destroy a key over the KM mailbox; reject illegal, over-long and mis-framed commands. AES is the consume witness.
+|`sep_km_mailbox_protocol_rand_test`
+|no_cpu, +skip_fuse_sense, KM held
+|ocah_axi_vip
+|The SEP-side mailbox as a register surface: STATUS depth/full/empty, the two SEP-reachable stickies, both `SEP_CTRL` response modes, `IRQ_STATUS` / `IRQ_ENABLE` gating onto aggregator `[14]`, and flush. Not a command stream.
+|`sep_km_crc_pcpi_kat_test`
+|no_cpu, +skip_fuse_sense
+|ocah_axi_vip, KM path / golden
+|CRC co-processor KAT, all three modes, operands from the run seed.
+|`sep_km_kpv_scrambler_test`
+|no_cpu, +skip_fuse_sense
+|ocah_axi_vip, KM path / golden
+|KPV scrambler: stored word and address mapping both transform while enabled, and the vault passes through while disabled.
 |===
 
 [[iconic-scorecard]]
@@ -576,8 +592,8 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_km_command_set_rand_test`. Generate, transfer, revoke and engine-shred on the real KM firmware, with AES as the consume witness; the three framing rejections with the values they carry; illegal-command and bad-length refusals; and a shredded engine refusing to start. The DRBG fault SOURCE stays Phase 3 -- its organic conditions cannot be provoked from the SEP fabric and the KM halts rather than answering -- but the interrupt plumbing for that bit is graded on the vault vehicle through the architected `IRQ_SET` inject. The mailbox's own register surface is a separate entry, `sep_km_mailbox_protocol_rand_test`.
 
 |KM mailbox protocol (FIFO status, over/underflow, flush)
-|GAP
-|`sep_km_mailbox_protocol_rand_test`, decided as its own entry and not yet coded. The command-set vehicle uses the mailbox as a transport and reaches 4 of its 7 SEP-side registers and 2 of the 12 STATUS bits; the rest need an empty-FIFO read and a deliberate overrun, which corrupt the frame in flight.
+|PROVEN
+|`sep_km_mailbox_protocol_rand_test`. Empty-FIFO read and inbound overrun, both `SEP_CTRL` response modes, STATUS depth/full/empty against a golden, `IRQ_STATUS` / `IRQ_ENABLE` gating onto aggregator `[14]`, and flush that empties both FIFOs without clearing the stickies. KM is held so firmware cannot drain or fault the FIFOs. The command-set vehicle stays the transport and is not re-credited here. KM-peer events (`flushed_by_km`, inbound underflow, outbound overflow, separators) stay on the KM IP mailbox vehicles.
 
 |KM key/policy vault (extent + write-lock + seal)
 |PROVEN
@@ -4551,42 +4567,92 @@ response modes and flush -- is owned by `sep_km_mailbox_protocol_rand_test`.
 [[sep_km_mailbox_protocol_rand_test]]
 ===== `sep_km_mailbox_protocol_rand_test`
 
-*Run mode*: `no_cpu`, `+skip_fuse_sense`, `+km_rom_hex` (real KM firmware)
+*Run mode*: `no_cpu`, `+skip_fuse_sense`, KM held in `SW_RESET_N` (reset default).
+No `+km_rom_hex`: this leaf grades the SEP-side registers, not a command stream.
 
-*Phase*: 2 (decided, not yet coded)
+*Phase*: 2
 
 *Bucket*: Key Manager vault
 
 *Objective*: the SEP-side KM mailbox as a REGISTER surface rather than a
-transport. `STATUS` depth and full/empty, the four sticky overflow and underflow
-bits, `IRQ_STATUS`, and `SEP_CTRL`'s two response modes and its flush.
-Grade: GAP, not coded.
+transport. `STATUS` depth and full/empty, the two SEP-reachable sticky error
+bits, `IRQ_STATUS` / `IRQ_ENABLE` gating onto aggregator `[14]`, both
+`SEP_CTRL` response modes, and flush.
 
-*Why it is its own entry*: the plan left this conditional -- fold the protocol
-into the command set, or split it out. It splits out, and the reason is
-measurable rather than stylistic. `sep_km_command_set_rand_test` reaches 4 of
-the 7 SEP-side registers and 2 of the 12 `STATUS` bits, because a transport only
-ever touches what a well-formed exchange needs. Reaching the rest means reading
-an empty FIFO and overrunning a full one, and both corrupt whatever frame is in
-flight: they cannot share a leaf whose subject is the command stream. An attempt
-to fold them in was made and withdrawn.
+*Why it is its own entry*: a transport only ever touches what a well-formed
+exchange needs. `sep_km_command_set_rand_test` reaches 4 of the 7 SEP-side
+registers and 2 of the 12 `STATUS` bits. Reaching the rest means reading an
+empty FIFO and overrunning a full one, and both corrupt a frame in flight.
 
-*Test Procedure*: T.B.D. -- yet to code.
+*Why KM is held*: the SEP-facing mailbox lives on cold reset, so the FIFOs and
+SEP registers stay alive while the KM CPU cannot consume inbound words or push
+outbound ones. Fill, overflow and underflow are then deterministic, and
+firmware cannot flush or fault the mailbox under the host. A `SEP_CTRL` write
+after a deliberate underflow is a register-block access, independent of the
+FIFO error path, and must stay OKAY. The write is a 32-bit beat: a 64-bit
+beat at `SEP_CTRL` (offset 0x18) spans past the 0x1C mailbox window and the
+fabric refuses it. Negative FIFO accesses are marked `expect_error` so the
+environment scoreboard does not fail them as real errors.
 
-*Checkers (planned)*: an empty-FIFO read answers SLVERR and latches
-`outbound_underflow` in both `STATUS` and `IRQ_STATUS`; setting
-`SEP_CTRL.outbound_underflow_resp` turns that same access into OKAY with the bit
-still latching, so the response and the flag are shown to be independently
-controlled; an overrun latches `inbound_full` and `inbound_overflow` with the
-depth field reading full; `CTRL.FLUSH` drains both FIFOs, zeroes the depth and
-self-clears.
+*Randomization*: RANDCFG. The 16 inbound fill words and the overflow poke come
+from the run seed. Every discrete cell (idle, underflow SLVERR, underflow
+OKAY-mode, fill, overflow SLVERR, overflow OKAY-mode, IRQ enable/gate/W1C,
+flush) walks in one invocation.
 
-*Known obstacles, from the withdrawn attempt*: the negative accesses must be
-marked `expect_error` or the environment scoreboard fails them as real errors.
-A `SEP_CTRL` write immediately after a deliberate underflow was itself refused
-even though the register is `sw=rw` -- that needs understanding before the
-sequence above is written, and it may be the KM's own fault response rather than
-the register.
+*Test Procedure*:
+
+[arabic]
+. Bring up no_cpu with fuse sense skipped. Require `SW_RESET_N` bit 0 clear.
+. Compare reset `STATUS` and `IRQ_STATUS` against the empty golden.
+. Read empty `SEP_READ_DATA`; require SLVERR, data 0, and `outbound_underflow`
+  latched in both `STATUS` and `IRQ_STATUS`.
+. Write `SEP_CTRL` immediately after that underflow; require OKAY and readback.
+. Set `outbound_underflow_resp`; the same empty read must be OKAY with the
+  stickies still set. Write-1-to-clear both copies.
+. Write 16 seeded words; after each write, `STATUS` depth/full/empty and
+  `IRQ_STATUS.inbound_write_space_avail` must match the golden.
+. A 17th write must SLVERR, latch `inbound_overflow`, and leave depth 16.
+. Set `inbound_overflow_resp`; the next overrun must be OKAY, drop the word,
+  and leave the sticky set.
+. Enable the two error IRQs; aggregator `[14]` must rise. Clear the enable;
+  the pin must drop while `IRQ_STATUS` stays. Write-1-to-clear both stickies.
+. Set flush. Both FIFOs empty, `flush` self-clears, and the overflow sticky
+  survives until write-1-to-clear.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-HELD
+|`SW_RESET_N` bit 0 reads 0. Without this the fill/overflow goldens are a race against firmware.
+|CHK-IDLE
+|Reset `STATUS` and `IRQ_STATUS` match the empty golden; aggregator `[14]` is 0.
+|CHK-UFL
+|Empty `SEP_READ_DATA` returns SLVERR and 0, and `outbound_underflow` latches in both `STATUS` and `IRQ_STATUS`.
+|CHK-CTRL
+|A 32-bit `SEP_CTRL` write immediately after that underflow is OKAY and reads back. The register is not the FIFO error path. A 64-bit beat at offset 0x18 spans past the 0x1C window and is refused.
+|CHK-UFL-RESP
+|`SEP_CTRL.outbound_underflow_resp` turns the same empty read into OKAY; the sticky bits stay set.
+|CHK-UFL-W1C
+|Write-1-to-clear drops both sticky copies.
+|CHK-FILL
+|16 seeded writes fill inbound. After each write, `STATUS` depth/full/empty and `IRQ_STATUS.inbound_write_space_avail` match the golden.
+|CHK-OVR
+|A 17th write returns SLVERR, latches `inbound_overflow`, and leaves depth 16.
+|CHK-OVR-RESP
+|`SEP_CTRL.inbound_overflow_resp` turns the next overrun into OKAY; the sticky bit stays; depth stays 16 (the word is dropped).
+|CHK-IRQ
+|Enabling the two error IRQs raises aggregator `[14]`. Clearing the enable drops the pin while `IRQ_STATUS` stays. Write-1-to-clear drops both.
+|CHK-FLUSH
+|`CTRL.FLUSH` empties both FIFOs, self-clears, and does not clear the sticky error bits.
+|===
+
+*Accepted scope deltas*: `inbound_underflow`, `outbound_overflow`, and
+`flushed_by_km` need the KM CPU as the peer. `STATUS.inbound_separator`
+updates only when the KM pops the inbound FIFO, and `STATUS.outbound_separator`
+only when the SEP pops a KM-pushed word, so both stay on the KM IP mailbox
+vehicles. `outbound_read_data_avail` stays 0 for the same reason.
 
 '''''
 
@@ -4852,12 +4918,11 @@ Nothing in this section is scheduled work until the UVM bench exists.
 |===
 |Item |Count
 |Phase 1 tests |31
-|Phase 2 tests |48
-|Cocotb total |79
+|Phase 2 tests |49
+|Cocotb total |80
 |Phase 3 |T.B.D.
-|Iconic scorecard rows |54 in-scope: 52 PROVEN, 2 GAP (see <<iconic-scorecard>>)
+|Iconic scorecard rows |54 in-scope: 53 PROVEN, 1 GAP (see <<iconic-scorecard>>)
 |Phase 2 parked, coded and failing |1 (per-IP reset isolation; graded GAP, parked on an RTL fix)
-|Phase 2 decided, not yet coded |1 (KM mailbox protocol; graded GAP, split out of the command-set entry)
 |===
 
 === Regression Groups

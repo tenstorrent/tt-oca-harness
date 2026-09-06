@@ -38,6 +38,7 @@ KM_MBOX_WRITE_SEPARATOR = sym("KM_MAILBOX_SEP_SEP_WRITE_SEPARATOR_REG_OFFSET")
 KM_MBOX_READ_DATA = sym("KM_MAILBOX_SEP_SEP_READ_DATA_REG_OFFSET")
 KM_MBOX_STATUS = sym("KM_MAILBOX_SEP_SEP_STATUS_REG_OFFSET")
 KM_MBOX_IRQ_STATUS = sym("KM_MAILBOX_SEP_SEP_IRQ_STATUS_REG_OFFSET")
+KM_MBOX_IRQ_ENABLE = sym("KM_MAILBOX_SEP_SEP_IRQ_ENABLE_REG_OFFSET")
 KM_MBOX_CTRL = sym("KM_MAILBOX_SEP_SEP_CTRL_REG_OFFSET")
 
 # STATUS bit positions
@@ -60,6 +61,17 @@ KM_IRQ_INBOUND_SPACE_AVAIL = 1
 KM_IRQ_INBOUND_OVERFLOW = 2
 KM_IRQ_OUTBOUND_UNDERFLOW = 3
 KM_IRQ_FLUSHED_BY_KM = 4
+KM_IRQ_EN_OUTBOUND_DATA_AVAIL = 0
+KM_IRQ_EN_INBOUND_SPACE_AVAIL = 1
+KM_IRQ_EN_INBOUND_OVERFLOW = 2
+KM_IRQ_EN_OUTBOUND_UNDERFLOW = 3
+KM_IRQ_EN_FLUSHED_BY_KM = 4
+
+# sep.sv assembles km_mbox_irq onto sep_internal_interrupts[14].
+KM_MBOX_IRQ_AGG = 14
+
+RESP_OKAY = 0
+RESP_SLVERR = 2
 
 # SEP_CTRL bit positions.
 KM_CTRL_INBOUND_OVERFLOW_RESP = 0
@@ -543,40 +555,87 @@ class SepKmMailbox:
 
     # --- raw register access, for grading the mailbox as a register surface ---
     async def read_status(self) -> int:
-        return await self._rd(KM_MBOX_STATUS)
+        return await self._rd32(KM_MBOX_STATUS)
 
-    async def read_irq_status(self) -> int:
-        return await self._rd(KM_MBOX_IRQ_STATUS)
-
-    async def write_irq_status(self, value: int) -> None:
-        await self._wr(KM_MBOX_IRQ_STATUS, value)
-
-    async def write_ctrl(self, value: int) -> None:
-        await self._wr(KM_MBOX_CTRL, value)
-
-    async def read_ctrl(self) -> int:
-        return await self._rd(KM_MBOX_CTRL)
-
-    async def read_data_raw(self) -> tuple[bool, int]:
-        """Read SEP_READ_DATA and report (response_ok, data) without raising.
-
-        The underflow leg needs the response itself as evidence, so this cannot
-        go through the raising helper.
-        """
+    async def _wr32(self, offset: int, data: int) -> None:
+        """32-bit write. A 64-bit beat at SEP_CTRL (offset 0x18) spans past
+        the 0x1C mailbox window and the fabric refuses it."""
         seq = SepAxiAccessSeq(
-            "km_mbox_rd_raw", op=SepAxiOp.READ, addr=self.base + KM_MBOX_READ_DATA, size=2
+            "km_mbox_wr32",
+            op=SepAxiOp.WRITE,
+            addr=self.base + offset,
+            wdata=data,
+            size=2,
         )
         await self.test.start_seq(seq)
-        return seq.resp_ok, seq.rdata
+        if not seq.resp_ok:
+            raise AssertionError(
+                f"KM mailbox 32-bit write @0x{self.base + offset:08x} not OKAY "
+                f"(resp={seq.resp_code})"
+            )
 
-    async def write_data_raw(self, value: int) -> bool:
-        """Write SEP_WRITE_DATA and report whether the response was OKAY."""
+    async def _rd32(self, offset: int) -> int:
+        seq = SepAxiAccessSeq(
+            "km_mbox_rd32",
+            op=SepAxiOp.READ,
+            addr=self.base + offset,
+            size=2,
+        )
+        await self.test.start_seq(seq)
+        if not seq.resp_ok:
+            raise AssertionError(
+                f"KM mailbox 32-bit read @0x{self.base + offset:08x} not OKAY "
+                f"(resp={seq.resp_code})"
+            )
+        return seq.rdata
+
+    async def write_status(self, value: int) -> None:
+        await self._wr32(KM_MBOX_STATUS, value)
+
+    async def read_irq_status(self) -> int:
+        return await self._rd32(KM_MBOX_IRQ_STATUS)
+
+    async def write_irq_status(self, value: int) -> None:
+        await self._wr32(KM_MBOX_IRQ_STATUS, value)
+
+    async def read_irq_enable(self) -> int:
+        return await self._rd32(KM_MBOX_IRQ_ENABLE)
+
+    async def write_irq_enable(self, value: int) -> None:
+        await self._wr32(KM_MBOX_IRQ_ENABLE, value)
+
+    async def write_ctrl(self, value: int) -> None:
+        await self._wr32(KM_MBOX_CTRL, value)
+
+    async def read_ctrl(self) -> int:
+        return await self._rd32(KM_MBOX_CTRL)
+
+    async def read_data_raw(self, *, expect_error: bool = False) -> tuple[int, int]:
+        """Read SEP_READ_DATA. Returns (resp_code, data).
+
+        The underflow leg needs the response itself as evidence, so this cannot
+        go through the raising helper. Pass expect_error when a non-OKAY
+        response is the contract, or the environment scoreboard fails it.
+        """
+        seq = SepAxiAccessSeq(
+            "km_mbox_rd_raw",
+            op=SepAxiOp.READ,
+            addr=self.base + KM_MBOX_READ_DATA,
+            size=2,
+            expect_error=expect_error,
+        )
+        await self.test.start_seq(seq)
+        return seq.resp_code, seq.rdata
+
+    async def write_data_raw(self, value: int, *, expect_error: bool = False) -> int:
+        """Write SEP_WRITE_DATA. Returns resp_code."""
         seq = SepAxiAccessSeq(
             "km_mbox_wr_raw",
             op=SepAxiOp.WRITE,
             addr=self.base + KM_MBOX_WRITE_DATA,
             wdata=value,
             size=2,
+            expect_error=expect_error,
         )
         await self.test.start_seq(seq)
-        return seq.resp_ok
+        return seq.resp_code
