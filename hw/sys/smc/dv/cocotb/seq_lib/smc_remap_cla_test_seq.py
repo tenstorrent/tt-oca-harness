@@ -428,16 +428,37 @@ CLA_RESET_SWEEP = _cla_reset_sweep()
 # Non-zero-reset rows carry the discrimination; asserted below so a generated
 # map that lost them cannot silently turn the sweep into 82 reads of zero.
 CLA_SWEEP_NONZERO = tuple(r for r in CLA_RESET_SWEEP if r[2] != 0)
-# Deny leg: the window opens on the dst_sink block, whose first two registers are
-# `Trdstramcontrol @ 0x0` and `Trdstramimpl @ 0x4`; the next is
-# `Trdstramstartlow @ 0x10`. So 0x8/0xC are holes, as is 0x30 (`Trdstramrphigh`
-# @0x24 is the last before `Trdstramdata` @0x40). These probes are named as
-# offsets, never under a register name.
-CLA_UNMAPPED_PROBES = (
-    ("CLA_WINDOW_OFF8", SMC_CLA_REG_MAP_BASE_ADDR + 0x8),
-    ("CLA_WINDOW_OFFC", SMC_CLA_REG_MAP_BASE_ADDR + 0xC),
-    ("CLA_WINDOW_OFF30", SMC_CLA_REG_MAP_BASE_ADDR + 0x30),
-)
+def _cla_unmapped_probes(count: int = 3) -> tuple[tuple[str, int], ...]:
+    """In-window offsets that map to no register, taken from the generated map.
+
+    The aperture is not densely packed, and which offsets are holes moves every
+    time the map is rebuilt. Derived here so the deny leg cannot go stale into
+    a silent pass.
+    """
+    import smc_reg as _r
+
+    mapped = {
+        getattr(_r, n) for n in dir(_r) if n.startswith("SMC_CLA_") and n.endswith("_REG_ADDR")
+    }
+    out = []
+    for off in range(0, 0x3000, 4):
+        addr = SMC_CLA_REG_MAP_BASE_ADDR + off
+        if addr in mapped:
+            continue
+        # A 4-byte hole inside a 64-bit register's span is still decoded.
+        if (addr - 4) in mapped or (addr - 8) in mapped:
+            continue
+        out.append((f"CLA_WINDOW_OFF{off:X}", addr))
+        if len(out) == count:
+            break
+    assert len(out) == count, (
+        f"only found {len(out)} unmapped in-window offsets; the deny leg needs "
+        f"{count} to show the window refuses what it does not decode"
+    )
+    return tuple(out)
+
+
+CLA_UNMAPPED_PROBES = _cla_unmapped_probes()
 
 # --- ALIAS_REMAP translation ---------------------------------------------
 # Field positions come from the generated alias_remap header, never hand-packed.
