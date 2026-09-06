@@ -18,14 +18,16 @@ v0.5.0 release regression matrix (#485), and
 for the SEP=0 component signoff record (#481 / #482 / #483 / #490 / #491).
 
 **Executable contract:** enrolled groups in [`testlists/all.toml`](testlists/all.toml)
-— enrolled `phase1` **48**, `sep0_all` **52** (no Force; product-pin CTM;
+— enrolled `smoke` **4**, `smc` **11**, `dtp` **29**, `fabric` **14**,
+`sep0_all` **52**, `sep0_p4_all` **54** (no Force; product-pin CTM;
 `sep0_all` is 51 PASS / 1 FAIL on the cited nightly).
 
 **Green / signoff policy:** no DUT Force / no TB placeholder.
 Raise-stub bodies live under `cocotb/tests_deferred/` and are not ported —
 **not** reportable as PASS.
 
-**Group ladder:** `smoke` ⊂ `top5` ⊂ `top10` ⊂ `phase1` (see `testlists/all.toml`).
+**Groups:** `smoke` for a fast gate, one group per feature area, and `all`
+for the whole package (see `testlists/all.toml`).
 
 **OUT / deferred** (SEP=1 / interop / toggle / `needs_real_lcc`): not ported.
 Every named entry is classified in
@@ -76,16 +78,14 @@ python3 tools/dv/run_dv.py --dut smu --build-only
 python3 tools/dv/run_dv.py --dut smu --items smoke --dry-run
 
 python3 tools/dv/run_dv.py --dut smu --items smoke
-python3 tools/dv/run_dv.py --dut smu --items top5
-python3 tools/dv/run_dv.py --dut smu --items top10
-python3 tools/dv/run_dv.py --dut smu --items phase1
+python3 tools/dv/run_dv.py --dut smu --items smc
+python3 tools/dv/run_dv.py --dut smu --items sep0_all
 
-python3 tools/dv/run_dv.py --dut smu --items phase1 --tool xcelium --cov
+python3 tools/dv/run_dv.py --dut smu --items all --tool xcelium --cov
 ```
 
-Groups: `smoke` (4), `top5` (5), `top10` (11), `phase1` (48), `smc` (11),
-`dtp` (29), `fabric` (14), `phase2` (49), `phase3` (5), `phase4_sep0` (19),
-`sep0_all` (52), `sep0_p4_all` (54).
+Groups: `smoke` (4), `smc` (11), `dtp` (29), `fabric` (14),
+`sep0_all` (52), `sep0_p4_all` (54). Unique enrolled bodies: 56.
 
 ### SystemVerilog UVM framework (`--framework uvm`)
 
@@ -153,7 +153,7 @@ feature reuses that IP bench's reference model and scoreboard through
 
 | Source | DUT | Signoff role |
 |--------|-----|--------------|
-| Bare `--dut smu` | `tb/tb_top.sv` (`DUT_TAG=BARE`) | Density / CSR / fabric SEP=0 — `phase1` (48), `sep0_all` (52) |
+| Bare `--dut smu` | `tb/tb_top.sv` (`DUT_TAG=BARE`) | Density / CSR / fabric SEP=0 — `sep0_all` (52) |
 | Wrapper `--dut smu_wrapper` | `tb/tb_wrapper_top.sv` (`DUT_TAG=WRAPPER`) | Production-pin boot / elab smoke — **≠** `sep0_all` density signoff |
 
 Do not merge wrapper smoke PASS into bare `sep0_all` evidence. Logs carry
