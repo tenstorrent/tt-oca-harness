@@ -673,7 +673,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 
 |AXI narrow-read lane extraction and repeatability
 |PROVEN
-|`sep_axi_partial_lane_read_test`: all 36 byte-run slices, all 14 aligned narrow-ARSIZE cells and the CSR extremes exact and repeatable, passing on the Verilator acceptance backend.
+|`sep_axi_partial_lane_read_test`: all 36 byte-run slices, all 14 aligned narrow-ARSIZE cells and the CSR extremes exact and repeatable around a checked disturb. `CHK-RANDCFG` holds the walked counts against those floors.
 
 |Reserved inter-block address space
 |PROVEN
@@ -3993,38 +3993,43 @@ watermark together; no vehicle asserts that pair today.
 
 *Phase*: 2
 
+*Bucket*: Fabric and remap
+
 *Run mode*: `no_cpu`, `+skip_fuse_sense`
 
 *VIP / Model*: ocah_axi_vip
 
-*Testlist*: `system.toml`
+*Testlist*: `system.toml` (`reseed = 3`), also in `all.toml` / `no_cpu`
 
-*Randomization*: RANDCFG — the required cells are walked exhaustively on every seed: all 36 contiguous (offset, length) byte-run slices of a 64-bit word, all 14 aligned narrow-ARSIZE cells (AxSIZE 0/1/2 at every legal lane offset), and the all-zeros/all-ones CSR patterns. The seed varies the walk order, the SRAM addresses, the 64-bit word under test and extra CSR patterns.
+*Randomization*: RANDCFG — `SepAxiPartialLaneReadCfg` is the single source of truth for stimulus and goldens. Required cells walk every seed: all 36 contiguous (offset, length) byte-run slices of a 64-bit word (`8+7+…+1`), all 14 aligned narrow-ARSIZE cells (AxSIZE 0/1/2 at every legal lane offset: `8+4+2`), and the all-zeros / all-ones CSR patterns. The seed varies walk order, SRAM address, the 64-bit word, and extra CSR patterns only.
 
 *Objective*: A read narrower than the 64-bit CPU-LSU beat only obligates the responder to drive the addressed byte lanes: a 32-bit CSR endpoint leaves RDATA[63:32] undriven, and a narrow-ARSIZE beat leaves every non-addressed lane undriven. The VIP master samples the full beat and extracts the addressed bytes, so the value a test receives must be a pure function of the addressed lanes — exact against an independent golden and identical on re-read — regardless of what the undriven lanes carry. `sep_axi_strobe_window_test` owns the write-side lane rule; here the write is trusted and the read extraction is on trial. The contract is pinned through the public VIP read path alone, with no cocotb or cocotbext-axi global state involved.
 
 *Test Procedure*:
 
 [arabic]
+. Log the seed, word, addresses and cell counts, and hold the walked counts against the 8-byte-beat floors (36 slices, 14 ARSIZE cells) plus the two required CSR extremes.
 . Write a pattern to the 32-bit `SW_DEBUG` CSR, read it back twice as 4-byte reads with a checked read of the non-zero RO `SEP_LOCAL_BASE_ADDR` register between them; repeat for the all-zeros, all-ones and seed-random patterns.
 . Prime a seed-random 64-bit SRAM word and its neighbour with the complement value.
 . Read every contiguous (offset, length) byte run of the primed word, re-reading each slice after a checked full-width read of the complement neighbour.
-. Read the primed word at every aligned narrow-ARSIZE cell (AxSIZE 0/1/2 at each legal lane offset).
+. Read the primed word at every aligned narrow-ARSIZE cell (AxSIZE 0/1/2 at each legal lane offset), re-reading each cell after the same complement-neighbour disturb.
 
 *Checkers*:
 
 [cols="2,5",options="header"]
 |===
 |Checker |Contract
+|CHK-RANDCFG
+|Walked slice and ARSIZE counts equal the combinatorial floors (`36`, `14`), and the CSR walk starts with all-zeros then all-ones. Seed, word, addresses and counts are logged, so a shrunken walk fails rather than reporting PASS over fewer cells.
 |CHK-CSR-LANE
 |Each pattern reads back exactly and identically on the repeat, through a beat whose upper four lanes the CSR endpoint never drives. All-zeros always runs next to all-ones and random patterns on the same register, so a dead write path or a zero-filled read cannot pass the set.
 |CHK-SRAM-SLICE
 |Every byte-run slice equals the Python slice of the primed word, and re-reads it exactly after the disturbing read. An extraction that starts at the wrong byte, takes the wrong length, or depends on leftover channel payloads fails the compare; the disturbing read is itself compared against the complement word, so the disturbance is proven to have happened.
 |CHK-ARSIZE
-|Every aligned AxSIZE-0/1/2 cell returns exactly the addressed lanes of the primed word, on beats where the responder legitimately drives nothing else.
-|CHK-RANDCFG
-|The seed, word, addresses and cell counts are logged up front, so a shrunken walk is visible rather than inferred from a PASS.
+|Every aligned AxSIZE-0/1/2 cell returns exactly the addressed lanes of the primed word, and re-reads them identically after the complement-neighbour disturb, on beats where the responder legitimately drives nothing else.
 |===
+
+*Not claimed*: write-side strobe masking (`sep_axi_strobe_window_test`); AxSIZE=3 (that is the slice walk's full-width baseline).
 
 '''''
 
