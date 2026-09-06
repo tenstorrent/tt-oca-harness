@@ -175,7 +175,7 @@ class SepKmCrc:
         await self._post(data & 0xFFFF_FFFF, last=True)
 
         for _ in range(timeout):
-            if not (await self._rd(KM_MBOX_STATUS)) & (1 << KM_STATUS_OUTBOUND_EMPTY):
+            if not (await self._rd(KM_MBOX_STATUS) & (1 << KM_STATUS_OUTBOUND_EMPTY)):
                 return await self._rd(KM_MBOX_READ_DATA)
             await ClockCycles(cocotb.top.clk_i, poll_cycles)
         raise AssertionError(

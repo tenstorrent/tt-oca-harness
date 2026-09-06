@@ -142,7 +142,7 @@ class SepKpvScrambler:
         reason for polling with a limit rather than waiting forever.
         """
         for _ in range(timeout):
-            if not (await self._rd(KM_MBOX_STATUS)) & (1 << KM_STATUS_OUTBOUND_EMPTY):
+            if not (await self._rd(KM_MBOX_STATUS) & (1 << KM_STATUS_OUTBOUND_EMPTY)):
                 return await self._rd(KM_MBOX_READ_DATA)
             await ClockCycles(cocotb.top.clk_i, poll_cycles)
         raise AssertionError(f"KPV scrambler ROM never reported {what}")
