@@ -27,6 +27,9 @@
 #     back FREE with CTRL all clear -- the mark is what makes a no-op erase
 #     fail rather than pass on the reset value
 #
+# Register addresses come from the generated map, included below. Field bit
+# positions are still literal -- the address header does not carry them.
+#
 # CTRL[slot] bits: lock_write[0], lock_use[1], erase[2], seal[3]. Erase is
 # never gated by a lock or by the seal; the slot's seal state when the erase
 # completes is what decides retired versus reusable.
@@ -37,6 +40,20 @@
 #
 # Build (output committed as ../km_rom_vault.parhex):
 #   make -C hw/sys/sep/dv/cocotb/tests/km_fw ../km_rom_vault.parhex
+
+#include "key_manager_addr.h"
+
+    // Mailbox register offsets, derived from the generated map rather than
+    // typed: the images hold the block base in a register and index off it.
+    .equ MBOX_WRITE_DATA,  (KEY_MANAGER_MAILBOX_KM_KM_WRITE_DATA_BASE_ADDR - KEY_MANAGER_MAILBOX_KM_BASE_ADDR)
+    .equ MBOX_WRITE_SEP,   (KEY_MANAGER_MAILBOX_KM_KM_WRITE_SEPARATOR_BASE_ADDR - KEY_MANAGER_MAILBOX_KM_BASE_ADDR)
+    .equ MBOX_READ_DATA,   (KEY_MANAGER_MAILBOX_KM_KM_READ_DATA_BASE_ADDR - KEY_MANAGER_MAILBOX_KM_BASE_ADDR)
+    .equ MBOX_STATUS,      (KEY_MANAGER_MAILBOX_KM_KM_STATUS_BASE_ADDR - KEY_MANAGER_MAILBOX_KM_BASE_ADDR)
+
+    // The KM SRAM is a memory, not a register block, so the generated register
+    // header carries no symbol for it. Its base is km_intf_pkg.sv
+    // SRAM_BASE_ADDR and its lock granularity is SRAM_LOCK_REGION_BYTES.
+    .equ KM_SRAM_BASE, 0x00008000
 
     .section .text
     .globl _start
@@ -50,20 +67,20 @@ _start:
     # x9  IRQ_STATUS
     # x10 SRAM base
     # x6,x7,x11-x15 scratch
-    lui   x1, 0x10              # mbox 0x00010000
+    li    x1, KEY_MANAGER_MAILBOX_KM_BASE_ADDR
     addi  x5, x0, 0             # flags
 
     # Wait for the host config word.
-1:  lw    x2, 0xC(x1)
+1:  lw    x2, MBOX_STATUS(x1)
     andi  x6, x2, 0x1           # inbound_empty
     bnez  x6, 1b
-    lw    x2, 0x8(x1)           # cfg
+    lw    x2, MBOX_READ_DATA(x1)           # cfg
     andi  x3, x2, 0x3F          # slot
     srli  x4, x2, 8
     andi  x4, x4, 0x1F          # region
 
     # --- legal slots: 0, seed, 63 ---
-    lui   x8, 0x13              # CTRL[0] = 0x00013000
+    li    x8, KEY_MANAGER_KPV_CTRL_BASE_ADDR(0)
     addi  x6, x0, 1
     sw    x6, 0(x8)
     lw    x7, 0(x8)
@@ -90,15 +107,14 @@ slot_done:
     # the register-decode path. This is the lock path: a legal key-entry address
     # on a slot whose lock_write is set. IRQ_STATUS bits are sticky, so clear
     # and confirm clean first or an earlier fault would satisfy it.
-    lui   x9, 0x14
-    addi  x9, x9, 0xC           # IRQ_STATUS
+    li    x9, KEY_MANAGER_KMCSR_IRQ_STATUS_BASE_ADDR
     addi  x11, x0, 0x30         # AXI_SLVERR | AXI_DECERR
     sw    x11, 0(x9)
     lw    x7, 0(x9)
     andi  x7, x7, 0x30
     bnez  x7, lockwr_done
 
-    lui   x12, 0x12             # KEY_ENTRY base
+    li    x12, KEY_MANAGER_KPV_KEY_ENTRY_BASE_ADDR(0)
     slli  x13, x3, 6            # slot * 0x40
     add   x12, x12, x13         # KEY_ENTRY[slot].word0
     lui   x13, 0xC0DE1
@@ -150,15 +166,13 @@ lockuse_done:
     # Clear the two error bits and require them to read back 0 FIRST. They are
     # sticky, so without this the check would also be satisfied by an earlier
     # fault anywhere on the KM CPU bus, and would not be about this store.
-    lui   x9, 0x14
-    addi  x9, x9, 0xC           # IRQ_STATUS 0x0001400C
+    li    x9, KEY_MANAGER_KMCSR_IRQ_STATUS_BASE_ADDR
     addi  x11, x0, 0x30         # AXI_SLVERR | AXI_DECERR
     sw    x11, 0(x9)
     lw    x7, 0(x9)
     andi  x7, x7, 0x30
     bnez  x7, extent_done       # not clean to begin with: prove nothing
-    lui   x6, 0x13
-    addi  x6, x6, 0x108         # 0x00013108
+    li    x6, KEY_MANAGER_KPV_BASE_ADDR + KEY_MANAGER_KPV_SIZE
     sw    x0, 0(x6)
     addi  x12, x0, 32
 3:  lw    x7, 0(x9)
@@ -174,7 +188,7 @@ extent_ok:
 extent_done:
 
     # --- SRAM write-lock ---
-    lui   x10, 0x8              # SRAM 0x00008000
+    li    x10, KM_SRAM_BASE
     slli  x6, x4, 10            # region * 0x400
     add   x6, x10, x6
     addi  x6, x6, 0x100         # test address
@@ -184,8 +198,7 @@ extent_done:
     lw    x11, 0(x6)
     bne   x11, x7, lock_done    # preload must land (region unlocked)
 
-    lui   x12, 0x14
-    addi  x12, x12, 0x1C        # SRAM_LOCK 0x0001401C
+    li    x12, KEY_MANAGER_KMCSR_SRAM_LOCK_BASE_ADDR
     addi  x11, x0, 1
     sll   x11, x11, x4
     sw    x11, 0(x12)
@@ -197,8 +210,7 @@ extent_done:
     bne   x13, x7, lock_done    # write must be dropped
     ori   x5, x5, 0x4           # CHK-DROP
 
-    lui   x14, 0x14
-    addi  x14, x14, 0x24        # SRAM_WRITE_LOCK_VIOLATION 0x00014024
+    li    x14, KEY_MANAGER_KMCSR_SRAM_WRITE_LOCK_VIOLATION_BASE_ADDR
     lw    x13, 0(x14)
     addi  x15, x0, 1
     sll   x15, x15, x4
@@ -226,7 +238,7 @@ lock_done:
 
     # --- seal, then erase: the slot must retire, not free ---
     # x2 still holds the host config word.
-    lui   x8, 0x13              # CTRL[0] = 0x00013000
+    li    x8, KEY_MANAGER_KPV_CTRL_BASE_ADDR(0)
     srli  x6, x2, 16
     andi  x6, x6, 0x3F          # seal slot
     slli  x6, x6, 2
@@ -287,7 +299,7 @@ seal_done:
     # Preload key data BEFORE marking the slot, while writes are still allowed.
     # CHK-FREE below grades CTRL bookkeeping only; this is what shows the erase
     # actually overwrites the stored words rather than just clearing flags.
-    lui   x13, 0x12
+    li    x13, KEY_MANAGER_KPV_KEY_ENTRY_BASE_ADDR(0)
     srli  x14, x2, 24
     andi  x14, x14, 0x3F
     slli  x14, x14, 6
@@ -348,8 +360,7 @@ free_done:
     andi  x7, x7, 0x40
     bnez  x7, irqset_done       # must start clean
 
-    lui   x12, 0x14
-    addi  x12, x12, 0x20        # IRQ_SET 0x00014020
+    li    x12, KEY_MANAGER_KMCSR_IRQ_SET_BASE_ADDR
     addi  x11, x0, 0x40
     sw    x11, 0(x12)           # software-inject DRBG_ERR
     lw    x7, 0(x9)
