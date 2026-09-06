@@ -8,8 +8,9 @@ compared word-for-word against the vendored NIST ACVP vector. Sensitivity:
 flip one seed bit and the key must differ. PIC [34] is proven live via
 error_intr_trig (0->1, W1C -> 0) before the KAT, then stays low at
 completion; [35] rises on completion and is W1C-cleared. ZEROIZE must
-drop VALID and clear the pubkey window (READY stays high through the
-wipe). ML-KEM, sign/verify, and the key-vault seed path are not claimed.
+drop VALID, and the pubkey window must then read zero. ML-KEM,
+sign/verify, and the key-vault seed path are not claimed, and neither is
+the ABR_ZEROIZE memory walk itself -- see CHK-ZEROIZE below.
 
 RANDCFG: masking entropy and the flipped seed bit come from the run seed.
 no_cpu / +skip_fuse_sense.
@@ -144,9 +145,17 @@ class sep_abr_mldsa_keygen_kat_test(sep_base_test):
         assert await self._irq(IRQ_ABR_NOTIF) == 0, "[35] still high after notif_internal_sts W1C"
         self.logger.info("CHK-PIC-NOTIF-W1C PASS: [35] 1->0 via notif_internal_sts W1C")
 
-        # READY stays high through ZEROIZE (abr_idle includes that state),
-        # so a READY wait is vacuous. VALID must fall, and the pubkey
-        # window must read as cleared.
+        # MLDSA_STATUS.READY is driven by abr_ready = (abr_prog_cntr ==
+        # ABR_RESET) (abr_ctrl.sv), which is LOW through the ABR_ZEROIZE walk --
+        # abr_idle is a different signal and is not in STATUS -- so a
+        # READY-high wait here would hang rather than pass vacuously. VALID
+        # must fall, and the pubkey window must then read zero.
+        #
+        # Scope of the pubkey half: the read port is gated on mldsa_valid_reg
+        # (abr_ctrl.sv api_pubkey_re), so once VALID is 0 the window returns 0
+        # whether or not the memory walk ran. This proves the window is no
+        # longer readable, NOT that the RAM was wiped. Proving the wipe needs a
+        # probe on the pubkey RAM or on zeroize_mem_done; it is not claimed.
         await abr.wr32(ABR_CTRL, CTRL_ZEROIZE)
         st_z = await self._wait_status(abr, ST_VALID, 0, what="post-zeroize VALID clear")
         assert (st_z & ST_ERROR) == 0, f"post-zeroize STATUS=0x{st_z:08x}, expected VALID=0 ERROR=0"
@@ -158,7 +167,11 @@ class sep_abr_mldsa_keygen_kat_test(sep_base_test):
             f"post-zeroize pubkey still live in {len(live)} of {PK_WORDS} words, "
             f"first at index {live[0][0]}=0x{live[0][1]:08x}"
         )
-        self.logger.info("CHK-ZEROIZE PASS: VALID=0 and all %d pubkey words read 0", PK_WORDS)
+        self.logger.info(
+            "CHK-ZEROIZE PASS: VALID=0 and all %d pubkey words read 0 (read-gated, "
+            "not a proven RAM wipe)",
+            PK_WORDS,
+        )
 
         flipped = cfg.flipped_seed(list(NIST_KG_SEED))
         pk2 = await self._keygen(abr, flipped, cfg.entropy, what="sensitivity-keygen")

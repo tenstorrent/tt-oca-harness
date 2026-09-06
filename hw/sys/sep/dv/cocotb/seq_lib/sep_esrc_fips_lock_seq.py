@@ -35,6 +35,7 @@ from seq_lib.sep_esrc_bringup_seq import (
     ESRC_HEALTH_TEST_WINDOW_SIZE,
     ESRC_MARKOV_TEST_PROB_THRESHOLDS,
     ESRC_MIN_ENTROPY_H,
+    ESRC_RECOMMENDED_THRESHOLDS,
     ESRC_RING_OSC_CTRL,
     ESRC_RING_OSC_ENABLE,
     ESRC_RING_OSC_TUNE,
@@ -44,8 +45,24 @@ from seq_lib.sep_esrc_bringup_seq import (
 LOCK_BIT = 0x1
 SHA256_BIT = ENTROPY_SOURCE.fields("CTRL")["SHA256_WHITENING_ENABLE"]["bm"]
 CHURN_BIT = ENTROPY_SOURCE.fields("FIFO_CTRL")["ENTROPY_CHURN_ENABLE"]["bm"]
-WINDOW_MASK = 0xFFFF
-THRESH_MASK = 0xFFFF
+WINDOW_MASK = ENTROPY_SOURCE.fields("HEALTH_TEST_WINDOW_SIZE")["SIZE"]["bm"]
+WINDOW_RESET = ENTROPY_SOURCE.reset("HEALTH_TEST_WINDOW_SIZE")
+THRESH_MASK = ENTROPY_SOURCE.fields("ALERT_THRESHOLD")["THRESHOLD"]["bm"]
+THRESH_RESET = ENTROPY_SOURCE.reset("ALERT_THRESHOLD")
+RING_OSC_MASK = (
+    ENTROPY_SOURCE.fields("RING_OSC_ENABLE")["ENABLE"]["bm"]
+    | ENTROPY_SOURCE.fields("RING_OSC_ENABLE")["SAMPLE_CLK_ENABLE"]["bm"]
+)
+RING_OSC_RESET = ENTROPY_SOURCE.reset("RING_OSC_ENABLE")
+GEN_DIV_MASK = ENTROPY_SOURCE.fields("GENERATOR_0_SAMPLE_CLK_CONFIG")["SAMPLE_CLK_DIVIDE"]["bm"]
+GEN_DIV_RESET = ENTROPY_SOURCE.reset("GENERATOR_0_SAMPLE_CLK_CONFIG")
+MIN_ENTROPY_H_MASK = ENTROPY_SOURCE.fields("MIN_ENTROPY_H")["H"]["bm"]
+RCT_LIMIT = ENTROPY_SOURCE.fields("RECOMMENDED_THRESHOLDS")["RCT_LIMIT"]
+APT_LIMIT = ENTROPY_SOURCE.fields("RECOMMENDED_THRESHOLDS")["APT_LIMIT"]
+# SP 800-90B 4.4.2 fixes the APT window at 1024 samples, so the advisory high
+# cutoff can never exceed it. entropy_source.rdl states the window in the
+# APT_LIMIT description.
+APT_WINDOW = 1024
 # entropy_source.sv locks both HEALTH_TEST_CTRL fields under FIPS_LOCK.LOCK
 # (ENABLE and REPETITION_LIMIT both carry swwel = fips_lock), so the compare
 # window is both field bitmasks, taken from the generated export rather than a
@@ -142,7 +159,7 @@ class SepEsrcFipsLockCfg:
         ring_pre = RING_OSC_SAMPLECLK_ONLY & ~ENTROPY_SOURCE.fields("RING_OSC_ENABLE")[
             "SAMPLE_CLK_ENABLE"
         ]["bm"] | ENTROPY_SOURCE.value("RING_OSC_ENABLE", ENABLE=0, SAMPLE_CLK_ENABLE=ring_clk_pre)
-        ring_poke = 0x00FF_FFFF
+        ring_poke = RING_OSC_RESET
         tune_pre = ENTROPY_SOURCE.value(
             "RING_OSC_TUNE",
             DETUNE=1 << rng.randrange(12),
@@ -193,7 +210,7 @@ class SepEsrcFipsLockCfg:
                 ENTROPY_SOURCE.reset("CTRL"),
             ),
             SepEsrcFipsLockTarget(
-                "WINDOW", ESRC_HEALTH_TEST_WINDOW_SIZE, win_pre, win_poke, WINDOW_MASK, 0x800
+                "WINDOW", ESRC_HEALTH_TEST_WINDOW_SIZE, win_pre, win_poke, WINDOW_MASK, WINDOW_RESET
             ),
             SepEsrcFipsLockTarget(
                 "HT_ENABLE",
@@ -215,7 +232,7 @@ class SepEsrcFipsLockCfg:
                 DECOR_CTRL_DIV64,
             ),
             SepEsrcFipsLockTarget(
-                "RING_OSC", ESRC_RING_OSC_ENABLE, ring_pre, ring_poke, 0x00FF_FFFF, 0x00FF_FFFF
+                "RING_OSC", ESRC_RING_OSC_ENABLE, ring_pre, ring_poke, RING_OSC_MASK, RING_OSC_RESET
             ),
             # RING_OSC_TUNE locks DETUNE and SAMPLE_CLK_DETUNE, so both are in
             # the compare window.
@@ -229,7 +246,12 @@ class SepEsrcFipsLockCfg:
                 ENTROPY_SOURCE.reset("RING_OSC_TUNE"),
             ),
             SepEsrcFipsLockTarget(
-                "GEN0_DIV", ESRC_GEN0_SAMPLE_CLK, gen_div_pre, gen_div_poke, 0x1F, 0
+                "GEN0_DIV",
+                ESRC_GEN0_SAMPLE_CLK,
+                gen_div_pre,
+                gen_div_poke,
+                GEN_DIV_MASK,
+                GEN_DIV_RESET,
             ),
             SepEsrcFipsLockTarget(
                 "FIFO_CHURN",
@@ -240,7 +262,7 @@ class SepEsrcFipsLockCfg:
                 ENTROPY_SOURCE.reset("FIFO_CTRL"),
             ),
             SepEsrcFipsLockTarget(
-                "ALERT_THRESH", ESRC_ALERT_THRESHOLD, thresh_pre, 1, THRESH_MASK, 4
+                "ALERT_THRESH", ESRC_ALERT_THRESHOLD, thresh_pre, 1, THRESH_MASK, THRESH_RESET
             ),
             # The remaining registers entropy_source.sv marks swwel = fips_lock.
             _locked_target(
@@ -279,6 +301,14 @@ class SepEsrcFipsLockCfg:
             for idx in range(1, 12)
         )
         self.obs_enable = 1
+        # Ascending MIN_ENTROPY_H points for the advisory-threshold sweep. The
+        # three anchors are the register reset and both ends of the Q4.4 range,
+        # where the closed form saturates; the rest come from the seed so the
+        # sweep is not pinned to one corner of the LUT.
+        h_anchors = {0x00, ENTROPY_SOURCE.reset("MIN_ENTROPY_H"), MIN_ENTROPY_H_MASK}
+        while len(h_anchors) < 8:
+            h_anchors.add(rng.randrange(1, MIN_ENTROPY_H_MASK))
+        self.rec_thresh_h = tuple(sorted(h_anchors))
         # CHK-POST-UNLOCK must land on a target whose poke differs from the
         # register reset. On a target where they agree, the reset value alone
         # satisfies the readback and a dropped post-unlock write still passes.
@@ -289,7 +319,10 @@ class SepEsrcFipsLockCfg:
 
     def summary(self) -> str:
         cells = " ".join(t.summary() for t in self.targets)
-        return f"seed={self.seed} cells={self.n_cells()} {cells}"
+        return (
+            f"seed={self.seed} cells={self.n_cells()} "
+            f"rec_thresh_h={[f'0x{h:02x}' for h in self.rec_thresh_h]} {cells}"
+        )
 
 
 class SepEsrcFipsLock(SepAxiRegDriver):
@@ -322,3 +355,25 @@ class SepEsrcFipsLock(SepAxiRegDriver):
 
     async def read_obs_enable(self) -> int:
         return (await self._rd(ESRC_BIW_OBS_CTRL)) & 0x1
+
+    async def write_min_entropy_h(self, h: int) -> None:
+        await self._wr(ESRC_MIN_ENTROPY_H, h & MIN_ENTROPY_H_MASK)
+
+    async def read_recommended_thresholds(self) -> tuple[int, int]:
+        """The advisory RCT and APT cutoffs the LUT derives from MIN_ENTROPY_H."""
+        raw = await self._rd(ESRC_RECOMMENDED_THRESHOLDS)
+        rct = (raw & RCT_LIMIT["bm"]) >> RCT_LIMIT["bp"]
+        apt = (raw & APT_LIMIT["bm"]) >> APT_LIMIT["bp"]
+        return rct, apt
+
+
+def rct_limit_golden(h: int) -> int:
+    """SP 800-90B 4.4.1 repetition cutoff C = 1 + ceil(20 / H), H in Q4.4.
+
+    Derived from the standard, not read from entropy_source_rec_thresh_lut.sv,
+    which is what makes the compare an oracle rather than a mirror. H = 0 carries
+    no entropy, so no finite cutoff applies and the field saturates.
+    """
+    if h == 0:
+        return RCT_LIMIT["bm"]
+    return 1 + -(-320 // h)
