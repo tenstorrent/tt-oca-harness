@@ -94,10 +94,29 @@ hw/sys/smc/dv/
 ├── tb/                     # tb_top.sv (cocotb + UVM shapes), smc_tb_signal_list.svh,
 │                           # smc_tb_if.sv, verilator_stubs/
 ├── testlists/
-├── assets/
-├── docs/                   # VPLAN, test-development, porting, execution guides
+├── assets/                 # preloaded memory/fuse images the testlists pass by
+│                           # plusarg (ROM hex, eFuse shadow, scratch stripes)
+├── fw/                     # C firmware the CPU-boot scenarios execute; built by
+│                           # the toolchain container, not by the DV runner
+├── cov/                    # functional-coverage collection and merge inputs
+├── docs/                   # VPLAN, FCOV and TB architecture
 └── smc_sim_cfg.toml        # both frameworks: [frameworks.cocotb] + [frameworks.uvm]
 ```
+
+`assets/`, `fw/`, `models/` and `uvm/` are outside the five directories the DV
+sign-off checklist names at 6.1, and are held here deliberately:
+
+* `assets/` — a preload image is an input to a scenario, so it belongs beside
+  the testlist that names it rather than in a shared pool where a rebuild for
+  one subsystem would move another's expectations.
+* `fw/` — the CPU-boot scenarios need firmware whose source is versioned with
+  the tests that run it; it is built by the toolchain container and consumed as
+  a ROM image, never compiled by the DV runner.
+* `models/` — bus terminators and register stand-ins, each declared in
+  `models/README.md` with what it replaces and why the shared component does
+  not fit.
+* `uvm/` — the SV-UVM shape of the same scenarios, selected by
+  `--framework uvm`; it shares `tb/tb_top.sv` with the cocotb shape.
 
 `tb/tb_top.sv` is ONE module with two shapes: the cocotb pin port list by
 default, and under the bare `+define+UVM` (set by the native profile's
