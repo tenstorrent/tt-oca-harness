@@ -1768,8 +1768,18 @@ int i2c_target_receive_transaction_framed(uint32_t idx, uint8_t *buffer, uint32_
         if (status.f.ACQEMPTY && in_txn != 0) {
             // Brief wait for next FIFO entry
             count = 0;
+            /* Derived from the caller's bound rather than fixed.
+             *
+             * This was a hardcoded 10000 that ignored timeout_cycles entirely,
+             * so a caller that had sized its own bound against an enclosing
+             * harness budget had that sizing silently overridden here: a stall
+             * on this path could burn milliseconds and let the harness time out
+             * first, which reports the wrong condition -- the harness says the
+             * test hung, when the firmware knew exactly which byte never came.
+             * The comment claiming a "100x reduction" also did not match the
+             * value it sat on. */
             uint32_t inter_byte_timeout =
-                10000; // OPTIMIZED: Reduced from 10000 to 100 (100x reduction)
+                (timeout_cycles > 0u && timeout_cycles < 10000u) ? timeout_cycles : 10000u;
             while (count < inter_byte_timeout) {
                 status.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
                                                 SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
