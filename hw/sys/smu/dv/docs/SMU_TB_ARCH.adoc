@@ -8,8 +8,9 @@
 
 The SMU open-source environment is a PyUVM-on-cocotb testbench driven by
 `tools/dv/run_dv.py`. Verilator is the functional backend; VCS and Xcelium run
-the same Python tests when commercial coverage is wanted. There is no
-SystemVerilog UVM layer.
+the same Python tests when commercial coverage is wanted. The bare `smu` DUT
+also carries a SystemVerilog UVM realization (`--framework uvm`, VCS) on the
+same `tb/tb_top.sv`; see <<sv-uvm-realization>>.
 
 Two DUTs share this DV root:
 
@@ -36,10 +37,12 @@ hw/sys/smu/dv/
 ├── cocotb_wrapper/{env,seq_lib,tests}/  # --dut smu_wrapper baseline
 ├── docs/                         # this chapter set
 ├── fw/                           # firmware images built for the dual-FW tests
-├── tb/                           # tb_top.sv, tb_wrapper_top.sv, public scope
+├── tb/                           # tb_top.sv (cocotb + UVM shapes), smu_tb_signal_list.svh,
+│                                 # smu_tb_if.sv, tb_wrapper_top.sv, public scope
+├── uvm/{env,seq_lib,tests}/      # SV-UVM env / seq_lib / tests (--framework uvm)
 ├── testlists/                    # per-feature TOML leaves + all.toml groups
 ├── tools/                        # wrapper readiness gates
-├── smu_sim_cfg.toml              # --dut smu
+├── smu_sim_cfg.toml              # --dut smu: [frameworks.cocotb] + [frameworks.uvm]
 └── smu_wrapper_sim_cfg.toml      # --dut smu_wrapper
 ....
 
@@ -103,6 +106,26 @@ them:
 `expect_eq` and `expect_true` are the only two check primitives; both take an
 optional `evidence=` argument naming the TOKEN they prove.
 
+The SV-UVM realization checks through the mandatory two-stream scoreboard of
+the shared framework (`ocah_scoreboard`): each feature pairs a VIP monitor
+stream with the `expected_ap` of that feature's reference model.
+
+[cols=",,",options="header",]
+|===
+|Feature (SV-UVM) |Reference model -> scoreboard |What is compared
+|`ir_decode` |`dtp_ir_decode_ref_model` (JTAG event + IR-scan streams) -> `dtp_scoreboard` inside `smu_scoreboard` |The DTP one-hot decoded instruction (`dtp_tb_if.inst_decoded`) after every plain IR load
+|`idcode` |`dtp_idcode_ref_model` (scan + event streams; expected IDCODE from `smu_pkg`) -> same |The 32-bit TDO of every DR scan under IDCODE
+|`bypass` |`dtp_bypass_ref_model` (scan + event streams) -> same |TDI delayed one TCK for every DR scan under a bypass-class instruction
+|TAP FSM invariant |`dtp_tap_fsm_checker` subscriber on the JTAG event stream |Every TCK step against the IEEE 1149.1 next-state model (`CHK-TAP-STATE`)
+|Scenario evidence |`smu_base_test_seq` over `ocah_checker` |Named `CHK-*` lines with required IDs per scenario, finalized once per pass (`CHECKER_SUMMARY name=smu_scenario`)
+|PTAP protocol |`ocah_jtag_sva` in the harness |JTAG pin and state rules, gated by `smu_tb_if.jtag_sva_en`
+|===
+
+SMU integrates DTP, so the embedded-IP features are judged by the DTP bench's
+own components, reused unchanged; a required feature with zero comparisons
+fails the run. `+SMU_PTAP_IDCODE_NEGATIVE` arms a wrong expected IDCODE in the
+reference model and in the scenario evidence, so the run must FAIL.
+
 === Coverage Strategy
 
 Verilator does not support SystemVerilog covergroups, so scenario-intent
@@ -152,6 +175,14 @@ and reports them per test. Results land under
 `build/runs/<timestamp>__<tool>__<label>/` with a per-test `result.json` and
 `results.xml`.
 
+[source,bash]
+----
+# SV-UVM view (VCS): build, the bound scenario, the UVM-implemented smoke subset
+python3 tools/dv/run_dv.py --dut smu --framework uvm --build-only --skip-unimplemented
+python3 tools/dv/run_dv.py --dut smu --framework uvm --items smu_dtp_jtag_smoke_test --seed 1
+python3 tools/dv/run_dv.py --dut smu --framework uvm --items smoke --skip-unimplemented
+----
+
 The wrapper DUT additionally builds firmware images through
 `fw/build_firmware.py` into `build/firmware/`, declared per test as
 `[c_build.*].outputs` and staged into each per-test run directory.
@@ -162,3 +193,79 @@ python3 hw/sys/smu/dv/tools/smu_wrapper_tb_readiness_test.py --phase source
 python3 tools/dv/run_dv.py --dut smu_wrapper --items smoke \
   --stage flist --stage c_compile --stage hdl_compile --stage sim
 ----
+
+[[sv-uvm-realization]]
+=== SystemVerilog UVM Realization (`--framework uvm`)
+
+The SV-UVM realization runs through the same native runner: `smu_sim_cfg.toml`
+declares it as the `[frameworks.uvm]` overlay (shared DV root, sim config, and
+testlist; `build/uvm/` build tree), and `--dut smu --framework uvm` selects it
+on VCS (the `native` profile's `uvm` framework, `-ntb_opts uvm`). Scenarios
+bind both realizations in their testlist `module` map
+(`module = { cocotb = "<name>", uvm = "<name>" }`); those without a `uvm`
+entry error when selected under the UVM view, and `--skip-unimplemented` runs
+a group's UVM-implemented subset. The conventions this realization follows
+are the shared adopter guide, `hw/common/dv/docs/uvm-framework.adoc`; the
+DTP and SMC benches are the reference implementations.
+
+There is exactly ONE testbench top module: `smu_uvm_top` in `tb/tb_top.sv`,
+shared between both realizations. The bare `+define+UVM` (set by the native
+profile's `[frameworks.uvm]` overlay) switches its shape: without it the
+module exposes the pin-level ANSI port list cocotb drives; with it the same
+signals, declared once in `tb/smu_tb_signal_list.svh`, become internal TB
+signals and the harness block at the end of the module takes over: the three
+clocks with periods from `smu_tb_if`, the shared `ocah_jtag_if` on the primary
+TAP pins, the SMU-local `smu_tb_if`, a `dtp_tb_if` instance wired to the
+embedded DTP (one-hot TAP state, decoded instruction, and the DTP's system and
+power-on reset assertion counters observed on the DTP instance pins), the JTAG
+protocol SVA, quiescent tie-offs at the idle values `smu_base_test.bring_up`
+uses, `uvm_config_db` publication of the three virtual interfaces, and
+`run_test()`.
+
+.SV-UVM component tree (`uvm/`)
+....
+smu_dtp_jtag_smoke_test (tests/) extends smu_base_test extends ocah_test
+  build:  smu_test_cfg (seeded clock/TCK periods, settle, knobs, required
+          features, JTAG evidence policy) -> smu_env_cfg -> smu_env
+  run:    bring_up() ladder through smu_tb_if, then 16+ seeded passes of
+          smu_dtp_jtag_smoke_test_seq on smu_env.m_vseqr
+
+smu_env (env/) extends ocah_env
+  ocah_jtag_master_env        active JTAG agent on ocah_jtag_if (jtag_vif)
+  ocah_jtag_scan_builder      IR/DR scan reconstruction on the event stream
+  ocah_jtag_checker           env-owned aggregate evidence (CHK-TAP-*)
+  dtp_ir_decode_ref_model     embedded DTP: the DTP bench's reference models
+  dtp_idcode_ref_model        (expected IDCODE from smu_pkg::DefaultCfg)
+  dtp_bypass_ref_model
+  dtp_tap_fsm_checker         embedded DTP: the DTP bench's invariant checker
+  smu_scoreboard              always on; SoC verdict point:
+    dtp_scoreboard              the DTP bench's scoreboard, reused as a child
+                                (ir_decode, idcode, bypass pairing)
+  smu_virtual_sequencer       m_jtag_seqr
+
+smu_seq_lib_pkg (seq_lib/)
+  smu_jtag_op_seq             base of the operations (tracked TAP state)
+  smu_jtag_{tap_reset,tms_walk,goto_state,ir_scan,dr_scan}_seq
+  smu_base_test_seq           TAP-state checks, bounded waits, TRST/POR
+                              controls, named evidence
+  smu_dtp_jtag_smoke_test_seq S1 setup, S2 IDCODE, S3 BYPASS, S4 TRST+POR,
+                              S5 bounded-wait inventory and NONVAC fence
+....
+
+SMU is a system that integrates IPs and subsystems, so its environment
+reuses the instantiated IP's DV components rather than re-deriving them: the
+embedded DTP is checked by the DTP bench's reference models, TAP FSM checker,
+and scoreboard (`hw/sys/dtp/dv/uvm/env`, compiled into the SMU view through
+`dtp_env_pkg`), reading the DTP observables through the same `dtp_tb_if` the
+DTP bench uses. `smu_scoreboard` is the one verdict point: it owns the
+embedded-IP scoreboards as children and registers SMU-level integration
+features itself as they land. The same pattern extends to the embedded SMC
+(its bench's reference models and `smc_scoreboard`) when an SMC-side UVM
+scenario is bound.
+
+The bring-up ladder is the cocotb one, in ref-clock cycles of the seeded
+period: power-good after `powergood_delay_cycles`, cold-reset release after
+`cold_release_delay_cycles`, the seeded settle, then bounded polls of the
+cold-stable and primary reset releases. A scenario that drops power-good
+(the smoke's POR path) restores the same released-reset baseline before its
+pass ends, so every pass of the 16-pass floor starts from a live DUT.

@@ -1,18 +1,48 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// SMU OSS cocotb top — Phase-1 SEP=0.
+// SMU OSS TB top — Phase-1 SEP=0, shared by the native cocotb / PyUVM flow
+// and the SystemVerilog UVM flow. ONE module, two shapes:
+//   * default (cocotb, `--dut smu`): the pin-level ANSI port list cocotb
+//     drives and samples;
+//   * `UVM` (SV-UVM, `--dut smu --framework uvm`): the port list is replaced
+//     by internal TB signals and the harness block at the end of the module
+//     adds the clocks, the shared JTAG VIP interface, the SMU-local and
+//     embedded-DTP TB interfaces, quiescent tie-offs, uvm_config_db
+//     publication, and run_test(). Test classes are compiled via
+//     `include "smu_tests.sv".
+// Every TB signal is declared once, in tb/smu_tb_signal_list.svh, and
+// expanded into the selected shape by the SMU_TB_* macros below.
+//
 // Instantiates bare `smu` with SEP=0, flattens JTAG + external SMN AXI for
-// cocotb BFMs. Macro/I3C/DTP CSR boundaries are idle (no TB placeholder
+// the VIPs. Macro/I3C/DTP CSR boundaries are idle (no TB placeholder
 // terminators); smu_axi_out_sim_slave terminates outbound SMN.
 //
 // Real checkers consume:
 //   - rst_cold_stable_ref_clk_no / rst_primary_* after reset release
 //   - sep_global_base_o / sep_region_size_o (== 0 when SEP=0)
-//   - jtag_* IDCODE/BYPASS via OcahJtagMasterDriver
+//   - jtag_* IDCODE/BYPASS via the shared ocah_jtag_vip
 //   - s_axi_* CSR frontdoor reads (VERSION_LO etc.)
 
 `timescale 1ps / 1fs
+
+// Shape selection for smu_tb_signal_list.svh: the same list expands as the
+// ANSI port list (cocotb) or as internal TB signals (`UVM`). The macros live
+// only from here to the `undef block after the module header.
+`ifndef UVM
+    // cocotb shape: every entry is a pin-level ANSI port, published to cocotb
+    // through the Verilator metacomment (smu_public_scope.vlt publishes the
+    // whole module as well).
+    `define SMU_TB_IN_FIRST(dtype, name) input  wire dtype name /*verilator public_flat_rw*/
+    `define SMU_TB_IN(dtype, name)     , input  wire dtype name /*verilator public_flat_rw*/
+    `define SMU_TB_OUT(dtype, name)    , output dtype name /*verilator public_flat_rw*/
+`else
+    // SV-UVM shape: every entry is an internal TB signal for the harness
+    // block at the end of this module.
+    `define SMU_TB_IN_FIRST(dtype, name) dtype name;
+    `define SMU_TB_IN(dtype, name) dtype name;
+    `define SMU_TB_OUT(dtype, name) dtype name;
+`endif
 
 module smu_uvm_top
   import smu_pkg::*;
@@ -20,149 +50,18 @@ module smu_uvm_top
   import smc_pkg::*;
   import prim_jtag_pkg::*;
   import chipyard_4core_mem_pkg::*;
+`ifndef UVM
 (
-  input  wire logic clk_smu_i,
-  input  wire logic clk_ref_i,
-  input  wire logic clk_periph_i,
-  input  wire logic rst_cold_ni,
-  input  wire logic powergood_i,
-  // External boot-sequence done gate (SMU_006); default-drive 1'b1 in base bring-up
-  input  wire logic ext_boot_seq_done_i,
-
-  // Primary JTAG TAP (cocotb OcahJtagMasterDriver)
-  input  wire logic jtag_tck,
-  input  wire logic jtag_tms,
-  input  wire logic jtag_trst,   // active-low
-  input  wire logic jtag_tdi,
-  output logic      jtag_tdo,
-  output logic      jtag_tdo_oen,
-
-  // Reset / SEP=0 observables (real checkers)
-  output logic        rst_cold_stable_ref_clk_no,
-  output logic        rst_primary_ref_clk_no,
-  output logic        rst_primary_smc_clk_no,
-  output logic        rst_primary_periph_clk_no,
-  output logic [55:0] sep_global_base_o,
-  output logic [55:0] sep_region_size_o,
-  output logic [55:0] smc_global_base_o,
-  output logic [31:0] smc_region_size_o,
-  output logic        init_mem_done_o,
-  output logic        fuse_sense_done_o,
-  output logic        fuse_reset_n_delayed_o,
-  // DTP DEBUG_CONTROL -> SMC boot-stall (hierarchical observe)
-  output logic        jtag_boot_stall_ovrd,
-  output logic        jtag_boot_stall,
-  // IC_RESET observables (DTP override)
-  output logic        jtag_ic_reset_ext_ovrd,
-  output logic        jtag_ic_reset_ext_ctrl_n,
-  output logic        jtag_ic_reset_smc_ovrd,
-  output logic        jtag_ic_reset_smc_ctrl_n,
-  // Cross-trigger CTM loopback ports (cocotb drives dst_req)
-  input  wire logic [7:0] xtrig_ctm_dst_req,
-  output logic [7:0]      xtrig_ctm_dst_ack,
-  output logic [7:0]      xtrig_ctm_src_req,
-  input  wire logic [7:0] xtrig_ctm_src_ack,
-  // Clock-stop coordination
-  input  wire logic [7:0] xtrig_clk_stop_req,
-  output logic            dtp_stop_clks_o,
-  output logic            dtp_cla_clock_stop_en,
-  // Lifecycle / demote (SEP=0 defaults)
-  output logic [7:0]      lc_state_o,
-  output logic            lc_sigint_err_o,
-  output logic [1:0]      lcc_demote_state_1_o,
-  output logic [1:0]      lcc_demote_state_2_o,
-  // GPIO boot-stall pad bit[57] drive (OR'd into pad2core; Verilator-safe)
-  input  wire logic        gpio_boot_stall_drive_i,
-  output logic [31:0] ext_mailbox_interrupts,
-  output logic [31:0] jtag_ptap_state,
-  output logic [31:0] jtag_ptap_inst_decoded,
-
-  // Macro AXI-Lite activity (OR of aw/w/ar valid on the boundary master).
-  // PLL, PVT and the extension slot share the single smc_external window.
-  output logic tb_axil_external_active /*verilator public_flat_rw*/,
-
-  // WDT first-timeout pin observe (ChipYard rst export; clamped under isolate)
-  output logic tb_wdt_first_timeout /*verilator public_flat_rw*/,
-  // Pre-clamp observe only (no TB Force inject — policy: real RTL / fail test)
-  output logic      tb_wdt_reset_raw /*verilator public_flat_rw*/,
-  output logic      tb_cluster_boundary_isolate /*verilator public_flat_rw*/,
-
-  // OCTS timer count pin observe
-  output logic [63:0] tb_timer_count /*verilator public_flat_rw*/,
-  // IO STAP host TCK observe (DTP-IO-STAP; chiplet-to-chiplet TAP fanout)
-  output logic tb_stap_io_tck /*verilator public_flat_rw*/,
-  // SMC STAP host observe (internal DTP→SMC CPU JTAG; not a top-level SMU port)
-  output logic tb_stap_smc_tck /*verilator public_flat_rw*/,
-  output logic tb_stap_smc_trst_n /*verilator public_flat_rw*/,
-  output logic tb_stap_smc_tdi /*verilator public_flat_rw*/,
-  output logic tb_stap_smc_tms /*verilator public_flat_rw*/,
-  // Select-gated: host_tdo_oen = stap_sel && shift_en (observe DTP port; SMU wire is unused)
-  output logic tb_stap_smc_tdo_oen /*verilator public_flat_rw*/,
-  // BSR scan_ctrl.select (instruction-gated; TCK fans out on any DR)
-  output logic tb_bsr_select /*verilator public_flat_rw*/,
-  // SMC OTP JTAG2AXI gate (feat_ctrl fuse_test && soc && ap; SEP=0 ties open)
-  output logic tb_otp_jtag2axi_security_disable /*verilator public_flat_rw*/,
-  // SMC fabric JTAG2AXI gate (feat_ctrl soc && ap; SEP=0 ties open)
-  output logic tb_smc_jtag2axi_security_disable /*verilator public_flat_rw*/,
-
-  // Telemetry ATB channel-0 drive / observe (receivers 1..N stay idle)
-  input  wire logic [7:0] tb_tel_atdata /*verilator public_flat_rw*/,
-  input  wire logic [6:0] tb_tel_atid /*verilator public_flat_rw*/,
-  input  wire logic       tb_tel_atvalid /*verilator public_flat_rw*/,
-  input  wire logic       tb_tel_afready /*verilator public_flat_rw*/,
-  output logic            tb_tel_atready /*verilator public_flat_rw*/,
-  output logic            tb_tel_afvalid /*verilator public_flat_rw*/,
-
-  // Flat external SMN AXI subordinate (the shared ocah_axi_vip master drives this)
-  input  wire logic [7:0]   s_axi_awid,
-  input  wire logic [55:0]  s_axi_awaddr,
-  input  wire logic [7:0]   s_axi_awlen,
-  input  wire logic [2:0]   s_axi_awsize,
-  input  wire logic [1:0]   s_axi_awburst,
-  input  wire logic         s_axi_awlock,
-  input  wire logic [3:0]   s_axi_awcache,
-  input  wire logic [2:0]   s_axi_awprot,
-  input  wire logic [3:0]   s_axi_awqos,
-  input  wire logic [3:0]   s_axi_awregion,
-  input  wire logic [11:0]  s_axi_awuser,
-  input  wire logic         s_axi_awvalid,
-  output logic              s_axi_awready,
-  input  wire logic [63:0]  s_axi_wdata,
-  input  wire logic [7:0]   s_axi_wstrb,
-  input  wire logic         s_axi_wlast,
-  input  wire logic [11:0]  s_axi_wuser,
-  input  wire logic         s_axi_wvalid,
-  output logic              s_axi_wready,
-  output logic [7:0]        s_axi_bid,
-  output logic [1:0]        s_axi_bresp,
-  output logic [11:0]       s_axi_buser,
-  output logic              s_axi_bvalid,
-  input  wire logic         s_axi_bready,
-  input  wire logic [7:0]   s_axi_arid,
-  input  wire logic [55:0]  s_axi_araddr,
-  input  wire logic [7:0]   s_axi_arlen,
-  input  wire logic [2:0]   s_axi_arsize,
-  input  wire logic [1:0]   s_axi_arburst,
-  input  wire logic         s_axi_arlock,
-  input  wire logic [3:0]   s_axi_arcache,
-  input  wire logic [2:0]   s_axi_arprot,
-  input  wire logic [3:0]   s_axi_arqos,
-  input  wire logic [3:0]   s_axi_arregion,
-  input  wire logic [11:0]  s_axi_aruser,
-  input  wire logic         s_axi_arvalid,
-  output logic              s_axi_arready,
-  output logic [7:0]        s_axi_rid,
-  output logic [63:0]       s_axi_rdata,
-  output logic [1:0]        s_axi_rresp,
-  output logic              s_axi_rlast,
-  output logic [11:0]       s_axi_ruser,
-  output logic              s_axi_rvalid,
-  input  wire logic         s_axi_rready,
-
-  // Activity counters for connectivity checks
-  output logic [31:0] smu_axi_in_awvalid_count,
-  output logic [31:0] smu_axi_out_awvalid_count
+  `include "smu_tb_signal_list.svh"
 );
+`else
+();
+  `include "smu_tb_signal_list.svh"
+`endif
+
+`undef SMU_TB_IN_FIRST
+`undef SMU_TB_IN
+`undef SMU_TB_OUT
 
   // ------------------------------------------------------------------
   // JTAG pin pack
@@ -656,5 +555,154 @@ module smu_uvm_top
   assign pad2core = core2pad |
         ({{(smc_pkg::NUM_GPIO_WRAPS-1){1'b0}}, gpio_boot_stall_drive_i}
          << 57);
+
+`ifdef UVM
+  // ------------------------------------------------------------------
+  // SV-UVM harness (`--dut smu --framework uvm`): clocks, the shared JTAG
+  // VIP interface on the primary TAP pins, the SMU-local TB interface, the
+  // embedded DTP's TB interface (so the DTP bench's reference models and
+  // checkers attach unchanged), the JTAG protocol SVA, quiescent tie-offs
+  // for every other cocotb-driven stimulus pin, uvm_config_db publication,
+  // and run_test(). Compiled only when the native uvm flow defines UVM; the
+  // cocotb flow sees only the ported module above.
+  // ------------------------------------------------------------------
+  import uvm_pkg::*;
+
+  smu_tb_if u_tb_if ();
+  dtp_tb_if u_dtp_tb_if ();
+  ocah_jtag_if u_jtag_if ();
+
+  // Three free-running clocks with the periods the env publishes on
+  // smu_tb_if from the seeded test cfg (cocotb SmuEnvCfg.randomize_timing
+  // parity); TCK is bit-banged by the VIP driver.
+  initial begin
+    clk_smu_i    = 1'b0;
+    clk_ref_i    = 1'b0;
+    clk_periph_i = 1'b0;
+  end
+  always #(u_tb_if.smu_clk_period_ns * 0.5ns) clk_smu_i = ~clk_smu_i;
+  always #(u_tb_if.ref_clk_period_ns * 0.5ns) clk_ref_i = ~clk_ref_i;
+  always #(u_tb_if.periph_clk_period_ns * 0.5ns) clk_periph_i = ~clk_periph_i;
+
+  // Power-good, cold reset, and the boot-sequence gate are test-sequenced
+  // through smu_tb_if; the reset-unit outputs and the fuse-sense
+  // observables are mirrored back for the sequences.
+  assign powergood_i         = u_tb_if.powergood;
+  assign rst_cold_ni         = u_tb_if.rst_cold_n;
+  assign ext_boot_seq_done_i = u_tb_if.ext_boot_seq_done;
+  assign u_tb_if.rst_cold_stable_ref_clk_n = rst_cold_stable_ref_clk_no;
+  assign u_tb_if.rst_primary_ref_clk_n     = rst_primary_ref_clk_no;
+  assign u_tb_if.rst_primary_smc_clk_n     = rst_primary_smc_clk_no;
+  assign u_tb_if.rst_primary_periph_clk_n  = rst_primary_periph_clk_no;
+  assign u_tb_if.fuse_sense_done           = fuse_sense_done_o;
+  assign u_tb_if.fuse_reset_n_delayed      = fuse_reset_n_delayed_o;
+  assign u_tb_if.lc_state                  = lc_state_o;
+
+  // Cold-reset assertion counter (reference models re-baseline on it).
+  logic [31:0] cold_rst_assert_count = '0;
+  always @(negedge rst_cold_ni) cold_rst_assert_count <= cold_rst_assert_count + 32'd1;
+  assign u_tb_if.cold_rst_assert_count = cold_rst_assert_count;
+
+  // Primary JTAG TAP: TB drives tck/tms/trst_n/tdi, DUT drives tdo/tdo_oen.
+  assign jtag_tck  = u_jtag_if.tck;
+  assign jtag_tms  = u_jtag_if.tms;
+  assign jtag_trst = u_jtag_if.trst_n;
+  assign jtag_tdi  = u_jtag_if.tdi;
+  assign u_jtag_if.tdo     = jtag_tdo;
+  assign u_jtag_if.tdo_oen = jtag_tdo_oen;
+
+  // Embedded DTP through its own TB interface, wired the way the DTP bench
+  // wires its top: the one-hot TAP state and decoded instruction the DUT
+  // exports, and the assertion counters of the DTP's system and power-on
+  // resets, observed on the DTP instance pins (pwr_on_rst_ni is the SMC
+  // reset unit's powergood_stable; rst_n_i is the primary smc-clock reset).
+  logic [31:0] dtp_sys_rst_assert_count = '0;
+  logic [31:0] dtp_por_assert_count     = '0;
+  always @(negedge u_dut.u_dtp.rst_n_i)
+    dtp_sys_rst_assert_count <= dtp_sys_rst_assert_count + 32'd1;
+  always @(negedge u_dut.u_dtp.pwr_on_rst_ni) dtp_por_assert_count <= dtp_por_assert_count + 32'd1;
+  assign u_dtp_tb_if.tap_state            = ptap_state;
+  assign u_dtp_tb_if.inst_decoded         = ptap_inst;
+  assign u_dtp_tb_if.sys_rst_assert_count = dtp_sys_rst_assert_count;
+  assign u_dtp_tb_if.por_assert_count     = dtp_por_assert_count;
+
+  // Clean-room JTAG protocol SVA checker (ocah_jtag_vip/sva) on the primary
+  // TAP pins + the exported one-hot TAP state, enabled via smu_tb_if.
+  ocah_jtag_sva #(
+    .EN_STATE_RULES(1'b1)
+  ) u_jtag_ptap_sva (
+    .tck         (jtag_tck),
+    .tms         (jtag_tms),
+    .tdi         (jtag_tdi),
+    .trst_n      (jtag_trst),
+    .tdo         (jtag_tdo),
+    .tdo_oen     (jtag_tdo_oen),
+    .en_i        (u_tb_if.jtag_sva_en),
+    .tap_state_i (ptap_state)
+  );
+
+  // ------------------------------------------------------------------
+  // Quiescent tie-offs: every other cocotb-driven stimulus pin at the idle
+  // value the cocotb smu_base_test bring-up sets. A scenario that needs one
+  // of these pins promotes it into smu_tb_if; nothing here is driven from
+  // class code.
+  // ------------------------------------------------------------------
+
+  // Cross-trigger CTM loopback, clock-stop requests, boot-stall pad.
+  assign xtrig_ctm_dst_req       = '0;
+  assign xtrig_ctm_src_ack       = '0;
+  assign xtrig_clk_stop_req      = '0;
+  assign gpio_boot_stall_drive_i = 1'b0;
+
+  // Telemetry ATB channel 0 idle.
+  assign tb_tel_atdata  = '0;
+  assign tb_tel_atid    = '0;
+  assign tb_tel_atvalid = 1'b0;
+  assign tb_tel_afready = 1'b0;
+
+  // External SMN AXI4 ingress: no initiator attached, request side idle
+  // (the cocotb bring-up idle values: single-beat INCR shape, no valids).
+  assign s_axi_awid     = '0;
+  assign s_axi_awaddr   = '0;
+  assign s_axi_awlen    = '0;
+  assign s_axi_awsize   = 3'd3;
+  assign s_axi_awburst  = 2'b01;
+  assign s_axi_awlock   = 1'b0;
+  assign s_axi_awcache  = '0;
+  assign s_axi_awprot   = '0;
+  assign s_axi_awqos    = '0;
+  assign s_axi_awregion = '0;
+  assign s_axi_awuser   = '0;
+  assign s_axi_awvalid  = 1'b0;
+  assign s_axi_wdata    = '0;
+  assign s_axi_wstrb    = '0;
+  assign s_axi_wlast    = 1'b1;
+  assign s_axi_wuser    = '0;
+  assign s_axi_wvalid   = 1'b0;
+  assign s_axi_bready   = 1'b0;
+  assign s_axi_arid     = '0;
+  assign s_axi_araddr   = '0;
+  assign s_axi_arlen    = '0;
+  assign s_axi_arsize   = 3'd3;
+  assign s_axi_arburst  = 2'b01;
+  assign s_axi_arlock   = 1'b0;
+  assign s_axi_arcache  = '0;
+  assign s_axi_arprot   = '0;
+  assign s_axi_arqos    = '0;
+  assign s_axi_arregion = '0;
+  assign s_axi_aruser   = '0;
+  assign s_axi_arvalid  = 1'b0;
+  assign s_axi_rready   = 1'b0;
+
+  // Test classes (one per scenario) and the base test.
+  `include "smu_tests.sv"
+
+  initial begin
+    uvm_config_db#(virtual smu_tb_if)::set(null, "*", "tb_vif", u_tb_if);
+    uvm_config_db#(virtual dtp_tb_if)::set(null, "*", "dtp_tb_vif", u_dtp_tb_if);
+    uvm_config_db#(virtual ocah_jtag_if)::set(null, "*", "jtag_vif", u_jtag_if);
+    run_test();
+  end
+`endif
 
 endmodule : smu_uvm_top
