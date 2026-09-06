@@ -363,41 +363,9 @@ sequence below applies only to streams firmware explicitly changes to 0.</p>
 </div>
 <div class="sect3">
 <h4 id="bring-up-sequence-at-a-glance"><a class="anchor" href="#bring-up-sequence-at-a-glance"></a><a class="link" href="#bring-up-sequence-at-a-glance">2.2.1. Bring-up sequence at a glance</a></h4>
-<div class="listingblock kroki-error">
+<div class="imageblock kroki">
 <div class="content">
-<pre>@startuml
-start
-:Stop dispatching new entropy-dependent operations;
-:Keep the Key Manager idle;
-:Choose and initialize entropy source;
-if (Use OCAH TRNG?) then (yes)
-  :Pulse shared TRNG reset;
-  :Set required EXT_TRNG_SRC_SEL bits to 0;
-  :Configure ESRC with generators off;
-  :Enable CSRNG and configure EDN auto mode;
-  :Enable approved ring oscillators;
-  if (ESRC boot health test passes?) then (yes)
-    :Apply FIPS_LOCK if required;
-    :Enable EDN and issue Instantiate;
-    if (Instantiate acknowledged successfully?) then (yes)
-    else (no)
-      :Record CSRNG/EDN status;
-      :Fail initialization;
-      stop
-    endif
-  else (no)
-    :Record ESRC health and alert status;
-    :Fail initialization;
-    stop
-  endif
-else (external)
-  :Keep required EXT_TRNG_SRC_SEL bits at 1;
-  :Validate the external TRNG;
-endif
-:Lock source selection if required;
-:Resume entropy-dependent operations;
-stop
-@enduml</pre>
+<img src="_images/ocah-trng-bring-up-ff5e754b0f3d7d0cb229e6dfeea0dd7f666c60f3.svg" alt="ocah-trng-bring-up">
 </div>
 </div>
 </div>
