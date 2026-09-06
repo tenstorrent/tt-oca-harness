@@ -37,10 +37,37 @@ KM_MBOX_WRITE_DATA = sym("KM_MAILBOX_SEP_SEP_WRITE_DATA_REG_OFFSET")
 KM_MBOX_WRITE_SEPARATOR = sym("KM_MAILBOX_SEP_SEP_WRITE_SEPARATOR_REG_OFFSET")
 KM_MBOX_READ_DATA = sym("KM_MAILBOX_SEP_SEP_READ_DATA_REG_OFFSET")
 KM_MBOX_STATUS = sym("KM_MAILBOX_SEP_SEP_STATUS_REG_OFFSET")
+KM_MBOX_IRQ_STATUS = sym("KM_MAILBOX_SEP_SEP_IRQ_STATUS_REG_OFFSET")
+KM_MBOX_CTRL = sym("KM_MAILBOX_SEP_SEP_CTRL_REG_OFFSET")
 
 # STATUS bit positions
+KM_STATUS_INBOUND_EMPTY = 0
+KM_STATUS_INBOUND_FULL = 1
 KM_STATUS_OUTBOUND_EMPTY = 2
+KM_STATUS_OUTBOUND_FULL = 3
+KM_STATUS_INBOUND_DEPTH_LSB = 4
+KM_STATUS_OUTBOUND_DEPTH_LSB = 12
+KM_STATUS_INBOUND_OVERFLOW = 20
+KM_STATUS_OUTBOUND_OVERFLOW = 21
+KM_STATUS_INBOUND_UNDERFLOW = 22
+KM_STATUS_OUTBOUND_UNDERFLOW = 23
+KM_STATUS_INBOUND_SEPARATOR = 24
 KM_STATUS_OUTBOUND_SEPARATOR = 25
+
+# SEP_IRQ_STATUS bit positions.
+KM_IRQ_OUTBOUND_DATA_AVAIL = 0
+KM_IRQ_INBOUND_SPACE_AVAIL = 1
+KM_IRQ_INBOUND_OVERFLOW = 2
+KM_IRQ_OUTBOUND_UNDERFLOW = 3
+KM_IRQ_FLUSHED_BY_KM = 4
+
+# SEP_CTRL bit positions.
+KM_CTRL_INBOUND_OVERFLOW_RESP = 0
+KM_CTRL_OUTBOUND_UNDERFLOW_RESP = 1
+KM_CTRL_FLUSH = 2
+
+# Both FIFOs are 16 entries deep (the KM firmware's own frame-size bound).
+KM_MBOX_DEPTH = 16
 
 # --- commands / responses / destinations ----------------------------------
 KM_CMD_STAT = 0x03
@@ -55,8 +82,11 @@ KM_RESP_KM_READY = 0x55
 # Return codes (signed int8 in the RESP_CMD payload).
 KM_RC_SUCCESS = 0
 KM_RC_FAILURE = -1
+KM_RC_HEADER_CRC = -2
+KM_RC_CMD_NOSEQ = -3
 KM_RC_INVALID_CMD = -4
 KM_RC_INVALID_LEN = -5
+KM_RC_PAYLOAD_CRC = -6
 KM_RC_INVALID_ARG = -7
 
 # The command-ID space is sparse: 0x00-0x04, 0x10-0x12 and 0x22-0x28 are the
@@ -158,17 +188,26 @@ class SepKmMailbox:
         separator to the final word, then bump the sequence number. Returns the
         command sequence number used (the firmware echoes it in the RESP_CMD)."""
         sent_seq = self.seq_num
+        words = self.build_frame(cmd_id, sent_seq, payload_words)
+        await self._post_words(words)
+        self.seq_num = (self.seq_num + 1) & 0xFF
+        return sent_seq
+
+    def build_frame(self, cmd_id: int, seq_num: int, payload_words: list[int]) -> list[int]:
+        """Build a well-formed frame: header, payload, and the payload CRC."""
         payload_len = len(payload_words)
-        words = [build_header(cmd_id, sent_seq, payload_len)]
+        words = [build_header(cmd_id, seq_num, payload_len)]
         words.extend(w & 0xFFFF_FFFF for w in payload_words)
         if payload_len > 0:
             words.append(crc32c(_payload_bytes(payload_words)))
+        return words
+
+    async def _post_words(self, words: list[int]) -> None:
+        """Write one frame, applying the separator to its final word."""
         for i, word in enumerate(words):
             if i == len(words) - 1:
                 await self._wr(KM_MBOX_WRITE_SEPARATOR, 1)
             await self._wr(KM_MBOX_WRITE_DATA, word)
-        self.seq_num = (self.seq_num + 1) & 0xFF
-        return sent_seq
 
     async def recv_frame(self, *, timeout: int = 200_000, poll_cycles: int = 20) -> list[int]:
         """Read a full response frame (words up to and including the one whose
@@ -383,15 +422,27 @@ class SepKmMailbox:
         self.log.info("KM CMD_KEY_LOAD ok: dest=0x%02x handle=0x%02x", dest, handle)
         return handle
 
-    async def key_transfer(self, *, handle: int, dest: int, timeout: int = 200_000) -> int:
-        """CMD_KEY_TRANSFER; returns the signed return code (0 = success)."""
+    async def key_transfer(
+        self, *, handle: int, dest: int, timeout: int = 200_000
+    ) -> tuple[int, int]:
+        """CMD_KEY_TRANSFER; returns (return_code, return_arg).
+
+        The argument is returned rather than dropped so a caller can check the
+        echo, as it does for generate, revoke and shred: on success it packs
+        the handle and the destination mask."""
         seq = await self.send_command(
             KM_CMD_KEY_TRANSFER, [handle & 0xFFFF_FFFF, dest & 0xFFFF_FFFF]
         )
-        rc, _arg = await self.recv_resp_cmd(KM_CMD_KEY_TRANSFER, seq, timeout=timeout)
+        rc, arg = await self.recv_resp_cmd(KM_CMD_KEY_TRANSFER, seq, timeout=timeout)
         await self.check_outbound_empty("POST-KEY-TRANSFER")
-        self.log.info("KM CMD_KEY_TRANSFER: handle=0x%02x dest=0x%02x rc=%d", handle, dest, rc)
-        return rc
+        self.log.info(
+            "KM CMD_KEY_TRANSFER: handle=0x%02x dest=0x%02x rc=%d arg=0x%08x",
+            handle,
+            dest,
+            rc,
+            arg,
+        )
+        return rc, arg
 
     async def check_outbound_empty(self, tag: str) -> None:
         status = await self._status()
@@ -447,3 +498,85 @@ class SepKmMailbox:
         rc, arg = await self.recv_resp_cmd(cmd_id, seq, timeout=timeout)
         await self.check_outbound_empty(f"POST-RAW-0x{cmd_id:02x}")
         return rc, arg
+
+    async def send_bad_header_crc(self, cmd_id: int, *, timeout: int = 200_000) -> tuple[int, int]:
+        """Send a frame whose header CRC-8 is wrong; return (rc, arg).
+
+        The KM rejects this before it validates the sequence number, so its
+        expected sequence counter does NOT advance. The host counter is rolled
+        back to match, otherwise every later command would be refused for the
+        wrong reason."""
+        seq_used = self.seq_num
+        words = self.build_frame(cmd_id, seq_used, [])
+        words[0] ^= 1 << 24  # flip a bit inside the header CRC-8 field
+        await self._post_words(words)
+        rc, arg = await self.recv_resp_cmd(cmd_id, seq_used, timeout=timeout)
+        await self.check_outbound_empty("POST-BAD-HEADER-CRC")
+        return rc, arg
+
+    async def send_bad_seq(self, cmd_id: int, *, timeout: int = 200_000) -> tuple[int, int]:
+        """Send a well-formed frame carrying the wrong sequence number.
+
+        Rejected at the sequence check, which is also before the counter
+        advances, so the host counter is left where it was."""
+        wrong = (self.seq_num + 7) & 0xFF
+        await self._post_words(self.build_frame(cmd_id, wrong, []))
+        rc, arg = await self.recv_resp_cmd(cmd_id, wrong, timeout=timeout)
+        await self.check_outbound_empty("POST-BAD-SEQ")
+        return rc, arg
+
+    async def send_bad_payload_crc(
+        self, cmd_id: int, payload_words: list[int], *, timeout: int = 200_000
+    ) -> tuple[int, int]:
+        """Send a frame whose payload CRC-32C is wrong; return (rc, arg).
+
+        This one is rejected AFTER the sequence check, so the KM's counter has
+        advanced and the host's must too -- the opposite of the two above."""
+        sent_seq = self.seq_num
+        words = self.build_frame(cmd_id, sent_seq, payload_words)
+        words[-1] ^= 0x0000_0001
+        await self._post_words(words)
+        self.seq_num = (self.seq_num + 1) & 0xFF
+        rc, arg = await self.recv_resp_cmd(cmd_id, sent_seq, timeout=timeout)
+        await self.check_outbound_empty("POST-BAD-PAYLOAD-CRC")
+        return rc, arg
+
+    # --- raw register access, for grading the mailbox as a register surface ---
+    async def read_status(self) -> int:
+        return await self._rd(KM_MBOX_STATUS)
+
+    async def read_irq_status(self) -> int:
+        return await self._rd(KM_MBOX_IRQ_STATUS)
+
+    async def write_irq_status(self, value: int) -> None:
+        await self._wr(KM_MBOX_IRQ_STATUS, value)
+
+    async def write_ctrl(self, value: int) -> None:
+        await self._wr(KM_MBOX_CTRL, value)
+
+    async def read_ctrl(self) -> int:
+        return await self._rd(KM_MBOX_CTRL)
+
+    async def read_data_raw(self) -> tuple[bool, int]:
+        """Read SEP_READ_DATA and report (response_ok, data) without raising.
+
+        The underflow leg needs the response itself as evidence, so this cannot
+        go through the raising helper.
+        """
+        seq = SepAxiAccessSeq(
+            "km_mbox_rd_raw", op=SepAxiOp.READ, addr=self.base + KM_MBOX_READ_DATA, size=2
+        )
+        await self.test.start_seq(seq)
+        return seq.resp_ok, seq.rdata
+
+    async def write_data_raw(self, value: int) -> bool:
+        """Write SEP_WRITE_DATA and report whether the response was OKAY."""
+        seq = SepAxiAccessSeq(
+            "km_mbox_wr_raw",
+            op=SepAxiOp.WRITE,
+            addr=self.base + KM_MBOX_WRITE_DATA,
+            wdata=value,
+            size=2,
+        )
+        await self.test.start_seq(seq)
+        return seq.resp_ok

@@ -85,6 +85,64 @@ _start:
     ori   x5, x5, 0x1           # CHK-SLOT
 slot_done:
 
+    # --- key-data write to a write-locked slot must raise SLVERR ---
+    # The extent check below proves SLVERR for an out-of-map ADDRESS, which is
+    # the register-decode path. This is the lock path: a legal key-entry address
+    # on a slot whose lock_write is set. IRQ_STATUS bits are sticky, so clear
+    # and confirm clean first or an earlier fault would satisfy it.
+    lui   x9, 0x14
+    addi  x9, x9, 0xC           # IRQ_STATUS
+    addi  x11, x0, 0x30         # AXI_SLVERR | AXI_DECERR
+    sw    x11, 0(x9)
+    lw    x7, 0(x9)
+    andi  x7, x7, 0x30
+    bnez  x7, lockwr_done
+
+    lui   x12, 0x12             # KEY_ENTRY base
+    slli  x13, x3, 6            # slot * 0x40
+    add   x12, x12, x13         # KEY_ENTRY[slot].word0
+    lui   x13, 0xC0DE1
+    sw    x13, 0(x12)           # refused: slot is write-locked
+    addi  x14, x0, 32
+6:  lw    x7, 0(x9)
+    andi  x11, x7, 0x30
+    bnez  x11, lockwr_ok
+    addi  x14, x14, -1
+    bnez  x14, 6b
+    j     lockwr_done
+lockwr_ok:
+    ori   x5, x5, 0x200         # CHK-LOCKWR
+    addi  x11, x0, 0x30
+    sw    x11, 0(x9)            # W1C for the next check
+lockwr_done:
+
+    # --- key-data read of a lock_use slot returns SLVERR and zero data ---
+    addi  x7, x0, 0x2           # LOCK_USE (woset, joins lock_write)
+    slli  x11, x3, 2
+    add   x11, x8, x11
+    sw    x7, 0(x11)
+    lw    x7, 0(x11)
+    andi  x7, x7, 0x2
+    beqz  x7, lockuse_done      # the lock did not take: prove nothing
+
+    lw    x7, 0(x9)
+    andi  x7, x7, 0x30
+    bnez  x7, lockuse_done      # must start clean
+    lw    x13, 0(x12)           # refused read; data must be forced to zero
+    addi  x14, x0, 32
+7:  lw    x7, 0(x9)
+    andi  x11, x7, 0x30
+    bnez  x11, lockuse_err
+    addi  x14, x14, -1
+    bnez  x14, 7b
+    j     lockuse_done
+lockuse_err:
+    bnez  x13, lockuse_done     # SLVERR alone is not enough: data must be 0
+    ori   x5, x5, 0x400         # CHK-LOCKUSE
+    addi  x11, x0, 0x30
+    sw    x11, 0(x9)
+lockuse_done:
+
     # --- past last KPV register, still in the 8 KB window ---
     # PeakRDL --err-if-bad-addr answers SLVERR; IRQ_STATUS is sticky on the
     # B-handshake pulse, so poll a bounded number of times.
@@ -144,13 +202,14 @@ extent_done:
     lw    x13, 0(x14)
     addi  x15, x0, 1
     sll   x15, x15, x4
-    and   x13, x13, x15
-    beqz  x13, lock_done
+    bne   x13, x15, lock_done   # exactly this region, not merely including it
     ori   x5, x5, 0x8           # CHK-VIOL
 
     lw    x13, 0(x9)            # IRQ_STATUS
-    andi  x13, x13, 0x8         # SRAM_WRITE_LOCK_ERR
-    beqz  x13, lock_done
+    andi  x15, x13, 0x8         # SRAM_WRITE_LOCK_ERR must be set
+    beqz  x15, lock_done
+    andi  x15, x13, 0x7         # and no ROM/SRAM parity or ROM-write error
+    bnez  x15, lock_done
     ori   x5, x5, 0x10          # CHK-IRQ
 
     addi  x13, x0, -1
@@ -196,6 +255,27 @@ seal_erased:
     addi  x12, x0, 0x3
     bne   x11, x12, seal_done   # retired: write stays locked, use becomes locked
     ori   x5, x5, 0x80          # CHK-RETIRE
+
+    # Retirement is stated to hold until warm reset. Erase the retired slot
+    # again: it must come back retired, not freed. Without this the retire is
+    # only shown as a one-shot transition, not as a sticky property.
+    addi  x7, x0, 0x4           # ERASE
+    sw    x7, 0(x6)
+    addi  x12, x0, 256
+8:  lw    x7, 0(x6)
+    andi  x11, x7, 0x4
+    beqz  x11, retire_stuck
+    addi  x12, x12, -1
+    bnez  x12, 8b
+    j     seal_done
+retire_stuck:
+    lw    x7, 0(x6)
+    andi  x11, x7, 0x3
+    addi  x12, x0, 0x3
+    bne   x11, x12, seal_done   # a second erase must not release the slot
+    addi  x11, x0, 1
+    slli  x11, x11, 12
+    or    x5, x5, x11           # CHK-RETSTICK
 seal_done:
 
     # --- erase an unsealed slot: it must come back reusable ---
@@ -203,6 +283,19 @@ seal_done:
     andi  x6, x6, 0x3F          # free slot
     slli  x6, x6, 2
     add   x6, x8, x6            # CTRL[free_slot]
+
+    # Preload key data BEFORE marking the slot, while writes are still allowed.
+    # CHK-FREE below grades CTRL bookkeeping only; this is what shows the erase
+    # actually overwrites the stored words rather than just clearing flags.
+    lui   x13, 0x12
+    srli  x14, x2, 24
+    andi  x14, x14, 0x3F
+    slli  x14, x14, 6
+    add   x13, x13, x14         # KEY_ENTRY[free_slot]
+    lui   x14, 0x5A5A5
+    addi  x14, x14, 0x5A5
+    sw    x14, 0(x13)           # word 0
+    sw    x14, 0x3C(x13)        # word 15
 
     # Mark the slot first. Its reset value is already 0, so erasing an
     # untouched slot and finding CTRL clear would be satisfied by an erase that
@@ -228,14 +321,65 @@ free_erased:
     andi  x11, x7, 0xF
     bnez  x11, free_done        # unsealed erase clears CTRL entirely
     ori   x5, x5, 0x100         # CHK-FREE
+
+    # The erase fills through an LFSR that advances per word, so both preloaded
+    # words must have changed AND must now differ from each other. A stuck-at
+    # fill, or a fill that never ran, fails.
+    lw    x11, 0(x13)
+    lw    x12, 0x3C(x13)
+    beq   x11, x14, free_done   # word 0 unchanged
+    beq   x12, x14, free_done   # word 15 unchanged
+    beq   x11, x12, free_done   # both words identical: not an advancing fill
+    addi  x11, x0, 1
+    slli  x11, x11, 11
+    or    x5, x5, x11           # CHK-ERASEDATA
 free_done:
 
-    # Echo the slot the host asked for into bits [15:10]. Without it the result
-    # word is the same constant for every seed, so a config word that never
-    # arrived could not be told from one that did.
-    slli  x7, x3, 10
-    or    x5, x5, x7
-    lui   x6, 0xA11A0           # 0xA11A0000
+    # --- IRQ_SET drives IRQ_STATUS, and IRQ_ENABLE does not gate the status ---
+    # IRQ_SET is the architected software-inject path: each field pulses the
+    # matching IRQ_STATUS bit so an ISR can be exercised without the hardware
+    # condition. DRBG_ERR is used here because it is the one status bit whose
+    # own fault source has no frontdoor from the SEP side. This grades the
+    # set/W1C plumbing and the aggregation ONLY -- it does not prove a DRBG
+    # fault is detected, and must not be recorded as coverage of that source.
+    addi  x11, x0, 0x40         # DRBG_ERR
+    sw    x11, 0(x9)            # W1C first: the bit is sticky
+    lw    x7, 0(x9)
+    andi  x7, x7, 0x40
+    bnez  x7, irqset_done       # must start clean
+
+    lui   x12, 0x14
+    addi  x12, x12, 0x20        # IRQ_SET 0x00014020
+    addi  x11, x0, 0x40
+    sw    x11, 0(x12)           # software-inject DRBG_ERR
+    lw    x7, 0(x9)
+    andi  x7, x7, 0x40
+    beqz  x7, irqset_done
+
+    addi  x11, x0, 0x40
+    sw    x11, 0(x9)            # W1C it back down
+    lw    x7, 0(x9)
+    andi  x7, x7, 0x40
+    bnez  x7, irqset_done
+    addi  x11, x0, 1
+    slli  x11, x11, 13
+    or    x5, x5, x11           # CHK-IRQSET
+irqset_done:
+
+    # Fold the whole received config word into eight bits and echo it at
+    # [23:16]. Echoing only the slot would leave the region and the seal/free
+    # pair unproven: a ROM that ignored them would produce an identical result
+    # word. The fold covers every field the host packed.
+    srli  x6, x2, 8
+    xor   x6, x6, x2
+    srli  x7, x2, 16
+    xor   x6, x6, x7
+    srli  x7, x2, 24
+    xor   x6, x6, x7
+    andi  x6, x6, 0xFF
+    slli  x6, x6, 16
+    or    x5, x5, x6
+    lui   x6, 0xA1000           # magic 0xA1 in [31:24]
     or    x5, x5, x6
     sw    x5, 0(x10)            # SRAM word0
 2:  j     2b

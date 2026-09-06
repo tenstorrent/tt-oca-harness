@@ -25,17 +25,23 @@ from seq_lib.sep_km_mem_smoke_seq import sep_km_release_seq
 N_SLOTS = 64
 # Region 0 holds the result word; region 15 hangs in the KM IP SRAM-lock test.
 LEGAL_REGIONS = tuple(r for r in range(1, 31) if r != 15)
-RESULT_MAGIC = 0xA11A0000
-FLAG_SLOT = 0x1
-FLAG_EXTENT = 0x2
-FLAG_DROP = 0x4
-FLAG_VIOL = 0x8
-FLAG_IRQ = 0x10
-FLAG_W1C = 0x20
-SLOT_ECHO_SHIFT = 10
-FLAG_SEAL = 0x40
-FLAG_RETIRE = 0x80
-FLAG_FREE = 0x100
+# Result word: magic in [31:24], a fold of the received config word in [23:16],
+# and the checker flags in [15:0].
+RESULT_MAGIC = 0xA1
+FLAG_SLOT = 0x0001
+FLAG_EXTENT = 0x0002
+FLAG_DROP = 0x0004
+FLAG_VIOL = 0x0008
+FLAG_IRQ = 0x0010
+FLAG_W1C = 0x0020
+FLAG_SEAL = 0x0040
+FLAG_RETIRE = 0x0080
+FLAG_FREE = 0x0100
+FLAG_LOCKWR = 0x0200
+FLAG_LOCKUSE = 0x0400
+FLAG_ERASEDATA = 0x0800
+FLAG_RETSTICK = 0x1000
+FLAG_IRQSET = 0x2000
 FLAG_ALL = (
     FLAG_SLOT
     | FLAG_EXTENT
@@ -46,7 +52,25 @@ FLAG_ALL = (
     | FLAG_SEAL
     | FLAG_RETIRE
     | FLAG_FREE
+    | FLAG_LOCKWR
+    | FLAG_LOCKUSE
+    | FLAG_ERASEDATA
+    | FLAG_RETSTICK
+    | FLAG_IRQSET
 )
+
+
+def cfg_fold(cfg_word: int) -> int:
+    """The eight-bit fold of the config word that the ROM echoes back.
+
+    Every field the host packs feeds this, so a ROM that ignored the region or
+    either seal-walk slot returns a different value. Echoing only the slot
+    would leave three of the four seeded operands unproven.
+    """
+    folded = cfg_word ^ (cfg_word >> 8) ^ (cfg_word >> 16) ^ (cfg_word >> 24)
+    return folded & 0xFF
+
+
 KM_MBOX_BASE = sym("KM_MAILBOX_SEP_REG_MAP_BASE_ADDR")
 
 
@@ -75,10 +99,7 @@ class SepKmVaultCfg:
             | ((self.seal_slot & 0x3F) << 16)
             | ((self.free_slot & 0x3F) << 24)
         )
-        # The ROM echoes the slot it received into bits [15:10]. Without it the
-        # expected word would be the same constant for every seed, and a config
-        # word that never arrived could not be told from one that did.
-        self.expect = RESULT_MAGIC | FLAG_ALL | ((self.slot & 0x3F) << SLOT_ECHO_SHIFT)
+        self.expect = (RESULT_MAGIC << 24) | (cfg_fold(self.cfg_word) << 16) | FLAG_ALL
 
     @staticmethod
     def _pick_free(rng, taken: set[int]) -> int:

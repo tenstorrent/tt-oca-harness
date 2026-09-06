@@ -38,9 +38,11 @@
 #   pass B: one {index, value} pair for the first logical index under the
 #           second key
 #   the round-trip word, the key register read back while still UNLOCKED, the
-#   same register read after the sticky lock, and the post-lock round-trip word
+#   same register read after the sticky lock, the post-lock round-trip word,
+#   then a round-trip taken AFTER attempting to rewrite both the key and the
+#   enable, and finally KPV_SCRAMBLER_CTRL itself
 #
-# That is 13 words on the healthy path (1 + 2*3 + 2 + 4) into a 16-deep
+# That is 15 words on the healthy path (1 + 2*3 + 2 + 6) into a 16-deep
 # outbound FIFO, and this image does not check for space before writing. The
 # margin only holds while the count is 3, so the host raises on a wrong count
 # before it drains the pair list -- see the collector in
@@ -251,6 +253,32 @@ found_b:
     addi  x5, x0, 1
     sw    x5, 0x4(x1)
     sw    x7, 0x0(x1)           # post-lock round-trip word
+
+    # The lock's DOCUMENTED contract is that the key and the enable can no
+    # longer be modified. Try both. A third key is derived from key B by
+    # inversion so it needs no extra config word, and it is distinct from key B
+    # because no 32-bit value equals its own complement.
+    lui   x5, 0x13
+    addi  x5, x5, 0x100
+    xori  x4, x12, -1
+    sw    x4, 0(x5)             # refused: key is write-locked
+    lui   x5, 0x13
+    addi  x5, x5, 0x104
+    sw    x0, 0(x5)             # refused: enable is write-locked
+
+    slli  x4, x11, 2
+    add   x4, x2, x4
+    lw    x7, 0(x4)
+    addi  x5, x0, 1
+    sw    x5, 0x4(x1)
+    sw    x7, 0x0(x1)           # round-trip after both refused writes
+
+    lui   x5, 0x13
+    addi  x5, x5, 0x104
+    lw    x7, 0(x5)
+    addi  x5, x0, 1
+    sw    x5, 0x4(x1)
+    sw    x7, 0x0(x1)           # KPV_SCRAMBLER_CTRL after the refused write
 
 halt:
     j     halt

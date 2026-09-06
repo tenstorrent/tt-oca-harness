@@ -569,11 +569,15 @@ later test could hit it too — credit once, at the earliest phase that proved i
 
 |KM sideload consume (AES/HMAC/KMAC/OTBN)
 |PROVEN
-|`sep_km_*_sideload_kat_test`, `sep_drbg_real_sink_multi_km_aes_test`. Fail-closed START without a valid key, and post-error recovery, are Phase 3.
+|`sep_km_*_sideload_kat_test`, `sep_drbg_real_sink_multi_km_aes_test`. Fail-closed START without a valid key is proven on `sep_km_command_set_rand_test` CHK-GONE: after the engine's key is shredded it produces no output in a bounded window. Post-error recovery is Phase 3.
 
 |KM mailbox command set
 |PROVEN
-|`sep_km_command_set_rand_test`. Generate, transfer, revoke and engine-shred on the real KM firmware, with AES as the consume witness, plus illegal-command and bad-length refusals. A DRBG fault raised during a command is Phase 3: its status bit is on the Key Manager's own bus, which answers DECERR from the SEP fabric, so it has no frontdoor.
+|`sep_km_command_set_rand_test`. Generate, transfer, revoke and engine-shred on the real KM firmware, with AES as the consume witness; the three framing rejections with the values they carry; illegal-command and bad-length refusals; and a shredded engine refusing to start. The DRBG fault SOURCE stays Phase 3 -- its organic conditions cannot be provoked from the SEP fabric and the KM halts rather than answering -- but the interrupt plumbing for that bit is graded on the vault vehicle through the architected `IRQ_SET` inject. The mailbox's own register surface is a separate entry, `sep_km_mailbox_protocol_rand_test`.
+
+|KM mailbox protocol (FIFO status, over/underflow, flush)
+|GAP
+|`sep_km_mailbox_protocol_rand_test`, decided as its own entry and not yet coded. The command-set vehicle uses the mailbox as a transport and reaches 4 of its 7 SEP-side registers and 2 of the 12 STATUS bits; the rest need an empty-FIFO read and a deliberate overrun, which corrupt the frame in flight.
 
 |KM key/policy vault (extent + write-lock + seal)
 |PROVEN
@@ -4400,24 +4404,34 @@ error path works.
 |Checker |Contract
 |CHK-SLOT
 |`CTRL.lock_write` sticks on slots 0, the seed slot, and 63.
+|CHK-LOCKWR
+|A key-data write to a write-locked slot raises AXI SLVERR. This is the LOCK path, not the decode path CHK-EXTENT grades: a legal key-entry address on a locked slot. The sticky error bits are cleared and confirmed clean first, so an earlier fault cannot satisfy it.
+|CHK-LOCKUSE
+|A key-data read of a `lock_use` slot raises SLVERR and returns zero data. Both halves are required: the refusal alone would not show the data path is also forced.
 |CHK-EXTENT
 |Store to `0x13108` sets `IRQ_STATUS` AXI_SLVERR or AXI_DECERR.
 |CHK-DROP
 |Write to the locked SRAM region is dropped (readback unchanged).
 |CHK-VIOL
-|Matching `SRAM_WRITE_LOCK_VIOLATION` bit is set.
+|`SRAM_WRITE_LOCK_VIOLATION` reads EXACTLY the locked region's bit. Compared whole rather than masked, so a decoder that set every region's bit fails.
 |CHK-IRQ
-|`IRQ_STATUS.SRAM_WRITE_LOCK_ERR` is set.
+|`IRQ_STATUS.SRAM_WRITE_LOCK_ERR` is set and no ROM/SRAM parity or ROM-write error is raised alongside it.
 |CHK-W1C
 |Violation and IRQ bits read back 0 after W1C.
 |CHK-SEAL
 |One `CTRL` write on the seed's seal slot sets `seal` and raises `lock_write` with it.
 |CHK-RETIRE
 |Erasing that sealed slot leaves it retired: `lock_write` held and `lock_use` gained.
+|CHK-RETSTICK
+|A SECOND erase of the retired slot leaves it retired. Retirement is stated to hold until warm reset, so it is graded as a sticky property rather than a one-shot transition.
 |CHK-FREE
 |An unsealed slot is marked with `lock_write`, and the erase clears `CTRL` entirely, so the slot is reusable. The mark matters: the reset value is already clear, so without it a no-op erase would pass. The contrast is the point: the same erase, one sealed and one not.
+|CHK-ERASEDATA
+|The erase overwrites the stored key words, not just the CTRL bookkeeping. Two words are preloaded before the slot is marked; after the erase both differ from the preload AND from each other, so a fill that never ran or that is stuck at one value fails.
+|CHK-IRQSET
+|`IRQ_SET.DRBG_ERR_SET` raises `IRQ_STATUS.DRBG_ERR`, and W1C clears it. This grades the software-inject path and the status plumbing ONLY -- it is not coverage of the DRBG fault source, and must not be recorded as such.
 |CHK-RANDCFG
-|Slot, region and the seal/free slot pair come from the seed; word0 matches `FLAG_ALL`.
+|The ROM echoes an eight-bit fold of the WHOLE config word, so all four seeded operands are proven received. Echoing only the slot would let a ROM that ignored the region or either seal-walk slot produce an identical result word.
 |===
 
 *Aperture*: the vault is on the KM CPU bus, so the ROM evaluates these
@@ -4425,9 +4439,9 @@ contracts and the host reads one summary word from KM SRAM. That indirection is
 real and is stated here rather than left implied: the host observes a result
 word, not the individual registers. What keeps it from being a firmware
 self-report is the seeded configuration -- the slot, region and slot pair are
-chosen by the host, and the result word must equal the value those choices
-predict, so a firmware that reported success unconditionally would still have to
-have used the host's operands.
+chosen by the host, and the result word carries a fold of the whole config word
+the ROM received, so a firmware that reported success unconditionally would
+still have to have consumed every one of the host's operands.
 
 '''''
 
@@ -4472,8 +4486,8 @@ out-of-policy destination, and the undefined command IDs, which always include
 the four IDs immediately outside the defined runs.
 
 *Scope*: sideload KATs stay consume proofs; this vehicle owns the mailbox command
-set. If mailbox protocol RANDCFG does not fit, add
-`sep_km_mailbox_protocol_rand_test` rather than overload this entry. The seal
+set. The plan left open whether the mailbox PROTOCOL folds in here or splits
+out. It splits out: see `sep_km_mailbox_protocol_rand_test`. The seal
 walk is on `sep_km_key_policy_vault_test`, not here: no mailbox command seals a
 slot, so over this surface an erase always frees.
 
@@ -4504,6 +4518,10 @@ slot, so over this surface an erase always frees.
 |Every seeded undefined command ID returns the invalid-command code.
 |CHK-LEN
 |A defined command carrying the wrong payload length returns the invalid-length code.
+|CHK-FRAME
+|The three framing rejections, each with the value it carries: a corrupt header CRC-8 returns RC_HEADER_CRC with the CRC the KM computed, a wrong sequence number returns RC_CMD_NOSEQ with the number it expected, and a corrupt payload CRC-32C returns RC_PAYLOAD_CRC. The sequence-counter side effects differ between the three and are handled in the driver.
+|CHK-GONE
+|A shredded engine refuses to start. After a final `CMD_ENGINE_SHRED` the AES produces no output within a bounded window, which is the only frontdoor evidence the shred reached the key: the engine key registers are write-only. Runs last, because an engine parked waiting for a key stays parked.
 |CHK-ALIVE
 |After every refusal `CMD_STAT` succeeds and reports no latched recoverable error. The second half is what gives CHK-DEST and CHK-CLOSED their meaning: while a recoverable fault is pending the KM refuses every key command with the same failure code those two expect, before it looks at the arguments at all, so a faulted KM would otherwise satisfy both without the policy they name being exercised.
 |===
@@ -4516,13 +4534,59 @@ wrong reason does not read as a pass. The two known keys are checked to encrypt
 the plaintext differently before either is used, so CHK-SHRED's
 before-and-after comparison cannot be satisfied by two identical goldens.
 
-*Not claimed*: a DRBG fault raised during a command. Its status bit is on the
-Key Manager's own bus, which answers DECERR from the SEP fabric, and at SEP
-level such a fault is unrecoverable — the KM emits an unsolicited fault response
-and halts — so it is neither a readable status nor a return code from here.
-Phase 3. The shredded key material itself is also not observed: the engine key
-share registers are write-only and read as zero, so the shred is proven by its
-return code plus the engine re-keying correctly afterwards.
+*Not claimed*: the DRBG fault SOURCE. The organic timeout and AXI-Stream error
+conditions cannot be provoked from the SEP fabric, and at SEP level such a fault
+is unrecoverable -- the KM emits an unsolicited fault response and halts -- so it
+is neither a readable status nor a return code from here. The interrupt plumbing
+for that same bit IS reachable and is graded on the vault vehicle's CHK-IRQSET,
+via the architected `IRQ_SET.DRBG_ERR_SET` inject; the two must not be conflated,
+and CHK-IRQSET is not coverage of the source.
+
+The mailbox is a transport here, not the subject. Its register surface -- depth,
+full, the four overflow/underflow stickies, `IRQ_STATUS`, and `SEP_CTRL`'s
+response modes and flush -- is owned by `sep_km_mailbox_protocol_rand_test`.
+
+'''''
+
+[[sep_km_mailbox_protocol_rand_test]]
+===== `sep_km_mailbox_protocol_rand_test`
+
+*Run mode*: `no_cpu`, `+skip_fuse_sense`, `+km_rom_hex` (real KM firmware)
+
+*Phase*: 2 (decided, not yet coded)
+
+*Bucket*: Key Manager vault
+
+*Objective*: the SEP-side KM mailbox as a REGISTER surface rather than a
+transport. `STATUS` depth and full/empty, the four sticky overflow and underflow
+bits, `IRQ_STATUS`, and `SEP_CTRL`'s two response modes and its flush.
+Grade: GAP, not coded.
+
+*Why it is its own entry*: the plan left this conditional -- fold the protocol
+into the command set, or split it out. It splits out, and the reason is
+measurable rather than stylistic. `sep_km_command_set_rand_test` reaches 4 of
+the 7 SEP-side registers and 2 of the 12 `STATUS` bits, because a transport only
+ever touches what a well-formed exchange needs. Reaching the rest means reading
+an empty FIFO and overrunning a full one, and both corrupt whatever frame is in
+flight: they cannot share a leaf whose subject is the command stream. An attempt
+to fold them in was made and withdrawn.
+
+*Test Procedure*: T.B.D. -- yet to code.
+
+*Checkers (planned)*: an empty-FIFO read answers SLVERR and latches
+`outbound_underflow` in both `STATUS` and `IRQ_STATUS`; setting
+`SEP_CTRL.outbound_underflow_resp` turns that same access into OKAY with the bit
+still latching, so the response and the flag are shown to be independently
+controlled; an overrun latches `inbound_full` and `inbound_overflow` with the
+depth field reading full; `CTRL.FLUSH` drains both FIFOs, zeroes the depth and
+self-clears.
+
+*Known obstacles, from the withdrawn attempt*: the negative accesses must be
+marked `expect_error` or the environment scoreboard fails them as real errors.
+A `SEP_CTRL` write immediately after a deliberate underflow was itself refused
+even though the register is `sw=rw` -- that needs understanding before the
+sequence above is written, and it may be the KM's own fault response rather than
+the register.
 
 '''''
 
@@ -4674,6 +4738,8 @@ known-zero. The zero fill is *setup*, not a wipe security checker.
 |After the sticky lock the same register reads zero.
 |CHK-LOCKRT
 |The round-trip still recovers the plaintext after the lock, so the hardware kept the key it was using.
+|CHK-SWWEL
+|The lock's DOCUMENTED contract: after it, a write of a different key and a write clearing ENABLE are both refused -- the round-trip still returns the plaintext and ENABLE still reads set. CHK-LOCK grades behaviour the specification does not state; this grades the behaviour it does.
 |===
 
 *Anti-vacuity*: "exactly three" is the load-bearing quantifier, not "at least
@@ -4789,8 +4855,9 @@ Nothing in this section is scheduled work until the UVM bench exists.
 |Phase 2 tests |48
 |Cocotb total |79
 |Phase 3 |T.B.D.
-|Iconic scorecard rows |53 in-scope: 52 PROVEN, 1 GAP (see <<iconic-scorecard>>)
+|Iconic scorecard rows |54 in-scope: 52 PROVEN, 2 GAP (see <<iconic-scorecard>>)
 |Phase 2 parked, coded and failing |1 (per-IP reset isolation; graded GAP, parked on an RTL fix)
+|Phase 2 decided, not yet coded |1 (KM mailbox protocol; graded GAP, split out of the command-set entry)
 |===
 
 === Regression Groups

@@ -127,6 +127,8 @@ args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
 name = "sep_km_key_policy_vault_test"
 module = "km.sep_km_key_policy_vault_test"
 seed = 1
+# Randomized stimulus: walk more than one seed in a regression.
+reseed = 3
 timeout_sec = 1800
 tags = ["km", "kpv", "sram_lock", "subsystem"]
 run_modes = ["no_cpu"]
@@ -145,6 +147,8 @@ name = "sep_km_command_set_rand_test"
 module = "km.sep_km_command_set_rand_test"
 firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
+# Randomized stimulus: walk more than one seed in a regression.
+reseed = 3
 timeout_sec = 7200
 tags = ["km", "mailbox", "kpv", "subsystem", "entropy"]
 run_modes = ["no_cpu"]
@@ -160,6 +164,8 @@ args = ["+esrc_noise_force", "+km_rom_hex=rom_main.rom.parhex"]
 name = "sep_km_crc_pcpi_kat_test"
 module = "km.sep_km_crc_pcpi_kat_test"
 seed = 1
+# Randomized stimulus: walk more than one seed in a regression.
+reseed = 3
 timeout_sec = 1800
 tags = ["km", "crc", "pcpi", "subsystem"]
 run_modes = ["no_cpu"]
@@ -176,6 +182,8 @@ args = ["+skip_fuse_sense", "+km_rom_hex=km_rom_crc.parhex"]
 name = "sep_km_kpv_scrambler_test"
 module = "km.sep_km_kpv_scrambler_test"
 seed = 1
+# Randomized stimulus: walk more than one seed in a regression.
+reseed = 3
 timeout_sec = 1800
 tags = ["km", "kpv", "scrambler", "subsystem"]
 run_modes = ["no_cpu"]
