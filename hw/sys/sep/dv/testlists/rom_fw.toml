@@ -611,10 +611,9 @@ args = [
 #                        takes the SECONDARY arm, which reaches the same SMC-SRAM
 #                        wait loop and would look almost identical -- so the test
 #                        forbids BOOT_SECONDARY rather than trusting the strap.
-#   +sep_straps_hi       seeds STRAPS_HI[23] (boot_recovery). 0x00800000 sets that
-#                        bit and no other; STRAPS_HI[24] is bl0_pll_clk and
-#                        STRAPS_HI[29] is rotate_update, neither of which belongs
-#                        in this scenario.
+#   +sep_straps_lo       seeds STRAPS_LO[19] (boot_recovery). 0x00080000 sets
+#                        that bit and no other; the testbench ORs it with
+#                        primary_chiplet from +sep_boot_from_spi.
 #   +sep_smc_mem_hex     stages the manifest+BL1 image at the SMC-SRAM base, which
 #                        is where the recovery path fetches from.
 #
@@ -637,14 +636,14 @@ run_modes = ["cpu"]
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
-  "+sep_straps_hi=00800000",
+  "+sep_straps_lo=00080000",
   "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/smc_mem.hex",
 ]
 
 [[tests]]
 # ROTATE_UPDATE strap: the primary and backup manifest slots swap order.
 #
-# +sep_straps_hi=20000000 is STRAPS_HI[29] and nothing else. The test erases the
+# +sep_straps_hi=04000000 is STRAPS_HI[26] and nothing else. The test erases the
 # 0x1000 slot, so the only bootable image is at 0x41000 -- but that alone would
 # NOT prove rotation, because an unrotated ROM would reject 0x1000 as BAD_MAGIC
 # and then boot 0x41000 anyway. The evidence is address ORDER (asserted on the
@@ -665,7 +664,7 @@ run_modes = ["cpu"]
 args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
-  "+sep_straps_hi=20000000",
+  "+sep_straps_hi=04000000",
 ]
 
 [[tests]]

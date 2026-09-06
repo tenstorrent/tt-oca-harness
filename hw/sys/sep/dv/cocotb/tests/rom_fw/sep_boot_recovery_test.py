@@ -11,13 +11,11 @@ three-way branch and this testcase pins the middle arm::
     else if (straps.primary_chiplet && straps.boot_recovery)   -> BOOT_RECOVERY
     else                                                       -> BOOT_SECONDARY
 
-THE STRAP BITS ARE NOT THE ONES IN THE REFERENCE. In this design
-``primary_chiplet`` is ``STRAPS_LO[25]`` and ``boot_recovery`` is
-``STRAPS_HI[23]`` (``sep_smc_interface.h:78,81``) -- two different words. The
-testbench seeds the low word from ``+sep_boot_from_spi`` and the high word from
-``+sep_straps_hi``, and the ROM echoes both back (``boot_straps.c:29-34``), so
-``STRAPS_HI=0x00800000`` plus ``STRAP primary=1`` is direct evidence that the
-combination under test is the one the ROM saw.
+The captured-GPIO contract places ``primary_chiplet`` at ``STRAPS_LO[25]`` and
+``boot_recovery`` at ``STRAPS_LO[19]``. The testbench combines
+``+sep_boot_from_spi`` and ``+sep_straps_lo`` in that word, and the ROM echoes it
+back, so ``STRAPS_LO=0x02080000`` plus ``STRAP primary=1 recovery=1`` is direct
+evidence that the ROM saw the intended combination.
 
 WHY BOTH ARMS IT IS NOT MUST BE FORBIDDEN. ``BOOT_RECOVERY`` and
 ``BOOT_SECONDARY`` converge immediately: both set a boot_mode and then fall into
@@ -41,11 +39,11 @@ import pyuvm
 from env import sep_spi_slot_evidence as ev
 from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
 
-# Must match +sep_straps_hi in the testlist entry. sep_smc_interface.h:81.
-_STRAPS_HI_RECOVERY = 0x0080_0000
-_BOOT_RECOVERY_BIT_HI = 23
+# Must match +sep_straps_lo combined with +sep_boot_from_spi in the testlist.
+_STRAPS_LO_RECOVERY = 0x0208_0000
+_BOOT_RECOVERY_BIT_LO = 19
 
-_STRAPS_HI_ECHO = f"STRAPS_HI=0x{_STRAPS_HI_RECOVERY:08x}"
+_STRAPS_LO_ECHO = f"STRAPS_LO=0x{_STRAPS_LO_RECOVERY:08x}"
 _STRAP_PRIMARY_ECHO = "STRAP primary=1"     # boot_straps.c:32
 _STRAP_RECOVERY_ECHO = " recovery=1"        # boot_straps.c:33
 _RECOVERY_MARKER = "BOOT_RECOVERY"          # rom_main.c:635
@@ -81,7 +79,7 @@ class sep_boot_recovery_test(sep_rom_ot_dma_boot_test):
     # Replaces the inherited SPI-path tuple entirely: every marker in it is one
     # this run must not produce.
     required_markers = (
-        _STRAPS_HI_ECHO, _STRAP_PRIMARY_ECHO, _STRAP_RECOVERY_ECHO,
+        _STRAPS_LO_ECHO, _STRAP_PRIMARY_ECHO, _STRAP_RECOVERY_ECHO,
         _RECOVERY_MARKER, _WAIT_SMC, _SMC_MANIFEST_SRC, _MANIFEST_OK,
     ) + _BL1_MARKERS
     forbidden_markers = (
@@ -91,15 +89,15 @@ class sep_boot_recovery_test(sep_rom_ot_dma_boot_test):
     def mutate_flash_image(self, buf: bytearray) -> bytearray:
         # The flash is left bootable on purpose; see the module docstring. This
         # hook only records that, and self-checks the strap word.
-        assert (_STRAPS_HI_RECOVERY >> _BOOT_RECOVERY_BIT_HI) & 1, (
-            f"the strap word this test injects (0x{_STRAPS_HI_RECOVERY:08x}) does "
-            f"not set boot_recovery (STRAPS_HI bit {_BOOT_RECOVERY_BIT_HI})"
+        assert (_STRAPS_LO_RECOVERY >> _BOOT_RECOVERY_BIT_LO) & 1, (
+            f"the combined strap word (0x{_STRAPS_LO_RECOVERY:08x}) does not set "
+            f"boot_recovery (STRAPS_LO bit {_BOOT_RECOVERY_BIT_LO})"
         )
         self.logger.info(
-            "CHK-STIMULUS-RECOVERY: STRAPS_LO[25]=1 (+sep_boot_from_spi) and "
-            "STRAPS_HI=0x%08x (boot_recovery); flash left intact and bootable so "
-            "that declining to read it is a real observation",
-            _STRAPS_HI_RECOVERY,
+            "CHK-STIMULUS-RECOVERY: STRAPS_LO=0x%08x sets primary_chiplet[25] "
+            "and boot_recovery[19]; flash left intact and bootable so that "
+            "declining to read it is a real observation",
+            _STRAPS_LO_RECOVERY,
         )
         return buf
 
@@ -133,18 +131,18 @@ class sep_boot_recovery_test(sep_rom_ot_dma_boot_test):
                     return i
             return -1
 
-        i_straps = index_of(_STRAPS_HI_ECHO)
+        i_straps = index_of(_STRAPS_LO_ECHO)
         i_branch = index_of(_RECOVERY_MARKER)
         i_wait = index_of(_WAIT_SMC)
         i_src = index_of(_SMC_MANIFEST_SRC)
         i_ok = index_of(_MANIFEST_OK)
         assert i_straps < i_branch < i_wait < i_src < i_ok, (
-            f"recovery sequence is out of order: {_STRAPS_HI_ECHO}@{i_straps} -> "
+            f"recovery sequence is out of order: {_STRAPS_LO_ECHO}@{i_straps} -> "
             f"{_RECOVERY_MARKER}@{i_branch} -> {_WAIT_SMC}@{i_wait} -> "
             f"{_SMC_MANIFEST_SRC}@{i_src} -> {_MANIFEST_OK}@{i_ok}. Console: {console}"
         )
         self.logger.info(
-            "CHK-RECOVERY-ORDER: STRAPS_HI@%d -> BOOT_RECOVERY@%d -> "
+            "CHK-RECOVERY-ORDER: STRAPS_LO@%d -> BOOT_RECOVERY@%d -> "
             "WAIT_SMC_MANIFEST@%d -> SMC manifest@%d -> MANIFEST_OK@%d",
             i_straps, i_branch, i_wait, i_src, i_ok,
         )

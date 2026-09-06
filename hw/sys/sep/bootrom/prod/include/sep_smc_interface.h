@@ -114,6 +114,7 @@ static inline uint32_t sep_get_smc_base(void) {
 #define SMC_STRAP_PRIMARY_CHIPLET_BIT 25
 
 // STRAPS_HI (GPIO 32-60, bit index == GPIO index - 32):
+#define SMC_STRAP_MBIST_BYPASS_BIT_HI 22 // GPIO 54
 #define SMC_STRAP_ROTATE_UPDATE_BIT_HI 26 // GPIO 58
 
 // Masks (applied to the corresponding 32-bit register read).
@@ -122,6 +123,7 @@ static inline uint32_t sep_get_smc_base(void) {
 #define SMC_STRAP_BL0_PLLCLK_MASK (1u << SMC_STRAP_BL0_PLLCLK_BIT)
 #define SMC_STRAP_STATUS_RPT_DISABLE_MASK (1u << SMC_STRAP_STATUS_RPT_DISABLE_BIT)
 #define SMC_STRAP_PRIMARY_CHIPLET_MASK (1u << SMC_STRAP_PRIMARY_CHIPLET_BIT)
+#define SMC_STRAP_MBIST_BYPASS_MASK (1u << SMC_STRAP_MBIST_BYPASS_BIT_HI)
 #define SMC_STRAP_ROTATE_UPDATE_MASK (1u << SMC_STRAP_ROTATE_UPDATE_BIT_HI)
 
 // ---------------------------------------------------------------------------

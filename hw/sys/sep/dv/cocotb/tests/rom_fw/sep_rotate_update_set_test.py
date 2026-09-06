@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """ROTATE_UPDATE strap swaps the primary and backup manifest slots (PyUVM).
 
-FEATURE. ``STRAPS_HI[29]`` (``sep_smc_interface.h:83``) tells the ROM to try the
+FEATURE. ``STRAPS_HI[26]`` tells the ROM to try the
 slots in the opposite order. ``rom_manifest_boot`` keeps the offset table fixed
 and rotates the INDEX instead (``manifest_load.c:737-740``)::
 
@@ -26,7 +26,7 @@ is the whole test, and it is asserted three independent ways:
   * on the device side, no read transaction lands anywhere in the primary slot's
     flash span, which is measured at the flash model rather than inferred.
 
-``STRAPS_HI=0x20000000`` is required as well: it is the ROM echoing the word it
+``STRAPS_HI=0x04000000`` is required as well: it is the ROM echoing the word it
 actually read, so the run is attributable to this stimulus and not to a strap
 that happened to be set some other way.
 
@@ -44,8 +44,8 @@ from env import sep_spi_slot_evidence as ev
 from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
 
 # Must match +sep_straps_hi in the testlist entry.
-_STRAPS_HI_ROTATE = 0x2000_0000
-_ROTATE_UPDATE_BIT = 29  # sep_smc_interface.h:83
+_STRAPS_HI_ROTATE = 0x0400_0000
+_ROTATE_UPDATE_BIT = 26
 
 _SPI_PATH_MARKER = "BOOT_SPI"
 _STRAPS_HI_ECHO = f"STRAPS_HI=0x{_STRAPS_HI_ROTATE:08x}"

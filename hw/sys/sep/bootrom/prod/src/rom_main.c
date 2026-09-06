@@ -95,16 +95,16 @@ static volatile uint32_t g_data_init = 0x12345678u;
 static volatile uint32_t g_bss_zero;
 
 // Warm reset is handled in vector.S (V2):
-// - vector.S reads sep_scratch_warm_scratch[0] (0x10A32080) early,
+// - vector.S reads cold_scratch[7] early,
 //   before touching DCCM (sp/scrub/.data/.bss), to preserve BL1 state.
-// - If warm_scratch[0] contains a valid SRAM address, vector.S poisons
-//   it (writes 0) and jumps directly to the warm handler.
-// - If we reach rom_main(), it's always a cold boot (warm_scratch already
-//   poisoned by vector.S on both warm and cold paths).
+// - A valid ICCM address transfers directly to the warm handler and remains
+//   intact for subsequent watchdog resets.
+// - A zero slot selects cold boot; the cold path then poisons it with -1.
+// - An invalid nonzero slot stops in vector.S.
 //
 // The SEP scratch registers used:
-//   warm_scratch[0] @ 0x10A32080: warm reset handler pointer (survives warm reset)
-//   cold_scratch[0] @ 0x10A32000: ROM status (cleared on any reset)
+//   cold_scratch[7]: warm reset handler pointer (survives watchdog reset)
+//   cold_scratch[0]: terminal ROM verdict
 
 #ifndef ROM_SPI_SYSCLK_MHZ
 #define ROM_SPI_SYSCLK_MHZ 25u
@@ -569,7 +569,7 @@ void rom_main(void) {
 
     // ── Cold boot (warm reset is handled in vector.S) ──
     // If we reach rom_main(), vector.S already determined this is a cold boot
-    // (warm_scratch[0] was zero or out-of-range, and has been cleared).
+    // because cold_scratch[7] was zero, then poisoned the slot with -1.
     // Nothing is written to cold_scratch[0] here: it carries the terminal verdict
     // only (errors.h VERDICT_OUT), and a second writer with unrelated semantics
     // would make a single read ambiguous. The console line below reports the cold

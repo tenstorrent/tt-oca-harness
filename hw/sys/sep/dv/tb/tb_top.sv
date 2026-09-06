@@ -852,7 +852,7 @@ module sep_uvm_top
 
         // SMC address configuration tied to 0 (identity remap).
 `ifdef SEP_SMC_MEM_MODEL
-        // Route the SMC region (scratch 0x4003_9080+, straps 0x4000_2090, SMC SRAM
+        // Route the SMC region (scratch 0x4003_9080+, straps 0x4040_5800, SMC SRAM
         // 0x4006_0000+ manifest) out the sep_ext_to_smc AXI to the behavioral
         // axi_sim_mem. The ROM boots secondary (non-SPI) and DMAs the manifest+BL1
         // from SMC SRAM.
@@ -944,16 +944,18 @@ module sep_uvm_top
     // smc_global_base_addr_i). Keep them in step with that header; if the ROM
     // legitimately needs a new block, add its authoritative base/size here
     // rather than widening an existing window.
+    localparam logic [55:0] SmcStrapsLoAddr = 56'h4040_5800;
+    localparam logic [55:0] SmcStrapsHiAddr = SmcStrapsLoAddr + 4;
     localparam int unsigned SmcNumWindows = 7;
     // {base, size} pairs, SEP-side addresses.
     localparam logic [55:0] SmcWinBase [SmcNumWindows] = '{
-        56'h4000_2000,  // SMC_RESET_UNIT            (straps LO/HI)
+        56'h4000_2000,  // SMC_RESET_UNIT
         56'h4000_2900,  // SMC_MISC_WRAP_CHIP_CONFIG (CHIP_ID, LC_STATE)
         56'h4000_7000,  // SMC_EFUSE_MAP             (chiplet/package ID)
         56'h4000_B800,  // DFX_CTRL                  (STATUS_SMU)
         56'h4003_9000,  // SMC_CPU_CTRL              (scratch[0..15] at +0x80)
         56'h4006_0000,  // SPM_MEMORY                (manifest + BL1)
-        56'h4040_5800   // SMC_EXTERNAL straps      (STRAPS_LO/HI)
+        SmcStrapsLoAddr // SMC_EXTERNAL straps      (STRAPS_LO/HI)
     };
     localparam logic [55:0] SmcWinSize [SmcNumWindows] = '{
         56'h0000_00CC, 56'h0000_0014, 56'h0000_0C00,
@@ -1028,7 +1030,7 @@ module sep_uvm_top
         // that boots. It was 0x03 while the gate only read mem_repair_success.
         u_smc_mem.mem[56'h4000_B800] = 8'h13;
         u_smc_mem.mem[56'h4000_B801] = 8'h01;
-        // STRAPS_LO (smc_base+0x2090) and STRAPS_HI (+0x2094), all eight bytes,
+        // STRAPS_LO and STRAPS_HI in the SMC external supplementary window,
         // explicitly zero.
         // REQUIRED, not tidiness: u_smc_mem.mem is an associative array, so
         // reading a key that was never written yields X. Both halves are now read
@@ -1043,14 +1045,14 @@ module sep_uvm_top
         // way; sep_sim_cfg.toml also lists vcs and xcelium, where without this the
         // MBIST arm would branch on X for every test that does not pass
         // +sep_straps_hi. Do not remove it because the Verilator runs are green.
-        u_smc_mem.mem[56'h4000_2090] = 8'h00;
-        u_smc_mem.mem[56'h4000_2091] = 8'h00;
-        u_smc_mem.mem[56'h4000_2092] = 8'h00;
-        u_smc_mem.mem[56'h4000_2093] = 8'h00;
-        u_smc_mem.mem[56'h4000_2094] = 8'h00;
-        u_smc_mem.mem[56'h4000_2095] = 8'h00;
-        u_smc_mem.mem[56'h4000_2096] = 8'h00;
-        u_smc_mem.mem[56'h4000_2097] = 8'h00;
+        u_smc_mem.mem[SmcStrapsLoAddr + 0] = 8'h00;
+        u_smc_mem.mem[SmcStrapsLoAddr + 1] = 8'h00;
+        u_smc_mem.mem[SmcStrapsLoAddr + 2] = 8'h00;
+        u_smc_mem.mem[SmcStrapsLoAddr + 3] = 8'h00;
+        u_smc_mem.mem[SmcStrapsHiAddr + 0] = 8'h00;
+        u_smc_mem.mem[SmcStrapsHiAddr + 1] = 8'h00;
+        u_smc_mem.mem[SmcStrapsHiAddr + 2] = 8'h00;
+        u_smc_mem.mem[SmcStrapsHiAddr + 3] = 8'h00;
         if ($value$plusargs("sep_smc_mem_hex=%s", smc_mem_image)) begin
             $readmemh(smc_mem_image, u_smc_mem.mem);
             $display("[tb] SMC mem preloaded from %s", smc_mem_image);
@@ -1059,25 +1061,25 @@ module sep_uvm_top
         // All three sit BELOW the $readmemh above, so an explicit request always
         // wins over whatever a +sep_smc_mem_hex image happens to cover. Keeping
         // them together is not cosmetic: the strap seed used to run ABOVE the
-        // $readmemh, so an SMC image that grew to cover 0x2090 would have
-        // silently cleared primary_chiplet while boot_recovery -- written below
-        // -- survived, quietly moving a recovery test onto the secondary arm.
+        // $readmemh, so an SMC image that covered the straps window could
+        // silently clear an explicit stimulus.
         //
         // +sep_boot_from_spi sets STRAPS_LO[25] (primary_chiplet) at
-        // smc_base+0x2090. Bit 25 is byte 3 of the word, bit 1. It is a strap
+        // smc_base+0x405800. Bit 25 is byte 3 of the word, bit 1. It is a strap
         // value, NOT a boot-path selector: boot_from_spi() is
         // `primary_chiplet && !boot_recovery` (boot_straps.h), so with
-        // +sep_straps_hi also asserting boot_recovery the ROM takes its RECOVERY
+        // +sep_straps_lo also asserting boot_recovery the ROM takes its RECOVERY
         // branch instead -- which is exactly what sep_boot_recovery_test needs.
         // Default off: without it the ROM keeps taking the SMC-SRAM secondary
         // branch, so sep_rom_non_secure_boot_test is unaffected.
         if ($test$plusargs("sep_boot_from_spi")) begin
-            u_smc_mem.mem[56'h4000_2093] = u_smc_mem.mem[56'h4000_2093] | 8'h02;
+            u_smc_mem.mem[SmcStrapsLoAddr + 3] =
+                u_smc_mem.mem[SmcStrapsLoAddr + 3] | 8'h02;
             $display("[tb] STRAPS_LO[25] primary_chiplet=1");
         end
-        // STRAPS_LO (smc_base+0x2090) whole-word override, the twin of
+        // STRAPS_LO (smc_base+0x405800) whole-word override, the twin of
         // +sep_straps_hi below. sep_smc_interface.h: [13] bypass_sram_repair,
-        // [21] status_rpt_disable, [25] primary_chiplet.
+        // [19] boot_recovery, [21] status_rpt_disable, [25] primary_chiplet.
         //
         // Needed because the ROM's boot gate reads bit 13: OCAH-MAS makes
         // BYPASS_SRAM_REPAIR (GPIO pin 13) mean repair never ran, and the gate
@@ -1092,12 +1094,16 @@ module sep_uvm_top
         // the other whichever bits each sets. Both sit after the $readmemh for
         // the reason given above.
         if ($value$plusargs("sep_straps_lo=%h", straps_lo_ovr)) begin
-            u_smc_mem.mem[56'h4000_2090] = u_smc_mem.mem[56'h4000_2090] | straps_lo_ovr[7:0];
-            u_smc_mem.mem[56'h4000_2091] = u_smc_mem.mem[56'h4000_2091] | straps_lo_ovr[15:8];
-            u_smc_mem.mem[56'h4000_2092] = u_smc_mem.mem[56'h4000_2092] | straps_lo_ovr[23:16];
-            u_smc_mem.mem[56'h4000_2093] = u_smc_mem.mem[56'h4000_2093] | straps_lo_ovr[31:24];
-            $display("[tb] STRAPS_LO or'd with 0x%08x (+sep_straps_lo): bypass_sram_repair=%0d",
-                     straps_lo_ovr, straps_lo_ovr[13]);
+            u_smc_mem.mem[SmcStrapsLoAddr + 0] =
+                u_smc_mem.mem[SmcStrapsLoAddr + 0] | straps_lo_ovr[7:0];
+            u_smc_mem.mem[SmcStrapsLoAddr + 1] =
+                u_smc_mem.mem[SmcStrapsLoAddr + 1] | straps_lo_ovr[15:8];
+            u_smc_mem.mem[SmcStrapsLoAddr + 2] =
+                u_smc_mem.mem[SmcStrapsLoAddr + 2] | straps_lo_ovr[23:16];
+            u_smc_mem.mem[SmcStrapsLoAddr + 3] =
+                u_smc_mem.mem[SmcStrapsLoAddr + 3] | straps_lo_ovr[31:24];
+            $display("[tb] STRAPS_LO or'd with 0x%08x (+sep_straps_lo): bypass_sram_repair=%0d recovery=%0d",
+                     straps_lo_ovr, straps_lo_ovr[13], straps_lo_ovr[19]);
         end
         // MEM_REPAIR / MBIST gate injection.
         //
@@ -1115,23 +1121,20 @@ module sep_uvm_top
             $display("[tb] DFX_CTRL_STATUS_SMU overridden to 0x%08x (+sep_dft_status)",
                      dft_status_ovr);
         end
-        // STRAPS_HI (smc_base+0x2094) = bits [63:32] of the 64-bit strap word.
-        // sep_smc_interface.h: [23] boot_recovery, [24] bl0_pll_clk,
-        // [29] rotate_update. STRAPS_LO already has a strap-specific plusarg
-        // (+sep_boot_from_spi) but nothing reached the high half, so the recovery
-        // and rotate boot modes had no stimulus at all.
+        // STRAPS_HI (smc_base+0x405804) = bits [63:32] of the 64-bit strap word.
+        // sep_smc_interface.h: [22] mbist_bypass, [26] rotate_update.
         //
         // Whole-word, like +sep_dft_status: a per-bit flag would need one plusarg
         // per strap and could not express a combination, and the ROM reads the
         // word once (boot_straps.c) so partial writes would be the odd case
         // rather than the normal one. Little-endian: byte 0 holds bits [7:0].
         if ($value$plusargs("sep_straps_hi=%h", straps_hi_ovr)) begin
-            u_smc_mem.mem[56'h4000_2094] = straps_hi_ovr[7:0];
-            u_smc_mem.mem[56'h4000_2095] = straps_hi_ovr[15:8];
-            u_smc_mem.mem[56'h4000_2096] = straps_hi_ovr[23:16];
-            u_smc_mem.mem[56'h4000_2097] = straps_hi_ovr[31:24];
-            $display("[tb] STRAPS_HI set to 0x%08x (+sep_straps_hi): recovery=%0d rotate=%0d",
-                     straps_hi_ovr, straps_hi_ovr[23], straps_hi_ovr[29]);
+            u_smc_mem.mem[SmcStrapsHiAddr + 0] = straps_hi_ovr[7:0];
+            u_smc_mem.mem[SmcStrapsHiAddr + 1] = straps_hi_ovr[15:8];
+            u_smc_mem.mem[SmcStrapsHiAddr + 2] = straps_hi_ovr[23:16];
+            u_smc_mem.mem[SmcStrapsHiAddr + 3] = straps_hi_ovr[31:24];
+            $display("[tb] STRAPS_HI set to 0x%08x (+sep_straps_hi): mbist_bypass=%0d rotate=%0d",
+                     straps_hi_ovr, straps_hi_ovr[22], straps_hi_ovr[26]);
         end
     end
 
