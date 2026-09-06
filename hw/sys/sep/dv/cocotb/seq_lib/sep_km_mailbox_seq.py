@@ -503,9 +503,9 @@ class SepKmMailbox:
         """Send a frame whose header CRC-8 is wrong; return (rc, arg).
 
         The KM rejects this before it validates the sequence number, so its
-        expected sequence counter does NOT advance. The host counter is rolled
-        back to match, otherwise every later command would be refused for the
-        wrong reason."""
+        expected sequence counter does NOT advance. This helper never
+        increments the host counter either (it posts the frame directly), so
+        the two stay aligned for later commands."""
         seq_used = self.seq_num
         words = self.build_frame(cmd_id, seq_used, [])
         words[0] ^= 1 << 24  # flip a bit inside the header CRC-8 field
