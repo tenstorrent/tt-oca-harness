@@ -2,8 +2,8 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /**
- * @file main.c
- * @brief I2C SMBus Alert/Suspend Test - OpenTitan I2C Version
+ * @file i2c_smbus_model_test.c
+ * @brief I2C SMBus Alert Test against the SV SMBus peer - OpenTitan I2C Version
  *
  * =============================================================================
  * Test Purpose
@@ -13,8 +13,10 @@
  * OpenTitan I2C IP:
  *   - SMBus Alert (SMBALERT#): Device -> Host signal propagation
  *   - Alert Response Address (ARA): Host reads alert source
- *   - SMBus Suspend (SMBSUS#): Host -> Device signal propagation
- *   - Interrupt status and clearing
+ *   - Interrupt status and clearing (INTR_STATE.SMBALERT set, then W1C)
+ *
+ * SMBSUS# is driven in Step 5 but is NOT verified here -- see the Step 5 note
+ * in the Test Flow section below.
  *
  * =============================================================================
  * Test Architecture
@@ -54,11 +56,12 @@
  *    - Host performs ARA read (0x0C)
  *    - Verify alert cleared after ARA
  *
- * 5. Test SMBus Suspend (Host -> Device)
- *    - Host asserts SMBSUS#
- *    - Device detects suspend status
- *    - Host deasserts SMBSUS#
- *    - Device verifies suspend cleared
+ * 5. Drive SMBus Suspend (Host -> Device) -- stimulus only, not checked
+ *    - Host asserts SMBSUS#, then deasserts it
+ *    - Nothing observes it: the SMBus peer in this testbench
+ *      (tb_uvm/sv/I2C_SMBUS_MODEL.sv) hardwires SMBSUS_N = 1'bz and samples
+ *      that pin nowhere, so no "device detected suspend" fact exists to check
+ *      and none is reported. See Step 5 below.
  *
  * =============================================================================
  */
