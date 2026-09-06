@@ -271,6 +271,26 @@ void i2c_config_timing(uint32_t idx, const i2c_timing_config_t *config) {
  * most recent one -- which is what the header promises and what a test asserting
  * immediately after the call needs. It used to be write-only and sticky, so a
  * test reading it would have seen "did any reset, ever, need repair". */
+/* Driver-internal scratch tracing, off by default.
+ *
+ * These calls used to be plain write_scratch(). scratch[1] is the FW<->cocotb
+ * handshake channel that most testcases in this suite poll, and scratch[0] is
+ * the pass/fail channel -- so a driver call made while a handshake was pending
+ * overwrote the testcase's own marker with a debug value, and the four
+ * write_scratch(0, debug_info) calls wrote over the verdict word. The failure
+ * that results looks like the testcase hanging or reporting the wrong state,
+ * with nothing pointing at the driver.
+ *
+ * Nothing depends on these values -- all 42 were markers -- so they are
+ * compiled out unless a debugger asks for them. Define I2C_DRIVER_SCRATCH_TRACE
+ * to get them back, and only in a build whose testcase does not use the
+ * scratch handshake. */
+#ifdef I2C_DRIVER_SCRATCH_TRACE
+#define i2c_trace_scratch(idx, val) write_scratch((idx), (val))
+#else
+#define i2c_trace_scratch(idx, val) ((void)(idx), (void)(val))
+#endif
+
 uint32_t g_i2c_acq_reset_needed_drain;
 uint32_t g_i2c_acq_reset_residual;      /* ACQLVL still left when the drain gave up */
 
@@ -753,24 +773,24 @@ int i2c_controller_read(uint32_t idx, uint8_t target_addr, uint8_t *data, uint32
     uint32_t target_idx_for_debug = (idx == 1) ? 0 : 0; // Default to 0 for I2C_0
 
     // Debug marker: Enter function
-    write_scratch(1, 0x00000090); // Enter i2c_controller_read
+    i2c_trace_scratch(1, 0x00000090); // Enter i2c_controller_read
 
     // CRITICAL FIX: Support Repeated START
     // In Repeated START scenarios, controller stays busy between transactions.
     // Only wait for idle if controller was previously stopped (hostidle=1).
     // If controller is already busy (hostidle=0), assume Repeated START sequence.
-    write_scratch(1, 0x00000091); // Before idle check
+    i2c_trace_scratch(1, 0x00000091); // Before idle check
     i2c__STATUS_t status = {.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
                                                       SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
     // Check if we need to wait for idle
     if (status.f.HOSTIDLE) {
         // Controller was idle, wait for it to be ready
-        write_scratch(1, 0x00000092); // hostidle=1, waiting
+        i2c_trace_scratch(1, 0x00000092); // hostidle=1, waiting
         int ret = i2c_controller_wait_idle(idx, I2C_TIMEOUT_DEFAULT);
-        write_scratch(1, 0x00000093); // After wait_idle
+        i2c_trace_scratch(1, 0x00000093); // After wait_idle
         if (ret != I2C_OK) {
-            write_scratch(1, 0x00000094); // Error: wait_idle failed
+            i2c_trace_scratch(1, 0x00000094); // Error: wait_idle failed
             // Check for controller events on timeout
             uint32_t events = i2c_get_controller_events(idx);
             if (events != 0) {
@@ -781,7 +801,7 @@ int i2c_controller_read(uint32_t idx, uint8_t target_addr, uint8_t *data, uint32
         }
     } else {
         // Controller is busy - this is a Repeated START, continue directly
-        write_scratch(1, 0x00000095); // hostidle=0, Repeated START
+        i2c_trace_scratch(1, 0x00000095); // hostidle=0, Repeated START
     }
 
     // =========================================================================
@@ -811,7 +831,7 @@ int i2c_controller_read(uint32_t idx, uint8_t target_addr, uint8_t *data, uint32
     const uint32_t MIN_REQUIRED_SLOTS = 2; // Need 2 slots for address + read command
 
     // Wait for FMT FIFO to have at least 2 free slots
-    write_scratch(1, 0x00000096); // Before waiting for FMT FIFO space
+    i2c_trace_scratch(1, 0x00000096); // Before waiting for FMT FIFO space
     uint32_t fifo_wait_count = 0;
     const uint32_t FIFO_WAIT_TIMEOUT = I2C_TIMEOUT_DEFAULT;
 
@@ -834,10 +854,10 @@ int i2c_controller_read(uint32_t idx, uint8_t target_addr, uint8_t *data, uint32
     }
 
     if (fifo_wait_count >= FIFO_WAIT_TIMEOUT) {
-        write_scratch(1, 0x00000097); // Error: FMT FIFO timeout
+        i2c_trace_scratch(1, 0x00000097); // Error: FMT FIFO timeout
         return I2C_ERROR_TIMEOUT;
     }
-    write_scratch(1, 0x00000098); // FMT FIFO ready (at least 2 slots available)
+    i2c_trace_scratch(1, 0x00000098); // FMT FIFO ready (at least 2 slots available)
 
     // CRITICAL: Write both FMT entries consecutively with minimal delay
     // This ensures depth >= 2 when FSM starts processing
@@ -845,7 +865,7 @@ int i2c_controller_read(uint32_t idx, uint8_t target_addr, uint8_t *data, uint32
 
     // Entry 1: Send START + address (read bit = 1)
     // If controller was busy, this becomes a Repeated START automatically
-    write_scratch(1, 0x00000099); // Before sending START+address
+    i2c_trace_scratch(1, 0x00000099); // Before sending START+address
     fdata.f.FBYTE = (target_addr << 1) | 0x1;
     fdata.f.START = 1;
     fdata.f.READB = 0;
@@ -854,7 +874,7 @@ int i2c_controller_read(uint32_t idx, uint8_t target_addr, uint8_t *data, uint32
                   fdata.w);
 
     // Entry 2: Send read command (write immediately after Entry 1)
-    write_scratch(1, 0x0000009A); // Before sending read command
+    i2c_trace_scratch(1, 0x0000009A); // Before sending read command
     fdata.w = 0;
     fdata.f.FBYTE = (len & 0xFF); // Number of bytes to read (0 = 256)
     fdata.f.READB = 1;
@@ -868,7 +888,7 @@ int i2c_controller_read(uint32_t idx, uint8_t target_addr, uint8_t *data, uint32
     i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) -
                           SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
                   fdata.w);
-    write_scratch(1, 0x0000009B); // After sending both FMT entries
+    i2c_trace_scratch(1, 0x0000009B); // After sending both FMT entries
 
     // At this point, FMT FIFO contains 2 entries:
     //   - Entry 1: START + ADDR + R (depth changes 0->1 or N->N+1)
@@ -877,11 +897,11 @@ int i2c_controller_read(uint32_t idx, uint8_t target_addr, uint8_t *data, uint32
     // This avoids the fmt_fifo_depth_i == 1 condition triggering prematurely
 
     // Read data from RX FIFO
-    write_scratch(1, 0x0000009C); // Before reading RX FIFO loop
+    i2c_trace_scratch(1, 0x0000009C); // Before reading RX FIFO loop
     uint32_t timeout = I2C_TIMEOUT_DEFAULT;
     for (uint32_t i = 0; i < len; i++) {
         // Wait for data in RX FIFO
-        write_scratch(1, 0x0000009D); // Before waiting for RX data (iteration i)
+        i2c_trace_scratch(1, 0x0000009D); // Before waiting for RX data (iteration i)
         uint32_t count = 0;
         uint32_t last_events_check = 0;
         while (1) {
@@ -897,7 +917,7 @@ int i2c_controller_read(uint32_t idx, uint8_t target_addr, uint8_t *data, uint32
                 if (events != last_events_check) {
                     // Events changed - record to scratchpad
                     if (events & 0x1) {
-                        write_scratch(1, 0x0000009E); // Error: NACK detected
+                        i2c_trace_scratch(1, 0x0000009E); // Error: NACK detected
                         // Debug: Log Target status when NACK occurs (only if idx=1, meaning I2C_1
                         // Controller)
                         if (idx == 1) {
@@ -908,16 +928,16 @@ int i2c_controller_read(uint32_t idx, uint8_t target_addr, uint8_t *data, uint32
                             // (tgt_acq_level & 0xFF)
                             uint32_t debug_info =
                                 0x9A000000 | ((tgt_tx_level & 0xFF) << 8) | (tgt_acq_level & 0xFF);
-                            write_scratch(0, debug_info);
+                            i2c_trace_scratch(0, debug_info);
                         }
                         return I2C_ERROR_NACK;
                     }
                     if (events & 0x8) {
-                        write_scratch(1, 0x0000009F); // Error: Arbitration lost
+                        i2c_trace_scratch(1, 0x0000009F); // Error: Arbitration lost
                         return I2C_ERROR;
                     }
                     if (events & 0x4) {
-                        write_scratch(1, 0x000000A0); // Error: Bus timeout
+                        i2c_trace_scratch(1, 0x000000A0); // Error: Bus timeout
                         return I2C_ERROR_TIMEOUT;
                     }
                     last_events_check = events;
@@ -932,8 +952,8 @@ int i2c_controller_read(uint32_t idx, uint8_t target_addr, uint8_t *data, uint32
                     // << 8 | (tgt_acq_level & 0xFF)
                     uint32_t debug_info = 0xA5000000 | ((events & 0xFF) << 16) |
                                           ((tgt_tx_level & 0xFF) << 8) | (tgt_acq_level & 0xFF);
-                    write_scratch(0, debug_info);
-                    write_scratch(1, 0x000000A1); // Debug: Periodic status check
+                    i2c_trace_scratch(0, debug_info);
+                    i2c_trace_scratch(1, 0x000000A1); // Debug: Periodic status check
 
                     // CRITICAL FIX: Clear Target TARGET_EVENTS periodically during read wait
                     // Problem: When Controller sends read command, Target FSM sets TX_PENDING
@@ -957,7 +977,7 @@ int i2c_controller_read(uint32_t idx, uint8_t target_addr, uint8_t *data, uint32
 
             count++;
             if (count >= timeout) {
-                write_scratch(1, 0x000000A2); // Error: Timeout waiting for RX data
+                i2c_trace_scratch(1, 0x000000A2); // Error: Timeout waiting for RX data
                 // Check events one more time before returning timeout
                 uint32_t events = i2c_get_controller_events(idx);
                 // Debug: Log final status when timeout occurs (only if idx=1, meaning I2C_1
@@ -969,7 +989,7 @@ int i2c_controller_read(uint32_t idx, uint8_t target_addr, uint8_t *data, uint32
                     // << 8 | (tgt_acq_level & 0xFF)
                     uint32_t debug_info = 0x9F000000 | ((events & 0xFF) << 16) |
                                           ((tgt_tx_level & 0xFF) << 8) | (tgt_acq_level & 0xFF);
-                    write_scratch(0, debug_info);
+                    i2c_trace_scratch(0, debug_info);
                 }
                 if (events != 0) {
                     // Return specific error based on events
@@ -982,12 +1002,12 @@ int i2c_controller_read(uint32_t idx, uint8_t target_addr, uint8_t *data, uint32
         }
 
         // Read data byte
-        write_scratch(1, 0x000000A3); // Before reading data byte
+        i2c_trace_scratch(1, 0x000000A3); // Before reading data byte
         i2c__RDATA_t rdata = {.w =
                                   i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_RDATA_BASE_ADDR(0) -
                                                        SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
         data[i] = (uint8_t)rdata.f.DATA;
-        write_scratch(1, 0x000000A4); // After reading data byte
+        i2c_trace_scratch(1, 0x000000A4); // After reading data byte
     }
 
     // =========================================================================
@@ -1001,7 +1021,7 @@ int i2c_controller_read(uint32_t idx, uint8_t target_addr, uint8_t *data, uint32
     // Reference: i2c_p0_rdwr/src/main.c:460-504 (successful pattern)
     // Bug fixed: i2c_read_sanity test hanging after first transaction
     // =========================================================================
-    write_scratch(1, 0x000000A5); // Debug: Before draining ACQ FIFO
+    i2c_trace_scratch(1, 0x000000A5); // Debug: Before draining ACQ FIFO
 
     // Only drain if this is I2C_1 Controller reading from I2C_0 Target
     if (idx == 1) {
@@ -1029,13 +1049,13 @@ int i2c_controller_read(uint32_t idx, uint8_t target_addr, uint8_t *data, uint32
             // Avoid infinite loop
             if (drained_count > 64) {
                 // ACQ FIFO depth is 64, should never drain more
-                write_scratch(1, 0x000000A6); // Warning: Drained too many entries
+                i2c_trace_scratch(1, 0x000000A6); // Warning: Drained too many entries
                 break;
             }
         }
 
         if (drained_count > 0) {
-            write_scratch(1, 0x000000A4); // Debug: ACQ FIFO drained successfully
+            i2c_trace_scratch(1, 0x000000A4); // Debug: ACQ FIFO drained successfully
             // Optionally log drained count to scratch[0] for debugging
             // write_scratch(0, 0xACF00000 | (drained_count & 0xFF));
         }
@@ -1067,7 +1087,7 @@ int i2c_controller_read(uint32_t idx, uint8_t target_addr, uint8_t *data, uint32
         }
     }
 
-    write_scratch(1, 0x000000A2); // Before return (success)
+    i2c_trace_scratch(1, 0x000000A2); // Before return (success)
     return I2C_OK;
 }
 
@@ -1568,13 +1588,13 @@ uint32_t i2c_target_transmit(uint32_t idx, const uint8_t *data, uint32_t len) {
     // Debug marker: Enter function (only for i2c_internal_smbus test context)
     // Use scratch[1] = 0x00000080 to indicate function entry
     // Note: This is a common function, so we use a high marker value to avoid conflicts
-    write_scratch(1, 0x00000080); // Enter i2c_target_transmit
+    i2c_trace_scratch(1, 0x00000080); // Enter i2c_target_transmit
 
     for (uint32_t i = 0; i < len; i++) {
         // Debug marker: Before checking TX FIFO status
         // Use scratch[1] = 0x00000081 + i to track loop iterations
         if (i == 0) {
-            write_scratch(1, 0x00000081); // Before first iteration
+            i2c_trace_scratch(1, 0x00000081); // Before first iteration
         }
 
         // Check TX FIFO space using precise level check (per OpenTitan FIFO flow guide)
@@ -1586,7 +1606,7 @@ uint32_t i2c_target_transmit(uint32_t idx, const uint8_t *data, uint32_t len) {
 
         // Debug marker: After reading FIFO STATUS register
         if (i == 0) {
-            write_scratch(1, 0x00000082); // After reading FIFO STATUS
+            i2c_trace_scratch(1, 0x00000082); // After reading FIFO STATUS
         }
 
         // Precise level check: TXLVL[6:0] should be < 256 (FIFO depth)
@@ -1600,7 +1620,7 @@ uint32_t i2c_target_transmit(uint32_t idx, const uint8_t *data, uint32_t len) {
 
         // Debug marker: Before writing TXDATA
         if (i == 0) {
-            write_scratch(1, 0x00000083); // Before writing TXDATA
+            i2c_trace_scratch(1, 0x00000083); // Before writing TXDATA
         }
 
         // Write data byte
@@ -1612,7 +1632,7 @@ uint32_t i2c_target_transmit(uint32_t idx, const uint8_t *data, uint32_t len) {
 
         // Debug marker: After writing TXDATA
         if (i == 0) {
-            write_scratch(1, 0x00000084); // After writing TXDATA
+            i2c_trace_scratch(1, 0x00000084); // After writing TXDATA
         }
 
         written++;
@@ -1620,7 +1640,7 @@ uint32_t i2c_target_transmit(uint32_t idx, const uint8_t *data, uint32_t len) {
 
     // Debug marker: Before return
     if (written > 0) {
-        write_scratch(1, 0x00000085); // Before return (success)
+        i2c_trace_scratch(1, 0x00000085); // Before return (success)
     }
 
     return written;
@@ -2453,25 +2473,25 @@ int smbus_alert_response(uint32_t idx, uint8_t *alert_addr) {
     if (!alert_addr) return I2C_ERROR_INVALID;
 
     // Debug marker: Enter function
-    write_scratch(1, 0x00000086); // Enter smbus_alert_response
+    i2c_trace_scratch(1, 0x00000086); // Enter smbus_alert_response
 
     // Read from Alert Response Address (0x0C)
-    write_scratch(1, 0x00000087); // Before calling i2c_controller_read
+    i2c_trace_scratch(1, 0x00000087); // Before calling i2c_controller_read
     uint8_t addr_byte = 0;
     int ret = i2c_controller_read(idx, SMBUS_ADDR_ARA, &addr_byte, 1, true);
-    write_scratch(1, 0x00000088); // After i2c_controller_read returned
+    i2c_trace_scratch(1, 0x00000088); // After i2c_controller_read returned
 
     if (ret == I2C_OK) {
-        write_scratch(1, 0x00000089);   // Before extracting address
+        i2c_trace_scratch(1, 0x00000089);   // Before extracting address
         *alert_addr = (addr_byte >> 1); // Extract 7-bit address
-        write_scratch(1, 0x0000008A);   // After extracting address
+        i2c_trace_scratch(1, 0x0000008A);   // After extracting address
     } else {
-        write_scratch(1, 0x0000008B); // Error path
+        i2c_trace_scratch(1, 0x0000008B); // Error path
         // On error, set alert_addr to 0xFF to indicate failure
         *alert_addr = 0xFF;
     }
 
-    write_scratch(1, 0x0000008C); // Before return
+    i2c_trace_scratch(1, 0x0000008C); // Before return
     return ret;
 }
 
