@@ -53,8 +53,11 @@ class smu_xtrig_ctm_remap_test(smu_base_test):
         dtp_src_ack = dut.u_dut.dtp_xtrig_ctm_src_ack
 
         async def _settle() -> None:
-            await RisingEdge(dut.clk_smu_i)
-            await RisingEdge(dut.clk_smu_i)
+            # The CTM ack crosses into the DTP clock domain and back, so two
+            # edges are not enough for it to reflect the new request; measured,
+            # the ack still showed the PREVIOUS pattern after two.
+            for _ in range(40):
+                await RisingEdge(dut.clk_smu_i)
 
         sb.expect_eq(
             "idle src_ack[1:0] hardwire",
