@@ -82,8 +82,9 @@ include::../../../hw/ip/jtag/jtag_ptap/doc/index.adoc[leveloffset=+2]
 ```
 
 Use full-page includes with `leveloffset`. Do not use `[tag=body]` to extract
-body content: it leaves `==` body headings at absolute document level and
-creates unintended top-level chapters in the PDF.
+body content: the tag strips the `= Title` without applying `leveloffset`, so
+`==` body headings land at absolute document level and create unintended
+top-level chapters in the PDF.
 
 Private fragments (no `= Title`, `==` or lower headings) are included by their
 owning page. They are staged to `partials/`, never to `pages/`.
@@ -194,4 +195,4 @@ OS-level flows belong in the Programmer's Guide.
 - [ ] No unintended per-page file annotations: `pdfinfo -url` shows no `*.pdf` destinations.
 - [ ] Figure renders; no SVG fallback text.
 
-Fixture build commands and evidence: see `doc/trm/STRUCTURE.md §7`.
+Fixture build commands and evidence: see `doc/trm/STRUCTURE.md §8`.

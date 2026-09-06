@@ -59,12 +59,35 @@ depth, breaking the intended hierarchy.
     3.8 Cross-Trigger Matrix            (hw/ip/cross_trigger/cross_trigger_matrix/doc/index.adoc [leveloffset=+2])
     3.9 Clock Stop / Reset              (hw/sys/dtp/doc/clock_stop.adoc [leveloffset=+2])
     3.10 Configuration and Reference    (port table and register routes)
-  Ch 4: SEP                (hw/sys/sep/doc/index.adoc [leveloffset=+1])  ← unchanged
-  Ch 5: SMC                (hw/sys/smc/doc/index.adoc [leveloffset=+1])  ← unchanged
+  Ch 4: SEP                (hw/sys/sep/doc/index.adoc [leveloffset=0])  ← existing == heading; offset 0 until SEP task
+  Ch 5: SMC                (hw/sys/smc/doc/index.adoc [leveloffset=0])  ← existing == heading; offset 0 until SMC task
 ```
 
 Both outlines follow the same order: overview → architecture/access → JTAG
 operation (integration before IP detail) → cross-trigger → clock-stop → config/reference.
+
+The after-DTP-pilot PDF assembly root (`src/index.adoc`) includes chapters in this
+order:
+
+```adoc
+= OCAH Platform Architecture
+include::architecture.adoc[leveloffset=+1]
+
+= System Management Unit
+include::../../../hw/sys/smu/doc/index.adoc[leveloffset=+1]
+include::../../../hw/sys/dtp/doc/index.adoc[leveloffset=+1]
+// DTP topics follow here, each included once at leveloffset=+2:
+// overview/access paths, JTAG integration, IU/PTAP/STAP,
+// CTN/CTP/CTM, clock-stop, configuration/reference.
+
+// Unchanged baseline child indexes already start with == chapter headings.
+include::../../../hw/sys/sep/doc/index.adoc[leveloffset=0]
+include::../../../hw/sys/smc/doc/index.adoc[leveloffset=0]
+```
+
+Note: DTP's own `index.adoc` gains `= Title` as part of the pilot. Pre-pilot, the
+file starts with `==`; include it temporarily at `leveloffset=0` until the pilot
+adds the title, at which point change to `leveloffset=+1`.
 
 ---
 
@@ -92,31 +115,39 @@ operation (integration before IP detail) → cross-trigger → clock-stop → co
 ## 3. Assembly include ownership (before → after)
 
 This table shows which assembly edges exist at baseline and what changes during
-the DTP pilot. SMC and SEP are untouched; their existing heading levels
-(`leveloffset=0` in `architecture.adoc`) remain valid until an explicit SMC/SEP task.
+the DTP pilot. SEP and SMC existing indexes start with `==` (not `= Title`);
+use `leveloffset=0` to keep those headings at chapter level. Correcting SEP/SMC
+to use `= Title` is scoped to their own later restructuring tasks.
 
 | Assembly edge | Baseline owner | After DTP pilot |
 |---|---|---|
 | root → architecture.adoc | `src/index.adoc` | unchanged |
-| architecture.adoc → sep/doc/index.adoc | `architecture.adoc` (leveloffset=0) | unchanged |
-| architecture.adoc → smc/doc/index.adoc | `architecture.adoc` (leveloffset=0) | unchanged |
-| architecture.adoc → dtp/doc/index.adoc | `architecture.adoc` (leveloffset=0) | **removed** — DTP moves to root assembly |
-| root → smu/doc/index.adoc | _(new)_ | `src/index.adoc` (leveloffset=+1) |
-| root → dtp/doc/index.adoc | _(new)_ | `src/index.adoc` (leveloffset=+1) |
-| dtp/doc/index.adoc → IP chapters | `dtp/doc/index.adoc` (leveloffset=0) | **removed** — IP chapters move to root assembly |
-| root → each IP chapter | _(new)_ | `src/index.adoc` (leveloffset=+2) |
-| dtp/doc/index.adoc → jtag.adoc, clock_stop.adoc | `dtp/doc/index.adoc` (leveloffset=0) | **removed** — moved to root assembly (leveloffset=+2) |
+| architecture.adoc → sep/doc/index.adoc | `architecture.adoc` (leveloffset=0) | **removed** — SEP moves to root assembly under SMU part |
+| architecture.adoc → smc/doc/index.adoc | `architecture.adoc` (leveloffset=0) | **removed** — SMC moves to root assembly under SMU part |
+| architecture.adoc → dtp/doc/index.adoc | `architecture.adoc` (leveloffset=0) | **removed** — DTP moves to root assembly under SMU part |
+| root → smu/doc/index.adoc | _(new with SMU framework task)_ | `src/index.adoc` (leveloffset=+1) |
+| root → dtp/doc/index.adoc (pre-pilot) | _(new)_ | `src/index.adoc` (leveloffset=0) — DTP starts with ==; temporary until pilot adds = Title |
+| root → dtp/doc/index.adoc (after pilot) | _(pilot changes this edge)_ | `src/index.adoc` (leveloffset=+1) — pilot adds = Title |
+| dtp/doc/index.adoc → overview.adoc | `dtp/doc/index.adoc` (leveloffset=0) | **removed** — moves to root assembly at leveloffset=+2 |
+| dtp/doc/index.adoc → jtag_intf_unit/doc/index.adoc | `dtp/doc/index.adoc` (leveloffset=0) | **removed** — moves to root assembly at leveloffset=+2 |
+| dtp/doc/index.adoc → jtag_ptap/doc/index.adoc | `dtp/doc/index.adoc` (leveloffset=0) | **removed** — moves to root assembly at leveloffset=+2 |
+| dtp/doc/index.adoc → jtag_stap/doc/index.adoc | `dtp/doc/index.adoc` (leveloffset=0) | **removed** — moves to root assembly at leveloffset=+2 |
+| dtp/doc/index.adoc → cross_trigger_network/doc/index.adoc | `dtp/doc/index.adoc` (leveloffset=0) | **removed** — moves to root assembly at leveloffset=+2 |
+| dtp/doc/index.adoc → cross_trigger_port/doc/index.adoc | `dtp/doc/index.adoc` (leveloffset=0) | **removed** — moves to root assembly at leveloffset=+2 |
+| dtp/doc/index.adoc → cross_trigger_matrix/doc/index.adoc | `dtp/doc/index.adoc` (leveloffset=0) | **removed** — moves to root assembly at leveloffset=+2 |
+| dtp/doc/index.adoc → jtag.adoc | `dtp/doc/index.adoc` (leveloffset=0) | **removed** — moves to root assembly at leveloffset=+2 |
+| dtp/doc/index.adoc → clock_stop.adoc | `dtp/doc/index.adoc` (leveloffset=0) | **removed** — moves to root assembly at leveloffset=+2 |
+| dtp/doc/index.adoc → defines.adoc | `dtp/doc/index.adoc` (leveloffset=0) | **removed entirely** — defines.adoc is DV content; excluded from TRM |
+| root → each DTP topic | _(new)_ | `src/index.adoc` (leveloffset=+2) |
+| root → sep/doc/index.adoc | _(new under SMU part)_ | `src/index.adoc` (leveloffset=0) — existing == heading; unchanged until SEP task |
+| root → smc/doc/index.adoc | _(new under SMU part)_ | `src/index.adoc` (leveloffset=0) — existing == heading; unchanged until SMC task |
 
 **Result:** `src/index.adoc` owns the complete book spine. Each topic is
-included once. `architecture.adoc` retains SEP and SMC includes at baseline
-`leveloffset=0` — these remain correct in the existing part structure. DTP is
-removed from `architecture.adoc` after the pilot succeeds.
-
-Small gap for the pilot: existing SMC and SEP content in `architecture.adoc`
-uses `leveloffset=0`, meaning their `= Title` stays at level 0 (document title)
-when the PDF assembler encounters them. This is the current production baseline
-behaviour. Correcting SMC and SEP heading levels is scoped to the SMC and SEP
-tasks, not the DTP pilot.
+included exactly once. `architecture.adoc` has no subsystem includes; it
+contains only platform-wide content (memory map, clock/reset domains) plus the
+HTML-only `[[smu-axi-crossbar]]` compatibility block. SEP and SMC appear under
+the SMU part at `leveloffset=0`; their `==` headings become chapter headings
+within the part, which matches their current production treatment.
 
 ---
 
@@ -162,9 +193,13 @@ endif::backend-html5[]
 | `IP/ctm` | `hw/ip/cross_trigger/cross_trigger_matrix/doc/` |
 
 IP pages are staged to `ip/pages/<ip>/doc/` by the `stage_adoc_tree` IP loop.
-IP private fragments (architecture.adoc, interface.adoc — no `= Title`, body
-headings start at `====`) are staged to `ip/partials/<ip>/doc/` and included
-by their owning index page. They are not standalone URLs.
+IP private fragments (architecture.adoc, interface.adoc — no `= Title`) are
+staged to `ip/partials/<ip>/doc/` and included by their owning index page.
+They are not standalone URLs. The owning index page supplies the `== Architecture`
+or `== Interface` section heading; the fragment supplies anchored body content,
+with any subheadings at a level below that section heading. Do not add a blanket
+`====` heading inside fragments — use the appropriate level relative to the owning
+section.
 
 ### DTP subsystem files (6)
 
@@ -182,7 +217,7 @@ by their owning index page. They are not standalone URLs.
 | Source | Staged destination | Notes |
 |---|---|---|
 | `IP/jiu/index.adoc` | `ip/pages/jtag_intf_unit/doc/index.adoc` | Page: JTAG Interface Unit |
-| `IP/jiu/architecture.adoc` | `ip/partials/jtag_intf_unit/doc/architecture.adoc` | Private fragment; `====` heading; included by JIU index |
+| `IP/jiu/architecture.adoc` | `ip/partials/jtag_intf_unit/doc/architecture.adoc` | Private fragment; anchored body; included by JIU index |
 | `IP/jiu/interface.adoc` | `ip/partials/jtag_intf_unit/doc/interface.adoc` | Private fragment; anchor `[[jtag-intf-unit-interface]]` |
 | `IP/ptap/index.adoc` | `ip/pages/jtag_ptap/doc/index.adoc` | Page: JTAG PTAP |
 | `IP/ptap/architecture.adoc` | `ip/partials/jtag_ptap/doc/architecture.adoc` | Private fragment; anchor `[[ptap-architecture]]` |
@@ -255,6 +290,8 @@ it exits 0. Do not reclassify unrelated SMC/SEP pages during the DTP pilot.
 
 ## 7. URL and anchor compatibility
 
+### Crossbar section migration
+
 The old URL `architecture.html#smu-axi-crossbar` must continue to work after
 the crossbar section moves to the SMU chapter. The old page keeps the anchor
 and an onward link (HTML-only); the new page carries the authoritative content.
@@ -263,23 +300,59 @@ The PDF assembly includes only the new page, so there is one PDF destination.
 | Old URL | Old anchor | New page | New anchor | Action |
 |---|---|---|---|---|
 | `architecture.html#smu-axi-crossbar` | `[[smu-axi-crossbar]]` | `smu/index.html` | `[[smu-axi-crossbar]]` | Compat block in architecture.adoc (HTML-only); new page carries authoritative anchor |
-| `dtp/index.html#debug-test-ports` | `[[debug-test-ports]]` | `dtp/index.html` | `[[debug-test-ports]]` | No URL change; keep anchor |
-| `dtp/jtag.html#dtp-jtag-integration` | `[[dtp-jtag-integration]]` | `dtp/jtag.html` | `[[dtp-jtag-integration]]` | No URL change; keep anchor |
-| `dtp/clock_stop.html#dtp-clock-stop` | `[[dtp-clock-stop]]` | `dtp/clock_stop.html` | `[[dtp-clock-stop]]` | No URL change; keep anchor |
-| `ip/jtag_intf_unit/doc/index.html#jtag-interface-unit` | `[[jtag-interface-unit]]` | same | same | No URL change |
-| `ip/jtag_ptap/doc/index.html#jtag-ptap` | `[[jtag-ptap]]` | same | same | No URL change |
-| `ip/jtag_ptap/doc/architecture.html` | `[[ptap-architecture]]` | Private fragment — no standalone URL | — | Old URL disappears; anchor survives on the PTAP index page via fragment include |
-| `ip/jtag_stap/doc/index.html#jtag-stap` | `[[jtag-stap]]` | same | same | No URL change |
-| `ip/cross_trigger_network/doc/index.html#cross-trigger-network` | `[[cross-trigger-network]]` | same | same | No URL change |
-| `ip/cross_trigger_port/doc/index.html#cross-trigger-port` | `[[cross-trigger-port]]` | same | same | Anchor already exists in source |
-| `ip/cross_trigger_matrix/doc/index.html#cross-trigger-matrix` | `[[cross-trigger-matrix]]` | same | same | Anchor already exists in source |
 
-**Fixture proof** (Item 2): The 002c fixture demonstrates the `smu-axi-crossbar`
-migration. Verified in `_build/html/`:
+### IP fragment URL compatibility (13 pages)
+
+Converting architecture/interface/memmap sub-files to private partials removes
+their old standalone URLs. For each old URL, author a short **HTML-only
+compatibility page** at that exact path. Each compat page contains:
+- `= Title (moved)` — a meaningful HTML title
+- The old explicit anchor (e.g., `[[ptap-architecture]]`)
+- An onward `xref:` link to the owning IP index page and the anchor there
+- No copied technical prose
+
+Compat pages are authored at `doc/trm/compat/ip/<ip>/doc/<filename>.adoc` and
+staged to `ip/pages/<ip>/doc/<filename>.adoc` (HTML-only, not in PDF assembly).
+The private fragment itself is staged to `ip/partials/<ip>/doc/<filename>.adoc`.
+
+Anchors verified against current production source files:
+
+**JTAG IP (6 compat pages):**
+
+| Old URL (fragment → private) | Old anchor in fragment | New owning page | Anchor on owning page | Compat page source |
+|---|---|---|---|---|
+| `ip/jtag_intf_unit/doc/architecture.html` | `[[jtag-intf-unit-architecture]]` | `ip/jtag_intf_unit/doc/index.html` | `[[jtag-intf-unit-architecture]]` | `doc/trm/compat/ip/jtag_intf_unit/doc/architecture.adoc` |
+| `ip/jtag_intf_unit/doc/interface.html` | `[[jtag-intf-unit-interface]]` | `ip/jtag_intf_unit/doc/index.html` | `[[jtag-intf-unit-interface]]` | `doc/trm/compat/ip/jtag_intf_unit/doc/interface.adoc` |
+| `ip/jtag_ptap/doc/architecture.html` | `[[ptap-architecture]]` | `ip/jtag_ptap/doc/index.html` | `[[ptap-architecture]]` (via fragment include) | `doc/trm/compat/ip/jtag_ptap/doc/architecture.adoc` |
+| `ip/jtag_ptap/doc/interface.html` | `[[ptap-interface]]` | `ip/jtag_ptap/doc/index.html` | `[[ptap-interface]]` (via fragment include) | `doc/trm/compat/ip/jtag_ptap/doc/interface.adoc` |
+| `ip/jtag_stap/doc/architecture.html` | `[[jtag-stap-architecture]]` | `ip/jtag_stap/doc/index.html` | `[[jtag-stap-architecture]]` | `doc/trm/compat/ip/jtag_stap/doc/architecture.adoc` |
+| `ip/jtag_stap/doc/interface.html` | `[[jtag-stap-interface]]` | `ip/jtag_stap/doc/index.html` | `[[jtag-stap-interface]]` | `doc/trm/compat/ip/jtag_stap/doc/interface.adoc` |
+
+**Cross-trigger IP (7 compat pages):**
+
+| Old URL (fragment → private) | Old anchor in fragment | New owning page | Anchor on owning page | Compat page source |
+|---|---|---|---|---|
+| `ip/cross_trigger_network/doc/architecture.html` | `[[cross-trigger-network-architecture]]` | `ip/cross_trigger_network/doc/index.html` | `[[cross-trigger-network-architecture]]` (via fragment) | `doc/trm/compat/ip/cross_trigger_network/doc/architecture.adoc` |
+| `ip/cross_trigger_network/doc/interface.html` | `[[cross-trigger-network-interface]]` | `ip/cross_trigger_network/doc/index.html` | `[[cross-trigger-network-interface]]` (via fragment) | `doc/trm/compat/ip/cross_trigger_network/doc/interface.adoc` |
+| `ip/cross_trigger_network/doc/memmap.html` | `[[cross-trigger-network-memmap]]` | `ip/cross_trigger_network/doc/index.html` | `[[cross-trigger-network-memmap]]` (via fragment) | `doc/trm/compat/ip/cross_trigger_network/doc/memmap.adoc` |
+| `ip/cross_trigger_port/doc/architecture.html` | `[[cross-trigger-port-architecture]]` | `ip/cross_trigger_port/doc/index.html` | `[[cross-trigger-port]]` (anchor already in source) | `doc/trm/compat/ip/cross_trigger_port/doc/architecture.adoc` |
+| `ip/cross_trigger_port/doc/interface.html` | `[[cross-trigger-port-interface]]` | `ip/cross_trigger_port/doc/index.html` | `[[cross-trigger-port-interface]]` | `doc/trm/compat/ip/cross_trigger_port/doc/interface.adoc` |
+| `ip/cross_trigger_matrix/doc/architecture.html` | `[[cross-trigger-matrix-architecture]]` | `ip/cross_trigger_matrix/doc/index.html` | `[[cross-trigger-matrix]]` (anchor already in source) | `doc/trm/compat/ip/cross_trigger_matrix/doc/architecture.adoc` |
+| `ip/cross_trigger_matrix/doc/interface.html` | `[[cross-trigger-matrix-interface]]` | `ip/cross_trigger_matrix/doc/index.html` | `[[cross-trigger-matrix-interface]]` | `doc/trm/compat/ip/cross_trigger_matrix/doc/interface.adoc` |
+
+Notes:
+- `cross_trigger_port/doc/index.adoc` carries `[[cross-trigger-port]]` (not `[[cross-trigger-port-architecture]]`); compat page links to that anchor.
+- `cross_trigger_matrix/doc/index.adoc` carries `[[cross-trigger-matrix]]` (not `[[cross-trigger-matrix-architecture]]`); compat page links to that anchor.
+- `memmap.adoc` has no separate old standalone URL in the production baseline; row is included for completeness. Only create a compat page if that URL existed in the published site.
+
+**Fixture proof** (Items 1 and 2): The 002d fixture demonstrates both compat routes. Verified in `_build/html/`:
 - `architecture.html` exists with `id="smu-axi-crossbar"` (old anchor present).
 - `architecture.html` contains `href="smu/index.html#smu-axi-crossbar"` (onward link).
 - `smu/index.html` contains `id="smu-axi-crossbar"` (new authoritative destination).
+- `ip/jtag_ptap/doc/architecture.html` exists with `id="ptap-architecture"` and `href="index.html#ptap-architecture"`.
+- `ip/jtag_ptap/doc/index.html` contains `id="ptap-architecture"` (via private fragment include).
 - PDF: one `smu-axi-crossbar` named destination (from SMU chapter only). No duplicate.
+- PDF: `ptap-architecture` named destination present. Compat page absent from PDF (HTML-only).
 
 ---
 
@@ -287,21 +360,26 @@ migration. Verified in `_build/html/`:
 
 ### Fixture location
 
-`/tmp/claude-1000/task-002c/fixture/`, HEAD `1e68ad3`.
+`/tmp/claude-1000/task-002d/fixture/`, HEAD `b625376`.
 
 **Canonical sources** (single maintained copy):
 
 ```
-hw/sys/smu/doc/index.adoc          ← authored SMU page
-hw/sys/smu/doc/crossbar-table.adoc ← private fragment (→ smu/partials/)
-hw/sys/smu/dv/defines.adoc         ← DV content (excluded from staging)
-hw/sys/smu/assets/smu_block.svg    ← source image
-hw/ip/jtag/jtag_ptap/doc/index.adoc    ← representative IP page
+hw/sys/smu/doc/index.adoc               ← authored SMU page
+hw/sys/smu/doc/crossbar-table.adoc      ← private fragment (→ smu/partials/)
+hw/sys/smu/dv/defines.adoc              ← DV content (excluded from staging)
+hw/sys/smu/assets/smu_block.svg         ← source image
+hw/sys/dtp/doc/index.adoc               ← DTP chapter (= Title; pilot-shaped)
+hw/sys/dtp/doc/jtag.adoc                ← DTP JTAG topic (= Title)
+hw/sys/sep/doc/index.adoc               ← SEP stand-in (== heading; no = Title)
+hw/sys/smc/doc/index.adoc               ← SMC stand-in (== heading; no = Title)
+hw/ip/jtag/jtag_ptap/doc/index.adoc     ← representative IP page
 hw/ip/jtag/jtag_ptap/doc/architecture.adoc ← private fragment (→ ip/partials/)
-doc/trm/src/architecture.adoc      ← compatibility page with HTML-only compat block
-book.adoc                          ← PDF assembly (reads hw/ sources directly)
-antora-playbook.yml                ← Antora reads staged/ git repo
-stage.sh                           ← clean → stage → commit staged/
+doc/trm/src/architecture.adoc           ← platform page with HTML-only compat block
+doc/trm/compat/ip/jtag_ptap/doc/architecture.adoc ← IP compat page (→ ip/pages/)
+book.adoc                               ← PDF assembly (reads hw/ sources directly)
+antora-playbook.yml                     ← Antora reads staged/ git repo
+stage.sh                                ← clean → stage → commit staged/
 ```
 
 No prose is duplicated. `staged/` is generated by `stage.sh` and committed for
@@ -311,51 +389,59 @@ directly with correct relative fragment paths.
 ### Commands
 
 ```bash
-cd /tmp/claude-1000/task-002c/fixture
+cd /tmp/claude-1000/task-002d/fixture
 
 # 1. Clean and stage (populates and commits staged/)
 bash stage.sh
 
 # 2. HTML build (Antora reads staged/ git repo)
-node /tmp/claude-1000/npm-cache/_npx/def697450dda4c3a/node_modules/@antora/cli/bin/antora \
-  --log-failure-level error antora-playbook.yml
+node /home/colin-mckellar/.npm/_npx/def697450dda4c3a/node_modules/@antora/cli/bin/antora \
+  antora-playbook.yml
 
 # 3. PDF build (reads canonical hw/ sources directly)
-GEM_HOME=$TMPDIR/gems $TMPDIR/gems/bin/asciidoctor-pdf -D _build/pdf book.adoc
+GEM_HOME=/tmp/claude-1000/gems /tmp/claude-1000/gems/bin/asciidoctor-pdf \
+  -o _build/pdf/book.pdf book.adoc
 
 # 4. Checks
 pdfinfo -url _build/pdf/book.pdf    # must list no *.pdf annotations
-pdfinfo -dests _build/pdf/book.pdf  # must include smu-axi-crossbar
+pdfinfo -dests _build/pdf/book.pdf  # must include smu-axi-crossbar, ptap-architecture
 ```
 
 ### Measured results
 
-**HTML** — 4 pages (all titled):
+**HTML** — 7 pages (all titled):
 
 | URL | `<title>` |
 |---|---|
 | `index.html` | `OCAH Prototype TRM :: OCAH Prototype TRM` |
 | `architecture.html` | `OCAH Platform Architecture :: OCAH Prototype TRM` |
 | `smu/index.html` | `System Management Unit :: OCAH Prototype TRM` |
+| `dtp/index.html` | `Debug and Test Ports (DTP) :: OCAH Prototype TRM` |
+| `dtp/jtag.html` | `JTAG Operation :: OCAH Prototype TRM` |
 | `ip/jtag_ptap/doc/index.html` | `JTAG Primary TAP (PTAP) :: OCAH Prototype TRM` |
+| `ip/jtag_ptap/doc/architecture.html` | `PTAP Architecture (moved) :: OCAH Prototype TRM` |
 
 **Nav depth** (measured `data-depth` from rendered HTML):
 
 ```
+[1] OCAH Prototype TRM
 [2] Platform Architecture
 [2] System Management Unit
-  [3] JTAG Primary TAP
+  [3] Debug and Test Ports (DTP)
+    [4] JTAG Operation
+    [4] JTAG Primary TAP (PTAP)
 ```
 
 **Content verification:**
 - `smu/index.html`: crossbar table present; `src="_images/smu_block.svg"` present.
-- `ip/jtag_ptap/doc/index.html`: `id="ptap-architecture"` present; fragment body text present.
+- `ip/jtag_ptap/doc/index.html`: `id="ptap-architecture"` present (via fragment include).
+- `ip/jtag_ptap/doc/architecture.html`: `id="ptap-architecture"` present (compat anchor); `href="index.html#ptap-architecture"` present (onward link).
 - `architecture.html`: `id="smu-axi-crossbar"` present; `href="smu/index.html#smu-axi-crossbar"` present.
 - `smu/index.html`: `id="smu-axi-crossbar"` present (new authoritative destination).
 
-**PDF:** Part "OCAH Platform Architecture" → Ch.1 Platform → Ch.2 SMU (§2.1 Composition, §2.2 AXI Crossbar, §2.3 PTAP). Zero external file annotations. Named destination `smu-axi-crossbar` on page 6 (one occurrence).
+**PDF:** 9 pages. Part "OCAH Platform Architecture" → Ch.1 Platform → Part "System Management Unit" → Ch.2 SMU → Ch.3 DTP (§3.1 Architecture Overview, §3.2 Reading Route) → §3.x JTAG Operation → §3.x JTAG Primary TAP → Ch.4 SEP → Ch.5 SMC. Zero external file annotations (`pdfinfo -url` empty). Named destinations include: `smu-axi-crossbar`, `debug-test-ports`, `dtp-jtag-integration`, `jtag-ptap`, `ptap-architecture`, `security-processor-sep`, `system-management-controller-smc`.
 
-**Staging checks:** All three `PASS:` lines confirmed (DV excluded, crossbar-table in partials/, IP architecture.adoc in partials/).
+**Staging checks:** All five `PASS:` lines confirmed (DV excluded, crossbar-table in partials/, IP architecture fragment in partials/, compat page in ip/pages/, DTP pages present).
 
 ### Production build reference
 
