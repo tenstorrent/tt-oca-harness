@@ -788,19 +788,47 @@ tests = [
   "smu_wrapper_elaboration_sep_rtl_test",
 ]
 
-# Default `--items all` for smu_wrapper.
+# Default `--items all` for smu_wrapper: every test in this file that can pass.
+# The only omissions are the two sep_smc_sram_blocked leaves, which cannot pass
+# by construction; their group carries the reason. Anything else added to this
+# file belongs here too, so that `--items all` keeps meaning "all of it".
 [[groups]]
 name = "all"
 tests = [
   "smu_wrapper_elaboration_no_sep_test",
-  "smu_smc_smoke_test",
   "smu_wrapper_elaboration_sep_rtl_test",
+  "smu_smc_smoke_test",
   "smu_sep_smoke_test",
+  "smu_sep_boot_health_test",
+  "smu_sep_sanity_test",
+  "smu_sep_modules_test",
+  "smu_sep_aes_test",
+  "smu_sep_otbn_test",
+  "smu_sep_efuse_test",
+  "smu_sep_wdt_test",
+  "smu_sep_dma_test",
+  "smu_sep_bidirect_test",
+  "smu_sep_remap_test",
+  "smu_sep_rom_tcm_load_test",
+  "smu_sep_spi_test",
+  "smu_sep_smc_notify_test",
+  "smu_wrapper_jtag_ptap_test",
+  "smu_sep_lcc_flow_test",
+  "smu_sep_lcc_state_test_dev_test",
+  "smu_sep_lcc_state_prod_test",
+  "smu_sep_lcc_state_prod_end_test",
+  "smu_sep_lcc_state_rma_chiplet_test",
+  "smu_sep_dbg_gating_test_dev_test",
+  "smu_sep_dbg_gating_prod_end_test",
+  "smu_dtp_sep_smc_chain_prod_test",
+  "smu_dtp_sep_smc_chain_prod_end_test",
+  "smu_sep_entropy_test",
 ]
 
-# Real SEP DV firmware. Separate from the merge gate: the images are produced by
-# the SEP fw engine inside the toolchain container, not by this DV root's
-# freestanding builder.
+# Real SEP DV firmware, kept as a group so the firmware-driven leaves can be run
+# on their own. These are in `all`: their images build from this DV root's own
+# c_compile stage -- 14/14, ~150 s each -- so the earlier note that they needed
+# the toolchain container's SEP fw engine does not hold.
 [[groups]]
 name = "sep_real_fw"
 tests = [
@@ -831,7 +859,9 @@ tests = [
 
 # SEP-driven SMC bring-up needs the SMC image visible in SMC SRAM to an external
 # master; in this integration that RAM is CPU-private (see smu_sep_smc_xbar_test).
-# Kept runnable for the investigation; never reports PASS.
+# Kept runnable for the investigation; never reports PASS. Re-confirmed
+# 2026-09-06: both FAIL on their own timeout, which is why they are the only two
+# leaves `all` leaves out.
 [[groups]]
 name = "sep_smc_sram_blocked"
 tests = [
@@ -877,12 +907,37 @@ tests = [
   "smu_sep_smoke_test",
 ]
 
-# Retained alias: `all` already carries the SEP exec leaf (tools/dv/doc names it).
+# Retained alias for the name tools/dv/doc uses. It has always carried the same
+# membership as `all`, so it tracks `all` here too -- keep the two in step.
 [[groups]]
 name = "all_with_sep_exec"
 tests = [
   "smu_wrapper_elaboration_no_sep_test",
-  "smu_smc_smoke_test",
   "smu_wrapper_elaboration_sep_rtl_test",
+  "smu_smc_smoke_test",
   "smu_sep_smoke_test",
+  "smu_sep_boot_health_test",
+  "smu_sep_sanity_test",
+  "smu_sep_modules_test",
+  "smu_sep_aes_test",
+  "smu_sep_otbn_test",
+  "smu_sep_efuse_test",
+  "smu_sep_wdt_test",
+  "smu_sep_dma_test",
+  "smu_sep_bidirect_test",
+  "smu_sep_remap_test",
+  "smu_sep_rom_tcm_load_test",
+  "smu_sep_spi_test",
+  "smu_sep_smc_notify_test",
+  "smu_wrapper_jtag_ptap_test",
+  "smu_sep_lcc_flow_test",
+  "smu_sep_lcc_state_test_dev_test",
+  "smu_sep_lcc_state_prod_test",
+  "smu_sep_lcc_state_prod_end_test",
+  "smu_sep_lcc_state_rma_chiplet_test",
+  "smu_sep_dbg_gating_test_dev_test",
+  "smu_sep_dbg_gating_prod_end_test",
+  "smu_dtp_sep_smc_chain_prod_test",
+  "smu_dtp_sep_smc_chain_prod_end_test",
+  "smu_sep_entropy_test",
 ]
