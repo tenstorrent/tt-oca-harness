@@ -6,7 +6,8 @@
 This guide covers conventions for adding or changing a TRM topic so it works
 correctly in both the Antora web site and the asciidoctor-pdf book.
 
-Do not add this file to the Antora nav or the PDF assembly.
+This is a separate customer maintenance handover document. Do not stage it
+as a TRM web page, add it to public navigation, or include it in the TRM PDF.
 
 ---
 
@@ -60,7 +61,7 @@ Every chapter (subsystem or IP block) starts with:
 2. **Capabilities** — a brief list of key features or scope.
 3. **Block diagram** — at full column width, with a caption and meaningful alt text.
 4. **Reading route** — brief prose or a list pointing through the chapter's main
-   sections, with backend-guarded cross-page links (see §5).
+   sections, with backend-guarded cross-page links (see §6).
 
 Omit sections that genuinely do not apply; do not add empty placeholders.
 
@@ -81,13 +82,13 @@ include::../../../hw/sys/smu/doc/index.adoc[leveloffset=+1]
 include::../../../hw/ip/jtag/jtag_ptap/doc/index.adoc[leveloffset=+2]
 ```
 
-Use full-page includes with `leveloffset`. Do not use `[tag=body]` to extract
-body content: the tag strips the `= Title` without applying `leveloffset`, so
-`==` body headings land at absolute document level and create unintended
-top-level chapters in the PDF.
+Use full-page includes with explicit `leveloffset` as the chosen convention.
+Body tags select content; they do not adjust heading levels by themselves.
+The full-page pattern keeps each title in one maintained source.
 
-Private fragments (no `= Title`, `==` or lower headings) are included by their
-owning page. They are staged to `partials/`, never to `pages/`.
+Private fragments have no `= Title`. Their owning page supplies the section
+heading; any fragment subheadings sit below it. Stage fragments to `partials/`,
+never to `pages/`.
 
 ---
 

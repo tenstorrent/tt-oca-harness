@@ -13,9 +13,9 @@ list. Do not add to the Antora nav or the PDF assembly.
 
 ### Web navigation
 
-The production nav file is `doc/trm/modules/ROOT/nav.adoc`. A single nav file
-is required; multiple separate nav files render each root `*` entry at the same
-depth, breaking the intended hierarchy.
+The production nav file is `doc/trm/modules/ROOT/nav.adoc`. Use one nested
+list there for this design. Registering independent lists with root `*` entries
+does not nest those entries beneath one another.
 
 ```
 * TRM Landing
@@ -121,7 +121,7 @@ to use `= Title` is scoped to their own later restructuring tasks.
 
 | Assembly edge | Baseline owner | After DTP pilot |
 |---|---|---|
-| root → architecture.adoc | `src/index.adoc` | unchanged |
+| root → architecture.adoc | `src/index.adoc` (offset 0) | same owner; offset +1 beneath the platform part |
 | architecture.adoc → sep/doc/index.adoc | `architecture.adoc` (leveloffset=0) | **removed** — SEP moves to root assembly under SMU part |
 | architecture.adoc → smc/doc/index.adoc | `architecture.adoc` (leveloffset=0) | **removed** — SMC moves to root assembly under SMU part |
 | architecture.adoc → dtp/doc/index.adoc | `architecture.adoc` (leveloffset=0) | **removed** — DTP moves to root assembly under SMU part |
@@ -163,6 +163,12 @@ The SMU-framework task moves only:
 Platform-wide sections — memory map, power domains, clock domains, reset
 hierarchy — **stay in `architecture.adoc`** and are linked from the SMU chapter.
 Further SMU narrative belongs to the later SMU completion task.
+
+Retain the existing about/revision front matter and SMN/AoU placeholder content.
+When architecture becomes platform-only, move its SMN/AoU assembly includes
+to a following platform-components part at the root, preserving their `==`
+chapter headings at offset 0 and their existing standalone web paths. This
+keeps those components outside SMU containment without adding technical prose.
 
 After the move, `architecture.adoc` retains an HTML-only compatibility block:
 
@@ -272,8 +278,15 @@ simplest approach is an explicit copy of the index file to `pages/` followed
 by explicit copies of fragment files to `partials/` — or a pattern-based
 exclusion from `stage_adoc_tree` combined with explicit partial staging.
 
+Apply this routing exception only to the six DTP IPs listed in section 5.
+All other IPs retain their existing staging behaviour. Stage the 13 authored
+TRM compatibility pages from section 7 into their old page paths separately;
+never substitute the technical fragment itself for a compatibility page.
+
 After any `stage-docs.sh` change: rebuild the Integrator Guide and verify
-it exits 0. Do not reclassify unrelated SMC/SEP pages during the DTP pilot.
+it exits 0. Check affected IP includes there as well as the TRM; preserve
+sibling-product resource paths or update consumers under the relevant brief.
+Do not reclassify unrelated SMC/SEP pages during the DTP pilot.
 
 ### Fragment and DV exclusion
 
@@ -325,8 +338,8 @@ Anchors verified against current production source files:
 | `ip/jtag_intf_unit/doc/interface.html` | `[[jtag-intf-unit-interface]]` | `ip/jtag_intf_unit/doc/index.html` | `[[jtag-intf-unit-interface]]` | `doc/trm/compat/ip/jtag_intf_unit/doc/interface.adoc` |
 | `ip/jtag_ptap/doc/architecture.html` | `[[ptap-architecture]]` | `ip/jtag_ptap/doc/index.html` | `[[ptap-architecture]]` (via fragment include) | `doc/trm/compat/ip/jtag_ptap/doc/architecture.adoc` |
 | `ip/jtag_ptap/doc/interface.html` | `[[ptap-interface]]` | `ip/jtag_ptap/doc/index.html` | `[[ptap-interface]]` (via fragment include) | `doc/trm/compat/ip/jtag_ptap/doc/interface.adoc` |
-| `ip/jtag_stap/doc/architecture.html` | `[[jtag-stap-architecture]]` | `ip/jtag_stap/doc/index.html` | `[[jtag-stap-architecture]]` | `doc/trm/compat/ip/jtag_stap/doc/architecture.adoc` |
-| `ip/jtag_stap/doc/interface.html` | `[[jtag-stap-interface]]` | `ip/jtag_stap/doc/index.html` | `[[jtag-stap-interface]]` | `doc/trm/compat/ip/jtag_stap/doc/interface.adoc` |
+| `ip/jtag_stap/doc/architecture.html` | `[[stap-architecture]]` | `ip/jtag_stap/doc/index.html` | `[[stap-architecture]]` | `doc/trm/compat/ip/jtag_stap/doc/architecture.adoc` |
+| `ip/jtag_stap/doc/interface.html` | `[[stap-interface]]` | `ip/jtag_stap/doc/index.html` | `[[stap-interface]]` | `doc/trm/compat/ip/jtag_stap/doc/interface.adoc` |
 
 **Cross-trigger IP (7 compat pages):**
 
@@ -334,16 +347,19 @@ Anchors verified against current production source files:
 |---|---|---|---|---|
 | `ip/cross_trigger_network/doc/architecture.html` | `[[cross-trigger-network-architecture]]` | `ip/cross_trigger_network/doc/index.html` | `[[cross-trigger-network-architecture]]` (via fragment) | `doc/trm/compat/ip/cross_trigger_network/doc/architecture.adoc` |
 | `ip/cross_trigger_network/doc/interface.html` | `[[cross-trigger-network-interface]]` | `ip/cross_trigger_network/doc/index.html` | `[[cross-trigger-network-interface]]` (via fragment) | `doc/trm/compat/ip/cross_trigger_network/doc/interface.adoc` |
-| `ip/cross_trigger_network/doc/memmap.html` | `[[cross-trigger-network-memmap]]` | `ip/cross_trigger_network/doc/index.html` | `[[cross-trigger-network-memmap]]` (via fragment) | `doc/trm/compat/ip/cross_trigger_network/doc/memmap.adoc` |
-| `ip/cross_trigger_port/doc/architecture.html` | `[[cross-trigger-port-architecture]]` | `ip/cross_trigger_port/doc/index.html` | `[[cross-trigger-port]]` (anchor already in source) | `doc/trm/compat/ip/cross_trigger_port/doc/architecture.adoc` |
-| `ip/cross_trigger_port/doc/interface.html` | `[[cross-trigger-port-interface]]` | `ip/cross_trigger_port/doc/index.html` | `[[cross-trigger-port-interface]]` | `doc/trm/compat/ip/cross_trigger_port/doc/interface.adoc` |
-| `ip/cross_trigger_matrix/doc/architecture.html` | `[[cross-trigger-matrix-architecture]]` | `ip/cross_trigger_matrix/doc/index.html` | `[[cross-trigger-matrix]]` (anchor already in source) | `doc/trm/compat/ip/cross_trigger_matrix/doc/architecture.adoc` |
-| `ip/cross_trigger_matrix/doc/interface.html` | `[[cross-trigger-matrix-interface]]` | `ip/cross_trigger_matrix/doc/index.html` | `[[cross-trigger-matrix-interface]]` | `doc/trm/compat/ip/cross_trigger_matrix/doc/interface.adoc` |
+| `ip/cross_trigger_network/doc/memmap.html` | `[[ctn-memory-map]]` | `ip/cross_trigger_network/doc/index.html` | `[[ctn-memory-map]]` (via fragment) | `doc/trm/compat/ip/cross_trigger_network/doc/memmap.adoc` |
+| `ip/cross_trigger_port/doc/architecture.html` | `[[ctp-architecture]]` | `ip/cross_trigger_port/doc/index.html` | `[[ctp-architecture]]` (via fragment) | `doc/trm/compat/ip/cross_trigger_port/doc/architecture.adoc` |
+| `ip/cross_trigger_port/doc/interface.html` | `[[ctp-interface]]` | `ip/cross_trigger_port/doc/index.html` | `[[ctp-interface]]` | `doc/trm/compat/ip/cross_trigger_port/doc/interface.adoc` |
+| `ip/cross_trigger_matrix/doc/architecture.html` | `[[ctm-architecture]]` | `ip/cross_trigger_matrix/doc/index.html` | `[[ctm-architecture]]` (via fragment) | `doc/trm/compat/ip/cross_trigger_matrix/doc/architecture.adoc` |
+| `ip/cross_trigger_matrix/doc/interface.html` | `[[ctm-interface]]` | `ip/cross_trigger_matrix/doc/index.html` | `[[ctm-interface]]` | `doc/trm/compat/ip/cross_trigger_matrix/doc/interface.adoc` |
 
 Notes:
-- `cross_trigger_port/doc/index.adoc` carries `[[cross-trigger-port]]` (not `[[cross-trigger-port-architecture]]`); compat page links to that anchor.
-- `cross_trigger_matrix/doc/index.adoc` carries `[[cross-trigger-matrix]]` (not `[[cross-trigger-matrix-architecture]]`); compat page links to that anchor.
-- `memmap.adoc` has no separate old standalone URL in the production baseline; row is included for completeness. Only create a compat page if that URL existed in the published site.
+- Preserve the anchored fragment body on each owning index page; compatibility
+  links target that same specific section, not just the block overview.
+- The CTP and CTM index overview anchors (`cross-trigger-port` and
+  `cross-trigger-matrix`) also remain unchanged.
+- CTN `memmap.html#ctn-memory-map` exists in the verified baseline HTML;
+  its compatibility page is required along with the other 12 pages.
 
 **Fixture proof** (Items 1 and 2): The 002d fixture demonstrates both compat routes. Verified in `_build/html/`:
 - `architecture.html` exists with `id="smu-axi-crossbar"` (old anchor present).
