@@ -14,9 +14,9 @@
 //     while shifting)
 //
 // Test-Logic-Reset selects IDCODE (BYPASS when cfg.has_idcode == 0), and
-// unimplemented instructions behave as BYPASS. Reactive by design: there is
-// no sequence-driven stimulus, so the agent has no sequencer; tests
-// configure and inspect the device through ocah_jtag_slave_sequence.
+// unimplemented instructions behave as BYPASS. Reactive: there is no
+// sequence-driven stimulus, so the agent has no sequencer; tests configure
+// and inspect the device through ocah_jtag_slave_sequence.
 //
 // Rule provenance: implemented from the public IEEE Std 1149.1 clause
 // descriptions. No third-party device-model source was consulted or copied.

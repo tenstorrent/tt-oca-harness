@@ -16,8 +16,8 @@
 //
 // This class owns evidence mechanics only. Protocol legality belongs in the
 // checker shipped by each ocah_<protocol>_vip package, which extends this
-// base (issue #1132) -- the same split the cocotb flow draws between
-// ocah_checker and the per-protocol checkers.
+// base -- the same split the cocotb flow draws between ocah_checker and the
+// per-protocol checkers.
 
 class ocah_checker extends uvm_object;
   `uvm_object_utils(ocah_checker)

@@ -350,7 +350,7 @@ class OcahAxiMasterSequence:
         )
 
     def configure(self, **kwargs: Any) -> None:
-        """Store wrapper configuration knobs accepted by earlier implementations."""
+        """Apply the supported knobs (timeout_cycles, timeout_ns, default_id); reject others."""
         if "timeout_cycles" in kwargs:
             self.timeout_cycles = int(kwargs["timeout_cycles"])
         if "timeout_ns" in kwargs:

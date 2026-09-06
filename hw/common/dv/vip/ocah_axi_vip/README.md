@@ -25,8 +25,7 @@ This package is the base bus BFM that the protocol-specific VIPs build on.
 ## Backend
 
 The released AXI master and responder BFMs are backed by `cocotbext-axi`
-(`cocotbext-axi>=0.1.24,<0.2` in `pyproject.toml`; 0.1.28 in the current OSS
-environment):
+(`cocotbext-axi>=0.1.24,<0.2` in `pyproject.toml`):
 
 | Wrapper | Backend |
 |---|---|
@@ -44,12 +43,11 @@ process-global cocotb or `cocotbext-axi` state is touched.
 
 ---
 
-## When to use this wrapper vs the legacy VIPs
+## Which class to use
 
 | Scenario | Recommended class |
 |---|---|
 | Writing a new OCAH cocotb test | `OcahAxiMasterAgent` / `OcahAxiLiteMasterAgent` |
-| Extending an existing test that already imports `axi4_vip` directly | Prefer migrating the touched path to `ocah_axi_vip` |
 | Burst AXI4 traffic (memory fills, DMA) | `OcahAxiMasterAgent` |
 | Memory-backed AXI subordinate/responder | `OcahAxiSlaveAgent` |
 | Control/status register access over AXI4-Lite | `OcahAxiLiteMasterAgent` |
@@ -59,9 +57,7 @@ process-global cocotb or `cocotbext-axi` state is touched.
 | AXI-Stream (e.g. entropy data path) | **Out of scope** for this package — stream sources stay DUT-local |
 
 Do not use `cocotbext-axi` types (`AxiMaster`, `AxiLiteMaster`, etc.)
-directly in new test files; always go through this package. Existing SEP files
-are the no-touch compatibility reference for this release and are not
-migrated.
+directly in new test files; always go through this package.
 
 ---
 
@@ -116,11 +112,10 @@ side-specific components — agent, config, driver, sequence — carry the side
 token in their basenames. Tests consume each side ONLY through its
 `*Sequence` class (usually `agent.sequence`); missing operations get added to
 the sequence layer, never inlined in tests. The bus monitors and the passive
-UVM environment are deliberately side-NEUTRAL and carry no side token: they
-reconstruct traffic from the shared wires regardless of who generated it
-(a VIP master, a VIP responder, or the DUT itself — DTP observes purely
-DUT-generated traffic with no VIP master present), so a side token on them
-would be false labeling.
+UVM environment are side-NEUTRAL and carry no side token: they reconstruct
+traffic from the shared wires regardless of who generated it (a VIP master, a
+VIP responder, or the DUT itself — DTP observes purely DUT-generated traffic
+with no VIP master present).
 
 The package contains only canonical component files, matching the SV-UVM
 flow's basenames one-to-one (flow-only components follow the same pattern):
@@ -148,7 +143,7 @@ DTP adoption pattern.
 from ocah_axi_vip import OcahAxiMasterAgent
 
 master = OcahAxiMasterAgent(
-    dut.axi_if,              # cocotb handle for axi4_intf.sv instance
+    dut.axi_if,              # cocotb handle for the AXI4 interface instance
     name="axi4_host",        # used in log messages
     timeout_cycles=1000,     # clock cycles before TimeoutError
     addr_width=32,           # address bus width (informational)
@@ -362,7 +357,7 @@ if not result.ok:
     cocotb.log.warning(f"read returned resp=0x{result.resp:X}")
 ```
 
-Use `allow_timeout=True` with `timeout_ns=<n>` when a negative test intentionally
+Use `allow_timeout=True` with `timeout_ns=<n>` when a negative test
 accepts a non-completing access. In that case the result has `timed_out=True`,
 `ok=False`, and `resp=-1`.
 
@@ -399,19 +394,12 @@ AXI4 / AXI4-Lite master types and the passive monitor.
 
 ---
 
-## Migration from legacy axi4_vip / axi4_lite_vip
+## Extending the wrapper
 
-| Legacy call | Replacement |
-|---|---|
-| `AXI4LiteMasterBFM(intf).write_transaction(txn)` | `OcahAxiLiteMasterAgent(intf).sequence.write(addr, data)` |
-| `AXI4MasterBFM(intf).write_single(addr, data)` | `OcahAxiMasterAgent(intf).sequence.write(addr, data)` |
-| `AXI4MasterBFM(intf).write_burst(txn)` | `OcahAxiMasterAgent(intf).sequence.burst_write(addr, data_list)` |
-| `create_axi4_monitor(intf, clk)` | `OcahAxiMonitor(intf, clk)` |
-
-The wrapper API does not expose transaction dataclass types (`AXI4WriteTransaction`,
-etc.).  If you need fine-grained control (e.g. non-default QOS or LOCK bits)
-that is not yet exposed by the wrapper, open an issue on the OCAH tracker so
-the API can be extended rather than bypassed.
+The wrapper API does not expose backend transaction types. If you need
+fine-grained control (e.g. non-default QOS or LOCK bits) that the wrapper does
+not expose, open an issue on the OCAH tracker so the API can be extended rather
+than bypassed.
 
 ## Hierarchical VIP Layout
 
@@ -423,8 +411,8 @@ re-exporting the stable public API — always import
 `cov/` holds this package's framework-neutral commercial-simulator
 functional-coverage model (`cov/ocah_axi_cov.sv` — plain covergroup/bind SV
 with no UVM phasing, so the cocotb commercial-sim flow compiles it and the
-UVM flow binds the same file). `interface/` (shared SV interfaces) and `uvm/`
-(SV-UVM agent + env) are added as they land for this protocol. The SV-UVM
+UVM flow binds the same file). `interface/` holds the shared SV interfaces and
+`uvm/` the SV-UVM agents and envs. The SV-UVM
 template and the commercial-VIP plug-in contract (env-level factory
 override, user-implemented API wrapper, monitor closing, nested vendor
 interface) are documented in `../ocah_jtag_vip/README.md`

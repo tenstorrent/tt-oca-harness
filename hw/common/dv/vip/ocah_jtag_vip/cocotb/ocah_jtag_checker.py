@@ -294,6 +294,6 @@ class OcahJtagChecker:
         if not item.is_dr or item.instruction is None or item.bit_count <= 1:
             return
         # BYPASS-like scans are often wider than the one-bit register because
-        # tests intentionally push long patterns through the one-cycle delay.
+        # tests push long patterns through the one-cycle delay.
         if item.bit_count > 0 and item.tdo_value < 0:
             self._record("DR scan returned a negative TDO value", item)

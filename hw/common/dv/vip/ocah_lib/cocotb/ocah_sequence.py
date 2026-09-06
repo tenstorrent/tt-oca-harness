@@ -12,8 +12,8 @@ iteration logging use the shared formats. This is the parent of every
 SV-UVM twin is ``ocah_sequence``; it seeds the ``body()`` process once
 (``seed_scenario_rng``) where Python hands each helper its own salted RNG.
 
-Deliberately absent: an evidence handle. Its type is the protocol checker the
-bench needs, so the bench base sequence declares it.
+No evidence handle here: its type is the protocol checker the bench needs, so
+the bench base sequence declares it.
 """
 
 from __future__ import annotations

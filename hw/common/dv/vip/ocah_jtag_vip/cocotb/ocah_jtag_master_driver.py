@@ -303,7 +303,7 @@ class OcahJtagMasterDriver:
         return await self._cycle(int(tms) & 0x1, 0)
 
     async def tms_step(self, tms: int) -> int:
-        """Alias for `step_tms()` matching the public plan wording."""
+        """Alias for `step_tms()`."""
         return await self.step_tms(tms)
 
     async def goto_state(self, state) -> None:
@@ -317,7 +317,7 @@ class OcahJtagMasterDriver:
             await self.step_tms(tms)
 
     async def move_to_state(self, state) -> None:
-        """Backward-compatible alias for `goto_state()`."""
+        """Alias for `goto_state()`."""
         await self.goto_state(state)
 
     async def random_tms_walk(self, cycles: int, rng: Random) -> OcahJtagState:

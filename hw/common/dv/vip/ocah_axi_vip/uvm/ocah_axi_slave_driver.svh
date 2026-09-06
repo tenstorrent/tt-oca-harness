@@ -16,8 +16,8 @@
 // DRIVES the responder-side signals (awready/wready/b*/arready/r*)
 // procedurally with NBA — so the TB must wire only the master-driven
 // direction into this vif and route the responder-driven signals back to
-// the DUT. Reactive: there is deliberately no sequencer; tests configure
-// and inspect the device through ocah_axi_slave_sequence.
+// the DUT. Reactive: there is no sequencer; tests configure and inspect the
+// device through ocah_axi_slave_sequence.
 
 class ocah_axi_slave_driver extends uvm_component;
   `uvm_component_utils(ocah_axi_slave_driver)
