@@ -34,18 +34,16 @@ import os
 import shutil
 from pathlib import Path
 
-from sep_reg_meta import sym
-
 import cocotb
 import pyuvm
 from cocotb.triggers import RisingEdge
-
-from sep_base_test import sep_base_test
 from env import sep_manifest_mutate as mm
 from env import sep_spi_slot_evidence as ev
-from env.sep_efuse_image import SepEfuseImage, LC_TEST_DEV
-from env.sep_rom_console import rom_console_task, log_scratch_cold
-from env.sep_verdict import decode_verdict, TEST_PASS_CODE
+from env.sep_efuse_image import LC_TEST_DEV, SepEfuseImage
+from env.sep_rom_console import log_scratch_cold, rom_console_task
+from env.sep_verdict import TEST_PASS_CODE, decode_verdict
+from sep_base_test import sep_base_test
+from sep_reg_meta import sym
 
 _SEP_ROOT = str(Path(__file__).resolve().parents[4])
 _FW_DIR = os.path.join(_SEP_ROOT, "bootrom", "prod", "build_ot")
@@ -103,8 +101,11 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
         self.logger.info(
             "CHK-STIMULUS-SPI: both slots erased to 0x%02x -- primary "
             "0x%06x..0x%06x, backup 0x%06x..0x%06x",
-            mm.ERASED_BYTE, spans["primary"][0], spans["primary"][1],
-            spans["backup"][0], spans["backup"][1],
+            mm.ERASED_BYTE,
+            spans["primary"][0],
+            spans["primary"][1],
+            spans["backup"][0],
+            spans["backup"][1],
         )
         return buf
 
@@ -141,7 +142,10 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
         loaded = bytes(self.mutate_flash_image(img))
         image_len = len(loaded)
         flash = OcahSpiFlash(
-            dut.spi_cs_n_o, dut.spi_sck_o, mosi=dut.spi_mosi_o, miso=dut.spi_miso_i,
+            dut.spi_cs_n_o,
+            dut.spi_sck_o,
+            mosi=dut.spi_mosi_o,
+            miso=dut.spi_miso_i,
             name="sep_spi_no_detect_flash",
         )
         flash.preload(loaded)
@@ -155,7 +159,9 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
         last_log = 0
         try:
             await self.bring_up_cpu_boot(
-                _ROM_BASE >> 1, pre_reset_hook=_load_tcm, run_pulse_cycles=40,
+                _ROM_BASE >> 1,
+                pre_reset_hook=_load_tcm,
+                run_pulse_cycles=40,
             )
             for cycle in range(_MAX_RUN_CYCLES):
                 await RisingEdge(dut.clk_i)
@@ -174,14 +180,19 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
                     fw_pass = verdict[1]
                     self.logger.info(
                         "CHK-VERDICT: ROM signalled completion at cycle %d via "
-                        "cold_scratch[0], pass=%d", cycle, fw_pass,
+                        "cold_scratch[0], pass=%d",
+                        cycle,
+                        fw_pass,
                     )
                     break
                 if cycle - last_log >= _PROGRESS_EVERY:
                     last_log = cycle
                     self.logger.info(
                         "no-detect poll cyc=%d status=0x%08x retired=%d lines=%d",
-                        cycle, status, retired, len(console),
+                        cycle,
+                        status,
+                        retired,
+                        len(console),
                     )
 
             # The hang is part of the expected result. Breaking out the cycle the
@@ -206,8 +217,11 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
                 self.logger.info(
                     "CHK-HANG: %d cycles after the terminal status, "
                     "cold_scratch[1]=0x%08x, fw_pass=%d, %d new console line(s): %s",
-                    _HANG_OBSERVE_CYCLES, last_status, fw_pass,
-                    len(post_lines), post_lines,
+                    _HANG_OBSERVE_CYCLES,
+                    last_status,
+                    fw_pass,
+                    len(post_lines),
+                    post_lines,
                 )
         finally:
             txns = flash.get_transactions()
@@ -219,8 +233,7 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
         self._check(console, status_seq, fw_done, fw_pass, retired, txns, image_len)
 
     # --- checks ------------------------------------------------------------
-    def _check(self, console, status_seq, fw_done, fw_pass, retired,
-               txns, image_len) -> None:
+    def _check(self, console, status_seq, fw_done, fw_pass, retired, txns, image_len) -> None:
         log = self.logger
         status_hex = [hex(v) for v in status_seq]
         log.info("cold_scratch[1] sequence: %s", status_hex)
@@ -262,8 +275,7 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
                 f"ROM printed {marker!r}: the backup was reached via the SPI-init "
                 f"failure path, so no address decision was tested"
             )
-        log.info("CHK-CONTROLLER-UP: %s, and neither init-failure path taken",
-                 _SPI_INIT_OK)
+        log.info("CHK-CONTROLLER-UP: %s, and neither init-failure path taken", _SPI_INIT_OK)
 
         # The count matters: one BAD_MAGIC would mean only one address was read.
         i_psrc = index_of(_PRIMARY_SRC)
@@ -280,8 +292,13 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
             f"saw {n_bad}. Both addresses must be read and both must be rejected "
             f"for the reason this stimulus plants. Console: {console}"
         )
-        log.info("CHK-BOTH-ADDRESSES: primary@%d then backup@%d, %d x %s",
-                 i_psrc, i_bsrc, n_bad, _BAD_MAGIC_ERR)
+        log.info(
+            "CHK-BOTH-ADDRESSES: primary@%d then backup@%d, %d x %s",
+            i_psrc,
+            i_bsrc,
+            n_bad,
+            _BAD_MAGIC_ERR,
+        )
 
         # Without this, a run where the backup booted could still show the above.
         assert not any(_MANIFEST_OK in line for line in console), (
@@ -299,20 +316,21 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
             (_STATUS_TERMINAL, "STATUS_ENCODE(ERROR, BAD_MAGIC & 0xFFFF)"),
         ):
             assert want in status_seq, (
-                f"cold_scratch[1] never held 0x{want:08x} ({what}); observed "
-                f"{status_hex}"
+                f"cold_scratch[1] never held 0x{want:08x} ({what}); observed {status_hex}"
             )
         assert fw_done, (
             f"ROM never signalled completion within {_MAX_RUN_CYCLES} cycles; two "
             f"undetected addresses must converge on a mailbox FAIL and hang. "
             f"cold_scratch[1]: {status_hex}"
         )
-        assert not fw_pass, (
-            "ROM signalled PASS with no valid manifest at either address"
+        assert not fw_pass, "ROM signalled PASS with no valid manifest at either address"
+        log.info(
+            "CHK-TERMINAL: %s after both rejections, cold_scratch[1] held "
+            "0x%08x then 0x%08x, mailbox FAIL (fw_pass=0)",
+            _ALL_FAILED,
+            _STATUS_LOOP_FAILED,
+            _STATUS_TERMINAL,
         )
-        log.info("CHK-TERMINAL: %s after both rejections, cold_scratch[1] held "
-                 "0x%08x then 0x%08x, mailbox FAIL (fw_pass=0)",
-                 _ALL_FAILED, _STATUS_LOOP_FAILED, _STATUS_TERMINAL)
 
         # Had the ROM continued -- retried, restarted, or reported further --
         # cold_scratch[1] would have moved off the terminal error.
@@ -322,9 +340,12 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
             f"0x{_STATUS_TERMINAL:08x}: the ROM did not stay stopped. Full status "
             f"sequence: {status_hex}"
         )
-        log.info("CHK-HANG-HELD: cold_scratch[1] still 0x%08x and fw_pass still 0 "
-                 "after %d cycles -- terminal, not transient",
-                 _STATUS_TERMINAL, _HANG_OBSERVE_CYCLES)
+        log.info(
+            "CHK-HANG-HELD: cold_scratch[1] still 0x%08x and fw_pass still 0 "
+            "after %d cycles -- terminal, not transient",
+            _STATUS_TERMINAL,
+            _HANG_OBSERVE_CYCLES,
+        )
 
         for marker in _BOOT_PROGRESS:
             assert not any(marker in line for line in console), (
@@ -342,8 +363,10 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
             f"{[hex(t['opcode']) for t in txns]}"
         )
         seen = {}
-        for slot, base in (("primary", mm.PRIMARY_MANIFEST_OFFSET),
-                           ("backup", mm.BACKUP_MANIFEST_OFFSET)):
+        for slot, base in (
+            ("primary", mm.PRIMARY_MANIFEST_OFFSET),
+            ("backup", mm.BACKUP_MANIFEST_OFFSET),
+        ):
             hit = ev.covering_read(rds, base)
             assert hit is not None, (
                 f"no SPI read covered the {slot} manifest address 0x{base:x}: that "
@@ -367,6 +390,9 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
         log.info(
             "CHK-DEVICE-BLANK: read[%d] 0x%06x and read[%d] 0x%06x both returned "
             "0x%02x -- one device, two addresses, both blank, in order",
-            seen["primary"], mm.PRIMARY_MANIFEST_OFFSET,
-            seen["backup"], mm.BACKUP_MANIFEST_OFFSET, mm.ERASED_BYTE,
+            seen["primary"],
+            mm.PRIMARY_MANIFEST_OFFSET,
+            seen["backup"],
+            mm.BACKUP_MANIFEST_OFFSET,
+            mm.ERASED_BYTE,
         )

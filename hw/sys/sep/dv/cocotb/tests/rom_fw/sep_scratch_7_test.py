@@ -60,15 +60,13 @@ import os
 import shutil
 from pathlib import Path
 
-from sep_reg_meta import sym
-
 import cocotb
 import pyuvm
 from cocotb.triggers import RisingEdge
-
+from env.sep_efuse_image import LC_TEST_DEV, SepEfuseImage
+from env.sep_rom_console import log_scratch_cold, rom_console_task
 from sep_base_test import sep_base_test
-from env.sep_efuse_image import SepEfuseImage, LC_TEST_DEV
-from env.sep_rom_console import rom_console_task, log_scratch_cold
+from sep_reg_meta import sym
 
 _SEP_ROOT = str(Path(__file__).resolve().parents[4])
 # Same ROM build as the OT boot tests, so this test adds no new firmware profile.
@@ -180,7 +178,9 @@ class sep_scratch_7_test(sep_base_test):
         obs = _WarmDispatchObserver(self)
         sampler = cocotb.start_soon(obs.run(dut))
         await self.bring_up_cpu_boot(
-            _ROM_BASE >> 1, pre_reset_hook=_load_tcm, run_pulse_cycles=40,
+            _ROM_BASE >> 1,
+            pre_reset_hook=_load_tcm,
+            run_pulse_cycles=40,
         )
         await sampler
         log_scratch_cold(self.logger)
@@ -234,17 +234,18 @@ class _WarmDispatchObserver:
             # sampler ran the full budget every time -- 400,000 cycles of it --
             # which also let post-jump execution pollute the sequences this test
             # then asserts on. The retention check itself lives after the loop.
-            if (
-                _STATUS_WARM_RESET_JUMP in self.status_seq
-                and _HANDLER_ADDR in self.pcs
-            ):
+            if _STATUS_WARM_RESET_JUMP in self.status_seq and _HANDLER_ADDR in self.pcs:
                 log.info("warm dispatch observed at cycle %d; stopping sampler", cycle)
                 return
             if cycle - last_log >= _PROGRESS_EVERY:
                 last_log = cycle
                 log.info(
                     "warm dispatch poll cyc=%d cold7=0x%08x status=0x%08x retired=%d pcs=%d",
-                    cycle, cold7, status, self.retired, len(self.pcs),
+                    cycle,
+                    cold7,
+                    status,
+                    self.retired,
+                    len(self.pcs),
                 )
         log.info(
             "sampler ran out at %d cycles: cold7_seq=%s status_seq=%s retired=%d",
@@ -307,8 +308,10 @@ class _WarmDispatchObserver:
             f"slot intact on the accept path -- clearing it would disarm watchdog "
             f"recovery from the second reset onward. Sequence: {cold7_hex}"
         )
-        log.info("CHK-WARM-RETAINED: cold_scratch[7] left at 0x%08x for the next "
-                 "watchdog reset", _HANDLER_ADDR)
+        log.info(
+            "CHK-WARM-RETAINED: cold_scratch[7] left at 0x%08x for the next watchdog reset",
+            _HANDLER_ADDR,
+        )
 
         # CHK-NO-COLD: the negative half of the dispatch -- proof the ROM did not
         # simply fall through to cold_boot.
@@ -336,5 +339,8 @@ class _WarmDispatchObserver:
             f"ROM produced console output, which only happens on the cold-boot "
             f"path (every simputs call sits downstream of cold_boot): {console}"
         )
-        log.info("CHK-WARM-NO-COLD: cold_boot's 0x%08x poison never appeared and "
-                 "no cold-path console output", _COLD_POISON)
+        log.info(
+            "CHK-WARM-NO-COLD: cold_boot's 0x%08x poison never appeared and "
+            "no cold-path console output",
+            _COLD_POISON,
+        )

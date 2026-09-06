@@ -24,7 +24,6 @@ run would still end on the same ``MANIFEST_ERR_BL1_BAD_ADDR`` code.
 from __future__ import annotations
 
 import pyuvm
-
 from env import sep_payload_mutate as pm
 from rom_fw.sep_bl1_image_invalid_base import sep_bl1_image_invalid_base
 
@@ -50,11 +49,12 @@ class sep_bl1_entry_invalid_test(sep_bl1_image_invalid_base):
             f"this testcase would be asserting on a defect it did not plant"
         )
         written = pm.set_bl1_entry_point(buf, slot)
-        assert written == length, (
-            f"expected the boundary value 0x{length:x}, wrote 0x{written:x}"
-        )
+        assert written == length, f"expected the boundary value 0x{length:x}, wrote 0x{written:x}"
         self.logger.info(
             "CHK-STIMULUS-BL1-ENTRY: %s entry_point 0x%x -> 0x%x (== length, the "
             "smallest rejected value); %s",
-            slot, before, written, pm.describe_bl1(buf, slot),
+            slot,
+            before,
+            written,
+            pm.describe_bl1(buf, slot),
         )

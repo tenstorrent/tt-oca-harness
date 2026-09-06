@@ -35,7 +35,6 @@ at the device. Running the SPI-stub ROM instead would make it vacuous.
 from __future__ import annotations
 
 import pyuvm
-
 from env import sep_spi_slot_evidence as ev
 from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
 
@@ -44,10 +43,10 @@ _STRAPS_LO_RECOVERY = 0x0208_0000
 _BOOT_RECOVERY_BIT_LO = 19
 
 _STRAPS_LO_ECHO = f"STRAPS_LO=0x{_STRAPS_LO_RECOVERY:08x}"
-_STRAP_PRIMARY_ECHO = "STRAP primary=1"     # boot_straps.c:32
-_STRAP_RECOVERY_ECHO = " recovery=1"        # boot_straps.c:33
-_RECOVERY_MARKER = "BOOT_RECOVERY"          # rom_main.c:635
-_WAIT_SMC = "WAIT_SMC_MANIFEST"             # manifest_load.c:720
+_STRAP_PRIMARY_ECHO = "STRAP primary=1"  # boot_straps.c:32
+_STRAP_RECOVERY_ECHO = " recovery=1"  # boot_straps.c:33
+_RECOVERY_MARKER = "BOOT_RECOVERY"  # rom_main.c:635
+_WAIT_SMC = "WAIT_SMC_MANIFEST"  # manifest_load.c:720
 # smc_sram_base (0x4006_0000, sep_smc_interface.h:57,162-164) + the manifest
 # offset the responder publishes in SMC scratch[8] (0x1000). manifest_load.c:765.
 #
@@ -79,11 +78,18 @@ class sep_boot_recovery_test(sep_rom_ot_dma_boot_test):
     # Replaces the inherited SPI-path tuple entirely: every marker in it is one
     # this run must not produce.
     required_markers = (
-        _STRAPS_LO_ECHO, _STRAP_PRIMARY_ECHO, _STRAP_RECOVERY_ECHO,
-        _RECOVERY_MARKER, _WAIT_SMC, _SMC_MANIFEST_SRC, _MANIFEST_OK,
+        _STRAPS_LO_ECHO,
+        _STRAP_PRIMARY_ECHO,
+        _STRAP_RECOVERY_ECHO,
+        _RECOVERY_MARKER,
+        _WAIT_SMC,
+        _SMC_MANIFEST_SRC,
+        _MANIFEST_OK,
     ) + _BL1_MARKERS
     forbidden_markers = (
-        _SPI_MARKER, _SECONDARY_MARKER, "MANIFEST_ALL_FAILED",
+        _SPI_MARKER,
+        _SECONDARY_MARKER,
+        "MANIFEST_ALL_FAILED",
     ) + _SPI_INIT_MARKERS
 
     def mutate_flash_image(self, buf: bytearray) -> bytearray:
@@ -102,8 +108,9 @@ class sep_boot_recovery_test(sep_rom_ot_dma_boot_test):
         return buf
 
     def log_transport(self, flash) -> None:
-        self.logger.info("CHK-SPI-TXNS:\n%s",
-                         ev.summarize(flash.get_transactions(), self._image_len))
+        self.logger.info(
+            "CHK-SPI-TXNS:\n%s", ev.summarize(flash.get_transactions(), self._image_len)
+        )
 
     def check_transport(self, console: list[str], flash) -> None:
         txns = flash.get_transactions()
@@ -144,5 +151,9 @@ class sep_boot_recovery_test(sep_rom_ot_dma_boot_test):
         self.logger.info(
             "CHK-RECOVERY-ORDER: STRAPS_LO@%d -> BOOT_RECOVERY@%d -> "
             "WAIT_SMC_MANIFEST@%d -> SMC manifest@%d -> MANIFEST_OK@%d",
-            i_straps, i_branch, i_wait, i_src, i_ok,
+            i_straps,
+            i_branch,
+            i_wait,
+            i_src,
+            i_ok,
         )

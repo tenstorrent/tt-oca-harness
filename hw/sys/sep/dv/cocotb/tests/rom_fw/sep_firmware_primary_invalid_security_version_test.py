@@ -61,7 +61,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyuvm
-
 from env import sep_manifest_mutate as mm
 from env import sep_payload_mutate as pm
 from rom_fw.sep_primary_fail_backup_boot_base import (
@@ -70,8 +69,11 @@ from rom_fw.sep_primary_fail_backup_boot_base import (
 )
 
 _EFUSE_PRELOAD = (
-    Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads"
-    / "efuse_configurations" / "sep_efuse_lc_prod_secver1.toml"
+    Path(__file__).resolve().parents[3]
+    / "tb"
+    / "efuse_preloads"
+    / "efuse_configurations"
+    / "sep_efuse_lc_prod_secver1.toml"
 )
 
 # Thermometer count of BL1_VERSION in the preload above, and the versions the two
@@ -88,8 +90,7 @@ _BACKUP_VER_ECHO = f"MFST_VER=0x{_BACKUP_SECURITY_VERSION:08x}"
 
 
 @pyuvm.test()
-class sep_firmware_primary_invalid_security_version_test(
-        sep_primary_fail_backup_boot_base):
+class sep_firmware_primary_invalid_security_version_test(sep_primary_fail_backup_boot_base):
     """Primary below the rollback floor -> rejected -> backup at the floor boots."""
 
     primary_defect_marker = "VERSION_ROLLBACK"
@@ -102,9 +103,16 @@ class sep_firmware_primary_invalid_security_version_test(
     # None of these may fire. The primary is rejected upstream of key selection,
     # so every one of them appearing on the primary would mean the rollback check
     # did not preempt it; and the backup is valid, so none may fire there either.
-    extra_forbidden = ("BAD_SIG_TYPE=", "BAD_KEY_IDX", "BAD_KEY_SEL",
-                       "ROM_KEY_EMPTY", "FUSE_KEY_EMPTY", "PUBK_HASH_MISMATCH",
-                       "KEY_REVOKED", "RSA_VERIFY_FAIL")
+    extra_forbidden = (
+        "BAD_SIG_TYPE=",
+        "BAD_KEY_IDX",
+        "BAD_KEY_SEL",
+        "ROM_KEY_EMPTY",
+        "FUSE_KEY_EMPTY",
+        "PUBK_HASH_MISMATCH",
+        "KEY_REVOKED",
+        "RSA_VERIFY_FAIL",
+    )
 
     def corrupt_primary(self, buf: bytearray) -> None:
         # The shipped primary already carries 0, which is below the floor this
@@ -127,7 +135,10 @@ class sep_firmware_primary_invalid_security_version_test(
         self.logger.info(
             "CHK-STIMULUS-PRIMARY-VERSION: primary security_version=%d vs fuse "
             "floor %d (reject expected because %d < %d); slot untouched and still "
-            "fully sealed", got, _FUSE_SECURITY_VERSION, got,
+            "fully sealed",
+            got,
+            _FUSE_SECURITY_VERSION,
+            got,
             _FUSE_SECURITY_VERSION,
         )
 
@@ -156,7 +167,9 @@ class sep_firmware_primary_invalid_security_version_test(
             "CHK-STIMULUS-BACKUP-VERSION: backup security_version %d -> %d, "
             "exactly at the fuse floor %d (the `manifest_ver == fuse_ver` accept "
             "boundary); slot re-sealed and re-signed with dev0",
-            before, got, _FUSE_SECURITY_VERSION,
+            before,
+            got,
+            _FUSE_SECURITY_VERSION,
         )
 
     def check_efuse(self, image) -> None:
@@ -224,6 +237,13 @@ class sep_firmware_primary_invalid_security_version_test(
         self.logger.info(
             "CHK-ROLLBACK-FAILOVER: %s + %s@%d -> VERSION_ROLLBACK@%d -> backup@%d "
             "-> %s@%d accepted at the floor; PUBK_SEL= first seen at %d, after the "
-            "backup read", _FUSE_VER_ECHO, _PRIMARY_VER_ECHO, i_pver, i_roll,
-            i_bsrc, _BACKUP_VER_ECHO, i_bver, i_psel,
+            "backup read",
+            _FUSE_VER_ECHO,
+            _PRIMARY_VER_ECHO,
+            i_pver,
+            i_roll,
+            i_bsrc,
+            _BACKUP_VER_ECHO,
+            i_bver,
+            i_psel,
         )

@@ -28,7 +28,6 @@ which architected status codes are substituted -- is in the shared base
 from __future__ import annotations
 
 import pyuvm
-
 from rom_fw.sep_chiplet_pubkey_base import sep_chiplet_pubkey_revoked_base
 
 

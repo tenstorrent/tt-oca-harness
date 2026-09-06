@@ -147,7 +147,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyuvm
-
 from env import sep_manifest_mutate as mm
 from env import sep_payload_mutate as pm
 from env import sep_spi_slot_evidence as ev
@@ -157,8 +156,11 @@ from rom_fw.sep_rom_ot_dma_boot_test import (
 )
 
 _EFUSE_PRELOAD = (
-    Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads"
-    / "efuse_configurations" / "sep_efuse_lc_prod_bl1ver36_spread.toml"
+    Path(__file__).resolve().parents[3]
+    / "tb"
+    / "efuse_preloads"
+    / "efuse_configurations"
+    / "sep_efuse_lc_prod_bl1ver36_spread.toml"
 )
 
 # The thermometer floor the preload burns, and the manifest value this testcase
@@ -170,16 +172,16 @@ _EFUSE_PRELOAD = (
 # byte; matching that VALUE and distinguishing the eight words are mutually exclusive,
 # and the decode coverage is worth more than the scale. Disclosed in flow_deviation.
 _SECURITY_VERSION = 36
-_FUSE_VER_ECHO = f"FUSE_VER=0x{_SECURITY_VERSION:08x}"   # manifest_crypto.c
-_MFST_VER_ECHO = f"MFST_VER=0x{_SECURITY_VERSION:08x}"   # manifest_crypto.c
+_FUSE_VER_ECHO = f"FUSE_VER=0x{_SECURITY_VERSION:08x}"  # manifest_crypto.c
+_MFST_VER_ECHO = f"MFST_VER=0x{_SECURITY_VERSION:08x}"  # manifest_crypto.c
 
 _LC_PROD = "LC=PROD"
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
-_PUBK_SEL = "PUBK_SEL="                  # manifest_crypto.c
-_RSA_START = "RSA_VERIFY_START"          # manifest_crypto.c
-_SIG_VALID = "SIG_VALID"                 # manifest_crypto.c
-_CRYPTO_OK = "CRYPTO_VALIDATE_OK"        # manifest_crypto.c
+_PUBK_SEL = "PUBK_SEL="  # manifest_crypto.c
+_RSA_START = "RSA_VERIFY_START"  # manifest_crypto.c
+_SIG_VALID = "SIG_VALID"  # manifest_crypto.c
+_CRYPTO_OK = "CRYPTO_VALIDATE_OK"  # manifest_crypto.c
 
 
 @pyuvm.test()
@@ -188,17 +190,36 @@ class sep_firmware_bl1_ver_test(sep_rom_ot_dma_boot_test):
 
     flash_image = SECURE_FLASH_IMAGE
     required_markers = sep_rom_ot_dma_boot_test.required_markers + (
-        _LC_PROD, _PRIMARY_SRC, _FUSE_VER_ECHO, _MFST_VER_ECHO,
-        _RSA_START, _SIG_VALID, _CRYPTO_OK, "BL1_COPIED", "BL1_JUMP=",
+        _LC_PROD,
+        _PRIMARY_SRC,
+        _FUSE_VER_ECHO,
+        _MFST_VER_ECHO,
+        _RSA_START,
+        _SIG_VALID,
+        _CRYPTO_OK,
+        "BL1_COPIED",
+        "BL1_JUMP=",
     )
     # VERSION_ROLLBACK is the load-bearing forbid: it is the arm this boundary must
     # NOT take. The rest exclude a boot that completed for some other reason -- a
     # failover, a skipped crypto chain, or a different rejecting arm firing first.
     forbidden_markers = sep_rom_ot_dma_boot_test.forbidden_markers + (
-        "VERSION_ROLLBACK", "SBOOT_OFF", "FUSE: SBOOT_DIS: 1", _BACKUP_SRC,
-        "MANIFEST_ERR=", "MANIFEST_ALL_FAILED", "CRYPTO_FAIL=", "RSA_VERIFY_FAIL",
-        "BAD_SIG_TYPE=", "BAD_KEY_IDX", "BAD_KEY_SEL", "ROM_KEY_EMPTY",
-        "FUSE_KEY_EMPTY", "PUBK_HASH_MISMATCH", "PUBK_HASH_TIMEOUT", "KEY_REVOKED",
+        "VERSION_ROLLBACK",
+        "SBOOT_OFF",
+        "FUSE: SBOOT_DIS: 1",
+        _BACKUP_SRC,
+        "MANIFEST_ERR=",
+        "MANIFEST_ALL_FAILED",
+        "CRYPTO_FAIL=",
+        "RSA_VERIFY_FAIL",
+        "BAD_SIG_TYPE=",
+        "BAD_KEY_IDX",
+        "BAD_KEY_SEL",
+        "ROM_KEY_EMPTY",
+        "FUSE_KEY_EMPTY",
+        "PUBK_HASH_MISMATCH",
+        "PUBK_HASH_TIMEOUT",
+        "KEY_REVOKED",
         "LC_USAGE_CONSTRAINT_FAIL",
     )
 
@@ -260,7 +281,12 @@ class sep_firmware_bl1_ver_test(sep_rom_ot_dma_boot_test):
             "BL1_VERSION popcount=%d spread over %d/8 words %s with per-word "
             "popcounts %s (a permutation of 1..8, so no mis-indexed decode reaches "
             "the same total)",
-            lc, sboot_dis, revoke, popcount, nonzero_words, [hex(w) for w in words],
+            lc,
+            sboot_dis,
+            revoke,
+            popcount,
+            nonzero_words,
+            [hex(w) for w in words],
             per_word,
         )
         return image
@@ -298,13 +324,16 @@ class sep_firmware_bl1_ver_test(sep_rom_ot_dma_boot_test):
             "CHK-STIMULUS-BOUNDARY: both slots security_version %d -> %d, re-signed "
             "with dev0 and re-verified sealed; the fuse floor is also %d, so the "
             "manifest sits EXACTLY on the accept boundary of manifest_crypto.c:94",
-            0, _SECURITY_VERSION, _SECURITY_VERSION,
+            0,
+            _SECURITY_VERSION,
+            _SECURITY_VERSION,
         )
         return buf
 
     def log_transport(self, flash) -> None:
-        self.logger.info("CHK-SPI-TXNS:\n%s",
-                         ev.summarize(flash.get_transactions(), self._image_len))
+        self.logger.info(
+            "CHK-SPI-TXNS:\n%s", ev.summarize(flash.get_transactions(), self._image_len)
+        )
 
     # --- checks ------------------------------------------------------------
     def check_transport(self, console: list[str], flash) -> None:
@@ -355,8 +384,19 @@ class sep_firmware_bl1_ver_test(sep_rom_ot_dma_boot_test):
             "CHK-ROLLBACK-BOUNDARY: primary@%d -> %s@%d -> %s@%d (equal, so accepted) "
             "-> %s@%d -> %s@%d -> %s@%d, each exactly once; and the version check "
             "preceded %s@%d",
-            i_psrc, _FUSE_VER_ECHO, i_fuse, _MFST_VER_ECHO, i_mfst,
-            _RSA_START, i_rsa, _SIG_VALID, i_sig, _CRYPTO_OK, i_ok, _PUBK_SEL, i_sel,
+            i_psrc,
+            _FUSE_VER_ECHO,
+            i_fuse,
+            _MFST_VER_ECHO,
+            i_mfst,
+            _RSA_START,
+            i_rsa,
+            _SIG_VALID,
+            i_sig,
+            _CRYPTO_OK,
+            i_ok,
+            _PUBK_SEL,
+            i_sel,
         )
 
         # --- device evidence -------------------------------------------------
@@ -392,5 +432,8 @@ class sep_firmware_bl1_ver_test(sep_rom_ot_dma_boot_test):
         self.logger.info(
             "CHK-NO-FAILOVER: read[%d] at 0x%06x returned magic %r, and no read "
             "touched the backup span across %d reads -- the PRIMARY served this boot",
-            idx, mm.PRIMARY_MANIFEST_OFFSET, magic, len(rds),
+            idx,
+            mm.PRIMARY_MANIFEST_OFFSET,
+            magic,
+            len(rds),
         )

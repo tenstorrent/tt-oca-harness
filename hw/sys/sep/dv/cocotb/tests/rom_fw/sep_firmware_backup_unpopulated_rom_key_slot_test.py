@@ -31,7 +31,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyuvm
-
 from env import sep_manifest_mutate as mm
 from rom_fw.sep_backup_manifest_fail_base import (
     MANIFEST_ERR_SIG_FAILED,
@@ -39,7 +38,11 @@ from rom_fw.sep_backup_manifest_fail_base import (
 )
 
 _EFUSE_PRELOAD = (
-    Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads" / "efuse_configurations" / "sep_efuse_lc_prod.toml"
+    Path(__file__).resolve().parents[3]
+    / "tb"
+    / "efuse_preloads"
+    / "efuse_configurations"
+    / "sep_efuse_lc_prod.toml"
 )
 
 # key_digests.c populates slot 0 only. Slot 1 is the first empty one.
@@ -57,8 +60,14 @@ class sep_firmware_backup_unpopulated_rom_key_slot_test(sep_backup_manifest_fail
     efuse_preload = _EFUSE_PRELOAD
     # Every arm that would make the verdict mean something other than "the slot
     # had no digest", plus proof the modulus never reached the verifier.
-    extra_forbidden = ("RSA_VERIFY_START", "SIG_VALID", "CRYPTO_VALIDATE_OK",
-                       "BAD_KEY_IDX", "BAD_KEY_SEL", "FUSE_KEY_EMPTY")
+    extra_forbidden = (
+        "RSA_VERIFY_START",
+        "SIG_VALID",
+        "CRYPTO_VALIDATE_OK",
+        "BAD_KEY_IDX",
+        "BAD_KEY_SEL",
+        "FUSE_KEY_EMPTY",
+    )
 
     def corrupt_backup(self, buf: bytearray) -> None:
         mm.set_public_key_sel(buf, "backup", selection=0, index=_EMPTY_SLOT)
@@ -71,7 +80,8 @@ class sep_firmware_backup_unpopulated_rom_key_slot_test(sep_backup_manifest_fail
         self.logger.info(
             "CHK-STIMULUS-EMPTY-SLOT: backup public_key_sel=0x%04x "
             "(ROM key slot %d, no compiled-in digest), TBS re-hashed",
-            got, _EMPTY_SLOT,
+            got,
+            _EMPTY_SLOT,
         )
 
     def check_efuse(self, image) -> None:

@@ -234,7 +234,6 @@ from pathlib import Path
 
 import cocotb
 from cocotb.triggers import RisingEdge
-
 from env import sep_manifest_mutate as mm
 from env import sep_payload_mutate as pm
 from env import sep_spi_slot_evidence as ev
@@ -243,9 +242,7 @@ from rom_fw.sep_rom_ot_dma_boot_test import (
     sep_rom_ot_dma_boot_test,
 )
 
-EFUSE_DIR = (
-    Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads" / "efuse_configurations"
-)
+EFUSE_DIR = Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads" / "efuse_configurations"
 
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
@@ -362,8 +359,10 @@ class sep_demotion_decision_base(sep_rom_ot_dma_boot_test):
             f"SBOOT_DIS is {sboot_dis}, expected {self.expected_sboot_dis}"
         )
         self.logger.info(
-            "CHK-STIMULUS-EFUSE: LC raw=0x%x, SBOOT_DIS=%d, BL1_VERSION=0x%x, "
-            "PUBK_REVOKE=0x%x", lc, sboot_dis, image.field_int("BL1_VERSION"),
+            "CHK-STIMULUS-EFUSE: LC raw=0x%x, SBOOT_DIS=%d, BL1_VERSION=0x%x, PUBK_REVOKE=0x%x",
+            lc,
+            sboot_dis,
+            image.field_int("BL1_VERSION"),
             image.field_int("CHIPLET_PUBK_REVOKE"),
         )
         return image
@@ -391,19 +390,21 @@ class sep_demotion_decision_base(sep_rom_ot_dma_boot_test):
         pbase = mm.slot_base("primary")
         self._planted = {
             mm.OFF_SELECTOR_BITS: bytes(
-                buf[pbase + mm.OFF_SELECTOR_BITS:pbase + mm.OFF_SELECTOR_BITS + 8]),
+                buf[pbase + mm.OFF_SELECTOR_BITS : pbase + mm.OFF_SELECTOR_BITS + 8]
+            ),
             mm.OFF_USAGE_FLAGS: bytes(
-                buf[pbase + mm.OFF_USAGE_FLAGS:pbase + mm.OFF_USAGE_FLAGS + 4]),
-            mm.OFF_FLAG_ARGS: bytes(
-                buf[pbase + mm.OFF_FLAG_ARGS:pbase + mm.OFF_FLAG_ARGS + 4]),
+                buf[pbase + mm.OFF_USAGE_FLAGS : pbase + mm.OFF_USAGE_FLAGS + 4]
+            ),
+            mm.OFF_FLAG_ARGS: bytes(buf[pbase + mm.OFF_FLAG_ARGS : pbase + mm.OFF_FLAG_ARGS + 4]),
         }
         for slot in ("primary", "backup"):
             self.logger.info("CHK-STIMULUS-%s: %s", slot.upper(), mm.describe(buf, slot))
         return buf
 
     def log_transport(self, flash) -> None:
-        self.logger.info("CHK-SPI-TXNS:\n%s",
-                         ev.summarize(flash.get_transactions(), self._image_len))
+        self.logger.info(
+            "CHK-SPI-TXNS:\n%s", ev.summarize(flash.get_transactions(), self._image_len)
+        )
 
     # --- register observation ----------------------------------------------
     def _sample_demote(self, dut) -> tuple[int, int, int, int]:
@@ -488,6 +489,7 @@ class sep_demotion_decision_base(sep_rom_ot_dma_boot_test):
         wrote afterwards would be a real ordering defect and is not currently
         observable any other way.
         """
+
         def index_of(marker: str) -> int:
             for i, line in enumerate(console):
                 if marker in line:
@@ -505,8 +507,11 @@ class sep_demotion_decision_base(sep_rom_ot_dma_boot_test):
             f"handoff (rom_main.c:349-353, :377-436, :444). Console: {console}"
         )
         self.logger.info(
-            "CHK-BOOT-CHAIN-ORDER: MANIFEST_OK@%d -> [C15]@%d -> BL1_COPIED@%d -> "
-            "BL1_JUMP=@%d", i_ok, i_last_demote, i_copied, i_jump,
+            "CHK-BOOT-CHAIN-ORDER: MANIFEST_OK@%d -> [C15]@%d -> BL1_COPIED@%d -> BL1_JUMP=@%d",
+            i_ok,
+            i_last_demote,
+            i_copied,
+            i_jump,
         )
 
     def _check_demotion_console(self, console: list[str]) -> None:
@@ -546,8 +551,7 @@ class sep_demotion_decision_base(sep_rom_ot_dma_boot_test):
                 f"it reads (rom_main.c:349-353 then :380-381). Console: {console}"
             )
         self.logger.info(
-            "CHK-DEMOTION-CONSOLE: %s each exactly once and after MANIFEST_OK; none "
-            "of %s present",
+            "CHK-DEMOTION-CONSOLE: %s each exactly once and after MANIFEST_OK; none of %s present",
             ", ".join(repr(t) for t in self.demotion_required),
             ", ".join(repr(t) for t in forbidden),
         )
@@ -559,8 +563,10 @@ class sep_demotion_decision_base(sep_rom_ot_dma_boot_test):
         self.logger.info(
             "CHK-DEMOTE-TRANSITIONS: %d change(s) recorded: %s",
             len(self._demote_changes),
-            [(c, f"st1=0b{v[0]:02b} lk1={v[1]} st2=0b{v[2]:02b} lk2={v[3]}")
-             for c, v in self._demote_changes],
+            [
+                (c, f"st1=0b{v[0]:02b} lk1={v[1]} st2=0b{v[2]:02b} lk2={v[3]}")
+                for c, v in self._demote_changes
+            ],
         )
         # The transition record is what turns "the register reads (1, 1)" into "BL0
         # WROTE it, and it was at its reset value before". Asserting it is what makes
@@ -626,7 +632,11 @@ class sep_demotion_decision_base(sep_rom_ot_dma_boot_test):
         self.logger.info(
             "CHK-DEMOTE-REGISTERS: DEMOTE_1 demote=%d lock=%d, DEMOTE_2 demote=%d "
             "lock=%d -- read from the lifecycle controller, matching the expected "
-            "[C15] outcome", got_1[0], got_1[1], got_2[0], got_2[1],
+            "[C15] outcome",
+            got_1[0],
+            got_1[1],
+            got_2[0],
+            got_2[1],
         )
 
     def _check_primary_served(self, flash) -> None:
@@ -646,8 +656,7 @@ class sep_demotion_decision_base(sep_rom_ot_dma_boot_test):
         )
         hit = ev.covering_read(rds, mm.PRIMARY_MANIFEST_OFFSET)
         assert hit is not None, (
-            f"no SPI read covered the primary manifest address "
-            f"0x{mm.PRIMARY_MANIFEST_OFFSET:x}"
+            f"no SPI read covered the primary manifest address 0x{mm.PRIMARY_MANIFEST_OFFSET:x}"
         )
         idx, txn = hit
         magic = ev.bytes_at(txn, mm.PRIMARY_MANIFEST_OFFSET, 4)
@@ -665,9 +674,11 @@ class sep_demotion_decision_base(sep_rom_ot_dma_boot_test):
             "CHK-NO-FAILOVER: read[%d] at 0x%06x returned magic %r, and no read "
             "touched the backup span across %d reads -- the demotion inputs the ROM "
             "read are the ones this testcase planted in the PRIMARY",
-            idx, mm.PRIMARY_MANIFEST_OFFSET, magic, len(rds),
+            idx,
+            mm.PRIMARY_MANIFEST_OFFSET,
+            magic,
+            len(rds),
         )
-
 
     def _check_stimulus_served(self, flash) -> None:
         """Require the DEVICE to have returned the demotion bytes this test planted.
@@ -693,9 +704,11 @@ class sep_demotion_decision_base(sep_rom_ot_dma_boot_test):
         transport ever splits a field across two reads this assertion fires and the
         fix is to stitch the reads, not to drop the check.
         """
-        names = {mm.OFF_SELECTOR_BITS: "usage_constraints.selector_bits",
-                 mm.OFF_USAGE_FLAGS: "usage_constraints.flags",
-                 mm.OFF_FLAG_ARGS: "boot_arguments.flag_args"}
+        names = {
+            mm.OFF_SELECTOR_BITS: "usage_constraints.selector_bits",
+            mm.OFF_USAGE_FLAGS: "usage_constraints.flags",
+            mm.OFF_FLAG_ARGS: "boot_arguments.flag_args",
+        }
         assert getattr(self, "_planted", None), (
             "no planted-stimulus snapshot: mutate_flash_image() did not run, so the "
             "device-side check below has nothing to compare against"
@@ -728,8 +741,9 @@ class sep_demotion_decision_base(sep_rom_ot_dma_boot_test):
         )
 
 
-def narrow_life_cycle_states(test, buf: bytearray, allowed: int, *,
-                             reseal_slots: tuple[str, ...]) -> None:
+def narrow_life_cycle_states(
+    test, buf: bytearray, allowed: int, *, reseal_slots: tuple[str, ...]
+) -> None:
     """Narrow BOTH slots' ``life_cycle_states`` to a single state, and say why.
 
     The shipped image permits TEST_DEV | PROD | PROD_END (0x7,
@@ -764,6 +778,8 @@ def narrow_life_cycle_states(test, buf: bytearray, allowed: int, *,
         "CHK-STIMULUS-LC-CONSTRAINT: both slots life_cycle_states 0x%08x -> "
         "0x%08x with selector bit %d set, so manifest_load.c:540-549 must map the "
         "live LC state into this bitmap for the boot to proceed; re-sealed slots: %s",
-        mm.SHIPPED_LIFE_CYCLE_STATES, allowed, mm.SELECTOR_BIT_LIFE_CYCLE_STATES,
+        mm.SHIPPED_LIFE_CYCLE_STATES,
+        allowed,
+        mm.SELECTOR_BIT_LIFE_CYCLE_STATES,
         ", ".join(reseal_slots) or "(none)",
     )

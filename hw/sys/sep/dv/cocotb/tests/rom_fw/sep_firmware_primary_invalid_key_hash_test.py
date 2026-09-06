@@ -60,14 +60,16 @@ import os
 from pathlib import Path
 
 import pyuvm
-
 from env import sep_manifest_mutate as mm
 from env import sep_spi_slot_evidence as ev
 from rom_fw.sep_rom_ot_dma_boot_test import SECURE_FLASH_IMAGE, sep_rom_ot_dma_boot_test
 
 _EFUSE_PRELOAD = (
-    Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads"
-    / "efuse_configurations" / "sep_efuse_lc_prod.toml"
+    Path(__file__).resolve().parents[3]
+    / "tb"
+    / "efuse_preloads"
+    / "efuse_configurations"
+    / "sep_efuse_lc_prod.toml"
 )
 
 # manifest.h:294-320
@@ -75,9 +77,9 @@ MANIFEST_ERR_KEY_HASH_MISMATCH = 0x0003_0016
 
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
-_HASH_MISMATCH = "PUBK_HASH_MISMATCH"                                  # manifest_crypto.c:132
-_CRYPTO_FAIL = f"CRYPTO_FAIL=0x{MANIFEST_ERR_KEY_HASH_MISMATCH:08x}"   # manifest_load.c:671
-_SLOT_ERR = f"MANIFEST_ERR=0x{MANIFEST_ERR_KEY_HASH_MISMATCH:08x}"     # manifest_load.c:771
+_HASH_MISMATCH = "PUBK_HASH_MISMATCH"  # manifest_crypto.c:132
+_CRYPTO_FAIL = f"CRYPTO_FAIL=0x{MANIFEST_ERR_KEY_HASH_MISMATCH:08x}"  # manifest_load.c:671
+_SLOT_ERR = f"MANIFEST_ERR=0x{MANIFEST_ERR_KEY_HASH_MISMATCH:08x}"  # manifest_load.c:771
 _RSA_START = "RSA_VERIFY_START"
 _SIG_VALID = "SIG_VALID"
 _CRYPTO_OK = "CRYPTO_VALIDATE_OK"
@@ -89,8 +91,14 @@ _LC_PROD = "LC=PROD"
 # reason other than the planted one.
 _SBOOT_OFF = "SBOOT_OFF"
 _ALL_FAILED = "MANIFEST_ALL_FAILED"
-_OTHER_KEY_VERDICTS = ("BAD_KEY_IDX", "BAD_KEY_SEL", "FUSE_KEY_EMPTY",
-                       "ROM_KEY_EMPTY", "KEY_REVOKED", "VERSION_ROLLBACK")
+_OTHER_KEY_VERDICTS = (
+    "BAD_KEY_IDX",
+    "BAD_KEY_SEL",
+    "FUSE_KEY_EMPTY",
+    "ROM_KEY_EMPTY",
+    "KEY_REVOKED",
+    "VERSION_ROLLBACK",
+)
 
 
 @pyuvm.test()
@@ -99,12 +107,24 @@ class sep_firmware_primary_invalid_key_hash_test(sep_rom_ot_dma_boot_test):
 
     flash_image = SECURE_FLASH_IMAGE
     required_markers = sep_rom_ot_dma_boot_test.required_markers + (
-        _LC_PROD, _HASH_MISMATCH, _CRYPTO_FAIL, _SLOT_ERR, _BACKUP_SRC,
-        _RSA_START, _SIG_VALID, _CRYPTO_OK,
+        _LC_PROD,
+        _HASH_MISMATCH,
+        _CRYPTO_FAIL,
+        _SLOT_ERR,
+        _BACKUP_SRC,
+        _RSA_START,
+        _SIG_VALID,
+        _CRYPTO_OK,
     )
-    forbidden_markers = sep_rom_ot_dma_boot_test.forbidden_markers + (
-        _SBOOT_OFF, _ALL_FAILED, "FUSE: SBOOT_DIS: 1",
-    ) + _OTHER_KEY_VERDICTS
+    forbidden_markers = (
+        sep_rom_ot_dma_boot_test.forbidden_markers
+        + (
+            _SBOOT_OFF,
+            _ALL_FAILED,
+            "FUSE: SBOOT_DIS: 1",
+        )
+        + _OTHER_KEY_VERDICTS
+    )
 
     def build_efuse_image(self):
         assert os.path.isfile(_EFUSE_PRELOAD), f"eFuse preload missing: {_EFUSE_PRELOAD}"
@@ -133,7 +153,11 @@ class sep_firmware_primary_invalid_key_hash_test(sep_rom_ot_dma_boot_test):
         )
         self.logger.info(
             "CHK-STIMULUS-EFUSE: LC raw=0x%x (PROD), SBOOT_DIS=%d, "
-            "BL1_VERSION=0x%x, PUBK_REVOKE=0x%x", lc, sboot_dis, bl1_ver, revoke,
+            "BL1_VERSION=0x%x, PUBK_REVOKE=0x%x",
+            lc,
+            sboot_dis,
+            bl1_ver,
+            revoke,
         )
         return image
 
@@ -149,8 +173,9 @@ class sep_firmware_primary_invalid_key_hash_test(sep_rom_ot_dma_boot_test):
         return buf
 
     def log_transport(self, flash) -> None:
-        self.logger.info("CHK-SPI-TXNS:\n%s",
-                         ev.summarize(flash.get_transactions(), self._image_len))
+        self.logger.info(
+            "CHK-SPI-TXNS:\n%s", ev.summarize(flash.get_transactions(), self._image_len)
+        )
 
     def check_transport(self, console: list[str], flash) -> None:
         def index_of(marker: str) -> int:
@@ -186,13 +211,16 @@ class sep_firmware_primary_invalid_key_hash_test(sep_rom_ot_dma_boot_test):
 
         # CHK-KEYHASH-RECOVERED: the boot came from the backup, after the primary
         # was rejected.
-        assert i_bsrc < i_ok, (
-            f"{_MANIFEST_OK}@{i_ok} did not follow the backup read@{i_bsrc}"
-        )
+        assert i_bsrc < i_ok, f"{_MANIFEST_OK}@{i_ok} did not follow the backup read@{i_bsrc}"
         self.logger.info(
             "CHK-KEYHASH-FAILOVER: primary@%d -> PUBK_HASH_MISMATCH@%d -> "
             "MANIFEST_ERR@%d -> backup@%d -> RSA_VERIFY_START@%d -> MANIFEST_OK@%d",
-            i_psrc, i_hash, i_perr, i_bsrc, i_rsa, i_ok,
+            i_psrc,
+            i_hash,
+            i_perr,
+            i_bsrc,
+            i_rsa,
+            i_ok,
         )
 
         # CHK-KEYHASH-ONE-MISMATCH: the backup did not also mismatch. A second
@@ -232,6 +260,9 @@ class sep_firmware_primary_invalid_key_hash_test(sep_rom_ot_dma_boot_test):
         self.logger.info(
             "CHK-KEYHASH-ADDR: read[%d] 0x%06x returned a valid %r header and was "
             "still rejected; read[%d] 0x%06x served the boot",
-            p_idx, mm.PRIMARY_MANIFEST_OFFSET, p_magic,
-            b_idx, mm.BACKUP_MANIFEST_OFFSET,
+            p_idx,
+            mm.PRIMARY_MANIFEST_OFFSET,
+            p_magic,
+            b_idx,
+            mm.BACKUP_MANIFEST_OFFSET,
         )

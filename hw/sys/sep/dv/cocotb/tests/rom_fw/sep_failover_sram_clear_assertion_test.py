@@ -119,12 +119,10 @@ import pyuvm
 from cocotb.handle import Immediate
 from cocotb.triggers import ClockCycles
 from cocotb.utils import get_sim_time
-
-from sep_reg_meta import sym
-
 from env import sep_manifest_mutate as mm
 from env.sep_rom_console import rom_console_task
 from rom_fw.sep_spi_primary_fail_backup_test import sep_spi_primary_fail_backup_test
+from sep_reg_meta import sym
 
 # 0x1000_0000. From the RDL export, not a literal, so the test cannot drift from
 # the address the ROM's SRAM_BASE macro resolves to (manifest_load.c).
@@ -215,7 +213,7 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
                 f"cannot reach the SEP SRAM array from cocotb.top; the walk reached "
                 f"{'.'.join(walked)} and then failed with {type(exc).__name__}: {exc}. "
                 f"The built model does register this scope -- see "
-                f"Vtop__Syms__ctor__1__Slow.cpp varInsert(\"mem\", ...) under "
+                f'Vtop__Syms__ctor__1__Slow.cpp varInsert("mem", ...) under '
                 f"sep_uvm_top.u_dut.u_sep_ip_integration.u_sep_sram.gen_ram_inst[0].u_mem "
                 f"-- so a failure here means the public scope in "
                 f"hw/sys/sep/dv/sep_public_scope.vlt changed, not that the test is wrong"
@@ -259,15 +257,19 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
             f"{len(bad)}+ words differ, first: "
             + "; ".join(f"word[{i}] want 0x{w:016x} got 0x{g:016x}" for i, w, g in bad)
             + ". Without a non-zero starting state every 'SRAM is now zero' check "
-              "below would pass on a ROM that cleared nothing."
+            "below would pass on a ROM that cleared nothing."
         )
         self._poison_words = _SRAM_WORDS
         self.logger.info(
             "CHK-SRAM-POISON: all %d words (0x%08x..0x%08x, %d KiB) hold a distinct "
             "non-zero value before the boot; word[0]=0x%016x word[%d]=0x%016x",
-            _SRAM_WORDS, _SRAM_BASE, _SRAM_BASE + _SRAM_WORDS * _WORD_BYTES - 1,
+            _SRAM_WORDS,
+            _SRAM_BASE,
+            _SRAM_BASE + _SRAM_WORDS * _WORD_BYTES - 1,
             _SRAM_WORDS * _WORD_BYTES // 1024,
-            self._word(0), _LAST_WORD, self._word(_LAST_WORD),
+            self._word(0),
+            _LAST_WORD,
+            self._word(_LAST_WORD),
         )
 
     def _snapshot(self, what: str) -> dict:
@@ -359,26 +361,31 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
         self._console = []
         self._mem = self._resolve_sram()
         self._poison_sram()
-        cocotb.start_soon(
-            rom_console_task(_quiet_logger(), sink=self._console, prefix="")
-        )
+        cocotb.start_soon(rom_console_task(_quiet_logger(), sink=self._console, prefix=""))
         cocotb.start_soon(self._sram_scoreboard())
         await super().run_scenario()
 
     def log_transport(self, flash) -> None:
         """Dump the SRAM scoreboard before any assertion can abort the test."""
         super().log_transport(flash)
-        for snap in (self._first_sample, self._first_touch, self._residue,
-                     self._cleared, self._redirtied):
+        for snap in (
+            self._first_sample,
+            self._first_touch,
+            self._residue,
+            self._cleared,
+            self._redirtied,
+        ):
             if snap is None:
                 continue
             self.logger.info(
-                "SRAM-SCOREBOARD %-11s t=%sns word[0]=0x%016x word[%d]=0x%016x "
-                "console_lines=%d%s",
-                snap["what"], snap["time_ns"], snap["word0"], _LAST_WORD, snap["last"],
+                "SRAM-SCOREBOARD %-11s t=%sns word[0]=0x%016x word[%d]=0x%016x console_lines=%d%s",
+                snap["what"],
+                snap["time_ns"],
+                snap["word0"],
+                _LAST_WORD,
+                snap["last"],
                 len(snap["console"]),
-                "" if "nonzero_count" not in snap
-                else f" nonzero_words={snap['nonzero_count']}",
+                "" if "nonzero_count" not in snap else f" nonzero_words={snap['nonzero_count']}",
             )
 
     def check_transport(self, console: list[str], flash) -> None:
@@ -432,8 +439,11 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
             "CHK-SRAM-RESIDUE: SRAM first disturbed at t=%sns; by t=%sns word[0] holds "
             "the rejected primary's own bytes (0x%016x) and the far end is still dirty "
             "(word[%d]=0x%016x), so the clear had not begun",
-            self._first_touch["time_ns"], self._residue["time_ns"],
-            self._residue["word0"], _LAST_WORD, self._residue["last"],
+            self._first_touch["time_ns"],
+            self._residue["time_ns"],
+            self._residue["word0"],
+            _LAST_WORD,
+            self._residue["last"],
         )
 
         # --- the clear itself ---------------------------------------------------
@@ -450,12 +460,14 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
                 for i, v in self._cleared["nonzero_sample"]
             )
             + ". clear_sram_region(SRAM_BASE, SRAM_SIZE) is specified to zero the "
-              "whole 256 KiB (manifest_load.c:693-699,776)."
+            "whole 256 KiB (manifest_load.c:693-699,776)."
         )
         self.logger.info(
             "CHK-SRAM-CLEARED: at t=%sns all %d words (0x%08x..0x%08x, %d KiB) read 0 "
             "-- the clear pattern is zero, which answers TP080's open item",
-            self._cleared["time_ns"], _SRAM_WORDS, _SRAM_BASE,
+            self._cleared["time_ns"],
+            _SRAM_WORDS,
+            _SRAM_BASE,
             _SRAM_BASE + _SRAM_WORDS * _WORD_BYTES - 1,
             _SRAM_WORDS * _WORD_BYTES // 1024,
         )
@@ -482,7 +494,9 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
             "-- i.e. inside the primary-fail -> backup-retry window. boot_flash_reinit() "
             "is the instruction immediately after the store loop "
             "(boot_rom.dis 10042750 -> 10042754), so it had not yet been called",
-            self._cleared["time_ns"], _PRIMARY_ERR, _BACKUP_LABEL,
+            self._cleared["time_ns"],
+            _PRIMARY_ERR,
+            _BACKUP_LABEL,
         )
 
         # --- the window closes when the backup fetch writes SRAM again ----------
@@ -490,11 +504,7 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
             "CHK-CLEAR-BRACKET FAIL: word[0] never became non-zero again, so no backup "
             "manifest was ever fetched into the cleared SRAM"
         )
-        assert (
-            self._residue["time_ns"]
-            < self._cleared["time_ns"]
-            < self._redirtied["time_ns"]
-        ), (
+        assert self._residue["time_ns"] < self._cleared["time_ns"] < self._redirtied["time_ns"], (
             f"CHK-CLEAR-BRACKET FAIL: the three SRAM events are out of order -- "
             f"residue@{self._residue['time_ns']}ns, "
             f"cleared@{self._cleared['time_ns']}ns, "
@@ -502,7 +512,8 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
         )
         self.logger.info(
             "CHK-CLEAR-BRACKET: dirty@%sns -> all-zero@%sns -> backup fetch@%sns",
-            self._residue["time_ns"], self._cleared["time_ns"],
+            self._residue["time_ns"],
+            self._cleared["time_ns"],
             self._redirtied["time_ns"],
         )
 

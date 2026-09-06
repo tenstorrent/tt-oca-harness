@@ -23,7 +23,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyuvm
-
 from env import sep_manifest_mutate as mm
 from rom_fw.sep_backup_manifest_fail_base import (
     MANIFEST_ERR_VERSION_ROLLBACK,
@@ -31,8 +30,11 @@ from rom_fw.sep_backup_manifest_fail_base import (
 )
 
 _EFUSE_PRELOAD = (
-    Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads"
-    / "efuse_configurations" / "sep_efuse_lc_prod_secver8.toml"
+    Path(__file__).resolve().parents[3]
+    / "tb"
+    / "efuse_preloads"
+    / "efuse_configurations"
+    / "sep_efuse_lc_prod_secver8.toml"
 )
 
 # Fuse thermometer count in the preload above, and the version planted in the
@@ -62,8 +64,10 @@ class sep_firmware_backup_invalid_security_version_test(sep_backup_manifest_fail
         self.logger.info(
             "CHK-STIMULUS-VERSION: backup security_version=%d vs fuse count %d "
             "(reject expected because %d < %d), TBS re-hashed",
-            _BACKUP_SECURITY_VERSION, _FUSE_SECURITY_VERSION,
-            _BACKUP_SECURITY_VERSION, _FUSE_SECURITY_VERSION,
+            _BACKUP_SECURITY_VERSION,
+            _FUSE_SECURITY_VERSION,
+            _BACKUP_SECURITY_VERSION,
+            _FUSE_SECURITY_VERSION,
         )
 
     def check_efuse(self, image) -> None:
@@ -79,8 +83,7 @@ class sep_firmware_backup_invalid_security_version_test(sep_backup_manifest_fail
             f"fuse count {popcount}, so no rollback would be detected"
         )
         assert image.field_int("CHIPLET_PUBK_REVOKE") == 0, (
-            "CHIPLET_PUBK_REVOKE must be 0; a revocation verdict would come from a "
-            "different check"
+            "CHIPLET_PUBK_REVOKE must be 0; a revocation verdict would come from a different check"
         )
 
     def _check(self, console, status_seq, fw_done, fw_pass, retired) -> None:
@@ -95,5 +98,4 @@ class sep_firmware_backup_invalid_security_version_test(sep_backup_manifest_fail
                 f"ROM never printed {marker}: the rollback verdict cannot be "
                 f"attributed to this test's version pair. Console: {console}"
             )
-        self.logger.info("CHK-VERSION-PAIR: ROM compared %s against %s",
-                         mfst_marker, fuse_marker)
+        self.logger.info("CHK-VERSION-PAIR: ROM compared %s against %s", mfst_marker, fuse_marker)

@@ -28,7 +28,6 @@ anyway: the ROM runs from Boot ROM and decides before DCCM is touched.
 from __future__ import annotations
 
 import pyuvm
-
 from rom_fw.sep_warm_dispatch_base import (
     COLD_POISON,
     RANGE_BASE,
@@ -117,19 +116,19 @@ class sep_warm_reset_bad_target_exception_test(sep_warm_dispatch_base):
         # Order matters: the announcement precedes the transfer of control, so a
         # GENERAL_EXCEPTION that arrived BEFORE the jump would be some earlier
         # fault wearing the same word.
-        assert status_seq.index(STATUS_WARM_JUMP) < \
-            status_seq.index(STATUS_GENERAL_EXCEPTION), (
+        assert status_seq.index(STATUS_WARM_JUMP) < status_seq.index(STATUS_GENERAL_EXCEPTION), (
             f"GENERAL_EXCEPTION appears before WARM_RESET_JUMP in {status_hex}: "
             f"the fault happened before the dispatch, not because of it"
         )
-        self.logger.info("CHK-EXCEPTION: 0x%08x after 0x%08x",
-                         STATUS_GENERAL_EXCEPTION, STATUS_WARM_JUMP)
+        self.logger.info(
+            "CHK-EXCEPTION: 0x%08x after 0x%08x", STATUS_GENERAL_EXCEPTION, STATUS_WARM_JUMP
+        )
 
         # CHK-MEPC: control reached EXACTLY the seeded address. trap_vector_early
         # writes status, mcause, mtval, mepc, status -- so the seeded address must
         # appear in the sequence AFTER the exception status. This is the check the
         # reference's log-string match cannot make.
-        after_exc = status_seq[status_seq.index(STATUS_GENERAL_EXCEPTION):]
+        after_exc = status_seq[status_seq.index(STATUS_GENERAL_EXCEPTION) :]
         assert _BAD_TARGET in after_exc, (
             f"cold_scratch[1] never carried mepc = 0x{_BAD_TARGET:08x} after the "
             f"exception status; observed {[hex(v) for v in after_exc]}. The trap "
@@ -144,8 +143,7 @@ class sep_warm_reset_bad_target_exception_test(sep_warm_dispatch_base):
             f"cold_scratch[1] never carried mcause = {_MCAUSE_ILLEGAL_INSN} "
             f"(illegal instruction); observed {[hex(v) for v in after_exc]}"
         )
-        self.logger.info("CHK-MCAUSE: illegal instruction (%d)",
-                         _MCAUSE_ILLEGAL_INSN)
+        self.logger.info("CHK-MCAUSE: illegal instruction (%d)", _MCAUSE_ILLEGAL_INSN)
 
         # CHK-VERDICT-FAIL: trap_vector_early's terminal verdict. A fault that
         # reported a status but left the verdict channel untouched would look

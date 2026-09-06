@@ -67,7 +67,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyuvm
-
 from env import sep_manifest_mutate as mm
 from rom_fw.sep_primary_fail_backup_boot_base import (
     MANIFEST_ERR_SIG_FAILED,
@@ -75,8 +74,11 @@ from rom_fw.sep_primary_fail_backup_boot_base import (
 )
 
 _EFUSE_PRELOAD = (
-    Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads"
-    / "efuse_configurations" / "sep_efuse_lc_prod.toml"
+    Path(__file__).resolve().parents[3]
+    / "tb"
+    / "efuse_preloads"
+    / "efuse_configurations"
+    / "sep_efuse_lc_prod.toml"
 )
 
 # Both slots keep the shipped selector, ROM key slot 0
@@ -102,17 +104,24 @@ class sep_firmware_primary_invalid_signature_test(sep_primary_fail_backup_boot_b
     # shares this error code. The rest are the other rejecting arms of
     # validate_signature: reaching any of them would mean a slot was refused before
     # the verifier, so the terminal verdict would not be a signature verdict.
-    extra_forbidden = ("BAD_SIG_TYPE=", "BAD_KEY_IDX", "BAD_KEY_SEL",
-                       "ROM_KEY_EMPTY", "FUSE_KEY_EMPTY", "PUBK_HASH_MISMATCH",
-                       "KEY_REVOKED", "VERSION_ROLLBACK")
+    extra_forbidden = (
+        "BAD_SIG_TYPE=",
+        "BAD_KEY_IDX",
+        "BAD_KEY_SEL",
+        "ROM_KEY_EMPTY",
+        "FUSE_KEY_EMPTY",
+        "PUBK_HASH_MISMATCH",
+        "KEY_REVOKED",
+        "VERSION_ROLLBACK",
+    )
 
     def corrupt_primary(self, buf: bytearray) -> None:
         # No manifest_identifier corruption: the primary must reach
         # rsa_3072_verify.
         base = mm.slot_base("primary") + mm.OFF_SIGNATURE
-        before = bytes(buf[base:base + 8])
+        before = bytes(buf[base : base + 8])
         mm.flip_signature_byte(buf, "primary", byte_index=0, xor_mask=0x01)
-        after = bytes(buf[base:base + 8])
+        after = bytes(buf[base : base + 8])
         assert before != after, "signature flip was a no-op"
         # The hash must still verify: if this mutation had invalidated the TBS hash,
         # the primary would be rejected as HASH_MISMATCH in the manifest loop and
@@ -124,7 +133,8 @@ class sep_firmware_primary_invalid_signature_test(sep_primary_fail_backup_boot_b
         self.logger.info(
             "CHK-STIMULUS-SIG: primary signature[0:8] %s -> %s (1 bit), TBS hash "
             "intact and modulus still binds the ROM slot-0 digest",
-            before.hex(), after.hex(),
+            before.hex(),
+            after.hex(),
         )
 
     def check_efuse(self, image) -> None:
@@ -149,8 +159,7 @@ class sep_firmware_primary_invalid_signature_test(sep_primary_fail_backup_boot_b
         def indices_of(marker: str) -> list[int]:
             return [i for i, line in enumerate(console) if marker in line]
 
-        i_bsrc = next(iter(indices_of(
-            f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}")), -1)
+        i_bsrc = next(iter(indices_of(f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}")), -1)
         sels = indices_of(_SEL_ECHO)
 
         # CHK-BOTH-REACHED-KEYSEL: this is the discriminating check of the testcase.
@@ -172,5 +181,8 @@ class sep_firmware_primary_invalid_signature_test(sep_primary_fail_backup_boot_b
         self.logger.info(
             "CHK-BOTH-REACHED-KEYSEL: %s at lines %s, one before and one after the "
             "backup read@%d -- both manifests passed the signature-type arm and "
-            "reached key selection", _SEL_ECHO, sels, i_bsrc,
+            "reached key selection",
+            _SEL_ECHO,
+            sels,
+            i_bsrc,
         )

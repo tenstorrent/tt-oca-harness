@@ -33,15 +33,13 @@ import os
 import shutil
 from pathlib import Path
 
-from sep_reg_meta import sym
-
 import cocotb
 from cocotb.triggers import RisingEdge
-
-from sep_base_test import sep_base_test
 from env import sep_manifest_mutate as mm
-from env.sep_rom_console import rom_console_task, log_scratch_cold
+from env.sep_rom_console import log_scratch_cold, rom_console_task
 from env.sep_verdict import decode_verdict
+from sep_base_test import sep_base_test
+from sep_reg_meta import sym
 
 _SEP_ROOT = str(Path(__file__).resolve().parents[4])
 _FW_DIR = os.path.join(_SEP_ROOT, "bootrom", "prod", "build_ot")
@@ -150,9 +148,12 @@ class sep_backup_manifest_fail_base(sep_base_test):
         )
         self.check_efuse(image)
         self.write_efuse_image(image)
-        self.logger.info("CHK-STIMULUS-EFUSE: LC raw=0x%x, BL1_VERSION=0x%x, PUBK_REVOKE=0x%x",
-                         lc, image.field_int("BL1_VERSION"),
-                         image.field_int("CHIPLET_PUBK_REVOKE"))
+        self.logger.info(
+            "CHK-STIMULUS-EFUSE: LC raw=0x%x, BL1_VERSION=0x%x, PUBK_REVOKE=0x%x",
+            lc,
+            image.field_int("BL1_VERSION"),
+            image.field_int("CHIPLET_PUBK_REVOKE"),
+        )
 
         console: list[str] = []
         cocotb.start_soon(rom_console_task(self.logger, sink=console))
@@ -174,7 +175,10 @@ class sep_backup_manifest_fail_base(sep_base_test):
         with open(self.flash_image, "rb") as fh:
             img = bytearray(fh.read())
         flash = OcahSpiFlash(
-            dut.spi_cs_n_o, dut.spi_sck_o, mosi=dut.spi_mosi_o, miso=dut.spi_miso_i,
+            dut.spi_cs_n_o,
+            dut.spi_sck_o,
+            mosi=dut.spi_mosi_o,
+            miso=dut.spi_miso_i,
             name="sep_backup_fail_flash",
         )
         # Published for subclasses that check the DEVICE side of the failover.
@@ -197,7 +201,9 @@ class sep_backup_manifest_fail_base(sep_base_test):
         last_log = 0
         try:
             await self.bring_up_cpu_boot(
-                _ROM_BASE >> 1, pre_reset_hook=_load_tcm, run_pulse_cycles=40,
+                _ROM_BASE >> 1,
+                pre_reset_hook=_load_tcm,
+                run_pulse_cycles=40,
             )
             for cycle in range(_MAX_RUN_CYCLES):
                 await RisingEdge(dut.clk_i)
@@ -216,13 +222,20 @@ class sep_backup_manifest_fail_base(sep_base_test):
                     fw_pass = verdict[1]
                     self.logger.info(
                         "CHK-VERDICT: ROM signalled completion at cycle %d via "
-                        "cold_scratch[0], pass=%d", cycle, fw_pass,
+                        "cold_scratch[0], pass=%d",
+                        cycle,
+                        fw_pass,
                     )
                     break
                 if cycle - last_log >= _PROGRESS_EVERY:
                     last_log = cycle
-                    self.logger.info("failover poll cyc=%d status=0x%08x retired=%d lines=%d",
-                                     cycle, status, retired, len(console))
+                    self.logger.info(
+                        "failover poll cyc=%d status=0x%08x retired=%d lines=%d",
+                        cycle,
+                        status,
+                        retired,
+                        len(console),
+                    )
 
             # Did it actually STOP? The procedures for these testcases say the ROM
             # hangs after the terminal error, and the verdict alone does not say
@@ -275,7 +288,8 @@ class sep_backup_manifest_fail_base(sep_base_test):
         self.logger.info(
             "CHK-HANG: cold_scratch[1] held 0x%08x and the console stayed silent "
             "for %d cycles after the terminal verdict",
-            terminal_status, _QUIESCE_CYCLES,
+            terminal_status,
+            _QUIESCE_CYCLES,
         )
 
     def check_defect_attribution(self, console, i_backup: int) -> None:
@@ -300,8 +314,9 @@ class sep_backup_manifest_fail_base(sep_base_test):
             f"{self.backup_defect_marker} appeared at line {i_defect}, before the "
             f"backup slot was read at line {i_backup}: it cannot be the backup's verdict"
         )
-        self.logger.info("CHK-BACKUP-DEFECT: %s observed after the backup read",
-                         self.backup_defect_marker)
+        self.logger.info(
+            "CHK-BACKUP-DEFECT: %s observed after the backup read", self.backup_defect_marker
+        )
 
     def _check(self, console, status_seq, fw_done, fw_pass, retired) -> None:
         log = self.logger
@@ -340,8 +355,11 @@ class sep_backup_manifest_fail_base(sep_base_test):
             f"did not work, so the backup defect may never have been reached. "
             f"Console: {console}"
         )
-        log.info("CHK-FAILOVER-PRIMARY: primary read at %s and rejected with %s",
-                 _PRIMARY_SRC, primary_err)
+        log.info(
+            "CHK-FAILOVER-PRIMARY: primary read at %s and rejected with %s",
+            _PRIMARY_SRC,
+            primary_err,
+        )
 
         # CHK-FAILOVER: the backup slot was read, and read AFTER the primary was
         # rejected. Ordering is the substance of a failover test; two markers in
@@ -357,8 +375,7 @@ class sep_backup_manifest_fail_base(sep_base_test):
             f"primary rejection ({primary_err}, line {i_primary_err}) did not precede "
             f"the backup read (line {i_backup})"
         )
-        log.info("CHK-FAILOVER-BACKUP: backup read at %s, after the primary rejection",
-                 _BACKUP_SRC)
+        log.info("CHK-FAILOVER-BACKUP: backup read at %s, after the primary rejection", _BACKUP_SRC)
 
         # CHK-SECURE-RAN: the crypto chain executed. If secure boot had been
         # skipped, the backup's cryptographic defect would be irrelevant and the
@@ -392,11 +409,12 @@ class sep_backup_manifest_fail_base(sep_base_test):
             f"rejected manifest must converge on a mailbox FAIL. "
             f"cold_scratch[1]: {status_hex}"
         )
-        assert not fw_pass, (
-            "ROM signalled PASS: it booted an image it was supposed to reject"
+        assert not fw_pass, "ROM signalled PASS: it booted an image it was supposed to reject"
+        log.info(
+            "CHK-TERMINAL: %s, cold_scratch[1]=0x%08x, mailbox FAIL (fw_pass=0)",
+            crypto_fail,
+            expected_status,
         )
-        log.info("CHK-TERMINAL: %s, cold_scratch[1]=0x%08x, mailbox FAIL (fw_pass=0)",
-                 crypto_fail, expected_status)
 
         # CHK-NO-BOOT: nothing downstream of the rejection ran.
         for marker in _BOOT_PROGRESS_MARKERS + tuple(self.extra_forbidden):
@@ -404,5 +422,7 @@ class sep_backup_manifest_fail_base(sep_base_test):
                 f"ROM printed {marker}, which sits past the rejection: it continued "
                 f"booting a manifest it had already failed. Console: {console}"
             )
-        log.info("CHK-NO-BOOT: none of %s reached",
-                 ", ".join(_BOOT_PROGRESS_MARKERS + tuple(self.extra_forbidden)))
+        log.info(
+            "CHK-NO-BOOT: none of %s reached",
+            ", ".join(_BOOT_PROGRESS_MARKERS + tuple(self.extra_forbidden)),
+        )

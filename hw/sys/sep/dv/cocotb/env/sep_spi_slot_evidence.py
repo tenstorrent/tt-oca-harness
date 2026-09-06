@@ -63,11 +63,10 @@ def bytes_at(txn: Txn, addr: int, count: int) -> bytes:
     start, end = read_span(txn)
     if not (start <= addr and addr + count <= end):
         raise AssertionError(
-            f"read at 0x{start:x}..0x{end:x} does not cover "
-            f"0x{addr:x}..0x{addr + count:x}"
+            f"read at 0x{start:x}..0x{end:x} does not cover 0x{addr:x}..0x{addr + count:x}"
         )
     off = addr - start
-    return bytes(txn["data_out"][off:off + count])
+    return bytes(txn["data_out"][off : off + count])
 
 
 def slot_read_indices(rds: Sequence[Txn], slot: str, image_len: int) -> List[int]:

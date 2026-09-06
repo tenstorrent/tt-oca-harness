@@ -20,8 +20,6 @@ runs the real ROM -- not a backdoored payload.
 
 from __future__ import annotations
 
-from sep_reg_meta import sym
-
 import cocotb
 import pyuvm
 from env.sep_boot_scoreboard import SepBootScoreboard

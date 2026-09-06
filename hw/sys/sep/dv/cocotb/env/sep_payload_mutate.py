@@ -58,18 +58,18 @@ from env import sep_manifest_mutate as mm
 # ── Manifest fields this module touches (manifest.h) ──────────────────
 # All are inside the TBS except boot_arguments, so writing any of them obliges a
 # rehash + re-sign. verify_sealed() cross-checks every one against real bytes.
-OFF_PAYLOAD_HASH = 552          # 32 B, SHA-256 over payload[:payload_hashed_length]
-OFF_PAYLOAD_HASHED_LEN = 584    # uint64
-OFF_PAYLOAD_LENGTH = 600        # uint64
+OFF_PAYLOAD_HASH = 552  # 32 B, SHA-256 over payload[:payload_hashed_length]
+OFF_PAYLOAD_HASHED_LEN = 584  # uint64
+OFF_PAYLOAD_LENGTH = 600  # uint64
 OFF_BOOT_PAYLOAD_OFFSET = 1160  # int64, first field of boot_arguments
-OFF_USAGE_FLAGS = 92            # uint32, usage_constraints.flags (16 + 76)
+OFF_USAGE_FLAGS = 92  # uint32, usage_constraints.flags (16 + 76)
 
 # ── TOC layout (manifest.h) ──────────────────────────────────────────
-TOC_MAGIC = b"PTOC"             # TOC_HEADER_MAGIC_WORD 0x434f5450
+TOC_MAGIC = b"PTOC"  # TOC_HEADER_MAGIC_WORD 0x434f5450
 TOC_HDR_SIZE = 32
 TOC_ENTRY_SIZE = 216
-TOC_OFF_PAYLOAD_LENGTH = 8      # uint64 in the header
-TOC_OFF_IMAGE_COUNT = 16        # uint64 in the header
+TOC_OFF_PAYLOAD_LENGTH = 8  # uint64 in the header
+TOC_OFF_IMAGE_COUNT = 16  # uint64 in the header
 
 # Field offsets within a toc_entry.
 E_TYPE = 0
@@ -93,8 +93,16 @@ MANIFEST_ERR_BAD_TOC_ID = 0x0003_0005
 
 # The dev0 signing key, relative to the repo's sep root.
 _SEP_ROOT = Path(__file__).resolve().parents[3]
-DEV0_KEY = (_SEP_ROOT / "bootrom" / "prod" / "tools" / "tt-boot-manifest"
-            / "tests" / "signing_keys" / "rsa_private_key.dev0.pem")
+DEV0_KEY = (
+    _SEP_ROOT
+    / "bootrom"
+    / "prod"
+    / "tools"
+    / "tt-boot-manifest"
+    / "tests"
+    / "signing_keys"
+    / "rsa_private_key.dev0.pem"
+)
 
 # EMSA-PKCS1-v1_5 DigestInfo prefix for SHA-256 (RFC 8017 section 9.2, note 1).
 _SHA256_DIGESTINFO = bytes.fromhex("3031300d060960864801650304020105000420")
@@ -108,7 +116,7 @@ def _der_len(b: bytes, i: int) -> tuple[int, int]:
     i += 1
     if n & 0x80:
         k = n & 0x7F
-        n = int.from_bytes(b[i:i + k], "big")
+        n = int.from_bytes(b[i : i + k], "big")
         i += k
     return n, i
 
@@ -117,7 +125,7 @@ def _der_tlv(b: bytes, i: int) -> tuple[int, bytes, int]:
     tag = b[i]
     i += 1
     ln, i = _der_len(b, i)
-    return tag, b[i:i + ln], i + ln
+    return tag, b[i : i + ln], i + ln
 
 
 def load_rsa_private_key(pem_path: Path = DEV0_KEY) -> tuple[int, int, int]:
@@ -134,9 +142,9 @@ def load_rsa_private_key(pem_path: Path = DEV0_KEY) -> tuple[int, int, int]:
     if tag != 0x30:
         raise AssertionError(f"{pem_path}: expected a DER SEQUENCE, got tag 0x{tag:02x}")
     i = 0
-    _, _, i = _der_tlv(info, i)       # version
-    _, _, i = _der_tlv(info, i)       # algorithm identifier
-    tag, pk, _ = _der_tlv(info, i)    # privateKey OCTET STRING
+    _, _, i = _der_tlv(info, i)  # version
+    _, _, i = _der_tlv(info, i)  # algorithm identifier
+    tag, pk, _ = _der_tlv(info, i)  # privateKey OCTET STRING
     if tag != 0x04:
         raise AssertionError(f"{pem_path}: expected an OCTET STRING, got tag 0x{tag:02x}")
     tag, rsa_seq, _ = _der_tlv(pk, 0)  # RSAPrivateKey
@@ -177,19 +185,21 @@ def verify_pkcs1v15_sha256(msg: bytes, sig: bytes, n: int, e: int = 65537) -> bo
 
 # ── slot geometry ────────────────────────────────────────────────────────────
 def _u64(buf, at: int) -> int:
-    return int.from_bytes(bytes(buf[at:at + 8]), "little")
+    return int.from_bytes(bytes(buf[at : at + 8]), "little")
 
 
 def _put_u64(buf: bytearray, at: int, value: int) -> None:
-    buf[at:at + 8] = int(value).to_bytes(8, "little")
+    buf[at : at + 8] = int(value).to_bytes(8, "little")
 
 
 def payload_base(buf, slot: str) -> int:
     """Flash byte offset of ``slot``'s payload (manifest base + payload_offset)."""
     base = mm.slot_base(slot)
-    off = int.from_bytes(bytes(buf[base + OFF_BOOT_PAYLOAD_OFFSET:
-                                   base + OFF_BOOT_PAYLOAD_OFFSET + 8]),
-                         "little", signed=True)
+    off = int.from_bytes(
+        bytes(buf[base + OFF_BOOT_PAYLOAD_OFFSET : base + OFF_BOOT_PAYLOAD_OFFSET + 8]),
+        "little",
+        signed=True,
+    )
     return base + off
 
 
@@ -204,8 +214,9 @@ def payload_hashed_length(buf, slot: str) -> int:
 def is_encrypted(buf, slot: str) -> bool:
     """usage_constraints.flags bit 1, manifest.h."""
     base = mm.slot_base(slot)
-    flags = int.from_bytes(bytes(buf[base + OFF_USAGE_FLAGS:base + OFF_USAGE_FLAGS + 4]),
-                           "little")
+    flags = int.from_bytes(
+        bytes(buf[base + OFF_USAGE_FLAGS : base + OFF_USAGE_FLAGS + 4]), "little"
+    )
     return bool((flags >> 1) & 1)
 
 
@@ -218,7 +229,7 @@ def read_bytes(buf, start: int, length: int) -> bytes:
     lets a testcase declare an image size larger than the material actually
     programmed and still know, exactly, which bytes the ROM will hash.
     """
-    have = bytes(buf[start:start + length])
+    have = bytes(buf[start : start + length])
     if len(have) < length:
         have += bytes([mm.ERASED_BYTE]) * (length - len(have))
     return have
@@ -251,11 +262,13 @@ def bl1_field(buf, slot: str, field_off: int) -> int:
 
 def describe_bl1(buf, slot: str) -> str:
     e = find_image(buf, slot)
-    return (f"{slot} BL1: offset={_u64(buf, e + E_OFFSET)} "
-            f"length={_u64(buf, e + E_LENGTH)} "
-            f"load_addr=0x{_u64(buf, e + E_LOAD_ADDR):08x} "
-            f"entry_point=0x{_u64(buf, e + E_ENTRY_POINT):x} "
-            f"payload_length={manifest_payload_length(buf, slot)}")
+    return (
+        f"{slot} BL1: offset={_u64(buf, e + E_OFFSET)} "
+        f"length={_u64(buf, e + E_LENGTH)} "
+        f"load_addr=0x{_u64(buf, e + E_LOAD_ADDR):08x} "
+        f"entry_point=0x{_u64(buf, e + E_ENTRY_POINT):x} "
+        f"payload_length={manifest_payload_length(buf, slot)}"
+    )
 
 
 # ── the anchor ───────────────────────────────────────────────────────────────
@@ -283,7 +296,7 @@ def verify_sealed(buf, slot: str, *, check_toc: bool = True) -> None:
             f"{slot} payload_hashed_length ({hashed}) exceeds payload_length ({p_len}); "
             f"validate_manifest_header would reject this before any check under test"
         )
-    stored = bytes(buf[base + OFF_PAYLOAD_HASH:base + OFF_PAYLOAD_HASH + 32])
+    stored = bytes(buf[base + OFF_PAYLOAD_HASH : base + OFF_PAYLOAD_HASH + 32])
     calc = hashlib.sha256(read_bytes(buf, p, hashed)).digest()
     if stored != calc:
         raise AssertionError(
@@ -293,7 +306,7 @@ def verify_sealed(buf, slot: str, *, check_toc: bool = True) -> None:
         )
 
     if check_toc:
-        ident = bytes(buf[p:p + 4])
+        ident = bytes(buf[p : p + 4])
         if ident != TOC_MAGIC:
             raise AssertionError(
                 f"{slot} payload does not start with {TOC_MAGIC!r} (got {ident!r}); "
@@ -307,7 +320,7 @@ def verify_sealed(buf, slot: str, *, check_toc: bool = True) -> None:
             )
         for i, e in enumerate(toc_entries(buf, slot)):
             off, ln = _u64(buf, e + E_OFFSET), _u64(buf, e + E_LENGTH)
-            want = bytes(buf[e + E_HASH:e + E_HASH + 32])
+            want = bytes(buf[e + E_HASH : e + E_HASH + 32])
             got = hashlib.sha256(read_bytes(buf, p + off, ln)).digest()
             if want != got:
                 raise AssertionError(
@@ -317,8 +330,8 @@ def verify_sealed(buf, slot: str, *, check_toc: bool = True) -> None:
                 )
 
     n, e_pub, _d = load_rsa_private_key()
-    tbs = bytes(buf[base:base + mm.TBS_LEN])
-    sig = bytes(buf[base + mm.OFF_SIGNATURE:base + mm.OFF_SIGNATURE + RSA_KEY_BYTES])
+    tbs = bytes(buf[base : base + mm.TBS_LEN])
+    sig = bytes(buf[base + mm.OFF_SIGNATURE : base + mm.OFF_SIGNATURE + RSA_KEY_BYTES])
     if not verify_pkcs1v15_sha256(tbs, sig, n):
         raise AssertionError(
             f"{slot} signature does not verify against the dev0 modulus; the ROM "
@@ -339,8 +352,8 @@ def verify_signing_key(buf, slot: str) -> None:
     """
     base = mm.slot_base(slot)
     n, _e, d = load_rsa_private_key()
-    tbs = bytes(buf[base:base + mm.TBS_LEN])
-    shipped = bytes(buf[base + mm.OFF_SIGNATURE:base + mm.OFF_SIGNATURE + RSA_KEY_BYTES])
+    tbs = bytes(buf[base : base + mm.TBS_LEN])
+    shipped = bytes(buf[base + mm.OFF_SIGNATURE : base + mm.OFF_SIGNATURE + RSA_KEY_BYTES])
     mine = sign_pkcs1v15_sha256(tbs, n, d)
     if mine != shipped:
         raise AssertionError(
@@ -356,8 +369,9 @@ def rehash_image(buf: bytearray, slot: str, entry: int) -> None:
     """Recompute one TOC entry's digest over its (possibly resized) body."""
     p = payload_base(buf, slot)
     off, ln = _u64(buf, entry + E_OFFSET), _u64(buf, entry + E_LENGTH)
-    buf[entry + E_HASH:entry + E_HASH + 32] = hashlib.sha256(
-        read_bytes(buf, p + off, ln)).digest()
+    buf[entry + E_HASH : entry + E_HASH + 32] = hashlib.sha256(
+        read_bytes(buf, p + off, ln)
+    ).digest()
 
 
 def reseal(buf: bytearray, slot: str) -> None:
@@ -372,13 +386,15 @@ def reseal(buf: bytearray, slot: str) -> None:
     base = mm.slot_base(slot)
     p = payload_base(buf, slot)
     hashed = payload_hashed_length(buf, slot)
-    buf[base + OFF_PAYLOAD_HASH:base + OFF_PAYLOAD_HASH + 32] = hashlib.sha256(
-        read_bytes(buf, p, hashed)).digest()
+    buf[base + OFF_PAYLOAD_HASH : base + OFF_PAYLOAD_HASH + 32] = hashlib.sha256(
+        read_bytes(buf, p, hashed)
+    ).digest()
     mm.rehash(buf, slot)  # manifest_hash = sha256(TBS)
     n, _e, d = load_rsa_private_key()
-    tbs = bytes(buf[base:base + mm.TBS_LEN])
-    buf[base + mm.OFF_SIGNATURE:base + mm.OFF_SIGNATURE + RSA_KEY_BYTES] = \
-        sign_pkcs1v15_sha256(tbs, n, d)
+    tbs = bytes(buf[base : base + mm.TBS_LEN])
+    buf[base + mm.OFF_SIGNATURE : base + mm.OFF_SIGNATURE + RSA_KEY_BYTES] = sign_pkcs1v15_sha256(
+        tbs, n, d
+    )
 
 
 # ── the mutations ────────────────────────────────────────────────────────────
@@ -461,8 +477,9 @@ def set_bl1_zero_length(buf: bytearray, slot: str) -> int:
     return was
 
 
-def corrupt_ciphertext(buf: bytearray, slot: str, *, block: int = 0,
-                       byte_index: int = 0, mask: int = 0x01) -> tuple[int, int]:
+def corrupt_ciphertext(
+    buf: bytearray, slot: str, *, block: int = 0, byte_index: int = 0, mask: int = 0x01
+) -> tuple[int, int]:
     """Flip a bit of the ENCRYPTED payload so the plaintext TOC magic cannot survive.
 
     TP049 variant (b). AES-CBC decryption never reports an error for wrong input --

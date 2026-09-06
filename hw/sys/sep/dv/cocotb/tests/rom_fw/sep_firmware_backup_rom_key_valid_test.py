@@ -55,7 +55,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyuvm
-
 from env import sep_manifest_mutate as mm
 from rom_fw.sep_primary_fail_backup_boot_base import (
     MANIFEST_ERR_BAD_MAGIC,
@@ -64,8 +63,11 @@ from rom_fw.sep_primary_fail_backup_boot_base import (
 from rom_fw.sep_pubkey_rom_revoked_base import select_backup_rom_slot
 
 _EFUSE_PRELOAD = (
-    Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads"
-    / "efuse_configurations" / "sep_efuse_lc_prod.toml"
+    Path(__file__).resolve().parents[3]
+    / "tb"
+    / "efuse_preloads"
+    / "efuse_configurations"
+    / "sep_efuse_lc_prod.toml"
 )
 
 # The only populated entry in key_digests.c, and the slot the shipped image
@@ -93,9 +95,17 @@ class sep_firmware_backup_rom_key_valid_test(sep_primary_fail_backup_boot_base):
     # Every rejecting arm of validate_signature. This is a positive test, so none
     # of them may fire: seeing any one would mean the boot completed in spite of a
     # key-selection complaint, or from a slot this testcase did not select.
-    extra_forbidden = ("BAD_SIG_TYPE=", "BAD_KEY_IDX", "BAD_KEY_SEL",
-                       "ROM_KEY_EMPTY", "FUSE_KEY_EMPTY", "PUBK_HASH_MISMATCH",
-                       "KEY_REVOKED", "VERSION_ROLLBACK", "RSA_VERIFY_FAIL")
+    extra_forbidden = (
+        "BAD_SIG_TYPE=",
+        "BAD_KEY_IDX",
+        "BAD_KEY_SEL",
+        "ROM_KEY_EMPTY",
+        "FUSE_KEY_EMPTY",
+        "PUBK_HASH_MISMATCH",
+        "KEY_REVOKED",
+        "VERSION_ROLLBACK",
+        "RSA_VERIFY_FAIL",
+    )
 
     def corrupt_primary(self, buf: bytearray) -> None:
         # The same failover trigger the revoke family uses: the magic word, which
@@ -115,7 +125,9 @@ class sep_firmware_backup_rom_key_valid_test(sep_primary_fail_backup_boot_base):
         self.logger.info(
             "CHK-STIMULUS-VALID-SLOT: backup public_key_sel=0x%04x (ROM key slot "
             "%d, populated and unrevoked); TBS unchanged, so the backup keeps its "
-            "original dev0 signature", got, _VALID_SLOT,
+            "original dev0 signature",
+            got,
+            _VALID_SLOT,
         )
 
     def check_efuse(self, image) -> None:
@@ -173,6 +185,11 @@ class sep_firmware_backup_rom_key_valid_test(sep_primary_fail_backup_boot_base):
         self.logger.info(
             "CHK-KEYSEL-RAN: backup@%d -> %s@%d -> %s@%d -> RSA_VERIFY_START@%d; "
             "the ROM-key path executed and permitted slot %d",
-            i_bsrc, _PUBK_SEL_ECHO, i_sel, _REVOKE_ECHO, i_revoke, i_rsa,
+            i_bsrc,
+            _PUBK_SEL_ECHO,
+            i_sel,
+            _REVOKE_ECHO,
+            i_revoke,
+            i_rsa,
             _VALID_SLOT,
         )

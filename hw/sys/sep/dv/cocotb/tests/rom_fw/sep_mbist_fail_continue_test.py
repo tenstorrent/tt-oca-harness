@@ -66,8 +66,7 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import RisingEdge
-
-from env.sep_efuse_image import SepEfuseImage, LC_TEST_DEV
+from env.sep_efuse_image import LC_TEST_DEV, SepEfuseImage
 from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
 
 # Must match +sep_dft_status in the testlist. Identical to the failure arm's
@@ -87,8 +86,8 @@ _STATUS_RPT_SKIP_MEM_CHECK_BIT = 2
 
 # cold_scratch[1] words, numerically identical to the two MBIST siblings so the
 # three arms state one contract between them.
-_STATUS_MBIST_WARN = 0x0801_0000 | 0x219          # WARN + SEP_MSG_MBIST_FAIL
-_STATUS_DFT_GATE_BLOCKED = 0x0F01_0000 | 0xD001   # ERROR + ROM_ERR_DFT_GATE_BLOCKED
+_STATUS_MBIST_WARN = 0x0801_0000 | 0x219  # WARN + SEP_MSG_MBIST_FAIL
+_STATUS_DFT_GATE_BLOCKED = 0x0F01_0000 | 0xD001  # ERROR + ROM_ERR_DFT_GATE_BLOCKED
 # vector.S, written immediately BEFORE the gate.
 _STATUS_PRESTART_DONE = 0x8001_0056
 
@@ -133,8 +132,8 @@ class sep_mbist_fail_continue_test(sep_rom_ot_dma_boot_test):
             f"reporting on the failure arm instead"
         )
         self.logger.info(
-            "CHK-BYPASS-FUSE: OTP STATUS_RPT = 0x%08x, bit %d (SKIP_MEM_CHECK) "
-            "blown", image.field_int("STATUS_RPT"),
+            "CHK-BYPASS-FUSE: OTP STATUS_RPT = 0x%08x, bit %d (SKIP_MEM_CHECK) blown",
+            image.field_int("STATUS_RPT"),
             _STATUS_RPT_SKIP_MEM_CHECK_BIT,
         )
         return image
@@ -172,12 +171,9 @@ class sep_mbist_fail_continue_test(sep_rom_ot_dma_boot_test):
     def log_transport(self, flash) -> None:
         # Runs from the base's `finally`, i.e. before any assertion can abort the
         # run, so the gate evidence is in the log even when a later check fails.
-        self.logger.info("cold_scratch[1] sequence: %s",
-                         [hex(v) for v in self._status_seq])
-        self.logger.info("SMC scratch[10] sequence: %s",
-                         [hex(v) for v in self._s10_seq])
-        self.logger.info("DFX_CTRL_STATUS_SMU sequence: %s",
-                         [hex(v) for v in self._dft_seq])
+        self.logger.info("cold_scratch[1] sequence: %s", [hex(v) for v in self._status_seq])
+        self.logger.info("SMC scratch[10] sequence: %s", [hex(v) for v in self._s10_seq])
+        self.logger.info("DFX_CTRL_STATUS_SMU sequence: %s", [hex(v) for v in self._dft_seq])
 
     async def run_scenario(self) -> None:
         # Guard the stimulus before anything else. Without the injection the tb
@@ -249,8 +245,9 @@ class sep_mbist_fail_continue_test(sep_rom_ot_dma_boot_test):
             f"probe's power-up 0 and the injected 0x{_DFT_STATUS_FAIL:08x}. The tb "
             f"default 0x00000113 appearing would mean the gate read a passing word"
         )
-        self.logger.info("CHK-DFT-INJECTED: DFX_CTRL_STATUS_SMU = 0x%08x at the SMC",
-                         _DFT_STATUS_FAIL)
+        self.logger.info(
+            "CHK-DFT-INJECTED: DFX_CTRL_STATUS_SMU = 0x%08x at the SMC", _DFT_STATUS_FAIL
+        )
 
         # CHK-DFT-REACHED: vector.S ran up to the instruction before the gate, so
         # the checks below describe this gate rather than a path that never got
@@ -261,8 +258,7 @@ class sep_mbist_fail_continue_test(sep_rom_ot_dma_boot_test):
             f"cannot be said to have reached the MEM_REPAIR gate. "
             f"Observed {status_hex}"
         )
-        self.logger.info("CHK-DFT-REACHED: cold_scratch[1] = 0x%08x",
-                         _STATUS_PRESTART_DONE)
+        self.logger.info("CHK-DFT-REACHED: cold_scratch[1] = 0x%08x", _STATUS_PRESTART_DONE)
 
         # CHK-MBIST-FAIL-TAKEN: the gate classified the injected word as a FAILURE.
         # This is what separates this arm from the pass arm: without it, a run in
@@ -287,8 +283,7 @@ class sep_mbist_fail_continue_test(sep_rom_ot_dma_boot_test):
             f"0x{_DFT_STATUS_FAIL:08x}; the ROM did not publish the value it "
             f"gated on. Observed {s10_hex}"
         )
-        self.logger.info("CHK-MBIST-PUBLISH: SMC scratch[10] = 0x%08x",
-                         _DFT_STATUS_FAIL)
+        self.logger.info("CHK-MBIST-PUBLISH: SMC scratch[10] = 0x%08x", _DFT_STATUS_FAIL)
 
         # CHK-BYPASS-TAKEN: the ERROR word never appeared. Together with the
         # completed boot above, this is the bypass: the gate found the failure,
@@ -301,5 +296,6 @@ class sep_mbist_fail_continue_test(sep_rom_ot_dma_boot_test):
         self.logger.info(
             "CHK-BYPASS-TAKEN: 0x%08x never reached cold_scratch[1]; the boot "
             "continued past a failed MEM_REPAIR because STATUS_RPT bit %d was blown",
-            _STATUS_DFT_GATE_BLOCKED, _STATUS_RPT_SKIP_MEM_CHECK_BIT,
+            _STATUS_DFT_GATE_BLOCKED,
+            _STATUS_RPT_SKIP_MEM_CHECK_BIT,
         )

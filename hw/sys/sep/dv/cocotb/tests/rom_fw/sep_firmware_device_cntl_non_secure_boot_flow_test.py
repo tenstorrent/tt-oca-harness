@@ -32,7 +32,6 @@ import os
 from pathlib import Path
 
 import pyuvm
-
 from rom_fw.sep_rom_ot_dma_boot_test import SECURE_FLASH_IMAGE, sep_rom_ot_dma_boot_test
 
 # Emitted only when the ROM decides secure boot is OFF (rom_main.c:348).
@@ -51,8 +50,11 @@ _SIG_VALID = "SIG_VALID"
 _CRYPTO_OK = "CRYPTO_VALIDATE_OK"
 
 _EFUSE_PRELOAD = (
-    Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads"
-    / "efuse_configurations" / "sep_efuse_lc_prod_sboot_dis.toml"
+    Path(__file__).resolve().parents[3]
+    / "tb"
+    / "efuse_preloads"
+    / "efuse_configurations"
+    / "sep_efuse_lc_prod_sboot_dis.toml"
 )
 
 
@@ -64,19 +66,21 @@ class sep_firmware_device_cntl_non_secure_boot_flow_test(sep_rom_ot_dma_boot_tes
     # Inherit the SPI-path markers (BOOT_SPI / MANIFEST_SRC / MANIFEST_OK) so the
     # transport is still pinned down, then add the device-control evidence.
     required_markers = sep_rom_ot_dma_boot_test.required_markers + (
-        _SBOOT_DIS_SET, _LC_PROD, _SBOOT_OFF,
+        _SBOOT_DIS_SET,
+        _LC_PROD,
+        _SBOOT_OFF,
     )
     # The negative half. SBOOT_OFF alone says the ROM *reported* the decision;
     # these say it acted on it. Without them a ROM that printed SBOOT_OFF and then
     # verified the signature anyway would pass.
     forbidden_markers = sep_rom_ot_dma_boot_test.forbidden_markers + (
-        _RSA_START, _SIG_VALID, _CRYPTO_OK,
+        _RSA_START,
+        _SIG_VALID,
+        _CRYPTO_OK,
     )
 
     def build_efuse_image(self):
-        assert os.path.isfile(_EFUSE_PRELOAD), (
-            f"eFuse preload missing: {_EFUSE_PRELOAD}"
-        )
+        assert os.path.isfile(_EFUSE_PRELOAD), f"eFuse preload missing: {_EFUSE_PRELOAD}"
         image = self.select_efuse_image(default_preload=_EFUSE_PRELOAD)
         # Guard the stimulus. select_efuse_image() falls back to a seeded random
         # image when the plusarg is absent, and a random image would almost

@@ -32,7 +32,6 @@ import os
 from pathlib import Path
 
 import pyuvm
-
 from rom_fw.sep_rom_ot_dma_boot_test import SECURE_FLASH_IMAGE, sep_rom_ot_dma_boot_test
 
 _LC_PROD = "LC=PROD"
@@ -46,8 +45,11 @@ _SBOOT_OFF = "SBOOT_OFF"
 _SBOOT_DIS_SET = "FUSE: SBOOT_DIS: 1"
 
 _EFUSE_PRELOAD = (
-    Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads"
-    / "efuse_configurations" / "sep_efuse_lc_prod.toml"
+    Path(__file__).resolve().parents[3]
+    / "tb"
+    / "efuse_preloads"
+    / "efuse_configurations"
+    / "sep_efuse_lc_prod.toml"
 )
 
 
@@ -57,10 +59,14 @@ class sep_firmware_enforced_secure_boot_flow_test(sep_rom_ot_dma_boot_test):
 
     flash_image = SECURE_FLASH_IMAGE
     required_markers = sep_rom_ot_dma_boot_test.required_markers + (
-        _LC_PROD, _RSA_START, _SIG_VALID, _CRYPTO_OK,
+        _LC_PROD,
+        _RSA_START,
+        _SIG_VALID,
+        _CRYPTO_OK,
     )
     forbidden_markers = sep_rom_ot_dma_boot_test.forbidden_markers + (
-        _SBOOT_OFF, _SBOOT_DIS_SET,
+        _SBOOT_OFF,
+        _SBOOT_DIS_SET,
     )
 
     def build_efuse_image(self):
@@ -92,6 +98,10 @@ class sep_firmware_enforced_secure_boot_flow_test(sep_rom_ot_dma_boot_test):
         )
         self.logger.info(
             "CHK-SBOOT-STIMULUS: OTP LC raw=0x%x (PROD), SBOOT_DIS=%d, "
-            "BL1_VERSION=0x%x, PUBK_REVOKE=0x%x", lc, sboot_dis, bl1_ver, revoke,
+            "BL1_VERSION=0x%x, PUBK_REVOKE=0x%x",
+            lc,
+            sboot_dis,
+            bl1_ver,
+            revoke,
         )
         return image

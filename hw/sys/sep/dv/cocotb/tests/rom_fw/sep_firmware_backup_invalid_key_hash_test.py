@@ -34,7 +34,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyuvm
-
 from env import sep_manifest_mutate as mm
 from rom_fw.sep_backup_manifest_fail_base import (
     MANIFEST_ERR_KEY_HASH_MISMATCH,
@@ -42,7 +41,11 @@ from rom_fw.sep_backup_manifest_fail_base import (
 )
 
 _EFUSE_PRELOAD = (
-    Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads" / "efuse_configurations" / "sep_efuse_lc_prod.toml"
+    Path(__file__).resolve().parents[3]
+    / "tb"
+    / "efuse_preloads"
+    / "efuse_configurations"
+    / "sep_efuse_lc_prod.toml"
 )
 
 _HASH_MISMATCH = "PUBK_HASH_MISMATCH"  # manifest_crypto.c:132
@@ -58,9 +61,17 @@ class sep_firmware_backup_invalid_key_hash_test(sep_backup_manifest_fail_base):
     efuse_preload = _EFUSE_PRELOAD
     # Every verdict that would mean the rejection was something other than the
     # digest bind, plus proof neither unbound modulus reached the verifier.
-    extra_forbidden = ("RSA_VERIFY_START", "SIG_VALID", "CRYPTO_VALIDATE_OK",
-                       "BAD_KEY_IDX", "BAD_KEY_SEL", "FUSE_KEY_EMPTY",
-                       "ROM_KEY_EMPTY", "KEY_REVOKED idx=", "VERSION_ROLLBACK")
+    extra_forbidden = (
+        "RSA_VERIFY_START",
+        "SIG_VALID",
+        "CRYPTO_VALIDATE_OK",
+        "BAD_KEY_IDX",
+        "BAD_KEY_SEL",
+        "FUSE_KEY_EMPTY",
+        "ROM_KEY_EMPTY",
+        "KEY_REVOKED idx=",
+        "VERSION_ROLLBACK",
+    )
 
     def corrupt_primary(self, buf: bytearray) -> None:
         # Different byte from the backup's, so the two mutations cannot be one
@@ -101,5 +112,8 @@ class sep_firmware_backup_invalid_key_hash_test(sep_backup_manifest_fail_base):
         self.logger.info(
             "CHK-BACKUP-DEFECT: %s at line %d (primary) and line %d (backup, "
             "after the backup read at %d)",
-            _HASH_MISMATCH, before[0], after[0], i_backup,
+            _HASH_MISMATCH,
+            before[0],
+            after[0],
+            i_backup,
         )

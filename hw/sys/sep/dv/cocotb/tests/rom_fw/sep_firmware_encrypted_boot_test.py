@@ -30,16 +30,19 @@ import os
 from pathlib import Path
 
 import pyuvm
-
 from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
 
 _SEP_ROOT = Path(__file__).resolve().parents[4]
 _ENCRYPTED_IMAGE = str(_SEP_ROOT / "bootrom" / "prod" / "build" / "encrypted_boot.bin")
 _PLAINTEXT_IMAGE = str(_SEP_ROOT / "bootrom" / "prod" / "build" / "secure_boot.bin")
-_BACKUP_OFF = 0x41000   # the backup slot is the one that runs last
+_BACKUP_OFF = 0x41000  # the backup slot is the one that runs last
 _PAYLOAD_OFF = 0x1000
 _EFUSE_PRELOAD = (
-    Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads" / "efuse_configurations" / "sep_efuse_class_key.toml"
+    Path(__file__).resolve().parents[3]
+    / "tb"
+    / "efuse_preloads"
+    / "efuse_configurations"
+    / "sep_efuse_class_key.toml"
 )
 
 # The class key the packer derived from, verbatim from
@@ -66,7 +69,12 @@ class sep_firmware_encrypted_boot_test(sep_rom_ot_dma_boot_test):
 
     flash_image = _ENCRYPTED_IMAGE
     required_markers = sep_rom_ot_dma_boot_test.required_markers + (
-        _RSA_START, _SIG_VALID, _PLD_HASH_OK, _DECRYPT_START, _DECRYPT_OK, _CRYPTO_OK,
+        _RSA_START,
+        _SIG_VALID,
+        _PLD_HASH_OK,
+        _DECRYPT_START,
+        _DECRYPT_OK,
+        _CRYPTO_OK,
     )
     # Every decryption failure arm, plus the two verdicts that would mean the
     # feature silently did not engage. The HMAC/SHA rejection markers matter most:
@@ -74,21 +82,44 @@ class sep_firmware_encrypted_boot_test(sep_rom_ot_dma_boot_test):
     # a completion poll reads as success, so without them a garbage digest -- and
     # therefore a garbage AES key -- reaches decryption looking like a clean run.
     forbidden_markers = sep_rom_ot_dma_boot_test.forbidden_markers + (
-        "KDF_FAIL", "KDF_HMAC_FAIL", "HMAC_ERR_CODE=", "HMAC_START_REJECTED",
-        "HMAC_OP_REJECTED", "SHA_START_REJECTED", "SHA_OP_REJECTED",
-        "AES_INIT_FAIL", "AES_INIT_BUSY", "AES_DEC_FAIL", "SBOOT_OFF",
-        "PLD_HASH_MISMATCH", "MANIFEST_ERR=",
+        "KDF_FAIL",
+        "KDF_HMAC_FAIL",
+        "HMAC_ERR_CODE=",
+        "HMAC_START_REJECTED",
+        "HMAC_OP_REJECTED",
+        "SHA_START_REJECTED",
+        "SHA_OP_REJECTED",
+        "AES_INIT_FAIL",
+        "AES_INIT_BUSY",
+        "AES_DEC_FAIL",
+        "SBOOT_OFF",
+        "PLD_HASH_MISMATCH",
+        "MANIFEST_ERR=",
         # Every manifest/TOC/image rejection arm. This image is valid, so any of
         # these firing means a new check rejects something it should accept --
         # which a boot that merely ends in MANIFEST_ERR would not tell apart.
-        "PAYLOAD_OFF_RANGE", "PAYLOAD_LEN_RANGE", "PAYLOAD_OFF_ALIGN",
-        "PAYLOAD_HASHED_LEN_BAD", "ENC_HASHED_LEN_PARTIAL", "ENC_WITHOUT_SBOOT",
-        "TOC_REGION_OOB", "TOC_PLEN_MISMATCH", "IMAGE_ORDER_BAD",
-        "IMAGE_LEN_ZERO", "IMAGE_LEN_ALIGN", "IMAGE_HASH_MISMATCH",
-        "IMAGE_HASH_TIMEOUT", "NO_BL1_IMAGE", "BL1_ADDR_RANGE",
-        "BL1_ENTRY_RANGE", "ROM_KEY_EMPTY", "FLASH_REINIT_FAIL",
+        "PAYLOAD_OFF_RANGE",
+        "PAYLOAD_LEN_RANGE",
+        "PAYLOAD_OFF_ALIGN",
+        "PAYLOAD_HASHED_LEN_BAD",
+        "ENC_HASHED_LEN_PARTIAL",
+        "ENC_WITHOUT_SBOOT",
+        "TOC_REGION_OOB",
+        "TOC_PLEN_MISMATCH",
+        "IMAGE_ORDER_BAD",
+        "IMAGE_LEN_ZERO",
+        "IMAGE_LEN_ALIGN",
+        "IMAGE_HASH_MISMATCH",
+        "IMAGE_HASH_TIMEOUT",
+        "NO_BL1_IMAGE",
+        "BL1_ADDR_RANGE",
+        "BL1_ENTRY_RANGE",
+        "ROM_KEY_EMPTY",
+        "FLASH_REINIT_FAIL",
         # AES alert bits, the same silent-failure shape as the HMAC ones above.
-        "AES_CTRL_REJECTED", "AES_ALERT_AFTER_DEC", "AES_ALERT_STATUS=",
+        "AES_CTRL_REJECTED",
+        "AES_ALERT_AFTER_DEC",
+        "AES_ALERT_STATUS=",
     )
 
     def build_efuse_image(self):
@@ -108,19 +139,21 @@ class sep_firmware_encrypted_boot_test(sep_rom_ot_dma_boot_test):
     def mutate_flash_image(self, buf: bytearray) -> bytearray:
         # Prove the image really is ciphertext, so a silently-unencrypted build
         # cannot make this test pass without exercising decryption at all.
-        toc = bytes(buf[0x1000 + 0x1000:0x1000 + 0x1000 + 4])
+        toc = bytes(buf[0x1000 + 0x1000 : 0x1000 + 0x1000 + 4])
         assert toc != b"PTOC", (
             "primary payload starts with the plaintext TOC magic: the image is "
             "not encrypted, so this run would prove nothing about decryption"
         )
-        flags = int.from_bytes(buf[0x1000 + 92:0x1000 + 96], "little")
+        flags = int.from_bytes(buf[0x1000 + 92 : 0x1000 + 96], "little")
         assert (flags >> 1) & 1, (
             f"usage_constraints.flags=0x{flags:x} has the encrypted_payload bit "
             f"clear; the ROM would not call decrypt_payload()"
         )
         self.logger.info(
             "CHK-STIMULUS-ENC: primary usage_flags=0x%08x (encrypted), "
-            "payload starts %s (not PTOC)", flags, toc.hex(),
+            "payload starts %s (not PTOC)",
+            flags,
+            toc.hex(),
         )
         return buf
 
@@ -149,7 +182,8 @@ class sep_firmware_encrypted_boot_test(sep_rom_ot_dma_boot_test):
             self.logger.error(
                 "CHK-PROBE: SRAM word 0 is not the manifest magic -- this probe is "
                 "NOT reading the manifest/payload region, so the block comparison "
-                "below proves nothing about the ROM")
+                "below proves nothing about the ROM"
+            )
             return
 
         got = int(self.rd(cocotb.top.sram_payload_probe_o)).to_bytes(48, "little")
@@ -157,15 +191,16 @@ class sep_firmware_encrypted_boot_test(sep_rom_ot_dma_boot_test):
         # images, so its bytes at the same offset are exactly what a correct
         # decryption must reproduce.
         with open(_PLAINTEXT_IMAGE, "rb") as fh:
-            ref = fh.read()[_BACKUP_OFF + _PAYLOAD_OFF:][:48]
+            ref = fh.read()[_BACKUP_OFF + _PAYLOAD_OFF :][:48]
 
         verdict = []
         for b in range(3):
-            g, r = got[b * 16:(b + 1) * 16], ref[b * 16:(b + 1) * 16]
+            g, r = got[b * 16 : (b + 1) * 16], ref[b * 16 : (b + 1) * 16]
             ok = g == r
             verdict.append(ok)
-            self.logger.info("CHK-BLOCK%d: got=%s  expected=%s  %s",
-                             b, g.hex(), r.hex(), "OK" if ok else "WRONG")
+            self.logger.info(
+                "CHK-BLOCK%d: got=%s  expected=%s  %s", b, g.hex(), r.hex(), "OK" if ok else "WRONG"
+            )
 
         if all(verdict):
             self.logger.info("CHK-DECRYPT-VERDICT: all three blocks correct")
@@ -174,16 +209,21 @@ class sep_firmware_encrypted_boot_test(sep_rom_ot_dma_boot_test):
                 "CHK-DECRYPT-VERDICT: block 0 WRONG, blocks 1-2 CORRECT. That is the "
                 "signature of the IV never reaching the engine: CBC chains later "
                 "blocks on the previous ciphertext, which does not depend on the IV. "
-                "Suspect the IV write in aes_driver.c, not the key.")
+                "Suspect the IV write in aes_driver.c, not the key."
+            )
         elif not any(verdict):
             self.logger.error(
                 "CHK-DECRYPT-VERDICT: ALL blocks wrong -- that is a wrong KEY (or a "
                 "wrong mode), not a lost IV; a lost IV would corrupt block 0 only. "
                 "Suspect the key handed to aes128cbc_decrypt(), i.e. the fuse read "
-                "or the KBKDF, over the AES driver itself.")
+                "or the KBKDF, over the AES driver itself."
+            )
         else:
-            self.logger.error("CHK-DECRYPT-VERDICT: mixed pattern %s -- matches "
-                              "neither a lost IV nor a wrong key", verdict)
+            self.logger.error(
+                "CHK-DECRYPT-VERDICT: mixed pattern %s -- matches "
+                "neither a lost IV nor a wrong key",
+                verdict,
+            )
 
     def check_transport(self, console: list[str], flash) -> None:
         def index_of(marker: str) -> int:
@@ -208,6 +248,9 @@ class sep_firmware_encrypted_boot_test(sep_rom_ot_dma_boot_test):
             f"IMAGES=({i_images}); the TOC must be parsed only after decryption"
         )
         self.logger.info(
-            "CHK-DECRYPT-ORDER: PLD_HASH_OK@%d -> DECRYPT_START@%d -> "
-            "DECRYPT_OK@%d -> IMAGES=@%d", i_hash, i_dec, i_ok, i_images,
+            "CHK-DECRYPT-ORDER: PLD_HASH_OK@%d -> DECRYPT_START@%d -> DECRYPT_OK@%d -> IMAGES=@%d",
+            i_hash,
+            i_dec,
+            i_ok,
+            i_images,
         )

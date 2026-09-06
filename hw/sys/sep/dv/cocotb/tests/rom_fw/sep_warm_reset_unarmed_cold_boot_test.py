@@ -27,7 +27,6 @@ just that it changed.
 from __future__ import annotations
 
 import pyuvm
-
 from rom_fw.sep_warm_dispatch_base import (
     COLD_POISON,
     STATUS_BOOTROM_START,
@@ -107,5 +106,8 @@ class sep_warm_reset_unarmed_cold_boot_test(sep_warm_dispatch_base):
             f"(SEP_MSG_WARM_RESET_HANG): the ROM ran the zero slot into the range "
             f"check and hung instead of cold booting. Observed {status_hex}"
         )
-        self.logger.info("CHK-NO-WARM-DECISION: neither 0x%08x nor 0x%08x present",
-                         STATUS_WARM_JUMP, STATUS_WARM_HANG)
+        self.logger.info(
+            "CHK-NO-WARM-DECISION: neither 0x%08x nor 0x%08x present",
+            STATUS_WARM_JUMP,
+            STATUS_WARM_HANG,
+        )

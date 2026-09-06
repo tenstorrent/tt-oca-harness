@@ -38,7 +38,6 @@ only introduce failure modes that say nothing about rotation.
 from __future__ import annotations
 
 import pyuvm
-
 from env import sep_manifest_mutate as mm
 from env import sep_spi_slot_evidence as ev
 from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
@@ -49,8 +48,8 @@ _ROTATE_UPDATE_BIT = 26
 
 _SPI_PATH_MARKER = "BOOT_SPI"
 _STRAPS_HI_ECHO = f"STRAPS_HI=0x{_STRAPS_HI_ROTATE:08x}"
-_ROTATE_ECHO = "SPI_ROTATE=1"          # rom_main.c:321
-_STRAP_ROTATE_ECHO = " rotate=1"       # boot_straps.c:34
+_ROTATE_ECHO = "SPI_ROTATE=1"  # rom_main.c:321
+_STRAP_ROTATE_ECHO = " rotate=1"  # boot_straps.c:34
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
 _MANIFEST_OK = "MANIFEST_OK"
@@ -67,11 +66,18 @@ class sep_rotate_update_set_test(sep_rom_ot_dma_boot_test):
     # Replaces, not extends: the inherited tuple requires MANIFEST_SRC=0x00001000,
     # which under rotation is precisely what must NOT happen.
     required_markers = (
-        _SPI_PATH_MARKER, _STRAPS_HI_ECHO, _ROTATE_ECHO, _STRAP_ROTATE_ECHO,
-        _BACKUP_SRC, _MANIFEST_OK,
+        _SPI_PATH_MARKER,
+        _STRAPS_HI_ECHO,
+        _ROTATE_ECHO,
+        _STRAP_ROTATE_ECHO,
+        _BACKUP_SRC,
+        _MANIFEST_OK,
     )
     forbidden_markers = sep_rom_ot_dma_boot_test.forbidden_markers + (
-        _PRIMARY_SRC, _SECOND_ATTEMPT, _ANY_SLOT_ERROR, "MANIFEST_ALL_FAILED",
+        _PRIMARY_SRC,
+        _SECOND_ATTEMPT,
+        _ANY_SLOT_ERROR,
+        "MANIFEST_ALL_FAILED",
     )
 
     def mutate_flash_image(self, buf: bytearray) -> bytearray:
@@ -85,7 +91,11 @@ class sep_rotate_update_set_test(sep_rom_ot_dma_boot_test):
         self.logger.info(
             "CHK-STIMULUS-ROTATE: primary span 0x%06x..0x%06x erased to 0x%02x "
             "(%d bytes); the only bootable slot is 0x%06x: %s",
-            start, end, mm.ERASED_BYTE, end - start, mm.BACKUP_MANIFEST_OFFSET,
+            start,
+            end,
+            mm.ERASED_BYTE,
+            end - start,
+            mm.BACKUP_MANIFEST_OFFSET,
             mm.describe(buf, "backup"),
         )
         assert (_STRAPS_HI_ROTATE >> _ROTATE_UPDATE_BIT) & 1, (
@@ -95,8 +105,9 @@ class sep_rotate_update_set_test(sep_rom_ot_dma_boot_test):
         return buf
 
     def log_transport(self, flash) -> None:
-        self.logger.info("CHK-SPI-TXNS:\n%s",
-                         ev.summarize(flash.get_transactions(), self._image_len))
+        self.logger.info(
+            "CHK-SPI-TXNS:\n%s", ev.summarize(flash.get_transactions(), self._image_len)
+        )
 
     def check_transport(self, console: list[str], flash) -> None:
         rds = ev.reads(flash.get_transactions())
@@ -131,9 +142,7 @@ class sep_rotate_update_set_test(sep_rom_ot_dma_boot_test):
         )
 
         b_hit = ev.covering_read(rds, mm.BACKUP_MANIFEST_OFFSET)
-        assert b_hit is not None, (
-            f"no SPI read covered 0x{mm.BACKUP_MANIFEST_OFFSET:x}"
-        )
+        assert b_hit is not None, f"no SPI read covered 0x{mm.BACKUP_MANIFEST_OFFSET:x}"
         b_idx, b_txn = b_hit
         b_magic = ev.bytes_at(b_txn, mm.BACKUP_MANIFEST_OFFSET, 4)
         assert b_magic == mm.MANIFEST_MAGIC, (
@@ -143,5 +152,8 @@ class sep_rotate_update_set_test(sep_rom_ot_dma_boot_test):
         self.logger.info(
             "CHK-ROTATE-ADDR: first slot read is read[%d] in the rotated slot, "
             "read[%d] returned %r at 0x%06x, and no read touched the primary span",
-            first_slot_read, b_idx, b_magic, mm.BACKUP_MANIFEST_OFFSET,
+            first_slot_read,
+            b_idx,
+            b_magic,
+            mm.BACKUP_MANIFEST_OFFSET,
         )

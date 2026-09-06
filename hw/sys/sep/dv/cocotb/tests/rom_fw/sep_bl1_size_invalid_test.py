@@ -41,7 +41,6 @@ end the boot, and would otherwise look the same from the outside.
 from __future__ import annotations
 
 import pyuvm
-
 from env import sep_payload_mutate as pm
 from rom_fw.sep_bl1_image_invalid_base import sep_bl1_image_invalid_base
 
@@ -75,6 +74,8 @@ class sep_bl1_size_invalid_test(sep_bl1_image_invalid_base):
         # but stating it makes the "size is the only defect" claim explicit.
         assert pm.bl1_field(buf, slot, pm.E_TYPE) == pm.IMAGE_TYPE_SEP_BL1
         self.logger.info(
-            "CHK-STIMULUS-BL1-SIZE: %s BL1 length %d -> 0, type and load_addr "
-            "untouched; %s", slot, was, pm.describe_bl1(buf, slot),
+            "CHK-STIMULUS-BL1-SIZE: %s BL1 length %d -> 0, type and load_addr untouched; %s",
+            slot,
+            was,
+            pm.describe_bl1(buf, slot),
         )

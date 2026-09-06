@@ -277,6 +277,7 @@ class SepEfuseImage:
             # Lazy so a .hex-only run pays for neither tomllib nor the scan of
             # the generated header's bitfield structs.
             from sep_generate_efuse_preload import apply_toml
+
             return apply_toml(self, path)
         toks = path.read_text(encoding="utf-8").split()
         if toks and all(t in ("0", "1") for t in toks) and len(toks) > NUM_FUSE_WORDS:

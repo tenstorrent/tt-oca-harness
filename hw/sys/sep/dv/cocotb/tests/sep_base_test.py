@@ -61,7 +61,6 @@ from env.sep_env import SepEnv
 from env.sep_env_cfg import SepEnvCfg
 from env.sep_verdict import decode_verdict
 
-
 # Committed default OTP image loaded when a test passes `+sep_efuse_preload` with
 # no path (see select_efuse_image()). Real-fuse-sense tests (no +skip_fuse_sense)
 # depend on it: without the file they would sense a zero OTP.
@@ -73,7 +72,6 @@ _DEFAULT_EFUSE_PRELOAD = (
 # AXI round trip (which is tens of ns) but finite, so a wedged fabric cannot turn
 # the diagnostic itself into a sim timeout.
 _STALL_CSR_TIMEOUT_NS = 50_000
-
 
 
 class sep_base_test(uvm_test):
@@ -613,7 +611,8 @@ class sep_base_test(uvm_test):
                     self.logger.info(
                         "CHK-VERDICT: firmware signaled completion at cycle %d "
                         "via cold_scratch[0], pass=%d",
-                        cycle, verdict[1],
+                        cycle,
+                        verdict[1],
                     )
                     break
             elif self.rd(dut.fw_done_o):

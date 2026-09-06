@@ -73,15 +73,13 @@ import os
 import shutil
 from pathlib import Path
 
-from sep_reg_meta import sym
-
 import cocotb
 import pyuvm
 from cocotb.triggers import RisingEdge
-
+from env.sep_efuse_image import LC_TEST_DEV, SepEfuseImage
+from env.sep_rom_console import log_scratch_cold, rom_console_task
 from sep_base_test import sep_base_test
-from env.sep_efuse_image import SepEfuseImage, LC_TEST_DEV
-from env.sep_rom_console import rom_console_task, log_scratch_cold
+from sep_reg_meta import sym
 
 _SEP_ROOT = str(Path(__file__).resolve().parents[4])
 # The dispatch is the first thing after MRAC setup, long before any transport is
@@ -104,8 +102,8 @@ _INVALID_HANDLER = _RANGE_END
 
 # cold_scratch[1] words, all from vector.S (by symbol; the line numbers went stale
 # once already).
-_STATUS_WARM_HANG = 0x0F01_0069   # ERROR + SEP_MSG_WARM_RESET_HANG, warm_reset_hang
-_STATUS_WARM_JUMP = 0x0101_0068   # INFO  + SEP_MSG_WARM_RESET_JUMP, accept arm
+_STATUS_WARM_HANG = 0x0F01_0069  # ERROR + SEP_MSG_WARM_RESET_HANG, warm_reset_hang
+_STATUS_WARM_JUMP = 0x0101_0068  # INFO  + SEP_MSG_WARM_RESET_JUMP, accept arm
 _STATUS_BOOTROM_START = 0x8001_0044
 _STATUS_PRESTART_DONE = 0x8001_0056
 # Written by cold_boot as the out-of-range poison, its first store. Seeing it means
@@ -167,7 +165,8 @@ class sep_warm_reset_invalid_hang_test(sep_base_test):
         self.logger.info(
             "CHK-STIMULUS-HANDLER: cold_scratch[7] seed = 0x%08x, the smallest "
             "address rejected by `bgeu handler, 0x%08x`",
-            _INVALID_HANDLER, _RANGE_END,
+            _INVALID_HANDLER,
+            _RANGE_END,
         )
 
         efuse_img = SepEfuseImage()
@@ -192,7 +191,9 @@ class sep_warm_reset_invalid_hang_test(sep_base_test):
             dut.tcm_load_i.value = 0
 
         await self.bring_up_cpu_boot(
-            _ROM_BASE >> 1, pre_reset_hook=_load_tcm, run_pulse_cycles=40,
+            _ROM_BASE >> 1,
+            pre_reset_hook=_load_tcm,
+            run_pulse_cycles=40,
         )
 
         status_seq: list[int] = []
@@ -225,7 +226,10 @@ class sep_warm_reset_invalid_hang_test(sep_base_test):
                 last_log = cycle
                 self.logger.info(
                     "warm dispatch poll cyc=%d status=0x%08x cold7=0x%08x retired=%d",
-                    cycle, status, cold7, retired,
+                    cycle,
+                    status,
+                    cold7,
+                    retired,
                 )
 
         # Did it actually STOP? Same reasoning as the MEM_REPAIR gate's halt: the
@@ -253,8 +257,7 @@ class sep_warm_reset_invalid_hang_test(sep_base_test):
                     # very label whose absence the test exists to prove, so check
                     # the addresses against the label in the .dis, not by eye.
                     post_pcs.add(self.rd(dut.cpu_trace_addr_o))
-                if ((self.rd(dut.scratch_cold_probe_o) >> 32) & 0xFFFF_FFFF) != \
-                        _STATUS_WARM_HANG:
+                if ((self.rd(dut.scratch_cold_probe_o) >> 32) & 0xFFFF_FFFF) != _STATUS_WARM_HANG:
                     post_status_moved = True
         post_span = (max(post_pcs) - min(post_pcs)) if post_pcs else 0
 
@@ -289,8 +292,7 @@ class sep_warm_reset_invalid_hang_test(sep_base_test):
             f"cold_scratch[1] never reached 0x{_STATUS_WARM_HANG:08x} within "
             f"{_MAX_RUN_CYCLES} cycles; observed {status_hex}"
         )
-        self.logger.info("CHK-WARM-REJECT: cold_scratch[1] = 0x%08x",
-                         _STATUS_WARM_HANG)
+        self.logger.info("CHK-WARM-REJECT: cold_scratch[1] = 0x%08x", _STATUS_WARM_HANG)
 
         # CHK-NO-JUMP: the accept arm did not run. Two independent witnesses,
         # because either alone is weak: the ROM announces the jump in
@@ -302,7 +304,8 @@ class sep_warm_reset_invalid_hang_test(sep_base_test):
             f"and jumped to it. Observed {status_hex}"
         )
         self.logger.info(
-            "CHK-NO-JUMP: 0x%08x absent from cold_scratch[1]", _STATUS_WARM_JUMP,
+            "CHK-NO-JUMP: 0x%08x absent from cold_scratch[1]",
+            _STATUS_WARM_JUMP,
         )
 
         # CHK-NO-COLD-FALLTHROUGH: it did not quietly fall into a normal boot
@@ -310,8 +313,10 @@ class sep_warm_reset_invalid_hang_test(sep_base_test):
         # written after it, so their absence places execution on the hang.
         # cold_scratch[7] never taking cold_boot's -1 poison is the independent
         # second witness, written by a different instruction in a different block.
-        for word, name in ((_STATUS_BOOTROM_START, "BOOTROM_START"),
-                           (_STATUS_PRESTART_DONE, "BOOTROM_PRESTART_DONE")):
+        for word, name in (
+            (_STATUS_BOOTROM_START, "BOOTROM_START"),
+            (_STATUS_PRESTART_DONE, "BOOTROM_PRESTART_DONE"),
+        ):
             assert word not in status_seq, (
                 f"cold_scratch[1] held 0x{word:08x} ({name}), which cold_boot "
                 f"writes: the ROM fell through the dispatch into a normal boot "
@@ -321,8 +326,9 @@ class sep_warm_reset_invalid_hang_test(sep_base_test):
             f"cold_scratch[7] held cold_boot's poison 0x{_COLD_POISON:08x} "
             f"({cold7_hex}): execution reached cold_boot"
         )
-        self.logger.info("CHK-NO-COLD-FALLTHROUGH: no cold_boot status word and no "
-                         "0x%08x poison", _COLD_POISON)
+        self.logger.info(
+            "CHK-NO-COLD-FALLTHROUGH: no cold_boot status word and no 0x%08x poison", _COLD_POISON
+        )
 
         # CHK-PRE-C: the dispatch stopped the ROM before the C runtime, which is
         # what keeps BL1's DCCM state intact across a warm reset. A silent console
@@ -352,6 +358,8 @@ class sep_warm_reset_invalid_hang_test(sep_base_test):
         self.logger.info(
             "CHK-HANG: cold_scratch[1] held 0x%08x while the PC spun across %d "
             "byte(s) at %s for %d cycles",
-            _STATUS_WARM_HANG, post_span, [hex(p) for p in sorted(post_pcs)],
+            _STATUS_WARM_HANG,
+            post_span,
+            [hex(p) for p in sorted(post_pcs)],
             _QUIESCE_CYCLES,
         )

@@ -114,7 +114,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyuvm
-
 from env import sep_manifest_mutate as mm
 from env import sep_payload_mutate as pm
 from env import sep_spi_slot_evidence as ev
@@ -128,9 +127,7 @@ from rom_fw.sep_chiplet_pubkey_base import (
     select_chiplet_fuse_key,
 )
 
-_EFUSE_DIR = (
-    Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads" / "efuse_configurations"
-)
+_EFUSE_DIR = Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads" / "efuse_configurations"
 
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
@@ -140,12 +137,12 @@ _CHIPLET_KEY = 0
 # PUBK_SEL_FUSE_KEY_0 with index 0 encodes as 0x10, a value the ROM-key arm cannot
 # produce.
 _PUBK_SEL_VALUE = (mm.PUBK_SEL_FUSE_KEY_0 & 0x7) << 4
-_PUBK_SEL_ECHO = f"PUBK_SEL=0x{_PUBK_SEL_VALUE:08x}"        # manifest_crypto.c
+_PUBK_SEL_ECHO = f"PUBK_SEL=0x{_PUBK_SEL_VALUE:08x}"  # manifest_crypto.c
 # Only ROM dev key 0. Bits 16/17 (CHIPLET_PUBK_HASH0/1, sep_efuse_map.rdl:727) are
 # deliberately clear -- see the docstring.
 _REVOKE_BITMAP = 1 << 0
-_REVOKE_ECHO = f"PUBK_REVOKE=0x{_REVOKE_BITMAP:08x}"        # manifest_crypto.c
-_HASH_MISMATCH = "PUBK_HASH_MISMATCH"                       # manifest_crypto.c
+_REVOKE_ECHO = f"PUBK_REVOKE=0x{_REVOKE_BITMAP:08x}"  # manifest_crypto.c
+_HASH_MISMATCH = "PUBK_HASH_MISMATCH"  # manifest_crypto.c
 
 
 @pyuvm.test()
@@ -161,11 +158,22 @@ class sep_firmware_chiplet_pubkey_0_wrong_digest_test(sep_backup_manifest_fail_b
     # KEY_REVOKED covers both the ROM-key-arm counterfactual and an accidental
     # chiplet revoke; the RSA markers prove the digest bind stopped the run before
     # the verifier; the rest are the other rejecting arms of validate_signature.
-    extra_forbidden = ("KEY_REVOKED", "ROM_KEY_EMPTY", "FUSE_KEY_EMPTY",
-                       "PUBK_HASH_TIMEOUT", "RSA_VERIFY_START", "RSA_VERIFY_FAIL",
-                       "SIG_VALID", "CRYPTO_VALIDATE_OK", "BAD_KEY_IDX",
-                       "BAD_KEY_SEL", "BAD_SIG_TYPE=", "VERSION_ROLLBACK",
-                       "LC_USAGE_CONSTRAINT_FAIL", ROM_ARM_KEY_REVOKED)
+    extra_forbidden = (
+        "KEY_REVOKED",
+        "ROM_KEY_EMPTY",
+        "FUSE_KEY_EMPTY",
+        "PUBK_HASH_TIMEOUT",
+        "RSA_VERIFY_START",
+        "RSA_VERIFY_FAIL",
+        "SIG_VALID",
+        "CRYPTO_VALIDATE_OK",
+        "BAD_KEY_IDX",
+        "BAD_KEY_SEL",
+        "BAD_SIG_TYPE=",
+        "VERSION_ROLLBACK",
+        "LC_USAGE_CONSTRAINT_FAIL",
+        ROM_ARM_KEY_REVOKED,
+    )
 
     # --- stimulus ----------------------------------------------------------
     def corrupt_primary(self, buf: bytearray) -> None:
@@ -183,7 +191,9 @@ class sep_firmware_chiplet_pubkey_0_wrong_digest_test(sep_backup_manifest_fail_b
             "CHK-STIMULUS-FUSED-KEY: both slots public_key_sel=0x%04x "
             "(PUBK_SEL_FUSE_KEY_%d, index 0), re-signed with dev0 and re-verified "
             "sealed. Both are fully valid manifests; the only defect in this run is "
-            "in the FUSE", p_sel, _CHIPLET_KEY,
+            "in the FUSE",
+            p_sel,
+            _CHIPLET_KEY,
         )
 
     def corrupt_backup(self, buf: bytearray) -> None:
@@ -197,7 +207,8 @@ class sep_firmware_chiplet_pubkey_0_wrong_digest_test(sep_backup_manifest_fail_b
             "CHK-STIMULUS-BOTH-SEALED: backup public_key_sel=0x%04x and the backup "
             "passes payload_hash, every TOC image digest, manifest_hash over the TBS "
             "and RSA verification of its re-signed signature against the dev0 "
-            "modulus. Neither slot carries a defect -- the fuse does", got,
+            "modulus. Neither slot carries a defect -- the fuse does",
+            got,
         )
 
     def check_efuse(self, image) -> None:
@@ -251,7 +262,9 @@ class sep_firmware_chiplet_pubkey_0_wrong_digest_test(sep_backup_manifest_fail_b
             "IS it. So a ROM comparing against public_key_digests[0], and a ROM "
             "reading the wrong chiplet fuse, both boot -- and both fail this "
             "testcase",
-            revoke, h0, h1,
+            revoke,
+            h0,
+            h1,
         )
 
     # --- checks ------------------------------------------------------------
@@ -275,7 +288,9 @@ class sep_firmware_chiplet_pubkey_0_wrong_digest_test(sep_backup_manifest_fail_b
         self.logger.info(
             "CHK-BOTH-MISMATCHED: %s at lines %s, one before and one after the backup "
             "read@%d -- both manifests were refused by the chiplet digest fuse",
-            _HASH_MISMATCH, hits, i_backup,
+            _HASH_MISMATCH,
+            hits,
+            i_backup,
         )
 
     def _check(self, console, status_seq, fw_done, fw_pass, retired) -> None:
@@ -315,8 +330,13 @@ class sep_firmware_chiplet_pubkey_0_wrong_digest_test(sep_backup_manifest_fail_b
             "CHK-BOTH-SLOTS-REFUSED: %s and %s each twice, %s at lines %s straddling "
             "the backup read@%d, then MANIFEST_ALL_FAILED -- and PUBK_REVOKE=0x%08x "
             "says the revocation check ran and PERMITTED the key, so the digest is "
-            "the sole cause", _PUBK_SEL_ECHO, _REVOKE_ECHO, crypto_fail, hits,
-            i_backup, _REVOKE_BITMAP,
+            "the sole cause",
+            _PUBK_SEL_ECHO,
+            _REVOKE_ECHO,
+            crypto_fail,
+            hits,
+            i_backup,
+            _REVOKE_BITMAP,
         )
 
         # Device-side: the console says which address the ROM intended to read; the
@@ -336,5 +356,8 @@ class sep_firmware_chiplet_pubkey_0_wrong_digest_test(sep_backup_manifest_fail_b
         )
         self.logger.info(
             "CHK-BOTH-FETCHED: device served read[%d] 0x%06x then read[%d] 0x%06x",
-            p_idx, mm.PRIMARY_MANIFEST_OFFSET, b_idx, mm.BACKUP_MANIFEST_OFFSET,
+            p_idx,
+            mm.PRIMARY_MANIFEST_OFFSET,
+            b_idx,
+            mm.BACKUP_MANIFEST_OFFSET,
         )

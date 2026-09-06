@@ -61,13 +61,11 @@ Needs ``+sep_crypto_edn_force``: PROD_END enforces secure boot
 from __future__ import annotations
 
 import pyuvm
-
 from rom_fw.sep_demotion_prod_end_base import sep_demotion_prod_end_base
 
 
 @pyuvm.test()
-class sep_firmware_demotion_decision_no_flag_prod_end_sel_bit_set_test(
-        sep_demotion_prod_end_base):
+class sep_firmware_demotion_decision_no_flag_prod_end_sel_bit_set_test(sep_demotion_prod_end_base):
     """PROD_END with selector bit 17 set: the selector is never consulted."""
 
     # +LC_STATE_END_PROD +SET_SELECTOR_BIT_17, no +AUTH_FLAG_0 and no

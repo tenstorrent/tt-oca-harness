@@ -85,11 +85,11 @@ if __name__ == "__main__":
 
 # Import order matters: sep_reg_meta puts regs/gen/py on sys.path as an import
 # side effect, so it has to precede sep_reg. Same idiom as sep_efuse_image.
-import sep_reg_meta  # noqa: F401,E402
-import sep_reg  # noqa: E402
-
 import tomllib  # noqa: E402
 from typing import Dict, Optional, Tuple  # noqa: E402
+
+import sep_reg  # noqa: E402
+import sep_reg_meta  # noqa: F401,E402
 
 WORD_BITS = 32
 
@@ -187,8 +187,7 @@ def _apply_register(image, reg_name: str, body: dict) -> None:
             raise ValueError(f"{where}: expected a table with a 'value' key")
         if saw_whole:
             raise ValueError(
-                f"{where}: register also sets a whole-register 'value'; "
-                "use one form or the other"
+                f"{where}: register also sets a whole-register 'value'; use one form or the other"
             )
         if fields is None:
             # No bitfield struct is generated for registers wider than 64 bits.
@@ -224,9 +223,7 @@ def apply_toml(image, path: str | Path):
         doc = tomllib.load(handle)
     for reg_name, body in doc.items():
         if not isinstance(body, dict):
-            raise ValueError(
-                f"{path}: top-level key {reg_name!r} is not a register table"
-            )
+            raise ValueError(f"{path}: top-level key {reg_name!r} is not a register table")
         _apply_register(image, reg_name, body)
     return image
 
@@ -281,9 +278,7 @@ def _selftest() -> int:
     SepEfuseImage = _load_sep_efuse_image()
 
     def build(text: str):
-        with tempfile.NamedTemporaryFile(
-            "w", suffix=".toml", delete=False
-        ) as handle:
+        with tempfile.NamedTemporaryFile("w", suffix=".toml", delete=False) as handle:
             handle.write(text)
             tmp = handle.name
         try:
@@ -319,26 +314,41 @@ def _selftest() -> int:
         _failures.append(label)
 
     print("-- values land where the generated map says --")
-    ok("ROM_CTL packs its bitfields LSB-first",
-       '[ROM_CTL]\n'
-       '  [ROM_CTL.fields.rom_endianness_ctrl]\n  value = 0x1\n'
-       '  [ROM_CTL.fields.rom_swap_ctrl]\n  value = 0x6\n',
-       0x1 | (0x6 << 1), lambda i: i.field_int("ROM_CTL"))
-    ok("whole-register form fills a 256-bit field",
-       "[CLASS_KEY]\nvalue = 0x" + "a5" * 32 + "\n",
-       int("a5" * 32, 16), lambda i: i.field_int("CLASS_KEY"))
+    ok(
+        "ROM_CTL packs its bitfields LSB-first",
+        "[ROM_CTL]\n"
+        "  [ROM_CTL.fields.rom_endianness_ctrl]\n  value = 0x1\n"
+        "  [ROM_CTL.fields.rom_swap_ctrl]\n  value = 0x6\n",
+        0x1 | (0x6 << 1),
+        lambda i: i.field_int("ROM_CTL"),
+    )
+    ok(
+        "whole-register form fills a 256-bit field",
+        "[CLASS_KEY]\nvalue = 0x" + "a5" * 32 + "\n",
+        int("a5" * 32, 16),
+        lambda i: i.field_int("CLASS_KEY"),
+    )
     # A corrupt (non-complementary) encoding must survive: preloads exist to
     # sense the DUT into states the write path cannot reach.
-    ok("corrupt LC_STATE encoding is preserved verbatim",
-       '[LC_STATE]\n  [LC_STATE.fields.lc_state]\n  value = 0x11\n',
-       0x11, lambda i: i.words[i.field("LC_STATE").word])
-    ok("anything unstated stays zero",
-       '[LC_STATE]\n  [LC_STATE.fields.lc_state]\n  value = 0xE1\n',
-       0xE1, lambda i: sum(i.words))
-    ok("the reference suite's stray regwidth key is ignored",
-       '[SEP_SPI_CTRL_FIELD_EN]\nregwidth = 288\n'
-       '  [SEP_SPI_CTRL_FIELD_EN.fields.smu_pll_sysclk]\n  value = 0x320\n',
-       0x320 << 8, lambda i: i.field_int("SEP_SPI_CTRL_FIELD_EN"))
+    ok(
+        "corrupt LC_STATE encoding is preserved verbatim",
+        "[LC_STATE]\n  [LC_STATE.fields.lc_state]\n  value = 0x11\n",
+        0x11,
+        lambda i: i.words[i.field("LC_STATE").word],
+    )
+    ok(
+        "anything unstated stays zero",
+        "[LC_STATE]\n  [LC_STATE.fields.lc_state]\n  value = 0xE1\n",
+        0xE1,
+        lambda i: sum(i.words),
+    )
+    ok(
+        "the reference suite's stray regwidth key is ignored",
+        "[SEP_SPI_CTRL_FIELD_EN]\nregwidth = 288\n"
+        "  [SEP_SPI_CTRL_FIELD_EN.fields.smu_pll_sysclk]\n  value = 0x320\n",
+        0x320 << 8,
+        lambda i: i.field_int("SEP_SPI_CTRL_FIELD_EN"),
+    )
 
     # Registers no live config sets. A name here that the RDL no longer has makes
     # _apply_register raise, so this is the drift check for the wide and secret
@@ -361,8 +371,10 @@ def _selftest() -> int:
         ("SIP_DIS", 0xDEADBEAFDEADBEAF),
         ("SYS_DIS", 0xBADCAB1EBADCAB1E),
         ("RMA_SIP_TOKEN_DIGEST", 0x123456789ABCDEF),
-        ("RMA_CHIPLET_TOKEN_DIGEST",
-         0x66687AADF862BD776C8FC18B8E9F8E20089714856EE233B3902A591D0D5F2925),
+        (
+            "RMA_CHIPLET_TOKEN_DIGEST",
+            0x66687AADF862BD776C8FC18B8E9F8E20089714856EE233B3902A591D0D5F2925,
+        ),
         ("CHIPLET_UID", 0xDEADBEEF),
         # 800 MHz in smu_pll_sysclk[18:8], so the register value is shifted.
         ("SEP_SPI_CTRL_FIELD_EN", 0x320 << 8),
@@ -371,24 +383,35 @@ def _selftest() -> int:
 
     print("\n-- a stale or wrong config fails loud --")
     err("unknown register", "[NOT_A_REG]\nvalue = 1\n", "unknown eFuse register")
-    err("unknown field",
-        '[ROM_CTL]\n  [ROM_CTL.fields.nope]\n  value = 1\n', "has no field")
+    err("unknown field", "[ROM_CTL]\n  [ROM_CTL.fields.nope]\n  value = 1\n", "has no field")
     err("unknown per-register key", "[LC_STATE]\nnope = 1\n", "unknown key")
-    err("lock key rejected rather than ignored",
-        '[LC_STATE]\nwrite_locked = "False"\n', "lock bits are not implemented")
-    err("value wider than its field",
-        '[ROM_CTL]\n  [ROM_CTL.fields.rom_swap_ctrl]\n  value = 0x20\n',
-        "does not fit in 5 bits")
-    err("value wider than its register",
-        "[LC_STATE]\nvalue = 0x1_0000_0000\n", "does not fit in 32 bits")
+    err(
+        "lock key rejected rather than ignored",
+        '[LC_STATE]\nwrite_locked = "False"\n',
+        "lock bits are not implemented",
+    )
+    err(
+        "value wider than its field",
+        "[ROM_CTL]\n  [ROM_CTL.fields.rom_swap_ctrl]\n  value = 0x20\n",
+        "does not fit in 5 bits",
+    )
+    err(
+        "value wider than its register",
+        "[LC_STATE]\nvalue = 0x1_0000_0000\n",
+        "does not fit in 32 bits",
+    )
     err("negative value", "[LC_STATE]\nvalue = -1\n", "must not be negative")
-    err("whole-register and per-field forms mixed",
-        '[LC_STATE]\nvalue = 1\n  [LC_STATE.fields.lc_state]\n  value = 2\n',
-        "use one form or the other")
-    err("two field entries on a register with no generated bitfields",
-        '[CLASS_KEY]\n  [CLASS_KEY.fields.key]\n  value = 1\n'
-        '  [CLASS_KEY.fields.other]\n  value = 2\n',
-        "exactly one whole-register field")
+    err(
+        "whole-register and per-field forms mixed",
+        "[LC_STATE]\nvalue = 1\n  [LC_STATE.fields.lc_state]\n  value = 2\n",
+        "use one form or the other",
+    )
+    err(
+        "two field entries on a register with no generated bitfields",
+        "[CLASS_KEY]\n  [CLASS_KEY.fields.key]\n  value = 1\n"
+        "  [CLASS_KEY.fields.other]\n  value = 2\n",
+        "exactly one whole-register field",
+    )
 
     # Loading each live config is the floor: these are what the DUT senses at
     # t=0, so one that no longer parses -- because the RDL renamed a field, say
@@ -434,12 +457,16 @@ def _main() -> int:
     import argparse
 
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--selftest", action="store_true",
-                        help="run the loader selftest")
-    parser.add_argument("--emit", nargs="+", type=Path, metavar="CFG",
-                        help="write <CFG>.hex for each config given")
-    parser.add_argument("--output-dir", type=Path, default=_CONFIG_DIR.parent,
-                        help="where --emit writes (default: tb/efuse_preloads/)")
+    parser.add_argument("--selftest", action="store_true", help="run the loader selftest")
+    parser.add_argument(
+        "--emit", nargs="+", type=Path, metavar="CFG", help="write <CFG>.hex for each config given"
+    )
+    parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=_CONFIG_DIR.parent,
+        help="where --emit writes (default: tb/efuse_preloads/)",
+    )
     args = parser.parse_args()
     if args.selftest:
         return _selftest()

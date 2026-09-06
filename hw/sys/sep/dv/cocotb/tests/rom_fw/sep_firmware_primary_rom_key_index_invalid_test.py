@@ -88,7 +88,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyuvm
-
 from env import sep_manifest_mutate as mm
 from rom_fw.sep_primary_fail_backup_boot_base import (
     MANIFEST_ERR_SIG_FAILED,
@@ -96,8 +95,11 @@ from rom_fw.sep_primary_fail_backup_boot_base import (
 )
 
 _EFUSE_PRELOAD = (
-    Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads"
-    / "efuse_configurations" / "sep_efuse_lc_prod.toml"
+    Path(__file__).resolve().parents[3]
+    / "tb"
+    / "efuse_preloads"
+    / "efuse_configurations"
+    / "sep_efuse_lc_prod.toml"
 )
 
 # The boundary: the smallest index the ROM key table does not contain.
@@ -112,8 +114,7 @@ _REVOKE_ECHO = "PUBK_REVOKE="
 
 
 @pyuvm.test()
-class sep_firmware_primary_rom_key_index_invalid_test(
-        sep_primary_fail_backup_boot_base):
+class sep_firmware_primary_rom_key_index_invalid_test(sep_primary_fail_backup_boot_base):
     """Primary names ROM key index 6 -> rejected at the bound -> backup boots."""
 
     primary_defect_marker = "BAD_KEY_IDX"
@@ -129,9 +130,16 @@ class sep_firmware_primary_rom_key_index_invalid_test(
     # shares this error code. ROM_KEY_EMPTY must not appear at all: reaching the
     # digest table with index 6 would be a read past a six-entry array. The rest
     # are the later arms, none of which either slot may reach.
-    extra_forbidden = ("BAD_KEY_SEL", "ROM_KEY_EMPTY", "PUBK_HASH_MISMATCH",
-                       "KEY_REVOKED", "FUSE_KEY_EMPTY", "VERSION_ROLLBACK",
-                       "BAD_SIG_TYPE=", "RSA_VERIFY_FAIL")
+    extra_forbidden = (
+        "BAD_KEY_SEL",
+        "ROM_KEY_EMPTY",
+        "PUBK_HASH_MISMATCH",
+        "KEY_REVOKED",
+        "FUSE_KEY_EMPTY",
+        "VERSION_ROLLBACK",
+        "BAD_SIG_TYPE=",
+        "RSA_VERIFY_FAIL",
+    )
 
     def corrupt_primary(self, buf: bytearray) -> None:
         # No manifest_identifier corruption: the primary must reach the bound.
@@ -159,7 +167,9 @@ class sep_firmware_primary_rom_key_index_invalid_test(
             "CHK-STIMULUS-KEY-INDEX: primary public_key_sel=0x%04x (ROM key source, "
             "index %d == PUBK_SEL_NUM_ROM_KEYS, the smallest out-of-range value), "
             "TBS re-hashed, magic intact so the slot still reaches "
-            "validate_signature", got, _BAD_INDEX,
+            "validate_signature",
+            got,
+            _BAD_INDEX,
         )
 
     def check_efuse(self, image) -> None:
@@ -235,6 +245,12 @@ class sep_firmware_primary_rom_key_index_invalid_test(
         self.logger.info(
             "CHK-BOUND-PREEMPTS-REVOKE: primary %s@%d -> BAD_KEY_IDX@%d with no "
             "fuse echo, then backup@%d -> %s@%d -> %s@%d -> boot",
-            _PRIMARY_SEL_ECHO, i_psel, i_bad, i_bsrc, _BACKUP_SEL_ECHO, i_bsel,
-            _REVOKE_ECHO, i_revoke,
+            _PRIMARY_SEL_ECHO,
+            i_psel,
+            i_bad,
+            i_bsrc,
+            _BACKUP_SEL_ECHO,
+            i_bsel,
+            _REVOKE_ECHO,
+            i_revoke,
         )

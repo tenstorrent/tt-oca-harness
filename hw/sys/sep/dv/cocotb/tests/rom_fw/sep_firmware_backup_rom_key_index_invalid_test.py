@@ -43,7 +43,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyuvm
-
 from env import sep_manifest_mutate as mm
 from rom_fw.sep_backup_manifest_fail_base import (
     MANIFEST_ERR_SIG_FAILED,
@@ -51,8 +50,11 @@ from rom_fw.sep_backup_manifest_fail_base import (
 )
 
 _EFUSE_PRELOAD = (
-    Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads"
-    / "efuse_configurations" / "sep_efuse_lc_prod.toml"
+    Path(__file__).resolve().parents[3]
+    / "tb"
+    / "efuse_preloads"
+    / "efuse_configurations"
+    / "sep_efuse_lc_prod.toml"
 )
 
 # The boundary: the smallest index the ROM key table does not contain.
@@ -74,10 +76,19 @@ class sep_firmware_backup_rom_key_index_invalid_test(sep_backup_manifest_fail_ba
     # reaching either would be indexing past its own table. The rest are the arms
     # that would make the verdict mean something other than "the index was out of
     # range".
-    extra_forbidden = ("PUBK_REVOKE=", "KEY_REVOKED", "ROM_KEY_EMPTY",
-                       "PUBK_HASH_MISMATCH", "BAD_KEY_SEL", "FUSE_KEY_EMPTY",
-                       "RSA_VERIFY_START", "SIG_VALID", "CRYPTO_VALIDATE_OK",
-                       "VERSION_ROLLBACK", "BAD_SIG_TYPE=")
+    extra_forbidden = (
+        "PUBK_REVOKE=",
+        "KEY_REVOKED",
+        "ROM_KEY_EMPTY",
+        "PUBK_HASH_MISMATCH",
+        "BAD_KEY_SEL",
+        "FUSE_KEY_EMPTY",
+        "RSA_VERIFY_START",
+        "SIG_VALID",
+        "CRYPTO_VALIDATE_OK",
+        "VERSION_ROLLBACK",
+        "BAD_SIG_TYPE=",
+    )
 
     def corrupt_backup(self, buf: bytearray) -> None:
         mm.set_public_key_sel(buf, "backup", selection=0, index=_BAD_INDEX)
@@ -99,7 +110,9 @@ class sep_firmware_backup_rom_key_index_invalid_test(sep_backup_manifest_fail_ba
         self.logger.info(
             "CHK-STIMULUS-KEY-INDEX: backup public_key_sel=0x%04x (ROM key source, "
             "index %d == PUBK_SEL_NUM_ROM_KEYS, the smallest out-of-range value), "
-            "TBS re-hashed", got, _BAD_INDEX,
+            "TBS re-hashed",
+            got,
+            _BAD_INDEX,
         )
 
     def check_efuse(self, image) -> None:
@@ -127,10 +140,10 @@ class sep_firmware_backup_rom_key_index_invalid_test(sep_backup_manifest_fail_ba
         )
         n = sum(1 for line in console if "BAD_KEY_IDX" in line)
         assert n == 1, (
-            f"BAD_KEY_IDX appeared {n} times, expected exactly 1 (the backup's). "
-            f"Console: {console}"
+            f"BAD_KEY_IDX appeared {n} times, expected exactly 1 (the backup's). Console: {console}"
         )
         self.logger.info(
             "CHK-KEY-INDEX-ECHO: ROM read %s and refused it once, without "
-            "consulting the revocation bitmap", _PUBK_SEL_ECHO,
+            "consulting the revocation bitmap",
+            _PUBK_SEL_ECHO,
         )

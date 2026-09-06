@@ -47,7 +47,6 @@ still means the signature really verified.
 from __future__ import annotations
 
 import pyuvm
-
 from rom_fw.sep_pubkey_rom_revoked_primary_base import (
     sep_primary_pubkey_rom_revoked_failover_base,
 )
@@ -55,7 +54,8 @@ from rom_fw.sep_pubkey_rom_revoked_primary_base import (
 
 @pyuvm.test()
 class sep_firmware_primary_pubkey_rom_2_revoked_key_test(
-        sep_primary_pubkey_rom_revoked_failover_base):
+    sep_primary_pubkey_rom_revoked_failover_base
+):
     """Primary selects revoked ROM slot 2 -> rejected -> backup boots from slot 0."""
 
     _REVOKED_SLOT = 2

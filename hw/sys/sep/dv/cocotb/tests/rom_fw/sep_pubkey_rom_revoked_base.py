@@ -81,9 +81,7 @@ from rom_fw.sep_backup_manifest_fail_base import (
     sep_backup_manifest_fail_base,
 )
 
-_EFUSE_DIR = (
-    Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads" / "efuse_configurations"
-)
+_EFUSE_DIR = Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads" / "efuse_configurations"
 
 # public_key_sel is {index:4, selection:3}; PUBK_SEL_ROM_KEY is 0 (manifest.h),
 # so a ROM-slot selector is just the index.
@@ -111,9 +109,9 @@ def select_backup_rom_slot(buf: bytearray, slot_index: int) -> tuple[int, bool]:
     ``RSA_VERIFY_START`` to prove that rather than assume it.
     """
     base = mm.slot_base("backup")
-    tbs_before = bytes(buf[base:base + mm.TBS_LEN])
+    tbs_before = bytes(buf[base : base + mm.TBS_LEN])
     mm.set_public_key_sel(buf, "backup", selection=PUBK_SEL_ROM_KEY, index=slot_index)
-    tbs_after = bytes(buf[base:base + mm.TBS_LEN])
+    tbs_after = bytes(buf[base : base + mm.TBS_LEN])
     tbs_changed = tbs_before != tbs_after
 
     got = mm.get_public_key_sel(buf, "backup")
@@ -138,7 +136,7 @@ def select_backup_rom_slot(buf: bytearray, slot_index: int) -> tuple[int, bool]:
         # signature somehow still verified, the write did not land in the TBS and
         # the selector under test is not the one the ROM will read.
         n, e_pub, _d = pm.load_rsa_private_key()
-        sig = bytes(buf[base + mm.OFF_SIGNATURE:base + mm.OFF_SIGNATURE + pm.RSA_KEY_BYTES])
+        sig = bytes(buf[base + mm.OFF_SIGNATURE : base + mm.OFF_SIGNATURE + pm.RSA_KEY_BYTES])
         assert not pm.verify_pkcs1v15_sha256(tbs_after, sig, n, e_pub), (
             "backup signature still verifies after the selector was changed; the "
             "write did not land inside the TBS, so the ROM would read the original "
@@ -175,10 +173,18 @@ class sep_pubkey_rom_revoked_base(sep_backup_manifest_fail_base):
     # seeing it would mean the digest table was consulted before the fuse bitmap);
     # RSA_VERIFY_START and SIG_VALID are load-bearing for slot 0 (its manifest is
     # otherwise valid, so without them a revocation that did nothing would boot).
-    extra_forbidden = ("ROM_KEY_EMPTY", "PUBK_HASH_MISMATCH", "RSA_VERIFY_START",
-                       "SIG_VALID", "CRYPTO_VALIDATE_OK", "BAD_KEY_IDX",
-                       "BAD_KEY_SEL", "FUSE_KEY_EMPTY", "VERSION_ROLLBACK",
-                       "BAD_SIG_TYPE=")
+    extra_forbidden = (
+        "ROM_KEY_EMPTY",
+        "PUBK_HASH_MISMATCH",
+        "RSA_VERIFY_START",
+        "SIG_VALID",
+        "CRYPTO_VALIDATE_OK",
+        "BAD_KEY_IDX",
+        "BAD_KEY_SEL",
+        "FUSE_KEY_EMPTY",
+        "VERSION_ROLLBACK",
+        "BAD_SIG_TYPE=",
+    )
 
     def __init_subclass__(cls, **kwargs) -> None:
         super().__init_subclass__(**kwargs)
@@ -225,8 +231,12 @@ class sep_pubkey_rom_revoked_base(sep_backup_manifest_fail_base):
             "CHK-STIMULUS-REVOKED-SLOT: backup public_key_sel=0x%04x (ROM key slot "
             "%d, revoked by CHIPLET_PUBK_REVOKE bit %d); TBS changed=%s, backup "
             "manifest %s",
-            got, self._REVOKED_SLOT, self._REVOKED_SLOT, tbs_changed,
-            "re-hashed, signature now stale" if tbs_changed
+            got,
+            self._REVOKED_SLOT,
+            self._REVOKED_SLOT,
+            tbs_changed,
+            "re-hashed, signature now stale"
+            if tbs_changed
             else "untouched and still fully sealed with a valid dev0 signature",
         )
 
@@ -268,5 +278,7 @@ class sep_pubkey_rom_revoked_base(sep_backup_manifest_fail_base):
         )
         self.logger.info(
             "CHK-REVOKE-ECHO: ROM read %s and %s, and refused slot %d exactly once",
-            self._PUBK_SEL_ECHO, self._REVOKE_ECHO, self._REVOKED_SLOT,
+            self._PUBK_SEL_ECHO,
+            self._REVOKE_ECHO,
+            self._REVOKED_SLOT,
         )

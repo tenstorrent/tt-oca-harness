@@ -39,8 +39,7 @@ from pathlib import Path
 
 from rom_fw.sep_backup_manifest_fail_base import sep_backup_manifest_fail_base
 
-_EFUSE_DIR = (Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads"
-              / "efuse_configurations")
+_EFUSE_DIR = Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads" / "efuse_configurations"
 _EFUSE_LC_PROD = _EFUSE_DIR / "sep_efuse_lc_prod.toml"
 
 # manifest_load.c:764-765 -- the ROM labels the slot and then prints its offset.
@@ -59,8 +58,15 @@ _SBOOT_OFF = "SBOOT_OFF"
 # "LOAD=" and "LEN=" are deliberately NOT used: manifest_load.c:798 prints
 # "PAYLOAD=", which contains "LOAD=" as a substring, so a marker check would
 # false-positive on an ordinary payload report.
-_BL1_PROGRESS = ("BL1_TYPE=", "COPY_SRC=", "COPY_DST=", "COPY_LEN=", "BL1_COPIED",
-                 "PRE_JUMP", "BL1_JUMP=")
+_BL1_PROGRESS = (
+    "BL1_TYPE=",
+    "COPY_SRC=",
+    "COPY_DST=",
+    "COPY_LEN=",
+    "BL1_COPIED",
+    "PRE_JUMP",
+    "BL1_JUMP=",
+)
 
 # Every OTHER rejection the payload validator can emit. A negative test is only
 # worth its verdict if the image failed for the reason it planted and for no
@@ -68,10 +74,20 @@ _BL1_PROGRESS = ("BL1_TYPE=", "COPY_SRC=", "COPY_DST=", "COPY_LEN=", "BL1_COPIED
 # signature that a re-seal went wrong (a stale image digest, a stale payload
 # hash, a payload length left inconsistent with the TOC).
 _OTHER_REJECTIONS = (
-    "PLD_HASH_MISMATCH", "PLD_HASH_TIMEOUT", "RSA_VERIFY_FAIL", "RSA_PKCS1_FAIL",
-    "SIG_VALID_FAIL", "TOC_PLEN_MISMATCH", "TOC_REGION_OOB", "IMAGE_ORDER_BAD",
-    "IMAGE_HASH_MISMATCH", "IMAGE_HASH_TIMEOUT", "NO_BL1_IMAGE",
-    "LC_USAGE_CONSTRAINT_FAIL", "ENC_WITHOUT_SBOOT", "FLASH_REINIT_FAIL",
+    "PLD_HASH_MISMATCH",
+    "PLD_HASH_TIMEOUT",
+    "RSA_VERIFY_FAIL",
+    "RSA_PKCS1_FAIL",
+    "SIG_VALID_FAIL",
+    "TOC_PLEN_MISMATCH",
+    "TOC_REGION_OOB",
+    "IMAGE_ORDER_BAD",
+    "IMAGE_HASH_MISMATCH",
+    "IMAGE_HASH_TIMEOUT",
+    "NO_BL1_IMAGE",
+    "LC_USAGE_CONSTRAINT_FAIL",
+    "ENC_WITHOUT_SBOOT",
+    "FLASH_REINIT_FAIL",
 )
 
 
@@ -129,7 +145,9 @@ class sep_bl1_image_invalid_base(sep_backup_manifest_fail_base):
         )
         self.logger.info(
             "CHK-BL1-DEFECT: %s reported for both slots (lines %s, backup read at %d)",
-            self.backup_defect_marker, hits, i_backup,
+            self.backup_defect_marker,
+            hits,
+            i_backup,
         )
 
     def _check(self, console, status_seq, fw_done, fw_pass, retired) -> None:
@@ -173,8 +191,13 @@ class sep_bl1_image_invalid_base(sep_backup_manifest_fail_base):
             f"backup slot was read at line {i_backup}, before the primary at line "
             f"{i_primary}: this is not a primary-then-backup retry"
         )
-        log.info("CHK-FAILOVER: primary at %s (line %d), then backup at %s (line %d)",
-                 _PRIMARY_SRC, i_primary, _BACKUP_SRC, i_backup)
+        log.info(
+            "CHK-FAILOVER: primary at %s (line %d), then backup at %s (line %d)",
+            _PRIMARY_SRC,
+            i_primary,
+            _BACKUP_SRC,
+            i_backup,
+        )
 
         # CHK-CRYPTO-RAN: secure boot was enforced and the signature verified, for
         # BOTH slots. This is what proves the defect is being caught by the payload
@@ -195,8 +218,11 @@ class sep_bl1_image_invalid_base(sep_backup_manifest_fail_base):
             f"was rejected earlier and the BL1 verdict below is not what stopped "
             f"it. Console: {console}"
         )
-        log.info("CHK-CRYPTO-RAN: %s seen %d times; signature and payload hash "
-                 "verified on both slots", _CRYPTO_OK, n_crypto)
+        log.info(
+            "CHK-CRYPTO-RAN: %s seen %d times; signature and payload hash verified on both slots",
+            _CRYPTO_OK,
+            n_crypto,
+        )
 
         # CHK-BL1-DEFECT: the planted defect was reported, for each slot.
         self.check_defect_attribution(console, i_backup)
@@ -218,8 +244,12 @@ class sep_bl1_image_invalid_base(sep_backup_manifest_fail_base):
             f"(STATUS_ENCODE(ERROR, 0x{self.expected_error & 0xFFFF:04x})); "
             f"observed {status_hex}"
         )
-        log.info("CHK-REJECT-REASON: %s on both slots, %s, cold_scratch[1]=0x%08x",
-                 err_marker, _ALL_FAILED, expected_status)
+        log.info(
+            "CHK-REJECT-REASON: %s on both slots, %s, cold_scratch[1]=0x%08x",
+            err_marker,
+            _ALL_FAILED,
+            expected_status,
+        )
 
         # CHK-ONLY-REASON: nothing else rejected the image. Without this, a
         # re-seal mistake that happened to also trip the planted marker would read
@@ -237,9 +267,7 @@ class sep_bl1_image_invalid_base(sep_backup_manifest_fail_base):
             f"ROM never signalled completion; a manifest that fails every slot must "
             f"converge on a mailbox FAIL. cold_scratch[1]: {status_hex}"
         )
-        assert not fw_pass, (
-            "ROM signalled PASS: it booted an image it was supposed to reject"
-        )
+        assert not fw_pass, "ROM signalled PASS: it booted an image it was supposed to reject"
         log.info("CHK-TERMINAL: mailbox FAIL (fw_pass=0)")
 
         # CHK-NO-HANDOFF: the procedures' central claim -- BL0 rejected the image
@@ -250,5 +278,7 @@ class sep_bl1_image_invalid_base(sep_backup_manifest_fail_base):
                 f"entering BL1: the image was rejected too late, after BL0 had "
                 f"already begun the handoff. Console: {console}"
             )
-        log.info("CHK-NO-HANDOFF: none of %s reached, so BL1 was never copied or "
-                 "entered", ", ".join(_BL1_PROGRESS))
+        log.info(
+            "CHK-NO-HANDOFF: none of %s reached, so BL1 was never copied or entered",
+            ", ".join(_BL1_PROGRESS),
+        )

@@ -92,9 +92,9 @@ MANIFEST_ERR_VERSION_ROLLBACK = 0x0003_0014
 
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
-_RSA_START = "RSA_VERIFY_START"          # manifest_crypto.c
-_SIG_VALID = "SIG_VALID"                 # manifest_crypto.c
-_CRYPTO_OK = "CRYPTO_VALIDATE_OK"        # manifest_crypto.c
+_RSA_START = "RSA_VERIFY_START"  # manifest_crypto.c
+_SIG_VALID = "SIG_VALID"  # manifest_crypto.c
+_CRYPTO_OK = "CRYPTO_VALIDATE_OK"  # manifest_crypto.c
 _MANIFEST_OK = "MANIFEST_OK"
 _LC_PROD = "LC=PROD"
 
@@ -149,8 +149,16 @@ class sep_primary_fail_backup_boot_base(sep_rom_ot_dma_boot_test):
     def _markers(cls) -> tuple[tuple[str, ...], tuple[str, ...]]:
         slot_err = f"MANIFEST_ERR=0x{cls.primary_expected_error:08x}"
         crypto_fail = f"CRYPTO_FAIL=0x{cls.primary_expected_error:08x}"
-        required = (_LC_PROD, _PRIMARY_SRC, slot_err, _BACKUP_SRC,
-                    _RSA_START, _SIG_VALID, _CRYPTO_OK, _MANIFEST_OK)
+        required = (
+            _LC_PROD,
+            _PRIMARY_SRC,
+            slot_err,
+            _BACKUP_SRC,
+            _RSA_START,
+            _SIG_VALID,
+            _CRYPTO_OK,
+            _MANIFEST_OK,
+        )
         if cls.primary_defect_marker:
             required += (cls.primary_defect_marker, crypto_fail)
         return required, (_SBOOT_OFF, _ALL_FAILED, _SBOOT_DIS_FUSE)
@@ -160,10 +168,12 @@ class sep_primary_fail_backup_boot_base(sep_rom_ot_dma_boot_test):
         req, forb = self._markers()
         # Instance attributes, so the two tuples are assembled from this
         # subclass's own error code rather than shared class state.
-        self.required_markers = (sep_rom_ot_dma_boot_test.required_markers
-                                 + req + tuple(self.extra_required))
-        self.forbidden_markers = (sep_rom_ot_dma_boot_test.forbidden_markers
-                                  + forb + tuple(self.extra_forbidden))
+        self.required_markers = (
+            sep_rom_ot_dma_boot_test.required_markers + req + tuple(self.extra_required)
+        )
+        self.forbidden_markers = (
+            sep_rom_ot_dma_boot_test.forbidden_markers + forb + tuple(self.extra_forbidden)
+        )
 
     def build_efuse_image(self):
         assert self.efuse_preload and os.path.isfile(self.efuse_preload), (
@@ -182,8 +192,11 @@ class sep_primary_fail_backup_boot_base(sep_rom_ot_dma_boot_test):
         self.check_efuse(image)
         self.logger.info(
             "CHK-STIMULUS-EFUSE: LC raw=0x%x (PROD), SBOOT_DIS=%d, "
-            "BL1_VERSION=0x%x, PUBK_REVOKE=0x%x", lc, sboot_dis,
-            image.field_int("BL1_VERSION"), image.field_int("CHIPLET_PUBK_REVOKE"),
+            "BL1_VERSION=0x%x, PUBK_REVOKE=0x%x",
+            lc,
+            sboot_dis,
+            image.field_int("BL1_VERSION"),
+            image.field_int("CHIPLET_PUBK_REVOKE"),
         )
         return image
 
@@ -208,8 +221,9 @@ class sep_primary_fail_backup_boot_base(sep_rom_ot_dma_boot_test):
         return buf
 
     def log_transport(self, flash) -> None:
-        self.logger.info("CHK-SPI-TXNS:\n%s",
-                         ev.summarize(flash.get_transactions(), self._image_len))
+        self.logger.info(
+            "CHK-SPI-TXNS:\n%s", ev.summarize(flash.get_transactions(), self._image_len)
+        )
 
     # --- checks ------------------------------------------------------------
     def check_transport(self, console: list[str], flash) -> None:
@@ -251,8 +265,7 @@ class sep_primary_fail_backup_boot_base(sep_rom_ot_dma_boot_test):
                 f"primary read@{i_psrc} and the primary error@{i_perr}: it is not "
                 f"the primary's verdict. Console: {console}"
             )
-            n = sum(1 for line in console
-                    if self.primary_defect_marker in line)
+            n = sum(1 for line in console if self.primary_defect_marker in line)
             assert n == 1, (
                 f"{self.primary_defect_marker} appeared {n} times, expected "
                 f"exactly 1 (the primary's); the backup must not carry this "
@@ -313,7 +326,13 @@ class sep_primary_fail_backup_boot_base(sep_rom_ot_dma_boot_test):
         self.logger.info(
             "CHK-PRIMARY-FAILOVER: primary@%d -> %s@%d -> backup@%d -> "
             "RSA_VERIFY_START@%d -> SIG_VALID@%d -> MANIFEST_OK@%d",
-            i_psrc, slot_err, i_perr, i_bsrc, i_rsa, i_sig, i_ok,
+            i_psrc,
+            slot_err,
+            i_perr,
+            i_bsrc,
+            i_rsa,
+            i_sig,
+            i_ok,
         )
 
         # --- device evidence -------------------------------------------------
@@ -338,7 +357,9 @@ class sep_primary_fail_backup_boot_base(sep_rom_ot_dma_boot_test):
             f"(read[{p_idx}]): the transaction order is not a failover"
         )
         self.logger.info(
-            "CHK-FAILOVER-ADDR: device served read[%d] 0x%06x first and read[%d] "
-            "0x%06x second", p_idx, mm.PRIMARY_MANIFEST_OFFSET,
-            b_idx, mm.BACKUP_MANIFEST_OFFSET,
+            "CHK-FAILOVER-ADDR: device served read[%d] 0x%06x first and read[%d] 0x%06x second",
+            p_idx,
+            mm.PRIMARY_MANIFEST_OFFSET,
+            b_idx,
+            mm.BACKUP_MANIFEST_OFFSET,
         )

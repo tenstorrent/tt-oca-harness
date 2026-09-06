@@ -58,22 +58,22 @@ TBS_LEN = 744
 # just OFF_IDENTIFIER and OFF_MANIFEST_HASH against a real image, so an unused
 # offset would be an unverified number that reads as authoritative. Anyone adding
 # one (e.g. the encryption fields) must extend verify_layout() to check it.
-OFF_IDENTIFIER = 0        # uint32  "TBL1"
+OFF_IDENTIFIER = 0  # uint32  "TBL1"
 # usage_constraints sits at manifest offset 16 and is 80 bytes (manifest.h).
 # Its members, from manifest.h: selector_bits(u64) chiplet_id[8](32 B)
 # package_id[8](32 B) life_cycle_states(u32) flags(u32). All INSIDE the TBS, so
 # every mutator below re-hashes, and a mutation that must still BOOT additionally
 # needs env/sep_payload_mutate.reseal().
-OFF_SELECTOR_BITS = 16      # uint64
+OFF_SELECTOR_BITS = 16  # uint64
 OFF_LIFE_CYCLE_STATES = 88  # uint32
-OFF_USAGE_FLAGS = 92        # uint32
+OFF_USAGE_FLAGS = 92  # uint32
 OFF_SECURITY_VERSION = 162  # uint16
-OFF_SIGNATURE_TYPE = 165    # uint8
-OFF_PUBLIC_KEY_SEL = 166    # uint16 {index:4, selection:3, rsvd:9}
-OFF_PUBLIC_KEY = 168      # 384 B  -- RSA-3072 modulus, inside the TBS
-OFF_SIGNATURE = 744       # 384 B  -- outside the TBS
+OFF_SIGNATURE_TYPE = 165  # uint8
+OFF_PUBLIC_KEY_SEL = 166  # uint16 {index:4, selection:3, rsvd:9}
+OFF_PUBLIC_KEY = 168  # 384 B  -- RSA-3072 modulus, inside the TBS
+OFF_SIGNATURE = 744  # 384 B  -- outside the TBS
 OFF_MANIFEST_HASH = 1128  # 32 B   -- outside the TBS
-OFF_FLAG_ARGS = 1168      # uint32 -- outside the TBS
+OFF_FLAG_ARGS = 1168  # uint32 -- outside the TBS
 
 PUBLIC_KEY_LEN = 384  # manifest.h, RSA_3072_KEY_SZ_BYTES
 
@@ -110,9 +110,7 @@ MANIFEST_MAGIC = b"TBL1"
 # (bootrom/prod/src/key_digests.c:19-21). It is what check_pubkey_hash() compares
 # a ROM-slot-0 manifest's modulus against, so it doubles as the cross-check that
 # OFF_PUBLIC_KEY really points at the modulus -- see verify_public_key().
-ROM_KEY0_DIGEST = bytes.fromhex(
-    "4676d023736b5ebd5131f75b062a355e9ae1790e80c872b5ee9b0c1fff04c3e3"
-)
+ROM_KEY0_DIGEST = bytes.fromhex("4676d023736b5ebd5131f75b062a355e9ae1790e80c872b5ee9b0c1fff04c3e3")
 
 # Erased-flash byte. Matches the BFM's backing store and its out-of-range read
 # value (ocah_spi_flash.py), so an erased region in the image and an
@@ -213,7 +211,7 @@ def slot_is_erased(buf: bytes, slot: str) -> bool:
 
 def tbs_hash(buf: bytes, base: int) -> bytes:
     """SHA-256 over the manifest's TBS region."""
-    return hashlib.sha256(bytes(buf[base:base + TBS_LEN])).digest()
+    return hashlib.sha256(bytes(buf[base : base + TBS_LEN])).digest()
 
 
 def verify_layout(buf: bytes, slot: str) -> None:
@@ -226,13 +224,13 @@ def verify_layout(buf: bytes, slot: str) -> None:
     stated reason. This converts that silent-wrong-reason failure into a loud one.
     """
     base = slot_base(slot)
-    ident = bytes(buf[base + OFF_IDENTIFIER:base + OFF_IDENTIFIER + 4])
+    ident = bytes(buf[base + OFF_IDENTIFIER : base + OFF_IDENTIFIER + 4])
     if ident != MANIFEST_MAGIC:
         raise AssertionError(
             f"{slot} manifest at 0x{base:x} does not start with {MANIFEST_MAGIC!r} "
             f"(got {ident!r}); the image is not the packed layout this expects"
         )
-    stored = bytes(buf[base + OFF_MANIFEST_HASH:base + OFF_MANIFEST_HASH + 32])
+    stored = bytes(buf[base + OFF_MANIFEST_HASH : base + OFF_MANIFEST_HASH + 32])
     calc = tbs_hash(buf, base)
     if stored != calc:
         raise AssertionError(
@@ -245,7 +243,7 @@ def verify_layout(buf: bytes, slot: str) -> None:
 def rehash(buf: bytearray, slot: str) -> None:
     """Recompute ``manifest_hash`` after an in-TBS mutation."""
     base = slot_base(slot)
-    buf[base + OFF_MANIFEST_HASH:base + OFF_MANIFEST_HASH + 32] = tbs_hash(buf, base)
+    buf[base + OFF_MANIFEST_HASH : base + OFF_MANIFEST_HASH + 32] = tbs_hash(buf, base)
 
 
 def selector_bits(buf: bytes, slot: str) -> int:
@@ -289,8 +287,7 @@ def verify_usage_constraints_layout(buf: bytes, slot: str) -> None:
     sel = selector_bits(buf, slot)
     lcs = life_cycle_states(buf, slot)
     flags = usage_flags(buf, slot)
-    if (sel, lcs, flags) != (SHIPPED_SELECTOR_BITS, SHIPPED_LIFE_CYCLE_STATES,
-                             SHIPPED_USAGE_FLAGS):
+    if (sel, lcs, flags) != (SHIPPED_SELECTOR_BITS, SHIPPED_LIFE_CYCLE_STATES, SHIPPED_USAGE_FLAGS):
         raise AssertionError(
             f"{slot} usage_constraints decoded as selector_bits=0x{sel:016x}, "
             f"life_cycle_states=0x{lcs:08x}, flags=0x{flags:08x}; expected "
@@ -318,9 +315,7 @@ def set_selector_bit(buf: bytearray, slot: str, bit: int, value: bool) -> None:
     cur = struct.unpack_from("<Q", buf, base + OFF_SELECTOR_BITS)[0]
     new = (cur | (1 << bit)) if value else (cur & ~(1 << bit) & 0xFFFF_FFFF_FFFF_FFFF)
     if new == cur:
-        raise ValueError(
-            f"selector_bits bit {bit} is already {int(value)}; that is not a mutation"
-        )
+        raise ValueError(f"selector_bits bit {bit} is already {int(value)}; that is not a mutation")
     struct.pack_into("<Q", buf, base + OFF_SELECTOR_BITS, new)
     rehash(buf, slot)
 
@@ -341,8 +336,7 @@ def set_usage_flags_bit(buf: bytearray, slot: str, bit: int, value: bool) -> Non
     new = (cur | (1 << bit)) if value else (cur & ~(1 << bit) & 0xFFFF_FFFF)
     if new == cur:
         raise ValueError(
-            f"usage_constraints.flags bit {bit} is already {int(value)}; that is not "
-            f"a mutation"
+            f"usage_constraints.flags bit {bit} is already {int(value)}; that is not a mutation"
         )
     struct.pack_into("<I", buf, base + OFF_USAGE_FLAGS, new)
     rehash(buf, slot)
@@ -363,9 +357,7 @@ def set_life_cycle_states(buf: bytearray, slot: str, value: int) -> None:
         raise ValueError("life_cycle_states is 32 bits")
     base = slot_base(slot)
     if value == life_cycle_states(buf, slot):
-        raise ValueError(
-            f"life_cycle_states is already 0x{value:08x}; that is not a mutation"
-        )
+        raise ValueError(f"life_cycle_states is already 0x{value:08x}; that is not a mutation")
     struct.pack_into("<I", buf, base + OFF_LIFE_CYCLE_STATES, value)
     rehash(buf, slot)
 
@@ -381,7 +373,7 @@ def set_identifier(buf: bytearray, slot: str, value: bytes = b"\x99\x99\x99\x99"
         raise ValueError("identifier is 4 bytes")
     if value == MANIFEST_MAGIC:
         raise ValueError("value equals the valid magic; that is not a mutation")
-    buf[base + OFF_IDENTIFIER:base + OFF_IDENTIFIER + 4] = value
+    buf[base + OFF_IDENTIFIER : base + OFF_IDENTIFIER + 4] = value
     rehash(buf, slot)
 
 
@@ -460,7 +452,7 @@ def get_public_key_sel(buf: bytes, slot: str) -> int:
 def public_key(buf: bytes, slot: str) -> bytes:
     """The 384-byte RSA modulus this slot's manifest carries."""
     base = slot_base(slot)
-    return bytes(buf[base + OFF_PUBLIC_KEY:base + OFF_PUBLIC_KEY + PUBLIC_KEY_LEN])
+    return bytes(buf[base + OFF_PUBLIC_KEY : base + OFF_PUBLIC_KEY + PUBLIC_KEY_LEN])
 
 
 def verify_public_key(buf: bytes, slot: str) -> None:
@@ -496,8 +488,9 @@ def verify_public_key(buf: bytes, slot: str) -> None:
         )
 
 
-def corrupt_public_key(buf: bytearray, slot: str, *, byte_index: int = 0,
-                       xor_mask: int = 0x01) -> None:
+def corrupt_public_key(
+    buf: bytearray, slot: str, *, byte_index: int = 0, xor_mask: int = 0x01
+) -> None:
     """Flip a bit of the RSA modulus, so SHA-256 of it stops matching the digest.
 
     In-TBS, so the manifest hash is recomputed: the slot must still pass
@@ -526,8 +519,9 @@ def corrupt_public_key(buf: bytearray, slot: str, *, byte_index: int = 0,
         )
 
 
-def flip_signature_byte(buf: bytearray, slot: str, *, byte_index: int = 0,
-                        xor_mask: int = 0x01) -> None:
+def flip_signature_byte(
+    buf: bytearray, slot: str, *, byte_index: int = 0, xor_mask: int = 0x01
+) -> None:
     """Corrupt the signature (outside the TBS; no re-hash, no re-sign).
 
     Single-bit by default: an otherwise perfectly valid manifest must still fail
@@ -565,18 +559,20 @@ def get_flag_args(buf: bytes, slot: str) -> int:
 def describe(buf: bytes, slot: str) -> str:
     """One-line summary of a slot, for logging the stimulus that was applied."""
     base = slot_base(slot)
-    ident = bytes(buf[base + OFF_IDENTIFIER:base + OFF_IDENTIFIER + 4])
+    ident = bytes(buf[base + OFF_IDENTIFIER : base + OFF_IDENTIFIER + 4])
     secver = struct.unpack_from("<H", buf, base + OFF_SECURITY_VERSION)[0]
     sigtype = buf[base + OFF_SIGNATURE_TYPE]
     pubksel = struct.unpack_from("<H", buf, base + OFF_PUBLIC_KEY_SEL)[0]
     flag_args = struct.unpack_from("<I", buf, base + OFF_FLAG_ARGS)[0]
-    hash_ok = bytes(buf[base + OFF_MANIFEST_HASH:base + OFF_MANIFEST_HASH + 32]) == tbs_hash(buf, base)
-    sig8 = bytes(buf[base + OFF_SIGNATURE:base + OFF_SIGNATURE + 8]).hex()
+    hash_ok = bytes(buf[base + OFF_MANIFEST_HASH : base + OFF_MANIFEST_HASH + 32]) == tbs_hash(
+        buf, base
+    )
+    sig8 = bytes(buf[base + OFF_SIGNATURE : base + OFF_SIGNATURE + 8]).hex()
     # The modulus digest, i.e. exactly what check_pubkey_hash() compares. Logged
     # so a key-hash testcase's stimulus is readable from the run log without
     # re-deriving it: "binds_rom_key0=False" IS the planted defect.
     pubk_digest = hashlib.sha256(
-        bytes(buf[base + OFF_PUBLIC_KEY:base + OFF_PUBLIC_KEY + PUBLIC_KEY_LEN])
+        bytes(buf[base + OFF_PUBLIC_KEY : base + OFF_PUBLIC_KEY + PUBLIC_KEY_LEN])
     ).digest()
     sel = struct.unpack_from("<Q", buf, base + OFF_SELECTOR_BITS)[0]
     lcs = struct.unpack_from("<I", buf, base + OFF_LIFE_CYCLE_STATES)[0]

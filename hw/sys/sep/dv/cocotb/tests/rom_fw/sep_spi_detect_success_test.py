@@ -18,7 +18,6 @@ this from the primary-fail/backup-success sibling; a silent failover also reache
 from __future__ import annotations
 
 import pyuvm
-
 from env import sep_manifest_mutate as mm
 from env import sep_spi_slot_evidence as ev
 from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
@@ -43,13 +42,17 @@ class sep_spi_detect_success_test(sep_rom_ot_dma_boot_test):
 
     required_markers = sep_rom_ot_dma_boot_test.required_markers + (_SPI_INIT_OK,)
     forbidden_markers = sep_rom_ot_dma_boot_test.forbidden_markers + (
-        _BACKUP_SRC, _ANY_MANIFEST_ERR, _ALL_FAILED, _SPI_INIT_ERR,
+        _BACKUP_SRC,
+        _ANY_MANIFEST_ERR,
+        _ALL_FAILED,
+        _SPI_INIT_ERR,
         _SPI_INIT_FAILED_SKIP,
     )
 
     def log_transport(self, flash) -> None:
-        self.logger.info("CHK-SPI-TXNS:\n%s",
-                         ev.summarize(flash.get_transactions(), self._image_len))
+        self.logger.info(
+            "CHK-SPI-TXNS:\n%s", ev.summarize(flash.get_transactions(), self._image_len)
+        )
 
     def check_transport(self, console: list[str], flash) -> None:
         txns = flash.get_transactions()
@@ -78,7 +81,9 @@ class sep_spi_detect_success_test(sep_rom_ot_dma_boot_test):
         )
         self.logger.info(
             "CHK-DETECT-PRIMARY: read[%d] at 0x%06x returned magic %r",
-            idx, mm.PRIMARY_MANIFEST_OFFSET, magic,
+            idx,
+            mm.PRIMARY_MANIFEST_OFFSET,
+            magic,
         )
 
         # Without this, the primary-fail/backup-success run would also pass here.

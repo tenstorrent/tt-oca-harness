@@ -54,14 +54,18 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyuvm
-
 from env import sep_payload_mutate as pm
 from rom_fw.sep_backup_manifest_fail_base import sep_backup_manifest_fail_base
 
 _SEP_ROOT = Path(__file__).resolve().parents[4]
 _ENCRYPTED_IMAGE = str(_SEP_ROOT / "bootrom" / "prod" / "build" / "encrypted_boot.bin")
-_EFUSE_PRELOAD = (Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads"
-                  / "efuse_configurations" / "sep_efuse_lc_prod_class_key.toml")
+_EFUSE_PRELOAD = (
+    Path(__file__).resolve().parents[3]
+    / "tb"
+    / "efuse_preloads"
+    / "efuse_configurations"
+    / "sep_efuse_lc_prod_class_key.toml"
+)
 
 _PRIMARY_SRC = "MANIFEST_SRC=0x00001000"
 _BACKUP_SRC = "MANIFEST_SRC=0x00041000"
@@ -78,10 +82,21 @@ _BL1_PROGRESS = ("BL1_TYPE=", "COPY_DST=", "BL1_COPIED", "PRE_JUMP", "BL1_JUMP="
 # reason this testcase did not plant. KDF and AES-init failures would stop the
 # ROM before the engine ran; PLD_HASH_MISMATCH would mean the re-seal is broken.
 _PREMATURE = (
-    "KDF_FAIL", "KDF_HMAC_FAIL", "AES_INIT_FAIL", "AES_INIT_BUSY", "AES_RST_FAIL",
-    "AES_CTRL_REJECTED", "AES_ALERT_AFTER_DEC", "AES_ALERT_STATUS=", "AES_DEC_FAIL",
-    "PLD_HASH_MISMATCH", "PLD_HASH_TIMEOUT", "RSA_VERIFY_FAIL", "RSA_PKCS1_FAIL",
-    "ENC_WITHOUT_SBOOT", "LC_USAGE_CONSTRAINT_FAIL",
+    "KDF_FAIL",
+    "KDF_HMAC_FAIL",
+    "AES_INIT_FAIL",
+    "AES_INIT_BUSY",
+    "AES_RST_FAIL",
+    "AES_CTRL_REJECTED",
+    "AES_ALERT_AFTER_DEC",
+    "AES_ALERT_STATUS=",
+    "AES_DEC_FAIL",
+    "PLD_HASH_MISMATCH",
+    "PLD_HASH_TIMEOUT",
+    "RSA_VERIFY_FAIL",
+    "RSA_PKCS1_FAIL",
+    "ENC_WITHOUT_SBOOT",
+    "LC_USAGE_CONSTRAINT_FAIL",
 )
 
 
@@ -99,15 +114,18 @@ class sep_decryption_failure_terminal_test(sep_backup_manifest_fail_base):
     # --- stimulus ------------------------------------------------------------
     def corrupt_primary(self, buf: bytearray) -> None:
         base = pm.payload_base(buf, "primary")
-        before = bytes(buf[base:base + 16])
+        before = bytes(buf[base : base + 16])
         at, new = pm.corrupt_ciphertext(buf, "primary")
-        after = bytes(buf[base:base + 16])
+        after = bytes(buf[base : base + 16])
         assert before != after, "the ciphertext flip did not change the image"
         self.logger.info(
             "CHK-STIMULUS-CIPHERTEXT: primary payload flash byte 0x%x -> 0x%02x; "
             "CBC block 0 %s -> %s (block 0 decrypts to the bytes carrying the TOC "
             "identifier); manifest re-hashed and re-signed with dev0",
-            at, new, before.hex(), after.hex(),
+            at,
+            new,
+            before.hex(),
+            after.hex(),
         )
 
     def corrupt_backup(self, buf: bytearray) -> None:
@@ -189,8 +207,15 @@ class sep_decryption_failure_terminal_test(sep_backup_manifest_fail_base):
             f"{_DECRYPT_OK}({i_ok}); the payload hash covers ciphertext and must be "
             f"checked before decryption. Console: {console}"
         )
-        log.info("CHK-DECRYPT-RAN: %s@%d -> %s@%d -> %s@%d",
-                 _PLD_HASH_OK, i_hash, _DECRYPT_START, i_start, _DECRYPT_OK, i_ok)
+        log.info(
+            "CHK-DECRYPT-RAN: %s@%d -> %s@%d -> %s@%d",
+            _PLD_HASH_OK,
+            i_hash,
+            _DECRYPT_START,
+            i_start,
+            _DECRYPT_OK,
+            i_ok,
+        )
 
         # CHK-DECRYPT-FAILED: the rejection, and that it came AFTER the engine ran.
         err_marker = f"MANIFEST_ERR=0x{self.expected_error:08x}"
@@ -208,8 +233,13 @@ class sep_decryption_failure_terminal_test(sep_backup_manifest_fail_base):
         assert expected_status in status_seq, (
             f"cold_scratch[1] never held 0x{expected_status:08x}; observed {status_hex}"
         )
-        log.info("CHK-DECRYPT-FAILED: %s at line %d, after %s; cold_scratch[1]=0x%08x",
-                 err_marker, i_err, _DECRYPT_OK, expected_status)
+        log.info(
+            "CHK-DECRYPT-FAILED: %s at line %d, after %s; cold_scratch[1]=0x%08x",
+            err_marker,
+            i_err,
+            _DECRYPT_OK,
+            expected_status,
+        )
 
         # CHK-NO-BACKUP-RETRY: procedure step 5 and its "no backup address read"
         # expected result. Left at full strength deliberately -- see the module
@@ -228,9 +258,7 @@ class sep_decryption_failure_terminal_test(sep_backup_manifest_fail_base):
         assert any(_ALL_FAILED in line for line in console), (
             f"ROM never printed {_ALL_FAILED}. Console: {console}"
         )
-        assert fw_done, (
-            f"ROM never signalled completion; cold_scratch[1]: {status_hex}"
-        )
+        assert fw_done, f"ROM never signalled completion; cold_scratch[1]: {status_hex}"
         assert not fw_pass, (
             "ROM signalled PASS: it booted an image whose payload it could not decrypt"
         )
@@ -239,7 +267,6 @@ class sep_decryption_failure_terminal_test(sep_backup_manifest_fail_base):
         # CHK-NO-BOOT: nothing downstream of the rejection ran.
         for marker in _BL1_PROGRESS:
             assert not any(marker in line for line in console), (
-                f"ROM printed {marker}, which sits past the rejection. "
-                f"Console: {console}"
+                f"ROM printed {marker}, which sits past the rejection. Console: {console}"
             )
         log.info("CHK-NO-BOOT: none of %s reached", ", ".join(_BL1_PROGRESS))

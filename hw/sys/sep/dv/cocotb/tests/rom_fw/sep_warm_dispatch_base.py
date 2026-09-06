@@ -27,14 +27,12 @@ import os
 import shutil
 from pathlib import Path
 
-from sep_reg_meta import sym
-
 import cocotb
 from cocotb.triggers import RisingEdge
-
+from env.sep_efuse_image import LC_TEST_DEV, SepEfuseImage
+from env.sep_rom_console import log_scratch_cold, rom_console_task
 from sep_base_test import sep_base_test
-from env.sep_efuse_image import SepEfuseImage, LC_TEST_DEV
-from env.sep_rom_console import rom_console_task, log_scratch_cold
+from sep_reg_meta import sym
 
 _SEP_ROOT = str(Path(__file__).resolve().parents[4])
 # The dispatch runs before any transport is selected, so the SPI build variant is
@@ -47,8 +45,8 @@ RANGE_BASE = 0xC000_0000
 RANGE_END = 0xC004_0000
 
 # cold_scratch[1] status words, all from vector.S / status_values.h.
-STATUS_WARM_HANG = 0x0F01_0069      # ERROR + SEP_MSG_WARM_RESET_HANG
-STATUS_WARM_JUMP = 0x0101_0068      # INFO  + SEP_MSG_WARM_RESET_JUMP
+STATUS_WARM_HANG = 0x0F01_0069  # ERROR + SEP_MSG_WARM_RESET_HANG
+STATUS_WARM_JUMP = 0x0101_0068  # INFO  + SEP_MSG_WARM_RESET_JUMP
 STATUS_GENERAL_EXCEPTION = 0x0F01_0028  # ERROR + SEP_MSG_GENERAL_EXCEPTION
 STATUS_BOOTROM_START = 0x8001_0044
 STATUS_PRESTART_DONE = 0x8001_0056
@@ -104,9 +102,7 @@ class sep_warm_dispatch_base(sep_base_test):
                 f"cold_scratch[7] at its cold reset value of 0 to drive the beqz "
                 f"early-out"
             )
-            self.logger.info(
-                "CHK-STIMULUS-HANDLER: cold_scratch[7] left unarmed (reset value 0)"
-            )
+            self.logger.info("CHK-STIMULUS-HANDLER: cold_scratch[7] left unarmed (reset value 0)")
         else:
             assert seeded is not None, (
                 "+sep_cold_scratch7 is not set: cold_scratch[7] would read 0, the "
@@ -123,7 +119,8 @@ class sep_warm_dispatch_base(sep_base_test):
                 f"same value and CHK-SEED could not tell the two apart"
             )
             self.logger.info(
-                "CHK-STIMULUS-HANDLER: cold_scratch[7] seed = 0x%08x", self.seed,
+                "CHK-STIMULUS-HANDLER: cold_scratch[7] seed = 0x%08x",
+                self.seed,
             )
 
         efuse_img = SepEfuseImage()
@@ -157,7 +154,9 @@ class sep_warm_dispatch_base(sep_base_test):
             )
 
         await self.bring_up_cpu_boot(
-            _ROM_BASE >> 1, pre_reset_hook=hook, run_pulse_cycles=40,
+            _ROM_BASE >> 1,
+            pre_reset_hook=hook,
+            run_pulse_cycles=40,
         )
         return console
 
@@ -201,14 +200,16 @@ class sep_warm_dispatch_base(sep_base_test):
                 retired += 1
             if stop_status is not None and status == stop_status:
                 stopped = True
-                self.logger.info("stop status 0x%08x seen at cycle %d",
-                                 stop_status, cycle)
+                self.logger.info("stop status 0x%08x seen at cycle %d", stop_status, cycle)
                 break
             if cycle - last_log >= self.progress_every:
                 last_log = cycle
                 self.logger.info(
                     "warm dispatch poll cyc=%d status=0x%08x cold7=0x%08x retired=%d",
-                    cycle, status, cold7, retired,
+                    cycle,
+                    status,
+                    cold7,
+                    retired,
                 )
 
         log_scratch_cold(self.logger)
@@ -262,6 +263,8 @@ class sep_warm_dispatch_base(sep_base_test):
         self.logger.info(
             "CHK-HANG: cold_scratch[1] held 0x%08x while the PC spun across %d "
             "byte(s) at %s for %d cycles",
-            resting_status, quiesce["span"],
-            [hex(p) for p in sorted(quiesce["pcs"])], QUIESCE_CYCLES,
+            resting_status,
+            quiesce["span"],
+            [hex(p) for p in sorted(quiesce["pcs"])],
+            QUIESCE_CYCLES,
         )

@@ -54,7 +54,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyuvm
-
 from env import sep_manifest_mutate as mm
 from rom_fw.sep_backup_manifest_fail_base import (
     MANIFEST_ERR_SIG_FAILED,
@@ -62,8 +61,11 @@ from rom_fw.sep_backup_manifest_fail_base import (
 )
 
 _EFUSE_PRELOAD = (
-    Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads"
-    / "efuse_configurations" / "sep_efuse_lc_prod.toml"
+    Path(__file__).resolve().parents[3]
+    / "tb"
+    / "efuse_preloads"
+    / "efuse_configurations"
+    / "sep_efuse_lc_prod.toml"
 )
 
 # One of the reference's own values (sep_firmware_secure_boot_test.py), fixed
@@ -85,10 +87,20 @@ class sep_firmware_backup_invalid_signature_type_test(sep_backup_manifest_fail_b
     # type check ran FIRST rather than merely eventually. RSA_VERIFY_FAIL is the
     # discriminator against the signature-VALUE sibling, which shares this error
     # code. The rest are the later arms, none of which may be reached.
-    extra_forbidden = ("PUBK_SEL=", "RSA_VERIFY_START", "RSA_VERIFY_FAIL",
-                       "SIG_VALID", "CRYPTO_VALIDATE_OK", "BAD_KEY_IDX",
-                       "BAD_KEY_SEL", "ROM_KEY_EMPTY", "FUSE_KEY_EMPTY",
-                       "PUBK_HASH_MISMATCH", "KEY_REVOKED", "VERSION_ROLLBACK")
+    extra_forbidden = (
+        "PUBK_SEL=",
+        "RSA_VERIFY_START",
+        "RSA_VERIFY_FAIL",
+        "SIG_VALID",
+        "CRYPTO_VALIDATE_OK",
+        "BAD_KEY_IDX",
+        "BAD_KEY_SEL",
+        "ROM_KEY_EMPTY",
+        "FUSE_KEY_EMPTY",
+        "PUBK_HASH_MISMATCH",
+        "KEY_REVOKED",
+        "VERSION_ROLLBACK",
+    )
 
     def corrupt_backup(self, buf: bytearray) -> None:
         before = mm.get_signature_type(buf, "backup")
@@ -110,7 +122,9 @@ class sep_firmware_backup_invalid_signature_type_test(sep_backup_manifest_fail_b
         self.logger.info(
             "CHK-STIMULUS-SIGTYPE: backup signature_type %d (MANIFEST_SIG_TYPE_"
             "RSA_3072) -> %d (unsupported), TBS re-hashed, signature now stale "
-            "but never reached", before, got,
+            "but never reached",
+            before,
+            got,
         )
 
     def check_efuse(self, image) -> None:

@@ -112,11 +112,11 @@ from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
 
 # Console tokens, each verified to occur exactly once in bootrom/prod/src/ so no
 # forbid below is inert (the inert-forbid trap is vp FINDINGS F10 item 5).
-_LC_PROD = "LC=PROD"                               # lifecycle.c
-_LC_PROD_END = "LC=PROD_END"                       # lifecycle.c
-_SBOOT_DIS_FUSE = "FUSE: SBOOT_DIS: 1"             # rom_main.c
-_SBOOT_OFF = "SBOOT_OFF"                           # manifest_load.c
-_PLD_HASH_OK = "PLD_HASH_OK"                       # manifest_crypto.c
+_LC_PROD = "LC=PROD"  # lifecycle.c
+_LC_PROD_END = "LC=PROD_END"  # lifecycle.c
+_SBOOT_DIS_FUSE = "FUSE: SBOOT_DIS: 1"  # rom_main.c
+_SBOOT_OFF = "SBOOT_OFF"  # manifest_load.c
+_PLD_HASH_OK = "PLD_HASH_OK"  # manifest_crypto.c
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
 
@@ -150,8 +150,11 @@ def apply_secure_boot_dis(test, buf: bytearray, slot: str = "primary") -> None:
         "CHK-STIMULUS-SBOOT-DIS: %s flag_args 0x%08x -> 0x%08x (bit %d cleared) and "
         "signature_type -> %d (NO_SIGNATURE). The eFuse surface is the preload's, "
         "checked as expected_sboot_dis",
-        slot, before_flags, mm.get_flag_args(buf, slot),
-        mm.FLAG_ARGS_BIT_SECURE_BOOT, mm.SIG_TYPE_NO_SIGNATURE,
+        slot,
+        before_flags,
+        mm.get_flag_args(buf, slot),
+        mm.FLAG_ARGS_BIT_SECURE_BOOT,
+        mm.SIG_TYPE_NO_SIGNATURE,
     )
 
 
@@ -193,8 +196,7 @@ def outcome_for(sel: int, auth: int, bl2: int) -> dict:
     if bl2:
         return {
             "label": "O4",
-            "required": ("DEMOTE: BL2 deferred, unlocked", "BL2_DEMOTE_DEC=",
-                         "DEMOTE_NOT_LOCKED"),
+            "required": ("DEMOTE: BL2 deferred, unlocked", "BL2_DEMOTE_DEC=", "DEMOTE_NOT_LOCKED"),
             "values": ("BL2_DEMOTE_DEC=1",),
             "demote_1": (0, 0),
             "demote_2": (0, 0),
@@ -205,8 +207,7 @@ def outcome_for(sel: int, auth: int, bl2: int) -> dict:
         }
     return {
         "label": "O5",
-        "required": ("DEMOTE: BL2 deferred, lock non-demoted", "BL2_DEMOTE_DEC=",
-                     "DEMOTE_LOCKED"),
+        "required": ("DEMOTE: BL2 deferred, lock non-demoted", "BL2_DEMOTE_DEC=", "DEMOTE_LOCKED"),
         "values": ("BL2_DEMOTE_DEC=0",),
         "demote_1": (0, 1),
         "demote_2": (0, 0),
@@ -227,9 +228,7 @@ class _demotion_prod_mixin:
             # any simulation, because mutate_flash_image() runs pre-boot.
             return
         if any(b not in (0, 1) for b in bits):
-            raise ValueError(
-                f"{cls.__name__}: _SEL/_AUTH/_BL2 must each be 0 or 1, got {bits}"
-            )
+            raise ValueError(f"{cls.__name__}: _SEL/_AUTH/_BL2 must each be 0 or 1, got {bits}")
         want = outcome_for(*bits)
         cls._OUTCOME = want["label"]
         # The member wrote its own expectations; this requires them to agree with
@@ -238,27 +237,27 @@ class _demotion_prod_mixin:
         mismatches = []
         if tuple(cls.demotion_required) != want["required"]:
             mismatches.append(
-                f"demotion_required {tuple(cls.demotion_required)} != {want['required']}")
+                f"demotion_required {tuple(cls.demotion_required)} != {want['required']}"
+            )
         if tuple(sorted(cls.demotion_values)) != tuple(sorted(want["values"])):
-            mismatches.append(
-                f"demotion_values {tuple(cls.demotion_values)} != {want['values']}")
+            mismatches.append(f"demotion_values {tuple(cls.demotion_values)} != {want['values']}")
         if tuple(cls.expect_demote_1) != want["demote_1"]:
-            mismatches.append(
-                f"expect_demote_1 {tuple(cls.expect_demote_1)} != {want['demote_1']}")
+            mismatches.append(f"expect_demote_1 {tuple(cls.expect_demote_1)} != {want['demote_1']}")
         if tuple(cls.expect_demote_2) != want["demote_2"]:
-            mismatches.append(
-                f"expect_demote_2 {tuple(cls.expect_demote_2)} != {want['demote_2']}")
+            mismatches.append(f"expect_demote_2 {tuple(cls.expect_demote_2)} != {want['demote_2']}")
         if (cls.demote_changes_min, cls.demote_changes_max) != want["changes"]:
             mismatches.append(
                 f"demote change bounds "
                 f"{(cls.demote_changes_min, cls.demote_changes_max)} != "
-                f"{want['changes']}")
+                f"{want['changes']}"
+            )
         if mismatches:
             raise AssertionError(
                 f"{cls.__name__} declares (sel, auth, bl2) = {bits}, which "
                 f"rom_main.c:388-409 and :431-436 make outcome {want['label']}, but "
-                f"its written expectations disagree: " + "; ".join(mismatches) +
-                ". Either the declared inputs or the declared outcome is wrong; "
+                f"its written expectations disagree: "
+                + "; ".join(mismatches)
+                + ". Either the declared inputs or the declared outcome is wrong; "
                 "outcome_for() in rom_fw/sep_demotion_prod_base.py is the "
                 "transcription of the ROM's control flow"
             )
@@ -282,17 +281,22 @@ class sep_demotion_prod_base(_demotion_prod_mixin, sep_demotion_decision_base):
     """
 
     # Subclass contract: the three manifest demotion inputs this member drives.
-    _SEL = -1     # usage_constraints.selector_bits bit 17 (rom_main.c)
-    _AUTH = -1    # usage_constraints.flags bit 0          (rom_main.c)
-    _BL2 = -1     # boot_arguments.flag_args bit 0         (rom_main.c)
+    _SEL = -1  # usage_constraints.selector_bits bit 17 (rom_main.c)
+    _AUTH = -1  # usage_constraints.flags bit 0          (rom_main.c)
+    _BL2 = -1  # boot_arguments.flag_args bit 0         (rom_main.c)
 
     efuse_preload = PROD_SBOOT_DIS_PRELOAD
     expected_lc_raw = LC_RAW_PROD
     expected_sboot_dis = 1
 
     required_markers = sep_rom_ot_dma_boot_test.required_markers + (
-        _LC_PROD, _SBOOT_DIS_FUSE, _PRIMARY_SRC, _SBOOT_OFF, _PLD_HASH_OK,
-        "BL1_COPIED", "BL1_JUMP=",
+        _LC_PROD,
+        _SBOOT_DIS_FUSE,
+        _PRIMARY_SRC,
+        _SBOOT_OFF,
+        _PLD_HASH_OK,
+        "BL1_COPIED",
+        "BL1_JUMP=",
     )
     # LC=PROD_END is forbidden rather than LC=PROD being forbidden on the PROD_END
     # side, because "LC=PROD" is a strict PREFIX of "LC=PROD_END": only the longer
@@ -302,10 +306,20 @@ class sep_demotion_prod_base(_demotion_prod_mixin, sep_demotion_decision_base):
     # path from the one under test, and none of these members passes
     # +sep_crypto_edn_force.
     forbidden_markers = sep_rom_ot_dma_boot_test.forbidden_markers + (
-        _LC_PROD_END, "LC_USAGE_CONSTRAINT_FAIL", _BACKUP_SRC, "MANIFEST_ERR=",
-        "MANIFEST_ALL_FAILED", "CRYPTO_FAIL=", "RSA_VERIFY_START",
-        "RSA_VERIFY_FAIL", "SIG_VALID", "CRYPTO_VALIDATE_OK", "BAD_SIG_TYPE=",
-        "PLD_HASH_FAIL=", "PLD_HASH_MISMATCH", "ENC_WITHOUT_SBOOT",
+        _LC_PROD_END,
+        "LC_USAGE_CONSTRAINT_FAIL",
+        _BACKUP_SRC,
+        "MANIFEST_ERR=",
+        "MANIFEST_ALL_FAILED",
+        "CRYPTO_FAIL=",
+        "RSA_VERIFY_START",
+        "RSA_VERIFY_FAIL",
+        "SIG_VALID",
+        "CRYPTO_VALIDATE_OK",
+        "BAD_SIG_TYPE=",
+        "PLD_HASH_FAIL=",
+        "PLD_HASH_MISMATCH",
+        "ENC_WITHOUT_SBOOT",
     )
 
     # --- stimulus ----------------------------------------------------------
@@ -328,15 +342,15 @@ class sep_demotion_prod_base(_demotion_prod_mixin, sep_demotion_decision_base):
         if self._SEL:
             mm.set_selector_bit(buf, "primary", mm.SELECTOR_BIT_BL1_DEMOTION, True)
         if self._AUTH:
-            mm.set_usage_flags_bit(buf, "primary",
-                                   mm.USAGE_CONSTRAINTS_FLAGS_BIT_BL1_DEMOTION, True)
+            mm.set_usage_flags_bit(
+                buf, "primary", mm.USAGE_CONSTRAINTS_FLAGS_BIT_BL1_DEMOTION, True
+            )
         if self._BL2:
             mm.set_flag_args_bit(buf, "primary", mm.FLAG_ARGS_BIT_BL2_DEMOTION, True)
         apply_secure_boot_dis(self, buf)
         # The PRIMARY is deliberately NOT re-sealed: it is unsigned by
         # construction and re-signing it would undo the surface just set.
-        narrow_life_cycle_states(self, buf, LC_STATES_PROD_ONLY,
-                                 reseal_slots=("backup",))
+        narrow_life_cycle_states(self, buf, LC_STATES_PROD_ONLY, reseal_slots=("backup",))
 
     def check_manifest_stimulus(self, buf: bytearray) -> None:
         """Read all five mutated fields back out of the packed image.
@@ -393,8 +407,15 @@ class sep_demotion_prod_base(_demotion_prod_mixin, sep_demotion_decision_base):
             "cleared), signature_type=%d (NO_SIGNATURE), life_cycle_states=0x%08x, "
             "manifest hash valid. This slot can only boot because the SBOOT_DIS "
             "fuse is burned. Forbidden neighbouring values: %s",
-            self._OUTCOME, mm.SELECTOR_BIT_BL1_DEMOTION, sel,
-            mm.USAGE_CONSTRAINTS_FLAGS_BIT_BL1_DEMOTION, auth,
-            mm.FLAG_ARGS_BIT_BL2_DEMOTION, bl2, mm.FLAG_ARGS_BIT_SECURE_BOOT,
-            sigtype, lcs, ", ".join(self._VALUE_FORBIDS),
+            self._OUTCOME,
+            mm.SELECTOR_BIT_BL1_DEMOTION,
+            sel,
+            mm.USAGE_CONSTRAINTS_FLAGS_BIT_BL1_DEMOTION,
+            auth,
+            mm.FLAG_ARGS_BIT_BL2_DEMOTION,
+            bl2,
+            mm.FLAG_ARGS_BIT_SECURE_BOOT,
+            sigtype,
+            lcs,
+            ", ".join(self._VALUE_FORBIDS),
         )

@@ -150,9 +150,7 @@ from rom_fw.sep_backup_manifest_fail_base import (
 )
 from rom_fw.sep_primary_fail_backup_boot_base import sep_primary_fail_backup_boot_base
 
-_EFUSE_DIR = (
-    Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads" / "efuse_configurations"
-)
+_EFUSE_DIR = Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads" / "efuse_configurations"
 
 # public_key_sel is {index:4, selection:3} (manifest.h); PUBK_SEL_ROM_KEY
 # is 0 (manifest.h), so a ROM-slot selector is just the index.
@@ -181,9 +179,9 @@ def select_primary_rom_slot(buf: bytearray, slot_index: int) -> tuple[int, bool]
     signature goes stale -- harmless only because revocation is reached first.
     """
     base = mm.slot_base("primary")
-    tbs_before = bytes(buf[base:base + mm.TBS_LEN])
+    tbs_before = bytes(buf[base : base + mm.TBS_LEN])
     mm.set_public_key_sel(buf, "primary", selection=PUBK_SEL_ROM_KEY, index=slot_index)
-    tbs_after = bytes(buf[base:base + mm.TBS_LEN])
+    tbs_after = bytes(buf[base : base + mm.TBS_LEN])
     tbs_changed = tbs_before != tbs_after
 
     got = mm.get_public_key_sel(buf, "primary")
@@ -208,7 +206,7 @@ def select_primary_rom_slot(buf: bytearray, slot_index: int) -> tuple[int, bool]
         # signature somehow still verified, the write did not land in the TBS and
         # the selector under test is not the one the ROM will read.
         n, e_pub, _d = pm.load_rsa_private_key()
-        sig = bytes(buf[base + mm.OFF_SIGNATURE:base + mm.OFF_SIGNATURE + pm.RSA_KEY_BYTES])
+        sig = bytes(buf[base + mm.OFF_SIGNATURE : base + mm.OFF_SIGNATURE + pm.RSA_KEY_BYTES])
         assert not pm.verify_pkcs1v15_sha256(tbs_after, sig, n, e_pub), (
             "primary signature still verifies after the selector was changed; the "
             "write did not land inside the TBS, so the ROM would read the original "
@@ -284,8 +282,12 @@ class _primary_revoked_slot_mixin:
             "CHK-STIMULUS-REVOKED-SLOT: primary public_key_sel=0x%04x (ROM key slot "
             "%d, revoked by CHIPLET_PUBK_REVOKE bit %d); TBS changed=%s, primary "
             "manifest %s",
-            got, self._REVOKED_SLOT, self._REVOKED_SLOT, tbs_changed,
-            "re-hashed, signature now stale" if tbs_changed
+            got,
+            self._REVOKED_SLOT,
+            self._REVOKED_SLOT,
+            tbs_changed,
+            "re-hashed, signature now stale"
+            if tbs_changed
             else "untouched and still fully sealed with a valid dev0 signature",
         )
 
@@ -299,8 +301,10 @@ class _primary_revoked_slot_mixin:
         it asserting the wrong shape.
         """
         backup_sel = mm.get_public_key_sel(buf, "backup")
-        backup_revoked = bool(self._REVOKE_BITMAP & (1 << (backup_sel & 0xF))) and \
-            ((backup_sel >> 4) & 0x7) == PUBK_SEL_ROM_KEY
+        backup_revoked = (
+            bool(self._REVOKE_BITMAP & (1 << (backup_sel & 0xF)))
+            and ((backup_sel >> 4) & 0x7) == PUBK_SEL_ROM_KEY
+        )
         assert backup_revoked == self._BACKUP_ALSO_REVOKED, (
             f"slot {self._REVOKED_SLOT}: the backup selector is 0x{backup_sel:04x}, "
             f"so 'the backup is refused by the same fuse bit' is {backup_revoked}, "
@@ -313,8 +317,11 @@ class _primary_revoked_slot_mixin:
         )
         self.logger.info(
             "CHK-STIMULUS-OUTCOME-SHAPE: backup selector 0x%04x, refused by bitmap "
-            "0x%x = %s -> %s expected", backup_sel, self._REVOKE_BITMAP,
-            backup_revoked, "TERMINAL" if backup_revoked else "FAILOVER",
+            "0x%x = %s -> %s expected",
+            backup_sel,
+            self._REVOKE_BITMAP,
+            backup_revoked,
+            "TERMINAL" if backup_revoked else "FAILOVER",
         )
 
     def check_efuse(self, image) -> None:
@@ -334,7 +341,8 @@ class _primary_revoked_slot_mixin:
 
 
 class sep_primary_pubkey_rom_revoked_failover_base(
-        _primary_revoked_slot_mixin, sep_primary_fail_backup_boot_base):
+    _primary_revoked_slot_mixin, sep_primary_fail_backup_boot_base
+):
     """Slots 1-5: the primary selects a revoked slot, the backup boots.
 
     The backup still selects unrevoked ROM slot 0, so this is the reference's
@@ -353,9 +361,16 @@ class sep_primary_pubkey_rom_revoked_failover_base(
     # table was consulted before the fuse bitmap. RSA_VERIFY_FAIL must not appear
     # either -- the backup is valid, so the only verifier run in this scenario
     # succeeds.
-    extra_forbidden = ("ROM_KEY_EMPTY", "PUBK_HASH_MISMATCH", "BAD_KEY_IDX",
-                       "BAD_KEY_SEL", "FUSE_KEY_EMPTY", "VERSION_ROLLBACK",
-                       "BAD_SIG_TYPE=", "RSA_VERIFY_FAIL")
+    extra_forbidden = (
+        "ROM_KEY_EMPTY",
+        "PUBK_HASH_MISMATCH",
+        "BAD_KEY_IDX",
+        "BAD_KEY_SEL",
+        "FUSE_KEY_EMPTY",
+        "VERSION_ROLLBACK",
+        "BAD_SIG_TYPE=",
+        "RSA_VERIFY_FAIL",
+    )
     # The backup's own selector, so "the backup booted" is tied to slot 0 rather
     # than to an unread selection. There is deliberately NO separate backup fuse
     # echo: ``check_pubkey_revoked`` prints the whole 32-bit fuse WORD
@@ -376,8 +391,7 @@ class sep_primary_pubkey_rom_revoked_failover_base(
         # silently lose the defect token.
         cls.primary_defect_marker = cls._KEY_REVOKED_ECHO
         # The primary's selector, the shared fuse word, and the backup's selector.
-        cls.extra_required = (cls._PUBK_SEL_ECHO, cls._REVOKE_ECHO,
-                              cls._BACKUP_SEL_ECHO)
+        cls.extra_required = (cls._PUBK_SEL_ECHO, cls._REVOKE_ECHO, cls._BACKUP_SEL_ECHO)
 
     def corrupt_primary(self, buf: bytearray) -> None:
         self._plant_revoked_selector(buf)
@@ -452,14 +466,19 @@ class sep_primary_pubkey_rom_revoked_failover_base(
         self.logger.info(
             "CHK-REVOKE-FAILOVER: primary %s -> %s -> %s (slot %d refused once) -> "
             "backup %s -> %s again at line %d, permitted -> boot",
-            self._PUBK_SEL_ECHO, self._REVOKE_ECHO, self._KEY_REVOKED_ECHO,
-            self._REVOKED_SLOT, self._BACKUP_SEL_ECHO, self._REVOKE_ECHO,
+            self._PUBK_SEL_ECHO,
+            self._REVOKE_ECHO,
+            self._KEY_REVOKED_ECHO,
+            self._REVOKED_SLOT,
+            self._BACKUP_SEL_ECHO,
+            self._REVOKE_ECHO,
             revokes[1],
         )
 
 
 class sep_primary_pubkey_rom_revoked_terminal_base(
-        _primary_revoked_slot_mixin, sep_backup_manifest_fail_base):
+    _primary_revoked_slot_mixin, sep_backup_manifest_fail_base
+):
     """Slot 0: one fuse bit refuses BOTH manifests, so the run is terminal.
 
     Both slots of the shipped image select ROM key 0, so this member plants no
@@ -476,10 +495,19 @@ class sep_primary_pubkey_rom_revoked_terminal_base(
     # reached the verifier. RSA_VERIFY_START and SIG_VALID are the load-bearing
     # forbids here: both manifests are otherwise valid, so without them a
     # revocation that did nothing would boot.
-    extra_forbidden = ("ROM_KEY_EMPTY", "PUBK_HASH_MISMATCH", "RSA_VERIFY_START",
-                       "RSA_VERIFY_FAIL", "SIG_VALID", "CRYPTO_VALIDATE_OK",
-                       "BAD_KEY_IDX", "BAD_KEY_SEL", "FUSE_KEY_EMPTY",
-                       "VERSION_ROLLBACK", "BAD_SIG_TYPE=")
+    extra_forbidden = (
+        "ROM_KEY_EMPTY",
+        "PUBK_HASH_MISMATCH",
+        "RSA_VERIFY_START",
+        "RSA_VERIFY_FAIL",
+        "SIG_VALID",
+        "CRYPTO_VALIDATE_OK",
+        "BAD_KEY_IDX",
+        "BAD_KEY_SEL",
+        "FUSE_KEY_EMPTY",
+        "VERSION_ROLLBACK",
+        "BAD_SIG_TYPE=",
+    )
 
     def __init_subclass__(cls, **kwargs) -> None:
         super().__init_subclass__(**kwargs)
@@ -514,7 +542,8 @@ class sep_primary_pubkey_rom_revoked_terminal_base(
             "passes payload_hash, every TOC image digest, manifest_hash over the "
             "TBS and RSA verification of its shipped signature against the dev0 "
             "modulus, whose SHA-256 is the ROM's compiled-in slot-0 digest. Both "
-            "manifests are genuinely bootable and one fuse bit refuses both", got,
+            "manifests are genuinely bootable and one fuse bit refuses both",
+            got,
         )
 
     # --- checks ------------------------------------------------------------
@@ -526,8 +555,7 @@ class sep_primary_pubkey_rom_revoked_terminal_base(
         backup. Instead: exactly two occurrences, one on each side of the backup
         read.
         """
-        hits = [i for i, line in enumerate(console)
-                if self.backup_defect_marker in line]
+        hits = [i for i, line in enumerate(console) if self.backup_defect_marker in line]
         assert len(hits) == 2, (
             f"{self.backup_defect_marker} appeared {len(hits)} times at {hits}, "
             f"expected exactly 2 -- one per manifest slot. One occurrence would "
@@ -541,7 +569,10 @@ class sep_primary_pubkey_rom_revoked_terminal_base(
         self.logger.info(
             "CHK-BOTH-REVOKED: %s at lines %s, one before and one after the backup "
             "read@%d -- both manifests were refused by bit %d",
-            self.backup_defect_marker, hits, i_backup, self._REVOKED_SLOT,
+            self.backup_defect_marker,
+            hits,
+            i_backup,
+            self._REVOKED_SLOT,
         )
 
     def _check(self, console, status_seq, fw_done, fw_pass, retired) -> None:
@@ -565,9 +596,14 @@ class sep_primary_pubkey_rom_revoked_terminal_base(
         # own crypto verdict would be unasserted. Requiring two occurrences that
         # straddle the backup read attributes one to each slot.
         crypto_fail = f"CRYPTO_FAIL=0x{self.expected_error:08x}"
-        i_backup = next((i for i, line in enumerate(console)
-                         if f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}" in line),
-                        -1)
+        i_backup = next(
+            (
+                i
+                for i, line in enumerate(console)
+                if f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}" in line
+            ),
+            -1,
+        )
         hits = [i for i, line in enumerate(console) if crypto_fail in line]
         assert len(hits) == 2, (
             f"{crypto_fail} appeared {len(hits)} times at {hits}, expected exactly 2 "
@@ -591,7 +627,11 @@ class sep_primary_pubkey_rom_revoked_terminal_base(
         self.logger.info(
             "CHK-BOTH-SLOTS-REFUSED: %s and %s each twice, %s at lines %s straddling "
             "the backup read@%d, then MANIFEST_ALL_FAILED",
-            self._PUBK_SEL_ECHO, self._REVOKE_ECHO, crypto_fail, hits, i_backup,
+            self._PUBK_SEL_ECHO,
+            self._REVOKE_ECHO,
+            crypto_fail,
+            hits,
+            i_backup,
         )
 
         # Device-side evidence: the console says which address the ROM INTENDED to
@@ -616,5 +656,8 @@ class sep_primary_pubkey_rom_revoked_terminal_base(
         self.logger.info(
             "CHK-BOTH-FETCHED: device served read[%d] 0x%06x then read[%d] 0x%06x; "
             "both slots were really fetched and both were refused",
-            p_idx, mm.PRIMARY_MANIFEST_OFFSET, b_idx, mm.BACKUP_MANIFEST_OFFSET,
+            p_idx,
+            mm.PRIMARY_MANIFEST_OFFSET,
+            b_idx,
+            mm.BACKUP_MANIFEST_OFFSET,
         )

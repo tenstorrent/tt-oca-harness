@@ -47,13 +47,13 @@ No ``+sep_crypto_edn_force``: secure boot is off, so the ROM never drives OTBN.
 from __future__ import annotations
 
 import pyuvm
-
 from rom_fw.sep_demotion_prod_base import sep_demotion_prod_base
 
 
 @pyuvm.test()
 class sep_firmware_demotion_decision_auth_flag_0_unauth_flag_0_prod_sel_bit_set_test(
-        sep_demotion_prod_base):
+    sep_demotion_prod_base
+):
     """PROD, selector set, both flags set: DEMOTE_1 demoted and locked, BL2 dec 1."""
 
     # +LC_STATE_PROD +SET_SELECTOR_BIT_17 +AUTH_FLAG_0 +UNAUTH_FLAG_0
@@ -67,6 +67,6 @@ class sep_firmware_demotion_decision_auth_flag_0_unauth_flag_0_prod_sel_bit_set_
 
     # rom_main.c lc_write_demotion(demotion_reg=true, lock=true). The lock is
     # the load-bearing half here -- see the docstring. DEMOTE_2 is written only at
-    #, i.e. only at PROD_END.
+    # , i.e. only at PROD_END.
     expect_demote_1 = (1, 1)
     expect_demote_2 = (0, 0)

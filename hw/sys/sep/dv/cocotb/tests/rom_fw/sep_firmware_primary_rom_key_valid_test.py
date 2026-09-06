@@ -103,18 +103,20 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyuvm
-
 from env import sep_manifest_mutate as mm
 from env import sep_spi_slot_evidence as ev
+from rom_fw.sep_pubkey_rom_revoked_primary_base import select_primary_rom_slot
 from rom_fw.sep_rom_ot_dma_boot_test import (
     SECURE_FLASH_IMAGE,
     sep_rom_ot_dma_boot_test,
 )
-from rom_fw.sep_pubkey_rom_revoked_primary_base import select_primary_rom_slot
 
 _EFUSE_PRELOAD = (
-    Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads"
-    / "efuse_configurations" / "sep_efuse_lc_prod.toml"
+    Path(__file__).resolve().parents[3]
+    / "tb"
+    / "efuse_preloads"
+    / "efuse_configurations"
+    / "sep_efuse_lc_prod.toml"
 )
 
 # The only populated entry in key_digests.c, and the slot the shipped image
@@ -126,11 +128,11 @@ _REVOKE_ECHO = "PUBK_REVOKE=0x00000000"
 _LC_PROD = "LC=PROD"
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
-_RSA_START = "RSA_VERIFY_START"          # manifest_crypto.c
-_SIG_VALID = "SIG_VALID"                 # manifest_crypto.c
-_CRYPTO_OK = "CRYPTO_VALIDATE_OK"        # manifest_crypto.c
-_BL1_COPIED = "BL1_COPIED"               # rom_handoff.c
-_BL1_JUMP = "BL1_JUMP="                  # rom_handoff.c
+_RSA_START = "RSA_VERIFY_START"  # manifest_crypto.c
+_SIG_VALID = "SIG_VALID"  # manifest_crypto.c
+_CRYPTO_OK = "CRYPTO_VALIDATE_OK"  # manifest_crypto.c
+_BL1_COPIED = "BL1_COPIED"  # rom_handoff.c
+_BL1_JUMP = "BL1_JUMP="  # rom_handoff.c
 
 # Must never appear. SBOOT_OFF would mean the crypto chain was skipped, so the key
 # selection under test never ran; MANIFEST_ERR= / MANIFEST_ALL_FAILED and the
@@ -147,18 +149,36 @@ class sep_firmware_primary_rom_key_valid_test(sep_rom_ot_dma_boot_test):
 
     flash_image = SECURE_FLASH_IMAGE
     required_markers = sep_rom_ot_dma_boot_test.required_markers + (
-        _LC_PROD, _PRIMARY_SRC, _PUBK_SEL_ECHO, _REVOKE_ECHO, _RSA_START,
-        _SIG_VALID, _CRYPTO_OK, _BL1_COPIED, _BL1_JUMP,
+        _LC_PROD,
+        _PRIMARY_SRC,
+        _PUBK_SEL_ECHO,
+        _REVOKE_ECHO,
+        _RSA_START,
+        _SIG_VALID,
+        _CRYPTO_OK,
+        _BL1_COPIED,
+        _BL1_JUMP,
     )
     # Every rejecting arm of validate_signature, plus the failover evidence. This is
     # a positive test, so none of them may fire: seeing any one would mean the boot
     # completed in spite of a key-selection complaint, or from a slot this testcase
     # did not select.
     forbidden_markers = sep_rom_ot_dma_boot_test.forbidden_markers + (
-        _SBOOT_OFF, _SBOOT_DIS_FUSE, _BACKUP_SRC, _ANY_MANIFEST_ERR, _ALL_FAILED,
-        "BAD_SIG_TYPE=", "BAD_KEY_IDX", "BAD_KEY_SEL", "ROM_KEY_EMPTY",
-        "FUSE_KEY_EMPTY", "PUBK_HASH_MISMATCH", "KEY_REVOKED", "VERSION_ROLLBACK",
-        "RSA_VERIFY_FAIL", "CRYPTO_FAIL=",
+        _SBOOT_OFF,
+        _SBOOT_DIS_FUSE,
+        _BACKUP_SRC,
+        _ANY_MANIFEST_ERR,
+        _ALL_FAILED,
+        "BAD_SIG_TYPE=",
+        "BAD_KEY_IDX",
+        "BAD_KEY_SEL",
+        "ROM_KEY_EMPTY",
+        "FUSE_KEY_EMPTY",
+        "PUBK_HASH_MISMATCH",
+        "KEY_REVOKED",
+        "VERSION_ROLLBACK",
+        "RSA_VERIFY_FAIL",
+        "CRYPTO_FAIL=",
     )
 
     # --- stimulus ----------------------------------------------------------
@@ -189,7 +209,11 @@ class sep_firmware_primary_rom_key_valid_test(sep_rom_ot_dma_boot_test):
         )
         self.logger.info(
             "CHK-STIMULUS-EFUSE: LC raw=0x%x (PROD), SBOOT_DIS=%d, BL1_VERSION=0x%x, "
-            "PUBK_REVOKE=0x%x", lc, sboot_dis, bl1_ver, revoke,
+            "PUBK_REVOKE=0x%x",
+            lc,
+            sboot_dis,
+            bl1_ver,
+            revoke,
         )
         return image
 
@@ -207,14 +231,17 @@ class sep_firmware_primary_rom_key_valid_test(sep_rom_ot_dma_boot_test):
         self.logger.info(
             "CHK-STIMULUS-VALID-SLOT: primary public_key_sel=0x%04x (ROM key slot "
             "%d, populated and unrevoked); TBS unchanged, so the primary keeps its "
-            "original dev0 signature and stays fully sealed", got, _VALID_SLOT,
+            "original dev0 signature and stays fully sealed",
+            got,
+            _VALID_SLOT,
         )
         self.logger.info("CHK-STIMULUS-PRIMARY: %s", mm.describe(buf, "primary"))
         return buf
 
     def log_transport(self, flash) -> None:
-        self.logger.info("CHK-SPI-TXNS:\n%s",
-                         ev.summarize(flash.get_transactions(), self._image_len))
+        self.logger.info(
+            "CHK-SPI-TXNS:\n%s", ev.summarize(flash.get_transactions(), self._image_len)
+        )
 
     # --- checks ------------------------------------------------------------
     def check_transport(self, console: list[str], flash) -> None:
@@ -253,8 +280,19 @@ class sep_firmware_primary_rom_key_valid_test(sep_rom_ot_dma_boot_test):
         self.logger.info(
             "CHK-KEYSEL-RAN: primary@%d -> %s@%d -> %s@%d -> %s@%d -> %s@%d -> "
             "%s@%d, each exactly once; the ROM-key path executed and permitted "
-            "slot %d", i_psrc, _PUBK_SEL_ECHO, i_sel, _REVOKE_ECHO, i_revoke,
-            _RSA_START, i_rsa, _SIG_VALID, i_sig, _CRYPTO_OK, i_ok, _VALID_SLOT,
+            "slot %d",
+            i_psrc,
+            _PUBK_SEL_ECHO,
+            i_sel,
+            _REVOKE_ECHO,
+            i_revoke,
+            _RSA_START,
+            i_rsa,
+            _SIG_VALID,
+            i_sig,
+            _CRYPTO_OK,
+            i_ok,
+            _VALID_SLOT,
         )
 
         # --- device evidence -------------------------------------------------
@@ -291,5 +329,9 @@ class sep_firmware_primary_rom_key_valid_test(sep_rom_ot_dma_boot_test):
         self.logger.info(
             "CHK-NO-FAILOVER: read[%d] at 0x%06x returned magic %r, and no read "
             "touched the backup span across %d reads -- the PRIMARY served this "
-            "boot", idx, mm.PRIMARY_MANIFEST_OFFSET, magic, len(rds),
+            "boot",
+            idx,
+            mm.PRIMARY_MANIFEST_OFFSET,
+            magic,
+            len(rds),
         )

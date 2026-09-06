@@ -66,7 +66,6 @@ so a full RSA-3072 modexp runs on OTBN. The RSA assertions are untouched.
 from __future__ import annotations
 
 import pyuvm
-
 from env import sep_manifest_mutate as mm
 from rom_fw.sep_demotion_decision_base import (
     EFUSE_DIR,
@@ -75,7 +74,7 @@ from rom_fw.sep_demotion_decision_base import (
 )
 from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
 
-_LC_PROD_END = "LC=PROD_END"                       # lifecycle.c
+_LC_PROD_END = "LC=PROD_END"  # lifecycle.c
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
 
@@ -86,8 +85,7 @@ _LC_STATES_PROD_END_ONLY = 1 << mm.LC_STATES_BIT_PROD_END
 
 
 @pyuvm.test()
-class sep_firmware_demotion_decision_auth_flag_0_prod_end_test(
-        sep_demotion_decision_base):
+class sep_firmware_demotion_decision_auth_flag_0_prod_end_test(sep_demotion_decision_base):
     """PROD_END overrides a set BL1 demotion flag: no demotion, both registers locked."""
 
     efuse_preload = EFUSE_DIR / "sep_efuse_lc_prod_end.toml"
@@ -104,18 +102,35 @@ class sep_firmware_demotion_decision_auth_flag_0_prod_end_test(
     demotion_values = ()
 
     required_markers = sep_rom_ot_dma_boot_test.required_markers + (
-        _LC_PROD_END, _PRIMARY_SRC, "RSA_VERIFY_START", "SIG_VALID",
-        "CRYPTO_VALIDATE_OK", "BL1_COPIED", "BL1_JUMP=",
+        _LC_PROD_END,
+        _PRIMARY_SRC,
+        "RSA_VERIFY_START",
+        "SIG_VALID",
+        "CRYPTO_VALIDATE_OK",
+        "BL1_COPIED",
+        "BL1_JUMP=",
     )
     # LC_USAGE_CONSTRAINT_FAIL is load-bearing here: the manifest permits PROD_END
     # ONLY, so its absence is what says the ROM decoded raw 0x8 correctly. SBOOT_OFF
     # would mean PROD_END did not enforce secure boot. The rest exclude a boot that
     # completed by failover or with a rejected slot.
     forbidden_markers = sep_rom_ot_dma_boot_test.forbidden_markers + (
-        "LC_USAGE_CONSTRAINT_FAIL", "SBOOT_OFF", "FUSE: SBOOT_DIS: 1", _BACKUP_SRC,
-        "MANIFEST_ERR=", "MANIFEST_ALL_FAILED", "CRYPTO_FAIL=", "RSA_VERIFY_FAIL",
-        "VERSION_ROLLBACK", "KEY_REVOKED", "BAD_SIG_TYPE=", "BAD_KEY_SEL",
-        "BAD_KEY_IDX", "ROM_KEY_EMPTY", "FUSE_KEY_EMPTY", "PUBK_HASH_MISMATCH",
+        "LC_USAGE_CONSTRAINT_FAIL",
+        "SBOOT_OFF",
+        "FUSE: SBOOT_DIS: 1",
+        _BACKUP_SRC,
+        "MANIFEST_ERR=",
+        "MANIFEST_ALL_FAILED",
+        "CRYPTO_FAIL=",
+        "RSA_VERIFY_FAIL",
+        "VERSION_ROLLBACK",
+        "KEY_REVOKED",
+        "BAD_SIG_TYPE=",
+        "BAD_KEY_SEL",
+        "BAD_KEY_IDX",
+        "ROM_KEY_EMPTY",
+        "FUSE_KEY_EMPTY",
+        "PUBK_HASH_MISMATCH",
     )
 
     # --- stimulus ----------------------------------------------------------
@@ -123,12 +138,12 @@ class sep_firmware_demotion_decision_auth_flag_0_prod_end_test(
         # +AUTH_FLAG_0 -> usage_constraints.BL1_demotion, i.e. flags bit 0
         # (sep_demotion_uid_checker.py sets it on the PRIMARY only, and the
         # reference's own decision table makes it the BL1 demotion request).
-        mm.set_usage_flags_bit(buf, "primary",
-                               mm.USAGE_CONSTRAINTS_FLAGS_BIT_BL1_DEMOTION, True)
+        mm.set_usage_flags_bit(buf, "primary", mm.USAGE_CONSTRAINTS_FLAGS_BIT_BL1_DEMOTION, True)
         # Narrowing life_cycle_states is the last in-TBS write, and it re-seals both
         # slots, so the flag write above is inside the region that gets re-signed.
-        narrow_life_cycle_states(self, buf, _LC_STATES_PROD_END_ONLY,
-                                 reseal_slots=("primary", "backup"))
+        narrow_life_cycle_states(
+            self, buf, _LC_STATES_PROD_END_ONLY, reseal_slots=("primary", "backup")
+        )
 
     def check_manifest_stimulus(self, buf: bytearray) -> None:
         flags = mm.usage_flags(buf, "primary")
@@ -162,6 +177,8 @@ class sep_firmware_demotion_decision_auth_flag_0_prod_end_test(
             "(BL1 demotion REQUESTED), selector_bits[%d] = 0, flag_args[%d] = 0, "
             "life_cycle_states = 0x%08x. The ROM must ignore all three because the "
             "part is at PROD_END",
-            mm.USAGE_CONSTRAINTS_FLAGS_BIT_BL1_DEMOTION, mm.SELECTOR_BIT_BL1_DEMOTION,
-            mm.FLAG_ARGS_BIT_BL2_DEMOTION, lcs,
+            mm.USAGE_CONSTRAINTS_FLAGS_BIT_BL1_DEMOTION,
+            mm.SELECTOR_BIT_BL1_DEMOTION,
+            mm.FLAG_ARGS_BIT_BL2_DEMOTION,
+            lcs,
         )

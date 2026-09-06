@@ -21,7 +21,6 @@ persuaded to reason about a revoked key.
 from __future__ import annotations
 
 import pyuvm
-
 from rom_fw.sep_pubkey_rom_revoked_base import sep_pubkey_rom_revoked_base
 
 

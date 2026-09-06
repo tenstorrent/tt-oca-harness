@@ -73,15 +73,13 @@ import os
 import shutil
 from pathlib import Path
 
-from sep_reg_meta import sym
-
 import cocotb
 import pyuvm
 from cocotb.triggers import RisingEdge
-
+from env.sep_efuse_image import LC_TEST_DEV, SepEfuseImage
+from env.sep_rom_console import log_scratch_cold, rom_console_task
 from sep_base_test import sep_base_test
-from env.sep_efuse_image import SepEfuseImage, LC_TEST_DEV
-from env.sep_rom_console import rom_console_task, log_scratch_cold
+from sep_reg_meta import sym
 
 _SEP_ROOT = str(Path(__file__).resolve().parents[4])
 # Same ROM build as the OT boot tests: the DFT gate runs well before any manifest
@@ -203,7 +201,9 @@ class sep_firmware_mbist_fail_test(sep_base_test):
             dut.tcm_load_i.value = 0
 
         await self.bring_up_cpu_boot(
-            _ROM_BASE >> 1, pre_reset_hook=_load_tcm, run_pulse_cycles=40,
+            _ROM_BASE >> 1,
+            pre_reset_hook=_load_tcm,
+            run_pulse_cycles=40,
         )
 
         status_seq: list[int] = []
@@ -236,7 +236,10 @@ class sep_firmware_mbist_fail_test(sep_base_test):
                 last_log = cycle
                 self.logger.info(
                     "mbist gate poll cyc=%d status=0x%08x scratch10=0x%08x retired=%d",
-                    cycle, status, s10, retired,
+                    cycle,
+                    status,
+                    s10,
+                    retired,
                 )
         # Did it actually STOP, or just pass through the terminal status on its
         # way somewhere else? Watch a little longer and check WHERE it executes,
@@ -259,8 +262,9 @@ class sep_firmware_mbist_fail_test(sep_base_test):
                     # stricter), so it was misleading output rather than a
                     # false pass, but the addresses in the log were fiction.
                     post_pcs.add(self.rd(dut.cpu_trace_addr_o))
-                if ((self.rd(dut.scratch_cold_probe_o) >> 32) & 0xFFFF_FFFF) != \
-                        _STATUS_DFT_GATE_BLOCKED:
+                if (
+                    (self.rd(dut.scratch_cold_probe_o) >> 32) & 0xFFFF_FFFF
+                ) != _STATUS_DFT_GATE_BLOCKED:
                     post_status_moved = True
         post_span = (max(post_pcs) - min(post_pcs)) if post_pcs else 0
 
@@ -298,9 +302,7 @@ class sep_firmware_mbist_fail_test(sep_base_test):
             f"(SEP_MSG_MBIST_FAIL): the gate did not take the failure arm. "
             f"Observed {status_hex}"
         )
-        self.logger.info(
-            "CHK-DFT-DETECT: cold_scratch[1] = 0x%08x (WARN)", _STATUS_MBIST_WARN
-        )
+        self.logger.info("CHK-DFT-DETECT: cold_scratch[1] = 0x%08x (WARN)", _STATUS_MBIST_WARN)
 
         # CHK-DFT-PRE-C: the gate stopped the ROM before the C runtime, which is
         # the whole point of it living in vector.S. A silent console proves it: the
@@ -323,9 +325,7 @@ class sep_firmware_mbist_fail_test(sep_base_test):
             f"SMC scratch[10] never held the failing DFT status "
             f"0x{self.dft_status_injected:08x}; observed {s10_hex}"
         )
-        self.logger.info(
-            "CHK-DFT-PUBLISH: SMC scratch[10] = 0x%08x", self.dft_status_injected
-        )
+        self.logger.info("CHK-DFT-PUBLISH: SMC scratch[10] = 0x%08x", self.dft_status_injected)
 
         # CHK-DFT-NO-BYPASS: the bypass fuse (STATUS_RPT bit 2) is unblown in this
         # eFuse image, so the ROM must not have taken the bypass path. Evidence is
@@ -334,9 +334,9 @@ class sep_firmware_mbist_fail_test(sep_base_test):
         # CHK-DFT-PRE-C already established did not happen.
         bypass_bit = (efuse_img.field_int("STATUS_RPT") >> 2) & 1
         assert bypass_bit == 0, (
-            f"STATUS_RPT bit 2 (mem_repair bypass) is set in the eFuse image, so "
-            f"the ROM was entitled to continue and this test proves nothing about "
-            f"the enforced arm"
+            "STATUS_RPT bit 2 (mem_repair bypass) is set in the eFuse image, so "
+            "the ROM was entitled to continue and this test proves nothing about "
+            "the enforced arm"
         )
         self.logger.info("CHK-DFT-NO-BYPASS: STATUS_RPT bit 2 unblown in the OTP")
 
@@ -352,8 +352,8 @@ class sep_firmware_mbist_fail_test(sep_base_test):
             f"{_MAX_RUN_CYCLES} cycles; observed {status_hex}"
         )
         assert not post_status_moved, (
-            f"cold_scratch[1] moved on after ROM_ERR_DFT_GATE_BLOCKED, so the gate "
-            f"reported the failure and then continued instead of halting"
+            "cold_scratch[1] moved on after ROM_ERR_DFT_GATE_BLOCKED, so the gate "
+            "reported the failure and then continued instead of halting"
         )
         assert post_pcs, (
             f"core retired nothing in the {_QUIESCE_CYCLES} cycles after the "
@@ -369,8 +369,10 @@ class sep_firmware_mbist_fail_test(sep_base_test):
         self.logger.info(
             "CHK-DFT-TERMINAL: cold_scratch[1] = 0x%08x, then spinning across "
             "%d byte(s) at %s for %d cycles",
-            _STATUS_DFT_GATE_BLOCKED, post_span,
-            [hex(p) for p in sorted(post_pcs)], _QUIESCE_CYCLES,
+            _STATUS_DFT_GATE_BLOCKED,
+            post_span,
+            [hex(p) for p in sorted(post_pcs)],
+            _QUIESCE_CYCLES,
         )
 
         # CHK-DFT-NO-PROGRESS: nothing downstream of the gate ran.
@@ -380,6 +382,4 @@ class sep_firmware_mbist_fail_test(sep_base_test):
                 f"continued booting past a failure it was supposed to block. "
                 f"Console: {console}"
             )
-        self.logger.info(
-            "CHK-DFT-NO-PROGRESS: none of %s reached", ", ".join(_DOWNSTREAM_MARKERS)
-        )
+        self.logger.info("CHK-DFT-NO-PROGRESS: none of %s reached", ", ".join(_DOWNSTREAM_MARKERS))

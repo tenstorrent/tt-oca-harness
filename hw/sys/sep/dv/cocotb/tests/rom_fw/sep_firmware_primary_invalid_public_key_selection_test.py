@@ -49,7 +49,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyuvm
-
 from env import sep_manifest_mutate as mm
 from rom_fw.sep_primary_fail_backup_boot_base import (
     MANIFEST_ERR_SIG_FAILED,
@@ -57,8 +56,11 @@ from rom_fw.sep_primary_fail_backup_boot_base import (
 )
 
 _EFUSE_PRELOAD = (
-    Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads"
-    / "efuse_configurations" / "sep_efuse_lc_prod.toml"
+    Path(__file__).resolve().parents[3]
+    / "tb"
+    / "efuse_preloads"
+    / "efuse_configurations"
+    / "sep_efuse_lc_prod.toml"
 )
 
 # manifest.h assigns 0, 1, 2, 4, 5. 3, 6 and 7 name nothing; the reference
@@ -73,8 +75,7 @@ _BACKUP_SEL_ECHO = "PUBK_SEL=0x00000000"
 
 
 @pyuvm.test()
-class sep_firmware_primary_invalid_public_key_selection_test(
-        sep_primary_fail_backup_boot_base):
+class sep_firmware_primary_invalid_public_key_selection_test(sep_primary_fail_backup_boot_base):
     """Primary names key source 3 -> rejected -> backup boots."""
 
     primary_defect_marker = "BAD_KEY_SEL"
@@ -86,9 +87,16 @@ class sep_firmware_primary_invalid_public_key_selection_test(
     # BAD_KEY_IDX is the discriminator against the index arm, which shares this
     # error code. The rest must not fire at all: the primary is rejected at the
     # selection and the backup is valid, so nothing else may complain.
-    extra_forbidden = ("BAD_KEY_IDX", "BAD_SIG_TYPE=", "ROM_KEY_EMPTY",
-                       "FUSE_KEY_EMPTY", "PUBK_HASH_MISMATCH", "KEY_REVOKED",
-                       "VERSION_ROLLBACK", "RSA_VERIFY_FAIL")
+    extra_forbidden = (
+        "BAD_KEY_IDX",
+        "BAD_SIG_TYPE=",
+        "ROM_KEY_EMPTY",
+        "FUSE_KEY_EMPTY",
+        "PUBK_HASH_MISMATCH",
+        "KEY_REVOKED",
+        "VERSION_ROLLBACK",
+        "RSA_VERIFY_FAIL",
+    )
 
     def corrupt_primary(self, buf: bytearray) -> None:
         # No manifest_identifier corruption: the primary must reach key selection.
@@ -107,7 +115,9 @@ class sep_firmware_primary_invalid_public_key_selection_test(
         self.logger.info(
             "CHK-STIMULUS-PUBKSEL: primary public_key_sel=0x%04x (selection=%d, "
             "unassigned; index 0 unchanged), TBS re-hashed, magic intact so the "
-            "slot still reaches validate_signature", got, _BAD_SELECTION,
+            "slot still reaches validate_signature",
+            got,
+            _BAD_SELECTION,
         )
 
     def check_efuse(self, image) -> None:
@@ -152,7 +162,11 @@ class sep_firmware_primary_invalid_public_key_selection_test(
             f"the booting slot's key selection is unattributed. Console: {console}"
         )
         self.logger.info(
-            "CHK-PUBKSEL-FAILOVER: primary %s@%d -> BAD_KEY_SEL@%d -> backup@%d "
-            "-> %s@%d", _PRIMARY_SEL_ECHO, i_psel, i_bad, i_bsrc,
-            _BACKUP_SEL_ECHO, i_bsel,
+            "CHK-PUBKSEL-FAILOVER: primary %s@%d -> BAD_KEY_SEL@%d -> backup@%d -> %s@%d",
+            _PRIMARY_SEL_ECHO,
+            i_psel,
+            i_bad,
+            i_bsrc,
+            _BACKUP_SEL_ECHO,
+            i_bsel,
         )

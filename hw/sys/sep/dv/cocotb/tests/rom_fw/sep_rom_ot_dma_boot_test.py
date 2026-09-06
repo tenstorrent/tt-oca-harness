@@ -158,9 +158,6 @@ class sep_rom_ot_dma_boot_test(sep_base_test):
         so no existing test changes behaviour.
         """
 
-
-
-
     async def run_scenario(self) -> None:
         dut = cocotb.top
         # BL1 (bl1_pass_test) prints on the SCRATCH2 virt console, not the mailbox
@@ -243,4 +240,3 @@ class sep_rom_ot_dma_boot_test(sep_base_test):
 
         # Device-side evidence, for the testcases that need it. No-op by default.
         self.check_transport(console, flash)
-

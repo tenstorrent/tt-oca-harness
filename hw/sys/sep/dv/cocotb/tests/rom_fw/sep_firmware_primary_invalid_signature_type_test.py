@@ -88,7 +88,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyuvm
-
 from env import sep_manifest_mutate as mm
 from rom_fw.sep_primary_fail_backup_boot_base import (
     MANIFEST_ERR_SIG_FAILED,
@@ -96,8 +95,11 @@ from rom_fw.sep_primary_fail_backup_boot_base import (
 )
 
 _EFUSE_PRELOAD = (
-    Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads"
-    / "efuse_configurations" / "sep_efuse_lc_prod.toml"
+    Path(__file__).resolve().parents[3]
+    / "tb"
+    / "efuse_preloads"
+    / "efuse_configurations"
+    / "sep_efuse_lc_prod.toml"
 )
 
 # One of the reference's own values (sep_firmware_secure_boot_test.py), fixed so
@@ -111,8 +113,7 @@ _BACKUP_SEL_ECHO = "PUBK_SEL=0x00000000"
 
 
 @pyuvm.test()
-class sep_firmware_primary_invalid_signature_type_test(
-        sep_primary_fail_backup_boot_base):
+class sep_firmware_primary_invalid_signature_type_test(sep_primary_fail_backup_boot_base):
     """Primary declares sig type 0 -> rejected at the first arm -> backup boots."""
 
     primary_defect_marker = _BAD_SIG_TYPE_ECHO
@@ -127,9 +128,16 @@ class sep_firmware_primary_invalid_signature_type_test(
     # which shares this error code. The rest are the later arms of
     # validate_signature: the primary dies at the first arm and the backup is
     # valid, so none of them may fire on either slot.
-    extra_forbidden = ("RSA_VERIFY_FAIL", "BAD_KEY_IDX", "BAD_KEY_SEL",
-                       "ROM_KEY_EMPTY", "FUSE_KEY_EMPTY", "PUBK_HASH_MISMATCH",
-                       "KEY_REVOKED", "VERSION_ROLLBACK")
+    extra_forbidden = (
+        "RSA_VERIFY_FAIL",
+        "BAD_KEY_IDX",
+        "BAD_KEY_SEL",
+        "ROM_KEY_EMPTY",
+        "FUSE_KEY_EMPTY",
+        "PUBK_HASH_MISMATCH",
+        "KEY_REVOKED",
+        "VERSION_ROLLBACK",
+    )
 
     def corrupt_primary(self, buf: bytearray) -> None:
         # No manifest_identifier corruption: the primary must reach
@@ -154,7 +162,9 @@ class sep_firmware_primary_invalid_signature_type_test(
         self.logger.info(
             "CHK-STIMULUS-SIGTYPE: primary signature_type %d (MANIFEST_SIG_TYPE_"
             "RSA_3072) -> %d (unsupported), TBS re-hashed, signature now stale but "
-            "never reached", before, got,
+            "never reached",
+            before,
+            got,
         )
 
     def check_efuse(self, image) -> None:
@@ -220,5 +230,9 @@ class sep_firmware_primary_invalid_signature_type_test(
             "CHK-SIGTYPE-PREEMPTS-KEYSEL: %s@%d before the backup read@%d, and "
             "PUBK_SEL= appears exactly once (%s@%d, the backup's) -- the type check "
             "ran ahead of the selector echo",
-            _BAD_SIG_TYPE_ECHO, i_type, i_bsrc, _BACKUP_SEL_ECHO, i_bsel,
+            _BAD_SIG_TYPE_ECHO,
+            i_type,
+            i_bsrc,
+            _BACKUP_SEL_ECHO,
+            i_bsel,
         )

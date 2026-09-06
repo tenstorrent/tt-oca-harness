@@ -59,7 +59,6 @@ rather than silently start needing the shortcut.
 from __future__ import annotations
 
 import pyuvm
-
 from rom_fw.sep_demotion_prod_base import sep_demotion_prod_base
 
 
@@ -73,8 +72,11 @@ class sep_firmware_demotion_decision_auth_flag_0_prod_test(sep_demotion_prod_bas
     _AUTH = 1
     _BL2 = 0
 
-    demotion_required = ("DEMOTE: BL2 deferred, lock non-demoted", "BL2_DEMOTE_DEC=",
-                         "DEMOTE_LOCKED")
+    demotion_required = (
+        "DEMOTE: BL2 deferred, lock non-demoted",
+        "BL2_DEMOTE_DEC=",
+        "DEMOTE_LOCKED",
+    )
     demotion_values = ("BL2_DEMOTE_DEC=0",)
 
     # rom_main.c lc_write_demotion(demotion_reg=false, lock=true). demotion_reg

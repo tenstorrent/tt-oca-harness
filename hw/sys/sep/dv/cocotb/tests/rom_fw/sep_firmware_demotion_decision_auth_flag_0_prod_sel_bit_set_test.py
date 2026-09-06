@@ -79,7 +79,6 @@ rather than silently start needing the shortcut.
 from __future__ import annotations
 
 import pyuvm
-
 from env import sep_manifest_mutate as mm
 from rom_fw.sep_demotion_decision_base import (
     EFUSE_DIR,
@@ -88,11 +87,11 @@ from rom_fw.sep_demotion_decision_base import (
 )
 from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
 
-_LC_PROD = "LC=PROD"                               # lifecycle.c
-_LC_PROD_END = "LC=PROD_END"                       # lifecycle.c
-_SBOOT_DIS_FUSE = "FUSE: SBOOT_DIS: 1"             # rom_main.c
-_SBOOT_OFF = "SBOOT_OFF"                           # manifest_load.c
-_PLD_HASH_OK = "PLD_HASH_OK"                       # manifest_crypto.c
+_LC_PROD = "LC=PROD"  # lifecycle.c
+_LC_PROD_END = "LC=PROD_END"  # lifecycle.c
+_SBOOT_DIS_FUSE = "FUSE: SBOOT_DIS: 1"  # rom_main.c
+_SBOOT_OFF = "SBOOT_OFF"  # manifest_load.c
+_PLD_HASH_OK = "PLD_HASH_OK"  # manifest_crypto.c
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
 
@@ -103,8 +102,7 @@ _LC_STATES_PROD_ONLY = 1 << mm.LC_STATES_BIT_PROD
 
 
 @pyuvm.test()
-class sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test(
-        sep_demotion_decision_base):
+class sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test(sep_demotion_decision_base):
     """PROD, selector bit 17 set, BL1 demotion flag set -> DEMOTE_1 demoted and locked."""
 
     efuse_preload = EFUSE_DIR / "sep_efuse_lc_prod_sboot_dis.toml"
@@ -121,8 +119,13 @@ class sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test(
     demotion_values = ("BL1_DEMOTE=1", "BL2_DEMOTE_DEC=0")
 
     required_markers = sep_rom_ot_dma_boot_test.required_markers + (
-        _LC_PROD, _SBOOT_DIS_FUSE, _PRIMARY_SRC, _SBOOT_OFF, _PLD_HASH_OK,
-        "BL1_COPIED", "BL1_JUMP=",
+        _LC_PROD,
+        _SBOOT_DIS_FUSE,
+        _PRIMARY_SRC,
+        _SBOOT_OFF,
+        _PLD_HASH_OK,
+        "BL1_COPIED",
+        "BL1_JUMP=",
     )
     # BL1_DEMOTE=0 and BL2_DEMOTE_DEC=1 are the values of the neighbouring rows, so
     # forbidding them pins this run to O2a rather than to "some demotion happened".
@@ -130,10 +133,22 @@ class sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test(
     # RSA_VERIFY_START / SIG_VALID must not appear: secure boot is off, so a run
     # that verified a signature took a different path from the one under test.
     forbidden_markers = sep_rom_ot_dma_boot_test.forbidden_markers + (
-        _LC_PROD_END, "BL1_DEMOTE=0", "BL2_DEMOTE_DEC=1", "LC_USAGE_CONSTRAINT_FAIL",
-        _BACKUP_SRC, "MANIFEST_ERR=", "MANIFEST_ALL_FAILED", "CRYPTO_FAIL=",
-        "RSA_VERIFY_START", "RSA_VERIFY_FAIL", "SIG_VALID", "CRYPTO_VALIDATE_OK",
-        "BAD_SIG_TYPE=", "PLD_HASH_FAIL=", "PLD_HASH_MISMATCH", "ENC_WITHOUT_SBOOT",
+        _LC_PROD_END,
+        "BL1_DEMOTE=0",
+        "BL2_DEMOTE_DEC=1",
+        "LC_USAGE_CONSTRAINT_FAIL",
+        _BACKUP_SRC,
+        "MANIFEST_ERR=",
+        "MANIFEST_ALL_FAILED",
+        "CRYPTO_FAIL=",
+        "RSA_VERIFY_START",
+        "RSA_VERIFY_FAIL",
+        "SIG_VALID",
+        "CRYPTO_VALIDATE_OK",
+        "BAD_SIG_TYPE=",
+        "PLD_HASH_FAIL=",
+        "PLD_HASH_MISMATCH",
+        "ENC_WITHOUT_SBOOT",
     )
 
     # --- stimulus ----------------------------------------------------------
@@ -142,8 +157,7 @@ class sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test(
         # (sep_demotion_uid_checker.py).
         mm.set_selector_bit(buf, "primary", mm.SELECTOR_BIT_BL1_DEMOTION, True)
         # +AUTH_FLAG_0 -> usage_constraints.BL1_demotion (:438-440).
-        mm.set_usage_flags_bit(buf, "primary",
-                               mm.USAGE_CONSTRAINTS_FLAGS_BIT_BL1_DEMOTION, True)
+        mm.set_usage_flags_bit(buf, "primary", mm.USAGE_CONSTRAINTS_FLAGS_BIT_BL1_DEMOTION, True)
         # +SECURE_BOOT_DIS, manifest surface 1: the flag secure_boot_enabled reads
         # (manifest_load.c). Outside the TBS, so no re-hash.
         mm.set_flag_args_bit(buf, "primary", mm.FLAG_ARGS_BIT_SECURE_BOOT, False)
@@ -154,8 +168,7 @@ class sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test(
         # Last in-TBS write. The BACKUP is re-sealed so it stays a fully valid
         # alternative; the PRIMARY is deliberately NOT re-sealed -- it is unsigned by
         # construction, and re-signing it would undo the surface just set.
-        narrow_life_cycle_states(self, buf, _LC_STATES_PROD_ONLY,
-                                 reseal_slots=("backup",))
+        narrow_life_cycle_states(self, buf, _LC_STATES_PROD_ONLY, reseal_slots=("backup",))
 
     def check_manifest_stimulus(self, buf: bytearray) -> None:
         sel = mm.selector_bits(buf, "primary")
@@ -202,6 +215,8 @@ class sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test(
             "fuse is burned",
             mm.SELECTOR_BIT_BL1_DEMOTION,
             mm.USAGE_CONSTRAINTS_FLAGS_BIT_BL1_DEMOTION,
-            mm.FLAG_ARGS_BIT_BL2_DEMOTION, mm.FLAG_ARGS_BIT_SECURE_BOOT,
-            sigtype, lcs,
+            mm.FLAG_ARGS_BIT_BL2_DEMOTION,
+            mm.FLAG_ARGS_BIT_SECURE_BOOT,
+            sigtype,
+            lcs,
         )

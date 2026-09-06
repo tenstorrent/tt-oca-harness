@@ -48,7 +48,6 @@ never driven and ``RSA_VERIFY_START`` is forbidden.
 from __future__ import annotations
 
 import pyuvm
-
 from rom_fw.sep_pubkey_rom_revoked_primary_base import (
     sep_primary_pubkey_rom_revoked_terminal_base,
 )
@@ -56,7 +55,8 @@ from rom_fw.sep_pubkey_rom_revoked_primary_base import (
 
 @pyuvm.test()
 class sep_firmware_primary_pubkey_rom_0_revoked_key_test(
-        sep_primary_pubkey_rom_revoked_terminal_base):
+    sep_primary_pubkey_rom_revoked_terminal_base
+):
     """Primary selects revoked ROM slot 0; the backup selects it too -> terminal."""
 
     _REVOKED_SLOT = 0

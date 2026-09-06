@@ -88,7 +88,6 @@ import hashlib
 from pathlib import Path
 
 import pyuvm
-
 from env import sep_manifest_mutate as mm
 from env import sep_payload_mutate as pm
 from env import sep_spi_slot_evidence as ev
@@ -98,15 +97,18 @@ from rom_fw.sep_backup_manifest_fail_base import (
 )
 
 _EFUSE_PRELOAD = (
-    Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads"
-    / "efuse_configurations" / "sep_efuse_lc_prod.toml"
+    Path(__file__).resolve().parents[3]
+    / "tb"
+    / "efuse_preloads"
+    / "efuse_configurations"
+    / "sep_efuse_lc_prod.toml"
 )
 
 # rsa_verify.c / manifest_crypto.c console markers, exact console lines.
-_RSA_START = "RSA_VERIFY_START"   # manifest_crypto.c:243, once per slot
-_RSA_EXEC = "RSA_EXEC"            # rsa_verify.c:161, immediately before otbn_execute()
-_PKCS1_FAIL = "RSA_PKCS1_FAIL"    # rsa_verify.c:175, the modexp RESULT mismatched
-_RSA_FAIL = "RSA_VERIFY_FAIL"     # manifest_crypto.c:245, the caller's verdict
+_RSA_START = "RSA_VERIFY_START"  # manifest_crypto.c:243, once per slot
+_RSA_EXEC = "RSA_EXEC"  # rsa_verify.c:161, immediately before otbn_execute()
+_PKCS1_FAIL = "RSA_PKCS1_FAIL"  # rsa_verify.c:175, the modexp RESULT mismatched
+_RSA_FAIL = "RSA_VERIFY_FAIL"  # manifest_crypto.c:245, the caller's verdict
 
 # The OTBN engine's own failure markers (rsa_verify.c:135,142,164). Each of these
 # also ends in RSA_VERIFY_FAIL, so without forbidding them a broken OTBN would be
@@ -115,9 +117,17 @@ _OTBN_ENGINE_FAILURES = ("RSA_OTBN_INIT_FAIL", "RSA_OTBN_LOAD_FAIL", "RSA_EXEC_F
 
 # Every other route to MANIFEST_ERR_SIG_FAILED (manifest_crypto.c:164,176,193,
 # 224,234 and 128), plus the two checks that precede the signature entirely.
-_OTHER_SIG_VERDICTS = ("BAD_SIG_TYPE=", "BAD_KEY_IDX", "BAD_KEY_SEL",
-                       "ROM_KEY_EMPTY", "FUSE_KEY_EMPTY", "PUBK_HASH_TIMEOUT",
-                       "PUBK_HASH_MISMATCH", "KEY_REVOKED idx=", "VERSION_ROLLBACK")
+_OTHER_SIG_VERDICTS = (
+    "BAD_SIG_TYPE=",
+    "BAD_KEY_IDX",
+    "BAD_KEY_SEL",
+    "ROM_KEY_EMPTY",
+    "FUSE_KEY_EMPTY",
+    "PUBK_HASH_TIMEOUT",
+    "PUBK_HASH_MISMATCH",
+    "KEY_REVOKED idx=",
+    "VERSION_ROLLBACK",
+)
 
 # Signature byte flipped per slot. Different indices so the two writes are
 # independently attributable, and one bit each because a manifest correct in
@@ -135,7 +145,7 @@ def _recovered_em(buf, slot: str, n: int, e: int) -> bytes:
     say "the hash OTBN extracts is X" rather than "the ROM printed a failure".
     """
     base = mm.slot_base(slot)
-    sig = bytes(buf[base + mm.OFF_SIGNATURE:base + mm.OFF_SIGNATURE + pm.RSA_KEY_BYTES])
+    sig = bytes(buf[base + mm.OFF_SIGNATURE : base + mm.OFF_SIGNATURE + pm.RSA_KEY_BYTES])
     return pow(int.from_bytes(sig, "big"), e, n).to_bytes(pm.RSA_KEY_BYTES, "big")
 
 
@@ -162,17 +172,21 @@ class sep_otbn_rsa_verify_failure_test(sep_backup_manifest_fail_base):
     def _prove_slot(self, buf, slot: str, tag: str, n: int, e: int) -> bytes:
         """Log the recovered hash for ``slot`` and return it."""
         base = mm.slot_base(slot)
-        tbs = bytes(buf[base:base + mm.TBS_LEN])
-        sig = bytes(buf[base + mm.OFF_SIGNATURE:base + mm.OFF_SIGNATURE
-                        + pm.RSA_KEY_BYTES])
-        stored = bytes(buf[base + mm.OFF_MANIFEST_HASH:base + mm.OFF_MANIFEST_HASH + 32])
+        tbs = bytes(buf[base : base + mm.TBS_LEN])
+        sig = bytes(buf[base + mm.OFF_SIGNATURE : base + mm.OFF_SIGNATURE + pm.RSA_KEY_BYTES])
+        stored = bytes(buf[base + mm.OFF_MANIFEST_HASH : base + mm.OFF_MANIFEST_HASH + 32])
         em = _recovered_em(buf, slot, n, e)
         extracted = em[-32:]
         self.logger.info(
             "CHK-STIMULUS-OTBN[%s %s]: sig[0:8]=%s manifest_hash=%s "
             "sha256(TBS)=%s OTBN-recovered-hash=%s match=%s pkcs1_valid=%s",
-            tag, slot, sig[:8].hex(), stored.hex(), hashlib.sha256(tbs).hexdigest(),
-            extracted.hex(), extracted == stored,
+            tag,
+            slot,
+            sig[:8].hex(),
+            stored.hex(),
+            hashlib.sha256(tbs).hexdigest(),
+            extracted.hex(),
+            extracted == stored,
             pm.verify_pkcs1v15_sha256(tbs, sig, n),
         )
         return extracted
@@ -180,8 +194,8 @@ class sep_otbn_rsa_verify_failure_test(sep_backup_manifest_fail_base):
     def _corrupt(self, buf: bytearray, slot: str, byte_index: int, mask: int) -> None:
         n, e, _d = pm.load_rsa_private_key()
         base = mm.slot_base(slot)
-        stored = bytes(buf[base + mm.OFF_MANIFEST_HASH:base + mm.OFF_MANIFEST_HASH + 32])
-        tbs_before = bytes(buf[base:base + mm.TBS_LEN])
+        stored = bytes(buf[base + mm.OFF_MANIFEST_HASH : base + mm.OFF_MANIFEST_HASH + 32])
+        tbs_before = bytes(buf[base : base + mm.TBS_LEN])
 
         # BEFORE. The shipped slot must verify, and the value OTBN recovers must
         # BE manifest_hash. Without this the run could be rejecting an image that
@@ -194,13 +208,13 @@ class sep_otbn_rsa_verify_failure_test(sep_backup_manifest_fail_base):
             f"would not be attributable to the flip"
         )
 
-        sig_before = bytes(buf[base + mm.OFF_SIGNATURE:base + mm.OFF_SIGNATURE + 8])
+        sig_before = bytes(buf[base + mm.OFF_SIGNATURE : base + mm.OFF_SIGNATURE + 8])
         mm.flip_signature_byte(buf, slot, byte_index=byte_index, xor_mask=mask)
 
         # AFTER. The write landed, the TBS is untouched, and the recovered value
         # is no longer manifest_hash -- which is exactly what verify_pkcs1_v15()
         # compares (rsa_verify.c:100-105).
-        assert bytes(buf[base:base + mm.TBS_LEN]) == tbs_before, (
+        assert bytes(buf[base : base + mm.TBS_LEN]) == tbs_before, (
             f"{slot}: the signature flip changed TBS bytes; the slot would be "
             f"rejected as MANIFEST_HASH_MISMATCH in the manifest loop and RSA "
             f"would never run"
@@ -215,12 +229,17 @@ class sep_otbn_rsa_verify_failure_test(sep_backup_manifest_fail_base):
             f"{slot}: the recovered hash still equals manifest_hash after the "
             f"flip, so the ROM would ACCEPT this signature"
         )
-        sig_after = bytes(buf[base + mm.OFF_SIGNATURE:base + mm.OFF_SIGNATURE + 8])
+        sig_after = bytes(buf[base + mm.OFF_SIGNATURE : base + mm.OFF_SIGNATURE + 8])
         self.logger.info(
             "CHK-STIMULUS-SIG[%s]: signature[%d] ^= 0x%02x (1 bit); sig[0:8] %s -> "
             "%s; TBS hash intact; recovered hash %s -> %s",
-            slot, byte_index, mask, sig_before.hex(), sig_after.hex(),
-            pre.hex()[:16] + "...", post.hex()[:16] + "...",
+            slot,
+            byte_index,
+            mask,
+            sig_before.hex(),
+            sig_after.hex(),
+            pre.hex()[:16] + "...",
+            post.hex()[:16] + "...",
         )
 
     def mutate_flash_image(self, buf: bytearray) -> bytearray:
@@ -275,7 +294,11 @@ class sep_otbn_rsa_verify_failure_test(sep_backup_manifest_fail_base):
         )
         self.logger.info(
             "CHK-BACKUP-DEFECT: %s at line(s) %s (primary) and %s (backup, after "
-            "the backup read at %d)", _PKCS1_FAIL, before, after, i_backup,
+            "the backup read at %d)",
+            _PKCS1_FAIL,
+            before,
+            after,
+            i_backup,
         )
 
     def _check(self, console, status_seq, fw_done, fw_pass, retired) -> None:
@@ -283,8 +306,14 @@ class sep_otbn_rsa_verify_failure_test(sep_backup_manifest_fail_base):
         super()._check(console, status_seq, fw_done, fw_pass, retired)
 
         log = self.logger
-        i_backup = next((i for i, line in enumerate(console)
-                         if f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}" in line), -1)
+        i_backup = next(
+            (
+                i
+                for i, line in enumerate(console)
+                if f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}" in line
+            ),
+            -1,
+        )
         assert i_backup >= 0, "backup read marker missing"  # super() proved it exists
 
         starts = self._hits(console, _RSA_START)
@@ -317,8 +346,7 @@ class sep_otbn_rsa_verify_failure_test(sep_backup_manifest_fail_base):
         # result mismatch -> verdict. Ordering is the substance: the same four
         # markers in any order would also be satisfied by a run whose failure came
         # from somewhere else.
-        for tag, lo, hi in (("primary", -1, i_backup),
-                            ("backup", i_backup, len(console))):
+        for tag, lo, hi in (("primary", -1, i_backup), ("backup", i_backup, len(console))):
             s = [i for i in starts if lo < i < hi]
             x = [i for i in execs if lo < i < hi]
             p = [i for i in pkcs1 if lo < i < hi]
@@ -334,13 +362,25 @@ class sep_otbn_rsa_verify_failure_test(sep_backup_manifest_fail_base):
             )
             log.info(
                 "CHK-OTBN-%s: %s@%d -> %s@%d -> %s@%d -> %s@%d",
-                tag.upper(), _RSA_START, s[0], _RSA_EXEC, x[0],
-                _PKCS1_FAIL, p[0], _RSA_FAIL, f[0],
+                tag.upper(),
+                _RSA_START,
+                s[0],
+                _RSA_EXEC,
+                x[0],
+                _PKCS1_FAIL,
+                p[0],
+                _RSA_FAIL,
+                f[0],
             )
 
         # Recorded, not asserted -- see the docstring's note on pass count.
-        log.info("CHK-OTBN-EXEC-COUNT: %d OTBN execution(s) observed this boot "
-                 "(%d slots verified); indices %s", len(execs), len(starts), execs)
+        log.info(
+            "CHK-OTBN-EXEC-COUNT: %d OTBN execution(s) observed this boot "
+            "(%d slots verified); indices %s",
+            len(execs),
+            len(starts),
+            execs,
+        )
 
         # --- device evidence --------------------------------------------------
         # The successful half of boot_flash_reinit() (manifest_load.c:777) prints
@@ -367,8 +407,10 @@ class sep_otbn_rsa_verify_failure_test(sep_backup_manifest_fail_base):
         )
         # Both slots really were well-formed manifests on the wire, so neither
         # rejection is a blank or garbled slot wearing the signature verdict.
-        for name, addr, txn in (("primary", mm.PRIMARY_MANIFEST_OFFSET, p_txn),
-                                ("backup", mm.BACKUP_MANIFEST_OFFSET, b_txn)):
+        for name, addr, txn in (
+            ("primary", mm.PRIMARY_MANIFEST_OFFSET, p_txn),
+            ("backup", mm.BACKUP_MANIFEST_OFFSET, b_txn),
+        ):
             magic = ev.bytes_at(txn, addr, 4)
             assert magic == mm.MANIFEST_MAGIC, (
                 f"device returned {magic!r} at 0x{addr:x} for the {name} slot, "
@@ -379,6 +421,9 @@ class sep_otbn_rsa_verify_failure_test(sep_backup_manifest_fail_base):
         log.info(
             "CHK-RETRY-ADDR: read[%d] served 0x%06x and read[%d] served 0x%06x, in "
             "that order; both returned a valid %r header and both were rejected",
-            p_idx, mm.PRIMARY_MANIFEST_OFFSET, b_idx, mm.BACKUP_MANIFEST_OFFSET,
+            p_idx,
+            mm.PRIMARY_MANIFEST_OFFSET,
+            b_idx,
+            mm.BACKUP_MANIFEST_OFFSET,
             mm.MANIFEST_MAGIC,
         )

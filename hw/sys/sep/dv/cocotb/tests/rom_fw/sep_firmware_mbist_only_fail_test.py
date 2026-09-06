@@ -33,7 +33,6 @@ handler (`dft_gate_failed` in bootrom/prod/src/vector.S).
 from __future__ import annotations
 
 import pyuvm
-
 from rom_fw.sep_firmware_mbist_fail_test import sep_firmware_mbist_fail_test
 
 # bootrom/prod/include/sep_smc_interface.h and dfx_ctrl_status.rdl.

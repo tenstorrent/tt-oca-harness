@@ -34,7 +34,6 @@ retry counter but the offset from the possibly-rotated slot index
 from __future__ import annotations
 
 import pyuvm
-
 from env import sep_manifest_mutate as mm
 from env import sep_spi_slot_evidence as ev
 from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
@@ -60,10 +59,14 @@ class sep_spi_primary_fail_backup_test(sep_rom_ot_dma_boot_test):
     """Primary address blank -> ROM fails over to the backup address and boots."""
 
     required_markers = sep_rom_ot_dma_boot_test.required_markers + (
-        _SPI_INIT_OK, _PRIMARY_ERR, _BACKUP_SRC,
+        _SPI_INIT_OK,
+        _PRIMARY_ERR,
+        _BACKUP_SRC,
     )
     forbidden_markers = sep_rom_ot_dma_boot_test.forbidden_markers + (
-        _ALL_FAILED, _SPI_INIT_ERR, _SPI_INIT_FAILED_SKIP,
+        _ALL_FAILED,
+        _SPI_INIT_ERR,
+        _SPI_INIT_FAILED_SKIP,
     )
 
     def mutate_flash_image(self, buf: bytearray) -> bytearray:
@@ -77,17 +80,21 @@ class sep_spi_primary_fail_backup_test(sep_rom_ot_dma_boot_test):
         self.logger.info(
             "CHK-STIMULUS-SPI: primary span 0x%06x..0x%06x erased to 0x%02x "
             "(%d bytes); backup intact: %s",
-            start, end, mm.ERASED_BYTE, end - start, mm.describe(buf, "backup"),
+            start,
+            end,
+            mm.ERASED_BYTE,
+            end - start,
+            mm.describe(buf, "backup"),
         )
         return buf
 
     def log_transport(self, flash) -> None:
-        self.logger.info("CHK-SPI-TXNS:\n%s",
-                         ev.summarize(flash.get_transactions(), self._image_len))
+        self.logger.info(
+            "CHK-SPI-TXNS:\n%s", ev.summarize(flash.get_transactions(), self._image_len)
+        )
 
     def check_transport(self, console: list[str], flash) -> None:
         txns = flash.get_transactions()
-        image_len = self._image_len
 
         def index_of(marker: str) -> int:
             for i, line in enumerate(console):
@@ -110,7 +117,10 @@ class sep_spi_primary_fail_backup_test(sep_rom_ot_dma_boot_test):
         )
         self.logger.info(
             "CHK-FAILOVER-ORDER: primary@%d -> BAD_MAGIC@%d -> backup@%d -> OK@%d",
-            i_psrc, i_perr, i_bsrc, i_ok,
+            i_psrc,
+            i_perr,
+            i_bsrc,
+            i_ok,
         )
 
         # --- device evidence -------------------------------------------------
@@ -163,6 +173,9 @@ class sep_spi_primary_fail_backup_test(sep_rom_ot_dma_boot_test):
         self.logger.info(
             "CHK-ADDR-FAILOVER: read[%d] 0x%06x returned blank, then read[%d] "
             "0x%06x returned %r -- same device, two addresses, in order",
-            p_idx, mm.PRIMARY_MANIFEST_OFFSET, b_idx,
-            mm.BACKUP_MANIFEST_OFFSET, b_magic,
+            p_idx,
+            mm.PRIMARY_MANIFEST_OFFSET,
+            b_idx,
+            mm.BACKUP_MANIFEST_OFFSET,
+            b_magic,
         )

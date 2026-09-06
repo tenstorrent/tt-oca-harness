@@ -18,7 +18,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyuvm
-
 from env import sep_manifest_mutate as mm
 from rom_fw.sep_backup_manifest_fail_base import (
     MANIFEST_ERR_SIG_FAILED,
@@ -26,7 +25,11 @@ from rom_fw.sep_backup_manifest_fail_base import (
 )
 
 _EFUSE_PRELOAD = (
-    Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads" / "efuse_configurations" / "sep_efuse_lc_prod.toml"
+    Path(__file__).resolve().parents[3]
+    / "tb"
+    / "efuse_preloads"
+    / "efuse_configurations"
+    / "sep_efuse_lc_prod.toml"
 )
 
 
@@ -55,9 +58,9 @@ class sep_firmware_backup_invalid_signature_test(sep_backup_manifest_fail_base):
     extra_forbidden = ("SIG_VALID", "CRYPTO_VALIDATE_OK", "BAD_SIG_TYPE=")
 
     def corrupt_backup(self, buf: bytearray) -> None:
-        before = bytes(buf[mm.BACKUP_MANIFEST_OFFSET + mm.OFF_SIGNATURE:][:8])
+        before = bytes(buf[mm.BACKUP_MANIFEST_OFFSET + mm.OFF_SIGNATURE :][:8])
         mm.flip_signature_byte(buf, "backup", byte_index=0, xor_mask=0x01)
-        after = bytes(buf[mm.BACKUP_MANIFEST_OFFSET + mm.OFF_SIGNATURE:][:8])
+        after = bytes(buf[mm.BACKUP_MANIFEST_OFFSET + mm.OFF_SIGNATURE :][:8])
         assert before != after, "signature flip was a no-op"
         # The hash must still verify: if this mutation had invalidated the TBS
         # hash, the backup would be rejected as HASH_MISMATCH in the manifest loop
@@ -65,7 +68,8 @@ class sep_firmware_backup_invalid_signature_test(sep_backup_manifest_fail_base):
         mm.verify_layout(buf, "backup")
         self.logger.info(
             "CHK-STIMULUS-SIG: backup signature[0:8] %s -> %s (1 bit), TBS hash intact",
-            before.hex(), after.hex(),
+            before.hex(),
+            after.hex(),
         )
 
     def check_efuse(self, image) -> None:

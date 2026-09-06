@@ -103,7 +103,6 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import RisingEdge
-
 from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
 
 # Must match +sep_dft_status in the testlist entry.
@@ -135,8 +134,8 @@ _MBIST_ABORT_BIT = 12
 # The two words the FAILURE arm writes to cold_scratch[1]; neither may appear.
 # Kept numerically identical to sep_firmware_mbist_fail_test so the pair states
 # one contract from both sides.
-_STATUS_MBIST_WARN = 0x0801_0000 | 0x219          # WARN + SEP_MSG_MBIST_FAIL
-_STATUS_DFT_GATE_BLOCKED = 0x0F01_0000 | 0xD001   # ERROR + ROM_ERR_DFT_GATE_BLOCKED
+_STATUS_MBIST_WARN = 0x0801_0000 | 0x219  # WARN + SEP_MSG_MBIST_FAIL
+_STATUS_DFT_GATE_BLOCKED = 0x0F01_0000 | 0xD001  # ERROR + ROM_ERR_DFT_GATE_BLOCKED
 # Written by vector.S immediately BEFORE the gate: the
 # STATUS_ENCODE(STATUS_TYPE_DEBUG, SEP_MSG_BOOTROM_PRESTART_DONE) store, the last
 # thing that runs ahead of the `lw` of DFX_CTRL_STATUS_SMU. (Named by symbol, not
@@ -200,12 +199,9 @@ class sep_firmware_mbist_pass_test(sep_rom_ot_dma_boot_test):
     def log_transport(self, flash) -> None:
         # Runs from the base's `finally`, i.e. before any assertion can abort the
         # run, so the gate evidence is in the log even when a later check fails.
-        self.logger.info("cold_scratch[1] sequence: %s",
-                         [hex(v) for v in self._status_seq])
-        self.logger.info("SMC scratch[10] sequence: %s",
-                         [hex(v) for v in self._s10_seq])
-        self.logger.info("DFX_CTRL_STATUS_SMU sequence: %s",
-                         [hex(v) for v in self._dft_seq])
+        self.logger.info("cold_scratch[1] sequence: %s", [hex(v) for v in self._status_seq])
+        self.logger.info("SMC scratch[10] sequence: %s", [hex(v) for v in self._s10_seq])
+        self.logger.info("DFX_CTRL_STATUS_SMU sequence: %s", [hex(v) for v in self._dft_seq])
 
     async def run_scenario(self) -> None:
         # Guard the stimulus before anything else. Without the injection the tb
@@ -233,11 +229,7 @@ class sep_firmware_mbist_pass_test(sep_rom_ot_dma_boot_test):
                 f"(bit {_bit}) CLEAR -- the gate requires all three, so this is "
                 f"a failure-arm injection"
             )
-        _required = (
-            (1 << _MEM_REPAIR_SUCCESS_BIT)
-            | (1 << _MBIST_DONE_BIT)
-            | (1 << _MBIST_PASS_BIT)
-        )
+        _required = (1 << _MEM_REPAIR_SUCCESS_BIT) | (1 << _MBIST_DONE_BIT) | (1 << _MBIST_PASS_BIT)
         assert _DFT_STATUS_PASS == _required, (
             f"injected DFT status must be exactly the three required bits and "
             f"nothing else; 0x{_DFT_STATUS_PASS:08x} != 0x{_required:08x}. Leaving "
@@ -304,8 +296,8 @@ class sep_firmware_mbist_pass_test(sep_rom_ot_dma_boot_test):
             f"means the gate read something this testcase did not choose"
         )
         self.logger.info(
-            "CHK-DFT-INJECTED: DFX_CTRL_STATUS_SMU = 0x%08x at the SMC, for the "
-            "whole run", _DFT_STATUS_PASS,
+            "CHK-DFT-INJECTED: DFX_CTRL_STATUS_SMU = 0x%08x at the SMC, for the whole run",
+            _DFT_STATUS_PASS,
         )
 
         # CHK-DFT-REACHED: vector.S ran up to the instruction before the gate.
@@ -318,8 +310,8 @@ class sep_firmware_mbist_pass_test(sep_rom_ot_dma_boot_test):
             f"Observed {status_hex}"
         )
         self.logger.info(
-            "CHK-DFT-REACHED: cold_scratch[1] = 0x%08x, so execution arrived at "
-            "the gate", _STATUS_PRESTART_DONE,
+            "CHK-DFT-REACHED: cold_scratch[1] = 0x%08x, so execution arrived at the gate",
+            _STATUS_PRESTART_DONE,
         )
 
         # CHK-DFT-NO-WARN / CHK-DFT-NO-BLOCK: neither word the failure arm writes
@@ -337,7 +329,8 @@ class sep_firmware_mbist_pass_test(sep_rom_ot_dma_boot_test):
         )
         self.logger.info(
             "CHK-DFT-NO-WARN: neither 0x%08x nor 0x%08x reached cold_scratch[1]",
-            _STATUS_MBIST_WARN, _STATUS_DFT_GATE_BLOCKED,
+            _STATUS_MBIST_WARN,
+            _STATUS_DFT_GATE_BLOCKED,
         )
 
         # CHK-DFT-NO-PUBLISH: SMC scratch[10] is written only by the failure arm

@@ -31,7 +31,6 @@ plusarg at.
 from __future__ import annotations
 
 import pyuvm
-
 from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
 
 

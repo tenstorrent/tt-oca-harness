@@ -25,7 +25,6 @@ STIMULUS: ``CHK-SEED`` shows the register really held an address below the base.
 from __future__ import annotations
 
 import pyuvm
-
 from rom_fw.sep_warm_dispatch_base import (
     COLD_POISON,
     RANGE_BASE,
@@ -82,8 +81,7 @@ class sep_warm_reset_below_range_hang_test(sep_warm_dispatch_base):
             f"0x{_BELOW_RANGE_HANDLER:08x}; observed {cold7_hex}. The tb deposit "
             f"did not take, so this run says nothing about the lower bound"
         )
-        self.logger.info("CHK-SEED: cold_scratch[7] held 0x%08x",
-                         _BELOW_RANGE_HANDLER)
+        self.logger.info("CHK-SEED: cold_scratch[7] held 0x%08x", _BELOW_RANGE_HANDLER)
 
         # CHK-WARM-REJECT-LOW: the lower bound rejected it and said so.
         assert obs["stopped"] and STATUS_WARM_HANG in status_seq, (
@@ -91,8 +89,7 @@ class sep_warm_reset_below_range_hang_test(sep_warm_dispatch_base):
             f"(STATUS_ENCODE(ERROR, SEP_MSG_WARM_RESET_HANG)); observed "
             f"{status_hex}"
         )
-        self.logger.info("CHK-WARM-REJECT-LOW: cold_scratch[1] = 0x%08x",
-                         STATUS_WARM_HANG)
+        self.logger.info("CHK-WARM-REJECT-LOW: cold_scratch[1] = 0x%08x", STATUS_WARM_HANG)
 
         # CHK-NO-JUMP: the accept arm did not run. The ROM announces the jump in
         # cold_scratch[1] BEFORE transferring control, so its absence is what
@@ -102,15 +99,16 @@ class sep_warm_reset_below_range_hang_test(sep_warm_dispatch_base):
             f"(SEP_MSG_WARM_RESET_JUMP): the ROM accepted a handler below ICCM "
             f"base and jumped to it. Observed {status_hex}"
         )
-        self.logger.info("CHK-NO-JUMP: 0x%08x absent from cold_scratch[1]",
-                         STATUS_WARM_JUMP)
+        self.logger.info("CHK-NO-JUMP: 0x%08x absent from cold_scratch[1]", STATUS_WARM_JUMP)
 
         # CHK-NO-COLD-FALLTHROUGH: it did not quietly fall into a normal boot.
         # The reject arm sits ABOVE cold_boot, so these words being absent places
         # execution on the hang; the missing -1 poison is the second witness,
         # written by a different instruction in a different block.
-        for word, name in ((STATUS_BOOTROM_START, "BOOTROM_START"),
-                           (STATUS_PRESTART_DONE, "BOOTROM_PRESTART_DONE")):
+        for word, name in (
+            (STATUS_BOOTROM_START, "BOOTROM_START"),
+            (STATUS_PRESTART_DONE, "BOOTROM_PRESTART_DONE"),
+        ):
             assert word not in status_seq, (
                 f"cold_scratch[1] held 0x{word:08x} ({name}), which cold_boot "
                 f"writes: the ROM fell through the dispatch into a normal boot. "
@@ -120,8 +118,9 @@ class sep_warm_reset_below_range_hang_test(sep_warm_dispatch_base):
             f"cold_scratch[7] held cold_boot's poison 0x{COLD_POISON:08x} "
             f"({cold7_hex}): execution reached cold_boot"
         )
-        self.logger.info("CHK-NO-COLD-FALLTHROUGH: no cold_boot status word and "
-                         "no 0x%08x poison", COLD_POISON)
+        self.logger.info(
+            "CHK-NO-COLD-FALLTHROUGH: no cold_boot status word and no 0x%08x poison", COLD_POISON
+        )
 
         # CHK-PRE-C: the dispatch stopped the ROM before the C runtime. The
         # virtual console is simputs(), and simputs() needs C.

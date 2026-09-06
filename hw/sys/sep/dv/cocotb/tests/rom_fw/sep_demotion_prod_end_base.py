@@ -68,7 +68,7 @@ from rom_fw.sep_demotion_decision_base import (
 )
 from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
 
-_LC_PROD_END = "LC=PROD_END"                       # lifecycle.c
+_LC_PROD_END = "LC=PROD_END"  # lifecycle.c
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
 
@@ -86,9 +86,9 @@ class sep_demotion_prod_end_base(sep_demotion_decision_base):
     # Subclass contract: the three manifest demotion inputs this member plants.
     # The ROM reads none of them on this path -- that IS the property under test --
     # so they are asserted from the artefact instead.
-    _SEL = 0      # usage_constraints.selector_bits bit 17
-    _AUTH = 0     # usage_constraints.flags bit 0
-    _BL2 = 0      # boot_arguments.flag_args bit 0
+    _SEL = 0  # usage_constraints.selector_bits bit 17
+    _AUTH = 0  # usage_constraints.flags bit 0
+    _BL2 = 0  # boot_arguments.flag_args bit 0
 
     efuse_preload = PROD_END_PRELOAD
     expected_lc_raw = LC_RAW_PROD_END
@@ -106,8 +106,13 @@ class sep_demotion_prod_end_base(sep_demotion_decision_base):
     demotion_values = ()
 
     required_markers = sep_rom_ot_dma_boot_test.required_markers + (
-        _LC_PROD_END, _PRIMARY_SRC, "RSA_VERIFY_START", "SIG_VALID",
-        "CRYPTO_VALIDATE_OK", "BL1_COPIED", "BL1_JUMP=",
+        _LC_PROD_END,
+        _PRIMARY_SRC,
+        "RSA_VERIFY_START",
+        "SIG_VALID",
+        "CRYPTO_VALIDATE_OK",
+        "BL1_COPIED",
+        "BL1_JUMP=",
     )
     # LC_USAGE_CONSTRAINT_FAIL is load-bearing: the manifest permits PROD_END
     # ONLY, so its absence is what says the ROM decoded raw 0x8 correctly. The
@@ -116,10 +121,22 @@ class sep_demotion_prod_end_base(sep_demotion_decision_base):
     # base, because they are DEMOTION_TOKENS this outcome does not require -- and
     # their absence is the direct observable that no manifest input was read.
     forbidden_markers = sep_rom_ot_dma_boot_test.forbidden_markers + (
-        "LC_USAGE_CONSTRAINT_FAIL", "SBOOT_OFF", "FUSE: SBOOT_DIS: 1", _BACKUP_SRC,
-        "MANIFEST_ERR=", "MANIFEST_ALL_FAILED", "CRYPTO_FAIL=", "RSA_VERIFY_FAIL",
-        "VERSION_ROLLBACK", "KEY_REVOKED", "BAD_SIG_TYPE=", "BAD_KEY_SEL",
-        "BAD_KEY_IDX", "ROM_KEY_EMPTY", "FUSE_KEY_EMPTY", "PUBK_HASH_MISMATCH",
+        "LC_USAGE_CONSTRAINT_FAIL",
+        "SBOOT_OFF",
+        "FUSE: SBOOT_DIS: 1",
+        _BACKUP_SRC,
+        "MANIFEST_ERR=",
+        "MANIFEST_ALL_FAILED",
+        "CRYPTO_FAIL=",
+        "RSA_VERIFY_FAIL",
+        "VERSION_ROLLBACK",
+        "KEY_REVOKED",
+        "BAD_SIG_TYPE=",
+        "BAD_KEY_SEL",
+        "BAD_KEY_IDX",
+        "ROM_KEY_EMPTY",
+        "FUSE_KEY_EMPTY",
+        "PUBK_HASH_MISMATCH",
     )
 
     # --- stimulus ----------------------------------------------------------
@@ -134,12 +151,14 @@ class sep_demotion_prod_end_base(sep_demotion_decision_base):
         if self._SEL:
             mm.set_selector_bit(buf, "primary", mm.SELECTOR_BIT_BL1_DEMOTION, True)
         if self._AUTH:
-            mm.set_usage_flags_bit(buf, "primary",
-                                   mm.USAGE_CONSTRAINTS_FLAGS_BIT_BL1_DEMOTION, True)
+            mm.set_usage_flags_bit(
+                buf, "primary", mm.USAGE_CONSTRAINTS_FLAGS_BIT_BL1_DEMOTION, True
+            )
         if self._BL2:
             mm.set_flag_args_bit(buf, "primary", mm.FLAG_ARGS_BIT_BL2_DEMOTION, True)
-        narrow_life_cycle_states(self, buf, LC_STATES_PROD_END_ONLY,
-                                 reseal_slots=("primary", "backup"))
+        narrow_life_cycle_states(
+            self, buf, LC_STATES_PROD_END_ONLY, reseal_slots=("primary", "backup")
+        )
 
     def check_manifest_stimulus(self, buf: bytearray) -> None:
         """Read the three demotion inputs back out of the packed image.
@@ -182,7 +201,11 @@ class sep_demotion_prod_end_base(sep_demotion_decision_base):
             "flag_args[%d]=%d, life_cycle_states=0x%08x. rom_main.c:383 must ignore "
             "all three because the part is at PROD_END, and their absence from the "
             "console is asserted by forbidding BL1_DEMOTE= and BL2_DEMOTE_DEC=",
-            mm.SELECTOR_BIT_BL1_DEMOTION, sel,
-            mm.USAGE_CONSTRAINTS_FLAGS_BIT_BL1_DEMOTION, auth,
-            mm.FLAG_ARGS_BIT_BL2_DEMOTION, bl2, lcs,
+            mm.SELECTOR_BIT_BL1_DEMOTION,
+            sel,
+            mm.USAGE_CONSTRAINTS_FLAGS_BIT_BL1_DEMOTION,
+            auth,
+            mm.FLAG_ARGS_BIT_BL2_DEMOTION,
+            bl2,
+            lcs,
         )
