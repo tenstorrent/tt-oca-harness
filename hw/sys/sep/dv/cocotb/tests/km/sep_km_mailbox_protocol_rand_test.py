@@ -196,14 +196,11 @@ class sep_km_mailbox_protocol_rand_test(sep_base_test):
     async def _chk_underflow(self) -> None:
         resp, data = await self.mb.read_data_raw(expect_error=True)
         assert resp == RESP_SLVERR and not data, (
-            f"CHK-UFL FAIL: empty READ_DATA resp={resp} data=0x{data:08x}, "
-            "expected SLVERR and 0"
+            f"CHK-UFL FAIL: empty READ_DATA resp={resp} data=0x{data:08x}, expected SLVERR and 0"
         )
         await self._expect_status("CHK-UFL", inbound_depth=0, outbound_underflow=1)
         await self._expect_irq("CHK-UFL", inbound_depth=0, outbound_underflow=1)
-        self.logger.info(
-            "CHK-UFL PASS: empty READ_DATA -> SLVERR + 0, outbound_underflow latched"
-        )
+        self.logger.info("CHK-UFL PASS: empty READ_DATA -> SLVERR + 0, outbound_underflow latched")
 
         # Register-block write, not a FIFO pop: must stay OKAY after underflow.
         await self.mb.write_ctrl(1 << KM_CTRL_OUTBOUND_UNDERFLOW_RESP)
@@ -259,12 +256,8 @@ class sep_km_mailbox_protocol_rand_test(sep_base_test):
         assert resp == RESP_OKAY, (
             f"CHK-OVR-RESP FAIL: write-to-full with resp-mode=OKAY returned {resp}"
         )
-        await self._expect_status(
-            "CHK-OVR-RESP", inbound_depth=KM_MBOX_DEPTH, inbound_overflow=1
-        )
-        await self._expect_irq(
-            "CHK-OVR-RESP", inbound_depth=KM_MBOX_DEPTH, inbound_overflow=1
-        )
+        await self._expect_status("CHK-OVR-RESP", inbound_depth=KM_MBOX_DEPTH, inbound_overflow=1)
+        await self._expect_irq("CHK-OVR-RESP", inbound_depth=KM_MBOX_DEPTH, inbound_overflow=1)
         self.logger.info(
             "CHK-OVR-RESP PASS: resp-mode=OKAY on the next overrun; depth still %d",
             KM_MBOX_DEPTH,
@@ -283,9 +276,7 @@ class sep_km_mailbox_protocol_rand_test(sep_base_test):
         await self.mb.write_irq_enable(0)
         await ClockCycles(cocotb.top.clk_i, 2)
         irq_after = await self.mb.read_irq_status()
-        assert self._irq_agg() == 0, (
-            "CHK-IRQ FAIL: aggregator [14] stayed 1 after IRQ_ENABLE=0"
-        )
+        assert self._irq_agg() == 0, "CHK-IRQ FAIL: aggregator [14] stayed 1 after IRQ_ENABLE=0"
         assert irq_after == irq_held, (
             f"CHK-IRQ FAIL: IRQ_STATUS changed when enable cleared "
             f"(0x{irq_held:08x} -> 0x{irq_after:08x})"
@@ -322,9 +313,9 @@ class sep_km_mailbox_protocol_rand_test(sep_base_test):
         assert st & (1 << KM_STATUS_INBOUND_OVERFLOW), (
             f"CHK-FLUSH FAIL: flush cleared inbound_overflow (STATUS=0x{st:08x})"
         )
-        assert (st & 0xFFF) == (
-            (1 << KM_STATUS_INBOUND_EMPTY) | (1 << KM_STATUS_OUTBOUND_EMPTY)
-        ), f"CHK-FLUSH FAIL: FIFOs not empty after flush (STATUS=0x{st:08x})"
+        assert (st & 0xFFF) == ((1 << KM_STATUS_INBOUND_EMPTY) | (1 << KM_STATUS_OUTBOUND_EMPTY)), (
+            f"CHK-FLUSH FAIL: FIFOs not empty after flush (STATUS=0x{st:08x})"
+        )
         assert ((st >> KM_STATUS_INBOUND_DEPTH_LSB) & 0xFF) == 0, (
             f"CHK-FLUSH FAIL: inbound_depth not 0 after flush (STATUS=0x{st:08x})"
         )
