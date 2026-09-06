@@ -86,6 +86,9 @@ class sep_km_kpv_scrambler_test(sep_base_test):
         rep = await kpv.collect()
 
         # --- CHK-COUNT --------------------------------------------------------
+        # The collector already raises on a wrong count, before it drains the
+        # pair list that a wrong count would flood. This restates the contract
+        # at the point the plan names it, so the checker is visible here.
         assert rep.count == N_TEST_INDICES, (
             f"CHK-COUNT FAIL: {rep.count} of the 1024 key-entry words differ from the "
             f"zeroed setup, expected exactly {N_TEST_INDICES}. Fewer means a write "
@@ -116,9 +119,10 @@ class sep_km_kpv_scrambler_test(sep_base_test):
         stored_indices = sorted(index for index, _ in rep.pairs)
         logical = sorted(cfg.indices)
         assert stored_indices != logical, (
-            "CHK-ADDR FAIL: every word was stored at its own logical index "
-            f"({logical}) -- the address mapping is identity, so the address tweak "
-            "is not being applied"
+            "CHK-ADDR FAIL: the set of physical indices written is identical to the "
+            f"set of logical indices asked for ({logical}), so the address tweak "
+            "moved nothing. Note this compares the two as SETS: a tweak that merely "
+            "permuted these three indices among themselves would also land here"
         )
         self.logger.info("CHK-ADDR PASS: logical %s stored at physical %s", logical, stored_indices)
 

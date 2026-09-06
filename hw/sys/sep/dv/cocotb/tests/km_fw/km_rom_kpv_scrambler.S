@@ -40,6 +40,12 @@
 #   the round-trip word, the key register read back while still UNLOCKED, the
 #   same register read after the sticky lock, and the post-lock round-trip word
 #
+# That is 13 words on the healthy path (1 + 2*3 + 2 + 4) into a 16-deep
+# outbound FIFO, and this image does not check for space before writing. The
+# margin only holds while the count is 3, so the host raises on a wrong count
+# before it drains the pair list -- see the collector in
+# cocotb/seq_lib/sep_km_kpv_scrambler_seq.py.
+#
 # The unlocked readback is the control for the locked one: without it, "the key
 # register reads zero after the lock" is equally satisfied by a register that
 # is write-only or always zero.

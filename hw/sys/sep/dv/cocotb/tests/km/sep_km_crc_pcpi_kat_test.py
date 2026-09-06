@@ -25,7 +25,10 @@ Checkers:
               give different results in CRC-32C byte mode and CRC-8/ROHC,
               compared over the low byte so the two modes' differing result
               WIDTHS cannot satisfy it on their own
-  CHK-NARROW  CRC-8/ROHC leaves the upper 24 result bits clear
+  CHK-NARROW  CRC-8/ROHC leaves the upper 24 result bits clear. The golden
+              already masks to eight bits, so CHK-ROHC covers this; it is
+              stated separately because the zero-extension is its own RTL
+              assertion and a reader should see it named
   CHK-UPPER   both byte modes ignore the operand's upper 24 bits: the same low
               byte under different garbage returns the same result
   CHK-MOVE    a guard on the operand screen rather than independent evidence:
@@ -128,13 +131,17 @@ class sep_km_crc_pcpi_kat_test(sep_base_test):
         # Compared over the low byte only. CRC-8/ROHC returns eight bits and
         # CRC-32C thirty-two, so a full-width compare would be satisfied by the
         # widths alone and would say nothing about the polynomials.
-        poly_state, poly_data = cfg.byte_vectors[0]
-        r_32c = await crc.update(CRC_MODE_32C_BYTE, poly_state & 0xFF, poly_data)
-        r_rohc = await crc.update(CRC_MODE_8_ROHC, poly_state & 0xFF, poly_data)
+        # Its own screened operand, not a reused KAT vector: the two families
+        # agree in the low byte for roughly one operand in 256, which is correct
+        # hardware and would otherwise fail a small fraction of seeds.
+        poly_state, poly_data = cfg.poly_state, cfg.poly_data
+        r_32c = await crc.update(CRC_MODE_32C_BYTE, poly_state, poly_data)
+        r_rohc = await crc.update(CRC_MODE_8_ROHC, poly_state, poly_data)
         assert (r_32c & 0xFF) != (r_rohc & 0xFF), (
             f"CHK-POLY FAIL: CRC-32C byte and CRC-8/ROHC agree in the low byte "
-            f"(0x{r_32c & 0xFF:02x}) for state=0x{poly_state & 0xFF:02x} "
-            f"data=0x{poly_data:08x} -- one polynomial is being used for both modes"
+            f"(0x{r_32c & 0xFF:02x}) for state=0x{poly_state:02x} "
+            f"data=0x{poly_data:08x}, an operand screened to make them differ -- "
+            "one polynomial is being used for both modes"
         )
         self.logger.info(
             "CHK-POLY PASS: low byte differs, CRC-32C 0x%02x vs CRC-8/ROHC 0x%02x",

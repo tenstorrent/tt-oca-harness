@@ -16,8 +16,9 @@
 #
 # Then:
 #   write LOCK_WRITE on slot 0, the seed slot, and slot 63; read back bit 0
-#   store to 0x13108 (first offset past KM_KPV_SIZE=0x1108, still inside
-#     the 8 KB KPV decode window) and require AXI_SLVERR (or DECERR)
+#   store to 0x13108 (KPV base 0x12000 + KM_KPV_SIZE 0x1108, so the first
+#     byte past the register map and still inside the 8 KB KPV decode window)
+#     and require AXI_SLVERR (or DECERR)
 #   lock the seed SRAM region, store, require the write dropped plus
 #     SRAM_WRITE_LOCK_VIOLATION and IRQ_STATUS.SRAM_WRITE_LOCK_ERR, then W1C
 #   seal a slot (one write; hardware raises lock_write with it), erase it, and

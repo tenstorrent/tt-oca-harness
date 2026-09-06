@@ -4505,7 +4505,7 @@ slot, so over this surface an erase always frees.
 |CHK-LEN
 |A defined command carrying the wrong payload length returns the invalid-length code.
 |CHK-ALIVE
-|`CMD_STAT` succeeds after every refusal: a rejected command leaves the KM in its command loop rather than wedged or faulted.
+|After every refusal `CMD_STAT` succeeds and reports no latched recoverable error. The second half is what gives CHK-DEST and CHK-CLOSED their meaning: while a recoverable fault is pending the KM refuses every key command with the same failure code those two expect, before it looks at the arguments at all, so a faulted KM would otherwise satisfy both without the policy they name being exercised.
 |===
 
 *Anti-vacuity*: every frame is built with a correct header CRC-8, a correct
@@ -4575,7 +4575,7 @@ two registers in the lower half and cannot name one the core does not have.
 |CHK-XCHAIN
 |One word instruction equals four chained byte instructions from the same start state. Hardware on both sides, so it holds independently of the golden.
 |CHK-POLY
-|The two polynomial families return different results for the same state and byte.
+|The two polynomial families return different results for the same state and byte, compared over the low byte so their differing result widths cannot satisfy it. The operand is screened for this: the two agree in the low byte for roughly one input in 256, which is correct hardware, so it is excluded from the draw rather than tolerated by a looser check.
 |CHK-NARROW
 |CRC-8/ROHC leaves the upper twenty-four result bits clear.
 |CHK-UPPER

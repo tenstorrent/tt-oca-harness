@@ -66,6 +66,12 @@ class SepKmCrcCfg:
         self.rohc_vectors = tuple(self._draw_rohc(rng) for _ in range(N_RAND_VECTORS))
         # The chained cross-check needs one word whose bytes are all distinct.
         self.chain_state, self.chain_word = self._draw_word(rng)
+        # CHK-POLY compares the two polynomial families over the low byte, and
+        # two different polynomials agree there for about one operand in 256.
+        # That is correct hardware, so the operand is screened rather than the
+        # checker loosened -- otherwise the test would fail a fraction of a
+        # percent of seeds for no defect.
+        self.poly_state, self.poly_data = self._draw_poly(rng)
 
     @staticmethod
     def _moves(mode: int, state: int, data: int) -> bool:
@@ -97,6 +103,19 @@ class SepKmCrcCfg:
                 return state, data
 
     @classmethod
+    def _draw_poly(cls, rng) -> tuple[int, int]:
+        """An operand the two polynomial families map to different low bytes."""
+        while True:
+            state = rng.getrandbits(8)
+            data = rng.getrandbits(32)
+            if (data & 0xFF) == 0 and state == 0:
+                continue
+            lo_32c = crc_golden(MODE_32C_BYTE, state, data) & 0xFF
+            lo_rohc = crc_golden(MODE_8_ROHC, state, data) & 0xFF
+            if lo_32c != lo_rohc:
+                return state, data
+
+    @classmethod
     def _draw_rohc(cls, rng) -> tuple[int, int]:
         while True:
             state = rng.getrandbits(8)
@@ -109,7 +128,8 @@ class SepKmCrcCfg:
     def summary(self) -> str:
         return (
             f"seed={self.seed} vectors_per_mode={N_RAND_VECTORS} "
-            f"chain_state=0x{self.chain_state:08x} chain_word=0x{self.chain_word:08x}"
+            f"chain_state=0x{self.chain_state:08x} chain_word=0x{self.chain_word:08x} "
+            f"poly_state=0x{self.poly_state:02x} poly_data=0x{self.poly_data:08x}"
         )
 
 

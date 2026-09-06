@@ -33,8 +33,12 @@ Checkers:
   CHK-ILLEGAL every seeded undefined command ID returns RC_INVALID_CMD (-4)
   CHK-LEN     a defined command carrying the wrong payload length returns
               RC_INVALID_LEN (-5)
-  CHK-ALIVE   CMD_STAT succeeds after every rejection: a refused command leaves
-              the KM in its command loop rather than wedged or faulted
+  CHK-ALIVE   after every rejection CMD_STAT succeeds AND reports no latched
+              recoverable error. The second half is what gives the refusal
+              checkers their meaning: while a recoverable fault is pending the
+              KM answers RC_FAILURE to every key command regardless of its
+              arguments, which is the same code CHK-DEST and CHK-CLOSED
+              expect, so without this a faulted KM would satisfy both
 
 Accepted scope deltas (declared, not silent):
   * The card's DRBG-fault-during-command checker is NOT built here. The fault
@@ -104,7 +108,7 @@ AES_ECB_PT = (0x00112233, 0x44556677, 0x8899AABB, 0xCCDDEEFF)
 GEN_KEY_WORDS = (8, 12)
 
 # Number of undefined command IDs to walk per run.
-N_ILLEGAL_IDS = 6
+N_ILLEGAL_IDS = 7
 
 
 class SepKmCommandSetCfg:
@@ -127,7 +131,10 @@ class SepKmCommandSetCfg:
         are where an off-by-one in the validity test shows up. The rest come
         from the seed.
         """
-        picked = [0x05, 0x0F, 0x13, 0x29]
+        # The four defined runs are 0x00-0x04, 0x10-0x12 and 0x22-0x28, so these
+        # are the IDs immediately outside them -- 0x21 included, since a
+        # boundary slip there would invent a command inside the key range.
+        picked = [0x05, 0x0F, 0x13, 0x21, 0x29]
         while len(picked) < N_ILLEGAL_IDS:
             cand = rng.randrange(0x100)
             if cand not in KM_VALID_CMD_IDS and cand not in picked:
@@ -248,6 +255,7 @@ class sep_km_command_set_rand_test(sep_base_test):
             "CHK-DEST PASS: transfer to 0x%02x refused with RC_FAILURE -- outside DEST_VALID",
             cfg.bad_dest,
         )
+        await self._check_alive("post-dest-refusal")
 
         # --- CHK-SHRED: destroy the engine's key, then re-key it --------------
         rc, arg = await self.km.engine_shred(dest=KM_DEST_AES)
@@ -294,6 +302,7 @@ class sep_km_command_set_rand_test(sep_base_test):
             "not fail closed"
         )
         self.logger.info("CHK-CLOSED PASS: transfer on the revoked handle refused with RC_FAILURE")
+        await self._check_alive("post-revoked-transfer")
 
         # --- CHK-NULL: the reserved handle is never a target ------------------
         # The null handle is rejected by argument validation, before any
@@ -339,12 +348,27 @@ class sep_km_command_set_rand_test(sep_base_test):
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
         assert self.drbg_sb.report()
-        self.logger.info("CHK-ALIVE + entropy alerts PASS (DRBG scoreboard)")
+        self.logger.info("entropy alerts clear and DRBG scoreboard reports PASS")
 
     async def _check_alive(self, tag: str) -> None:
-        """CHK-ALIVE: a rejected command must not take the KM out of its loop."""
-        rc, _ = await self.km.stat()
+        """CHK-ALIVE: the KM is still in its loop and has not latched a fault.
+
+        Both halves matter. While a recoverable fault is pending the KM rejects
+        every key command with RC_FAILURE before it ever looks at the
+        arguments -- the same code CHK-DEST and CHK-CLOSED assert -- so a
+        refusal checker that ran against a faulted KM would pass without the
+        policy it names being exercised at all. CMD_STAT stays on the
+        allowlist through a fault, so its return code alone cannot see this;
+        its return argument carries the recoverable-error bit that can.
+        """
+        rc, arg = await self.km.stat()
         assert rc == KM_RC_SUCCESS, (
             f"CHK-ALIVE FAIL [{tag}]: CMD_STAT returned rc={rc} after a rejected "
             "command -- the KM did not stay in its command loop"
         )
+        assert (arg & 0x1) == 0, (
+            f"CHK-ALIVE FAIL [{tag}]: CMD_STAT reports a latched recoverable error "
+            f"(arg=0x{arg:08x}). Every key command is refused RC_FAILURE in that "
+            "state, so the refusal checkers around here prove nothing"
+        )
+        self.logger.info("CHK-ALIVE PASS [%s]: CMD_STAT rc=0 and no latched recoverable error", tag)

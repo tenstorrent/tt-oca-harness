@@ -149,10 +149,18 @@ class SepKpvScrambler:
 
     async def collect(self) -> SepKpvScramblerReport:
         count = await self._next_word("the non-zero count")
-        if count > KPV_N_WORDS:
+        # Raise on a wrong count HERE, before draining the pair list. The ROM
+        # emits two words per non-zero entry without checking for space, and the
+        # outbound FIFO is far shallower than the file, so a dirty register file
+        # would flood it: the pairs would be dropped and the run would die on an
+        # unattributed "never reported index N" instead of saying that the count
+        # was wrong. The count is the diagnosis, so it is checked first.
+        if count != N_TEST_INDICES:
             raise AssertionError(
-                f"KPV scrambler ROM reported {count} non-zero words, more than the "
-                f"{KPV_N_WORDS}-word file holds"
+                f"CHK-COUNT FAIL: {count} of the {KPV_N_WORDS} key-entry words differ "
+                f"from the zeroed setup, expected exactly {N_TEST_INDICES}. Fewer means "
+                "a write never landed or the read path is stuck; more means the file "
+                "was left dirty."
             )
         pairs = []
         for i in range(count):
