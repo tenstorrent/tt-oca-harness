@@ -442,7 +442,7 @@ verifying the block behind the port.
 |assertion |<value>: GPIO <value> changed between the sweep's reference
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `canonical_top10`, `canonical_top20`, `canonical_top6`, `combined`, `pyuvm`, `smoke`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `combined`, `pyuvm`, `smoke`.
 
 '''''
 
@@ -532,7 +532,7 @@ verifying the block behind the port.
 |assertion |<value> @ 0x<value>: default read 0x<value>, expected 0x<value> (<value>)
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `batch_b`, `canonical_top10`, `canonical_top20`, `canonical_top6`, `project_p0_triplets`, `pyuvm`, `smoke`, `vplan_triplets`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `project_p0_triplets`, `pyuvm`, `smoke`, `vplan_triplets`.
 
 '''''
 
@@ -638,7 +638,7 @@ verifying the block behind the port.
 |assertion |register boundary sweep mismatch
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `batch_b`, `depth_reg`, `project_p0_triplets`, `vplan_triplets`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `depth_reg`, `project_p0_triplets`, `vplan_triplets`.
 
 '''''
 
@@ -673,7 +673,7 @@ verifying the block behind the port.
 |assertion |expected <value> real SEP_IN AXI CSR accesses, got <value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `batch_b`, `canonical_top10`, `canonical_top20`, `canonical_top6`, `project_p0`, `project_p0_triplets`, `pyuvm`, `smoke`, `vplan_triplets`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `project_p0`, `project_p0_triplets`, `pyuvm`, `smoke`, `vplan_triplets`.
 
 '''''
 
@@ -714,7 +714,7 @@ verifying the block behind the port.
 |assertion |<value> of <value> AVS_CFG
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `avsbus_depth`, `balanced_ip`, `batch_d`, `project_p0_triplets`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `avsbus_depth`, `balanced_ip`, `project_p0_triplets`.
 
 '''''
 
@@ -746,7 +746,7 @@ verifying the block behind the port.
 |scoreboard |Every access is compared by the SYS_AXI scoreboard against its stated expectation
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `batch_d`, `project_p0`, `project_p0_triplets`, `vplan_triplets`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `project_p0`, `project_p0_triplets`, `vplan_triplets`.
 
 '''''
 
@@ -778,7 +778,7 @@ verifying the block behind the port.
 |assertion |AVSBus status depth mismatch
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `avsbus_depth`, `batch_d`, `project_p0_triplets`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `avsbus_depth`, `project_p0_triplets`.
 
 '''''
 
@@ -853,7 +853,7 @@ verifying the block behind the port.
 |assertion |OCTS STATUS.MODE != PRIMARY after strap: STATUS=0x<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `batch_d`, `p2_phase_a`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`.
 
 '''''
 
@@ -925,7 +925,7 @@ verifying the block behind the port.
 |assertion |sideband CSR precheck issued <value> accesses, expected
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `batch_d`, `canonical_top20`, `pyuvm`, `smoke`, `vplan_triplets`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `pyuvm`, `smoke`, `vplan_triplets`.
 
 '''''
 
@@ -965,7 +965,7 @@ verifying the block behind the port.
 |assertion |tb_telemetry_irq_any rose but TELEMETRY_0 INTR_STATUS does not
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `p1_coverage_gap`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`.
 
 '''''
 
@@ -999,7 +999,7 @@ verifying the block behind the port.
 |assertion |WDT key protocol proven on cores <value>, expected
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `p1_coverage_gap_r4`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`.
 
 '''''
 
@@ -1043,7 +1043,7 @@ verifying the block behind the port.
 |assertion |required coverage cells not hit: missing
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `batch_d`, `canonical_top20`, `pyuvm`, `smoke`, `vplan_triplets`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `pyuvm`, `smoke`, `vplan_triplets`.
 
 '''''
 
@@ -1224,7 +1224,7 @@ verifying the block behind the port.
 |scoreboard |Every access is compared by the SYS_AXI scoreboard against its stated expectation
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `batch_d`, `canonical_top20`, `project_p0`, `project_p0_triplets`, `pyuvm`, `smoke`, `vplan_triplets`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `project_p0`, `project_p0_triplets`, `pyuvm`, `smoke`, `vplan_triplets`.
 
 '''''
 
@@ -1302,7 +1302,7 @@ verifying the block behind the port.
 |assertion |filter field sweep count mismatch
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `p1_coverage_gap_r3`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`.
 
 '''''
 
@@ -1317,7 +1317,6 @@ verifying the block behind the port.
 
 *Test Coverage*:
 
-* Filter multi-entry sweep (testlist group `p1_coverage_gap_r2`).
 * RTL exposes 16 inbound + 16 outbound filter entries; this sweep covers every one of the 32 slots rather than entry 0 of each direction.
 * Each of the 32 slots is proven *individually discriminable*, not merely "a window that answers 0x3000": every slot gets a signature value unique to (direction, index), and the sweep is PHASED so that the 32 signatures are CO-RESIDENT when they are read back.
 * Phasing is the whole point.
@@ -1342,7 +1341,7 @@ verifying the block behind the port.
 |assertion |filter_multi_entry: scoreboard booked only
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `p1_coverage_gap_r2`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`.
 
 '''''
 
@@ -1377,7 +1376,7 @@ verifying the block behind the port.
 |scoreboard |Every access is compared by the SYS_AXI scoreboard against its stated expectation
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `batch_d`, `project_p0`, `project_p0_triplets`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `project_p0`, `project_p0_triplets`.
 
 '''''
 
@@ -1412,7 +1411,7 @@ verifying the block behind the port.
 |assertion |fabric CSR precheck mismatch
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `batch_d`, `canonical_top10`, `canonical_top20`, `canonical_top6`, `pyuvm`, `smoke`, `vplan_triplets`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `pyuvm`, `smoke`, `vplan_triplets`.
 
 '''''
 
@@ -1445,7 +1444,7 @@ verifying the block behind the port.
 |assertion |local_fabric_csr: the scoreboard performed <value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `batch_d`, `depth_fabric`, `project_p0_triplets`, `vplan_triplets`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `depth_fabric`, `project_p0_triplets`, `vplan_triplets`.
 
 '''''
 
@@ -1549,7 +1548,7 @@ verifying the block behind the port.
 |assertion |blocked output-fabric write resp <value>, expected DECERR
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `batch_d`, `canonical_top20`, `depth_fabric`, `project_p0_triplets`, `pyuvm`, `smoke`, `vplan_triplets`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `depth_fabric`, `project_p0_triplets`, `pyuvm`, `smoke`, `vplan_triplets`.
 
 '''''
 
@@ -1587,6 +1586,7 @@ verifying the block behind the port.
 |`CHK-REMAP-ALIAS0-IDENTITY` |Evidence token emitted only after the compares it names have held
 |`CHK-REMAP-ALIAS0-LANDING` |Evidence token emitted only after the compares it names have held
 |`CHK-REMAP-ALIAS0-OFF` |Evidence token emitted only after the compares it names have held
+|assertion |only found <value> unmapped in-window offsets; the deny leg needs
 |assertion |<value> @ 0x<value>: expected resp=<value>, got
 |assertion |<value> @ 0x<value>: expected rdata=0 from the error responder,
 |assertion |CLA reset sweep built only <value> rows from the
@@ -1594,7 +1594,7 @@ verifying the block behind the port.
 |assertion |expected at least <value> value-checked reads
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `p1_coverage_gap`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`.
 
 '''''
 
@@ -1672,7 +1672,7 @@ verifying the block behind the port.
 |assertion |XVISOR_REMAP sweep count mismatch
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `p1_coverage_gap_r4`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`.
 
 '''''
 
@@ -1962,7 +1962,7 @@ verifying the block behind the port.
 |assertion |primary ref reset asserted at <value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `batch_d`, `canonical_top10`, `canonical_top20`, `project_p0_triplets`, `pyuvm`, `smoke`, `vplan_triplets`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `project_p0_triplets`, `pyuvm`, `smoke`, `vplan_triplets`.
 
 '''''
 
@@ -2163,7 +2163,7 @@ verifying the block behind the port.
 |assertion |JTAG reset proxy access mismatch
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `batch_c`, `jtag_depth`, `project_p0_triplets`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `jtag_depth`, `project_p0_triplets`.
 
 '''''
 
@@ -2251,7 +2251,7 @@ verifying the block behind the port.
 |assertion |<value>: <value> never reached <value> within <value> clk_ref_i
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `batch_d`, `canonical_top20`, `pyuvm`, `smoke`, `vplan_triplets`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `pyuvm`, `smoke`, `vplan_triplets`.
 
 '''''
 
@@ -2958,7 +2958,7 @@ verifying the block behind the port.
 |assertion |<value> of 12 alias pairs returned a
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `p1_coverage_gap_r4`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`.
 
 '''''
 
@@ -2999,7 +2999,7 @@ verifying the block behind the port.
 |assertion |missing CHK evidence token: CHK-CPU-CTRL-MAP-DEPTH (seen=<value>)
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `batch_d`, `cpu_depth`, `project_p0_triplets`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `cpu_depth`, `project_p0_triplets`.
 
 '''''
 
@@ -3034,7 +3034,7 @@ verifying the block behind the port.
 |assertion |DUMMY_ROM resets are no longer discriminating: <value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `batch_d`, `cpu_depth`, `project_p0_triplets`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `cpu_depth`, `project_p0_triplets`.
 
 '''''
 
@@ -3109,7 +3109,7 @@ verifying the block behind the port.
 |assertion |tb_fuse_sense_done already 1 with no observed 0→1 transition
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `must_catch_w1w2`, `p2_phase_c`, `vplan_gaps`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `vplan_gaps`.
 
 '''''
 
@@ -3244,7 +3244,7 @@ verifying the block behind the port.
 |assertion |diagnostic CSR precheck issued <value> accesses, expected
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `batch_d`, `canonical_top20`, `project_p0_triplets`, `pyuvm`, `smoke`, `vplan_triplets`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `project_p0_triplets`, `pyuvm`, `smoke`, `vplan_triplets`.
 
 '''''
 
@@ -3282,7 +3282,7 @@ verifying the block behind the port.
 |assertion |smc_ecc_fault_inject_test requires +smc_scratch_ram_hex
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `must_catch_w1w2`, `p2_phase_b`, `vplan_gaps`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `vplan_gaps`.
 
 '''''
 
@@ -3323,7 +3323,7 @@ verifying the block behind the port.
 |assertion |expected <value> value-checked SEP_IN AXI reads
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `batch_d`, `cpu_depth`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `cpu_depth`.
 
 '''''
 
@@ -3361,7 +3361,7 @@ verifying the block behind the port.
 |assertion |program_done never set on secure-error path
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `must_catch_w1w2`, `p2_phase_c`, `vplan_gaps`, `vplan_triplets`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `vplan_gaps`, `vplan_triplets`.
 
 '''''
 
@@ -3400,7 +3400,7 @@ verifying the block behind the port.
 |assertion |REFERENCE_COUNTER advanced faster than clk_ref_i:
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `batch_d`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`.
 
 '''''
 
@@ -3469,7 +3469,7 @@ verifying the block behind the port.
 |scoreboard |Every access is compared by the SYS_AXI scoreboard against its stated expectation
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `batch_d`, `project_p0`, `project_p0_triplets`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `project_p0`, `project_p0_triplets`.
 
 '''''
 
@@ -3541,7 +3541,7 @@ verifying the block behind the port.
 |assertion |<value>: STATUS_SMU=0x<value> want 0x<value> after <value> CSR poll(s)
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `batch_d`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`.
 
 '''''
 
@@ -3576,7 +3576,7 @@ verifying the block behind the port.
 |assertion |expected iJTAG precheck CSR access sequence
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `batch_c`, `canonical_top10`, `canonical_top20`, `project_p0`, `project_p0_triplets`, `pyuvm`, `smoke`, `vplan_triplets`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `project_p0`, `project_p0_triplets`, `pyuvm`, `smoke`, `vplan_triplets`.
 
 '''''
 
@@ -3616,7 +3616,7 @@ verifying the block behind the port.
 |assertion |dmstatus read as zero after dmactive
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `jtag_depth`, `p2_phase_b`, `p2_phase_c`, `project_p0_triplets`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `jtag_depth`, `project_p0_triplets`.
 
 '''''
 
@@ -3694,7 +3694,7 @@ verifying the block behind the port.
 |assertion |eFuse chip-config mismatch
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `batch_d`, `depth_efuse`, `project_p0_triplets`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `depth_efuse`, `project_p0_triplets`.
 
 '''''
 
@@ -3737,7 +3737,7 @@ verifying the block behind the port.
 |assertion |lc-decode cross-check handle <value> does
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `p2_phase_b`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`.
 
 '''''
 
@@ -3856,7 +3856,7 @@ verifying the block behind the port.
 |assertion |every SMC_EFUSE_MAP row expects the blocked signature, so no read
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `p1_coverage_gap`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`.
 
 '''''
 
@@ -3903,7 +3903,7 @@ verifying the block behind the port.
 |assertion |program_status is set after a program that was NOT fail-injected
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `must_catch_w1w2`, `p2_phase_c`, `vplan_gaps`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `vplan_gaps`.
 
 '''''
 
@@ -3939,7 +3939,7 @@ verifying the block behind the port.
 |assertion |CLOCK_GATE_CONTROL already held the probe pattern
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `batch_d`, `depth_efuse`, `project_p0_triplets`, `vplan_triplets`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `depth_efuse`, `project_p0_triplets`, `vplan_triplets`.
 
 '''''
 
@@ -3972,7 +3972,7 @@ verifying the block behind the port.
 |assertion |eFuse proxy read mismatch
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `batch_d`, `canonical_top20`, `project_p0`, `project_p0_triplets`, `pyuvm`, `smoke`, `vplan_triplets`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `project_p0`, `project_p0_triplets`, `pyuvm`, `smoke`, `vplan_triplets`.
 
 '''''
 
@@ -4087,7 +4087,7 @@ verifying the block behind the port.
 |scoreboard |Every access is compared by the SYS_AXI scoreboard against its stated expectation
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `p1_coverage_gap`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`.
 
 '''''
 
@@ -4123,7 +4123,7 @@ verifying the block behind the port.
 |assertion |GPIO_CTRL full sweep count mismatch: <value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `p1_coverage_gap`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`.
 
 '''''
 
@@ -4199,7 +4199,7 @@ verifying the block behind the port.
 |assertion |GPIO_INTF full sweep count mismatch
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `p1_coverage_gap_r3`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`.
 
 '''''
 
@@ -4234,7 +4234,7 @@ verifying the block behind the port.
 |assertion |GPIO/IRQ precheck: the scoreboard performed <value> exact value
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `batch_d`, `canonical_top20`, `gpio`, `project_p0_triplets`, `pyuvm`, `smoke`, `vplan_triplets`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `gpio`, `project_p0_triplets`, `pyuvm`, `smoke`, `vplan_triplets`.
 
 '''''
 
@@ -4959,7 +4959,7 @@ verifying the block behind the port.
 |assertion |I2C U4-2/SMBus incomplete:
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `batch_c`, `canonical_top10`, `canonical_top20`, `i2c`, `project_p0_triplets`, `pyuvm`, `smoke`, `vplan_triplets`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `i2c`, `project_p0_triplets`, `pyuvm`, `smoke`, `vplan_triplets`.
 
 '''''
 
@@ -4994,7 +4994,7 @@ verifying the block behind the port.
 |assertion |I2C multi-instance precheck count mismatch
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `p1_coverage_gap`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`.
 
 '''''
 
@@ -5461,7 +5461,7 @@ verifying the block behind the port.
 |assertion |SMBALERT# stayed low after ARA (expected hwclr)
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `batch_c`, `p2_phase_a`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`.
 
 '''''
 
@@ -5544,7 +5544,7 @@ verifying the block behind the port.
 |assertion |DUT Host Notify: frame does not end in STOP; last word
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `batch_c`, `p2_phase_a`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`.
 
 '''''
 
@@ -5582,7 +5582,7 @@ verifying the block behind the port.
 |assertion |SMBus PEC mismatch: got 0x<value>, expected 0x<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `batch_c`, `must_catch_w1w2`, `p2_phase_a`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`.
 
 '''''
 
@@ -5622,7 +5622,7 @@ verifying the block behind the port.
 |assertion |I3C HCI_VERSION mismatch: got 0x<value>,
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `batch_c`, `i3c_depth`, `project_p0_triplets`, `vplan_triplets`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `i3c_depth`, `project_p0_triplets`, `vplan_triplets`.
 
 '''''
 
@@ -5666,7 +5666,7 @@ verifying the block behind the port.
 |assertion |MAILBOX_DATA_ERROR: the scoreboard checked only
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `batch_b`, `mailbox_depth`, `project_p0_triplets`, `vplan_triplets`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `mailbox_depth`, `project_p0_triplets`, `vplan_triplets`.
 
 '''''
 
@@ -5735,7 +5735,7 @@ verifying the block behind the port.
 |assertion |mailbox field sweep mismatch: got <value>, expected <value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `p1_coverage_gap_r3`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`.
 
 '''''
 
@@ -5767,7 +5767,7 @@ verifying the block behind the port.
 |scoreboard |Every access is compared by the SYS_AXI scoreboard against its stated expectation
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `batch_b`, `project_p0`, `project_p0_triplets`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `project_p0`, `project_p0_triplets`.
 
 '''''
 
@@ -5801,7 +5801,7 @@ verifying the block behind the port.
 |assertion |mailbox inbound CSR sequence mismatch
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `p1_coverage_gap`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`.
 
 '''''
 
@@ -5838,7 +5838,7 @@ verifying the block behind the port.
 |assertion |mailbox CSR access sequence issued <value> accesses,
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `batch_b`, `canonical_top10`, `canonical_top20`, `canonical_top6`, `project_p0_triplets`, `pyuvm`, `smoke`, `vplan_triplets`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `project_p0_triplets`, `pyuvm`, `smoke`, `vplan_triplets`.
 
 '''''
 
@@ -5871,7 +5871,7 @@ verifying the block behind the port.
 |scoreboard |Every access is compared by the SYS_AXI scoreboard against its stated expectation
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `p1_coverage_gap_r2`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`.
 
 '''''
 
@@ -5908,7 +5908,7 @@ verifying the block behind the port.
 |assertion |SPI pad BFM READ preload mismatch: got <value>, expected <value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `batch_d`, `p2_phase_a`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`.
 
 '''''
 
@@ -6148,7 +6148,7 @@ verifying the block behind the port.
 |assertion |uart_log_engine_rw: <value> masked read-back
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `batch_d`, `depth_uart_log`, `vplan_triplets`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `depth_uart_log`, `vplan_triplets`.
 
 '''''
 
@@ -6181,7 +6181,7 @@ verifying the block behind the port.
 |assertion |UART VIP bind failed: <value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `batch_d`, `must_catch_w1w2`, `p2_phase_a`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`.
 
 '''''
 
@@ -6261,7 +6261,7 @@ verifying the block behind the port.
 |assertion |UART_MSR never reported CTS = <value> after this test drove
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `batch_d`, `canonical_top20`, `pyuvm`, `smoke`, `vplan_triplets`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`, `pyuvm`, `smoke`, `vplan_triplets`.
 
 '''''
 
@@ -6272,7 +6272,7 @@ verifying the block behind the port.
 |Metric |Count
 |Enrolled open-source testcases |153
 |Feature areas |15
-|Regression groups |39
+|Regression groups |25
 |===
 
 === Regression Groups
@@ -6284,12 +6284,6 @@ verifying the block behind the port.
 |`avsbus_depth` |2 |avsbus depth coverage
 |`axil` |2 |axil coverage
 |`balanced_ip` |99 |One-per-IP breadth run used for routine regression
-|`batch_b` |6 |batch b coverage
-|`batch_c` |7 |batch c coverage
-|`batch_d` |28 |batch d coverage
-|`canonical_top10` |8 |canonical top10 coverage
-|`canonical_top20` |17 |canonical top20 coverage
-|`canonical_top6` |5 |canonical top6 coverage
 |`clock` |10 |clock coverage
 |`combined` |5 |combined coverage
 |`cpu_depth` |4 |cpu depth coverage
@@ -6303,14 +6297,6 @@ verifying the block behind the port.
 |`irq` |10 |irq coverage
 |`jtag_depth` |2 |jtag depth coverage
 |`mailbox_depth` |1 |mailbox depth coverage
-|`must_catch_w1w2` |6 |must catch w1w2 coverage
-|`p1_coverage_gap` |7 |p1 coverage gap coverage
-|`p1_coverage_gap_r2` |2 |p1 coverage gap r2 coverage
-|`p1_coverage_gap_r3` |3 |p1 coverage gap r3 coverage
-|`p1_coverage_gap_r4` |3 |p1 coverage gap r4 coverage
-|`p2_phase_a` |6 |p2 phase a coverage
-|`p2_phase_b` |3 |p2 phase b coverage
-|`p2_phase_c` |4 |p2 phase c coverage
 |`project_p0` |13 |project p0 coverage
 |`project_p0_triplets` |38 |project p0 triplets coverage
 |`pyuvm` |35 |Scenarios with a PyUVM implementation

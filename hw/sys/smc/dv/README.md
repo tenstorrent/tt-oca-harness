@@ -19,7 +19,7 @@ I3C CCC/IBI / real-core protocol, adopter PLL/PVT OKAY wraps, and TB-glue
 demos (e.g. hardcoded DFD capture token) are not ported
 — not reportable as feature PASS. `smc_i3c_to_fabric_test` is
 **decode only** (fabric → real OCA core `HCI_VERSION`) and is **not**
-in `smoke`, `canonical_top*`, or `project_p0`. Run it via `i3c_depth`
+in `smoke` or `project_p0`. Run it via `i3c_depth`
 or by name. Checklist:
 
 **`allow_timeout` review gate:** default `False`. New `allow_timeout=True`

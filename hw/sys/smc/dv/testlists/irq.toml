@@ -98,3 +98,14 @@ tests = [
     "smc_temp_interrupt_test",
     "smc_ext_interrupts_pin_test",
 ]
+
+[[tests]]
+name = "smc_mailbox_irq_test"
+module = "smc_mailbox_irq_test"
+seed = 1
+timeout_sec = 1800
+tags = [
+    "smoke", "ci", "axil", "canonical",
+    "pyuvm"
+]
+run_modes = ["smoke"]

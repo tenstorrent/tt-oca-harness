@@ -5,8 +5,27 @@ schema_version = 1
 # Aggregate testlist: merges all per-feature testlists. The DUT sim_cfg
 # points at this file so `--tag smoke` resolves across every leaf list.
 # Mirrors the shared all.toml convention.
-#
-includes = ["reset.toml", "i2c.toml", "uart.toml", "clock.toml", "irq.toml", "gpio.toml", "axil.toml", "combined.toml", "batch_b.toml", "batch_c.toml", "batch_d.toml", "occp_boot.toml", "dual.toml", "vplan_triplets.toml", "p1_coverage_gap.toml", "p1_coverage_gap_r2.toml", "p1_coverage_gap_r3.toml", "p1_coverage_gap_r4.toml"]
+includes = [
+    "axil.toml",
+    "clock.toml",
+    "combined.toml",
+    "cpu.toml",
+    "dual.toml",
+    "efuse.toml",
+    "fabric.toml",
+    "gpio.toml",
+    "i2c.toml",
+    "irq.toml",
+    "jtag.toml",
+    "mailbox.toml",
+    "occp_boot.toml",
+    "power.toml",
+    "register.toml",
+    "reset.toml",
+    "spi.toml",
+    "uart.toml",
+    "vplan_triplets.toml",
+]
 
 [[groups]]
 name = "all"
@@ -281,51 +300,6 @@ tests = [
 ]
 
 [[groups]]
-name = "canonical_top6"
-tests = [
-    "smc_canonical_smoke_test",
-    "smc_register_sanity_test",
-    "smc_default_reg_rd_test",
-    "smc_mailbox_irq_test",
-    "smc_input_output_fabric_wr_rd_test",
-]
-
-[[groups]]
-name = "canonical_top10"
-tests = [
-    "smc_canonical_smoke_test",
-    "smc_register_sanity_test",
-    "smc_default_reg_rd_test",
-    "smc_mailbox_irq_test",
-    "smc_flr_sanity_test",
-    "smc_i2c_master_target_test",
-    "smc_ijtag_basic_test",
-    "smc_input_output_fabric_wr_rd_test",
-]
-
-[[groups]]
-name = "canonical_top20"
-tests = [
-    "smc_canonical_smoke_test",
-    "smc_register_sanity_test",
-    "smc_default_reg_rd_test",
-    "smc_mailbox_irq_test",
-    "smc_flr_sanity_test",
-    "smc_i2c_master_target_test",
-    "smc_ijtag_basic_test",
-    "smc_input_output_fabric_wr_rd_test",
-    "smc_cpu_to_sep_axi_test",
-    "smc_efuse_otp_clock_test",
-    "smc_gpio_irq_active_test",
-    "smc_sideband_protocol_smoke_test",
-    "smc_uart_spi_log_engine_test",
-    "smc_zeroer_dma_timeout_test",
-    "smc_output_filter_remap_security_test",
-    "smc_ecc_dfd_dbs_sanity_test",
-    "smc_multi_reset_csr_persistence_test",
-]
-
-[[groups]]
 name = "project_p0"
 tests = [
     "smc_cold_reset_test",
@@ -384,45 +358,6 @@ tests = [
     "smc_avsbus_clock_config_proxy_test",
     "smc_dbs_idle_test",
     "smc_ecc_dfd_dbs_sanity_test",
-]
-
-[[groups]]
-name = "p2_phase_a"
-tests = [
-    "smc_smbus_pmbus_test",
-    "smc_smbus_hostnotify_test",
-    "smc_smbus_alert_ara_test",
-    "smc_uart_loopback_test",
-    "smc_spi_pad_bfm_test",
-    "smc_octs_dual_sync_test",
-]
-
-[[groups]]
-name = "p2_phase_b"
-tests = [
-    "smc_efuse_jtag_lc_access_matrix_test",
-    "smc_ecc_fault_inject_test",
-    "smc_jtag_dmi_smoke_test",
-]
-
-[[groups]]
-name = "must_catch_w1w2"
-tests = [
-    "smc_cpu_firmware_boot_test",
-    "smc_efuse_otp_burn_shadow_test",
-    "smc_occp_sanity_secure_error_test",
-    "smc_ecc_fault_inject_test",
-    "smc_uart_loopback_test",
-    "smc_smbus_pmbus_test",
-]
-
-[[groups]]
-name = "p2_phase_c"
-tests = [
-    "smc_jtag_dmi_smoke_test",
-    "smc_cpu_firmware_boot_test",
-    "smc_efuse_otp_burn_shadow_test",
-    "smc_occp_sanity_secure_error_test",
 ]
 
 [[groups]]

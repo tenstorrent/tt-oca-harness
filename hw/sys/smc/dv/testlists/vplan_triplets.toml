@@ -71,7 +71,7 @@ name = "smc_efuse_jtag_lc_access_matrix_test"
 module = "smc_efuse_jtag_lc_access_matrix_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "vplan_gap", "jtag_depth", "p2_phase_b", "pyuvm"]
+tags = ["ci", "vplan_gap", "jtag_depth", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -212,7 +212,7 @@ name = "smc_occp_sanity_secure_error_test"
 module = "smc_occp_sanity_secure_error_test"
 seed = 1
 timeout_sec = 3600
-tags = ["ci", "vplan_gap", "cpu_depth", "p2_phase_c", "u7_secure", "pyuvm"]
+tags = ["ci", "vplan_gap", "cpu_depth", "u7_secure", "pyuvm"]
 run_modes = ["smoke"]
 args = [
     "+smc_efuse_hex={repo_root}/hw/sys/smc/dv/assets/smc_efuse_default.hex",
@@ -224,7 +224,7 @@ name = "smc_efuse_otp_burn_shadow_test"
 module = "smc_efuse_otp_burn_shadow_test"
 seed = 1
 timeout_sec = 3600
-tags = ["ci", "vplan_gap", "p2_phase_c", "u7_otp", "pyuvm"]
+tags = ["ci", "vplan_gap", "u7_otp", "pyuvm"]
 run_modes = ["smoke"]
 args = [
     "+smc_efuse_hex={repo_root}/hw/sys/smc/dv/assets/smc_efuse_default.hex",
@@ -236,7 +236,7 @@ name = "smc_ecc_fault_inject_test"
 module = "smc_ecc_fault_inject_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "vplan_gap", "p2_phase_b", "u7_ecc", "pyuvm"]
+tags = ["ci", "vplan_gap", "u7_ecc", "pyuvm"]
 run_modes = ["smoke"]
 # Scratch-bank0 inject fire needs live CPU fetch of a preloaded scratch image.
 # Hold boot until the seq arms inject + programs the scratch reset vector.
@@ -255,7 +255,7 @@ name = "smc_ecc_codeword_sec_test"
 module = "smc_ecc_codeword_sec_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "vplan_gap", "p2_phase_b", "u7_ecc", "pyuvm"]
+tags = ["ci", "vplan_gap", "u7_ecc", "pyuvm"]
 run_modes = ["smoke"]
 args = [
     "+skip_fuse_sense",
@@ -271,7 +271,7 @@ name = "smc_ecc_codeword_ded_test"
 module = "smc_ecc_codeword_ded_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "vplan_gap", "p2_phase_b", "u7_ecc", "pyuvm"]
+tags = ["ci", "vplan_gap", "u7_ecc", "pyuvm"]
 run_modes = ["smoke"]
 args = [
     "+skip_fuse_sense",

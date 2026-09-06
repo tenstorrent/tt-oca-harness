@@ -63,3 +63,33 @@ tests = [
     "smc_uart_extremes_misc_test",
     "smc_uart_sanity_test",
 ]
+
+[[tests]]
+name = "smc_uart_spi_log_engine_test"
+module = "smc_uart_spi_log_engine_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smoke", "ci", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_uart_log_engine_reg_rw_test"
+module = "smc_uart_log_engine_reg_rw_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "depth_uart_log", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_uart_loopback_test"
+module = "smc_uart_loopback_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "depth_uart_log", "pyuvm"]
+run_modes = ["smoke"]
+
+[[groups]]
+name = "depth_uart_log"
+tests = [
+    "smc_uart_log_engine_reg_rw_test",
+]
