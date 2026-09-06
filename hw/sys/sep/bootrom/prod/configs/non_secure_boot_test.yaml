@@ -66,7 +66,7 @@ primary:
       version: 1
       offset: 0x1000
       description: "OCAH SEP BL1 test (bl1_pass_test)"
-      entry_point: 0x01000000
+      entry_point: 0xC0000000  # equals sep_iram_base, so the packed offset is 0
       file_path: "$OCH_ROOT/fw/tests/bl1_pass_test/build/bl1_pass_test.bin"
   spi:
     description: "SPI TLV for OCAH SEP (keep_default_init)"

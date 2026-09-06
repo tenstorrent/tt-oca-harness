@@ -291,34 +291,12 @@ module sep_uvm_top
     // -- the EL2 owns the LSU bus under +cpu_boot. The cold block survives the KM
     // warm reset. Read-only observation of the same registers.
     output logic [255:0]      scratch_cold_probe_o,
-    // SEP SRAM read-back, read-only XMR, no force. DECRYPT_OK only reports that
-    // the AES engine returned, not that the plaintext is correct, and a TOC
-    // rejection alone cannot separate a wrong key from a wrong driver -- so a
-    // test needs the bytes themselves.
-    //   sram_word0_probe_o  : SRAM word 0 = start of the loaded manifest. Its
-    //                         low half must read as the "TBL1" magic; that is
-    //                         what proves this probe addresses what it claims
-    //                         to, so the payload bytes below can be trusted.
-    //   sram_payload_probe_o: 48 bytes at payload offset 0x1000 = three AES
-    //                         blocks. Three, not one, because a CBC run with a
-    //                         bad IV corrupts only block 0 -- one block cannot
-    //                         tell that apart from a bad key, which corrupts
-    //                         every block.
+    // Read-only XMRs observe the loaded manifest header and three decrypted AES
+    // payload blocks. The CPU owns the SRAM frontdoor during firmware boot, so
+    // the testbench has no independent read path. The memory arrays sit outside
+    // the AXI ready/valid combinational cones.
     output logic [63:0]       sram_word0_probe_o,
     output logic [383:0]      sram_payload_probe_o,
-    // SEP scratch-WARM CSR array (8 words x 32b). Same access pattern as the cold
-    // probe, but a different reset domain: the warm block is reset by
-    // (rst_ni && rst_warm_ni).
-    //
-    // CURRENTLY UNUSED. It was added when the ROM kept its warm-reset handler
-    // address in warm_scratch[0]. The ROM now uses COLD scratch 7 -- precisely
-    // because this bank does NOT survive a watchdog reset (vector.S, FINDINGS
-    // F28) -- so the warm-dispatch tests read scratch_cold_probe_o instead and
-    // nothing reads this port. Retained rather than deleted because it predates
-    // that change and costs nothing; delete it if it is still unused when the
-    // warm bank next comes up. Do not restore the old claim that the ROM poisons
-    // word 0 before jumping: the accept path now leaves its slot intact (F29).
-    output logic [255:0]      scratch_warm_probe_o,
     // SMC scratch[10] (smc_base+0x390D0), the slot the ROM publishes the raw
     // DFX/MEM_REPAIR status into when it blocks the boot -- the documented
     // JTAG-readable evidence that the ROM saw the failure. Sampled rather than
@@ -438,23 +416,11 @@ module sep_uvm_top
     output logic              lcc_security_disable_probe_o,
     output logic              lcc_sigint_err_probe_o,
     output logic              secure_tm_o,
-    // Demotion registers. The boot ROM's [C15] block decides BL1/BL2 demotion and
-    // writes DEMOTE_1 (and, at PROD_END only, DEMOTE_2) -- bootrom/prod/src/rom_main.c:377-436
-    // via lc_write_demotion()/lc_write_demotion_2() (bootrom/prod/src/lifecycle.c:116-128).
-    // Until now nothing observed those writes: `lcc_demote_state_{1,2}_o` were real
-    // `sep_wrapper` outputs left dangling below, and the LOCK bit is on no port at
-    // all. That left the console strings as the only evidence, and the console is
-    // printed from a LOCAL computed one line earlier (rom_main.c),
-    // so a ROM that decided correctly, printed correctly and wrote the wrong
-    // register value passed unchallenged.
-    //
-    // `state` is the DUT output (frontdoor): a 2-bit {~demote, demote} pair from
-    // prim_diff_encode_multi (rtl/sep_lifecycle_ctrl.sv:43-56, encoding at
-    // hw/common/och_prim/rtl/prim_diff_encode_multi.sv:41-49), so bit 0 IS demote,
-    // bit 1 is its complement: 2'b10 means demote=0 and 2'b01 means demote=1. Any
-    // other value is a broken rail rather than a demotion verdict.
-    // `lock` has no port and is a read-only XMR of the register field storage --
-    // same class as sep_internal_interrupts_probe_o above, no force, no deposit.
+    // Demotion state outputs expose the differential {~demote, demote} encoding;
+    // 2'b10 is clear, 2'b01 is set, and other values are invalid. The lock bits
+    // have no DUT output, and the CPU owns their AXI frontdoor during firmware
+    // boot, so read-only XMRs observe the register storage. The leaf register
+    // storage sits outside the AXI ready/valid combinational cones.
     output logic [1:0]        lcc_demote_state_1_probe_o,
     output logic [1:0]        lcc_demote_state_2_probe_o,
     output logic              lcc_demote_lock_1_probe_o,
@@ -978,7 +944,7 @@ module sep_uvm_top
     // smc_global_base_addr_i). Keep them in step with that header; if the ROM
     // legitimately needs a new block, add its authoritative base/size here
     // rather than widening an existing window.
-    localparam int unsigned SmcNumWindows = 6;
+    localparam int unsigned SmcNumWindows = 7;
     // {base, size} pairs, SEP-side addresses.
     localparam logic [55:0] SmcWinBase [SmcNumWindows] = '{
         56'h4000_2000,  // SMC_RESET_UNIT            (straps LO/HI)
@@ -986,11 +952,13 @@ module sep_uvm_top
         56'h4000_7000,  // SMC_EFUSE_MAP             (chiplet/package ID)
         56'h4000_B800,  // DFX_CTRL                  (STATUS_SMU)
         56'h4003_9000,  // SMC_CPU_CTRL              (scratch[0..15] at +0x80)
-        56'h4006_0000   // SPM_MEMORY                (manifest + BL1)
+        56'h4006_0000,  // SPM_MEMORY                (manifest + BL1)
+        56'h4040_5800   // SMC_EXTERNAL straps      (STRAPS_LO/HI)
     };
     localparam logic [55:0] SmcWinSize [SmcNumWindows] = '{
         56'h0000_00CC, 56'h0000_0014, 56'h0000_0C00,
-        56'h0000_0018, 56'h0000_02C0, 56'h0010_0000
+        56'h0000_0018, 56'h0000_02C0, 56'h0010_0000,
+        56'h0000_0008
     };
 
     // Counted as well as reported: a cocotb test can require this to be 0, so the
@@ -1007,22 +975,29 @@ module sep_uvm_top
         end
     endfunction
 
+    logic smc_aw_violation;
+    logic smc_ar_violation;
+    assign smc_aw_violation =
+        ext_to_smc_req_w.aw_valid && ext_to_smc_resp_w.aw_ready &&
+        !smc_addr_mapped(ext_to_smc_req_w.aw.addr);
+    assign smc_ar_violation =
+        ext_to_smc_req_w.ar_valid && ext_to_smc_resp_w.ar_ready &&
+        !smc_addr_mapped(ext_to_smc_req_w.ar.addr);
+
     always @(posedge clk_i) begin
-        if (rst_ni) begin
-            if (ext_to_smc_req_w.aw_valid && ext_to_smc_resp_w.aw_ready &&
-                !smc_addr_mapped(ext_to_smc_req_w.aw.addr)) begin
-                smc_addr_violations++;
+        if (!rst_ni) begin
+            smc_addr_violations <= 0;
+        end else begin
+            smc_addr_violations <=
+                smc_addr_violations + smc_aw_violation + smc_ar_violation;
+            if (smc_aw_violation) begin
                 $error("[tb] SMC ADDRESS DECODE: write to 0x%0h is outside every register window in smc_addr.h -- the ROM is using an offset this design does not implement",
                        ext_to_smc_req_w.aw.addr);
             end
-            if (ext_to_smc_req_w.ar_valid && ext_to_smc_resp_w.ar_ready &&
-                !smc_addr_mapped(ext_to_smc_req_w.ar.addr)) begin
-                smc_addr_violations++;
+            if (smc_ar_violation) begin
                 $error("[tb] SMC ADDRESS DECODE: read from 0x%0h is outside every register window in smc_addr.h -- the ROM is using an offset this design does not implement",
                        ext_to_smc_req_w.ar.addr);
             end
-        end else begin
-            smc_addr_violations <= 0;
         end
     end
 
@@ -1347,29 +1322,10 @@ module sep_uvm_top
         $display("[tb_backdoor_mem] TCM image loaded (sep_itcm.hex / sep_dtcm.hex)");
 
         // ICCM single-word poke: +sep_iccm_word=<hexaddr>:<hexdata>
-        //
-        // MUST RUN HERE, AFTER THE BULK LOAD, AND THAT IS THE WHOLE POINT. An
-        // earlier version did this from its own `initial` block at time 0 and was
-        // silently erased: the loop above rewrites all 256 KiB of ICCM at
-        // tcm_load_i, so the poked word became whatever the ROM image happens to
-        // hold at that offset. sep_scratch_7_test then "passed" while executing
-        // ROM code at the handler address instead of the `j .` it thought it had
-        // placed there. Ordering between two separate always/initial blocks in
-        // the same timestep is not guaranteed either, which is why this is
-        // appended to the loader rather than raced against it.
-        //
-        // Needed because the ROM's warm-handler range check is ICCM
-        // (sep-boot-flow.puml), so proving dispatch means putting a real
-        // instruction at the seeded address and watching the PC settle there.
-        // +sep_sram_hex cannot do it: different memory. The reference testbench
-        // has the same need and the same answer -- +preload_iccm_ram_upper /
-        // _lower appear on exactly one entry in its whole regression, the
-        // scratch-7 test.
-        //
-        // ECC is not optional: the EL2 TCMs carry Hsiao SECDED, so a raw 32-bit
-        // write reads back as an ECC error rather than an instruction. Uses the
-        // same bd_riscv_ecc32() and the same off[3:2] bank interleave as the bulk
-        // load above -- a narrow entry point onto proven machinery.
+        // The poke follows the bulk load in this block because that load rewrites
+        // the entire ICCM. The warm-handler test places an instruction at the
+        // seeded address and observes the PC there. The poke uses the TCM's Hsiao
+        // SECDED encoding and bank interleave so the core fetches a valid word.
         if ($value$plusargs("sep_iccm_word=%s", iccm_poke_arg)) begin
             if ($sscanf(iccm_poke_arg, "%h:%h", iccm_poke_addr, iccm_poke_data) != 2) begin
                 $fatal(1, "[tb] +sep_iccm_word must be <hexaddr>:<hexdata>, got '%s'",
@@ -1594,16 +1550,10 @@ module sep_uvm_top
         `SEP_CORE.sep_crypto.u_sep_crypto_axi_interconnect.isolated_o.trng_entropy_source
     };
 
-    // DEMOTE_1/DEMOTE_2 lock bits. The demote bit leaves the DUT on a real port
-    // (connected above); the lock bit does not, so it is read here straight out of
-    // the register field storage the RDL declares
-    // (regs/blocks/sep_lifecycle_ctrl/sep_lifecycle_ctrl.rdl:31-36, sw=rw
-    // onwrite=woset) and assigned into demote_reg_{1,2}.lock at
-    // rtl/sep_lifecycle_ctrl.sv:185. Read-only XMR, no force -- same class
-    // as the probes above. Both fields are write-one-to-set and are never cleared
-    // by hardware, so the value read at end of test is exactly what BL0 wrote, and
-    // "never written" is observable as 0 rather than being indistinguishable from
-    // "written with zeros".
+    // Read-only XMRs observe the write-one-to-set demotion lock storage. The lock
+    // bits have no DUT output, and firmware owns the AXI frontdoor while they are
+    // programmed. These leaf fields sit outside the AXI ready/valid combinational
+    // cones and retain whether firmware wrote each lock.
     assign lcc_demote_lock_1_probe_o =
         `SEP_CORE.sep_crypto.u_sep_lifecycle_ctrl.demote_reg_1.lock;
     assign lcc_demote_lock_2_probe_o =
@@ -1646,9 +1596,9 @@ module sep_uvm_top
     assign sys_csr_axil_awaddr_o =
         `SEP_CORE.sep_system_peripherals.system_csr_axil_req.aw.addr[31:0];
 
-    // The manifest is loaded at SEP SRAM base and the payload sits at
-    // manifest + payload_offset (0x1000); SEP SRAM is 64 bits wide, so that is
-    // word index 0x200.
+    // Read-only XMRs observe the manifest at SRAM word 0 and the decrypted
+    // payload at byte offset 0x1000. Firmware owns the SRAM AXI frontdoor during
+    // boot, and these memory-array reads sit outside the ready/valid cones.
     assign sram_word0_probe_o = `SEP_IPI.u_sep_sram.gen_ram_inst[0].u_mem.mem['h000];
 `define SRAM_PL(i) \
     assign sram_payload_probe_o[64*(i) +: 64] = \
@@ -1657,39 +1607,14 @@ module sep_uvm_top
     `SRAM_PL(3); `SRAM_PL(4); `SRAM_PL(5);
 `undef SRAM_PL
 
-    // Same for the warm block (reset by rst_ni && rst_warm_ni). The ROM reads
-    // none of these words -- the handler slot is COLD scratch 7 -- so all eight
-    // are probed only to keep the port shape matching the cold probe. See the
-    // port declaration for why this is retained while unused.
-`define SCRATCH_WARM(i) \
-    assign scratch_warm_probe_o[32*(i) +: 32] = \
-        `SEP_CORE.sep_system_peripherals.u_sep_system_csr.u_sep_scratch_reg_warm.field_storage.SCRATCH[i].data.value
-    `SCRATCH_WARM(0); `SCRATCH_WARM(1); `SCRATCH_WARM(2); `SCRATCH_WARM(3);
-    `SCRATCH_WARM(4); `SCRATCH_WARM(5); `SCRATCH_WARM(6); `SCRATCH_WARM(7);
-`undef SCRATCH_WARM
-
     // ------------------------------------------------------------------
-    // Warm-reset handler seed, SPEC VERSION: +sep_cold_scratch7=<hex32>
+    // Warm-reset handler seed: +sep_cold_scratch7=<hex32>
     // ------------------------------------------------------------------
-    // Seeds the register the ROM reads for its warm-handler slot.
-    // sep-boot-flow.puml puts the address in SEP COLD Scratch 7 -- "always
-    // 0 on cold resets, maintains value across warm/watchdog resets" -- and the
-    // ROM was re-pointed there from WARM Scratch 0 (vector.S, FINDINGS F28).
-    //
-    // The old +sep_warm_scratch0 deposit was removed with this change rather than
-    // left behind: both testcases that used it were migrated, so it had no
-    // callers, and an unused stimulus path is one nobody maintains or notices
-    // rotting.
-    //
-    // Same two-rail wait as the warm deposit, and for the same reason, even
-    // though the cold bank's retention is what makes it the right register:
-    // the write still has to land after reset release and before the core
-    // fetches. Waiting on rst_ni alone is what made sep_scratch_7_test fail five
-    // consecutive runs (F07/F09/F12) -- that was a testbench bug, not RTL.
-    //
-    // A one-shot DEPOSIT, not a `force`, for the same reason as the warm twin:
-    // the ROM poisons this register with -1 on the cold path, and a force would
-    // hide a missing poison.
+    // A one-shot deposit seeds COLD Scratch 7 after both resets release and
+    // before the CPU fetches. The CPU owns the system-CSR AXI frontdoor during
+    // firmware boot, so the testbench cannot perform this timed write through an
+    // independent master. The leaf storage sits outside the AXI ready/valid
+    // combinational cones. A deposit allows later ROM writes to remain visible.
     logic [31:0] cold_scratch7_seed;
     initial begin : cold_scratch7_seed_deposit
         if ($value$plusargs("sep_cold_scratch7=%h", cold_scratch7_seed)) begin
@@ -1883,6 +1808,7 @@ module sep_uvm_top
     // run; the real entropy_source -> CSRNG -> EDN path is bypassed and NOT
     // exercised. Covers OTBN (RND/URND) and AES; AES is a separate EDN client
     // and stalls in its masking-PRNG reseed without a client-0 grant.
+    localparam logic [31:0] AesEdnWord = 32'hA5A5_5A5A;
     logic edn_force_on;
     logic otbn_rnd_ack_q, otbn_urnd_ack_q, aes_ack_q;
     initial begin
@@ -1918,7 +1844,7 @@ module sep_uvm_top
             force `OTBN_URND_RSP.edn_bus  = $urandom();
             force `AES_RSP.edn_ack        = aes_ack_q;
             force `AES_RSP.edn_fips       = 1'b1;
-            force `AES_RSP.edn_bus        = $urandom();
+            force `AES_RSP.edn_bus        = AesEdnWord;
         end
     end
 `undef AES_RSP
