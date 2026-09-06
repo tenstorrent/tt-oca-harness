@@ -26,13 +26,13 @@ MOD="${OCAH_DOC_PRODUCT_MODULES:-$PRODUCT/modules}"
 ASSETS="${OCAH_DOC_PRODUCT_ASSETS:-$PRODUCT/assets}"
 COMMON_ASSETS="$DOC/trm/assets"
 
-SUBSYSTEMS="smc sep dtp"
+SUBSYSTEMS="smc sep dtp smu"
 PORT_TABLE_SYS="smc sep dtp smu"
-MODULES="ROOT smc sep dtp ip"
+MODULES="ROOT smc sep dtp smu ip"
 
 clean() {
   rm -rf "$MOD/ROOT/pages" "$MOD/ROOT/partials/hw" "$MOD/ROOT/assets"
-  for m in smc sep dtp ip; do
+  for m in smc sep dtp smu ip; do
     rm -rf "${MOD:?}/$m"
   done
   # Remove only the gitignored image copies staged into product assets.
@@ -104,6 +104,12 @@ for s in $SUBSYSTEMS; do
   stage_gen_html "$ROOT/hw/sys/$s/regs/gen/html" "$MOD/$s/partials/$s/regs/gen/html"
   stage_gen_adoc "$ROOT/hw/sys/$s/dv/models/regs/gen/adoc" "$MOD/$s/partials/$s/dv/models/regs/gen/adoc"
   stage_gen_html "$ROOT/hw/sys/$s/dv/models/regs/gen/html" "$MOD/$s/partials/$s/dv/models/regs/gen/html"
+done
+# port_table.adoc files are private fragments used only by the ROOT partial
+# (for the Integrator Guide). Remove them from smu/pages/ (and any other
+# subsystem pages/ that picked them up) to prevent Untitled standalone URLs.
+for s in $SUBSYSTEMS; do
+  rm -f "$MOD/$s/pages/port_table.adoc"
 done
 
 # --- ip: collapse every hw/ip/<ip>/doc under <ip>/doc, partials per IP. Register

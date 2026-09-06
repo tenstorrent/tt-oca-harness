@@ -28,6 +28,10 @@ ifndef::release[]
 endif::release[]
 * xref:about-ocah.adoc[About OCAH] - Learn about OCAH motivation, overview, and use cases
 * xref:architecture.adoc[OCAH Architecture & Design] - Detailed architecture and design documentation
+* xref:smu:index.adoc[System Management Unit] - SMU composition, AXI crossbar and child subsystems
+** xref:sep:index.adoc[Security Processor (SEP)]
+** xref:smc:index.adoc[System Management Controller (SMC)]
+** xref:dtp:index.adoc[Debug & Test Ports (DTP)]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
@@ -36,5 +40,21 @@ ifndef::release[]
 include::revision.adoc[]
 endif::release[]
 include::about-ocah.adoc[leveloffset=+1]
-include::architecture.adoc[]
+
+= OCAH Platform Architecture
+include::architecture.adoc[leveloffset=+1]
+
+= System Management Unit
+// SMU landing page: = Title → == (chapter)
+include::../../../hw/sys/smu/doc/index.adoc[leveloffset=+1]
+
+// SEP: existing index starts with == (no = Title); offset 0 keeps == as chapter.
+include::../../../hw/sys/sep/doc/index.adoc[leveloffset=0]
+
+// SMC: existing index starts with == (no = Title); offset 0 keeps == as chapter.
+include::../../../hw/sys/smc/doc/index.adoc[leveloffset=0]
+
+// DTP: existing index starts with == (no = Title); offset 0 keeps == as chapter.
+// The DTP pilot will add = Title and switch this edge to leveloffset=+1.
+include::../../../hw/sys/dtp/doc/index.adoc[leveloffset=0]
 endif::backend-pdf[]
