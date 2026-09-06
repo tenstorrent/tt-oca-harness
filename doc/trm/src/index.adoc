@@ -30,8 +30,12 @@ This documentation is organized into the following sections:
 ifndef::release[]
 * xref:revision.adoc[Internal Revision History] - Track internal revisions and updates to the OCAH documentation
 endif::release[]
-* xref:architecture.adoc[OCAH Architecture & Design] - Subsystem composition, memory map, clocks, reset, and per-block microarchitecture
-* xref:dashboard.adoc[Verification Dashboard] - Block-level verification status
+* xref:architecture.adoc[OCAH Architecture & Design] - Detailed architecture and design documentation
+* xref:smu:index.adoc[System Management Unit] - SMU composition, AXI crossbar and child subsystems
+** xref:sep:index.adoc[Security Processor (SEP)]
+** xref:smc:index.adoc[System Management Controller (SMC)]
+** xref:dtp:index.adoc[Debug & Test Ports (DTP)]
+* xref:dashboard.adoc[Verification Dashboard]
 endif::backend-html5[]
 
 ifdef::backend-pdf[]
@@ -39,5 +43,25 @@ ifdef::backend-pdf[]
 ifndef::release[]
 include::revision.adoc[]
 endif::release[]
-include::architecture.adoc[]
+= OCAH Platform Architecture
+include::architecture.adoc[leveloffset=+1]
+
+= System Management Unit
+// SMU landing page: = Title → == (chapter)
+include::../../../hw/sys/smu/doc/index.adoc[leveloffset=+1]
+
+// SEP: existing index starts with == (no = Title); offset 0 keeps == as chapter.
+include::../../../hw/sys/sep/doc/index.adoc[leveloffset=0]
+
+// SMC: existing index starts with == (no = Title); offset 0 keeps == as chapter.
+include::../../../hw/sys/smc/doc/index.adoc[leveloffset=0]
+
+// DTP: existing index starts with == (no = Title); offset 0 keeps == as chapter.
+// The DTP pilot will add = Title and switch this edge to leveloffset=+1.
+include::../../../hw/sys/dtp/doc/index.adoc[leveloffset=0]
+
+= OCAH Platform Components
+// SMN/AoU: placeholder Setext headings render as == chapters at offset 0.
+include::smn.placeholder.adoc[leveloffset=0]
+include::aou.adoc[leveloffset=+1]
 endif::backend-pdf[]

@@ -1,0 +1,22 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= AXI-over-UCIe Bridge (AoU)
+
+[[axi-over-ucie-bridge]]
+ifdef::backend-pdf[]
+:aou-imagesdir: {docdir}/../../../vendor/tenstorrent/aou/upstream/DOC/MAS/assets
+include::../../../vendor/tenstorrent/aou/upstream/DOC/MAS/index.adoc[leveloffset=0]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+// The MAS's own internal cross-references (e.g. "see Section 6.4") now land
+// in the Integrator Guide and Programmer's Guide, not this chapter, because
+// their content was split by audience across three products. For PDF,
+// everything is one include tree, so the vendored source's own same-file
+// defaults (integration.adoc/software-operation.adoc) resolve directly. For
+// HTML, each product is a separate Antora component, so the same reference
+// has to name the sibling component's page instead.
+:aou-integration-xref: ocah-integrator-guide:ROOT:aou.adoc
+:aou-software-xref: ocah-programmer-guide:ROOT:index.adoc
+include::aou:partial$index.adoc[leveloffset=0]
+endif::backend-html5[]

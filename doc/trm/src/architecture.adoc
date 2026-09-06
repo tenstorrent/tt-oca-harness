@@ -72,33 +72,15 @@ relationship between the subsystems described above.
 .OCAH Top-Level Block Diagram
 image::ocah_top.png[OCAH Top-Level Block Diagram,scaledwidth=100.0%]
 
+// The smu-axi-crossbar section has moved to the SMU chapter.
+// HTML-only compatibility block: old anchor + onward link preserved.
+// PDF assembly includes the authoritative content from smu/index.adoc;
+// this block is ifdef-guarded to prevent a duplicate PDF destination.
+ifdef::backend-html5[]
 [[smu-axi-crossbar]]
-==== SMU AXI Crossbar
-
-Inside the SMU, the `smu_axi_xbar` module is the system-level
-arbitration fabric between SEP, SMC, and the rest of the chiplet
-(reached through the `smu_axi_in` / `smu_axi_out` boundary pair). It is
-a 3x3 AXI4 crossbar with non-reflexive connectivity: each master can
-reach the other two subordinates but never its own inbound port.
-
-.SMU AXI crossbar ports
-[cols="<22%,<22%,<56%",options="header"]
-|===
-|Master (from) |Subordinate (to) |Purpose
-
-|`sep_out` |`smc_in`  |SEP-initiated transactions into SMC resources
-|`sep_out` |`ext_out` |SEP-initiated transactions leaving the SMU
-|`smc_out` |`sep_in`  |SMC-initiated transactions into SEP resources
-|`smc_out` |`ext_out` |SMC-initiated transactions leaving the SMU
-|`ext_in`  |`sep_in`  |External transactions targeting SEP
-|`ext_in`  |`smc_in`  |External transactions targeting SMC
-|===
-
-Routing decisions use a runtime address map with two programmable
-rules (SEP and SMC apertures) and one static catch-all (`ext_out`).
-See <<ocah-memory-map,OCAH Memory Map>> for the fixed-vs-programmable
-split and the reference envelope convention, and see the SMU AXI Crossbar
-Address Map section in the Integrator Guide for firmware programming order.
+_The SMU AXI Crossbar section has moved to the System Management Unit chapter._
+See xref:smu:index.adoc#smu-axi-crossbar[SMU AXI Crossbar].
+endif::backend-html5[]
 
 [[ocah-memory-map]]
 === OCAH Memory Map
@@ -351,55 +333,39 @@ endif::backend-pdf[]
 For integration-level reset procedures, refer to the Integrator Guide.
 
 // ============================================================================
-// Per-subsystem deep dives
+// HTML-only compatibility anchors for displaced subsystem fragments.
+// These old in-page anchors now resolve to standalone subsystem pages.
+// PDF assembly places authoritative content from the SMU part (src/index.adoc);
+// all compat blocks are ifdef-guarded to prevent duplicate PDF destinations.
 // ============================================================================
 
-// SEP
+// HTML-only compatibility anchors for subsystem pages that moved.
+// PDF assembly places authoritative content in the SMU part; these blocks
+// are ifdef-guarded to prevent duplicate PDF destinations.
+ifdef::backend-html5[]
 [[security-processor-sep]]
-ifdef::backend-pdf[]
-include::../../../hw/sys/sep/doc/index.adoc[leveloffset=0]
-endif::backend-pdf[]
-ifdef::backend-html5[]
-include::sep:index.adoc[leveloffset=0]
-endif::backend-html5[]
+_The Security Processor (SEP) section has moved._
+See xref:sep:index.adoc[Security Processor (SEP)].
 
-// SMC
 [[system-management-controller]]
-ifdef::backend-pdf[]
-include::../../../hw/sys/smc/doc/index.adoc[leveloffset=0]
-endif::backend-pdf[]
-ifdef::backend-html5[]
-include::smc:index.adoc[leveloffset=0]
-endif::backend-html5[]
+_The System Management Controller (SMC) section has moved._
+See xref:smc:index.adoc[System Management Controller (SMC)].
 
-// DTP
 [[debug-test-ports]]
-ifdef::backend-pdf[]
-include::../../../hw/sys/dtp/doc/index.adoc[leveloffset=0]
-endif::backend-pdf[]
-ifdef::backend-html5[]
-include::dtp:index.adoc[leveloffset=0]
+_The Debug & Test Ports (DTP) section has moved._
+See xref:dtp:index.adoc[Debug & Test Ports (DTP)].
 endif::backend-html5[]
 
-// SMN
-// TODO remove adoc below and follow SMC example
-include::smn.placeholder.adoc[]
-
-// AOU
-[[axi-over-ucie-bridge]]
-ifdef::backend-pdf[]
-:aou-imagesdir: {docdir}/../../../vendor/tenstorrent/aou/upstream/DOC/MAS/assets
-include::../../../vendor/tenstorrent/aou/upstream/DOC/MAS/index.adoc[leveloffset=0]
-endif::backend-pdf[]
+// HTML-only compatibility anchors for SMN/AoU, whose authoritative chapters
+// are assembled from the platform-components part in src/index.adoc.
+// PDF assembly places the authoritative content there; these blocks are
+// ifdef-guarded to prevent duplicate PDF destinations.
 ifdef::backend-html5[]
-// The MAS's own internal cross-references (e.g. "see Section 6.4") now land
-// in the Integrator Guide and Programmer's Guide, not this chapter, because
-// their content was split by audience across three products. For PDF,
-// everything is one include tree, so the vendored source's own same-file
-// defaults (integration.adoc/software-operation.adoc) resolve directly. For
-// HTML, each product is a separate Antora component, so the same reference
-// has to name the sibling component's page instead.
-:aou-integration-xref: ocah-integrator-guide:ROOT:aou.adoc
-:aou-software-xref: ocah-programmer-guide:ROOT:index.adoc
-include::aou:partial$index.adoc[leveloffset=0]
+[[system-management-network]]
+_The System Management Network section has moved to a standalone chapter._
+See xref:smn.placeholder.adoc#system-management-network[System Management Network].
+
+[[axi-over-ucie-bridge]]
+_The AXI-over-UCIe Bridge section has moved to a standalone chapter._
+See xref:aou.adoc#axi-over-ucie-bridge[AXI-over-UCIe Bridge].
 endif::backend-html5[]

@@ -9,9 +9,9 @@
 # product's src/meta tree, hw/**/doc and hw/**/regs/gen, plus explicitly staged
 # vendored documentation.
 #
-# Module topology (6 modules): ROOT, smc, sep, dtp, aou, ip.
+# Modules: ROOT, smc, sep, dtp, aou, ip; SMU is enabled by the TRM product.
 #   - ROOT: product src/*.adoc + meta tables + subsystem port_table partials.
-#   - smc/sep/dtp: pages from hw/sys/<sys>/doc, reg partials from its regs/gen.
+#   - subsystem modules: hw/sys/<sys>/doc pages and regs/gen partials.
 #   - aou: selected content from the vendored AXI-over-UCIe specification.
 #   - ip: every hw/ip/<ip>/doc collapsed under <ip>/doc, reg partials per IP.
 # Register docs use generated .html partials for Antora HTML and generated .adoc
@@ -31,12 +31,20 @@ AOU_DOC="$ROOT/vendor/tenstorrent/aou/upstream/DOC/MAS"
 AOU_INTEGRATION_GUIDE="$ROOT/vendor/tenstorrent/aou/upstream/DOC/integration_guide"
 
 SUBSYSTEMS="smc sep dtp"
+# The SMU chapter links into the TRM's ROOT module. Other products retain
+# their existing subsystem pages and the independent ROOT SMU port partial.
+if [ "${OCAH_DOC_PRODUCT_INCLUDE_SMU:-0}" = "1" ]; then
+  SUBSYSTEMS="$SUBSYSTEMS smu"
+else
+  # Remove stale SMU pages/assets from builds predating product scoping.
+  rm -rf "${MOD:?}/smu"
+fi
 PORT_TABLE_SYS="smc sep dtp smu"
-MODULES="ROOT smc sep dtp aou ip"
+MODULES="ROOT $SUBSYSTEMS aou ip"
 
 clean() {
   rm -rf "$MOD/ROOT/pages" "$MOD/ROOT/partials/hw" "$MOD/ROOT/assets"
-  for m in smc sep dtp aou ip; do
+  for m in smc sep dtp smu aou ip; do
     rm -rf "${MOD:?}/$m"
   done
   rm -f "$ASSETS"/aou-*
@@ -133,6 +141,10 @@ for s in $SUBSYSTEMS; do
   stage_gen_adoc "$ROOT/hw/sys/$s/dv/models/regs/gen/adoc" "$MOD/$s/partials/$s/dv/models/regs/gen/adoc"
   stage_gen_html "$ROOT/hw/sys/$s/dv/models/regs/gen/html" "$MOD/$s/partials/$s/dv/models/regs/gen/html"
 done
+# SMU's port_table.adoc is a private fragment for the ROOT partial only.
+# Remove it from smu/pages/ to prevent an Untitled standalone URL.
+# SEP/SMC/DTP retain their port_table pages; restrict this exclusion to SMU.
+rm -f "$MOD/smu/pages/port_table.adoc"
 
 # --- aou: each product stages only the section it publishes ---
 rm -rf "$MOD/aou"
