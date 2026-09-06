@@ -174,7 +174,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |`CHK-ALIAS-REMAP-SCOPE-S3` |Evidence token, emitted only after the compares it names have held
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `fabric`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -208,7 +208,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |scoreboard |Every access is compared against its stated expectation
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `fabric`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -242,7 +242,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |`CHK-NONVAC` |Evidence token, emitted only after the compares it names have held
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `fabric`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -278,7 +278,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |`CHK-NONVAC` |Evidence token, emitted only after the compares it names have held
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `fabric`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -314,7 +314,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |allow_ns incomplete s1s=<value> s1n=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `fabric`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -352,7 +352,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |in-matrix incomplete s1=<value> s2=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `fabric`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -385,7 +385,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |out-matrix incomplete s1=<value> s2d=<value> s3d=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `fabric`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -419,7 +419,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |scoreboard |Every access is compared against its stated expectation
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `fabric`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -455,7 +455,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |S9 AxPROT matrix incomplete
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `fabric`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -492,7 +492,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |xbar structure incomplete pos=<value> absent=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `fabric`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -526,7 +526,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |local_fabric incomplete s1=<value> observed=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `fabric`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -562,7 +562,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |otp_vs_fabric race incomplete s1=<value> s2=<value> s3=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -597,7 +597,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |filter_program incomplete s1=<value> s2=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `fabric`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -635,7 +635,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |filter_shrink incomplete s1=<value> s2=<value> s3=<value> s4=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `fabric`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -671,7 +671,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |filter_window_edge incomplete s1=<value> s2=<value> s3=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `fabric`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -704,7 +704,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |scoreboard |Every access is compared against its stated expectation
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -739,7 +739,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |scoreboard |Every access is compared against its stated expectation
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -771,7 +771,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |scoreboard |Every access is compared against its stated expectation
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -804,7 +804,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |scoreboard |Every access is compared against its stated expectation
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -836,7 +836,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |scoreboard |Every access is compared against its stated expectation
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -871,7 +871,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |`CHK-NONVAC` |Evidence token, emitted only after the compares it names have held
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `smc`, `smoke`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `smc`, `smoke`.
 
 '''''
 
@@ -903,7 +903,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |scoreboard |Every access is compared against its stated expectation
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -936,7 +936,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |scoreboard |Every access is compared against its stated expectation
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -968,7 +968,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |scoreboard |Every access is compared against its stated expectation
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_p4_all`.
 
 '''''
 
@@ -1001,7 +1001,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |scoreboard |Every access is compared against its stated expectation
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -1031,7 +1031,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |scoreboard |Every access is compared against its stated expectation
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `sep0_all`, `sep0_p4_all`, `smc`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `sep0_p4_all`, `smc`.
 
 '''''
 
@@ -1073,7 +1073,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |`CHK-NONVAC` |Evidence token, emitted only after the compares it names have held
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -1107,7 +1107,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |i3c_mem incomplete s1=<value> observed=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `sep0_all`, `sep0_p4_all`, `smc`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `sep0_p4_all`, `smc`.
 
 '''''
 
@@ -1143,7 +1143,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |jtag2axi_vs_smn race incomplete s1=<value> s2=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -1185,7 +1185,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |tb_timer_count pin observe missing or not advancing
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `sep0_all`, `sep0_p4_all`, `smc`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `sep0_p4_all`, `smc`.
 
 '''''
 
@@ -1216,7 +1216,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |scoreboard |Every access is compared against its stated expectation
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -1253,7 +1253,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |scoreboard |Every access is compared against its stated expectation
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_p4_all`.
 
 '''''
 
@@ -1295,7 +1295,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |bsr_ijtag incomplete s1=<value> s2=<value> s3=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -1333,7 +1333,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |io_stap incomplete s1=<value> s2=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -1369,7 +1369,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |jtag2axi_abort incomplete s1=<value> s2=<value> s3=<value> s4=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -1405,7 +1405,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |jtag2axi_b2b incomplete s1=<value> s2=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -1441,7 +1441,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |jtag2axi_smc_error incomplete s1=<value> s2=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -1478,7 +1478,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |jtag2axi_rw_matrix incomplete s1=<value> s2=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -1513,7 +1513,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |jtag2axi_wstrb_partial incomplete s1=<value> s2=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -1553,7 +1553,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |jtag_smc_cpu_register incomplete s1=<value> s2=<value> s3=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -1588,7 +1588,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |`CHK-NONVAC` |Evidence token, emitted only after the compares it names have held
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `dtp`, `sep0_all`, `sep0_p4_all`, `smoke`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`, `smoke`.
 
 '''''
 
@@ -1622,7 +1622,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |otp_smc_complete incomplete s1=<value> s2=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -1664,7 +1664,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |otp_smc_map incomplete s1=<value> s2=<value> s3=<value> s4=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -1707,7 +1707,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |otp_smc_series_error incomplete s1=<value> s2=<value> s3=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -1749,7 +1749,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |ptap_otp_instr_scan incomplete s1=<value> s2=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -1796,7 +1796,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |smc_stap incomplete s1=<value> s2=<value> s3=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -1838,7 +1838,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |jtag_chain_enhanced incomplete s1=<value> s2=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -1879,7 +1879,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |jtag2axi_smoke incomplete s1=<value> s2=<value> s3=<value> s4=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -1915,7 +1915,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |`CHK-NONVAC` |Evidence token, emitted only after the compares it names have held
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `sep0_all`, `sep0_p4_all`, `smc`, `smoke`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `sep0_p4_all`, `smc`, `smoke`.
 
 '''''
 
@@ -1952,7 +1952,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |`CHK-NONVAC` |Evidence token, emitted only after the compares it names have held
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
 
 '''''
 
@@ -1989,7 +1989,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |`CHK-NONVAC` |Evidence token, emitted only after the compares it names have held
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `smc`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `smc`.
 
 '''''
 
@@ -2025,7 +2025,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |mailbox_sanity incomplete s1=<value> s2=<value> s3=<value> s4=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `sep0_all`, `sep0_p4_all`, `smc`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `sep0_p4_all`, `smc`.
 
 '''''
 
@@ -2056,7 +2056,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |scoreboard |Every access is compared against its stated expectation
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `sep0_all`, `sep0_p4_all`, `smc`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `sep0_p4_all`, `smc`.
 
 '''''
 
@@ -2091,7 +2091,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |`CHK-NONVAC` |Evidence token, emitted only after the compares it names have held
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `sep0_all`, `sep0_p4_all`, `smc`, `smoke`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `sep0_p4_all`, `smc`, `smoke`.
 
 '''''
 
@@ -2127,7 +2127,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |wdt_sanity incomplete s1=<value> s2=<value> s3=<value> s4=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `sep0_all`, `sep0_p4_all`, `smc`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `sep0_p4_all`, `smc`.
 
 '''''
 
@@ -2162,7 +2162,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |wdt_timeout incomplete s1=<value> s2=<value> s3=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `sep0_all`, `sep0_p4_all`, `smc`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `sep0_p4_all`, `smc`.
 
 '''''
 === Counts
