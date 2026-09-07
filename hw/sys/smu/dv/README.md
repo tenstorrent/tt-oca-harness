@@ -9,7 +9,9 @@ verification plan, and
 [`docs/SMU_FEATURE_LIST.adoc`](docs/SMU_FEATURE_LIST.adoc) for the
 candidate v0.5.0 SEP=0 feature subset, and
 [`docs/SMU_DEFERRED_DISPOSITION.adoc`](docs/SMU_DEFERRED_DISPOSITION.adoc)
-for the v0.5.0 deferred/OUT classification of the 123-entry catalog.
+for the v0.5.0 deferred/OUT classification of the 123-entry catalog, and
+[`docs/SMU_RELEASE_MATRIX.adoc`](docs/SMU_RELEASE_MATRIX.adoc) for the
+v0.5.0 release regression matrix (#485).
 
 **Executable contract:** enrolled groups in [`testlists/all.toml`](testlists/all.toml)
 — live green `phase1` **49**, `sep0_all` **53** (no Force; product-pin CTM).

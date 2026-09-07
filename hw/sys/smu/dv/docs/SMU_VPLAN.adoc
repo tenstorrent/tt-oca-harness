@@ -189,7 +189,7 @@ pull requests run (`.github/workflows/sim.yml`). `smoke` is not a subset of
 * *`smoke` is not a subset of `sep0_all`.* `smu_ext_boot_seq_gate_test` is in
   `smoke`, `top10`, `smc` and `phase1` but in neither `sep0_all` nor
   `sep0_p4_all`, so the nightly does not run a test every pull request does.
-  Whether it belongs in `sep0_all` or stays pull-request-only is open in #493.
+  #485 keeps it PR-only. Re-enrollment is a later #493 choice.
 
 * *SEP=1 is out of scope here.* Everything in this plan runs with `SEP=0`. The
   dual-firmware SEP-under-SMU work is gated on the SEP instruction-fetch
