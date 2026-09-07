@@ -11,6 +11,8 @@ No Force/deposit. Reuses SMU_ALL_005 PTAP leave-TLR helper pattern.
 
 from __future__ import annotations
 
+from seq_lib.smu_tb_pins import smc_primary_reset
+
 import os
 import random
 import time
@@ -168,7 +170,7 @@ class smu_axi_crossbar_error_handling_test_seq:
                 raise AssertionError(f"timeout path missing last-state: {line}")
 
         # NONVAC: clocks advanced, reset released, S1 PASS token ordered.
-        rst = self._sample(dut.rst_primary_smc_clk_no, "rst_primary_smc_clk_no")
+        rst = self._sample(smc_primary_reset(dut), "rst_primary_smc_clk_no")
         if rst != 1:
             raise AssertionError(f"CHK-NONVAC reset not released: rst_primary_smc_clk_no={rst}")
         await RisingEdge(dut.clk_smu_i)

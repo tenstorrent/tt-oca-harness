@@ -17,6 +17,8 @@ non-support credit. See ``SMU_SEP0_COMPONENT_SIGNOFF.adoc`` (#491).
 
 from __future__ import annotations
 
+from seq_lib.smu_tb_pins import smc_primary_reset
+
 import random
 
 import cocotb
@@ -43,7 +45,7 @@ class smu_axi_atomic_operation_test(smu_base_test):
         self.logger.info("SEED: %d non-ATOP arid=0x%x", seed, arid)
 
         await ClockCycles(dut.clk_smu_i, 50)
-        master = await make_smu_axi_master(dut, dut.clk_smu_i, dut.rst_primary_smc_clk_no)
+        master = await make_smu_axi_master(dut, dut.clk_smu_i, smc_primary_reset(dut))
         value, resp, issued, rid = await axi_read32_resp_ids_bounded(
             master,
             SMC_CHIP_CONFIG_VERSION_LO,

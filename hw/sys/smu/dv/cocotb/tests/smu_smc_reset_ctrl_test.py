@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from seq_lib.smu_tb_pins import smc_primary_reset
+
 import cocotb
 import pyuvm
 from cocotb.triggers import RisingEdge
@@ -41,7 +43,7 @@ class smu_smc_reset_ctrl_test(smu_base_test):
         )
         sb.expect_eq(
             "rst_primary_smc_clk_no",
-            _sample1(dut.rst_primary_smc_clk_no, "rst_primary_smc_clk_no"),
+            _sample1(smc_primary_reset(dut), "rst_primary_smc_clk_no"),
             1,
             evidence="RST_PRIMARY_SMC_1",
         )
@@ -62,7 +64,7 @@ class smu_smc_reset_ctrl_test(smu_base_test):
                     dut.rst_primary_ref_clk_no, "rst_primary_ref_clk_no"
                 ),
                 "rst_primary_smc_clk_no": _sample1(
-                    dut.rst_primary_smc_clk_no, "rst_primary_smc_clk_no"
+                    smc_primary_reset(dut), "rst_primary_smc_clk_no"
                 ),
                 "rst_primary_periph_clk_no": _sample1(
                     dut.rst_primary_periph_clk_no, "rst_primary_periph_clk_no"
@@ -86,7 +88,7 @@ class smu_smc_reset_ctrl_test(smu_base_test):
         )
         sb.expect_eq(
             "rst_primary_smc holds high",
-            _sample1(dut.rst_primary_smc_clk_no, "rst_primary_smc_clk_no"),
+            _sample1(smc_primary_reset(dut), "rst_primary_smc_clk_no"),
             1,
             evidence="RST_SMC_HOLD",
         )

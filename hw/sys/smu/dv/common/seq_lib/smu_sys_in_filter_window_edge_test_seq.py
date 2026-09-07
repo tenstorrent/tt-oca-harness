@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from seq_lib.smu_tb_pins import smc_primary_reset
+
 import cocotb
 from ocah_axi_vip import RESP_DECERR, RESP_OKAY
 from ocah_jtag_vip import OcahJtagState
@@ -85,7 +87,7 @@ class smu_sys_in_filter_window_edge_test_seq:
         self.s1_ok = True
         sb.expect_eq("CHK-FILTER-EDGE-GATE-OPEN", gate, 0)
 
-        master = await make_smu_axi_master(dut, dut.clk_smu_i, dut.rst_primary_smc_clk_no)
+        master = await make_smu_axi_master(dut, dut.clk_smu_i, smc_primary_reset(dut))
         await program_inbound0_window(jtag, WINDOW_START, WINDOW_END, scoreboard=sb, tag="EDGE")
 
         data_v, resp_v = await await_smn_resp(

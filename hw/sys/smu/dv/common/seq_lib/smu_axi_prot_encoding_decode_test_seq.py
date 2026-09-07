@@ -8,6 +8,8 @@ Commercial S1–S8 (GPIO PoC AXI-Lite exact-match) need sep_in_master and are no
 
 from __future__ import annotations
 
+from seq_lib.smu_tb_pins import smc_primary_reset
+
 import cocotb
 from cocotb.triggers import ClockCycles, with_timeout
 from ocah_axi_vip import RESP_DECERR, RESP_OKAY
@@ -141,7 +143,7 @@ class smu_axi_prot_encoding_decode_test_seq:
             raise AssertionError(f"IDCODE want 0x1 got 0x{idcode:08x}")
         sb.expect_eq("CHK-SMU-PROT-J2A-READY", idcode, 0x1)
 
-        master = await make_smu_axi_master(dut, dut.clk_smu_i, dut.rst_primary_smc_clk_no)
+        master = await make_smu_axi_master(dut, dut.clk_smu_i, smc_primary_reset(dut))
         probe = SMC_CHIP_CONFIG_VERSION_LO
         lo, hi = page_align_window(probe, probe)
         await self._program_secure_window(jtag, lo, hi)

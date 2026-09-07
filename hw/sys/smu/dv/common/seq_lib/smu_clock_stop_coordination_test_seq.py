@@ -13,6 +13,8 @@ No Force/deposit. No DTP-FEAT-GATE.* / INT-FEAT-CTRL-DTP-GATE (re-homed to 008).
 
 from __future__ import annotations
 
+from seq_lib.smu_tb_pins import smc_primary_reset
+
 import time
 
 import cocotb
@@ -154,7 +156,7 @@ class smu_clock_stop_coordination_test_seq:
         await jtag.reset_tap()
         await ClockCycles(dut.clk_smu_i, self.SETTLE)
         await self._wait_eq(
-            dut.rst_primary_smc_clk_no,
+            smc_primary_reset(dut),
             1,
             clk=dut.clk_smu_i,
             bound=self.BOUND_CYCLES,
@@ -202,7 +204,7 @@ class smu_clock_stop_coordination_test_seq:
         dut.rst_cold_ni.value = 1
         await ClockCycles(dut.clk_ref_i, self.cfg.post_reset_settle_cycles)
         await self._wait_eq(
-            dut.rst_primary_smc_clk_no,
+            smc_primary_reset(dut),
             1,
             clk=dut.clk_smu_i,
             bound=self.BOUND_CYCLES,

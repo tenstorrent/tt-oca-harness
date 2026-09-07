@@ -12,6 +12,8 @@ No Force/deposit. No SEP-sysif/LC/SEC_DIS/mem/fuse/WDT/alias/CTM.S1/CTP/DTP-CSR.
 
 from __future__ import annotations
 
+from seq_lib.smu_tb_pins import smc_primary_reset
+
 import time
 
 import cocotb
@@ -115,7 +117,7 @@ class smu_sep_smoke_test_seq:
         await jtag.reset_tap()
         await ClockCycles(dut.clk_smu_i, self.SETTLE)
         await self._wait_eq(
-            dut.rst_primary_smc_clk_no,
+            smc_primary_reset(dut),
             1,
             clk=dut.clk_smu_i,
             bound=self.BOUND_CYCLES,
@@ -126,7 +128,7 @@ class smu_sep_smoke_test_seq:
         dut.xtrig_ctm_src_ack.value = 0
         dut.jtag_trst.value = 1
         base_ref = self._sample(dut.rst_primary_ref_clk_no, "rst_primary_ref_clk_no")
-        base_smc = self._sample(dut.rst_primary_smc_clk_no, "rst_primary_smc_clk_no")
+        base_smc = self._sample(smc_primary_reset(dut), "rst_primary_smc_clk_no")
         base_ack = self._sample(dut.xtrig_ctm_dst_ack, "xtrig_ctm_dst_ack")
         if base_ref != 1 or base_smc != 1:
             raise AssertionError(f"baseline primary not released: ref={base_ref} smc={base_smc}")
@@ -159,7 +161,7 @@ class smu_sep_smoke_test_seq:
             name="rst_primary_ref_clk_no",
         )
         await self._wait_eq(
-            dut.rst_primary_smc_clk_no,
+            smc_primary_reset(dut),
             0,
             clk=dut.clk_smu_i,
             bound=self.BOUND_CYCLES,
@@ -167,12 +169,12 @@ class smu_sep_smoke_test_seq:
             name="rst_primary_smc_clk_no",
         )
         obs_ref = self._sample(dut.rst_primary_ref_clk_no, "rst_primary_ref_clk_no")
-        obs_smc = self._sample(dut.rst_primary_smc_clk_no, "rst_primary_smc_clk_no")
+        obs_smc = self._sample(smc_primary_reset(dut), "rst_primary_smc_clk_no")
         if obs_ref != 0 or obs_smc != 0:
             raise AssertionError(f"RST-PRIMARY.S1 fail: ref={obs_ref} smc={obs_smc} expect both 0")
         await self._release_cold()
         await self._wait_eq(
-            dut.rst_primary_smc_clk_no,
+            smc_primary_reset(dut),
             1,
             clk=dut.clk_smu_i,
             bound=self.BOUND_CYCLES,
@@ -225,7 +227,7 @@ class smu_sep_smoke_test_seq:
             name="rst_primary_ref_clk_no",
         )
         await self._wait_eq(
-            dut.rst_primary_smc_clk_no,
+            smc_primary_reset(dut),
             0,
             clk=dut.clk_smu_i,
             bound=self.BOUND_CYCLES,
@@ -245,7 +247,7 @@ class smu_sep_smoke_test_seq:
             )
         await self._release_cold()
         await self._wait_eq(
-            dut.rst_primary_smc_clk_no,
+            smc_primary_reset(dut),
             1,
             clk=dut.clk_smu_i,
             bound=self.BOUND_CYCLES,

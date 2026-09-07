@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from seq_lib.smu_tb_pins import smc_primary_reset
+
 import cocotb
 from cocotb.triggers import ClockCycles
 from ocah_axi_vip import RESP_OKAY
@@ -86,7 +88,7 @@ class smu_jtag2axi_vs_smn_same_csr_race_test_seq:
         self.s1_ok = True
         sb.expect_eq("CHK-J2ASMN-GATE-OPEN", gate, 0)
 
-        master = await make_smu_axi_master(dut, dut.clk_smu_i, dut.rst_primary_smc_clk_no)
+        master = await make_smu_axi_master(dut, dut.clk_smu_i, smc_primary_reset(dut))
         await program_inbound0_window(jtag, WINDOW_START, WINDOW_END, scoreboard=sb, tag="RACE")
         await await_smn_resp(
             master,

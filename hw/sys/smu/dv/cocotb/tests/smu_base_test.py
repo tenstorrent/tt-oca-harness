@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from seq_lib.smu_tb_pins import smc_primary_reset
+
 import os
 import sys
 from pathlib import Path
@@ -177,7 +179,7 @@ class smu_base_test(uvm_test):
             name="rst_cold_stable_ref_clk_no",
         )
         await wait_signal_high(
-            dut.rst_primary_smc_clk_no,
+            smc_primary_reset(dut),
             dut.clk_smu_i,
             timeout_cycles=2000,
             name="rst_primary_smc_clk_no",

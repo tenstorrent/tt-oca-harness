@@ -17,6 +17,8 @@ Independent expects from pinned hw/sys/smc/doc/fabric.adoc
 
 from __future__ import annotations
 
+from seq_lib.smu_tb_pins import smc_primary_reset
+
 import time
 
 import cocotb
@@ -257,7 +259,7 @@ class smu_smc_smoke_test_seq:
             "dual-network hierarchy baseline",
         )
         primary = await self._wait_eq(
-            dut.rst_primary_smc_clk_no,
+            smc_primary_reset(dut),
             1,
             clk=dut.clk_smu_i,
             bound=self.BOUND_CYCLES,

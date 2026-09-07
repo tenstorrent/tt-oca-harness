@@ -9,6 +9,8 @@ Observes fuse_reset_n_delayed_o — the RTL consumer gated by ext_boot_seq_done_
 
 from __future__ import annotations
 
+from seq_lib.smu_tb_pins import smc_primary_reset
+
 import time
 
 import cocotb
@@ -106,7 +108,7 @@ class smu_ext_boot_seq_gate_test_seq:
             "NEGATIVE CONTROL: rst_primary_smc_clk_no still releases while boot-gated",
         )
         primary = await self._wait_eq(
-            dut.rst_primary_smc_clk_no,
+            smc_primary_reset(dut),
             1,
             clk=dut.clk_smu_i,
             bound=self.RELEASE_BOUND,

@@ -14,6 +14,8 @@ No mailbox MMIO; no Force/deposit on ext_mailbox_interrupts.
 
 from __future__ import annotations
 
+from seq_lib.smu_tb_pins import smc_primary_reset
+
 import time
 
 import cocotb
@@ -135,7 +137,7 @@ class smu_smc_mailbox_int_test_seq:
             "baseline ext_mailbox_interrupts observation (no mailbox MMIO)",
         )
         await self._wait_eq(
-            dut.rst_primary_smc_clk_no,
+            smc_primary_reset(dut),
             1,
             clk=dut.clk_smu_i,
             bound=self.BOUND_CYCLES,

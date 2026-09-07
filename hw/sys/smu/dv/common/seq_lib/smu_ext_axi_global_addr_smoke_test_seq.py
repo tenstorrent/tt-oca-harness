@@ -12,6 +12,8 @@ Commercial used sep_in (local) + ext_in (global); OSS uses J2A + s_axi.
 
 from __future__ import annotations
 
+from seq_lib.smu_tb_pins import smc_primary_reset
+
 import cocotb
 from cocotb.triggers import ClockCycles, with_timeout
 from ocah_axi_vip import PROT_PRIVILEGED, RESP_OKAY
@@ -184,7 +186,7 @@ class smu_ext_axi_global_addr_smoke_test_seq:
         sb.expect_eq("CHK-BASE-EQ-J2A-READY", idcode, 0x1)
 
         master = await make_smu_axi_master(
-            self.dut, self.dut.clk_smu_i, self.dut.rst_primary_smc_clk_no
+            self.dut, self.dut.clk_smu_i, self.smc_primary_reset(dut)
         )
 
         await self._program_aperture(jtag, GLOBAL_BASE_1)

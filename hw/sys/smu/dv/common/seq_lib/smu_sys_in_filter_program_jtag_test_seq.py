@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from seq_lib.smu_tb_pins import smc_primary_reset
+
 import cocotb
 from ocah_axi_vip import RESP_DECERR, RESP_OKAY
 from ocah_jtag_vip import OcahJtagState
@@ -85,7 +87,7 @@ class smu_sys_in_filter_program_jtag_test_seq:
         self._log(f"CHK-FILTER-PROG-GATE-OPEN disable={gate}")
         sb.expect_eq("CHK-FILTER-PROG-GATE-OPEN", gate, 0)
 
-        master = await make_smu_axi_master(dut, dut.clk_smu_i, dut.rst_primary_smc_clk_no)
+        master = await make_smu_axi_master(dut, dut.clk_smu_i, smc_primary_reset(dut))
         pre_data, pre_resp = await await_smn_resp(
             master,
             VERSION_LO,

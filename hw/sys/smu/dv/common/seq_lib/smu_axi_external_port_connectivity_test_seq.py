@@ -17,6 +17,8 @@ SMU_ALL_008 — out of scope for this card.
 
 from __future__ import annotations
 
+from seq_lib.smu_tb_pins import smc_primary_reset
+
 import os
 import random
 import time
@@ -179,7 +181,7 @@ class smu_axi_external_port_connectivity_test_seq:
         sep_size = self._sample(dut.sep_region_size_o, "sep_region_size_o")
         self._log(f"baseline sep_global_base_o=0x{sep_base:x} sep_region_size_o=0x{sep_size:x}")
 
-        master = await make_smu_axi_master(dut, dut.clk_smu_i, dut.rst_primary_smc_clk_no)
+        master = await make_smu_axi_master(dut, dut.clk_smu_i, smc_primary_reset(dut))
 
         # ------------------------------------------------------------------
         # S2 SMU-PORT-SMN-AXI.S1 — inbound reaches SMC via direct IW path

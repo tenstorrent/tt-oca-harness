@@ -14,6 +14,8 @@ Filter program / allow contrast is not covered here (see tests_deferred).
 
 from __future__ import annotations
 
+from seq_lib.smu_tb_pins import smc_primary_reset
+
 import random
 
 import cocotb
@@ -56,7 +58,7 @@ class smu_axi_id_width_conversion_test(smu_base_test):
         )
 
         await ClockCycles(dut.clk_smu_i, 50)
-        master = await make_smu_axi_master(dut, dut.clk_smu_i, dut.rst_primary_smc_clk_no)
+        master = await make_smu_axi_master(dut, dut.clk_smu_i, smc_primary_reset(dut))
 
         for idx, addr in enumerate(PROBE_ADDRS):
             arid = arids[idx]

@@ -14,6 +14,8 @@ Local-alias CSR pages stand in for the commercial SPM/global-aperture windows.
 
 from __future__ import annotations
 
+from seq_lib.smu_tb_pins import smc_primary_reset
+
 import cocotb
 from cocotb.triggers import ClockCycles, with_timeout
 from ocah_axi_vip import PROT_NONSECURE, PROT_PRIVILEGED, RESP_DECERR, RESP_OKAY
@@ -234,7 +236,7 @@ class smu_axi_filter_in_instance_matrix_test_seq:
             raise AssertionError(f"IDCODE want 0x1 got 0x{idcode:08x}")
         sb.expect_eq("CHK-FILTER-IN-J2A-READY", idcode, 0x1)
 
-        master = await make_smu_axi_master(dut, dut.clk_smu_i, dut.rst_primary_smc_clk_no)
+        master = await make_smu_axi_master(dut, dut.clk_smu_i, smc_primary_reset(dut))
 
         # ---- S4 capture: default block before any inbound filter CSR ----
         _rd, rd_resp = await self._axi_rw(

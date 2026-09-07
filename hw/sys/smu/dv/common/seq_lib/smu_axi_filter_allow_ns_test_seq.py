@@ -12,6 +12,8 @@ The commercial FAB_SMC_026 outbound/S4/S5 matrix needs a peer master and is not 
 
 from __future__ import annotations
 
+from seq_lib.smu_tb_pins import smc_primary_reset
+
 import cocotb
 from cocotb.triggers import ClockCycles, with_timeout
 from ocah_axi_vip import PROT_NONSECURE, PROT_PRIVILEGED, RESP_DECERR, RESP_OKAY
@@ -203,7 +205,7 @@ class smu_axi_filter_allow_ns_test_seq:
         self._log(f"OBS IDCODE=0x{idcode:08x}")
         sb.expect_eq("CHK-SMU-ALLOW-NS-J2A-READY", idcode, 0x1)
 
-        master = await make_smu_axi_master(dut, dut.clk_smu_i, dut.rst_primary_smc_clk_no)
+        master = await make_smu_axi_master(dut, dut.clk_smu_i, smc_primary_reset(dut))
 
         probe = SMC_CHIP_CONFIG_VERSION_LO
         lo, hi = page_align_window(probe, probe)

@@ -14,6 +14,8 @@ Must FAIL if sticky broken or TRST fails to clear DEBUG_CONTROL.
 
 from __future__ import annotations
 
+from seq_lib.smu_tb_pins import smc_primary_reset
+
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
@@ -56,7 +58,7 @@ class smu_boot_stall_jtag_cold_reset_matrix_test(smu_base_test):
         dut.rst_cold_ni.value = 1
         await ClockCycles(dut.clk_ref_i, self.cfg.post_reset_settle_cycles)
         await wait_signal_high(
-            dut.rst_primary_smc_clk_no,
+            smc_primary_reset(dut),
             dut.clk_smu_i,
             timeout_cycles=2000,
             name="rst_primary after cold+stall",

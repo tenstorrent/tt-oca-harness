@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from seq_lib.smu_tb_pins import smc_primary_reset
+
 import cocotb
 from ocah_axi_vip import RESP_DECERR, RESP_OKAY
 from ocah_jtag_vip import OcahJtagState
@@ -71,7 +73,7 @@ class smu_sys_in_filter_reprogram_shrink_test_seq:
         if gate != 0:
             raise AssertionError(f"SMC J2A still gated after TCK sync: security_disable={gate}")
 
-        master = await make_smu_axi_master(dut, dut.clk_smu_i, dut.rst_primary_smc_clk_no)
+        master = await make_smu_axi_master(dut, dut.clk_smu_i, smc_primary_reset(dut))
         _, pre = await await_smn_resp(
             master,
             VERSION_LO,
