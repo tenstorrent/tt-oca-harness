@@ -1221,7 +1221,11 @@ bridge), so an import failure reported here reproduces in a real run and an
 import that only works with extra ambient packages does not mask one. The
 probe assigns the simulation-time `cocotb.log` attribute the way cocotb's
 initialization does before importing test modules, so modules that touch it
-at import scope are not false-flagged. The
+at import scope are not false-flagged. Modules are probed 20 per child
+interpreter with a 120-second budget per batch; a batch that exceeds it is
+retried once with twice the budget, and only a batch that exceeds both is
+reported as failed. `OCAH_DOCTOR_PROBE_TIMEOUT=<seconds>` replaces the
+per-batch budget on a slow filesystem. The
 shared VIP check imports `ocah_axi_vip` from its in-repo root
 (`hw/common/dv/vip`); no `pip install` of `hw/common/dv` is required. The
 doctor does not check out a license or comprehensively probe Bender, Make,
