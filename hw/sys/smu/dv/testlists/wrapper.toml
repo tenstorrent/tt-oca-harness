@@ -813,6 +813,220 @@ tests = [
   "smu_axi_id_width_conversion_test",
 ]
 
+# Migrated from the bare `--dut smu` fabric group. Same modules and the same
+# sequences -- seq_lib is shared and resolves its pins by role -- so these
+# are the same claims made against the production wrapper. Held in their own
+# group until the bare twins retire, so nothing is counted twice.
+[[tests]]
+name = "smu_axi_alias_remap_manager_scope_test"
+module = "smu_axi_alias_remap_manager_scope_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "fabric", "migrated", "no_sep", "tier_a_pilot"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_axi_atomic_operation_test"
+module = "smu_axi_atomic_operation_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["fabric", "migrated", "no_sep"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_axi_crossbar_error_handling_test"
+module = "smu_axi_crossbar_error_handling_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["fabric", "migrated", "no_sep"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_axi_external_port_connectivity_test"
+module = "smu_axi_external_port_connectivity_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["fabric", "migrated", "no_sep"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_axi_filter_allow_ns_test"
+module = "smu_axi_filter_allow_ns_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "fabric", "migrated", "no_sep", "tier_a_pilot"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_axi_filter_in_instance_matrix_test"
+module = "smu_axi_filter_in_instance_matrix_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "fabric", "migrated", "no_sep", "tier_a_pilot"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_axi_filter_out_instance_matrix_test"
+module = "smu_axi_filter_out_instance_matrix_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "fabric", "migrated", "no_sep", "tier_a_pilot"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_axi_prot_encoding_decode_test"
+module = "smu_axi_prot_encoding_decode_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "fabric", "migrated", "no_sep", "tier_a_pilot"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_axi_xbar_structure_test"
+module = "smu_axi_xbar_structure_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "fabric", "migrated", "no_sep", "tier_c"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_fabric_reg_bar_wr_test"
+module = "smu_fabric_reg_bar_wr_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "fabric", "migrated", "no_sep", "tier_a_pilot"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_sys_in_filter_program_jtag_test"
+module = "smu_sys_in_filter_program_jtag_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "fabric", "migrated", "no_sep", "tier_a_pilot"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_sys_in_filter_reprogram_shrink_test"
+module = "smu_sys_in_filter_reprogram_shrink_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "fabric", "migrated", "no_sep", "tier_a_pilot"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_sys_in_filter_window_edge_test"
+module = "smu_sys_in_filter_window_edge_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "fabric", "migrated", "no_sep", "tier_a_pilot"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+# Migrated fabric leaves proven on this DUT: same module, same sequence,
+# same claim as the bare twin.
+[[groups]]
+name = "migrated_fabric"
+tests = [
+  "smu_axi_alias_remap_manager_scope_test",
+  "smu_axi_atomic_operation_test",
+  "smu_axi_filter_out_instance_matrix_test",
+  "smu_axi_xbar_structure_test",
+  "smu_fabric_reg_bar_wr_test",
+]
+
+# Migrated, enrolled so they stay visible, and not yet passing here. Each
+# needs something tb_wrapper_top.sv does not expose yet -- none of them has
+# shown a DUT difference. Do not fold these into `all` until they pass.
+[[groups]]
+name = "migrated_fabric_pending"
+tests = [
+  "smu_axi_crossbar_error_handling_test",  # needs jtag_ptap_state / jtag_ptap_inst_decoded on this TB
+  "smu_axi_external_port_connectivity_test",  # needs sep_global_base_o / sep_region_size_o on this TB
+  "smu_axi_filter_allow_ns_test",  # reaches u_dut.u_dtp; DTP sits one level deeper here (u_dut.u_smu.u_dtp)
+  "smu_axi_filter_in_instance_matrix_test",  # under triage
+  "smu_axi_prot_encoding_decode_test",  # asserts on AxPROT, which ext_in_* does not carry yet
+  "smu_sys_in_filter_program_jtag_test",  # needs the tb_smc_jtag2axi_security_disable observation tap
+  "smu_sys_in_filter_reprogram_shrink_test",  # needs the tb_smc_jtag2axi_security_disable observation tap
+  "smu_sys_in_filter_window_edge_test",  # needs the tb_smc_jtag2axi_security_disable observation tap
+]
+
 # Default `--items all` for smu_wrapper: every test in this file that can pass.
 # The only omissions are the two sep_smc_sram_blocked leaves, which cannot pass
 # by construction; their group carries the reason. Anything else added to this
