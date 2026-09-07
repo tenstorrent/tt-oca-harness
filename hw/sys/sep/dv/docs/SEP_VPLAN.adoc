@@ -13,14 +13,14 @@
 |Bare core |`sep` (`hw/sys/sep/rtl/sep.sv`)
 |Repository |`tt-oca-harness`
 |Project |OCAH
-|Framework |PyUVM on cocotb (Phase 1 / Phase 2); UVM planned (Phase 3)
+|Framework |PyUVM on cocotb (Phase 1 / Phase 2); SystemVerilog UVM on the same top (Phase 3, `--framework uvm`)
 |Primary simulator |Verilator
 |Architecture reference |`hw/sys/sep/doc/`
 |Register export |`hw/sys/sep/regs/gen/` (via `env/sep_reg_meta.py`)
 |How to run |`README.md` in this DV tree (`tools/dv/run_dv.py --dut sep`)
 |Phase 1 test cases |31
 |Phase 2 test cases |49
-|Phase 3 |T.B.D. (new UVM bench)
+|Phase 3 |SV-UVM bench bring-up; 1 bound scenario (`sep_axi_smoke_test`)
 |===
 
 This VPLAN is the technical contract for the open-source SEP DV
@@ -51,7 +51,7 @@ One DUT. Two environments across three phases.
 |Iconic feature coverage by IP, plus cross-IP edges a per-IP bench cannot see. Includes block activation for instantiated IPs that otherwise had no vehicle. Randomize when there is a legal matrix (`RAND-REP` / `RANDCFG`); keep directed (`RAND-NONE`) when there is not.
 
 |Phase 3
-|New UVM testbench
+|SystemVerilog UVM realization of the same testbench top
 |Bring-up + smoke first, then coverage-driven corners, error/security permutations, and code-coverage close-out. Low overlap with Phase 1 / Phase 2. See <<phase-3>>.
 |===
 
@@ -4908,12 +4908,28 @@ contracts owned by the vault test, and the wipe security contract.
 '''''
 
 [[phase-3]]
-=== Phase 3 — UVM Environment (T.B.D.)
+=== Phase 3 — UVM Environment
 
-Phase 3 is a *new* UVM testbench on the same DUT (`sep_wrapper`) and the
-same OSS-safe filelist. It does not extend the cocotb environment.
+Phase 3 is the SystemVerilog UVM realization of the SEP bench on the same
+DUT (`sep_wrapper`), the same OSS-safe filelist, and the same testbench top
+(`tb/tb_top.sv`, one module with a cocotb shape and a `UVM` shape). It does
+not extend the cocotb environment: the class library lives under `uvm/`
+on the shared framework bases of `hw/common/dv/vip/ocah_lib/` and drives
+the CPU-LSU splice through the shared `ocah_axi_vip` master. Architecture
+and run recipes are in
+link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_TB_ARCH].
 
-First deliverable:: UVM bring-up plus smoke — not a corner list.
+Bring-up and smoke:: `sep_axi_smoke_test` is the first scenario bound in
+both realizations (`module = { cocotb = ..., uvm = ... }` in
+`testlists/system.toml`). The SV-UVM pass keeps the cocotb semantics on
+the CPU-LSU splice — fuse-sense release, the `SEP_LOCAL_BASE_ADDR`
+reset-value read, directed and seeded-random write/readback of
+`SEP_SW_DEBUG`, `SEP_NMI_VEC`, `RAS_BANK_INFO`, and `PKA_CTRL` through
+their generated field masks, and a restore to reset values — over 16
+seeded passes, with named `CHK-*` evidence finalized per pass and the
+always-on scoreboard's `cpu_ctrl_csr` feature required.
+`+SEP_CSR_SCOREBOARD_NEGATIVE` corrupts the scoreboard prediction so the
+run must FAIL, which is the non-vacuity proof of the pass/fail path.
 
 After smoke:: Coverage-driven corners, error and security permutations,
 and code-coverage close-out. Prefer low overlap with Phase 1 / Phase 2:
@@ -4981,7 +4997,7 @@ Holding notes (candidates, not an execute list)::
 |`CFG.sideload=1` START with no valid Key Manager key must fail closed (`ErrKeyNotValid`). `CMD.err_processed` returns the engine to idle with `CFG_REGWEN` open, and the next software-key operation reproduces the pre-error digest. KEY_VALID gating and stale-key reject sit on the same card. Valid-key consume stays with `sep_km_kmac_sideload_kat_test`.
 |===
 
-Nothing in this section is scheduled work until the UVM bench exists.
+The holding notes are candidates for the SV-UVM bench, not an execute list.
 
 === Counts
 
@@ -4991,7 +5007,7 @@ Nothing in this section is scheduled work until the UVM bench exists.
 |Phase 1 tests |31
 |Phase 2 tests |49
 |Cocotb total |80
-|Phase 3 |T.B.D.
+|Phase 3 |1 SV-UVM scenario bound (`sep_axi_smoke_test`)
 |Iconic scorecard rows |54 in-scope: 53 PROVEN, 1 GAP (see <<iconic-scorecard>>)
 |Phase 2 parked, coded and failing |1 (per-IP reset isolation; graded GAP, parked on an RTL fix)
 |===
