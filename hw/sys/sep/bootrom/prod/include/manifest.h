@@ -309,8 +309,8 @@ enum {
 
 struct boot_straps;
 
-uint32_t rom_manifest_boot(const struct boot_straps *straps, uint32_t spi_status,
-                          uint32_t lc_state, bool sboot_dis);
+uint32_t rom_manifest_boot(const struct boot_straps *straps, uint32_t spi_status, uint32_t lc_state,
+                           bool sboot_dis);
 uint32_t rom_handoff_bl1(const manifest_t *m);
 void rom_clear_ext_sram(void);
 

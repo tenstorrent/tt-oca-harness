@@ -313,7 +313,8 @@ static uint32_t validate_manifest_payload(const manifest_t *m) {
     // the payload was ever big enough to hold them. Without this, a small
     // payload with a large image_count reads entries from beyond the DMA'd
     // region -- whatever happens to follow it in SRAM -- and validates those.
-    uint32_t toc_bytes = (uint32_t)sizeof(struct toc_header) + n * (uint32_t)sizeof(struct toc_entry);
+    uint32_t toc_bytes =
+        (uint32_t)sizeof(struct toc_header) + n * (uint32_t)sizeof(struct toc_entry);
     if (toc_bytes < n || toc_bytes > p_len) {
         simputshex32("TOC_REGION_OOB=", toc_bytes);
         return MANIFEST_ERR_PAYLOAD_TOO_LARGE;
@@ -335,12 +336,11 @@ static uint32_t validate_manifest_payload(const manifest_t *m) {
     // more than was actually loaded; the padding bound keeps the slack from
     // being an arbitrary amount of unaccounted payload.
     const uint64_t toc_p_len = (uint64_t)toc->payload_length;
-    const bool encrypted = (m->usage_constraints.flags &
-                            (1u << USAGE_CONSTRAINTS_FLAGS_BIT_ENCRYPTED_PAYLOAD)) != 0u;
-    const bool plen_bad = encrypted
-        ? (toc_p_len > m->payload_length ||
-           m->payload_length - toc_p_len > AES_CBC_BLOCK_BYTES)
-        : (toc_p_len != m->payload_length);
+    const bool encrypted =
+        (m->usage_constraints.flags & (1u << USAGE_CONSTRAINTS_FLAGS_BIT_ENCRYPTED_PAYLOAD)) != 0u;
+    const bool plen_bad = encrypted ? (toc_p_len > m->payload_length ||
+                                       m->payload_length - toc_p_len > AES_CBC_BLOCK_BYTES)
+                                    : (toc_p_len != m->payload_length);
     if (plen_bad) {
         simputshex32("TOC_PLEN_MISMATCH=", (uint32_t)toc_p_len);
         return MANIFEST_ERR_BAD_LENGTH;
@@ -456,7 +456,7 @@ static uint32_t validate_manifest_payload(const manifest_t *m) {
 
 // Attempt one manifest slot: load -> validate -> integrity -> payload.
 static uint32_t try_manifest_slot(manifest_t *dest, uint32_t src_addr, bool from_spi,
-                                 uint32_t lc_state, bool sboot_dis) {
+                                  uint32_t lc_state, bool sboot_dis) {
     uint32_t err;
 
 #if BOOT_SPI_CONTROLLER_OT
@@ -509,8 +509,8 @@ static uint32_t try_manifest_slot(manifest_t *dest, uint32_t src_addr, bool from
     // authenticates the manifest that selects it -- and the ciphertext would
     // reach the TOC check undecrypted anyway, failing as a malformed TOC and
     // hiding the real reason.
-    if (!sb && (dest->usage_constraints.flags &
-                (1u << USAGE_CONSTRAINTS_FLAGS_BIT_ENCRYPTED_PAYLOAD))) {
+    if (!sb &&
+        (dest->usage_constraints.flags & (1u << USAGE_CONSTRAINTS_FLAGS_BIT_ENCRYPTED_PAYLOAD))) {
         simputs("ENC_WITHOUT_SBOOT\n");
         return MANIFEST_ERR_LC_USAGE_CONSTRAINT;
     }
@@ -702,8 +702,8 @@ static void clear_sram_region(uint32_t addr, uint32_t size) {
 // Public API
 // ---------------------------------------------------------------------------
 
-uint32_t rom_manifest_boot(const struct boot_straps *straps, uint32_t spi_status,
-                          uint32_t lc_state, bool sboot_dis) {
+uint32_t rom_manifest_boot(const struct boot_straps *straps, uint32_t spi_status, uint32_t lc_state,
+                           bool sboot_dis) {
     manifest_t *p_manifest = (manifest_t *)(uintptr_t)SRAM_BASE;
     const bool from_spi = boot_from_spi(straps);
 
@@ -765,8 +765,7 @@ uint32_t rom_manifest_boot(const struct boot_straps *straps, uint32_t spi_status
         simputshex32("MANIFEST_SRC=", manifest_src);
 
         // Attempt load + validate.
-        uint32_t err = try_manifest_slot(p_manifest, manifest_src, from_spi,
-                                        lc_state, sboot_dis);
+        uint32_t err = try_manifest_slot(p_manifest, manifest_src, from_spi, lc_state, sboot_dis);
         if (err != 0u) {
             simputshex32("MANIFEST_ERR=", err);
             last_err = err;

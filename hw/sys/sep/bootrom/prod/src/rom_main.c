@@ -364,7 +364,7 @@ static uint32_t rom_spi_init(const struct boot_straps *straps, uint16_t sysclk_m
 // locks fuse secrets, and hands off to BL1.
 // spi_status: result of spi_init(); non-zero skips the primary manifest retry.
 static void rom_manifest_validate_handoff(const struct boot_straps *straps, uint32_t spi_status,
-                                         uint32_t lc_state, bool sboot_dis) {
+                                          uint32_t lc_state, bool sboot_dis) {
     // ── [C12–C14] manifest load ──
     report_status(STATUS_TYPE_INFO, SEP_MSG_MANIFEST_LOAD_START);
     uint32_t mfst_err = rom_manifest_boot(straps, spi_status, lc_state, sboot_dis);
@@ -420,11 +420,10 @@ static void rom_manifest_validate_handoff(const struct boot_straps *straps, uint
 
             bl2_demote_m = bl2_demote;
             // Whichever flag decides is what the measurement records.
-            demotion_decision =
-                (sel & (1ull << SELECTOR_BIT_BL1_DEMOTION))
-                    ? ((m->usage_constraints.flags &
-                        (1u << USAGE_CONSTRAINTS_FLAGS_BIT_BL1_DEMOTION)) != 0)
-                    : bl2_demote;
+            demotion_decision = (sel & (1ull << SELECTOR_BIT_BL1_DEMOTION))
+                                    ? ((m->usage_constraints.flags &
+                                        (1u << USAGE_CONSTRAINTS_FLAGS_BIT_BL1_DEMOTION)) != 0)
+                                    : bl2_demote;
 
             if (sel & (1ull << SELECTOR_BIT_BL1_DEMOTION)) {
                 // BL1 manifest decides demotion, and the register is always locked.
@@ -479,12 +478,10 @@ static void rom_manifest_validate_handoff(const struct boot_straps *straps, uint
     {
         const manifest_t *m =
             (const manifest_t *)(uintptr_t)get_bl0_state()->sep_sram_manifest_addr;
-        uint32_t demotion_bits = (demotion_decision ? 1u : 0u) |
-                                 (lock_demotion ? (1u << 1) : 0u) |
+        uint32_t demotion_bits = (demotion_decision ? 1u : 0u) | (lock_demotion ? (1u << 1) : 0u) |
                                  (bl2_demote_m ? (1u << 2) : 0u);
-        if (rom_record_measurement(m->manifest_hash, demotion_bits,
-                                   get_bl0_state()->secure_boot, lc_state,
-                                   sboot_dis) != 0u) {
+        if (rom_record_measurement(m->manifest_hash, demotion_bits, get_bl0_state()->secure_boot,
+                                   lc_state, sboot_dis) != 0u) {
             rom_err_fail(ROM_ERR_MEASUREMENT_FAILED);
         }
     }

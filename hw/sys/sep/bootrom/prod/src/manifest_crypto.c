@@ -41,9 +41,9 @@
 // and therefore always clear, so revoking a fused key had no effect at all.
 #define PUBK_REVOKE_BIT_CHIPLET_HASH0 16
 #define PUBK_REVOKE_BIT_CHIPLET_HASH1 17
-#define PUBK_REVOKE_BIT_SIP_HASH0     20
-#define PUBK_REVOKE_BIT_SYS_HASH      22
-#define PUBK_REVOKE_BIT_SIP_HASH1     24
+#define PUBK_REVOKE_BIT_SIP_HASH0 20
+#define PUBK_REVOKE_BIT_SYS_HASH 22
+#define PUBK_REVOKE_BIT_SIP_HASH1 24
 
 // Max KDF argument bytes.
 #define MAX_KDF_ARGUMENT_BYTES 16

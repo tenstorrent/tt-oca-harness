@@ -453,9 +453,8 @@ static int chk_err_overflow(void) {
     // No command is outstanding, so nothing drains the FIFO: keep writing until
     // the HOST reports TXFULL. The bound is a guard, not the contract.
     uint32_t writes = 0;
-    while (writes < TXFULL_WRITE_LIM &&
-           !(spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR) &
-             SPI_CONTROLLER__STATUS__TXFULL_bm)) {
+    while (writes < TXFULL_WRITE_LIM && !(spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR) &
+                                          SPI_CONTROLLER__STATUS__TXFULL_bm)) {
         spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0xE0000000u + writes);
         writes++;
     }

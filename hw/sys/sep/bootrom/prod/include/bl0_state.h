@@ -89,8 +89,7 @@ _Static_assert(sizeof(struct bl0_state) <= BL0_STATE_RESERVE_BYTES,
 
 // BL1 reads this struct at a compile-time address, so BL0 and BL1 must be built
 // from this header.
-_Static_assert(BL0_STATE_ADDR + sizeof(struct bl0_state)
-                   == OROM_DCCM_BASE + OROM_DCCM_SIZE,
+_Static_assert(BL0_STATE_ADDR + sizeof(struct bl0_state) == OROM_DCCM_BASE + OROM_DCCM_SIZE,
                "bl0_state must end exactly at the top of DCCM");
 
 static inline struct bl0_state *get_bl0_state(void) {

@@ -61,9 +61,8 @@ _Static_assert(sizeof(struct rom_measurement_input) == 48,
 //
 // Returns 0 on success, 1 on a crypto engine failure; the caller maps that onto
 // an error code.
-static inline uint32_t rom_record_measurement(const uint8_t *manifest_hash,
-                                              uint32_t demotion_bits, bool secure_boot,
-                                              uint32_t lc_state, bool sboot_dis) {
+static inline uint32_t rom_record_measurement(const uint8_t *manifest_hash, uint32_t demotion_bits,
+                                              bool secure_boot, uint32_t lc_state, bool sboot_dis) {
     report_status(STATUS_TYPE_INFO, SEP_MSG_RECORD_MEASUREMENT);
 
     struct rom_measurement_input input;
