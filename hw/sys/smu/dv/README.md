@@ -7,7 +7,9 @@ See [`docs/index.adoc`](docs/index.adoc) for the chapter set:
 architecture, [`docs/SMU_VPLAN.adoc`](docs/SMU_VPLAN.adoc) for the
 verification plan, and
 [`docs/SMU_FEATURE_LIST.adoc`](docs/SMU_FEATURE_LIST.adoc) for the
-candidate v0.5.0 SEP=0 feature subset, and
+candidate v0.5.0 SEP=0 feature subset (unsigned; #487),
+[`docs/SMU_SCOPE_TRACEABILITY.adoc`](docs/SMU_SCOPE_TRACEABILITY.adoc)
+for the candidate requirement-to-test matrix (unsigned; #479), and
 [`docs/SMU_DEFERRED_DISPOSITION.adoc`](docs/SMU_DEFERRED_DISPOSITION.adoc)
 for the v0.5.0 deferred/OUT classification of the 123-entry catalog.
 

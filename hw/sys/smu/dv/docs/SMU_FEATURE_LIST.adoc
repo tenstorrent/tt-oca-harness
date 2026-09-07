@@ -143,8 +143,8 @@ v0.5.0 nightly denominator.
 * The commercial names `main_wrapper` and `main_wrapper_por` are not in
   this tree. The wrapper successors are
   `smu_wrapper_elaboration_no_sep_test` (elaboration / reset) and
-  `smu_wrapper_elaboration_sep_rtl_test` (SEP=1 elab, quarantined). See
-  #261. Do not invent a bare-`smu` test under those names.
+  `smu_wrapper_elaboration_sep_rtl_test` (SEP=1 elab, wrapper `smoke`).
+  See #261. Do not invent a bare-`smu` test under those names.
 
 [[smu-focused-gaps]]
 === Focused gaps (not absorbed here)
@@ -153,7 +153,7 @@ v0.5.0 nightly denominator.
 |===
 |Gap |Owner |Tracker
 |Designer confirmation of this subset |SMU designer |#487 (this file)
-|Traceability approval after the subset is signed |SMU design owner + DV lead |#479
+|Traceability approval after the subset is signed |SMU design owner + DV lead |#479 (`SMU_SCOPE_TRACEABILITY.adoc`)
 |Whether `smu_ext_boot_seq_gate_test` joins `sep0_all` |SMU DV |#493
 |Whether `smu_smc_mailbox_int_test` joins `sep0_all` |SMU DV |#481
 |SEP=1 / F2 / F5 |SEP=1 track |#493
