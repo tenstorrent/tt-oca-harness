@@ -1,38 +1,157 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
- 
+
+= Debug & Test Ports (DTP)
+:description: DTP overview — purpose, composition and reading route.
+
 [[debug-test-ports]]
-== Debug and Test Ports (DTP)
- 
-:imagesdir: assets
- 
-include::overview.adoc[leveloffset=0]
- 
-// JTAG Components
+
+The Debug & Test Ports (DTP) module provides the debug and test infrastructure
+for Tenstorrent chiplets. It integrates the JTAG Interface Unit (JIU) and the
+Cross Trigger Network (CTN) into a single instantiable subsystem that exposes
+a standard external JTAG port, internal debug bridges, and a configurable
+cross-trigger fabric.
+
+== Capabilities
+
+* *JTAG access* — IEEE 1149.1-2013 Primary TAP with configurable Secondary TAPs
+  for hierarchical multi-chiplet debug connectivity per IEEE 1838-2019 (3DIC).
+* *iJTAG chains* — IEEE 1687-2014 SIB-based chains for DFT secure, DFT
+  non-secure, and DFD instrumentation, plus SMC and SEP OTP debug bridges.
+* *JTAG2AXI bridges* — SMC fabric, SMC OTP and SEP OTP debug access without
+  system software.
+* *Cross-trigger fabric* — Configurable network (1–32 external CTPs, 0–32
+  internal cross triggers) supporting both wire-OR and point-to-point signalling
+  per the Open Chiplet Cross Triggering (OCCT) specification.
+* *Clock stop* — Unified halt path combining JTAG DEBUG_CONTROL and CLA
+  clock-stop requests, with separate CLA-only readback for software observation.
+* *Lifecycle feature control* — SEP-driven enable polarity gates eleven debug and
+  test paths (five STAP/scan paths, three iJTAG chains and three JTAG2AXI bridges)
+  independently.
+
+== Reading Route
+
+Follow this order to understand the DTP:
+
 ifdef::backend-html5[]
-include::ip:jtag_intf_unit/doc/index.adoc[leveloffset=0]
-include::ip:jtag_ptap/doc/index.adoc[leveloffset=0]
-include::ip:jtag_stap/doc/index.adoc[leveloffset=0]
+. xref:overview.adoc[Architecture and Access Paths] — how the JIU and CTN
+  connect internally and how debug access reaches them through the SMU.
+. xref:jtag.adoc[JTAG Operation] — DTP-level topology, scan chain ordering,
+  clock domains, reset hierarchy and lifecycle feature control, before the
+  per-component reference pages below.
+. JTAG reference — xref:ip:jtag_intf_unit/doc/index.adoc[JTAG Interface Unit],
+  xref:ip:jtag_ptap/doc/index.adoc[JTAG PTAP],
+  xref:ip:jtag_stap/doc/index.adoc[JTAG STAP].
+. Cross-trigger reference — xref:ip:cross_trigger_network/doc/index.adoc[Cross-Trigger Network]
+  (includes unified register map),
+  xref:ip:cross_trigger_port/doc/index.adoc[Cross-Trigger Port],
+  xref:ip:cross_trigger_matrix/doc/index.adoc[Cross-Trigger Matrix].
+. xref:clock_stop.adoc[Clock Stop / Reset] — architecture of the combined JTAG
+  and CLA halt path.
+. xref:reference.adoc[Configuration and Reference] — port table and parameter
+  summary.
 endif::backend-html5[]
 ifdef::backend-pdf[]
-include::../../../ip/jtag/jtag_intf_unit/doc/index.adoc[leveloffset=0]
-include::../../../ip/jtag/jtag_ptap/doc/index.adoc[leveloffset=0]
-include::../../../ip/jtag/jtag_stap/doc/index.adoc[leveloffset=0]
+. xref:overview.adoc[Architecture and Access Paths] — see the DTP Architecture and Access Paths section.
+. xref:jtag.adoc[JTAG Operation] — see the JTAG Operation section.
+. JTAG reference — see the xref:ip:jtag_intf_unit/doc/index.adoc[JTAG Interface Unit],
+  xref:ip:jtag_ptap/doc/index.adoc[JTAG PTAP] and xref:ip:jtag_stap/doc/index.adoc[JTAG STAP] sections.
+. Cross-trigger reference — see the xref:ip:cross_trigger_network/doc/index.adoc[Cross-Trigger Network]
+  (includes unified register map),
+  xref:ip:cross_trigger_port/doc/index.adoc[Cross-Trigger Port] and
+  xref:ip:cross_trigger_matrix/doc/index.adoc[Cross-Trigger Matrix] sections.
+. xref:clock_stop.adoc[Clock Stop / Reset] — see the Clock Stop / Reset section.
+. xref:reference.adoc[Configuration and Reference] — see the Configuration and Reference section.
 endif::backend-pdf[]
- 
-// Cross Trigger Components
+
 ifdef::backend-html5[]
-include::ip:cross_trigger_network/doc/index.adoc[leveloffset=0]
-include::ip:cross_trigger_port/doc/index.adoc[leveloffset=0]
-include::ip:cross_trigger_matrix/doc/index.adoc[leveloffset=0]
+// Compatibility anchors: former assembled dtp/index.adoc deep-link targets.
+// These IDs now resolve here and redirect readers to the authoritative page.
+[[dtp-overview]]
+_Content moved:_
+xref:overview.adoc#dtp-overview[Architecture and Access Paths]
+
+[[dtp-jtag-integration]]
+_Content moved:_
+xref:jtag.adoc#dtp-jtag-integration[JTAG Operation]
+
+[[jtag-interface-unit]]
+_Content moved:_
+xref:ip:jtag_intf_unit/doc/index.adoc#jtag-interface-unit[JTAG Interface Unit]
+
+[[jtag-intf-unit-architecture]]
+_Content moved:_
+xref:ip:jtag_intf_unit/doc/index.adoc#jtag-intf-unit-architecture[JTAG Interface Unit Architecture]
+
+[[jtag-intf-unit-interface]]
+_Content moved:_
+xref:ip:jtag_intf_unit/doc/index.adoc#jtag-intf-unit-interface[JTAG Interface Unit Interface]
+
+[[jtag-ptap]]
+_Content moved:_
+xref:ip:jtag_ptap/doc/index.adoc#jtag-ptap[JTAG PTAP]
+
+[[ptap-architecture]]
+_Content moved:_
+xref:ip:jtag_ptap/doc/index.adoc#ptap-architecture[JTAG PTAP Architecture]
+
+[[ptap-interface]]
+_Content moved:_
+xref:ip:jtag_ptap/doc/index.adoc#ptap-interface[JTAG PTAP Interface]
+
+[[jtag-stap]]
+_Content moved:_
+xref:ip:jtag_stap/doc/index.adoc#jtag-stap[JTAG STAP]
+
+[[stap-architecture]]
+_Content moved:_
+xref:ip:jtag_stap/doc/index.adoc#stap-architecture[JTAG STAP Architecture]
+
+[[stap-interface]]
+_Content moved:_
+xref:ip:jtag_stap/doc/index.adoc#stap-interface[JTAG STAP Interface]
+
+[[cross-trigger-network]]
+_Content moved:_
+xref:ip:cross_trigger_network/doc/index.adoc#cross-trigger-network[Cross-Trigger Network]
+
+[[cross-trigger-network-architecture]]
+_Content moved:_
+xref:ip:cross_trigger_network/doc/index.adoc#cross-trigger-network-architecture[Cross-Trigger Network Architecture]
+
+[[cross-trigger-network-interface]]
+_Content moved:_
+xref:ip:cross_trigger_network/doc/index.adoc#cross-trigger-network-interface[Cross-Trigger Network Interface]
+
+[[ctn-memory-map]]
+_Content moved:_
+xref:ip:cross_trigger_network/doc/index.adoc#ctn-memory-map[CTN Memory Map]
+
+[[cross-trigger-port]]
+_Content moved:_
+xref:ip:cross_trigger_port/doc/index.adoc#cross-trigger-port[Cross-Trigger Port]
+
+[[ctp-architecture]]
+_Content moved:_
+xref:ip:cross_trigger_port/doc/index.adoc#ctp-architecture[Cross-Trigger Port Architecture]
+
+[[ctp-interface]]
+_Content moved:_
+xref:ip:cross_trigger_port/doc/index.adoc#ctp-interface[Cross-Trigger Port Interface]
+
+[[cross-trigger-matrix]]
+_Content moved:_
+xref:ip:cross_trigger_matrix/doc/index.adoc#cross-trigger-matrix[Cross-Trigger Matrix]
+
+[[ctm-architecture]]
+_Content moved:_
+xref:ip:cross_trigger_matrix/doc/index.adoc#ctm-architecture[Cross-Trigger Matrix Architecture]
+
+[[ctm-interface]]
+_Content moved:_
+xref:ip:cross_trigger_matrix/doc/index.adoc#ctm-interface[Cross-Trigger Matrix Interface]
+
+[[dtp-clock-stop]]
+_Content moved:_
+xref:clock_stop.adoc#dtp-clock-stop[Clock Stop / Reset]
 endif::backend-html5[]
-ifdef::backend-pdf[]
-include::../../../ip/cross_trigger/cross_trigger_network/doc/index.adoc[leveloffset=0]
-include::../../../ip/cross_trigger/cross_trigger_port/doc/index.adoc[leveloffset=0]
-include::../../../ip/cross_trigger/cross_trigger_matrix/doc/index.adoc[leveloffset=0]
-endif::backend-pdf[]
- 
-// DTP-level integration
-include::jtag.adoc[leveloffset=0]
-include::clock_stop.adoc[leveloffset=0]
-include::defines.adoc[leveloffset=0]

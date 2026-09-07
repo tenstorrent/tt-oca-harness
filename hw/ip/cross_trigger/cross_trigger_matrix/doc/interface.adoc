@@ -2,9 +2,8 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[ctm-interface]]
-==== Interface
 
-===== Signal Interface
+=== Signal Interface
 
 [cols="<,<,<,<",options="header"]
 |===
@@ -20,7 +19,7 @@
 
 Where N = NUM_CTP and M = NUM_INT_CT.
 
-===== Data Ports
+=== Data Ports
 
 The CTM has the following data ports:
 
@@ -31,7 +30,7 @@ The CTM has the following data ports:
   CTPs, or other cross trigger generating devices, where M is the number of
   these cross trigger sources.
 
-===== Dependencies
+=== Dependencies
 
 The CTM depends on the following components:
 

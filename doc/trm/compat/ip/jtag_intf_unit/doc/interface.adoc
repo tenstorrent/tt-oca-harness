@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= JTAG Interface Unit Interface (moved)
+
+[[jtag-intf-unit-interface]]
+
+This page has moved.
+See xref:ip:jtag_intf_unit/doc/index.adoc#jtag-intf-unit-interface[JTAG Interface Unit Interface].

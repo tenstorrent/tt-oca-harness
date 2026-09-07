@@ -2,9 +2,8 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[jtag-intf-unit-interface]]
-==== Interface
 
-===== Instruction Encodings
+=== Instruction Encodings
 
 The JTAG interface unit uses 6-bit instruction encodings:
 
@@ -56,7 +55,7 @@ The JTAG interface unit uses 6-bit instruction encodings:
 **NOTE:** All instruction encodings _not_ explicitly defined in this table map
 to the BYPASS instruction.
 
-===== Signal Interface
+=== Signal Interface
 
 [cols="<,<,<,<",options="header"]
 |===
@@ -83,7 +82,7 @@ to the BYPASS instruction.
 |sep_otp_axil_* |Output | |SEP OTP AXI-Lite interface
 |===
 
-===== Dependencies
+=== Dependencies
 
 The JTAG Interface Unit depends on the following components:
 

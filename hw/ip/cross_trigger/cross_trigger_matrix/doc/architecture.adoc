@@ -2,7 +2,6 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[ctm-architecture]]
-==== Architecture
 
 The Cross Trigger Matrix in this tree is configured for 26 source ports and 26
 destination ports, matching the DTP cross-trigger topology. The matrix
@@ -15,7 +14,7 @@ The CTM is programmed at runtime via firmware or debug transactions. Proper
 configuration of the CTMs in each chiplet will minimize trigger latency and
 prevent loops in the SiP cross trigger network.
 
-===== Routing Logic
+=== Routing Logic
 
 The CTM routing implements a two-stage combinatorial path followed by output
 registration. Each of the 26 CT_Src output ports is driven by a dedicated
@@ -41,7 +40,7 @@ the same CT_Dst input, enabling broadcast distribution. The register stage
 prevents glitches on the output when configuration changes or when multiple
 input pulses arrive simultaneously.
 
-===== Port Indexing
+=== Port Indexing
 
 CTM ports are indexed as follows:
 

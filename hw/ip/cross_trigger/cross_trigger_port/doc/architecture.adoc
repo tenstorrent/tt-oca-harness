@@ -2,7 +2,6 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[ctp-architecture]]
-==== Architecture
 
 The Cross Trigger Port architecture separates the register interface from core
 logic to enable reuse. The full `cross_trigger_port` module includes CSRs for
@@ -12,7 +11,7 @@ cross-trigger connections without AXI-Lite overhead.
 
 image::ctp_module_diagram.png[CTP Module Diagram,scaledwidth=90.0%]
 
-===== Submodule Hierarchy
+=== Submodule Hierarchy
 
 The CTP core instantiates four specialized submodules for different aspects of
 cross-trigger operation:
@@ -34,7 +33,7 @@ cross-trigger operation:
 |Implements sender and receiver state machines for Point-to-Point mode four-phase handshaking protocol
 |===
 
-===== Wire-OR Mode
+=== Wire-OR Mode
 
 Wire-OR mode is a 1-wire cross trigger signaling scheme compatible with many
 existing cross triggering implementations. This scheme is very resource
@@ -43,7 +42,7 @@ network. However, the performance of the network decreases as the number of
 connected chiplets increase. Also, the duration of the cross trigger pulse must
 be pre-arranged across all connected chiplets.
 
-====== Pulse Stretcher Operation
+==== Pulse Stretcher Operation
 
 The pulse stretcher extends single-cycle core-side pulses to multi-cycle GPIO
 assertions lasting `stretch_mult + 1` clock cycles. The module implements a
@@ -77,7 +76,7 @@ in the following example diagram:
 
 image::sip_wireor_diagram.png[SiP Wire-OR Cross Trigger Diagram,scaledwidth=90.0%]
 
-===== Point-to-Point Mode
+=== Point-to-Point Mode
 
 Point-to-point mode utilizes a four-phase handshaking scheme to synchronize a
 cross trigger quickly and reliably between two chiplets without pulse
@@ -106,7 +105,7 @@ The timing of the request/acknowledge handshake is shown in the diagram below:
 
 image::p2p_timing_diagram.svg[Point-to-Point Request/Acknowledge Timing,scaledwidth=90.0%]
 
-====== Synchronization and CDC Handling
+==== Synchronization and CDC Handling
 
 All GPIO input signals are asynchronous with respect to the CTP system clock and
 require synchronization to prevent metastability. The `ctp_synchronizer` module
@@ -136,7 +135,7 @@ polarity requirements. Edge detection and state machine processing occur only on
 synchronized (and optionally inverted) signals, ensuring all CTP core logic
 operates on glitch-free inputs.
 
-====== Handshake State Machines
+==== Handshake State Machines
 
 Point-to-point mode implements two independent state machines within the
 `ctp_handshake_ctrl` module, enabling full-duplex cross-triggering. The sender

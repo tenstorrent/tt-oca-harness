@@ -2,9 +2,8 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[ptap-interface]]
-==== Interface
 
-===== Instruction Encodings
+=== Instruction Encodings
 
 The PTAP uses 6-bit instruction encodings. During the capture phase, the least
 significant bit (closest to TDO) of the instruction register always presents a 1
@@ -41,7 +40,7 @@ register always return 0s.
 **NOTE:** All instruction encodings _not_ explicitly defined in this table map
 to the BYPASS instruction.
 
-===== Signal Interface
+=== Signal Interface
 
 [cols="<,<,<,<",options="header"]
 |===
@@ -74,7 +73,7 @@ to the BYPASS instruction.
 |feat_ctrl_i |Input |64 |Lifecycle feature control vector, enable-polarity (1 = feature enabled); security gating for debug interfaces
 |===
 
-===== Dependencies
+=== Dependencies
 
 The PTAP depends on the following components:
 

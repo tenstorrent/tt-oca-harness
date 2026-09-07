@@ -1,0 +1,63 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Configuration and Reference
+:description: DTP port reference, configuration parameters and routes to generated register documentation.
+
+[[dtp-reference]]
+
+This page provides the DTP top-level port table. Configuration parameters are
+defined on their owning IP pages; see the links in the section below. The
+generated CTM and CTP register maps appear in the
+ifdef::backend-html5[]
+xref:ip:cross_trigger_network/doc/index.adoc#ctn-memory-map[CTN Memory Map]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+<<ctn-memory-map,CTN Memory Map>>
+endif::backend-pdf[]
+section of the Cross-Trigger Network page.
+
+[[dtp-port-reference]]
+== Port Reference
+
+The table below lists all DTP top-level ports. The port table is shared with
+the Integrator Guide.
+
+ifdef::backend-html5[]
+include::ROOT:partial$hw/dtp/doc/port_table.adoc[]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+include::port_table.adoc[]
+endif::backend-pdf[]
+
+== Configuration Parameters
+
+DTP instantiation parameters are defined on their owning IP pages:
+
+* *JTAG Interface Unit* parameters (STAP count, I/O/SMC/SEP/extra STAP enables) —
+  see the
+ifdef::backend-html5[]
+  xref:ip:jtag_intf_unit/doc/index.adoc[JTAG Interface Unit]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+  <<jtag-interface-unit,JTAG Interface Unit>>
+endif::backend-pdf[]
+  page.
+* *PTAP* parameters (IC_RESET struct types, IDCODE fields, JTAG2AXI pipeline
+  depths, feature-enable enables) — see the
+ifdef::backend-html5[]
+  xref:ip:jtag_ptap/doc/index.adoc[JTAG PTAP]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+  <<jtag-ptap,JTAG PTAP>>
+endif::backend-pdf[]
+  page.
+* *Cross Trigger Network* parameters (CTP count, internal CT count, clock-stop
+  request count, per-CTP operating mode) — see the
+ifdef::backend-html5[]
+  xref:ip:cross_trigger_network/doc/index.adoc[Cross-Trigger Network]
+endif::backend-html5[]
+ifdef::backend-pdf[]
+  <<cross-trigger-network,Cross-Trigger Network>>
+endif::backend-pdf[]
+  page.

@@ -2,23 +2,22 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[jtag-intf-unit-architecture]]
-==== Architecture
 
-The JTAG Interface Unit integrates PTAP, STAP chain, and iJTAG network into a
-unified debug access point.
+The JTAG Interface Unit integrates the PTAP, STAP chain and iJTAG network into
+a unified debug access point.
 
 Shown below is an abstract diagram of the JTAG scan chain.
 
-image::jtag_scan_chain.drawio.svg[JTAG Scan Chain Diagram,scaledwidth=90.0%]
+image::jtag_scan_chain.drawio.svg[JTAG scan chain diagram showing PTAP connected to the external JTAG pins and the STAP chain,scaledwidth=90.0%]
 
-===== Scan Chain Topology
+=== Scan Chain Topology
 
 The PTAP is connected to the incoming JTAG interface for the chiplet. The scan
 chain is organized in three major segments: the Primary TAP processes all
 instructions, the Secondary TAP chain provides hierarchical TAP access, and the
 iJTAG network enables instrument-level access to debug blocks.
 
-====== STAP Chain Hierarchy
+==== STAP Chain Hierarchy
 
 The STAP chain implements a four-level hierarchy with configurable lockup latch
 insertion optimized for different physical routing distances.
@@ -58,7 +57,7 @@ signal routing is local to the chiplet. The final extra STAP in the chain
 enables scan output lockup when `NUM_EXTRA_STAPS > 0`, providing additional
 output timing margin before the scan path returns to the PTAP.
 
-====== Feature Control Synchronization
+==== Feature Control Synchronization
 
 The lifecycle feature control signals originate in the system clock domain and
 must be synchronized to the TCK domain before use. The interface unit implements
@@ -108,27 +107,27 @@ it is disabled when *any* one of them is deasserted:
 |`!ap_debug`
 |===
 
-===== iJTAG Network
+=== iJTAG Network
 
 The iJTAG network is organized into three cascaded Segment Insertion Bit (SIB)
 chains with differing security requirements. Each SIB gates access to a specific
 set of debug instruments based on the synchronized feature control signals, and
 requires *all* of the enables listed for it above.
 
-====== DFT Secure Chain
+==== DFT Secure Chain
 
 The DFT Secure chain is the most restrictive of the three: it is accessible only
 when fuse test, SEP debug, SOC debug, and AP debug are all enabled. This chain
 is ported out of the DTP for connection to tooling-generated DFT logic such as
 MBIST controllers and scan compression logic.
 
-====== DFT Non-Secure Chain
+==== DFT Non-Secure Chain
 
 The DFT Non-Secure chain requires both SOC debug and AP debug to be enabled.
 This chain provides access to DFT instrumentation that does not involve
 security-sensitive fuse or SEP operations.
 
-====== DFD Chain
+==== DFD Chain
 
 The Debug Forensics Dump (DFD) chain requires AP debug to be enabled. The SIB
 gate itself is the least restrictive of the three; the resources reached through
@@ -140,7 +139,7 @@ lifecycle condition. This chain grants access to:
 * SEP OTP controller via AXI-Lite-to-APB bridge
 * Extension port for integrator-defined debug instruments
 
-===== JTAG2AXI Interfaces
+=== JTAG2AXI Interfaces
 
 The interface unit instantiates multiple JTAG2AXI bridges:
 

@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= JTAG STAP Interface (moved)
+
+[[stap-interface]]
+
+This page has moved.
+See xref:ip:jtag_stap/doc/index.adoc#stap-interface[JTAG STAP Interface].

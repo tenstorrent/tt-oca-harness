@@ -19,3 +19,4 @@ asciidoc:
     allow-uri-read: ''
     basedir: doc/trm
     verbose: ''
+    ocah-trm: ''
