@@ -28,7 +28,7 @@ includes = ["smc.toml", "dtp.toml", "fabric.toml"]
 #                                    Now waits on the TCK edge itself and reads
 #                                    the same counts on all 12 pairs.
 #
-#   smu_smc_dtp_jtag2axi_smoke_test  NOT a DV defect. The SMC JTAG2AXI SERIES
+#   smu_smc_dtp_jtag2axi_smoke_test  NOT a DV defect; filed as #1599. The SERIES
 #                                    incremental write never leaves BUSY when
 #                                    jtag_period_ns / smu_clk_period_ns < 4:
 #                                    FAIL at 2.67, 3.20, 3.33 and PASS at 4.00
