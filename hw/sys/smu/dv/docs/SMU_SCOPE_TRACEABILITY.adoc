@@ -9,7 +9,7 @@ This chapter is the *candidate* requirement-to-test-to-coverage matrix for
 subset and the per-leaf `TEST_EVIDENCE` tokens (#487).
 `SMU_DEFERRED_DISPOSITION.adoc` classifies the 123-entry catalog (#488).
 Live group membership is `testlists/all.toml`. This file is the
-reconciliation those two chapters plus the SPEC Features 1–7.
+reconciliation of those two chapters with SPEC Features 1–7.
 
 Do not treat a merged copy as design-owner or DV-lead sign-off.
 
@@ -47,9 +47,9 @@ Executable membership on `main` today, `--dut smu` only:
 |===
 |Group |Count |Role
 |`smoke` |4 |PR gate (`sim.yml`). Includes `smu_ext_boot_seq_gate_test`, which is not in `sep0_all`.
-|`phase1` |49 |Bring-up ladder. Not the release denominator.
-|`sep0_all` |53 |Nightly and weekly (`regress.yml`). v0.5.0 feature-credit set.
-|`sep0_p4_all` |55 |Adds two P4 deepeners. Not the nightly denominator.
+|`phase1` |48 |Bring-up ladder. Not the release denominator.
+|`sep0_all` |52 |Nightly and weekly (`regress.yml`). v0.5.0 feature-credit set.
+|`sep0_p4_all` |54 |Adds two P4 deepeners. Not the nightly denominator.
 |===
 
 `--dut smu_wrapper` (`testlists/wrapper.toml`) is a different evidence
@@ -84,7 +84,7 @@ is `SMU_FEATURE_LIST.adoc`; this table is the credit decision.
 [cols="1,2,2,2,3,1",options="header",]
 |===
 |Requirement |Canonical tests |Groups |Coverage intent |Checker evidence |Credit
-|F1 SMC boot / firmware observe (SEP=0) |`smu_smc_smoke_test`, reset / mailbox / WDT / strap / OCTS cluster |`sep0_all` |`smu_fcov` F1 bins |`CHK-SMC-FAB-DUAL-NET-S2`, `RST_PRIMARY_SMC_1`, `SMC_MBX_CSR_OK`, `WDT_UNLOCK_OK`, `SMC_STRAP_OK`, `CHK-OCTS-COUNT-MONOTONIC` |YES
+|F1 SMC boot / firmware observe (SEP=0) |`smu_smc_smoke_test`, reset / mailbox / WDT / `smu_smc_gpio_strap_sanity_test` / OCTS cluster |`sep0_all` |`smu_fcov` F1 bins |`CHK-SMC-FAB-DUAL-NET-S2`, `RST_PRIMARY_SMC_1`, `SMC_MBX_CSR_OK`, `WDT_UNLOCK_OK`, `SMC_STRAP_OK`, `CHK-OCTS-COUNT-MONOTONIC` |YES
 |F1 PR-only |`smu_ext_boot_seq_gate_test`, `smu_smc_mailbox_int_test` |`smoke` / `phase1` / `smc` — not `sep0_all` |same |`CHK-BOOT-SEQ-GATE`, `CHK-SMC-MBX-IRQ-EXT-S2` |NO (enrollment open: #493 / #481)
 |F2 Real SEP under SMU |— |wrapper `sep_rtl` only |— |wrapper `DUT_TAG=WRAPPER` boot tokens |NO
 |F3 DTP debug and test access |PTAP / STAP / BSR / JTAG2AXI / OTP / boot-stall / IC_RESET cluster |`sep0_all` |`smu_fcov` F3 bins |`CHK-DTP-JTAG-PTAP-S1`, `STALL_COLD_STICKY`, `CHK-OTP-SMC-MAP-RW`, `J2A_*` |YES
@@ -97,7 +97,7 @@ is `SMU_FEATURE_LIST.adoc`; this table is the credit decision.
 `smu_sep_smoke_test` on `--dut smu` is F1 observe / F6 export under
 `SEP=0`. It is not F2 credit.
 
-[[smu-focused-gaps]]
+[[smu-scope-focused-gaps]]
 === Focused gaps (not absorbed here)
 
 [cols="2,3,3",options="header",]
