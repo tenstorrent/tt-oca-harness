@@ -367,8 +367,7 @@ package smc_pkg;
   /////////////////////////////////////////
 
   // Macro for AXI-Lite address width adjustment assignments
-  `define AXI_LITE_ASSIGN_ADDR_WIDTH_ADJ_CASTING(dst_req, dst_resp, src_req, src_resp,
-                                                 dst_addr_type) \
+  `define AXI_LITE_ASSIGN_ADDR_WIDTH_ADJ_CASTING(dst_req, dst_resp, src_req, src_resp, dst_addr_type) \
         assign dst_req.aw_valid = src_req.aw_valid; \
         assign dst_req.aw.addr  = dst_addr_type'(src_req.aw.addr); \
         assign dst_req.aw.prot  = src_req.aw.prot; \
