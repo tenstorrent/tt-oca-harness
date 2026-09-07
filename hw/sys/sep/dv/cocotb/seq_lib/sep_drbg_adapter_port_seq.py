@@ -45,10 +45,15 @@ RETIRE_TIMEOUT_CYCLES = 200
 #
 # A non-zero gap gives the leading channel time to handshake first, which is
 # what makes a partially-committed cell different from a same-cycle one.
+# The separation between the leading write channel and the trailing one. The
+# gapped control drives the same value, so the control and the cells cannot
+# drift apart and leave the gap unexcluded again.
+GAP_CYCLES = 4
+
 PORT_ORDERS: tuple[tuple[str, int, int, int], ...] = (
     ("all-same-cycle", 0, 0, 0),
-    ("aw-then-ar", 0, 4, 2),
-    ("w-then-ar", 4, 0, 2),
+    ("aw-then-ar", 0, GAP_CYCLES, GAP_CYCLES // 2),
+    ("w-then-ar", GAP_CYCLES, 0, GAP_CYCLES // 2),
 )
 ORDER_NAMES = tuple(name for name, *_o in PORT_ORDERS)
 
@@ -123,6 +128,16 @@ class AdapterPortVehicle:
         await self.reset()
         obs = await self.run_order("control-read", None, None, 0)
         out["read"] = obs
+
+        # Lone GAPPED write: AW, then W four cycles later, still no AR. The
+        # overlap cells for aw-then-ar and w-then-ar separate their channels
+        # by that gap, so without this leg the gap itself is never excluded as
+        # the cause of their stall -- the two zero-gap controls above say
+        # nothing about it, and excluding it by reading the RTL would be
+        # taking the answer from the design under test.
+        await self.reset()
+        obs = await self.run_order("control-gapped-write", 0, GAP_CYCLES, None)
+        out["gapped-write"] = obs
         return out
 
     async def run_order(
@@ -228,9 +243,14 @@ class AdapterPortVehicle:
             return None
         if aw == w == ar:
             return "all-same-cycle"
-        if aw <= ar <= w:
+        # Strict: a cell that collapsed AW and AR into one cycle IS the
+        # same-cycle interlock, not the ordering that was requested, and
+        # labelling it as requested would score coverage for a state the
+        # cell never presented. Anything that is neither falls through to
+        # other(...) and fails CHK-PORT-STIM as a stimulus miss.
+        if aw < ar < w:
             return "aw-then-ar"
-        if w <= ar <= aw:
+        if w < ar < aw:
             return "w-then-ar"
         return f"other(aw={aw},w={w},ar={ar})"
 

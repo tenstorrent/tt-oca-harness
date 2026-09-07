@@ -21,7 +21,11 @@ Division of labour, deliberately: this leaf grades the MODULE's arbitration,
 the fabric-driven leaves grade the SEP integration. Neither substitutes for
 the other, and this one does not claim the integration.
 
-CHK-PORT-CONTROL: a lone write and a lone read retire AND answer OKAY. Both
+CHK-PORT-CONTROL: a lone write, a lone read, and a write whose AW and W are
+separated by the same gap the overlap cells use, all retire AND answer OKAY.
+The gapped leg is what excludes the channel separation itself as the cause of
+an overlap cell's stall; without it that exclusion would rest on reading the
+RTL, which is taking the answer from the design under test. Both
 halves matter: an access the adapter rejects as unsupported is answered SLVERR
 straight out of StIdle with nothing forwarded, and retires just as promptly as
 a real one, so the response code is what shows the forwarding leg is alive. With no channel
@@ -45,6 +49,7 @@ from __future__ import annotations
 import pyuvm
 from sep_base_test import sep_base_test
 from seq_lib.sep_drbg_adapter_port_seq import (
+    GAP_CYCLES,
     ORDER_NAMES,
     RESP_OKAY,
     PORT_ORDERS,
@@ -78,7 +83,11 @@ class sep_drbg_axil_adapter_port_arbitration_test(sep_base_test):
         # just as promptly -- so a control that only watched the valid would
         # accept a dead forwarding path. The response code is what separates
         # them, and OKAY can only come from the far side.
-        for half, key in (("write", "b_resp"), ("read", "r_resp")):
+        for half, key in (
+            ("write", "b_resp"),
+            ("read", "r_resp"),
+            ("gapped-write", "b_resp"),
+        ):
             assert ctl[half][key] == RESP_OKAY, (
                 f"CHK-PORT-CONTROL FAIL: the lone {half} retired with "
                 f"resp={ctl[half][key]}, not OKAY ({veh.summary(ctl[half])}); "
@@ -87,9 +96,14 @@ class sep_drbg_axil_adapter_port_arbitration_test(sep_base_test):
                 f"is alive and the overlap cells below would prove nothing"
             )
         self.logger.info(
-            "CHK-PORT-CONTROL PASS: lone write retired (%s); lone read retired (%s)",
+            "CHK-PORT-CONTROL PASS: lone write retired (%s); lone read retired "
+            "(%s); gapped write, AW then W %d cycles later and no AR, retired "
+            "(%s) -- so the channel separation the overlap cells use is not "
+            "itself what stalls them",
             veh.summary(ctl["write"]),
             veh.summary(ctl["read"]),
+            GAP_CYCLES,
+            veh.summary(ctl["gapped-write"]),
         )
 
         fails: list[str] = []
