@@ -8,9 +8,9 @@
 # gitignored throwaway build input: the single source of truth stays in each
 # product's src/meta tree plus hw/**/doc and hw/**/regs/gen.
 #
-# Module topology (5 modules): ROOT, smc, sep, dtp, ip.
+# Modules: ROOT, smc, sep, dtp, ip; SMU is enabled by the TRM product.
 #   - ROOT: product src/*.adoc + meta tables + subsystem port_table partials.
-#   - smc/sep/dtp: pages from hw/sys/<sys>/doc, reg partials from its regs/gen.
+#   - subsystem modules: hw/sys/<sys>/doc pages and regs/gen partials.
 #   - ip: every hw/ip/<ip>/doc collapsed under <ip>/doc, reg partials per IP.
 # Register docs use generated .html partials for Antora HTML and generated .adoc
 # partials for PDF.
@@ -26,9 +26,17 @@ MOD="${OCAH_DOC_PRODUCT_MODULES:-$PRODUCT/modules}"
 ASSETS="${OCAH_DOC_PRODUCT_ASSETS:-$PRODUCT/assets}"
 COMMON_ASSETS="$DOC/trm/assets"
 
-SUBSYSTEMS="smc sep dtp smu"
+SUBSYSTEMS="smc sep dtp"
+# The SMU chapter links into the TRM's ROOT module. Other products retain
+# their existing subsystem pages and the independent ROOT SMU port partial.
+if [ "${OCAH_DOC_PRODUCT_INCLUDE_SMU:-0}" = "1" ]; then
+  SUBSYSTEMS="$SUBSYSTEMS smu"
+else
+  # Remove stale SMU pages/assets from builds predating product scoping.
+  rm -rf "${MOD:?}/smu"
+fi
 PORT_TABLE_SYS="smc sep dtp smu"
-MODULES="ROOT smc sep dtp smu ip"
+MODULES="ROOT $SUBSYSTEMS ip"
 
 clean() {
   rm -rf "$MOD/ROOT/pages" "$MOD/ROOT/partials/hw" "$MOD/ROOT/assets"

@@ -37,6 +37,7 @@ ocah-doc-trm-setup: ocah-doc-trm-meta ocah-doc-reg-setup
 	  OCAH_DOC_PRODUCT_META="$(OCAH_TRM_META)" \
 	  OCAH_DOC_PRODUCT_MODULES="$(OCAH_TRM_MODULES)" \
 	  OCAH_DOC_PRODUCT_ASSETS="$(OCAH_TRM_ASSETS)" \
+	  OCAH_DOC_PRODUCT_INCLUDE_SMU="1" \
 	  OCAH_DOC_PRODUCT_INCLUDE_REVISION="$(if $(OCAH_DOC_RELEASE_ENABLED),0,1)" \
 	  bash "$(OCAH_DOC_DIR)/stage-docs.sh"
 	@if [ "$(if $(OCAH_DOC_RELEASE_ENABLED),1,0)" = "1" ]; then \
