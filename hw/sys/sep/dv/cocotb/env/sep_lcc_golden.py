@@ -303,6 +303,141 @@ def selftest() -> None:
     # PROD_END's only reachable destinations are outside the named set.
     assert is_invalid_lc(lc_state_next(LC_PROD_END, 0x1, sip_match=True, chiplet_match=True))
     assert lc_state_next(0x9, 0xF, sip_match=True, chiplet_match=True) == 0x9
+    assert dbg_disable_unpack(0, DBG_DISABLE_WIDTH)["stap_io"] == 0
+    try:
+        dbg_disable_unpack(0, DBG_DISABLE_WIDTH + 1)
+    except AssertionError:
+        pass
+    else:
+        raise AssertionError("dbg_disable_unpack must reject a width mismatch")
+
+    # sip=1, chiplet=0, sep=0: Case 1 open, Cases 2 and 3 closed. stap_sep
+    # is Case 3; a Case 1 formula would open it here.
+    sip_only = 1 << 16
+    got = dbg_disable_expected(sip_only)
+    assert got["stap_io"] == 0
+    assert got["stap_smc"] == 1
+    assert got["stap_sep"] == 1
+    assert "dft_secure" not in got and "dfd" not in got
+    assert got["stap_sep"] != (1 - ((sip_only >> 16) & 1)), (
+        "stap_sep Case 3 vs Case 1 must diverge when only SIP_DBG is set"
+    )
+    # sip=1, chiplet=1, sep=0: the dft_secure spec-vs-RTL cell. Case 2 open,
+    # Case 3 still closed.
+    sip_chip = (1 << 16) | (1 << 1)
+    got = dbg_disable_expected(sip_chip)
+    assert got["stap_smc"] == 0
+    assert got["stap_sep"] == 1
+
+
+# ---------------------------------------------------------------------------
+# dbg_disable
+# ---------------------------------------------------------------------------
+# Field order of sep_lifecycle_ctrl_pkg::dbg_disable_t. A packed struct puts the
+# first-declared field in the most significant bit, so index 0 here is the MSB
+# of the flattened vector the testbench exports.
+DBG_DISABLE_FIELDS = (
+    "stap_io",
+    "stap_smc",
+    "stap_sep",
+    "stap_extra",
+    "stap_host",
+    "dft_secure",
+    "dft_nonsecure",
+    "dfd",
+    "smc_jtag2axi",
+    "smc_otp_jtag2axi",
+    "sep_otp_jtag2axi",
+)
+DBG_DISABLE_WIDTH = len(DBG_DISABLE_FIELDS)
+
+# Bits this golden does NOT claim, and why. Both are places where the DTP path
+# table in the lifecycle chapter and the RTL disagree. They are left unchecked
+# instead of being asserted either way, because encoding one side would turn an
+# open architecture question into a silent DV opinion.
+#
+# The two diverge in opposite directions, which matters:
+#
+#   dfd         RTL disables in more states than the spec requires. Stricter,
+#               so the divergence is fail-safe.
+#   dft_secure  RTL disables in fewer states than the spec requires. The spec
+#               puts the secure DFT chain at Case 3; the RTL omits the SEP_DBG
+#               term, so at sip_debug=1, chiplet_dbg=1, sep_debug=0 the spec
+#               says the chain must be closed and the RTL leaves it open. This
+#               one is permissive, not fail-safe, and it is a security-relevant
+#               gap rather than a neutral ambiguity.
+#
+# When arch rules, the bit moves into dbg_disable_expected and out of this
+# tuple.
+#
+#   dft_secure  spec: Case 3 (SIP_DBG & CHIPLET_DBG & SEP_DBG)
+#               RTL:  Case 2, flagged in sep_lifecycle_ctrl.sv as an open spec
+#                     confirmation. The secure DFT chain is also subject to the
+#                     command-class rule, which this vector does not describe.
+#               issue 450
+#   dfd         spec: Case 1 (SIP_DBG alone)
+#               RTL:  Case 2.
+#               issue 1576
+DBG_DISABLE_UNCLAIMED = ("dft_secure", "dfd")
+
+
+def dbg_disable_expected(feat_ctrl: int) -> dict[str, int]:
+    """Expected dbg_disable bits for a FEAT_CTRL value, per the DTP gating ladder.
+
+    The lifecycle chapter states the ladder as three nested cases, composed by
+    AND so that a partial fuse burn fails safe:
+
+        Case 1  SIP_DBG
+        Case 2  SIP_DBG & CHIPLET_DBG
+        Case 3  SIP_DBG & CHIPLET_DBG & SEP_DBG
+
+    ``dbg_disable`` is active-high (1 = interface disabled), so each bit is the
+    negation of its case. SIP_DBG is the mandatory outer gate: no path opens
+    while it is closed, which is what makes SEP_DBG alone insufficient to reach
+    SEP internal state.
+
+    Returns only the bits this golden claims; see ``DBG_DISABLE_UNCLAIMED``.
+    """
+    sep_dbg = (feat_ctrl >> 0) & 1
+    chiplet_dbg = (feat_ctrl >> 1) & 1
+    sip_dbg = (feat_ctrl >> 16) & 1
+
+    case1 = sip_dbg
+    case2 = sip_dbg & chiplet_dbg
+    case3 = case2 & sep_dbg
+
+    exp = {
+        "stap_io": 1 - case1,
+        "stap_smc": 1 - case2,
+        "stap_extra": 1 - case2,
+        "stap_host": 1 - case2,
+        "dft_nonsecure": 1 - case2,
+        "smc_jtag2axi": 1 - case2,
+        "stap_sep": 1 - case3,
+        # The fuse controller enforces OTP JTAG2AXIL access through LOCKS, so
+        # the lifecycle controller ties both bridges open in every LC state.
+        "smc_otp_jtag2axi": 0,
+        "sep_otp_jtag2axi": 0,
+    }
+    assert set(exp) | set(DBG_DISABLE_UNCLAIMED) == set(DBG_DISABLE_FIELDS), (
+        "dbg_disable golden does not account for every field in the struct"
+    )
+    return exp
+
+
+def dbg_disable_unpack(raw: int, width: int) -> dict[str, int]:
+    """Split the flattened dbg_disable vector into named bits (MSB first).
+
+    ``width`` is the exported vector's declared width, not ``int.bit_length``:
+    leading zeros are bits. A field added or reordered in the packed struct
+    changes that width and must fail here so the field list is updated.
+    """
+    n = DBG_DISABLE_WIDTH
+    assert width == n, (
+        f"dbg_disable vector is {width} bits, golden lists {n} fields -- "
+        "the packed struct changed and the field list must be updated"
+    )
+    return {name: (raw >> (n - 1 - i)) & 1 for i, name in enumerate(DBG_DISABLE_FIELDS)}
 
 
 selftest()
