@@ -16,12 +16,21 @@ includes = ["smc.toml", "dtp.toml", "fabric.toml"]
 # feature and phase groups below are subsets for narrower runs; none of them
 # covers the whole set, and the widest (sep0_p4_all) leaves out two.
 #
-# This group is currently RED. Run 2026-09-06 on Verilator, seed 1: 55 pass,
-# smu_xtrig_ctm_remap_test fails on `dst_req pat=0x80 TB ack follows handshake
-# lane 7 only: expected 128, got 0` -- the request reaches DTP[9:2] but no ack
-# returns on the top lane. It carries no `ci` tag, which is why the red has
-# gone unreported. `smoke` remains the green gate; do not drop the failing
-# leaf from here to make this group green.
+# This group is not reliably green, and the reason is the timing randomisation
+# in SmuEnvCfg.randomize_timing rather than the DUT. Two leaves carry checks
+# whose budgets assume one clock ratio and are re-rolled each run:
+#
+#   smu_dtp_bsr_ijtag_scan_test      counts TCK edges by sampling jtag_tck on
+#                                    clk_ref_i; 7 of the 12 (jtag, ref) pairs
+#                                    give under two samples per TCK high phase,
+#                                    so edges are aliased away
+#   smu_smc_dtp_jtag2axi_smoke_test  OTP_POLL is a fixed 128 iterations, which
+#                                    covers less simulated time when the seed
+#                                    picks a fast TCK against a slow clk_smu
+#
+# Both are DV defects, not DUT ones, and neither carries a `ci` tag -- which is
+# how they stayed unreported. Do not drop them from here to make the group
+# green; `smoke` is the gate that has to stay green.
 [[groups]]
 name = "all"
 tests = [
