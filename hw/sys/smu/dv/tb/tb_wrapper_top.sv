@@ -161,6 +161,16 @@ module smu_wrapper_uvm_top (
   input  wire logic [2:0]  ext_in_awsize,
   input  wire logic [1:0]  ext_in_awburst,
   input  wire logic [11:0] ext_in_awuser,
+  // AXI4 qualifiers. axi_56_64_aw_chan_t carries all of these; the TB used to
+  // tie them off, which left the wrapper unable to verify AxPROT and friends
+  // at all -- a coverage hole, not only a migration blocker.
+  input  wire logic        ext_in_awlock,
+  input  wire logic [3:0]  ext_in_awcache,
+  input  wire logic [2:0]  ext_in_awprot,
+  input  wire logic [3:0]  ext_in_awqos,
+  input  wire logic [3:0]  ext_in_awregion,
+  input  wire logic [11:0] ext_in_wuser,
+  output logic [11:0]      ext_in_buser,
   input  wire logic        ext_in_wvalid,
   output logic             ext_in_wready,
   input  wire logic [63:0] ext_in_wdata,
@@ -178,6 +188,29 @@ module smu_wrapper_uvm_top (
   input  wire logic [2:0]  ext_in_arsize,
   input  wire logic [1:0]  ext_in_arburst,
   input  wire logic [11:0] ext_in_aruser,
+  input  wire logic        ext_in_arlock,
+  input  wire logic [3:0]  ext_in_arcache,
+  input  wire logic [2:0]  ext_in_arprot,
+  input  wire logic [3:0]  ext_in_arqos,
+  input  wire logic [3:0]  ext_in_arregion,
+  output logic [11:0]      ext_in_ruser,
+  // Observables the migrated bare-smu leaves read. Every one is already a
+  // smu_wrapper.sv output that this TB was discarding into an empty
+  // connection; the bare TB has exposed them all along.
+  output jtag_tap_pkg::tap_state_e                      jtag_ptap_state,
+  output jtag_inst_reg_pkg::jtag_instruction_decoded_e  jtag_ptap_inst_decoded,
+  output logic [55:0]                                   sep_global_base_o,
+  output logic [55:0]                                   sep_region_size_o,
+  output logic [55:0]                                   smc_global_base_o,
+  output logic [31:0]                                   smc_region_size_o,
+  output logic                                          rst_primary_ref_clk_no,
+  output logic                                          rst_primary_periph_clk_no,
+  output logic                                          rst_cold_stable_ref_clk_no,
+  output logic                                          lc_sigint_err_o,
+  // PTAP security-disable taps, reached hierarchically exactly as the bare TB
+  // does -- one level deeper here, since u_dut is the wrapper.
+  output logic                                          tb_smc_jtag2axi_security_disable,
+  output logic                                          tb_otp_jtag2axi_security_disable,
   output logic             ext_in_rvalid,
   input  wire logic        ext_in_rready,
   output logic [7:0]       ext_in_rid,
@@ -489,11 +522,11 @@ module smu_wrapper_uvm_top (
   assign smu_axi_in_req.aw.len    = ext_in_awlen;
   assign smu_axi_in_req.aw.size   = ext_in_awsize;
   assign smu_axi_in_req.aw.burst  = ext_in_awburst;
-  assign smu_axi_in_req.aw.lock   = 1'b0;
-  assign smu_axi_in_req.aw.cache  = '0;
-  assign smu_axi_in_req.aw.prot   = '0;
-  assign smu_axi_in_req.aw.qos    = '0;
-  assign smu_axi_in_req.aw.region = '0;
+  assign smu_axi_in_req.aw.lock   = ext_in_awlock;
+  assign smu_axi_in_req.aw.cache  = ext_in_awcache;
+  assign smu_axi_in_req.aw.prot   = ext_in_awprot;
+  assign smu_axi_in_req.aw.qos    = ext_in_awqos;
+  assign smu_axi_in_req.aw.region = ext_in_awregion;
   assign smu_axi_in_req.aw.atop   = '0;
   assign smu_axi_in_req.aw.user   = ext_in_awuser;
   assign smu_axi_in_req.aw_valid  = ext_in_awvalid;
@@ -501,7 +534,7 @@ module smu_wrapper_uvm_top (
   assign smu_axi_in_req.w.data    = ext_in_wdata;
   assign smu_axi_in_req.w.strb    = ext_in_wstrb;
   assign smu_axi_in_req.w.last    = ext_in_wlast;
-  assign smu_axi_in_req.w.user    = '0;
+  assign smu_axi_in_req.w.user    = ext_in_wuser;
   assign smu_axi_in_req.w_valid   = ext_in_wvalid;
 
   assign smu_axi_in_req.b_ready   = ext_in_bready;
@@ -511,11 +544,11 @@ module smu_wrapper_uvm_top (
   assign smu_axi_in_req.ar.len    = ext_in_arlen;
   assign smu_axi_in_req.ar.size   = ext_in_arsize;
   assign smu_axi_in_req.ar.burst  = ext_in_arburst;
-  assign smu_axi_in_req.ar.lock   = 1'b0;
-  assign smu_axi_in_req.ar.cache  = '0;
-  assign smu_axi_in_req.ar.prot   = '0;
-  assign smu_axi_in_req.ar.qos    = '0;
-  assign smu_axi_in_req.ar.region = '0;
+  assign smu_axi_in_req.ar.lock   = ext_in_arlock;
+  assign smu_axi_in_req.ar.cache  = ext_in_arcache;
+  assign smu_axi_in_req.ar.prot   = ext_in_arprot;
+  assign smu_axi_in_req.ar.qos    = ext_in_arqos;
+  assign smu_axi_in_req.ar.region = ext_in_arregion;
   assign smu_axi_in_req.ar.user   = ext_in_aruser;
   assign smu_axi_in_req.ar_valid  = ext_in_arvalid;
 
@@ -525,12 +558,14 @@ module smu_wrapper_uvm_top (
   assign ext_in_wready  = smu_axi_in_resp.w_ready;
   assign ext_in_bid     = smu_axi_in_resp.b.id;
   assign ext_in_bresp   = smu_axi_in_resp.b.resp;
+  assign ext_in_buser   = smu_axi_in_resp.b.user;
   assign ext_in_bvalid  = smu_axi_in_resp.b_valid;
   assign ext_in_arready = smu_axi_in_resp.ar_ready;
   assign ext_in_rid     = smu_axi_in_resp.r.id;
   assign ext_in_rdata   = smu_axi_in_resp.r.data;
   assign ext_in_rresp   = smu_axi_in_resp.r.resp;
   assign ext_in_rlast   = smu_axi_in_resp.r.last;
+  assign ext_in_ruser   = smu_axi_in_resp.r.user;
   assign ext_in_rvalid  = smu_axi_in_resp.r_valid;
 
   // Cocotb observe ports that hw/top/smu_wrapper does not expose directly.
@@ -921,6 +956,10 @@ module smu_wrapper_uvm_top (
         u_dut.u_smu.gen_sep.u_sep.sep_system_peripherals.u_stee_remap.remap_table[0].offset;
 
   assign sep_xbar_global_base_o = u_dut.u_smu.sep_global_base_o;
+  assign tb_smc_jtag2axi_security_disable =
+        u_dut.u_smu.u_dtp.u_jtag_intf_unit.u_jtag_ptap.smc_jtag2axi_security_disable;
+  assign tb_otp_jtag2axi_security_disable =
+        u_dut.u_smu.u_dtp.u_jtag_intf_unit.u_jtag_ptap.smc_otp_jtag2axi_security_disable;
   assign sep_xbar_region_size_o = u_dut.u_smu.sep_region_size_o[31:0];
 
   always_ff @(posedge clk_smu_i or negedge rst_cold_ni) begin
@@ -1215,8 +1254,8 @@ module smu_wrapper_uvm_top (
     .jtag_dft_host_scan_out_o  (),
 
     .dtp_stop_clks_o (),
-    .jtag_ptap_state_o (),
-    .jtag_ptap_inst_decoded_o (),
+    .jtag_ptap_state_o (jtag_ptap_state),
+    .jtag_ptap_inst_decoded_o (jtag_ptap_inst_decoded),
     .jtag_ic_reset_ext_o (),
 
     .xtrig_ctm_src_req_o (xtrig_ctm_src_req),
@@ -1242,7 +1281,7 @@ module smu_wrapper_uvm_top (
     .xtrig_ctp_ack_out_din_i ('0),
     .xtrig_ctp_ack_out_din_en_o (),
 
-    .rst_primary_ref_clk_no (),
+    .rst_primary_ref_clk_no (rst_primary_ref_clk_no),
     .rst_primary_smc_clk_no (rst_primary_smc_clk_n),
 
     .smu_axi_in_req_i  (smu_axi_in_req),
@@ -1268,10 +1307,10 @@ module smu_wrapper_uvm_top (
     .wdt_first_timeout_o (),
     .wdt_second_timeout_o (),
 
-    .smc_global_base_o (),
-    .smc_region_size_o (),
-    .sep_global_base_o (),
-    .sep_region_size_o (),
+    .smc_global_base_o (smc_global_base_o),
+    .smc_region_size_o (smc_region_size_o),
+    .sep_global_base_o (sep_global_base_o),
+    .sep_region_size_o (sep_region_size_o),
 
     .ext_interrupts_i ('0),
     .fuse_sense_done_o,
@@ -1279,7 +1318,7 @@ module smu_wrapper_uvm_top (
     .skip_mem_repair_o (),
     .ext_boot_seq_done_i (1'b1),
     .lc_state_o (lc_state),
-    .lc_sigint_err_o (),
+    .lc_sigint_err_o (lc_sigint_err_o),
     .ndmreset_request_i ('0),
     .ndmreset_process_o (),
     .ext_mailbox_interrupts_o (ext_mailbox_interrupts),

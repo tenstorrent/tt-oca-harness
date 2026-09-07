@@ -8,6 +8,8 @@ not exist under that generate arm. Does not drive the crossbar.
 
 from __future__ import annotations
 
+from seq_lib.smu_tb_pins import smu_scope
+
 import cocotb
 
 
@@ -31,7 +33,7 @@ class smu_axi_xbar_structure_test_seq:
     async def run(self) -> None:
         dut = self.dut
         sb = self.test.env.scoreboard
-        wrap = self._require_child(dut, "u_dut")
+        wrap = smu_scope(dut)
         smu = wrap.u_smu if hasattr(wrap, "u_smu") else wrap
         sb.expect_true(
             "CHK-XBAR-POS-NO-GEN-SEP: gen_sep absent under SEP=0",

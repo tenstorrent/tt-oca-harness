@@ -17,7 +17,7 @@ SMU_ALL_008 — out of scope for this card.
 
 from __future__ import annotations
 
-from seq_lib.smu_tb_pins import smc_primary_reset
+from seq_lib.smu_tb_pins import smc_primary_reset, smu_scope
 
 import os
 import random
@@ -127,7 +127,7 @@ class smu_axi_external_port_connectivity_test_seq:
 
     async def _observe_direct_iw_converters(self, dut) -> tuple[str, int, int]:
         """Passive hierarchy observe: gen_no_sep IW converters present; no xbar."""
-        smu = self._require_child(dut, "u_dut")
+        smu = smu_scope(dut)
         if hasattr(smu, "gen_sep"):
             raise AssertionError(
                 "SEP=0 elaboration fail: gen_sep present (expected gen_no_sep only)"

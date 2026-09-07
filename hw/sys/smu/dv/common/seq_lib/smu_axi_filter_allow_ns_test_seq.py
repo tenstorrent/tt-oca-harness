@@ -12,7 +12,7 @@ The commercial FAB_SMC_026 outbound/S4/S5 matrix needs a peer master and is not 
 
 from __future__ import annotations
 
-from seq_lib.smu_tb_pins import smc_primary_reset
+from seq_lib.smu_tb_pins import smc_primary_reset, smu_scope
 
 import cocotb
 from cocotb.triggers import ClockCycles, with_timeout
@@ -191,7 +191,7 @@ class smu_axi_filter_allow_ns_test_seq:
 
         try:
             sec = int(
-                dut.u_dut.u_dtp.u_jtag_intf_unit.u_jtag_ptap.smc_jtag2axi_security_disable.value
+                smu_scope(dut).u_dtp.u_jtag_intf_unit.u_jtag_ptap.smc_jtag2axi_security_disable.value
             )
             self._log(f"OBS smc_jtag2axi_security_disable={sec}")
             if sec != 0:

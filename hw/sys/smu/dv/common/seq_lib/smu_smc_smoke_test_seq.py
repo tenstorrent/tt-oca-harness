@@ -17,7 +17,7 @@ Independent expects from pinned hw/sys/smc/doc/fabric.adoc
 
 from __future__ import annotations
 
-from seq_lib.smu_tb_pins import smc_primary_reset
+from seq_lib.smu_tb_pins import smc_primary_reset, smu_scope
 
 import time
 
@@ -218,7 +218,7 @@ class smu_smc_smoke_test_seq:
 
     def _resolve_dual_net_hierarchy(self, dut):
         """Walk bare SMU→SMC fabric dual-network instances (CONNECTIVITY)."""
-        smu = self._require_child(dut, "u_dut")
+        smu = smu_scope(dut)
         smc = self._require_child(smu, "u_smc")
         base = self._require_child(smc, "u_smc_base")
         fabric = self._require_child(base, "u_smc_fabric")

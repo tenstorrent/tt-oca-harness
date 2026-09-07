@@ -43,3 +43,18 @@ def cold_stable_reset(dut: Any) -> Any:
 def smu_axi_in_prefix(dut: Any) -> str:
     """Flattened-signal prefix for the SMU AXI slave on this TB."""
     return "s_axi" if getattr(dut, "s_axi_awvalid", None) is not None else "ext_in"
+
+
+def smu_scope(dut: Any) -> Any:
+    """The `smu` instance, wherever this testbench put it.
+
+    tb_top.sv instantiates smu directly as u_dut; tb_wrapper_top.sv's u_dut is
+    smu_wrapper, with smu one level down as u_smu. A sequence reaching into
+    smu's own hierarchy asks for this rather than writing dut.u_dut, so the
+    same reach works on both DUTs.
+    """
+    u_dut = tb_pin(dut, "u_dut")
+    # `is not None`, not a truth test: a cocotb handle raises TypeError when
+    # cast to bool.
+    inner = getattr(u_dut, "u_smu", None)
+    return u_dut if inner is None else inner

@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from seq_lib.smu_tb_pins import smu_scope
+
 import re
 from functools import lru_cache
 from pathlib import Path
@@ -532,7 +534,7 @@ def read_smc_reset_ctrl_bit(dut, leaf: str, idx: int | None = None) -> int:
     For scalar fuse/warm/cool/cold leaves, pass ``leaf`` only.
     For ss_* vectors, pass ``leaf`` + ``idx`` (0..31).
     """
-    ctrl = dut.u_dut.jtag_smc_reset_ctrl
+    ctrl = smu_scope(dut).jtag_smc_reset_ctrl
     if idx is not None:
         bit = _ss_reset_ctrl_bit_index(leaf, idx)
         # Prefer packed whole-struct (VCS may expose ss_* as non-indexable GPI).

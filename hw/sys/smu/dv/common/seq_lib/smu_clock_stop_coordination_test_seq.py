@@ -13,7 +13,7 @@ No Force/deposit. No DTP-FEAT-GATE.* / INT-FEAT-CTRL-DTP-GATE (re-homed to 008).
 
 from __future__ import annotations
 
-from seq_lib.smu_tb_pins import smc_primary_reset
+from seq_lib.smu_tb_pins import smc_primary_reset, smu_scope
 
 import time
 
@@ -558,9 +558,9 @@ class smu_clock_stop_coordination_test_seq:
         dut.xtrig_clk_stop_req.value = 0x1
         await RisingEdge(dut.clk_smu_i)
         await RisingEdge(dut.clk_smu_i)
-        dtp_req = self._sample(dut.u_dut.dtp_xtrig_clk_stop_req, "dtp_xtrig_clk_stop_req")
+        dtp_req = self._sample(smu_scope(dut).dtp_xtrig_clk_stop_req, "dtp_xtrig_clk_stop_req")
         smc_fb = self._sample(
-            dut.u_dut.tdr_dbg_ctrl_clocks_stopped_by_cla,
+            smu_scope(dut).tdr_dbg_ctrl_clocks_stopped_by_cla,
             "tdr_dbg_ctrl_clocks_stopped_by_cla",
         )
         dtp0 = dtp_req & 0x1
@@ -592,7 +592,7 @@ class smu_clock_stop_coordination_test_seq:
             f"clear/ack cla_en and xtrig; en={en_clr}",
         )
         dtp_idle = await self._wait_eq(
-            dut.u_dut.dtp_xtrig_clk_stop_req,
+            smu_scope(dut).dtp_xtrig_clk_stop_req,
             smc_fb & 0x1,  # only SMC fb bit may remain; upper bits 0
             clk=dut.clk_smu_i,
             bound=self.BOUND_CYCLES,
@@ -606,7 +606,7 @@ class smu_clock_stop_coordination_test_seq:
             )
         if (dtp_idle & 0x1) != (
             self._sample(
-                dut.u_dut.tdr_dbg_ctrl_clocks_stopped_by_cla,
+                smu_scope(dut).tdr_dbg_ctrl_clocks_stopped_by_cla,
                 "tdr_dbg_ctrl_clocks_stopped_by_cla",
             )
         ):

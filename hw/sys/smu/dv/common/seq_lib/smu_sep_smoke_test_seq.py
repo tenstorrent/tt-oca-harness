@@ -12,7 +12,7 @@ No Force/deposit. No SEP-sysif/LC/SEC_DIS/mem/fuse/WDT/alias/CTM.S1/CTP/DTP-CSR.
 
 from __future__ import annotations
 
-from seq_lib.smu_tb_pins import smc_primary_reset
+from seq_lib.smu_tb_pins import smc_primary_reset, smu_scope
 
 import time
 
@@ -292,7 +292,7 @@ class smu_sep_smoke_test_seq:
 
         # Observe DTP mode[1:0] hierarchically; Failed/X/Z = unobservable.
         # No DefaultCfg inference / skip-to-pass on the proof path.
-        mode_sig = dut.u_dut.DTP_XTRIG_INT_CT_MODE
+        mode_sig = smu_scope(dut).DTP_XTRIG_INT_CT_MODE
         mode_val = self._sample(mode_sig, "DTP_XTRIG_INT_CT_MODE")
         expected_mode = CFG_INT_CT_MODE << 2
         if mode_val != expected_mode:
@@ -344,8 +344,8 @@ class smu_sep_smoke_test_seq:
             "ACTION/RESPONSE/EFFECT DTP-XTRIG-CTM.S3: bits [1:0] remain reserved for SMC",
         )
         self._log("COVERAGE DTP-XTRIG-CTM.S3 cells: bits=1:0,owner=smc")
-        dtp_dst_req = dut.u_dut.dtp_xtrig_ctm_dst_req
-        dtp_src_ack = dut.u_dut.dtp_xtrig_ctm_src_ack
+        dtp_dst_req = smu_scope(dut).dtp_xtrig_ctm_dst_req
+        dtp_src_ack = smu_scope(dut).dtp_xtrig_ctm_src_ack
 
         for pat in DEST_PATS:
             dut.xtrig_ctm_dst_req.value = pat
