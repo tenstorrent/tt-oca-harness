@@ -339,14 +339,16 @@ _The Debug & Test Ports (DTP) section has moved._
 See xref:dtp:index.adoc[Debug & Test Ports (DTP)].
 endif::backend-html5[]
 
-// ============================================================================
-// Platform components: SMN and AoU.
-// These are not part of the SMU and remain in this platform architecture
-// chapter until they receive their own tasks.
-// smn.placeholder.adoc defines [[system-management-network]].
-// aou.placeholder.adoc defines [[axi-over-ucie-bridge]].
-// ============================================================================
+// HTML-only compatibility anchors for SMN/AoU, whose authoritative chapters
+// are assembled from the platform-components part in src/index.adoc.
+// PDF assembly places the authoritative content there; these blocks are
+// ifdef-guarded to prevent duplicate PDF destinations.
+ifdef::backend-html5[]
+[[system-management-network]]
+_The System Management Network section has moved to a standalone chapter._
+See xref:smn.placeholder.adoc#system-management-network[System Management Network].
 
-include::smn.placeholder.adoc[]
-
-include::aou.placeholder.adoc[]
+[[axi-over-ucie-bridge]]
+_The AXI-over-UCIe Bridge section has moved to a standalone chapter._
+See xref:aou.placeholder.adoc#axi-over-ucie-bridge[AXI-over-UCIe Bridge].
+endif::backend-html5[]

@@ -57,4 +57,9 @@ include::../../../hw/sys/smc/doc/index.adoc[leveloffset=0]
 // DTP: existing index starts with == (no = Title); offset 0 keeps == as chapter.
 // The DTP pilot will add = Title and switch this edge to leveloffset=+1.
 include::../../../hw/sys/dtp/doc/index.adoc[leveloffset=0]
+
+= OCAH Platform Components
+// SMN/AoU: placeholder Setext headings render as == chapters at offset 0.
+include::smn.placeholder.adoc[leveloffset=0]
+include::aou.placeholder.adoc[leveloffset=0]
 endif::backend-pdf[]

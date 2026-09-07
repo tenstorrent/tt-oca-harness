@@ -105,12 +105,10 @@ for s in $SUBSYSTEMS; do
   stage_gen_adoc "$ROOT/hw/sys/$s/dv/models/regs/gen/adoc" "$MOD/$s/partials/$s/dv/models/regs/gen/adoc"
   stage_gen_html "$ROOT/hw/sys/$s/dv/models/regs/gen/html" "$MOD/$s/partials/$s/dv/models/regs/gen/html"
 done
-# port_table.adoc files are private fragments used only by the ROOT partial
-# (for the Integrator Guide). Remove them from smu/pages/ (and any other
-# subsystem pages/ that picked them up) to prevent Untitled standalone URLs.
-for s in $SUBSYSTEMS; do
-  rm -f "$MOD/$s/pages/port_table.adoc"
-done
+# SMU's port_table.adoc is a private fragment for the ROOT partial only.
+# Remove it from smu/pages/ to prevent an Untitled standalone URL.
+# SEP/SMC/DTP retain their port_table pages; restrict this exclusion to SMU.
+rm -f "$MOD/smu/pages/port_table.adoc"
 
 # --- ip: collapse every hw/ip/<ip>/doc under <ip>/doc, partials per IP. Register
 #     partials are staged for every IP (even register-only IPs with no doc/ dir,
