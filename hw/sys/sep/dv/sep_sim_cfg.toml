@@ -51,17 +51,6 @@ sources = [
   # OCAH_INC_ASSERT, which Verilator does not define, so it elaborates to an
   # empty module there and the rules are live only under VCS.
   "hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv",
-  # After bender flist so abr_wrapper_key_reg_pkg is already declared (see exclude_files).
-  "hw/sys/sep/dv/shims/crypto/abr_wrapper_key_reg_stub.sv",
-]
-# PeakRDL abr_wrapper_key_reg miscompiles under Verilator 5.046 (nested-struct
-# aggregate / hwif_in tied-'0 fold -> missing __PVT__MLKEM_SHARED_KEY). Drop the
-# generated block from every target's bender flist; the stub above replaces it.
-# A `--cov` compile (`VM_COVERAGE=1`) hits the same error on 5.046; 5.050
-# compiles. Package files (*_reg_pkg.sv) stay — substring match is on this
-# exact basename.
-exclude_files = [
-  "hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_reg.sv",
 ]
 # `stubs` are Verilator/VCS-compat overrides, listed ahead of
 # the bender filelist so -Wno-MODDUP "first definition wins" selects them.
@@ -469,10 +458,6 @@ defines = [
   "SEP_SMN_INBOUND_AXI_LIVE",
   "SEP_JTAG_AXIL_LIVE",
 ]
-# abr_wrapper_key_reg stub swap is DUT-wide ([build].exclude_files + sources):
-# sep_crypto_abr_wrapper instantiates u_abr_key_csr again; Verilator still cannot
-# compile the PeakRDL-generated block (see shims/crypto/abr_wrapper_key_reg_stub.sv).
-
 [targets.default.tools.verilator]
 flags = [
   # PeakRDL reg blocks reset their axil_resp_buffer struct-array via an NBA in a
@@ -529,8 +514,8 @@ sources = [
 flags = ["-Wno-BLKLOOPINIT", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM"]
 
 # SystemVerilog UVM view (`--dut sep --framework uvm`, VCS): the same DUT recipe
-# (Bender targets, stubs, exclude_files, the abr_wrapper_key_reg shim) with the
-# shared framework library and AXI VIP manifests ahead of the DUT sources, the
+# (Bender targets, stubs) with the shared framework library and AXI VIP
+# manifests ahead of the DUT sources, the
 # SEP-local TB interface, and the two bench packages. A framework `[build]` list
 # replaces the DUT-level one rather than appending to it, so the TB collateral
 # both flows compile is restated here; the AXI protocol SVA comes from the VIP
@@ -562,8 +547,6 @@ incdirs = [
 ]
 sources = [
   "hw/sys/sep/dv/tb/sep_outbound_mbx.sv",
-  # After the bender flist so abr_wrapper_key_reg_pkg is already declared (see exclude_files).
-  "hw/sys/sep/dv/shims/crypto/abr_wrapper_key_reg_stub.sv",
   "hw/sys/sep/dv/tb/sep_tb_if.sv",
   "hw/sys/sep/dv/uvm/env/sep_env_pkg.sv",
   "hw/sys/sep/dv/uvm/seq_lib/sep_seq_lib_pkg.sv",

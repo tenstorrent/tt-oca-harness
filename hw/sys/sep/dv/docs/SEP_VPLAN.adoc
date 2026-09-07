@@ -2632,8 +2632,8 @@ is why they are asserted from Python probes rather than left to the SVA.
 . The aperture is a `sep_crypto` demux rule at `ABR_REG_MAP_BASE_ADDR` (`hw/sys/sep/rtl/sep_crypto_pkg.sv`), reachable from the CPU-LSU master the way the OTBN tests already reach their block.
 . It is *not* behind an `axi_lite_isolate` unit: unlike the ESRC, CSRNG and EDN legs, the external TRNG passthrough in `hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv` carries none.
 . Accesses are 32-bit beats (`AxSIZE=2`) because this path has no width converter.
-. `hw/sys/sep/dv/shims/crypto/abr_wrapper_key_reg_stub.sv` replaces the Key-Manager-side key CSR block only; the ABR register block behind this aperture is real RTL.
-. The stub ties every key share and `key_valid` to zero, so only the software-written seed path is honest here.
+. The Key-Manager-side key CSR is the generated PeakRDL `abr_wrapper_key_reg`. The ABR register block behind this aperture is real RTL.
+. This leaf writes the seed window over the bus. The key-vault seed path is not claimed.
 
 *Checkers*:
 
@@ -2666,9 +2666,7 @@ match, so a cached or constant engine passes the first leg and fails the second.
 stuck-low aggregator cannot satisfy both `CHK-PIC-ERROR` and `CHK-PIC-NOTIF`.
 
 *Not claimed*: ML-KEM-1024, ML-DSA sign/verify, and the key-vault seed path — a
-green keyGen closes none of them. `abr_wrapper_key_reg_stub.sv` ties every key
-share and `key_valid` to zero, so only the software-written seed path is honest
-here.
+green keyGen closes none of them. This leaf writes the seed window over the bus.
 
 
 '''''

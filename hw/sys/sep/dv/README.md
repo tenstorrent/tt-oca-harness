@@ -250,7 +250,6 @@ hw/sys/sep/dv/
 │                        #   SV addrmap package is the RTL build input.
 ├── shims/               # SEP-local behavioral sim-models
 │   ├── cpu/             #   sep_cpu_stub (no_cpu build: LSU demux, no VeeR)
-│   ├── crypto/          #   abr_wrapper_key_reg_stub (Verilator ABR CSR shim)
 │   └── analog/          #   entropy_ring_oscillator
 ├── tb/                  # DUT-only top + helper RTL
 │   ├── tb_top.sv        #   module sep_uvm_top (wraps sep_wrapper) + tb_backdoor_mem;
@@ -275,9 +274,9 @@ The bender filelist uses targets `["sep", "sep_el2", "sep_wrapper"]` only — ne
 `"simulation"`, which pulls licensed I/O and a foundry padring. Verify
 vendor-clean with `tools/dv/check_no_vendor_paths.py`.
 
-`[build].exclude_files` holds only `abr_wrapper_key_reg.sv` — a Verilator
-PeakRDL miscompile workaround, replaced by `shims/crypto/abr_wrapper_key_reg_stub.sv`.
-Proprietary IPs that are not in the OSS checkout are simply not on the filelist.
+`[build].exclude_files` is empty at the DUT level. The `lsu_stub_all_live`
+target excludes `sep_cpu.sv` and appends the CPU stub. Proprietary IPs that
+are not in the OSS checkout are simply not on the filelist.
 
 ## Troubleshooting
 
