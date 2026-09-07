@@ -24,8 +24,8 @@ import random
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
-from smu_addr_map import SMC_CHIP_CONFIG_VERSION_LO, smc_addr
-from smu_axi_helpers import axi_read32_resp_ids_bounded, make_smu_axi_master, resp_name
+from seq_lib.smu_addr_map import SMC_CHIP_CONFIG_VERSION_LO, smc_addr
+from seq_lib.smu_axi_helpers import axi_read32_resp_ids_bounded, make_smu_axi_master, resp_name
 from smu_base_test import smu_base_test
 
 PROBE_ADDRS = (

@@ -157,14 +157,11 @@ python_root = "hw/sys/smu/dv/cocotb_wrapper"
 test_dir = "hw/sys/smu/dv/cocotb_wrapper/tests"
 python_paths = [
   "hw/common/dv/vip",
-  # The bare-smu seq_lib *contents*, not the package. cocotb/seq_lib carries an
-  # __init__.py and cocotb_wrapper/seq_lib does not, so putting the outer root
-  # here would let the regular package shadow this tree's namespace one and
-  # break every wrapper test. Adding the inner directory instead makes the
-  # TB-agnostic helpers (smu_addr_map, smu_axi_helpers) importable as top-level
-  # modules while `seq_lib` still resolves to cocotb_wrapper's own.
-  "hw/sys/smu/dv/cocotb/seq_lib",
-  # Shared PyUVM env, same package for both DUTs -- see smu_sim_cfg.toml.
+  # Shared PyUVM env and seq_lib, one package each for both DUTs. seq_lib had
+  # to merge rather than be shared by path: its modules import each other as
+  # `from seq_lib.x`, so they only resolve inside a package of that name, and
+  # `seq_lib` can only ever be one package. The two trees had 49 and 28 modules
+  # and no name in common, so they became one -- see smu_sim_cfg.toml.
   "hw/sys/smu/dv/common",
 ]
 results_dir = "{run_dir}/{item}/results"
