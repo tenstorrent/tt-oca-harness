@@ -349,7 +349,8 @@ static bool test_memory_access_violations(comprehensive_error_test_context_t *ct
  */
 static bool test_zero_length_rejection(comprehensive_error_test_context_t *ctx) {
     simputs("\n=== Test 2: Zero-Length Command Rejection ===\n");
-    simputs("SPEC: write_size/read_length of 0 -> WRITE_OVERFLOW / READ_OVERFLOW, Invalid_header\n");
+    simputs("SPEC: zero write_size/read_length -> WRITE_OVERFLOW / READ_OVERFLOW,\n");
+    simputs("      answered with Invalid_header\n");
 
     bool test_passed = true;
     uint8_t dummy = 0;
@@ -651,7 +652,8 @@ static bool test_address_wraparound(comprehensive_error_test_context_t *ctx) {
  */
 static bool test_permitted_range_boundary(comprehensive_error_test_context_t *ctx) {
     simputs("\n=== Test 8: Permitted Range Boundary ===\n");
-    simputs("SPEC: a transfer straddling the ROM boundary is refused; the first legal word is served\n");
+    simputs("SPEC: a transfer straddling the ROM boundary is refused;\n");
+    simputs("      the first legal word is served\n");
 
     bool test_passed = true;
     test_context_t *c = ctx->occp_ctx;
@@ -840,6 +842,7 @@ static bool verify_error_reporting(comprehensive_error_test_context_t *ctx) {
     int n_validate_failed = 0;
     int n_cmd_unknown = 0;
     int n_cmd_failed = 0;
+    int n_cmd_read = 0;
     int n_unexpected = 0;
     int n_entries = 0;
     bool drained = false;
@@ -903,6 +906,12 @@ static bool verify_error_reporting(comprehensive_error_test_context_t *ctx) {
         } else if (occp_status_matches_expected(status, OCCP_FW_ID_SMC_BL0, OCCP_STATUS_MSG_ERROR,
                                                 (uint16_t)OCCP_SPEC_ERROR_CMD_UNKNOWN, false)) {
             n_cmd_unknown++;
+        } else if (OCCP_STATUS_EXTRACT_VALUE(status) == (uint16_t)OCCP_SPEC_ERROR_CMD_READ) {
+            /* Transport-level command read error (occp.c:793). Expected here:
+             * the oversize-body injection in Test 5 leaves trailing bytes that
+             * the dispatch loop reads as a malformed next command. Logged, not
+             * scored. */
+            n_cmd_read++;
         } else {
             simputshex32("FAIL: unexpected SMC BL0 error record: 0x", status);
             n_unexpected++;
@@ -923,6 +932,7 @@ static bool verify_error_reporting(comprehensive_error_test_context_t *ctx) {
     simputshex32("VALIDATE address failed:    ", n_validate_failed);
     simputshex32("CMD unknown:                ", n_cmd_unknown);
     simputshex32("CMD failed (not scored):    ", n_cmd_failed);
+    simputshex32("CMD read (not scored):      ", n_cmd_read);
     simputshex32("Unexpected error records:   ", n_unexpected);
 
     if (!drained) {
@@ -942,14 +952,16 @@ static bool verify_error_reporting(comprehensive_error_test_context_t *ctx) {
         {n_jump_failed, ctx->exp_jump_failed, "JUMP_READ_FAILED"},
         {n_jump_security, ctx->exp_jump_security, "JUMP_SECURITY"},
         {n_validate_failed, ctx->exp_validate_failed, "VALIDATE_ADDRESS_FAILED"},
-        /* CMD_UNKNOWN is reported as 0x101 | <randomly drawn rejected ID>. That
-         * low byte is not reported back to the test and, for ids with
-         * (id & 0xF0) == 0x10, the record is indistinguishable from the
-         * CMD_FAILED companion. Per-injection counting is therefore unsound
-         * here; the exact per-command proof for the invalid-header injections
-         * is the exp_response_code check in Test 4, which already ran. This
-         * only asserts that the category was reported at all. */
-        {n_cmd_unknown, (ctx->exp_cmd_unknown > 0) ? 1 : 0, "CMD_UNKNOWN"},
+        /* Invalid-header rejections. The ROM reports them as
+         * 0x101 | <randomly drawn rejected ID> (occp.c:713) or
+         * 0x110 | <header validation code> (occp.c:679); the drawn ID is not
+         * reported back to the test and, for ids with (id & 0xF0) == 0x10, the
+         * first form is indistinguishable from the second. The two are
+         * therefore scored together as one dispatch-reject family. The exact,
+         * per-command proof for these injections is the exp_response_code
+         * check in Test 4, which already ran. */
+        {n_cmd_unknown + n_cmd_failed, ctx->exp_cmd_unknown,
+         "dispatch reject (CMD_UNKNOWN/CMD_FAILED)"},
     };
 
     for (int i = 0; i < (int)(sizeof(checks) / sizeof(checks[0])); i++) {

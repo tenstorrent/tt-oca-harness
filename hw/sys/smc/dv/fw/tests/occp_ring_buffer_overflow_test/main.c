@@ -140,10 +140,9 @@ static bool expect_eq32(const char *what, uint32_t actual, uint32_t expected) {
         simputshex32("    actual:   0x", actual);
         return false;
     }
-    simputshex32("  ok (0x", actual);
-    simputs("): ");
+    simputs("  ok: ");
     simputs(what);
-    simputs("\n");
+    simputshex32(" = 0x", actual);
     return true;
 }
 
@@ -570,8 +569,14 @@ static void finalize_test_results(rb_test_context_t *t) {
         simputs("RING BUFFER OVERFLOW CHECKS FAILED\n");
     }
 
-    occp_send_write_command(t->occp, t->occp->slave_addr, SMC_CPU_CTRL_SCRATCH_0__REG_ADDR,
-                            (uint8_t *)&result_code, sizeof(result_code));
+    int result = occp_send_write_command(t->occp, t->occp->slave_addr,
+                                         SMC_CPU_CTRL_SCRATCH_0__REG_ADDR,
+                                         (uint8_t *)&result_code, sizeof(result_code));
+    increment_cmd_count(t->occp);
+    if (result != OCCP_SUCCESS) {
+        simputs("FAIL: could not publish the result code to the DUT scratch register\n");
+        t->overall_result = false;
+    }
 }
 
 int main(void) {

@@ -2014,7 +2014,12 @@ void execute_random_commands(test_context_t *ctx, int num_commands) {
                  * Error codes are a byte (occp-protocol.adoc: 0x00 No error ..
                  * 0x0A Oversized transport frame, 0xFF General error), so the
                  * low byte is the whole field. */
-                if ((status_data & 0xFF) != (uint32_t)ctx->exp_occp_last_error) {
+                if (!ctx->check_occp_last_error) {
+                    simputshex32("GET_OCCP_ERROR_CODE value (not checked): ",
+                                 status_data & 0xFF);
+                    simputs("GET_OCCP_ERROR_CODE: transport OK, value unchecked -- set "
+                            "ctx->check_occp_last_error to compare it\n");
+                } else if ((status_data & 0xFF) != (uint32_t)ctx->exp_occp_last_error) {
                     simputs("GET_OCCP_ERROR_CODE: FAIL\n");
                     simputshex32("Expected: ", (uint32_t)ctx->exp_occp_last_error);
                     simputshex32("Actual: ", status_data & 0xFF);

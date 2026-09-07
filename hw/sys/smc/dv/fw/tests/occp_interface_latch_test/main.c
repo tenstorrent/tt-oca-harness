@@ -240,7 +240,10 @@ int main(void) {
 
     ctxB.exp_timeout = true;
     ctxB.timeout = OCCP_IFACE_B_RESP_BUDGET_ITERS;
-    /* 2) Attempt to send commands on ifaceB which should be ignored */
+    /* 2) Attempt to send commands on ifaceB which should be ignored. Read against
+     * Step 0: the same ifaceB answered inside this same budget moments ago, so a
+     * timeout here is the latch and not a dead link. A response instead makes
+     * occp_get_response_header return OCCP_ERR (occp_commands.c:273-276). */
     simputs("Step 2: Send probe writes on ifaceB; expect to be ignored due to latch\n");
     execute_random_commands(&ctxB, 1);
 
