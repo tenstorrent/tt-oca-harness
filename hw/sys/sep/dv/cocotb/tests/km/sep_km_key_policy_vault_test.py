@@ -1,13 +1,17 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""KM key/policy vault: slot extent and SRAM write-lock.
+"""KM key/policy vault: slot extent, SRAM write-lock, and the KPV seal.
 
 no_cpu / +skip_fuse_sense / +km_rom_hex=km_rom_vault.parhex. RANDCFG.
-Not ``rom_main``: KPV CTRL and SRAM_LOCK are on the KM CPU bus, and
-seal stays on the parked command-set vehicle. The host posts a seed-
-selected slot and SRAM region through the mailbox; the ROM walks slot
-0, that slot, and slot 63, rejects a store past ``KM_KPV_SIZE``, then
-locks the selected SRAM region and W1C-clears the violation / IRQ.
+Not ``rom_main``: KPV CTRL and SRAM_LOCK are on the KM CPU bus. The seal
+lives here rather than on the mailbox command set because no command
+seals a slot -- over the mailbox an erase always frees, so the retire
+path has no vehicle there. The host posts a seed-selected slot, SRAM
+region and seal/free slot pair through the mailbox; the ROM walks slot
+0, that slot, and slot 63, rejects a store past ``KM_KPV_SIZE``, locks
+the selected SRAM region and W1C-clears the violation / IRQ, then runs
+the seal contrast: the same erase retires a sealed slot and frees an
+unsealed one.
 Result flags in KM SRAM word0 (the signed-off ``km_sram_word0_o`` probe).
 """
 
@@ -20,7 +24,10 @@ from sep_base_test import sep_base_test
 from seq_lib.sep_km_vault_seq import (
     FLAG_DROP,
     FLAG_EXTENT,
+    FLAG_FREE,
     FLAG_IRQ,
+    FLAG_RETIRE,
+    FLAG_SEAL,
     FLAG_SLOT,
     FLAG_VIOL,
     FLAG_W1C,
@@ -79,11 +86,30 @@ class sep_km_key_policy_vault_test(sep_base_test):
         self.logger.info("CHK-IRQ PASS: IRQ_STATUS.SRAM_WRITE_LOCK_ERR set")
         _bit(FLAG_W1C, "CHK-W1C")
         self.logger.info("CHK-W1C PASS: violation and IRQ read back 0 after W1C")
+        _bit(FLAG_SEAL, "CHK-SEAL")
+        self.logger.info(
+            "CHK-SEAL PASS: one CTRL write on slot %d set seal and raised lock_write",
+            cfg.seal_slot,
+        )
+        _bit(FLAG_RETIRE, "CHK-RETIRE")
+        self.logger.info(
+            "CHK-RETIRE PASS: erasing sealed slot %d left it retired "
+            "(lock_write held, lock_use gained)",
+            cfg.seal_slot,
+        )
+        _bit(FLAG_FREE, "CHK-FREE")
+        self.logger.info(
+            "CHK-FREE PASS: erasing unsealed slot %d cleared CTRL entirely (reusable)",
+            cfg.free_slot,
+        )
         assert word == cfg.expect, f"CHK-RANDCFG FAIL: word0=0x{word:08x} != 0x{cfg.expect:08x}"
         self.logger.info(
-            "CHK-RANDCFG PASS: slot=%d region=%d from seed %d word0=0x%08x",
+            "CHK-RANDCFG PASS: slot=%d region=%d seal_slot=%d free_slot=%d "
+            "from seed %d word0=0x%08x",
             cfg.slot,
             cfg.region,
+            cfg.seal_slot,
+            cfg.free_slot,
             cfg.seed,
             word,
         )

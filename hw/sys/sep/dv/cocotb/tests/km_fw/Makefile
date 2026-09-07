@@ -6,7 +6,16 @@ RISCV_OBJCOPY ?= $(GCC_PREFIX)-objcopy
 PYTHON ?= python3
 
 OUT_DIR := ..
-ROMS := km_rom km_rom_entropy km_rom_coexist km_rom_vault
+ROMS := km_rom km_rom_entropy km_rom_coexist km_rom_vault km_rom_crc \
+        km_rom_kpv_scrambler
+
+# The KM PicoRV32 is built with ENABLE_REGS_16_31=0, so an image that runs on
+# it must be assembled for RV32E and may use x0-x15 only. Images that only feed
+# the tb keep the wider base ISA.
+RV32E_ROMS := km_rom_vault km_rom_crc km_rom_kpv_scrambler
+ARCH_FLAGS = -march=rv32i -mabi=ilp32
+$(addprefix $(OUT_DIR)/,$(addsuffix .parhex,$(RV32E_ROMS))): \
+        ARCH_FLAGS := -march=rv32e -mabi=ilp32e
 PARHEX := $(addprefix $(OUT_DIR)/,$(addsuffix .parhex,$(ROMS)))
 
 .PHONY: all clean rom_main
@@ -74,14 +83,8 @@ rom_main: rom_main_stamp
 	cp $(KM_ROM_BUILT) $(OUT_DIR)/rom_main.rom.parhex
 	@echo "[km_fw] staged rom_main.rom.parhex -> $(OUT_DIR)/rom_main.rom.parhex"
 
-# Vault ROM uses RV32E: PicoRV32 is built with ENABLE_REGS_16_31=0.
-$(OUT_DIR)/km_rom_vault.parhex: km_rom_vault.S gen_parhex.py
-	$(RISCV_CC) -nostdlib -march=rv32e -mabi=ilp32e -Ttext=0 -o km_rom_vault.elf $<
-	$(RISCV_OBJCOPY) -O binary km_rom_vault.elf km_rom_vault.bin
-	$(PYTHON) gen_parhex.py km_rom_vault.bin > $@
-
 $(OUT_DIR)/%.parhex: %.S gen_parhex.py
-	$(RISCV_CC) -nostdlib -march=rv32i -mabi=ilp32 -Ttext=0 -o $*.elf $<
+	$(RISCV_CC) -nostdlib $(ARCH_FLAGS) -Ttext=0 -o $*.elf $<
 	$(RISCV_OBJCOPY) -O binary $*.elf $*.bin
 	$(PYTHON) gen_parhex.py $*.bin > $@
 
