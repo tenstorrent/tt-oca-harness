@@ -233,29 +233,14 @@ args = [
 # exists for. The external master is played by the sequence on the flat ext_in_*
 # pins tb_wrapper_top.sv exposes. Protocol and every address
 # come from the firmwares' shared header
-# hw/sys/sep/dv/fw/tests/common/smu_sep_ext_axi_protocol.h. The SMC ROM
+# hw/sys/sep/dv/fw/tests/common/smu_sep_ext_axi_protocol.h.
 # The sequence re-vectors the SMC cores to smu_sep_ext_axi_smc_entry, read from
 # the built .sram.sym, over JTAG2AXI.
 #
-# NOT ENROLLED -- blocked on a preload lifetime problem, not on this test.
-# The SMC-side image is placed by the +smc_scratch_ram_hex backdoor at time
-# zero, and the SMC boot path then writes EVERY word of scratch RAM before any
-# firmware can use it: measured 4096 bus writes (exactly the RAM depth) against
-# a counter that reads 0 at sequence start, so the wipe happens after the load,
-# during the run. It is not this test's doing -- swapping in the plain
-# non-jumping ROM (smu_sep_arm, one store then wfi) produces the same 4096
-# writes. Consequence: the image is gone by the time the ROM jumps, the
-# scratch-RAM half never reaches its S2/S3, CPU_CTRL scratch6 (SMC_READY) stays
-# 0, the SMC aperture is never opened, and the master's reads of SMC globals
-# come back DECERR (resp=3, data 0xbadcab1e).
-#
-# The ext_in half itself is proven working by that same evidence: the master
-# drives real AXI and gets real responses on the boundary it was given.
-#
-# The preload half of that is now handled: smc_4core_cpu zeroes the scratch RAM
-# at boot to establish valid ECC, and tb_wrapper_top.sv holds that FSM off
-# whenever +smc_scratch_ram_hex supplies an image, so the image survives and the
-# SMC executes from it.
+# Enrolled in sep_smc_sram_blocked. The preload is handled: smc_4core_cpu
+# zeroes the scratch RAM at boot to establish valid ECC, and
+# tb_wrapper_top.sv holds that FSM off whenever +smc_scratch_ram_hex
+# supplies an image, so the image survives.
 #
 # The hand-off is handled too. Jumping to the image from the ROM left the core
 # carrying the ROM's state -- mtvec among it -- so its first trap went to address
