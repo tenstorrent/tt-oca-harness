@@ -70,7 +70,7 @@ class sep_aes_mode_keysize_rand_test(sep_base_test):
         self.aes = SepAes(self)
         seed = self.random_seed()
         self.rng = SepSeededRng(seed)
-        self.logger.info("AES mode/key-size breadth AES mode x key-size breadth: seed=%d", seed)
+        self.logger.info("AES mode x key-size breadth: seed=%d", seed)
         await self.aes.trigger_prng_reseed()  # seed the masking PRNG from EDN
 
         # Collect each cell's DUT ciphertext, so the matrix claim rests on observed
