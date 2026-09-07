@@ -1547,6 +1547,123 @@ module sep_uvm_top
     assign drbg_genbits_data_o  = `SEP_DRBG.u_csrng.u_csrng_core.u_csrng_ctr_drbg.bits_data_o;
     assign drbg_genbits_fips_o  = `SEP_DRBG.u_csrng.u_csrng_core.u_csrng_ctr_drbg.bits_fips_o;
     assign drbg_gen_last_o      = `SEP_DRBG.u_csrng.u_csrng_core.gen_last_q;
+    // drbg_axil64_lane_adapter arbitration, sampled at each adapter's own
+    // AXI-Lite-64 port: {ar_ready, w_ready, aw_ready, ar_valid, w_valid, aw_valid}.
+    assign drbg_csrng_axil_chan_o = {
+        `SEP_DRBG.u_csrng_axil_adapter.axil64_rsp_o.ar_ready,
+        `SEP_DRBG.u_csrng_axil_adapter.axil64_rsp_o.w_ready,
+        `SEP_DRBG.u_csrng_axil_adapter.axil64_rsp_o.aw_ready,
+        `SEP_DRBG.u_csrng_axil_adapter.axil64_req_i.ar_valid,
+        `SEP_DRBG.u_csrng_axil_adapter.axil64_req_i.w_valid,
+        `SEP_DRBG.u_csrng_axil_adapter.axil64_req_i.aw_valid
+    };
+    assign drbg_edn_axil_chan_o = {
+        `SEP_DRBG.u_edn_axil_adapter.axil64_rsp_o.ar_ready,
+        `SEP_DRBG.u_edn_axil_adapter.axil64_rsp_o.w_ready,
+        `SEP_DRBG.u_edn_axil_adapter.axil64_rsp_o.aw_ready,
+        `SEP_DRBG.u_edn_axil_adapter.axil64_req_i.ar_valid,
+        `SEP_DRBG.u_edn_axil_adapter.axil64_req_i.w_valid,
+        `SEP_DRBG.u_edn_axil_adapter.axil64_req_i.aw_valid
+    };
+
+    // ---------------------------------------------------------------------
+    // Port-level arbitration vehicle: a TB-owned second instance of
+    // drbg_axil64_lane_adapter, driven straight from cocotb.
+    //
+    // The DUT's own lane adapters sit behind the crossbar, which delivers W a
+    // cycle after AW and re-serializes to that order whatever a master
+    // presents, so the same-cycle and W-first orderings cannot be presented
+    // at a DUT adapter port from the fabric. This instance has its own reset
+    // and no fabric in front of it, so every legal ordering is reachable and
+    // a wedged cell is cleared by resetting the vehicle alone.
+    //
+    // Its axil32 side is an always-ready responder: the contract under test
+    // is the 64-bit port's channel arbitration, so the downstream leg only
+    // has to retire what the adapter forwards. It must not be the thing that
+    // stalls, or a stall would be ambiguous.
+    // ---------------------------------------------------------------------
+    drbg_pkg::drbg_axil64_req_t  tbadp_req;
+    drbg_pkg::drbg_axil64_resp_t tbadp_rsp;
+    drbg_pkg::drbg_axil32_req_t  tbadp_req32;
+    drbg_pkg::drbg_axil32_resp_t tbadp_rsp32;
+
+    always_comb begin
+        tbadp_req          = '0;
+        tbadp_req.aw_valid = tbadp_aw_valid_i;
+        tbadp_req.aw.addr  = tbadp_aw_addr_i;
+        tbadp_req.w_valid  = tbadp_w_valid_i;
+        tbadp_req.w.data   = tbadp_w_data_i;
+        tbadp_req.w.strb   = tbadp_w_strb_i;
+        tbadp_req.b_ready  = tbadp_b_ready_i;
+        tbadp_req.ar_valid = tbadp_ar_valid_i;
+        tbadp_req.ar.addr  = tbadp_ar_addr_i;
+        tbadp_req.r_ready  = tbadp_r_ready_i;
+    end
+
+    assign tbadp_chan_o = {
+        tbadp_rsp.ar_ready,
+        tbadp_rsp.w_ready,
+        tbadp_rsp.aw_ready,
+        tbadp_req.ar_valid,
+        tbadp_req.w_valid,
+        tbadp_req.aw_valid
+    };
+    assign tbadp_b_valid_o = tbadp_rsp.b_valid;
+    assign tbadp_r_valid_o = tbadp_rsp.r_valid;
+    assign tbadp_r_data_o  = tbadp_rsp.r.data;
+    // The response CODES, not just the valids. An access the adapter rejects
+    // as unsupported answers SLVERR from StIdle without forwarding anything,
+    // and retires just as promptly as a real one -- so a control that only
+    // watched the valid could not tell a live forwarding path from a rejected
+    // access.
+    assign tbadp_b_resp_o  = tbadp_rsp.b.resp;
+    assign tbadp_r_resp_o  = tbadp_rsp.r.resp;
+
+    // Always-ready axil32 responder: every ready is an unconditional 1'b1.
+    // Deliberately NOT gated on the peer channel's valid -- cross-gating the
+    // readys is the exact shape this vehicle exists to catch, and putting it
+    // one hop downstream would make a stall ambiguous about which side
+    // produced it.
+    logic tbadp32_b_pending_q, tbadp32_r_pending_q;
+    always_ff @(posedge clk_i or negedge tbadp_rst_ni_i) begin
+        if (!tbadp_rst_ni_i) begin
+            tbadp32_b_pending_q <= 1'b0;
+            tbadp32_r_pending_q <= 1'b0;
+        end else begin
+            tbadp32_b_pending_q <= (tbadp_req32.aw_valid && tbadp_req32.w_valid)
+                                   || (tbadp32_b_pending_q && !tbadp_req32.b_ready);
+            tbadp32_r_pending_q <= tbadp_req32.ar_valid
+                                   || (tbadp32_r_pending_q && !tbadp_req32.r_ready);
+        end
+    end
+    always_comb begin
+        tbadp_rsp32           = '0;
+        tbadp_rsp32.aw_ready  = 1'b1;
+        tbadp_rsp32.w_ready   = 1'b1;
+        tbadp_rsp32.ar_ready  = 1'b1;
+        tbadp_rsp32.b_valid   = tbadp32_b_pending_q;
+        tbadp_rsp32.b.resp    = axi_pkg::RESP_OKAY;
+        tbadp_rsp32.r_valid   = tbadp32_r_pending_q;
+        tbadp_rsp32.r.data    = 32'hA5A5_1234;
+        tbadp_rsp32.r.resp    = axi_pkg::RESP_OKAY;
+    end
+
+    drbg_axil64_lane_adapter #(
+        .axil64_req_t(drbg_pkg::drbg_axil64_req_t),
+        .axil64_rsp_t(drbg_pkg::drbg_axil64_resp_t),
+        .axil32_req_t(drbg_pkg::drbg_axil32_req_t),
+        .axil32_rsp_t(drbg_pkg::drbg_axil32_resp_t)
+    ) u_tbadp_vehicle (
+        .clk_i                     (clk_i),
+        .rst_ni                    (tbadp_rst_ni_i),
+        .axil64_req_i              (tbadp_req),
+        .axil64_rsp_o              (tbadp_rsp),
+        .axil32_req_o              (tbadp_req32),
+        .axil32_rsp_i              (tbadp_rsp32),
+        .unsupported_access_pulse_o(),
+        .forwarded_read_pulse_o    (),
+        .forwarded_write_pulse_o   ()
+    );
     // Post-EXT_TRNG_SRC_SEL-mux: the entropy actually presented to the KM (proves
     // the internal-DRBG leg was selected, not ext_trng). tvalid && tready = the KM
     // consumed a genbits word.
