@@ -164,6 +164,8 @@ python_paths = [
   # TB-agnostic helpers (smu_addr_map, smu_axi_helpers) importable as top-level
   # modules while `seq_lib` still resolves to cocotb_wrapper's own.
   "hw/sys/smu/dv/cocotb/seq_lib",
+  # Shared PyUVM env, same package for both DUTs -- see smu_sim_cfg.toml.
+  "hw/sys/smu/dv/common",
 ]
 results_dir = "{run_dir}/{item}/results"
 cocotb_log = "{run_dir}/{item}/logs/{item}.log"

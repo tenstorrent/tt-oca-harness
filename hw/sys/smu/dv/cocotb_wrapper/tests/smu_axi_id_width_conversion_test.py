@@ -39,6 +39,8 @@ PROBE_ADDRS = (
 class smu_axi_id_width_conversion_test(smu_base_test):
     """Prove SMN->iw_converter completes with matching RID on smu_wrapper."""
 
+    use_shared_env = True
+
     async def run_scenario(self) -> None:
         dut = cocotb.top
         seed = self.random_seed()
@@ -56,20 +58,21 @@ class smu_axi_id_width_conversion_test(smu_base_test):
             dut, dut.clk_smu_i, dut.rst_primary_smc_clk_n_o, prefix="ext_in"
         )
 
+        sb = self.env.scoreboard
         for idx, addr in enumerate(PROBE_ADDRS):
             _value, resp, issued, rid = await axi_read32_resp_ids_bounded(
                 master, addr, arid=arids[idx], label=f"id_width_rd@{idx}"
             )
-            if rid != issued:
-                raise AssertionError(
-                    f"RID mismatch via ID-converted SYS_IN @0x{addr:08x}: "
-                    f"issued ARID 0x{issued:x}, returned RID 0x{rid:x}"
-                )
-            self.logger.info(
-                "CHK-AXI-ID-WIDTH @0x%08x arid=0x%x rid=0x%x resp=%s",
-                addr,
-                issued,
+            sb.expect_eq(
+                f"RID match via ID-converted SYS_IN @0x{addr:08x}",
                 rid,
+                issued,
+                evidence="AXI_ID_WIDTH_OK",
+            )
+            # Diagnostic only -- response class is not a deny/allow claim.
+            self.logger.info(
+                "id_width probe @0x%08x completed resp=%s (not asserted)",
+                addr,
                 resp_name(resp),
             )
 

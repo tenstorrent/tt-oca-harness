@@ -150,6 +150,12 @@ python_root = "hw/sys/smu/dv/cocotb"
 test_dir = "hw/sys/smu/dv/cocotb/tests"
 python_paths = [
   "hw/common/dv/vip",
+  # Shared PyUVM env (SmuEnv / SmuScoreboard / evidence map / fcov). It lives
+  # outside both cocotb trees under a name neither uses, because `env` can
+  # only resolve to one package: cocotb/env was a regular package and
+  # cocotb_wrapper/env is a namespace one, and a regular package wins the
+  # import regardless of path order.
+  "hw/sys/smu/dv/common",
   # Reuse DTP JTAG helpers (types / tap device / IDCODE decode) without copying.
   "hw/sys/dtp/dv/cocotb",
   # Raise-stub deferred bodies (importable if someone runs deferred items).
