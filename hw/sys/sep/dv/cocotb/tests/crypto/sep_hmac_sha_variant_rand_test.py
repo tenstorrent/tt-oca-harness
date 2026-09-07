@@ -34,7 +34,6 @@ Checkers:
   CHK-CELL     per cell: engine DIGEST == independent golden (8/12/16 words)
   CHK-RW1C     per cell: INTR_STATE.hmac_done W1C-clears to 0 (in run_mac)
   CHK-ERR      per cell: ERR_CODE == 0 and INTR_STATE.hmac_err == 0
-               of the same message (proves the key was actually consumed)
   CHK-RAND-REP every legal cell produced its own golden-matching digest, and all
                digests are distinct (seed logged)
 """
@@ -88,7 +87,7 @@ class sep_hmac_sha_variant_rand_test(sep_base_test):
         self.hmac = SepHmac(self)
         seed = self.random_seed()
         self.rng = SepSeededRng(seed)
-        self.logger.info("HMAC SHA-variant breadth HMAC SHA-variant breadth: seed=%d", seed)
+        self.logger.info("HMAC SHA-variant breadth: seed=%d", seed)
 
         # CHK-CONV: pin the SW-key register byte convention once (bring-up).
         conv = await self._check_key_convention()
