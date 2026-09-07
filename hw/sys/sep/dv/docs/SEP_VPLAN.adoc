@@ -13,14 +13,14 @@
 |Bare core |`sep` (`hw/sys/sep/rtl/sep.sv`)
 |Repository |`tt-oca-harness`
 |Project |OCAH
-|Framework |PyUVM on cocotb (Phase 1 / Phase 2); UVM planned (Phase 3)
+|Framework |PyUVM on cocotb (Phase 1 / Phase 2); SystemVerilog UVM on the same top (Phase 3, `--framework uvm`)
 |Primary simulator |Verilator
 |Architecture reference |`hw/sys/sep/doc/`
 |Register export |`hw/sys/sep/regs/gen/` (via `env/sep_reg_meta.py`)
 |How to run |`README.md` in this DV tree (`tools/dv/run_dv.py --dut sep`)
 |Phase 1 test cases |31
 |Phase 2 test cases |49
-|Phase 3 |T.B.D. (new UVM bench)
+|Phase 3 |SV-UVM bench bring-up; 1 bound scenario (`sep_axi_smoke_test`)
 |===
 
 This VPLAN is the technical contract for the open-source SEP DV
@@ -51,7 +51,7 @@ One DUT. Two environments across three phases.
 |Iconic feature coverage by IP, plus cross-IP edges a per-IP bench cannot see. Includes block activation for instantiated IPs that otherwise had no vehicle. Randomize when there is a legal matrix (`RAND-REP` / `RANDCFG`); keep directed (`RAND-NONE`) when there is not.
 
 |Phase 3
-|New UVM testbench
+|SystemVerilog UVM realization of the same testbench top
 |Bring-up + smoke first, then coverage-driven corners, error/security permutations, and code-coverage close-out. Low overlap with Phase 1 / Phase 2. See <<phase-3>>.
 |===
 
@@ -464,7 +464,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |`sep_efuse_set_only_monotonicity_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip
-|The walked fields are metal `WRITE_SET_ONLY` in `sep_efuse_pkg::EfuseFieldMap`: `BL1_VERSION`, `BL2_VERSION`, `CHIPLET_PUBK_REVOKE`, `REQUIRED_SIGNERS`, `REQUIRED_ALGS`.
+|The walked fields are metal `WRITE_SET_ONLY` in `sep_efuse_pkg::EfuseFieldMap`: `BL1_VERSION`, `BL2_VERSION`, `CHIPLET_PUBK_REVOKE`, `REQUIRED_SIGNERS`, `REQUIRED_ALGS`, plus the Class-1 fields `SIP_DIS` and `SYS_DIS`.
 |`sep_sec_dis_override_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip
@@ -510,8 +510,11 @@ bare SEP, and deferred items (AGP, local UART/GPIO, ROM patch, next-gen
 DMA-AES, DCLS-in-SEP, PCR vault, ROM-FW contracts).
 
 Feature grades are independent of per-test checkers. `GAP` means no
-vehicle yet. A known RTL defect that the suite still exercises is called
-out in <<known-limitations>>, not as a feature credit.
+vehicle yet. `PARTIAL` means a vehicle exists and proves part of the feature,
+with the unproven part named in the row — it is not a softer `PROVEN`, and a
+row may not sit at `PARTIAL` without saying which part is unclaimed and why.
+A known RTL defect that the suite still exercises is called out in
+<<known-limitations>>, not as a feature credit.
 The architecture spec under `hw/sys/sep/doc/` is the scorecard denominator: a
 feature that spec does not define is not a row. A backlog *name* is not a
 credit, and a `FAILED` spec-gap is honest but is not a feature credit either.
@@ -674,6 +677,22 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |eFuse set-only (anti-rollback)
 |PROVEN
 |`sep_efuse_set_only_monotonicity_test`
+
+|eFuse per-spare write-lock slot numbering
+|PROVEN
+|`sep_efuse_program_lock_matrix_test`. Every run walks `SPARE0..SPARE7`: each spare is programmed while unlocked, then its own `LOCKS_SPARE` bit is set and a second bit in the same spare is rejected. The spares are walked in order after each preceding lock, so a lock bit wired past its own slot fails the next spare's unlocked-program cell. Slot coverage does not depend on the seed; only the bit offsets within a spare do.
+
+|Token comparator fail-closed at the lifecycle gate
+|PROVEN
+|`sep_lcc_lc_state_w1s_prod_test` (`CHK-GATE-SIP-FAULT`). A redundancy fault forces the reserved error code onto the token status, and the `LC_STATE` bit[1] advance must not land — the gate compares for equality with the match code, so a gate written as "not a mismatch" would let the fault code through. The cell that follows presents the same token with the fault removed and does advance, so the pair is a contrast rather than a lone negative.
+
+|Token comparator fault latch cleared by reset
+|PROVEN
+|`sep_efuse_rma_token_rand_test` (`CHK-FAULT-RESET`). The set-only phases prove the fault bits survive a valid retry; only this one separates that from a latch that never clears. After the two zeros it re-arms once, so the phase ends on a zero-to-one transition rather than on a wedged detector that stays at 0.
+
+|Debug-disable gating ladder (`dbg_disable`)
+|PARTIAL
+|`sep_lcc_demote_feat_ctrl_matrix_test` (`CHK-DBG-DISABLE`). Nine of the eleven bits are checked against the DTP path gating ladder for the same `FEAT_CTRL` the cell just verified, across the whole demote matrix. `dft_secure` and `dfd` are deliberately unclaimed: the path table in the lifecycle chapter and the RTL disagree on both, and they diverge in opposite directions -- `dfd` is stricter in the RTL, `dft_secure` is more permissive. See <<known-limitations>>.
 
 |Local-master alias remap datapath
 |PROVEN
@@ -1393,7 +1412,8 @@ and `fw/drivers/sep_efuse.h` use the same derived table.
 . Write the lifecycle word write-one-to-set, and require both the differentially encoded lifecycle word and the controller's decoded feature-control output to match the specification-derived golden for the expected next state.
 . Re-check the observed step against the transition rules in value form, using the code the device returned rather than the one the test wrote.
 . On the demoted leaf, assert both demotion registers first and prove the demotion is visible in feature control before requiring the transition to succeed.
-. On the transient leaf, present the token and take no bus write at all; the same rules must apply.
+. On the production leaf, present a valid SIP token with the comparator collapsed; the bit must not set. Release the fault and the same write then advances.
+. On the transient leaf, require the state to hold with the enable armed and no token, then present the token and take no bus write at all; the same rules must apply.
 
 *Checkers*:
 
@@ -1404,6 +1424,8 @@ and `fw/drivers/sep_efuse.h` use the same derived table.
 |A write of zero to the lifecycle word clears nothing. Write-one-to-set means a bit never returns to 0, so a controller that treated the write as an assignment fails here.
 |CHK-GATE-SIP
 |The system-in-package bit does not set without a matching token. The write is otherwise identical to the one that succeeds later in the same leaf, so the gate is the only difference between the two outcomes.
+|CHK-GATE-SIP-FAULT
+|A valid SIP token presented with the comparator collapsed must not set the bit. The status is the fault code `6'b111111`, which a gate written as "not a mismatch" would accept. The cell that follows presents the same token with the fault removed and does advance.
 |CHK-GATE-CHIP-ORD
 |The chiplet bit does not set from the production state even with the chiplet token *already matched*, because the system-in-package state is not yet established. This isolates the ordering requirement from the token requirement — with the token gate open, only the ordering gate can hold.
 |CHK-GATE-CHIP-TOK
@@ -1424,6 +1446,8 @@ and `fw/drivers/sep_efuse.h` use the same derived table.
 |From outside the named set, a write of every lifecycle bit with BOTH tokens matched changes nothing. This is the strongest available form of the end-of-life property: every gate that could open is open, and the state still does not move.
 |CHK-PROD-END-INVALID
 |From the terminal product state, the reachable destination is outside the named set — the specification's "the only permitted transition is to INVALID", proven rather than assumed.
+|CHK-TRANSIENT-NO-TOKEN
+|With the transient enable armed and no token presented, the sensed terminal product state holds. The transient path applies the token gates; it does not move on the enable bit alone.
 |CHK-TRANSIENT-INVALID
 |The transient return-material-authorisation path applies the same write-one-to-set and token rules with no bus request at all, including when the result falls outside the named set.
 |CHK-UPPER-MERGE
@@ -3516,14 +3540,15 @@ per-IP clock gate.
 
 *VIP / Model*: ocah_axi_vip
 
-*Objective*: Program × lock on a legal spare field.
+*Objective*: Program × lock on every legal spare field in one invocation.
 
 *Test Procedure*:
 
 [arabic]
-. Program one seed-selected bit of the spare; OTP readback and resense shadow match the independent image golden.
-. Program that spare's write-lock, then reject a second bit (`PROGRAM_ERR`). OTP and resense golden keep the rejected bit 0.
-. Both discrete cells ran in one invocation.
+. Walk `SPARE0` through `SPARE7` in order. For each spare, program one seed-selected bit while unlocked; OTP readback and resense shadow match the independent image golden.
+. Program that spare's own `LOCKS_SPARE` bit, then reject a second bit (`PROGRAM_ERR`). OTP and resense golden keep the rejected bit 0.
+. Spare `k+1` is programmed only after spare `k` is locked, so a lock bit wired past its own slot fails the next spare's unlocked-program cell.
+. The seed selects only the bit offsets inside each spare. Slot coverage does not depend on reseed.
 
 *Checkers*:
 
@@ -3531,11 +3556,11 @@ per-IP clock gate.
 |===
 |Checker |Contract
 |CHK-UNLOCK-PROGRAM
-|An unlocked spare bit programs and reads back in OTP and after resense.
+|An unlocked spare bit programs and reads back in OTP and after resense. Logged once per spare.
 |CHK-LOCK-REJECT
-|A write-locked spare rejects a later program; OTP and the post-resense shadow match the independent golden (lock bit set, rejected bit 0).
-|CHK-RAND-REP
-|Unlock-program and lock-reject both ran on the same spare.
+|A write-locked spare rejects a later program; OTP and the post-resense shadow match the independent golden (lock bit set, rejected bit 0). Logged once per spare.
+|CHK-SPARE-LOCK-SLOTS
+|All eight spares ran both cells in one invocation. A lock of spare `k` must not block spare `k+1`.
 |===
 
 '''''
@@ -3628,6 +3653,7 @@ both lock flavours of one seed-selected spare.
 . Walk TEST_DEV and PROD at DIS=0 through the four demote cells.
 . W1S a seed-pinned DIS pair and walk the four demote cells at PROD.
 . Every cell's inbound probe is OKAY iff `sep_debug=1`, else DECERR.
+. Every cell's `dbg_disable` vector matches the DTP gating ladder for that same `FEAT_CTRL`, except `dft_secure` and `dfd`.
 . Lock one seed-selected `DEMOTE` at 0; a later demote write is ignored.
 . `rst_ni` releases the lock; the same demote write then lands.
 
@@ -3646,6 +3672,8 @@ both lock flavours of one seed-selected spare.
 |With `lock` set and `demote` still 0, a later demote write is ignored and `feat_ctrl` stays at the undemoted golden.
 |CHK-DEMOTE-LOCK-RESET
 |After `rst_ni` the lock is 0 and the same demote write lands.
+|CHK-DBG-DISABLE
+|Nine of the eleven `dbg_disable` bits match the DTP gating ladder for the same `FEAT_CTRL` the cell just verified. `dft_secure` and `dfd` are unclaimed: the path table and the RTL disagree, and they diverge in opposite directions -- `dfd` is stricter in the RTL, `dft_secure` is more permissive.
 |===
 
 '''''
@@ -3672,6 +3700,7 @@ both lock flavours of one seed-selected spare.
 . Common-mode invert of all three RMA_SIP comparators on a valid token: legal mismatch code, no sticky bit, IRQ low.
 . Common-mode invert of all three RMA_SIP comparators on a wrong token: legal match code, no sticky bit, IRQ low (fail-open hole).
 . Collapse instance 0, then two-instance disagree: match status `6'b111111`, SIP sticky bit, `sep_internal_interrupts[39]`. Valid retry plus write-0 leave the bit and IRQ asserted.
+. A cold-reset re-sense clears `TOKEN_MATCH_FAULT` and releases the interrupt.
 
 *Checkers*:
 
@@ -3691,19 +3720,21 @@ both lock flavours of one seed-selected spare.
 |CHK-COMMON-MODE-MATCH
 |All three comparators flipping a mismatch to a legal match does not set a sticky bit or raise `sep_internal_interrupts[39]`.
 |CHK-COLLAPSE
-|A collapsed differential pair forces `6'b111111` and the SIP sticky bit.
+|Inject `3'b001` forces `6'b111111` and the SIP sticky bit. That encoding also makes instance 0 disagree with the others, so this check does not isolate the collapse detector.
 |CHK-DISAGREE
 |Two instances that disagree force `6'b111111` and keep the sticky bit.
 |CHK-ERROR-CODE
 |A redundancy fault writes `6'b111111` on every match-status bit.
 |CHK-STICKY
 |A valid-token retry and a write-0 leave `TOKEN_MATCH_FAULT` and irq39 asserted (`sw=r` until reset).
-|CHK-IRQ-38
+|CHK-IRQ-39
 |`sep_internal_interrupts[39]` (PIC source 40) asserts with the sticky bit.
 |CHK-WHICH-TOKEN
 |Collapse on CHIPLET and SEC_DISABLE sets bits 8 and 16 (OR with SIP bit 0).
 |CHK-JTAG-FAULT
 |After `RMA_CHIP_1`, a JTAG read of `TOKEN_MATCH_FAULT` matches the AXI read. PROD/RMA_SIP JTAG token-block allow is `sep_efuse_jtag_axil_el2_cpu_mux_test`, not this check.
+|CHK-FAULT-RESET
+|A cold-reset re-sense clears `TOKEN_MATCH_FAULT` and releases `sep_internal_interrupts[39]`. The earlier sticky checks cannot tell a resettable latch from one that never clears. After the two zeros the detector is re-armed once, so the phase ends on a zero-to-one transition.
 |===
 
 '''''
@@ -4173,7 +4204,7 @@ watermark together; no vehicle asserts that pair today.
 |CHK-WRITABLE-CONTRAST
 |A WRITE_UNLOCK spare still overwrites, so the OR is field-local.
 |CHK-RANDCFG
-|All five legal set-only fields walked in one invocation.
+|Seven set-only fields walked in one invocation, including `SIP_DIS` and `SYS_DIS` -- the Class-1 members, whose shadow OR-merge takes the `class1_shadow_storage_idx` arm of `efuse_shadow_regs.sv` that the non-Class-1 fields never reach. Both are pinned to their function-group word so the walk does not OR `sep_debug`, `chiplet_dbg` or `sip_debug` into `FEAT_CTRL`. This test drives the CPU-LSU master, which has no inbound filter.
 |===
 
 '''''
@@ -4877,12 +4908,28 @@ contracts owned by the vault test, and the wipe security contract.
 '''''
 
 [[phase-3]]
-=== Phase 3 — UVM Environment (T.B.D.)
+=== Phase 3 — UVM Environment
 
-Phase 3 is a *new* UVM testbench on the same DUT (`sep_wrapper`) and the
-same OSS-safe filelist. It does not extend the cocotb environment.
+Phase 3 is the SystemVerilog UVM realization of the SEP bench on the same
+DUT (`sep_wrapper`), the same OSS-safe filelist, and the same testbench top
+(`tb/tb_top.sv`, one module with a cocotb shape and a `UVM` shape). It does
+not extend the cocotb environment: the class library lives under `uvm/`
+on the shared framework bases of `hw/common/dv/vip/ocah_lib/` and drives
+the CPU-LSU splice through the shared `ocah_axi_vip` master. Architecture
+and run recipes are in
+link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_TB_ARCH].
 
-First deliverable:: UVM bring-up plus smoke — not a corner list.
+Bring-up and smoke:: `sep_axi_smoke_test` is the first scenario bound in
+both realizations (`module = { cocotb = ..., uvm = ... }` in
+`testlists/system.toml`). The SV-UVM pass keeps the cocotb semantics on
+the CPU-LSU splice — fuse-sense release, the `SEP_LOCAL_BASE_ADDR`
+reset-value read, directed and seeded-random write/readback of
+`SEP_SW_DEBUG`, `SEP_NMI_VEC`, `RAS_BANK_INFO`, and `PKA_CTRL` through
+their generated field masks, and a restore to reset values — over 16
+seeded passes, with named `CHK-*` evidence finalized per pass and the
+always-on scoreboard's `cpu_ctrl_csr` feature required.
+`+SEP_CSR_SCOREBOARD_NEGATIVE` corrupts the scoreboard prediction so the
+run must FAIL, which is the non-vacuity proof of the pass/fail path.
 
 After smoke:: Coverage-driven corners, error and security permutations,
 and code-coverage close-out. Prefer low overlap with Phase 1 / Phase 2:
@@ -4950,7 +4997,7 @@ Holding notes (candidates, not an execute list)::
 |`CFG.sideload=1` START with no valid Key Manager key must fail closed (`ErrKeyNotValid`). `CMD.err_processed` returns the engine to idle with `CFG_REGWEN` open, and the next software-key operation reproduces the pre-error digest. KEY_VALID gating and stale-key reject sit on the same card. Valid-key consume stays with `sep_km_kmac_sideload_kat_test`.
 |===
 
-Nothing in this section is scheduled work until the UVM bench exists.
+The holding notes are candidates for the SV-UVM bench, not an execute list.
 
 === Counts
 
@@ -4960,7 +5007,7 @@ Nothing in this section is scheduled work until the UVM bench exists.
 |Phase 1 tests |31
 |Phase 2 tests |49
 |Cocotb total |80
-|Phase 3 |T.B.D.
+|Phase 3 |1 SV-UVM scenario bound (`sep_axi_smoke_test`)
 |Iconic scorecard rows |54 in-scope: 53 PROVEN, 1 GAP (see <<iconic-scorecard>>)
 |Phase 2 parked, coded and failing |1 (per-IP reset isolation; graded GAP, parked on an RTL fix)
 |===
@@ -5040,6 +5087,16 @@ constraint is not an open defect.
 [cols="2,4",options="header"]
 |===
 |Topic |Contract
+
+|`dbg_disable` ladder: `dfd` and `dft_secure` (spec-vs-RTL)
+|The DTP path table in the lifecycle chapter and `sep_lifecycle_ctrl.sv` disagree on two of the eleven debug-disable bits. The table puts the DFD iJTAG path at Case 1 (`SIP_DBG` alone) and the secure DFT iJTAG path at Case 3; the RTL gates both at Case 2 (`SIP_DBG` and `CHIPLET_DBG`). The two divergences run in opposite directions and only one of them is safe.
+
+`dfd`: the RTL disables in more states than the table requires, so it closes a path the specification would leave open. Fail-safe.
+
+`dft_secure`: the RTL disables in *fewer* states. `dbg_disable` is active high, so Case 3 means `!SIP_DBG || !CHIPLET_DBG || !SEP_DBG` and the RTL omits the `SEP_DBG` term. At `SIP_DBG=1, CHIPLET_DBG=1, SEP_DBG=0` the specification says the secure DFT scan chain must be closed and the RTL leaves it open. This is the permissive direction on a chain the chapter's Class-2 rule treats as never-dumpable, so it is a security-relevant gap and not a neutral ambiguity. `CHK-DBG-DISABLE` therefore checks the other nine bits and leaves these two unclaimed: asserting either side would turn an open architecture question into a DV opinion. Tracked as issues 450 (`dft_secure`) and 1576 (`dfd`). When arch rules, the golden gains the bit and the scorecard row moves from `PARTIAL` to `PROVEN`.
+
+|Token-comparator collapse inject (`3'b001`)
+|`tb_top` mode `3'b001` forces instance 0 to a collapsed pair and leaves instances 1 and 2 as a legal match. The fault output is the OR of collapse and disagree, so `CHK-COLLAPSE` does not prove the collapse detector exists. Isolating that term needs all three pairs alike and `compute_comparison_vld_i=1`. SEC_DISABLE's valid is the sticky digest valid, not the RMA `digest_vld && fuse_sense_done` term, so an all-alike force with SEC valid still 0 is expected not to raise that rail. The inject stays at `3'b001` until a kept run isolates the term.
 
 |Inbound CFG allow-list (firmware constraint)
 |Hardware does not hard-block allow-listing the inbound-filter CFG window, outbound CFG, the remap banks, or `SEP_GLOBAL_BASE_ADDR` / `SEP_REGION_SIZE`, and is correct as built: the filter applies the rules it is given. Firmware must keep those CSRs outside every allow window — allow-listing them is a programming error, not a hardware defect, and nothing is expected to change in the RTL. The suite proves ownership under correct programming (`CHK-OWNERSHIP`).
