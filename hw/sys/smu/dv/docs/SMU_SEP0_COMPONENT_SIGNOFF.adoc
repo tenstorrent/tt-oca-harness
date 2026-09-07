@@ -57,7 +57,7 @@ They are not silent gaps.
 Filter-allow positive control is enrolled and PASSed:
 `smu_axi_filter_allow_ns_test` emits `CHK-SMU-ALLOW-NS-S1/S2/S3`;
 the SYS_IN program / window / shrink leaves emit `AXI_FILTER_OKAY`
-via `CHK-FILTER-PROG-*`.
+via `CHK-AXI-FILTER-OKAY`.
 
 `smu_axi_atomic_operation_test` proves the supported class only
 (`AXI_NON_ATOP_OK`, RID==ARID). The TB ties
@@ -91,9 +91,9 @@ but is not in live `smc` / `sep0_all`; it is not release credit.
 
 JTAG smoke, boot-stall, IC_RESET, clock-stop, STAP, BSR, and
 illegal-phase CTM PASSed on the nightly. Product-pin CTM remap
-(`smu_xtrig_ctm_remap_test`) FAILed: `dst_req pat=0x80` sampled
-lane-7 ack as 0 (CDC settle). That residual is #1572. Block-level
-DTP signoff stays the DTP package.
+(`smu_xtrig_ctm_remap_test`) FAILed: `TB ack follows handshake lane 7 only`
+at `dst_req pat=0x80` sampled lane-7 ack as 0 (CDC settle). That residual
+is #1572. Block-level DTP signoff stays the DTP package.
 
 Force-era `feat_ctrl` leftovers stay OUT in
 `SMU_DEFERRED_DISPOSITION.adoc`.

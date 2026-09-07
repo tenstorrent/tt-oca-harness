@@ -64,7 +64,8 @@ emits; the map must not invent a checkbox the body cannot prove.
 `smu_ext_boot_seq_gate_test` (F1, SMU_006) and `smu_smc_mailbox_int_test`
 (F1) are enrolled in `smoke` / `phase1` / `smc` but not in `sep0_all`.
 They stay on the candidate list as PR-only. #493 decides whether the boot
-gate joins the nightly; #481 decides the mailbox-int enrollment.
+gate joins the nightly; `smu_smc_mailbox_int_test` stays OUT of
+`sep0_all` (in `smc` only) per #481.
 
 [cols="3,1,2,3",options="header",]
 |===

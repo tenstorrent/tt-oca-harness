@@ -344,9 +344,12 @@ seeds, and those run paths on the tracking GitHub issue.
 
 The `SEP=0` `tb_top.sv`, `SmuEnv` and the sequence library are in place:
 59 live test bodies under `cocotb/tests/`, 28 non-enrolled bodies under
-`cocotb/tests_deferred/`. One body under `cocotb/tests/` is present but
+`cocotb/tests_deferred/`. Two bodies under `cocotb/tests/` are present but
 not enrolled -- `smu_ext_axi_global_addr_smoke_test`, blocked because the
-OSS `s_axi` is a LOCAL aperture so `GLOBAL_BASE + offset` DECERRs; its
-docstring carries that reason. `sep0_all` (52) is the SMU regression group
+OSS `s_axi` is a LOCAL aperture so `GLOBAL_BASE + offset` DECERRs (its
+docstring carries that reason), and `smu_smc_gpio_strap_sanity_test`,
+blocked because strap capture is adopter-owned so the reset_unit
+`STRAPS_*` CSRs and the strap bus this test drove no longer exist here.
+`smu_base_test` is the base class. `sep0_all` (52) is the SMU regression group
 in `.github/workflows/regress.yml` (nightly at one seed per test, weekly at
 three).
