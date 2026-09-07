@@ -2,10 +2,10 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // Slave-side (reactive TAP device) agent: monitor always (when en_monitor);
-// the reactive device driver when cfg.is_active == UVM_ACTIVE. Reactive by
-// design — the external host supplies all stimulus — so there is no
-// sequencer; tests configure and inspect the device through
-// ocah_jtag_slave_sequence bound to m_driver.
+// the reactive device driver when cfg.is_active == UVM_ACTIVE. Reactive: the
+// external host supplies all stimulus, so there is no sequencer; tests
+// configure and inspect the device through ocah_jtag_slave_sequence bound to
+// m_driver.
 
 class ocah_jtag_slave_agent extends uvm_agent;
   `uvm_component_utils(ocah_jtag_slave_agent)

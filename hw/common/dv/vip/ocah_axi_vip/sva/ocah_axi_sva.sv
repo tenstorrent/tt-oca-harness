@@ -100,8 +100,8 @@ module ocah_axi_sva #(
 
   // ------------------------------------------------------------------
   // Reset behavior: VALID must be low while reset is asserted (A3.1.2).
-  // Deliberately NOT reset-disabled; qualified on a resolved-low aresetn
-  // so an X reset at time zero cannot fire it.
+  // Not reset-disabled (the rule checks reset itself); qualified on a
+  // resolved-low aresetn so an X reset at time zero cannot fire it.
   // ------------------------------------------------------------------
   `OCAH_ASSERT(OCAH_AXI_AW_VALID_RESET_LOW, (en_i && (aresetn === 1'b0)) |-> !awvalid, aclk, 1'b0)
   `OCAH_ASSERT(OCAH_AXI_W_VALID_RESET_LOW, (en_i && (aresetn === 1'b0)) |-> !wvalid, aclk, 1'b0)

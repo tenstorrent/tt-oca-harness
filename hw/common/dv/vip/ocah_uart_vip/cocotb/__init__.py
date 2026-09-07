@@ -10,7 +10,7 @@ the SMC firmware-visible console (8N1, configurable baud rate).
 The backend is native to this package: ``OcahUartMasterDriver`` drives
 8-N-1 frames onto a line and ``OcahUartLineMonitor`` reassembles bytes from
 one.  No external UART library is required; ``OcahUartImportError`` is
-retained only for backward compatibility with callers that catch it.
+exported but never raised.
 
 Primary exports
 ---------------

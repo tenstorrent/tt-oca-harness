@@ -71,8 +71,8 @@ interface ocah_jtag_cov_if (
     scan_cg.sample(is_ir, bit_count, instr_known, instruction);
   endfunction
 
-  // Reset-cause coverage is sampled on the reset event itself, so it is
-  // deliberately not gated on trst_ni.
+  // Reset-cause coverage is sampled on the reset event itself, so it is not
+  // gated on trst_ni.
   function automatic void sample_reset(input bit via_trst);
     reset_cg.sample(via_trst);
   endfunction
