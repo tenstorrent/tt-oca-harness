@@ -2165,6 +2165,744 @@ and `smu_smc_mailbox_int_test` only through `smc`
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `sep0_p4_all`, `smc`.
 
 '''''
+==== SMU_WRAPPER
+
+[[sec-001-smu_dtp_sep_smc_chain_prod_end_test]]
+===== 57 `smu_dtp_sep_smc_chain_prod_end_test`
+
+*Source Module*: `smu_dtp_sep_smc_chain_prod_end_test`
+
+*Objective*: See Test Coverage.
+
+*Test Procedure*:
+
+[arabic]
+. Drive `smu_dtp_sep_smc_chain_prod_end_test_seq` over the wrapper's product interfaces.
+. Compare every access against its stated expectation in the scoreboard.
+. Emit the evidence tokens listed under Checkers.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|scoreboard |Every access is compared against its stated expectation
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `sep_chain`.
+
+'''''
+
+[[sec-002-smu_dtp_sep_smc_chain_prod_test]]
+===== 58 `smu_dtp_sep_smc_chain_prod_test`
+
+*Source Module*: `smu_dtp_sep_smc_chain_prod_test`
+
+*Objective*: See Test Coverage.
+
+*Test Procedure*:
+
+[arabic]
+. Drive `smu_dtp_sep_smc_chain_prod_test_seq` over the wrapper's product interfaces.
+. Compare every access against its stated expectation in the scoreboard.
+. Emit the evidence tokens listed under Checkers.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|scoreboard |Every access is compared against its stated expectation
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `sep_chain`.
+
+'''''
+
+[[sec-003-smu_sep_dbg_gating_prod_end_test]]
+===== 59 `smu_sep_dbg_gating_prod_end_test`
+
+*Source Module*: `smu_sep_dbg_gating_prod_end_test`
+
+*Objective*: See Test Coverage.
+
+*Test Procedure*:
+
+[arabic]
+. Drive `smu_sep_dbg_gating_prod_end_test_seq` over the wrapper's product interfaces.
+. Compare every access against its stated expectation in the scoreboard.
+. Emit the evidence tokens listed under Checkers.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|scoreboard |Every access is compared against its stated expectation
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `sep_lifecycle`.
+
+'''''
+
+[[sec-004-smu_sep_dbg_gating_test_dev_test]]
+===== 60 `smu_sep_dbg_gating_test_dev_test`
+
+*Source Module*: `smu_sep_dbg_gating_test_dev_test`
+
+*Objective*: See Test Coverage.
+
+*Test Procedure*:
+
+[arabic]
+. Drive `smu_sep_dbg_gating_test_dev_test_seq` over the wrapper's product interfaces.
+. Compare every access against its stated expectation in the scoreboard.
+. Emit the evidence tokens listed under Checkers.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|scoreboard |Every access is compared against its stated expectation
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `sep_lifecycle`.
+
+'''''
+
+[[sec-005-smu_wrapper_jtag_ptap_test]]
+===== 61 `smu_wrapper_jtag_ptap_test`
+
+*Source Module*: `smu_wrapper_jtag_ptap_test`
+
+*Objective*: See Test Coverage.
+
+*Test Procedure*:
+
+[arabic]
+. Drive `smu_wrapper_jtag_ptap_test_seq` over the wrapper's product interfaces.
+. Compare every access against its stated expectation in the scoreboard.
+. Emit the evidence tokens listed under Checkers.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|scoreboard |Every access is compared against its stated expectation
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `sep_probe`.
+
+'''''
+
+==== SEP
+
+[[sec-006-smu_sep_aes_test]]
+===== 62 `smu_sep_aes_test`
+
+*Source Module*: `smu_sep_aes_test`
+
+*Objective*: See Test Coverage.
+
+*Test Procedure*:
+
+[arabic]
+. Drive `smu_sep_aes_test_seq` over the wrapper's product interfaces.
+. Compare every access against its stated expectation in the scoreboard.
+. Emit the evidence tokens listed under Checkers.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|scoreboard |Every access is compared against its stated expectation
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `sep_real_fw`.
+
+'''''
+
+[[sec-007-smu_sep_bidirect_test]]
+===== 63 `smu_sep_bidirect_test`
+
+*Source Module*: `smu_sep_bidirect_test`
+
+*Objective*: See Test Coverage.
+
+*Test Procedure*:
+
+[arabic]
+. Drive `smu_sep_bidirect_test_seq` over the wrapper's product interfaces.
+. Compare every access against its stated expectation in the scoreboard.
+. Emit the evidence tokens listed under Checkers.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|scoreboard |Every access is compared against its stated expectation
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `sep_real_fw`.
+
+'''''
+
+[[sec-008-smu_sep_dma_test]]
+===== 64 `smu_sep_dma_test`
+
+*Source Module*: `smu_sep_dma_test`
+
+*Objective*: See Test Coverage.
+
+*Test Procedure*:
+
+[arabic]
+. Drive `smu_sep_dma_test_seq` over the wrapper's product interfaces.
+. Compare every access against its stated expectation in the scoreboard.
+. Emit the evidence tokens listed under Checkers.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|scoreboard |Every access is compared against its stated expectation
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `sep_real_fw`.
+
+'''''
+
+[[sec-009-smu_sep_efuse_test]]
+===== 65 `smu_sep_efuse_test`
+
+*Source Module*: `smu_sep_efuse_test`
+
+*Objective*: See Test Coverage.
+
+*Test Procedure*:
+
+[arabic]
+. Drive `smu_sep_efuse_test_seq` over the wrapper's product interfaces.
+. Compare every access against its stated expectation in the scoreboard.
+. Emit the evidence tokens listed under Checkers.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|scoreboard |Every access is compared against its stated expectation
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `sep_real_fw`.
+
+'''''
+
+[[sec-010-smu_sep_entropy_test]]
+===== 66 `smu_sep_entropy_test`
+
+*Source Module*: `smu_sep_entropy_test`
+
+*Objective*: See Test Coverage.
+
+*Test Procedure*:
+
+[arabic]
+. Drive `smu_sep_entropy_test_seq` over the wrapper's product interfaces.
+. Compare every access against its stated expectation in the scoreboard.
+. Emit the evidence tokens listed under Checkers.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|scoreboard |Every access is compared against its stated expectation
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `sep_entropy`.
+
+'''''
+
+[[sec-011-smu_sep_lcc_flow_test]]
+===== 67 `smu_sep_lcc_flow_test`
+
+*Source Module*: `smu_sep_lcc_flow_test`
+
+*Objective*: See Test Coverage.
+
+*Test Procedure*:
+
+[arabic]
+. Drive `smu_sep_lcc_flow_test_seq` over the wrapper's product interfaces.
+. Compare every access against its stated expectation in the scoreboard.
+. Emit the evidence tokens listed under Checkers.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|scoreboard |Every access is compared against its stated expectation
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `sep_real_fw`.
+
+'''''
+
+[[sec-012-smu_sep_lcc_state_prod_end_test]]
+===== 68 `smu_sep_lcc_state_prod_end_test`
+
+*Source Module*: `smu_sep_lcc_state_prod_end_test`
+
+*Objective*: See Test Coverage.
+
+*Test Procedure*:
+
+[arabic]
+. Drive `smu_sep_lcc_state_prod_end_test_seq` over the wrapper's product interfaces.
+. Compare every access against its stated expectation in the scoreboard.
+. Emit the evidence tokens listed under Checkers.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|scoreboard |Every access is compared against its stated expectation
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `sep_lifecycle`.
+
+'''''
+
+[[sec-013-smu_sep_lcc_state_prod_test]]
+===== 69 `smu_sep_lcc_state_prod_test`
+
+*Source Module*: `smu_sep_lcc_state_prod_test`
+
+*Objective*: See Test Coverage.
+
+*Test Procedure*:
+
+[arabic]
+. Drive `smu_sep_lcc_state_prod_test_seq` over the wrapper's product interfaces.
+. Compare every access against its stated expectation in the scoreboard.
+. Emit the evidence tokens listed under Checkers.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|scoreboard |Every access is compared against its stated expectation
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `sep_lifecycle`.
+
+'''''
+
+[[sec-014-smu_sep_lcc_state_rma_chiplet_test]]
+===== 70 `smu_sep_lcc_state_rma_chiplet_test`
+
+*Source Module*: `smu_sep_lcc_state_rma_chiplet_test`
+
+*Objective*: See Test Coverage.
+
+*Test Procedure*:
+
+[arabic]
+. Drive `smu_sep_lcc_state_rma_chiplet_test_seq` over the wrapper's product interfaces.
+. Compare every access against its stated expectation in the scoreboard.
+. Emit the evidence tokens listed under Checkers.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|scoreboard |Every access is compared against its stated expectation
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `sep_lifecycle`.
+
+'''''
+
+[[sec-015-smu_sep_lcc_state_test_dev_test]]
+===== 71 `smu_sep_lcc_state_test_dev_test`
+
+*Source Module*: `smu_sep_lcc_state_test_dev_test`
+
+*Objective*: See Test Coverage.
+
+*Test Procedure*:
+
+[arabic]
+. Drive `smu_sep_lcc_state_test_dev_test_seq` over the wrapper's product interfaces.
+. Compare every access against its stated expectation in the scoreboard.
+. Emit the evidence tokens listed under Checkers.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|scoreboard |Every access is compared against its stated expectation
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `sep_lifecycle`.
+
+'''''
+
+[[sec-016-smu_sep_modules_test]]
+===== 72 `smu_sep_modules_test`
+
+*Source Module*: `smu_sep_modules_test`
+
+*Objective*: See Test Coverage.
+
+*Test Procedure*:
+
+[arabic]
+. Drive `smu_sep_modules_test_seq` over the wrapper's product interfaces.
+. Compare every access against its stated expectation in the scoreboard.
+. Emit the evidence tokens listed under Checkers.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|scoreboard |Every access is compared against its stated expectation
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `sep_real_fw`.
+
+'''''
+
+[[sec-017-smu_sep_otbn_test]]
+===== 73 `smu_sep_otbn_test`
+
+*Source Module*: `smu_sep_otbn_test`
+
+*Objective*: See Test Coverage.
+
+*Test Procedure*:
+
+[arabic]
+. Drive `smu_sep_otbn_test_seq` over the wrapper's product interfaces.
+. Compare every access against its stated expectation in the scoreboard.
+. Emit the evidence tokens listed under Checkers.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|scoreboard |Every access is compared against its stated expectation
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `sep_real_fw`.
+
+'''''
+
+[[sec-018-smu_sep_rom_tcm_load_test]]
+===== 74 `smu_sep_rom_tcm_load_test`
+
+*Source Module*: `smu_sep_rom_tcm_load_test`
+
+*Objective*: See Test Coverage.
+
+*Test Procedure*:
+
+[arabic]
+. Drive `smu_sep_rom_tcm_load_test_seq` over the wrapper's product interfaces.
+. Compare every access against its stated expectation in the scoreboard.
+. Emit the evidence tokens listed under Checkers.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|scoreboard |Every access is compared against its stated expectation
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `sep_real_fw`.
+
+'''''
+
+[[sec-019-smu_sep_sanity_test]]
+===== 75 `smu_sep_sanity_test`
+
+*Source Module*: `smu_sep_sanity_test`
+
+*Objective*: See Test Coverage.
+
+*Test Procedure*:
+
+[arabic]
+. Drive `smu_sep_sanity_test_seq` over the wrapper's product interfaces.
+. Compare every access against its stated expectation in the scoreboard.
+. Emit the evidence tokens listed under Checkers.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|scoreboard |Every access is compared against its stated expectation
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `sep_real_fw`.
+
+'''''
+
+[[sec-020-smu_sep_smc_notify_test]]
+===== 76 `smu_sep_smc_notify_test`
+
+*Source Module*: `smu_sep_smc_notify_test`
+
+*Objective*: See Test Coverage.
+
+*Test Procedure*:
+
+[arabic]
+. Drive `smu_sep_smc_notify_test_seq` over the wrapper's product interfaces.
+. Compare every access against its stated expectation in the scoreboard.
+. Emit the evidence tokens listed under Checkers.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|scoreboard |Every access is compared against its stated expectation
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `sep_real_fw`.
+
+'''''
+
+[[sec-021-smu_sep_smc_xbar_test]]
+===== 77 `smu_sep_smc_xbar_test`
+
+*Source Module*: `smu_sep_smc_xbar_test`
+
+*Objective*: See Test Coverage.
+
+*Test Procedure*:
+
+[arabic]
+. Drive `smu_sep_smc_xbar_test_seq` over the wrapper's product interfaces.
+. Compare every access against its stated expectation in the scoreboard.
+. Emit the evidence tokens listed under Checkers.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|scoreboard |Every access is compared against its stated expectation
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `sep_smc_sram_blocked`.
+
+'''''
+
+[[sec-023-smu_sep_spi_test]]
+===== 78 `smu_sep_spi_test`
+
+*Source Module*: `smu_sep_spi_test`
+
+*Objective*: See Test Coverage.
+
+*Test Procedure*:
+
+[arabic]
+. Drive `smu_sep_spi_test_seq` over the wrapper's product interfaces.
+. Compare every access against its stated expectation in the scoreboard.
+. Emit the evidence tokens listed under Checkers.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|scoreboard |Every access is compared against its stated expectation
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `sep_real_fw`.
+
+'''''
+
+[[sec-024-smu_sep_wdt_test]]
+===== 79 `smu_sep_wdt_test`
+
+*Source Module*: `smu_sep_wdt_test`
+
+*Objective*: See Test Coverage.
+
+*Test Procedure*:
+
+[arabic]
+. Drive `smu_sep_wdt_test_seq` over the wrapper's product interfaces.
+. Compare every access against its stated expectation in the scoreboard.
+. Emit the evidence tokens listed under Checkers.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|scoreboard |Every access is compared against its stated expectation
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `sep_real_fw`.
+
+'''''
+
+[[sec-025-smu_wrapper_elaboration_no_sep_test]]
+===== 80 `smu_wrapper_elaboration_no_sep_test`
+
+*Source Module*: `smu_wrapper_elaboration_no_sep_test`
+
+*Objective*: See Test Coverage.
+
+*Test Procedure*:
+
+[arabic]
+. Drive `smu_wrapper_elaboration_no_sep_test_seq` over the wrapper's product interfaces.
+. Compare every access against its stated expectation in the scoreboard.
+. Emit the evidence tokens listed under Checkers.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|scoreboard |Every access is compared against its stated expectation
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `all_with_sep_exec`, `build_smoke`, `smoke`.
+
+'''''
+
+[[sec-026-smu_wrapper_elaboration_sep_rtl_test]]
+===== 81 `smu_wrapper_elaboration_sep_rtl_test`
+
+*Source Module*: `smu_wrapper_elaboration_sep_rtl_test`
+
+*Objective*: See Test Coverage.
+
+*Test Procedure*:
+
+[arabic]
+. Drive `smu_wrapper_elaboration_sep_rtl_test_seq` over the wrapper's product interfaces.
+. Compare every access against its stated expectation in the scoreboard.
+. Emit the evidence tokens listed under Checkers.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|scoreboard |Every access is compared against its stated expectation
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `all_with_sep_exec`, `build_smoke`, `sep_rtl_only`, `smoke`.
+
+'''''
+
+==== RESET
+
+[[sec-027-smu_sep_boot_health_test]]
+===== 82 `smu_sep_boot_health_test`
+
+*Source Module*: `smu_sep_boot_health_test`
+
+*Objective*: See Test Coverage.
+
+*Test Procedure*:
+
+[arabic]
+. Drive `smu_sep_boot_health_test_seq` over the wrapper's product interfaces.
+. Compare every access against its stated expectation in the scoreboard.
+. Emit the evidence tokens listed under Checkers.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|scoreboard |Every access is compared against its stated expectation
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `sep_real_fw`.
+
+'''''
+
+==== FABRIC
+
+[[sec-028-smu_sep_ext_axi_test]]
+===== 83 `smu_sep_ext_axi_test`
+
+*Source Module*: `smu_sep_ext_axi_test`
+
+*Objective*: See Test Coverage.
+
+*Test Procedure*:
+
+[arabic]
+. Drive `smu_sep_ext_axi_test_seq` over the wrapper's product interfaces.
+. Compare every access against its stated expectation in the scoreboard.
+. Emit the evidence tokens listed under Checkers.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|scoreboard |Every access is compared against its stated expectation
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `sep_smc_sram_blocked`.
+
+'''''
+
+[[sec-029-smu_sep_remap_test]]
+===== 84 `smu_sep_remap_test`
+
+*Source Module*: `smu_sep_remap_test`
+
+*Objective*: See Test Coverage.
+
+*Test Procedure*:
+
+[arabic]
+. Drive `smu_sep_remap_test_seq` over the wrapper's product interfaces.
+. Compare every access against its stated expectation in the scoreboard.
+. Emit the evidence tokens listed under Checkers.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|scoreboard |Every access is compared against its stated expectation
+|===
+
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `sep_real_fw`.
+
+'''''
+
+==== SMC
+
 === Counts
 
 [cols=",",options="header",]
