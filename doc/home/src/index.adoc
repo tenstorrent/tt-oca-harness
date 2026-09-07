@@ -24,7 +24,7 @@ repositories, each covering a distinct part of building and using OCAH:
 
 [cols="1,1,2,3",options="header"]
 |===
-|Package |Owner |Repository |Role in the ecosystem
+|Package |Upstream |Repository |Role in the ecosystem
 
 |tt-oca-harness
 |Tenstorrent
@@ -53,7 +53,7 @@ explains how Bender materializes and updates them.
 
 [cols="1,1,2,3",options="header"]
 |===
-|Package |Owner |Repository |Role in OCAH
+|Package |Upstream |Repository |Role in OCAH
 
 |OpenTitan
 |lowRISC
