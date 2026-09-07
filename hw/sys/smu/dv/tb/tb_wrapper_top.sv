@@ -211,6 +211,9 @@ module smu_wrapper_uvm_top (
   // does -- one level deeper here, since u_dut is the wrapper.
   output logic                                          tb_smc_jtag2axi_security_disable,
   output logic                                          tb_otp_jtag2axi_security_disable,
+  input  wire logic                                     ext_boot_seq_done_i,
+  output logic [63:0]                                   tb_timer_count,
+  output logic                                          tb_bsr_select,
   output logic             ext_in_rvalid,
   input  wire logic        ext_in_rready,
   output logic [7:0]       ext_in_rid,
@@ -498,6 +501,10 @@ module smu_wrapper_uvm_top (
   logic [31:0] ext_mailbox_interrupts;
   logic [31:0] smc_scratch_0_q;
   logic        rst_cold_stable_ref_clk_n;
+  prim_jtag_pkg::jtag_scan_ctrl_t bsr_ctrl_w;
+  // BSR scan out folded back to scan in, as tb_top.sv does: the EXTEST
+  // loopback test compares TDO against what it shifted in.
+  logic bsr_scan_loop;
   logic        rst_primary_smc_clk_n;
   logic        sep_reset_n;
   sep_pkg::sep_cpu_trace_t sep_cpu_trace;
@@ -956,6 +963,8 @@ module smu_wrapper_uvm_top (
         u_dut.u_smu.gen_sep.u_sep.sep_system_peripherals.u_stee_remap.remap_table[0].offset;
 
   assign sep_xbar_global_base_o = u_dut.u_smu.sep_global_base_o;
+  assign rst_cold_stable_ref_clk_no = rst_cold_stable_ref_clk_n;
+  assign tb_bsr_select = bsr_ctrl_w.select;
   assign tb_smc_jtag2axi_security_disable =
         u_dut.u_smu.u_dtp.u_jtag_intf_unit.u_jtag_ptap.smc_jtag2axi_security_disable;
   assign tb_otp_jtag2axi_security_disable =
@@ -1223,9 +1232,9 @@ module smu_wrapper_uvm_top (
     .jtag_ptap_client_tdo_o      (jtag_ptap_tdo),
     .jtag_ptap_client_tdo_oen_o  (jtag_ptap_tdo_oen),
 
-    .jtag_bsr_host_scan_ctrl_o (),
-    .jtag_bsr_host_scan_in_i   (1'b0),
-    .jtag_bsr_host_scan_out_o  (),
+    .jtag_bsr_host_scan_ctrl_o (bsr_ctrl_w),
+    .jtag_bsr_host_scan_in_i   (bsr_scan_loop),
+    .jtag_bsr_host_scan_out_o  (bsr_scan_loop),
 
     .jtag_stap_io_host_tap_ctrl_o (),
     .jtag_stap_io_host_tdi_i      (1'b0),
@@ -1316,7 +1325,7 @@ module smu_wrapper_uvm_top (
     .fuse_sense_done_o,
     .fuse_reset_n_delayed_o,
     .skip_mem_repair_o (),
-    .ext_boot_seq_done_i (1'b1),
+    .ext_boot_seq_done_i (ext_boot_seq_done_i),
     .lc_state_o (lc_state),
     .lc_sigint_err_o (lc_sigint_err_o),
     .ndmreset_request_i ('0),
@@ -1333,7 +1342,7 @@ module smu_wrapper_uvm_top (
     .disable_sram_auto_init_i (smc_disable_sram_auto_init),
     .init_mem_done_o,
     .chiplet_is_primary_i (1'b1),
-    .timer_count_o (),
+    .timer_count_o (tb_timer_count),
 
     .test_en_i (1'b0),
     .scan_rst_ni (1'b1),

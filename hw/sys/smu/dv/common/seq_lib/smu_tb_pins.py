@@ -16,6 +16,18 @@ from __future__ import annotations
 from typing import Any
 
 
+def _child(dut: Any, name: str) -> Any:
+    """Absent child as None, whichever way this cocotb version reports it.
+
+    Handles raise on a missing child rather than returning None, and not always
+    as AttributeError, so the default argument to getattr is not enough.
+    """
+    try:
+        return getattr(dut, name)
+    except Exception:  # noqa: BLE001 - the handle's own exception type varies
+        return None
+
+
 def tb_pin(dut: Any, *names: str) -> Any:
     """First of ``names`` this testbench top exposes.
 
@@ -24,7 +36,7 @@ def tb_pin(dut: Any, *names: str) -> Any:
     as an unrelated failure.
     """
     for name in names:
-        handle = getattr(dut, name, None)
+        handle = _child(dut, name)
         if handle is not None:
             return handle
     raise AssertionError(f"none of {names} exists on this TB top ({type(dut).__name__})")
@@ -42,7 +54,7 @@ def cold_stable_reset(dut: Any) -> Any:
 
 def smu_axi_in_prefix(dut: Any) -> str:
     """Flattened-signal prefix for the SMU AXI slave on this TB."""
-    return "s_axi" if getattr(dut, "s_axi_awvalid", None) is not None else "ext_in"
+    return "s_axi" if _child(dut, "s_axi_awvalid") is not None else "ext_in"
 
 
 def smu_scope(dut: Any) -> Any:
@@ -56,5 +68,5 @@ def smu_scope(dut: Any) -> Any:
     u_dut = tb_pin(dut, "u_dut")
     # `is not None`, not a truth test: a cocotb handle raises TypeError when
     # cast to bool.
-    inner = getattr(u_dut, "u_smu", None)
+    inner = _child(u_dut, "u_smu")
     return u_dut if inner is None else inner

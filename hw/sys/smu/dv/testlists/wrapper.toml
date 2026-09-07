@@ -1020,6 +1020,203 @@ tests = [
   "smu_sys_in_filter_window_edge_test",
 ]
 
+# Migrated bare-smu SMC leaves. Enrolled together so a failure names the
+# batch; folded in once each is proven here.
+[[tests]]
+name = "smu_dtp_bsr_extest_loopback_test"
+module = "smu_dtp_bsr_extest_loopback_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["bsr", "dtp", "migrated", "no_sep", "phase4"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_ext_boot_seq_gate_test"
+module = "smu_ext_boot_seq_gate_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["boot_gate", "migrated", "no_sep", "smc"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_i3c_mem_port_connectivity_test"
+module = "smu_i3c_mem_port_connectivity_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "fabric", "migrated", "no_sep", "smc", "tier_c"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_ic_reset_ss_domain_matrix_test"
+module = "smu_ic_reset_ss_domain_matrix_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["dtp", "ic_reset", "migrated", "no_sep", "phase4"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_no_sep_configuration_test"
+module = "smu_no_sep_configuration_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["migrated", "no_sep", "smc", "smoke"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_smc_mailbox_int_test"
+module = "smu_smc_mailbox_int_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["mailbox", "migrated", "no_sep", "smc", "smu_all_004"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_smc_mailbox_sanity_test"
+module = "smu_smc_mailbox_sanity_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "mailbox", "migrated", "no_sep", "smc", "tier_c"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_smc_reset_ctrl_test"
+module = "smu_smc_reset_ctrl_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["migrated", "no_sep", "reset", "smc"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_smc_security_demote_pm_test"
+module = "smu_smc_security_demote_pm_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["migrated", "no_sep", "security", "smc"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_smc_wdt_sanity_test"
+module = "smu_smc_wdt_sanity_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "migrated", "no_sep", "smc", "tier_c", "wdt"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_smc_wdt_timeout_irq_test"
+module = "smu_smc_wdt_timeout_irq_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "migrated", "no_sep", "smc", "tier_c", "wdt"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_system_timer_octs_test"
+module = "smu_system_timer_octs_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "migrated", "no_sep", "octs", "smc", "tier_c"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[groups]]
+name = "migrated_smc"
+tests = [
+  "smu_dtp_bsr_extest_loopback_test",
+  "smu_ext_boot_seq_gate_test",
+  "smu_i3c_mem_port_connectivity_test",
+  "smu_ic_reset_ss_domain_matrix_test",
+  "smu_no_sep_configuration_test",
+  "smu_smc_mailbox_int_test",
+  "smu_smc_mailbox_sanity_test",
+  "smu_smc_security_demote_pm_test",
+  "smu_smc_wdt_sanity_test",
+  "smu_smc_wdt_timeout_irq_test",
+  "smu_system_timer_octs_test",
+]
+
+# Migrated and not yet green here. smu_smc_reset_ctrl_test samples
+# rst_cold_stable_ref_clk_no as 0 where the bare DUT reads 1. The pin is
+# wired and the rest of its resets agree, so this is the first candidate for
+# a real profile difference rather than a testbench gap -- the wrapper adds
+# smc_ip_integration between the reset controller and this observable.
+[[groups]]
+name = "migrated_smc_pending"
+tests = [
+  "smu_smc_reset_ctrl_test",
+]
+
 # Default `--items all` for smu_wrapper: every test in this file that can pass.
 # The only omissions are the two sep_smc_sram_blocked leaves, which cannot pass
 # by construction; their group carries the reason. Anything else added to this

@@ -53,6 +53,26 @@ class smu_base_test(uvm_test):
             raise AssertionError(f"{name} contains X/Z: {value}")
         return int(value)
 
+    async def arm_async_resets(self) -> None:
+        """Create a falling TRST edge so IC_RESET TDR reset-values load.
+
+        Same contract as the bare tb_top.sv base test: Verilator two-state
+        powers jtag_trst up at 0, which is not a falling edge, and the IC_RESET
+        reset_hold flop resets only on TRST with RESET_VAL=1. Left at 0 it
+        keeps the override asserted and SMC cold reset never releases. This
+        bring-up does the same pre-drive inline; the method exists so a
+        migrated leaf that re-arms mid-test finds it here too.
+        """
+        dut = cocotb.top
+        dut.powergood_i.value = 1
+        dut.rst_cold_ni.value = 1
+        dut.jtag_tck.value = 0
+        dut.jtag_tms.value = 1
+        dut.jtag_trst.value = 1
+        dut.jtag_tdi.value = 0
+        await self.jtag_tap_reset()
+        await ClockCycles(dut.clk_ref_i, 2)
+
     async def wait_signal_high(self, signal, clk, *, timeout_cycles: int, name: str) -> int:
         """Block until `signal` reads 1, and say how long it took.
 
@@ -194,7 +214,13 @@ class smu_base_test(uvm_test):
         self.logger.info("Step 0: pre-drive resets high to arm async resets")
         dut.powergood_i.value = 1
         dut.rst_cold_ni.value = 1
-        # TRST follows cold reset.
+        # This pin used to be tied to 1'b1 inside the TB. It is a driven input
+        # now, so that smu_ext_boot_seq_gate_test can hold it low, and the
+        # default has to be restored here or every leaf that expects the boot
+        # sequence complete sees it deasserted. The bare bring-up does the same.
+        dut.ext_boot_seq_done_i.value = 1
+        # TRST follows cold reset, as it did when this TB tied trst_n to
+        # rst_cold_ni internally.
         dut.jtag_tck.value = 0
         dut.jtag_tms.value = 1
         dut.jtag_trst.value = 1
