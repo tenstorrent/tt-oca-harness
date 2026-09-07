@@ -75,10 +75,8 @@ class smc_register_sanity_test_seq(smc_base_test_seq):
         # The catalog entry validates the address AND carries the symbol-sourced
         # RDL reset value (``SCRATCH__SCRATCH__DATA_reset`` out of the generated
         # ``misc_wrap.h``). That value is what the reset read and the restore
-        # write below compare against: loading it and then comparing a hand-typed
-        # ``0`` made the symbol-sourced half dead code while the compare rotted
-        # independently of the RDL ([NO-DUMMY-DEAD-CODE] /
-        # [ADDRESS-FROM-AUTHORITATIVE-MAP]).
+        # write below compare against, so the compare moves with the RDL instead
+        # of a hand-typed ``0`` ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
         targets = []
         for name, addr, pattern in WRITE_READBACK:
             entry = catalog_entry(name, addr, writable=True)

@@ -46,9 +46,9 @@ class SmuScoreboard(uvm_component):
         if evidence:
             return _normalize_token(evidence)
         # Auto-attach mapped FEATURE tokens only when the check name contains
-        # the TOKEN or CHK id itself. Do NOT fuzzy-match expect-string keywords
-        # (e.g. "ovrd"/"stall"/"reset") — that prematurely logged FEATURE tokens
-        # on idle/bring-up compares (EVIDENCE-TOKEN-CONDITIONAL).
+        # the TOKEN or CHK id itself; matching expect-string keywords (e.g.
+        # "ovrd"/"stall"/"reset") would log FEATURE tokens on idle/bring-up
+        # compares (EVIDENCE-TOKEN-CONDITIONAL).
         rows = TEST_EVIDENCE.get(self.testcase_name or "", [])
         name_u = str(name).upper().replace("-", "_")
         for chk_id, token, _expect in rows:

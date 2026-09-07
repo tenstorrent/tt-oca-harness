@@ -23,8 +23,7 @@
 // the scenario's required IDs and finalized after the scenario so a silently
 // skipped check cannot report PASS. Every draw in a pass follows
 // seed_scenario_rng() (first statement of body()). The cocotb twin is the
-// helper layer of seq_lib/smu_dtp_jtag_smoke_test_seq.py (the SMU cocotb
-// scenarios hold their helpers inline today).
+// helper layer of seq_lib/smu_dtp_jtag_smoke_test_seq.py.
 
 class smu_base_test_seq extends ocah_sequence;
   `uvm_object_utils(smu_base_test_seq)
@@ -106,8 +105,8 @@ class smu_base_test_seq extends ocah_sequence;
 
   // Consecutive step marks in non-decreasing simulation time: the ordered
   // fence of the cocotb scenario, whose wall-clock marks always advance; in
-  // simulation a step that consumes no time legitimately shares the time
-  // of the next mark, so the fence is order plus non-decreasing time.
+  // simulation a step that consumes no time shares the time of the next
+  // mark, so the fence is order plus non-decreasing time.
   function int unsigned ordered_step_deltas();
     int unsigned ordered = 0;
     for (int unsigned i = 1; i < m_step_order.size(); i++)

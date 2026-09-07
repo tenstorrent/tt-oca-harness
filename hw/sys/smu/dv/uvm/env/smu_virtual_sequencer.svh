@@ -5,8 +5,7 @@
 // smu_env in connect_phase, and nothing else. Scenario virtual sequences
 // (smu_base_test_seq family) run on it and start reusable operation
 // sequences on the handle each step needs: primary-TAP JTAG operations on
-// m_jtag_seqr. Further ingress ports (the external SMN AXI4 master) add a
-// handle here when their agents land.
+// m_jtag_seqr.
 
 class smu_virtual_sequencer extends ocah_sequencer;
   `uvm_component_utils(smu_virtual_sequencer)

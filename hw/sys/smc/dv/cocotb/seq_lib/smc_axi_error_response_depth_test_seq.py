@@ -59,8 +59,8 @@ assert local_fabric_masked_addr(_UNIMPL_XVISOR_VIA_MASK) == _XVISOR_TOP_PAGE, (
 )
 
 # EXTERNAL_MANDATORY GPIO_CTRL is terminated with DECERR on the OSS DUT path
-# (smc_ip_integration err_slv). Replaces the obsolete I3C-stub SLVERR probe —
-# OCA_I3C_WRAP is a real core (OKAY) after open-source integration.
+# (smc_ip_integration err_slv). OCA_I3C_WRAP is a real core and answers OKAY,
+# so it is not a DECERR probe.
 _GPIO_CTRL0 = external_gpio_ctrl_addr(0)
 
 # Data an AXI error slave returns alongside the error response. The two

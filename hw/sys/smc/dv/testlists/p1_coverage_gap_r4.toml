@@ -1,9 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 schema_version = 1
 
-# P1 Coverage-Gap Depth Slate — Round 4 (previously-unreached CSR blocks).
+# P1 Coverage-Gap Depth Slate — Round 4 (XVISOR_REMAP + cluster-BEU CSR blocks).
 # See `docs/SMC_VPLAN.adoc` §P1 Coverage-Gap Depth Slate — Round 4.
-# Closes the XVISOR_REMAP + cluster-BEU gaps.
 
 [[tests]]
 name = "smc_xvisor_remap_test"

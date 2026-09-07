@@ -16,10 +16,9 @@ the passive ledger in ``env/smc_probe_liveness.py``, which is fed by a DUT
 observation (the probe seen at 1), so requiring them is DUT-sensitive: a
 stuck-at-0 / undriven / mis-bound aggregate fails here.
 
-``item.resolvable`` is deliberately **not** presented as this testcase's check:
+``item.resolvable`` is **not** presented as this testcase's check:
 every retained run is Verilator (2-state), where ``value.is_resolvable`` cannot
-be False, so it has no FAIL-ON path in the evidence that exists. The former
-``CHK-NONVAC`` token claimed exactly that and is gone.
+be False, so it has no FAIL-ON path in the evidence that exists.
 """
 
 from __future__ import annotations
@@ -46,11 +45,6 @@ class smc_irq_observe_test_seq(smc_base_test_seq):
         sb = self.env.scoreboard
         seen_before = sb.irq_samples_seen
 
-        # No SETUP step is narrated here: clocks/resets are brought up by
-        # smc_base_test._bring_up before this sequence starts, and this leaf
-        # owns no setup action of its own. The former "STEP S1: SETUP
-        # clocks/resets" line performed nothing and read as an implemented
-        # phase ([NO-EMPTY-PHASE]).
         cocotb.log.info(
             "STEP S1: INSTRUMENTATION-ONLY one SmcIrqItem SAMPLE "
             "(tb_sync_irq/tb_gpio_irq_any/tb_uart_irq_any)"

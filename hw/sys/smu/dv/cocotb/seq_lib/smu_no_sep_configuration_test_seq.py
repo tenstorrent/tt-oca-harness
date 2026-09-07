@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smu_no_sep_configuration_test (SMU_005 rev 3).
 
-Proves SEP=0 lc_state_o==8'hf0 only. Direct SMN→SMC path deferred: SYS_IN
+Proves SEP=0 lc_state_o==8'hf0 only. The direct SMN→SMC path is not covered: SYS_IN
 BlockByDefault + gated JTAG2AXI prevent a frontdoor SMC hit under SEP=0.
 """
 
@@ -112,7 +112,7 @@ class smu_no_sep_configuration_test_seq:
         self._step_ts["PASS"] = time.monotonic()
         self._log("SMU_005 sequence complete (PASS term recorded for NONVAC fence)")
 
-        # Measured ordered-fence pairs (not True/True literals).
+        # Ordered-fence pairs from the measured step timestamps.
         order = ["S1", "S2", "PASS"]
         pairs_ok = sum(
             1

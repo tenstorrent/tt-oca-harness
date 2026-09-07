@@ -119,8 +119,7 @@ class smu_base_test(uvm_test):
         self.logger.info("Step 0: pre-drive resets high to arm async resets")
         dut.powergood_i.value = 1
         dut.rst_cold_ni.value = 1
-        # TRST follows cold reset, as it did when this TB tied trst_n to
-        # rst_cold_ni internally.
+        # TRST follows cold reset.
         dut.jtag_tck.value = 0
         dut.jtag_tms.value = 1
         dut.jtag_trst.value = 1

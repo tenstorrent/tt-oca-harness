@@ -95,7 +95,6 @@ description = "PyUVM cross-trigger XTRIG, CTP, and CTM tests"
 timeout_sec = 1800
 args = []
 
-# OD-19: one [targets.<name>] merges the former [compile_targets]/[run_targets] split.
 # Tool-specific flags live under [targets.<name>.tools.<tool>].
 [targets.default]
 description = "DTP cocotb target for public JTAG/JTAG2AXI smoke and coverage"

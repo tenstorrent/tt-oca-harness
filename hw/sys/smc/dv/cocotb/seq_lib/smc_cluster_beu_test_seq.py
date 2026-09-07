@@ -15,9 +15,6 @@ whose generated reset is ``0xC000_0000`` and which nothing here writes. Bits
 ``[31:25]`` of the incoming address are therefore discarded, and
 ``0xC801_x000`` becomes ``0xC001_x000``.
 
-Filed as #1237, with the region-wide measurement and the RTL site in the comment
-on it, and the parent #1249.
-
 The reads do not reach the cluster at all, so the value mismatch is not an
 unmodelled register block behind a cluster black-box. The three non-zero words
 cores 0 and 1 return are bit-for-bit the ``SMC_BASE_CONFIG`` RDL resets --
@@ -108,7 +105,7 @@ _CORESIDENCY_MAPPED_ADDR = local_fabric_masked_addr(_CORESIDENCY_BEU_ADDR)
 
 
 class smc_cluster_beu_test_seq(SmcCsrSeq):
-    """Locks the BEU-window aliasing of #1237 by reads and a write co-residency."""
+    """Locks the BEU-window aliasing by reads and a write co-residency."""
 
     def __init__(self, name: str = "smc_cluster_beu_test_seq") -> None:
         super().__init__(name)

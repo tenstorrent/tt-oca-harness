@@ -4,8 +4,7 @@
 
 DV-CARD:          SMU_ALL_008   ANCHOR: smu_axi_crossbar_error_handling_test
 
-Option-B honesty amend (plan/cards r18): OWNS only SMC-PWRGOOD-DTP-POR.S2.
-FAB-IN / DECODE removed from the runnable path (OOM / dishonest DECERR poison).
+Owns only SMC-PWRGOOD-DTP-POR.S2; FAB-IN / DECODE are out of scope.
 
 No Force/deposit. Reuses SMU_ALL_005 PTAP leave-TLR helper pattern.
 """
@@ -157,10 +156,9 @@ class smu_axi_crossbar_error_handling_test_seq:
         jtag = make_smu_jtag_tap(dut, self.cfg.jtag_period_ns)
         jtag.init_signals()
 
-        # FAB-IN / DECODE intentionally absent from runnable path.
         await self._step_s1_leave_tlr(jtag)
 
-        # Bounded-wait inventory (fail_on timeout); not a card checker in r18.
+        # Bounded-wait inventory (fail_on timeout).
         self._log("TIMEOUT: bounded waits with last-state diagnostics")
         for line in self._timeout_paths:
             self._log(f"TIMEOUT-PATH {line}")

@@ -84,7 +84,7 @@
 `DTP_TB_OUT(logic, jtag_stap_extra0_trst_n)
 `DTP_TB_OUT(logic, jtag_stap_extra0_tdo_oen)
 
-// Downstream STAP TAP attachment (issue #1056). Per STAP host port: the
+// Downstream STAP TAP attachment. Per STAP host port: the
 // host TDO (the downstream TAP's TDI), the downstream TAP's TDO back into
 // the host TDI, and the attach enable. With ds_en=0 the host TDI is the
 // port's own TDO (wire loopback, the default); with ds_en=1 a reactive

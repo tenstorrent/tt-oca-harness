@@ -44,12 +44,11 @@ class smc_mailbox_irq_test(smc_base_test):
             csr_accesses=seq.accesses,
             min_csr_accesses=MAILBOX_IRQ_MIN_CSR_ACCESSES,
             proxy=False,
-            # Names the observable this scenario actually checked. The previous
-            # wording claimed "toggled SMC sync IRQ", but check_mailbox_irq_source
-            # reads only tb_mailbox_irq_any (tb_top.sv:1363,
+            # Names the observable this scenario actually checked:
+            # check_mailbox_irq_source reads only tb_mailbox_irq_any (tb_top.sv,
             # |u_dut.u_smc.peripheral_interrupts[7:0]); tb_sync_irq is a
-            # different net (tb_top.sv:1355) that this test never samples, and
-            # the IRQ agent is not started here.
+            # different net that this test never samples, and the IRQ agent is
+            # not started here.
             details=(
                 "SEP mailbox interrupt injection raised tb_mailbox_irq_any "
                 "(peripheral_interrupts[7:0]); tb_sync_irq not sampled here"

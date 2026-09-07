@@ -19,8 +19,8 @@
 // The default 6 seeded multi-hot rows make 16 rows per pass (1 all_clear +
 // 8 one-hot + 6 multi-hot + 1 all_disabled), so one matrix pass meets the
 // 16-iteration floor with seeded rows; +DTP_DBG_DISABLE_MULTI_HOT_ROWS
-// overrides. The cocotb flow's Python DtpDbgDisableFcov ledger stays
-// cocotb-only; the checks it gated on are all ported.
+// overrides. The cocotb flow's Python DtpDbgDisableFcov ledger is
+// cocotb-only.
 
 class dtp_dbg_disable_scan_matrix_test_seq extends dtp_scan_base_test_seq;
   `uvm_object_utils(dtp_dbg_disable_scan_matrix_test_seq)
@@ -199,7 +199,7 @@ class dtp_dbg_disable_scan_matrix_test_seq extends dtp_scan_base_test_seq;
     // Delayed-replay proof (the check_stored_sib_across_gate pattern):
     // close every SIB with a sanctioned write first — the SIB scan
     // registers RETAIN sanctioned configuration under a gate, so a SIB
-    // left open by an earlier row legitimately re-arms on release and
+    // left open by an earlier row re-arms on release and
     // is not a replay — then attempt a fully-gated open of all three,
     // release without reset, and prove no select pulses (a gated open
     // attempt that stuck would assert here).

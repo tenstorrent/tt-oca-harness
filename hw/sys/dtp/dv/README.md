@@ -109,7 +109,7 @@ python3 tools/dv/run_dv.py --dut dtp --items jtag2axi
 # model route compare, CSR readback, quiet windows, stretch measurements)
 python3 tools/dv/run_dv.py --dut dtp --items xtrig
 
-# Checker negative validation: deliberately wrong arming must fail the run
+# Checker negative validation: wrong arming must fail the run
 DTP_AXI_SCOREBOARD_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp \
   --items dtp_jtag2axi_decode_error_decerr_read_test
 
@@ -157,9 +157,9 @@ map (`module = { cocotb = "...", uvm = "..." }`), so the same `--items` name
 selects the same VPLAN scenario in either framework; the UVM class name is
 the `uvm` entry (`+UVM_TESTNAME`). Selecting a scenario with no `uvm` entry
 errors; `--skip-unimplemented` runs a group's UVM-implemented subset instead.
-VCS only for now — a commercial simulator is required because Verilator has
-no SV-UVM support (see `frameworks` in `simulators.toml`); Xcelium support
-is planned but not yet signed off. `--cov` instruments the VCS build with
+The SV-UVM flow runs on VCS: a commercial simulator is required because
+Verilator has no SV-UVM support (see `frameworks` in `simulators.toml`).
+`--cov` instruments the VCS build with
 `-cm line+cond+tgl+fsm+branch+assert` (covergroups collect into the same
 databases), writes one `simv.vdb` per test, and merges/reports through the
 standard `cov_merge`/`cov_report` stages (`urg`).
@@ -322,7 +322,7 @@ to the stock tests without editing this tree. The seam is the
 `DTP_OVERLAY_TESTS` compile hook at the end of `uvm/tests/dtp_tests.sv` —
 define it to the quoted name of an include file on the overlay's own
 include path and that file compiles into the test manifest. The OSS flists
-never define it, so the open-source build is unchanged.
+never define it, so the open-source build is unaffected.
 
 An overlay is three adopter-owned files, kept outside this repository
 (vendor VIP collateral cannot be committed here):
@@ -362,11 +362,11 @@ evidence and the `UVM TEST PASSED` banner.
 
 ## Scope
 
-This DTP public bring-up now includes the 19-test Smoke and Basic JTAG group:
+The DTP public testbench covers the 19-test Smoke and Basic JTAG group:
 TAP FSM, IDCODE, BYPASS variants, undefined-instruction fallback, RUNBIST,
 BSR-oriented instructions, TMP CLAMP_HOLD/RELEASE, TRST/POR/TLR reset behavior,
 and AC EXTEST train/pulse smoke checks. JTAG2AXI, iJTAG/3DCR, and cross-trigger
 scenarios are also implemented and enrolled in the native TOML catalog, with
-their current DUT-local model limitations documented above and in
+their DUT-local model limitations documented above and in
 [`docs/DTP_VPLAN.adoc`](docs/DTP_VPLAN.adoc). Their presence does not make the
 topology-specific models shared VIPs.

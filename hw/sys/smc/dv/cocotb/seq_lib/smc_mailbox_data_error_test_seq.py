@@ -14,16 +14,15 @@ tracked in a comment: it has moved once already, when ``HANG_DET_*`` was added
 The DUT-vs-golden compare is the ``expected=`` on each paired ``READ_DATA``
 read, enforced by ``SmcScoreboard`` (``env/smc_scoreboard.py:711-716``): data
 written into ``OUTBOUND_WRITE_DATA`` must come back out of
-``INBOUND_READ_DATA`` in FIFO order, and vice versa. There are deliberately no
+``INBOUND_READ_DATA`` in FIFO order, and vice versa. There are no
 synthetic ``SmcMemoryModel`` regions here: asserting a written literal back out
 of a TB-local dict at an address no DUT transaction reaches is a ``C == C``
 compare that cannot fail on any RTL ([NO-ALWAYS-PASS-CHECKER]). The
 scoreboard's real
 ``update_golden`` / ``check_golden`` path cannot replace them either: it is
 keyed by ``item.addr``, and a mailbox is a FIFO whose two writes land on the
-same address, so an address-keyed model cannot represent it. The synthetic
-regions are therefore removed rather than rewired, per the closure condition's
-first branch; the fail-capable DUT compare above is untouched.
+same address, so an address-keyed model cannot represent it; the fail-capable
+DUT compare above is the verdict.
 """
 
 from __future__ import annotations

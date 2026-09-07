@@ -38,20 +38,16 @@ class SmcEnv(uvm_env):
         self.gpio_agent = SmcGpioAgent("gpio_agent", self)
         self.axil_agent = SmcAxilAgent("axil_agent", self)
         # --- Protocol / traffic agents ---
-        # Port identity, stated once here because the historical handle name is
-        # misleading ([ADDRESS-FROM-AUTHORITATIVE-MAP]):
+        # Port identity ([ADDRESS-FROM-AUTHORITATIVE-MAP]):
         #
         #   sep_in_axi_agent (SmcSysAxiAgent,   bus_prefix "s_axi")
         #       -> tb_top s_axi_* bridge -> smc.sep_axi_in_req_i   ["SEP_IN AXI"]
         #   sys_in_axi_agent (SmcSysInAxiAgent, bus_prefix "sys_axi")
         #       -> smc.sys_axi_in_req_i                            ["SYS_IN AXI"]
         #
-        # `sep_in_axi_agent` is the correctly-named handle and agrees with its
-        # driver's bus_prefix/bus_name; `sys_axi_agent` is kept as a deprecated
-        # alias for the same instance because ~50 call sites across tests/ and
-        # seq_lib/ still use it. Prefer `sep_in_axi_agent` in new code. The alias
-        # is the same object, so `bus_name` in every kept log line stays the
-        # authority on which port was driven.
+        # `sys_axi_agent` is an alias of `sep_in_axi_agent` (the same object), so
+        # `bus_name` in every kept log line is the authority on which port was
+        # driven.
         self.sep_in_axi_agent = SmcSysAxiAgent("sep_in_axi_agent", self)
         self.sys_axi_agent = self.sep_in_axi_agent
         self.sys_in_axi_agent = SmcSysInAxiAgent("sys_in_axi_agent", self)

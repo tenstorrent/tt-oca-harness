@@ -101,10 +101,8 @@ module smu_axi_out_sim_slave #(
     end
   end
 
-  // A plain edge-triggered `always`, not `always_ff`: the state above carries
-  // declaration initialisers, and VCS treats an initialiser as a second driver
-  // of an `always_ff` variable (ICPD_INIT). The block is still the one clocked
-  // writer of that state.
+  // The state above carries declaration initialisers, and VCS rejects an
+  // initialiser on `always_ff` state as a second driver (ICPD_INIT).
   always @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       aw_wr     <= '0;

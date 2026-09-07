@@ -31,7 +31,7 @@ class dtp_jtag_tlr_reset_test_seq(dtp_jtag_base_test_seq):
         )
         self.attach_tap_checker(checker)
         # DTP_JTAG_TAP_CHECKER_NEGATIVE=1 is the documented negative-validation
-        # hook: it deliberately desyncs the TAP reference model so the next
+        # hook: it desyncs the TAP reference model so the next
         # state check must FAIL, proving the checker rejects a bad prediction
         # end to end.
         negative = OcahKnobs.is_set("DTP_JTAG_TAP_CHECKER_NEGATIVE")

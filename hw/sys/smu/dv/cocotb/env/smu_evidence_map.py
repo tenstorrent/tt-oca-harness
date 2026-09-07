@@ -6,9 +6,9 @@ Each test lists (CHK_ID, TOKEN, EXPECT) triples. Scoreboard logs
 ``EVIDENCE: <TOKEN>``; GitHub leaf contracts must require the same TOKEN.
 ``CHK-NONVAC`` is emitted by SmuScoreboard.check_phase when checks > 0.
 
-Force-era / deferred names may still appear below for catalog continuity;
-they are **OUT** under the 2026-07-29 no-Force policy and must not be
-reported as green. Bodies: ``cocotb/tests_deferred/``.
+Deferred names appear below for catalog continuity; they are **OUT** under
+the no-Force policy and must not be reported as green. Bodies:
+``cocotb/tests_deferred/``.
 """
 
 from __future__ import annotations
@@ -213,7 +213,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     "smu_axi_atomic_operation_test": [
         ("CHK-AXI-NON-ATOP", "AXI_NON_ATOP_OK", "non-ATOP SMN path completes"),
     ],
-    # --- sep0_all rows that were enrolled without a map (tokens match seq expect_*) ---
+    # --- sep0_all rows (tokens match seq expect_*) ---
     "smu_axi_xbar_structure_test": [
         (
             "CHK-XBAR-POS-NO-GEN-SEP",
@@ -337,8 +337,7 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-CPU-REG-STALL", "CPU_REG_STALL", "DEBUG_CONTROL boot_stall hold"),
     ],
     "smu_dtp_otp_smc_complete_rw_test": [
-        # CHK-OTP-GATED / OTP_GATED_NO_UPDATE intentionally dropped: gated-deny
-        # is not claimed on this leaf (see test docstring); MAP-RW only.
+        # Gated-deny is not claimed on this leaf (see test docstring); MAP-RW only.
         ("CHK-OTP-MAP-RW", "OTP_MAP_RW_OK", "OTP+fabric+shadow match on RESERVED"),
     ],
     "smu_dtp_ptap_otp_instr_scan_test": [

@@ -9,8 +9,8 @@ loops, so the test classifies the run by which loop PC the SEP settles on
 rather than by any TB-side inference.
 
 Symbol addresses come from the staged .sym, so the contract survives a firmware
-relink. SEP-local cold scratch7 (0x10802038) marker observation is deliberately
-out of scope here and left to the follow-on anchor.
+relink. SEP-local cold scratch7 (0x10802038) marker observation is out of scope
+here.
 """
 
 from __future__ import annotations

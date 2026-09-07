@@ -44,8 +44,7 @@ class smc_sideband_protocol_smoke_test(smc_base_test):
             # No timeout statistic is published: every access in this sequence
             # leaves `allow_timeout` False, so the driver raises on expiry and
             # `seq.timeouts` can only ever be 0 here. Reporting that structural
-            # zero would advertise a measurement that was never taken
-            # .
+            # zero would advertise a measurement that was never taken.
             timeouts=None,
             min_csr_accesses=SIDEBAND_MIN_CSR_ACCESSES,
             details=(

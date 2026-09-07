@@ -853,8 +853,8 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
     # ------------------------------------------------------------------
     # Seeded per-pass port picks: every source/destination CTP and internal CT
     # is interchangeable per spec, so each loop proves the route class on a
-    # different port set. Inputs are kept out of the output masks (as in the
-    # original directed picks) so the isolation check stays meaningful.
+    # different port set. Inputs are kept out of the output masks so the
+    # isolation check stays meaningful.
     async def run_ctm_wire_or_cla_to_ctp(self) -> None:
         rng = self.rng("ctm_wire_or_cla_to_ctp")
         int_in, int_ovl = rng.sample(range(XTRIG_NUM_INT_CT), 2)

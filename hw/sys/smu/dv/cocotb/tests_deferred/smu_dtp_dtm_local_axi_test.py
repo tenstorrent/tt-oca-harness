@@ -2,8 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_dtp_dtm_local_axi_test — DEFERRED (needs_real_lcc / needs SEP=1 / no Force).
 
-Was Force-based JTAG2AXI / feat_ctrl ungating under SEP=0. Use
-smu_lcc_helpers + SEP=1 eFuse LCC when available (#3538).
+Needs SEP=1 eFuse LCC ungating through smu_lcc_helpers; SEP=0 ties
+feat_ctrl='0'.
 Not ported (needs_real_lcc, sep1).
 """
 

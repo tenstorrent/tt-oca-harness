@@ -71,11 +71,10 @@ class SmcProtocolVipItem(uvm_sequence_item):
         # `fabric_accesses` is always MEASURED: smc_base_test.record_protocol_vip
         # fills it from SmcScoreboard.axi_accesses_by_bus (the driver-stamped
         # per-port tally of completed accesses), never from a value the call site
-        # supplies. Passing the floor constant as the observation is what made
-        # `fabric_accesses >= min_fabric_accesses` a `C >= C` tautology at four
-        # call sites while the kept log printed it as a measured-vs-minimum
-        # comparison ([NO-ALWAYS-PASS-CHECKER]); `fabric_access_source` is
-        # printed so the retained evidence names where the number came from.
+        # supplies -- a floor constant passed as the observation would make
+        # `fabric_accesses >= min_fabric_accesses` a `C >= C` tautology
+        # ([NO-ALWAYS-PASS-CHECKER]). `fabric_access_source` is printed so the
+        # retained evidence names where the number came from.
         self.fabric_accesses: int = 0
         self.min_fabric_accesses: int = 0
         self.fabric_access_label: str = ""

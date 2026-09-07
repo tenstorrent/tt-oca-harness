@@ -4,7 +4,7 @@
 
 DV-CARD:          SMU_ALL_002   ANCHOR: smu_axi_external_port_connectivity_test
 
-Approved OWNS (card r4 / plan r3):
+Owns:
   SMU-PORT-SMN-AXI.S1 — inbound 56/64-bit on smu_axi_in reaches SMC via
     direct IW converters (bare tb_top SEP=0; required_cells dir=in +
     dest=smc_aperture only).
@@ -189,7 +189,7 @@ class smu_axi_external_port_connectivity_test_seq:
             "ACTION SMU-PORT-SMN-AXI.S1: 56/64-bit smu_axi_in write/read "
             f"@0x{self.IN_PROBE:08x} (SMC aperture / direct IW)",
         )
-        # required_cells (approved FL after FIND-001 split): dir=in, dest=smc_aperture
+        # required_cells: dir=in, dest=smc_aperture
         self._log("COVERAGE SMU-PORT-SMN-AXI.S1 cells: dir=in dest=smc_aperture")
 
         self._log(
@@ -310,7 +310,7 @@ class smu_axi_external_port_connectivity_test_seq:
         for a, b in zip(order, order[1:]):
             if self._step_ts[a] >= self._step_ts[b]:
                 raise AssertionError(f"CHK-NONVAC order fail: {a} not before {b}")
-        # Timestamp deltas from wall-clock marks (not decorative True/True).
+        # Timestamp deltas from wall-clock marks.
         deltas_ns = [
             int((self._step_ts[b] - self._step_ts[a]) * 1e9) for a, b in zip(order, order[1:])
         ]
