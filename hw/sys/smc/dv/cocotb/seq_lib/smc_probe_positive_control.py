@@ -37,11 +37,11 @@ proves a *change* instead, because its observables (the ``tb_core2pad_o`` /
 ``tb_core2pad_en_o`` pad-output vectors) are non-zero at idle -- it drives a real
 GPIO0 TX programming change, requires exactly one pad to move, and requires the
 bus to restore bit-for-bit.  The three ``tb_gpio_*_any`` OR-aggregates get **no**
-control on purpose: they read 1 from reset onward and nothing can drive them to 0,
+control: they read 1 from reset onward and nothing can drive them to 0,
 so they are declared unbackable (see below) rather than given a control that would
 certify nothing.
 
-``tb_axil_dtp_csr_active`` deliberately has **no** control here.
+``tb_axil_dtp_csr_active`` has **no** control here.
 ``tb_top.sv:1151`` ties ``axil_dtp_csr_resp = '0'`` -- there is no responder, so
 an AXI-Lite access into the DTP CSR window would wedge instead of completing --
 and the DTP CSR boundary is a recorded TB-policy deferral
@@ -838,8 +838,8 @@ class SmcGpioAggregateStabilitySeq(smc_base_test_seq):
     exact cross-sample expectation on it would be flaky rather than proof -- see
     ``GPIO_STABLE_VECTOR_FIELDS``. Its value is reported as a diagnostic.
 
-    The expectation is still an *earlier* observation rather than the sample
-    being checked, and it is now on an observable proven able to change.
+    The expectation is an *earlier* observation rather than the sample being
+    checked, on an observable proven able to change.
     """
 
     def __init__(self, name: str, reference, samples: int = 2, gap_ref_cycles: int = 80) -> None:

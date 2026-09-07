@@ -15,10 +15,10 @@
 #                   can tell "read the fuse" from "read zeros".
 #   PLL_AND_SENSOR  the per-PLL default coefficient pattern.
 #
-# RESERVED[1] -- the OCCP transport timeout the boot ROM reads -- is left 0
-# here on purpose. The ROM treats 0 as "not programmed" and substitutes its own
-# 10000-cycle default (bootrom/prod/lib/src/occp.c). randomize_efuse.py is what
-# overrides it per run.
+# RESERVED[1] -- the OCCP transport timeout the boot ROM reads -- is 0 here.
+# The ROM treats 0 as "not programmed" and substitutes its own 10000-cycle
+# default (bootrom/prod/lib/src/occp.c). randomize_efuse.py is what overrides
+# it per run.
 
 [LOCKS]
     write_locked = "False"

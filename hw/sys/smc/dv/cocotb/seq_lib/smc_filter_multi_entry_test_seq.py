@@ -141,7 +141,7 @@ def _slot_signature(index: int, outbound: bool) -> int:
     ``src_id``/``group_id`` encode the index in two independent nibbles that
     move in opposite directions, so no two of the 32 slots share a value.
     ``entry_enabled`` (rdl:34), ``allow_ns`` (rdl:40), ``allow_burst``
-    (rdl:64) and the write-once ``locked`` (rdl:71) are deliberately left at
+    (rdl:64) and the write-once ``locked`` (rdl:71) are left at
     their reset value: the sweep must not arm or lock a filter.
     ``data_bus_width`` (rdl:46) is ``sw=r``, which is why the expected
     readback is the RDL default OR-ed with the signature.

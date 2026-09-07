@@ -184,8 +184,9 @@ compile_args = [
 build_args = ["--coverage-line", "--coverage-expr", "--coverage-user", "--output-groups", "0"]
 
 [frameworks.cocotb]
-# Flow-first layout: cocotb env/seq_lib/tests live under cocotb/ (room for a
-# future uvm/ sibling). python_root puts env/ + seq_lib/ on the import path.
+# Flow-first layout: cocotb env/seq_lib/tests live under cocotb/, the SV-UVM
+# realization under its uvm/ sibling. python_root puts env/ + seq_lib/ on the
+# import path.
 python_root = "hw/sys/sep/dv/cocotb"
 test_dir = "hw/sys/sep/dv/cocotb/tests"
 # Shared cocotb VIP (ocah_spi_vip, ocah_axi_vip, ...) lives at hw/common/dv/vip;
@@ -526,3 +527,59 @@ sources = [
 
 [targets.lsu_stub_all_live.tools.verilator]
 flags = ["-Wno-BLKLOOPINIT", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM"]
+
+# SystemVerilog UVM view (`--dut sep --framework uvm`, VCS): the same DUT recipe
+# (Bender targets, stubs, exclude_files, the abr_wrapper_key_reg shim) with the
+# shared framework library and AXI VIP manifests ahead of the DUT sources, the
+# SEP-local TB interface, and the two bench packages. A framework `[build]` list
+# replaces the DUT-level one rather than appending to it, so the TB collateral
+# both flows compile is restated here; the AXI protocol SVA comes from the VIP
+# manifest, and the picorv32 KM core is left to the Bender flist (VCS rejects
+# a module declared twice). The tool allowlist is restated because the DUT's
+# top-level `tools` list would otherwise override the profile's.
+[frameworks.uvm]
+description = "SEP SV-UVM smoke flow (VCS)"
+default_tool = "vcs"
+tools = ["vcs"]
+
+[frameworks.uvm.build]
+source_lists = [
+  "hw/common/dv/vip/ocah_lib/uvm/sources.toml",
+  "hw/common/dv/vip/ocah_axi_vip/uvm/sources.toml",
+]
+filelist = "hw/sys/sep/dv/build/uvm/sep_uvm_compile.f"
+bender_filelist = "hw/sys/sep/dv/build/uvm/sep_uvm_bender.f"
+work_dir = "hw/sys/sep/dv/build/uvm"
+# hw/sys/sep/regs/gen/svh carries the generated register header sep_env_pkg
+# includes for addresses, reset values, and field masks.
+incdirs = [
+  "hw/sys/sep/dv/tb",
+  "hw/common/assert",
+  "hw/sys/sep/regs/gen/svh",
+  "hw/sys/sep/dv/uvm/env",
+  "hw/sys/sep/dv/uvm/seq_lib",
+  "hw/sys/sep/dv/uvm/tests",
+]
+sources = [
+  "hw/sys/sep/dv/tb/sep_outbound_mbx.sv",
+  # After the bender flist so abr_wrapper_key_reg_pkg is already declared (see exclude_files).
+  "hw/sys/sep/dv/shims/crypto/abr_wrapper_key_reg_stub.sv",
+  "hw/sys/sep/dv/tb/sep_tb_if.sv",
+  "hw/sys/sep/dv/uvm/env/sep_env_pkg.sv",
+  "hw/sys/sep/dv/uvm/seq_lib/sep_seq_lib_pkg.sv",
+]
+
+[frameworks.uvm.sim]
+args = ["+UVM_VERBOSITY=UVM_MEDIUM"]
+
+# The no_cpu scenarios select target = "lsu_stub_all_live" (CPU stubbed, the
+# stub is the sole LSU driver); the full-CPU default target force-splices the
+# LSU request on VCS. Both share one SV-UVM build tree, partitioned by input
+# fingerprint like the cocotb targets.
+[frameworks.uvm.targets.default]
+description = "SEP SV-UVM full-CPU target"
+build_dir = "hw/sys/sep/dv/build/uvm"
+
+[frameworks.uvm.targets.lsu_stub_all_live]
+description = "SEP SV-UVM no_cpu target: CPU stubbed, LSU driven by the shared AXI VIP master"
+build_dir = "hw/sys/sep/dv/build/uvm"

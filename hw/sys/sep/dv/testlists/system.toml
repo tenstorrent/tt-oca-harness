@@ -8,7 +8,8 @@ schema_version = 1
 
 [[tests]]
 name = "sep_axi_smoke_test"
-module = "system.sep_axi_smoke_test"
+# One VPLAN scenario, two implementations: cocotb module vs SV-UVM class (+UVM_TESTNAME).
+module = { cocotb = "system.sep_axi_smoke_test", uvm = "sep_axi_smoke_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["smoke", "system", "ci"]

@@ -715,7 +715,7 @@ module dtp_uvm_top
     // Cross-trigger coverage (CTP / CTM): CSR-write decode plus the
     // cross-trigger GPIO and matrix handshake pins, all in the system-clock
     // domain. The SV-UVM shape ties these inputs quiescent, so the bins
-    // collect only where the stimulus exists (the cocotb flow today).
+    // collect only where the stimulus exists (the cocotb flow).
     dtp_xtrig_fcov u_dtp_xtrig_fcov (
         .clk_i                 (clk_i),
         .rst_ni                (rst_n_i),
@@ -821,7 +821,7 @@ module dtp_uvm_top
     assign u_tb_if.jtag_stap_host_capture_en  = jtag_stap_host_capture_en;
     assign u_tb_if.jtag_stap_host_update_en   = jtag_stap_host_update_en;
 
-    // Downstream STAP TAPs (issue #1056): one ocah_jtag_if per STAP host
+    // Downstream STAP TAPs: one ocah_jtag_if per STAP host
     // port, wired from the port's forwarded tck/tms/trst_n and its TDO; the
     // shared ocah_jtag_vip slave agent answers on tdo, routed back into the
     // host TDI when the sequence sets dtp_tb_if.stap_<x>_ds_en (default 0

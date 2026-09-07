@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_dtp_otp_debug_access_test — DEFERRED (needs_real_lcc / needs SEP=1 / no Force).
 
-Was: OTP lifecycle Force. Re-enable with legal TB pin / frontdoor / real LCC.
+Needs a legal TB pin, frontdoor stimulus, or real LCC for the OTP lifecycle.
 Not ported (needs_real_lcc, sep1).
 """
 

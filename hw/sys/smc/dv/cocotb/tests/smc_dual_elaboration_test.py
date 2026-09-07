@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Dual-SMC elaboration probe (design doc Phase 1.4).
+"""Dual-SMC elaboration probe.
 
-Answers the one open risk in docs/dual_smc_occp_boot_design.md -- whether
-Verilator can carry two SMC instances -- with a measurement rather than a guess.
+Answers whether Verilator can carry two SMC instances with a measurement
+rather than a guess.
 The build cost is recorded by the runner; this test only has to prove the 2x
 model elaborates and that both instances independently leave reset, so that a
 later failure in the OCCP flow cannot be blamed on the doubled top.
@@ -44,11 +44,10 @@ def _check_i3c_counter_indexing(dut) -> None:
     """Assert cocotb indexes the per-channel I3C counters the way the TB meant.
 
     The TB exports tb_i3c_channel_id_N = SharedI3cIdx[N], so the mapping can
-    be read rather than assumed. This exists because the OCCP boot test reported
-    "transfer seen on I3C0" while the controller firmware reported, correctly,
-    that it was driving instance 3. The cause was cocotb reading an unpacked-array
-    port as element 0 for every index; the counters are flat scalars now, and this
-    check exists so that class of silent mis-attribution fails loudly instead.
+    be read rather than assumed: cocotb reads an unpacked-array port as element 0
+    for every index, which would attribute every channel's traffic to I3C0. The
+    counters are flat scalars, and this check makes that class of silent
+    mis-attribution fail loudly.
     """
     seen = [
         int(getattr(dut, f"tb_i3c_channel_id_{pos}").value)

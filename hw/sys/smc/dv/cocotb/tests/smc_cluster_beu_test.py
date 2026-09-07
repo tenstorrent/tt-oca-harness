@@ -13,7 +13,7 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_cluster_beu_test(smc_base_test):
-    """Locks the 0xC801_0000 -> 0xC001_0000 local-fabric address fold (#1237).
+    """Locks the 0xC801_0000 -> 0xC001_0000 local-fabric address fold.
 
     No access in this testcase reaches a Bus Error Unit; see the sequence
     docstring for the RTL site and for what is proven instead.

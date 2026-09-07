@@ -161,7 +161,7 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
         self.logger.info("CHK-NEG dummy-key ECB PASS: ct_dummy == AES(dummy, PT) golden")
 
         # CHK-B: sideload the handle's key to the AES wrapper KEY CSRs.
-        rc = await self.km.key_transfer(handle=handle, dest=KM_DEST_AES)
+        rc, _ = await self.km.key_transfer(handle=handle, dest=KM_DEST_AES)
         assert rc == 0, f"CMD_KEY_TRANSFER returned rc={rc} (expected 0)"
         self.logger.info("CHK-B CMD_KEY_TRANSFER PASS: rc=0 (key sideloaded to AES)")
 

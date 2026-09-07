@@ -61,11 +61,10 @@ module smc_uvm_top
     // ==================================================================
     // Dual-instance port surface.
     //
-    // Deliberately narrower than the single-instance list above. Only the
-    // surface the OCCP boot flow needs is lifted: clocks/resets, one inbound
-    // AXI manager per instance, the shared I3C pads, and scratch/ROM-fetch
-    // observability. Every other wrapper port is tied off inside
-    // smc_dual_inst, with the same value the single-instance half uses.
+    // Only the surface the OCCP boot flow needs is lifted: clocks/resets, one
+    // inbound AXI manager per instance, the shared I3C pads, and
+    // scratch/ROM-fetch observability. Every other wrapper port is tied off
+    // inside smc_dual_inst, with the same value the single-instance half uses.
     // ==================================================================
     input wire logic clk_smc_i /*verilator public_flat_rw*/,
     input wire logic clk_ref_i /*verilator public_flat_rw*/,
@@ -100,16 +99,12 @@ module smc_uvm_top
     // Per-channel view of the three cross-wired I3C channels {0, 1, 3}. Index
     // is the position in that list, not the I3C instance number.
     //
-    // Per-channel I3C activity, one flat scalar per position -- deliberately NOT
-    // an unpacked-array port.
-    //
-    // Measured 2026-08-24: an unpacked-array port declared `logic [7:0] x [3]`
-    // and assigned '{0,1,3} read back through cocotb as [0,0,0]. Whether that is
-    // a general property of unpacked-array handles or something narrower was not
-    // established -- what matters is that it failed silently and mis-attributed
-    // every per-channel count. Flat scalars sidestep the question entirely, and
-    // tb_i3c_channel_id_N carries the instance each position watches so the
-    // mapping is asserted (smc_dual_elaboration_test) rather than assumed.
+    // Per-channel I3C activity, one flat scalar per position. An unpacked-array
+    // port (`logic [7:0] x [3]` assigned '{0,1,3}) reads back through cocotb as
+    // [0,0,0], silently mis-attributing every per-channel count, so the counts
+    // are flat scalars and tb_i3c_channel_id_N carries the instance each
+    // position watches, asserted by smc_dual_elaboration_test rather than
+    // assumed.
     output logic [7:0]      tb_i3c_channel_id_0 /*verilator public_flat_rw*/,
     output logic [7:0]      tb_bfm_i3c_wsel /*verilator public_flat_rw*/,
     output logic [7:0]      tb_i3c_channel_id_1 /*verilator public_flat_rw*/,
@@ -336,16 +331,15 @@ module smc_uvm_top
     // testbench defect: latching the last good level would hide it, so it
     // fails here instead.
     //
-    // $fatal, not $error: this is the safety net for the whole reset-hold
-    // change, and $error only prints on Xcelium and VCS -- the run would go
-    // green with the DUT on a stale reset level. It is also not a DUT finding
-    // that a scoreboard should weigh; the stimulus is wrong and nothing after
-    // it means anything.
+    // $fatal, not $error: $error only prints on Xcelium and VCS -- the run
+    // would go green with the DUT on a stale reset level. It is also not a DUT
+    // finding that a scoreboard should weigh; the stimulus is wrong and nothing
+    // after it means anything.
     //
     // Each block is sensitive to its input alone rather than @(*). Under @(*)
     // the *_driven flag it writes is also in its own inferred sensitivity
     // list, which makes the block self-retriggering and draws UNOPTFLAT and
-    // LATCH from Verilator. The value latch on *_int is deliberate.
+    // LATCH from Verilator; *_int holds the last known level between events.
     logic rst_cold_n_int = 1'b0;
     logic rst_cold_n_driven = 1'b0;
     always @(rst_cold_ni) begin
@@ -443,13 +437,12 @@ module smc_uvm_top
         assign tb_telemetry_afready[tel_i] = 1'b1;
     end
 
-    // NOTE: the adopter external window (PLL / PVT / GPIO ctrl) and the eFuse
-    // bank/shim macro are absorbed into hw/top/smc_ip_integration.sv
-    // (instantiated inside smc_wrapper as u_smc.smc_external_req_o feeding
-    // u_smc_ip_integration directly) --
-    // they are no longer boundary ports of smc_wrapper, so there is nothing
-    // to declare/terminate for them at this TB level (see header comment).
-    // DTP CSR (axil_dtp_csr_req_o) remains a smc_wrapper boundary port.
+    // The adopter external window (PLL / PVT / GPIO ctrl) and the eFuse
+    // bank/shim macro live inside hw/top/smc_ip_integration.sv (u_smc's
+    // smc_external_req_o feeds u_smc_ip_integration directly inside
+    // smc_wrapper), so they are not boundary ports of smc_wrapper and nothing
+    // is declared or terminated for them at this TB level (see header comment).
+    // DTP CSR (axil_dtp_csr_req_o) is a smc_wrapper boundary port.
     smc_axil_32_32_req_t  axil_dtp_csr_req;
     smc_axil_32_32_resp_t axil_dtp_csr_resp;
 
@@ -494,7 +487,7 @@ module smc_uvm_top
     // reset_n = sense && rst_ni && ext_boot_seq_done).
     bit tb_hold_ext_boot /*verilator public_flat_rw*/;
     // +smc_uart_cross_3to0: short commercial UART pairs 0↔3 and 1↔2
-    // (TX of each into RX of the peer). Name kept for enrolled tests.
+    // (TX of each into RX of the peer).
     bit tb_uart_cross_3to0;
     initial begin
         tb_hold_cpu_boot = 1'b0;
@@ -516,9 +509,7 @@ module smc_uvm_top
 
     // Minimal LSIO open-drain resolver for I2C0. The SMC padring maps I2C0
     // SCL/SDA to the I2C0 GPIO pads. Released lines resolve high; either the DUT
-    // or cocotb side may pull a line low. `u_smc_peripherals` now sits one
-    // level deeper (u_dut.u_smc.u_smc_peripherals) since u_dut is
-    // smc_wrapper.
+    // or cocotb side may pull a line low.
     //
     // +smc_i2c_shared_bus: OR I2C1/I2C2 open-drain pulls into the same resolved
     // bus and drive those pads with that value (commercial tranif1 short).
@@ -588,35 +579,32 @@ module smc_uvm_top
     assign tb_i3c0_sda = !(tb_i3c0_sda_dut_low || tb_i3c0_sda_ext_low);
 
     // ------------------------------------------------------------------
-    // Pad injection (KNOWN RISK -- see header + summary).
+    // Pad injection (KNOWN RISK).
     //
-    // pad2core/core2pad are no longer TB-facing ports: they are internal
-    // smc_wrapper nets routed through one prim_pad_shim.sv per pin
-    // (hw/top/smc_ip_integration.sv) onto the physical `gpio_pad_io` inout
-    // bus. There is no legal way to XMR-assign `u_dut.u_smc.pad2core_i`
-    // (it is already driven by u_smc_ip_integration's pad2core_o), so
-    // external stimulus must be injected onto `gpio_pad_io` itself:
+    // pad2core/core2pad are internal smc_wrapper nets routed through one
+    // prim_pad_shim.sv per pin (hw/top/smc_ip_integration.sv) onto the
+    // physical `gpio_pad_io` inout bus. There is no legal way to XMR-assign
+    // `u_dut.u_smc.pad2core_i` (it is already driven by u_smc_ip_integration's
+    // pad2core_o), so external stimulus must be injected onto `gpio_pad_io`
+    // itself:
     //   - A weak `pullup` per pin gives idle/unconnected pads a defined '1
-    //     (mirrors bare tb_top's tb_pad2core default) without ever
-    //     contending with a real (strength-1) driver.
+    //     without ever contending with a real (strength-1) driver.
     //   - `tb_pad_drive_en/val` strongly drive only the specific pins this
     //     TB wants to inject (GPIO overrides, I2C0/I3C0 open-drain lines,
     //     UART0 RX, SPI DQ0 MISO, AVSBus sdata, OCTS secondary inject,
-    //     boot-stall hold) -- computed with the exact same mux logic bare
-    //     tb_top used for tb_pad2core.
+    //     boot-stall hold).
     //   - For I2C0/I3C0, the resolved value (DUT-low XMR probe OR ext-low)
     //     is *always* strongly driven back onto the pad so pad2core reads
-    //     the correct bus state for ACK / clock-stretch (mirrors tb_top's
-    //     manual open-drain reconstruction). This assumes the digital I2C/
-    //     I3C core only asserts its own pad OE while driving logic 0
-    //     (never asserts OE to push a logic 1); if that assumption is ever
-    //     violated, the DUT's own strong '1 push and this block's strong
-    //     '0 pull could momentarily contend (X) around edges. See summary.
+    //     the correct bus state for ACK / clock-stretch. This assumes the
+    //     digital I2C/I3C core only asserts its own pad OE while driving
+    //     logic 0 (never asserts OE to push a logic 1); if that assumption is
+    //     ever violated, the DUT's own strong '1 push and this block's strong
+    //     '0 pull could momentarily contend (X) around edges.
     //   - All other DUT-owned output pads (UART0 TX, AVS clk/mdata, OCTS
     //     observe, general GPIO outputs) are left un-driven here (Z) and
-    //     read back via XMR into u_dut.u_smc.core2pad_o/core2pad_en_o,
-    //     exactly like bare tb_top, so this injection block never contends
-    //     with the DUT's own output drive on those pins.
+    //     read back via XMR into u_dut.u_smc.core2pad_o/core2pad_en_o, so
+    //     this injection block never contends with the DUT's own output drive
+    //     on those pins.
     // ------------------------------------------------------------------
     always_comb begin
         tb_pad_drive_en  = '0;
@@ -1078,7 +1066,7 @@ module smc_uvm_top
     assign tb_cpu_fw_mailbox_valid    = `CPU_MEM_DV.fw_mailbox_valid_q;
     assign cpu_scratch0_inject_fire   = `CPU_MEM_DV.scratch0_inject_fire_q;
 
-    // Probe pin kept for cocotb init compatibility; do not OR into the score.
+    // Probe pin on the cocotb init surface; do not OR into the score.
     logic unused_ecc_probe;
     assign unused_ecc_probe = tb_cpu_ecc_inject_probe;
 
@@ -1094,8 +1082,7 @@ module smc_uvm_top
 
     // ------------------------------------------------------------------
     // DTP CSR boundary (smc_wrapper only): NO TB err_slv (policy: no
-    // placeholder). resp idle until a legal subordinate exists. Not an
-    // SMU gap — smu.sv already connects SMC axil_dtp_csr to DTP.
+    // placeholder); resp is idle. smu.sv connects SMC axil_dtp_csr to DTP.
     // ------------------------------------------------------------------
     assign axil_dtp_csr_resp = '0;
 
@@ -1245,10 +1232,10 @@ module smc_uvm_top
     assign efuse_shadow_probe_o =
         u_dut.u_smc.u_smc_peripherals.u_smc_efuse_wrapper.u_efuse_interface_controller
             .u_efuse_shadow_regs.shadow_efuse_o;
-    // eFuse bank storage is now inside smc_ip_integration's own
-    // efuse_bank_model (hw/ip/efuse/dv/models/efuse_bank_model.sv), not a
-    // efuse_bank_model. Its "programmed" and "OTP" storage collapse into the
-    // same register file, so programmed_word0 mirrors otp_word0.
+    // eFuse bank storage is smc_ip_integration's efuse_bank_model
+    // (hw/ip/efuse/dv/models/efuse_bank_model.sv). Its "programmed" and "OTP"
+    // storage collapse into the same register file, so programmed_word0
+    // mirrors otp_word0.
     assign tb_efuse_otp_word0 =
         u_dut.u_smc_ip_integration.u_efuse_bank_model.u_efuse_bank_reg
             .field_storage.EFUSE_BANK_REG[0].dout.value;
@@ -1312,7 +1299,7 @@ module smc_uvm_top
     // Per-interface idle observability -- drives Batch B per-module sanity
     // tests. Sample all four external-macro masters from real smc ports so
     // the active pulse is visible even when a wrapper/TB wire does not track
-    // the same cycle as the cocotb latch (PLL/PVT/extension already did this).
+    // the same cycle as the cocotb latch.
     assign tb_axil_dtp_csr_active    = u_dut.u_smc.axil_dtp_csr_req_o.aw_valid
                                      | u_dut.u_smc.axil_dtp_csr_req_o.w_valid
                                      | u_dut.u_smc.axil_dtp_csr_req_o.ar_valid;
@@ -1333,9 +1320,8 @@ module smc_uvm_top
     assign tb_cpu_debug_dmactive_ack =
         u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.debug_dmactiveAck;
 
-    // TB-GLUE only (deferred test): pulse tb_dfd_fault_inject to latch a
-    // deterministic token. This is NOT smc_dfd_wrap / hw/ip/dfd coverage.
-    // See hw/sys/smc/doc/dv_hack_cleanup_checklist.md Phase 1.1.
+    // TB glue: pulse tb_dfd_fault_inject to latch a deterministic token. This
+    // is NOT smc_dfd_wrap / hw/ip/dfd coverage.
     // Hart0 PC can be X before CPU bring-up, so do not sample hierarchical PC
     // into the public capture port (cocotb cannot int() X).
     always_ff @(posedge clk_smc_i or negedge rst_cold_n_int) begin
@@ -1579,8 +1565,8 @@ module smc_uvm_top
         end
     end
 
-    // Channel 0 is lifted under the historical tb_i3c0_* names so cocotb code
-    // written against the single-instance TB reads the same signals.
+    // Channel 0 is lifted under the tb_i3c0_* names of the single-instance TB
+    // so cocotb code written against it reads the same signals.
     assign tb_i3c0_scl_dut_low = i3c_scl_dut_low[0];
     assign tb_i3c0_sda_dut_low = i3c_sda_dut_low[0];
     assign tb_i3c0_scl_bfm_low = i3c_scl_bfm_low[0];
@@ -1700,10 +1686,10 @@ module smc_uvm_top
 
         // Target-up: the controller senses what the target drives, unless a
         // test is holding the pad itself. Guarded exactly like BOOT_STALL
-        // below: without the guard this unconditional assignment comes after
-        // the ext-override loop above and silently wins, which made
-        // set_gpio_override(..., 58, ...) dead code and turned the payload
-        // staging window into a race against the controller firmware.
+        // below: unguarded, this assignment comes after the ext-override loop
+        // above and silently wins, making set_gpio_override(..., 58, ...) dead
+        // and turning the payload staging window into a race against the
+        // controller firmware.
         if (!bfm_gpio_ext_drive_en[OCCP_TARGET_UP_PAD]) begin
             bfm_pad_drive_en[OCCP_TARGET_UP_PAD]  = 1'b1;
             bfm_pad_drive_val[OCCP_TARGET_UP_PAD] = tb_gpio58_bus;
@@ -1855,8 +1841,7 @@ module smc_uvm_top
     // This decode is only known-correct at offset 0. Measured by
     // smc_dual_axi_sram_probe_test: patterns written and read back over AXI at
     // 0xC0066400/+8/+0x40 all verify while this formula reports zero for every
-    // one of them. Nothing gates on the peek for that reason -- see
-    // docs/occp_dual_boot_jump_rootcause.md.
+    // one of them. Nothing gates on the peek for that reason.
     localparam int unsigned SCRATCH_BANK_STRIPE_BYTES = 64;
     localparam int unsigned SCRATCH_BYTES_PER_ENTRY   = 8;
     localparam int unsigned SCRATCH_ENTRIES_PER_STRIPE =

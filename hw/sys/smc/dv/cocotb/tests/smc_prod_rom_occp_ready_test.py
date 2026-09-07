@@ -2,9 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS production boot ROM milestone: reach the OCCP command loop.
 
-First test in the OSS tree to run product firmware (hw/sys/smc/bootrom/prod,
-built with I3C_CORE=swap) rather than a DV stub image. It is deliberately
-narrower than the OCCP boot tests that build on it: no bus traffic, no
+Runs product firmware (hw/sys/smc/bootrom/prod, built with I3C_CORE=swap)
+rather than a DV stub image. It is narrower than the OCCP boot tests that build on it: no bus traffic, no
 controller. It answers one question -- does the real ROM get all the way from
 reset through strap/fuse read, security checks, interface map and OCCP init to
 its command processing loop, on the OSS smc_wrapper?

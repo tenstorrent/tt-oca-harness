@@ -83,9 +83,7 @@ class smc_cpu_firmware_boot_test(smc_base_test):
             SmcProtocolVipKind.CPU,
             type(self).__name__,
             # Directed stimulus floor: 9 SEP_IN AXI CPU boot-control accesses.
-            # Literal here, not read from `seq.accesses` (which the sequence
-            # also floors at 4 via `or 4`, another reason not to trust it as a
-            # measure).
+            # Literal here, not read from `seq.accesses`.
             min_csr_accesses=9,
             csr_accesses=seq.accesses,
             proxy=False,
@@ -93,6 +91,6 @@ class smc_cpu_firmware_boot_test(smc_base_test):
         )
 
     async def run_scenario(self) -> None:
-        # Unused when run_phase overrides; kept for base-class contract.
+        # Unused when run_phase overrides; the base class requires it.
         seq = smc_cpu_firmware_boot_test_seq("cpu_fw_boot_seq")
         await self.run_scenario_with(seq)

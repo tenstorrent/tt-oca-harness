@@ -157,12 +157,11 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         stat_hold = await self.csr_read("STATUS_HOLD", STATUS)
         assert st_hold & PROG_ERR, f"timeout PROGRAM_STATUS not sticky: CTRL=0x{st_hold:x}"
         # PROGRAM_STATUS is live HW from the last op; writing 0 does not clear
-        # it. EFUSE_INTERFACE_CTRL_STATUS is now asserted per field from the
-        # generated header rather than printed next to no expectation
-        # ([EXACT-EXPECTATION]): fuse sense has completed, and a request that
-        # was aborted by the *timeout* counter is not an eFuse request error nor
-        # an address error, so all three error bits must read 0 and SENSE_DONE
-        # must read 1.
+        # it. EFUSE_INTERFACE_CTRL_STATUS is asserted per field from the
+        # generated header ([EXACT-EXPECTATION]): fuse sense has completed, and
+        # a request aborted by the *timeout* counter is neither an eFuse request
+        # error nor an address error, so all three error bits must read 0 and
+        # SENSE_DONE must read 1.
         assert (stat_hold & SENSE_DONE) == SENSE_DONE, (
             f"STATUS.EFUSE_SENSE_DONE not set after fuse sense: STATUS=0x{stat_hold:x}"
         )
@@ -219,13 +218,11 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         self.read_tmo_data = data
 
         # SAME-CONFIGURATION POSITIVE CONTROL for the `data == 0` above
-        # ([NEGATIVE-NEEDS-POSITIVE-CONTROL]). The old recovery leg re-read with
-        # READ_REQ_TIMOUT_ENABLE back at 0, so no read with the timeout ENABLED
-        # was ever shown returning data, and a dead or unmapped READ_DATA
-        # register would have satisfied `data == 0` just as well. Here the
-        # enable bit stays 1 and only the cycle count changes to the RDL default
-        # (0x%x), so the difference between this read and the one above is
-        # exactly the quantity under test.
+        # ([NEGATIVE-NEEDS-POSITIVE-CONTROL]): the enable bit stays 1 and only
+        # the cycle count changes to the RDL default (0x%x), so the difference
+        # between this read and the one above is exactly the quantity under
+        # test. A dead or unmapped READ_DATA register would satisfy `data == 0`
+        # alone.
         tmo_enabled_long = TMO_EN_R | TMO_CYC_RST_R
         await self.csr_write("READ_TMO_EN_LONG", READ_TMO, tmo_enabled_long)
         await self.csr_read("READ_TMO_EN_LONG_RB", READ_TMO, expected=tmo_enabled_long)

@@ -159,10 +159,9 @@ class smc_efuse_boundary_signals_test_seq(SmcCsrSeq):
                 f"RELEASE: tb_fuse_reset_n stayed 0 after ext_boot release "
                 f"last={last_frst} bound={_RELEASE_BOUND}"
             )
-        # `tb_rst_warm_smc_clk_n` is an unconditional TB output (tb_top.sv:439,
-        # driven at tb_top.sv:1316), so the old `if hasattr(...)` guard was dead
-        # and would have silently skipped this leg if the port ever disappeared
-        # ([NO-DUMMY-DEAD-CODE]). Assert it instead.
+        # `tb_rst_warm_smc_clk_n` is an unconditional TB output (tb_top.sv), so a
+        # missing port is a bench defect: assert it rather than skip the leg
+        # ([NO-DUMMY-DEAD-CODE]).
         assert hasattr(dut, "tb_rst_warm_smc_clk_n"), (
             "tb_rst_warm_smc_clk_n missing from the TB top: the warm-reset "
             "release leg has no observation port and cannot be checked"

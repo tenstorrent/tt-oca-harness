@@ -26,7 +26,7 @@ class smc_static_cg_sanity_test(smc_base_test):
             "CHK-DMA-GATE-DISABLED-FREE-RUN",
             "CHK-ZEROER-GATE-DISABLED-FREE-RUN",
             "CHK-NONVAC",
-            # Legacy P1 tokens retained for closed P1 grade compatibility.
+            # P1 tokens (see smc_static_cg_sanity_test_seq).
             "CHK-MODULE-GATING",
             "CHK-ENABLE-THRESHOLD",
             "CHK-TIMEOUT-PATHS",

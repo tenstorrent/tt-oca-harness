@@ -5,8 +5,7 @@
 // smc_env in connect_phase, and nothing else. Scenario virtual sequences
 // (smc_base_test_seq family) run on it and start reusable operation
 // sequences on the handle each step needs: SEP_IN CSR accesses on
-// m_sep_in_seqr. Further ingress ports (SYS_IN, JTAG AXI) add a handle
-// here when their agents land.
+// m_sep_in_seqr.
 
 class smc_virtual_sequencer extends ocah_sequencer;
   `uvm_component_utils(smc_virtual_sequencer)

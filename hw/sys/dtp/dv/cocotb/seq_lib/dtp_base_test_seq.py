@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Generic base sequence for DTP cocotb stimulus.
 
-This class intentionally stays feature-agnostic. Feature-specific helpers live in
+This class stays feature-agnostic. Feature-specific helpers live in
 child base sequences such as ``dtp_jtag_base_test_seq``,
 ``dtp_debug_tdr_base_test_seq``, and ``dtp_jtag2axi_base_test_seq``.
 The test assigns ``cfg`` before starting the sequence (dtp_base_test.plumb_scenario_seq).

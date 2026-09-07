@@ -16,9 +16,9 @@
 //     (Verilator cannot compile covergroups; the public build defines
 //     VERILATOR explicitly).
 //
-// Scenario-area sections (JTAG core, JTAG2AXI/OTP, debug TDR, scan/STAP,
-// cross-trigger) are populated by their owning changes; the shared event
-// decode and the per-boundary liveness points live at the top.
+// JTAG-core coverage lives here; JTAG2AXI/OTP, debug TDR, scan/STAP, and
+// cross-trigger coverage live in the sibling dtp_*_fcov.sv modules. The
+// shared event decode and the per-boundary liveness points come first.
 
 `include "ocah_fcov_macros.svh"
 

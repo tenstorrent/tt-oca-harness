@@ -66,10 +66,9 @@ class smc_spm_mem_boundary_test_seq(SmcCsrSeq):
                 len(_PATTERNS),
             )
 
-        # `lo_ok`/`mid_ok`/`hi_ok` were `flags.append(True)` inside the loop --
-        # literal True whenever the body completed -- and the BASIC token below
-        # printed exactly those three constants. Both are replaced by the
-        # measured words ([NO-ALWAYS-PASS-CHECKER]).
+        # `lo_ok`/`mid_ok`/`hi_ok` carry the measured words, and the BASIC
+        # token prints them: boolean flags set on the way past would be literal
+        # True whenever the body completed ([NO-ALWAYS-PASS-CHECKER]).
         self.lo_ok, self.mid_ok, self.hi_ok = (
             observed["SPM_LO"],
             observed["SPM_LO_NEXT"],

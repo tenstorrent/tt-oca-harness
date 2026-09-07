@@ -19,9 +19,8 @@ cool reset fails instead of coasting to the post-release SAMPLE gates
   unless the wait already had -- [NO-ALWAYS-PASS-CHECKER]). A DUT that releases
   the cold/cool path early, anywhere inside the window, fails here.
 * release half: a bounded ``WAIT_STATE`` on the released levels followed by the
-  post-release ``SAMPLE`` (the checked_cleared leg). Both replace the former
-  fixed reassert / between / recover ``ClockCycles`` completion sync
-  ([NO-BLIND-DELAY-SYNC] / [TIMEOUT-MUST-FAIL]).
+  post-release ``SAMPLE`` (the checked_cleared leg); no fixed ``ClockCycles``
+  completion sync ([NO-BLIND-DELAY-SYNC] / [TIMEOUT-MUST-FAIL]).
 
 Expected levels come from ``hw/sys/smc/doc/clk_rst.adoc``: cold reset drives the
 cold-stable and primary paths, cool reset is a primary-level reset that leaves
@@ -105,7 +104,7 @@ class smc_cold_reset_repeated_test_seq(SmcResetSeqBase):
         await self._send(SmcResetOp.SAMPLE)
         # Activity gate on the fail-capable legs: one assert + one release wait
         # per cold repeat plus the cool pair, and a full checked mid-assert hold
-        # window each ([NO-ZERO-ACTIVITY-PASS]). The raw floor now counts the
+        # window each ([NO-ZERO-ACTIVITY-PASS]). The raw floor counts the
         # samples taken *after* the assert handshake, so it cannot be satisfied
         # by snapshots that shared the wait's timestamp.
         sb = self.env.scoreboard

@@ -19,8 +19,11 @@ import cocotb
 import pyuvm
 from env.sep_efuse_image import LC_WORD_IDX, SepEfuseImage
 from env.sep_lcc_golden import (
+    DBG_DISABLE_UNCLAIMED,
     LC_PROD,
     LC_TEST_DEV,
+    dbg_disable_expected,
+    dbg_disable_unpack,
     feat_ctrl_expected,
     lc_state_name,
 )
@@ -46,6 +49,41 @@ RESP_OKAY = 0
 class sep_lcc_demote_feat_ctrl_matrix_test(sep_base_test):
     """Walk the demote product; feat_ctrl vs golden and one live filter gate."""
 
+    def _check_dbg_disable(self, feat_ctrl: int, tag: str) -> None:
+        """dbg_disable against the DTP gating ladder, for this same FEAT_CTRL.
+
+        The eleven debug-disable outputs are the consumer side of feature
+        control: FEAT_CTRL says which debug scopes are open, dbg_disable is what
+        the DTP, JTAG and SMU paths are actually gated on. The two OTP
+        JTAG2AXIL bits are tied to zero, so they cannot distinguish a correct
+        gating formula from a broken one. The walk checks the rest against
+        the same FEAT_CTRL the cell above just checked, so the two are one
+        consistent claim rather than two independent guesses.
+        """
+        probe = cocotb.top.dbg_disable_all_o
+        val = probe.value
+        width = getattr(val, "n_bits", None)
+        if width is None:
+            bits = getattr(val, "binstr", None)
+            width = len(bits) if bits is not None else len(probe)
+        raw = int(val)
+        got = dbg_disable_unpack(raw, int(width))
+        want = dbg_disable_expected(feat_ctrl)
+        for name, exp in want.items():
+            assert got[name] == exp, (
+                f"{tag}: dbg_disable.{name}={got[name]} expected {exp} for "
+                f"FEAT_CTRL=0x{feat_ctrl:016x} "
+                f"(sep_dbg={feat_ctrl & 1} chiplet_dbg={(feat_ctrl >> 1) & 1} "
+                f"sip_dbg={(feat_ctrl >> 16) & 1})"
+            )
+        self.logger.info(
+            "CHK-DBG-DISABLE PASS: %s %d of %d bits match the gating ladder (unclaimed: %s)",
+            tag,
+            len(want),
+            len(want) + len(DBG_DISABLE_UNCLAIMED),
+            ", ".join(DBG_DISABLE_UNCLAIMED),
+        )
+
     async def _check_cell(
         self,
         image: SepEfuseImage,
@@ -54,14 +92,25 @@ class sep_lcc_demote_feat_ctrl_matrix_test(sep_base_test):
         demote_2: int,
         tag: str,
     ) -> None:
+        # SEC_DIS forces FEAT_CTRL to all-ones before the SECURE_TM mask, so
+        # feeding the probe into the golden would make a stuck-at-1 probe agree
+        # with a stuck-at-1 DUT at every cell in the matrix -- the whole walk
+        # would pass with the decode bypassed. This test presents no SEC_DIS
+        # token, so the value is known in advance: assert it and pass the
+        # literal.
         sec_dis = int(cocotb.top.lcc_security_disable_probe_o.value) & 0x1
+        assert sec_dis == 0, (
+            "SEC_DIS is asserted but this test never presents a token; with it "
+            "set, FEAT_CTRL is all-ones regardless of LC state, the DIS vectors "
+            "and both DEMOTE bits, so every cell below would be vacuous"
+        )
         feat = feat_ctrl_expected(
             image.lc_raw(),
             image.field_int("SIP_DIS"),
             image.field_int("SYS_DIS"),
             demote_1=demote_1,
             demote_2=demote_2,
-            sec_dis=sec_dis,
+            sec_dis=0,
         )
         ctl = SepLccFeatCtrlCheckSeq(feat)
         await self.start_seq(ctl)
@@ -74,6 +123,7 @@ class sep_lcc_demote_feat_ctrl_matrix_test(sep_base_test):
         assert probe.resp_code == want, (
             f"{tag}: ext probe resp={probe.resp_code}, expected {want} (sep_debug={ctl.sep_debug})"
         )
+        self._check_dbg_disable(ctl.feat_ctrl, tag)
         self.logger.info(
             "CHK-FEAT-CTRL PASS: %s FEAT_CTRL=0x%016x sep_debug=%d",
             tag,

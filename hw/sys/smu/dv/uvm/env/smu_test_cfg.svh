@@ -51,7 +51,6 @@ class smu_test_cfg extends ocah_test_cfg;
     super.new(name);
   endfunction
 
-  // Fill the knob-derived controls through the one knob accessor.
   function void read_knobs();
     ptap_idcode_negative = ocah_knobs::is_set("SMU_PTAP_IDCODE_NEGATIVE");
   endfunction
@@ -62,7 +61,6 @@ class smu_test_cfg extends ocah_test_cfg;
     foreach (ids[i]) jtag_policy.required_ids.push_back(ids[i]);
   endfunction
 
-  // Replace the required scoreboard features.
   function void set_required_features(string features[$]);
     required_features.delete();
     foreach (features[i]) require_feature(features[i]);

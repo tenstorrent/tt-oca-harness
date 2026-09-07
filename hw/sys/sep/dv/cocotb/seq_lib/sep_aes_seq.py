@@ -288,6 +288,26 @@ class SepAes(SepAxiRegDriver):
         await self._poll_status_bit(AES_STATUS_OUTPUT_VALID, "output_valid")
         return await self.read_data_out()
 
+    async def output_valid_within(self, polls: int, *, poll_cycles: int = 20) -> bool:
+        """Bounded probe: did OUTPUT_VALID assert within this window?
+
+        Returns rather than raises, because a caller proving the engine must
+        REFUSE to start needs the negative as a result, not as an error. Keep
+        the window short: it is spent in full on every passing run.
+        """
+        for _ in range(polls):
+            if await self._rd(AES_STATUS) & (1 << AES_STATUS_OUTPUT_VALID):
+                return True
+            await ClockCycles(cocotb.top.clk_i, poll_cycles)
+        return False
+
+    async def start_block_no_wait(self, pt_words: list[int]) -> None:
+        """Write one input block and return without waiting for a result."""
+        assert len(pt_words) == 4, "AES block needs 4 data words"
+        await self._poll_status_bit(AES_STATUS_INPUT_READY, "input_ready")
+        for i, word in enumerate(pt_words):
+            await self._wr(AES_DATA_IN_0 + i * 4, word & 0xFFFF_FFFF)
+
     async def read_data_out(self) -> list[int]:
         """Read DATA_OUT_0..3. Re-readable: AES holds the last ciphertext in the
         output registers until the next block output, an explicit DATA_OUT_CLEAR

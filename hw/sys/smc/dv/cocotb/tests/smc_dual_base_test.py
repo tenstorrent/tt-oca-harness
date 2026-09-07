@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Shared bring-up for the dual-SMC OCCP tests.
 
-Deliberately thinner than hw/sys/smc/dv/cocotb/tests/smc_base_test.py: that
+Thinner than hw/sys/smc/dv/cocotb/tests/smc_base_test.py: that
 harness builds the whole single-instance SmcEnv against tb_top.sv's ~400-port
 surface, none of which exists on tb_top.sv (SMC_DUAL half). Here both instances share one
 clock/reset bring-up and each gets its own inbound AXI master.
@@ -65,9 +65,8 @@ def regenerate_efuse_image(seed: int) -> None:
     care about fuse contents is unaffected.
 
     The image is derived from `seed`, so a failing run is reproducible from its
-    RANDOM_SEED. What varies today is the OCCP transport timeout -- see
-    efuse_preload/randomize_efuse.py for the field list and for what is not yet
-    randomized.
+    RANDOM_SEED. The OCCP transport timeout varies -- see
+    efuse_preload/randomize_efuse.py for the field list.
     """
     img = cocotb.plusargs.get("smc_efuse_hex")
     if img is None:

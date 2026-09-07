@@ -94,7 +94,7 @@ class sep_kmac_mode_strength_rand_test(sep_base_test):
         self.kmac = SepKmac(self)
         seed = self.random_seed()
         self.rng = SepSeededRng(seed)
-        self.logger.info("KMAC mode/strength breadth KMAC mode x strength breadth: seed=%d", seed)
+        self.logger.info("KMAC mode x strength breadth: seed=%d", seed)
 
         # Collect each cell's DUT result so the matrix claim rests on observed
         # output, not on the loop's own trip count. Comparing `walked` only to a

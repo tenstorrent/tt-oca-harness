@@ -25,7 +25,7 @@ Synchronization and verdicts:
   ``_recover_sample()`` tail's contribution is tracked separately and
   subtracted, so a step is not credited for the recovery every step ends with
   and dropping that step's own assert leg fails the fence. Expectation-free
-  ``RAW_SAMPLE`` observations are booked in a separate counter and deliberately
+  ``RAW_SAMPLE`` observations are booked in a separate counter and
   cannot satisfy it either, so a step whose expectations were dropped (or which
   never ran) fails instead of being papered over ([NO-ZERO-ACTIVITY-PASS] /
   [NO-DUMMY-DEAD-CODE]).
@@ -89,7 +89,7 @@ class smc_cold_reset_test_seq(SmcResetSeqBase):
     def _checked_reset_evidence(self) -> int:
         """Scoreboard reset checks that can FAIL, i.e. real evidence so far.
 
-        Deliberately excludes ``reset_raw_observations_seen``: an
+        Excludes ``reset_raw_observations_seen``: an
         expectation-free snapshot is booked OBSERVED-ONLY and must not be able
         to satisfy a non-vacuity fence.
         """
@@ -133,7 +133,7 @@ class smc_cold_reset_test_seq(SmcResetSeqBase):
         # S2 — clock edges. clk_smc_i / clk_ref_i / clk_periph_i are DUT *inputs*
         # driven by cocotb Clock(...) in smc_base_test._bring_up, so these counts
         # can only fail on a TB clock-generator mistake, never on wrong DUT RTL.
-        # They are kept as a SETUP self-check and deliberately NOT emitted as DUT
+        # They are kept as a SETUP self-check and NOT emitted as DUT
         # evidence ([NO-ALWAYS-PASS-CHECKER]); the DUT-side gated-clock proof
         # lives in the smc clk/cg tests.
         self._mark_step("S2", "COUNT_EDGES on clk_smc_i/clk_ref_i/clk_periph_i")

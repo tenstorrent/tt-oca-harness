@@ -48,8 +48,8 @@ class smc_smbus_pmbus_test_seq(SmcCsrSeq):
 
         # Real DUT gate (model-free): drive the DUT I2C0 controller and verify it
         # physically actuates the tb_i2c0 SCL/SDA pins via OVRD. This fails if the
-        # DUT I2C0 controller reg->pin path is broken, so the test is no longer a
-        # pure VIP-side self-check. (The SMBus PEC / PMBus Linear11 checks below
+        # DUT I2C0 controller reg->pin path is broken, so the test is not a pure
+        # VIP-side self-check. (The SMBus PEC / PMBus Linear11 checks below
         # are protocol-math helpers on the cocotb master VIP -- SMBus/PMBus are
         # software layers on top of I2C, verified VIP-side; the byte transaction,
         # when run, traverses the DUT-facing I2C0 pins.)
