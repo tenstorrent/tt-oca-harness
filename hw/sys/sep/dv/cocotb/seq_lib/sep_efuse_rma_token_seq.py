@@ -136,14 +136,15 @@ class SepRmaTokenMatchSeq(uvm_sequence):
                     self.matched,
                 )
                 return
-        # A comparator that never reaches a terminal code is a failure, not a
-        # mismatch: reporting it as matched=False lets the negative leg of a
-        # caller's check pass on a DUT whose compare never completed.
-        self.matched = None
-        self.timed_out = True
+        # Never settling is a DUT failure, not a mismatch. Recording it as
+        # matched=False made a token block that answers nothing indistinguishable
+        # from one that correctly rejected a wrong token, so every "mismatch"
+        # check in every caller passed on a dead comparator.
         raise AssertionError(
-            f"[rma] {token_name} token never reached a terminal code in "
-            f"{_POLL_CYCLES} cycles (last code=0x{self.match_code:02x})"
+            f"{token_name} token match status never settled after {_POLL_CYCLES} "
+            f"cycles (last code=0x{self.match_code:02x}; expected one of "
+            f"match 0x{_TOKEN_MATCH:02x}, mismatch 0x{_TOKEN_MISMATCH:02x}, "
+            f"error 0x{_TOKEN_ERROR:02x})"
         )
 
 

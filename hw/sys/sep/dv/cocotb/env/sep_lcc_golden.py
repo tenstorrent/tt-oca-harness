@@ -367,9 +367,6 @@ DBG_DISABLE_WIDTH = len(DBG_DISABLE_FIELDS)
 #               one is permissive, not fail-safe, and it is a security-relevant
 #               gap rather than a neutral ambiguity.
 #
-# When arch rules, the bit moves into dbg_disable_expected and out of this
-# tuple.
-#
 # Each is tracked; when arch rules, the bit moves into dbg_disable_expected and
 # out of this tuple, and the plan's scorecard row goes from PARTIAL to PROVEN.
 #

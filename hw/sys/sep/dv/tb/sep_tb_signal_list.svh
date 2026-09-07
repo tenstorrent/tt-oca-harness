@@ -52,10 +52,22 @@
 `SEP_TB_IN(logic, lc_sigint_inject_i)
 // Token-comparator redundancy fault inject. Default 0. Encoding:
 //   3'b000 off
-//   3'b001 collapse instance 0 of the RMA_SIP comparator (both rails 0)
-//   3'b010 disagree: instance 0 drives a legal mismatch pair while 1/2 match
-//   3'b011 common-mode mismatch: all three legal mismatch (invert of a match)
-//   3'b100 common-mode match: all three legal match (invert of a mismatch)
+//   3'b001 collapse instance 0 of the selected comparator (both rails 0).
+//          This also makes instance 0 disagree with 1 and 2, and the fault
+//          output is the OR of the collapse and disagree terms, so this
+//          mode does not prove the collapse detector exists. Isolating it
+//          needs all three pairs alike and compute_comparison_vld_i=1.
+//          SEC_DISABLE's valid is the sticky digest valid, not the RMA
+//          digest_vld && fuse_sense_done term, so an all-alike force with
+//          that valid still 0 is expected not to raise the SEC rail.
+//   3'b010 disagree: instance 0 drives a legal mismatch pair while 1/2 match.
+//          Every pair stays legal, so this isolates the disagree term.
+//   3'b011 unanimous legal mismatch pair on all three instances
+//   3'b100 unanimous legal match pair on all three instances
+//          The two unanimous modes overwrite the gated comparator outputs,
+//          so the presented token does not reach the result: they show that
+//          a unanimous legal pair raises no fault, not that any particular
+//          token compares a particular way.
 // Signed off -- no legal token/OTP image can break the three identical
 // compare cones. See the force block below.
 `SEP_TB_IN(logic [2:0], token_cmp_fault_inject_i)

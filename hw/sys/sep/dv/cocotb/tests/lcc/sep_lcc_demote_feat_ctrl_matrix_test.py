@@ -92,14 +92,25 @@ class sep_lcc_demote_feat_ctrl_matrix_test(sep_base_test):
         demote_2: int,
         tag: str,
     ) -> None:
+        # SEC_DIS forces FEAT_CTRL to all-ones before the SECURE_TM mask, so
+        # feeding the probe into the golden would make a stuck-at-1 probe agree
+        # with a stuck-at-1 DUT at every cell in the matrix -- the whole walk
+        # would pass with the decode bypassed. This test presents no SEC_DIS
+        # token, so the value is known in advance: assert it and pass the
+        # literal.
         sec_dis = int(cocotb.top.lcc_security_disable_probe_o.value) & 0x1
+        assert sec_dis == 0, (
+            "SEC_DIS is asserted but this test never presents a token; with it "
+            "set, FEAT_CTRL is all-ones regardless of LC state, the DIS vectors "
+            "and both DEMOTE bits, so every cell below would be vacuous"
+        )
         feat = feat_ctrl_expected(
             image.lc_raw(),
             image.field_int("SIP_DIS"),
             image.field_int("SYS_DIS"),
             demote_1=demote_1,
             demote_2=demote_2,
-            sec_dis=sec_dis,
+            sec_dis=0,
         )
         ctl = SepLccFeatCtrlCheckSeq(feat)
         await self.start_seq(ctl)

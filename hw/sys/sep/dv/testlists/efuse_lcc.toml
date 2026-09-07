@@ -101,8 +101,9 @@ target = "lsu_stub_all_live"
 
 [[tests]]
 # eFuse set-only shadow OR-merge on version / revoke / required-signer
-# fields (never LC_STATE). RANDCFG: every seed walks all five legal
-# set-only fields; word index and bit patterns come from the run seed.
+# and Class-1 DIS fields (never LC_STATE). RANDCFG: every seed walks
+# seven legal set-only fields; word index and bit patterns come from
+# the run seed.
 # Real fuse sense. Program x lock stays a different mechanism.
 name = "sep_efuse_set_only_monotonicity_test"
 module = "efuse.sep_efuse_set_only_monotonicity_test"
