@@ -16,21 +16,36 @@ includes = ["smc.toml", "dtp.toml", "fabric.toml"]
 # feature and phase groups below are subsets for narrower runs; none of them
 # covers the whole set, and the widest (sep0_p4_all) leaves out two.
 #
-# This group is not reliably green, and the reason is the timing randomisation
-# in SmuEnvCfg.randomize_timing rather than the DUT. Two leaves carry checks
-# whose budgets assume one clock ratio and are re-rolled each run:
+# This group is not green, and SmuEnvCfg.randomize_timing is what exposes it:
+# it re-rolls the clock periods every run, so a leaf that depends on one ratio
+# passes or fails by seed. One of the two it caught was a DV defect and is
+# fixed; the other is not ours.
 #
-#   smu_dtp_bsr_ijtag_scan_test      counts TCK edges by sampling jtag_tck on
-#                                    clk_ref_i; 7 of the 12 (jtag, ref) pairs
-#                                    give under two samples per TCK high phase,
-#                                    so edges are aliased away
-#   smu_smc_dtp_jtag2axi_smoke_test  OTP_POLL is a fixed 128 iterations, which
-#                                    covers less simulated time when the seed
-#                                    picks a fast TCK against a slow clk_smu
+#   smu_dtp_bsr_ijtag_scan_test      FIXED. It counted TCK edges by sampling
+#                                    jtag_tck on clk_ref_i, and 7 of the 12
+#                                    (jtag, ref) pairs leave under two samples
+#                                    per TCK high phase, so edges aliased away.
+#                                    Now waits on the TCK edge itself and reads
+#                                    the same counts on all 12 pairs.
 #
-# Both are DV defects, not DUT ones, and neither carries a `ci` tag -- which is
-# how they stayed unreported. Do not drop them from here to make the group
-# green; `smoke` is the gate that has to stay green.
+#   smu_smc_dtp_jtag2axi_smoke_test  NOT a DV defect. The SMC JTAG2AXI SERIES
+#                                    incremental write never leaves BUSY when
+#                                    jtag_period_ns / smu_clk_period_ns < 4:
+#                                    FAIL at 2.67, 3.20, 3.33 and PASS at 4.00
+#                                    (three different period pairs), 4.80, 5.00
+#                                    and 6.00. jtag/ref and jtag/periph do not
+#                                    separate the two sets, so it is this ratio
+#                                    and not another clock. Raising the poll
+#                                    budget 16x does not help -- it is a hang,
+#                                    not a short timeout. Every one of those TCK
+#                                    frequencies is inside the 10-50 MHz the
+#                                    integrator guide specifies, and jtag2axi.sv
+#                                    crosses to ACLK through axi_cdc_clearable,
+#                                    which should not impose a ratio at all.
+#
+# Neither carries a `ci` tag, which is how both stayed unreported. Do not drop
+# the jtag2axi leaf from this group to make it green: `smoke` is the gate that
+# has to stay green, and this group exists to keep the failure visible.
 [[groups]]
 name = "all"
 tests = [

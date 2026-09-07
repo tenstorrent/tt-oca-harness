@@ -16,7 +16,7 @@ Not claimed: pad BSR I/O, DFD/iJTAG SIB open, TDO payload match.
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import RisingEdge
+from cocotb.triggers import ReadOnly, RisingEdge
 from ocah_jtag_vip import OcahJtagMasterSequence, OcahJtagState
 
 from seq_lib.smu_jtag_helpers import (
@@ -33,8 +33,6 @@ IDCODE_DR_WIDTH = 32
 MIN_UNSEL_TCK = DTP_IR_WIDTH + IDCODE_DR_WIDTH
 # shift_dr(N, back_to_rti): Select-DR + Capture-DR + N Shift + Exit1-DR + Update-DR
 EXPECTED_BSR_SEL_TCK = DTP_BSR_MODEL_LEN + 4
-# Extra ref edges after the scan so the last TCK rise is not dropped.
-_DRAIN_REF_CYCLES = 16
 
 
 class smu_dtp_bsr_ijtag_scan_test_seq:
@@ -60,38 +58,37 @@ class smu_dtp_bsr_ijtag_scan_test_seq:
             raise AssertionError(f"X/Z on {name}: {val}")
         return int(val) & 1
 
-    async def _observe_select(self, stop: list[bool]) -> dict[str, int]:
-        """TCK-sync BSR select-high counts; window tracks the concurrent scan."""
-        prev_tck = self._sample_bit("jtag_tck")
-        tck_n = 0
-        bsr_tcks = 0
+    async def _count_select(self, acc: dict[str, int]) -> None:
+        """Count TCK rises, and the BSR-selected subset, on TCK itself.
 
-        async def _tick() -> None:
-            nonlocal prev_tck, tck_n, bsr_tcks
-            await RisingEdge(self.dut.clk_ref_i)
-            tck = self._sample_bit("jtag_tck")
-            bsr = self._sample_bit("tb_bsr_select")
-            if tck == 1 and prev_tck == 0:
-                tck_n += 1
-                if bsr:
-                    bsr_tcks += 1
-            prev_tck = tck
+        This used to detect TCK edges by sampling jtag_tck on clk_ref_i, which
+        aliases: SmuEnvCfg.randomize_timing draws jtag_period_ns from
+        (32, 40, 48) and ref_clk_period_ns from (8, 10, 12, 16), and 7 of those
+        12 pairs leave under two ref samples inside a TCK high phase, so whole
+        pulses go uncounted. Seed 1671455428 draws ref=16 / jtag=40 -- 1.25
+        samples -- and lost one of the twelve. Waiting on the TCK edge is exact
+        and independent of both periods.
 
-        while not stop[0]:
-            await _tick()
-        for _ in range(_DRAIN_REF_CYCLES):
-            await _tick()
-        return {"tck_n": tck_n, "bsr_tcks": bsr_tcks}
+        `.select` is driven off the TAP state machine, so it is sampled in the
+        read-only region after the edge: the value that qualifies this TCK is
+        the settled one, not whatever is mid-update at the edge itself.
+        """
+        while True:
+            await RisingEdge(self.dut.jtag_tck)
+            await ReadOnly()
+            acc["tck_n"] += 1
+            if self._sample_bit("tb_bsr_select"):
+                acc["bsr_tcks"] += 1
 
     async def _scan_and_observe(
         self, jtag: OcahJtagMasterSequence, ir: int, dr_val: int, dr_width: int
     ) -> dict[str, int]:
-        stop = [False]
-        mon = cocotb.start_soon(self._observe_select(stop))
+        acc = {"tck_n": 0, "bsr_tcks": 0}
+        mon = cocotb.start_soon(self._count_select(acc))
         await jtag.shift_ir(ir, width=DTP_IR_WIDTH, back_to_rti=True)
         await jtag.shift_dr(dr_val, dr_width, back_to_rti=True)
-        stop[0] = True
-        return await mon
+        mon.cancel()
+        return acc
 
     async def run(self) -> None:
         sb = self.test.env.scoreboard
