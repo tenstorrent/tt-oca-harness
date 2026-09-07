@@ -303,11 +303,23 @@ module smu_wrapper_uvm_top (
 
 `ifdef SMU_NO_SEP
   localparam int unsigned SEP_ENABLED = 0;
-  localparam smu_pkg::smu_cfg_t SMU_CFG = smu_pkg::NoSepCfg;
+  localparam smu_pkg::smu_cfg_t SMU_BASE_CFG = smu_pkg::NoSepCfg;
 `else
   localparam int unsigned SEP_ENABLED = 1;
-  localparam smu_pkg::smu_cfg_t SMU_CFG = smu_pkg::DefaultCfg;
+  localparam smu_pkg::smu_cfg_t SMU_BASE_CFG = smu_pkg::DefaultCfg;
 `endif
+
+  // Same override tb_top.sv applies: exercise the most-significant configured
+  // DTP cross-trigger mode bit while [1:0] stay SMC-reserved. Without it lane 7
+  // is wire-OR here and point-to-point there, so the migrated CTM leaves would
+  // be scoring a different design than the one they were written against.
+  function automatic smu_pkg::smu_cfg_t make_tb_cfg();
+    smu_pkg::smu_cfg_t cfg = SMU_BASE_CFG;
+    cfg.XTRIG_INT_CT_MODE = 8'h80;
+    return cfg;
+  endfunction
+
+  localparam smu_pkg::smu_cfg_t SMU_CFG = make_tb_cfg();
 
   localparam logic [31:0] SMC_TEST_PASS = 32'hACAF_ACA1;
   localparam logic [31:0] SMC_TEST_FAIL = 32'hFFFF_FFFF;

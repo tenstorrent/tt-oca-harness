@@ -17,6 +17,7 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, RisingEdge
+from seq_lib.smu_tb_pins import smu_scope
 from smu_base_test import smu_base_test
 
 DEST_PATS = (0x01, 0x80, 0xA5, 0x5A)
@@ -68,8 +69,8 @@ class smu_xtrig_ctm_remap_test(smu_base_test):
         dut.xtrig_ctm_src_ack.value = 0
         await ClockCycles(dut.clk_smu_i, 8)
 
-        dtp_dst_req = dut.u_dut.dtp_xtrig_ctm_dst_req
-        dtp_src_ack = dut.u_dut.dtp_xtrig_ctm_src_ack
+        dtp_dst_req = smu_scope(dut).dtp_xtrig_ctm_dst_req
+        dtp_src_ack = smu_scope(dut).dtp_xtrig_ctm_src_ack
 
         async def _settle() -> None:
             await RisingEdge(dut.clk_smu_i)

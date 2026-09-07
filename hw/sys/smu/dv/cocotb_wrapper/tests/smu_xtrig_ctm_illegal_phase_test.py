@@ -15,6 +15,7 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, RisingEdge
+from seq_lib.smu_tb_pins import smu_scope
 from smu_base_test import smu_base_test
 
 PAT_A = 0x25
@@ -47,7 +48,7 @@ class smu_xtrig_ctm_illegal_phase_test(smu_base_test):
         dut.xtrig_ctm_src_ack.value = 0
         await ClockCycles(dut.clk_smu_i, 8)
 
-        dtp_dst_req = dut.u_dut.dtp_xtrig_ctm_dst_req
+        dtp_dst_req = smu_scope(dut).dtp_xtrig_ctm_dst_req
 
         async def _settle() -> None:
             await RisingEdge(dut.clk_smu_i)
