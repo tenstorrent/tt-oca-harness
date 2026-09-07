@@ -259,8 +259,10 @@ hw/sys/sep/dv/
 │   ├── sep_tb_signal_list.svh  # every TB signal, declared once for both shapes
 │   ├── sep_tb_if.sv     #   SEP-local TB interface of the SV-UVM shape
 │   ├── sep_outbound_mbx.sv  # outbound mailbox responder + console/PASS monitor
-│   ├── efuse_preloads/  #   committed default eFuse image (sep_efuse_default.hex)
-│   └── interfaces/      #   SV interfaces
+│   ├── efuse_preloads/  #   efuse_configurations/*.toml declare OTP images by
+│   │                    #   register/field; sep_efuse_default.hex is the one
+│   │                    #   committed image (a random-vector snapshot)
+│   └── interfaces/      #   (SV interfaces — empty for now)
 ├── testlists/           # native TOML testlists (all.toml + per-subsystem leaves)
 ├── sep_sim_cfg.toml     # block build/filelist manifest, run modes, tool knobs
 ├── sep_public_scope.vlt # scoped Verilator public list (narrow on purpose: a global

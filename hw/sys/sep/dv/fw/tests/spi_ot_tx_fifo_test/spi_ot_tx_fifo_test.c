@@ -53,7 +53,6 @@ int main(void) {
     spi_controller__STATUS_t status;
     spi_controller__ERROR_STATUS_t err_status;
 
-
     /* Enable controller */
     ctrl.w = SPI_CONTROLLER__CTRL_reset;
     ctrl.f.SPIEN = 1;

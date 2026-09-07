@@ -1,0 +1,69 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+//
+// SEP SRAM preload: a minimal warm-reset handler for sep_scratch_7_test.
+//
+// The Boot ROM's warm-reset dispatch (bootrom/prod/src/vector.S) jumps to the
+// address in warm_scratch[0] if it lies inside SEP SRAM
+// [SEP_SRAM_BASE, SEP_BOOT_ROM_BASE) = [0x10000000, 0x10040000). In production
+// that target is BL1, already resident in SRAM. Under test there is no BL1, so
+// this file puts one valid instruction at the jump target instead.
+//
+// WHY A REAL INSTRUCTION AND NOT ZEROS. The check that proves the ROM jumped to
+// the *scratch value* (rather than to a hardcoded base, or not at all) is the
+// retired-PC trace. SRAM default-fills to zero, and 0x00000000 is an illegal
+// instruction: it traps instead of retiring, so it would produce no PC evidence.
+// Worse, the ROM's trap_vector needs a valid `sp`, which the warm path never sets
+// up (vector.S sets sp in cold_boot, after the warm branch) -- so a trap here
+// would corrupt the observation instead of yielding it.
+//
+// THE INSTRUCTION is `j .` (jump-to-self) = 0x0000006f, verified with
+// riscv64-unknown-elf-gcc -march=rv32im_zicsr -mabi=ilp32. It retires forever at
+// the entry address, so the trace shows exactly the seeded PC and nothing after.
+//
+// LAYOUT. u_sep_sram is 32768 x 64-bit, byte-addressed from 0x10000000, and
+// $readmemh fills from index 0. The handler entry is 0x10000100 -- deliberately
+// NOT offset 0, so "PC == seeded address" cannot be satisfied by a ROM that
+// jumped to the range base by mistake. Byte offset 0x100 is 64-bit word 32, so
+// words 0..31 are zero filler and word 32 carries the instruction.
+//
+// Both halves of word 32 hold the instruction. Only the low half (0x10000100) is
+// the entry, but filling both makes the preload immune to a half-mapping
+// surprise without weakening the PC check -- the ROM still has to jump to
+// 0x10000100 for that PC to appear in the trace.
+//
+// Keep this in sync with _WARM_HANDLER_ADDR in
+// cocotb/tests/rom_fw/sep_scratch_7_test.py.
+0000000000000000
+0000000000000000
+0000000000000000
+0000000000000000
+0000000000000000
+0000000000000000
+0000000000000000
+0000000000000000
+0000000000000000
+0000000000000000
+0000000000000000
+0000000000000000
+0000000000000000
+0000000000000000
+0000000000000000
+0000000000000000
+0000000000000000
+0000000000000000
+0000000000000000
+0000000000000000
+0000000000000000
+0000000000000000
+0000000000000000
+0000000000000000
+0000000000000000
+0000000000000000
+0000000000000000
+0000000000000000
+0000000000000000
+0000000000000000
+0000000000000000
+0000000000000000
+0000006f0000006f

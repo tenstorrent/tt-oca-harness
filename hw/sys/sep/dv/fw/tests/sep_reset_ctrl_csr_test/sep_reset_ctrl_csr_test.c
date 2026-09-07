@@ -251,10 +251,8 @@ int main(void) {
     WRITE_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR, trng_asserted);
     (void)READ_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
 
-    uint32_t aes_live =
-        READ_REG(OCH_SEP_TOP_AES_CTRL_AUX_REGWEN_BASE_ADDR);
-    if (aes_live != AES__CTRL_AUX_REGWEN__CTRL_AUX_REGWEN_reset ||
-        nmi_count() != expected_nmi) {
+    uint32_t aes_live = READ_REG(OCH_SEP_TOP_AES_CTRL_AUX_REGWEN_BASE_ADDR);
+    if (aes_live != AES__CTRL_AUX_REGWEN__CTRL_AUX_REGWEN_reset || nmi_count() != expected_nmi) {
         printf("ERROR: AES sibling was affected by TRNG-only reset\n");
         test_fail(1);
     }
@@ -282,8 +280,8 @@ int main(void) {
     for (size_t i = 0; i < sizeof(trng_ports) / sizeof(trng_ports[0]); i++) {
         uint32_t rd = READ_REG(trng_ports[i].probe_addr);
         if (rd != 0u || nmi_count() != expected_nmi) {
-            printf("ERROR: TRNG %s did not reopen at reset default (0x%08x)\n",
-                   trng_ports[i].name, rd);
+            printf("ERROR: TRNG %s did not reopen at reset default (0x%08x)\n", trng_ports[i].name,
+                   rd);
             test_fail(1);
         }
     }

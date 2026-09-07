@@ -20,24 +20,20 @@ invisible to the other, and ``build_ot_pio/boot_rom.elf`` does not even contain
 ``ot_spi_flash_read_dma`` -- the linker drops it -- so the DMA test genuinely
 cannot cover this code.
 
-Everything else is inherited. This subclass exists to redirect the ROM images at
-``build_ot_pio/``; the scenario, the flash BFM wiring and the BOOT_SPI /
-WAIT_SMC_MANIFEST path assertions all come from the parent, which is the point of
-keeping those as class data there.
+Everything else is inherited. Which ROM binary runs is decided by the
+``+sep_boot_rom_hex`` the testlist passes for this entry (``build_ot_pio/``); the
+scenario, the flash BFM wiring and the BOOT_SPI / WAIT_SMC_MANIFEST path
+assertions all come from the parent as class data. This subclass therefore
+carries no body of its own -- it gives the testlist a second name to point that
+plusarg at.
 """
 
 from __future__ import annotations
 
-import os
-
 import pyuvm
-from cpu.sep_rom_ot_dma_boot_test import _ROM_DIR, sep_rom_ot_dma_boot_test
+from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
 
 
 @pyuvm.test()
 class sep_rom_ot_pio_boot_test(sep_rom_ot_dma_boot_test):
     """Boot over the OT SPI host with the RX FIFO drained by CPU PIO."""
-
-    # Must stay in step with +sep_boot_rom_hex in the testlist, which points at
-    # this same directory's boot_rom.vmem.
-    rom_build_dir = os.path.join(_ROM_DIR, "build_ot_pio")

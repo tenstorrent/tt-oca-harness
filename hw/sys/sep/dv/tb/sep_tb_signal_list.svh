@@ -272,6 +272,33 @@
 // -- the EL2 owns the LSU bus under +cpu_boot. The cold block survives the KM
 // warm reset. Mirrors the reference UVM observer's uvm_hdl_read of the same registers.
 `SEP_TB_OUT(logic [255:0], scratch_cold_probe_o)
+// Read-only XMRs observe the loaded manifest header and three decrypted AES
+// payload blocks. The CPU owns the SRAM frontdoor during firmware boot, so
+// the testbench has no independent read path. The memory arrays sit outside
+// the AXI ready/valid combinational cones.
+`SEP_TB_OUT(logic [63:0], sram_word0_probe_o)
+`SEP_TB_OUT(logic [383:0], sram_payload_probe_o)
+// SMC scratch[10] (smc_base+0x390D0), the slot the ROM publishes the raw
+// DFX/MEM_REPAIR status into when it blocks the boot -- the documented
+// JTAG-readable evidence that the ROM saw the failure. Sampled rather than
+// continuously assigned: axi_sim_mem backs the SMC with an ASSOCIATIVE array,
+// which cannot appear in a continuous assign. Reads 0 until the ROM writes it.
+`SEP_TB_OUT(logic [31:0], smc_scratch10_probe_o)
+// DFX_CTRL_STATUS_SMU (smc_base+0xB800) as the SMC model actually holds it,
+// i.e. the word the ROM's MEM_REPAIR gate reads over AXI. The FAILURE arm can
+// confirm its own injection from SMC scratch[10], because the gate republishes
+// the raw value there; the PASS arm cannot, because that publication sits on
+// the failure branch and the pass branch writes nothing at all. Without this
+// probe a pass-arm test whose +sep_dft_status silently failed to apply would
+// read the tb default 0x113 -- which has mem_repair_success, mbist_done AND
+// mbist_pass set, so it would still boot and still be green, and the whole
+// discrimination the testcase rests on would be untested.
+`SEP_TB_OUT(logic [31:0], smc_dft_status_probe_o)
+// Count of SEP->SMC accesses that landed outside every register window the
+// generated SMC map declares. Non-zero means the ROM used an offset this
+// design does not implement -- see the SMC address decode check below. Any
+// test may assert this is 0; the flat axi_sim_mem cannot catch it otherwise.
+`SEP_TB_OUT(logic [31:0], smc_addr_violations_o)
 `SEP_TB_OUT(logic [31:0], km_rom_req_count_o)
 `SEP_TB_OUT(logic [31:0], km_sram_req_count_o)
 `SEP_TB_OUT(logic [31:0], km_sram_write_count_o)
@@ -371,6 +398,15 @@
 `SEP_TB_OUT(logic, lcc_security_disable_probe_o)
 `SEP_TB_OUT(logic, lcc_sigint_err_probe_o)
 `SEP_TB_OUT(logic, secure_tm_o)
+// Demotion state outputs expose the differential {~demote, demote} encoding;
+// 2'b10 is clear, 2'b01 is set, and other values are invalid. The lock bits
+// have no DUT output, and the CPU owns their AXI frontdoor during firmware
+// boot, so read-only XMRs observe the register storage. The leaf register
+// storage sits outside the AXI ready/valid combinational cones.
+`SEP_TB_OUT(logic [1:0], lcc_demote_state_1_probe_o)
+`SEP_TB_OUT(logic [1:0], lcc_demote_state_2_probe_o)
+`SEP_TB_OUT(logic, lcc_demote_lock_1_probe_o)
+`SEP_TB_OUT(logic, lcc_demote_lock_2_probe_o)
 // OTP JTAG2AXIL disable bits of DUT dbg_disable_o (frontdoor). LCC ties
 // both to 0; the fuse controller enforces access. Sliced here so cocotb
 // can read them without a packed-struct field walk.
