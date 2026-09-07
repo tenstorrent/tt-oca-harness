@@ -88,8 +88,8 @@ if __name__ == "__main__":
 import tomllib  # noqa: E402
 from typing import Dict, Optional, Tuple  # noqa: E402
 
-import sep_reg  # noqa: E402
 import sep_reg_meta  # noqa: F401,E402
+import sep_reg  # noqa: E402
 
 WORD_BITS = 32
 
