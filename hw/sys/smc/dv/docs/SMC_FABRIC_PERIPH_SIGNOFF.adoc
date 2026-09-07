@@ -10,9 +10,9 @@ name is not protocol proof. `testlists/deferred.toml` is gone; OUT rows
 live in `SMC_DEFERRED_DISPOSITION.adoc` and the README "Present but not
 enrolled" table.
 
-Evidence: scheduled nightly `--dut smc --items smoke` on `a273033a0`
-completed successfully
-(https://github.com/tenstorrent/tt-oca-harness/actions/runs/34051136716).
+Evidence: the `verilator-nightly (smc)` job of run 34051136716 on
+`a273033a0` passed
+(https://github.com/tenstorrent/tt-oca-harness/actions/runs/34051136716/job/101534871072).
 Every credited fabric / peripheral name below is in that `smoke` group.
 
 [[smc-fabric-credit]]

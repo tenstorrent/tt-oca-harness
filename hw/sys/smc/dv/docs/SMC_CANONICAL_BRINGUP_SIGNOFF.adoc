@@ -36,7 +36,7 @@ Evidence: the `verilator-nightly (smc)` job of run 34051136716 on
 [cols="2,3,3,1",options="header",]
 |===
 |Requirement |Test |Nightly evidence |Credit
-|Reset / power-good bring-up |`smc_canonical_smoke_test` |`CHK-CANONICAL-SMOKE`, `CHK-RESET-WAIT-COLD` / `COOL` |YES
+|Reset / power-good bring-up |`smc_canonical_smoke_test` |`CHK-CANONICAL-SMOKE`, `CHK-RESET-WAIT-COLD_PRIMARY_ASSERTED` / `COOL_PRIMARY_ASSERTED` |YES
 |Scratch / chip-config CSR |`smc_register_sanity_test` |15 SEP_IN AXI scratch RW/restore accesses; scoreboard value checks; `proxy=False` |YES
 |Default / RO register read |`smc_default_reg_rd_test` |`CHK-DEFAULT-REG-SWEEP`, `CHK-DEFAULT-REG-VALUE` |YES
 |Mailbox STATUS / IRQ |`smc_mailbox_irq_test` |`CHK-MAILBOX-IRQ-ASSERT` / `CLEAR` / `SOURCE` |YES
@@ -46,8 +46,9 @@ Evidence: the `verilator-nightly (smc)` job of run 34051136716 on
 |SAMPLE observe |`smc_cold_reset_test` and other `project_p0` observe leaves |In `smoke`; SAMPLE-only |NO
 |===
 
-Stub-signature members are gone. `smc_i3c_to_fabric_test` is decode
-only, not SLVERR-to-stub, and is not a canonical seat (#1448 / #504).
+`canonical_top*` and `project_p0` no longer carry the I3C stub-signature
+leaf after #1448. `smc_i3c_to_fabric_test` is decode only, not
+SLVERR-to-stub, and is not I3C protocol credit (#504).
 
 [[smc-canonical-approval]]
 === Component approval (unsigned)
