@@ -88,18 +88,13 @@ int main(void) {
     return 0;
 }
 
-int other_main(int hartid) {
-    while (true) {
-        __asm__("wfi");
-    }
-}
-
 int secondary_main(void) {
-    int hartid = metal_cpu_get_current_hartid();
-
-    if (hartid == 0) {
-        return main();
-    } else {
-        return other_main(hartid);
+    /* Only hart 0 drives the sequence; the rest park. */
+    if (metal_cpu_get_current_hartid() != 0) {
+        while (true) {
+            __asm__("wfi");
+        }
     }
+
+    return main();
 }
