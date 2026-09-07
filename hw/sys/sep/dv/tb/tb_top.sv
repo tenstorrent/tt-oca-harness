@@ -282,6 +282,7 @@ module sep_uvm_top
     sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable_w;
     assign dbg_disable_smc_otp_jtag2axi_o = dbg_disable_w.smc_otp_jtag2axi;
     assign dbg_disable_sep_otp_jtag2axi_o = dbg_disable_w.sep_otp_jtag2axi;
+    assign dbg_disable_all_o              = dbg_disable_w;
 
     // TB-owned JTAG pins used to program the EL2 reset-vector TDR in +cpu_boot
     // mode. They remain at the idle TAP-reset values for no-CPU tests.
