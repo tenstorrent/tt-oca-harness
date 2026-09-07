@@ -30,22 +30,44 @@ from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
 # --- mailbox register map (SEP/host side) ---------------------------------
 KM_MBOX_BASE = sym("KM_MAILBOX_SEP_REG_MAP_BASE_ADDR")
-KM_MBOX_WRITE_DATA = 0x000
-KM_MBOX_WRITE_SEPARATOR = 0x004
-KM_MBOX_READ_DATA = 0x008
-KM_MBOX_STATUS = 0x00C
+# Offsets from the generated map, not literals: a register-flow rename or a
+# moved register then surfaces as an import-time error instead of a silently
+# stale constant that reads or writes the wrong port.
+KM_MBOX_WRITE_DATA = sym("KM_MAILBOX_SEP_SEP_WRITE_DATA_REG_OFFSET")
+KM_MBOX_WRITE_SEPARATOR = sym("KM_MAILBOX_SEP_SEP_WRITE_SEPARATOR_REG_OFFSET")
+KM_MBOX_READ_DATA = sym("KM_MAILBOX_SEP_SEP_READ_DATA_REG_OFFSET")
+KM_MBOX_STATUS = sym("KM_MAILBOX_SEP_SEP_STATUS_REG_OFFSET")
 
 # STATUS bit positions
 KM_STATUS_OUTBOUND_EMPTY = 2
 KM_STATUS_OUTBOUND_SEPARATOR = 25
 
 # --- commands / responses / destinations ----------------------------------
+KM_CMD_STAT = 0x03
 KM_CMD_KEY_GENERATE = 0x22
+KM_CMD_KEY_REVOKE = 0x23
 KM_CMD_KEY_TRANSFER = 0x24
+KM_CMD_ENGINE_SHRED = 0x25
 KM_CMD_KEY_LOAD = 0x26
 KM_RESP_CMD = 0x00
 KM_RESP_KM_READY = 0x55
+
+# Return codes (signed int8 in the RESP_CMD payload).
 KM_RC_SUCCESS = 0
+KM_RC_FAILURE = -1
+KM_RC_INVALID_CMD = -4
+KM_RC_INVALID_LEN = -5
+KM_RC_INVALID_ARG = -7
+
+# The command-ID space is sparse: 0x00-0x04, 0x10-0x12 and 0x22-0x28 are the
+# only defined opcodes, so every other ID must come back KM_RC_INVALID_CMD.
+KM_VALID_CMD_IDS = (
+    frozenset(range(0x00, 0x05)) | frozenset(range(0x10, 0x13)) | frozenset(range(0x22, 0x29))
+)
+
+# The null handle is reserved and never allocated, so it is always a legal
+# stand-in for "a handle the key registry does not hold".
+KM_KEY_HANDLE_NULL = 0x00
 
 # Destination bitmask (rom_defs.h / sep_km_types.sv): bit3 = OTBN
 KM_DEST_HMAC = 0x01
@@ -368,10 +390,60 @@ class SepKmMailbox:
         )
         rc, _arg = await self.recv_resp_cmd(KM_CMD_KEY_TRANSFER, seq, timeout=timeout)
         await self.check_outbound_empty("POST-KEY-TRANSFER")
-        self.log.info("KM CMD_KEY_TRANSFER ok: handle=0x%02x dest=0x%02x rc=%d", handle, dest, rc)
+        self.log.info("KM CMD_KEY_TRANSFER: handle=0x%02x dest=0x%02x rc=%d", handle, dest, rc)
         return rc
 
     async def check_outbound_empty(self, tag: str) -> None:
         status = await self._status()
         if not (status & (1 << KM_STATUS_OUTBOUND_EMPTY)):
             raise AssertionError(f"[{tag}] KM mailbox outbound FIFO not empty: 0x{status:08x}")
+
+    async def key_revoke(self, *, handle: int, timeout: int = 200_000) -> tuple[int, int]:
+        """CMD_KEY_REVOKE; returns (return_code, return_arg).
+
+        Revoke erases every KPV slot the key spans and destroys the registry
+        entry, so a later CMD_KEY_TRANSFER on the same handle must fail the
+        lookup. Returns the raw result rather than raising, because the reject
+        legs are the point of the negative cases."""
+        seq = await self.send_command(KM_CMD_KEY_REVOKE, [handle & 0xFFFF_FFFF])
+        rc, arg = await self.recv_resp_cmd(KM_CMD_KEY_REVOKE, seq, timeout=timeout)
+        await self.check_outbound_empty("POST-KEY-REVOKE")
+        self.log.info("KM CMD_KEY_REVOKE: handle=0x%02x rc=%d arg=0x%08x", handle, rc, arg)
+        return rc, arg
+
+    async def engine_shred(self, *, dest: int, timeout: int = 200_000) -> tuple[int, int]:
+        """CMD_ENGINE_SHRED; returns (return_code, return_arg).
+
+        Clears KEY_VALID on every selected engine and overwrites both key
+        shares with fresh random data, so a consume attempted afterwards has
+        no valid key to use."""
+        seq = await self.send_command(KM_CMD_ENGINE_SHRED, [dest & 0xFFFF_FFFF])
+        rc, arg = await self.recv_resp_cmd(KM_CMD_ENGINE_SHRED, seq, timeout=timeout)
+        await self.check_outbound_empty("POST-ENGINE-SHRED")
+        self.log.info("KM CMD_ENGINE_SHRED: dest=0x%02x rc=%d arg=0x%08x", dest, rc, arg)
+        return rc, arg
+
+    async def stat(self, *, timeout: int = 200_000) -> tuple[int, int]:
+        """CMD_STAT; returns (return_code, return_arg).
+
+        Used after a rejected command as a liveness-and-no-side-effect probe:
+        a KM that answers STAT normally has stayed in its command loop rather
+        than wedging or faulting on the rejected frame."""
+        seq = await self.send_command(KM_CMD_STAT, [])
+        rc, arg = await self.recv_resp_cmd(KM_CMD_STAT, seq, timeout=timeout)
+        await self.check_outbound_empty("POST-STAT")
+        return rc, arg
+
+    async def send_raw_expect_rc(
+        self, cmd_id: int, payload_words: list[int], *, timeout: int = 200_000
+    ) -> tuple[int, int]:
+        """Send an arbitrary (including undefined) command and return its
+        (return_code, return_arg) without judging it.
+
+        The frame itself stays well formed -- correct header CRC-8, correct
+        declared length, correct payload CRC-32C -- so the KM rejects it on the
+        command ID or the argument, not on framing."""
+        seq = await self.send_command(cmd_id, payload_words)
+        rc, arg = await self.recv_resp_cmd(cmd_id, seq, timeout=timeout)
+        await self.check_outbound_empty(f"POST-RAW-0x{cmd_id:02x}")
+        return rc, arg

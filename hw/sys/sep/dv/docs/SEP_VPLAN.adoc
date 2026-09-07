@@ -481,7 +481,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |`sep_km_key_policy_vault_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, KM path / golden
-|The key/policy vault refuses what it should: a store to a locked SRAM region is dropped with the readback unchanged, the matching `SRAM_WRITE_LOCK_VIOLATION` bit sets, `IRQ_STATUS` raises AXI_SLVERR or AXI_DECERR, and the status bit clears W1C. Scope: seal stays on the parked command-set vehicle.
+|The key/policy vault refuses what it should: a store to a locked SRAM region is dropped with the readback unchanged, the matching `SRAM_WRITE_LOCK_VIOLATION` bit sets, `IRQ_STATUS` raises AXI_SLVERR or AXI_DECERR, and the status bit clears W1C. The seal walk is here too: the same erase must retire a sealed slot and free an unsealed one.
 |===
 
 [[iconic-scorecard]]
@@ -572,12 +572,12 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_km_*_sideload_kat_test`, `sep_drbg_real_sink_multi_km_aes_test`. Fail-closed START without a valid key, and post-error recovery, are Phase 3.
 
 |KM mailbox command set
-|GAP
-|Parked: `sep_km_command_set_rand_test` (needs dedicated KM ROM)
-
-|KM key/policy vault (extent + write-lock)
 |PROVEN
-|`sep_km_key_policy_vault_test`. Seal stays with the command-set vehicle.
+|`sep_km_command_set_rand_test`. Generate, transfer, revoke and engine-shred on the real KM firmware, with AES as the consume witness, plus illegal-command and bad-length refusals. A DRBG fault raised during a command is Phase 3: its status bit is on the Key Manager's own bus, which answers DECERR from the SEP fabric, so it has no frontdoor.
+
+|KM key/policy vault (extent + write-lock + seal)
+|PROVEN
+|`sep_km_key_policy_vault_test`. The seal walk lives here rather than on the command set: no mailbox command seals a slot, so over the command set an erase always frees and the retire path has no vehicle there.
 
 |ESRC → DRBG → EDN consume
 |PROVEN
@@ -692,12 +692,12 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_entropy_pool_aperture_test`. Drain-under-fill / stall-duration are Phase 3.
 
 |KM CRC engine (PCPI)
-|GAP
-|Parked: `sep_km_crc_pcpi_kat_test`
+|PROVEN
+|`sep_km_crc_pcpi_kat_test`. All three modes against an independent golden, plus a hardware-only word-versus-byte chaining cross-check that holds if the golden is wrong.
 
 |KM KPV scrambler
-|GAP
-|Parked: `sep_km_kpv_scrambler_test`
+|PROVEN
+|`sep_km_kpv_scrambler_test`. Data transform, address tweak and keying, all frontdoor: the vault passes through while disabled, so the raw stored words are readable without a hierarchical peek.
 
 |Mailbox outbox FIFO, threshold interrupt and error flags
 |PROVEN
@@ -4380,17 +4380,17 @@ error path works.
 
 *VIP / Model*: ocah_axi_vip, KM path / golden
 
-*Randomization*: RANDCFG — slot and SRAM lock region from the run seed; extent endpoints 0 and 63 and the lock/W1C sequence are directed.
+*Randomization*: RANDCFG — slot, SRAM lock region and the seal/free slot pair from the run seed; extent endpoints 0 and 63 and the lock/W1C sequence are directed.
 
-*Objective*: The key/policy vault refuses what it should: a store to a locked SRAM region is dropped with the readback unchanged, the matching `SRAM_WRITE_LOCK_VIOLATION` bit sets, `IRQ_STATUS` raises AXI_SLVERR or AXI_DECERR, and the status bit clears W1C. Scope: seal stays on the parked command-set vehicle.
+*Objective*: The key/policy vault refuses what it should: a store to a locked SRAM region is dropped with the readback unchanged, the matching `SRAM_WRITE_LOCK_VIOLATION` bit sets, `IRQ_STATUS` raises AXI_SLVERR or AXI_DECERR, and the status bit clears W1C. The seal walk is here too: the same erase must retire a sealed slot and free an unsealed one.
 
 *Test Procedure*:
 
 [arabic]
 . Dedicated `km_rom_vault` on the KM CPU bus, not `rom_main`.
-. Seal stays on the parked command-set vehicle.
+. The seal walk lives here rather than on the command set because no mailbox command seals a slot: over that surface an erase always frees, so the retire path has no vehicle there.
 . PicoRV32 is RV32E (`x0`–`x15` only).
-. A legal slot in 0..63 takes `CTRL.lock_write`; a store past `KM_KPV_SIZE` (`0x13108`, still inside the 8 KB KPV window) raises AXI SLVERR; a write to a write-locked SRAM region (never region 0 or 15) is dropped and raises `SRAM_WRITE_LOCK_VIOLATION` plus `IRQ_STATUS.SRAM_WRITE_LOCK_ERR`, then both W1C-clear to 0.
+. A legal slot in 0..63 takes `CTRL.lock_write`; a store past `KM_KPV_SIZE` (`0x13108`, still inside the 8 KB KPV window) raises AXI SLVERR or DECERR; a write to a write-locked SRAM region (never region 0 or 15) is dropped and raises `SRAM_WRITE_LOCK_VIOLATION` plus `IRQ_STATUS.SRAM_WRITE_LOCK_ERR`, then both W1C-clear to 0.
 . [cols="1,2,2,1",options="header"]
 
 *Checkers*:
@@ -4410,65 +4410,147 @@ error path works.
 |`IRQ_STATUS.SRAM_WRITE_LOCK_ERR` is set.
 |CHK-W1C
 |Violation and IRQ bits read back 0 after W1C.
+|CHK-SEAL
+|One `CTRL` write on the seed's seal slot sets `seal` and raises `lock_write` with it.
+|CHK-RETIRE
+|Erasing that sealed slot leaves it retired: `lock_write` held and `lock_use` gained.
+|CHK-FREE
+|An unsealed slot is marked with `lock_write`, and the erase clears `CTRL` entirely, so the slot is reusable. The mark matters: the reset value is already clear, so without it a no-op erase would pass. The contrast is the point: the same erase, one sealed and one not.
 |CHK-RANDCFG
-|Slot and region come from the seed; word0 matches `FLAG_ALL`.
+|Slot, region and the seal/free slot pair come from the seed; word0 matches `FLAG_ALL`.
 |===
+
+*Aperture*: the vault is on the KM CPU bus, so the ROM evaluates these
+contracts and the host reads one summary word from KM SRAM. That indirection is
+real and is stated here rather than left implied: the host observes a result
+word, not the individual registers. What keeps it from being a firmware
+self-report is the seeded configuration -- the slot, region and slot pair are
+chosen by the host, and the result word must equal the value those choices
+predict, so a firmware that reported success unconditionally would still have to
+have used the host's operands.
 
 '''''
 
-==== Parked vehicle contracts
-
-These three vehicles are parked on infrastructure (a dedicated Key Manager ROM
-image), not descoped. The cards below are the contract each must meet when it is
-unparked.
+==== Key Manager vault vehicles
 
 [[sep_km_command_set_rand_test]]
 ===== `sep_km_command_set_rand_test`
 
-*Run mode*: `no_cpu`, `+skip_fuse_sense`, `+km_rom_hex` (real KM firmware)
+*Run mode*: `no_cpu`, real fuse-sense, `+esrc_noise_force`,
+`+km_rom_hex=rom_main.rom.parhex`
 
-*Phase*: 2 (parked — not coded)
+*Phase*: 2
 
 *Bucket*: Key Manager vault
 
 *Objective*: the KM mailbox command set is this vehicle's surface — generate,
 transfer, revoke-or-shred, and illegal-to-error. The sideload KATs prove only
 that a consumer can consume a key; none of them exercises the command interface
-that produces, moves and destroys one. Grade: GAP, not coded.
+that produces, moves and destroys one.
 
-*Test Procedure*: T.B.D. — yet to code.
+*Test Procedure*:
+
+[arabic]
+. Stage a valid PROD OTP image and sense it for real: the KM firmware reads OTP
+at boot. Park OTBN, KMAC and HMAC, leave AES released as the consume witness, so
+a transferred key can only land where the test says it lands.
+. Bring entropy up strict, then release the KM and wait for `RESP_KM_READY`.
+. Generate a key for AES twice; check the handle and the echoed argument fields.
+. Load a known key, transfer it to AES, and encrypt: the ciphertext is compared
+against an independent AES-256-ECB golden.
+. Transfer the same handle to an engine outside its permitted set.
+. Shred the AES key, then load and transfer a second, distinct known key and
+encrypt again.
+. Revoke the generated handle, then transfer on it.
+. Revoke the reserved null handle; walk seeded undefined command IDs; send a
+defined command with the wrong payload length. Probe with `CMD_STAT` after each
+refusal.
 
 *Randomization*: RAND-REP — generate / transfer / revoke-or-shred /
-illegal-to-error every seed; mailbox operands from the run seed.
+illegal-to-error every seed. RANDCFG for the generated key size, the
+out-of-policy destination, and the undefined command IDs, which always include
+the four IDs immediately outside the defined runs.
 
 *Scope*: sideload KATs stay consume proofs; this vehicle owns the mailbox command
 set. If mailbox protocol RANDCFG does not fit, add
-`sep_km_mailbox_protocol_rand_test` rather than overload this entry.
+`sep_km_mailbox_protocol_rand_test` rather than overload this entry. The seal
+walk is on `sep_km_key_policy_vault_test`, not here: no mailbox command seals a
+slot, so over this surface an erase always frees.
 
-*Checkers (planned)*: a command is accepted or rejected per the KM spec; transfer
-makes the consumer-visible key match the generated value; revoke-or-shred makes a
-later consume fail closed; erasing a sealed slot destroys its material and leaves
-the slot retired rather than reusable; a DRBG fault during a command raises
-`IRQ_STATUS.DRBG_ERR` and does not surface as an AXI error response; an illegal
-command returns the documented error and does not change key state.
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK0
+|`rom_main` boots on real entropy and announces `RESP_KM_READY`.
+|CHK-GEN
+|`CMD_KEY_GENERATE` returns success and a non-null handle, and its return argument echoes the requested size and destination mask.
+|CHK-UNIQ
+|A second generate returns a different handle.
+|CHK-XFER
+|`CMD_KEY_TRANSFER` of a known loaded key succeeds and the AES ciphertext equals the independent golden.
+|CHK-DEST
+|A transfer to an engine outside the key's permitted set is refused with the failure code, not an argument-validation code.
+|CHK-SHRED
+|`CMD_ENGINE_SHRED` succeeds with its destination echoed, and the engine re-keys: a second distinct key transferred afterwards encrypts to its own golden and no longer to the first key's.
+|CHK-REVOKE
+|`CMD_KEY_REVOKE` succeeds with the handle echoed.
+|CHK-CLOSED
+|A transfer on the revoked handle is refused with the failure code: revoke fails closed.
+|CHK-NULL
+|Revoking the reserved null handle is refused with the invalid-argument code.
+|CHK-ILLEGAL
+|Every seeded undefined command ID returns the invalid-command code.
+|CHK-LEN
+|A defined command carrying the wrong payload length returns the invalid-length code.
+|CHK-ALIVE
+|After every refusal `CMD_STAT` succeeds and reports no latched recoverable error. The second half is what gives CHK-DEST and CHK-CLOSED their meaning: while a recoverable fault is pending the KM refuses every key command with the same failure code those two expect, before it looks at the arguments at all, so a faulted KM would otherwise satisfy both without the policy they name being exercised.
+|===
+
+*Anti-vacuity*: every frame is built with a correct header CRC-8, a correct
+declared length and a correct payload CRC-32C, so a refusal is a verdict on the
+command ID or its arguments and never on framing. The refusal checkers assert
+the exact documented code rather than "not success", so a rejection for the
+wrong reason does not read as a pass. The two known keys are checked to encrypt
+the plaintext differently before either is used, so CHK-SHRED's
+before-and-after comparison cannot be satisfied by two identical goldens.
+
+*Not claimed*: a DRBG fault raised during a command. Its status bit is on the
+Key Manager's own bus, which answers DECERR from the SEP fabric, and at SEP
+level such a fault is unrecoverable — the KM emits an unsolicited fault response
+and halts — so it is neither a readable status nor a return code from here.
+Phase 3. The shredded key material itself is also not observed: the engine key
+share registers are write-only and read as zero, so the shred is proven by its
+return code plus the engine re-keying correctly afterwards.
 
 '''''
 
 [[sep_km_crc_pcpi_kat_test]]
 ===== `sep_km_crc_pcpi_kat_test`
 
-*Run mode*: `no_cpu`, `+skip_fuse_sense`, dedicated KM ROM image
+*Run mode*: `no_cpu`, `+skip_fuse_sense`, `+km_rom_hex=km_rom_crc.parhex`
 
-*Phase*: 2 (parked — not coded)
+*Phase*: 2
 
 *Bucket*: Key Manager vault
 
 *Objective*: each mode of the KM CRC engine produces the value an independently
 written host-side model produces. The engine has no register interface, so the
 proof has to come from KM firmware issuing the PCPI custom-0 instruction.
-Grade: GAP, not coded.
 
-*Test Procedure*: T.B.D. — yet to code.
+*Test Procedure*:
+
+[arabic]
+. Release the KM on a dedicated service ROM. The ROM applies one CRC instruction
+per request — mode, chaining state, data operand — and returns the raw result.
+It decides nothing.
+. Walk the seeded operand set through all three modes and compare each result
+against the host-side golden.
+. Send one word through the word instruction and the same four bytes through
+four chained byte instructions.
+. Send one state and byte through both polynomial families.
+. Repeat each byte-mode operand with garbage in the upper three bytes.
 
 *Randomization*: RANDCFG — the vector set, from the run seed.
 
@@ -4476,83 +4558,146 @@ Grade: GAP, not coded.
 PCPI co-processor reached by a custom-0 instruction, so the only honest
 activation is KM firmware, in the ROM pattern the vault test established. The
 assembler has no mnemonic for the instruction, so the image emits encoded words;
-the KM core is built without the upper register file, so the encoding macro must
-reject a register number outside the lower half at assembly time rather than
-silently misbehaving.
+the KM core is built without the upper register file, so the encodings target
+two registers in the lower half and cannot name one the core does not have.
 
-*Checkers (planned)*: each mode's result equals an independently written host-side
-golden; the word mode and the byte mode agree with each other when chained, which
-is a hardware-only cross-check independent of the golden; the two polynomial
-modes give different results for the same input; the narrow mode leaves the upper
-result bits clear. All three modes (32C word, 32C byte, CRC-8/ROHC) walk in this
-vehicle; do not split them into siblings.
+*Checkers*:
 
-*Anti-vacuity*: the golden values are asserted non-zero and pairwise distinct
-before any comparison, so a vector set that degenerates to zero fails at
-construction rather than passing. The vector generator rejects inputs whose
-golden equals an operand. One vector is computed in the deliberately wrong mode
-and asserted to *differ* — a co-processor stubbed to return a plausible constant
-passes a known-answer test but fails a required difference.
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-WORD
+|Every seeded CRC-32C word vector equals the independent golden.
+|CHK-BYTE
+|Every seeded CRC-32C byte vector equals the independent golden.
+|CHK-ROHC
+|Every seeded CRC-8/ROHC vector equals the independent golden.
+|CHK-XCHAIN
+|One word instruction equals four chained byte instructions from the same start state. Hardware on both sides, so it holds independently of the golden.
+|CHK-POLY
+|The two polynomial families return different results for the same state and byte, compared over the low byte so their differing result widths cannot satisfy it. The operand is screened for this: the two agree in the low byte for roughly one input in 256, which is correct hardware, so it is excluded from the draw rather than tolerated by a looser check.
+|CHK-NARROW
+|CRC-8/ROHC leaves the upper twenty-four result bits clear.
+|CHK-UPPER
+|Both byte modes ignore the operand's upper twenty-four bits.
+|CHK-MOVE
+|No result equals its own input state.
+|===
 
-*Trap for the implementer*: the engine applies no initial value and no final
-inversion. Reusing `crc32c()` from `seq_lib/sep_km_mailbox_seq.py` gives a wrong
-golden — that helper is Castagnoli with `init=0xFFFFFFFF` and
-`xorout=0xFFFFFFFF`, which is the mailbox frame CRC, not this engine. The
-dangerous outcome is not the false failure; it is matching the golden to the DUT
-afterwards. Write the bare stepping function independently and check it against
-the register description.
+*Anti-vacuity*: the golden is anchored to published check values for both
+algorithms and to a byte-order self-test, all asserted at import, so a
+transcription error fails before a run rather than agreeing with an equally
+wrong DUT. The operand draw rejects an all-zero state with an all-zero byte,
+which every reflected CRC maps to zero and which therefore passes against a dead
+engine; words whose four bytes are not all distinct, which cannot separate
+little-endian consumption from big-endian; and operands sitting on a fixed point
+of their mode, which the engine correctly maps back onto their own input state.
+A fixed point is legal hardware behaviour, not a defect -- in CRC-8/ROHC one
+byte in 256 is a fixed point for any given state -- so it is screened out of the
+draw with the independent golden rather than tolerated by CHK-MOVE, which would
+otherwise be unfalsifiable for that vector. CHK-MOVE then fails a co-processor
+that hands back its first operand, and CHK-XCHAIN and CHK-POLY need no golden at
+all. All three modes walk in this vehicle; do not split them into siblings.
+
+*Not claimed*: the illegal-encoding trap. An unrecognised instruction in this
+family produces no handshake and traps the core, which would end the service
+loop; the KM firmware's own regression owns that leg.
 
 '''''
 
 [[sep_km_kpv_scrambler_test]]
 ===== `sep_km_kpv_scrambler_test`
 
-*Run mode*: `no_cpu`, `+skip_fuse_sense`, dedicated KM ROM image
+*Run mode*: `no_cpu`, `+skip_fuse_sense`,
+`+km_rom_hex=km_rom_kpv_scrambler.parhex`
 
-*Phase*: 2 (parked — not coded)
+*Phase*: 2
 
 *Bucket*: Key Manager vault
 
 *Objective*: the key-policy vault scrambler transforms both the stored word and
-the address mapping while enabled, and the vault returns the logical word
-unmodified while disabled. Grade: GAP, not coded.
+the address mapping while enabled. Pass-through while disabled is the
+observation aperture this test relies on rather than a contract it asserts --
+it is what makes the raw stored words readable frontdoor, and a vault that did
+not pass through would fail the round-trip and the count instead.
 
-*Test Procedure*: T.B.D. — yet to code.
+*Test Procedure*:
 
-*Randomization*: RANDCFG — the scrambler key, the target slot and word, and the
-plaintext, from the run seed.
+[arabic]
+. Release the KM on a dedicated observation ROM and post two scrambler keys and
+three logical key-entry indices.
+. With the scrambler off, zero all 1024 key-entry words. That reaches a known
+starting state through a legitimate frontdoor, without a wipe and without
+relying on power-up values.
+. Program the first key, enable the scrambler, write one plaintext at each of
+the three logical indices, then disable and scan the whole file.
+. Repeat with the second key at the first index only.
+. Re-enable and read the first index back.
+. Take the sticky lock last, then read the key register and the first index
+again.
+
+*Randomization*: RANDCFG — two scrambler keys and three logical indices, drawn
+distinct, from the run seed.
 
 *Aperture*: the vault is reachable only from the KM side, so this needs its own
-ROM image, not `rom_main`. `KPV_SCRAMBLER_CTRL.enable` is a firmware-legal CSR
-toggle until lock; it is not the KM SRAM `SCRAMBLER_CTRL` that `rom_main` locks.
-No hierarchical peek is needed: with the scrambler disabled the vault addresses
-its register file with the logical index and passes data through unmodified, so
-firmware can write plaintext with scrambling on, disable it, and read the raw
-stored words back through a legitimate frontdoor. Do not set the key lock until
-the final checker — locking is sticky.
+ROM image, not `rom_main` — that image programs the key, enables the scrambler
+and takes the sticky lock during boot, so the enable toggle is already gone
+before the host can act. No hierarchical peek is needed: with the scrambler
+disabled the vault addresses its register file with the logical index and passes
+data through unmodified, so firmware can write plaintext with scrambling on,
+disable it, and read the raw stored words back through a legitimate frontdoor.
+The lock is taken last because it is sticky. The ROM reports raw observations
+and the host holds every verdict.
 
 *Precondition*: `km_kpv_regfile` has no reset, so power-up is undefined and a
-whole-vault "exactly one non-zero" scan is not a contract until the file is
-known-zero. Wipe the file as *setup* before the write — that is not a wipe
-security checker. Alternatively snapshot every logical word with the scrambler
-off and diff the raw scan against that snapshot.
+whole-vault "exactly N non-zero" scan is not a contract until the file is
+known-zero. The zero fill is *setup*, not a wipe security checker.
 
-*Checkers (planned)*: the written word round-trips exactly with scrambling
-enabled; after disable, exactly one word in the raw scan differs from the
-post-wipe (or pre-write) snapshot and that word differs from the plaintext; that
-word sits at a different index than the logical one, proving the address tweak;
-the same plaintext under a different key stores a different word, proving the
-scrambler is actually keyed; and after the key lock the key register reads back
-zero while the round-trip still recovers the plaintext.
+*Checkers*:
 
-*Anti-vacuity*: requiring exactly one *new* differing word versus the snapshot is
-what makes the confidentiality claim real. A write that never landed gives zero
-diffs and fails; a read path stuck at zero gives zero and fails. A bare "stored
-differs from plaintext" check would pass in both cases, and a Verilator
-X-to-zero default would pass a dirty file that was never written. Round-trip is a
-required conjunct, so a scrambler that destroys data cannot pass by looking
-scrambled. The plaintext is chosen with mixed nibbles because the substitution is
-nibble-wise and a uniform value would weaken the difference signal.
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-COUNT
+|After three writes through the enabled scrambler, exactly three of the 1024 words differ from the zeroed setup.
+|CHK-DATA
+|No stored word equals any plaintext written.
+|CHK-ADDR
+|The stored words do not all sit at their own logical index: the address mapping is tweaked, not identity.
+|CHK-KEYED
+|The same plaintext at the same logical index under a different key stores a different word, so the transform is keyed rather than a fixed obfuscation. The reported index is range-checked and the value required non-zero first, so a second-key pass whose write never landed fails here instead of being read as evidence of keying.
+|CHK-RT
+|With the scrambler re-enabled, the logical index reads back the exact plaintext.
+|CHK-KEYRD
+|Before the lock, the key register reads back the key that was written. This is the control for CHK-LOCK: without it a write-only or permanently-zero register would satisfy the zero-after-lock check for free.
+|CHK-LOCK
+|After the sticky lock the same register reads zero.
+|CHK-LOCKRT
+|The round-trip still recovers the plaintext after the lock, so the hardware kept the key it was using.
+|===
+
+*Anti-vacuity*: "exactly three" is the load-bearing quantifier, not "at least
+one". A write that never landed gives zero differences and fails; a read path
+stuck at zero gives zero and fails; a register file left dirty gives more than
+three and fails. A bare "the stored word differs from the plaintext" check would
+pass in the first two cases, and under a simulator that defaults uninitialised
+memory to zero it would also pass on a file that was never written. Round-trip
+is a required conjunct, so a scrambler that destroys data cannot pass by looking
+scrambled. The plaintext is chosen with mixed nibbles because the substitution
+is nibble-wise and a uniform value would weaken the difference signal.
+
+CHK-ADDR is deliberately "not all of them" rather than "each of them". The
+address transform is a bijection on the 1024 indices, and a bijection may have
+fixed points, so a single index mapping to itself is legal; an identity mapping
+across three seeded indices is not.
+
+CHK-LOCK asserts RTL behaviour the architecture document does not state. The
+document requires only that a locked key cannot be modified; the hardware
+additionally drives the key register to zero once the lock commits, while the
+scrambler keeps using a shadow copy. CHK-LOCKRT is what makes the pair
+meaningful: the key is unreadable and still in use. Recorded here because a
+checker that outruns its specification should say so rather than read as
+contracted behaviour.
 
 *Not claimed*: the eraser's use of the shared scrambler, the seal and retire
 contracts owned by the vault test, and the wipe security contract.
@@ -4572,12 +4717,6 @@ and code-coverage close-out. Prefer low overlap with Phase 1 / Phase 2:
 a UVM test whose bins the cocotb suite already hits is rejected.
 
 Parked cocotb scorecard vehicles (still Phase 2 ownership, not Phase 3)::
-
-Not coded:
-
-* `sep_km_command_set_rand_test`
-* `sep_km_crc_pcpi_kat_test`
-* `sep_km_kpv_scrambler_test`
 
 Coded and failing, parked on an RTL fix:
 
@@ -4647,11 +4786,11 @@ Nothing in this section is scheduled work until the UVM bench exists.
 |===
 |Item |Count
 |Phase 1 tests |31
-|Phase 2 tests |45
-|Cocotb total |76
+|Phase 2 tests |48
+|Cocotb total |79
 |Phase 3 |T.B.D.
-|Iconic scorecard rows |53 in-scope: 49 PROVEN, 4 GAP (see <<iconic-scorecard>>)
-|Phase 2 parked, not coded |3 (Key Manager vault; graded GAP, outside the Phase 2 count)
+|Iconic scorecard rows |53 in-scope: 52 PROVEN, 1 GAP (see <<iconic-scorecard>>)
+|Phase 2 parked, coded and failing |1 (per-IP reset isolation; graded GAP, parked on an RTL fix)
 |===
 
 === Regression Groups

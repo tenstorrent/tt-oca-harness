@@ -1,13 +1,15 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""KM key/policy vault: slot extent and SRAM write-lock.
+"""KM key/policy vault: slot extent, SRAM write-lock, and the KPV seal.
 
 RANDCFG. The KM CPU owns KPV CTRL and SRAM_LOCK, so a dedicated ROM
-(``km_rom_vault.S``) is the vehicle — not ``rom_main``. Seal stays on
-the parked command-set test. The host mailbox word selects the legal
-slot and the SRAM lock region; extent endpoints 0 and 63 are always
-walked, then a store past ``KM_KPV_SIZE`` must raise AXI SLVERR.
-Result flags land in KM SRAM word0.
+(``km_rom_vault.S``) is the vehicle — not ``rom_main``. The seal walk is
+here rather than on the mailbox command set because no command seals a
+slot: over that surface an erase always frees. The host mailbox word
+selects the legal slot, the SRAM lock region and the seal/free slot
+pair; extent endpoints 0 and 63 are always walked, then a store past
+``KM_KPV_SIZE`` must raise AXI SLVERR. Result flags land in KM SRAM
+word0, with the slot the ROM received echoed back alongside them.
 """
 
 from __future__ import annotations
@@ -30,24 +32,65 @@ FLAG_DROP = 0x4
 FLAG_VIOL = 0x8
 FLAG_IRQ = 0x10
 FLAG_W1C = 0x20
-FLAG_ALL = FLAG_SLOT | FLAG_EXTENT | FLAG_DROP | FLAG_VIOL | FLAG_IRQ | FLAG_W1C
+SLOT_ECHO_SHIFT = 10
+FLAG_SEAL = 0x40
+FLAG_RETIRE = 0x80
+FLAG_FREE = 0x100
+FLAG_ALL = (
+    FLAG_SLOT
+    | FLAG_EXTENT
+    | FLAG_DROP
+    | FLAG_VIOL
+    | FLAG_IRQ
+    | FLAG_W1C
+    | FLAG_SEAL
+    | FLAG_RETIRE
+    | FLAG_FREE
+)
 KM_MBOX_BASE = sym("KM_MAILBOX_SEP_REG_MAP_BASE_ADDR")
 
 
 class SepKmVaultCfg:
-    """Single source of truth: legal slot and SRAM lock region from the seed."""
+    """Single source of truth: the seeded slots and SRAM lock region.
+
+    ``seal_slot`` and ``free_slot`` are the two halves of the seal contrast --
+    the same erase, run once on a sealed slot and once on an unsealed one, must
+    retire the first and free the second. They are drawn distinct from each
+    other and from every slot the extent walk write-locks (0, ``slot``, 63), so
+    neither outcome can be attributed to a lock the walk left behind.
+    """
 
     def __init__(self, seed: int) -> None:
         self.seed = seed
         rng = SepSeededRng(seed)
         self.slot = rng.randrange(N_SLOTS)
         self.region = rng.choice(LEGAL_REGIONS)
-        self.cfg_word = (self.slot & 0x3F) | ((self.region & 0x1F) << 8)
-        self.expect = RESULT_MAGIC | FLAG_ALL
+        taken = {0, N_SLOTS - 1, self.slot}
+        self.seal_slot = self._pick_free(rng, taken)
+        taken.add(self.seal_slot)
+        self.free_slot = self._pick_free(rng, taken)
+        self.cfg_word = (
+            (self.slot & 0x3F)
+            | ((self.region & 0x1F) << 8)
+            | ((self.seal_slot & 0x3F) << 16)
+            | ((self.free_slot & 0x3F) << 24)
+        )
+        # The ROM echoes the slot it received into bits [15:10]. Without it the
+        # expected word would be the same constant for every seed, and a config
+        # word that never arrived could not be told from one that did.
+        self.expect = RESULT_MAGIC | FLAG_ALL | ((self.slot & 0x3F) << SLOT_ECHO_SHIFT)
+
+    @staticmethod
+    def _pick_free(rng, taken: set[int]) -> int:
+        while True:
+            cand = rng.randrange(N_SLOTS)
+            if cand not in taken:
+                return cand
 
     def summary(self) -> str:
         return (
             f"seed={self.seed} slot={self.slot} region={self.region} "
+            f"seal_slot={self.seal_slot} free_slot={self.free_slot} "
             f"cfg=0x{self.cfg_word:08x} expect=0x{self.expect:08x}"
         )
 
