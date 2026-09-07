@@ -33,12 +33,29 @@ Checkers:
   CHK-ILLEGAL every seeded undefined command ID returns RC_INVALID_CMD (-4)
   CHK-LEN     a defined command carrying the wrong payload length returns
               RC_INVALID_LEN (-5)
+  CHK-FRAME   the three framing rejections, each with the value it carries: a
+              corrupt header CRC-8 returns RC_HEADER_CRC with the CRC the KM
+              computed, a wrong sequence number returns RC_CMD_NOSEQ with the
+              number it expected, and a corrupt payload CRC-32C returns
+              RC_PAYLOAD_CRC
+  CHK-GONE    a shredded engine refuses to start: after a final
+              CMD_ENGINE_SHRED the AES produces no output within a bounded
+              window, so the shred reached the key rather than merely returning
+              success. Run last, because an engine parked waiting for a key
+              stays that way until its next valid key
   CHK-ALIVE   after every rejection CMD_STAT succeeds AND reports no latched
               recoverable error. The second half is what gives the refusal
               checkers their meaning: while a recoverable fault is pending the
               KM answers RC_FAILURE to every key command regardless of its
               arguments, which is the same code CHK-DEST and CHK-CLOSED
               expect, so without this a faulted KM would satisfy both
+
+The mailbox is a TRANSPORT here, not the subject. Its register surface --
+STATUS depth and full/overflow/underflow, IRQ_STATUS, and SEP_CTRL's response
+modes and flush -- belongs to `sep_km_mailbox_protocol_rand_test`, which the
+plan holds as a separate entry. Proving those means deliberately reading an
+empty FIFO and overrunning a full one, which corrupts whatever frame is in
+flight; it does not compose with a leaf whose subject is the command stream.
 
 Accepted scope deltas (declared, not silent):
   * The card's DRBG-fault-during-command checker is NOT built here. The fault
@@ -65,15 +82,19 @@ from seq_lib.sep_aes_seq import SepAes
 from seq_lib.sep_km_mailbox_seq import (
     KM_CMD_KEY_GENERATE,
     KM_CMD_KEY_REVOKE,
+    KM_CMD_STAT,
     KM_DEST_AES,
     KM_DEST_HMAC,
     KM_DEST_KMAC,
     KM_DEST_OTBN,
     KM_KEY_HANDLE_NULL,
+    KM_RC_CMD_NOSEQ,
     KM_RC_FAILURE,
+    KM_RC_HEADER_CRC,
     KM_RC_INVALID_ARG,
     KM_RC_INVALID_CMD,
     KM_RC_INVALID_LEN,
+    KM_RC_PAYLOAD_CRC,
     KM_RC_SUCCESS,
     KM_VALID_CMD_IDS,
     SepKmMailbox,
@@ -109,6 +130,10 @@ GEN_KEY_WORDS = (8, 12)
 
 # Number of undefined command IDs to walk per run.
 N_ILLEGAL_IDS = 7
+
+# Negative window for the shredded-engine probe. A healthy encryption completes
+# in far fewer polls than this, so a passing run spends the whole window.
+_SHRED_REFUSE_POLLS = 200
 
 
 class SepKmCommandSetCfg:
@@ -228,8 +253,12 @@ class sep_km_command_set_rand_test(sep_base_test):
         )
 
         handle_a = await self.km.key_load(key_words=list(KAT_KEY_A), dest=KM_DEST_AES)
-        rc = await self.km.key_transfer(handle=handle_a, dest=KM_DEST_AES)
+        rc, arg = await self.km.key_transfer(handle=handle_a, dest=KM_DEST_AES)
         assert rc == KM_RC_SUCCESS, f"CHK-XFER FAIL: CMD_KEY_TRANSFER rc={rc}"
+        assert (arg & 0xFF) == handle_a and ((arg >> 8) & 0xFF) == KM_DEST_AES, (
+            f"CHK-XFER FAIL: RETURN_ARG 0x{arg:08x} does not echo handle 0x{handle_a:02x} "
+            f"and dest 0x{KM_DEST_AES:02x}"
+        )
         await self.aes.configure_ecb_enc_256(sideload=True)
         await self.aes.trigger_prng_reseed()
         ct_a = await self.aes.run_ecb_block(list(AES_ECB_PT))
@@ -245,7 +274,7 @@ class sep_km_command_set_rand_test(sep_base_test):
         # validation and is refused by the transfer itself: RC_FAILURE, not
         # RC_INVALID_ARG. Asserting the exact code keeps a refusal for the wrong
         # reason -- a malformed argument, say -- from reading as a pass.
-        rc = await self.km.key_transfer(handle=handle_a, dest=cfg.bad_dest)
+        rc, _ = await self.km.key_transfer(handle=handle_a, dest=cfg.bad_dest)
         assert rc == KM_RC_FAILURE, (
             f"CHK-DEST FAIL: transfer to 0x{cfg.bad_dest:02x} returned rc={rc}, expected "
             f"{KM_RC_FAILURE} (RC_FAILURE) -- the key was loaded for "
@@ -265,7 +294,7 @@ class sep_km_command_set_rand_test(sep_base_test):
             f"0x{KM_DEST_AES:02x}"
         )
         handle_b = await self.km.key_load(key_words=list(KAT_KEY_B), dest=KM_DEST_AES)
-        rc = await self.km.key_transfer(handle=handle_b, dest=KM_DEST_AES)
+        rc, _ = await self.km.key_transfer(handle=handle_b, dest=KM_DEST_AES)
         assert rc == KM_RC_SUCCESS, f"CHK-SHRED FAIL: post-shred CMD_KEY_TRANSFER rc={rc}"
         await self.aes.configure_ecb_enc_256(sideload=True)
         await self.aes.trigger_prng_reseed()
@@ -295,7 +324,7 @@ class sep_km_command_set_rand_test(sep_base_test):
 
         # The handle is still a legal value, so this too is refused by the
         # registry lookup rather than by argument validation.
-        rc = await self.km.key_transfer(handle=gen_handle, dest=KM_DEST_AES)
+        rc, _ = await self.km.key_transfer(handle=gen_handle, dest=KM_DEST_AES)
         assert rc == KM_RC_FAILURE, (
             f"CHK-CLOSED FAIL: CMD_KEY_TRANSFER on revoked handle 0x{gen_handle:02x} "
             f"returned rc={rc}, expected {KM_RC_FAILURE} (RC_FAILURE) -- revoke did "
@@ -341,9 +370,67 @@ class sep_km_command_set_rand_test(sep_base_test):
         self.logger.info("CHK-LEN PASS: over-long CMD_KEY_REVOKE payload returned RC_INVALID_LEN")
         await self._check_alive("post-bad-length")
 
+        # --- CHK-FRAME: the three framing rejections --------------------------
+        # These are the only return codes the KM produces before it looks at the
+        # command at all, and each carries a value worth checking: the CRC the KM
+        # itself computed, or the sequence number it was expecting. The seq
+        # counter side effects differ between them and are handled in the driver.
+        rc, arg = await self.km.send_bad_header_crc(KM_CMD_STAT)
+        assert rc == KM_RC_HEADER_CRC, (
+            f"CHK-FRAME FAIL: a corrupt header CRC-8 returned rc={rc}, expected "
+            f"{KM_RC_HEADER_CRC} (RC_HEADER_CRC)"
+        )
+        self.logger.info(
+            "CHK-FRAME PASS: corrupt header CRC-8 refused RC_HEADER_CRC, KM computed 0x%02x",
+            arg & 0xFF,
+        )
+        await self._check_alive("post-bad-header-crc")
+
+        expected_seq = self.km.seq_num
+        rc, arg = await self.km.send_bad_seq(KM_CMD_STAT)
+        assert rc == KM_RC_CMD_NOSEQ, (
+            f"CHK-FRAME FAIL: a wrong sequence number returned rc={rc}, expected "
+            f"{KM_RC_CMD_NOSEQ} (RC_CMD_NOSEQ)"
+        )
+        assert (arg & 0xFF) == expected_seq, (
+            f"CHK-FRAME FAIL: RC_CMD_NOSEQ reported expected sequence 0x{arg & 0xFF:02x}, "
+            f"but the host is at 0x{expected_seq:02x} -- the two counters disagree"
+        )
+        self.logger.info(
+            "CHK-FRAME PASS: wrong sequence number refused RC_CMD_NOSEQ, KM expecting %d",
+            arg & 0xFF,
+        )
+        await self._check_alive("post-bad-seq")
+
+        rc, _ = await self.km.send_bad_payload_crc(KM_CMD_KEY_REVOKE, [gen_handle2])
+        assert rc == KM_RC_PAYLOAD_CRC, (
+            f"CHK-FRAME FAIL: a corrupt payload CRC-32C returned rc={rc}, expected "
+            f"{KM_RC_PAYLOAD_CRC} (RC_PAYLOAD_CRC)"
+        )
+        self.logger.info("CHK-FRAME PASS: corrupt payload CRC-32C refused RC_PAYLOAD_CRC")
+        await self._check_alive("post-bad-payload-crc")
+
+        # --- CHK-GONE: a shredded engine will not run -------------------------
+        # Deliberately last. The engine is left with no valid key, so it parks
+        # waiting for one; nothing after this point may need it. This is the
+        # direct observation of the shred: the engine key registers are
+        # write-only, so refusal to start is the only frontdoor evidence that
+        # the shred reached the key rather than just returning success.
+        rc, _ = await self.km.engine_shred(dest=KM_DEST_AES)
+        assert rc == KM_RC_SUCCESS, f"CHK-GONE FAIL: final CMD_ENGINE_SHRED rc={rc}"
+        await self.aes.configure_ecb_enc_256(sideload=True)
+        await self.aes.start_block_no_wait(list(AES_ECB_PT))
+        assert not await self.aes.output_valid_within(_SHRED_REFUSE_POLLS), (
+            "CHK-GONE FAIL: the AES produced a result with sideload selected after its "
+            "key was shredded -- the shred did not reach the key"
+        )
+        self.logger.info(
+            "CHK-GONE PASS: the shredded engine produced no output in %d polls (fail-closed START)",
+            _SHRED_REFUSE_POLLS,
+        )
+
         # --- EOT --------------------------------------------------------------
         await self.km.check_outbound_empty("EOT")
-        await self.aes.wait_idle("EOT")
         await self.aes.check_status_clean("EOT")
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()

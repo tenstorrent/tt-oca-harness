@@ -12,10 +12,10 @@
 # index comparison, the keying comparison and the round-trip verdict all live
 # in the host test.
 #
-# KM CPU view: mailbox 0x00010000, key entries 0x00012000 (1024 words),
-# KPV_SCRAMBLER_KEY 0x00013100, KPV_SCRAMBLER_CTRL 0x00013104 (ENABLE bit 0,
-# LOCK bit 1). These literals must track the generated map in
-# hw/ip/key_manager/regs/gen/c/key_manager_addr.h, which is authoritative.
+# Every register address comes from the generated map, included below, so a
+# moved register is a build error rather than a stale constant. Field bit
+# positions are still literal -- the address header does not carry them.
+# KPV_SCRAMBLER_CTRL: ENABLE bit 0, LOCK bit 1.
 #
 # Request, three words over the KM mailbox:
 #   word 0  first scrambler key
@@ -38,9 +38,11 @@
 #   pass B: one {index, value} pair for the first logical index under the
 #           second key
 #   the round-trip word, the key register read back while still UNLOCKED, the
-#   same register read after the sticky lock, and the post-lock round-trip word
+#   same register read after the sticky lock, the post-lock round-trip word,
+#   then a round-trip taken AFTER attempting to rewrite both the key and the
+#   enable, and finally KPV_SCRAMBLER_CTRL itself
 #
-# That is 13 words on the healthy path (1 + 2*3 + 2 + 4) into a 16-deep
+# That is 15 words on the healthy path (1 + 2*3 + 2 + 6) into a 16-deep
 # outbound FIFO, and this image does not check for space before writing. The
 # margin only holds while the count is 3, so the host raises on a wrong count
 # before it drains the pair list -- see the collector in
@@ -52,6 +54,15 @@
 #
 # Build (output committed as ../km_rom_kpv_scrambler.parhex):
 #   make -C hw/sys/sep/dv/cocotb/tests/km_fw ../km_rom_kpv_scrambler.parhex
+
+#include "key_manager_addr.h"
+
+    // Mailbox register offsets, derived from the generated map rather than
+    // typed: the images hold the block base in a register and index off it.
+    .equ MBOX_WRITE_DATA,  (KEY_MANAGER_MAILBOX_KM_KM_WRITE_DATA_BASE_ADDR - KEY_MANAGER_MAILBOX_KM_BASE_ADDR)
+    .equ MBOX_WRITE_SEP,   (KEY_MANAGER_MAILBOX_KM_KM_WRITE_SEPARATOR_BASE_ADDR - KEY_MANAGER_MAILBOX_KM_BASE_ADDR)
+    .equ MBOX_READ_DATA,   (KEY_MANAGER_MAILBOX_KM_KM_READ_DATA_BASE_ADDR - KEY_MANAGER_MAILBOX_KM_BASE_ADDR)
+    .equ MBOX_STATUS,      (KEY_MANAGER_MAILBOX_KM_KM_STATUS_BASE_ADDR - KEY_MANAGER_MAILBOX_KM_BASE_ADDR)
 
     .equ N_WORDS, 1024
 
@@ -66,28 +77,27 @@ _start:
     # x9  packed indices
     # x11 first logical index, kept for both round-trip reads
     # x12 scrambler key B
-    lui   x1, 0x10              # mailbox
-    lui   x2, 0x12              # key entries
+    li    x1, KEY_MANAGER_MAILBOX_KM_BASE_ADDR
+    li    x2, KEY_MANAGER_KPV_KEY_ENTRY_BASE_ADDR(0)
 
     # --- host config: key A, key B, packed indices ---
-1:  lw    x4, 0xC(x1)
+1:  lw    x4, MBOX_STATUS(x1)
     andi  x5, x4, 0x1           # inbound_empty
     bnez  x5, 1b
-    lw    x8, 0x8(x1)
-2:  lw    x4, 0xC(x1)
+    lw    x8, MBOX_READ_DATA(x1)
+2:  lw    x4, MBOX_STATUS(x1)
     andi  x5, x4, 0x1
     bnez  x5, 2b
-    lw    x12, 0x8(x1)
-3:  lw    x4, 0xC(x1)
+    lw    x12, MBOX_READ_DATA(x1)
+3:  lw    x4, MBOX_STATUS(x1)
     andi  x5, x4, 0x1
     bnez  x5, 3b
-    lw    x9, 0x8(x1)
+    lw    x9, MBOX_READ_DATA(x1)
 
     andi  x11, x9, 0x3FF        # first logical index
 
     # ================= pass A: key A, three indices =================
-    lui   x5, 0x13
-    addi  x5, x5, 0x104
+    li    x5, KEY_MANAGER_KPV_KPV_SCRAMBLER_CTRL_BASE_ADDR
     sw    x0, 0(x5)             # ENABLE = 0 for the zero fill
     addi  x3, x0, 0
     addi  x6, x0, N_WORDS
@@ -98,8 +108,7 @@ zero_a:
     addi  x3, x3, 1
     blt   x3, x6, zero_a
 
-    lui   x5, 0x13
-    addi  x5, x5, 0x100
+    li    x5, KEY_MANAGER_KPV_KPV_SCRAMBLER_KEY_BASE_ADDR
     sw    x8, 0(x5)             # KPV_SCRAMBLER_KEY = key A
     addi  x4, x0, 1
     sw    x4, 0x4(x5)           # ENABLE = 1
@@ -124,8 +133,7 @@ write_a:
     addi  x4, x0, 3
     blt   x3, x4, write_a
 
-    lui   x5, 0x13
-    addi  x5, x5, 0x104
+    li    x5, KEY_MANAGER_KPV_KPV_SCRAMBLER_CTRL_BASE_ADDR
     sw    x0, 0(x5)             # ENABLE = 0 to see the raw file
 
     addi  x3, x0, 0
@@ -142,8 +150,8 @@ count_a_next:
     blt   x3, x6, count_a
 
     addi  x4, x0, 1
-    sw    x4, 0x4(x1)
-    sw    x8, 0x0(x1)           # count
+    sw    x4, MBOX_WRITE_SEP(x1)
+    sw    x8, MBOX_WRITE_DATA(x1)           # count
 
     addi  x3, x0, 0
     addi  x6, x0, N_WORDS
@@ -153,11 +161,11 @@ emit_a:
     lw    x7, 0(x4)
     beqz  x7, emit_a_next
     addi  x5, x0, 1
-    sw    x5, 0x4(x1)
-    sw    x3, 0x0(x1)           # physical index
+    sw    x5, MBOX_WRITE_SEP(x1)
+    sw    x3, MBOX_WRITE_DATA(x1)           # physical index
     addi  x5, x0, 1
-    sw    x5, 0x4(x1)
-    sw    x7, 0x0(x1)           # stored word
+    sw    x5, MBOX_WRITE_SEP(x1)
+    sw    x7, MBOX_WRITE_DATA(x1)           # stored word
 emit_a_next:
     addi  x3, x3, 1
     blt   x3, x6, emit_a
@@ -172,8 +180,7 @@ zero_b:
     addi  x3, x3, 1
     blt   x3, x6, zero_b
 
-    lui   x5, 0x13
-    addi  x5, x5, 0x100
+    li    x5, KEY_MANAGER_KPV_KPV_SCRAMBLER_KEY_BASE_ADDR
     sw    x12, 0(x5)            # KPV_SCRAMBLER_KEY = key B (still unlocked)
     addi  x4, x0, 1
     sw    x4, 0x4(x5)           # ENABLE = 1
@@ -188,8 +195,7 @@ zero_b:
     add   x7, x2, x7
     sw    x6, 0(x7)
 
-    lui   x5, 0x13
-    addi  x5, x5, 0x104
+    li    x5, KEY_MANAGER_KPV_KPV_SCRAMBLER_CTRL_BASE_ADDR
     sw    x0, 0(x5)             # ENABLE = 0
 
     addi  x3, x0, 0
@@ -205,15 +211,14 @@ find_b:
     addi  x7, x0, 0
 found_b:
     addi  x5, x0, 1
-    sw    x5, 0x4(x1)
-    sw    x3, 0x0(x1)           # physical index under key B
+    sw    x5, MBOX_WRITE_SEP(x1)
+    sw    x3, MBOX_WRITE_DATA(x1)           # physical index under key B
     addi  x5, x0, 1
-    sw    x5, 0x4(x1)
-    sw    x7, 0x0(x1)           # stored word under key B
+    sw    x5, MBOX_WRITE_SEP(x1)
+    sw    x7, MBOX_WRITE_DATA(x1)           # stored word under key B
 
     # ================= round trip, then the sticky lock =================
-    lui   x5, 0x13
-    addi  x5, x5, 0x104
+    li    x5, KEY_MANAGER_KPV_KPV_SCRAMBLER_CTRL_BASE_ADDR
     addi  x4, x0, 1
     sw    x4, 0(x5)             # ENABLE = 1
 
@@ -221,36 +226,56 @@ found_b:
     add   x4, x2, x4
     lw    x7, 0(x4)
     addi  x5, x0, 1
-    sw    x5, 0x4(x1)
-    sw    x7, 0x0(x1)           # round-trip word
+    sw    x5, MBOX_WRITE_SEP(x1)
+    sw    x7, MBOX_WRITE_DATA(x1)           # round-trip word
 
     # Read the key register while it is still unlocked. This is the control for
     # the locked readback below.
-    lui   x5, 0x13
-    addi  x5, x5, 0x100
+    li    x5, KEY_MANAGER_KPV_KPV_SCRAMBLER_KEY_BASE_ADDR
     lw    x7, 0(x5)
     addi  x5, x0, 1
-    sw    x5, 0x4(x1)
-    sw    x7, 0x0(x1)           # key register, unlocked
+    sw    x5, MBOX_WRITE_SEP(x1)
+    sw    x7, MBOX_WRITE_DATA(x1)           # key register, unlocked
 
-    lui   x5, 0x13
-    addi  x5, x5, 0x104
+    li    x5, KEY_MANAGER_KPV_KPV_SCRAMBLER_CTRL_BASE_ADDR
     addi  x4, x0, 3             # ENABLE | LOCK, taken last because it sticks
     sw    x4, 0(x5)
 
-    lui   x5, 0x13
-    addi  x5, x5, 0x100
+    li    x5, KEY_MANAGER_KPV_KPV_SCRAMBLER_KEY_BASE_ADDR
     lw    x7, 0(x5)             # key register readback after the lock
     addi  x5, x0, 1
-    sw    x5, 0x4(x1)
-    sw    x7, 0x0(x1)
+    sw    x5, MBOX_WRITE_SEP(x1)
+    sw    x7, MBOX_WRITE_DATA(x1)
 
     slli  x4, x11, 2
     add   x4, x2, x4
     lw    x7, 0(x4)
     addi  x5, x0, 1
-    sw    x5, 0x4(x1)
-    sw    x7, 0x0(x1)           # post-lock round-trip word
+    sw    x5, MBOX_WRITE_SEP(x1)
+    sw    x7, MBOX_WRITE_DATA(x1)           # post-lock round-trip word
+
+    # The lock's DOCUMENTED contract is that the key and the enable can no
+    # longer be modified. Try both. A third key is derived from key B by
+    # inversion so it needs no extra config word, and it is distinct from key B
+    # because no 32-bit value equals its own complement.
+    li    x5, KEY_MANAGER_KPV_KPV_SCRAMBLER_KEY_BASE_ADDR
+    xori  x4, x12, -1
+    sw    x4, 0(x5)             # refused: key is write-locked
+    li    x5, KEY_MANAGER_KPV_KPV_SCRAMBLER_CTRL_BASE_ADDR
+    sw    x0, 0(x5)             # refused: enable is write-locked
+
+    slli  x4, x11, 2
+    add   x4, x2, x4
+    lw    x7, 0(x4)
+    addi  x5, x0, 1
+    sw    x5, MBOX_WRITE_SEP(x1)
+    sw    x7, MBOX_WRITE_DATA(x1)           # round-trip after both refused writes
+
+    li    x5, KEY_MANAGER_KPV_KPV_SCRAMBLER_CTRL_BASE_ADDR
+    lw    x7, 0(x5)
+    addi  x5, x0, 1
+    sw    x5, MBOX_WRITE_SEP(x1)
+    sw    x7, MBOX_WRITE_DATA(x1)           # KPV_SCRAMBLER_CTRL after the refused write
 
 halt:
     j     halt

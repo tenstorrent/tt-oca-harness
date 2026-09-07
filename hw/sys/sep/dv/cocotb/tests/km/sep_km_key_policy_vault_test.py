@@ -23,10 +23,15 @@ from cocotb.triggers import RisingEdge
 from sep_base_test import sep_base_test
 from seq_lib.sep_km_vault_seq import (
     FLAG_DROP,
+    FLAG_ERASEDATA,
     FLAG_EXTENT,
     FLAG_FREE,
     FLAG_IRQ,
+    FLAG_IRQSET,
+    FLAG_LOCKUSE,
+    FLAG_LOCKWR,
     FLAG_RETIRE,
+    FLAG_RETSTICK,
     FLAG_SEAL,
     FLAG_SLOT,
     FLAG_VIOL,
@@ -58,7 +63,7 @@ class sep_km_key_policy_vault_test(sep_base_test):
         for polled in range(1, _MAX_KM_CYCLES + 1):
             await RisingEdge(dut.clk_i)
             word = self.rd(dut.km_sram_word0_o)
-            if (word & 0xFFFF_0000) == RESULT_MAGIC:
+            if (word >> 24) == RESULT_MAGIC:
                 break
         else:
             raise AssertionError(
@@ -75,6 +80,16 @@ class sep_km_key_policy_vault_test(sep_base_test):
         _bit(FLAG_SLOT, "CHK-SLOT")
         self.logger.info(
             "CHK-SLOT PASS: CTRL lock_write stuck on endpoints 0 and 63 plus seed slot"
+        )
+        _bit(FLAG_LOCKWR, "CHK-LOCKWR")
+        self.logger.info(
+            "CHK-LOCKWR PASS: key-data write to write-locked slot %d raised AXI SLVERR",
+            cfg.slot,
+        )
+        _bit(FLAG_LOCKUSE, "CHK-LOCKUSE")
+        self.logger.info(
+            "CHK-LOCKUSE PASS: key-data read of the lock_use slot raised SLVERR and "
+            "returned zero data"
         )
         _bit(FLAG_EXTENT, "CHK-EXTENT")
         self.logger.info("CHK-EXTENT PASS: store 0x13108 set AXI_SLVERR or AXI_DECERR")
@@ -97,15 +112,31 @@ class sep_km_key_policy_vault_test(sep_base_test):
             "(lock_write held, lock_use gained)",
             cfg.seal_slot,
         )
+        _bit(FLAG_RETSTICK, "CHK-RETSTICK")
+        self.logger.info(
+            "CHK-RETSTICK PASS: a second erase left slot %d retired, not released",
+            cfg.seal_slot,
+        )
         _bit(FLAG_FREE, "CHK-FREE")
         self.logger.info(
             "CHK-FREE PASS: erasing unsealed slot %d cleared CTRL entirely (reusable)",
             cfg.free_slot,
         )
+        _bit(FLAG_ERASEDATA, "CHK-ERASEDATA")
+        self.logger.info(
+            "CHK-ERASEDATA PASS: the erase overwrote both preloaded key words in slot "
+            "%d with differing values, so the fill ran and advanced",
+            cfg.free_slot,
+        )
+        _bit(FLAG_IRQSET, "CHK-IRQSET")
+        self.logger.info(
+            "CHK-IRQSET PASS: IRQ_SET.DRBG_ERR_SET raised IRQ_STATUS.DRBG_ERR and W1C "
+            "cleared it (interrupt plumbing only, not the DRBG fault source)"
+        )
         assert word == cfg.expect, f"CHK-RANDCFG FAIL: word0=0x{word:08x} != 0x{cfg.expect:08x}"
         self.logger.info(
-            "CHK-RANDCFG PASS: slot=%d region=%d seal_slot=%d free_slot=%d "
-            "from seed %d word0=0x%08x",
+            "CHK-RANDCFG PASS: the ROM echoed a fold of the whole config word "
+            "(slot=%d region=%d seal_slot=%d free_slot=%d, seed %d) word0=0x%08x",
             cfg.slot,
             cfg.region,
             cfg.seal_slot,

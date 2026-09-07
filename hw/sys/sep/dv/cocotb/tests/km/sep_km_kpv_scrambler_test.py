@@ -31,6 +31,9 @@ Checkers:
   CHK-LOCK   after the sticky lock the same register reads zero
   CHK-LOCKRT the round-trip still recovers the plaintext after the lock, so the
              hardware kept the key it was using
+  CHK-SWWEL  the lock's DOCUMENTED contract: after it, a write of a different
+             key and a write clearing ENABLE are both refused -- the round-trip
+             still returns the plaintext and ENABLE still reads 1
 
 Anti-vacuity. "Exactly three" is the load-bearing quantifier, not "at least
 one": a write that never landed gives zero differences and fails, a read path
@@ -189,4 +192,26 @@ class sep_km_kpv_scrambler_test(sep_base_test):
         )
         self.logger.info(
             "CHK-LOCKRT PASS: the round-trip still recovers the plaintext after the lock"
+        )
+
+        # --- CHK-SWWEL --------------------------------------------------------
+        # This is the contract the architecture document actually states, as
+        # opposed to CHK-LOCK's zero readback which it does not. Both halves
+        # matter: a lock that froze the key but let ENABLE be cleared would
+        # leave the vault passing plaintext through.
+        assert rep.refused_round_trip == expected_pt, (
+            f"CHK-SWWEL FAIL: after writing a different key and clearing ENABLE on the "
+            f"locked scrambler, logical index {first_logical} read back "
+            f"0x{rep.refused_round_trip:08x}, expected 0x{expected_pt:08x} -- one of "
+            "the two writes was accepted"
+        )
+        assert rep.ctrl_after_refused & 0x1, (
+            f"CHK-SWWEL FAIL: KPV_SCRAMBLER_CTRL reads 0x{rep.ctrl_after_refused:08x} "
+            "after a write clearing ENABLE on the locked scrambler; ENABLE should still "
+            "be set"
+        )
+        self.logger.info(
+            "CHK-SWWEL PASS: locked key and ENABLE both refused their writes "
+            "(CTRL=0x%08x, round-trip intact)",
+            rep.ctrl_after_refused,
         )

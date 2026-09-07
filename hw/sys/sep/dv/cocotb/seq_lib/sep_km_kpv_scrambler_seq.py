@@ -93,6 +93,8 @@ class SepKpvScramblerReport:
         key_unlocked: int,
         key_readback: int,
         post_lock_round_trip: int,
+        refused_round_trip: int,
+        ctrl_after_refused: int,
     ) -> None:
         self.count = count
         self.pairs = pairs
@@ -101,6 +103,8 @@ class SepKpvScramblerReport:
         self.key_unlocked = key_unlocked
         self.key_readback = key_readback
         self.post_lock_round_trip = post_lock_round_trip
+        self.refused_round_trip = refused_round_trip
+        self.ctrl_after_refused = ctrl_after_refused
 
 
 class SepKpvScrambler:
@@ -173,6 +177,8 @@ class SepKpvScrambler:
         key_unlocked = await self._next_word("the unlocked key readback")
         key_readback = await self._next_word("the locked key readback")
         post_lock = await self._next_word("the post-lock round-trip word")
+        refused_rt = await self._next_word("the round-trip after the refused writes")
+        ctrl_after = await self._next_word("KPV_SCRAMBLER_CTRL after the refused write")
         return SepKpvScramblerReport(
             count,
             pairs,
@@ -181,4 +187,6 @@ class SepKpvScrambler:
             key_unlocked,
             key_readback,
             post_lock,
+            refused_rt,
+            ctrl_after,
         )
