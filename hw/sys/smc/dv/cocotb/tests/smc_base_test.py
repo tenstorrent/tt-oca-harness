@@ -63,8 +63,6 @@ _PROTOCOL_VIP_TESTS = {
     "smc_pll_dvfs_depth_test": SmcProtocolVipKind.CLOCK,
     "smc_static_cg_sanity_test": SmcProtocolVipKind.CLOCK,
     "smc_gpio_irq_active_test": SmcProtocolVipKind.GPIO_IRQ,
-    "smc_gpio_strap_sanity_test": SmcProtocolVipKind.GPIO_IRQ,
-    "smc_external_interrupts_test": SmcProtocolVipKind.GPIO_IRQ,
     "smc_uart_spi_log_engine_test": SmcProtocolVipKind.UART_LOG,
     "smc_uart_log_engine_reg_rw_test": SmcProtocolVipKind.UART_LOG,
     "smc_uart_log_engine_error_boundary_test": SmcProtocolVipKind.UART_LOG,

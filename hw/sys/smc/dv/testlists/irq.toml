@@ -73,7 +73,9 @@ timeout_sec = 1800
 tags = ["ci", "irq", "pvt", "tier_c", "pyuvm"]
 run_modes = ["smoke"]
 
-# Unique vs GPIO smc_external_interrupts_test: wrapper ext_interrupts_i[0].
+# The only external-interrupt coverage there is: wrapper ext_interrupts_i[0],
+# both directions. Bits [255:1] are tied to 0 in tb/tb_top.sv, so nothing above
+# bit 0 is reachable without TB work.
 [[tests]]
 name = "smc_ext_interrupts_pin_test"
 module = "smc_ext_interrupts_pin_test"
