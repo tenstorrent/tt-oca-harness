@@ -155,7 +155,7 @@ v0.5.0 nightly denominator.
 |Designer confirmation of this subset |SMU designer |#487 (this file)
 |Traceability approval after the subset is signed |SMU design owner + DV lead |#479 (`SMU_SCOPE_TRACEABILITY.adoc`)
 |Whether `smu_ext_boot_seq_gate_test` joins `sep0_all` |SMU DV |#493
-|Whether `smu_smc_mailbox_int_test` joins `sep0_all` |SMU DV |#481
+|`smu_smc_mailbox_int_test` stays OUT of `sep0_all` (in `smc` only) |SMU DV |#481
 |SEP=1 / F2 / F5 |SEP=1 track |#493
 |123 deferred names |SMU DV |#488
 |Commercial `main_wrapper*` names |SMU DV |#261

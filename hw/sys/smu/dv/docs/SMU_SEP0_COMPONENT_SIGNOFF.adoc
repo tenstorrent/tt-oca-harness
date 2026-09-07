@@ -8,9 +8,9 @@ This chapter records the v0.5.0 SEP=0 component decisions for #481,
 #482, #483, #490, and #491. Feature credit stays the enrolled
 `sep0_all` set. Wrapper PASSes and `tests_deferred/` names are OUT.
 
-Evidence SHA is `a273033a0` (origin/main). The scheduled nightly
-`--dut smu --items sep0_all` on that SHA is 51 PASS / 1 FAIL
-(https://github.com/tenstorrent/tt-oca-harness/actions/runs/34051136716).
+Evidence SHA is `a273033a0` (origin/main). The `verilator-nightly (smu)`
+job of run 34051136716 on that SHA is 51 PASS / 1 FAIL
+(https://github.com/tenstorrent/tt-oca-harness/actions/runs/34051136716/job/101534871053).
 The single FAIL is `smu_xtrig_ctm_remap_test` (#482 residual; the
 CDC settle is in #1572).
 
@@ -18,7 +18,7 @@ CDC settle is in #1572).
 === JTAG2AXI / OTP / filter depth (#490)
 
 The no-Force deepeners are enrolled in `phase1` / `sep0_all`. There is
-no `testlists/deferred.toml`. README / VPLAN counts are `sep0_all` = 53.
+no `testlists/deferred.toml`. README / VPLAN counts are `sep0_all` = 52.
 
 Enrolled names that PASSed on the nightly, with no Force / placeholder:
 
@@ -80,7 +80,7 @@ Release-group (`sep0_all`) SMC-under-SMU names that PASSed:
 PR-only, **OUT of `sep0_all`** (stay in `smoke` / `phase1` / `smc`):
 
 * `smu_ext_boot_seq_gate_test` — enrollment is #493
-* `smu_smc_mailbox_int_test` — enrollment stays a later decision
+* `smu_smc_mailbox_int_test` — OUT of `sep0_all` (#481); stays in `smc`
 
 eFuse / burn under SMU is OUT (SEP=1 / child-TB).
 `smu_smc_gpio_strap_sanity_test` is named in `SMU_FEATURE_LIST.adoc`

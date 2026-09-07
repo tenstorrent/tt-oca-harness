@@ -342,7 +342,11 @@ seeds, and those run paths on the tracking GitHub issue.
 
 ## Enrollment
 
-`smu_ext_axi_global_addr_smoke_test` under `cocotb/tests/` is not enrolled:
-the OSS `s_axi` is a LOCAL aperture, so `GLOBAL_BASE + offset` DECERRs; its
-docstring carries that reason. `sep0_all` is the SMU regression group in
-`.github/workflows/regress.yml`.
+The `SEP=0` `tb_top.sv`, `SmuEnv` and the sequence library are in place:
+59 live test bodies under `cocotb/tests/`, 28 non-enrolled bodies under
+`cocotb/tests_deferred/`. One body under `cocotb/tests/` is present but
+not enrolled -- `smu_ext_axi_global_addr_smoke_test`, blocked because the
+OSS `s_axi` is a LOCAL aperture so `GLOBAL_BASE + offset` DECERRs; its
+docstring carries that reason. `sep0_all` (52) is the SMU regression group
+in `.github/workflows/regress.yml` (nightly at one seed per test, weekly at
+three).

@@ -9,11 +9,14 @@ the SCOPE matrix in `SMC_SCOPE_TRACEABILITY.adoc`, not every name in
 `reset.toml` / `clock.toml` / `irq.toml`. SAMPLE-only observe tests
 stay in `smoke` and are not requirement rows.
 
-Evidence: scheduled nightly and weekly `--dut smc --items smoke` on
-`a273033a0` both completed successfully
-(https://github.com/tenstorrent/tt-oca-harness/actions/runs/34051136716
-nightly; weekly run 33982997638). `smoke` includes the credited
-reset / mailbox-IRQ / FLR names and the SAMPLE observe cluster.
+Evidence: the `verilator-nightly (smc)` job of run 34051136716 on
+`a273033a0` passed
+(https://github.com/tenstorrent/tt-oca-harness/actions/runs/34051136716/job/101534871072).
+The `verilator-weekly (smc)` job of run 33982997638 on ancestor
+`97b9cef40` also passed
+(https://github.com/tenstorrent/tt-oca-harness/actions/runs/33982997638/job/101351466849).
+`smoke` includes the credited reset / mailbox-IRQ / FLR names and the
+SAMPLE observe cluster.
 
 [[smc-rci-credit]]
 === Credited vs observe-only
@@ -25,7 +28,7 @@ reset / mailbox-IRQ / FLR names and the SAMPLE observe cluster.
 |Mailbox STATUS / IRQ |`smc_mailbox_irq_test` |`smoke`, `canonical_top6` |YES
 |Function-level reset |`smc_flr_sanity_test` |`smoke`, `canonical_top10` |YES
 |GPIO IRQ active |`smc_gpio_irq_active_test` |`smoke`, `canonical_top20` |YES
-|Multi-reset CSR persist |`smc_multi_reset_csr_persistence_test` |`canonical_top20` (not `smoke`) |YES
+|Multi-reset CSR persist |`smc_multi_reset_csr_persistence_test` |`smoke`, `canonical_top20` |YES
 |Cold reset / clk running / IRQ observe |`smc_cold_reset_test`, `smc_clk_running_test`, `smc_irq_observe_test` |`smoke` / `project_p0` |NO (SAMPLE-only)
 |PLL/PVT clock config |`smc_pll_*` |unenrolled `rtl_placeholder` |NO
 |===
@@ -37,6 +40,12 @@ paths receive no credit.
 
 Depth groups `reset` / `clock` / `irq` remain debug breadth. They are
 not an extra feature-credit set.
+
+The #499 OUT leftover names
+(`smc_cool_reset_from_primary_chiplet_test`,
+`smc_cool_reset_from_bmc_test`,
+`smc_cool_reset_x_cool_reset_test`) already have rows in
+`SMC_DEFERRED_DISPOSITION.adoc`. They are not silent gaps.
 
 [[smc-rci-approval]]
 === Component approval (unsigned)
