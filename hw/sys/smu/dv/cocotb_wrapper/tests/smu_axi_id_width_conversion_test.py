@@ -25,12 +25,7 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
 from smu_addr_map import SMC_CHIP_CONFIG_VERSION_LO, smc_addr
-from smu_axi_helpers import (
-    axi_read32_resp_ids_bounded,
-    make_smu_axi_master,
-    resp_name,
-    wait_signal_high,
-)
+from smu_axi_helpers import axi_read32_resp_ids_bounded, make_smu_axi_master, resp_name
 from smu_base_test import smu_base_test
 
 PROBE_ADDRS = (
@@ -55,18 +50,7 @@ class smu_axi_id_width_conversion_test(smu_base_test):
                 arids.append(arid)
         self.logger.info("SEED: %d id_width arids=%s", seed, [f"0x{a:x}" for a in arids])
 
-        # This TB's bring_up releases cold reset and waits a fixed
-        # post_reset_cycles, where the bare-smu one blocks on the primary
-        # resets going high. The SMC primary reset carries a 255-cycle
-        # clk_ref extender on top of the cold deglitch, so at the end of
-        # bring_up here it is still asserted and an AXI read issued now never
-        # gets a response. Wait for it explicitly.
-        await wait_signal_high(
-            dut.rst_primary_smc_clk_n_o,
-            dut.clk_smu_i,
-            timeout_cycles=2000,
-            name="rst_primary_smc_clk_n_o",
-        )
+        # bring_up has already blocked until rst_primary_smc_clk_n_o released.
         await ClockCycles(dut.clk_smu_i, 50)
         master = await make_smu_axi_master(
             dut, dut.clk_smu_i, dut.rst_primary_smc_clk_n_o, prefix="ext_in"

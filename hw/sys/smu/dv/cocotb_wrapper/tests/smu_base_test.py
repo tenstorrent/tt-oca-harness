@@ -43,6 +43,19 @@ class smu_base_test(uvm_test):
             raise AssertionError(f"{name} contains X/Z: {value}")
         return int(value)
 
+    async def wait_signal_high(self, signal, clk, *, timeout_cycles: int, name: str) -> int:
+        """Block until `signal` reads 1, and say how long it took.
+
+        Mirrors seq_lib.smu_axi_helpers.wait_signal_high in the bare-smu tree.
+        Kept here rather than imported so the base test does not depend on an
+        AXI helper for a generic wait.
+        """
+        for cycle in range(timeout_cycles):
+            if self.read_int(signal, name, allow_xz=True):
+                return cycle
+            await ClockCycles(clk, 1)
+        raise AssertionError(f"{name} still low after {timeout_cycles} cycles")
+
     def build_phase(self) -> None:
         self.cfg = SmuEnvCfg("cfg")
         self.cfg.randomize_timing(self.random_seed())
@@ -218,6 +231,28 @@ class smu_base_test(uvm_test):
             "Post-reset SEP evidence: reset_n=%d fuse_done=%d",
             self.post_release_sep_reset,
             self.post_release_sep_fuse,
+        )
+
+        # post_reset_cycles is a settle, not a release. The SMC primary reset
+        # runs a 32-cycle cold deglitch and then a 255-cycle extender on
+        # clk_ref, so it is still asserted when that settle expires -- an AXI
+        # read issued at this point gets no response and times out. The bare
+        # tb_top.sv bring-up has always blocked on these two; this one now does
+        # too, so a test does not have to know.
+        cold_cycles = await self.wait_signal_high(
+            dut.rst_cold_n_o, dut.clk_ref_i, timeout_cycles=2000, name="rst_cold_n_o"
+        )
+        smc_cycles = await self.wait_signal_high(
+            dut.rst_primary_smc_clk_n_o,
+            dut.clk_smu_i,
+            timeout_cycles=2000,
+            name="rst_primary_smc_clk_n_o",
+        )
+        self.logger.info(
+            "Primary resets released: rst_cold_n_o after %d clk_ref, "
+            "rst_primary_smc_clk_n_o after %d clk_smu",
+            cold_cycles,
+            smc_cycles,
         )
         self.cfg.reset_done.set()
 
