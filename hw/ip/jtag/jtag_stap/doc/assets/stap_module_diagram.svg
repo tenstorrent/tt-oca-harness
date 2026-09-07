@@ -2,7 +2,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <svg xmlns="http://www.w3.org/2000/svg" version="1.1"
-     width="760" height="340" viewBox="0 0 760 340">
+     width="860" height="400" viewBox="0 0 860 400">
   <defs>
     <style>
       text { font-family: sans-serif; fill: #333333; }
@@ -10,6 +10,7 @@
       .label  { font-size: 12px; }
       .small  { font-size: 10px; fill: #555555; }
       .port   { font-size: 10px; font-family: monospace; fill: #333333; }
+      .note   { font-size: 9px; fill: #666666; }
     </style>
     <marker id="arr" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
       <path d="M0,0 L0,6 L7,3 z" fill="#4a7baa"/>
@@ -17,74 +18,115 @@
     <marker id="arr-g" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
       <path d="M0,0 L0,6 L7,3 z" fill="#555555"/>
     </marker>
+    <marker id="arr-r" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L7,3 z" fill="#aa5555"/>
+    </marker>
   </defs>
 
   <text x="14" y="22" class="title">STAP — Secondary TAP Architecture (one instance per STAP)</text>
 
   <!-- ── Outer STAP boundary ────────────────────────────────────────── -->
-  <rect x="10" y="34" width="740" height="295" rx="6"
+  <rect x="10" y="34" width="840" height="280" rx="6"
         fill="none" stroke="#4a7baa" stroke-width="2" stroke-dasharray="8 4"/>
   <text x="24" y="54" class="label" font-weight="bold" fill="#4a7baa">STAP (N-th instance)</text>
 
-  <!-- ── SIB (MUX pre-SR) ───────────────────────────────────────────── -->
-  <rect x="80" y="70" width="140" height="80" rx="4"
+  <!-- ── SIB (prim_jtag_sib_mux_pre) ──────────────────────────────── -->
+  <rect x="90" y="70" width="150" height="90" rx="4"
         fill="#dce8f4" stroke="#4a7baa" stroke-width="1.5"/>
-  <text x="150" y="104" class="label" text-anchor="middle">SIB</text>
-  <text x="150" y="120" class="label" text-anchor="middle">(MUX pre-SR)</text>
-  <text x="150" y="136" class="small" text-anchor="middle">Capture / Update</text>
+  <text x="165" y="106" class="label" text-anchor="middle">SIB</text>
+  <text x="165" y="122" class="small" text-anchor="middle">prim_jtag_sib_mux_pre</text>
+  <text x="165" y="138" class="small" text-anchor="middle">Capture / Update / Select</text>
 
-  <!-- ── 3DCR Register ──────────────────────────────────────────────── -->
-  <rect x="300" y="70" width="140" height="80" rx="4"
+  <!-- ── Optional pipeline flop (green) ──────────────────────────── -->
+  <rect x="310" y="82" width="130" height="50" rx="4"
+        fill="#e8f4e8" stroke="#4a9a4a" stroke-width="1.5" stroke-dasharray="5 3"/>
+  <text x="375" y="103" class="small" text-anchor="middle" font-weight="bold" fill="#4a9a4a">Optional flop</text>
+  <text x="375" y="118" class="small" text-anchor="middle" fill="#4a9a4a">(pipeline / lockup cell)</text>
+
+  <!-- ── 3DCR Scan Register ─────────────────────────────────────── -->
+  <rect x="310" y="148" width="130" height="70" rx="4"
         fill="#dce8f4" stroke="#4a7baa" stroke-width="1.5"/>
-  <text x="370" y="104" class="label" text-anchor="middle">3DCR</text>
-  <text x="370" y="120" class="label" text-anchor="middle">Register</text>
-  <text x="370" y="136" class="small" text-anchor="middle">Select / SR</text>
+  <text x="375" y="180" class="label" text-anchor="middle">3DCR</text>
+  <text x="375" y="196" class="label" text-anchor="middle">Scan Register</text>
+  <text x="375" y="210" class="small" text-anchor="middle">Select / Shift / Update</text>
 
-  <!-- ── Lifecycle gate ─────────────────────────────────────────────── -->
-  <rect x="540" y="70" width="160" height="60" rx="4"
-        fill="#f5f0e8" stroke="#998866" stroke-width="1.5"/>
-  <text x="620" y="97" class="label" text-anchor="middle">Lifecycle Enable</text>
-  <text x="620" y="114" class="small" text-anchor="middle">feat_ctrl_i gating</text>
+  <!-- ── Security gating (red AND gate) ─────────────────────────── -->
+  <rect x="510" y="85" width="170" height="100" rx="4"
+        fill="#fce8e8" stroke="#aa5555" stroke-width="1.5"/>
+  <text x="595" y="112" class="label" text-anchor="middle" fill="#aa5555">Security Gate</text>
+  <text x="595" y="128" class="small" text-anchor="middle">update_en &amp;= !security_disable_i</text>
+  <text x="595" y="144" class="small" text-anchor="middle">stap_sel = security_disable ? 0 : sel</text>
+  <text x="595" y="160" class="small" text-anchor="middle">host_tdo = security_disable ? 0 : tdo</text>
+  <text x="595" y="175" class="small" text-anchor="middle">(RTL: jtag_stap.sv:130,136,137)</text>
 
-  <!-- SIB → 3DCR -->
-  <line x1="220" y1="110" x2="300" y2="110" stroke="#4a7baa" stroke-width="1.5" marker-end="url(#arr)"/>
-  <!-- 3DCR → Lifecycle -->
-  <line x1="440" y1="110" x2="540" y2="100" stroke="#4a7baa" stroke-width="1.2" marker-end="url(#arr)"/>
+  <!-- ── Connections inside STAP ─────────────────────────────────── -->
 
-  <!-- ── Scan path connections ──────────────────────────────────────── -->
-  <!-- STAP_SI[N-1] input -->
-  <text x="12" y="115" class="port">STAP_SI[N-1]</text>
-  <line x1="78" y1="112" x2="45" y2="112" stroke="#555555" stroke-width="1" marker-end="url(#arr-g)"/>
-  <line x1="45" y1="112" x2="45" y2="85" stroke="#555555" stroke-width="1"/>
-  <text x="12" y="88" class="port">STAP_TDI[N-1]</text>
-  <line x1="78" y1="85" x2="12" y2="85" stroke="#555555" stroke-width="1" marker-end="url(#arr-g)"/>
+  <!-- SIB → Optional flop (scan-out of SIB into optional pipeline stage) -->
+  <line x1="240" y1="107" x2="310" y2="107" stroke="#4a7baa" stroke-width="1.2" marker-end="url(#arr)"/>
 
-  <!-- STAP_TMS -->
-  <text x="12" y="145" class="port">STAP_TMS[N-1]</text>
-  <text x="12" y="162" class="port">PTAP_TMS</text>
-  <line x1="78" y1="140" x2="12" y2="140" stroke="#555555" stroke-width="1" marker-end="url(#arr-g)"/>
+  <!-- Optional flop → 3DCR (feeds scan-in of 3DCR register) -->
+  <line x1="375" y1="132" x2="375" y2="148" stroke="#4a7baa" stroke-width="1.2" marker-end="url(#arr)"/>
 
-  <!-- STAP_TDO, STAP_SO outputs -->
-  <text x="714" y="140" class="port">STAP_TDO[N-1]</text>
-  <text x="714" y="156" class="port">STAP_SO[N-1]</text>
-  <line x1="700" y1="100" x2="714" y2="137" stroke="#555555" stroke-width="1" marker-end="url(#arr-g)"/>
+  <!-- SIB sel_out / update_en → Security Gate (control path, dashed) -->
+  <polyline points="240,140 280,140 280,135 510,135"
+            fill="none" stroke="#aa5555" stroke-width="1" stroke-dasharray="4 2" marker-end="url(#arr-r)"/>
 
-  <!-- CAPTURE_STAP feedback -->
-  <polyline points="150,150 150,200 370,200 370,150"
+  <!-- 3DCR scan-out → Security Gate TDO mux -->
+  <polyline points="440,183 480,183 480,155 510,155"
+            fill="none" stroke="#4a7baa" stroke-width="1.2" marker-end="url(#arr)"/>
+
+  <!-- ── External inputs (left side) ────────────────────────────── -->
+
+  <!-- STAP_TDI[N]: scan data in, arrives at SIB scan-in -->
+  <text x="14" y="82" class="port">STAP_TDI[N]</text>
+  <line x1="88" y1="79" x2="14" y2="79" stroke="#555555" stroke-width="1.2" marker-end="url(#arr-g)"/>
+  <!-- Arrow tip: pointing INTO SIB (left edge at x=90, label at x=14, so arrow goes right) -->
+  <line x1="14" y1="79" x2="88" y2="79" stroke="#555555" stroke-width="1.2" marker-end="url(#arr)"/>
+
+  <!-- STAP_SI[N]: update data in — also enters SIB from below -->
+  <text x="14" y="116" class="port">STAP_SI[N]</text>
+  <line x1="14" y1="113" x2="88" y2="113" stroke="#555555" stroke-width="1.2" marker-end="url(#arr)"/>
+
+  <!-- PTAP_TMS / STAP_TMS: control, enters SIB from left-low -->
+  <text x="14" y="148" class="port">PTAP_TMS / STAP_TMS[N]</text>
+  <line x1="14" y1="145" x2="88" y2="145" stroke="#555555" stroke-width="1.2" marker-end="url(#arr)"/>
+
+  <!-- security_disable_i: enters Security Gate from below -->
+  <text x="536" y="216" class="port" fill="#aa5555">security_disable_i</text>
+  <line x1="595" y1="212" x2="595" y2="185" stroke="#aa5555" stroke-width="1.2" marker-end="url(#arr-r)"/>
+
+  <!-- CAPTURE_DR / UPDATE_DR from TAP Controller (feedback into SIB and 3DCR) -->
+  <polyline points="165,160 165,240 375,240 375,218"
             fill="none" stroke="#998866" stroke-width="1" stroke-dasharray="4 2" marker-end="url(#arr-g)"/>
-  <text x="260" y="222" class="small" text-anchor="middle">CAPTURE_DR / UPDATE_DR from TAP controller</text>
+  <text x="275" y="255" class="note" text-anchor="middle">CAPTURE_DR / UPDATE_DR from TAP Controller</text>
 
-  <!-- ── iJTAG note ─────────────────────────────────────────────────── -->
-  <rect x="80" y="240" width="600" height="72" rx="4"
+  <!-- ── External outputs (right side) ──────────────────────────── -->
+
+  <!-- host_tdo_o: scan data out from Security Gate, x must be well inside 860 viewBox -->
+  <text x="696" y="107" class="port">host_tdo_o</text>
+  <line x1="680" y1="104" x2="696" y2="104" stroke="#555555" stroke-width="1.2" marker-end="url(#arr-g)"/>
+
+  <!-- host_tdo_oen_o: tri-state enable, exits below host_tdo_o label, stays inside viewBox -->
+  <text x="696" y="125" class="port">host_tdo_oen_o</text>
+  <line x1="680" y1="122" x2="696" y2="122" stroke="#555555" stroke-width="1.2" marker-end="url(#arr-g)"/>
+
+  <!-- host_sib_scan_ctrl_o / host_tap_ctrl_o: control outputs -->
+  <text x="696" y="160" class="port">host_sib_scan_ctrl_o</text>
+  <line x1="680" y1="157" x2="696" y2="157" stroke="#555555" stroke-width="1.2" marker-end="url(#arr-g)"/>
+  <text x="696" y="178" class="port">host_tap_ctrl_o</text>
+  <line x1="680" y1="175" x2="696" y2="175" stroke="#555555" stroke-width="1.2" marker-end="url(#arr-g)"/>
+
+  <!-- ── Notes / legend ─────────────────────────────────────────── -->
+  <rect x="14" y="330" width="832" height="62" rx="4"
         fill="#f8f8f8" stroke="#cccccc" stroke-width="1"/>
-  <text x="380" y="262" class="small" text-anchor="middle">
-    Each STAP instance may be disabled by parameter (e.g. JTAG_STAP_IO_ENABLE=0).
+  <text x="430" y="349" class="small" text-anchor="middle">
+    Green dashed block: optional pipeline / lockup flop between SIB select-out and 3DCR scan-in.
   </text>
-  <text x="380" y="278" class="small" text-anchor="middle">
-    When disabled, the DTP bypasses the STAP in the PTAP secondary scan chain:
+  <text x="430" y="363" class="small" text-anchor="middle">
+    Red block: security gate — when security_disable_i=1, stap_sel forced 0 and host_tdo_o forced 0,
   </text>
-  <text x="380" y="294" class="small" text-anchor="middle">
-    STAP_TDI[N-1] is driven from the previous stage TDO; STAP_TDO[N-1] is ignored.
+  <text x="430" y="377" class="small" text-anchor="middle">
+    and update_en is masked, preventing scan-register updates from propagating to the host.
   </text>
 
 </svg>

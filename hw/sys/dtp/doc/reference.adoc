@@ -24,7 +24,13 @@ The table below lists all DTP top-level ports. The port table is shared with
 the Integrator Guide.
 
 ifdef::backend-html5[]
+++++
+<div class="dtp-port-reference-scroll">
+++++
 include::ROOT:partial$hw/dtp/doc/port_table.adoc[]
+++++
+</div>
+++++
 endif::backend-html5[]
 ifdef::backend-pdf[]
 include::port_table.adoc[]

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+_Legend: "Default" column omitted where N/A — those ports have no integrator-supplied default; connect as directed by Description._
+
 [.dtp-port-reference.small,stretch]
 .DTP Port Declaration
 [cols="<20%,<16%,<8%,<11%,<25%,<20%",options="header",frame=all,grid=all]
@@ -72,9 +74,9 @@
 |`jtag_boot_stall_ovrd_o` |`logic` |Out |1 |JTAG boot stall override enable. |Boot control
 |`jtag_boot_stall_o` |`logic` |Out |1 |JTAG boot stall value when override is asserted. |Boot control
 
-|`jtag_ic_reset_smc_o` |`ic_reset_smc_t` |Out |`$bits(ic_reset_smc_t)` |SMC IC_RESET override slice. Struct fields: `.ovrd` (override enables), `.val` (active-low override values). Tied to '0 when `JTAG_IC_RESET_SMC_ENABLE=0`. |SMC `jtag_smc_reset_ctrl_i`
-|`jtag_ic_reset_sep_o` |`ic_reset_sep_t` |Out |`$bits(ic_reset_sep_t)` |SEP IC_RESET override slice. Struct fields: `.ovrd`, `.val`. Tied to '0 when `JTAG_IC_RESET_SEP_ENABLE=0`. |SEP `jtag_sep_reset_ctrl_i`
-|`jtag_ic_reset_ext_o` |`ic_reset_ext_t` |Out |`$bits(ic_reset_ext_t)` |External IC_RESET override slice. Struct fields: `.ovrd`, `.val` (integrator-defined size). Tied to '0 when `JTAG_IC_RESET_EXT_ENABLE=0`. |Integrator reset overrides
+|`jtag_ic_reset_smc_o` |`ic_reset_smc_t` |Out |`$bits(ic_reset_smc_t)` |SMC IC_RESET override slice. Struct contains `.ovrd` (override enables) and `.val` (active-low override values), each sized to match the corresponding SMC reset control struct. Tied to '0 when `JTAG_IC_RESET_SMC_ENABLE=0`. |SMC `jtag_smc_reset_ctrl_i`
+|`jtag_ic_reset_sep_o` |`ic_reset_sep_t` |Out |`$bits(ic_reset_sep_t)` |SEP IC_RESET override slice. Struct contains `.ovrd` (override enables) and `.val` (active-low override values), each sized to match the corresponding SEP reset control struct. Tied to '0 when `JTAG_IC_RESET_SEP_ENABLE=0`. |SEP `jtag_sep_reset_ctrl_i`
+|`jtag_ic_reset_ext_o` |`ic_reset_ext_t` |Out |`$bits(ic_reset_ext_t)` |External IC_RESET override slice. Struct contains `.ovrd` (override enables) and `.val` (active-low override values), each sized per integrator-defined type. Tied to '0 when `JTAG_IC_RESET_EXT_ENABLE=0`. |Integrator-defined reset overrides for logic outside the SMU
 
 |`jtag_ptap_state_o` |`tap_state_e` |Out |- |Current PTAP TAP state. |Debug infrastructure
 |`jtag_ptap_inst_decoded_o` |`jtag_instruction_decoded_e` |Out |- |Current decoded PTAP instruction. |Debug infrastructure
@@ -83,9 +85,9 @@
 |`axil_xtrig_resp_o` |`xtrig_axil_resp_t` |Out |- |Cross trigger CSR AXI-Lite response to SMC. |SMC `axil_dtp_csr_resp_i`
 
 |`xtrig_ctm_src_req_o` |`logic` |Out |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger source requests from CTM to destination sinks. |Cross trigger sinks
-|`xtrig_ctm_src_ack_i` |`logic` |In |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger source acknowledges. Unused in pulse mode. Default: tie to '0 in pulse mode. |Cross trigger sinks
+|`xtrig_ctm_src_ack_i` |`logic` |In |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger source acknowledges. Unused in pulse-sync mode (mode bit = 0). Default: tie to '0 in pulse-sync mode. |Cross trigger sinks
 |`xtrig_ctm_dst_req_i` |`logic` |In |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger destination requests from source generators. Default: tie to '0 if unused. |Cross trigger sources
-|`xtrig_ctm_dst_ack_o` |`logic` |Out |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger destination acknowledges. Unused in pulse mode. |Cross trigger sources
+|`xtrig_ctm_dst_ack_o` |`logic` |Out |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger destination acknowledges. Unused in pulse-sync mode (mode bit = 0). |Cross trigger sources
 
 |`xtrig_clk_stop_req_i` |`logic` |In |`[XTRIG_NUM_CLK_STOP_REQ-1:0]` |Clock stop requests from CLAs or other devices. Default: tie to '0 if unused. |Clock stop requestors
 

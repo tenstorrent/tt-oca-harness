@@ -565,6 +565,19 @@
    DTP PORT REFERENCE TABLE
    Scoped to .dtp-port-reference role only; no global selectors.
    ======================================== */
+
+/* Narrow-viewport wrapper: gives the table its own horizontal scroll zone
+   so the page itself stays within the viewport. min-width keeps all six
+   columns usable without collapsing to single characters. */
+.dtp-port-reference-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.doc .dtp-port-reference-scroll table.dtp-port-reference {
+    min-width: 680px;
+}
+
 .doc table.dtp-port-reference {
     table-layout: fixed;
     width: 100%;
