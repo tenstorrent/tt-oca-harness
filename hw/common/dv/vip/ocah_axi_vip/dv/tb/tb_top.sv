@@ -18,7 +18,7 @@
 //             nets.
 //
 // All nets are driven from cocotb (--public-flat-rw); nothing here has
-// drivers, so the lint waivers below cover the whole module on purpose.
+// drivers, so the lint waivers below cover the whole module.
 
 `timescale 1ns / 1ps
 
@@ -185,8 +185,8 @@ module ocah_axi_vip_tb_top;
   // One interface instance carries the whole selftest bus: the master
   // driver procedurally drives the initiator-side signals, the slave
   // driver the responder-side signals, and the passive monitor samples
-  // both through mon_cb (no DUT in the loop by design; the s_axi/t_axi
-  // flat nets above belong to the cocotb shape and stay idle here).
+  // both through mon_cb (no DUT in the loop; the s_axi/t_axi flat nets
+  // above belong to the cocotb shape and stay idle here).
   ocah_axi_if u_axi_if (
     .aclk(clk),
     .aresetn(rst_n)

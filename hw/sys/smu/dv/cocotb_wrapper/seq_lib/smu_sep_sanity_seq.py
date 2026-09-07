@@ -19,10 +19,9 @@ that dies mid-run reports where rather than just timing out:
     3  HMAC done, entering KMAC stage
     4  KMAC done
 
-All five are required. An earlier firmware revision emitted beacon 0 ahead of
-sep_outbound_filter_init(); that store faulted against the BlockByDefault=1
-outbound filter and killed the image before it could open the window, so the
-beacon now follows the filter programming and its absence is a real failure.
+All five are required. Beacon 0 follows sep_outbound_filter_init(): a store
+ahead of it faults against the BlockByDefault=1 outbound filter and kills the
+image before it can open the window, so the beacon's absence is a real failure.
 """
 
 from __future__ import annotations

@@ -185,19 +185,13 @@ class smc_ecc_fault_inject_test_seq(SmcCsrSeq):
         # on its first cycle and could not fail ([TIMEOUT-MUST-FAIL] /
         # [NO-ALWAYS-PASS-CHECKER]).
         await boot_task
-        # There is deliberately no scratch-read wait at this point. The CPU does
-        # not re-fetch from scratch bank0 once the boot fetch has completed, and
-        # that is measured rather than assumed: a correctly baselined wait here
-        # times out with the count static at 33 over 50_000 cycles, and still
-        # times out at a static 33 after an extra `_pulse_scratch_boot()`. A
-        # wait with no stimulus behind it can only be satisfied by a stale
-        # baseline ([NO-ALWAYS-PASS-CHECKER]).
-        #
-        # The recovery property --
-        # further scratch traffic with the inject cleared must not score -- is
-        # already proven earlier in this body by the `RECOVERY` leg, which takes
-        # its baseline (`scratch_hold`) live, a few statements before it waits,
-        # and is followed by `assert mid_after == mid`.
+        # The CPU does not re-fetch from scratch bank0 once the boot fetch has
+        # completed (the scratch-read count stays static over 50_000 cycles,
+        # and after a further `_pulse_scratch_boot()`), so no scratch-read wait
+        # belongs here: a wait with no stimulus behind it can only be satisfied
+        # by a stale baseline ([NO-ALWAYS-PASS-CHECKER]). The recovery property
+        # -- further scratch traffic with the inject cleared must not score --
+        # is proven by the `RECOVERY` leg above (`assert mid_after == mid`).
 
         await self.wait_fuse_sense_done()
         await self.csr_read("RAS_BANK_INFO", RAS_BANK_INFO)

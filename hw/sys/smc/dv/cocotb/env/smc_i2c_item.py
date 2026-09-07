@@ -12,11 +12,10 @@ from pyuvm import uvm_sequence_item
 class SmcI2cOp(Enum):
     """Observation operations the I2C agent supports.
 
-    Only ``SAMPLE`` is defined today: pre-cocotb-stimulus observability of the
+    Only ``SAMPLE`` is defined: pre-cocotb-stimulus observability of the
     SMC-internal I2C clock-gate enable and the lowest I2C controller debug
-    nibble, lifted to tb_top as ``tb_i2c_cg_en`` / ``tb_i2c_debug_lo``. Real
-    bus-driving operations (``WRITE`` / ``READ``) will land once the OSS top
-    exposes I2C SCL/SDA pads.
+    nibble, lifted to tb_top as ``tb_i2c_cg_en`` / ``tb_i2c_debug_lo``.
+    Bus-driving operations need I2C SCL/SDA pads on the OSS top.
     """
 
     SAMPLE = "SAMPLE"

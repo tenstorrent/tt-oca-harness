@@ -67,17 +67,6 @@ async def prove_axil_any_master_activity(seq) -> None:
         # The nested eFuse-bank prover records its own observation for
         # check_efuse_otp_observability; a diagnostic test never consumes it, so
         # drop it here rather than leaving a stale credit behind.
-        #
-        # LAYERING DEBT (cleanup, NOT FIXED HERE): this reaches
-        # into another module's private list to keep the two ledgers consistent.
-        # The invariant is real and nothing is mis-credited, but it is enforced by
-        # convention at this one call site instead of by the owning module. The
-        # tidy fix belongs in `smc_efuse_vip_utils`: either a public
-        # `consume_positive_control()` / `discard_positive_control()` pair, or a
-        # `record=False` argument on `prove_efuse_bank_axil_activity` so the
-        # nested call never credits the eFuse ledger at all. That file is outside
-        # this change's ownership, so the debt is documented rather than papered
-        # over; do not add a second cross-module mutation without doing the fix.
         if smc_efuse_vip_utils._POSITIVE_CONTROL:
             smc_efuse_vip_utils._POSITIVE_CONTROL.pop()
 
@@ -111,7 +100,7 @@ async def check_diagnostic_observability() -> None:
       no step in a diagnostic CSR test re-asserts either. These are ``== 1``
       (deasserted) expectations, so they are not idle/negative checks.
 
-    ``tb_sync_irq`` is deliberately NOT sampled or logged here: this path has no
+    ``tb_sync_irq`` is NOT sampled or logged here: this path has no
     independently sourced expectation for it, and logging it as "observed" reads
     as a check that does not exist. SMC interrupt-aggregate observability is
     owned by ``smc_irq_observe_test_seq``.

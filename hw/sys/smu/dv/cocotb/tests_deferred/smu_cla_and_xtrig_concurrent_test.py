@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_cla_and_xtrig_concurrent_test — DEFERRED (no DUT Force policy).
 
-Was: CLA+CTM Force inject on hierarchical SMU nets. No product pin / frontdoor stimulus yet.
+No product pin or frontdoor stimulus exists for CLA+CTM injection.
 Not ported (needs_real_stimulus / no_force).
 """
 

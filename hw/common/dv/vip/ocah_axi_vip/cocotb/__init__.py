@@ -78,7 +78,7 @@ from .ocah_axi_types import (
 
 
 class OcahAxiVipBackendError(ImportError):
-    """Raised when an optional legacy-backed monitor cannot import its backend."""
+    """Raised at construction of a class whose optional backend is not importable."""
 
 
 def _unavailable_class(class_name: str, backend: str):

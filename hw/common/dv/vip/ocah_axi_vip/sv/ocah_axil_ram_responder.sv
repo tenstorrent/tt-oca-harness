@@ -12,8 +12,8 @@
 // operate -> disarm) belongs to the driving sequence, mirroring the cocotb
 // `configure_target_error` / `clear_target_errors` flow.
 //
-// Simulation TB collateral for the SV-UVM flow (e.g. replacing the DTP tb_top
-// UVM-mode tie-offs). Not intended for synthesis or Verilator filelists.
+// Simulation TB collateral for the SV-UVM flow. Not intended for synthesis or
+// Verilator filelists.
 
 module ocah_axil_ram_responder #(
   parameter int unsigned ADDR_WIDTH = 32,

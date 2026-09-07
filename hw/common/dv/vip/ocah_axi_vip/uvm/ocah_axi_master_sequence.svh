@@ -144,7 +144,7 @@ class ocah_axi_master_sequence extends uvm_sequence #(ocah_axi_item);
   // Single-beat write with explicit channel skew (the cocotb write_skewed
   // parity operation): aw/w_valid_delay hold that channel's VALID low for N
   // cycles before it launches — AXI permits either arrival order, so
-  // demux/regblock channel-ordering paths are exercised deliberately — and
+  // demux/regblock channel-ordering paths are exercised — and
   // b_ready_delay defers the BREADY assert after the data phase.
   task write_skewed_result(
       input bit [63:0] addr, input bit [63:0] data, output ocah_axi_item result,

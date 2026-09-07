@@ -8,7 +8,7 @@
 // m_master_env.m_sequencer, m_slave_agent.seq, m_axi_env.m_checker/cfg.
 //
 // `en_passive` gates the wire-level observation stack: the ID-mismatch test
-// clears it (uvm_config_db bit "en_passive") because a deliberately
+// clears it (uvm_config_db bit "en_passive") because a
 // corrupted response ID is an orphan completion to a passive observer — the
 // corruption evidence rides the env-owned scenario checker instead.
 

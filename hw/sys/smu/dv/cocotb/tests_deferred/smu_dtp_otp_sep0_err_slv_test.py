@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_dtp_otp_sep0_err_slv_test — DEFERRED (needs_real_lcc / needs SEP=1 / no Force).
 
-Was: OTP Force + hier AXIL Force. Use smu_lcc_helpers + SEP=1 eFuse LCC when available.
+Needs SEP=1 eFuse LCC ungating through smu_lcc_helpers.
 Not ported (needs_real_lcc, sep1).
 """
 

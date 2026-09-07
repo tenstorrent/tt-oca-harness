@@ -66,7 +66,7 @@ class SmuSepModulesSeq:
         max_cycles = int(os.environ.get("SMU_SEP_MODULES_MAX_CYCLES", "600000"), 0)
         heartbeat = max(1, max_cycles // 20)
 
-        # AES masking reseeds from crypto-EDN, so this image now runs the entropy
+        # AES masking reseeds from crypto-EDN, so this image runs the entropy
         # bring-up before its AES stage. The ring oscillators do not self-oscillate
         # under Verilator, so the raw noise has to come from the testbench -- the
         # same exception hw/sys/sep/dv takes, and the only forced signal involved.

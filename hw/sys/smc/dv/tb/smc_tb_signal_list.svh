@@ -204,7 +204,7 @@
 `SMC_TB_OUT(logic [smc_pkg::NUM_GPIO_WRAPS-1:0], tb_core2pad_en_o)
 
 // Flat inbound AXI manager driven by cocotbext-axi (prefix s_axi).
-// Mirrors the legacy SMC DV inbound AXI path for real CSR/fabric traffic.
+// Inbound AXI path for real CSR/fabric traffic.
 `SMC_TB_IN(logic [5:0], s_axi_awid)
 `SMC_TB_IN(logic [55:0], s_axi_awaddr)
 `SMC_TB_IN(logic [7:0], s_axi_awlen)
@@ -416,8 +416,8 @@
 
 // U7-1: ECC SBE/DBE inject into scratch bank0 reads + fire count.
 // fire_count tracks DUT cpu_scratch0_inject_fire only (real bank0 reads
-// with inject armed). tb_cpu_ecc_inject_probe is retained for API compat
-// but is not scored (synthetic probe path removed).
+// with inject armed). tb_cpu_ecc_inject_probe is part of the cocotb pin
+// surface and is not scored.
 `SMC_TB_IN(logic, tb_cpu_ecc_inject_sbe)
 `SMC_TB_IN(logic, tb_cpu_ecc_inject_dbe)
 `SMC_TB_IN(logic, tb_cpu_ecc_inject_probe)

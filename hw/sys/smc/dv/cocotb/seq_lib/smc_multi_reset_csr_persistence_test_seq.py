@@ -185,7 +185,7 @@ class smc_multi_reset_csr_persistence_test_seq(SmcResetSeqBase, SmcCsrSeq):
 
         await self.csr_restore("SCRATCH_COLD_WARM_1", scratch.addr, data=scratch.expected)
         # Loop integrity + scoreboard cross-check. This sweep issues no bounded
-        # read, so `assert_all_reachable` deliberately does NOT assert
+        # read, so `assert_all_reachable` does NOT assert
         # `timeouts == 0` here (it could not fail on this path -- a no-response
         # raises in the AXI driver instead); what it does assert is that the
         # scoreboard actually checked at least as many SYS AXI items as this

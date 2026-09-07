@@ -150,7 +150,7 @@ EFUSE_BANK_INIT_TIME_RESET = _field_mask(
 
 # Consume-once record of the positive-control observation so the idle leg can
 # state, in the kept log, whether it is backed by one *in this test*.
-# Module-private on purpose: use the public
+# Module-private: use the public
 # ``prove_efuse_bank_axil_activity(..., record=False)`` / :func:
 # ``consume_positive_control`` API below instead of reaching in from another
 # module ([REUSE-AND-LAYERING]).

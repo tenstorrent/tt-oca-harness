@@ -57,9 +57,8 @@ common_bender_targets = [
 ]
 # smu pulls smc+dtp; sep+sep_el2 supply the real SEP subsystem and EL2 CPU;
 # smu_wrapper adds hw/top/{smu_wrapper,smc_ip_integration,sep_ip_integration}.
-# `simulation` is deliberately NOT set: the
-# sep×simulation slice references absolute /tech and /vendor_ip model paths
-# that only exist on internal hosts.
+# No `simulation` target: the sep×simulation slice references absolute /tech
+# and /vendor_ip model paths that only exist on internal hosts.
 bender_targets = [
   "smu",
   "smc",
@@ -138,12 +137,12 @@ public_scope = "hw/sys/smu/dv/tb/smu_wrapper_public_scope.vlt"
 ccache = true
 
 [coverage.verilator]
-# Line / branch (--coverage-line), expression, and SVL user coverage. Toggle is
-# deliberately absent, matching smu_sim_cfg.toml and sep_sim_cfg.toml: on these
-# models toggle points are ~95% of the coverage database (~0.5 GB per test leaf)
-# and the costliest instrumentation at sim time. Without it the same regression
-# stays in the low GB range and fits standard CI runner disk. This replaces the
-# simulator default `--coverage`, which would enable every form including toggle.
+# Line / branch (--coverage-line), expression, and SVL user coverage; no toggle,
+# matching smu_sim_cfg.toml and sep_sim_cfg.toml: on these models toggle points
+# are ~95% of the coverage database (~0.5 GB per test leaf) and the costliest
+# instrumentation at sim time. Without it the same regression stays in the low GB
+# range and fits standard CI runner disk. This replaces the simulator default
+# `--coverage`, which would enable every form including toggle.
 build_args = ["--coverage-line", "--coverage-expr", "--coverage-user"]
 
 [build.options]

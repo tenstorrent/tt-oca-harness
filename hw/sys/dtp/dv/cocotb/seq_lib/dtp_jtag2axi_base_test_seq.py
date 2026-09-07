@@ -268,7 +268,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         # non-OKAY is classified as EXPECTED. One credit covers
         # the single op; direction narrows when only one side is armed.
         # DTP_AXI_SCOREBOARD_NEGATIVE=1 is the documented negative-validation
-        # hook: it deliberately arms the WRONG response so the run must FAIL,
+        # hook: it arms the WRONG response so the run must FAIL,
         # proving the checker rejects a bad expectation end to end.
         armed_resp = int(resp)
         if OcahKnobs.is_set("DTP_AXI_SCOREBOARD_NEGATIVE"):

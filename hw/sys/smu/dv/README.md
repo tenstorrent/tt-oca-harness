@@ -7,16 +7,16 @@ See [`docs/index.adoc`](docs/index.adoc) for the chapter set:
 architecture, [`docs/SMU_VPLAN.adoc`](docs/SMU_VPLAN.adoc) for the
 verification plan, and
 [`docs/SMU_FEATURE_LIST.adoc`](docs/SMU_FEATURE_LIST.adoc) for the
-candidate v0.5.0 SEP=0 feature subset (unsigned; #487), and
+candidate v0.5.0 SEP=0 feature subset, and
 [`docs/SMU_DEFERRED_DISPOSITION.adoc`](docs/SMU_DEFERRED_DISPOSITION.adoc)
 for the v0.5.0 deferred/OUT classification of the 123-entry catalog.
 
 **Executable contract:** enrolled groups in [`testlists/all.toml`](testlists/all.toml)
 — live green `phase1` **49**, `sep0_all` **53** (no Force; product-pin CTM).
 
-**Green / signoff policy (2026-07-29):** no DUT Force / no TB placeholder.
-Raise-stub Force-era bodies live under `cocotb/tests_deferred/` +
-not ported — **not** reportable as PASS.
+**Green / signoff policy:** no DUT Force / no TB placeholder.
+Raise-stub bodies live under `cocotb/tests_deferred/` and are not ported —
+**not** reportable as PASS.
 
 **Group ladder:** `smoke` ⊂ `top5` ⊂ `top10` ⊂ `phase1` (see `testlists/all.toml`).
 
@@ -40,7 +40,7 @@ smu_<scenario>_test
 | `tb/smu_tb_signal_list.svh`, `tb/smu_tb_if.sv` | The TB signals declared once for both shapes; the SMU-local TB interface of the SV-UVM view |
 | `uvm/{env,seq_lib,tests}/` | SV-UVM realization (`--framework uvm`, VCS) |
 | `cocotb/{env,seq_lib,tests}/` | Live enrolled PyUVM tests |
-| `cocotb/tests_deferred/` | Force-era raise stubs (catalog only); each body's docstring carries its blocker |
+| `cocotb/tests_deferred/` | Raise stubs (catalog only); each body's docstring carries its blocker |
 | `testlists/all.toml` | Enrolled SEP=0 groups (`sep0_all` = 53) |
 | `smu_sim_cfg.toml` | `--dut smu` sim defaults |
 | `smu_wrapper_sim_cfg.toml` | `--dut smu_wrapper` production-wrapper baseline |
@@ -57,7 +57,7 @@ smu_<scenario>_test
 | External SMN AXI4 | `ocah_axi_vip` (`OcahAxiSlaveAgent` / master) |
 | SMC OTP AXI-Lite (over JTAG2AXI) | `ocah_axi_vip` AXI-Lite |
 | SMC scratch / mailbox | Backdoor + cocotb polling |
-| Cross-trigger / iJTAG | OCAH-local BFM (later) |
+| Cross-trigger / iJTAG | OCAH-local BFM |
 
 ## Running (Phase-1 SEP=0)
 
@@ -138,7 +138,7 @@ To port another cocotb scenario: add `uvm/seq_lib/<name>_seq.svh` on
 `configure_test_cfg()` for the scoreboard features it requires), add both
 `include`s to the package and the manifest, and change the scenario's
 testlist entry to the binding map. A pin the scenario needs that the harness
-ties off today is promoted into `tb/smu_tb_if.sv` first; a new embedded-IP
+ties off is promoted into `tb/smu_tb_if.sv` first; a new embedded-IP
 feature reuses that IP bench's reference model and scoreboard through
 `smu_env` and `smu_scoreboard`.
 
@@ -200,7 +200,7 @@ python3 hw/sys/smu/dv/tools/smu_wrapper_tb_readiness_test.py \
 These boot the images from `hw/sys/sep/dv/fw/tests/`, the same ones the internal
 SMU suite uses, rather than this DV root's minimal freestanding smoke. They need
 the toolchain container (see `[c_build.sep_dv_fw]`), so they are enrolled in
-`sep_real_fw` rather than the merge gate until CI carries the image.
+`sep_real_fw` rather than the merge gate.
 
 The verdict is always the firmware's own — a named terminal loop, or the STDOUT
 mailbox handshake — and the testbench only observes. `seq_lib/sep_fw_common.py`
@@ -242,36 +242,30 @@ than on a test defect — see the notes on their testlist entries:
 |------|-------|-----------|
 | `smu_sep_smc_xbar_test` | `sep_smc_sram_blocked` | SEP-driven SMC bring-up polls SMC SRAM for an image cookie, but that RAM sits on the CPU-private memory interface, so a master arriving through sys-inbound cannot see it. Also blocks `sep_smc_interop` and `sep_smc_mbox_irq`. |
 
-`smu_sep_modules_test` used to sit in this table, blocked on the entropy stack.
-It is now enrolled in `sep_real_fw`: the entropy stack is brought up by firmware
-(`sep_entropy_bringup()` in `hw/sys/sep/dv/fw/drivers/sep_entropy.h`) ahead of
-the AES stage, with `+esrc_noise_force` supplying the raw noise the ring
-oscillators cannot generate under Verilator. `sep_smu_aes` is enrolled on the
-same basis. `sep_smu_otbn` was listed alongside them as entropy-blocked, which
-was wrong: it only writes CSRs and never needed entropy at all.
+`smu_sep_modules_test` and `sep_smu_aes` are enrolled in `sep_real_fw`: the
+entropy stack is brought up by firmware (`sep_entropy_bringup()` in
+`hw/sys/sep/dv/fw/drivers/sep_entropy.h`) ahead of the AES stage, with
+`+esrc_noise_force` supplying the raw noise the ring oscillators cannot generate
+under Verilator. `sep_smu_otbn` only writes CSRs and needs no entropy.
 
-`smu_sep_ext_axi_test` is now built end to end and blocked on the same preload
-problem. Its three parties all exist: the SEP and SMC firmware halves, and an
-ext_in AXI master played by the sequence on the flat `ext_in_*` pins the
-testbench now exposes for `cocotbext.axi` (`smu_axi_in_req` used to be tied off,
-so that third party could not exist at all). `smu_sep_ext_axi_arm` is an SMC ROM
+`smu_sep_ext_axi_test` builds end to end and is blocked on the same preload
+problem. Its three parties are the SEP and SMC firmware halves, and an ext_in
+AXI master played by the sequence on the flat `ext_in_*` pins the testbench
+exposes for `cocotbext.axi`. `smu_sep_ext_axi_arm` is an SMC ROM
 that hands control to the scratch-RAM half, and the sequence reconciles its jump
 target against `smu_sep_ext_axi_smc_entry` in the built `.sram.sym`.
 
-What blocks it is preload lifetime, measured rather than assumed: the SMC boot
-path writes every word of scratch RAM (4096 bus writes, exactly the RAM depth)
-after the time-zero backdoor load, so the image is gone before firmware runs.
-Swapping in the plain non-jumping ROM produces the same 4096 writes, so it is
-not the handoff. The ext_in master itself is proven working by the same run — it
+What blocks it is preload lifetime: the SMC boot path writes every word of
+scratch RAM (4096 bus writes, exactly the RAM depth) after the time-zero
+backdoor load, so the image is gone before firmware runs. The plain non-jumping
+ROM produces the same 4096 writes, so it is not the handoff. The ext_in master
 drives real AXI and gets real responses, including the DECERR the closed SMC
-aperture correctly returns. Unblocking means moving the stripe load in
-`hw/sys/smc/dv/models/smc_cpu_mem_dv.sv` to after that initialisation. That also
-looks like the decisive cause behind `smu_sep_smc_xbar_test`, whose note
-attributes the failure to the missing sys-inbound path to CPU-private RAM.
+aperture returns. The stripe load lives in
+`hw/sys/smc/dv/models/smc_cpu_mem_dv.sv`.
 
 The SEP smoke is a boot-readiness anchor mirroring the internal
 `smu_sep_smoke_test` contract; console/STDOUT checking over the external AXI
-path is tracked separately.
+path is out of scope.
 
 ### Entropy stack (`--items sep_entropy`)
 
@@ -296,7 +290,7 @@ Two things this needs that the rest of the suite does not:
   LFSR, because the ring oscillators do not self-oscillate under Verilator.
   This is the one forced signal, it is inert without the plusarg, and the
   downstream taps are read-only. `hw/sys/sep/dv` takes the same exception.
-  Its other shortcut, `+sep_crypto_edn_force`, is deliberately **not** adopted
+  Its other shortcut, `+sep_crypto_edn_force`, is **not** adopted
   here: it would skip the logic these tests exist to exercise.
 
 ### Lifecycle and the DTP → SEP → SMC chain
@@ -334,13 +328,9 @@ run directory). Results land under `build/runs/<ts>__<tool>__<label>/` with
 per-test `result.json` / `results.xml`; record issue evidence as commands,
 seeds, and those run paths on the tracking GitHub issue.
 
-## Status
+## Enrollment
 
-The `SEP=0` `tb_top.sv`, `SmuEnv` and the sequence library are in place:
-59 live test bodies under `cocotb/tests/`, 28 non-enrolled bodies under
-`cocotb/tests_deferred/`. One body under `cocotb/tests/` is present but
-not enrolled -- `smu_ext_axi_global_addr_smoke_test`, blocked because the
-OSS `s_axi` is a LOCAL aperture so `GLOBAL_BASE + offset` DECERRs; its
-docstring carries that reason. `sep0_all` (53) is the SMU regression group
-in `.github/workflows/regress.yml` (nightly at one seed per test, weekly at
-three).
+`smu_ext_axi_global_addr_smoke_test` under `cocotb/tests/` is not enrolled:
+the OSS `s_axi` is a LOCAL aperture, so `GLOBAL_BASE + offset` DECERRs; its
+docstring carries that reason. `sep0_all` is the SMU regression group in
+`.github/workflows/regress.yml`.

@@ -217,7 +217,7 @@ def check_filelists(result: Readiness, filelists: list[Path]) -> None:
         "axi_sim_mem.sv",
     )
     forbidden_tokens = (
-        # Stale foundry path + retired DV TCM shim must not appear.
+        # Foundry-path and DV TCM shim tokens must not appear.
         # (OSS TCM is hw/sys/sep/rtl/sep_tcm_wrapper.sv; blocker is ram_*.)
         "hw/sep/sep_tcm_wrapper.sv",
         "hw/sys/smu/dv/shims/mem/sep_tcm_wrapper.sv",

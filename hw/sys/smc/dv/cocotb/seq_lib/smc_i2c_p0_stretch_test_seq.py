@@ -144,7 +144,7 @@ class smc_i2c_p0_stretch_test_seq(SmcCsrSeq):
         Dropping it removes no proof. That the host really executed the read on
         the bus is established by ``body``: ``_wait_rx_byte`` returns the byte the
         target supplied and it is compared against ``_READ0``. What remains to
-        establish is the settled state, which is now an exact expectation over
+        establish is the settled state, an exact expectation over
         the bits this scenario determines instead of a single ``HOSTIDLE`` bit:
 
           HOSTIDLE  = 1  the host FSM finished the transfer

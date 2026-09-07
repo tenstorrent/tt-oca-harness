@@ -146,8 +146,8 @@ class smu_dtp_jtag2axi_smc_rw_matrix_test_seq:
             payload = (DEFAULT_DATA ^ (0x1111_1111_1111_1111 * size)) & window
             write_data = (SIZE_OUTER & ~window) | payload
             # Bridge byte-enables follow WSTRB, not AxSIZE: SIZE=0 + WSTRB=0xFF
-            # stores the full beat (seed-1 FAIL 0xa5a5…a5ef). Issue the matching
-            # WSTRB width; 8-byte read must keep SIZE_SEED outside that window.
+            # stores the full beat. Issue the matching WSTRB width; the 8-byte
+            # read must keep SIZE_SEED outside that window.
             wstrb = _full_wstrb(size)
             want = apply_axi_wstrb(SIZE_SEED, write_data, wstrb, 8)
             await self._wr(

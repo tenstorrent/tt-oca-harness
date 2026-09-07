@@ -39,7 +39,7 @@ blocked outcome *is* derivable from the sources above: the RESERVED region's
 observed block comes from the hardware field-map lock (``rule_t.lock[0]``,
 ``architecture.adoc:179-201``), which is fused into the array rather than
 published in any artifact this testbench can read, so an expectation for it
-could only have been copied off the DUT. All four reads now carry an exact,
+could only have been copied off the DUT. All four reads carry an exact,
 independently sourced expectation.
 """
 
@@ -82,7 +82,7 @@ def _map_expect(addr: int, lock_field: str | None) -> int:
 # Every SMC_EFUSE_MAP region that has BOTH a generated base address and a
 # generated `*_READ_LOCK` bit in blocks/smc_efuse_map.h, so `_map_expect` can
 # derive an exact expectation for it from the preload asset plus the generated
-# map. Excluded on purpose:
+# map. Excluded:
 #   * `RESERVED_0..64` -- see the module docstring: its blocked outcome is not
 #     independently derivable, so a compare on it would not be evidence.
 #   * `SPI_CONFIG` / `SPI_CTRL_FIELD_ENABLE` -- a LOCKS read-lock bit exists for

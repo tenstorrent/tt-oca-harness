@@ -6,7 +6,6 @@ schema_version = 1
 # points at this file so `--tag smoke` resolves across every leaf list.
 # Mirrors the shared all.toml convention.
 #
-# TB-policy deferred (I3C DAT, DTP CSR idle, pll/pvt placeholder, fake BFM):
 includes = ["reset.toml", "i2c.toml", "uart.toml", "clock.toml", "irq.toml", "gpio.toml", "axil.toml", "combined.toml", "batch_b.toml", "batch_c.toml", "batch_d.toml", "occp_boot.toml", "dual.toml", "vplan_triplets.toml", "p1_coverage_gap.toml", "p1_coverage_gap_r2.toml", "p1_coverage_gap_r3.toml", "p1_coverage_gap_r4.toml"]
 
 [[groups]]
@@ -211,7 +210,6 @@ name = "p2_phase_b"
 tests = [
     "smc_efuse_jtag_lc_access_matrix_test",
     "smc_ecc_fault_inject_test",
-    # smc_dfd_dbs_fault_inject_test — not ported (tb_glue; not DUT DFD RTL)
     "smc_jtag_dmi_smoke_test",
 ]
 
@@ -222,7 +220,6 @@ tests = [
     "smc_efuse_otp_burn_shadow_test",
     "smc_occp_sanity_secure_error_test",
     "smc_ecc_fault_inject_test",
-    # smc_dfd_dbs_fault_inject_test → deferred (tb_glue)
     "smc_uart_loopback_test",
     "smc_smbus_pmbus_test",
 ]
@@ -347,7 +344,6 @@ tests = [
     "smc_output_filter_remap_security_test",
     "smc_zeroer_dma_timeout_test",
     # --- reset (6) ---
-    # smc_captured_straps_test → deferred (needs_adopter_straps); covered in nonfree
     "smc_cold_reset_test",
     "smc_cool_reset_x_cold_reset_test",
     "smc_jtag_reset_ctrl_test",
@@ -363,10 +359,10 @@ tests = [
     # --- timer (1) ---
     "smc_octs_dual_sync_test",
     # --- wdt (1) ---
-    # New in the coverage-widening pass. Proves the cluster WDT magic-key
-    # unlock (wdt.rdl:105-111) with the LOCKED write as its own negative
-    # control, on all four cores: without that pair a plain write/readback on
-    # CMP silently reads back the reset value and looks like a pass.
+    # Proves the cluster WDT magic-key unlock (wdt.rdl:105-111) with the LOCKED
+    # write as its own negative control, on all four cores: without that pair a
+    # plain write/readback on CMP silently reads back the reset value and looks
+    # like a pass.
     "smc_wdt_key_csr_test",
     # --- uart_log (8) ---
     "smc_uart_baud_word_parity_format_test",

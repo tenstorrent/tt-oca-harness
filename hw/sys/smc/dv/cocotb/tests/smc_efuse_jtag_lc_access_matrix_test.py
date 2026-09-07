@@ -145,7 +145,7 @@ READ_CLASSES = (
 # Hierarchical decode probe. `hw/sys/smc/dv/tb/smc_public_scope.vlt` publishes
 # `lc_state_smc_raw` / `lc_sigint_err` / `is_prod_or_rma_sip` READ-ONLY
 # (`public_flat_rd -module "smc_efuse_wrapper"`), which is what makes this path
-# resolvable under Verilator. Read-only on purpose: this test only samples them,
+# resolvable under Verilator. Read-only: this test only samples them,
 # so cocotb cannot write internal state even by accident.
 _LC_PROBE_PATH = ("u_dut", "u_smc", "u_smc_peripherals", "u_smc_efuse_wrapper")
 _LC_PROBE_VARS = ("lc_state_smc_raw", "lc_sigint_err", "is_prod_or_rma_sip")

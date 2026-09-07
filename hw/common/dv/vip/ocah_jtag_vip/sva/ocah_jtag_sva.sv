@@ -123,8 +123,8 @@ module ocah_jtag_sva #(
                    en_i |=> (tap_state_i == jtag_next_onehot($past(tap_state_i), $past(tms))), tck,
                    !trst_n)
 
-      // TRST forces Test-Logic-Reset (§6.1.1). Deliberately NOT
-      // reset-disabled; qualified on a resolved-low trst_n.
+      // TRST forces Test-Logic-Reset (§6.1.1). Not reset-disabled (the rule
+      // checks reset itself); qualified on a resolved-low trst_n.
       `OCAH_ASSERT(OCAH_JTAG_TRST_TLR, (en_i && (trst_n === 1'b0)) |-> (tap_state_i == TlrOnehot),
                    tck, 1'b0)
 

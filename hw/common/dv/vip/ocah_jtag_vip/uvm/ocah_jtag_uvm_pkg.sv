@@ -21,7 +21,7 @@
 //   ocah_jtag_scan_builder.svh     — IR/DR scan reconstruction over the step stream
 //   ocah_jtag_checker.svh          — TAP-contract checker over the reference model
 //                                    and the shared ocah_checker evidence base
-//                                    (ocah_checker_uvm_pkg, issue #1132)
+//                                    (ocah_checker_uvm_pkg)
 //   ocah_jtag_slave_sequence.svh   — slave test-facing API (configure/inspect the device)
 //   ocah_jtag_cov.svh              — optional functional-coverage subscriber (cfg.en_cov)
 //   ocah_jtag_master_agent.svh     — master agent bundle
@@ -35,9 +35,8 @@
 //
 // The monitor publishes raw observations only. ocah_jtag_scan_builder layers
 // IR/DR scan reconstruction on the step stream, and ocah_jtag_checker owns
-// named TAP-contract evidence (issue tt-oca-hw#3296); pairing steps with a
-// DUT's decoded TAP state remains a DUT-side subscriber's job (e.g. DTP's
-// dtp_tap_fsm_checker).
+// named TAP-contract evidence; pairing steps with a DUT's decoded TAP state
+// remains a DUT-side subscriber's job (e.g. DTP's dtp_tap_fsm_checker).
 
 `timescale 1ns / 1ps
 

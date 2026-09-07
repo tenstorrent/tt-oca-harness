@@ -3,29 +3,14 @@
 //
 // smu_dtp_jtag_smoke_test scenario sequence (SMU_ALL_005, DTP-JTAG-PTAP
 // S1/S2/S3 on the embedded DTP's primary TAP), carrying the cocotb
-// seq_lib/smu_dtp_jtag_smoke_test_seq.py semantics:
-//   S1  SETUP: TAP reset by TRST, then Run-Test/Idle, confirmed on the DUT
-//       one-hot state observable;
-//   S2  IDCODE: load the IDCODE instruction, shift the 32-bit device
-//       identification, compare it with the SMU-configured value and decode
-//       the IEEE 1149.1 fields (CHK-DTP-JTAG-PTAP-S1); the decoded-IR
-//       observable is logged;
-//   S3  BYPASS: load BYPASS, walk Select-DR -> Capture-DR -> Shift-DR with
-//       a state confirmation at each leg, shift the directed 32-bit pattern
-//       cycle by cycle, walk Update-DR -> Run-Test/Idle, and require the
-//       one-TCK TDI-to-TDO latency (CHK-DTP-JTAG-PTAP-S2); then random_count
-//       seeded random patterns IN ADDITION through full DR scans, each with
-//       the same latency check (+SMU_RANDOM_COUNT, default 5; each pass
-//       exercises different data);
-//   S4  TRST and POR: from Shift-DR under BYPASS, a held TRST returns the TAP
-//       to Test-Logic-Reset; again from Shift-DR, dropping power-good (the
-//       SMC reset unit's power-on reset into the DTP) returns it to
-//       Test-Logic-Reset (CHK-DTP-JTAG-PTAP-S3); power-good is restored and
-//       the released-reset baseline re-established for the next pass;
-//   S5  bounded-wait inventory: every wait site named a finite bound and its
-//       last state, none expired, and the count equals the nine sites of the
-//       cocotb scenario (CHK-TIMEOUT-PATHS); the ordered step fence
-//       S1<S2<S3<S4<S5<PASS holds (CHK-NONVAC).
+// seq_lib/smu_dtp_jtag_smoke_test_seq.py semantics: S1 TAP reset to
+// Run-Test/Idle; S2 IDCODE against the SMU-configured value
+// (CHK-DTP-JTAG-PTAP-S1); S3 BYPASS one-TCK latency on the directed pattern
+// leg by leg, then on random_count seeded patterns (CHK-DTP-JTAG-PTAP-S2;
+// +SMU_RANDOM_COUNT, default 5); S4 TRST and power-on reset from Shift-DR
+// back to Test-Logic-Reset (CHK-DTP-JTAG-PTAP-S3); S5 bounded-wait inventory
+// (CHK-TIMEOUT-PATHS) and the ordered step fence S1<S2<S3<S4<S5<PASS
+// (CHK-NONVAC). Each run_* task below carries its step's detail.
 // Independently, the embedded DTP reference models predict every IDCODE and
 // BYPASS DR scan and the decoded instruction of every IR load, paired by
 // the always-on scoreboard; +SMU_PTAP_IDCODE_NEGATIVE corrupts the expected

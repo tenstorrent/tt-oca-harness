@@ -649,7 +649,7 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
         )
 
         # DUT-time claim over the P2 phases that bracket real simulation time.
-        # `FOLLOWON-OBSERVED` is deliberately NOT in this list: it is marked at
+        # `FOLLOWON-OBSERVED` is NOT in this list: it is marked at
         # the same instant as `BOUNDARY-SWEEP(3-cells)` (the sweep IS the
         # follow-on observation), so demanding a strictly later timestamp for it
         # would be a bookkeeping artefact. Its evidence is the per-cell MEASURED
@@ -979,5 +979,5 @@ class smc_zeroer_axiclk_cg_test_seq(SmcCsrSeq):
         cg.mark_fence(self.fence, "PASS")
         cocotb.log.info("smc_zeroer_axiclk_cg_test_seq PASS")
 
-        # ---- P2 (SMC_CG_P2_002) extension: additive, P1 evidence above unchanged ----
+        # ---- P2 (SMC_CG_P2_002) extension ----
         await self._p2_extension()

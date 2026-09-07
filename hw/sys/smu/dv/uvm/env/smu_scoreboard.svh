@@ -13,15 +13,13 @@
 //     observables; this class publishes both. Streams reach it through
 //     the pass-through exports below, so smu_env wires this scoreboard
 //     only;
-//   * SMU-level integration features (none yet), registered here on the
+//   * SMU-level integration features, registered here on the
 //     ocah_scoreboard base like any bench scoreboard.
 //
 // A required feature (smu_test_cfg.required_features through the env cfg)
 // is routed to the scoreboard that registers it; a name neither knows is a
 // configuration defect (the child's registry check reports it). Expected
-// values never originate here. The cocotb twin is env/smu_scoreboard.py
-// (its inline expect_* checks; the two-stream shape is the migration
-// target, see SMU_TB_ARCH).
+// values never originate here. The cocotb twin is env/smu_scoreboard.py.
 
 class smu_scoreboard extends ocah_scoreboard;
   `uvm_component_utils(smu_scoreboard)

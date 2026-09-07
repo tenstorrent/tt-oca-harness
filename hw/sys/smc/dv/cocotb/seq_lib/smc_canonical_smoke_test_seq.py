@@ -10,7 +10,7 @@ and then samples. Every one is a bounded poll on the real reset observables via
 ``SmcResetOp.WAIT_STATE`` -- the driver polls until the exact
 expected state appears and the scoreboard converts bound expiry into a testcase
 failure with the last observed state (`[NO-BLIND-DELAY-SYNC]`,
-`[TIMEOUT-MUST-FAIL]`). Mid-window ``RAW_SAMPLE`` snapshots now carry the exact
+`[TIMEOUT-MUST-FAIL]`). Mid-window ``RAW_SAMPLE`` snapshots carry the exact
 asserted expectation they are taken for, so they are checked evidence instead of
 observations (`[EXACT-EXPECTATION]`). The remaining fixed ``ClockCycles`` are
 *driven stimulus widths* (how long a pin is held low), which is the quantity the
@@ -107,8 +107,8 @@ class smc_canonical_smoke_test_seq(smc_base_test_seq):
     COOL_ASSERT_REF_CYCLES = 80
     # --- observation bounds (expiry is a failure, never a settle delay) ---
     ASSERT_BOUND_REF_CYCLES = 200
-    # Covers the whole reset-recovery chain; the previous fixed 700-cycle
-    # recover wait is now only the upper bound of this poll.
+    # Covers the whole reset-recovery chain; this is the upper bound of a poll,
+    # not a fixed wait.
     RELEASE_BOUND_REF_CYCLES = 2000
 
     def __init__(self, name: str = "smc_canonical_smoke_test_seq") -> None:
@@ -199,10 +199,8 @@ class smc_canonical_smoke_test_seq(smc_base_test_seq):
         # 1 from reset onward and no frontdoor stimulus can drive them to 0, so
         # they are declared in `env.smc_probe_liveness.UNBACKABLE_PROBES` and
         # `SmcScoreboard._check_gpio` REFUSES a stated `expect_` on them. With no
-        # expectation at all its only gate was `assert item.resolvable`, which
-        # cannot be False under the 2-state simulator every retained run uses --
-        # so GPIO was the one agent in a "six-agent sweep" contributing no
-        # fail-capable compare.
+        # expectation the only gate would be `assert item.resolvable`, which
+        # cannot be False under the 2-state simulator every retained run uses.
         #
         # `tb_core2pad_o` / `tb_core2pad_en_o` DO move under real frontdoor GPIO
         # CSR programming, so an expectation on them is backable; `body()` runs

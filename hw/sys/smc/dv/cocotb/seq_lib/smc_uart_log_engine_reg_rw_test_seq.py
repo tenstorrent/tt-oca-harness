@@ -55,7 +55,7 @@ LOG_INTR_ENABLE_MASK = _field_mask(
 # `sw = w` with `singlepulse`, so a written 1 does not stick and no
 # write/read-back expectation is derivable for it.
 LOG_WRITE_ADDR_MASK = _field_mask(_LOG_ENGINE_H, "LOG_ENGINE__LOG_WRITE_ADDR__LOG_WRITE_ADDR_bm")
-# `LOG_CTRL` is deliberately NOT added to the write sweep, for two independent
+# `LOG_CTRL` is NOT added to the write sweep, for two independent
 # reasons: its generated macro is doubly indexed
 # (`..._LOG_CTRL_BASE_ADDR(wrap_idx, LOG_CTRL_idx)`, smc_addr.h:756) so
 # `smc_indexed_addr` cannot resolve it, and this file already records that
@@ -136,7 +136,7 @@ UART_LOG_READS = [
     ),
 ]
 
-# LOG_ENGINE_LOG_CTRL_0 is intentionally READ-only-swept (see UART_LOG_READS)
+# LOG_ENGINE_LOG_CTRL_0 is READ-only-swept (see UART_LOG_READS)
 # and NOT part of the write/restore sweep (arbiter assume on unfinished log write).
 UART_LOG_WRITES = [
     (

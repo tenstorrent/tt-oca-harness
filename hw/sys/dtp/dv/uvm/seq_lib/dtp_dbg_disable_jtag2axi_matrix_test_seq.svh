@@ -15,7 +15,7 @@
 // the 16-iteration floor with seeded rows; +DTP_DBG_DISABLE_MULTI_HOT_ROWS
 // overrides. Reuses the robustness sequence's per-target handle bundles
 // and select_target() swapping. The cocotb flow's Python DtpDbgDisableFcov
-// ledger stays cocotb-only; the checks it gated on are all ported.
+// ledger is cocotb-only.
 
 class dtp_dbg_disable_jtag2axi_matrix_test_seq extends dtp_jtag2axi_robustness_test_seq;
   `uvm_object_utils(dtp_dbg_disable_jtag2axi_matrix_test_seq)

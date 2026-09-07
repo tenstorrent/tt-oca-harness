@@ -213,7 +213,7 @@ class smc_i2c_p0_timeout_test_seq(SmcCsrSeq):
         hw/ip/i2c/regs/i2c.rdl, and each write is masked to the generated field
         masks so reserved bits are never driven.
 
-        DELIBERATELY EXCLUDED -- `INTR_TEST`. It is declared `singlepulse` in
+        EXCLUDED -- `INTR_TEST`. It is declared `singlepulse` in
         i2c.rdl, so a written 1 does NOT stick and a write/readback expectation
         is not derivable for it; on top of that its 20 fields force real
         interrupt sources, which is not something to leave behind in a shared

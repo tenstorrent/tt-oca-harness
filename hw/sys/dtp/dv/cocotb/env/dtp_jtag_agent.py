@@ -308,5 +308,4 @@ class DtpJtagAgent(uvm_agent):
 
     def connect_phase(self) -> None:
         self.driver.seq_item_port.connect(self.sequencer.seq_item_export)
-        # Expose the driver's completed-transaction stream as the agent's port.
         self.ap = self.driver.ap

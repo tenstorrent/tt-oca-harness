@@ -4,7 +4,7 @@
 
 DV-CARD:          SMU_ALL_003   ANCHOR: smu_smc_smoke_test
 
-Approved OWNS (card r6 / plan r3):
+Owns:
   SMC-FAB-DUAL-NET.S2 — local peripherals/config registers use AXI4-Lite LP
   SMC-FAB-DUAL-NET.S3 — both networks carry 64-bit data without truncation
 

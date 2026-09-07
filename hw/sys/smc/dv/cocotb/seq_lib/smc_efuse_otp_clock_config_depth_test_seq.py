@@ -29,7 +29,7 @@ from .smc_efuse_vip_utils import prove_efuse_bank_axil_activity
 
 CLOCK_GATE_CONTROL = smc_addr(
     "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
-)  # base_config offset 0x18 (was 0x30 before HANG_DET_* added)
+)  # base_config offset 0x18
 CLOCK_GATE_PATTERN = (1 << 8) | (1 << 11) | (1 << 12)
 CLOCK_GATE_MASK = 0x0000_1FFF
 

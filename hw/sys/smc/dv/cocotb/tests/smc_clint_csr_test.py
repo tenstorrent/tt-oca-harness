@@ -11,8 +11,8 @@ discriminators from different blocks, measured in the same run:
 
 and MTIME, a free-running counter, reads 0x0 twice 512 `clk_smc_i` apart.
 
-This is the bit-27 fold of #1237, which was filed for the BEU sub-window
-`0xC801_xxxx`; the scope is the whole `0xC8xx_xxxx` region. The testcase is kept
+This is the bit-27 fold seen on the BEU sub-window `0xC801_xxxx`; the scope is
+the whole `0xC8xx_xxxx` region. The testcase is kept
 because its MTIME-monotonic leg is the cheapest regression guard for that
 decode -- it starts passing when the fold is repaired.
 """
