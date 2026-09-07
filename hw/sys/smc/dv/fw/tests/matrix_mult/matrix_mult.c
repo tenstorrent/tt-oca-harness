@@ -7,8 +7,22 @@
 #include "virt_console.h"
 #include "cpu_perf.h"
 
-#define MAX_DIM 5
+/* MATRIX_SIZES is a COUNT of size classes; the loop below walks dim_log over
+ * [0, MATRIX_SIZES) and uses dim = 2^dim_log, so the largest matrix edge is
+ * 2^(MATRIX_SIZES-1) = 16, not MATRIX_SIZES.
+ *
+ * MAX_DIM was a literal 5 -- the same number, meaning something else entirely.
+ * The arrays were therefore [5][5] while the last two size classes indexed to
+ * [7][7] and [15][15], writing well past them. Per the linked symbol table
+ * those addresses land in picolibc's on_exits table, so the two blocks that
+ * dominate the reported timings were corrupting the atexit registry and each
+ * other's matrices. Nothing caught it because the test compares no result and
+ * calls test_pass unconditionally.
+ *
+ * Derived from MATRIX_SIZES now so the two cannot drift apart again.
+ */
 #define MATRIX_SIZES 5
+#define MAX_DIM (1 << (MATRIX_SIZES - 1))
 #define N_ITER 5
 
 static double A[MAX_DIM][MAX_DIM];

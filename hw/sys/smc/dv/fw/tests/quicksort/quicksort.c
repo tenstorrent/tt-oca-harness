@@ -47,6 +47,21 @@ int partition(int arr[], int low, int high) {
 // arr[] --> Array to be sorted,
 // low  --> Starting index,
 // high  --> Ending index
+//
+// HAZARD, left as-is deliberately: recursion depth here is unbounded and can
+// exceed the stack. Lomuto partition degrades to depth n when the pivot is
+// always extremal, and the frame is 48 bytes (see the prologue in the built
+// .dis), so ARRAY_SIZES-1 = 2048 elements needs ~98 KB against
+// __stack_size = 4K (toolchain.mk) -- about 85 frames is all that fits. The
+// all-equal input is one of the degenerate cases, and it is exactly what the
+// fill path produces when the seed is zero.
+//
+// Not repaired here because the standard fix -- recurse into the smaller
+// partition and loop on the larger, bounding depth to O(log n) -- changes the
+// call structure of a routine whose purpose is to be *measured*. Doing that
+// silently would alter the benchmark while its numbers are already unchecked
+// (this test compares no result and calls test_pass unconditionally). It needs
+// the perf owner to say whether the published figures may move.
 void quick_sort(int arr[], int low, int high) {
     if (low < high) {
         // pi is partitioning index, arr[p] is now
