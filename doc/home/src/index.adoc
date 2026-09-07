@@ -20,91 +20,109 @@ alongside the OCA Architecture specification and the OCA Compliance program.
 == Ecosystem repositories
 
 OCAH integrates both Tenstorrent-owned projects and third-party open-source
-projects. For third-party dependencies, Tenstorrent generally maintains a fork
-to support coordinated development, keeps it synchronized with the upstream
-project, and contributes suitable changes back upstream where possible. The
-exact revisions and subsets imported into this repository are defined in
-`Bender.yml`; the
+projects, distinguished below by original owner. For third-party
+dependencies, Tenstorrent generally maintains a fork to support coordinated
+development, keeps it synchronized with the upstream project, and contributes
+suitable changes back upstream where possible. The exact revisions and
+subsets imported into this repository are defined in `Bender.yml`; the
 xref:ocah-contributing:ROOT:workflows.adoc#vendor-packages[Contributing Guide]
 explains how Bender materializes and updates them.
 
-[cols="1,2,3",options="header"]
+[cols="1,1,2,3",options="header"]
 |===
-|Package |Repository |Role in OCAH
+|Package |Owner |Repository |Role in OCAH
 
 |OpenTitan
+|lowRISC
 |https://github.com/tenstorrent/tt-opentitan[tenstorrent/tt-opentitan]
 |Common primitives, cryptography, entropy, timers, and register tooling
 
 |Common Verification
+|PULP Platform
 |https://github.com/tenstorrent/tt-common_verification[tenstorrent/tt-common_verification]
 |Vendored so PULP-derived dependencies resolve a consistent local copy; not
-directly built by OCAH
+directly used by OCAH
 
 |Common Cells
+|PULP Platform
 |https://github.com/tenstorrent/tt-common_cells[tenstorrent/tt-common_cells]
 |Reusable RTL cells used by interconnect and DMA components
 
 |APB
+|PULP Platform
 |https://github.com/tenstorrent/tt-apb[tenstorrent/tt-apb]
 |Advanced Peripheral Bus components
 
 |AXI
+|PULP Platform
 |https://github.com/tenstorrent/tt-axi[tenstorrent/tt-axi]
 |Advanced eXtensible Interface components
 
 |iDMA
+|PULP Platform
 |https://github.com/tenstorrent/tt-iDMA[tenstorrent/tt-iDMA]
 |Intelligent direct memory access engine
 
 |UNBENT
+|PULP Platform
 |https://github.com/tenstorrent-forks/unbent[tenstorrent-forks/unbent]
 |AXI bus-error-unit wrapper for chiplet integrators; not instantiated in
 OCAH's own RTL
 
 |AXI Stream
+|PULP Platform
 |https://github.com/tenstorrent/tt-axi_stream[tenstorrent/tt-axi_stream]
 |Compiled into iDMA's generated backend bundle; OCAH's AXI-only DMA
 configuration does not instantiate it
 
 |OBI
+|PULP Platform
 |https://github.com/tenstorrent/tt-obi[tenstorrent/tt-obi]
 |Supplies the types iDMA's OBI backend headers reference; OCAH does not
 instantiate an OBI bus
 
 |Register Interface
+|PULP Platform
 |https://github.com/tenstorrent/tt-register_interface[tenstorrent/tt-register_interface]
 |AXI-to-register bridge (`axi_to_reg_v2`) used by the iDMA control interface
 
 |Adams Bridge
+|CHIPS Alliance
 |https://github.com/chipsalliance/adams-bridge[chipsalliance/adams-bridge]
 |Post-quantum cryptography engine
 
 |Caliptra RTL
+|CHIPS Alliance
 |https://github.com/chipsalliance/caliptra-rtl[chipsalliance/caliptra-rtl]
 |Key-vault client helpers for Adams Bridge
 
 |VeeR EL2
+|CHIPS Alliance
 |https://github.com/tenstorrent/tt-Cores-VeeR-EL2[tenstorrent/tt-Cores-VeeR-EL2]
 |SEP processor core
 
 |PicoRV32
+|YosysHQ
 |https://github.com/tenstorrent/tt-picorv32[tenstorrent/tt-picorv32]
 |Key Manager processor core
 
 |AoU RTL
+|Tenstorrent
 |https://github.com/tenstorrent/aou-rtl[tenstorrent/aou-rtl]
 |AXI-over-UCIe bridge
 
 |I3C Core
+|CHIPS Alliance / Antmicro
 |https://github.com/tenstorrent/tt-i3c-core[tenstorrent/tt-i3c-core]
 |I3C controller and target
 
 |Caliptra RTL for I3C
+|CHIPS Alliance
 |https://github.com/tenstorrent/caliptra-rtl-fork[tenstorrent/caliptra-rtl-fork]
 |AXI and common RTL used by I3C
 
 |cocotbext-i3c
+|Antmicro
 |https://github.com/antmicro/cocotbext-i3c[antmicro/cocotbext-i3c]
 |I3C target verification model vendored for the I3C DV testbench; not yet
 exercised by an active test

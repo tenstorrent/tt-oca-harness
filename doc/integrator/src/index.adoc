@@ -94,7 +94,12 @@ collateral so an integrator does not have to discover every owner-local path.
 `integration/rdl/<subsystem>/` is a flat, self-contained list of the SystemRDL
 files required by that subsystem. Filenames remain unchanged, and shared
 dependencies appear in every subsystem that needs them. Non-RDL support files
-needed by relative includes remain at the `integration/rdl/` root. The matching
+needed by relative includes remain at the `integration/rdl/` root -- for
+example, `integration/rdl/i3c_defines.svh` sits there because both
+`integration/rdl/smc/registers.rdl` and `integration/rdl/smu/registers.rdl`
+reach it through the I3C core's own parent-relative include
+(`../i3c_defines.svh`), and that relative path only resolves if the header is
+one directory above every subsystem folder that needs it. The matching
 generated IEEE 1685-2014 component descriptions use the same flat subsystem
 organization under `integration/ipxact/<subsystem>/`.
 

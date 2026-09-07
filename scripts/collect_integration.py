@@ -152,6 +152,11 @@ def rdl_unit_closures() -> dict[str, set[Path]]:
 
 
 def rdl_links(units: dict[str, set[Path]]) -> dict[Path, Path]:
+    # Non-RDL support files (e.g. i3c_defines.svh) sit at the rdl/ root rather
+    # than in a subsystem folder: their RDL includers use a parent-relative
+    # `include "../<file>"`, and every subsystem folder that needs one is one
+    # directory below rdl/, so the same root copy resolves that include for
+    # all of them.
     links: dict[Path, Path] = {}
     for system, sources in units.items():
         for source in sources:
