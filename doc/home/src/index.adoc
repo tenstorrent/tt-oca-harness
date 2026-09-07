@@ -58,7 +58,7 @@ explains how Bender materializes and updates them.
 |OpenTitan
 |lowRISC
 |https://github.com/tenstorrent/tt-opentitan[tenstorrent/tt-opentitan]
-|Common primitives, cryptography, entropy, timers, and register tooling
+|Common primitives, cryptography, entropy, and timers
 
 |Common Verification
 |PULP Platform
@@ -145,6 +145,14 @@ instantiate an OBI bus
 |I3C target verification model vendored for the I3C DV testbench; not yet
 exercised by an active test
 |===
+
+The SMC's Rocket CPU cluster is a further exception: it is generated
+SystemVerilog output of the
+https://chipyard.readthedocs.io/en/stable/Generators/Rocket.html[Chipyard
+Rocket-chip] Chisel generator rather than a checked-out upstream source
+tree, so there is no upstream repository to fork or pin. It lives flat in
+the repository under
+`hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/`.
 
 == Learn more
 
