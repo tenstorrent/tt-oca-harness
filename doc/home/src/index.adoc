@@ -19,12 +19,35 @@ alongside the OCA Architecture specification and the OCA Compliance program.
 
 == Ecosystem repositories
 
-OCAH integrates both Tenstorrent-owned projects and third-party open-source
-projects, distinguished below by original owner. For third-party
-dependencies, Tenstorrent generally maintains a fork to support coordinated
-development, keeps it synchronized with the upstream project, and contributes
-suitable changes back upstream where possible. The exact revisions and
-subsets imported into this repository are defined in `Bender.yml`; the
+The OCA Harness ecosystem itself spans a small family of Tenstorrent-owned
+repositories, each covering a distinct part of building and using OCAH:
+
+[cols="1,1,2,3",options="header"]
+|===
+|Package |Owner |Repository |Role in the ecosystem
+
+|tt-oca-harness
+|Tenstorrent
+|https://github.com/tenstorrent/tt-oca-harness[tenstorrent/tt-oca-harness]
+|This repository: OCAH's RTL, documentation, and register/IP-XACT tooling
+
+|tt-oca-harness-aou
+|Tenstorrent
+|https://github.com/tenstorrent/tt-oca-harness-aou[tenstorrent/tt-oca-harness-aou]
+|AXI-over-UCIe (AoU) bridge RTL, a component of OCAH's RTL collateral
+
+|tt-oca-harness-model
+|Tenstorrent
+|https://github.com/tenstorrent/tt-oca-harness-model[tenstorrent/tt-oca-harness-model]
+|Virtual platform of the harness for rapid prototyping
+|===
+
+OCAH also reuses third-party open-source IP rather than reimplementing it.
+Tenstorrent generally maintains a fork of each such dependency to support
+coordinated development, keeps it synchronized with the upstream project, and
+contributes suitable changes back upstream where possible. The exact
+revisions and subsets imported into this repository are defined in
+`Bender.yml`; the
 xref:ocah-contributing:ROOT:workflows.adoc#vendor-packages[Contributing Guide]
 explains how Bender materializes and updates them.
 
@@ -105,11 +128,6 @@ instantiate an OBI bus
 |YosysHQ
 |https://github.com/tenstorrent/tt-picorv32[tenstorrent/tt-picorv32]
 |Key Manager processor core
-
-|AoU RTL
-|Tenstorrent
-|https://github.com/tenstorrent/aou-rtl[tenstorrent/aou-rtl]
-|AXI-over-UCIe bridge
 
 |I3C Core
 |CHIPS Alliance / Antmicro
