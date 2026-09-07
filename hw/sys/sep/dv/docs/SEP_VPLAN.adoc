@@ -2906,7 +2906,7 @@ immediate neighbour, and nothing records which indices a regression covered.
 |CHK-WIRQT
 |The write-threshold interrupt state matches the golden prediction, the pending register is gated by the enable (IRQP drops when IRQEN is cleared, IRQS stays), and the interrupt re-asserts after write-one-to-clear while still above threshold.
 |CHK-ERR-RD
-|A read of the empty FIFO returns SLVERR, the error sentinel data, and a sticky read-error flag with read-clear semantics. Deny is distinguished three ways.
+|A read of the empty FIFO returns SLVERR, the vendor block's `0xFEEDDEAD` sentinel (PULP `vendor/pulp-platform/axi/upstream/src/axi_lite_mailbox.sv` line 377), and a sticky read-error flag with read-clear semantics. The `read_error` flag is the documented contract (`hw/ip/axi_lite_mailbox_unit/doc/interface.adoc`); the sentinel value is a vendor constant with no TT-side specification, so the golden traces it to that source. Deny is distinguished three ways.
 |CHK-ERR-IRQ / CHK-ERR-WR / CHK-ERR-WR-IRQ
 |The error interrupt sets and clears on write-one-to-clear; a write to the full FIFO returns SLVERR and sets the write-error flag, with its own interrupt.
 |CHK-FLUSH
@@ -2914,7 +2914,7 @@ immediate neighbour, and nothing records which indices a regression covered.
 |CHK-SUBWORD-PUSH
 |Write-side contract: a 4-byte `WRITE_DATA` beat is a whole push. Two 4-byte beats, at `+0x00` and then `+0x04`, are each answered OKAY and each occupy their own FIFO entry, so occupancy advances by two. `+0x04` is the same 8-byte register, not a high half. STATUS carries no exact depth, so occupancy is read through the write threshold programmed to 1: `write_level_above` must be clear after the first beat and set after the second. This does not grade the spec's two-word read of an incoming 64-bit message — see <<known-limitations>>.
 |CHK-WDATA-RD
-|The push register is write-only: a read of it returns the block's documented `0xFEEDC0DE` constant with an OKAY response — not a FIFO entry and not an error — and leaves the transmit occupancy unchanged, re-compared against the golden afterwards.
+|The push register is write-only: a read of it returns the vendor block's `0xFEEDC0DE` constant (PULP `vendor/pulp-platform/axi/upstream/src/axi_lite_mailbox.sv` line 370, inherited through `axi_lite_mailbox_unit.sv`) with an OKAY response — not a FIFO entry and not an error — and leaves the transmit occupancy unchanged, re-compared against the golden afterwards.
 |===
 
 *Deferred*: the read half of the threshold pair. `RIRQT` and

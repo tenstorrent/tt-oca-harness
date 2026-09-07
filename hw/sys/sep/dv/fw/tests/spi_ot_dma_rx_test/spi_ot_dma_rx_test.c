@@ -179,13 +179,13 @@ int main(void) {
 
     // CHK-NOERR evidence: the four values the legs above already read, so the
     // checker is auditable from the log rather than only from a silent pass.
-    sep_mbx_puts("CHK-NOERR: dma_status=0x");
+    sep_mbx_puts("CHK-NOERR: dma_status=");
     sep_mbx_puthex(status_after_clear);
-    sep_mbx_puts(" dma_err_code=0x");
+    sep_mbx_puts(" dma_err_code=");
     sep_mbx_puthex(sep_dma_rd(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR));
     sep_mbx_puts(" spi_idle=");
     sep_mbx_putc(spi_idle ? '1' : '0');
-    sep_mbx_puts(" spi_err_status=0x");
+    sep_mbx_puts(" spi_err_status=");
     sep_mbx_puthex(spi_err_status);
     sep_mbx_putc('\n');
 
