@@ -685,9 +685,9 @@ class smc_remap_cla_test_seq(SmcCsrSeq):
             "CHK-CLA-RESET-SWEEP: %d CLA registers read over the aperture and "
             "compared against their generated RDL reset values, %d of them with "
             "a NON-ZERO reset (the discriminating rows -- no error slave and no "
-            "unmapped read can fabricate 0x41010101 / 0x40000000 / 0x01003901 / "
-            "0x00102810 / 0x0801). Zero-reset rows are separated from a lost "
-            "decode by the deny leg below, which answers SLVERR in the same run.",
+            "unmapped read can fabricate %s). Zero-reset rows are separated from "
+            "a lost decode by the deny leg below, which answers SLVERR in the "
+            "same run.",
             len(CLA_RESET_SWEEP),
             len(CLA_SWEEP_NONZERO),
         )
