@@ -265,7 +265,7 @@ hw/sys/smc/dv/
 ├── testlists/              # per-feature TOML leaves + all.toml
 ├── assets/                 # ROM/eFuse/shadow preload images
 ├── smc_sim_cfg.toml  # sole launch config (tb_top → smc_wrapper), both frameworks
-└── docs/                   # index.adoc, TB_ARCH, VPLAN, FCOV, SCOPE, DEFERRED
+└── docs/                   # index.adoc, TB_ARCH, VPLAN, FCOV, SCOPE, DEFERRED, local_records
 ....
 
 [[hdl-top]]
@@ -749,7 +749,7 @@ hw/sys/smc/dv/testlists/
 ├── batch_c.toml        # active I2C/iJTAG CSR prechecks + I3C CSR smoke
 ├── batch_d.toml        # FLR + TOP-20 CSR/precheck representatives
 ├── vplan_triplets.toml # 16 functional modules x 3 tests
-├── p1_coverage_gap*.toml  # coverage-gap depth rounds 1-5
+├── p1_coverage_gap*.toml  # coverage-gap depth rounds 1-4
 └── (no wrapper.toml — `--dut smc` already instantiates `smc_wrapper`)
 ....
 
