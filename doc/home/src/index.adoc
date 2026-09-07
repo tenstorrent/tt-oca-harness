@@ -59,19 +59,22 @@ directly built by OCAH
 
 |UNBENT
 |https://github.com/tenstorrent-forks/unbent[tenstorrent-forks/unbent]
-|Bus error unit
+|AXI bus-error-unit wrapper for chiplet integrators; not instantiated in
+OCAH's own RTL
 
 |AXI Stream
 |https://github.com/tenstorrent/tt-axi_stream[tenstorrent/tt-axi_stream]
-|AXI4-Stream components
+|Compiled into iDMA's generated backend bundle; OCAH's AXI-only DMA
+configuration does not instantiate it
 
 |OBI
 |https://github.com/tenstorrent/tt-obi[tenstorrent/tt-obi]
-|Open Bus Interface components
+|Supplies the types iDMA's OBI backend headers reference; OCAH does not
+instantiate an OBI bus
 
 |Register Interface
 |https://github.com/tenstorrent/tt-register_interface[tenstorrent/tt-register_interface]
-|Register-bus adapters and interconnect
+|AXI-to-register bridge (`axi_to_reg_v2`) used by the iDMA control interface
 
 |Adams Bridge
 |https://github.com/chipsalliance/adams-bridge[chipsalliance/adams-bridge]
@@ -103,11 +106,8 @@ directly built by OCAH
 
 |cocotbext-i3c
 |https://github.com/antmicro/cocotbext-i3c[antmicro/cocotbext-i3c]
-|I3C verification models
-
-|AXI VIP
-|https://github.com/antmicro/axi-vip[antmicro/axi-vip]
-|AXI verification components for I3C
+|I3C target verification model vendored for the I3C DV testbench; not yet
+exercised by an active test
 |===
 
 == Learn more
