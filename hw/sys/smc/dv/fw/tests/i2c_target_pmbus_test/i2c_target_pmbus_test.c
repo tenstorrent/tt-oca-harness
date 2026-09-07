@@ -450,6 +450,26 @@ static void run_pmbus_target(void) {
              * staged when the command phase ended, and the target clock-
              * stretched until they were. */
 
+            /* Fold in THIS transaction's TARGET_EVENTS before publishing it.
+             *
+             * service_events() otherwise only runs at the top of the loop,
+             * while the STOP entry is popped further down the same iteration.
+             * The STOP that ends this transaction sets TARGET_EVENTS.STOP_DETECT
+             * in the same RTL cycle that writes the ACQ STOP entry
+             * (i2c_core.sv:673,1096), so by the time that entry has been read
+             * back over APB the bit is certainly set -- but the top-of-loop
+             * sample for this iteration already happened before the pop. Without
+             * this call the record published for transaction N carries the
+             * stop-detect count as of N-1 whenever the pop lands in the same
+             * iteration as the STOP, which is intermittent: an observed run had
+             * transaction 6 publish 6 and transaction 7 publish 6.
+             *
+             * With it, every published record is internally consistent --
+             * stop_detect_count equals txn_count -- which is what lets the
+             * cocotb half assert the exact equality instead of a weaker
+             * "advanced since last time". */
+            service_events();
+
             g_txn_count++;
             in_xact = false;
             publish(framing, data_bearing, framing, bytes_word);
