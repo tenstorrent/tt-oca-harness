@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-_Legend: "Default" column omitted where N/A — those ports have no integrator-supplied default; connect as directed by Description._
+_Legend: Where no Default entry is shown in Description / Default, the original port reference specifies N/A — those ports have no integrator-supplied default; connect as directed by Description._
+
+ifdef::backend-html5[]
+++++
+<div class="dtp-port-reference-scroll">
+++++
+endif::backend-html5[]
 
 [.dtp-port-reference.small,stretch]
 .DTP Port Declaration
@@ -108,3 +114,9 @@ _Legend: "Default" column omitted where N/A — those ports have no integrator-s
 |`xtrig_ctp_ack_out_din_i` |`logic` |In |`[XTRIG_NUM_CTP-1:0]` |CTP ack-out data input. Default: tie to '0 if unused. |GPIO pad ring
 |`xtrig_ctp_ack_out_din_en_o` |`logic` |Out |`[XTRIG_NUM_CTP-1:0]` |CTP ack-out input enable. |GPIO pad ring
 |===
+
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]

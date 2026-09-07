@@ -84,9 +84,9 @@
   <!-- ── iJTAG SIB chains (lower half) ─────────────────────────────────── -->
   <text x="104" y="185" class="small" font-weight="bold">iJTAG SIB Chains (instruction-selected scan paths through PTAP TDR mux)</text>
 
-  <!-- Horizontal select bus from PTAP down -->
+  <!-- Horizontal select bus from PTAP down; extends left to x=104 so Secure DFT drop at x=159 is on the bus -->
   <line x1="164" y1="114" x2="164" y2="200" stroke="#998866" stroke-width="1" stroke-dasharray="3 2"/>
-  <line x1="164" y1="200" x2="780" y2="200" stroke="#998866" stroke-width="1" stroke-dasharray="3 2"/>
+  <line x1="104" y1="200" x2="780" y2="200" stroke="#998866" stroke-width="1" stroke-dasharray="3 2"/>
 
   <!-- Secure DFT -->
   <rect x="104" y="210" width="110" height="48" rx="3" fill="#f5f0e8" stroke="#998866" stroke-width="1.2"/>

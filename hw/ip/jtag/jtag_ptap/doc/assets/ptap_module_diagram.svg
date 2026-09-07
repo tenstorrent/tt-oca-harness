@@ -140,14 +140,19 @@
   <line x1="270" y1="348" x2="68" y2="348" stroke="#555555" stroke-width="1.2" marker-end="url(#arr-g)"/>
 
   <!-- ── External ports (right side) ────────────────────────────────── -->
-  <!-- Scan outputs from TDR bank to downstream iJTAG -->
-  <text x="820" y="265" class="port" text-anchor="start">SMC_AXI_SI</text>
-  <text x="820" y="282" class="port" text-anchor="start">SMC_OTP_SI</text>
-  <text x="820" y="299" class="port" text-anchor="start">SEP_OTP_SI</text>
-  <text x="820" y="316" class="port" text-anchor="start">STAP_TDI</text>
-  <text x="820" y="333" class="port" text-anchor="start">CAPTURE_DR</text>
-  <!-- These are conceptual labels; specific signals exit via TDR registers →
-       right side is left unlabelled with lines to avoid clutter over TDR column -->
+  <!-- Scan outputs from TDR bank to downstream iJTAG.
+       Labels placed with text-anchor="end" at x=798; rightmost extent ≤ 798 < 860. -->
+  <text x="798" y="265" class="port" text-anchor="end">SMC_AXI_SI</text>
+  <text x="798" y="282" class="port" text-anchor="end">SMC_OTP_SI</text>
+  <text x="798" y="299" class="port" text-anchor="end">SEP_OTP_SI</text>
+  <text x="798" y="316" class="port" text-anchor="end">STAP_TDI</text>
+  <text x="798" y="333" class="port" text-anchor="end">CAPTURE_DR</text>
+  <!-- Lines from TDR column right edge (x=810) to label anchor (x=798) -->
+  <line x1="810" y1="263" x2="800" y2="263" stroke="#555555" stroke-width="1" marker-end="url(#arr-g)"/>
+  <line x1="810" y1="280" x2="800" y2="280" stroke="#555555" stroke-width="1" marker-end="url(#arr-g)"/>
+  <line x1="810" y1="297" x2="800" y2="297" stroke="#555555" stroke-width="1" marker-end="url(#arr-g)"/>
+  <line x1="810" y1="314" x2="800" y2="314" stroke="#555555" stroke-width="1" marker-end="url(#arr-g)"/>
+  <line x1="810" y1="331" x2="800" y2="331" stroke="#555555" stroke-width="1" marker-end="url(#arr-g)"/>
 
   <!-- ── Note ───────────────────────────────────────────────────────── -->
   <rect x="70" y="400" width="560" height="64" rx="4"
