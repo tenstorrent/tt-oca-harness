@@ -4,17 +4,13 @@
 module apb2mmr
 import ntr_sink_mmr_pkg::*;
 import dst_sink_mmr_pkg::*;
-import dfd_pkg::*;
 #(
     parameter DATA_WIDTH = 64, // Must be multiple of 32
     parameter ADDR_WIDTH = 17,
     parameter [ADDR_WIDTH-1:0] BASE_ADDR = 0,
     localparam APB_STRB_WIDTH = DATA_WIDTH / 8, // APB byte strobe (pstrb)
-    localparam STRB_WIDTH = 2,                  // MMR 4-byte-lane strobe (MmrWrStrb/MmrWrStrb8B)
-    parameter INST_WIDTH = 2,
-    parameter NUM_MMR_BLOCKS = 1,
-    parameter DST_SUPPORT = 1,
-    parameter NTRACE_SUPPORT = 1
+    localparam STRB_WIDTH = 2,                  // MMR 4-byte-lane strobe (MmrWrStrb)
+    parameter NUM_MMR_BLOCKS = 1
 ) (
     input  logic clk,
     input  logic reset_n,
@@ -31,38 +27,31 @@ import dfd_pkg::*;
     output logic                   pslverr,
 
     // MMR
-    output  logic                   MmrCs, // Single-bit request valid; one-hot block select decoded externally
+    // Level request, held until the response; the one-hot block select is
+    // decoded externally and the request is accepted once by mmr_req_ctrl.
+    output  logic                   MmrCs,
     output  logic                   MmrWrEn,
     output  logic  [STRB_WIDTH-1:0] MmrWrStrb,
-    output  logic  [STRB_WIDTH-1:0] MmrWrStrb8B, // For 8B Mmrs
-    output  logic                   MmrRegSel,
     output  logic  [12-1:0]         MmrAddr,
     output  logic  [DATA_WIDTH-1:0] MmrWrData,
-    output  logic  [INST_WIDTH-1:0] MmrWrInstrType,
-    input   logic                   MmrHit,
     input   logic  [DATA_WIDTH-1:0] MmrRdData,
-    input   logic                   MmrError
+    // Counter-timed response from mmr_req_ctrl (never MmrHit: an access to an
+    // unimplemented offset produces no hit and must still complete).
+    input   logic                   rsp_vld,
+    input   logic                   rsp_err
 );
 
     localparam [ADDR_WIDTH-1:0] MMR_END_ADDR = (ADDR_WIDTH)'(BASE_ADDR) + ((ADDR_WIDTH)'(NUM_MMR_BLOCKS) << 12);
 
     logic [ADDR_WIDTH-1:0]                paddr_base;
-    logic APB_Setup;
     logic int_MmrCs;
-    logic int_MmrWrEn,  int_MmrRegSel;
+    logic int_MmrWrEn;
     logic [12-1:0] int_MmrAddr;
-    logic [INST_WIDTH-1:0] int_MmrWrInstrType;
     logic [DATA_WIDTH-1:0] int_MmrWrData;
     logic [STRB_WIDTH-1:0] int_MmrWrStrb;
-    logic [STRB_WIDTH-1:0] int_MmrWrStrb8B;
-
-    assign APB_Setup = psel && ~penable;
-
 
     //APB <<--> MMR interface
-    assign int_MmrWrInstrType = {INST_WIDTH{1'b0}};
     assign int_MmrAddr = paddr[12-1:0];
-    assign int_MmrRegSel = APB_Setup && pwrite;
     assign int_MmrWrEn = pwrite;
     assign int_MmrWrData = pwdata;
     assign prdata = MmrRdData;
@@ -76,13 +65,15 @@ import dfd_pkg::*;
                        && ~((paddr_base >= (ADDR_WIDTH)'(BASE_ADDR))
                          &&  (paddr_base <  (ADDR_WIDTH)'(MMR_END_ADDR)));
 
-    assign pready = (psel && penable && (MmrHit || MmrError || decode_miss));
+    assign pready = (psel && penable && rsp_vld);
 
-    // Single-cycle request valid (setup phase). The one-hot block select is
-    // decoded externally in mmrs.sv, shared with the AXI path.
-    assign int_MmrCs = APB_Setup;
+    // Level request, asserted from the setup phase until the transfer
+    // completes.  A single-cycle setup pulse cannot be back-pressured, so it
+    // would be dropped whenever the fabric is busy; holding it lets
+    // mmr_req_ctrl accept the request when it is ready.
+    assign int_MmrCs = psel && ~pready;
 
-    assign pslverr = psel && penable && (MmrError || decode_miss);
+    assign pslverr = psel && penable && pready &&(rsp_err || decode_miss);
 
     always_comb begin
         int_MmrWrStrb = '0;
@@ -91,32 +82,22 @@ import dfd_pkg::*;
         end
     end
 
-    if (DATA_WIDTH <= 32) begin : gen_wstrb_8b_d32
-        assign int_MmrWrStrb8B = (int_MmrAddr[2] == 1'b0) ? {1'b0, int_MmrWrStrb[0]}: {int_MmrWrStrb[0], 1'b0} ;
-    end else begin : gen_wstrb_8b_d64
-        assign int_MmrWrStrb8B = int_MmrWrStrb;
-    end
-
-
+    // MmrRegSel, MmrWrStrb8B and MmrWrInstrType are derived centrally in
+    // mmrs.sv from the request held by mmr_req_ctrl, so they are no longer
+    // driven per-interface here.
     always_comb begin
         if (~reset_n) begin
             MmrCs = '0;
             MmrWrEn = '0;
             MmrWrStrb = '0;
-            MmrWrStrb8B = '0;
-            MmrRegSel = '0;
             MmrAddr = '0;
             MmrWrData = '0;
-            MmrWrInstrType = '0;
         end else begin
             MmrCs = int_MmrCs;
             MmrWrEn = int_MmrWrEn;
             MmrWrStrb = int_MmrWrStrb;
-            MmrWrStrb8B = int_MmrWrStrb8B;
-            MmrRegSel = int_MmrRegSel;
             MmrAddr = int_MmrAddr;
             MmrWrData = int_MmrWrData;
-            MmrWrInstrType = int_MmrWrInstrType;
         end
     end
 

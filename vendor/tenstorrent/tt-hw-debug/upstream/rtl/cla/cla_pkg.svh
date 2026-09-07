@@ -45,7 +45,6 @@ parameter ACTION_BASE_COUNTER_INCREMENT_PULSE      = 16;
 parameter ACTION_BASE_COUNTER_CLEAR_CTR            = 17;
 parameter ACTION_BASE_COUNTER_AUTO_INCREMENT       = 18;
 parameter ACTION_BASE_COUNTER_STOP_AUTO_INCREMENT  = 19;
-parameter ACTION_TIMESTAMP_CAPTURE                 = 20;
 
 //Event Positions
 parameter NUMBER_OF_EVENTS_PER_COUNTER = 3;

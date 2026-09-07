@@ -146,7 +146,11 @@ module smc_dfd_wrap #(
     .MMR_ADDR_WIDTH                         (23),
     .MMR_DATA_WIDTH                         (32),
     .MMR_BASE_ADDRESS                       (BASE_ADDR),
-    .EXTERNAL_SINK_MEM                      (1)
+    .EXTERNAL_SINK_MEM                      (1),
+    // SMC has no reference-timestamp source: the CLA timestamp is driven by
+    // the local time_tick below, which is scheme 0. The top defaults to 1.
+    .TIMESTAMP_SYNC_SCHEME                  (0),
+    .OCTS_TS_OUTPUT                         (0)
   ) u_dfd_top (
     .i_clk                                  (clk_gated_i),
     .i_rst_n                                (rst_primary_ni),
@@ -184,6 +188,8 @@ module smc_dfd_wrap #(
 
     .i_cla_time_tick                        (time_tick),
     .i_timestamp                            ('0),
+    .i_ref_timestamp                        ('0),
+    .i_octs_timestamp                       ('0),
 
     // DST instruction-trigger control (from N-Trace); no N-Trace in this build
     .i_sdtrig_control                       (te_pkg::TRIG_TRACE_NONE),
