@@ -39,6 +39,14 @@ public_flat_rw -module "prim_ram_1p"  -var "mem"
 public_flat_rw -module "prim_rom"     -var "mem"
 public_flat_rw -module "ram_16384x39" -var "ram_core"
 
+// +sep_cold_scratch7 deposits the warm-handler address into
+// sep_scratch_reg.field_storage before the CPU fetches. The CPU owns the
+// system-CSR AXI frontdoor during firmware boot, so the testbench has no
+// independent path for this timed write. The XMR deposit requires public write
+// access to the leaf register storage, which sits outside the fabric AXI
+// ready/valid combinational cones.
+public_flat_rw -module "sep_scratch_reg" -var "field_storage"
+
 // Do not add abr_wrapper_key_reg to this public list. The PeakRDL block is on
 // the Bender filelist and tests reach it frontdoor. Also, no comment line here
 // may START with the word "verilator" -- the .vlt lexer treats

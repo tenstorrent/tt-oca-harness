@@ -112,10 +112,11 @@ static int test_dynamic_region_reconfiguration(void) {
 
             // Reconfigure while traffic is active
             if (setup_output_remap_region_extended(region, new_src, new_dest,
-                                                   1,                            // enable
+                                                   1,                // enable
                                                    (region + 1) % 2, // switch channel
-                                                   0xFFF00000,                   // 1MB granularity
-                                                   CACHE_ATTR_NORMAL_NC) != 0) { // switch cache attributes
+                                                   0xFFF00000,       // 1MB granularity
+                                                   CACHE_ATTR_NORMAL_NC) !=
+                0) { // switch cache attributes
                 continue;
             }
 

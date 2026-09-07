@@ -20,9 +20,6 @@ runs the real ROM -- not a backdoored payload.
 
 from __future__ import annotations
 
-import os
-from pathlib import Path
-
 import cocotb
 import pyuvm
 from env.sep_boot_scoreboard import SepBootScoreboard
@@ -30,11 +27,6 @@ from env.sep_efuse_image import LC_TEST_DEV, SepEfuseImage
 from env.sep_rom_console import log_scratch_cold, rom_console_task
 from sep_base_test import sep_base_test
 from sep_reg_meta import sym
-
-_SEP_ROOT = str(Path(__file__).resolve().parents[4])
-_FW_DIR = os.path.join(_SEP_ROOT, "bootrom", "prod", "build")
-_ITCM_HEX = os.path.join(_FW_DIR, "boot_rom.itcm.hex")  # ROM .text (ICCM copy; harmless)
-_DTCM_HEX = os.path.join(_FW_DIR, "boot_rom.dtcm.hex")  # ROM .rodata/.data/.bss -> DCCM
 
 # Reset PC -> Boot ROM base 0x10040000 (SEP_BOOT_ROM_MEM_BASE_ADDR). rst_vec = PC[31:1].
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
@@ -70,6 +62,11 @@ class sep_rom_non_secure_boot_test(sep_base_test):
 
     build_env = False
 
+    # Gate on the ROM/BL1 verdict word in cold_scratch[0] rather than the
+    # outbound mailbox. Inherited by every subclass in this directory.
+    # See dv/docs/rom_verdict_scratch0_migration.md.
+    verdict_source = "scratch0"
+
     def build_phase(self) -> None:
         super().build_phase()
         self.sb = SepBootScoreboard("sb", self)
@@ -91,11 +88,14 @@ class sep_rom_non_secure_boot_test(sep_base_test):
         self.write_efuse_image(efuse_img)
         cocotb.start_soon(rom_console_task(self.logger, sink=self._rom_markers))
         try:
-            await self.boot_firmware(
+            # No TCM staging: the ROM runs from Boot ROM (+sep_boot_rom_hex) and
+            # pulls BL1 off SPI into ICCM itself, so there is no firmware image for
+            # the tcm_load_i backdoor to place. That backdoor also gave every
+            # ICCM/DCCM row valid ECC; DCCM now gets it from the vector.S scrub and
+            # ICCM from the DMA that loads BL1, within the loaded image only.
+            await self.bring_up_cpu_boot(_ROM_BASE >> 1, run_pulse_cycles=40)
+            await self.poll_boot(
                 self.sb,
-                _ITCM_HEX,
-                _DTCM_HEX,
-                rst_vec=_ROM_BASE >> 1,
                 max_run_cycles=_MAX_RUN_CYCLES,
                 no_boot_cycles=_NO_BOOT_CYCLES,
                 progress_every=_PROGRESS_EVERY,

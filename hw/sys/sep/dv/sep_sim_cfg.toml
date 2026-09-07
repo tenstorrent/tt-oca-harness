@@ -23,6 +23,36 @@ tools = ["verilator", "xcelium", "vcs"]
 path = "testlists/all.toml"
 format = "toml_list"
 
+# The vendored adams_bridge abr_reg has two immediate assertions on
+# external_wr_ack / external_rd_ack (abr_reg.sv). They fire once at t=0 fs,
+# before reset releases, because the ack strobes are still X and an X fails
+# `assert(!ack || ...)`. Benign X-init in third-party IP whose datapath OSS DV
+# does not exercise.
+#
+# They live in the POST-reset branch of an always_ff, so they are REAL runtime
+# protocol checks -- waiving them by file:line alone would also hide a genuine
+# runtime violation. Two patterns are therefore needed, and they work as a pair:
+#
+#   ignore    -- drops the "Error:" line, which VCS prints WITHOUT a timestamp.
+#   hard-fail -- the companion line DOES carry the timestamp
+#                ("...abr_reg.sv", 67: ...: started at 0fs failed at 0 fs).
+#                Matching "failed at <non-zero>" turns any post-time-0 firing of
+#                those exact assertions back into a hard failure.
+#
+# So the t=0 X-init noise is waived and nothing else is: a real runtime abr_reg
+# violation still fails the run, loudly, on the timestamped line.
+#
+# ($assertoff in the TB does not work here -- it races the always_ff's own
+# time-0 evaluation and the assertion fires first.)
+[pass_fail]
+extra_ignore_patterns = [
+  'abr_reg\.sv.*at time 0',
+  'abr_reg\.sv", (67|69):',
+]
+extra_hard_fail_patterns = [
+  'abr_reg\.sv", (67|69):.*failed at [1-9]',
+]
+
 [native.stages.clean]
 kind = "clean"
 paths = ["{run_dir}", "hw/sys/sep/dv/build"]
@@ -266,6 +296,9 @@ outputs = [
 # NOTE: as in [c_build.default], argv goes through str.format() and the runlib
 # rejects every placeholder except {fw_target} -- braces of any kind, including
 # shell ${...} expansion, are unavailable here. Use "$VAR" and $(...) instead.
+# DCCM_SCRUB_BYTES is left at the product default here, as it now is in every
+# boot_rom variant: vector.S's scrub establishes DCCM's ECC itself, which is what
+# happens on silicon, so the testbench does not stand in for it.
 cwd = "."
 argv = [
   "bash",
@@ -310,11 +343,30 @@ outputs = [
 # unimplemented sep_external aperture, the bus error raises NMI, and the CPU
 # leaves the boot flow through the reset NMI vector in ICCM. Clearing both keeps
 # the linked bootcode to what the open DUT implements.
+# DCCM_SCRUB_BYTES is left at the product default (0x20000, matching vector.S's
+# own #ifndef fallback). vector.S scrubs all 128KiB of DCCM before the C runtime
+# starts, and because a store writes its ECC, that scrub is what establishes
+# DCCM's ECC state -- on silicon, where DCCM powers up with random contents and
+# random ECC, and here.
+#
+# This variant used to override it to 0 and let the testbench's backdoor TCM load
+# supply ECC instead (tb_top.sv writes bd_riscv_ecc32 alongside every preloaded
+# word), on the grounds that the scrub then bought no coverage. Two reasons that
+# is no longer done: it substitutes the testbench for firmware on a step the
+# firmware owns, and it masked the ROM's own check -- the preload put the correct
+# g_data_init value into DCCM, which is exactly what
+# rom_check_runtime_init_or_fail() reads to prove vector.S's .data copy ran, so a
+# broken copy loop would still have passed.
+#
+# The scrub costs 2047 cycles on sep_rom_non_secure_boot_test (923653 with it vs
+# 921606 without, same test and ROM), i.e. 0.22%. An earlier version of this
+# comment claimed ~3.9x wall clock; that figure never reconciled with observed
+# run times and was wrong.
 cwd = "."
 argv = [
   "bash",
   "-lc",
-  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_TC\" ]; then for c in /tools_soc/opensrc/riscv-gnu-toolchain/2025.01.20-rhel-8.10/bin \"$HOME\"/.local/opt/xpack-riscv-none-elf-gcc-*/bin; do if [ -x \"$c/riscv64-unknown-elf-gcc\" ]; then RV_TC=\"$c\"; RV_PFX=riscv64-unknown-elf-; break; fi; if [ -x \"$c/riscv-none-elf-gcc\" ]; then RV_TC=\"$c\"; RV_PFX=riscv-none-elf-; break; fi; done; fi; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; ROM_DIR=hw/sys/sep/bootrom/prod; if [ -n \"$RV_TC\" ] && \"$RV_TC/$RV_PFX\"gcc -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then GCC_P=$(printf %s \"$RV_PFX\" | sed 's/-$//'); make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= ot-toolchain-images GCC_PREFIX=\"$RV_TC/$GCC_P\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] host toolchain has no picolibc; building the OT boot ROM in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX ./scripts/docker-run.sh run-here make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= ot-toolchain-images; else echo \"error: no picolibc-enabled RISC-V toolchain and no scripts/docker-run.sh\" >&2; exit 1; fi; make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= pack-images secure_boot_spi",
+  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_TC\" ]; then for c in /tools_soc/opensrc/riscv-gnu-toolchain/2025.01.20-rhel-8.10/bin \"$HOME\"/.local/opt/xpack-riscv-none-elf-gcc-*/bin; do if [ -x \"$c/riscv64-unknown-elf-gcc\" ]; then RV_TC=\"$c\"; RV_PFX=riscv64-unknown-elf-; break; fi; if [ -x \"$c/riscv-none-elf-gcc\" ]; then RV_TC=\"$c\"; RV_PFX=riscv-none-elf-; break; fi; done; fi; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; ROM_DIR=hw/sys/sep/bootrom/prod; if [ -n \"$RV_TC\" ] && \"$RV_TC/$RV_PFX\"gcc -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then GCC_P=$(printf %s \"$RV_PFX\" | sed 's/-$//'); make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= ot-toolchain-images GCC_PREFIX=\"$RV_TC/$GCC_P\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] host toolchain has no picolibc; building the OT boot ROM in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX ./scripts/docker-run.sh run-here make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= ot-toolchain-images; else echo \"error: no picolibc-enabled RISC-V toolchain and no scripts/docker-run.sh\" >&2; exit 1; fi; make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= pack-images secure_boot_spi encrypted_boot_spi",
 ]
 outputs = [
   "hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
@@ -324,6 +376,11 @@ outputs = [
   "hw/sys/sep/bootrom/prod/build_ot/boot_rom.sym",
   "hw/sys/sep/bootrom/prod/build/non_secure_boot.bin",
   "hw/sys/sep/bootrom/prod/build/secure_boot.bin",
+  # The SMC-SRAM staged image, produced by the same `pack-images` rule as the two
+  # .bin files above. Declared because sep_boot_recovery_test passes it as
+  # +sep_smc_mem_hex, and an undeclared input would let `--stage sim` start and
+  # then die inside $readmemh instead of failing the output check.
+  "hw/sys/sep/bootrom/prod/build/smc_mem.hex",
 ]
 
 [c_build.boot_rom_ot_pio]
@@ -343,6 +400,9 @@ outputs = [
 # The same toolchain probe is duplicated in five argv blocks; a fix must be
 # applied in all five. Folding it into a script under tools/dv/ would also
 # retire the no-braces constraint.
+# DCCM_SCRUB_BYTES is left at the product default, as in every boot_rom variant.
+# See [c_build.boot_rom_ot] for why the testbench no longer supplies DCCM's ECC
+# in place of vector.S's scrub.
 cwd = "."
 argv = [
   "bash",
@@ -406,7 +466,7 @@ description = "CPU firmware boot: VeeR EL2 owns its master buses and fetches fir
 timeout_sec = 3600
 args = ["+cpu_boot"]
 
-# One [targets.<name>] owns both compile and run knobs.
+# One [targets.<name>] merges the former [compile_targets]/[run_targets] split.
 # Tool-specific flags live under [targets.<name>.tools.<tool>].
 # cocotb's runner forces a global --public-flat-rw. The runlib cocotb_public_scope() integration
 # drops it and substitutes the scoped public config in `public_scope` above, because cocotb only

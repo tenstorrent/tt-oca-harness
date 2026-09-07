@@ -43,7 +43,6 @@ int main(void) {
     spi_controller__CTRL_t ctrl;
     spi_controller__STATUS_t status;
 
-
     /* Step 1: Read CTRL default */
     printf("Step 1: CTRL default check\n");
     ctrl.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CTRL_BASE_ADDR);

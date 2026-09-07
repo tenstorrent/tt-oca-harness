@@ -72,8 +72,8 @@ struct pic_src_desc {
 
 // Legal INTR_TEST / mailbox rows this firmware can deliver. PIC id = agg idx + 1.
 static const struct pic_src_desc k_catalog[] = {
-    {1u,  PIC_KIND_MBOX, 0,          0,          0,          0,    "mailbox"},
-    {9u,  PIC_KIND_INTR_STATUS, OCH_SEP_TOP_SECURE_DMA_INTR_STATE_BASE_ADDR,
+    {1u, PIC_KIND_MBOX, 0, 0, 0, 0, "mailbox"},
+    {9u, PIC_KIND_INTR_STATUS, OCH_SEP_TOP_SECURE_DMA_INTR_STATE_BASE_ADDR,
      OCH_SEP_TOP_SECURE_DMA_INTR_ENABLE_BASE_ADDR, OCH_SEP_TOP_SECURE_DMA_INTR_TEST_BASE_ADDR,
      SECURE_DMA__INTR_STATE__DMA_DONE_bm, "DMA"},
     {18u, PIC_KIND_INTR, OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR,
@@ -98,8 +98,7 @@ static const struct pic_src_desc k_catalog[] = {
 
 // [0]=magic [1]=n_src [2..6]=PIC source ids. Default is the MUST trio so an
 // unpatched image still runs the directed walk.
-volatile uint32_t g_pic_params[7] = {
-    PIC_PARAM_MAGIC, 3u, 1u, 30u, 18u, 0u, 0u};
+volatile uint32_t g_pic_params[7] = {PIC_PARAM_MAGIC, 3u, 1u, 30u, 18u, 0u, 0u};
 
 static struct pic_src_desc g_sel[PIC_SRC_MAX];
 static int g_n_src = 0;
@@ -139,9 +138,9 @@ static int is_ip_intr(uint32_t kind) {
 static void clear_ip_intr(const struct pic_src_desc *d) {
     if (d->kind == PIC_KIND_INTR_STATUS) {
         wr32(d->test, 0);
-        wr32(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR,
-             SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__ERROR_bm |
-                 SECURE_DMA__STATUS__CHUNK_DONE_bm);
+        wr32(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, SECURE_DMA__STATUS__DONE_bm |
+                                                          SECURE_DMA__STATUS__ERROR_bm |
+                                                          SECURE_DMA__STATUS__CHUNK_DONE_bm);
     } else {
         wr32(d->state, d->bit);
     }
@@ -177,7 +176,7 @@ static void silence_and_bound(uint32_t id) {
         pic_disable_source(id);
     }
     if (g_unexpected_claims > UNEXPECTED_CLAIM_MAX) {
-        __asm__ volatile("csrc mie, %0" :: "r"((uint32_t)(1u << 11)));
+        __asm__ volatile("csrc mie, %0" ::"r"((uint32_t)(1u << 11)));
     }
 }
 
