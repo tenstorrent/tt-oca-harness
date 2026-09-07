@@ -6,6 +6,23 @@
 #include "smc_io.h"
 #include "smc_test.h"
 
+/* Readback-compare a plain storage register and count a mismatch as an error.
+ *
+ * Every ISOLATE_REQ_* register compared below is `sw = rw; hw = r;` over the
+ * full [31:0] in hw/sys/smc/regs/blocks/reset_unit/reset_unit.rdl, so the value
+ * written must read back bit for bit. `end_test()` passes iff `_ERROR_CNT == 0`,
+ * so these are what give the test its fail path.
+ */
+static void check_reg(int hartid, uint64_t addr, uint32_t wrote, const char *name) {
+    uint32_t got = read_reg(addr);
+
+    if (got != wrote) {
+        raise_error_s(hartid, name);
+        info_msg_hex32_s(hartid, "  wrote: ", wrote);
+        info_msg_hex32_s(hartid, "  read : ", got);
+    }
+}
+
 int main(void) {
 
     int hartid = metal_cpu_get_current_hartid();
@@ -39,6 +56,20 @@ int main(void) {
 
     uint32_t random_pinen = get_random_int();
     write_reg(SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_PINEN_REG_BASE_ADDR, random_pinen);
+
+    /* SS_COLD_RESET_N is not comparable here: smc_subsystem_resets.sv masks its
+     * write with ~ss_cold_reset_lock, so a mismatch would be the lock doing its
+     * job. ISOLATE_REQ_SMC_REG is not either -- it is hardware-set from
+     * cfg_flr_pf_active, so a software clear can legitimately lose the race.
+     * Both stay stimulus-only. */
+    check_reg(hartid, SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_FLR_COUNTER_VALUE_BASE_ADDR,
+              random_flr_counter, "ISOLATE_REQ_FLR_COUNTER_VALUE readback mismatch");
+    check_reg(hartid, SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_FLR_RESET_COUNTER_VALUE_BASE_ADDR,
+              random_flr_reset_counter, "ISOLATE_REQ_FLR_RESET_COUNTER_VALUE readback mismatch");
+    check_reg(hartid, SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_SMCEN_REG_BASE_ADDR, random_smcen,
+              "ISOLATE_REQ_SMCEN_REG readback mismatch");
+    check_reg(hartid, SMC_TOP_SMC_RESET_UNIT_ISOLATE_REQ_PINEN_REG_BASE_ADDR, random_pinen,
+              "ISOLATE_REQ_PINEN_REG readback mismatch");
 
     end_test(hartid);
 
