@@ -33,10 +33,10 @@ This guide provides a systematic approach to verify:
 
 | Category | Count | Verification Focus |
 |----------|-------|-------------------|
-| **Read-Only (RO)** | 26 | Default values, HW update behavior |
-| **Read-Write (RW)** | 15 | Default values, write masks, pattern tests |
-| **Write-Only (WO)** | 1 | Side effects (cannot verify readback) |
-| **Write-1-Clear (W1C)** | 1 | Set/clear behavior |
+| **Read-Only (R/O)** | 26 | Default values, HW update behavior |
+| **Read-Write (R/W)** | 15 | Default values, write masks, pattern tests |
+| **Write-Only (W/O)** | 1 | Side effects (cannot verify readback) |
+| **Write-1-Clear (W1/C)** | 1 | Set/clear behavior |
 
 ### 1.3 Test Prerequisites
 
@@ -177,7 +177,7 @@ Step 3: Verify health status defaults
 **Total Registers**: 42
 
 - **Check immediately**: 30 registers
-- **Skip (WO)**: 1 register (INTR_TEST)
+- **Skip (W/O)**: 1 register (INTR_TEST)
 - **Check after disabling health tests**: 11 registers (status/counters)
 
 ---

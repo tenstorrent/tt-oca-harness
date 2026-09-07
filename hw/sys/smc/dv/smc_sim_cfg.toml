@@ -23,7 +23,7 @@ format = "toml_list"
 
 [native.stages.clean]
 kind = "clean"
-paths = ["{run_dir}", "hw/sys/smc/dv/build"]
+paths = ["{run_dir}", "hw/sys/smc/dv/build", "hw/sys/smc/dv/build_dual"]
 
 [build]
 top_module = "smc_uvm_top"
@@ -70,17 +70,16 @@ sources = [
   #                      (Bender.yml:64,  target any(opentitan_smu, sep, smu, key_manager))
   # Without them both cells elaborate as unresolved: VCS/Xcelium refuse the
   # build outright, and Verilator only proceeds because `-Wno-fatal` demotes
-  # the missing-module error to a warning and black-boxes them -- so a CDC FIFO
-  # and a reset synchronizer were silently absent from every SMC run. The
-  # upstream fix is to add `smc` to those two Bender targets; this DV-local
-  # source entry unblocks all three simulators without editing vendor/.
+  # the missing-module error to a warning and black-boxes them, leaving a CDC
+  # FIFO and a reset synchronizer silently absent. Bender.yml carries them only
+  # under the targets above, so this DV-local source entry supplies them to all
+  # three simulators without editing vendor/.
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_async.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_rst_sync.sv",
   # prim_flop_2sync instantiates prim_cdc_rand_delay when SIMULATION is defined
-  # (it is, see targets.default.tools.*). Bender.yml:38-42 records exactly this
-  # gap for `dtp` and closes it with `target: all(dtp, simulation)`; `smc` has
-  # the same hole and no equivalent entry. Upstream fix: add
-  # `target: all(smc, simulation)` carrying this file.
+  # (it is, see targets.default.tools.*). Bender.yml:38-42 closes exactly this
+  # gap for `dtp` with `target: all(dtp, simulation)`; `smc` has no equivalent
+  # entry, so this file is listed here.
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_cdc_rand_delay.sv",
   # prim_ram_1p backs the CPU cluster memory macros
   # (smc_cpu/mem_swaps/4core/OCAH4CORECluster_mem_swaps.sv:95, reached via
@@ -117,6 +116,20 @@ ccache = true
 [build.options]
 build_jobs = 8
 
+[coverage.verilator]
+# Instrument line/branch (--coverage-line) and SVL user coverage; toggle
+# stays off because with the simulator default `--coverage` one SMC test
+# leaf's native database is ~0.6 GB, which does not fit a reseeded
+# regression on standard CI runner disk before merge.
+#
+# --output-groups 0 disables Verilator's default concatenation of the
+# generated .cpp files into --build-jobs groups. Grouping is by file count,
+# so on the coverage-instrumented model one group collected ~240 MB of
+# C++ into a single translation unit that the compiler did not finish in
+# two hours; per-file compilation keeps every unit and every compiler
+# process bounded (46-minute build on six cores, ~12 MB database per leaf).
+build_args = ["--coverage-line", "--coverage-user", "--output-groups", "0"]
+
 [frameworks.cocotb]
 python_root = "hw/sys/smc/dv/cocotb"
 test_dir = "hw/sys/smc/dv/cocotb/tests"
@@ -140,12 +153,136 @@ outputs = [
   "hw/sys/smc/dv/fw/build/tests/{fw_target}/default_efuse_shadow_reg.preload",
 ]
 
+[c_build.bootrom]
+# Build the real SMC production boot ROM (hw/sys/smc/bootrom/prod) instead of a
+# DV C test. Selected by `firmware = { name = "prod_rom", mode = "bootrom" }`.
+#
+# I3C_CORE=swap defines I3C_USE_HCI_CORE, which is what
+# selects drivers/src/i3c_hci_driver.c -- the target-side driver for the OCA
+# i3c-core this tree actually instantiates -- over the Cadence override.
+#
+# ENABLE_RELEASE_PRINTS=1 affects debuggability only, not function.
+# The ROM's simputs() virtual console is wrapped in `#ifdef DEBUG`
+# (bootrom/prod/lib/src/virt_console.c), and a release build only defines
+# DEBUG when this knob is set (bootrom/prod/Makefile; it
+# defaults to 0). Without it the target half of every dual test is a black box:
+# every gate still passes, because they read CSRs, POST codes and the retired
+# PC rather than the console. A ROM built without this knob emits no
+# `[target-fw]` lines (201 with it) and its .text shrinks from 25670 to 14164
+# bytes. Leave it on.
+#
+# The ROM's own Makefile is standalone and needs a picolibc-enabled RISC-V
+# toolchain, which most hosts do not carry, so probe for one and fall back to
+# the OCAH toolchain container. Same host-vs-container split as
+# hw/sys/sep/dv/sep_sim_cfg.toml's [c_build.boot_rom].
+#
+# NOTE: as in [c_build.default], argv goes through str.format() and the runlib
+# rejects every placeholder except {fw_target} -- braces of any kind, including
+# shell ${...} expansion, are unavailable here. Use "$VAR" and $(...) instead.
+cwd = "."
+argv = [
+  "bash",
+  "-lc",
+  "set -e; EFUSE=hw/sys/smc/dv/efuse_preload; PY=.venv/bin/python3; if [ ! -x \"$PY\" ]; then PY=python3; fi; \"$PY\" $EFUSE/generate_efuse_preload.py $EFUSE/configurations/default_efuse.toml --output_file hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex; ROM_DIR=hw/sys/smc/bootrom/prod; RV_TC=\"$RISCV_TOOLCHAIN\"; if [ -n \"$RV_TC\" ]; then CC_PROBE=\"$RV_TC/riscv64-unknown-elf-gcc\"; else CC_PROBE=riscv64-unknown-elf-gcc; fi; if \"$CC_PROBE\" -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then make -C \"$ROM_DIR\" I3C_CORE=swap ENABLE_RELEASE_PRINTS=1 RISCV_TOOLCHAIN=\"$RV_TC\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] host toolchain has no picolibc; building the SMC boot ROM in the OCAH toolchain container\"; ./scripts/docker-run.sh run make -C \"$ROM_DIR\" I3C_CORE=swap ENABLE_RELEASE_PRINTS=1; else echo \"error: no picolibc-enabled RISC-V toolchain and no scripts/docker-run.sh\" >&2; exit 1; fi",
+]
+# prod_rom.bin64 is exactly 16384 64-bit lines, matching the CPU ROM array
+# (prim_rom Width=64 Depth=16384 in OCAH4CORECluster_rom_ext), so it loads via
+# +rom_bin64 / $readmemb with no truncation. The .preload.hex form is staged
+# alongside it for inspection.
+outputs = [
+  "hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex",
+  "hw/sys/smc/bootrom/prod/build/release/hex/prod_rom.bin64",
+  "hw/sys/smc/bootrom/prod/build/release/hex/prod_rom.preload.hex",
+]
+
+[c_build.dual_occp]
+# All three images the dual OCCP boot needs, in one stage, because the test
+# needs them together:
+#   prod_rom                -> u_dut  (target, real production boot ROM)
+#   occp_unsecure_boot_test -> u_bfm  (controller, rom-mode DV image)
+#   hello_world             -> transferred over I3C by the controller. An
+#                              ordinary sram-mode image from the shared test
+#                              engine, matching the reference environment's
+#                              +ROM_FW_TEST=hello_world. cocotb writes it into
+#                              the controller's SRAM over AXI, so nothing has to
+#                              embed it in a ROM image.
+#
+# {fw_target} is the only placeholder the runlib allows, so the DV test names
+# are spelled out rather than interpolated. Same host-toolchain-vs-container
+# split as [c_build.bootrom] above; see there for why it exists and for the
+# no-braces constraint on argv.
+cwd = "."
+argv = [
+  "bash",
+  "-lc",
+  "set -e; EFUSE=hw/sys/smc/dv/efuse_preload; PY=.venv/bin/python3; if [ ! -x \"$PY\" ]; then PY=python3; fi; \"$PY\" $EFUSE/generate_efuse_preload.py $EFUSE/configurations/default_efuse.toml --output_file hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex; ROM_DIR=hw/sys/smc/bootrom/prod; FW='make ocah-dv-fw-tests TARGET=smc TEST=occp_unsecure_boot_test && make ocah-dv-fw-tests TARGET=smc TEST=hello_world'; RV_TC=\"$RISCV_TOOLCHAIN\"; if [ -n \"$RV_TC\" ]; then CC_PROBE=\"$RV_TC/riscv64-unknown-elf-gcc\"; else CC_PROBE=riscv64-unknown-elf-gcc; fi; if \"$CC_PROBE\" -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then make -C \"$ROM_DIR\" I3C_CORE=swap ENABLE_RELEASE_PRINTS=1 RISCV_TOOLCHAIN=\"$RV_TC\"; eval \"$FW\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] host toolchain has no picolibc; building the dual-OCCP images in the OCAH toolchain container\"; ./scripts/docker-run.sh run bash -lc 'make -C hw/sys/smc/bootrom/prod I3C_CORE=swap ENABLE_RELEASE_PRINTS=1 && make ocah-dv-fw-tests TARGET=smc TEST=occp_unsecure_boot_test && make ocah-dv-fw-tests TARGET=smc TEST=hello_world'; else echo \"error: no picolibc-enabled RISC-V toolchain and no scripts/docker-run.sh\" >&2; exit 1; fi",
+]
+outputs = [
+  "hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex",
+  "hw/sys/smc/bootrom/prod/build/release/hex/prod_rom.bin64",
+  "hw/sys/smc/dv/fw/build/tests/occp_unsecure_boot_test/occp_unsecure_boot_test.rom.hex",
+  "hw/sys/smc/dv/fw/build/tests/occp_unsecure_boot_test/occp_unsecure_boot_test.rom.sym",
+  "hw/sys/smc/dv/fw/build/tests/hello_world/hello_world.sram.bin",
+  "hw/sys/smc/dv/fw/build/tests/hello_world/hello_world.sram.sym",
+]
+
+[c_build.occp_sanity]
+# Two images for the rom-only OCCP family: the production boot ROM for the
+# target, and one rom-mode DV controller image. No payload -- these tests never
+# transfer one, which is what separates them from [c_build.dual_occp].
+#
+# Same host-toolchain-vs-container split as [c_build.bootrom] above; see there
+# for why it exists and for the no-braces constraint on argv.
+cwd = "."
+argv = [
+  "bash",
+  "-lc",
+  "set -e; EFUSE=hw/sys/smc/dv/efuse_preload; PY=.venv/bin/python3; if [ ! -x \"$PY\" ]; then PY=python3; fi; \"$PY\" $EFUSE/generate_efuse_preload.py $EFUSE/configurations/default_efuse.toml --output_file hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex; ROM_DIR=hw/sys/smc/bootrom/prod; FW='make ocah-dv-fw-tests TARGET=smc TEST=occp_sanity'; RV_TC=\"$RISCV_TOOLCHAIN\"; if [ -n \"$RV_TC\" ]; then CC_PROBE=\"$RV_TC/riscv64-unknown-elf-gcc\"; else CC_PROBE=riscv64-unknown-elf-gcc; fi; if \"$CC_PROBE\" -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then make -C \"$ROM_DIR\" I3C_CORE=swap ENABLE_RELEASE_PRINTS=1 RISCV_TOOLCHAIN=\"$RV_TC\"; eval \"$FW\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] host toolchain has no picolibc; building the OCCP sanity images in the OCAH toolchain container\"; ./scripts/docker-run.sh run bash -lc 'make -C hw/sys/smc/bootrom/prod I3C_CORE=swap ENABLE_RELEASE_PRINTS=1 && make ocah-dv-fw-tests TARGET=smc TEST=occp_sanity'; else echo \"error: no picolibc-enabled RISC-V toolchain and no scripts/docker-run.sh\" >&2; exit 1; fi",
+]
+outputs = [
+  "hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex",
+  "hw/sys/smc/bootrom/prod/build/release/hex/prod_rom.bin64",
+  "hw/sys/smc/dv/fw/build/tests/occp_sanity/occp_sanity.rom.hex",
+]
+
 [run_modes.smoke]
 description = "SMC functional smoke (smc_wrapper under tb_top)"
 timeout_sec = 1800
 args = [
   "+smc_efuse_hex={repo_root}/hw/sys/smc/dv/assets/smc_efuse_default.hex",
   "+rom_hex={repo_root}/hw/sys/smc/dv/assets/smc_rom_default.hex",
+]
+
+[run_modes.prod_rom]
+# Production boot ROM runs. Carries NO +rom_hex.
+#
+# `smoke` is the default run mode for any test that does not name one, and its
+# +rom_hex points at assets/smc_rom_default.hex -- 16 lines of zeros. Two
+# separate loaders consume it: OCAH4CORECluster_rom_ext at #0.1 (which prefers
+# +rom_bin64, so the production image wins there) and
+# smc_cpu_mem_integration's backdoor at #0.2 (which only knows +smc_rom_hex /
+# +rom_hex). The later one would therefore zero ROM words 0-15 -- the reset
+# vector and first instructions -- on top of a correctly loaded production ROM,
+# leaving the CPU to fetch all-zero opcodes. Keeping +rom_hex out of this mode
+# is what makes +rom_bin64 the single ROM image for these tests.
+description = "SMC boot from the real production ROM (+rom_bin64 only)"
+timeout_sec = 3600
+args = [
+  "+smc_efuse_hex={repo_root}/hw/sys/smc/dv/assets/smc_efuse_default.hex",
+]
+
+[run_modes.dual]
+# No +rom_hex here, for the same reason [run_modes.prod_rom] above omits it:
+# smc_cpu_mem_integration's #0.2 backdoor would apply it on top of the
+# production ROM loaded at #0.1 and zero its entry point.
+description = "Dual-SMC OCCP boot (+rom_bin64 target, +bfm_rom_hex controller)"
+timeout_sec = 7200
+args = [
+  # Generated by hw/sys/smc/dv/efuse_preload/generate_efuse_preload.py in the
+  # c_build stage, from configurations/default_efuse.toml. The single-instance
+  # run modes above use the hand-maintained assets/smc_efuse_default.hex, so
+  # fuse sense delivers different contents in the two targets.
+  "+smc_efuse_hex={repo_root}/hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex",
 ]
 
 [targets.default]
@@ -160,6 +297,38 @@ build_dir = "hw/sys/smc/dv/build/cocotb"
 # on every backend. Verilator also keeps +define+ASSERTS_OFF below.
 
 [targets.default.tools.verilator]
+flags = [
+  "-Wno-BLKLOOPINIT",
+  "+define+VERILATOR",
+  "+define+ASSERTS_OFF",
+]
+
+# Dual-SMC OCCP boot model. Same tb_top.sv, same smc_uvm_top; `SMC_DUAL` selects
+# the second instance and the shared I3C bus (see the header of tb_top.sv).
+#
+# Every build path is de-conflicted from [targets.default] -- its own filelist,
+# bender_filelist, work_dir and build_dir -- because concurrent --rebuild runs
+# race on bender filelist generation (docs/smc_oss_execution_guide.md). The two
+# models therefore coexist on disk and a dual run never invalidates the
+# single-instance model, or the reverse.
+#
+# Cost of the second instance, measured on Verilator 5.050: the verilated
+# executable grows 23 MB -> 43 MB, while cold hdl_compile does NOT grow
+# (195-243 s vs 231-265 s) because the module code is generated once and only
+# per-instance state duplicates. Simulation throughput is the real cost, which
+# is why this is a separate target rather than always-on.
+[targets.dual]
+description = "OSS dual-SMC cocotb target: OCCP controller + target on a shared I3C bus"
+build_dir = "hw/sys/smc/dv/build_dual/cocotb"
+work_dir = "hw/sys/smc/dv/build_dual"
+filelist = "hw/sys/smc/dv/build_dual/smc_dual_dut_compile.f"
+bender_filelist = "hw/sys/smc/dv/build_dual/smc_dual_bender.f"
+defines = [
+  "SYNTHESIS",
+  "SMC_DUAL",
+]
+
+[targets.dual.tools.verilator]
 flags = [
   "-Wno-BLKLOOPINIT",
   "+define+VERILATOR",

@@ -66,8 +66,7 @@ static inline uint32_t sep_reset_begin_trng_recovery(bool reset_km) {
     if (reset_km) consumer_bits |= SEP_SW_RESET_N_KM_BIT;
 
     sep_reset_wr(SEP_RESET_CTRL_SW_RESET_N, saved & ~consumer_bits);
-    sep_reset_wr(SEP_RESET_CTRL_SW_RESET_N,
-                 saved & ~consumer_bits & ~SEP_SW_RESET_N_TRNG_BIT);
+    sep_reset_wr(SEP_RESET_CTRL_SW_RESET_N, saved & ~consumer_bits & ~SEP_SW_RESET_N_TRNG_BIT);
     return saved;
 }
 

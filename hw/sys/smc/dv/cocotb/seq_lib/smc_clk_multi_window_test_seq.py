@@ -48,9 +48,8 @@ HYST_LEGAL_HI = 63
 # DV-side stimulus carve-out with NO SPEC basis -- the observed hyst=1 behaviour
 # (DMA accepts a command via NEXT_ID but DMA_CTRL_DONE never advances, so
 # `_wait_dma_done` reaches its bound) looks like DUT/integration misbehaviour on
-# a SPEC-legal encoding, and is filed as tenstorrent/tt-oca-harness#1235. It is
-# written out here and printed at run time precisely so it cannot pass as a
-# silent source comment. The band is restored to the draw when #1235 closes.
+# a SPEC-legal encoding. It is written out here and printed at run time so it
+# cannot pass as a silent source comment.
 HYST_LOW_EXCLUSION = {
     "name": "HYST-LOW-BAND-0-7-NOT-EXERCISED",
     "tag": "[BY-DESIGN-EXCEPTION]",
@@ -484,8 +483,7 @@ class smc_clk_multi_window_test_seq(SmcCsrSeq):
             f"zero_toggles_idle=1 cells={','.join(self.required_cells_hit)}",
         )
         # Measured, not asserted-by-literal: per window, the bound and the
-        # observed cycle counts the bounded waits actually consumed. The old
-        # `fail_on_expiry=1` was a constant and evidenced nothing
+        # observed cycle counts the bounded waits actually consumed
         # ([NO-DUMMY-DEAD-CODE]).
         observed = " ".join(
             f"{sid}(hyst={ev['hyst']},delay={ev['delay']},"

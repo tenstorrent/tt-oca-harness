@@ -4,9 +4,9 @@
 // DTP-local TB interface for the SV-UVM flow: the harness clock period,
 // system/power-on resets (sequenced by the test), reset-assertion counters,
 // and the DUT-produced one-hot IEEE 1149.1 TAP state used by the FSM
-// reference-model checks. Deliberately separate from the shared
-// ocah_jtag_if, which carries generic JTAG pins only. The cocotb realization
-// exposes the same members as the DtpTbIf accessor over the top's ports.
+// reference-model checks. Separate from the shared ocah_jtag_if, which
+// carries generic JTAG pins only. The cocotb realization exposes the same
+// members as the DtpTbIf accessor over the top's ports.
 //
 // The JTAG2AXI additions carry the test-drivable lifecycle
 // debug disables, the SVA suppress knobs, and mirrors of the tb_top

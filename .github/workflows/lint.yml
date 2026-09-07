@@ -507,9 +507,25 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # check-regen-regs.sh --skip-if-unrelated re-derives the PR diff
+          # itself (diff_class.py), the same way the diff-class job above
+          # does. A shallow, single-commit checkout has no merge base to
+          # diff against, so it always falls back to running the full
+          # check; match diff-class's fetch-depth here so the bypass has
+          # real history to work with.
+          fetch-depth: 0
       - name: Install uv
         uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.11"
       - name: Verify regenerated register collateral
-        run: bash scripts/ci/check-regen-regs.sh .
+        run: bash scripts/ci/check-regen-regs.sh --skip-if-unrelated .
+      # Here rather than in its own job so the configs are checked against the
+      # header this job just regenerated: they name OTP registers and fields, so
+      # an RDL rename silently invalidates one. stdlib-only, hence --no-project;
+      # 3.11 for tomllib.
+      - name: eFuse preload configs load against the regenerated map
+        run: |
+          uv run --no-project --python 3.11 \
+            hw/sys/sep/dv/cocotb/env/sep_generate_efuse_preload.py --selftest

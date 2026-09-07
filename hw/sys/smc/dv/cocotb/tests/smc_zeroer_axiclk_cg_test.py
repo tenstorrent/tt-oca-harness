@@ -24,8 +24,6 @@ class smc_zeroer_axiclk_cg_test(smc_base_test):
     async def run_scenario(self) -> None:
         seq = smc_zeroer_axiclk_cg_test_seq("zeroer_axiclk_cg_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
-        # P1 tokens are unchanged (additive extension keeps the closed P1
-        # grade valid); the P2 (SMC_CG_P2_002) tokens are appended.
         required = (
             "CHK-ZAXI-GATE-OFF-IDLE",
             "CHK-ZAXI-BUSY-ENABLE",

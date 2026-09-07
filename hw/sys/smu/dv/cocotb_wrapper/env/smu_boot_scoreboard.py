@@ -61,8 +61,7 @@ class SmuSepBootScoreboard(uvm_component):
     This is the boot-readiness bar of the SMU-level SEP smoke (mirroring the
     internal `smu_sep_smoke_test` contract): SEP must be observed fetching
     from the boot-ROM entry window and then executing firmware from ICCM.
-    Console/STDOUT checking over the external AXI path is out of scope here
-    and tracked separately (issue #3939).
+    Console/STDOUT checking over the external AXI path is out of scope here.
     """
 
     MIN_DISTINCT_PCS = 16

@@ -166,6 +166,7 @@ vendor_package:
     target_dir: "vendor/pulp-platform/unbent/upstream"
     upstream: { git: "https://github.com/tenstorrent-forks/unbent.git", rev: "2df7a3f0307739d3813cf77db8228720b39a94f8" }
     include_from_upstream:
+      - "LICENSE"
       - "src/bus_err_unit_reg_pkg.sv"
       - "src/bus_err_unit_bare.sv"
       - "src/bus_err_unit_reg_top.sv"
@@ -210,6 +211,7 @@ vendor_package:
     target_dir: "vendor/chipsalliance/adams-bridge/upstream"
     upstream: { git: "https://github.com/chipsalliance/adams-bridge.git", rev: "e59eba955eac2a1adcb059f250641ede78e304be" }
     include_from_upstream:
+      - "LICENSE"
       - "src/abr_top/rtl"
       - "src/abr_libs/rtl"
       - "src/abr_prim/rtl"
@@ -244,6 +246,7 @@ vendor_package:
     target_dir: "vendor/chipsalliance/caliptra-rtl/upstream"
     upstream: { git: "https://github.com/chipsalliance/caliptra-rtl.git", rev: "ec349a89a0fe7bbe24f16c6bb05f9779d5a3d4c6" }
     include_from_upstream:
+      - "LICENSE"
       - "src/keyvault/rtl/kv_macros.svh"
       - "src/keyvault/rtl/kv_defines_pkg.sv"
       - "src/keyvault/rtl/kv_fsm.sv"
@@ -312,6 +315,7 @@ vendor_package:
     target_dir: "vendor/chipsalliance/i3c-core/upstream"
     upstream: { git: "https://github.com/tenstorrent/tt-i3c-core.git", rev: "a6361105cd3432699da636f1f5e6f1eb4df09ed2" }
     include_from_upstream:
+      - "LICENSE"
       - "src"
     exclude_from_upstream:
       - "src/i3c_wrapper.sv"
@@ -322,17 +326,29 @@ vendor_package:
   - name: i3c-core-caliptra-rtl
     target_dir: "vendor/chipsalliance/i3c-core/upstream/third_party/caliptra-rtl"
     upstream: { git: "https://github.com/tenstorrent/caliptra-rtl-fork.git", rev: "8bd654eba57cfaa0688f9c4804b23253d0235dfc" }
+    include_from_upstream:
+      - "LICENSE"
+      - "src/axi/rtl/axi_addr.v"
+      - "src/axi/rtl/axi_if.sv"
+      - "src/axi/rtl/i3ccore_axi_pkg.sv"
+      - "src/caliptra_prim/rtl/caliptra_prim_assert.sv"
+      - "src/caliptra_prim/rtl/caliptra_prim_assert_dummy_macros.svh"
+      - "src/caliptra_prim/rtl/caliptra_prim_assert_sec_cm.svh"
+      - "src/caliptra_prim/rtl/caliptra_prim_assert_standard_macros.svh"
+      - "src/caliptra_prim/rtl/caliptra_prim_assert_yosys_macros.svh"
+      - "src/caliptra_prim/rtl/caliptra_prim_flop_macros.sv"
+      - "src/libs/rtl/caliptra_sva.svh"
+      - "src/libs/rtl/skidbuffer.v"
     patch_dir: "vendor/chipsalliance/i3c-core/patches/caliptra-rtl"
 
   - name: i3c-core-cocotbext-i3c
     target_dir: "vendor/chipsalliance/i3c-core/upstream/third_party/cocotbext-i3c"
     upstream: { git: "https://github.com/antmicro/cocotbext-i3c.git", rev: "6456315697d980ba59ff09448b89941346a3ce16" }
+    include_from_upstream:
+      - "LICENSE"
+      - "pyproject.toml"
+      - "src"
     patch_dir: "vendor/chipsalliance/i3c-core/patches/cocotbext-i3c"
-
-  - name: i3c-core-axi-vip
-    target_dir: "vendor/chipsalliance/i3c-core/upstream/third_party/axi-vip"
-    upstream: { git: "https://github.com/antmicro/axi-vip.git", rev: "6aeb0a5ba7810dafd96145f0e569db6996464b0e" }
-    patch_dir: "vendor/chipsalliance/i3c-core/patches/axi-vip"
 
 # RTL sources are partitioned by composable subsystem targets.
 sources:
@@ -551,6 +567,7 @@ sources:
       - hw/sys/smc/regs/gen/sv/blocks/reset_unit_reg_pkg.sv
       - hw/sys/smc/regs/gen/sv/blocks/scratch_reg_pkg.sv
       - hw/sys/smc/regs/gen/sv/blocks/smc_base_config_reg_pkg.sv
+      - hw/sys/smc/regs/gen/sv/blocks/straps_reg_pkg.sv
       - hw/sys/smc/rtl/smc_pkg.sv
       - hw/sys/smc/rtl/crossbars/smc_internal_axi_lite_xbar_pkg.sv
       - hw/sys/smc/rtl/crossbars/smc_local_xbar_pkg.sv
@@ -753,6 +770,7 @@ sources:
       - hw/ip/entropy_source/rtl/entropy_generator_complex.sv
       - hw/ip/entropy_source/rtl/entropy_health_test.sv
       - hw/ip/entropy_source/rtl/entropy_noise_source.sv
+      - hw/ip/entropy_source/rtl/entropy_ring_stage_wrappers.sv
       - hw/ip/entropy_source/rtl/entropy_ring_oscillator.sv
       - hw/ip/entropy_source/rtl/entropy_ripple_divider.sv
       - hw/ip/entropy_source/rtl/entropy_rosc_tune_fsm.sv
@@ -1194,6 +1212,7 @@ sources:
       - hw/sys/smc/regs/gen/sv/blocks/reset_unit_reg.sv
       - hw/sys/smc/regs/gen/sv/blocks/scratch_reg.sv
       - hw/sys/smc/regs/gen/sv/blocks/smc_base_config_reg.sv
+      - hw/sys/smc/regs/gen/sv/blocks/straps_reg.sv
       - hw/sys/smc/rtl/crossbars/smc_internal_axi_lite_xbar.sv
       - hw/sys/smc/rtl/crossbars/smc_local_xbar.sv
       - hw/sys/smc/rtl/crossbars/smc_periph_axi_lite_xbar.sv

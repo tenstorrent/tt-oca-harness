@@ -49,7 +49,7 @@ CPU_RESET_VECTOR_SCRATCH = 0xC006_0000
 CPU_RESET_CTRL_DEFAULT = CPU_CTRL_RESET_CTRL_REG_DEFAULT & 0xFFFF_FFFF
 # Hold cores (reset_n=0) while keeping uncore out of reset (bit 8).
 CPU_RESET_CTRL_HOLD_CORES = 0x0000_0100
-# Pulse-start bits [7:4] for cores 0-3 (see legacy smc_api.pulse_core_reset).
+# Pulse-start bits [7:4] for cores 0-3.
 CPU_RESET_CTRL_PULSE_ALL = CPU_RESET_CTRL_DEFAULT | 0x0000_00F0  # 0x1FF
 # debug_reset_n_n0_scan[24] defaults to 0 (DM held in reset). DMI/dmstatus
 # needs this bit set; FW and U7-3 release it explicitly.
@@ -66,7 +66,7 @@ CPU_FW_FAIL_VALUE = 0xBAD0_0000
 # MMIO to CPU_CTRL SCRATCH may not be reachable until more fabric bring-up.
 CPU_FW_SRAM_MAILBOX = 0xC006_0100
 
-# smc_padring.sv: boot_stall is lsio pad 57 (was 60 before 68->65 GPIO shrink).
+# boot_stall is an lsio pad; smc_padring.sv holds the assignment.
 BOOT_STALL_PAD = 57
 
 # Backward-compatible aliases.
@@ -122,7 +122,7 @@ async def check_cpu_bfm_observability() -> None:
 
 
 def _set_boot_stall(asserted: bool) -> None:
-    """Drive padring pad 57 (boot_stall, active-high) via TB GPIO override."""
+    """Drive the boot_stall pad (active-high) via the TB GPIO override."""
     dut = cocotb.top
     if not hasattr(dut, "tb_gpio_ext_drive_en"):
         return
@@ -236,7 +236,8 @@ async def check_cpu_firmware_boot_contract(
       * ``+smc_rom_hex=<path>`` — ROM window preload (vector 0xC004_0000)
       * ``+smc_scratch_ram_hex=<path>`` — scratch ECC hex, 64B-striped across
         32 banks (vector 0xC006_0000)
-      * ``+smc_hold_cpu_boot`` — assert pad57 from time-0 (preferred for scratch)
+      * ``+smc_hold_cpu_boot`` — assert boot_stall from time-0 (preferred for
+        scratch)
 
     Paths must be absolute (or resolvable from the simulator cwd under
     ``attempt_*/make``). If both plusargs are present, scratch wins.
@@ -268,8 +269,14 @@ async def check_cpu_firmware_boot_contract(
         CPU_FW_SUCCESS_MAGIC,
     )
 
-    # Clear CSR mailbox (SEP can reach CPU_CTRL). Scratch/D$ PASS is observed
-    # via tb_cpu_fw_mailbox (SEP cannot AXI to 0xC006_xxxx).
+    # CPU_CTRL is decoded off the front port ahead of the cluster, so SEP_IN
+    # reaches it whatever the cluster is doing.
+    #
+    # Scratch/D$ PASS is observed via tb_cpu_fw_mailbox rather than an AXI read
+    # of the scratch window. SEP_IN does reach that window, but only with the
+    # warm domain out of reset and every core released; while boot_stall is held
+    # the access never gets a response at all. The mailbox snoop needs neither
+    # condition.
     await seq.csr_write("CPU_BOOT_SCRATCH0_CLEAR", CPU_CTRL_SCRATCH_0, 0)
 
     # Capture fetch baselines BEFORE release: the I$ fill can complete

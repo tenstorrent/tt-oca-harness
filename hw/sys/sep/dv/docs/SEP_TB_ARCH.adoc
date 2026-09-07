@@ -13,7 +13,7 @@
 |Bare core |`sep` (`hw/sys/sep/rtl/sep.sv`)
 |Repository |`tt-oca-harness`
 |Project |OCAH
-|Framework |PyUVM on cocotb (Phase 1 / Phase 2); new UVM bench planned (Phase 3)
+|Framework |PyUVM on cocotb (Phase 1 / Phase 2); SystemVerilog UVM on the same top (Phase 3, `--framework uvm`)
 |Primary simulator |Verilator
 |Commercial simulator use |VCS / Xcelium for development iteration; Verilator is pre-merge acceptance
 |How to run |`README.md` (`tools/dv/run_dv.py --dut sep`)
@@ -118,7 +118,9 @@ hw/sys/sep/dv/
     SEP_TB_ARCH.adoc        # this document
     SEP_VPLAN.adoc          # verification contracts
   tb/
-    tb_top.sv               # sep_uvm_top
+    tb_top.sv               # sep_uvm_top: one module, two shapes (cocotb / `UVM)
+    sep_tb_signal_list.svh  # every TB signal, declared once for both shapes
+    sep_tb_if.sv            # SEP-local TB interface of the SV-UVM shape
     sep_outbound_mbx.sv     # FW console / PASS magic
     efuse_preloads/         # committed default OTP image
     interfaces/
@@ -132,6 +134,10 @@ hw/sys/sep/dv/
     seq_lib/                # uvm_sequence stimulus
     tests/                  # @pyuvm.test leaves (by area)
     dv_sim_prestage.py      # pre-sim eFuse hex staging
+  uvm/                      # SV-UVM realization (`--framework uvm`, VCS)
+    env/                    # sep_env_pkg: types, cfgs, ref models, scoreboard, env
+    seq_lib/                # sep_seq_lib_pkg: operations + scenario sequences
+    tests/                  # thin test classes + sep_tests.sv manifest
   fw/                       # bare-metal CPU FW + drivers
   testlists/                # system/cpu/crypto/... + all.toml
   sep_sim_cfg.toml          # sole launch config
@@ -142,7 +148,14 @@ hw/sys/sep/dv/
 
 [[sep-hdl-top]]
 `tb/tb_top.sv` instantiates `sep_wrapper` as `sep_uvm_top` and adapts packed RTL
-structs to cocotb-friendly scalar/vector ports.
+structs to cocotb-friendly scalar/vector ports. It is ONE module with two
+shapes: by default the ANSI port list cocotb drives; under the bare `UVM`
+define (set by the native profile's `uvm` framework) the same signals become
+internal TB nets and a harness block at the end of the module adds the
+clocks, the shared AXI VIP interfaces on the CPU-LSU splice, quiescent
+tie-offs, `uvm_config_db` publication, and `run_test()`. Every TB signal is
+declared once in `tb/sep_tb_signal_list.svh` and expanded into the selected
+shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 
 [cols=",",options="header"]
 |===
@@ -495,7 +508,8 @@ blackbox-stubbed. Scoped `sep_public_scope.vlt` replaces global
 
 Production Boot ROM firmware tests (`sep_rom_non_secure_boot_test`,
 `sep_rom_ot_{dma,pio,secure}_boot_test`) live in `testlists/rom_fw.toml` and run
-in the `all` and `rom_fw` groups. They belong to the ROM-FW owner; the OSS suite
+in the `rom_fw` group only -- naming that group, or the test, is the only way to
+reach them. They belong to the ROM-FW owner; the OSS suite
 grades ROM *hardware* access only (`sep_boot_rom_smoke_test`,
 `sep_rom_sanity_test`, `sep_boot_rom_lsu_read_test`).
 
@@ -572,6 +586,127 @@ Build the image by hand only when iterating on the KM firmware itself:
 make -C hw/sys/sep/dv/cocotb/tests/km_fw rom_main
 ----
 
+[[sep-uvm-realization]]
+=== SystemVerilog UVM Realization (`--framework uvm`)
+
+The SV-UVM realization runs through the same native runner: `sep_sim_cfg.toml`
+declares it as the `[frameworks.uvm]` overlay (shared DV root, sim config, and
+testlist; `build/uvm/` build tree), and `--dut sep --framework uvm` selects it
+on VCS (the `native` profile's `uvm` framework, `-ntb_opts uvm`). Scenarios
+carry both implementations in their testlist `module` binding map
+(`module = { cocotb = "<module>", uvm = "<name>" }`); those without a `uvm`
+entry error at selection unless `--skip-unimplemented` is passed. The
+framework conventions and the bring-up walkthrough this realization follows
+are the shared adopter guide, `hw/common/dv/docs/uvm-framework.adoc`; the
+reference benches are DTP and SMC.
+
+There is exactly ONE testbench top module: `sep_uvm_top` in `tb/tb_top.sv`,
+shared between both realizations (<<sep-hdl-top>>). Under `UVM` the harness
+adds the three clocks (periods from `sep_tb_if`, the system clock
+randomized over the cocotb `SepEnvCfg.randomize_timing` range), the shared
+AXI VIP master interface driving the `s_axi_*` request side of the CPU-LSU
+splice and a passive mirror interface for the VIP monitor, quiescent
+tie-offs for every other cocotb-driven pin at the idle value
+`sep_base_test.drive_idle_defaults` uses, the `uvm_config_db` publication of
+every virtual interface, and `run_test()`. The protocol SVA on the splice is
+the `u_s_axi_sva` instance of the shared body, enabled through
+`sep_tb_if.axi_sva_en` in this shape. The no_cpu scenarios keep
+their `target = "lsu_stub_all_live"` binding, so the `sep_cpu` stub stays
+the sole LSU driver in this shape as well. The class library mirrors the
+cocotb conventions under `uvm/` with identical basenames, one class per
+file, on the shared framework bases of `hw/common/dv/vip/ocah_lib/`:
+
+[arabic]
+. `hw/common/dv/vip/ocah_lib/uvm/ocah_lib_pkg.sv` — the shared framework
+  bases every SEP class extends (test, env, sequence, sequencer, scoreboard,
+  reference model, the two cfg bases, knob and seed accessors, pattern
+  helpers).
+. `hw/common/dv/vip/ocah_axi_vip/uvm/ocah_axi_uvm_pkg.sv` — the shared
+  SV-UVM AXI VIP (items, configs, master driver and sequence API, passive
+  monitor, agents, environments) with its interface, SVA, and coverage
+  collateral. The CPU-LSU splice is the first driven interface: the active
+  `ocah_axi_master_env` issues the traffic and a monitor-only passive
+  `ocah_axi_env` feeds the SEP scoreboard.
+. `tb/sep_tb_if.sv` — the SEP-local TB interface: harness clock periods,
+  the primary reset and the boot/run controls, the fuse-sense-done and
+  reset observables, the OTP JTAG2AXIL disable bits, the reset assertion
+  counter, the SVA enable.
+. `uvm/env/sep_env_pkg.sv` — `sep_types` (CPU-LSU geometry, the predicted
+  `sep_cpu_ctrl` register table built from the generated
+  `hw/sys/sep/regs/gen/svh/sep_reg.svh`, 32-bit-CSR lane helpers for the
+  64-bit bus), `sep_test_cfg`, `sep_env_cfg`, `sep_virtual_sequencer`,
+  `sep_cpu_ctrl_csr_ref_model`, `sep_scoreboard`, and `sep_env`.
+. `uvm/seq_lib/sep_seq_lib_pkg.sv` — the reusable operation sequences
+  (`sep_axi_csr_write_seq`, `sep_axi_csr_read_seq`) and the scenario
+  virtual sequences on `sep_base_test_seq`.
+. `uvm/tests/` — thin test classes named exactly like the scenario;
+  `uvm/tests/sep_tests.sv` is the include manifest `include`d by `tb_top.sv`
+  under `ifdef UVM (`+UVM_TESTNAME` selects the class).
+
+Compile order is explicit and load-bearing: the library and VIP layers come
+from their manifests (`ocah_lib/uvm/sources.toml`,
+`ocah_axi_vip/uvm/sources.toml`, listed in
+`[frameworks.uvm.build].source_lists` and expanded ahead of the DUT's own
+sources), then the TB collateral both flows compile (the picorv32 KM core
+files, `sep_outbound_mbx`, the `abr_wrapper_key_reg` shim), `sep_tb_if`,
+`sep_env_pkg`, `sep_seq_lib_pkg`, and `tb_top.sv` last.
+
+The scoreboard is always on and compares only. Each feature has its own
+reference model on the shared `ocah_ref_model` base:
+`sep_cpu_ctrl_csr_ref_model` subscribes to the CPU-LSU monitor stream,
+keeps a shadow of the predicted `sep_cpu_ctrl` registers rebuilt from the
+strobed writes it observes (each at its generated reset value until written
+and again after every primary reset), and publishes one expected item per
+OKAY predicted-register read on `expected_ap`; the scoreboard's
+`cpu_ctrl_csr` feature pairs it in order with the observed read, and a test
+that requires the feature fails when it recorded no comparison.
+`+SEP_CSR_SCOREBOARD_NEGATIVE` corrupts the reference model's prediction so
+the run must FAIL, proving the mandatory scoreboard gates pass/fail end to
+end. Scenario sequences add named `CHK-*` evidence through the shared
+`ocah_checker` (`CHECKER_SUMMARY name=sep_csr`), finalized per pass with
+required IDs.
+
+Logical item names stay framework-neutral and match the VPLAN scenarios, and
+the UVM class name equals the scenario name (testlist
+`name = "sep_axi_smoke_test"`,
+`module = { cocotb = "system.sep_axi_smoke_test", uvm = "sep_axi_smoke_test" }`),
+so `--items <name>` selects the same scenario in either realization. The
+first bound scenario is `sep_axi_smoke_test`: fuse-sense release, the
+`SEP_LOCAL_BASE_ADDR` reset-value read, directed and seeded-random
+write/readback of `SEP_SW_DEBUG`, `SEP_NMI_VEC`, `RAS_BANK_INFO`, and
+`PKA_CTRL` through their generated field masks, and a restore to reset
+values, with the non-vacuity count of real CPU-LSU CSR accesses as
+evidence. Every looped UVM test runs at least 16 scenario passes
+(`ocah_test.MinDefaultLoops`), each seeded `+ntb_random_seed` + pass index,
+with the loop knobs `+SEP_<TEST>_LOOPS`, `+SEP_<GROUP>_LOOPS`,
+`+SEP_TEST_LOOPS`, and `+SEP_RANDOM_COUNT` resolved specific-first. `UVM TEST
+PASSED` is emitted only in the base test's `report_phase` when the global
+UVM_ERROR/UVM_FATAL counts are zero, matching the `uvm-log` parser policy.
+
+[source,bash]
+----
+# SV-UVM build only (VCS). --skip-unimplemented (or an --items selection) is required:
+# the group holds cocotb-only scenarios.
+python3 tools/dv/run_dv.py --dut sep --framework uvm --build-only --skip-unimplemented
+
+# PyUVM (cocotb) and SV-UVM, same logical scenario name
+python3 tools/dv/run_dv.py --dut sep --items sep_axi_smoke_test --seed 1
+python3 tools/dv/run_dv.py --dut sep --framework uvm --items sep_axi_smoke_test --seed 1
+
+# Smoke group, UVM-implemented subset
+python3 tools/dv/run_dv.py --dut sep --framework uvm --items smoke --skip-unimplemented
+
+# Negative validation: a corrupted scoreboard prediction must make the run FAIL
+python3 tools/dv/run_dv.py --dut sep --framework uvm --items sep_axi_smoke_test \
+  --plusarg +SEP_CSR_SCOREBOARD_NEGATIVE
+----
+
+To port another cocotb scenario: add `uvm/seq_lib/<name>_seq.svh` on
+`sep_base_test_seq` (operations through the `csr_*` wrappers or a new
+reusable `sep_<if>_<op>_seq`), a thin `uvm/tests/<name>.svh` on
+`sep_base_test`, list both in their package and manifest, and give the
+testlist entry its `uvm` binding.
+
 === Build and Run
 
 [source,bash]
@@ -585,6 +720,7 @@ python3 tools/dv/run_dv.py --dut sep --items no_cpu --regress \
   --tool verilator --stage flist --stage hdl_compile --stage sim
 python3 tools/dv/run_dv.py --dut sep --items cpu --regress \
   --tool verilator --stage flist --stage hdl_compile --stage sim
+python3 tools/dv/run_dv.py --dut sep --framework uvm --items smoke --skip-unimplemented
 ----
 
 Firmware-boot leaves need a RISC-V image build first (`fw/fw.mk` or the

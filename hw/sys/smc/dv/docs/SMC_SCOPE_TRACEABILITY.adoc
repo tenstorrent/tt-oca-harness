@@ -21,7 +21,7 @@ Do not treat a merged copy as design-owner or DV-lead sign-off.
 |Spec / plan |`SMC_VPLAN.adoc` TC_SMC_P0_* plus the live canonical groups
 |Coverage intent |`SMC_FCOV.adoc` (Python counters; no Verilator covergroup)
 |Checker |`SmcScoreboard` non-vacuous SAMPLE/AXI/VIP counts + `results.xml`
-|CI tonight |`.github/workflows/sim.yml` PR `smoke`; nightly also `smoke`
+|CI tonight |`.github/workflows/sim.yml` PR `smoke`; `.github/workflows/regress.yml` nightly and weekly also `smoke`
 |===
 
 [[smc-scope-confirmation]]
@@ -42,7 +42,7 @@ Executable membership on `main` today:
 [cols="2,1,3",options="header",]
 |===
 |Group |Count |Role
-|`smoke` |36 |PR gate and SMC nightly (`sim.yml`). Debug breadth, not the feature denominator.
+|`smoke` |36 |PR gate (`sim.yml`) and SMC nightly and weekly (`regress.yml`). Debug breadth, not the feature denominator.
 |`canonical_top6` |5 |Minimum active-stimulus set. Includes `smc_i3c_to_fabric_test`.
 |`canonical_top10` |9 |Adds FLR, I2C master, iJTAG, fabric wr/rd.
 |`canonical_top20` |18 |Minimal full-breadth target on `main`.
@@ -57,7 +57,7 @@ matrix does not depend on the merge.
 
 Open question for the DV lead: keep `smoke` as the release CI gate, or
 move the nightly to `canonical_top6` once #1448 lands. This file does not
-change `sim.yml`.
+change `regress.yml`.
 
 [[smc-credit-rules]]
 === Credit rules

@@ -121,7 +121,7 @@ dtp_env                       composes; drives nothing; checks no protocol
                               sequences, four downstream STAP device sequences
   -> ocah_jtag_master_env     primary TAP: sequencer, driver, monitor (event_ap)
   -> ocah_axi_master_env      XTRIG CSR AXI-Lite initiator
-  -> ocah_axi_slave_agent x3  SMC OTP / SEP OTP (AXI-Lite), SMC fabric (AXI4) responders
+  -> ocah_axi_slave_agent x3  SMC OTP / SEP OTP AXI-Lite, SMC fabric (AXI4) responders
   -> ocah_axi_env x4          passive per port: monitor -> ref model -> scoreboard -> checker
                               (monitor only on the XTRIG CSR port)
   -> ocah_jtag_slave_agent x4 downstream STAP TAPs, attached per test
@@ -178,7 +178,7 @@ hw/sys/dtp/dv/
                   dtp_stap_ds_agent.py, dtp_scoreboard.py, dtp_scan_window_monitor.py,
                   dtp_scan_ref_model.py, dtp_scan_model.py, dtp_jtag_bypass_model.py,
                   dtp_tap_device.py, dtp_dbg_disable.py, dtp_types.py, dtp_xtrig_types.py,
-                  dtp_fcov.py, cocotb_compat.py
+                  dtp_fcov.py
     seq_lib/      dtp_base_test_seq.py, dtp_<family>_base_test_seq.py,
                   dtp_<family>_cmd_lib_seq.py, dtp_<scenario>_test_seq.py
     tests/        dtp_base_test.py, dtp_<scenario>_test.py

@@ -129,8 +129,7 @@ int main(void) {
     errors += check_reset_wire("aes", SEP_SW_RESET_N_AES_BIT, AES_CTRL_AUX_REGWEN_ADDR, 0x0u, 0x1u);
     errors += check_reset_wire("hmac", SEP_SW_RESET_N_HMAC_BIT, HMAC_INTR_ENABLE_ADDR, 0x7u, 0x0u);
     errors += check_reset_wire("kmac", SEP_SW_RESET_N_KMAC_BIT, KMAC_INTR_ENABLE_ADDR, 0x7u, 0x0u);
-    errors +=
-        check_reset_wire("esrc", SEP_SW_RESET_N_TRNG_BIT, ESRC_DEBUG_CTRL_ADDR, 0x1u, 0x0u);
+    errors += check_reset_wire("esrc", SEP_SW_RESET_N_TRNG_BIT, ESRC_DEBUG_CTRL_ADDR, 0x1u, 0x0u);
     errors +=
         check_reset_wire("csrng", SEP_SW_RESET_N_TRNG_BIT, CSRNG_INTR_ENABLE_ADDR, 0x1u, 0x0u);
     errors += check_reset_wire("edn", SEP_SW_RESET_N_TRNG_BIT, EDN_INTR_ENABLE_ADDR, 0x1u, 0x0u);

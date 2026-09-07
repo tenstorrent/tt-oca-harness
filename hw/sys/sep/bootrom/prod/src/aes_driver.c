@@ -47,6 +47,20 @@ static int wait_idle(void) {
     return -1;
 }
 
+// A shadowed CTRL update that does not take raises ALERT_RECOV_CTRL_UPDATE_ERR
+// and leaves the engine on the PREVIOUS configuration while IDLE / INPUT_READY /
+// OUTPUT_VALID all look normal, so those three cannot tell "configured as asked"
+// from "rejected, still on stale settings". ALERT_FATAL_FAULT is unrecoverable.
+static int check_no_alert(void) {
+    aes__STATUS_t s;
+    s.w = mmio_read32(OCH_SEP_TOP_AES_STATUS_BASE_ADDR);
+    if (s.f.ALERT_RECOV_CTRL_UPDATE_ERR || s.f.ALERT_FATAL_FAULT) {
+        simputshex32("AES_ALERT_STATUS=", s.w);
+        return -1;
+    }
+    return 0;
+}
+
 static int wait_input_ready(void) {
     for (int i = 0; i < AES_TIMEOUT; ++i) {
         aes__STATUS_t s;
@@ -145,6 +159,15 @@ int aes_init(void) {
         return -1;
     }
 
+    // Coming out of reset the AES seeds its masking PRNG from EDN and reports
+    // BUSY until that completes, and while busy it ignores CTRL_SHADOWED writes
+    // (aes_ctrl_reg_shadowed.sv). Waiting here is required by that contract.
+    // Defensive only: no observed failure here was caused by its absence.
+    if (wait_idle() != 0) {
+        simputs("AES_INIT_BUSY\n");
+        return -1;
+    }
+
     return 0;
 }
 
@@ -160,15 +183,29 @@ int aes128cbc_decrypt(uint8_t *data, uint32_t len, const uint8_t *key, const uin
     ctrl.f.KEY_LEN = AES_KEYLEN_128;
     ctrl.f.SIDELOAD = 0;
     ctrl.f.MANUAL_OPERATION = 0;
+
+    // CTRL_SHADOWED only takes effect while the unit is idle; see aes_init().
+    if (wait_idle() != 0) goto fail;
     write_ctrl(ctrl.w);
+
+    // Confirm the shadowed write actually landed before any key or data follows
+    // it; a rejected update would otherwise decrypt under the previous config.
+    if (check_no_alert() != 0) {
+        simputs("AES_CTRL_REJECTED\n");
+        goto fail;
+    }
 
     if (wait_idle() != 0) goto fail;
 
     write_key_128(key);
 
+    // A KEY write starts a PRNG reseed, and a KEY or IV write while busy is
+    // ignored like a CTRL write, so the IV write is separated by an idle wait.
     if (wait_idle() != 0) goto fail;
 
     write_iv(iv);
+
+    if (wait_idle() != 0) goto fail;
 
     // Process each 16-byte block.
     uint32_t blocks = len >> 4;
@@ -181,6 +218,12 @@ int aes128cbc_decrypt(uint8_t *data, uint32_t len, const uint8_t *key, const uin
         if (wait_output_valid() != 0) goto fail;
 
         read_data_out(blk); // Decrypt in-place.
+    }
+
+    // A fault raised mid-stream would otherwise be reported as a clean decrypt.
+    if (check_no_alert() != 0) {
+        simputs("AES_ALERT_AFTER_DEC\n");
+        goto fail;
     }
 
     aes_cleanup();

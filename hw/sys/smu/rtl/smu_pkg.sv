@@ -45,7 +45,7 @@ package smu_pkg;
     logic [7:0]  JTAG_OCH_VER;
 
     // Cross-trigger configuration
-    logic [dtp_pkg::DEFAULT_NUM_INT_CT-2:0] XTRIG_INT_CT_MODE;
+    logic [dtp_pkg::DEFAULT_NUM_INT_CT-3:0] XTRIG_INT_CT_MODE;
 
     // Pipeline depth parameters
     logic [1:0] SMC_OTP_RD_PL_DEPTH;

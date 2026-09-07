@@ -91,7 +91,7 @@ module smu_axi_out_sim_slave #(
     axi_resp_o.r.last   = (rd_beat == ar_q[ar_rd].len);
 
     // Strobe-masked merge of the pending write beat onto the current memory
-    // word, computed combinationally so the always_ff below only ever reads
+    // word, computed combinationally so the clocked block below only ever reads
     // wr_merged rather than recomputing the merge itself.
     wr_merged = store.exists(wr_addr[AddrWidth-1:3]) ? store[wr_addr[AddrWidth-1:3]] : '0;
     for (int unsigned b = 0; b < 8; b++) begin
@@ -101,7 +101,9 @@ module smu_axi_out_sim_slave #(
     end
   end
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin
+  // The state above carries declaration initialisers, and VCS rejects an
+  // initialiser on `always_ff` state as a second driver (ICPD_INIT).
+  always @(posedge clk_i or negedge rst_ni) begin
     if (!rst_ni) begin
       aw_wr     <= '0;
       aw_rd     <= '0;

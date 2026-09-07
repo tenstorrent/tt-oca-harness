@@ -75,6 +75,7 @@ ignore = ["E501"]
 # sep_reg_meta must import before sep_reg (it puts regs/gen/py on sys.path as
 # a side effect); isort's alphabetical sort would put sep_reg first and break it.
 "hw/sys/sep/dv/cocotb/env/sep_efuse_image.py" = ["I001"]
+"hw/sys/sep/dv/cocotb/env/sep_generate_efuse_preload.py" = ["I001"]
 
 [tool.mypy]
 python_version = "3.11"

@@ -52,13 +52,13 @@ UART_LOG_ENGINE_CTRL_UART_EN = reg_field_pack("UART_LOG_ENGINE_CTRL_CTRL_reg_t",
 # "The SMC cocotb bench drives no external value on that pad, so cts_ni = 0" is
 # not a safe premise here, and neither is "identical on Verilator and VCS":
 #   * ``tb_top.sv:803`` instantiates ``pullup u_pad_pullup (gpio_pad_io[i])`` on
-#     EVERY pad, deliberately, "to give idle/unconnected pads a defined '1"
+#     EVERY pad, "to give idle/unconnected pads a defined '1"
 #     (tb_top.sv:692-693) -- an undriven pad here is 1, not 0; and
 #   * whether that pullup resolves at all is a tool property: the same TB notes
 #     at :723-724 that "Verilator ignores `pullup`". An expectation resting on
 #     an undriven pad is therefore an expectation resting on a simulator
 #     artefact, and would flip on a 4-state simulator.
-# So the level is now stimulus this sequence establishes: pad 14 is driven from
+# So the level is stimulus this sequence establishes: pad 14 is driven from
 # the top-level ``tb_gpio_ext_drive_en`` / ``tb_gpio_ext_drive_value`` pins,
 # which are the highest-precedence entry in tb_top's pad-injection mux
 # (``tb_top.sv:716-721``, evaluated before the pullup and before every other

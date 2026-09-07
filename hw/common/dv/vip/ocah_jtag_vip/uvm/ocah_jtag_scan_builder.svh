@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// IR/DR scan-level reconstruction over the passive monitor's STEP stream —
-// the decode layer the package header documented as a follow-up, now that a
-// checker consumer exists (issue tt-oca-hw#3296). Mirrors the cocotb
-// OcahJtagMasterMonitor reconstruction: walk the IEEE 1149.1 reference FSM from
-// the sampled TMS bits, accumulate TDI/TDO while the controller is in
-// Shift-x, and publish one ocah_jtag_scan_item on each Shift-x -> Exit1-x
-// transition. A scan that re-enters Shift-x via Pause/Exit2 publishes a
-// partial item at the first Exit1-x and a cumulative item at the last, same
-// as the cocotb builder.
+// IR/DR scan-level reconstruction over the passive monitor's STEP stream.
+// Mirrors the cocotb OcahJtagMasterMonitor reconstruction: walk the IEEE
+// 1149.1 reference FSM from the sampled TMS bits, accumulate TDI/TDO while
+// the controller is in Shift-x, and publish one ocah_jtag_scan_item on each
+// Shift-x -> Exit1-x transition. A scan that re-enters Shift-x via
+// Pause/Exit2 publishes a partial item at the first Exit1-x and a cumulative
+// item at the last, same as the cocotb builder.
 //
 // Purely passive and DUT-agnostic: state comes from the reference model,
 // never from DUT observables. TRST assertion (event or sampled level)

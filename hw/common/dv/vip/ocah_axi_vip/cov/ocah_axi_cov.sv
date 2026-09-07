@@ -2,7 +2,7 @@
 // Copyright 2026 Tenstorrent Inc.
 //
 // Commercial-simulator AXI/AXI-Lite functional coverage hook.
-// Do not add this file to Verilator filelists; it intentionally uses covergroups.
+// Do not add this file to Verilator filelists: it uses covergroups.
 
 interface ocah_axi_cov_if #(
   parameter int unsigned ADDR_WIDTH = 64,

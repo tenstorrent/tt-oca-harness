@@ -210,7 +210,7 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
         delta = max(0, state["resume_at"] - state["active_at"])
         # `smc` is the number of clk_smc_i cycles this access actually consumed
         # before bus_active cleared -- the MEASURED margin against
-        # P2_SERVICE_BOUND_SMC, now enforced by the `done` check above and
+        # P2_SERVICE_BOUND_SMC, enforced by the `done` check above and
         # reported in CHK-TIMEOUT-PATHS.
         return {
             "delta": delta,
@@ -418,8 +418,7 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
         )
         # Measured margins, not a restatement of the configuration: each cell's
         # observed ungate delta against the bound that governed it, plus the
-        # observed service cycles against the service bound. `expired=0` was a
-        # literal that could not differ between runs and is gone.
+        # observed service cycles against the service bound.
         ungate_used = [
             v for r in results.values() for k, v in r.items() if k.startswith("resume_delta")
         ]
@@ -758,5 +757,5 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
         cg.mark_fence(self.fence, "PASS")
         cocotb.log.info("smc_zeroer_regclk_cg_test_seq PASS")
 
-        # ---- P2 (SMC_CG_P2_003) extension: additive, P1 evidence above unchanged ----
+        # ---- P2 (SMC_CG_P2_003) extension ----
         await self._p2_extension()

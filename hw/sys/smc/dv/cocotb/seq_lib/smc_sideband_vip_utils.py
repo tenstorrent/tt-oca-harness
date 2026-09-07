@@ -143,7 +143,7 @@ async def sample_avsbus_cur_state() -> int:
 async def wait_avsbus_leave_idle(max_cycles: int = 4000) -> int:
     """Poll until AVS FSM leaves IDLE (0x8); return the first non-idle state.
 
-    U4-4 pad BFM is still deferred; this proves DUT AVS controller FSM
+    No pad BFM exists here; this proves the DUT AVS controller FSM
     actually advances after an AVS_CMD CSR write (not just CSR readability).
     """
     dut = cocotb.top

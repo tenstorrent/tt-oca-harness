@@ -19,7 +19,7 @@ from smc_reg import (  # noqa: E402
     SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_REG_DEFAULT,
 )
 
-# ``_REPO`` / ``_field_mask`` come from the authoritative-map module on purpose:
+# ``_REPO`` / ``_field_mask`` come from the authoritative-map module:
 # it is the single place that knows the repo layout and how to read a generated
 # PeakRDL C header, and the chip_config block resets live in a block header
 # (misc_wrap.h) that ``smc_addr_map`` exposes no named accessor for.
@@ -37,7 +37,7 @@ def _chip_config_reset(field: str) -> int:
 
 CLOCK_GATE_CONTROL = smc_addr(
     "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
-)  # base_config offset 0x18 (was 0x30 before HANG_DET_* added)
+)  # base_config offset 0x18
 # Whole-register reset default from the generated PeakRDL Python map -- one
 # generated symbol, not a hand-composed field list (a hand list silently omits a
 # field the next regeneration adds). This makes the baseline CLOCK_GATE_CONTROL

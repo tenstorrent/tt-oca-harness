@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: CC-BY-4.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[workflows]]
@@ -362,6 +362,26 @@ make lint-verilator-all
 
 To run the linter only on a single block, use the `BLOCK` environment variable. To
 further constrain the printed warnings, also use `VERILATOR_LINT_PATH`.
+
+Verilator centrally loads
+`hw/common/regs/lint/peakrdl.verilator.vlt` for one generator-owned exception.
+It suppresses only `MULTIDRIVEN` reports naming the `field_combo` or
+`field_storage` aggregate in PeakRDL register modules and the copied SPI
+register module. PeakRDL emits separate processes for disjoint aggregate
+members, but Verilator reports the enclosing aggregate. The exception does not
+cover member names or width diagnostics.
+
+Audit the exception against the integrated SMU before changing its paths or
+messages. Run without the common waiver and confirm that every generated match
+names a `field_combo` or `field_storage` aggregate, while hand-authored
+`MULTIDRIVEN` findings remain visible:
+
+```bash
+make lint-verilator-all BLOCK=smu \
+  OCAH_LINT_VERILATOR_COMMON_WAIVERS= \
+  OCAH_LINT_VERILATOR_EXTRA_FLAGS="-Wall -Wpedantic" \
+  2>&1 | tee "$TMPDIR/verilator-smu-unwaived.log"
+```
 
 ==== Style and Lint checking with Slang
 

@@ -108,8 +108,6 @@ timeout_sec = 1800
 tags = ["ci", "batch_d", "cpu_depth", "tier_c", "pyuvm"]
 run_modes = ["smoke"]
 
-# smc_pll_pvt_clock_config_test — not ported (rtl_placeholder)
-
 [[tests]]
 name = "smc_gpio_irq_active_test"
 module = "smc_gpio_irq_active_test"
@@ -181,8 +179,6 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci", "batch_d", "depth_uart_log", "u2_spi_pad", "pyuvm"]
 run_modes = ["smoke"]
-
-# smc_sideband_avsbus_octs_bfm_test — not ported (fake_bfm)
 
 [[tests]]
 name = "smc_octs_dual_sync_test"

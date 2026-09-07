@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: CC-BY-4.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 = OCAH development guidelines
@@ -26,7 +26,7 @@ AXI4-lite is used for data interfaces and is generally configured with
 64-bit data and address. Control buses for accessing CSRs and other low
 speed sources are implemented with 32-bit APB.
 
-The system memory map and component CSRs (Configuration and Status
+The system memory map and component CSRs (Control and Status
 Registers) are defined in SystemRDL. This is the single source of truth
 and all downstream representations are rendered from this source.
 Examples are documentation (HTML), C headers, SystemVerilog UVM DV and
@@ -92,18 +92,30 @@ For C and C++ (`.c`, `.h`, `.cpp`, `.hpp`):
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 ```
 
-For AsciiDoc (`.adoc`), use line comments:
+For AsciiDoc (`.adoc`), use line comments. Documentation and images are
+licensed under CC-BY-4.0:
 
 ```asciidoc
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+```
+
+For JavaScript (`.js`), use line comments:
+
+```javascript
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 ```
 
 For shell and Python scripts that begin with a `#!` shebang line, place the header immediately after the shebang. Keep the year current for new files; do not edit the year on files you only modify.
 
-Generated register collateral under `hw/**/regs/gen/` is produced by the
-repository generation flows and carries the same SPDX Apache-2.0 header as
-hand-authored files (emitted by the generators / `tools/regs/stamp_spdx.py`).
+The CC-BY-4.0 AsciiDoc header above is for hand-authored documentation. Generated
+register collateral under `hw/**/regs/gen/` -- including its `.adoc` and `.html`
+tables -- is a mechanical rendering of the Apache-2.0-licensed SystemRDL source it
+is generated from, not hand-authored documentation, so it keeps the Apache-2.0
+header across every emitted extension (`.sv`, `.c`, `.py`, `.adoc`, `.html`, ...)
+rather than switching to CC-BY-4.0 by file extension. `tools/regs/stamp_spdx.py`
+stamps this header uniformly; do not hand-edit it into CC-BY-4.0.
 
 === Vendored code
 

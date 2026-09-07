@@ -6,11 +6,10 @@
 // uvm_config_db#(ocah_axi_master_config)::set(this, "<agent>*", "cfg", cfg)
 // so the agent's children resolve the same object.
 //
-// Deliberately NO agent-attached monitor: bus observation stays with the
-// side-neutral passive ocah_axi_env (the recorded side-token ruling — the
-// wire does not know which side generated the traffic), so this agent does
-// not duplicate one. Point the passive env at the same ocah_axi_if to
-// observe/score the traffic this agent drives.
+// No agent-attached monitor: bus observation stays with the side-neutral
+// passive ocah_axi_env (the wire does not know which side generated the
+// traffic), so this agent does not duplicate one. Point the passive env at
+// the same ocah_axi_if to observe/score the traffic this agent drives.
 
 class ocah_axi_master_agent extends uvm_agent;
   `uvm_component_utils(ocah_axi_master_agent)

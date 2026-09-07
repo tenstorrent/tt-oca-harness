@@ -16,15 +16,16 @@
 //
 // Modeled here (via smc_ip_integration.sv / sep_ip_integration.sv): the
 // shared eFuse bank/shim model (one SEP instance, one SMC instance), PLL/PVT
-// AXI-Lite stubs, one prim_pad_shim.sv per GPIO pin, the SEP SRAM/boot-ROM/
-// OTBN/Key-Manager memory macros (OpenTitan generic RAM/ROM primitives) and
-// TCM (OpenTitan-derived ICCM/DCCM wrapper), and the trace sink RAM banks.
-// The GPIO-shim CSR and adopter-extension AXI-Lite/AXI4 buses are terminated
-// with DECERR slaves. sep_ip_integration's TRNG DECERR termination is
-// instantiated for interface parity, tied off since smu.sv keeps its TRNG
-// ports internal. Every other technology-specific interface (SMC CPU
-// cache/SRAM/ROM macros, I3C DAT/DCT memory macros, ATB telemetry, JTAG,
-// ...) is passed straight through; see hw/top/README.md.
+// AXI-Lite stubs, one prim_pad_shim.sv per GPIO pin, the I3C DAT/DCT/RLT table
+// memories, the SEP SRAM/boot-ROM/OTBN/Key-Manager memory macros (OpenTitan
+// generic RAM/ROM primitives) and TCM (OpenTitan-derived ICCM/DCCM wrapper),
+// and the trace sink RAM banks. The GPIO-shim CSR and
+// adopter-extension AXI-Lite/AXI4 buses are terminated with DECERR slaves.
+// sep_ip_integration's TRNG DECERR termination is instantiated for
+// interface parity, tied off since smu.sv keeps its TRNG ports internal.
+// Every other technology-specific interface (SMC CPU cache/SRAM/ROM macros,
+// ATB telemetry, JTAG, ...) is passed straight through; see
+// hw/top/README.md.
 //
 // This is a reference integration example, provided for adopters to
 // substitute with their own vendor IP/macros.
@@ -232,9 +233,6 @@ module smu_wrapper
   input  logic  test_en_i,
   input  logic  scan_rst_ni,
 
-  // Captured Straps
-  input  logic [63:0]  captured_straps_i,
-
   // DFT status indicators
   input  logic mem_repair_done_i,
   input  logic mem_repair_success_i,
@@ -269,15 +267,10 @@ module smu_wrapper
   input  logic  clk_sep_wdt_i,
 
   // SEP straps
-  input  sep_pkg::sep_straps_t  sep_straps_i,
+  input  logic                  secure_tm_req_i,
 
-  // I3C DAT/DCT/RLT memory interfaces (macro interfaces, passed straight through)
-  input  i3c_pkg::dat_mem_src_t  [smc_config_pkg::NUM_I3C-1:0]  i3c_dat_mem_src_i,
-  output i3c_pkg::dat_mem_sink_t [smc_config_pkg::NUM_I3C-1:0]  i3c_dat_mem_sink_o,
-  input  i3c_pkg::dct_mem_src_t  [smc_config_pkg::NUM_I3C-1:0]  i3c_dct_mem_src_i,
-  output i3c_pkg::dct_mem_sink_t [smc_config_pkg::NUM_I3C-1:0]  i3c_dct_mem_sink_o,
-  input  i3c_pkg::rlt_mem_src_t  [smc_config_pkg::NUM_I3C-1:0]  i3c_rlt_mem_src_i,
-  output i3c_pkg::rlt_mem_sink_t [smc_config_pkg::NUM_I3C-1:0]  i3c_rlt_mem_sink_o,
+  // Gated I3C peripheral clock. The table memories it drives are absorbed by
+  // smc_ip_integration, so this leaves the wrapper for observation only.
   output logic                                                  gated_clk_periph_i3c_o,
 
   // Debug bus
@@ -334,6 +327,14 @@ module smu_wrapper
   logic [smc_pkg::NUM_GPIO_WRAPS-1:0] core2pad;
   logic [smc_pkg::NUM_GPIO_WRAPS-1:0] pad2core_en;
   logic [smc_pkg::NUM_GPIO_WRAPS-1:0] core2pad_en;
+
+  // I3C table memory macros (smu <-> smc_ip_integration)
+  i3c_pkg::dat_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dat_mem_src;
+  i3c_pkg::dat_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_dat_mem_sink;
+  i3c_pkg::dct_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dct_mem_src;
+  i3c_pkg::dct_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_dct_mem_sink;
+  i3c_pkg::rlt_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_rlt_mem_src;
+  i3c_pkg::rlt_mem_sink_t [smc_config_pkg::NUM_I3C-1:0] i3c_rlt_mem_sink;
 
   assign lsio_interface_select_o = lsio_interface_select;
 
@@ -427,6 +428,13 @@ module smu_wrapper
     .l1_dcache_data_intf_req_o (l1_dcache_data_intf_req),
     .l1_dcache_data_intf_rsp_i (l1_dcache_data_intf_rsp),
 
+    .i3c_dat_mem_src_i  (i3c_dat_mem_src),
+    .i3c_dat_mem_sink_o (i3c_dat_mem_sink),
+    .i3c_dct_mem_src_i  (i3c_dct_mem_src),
+    .i3c_dct_mem_sink_o (i3c_dct_mem_sink),
+    .i3c_rlt_mem_src_i  (i3c_rlt_mem_src),
+    .i3c_rlt_mem_sink_o (i3c_rlt_mem_sink),
+
     .smc_efuse_bank_ctrl_req_o     (smc_efuse_bank_ctrl_req),
     .smc_efuse_bank_ctrl_resp_i    (smc_efuse_bank_ctrl_resp),
     .smc_efuse_shim_command_req_o  (smc_efuse_shim_command_req),
@@ -470,6 +478,9 @@ module smu_wrapper
     .clk_smc_i               (clk_smu_i),
     .rst_primary_smc_clk_ni  (rst_primary_smc_clk_no),
 
+    .gated_clk_periph_i3c_i    (gated_clk_periph_i3c_o),
+    .rst_primary_periph_clk_ni (rst_primary_periph_clk_no),
+
     .smc_external_req_i  (smc_external_req),
     .smc_external_resp_o (smc_external_resp),
 
@@ -499,6 +510,13 @@ module smu_wrapper
     .l1_dcache_tag_intf_rsp  (l1_dcache_tag_intf_rsp),
     .l1_dcache_data_intf_req (l1_dcache_data_intf_req),
     .l1_dcache_data_intf_rsp (l1_dcache_data_intf_rsp),
+
+    .i3c_dat_mem_sink_i (i3c_dat_mem_sink),
+    .i3c_dat_mem_src_o  (i3c_dat_mem_src),
+    .i3c_dct_mem_sink_i (i3c_dct_mem_sink),
+    .i3c_dct_mem_src_o  (i3c_dct_mem_src),
+    .i3c_rlt_mem_sink_i (i3c_rlt_mem_sink),
+    .i3c_rlt_mem_src_o  (i3c_rlt_mem_src),
 
     .trace_mem_req  (trace_mem_req),
     .trace_mem_resp (trace_mem_resp),

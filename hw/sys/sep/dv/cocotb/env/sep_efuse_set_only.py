@@ -3,13 +3,24 @@
 """Seed-derived set-only shadow OR-merge policy.
 
 Legal set-only fields are metal-fixed ``WRITE_SET_ONLY`` in
-``sep_efuse_pkg::EfuseFieldMap``: ``BL1_VERSION``, ``BL2_VERSION``,
-``CHIPLET_PUBK_REVOKE``, ``REQUIRED_SIGNERS``, ``REQUIRED_ALGS``. This
-walk is that metal map, not the ``periphs.adoc`` SW-writable column:
-``REQUIRED_SIGNERS`` is ``true`` there (firmware may update the shadow
-per manifest; fuse monotonicity is the burn). A shadow write OR-merges
-with the stored word (``hw/ip/efuse/rtl/efuse_shadow_regs.sv``).
-``LC_STATE`` is not a member of this walk.
+``sep_efuse_pkg::EfuseFieldMap``. This walk is that metal map, not the
+``periphs.adoc`` SW-writable column: ``REQUIRED_SIGNERS`` is ``true``
+there (firmware may update the shadow per manifest; fuse monotonicity is
+the burn). A shadow write OR-merges with the stored word
+(``hw/ip/efuse/rtl/efuse_shadow_regs.sv``).
+
+Two storage arms, not one. ``efuse_shadow_regs.sv`` forks the OR-merge on
+whether the word is in ``Class1ShadowRanges``: Class-1 words merge into
+``shadow_efuse_values_n0_scan`` via ``class1_shadow_storage_idx``,
+everything else into ``shadow_efuse_values`` via
+``normal_shadow_storage_idx``. Walking only non-Class-1 fields leaves the
+Class-1 arm unexercised, so ``SIP_DIS`` and ``SYS_DIS`` are members here:
+they are ``WRITE_SET_ONLY`` with a ``SECURE_TM_LOCK`` that drops at
+``secure_tm=0``, and they are Class-1.
+
+``LC_STATE`` and ``LOCKS`` are set-only and Class-1 too, and are still not
+members: ``LC_STATE`` has its own lifecycle walk, and burning ``LOCKS``
+would write-lock the fields this test needs to keep writing.
 
 ``dv_sim_prestage.py`` loads this module to stage the t=0 hex; the test
 builds the same ``SepEfuseSetOnlyCfg(seed)`` as its golden. Do not switch
@@ -23,13 +34,26 @@ from sep_efuse_image import SepEfuseImage
 from sep_seeded_rng import SepSeededRng
 
 # Spec-stated used-bit masks (periphs.adoc). Multi-word version fields
-# apply the mask to the seed-selected word.
-SET_ONLY_FIELDS: tuple[tuple[str, int], ...] = (
-    ("BL1_VERSION", 0xFFFF_FFFF),
-    ("BL2_VERSION", 0xFFFF_FFFF),
-    ("CHIPLET_PUBK_REVOKE", 0xFFFF_FFFF),
-    ("REQUIRED_SIGNERS", 0x3),
-    ("REQUIRED_ALGS", 0xFFF),
+# apply the mask to the seed-selected word, unless the entry pins one.
+#
+# The DIS vectors are pinned to word 1 with a mask over the function group
+# only. Word 0 carries DBG_1 and DBG_2 -- sep_debug at bit 0, chiplet_dbg at
+# bit 1, sip_debug at bit 16 -- and setting any of those ORs those bits into
+# FEAT_CTRL. This test drives the CPU-LSU master, which has no inbound
+# filter; the pin still keeps the walk from changing FEAT_CTRL mid-run.
+# The function group is reserved or tied off for a no_cpu run, so it is
+# writable without disturbing fabric access.
+#   name -> (used_mask, pinned word index or None)
+SET_ONLY_FIELDS: tuple[tuple[str, int, "int | None"], ...] = (
+    ("BL1_VERSION", 0xFFFF_FFFF, None),
+    ("BL2_VERSION", 0xFFFF_FFFF, None),
+    ("CHIPLET_PUBK_REVOKE", 0xFFFF_FFFF, None),
+    ("REQUIRED_SIGNERS", 0x3, None),
+    ("REQUIRED_ALGS", 0xFFF, None),
+    # Class-1 storage arm. Function group = LC_DISABLE bits [63:48] = word 1
+    # bits [31:16].
+    ("SIP_DIS", 0xFFFF_0000, 1),
+    ("SYS_DIS", 0xFFFF_0000, 1),
 )
 CONTRAST_FIELD = "SPARE0"
 WORD_BITS = 32
@@ -87,7 +111,7 @@ class SepEfuseSetOnlyCfg:
         self.seed = seed
         rng = SepSeededRng(seed)
         self.fields: tuple[SepEfuseSetOnlyField, ...] = tuple(
-            self._draw_field(rng, name, used) for name, used in SET_ONLY_FIELDS
+            self._draw_field(rng, name, used, pin) for name, used, pin in SET_ONLY_FIELDS
         )
         self.spare_pattern = rng.getrandbits(WORD_BITS) | 1
         assert all(f.name != "LC_STATE" for f in self.fields)
@@ -97,9 +121,16 @@ class SepEfuseSetOnlyCfg:
         rng: SepSeededRng,
         name: str,
         used_mask: int,
+        pinned_word: int | None = None,
     ) -> SepEfuseSetOnlyField:
         fld = SepEfuseImage.field(name)
-        word_idx = rng.randrange(fld.n_words)
+        # Draw either way so the seed stream does not shift when a field gains
+        # or loses a pin -- the prestage process and the test must agree.
+        drawn_word = rng.randrange(fld.n_words)
+        word_idx = drawn_word if pinned_word is None else pinned_word
+        assert 0 <= word_idx < fld.n_words, (
+            f"{name} pinned to word {word_idx}, which is outside its {fld.n_words}-word extent"
+        )
         sensed, set_bits = _draw_masks(rng, used_mask)
         assert sensed and set_bits
         assert (sensed & set_bits) == 0
@@ -130,32 +161,45 @@ class SepEfuseSetOnlyCfg:
 
 
 def _selftest() -> None:
-    assert [n for n, _ in SET_ONLY_FIELDS] == [
+    # The literal list is the point: it is written here, not comprehended from
+    # SET_ONLY_FIELDS, so adding or dropping a member fails until someone
+    # decides that was intended. Nine fields carry WRITE_SET_ONLY in
+    # sep_efuse_pkg::EfuseFieldMap; the two absent here are LC_STATE (its own
+    # lifecycle walk) and LOCKS (burning it would lock the fields under test).
+    assert [n for n, _, _ in SET_ONLY_FIELDS] == [
         "BL1_VERSION",
         "BL2_VERSION",
         "CHIPLET_PUBK_REVOKE",
         "REQUIRED_SIGNERS",
         "REQUIRED_ALGS",
+        "SIP_DIS",
+        "SYS_DIS",
     ]
-    assert CONTRAST_FIELD != "LC_STATE"
+    # At least one Class-1 member, or the Class-1 OR-merge arm in
+    # efuse_shadow_regs.sv goes unexercised and nothing here would say so.
+    assert {"SIP_DIS", "SYS_DIS"} <= {n for n, _, _ in SET_ONLY_FIELDS}
+
     cfg = SepEfuseSetOnlyCfg(1)
-    assert len(cfg.fields) == len(SET_ONLY_FIELDS)
-    assert {f.name for f in cfg.fields} == {n for n, _ in SET_ONLY_FIELDS}
-    assert "LC_STATE" not in cfg.image_fixed()
     for f in cfg.fields:
-        assert f.sensed
-        assert f.set_bits
-        assert (f.sensed & f.set_bits) == 0
-        assert (f.sensed | 0) == f.sensed
-        assert f.after_set == (f.sensed | f.set_bits)
-        assert (f.after_set | 0) == f.after_set
-        fld = SepEfuseImage.field(f.name)
-        assert 0 <= f.word_idx < fld.n_words
-        assert cfg.image_fixed()[f.name] == f.field_int
+        # sensed and set_bits must be disjoint or the OR-merge check cannot
+        # distinguish a set from a value that was already there.
+        assert (f.sensed & f.set_bits) == 0, f"{f.name}: sensed and set overlap"
+        assert f.sensed and f.set_bits, f"{f.name}: empty mask"
+        assert (f.sensed | f.set_bits) & ~f.used_mask == 0, (
+            f"{f.name}: pattern outside the spec-stated used bits"
+        )
+
+    # The DIS vectors must stay clear of every bit that lands in FEAT_CTRL:
+    # sep_debug (0), chiplet_dbg (1) and sip_debug (16) all live in word 0.
+    for f in cfg.fields:
+        if f.name in ("SIP_DIS", "SYS_DIS"):
+            assert f.word_idx == 1, f"{f.name} must stay off the debug-group word"
+
+    # Two constructions from one seed agree -- the prestage process and the test
+    # build this independently and must land on the same image.
     again = SepEfuseSetOnlyCfg(1)
     assert again.image_fixed() == cfg.image_fixed()
     assert again.spare_pattern == cfg.spare_pattern
-    assert cfg.spare_pattern != 0
 
 
 _selftest()

@@ -30,12 +30,9 @@ class smc_i2c_p0_timeout_test(smc_base_test):
             # STIMULUS DECLARATION, not a check: the scoreboard evaluates
             # `csr_accesses >= min_csr_accesses` against the sequence's own
             # counter, so once the number is accurate it is `N >= N` and cannot
-            # fail ([NO-ALWAYS-PASS-CHECKER]). It was left at 27 -- the
-            # pre-sweep figure -- after the timeout/FIFO CSR sweep added 23
-            # accesses (4 registers x 5, plus 3 for the TARGET_NACK_COUNT rclr
-            # pair).
-            # The fail-capable content is the sweep's `expected=` compares and
-            # the rclr two-sided read, both scoreboard-enforced.
+            # fail ([NO-ALWAYS-PASS-CHECKER]). The fail-capable content is the
+            # sweep's `expected=` compares and the rclr two-sided read, both
+            # scoreboard-enforced.
             min_csr_accesses=50,
             csr_accesses=seq.accesses,
             proxy=False,

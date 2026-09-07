@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Cluster CLINT MTIME / MSIP over SEP_IN. No Force, no firmware.
 
-REACHABILITY IS THE FIRST THING THIS TEST PROVES, ON PURPOSE.
+REACHABILITY IS THE FIRST THING THIS TEST PROVES.
 
 Two claims in the tree disagree about whether SEP_IN can reach the cluster-local
 window at ``0xC800_0000``:
@@ -10,7 +10,7 @@ window at ``0xC800_0000``:
 * ``hw/sys/smc/dv/cocotb/seq_lib/smc_cpu_vip_utils.py:165-166`` states outright
   that "cluster-local CLINT MSIP (0xC800_0000) ... SEP-IN AXI cannot reach".
 * ``smc_cluster_beu_test`` nevertheless gets OKAY responses from
-  ``0xC801_xxxx``, in the SAME xbar window -- but issue #1237 shows those reads
+  ``0xC801_xxxx``, in the SAME xbar window -- but those reads
   are answered by ``SMC_BASE_CONFIG`` at ``0xC001_xxxx`` after a bit-27 fold,
   i.e. OKAY does NOT mean the intended block replied.
 
@@ -53,7 +53,7 @@ class smc_clint_csr_test_seq(SmcCsrSeq):
         dut = cocotb.top
 
         # --- Reachability + liveness in one measurement -------------------
-        # DIAGNOSTIC FIRST: is the bit-27 fold that #1237 documents for the BEU
+        # DIAGNOSTIC FIRST: is the bit-27 fold seen on the BEU
         # window also present here? CORE0 WDT CMP sits at 0xC0000020 with a
         # NON-ZERO reset of 0x1000, so the CLINT-side address that would fold
         # onto it, 0xC8000020, is a discriminating probe: MSIP and WDT CTRL both
@@ -81,9 +81,8 @@ class smc_clint_csr_test_seq(SmcCsrSeq):
             avs_mask,
         )
 
-        # Third window in the same family: PLIC at 0xC400_0000 (bit 26). #1237
-        # lists "whether PLIC and CLINT have the same SEP_IN fold" as an open
-        # question; both discriminators are reused here to answer it.
+        # Third window in the same family: PLIC at 0xC400_0000 (bit 26); both
+        # discriminators are reused here.
         plic_probe1 = await self.csr_read("PLIC_FOLD_PROBE", 0xC400_0020)
         plic_probe2 = await self.csr_read("PLIC_FOLD_PROBE2", 0xC400_4034)
         cocotb.log.info(

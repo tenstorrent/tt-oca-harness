@@ -3,10 +3,10 @@
 """AXI4-Lite master sequence API: the VIP's test-facing stimulus surface.
 
 `OcahAxiLiteMasterSequence` wraps one `OcahAxiLiteMasterDriver` and provides
-the blocking, checked transaction API tests consume. Compatibility calls keep
-their historical return values: ``write()`` returns a response code and
-``read()`` returns data; ``write_result()``/``read_result()`` expose response
-codes, data, and timeout state through plain dataclasses.
+the blocking, checked transaction API tests consume. Compatibility calls return
+plain values: ``write()`` returns a response code and ``read()`` returns data;
+``write_result()``/``read_result()`` expose response codes, data, and timeout
+state through plain dataclasses.
 ``write_skewed_result()`` and ``read_hold_result()`` are the SV-UVM parity
 protocol-control operations (independent AW/W launch skew, deferred
 BREADY/RREADY with a response-stability check). Tests drive the VIP through
@@ -168,7 +168,7 @@ class OcahAxiLiteMasterSequence:
 
         ``aw_valid_delay``/``w_valid_delay`` hold that channel's VALID low for
         N cycles before it launches — AXI permits either arrival order, so
-        demux and channel-ordering paths are exercised deliberately — and
+        demux and channel-ordering paths are exercised — and
         ``b_ready_delay`` defers the BREADY assert after the request phase.
         """
         cycles = self.timeout_cycles if timeout_cycles is None else int(timeout_cycles)
@@ -312,7 +312,7 @@ class OcahAxiLiteMasterSequence:
         return result
 
     def configure(self, **kwargs: Any) -> None:
-        """Store wrapper configuration knobs accepted by earlier implementations."""
+        """Apply the supported knobs (timeout_cycles, timeout_ns); any other key is rejected."""
         if "timeout_cycles" in kwargs:
             self.timeout_cycles = int(kwargs["timeout_cycles"])
         if "timeout_ns" in kwargs:

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// ocah_axi_id_match_test — issue #1129 (parity contract from #433): every
+// ocah_axi_id_match_test — response-ID parity contract with the cocotb twin: every
 // blocking master result exposes the issued AWID/ARID and a BID/RID sampled
 // live from the response handshake (RLAST beat for bursts), proven full-
 // stack against the shared fault slave with the passive env scoring the

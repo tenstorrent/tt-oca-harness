@@ -10,7 +10,7 @@ from seq_lib.smc_uart_spi_log_engine_test_seq import smc_uart_spi_log_engine_tes
 from smc_base_test import smc_base_test
 
 # Fail-capable stimulus floor for the UART_LOG record, written out here rather
-# than derived from the sequence's own register table on purpose: a floor
+# than derived from the sequence's own register table: a floor
 # computed from `len(UART_LOG_READS)` would shrink together with a sequence that
 # silently stopped issuing reads, which is exactly the failure this floor exists
 # to catch. Composition (smc_uart_spi_log_engine_test_seq):
@@ -21,7 +21,7 @@ from smc_base_test import smc_base_test
 # + 2 x UART_MSR per test-driven CTS pad level (the transition read carrying
 #     DCTS=1, then the read proving DCTS cleared), for pad=1 and pad=0
 #   => 12 minimum. It is a floor, not an equality: the pad-follow legs poll with
-#   a bound, so a slower propagation legitimately issues more reads.
+#   a bound, so a slower propagation issues more reads.
 UART_LOG_MIN_CSR_ACCESSES = 12
 
 

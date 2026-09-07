@@ -9,7 +9,7 @@
 // ONCE, skips the memory update (writes), and returns zero data (reads) —
 // plus per-direction one-shot response-ID corruption and per-channel
 // bounded READY backpressure. This table makes the
-// responder MISBEHAVE on purpose; the separate passive ocah_axi_config
+// responder MISBEHAVE; the separate passive ocah_axi_config
 // arm_expected_resp table is what classifies the observed non-OKAY as
 // EXPECTED for the scoreboard — tests arm both through their sequence layer.
 

@@ -18,7 +18,7 @@
 //     write proves no stuck state. The idle-TCK tail between the scan and
 //     the reset keeps the stalled transaction's completion ahead of the
 //     reset: a stall long enough for a true mid-flight abort leaves the
-//     recovery write BUSY_OR_FULL indefinitely (tracked as issue #1330);
+//     recovery write BUSY_OR_FULL indefinitely;
 //   * cdc_clear_abort_back_to_back_reset — two adjacent reset pulses with
 //     seeded spacing, then recovery write and read on every bridge;
 //   * decode_error_decerr_{write,read} / decode_error_mixed — one-shot
@@ -238,8 +238,7 @@ class dtp_jtag2axi_robustness_test_seq extends dtp_jtag2axi_base_test_seq;
   // The 64 idle TCK (= 640 system cycles at the fixed ratio) between the
   // scan and the reset outlast the bounded stall, so the transaction
   // completes before the reset lands: a stall long enough for a true
-  // mid-flight abort leaves the recovery write BUSY_OR_FULL indefinitely
-  // (tracked as issue #1330).
+  // mid-flight abort leaves the recovery write BUSY_OR_FULL indefinitely.
   protected task run_reset_abort(string label, string stall_channel, int unsigned stall_lo,
                                  int unsigned stall_hi, int unsigned pre_reset_wait_hi,
                                  int unsigned reset_cycles_hi, bit [63:0] recovery_xor,

@@ -59,7 +59,7 @@
 `SMC_TB_OUT(logic, tb_i2c0_sda)
 `SMC_TB_OUT(logic, tb_i2c0_scl_dut_low)
 `SMC_TB_OUT(logic, tb_i2c0_sda_dut_low)
-// I2C0 SMBALERT# (pad 39): active-low; pullup-high when DUT OE released.
+// I2C0 SMBALERT#: active-low; pullup-high when DUT OE released.
 `SMC_TB_OUT(logic, tb_i2c0_smbalert)
 // LSIO enable + controller-side sense (CDC'd). Host traffic must wait until
 // enable=1 and scl_i tracks the OD bus, else FMT sits unconsumed.
@@ -79,8 +79,8 @@
 `SMC_TB_OUT(logic, tb_cpu_jtag_tdo)
 
 // UART0 pad-level split-port for the P2 Phase A UART loopback:
-//   pad 11 = UART0 RX (external drive -> DUT input)
-//   pad 12 = UART0 TX (DUT output -> external observe)
+//   UART0_RX_PAD (external drive -> DUT input)
+//   UART0_TX_PAD (DUT output -> external observe)
 `SMC_TB_IN(logic, tb_uart0_rx_ext_drive)
 `SMC_TB_OUT(logic, tb_uart0_tx_from_dut)
 
@@ -131,7 +131,7 @@
 `SMC_TB_OUT(logic, tb_boot_stall_combined_o)
 `SMC_TB_IN(logic, tb_boot_stall_jtag_ovrd_i)
 `SMC_TB_IN(logic, tb_boot_stall_jtag_val_i)
-// DUT-side pad-57 sample via smc.pad2core_i (post pad-shim), not
+// DUT-side BOOT_STALL_PAD sample via smc.pad2core_i (post pad-shim), not
 // gpio_pad_io / tb_pad_drive_* echo. Do not XMR-drive pad2core_i — it is
 // already driven by smc_ip_integration; this is observe-only.
 `SMC_TB_OUT(logic, tb_gpio_pad57)
@@ -186,8 +186,8 @@
 `SMC_TB_OUT(logic, tb_octs_cnt_credit_from_dut)
 // Runtime primary/secondary strap (smc.chiplet_is_primary_i). Default 1.
 `SMC_TB_IN(logic, tb_chiplet_is_primary)
-// Secondary inject into pads 55/56 (smc_padring OCTS; was 58/59 before
-// the 68->65 GPIO shrink). pad2core enabled only when
+// Secondary inject into pads 55/56 (smc_padring OCTS). pad2core enabled
+// only when
 // chiplet_is_primary_i==0. Idle low when unused.
 `SMC_TB_IN(logic, tb_octs_sync_load_ext)
 `SMC_TB_IN(logic, tb_octs_cnt_credit_ext)
@@ -204,7 +204,7 @@
 `SMC_TB_OUT(logic [smc_pkg::NUM_GPIO_WRAPS-1:0], tb_core2pad_en_o)
 
 // Flat inbound AXI manager driven by cocotbext-axi (prefix s_axi).
-// Mirrors the legacy SMC DV inbound AXI path for real CSR/fabric traffic.
+// Inbound AXI path for real CSR/fabric traffic.
 `SMC_TB_IN(logic [5:0], s_axi_awid)
 `SMC_TB_IN(logic [55:0], s_axi_awaddr)
 `SMC_TB_IN(logic [7:0], s_axi_awlen)
@@ -416,8 +416,8 @@
 
 // U7-1: ECC SBE/DBE inject into scratch bank0 reads + fire count.
 // fire_count tracks DUT cpu_scratch0_inject_fire only (real bank0 reads
-// with inject armed). tb_cpu_ecc_inject_probe is retained for API compat
-// but is not scored (synthetic probe path removed).
+// with inject armed). tb_cpu_ecc_inject_probe is part of the cocotb pin
+// surface and is not scored.
 `SMC_TB_IN(logic, tb_cpu_ecc_inject_sbe)
 `SMC_TB_IN(logic, tb_cpu_ecc_inject_dbe)
 `SMC_TB_IN(logic, tb_cpu_ecc_inject_probe)

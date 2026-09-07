@@ -22,7 +22,7 @@
 //   ocah_axi_master_config.svh    — master cfg: vif, geometry, watchdog
 //   ocah_axi_checker.svh          — AXI checker identity over the shared
 //                                   ocah_checker evidence base
-//                                   (ocah_checker_uvm_pkg, issue #1132)
+//                                   (ocah_checker_uvm_pkg)
 //   ocah_axi_monitor.svh          — passive burst reconstruction (per-ID
 //                                   pairing; side-neutral bus observer)
 //   ocah_axi_ref_model.svh        — shadow memory + expected-item prediction

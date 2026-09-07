@@ -28,7 +28,7 @@
 // sees the state of its own Capture-DR. Plain class held by
 // dtp_jtag2axi_req_ref_model and dtp_jtag2axi_status_ref_model; no
 // reporting. Not modelled: the series read-data FIFO a SERIES_DATA capture
-// returns, and true request-FIFO backpressure. No cocotb twin yet.
+// returns, and true request-FIFO backpressure. No cocotb twin.
 
 class dtp_jtag2axi_model;
 
