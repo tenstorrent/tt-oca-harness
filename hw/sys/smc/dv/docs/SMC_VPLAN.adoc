@@ -61,7 +61,6 @@ verifying the block behind the port.
 |`smc_combined_observability_test` |SMC OSS PyUVM combined-observability test.
 |`smc_default_reg_rd_test` |Run a compact OSS-safe default-register read sweep.
 |`smc_ext_interrupts_pin_test` |ext_interrupts_i[0] after prim_sync3.
-|`smc_external_interrupts_test` |Run GPIO/IRQ-control CSR plus external IRQ injection.
 |`smc_register_boundary_depth_test` |Run a compact safe register-boundary sweep.
 |`smc_register_sanity_test` |Run the SMC OSS register-sanity scenario.
 |===
@@ -218,7 +217,6 @@ verifying the block behind the port.
 |`smc_gpio_output_driveback_test` |Program GPIO wrap 0 as TX output and check the DUT pad outputs.
 |`smc_gpio_p0_int_test` |GPIO0 rising/falling edge IRQ via pad drive.
 |`smc_gpio_p0_mux_test` |GPIO0 interface_enable vs a live lsio_select competitor.
-|`smc_gpio_strap_sanity_test` |Run GPIO CSR reachability plus external pad drive.
 |===
 
 ==== IRQ
@@ -306,6 +304,23 @@ verifying the block behind the port.
 |`smc_uart_loopback_test` |U4-1: AXI-program UART0 THR and capture the byte on pad12 TX.
 |`smc_uart_sanity_test` |UART pad-cross byte exchange on pairs 0→3 and 1→2.
 |`smc_uart_spi_log_engine_test` |Run the UART/log-engine representative CSR precheck.
+|===
+
+==== OCCP
+
+Two-instance and production-ROM scenarios. These build a different DUT from the
+rest of the plan -- `target = "dual"` elaborates `SMC_DUAL`, and the OCCP family
+runs `hw/sys/smc/bootrom/prod` instead of a DV stub image -- so they are
+enrolled through `dual_*` and `occp_*` rather than `all`.
+
+[cols="2,3",options="header",]
+|===
+|Testcase |Objective
+|`smc_dual_elaboration_test` |Prove the two-instance model elaborates and both instances leave reset independently.
+|`smc_dual_axi_sram_probe_test` |Measure that an inbound AXI manager reaches the CPU scratch SRAM window.
+|`smc_occp_sanity_test` |One SMC issues OCCP GET_VERSION at another and reports through an OCCP WRITE.
+|`smc_occp_dual_unsecure_boot_test` |OCCP unsecure boot end to end between two real SMCs over the shared I3C bus.
+|`smc_prod_rom_occp_ready_test` |Production boot ROM reaches its OCCP command processing loop.
 |===
 
 === Test Procedures
@@ -578,40 +593,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-007-smc_external_interrupts_test]]
-===== 7 `smc_external_interrupts_test`
-
-*Source Module*: `smc_external_interrupts_test`
-
-*BFM / Model*: ocah_axi_vip (AXI)
-
-*Objective*: Run GPIO/IRQ-control CSR plus external IRQ injection.
-
-*Test Coverage*:
-
-* SMC OSS external-interrupt GPIO injection test.
-
-*Test Procedure*:
-
-[arabic]
-. Drive the sequence `smc_external_interrupts_test_seq` over the interfaces named above.
-. Compare every access against its stated expectation in the scoreboard.
-. Emit the evidence tokens listed under Checkers.
-
-*Checkers*:
-
-[cols="1,2",options="header",]
-|===
-|Checker |Description
-|scoreboard |Every access is compared by the SYS_AXI scoreboard against its stated expectation
-|===
-
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `vplan_gaps`, `vplan_triplets`.
-
-'''''
-
-[[sec-008-smc_register_boundary_depth_test]]
-===== 8 `smc_register_boundary_depth_test`
+[[sec-007-smc_register_boundary_depth_test]]
+===== 7 `smc_register_boundary_depth_test`
 
 *Source Module*: `smc_register_boundary_depth_test`
 
@@ -642,8 +625,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-009-smc_register_sanity_test]]
-===== 9 `smc_register_sanity_test`
+[[sec-008-smc_register_sanity_test]]
+===== 8 `smc_register_sanity_test`
 
 *Source Module*: `smc_register_sanity_test`
 
@@ -679,8 +662,8 @@ verifying the block behind the port.
 
 ==== POWER
 
-[[sec-010-smc_avsbus_clock_config_proxy_test]]
-===== 10 `smc_avsbus_clock_config_proxy_test`
+[[sec-009-smc_avsbus_clock_config_proxy_test]]
+===== 9 `smc_avsbus_clock_config_proxy_test`
 
 *Source Module*: `smc_avsbus_clock_config_proxy_test`
 
@@ -718,8 +701,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-011-smc_avsbus_sanity_test]]
-===== 11 `smc_avsbus_sanity_test`
+[[sec-010-smc_avsbus_sanity_test]]
+===== 10 `smc_avsbus_sanity_test`
 
 *Source Module*: `smc_avsbus_sanity_test`
 
@@ -750,8 +733,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-012-smc_avsbus_status_depth_test]]
-===== 12 `smc_avsbus_status_depth_test`
+[[sec-011-smc_avsbus_status_depth_test]]
+===== 11 `smc_avsbus_status_depth_test`
 
 *Source Module*: `smc_avsbus_status_depth_test`
 
@@ -782,8 +765,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-013-smc_dma_sanity_test]]
-===== 13 `smc_dma_sanity_test`
+[[sec-012-smc_dma_sanity_test]]
+===== 12 `smc_dma_sanity_test`
 
 *Source Module*: `smc_dma_sanity_test`
 
@@ -819,8 +802,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-014-smc_octs_dual_sync_test]]
-===== 14 `smc_octs_dual_sync_test`
+[[sec-013-smc_octs_dual_sync_test]]
+===== 13 `smc_octs_dual_sync_test`
 
 *Source Module*: `smc_octs_dual_sync_test`
 
@@ -857,8 +840,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-015-smc_octs_sanity_test]]
-===== 15 `smc_octs_sanity_test`
+[[sec-014-smc_octs_sanity_test]]
+===== 14 `smc_octs_sanity_test`
 
 *Source Module*: `smc_octs_sanity_test`
 
@@ -889,8 +872,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-016-smc_sideband_protocol_smoke_test]]
-===== 16 `smc_sideband_protocol_smoke_test`
+[[sec-015-smc_sideband_protocol_smoke_test]]
+===== 15 `smc_sideband_protocol_smoke_test`
 
 *Source Module*: `smc_sideband_protocol_smoke_test`
 
@@ -929,8 +912,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-017-smc_telemetry_receiver_csr_test]]
-===== 17 `smc_telemetry_receiver_csr_test`
+[[sec-016-smc_telemetry_receiver_csr_test]]
+===== 16 `smc_telemetry_receiver_csr_test`
 
 *Source Module*: `smc_telemetry_receiver_csr_test`
 
@@ -969,8 +952,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-018-smc_wdt_key_csr_test]]
-===== 18 `smc_wdt_key_csr_test`
+[[sec-017-smc_wdt_key_csr_test]]
+===== 17 `smc_wdt_key_csr_test`
 
 *Source Module*: `smc_wdt_key_csr_test`
 
@@ -1003,8 +986,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-019-smc_zeroer_dma_timeout_test]]
-===== 19 `smc_zeroer_dma_timeout_test`
+[[sec-018-smc_zeroer_dma_timeout_test]]
+===== 18 `smc_zeroer_dma_timeout_test`
 
 *Source Module*: `smc_zeroer_dma_timeout_test`
 
@@ -1047,8 +1030,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-020-smc_zeroer_sanity_test]]
-===== 20 `smc_zeroer_sanity_test`
+[[sec-019-smc_zeroer_sanity_test]]
+===== 19 `smc_zeroer_sanity_test`
 
 *Source Module*: `smc_zeroer_sanity_test`
 
@@ -1081,8 +1064,8 @@ verifying the block behind the port.
 
 ==== FABRIC
 
-[[sec-021-smc_axi_error_response_depth_test]]
-===== 21 `smc_axi_error_response_depth_test`
+[[sec-020-smc_axi_error_response_depth_test]]
+===== 20 `smc_axi_error_response_depth_test`
 
 *Source Module*: `smc_axi_error_response_depth_test`
 
@@ -1119,8 +1102,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-022-smc_axil_burst_idle_test]]
-===== 22 `smc_axil_burst_idle_test`
+[[sec-021-smc_axil_burst_idle_test]]
+===== 21 `smc_axil_burst_idle_test`
 
 *Source Module*: `smc_axil_burst_idle_test`
 
@@ -1157,8 +1140,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-023-smc_axil_idle_test]]
-===== 23 `smc_axil_idle_test`
+[[sec-022-smc_axil_idle_test]]
+===== 22 `smc_axil_idle_test`
 
 *Source Module*: `smc_axil_idle_test`
 
@@ -1196,8 +1179,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-024-smc_cpu_to_sep_axi_test]]
-===== 24 `smc_cpu_to_sep_axi_test`
+[[sec-023-smc_cpu_to_sep_axi_test]]
+===== 23 `smc_cpu_to_sep_axi_test`
 
 *Source Module*: `smc_cpu_to_sep_axi_test`
 
@@ -1228,8 +1211,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-025-smc_deadspace_decode_test]]
-===== 25 `smc_deadspace_decode_test`
+[[sec-024-smc_deadspace_decode_test]]
+===== 24 `smc_deadspace_decode_test`
 
 *Source Module*: `smc_deadspace_decode_test`
 
@@ -1267,12 +1250,12 @@ verifying the block behind the port.
 |assertion |<value>: seeded readback of 0x<value> resp=
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `balanced_ip`.
 
 '''''
 
-[[sec-026-smc_filter_field_sweep_test]]
-===== 26 `smc_filter_field_sweep_test`
+[[sec-025-smc_filter_field_sweep_test]]
+===== 25 `smc_filter_field_sweep_test`
 
 *Source Module*: `smc_filter_field_sweep_test`
 
@@ -1306,8 +1289,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-027-smc_filter_multi_entry_test]]
-===== 27 `smc_filter_multi_entry_test`
+[[sec-026-smc_filter_multi_entry_test]]
+===== 26 `smc_filter_multi_entry_test`
 
 *Source Module*: `smc_filter_multi_entry_test`
 
@@ -1345,8 +1328,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-028-smc_input_fabric_axi_wr_rd_test]]
-===== 28 `smc_input_fabric_axi_wr_rd_test`
+[[sec-027-smc_input_fabric_axi_wr_rd_test]]
+===== 27 `smc_input_fabric_axi_wr_rd_test`
 
 *Source Module*: `smc_input_fabric_axi_wr_rd_test`
 
@@ -1380,8 +1363,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-029-smc_input_output_fabric_wr_rd_test]]
-===== 29 `smc_input_output_fabric_wr_rd_test`
+[[sec-028-smc_input_output_fabric_wr_rd_test]]
+===== 28 `smc_input_output_fabric_wr_rd_test`
 
 *Source Module*: `smc_input_output_fabric_wr_rd_test`
 
@@ -1415,8 +1398,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-030-smc_local_fabric_csr_depth_test]]
-===== 30 `smc_local_fabric_csr_depth_test`
+[[sec-029-smc_local_fabric_csr_depth_test]]
+===== 29 `smc_local_fabric_csr_depth_test`
 
 *Source Module*: `smc_local_fabric_csr_depth_test`
 
@@ -1448,8 +1431,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-031-smc_output_fabric_slverr_inject_test]]
-===== 31 `smc_output_fabric_slverr_inject_test`
+[[sec-030-smc_output_fabric_slverr_inject_test]]
+===== 30 `smc_output_fabric_slverr_inject_test`
 
 *Source Module*: `smc_output_fabric_slverr_inject_test`
 
@@ -1482,8 +1465,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-032-smc_output_fabric_wr_rd_responder_test]]
-===== 32 `smc_output_fabric_wr_rd_responder_test`
+[[sec-031-smc_output_fabric_wr_rd_responder_test]]
+===== 31 `smc_output_fabric_wr_rd_responder_test`
 
 *Source Module*: `smc_output_fabric_wr_rd_responder_test`
 
@@ -1514,8 +1497,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-033-smc_output_filter_remap_security_test]]
-===== 33 `smc_output_filter_remap_security_test`
+[[sec-032-smc_output_filter_remap_security_test]]
+===== 32 `smc_output_filter_remap_security_test`
 
 *Source Module*: `smc_output_filter_remap_security_test`
 
@@ -1552,8 +1535,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-034-smc_remap_cla_test]]
-===== 34 `smc_remap_cla_test`
+[[sec-033-smc_remap_cla_test]]
+===== 33 `smc_remap_cla_test`
 
 *Source Module*: `smc_remap_cla_test`
 
@@ -1594,12 +1577,12 @@ verifying the block behind the port.
 |assertion |expected at least <value> value-checked reads
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `balanced_ip`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `balanced_ip`.
 
 '''''
 
-[[sec-035-smc_sys_out_aw_w_split_test]]
-===== 35 `smc_sys_out_aw_w_split_test`
+[[sec-034-smc_sys_out_aw_w_split_test]]
+===== 34 `smc_sys_out_aw_w_split_test`
 
 *Source Module*: `smc_sys_out_aw_w_split_test`
 
@@ -1641,8 +1624,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-036-smc_xvisor_remap_test]]
-===== 36 `smc_xvisor_remap_test`
+[[sec-035-smc_xvisor_remap_test]]
+===== 35 `smc_xvisor_remap_test`
 
 *Source Module*: `smc_xvisor_remap_test`
 
@@ -1678,8 +1661,8 @@ verifying the block behind the port.
 
 ==== RESET
 
-[[sec-037-smc_cg_dft_reset_bringup_test]]
-===== 37 `smc_cg_dft_reset_bringup_test`
+[[sec-036-smc_cg_dft_reset_bringup_test]]
+===== 36 `smc_cg_dft_reset_bringup_test`
 
 *Source Module*: `smc_cg_dft_reset_bringup_test`
 
@@ -1718,8 +1701,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-038-smc_cold_reset_repeated_test]]
-===== 38 `smc_cold_reset_repeated_test`
+[[sec-037-smc_cold_reset_repeated_test]]
+===== 37 `smc_cold_reset_repeated_test`
 
 *Source Module*: `smc_cold_reset_repeated_test`
 
@@ -1753,8 +1736,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-039-smc_cold_reset_test]]
-===== 39 `smc_cold_reset_test`
+[[sec-038-smc_cold_reset_test]]
+===== 38 `smc_cold_reset_test`
 
 *Source Module*: `smc_cold_reset_test`
 
@@ -1800,8 +1783,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-040-smc_cool_reset_from_pcie_test]]
-===== 40 `smc_cool_reset_from_pcie_test`
+[[sec-039-smc_cool_reset_from_pcie_test]]
+===== 39 `smc_cool_reset_from_pcie_test`
 
 *Source Module*: `smc_cool_reset_from_pcie_test`
 
@@ -1845,8 +1828,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-041-smc_cool_reset_x_cold_reset_test]]
-===== 41 `smc_cool_reset_x_cold_reset_test`
+[[sec-040-smc_cool_reset_x_cold_reset_test]]
+===== 40 `smc_cool_reset_x_cold_reset_test`
 
 *Source Module*: `smc_cool_reset_x_cold_reset_test`
 
@@ -1887,8 +1870,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-042-smc_cpu_reset_source_test]]
-===== 42 `smc_cpu_reset_source_test`
+[[sec-041-smc_cpu_reset_source_test]]
+===== 41 `smc_cpu_reset_source_test`
 
 *Source Module*: `smc_cpu_reset_source_test`
 
@@ -1928,8 +1911,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-043-smc_flr_sanity_test]]
-===== 43 `smc_flr_sanity_test`
+[[sec-042-smc_flr_sanity_test]]
+===== 42 `smc_flr_sanity_test`
 
 *Source Module*: `smc_flr_sanity_test`
 
@@ -1966,8 +1949,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-044-smc_gpio_boot_stall_test]]
-===== 44 `smc_gpio_boot_stall_test`
+[[sec-043-smc_gpio_boot_stall_test]]
+===== 43 `smc_gpio_boot_stall_test`
 
 *Source Module*: `smc_gpio_boot_stall_test`
 
@@ -2009,8 +1992,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-045-smc_irq_during_powergood_glitch_test]]
-===== 45 `smc_irq_during_powergood_glitch_test`
+[[sec-044-smc_irq_during_powergood_glitch_test]]
+===== 44 `smc_irq_during_powergood_glitch_test`
 
 *Source Module*: `smc_irq_during_powergood_glitch_test`
 
@@ -2050,8 +2033,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-046-smc_jtag_boot_stall_sanity_test]]
-===== 46 `smc_jtag_boot_stall_sanity_test`
+[[sec-045-smc_jtag_boot_stall_sanity_test]]
+===== 45 `smc_jtag_boot_stall_sanity_test`
 
 *Source Module*: `smc_jtag_boot_stall_sanity_test`
 
@@ -2092,8 +2075,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-047-smc_jtag_reset_ctrl_test]]
-===== 47 `smc_jtag_reset_ctrl_test`
+[[sec-046-smc_jtag_reset_ctrl_test]]
+===== 46 `smc_jtag_reset_ctrl_test`
 
 *Source Module*: `smc_jtag_reset_ctrl_test`
 
@@ -2135,8 +2118,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-048-smc_jtag_reset_proxy_test]]
-===== 48 `smc_jtag_reset_proxy_test`
+[[sec-047-smc_jtag_reset_proxy_test]]
+===== 47 `smc_jtag_reset_proxy_test`
 
 *Source Module*: `smc_jtag_reset_proxy_test`
 
@@ -2167,8 +2150,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-049-smc_mixed_boot_stall_test]]
-===== 49 `smc_mixed_boot_stall_test`
+[[sec-048-smc_mixed_boot_stall_test]]
+===== 48 `smc_mixed_boot_stall_test`
 
 *Source Module*: `smc_mixed_boot_stall_test`
 
@@ -2211,8 +2194,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-050-smc_multi_reset_csr_persistence_test]]
-===== 50 `smc_multi_reset_csr_persistence_test`
+[[sec-049-smc_multi_reset_csr_persistence_test]]
+===== 49 `smc_multi_reset_csr_persistence_test`
 
 *Source Module*: `smc_multi_reset_csr_persistence_test`
 
@@ -2255,8 +2238,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-051-smc_ndm_reset_test]]
-===== 51 `smc_ndm_reset_test`
+[[sec-050-smc_ndm_reset_test]]
+===== 50 `smc_ndm_reset_test`
 
 *Source Module*: `smc_ndm_reset_test`
 
@@ -2297,8 +2280,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-052-smc_powergood_glitch_test]]
-===== 52 `smc_powergood_glitch_test`
+[[sec-051-smc_powergood_glitch_test]]
+===== 51 `smc_powergood_glitch_test`
 
 *Source Module*: `smc_powergood_glitch_test`
 
@@ -2331,8 +2314,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-053-smc_reset_recovery_matrix_test]]
-===== 53 `smc_reset_recovery_matrix_test`
+[[sec-052-smc_reset_recovery_matrix_test]]
+===== 52 `smc_reset_recovery_matrix_test`
 
 *Source Module*: `smc_reset_recovery_matrix_test`
 
@@ -2366,8 +2349,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-054-smc_reset_unit_sanity_test]]
-===== 54 `smc_reset_unit_sanity_test`
+[[sec-053-smc_reset_unit_sanity_test]]
+===== 53 `smc_reset_unit_sanity_test`
 
 *Source Module*: `smc_reset_unit_sanity_test`
 
@@ -2406,8 +2389,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-055-smc_ss_reset_complete_test]]
-===== 55 `smc_ss_reset_complete_test`
+[[sec-054-smc_ss_reset_complete_test]]
+===== 54 `smc_ss_reset_complete_test`
 
 *Source Module*: `smc_ss_reset_complete_test`
 
@@ -2448,8 +2431,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-056-smc_uart_fifo_basic_trigger_reset_test]]
-===== 56 `smc_uart_fifo_basic_trigger_reset_test`
+[[sec-055-smc_uart_fifo_basic_trigger_reset_test]]
+===== 55 `smc_uart_fifo_basic_trigger_reset_test`
 
 *Source Module*: `smc_uart_fifo_basic_trigger_reset_test`
 
@@ -2491,8 +2474,8 @@ verifying the block behind the port.
 
 ==== CLOCK
 
-[[sec-057-smc_cg_test_mode_bypass_test]]
-===== 57 `smc_cg_test_mode_bypass_test`
+[[sec-056-smc_cg_test_mode_bypass_test]]
+===== 56 `smc_cg_test_mode_bypass_test`
 
 *Source Module*: `smc_cg_test_mode_bypass_test`
 
@@ -2530,8 +2513,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-058-smc_cg_zeroer_activity_bringup_test]]
-===== 58 `smc_cg_zeroer_activity_bringup_test`
+[[sec-057-smc_cg_zeroer_activity_bringup_test]]
+===== 57 `smc_cg_zeroer_activity_bringup_test`
 
 *Source Module*: `smc_cg_zeroer_activity_bringup_test`
 
@@ -2572,8 +2555,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-059-smc_clk_multi_window_test]]
-===== 59 `smc_clk_multi_window_test`
+[[sec-058-smc_clk_multi_window_test]]
+===== 58 `smc_clk_multi_window_test`
 
 *Source Module*: `smc_clk_multi_window_test`
 
@@ -2613,8 +2596,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-060-smc_clk_running_test]]
-===== 60 `smc_clk_running_test`
+[[sec-059-smc_clk_running_test]]
+===== 59 `smc_clk_running_test`
 
 *Source Module*: `smc_clk_running_test`
 
@@ -2657,8 +2640,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-061-smc_dma_cg_activity_test]]
-===== 61 `smc_dma_cg_activity_test`
+[[sec-060-smc_dma_cg_activity_test]]
+===== 60 `smc_dma_cg_activity_test`
 
 *Source Module*: `smc_dma_cg_activity_test`
 
@@ -2705,8 +2688,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-062-smc_i2c_cg_sanity_test]]
-===== 62 `smc_i2c_cg_sanity_test`
+[[sec-061-smc_i2c_cg_sanity_test]]
+===== 61 `smc_i2c_cg_sanity_test`
 
 *Source Module*: `smc_i2c_cg_sanity_test`
 
@@ -2746,8 +2729,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-063-smc_static_cg_sanity_test]]
-===== 63 `smc_static_cg_sanity_test`
+[[sec-062-smc_static_cg_sanity_test]]
+===== 62 `smc_static_cg_sanity_test`
 
 *Source Module*: `smc_static_cg_sanity_test`
 
@@ -2789,8 +2772,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-064-smc_zeroer_axiclk_cg_test]]
-===== 64 `smc_zeroer_axiclk_cg_test`
+[[sec-063-smc_zeroer_axiclk_cg_test]]
+===== 63 `smc_zeroer_axiclk_cg_test`
 
 *Source Module*: `smc_zeroer_axiclk_cg_test`
 
@@ -2836,8 +2819,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-065-smc_zeroer_cg_indep_test]]
-===== 65 `smc_zeroer_cg_indep_test`
+[[sec-064-smc_zeroer_cg_indep_test]]
+===== 64 `smc_zeroer_cg_indep_test`
 
 *Source Module*: `smc_zeroer_cg_indep_test`
 
@@ -2875,8 +2858,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-066-smc_zeroer_regclk_cg_test]]
-===== 66 `smc_zeroer_regclk_cg_test`
+[[sec-065-smc_zeroer_regclk_cg_test]]
+===== 65 `smc_zeroer_regclk_cg_test`
 
 *Source Module*: `smc_zeroer_regclk_cg_test`
 
@@ -2923,8 +2906,8 @@ verifying the block behind the port.
 
 ==== CPU
 
-[[sec-067-smc_cluster_beu_test]]
-===== 67 `smc_cluster_beu_test`
+[[sec-066-smc_cluster_beu_test]]
+===== 66 `smc_cluster_beu_test`
 
 *Source Module*: `smc_cluster_beu_test`
 
@@ -2962,8 +2945,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-068-smc_cpu_ctrl_map_depth_test]]
-===== 68 `smc_cpu_ctrl_map_depth_test`
+[[sec-067-smc_cpu_ctrl_map_depth_test]]
+===== 67 `smc_cpu_ctrl_map_depth_test`
 
 *Source Module*: `smc_cpu_ctrl_map_depth_test`
 
@@ -3003,8 +2986,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-069-smc_cpu_ctrl_scratch_window_test]]
-===== 69 `smc_cpu_ctrl_scratch_window_test`
+[[sec-068-smc_cpu_ctrl_scratch_window_test]]
+===== 68 `smc_cpu_ctrl_scratch_window_test`
 
 *Source Module*: `smc_cpu_ctrl_scratch_window_test`
 
@@ -3038,8 +3021,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-070-smc_cpu_ecc_lint_pint_depth_test]]
-===== 70 `smc_cpu_ecc_lint_pint_depth_test`
+[[sec-069-smc_cpu_ecc_lint_pint_depth_test]]
+===== 69 `smc_cpu_ecc_lint_pint_depth_test`
 
 *Source Module*: `smc_cpu_ecc_lint_pint_depth_test`
 
@@ -3070,8 +3053,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-071-smc_cpu_firmware_boot_test]]
-===== 71 `smc_cpu_firmware_boot_test`
+[[sec-070-smc_cpu_firmware_boot_test]]
+===== 70 `smc_cpu_firmware_boot_test`
 
 *Source Module*: `smc_cpu_firmware_boot_test`
 
@@ -3113,8 +3096,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-072-smc_cpu_sanity_test]]
-===== 72 `smc_cpu_sanity_test`
+[[sec-071-smc_cpu_sanity_test]]
+===== 71 `smc_cpu_sanity_test`
 
 *Source Module*: `smc_cpu_sanity_test`
 
@@ -3145,8 +3128,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-073-smc_ecc_codeword_ded_test]]
-===== 73 `smc_ecc_codeword_ded_test`
+[[sec-072-smc_ecc_codeword_ded_test]]
+===== 72 `smc_ecc_codeword_ded_test`
 
 *Source Module*: `smc_ecc_codeword_ded_test`
 
@@ -3177,8 +3160,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-074-smc_ecc_codeword_sec_test]]
-===== 74 `smc_ecc_codeword_sec_test`
+[[sec-073-smc_ecc_codeword_sec_test]]
+===== 73 `smc_ecc_codeword_sec_test`
 
 *Source Module*: `smc_ecc_codeword_sec_test`
 
@@ -3209,8 +3192,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-075-smc_ecc_dfd_dbs_sanity_test]]
-===== 75 `smc_ecc_dfd_dbs_sanity_test`
+[[sec-074-smc_ecc_dfd_dbs_sanity_test]]
+===== 74 `smc_ecc_dfd_dbs_sanity_test`
 
 *Source Module*: `smc_ecc_dfd_dbs_sanity_test`
 
@@ -3248,8 +3231,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-076-smc_ecc_fault_inject_test]]
-===== 76 `smc_ecc_fault_inject_test`
+[[sec-075-smc_ecc_fault_inject_test]]
+===== 75 `smc_ecc_fault_inject_test`
 
 *Source Module*: `smc_ecc_fault_inject_test`
 
@@ -3286,8 +3269,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-077-smc_mutex_semaphore_test]]
-===== 77 `smc_mutex_semaphore_test`
+[[sec-076-smc_mutex_semaphore_test]]
+===== 76 `smc_mutex_semaphore_test`
 
 *Source Module*: `smc_mutex_semaphore_test`
 
@@ -3327,8 +3310,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-078-smc_occp_sanity_secure_error_test]]
-===== 78 `smc_occp_sanity_secure_error_test`
+[[sec-077-smc_occp_sanity_secure_error_test]]
+===== 77 `smc_occp_sanity_secure_error_test`
 
 *Source Module*: `smc_occp_sanity_secure_error_test`
 
@@ -3365,8 +3348,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-079-smc_reference_counter_test]]
-===== 79 `smc_reference_counter_test`
+[[sec-078-smc_reference_counter_test]]
+===== 78 `smc_reference_counter_test`
 
 *Source Module*: `smc_reference_counter_test`
 
@@ -3404,8 +3387,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-080-smc_spm_mem_boundary_test]]
-===== 80 `smc_spm_mem_boundary_test`
+[[sec-079-smc_spm_mem_boundary_test]]
+===== 79 `smc_spm_mem_boundary_test`
 
 *Source Module*: `smc_spm_mem_boundary_test`
 
@@ -3441,8 +3424,8 @@ verifying the block behind the port.
 
 ==== JTAG
 
-[[sec-081-smc_dbs_idle_test]]
-===== 81 `smc_dbs_idle_test`
+[[sec-080-smc_dbs_idle_test]]
+===== 80 `smc_dbs_idle_test`
 
 *Source Module*: `smc_dbs_idle_test`
 
@@ -3473,8 +3456,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-082-smc_dfd_sanity_test]]
-===== 82 `smc_dfd_sanity_test`
+[[sec-081-smc_dfd_sanity_test]]
+===== 81 `smc_dfd_sanity_test`
 
 *Source Module*: `smc_dfd_sanity_test`
 
@@ -3505,8 +3488,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-083-smc_dfx_status_abort_test]]
-===== 83 `smc_dfx_status_abort_test`
+[[sec-082-smc_dfx_status_abort_test]]
+===== 82 `smc_dfx_status_abort_test`
 
 *Source Module*: `smc_dfx_status_abort_test`
 
@@ -3545,8 +3528,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-084-smc_ijtag_basic_test]]
-===== 84 `smc_ijtag_basic_test`
+[[sec-083-smc_ijtag_basic_test]]
+===== 83 `smc_ijtag_basic_test`
 
 *Source Module*: `smc_ijtag_basic_test`
 
@@ -3580,8 +3563,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-085-smc_jtag_dmi_smoke_test]]
-===== 85 `smc_jtag_dmi_smoke_test`
+[[sec-084-smc_jtag_dmi_smoke_test]]
+===== 84 `smc_jtag_dmi_smoke_test`
 
 *Source Module*: `smc_jtag_dmi_smoke_test`
 
@@ -3622,8 +3605,8 @@ verifying the block behind the port.
 
 ==== EFUSE
 
-[[sec-086-smc_efuse_boundary_signals_test]]
-===== 86 `smc_efuse_boundary_signals_test`
+[[sec-085-smc_efuse_boundary_signals_test]]
+===== 85 `smc_efuse_boundary_signals_test`
 
 *Source Module*: `smc_efuse_boundary_signals_test`
 
@@ -3666,8 +3649,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-087-smc_efuse_chip_config_read_test]]
-===== 87 `smc_efuse_chip_config_read_test`
+[[sec-086-smc_efuse_chip_config_read_test]]
+===== 86 `smc_efuse_chip_config_read_test`
 
 *Source Module*: `smc_efuse_chip_config_read_test`
 
@@ -3698,8 +3681,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-088-smc_efuse_jtag_lc_access_matrix_test]]
-===== 88 `smc_efuse_jtag_lc_access_matrix_test`
+[[sec-087-smc_efuse_jtag_lc_access_matrix_test]]
+===== 87 `smc_efuse_jtag_lc_access_matrix_test`
 
 *Source Module*: `smc_efuse_jtag_lc_access_matrix_test`
 
@@ -3741,8 +3724,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-089-smc_efuse_jtag_lc_negative_test]]
-===== 89 `smc_efuse_jtag_lc_negative_test`
+[[sec-088-smc_efuse_jtag_lc_negative_test]]
+===== 88 `smc_efuse_jtag_lc_negative_test`
 
 *Source Module*: `smc_efuse_jtag_lc_negative_test`
 
@@ -3776,8 +3759,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-090-smc_efuse_locked_access_interrupt_test]]
-===== 90 `smc_efuse_locked_access_interrupt_test`
+[[sec-089-smc_efuse_locked_access_interrupt_test]]
+===== 89 `smc_efuse_locked_access_interrupt_test`
 
 *Source Module*: `smc_efuse_locked_access_interrupt_test`
 
@@ -3824,8 +3807,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-091-smc_efuse_map_read_test]]
-===== 91 `smc_efuse_map_read_test`
+[[sec-090-smc_efuse_map_read_test]]
+===== 90 `smc_efuse_map_read_test`
 
 *Source Module*: `smc_efuse_map_read_test`
 
@@ -3860,8 +3843,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-092-smc_efuse_otp_burn_shadow_test]]
-===== 92 `smc_efuse_otp_burn_shadow_test`
+[[sec-091-smc_efuse_otp_burn_shadow_test]]
+===== 91 `smc_efuse_otp_burn_shadow_test`
 
 *Source Module*: `smc_efuse_otp_burn_shadow_test`
 
@@ -3907,8 +3890,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-093-smc_efuse_otp_clock_config_depth_test]]
-===== 93 `smc_efuse_otp_clock_config_depth_test`
+[[sec-092-smc_efuse_otp_clock_config_depth_test]]
+===== 92 `smc_efuse_otp_clock_config_depth_test`
 
 *Source Module*: `smc_efuse_otp_clock_config_depth_test`
 
@@ -3943,8 +3926,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-094-smc_efuse_otp_clock_test]]
-===== 94 `smc_efuse_otp_clock_test`
+[[sec-093-smc_efuse_otp_clock_test]]
+===== 93 `smc_efuse_otp_clock_test`
 
 *Source Module*: `smc_efuse_otp_clock_test`
 
@@ -3976,8 +3959,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-095-smc_efuse_permission_boundary_test]]
-===== 95 `smc_efuse_permission_boundary_test`
+[[sec-094-smc_efuse_permission_boundary_test]]
+===== 94 `smc_efuse_permission_boundary_test`
 
 *Source Module*: `smc_efuse_permission_boundary_test`
 
@@ -4008,8 +3991,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-096-smc_efuse_read_program_timeout_test]]
-===== 96 `smc_efuse_read_program_timeout_test`
+[[sec-095-smc_efuse_read_program_timeout_test]]
+===== 95 `smc_efuse_read_program_timeout_test`
 
 *Source Module*: `smc_efuse_read_program_timeout_test`
 
@@ -4058,8 +4041,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-097-smc_efuse_shim_ctrl_test]]
-===== 97 `smc_efuse_shim_ctrl_test`
+[[sec-096-smc_efuse_shim_ctrl_test]]
+===== 96 `smc_efuse_shim_ctrl_test`
 
 *Source Module*: `smc_efuse_shim_ctrl_test`
 
@@ -4093,8 +4076,8 @@ verifying the block behind the port.
 
 ==== GPIO
 
-[[sec-098-smc_gpio_ctrl_full_sweep_test]]
-===== 98 `smc_gpio_ctrl_full_sweep_test`
+[[sec-097-smc_gpio_ctrl_full_sweep_test]]
+===== 97 `smc_gpio_ctrl_full_sweep_test`
 
 *Source Module*: `smc_gpio_ctrl_full_sweep_test`
 
@@ -4127,8 +4110,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-099-smc_gpio_filter_access_sep_test]]
-===== 99 `smc_gpio_filter_access_sep_test`
+[[sec-098-smc_gpio_filter_access_sep_test]]
+===== 98 `smc_gpio_filter_access_sep_test`
 
 *Source Module*: `smc_gpio_filter_access_sep_test`
 
@@ -4169,8 +4152,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-100-smc_gpio_intf_full_sweep_test]]
-===== 100 `smc_gpio_intf_full_sweep_test`
+[[sec-099-smc_gpio_intf_full_sweep_test]]
+===== 99 `smc_gpio_intf_full_sweep_test`
 
 *Source Module*: `smc_gpio_intf_full_sweep_test`
 
@@ -4203,8 +4186,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-101-smc_gpio_irq_active_test]]
-===== 101 `smc_gpio_irq_active_test`
+[[sec-100-smc_gpio_irq_active_test]]
+===== 100 `smc_gpio_irq_active_test`
 
 *Source Module*: `smc_gpio_irq_active_test`
 
@@ -4238,8 +4221,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-102-smc_gpio_irq_type_matrix_test]]
-===== 102 `smc_gpio_irq_type_matrix_test`
+[[sec-101-smc_gpio_irq_type_matrix_test]]
+===== 101 `smc_gpio_irq_type_matrix_test`
 
 *Source Module*: `smc_gpio_irq_type_matrix_test`
 
@@ -4278,8 +4261,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-103-smc_gpio_multi_sample_test]]
-===== 103 `smc_gpio_multi_sample_test`
+[[sec-102-smc_gpio_multi_sample_test]]
+===== 102 `smc_gpio_multi_sample_test`
 
 *Source Module*: `smc_gpio_multi_sample_test`
 
@@ -4317,8 +4300,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-104-smc_gpio_observe_test]]
-===== 104 `smc_gpio_observe_test`
+[[sec-103-smc_gpio_observe_test]]
+===== 103 `smc_gpio_observe_test`
 
 *Source Module*: `smc_gpio_observe_test`
 
@@ -4351,8 +4334,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-105-smc_gpio_output_driveback_test]]
-===== 105 `smc_gpio_output_driveback_test`
+[[sec-104-smc_gpio_output_driveback_test]]
+===== 104 `smc_gpio_output_driveback_test`
 
 *Source Module*: `smc_gpio_output_driveback_test`
 
@@ -4390,8 +4373,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-106-smc_gpio_p0_int_test]]
-===== 106 `smc_gpio_p0_int_test`
+[[sec-105-smc_gpio_p0_int_test]]
+===== 105 `smc_gpio_p0_int_test`
 
 *Source Module*: `smc_gpio_p0_int_test`
 
@@ -4431,8 +4414,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-107-smc_gpio_p0_mux_test]]
-===== 107 `smc_gpio_p0_mux_test`
+[[sec-106-smc_gpio_p0_mux_test]]
+===== 106 `smc_gpio_p0_mux_test`
 
 *Source Module*: `smc_gpio_p0_mux_test`
 
@@ -4473,42 +4456,10 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-108-smc_gpio_strap_sanity_test]]
-===== 108 `smc_gpio_strap_sanity_test`
-
-*Source Module*: `smc_gpio_strap_sanity_test`
-
-*BFM / Model*: ocah_axi_vip (AXI)
-
-*Objective*: Run GPIO CSR reachability plus external pad drive.
-
-*Test Coverage*:
-
-* SMC OSS GPIO strap sanity external-drive test.
-
-*Test Procedure*:
-
-[arabic]
-. Drive the sequence `smc_gpio_strap_sanity_test_seq` over the interfaces named above.
-. Compare every access against its stated expectation in the scoreboard.
-. Emit the evidence tokens listed under Checkers.
-
-*Checkers*:
-
-[cols="1,2",options="header",]
-|===
-|Checker |Description
-|scoreboard |Every access is compared by the SYS_AXI scoreboard against its stated expectation
-|===
-
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `vplan_gaps`, `vplan_triplets`.
-
-'''''
-
 ==== IRQ
 
-[[sec-109-smc_hang_detector_data_timeout_test]]
-===== 109 `smc_hang_detector_data_timeout_test`
+[[sec-107-smc_hang_detector_data_timeout_test]]
+===== 107 `smc_hang_detector_data_timeout_test`
 
 *Source Module*: `smc_hang_detector_data_timeout_test`
 
@@ -4552,8 +4503,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-110-smc_hang_detector_plic_route_test]]
-===== 110 `smc_hang_detector_plic_route_test`
+[[sec-108-smc_hang_detector_plic_route_test]]
+===== 108 `smc_hang_detector_plic_route_test`
 
 *Source Module*: `smc_hang_detector_plic_route_test`
 
@@ -4596,8 +4547,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-111-smc_hang_detector_sanity_test]]
-===== 111 `smc_hang_detector_sanity_test`
+[[sec-109-smc_hang_detector_sanity_test]]
+===== 109 `smc_hang_detector_sanity_test`
 
 *Source Module*: `smc_hang_detector_sanity_test`
 
@@ -4638,8 +4589,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-112-smc_hang_detector_sys_timeout_test]]
-===== 112 `smc_hang_detector_sys_timeout_test`
+[[sec-110-smc_hang_detector_sys_timeout_test]]
+===== 110 `smc_hang_detector_sys_timeout_test`
 
 *Source Module*: `smc_hang_detector_sys_timeout_test`
 
@@ -4682,8 +4633,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-113-smc_hang_detector_timeout_test]]
-===== 113 `smc_hang_detector_timeout_test`
+[[sec-111-smc_hang_detector_timeout_test]]
+===== 111 `smc_hang_detector_timeout_test`
 
 *Source Module*: `smc_hang_detector_timeout_test`
 
@@ -4725,8 +4676,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-114-smc_irq_multi_sample_test]]
-===== 114 `smc_irq_multi_sample_test`
+[[sec-112-smc_irq_multi_sample_test]]
+===== 112 `smc_irq_multi_sample_test`
 
 *Source Module*: `smc_irq_multi_sample_test`
 
@@ -4762,8 +4713,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-115-smc_irq_observe_test]]
-===== 115 `smc_irq_observe_test`
+[[sec-113-smc_irq_observe_test]]
+===== 113 `smc_irq_observe_test`
 
 *Source Module*: `smc_irq_observe_test`
 
@@ -4803,8 +4754,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-116-smc_temp_interrupt_test]]
-===== 116 `smc_temp_interrupt_test`
+[[sec-114-smc_temp_interrupt_test]]
+===== 114 `smc_temp_interrupt_test`
 
 *Source Module*: `smc_temp_interrupt_test`
 
@@ -4845,8 +4796,8 @@ verifying the block behind the port.
 
 ==== I2C
 
-[[sec-117-smc_i2c_error_fifo_depth_test]]
-===== 117 `smc_i2c_error_fifo_depth_test`
+[[sec-115-smc_i2c_error_fifo_depth_test]]
+===== 115 `smc_i2c_error_fifo_depth_test`
 
 *Source Module*: `smc_i2c_error_fifo_depth_test`
 
@@ -4877,8 +4828,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-118-smc_i2c_fifo_full_test]]
-===== 118 `smc_i2c_fifo_full_test`
+[[sec-116-smc_i2c_fifo_full_test]]
+===== 116 `smc_i2c_fifo_full_test`
 
 *Source Module*: `smc_i2c_fifo_full_test`
 
@@ -4920,8 +4871,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-119-smc_i2c_master_target_test]]
-===== 119 `smc_i2c_master_target_test`
+[[sec-117-smc_i2c_master_target_test]]
+===== 117 `smc_i2c_master_target_test`
 
 *Source Module*: `smc_i2c_master_target_test`
 
@@ -4963,8 +4914,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-120-smc_i2c_multi_instance_test]]
-===== 120 `smc_i2c_multi_instance_test`
+[[sec-118-smc_i2c_multi_instance_test]]
+===== 118 `smc_i2c_multi_instance_test`
 
 *Source Module*: `smc_i2c_multi_instance_test`
 
@@ -4998,8 +4949,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-121-smc_i2c_multi_sample_test]]
-===== 121 `smc_i2c_multi_sample_test`
+[[sec-119-smc_i2c_multi_sample_test]]
+===== 119 `smc_i2c_multi_sample_test`
 
 *Source Module*: `smc_i2c_multi_sample_test`
 
@@ -5037,8 +4988,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-122-smc_i2c_p0_cfifo_test]]
-===== 122 `smc_i2c_p0_cfifo_test`
+[[sec-120-smc_i2c_p0_cfifo_test]]
+===== 120 `smc_i2c_p0_cfifo_test`
 
 *Source Module*: `smc_i2c_p0_cfifo_test`
 
@@ -5072,8 +5023,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-123-smc_i2c_p0_conti_test]]
-===== 123 `smc_i2c_p0_conti_test`
+[[sec-121-smc_i2c_p0_conti_test]]
+===== 121 `smc_i2c_p0_conti_test`
 
 *Source Module*: `smc_i2c_p0_conti_test`
 
@@ -5112,8 +5063,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-124-smc_i2c_p0_fifo_test]]
-===== 124 `smc_i2c_p0_fifo_test`
+[[sec-122-smc_i2c_p0_fifo_test]]
+===== 122 `smc_i2c_p0_fifo_test`
 
 *Source Module*: `smc_i2c_p0_fifo_test`
 
@@ -5152,8 +5103,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-125-smc_i2c_p0_multictrl_test]]
-===== 125 `smc_i2c_p0_multictrl_test`
+[[sec-123-smc_i2c_p0_multictrl_test]]
+===== 123 `smc_i2c_p0_multictrl_test`
 
 *Source Module*: `smc_i2c_p0_multictrl_test`
 
@@ -5192,8 +5143,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-126-smc_i2c_p0_nack_test]]
-===== 126 `smc_i2c_p0_nack_test`
+[[sec-124-smc_i2c_p0_nack_test]]
+===== 124 `smc_i2c_p0_nack_test`
 
 *Source Module*: `smc_i2c_p0_nack_test`
 
@@ -5233,8 +5184,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-127-smc_i2c_p0_rdwr_test]]
-===== 127 `smc_i2c_p0_rdwr_test`
+[[sec-125-smc_i2c_p0_rdwr_test]]
+===== 125 `smc_i2c_p0_rdwr_test`
 
 *Source Module*: `smc_i2c_p0_rdwr_test`
 
@@ -5271,8 +5222,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-128-smc_i2c_p0_stretch_test]]
-===== 128 `smc_i2c_p0_stretch_test`
+[[sec-126-smc_i2c_p0_stretch_test]]
+===== 126 `smc_i2c_p0_stretch_test`
 
 *Source Module*: `smc_i2c_p0_stretch_test`
 
@@ -5311,8 +5262,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-129-smc_i2c_p0_timeout_test]]
-===== 129 `smc_i2c_p0_timeout_test`
+[[sec-127-smc_i2c_p0_timeout_test]]
+===== 127 `smc_i2c_p0_timeout_test`
 
 *Source Module*: `smc_i2c_p0_timeout_test`
 
@@ -5351,8 +5302,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-130-smc_i2c_p1_rdwr_protocol_test]]
-===== 130 `smc_i2c_p1_rdwr_protocol_test`
+[[sec-128-smc_i2c_p1_rdwr_protocol_test]]
+===== 128 `smc_i2c_p1_rdwr_protocol_test`
 
 *Source Module*: `smc_i2c_p1_rdwr_protocol_test`
 
@@ -5383,8 +5334,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-131-smc_i2c_target_smbus_test]]
-===== 131 `smc_i2c_target_smbus_test`
+[[sec-129-smc_i2c_target_smbus_test]]
+===== 129 `smc_i2c_target_smbus_test`
 
 *Source Module*: `smc_i2c_target_smbus_test`
 
@@ -5425,8 +5376,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-132-smc_smbus_alert_ara_test]]
-===== 132 `smc_smbus_alert_ara_test`
+[[sec-130-smc_smbus_alert_ara_test]]
+===== 130 `smc_smbus_alert_ara_test`
 
 *Source Module*: `smc_smbus_alert_ara_test`
 
@@ -5465,8 +5416,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-133-smc_smbus_alert_suspend_test]]
-===== 133 `smc_smbus_alert_suspend_test`
+[[sec-131-smc_smbus_alert_suspend_test]]
+===== 131 `smc_smbus_alert_suspend_test`
 
 *Source Module*: `smc_smbus_alert_suspend_test`
 
@@ -5508,8 +5459,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-134-smc_smbus_hostnotify_test]]
-===== 134 `smc_smbus_hostnotify_test`
+[[sec-132-smc_smbus_hostnotify_test]]
+===== 132 `smc_smbus_hostnotify_test`
 
 *Source Module*: `smc_smbus_hostnotify_test`
 
@@ -5548,8 +5499,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-135-smc_smbus_pmbus_test]]
-===== 135 `smc_smbus_pmbus_test`
+[[sec-133-smc_smbus_pmbus_test]]
+===== 133 `smc_smbus_pmbus_test`
 
 *Source Module*: `smc_smbus_pmbus_test`
 
@@ -5588,8 +5539,8 @@ verifying the block behind the port.
 
 ==== I3C
 
-[[sec-136-smc_i3c_to_fabric_test]]
-===== 136 `smc_i3c_to_fabric_test`
+[[sec-134-smc_i3c_to_fabric_test]]
+===== 134 `smc_i3c_to_fabric_test`
 
 *Source Module*: `smc_i3c_to_fabric_test`
 
@@ -5628,8 +5579,8 @@ verifying the block behind the port.
 
 ==== MAILBOX
 
-[[sec-137-smc_mailbox_data_error_test]]
-===== 137 `smc_mailbox_data_error_test`
+[[sec-135-smc_mailbox_data_error_test]]
+===== 135 `smc_mailbox_data_error_test`
 
 *Source Module*: `smc_mailbox_data_error_test`
 
@@ -5670,8 +5621,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-138-smc_mailbox_event_irq_test]]
-===== 138 `smc_mailbox_event_irq_test`
+[[sec-136-smc_mailbox_event_irq_test]]
+===== 136 `smc_mailbox_event_irq_test`
 
 *Source Module*: `smc_mailbox_event_irq_test`
 
@@ -5702,8 +5653,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-139-smc_mailbox_field_sweep_test]]
-===== 139 `smc_mailbox_field_sweep_test`
+[[sec-137-smc_mailbox_field_sweep_test]]
+===== 137 `smc_mailbox_field_sweep_test`
 
 *Source Module*: `smc_mailbox_field_sweep_test`
 
@@ -5739,8 +5690,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-140-smc_mailbox_idle_test]]
-===== 140 `smc_mailbox_idle_test`
+[[sec-138-smc_mailbox_idle_test]]
+===== 138 `smc_mailbox_idle_test`
 
 *Source Module*: `smc_mailbox_idle_test`
 
@@ -5771,8 +5722,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-141-smc_mailbox_inbound_test]]
-===== 141 `smc_mailbox_inbound_test`
+[[sec-139-smc_mailbox_inbound_test]]
+===== 139 `smc_mailbox_inbound_test`
 
 *Source Module*: `smc_mailbox_inbound_test`
 
@@ -5805,8 +5756,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-142-smc_mailbox_irq_test]]
-===== 142 `smc_mailbox_irq_test`
+[[sec-140-smc_mailbox_irq_test]]
+===== 140 `smc_mailbox_irq_test`
 
 *Source Module*: `smc_mailbox_irq_test`
 
@@ -5842,8 +5793,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-143-smc_mailbox_multi_instance_test]]
-===== 143 `smc_mailbox_multi_instance_test`
+[[sec-141-smc_mailbox_multi_instance_test]]
+===== 141 `smc_mailbox_multi_instance_test`
 
 *Source Module*: `smc_mailbox_multi_instance_test`
 
@@ -5877,8 +5828,8 @@ verifying the block behind the port.
 
 ==== SPI
 
-[[sec-144-smc_spi_pad_bfm_test]]
-===== 144 `smc_spi_pad_bfm_test`
+[[sec-142-smc_spi_pad_bfm_test]]
+===== 142 `smc_spi_pad_bfm_test`
 
 *Source Module*: `smc_spi_pad_bfm_test`
 
@@ -5914,8 +5865,8 @@ verifying the block behind the port.
 
 ==== UART
 
-[[sec-145-smc_uart_baud_word_parity_format_test]]
-===== 145 `smc_uart_baud_word_parity_format_test`
+[[sec-143-smc_uart_baud_word_parity_format_test]]
+===== 143 `smc_uart_baud_word_parity_format_test`
 
 *Source Module*: `smc_uart_baud_word_parity_format_test`
 
@@ -5953,8 +5904,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-146-smc_uart_error_conditions_test]]
-===== 146 `smc_uart_error_conditions_test`
+[[sec-144-smc_uart_error_conditions_test]]
+===== 144 `smc_uart_error_conditions_test`
 
 *Source Module*: `smc_uart_error_conditions_test`
 
@@ -5997,8 +5948,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-147-smc_uart_extremes_misc_test]]
-===== 147 `smc_uart_extremes_misc_test`
+[[sec-145-smc_uart_extremes_misc_test]]
+===== 145 `smc_uart_extremes_misc_test`
 
 *Source Module*: `smc_uart_extremes_misc_test`
 
@@ -6038,8 +5989,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-148-smc_uart_irq_sources_priority_test]]
-===== 148 `smc_uart_irq_sources_priority_test`
+[[sec-146-smc_uart_irq_sources_priority_test]]
+===== 146 `smc_uart_irq_sources_priority_test`
 
 *Source Module*: `smc_uart_irq_sources_priority_test`
 
@@ -6081,8 +6032,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-149-smc_uart_log_engine_error_boundary_test]]
-===== 149 `smc_uart_log_engine_error_boundary_test`
+[[sec-147-smc_uart_log_engine_error_boundary_test]]
+===== 147 `smc_uart_log_engine_error_boundary_test`
 
 *Source Module*: `smc_uart_log_engine_error_boundary_test`
 
@@ -6113,8 +6064,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-150-smc_uart_log_engine_reg_rw_test]]
-===== 150 `smc_uart_log_engine_reg_rw_test`
+[[sec-148-smc_uart_log_engine_reg_rw_test]]
+===== 148 `smc_uart_log_engine_reg_rw_test`
 
 *Source Module*: `smc_uart_log_engine_reg_rw_test`
 
@@ -6152,8 +6103,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-151-smc_uart_loopback_test]]
-===== 151 `smc_uart_loopback_test`
+[[sec-149-smc_uart_loopback_test]]
+===== 149 `smc_uart_loopback_test`
 
 *Source Module*: `smc_uart_loopback_test`
 
@@ -6185,8 +6136,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-152-smc_uart_sanity_test]]
-===== 152 `smc_uart_sanity_test`
+[[sec-150-smc_uart_sanity_test]]
+===== 150 `smc_uart_sanity_test`
 
 *Source Module*: `smc_uart_sanity_test`
 
@@ -6223,8 +6174,8 @@ verifying the block behind the port.
 
 '''''
 
-[[sec-153-smc_uart_spi_log_engine_test]]
-===== 153 `smc_uart_spi_log_engine_test`
+[[sec-151-smc_uart_spi_log_engine_test]]
+===== 151 `smc_uart_spi_log_engine_test`
 
 *Source Module*: `smc_uart_spi_log_engine_test`
 
@@ -6265,14 +6216,206 @@ verifying the block behind the port.
 
 '''''
 
+==== OCCP
+
+[[sec-152-smc_dual_elaboration_test]]
+===== 152 `smc_dual_elaboration_test`
+
+*Source Module*: `smc_dual_elaboration_test`
+
+*BFM / Model*: `SmcDualHarness` (hierarchical probes on both instances); production boot ROM loaded into both
+
+*Objective*: Prove the two-instance model elaborates and both instances leave reset independently.
+
+*Test Coverage*:
+
+* Two `smc_wrapper` instances built with `SMC_DUAL`, plus the I3C bus they share.
+* Reset release, fuse sense and memory init on each instance separately.
+* The testbench's own per-channel I3C counter indexing.
+
+*Test Procedure*:
+
+[arabic]
+. Elaborate the `dual` target with `+rom_bin64=prod_rom.bin64` on both instances.
+. Read `tb_i3c_channel_id_N` and confirm cocotb indexes the flat counters the way the TB exports them.
+. Wait for `powergood_stable` and primary SMC reset release on each instance.
+. Wait for fuse-sense done on each instance within 200000 `clk_smc_i` cycles.
+. Confirm `init_mem_done` stays low on both while `boot_stall` is held, then release and confirm it asserts.
+. Sample the shared I3C0 wired-AND and confirm it resolves to idle high with nothing driving.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-DUAL-I3C-INDEXING` |The channel-id ports read back as the TB exports them, so the counters are not all element 0
+|`CHK-DUAL-ELAB` |Both instances elaborated and report `powergood_stable`
+|`CHK-DUAL-RESET` |`rst_primary_smc_clk_no` deasserts on both instances
+|`CHK-DUAL-FUSE-SENSE` |Fuse sense completes on each instance within the 200000-cycle bound
+|`CHK-DUAL-BOOT-STALL` |`init_mem_done` is low on both instances while `boot_stall` is held
+|`CHK-DUAL-MEM-INIT` |`init_mem_done` asserts on both instances after `boot_stall` is released
+|`CHK-DUAL-I3C-IDLE` |The shared I3C0 wired-AND resolves, and resolves high, with no driver
+|===
+
+*Pass Criteria*: every checker above holds; a bound expiry or an unresolvable sample raises. Enrolled in: `dual_all`, `dual_smoke`.
+
+'''''
+
+[[sec-153-smc_dual_axi_sram_probe_test]]
+===== 153 `smc_dual_axi_sram_probe_test`
+
+*Source Module*: `smc_dual_axi_sram_probe_test`
+
+*BFM / Model*: `SmcDualHarness` with the inbound AXI manager (`bfm_axi`, SEP_IN); production boot ROM on both instances
+
+*Objective*: Measure that an inbound AXI manager reaches the CPU scratch SRAM window.
+
+*Test Coverage*:
+
+* Front-door AXI write and readback into the CPU scratch banks, which is how the OCCP boot flow stages its payload.
+* Three distinct patterns, one of them across a 64-byte bank stripe boundary.
+
+*Test Procedure*:
+
+[arabic]
+. Bring both instances up with `boot_stall` released, so the CPU cluster front port answers.
+. Read each probe address before its write; the banks are not auto-initialised, so the pre-write value is reported and not asserted on.
+. Write each of the three patterns over `bfm_axi` and read the address back.
+. Require every readback to equal exactly the pattern written.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-AXI-SCRATCH-REACHABLE` |Every pattern read back exactly as written, including the one crossing a bank stripe, so neither a stuck default subordinate nor a single-bank decode can satisfy it
+|===
+
+*Pass Criteria*: every pattern reads back exactly as written; any mismatch raises. `init_mem_done_o` and the hierarchical scratch peek are reported and gate nothing -- the peek's striped decode is only known-good at offset 0. Enrolled in: `dual_all`, `dual_smoke`.
+
+'''''
+
+[[sec-154-smc_occp_sanity_test]]
+===== 154 `smc_occp_sanity_test`
+
+*Source Module*: `smc_occp_sanity_test`
+
+*BFM / Model*: no model on either side -- `u_dut` runs the production boot ROM as OCCP target, `u_bfm` runs the `occp_sanity` DV ROM image as OCCP controller
+
+*Objective*: One SMC issues OCCP GET_VERSION at another and reports through an OCCP WRITE.
+
+*Test Coverage*:
+
+* I3C bring-up on the controller: target-ready pad, ENTDAA, channel selection.
+* OCCP `GET_VERSION` and a 4-byte OCCP `WRITE`, serviced by the target's ROM.
+
+*Test Procedure*:
+
+[arabic]
+. Elaborate the `dual` target with the production ROM on `u_dut` and `occp_sanity.rom.hex` applied to `u_bfm`.
+. Let the controller firmware bring up I3C, issue `GET_VERSION` and check the answer is `0x1`.
+. Let it report by OCCP-writing its pass/fail code into the target's scratch 0.
+. Poll both instances' scratch 0: fail on `TEST_FAIL` from either, pass on `TEST_PASS` from either.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-OCCP-SANITY` |Target and controller scratch 0, sampled together; `TEST_FAIL` from either fails the test
+|===
+
+*Pass Criteria*: `TEST_PASS` reaches a scratch 0 and neither instance reports `TEST_FAIL`. `CHK-OCCP-JUMP-EXECUTED` and `CHK-OCCP-CONTROLLER-NO-FAIL` are deliberately *not* carried over from the boot test: nothing executes on the target here, and `occp_sanity/main.c` never writes its own scratch 0, so both would be checks that cannot fail. The firmware consoles, I3C counters and POST code are diagnostic only. Enrolled in: `dual_all`.
+
+'''''
+
+[[sec-155-smc_occp_dual_unsecure_boot_test]]
+===== 155 `smc_occp_dual_unsecure_boot_test`
+
+*Source Module*: `smc_occp_dual_unsecure_boot_test`
+
+*BFM / Model*: no model on either side -- `u_bfm` runs the `occp_unsecure_boot_test` DV ROM image against `u_dut` running the production boot ROM
+
+*Objective*: OCCP unsecure boot end to end between two real SMCs over the shared I3C bus.
+
+*Test Coverage*:
+
+* Payload staging into the controller's scratch SRAM over its inbound AXI manager.
+* The scratch 5-8 host protocol between testbench and controller firmware.
+* ENTDAA, chunked OCCP `WRITE`s and the `JUMP`, firmware to firmware.
+* Real traffic on the shared I3C bus, counted by the testbench rather than reported by firmware.
+
+*Test Procedure*:
+
+[arabic]
+. Hold the controller parked on its target-ready handshake so the staging window stays open.
+. Draw the staging address and the transfer destination per run from the OCCP window, so honouring the WRITE address field and always writing from the bottom of the window are distinguishable.
+. Stage the payload over AXI, seed scratch 5-8, and release both CPUs.
+. Wait for the target ROM to reach its OCCP command loop, then let the controller drive the transfer and the JUMP.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-OCCP-TARGET-READY` |Target ROM is in its OCCP command loop, by POST code and trace
+|`CHK-OCCP-PRECONDITION` |Target scratch 0 does not already hold the pass value before the transfer
+|`CHK-OCCP-FW-SEED` |Controller RNG seeded from `RANDOM_SEED` and read back
+|`CHK-OCCP-PAYLOAD-STAGED` |The payload reads back from the controller's SRAM exactly as staged
+|`CHK-OCCP-HOST-PROTOCOL` |Controller scratch 5-8 reads back exactly as seeded
+|`CHK-OCCP-TRANSFER-LANDED` |Target SRAM at the drawn destination holds the transferred image
+|`CHK-OCCP-BUS-ACTIVITY` |SCL falls and START conditions counted by the testbench on the channel actually used
+|`CHK-OCCP-CONTROLLER-NO-FAIL` |Controller scratch 0 is not `TEST_FAIL`
+|`CHK-OCCP-JUMP-EXECUTED` |Target retired PC lands inside the transferred image
+|`CHK-OCCP-PAYLOAD-EXECUTED` |Target scratch 0 holds `TEST_PASS`, written by the payload
+|===
+
+*Pass Criteria*: every checker above holds. Enrolled in: `dual_all`, `occp_dual`.
+
+'''''
+
+[[sec-156-smc_prod_rom_occp_ready_test]]
+===== 156 `smc_prod_rom_occp_ready_test`
+
+*Source Module*: `smc_prod_rom_occp_ready_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); production boot ROM built with `I3C_CORE=swap`
+
+*Objective*: Production boot ROM reaches its OCCP command processing loop.
+
+*Test Coverage*:
+
+* The real ROM from reset through strap and fuse read, security checks, interface map and OCCP init.
+* No bus traffic and no controller: this is the single-instance precondition the OCCP boot tests build on.
+
+*Test Procedure*:
+
+[arabic]
+. Run with `+rom_bin64=prod_rom.bin64` and `+smc_hold_cpu_boot`, holding `boot_stall` from t=0.
+. Program `RESET_VECTOR` before any core fetches, then release.
+. Read the ROM's POST code from scratch 1 and require boot phase `[31:28]` to reach `OCCP_PROC`.
+. Cross-check against CPU ROM fetch activity, so the phase cannot be credited to anything but the ROM executing.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-PROD-ROM-OCCP-PROC` |POST code reaches the OCCP command loop, corroborated by ROM fetch activity
+|===
+
+*Pass Criteria*: the POST code reaches `OCCP_PROC` and ROM fetch activity corroborates it. Real fuse sense is used -- no `+skip_fuse_sense` -- so the ROM reads straps and fuses itself. Enrolled in: `occp_boot`.
+
+'''''
+
 === Counts
 
 [cols=",",options="header",]
 |===
 |Metric |Count
-|Enrolled open-source testcases |153
-|Feature areas |15
-|Regression groups |25
+|Enrolled open-source testcases |156
+|Feature areas |16
+|Regression groups |29
 |===
 
 === Regression Groups
@@ -6280,7 +6423,7 @@ verifying the block behind the port.
 [cols=",,",options="header",]
 |===
 |Group |Tests |Purpose
-|`all` |153 |Every enrolled testcase; the full regression
+|`all` |149 |The single-instance regression. It is not every enrolled testcase: the 5 OCCP entries build a different DUT, and 2 more are held out against #585 and #1488
 |`avsbus_depth` |2 |avsbus depth coverage
 |`axil` |2 |axil coverage
 |`balanced_ip` |99 |One-per-IP breadth run used for routine regression
@@ -6291,20 +6434,24 @@ verifying the block behind the port.
 |`depth_fabric` |2 |depth fabric coverage
 |`depth_reg` |1 |depth reg coverage
 |`depth_uart_log` |1 |depth uart log coverage
+|`dual_all` |4 |Every `SMC_DUAL` two-instance testcase
+|`dual_smoke` |2 |Two-instance bring-up: elaboration and the AXI scratch probe
 |`gpio` |8 |gpio coverage
 |`i2c` |14 |i2c coverage
 |`i3c_depth` |1 |i3c depth coverage
 |`irq` |10 |irq coverage
 |`jtag_depth` |2 |jtag depth coverage
 |`mailbox_depth` |1 |mailbox depth coverage
+|`occp_boot` |1 |Production boot ROM reaching its OCCP command loop
+|`occp_dual` |1 |OCCP unsecure boot between two real SMCs
 |`project_p0` |13 |project p0 coverage
 |`project_p0_triplets` |38 |project p0 triplets coverage
 |`pyuvm` |35 |Scenarios with a PyUVM implementation
 |`reset` |14 |reset coverage
 |`smoke` |35 |Fast bring-up gate
 |`uart` |6 |uart coverage
-|`vplan_gaps` |26 |vplan gaps coverage
-|`vplan_triplets` |45 |vplan triplets coverage
+|`vplan_gaps` |24 |vplan gaps coverage
+|`vplan_triplets` |43 |vplan triplets coverage
 |===
 
 === Known Limitations

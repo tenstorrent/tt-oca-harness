@@ -29,10 +29,18 @@ includes = [
 
 [[groups]]
 name = "all"
-# The whole enrolled set, so a reviewer can run the regression without knowing
-# which feature lists exist.
+# The single-instance regression, so a reviewer can run it without knowing which
+# feature lists exist.
 #
 # It is not every test the package defines, and the difference is deliberate.
+#
+# Five tests build a different DUT and so cannot ride in one sweep:
+# smc_dual_elaboration_test, smc_dual_axi_sram_probe_test,
+# smc_occp_sanity_test and smc_occp_dual_unsecure_boot_test carry
+# `target = "dual"`, which elaborates SMC_DUAL; smc_prod_rom_occp_ready_test
+# needs `run_modes = ["prod_rom"]` so the production ROM's reset vector is not
+# zeroed by the smoke-mode backdoor. They run as `dual_all` / `dual_smoke` /
+# `occp_dual` / `occp_boot`, and each has a VPLAN entry under OCCP.
 # 12 test modules under cocotb/tests/ are in no testlist:
 #
 #   smc_pll_awm_freq_sweep_test        smc_pvt_analog_sensor_test
