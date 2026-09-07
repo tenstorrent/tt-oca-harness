@@ -249,7 +249,6 @@ hw/sys/sep/dv/
 │                        #   (models/regs/gen/c/sep_external.h) via sep.h; the
 │                        #   SV addrmap package is the RTL build input.
 ├── shims/               # SEP-local behavioral sim-models
-│   ├── prim/            #   prim_sync2 → prim_flop_2sync override, prim_assert
 │   ├── cpu/             #   sep_cpu_stub (no_cpu build: LSU demux, no VeeR)
 │   ├── crypto/          #   abr_wrapper_key_reg_stub (Verilator ABR CSR shim)
 │   └── analog/          #   entropy_ring_oscillator

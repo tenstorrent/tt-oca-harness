@@ -126,7 +126,6 @@ hw/sys/sep/dv/
     interfaces/
   shims/
     cpu/sep_cpu_stub.sv     # no_cpu LSU splice
-    prim/prim_sync2.sv
     crypto/abr_wrapper_key_reg_stub.sv
     analog/entropy_ring_oscillator.sv
   cocotb/
@@ -339,7 +338,7 @@ wrapper's struct port, so flash tests need no mux step.
 
 ==== Kept TB shims
 
-`shims/` holds the `sep_cpu` stub (no_cpu build), `prim_sync2`, the ABR key-CSR
+`shims/` holds the `sep_cpu` stub (no_cpu build), the ABR key-CSR
 Verilator stub, and the entropy ring-oscillator. `tb/sep_outbound_mbx.sv` (the fw
 console / PASS monitor) is also kept — it services a real wrapper output port,
 not a memory model.
@@ -498,8 +497,8 @@ run gates on a coverage percentage. Do not mix the two numbers.
 Bender targets are `["sep", "sep_el2", "sep_wrapper"]` only — never
 `"simulation"` (licensed I/O / padring). Verilator override shims under
 `shims/` are listed ahead of the Bender filelist so first-def-wins selects
-them (`sep_cpu` stub on no_cpu, `prim_sync2` port remap, ABR key-reg stub,
-entropy RO). Proprietary IPs stay out of the filelist rather than being
+them (`sep_cpu` stub on no_cpu, ABR key-reg stub, entropy RO). Proprietary
+IPs stay out of the filelist rather than being
 blackbox-stubbed. Scoped `sep_public_scope.vlt` replaces global
 `--public-flat-rw` so AXI ready/valid cones stay optimizable.
 

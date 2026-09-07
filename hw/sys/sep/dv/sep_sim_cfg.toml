@@ -64,8 +64,9 @@ exclude_files = [
   "hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_reg.sv",
 ]
 # `stubs` are Verilator/VCS-compat overrides, listed ahead of
-# the bender filelist so -Wno-MODDUP "first definition wins" selects them. prim_sync2 retargets
-# the public prim_flop_2sync (it imports NO packages, so prepending it is safe).
+# the bender filelist so -Wno-MODDUP "first definition wins" selects them.
+# The analog RO shim is the only prepended override (no package imports).
+# SEP uses the product prim_sync2 (hw/common/och_prim/rtl/prim_sync2.sv).
 #
 # The sep_cpu stub is NOT prepended: it imports DUT packages (sep_pkg/el2_pkg) that are declared
 # only inside the bender filelist, so a prepended copy would reference them before declaration.
@@ -74,7 +75,6 @@ exclude_files = [
 # where every DUT package is already declared. The stub is then the single sep_cpu definition (no
 # MODDUP), and the full-CPU `default` target keeps the real sep_cpu untouched.
 stubs = [
-  "hw/sys/sep/dv/shims/prim/prim_sync2.sv",
   "hw/sys/sep/dv/shims/analog/entropy_ring_oscillator.sv",
 ]
 filelist = "hw/sys/sep/dv/build/sep_dut_compile.f"
