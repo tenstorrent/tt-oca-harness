@@ -129,8 +129,7 @@ async def _wait_smc_out_of_reset(log, timeout_cycles: int = SMC_RESET_TIMEOUT_CY
             break
     else:
         raise AssertionError(
-            f"SMC still in reset after {timeout_cycles} cycles; there is nothing "
-            "to re-vector"
+            f"SMC still in reset after {timeout_cycles} cycles; there is nothing to re-vector"
         )
     # Let the ROM boot reach its parking loop, so the pulse below restarts a
     # settled cluster rather than racing the boot it is meant to replace.
