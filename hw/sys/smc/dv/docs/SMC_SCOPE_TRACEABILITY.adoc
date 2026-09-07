@@ -46,7 +46,7 @@ Executable membership on `main` today:
 |`canonical_top6` |5 |Minimum active-stimulus set: bring-up, two CSR leaves, mailbox IRQ, fabric wr/rd.
 |`canonical_top10` |8 |Adds FLR, I2C master, iJTAG.
 |`canonical_top20` |17 |Minimal full-breadth target on `main`.
-|`project_p0` |13 |One name per Project 335 bucket #3301–#3314. Mixes SAMPLE bring-up; I3C decode is not a bucket leaf.
+|`project_p0` |13 |13 names over buckets #3301–#3314; #3311 (i3c) has no live leaf after #1448 — see the I3C intake (#506). Mixes SAMPLE bring-up.
 |===
 
 #1448 is merged: `smc_i3c_to_fabric_test` is HCI_VERSION decode only and
