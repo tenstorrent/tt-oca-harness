@@ -1876,7 +1876,9 @@ void execute_random_commands(test_context_t *ctx, int num_commands) {
                             "response)\n");
                 } else {
                     simputshex32("SEP Status: ", status_data);
-                    simputs("GET_SEP_STATUS: PASS\n");
+                    simputshex32("GET_SEP_STATUS value (not checked): ", status_data);
+                simputs("GET_SEP_STATUS: transport OK, value unchecked -- no expected value is defined "
+                        "for this command; see occp-protocol.adoc\n");
                 }
             } else {
                 if (ctx->invalid_len_err_inject_enable) {
@@ -1898,7 +1900,9 @@ void execute_random_commands(test_context_t *ctx, int num_commands) {
                             "response)\n");
                 } else {
                     simputshex32("SMC Status: ", status_data);
-                    simputs("GET_SMC_STATUS: PASS\n");
+                    simputshex32("GET_SMC_STATUS value (not checked): ", status_data);
+                simputs("GET_SMC_STATUS: transport OK, value unchecked -- no expected value is defined "
+                        "for this command; see occp-protocol.adoc\n");
                 }
             } else {
                 if (ctx->invalid_len_err_inject_enable) {
@@ -1915,8 +1919,9 @@ void execute_random_commands(test_context_t *ctx, int num_commands) {
                     simputs("GET_OCCP_BOOT_STATUS command timed out as expected\n");
                     return;
                 }
-                // TODO: what is this expected to be?
-                simputs("GET_OCCP_BOOT_STATUS: PASS\n");
+                simputshex32("GET_OCCP_BOOT_STATUS value (not checked): ", status_data);
+                simputs("GET_OCCP_BOOT_STATUS: transport OK, value unchecked -- no expected value is defined "
+                        "for this command; see occp-protocol.adoc\n");
             } else {
                 if (ctx->invalid_len_err_inject_enable) {
                     simputs("GET_OCCP_BOOT_STATUS errored under length injection (expected)\n");
@@ -1958,7 +1963,9 @@ void execute_random_commands(test_context_t *ctx, int num_commands) {
                     simputs("GET_OCCP_INTERFACE_STATUS command timed out as expected\n");
                     return;
                 }
-                simputs("GET_OCCP_INTERFACE_STATUS: PASS\n");
+                simputshex32("GET_OCCP_INTERFACE_STATUS value (not checked): ", status_data);
+                simputs("GET_OCCP_INTERFACE_STATUS: transport OK, value unchecked -- no expected value is defined "
+                        "for this command; see occp-protocol.adoc\n");
             } else {
                 if (ctx->invalid_len_err_inject_enable) {
                     simputs(
@@ -1976,7 +1983,22 @@ void execute_random_commands(test_context_t *ctx, int num_commands) {
                     simputs("GET_OCCP_ERROR_CODE command timed out as expected\n");
                     return;
                 }
-                simputs("GET_OCCP_ERROR_CODE: PASS\n");
+                /* Compare against the expectation the tests already set.
+                 *
+                 * ctx->exp_occp_last_error had 41 writers across the OCCP suite
+                 * and no reader at all, so every one of those expectations was
+                 * discarded and this printed PASS on transport success alone.
+                 * Error codes are a byte (occp-protocol.adoc: 0x00 No error ..
+                 * 0x0A Oversized transport frame, 0xFF General error), so the
+                 * low byte is the whole field. */
+                if ((status_data & 0xFF) != (uint32_t)ctx->exp_occp_last_error) {
+                    simputs("GET_OCCP_ERROR_CODE: FAIL\n");
+                    simputshex32("Expected: ", (uint32_t)ctx->exp_occp_last_error);
+                    simputshex32("Actual: ", status_data & 0xFF);
+                    ctx->overall_result = false;
+                } else {
+                    simputs("GET_OCCP_ERROR_CODE: PASS\n");
+                }
             } else {
                 if (ctx->invalid_len_err_inject_enable) {
                     simputs("GET_OCCP_ERROR_CODE errored under length injection (expected)\n");
