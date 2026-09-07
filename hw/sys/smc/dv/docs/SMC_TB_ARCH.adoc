@@ -33,8 +33,33 @@ and models are Python.
 for coverage. Driven by `tools/dv/run_dv.py`.
 * *Single DUT*: `--dut smc` → `smc_sim_cfg.toml`, top
 `smc_uvm_top` (`tb/tb_top.sv`) instantiating `hw/top/smc_wrapper.sv`.
-PLL/PVT/eFuse/pads/CPU mem live inside the wrapper; TB still provides
-SYS_OUT AXI + I3C DAT/DCT responders and a DTP CSR err_slv.
+PLL/PVT/eFuse/pads/CPU mem and the I3C DAT/DCT/RLT memories live inside
+the wrapper. The TB still provides the SYS_OUT AXI responder
+(`axi_sim_mem`). The DTP CSR boundary is idle: `axil_dtp_csr_resp` is
+tied off, with no TB `err_slv` (SMU already wires that port to DTP).
+
+`hw/common/dv/configs/duts.toml` does not register an `smc` alias of
+`smc_wrapper`. The runner discovers `--dut smc` from this DV root.
+`smu_wrapper` is a different DUT in that file and is not this bench.
+
+Placeholder PLL/PVT OKAY+0 wraps, idle DTP CSR, and I3C decode-only
+(`proxy=True`) are not feature proof. See `SMC_SCOPE_TRACEABILITY.adoc`
+and `SMC_DEFERRED_DISPOSITION.adoc`.
+
+[[smc-tb-arch-review]]
+=== Architecture review (unsigned)
+
+This chapter is the live hierarchy and VIP disposition for #497. Filling
+the row, or an in-repo review comment that quotes this chapter and accepts
+it, is what #497 needs. The empty table is intentional.
+
+[cols="2,3,2,3",options="header",]
+|===
+|Role |Name |Date |Result
+|SMC design owner | | |pending
+|SMC DV lead | | |pending
+|VIP owner | | |pending
+|===
 
 [[vip-selection-policy]]
 === VIP Selection Policy
@@ -240,15 +265,18 @@ hw/sys/smc/dv/
 ├── testlists/              # per-feature TOML leaves + all.toml
 ├── assets/                 # ROM/eFuse/shadow preload images
 ├── smc_sim_cfg.toml  # sole launch config (tb_top → smc_wrapper), both frameworks
-└── docs/                   # index.adoc, SMC_TB_ARCH, SMC_VPLAN, SMC_FCOV
+└── docs/                   # index.adoc, TB_ARCH, VPLAN, FCOV, SCOPE, DEFERRED
 ....
 
 [[hdl-top]]
 === HDL Top
 
 `tb/tb_top.sv` instantiates `hw/top/smc_wrapper.sv` as `smc_uvm_top`. PLL, PVT,
-eFuse, pads and CPU memory live inside the wrapper. The TB still provides the
-SYS_OUT AXI responder, the I3C DAT/DCT responders, and the DTP CSR err_slv.
+eFuse, pads, CPU memory, and the I3C DAT/DCT/RLT table memories live inside
+the wrapper. The TB still provides the SYS_OUT AXI responder (`axi_sim_mem`).
+The DTP CSR port is a `smc_wrapper` boundary: the TB ties
+`axil_dtp_csr_resp` to zero and does not instantiate an `err_slv`. Tests that
+need a DTP CSR subordinate stay unenrolled (`needs_dtp_csr_sub`).
 
 The module has two shapes selected by the bare `UVM` define. Every TB signal
 is declared exactly once in `tb/smc_tb_signal_list.svh` and expanded by the
@@ -266,7 +294,8 @@ takes over (see <<sv-uvm-realization>>).
 |SYS_OUT AXI |TB responder; `tb_output_axi_*` counters
 |CPU JTAG TAP |Exposes `tb_cpu_jtag_{tck,tms,tdi,tdo,reset}` for `SmcJtagTap`
 |I2C0 |Split-port `tb_i2c0_scl/sda` + `tb_i2c0_*_ext_low`
-|I3C0 |Pad-level `check_i3c0_external_pull_low`; no protocol VIP
+|I3C0 |Pad-level `check_i3c0_external_pull_low`; DAT/DCT/RLT sit inside `smc_ip_integration`; no protocol VIP
+|DTP CSR |Idle `smc_wrapper` boundary; resp tied off; no TB terminator
 |GPIO |DV-only `tb_gpio_ext_drive_en/value`
 |Mailbox |DV-only `tb_sep_mailbox_interrupts` + `tb_mailbox_irq_any`
 |Sideband |`tb_avsbus_irq`, `tb_telemetry_irq_any`, `tb_avsbus_cur_state_debug`
@@ -721,7 +750,7 @@ hw/sys/smc/dv/testlists/
 ├── batch_d.toml        # FLR + TOP-20 CSR/precheck representatives
 ├── vplan_triplets.toml # 16 functional modules x 3 tests
 ├── p1_coverage_gap*.toml  # coverage-gap depth rounds 1-5
-└── wrapper.toml        # deferred smc_wrapper catalog
+└── (no wrapper.toml — `--dut smc` already instantiates `smc_wrapper`)
 ....
 
 `--tag smoke` and `--tag pyuvm` resolve through `all.toml` groups. Treat this as
