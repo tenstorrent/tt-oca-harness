@@ -2,24 +2,27 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /**
- * @file main.c
- * @brief I2C P1 DMA Interface Verification Test
+ * @file i2c_p1_fifo_depth_xfer.c
+ * @brief I2C full-FIFO-depth transfer with an interleaved push-and-drain
  *
  * =============================================================================
  * Test Description
  * =============================================================================
  *
- * This test verifies the integration between the I2C module and a DMA controller,
- * ensuring large data transfers can be completed via DMA.
+ * Moves a 64-byte payload -- the full FIFO depth, where every other I2C test in
+ * this suite moves 1 to 5 bytes -- with the controller pushing while the target
+ * drains, then compares length and every byte.
+ *
+ * No DMA is involved: the body below records that the DMA-driven form of this
+ * transfer cannot work on this interface, so the payload is moved by the CPU.
  *
  * Test Objective:
- * - Verify I2C can perform large data transfers
- * - Verify data integrity during burst operations
+ * - Verify I2C can perform a full-FIFO-depth data transfer
+ * - Verify data integrity when push and drain overlap
  * - Verify I2C protocol remains valid throughout transfer
  *
  * Expected Result:
- * - Large data transfers complete successfully
- * - Data integrity maintained
+ * - The transfer completes and every byte matches
  * - I2C protocol compliance throughout transfer
  *
  * Note: This is a simplified test focusing on large data transfer capability.

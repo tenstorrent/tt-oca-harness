@@ -2,16 +2,22 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /**
- * @file main.c
- * @brief I2C P1 FIFO Stress Test
+ * @file i2c_p1_back_to_back_xfer.c
+ * @brief I2C back-to-back transactions and transaction-to-transaction recovery
  *
  * =============================================================================
  * Test Description
  * =============================================================================
  *
- * This test verifies FIFO error handling and system stability under continuous
- * I2C traffic. Performs 8 sequential write/receive transactions between internal
- * I2C controller and target.
+ * 8 sequential write/receive transactions between the internal I2C controller
+ * and target, back to back, with a per-byte compare on each. What this reaches
+ * that a single-shot transfer cannot is FIFO and state recovery *between*
+ * transactions.
+ *
+ * The FIFO levels stay far from full by design: each transaction carries 4 data
+ * bytes against a target RX FIFO depth of 268 and an FMT depth of 64, and no
+ * overflow or error path is reached. FIFO-depth and overflow behaviour belong to
+ * a separate test; nothing in this suite covers them yet.
  *
  * Expected Result:
  * - All 8 transactions complete successfully
