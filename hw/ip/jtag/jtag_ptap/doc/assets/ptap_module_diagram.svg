@@ -2,7 +2,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <svg xmlns="http://www.w3.org/2000/svg" version="1.1"
-     width="860" height="490" viewBox="0 0 860 490">
+     width="860" height="560" viewBox="0 0 860 560">
   <defs>
     <style>
       text { font-family: sans-serif; fill: #333333; }
@@ -33,7 +33,7 @@
   <text x="140" y="106" class="label" text-anchor="middle">TAP</text>
   <text x="140" y="122" class="label" text-anchor="middle">Controller</text>
 
-  <!-- External: PTAP_TMS / TRST arrive below the block to avoid line overlap -->
+  <!-- PTAP_TMS / TRST: arrive via a jog to the right of left-port labels -->
   <text x="14" y="196" class="port">PTAP_TMS</text>
   <text x="14" y="210" class="port">PTAP_TRST_N</text>
   <polyline points="68,165 54,165 54,190 70,110"
@@ -45,7 +45,7 @@
   <text x="340" y="100" class="label" text-anchor="middle">Instruction</text>
   <text x="340" y="116" class="label" text-anchor="middle">Register (IR)</text>
 
-  <!-- TAP Controller → IR (shift-enable, capture, update) -->
+  <!-- TAP Controller → IR -->
   <line x1="210" y1="95" x2="270" y2="95" stroke="#4a7baa" stroke-width="1.2" marker-end="url(#arr)"/>
 
   <!-- ── Instruction Decoder ─────────────────────────────────────────── -->
@@ -113,7 +113,7 @@
   <polyline points="540,130 540,215 410,215"
             fill="none" stroke="#4a7baa" stroke-width="1.2" stroke-dasharray="4 2" marker-end="url(#arr)"/>
 
-  <!-- ── IR Scan Mux ──────────────────────────────────────────────── -->
+  <!-- ── Scan Path Mux ──────────────────────────────────────────────── -->
   <rect x="270" y="295" width="140" height="60" rx="4"
         fill="#dce8f4" stroke="#4a7baa" stroke-width="1.5"/>
   <text x="340" y="322" class="label" text-anchor="middle">Scan Path Mux</text>
@@ -125,46 +125,53 @@
   <text x="540" y="322" class="label" text-anchor="middle">TMP Controller</text>
   <text x="540" y="338" class="small" text-anchor="middle">CH_RESET_N output</text>
 
-  <!-- ── External ports (left side — clear of blocks and lines) ──────── -->
+  <!-- ── External ports (left side) ──────────────────────────────────── -->
 
-  <!-- PTAP_TDI: enters IR at top (scan-in) — arrives at left x=268, y=77 -->
+  <!-- PTAP_TDI: enters IR at top -->
   <text x="14" y="78" class="port">PTAP_TDI</text>
   <line x1="68" y1="75" x2="270" y2="79" stroke="#555555" stroke-width="1.2" marker-end="url(#arr-g)"/>
 
-  <!-- BSR_SI / IJTAG_SI: enters Scan Path Mux -->
-  <text x="14" y="305" class="port">BSR_SI / IJTAG_SI</text>
-  <line x1="68" y1="302" x2="270" y2="318" stroke="#555555" stroke-width="1.2" marker-end="url(#arr-g)"/>
+  <!-- BSR_SI / IJTAG_SI: enters Scan Path Mux.
+       Label at y=305, line starts at x=68 (clear of left text block) y=305 -->
+  <text x="14" y="310" class="port">BSR_SI /</text>
+  <text x="14" y="323" class="port">IJTAG_SI</text>
+  <line x1="68" y1="320" x2="270" y2="325" stroke="#555555" stroke-width="1.2" marker-end="url(#arr-g)"/>
 
   <!-- PTAP_TDO: exits Scan Path Mux left -->
-  <text x="14" y="352" class="port">PTAP_TDO</text>
+  <text x="14" y="360" class="port">PTAP_TDO</text>
   <line x1="270" y1="348" x2="68" y2="348" stroke="#555555" stroke-width="1.2" marker-end="url(#arr-g)"/>
 
-  <!-- ── External ports (right side) ────────────────────────────────── -->
-  <!-- Scan outputs from TDR bank to downstream iJTAG.
-       Labels placed with text-anchor="end" at x=798; rightmost extent ≤ 798 < 860. -->
-  <text x="798" y="265" class="port" text-anchor="end">SMC_AXI_SI</text>
-  <text x="798" y="282" class="port" text-anchor="end">SMC_OTP_SI</text>
-  <text x="798" y="299" class="port" text-anchor="end">SEP_OTP_SI</text>
-  <text x="798" y="316" class="port" text-anchor="end">STAP_TDI</text>
-  <text x="798" y="333" class="port" text-anchor="end">CAPTURE_DR</text>
-  <!-- Lines from TDR column right edge (x=810) to label anchor (x=798) -->
-  <line x1="810" y1="263" x2="800" y2="263" stroke="#555555" stroke-width="1" marker-end="url(#arr-g)"/>
-  <line x1="810" y1="280" x2="800" y2="280" stroke="#555555" stroke-width="1" marker-end="url(#arr-g)"/>
-  <line x1="810" y1="297" x2="800" y2="297" stroke="#555555" stroke-width="1" marker-end="url(#arr-g)"/>
-  <line x1="810" y1="314" x2="800" y2="314" stroke="#555555" stroke-width="1" marker-end="url(#arr-g)"/>
-  <line x1="810" y1="331" x2="800" y2="331" stroke="#555555" stroke-width="1" marker-end="url(#arr-g)"/>
-
-  <!-- ── Note ───────────────────────────────────────────────────────── -->
+  <!-- ── Note (scan path summary) ────────────────────────────────────── -->
   <rect x="70" y="400" width="560" height="64" rx="4"
         fill="#f8f8f8" stroke="#cccccc" stroke-width="1"/>
   <text x="350" y="420" class="small" text-anchor="middle">
-    Scan data path: PTAP_TDI → IR (on instruction-register scan) or through selected TDR →
+    Scan data path: PTAP_TDI → IR (on IR-scan) or through selected TDR →
   </text>
   <text x="350" y="436" class="small" text-anchor="middle">
-    Scan Path Mux → PTAP_TDO.  Control: TAP Controller state machine drives Capture/Shift/Update.
+    Scan Path Mux → PTAP_TDO.  TAP Controller drives Capture/Shift/Update.
   </text>
   <text x="350" y="452" class="small" text-anchor="middle">
-    STAP_TDI and STAP_TDO feed the secondary scan chain; selected by STAP Select block.
+    STAP_TDI/TDO feed the secondary scan chain; selected by STAP Select block.
+  </text>
+
+  <!-- ── External interface note (below PTAP boundary) ────────────────
+       Five downstream outputs that exit the TDR bank rightward.
+       Placed below the PTAP dashed box (bottom at y=474) with clear margin.
+       These are named here rather than attached to specific register boxes to
+       avoid overlapping the TDR column. -->
+  <rect x="10" y="482" width="840" height="72" rx="4"
+        fill="#f0f4f8" stroke="#4a7baa" stroke-width="1"/>
+  <text x="430" y="498" class="small" text-anchor="middle" font-weight="bold">
+    External interface outputs from TDR bank (right side of PTAP):
+  </text>
+  <text x="430" y="514" class="small" text-anchor="middle">
+    SMC_AXI_SI · SMC_OTP_SI · SEP_OTP_SI (JTAG2AXI bridge scan inputs, lifecycle-gated)
+  </text>
+  <text x="430" y="530" class="small" text-anchor="middle">
+    STAP_TDI (secondary scan chain input) · CAPTURE_DR (data register scan control)
+  </text>
+  <text x="430" y="546" class="small" text-anchor="middle">
+    See PTAP port reference for full list. Interface descriptions are in adjacent architecture text.
   </text>
 
 </svg>

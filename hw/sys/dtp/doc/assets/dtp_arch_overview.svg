@@ -2,7 +2,7 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <svg xmlns="http://www.w3.org/2000/svg" version="1.1"
-     width="920" height="660" viewBox="0 0 920 660">
+     width="1000" height="700" viewBox="0 0 1000 700">
   <defs>
     <style>
       text { font-family: sans-serif; fill: #333333; }
@@ -26,191 +26,193 @@
     </marker>
   </defs>
 
-  <text x="14" y="20" class="title">DTP Internal Structure and Access Paths</text>
+  <text x="120" y="20" class="title">DTP Internal Structure and Access Paths</text>
 
-  <!-- ══ DTP outer boundary  y=30..530 ════════════════════════════════════ -->
-  <rect x="10" y="30" width="900" height="500" rx="6"
+  <!-- ══ DTP outer boundary  x=110..970, y=30..570
+       Left 110px: port label column for JTAG pads / scan / AXI bridge outputs.
+       Right edge at 970; right-side port labels placed at x≤960 to stay clear. -->
+  <rect x="110" y="30" width="860" height="540" rx="6"
         fill="none" stroke="#666666" stroke-width="2" stroke-dasharray="10 4"/>
-  <text x="26" y="50" class="blabel" fill="#444444">Debug and Test Ports (DTP)</text>
+  <text x="126" y="50" class="blabel" fill="#444444">Debug and Test Ports (DTP)</text>
 
-  <!-- ══ JIU block  x=30..430, y=58..480 ═════════════════════════════════ -->
-  <rect x="30" y="58" width="400" height="422" rx="5"
+  <!-- ══ JIU block  x=130..490, y=58..520 -->
+  <rect x="130" y="58" width="360" height="462" rx="5"
         fill="#f0f4f8" stroke="#4a7baa" stroke-width="1.5" stroke-dasharray="6 3"/>
-  <text x="46" y="76" class="blabel" fill="#4a7baa">JTAG Interface Unit (JIU)</text>
+  <text x="146" y="76" class="blabel" fill="#4a7baa">JTAG Interface Unit (JIU)</text>
 
-  <!-- PTAP  x=50..210, y=86..156 -->
-  <rect x="50" y="86" width="160" height="70" rx="4"
+  <!-- PTAP  x=150..320, y=86..156 -->
+  <rect x="150" y="86" width="170" height="70" rx="4"
         fill="#dce8f4" stroke="#4a7baa" stroke-width="1.2"/>
-  <text x="130" y="112" class="label" text-anchor="middle" font-weight="bold">PTAP</text>
-  <text x="130" y="128" class="small" text-anchor="middle">Primary TAP / IR Decoder</text>
-  <text x="130" y="143" class="small" text-anchor="middle">DEBUG_CONTROL TDR</text>
+  <text x="235" y="112" class="label" text-anchor="middle" font-weight="bold">PTAP</text>
+  <text x="235" y="128" class="small" text-anchor="middle">Primary TAP / IR Decoder</text>
+  <text x="235" y="143" class="small" text-anchor="middle">DEBUG_CONTROL TDR</text>
 
-  <!-- STAP chain  x=230..400, y=86..156 -->
-  <rect x="230" y="86" width="170" height="70" rx="4"
+  <!-- STAP chain  x=150..320, y=172..242 -->
+  <rect x="150" y="172" width="170" height="70" rx="4"
         fill="#dce8f4" stroke="#4a7baa" stroke-width="1.2"/>
-  <text x="315" y="112" class="label" text-anchor="middle" font-weight="bold">STAP Chain</text>
-  <text x="315" y="128" class="small" text-anchor="middle">I/O · SMC · SEP · Extra</text>
-  <text x="315" y="143" class="small" text-anchor="middle">(secondary scan)</text>
+  <text x="235" y="198" class="label" text-anchor="middle" font-weight="bold">STAP Chain</text>
+  <text x="235" y="214" class="small" text-anchor="middle">I/O · SMC · SEP · Extra</text>
+  <text x="235" y="229" class="small" text-anchor="middle">(secondary scan)</text>
 
-  <!-- PTAP → STAP scan chain -->
-  <line x1="210" y1="121" x2="230" y2="121"
+  <!-- PTAP → STAP -->
+  <line x1="235" y1="156" x2="235" y2="172"
         stroke="#4a7baa" stroke-width="1.2" marker-end="url(#arr-b)"/>
 
-  <!-- iJTAG SIB Network  x=50..410, y=174..228 -->
-  <rect x="50" y="174" width="360" height="54" rx="4"
+  <!-- iJTAG SIB Network  x=150..470, y=270..324 -->
+  <rect x="150" y="270" width="320" height="54" rx="4"
         fill="#dce8f4" stroke="#4a7baa" stroke-width="1.2"/>
-  <text x="230" y="197" class="label" text-anchor="middle" font-weight="bold">iJTAG SIB Network</text>
-  <text x="230" y="213" class="small" text-anchor="middle">Secure DFT · Non-secure DFT · DFD</text>
+  <text x="310" y="293" class="label" text-anchor="middle" font-weight="bold">iJTAG SIB Network</text>
+  <text x="310" y="309" class="small" text-anchor="middle">Secure DFT · Non-secure DFT · DFD</text>
 
-  <!-- PTAP instruction select → iJTAG (dashed, from PTAP bottom-center) -->
-  <line x1="130" y1="156" x2="130" y2="174"
+  <!-- PTAP → iJTAG (dashed, via x=175) -->
+  <polyline points="175,156 175,270"
+            fill="none" stroke="#4a7baa" stroke-width="1" stroke-dasharray="4 2"
+            marker-end="url(#arr-b)"/>
+
+  <!-- JTAG2AXI bridges  x=150..470, y=344..414 -->
+  <rect x="150" y="344" width="320" height="70" rx="4"
+        fill="#dce8f4" stroke="#4a7baa" stroke-width="1.2"/>
+  <text x="310" y="366" class="label" text-anchor="middle" font-weight="bold">JTAG2AXI / JTAG2AXIL Bridges</text>
+  <text x="310" y="382" class="small" text-anchor="middle">SMC fabric (AXI) · SMC OTP (AXI-Lite)</text>
+  <text x="310" y="397" class="small" text-anchor="middle">SEP OTP (AXI-Lite)</text>
+
+  <!-- iJTAG → bridges -->
+  <line x1="310" y1="324" x2="310" y2="344"
         stroke="#4a7baa" stroke-width="1" stroke-dasharray="4 2" marker-end="url(#arr-b)"/>
 
-  <!-- JTAG2AXI bridges  x=50..410, y=244..314 -->
-  <rect x="50" y="244" width="360" height="70" rx="4"
+  <!-- Scan Interfaces  x=150..330, y=432..486 -->
+  <rect x="150" y="432" width="180" height="54" rx="4"
         fill="#dce8f4" stroke="#4a7baa" stroke-width="1.2"/>
-  <text x="230" y="266" class="label" text-anchor="middle" font-weight="bold">JTAG2AXI / JTAG2AXIL Bridges</text>
-  <text x="230" y="282" class="small" text-anchor="middle">SMC fabric (AXI) · SMC OTP (AXI-Lite)</text>
-  <text x="230" y="297" class="small" text-anchor="middle">SEP OTP (AXI-Lite)</text>
+  <text x="240" y="454" class="label" text-anchor="middle" font-weight="bold">Scan Interfaces</text>
+  <text x="240" y="470" class="small" text-anchor="middle">BSR · STAP · DFD · DFT</text>
 
-  <!-- iJTAG → bridges (dashed) -->
-  <line x1="230" y1="228" x2="230" y2="244"
-        stroke="#4a7baa" stroke-width="1" stroke-dasharray="4 2" marker-end="url(#arr-b)"/>
-
-  <!-- Scan Interfaces  x=50..220, y=334..388 -->
-  <rect x="50" y="334" width="170" height="54" rx="4"
-        fill="#dce8f4" stroke="#4a7baa" stroke-width="1.2"/>
-  <text x="135" y="356" class="label" text-anchor="middle" font-weight="bold">Scan Interfaces</text>
-  <text x="135" y="372" class="small" text-anchor="middle">BSR · STAP · DFD · DFT</text>
-
-  <!-- jtag_clock_stop: PTAP DEBUG_CONTROL → CTN clock-stop aggregator.
-       Route: right edge of PTAP (x=210) → right through gap above STAP (y=96) →
-              up along x=448 → enters CTN at y=96 → down to aggregator top (y=172).
-       This routes entirely through whitespace inside DTP, touching no blocks. -->
-  <polyline points="210,96 448,96 448,172 520,172"
-            fill="none" stroke="#998866" stroke-width="1.2" stroke-dasharray="5 3"
-            marker-end="url(#arr-k)"/>
-  <text x="350" y="90" class="port" fill="#998866">jtag_clock_stop</text>
-
-  <!-- ══ CTN block  x=480..890, y=58..480 ═════════════════════════════════ -->
-  <rect x="480" y="58" width="410" height="422" rx="5"
+  <!-- ══ CTN block  x=510..960, y=58..520 -->
+  <rect x="510" y="58" width="450" height="462" rx="5"
         fill="#f4f0f0" stroke="#aa4a4a" stroke-width="1.5" stroke-dasharray="6 3"/>
-  <text x="496" y="76" class="blabel" fill="#aa4a4a">Cross Trigger Network (CTN)</text>
+  <text x="526" y="76" class="blabel" fill="#aa4a4a">Cross Trigger Network (CTN)</text>
 
-  <!-- CTM  x=500..660, y=86..144 -->
-  <rect x="500" y="86" width="160" height="58" rx="4"
+  <!-- CTM  x=530..710, y=86..144 -->
+  <rect x="530" y="86" width="180" height="58" rx="4"
         fill="#f4dcdc" stroke="#aa4a4a" stroke-width="1.2"/>
-  <text x="580" y="112" class="label" text-anchor="middle" font-weight="bold">CTM</text>
-  <text x="580" y="128" class="small" text-anchor="middle">N×M routing matrix</text>
+  <text x="620" y="112" class="label" text-anchor="middle" font-weight="bold">CTM</text>
+  <text x="620" y="128" class="small" text-anchor="middle">N×M routing matrix</text>
 
-  <!-- CTPs  x=700..860, y=86..144 -->
-  <rect x="700" y="86" width="160" height="58" rx="4"
+  <!-- CTPs  x=750..940, y=86..144 -->
+  <rect x="750" y="86" width="190" height="58" rx="4"
         fill="#f4dcdc" stroke="#aa4a4a" stroke-width="1.2"/>
-  <text x="780" y="112" class="label" text-anchor="middle" font-weight="bold">CTPs</text>
-  <text x="780" y="128" class="small" text-anchor="middle">[XTRIG_NUM_CTP-1:0]</text>
+  <text x="845" y="112" class="label" text-anchor="middle" font-weight="bold">CTPs</text>
+  <text x="845" y="128" class="small" text-anchor="middle">[XTRIG_NUM_CTP-1:0]</text>
 
   <!-- CTM ↔ CTPs -->
-  <line x1="660" y1="108" x2="700" y2="108"
+  <line x1="710" y1="108" x2="750" y2="108"
         stroke="#aa4a4a" stroke-width="1.2" marker-end="url(#arr-r)"/>
-  <line x1="700" y1="122" x2="660" y2="122"
+  <line x1="750" y1="122" x2="710" y2="122"
         stroke="#aa4a4a" stroke-width="1.2" marker-end="url(#arr-r)"/>
 
-  <!-- Clock-stop aggregator  x=500..850, y=160..224 -->
-  <rect x="500" y="160" width="350" height="64" rx="4"
+  <!-- Clock-stop aggregator  x=530..920, y=160..240.
+       Taller block (80px instead of 64px) to accommodate port labels inside. -->
+  <rect x="530" y="160" width="390" height="80" rx="4"
         fill="#f4dcdc" stroke="#aa4a4a" stroke-width="1.2"/>
-  <text x="675" y="184" class="label" text-anchor="middle" font-weight="bold">Clock-Stop Aggregator</text>
-  <text x="675" y="200" class="small" text-anchor="middle">OR( jtag_clock_stop , OR-reduce(xtrig_clk_stop_req_i) )</text>
-  <text x="675" y="215" class="small" text-anchor="middle">→ stop_clks_o</text>
+  <text x="725" y="188" class="label" text-anchor="middle" font-weight="bold">Clock-Stop Aggregator</text>
+  <text x="725" y="204" class="small" text-anchor="middle">OR( jtag_clock_stop , OR-reduce(xtrig_clk_stop_req_i) )</text>
+  <text x="725" y="219" class="small" text-anchor="middle">→ stop_clks_o</text>
+  <!-- Port labels inside block, right-aligned within the block -->
+  <text x="916" y="176" class="port" text-anchor="end" fill="#888888">← xtrig_clk_stop_req_i</text>
+  <text x="916" y="234" class="port" text-anchor="end" fill="#888888">stop_clks_o →</text>
 
-  <!-- AXI-Lite CSR  x=500..850, y=242..302 -->
-  <rect x="500" y="242" width="350" height="60" rx="4"
+  <!-- jtag_clock_stop: PTAP right (320,121) → right to x=495 (JIU/CTN gap) →
+       down to y=200 (aggregator mid, y=160..240) → right into aggregator left (530). -->
+  <polyline points="320,121 495,121 495,200 530,200"
+            fill="none" stroke="#998866" stroke-width="1.5" stroke-dasharray="5 3"
+            marker-end="url(#arr-k)"/>
+  <text x="405" y="115" class="port" fill="#998866" text-anchor="middle">jtag_clock_stop</text>
+
+  <!-- AXI-Lite CSR  x=530..920, y=260..320 -->
+  <rect x="530" y="260" width="390" height="60" rx="4"
         fill="#f4dcdc" stroke="#aa4a4a" stroke-width="1.2"/>
-  <text x="675" y="266" class="label" text-anchor="middle" font-weight="bold">AXI-Lite CSR</text>
-  <text x="675" y="282" class="small" text-anchor="middle">CTM routing · CTP config · clock-stop enables</text>
-  <text x="675" y="297" class="small" text-anchor="middle">(axil_xtrig_req_i / axil_xtrig_resp_o)</text>
+  <text x="725" y="284" class="label" text-anchor="middle" font-weight="bold">AXI-Lite CSR</text>
+  <text x="725" y="300" class="small" text-anchor="middle">CTM routing · CTP config · clock-stop enables</text>
+  <text x="725" y="315" class="small" text-anchor="middle">(axil_xtrig_req_i / axil_xtrig_resp_o)</text>
 
-  <!-- Internal CT  x=500..660, y=320..376 -->
-  <rect x="500" y="320" width="160" height="56" rx="4"
+  <!-- Internal CT  x=530..710, y=338..394 -->
+  <rect x="530" y="338" width="180" height="56" rx="4"
         fill="#f4dcdc" stroke="#aa4a4a" stroke-width="1.2"/>
-  <text x="580" y="344" class="small" text-anchor="middle" font-weight="bold">Internal CT</text>
-  <text x="580" y="360" class="small" text-anchor="middle">xtrig_ctm_src/dst_*</text>
+  <text x="620" y="362" class="small" text-anchor="middle" font-weight="bold">Internal CT</text>
+  <text x="620" y="378" class="small" text-anchor="middle">xtrig_ctm_src/dst_*</text>
 
-  <!-- CTM → Internal CT (dashed) -->
-  <line x1="580" y1="144" x2="580" y2="320"
-        stroke="#aa4a4a" stroke-width="1" stroke-dasharray="4 2" marker-end="url(#arr-r)"/>
+  <!-- CTM → Internal CT -->
+  <polyline points="710,115 722,115 722,366 710,366"
+            fill="none" stroke="#aa4a4a" stroke-width="1" stroke-dasharray="4 2"
+            marker-end="url(#arr-r)"/>
 
-  <!-- ══ External elements below DTP boundary (y > 530) ═══════════════════ -->
+  <!-- xtrig_clk_stop_req_i INPUT arrow — from right edge into aggregator -->
+  <line x1="958" y1="173" x2="922" y2="173"
+        stroke="#555555" stroke-width="1" stroke-dasharray="3 2" marker-end="url(#arr-g)"/>
 
-  <!-- JTAG pads  x=60..160, y=548..598 -->
-  <rect x="60" y="548" width="100" height="46" rx="3"
+  <!-- stop_clks_o OUTPUT arrow — from aggregator right out -->
+  <line x1="920" y1="231" x2="958" y2="231"
+        stroke="#555555" stroke-width="1.2" marker-end="url(#arr-g)"/>
+
+  <!-- ══ External elements below DTP boundary (y > 570) -->
+
+  <!-- JTAG pads  x=150..280, y=590..640 -->
+  <rect x="150" y="590" width="130" height="46" rx="3"
         fill="#e8e8e8" stroke="#888888" stroke-width="1.2"/>
-  <text x="110" y="567" class="small" text-anchor="middle" font-weight="bold">JTAG</text>
-  <text x="110" y="582" class="small" text-anchor="middle">Pads</text>
+  <text x="215" y="609" class="small" text-anchor="middle" font-weight="bold">JTAG</text>
+  <text x="215" y="624" class="small" text-anchor="middle">Pads</text>
 
-  <!-- Port label, left of JTAG pads -->
-  <text x="14" y="562" class="port">jtag_ptap</text>
-  <text x="14" y="575" class="port">_client_*</text>
+  <!-- jtag_ptap_client_* port labels in left margin -->
+  <text x="14" y="608" class="port">jtag_ptap_client_*</text>
 
-  <!-- JTAG pads ↔ PTAP: route vertically through DTP boundary gap at x=90/130 -->
-  <!-- TDI: pads → up through y=530 → PTAP left (in) -->
-  <polyline points="85,548 85,530 85,100 50,100"
+  <!-- JTAG pads ↔ PTAP: route at x=120 (left margin, clear of JIU x=130)
+       TDI: pads top-left (150,600) → left to x=120 → up to PTAP left (150,121) -->
+  <polyline points="150,600 120,600 120,570 120,121 150,121"
             fill="none" stroke="#555555" stroke-width="1.2" marker-end="url(#arr-g)"/>
-  <!-- TDO: PTAP bottom-right → down through y=530 → pads right (out) -->
-  <polyline points="160,130 165,130 165,530 135,530 135,548"
+  <!-- TDO: PTAP bottom-left (150,140) → left to x=112 → down → pads -->
+  <polyline points="150,140 112,140 112,570 112,600 150,600"
             fill="none" stroke="#555555" stroke-width="1" stroke-dasharray="3 2"
             marker-end="url(#arr-g)"/>
 
-  <!-- SMC (via SMU wiring)  x=310..510, y=548..598  — BELOW DTP boundary -->
-  <rect x="310" y="548" width="200" height="46" rx="3"
+  <!-- SMC box  x=370..580, y=590..640 -->
+  <rect x="370" y="590" width="210" height="46" rx="3"
         fill="#eeeeee" stroke="#888888" stroke-width="1.2"/>
-  <text x="410" y="567" class="small" text-anchor="middle">SMC (via SMU wiring)</text>
-  <text x="410" y="582" class="small" text-anchor="middle">axil_dtp_csr_req/resp</text>
+  <text x="475" y="609" class="small" text-anchor="middle">SMC (via SMU wiring)</text>
+  <text x="475" y="624" class="small" text-anchor="middle">axil_dtp_csr_req/resp</text>
 
-  <!-- SMC → CTN AXI-Lite CSR:
-       Route from SMC top (x=410, y=548) up through y=530, then right
-       to x=675 (CSR center), then up to CSR bottom (y=302). -->
-  <polyline points="460,548 460,530 675,530 675,302"
+  <!-- SMC → CTN AXI-Lite CSR at x=505 (gap between JIU x=490 and CTN x=510) -->
+  <polyline points="505,590 505,570 505,290 530,290"
             fill="none" stroke="#aa4a4a" stroke-width="1.2" marker-end="url(#arr-r)"/>
-  <!-- Response back: parallel wire slightly offset -->
-  <polyline points="675,302 675,524 450,524 450,548"
+  <!-- Response at x=497 -->
+  <polyline points="530,300 497,300 497,570 487,570 487,590"
             fill="none" stroke="#aa4a4a" stroke-width="1" stroke-dasharray="4 2"
             marker-end="url(#arr-r)"/>
-  <text x="560" y="520" class="port" fill="#aa4a4a">axil_xtrig_req/resp</text>
+  <text x="507" y="440" class="port" fill="#aa4a4a">axil_xtrig_req</text>
+  <text x="507" y="451" class="port" fill="#aa4a4a">/resp</text>
 
-  <!-- CTP pads  x=730..830, y=548..598 -->
-  <rect x="730" y="548" width="100" height="46" rx="3"
+  <!-- CTP pads  x=770..910, y=590..640 -->
+  <rect x="770" y="590" width="140" height="46" rx="3"
         fill="#e8e8e8" stroke="#888888" stroke-width="1.2"/>
-  <text x="780" y="567" class="small" text-anchor="middle" font-weight="bold">CTP</text>
-  <text x="780" y="582" class="small" text-anchor="middle">Pads</text>
+  <text x="840" y="609" class="small" text-anchor="middle" font-weight="bold">CTP</text>
+  <text x="840" y="624" class="small" text-anchor="middle">Pads</text>
 
-  <!-- CTPs ↔ CTP pads -->
-  <polyline points="780,144 780,530 780,548"
+  <!-- CTPs ↔ CTP pads: route at x=950 (right of CTPs, within CTN right) -->
+  <polyline points="940,115 952,115 952,570 840,570 840,590"
             fill="none" stroke="#555555" stroke-width="1.2" stroke-dasharray="3 2"
             marker-end="url(#arr-g)"/>
-  <text x="624" y="562" class="port">xtrig_ctp_req/ack_*</text>
+  <text x="720" y="582" class="port">xtrig_ctp_req/ack_*</text>
 
-  <!-- xtrig_clk_stop_req_i → aggregator right side; use text-anchor="end" at x=906 (≤920) -->
-  <text x="906" y="200" class="port" text-anchor="end">xtrig_clk_stop_req_i</text>
-  <line x1="850" y1="197" x2="907" y2="197"
-        stroke="#555555" stroke-width="1" stroke-dasharray="3 2" marker-end="url(#arr-g)"/>
-
-  <!-- stop_clks_o exits CTN right, text-anchor="end" at x=906 -->
-  <text x="906" y="232" class="port" text-anchor="end">stop_clks_o</text>
-  <line x1="850" y1="229" x2="907" y2="229"
-        stroke="#555555" stroke-width="1.2" marker-end="url(#arr-g)"/>
-
-  <!-- Scan chain external ports -->
-  <text x="14" y="342" class="port">jtag_*_scan_* /</text>
-  <text x="14" y="355" class="port">stap_*_host_*</text>
-  <line x1="50" y1="361" x2="34" y2="361"
+  <!-- Scan chain external ports: label column, then short line into Scan Interfaces -->
+  <text x="14" y="454" class="port">jtag_*_scan_* /</text>
+  <text x="14" y="467" class="port">stap_*_host_*</text>
+  <line x1="150" y1="463" x2="116" y2="463"
         stroke="#555555" stroke-width="1" marker-end="url(#arr-g)"/>
-  <line x1="34" y1="350" x2="50" y2="350"
+  <line x1="116" y1="452" x2="150" y2="452"
         stroke="#555555" stroke-width="1" stroke-dasharray="3 2" marker-end="url(#arr-g)"/>
 
   <!-- AXI debug bridge external outputs -->
-  <text x="14" y="460" class="port">axi_smc_dbg_* /</text>
-  <text x="14" y="473" class="port">axil_*_otp_jtag_*</text>
-  <line x1="50" y1="279" x2="34" y2="279"
+  <text x="14" y="368" class="port">axi_smc_dbg_* /</text>
+  <text x="14" y="381" class="port">axil_*_otp_jtag_*</text>
+  <line x1="150" y1="376" x2="116" y2="376"
         stroke="#4a7baa" stroke-width="1" stroke-dasharray="4 2" marker-end="url(#arr-b)"/>
 
 </svg>
