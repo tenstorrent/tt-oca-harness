@@ -446,7 +446,12 @@ int secondary_main(void) {
 
     if (hartid == 0) {
         return main();
-    } else {
+    }
+    /* Park forever. A bare wfi was not enough: it returns as soon as any
+     * interrupt is pending, and control then fell off the end of this
+     * non-void function, so a non-zero hart returned garbage. Looping is the
+     * idiom the sibling firmware tests already use for exactly this. */
+    while (true) {
         __asm__ __volatile__("wfi");
     }
 }
