@@ -44,7 +44,8 @@ _DUAL_REQ_CYCLES = 50_000
 # collection loop.
 _GRANT_SAMPLE_TARGET = 16
 _GRANT_MIN_SAMPLES = 4
-_GRANT_WAIT_CYCLES = 200_000
+_GRANT_POLLS = 200_000
+_GRANT_POLL_CYCLES = 20
 
 
 def _req() -> int:
@@ -150,13 +151,14 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
         # Collect grants for a fixed budget and let the asserts below decide.
         # Breaking out on the same condition the asserts test would make them
         # restatements of the loop guard, unable to fail at their own sites.
-        for _ in range(_GRANT_WAIT_CYCLES):
+        for _ in range(_GRANT_POLLS):
             if len(grants) >= _GRANT_SAMPLE_TARGET:
                 break
-            await ClockCycles(dut.clk_i, 20)
+            await ClockCycles(dut.clk_i, _GRANT_POLL_CYCLES)
         assert len(grants) >= _GRANT_MIN_SAMPLES, (
             f"CHK-NO-STARVE FAIL: only {len(grants)} post-adapter grants observed in "
-            f"{_GRANT_WAIT_CYCLES} polls, need {_GRANT_MIN_SAMPLES} to judge sharing "
+            f"{_GRANT_POLLS} polls of {_GRANT_POLL_CYCLES} cycles, need "
+            f"{_GRANT_MIN_SAMPLES} to judge sharing "
             f"(grants={grants[:16]} dual_grants={dual_grants[:16]})"
         )
 
@@ -184,10 +186,13 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
 
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
+        # The grant sample above establishes how much traffic each client
+        # actually took, so the routing floors are held to that rather than to
+        # the scoreboard's default of one beat.
+        self.drbg_sb.set_min_matches(CHK5_aes=_GRANT_MIN_SAMPLES, CHK5_otbn_urnd=_GRANT_MIN_SAMPLES)
         assert self.drbg_sb.report()
         ra = self.drbg_sb.results["CHK5_aes"]
         ru = self.drbg_sb.results["CHK5_otbn_urnd"]
-        assert ra.mismatches == 0 and ru.mismatches == 0
         self.logger.info(
             "CHK-ROUTING PASS: CHK5_aes match=%d and CHK5_otbn_urnd match=%d "
             "equal the AXIS1 grant-order stream (mismatch=0)",

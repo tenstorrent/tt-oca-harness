@@ -33,7 +33,7 @@ from env.sep_reg_meta import CSRNG, EDN, sym
 from ocah_axi_vip import worst_resp
 from sep_base_test import sep_base_test
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
-from seq_lib.sep_entropy_pool_seq import POOL_POP, POOL_STATUS
+from seq_lib.sep_entropy_pool_seq import POOL_POP, POOL_STATUS, RESP_SLVERR
 from seq_lib.sep_esrc_bringup_seq import (
     SepEsrcConfigSeq,
     SepEsrcEnableEdnSeq,
@@ -321,7 +321,13 @@ class sep_trng_reset_recovery_test(sep_base_test):
         # all three source legs back to the internal DRBG.
         await self._wait_pool_level(nonzero=False)
         empty_pop = await self._read(POOL_POP, length=8, expect_error=True)
-        assert empty_pop.resp_code != 0, "empty pool returned OKAY after TRNG reset"
+        # sep_entropy_fifo.sv answers an empty pop, and a pending read during
+        # clear, with RESP_SLVERR on both paths. Accepting any non-OKAY would let
+        # a DECERR pass -- and a DECERR here would mean the aperture had fallen
+        # into the reset domain, which is the opposite of what this proves.
+        assert empty_pop.resp_code == RESP_SLVERR, (
+            f"empty pool resp={empty_pop.resp_code} after TRNG reset, expected SLVERR"
+        )
         assert empty_pop.rdata == 0, "empty pool exposed stale pre-reset entropy"
         self.logger.info(
             "CHK-TRNG-STALE PASS: pool drained to 0 and the empty pop was refused with "
