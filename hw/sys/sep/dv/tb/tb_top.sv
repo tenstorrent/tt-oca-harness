@@ -1,6 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// SEP OSS DV testbench top.
+// SEP OSS DV testbench top, shared by the native cocotb / PyUVM flow and
+// the SystemVerilog UVM flow. ONE module, two shapes:
+//   * default (cocotb, `--dut sep`): the pin-level ANSI port list cocotb
+//     drives and samples;
+//   * `UVM` (SV-UVM, `--dut sep --framework uvm`): the port list is replaced
+//     by internal TB signals and the harness block at the end of the module
+//     adds the clocks, the shared-VIP interfaces on the CPU-LSU splice,
+//     quiescent tie-offs, uvm_config_db publication, and run_test(). Test
+//     classes are compiled via `include "sep_tests.sv".
+// Every TB signal is declared once, in tb/sep_tb_signal_list.svh, and
+// expanded into the selected shape by the SEP_TB_* macros below.
 //
 // Wraps the `sep_wrapper` DUT (hw/top/sep_wrapper.sv, which instantiates the bare
 // `sep` core from hw/sys/sep/rtl/sep.sv) for the OSS cocotb flow: brings
@@ -49,405 +59,44 @@
 
 `timescale 1ps/1fs
 
+// Shape selection for sep_tb_signal_list.svh: the same list expands as the
+// ANSI port list (cocotb) or as internal TB signals (`UVM`). The macros live
+// only from here to the `undef block after the module header.
+`ifndef UVM
+    // cocotb shape: every entry is a pin-level ANSI port, published to cocotb
+    // through the Verilator metacomment (sep_public_scope.vlt publishes the
+    // whole module as well).
+    `define SEP_TB_IN_FIRST(dtype, name) input  wire dtype name /*verilator public_flat_rw*/
+    `define SEP_TB_IN(dtype, name)     , input  wire dtype name /*verilator public_flat_rw*/
+    `define SEP_TB_OUT(dtype, name)    , output dtype name /*verilator public_flat_rw*/
+`else
+    // SV-UVM shape: every entry is an internal TB signal for the harness
+    // block at the end of this module.
+    `define SEP_TB_IN_FIRST(dtype, name) dtype name;
+    `define SEP_TB_IN(dtype, name) dtype name;
+    `define SEP_TB_OUT(dtype, name) dtype name;
+`endif
+
+// The signal list qualifies every package-scoped type explicitly, so the DUT
+// package imports follow the header (a module header that carries imports and
+// no port list is rejected by some frontends).
 module sep_uvm_top
+`ifndef UVM
+(
+    `include "sep_tb_signal_list.svh"
+);
+`else
+;
+    `include "sep_tb_signal_list.svh"
+`endif
+
+`undef SEP_TB_IN_FIRST
+`undef SEP_TB_IN
+`undef SEP_TB_OUT
+
     import sep_pkg::*;
     import sep_crypto_pkg::*;
     import sep_io_pkg::*;
-(
-    // Clocks (driven by cocotb)
-    input  wire logic clk_i,
-    input  wire logic clk_wdt_i,
-    input  wire logic entropy_rosc_sample_clk_i,
-
-    // Reset (driven by cocotb, active-low)
-    input  wire logic rst_ni,
-
-    // Boot/run controls (driven by cocotb)
-    input  wire logic ext_boot_seq_done_i,
-    input  wire logic mpc_reset_run_req,
-    // TEST_EN strap (frontdoor DUT input). Latched into secure_tm on fuse-sense-done
-    // (or on cold-reset release when security_disable is set). Default 0 = functional
-    // mode; drive 1 before sense to open FEAT_CTRL[47:32].
-    input  wire logic test_en_strap_i,
-    // JTAG SW-reset hold (frontdoor DUT input jtag_sep_reset_ctrl_i). When 1,
-    // that engine is held in SW reset regardless of SW_RESET_N, so it never
-    // asserts crypto edn_req across rst_ni. Default 0 = CSR owns the bit.
-    input  wire logic jtag_otbn_rst_hold_i,
-    input  wire logic jtag_aes_rst_hold_i,
-    input  wire logic jtag_hmac_rst_hold_i,
-    input  wire logic jtag_kmac_rst_hold_i,
-    input  wire logic jtag_trng_rst_hold_i,
-    // LC differential-integrity error inject. Default 0. When 1, tb forces a broken
-    // pair onto the LCC decoder input (signed off -- no legal OTP image can present
-    // one). See the force block below.
-    input  wire logic lc_sigint_inject_i,
-    // Token-comparator redundancy fault inject. Default 0. Encoding:
-    //   3'b000 off
-    //   3'b001 collapse instance 0 of the RMA_SIP comparator (both rails 0)
-    //   3'b010 disagree: instance 0 drives a legal mismatch pair while 1/2 match
-    //   3'b011 common-mode mismatch: all three legal mismatch (invert of a match)
-    //   3'b100 common-mode match: all three legal match (invert of a mismatch)
-    // Signed off -- no legal token/OTP image can break the three identical
-    // compare cones. See the force block below.
-    input  wire logic [2:0] token_cmp_fault_inject_i,
-    // Which token comparator the inject hits. Default 0.
-    //   2'b00 RMA_SIP  2'b01 RMA_CHIPLET  2'b10 SEC_DISABLE
-    input  wire logic [1:0] token_cmp_fault_sel_i,
-    // DMA host-path command-integrity inject. Default 0. When 1, tb forces a
-    // broken codeword onto the host-adapter command-integrity decoder input
-    // (signed off -- software cannot emit a bad TL-UL user code). The checker
-    // still gates on a_valid, so a DMA-issued command is required. See the
-    // force block below.
-    input  wire logic dma_host_intg_inject_i,
-
-    // ------------------------------------------------------------------
-    // Flat CPU-LSU AXI manager (cocotbext-axi AxiMaster, prefix s_axi)
-    // sep_cpu.lsu_axi_* = sep_32_64_3_12 (addr32/data64/id3/user12)
-    // ------------------------------------------------------------------
-    // Write address channel
-    input  wire logic [2:0]   s_axi_awid,
-    input  wire logic [31:0]  s_axi_awaddr,
-    input  wire logic [7:0]   s_axi_awlen,
-    input  wire logic [2:0]   s_axi_awsize,
-    input  wire logic [1:0]   s_axi_awburst,
-    input  wire logic         s_axi_awlock,
-    input  wire logic [3:0]   s_axi_awcache,
-    input  wire logic [2:0]   s_axi_awprot,
-    input  wire logic [3:0]   s_axi_awqos,
-    input  wire logic [3:0]   s_axi_awregion,
-    input  wire logic [11:0]  s_axi_awuser,
-    input  wire logic         s_axi_awvalid,
-    output logic              s_axi_awready,
-    // Write data channel
-    input  wire logic [63:0]  s_axi_wdata,
-    input  wire logic [7:0]   s_axi_wstrb,
-    input  wire logic         s_axi_wlast,
-    input  wire logic [11:0]  s_axi_wuser,
-    input  wire logic         s_axi_wvalid,
-    output logic              s_axi_wready,
-    // Write response channel
-    output logic [2:0]        s_axi_bid,
-    output logic [1:0]        s_axi_bresp,
-    output logic [11:0]       s_axi_buser,
-    output logic              s_axi_bvalid,
-    input  wire logic         s_axi_bready,
-    // Read address channel
-    input  wire logic [2:0]   s_axi_arid,
-    input  wire logic [31:0]  s_axi_araddr,
-    input  wire logic [7:0]   s_axi_arlen,
-    input  wire logic [2:0]   s_axi_arsize,
-    input  wire logic [1:0]   s_axi_arburst,
-    input  wire logic         s_axi_arlock,
-    input  wire logic [3:0]   s_axi_arcache,
-    input  wire logic [2:0]   s_axi_arprot,
-    input  wire logic [3:0]   s_axi_arqos,
-    input  wire logic [3:0]   s_axi_arregion,
-    input  wire logic [11:0]  s_axi_aruser,
-    input  wire logic         s_axi_arvalid,
-    output logic              s_axi_arready,
-    // Read data channel
-    output logic [2:0]        s_axi_rid,
-    output logic [63:0]       s_axi_rdata,
-    output logic [1:0]        s_axi_rresp,
-    output logic              s_axi_rlast,
-    output logic [11:0]       s_axi_ruser,
-    output logic              s_axi_rvalid,
-    input  wire logic         s_axi_rready,
-
-    // ------------------------------------------------------------------
-    // Flat SMN-inbound external AXI manager (cocotbext-axi AxiMaster, prefix
-    // m_axi). This is the DUT's REAL external inbound port (smn_inbound_axi_*,
-    // sep_56_64_6_12: addr56/data64/id6/user12) — a true frontdoor master on a
-    // real DUT port. Unlike the CPU-LSU splice (s_axi), which attaches to the
-    // internal LSU bus, this path traverses the SEP inbound filter
-    // (u_inbound_filter), which is block-by-default and is skipped
-    // only when feat_ctrl.sep_debug=1. `sep_lcc_uvm_inbound_filter_gating_test` drives
-    // it to prove external AXI is blocked (PROD) / allowed (PROD_DBG_1). Idle for
-    // every other test (the agent drives these to a clean idle from t=0).
-    // ------------------------------------------------------------------
-    // Write address channel
-    input  wire logic [5:0]   m_axi_awid,
-    input  wire logic [55:0]  m_axi_awaddr,
-    input  wire logic [7:0]   m_axi_awlen,
-    input  wire logic [2:0]   m_axi_awsize,
-    input  wire logic [1:0]   m_axi_awburst,
-    input  wire logic         m_axi_awlock,
-    input  wire logic [3:0]   m_axi_awcache,
-    input  wire logic [2:0]   m_axi_awprot,
-    input  wire logic [3:0]   m_axi_awqos,
-    input  wire logic [3:0]   m_axi_awregion,
-    input  wire logic [11:0]  m_axi_awuser,
-    input  wire logic         m_axi_awvalid,
-    output logic              m_axi_awready,
-    // Write data channel
-    input  wire logic [63:0]  m_axi_wdata,
-    input  wire logic [7:0]   m_axi_wstrb,
-    input  wire logic         m_axi_wlast,
-    input  wire logic [11:0]  m_axi_wuser,
-    input  wire logic         m_axi_wvalid,
-    output logic              m_axi_wready,
-    // Write response channel
-    output logic [5:0]        m_axi_bid,
-    output logic [1:0]        m_axi_bresp,
-    output logic [11:0]       m_axi_buser,
-    output logic              m_axi_bvalid,
-    input  wire logic         m_axi_bready,
-    // Read address channel
-    input  wire logic [5:0]   m_axi_arid,
-    input  wire logic [55:0]  m_axi_araddr,
-    input  wire logic [7:0]   m_axi_arlen,
-    input  wire logic [2:0]   m_axi_arsize,
-    input  wire logic [1:0]   m_axi_arburst,
-    input  wire logic         m_axi_arlock,
-    input  wire logic [3:0]   m_axi_arcache,
-    input  wire logic [2:0]   m_axi_arprot,
-    input  wire logic [3:0]   m_axi_arqos,
-    input  wire logic [3:0]   m_axi_arregion,
-    input  wire logic [11:0]  m_axi_aruser,
-    input  wire logic         m_axi_arvalid,
-    output logic              m_axi_arready,
-    // Read data channel
-    output logic [5:0]        m_axi_rid,
-    output logic [63:0]       m_axi_rdata,
-    output logic [1:0]        m_axi_rresp,
-    output logic              m_axi_rlast,
-    output logic [11:0]       m_axi_ruser,
-    output logic              m_axi_rvalid,
-    input  wire logic         m_axi_rready,
-
-    // ------------------------------------------------------------------
-    // Flat SEP-OTP JTAG AXI-Lite manager (cocotbext-axi AxiLiteMaster, prefix
-    // j_axi). This is the DUT's real `axil_sep_otp_jtag_*` port (efuse_axil:
-    // addr32/data32) -- the debug/JTAG path into the eFuse interface controller,
-    // which arbitrates with the CPU's eFuse-MMR path at the eFuse AXI-Lite mux and
-    // is LC-state-gated (in PROD/RMA_SIP the JTAG path may read/write only the MMR
-    // token region; a shadow/CSR access is routed to an error slave -> 0xbadcab1e).
-    // Used by `sep_efuse_jtag_axil_el2_cpu_mux_test`. Idle for every other test.
-    // ------------------------------------------------------------------
-    input  wire logic [31:0]  j_axi_awaddr,
-    input  wire logic [2:0]   j_axi_awprot,
-    input  wire logic         j_axi_awvalid,
-    output logic              j_axi_awready,
-    input  wire logic [31:0]  j_axi_wdata,
-    input  wire logic [3:0]   j_axi_wstrb,
-    input  wire logic         j_axi_wvalid,
-    output logic              j_axi_wready,
-    output logic [1:0]        j_axi_bresp,
-    output logic              j_axi_bvalid,
-    input  wire logic         j_axi_bready,
-    input  wire logic [31:0]  j_axi_araddr,
-    input  wire logic [2:0]   j_axi_arprot,
-    input  wire logic         j_axi_arvalid,
-    output logic              j_axi_arready,
-    output logic [31:0]       j_axi_rdata,
-    output logic [1:0]        j_axi_rresp,
-    output logic              j_axi_rvalid,
-    input  wire logic         j_axi_rready,
-
-    // ------------------------------------------------------------------
-    // CPU firmware-boot controls/observables (driven/read by cocotb in the
-    // `+cpu_boot` run mode; left at 0 by the no-CPU smoke tests).
-    // ------------------------------------------------------------------
-    input  wire logic [31:1]  rst_vec_i,         // desired reset PC[31:1] for JTAG TDR setup
-    input  wire logic         i_cpu_run_req_i,   // async run request to the core
-    input  wire logic         tcm_load_i,        // strobe: backdoor-load TCM image
-    // WDT reset INPUT to the DUT (a real sep primary input). Default-driven 1
-    // (deasserted) by sep_base_test for every test; the wdt-reset-path test
-    // pulses it to 0 to exercise wdt_rst_ni -> sep_cpu_reset_n.
-    input  wire logic         wdt_rst_ni_i,
-    // EL2 debugger reset INPUT to the DUT (sep.sv dbg_rstb_i, a real sep primary
-    // input). Default-driven 1 (deasserted) by sep_base_test; the CPU debug-reset
-    // isolation test pulses it to 0 to prove it does NOT disturb the system/CPU
-    // reset domain.
-    input  wire logic         dbg_rstb_i,
-    output logic              o_cpu_run_ack_o,   // core run acknowledge (XMR-tapped)
-    output logic              cpu_trace_valid_o, // retired-instruction valid
-    output logic [31:0]       cpu_trace_addr_o,  // retired-instruction PC
-    output logic [31:0]       cpu_trace_insn_o,  // retired instruction encoding
-    output logic [4:0]        cpu_trace_ecause_o,   // exception cause (with dbg_cpu_trace_exc_o)
-    output logic              cpu_trace_interrupt_o, // exception was an interrupt
-    output logic [31:0]       cpu_trace_tval_o,  // trap value (faulting addr/insn)
-    output logic              fw_done_o,         // firmware signaled completion
-    output logic              fw_pass_o,         // completion was PASS
-    output logic [7:0]        fw_char_o,         // firmware console byte
-    output logic              fw_char_valid_o,   // console byte strobe
-    // Boot bring-up debug observables (cheap XMR/struct taps).
-    output logic              dbg_iccm_active_o, // core asserting any ICCM bank clken (fetching)
-    output logic [13:0]       dbg_iccm_addr_o,   // ICCM bank-0 row address being fetched
-    output logic              dbg_dccm_active_o, // core asserting any DCCM bank clken
-    output logic              dbg_sep_reset_n_o, // SEP internal reset released
-    // CPU warm reset (sep_cpu_reset_n = sep_reset_n & wdt_rst_ni).
-    output logic              sep_cpu_reset_n_o,
-    output logic              dbg_cpu_trace_exc_o, // retired-instruction exception flag
-    output logic              sep_fuse_sense_done_o, // SEP fuse sense completed
-    // Sensed eFuse shadow-register array, flattened to a top-level OUTPUT PORT
-    // (not an internal signal) so cocotb reads it reliably -- same access
-    // pattern as every other observable above. Default backdoor data-compare
-    // path; one eFuse test uses the AXI front door instead.
-    output logic [sep_efuse_pkg::NumEfuseBits-1:0] efuse_shadow_probe_o,
-    // SEP scratch-cold CSR array (8 words x 32b), surfaced as a top-level probe so
-    // the dual-CPU eFuse-mux coexistence test can read the EL2 firmware's measured
-    // summary (host loop count + KM-contention error counters) with no AXI master
-    // -- the EL2 owns the LSU bus under +cpu_boot. The cold block survives the KM
-    // warm reset. Read-only observation of the same registers.
-    output logic [255:0]      scratch_cold_probe_o,
-    // Read-only XMRs observe the loaded manifest header and three decrypted AES
-    // payload blocks. The CPU owns the SRAM frontdoor during firmware boot, so
-    // the testbench has no independent read path. The memory arrays sit outside
-    // the AXI ready/valid combinational cones.
-    output logic [63:0]       sram_word0_probe_o,
-    output logic [383:0]      sram_payload_probe_o,
-    // SMC scratch[10] (smc_base+0x390D0), the slot the ROM publishes the raw
-    // DFX/MEM_REPAIR status into when it blocks the boot -- the documented
-    // JTAG-readable evidence that the ROM saw the failure. Sampled rather than
-    // continuously assigned: axi_sim_mem backs the SMC with an ASSOCIATIVE array,
-    // which cannot appear in a continuous assign. Reads 0 until the ROM writes it.
-    output logic [31:0]       smc_scratch10_probe_o,
-    // DFX_CTRL_STATUS_SMU (smc_base+0xB800) as the SMC model actually holds it,
-    // i.e. the word the ROM's MEM_REPAIR gate reads over AXI. The FAILURE arm can
-    // confirm its own injection from SMC scratch[10], because the gate republishes
-    // the raw value there; the PASS arm cannot, because that publication sits on
-    // the failure branch and the pass branch writes nothing at all. Without this
-    // probe a pass-arm test whose +sep_dft_status silently failed to apply would
-    // read the tb default 0x113 -- which has mem_repair_success, mbist_done AND
-    // mbist_pass set, so it would still boot and still be green, and the whole
-    // discrimination the testcase rests on would be untested.
-    output logic [31:0]       smc_dft_status_probe_o,
-    // Count of SEP->SMC accesses that landed outside every register window the
-    // generated SMC map declares. Non-zero means the ROM used an offset this
-    // design does not implement -- see the SMC address decode check below. Any
-    // test may assert this is 0; the flat axi_sim_mem cannot catch it otherwise.
-    output logic [31:0]       smc_addr_violations_o,
-    output logic [31:0]       km_rom_req_count_o,
-    output logic [31:0]       km_sram_req_count_o,
-    output logic [31:0]       km_sram_write_count_o,
-    output logic [31:0]       km_sram_word0_o,
-    output logic [31:0]       otbn_imem_req_count_o,
-    output logic [31:0]       otbn_imem_write_count_o,
-    output logic [31:0]       otbn_dmem_req_count_o,
-    output logic [31:0]       otbn_dmem_write_count_o,
-    // ESRC -> DRBG -> CSRNG -> EDN -> KM entropy datapath probes. The driven noise
-    // (esrc_noise_o) is the deterministic stimulus; the rest are DUT observation
-    // points for the alive smoke and CHK1-CHK5 golden-vs-probe scoreboard.
-    // Cocotb-driven 12-lane raw noise: lets a Python noise generator feed the DUT
-    // and a golden the SAME deterministic sequence, so the decorrelator golden
-    // aligns by construction.
-    input  wire logic [11:0]  esrc_noise_ext_i,
-    output logic [11:0]       esrc_noise_o,          // driven 12-lane raw noise (golden input)
-    output logic              esrc_noise_active_o,   // lane-0 actual DUT dcor.noise_i (force-took proof)
-    output logic [11:0]       esrc_ro_enable_o,      // CHK1/CHK2 per-lane generator enable (sync)
-    output logic [95:0]       esrc_decor_bytes_o,    // CHK1: 12x8 decorrelator sampled output
-    output logic [347:0]      esrc_decor_sr_o,       // CHK1 sync: 12x29 raw decorrelator ff_stage
-    output logic              esrc_decor_valid_o,    // CHK2 chain: per-sample BIW/decor valid strobe
-    output logic              esrc_whiten_push_o,    // CHK2 chain: SHA-whitener accepted-word strobe
-    output logic              esrc_compress_vld_o,   // CHK2: compressor output valid
-    output logic [31:0]       esrc_compress_data_o,  // CHK2: compressor output word
-    output logic              drbg_seed_valid_o,     // seed accumulated/presented to CSRNG
-    output logic              drbg_es_ack_o,         // CSRNG seed-handshake ack
-    output logic [383:0]      drbg_es_bits_o,        // CHK4: 384-bit hardware seed
-    output logic              drbg_genbits_vld_o,    // CHK4: CTR_DRBG genbits valid
-    output logic [127:0]      drbg_genbits_data_o,   // CHK4: CTR_DRBG genbits block
-    output logic              drbg_genbits_fips_o,   // CHK4: genbits fips flag
-    output logic              drbg_gen_last_o,       // CHK4: last genbits of a Generate
-    output logic              km_entropy_tvalid_o,   // CHK5: post-mux EDN->KM tvalid (entropy_muxed_req[0])
-    output logic [31:0]       km_entropy_tdata_o,    // CHK5: post-mux EDN->KM tdata word
-    output logic              km_entropy_tready_o,   // CHK5: KM tready (entropy_muxed_rsp[0]) -> real handshake
-    // CHK5 crypto EDN sinks: the SEP EDN's crypto leg (entropy_muxed_req[1]) fans
-    // out through drbg_axis_edn_adapter to native EDN clients crypto_edn[0]=AES,
-    // [1]=KMAC, [2]=OTBN-RND, [3]=OTBN-URND. A delivered word to sink i is the cycle
-    // crypto_edn_req[i].edn_req && crypto_edn_rsp[i].edn_ack. Packed per-client so a
-    // multi-sink CHK5 can score each endpoint off these vectors.
-    output logic [3:0]        crypto_edn_req_o,      // bit i = crypto_edn_req[i].edn_req
-    output logic [3:0]        crypto_edn_ack_o,      // bit i = crypto_edn_rsp[i].edn_ack
-    output logic [127:0]      crypto_edn_bus_o,      // word i = crypto_edn_rsp[i].edn_bus ([32*i +: 32])
-    output logic [3:0]        crypto_edn_fips_o,     // bit i = crypto_edn_rsp[i].edn_fips
-    // CHK5 per-sink ROUTING golden tap (AXIS1): the crypto-leg EDN word stream
-    // POST the KM/crypto mux but PRE the drbg_axis_edn_adapter fan-out
-    // (sep_crypto.entropy_muxed_req[1]). This is the authoritative ordered word
-    // sequence the adapter hands to the crypto endpoints; with a single active
-    // crypto sink the adapter is in-order so AES's post-adapter beats equal this
-    // stream 1:1, and each word is also chained to the CHK4 genbits golden.
-    // Read-only XMR, no force.
-    output logic              axis1_tvalid_o,        // entropy_muxed_req[1].tvalid
-    output logic              axis1_tready_o,        // entropy_muxed_rsp[1].tready
-    output logic [31:0]       axis1_tdata_o,         // entropy_muxed_req[1].tdata (32b word)
-    // CHK5 entropy-pool sink (EDN endpoint [2]): AXIS2 is the pre-adapter mux-leg
-    // stream (entropy_muxed_req[2]); pool_edn_* is the post-adapter native EDN
-    // handshake into sep_entropy_fifo (one client, so AXIS2==pool beats in order).
-    // Observation-only XMR, no force. No frontdoor equivalent of the 32-bit EDN
-    // beat -- the 0x1095 aperture is a packed 64-bit drain, Phase 3 FIFO consume.
-    output logic              axis2_tvalid_o,        // entropy_muxed_req[2].tvalid
-    output logic              axis2_tready_o,        // entropy_muxed_rsp[2].tready
-    output logic [31:0]       axis2_tdata_o,         // entropy_muxed_req[2].tdata (32b word)
-    output logic              pool_edn_req_o,        // entropy_pool_edn_req_i.edn_req
-    output logic              pool_edn_ack_o,        // entropy_pool_edn_rsp_o.edn_ack
-    output logic [31:0]       pool_edn_bus_o,        // entropy_pool_edn_rsp_o.edn_bus
-    output logic              pool_edn_fips_o,       // entropy_pool_edn_rsp_o.edn_fips
-    // Observation-only depth of the fabric pool's 32->64 packer. Used to
-    // trigger a TRNG reset with exactly one pre-reset 32-bit half-word cached.
-    output logic [1:0]        entropy_pool_packer_depth_o,
-    // Coordinated-reset observation: shared reset plus ESRC/CSRNG/EDN isolate
-    // completion bits, used to prove reset cannot precede the slowest drain.
-    output logic              trng_gated_rst_n_probe_o,
-    output logic [2:0]        trng_axi_isolated_probe_o,
-    // IP-interrupt aggregator: observation-only mirror of the 34-bit
-    // sep_internal_interrupts vector that sep.sv assembles and feeds to the VeeR
-    // PIC. The IP->aggregator test injects each CSRNG/EDN INTR_TEST and watches the
-    // mapped bit here. Read-only XMR, no force (same class as the probes above).
-    output logic [sep_pkg::NUM_INTERNAL_IRQS-1:0] sep_internal_interrupts_probe_o,
-    // The production SEP debug-bus output, exposed read-only for lane-packing checks.
-    output logic [383:0]      ext_debug_bus_o,
-    // System-CSR AXI4-Lite AR/AW handshakes after axi_to_axi_lite
-    // (sep_system_peripherals_xbar u_system_csr_a2l_1). Observation-only.
-    // SIGNED OFF 2026-08-25 by yenhenglai: fabric.adoc "convert burst to
-    // single" is this bridge. The external master still sees AxLEN=1;
-    // Lite has no AxLEN, so the split is not a frontdoor CSR. Addr is the
-    // local 32 bits (scratch is in the 32-bit map). Outside the tb s_axi /
-    // m_axi ready/valid cones.
-    output logic        sys_csr_axil_arvalid_o,
-    output logic        sys_csr_axil_arready_o,
-    output logic [31:0] sys_csr_axil_araddr_o,
-    output logic        sys_csr_axil_awvalid_o,
-    output logic        sys_csr_axil_awready_o,
-    output logic [31:0] sys_csr_axil_awaddr_o,
-    // Lifecycle status observability. security_disable and lc_sigint_err are DUT
-    // outputs (frontdoor). secure_tm_o is also a real DUT output -- the latched
-    // TEST_EN strap -- so a strap test can observe the latch rather than assume it.
-    output logic              lcc_security_disable_probe_o,
-    output logic              lcc_sigint_err_probe_o,
-    output logic              secure_tm_o,
-    // Demotion state outputs expose the differential {~demote, demote} encoding;
-    // 2'b10 is clear, 2'b01 is set, and other values are invalid. The lock bits
-    // have no DUT output, and the CPU owns their AXI frontdoor during firmware
-    // boot, so read-only XMRs observe the register storage. The leaf register
-    // storage sits outside the AXI ready/valid combinational cones.
-    output logic [1:0]        lcc_demote_state_1_probe_o,
-    output logic [1:0]        lcc_demote_state_2_probe_o,
-    output logic              lcc_demote_lock_1_probe_o,
-    output logic              lcc_demote_lock_2_probe_o,
-    // OTP JTAG2AXIL disable bits of DUT dbg_disable_o (frontdoor). LCC ties
-    // both to 0; the fuse controller enforces access. Sliced here so cocotb
-    // can read them without a packed-struct field walk.
-    output logic              dbg_disable_smc_otp_jtag2axi_o,
-    output logic              dbg_disable_sep_otp_jtag2axi_o,
-    // The whole dbg_disable_o struct, flattened to one vector. The two bits
-    // above are the pair LCC ties to zero and cannot tell a correct gating
-    // formula from a broken one. The other nine follow feat_ctrl: sip_debug
-    // as the mandatory outer gate, chiplet_dbg per scope, sep_debug
-    // additionally for the SEP S-TAP. Exported whole rather than bit by bit
-    // so a field added to the struct widens the vector.
-    output logic [$bits(sep_lifecycle_ctrl_pkg::dbg_disable_t)-1:0] dbg_disable_all_o,
-    // WDT bite reset request: a REAL `sep` output port (sep.sv wdt_timer_rst_req_o,
-    // asserted when the WDT count reaches BITE_THOLD). Brought out so the
-    // reset/WDT sanity test (`sep_reset_wdt_sanity_test`) can observe the bite ->
-    // reset-request edge. This
-    // is a DUT output (frontdoor), not an internal-signal probe.
-    output logic              wdt_timer_rst_req_o,
-    output logic              spi_cs_n_o,
-    output logic              spi_sck_o,
-    output logic              spi_mosi_o,
-    input  wire logic         spi_miso_i
-);
 
     // ------------------------------------------------------------------
     // DUT-flavor XMR roots. The DUT is `sep_wrapper`, so sep-internal state lives
@@ -1068,9 +717,8 @@ module sep_uvm_top
         // ---- Explicit per-test injections. -------------------------------
         // All three sit BELOW the $readmemh above, so an explicit request always
         // wins over whatever a +sep_smc_mem_hex image happens to cover. Keeping
-        // them together is not cosmetic: the strap seed used to run ABOVE the
-        // $readmemh, so an SMC image that covered the straps window could
-        // silently clear an explicit stimulus.
+        // them together is not cosmetic: they run after the $readmemh so an SMC image that covers
+        // the straps window cannot silently clear an explicit stimulus.
         //
         // +sep_boot_from_spi sets STRAPS_LO[25] (primary_chiplet) at
         // smc_base+0x405800. Bit 25 is byte 3 of the word, bit 1. It is a strap
@@ -2079,7 +1727,8 @@ module sep_uvm_top
     // would be judging the core's own traffic rather than TB stimulus. Static
     // initialisation resolves before any initial block, so the value is settled
     // before the first assertion samples. m_axi stays armed in both modes: it is
-    // TB-driven throughout.
+    // TB-driven throughout. The SV-UVM shape ANDs in the sep_tb_if runtime
+    // enable, so a scenario holds the checker off through the interface.
     bit s_axi_sva_en = !$test$plusargs("cpu_boot");
 
     ocah_axi_sva #(
@@ -2090,7 +1739,11 @@ module sep_uvm_top
     ) u_s_axi_sva (                       // CPU LSU master (TB-driven when !cpu_boot)
         .aclk    (clk_i),
         .aresetn (rst_ni),
+`ifdef UVM
+        .en_i    (s_axi_sva_en && u_tb_if.axi_sva_en),
+`else
         .en_i    (s_axi_sva_en),
+`endif
         .awid    (s_axi_awid),
         .awaddr  (s_axi_awaddr),
         .awlen   (s_axi_awlen),
@@ -2195,6 +1848,241 @@ module sep_uvm_top
         .rvalid  (cpu_axil_resp.r_valid),
         .rready  (cpu_axil_req.r_ready)
     );
+
+
+`ifdef UVM
+    // ------------------------------------------------------------------
+    // SV-UVM harness (`--dut sep --framework uvm`): the three clocks, the
+    // shared-VIP interface instances on the CPU-LSU splice, quiescent
+    // tie-offs for every other cocotb-driven stimulus pin, uvm_config_db
+    // publication, and run_test(). Compiled only when the native uvm flow
+    // defines UVM; the cocotb flow sees only the ported module above.
+    // ------------------------------------------------------------------
+    import uvm_pkg::*;
+
+    sep_tb_if u_tb_if ();
+
+    // Three free-running clocks with the periods the env publishes on
+    // sep_tb_if from the seeded test cfg (cocotb SepEnvCfg parity: sys
+    // 4..20 ns, WDT 5000 ns, entropy sample 3 ns).
+    initial begin
+        clk_i                     = 1'b0;
+        clk_wdt_i                 = 1'b0;
+        entropy_rosc_sample_clk_i = 1'b0;
+    end
+    always #(u_tb_if.sys_clk_period_ns * 0.5ns) clk_i = ~clk_i;
+    always #(u_tb_if.wdt_clk_period_ns * 0.5ns) clk_wdt_i = ~clk_wdt_i;
+    always #(u_tb_if.entropy_clk_period_ns * 0.5ns)
+        entropy_rosc_sample_clk_i = ~entropy_rosc_sample_clk_i;
+
+    // The primary reset and the boot/run controls are test-sequenced through
+    // sep_tb_if; the fabric-release and reset observables are mirrored back
+    // for the sequences and the scoreboard.
+    assign rst_ni              = u_tb_if.rst_n;
+    assign ext_boot_seq_done_i = u_tb_if.ext_boot_seq_done;
+    assign mpc_reset_run_req   = u_tb_if.mpc_reset_run_req;
+    assign wdt_rst_ni_i        = u_tb_if.wdt_rst_n;
+    assign dbg_rstb_i          = u_tb_if.dbg_rstb;
+    assign test_en_strap_i     = u_tb_if.test_en_strap;
+    assign u_tb_if.fuse_sense_done              = sep_fuse_sense_done_o;
+    assign u_tb_if.sep_reset_n                  = dbg_sep_reset_n_o;
+    assign u_tb_if.sep_cpu_reset_n              = sep_cpu_reset_n_o;
+    assign u_tb_if.secure_tm                    = secure_tm_o;
+    assign u_tb_if.dbg_disable_smc_otp_jtag2axi = dbg_disable_smc_otp_jtag2axi_o;
+    assign u_tb_if.dbg_disable_sep_otp_jtag2axi = dbg_disable_sep_otp_jtag2axi_o;
+
+    // Reset assertion counter: the scoreboard predictors re-baseline their
+    // CSR shadows on it.
+    logic [31:0] rst_assert_count = '0;
+    always @(negedge rst_ni) rst_assert_count <= rst_assert_count + 32'd1;
+    assign u_tb_if.rst_assert_count = rst_assert_count;
+
+    // CPU-LSU initiator: the shared ocah_axi_vip UVM master agent drives the
+    // s_axi_* request side (the agent's driver procedurally drives the
+    // request payloads and valids plus bready/rready on the master
+    // interface, routed into lsu_req_drive above) and the TB wires only the
+    // DUT-driven response signals back in. Geometry (32/64/3) lives in the
+    // master cfg; the interface uses the default maximum widths.
+    ocah_axi_if u_lsu_master_if (.aclk(clk_i), .aresetn(rst_ni));
+    assign s_axi_awid     = u_lsu_master_if.awid[2:0];
+    assign s_axi_awaddr   = u_lsu_master_if.awaddr[31:0];
+    assign s_axi_awlen    = u_lsu_master_if.awlen;
+    assign s_axi_awsize   = u_lsu_master_if.awsize;
+    assign s_axi_awburst  = u_lsu_master_if.awburst;
+    assign s_axi_awlock   = u_lsu_master_if.awlock;
+    assign s_axi_awcache  = u_lsu_master_if.awcache;
+    assign s_axi_awprot   = u_lsu_master_if.awprot;
+    assign s_axi_awqos    = u_lsu_master_if.awqos;
+    assign s_axi_awregion = u_lsu_master_if.awregion;
+    assign s_axi_awuser   = u_lsu_master_if.awuser[11:0];
+    assign s_axi_awvalid  = u_lsu_master_if.awvalid;
+    assign s_axi_wdata    = u_lsu_master_if.wdata;
+    assign s_axi_wstrb    = u_lsu_master_if.wstrb;
+    assign s_axi_wlast    = u_lsu_master_if.wlast;
+    assign s_axi_wuser    = u_lsu_master_if.wuser[11:0];
+    assign s_axi_wvalid   = u_lsu_master_if.wvalid;
+    assign s_axi_bready   = u_lsu_master_if.bready;
+    assign s_axi_arid     = u_lsu_master_if.arid[2:0];
+    assign s_axi_araddr   = u_lsu_master_if.araddr[31:0];
+    assign s_axi_arlen    = u_lsu_master_if.arlen;
+    assign s_axi_arsize   = u_lsu_master_if.arsize;
+    assign s_axi_arburst  = u_lsu_master_if.arburst;
+    assign s_axi_arlock   = u_lsu_master_if.arlock;
+    assign s_axi_arcache  = u_lsu_master_if.arcache;
+    assign s_axi_arprot   = u_lsu_master_if.arprot;
+    assign s_axi_arqos    = u_lsu_master_if.arqos;
+    assign s_axi_arregion = u_lsu_master_if.arregion;
+    assign s_axi_aruser   = u_lsu_master_if.aruser[11:0];
+    assign s_axi_arvalid  = u_lsu_master_if.arvalid;
+    assign s_axi_rready   = u_lsu_master_if.rready;
+
+    // Response side: DUT subordinate -> agent driver/monitor.
+    assign u_lsu_master_if.awready = s_axi_awready;
+    assign u_lsu_master_if.wready  = s_axi_wready;
+    assign u_lsu_master_if.bid     = 16'(s_axi_bid);
+    assign u_lsu_master_if.bresp   = s_axi_bresp;
+    assign u_lsu_master_if.buser   = 16'(s_axi_buser);
+    assign u_lsu_master_if.bvalid  = s_axi_bvalid;
+    assign u_lsu_master_if.arready = s_axi_arready;
+    assign u_lsu_master_if.rid     = 16'(s_axi_rid);
+    assign u_lsu_master_if.rdata   = s_axi_rdata;
+    assign u_lsu_master_if.rresp   = s_axi_rresp;
+    assign u_lsu_master_if.rlast   = s_axi_rlast;
+    assign u_lsu_master_if.ruser   = 16'(s_axi_ruser);
+    assign u_lsu_master_if.rvalid  = s_axi_rvalid;
+
+    // Passive mirror of the CPU-LSU bus for the shared-VIP monitor (the
+    // sep_scoreboard predictors consume its item stream), wired from the
+    // DUT-facing flat nets only. The protocol SVA on this bus is the
+    // u_s_axi_sva instance of the shared body, enabled through
+    // u_tb_if.axi_sva_en in this shape.
+    ocah_axi_if u_lsu_axi_if (.aclk(clk_i), .aresetn(rst_ni));
+    assign u_lsu_axi_if.awid     = 16'(s_axi_awid);
+    assign u_lsu_axi_if.awaddr   = 64'(s_axi_awaddr);
+    assign u_lsu_axi_if.awlen    = s_axi_awlen;
+    assign u_lsu_axi_if.awsize   = s_axi_awsize;
+    assign u_lsu_axi_if.awburst  = s_axi_awburst;
+    assign u_lsu_axi_if.awlock   = s_axi_awlock;
+    assign u_lsu_axi_if.awcache  = s_axi_awcache;
+    assign u_lsu_axi_if.awprot   = s_axi_awprot;
+    assign u_lsu_axi_if.awqos    = s_axi_awqos;
+    assign u_lsu_axi_if.awregion = s_axi_awregion;
+    assign u_lsu_axi_if.awuser   = 16'(s_axi_awuser);
+    assign u_lsu_axi_if.awvalid  = s_axi_awvalid;
+    assign u_lsu_axi_if.awready  = s_axi_awready;
+    assign u_lsu_axi_if.wdata    = s_axi_wdata;
+    assign u_lsu_axi_if.wstrb    = s_axi_wstrb;
+    assign u_lsu_axi_if.wlast    = s_axi_wlast;
+    assign u_lsu_axi_if.wuser    = 16'(s_axi_wuser);
+    assign u_lsu_axi_if.wvalid   = s_axi_wvalid;
+    assign u_lsu_axi_if.wready   = s_axi_wready;
+    assign u_lsu_axi_if.bid      = 16'(s_axi_bid);
+    assign u_lsu_axi_if.bresp    = s_axi_bresp;
+    assign u_lsu_axi_if.buser    = 16'(s_axi_buser);
+    assign u_lsu_axi_if.bvalid   = s_axi_bvalid;
+    assign u_lsu_axi_if.bready   = s_axi_bready;
+    assign u_lsu_axi_if.arid     = 16'(s_axi_arid);
+    assign u_lsu_axi_if.araddr   = 64'(s_axi_araddr);
+    assign u_lsu_axi_if.arlen    = s_axi_arlen;
+    assign u_lsu_axi_if.arsize   = s_axi_arsize;
+    assign u_lsu_axi_if.arburst  = s_axi_arburst;
+    assign u_lsu_axi_if.arlock   = s_axi_arlock;
+    assign u_lsu_axi_if.arcache  = s_axi_arcache;
+    assign u_lsu_axi_if.arprot   = s_axi_arprot;
+    assign u_lsu_axi_if.arqos    = s_axi_arqos;
+    assign u_lsu_axi_if.arregion = s_axi_arregion;
+    assign u_lsu_axi_if.aruser   = 16'(s_axi_aruser);
+    assign u_lsu_axi_if.arvalid  = s_axi_arvalid;
+    assign u_lsu_axi_if.arready  = s_axi_arready;
+    assign u_lsu_axi_if.rid      = 16'(s_axi_rid);
+    assign u_lsu_axi_if.rdata    = s_axi_rdata;
+    assign u_lsu_axi_if.rresp    = s_axi_rresp;
+    assign u_lsu_axi_if.rlast    = s_axi_rlast;
+    assign u_lsu_axi_if.ruser    = 16'(s_axi_ruser);
+    assign u_lsu_axi_if.rvalid   = s_axi_rvalid;
+    assign u_lsu_axi_if.rready   = s_axi_rready;
+
+    // ------------------------------------------------------------------
+    // Quiescent tie-offs: every other cocotb-driven stimulus pin at the idle
+    // value the cocotb sep_base_test.drive_idle_defaults sets. A scenario
+    // that needs one of these pins promotes it into sep_tb_if; nothing here
+    // is driven from class code.
+    // ------------------------------------------------------------------
+
+    // SMN-inbound external AXI4 master and the SEP-OTP JTAG AXI-Lite master:
+    // no initiator attached, request side idle, response acceptors ready.
+    assign m_axi_awid     = '0;
+    assign m_axi_awaddr   = '0;
+    assign m_axi_awlen    = '0;
+    assign m_axi_awsize   = '0;
+    assign m_axi_awburst  = '0;
+    assign m_axi_awlock   = 1'b0;
+    assign m_axi_awcache  = '0;
+    assign m_axi_awprot   = '0;
+    assign m_axi_awqos    = '0;
+    assign m_axi_awregion = '0;
+    assign m_axi_awuser   = '0;
+    assign m_axi_awvalid  = 1'b0;
+    assign m_axi_wdata    = '0;
+    assign m_axi_wstrb    = '0;
+    assign m_axi_wlast    = 1'b0;
+    assign m_axi_wuser    = '0;
+    assign m_axi_wvalid   = 1'b0;
+    assign m_axi_bready   = 1'b1;
+    assign m_axi_arid     = '0;
+    assign m_axi_araddr   = '0;
+    assign m_axi_arlen    = '0;
+    assign m_axi_arsize   = '0;
+    assign m_axi_arburst  = '0;
+    assign m_axi_arlock   = 1'b0;
+    assign m_axi_arcache  = '0;
+    assign m_axi_arprot   = '0;
+    assign m_axi_arqos    = '0;
+    assign m_axi_arregion = '0;
+    assign m_axi_aruser   = '0;
+    assign m_axi_arvalid  = 1'b0;
+    assign m_axi_rready   = 1'b1;
+
+    assign j_axi_awaddr  = '0;
+    assign j_axi_awprot  = '0;
+    assign j_axi_awvalid = 1'b0;
+    assign j_axi_wdata   = '0;
+    assign j_axi_wstrb   = '0;
+    assign j_axi_wvalid  = 1'b0;
+    assign j_axi_bready  = 1'b1;
+    assign j_axi_araddr  = '0;
+    assign j_axi_arprot  = '0;
+    assign j_axi_arvalid = 1'b0;
+    assign j_axi_rready  = 1'b1;
+
+    // JTAG SW-reset holds released; LC, token-comparator, and DMA integrity
+    // injects off; CPU-boot controls idle; raw noise quiet; SPI MISO
+    // idle-high.
+    assign jtag_otbn_rst_hold_i     = 1'b0;
+    assign jtag_aes_rst_hold_i      = 1'b0;
+    assign jtag_hmac_rst_hold_i     = 1'b0;
+    assign jtag_kmac_rst_hold_i     = 1'b0;
+    assign jtag_trng_rst_hold_i     = 1'b0;
+    assign lc_sigint_inject_i       = 1'b0;
+    assign token_cmp_fault_inject_i = '0;
+    assign token_cmp_fault_sel_i    = '0;
+    assign dma_host_intg_inject_i   = 1'b0;
+    assign rst_vec_i                = '0;
+    assign i_cpu_run_req_i          = 1'b0;
+    assign tcm_load_i               = 1'b0;
+    assign esrc_noise_ext_i         = '0;
+    assign spi_miso_i               = 1'b1;
+
+    // Non-reusable test classes compile as part of this top (module scope).
+    `include "sep_tests.sv"
+
+    initial begin
+        uvm_config_db#(virtual sep_tb_if)::set(null, "*", "tb_vif", u_tb_if);
+        uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "lsu_master_vif", u_lsu_master_if);
+        uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "lsu_axi_vif", u_lsu_axi_if);
+        run_test();
+    end
+`endif
 
 `undef SEP_ESRC
 `undef SEP_DRBG
