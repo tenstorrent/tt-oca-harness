@@ -106,8 +106,10 @@ organization under `integration/ipxact/<subsystem>/`.
 These directories are generated symlink indexes; run
 `python3 scripts/collect_integration.py` after adding or moving collateral.
 Their canonical targets remain under `hw/sys/<sys>/regs/`,
-`hw/ip/<ip>/regs/`, `hw/common/axi/`, and `vendor/...`. Other generated
-outputs remain under each owner's
+`hw/ip/<ip>/regs/`, `hw/common/axi/`, and `vendor/...` -- the `regs/` element
+of every component's directory layout, described in
+xref:ocah-contributing:ROOT:guidelines.adoc#component-directory-organization[the
+Contributing Guide]. Other generated outputs remain under each owner's
 `regs/gen/{c,sv,svh,py,ral,adoc,html,ipxact}/` directory.
 
 For the architecture-level responsibility split between the integrator, firmware,

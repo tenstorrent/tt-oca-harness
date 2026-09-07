@@ -320,6 +320,7 @@ used for synthesis may be selected with `TECH`.
 The yosys flow is still WIP, as timing constraints are not yet integrated/pipe cleaned.
 ====
 
+[[linting]]
 == Linting
 
 We use linters within the development of OCAH to perform static analysis
