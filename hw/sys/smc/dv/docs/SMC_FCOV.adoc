@@ -29,7 +29,7 @@ coverage, and full code coverage are collected with commercial simulators.
 |===
 |Metric |Target |Open-Source Collection Path
 |Functional coverage |Every `FUNC_COV_VALUE` bin named below is hit by the
-canonical suite |Python-side counters in `SmcScoreboard`
+enrolled `smoke` / `balanced_ip` suite |Python-side counters in `SmcScoreboard`
 |Line/branch/FSM/condition coverage |Collected for signoff in the commercial
 flow |VCS/Xcelium coverage databases (`--cov`)
 |Assertion coverage |Collected for enabled assertions in the commercial flow

@@ -156,7 +156,7 @@ VCS only: Verilator has no SV-UVM support. The bench architecture is in
 `docs/SMC_TB_ARCH.adoc` ("SystemVerilog UVM Realization"); the framework
 conventions it follows are in `hw/common/dv/docs/uvm-framework.adoc`.
 
-The first bound scenario is `smc_register_sanity_test` (VPLAN TC_SMC_P0_006):
+The first bound scenario is `smc_register_sanity_test`:
 SEP_IN AXI4 idle-read / write / readback / restore of the `SCRATCH_COLD` and
 `SCRATCH_COLD_WARM` registers over 16 seeded passes, every scratch read
 predicted by `smc_scratch_csr_ref_model` and paired by the always-on
