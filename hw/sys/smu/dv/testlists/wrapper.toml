@@ -788,6 +788,31 @@ tests = [
   "smu_wrapper_elaboration_sep_rtl_test",
 ]
 
+# Migration pilot: the first bare-`--dut smu` leaf brought onto this DUT. It
+# needs no firmware -- the TB is the AXI master -- and no new pins: the AXI
+# slave is ext_in_* here against s_axi_* there, and the SMC reset observable is
+# rst_primary_smc_clk_n_o against rst_primary_smc_clk_no. Held out of `all`
+# until the bare copy is retired, so the same claim is not counted twice.
+[[tests]]
+name = "smu_axi_id_width_conversion_test"
+module = "smu_axi_id_width_conversion_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["fabric", "no_sep", "migration_pilot"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[groups]]
+name = "migration_pilot"
+tests = [
+  "smu_axi_id_width_conversion_test",
+]
+
 # Default `--items all` for smu_wrapper: every test in this file that can pass.
 # The only omissions are the two sep_smc_sram_blocked leaves, which cannot pass
 # by construction; their group carries the reason. Anything else added to this

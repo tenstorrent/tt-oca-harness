@@ -157,6 +157,13 @@ python_root = "hw/sys/smu/dv/cocotb_wrapper"
 test_dir = "hw/sys/smu/dv/cocotb_wrapper/tests"
 python_paths = [
   "hw/common/dv/vip",
+  # The bare-smu seq_lib *contents*, not the package. cocotb/seq_lib carries an
+  # __init__.py and cocotb_wrapper/seq_lib does not, so putting the outer root
+  # here would let the regular package shadow this tree's namespace one and
+  # break every wrapper test. Adding the inner directory instead makes the
+  # TB-agnostic helpers (smu_addr_map, smu_axi_helpers) importable as top-level
+  # modules while `seq_lib` still resolves to cocotb_wrapper's own.
+  "hw/sys/smu/dv/cocotb/seq_lib",
 ]
 results_dir = "{run_dir}/{item}/results"
 cocotb_log = "{run_dir}/{item}/logs/{item}.log"
