@@ -2,9 +2,8 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[cross-trigger-network-interface]]
-==== Interface
 
-===== Cross Trigger Port (CTP)
+=== Cross Trigger Port (CTP)
 
 The following diagram and table illustrate the logical behavior and signal
 interface of a CTP module:
@@ -71,7 +70,7 @@ pad. In peer-to-peer mode the _ct_req_in_ pulse synchronizer controls
 this signal. In wire-OR mode it is unused.
 |=======================================================================
 
-===== Cross Trigger Matrix (CTM)
+=== Cross Trigger Matrix (CTM)
 
 The CTM has the following data ports and logical structure:
 
@@ -82,7 +81,7 @@ The CTM has the following data ports and logical structure:
   CTPs, or other cross trigger generating devices, where M is the number of
   these cross trigger sources.
 
-===== Cross Trigger Network Module Interface
+=== Cross Trigger Network Module Interface
 
 The top-level `cross_trigger_network` module has the following interface:
 
@@ -120,7 +119,7 @@ output logic [NUM_INT_CT-1:0] ctm_dst_ack_o
 // CT_Req_out, CT_Req_in, CT_Ack_in, CT_Ack_out signals
 ----
 
-===== Dependencies
+=== Dependencies
 
 The CTN depends on the following components:
 

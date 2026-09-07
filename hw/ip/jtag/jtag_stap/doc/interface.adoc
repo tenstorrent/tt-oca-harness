@@ -2,9 +2,8 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[stap-interface]]
-==== Interface
 
-===== Signal Interface
+=== Signal Interface
 
 [cols="<,<,<,<",options="header"]
 |===
@@ -26,7 +25,7 @@
 |stap_enabled_o |Output |1 |Indicates STAP is selected and enabled
 |===
 
-===== Timing Requirements
+=== Timing Requirements
 
 The STAP interface timing follows IEEE 1838-2019:
 
@@ -36,7 +35,7 @@ The STAP interface timing follows IEEE 1838-2019:
 * The lockup latch captures data on the falling edge of TCK when transitioning
   out of Shift-DR/IR states
 
-===== Dependencies
+=== Dependencies
 
 The STAP depends on the following components:
 

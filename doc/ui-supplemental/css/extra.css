@@ -632,3 +632,41 @@
     overflow-wrap: break-word;
     word-break: break-word;
 }
+
+/* ========================================
+   PORT REFERENCE TABLES
+   Scoped to .port-reference role only; no global selectors.
+   ======================================== */
+
+/* Keep wide tables within the viewport while preserving readable columns. */
+.port-reference-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.port-reference-scroll:focus-visible {
+    outline: 3px solid var(--oca-gold-accessible);
+    outline-offset: 1px;
+}
+
+.doc .port-reference-scroll table.port-reference {
+    min-width: 680px;
+}
+
+.doc .port-reference-scroll table.port-reference-wide {
+    min-width: 750px;
+}
+
+.doc table.port-reference {
+    table-layout: fixed;
+    width: 100%;
+    max-width: 100%;
+}
+
+.doc table.port-reference td,
+.doc table.port-reference th,
+.doc table.port-reference code {
+    overflow-wrap: anywhere;
+    white-space: normal;
+    word-break: normal;
+}

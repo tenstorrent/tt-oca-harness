@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Cross-Trigger Network Interface (moved)
+
+[[cross-trigger-network-interface]]
+
+This page has moved.
+See xref:ip:cross_trigger_network/doc/index.adoc#cross-trigger-network-interface[Cross-Trigger Network Interface].

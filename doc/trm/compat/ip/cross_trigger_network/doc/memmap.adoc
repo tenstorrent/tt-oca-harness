@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Cross-Trigger Network Memory Map (moved)
+
+[[ctn-memory-map]]
+
+This page has moved.
+See xref:ip:cross_trigger_network/doc/index.adoc#ctn-memory-map[Cross-Trigger Network Memory Map].

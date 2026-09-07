@@ -32,9 +32,9 @@ ifndef::release[]
 endif::release[]
 * xref:architecture.adoc[OCAH Architecture & Design] - Detailed architecture and design documentation
 * xref:smu:index.adoc[System Management Unit] - SMU composition, AXI crossbar and child subsystems
+** xref:dtp:index.adoc[Debug & Test Ports (DTP)]
 ** xref:sep:index.adoc[Security Processor (SEP)]
 ** xref:smc:index.adoc[System Management Controller (SMC)]
-** xref:dtp:index.adoc[Debug & Test Ports (DTP)]
 * xref:dashboard.adoc[Verification Dashboard]
 endif::backend-html5[]
 
@@ -50,15 +50,25 @@ include::architecture.adoc[leveloffset=+1]
 // SMU landing page: = Title → == (chapter)
 include::../../../hw/sys/smu/doc/index.adoc[leveloffset=+1]
 
+// DTP: = Title added; leveloffset=+1 makes it a chapter (==) immediately after SMU.
+include::../../../hw/sys/dtp/doc/index.adoc[leveloffset=+1]
+// DTP topic pages at leveloffset=+2 become sections (===) within the DTP chapter.
+include::../../../hw/sys/dtp/doc/overview.adoc[leveloffset=+2]
+include::../../../hw/sys/dtp/doc/jtag.adoc[leveloffset=+2]
+include::../../../hw/ip/jtag/jtag_intf_unit/doc/index.adoc[leveloffset=+2]
+include::../../../hw/ip/jtag/jtag_ptap/doc/index.adoc[leveloffset=+2]
+include::../../../hw/ip/jtag/jtag_stap/doc/index.adoc[leveloffset=+2]
+include::../../../hw/ip/cross_trigger/cross_trigger_network/doc/index.adoc[leveloffset=+2]
+include::../../../hw/ip/cross_trigger/cross_trigger_port/doc/index.adoc[leveloffset=+2]
+include::../../../hw/ip/cross_trigger/cross_trigger_matrix/doc/index.adoc[leveloffset=+2]
+include::../../../hw/sys/dtp/doc/clock_stop.adoc[leveloffset=+2]
+include::../../../hw/sys/dtp/doc/reference.adoc[leveloffset=+2]
+
 // SEP: existing index starts with == (no = Title); offset 0 keeps == as chapter.
 include::../../../hw/sys/sep/doc/index.adoc[leveloffset=0]
 
 // SMC: existing index starts with == (no = Title); offset 0 keeps == as chapter.
 include::../../../hw/sys/smc/doc/index.adoc[leveloffset=0]
-
-// DTP: existing index starts with == (no = Title); offset 0 keeps == as chapter.
-// The DTP pilot will add = Title and switch this edge to leveloffset=+1.
-include::../../../hw/sys/dtp/doc/index.adoc[leveloffset=0]
 
 = OCAH Platform Components
 // SMN/AoU: placeholder Setext headings render as == chapters at offset 0.

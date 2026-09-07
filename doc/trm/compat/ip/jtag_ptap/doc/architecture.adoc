@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= JTAG PTAP Architecture (moved)
+
+[[ptap-architecture]]
+
+This page has moved.
+See xref:ip:jtag_ptap/doc/index.adoc#ptap-architecture[JTAG PTAP Architecture].

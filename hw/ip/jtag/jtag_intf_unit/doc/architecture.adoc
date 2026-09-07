@@ -2,23 +2,22 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[jtag-intf-unit-architecture]]
-==== Architecture
 
-The JTAG Interface Unit integrates PTAP, STAP chain, and iJTAG network into a
-unified debug access point.
+The JTAG Interface Unit integrates the PTAP, STAP chain and iJTAG network into
+a unified debug access point.
 
 Shown below is an abstract diagram of the JTAG scan chain.
 
-image::jtag_scan_chain.drawio.svg[JTAG Scan Chain Diagram,scaledwidth=90.0%]
+image::jtag_scan_chain.svg[JTAG Interface Unit scan chain diagram showing PTAP, STAP chain and iJTAG SIB network,scaledwidth=90.0%]
 
-===== Scan Chain Topology
+=== Scan Chain Topology
 
 The PTAP is connected to the incoming JTAG interface for the chiplet. The scan
 chain is organized in three major segments: the Primary TAP processes all
 instructions, the Secondary TAP chain provides hierarchical TAP access, and the
 iJTAG network enables instrument-level access to debug blocks.
 
-====== STAP Chain Hierarchy
+==== STAP Chain Hierarchy
 
 The STAP chain implements a four-level hierarchy with configurable lockup latch
 insertion optimized for different physical routing distances.
@@ -58,7 +57,7 @@ signal routing is local to the chiplet. The final extra STAP in the chain
 enables scan output lockup when `NUM_EXTRA_STAPS > 0`, providing additional
 output timing margin before the scan path returns to the PTAP.
 
-====== Debug Disable Synchronization
+==== Debug Disable Synchronization
 
 `dbg_disable_i` (`sep_lifecycle_ctrl_pkg::dbg_disable_t`) is in the system clock
 domain and must be synchronized to TCK before use. The interface unit
@@ -106,22 +105,22 @@ Each field is active-high (1 = path disabled).
 |`dbg_disable_i.sep_otp_jtag2axi`
 |===
 
-===== iJTAG Network
+=== iJTAG Network
 
 The iJTAG network is organized into three cascaded Segment Insertion Bit (SIB)
 chains. Each SIB is gated by the corresponding synchronized debug-disable field.
 
-====== DFT Secure Chain
+==== DFT Secure Chain
 
 The DFT Secure chain is gated by `dbg_disable_i.dft_secure`. This port is for
 security-sensitive DFT control.
 
-====== DFT Non-Secure Chain
+==== DFT Non-Secure Chain
 
 The DFT Non-Secure chain is gated by `dbg_disable_i.dft_nonsecure`. General DFT
 control is attached to this port.
 
-====== DFD Chain
+==== DFD Chain
 
 The Design-for-Debug (DFD) chain is gated by `dbg_disable_i.dfd`. The
 resources reached through it are gated again inside the PTAP, where each
@@ -132,7 +131,7 @@ JTAG2AXI bridge is gated by its own disable input. This chain grants access to:
 * SEP OTP controller via AXI-Lite-to-APB bridge
 * Extension port for integrator-defined debug instruments
 
-===== JTAG2AXI Interfaces
+=== JTAG2AXI Interfaces
 
 The interface unit instantiates multiple JTAG2AXI bridges:
 

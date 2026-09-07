@@ -166,6 +166,9 @@ programmer)
   ;;
 esac
 
+# DTP: exclude defines.adoc (DV content, not for publication).
+rm -f "$MOD/dtp/pages/defines.adoc"
+
 # --- ip: collapse every hw/ip/<ip>/doc under <ip>/doc, partials per IP. Register
 #     partials are staged for every IP (even register-only IPs with no doc/ dir,
 #     e.g. zeroer referenced by SMC). AXI network/monitor elements live under
@@ -182,6 +185,36 @@ for ipdir in "$ROOT"/hw/ip/*/ "$ROOT"/hw/ip/*/*/; do
   stage_gen_adoc "$ipdir/dv/models/regs/gen/adoc" "$MOD/ip/partials/$ip/dv/models/regs/gen/adoc"
   stage_gen_html "$ipdir/dv/models/regs/gen/html" "$MOD/ip/partials/$ip/dv/models/regs/gen/html"
 done
+
+# --- ip: move architecture/interface/memmap fragments out of pages/ and into
+#     partials/ so they are private (no standalone URL). The owning index page
+#     includes them via the partial$ prefix for HTML or a relative path for PDF.
+#     CTN memmap.adoc also moves to partials/; it owns CTM and CTP register maps.
+for ip in jtag_intf_unit jtag_ptap jtag_stap \
+           cross_trigger_network cross_trigger_port cross_trigger_matrix; do
+  src="$MOD/ip/pages/$ip/doc"
+  dst="$MOD/ip/partials/$ip/doc"
+  for frag in architecture.adoc interface.adoc memmap.adoc; do
+    if [ -f "$src/$frag" ]; then
+      mkdir -p "$dst"
+      mv "$src/$frag" "$dst/$frag"
+    fi
+  done
+done
+
+# --- compat pages: HTML-only redirects for old fragment URLs. Staged into
+#     ip/pages/ so the old URL path still resolves; absent from PDF assembly. ---
+COMPAT="$DOC/trm/compat"
+for ip in jtag_intf_unit jtag_ptap jtag_stap \
+           cross_trigger_network cross_trigger_port cross_trigger_matrix; do
+  src="$COMPAT/ip/$ip/doc"
+  dst="$MOD/ip/pages/$ip/doc"
+  [ -d "$src" ] && stage_adoc_tree "$src" "$dst"
+done
+# DTP port_table compat page (old dtp/pages/port_table.adoc path).
+if [ -f "$COMPAT/dtp/port_table.adoc" ]; then
+  cp -f "$COMPAT/dtp/port_table.adoc" "$MOD/dtp/pages/port_table.adoc"
+fi
 
 # --- opentitan overlay: vendored OpenTitan IPs (e.g. csrng, edn) whose register
 #     collateral is generated into the lowRISC overlay rather than hw/ip, because
