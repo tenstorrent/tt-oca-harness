@@ -5198,7 +5198,28 @@ constraint is not an open defect.
 
 The stall is invisible to the checks the module already carries: the `ASSERT_KNOWN` checks at the bottom of the file confirm the ready signals are not X, and a stalled-but-stable `1'b0` satisfies that. It needs no exotic alignment either -- `CHK-CONCURRENT-CAL` measures plain untimed traffic arriving with AW and AR in the same cycle, so any store and load in flight together can reach it.
 
-Two of the three orderings are not reachable at a DUT adapter port from a SEP master: the crossbar delivers W one cycle after AW and re-serializes to that order whatever the master presents (measured at both ends, master gap 0 and port gap 1), and a master-side timing profile can only delay a channel, never advance one. They are graded on the port-driven vehicle instead. All three leaves are red and are deliberately not converted to expected failures. Reported to the open issue that raised the concurrent arbitration question; the RTL fix is owned there, not here.
+Two of the three orderings are not reachable at a DUT adapter port from a SEP
+master, and the cause is the fabric rather than the stimulus. Two independent
+lines of evidence agree.
+
+Structurally, `axi_demux_simple.sv` gates W forwarding on the AW handshake --
+`w_select_valid = w_cnt_up | (|w_open)` at line 312, consumed at line 497 --
+so W can never be forwarded to a downstream port before its own AW has been
+accepted. A W-before-AW presentation therefore cannot exist at the adapter
+port. Separately, `axi_demux` defaults `SpillAw = 1'b1` and `SpillW = 1'b0`
+and `sep_crypto_axi_interconnect` overrides neither, so AW crosses a spill
+register that W does not.
+
+Empirically, a write-only sweep of thirteen master timing profiles (write-only,
+so no cell can deadlock) produced port AW-to-W gaps of 1, 2, 3, 4, 5, 7 and 9
+cycles and never 0. `aw_delay=N` shifts AW and W together and leaves the gap at
+1, because the profile releases the trailing write channel off the leading one
+rather than placing either absolutely; `w_delay=N` only widens the gap. A
+master-side profile can delay a channel, never advance one, so the minimum
+reachable gap is the fabric's own.
+
+Both orderings are graded on the port-driven vehicle instead, which is why that
+vehicle exists rather than being a convenience. All three leaves are red and are deliberately not converted to expected failures. Reported to the open issue that raised the concurrent arbitration question; the RTL fix is owned there, not here.
 
 |`dbg_disable` ladder: `dfd` and `dft_secure` (spec-vs-RTL)
 |The DTP path table in the lifecycle chapter and `sep_lifecycle_ctrl.sv` disagree on two of the eleven debug-disable bits. The table puts the DFD iJTAG path at Case 1 (`SIP_DBG` alone) and the secure DFT iJTAG path at Case 3; the RTL gates both at Case 2 (`SIP_DBG` and `CHIPLET_DBG`). The two divergences run in opposite directions and only one of them is safe.
