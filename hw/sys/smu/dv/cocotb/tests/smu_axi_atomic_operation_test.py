@@ -7,9 +7,12 @@ filter/err path. TB ties ``smu_axi_in_req.aw.atop = 0`` (no flat ATOP pin).
 This test proves the supported non-ATOP traffic class completes with a live
 RID==ARID path rather than hanging.
 
-DECERR / err_slv poison deny semantics and ATOP reject stimulus need a legal
-ATOP driver and a filter-allow / OKAY positive control, so they are not covered
-(NEGATIVE-NEEDS-POSITIVE-CONTROL).
+Filter-allow / OKAY positive control is enrolled
+(``smu_axi_filter_allow_ns_test`` and the SYS_IN filter leaves).
+DECERR / err_slv poison and ATOP reject stay OUT: this TB ties
+``smu_axi_in_req.aw.atop = 0`` and has no legal ATOP driver
+(NEGATIVE-NEEDS-POSITIVE-CONTROL). A green run here is not ATOP
+non-support credit. See ``SMU_SEP0_COMPONENT_SIGNOFF.adoc`` (#491).
 """
 
 from __future__ import annotations

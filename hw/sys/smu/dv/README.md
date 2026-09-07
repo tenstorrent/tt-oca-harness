@@ -11,9 +11,11 @@ candidate v0.5.0 SEP=0 feature subset (unsigned; #487),
 [`docs/SMU_SCOPE_TRACEABILITY.adoc`](docs/SMU_SCOPE_TRACEABILITY.adoc)
 for the candidate requirement-to-test matrix (unsigned; #479), and
 [`docs/SMU_DEFERRED_DISPOSITION.adoc`](docs/SMU_DEFERRED_DISPOSITION.adoc)
-for the v0.5.0 deferred/OUT classification of the 123-entry catalog, and
+for the v0.5.0 deferred/OUT classification of the 123-entry catalog,
 [`docs/SMU_RELEASE_MATRIX.adoc`](docs/SMU_RELEASE_MATRIX.adoc) for the
-v0.5.0 release regression matrix (#485).
+v0.5.0 release regression matrix (#485), and
+[`docs/SMU_SEP0_COMPONENT_SIGNOFF.adoc`](docs/SMU_SEP0_COMPONENT_SIGNOFF.adoc)
+for the SEP=0 component signoff record (#481 / #482 / #483 / #490 / #491).
 
 **Executable contract:** enrolled groups in [`testlists/all.toml`](testlists/all.toml)
 — enrolled `phase1` **48**, `sep0_all` **52** (no Force; product-pin CTM;
