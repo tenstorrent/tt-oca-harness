@@ -202,7 +202,6 @@ run_modes = ["smoke"]
 # the first +rom_hex; smc_cpu_mem_dv then prefers +smc_rom_hex).
 args = [
     "+smc_hold_cpu_boot",
-    "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
     "+smc_rom_hex={repo_root}/hw/sys/smc/dv/assets/min_pass.rom.hex",
     "+rom_hex={repo_root}/hw/sys/smc/dv/assets/min_pass.rom.hex",
 ]
@@ -241,9 +240,7 @@ run_modes = ["smoke"]
 # Scratch-bank0 inject fire needs live CPU fetch of a preloaded scratch image.
 # Hold boot until the seq arms inject + programs the scratch reset vector.
 args = [
-    "+skip_fuse_sense",
     "+smc_hold_cpu_boot",
-    "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
     "+smc_scratch_ram_hex={repo_root}/hw/sys/smc/dv/assets/min_pass.ecc.hex",
 ]
 
@@ -258,9 +255,7 @@ timeout_sec = 1800
 tags = ["ci", "vplan_gap", "u7_ecc", "pyuvm"]
 run_modes = ["smoke"]
 args = [
-    "+skip_fuse_sense",
     "+smc_hold_cpu_boot",
-    "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
     "+smc_scratch_ram_hex={repo_root}/hw/sys/smc/dv/assets/min_pass.ecc.hex",
 ]
 
@@ -274,9 +269,7 @@ timeout_sec = 1800
 tags = ["ci", "vplan_gap", "u7_ecc", "pyuvm"]
 run_modes = ["smoke"]
 args = [
-    "+skip_fuse_sense",
     "+smc_hold_cpu_boot",
-    "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
     "+smc_scratch_ram_hex={repo_root}/hw/sys/smc/dv/assets/min_pass.ecc.hex",
 ]
 

@@ -41,25 +41,31 @@ name = "all"
 # needs `run_modes = ["prod_rom"]` so the production ROM's reset vector is not
 # zeroed by the smoke-mode backdoor. They run as `dual_all` / `dual_smoke` /
 # `occp_dual` / `occp_boot`, and each has a VPLAN entry under OCCP.
-# 12 test modules under cocotb/tests/ are in no testlist:
+#
+# 12 test modules under cocotb/tests/ are in no testlist. Each carries its
+# deferral reason in its own docstring, on a leading `# deferred: <tag>` line
+# where one applies:
 #
 #   smc_pll_awm_freq_sweep_test        smc_pvt_analog_sensor_test
 #   smc_pll_cgm_awm_config_test        smc_pvt_droop_test
 #   smc_pll_dvfs_depth_test            smc_i3c_ccc_ibi_full_test
-#   smc_pll_pvt_clock_config_test
+#   smc_pll_pvt_clock_config_test      smc_macro_axil_routing_test
 #
-#     -- deferred by TB policy: placeholder PLL/PVT RTL, and the I3C DAT/DCT
-#        backing RAM this bench does not instantiate. Recorded in SMC_VPLAN.adoc
-#        under Known Limitations.
+#     -- rtl_placeholder / needs_dtp_csr_sub: placeholder PLL/PVT RTL, the I3C
+#        DAT/DCT backing RAM this bench does not instantiate, and the idle DTP
+#        CSR port. All four appear in SMC_VPLAN.adoc under Known Limitations.
 #
-#   smc_captured_straps_test           smc_macro_axil_routing_test
-#   smc_clint_csr_test                 smc_sideband_avsbus_octs_bfm_test
-#   smc_dfd_dbs_fault_inject_test
-#
-#     -- NOT deferred anywhere. These five have no testlist entry, no VPLAN
-#        entry and no recorded reason, so nothing schedules them and nothing
-#        explains why. That is dv_policy 1.7 and it is open; do not read their
-#        absence here as a decision.
+#   smc_captured_straps_test      no_dut_port: smc_wrapper declares no
+#                                 captured_straps_i, so there is no tap to drive
+#   smc_clint_csr_test            the 0xC8xx_xxxx cluster-local window folds onto
+#                                 0xC0xx_xxxx on SEP_IN, so the reads never reach
+#                                 the CLINT. Bit-27 scope of #1237; the
+#                                 MTIME-monotonic leg turns green when it is fixed
+#   smc_dfd_dbs_fault_inject_test tb_glue: the TB latches a hardcoded
+#                                 0xDB5C_AFE1; real DFD is smc_dfd_wrap
+#   smc_sideband_avsbus_octs_bfm_test
+#                                 fake_bfm: raises on entry rather than standing
+#                                 in for a pad VIP that does not exist
 #
 # Two enrolled tests are also held out of this group, both red for a filed RTL
 # reason rather than a test defect. They keep their own [[tests]] entries and

@@ -6,6 +6,14 @@
 #include "smc_io.h"
 #include "smc_test.h"
 
+/* Scope: this image programs the cool-reset / FLR isolation configuration and
+ * proves the configuration holds. It does not observe a cool reset -- firmware
+ * cannot watch its own reset domain go down and come back. The runtime
+ * behaviour that configuration selects is scored on the testbench side by
+ * smc_cool_reset_from_pcie_test, which samples tb_isolate_req_o and
+ * tb_rst_cool_from_flr across a real FLR.
+ */
+
 /* Readback-compare a plain storage register and count a mismatch as an error.
  *
  * Every ISOLATE_REQ_* register compared below is `sw = rw; hw = r;` over the
