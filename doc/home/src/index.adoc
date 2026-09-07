@@ -17,6 +17,99 @@ OCAH is the *Harness* pillar of the wider
 https://www.openchipletatlas.org[Open Chiplet Atlas (OCA)] ecosystem,
 alongside the OCA Architecture specification and the OCA Compliance program.
 
+== Ecosystem repositories
+
+OCAH integrates both Tenstorrent-owned projects and third-party open-source
+projects. For third-party dependencies, Tenstorrent generally maintains a fork
+to support coordinated development, keeps it synchronized with the upstream
+project, and contributes suitable changes back upstream where possible. The
+exact revisions and subsets imported into this repository are defined in
+`Bender.yml`; the
+xref:ocah-contributing:ROOT:workflows.adoc#vendor-packages[Contributing Guide]
+explains how Bender materializes and updates them.
+
+[cols="1,2,3",options="header"]
+|===
+|Package |Repository |Role in OCAH
+
+|OpenTitan
+|https://github.com/tenstorrent/tt-opentitan[tenstorrent/tt-opentitan]
+|Common primitives, cryptography, entropy, timers, and register tooling
+
+|Common Verification
+|https://github.com/tenstorrent/tt-common_verification[tenstorrent/tt-common_verification]
+|Vendored so PULP-derived dependencies resolve a consistent local copy; not
+directly built by OCAH
+
+|Common Cells
+|https://github.com/tenstorrent/tt-common_cells[tenstorrent/tt-common_cells]
+|Reusable RTL cells used by interconnect and DMA components
+
+|APB
+|https://github.com/tenstorrent/tt-apb[tenstorrent/tt-apb]
+|Advanced Peripheral Bus components
+
+|AXI
+|https://github.com/tenstorrent/tt-axi[tenstorrent/tt-axi]
+|Advanced eXtensible Interface components
+
+|iDMA
+|https://github.com/tenstorrent/tt-iDMA[tenstorrent/tt-iDMA]
+|Intelligent direct memory access engine
+
+|UNBENT
+|https://github.com/tenstorrent-forks/unbent[tenstorrent-forks/unbent]
+|Bus error unit
+
+|AXI Stream
+|https://github.com/tenstorrent/tt-axi_stream[tenstorrent/tt-axi_stream]
+|AXI4-Stream components
+
+|OBI
+|https://github.com/tenstorrent/tt-obi[tenstorrent/tt-obi]
+|Open Bus Interface components
+
+|Register Interface
+|https://github.com/tenstorrent/tt-register_interface[tenstorrent/tt-register_interface]
+|Register-bus adapters and interconnect
+
+|Adams Bridge
+|https://github.com/chipsalliance/adams-bridge[chipsalliance/adams-bridge]
+|Post-quantum cryptography engine
+
+|Caliptra RTL
+|https://github.com/chipsalliance/caliptra-rtl[chipsalliance/caliptra-rtl]
+|Key-vault client helpers for Adams Bridge
+
+|VeeR EL2
+|https://github.com/tenstorrent/tt-Cores-VeeR-EL2[tenstorrent/tt-Cores-VeeR-EL2]
+|SEP processor core
+
+|PicoRV32
+|https://github.com/tenstorrent/tt-picorv32[tenstorrent/tt-picorv32]
+|Key Manager processor core
+
+|AoU RTL
+|https://github.com/tenstorrent/aou-rtl[tenstorrent/aou-rtl]
+|AXI-over-UCIe bridge
+
+|I3C Core
+|https://github.com/tenstorrent/tt-i3c-core[tenstorrent/tt-i3c-core]
+|I3C controller and target
+
+|Caliptra RTL for I3C
+|https://github.com/tenstorrent/caliptra-rtl-fork[tenstorrent/caliptra-rtl-fork]
+|AXI and common RTL used by I3C
+
+|cocotbext-i3c
+|https://github.com/antmicro/cocotbext-i3c[antmicro/cocotbext-i3c]
+|I3C verification models
+
+|AXI VIP
+|https://github.com/antmicro/axi-vip[antmicro/axi-vip]
+|AXI verification components for I3C
+|===
+
 == Learn more
 
 * xref:features.adoc[Feature Overview] -- what OCAH provides today

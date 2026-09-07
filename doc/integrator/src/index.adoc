@@ -85,16 +85,25 @@ plumbing are in <<smu-firmware-programming-order>> under <<smu-composition>>.
 ==== Register collateral
 
 The machine-readable address map ships in the repository tree; integrators
-consume it from the release checkout or tarball rather than a separate package:
+consume it from the release checkout or tarball rather than a separate package.
+The source of truth is distributed by ownership: each subsystem or IP keeps its
+canonical register sources and generated outputs beside its implementation.
+The `integration/` directory centralizes symlinks to that distributed
+collateral so an integrator does not have to discover every owner-local path.
 
-* System tops: `hw/sys/<sys>/regs/<sys>.rdl` (e.g. `hw/sys/sep/regs/sep.rdl`,
-  `hw/sys/smc/regs/smc.rdl`).
-* IP blocks: `hw/ip/<ip>/regs/<ip>.rdl`.
-* Vendored blocks: `vendor/.../overlay/regs/<ip>/regs/<ip>.rdl` or
-  `vendor/.../overlay/rdl/<ip>.rdl`.
-* Generated outputs per block: `<block>/regs/gen/{c,sv,svh,py,ral,adoc,html,ipxact}/`
-  — C headers, SystemVerilog packages, Python models, UVM RAL, documentation, and
-  IEEE 1685-2014 IP-XACT component descriptions.
+`integration/rdl/<subsystem>/` is a flat, self-contained list of the SystemRDL
+files required by that subsystem. Filenames remain unchanged, and shared
+dependencies appear in every subsystem that needs them. Non-RDL support files
+needed by relative includes remain at the `integration/rdl/` root. The matching
+generated IEEE 1685-2014 component descriptions use the same flat subsystem
+organization under `integration/ipxact/<subsystem>/`.
+
+These directories are generated symlink indexes; run
+`python3 scripts/collect_integration.py` after adding or moving collateral.
+Their canonical targets remain under `hw/sys/<sys>/regs/`,
+`hw/ip/<ip>/regs/`, `hw/common/axi/`, and `vendor/...`. Other generated
+outputs remain under each owner's
+`regs/gen/{c,sv,svh,py,ral,adoc,html,ipxact}/` directory.
 
 For the architecture-level responsibility split between the integrator, firmware,
 and the internal SEP/SMC maps, see
@@ -2176,8 +2185,9 @@ required for the assembled SoC. This section explains what those constraints do,
 are produced, and what an adopter has to change when integrating OCAH into their
 own flow and cell library.
 
-The collateral ships with the harness. Each block carries its own constraints in
-`hw/sys/<block>/synth/`:
+The collateral ships with the harness. `integration/constraint/<block>/synth/`
+groups it by system while preserving the original filenames and relative path
+depth:
 
 * `constraints.sdc` -- the block's full timing intent, including the clock
 definitions and the asynchronous clock groups. It sources the two files below.
@@ -2185,8 +2195,12 @@ definitions and the asynchronous clock groups. It sources the two files below.
 overrides.
 * `<block>_cdc_max_delay_generated.tcl` -- the per-instance calls.
 
-The two pieces shared by every block live in `flows/synth/constraints/`:
-`async_clock_groups.tcl` and `cdc_max_delay_procs.tcl`.
+The shared `async_clock_groups.tcl` and `cdc_max_delay_procs.tcl` helpers are
+under `integration/constraint/shared/`. These are symlink indexes: the
+canonical per-system files remain under `hw/sys/<block>/synth/`, and the
+canonical shared helpers remain under `flows/synth/constraints/`. Regenerate
+the index with `python3 scripts/collect_integration.py` after changing the
+collateral inventory.
 
 === Why crossings are bounded rather than timed
 

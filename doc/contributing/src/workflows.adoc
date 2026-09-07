@@ -28,6 +28,7 @@ command:
 make generate_filelist
 ```
 
+[[vendor-packages]]
 === Third-party (vendor) package imports with Bender
 
 External IP is materialized under `vendor/` via Bender's `vendor_package` feature. If a
