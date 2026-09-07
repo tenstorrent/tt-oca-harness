@@ -288,9 +288,13 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         # rolled back by a re-sense -- staging a PROD image here would make the
         # backdoor shadow check compare the sensed 0x7 against an expected 0x1
         # and fail on the image, never reaching the fault-latch question.
+        # resense, not bring_up: bring_up_no_cpu calls start_clocks, which has no
+        # idempotence guard, so a mid-test call spawns a second driver on clk_i,
+        # clk_wdt_i and entropy_rosc_sample_clk_i. resense pulses rst_ni with the
+        # clocks already running, which is what this phase needs.
         image = self.select_efuse_image(lc_raw=LC_RMA_CHIP_1, fixed=cfg.image_fixed())
         self.write_efuse_image(image)
-        await self.bring_up_and_wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
+        await self.resense(max_cycles=_MAX_SENSE_CYCLES)
 
         fault = await self._rd_fault()
         irq = self._irq39()
