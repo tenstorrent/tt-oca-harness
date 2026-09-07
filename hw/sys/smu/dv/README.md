@@ -253,6 +253,7 @@ than on a test defect — see the notes on their testlist entries:
 | Test | Group | Blocked on |
 |------|-------|-----------|
 | `smu_sep_smc_xbar_test` | `sep_smc_sram_blocked` | SEP-driven SMC bring-up polls SMC SRAM for an image cookie, but that RAM sits on the CPU-private memory interface, so a master arriving through sys-inbound cannot see it. Also blocks `sep_smc_interop` and `sep_smc_mbox_irq`. |
+| `smu_sep_ext_axi_test` | `sep_smc_sram_blocked` | Tile reset is taken and released, then no core fetches: neither the ROM nor the scratch read counter moves again. The preload and re-vector both land. |
 
 `smu_sep_modules_test` and `sep_smu_aes` are enrolled in `sep_real_fw`: the
 entropy stack is brought up by firmware (`sep_entropy_bringup()` in

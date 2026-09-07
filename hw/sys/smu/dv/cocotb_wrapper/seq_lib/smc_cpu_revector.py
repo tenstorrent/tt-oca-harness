@@ -138,12 +138,20 @@ async def _wait_smc_out_of_reset(log, timeout_cycles: int = SMC_RESET_TIMEOUT_CY
         before = rom_reads
         rom_reads = int(cocotb.top.smc_rom_read_count_o.value)
         if rom_reads > 0 and rom_reads == before:
+            log.info(
+                "SMC re-vector: SMC out of reset, ROM boot settled at %d ROM fetches",
+                rom_reads,
+            )
             break
         await ClockCycles(cocotb.top.clk_smu_i, SMC_BOOT_SETTLE_CYCLES)
-    log.info(
-        "SMC re-vector: SMC out of reset, ROM boot settled at %d ROM fetches",
-        rom_reads,
-    )
+    else:
+        log.info(
+            "SMC re-vector: SMC out of reset, ROM fetch count did not settle "
+            "after %d polls of %d cycles (last sample %d)",
+            SMC_BOOT_SETTLE_POLLS,
+            SMC_BOOT_SETTLE_CYCLES,
+            rom_reads,
+        )
 
 
 async def revector_smc_cores(test, jtag, entry: int, *, settle_cycles: int = 64) -> None:

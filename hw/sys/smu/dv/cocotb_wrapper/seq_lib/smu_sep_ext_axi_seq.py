@@ -207,8 +207,8 @@ class SmuSepExtAxiSeq(SepTerminalLoopSeq):
         """Is the SMC core running the scratch-RAM half at all?
 
         The ROM marker says the ROM ran; the scratch fetch counter says control
-        actually reached the image the ROM jumps to. Without both, an aperture
-        that never opens is unattributable.
+        actually reached the preloaded scratch image after the re-vector.
+        Without both, an aperture that never opens is unattributable.
         """
         rd = self._rd(cocotb.top.smc_scratch_read_count_o, "smc_scratch_rd")
         wr = self._rd(cocotb.top.smc_scratch_write_count_dv_o, "smc_scratch_wr")
@@ -250,10 +250,9 @@ class SmuSepExtAxiSeq(SepTerminalLoopSeq):
         jtag = make_wrapper_ptap()
         await self.test.jtag_tap_reset()
         await revector_smc_cores(self.test, jtag, smc_entry)
-        # Snapshot before anything runs: if scratch RAM has already been written
-        # wholesale by this point, the backdoor image was overwritten after the
-        # time-zero load and no amount of protocol work will help.
-        self.log.info("SMC liveness at sequence start: %s", self._smc_liveness())
+        # Liveness snapshot after the re-vector: the ROM marker and the scratch
+        # counters are the baseline the failure message compares against.
+        self.log.info("SMC liveness after re-vector: %s", self._smc_liveness())
 
         driver = cocotb.start_soon(self._drive())
         try:
