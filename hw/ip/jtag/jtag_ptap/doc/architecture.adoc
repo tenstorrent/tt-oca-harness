@@ -10,7 +10,7 @@ architecture supports Test Mode Persistence (TMP), boundary scan with dedicated
 scan ports and control signals, BIST functionality, and 3DIC support with STAP
 scan ports and control signals derived from internal TDRs.
 
-image::ptap_module_diagram.drawio.svg[PTAP Module Diagram,scaledwidth=90.0%]
+image::ptap_module_diagram.svg[PTAP Module Diagram showing TAP controller, instruction register, instruction decoder and TDR bank,scaledwidth=90.0%]
 
 === Module Hierarchy
 

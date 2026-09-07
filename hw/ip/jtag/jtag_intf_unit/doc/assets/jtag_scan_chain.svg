@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1"
+     width="860" height="400" viewBox="0 0 860 400">
+  <defs>
+    <style>
+      text { font-family: sans-serif; fill: #333333; }
+      .title  { font-size: 14px; font-weight: bold; }
+      .label  { font-size: 12px; }
+      .small  { font-size: 10px; fill: #555555; }
+      .port   { font-size: 10px; font-family: monospace; fill: #333333; }
+    </style>
+    <marker id="arr" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L7,3 z" fill="#4a7baa"/>
+    </marker>
+    <marker id="arr-g" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L7,3 z" fill="#555555"/>
+    </marker>
+    <marker id="arr-r" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L7,3 z" fill="#998866"/>
+    </marker>
+  </defs>
+
+  <text x="14" y="22" class="title">JIU — JTAG Interface Unit Scan Chain</text>
+
+  <!-- ── PTAP ────────────────────────────────────────────────────────── -->
+  <rect x="50" y="48" width="110" height="90" rx="4"
+        fill="#dce8f4" stroke="#4a7baa" stroke-width="1.5"/>
+  <text x="105" y="78" class="label" text-anchor="middle">PTAP</text>
+  <text x="105" y="95" class="small" text-anchor="middle">Instruction</text>
+  <text x="105" y="110" class="small" text-anchor="middle">Register</text>
+  <text x="105" y="125" class="small" text-anchor="middle">TDR Select</text>
+
+  <!-- TDI/TDO pads -->
+  <text x="6" y="78" class="port">TDI</text>
+  <line x1="50" y1="75" x2="34" y2="75" stroke="#555555" stroke-width="1" marker-end="url(#arr-g)"/>
+  <text x="6" y="108" class="port">TDO</text>
+  <line x1="34" y1="108" x2="50" y2="108" stroke="#555555" stroke-width="1" marker-end="url(#arr-g)"/>
+
+  <!-- ── STAP chain (top) ───────────────────────────────────────────── -->
+  <text x="210" y="42" class="small" font-weight="bold">STAP Interface (secondary scan chain)</text>
+
+  <rect x="210" y="48" width="90" height="50" rx="3" fill="#dce8f4" stroke="#4a7baa" stroke-width="1"/>
+  <text x="255" y="70" class="small" text-anchor="middle">STAP to I/O</text>
+  <text x="255" y="84" class="small" text-anchor="middle">(optional)</text>
+
+  <rect x="320" y="48" width="90" height="50" rx="3" fill="#dce8f4" stroke="#4a7baa" stroke-width="1"/>
+  <text x="365" y="70" class="small" text-anchor="middle">STAP to SMC</text>
+  <text x="365" y="84" class="small" text-anchor="middle">(optional)</text>
+
+  <rect x="430" y="48" width="90" height="50" rx="3" fill="#dce8f4" stroke="#4a7baa" stroke-width="1"/>
+  <text x="475" y="70" class="small" text-anchor="middle">STAP to SEP</text>
+  <text x="475" y="84" class="small" text-anchor="middle">(optional)</text>
+
+  <rect x="540" y="48" width="110" height="50" rx="3" fill="#dce8f4" stroke="#4a7baa" stroke-width="1" stroke-dasharray="5 3"/>
+  <text x="595" y="70" class="small" text-anchor="middle">Additional</text>
+  <text x="595" y="84" class="small" text-anchor="middle">STAP(s) (optional)</text>
+
+  <!-- PTAP → STAP chain -->
+  <line x1="160" y1="73" x2="210" y2="73" stroke="#4a7baa" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="300" y1="73" x2="320" y2="73" stroke="#4a7baa" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="410" y1="73" x2="430" y2="73" stroke="#4a7baa" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="520" y1="73" x2="540" y2="73" stroke="#4a7baa" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- TDO return from STAP chain back to PTAP -->
+  <polyline points="650,73 680,73 680,142 160,142 160,108"
+            fill="none" stroke="#4a7baa" stroke-width="1.2" stroke-dasharray="5 3" marker-end="url(#arr)"/>
+
+  <!-- ── iJTAG SIB chains (bottom half) ────────────────────────────── -->
+  <text x="50" y="180" class="small" font-weight="bold">iJTAG SIB Network (TDR scan paths, selected by instruction)</text>
+
+  <!-- Horizontal bus from PTAP down -->
+  <line x1="105" y1="138" x2="105" y2="200" stroke="#888888" stroke-width="1" stroke-dasharray="3 2"/>
+  <line x1="105" y1="200" x2="750" y2="200" stroke="#888888" stroke-width="1" stroke-dasharray="3 2"/>
+
+  <!-- iJTAG chain blocks -->
+  <rect x="50"  y="210" width="100" height="50" rx="3" fill="#f5f0e8" stroke="#998866" stroke-width="1"/>
+  <text x="100" y="232" class="small" text-anchor="middle">Secure DFT</text>
+  <text x="100" y="248" class="small" text-anchor="middle">iJTAG</text>
+
+  <rect x="165" y="210" width="100" height="50" rx="3" fill="#f5f0e8" stroke="#998866" stroke-width="1"/>
+  <text x="215" y="232" class="small" text-anchor="middle">Non-Secure DFT</text>
+  <text x="215" y="248" class="small" text-anchor="middle">iJTAG</text>
+
+  <rect x="280" y="210" width="100" height="50" rx="3" fill="#f5f0e8" stroke="#998866" stroke-width="1"/>
+  <text x="330" y="232" class="small" text-anchor="middle">DFD</text>
+  <text x="330" y="248" class="small" text-anchor="middle">iJTAG</text>
+
+  <rect x="395" y="210" width="100" height="50" rx="3" fill="#f5f0e8" stroke="#998866" stroke-width="1"/>
+  <text x="445" y="232" class="small" text-anchor="middle">SMC fabric</text>
+  <text x="445" y="248" class="small" text-anchor="middle">JTAG2AXI</text>
+
+  <rect x="510" y="210" width="100" height="50" rx="3" fill="#f5f0e8" stroke="#998866" stroke-width="1"/>
+  <text x="560" y="232" class="small" text-anchor="middle">SMC OTP</text>
+  <text x="560" y="248" class="small" text-anchor="middle">JTAG2AXIL</text>
+
+  <rect x="625" y="210" width="100" height="50" rx="3" fill="#f5f0e8" stroke="#998866" stroke-width="1"/>
+  <text x="675" y="232" class="small" text-anchor="middle">SEP OTP</text>
+  <text x="675" y="248" class="small" text-anchor="middle">JTAG2AXIL</text>
+
+  <!-- Drops from horizontal bus to each SIB chain -->
+  <line x1="100" y1="200" x2="100" y2="210" stroke="#998866" stroke-width="1" marker-end="url(#arr-r)"/>
+  <line x1="215" y1="200" x2="215" y2="210" stroke="#998866" stroke-width="1" marker-end="url(#arr-r)"/>
+  <line x1="330" y1="200" x2="330" y2="210" stroke="#998866" stroke-width="1" marker-end="url(#arr-r)"/>
+  <line x1="445" y1="200" x2="445" y2="210" stroke="#998866" stroke-width="1" marker-end="url(#arr-r)"/>
+  <line x1="560" y1="200" x2="560" y2="210" stroke="#998866" stroke-width="1" marker-end="url(#arr-r)"/>
+  <line x1="675" y1="200" x2="675" y2="210" stroke="#998866" stroke-width="1" marker-end="url(#arr-r)"/>
+
+  <!-- REG labels below each chain (serial scan) -->
+  <rect x="50"  y="270" width="100" height="26" rx="2" fill="#efefef" stroke="#aaaaaa" stroke-width="1"/>
+  <text x="100" y="288" class="small" text-anchor="middle">REG</text>
+  <rect x="165" y="270" width="100" height="26" rx="2" fill="#efefef" stroke="#aaaaaa" stroke-width="1"/>
+  <text x="215" y="288" class="small" text-anchor="middle">REG</text>
+  <rect x="280" y="270" width="100" height="26" rx="2" fill="#efefef" stroke="#aaaaaa" stroke-width="1"/>
+  <text x="330" y="288" class="small" text-anchor="middle">REG</text>
+  <rect x="395" y="270" width="100" height="26" rx="2" fill="#efefef" stroke="#aaaaaa" stroke-width="1"/>
+  <text x="445" y="288" class="small" text-anchor="middle">REG</text>
+  <rect x="510" y="270" width="100" height="26" rx="2" fill="#efefef" stroke="#aaaaaa" stroke-width="1"/>
+  <text x="560" y="288" class="small" text-anchor="middle">REG</text>
+  <rect x="625" y="270" width="100" height="26" rx="2" fill="#efefef" stroke="#aaaaaa" stroke-width="1"/>
+  <text x="675" y="288" class="small" text-anchor="middle">REG</text>
+
+  <!-- Chain scan connections (simplified serial path) -->
+  <polyline points="50,260 50,345 740,345 740,296 725,296"
+            fill="none" stroke="#888888" stroke-width="1" stroke-dasharray="4 2"/>
+  <text x="390" y="362" class="small" text-anchor="middle">TDO return — selected chain's register output feeds PTAP TDO mux</text>
+
+  <!-- Scan connection drops -->
+  <line x1="100" y1="260" x2="100" y2="270" stroke="#888888" stroke-width="1"/>
+  <line x1="215" y1="260" x2="215" y2="270" stroke="#888888" stroke-width="1"/>
+  <line x1="330" y1="260" x2="330" y2="270" stroke="#888888" stroke-width="1"/>
+  <line x1="445" y1="260" x2="445" y2="270" stroke="#888888" stroke-width="1"/>
+  <line x1="560" y1="260" x2="560" y2="270" stroke="#888888" stroke-width="1"/>
+  <line x1="675" y1="260" x2="675" y2="270" stroke="#888888" stroke-width="1"/>
+
+</svg>

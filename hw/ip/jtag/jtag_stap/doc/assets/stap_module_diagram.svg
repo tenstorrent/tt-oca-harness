@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1"
+     width="760" height="340" viewBox="0 0 760 340">
+  <defs>
+    <style>
+      text { font-family: sans-serif; fill: #333333; }
+      .title  { font-size: 14px; font-weight: bold; }
+      .label  { font-size: 12px; }
+      .small  { font-size: 10px; fill: #555555; }
+      .port   { font-size: 10px; font-family: monospace; fill: #333333; }
+    </style>
+    <marker id="arr" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L7,3 z" fill="#4a7baa"/>
+    </marker>
+    <marker id="arr-g" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L7,3 z" fill="#555555"/>
+    </marker>
+  </defs>
+
+  <text x="14" y="22" class="title">STAP — Secondary TAP Architecture (one instance per STAP)</text>
+
+  <!-- ── Outer STAP boundary ────────────────────────────────────────── -->
+  <rect x="10" y="34" width="740" height="295" rx="6"
+        fill="none" stroke="#4a7baa" stroke-width="2" stroke-dasharray="8 4"/>
+  <text x="24" y="54" class="label" font-weight="bold" fill="#4a7baa">STAP (N-th instance)</text>
+
+  <!-- ── SIB (MUX pre-SR) ───────────────────────────────────────────── -->
+  <rect x="80" y="70" width="140" height="80" rx="4"
+        fill="#dce8f4" stroke="#4a7baa" stroke-width="1.5"/>
+  <text x="150" y="104" class="label" text-anchor="middle">SIB</text>
+  <text x="150" y="120" class="label" text-anchor="middle">(MUX pre-SR)</text>
+  <text x="150" y="136" class="small" text-anchor="middle">Capture / Update</text>
+
+  <!-- ── 3DCR Register ──────────────────────────────────────────────── -->
+  <rect x="300" y="70" width="140" height="80" rx="4"
+        fill="#dce8f4" stroke="#4a7baa" stroke-width="1.5"/>
+  <text x="370" y="104" class="label" text-anchor="middle">3DCR</text>
+  <text x="370" y="120" class="label" text-anchor="middle">Register</text>
+  <text x="370" y="136" class="small" text-anchor="middle">Select / SR</text>
+
+  <!-- ── Lifecycle gate ─────────────────────────────────────────────── -->
+  <rect x="540" y="70" width="160" height="60" rx="4"
+        fill="#f5f0e8" stroke="#998866" stroke-width="1.5"/>
+  <text x="620" y="97" class="label" text-anchor="middle">Lifecycle Enable</text>
+  <text x="620" y="114" class="small" text-anchor="middle">feat_ctrl_i gating</text>
+
+  <!-- SIB → 3DCR -->
+  <line x1="220" y1="110" x2="300" y2="110" stroke="#4a7baa" stroke-width="1.5" marker-end="url(#arr)"/>
+  <!-- 3DCR → Lifecycle -->
+  <line x1="440" y1="110" x2="540" y2="100" stroke="#4a7baa" stroke-width="1.2" marker-end="url(#arr)"/>
+
+  <!-- ── Scan path connections ──────────────────────────────────────── -->
+  <!-- STAP_SI[N-1] input -->
+  <text x="12" y="115" class="port">STAP_SI[N-1]</text>
+  <line x1="78" y1="112" x2="45" y2="112" stroke="#555555" stroke-width="1" marker-end="url(#arr-g)"/>
+  <line x1="45" y1="112" x2="45" y2="85" stroke="#555555" stroke-width="1"/>
+  <text x="12" y="88" class="port">STAP_TDI[N-1]</text>
+  <line x1="78" y1="85" x2="12" y2="85" stroke="#555555" stroke-width="1" marker-end="url(#arr-g)"/>
+
+  <!-- STAP_TMS -->
+  <text x="12" y="145" class="port">STAP_TMS[N-1]</text>
+  <text x="12" y="162" class="port">PTAP_TMS</text>
+  <line x1="78" y1="140" x2="12" y2="140" stroke="#555555" stroke-width="1" marker-end="url(#arr-g)"/>
+
+  <!-- STAP_TDO, STAP_SO outputs -->
+  <text x="714" y="140" class="port">STAP_TDO[N-1]</text>
+  <text x="714" y="156" class="port">STAP_SO[N-1]</text>
+  <line x1="700" y1="100" x2="714" y2="137" stroke="#555555" stroke-width="1" marker-end="url(#arr-g)"/>
+
+  <!-- CAPTURE_STAP feedback -->
+  <polyline points="150,150 150,200 370,200 370,150"
+            fill="none" stroke="#998866" stroke-width="1" stroke-dasharray="4 2" marker-end="url(#arr-g)"/>
+  <text x="260" y="222" class="small" text-anchor="middle">CAPTURE_DR / UPDATE_DR from TAP controller</text>
+
+  <!-- ── iJTAG note ─────────────────────────────────────────────────── -->
+  <rect x="80" y="240" width="600" height="72" rx="4"
+        fill="#f8f8f8" stroke="#cccccc" stroke-width="1"/>
+  <text x="380" y="262" class="small" text-anchor="middle">
+    Each STAP instance may be disabled by parameter (e.g. JTAG_STAP_IO_ENABLE=0).
+  </text>
+  <text x="380" y="278" class="small" text-anchor="middle">
+    When disabled, the DTP bypasses the STAP in the PTAP secondary scan chain:
+  </text>
+  <text x="380" y="294" class="small" text-anchor="middle">
+    STAP_TDI[N-1] is driven from the previous stage TDO; STAP_TDO[N-1] is ignored.
+  </text>
+
+</svg>

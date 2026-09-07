@@ -4,7 +4,7 @@
 = Debug & Test Ports (DTP)
 :description: DTP overview — purpose, composition and reading route.
 
-[[debug-test-ports]]
+[[debug-test-ports,Debug and Test Ports (DTP)]]
 
 The Debug & Test Ports (DTP) module provides the debug and test infrastructure
 for Tenstorrent chiplets. It integrates the JTAG Interface Unit (JIU) and the
@@ -52,106 +52,80 @@ ifdef::backend-html5[]
   summary.
 endif::backend-html5[]
 ifdef::backend-pdf[]
-. xref:overview.adoc[Architecture and Access Paths] — see the DTP Architecture and Access Paths section.
-. xref:jtag.adoc[JTAG Operation] — see the JTAG Operation section.
-. JTAG reference — see the xref:ip:jtag_intf_unit/doc/index.adoc[JTAG Interface Unit],
-  xref:ip:jtag_ptap/doc/index.adoc[JTAG PTAP] and xref:ip:jtag_stap/doc/index.adoc[JTAG STAP] sections.
-. Cross-trigger reference — see the xref:ip:cross_trigger_network/doc/index.adoc[Cross-Trigger Network]
-  (includes unified register map),
-  xref:ip:cross_trigger_port/doc/index.adoc[Cross-Trigger Port] and
-  xref:ip:cross_trigger_matrix/doc/index.adoc[Cross-Trigger Matrix] sections.
-. xref:clock_stop.adoc[Clock Stop / Reset] — see the Clock Stop / Reset section.
-. xref:reference.adoc[Configuration and Reference] — see the Configuration and Reference section.
+. <<dtp-overview,Architecture and Access Paths>> — how the JIU and CTN connect internally
+  and how debug access reaches them through the SMU.
+. <<dtp-jtag-integration,JTAG Operation>> — DTP-level topology, scan chain ordering,
+  clock domains, reset hierarchy and lifecycle feature control.
+. JTAG reference — <<jtag-interface-unit,JTAG Interface Unit>>,
+  <<jtag-ptap,JTAG PTAP>>, <<jtag-stap,JTAG STAP>>.
+. Cross-trigger reference — <<cross-trigger-network,Cross-Trigger Network>>
+  (includes unified register map), <<cross-trigger-port,Cross-Trigger Port>>,
+  <<cross-trigger-matrix,Cross-Trigger Matrix>>.
+. <<dtp-clock-stop,Clock Stop / Reset>> — architecture of the combined JTAG and CLA halt path.
+. <<dtp-reference,Configuration and Reference>> — port table and parameter summary.
 endif::backend-pdf[]
 
 ifdef::backend-html5[]
-// Compatibility anchors: former assembled dtp/index.adoc deep-link targets.
-// These IDs now resolve here and redirect readers to the authoritative page.
-[[dtp-overview]]
-_Content moved:_
-xref:overview.adoc#dtp-overview[Architecture and Access Paths]
+== DTP Topic Pages
 
-[[dtp-jtag-integration]]
-_Content moved:_
-xref:jtag.adoc#dtp-jtag-integration[JTAG Operation]
+[cols="<,<",frame=none,grid=none]
+|===
 
-[[jtag-interface-unit]]
-_Content moved:_
-xref:ip:jtag_intf_unit/doc/index.adoc#jtag-interface-unit[JTAG Interface Unit]
+|[[dtp-overview]] xref:overview.adoc#dtp-overview[Architecture and Access Paths]
+|How the JIU and CTN connect internally and how debug access reaches them through the SMU.
 
-[[jtag-intf-unit-architecture]]
-_Content moved:_
-xref:ip:jtag_intf_unit/doc/index.adoc#jtag-intf-unit-architecture[JTAG Interface Unit Architecture]
+|[[dtp-jtag-integration]] xref:jtag.adoc#dtp-jtag-integration[JTAG Operation]
+|DTP-level JTAG topology, scan chain ordering, clock domains, reset hierarchy and lifecycle feature control.
 
-[[jtag-intf-unit-interface]]
-_Content moved:_
-xref:ip:jtag_intf_unit/doc/index.adoc#jtag-intf-unit-interface[JTAG Interface Unit Interface]
+|[[dtp-clock-stop]] xref:clock_stop.adoc#dtp-clock-stop[Clock Stop / Reset]
+|Architecture of the combined JTAG DEBUG_CONTROL and CLA halt path.
 
-[[jtag-ptap]]
-_Content moved:_
-xref:ip:jtag_ptap/doc/index.adoc#jtag-ptap[JTAG PTAP]
+|[[dtp-reference]] xref:reference.adoc[Configuration and Reference]
+|Port table and parameter summary.
 
-[[ptap-architecture]]
-_Content moved:_
-xref:ip:jtag_ptap/doc/index.adoc#ptap-architecture[JTAG PTAP Architecture]
+|===
 
-[[ptap-interface]]
-_Content moved:_
-xref:ip:jtag_ptap/doc/index.adoc#ptap-interface[JTAG PTAP Interface]
+== IP Component Reference
 
-[[jtag-stap]]
-_Content moved:_
-xref:ip:jtag_stap/doc/index.adoc#jtag-stap[JTAG STAP]
+[cols="<,<,<",frame=none,grid=none]
+|===
 
-[[stap-architecture]]
-_Content moved:_
-xref:ip:jtag_stap/doc/index.adoc#stap-architecture[JTAG STAP Architecture]
+|*JTAG*
+|[[jtag-interface-unit]] xref:ip:jtag_intf_unit/doc/index.adoc#jtag-interface-unit[JTAG Interface Unit]
+([[jtag-intf-unit-architecture]] xref:ip:jtag_intf_unit/doc/index.adoc#jtag-intf-unit-architecture[architecture],
+[[jtag-intf-unit-interface]] xref:ip:jtag_intf_unit/doc/index.adoc#jtag-intf-unit-interface[interface])
+|IEEE 1149.1 primary and secondary TAP controller.
 
-[[stap-interface]]
-_Content moved:_
-xref:ip:jtag_stap/doc/index.adoc#stap-interface[JTAG STAP Interface]
+|
+|[[jtag-ptap]] xref:ip:jtag_ptap/doc/index.adoc#jtag-ptap[JTAG PTAP]
+([[ptap-architecture]] xref:ip:jtag_ptap/doc/index.adoc#ptap-architecture[architecture],
+[[ptap-interface]] xref:ip:jtag_ptap/doc/index.adoc#ptap-interface[interface])
+|Primary TAP implementation and instruction decoder.
 
-[[cross-trigger-network]]
-_Content moved:_
-xref:ip:cross_trigger_network/doc/index.adoc#cross-trigger-network[Cross-Trigger Network]
+|
+|[[jtag-stap]] xref:ip:jtag_stap/doc/index.adoc#jtag-stap[JTAG STAP]
+([[stap-architecture]] xref:ip:jtag_stap/doc/index.adoc#stap-architecture[architecture],
+[[stap-interface]] xref:ip:jtag_stap/doc/index.adoc#stap-interface[interface])
+|Secondary TAP for hierarchical multi-chiplet connectivity.
 
-[[cross-trigger-network-architecture]]
-_Content moved:_
-xref:ip:cross_trigger_network/doc/index.adoc#cross-trigger-network-architecture[Cross-Trigger Network Architecture]
+|*Cross-trigger*
+|[[cross-trigger-network]] xref:ip:cross_trigger_network/doc/index.adoc#cross-trigger-network[Cross-Trigger Network]
+([[cross-trigger-network-architecture]] xref:ip:cross_trigger_network/doc/index.adoc#cross-trigger-network-architecture[architecture],
+[[cross-trigger-network-interface]] xref:ip:cross_trigger_network/doc/index.adoc#cross-trigger-network-interface[interface],
+[[ctn-memory-map]] xref:ip:cross_trigger_network/doc/index.adoc#ctn-memory-map[register map])
+|CTN hub integrating CTMs and CTPs; owns the unified register map.
 
-[[cross-trigger-network-interface]]
-_Content moved:_
-xref:ip:cross_trigger_network/doc/index.adoc#cross-trigger-network-interface[Cross-Trigger Network Interface]
+|
+|[[cross-trigger-port]] xref:ip:cross_trigger_port/doc/index.adoc#cross-trigger-port[Cross-Trigger Port]
+([[ctp-architecture]] xref:ip:cross_trigger_port/doc/index.adoc#ctp-architecture[architecture],
+[[ctp-interface]] xref:ip:cross_trigger_port/doc/index.adoc#ctp-interface[interface])
+|External pad-ring interface for OCCT cross-chiplet triggering.
 
-[[ctn-memory-map]]
-_Content moved:_
-xref:ip:cross_trigger_network/doc/index.adoc#ctn-memory-map[CTN Memory Map]
+|
+|[[cross-trigger-matrix]] xref:ip:cross_trigger_matrix/doc/index.adoc#cross-trigger-matrix[Cross-Trigger Matrix]
+([[ctm-architecture]] xref:ip:cross_trigger_matrix/doc/index.adoc#ctm-architecture[architecture],
+[[ctm-interface]] xref:ip:cross_trigger_matrix/doc/index.adoc#ctm-interface[interface])
+|Configurable N×M routing matrix for internal cross triggers.
 
-[[cross-trigger-port]]
-_Content moved:_
-xref:ip:cross_trigger_port/doc/index.adoc#cross-trigger-port[Cross-Trigger Port]
-
-[[ctp-architecture]]
-_Content moved:_
-xref:ip:cross_trigger_port/doc/index.adoc#ctp-architecture[Cross-Trigger Port Architecture]
-
-[[ctp-interface]]
-_Content moved:_
-xref:ip:cross_trigger_port/doc/index.adoc#ctp-interface[Cross-Trigger Port Interface]
-
-[[cross-trigger-matrix]]
-_Content moved:_
-xref:ip:cross_trigger_matrix/doc/index.adoc#cross-trigger-matrix[Cross-Trigger Matrix]
-
-[[ctm-architecture]]
-_Content moved:_
-xref:ip:cross_trigger_matrix/doc/index.adoc#ctm-architecture[Cross-Trigger Matrix Architecture]
-
-[[ctm-interface]]
-_Content moved:_
-xref:ip:cross_trigger_matrix/doc/index.adoc#ctm-interface[Cross-Trigger Matrix Interface]
-
-[[dtp-clock-stop]]
-_Content moved:_
-xref:clock_stop.adoc#dtp-clock-stop[Clock Stop / Reset]
+|===
 endif::backend-html5[]

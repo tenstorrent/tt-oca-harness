@@ -12,7 +12,7 @@ them to each other, to the SMU AXI crossbar, and to the external JTAG and
 cross-trigger pads.
 
 .DTP internal structure
-image::dtp_arch_diagram.drawio.svg[DTP architecture diagram showing the JTAG Interface Unit and Cross Trigger Network blocks with their connections to external pads and the SMU AXI crossbar,scaledwidth=90.0%]
+image::dtp_arch_overview.svg[DTP architecture diagram showing the JTAG Interface Unit and Cross Trigger Network blocks with their connections to external pads and the SMU AXI crossbar,scaledwidth=90.0%]
 
 == JTAG Interface Unit
 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[.small,stretch]
+[.dtp-port-reference.small,stretch]
 .DTP Port Declaration
 [cols="<20%,<16%,<8%,<11%,<25%,<20%",options="header",frame=all,grid=all]
 |===
@@ -10,7 +10,7 @@
 |`clk_i` |`logic` |In |1 |System clock for cross trigger logic and JTAG2AXI bridges. |System clock
 |`rst_n_i` |`logic` |In |1 |System reset (active low). Resets cross trigger and AXI logic; does not affect the TAP controller. |System reset
 |`pwr_on_rst_ni` |`logic` |In |1 |Power-on reset for JTAG state machine (active low, asynchronous). |Power-on reset
-|`feat_ctrl_i` |`sep_efuse_pkg::` `sep_efuse_map_lc_` `disable_reg_t` |In |- |Lifecycle feature control vector gating debug interfaces. Enable-polarity (1 = feature enabled). |Lifecycle controller
+|`feat_ctrl_i` |`sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t` |In |- |Lifecycle feature control vector gating debug interfaces. Enable-polarity (1 = feature enabled). |Lifecycle controller
 
 |`jtag_ptap_client_tap_ctrl_i` |`jtag_tap_ctrl_t` |In |- |Primary JTAG TAP control (TCK, TMS, TRST_N). |External JTAG pads
 |`jtag_ptap_client_tdi_i` |`logic` |In |1 |Primary JTAG TDI. |External JTAG pads
@@ -36,10 +36,10 @@
 |`jtag_stap_sep_host_tdo_o` |`logic` |Out |1 |SEP debug STAP TDO (to SEP TDI). |SEP JTAG port
 |`jtag_stap_sep_host_tdo_oen_o` |`logic` |Out |1 |SEP debug STAP TDO output enable. |SEP JTAG port
 
-|`jtag_stap_extra_host_tap_ctrl_o` |`jtag_tap_ctrl_t` |Out |`[NUM_EXTRA_STAP_PORTS-1:0]` |Extra STAP TAP control array. Default: tie to '0 if `JTAG_NUM_EXTRA_STAPS=0`. |Extra STAP hosts
-|`jtag_stap_extra_host_tdi_i` |`logic` |In |`[NUM_EXTRA_STAP_PORTS-1:0]` |Extra STAP TDI array. Default: tie to '0 if unused. |Extra STAP hosts
-|`jtag_stap_extra_host_tdo_o` |`logic` |Out |`[NUM_EXTRA_STAP_PORTS-1:0]` |Extra STAP TDO array. |Extra STAP hosts
-|`jtag_stap_extra_host_tdo_oen_o` |`logic` |Out |`[NUM_EXTRA_STAP_PORTS-1:0]` |Extra STAP TDO output enable array. |Extra STAP hosts
+|`jtag_stap_extra_host_tap_ctrl_o` |`jtag_tap_ctrl_t` |Out |`[JTAG_NUM_EXTRA_STAP_PORTS-1:0]` |Extra STAP TAP control array. Default: tie to '0 if `JTAG_NUM_EXTRA_STAPS=0`. |Extra STAP hosts
+|`jtag_stap_extra_host_tdi_i` |`logic` |In |`[JTAG_NUM_EXTRA_STAP_PORTS-1:0]` |Extra STAP TDI array. Default: tie to '0 if unused. |Extra STAP hosts
+|`jtag_stap_extra_host_tdo_o` |`logic` |Out |`[JTAG_NUM_EXTRA_STAP_PORTS-1:0]` |Extra STAP TDO array. |Extra STAP hosts
+|`jtag_stap_extra_host_tdo_oen_o` |`logic` |Out |`[JTAG_NUM_EXTRA_STAP_PORTS-1:0]` |Extra STAP TDO output enable array. |Extra STAP hosts
 
 |`jtag_stap_host_scan_ctrl_o` |`jtag_scan_ctrl_t` |Out |- |Extended STAP scan control. Tie scan_in to scan_out if unused. |STAP scan chain
 |`jtag_stap_host_scan_in_i` |`logic` |In |1 |Extended STAP scan data in. |STAP scan chain
@@ -82,27 +82,27 @@
 |`axil_xtrig_req_i` |`xtrig_axil_req_t` |In |- |Cross trigger CSR AXI-Lite request from SMC. |SMC `axil_dtp_csr_req_o`
 |`axil_xtrig_resp_o` |`xtrig_axil_resp_t` |Out |- |Cross trigger CSR AXI-Lite response to SMC. |SMC `axil_dtp_csr_resp_i`
 
-|`xtrig_ctm_src_req_o` |`logic` |Out |`[NUM_INT_CT-1:0]` |Cross trigger source requests from CTM to destination sinks. |Cross trigger sinks
-|`xtrig_ctm_src_ack_i` |`logic` |In |`[NUM_INT_CT-1:0]` |Cross trigger source acknowledges. Unused in pulse mode. Default: tie to '0 in pulse mode. |Cross trigger sinks
-|`xtrig_ctm_dst_req_i` |`logic` |In |`[NUM_INT_CT-1:0]` |Cross trigger destination requests from source generators. Default: tie to '0 if unused. |Cross trigger sources
-|`xtrig_ctm_dst_ack_o` |`logic` |Out |`[NUM_INT_CT-1:0]` |Cross trigger destination acknowledges. Unused in pulse mode. |Cross trigger sources
+|`xtrig_ctm_src_req_o` |`logic` |Out |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger source requests from CTM to destination sinks. |Cross trigger sinks
+|`xtrig_ctm_src_ack_i` |`logic` |In |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger source acknowledges. Unused in pulse mode. Default: tie to '0 in pulse mode. |Cross trigger sinks
+|`xtrig_ctm_dst_req_i` |`logic` |In |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger destination requests from source generators. Default: tie to '0 if unused. |Cross trigger sources
+|`xtrig_ctm_dst_ack_o` |`logic` |Out |`[XTRIG_NUM_INT_CT-1:0]` |Cross trigger destination acknowledges. Unused in pulse mode. |Cross trigger sources
 
-|`xtrig_clk_stop_req_i` |`logic` |In |`[NUM_CLK_STOP_REQ-1:0]` |Clock stop requests from CLAs or other devices. Default: tie to '0 if unused. |Clock stop requestors
+|`xtrig_clk_stop_req_i` |`logic` |In |`[XTRIG_NUM_CLK_STOP_REQ-1:0]` |Clock stop requests from CLAs or other devices. Default: tie to '0 if unused. |Clock stop requestors
 
-|`xtrig_ctp_req_out_dout_o` |`logic` |Out |`[NUM_CTP-1:0]` |CTP request-out data output (to pad ring). |GPIO pad ring
-|`xtrig_ctp_req_out_dout_en_o` |`logic` |Out |`[NUM_CTP-1:0]` |CTP request-out output enable. |GPIO pad ring
-|`xtrig_ctp_req_out_din_i` |`logic` |In |`[NUM_CTP-1:0]` |CTP request-out loopback input. Default: tie to '0 if unused. |GPIO pad ring
-|`xtrig_ctp_req_out_din_en_o` |`logic` |Out |`[NUM_CTP-1:0]` |CTP request-out input enable. |GPIO pad ring
-|`xtrig_ctp_req_in_dout_o` |`logic` |Out |`[NUM_CTP-1:0]` |CTP request-in data output. |GPIO pad ring
-|`xtrig_ctp_req_in_dout_en_o` |`logic` |Out |`[NUM_CTP-1:0]` |CTP request-in output enable. |GPIO pad ring
-|`xtrig_ctp_req_in_din_i` |`logic` |In |`[NUM_CTP-1:0]` |CTP request-in data input. Default: tie to '0 if unused. |GPIO pad ring
-|`xtrig_ctp_req_in_din_en_o` |`logic` |Out |`[NUM_CTP-1:0]` |CTP request-in input enable. |GPIO pad ring
-|`xtrig_ctp_ack_in_dout_o` |`logic` |Out |`[NUM_CTP-1:0]` |CTP ack-in data output. |GPIO pad ring
-|`xtrig_ctp_ack_in_dout_en_o` |`logic` |Out |`[NUM_CTP-1:0]` |CTP ack-in output enable. |GPIO pad ring
-|`xtrig_ctp_ack_in_din_i` |`logic` |In |`[NUM_CTP-1:0]` |CTP ack-in data input. Default: tie to '0 if unused. |GPIO pad ring
-|`xtrig_ctp_ack_in_din_en_o` |`logic` |Out |`[NUM_CTP-1:0]` |CTP ack-in input enable. |GPIO pad ring
-|`xtrig_ctp_ack_out_dout_o` |`logic` |Out |`[NUM_CTP-1:0]` |CTP ack-out data output. |GPIO pad ring
-|`xtrig_ctp_ack_out_dout_en_o` |`logic` |Out |`[NUM_CTP-1:0]` |CTP ack-out output enable. |GPIO pad ring
-|`xtrig_ctp_ack_out_din_i` |`logic` |In |`[NUM_CTP-1:0]` |CTP ack-out data input. Default: tie to '0 if unused. |GPIO pad ring
-|`xtrig_ctp_ack_out_din_en_o` |`logic` |Out |`[NUM_CTP-1:0]` |CTP ack-out input enable. |GPIO pad ring
+|`xtrig_ctp_req_out_dout_o` |`logic` |Out |`[XTRIG_NUM_CTP-1:0]` |CTP request-out data output (to pad ring). |GPIO pad ring
+|`xtrig_ctp_req_out_dout_en_o` |`logic` |Out |`[XTRIG_NUM_CTP-1:0]` |CTP request-out output enable. |GPIO pad ring
+|`xtrig_ctp_req_out_din_i` |`logic` |In |`[XTRIG_NUM_CTP-1:0]` |CTP request-out loopback input. Default: tie to '0 if unused. |GPIO pad ring
+|`xtrig_ctp_req_out_din_en_o` |`logic` |Out |`[XTRIG_NUM_CTP-1:0]` |CTP request-out input enable. |GPIO pad ring
+|`xtrig_ctp_req_in_dout_o` |`logic` |Out |`[XTRIG_NUM_CTP-1:0]` |CTP request-in data output. |GPIO pad ring
+|`xtrig_ctp_req_in_dout_en_o` |`logic` |Out |`[XTRIG_NUM_CTP-1:0]` |CTP request-in output enable. |GPIO pad ring
+|`xtrig_ctp_req_in_din_i` |`logic` |In |`[XTRIG_NUM_CTP-1:0]` |CTP request-in data input. Default: tie to '0 if unused. |GPIO pad ring
+|`xtrig_ctp_req_in_din_en_o` |`logic` |Out |`[XTRIG_NUM_CTP-1:0]` |CTP request-in input enable. |GPIO pad ring
+|`xtrig_ctp_ack_in_dout_o` |`logic` |Out |`[XTRIG_NUM_CTP-1:0]` |CTP ack-in data output. |GPIO pad ring
+|`xtrig_ctp_ack_in_dout_en_o` |`logic` |Out |`[XTRIG_NUM_CTP-1:0]` |CTP ack-in output enable. |GPIO pad ring
+|`xtrig_ctp_ack_in_din_i` |`logic` |In |`[XTRIG_NUM_CTP-1:0]` |CTP ack-in data input. Default: tie to '0 if unused. |GPIO pad ring
+|`xtrig_ctp_ack_in_din_en_o` |`logic` |Out |`[XTRIG_NUM_CTP-1:0]` |CTP ack-in input enable. |GPIO pad ring
+|`xtrig_ctp_ack_out_dout_o` |`logic` |Out |`[XTRIG_NUM_CTP-1:0]` |CTP ack-out data output. |GPIO pad ring
+|`xtrig_ctp_ack_out_dout_en_o` |`logic` |Out |`[XTRIG_NUM_CTP-1:0]` |CTP ack-out output enable. |GPIO pad ring
+|`xtrig_ctp_ack_out_din_i` |`logic` |In |`[XTRIG_NUM_CTP-1:0]` |CTP ack-out data input. Default: tie to '0 if unused. |GPIO pad ring
+|`xtrig_ctp_ack_out_din_en_o` |`logic` |Out |`[XTRIG_NUM_CTP-1:0]` |CTP ack-out input enable. |GPIO pad ring
 |===

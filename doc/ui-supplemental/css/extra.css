@@ -560,3 +560,21 @@
     background: var(--oca-green) !important;
     color: #ffffff !important;
 }
+
+/* ========================================
+   DTP PORT REFERENCE TABLE
+   Scoped to .dtp-port-reference role only; no global selectors.
+   ======================================== */
+.doc table.dtp-port-reference {
+    table-layout: fixed;
+    width: 100%;
+    max-width: 100%;
+}
+
+.doc table.dtp-port-reference td,
+.doc table.dtp-port-reference th,
+.doc table.dtp-port-reference code {
+    overflow-wrap: anywhere;
+    white-space: normal;
+    word-break: normal;
+}

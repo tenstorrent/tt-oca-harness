@@ -24,7 +24,7 @@ entry point for the chiplet. The JIU connects to:
 * The SMC and SEP CPU debug TAPs via STAPs.
 
 .DTP JTAG scan chain
-image::jtag_scan_chain.drawio.svg[DTP JTAG scan chain diagram showing PTAP connected to external JTAG pins and to the STAP chain,scaledwidth=90.0%]
+image::dtp_jtag_scan_chain.svg[DTP JTAG scan chain diagram showing PTAP connected to external JTAG pins and to the STAP chain and iJTAG SIB network,scaledwidth=90.0%]
 
 == STAP Secondary Scan Path
 
