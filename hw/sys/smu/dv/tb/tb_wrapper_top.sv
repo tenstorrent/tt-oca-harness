@@ -214,6 +214,25 @@ module smu_wrapper_uvm_top (
   input  wire logic                                     ext_boot_seq_done_i,
   output logic [63:0]                                   tb_timer_count,
   output logic                                          tb_bsr_select,
+  // DTP boot-stall / IC-reset / cross-trigger surface, matching tb_top.sv.
+  output logic                                          jtag_boot_stall,
+  output logic                                          jtag_boot_stall_ovrd,
+  output logic                                          jtag_ic_reset_ext_ovrd,
+  output logic                                          jtag_ic_reset_ext_ctrl_n,
+  output logic                                          jtag_ic_reset_smc_ovrd,
+  output logic                                          jtag_ic_reset_smc_ctrl_n,
+  input  wire logic                                     gpio_boot_stall_drive_i,
+  input  wire logic [dtp_pkg::DEFAULT_NUM_INT_CT-3:0]   xtrig_ctm_dst_req,
+  input  wire logic [dtp_pkg::DEFAULT_NUM_INT_CT-3:0]   xtrig_ctm_src_ack,
+  input  wire logic                                     xtrig_clk_stop_req,
+  output logic [dtp_pkg::DEFAULT_NUM_INT_CT-3:0]        xtrig_ctm_dst_ack,
+  output logic [dtp_pkg::DEFAULT_NUM_INT_CT-3:0]        xtrig_ctm_src_req,
+  output logic                                          tb_stap_io_tck,
+  output logic                                          tb_stap_smc_tck,
+  output logic                                          tb_stap_smc_tms,
+  output logic                                          tb_stap_smc_trst_n,
+  output logic                                          tb_stap_smc_tdi,
+  output logic                                          tb_stap_smc_tdo_oen,
   output logic             ext_in_rvalid,
   input  wire logic        ext_in_rready,
   output logic [7:0]       ext_in_rid,
@@ -457,7 +476,6 @@ module smu_wrapper_uvm_top (
   smu_axi_xbar_pkg::axi_out_resp_t    smu_axi_out_resp;
   logic [7:0] lc_state;
   // Matches smu_wrapper XTRIG_NUM_INT_CT (= DEFAULT_NUM_INT_CT - 2).
-  logic [dtp_pkg::DEFAULT_NUM_INT_CT-3:0] xtrig_ctm_src_req;
 
   // smc_4core_cpu zeroes the whole scratch RAM at boot to establish valid ECC
   // (its MEM_ZERO FSM, gated by this input). That runs after the time-zero
@@ -505,6 +523,9 @@ module smu_wrapper_uvm_top (
   // BSR scan out folded back to scan in, as tb_top.sv does: the EXTEST
   // loopback test compares TDO against what it shifted in.
   logic bsr_scan_loop;
+  logic smu_scope_boot_stall_val, smu_scope_boot_stall_ovrd;
+  jtag_tap_pkg::jtag_ic_reset_default_t ic_reset_ext_w;
+  prim_jtag_pkg::jtag_tap_ctrl_t        stap_io_ctrl_w;
   logic        rst_primary_smc_clk_n;
   logic        sep_reset_n;
   sep_pkg::sep_cpu_trace_t sep_cpu_trace;
@@ -964,6 +985,20 @@ module smu_wrapper_uvm_top (
 
   assign sep_xbar_global_base_o = u_dut.u_smu.sep_global_base_o;
   assign rst_cold_stable_ref_clk_no = rst_cold_stable_ref_clk_n;
+  assign jtag_boot_stall          = smu_scope_boot_stall_val;
+  assign jtag_boot_stall_ovrd     = smu_scope_boot_stall_ovrd;
+  assign jtag_ic_reset_ext_ovrd   = ic_reset_ext_w.ovrd;
+  assign jtag_ic_reset_ext_ctrl_n = ic_reset_ext_w.val;
+  assign jtag_ic_reset_smc_ovrd   = u_dut.u_smu.jtag_smc_reset_ctrl.ovrd.cold_reset_n_ovrd;
+  assign jtag_ic_reset_smc_ctrl_n = u_dut.u_smu.jtag_smc_reset_ctrl.val.cold_reset_n_val;
+  assign smu_scope_boot_stall_val  = u_dut.u_smu.boot_stall_jtag_val;
+  assign smu_scope_boot_stall_ovrd = u_dut.u_smu.boot_stall_jtag_ovrd;
+  assign tb_stap_io_tck      = stap_io_ctrl_w.tck;
+  assign tb_stap_smc_tck     = u_dut.u_smu.dtp_smc_stap_tap_ctrl.tck;
+  assign tb_stap_smc_tms     = u_dut.u_smu.dtp_smc_stap_tap_ctrl.tms;
+  assign tb_stap_smc_trst_n  = u_dut.u_smu.dtp_smc_stap_tap_ctrl.trst_n;
+  assign tb_stap_smc_tdi     = u_dut.u_smu.u_smc.smc_cpu_jtag_TDI_i;
+  assign tb_stap_smc_tdo_oen = u_dut.u_smu.u_dtp.jtag_stap_smc_host_tdo_oen_o;
   assign tb_bsr_select = bsr_ctrl_w.select;
   assign tb_smc_jtag2axi_security_disable =
         u_dut.u_smu.u_dtp.u_jtag_intf_unit.u_jtag_ptap.smc_jtag2axi_security_disable;
@@ -1236,7 +1271,7 @@ module smu_wrapper_uvm_top (
     .jtag_bsr_host_scan_in_i   (bsr_scan_loop),
     .jtag_bsr_host_scan_out_o  (bsr_scan_loop),
 
-    .jtag_stap_io_host_tap_ctrl_o (),
+    .jtag_stap_io_host_tap_ctrl_o (stap_io_ctrl_w),
     .jtag_stap_io_host_tdi_i      (1'b0),
     .jtag_stap_io_host_tdo_o      (),
     .jtag_stap_io_host_tdo_oen_o  (),
@@ -1265,13 +1300,13 @@ module smu_wrapper_uvm_top (
     .dtp_stop_clks_o (),
     .jtag_ptap_state_o (jtag_ptap_state),
     .jtag_ptap_inst_decoded_o (jtag_ptap_inst_decoded),
-    .jtag_ic_reset_ext_o (),
+    .jtag_ic_reset_ext_o (ic_reset_ext_w),
 
     .xtrig_ctm_src_req_o (xtrig_ctm_src_req),
-    .xtrig_ctm_src_ack_i ('0),
-    .xtrig_ctm_dst_req_i ('0),
-    .xtrig_ctm_dst_ack_o (),
-    .xtrig_clk_stop_req_i ('0),
+    .xtrig_ctm_src_ack_i (xtrig_ctm_src_ack),
+    .xtrig_ctm_dst_req_i (xtrig_ctm_dst_req),
+    .xtrig_ctm_dst_ack_o (xtrig_ctm_dst_ack),
+    .xtrig_clk_stop_req_i (xtrig_clk_stop_req),
 
     .xtrig_ctp_req_out_dout_o (),
     .xtrig_ctp_req_out_dout_en_o (),
