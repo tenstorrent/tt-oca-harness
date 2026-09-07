@@ -609,7 +609,8 @@ splice and a passive mirror interface for the VIP monitor, quiescent
 tie-offs for every other cocotb-driven pin at the idle value
 `sep_base_test.drive_idle_defaults` uses, the `uvm_config_db` publication of
 every virtual interface, and `run_test()`. The protocol SVA on the splice is
-the `u_s_axi_sva` instance of the shared body. The no_cpu scenarios keep
+the `u_s_axi_sva` instance of the shared body, enabled through
+`sep_tb_if.axi_sva_en` in this shape. The no_cpu scenarios keep
 their `target = "lsu_stub_all_live"` binding, so the `sep_cpu` stub stays
 the sole LSU driver in this shape as well. The class library mirrors the
 cocotb conventions under `uvm/` with identical basenames, one class per

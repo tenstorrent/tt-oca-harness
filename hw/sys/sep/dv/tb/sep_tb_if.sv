@@ -48,7 +48,8 @@ interface sep_tb_if;
   // Primary-reset assertion counter (driven by tb_top).
   logic [31:0] rst_assert_count;
 
-  // Runtime enable for the shared AXI protocol SVA checker.
+  // Runtime enable for the shared AXI protocol SVA checker on the CPU-LSU
+  // splice; tb_top ANDs it with the run-mode gate of u_s_axi_sva.
   logic axi_sva_en = 1'b1;
 
 endinterface : sep_tb_if

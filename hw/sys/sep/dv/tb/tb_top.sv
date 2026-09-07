@@ -1435,7 +1435,8 @@ module sep_uvm_top
     // would be judging the core's own traffic rather than TB stimulus. Static
     // initialisation resolves before any initial block, so the value is settled
     // before the first assertion samples. m_axi stays armed in both modes: it is
-    // TB-driven throughout.
+    // TB-driven throughout. The SV-UVM shape ANDs in the sep_tb_if runtime
+    // enable, so a scenario holds the checker off through the interface.
     bit s_axi_sva_en = !$test$plusargs("cpu_boot");
 
     ocah_axi_sva #(
@@ -1446,7 +1447,11 @@ module sep_uvm_top
     ) u_s_axi_sva (                       // CPU LSU master (TB-driven when !cpu_boot)
         .aclk    (clk_i),
         .aresetn (rst_ni),
+`ifdef UVM
+        .en_i    (s_axi_sva_en && u_tb_if.axi_sva_en),
+`else
         .en_i    (s_axi_sva_en),
+`endif
         .awid    (s_axi_awid),
         .awaddr  (s_axi_awaddr),
         .awlen   (s_axi_awlen),
@@ -1657,7 +1662,8 @@ module sep_uvm_top
     // Passive mirror of the CPU-LSU bus for the shared-VIP monitor (the
     // sep_scoreboard predictors consume its item stream), wired from the
     // DUT-facing flat nets only. The protocol SVA on this bus is the
-    // u_s_axi_sva instance of the shared body.
+    // u_s_axi_sva instance of the shared body, enabled through
+    // u_tb_if.axi_sva_en in this shape.
     ocah_axi_if u_lsu_axi_if (.aclk(clk_i), .aresetn(rst_ni));
     assign u_lsu_axi_if.awid     = 16'(s_axi_awid);
     assign u_lsu_axi_if.awaddr   = 64'(s_axi_awaddr);
