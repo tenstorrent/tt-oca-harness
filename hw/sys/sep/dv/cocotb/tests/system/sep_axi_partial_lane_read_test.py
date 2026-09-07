@@ -64,8 +64,7 @@ class sep_axi_partial_lane_read_test(sep_base_test):
             "CHK-RANDCFG FAIL: all-zeros and all-ones CSR patterns not first"
         )
         self.logger.info(
-            "CHK-RANDCFG PASS: seed=%d word=0x%016x @0x%08x slices=%d arsize=%d "
-            "csr_patterns=%d",
+            "CHK-RANDCFG PASS: seed=%d word=0x%016x @0x%08x slices=%d arsize=%d csr_patterns=%d",
             self.cfg_lane.seed,
             self.cfg_lane.word,
             self.cfg_lane.sram_addr,
