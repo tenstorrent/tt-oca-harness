@@ -1274,14 +1274,36 @@ module sep_uvm_top
     // firmware boot, so the testbench cannot perform this timed write through an
     // independent master. The leaf storage sits outside the AXI ready/valid
     // combinational cones. A deposit allows later ROM writes to remain visible.
+    //
+    // The two simulators need different deposit mechanics on this leaf, and
+    // neither mechanism compiles on the other tool:
+    //
+    //  * VCS rejects a procedural assignment here (Error-[ICPD]): the field
+    //    storage is written by an always_ff in sep_scratch_reg.sv, and the LRM
+    //    allows such a variable only one procedural driver. A force is not a
+    //    procedural driver, so VCS takes the force. That always_ff writes the
+    //    field only on reset or a decoded software write, so the value stands
+    //    after release until ROM writes it.
+    //  * Verilator cannot force an element of an unpacked array member
+    //    (V3Force "opaque force path selector ARRAYSEL"), and the failure lands
+    //    on the SCRATCH_COLD probe assigns above, not on the force itself. It
+    //    does not implement the single-driver rule, so the assignment stands.
     logic [31:0] cold_scratch7_seed;
     initial begin : cold_scratch7_seed_deposit
         if ($value$plusargs("sep_cold_scratch7=%h", cold_scratch7_seed)) begin
             wait (rst_ni === 1'b1);
             wait (sep_cpu_reset_n_o === 1'b1);
             repeat (4) @(posedge clk_i);
+`ifdef VERILATOR
             `SEP_CORE.sep_system_peripherals.u_sep_system_csr
                 .u_sep_scratch_reg_cold.field_storage.SCRATCH[7].data.value = cold_scratch7_seed;
+`else
+            force `SEP_CORE.sep_system_peripherals.u_sep_system_csr
+                .u_sep_scratch_reg_cold.field_storage.SCRATCH[7].data.value = cold_scratch7_seed;
+            @(posedge clk_i);
+            release `SEP_CORE.sep_system_peripherals.u_sep_system_csr
+                .u_sep_scratch_reg_cold.field_storage.SCRATCH[7].data.value;
+`endif
             $display("[tb] cold_scratch[7] seeded 0x%08x (+sep_cold_scratch7)",
                      cold_scratch7_seed);
         end
