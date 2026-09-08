@@ -40,7 +40,7 @@ seed = 1
 timeout_sec = 1800
 tags = [
     "smoke", "ci", "combined", "canonical",
-    "canonical_top6", "canonical_top10", "canonical_top20", "pyuvm"
+    "pyuvm"
 ]
 run_modes = ["smoke"]
 

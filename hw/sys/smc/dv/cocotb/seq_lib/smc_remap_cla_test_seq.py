@@ -428,16 +428,43 @@ CLA_RESET_SWEEP = _cla_reset_sweep()
 # Non-zero-reset rows carry the discrimination; asserted below so a generated
 # map that lost them cannot silently turn the sweep into 82 reads of zero.
 CLA_SWEEP_NONZERO = tuple(r for r in CLA_RESET_SWEEP if r[2] != 0)
-# Deny leg: the window opens on the dst_sink block, whose first two registers are
-# `Trdstramcontrol @ 0x0` and `Trdstramimpl @ 0x4`; the next is
-# `Trdstramstartlow @ 0x10`. So 0x8/0xC are holes, as is 0x30 (`Trdstramrphigh`
-# @0x24 is the last before `Trdstramdata` @0x40). These probes are named as
-# offsets, never under a register name.
-CLA_UNMAPPED_PROBES = (
-    ("CLA_WINDOW_OFF8", SMC_CLA_REG_MAP_BASE_ADDR + 0x8),
-    ("CLA_WINDOW_OFFC", SMC_CLA_REG_MAP_BASE_ADDR + 0xC),
-    ("CLA_WINDOW_OFF30", SMC_CLA_REG_MAP_BASE_ADDR + 0x30),
-)
+
+
+def _cla_unmapped_probes(count: int = 3) -> tuple[tuple[str, int], ...]:
+    """In-window offsets that map to no register, taken from the generated map.
+
+    The aperture is not densely packed, and which offsets are holes moves every
+    time the map is rebuilt. Derived here so the deny leg cannot go stale into
+    a silent pass.
+    """
+    import smc_reg as _r
+
+    mapped = {
+        getattr(_r, n) for n in dir(_r) if n.startswith("SMC_CLA_") and n.endswith("_REG_ADDR")
+    }
+    assert mapped, (
+        "generated smc_reg has no SMC_CLA_*_REG_ADDR symbols; the deny-leg "
+        "derivation would treat every offset as a hole"
+    )
+    out = []
+    for off in range(0, 0x3000, 4):
+        addr = SMC_CLA_REG_MAP_BASE_ADDR + off
+        if addr in mapped:
+            continue
+        # A 4-byte hole inside a 64-bit register's span is still decoded.
+        if (addr - 4) in mapped or (addr - 8) in mapped:
+            continue
+        out.append((f"CLA_WINDOW_OFF{off:X}", addr))
+        if len(out) == count:
+            break
+    assert len(out) == count, (
+        f"only found {len(out)} unmapped in-window offsets; the deny leg needs "
+        f"{count} to show the window refuses what it does not decode"
+    )
+    return tuple(out)
+
+
+CLA_UNMAPPED_PROBES = _cla_unmapped_probes()
 
 # --- ALIAS_REMAP translation ---------------------------------------------
 # Field positions come from the generated alias_remap header, never hand-packed.
@@ -664,13 +691,18 @@ class smc_remap_cla_test_seq(SmcCsrSeq):
             len(CLA_RESET_SWEEP),
             len(CLA_SWEEP_NONZERO),
         )
+        hole_offs = "/".join(
+            f"+0x{addr - SMC_CLA_REG_MAP_BASE_ADDR:X}" for _, addr in CLA_UNMAPPED_PROBES
+        )
         for name, addr in CLA_UNMAPPED_PROBES:
             await self.csr_read_expect_resp_zero(name, addr, RESP_SLVERR)
         cocotb.log.info(
-            "CHK-CLA-WINDOW-DENY: the three unmapped in-window offsets +0x8/+0xC/"
-            "+0x30 (holes in the dst_sink block that opens the aperture) each "
+            "CHK-CLA-WINDOW-DENY: the %d unmapped in-window offsets %s "
+            "(holes derived from the generated CLA map) each "
             "returned resp=%d (SLVERR) with rdata=0, while the registers around "
             "answered OKAY in the same run",
+            len(CLA_UNMAPPED_PROBES),
+            hole_offs,
             RESP_SLVERR,
         )
 
