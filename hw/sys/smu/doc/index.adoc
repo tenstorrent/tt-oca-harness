@@ -89,5 +89,5 @@ see the SMU AXI Crossbar Address Map section in the Integrator Guide for
 firmware programming order.
 
 [[smu-child-subsystems]]
-// Compatibility anchor for the former "Child Subsystems" section heading.
-// Content is now consolidated in the Composition section above.
+The subsystem chapters (DTP, SEP, SMC) follow immediately; see the
+<<composition,Composition>> section above for roles and cross-references.
