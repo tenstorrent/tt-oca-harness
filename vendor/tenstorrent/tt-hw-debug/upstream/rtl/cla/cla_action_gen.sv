@@ -24,7 +24,6 @@ import cla_pkg::*;
    output  logic start_trace,
    output  logic stop_trace,
    output  logic trace_pulse,
-   output  logic timestamp_capture,
    output  logic [XTRIGGER_WIDTH-1:0] xtrigger_out,
    output  logic [CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0]  custom_action_bus,
    // Internal Action Signals
@@ -175,7 +174,6 @@ end
      start_trace = action_bus[ACTION_START_TRACE];
      stop_trace = action_bus[ACTION_STOP_TRACE];
      trace_pulse = action_bus[ACTION_TRACE_PULSE];
-     timestamp_capture = action_bus[ACTION_TIMESTAMP_CAPTURE];
 
      xtrigger_out[0] = action_bus[ACTION_XTRIGGER0_OUT];
      xtrigger_out[1] = action_bus[ACTION_XTRIGGER1_OUT];

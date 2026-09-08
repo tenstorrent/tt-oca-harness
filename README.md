@@ -19,6 +19,9 @@ deployment of this repository: [tenstorrent.github.io/tt-oca-harness/](https://t
 
 The Getting Started Guide, in particular, can be found [here](https://tenstorrent.github.io/tt-oca-harness/ocah-contributing/latest/index.html).
 
+Integrator-facing register and timing collateral is indexed under
+[`integration/`](integration/).
+
 ## Contributing
 
 Contributions are welcome under the Apache License 2.0. Read

@@ -235,6 +235,7 @@ ECC_HEX_FILE     := $(HEX_DIR)/$(TARGET).ecc.hex
 BIN64_FILE       := $(HEX_DIR)/$(TARGET).bin64
 MAP_FILE         := $(OUT_DIR)/$(TARGET).map
 DISASM_FILE      := $(DISASM_DIR)/$(TARGET).dis
+SYM_FILE         := $(HEX_DIR)/$(TARGET).sym
 
 # =============================================================================
 # BUILD RULES
@@ -242,7 +243,7 @@ DISASM_FILE      := $(DISASM_DIR)/$(TARGET).dis
 
 .PHONY: all
 all: info $(ELF_FILE) $(BIN_FILE) $(HEX_FILE) $(PRELOAD_HEX_FILE) \
-     $(ECC_HEX_FILE) $(BIN64_FILE) $(DISASM_FILE) size
+     $(ECC_HEX_FILE) $(BIN64_FILE) $(DISASM_FILE) $(SYM_FILE) size
 
 .PHONY: info
 info:
@@ -327,6 +328,12 @@ $(ECC_HEX_FILE): $(BIN_FILE) | $(HEX_DIR)
 $(BIN64_FILE): $(BIN_FILE) | $(HEX_DIR)
 	@echo "BIN64 $@"
 	@python3 $(SCRIPTS_DIR)/bin_to_64b.py --input $< --output $@
+
+# nm listing next to the images: the DV processor-state monitors symbolize
+# retired PCs from it.
+$(SYM_FILE): $(ELF_FILE) | $(HEX_DIR)
+	@echo "SYM $@"
+	@$(NM) -B -n $< > $@
 
 # -d (code sections) not -D (all sections): binutils 2.44 objdump aborts on -D
 # for this image's NOBITS/.stack layout, and disassembling data is noise anyway.

@@ -28,6 +28,7 @@ command:
 make generate_filelist
 ```
 
+[[vendor-packages]]
 === Third-party (vendor) package imports with Bender
 
 External IP is materialized under `vendor/` via Bender's `vendor_package` feature. If a
@@ -319,6 +320,7 @@ used for synthesis may be selected with `TECH`.
 The yosys flow is still WIP, as timing constraints are not yet integrated/pipe cleaned.
 ====
 
+[[linting]]
 == Linting
 
 We use linters within the development of OCAH to perform static analysis
@@ -631,10 +633,10 @@ Scheduled and manually dispatched pipelines always run in full.
 
 | `lint-sv-slang`
 | `lint-sv-slang/smu`, `lint-sv-slang/aou`
-| `make lint-slang-all BLOCK=smu` / `BLOCK=aou-rtl`
+| `make lint-slang-all BLOCK=smu` / `BLOCK=aou`
 
 | `lint-sv-verilator`
-| `lint-sv-verilator/<block>` for `aou-rtl`, `dtp`, `sep`, `smc`, and `smu`
+| `lint-sv-verilator/<block>` for `aou`, `dtp`, `sep`, `smc`, and `smu`
 | `make lint-verilator-all [BLOCK=<block>]`
 
 | `lint-sv-verible` (disabled in CI)

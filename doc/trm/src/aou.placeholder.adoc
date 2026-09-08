@@ -5,8 +5,10 @@
 AXI-Over-UCIe Bridge
 --------------------
 
-AoU is specified outside this document. See the
-https://cdn.sanity.io/files/jpb4ed5r/production/25de1707769f21e4a3916103371d1fb419cadac0.pdf[AoU Technical Reference Manual].
+AoU is specified outside this document:
 
-OCAH instantiates the vendored `aou-rtl` bridge; it does not maintain a
+* https://cdn.sanity.io/files/jpb4ed5r/production/25de1707769f21e4a3916103371d1fb419cadac0.pdf[AoU architecture specification]
+* https://github.com/tenstorrent/tt-oca-harness-aou/tree/main/DOC/MAS[AoU microarchitecture specifications]
+
+OCAH instantiates the vendored `aou` bridge; it does not maintain a
 local AoU chapter.
