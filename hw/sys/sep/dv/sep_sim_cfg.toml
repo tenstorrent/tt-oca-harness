@@ -226,38 +226,27 @@ cocotb_log = "{run_dir}/{item}/logs/{item}.log"
 # emits the gitignored .itcm/.dtcm hex images under fw/build/tests/<target>/ from
 # tracked test/driver source.
 #
-# Toolchain resolution, in order: an explicit RISCV_TOOLCHAIN/RISCV_PREFIX from the
-# environment wins; then the project container's riscv-gnu-toolchain; then a local
-# xPack riscv-none-elf install (the macOS/Verilator-only route). NOTE: argv goes
-# through str.format() for {fw_target}, and the runlib additionally REJECTS any
-# other placeholder -- including a doubled ${{...}} -- so shell brace expansion is
-# unavailable here. Concatenate with quoting instead: "$RV_PFX"gcc.
+# Toolchain: the caller's RISCV_TOOLCHAIN/RISCV_PREFIX wins when that gcc has
+# picolibc. Otherwise the stage builds through scripts/docker-run.sh run-here.
+# There is no site or home-directory probe. argv goes through str.format() for
+# {fw_target}, and the runlib rejects any other placeholder -- including a
+# doubled ${{...}} -- so shell brace expansion is unavailable here. Concatenate
+# with quoting instead: "$RV_PFX"gcc.
 #
-# RISCV_TOOLCHAIN + RISCV_PREFIX is the ONLY toolchain contract the shared engine
-# accepts (hw/common/dv/fw/compile.mk); do not invent per-tool RISCV_GCC/_NM vars.
-# When RISCV_TOOLCHAIN is given without RISCV_PREFIX we still probe the directory
-# for both tool names, because the auto-detect loop that would have picked the
-# right prefix is skipped in that case -- otherwise pointing RISCV_TOOLCHAIN at an
-# xPack install would silently fall back to the riscv64-unknown-elf- prefix.
+# RISCV_TOOLCHAIN + RISCV_PREFIX is the ONLY toolchain contract the shared
+# engine accepts (hw/common/dv/fw/compile.mk). When RISCV_TOOLCHAIN is given
+# without RISCV_PREFIX we still probe that directory for both tool names.
 #
-# PICOLIBC IS THE REAL GATE, and it is why this stage falls back to docker-run.sh.
-# compile.mk builds with --specs=picolibc.specs, and the site riscv-gnu-toolchain
-# installs have no picolibc -- so a resolved toolchain is NOT sufficient. We probe
-# for picolibc.specs and, when it is absent, re-run the same make via
-# scripts/docker-run.sh (container, or bubblewrap when OCAH_TOOLCHAIN_ROOTFS is
-# set). Use `run-here`, not `run`: `run` remaps the repo to /work, so
-# OCAH_ROOT="$PWD" does not resolve inside the container. `run-here` mounts 1:1
-# at the host path and keeps the caller's cwd, matching the bwrap backend.
-# Unset RISCV_TOOLCHAIN/RISCV_PREFIX on that fallback:
-# run.sh points them at the host gcc (no picolibc), and that path is not inside
-# the sandbox -- compile.mk must use the image gcc on PATH. A bare clone without
-# picolibc still gets a working firmware image this way; the sim itself only
-# needs the .hex.
+# PICOLIBC IS THE REAL GATE. compile.mk builds with --specs=picolibc.specs.
+# Use `run-here`, not `run`: `run` remaps the repo to /work, so
+# OCAH_ROOT="$PWD" does not resolve inside the container. Unset
+# RISCV_TOOLCHAIN/RISCV_PREFIX on the container fallback so compile.mk uses
+# the image gcc on PATH.
 cwd = "."
 argv = [
   "bash",
   "-lc",
-  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_TC\" ]; then for c in /tools_soc/opensrc/riscv-gnu-toolchain/2025.01.20-rhel-8.10/bin \"$HOME\"/.local/opt/xpack-riscv-none-elf-gcc-*/bin; do if [ -x \"$c/riscv64-unknown-elf-gcc\" ]; then RV_TC=\"$c\"; RV_PFX=riscv64-unknown-elf-; break; fi; if [ -x \"$c/riscv-none-elf-gcc\" ]; then RV_TC=\"$c\"; RV_PFX=riscv-none-elf-; break; fi; done; fi; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; MK=\"dv-fw-tests TEST={fw_target}\"; if [ -n \"$RV_TC\" ] && \"$RV_TC/$RV_PFX\"gcc -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then exec make -C hw/sys/sep/dv/fw -f fw.mk $MK OCAH_ROOT=\"$PWD\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] host toolchain has no picolibc; building in the OCAH toolchain container\"; exec env -u RISCV_TOOLCHAIN -u RISCV_PREFIX ./scripts/docker-run.sh run-here make -C hw/sys/sep/dv/fw -f fw.mk $MK OCAH_ROOT=\"$PWD\"; else echo \"error: no picolibc-enabled RISC-V toolchain and no scripts/docker-run.sh\" >&2; exit 1; fi",
+  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; MK=\"dv-fw-tests TEST={fw_target}\"; if [ -n \"$RV_TC\" ] && \"$RV_TC/$RV_PFX\"gcc -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then exec make -C hw/sys/sep/dv/fw -f fw.mk $MK OCAH_ROOT=\"$PWD\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] no caller RISCV_TOOLCHAIN with picolibc; building in the OCAH toolchain container\"; exec env -u RISCV_TOOLCHAIN -u RISCV_PREFIX ./scripts/docker-run.sh run-here make -C hw/sys/sep/dv/fw -f fw.mk $MK OCAH_ROOT=\"$PWD\"; else echo \"error: set RISCV_TOOLCHAIN to a picolibc-enabled RISC-V toolchain, or provide scripts/docker-run.sh\" >&2; exit 1; fi",
 ]
 outputs = [
   "hw/sys/sep/dv/fw/build/tests/{fw_target}/{fw_target}.itcm.hex",
@@ -285,9 +274,10 @@ outputs = [
 #                     come from the tt-boot-manifest submodule's pyproject.toml via
 #                     uv, and the ocah-toolchain image carries neither.
 #
-# Toolchain resolution and the picolibc probe are deliberately identical to
-# [c_build.default] above -- see that block for why the probe (not mere toolchain
-# presence) is the real gate. GCC_PREFIX differs from the engine's RISCV_PREFIX:
+# Toolchain resolution for the ROM still walks a site path and a local xPack
+# install. That is not [c_build.default]. The picolibc probe is the real gate --
+# see [c_build.default] for why a resolved toolchain is not enough.
+# GCC_PREFIX differs from the engine's RISCV_PREFIX:
 # this Makefile spells `$(GCC_PREFIX)-gcc`, so the value carries no trailing dash.
 # Passing it as a full path prefix keeps PATH untouched. Make propagates
 # command-line variables to sub-makes, so the recursive OTBN-app and bl1_pass_test
