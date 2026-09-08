@@ -10,9 +10,11 @@ recipes, `docs/SMC_VPLAN.adoc` for the verification plan,
 `docs/SMC_SCOPE_TRACEABILITY.adoc` for the candidate v0.5.0
 requirement-to-test matrix (unsigned; #496),
 `docs/SMC_CANONICAL_BRINGUP_SIGNOFF.adoc` for the canonical bring-up /
-CSR signoff record (#498), and
+CSR signoff record (#498),
 `docs/SMC_FABRIC_PERIPH_SIGNOFF.adoc` for the fabric / peripheral
-honesty record (#500).
+honesty record (#500), and
+`docs/SMC_RELEASE_MATRIX.adoc` for the v0.5.0 release regression
+matrix (#502).
 
 **Green / signoff policy:** only claim **real DUT RTL paths**.
 I3C CCC/IBI / real-core protocol, adopter PLL/PVT OKAY wraps, and TB-glue
