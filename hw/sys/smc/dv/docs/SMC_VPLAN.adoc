@@ -6592,6 +6592,7 @@ the wrong reason.
 
 * The firmware path end to end, and nothing else: c_compile, output staging by basename, the 64B-striped scratch load, the reset-vector handoff, crt0 and picolibc init across four harts, and the MMIO store to CPU_CTRL SCRATCH_0.
 * The image is `test_pass(0)` and a `wfi` loop, so no DUT feature is under test.
+* Not a duplicate of `smc_cpu_firmware_boot_test`, and the two cannot be merged. That one boots `min_pass.rom.hex` from the ROM window -- a four-line hand-assembled stub that deliberately avoids crt0 and the hart barrier -- and its `CHK-ROM-IS-TARGET` requires that no scratch image be supplied. This one requires one. So they cover the ROM path and the c_compile-plus-striped-scratch path respectively, and share no CHK token.
 
 *Test Procedure*:
 
