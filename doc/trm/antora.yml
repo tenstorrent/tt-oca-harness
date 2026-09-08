@@ -21,3 +21,4 @@ asciidoc:
     basedir: doc/trm
     verbose: ''
     ocah-trm: ''
+    page-pagination: ''

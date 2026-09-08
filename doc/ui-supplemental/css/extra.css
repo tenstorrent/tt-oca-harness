@@ -704,3 +704,38 @@
     white-space: normal;
     word-break: normal;
 }
+
+/* ========================================
+   VERSION SELECTOR CONTEXT TOGGLE
+   The .context element inside .nav-panel-explore is a native <button>
+   (supplied by the nav-explore.hbs partial override) that toggles the
+   expanded component/version list. The bundle's site.js attaches the
+   panel-toggle click handler to .querySelector(".context"), so a button
+   with class="context" receives both mouse clicks and keyboard Enter/Space.
+   The collapsed view shows only the version pill; the full product name is
+   exposed via aria-label on the button and remains visible in the expanded
+   .components list. Selectors are scoped to .nav-panel-explore only.
+   ======================================== */
+.nav-panel-explore .context {
+    appearance: none;
+    -webkit-appearance: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    width: 100%;
+    text-align: left;
+    font-family: var(--oca-font-mono);
+    font-size: 0.68rem;
+    color: var(--oca-text);
+    background-color: var(--oca-cream);
+    border-top: 2px solid var(--oca-green);
+}
+
+.nav-panel-explore .context:focus-visible {
+    outline: 3px solid var(--oca-gold-accessible);
+    outline-offset: -3px;
+}
