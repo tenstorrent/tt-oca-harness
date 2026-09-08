@@ -34,13 +34,21 @@ name = "all"
 #
 # It is not every test the package defines, and the difference is deliberate.
 #
-# Five tests build a different DUT and so cannot ride in one sweep:
-# smc_dual_elaboration_test, smc_dual_axi_sram_probe_test,
-# smc_occp_sanity_test and smc_occp_dual_unsecure_boot_test carry
-# `target = "dual"`, which elaborates SMC_DUAL; smc_prod_rom_occp_ready_test
-# needs `run_modes = ["prod_rom"]` so the production ROM's reset vector is not
-# zeroed by the smoke-mode backdoor. They run as `dual_all` / `dual_smoke` /
-# `occp_dual` / `occp_boot`, and each has a VPLAN entry under OCCP.
+# The three `target = "dual"` bring-up scenarios are in: the runner builds both
+# targets in one invocation and schedules each testcase against its own, so a
+# second SMC_DUAL elaboration is the only extra cost and it is paid once.
+#
+# Two testcases are held out on measured runtime alone. Both are correct and
+# both are green; putting them here would turn a four-minute package run into a
+# multi-hour one, and nothing about them needs to gate every review:
+#
+#   smc_occp_dual_unsecure_boot_test  ~2.1 h. A full sram image crosses a
+#                                     ~2.6 MHz serial bus that Verilator
+#                                     simulates cycle by cycle. Runs as
+#                                     `dual_all` / `occp_dual`.
+#   smc_prod_rom_occp_ready_test      the production ROM's whole reset-to-OCCP
+#                                     path, `run_modes = ["prod_rom"]`. Runs as
+#                                     `occp_boot`, and carries the `ci` tag.
 #
 # 12 test modules under cocotb/tests/ are in no testlist. Each carries its
 # deferral reason in its own docstring, on a leading `# deferred: <tag>` line
@@ -115,6 +123,8 @@ tests = [
     "smc_dfx_status_abort_test",
     "smc_dma_cg_activity_test",
     "smc_dma_sanity_test",
+    "smc_dual_axi_sram_probe_test",
+    "smc_dual_elaboration_test",
     "smc_ecc_codeword_ded_test",
     "smc_ecc_codeword_sec_test",
     "smc_ecc_dfd_dbs_sanity_test",
@@ -191,6 +201,7 @@ tests = [
     "smc_mutex_semaphore_test",
     "smc_ndm_reset_test",
     "smc_occp_sanity_secure_error_test",
+    "smc_occp_sanity_test",
     "smc_octs_dual_sync_test",
     "smc_octs_sanity_test",
     "smc_output_fabric_slverr_inject_test",

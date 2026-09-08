@@ -6424,7 +6424,7 @@ enrolled through `dual_*` and `occp_*` rather than `all`.
 [cols=",,",options="header",]
 |===
 |Group |Tests |Purpose
-|`all` |149 |The single-instance regression. It is not every enrolled testcase: the 5 OCCP entries build a different DUT, and 2 more are held out against #585 and #1488
+|`all` |152 |The package regression, single-instance plus the three dual bring-up scenarios. Four testcases are out: two on measured runtime (`smc_occp_dual_unsecure_boot_test`, `smc_prod_rom_occp_ready_test`) and two against #585 and #1488
 |`avsbus_depth` |2 |avsbus depth coverage
 |`axil` |2 |axil coverage
 |`balanced_ip` |99 |One-per-IP breadth run used for routine regression

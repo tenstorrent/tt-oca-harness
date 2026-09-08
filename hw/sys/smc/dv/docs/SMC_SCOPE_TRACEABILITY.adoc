@@ -44,7 +44,7 @@ Executable membership, resolved from the testlists:
 |Group |Count |Role
 |`smoke` |35 |PR gate (`sim.yml`) and SMC nightly and weekly (`regress.yml`). Debug breadth, not the feature denominator.
 |`balanced_ip` |99 |One pass across every IP the bench drives. Successor to the `canonical_top6` / `top10` / `top20` tiers.
-|`all` |149 |The whole enrolled set, less the two held out against #585 and #1488.
+|`all` |152 |The package regression. Four of the 156 enrolled are out: two on measured runtime, two against #585 and #1488.
 |`project_p0` |13 |One name per Project 335 bucket #3301–#3314. Mixes SAMPLE bring-up with feature rows.
 |===
 
