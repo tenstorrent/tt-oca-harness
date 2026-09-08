@@ -1,0 +1,103 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= Debug & Test Ports (DTP) Integration
+:trm-url: https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest
+:page-role: integrator-guide
+
+[[dtp-integration]]
+== Configuration
+
+The cross-trigger topology is fixed at elaboration by `dtp_pkg`, a committed
+source file at `hw/sys/dtp/rtl/dtp_pkg.sv`. `DEFAULT_NUM_CTP`,
+`DEFAULT_NUM_INT_CT`, and `DEFAULT_NUM_CLK_STOP_REQ` there set the
+`XTRIG_NUM_CTP`, `XTRIG_NUM_INT_CT`, and `XTRIG_NUM_CLK_STOP_REQ` localparams of
+`dtp`, so a different port count is applied by editing that package rather than
+by overriding parameters at the instantiation. The remaining DTP parameters,
+including `XTRIG_INT_CT_MODE` and every `JTAG_*` enable, are set at the
+instantiation as shown below.
+
+Include the DTP in your build using Bender target `dtp`, which pulls in the DTP
+RTL together with the JTAG and cross-trigger IPs it instantiates. The legacy
+filelist `hw/sys/dtp/rtl/config/dtp.f` covers only the JTAG portion of the
+hierarchy and is not a complete DTP recipe.
+
+The package defaults are:
+
+[cols="2,1,2",options="header"]
+|===
+|Package constant |Default |DTP localparam
+|`DEFAULT_NUM_CTP` |16 |`XTRIG_NUM_CTP`
+|`DEFAULT_NUM_INT_CT` |10 |`XTRIG_NUM_INT_CT`
+|`DEFAULT_NUM_CLK_STOP_REQ` |9 |`XTRIG_NUM_CLK_STOP_REQ`
+|===
+
+== Instantiation
+
+[source,systemverilog]
+----
+dtp #(
+    // JTAG Configuration
+    .JTAG_BSR_ENABLE          (1'b1),
+    .JTAG_TMP_ENABLE          (1'b1),
+    .JTAG_SMC_DBG_ENABLE      (1'b1),
+    .JTAG_SEP_DBG_ENABLE      (1'b1),
+    .JTAG_IDCODE_MFR_ID       (11'h15A),
+    .JTAG_IDCODE_PART_NUM     (16'h1234),
+    .JTAG_IDCODE_SI_REV       (4'h1),
+    // Cross Trigger Configuration
+    .XTRIG_INT_CT_MODE        (10'b0000000000)
+) u_dtp (
+    .clk_i                    (clk),
+    .rst_n_i                  (rst_n),
+    .pwr_on_rst_ni            (pwr_on_rst_n),
+    // JTAG, Boundary Scan, Cross Trigger interfaces...
+);
+----
+
+== Clock and Reset
+
+* *TCK Domain*: JTAG logic operates on external Test Clock
+* *System Clock* (`clk_i`): Cross trigger logic and JTAG2AXI bridges
+* *System Reset* (`rst_n_i`): Resets cross trigger and AXI; does not affect TAP controller
+* *Power-On Reset* (`pwr_on_rst_ni`): Asynchronous reset for JTAG state machine
+
+== Constraints
+
+* JTAG interface: 10-50 MHz TCK frequency
+* Cross trigger signals synchronized to system clock
+* DTP remains active during clock stop for debug access
+* External CTP signals require pad ring integration with ESD protection
+
+== STAP Scan Chain Topology
+
+The DTP secondary scan path chains multiple STAPs on a single PTAP-managed scan
+string. The fixed order on this string is: PTAP, I/O STAP (if
+`JTAG_STAP_IO_ENABLE=1`), SMC debug STAP (if `JTAG_SMC_DBG_ENABLE=1`), SEP
+debug STAP (if `SEP=1` in the SMU), extra STAP[N-1:0], and return to PTAP.
+
+Both the SMC and SEP debug STAP host interfaces are internal to the SMU and are
+not exported on the SMU boundary. The SMU wires the SMC debug STAP host outputs
+to the SMC CPU/system JTAG ports (`smc_cpu_jtag_*`) when
+`JTAG_SMC_DBG_ENABLE=1`; when disabled, the DTP bypasses this STAP in the
+secondary scan chain and drives the internal host outputs low. The SEP debug
+STAP connects to the SEP JTAG debug port when `SEP=1`; when `SEP=0`, the SMU
+ties `sep_stap_tdo_to_dtp = 1'b0` to bypass the SEP STAP return path.
+
+Each STAP host interface is gated by lifecycle feature controls, synchronized to
+TCK inside the DTP. `feat_ctrl_i` is enable-polarity (1 = feature enabled), so a
+STAP host interface is enabled only when all of its required enables are asserted
+and is disabled when any one of them is deasserted.
+
+[cols="<25%,<35%,<40%",options="header"]
+|===
+|STAP |Enabled When |Host Gating Disable Condition
+|SMC debug STAP |`feat_ctrl_i.soc_debug \&\& feat_ctrl_i.ap_debug` |`!feat_ctrl_i.soc_debug \|\| !feat_ctrl_i.ap_debug`
+|SEP debug STAP |`feat_ctrl_i.sep_debug \&\& feat_ctrl_i.soc_debug \&\& feat_ctrl_i.ap_debug` |`!feat_ctrl_i.sep_debug \|\| !feat_ctrl_i.soc_debug \|\| !feat_ctrl_i.ap_debug`
+|===
+
+The full set of lifecycle-gated debug paths, including the iJTAG chains and the
+JTAG2AXI bridges, is tabulated in
+{trm-url}/dtp/jtag.html#dtp-jtag-integration[OCAH TRM — DTP JTAG Integration].
+
+See xref:dtp-ports.adoc#dtp-port-interface[DTP Port Interface] for the complete port inventory.

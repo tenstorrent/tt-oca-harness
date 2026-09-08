@@ -2,4 +2,19 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 * xref:index.adoc[Integrator Guide]
+** xref:smu-integration.adoc[SMU Integration]
+** xref:smc-integration.adoc[SMC Integration]
+** xref:dtp-integration.adoc[DTP Integration]
+** xref:sep-integration.adoc[SEP Integration]
+** xref:smn-integration.adoc[SMN Integration (status)]
+** xref:project-defines.adoc[Project Defines]
+** xref:prim-cell-replacement.adoc[Technology Cell Replacement]
+** xref:cdc-timing-constraints.adoc[CDC Timing Constraints]
+** Reference appendices
+*** xref:smc-ports.adoc[SMC Port Interface]
+*** xref:dtp-ports.adoc[DTP Port Interface]
+*** xref:sep-ports.adoc[SEP Port Interface]
+*** xref:smu-ports.adoc[SMU Port Interface]
+*** xref:gpio-reference.adoc[GPIO Pin Requirements]
+*** xref:smu-wiring-reference.adoc[SMU Wiring Reference]
 ** xref:revision.adoc[Revision History]

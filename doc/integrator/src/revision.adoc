@@ -28,4 +28,7 @@ reach.
 |0.0.5 |2026-09-02 |Alessandro Ottaviano |Consolidated immutable ROM FW
 integration guidance, including the generic weak-symbol override method and
 SMC, SEP, and Key Manager ROM FW integration sections.
+|0.0.6 |2026-09-08 |Colin McKellar |Split integration tasks, synthesis guidance
+and reference appendices into navigable pages; clarified manual links and
+build controls, shortened repeated prose, and retained one combined PDF.
 |=======================================================================

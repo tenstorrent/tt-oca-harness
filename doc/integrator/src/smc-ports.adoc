@@ -1,0 +1,21 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= SMC Port Interface
+:trm-url: https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest
+:page-role: integrator-guide integrator-port-reference
+
+[[smc-port-interface]]
+Ports of the `smc` logic-level module. For connection requirements, see
+xref:smc-integration.adoc[SMC Integration].
+
+ifdef::backend-html5[]
+[.table-scroll]
+--
+include::partial$hw/smc/doc/port_table.adoc[]
+--
+endif::backend-html5[]
+
+ifdef::backend-pdf[]
+include::../../../hw/sys/smc/doc/port_table.adoc[]
+endif::backend-pdf[]

@@ -1,0 +1,546 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= SMU Top-Level Integration
+:trm-url: https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest
+:page-role: integrator-guide
+
+[[smu-top-level-integration]]
+The System Management Unit (SMU) combines the SMC, DTP and optional SEP.
+Choose the integration boundary and assign the address map here, then follow
+xref:smc-integration.adoc[SMC Integration],
+xref:dtp-integration.adoc[DTP Integration] and, when enabled,
+xref:sep-integration.adoc[SEP Integration] for each subsystem's connections.
+
+[[address-map-integration]]
+== Address Map Integration
+
+The OCAH address map has three levels, and the assignment contract splits across
+the integrator, SEP firmware, and SMC firmware. Assign and program them from this
+section; the deeper subsystem and crossbar sections referenced below give the
+per-block detail.
+
+* *Chiplet envelope (integrator).* The SoC/chiplet address map assigns each
+  subsystem a global base and reserved size, and the adopter's fabric decoder
+  routes those ranges to the SMU. The SMU crossbar preserves offsets and does not
+  constrain envelope size, so the integrator owns non-overlap and containment at
+  the SoC level.
+* *SEP and SMC chiplet apertures (firmware).* Each subsystem exposes a
+  chiplet-visible aperture whose base and size are programmable at runtime.
+  Inbound transactions to an aperture are remapped global-to-local before they
+  reach the subsystem.
+* *Local-alias views (fixed in RTL).* Internally each subsystem addresses its
+  own resources through a fixed local map: the SMC at `0xC000_0000` (see
+  xref:smc-integration.adoc#smc-address-map-integration[Address Map and Aperture]), the SEP through its own local map. These are
+  RTL-fixed and not integrator-assigned.
+
+.Address-map assignment contract
+[width="100%",cols="26%,20%,54%",options="header"]
+|=======================================================================
+|Level |Owner |Assigned / programmed by
+|Chiplet envelope |Integrator |SoC/chiplet address map + adopter fabric decode
+|SEP chiplet aperture |SEP firmware |`SEP_GLOBAL_BASE_ADDR` / `SEP_REGION_SIZE`
+(the `sep_cpu_ctrl` CSRs)
+|SMC chiplet aperture |SMC firmware |`GLOBAL_BASE` / `REGION_SIZE` (the SMC CPU
+Control CSRs at `0xC001_0000`)
+|SEP / SMC local view |Fixed (RTL) |Offsets within each subsystem's local map
+(SMC local base `0xC000_0000`)
+|=======================================================================
+
+Programming order and constraints: firmware programs the SEP and SMC aperture
+CSRs during early boot, *before any cross-subsystem AXI traffic is issued*, and
+must keep the two apertures non-overlapping and inside the chiplet envelope the
+integrator assigned. The full runtime crossbar behaviour and the exact CSR
+plumbing are in xref:smu-integration.adoc#smu-firmware-programming-order[Firmware programming order] under xref:smu-integration.adoc#smu-composition[SMU Composition and Internal Wiring].
+
+[[address-map-collateral]]
+=== Register collateral
+
+Use the release checkout's `integration/` directory to locate register
+collateral. It indexes the canonical files beside each subsystem and IP.
+
+[cols="1,2",options="header"]
+|===
+|Location |Contents
+|`integration/rdl/<subsystem>/`
+|SystemRDL sources and shared dependencies for that subsystem.
+|`integration/ipxact/<subsystem>/`
+|Generated IEEE 1685-2014 component descriptions.
+|`<owner>/regs/gen/`
+|Generated C headers, SystemVerilog packages, Python models, UVM RAL and register documentation.
+|===
+
+Preserve the directory structure when consuming the indexes. For example,
+I3C register sources include `../i3c_defines.svh` from `integration/rdl/`.
+Run `python3 scripts/collect_integration.py` after adding or moving collateral.
+The https://tenstorrent.github.io/tt-oca-harness/ocah-contributing/latest/guidelines.html#component-directory-organization[Contributing Guide — Component Directory Organization]
+describes the canonical layout.
+
+See {trm-url}/architecture.html#ocah-memory-map[OCAH TRM — OCAH Memory Map]
+for the address-map responsibilities of the integrator and firmware.
+
+[[immutable-rom-fw-integration]]
+== Immutable ROM FW Integration
+
+Provide the production ROM firmware images for the SMC, SEP and Key Manager.
+Connect each ROM macro and load its final image before releasing its processor
+from reset. Where ROM firmware accesses adopter-owned peripherals, link the
+required integration hooks before freezing the image.
+
+[[rom-fw-override-method]]
+=== Weak-symbol override method
+
+For each required weak hook, link a strong definition with the same signature,
+ABI, return values and semantics into the final ROM firmware image. The hook
+must operate the adopter-owned IP present in the assembled design. This is a
+build-time replacement; the immutable ROM cannot load a replacement at runtime.
+
+Inspect the final ELF or linker map after linking. For example,
+`riscv64-unknown-elf-nm` must report each selected implementation as a strong
+symbol rather than `W`; successful linking alone does not prove that the weak
+default was replaced.
+
+[[smc-rom-fw-integration]]
+=== SMC ROM FW integration
+
+Connect `rom_intf_req_o` and `rom_intf_rsp_i` to the adopter's ROM
+implementation. In the current four-core configuration, the request provides
+the ROM clock, enable, and 14-bit 64-bit-word address, and the response returns
+one 64-bit word. This is a direct memory interface, not AXI-Lite. The 128 KiB
+ROM FW image must be present before the first boot; its build is under
+`hw/sys/smc/bootrom/prod/`.
+
+Connect the ROM macro configuration input reached as `rom_cfg_i` and
+`mem_cfg_i` according to the selected macro's contract. OCAH forwards these 11
+bits without assigning technology-specific semantics; the reference
+`smc_ip_integration.sv` ties them to zero. Set the eFuse shadow value that
+drives the CPU's `rom_flip_endianness_i` path to match the byte order of the
+image and ROM macro. Deasserted passes each 64-bit read word unchanged;
+asserted reverses its eight bytes.
+
+.SMC ROM FW override inventory
+[width="100%",cols="18%,20%,27%,35%",options="header"]
+|=======================================================================
+|Hook |Weak default |Rationale |Override and integration action
+|`smc_pll_init()`
+|Returns `SMC_PLL_SUCCESS` without programming PLL hardware.
+|PLL implementation is technology- and vendor-specific, so OCAH does not
+include a vendor-specific PLL driver.
+|Override when `BL0_PLLCLK` is asserted and the adopter's PLL requires
+ROM-time configuration. Provide the same
+`smc_pll_result_t smc_pll_init(void)` signature in the final ROM FW build.
+Any result other than `SMC_PLL_SUCCESS` is fatal: the ROM FW records an
+interface error and remains in `wfi`.
+|`i3c_release_reset()`, `cfg_ps()`, `init_i3c_ctrl()`, and
+`I3C_GetDriverInstance()`
+|Permit the ROM FW to boot without an active I3C implementation; I3C data
+operations report a hardware error.
+|OCAH includes an I3C implementation, but the adopter may select a different
+I3C target and driver for the final system.
+|When the ROM FW must use an active I3C target, select the open HCI
+implementation with `I3C_CORE=swap`, or connect the adopter's I3C target
+through the SMC external AXI-Lite master (`smc_external_req_o` and
+`smc_external_resp_i`) and link strong implementations that conform to
+`drivers/include/i3c_target_driver.h`.
+|=======================================================================
+
+[[sep-rom-fw-integration]]
+=== SEP ROM FW integration
+
+The SEP exposes the `sep_boot_rom` memory interface for its production ROM FW
+image. The detailed ROM-macro configuration, image-loading contract, and
+adopter override inventory are not yet documented here.
+
+[[km-rom-fw-integration]]
+=== Key Manager ROM FW integration
+
+The Key Manager exposes the `km_rom_mem` interface through SEP for its
+production ROM FW image. The detailed ROM-macro configuration, image-loading
+contract, and adopter override inventory are not yet documented here.
+
+[[smu-composition]]
+== SMU Composition and Internal Wiring
+
+The SMU connects debug, reset and cross-trigger paths between its subsystems.
+Use the following configuration and wiring requirements at the SMU boundary.
+
+[[smu-module-variants]]
+=== Module Variants and IP Integration
+
+OCAH core modules (`smc.sv`, `sep.sv`, `dtp.sv`, and the composite `smu.sv`)
+expose logic-level interfaces only. All technology-specific components -- PLLs,
+PVT sensors, eFuse shims, memory macros, GPIO padrings, SPI controllers, and
+external TRNG -- are instantiated outside the core modules by the adopter. This
+separation keeps the OCAH deliverable technology-neutral.
+
+The repository provides reference wrappers that demonstrate how to bridge the
+gap between OCAH core interfaces and adopter-specific IP:
+
+* `smu_wrapper.sv` wraps `smu.sv` with pad-level signal handling for clocks,
+  resets, GPIO, eFuse, and JTAG interfaces. It internally instantiates
+  `smc_ip_integration.sv` for SMC-related vendor IP and (when `SEP=1`)
+  `sep_ip_integration.sv` for SEP-related vendor IP.
+* `smc_wrapper.sv` provides an equivalent reference wrapping `smc.sv` alone,
+  useful when integrating the SMC without the DTP/SEP subsystems.
+
+Neither the wrappers nor the IP integration modules are part of the OCAH
+deliverable; they exist as integration guides and for Tenstorrent internal
+usage. Adopters must develop their own equivalents following the interface
+patterns demonstrated in these modules. The interface contracts at the module
+boundaries ensure technology substitution without modifying the verified OCAH
+logic.
+
+The figure below illustrates the relationship between the OCAH core modules, the
+wrapper layer, and the IP integration modules.
+
+.SMU Integration Components
+image::smu_integration_components.png[SMU Integration Components,scaledwidth=90.0%]
+
+==== IP Integration Modules
+
+`smc_ip_integration.sv` demonstrates integration of SMC-side technology
+components: PLL wrappers (generating `pll_cgm_clk_o` and `pll_awm_clk_o`),
+PVT sensor interfaces, eFuse shims, GPIO padring logic, memory macros (ROM,
+scratchpad RAM, cache tag and data arrays), and trace memory instances.
+
+`sep_ip_integration.sv` demonstrates integration of SEP-side technology
+components: SEP memory macros (TCM, scratch SRAM, boot ROM, OTBN IMEM/DMEM,
+Key Manager ROM/SRAM), eFuse shim, external TRNG, and SPI controller selection.
+
+==== Wrapper Clock Architecture
+
+The `smu_wrapper.sv` reference wrapper accepts pre-generated clocks directly:
+`clk_smu_i` (primary), `clk_ref_i` (reference), and `clk_periph_i`
+(peripheral). The `smc_wrapper.sv` uses `clk_smc_i` for the primary clock.
+Clock generation is entirely the adopter's responsibility. The `pll_wrap` model
+included in the DV environment only terminates the SMC's AXI-Lite PLL control
+interface; it does not generate functional clocks and must not be used as a
+synthesis model.
+
+=== Clock and Reset Architecture
+
+Connect `clk_smu_i` to the primary system clock and `clk_ref_i` to a stable
+reference source. The DTP operates on TCK for JTAG logic and on the system clock
+for cross-trigger and AXI bridges. Reset sequencing follows the SMC flow; the
+DTP JTAG state machine uses `pwr_on_rst_ni`, which the SMU connects to
+`rst_cold_ni`. The SMU internally connects DTP debug paths to the SMC and
+optionally instantiates the SEP when the `SEP` parameter is set to 1. The full
+interconnection details are described in xref:smu-integration.adoc#smc-dtp-interconnection[SMC-DTP Internal Interconnection] and
+xref:smu-integration.adoc#sep-conditional-wiring[SEP-Conditional Wiring] below.
+
+[[smu-axi-xbar-address-map]]
+=== SMU AXI Crossbar Address Map
+
+Inside the SMU, the `smu_axi_xbar` module routes traffic between three
+AXI4 manager/subordinate pairs: the SEP outbound master (`sep_out`),
+the SMC outbound master (`smc_out`), and the external SMU AXI input
+(`ext_in` / `smu_axi_in`). The corresponding targets are the SEP and
+SMC inbound subordinates, and the external SMU AXI output
+(`ext_out` / `smu_axi_out`).
+
+See {trm-url}/architecture.html#smu-axi-crossbar[OCAH TRM — SMU AXI Crossbar]
+for connectivity and {trm-url}/architecture.html#ocah-memory-map[OCAH TRM — OCAH Memory Map]
+for hardware and firmware responsibilities.
+
+The crossbar uses a *runtime* address map. Only the SEP and SMC
+apertures are programmable at runtime; the `ext_out` rule is static:
+
+* `sep_global_base_addr_i` / `sep_region_size_i` come from the
+  `sep_cpu_ctrl` CSRs `SEP_GLOBAL_BASE_ADDR` / `SEP_REGION_SIZE`,
+  exposed at both the `sep.sv` and `smu.sv` boundaries as
+  `sep_global_base_addr_o` / `sep_region_size_o` (both 56-bit).
+  `SEP_REGION_SIZE` is a 32-bit CSR field, zero-extended to 56-bit at
+  the SEP system CSR; the xbar input takes only the lower 32 bits.
+  `SEP_REGION_SIZE` defines the SEP global/chiplet aperture for SMU
+  routing and SEP inbound global-to-local remap. It is distinct from the
+  SEP CPU's architectural local-alias span. `SEP_REGION_SIZE` currently
+  resets to `0x0100_0000` (16 MiB). Tied to `'0` at the `smu.sv`
+  boundary when the `SEP` parameter is `0`.
+* `smc_global_base_addr_i` / `smc_region_size_i` come from the SMC CPU
+  control CSRs `GLOBAL_BASE` / `REGION_SIZE`, exposed at both the
+  `smc.sv` and `smu.sv` boundaries as `smc_global_base_o` (56-bit) /
+  `smc_region_size_o` (32-bit). `REGION_SIZE` resets to `0x0100_0000`
+  (16 MiB).
+
+SEP, SMC, and `smu_axi_xbar` all run on `clk_smu_i`, so these
+quasi-static CSR fields need no clock-domain crossing. The crossbar's
+address arithmetic is done on 57-bit widened sums. `ext_out` is a
+catch-all port that carries any outbound SEP/SMC manager request not matched by
+the programmed apertures; it has no fixed lower-bound address. Unmatched
+inbound (`ext_in`) requests return a decode error and do not reach `ext_out`.
+
+[[smu-firmware-programming-order]]
+==== Firmware programming order
+
+Firmware must program `SEP_GLOBAL_BASE_ADDR` / `SEP_REGION_SIZE` and
+SMC `GLOBAL_BASE` / `REGION_SIZE` during early boot, *before any
+cross-subsystem AXI traffic is issued*, and must ensure the two
+apertures do not overlap and both fall within the chiplet-visible SMU
+envelope assigned by the integrator. The SMU crossbar does not itself
+constrain envelope size.
+
+=== SMU Default Parameters
+
+The SMU exposes a set of configurable parameters that control DTP JTAG features,
+identification, cross trigger, and pipeline depths. The table below lists each
+parameter with its default value.
+
+[cols="<30%,<15%,<55%",options="header"]
+|===
+|Parameter |Value |Description
+
+|`JTAG_BSR_ENABLE` |1 |Boundary scan enabled
+|`JTAG_EXTEST_TRAIN_ENABLE` |1 |EXTEST_TRAIN instruction enabled
+|`JTAG_EXTEST_PULSE_ENABLE` |1 |EXTEST_PULSE instruction enabled
+|`JTAG_INTEST_ENABLE` |1 |INTEST instruction enabled
+|`JTAG_CLAMP_ENABLE` |1 |CLAMP instruction enabled
+|`JTAG_HIGHZ_ENABLE` |1 |HIGHZ instruction enabled
+|`JTAG_RUNBIST_ENABLE` |1 |RUNBIST instruction enabled
+|`JTAG_TMP_ENABLE` |1 |TMP controller enabled
+|`JTAG_IC_RESET_ENABLE` |1 |Enables the external IC_RESET TDR slice (SMU drives this into the DTP's `JTAG_IC_RESET_EXT_ENABLE`). SMC and SEP slices are enabled unconditionally by the SMU.
+|`JTAG_SMC_DBG_ENABLE` |1 |SMC debug interface enabled
+|`JTAG_STAP_IO_ENABLE` |1 |I/O STAP enabled
+|`JTAG_NUM_EXTRA_STAPS` |1 |Number of additional STAPs
+|`JTAG_IDCODE_MFR_ID` |`11'h000` |Manufacturer ID
+|`JTAG_IDCODE_PART_NUM` |`16'h0000` |Part number
+|`JTAG_IDCODE_SI_REV` |`4'h0` |Silicon revision
+|`JTAG_OCH_VER` |`8'h00` |OCAH IP version
+|`XTRIG_INT_CT_MODE` |`8'h00` |Internal CT protocol mode bits (0=pulse sync, 1=req/ack)
+|`SMC_OTP_RD_PL_DEPTH` |`2'h3` |SMC OTP read pipeline depth
+|`SMC_OTP_WR_PL_DEPTH` |`2'h3` |SMC OTP write pipeline depth
+|`SMC_RD_PL_DEPTH` |`2'h3` |SMC fabric read pipeline depth
+|`SMC_WR_PL_DEPTH` |`2'h3` |SMC fabric write pipeline depth
+|`SEP_ABR_SRAM_LATENCY` |`1` |ABR 1R1W registered-read latency, in clocks
+|`SEP_ABR_MASKING_EN` |`1` |Adams Bridge 2-share DOM masking
+|===
+
+SEP-related DTP configuration is not exposed as an SMU config-struct field.
+The SMU derives SEP debug/STAP enablement from the module parameter `SEP` and
+wires the corresponding DTP interfaces internally to the SEP block when `SEP=1`.
+
+[[ic-reset-tdr-structure]]
+=== IC_RESET TDR Structure
+
+The DTP primary TAP implements the IEEE 1149.1-2013 §17 IC_RESET TDR as three
+independently enabled slices plus a single `reset_hold` bit nearest TDO. At the
+SMU the scan order from TDI to TDO is:
+
+[source]
+----
+TDI → SMC slice → SEP slice → external slice → reset_hold → TDO
+----
+
+The SMU enables the SMC slice unconditionally, the SEP slice when `SEP=1`
+(otherwise that slice has width 0 and is omitted), and the external slice when
+`JTAG_IC_RESET_ENABLE` is set. Each slice is a packed struct with `.ovrd` and
+`.val` halves of equal width; `jtag_ptap` sizes the slice from `$bits(type)/2`
+and interleaves the halves into the `{reset_enable, reset_control}` pair IEEE
+§17 requires per port. Declaration order within each half is the TDI-to-TDO
+scan order: the first field is nearest TDI.
+
+[cols="<18%,<12%,<28%,<42%",options="header"]
+|===
+|Slice |Ports |Defined by |Consumed by
+|SMC |68 |OCAH (`smc_pkg::jtag_smc_reset_ctrl_t`) |SMC reset unit; SMU-internal, no SMU port
+|SEP |7 when `SEP=1`, else 0 |OCAH (`sep_pkg::jtag_sep_reset_ctrl_t`) |SEP reset controller; SMU-internal, no SMU port
+|External |`$bits(ic_reset_ext_t)/2` |Adopter (`ic_reset_ext_t`) |SMU output `jtag_ic_reset_ext_o`
+|`reset_hold` |1 bit |IEEE 1149.1 §17 |Nearest TDO; not a reset port
+|===
+
+The TDR length is `2 * (SMC ports + SEP ports + external ports) + 1`. Programming
+order and `reset_enable` polarity are in the DTP JTAG chapter of the Technical
+Reference Manual.
+
+==== SMC slice (TDI to TDO)
+
+The SMC slice covers the SMC reset domains and the 32 managed-subsystem (SS)
+cold and warm resets. Vector index `[31]` of each SS field is nearer TDI than
+`[0]`.
+
+[cols="<35%,<65%",options="header"]
+|===
+|Port |Reset domain
+|`ss_warm_reset_n[31:0]` |Per-subsystem warm reset
+|`ss_cold_reset_n[31:0]` |Per-subsystem cold reset
+|`cold_reset_n` |SMC cold reset
+|`cool_reset_n` |SMC cool reset
+|`warm_reset_n` |SMC warm reset
+|`fuse_reset_n` |Fuse reset (nearest the SEP slice)
+|===
+
+==== SEP slice (TDI to TDO)
+
+When `SEP=1` the SEP slice covers the SEP main reset and the crypto, Key
+Manager, and TRNG resets consumed by `sep_reset_ctrl`. `trng_jtag_rst_n` is
+nearest TDI.
+
+[cols="<35%,<65%",options="header"]
+|===
+|Port |Reset domain
+|`trng_jtag_rst_n` |TRNG
+|`sep_reset_n` |SEP main reset
+|`kmac_jtag_rst_n` |KMAC
+|`hmac_jtag_rst_n` |HMAC
+|`aes_jtag_rst_n` |AES
+|`otbn_jtag_rst_n` |OTBN
+|`km_jtag_rst_n` |Key Manager (nearest the external slice)
+|===
+
+==== External slice (adopter-defined)
+
+The external slice is reserved for reset overrides on logic instantiated
+outside the SMU. OCAH does not name its ports. Set the SMU type parameter
+`ic_reset_ext_t` to a packed struct with `.ovrd` and `.val` halves of equal
+width, and route `jtag_ic_reset_ext_o` to that logic. The parameter default
+(`jtag_tap_pkg::jtag_ic_reset_default_t`) is a single-override stub. Clear
+`JTAG_IC_RESET_ENABLE` when no external overrides are required.
+
+Declare a new external override at each half's MSB so already-assigned TDR
+positions do not shift. Extra subsystem reset controls beyond the SMC slice
+use this typed port.
+
+=== DTP Parameter Pass-Through
+
+The SMU passes through most DTP parameters to allow integrator customization.
+Type parameters are set internally based on SMC package types.
+
+==== JTAG Configuration Parameters
+
+[cols="<25%,<15%,<15%,<45%",options="header"]
+|===
+|Parameter |SMU Default |Pass-through |Notes
+
+|`JTAG_BSR_ENABLE` |1 |Yes |Boundary scan enabled
+|`JTAG_EXTEST_TRAIN_ENABLE` |1 |Yes |
+|`JTAG_EXTEST_PULSE_ENABLE` |1 |Yes |
+|`JTAG_INTEST_ENABLE` |1 |Yes |
+|`JTAG_CLAMP_ENABLE` |1 |Yes |
+|`JTAG_HIGHZ_ENABLE` |1 |Yes |
+|`JTAG_RUNBIST_ENABLE` |1 |Yes |
+|`JTAG_TMP_ENABLE` |1 |Yes |
+|`JTAG_IC_RESET_ENABLE` |1 |No |SMU routes this to the DTP's `JTAG_IC_RESET_EXT_ENABLE`; SMC and SEP slices are enabled inside the SMU instantiation (SMC unconditionally, SEP when `SEP=1`)
+|`JTAG_SMC_DBG_ENABLE` |1 |Yes |
+|`JTAG_SEP_DBG_ENABLE` |1 (`SEP=1`) |No |Derived internally from the SMU module parameter `SEP`; not exposed in `smu_cfg_t`
+|`JTAG_STAP_IO_ENABLE` |1 |Yes |
+|`JTAG_NUM_EXTRA_STAPS` |1 |Yes |Port array size equals parameter value; when set to 0, array size is 1 (tie-off required)
+|===
+
+==== JTAG ID Parameters
+
+[cols="<25%,<15%,<15%,<45%",options="header"]
+|===
+|Parameter |SMU Default |Pass-through |Notes
+
+|`JTAG_IDCODE_MFR_ID` |`11'h000` |Yes |Manufacturer ID
+|`JTAG_IDCODE_PART_NUM` |`16'h0000` |Yes |Part number
+|`JTAG_IDCODE_SI_REV` |`4'h0` |Yes |Silicon revision
+|`JTAG_OCH_VER` |`8'h00` |Yes |OCAH IP version
+|===
+
+==== Cross Trigger Parameters
+
+[cols="<20%,<15%,<15%,<15%,<35%",options="header"]
+|===
+|Parameter |SMU Default |DTP Internal |Pass-through |Notes
+
+|`XTRIG_INT_CT_MODE` |[7:0] |[9:0] |Yes |8-bit on SMU; DTP bits [1:0]=0 for SMC
+|===
+
+The SMU parameter width is two less than DTP's for cross trigger (8 vs 10)
+because internal cross trigger ports [1:0] and clock stop request #0 are
+connected to the SMC internally. The SMU remaps DTP ports [9:2] to SMU external
+ports [7:0].
+
+==== Pipeline Depth Parameters
+
+[cols="<25%,<15%,<15%,<45%",options="header"]
+|===
+|Parameter |SMU Default |Pass-through |Notes
+
+|`SMC_OTP_RD_PL_DEPTH` |`2'h3` |Yes |SMC OTP read pipeline depth
+|`SMC_OTP_WR_PL_DEPTH` |`2'h3` |Yes |SMC OTP write pipeline depth
+|`SEP_OTP_RD_PL_DEPTH` |`2'h3` |No |Fixed to `2'h3` in SMU; used when `SEP=1`, ignored when `SEP=0`
+|`SEP_OTP_WR_PL_DEPTH` |`2'h3` |No |Fixed to `2'h3` in SMU; used when `SEP=1`, ignored when `SEP=0`
+|`SMC_RD_PL_DEPTH` |`2'h3` |Yes |SMC fabric read pipeline depth
+|`SMC_WR_PL_DEPTH` |`2'h3` |Yes |SMC fabric write pipeline depth
+|===
+
+==== Type Parameters
+
+The following type parameters are set internally by the SMU and are not exposed
+for integrator configuration.
+
+[cols="<30%,<30%,<40%",options="header"]
+|===
+|Parameter |Set To |Notes
+
+|`jtag_tap_ctrl_t` |`prim_jtag_pkg::jtag_tap_ctrl_t` |JTAG TAP control struct
+|`jtag_scan_ctrl_t` |`prim_jtag_pkg::jtag_scan_ctrl_t` |JTAG scan control struct
+|`smc_jtag_axi_req_t` |`smc_pkg::smc_jtag_56_64_2_12_axi_req_t` |SMC debug AXI request
+|`smc_jtag_axi_resp_t` |`smc_pkg::smc_jtag_56_64_2_12_axi_resp_t` |SMC debug AXI response
+|`smc_otp_axil_req_t` |`smc_efuse_pkg::efuse_axil_req_t` |SMC OTP AXI-Lite request
+|`smc_otp_axil_resp_t` |`smc_efuse_pkg::efuse_axil_resp_t` |SMC OTP AXI-Lite response
+|`sep_otp_axil_req_t` |`smc_efuse_pkg::efuse_axil_req_t` |SEP OTP AXI-Lite request (error slave when `SEP=0`)
+|`sep_otp_axil_resp_t` |`smc_efuse_pkg::efuse_axil_resp_t` |SEP OTP AXI-Lite response (error slave when `SEP=0`)
+|`xtrig_axil_req_t` |`smc_pkg::smc_axil_32_32_req_t` |Cross trigger CSR request
+|`xtrig_axil_resp_t` |`smc_pkg::smc_axil_32_32_resp_t` |Cross trigger CSR response
+|===
+
+See xref:smu-wiring-reference.adoc#smu-wiring-reference[SMU Wiring Reference] for the DTP and SMC port mappings.
+
+[[smc-dtp-interconnection]]
+=== SMC-DTP Internal Interconnection
+
+The following table summarizes the key internal connections between the DTP and
+SMC within the SMU. These connections are not visible on the SMU boundary.
+
+[cols="<18%,<24%,<24%,<10%,<24%",options="header"]
+|===
+|Connection |DTP Port |SMC Port |Direction |Notes
+
+|AXI Debug Bus |`axi_smc_dbg_req_o` |`jtag_axi_in_req_i` |DTP -> SMC |
+| |`axi_smc_dbg_resp_i` |`jtag_axi_in_resp_o` |SMC -> DTP |
+|AXI OTP Bus |`axil_smc_otp_jtag_req_o` |`axil_smc_otp_jtag_req_i` |DTP -> SMC |
+| |`axil_smc_otp_jtag_resp_i` |`axil_smc_otp_jtag_resp_o` |SMC -> DTP |
+|DTP CSR Bus |`axil_xtrig_req_i` |`axil_dtp_csr_req_o` |SMC -> DTP |
+| |`axil_xtrig_resp_o` |`axil_dtp_csr_resp_i` |DTP -> SMC |
+|JTAG SMC Reset Overrides |`jtag_ic_reset_smc_o` |`jtag_reset_ctrl_i` |DTP -> SMC |Packed `smc_pkg::jtag_smc_reset_ctrl_t` struct carrying all SMC reset override enables and active-low values
+|DTP Reset |`rst_n_i` |`rst_primary_smc_clk_no` |SMC -> DTP |
+|Cross Trigger [1:0] |`xtrig_ctm_dst_req_i[1:0]` |`xtrigger_ss_o[1:0]` |SMC -> DTP |Both bits
+|Clock Stop #0 |`xtrig_clk_stop_req_i[0]` |`tdr_dbg_ctrl_clocks_stopped_by_cla_o` |SMC -> DTP |
+|Boot Stall |`jtag_boot_stall_ovrd_o` |`boot_stall_jtag_ovrd_i` |DTP -> SMC |
+| |`jtag_boot_stall_o` |`boot_stall_jtag_val_i` |DTP -> SMC |
+|===
+
+[[sep-conditional-wiring]]
+=== SEP-Conditional Wiring
+
+SEP-related interfaces are handled internally within the SMU. Their behavior
+depends on the module parameter `SEP`.
+
+[cols="<20%,<35%,<45%",options="header"]
+|===
+|Module/Signal |Implementation |Description
+
+|SMC SEP AXI Input |`sep_axi_in_req_i` = SEP traffic when `SEP=1`, else `'0` |Dedicated SEP-to-SMC subordinate path
+|DTP SEP OTP JTAG |SEP `axil_sep_otp_jtag_*` when `SEP=1`, else `u_sep_otp_axil_err_slv` |SEP OTP debug AXI-Lite path
+|DTP SEP STAP return |SEP `jtag_tdo` when `SEP=1`, else `sep_stap_tdo_to_dtp = 1'b0` |SEP JTAG STAP return path
+|SMU |`sep_mailbox_interrupts` |Internal SEP-to-SMC mailbox interrupts when `SEP=1`, else `'0`
+|SMC |`sep_wdt_reset_n_i = ~sep_wdt_timer_rst_req` when `SEP=1`, else `1'b1` |SEP watchdog reset input to SMC
+|===
+
+==== Other Internal Tie-offs
+
+[cols="<15%,<30%,<15%,<40%",options="header"]
+|===
+|Module |Port |Tie-off Value |Reason
+
+|DTP |`xtrig_ctm_src_ack_i[1:0]` |`2'b00` |SMC uses pulse-sync mode
+|===
+
+`xtrig_ctm_src_ack_i[9:2]` (exposed as SMU `xtrig_ctm_src_ack_i[7:0]`) is
+ported out through the SMU. The integrator should tie off to `'0` when using
+pulse-sync mode (`XTRIG_INT_CT_MODE` bit = 0), or connect to actual ack signals
+when using req/ack mode (bit = 1).
+
+See xref:smu-ports.adoc#smu-port-interface[SMU Port Interface] for the complete SMU port inventory.

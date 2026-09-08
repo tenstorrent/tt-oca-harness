@@ -12,7 +12,7 @@ asciidoc:
     source-highlighter: highlight.js
     sectanchors: ''
     sectlinks: ''
-    sectnums: ''
+    sectnums: false
     idprefix: ''
     idseparator: '-'
     safe-mode: unsafe

@@ -1,0 +1,635 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= SMU Wiring Reference
+:trm-url: https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest
+:page-role: integrator-guide
+
+[[smu-wiring-reference]]
+Internal DTP and SMC connections at the SMU boundary. Use these tables when
+checking the assembled hierarchy; integration requirements are in
+xref:smu-integration.adoc#smu-composition[SMU Composition and Internal Wiring].
+
+== DTP Port Mapping
+
+The following tables define the complete DTP port list as connected within the
+SMU. Ports marked "SMU external port" are exposed on the SMU boundary for
+integrator connection. Ports marked with a subsystem name (e.g. SMC, SEP) are
+wired internally within the SMU.
+
+=== Clock and Reset
+
+[cols="<30%,<10%,<15%,<45%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`clk_i` |input |1 |SMU `clk_smu_i` (shared with SMC `clk_smc_i`)
+|`rst_n_i` |input |1 |SMC `rst_primary_smc_clk_no`
+|`pwr_on_rst_ni` |input |1 |SMU `rst_cold_ni` (power-on reset for JTAG logic)
+|===
+
+=== Primary JTAG TAP Interface
+
+[cols="<30%,<10%,<15%,<45%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`jtag_ptap_client_tap_ctrl_i` |input |`jtag_tap_ctrl_t` |SMU external port
+|`jtag_ptap_client_tdi_i` |input |1 |SMU external port
+|`jtag_ptap_client_tdo_o` |output |1 |SMU external port
+|`jtag_ptap_client_tdo_oen_o` |output |1 |SMU external port
+|===
+
+=== Boundary Scan Interface
+
+[cols="<30%,<10%,<15%,<45%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`jtag_bsr_host_scan_ctrl_o` |output |`jtag_scan_ctrl_t` |SMU external port
+|`jtag_bsr_host_scan_in_i` |input |1 |SMU external port
+|`jtag_bsr_host_scan_out_o` |output |1 |SMU external port
+|===
+
+=== I/O STAP Interface
+
+[cols="<30%,<10%,<15%,<45%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`jtag_stap_io_host_tap_ctrl_o` |output |`jtag_tap_ctrl_t` |SMU external port
+|`jtag_stap_io_host_tdi_i` |input |1 |SMU external port
+|`jtag_stap_io_host_tdo_o` |output |1 |SMU external port
+|`jtag_stap_io_host_tdo_oen_o` |output |1 |SMU external port
+|===
+
+=== SMC Debug STAP Interface
+
+[cols="<30%,<10%,<15%,<45%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`jtag_stap_smc_host_tap_ctrl_o` |output |`jtag_tap_ctrl_t` |SMC `smc_cpu_jtag_{TCK,TMS}_i`; `trst_n` inverted drives SMC `smc_cpu_jtag_reset_i` when `JTAG_SMC_DBG_ENABLE=1`, else tie-off
+|`jtag_stap_smc_host_tdi_i` |input |1 |SMC `smc_cpu_jtag_TDO_data_o` when `JTAG_SMC_DBG_ENABLE=1`, else `1'b0`
+|`jtag_stap_smc_host_tdo_o` |output |1 |SMC `smc_cpu_jtag_TDI_i` when `JTAG_SMC_DBG_ENABLE=1`, else unused
+|`jtag_stap_smc_host_tdo_oen_o` |output |1 |Internal only; not consumed by SMC
+|===
+
+=== SEP Debug STAP Interface
+
+[cols="<30%,<10%,<15%,<45%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`jtag_stap_sep_host_tap_ctrl_o` |output |`jtag_tap_ctrl_t` |SEP `jtag_{tck,tms,trst_n}` when `SEP=1`, else unused
+|`jtag_stap_sep_host_tdi_i` |input |1 |SEP `jtag_tdo` when `SEP=1`, else `1'b0`
+|`jtag_stap_sep_host_tdo_o` |output |1 |SEP `jtag_tdi` when `SEP=1`, else unused
+|`jtag_stap_sep_host_tdo_oen_o` |output |1 |Internal only; not consumed by SEP at SMU level
+|===
+
+=== Extra STAP Interfaces
+
+[cols="<30%,<10%,<15%,<45%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`jtag_stap_extra_host_tap_ctrl_o` |output |`jtag_tap_ctrl_t[JTAG_NUM_EXTRA_STAP_PORTS-1:0]` |SMU external port
+|`jtag_stap_extra_host_tdi_i` |input |[JTAG_NUM_EXTRA_STAP_PORTS-1:0] |SMU external port
+|`jtag_stap_extra_host_tdo_o` |output |[JTAG_NUM_EXTRA_STAP_PORTS-1:0] |SMU external port
+|`jtag_stap_extra_host_tdo_oen_o` |output |[JTAG_NUM_EXTRA_STAP_PORTS-1:0] |SMU external port
+|===
+
+=== Extended STAP Scan Interface
+
+[cols="<30%,<10%,<15%,<45%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`jtag_stap_host_scan_ctrl_o` |output |`jtag_scan_ctrl_t` |SMU external port
+|`jtag_stap_host_scan_in_i` |input |1 |SMU external port
+|`jtag_stap_host_scan_out_o` |output |1 |SMU external port
+|===
+
+=== DFD iJTAG Interface
+
+[cols="<30%,<10%,<15%,<45%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`jtag_dfd_host_scan_ctrl_o` |output |`jtag_scan_ctrl_t` |SMU external port
+|`jtag_dfd_host_scan_in_i` |input |1 |SMU external port
+|`jtag_dfd_host_scan_out_o` |output |1 |SMU external port
+|===
+
+=== DFT iJTAG Interface
+
+[cols="<30%,<10%,<15%,<45%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`jtag_dft_host_scan_ctrl_o` |output |`jtag_scan_ctrl_t` |SMU external port
+|`jtag_dft_host_scan_in_i` |input |1 |SMU external port
+|`jtag_dft_host_scan_out_o` |output |1 |SMU external port
+|===
+
+=== SMC Fabric Debug AXI Interface
+
+[cols="<30%,<10%,<20%,<40%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`axi_smc_dbg_req_o` |output |`smc_jtag_axi_req_t` |SMC `jtag_axi_in_req_i`
+|`axi_smc_dbg_resp_i` |input |`smc_jtag_axi_resp_t` |SMC `jtag_axi_in_resp_o`
+|===
+
+=== SMC OTP Debug AXI-Lite Interface
+
+[cols="<30%,<10%,<20%,<40%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`axil_smc_otp_jtag_req_o` |output |`smc_otp_axil_req_t` |SMC `axil_smc_otp_jtag_req_i`
+|`axil_smc_otp_jtag_resp_i` |input |`smc_otp_axil_resp_t` |SMC `axil_smc_otp_jtag_resp_o`
+|===
+
+=== SEP OTP Debug AXI-Lite Interface
+
+When `SEP=1`, this interface connects to the SEP `axil_sep_otp_jtag_*` ports.
+When `SEP=0`, the SMU instantiates `u_sep_otp_axil_err_slv`, which responds
+with DECERR to all transactions.
+
+[cols="<30%,<10%,<20%,<40%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`axil_sep_otp_jtag_req_o` |output |`sep_otp_axil_req_t` |SEP `axil_sep_otp_jtag_req_i` when `SEP=1`, else AXI-Lite error slave (`u_sep_otp_axil_err_slv`)
+|`axil_sep_otp_jtag_resp_i` |input |`sep_otp_axil_resp_t` |SEP `axil_sep_otp_jtag_resp_o` when `SEP=1`, else AXI-Lite error slave (`u_sep_otp_axil_err_slv`)
+|===
+
+=== Clock Control
+
+[cols="<30%,<10%,<15%,<45%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`stop_clks_o` |output |1 |SMU external port: `dtp_stop_clks_o` (to PLL clock gates)
+|===
+
+=== Boot Stall Control
+
+[cols="<30%,<10%,<15%,<45%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`jtag_boot_stall_ovrd_o` |output |1 |SMC `boot_stall_jtag_ovrd_i`
+|`jtag_boot_stall_o` |output |1 |SMC `boot_stall_jtag_val_i`
+|===
+
+=== JTAG Reset Control
+
+[cols="<30%,<10%,<15%,<45%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`jtag_ic_reset_smc_o` |output |`smc_pkg::jtag_smc_reset_ctrl_t` |SMC `jtag_smc_reset_ctrl_i` (packed struct with `.ovrd` override enables and `.val` active-low override values)
+|`jtag_ic_reset_sep_o` |output |`sep_pkg::jtag_sep_reset_ctrl_t` |SEP `jtag_sep_reset_ctrl_i` (packed struct with `.ovrd` override enables and `.val` active-low override values); SMU-internal, no SMU port
+|`jtag_ic_reset_ext_o` |output |`ic_reset_ext_t` |SMU `jtag_ic_reset_ext_o` external port (integrator-defined packed struct; carries reset overrides for logic outside the SMU)
+|===
+
+=== JTAG State Outputs
+
+[cols="<30%,<10%,<20%,<40%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`jtag_ptap_state_o` |output |`tap_state_e` |SMU external port
+|`jtag_ptap_inst_decoded_o` |output |`jtag_instruction_decoded_e` |SMU external port
+|===
+
+=== Cross Trigger CSR AXI-Lite Interface
+
+[cols="<30%,<10%,<20%,<40%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`axil_xtrig_req_i` |input |`xtrig_axil_req_t` |SMC `axil_dtp_csr_req_o`
+|`axil_xtrig_resp_o` |output |`xtrig_axil_resp_t` |SMC `axil_dtp_csr_resp_i`
+|===
+
+=== Cross Trigger Matrix Interface
+
+[cols="<30%,<10%,<20%,<40%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`xtrig_ctm_src_req_o` |output |[XTRIG_NUM_INT_CT-1:0] |[1:0]: SMU internal (SMC), [9:2]: SMU external `xtrig_ctm_src_req_o[7:0]`
+|`xtrig_ctm_src_ack_i` |input |[XTRIG_NUM_INT_CT-1:0] |[1:0]: Tie-off (SMC), [9:2]: SMU external `xtrig_ctm_src_ack_i[7:0]`
+|`xtrig_ctm_dst_req_i` |input |[XTRIG_NUM_INT_CT-1:0] |[1:0]: SMC `xtrigger_ss_o[1:0]`, [9:2]: SMU external `xtrig_ctm_dst_req_i[7:0]`
+|`xtrig_ctm_dst_ack_o` |output |[XTRIG_NUM_INT_CT-1:0] |[1:0]: Unused (SMC connection), [9:2]: SMU external `xtrig_ctm_dst_ack_o[7:0]`
+|===
+
+Internal cross trigger ports [1:0] are reserved for SMC (both bits of
+`xtrigger_ss_o`). The SMU exposes ports [9:2] as external ports [7:0], so the
+SMU `XTRIG_NUM_INT_CT` parameter is two less than DTP's (8 vs 10). The SMC uses
+pulse-synchronization mode, so ack signals for ports [1:0] are unused:
+`xtrig_ctm_src_ack_i[1:0]` should be tied to `2'b00` and
+`xtrig_ctm_dst_ack_o[1:0]` are left unconnected. The usage of ack signals
+depends on the `XTRIG_INT_CT_MODE` parameter: when a mode bit is 0 (pulse
+synchronization), the corresponding ack is unused; when 1 (req/ack handshaking),
+the ack must be connected to the cross trigger endpoint.
+
+=== Clock Stop Request Interface
+
+[cols="<35%,<10%,<25%,<30%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`xtrig_clk_stop_req_i` |input |[XTRIG_NUM_CLK_STOP_REQ-1:0] |[0]: SMC `tdr_dbg_ctrl_clocks_stopped_by_cla_o`, [8:1]: SMU external `xtrig_clk_stop_req_i[7:0]`
+|===
+
+Clock stop request port #0 is reserved for SMC. The SMU exposes ports [8:1] as
+external ports [7:0], so the SMU `XTRIG_NUM_CLK_STOP_REQ` parameter should be
+one less than DTP's (8 vs 9).
+
+=== Cross Trigger Port GPIO Interface
+
+The 16 CTP signals from DTP are ported through the SMU and are direct
+`smu_wrapper` external ports (connected through the `.*` SMU instantiation).
+The adopter must connect them to GPIO pad logic; no tie-off or dangling is
+present in the wrapper itself.
+
+[cols="<30%,<10%,<15%,<45%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`xtrig_ctp_req_out_dout_o` |output |[15:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_req_out_dout_en_o` |output |[15:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_req_out_din_i` |input |[15:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_req_out_din_en_o` |output |[15:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_req_in_dout_o` |output |[15:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_req_in_dout_en_o` |output |[15:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_req_in_din_i` |input |[15:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_req_in_din_en_o` |output |[15:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_ack_in_dout_o` |output |[15:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_ack_in_dout_en_o` |output |[15:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_ack_in_din_i` |input |[15:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_ack_in_din_en_o` |output |[15:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_ack_out_dout_o` |output |[15:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_ack_out_dout_en_o` |output |[15:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_ack_out_din_i` |input |[15:0] |SMU external port; connect to GPIO pad logic
+|`xtrig_ctp_ack_out_din_en_o` |output |[15:0] |SMU external port; connect to GPIO pad logic
+|===
+
+== SMC Port Mapping
+
+The following tables define the complete SMC port list as connected within the
+SMU. Ports marked "SMU external port" are exposed on the SMU boundary. Ports
+marked with "DTP" or "SEP" are wired internally.
+
+=== Clocks
+
+[cols="<30%,<10%,<15%,<45%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`clk_smc_i`    |input |1 |SMU `clk_smu_i` (shared with DTP `clk_i`)
+|`clk_periph_i` |input |1 |SMU external port
+|`clk_ref_i`    |input |1 |SMU external port
+|===
+
+=== Resets
+
+[cols="<30%,<10%,<15%,<45%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`rst_cold_ni` |input |1 |SMU external port
+|`rst_primary_ref_clk_no` |output |1 |SMU external port
+|`rst_primary_smc_clk_no` |output |1 |SMU external port + DTP `rst_n_i`
+|===
+
+=== System AXI Input
+
+[cols="<30%,<10%,<25%,<35%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`sys_axi_in_req_i` |input |`smc_sys_in_56_64_6_12_axi_req_t` |SMU external port
+|`sys_axi_in_resp_o` |output |`smc_sys_in_56_64_6_12_axi_resp_t` |SMU external port
+|===
+
+=== JTAG AXI Input
+
+[cols="<30%,<10%,<25%,<35%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`jtag_axi_in_req_i` |input |`smc_jtag_56_64_2_12_axi_req_t` |DTP `axi_smc_dbg_req_o`
+|`jtag_axi_in_resp_o` |output |`smc_jtag_56_64_2_12_axi_resp_t` |DTP `axi_smc_dbg_resp_i`
+|===
+
+=== SMC OTP JTAG AXI-Lite
+
+[cols="<30%,<10%,<20%,<40%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`axil_smc_otp_jtag_req_i` |input |`efuse_axil_req_t` |DTP `axil_smc_otp_jtag_req_o`
+|`axil_smc_otp_jtag_resp_o` |output |`efuse_axil_resp_t` |DTP `axil_smc_otp_jtag_resp_i`
+|===
+
+=== SEP AXI Input
+
+When `SEP=0`, the SEP AXI subordinate input is tied off to `'0` and the
+response output is left unconnected. When `SEP=1`, the SMU drives this path from
+the SEP-to-SMC dedicated AXI connection.
+
+[cols="<30%,<10%,<25%,<35%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`sep_axi_in_req_i` |input |`smc_sep_in_56_64_6_12_axi_req_t` |Tied off to `'0` (no incoming transactions)
+|`sep_axi_in_resp_o` |output |`smc_sep_in_56_64_6_12_axi_resp_t` |Unconnected (no transactions to respond to)
+|===
+
+=== AXI Output
+
+[cols="<30%,<10%,<25%,<35%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`output_axi_req_o` |output |`smc_sys_out_56_64_8_12_axi_req_t` |SMU external port
+|`output_axi_resp_i` |input |`smc_sys_out_56_64_8_12_axi_resp_t` |SMU external port
+|===
+
+=== DTP CSR Interface
+
+[cols="<30%,<10%,<20%,<40%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`axil_dtp_csr_req_o` |output |`smc_axil_32_32_req_t` |DTP `axil_xtrig_req_i`
+|`axil_dtp_csr_resp_i` |input |`smc_axil_32_32_resp_t` |DTP `axil_xtrig_resp_o`
+|===
+
+=== Adopter Peripheral Window AXI-Lite
+
+[cols="<30%,<10%,<20%,<40%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`smc_external_req_o` |output |`smc_axil_32_32_req_t` |SMU external port (to adopter peripherals)
+|`smc_external_resp_i` |input |`smc_axil_32_32_resp_t` |SMU external port (from adopter peripherals)
+|===
+
+=== eFuse Interface
+
+[cols="<30%,<10%,<20%,<40%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`efuse_bank_ctrl_req_o` |output |`efuse_axil_req_t` |SMU external port
+|`efuse_bank_ctrl_resp_i` |input |`efuse_axil_resp_t` |SMU external port
+|`efuse_shim_command_req_o` |output |`fuse_command_req_t` |SMU external port
+|`efuse_shim_command_resp_i` |input |`fuse_command_resp_t` |SMU external port
+|`shadow_regs_o` |output |`efuse_map_t` |SMU external port
+|===
+
+=== GPIO Data Signals
+
+[cols="<30%,<10%,<20%,<40%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`lsio_interface_select_o` |output |[NUM_GPIO_WRAPS-1:0] |SMU external port
+|`pad2core_i` |input |[NUM_GPIO_WRAPS-1:0] |SMU external port
+|`core2pad_o` |output |[NUM_GPIO_WRAPS-1:0] |SMU external port
+|`pad2core_en_o` |output |[NUM_GPIO_WRAPS-1:0] |SMU external port
+|`core2pad_en_o` |output |[NUM_GPIO_WRAPS-1:0] |SMU external port
+|===
+
+=== GPIO External Pins
+
+[cols="<30%,<10%,<15%,<45%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`rst_cool_n_from_pin_i` |input |1 |SMU external port
+|===
+
+=== ATB Telemetry
+
+[cols="<30%,<10%,<25%,<35%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`clk_telemetry_i` |input |1 |SMU external port
+|`rst_telemetry_ni` |input |1 |SMU external port
+|`telemetry_atdata_i` |input |`telemetry_data_t[NUM_TELEMETRY_RECEIVERS-1:0]` |SMU external port
+|`telemetry_atid_i` |input |`atb_id_t[NUM_TELEMETRY_RECEIVERS-1:0]` |SMU external port
+|`telemetry_atready_o` |output |[NUM_TELEMETRY_RECEIVERS-1:0] |SMU external port
+|`telemetry_atvalid_i` |input |[NUM_TELEMETRY_RECEIVERS-1:0] |SMU external port
+|`telemetry_afvalid_o` |output |[NUM_TELEMETRY_RECEIVERS-1:0] |SMU external port
+|`telemetry_afready_i` |input |[NUM_TELEMETRY_RECEIVERS-1:0] |SMU external port
+|===
+
+=== DED/WDT
+
+[cols="<30%,<10%,<15%,<45%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`cluster_ded_o` |output |1 |SMU external port
+|`wdt_first_timeout_o` |output |1 |SMU external port
+|`wdt_second_timeout_o` |output |1 |SMU external port
+|===
+
+=== Region Size
+
+[cols="<30%,<10%,<15%,<45%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`smc_region_size_o` |output |[31:0] |SMU external port
+|===
+
+=== External Interrupts
+
+[cols="<30%,<10%,<20%,<40%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`ext_interrupts_i` |input |[NUM_EXT_INTERRUPTS-1:0] |SMU external port
+|`sep_mailbox_interrupts_i` |input |[7:0] |Internal: from SEP `smc_mailbox_interrupt_o` when `SEP=1`, else tied to `'0`
+|`sep_wdt_reset_n_i` |input |1 |Internal: `~sep_wdt_timer_rst_req` when `SEP=1`, else tied to `1'b1`
+|===
+
+=== Fuse Signals
+
+[cols="<30%,<10%,<15%,<45%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`fuse_sense_done_o` |output |1 |SMU external port
+|`fuse_reset_n_delayed_o` |output |1 |SMU external port
+|===
+
+=== DFT Signals
+
+[cols="<30%,<10%,<15%,<45%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`skip_mem_repair_o` |output |1 |SMU external port
+|`ext_boot_seq_done_i` |input |1 |SMU external port
+|===
+
+=== PVT
+
+[cols="<30%,<10%,<15%,<45%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`temp_interrupt_i` |input |1 |SMU external port
+|===
+
+=== Lifecycle State
+
+[cols="<30%,<10%,<20%,<40%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`lc_state_o` |output |[2*LC_STATE_WIDTH-1:0] |SEP lifecycle state when `SEP=1`, else `8'hf0`; ported through SMU
+|`lc_sigint_err_o` |output |1 |SEP lifecycle integrity error when `SEP=1`, else SMC `efuse_lc_sigint_err`
+|===
+
+=== RAS Bank Settings
+
+[cols="<30%,<10%,<15%,<45%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`ras_bank_chip_o` |output |[3:0] |SMU external port
+|`ras_bank_instance_o` |output |[3:0] |SMU external port
+|===
+
+=== Mailbox Interrupts
+
+[cols="<30%,<10%,<20%,<40%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`ext_mailbox_interrupts_o` |output |[NUM_MAILBOXES-1:0] |SMU external port
+|===
+
+=== Reset Unit Signals
+
+[cols="<30%,<10%,<15%,<45%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`cfg_flr_pf_active_i` |input |1 |SMU external port
+|`isolate_req_o` |output |[31:0] |SMU external port
+|`ss_reset_complete_i` |input |[31:0] |SMU external port
+|`ss_config_o` |output |[31:0] |SMU external port
+|`ss_reset_ctrl_o` |output |`reset_ctrl_t[31:0]` |SMU external port
+|`sync_irq_o` |output |1 |SMU external port
+|===
+
+=== CPU Memory Signals
+
+[cols="<30%,<10%,<20%,<40%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`rom_intf_req_o` |output |`rom_req_t` |SMU external port
+|`rom_intf_rsp_i` |input |`rom_rsp_t` |SMU external port
+|`scratch_ram_intf_req_o` |output |`scratch_ram_req_t[31:0]` |SMU external port
+|`scratch_ram_intf_rsp_i` |input |`scratch_ram_rsp_t[31:0]` |SMU external port
+|`l1_icache_tag_intf_req_o` |output |`l1_icache_tag_req_t[3:0]` |SMU external port
+|`l1_icache_tag_intf_rsp_i` |input |`l1_icache_tag_rsp_t[3:0]` |SMU external port
+|`l1_icache_data_intf_req_o` |output |`l1_icache_data_req_t[7:0]` |SMU external port
+|`l1_icache_data_intf_rsp_i` |input |`l1_icache_data_rsp_t[7:0]` |SMU external port
+|`l1_dcache_tag_intf_req_o` |output |`l1_dcache_tag_req_t[3:0]` |SMU external port
+|`l1_dcache_tag_intf_rsp_i` |input |`l1_dcache_tag_rsp_t[3:0]` |SMU external port
+|`l1_dcache_data_intf_req_o` |output |`l1_dcache_data_req_t[3:0]` |SMU external port
+|`l1_dcache_data_intf_rsp_i` |input |`l1_dcache_data_rsp_t[3:0]` |SMU external port
+|===
+
+=== Memory Init
+
+[cols="<30%,<10%,<15%,<45%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`disable_sram_auto_init_i` |input |1 |SMU external port
+|`init_mem_done_o` |output |1 |SMU external port
+|===
+
+=== System Timer OCTS Interface
+
+[cols="<30%,<10%,<15%,<45%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`timer_count_o` |output |[63:0] |SMU external port
+|===
+
+=== Reset Overrides (from DTP)
+
+[cols="<30%,<10%,<15%,<45%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`jtag_reset_ctrl_i` |input |`smc_pkg::jtag_smc_reset_ctrl_t` |DTP `jtag_ic_reset_smc_o` (packed struct with `.ovrd` override enables and `.val` active-low override values)
+|===
+
+=== DFD Signals
+
+[cols="<30%,<10%,<20%,<40%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`cla_gpio_enable_o` |output |1 |SMU external port
+|`tdr_dbg_ctrl_clock_stop_en_i` |input |1 |DTP `cla_clock_stop_en_o`
+|`tdr_dbg_ctrl_clocks_stopped_by_cla_o` |output |1 |DTP `xtrig_clk_stop_req_i[0]` (SMU connects SMC output to DTP input)
+|===
+
+=== Cross Trigger Interface
+
+[cols="<30%,<10%,<20%,<40%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`xtrigger_ss_i` |input |`smc_pkg::xtrigger_t` |SMU internal: DTP `xtrig_ctm_src_req_o[1:0]` → SMC. Not an SMU external port.
+|`xtrigger_ss_o` |output |`smc_pkg::xtrigger_t` |SMU internal: SMC → DTP `xtrig_ctm_dst_req_i[1:0]`. Not an SMU external port.
+|===
+
+=== Trace Memory
+
+[cols="<30%,<10%,<25%,<35%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`trace_mem_req_o` |output |`SinkMemPktIn_s[TRC_RAM_INSTANCES-1:0]` |SMU external port
+|`trace_mem_resp_i` |input |`SinkMemPktOut_s[TRC_RAM_INSTANCES-1:0]` |SMU external port
+|===
+
+=== External Debug Bus
+
+[cols="<30%,<10%,<15%,<45%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`ext_debug_bus_i` |input |[127:0] |SMU external port
+|===
+
+=== Test Mode
+
+[cols="<30%,<10%,<15%,<45%",options="header"]
+|===
+|Port |Direction |Width |SMU Connection
+
+|`test_en_i` |input |1 |SMU external port
+|`scan_rst_ni` |input |1 |SMU external port
+|===

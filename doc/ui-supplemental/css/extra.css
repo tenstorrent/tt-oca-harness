@@ -541,3 +541,47 @@
     overflow-wrap: break-word;
     word-break: break-word;
 }
+
+/* Integrator reference tables need room for signal names and descriptions.
+   Scroll the table on narrow screens while keeping the article readable. */
+.integrator-port-reference .doc {
+    max-width: none;
+}
+
+.integrator-port-reference .toc.sidebar {
+    display: none;
+}
+
+.integrator-guide .table-scroll {
+    overflow-x: auto;
+    margin-bottom: 1.5rem;
+}
+
+.integrator-guide .table-scroll table.tableblock {
+    min-width: 58rem;
+    table-layout: fixed;
+}
+
+.integrator-guide .doc table.tableblock {
+    width: 100%;
+    table-layout: fixed;
+}
+
+.integrator-guide .doc table.tableblock th {
+    background: var(--oca-green);
+    color: #fff;
+}
+
+.integrator-guide .doc table.tableblock td,
+.integrator-guide .doc table.tableblock th {
+    overflow-wrap: anywhere;
+}
+
+.integrator-guide .doc table.tableblock td code {
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.integrator-guide .doc table.tableblock tbody tr:nth-child(even) {
+    background: #f7f7f4;
+}

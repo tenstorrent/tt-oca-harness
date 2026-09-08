@@ -3,7 +3,7 @@
 
 [.small,stretch]
 .SMC Port Declaration
-[%autowidth,options="header",frame=all,grid=all]
+[cols="18,18,8,10,26,10,10",options="header",frame=all,grid=all]
 |===
 |Interface Name |Type |Direction |Width |Description |Connection |Default value (if applicable)
 

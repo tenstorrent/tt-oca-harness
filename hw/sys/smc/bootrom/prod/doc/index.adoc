@@ -29,7 +29,7 @@ implementations; a final adopter ROM FW image can replace them with strong
 definitions before the ROM FW is frozen. The detailed sections identify the
 hooks where they are used. For the build-time override method and the SMC
 override inventory, see
-xref:ocah-integrator-guide::index.adoc#immutable-rom-fw-integration[Immutable ROM FW Integration]
+xref:ocah-integrator-guide::smu-integration.adoc#immutable-rom-fw-integration[Immutable ROM FW Integration]
 in the Integrator Guide.
 
 The ROM has two terminal handoff paths.

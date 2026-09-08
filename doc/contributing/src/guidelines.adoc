@@ -71,7 +71,7 @@ Not every element is present everywhere -- `regs/` only exists where the
 component owns CSRs, and a small IP may have no `lint/` waivers to carry --
 but where an element exists, it is always at this location. The `regs/`
 directory's generated collateral layout is detailed in
-xref:ocah-integrator-guide:ROOT:index.adoc#address-map-collateral[the
+xref:ocah-integrator-guide:ROOT:smu-integration.adoc#address-map-collateral[the
 Integrator Guide], and the waiver conventions under `lint/` are in
 xref:workflows.adoc#linting[Linting].
 

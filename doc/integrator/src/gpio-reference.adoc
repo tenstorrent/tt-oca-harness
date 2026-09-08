@@ -1,0 +1,30 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+= GPIO Pin Requirements
+:trm-url: https://tenstorrent.github.io/tt-oca-harness/ocah-docs/latest
+:page-role: integrator-guide integrator-port-reference
+
+[[gpio-pin-requirements]]
+The SMC provides GPIO functionality with multiplexed peripheral functions and
+test interfaces. The following table lists the signal and bump location,
+assigned function, recommended pull, and GPIO-specific notes. It does not define
+default direction or decode configuration straps; use
+`smc_padring_pkg::DefaultDirectionMap` and the generated reset-unit `STRAPS_LO`
+and `STRAPS_HI` register descriptions for those.
+
+ifdef::backend-html5[]
+[.table-scroll]
+--
+include::meta/ocah_gpio_table.adoc[]
+--
+endif::backend-html5[]
+ifdef::backend-pdf[]
+include::../meta/ocah_gpio_table.adoc[]
+endif::backend-pdf[]
+
+For multi-chiplet systems, the `PRIMARY_CHIPLET` strap (`STRAPS_LO[25]`)
+determines whether the chiplet operates as primary or secondary. The primary
+chiplet's System Timer OCTS generates synchronization pulses
+(`timer_sync_load_o`, `timer_cnt_credit_o`) that secondary chiplets receive to
+maintain coherent timestamps across the system.
