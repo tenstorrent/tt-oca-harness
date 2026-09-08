@@ -65,7 +65,7 @@
   <text x="310" y="309" class="small" text-anchor="middle">Secure DFT · Non-secure DFT · DFD</text>
 
   <!-- PTAP → iJTAG (dashed, via x=480 — right of STAP x=150..320) -->
-  <polyline points="320,140 480,140 480,270"
+  <polyline points="320,140 480,140 480,290 470,290"
             fill="none" stroke="#4a7baa" stroke-width="1" stroke-dasharray="4 2"
             marker-end="url(#arr-b)"/>
 
