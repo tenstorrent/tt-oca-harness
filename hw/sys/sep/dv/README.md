@@ -297,54 +297,29 @@ binding.
 
 ## Layout
 
+Must: `cocotb/`, `cov/`, `docs/`, `tb/`, `testlists/`, `uvm/`, `README.md`,
+`sep_sim_cfg.toml`, and `fw/`. `fw/` is must because the shared engine discovers
+`hw/{ip,sys}/*/dv/fw/fw.mk` (same path as SMC and Key Manager). Product Boot ROM
+stays at `../bootrom/`.
+
+Optional: `models/` (open `sep_external` stand-in), `shims/` (`sep_cpu` stub +
+analog), `.gitignore` (SEP-local generated products), `sep_public_scope.vlt`
+(scoped Verilator public list).
+
 ```
 hw/sys/sep/dv/
-├── cocotb/              # flow-first: cocotb owns env + stimulus + tests
-│   ├── env/             #   PyUVM env: agents, scoreboards, config
-│   ├── seq_lib/         #   sequences (scenarios)
-│   ├── tests/           #   @pyuvm.test() entries, grouped by subsystem
-│   └── dv_sim_prestage.py  # pre-sim hook (stages out/sep_efuse.hex)
+├── cocotb/              # PyUVM env, sequences, tests
 ├── uvm/                 # SV-UVM realization (`--framework uvm`, VCS)
-│   ├── env/             #   sep_env_pkg: types, cfgs, ref models, scoreboard, env
-│   ├── seq_lib/         #   sep_seq_lib_pkg: operations + scenario sequences
-│   └── tests/           #   thin test classes + sep_tests.sv include manifest
-├── cov/                 # VCS code-coverage scope (`cov/config/vcs/`). `--cov`
-│                        #   is graded on VCS ([coverage.vcs]). Phase 1 cover
-│                        #   properties land in cov/sv/ when they are written.
-├── docs/                # testbench architecture + verification plan (AsciiDoc)
-├── fw/                  # OSS-owned firmware — see fw/fw.mk
-│   ├── fw.mk            #   shared-engine dispatcher (c_compile)
-│   ├── drivers/         #   device drivers linked into each test
-│   ├── include/         #   firmware-visible headers
-│   ├── link/            #   TCM linker scripts
-│   ├── startup/         #   crt0
-│   └── tests/           #   per-test C sources (hello_world, DMA, SPI, …)
-│                        # the Boot ROM lives outside DV, at ../bootrom/prod/
-├── models/              # SEP-local SystemRDL: models/regs/sep_external.rdl is the
-│                        #   open stand-in that satisfies sep.rdl's sep_external
-│                        #   include -- eFuse SHIM control plus the execute-in-place
-│                        #   window. Excluded for OSS hygiene: proprietary IPs in
-│                        #   nonfree. Firmware includes the open C headers
-│                        #   (models/regs/gen/c/sep_external.h) via sep.h; the
-│                        #   SV addrmap package is the RTL build input.
-├── shims/               # SEP-local behavioral sim-models
-│   ├── cpu/             #   sep_cpu_stub (no_cpu build: LSU demux, no VeeR)
-│   └── analog/          #   entropy_ring_oscillator
-├── tb/                  # DUT-only top + helper RTL
-│   ├── tb_top.sv        #   module sep_uvm_top (wraps sep_wrapper) + tb_backdoor_mem;
-│                        #   one module, two shapes (cocotb pins / SV-UVM harness)
-│   ├── sep_tb_signal_list.svh  # every TB signal, declared once for both shapes
-│   ├── sep_tb_if.sv     #   SEP-local TB interface of the SV-UVM shape
-│   ├── sep_outbound_mbx.sv  # outbound mailbox responder + console/PASS monitor
-│   ├── efuse_preloads/  #   efuse_configurations/*.toml declare OTP images by
-│   │                    #   register/field; sep_efuse_default.hex is the one
-│   │                    #   committed image (a random-vector snapshot)
-│   └── sram_preloads/   #   committed SRAM images (e.g. sep_warm_handler.hex)
-├── testlists/           # native TOML testlists (all.toml + per-subsystem leaves)
-├── sep_sim_cfg.toml     # block build/filelist manifest, run modes, tool knobs
-├── sep_public_scope.vlt # scoped Verilator public list (narrow on purpose: a global
-│                        #   --public-flat-rw wedges the Verilator model)
-├── build/               # generated: per-tool models + build/runs/<run-id>/ logs (gitignored)
+├── cov/                 # VCS code-coverage scope; cover properties land in cov/sv/
+├── docs/                # TB architecture, VPLAN, FCOV
+├── fw/                  # DV firmware (`fw.mk` / `c_compile`)
+├── tb/                  # sep_uvm_top + mailbox + preload images
+├── testlists/
+├── models/              # optional: open sep_external RDL + generated headers
+├── shims/               # optional: sep_cpu stub, analog oscillator
+├── sep_sim_cfg.toml
+├── sep_public_scope.vlt # optional
+├── .gitignore           # optional
 └── README.md
 ```
 
