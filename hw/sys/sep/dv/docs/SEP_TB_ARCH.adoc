@@ -20,7 +20,7 @@
 |===
 
 The OCAH open-source SEP testbench lives under `hw/sys/sep/dv/`. The directory
-layout is `README.md`. It uses a PyUVM environment and the unified OCAH
+layout is documented in `README.md`. It uses a PyUVM environment and the unified OCAH
 BFM packages for AXI, SPI, and (where needed) JTAG. Sibling SMC and DTP envs
 share the same runner and cocotb/PyUVM idioms; this document describes *SEP*.
 
@@ -110,7 +110,7 @@ bring-up helpers rather than re-implementing clock/reset:
 
 === Directory Structure
 
-The `dv/` directory layout is `README.md`. This document describes the
+The `dv/` directory layout is documented in `README.md`. This document describes the
 testbench architecture inside those paths.
 
 === HDL Top

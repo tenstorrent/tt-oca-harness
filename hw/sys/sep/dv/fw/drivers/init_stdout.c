@@ -28,4 +28,5 @@ static int sep_getc(FILE *file) {
 
     printf("ERROR: Tried to read from stdin, this is not supported\n");
     exit(1);
+    return 0;
 }
