@@ -2,10 +2,12 @@
   description = "Environment and Docker Container for OCAH";
 
   inputs = {
+    # Ensure git submodules are checked out when the flake is fetched.
     self.submodules = true;
 
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
 
+    # All inputs follow the same nixpkgs to avoid duplicate versions in the closure.
     pyproject-nix = {
       url = "github:pyproject-nix/pyproject.nix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -39,7 +41,7 @@
       ...
     }:
     let
-      # Load helper functions defined in nix/lib.nix
+      # Merge project helpers into nixpkgs.lib so they travel with lib.
       lib = nixpkgs.lib.extend (_: _: self.lib);
 
     in
@@ -81,6 +83,7 @@
             };
         in
         rec {
+          # Default to the lighter shell; opt into with_uv_deps when Python tooling is needed.
           default = without_uv_deps;
           without_uv_deps = ocah_shell { bundle_uv = false; };
           with_uv_deps = ocah_shell { bundle_uv = true; };
@@ -90,6 +93,7 @@
       dockerContainers = lib.forAllSystems (
         system:
         let
+          # Build the image with the native toolchain but always target x86_64-linux contents.
           nativePkgs = lib.pkgsFor system;
           pkgs = lib.pkgsFor "x86_64-linux";
         in
@@ -109,6 +113,7 @@
               }).config;
         }
       );
+      # Always evaluate hashes against x86_64-linux so every platform agrees on the same tag.
       containerHashes =
         let
           pkgs = lib.pkgsFor "x86_64-linux";

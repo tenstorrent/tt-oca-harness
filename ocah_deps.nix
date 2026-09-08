@@ -5,6 +5,7 @@
   ...
 }:
 let
+  # load-uv-env.nix returns a function; apply it to pkgs to get the pythonSet and venv.
   uv_loader = import ./nix/load-uv-env.nix { inherit inputs; };
   uv_loaded = uv_loader pkgs;
 in
@@ -27,6 +28,8 @@ in
     CMAKE_CXX_STANDARD = "20";
   }
   // (
+    # When bundling, point UV at the Nix-provided Python/venv and disable all network sync so it
+    # never tries to download packages or manage its own environment at runtime.
     if (bundle_uv) then
       rec {
         # UV Bypass Rules
@@ -53,6 +56,7 @@ in
     else
       { }
   );
+  # Full list of packages to include in the container image and dev shell.
   ocah_pkgs =
     with pkgs;
     [

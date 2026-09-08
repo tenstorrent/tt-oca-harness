@@ -6,10 +6,13 @@ let
   # Load ./uv.lock
   uv_workspace = inputs.uv2nix.lib.workspace.loadWorkspace { workspaceRoot = ../.; };
 
+  # Editable overlay installs the local workspace packages in-place via $REPO_ROOT,
+  # so source changes are picked up without rebuilding the venv.
   editableOverlay = uv_workspace.mkEditablePyprojectOverlay {
     root = "$REPO_ROOT";
   };
 
+  # Non-editable overlay for third-party dependencies, preferring pre-built wheels.
   overlay = uv_workspace.mkPyprojectOverlay {
     sourcePreference = "wheel";
   };
@@ -29,7 +32,7 @@ let
           # Prefer to build packages by Wheels
           inputs.pyproject-build-systems.overlays.wheel
           overlay
-          # These packages are built from source due to lack of wheel availability, and hence require setuptools to be included in the build
+          # Inject setuptools for source-only packages that ship no wheel and rely on it implicitly.
           (
             final: prev:
             let
@@ -57,6 +60,7 @@ let
   );
 
 in
+# Returns pythonSet and the venv built from it; apply editableOverlay last so local packages shadow wheels.
 pkgs: rec {
   pythonSet = (pythonSetWith pkgs).overrideScope editableOverlay;
   venv = pythonSet.mkVirtualEnv "tt-oca-env" (uv_workspace.deps.all);

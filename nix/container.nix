@@ -15,6 +15,7 @@ rec {
   inherit name;
 
   # self.containerHashes is an alias of this output, not the other way around - don't cause infinite recursion
+  # Reads the image tag from the canonical x86_64-linux build so all platforms share one stable hash.
   hash =
     self.dockerContainers.${systemForHash}.${
       if bundle_uv then "with_uv_deps" else "without_uv_deps"
@@ -27,6 +28,7 @@ rec {
     extraCommands = ''
       mkdir -m 1777 tmp
     '';
+    # Base system tools plus project packages; extraDeps allows callsites to extend the image.
     contents =
       with pkgs;
       [
@@ -42,6 +44,7 @@ rec {
       ++ ocah.ocah_pkgs
       ++ extraDeps;
     config = {
+      # Convert ocah_env attrset to Docker ENV strings, then append container-specific vars.
       Env = builtins.attrValues (builtins.mapAttrs (e: v: "${e}=${v}") ocah.ocah_env) ++ [
         "PS1=${PS1}"
         "TMPDIR=/tmp"
