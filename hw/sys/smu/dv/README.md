@@ -1,3 +1,8 @@
+<!--
+SPDX-License-Identifier: Apache-2.0
+SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+-->
+
 # SMU OCAH Open-Source TB
 
 OCAH open-source DV testbench for the **SMU (System Management Unit)**.
@@ -26,8 +31,9 @@ for the SEP=0 component signoff record (#481 / #482 / #483 / #490 / #491).
 Raise-stub bodies live under `cocotb/tests_deferred/` and are not ported —
 **not** reportable as PASS.
 
-**Groups:** `smoke` for a fast gate, one group per feature area, and `all`
-for the whole package (see `testlists/all.toml`).
+**Groups:** `smoke` for a fast gate, then `smc` / `dtp` / `fabric` by
+area, and `sep0_all` / `sep0_p4_all` for the SEP=0 package
+(see `testlists/all.toml`).
 
 **OUT / deferred** (SEP=1 / interop / toggle / `needs_real_lcc`): not ported.
 Every named entry is classified in
@@ -81,7 +87,7 @@ python3 tools/dv/run_dv.py --dut smu --items smoke
 python3 tools/dv/run_dv.py --dut smu --items smc
 python3 tools/dv/run_dv.py --dut smu --items sep0_all
 
-python3 tools/dv/run_dv.py --dut smu --items all --tool xcelium --cov
+python3 tools/dv/run_dv.py --dut smu --items sep0_all --tool xcelium --cov
 ```
 
 Groups: `smoke` (4), `smc` (11), `dtp` (29), `fabric` (14),
