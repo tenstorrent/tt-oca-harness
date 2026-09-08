@@ -315,7 +315,8 @@ Agents are split by *honesty class* — this is the defining SMC structure:
 `sys_in_axi_agent` (`sys_axi`), `jtag_axi_agent` (`jtag_axi`) — all
 `SmcSysAxiDriver` subclasses over `ocah_axi_vip.OcahAxiMasterAgent`, differing only
 by `bus_prefix`; plus `protocol_vip_agent` (records scenario evidence items).
-* *Passive monitors*: `axi_monitor` (SEP_IN), `output_axi_monitor` (SYS_OUT).
+* *Passive monitors*: `axi_monitor` (SEP_IN), `output_axi_monitor` (SYS_OUT),
+`cpu_trace_mon` (hart-0 retirement trace, <<cpu-trace-monitor>>).
 
 Every agent's analysis port connects to the single `SmcScoreboard`.
 
@@ -351,6 +352,43 @@ consistency (passed, non-empty scenario/details, `timeouts <= csr_accesses`)
 and an optional byte-level golden (`expected_bytes` vs `observed_bytes`).
 
 `check_phase()` asserts total evidence `> 0` (non-vacuity house rule).
+
+[[cpu-trace-monitor]]
+==== Processor-state monitor — `cocotb/env/smc_cpu_trace_monitor.py`
+
+Hart 0 of the Rocket cluster has no external trace port; `tb_top.sv` reaches
+its CSR trace bundle by hierarchical reference (`io_trace_0_valid` = retire or
+exception, `io_trace_0_iaddr`, `io_trace_0_insn`, `io_trace_0_exception`, plus
+`io_cause` with bit 63 = interrupt and `io_tval`) and exports it as
+`tb_cpu_trace_*` on the single-instance bench and `dut_cpu_trace_*` /
+`bfm_cpu_trace_*` on the `SMC_DUAL` bench, masked while that core's
+`core_reset_n` is asserted (the writeback registers behind the bundle have no
+reset). `tb_cpu_scratch2` exports the firmware virtual console the way the dual
+bench's `dut_scratch2`/`bfm_scratch2` do; `env/smc_virt_console.py` decodes it
+and `smc_base_test` logs every completed line.
+
+`SmcCpuTraceState` reconstructs, from one sample per `clk_smc_i`:
+
+PC history:: retirement count, distinct-PC set, and a 512-entry ring of the
+  most recent retirements.
+Shadow call stack:: RV64IMAC decode of linking `jal`/`jalr`/`c.jalr` (ra/t0),
+  returns through ra/t0, and `mret`; exception retirements push a trap frame
+  that `mret` pops. RV64C has no `c.jal`, so only `c.jalr` links in the
+  compressed decode. A core reset flushes the stack; tallies survive.
+Trap records:: cycle, PC, decoded mcause, tval; the first eight log at WARNING,
+  the rest at DEBUG.
+Hang watch:: a 20k-cycle retirement-free gap out of reset logs one warning with
+  a full dump — diagnostic only, `wfi` and terminal loops are legitimate.
+
+`SmcEnv` builds `cpu_trace_mon` for every test; it idles unless `+smc_rom_hex`,
+`+smc_scratch_ram_hex` or `+rom_bin64` names an image, and attaches the
+matching staged listing (`<test>.sram.sym` / `<test>.rom.sym` from the shared
+firmware engine, `prod_rom.sym` from the production ROM Makefile, or an
+explicit `+smc_sym`). A scenario that raises ends with the symbolized call
+stack, trap records, and recent-PC tail at error level before the assertion;
+`+smc_trace_log` streams every retirement to `smc_trace.log`. The dual bench
+runs one `SmcCpuTraceState` per instance from `SmcDualHarness.bring_up` and
+appends both reports to its failure messages.
 
 [[clock-and-reset-strategy]]
 === Clock and Reset Strategy

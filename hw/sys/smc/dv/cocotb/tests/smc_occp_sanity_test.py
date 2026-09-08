@@ -37,8 +37,11 @@ how the reference treats it.
 
 from __future__ import annotations
 
+import logging
+
 import cocotb
 from cocotb.triggers import ClockCycles
+from env.smc_virt_console import VirtConsole
 from smc_dual_base_test import DualCsr, SmcDualHarness, random_seed
 from smc_occp_dual_defs import (
     CPU_RESET_VECTOR_ROM,
@@ -51,7 +54,6 @@ from smc_occp_dual_defs import (
     format_activity,
     required_plusarg,
 )
-from smc_virt_console import VirtConsole
 
 # The transaction is GET_VERSION plus one 4-byte WRITE, against the boot test's
 # 15 chunks of 1024 B. The pass lands at roughly 939 us of sim time, about 235
@@ -122,7 +124,8 @@ async def smc_occp_sanity_test(_dut) -> None:
                 f"  target POST         = {describe_post_code(post)}\n"
                 f"  I3C bus [{format_activity(bus_activity(dut))}]\n"
                 f"controller firmware trace:\n{bfm_console.tail()}\n"
-                f"target firmware trace:\n{dut_console.tail()}"
+                f"target firmware trace:\n{dut_console.tail()}\n"
+                f"CPU state:\n{harness.cpu_trace_report()}"
             )
         if target_scratch0 == TEST_PASS or ctrl_scratch0 == TEST_PASS:
             break
@@ -155,11 +158,13 @@ async def smc_occp_sanity_test(_dut) -> None:
             f"wb_pc0={int(dut.bfm_wb_pc0.value):#x}\n"
             f"  I3C bus [{format_activity(bus_activity(dut))}]\n"
             f"controller firmware trace (last lines):\n{bfm_console.tail()}\n"
-            f"target firmware trace (last lines):\n{dut_console.tail()}"
+            f"target firmware trace (last lines):\n{dut_console.tail()}\n"
+            f"CPU state:\n{harness.cpu_trace_report()}"
         )
 
     bfm_console.flush()
     dut_console.flush()
+    harness.dump_cpu_trace(logging.INFO)
     post = await dut_csr.read("TARGET_POST_CODE_FINAL", SCRATCH_POST_CODE)
 
     # Diagnostics, not gates. Recorded so a pass carries the same evidence the

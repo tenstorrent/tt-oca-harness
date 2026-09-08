@@ -42,22 +42,20 @@ Executable membership on `main` today:
 [cols="2,1,3",options="header",]
 |===
 |Group |Count |Role
-|`smoke` |36 |PR gate (`sim.yml`) and SMC nightly and weekly (`regress.yml`). Debug breadth, not the feature denominator.
-|`canonical_top6` |5 |Minimum active-stimulus set. Includes `smc_i3c_to_fabric_test`.
-|`canonical_top10` |9 |Adds FLR, I2C master, iJTAG, fabric wr/rd.
-|`canonical_top20` |18 |Minimal full-breadth target on `main`.
-|`project_p0` |14 |One name per Project 335 bucket #3301–#3314. Mixes SAMPLE bring-up and the I3C decode leaf.
+|`smoke` |35 |PR gate (`sim.yml`) and SMC nightly and weekly (`regress.yml`). Debug breadth, not the feature denominator. Contains every `canonical_top20` name plus SAMPLE observe.
+|`canonical_top6` |5 |Minimum active-stimulus set: bring-up, two CSR leaves, mailbox IRQ, fabric wr/rd.
+|`canonical_top10` |8 |Adds FLR, I2C master, iJTAG.
+|`canonical_top20` |17 |Minimal full-breadth target on `main`.
+|`project_p0` |13 |13 names over buckets #3301–#3314; #3311 (i3c) has no live leaf after #1448 — see the I3C intake (#506). Mixes SAMPLE bring-up.
 |===
 
-#1448 (open) drops `smc_i3c_to_fabric_test` from `smoke` / `canonical_top*` /
-`project_p0` and seats `smc_input_output_fabric_wr_rd_test` in
-`canonical_top6`. After that merge the live counts are 35 / 5 / 8 / 17 /
-13. This candidate *already* gives that leaf no feature credit, so the
-matrix does not depend on the merge.
+#1448 is merged: `smc_i3c_to_fabric_test` is HCI_VERSION decode only and
+is not in `smoke` / `canonical_top*` / `project_p0`. Run it via
+`i3c_depth` / `batch_c` / by name. This matrix already gave that leaf no
+feature credit.
 
-Open question for the DV lead: keep `smoke` as the release CI gate, or
-move the nightly to `canonical_top6` once #1448 lands. This file does not
-change `regress.yml`.
+`regress.yml` still gates on `smoke`. Moving nightly to `canonical_top6`
+is a DV-lead choice and is not made here.
 
 [[smc-credit-rules]]
 === Credit rules
@@ -85,8 +83,8 @@ Requirement IDs are the VPLAN TC rows or the canonical scenario those
 tests actually run. Coverage bins are the `SMC_FCOV.adoc` families the
 scoreboard can hit; Verilator does not close SV covergroups.
 
-After #1448 the `canonical_top6` seat that used to be I3C is
-`smc_input_output_fabric_wr_rd_test` (already on top10/top20 today).
+The `canonical_top6` seat that used to be I3C is
+`smc_input_output_fabric_wr_rd_test` (#1448).
 
 [cols="2,3,2,2,3,1",options="header",]
 |===
@@ -95,7 +93,7 @@ After #1448 the `canonical_top6` seat that used to be I3C is
 |SMC misc / scratch / chip-config CSR |`smc_register_sanity_test` |top6, top10, top20, project_p0 |axil_csr |AXI readback vs expected; non-vacuous AXI |YES
 |Default / RO register read |`smc_default_reg_rd_test` |top6, top10, top20 |axil_csr |AXI RO data match |YES
 |Mailbox STATUS / IRQ |`smc_mailbox_irq_test` |top6, top10, top20 |mailbox |IRQ observe + mailbox CSR |YES
-|Local fabric CSR wr/rd |`smc_input_output_fabric_wr_rd_test` |top6 after #1448; top10, top20 today |fabric |AXI wr/rd on input+output windows |YES
+|Local fabric CSR wr/rd |`smc_input_output_fabric_wr_rd_test` |top6, top10, top20, smoke |fabric |AXI wr/rd on input+output windows |YES
 |Function-level reset |`smc_flr_sanity_test` |top10, top20 |reset |FLR then CSR recover |YES
 |I2C master/target active |`smc_i2c_master_target_test` |top10, top20 |i2c (active, not SAMPLE-only) |I2C agent + scoreboard |YES
 |iJTAG / TAP-adjacent |`smc_ijtag_basic_test` |top10, top20, project_p0 |jtag |JTAG VIP / CSR precheck |YES
@@ -108,7 +106,7 @@ After #1448 the `canonical_top6` seat that used to be I3C is
 |Outbound filter / remap |`smc_output_filter_remap_security_test` |top20 |fabric filter |AXI filter/remap |YES
 |ECC / DFD / DBS sanity |`smc_ecc_dfd_dbs_sanity_test` |top20 |dbs_dfd_ecam_ecc |CSR sanity; fault-inject is deferred |YES
 |Multi-reset CSR persist |`smc_multi_reset_csr_persistence_test` |top20 |reset |Scratch persist across reset classes |YES
-|I3C window decode |`smc_i3c_to_fabric_test` |top6/10/20/project_p0 on `main`; depth-only after #1448 |i3c decode |OKAY + `HCI_VERSION=0x120`; `proxy=True` |NO
+|I3C window decode |`smc_i3c_to_fabric_test` |`i3c_depth` / `batch_c` / by name |i3c decode |OKAY + `HCI_VERSION=0x120`; `proxy=True` |NO
 |PLL/PVT clock config |`smc_pll_pvt_clock_config_test` |named in VPLAN top20 prose; not in live top20 |macro handshake |OKAY+0 wrap |NO
 |I3C CCC/IBI |`smc_i3c_ccc_ibi_full_test` |deferred |— |child I3C TB |NO
 |DTP CSR on smc_wrapper |idle port; no terminator |deferred (#506) |— |do not add a placeholder slave for credit |NO
@@ -129,7 +127,7 @@ feature rows.
 |===
 |Gap |Owner |Tracker
 |Approve this matrix |SMC design owner + DV lead |#496 (this file)
-|Drop I3C decode from CI/canonical groups |SMC DV |#504 / #1448
+|I3C decode dropped from CI/canonical groups |SMC DV |#504 / #1448 (merged)
 |I3C DAT/DCT + DTP CSR idle boundaries |SMC DV |#506 / #1447
 |Deferred.toml disposition |SMC DV |#505 / #1447
 |UART / ROM intake |Bruce |existing UART/ROM issues; do not fold into #495
