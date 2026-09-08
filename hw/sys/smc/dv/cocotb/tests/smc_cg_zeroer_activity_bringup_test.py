@@ -37,6 +37,10 @@ class smc_cg_zeroer_activity_bringup_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.ZEROER_DMA,
             type(self).__name__,
+            # Directed stimulus floor: 15 SEP_IN AXI accesses (CG programming
+            # plus the zeroer descriptor/trigger writes). Literal here, not
+            # read from `seq.accesses`.
+            min_csr_accesses=15,
             csr_accesses=seq.accesses,
             timeouts=seq.timeouts,
             proxy=False,

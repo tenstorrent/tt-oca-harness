@@ -76,9 +76,9 @@ core TAP contracts:
 BFM-internal navigation (for example a scan that returns to Run-Test/Idle),
 call `sync_state()` so predictions restart from the true controller state.
 
-Monitors deliberately log and catch callback exceptions. An attached checker
-therefore retains its protocol error before raising, and the owning test or
-scoreboard must call `finalize()` after traffic. For worked integrations, see
+Monitors log and catch callback exceptions, so an attached checker retains its
+protocol error before raising, and the owning test or scoreboard must call
+`finalize()` after traffic. For worked integrations, see
 the DTP `dtp_jtag_idcode_test`, `dtp_jtag_bypass_test`,
 `dtp_jtag_tlr_reset_test`, and `dtp_jtag_trst_test` sequences (via
 `dtp_jtag_base_test_seq.attach_tap_checker`).
@@ -143,7 +143,7 @@ ocah_jtag_vip/
 | `ocah_jtag_slave_config` | Slave device configuration: IDCODE, IR width, register map (`add_reg`), `drive_tdo_oen` |
 | `ocah_jtag_slave_driver` | Reactive TAP device responder: capture/shift/update per IEEE 1149.1, Update-DR latches recorded in `updates` |
 | `ocah_jtag_slave_monitor` | Slave-side passive observer (same `ocah_jtag_event` stream as the master monitor) |
-| `ocah_jtag_slave_sequence` | Slave test-facing API: `set_register`/`get_register`, `check_last_update`, `check_update_count` |
+| `ocah_jtag_slave_sequence` | Slave test-facing API: `set_register`/`get_register`, `check_last_update`, `check_update_count`, `check_register` (a value still held, independent of the update history), `check_state` (the device's TAP controller state) |
 | `ocah_jtag_slave_agent` | Slave bundle (reactive: no sequencer — the external host supplies all stimulus) |
 
 `sva/ocah_jtag_sva.sv` is the pin-level protocol assertion module (X-hygiene,
@@ -189,8 +189,11 @@ through the `_slave_sequence` API. The protocol engine
 (`OcahJtagSlaveEngine`) holds no simulator handles and is validated
 standalone against the master-side reference model by
 `cocotb/examples/example_slave_selftest.py` (runnable with plain Python).
-No DUT integration consumes the slave side yet; DUT host-port testbenches
-(STAP/BSR loopback replacements) are the intended first consumers.
+The DTP testbench consumes it: its STAP-selection scenarios splice
+one slave device behind each `jtag_stap_*_host` port (cocotb
+`hw/sys/dtp/dv/cocotb/env/dtp_stap_ds_agent.py`, SV-UVM `dtp_env`) and judge
+selection, gating, and recovery through `check_last_update`,
+`check_update_count`, `check_register`, and `check_state`.
 
 ## Template Contract (per-protocol VIPs and commercial plug-ins)
 
@@ -253,14 +256,6 @@ per protocol:
    `[sim].args` — no checked-in config changes; license-env gating is
    already part of the commercial profile contract.
 
-No commercial-VIP integration exists in-tree — that is the placement
-policy above, not a gap. The contract itself is integration-proven: the
-companion carries a reference integration that ran a commercial AXI VIP
-behind exactly these hooks — the env-level factory override, the vendor-cfg
-hook, and the interface-nesting hook on the initiator side, plus a factory
-override of the reactive slave agent on the responder side — and reproduced
-an unmodified open-tree DUT scenario's CHK evidence identically.
-
 ## Quick Start
 
 ```python
@@ -313,9 +308,8 @@ tap = OcahJtagMasterDriver(
 | `await goto_state(state)` | Navigate using shortest TMS path |
 | `get_statistics()` | Return plain counters and tracked state |
 
-`reset_tap()` intentionally leaves the tracked TAP state in
-`TEST_LOGIC_RESET`. This matches DTP sanity sequences, which then step `TMS=0`
-to observe `RUN_TEST_IDLE`.
+`reset_tap()` leaves the tracked TAP state in `TEST_LOGIC_RESET`; step
+`TMS=0` afterwards to reach `RUN_TEST_IDLE`.
 
 ## Device Maps
 
@@ -355,7 +349,7 @@ checker.assert_clean()
 ```
 
 Callbacks receive `OcahJtagScanItem` objects. The item also supports
-`to_record()` for older dict-shaped callback code.
+`to_record()` for dict-shaped callback code.
 
 ## Validation
 

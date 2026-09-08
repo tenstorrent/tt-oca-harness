@@ -15,7 +15,6 @@ from ocah_jtag_vip import OcahJtagDevice, OcahJtagMasterDriver
 
 # Lifecycle ungating: use seq_lib.smu_lcc_helpers (SEP=1 eFuse→LCC).
 # SEP=0 gen_no_sep ties sep_feat_ctrl='1' (enable); J2A opens after TCK sync.
-# Force-based helpers were removed.
 
 _REPO_ROOT = Path(__file__).resolve().parents[6]
 _JTAG_INST_PKG = _REPO_ROOT / "hw" / "ip" / "jtag" / "jtag_ptap" / "rtl" / "jtag_inst_reg_pkg.sv"

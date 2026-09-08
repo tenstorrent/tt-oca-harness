@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""TB-glue demo (deferred): pulse tb_dfd_fault_inject → latch 0xDB5C_AFE1.
+"""TB-glue demo: pulse tb_dfd_fault_inject → latch 0xDB5C_AFE1.
 
 DOES NOT DEFEND: smc_dfd_wrap / hw/ip/dfd CLA / trace-RAM (real DFD RTL).
 DEFENDS only: TB public capture ports wired in tb_top.sv.

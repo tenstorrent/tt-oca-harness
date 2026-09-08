@@ -17,18 +17,33 @@ import sys
 from pathlib import Path
 from typing import Awaitable, Callable
 
+# A log record carrying a non-ASCII character raises UnicodeEncodeError inside the
+# logging handler when the interpreter's stdio encoding follows an ASCII locale,
+# and the traceback is reported as a simulation error rather than the failed print
+# it is. Shared VIP log strings outside this tree carry such characters, so escape
+# unencodable output instead of aborting on it. Nothing is suppressed: the record
+# still prints, with the offending character shown escaped.
+for _log_stream in (sys.stdout, sys.stderr):
+    try:
+        _log_stream.reconfigure(errors="backslashreplace")
+    except (AttributeError, OSError, ValueError):
+        pass
+
+
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge, Timer, with_timeout
+from cocotb.triggers import (
+    ClockCycles,
+    ReadOnly,
+    RisingEdge,
+    SimTimeoutError,
+    Timer,
+    with_timeout,
+)
 
 # Intentional OSS exception: this JTAG AXI-Lite helper must run on the public
 from ocah_axi_vip import OcahAxiLiteMasterAgent
 from pyuvm import ConfigDB, uvm_test
-
-try:  # cocotb < 2.0
-    from cocotb.result import SimTimeoutError
-except ImportError:  # cocotb >= 2.0
-    from cocotb.triggers import SimTimeoutError
 
 # The cocotb runner only puts the test dir on sys.path. Make the cocotb root
 # (env/, seq_lib/) and shared OSS VIP root importable before concrete tests
@@ -44,6 +59,7 @@ from env.sep_cpu_trace_monitor import SepCpuTraceMonitor
 from env.sep_efuse_image import SepEfuseImage
 from env.sep_env import SepEnv
 from env.sep_env_cfg import SepEnvCfg
+from env.sep_verdict import decode_verdict
 
 # Committed default OTP image loaded when a test passes `+sep_efuse_preload` with
 # no path (see select_efuse_image()). Real-fuse-sense tests (no +skip_fuse_sense)
@@ -63,6 +79,21 @@ class sep_base_test(uvm_test):
 
     build_env = True
 
+    # Which channel poll_boot() gates completion on.
+    #
+    #   "mailbox"  -- fw_done_o/fw_pass_o from the outbound mailbox decoder
+    #                 (dv/tb/sep_outbound_mbx.sv).  The default, and what every
+    #                 non-rom_fw firmware test uses: the spi/km/cpu payloads
+    #                 report through the mailbox and are not being migrated.
+    #   "scratch0" -- the ROM/BL1 verdict word in cold_scratch[0]
+    #                 (env/sep_verdict.py).  Opt-in, set by rom_fw tests only.
+    #
+    # Deliberately opt-in rather than a global switch: this attribute decides how
+    # a test concludes it passed, so flipping it for tests whose firmware never
+    # writes cold_scratch[0] would not fail loudly -- they would simply never
+    # complete.  See dv/docs/rom_verdict_scratch0_migration.md.
+    verdict_source = "mailbox"
+
     @staticmethod
     def random_seed() -> int:
         """Runner-provided seed (run_dv.py --seed -> RANDOM_SEED); default 1."""
@@ -70,10 +101,35 @@ class sep_base_test(uvm_test):
 
     @staticmethod
     def rd(sig) -> int:
-        """Read a DUT signal as int, resolving X/Z to zero via the env policy."""
+        """Read a DUT signal as int, resolving unknown bits to zero per BIT.
+
+        A wide probe with one unknown bit still yields every other lane: a
+        256-bit scratch probe resolved as a whole would read as a zeroed
+        counter, which is indistinguishable from a counter that stopped.
+
+        Two cocotb versions are in use here -- the Verilator flow runs 2.x,
+        which offers LogicArray.resolve(), and the VCS flow runs 1.x, which
+        does not and exposes the bit string instead. Both paths are kept so a
+        wide read does not silently collapse on either.
+
+        Callers that must distinguish "unknown" from "zero" cannot use this.
+        """
+        value = sig.value
         try:
-            return int(sig.value)
+            return int(value)
         except Exception:
+            pass
+        resolve = getattr(value, "resolve", None)
+        if resolve is not None:
+            try:
+                return int(resolve("zeros"))
+            except Exception:
+                pass
+        bits = getattr(value, "binstr", None) or str(value)
+        resolved = "".join(c if c in "01" else "1" if c in "hH" else "0" for c in bits)
+        try:
+            return int(resolved, 2)
+        except ValueError:
             return 0
 
     @staticmethod
@@ -142,6 +198,7 @@ class sep_base_test(uvm_test):
         self._set_if_exists(dut, "lc_sigint_inject_i", 0)
         self._set_if_exists(dut, "token_cmp_fault_inject_i", 0)
         self._set_if_exists(dut, "token_cmp_fault_sel_i", 0)
+        self._set_if_exists(dut, "dma_host_intg_inject_i", 0)
         # Idle the master strobes from t=0 (valid=0, ready=1) so a test that
         # does not construct OcahAxiMasterAgent still presents a resolved idle
         # bus. Called before start_clocks. Env-built tests drive the same idle.
@@ -172,6 +229,21 @@ class sep_base_test(uvm_test):
             secure_tm = int(probe.value) & 0x1
         check_efuse_shadow_backdoor(self.logger, self._efuse_compare_image, secure_tm=secure_tm)
 
+    def check_otp_jtag2axi_ungated(self) -> None:
+        """Require both OTP JTAG2AXIL disable bits to read 0.
+
+        LCC ties ``dbg_disable_o.smc_otp_jtag2axi`` and
+        ``sep_otp_jtag2axi`` to 0. The fuse controller enforces access.
+        """
+        dut = cocotb.top
+        smc = self.rd(dut.dbg_disable_smc_otp_jtag2axi_o)
+        sep = self.rd(dut.dbg_disable_sep_otp_jtag2axi_o)
+        if smc != 0 or sep != 0:
+            raise AssertionError(
+                f"CHK-OTP-JTAG2AXI-UNGATED FAIL: smc_otp={smc} sep_otp={sep}, expected both 0"
+            )
+        self.logger.info("CHK-OTP-JTAG2AXI-UNGATED PASS: smc_otp_jtag2axi=0 sep_otp_jtag2axi=0")
+
     async def _wait_fuse_sense(self, max_cycles: int) -> None:
         """Poll sep_fuse_sense_done_o until it asserts (or time out), then settle.
 
@@ -189,6 +261,7 @@ class sep_base_test(uvm_test):
                 self.logger.info("SEP fuse sense done at cycle %d", cycle)
                 await ClockCycles(dut.clk_i, 20)
                 self._check_efuse_shadow_after_sense()
+                self.check_otp_jtag2axi_ungated()
                 return
         raise AssertionError("sep_fuse_sense_done_o never asserted (fabric not released)")
 
@@ -333,9 +406,14 @@ class sep_base_test(uvm_test):
     async def resense(self, *, hold_cycles: int = 20, max_cycles: int = 20_000) -> None:
         """Re-pulse rst_ni to trigger a fresh fuse-sense (clocks already running).
 
-        The OTP responder reloads its image on reset assertion, so a test can
-        regenerate the eFuse image between sense cycles and resense to pick up
-        the new contents.
+        This re-senses whatever the OTP bank currently holds. It does NOT reload
+        the image file: ``efuse_bank_model`` deposits the hex in a time-0
+        ``initial`` and a fuse holds its state across every reset (the bank
+        register field has no reset value), so rewriting ``out/sep_efuse.hex``
+        between senses changes only the golden, not the DUT. To change what the
+        DUT senses, either program the OTP bits for real -- W1S, so only a
+        superset is reachable -- or start a new leaf with the image staged at
+        t=0 by ``dv_sim_prestage.py``.
         """
         dut = cocotb.top
         self.logger.info("Re-sensing: pulsing rst_ni")
@@ -518,6 +596,7 @@ class sep_base_test(uvm_test):
             self.rd(dut.dbg_iccm_active_o),
             self.rd(dut.dbg_iccm_addr_o),
         )
+        gate_on_scratch = self.verdict_source == "scratch0"
         for cycle in range(max_run_cycles):
             await RisingEdge(dut.clk_i)
             # Trace sampling lives in the CPU trace monitor; this loop owns
@@ -525,7 +604,18 @@ class sep_base_test(uvm_test):
             sb.note_run_ack(self.rd(dut.o_cpu_run_ack_o))
             if self.rd(dut.fw_char_valid_o):
                 sb.note_char(self.rd(dut.fw_char_o))
-            if self.rd(dut.fw_done_o):
+            if gate_on_scratch:
+                verdict = decode_verdict(self.rd(dut.scratch_cold_probe_o))
+                if verdict is not None:
+                    sb.note_fw(True, verdict[1])
+                    self.logger.info(
+                        "CHK-VERDICT: firmware signaled completion at cycle %d "
+                        "via cold_scratch[0], pass=%d",
+                        cycle,
+                        verdict[1],
+                    )
+                    break
+            elif self.rd(dut.fw_done_o):
                 sb.note_fw(True, self.rd(dut.fw_pass_o))
                 self.logger.info("firmware signaled completion at cycle %d", cycle)
                 break

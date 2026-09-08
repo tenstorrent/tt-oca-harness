@@ -71,7 +71,7 @@ class dtp_jtag2axi_error_test_seq(dtp_jtag2axi_base_test_seq):
             context=context,
         )
         self.status = DtpJtag2AxiStatus(status)
-        # OTP AXI-Lite fault RAM suppresses failed writes. The SMC fabric legacy
+        # OTP AXI-Lite fault RAM suppresses failed writes. The SMC fabric
         # responder reports the error after accepting data, so recovery is the
         # portable side-effect check for that target.
         if self.target != "smc_axi":

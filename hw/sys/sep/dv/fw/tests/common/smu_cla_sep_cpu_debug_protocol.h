@@ -52,7 +52,7 @@
 
 /* SMC scratch_4/_5: SMC fw publishes the exact read-back CLA node0 EAP0 for the current phase
  * (low32 -> scratch_4, high32 -> scratch_5) so the cocotb CHK-CLA-PRODUCER can assert+log the exact
- * per-action CSR readback. CDFDCSR/CDBGCLACTRLSTATUS are read back and enforced by the fw itself.
+ * per-action CSR readback. CDBGCLACTRLSTATUS is read back and enforced by the fw itself.
  */
 
 /* s2 : SMC -> SEP command channel */
@@ -78,7 +78,6 @@
 /* CLA node0 EAP single-action values (smu_sep_cla_node0_eap_value literals):
  *   initial release {1,4}: EAP0=0x341FBFC000 / EAP1=0x144FBFC000.
  *   single action N: EAP0 = 0x10<N>FBFC000, EAP1=0 (N in 0..5; bit N of the custom bus). */
-#define CLADBG_CLA_CDFDCSR_EXPECT 0x8000000000000000ULL
 #define CLADBG_CLA_CTRLSTATUS_EXPECT 0x60
 #define CLADBG_CLA_EAP0_RELEASE 0x341FBFC000ULL
 #define CLADBG_CLA_EAP1_RELEASE 0x144FBFC000ULL

@@ -22,6 +22,9 @@ class smc_mailbox_field_sweep_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.MAILBOX,
             type(self).__name__,
+            # Directed stimulus floor: 27 SEP_IN AXI per-mailbox field-sweep
+            # accesses. Literal here, not read from `seq.accesses`.
+            min_csr_accesses=27,
             csr_accesses=seq.accesses,
             proxy=False,
             details="P1 coverage-gap round 3: per-mailbox 6-field sweep x 4 outbound",

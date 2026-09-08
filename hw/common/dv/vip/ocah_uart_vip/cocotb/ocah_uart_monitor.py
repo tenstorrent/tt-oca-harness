@@ -10,9 +10,8 @@ Two components live here:
     start/data/stop bits at bit centres, resynchronising on every start-bit
     edge, and never drives the signal.  Side-neutral (bare name): a UART
     line is a symmetric point-to-point wire, and the sampler reconstructs
-    whatever traffic appears on it — VIP-driven or DUT-driven — so a
-    master/slave side token would be false labeling.  ``OcahUartConsole``
-    uses one instance as its receive path.
+    whatever traffic appears on it — VIP-driven or DUT-driven.
+    ``OcahUartConsole`` uses one instance as its receive path.
 
 ``OcahUartMonitor``
     Passive TX+RX byte tap with callbacks, built from two line monitors.

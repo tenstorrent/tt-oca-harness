@@ -4,7 +4,7 @@
 
 DV-CARD:          SMU_ALL_004   ANCHOR: smu_smc_mailbox_int_test
 
-Approved OWNS (card r8 / plan r3):
+Owns:
   SMC-MBX-IRQ-EXT.S2 — Width equals NUM_MAILBOXES (32) at the SMU boundary
     (passive DECODE on bare tb_top SEP=0; required_cells width=32).
 

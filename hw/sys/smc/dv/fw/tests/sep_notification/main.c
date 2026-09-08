@@ -8,7 +8,7 @@
  * source and emits a sequence of N event tokens to a handshake scratch
  * register, pausing after each token until the testbench acknowledges.
  *
- * Spec basis: OCH Specification §Crypto Key Manager — the KM can send
+ * Spec basis: OCAH Specification §Crypto Key Manager — the KM can send
  * asynchronous status/progress notifications upstream.  This test
  * exercises the analogous FW→TB notification path using scratch registers
  * as the transport, verifying that each event is delivered and acknowledged

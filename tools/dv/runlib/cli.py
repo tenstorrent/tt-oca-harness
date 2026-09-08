@@ -82,6 +82,11 @@ REGRESSION_SEED_MAX = 2_147_483_647
 SUPPORTED_PYTHON_MIN = (3, 11)
 SUPPORTED_PYTHON_MAX_EXCLUSIVE = (3, 14)
 _COVERAGE_STAGES = {"cov_merge", "cov_report"}
+# --doctor import probe: modules per child interpreter, and the seconds each child
+# has before it is killed. OCAH_DOCTOR_PROBE_TIMEOUT replaces the default budget.
+DOCTOR_PROBE_BATCH_SIZE = 20
+DOCTOR_PROBE_TIMEOUT_DEFAULT = 120.0
+DOCTOR_PROBE_TIMEOUT_ENV = os.environ.get("OCAH_DOCTOR_PROBE_TIMEOUT", "")
 
 
 class RunInterrupted(BaseException):
@@ -191,6 +196,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--run-mode",
         metavar="NAME",
         help="Run mode from the DUT sim config [run_modes.<name>] (default: the test's first run mode)",
+    )
+    common.add_argument(
+        "--target",
+        metavar="NAME",
+        help=(
+            "Build target from the DUT sim config [targets.<name>]; "
+            "overrides every selected test's target (default: each test's own target)"
+        ),
     )
     common.add_argument(
         "--overlay",
@@ -460,6 +473,7 @@ def validate_mode_options(args: argparse.Namespace) -> None:
         "retry": "--retry",
         "max_failures": "--max-failures",
         "run_mode": "--run-mode",
+        "target": "--target",
         "waves": "--waves",
         "waves_on_fail": "--waves-on-fail",
         "wave_start": "--wave-start",
@@ -840,34 +854,87 @@ print(json.dumps(out))
 """
 
 
-def _probe_imports(python_paths: list[Path], modules: list[str]) -> dict[str, tuple[bool, str]]:
-    """Import each module in a child interpreter whose PYTHONPATH is exactly `python_paths`.
+def doctor_probe_timeout() -> float:
+    """Return the per-batch import-probe budget in seconds.
 
-    Run stages rebuild PYTHONPATH for simulator children from the DUT config
-    (:func:`runlib.stages.cocotb_python_paths`) instead of inheriting the launcher's ambient
-    one, so probing through this process's ``sys.path`` reports failures runs never see.
+    `OCAH_DOCTOR_PROBE_TIMEOUT` must be a positive number when set; unset means the default.
     """
-    if not modules:
-        return {}
+    raw = DOCTOR_PROBE_TIMEOUT_ENV.strip()
+    if not raw:
+        return DOCTOR_PROBE_TIMEOUT_DEFAULT
+    try:
+        seconds = float(raw)
+    except ValueError as exc:
+        raise ConfigError(
+            f"OCAH_DOCTOR_PROBE_TIMEOUT must be a number of seconds, got {raw!r}"
+        ) from exc
+    if seconds <= 0:
+        raise ConfigError(f"OCAH_DOCTOR_PROBE_TIMEOUT must be positive, got {raw!r}")
+    return seconds
+
+
+def _probe_batch(
+    python_paths: list[Path], batch: list[str], timeout: float
+) -> dict[str, tuple[bool, str]] | None:
+    """Import `batch` in one child interpreter; None means the child exceeded `timeout`."""
     env = os.environ.copy()
     env["PYTHONPATH"] = os.pathsep.join(str(path) for path in python_paths if str(path))
     try:
         proc = subprocess.run(
-            [sys.executable, "-c", _PROBE_SCRIPT, *modules],
+            [sys.executable, "-c", _PROBE_SCRIPT, *batch],
             capture_output=True,
             text=True,
             env=env,
-            timeout=120,
+            timeout=timeout,
+            check=False,
         )
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        return {name: (False, f"import probe failed to run: {exc}") for name in modules}
+    except subprocess.TimeoutExpired:
+        return None
+    except OSError as exc:
+        return {name: (False, f"import probe failed to run: {exc}") for name in batch}
     try:
         raw = json.loads(proc.stdout.strip().splitlines()[-1])
         return {name: (bool(ok), str(detail)) for name, (ok, detail) in raw.items()}
     except (ValueError, IndexError):
         detail = (proc.stderr or proc.stdout).strip().splitlines()
         tail = detail[-1] if detail else f"exit code {proc.returncode}"
-        return {name: (False, f"import probe crashed: {tail}") for name in modules}
+        return {name: (False, f"import probe crashed: {tail}") for name in batch}
+
+
+def _probe_imports(
+    python_paths: list[Path],
+    modules: list[str],
+    *,
+    timeout: float = DOCTOR_PROBE_TIMEOUT_DEFAULT,
+    batch_size: int = DOCTOR_PROBE_BATCH_SIZE,
+) -> dict[str, tuple[bool, str]]:
+    """Import each module in child interpreters whose PYTHONPATH is exactly `python_paths`.
+
+    Run stages rebuild PYTHONPATH for simulator children from the DUT config
+    (:func:`runlib.stages.cocotb_python_paths`) instead of inheriting the launcher's ambient
+    one, so probing through this process's ``sys.path`` reports failures runs never see.
+
+    Modules are probed `batch_size` per child with `timeout` seconds each. A batch whose
+    child exceeds the budget is retried once with twice the budget; only a batch that
+    exceeds both is reported as failed, and only for its own modules.
+    """
+    if not modules:
+        return {}
+    results: dict[str, tuple[bool, str]] = {}
+    for start in range(0, len(modules), batch_size):
+        batch = modules[start : start + batch_size]
+        outcome = _probe_batch(python_paths, batch, timeout)
+        if outcome is None:
+            outcome = _probe_batch(python_paths, batch, timeout * 2)
+        if outcome is None:
+            why = (
+                f"import probe timed out twice ({timeout:g}s, then {timeout * 2:g}s) for a "
+                f"batch of {len(batch)} modules; raise OCAH_DOCTOR_PROBE_TIMEOUT on a slow "
+                "filesystem"
+            )
+            outcome = {name: (False, why) for name in batch}
+        results.update(outcome)
+    return results
 
 
 def _doctor_python_environment(root: Path, flow: Flow | None) -> bool:
@@ -941,9 +1008,16 @@ def _doctor_python_environment(root: Path, flow: Flow | None) -> bool:
             "so its bootstrap exports it",
         )
 
+    try:
+        probe_timeout = doctor_probe_timeout()
+    except ConfigError as exc:
+        _print_doctor_row("probe budget", "FAIL", str(exc))
+        print()
+        return True
+
     # Probe the shared VIP from its in-repo root, the way DUT configs put it on PYTHONPATH.
     vip_root = root / "hw" / "common" / "dv" / "vip"
-    vip_result = _probe_imports([vip_root, namespace_root], ["ocah_axi_vip"])
+    vip_result = _probe_imports([vip_root, namespace_root], ["ocah_axi_vip"], timeout=probe_timeout)
     ok, detail = vip_result["ocah_axi_vip"]
     _print_doctor_row("import ocah_axi_vip", "OK" if ok else "FAIL", detail)
     failed |= not ok
@@ -959,7 +1033,7 @@ def _doctor_python_environment(root: Path, flow: Flow | None) -> bool:
             print()
             return True
         modules = sorted({test.module for test in catalog.tests.values()})
-        results = _probe_imports(run_paths, modules)
+        results = _probe_imports(run_paths, modules, timeout=probe_timeout)
         failures = [(name, results[name][1]) for name in modules if not results[name][0]]
         if not modules:
             _print_doctor_row("test modules", "WARN", "testlist declares no tests")
@@ -1729,10 +1803,17 @@ def target_plan(
     catalog: TestCatalog,
     sim_cfg: dict[str, Any],
     items: list[str],
+    override: str | None = None,
 ) -> tuple[dict[str, str], list[str]]:
-    """Resolve a target per selected test and return first-seen unique target order."""
+    """Resolve a target per selected test and return first-seen unique target order.
+
+    ``override`` (``--target``) maps every selected item onto that name.
+    Omitted, each test keeps its own target. ``validate_target_plan`` rejects
+    an unknown name.
+    """
+    chosen = override.strip() if isinstance(override, str) and override.strip() else None
     if not items:
-        target = default_target_name(sim_cfg)
+        target = chosen or default_target_name(sim_cfg)
         return {}, [target]
 
     target_by_item: dict[str, str] = {}
@@ -1742,7 +1823,7 @@ def target_plan(
         test = catalog.tests.get(item)
         if test is None:
             raise ConfigError(f"selected item `{item}` is not a test in the catalog")
-        target = resolved_target_name(sim_cfg, test)
+        target = chosen or resolved_target_name(sim_cfg, test)
         target_by_item[item] = target
         if target not in seen:
             seen.add(target)
@@ -1915,7 +1996,9 @@ def run_flow(
     # Regression/group runs nest every test uniformly; a single explicit test stays flat.
     nest = need_items and bool(items) and scheduler
     label = run_label(catalog, requested, items)
-    target_by_item, build_targets = target_plan(catalog, sim_cfg, items if need_items else [])
+    target_by_item, build_targets = target_plan(
+        catalog, sim_cfg, items if need_items else [], override=getattr(args, "target", None)
+    )
     if flow.kind == "fv":
         explicit_targets = [item for item in items if catalog.tests[item].target]
         if explicit_targets:
@@ -1923,8 +2006,13 @@ def run_flow(
                 "per-test `target` selection is supported for simulation flows only; "
                 f"formal item(s) set target: {', '.join(explicit_targets)}"
             )
-    else:
-        validate_target_plan(sim_cfg, build_targets)
+    validate_target_plan(sim_cfg, build_targets)
+    if args.cov and len(build_targets) > 1:
+        raise ConfigError(
+            "coverage merge accepts one build target; this selection plans "
+            + ", ".join(build_targets)
+            + ". Pass --target <name> to run every selected test on one elaboration"
+        )
     multi_target = len(build_targets) > 1
     setattr(args, "_multi_target_run", multi_target)
     target_cfgs = {

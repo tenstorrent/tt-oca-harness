@@ -261,7 +261,7 @@ stay meaningful.
 
 The DTP `dtp_jtag_base_test_seq.attach_tap_checker()` hook wires these checks
 into TAP navigation automatically; `DTP_JTAG_TAP_CHECKER_NEGATIVE=1` runs the
-documented negative validation (a deliberately desynced model must FAIL the
+documented negative validation (a desynced model must FAIL the
 `dtp_jtag_tlr_reset_test` run).
 
 ## SystemVerilog Layer (interface / sva / cov / uvm)
@@ -280,7 +280,7 @@ never add them to Bender or Verilator filelists. Its contents:
 - `uvm/ocah_jtag_uvm_pkg.sv` — the SV-UVM VIP: item/config/driver/monitor/
   sequencer/agent plus the encoding-agnostic TAP reference model;
   `ocah_jtag_master_env` is the commercial-overridable unit that DUT envs
-  instantiate (see the DTP SV-UVM flow for the first consumer).
+  instantiate (see the DTP SV-UVM flow for a consuming integration).
 
 ## UVM Env Surface Convention
 
@@ -300,9 +300,9 @@ convention, with the JTAG master env as the reference template:
 - **Payload-named analysis ports.** An observation port is named
   `<kind>_ap` after the class it streams, mirroring the cocotb monitor
   callback names: `event_ap` (`ocah_jtag_event`), `scan_ap`
-  (`ocah_jtag_scan_item`), `item_ap` (`ocah_axi_item`). Port names are
-  deliberately not unified across VIPs — the payloads genuinely differ,
-  and the name tells a DUT env what it is subscribing to.
+  (`ocah_jtag_scan_item`), `item_ap` (`ocah_axi_item`). Port names differ
+  across VIPs because the payloads differ, and the name tells a DUT env what
+  it is subscribing to.
 - **Frozen surface is env-top-level handles only.** Everything a DUT env,
   test, or sequence may depend on is a direct member of the VIP env — the
   env promotes child handles (`m_sequencer` on `ocah_jtag_master_env` and

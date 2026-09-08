@@ -3,7 +3,8 @@ schema_version = 1
 
 [[tests]]
 name = "smc_register_sanity_test"
-module = "smc_register_sanity_test"
+# One VPLAN scenario, two implementations: cocotb module vs SV-UVM class (+UVM_TESTNAME).
+module = { cocotb = "smc_register_sanity_test", uvm = "smc_register_sanity_test" }
 seed = 1
 timeout_sec = 1800
 tags = [

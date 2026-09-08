@@ -1,0 +1,108 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+#
+# SMC eFuse map layout, for generate_efuse_preload.py.
+#
+# THIS FILE IS DERIVED, NOT AUTHORED. Every block below transcribes
+# hw/sys/smc/regs/blocks/smc_efuse_map/smc_efuse_map.rdl, which is the single
+# source of truth for the layout. The RDL address map is:
+#
+#     LOCKS             @ 0x000    64 b
+#     CHIPLET_ID        @ 0x008   256 b
+#     PACKAGE_ID        @ 0x028   256 b
+#     BIRA              @ 0x048 16384 b
+#     CLUSTER           @ 0x848   512 b
+#     FABRIC            @ 0x888   256 b
+#     SOP_TOPOLOGY      @ 0x8A8    32 b
+#     I2C_I3C_ID[9]     @ 0x8AC    64 b each
+#     I2C_CLOCK_GATING  @ 0x8F4    32 b
+#     I3C_DISABLE       @ 0x8F8    32 b
+#     PLL_AND_SENSOR    @ 0x8FC  4096 b
+#     RESERVED[65]      @ 0xAFC    32 b each   -> ends at 0xC00 = 3072 B
+#
+#     total = 24576 b = 3 KB = smc_efuse_pkg::SHADOW_REG_BITS
+#
+# The generator lays blocks out in the order they appear here, so this order
+# must match the RDL address map above. If the RDL changes, this file has to
+# change with it; nothing checks the two against each other.
+#
+# I2C_I3C_ID and RESERVED are arrays in the RDL. They are flattened here into
+# one block each of the full array width, because the generator works on
+# contiguous bit ranges rather than register instances:
+#     I2C_I3C_ID  9 x 64  =  576 b
+#     RESERVED   65 x 32  = 2080 b
+# A configuration addresses an individual RESERVED word by shifting inside
+# that 2080-bit value -- see randomize_efuse.py, which does exactly that for
+# RESERVED[1].
+
+[LOCKS]
+regwidth = 64
+  [LOCKS.fields.lock_entries]
+  bits = "63:0"
+  desc = "Per-field read/write lock controls. Bit 2*i = write lock, bit 2*i+1 = read lock, in configuration order."
+
+[CHIPLET_ID]
+regwidth = 256
+  [CHIPLET_ID.fields.chiplet_id]
+  bits = "255:0"
+  desc = "Chiplet ID. Lowest 7 bits are used directly as the I3C device address."
+
+[PACKAGE_ID]
+regwidth = 256
+  [PACKAGE_ID.fields.package_id]
+  bits = "255:0"
+  desc = "Package ID."
+
+[BIRA]
+regwidth = 16384
+  [BIRA.fields.repair_data]
+  bits = "16383:0"
+  desc = "16 kb of built-in redundancy-analysis (memory repair) data."
+
+[CLUSTER]
+regwidth = 512
+  [CLUSTER.fields.fuse_data]
+  bits = "511:0"
+  desc = "512 b reserved for the CPU clusters."
+
+[FABRIC]
+regwidth = 256
+  [FABRIC.fields.fuse_data]
+  bits = "255:0"
+  desc = "256 b reserved for the fabrics."
+
+[SOP_TOPOLOGY]
+regwidth = 32
+  [SOP_TOPOLOGY.fields.topology_serial]
+  bits = "31:0"
+  desc = "Serial number of the system-on-package topology configuration."
+
+[I2C_I3C_ID]
+regwidth = 576
+  [I2C_I3C_ID.fields.interface_id]
+  bits = "575:0"
+  desc = "9 x 64 b I2C/I3C interface IDs. Static-ID mode uses [6:0] of each; provisional-ID mode uses all 64."
+
+[I2C_CLOCK_GATING]
+regwidth = 32
+  [I2C_CLOCK_GATING.fields.clock_gating_config]
+  bits = "31:0"
+  desc = "I2C clock-gating configuration."
+
+[I3C_DISABLE]
+regwidth = 32
+  [I3C_DISABLE.fields.disable_config]
+  bits = "31:0"
+  desc = "I3C interface disable configuration."
+
+[PLL_AND_SENSOR]
+regwidth = 4096
+  [PLL_AND_SENSOR.fields.pll_sensor_config]
+  bits = "4095:0"
+  desc = "4 kb reserved for PLL and sensor configuration."
+
+[RESERVED]
+regwidth = 2080
+  [RESERVED.fields.reserved_data]
+  bits = "2079:0"
+  desc = "65 x 32 b reserved words. RESERVED[1] (bits 63:32) is the OCCP transport timeout the boot ROM reads from SMC_EFUSE_MAP_RESERVED_1 (bootrom/prod/drivers/src/smc_efuse.c)."

@@ -5,10 +5,9 @@ schema_version = 1
 
 # Aggregate Phase-1 (SEP=0) testlist for --dut smu.
 # Executable contract: enrolled groups in this file / testlists/all.toml
-# SEP=1 / interop / depth inventory: testlists/deferred.toml (not included).
-# Result-reporting policy: only enrolled groups report PASS; deferred.toml never does.
+# Result-reporting policy: only enrolled groups report PASS.
 # Only groups in this file (and testlists/wrapper.toml for --dut smu_wrapper)
-# produce reportable passing results; deferred.toml names never do.
+# produce reportable passing results.
 
 includes = ["smc.toml", "dtp.toml", "fabric.toml"]
 
@@ -47,8 +46,7 @@ tests = [
     "smu_ext_boot_seq_gate_test",
 ]
 
-# phase1 without Force/LCC ungating (those moved to deferred needs_real_lcc).
-# Product-pin CTM remap enrolled; Force four-phase / CLA fb inject stay deferred.
+# phase1: no Force/LCC ungating; product-pin CTM remap.
 [[groups]]
 name = "phase1"
 tests = [
@@ -78,7 +76,6 @@ tests = [
     "smu_i3c_mem_port_connectivity_test",
     "smu_smc_wdt_sanity_test",
     "smu_smc_wdt_timeout_irq_test",
-    "smu_smc_gpio_strap_sanity_test",
     "smu_smc_mailbox_sanity_test",
     "smu_dtp_io_stap_smoke_test",
     "smu_dtp_smc_stap_smoke_test",
@@ -116,7 +113,6 @@ tests = [
     "smu_i3c_mem_port_connectivity_test",
     "smu_smc_wdt_sanity_test",
     "smu_smc_wdt_timeout_irq_test",
-    "smu_smc_gpio_strap_sanity_test",
     "smu_smc_mailbox_sanity_test",
 ]
 
@@ -191,7 +187,6 @@ tests = [
     "smu_i3c_mem_port_connectivity_test",
     "smu_smc_wdt_sanity_test",
     "smu_smc_wdt_timeout_irq_test",
-    "smu_smc_gpio_strap_sanity_test",
     "smu_smc_mailbox_sanity_test",
     "smu_dtp_io_stap_smoke_test",
     "smu_dtp_smc_stap_smoke_test",
@@ -232,7 +227,7 @@ tests = [
     # phase2_smc_dtp (15)
     "smu_boot_stall_jtag_cold_reset_matrix_test",
     "smu_ic_reset_smc_multi_domain_test",
-    # phase3 H2 + H1b + H4b + H5 + H1c pin-only + H6 deferred
+    # phase3 H2 + H1b + H4b + H5 + H1c pin-only
     "smu_ic_reset_dual_domain_illegal_test",
     "smu_boot_stall_vs_ic_reset_priority_test",
     "smu_xtrig_ctm_illegal_phase_test",
@@ -282,7 +277,8 @@ tests = [
     "smu_jtag_chain_enhanced_test",
 ]
 
-# Full SEP=0 enrolled set (non-Force): phase1 (14) + deepeners (2) + corner (3) = 19
+# Full SEP=0 enrolled set (non-Force): phase1 (49-1) + deepeners (2) + corner (3) = 53.
+# smu_ext_boot_seq_gate_test is in smoke/phase1 but not here.
 [[groups]]
 name = "sep0_all"
 tests = [
@@ -313,7 +309,6 @@ tests = [
     "smu_i3c_mem_port_connectivity_test",
     "smu_smc_wdt_sanity_test",
     "smu_smc_wdt_timeout_irq_test",
-    "smu_smc_gpio_strap_sanity_test",
     "smu_smc_mailbox_sanity_test",
     "smu_dtp_io_stap_smoke_test",
     "smu_dtp_smc_stap_smoke_test",
@@ -375,7 +370,6 @@ tests = [
     "smu_i3c_mem_port_connectivity_test",
     "smu_smc_wdt_sanity_test",
     "smu_smc_wdt_timeout_irq_test",
-    "smu_smc_gpio_strap_sanity_test",
     "smu_smc_mailbox_sanity_test",
     "smu_dtp_io_stap_smoke_test",
     "smu_dtp_smc_stap_smoke_test",

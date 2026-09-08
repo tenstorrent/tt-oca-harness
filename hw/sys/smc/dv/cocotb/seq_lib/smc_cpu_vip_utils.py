@@ -49,7 +49,7 @@ CPU_RESET_VECTOR_SCRATCH = 0xC006_0000
 CPU_RESET_CTRL_DEFAULT = CPU_CTRL_RESET_CTRL_REG_DEFAULT & 0xFFFF_FFFF
 # Hold cores (reset_n=0) while keeping uncore out of reset (bit 8).
 CPU_RESET_CTRL_HOLD_CORES = 0x0000_0100
-# Pulse-start bits [7:4] for cores 0-3 (see legacy smc_api.pulse_core_reset).
+# Pulse-start bits [7:4] for cores 0-3.
 CPU_RESET_CTRL_PULSE_ALL = CPU_RESET_CTRL_DEFAULT | 0x0000_00F0  # 0x1FF
 # debug_reset_n_n0_scan[24] defaults to 0 (DM held in reset). DMI/dmstatus
 # needs this bit set; FW and U7-3 release it explicitly.
@@ -66,7 +66,7 @@ CPU_FW_FAIL_VALUE = 0xBAD0_0000
 # MMIO to CPU_CTRL SCRATCH may not be reachable until more fabric bring-up.
 CPU_FW_SRAM_MAILBOX = 0xC006_0100
 
-# smc_padring.sv: boot_stall is lsio pad 57 (was 60 before 68->65 GPIO shrink).
+# boot_stall is an lsio pad; smc_padring.sv holds the assignment.
 BOOT_STALL_PAD = 57
 
 # Backward-compatible aliases.
@@ -74,29 +74,55 @@ CPU_RESET_VECTOR = CPU_RESET_VECTOR_ROM
 CPU_RESET_RELEASE_ALL = CPU_RESET_CTRL_PULSE_ALL
 
 
-async def check_cpu_bfm_observability() -> None:
-    """Check the reset/powergood signals used by the CPU master-BFM substitute."""
-    dut = cocotb.top
+# Bound for the post-bring-up observability state this helper claims to observe.
+# Every caller runs after reset release, so anything beyond this is a real
+# failure of the powergood / reset-release contract rather than slow timing.
+CPU_BFM_OBS_TIMEOUT_CYCLES = 2000
+# Exact post-bring-up expectation: powergood stable and both observed resets
+# released (active-low, so 1). Value-checked, not just logged.
+CPU_BFM_OBS_EXPECTED = (
+    ("powergood_stable_o", 1),
+    ("rst_primary_smc_clk_no", 1),
+    ("rst_wdt_smc_clk_no", 1),
+)
 
-    await ClockCycles(dut.clk_smc_i, 8)
-    signals = [
-        dut.powergood_stable_o,
-        dut.rst_primary_smc_clk_no,
-        dut.rst_wdt_smc_clk_no,
-    ]
-    for signal in signals:
-        assert signal.value.is_resolvable, f"{signal._name} is not resolvable"
-    assert int(dut.powergood_stable_o.value) == 1, "Powergood did not stabilize"
-    cocotb.log.info(
-        "CPU BFM observability powergood=%d rst_primary=%d rst_wdt=%d",
-        int(dut.powergood_stable_o.value),
-        int(dut.rst_primary_smc_clk_no.value),
-        int(dut.rst_wdt_smc_clk_no.value),
+
+async def check_cpu_bfm_observability() -> None:
+    """Check the reset/powergood signals used by the CPU master-BFM substitute.
+
+    Bounded poll until powergood is stable AND both observed resets are
+    released, then assert that exact state. Expiry fails with the last observed
+    values (X/Z reported as such, never resolved blindly).
+    """
+    dut = cocotb.top
+    observed: dict[str, int | None] = {}
+    for _ in range(CPU_BFM_OBS_TIMEOUT_CYCLES):
+        for name, _want in CPU_BFM_OBS_EXPECTED:
+            value = getattr(dut, name).value
+            observed[name] = int(value) if value.is_resolvable else None
+        if all(observed[name] == want for name, want in CPU_BFM_OBS_EXPECTED):
+            cocotb.log.info(
+                "CHK-CPU-BFM-OBSERVABILITY: powergood_stable_o=%d "
+                "rst_primary_smc_clk_no=%d rst_wdt_smc_clk_no=%d "
+                "(all resolvable and at their exact post-bring-up levels)",
+                observed["powergood_stable_o"],
+                observed["rst_primary_smc_clk_no"],
+                observed["rst_wdt_smc_clk_no"],
+            )
+            return
+        await ClockCycles(dut.clk_smc_i, 1)
+    detail = ", ".join(
+        f"{name}={'X/Z' if observed.get(name) is None else observed[name]} (expected {want})"
+        for name, want in CPU_BFM_OBS_EXPECTED
+    )
+    raise AssertionError(
+        "CPU BFM observability never reached the post-bring-up state within "
+        f"{CPU_BFM_OBS_TIMEOUT_CYCLES} clk_smc_i cycles: {detail}"
     )
 
 
 def _set_boot_stall(asserted: bool) -> None:
-    """Drive padring pad 57 (boot_stall, active-high) via TB GPIO override."""
+    """Drive the boot_stall pad (active-high) via the TB GPIO override."""
     dut = cocotb.top
     if not hasattr(dut, "tb_gpio_ext_drive_en"):
         return
@@ -210,7 +236,8 @@ async def check_cpu_firmware_boot_contract(
       * ``+smc_rom_hex=<path>`` — ROM window preload (vector 0xC004_0000)
       * ``+smc_scratch_ram_hex=<path>`` — scratch ECC hex, 64B-striped across
         32 banks (vector 0xC006_0000)
-      * ``+smc_hold_cpu_boot`` — assert pad57 from time-0 (preferred for scratch)
+      * ``+smc_hold_cpu_boot`` — assert boot_stall from time-0 (preferred for
+        scratch)
 
     Paths must be absolute (or resolvable from the simulator cwd under
     ``attempt_*/make``). If both plusargs are present, scratch wins.
@@ -242,8 +269,14 @@ async def check_cpu_firmware_boot_contract(
         CPU_FW_SUCCESS_MAGIC,
     )
 
-    # Clear CSR mailbox (SEP can reach CPU_CTRL). Scratch/D$ PASS is observed
-    # via tb_cpu_fw_mailbox (SEP cannot AXI to 0xC006_xxxx).
+    # CPU_CTRL is decoded off the front port ahead of the cluster, so SEP_IN
+    # reaches it whatever the cluster is doing.
+    #
+    # Scratch/D$ PASS is observed via tb_cpu_fw_mailbox rather than an AXI read
+    # of the scratch window. SEP_IN does reach that window, but only with the
+    # warm domain out of reset and every core released; while boot_stall is held
+    # the access never gets a response at all. The mailbox snoop needs neither
+    # condition.
     await seq.csr_write("CPU_BOOT_SCRATCH0_CLEAR", CPU_CTRL_SCRATCH_0, 0)
 
     # Capture fetch baselines BEFORE release: the I$ fill can complete

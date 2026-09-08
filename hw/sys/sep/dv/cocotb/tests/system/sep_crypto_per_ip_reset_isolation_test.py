@@ -49,7 +49,7 @@ Isolation proof (both directions, then the remaining isolated bits):
                     TRNG-only reset, so resetting the entropy complex does not
                     reach the accelerator domains.
 
-reference ref: clock sep_clock_uvm_sw_reset_per_ip_test --
+Reference: sep_clock_uvm_sw_reset_per_ip_test --
 COVERED_STRONGER: the reference suite proves only the SW_RESET_N register -> sep_sw_rst_no output
 bit mapping (via an HDL backdoor); this test proves the reset actually lands in the
 IP and is domain-isolated at the level of a live crypto-datapath RESULT, frontdoor.
@@ -82,6 +82,7 @@ from seq_lib.sep_crypto_reset_iso_seq import (
     ENG_KMAC,
     ENG_OTBN,
     HMAC_DIGEST_RESET,
+    ISOLATE_DECERR_DATA,
     RESP_DECERR,
     RESP_OKAY,
     RST_HMAC,
@@ -232,9 +233,10 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         # Self-reset evidence = the victim's held result is PERTURBED (no longer the
         # value it held stably across the prior re-reads). For AES this is asserted as
         # "!= C", NOT "== 0", and that is RTL-correct, not a hidden reset bug: the
-        # OpenTitan AES DATA_OUT registers are, per spec, "cleared with pseudo-random
-        # data" on reset (vendor/lowRISC/opentitan/overlay/regs/aes/regs/gen/adoc/aes.adoc -- the DATA_REG.SEC_WIPE SCA
-        # countermeasure), so an AES-domain reset replaces the ciphertext with PRNG
+        # OpenTitan AES DATA_OUT registers are, per spec, "Upon reset, these
+        # registers are cleared with pseudo-random data"
+        # (vendor/lowRISC/opentitan/overlay/regs/aes/regs/gen/adoc/aes.adoc),
+        # so an AES-domain reset replaces the ciphertext with PRNG
         # data rather than a clean 0. DATA_OUT is fully inside aes_sw_rst_ni
         # (sep_crypto.sv) so there is no out-of-domain ciphertext leak. (The 4-word
         # read is non-atomic -- interleaved with entropy-FIFO drains -- so individual
@@ -303,12 +305,30 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             f"in-window HMAC DIGEST_0 read resp={iso_rd.resp_code} "
             f"timed_out={iso_rd.timed_out}, expected DECERR (not hang/OKAY/SLVERR)"
         )
+        # axi_lite_isolate answers a terminated read with its own DecErrData
+        # literal (vendor/pulp-platform/axi/upstream/src/axi_lite_isolate.sv:154,
+        # driven onto r.data at :172), and axi_burst_splitter_gran passes the R
+        # channel through unmodified. Matching it attributes the termination to
+        # the isolate rather than to any responder that happens to decode-error.
+        assert iso_rd.rdata == ISOLATE_DECERR_DATA, (
+            f"in-window HMAC DIGEST_0 read returned DECERR with rdata="
+            f"0x{iso_rd.rdata:08x}, not the isolate's DecErrData "
+            f"0x{ISOLATE_DECERR_DATA:08x}; the read was terminated elsewhere"
+        )
         self.logger.info(
-            "CHK-ISOLATE-DECERR PASS: HMAC DIGEST_0 read -> DECERR (resp=%d)", iso_rd.resp_code
+            "CHK-ISOLATE-DECERR PASS: HMAC DIGEST_0 read -> DECERR (resp=%d) with the "
+            "isolate's DecErrData 0x%08x",
+            iso_rd.resp_code,
+            iso_rd.rdata,
         )
 
         self.env.axi_monitor.arm_expected_decerr(1)
         iso_wr = await self.rst.probe(HMAC_CFG, write=True, wdata=0x1, expect_error=True)
+        if iso_wr.resp_code != RESP_DECERR:
+            # The credit armed above is only consumed by a DECERR beat. Left
+            # standing it would absorb the next unexpected DECERR anywhere on
+            # this bus, including the sibling and reopen probes below.
+            self.env.axi_monitor.release_expected_decerr(1)
         assert iso_wr.resp_code == RESP_DECERR and not iso_wr.timed_out, (
             f"in-window HMAC CFG write resp={iso_wr.resp_code} "
             f"timed_out={iso_wr.timed_out}, expected DECERR"

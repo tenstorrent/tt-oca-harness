@@ -4,8 +4,6 @@
 
 from __future__ import annotations
 
-import os
-
 from cocotb.triggers import ClockCycles, ReadOnly
 from env.dtp_xtrig_types import (
     XTRIG_CTM_SELECT_MASK,
@@ -34,6 +32,7 @@ from env.dtp_xtrig_types import (
     project_internal_mask,
 )
 from ocah_checker import OcahChecker
+from ocah_lib import OcahKnobs
 
 from .dtp_base_test_seq import dtp_base_test_seq
 
@@ -234,7 +233,7 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         # hook: the reference model is programmed with an INVERTED select so
         # CHK-XTRIG-ROUTE-MODEL must fail, proving the model comparison gates
         # pass/fail end to end (route scenarios only).
-        if os.environ.get("DTP_XTRIG_CHECKER_NEGATIVE", "0") not in ("", "0"):
+        if OcahKnobs.is_set("DTP_XTRIG_CHECKER_NEGATIVE"):
             model_mask = (~input_mask) & XTRIG_CTM_SELECT_MASK
             self.log.warning(
                 "NEGATIVE VALIDATION: CTM model select 0x%x instead of 0x%x",
@@ -854,8 +853,8 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
     # ------------------------------------------------------------------
     # Seeded per-pass port picks: every source/destination CTP and internal CT
     # is interchangeable per spec, so each loop proves the route class on a
-    # different port set. Inputs are kept out of the output masks (as in the
-    # original directed picks) so the isolation check stays meaningful.
+    # different port set. Inputs are kept out of the output masks so the
+    # isolation check stays meaningful.
     async def run_ctm_wire_or_cla_to_ctp(self) -> None:
         rng = self.rng("ctm_wire_or_cla_to_ctp")
         int_in, int_ovl = rng.sample(range(XTRIG_NUM_INT_CT), 2)

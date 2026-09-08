@@ -8,8 +8,8 @@ schema_version = 1
 #
 # Production Boot ROM firmware tests (sep_rom_non_secure_boot_test,
 # sep_rom_ot_{dma,pio,secure}_boot_test) are not defined here -- they live in
-# rom_fw.toml (different RTL target and firmware profile). They run in
-# the `all` and `rom_fw` groups, not `cpu`; this VPLAN grades ROM hardware
+# rom_fw.toml (different RTL target and firmware profile). They run in the
+# `rom_fw` group only -- not `cpu`, and not `all`; this VPLAN grades ROM hardware
 # access only (see hw/sys/sep/dv/docs/SEP_VPLAN.adoc, ROM-FW ownership in Known Limitations).
 
 [[tests]]
@@ -100,10 +100,13 @@ args = ["+skip_fuse_sense"]
 # drives the DMA (sep_dma.h) over the CPU LSU for SRAM->SRAM copies: CSR reset
 # values, CFG_REGWEN HW busy-lock, RANGE_REGWEN rw0c lock + range gating,
 # FIXED/INCR/WRAP address modes (per-mode golden image + neighbor), 1B/2B/4B
-# widths, STATUS.done RW1C, and one invalid-opcode error + recovery. Src/dst
-# offsets, copy length and fill seed come from the run seed (3 seeds). Distinct
-# from the Phase-1 DMA trio (hash/contention/spi-rx). cpu run mode;
-# +skip_fuse_sense (no OTP read). DMA & data movement (cpu-fw bucket).
+# widths, STATUS.done RW1C, one invalid-opcode error + recovery, and a
+# DMA-issued host-path command-integrity inject (exclusive host_path_err /
+# aggregator bit 40, CLEAR, recovery copy) and a fabric DECERR dest that
+# raises the same bit with the pin low. Src/dst offsets, copy length and
+# fill seed come from the run seed (3 seeds). Distinct from the Phase-1 DMA
+# trio (hash/contention/spi-rx). cpu run mode; +skip_fuse_sense (no OTP read).
+# DMA & data movement (cpu-fw bucket).
 name = "sep_dma_basic_test"
 module = "cpu.sep_dma_basic_test"
 firmware = "dma_basic_test"
@@ -168,10 +171,10 @@ run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]
 
 [[tests]]
-# PIC source 39 claim + mask for the token-comparator redundancy fault.
+# PIC source 40 claim + mask for the token-comparator redundancy fault.
 # Firmware arms the source and presents a SEC_DISABLE token; the host injects
-# a collapse on that comparator (tb port). Proves claim id 39, the
-# SEC_DISABLE sticky bit, and that masking meie[39] stops re-entry.
+# a collapse on that comparator (tb port). Proves claim id 40, the
+# SEC_DISABLE sticky bit, and that masking meie[40] stops re-entry.
 # +skip_fuse_sense: the SEC_DISABLE compare is not fuse-gated.
 name = "sep_efuse_token_match_fault_pic_test"
 module = "efuse.sep_efuse_token_match_fault_pic_test"

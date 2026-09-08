@@ -2,11 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smc_wdt_ip0_isolate_clamp_test — DEFERRED (pin / stimulus gap).
 
-Clamp mux exists in smc_4core_cpu (wdt_reset_raw x cluster_boundary_isolate).
-Was: Force those internals via TB pins to contrast clamp vs passthrough on
-WDOGIP0. Force pins removed — no product pre-clamp observe/inject pin.
-Re-enable when RTL exposes a legal port or the scenario is proven via
-frontdoor reset/WDT programming only. See testlists/deferred.toml."""
+Clamp mux exists in smc_4core_cpu (wdt_reset_raw x cluster_boundary_isolate),
+but no product pre-clamp observe or inject pin exists, and frontdoor reset/WDT
+programming alone cannot contrast clamp against passthrough on WDOGIP0.
+Not ported."""
 
 from __future__ import annotations
 

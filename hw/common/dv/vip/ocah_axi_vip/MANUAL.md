@@ -442,9 +442,9 @@ VIP layer; unused modules simply do not elaborate. Its contents:
   and AR/R engines, single transaction outstanding; samples via `mon_cb`,
   drives the initiator-side vif signals procedurally), the standard
   `ocah_axi_master_sequencer`, `ocah_axi_master_sequence` (the test-facing
+  `ocah_axi_master_sequencer`, `ocah_axi_master_sequence` (the test-facing
   stimulus API — see below), `ocah_axi_master_agent` (driver + sequencer;
-  deliberately no agent monitor — observation stays with the side-neutral
-  passive env), and `ocah_axi_master_env` (frozen surface: `m_sequencer`,
+  no agent monitor — observation stays with the side-neutral
   `cfg`; the commercial-override unit, same template contract as
   `ocah_jtag_master_env`).
 
@@ -487,7 +487,7 @@ response code untouched), one-shot per direction, disarmed by
 response to `uvm_error`; `allow_timeout=1` downgrades a watchdog expiry to
 a returned result with `timed_out` set.
 
-The DTP SV-UVM flow (`--dut dtp --framework uvm`) is the first consumer:
+The DTP SV-UVM flow (`--dut dtp --framework uvm`) consumes the slave side:
 tb_top wires the slave agent onto the SMC OTP AXI-Lite port (a dedicated
 `ocah_axi_if` carries the connection) and keeps the behavioral RAM responder
 module on the `m_axi` fabric port, instantiates the SVA checkers on both, and
@@ -518,9 +518,9 @@ convention, with the JTAG master env as the reference template:
 - **Payload-named analysis ports.** An observation port is named
   `<kind>_ap` after the class it streams, mirroring the cocotb monitor
   callback names: `event_ap` (`ocah_jtag_event`), `scan_ap`
-  (`ocah_jtag_scan_item`), `item_ap` (`ocah_axi_item`). Port names are
-  deliberately not unified across VIPs — the payloads genuinely differ,
-  and the name tells a DUT env what it is subscribing to.
+  (`ocah_jtag_scan_item`), `item_ap` (`ocah_axi_item`). Port names differ
+  across VIPs because the payloads differ, and the name tells a DUT env what
+  it is subscribing to.
 - **Frozen surface is env-top-level handles only.** Everything a DUT env,
   test, or sequence may depend on is a direct member of the VIP env — the
   env promotes child handles (`m_sequencer` on `ocah_jtag_master_env` and
@@ -546,8 +546,7 @@ AXI-Lite ports — and program faults and backpressure through the
 
 ## SEP Compatibility Reference
 
-Do not modify SEP code as part of this release. Existing SEP cocotbext usage is
-the compatibility checklist for the wrapper:
+SEP cocotbext usage is the compatibility checklist for the wrapper:
 
 | SEP pattern | OCAH wrapper support |
 |---|---|
@@ -556,9 +555,6 @@ the compatibility checklist for the wrapper:
 | `allow_timeout` negative checks | `read_result` / `write_result` support `allow_timeout=True` |
 | Exact response-code assertions | `resp`, `resp_list`, and `ok` fields |
 | Error-expected probes | Use `raise_on_error=False`, `check_response=False` |
-
-Future SEP migration can be planned separately after wrapper parity is proven by
-DTP and import/smoke validation.
 
 ## Migration Notes
 

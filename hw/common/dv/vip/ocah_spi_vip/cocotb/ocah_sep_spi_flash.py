@@ -23,10 +23,8 @@ reset), matching typical NOR-flash power-on semantics.
 
 DDR support
 -----------
-DDR (Double Data Rate) for octal mode is documented as out-of-scope for
-this initial implementation.  The class accepts ``mode="octal"`` but uses
-SDR (single data rate) operation.  A ``_DDR_TODO`` note marks the code path
-where DDR sampling would be introduced.
+DDR (Double Data Rate) octal is out of scope: the class accepts
+``mode="octal"`` but operates SDR (single data rate).
 
 Pin naming in tests
 -------------------
@@ -88,7 +86,7 @@ class OcahSepSpiFlash(OcahSpiFlash):
         Instance label.
     mode : str
         ``"single"``, ``"quad"``, or ``"octal"``.  Single-bit I/O is used in
-        all modes for now; see OCTAL_TODO in ``ocah_spi_flash.py``.
+        all modes.
     jedec_id : int
         3-byte JEDEC ID.  Default 0x20BA18.
     flash_size : int
@@ -234,10 +232,6 @@ class OcahSepSpiFlash(OcahSpiFlash):
 
         If ``dq_oe_n`` is not connected, DQ is driven unconditionally
         (same as base class behaviour).
-
-        DDR_TODO: For octal DDR mode, data should be sampled/driven on both
-        rising and falling SCLK edges with appropriate setup/hold.  This
-        is currently deferred pending SEP xSPI PHY timing confirmation.
         """
         from cocotb.triggers import FallingEdge as _FallingEdge  # noqa: PLC0415
 
@@ -259,7 +253,6 @@ class OcahSepSpiFlash(OcahSpiFlash):
 
             bit = (byte_val >> bit_idx) & 0x1
             # Drive DQ0 only; DQ[7:1] are not modified.
-            # For quad/octal the full-width drive is a OCTAL_TODO.
             dq_in = self._dq_in if self._dq_in is not None else self._miso
             if dq_in is not None:
                 dq_in.value = bit

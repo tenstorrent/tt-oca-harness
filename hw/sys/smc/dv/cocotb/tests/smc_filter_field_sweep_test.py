@@ -22,6 +22,10 @@ class smc_filter_field_sweep_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.OUTPUT_FABRIC,
             type(self).__name__,
+            # Directed stimulus floor: 3 fields x 4 entries x 2 directions = 24
+            # SEP_IN AXI filter CSR accesses. Literal here, not read from
+            # `seq.accesses`.
+            min_csr_accesses=24,
             csr_accesses=seq.accesses,
             proxy=False,
             details="P1 coverage-gap round 3: per-filter 3-field sweep x 4 entries x 2 dirs",

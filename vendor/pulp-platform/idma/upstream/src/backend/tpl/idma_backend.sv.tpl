@@ -561,7 +561,7 @@ _rsp_t ${protocol}_write_rsp_i,
     end else if (ErrorCap == idma_pkg::NO_ERROR_HANDLING) begin : gen_no_error_handler
         // bypass the signals, assign their neutral values
         assign idma_rsp.error     = 1'b0;
-        assign idma_rsp.pld       = 1'b0;
+        assign idma_rsp.pld       = '0;
         assign idma_rsp.last      = w_super_last;
         assign rsp_valid          = w_dp_rsp_valid & w_last_burst;
         assign eh_req_ready_o     = 1'b0;

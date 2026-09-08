@@ -95,7 +95,6 @@ description = "PyUVM cross-trigger XTRIG, CTP, and CTM tests"
 timeout_sec = 1800
 args = []
 
-# OD-19: one [targets.<name>] merges the former [compile_targets]/[run_targets] split.
 # Tool-specific flags live under [targets.<name>.tools.<tool>].
 [targets.default]
 description = "DTP cocotb target for public JTAG/JTAG2AXI smoke and coverage"
@@ -113,7 +112,11 @@ flags = [
 # (the dtp_fcov cover-property points); toggle instrumentation stays off to
 # keep per-test databases lean. Replaces the simulator-default `--coverage`
 # (which enables all forms including toggle). Matches the sep/smu DUT configs.
-build_args = ["--coverage-line", "--coverage-expr", "--coverage-user"]
+# --output-groups 0 compiles the generated .cpp files one by one instead of
+# in --build-jobs groups. Verilator groups by file count, and on a
+# coverage-instrumented model one group can become a translation unit of
+# several hundred MB that a hosted runner cannot compile (measured on SMC).
+build_args = ["--coverage-line", "--coverage-expr", "--coverage-user", "--output-groups", "0"]
 
 # --- SV-UVM framework overlay (selected by `--framework uvm`; VCS via the shared native
 # profile). Shares the DUT RTL recipe above; only the SV-UVM deltas live here. ONE tb_top module
@@ -123,13 +126,18 @@ build_args = ["--coverage-line", "--coverage-expr", "--coverage-user"]
 description = "DTP SV-UVM smoke flow (VCS)"
 
 [frameworks.uvm.build]
-# The shared VIP SV-UVM layers come from VIP-owned ordered manifests, expanded in listed order
-# AHEAD of this table's own incdirs/sources (dedup-merge) — never hand-copy VIP paths here.
-# Compile order stays load-bearing and explicit: the generated filelist emits the expanded
-# `sources` AFTER the bender filelist (DUT packages visible), then `top_file` last:
-#   ocah_jtag_vip manifest -> ocah_axi_vip manifest (each: interface -> collateral -> UVM pkg)
-#   -> dtp_tb_if -> dtp_seq_lib_pkg -> dtp_env_pkg -> tb_top.sv
+# The shared framework library and the VIP SV-UVM layers come from their owned ordered
+# manifests, expanded in listed order AHEAD of this table's own incdirs/sources (dedup-merge)
+# — never hand-copy library or VIP paths here. Compile order stays load-bearing and explicit:
+# the generated filelist emits the expanded `sources` AFTER the bender filelist (DUT packages
+# visible), then `top_file` last:
+#   ocah_lib manifest -> ocah_jtag_vip manifest -> ocah_axi_vip manifest
+#   (each: evidence base -> interface -> collateral -> UVM pkg)
+#   -> dtp_tb_if -> generated CSR address maps -> dtp_env_pkg -> dtp_seq_lib_pkg -> tb_top.sv
+# dtp_env_pkg compiles before dtp_seq_lib_pkg: the scenario virtual sequences run on the
+# dtp_virtual_sequencer the env package declares.
 source_lists = [
+  "hw/common/dv/vip/ocah_lib/uvm/sources.toml",
   "hw/common/dv/vip/ocah_jtag_vip/uvm/sources.toml",
   "hw/common/dv/vip/ocah_axi_vip/uvm/sources.toml",
 ]
@@ -150,8 +158,11 @@ sources = [
   "hw/sys/dtp/dv/cov/sv/dtp_scan_fcov.sv",
   "hw/sys/dtp/dv/cov/sv/dtp_xtrig_fcov.sv",
   "hw/sys/dtp/dv/tb/dtp_tb_if.sv",
-  "hw/sys/dtp/dv/uvm/seq_lib/dtp_seq_lib_pkg.sv",
+  # Generated cross-trigger port address map (PeakRDL): the CSR offsets the DTP scoreboard
+  # predictor and the XTRIG sequences read; the Bender DUT layer carries only the regblock.
+  "hw/ip/cross_trigger/cross_trigger_port/regs/gen/sv/cross_trigger_port_addrmap_pkg.sv",
   "hw/sys/dtp/dv/uvm/env/dtp_env_pkg.sv",
+  "hw/sys/dtp/dv/uvm/seq_lib/dtp_seq_lib_pkg.sv",
 ]
 
 [frameworks.uvm.sim]

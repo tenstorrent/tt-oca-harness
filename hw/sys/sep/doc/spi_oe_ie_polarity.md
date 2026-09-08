@@ -34,7 +34,7 @@ The open RTL exports technology-neutral SPI pad control signals. Adopters are
 responsible for mapping those signals to their pad cells and applying any
 required polarity conversion in their overlay or top-level integration.
 
-## Signal Transformation in OCH
+## Signal Transformation in OCAH
 
 ### `sep_ot_spi_wrap.sv`
 

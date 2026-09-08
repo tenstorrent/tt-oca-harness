@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import os
 import random
 
 import cocotb
@@ -12,6 +11,7 @@ from env.dtp_scan_model import DtpScanModel
 from env.dtp_tap_device import DTP_BSR_MODEL_LEN
 from env.dtp_types import DTP_IR_WIDTH, DtpJtagInstr, DtpTapFsm, DtpTapState
 from ocah_jtag_vip import OcahJtagChecker, OcahJtagMasterMonitor
+from ocah_lib import OcahKnobs
 
 from .dtp_base_test_seq import dtp_base_test_seq
 
@@ -70,10 +70,7 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
             logger=cocotb.log,
         )
         self.attach_tap_checker(checker)
-        self._family_negative = os.environ.get("DTP_JTAG_FAMILY_CHECKER_NEGATIVE", "0") not in (
-            "",
-            "0",
-        )
+        self._family_negative = OcahKnobs.is_set("DTP_JTAG_FAMILY_CHECKER_NEGATIVE")
         if self._family_negative:
             self.log.warning("NEGATIVE VALIDATION: family checker expectations will be corrupted")
         self._expected_ir_widths: list[int] = []
@@ -175,6 +172,15 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
             self._expected_ir_widths.append(DTP_IR_WIDTH)
         return item
 
+    async def shift_ir(self, value: int, width: int, *, back_to_rti: bool = True):
+        """Shift a raw IR value, keeping the attached TAP checker in sync."""
+        item = await super().shift_ir(value, width, back_to_rti=back_to_rti)
+        if back_to_rti and self.tap_checker is not None:
+            self.tap_checker.sync_state(DtpTapState.RUN_TEST_IDLE)
+        if self.family_monitor is not None:
+            self._expected_ir_widths.append(width)
+        return item
+
     async def shift_dr(self, value: int, width: int, *, back_to_rti: bool = True):
         """Shift raw DR data, keeping the attached TAP checker in sync."""
         item = await super().shift_dr(value, width, back_to_rti=back_to_rti)
@@ -270,7 +276,7 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         """Expected LSB-first TDO for a one-bit bypass register."""
         if width <= 0:
             return 0
-        shifted = (pattern & cls._bit_mask(max(width - 1, 0))) << 1
+        shifted = (pattern & cls.bit_mask(max(width - 1, 0))) << 1
         return (capture_bit & 0x1) | shifted
 
     @classmethod
@@ -278,7 +284,7 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         """Expected LSB-first TDO for the inverted one-bit bypass register."""
         if width <= 0:
             return 0
-        inverted = (~pattern) & cls._bit_mask(max(width - 1, 0))
+        inverted = (~pattern) & cls.bit_mask(max(width - 1, 0))
         return 0x1 | (inverted << 1)
 
     async def check_bypass_delay(
@@ -293,7 +299,7 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         await self.load_ir(instr)
         item = await self.shift_dr(pattern, width)
         expected = self.expected_bypass_tdo(pattern, width, capture_bit=capture_bit)
-        observed = item.result & self._bit_mask(width)
+        observed = item.result & self.bit_mask(width)
         self.family_check(
             "CHK-BYPASS-DELAY",
             f"bypass TDO for IR 0x{int(instr):02x}",
@@ -326,7 +332,7 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         await self.load_ir(DtpJtagInstr.INV_BYPASS)
         item = await self.shift_dr(pattern, width)
         expected = self.expected_inverted_bypass_tdo(pattern, width)
-        observed = item.result & self._bit_mask(width)
+        observed = item.result & self.bit_mask(width)
         self.family_check(
             "CHK-INV-BYPASS",
             "inverted bypass TDO",
@@ -357,8 +363,8 @@ class dtp_jtag_base_test_seq(dtp_base_test_seq):
         """Load ZERO_LENGTH_BYPASS and check direct TDI-to-TDO pass-through."""
         await self.load_ir(DtpJtagInstr.ZERO_LENGTH_BYPASS)
         item = await self.shift_dr(pattern, width)
-        expected = pattern & self._bit_mask(width)
-        observed = item.result & self._bit_mask(width)
+        expected = pattern & self.bit_mask(width)
+        observed = item.result & self.bit_mask(width)
         self.family_check(
             "CHK-ZLB-PASSTHROUGH",
             "zero-length bypass TDO",

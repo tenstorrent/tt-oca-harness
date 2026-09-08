@@ -27,6 +27,11 @@ class smc_smbus_alert_ara_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.I2C,
             type(self).__name__,
+            # Conservative stimulus floor: 34 accesses observed in the retained
+            # regression runs; the SMBALERT/ARA status polls are a
+            # timing-dependent remainder, so the floor is set below it. Literal
+            # here, not read from `seq.accesses`.
+            min_csr_accesses=27,
             csr_accesses=seq.accesses,
             proxy=False,
             details=(

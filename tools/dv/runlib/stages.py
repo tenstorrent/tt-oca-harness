@@ -36,8 +36,6 @@ from .buildcache import (
     option_build_args,
     resolve_build_dir,
     vcs_build_args,
-    vcs_force_rebuild,
-    vcs_simv_compile_deps,
     vcs_version,
     verilator_version,
     xcelium_build_args,
@@ -162,14 +160,6 @@ def _build_jobs_arg(args: argparse.Namespace) -> int:
     return int(getattr(args, "build_jobs", None) or args.sim_jobs)
 
 
-def _vcs_top_file(root: Path, build: dict[str, Any]) -> Path | None:
-    """Resolved ``[build].top_file``, or None when the DUT does not declare one."""
-    rel = str(build.get("top_file") or "").strip()
-    if not rel:
-        return None
-    return repo_path(root, rel)
-
-
 def _bender_filelist_sources(root: Path, build: dict[str, Any]) -> list[Path]:
     """The source files named inside the generated ``[build].bender_filelist``.
 
@@ -227,43 +217,6 @@ def _bender_sources_fingerprint(root: Path, build: dict[str, Any]) -> list[str]:
             digest.update(b"<missing>")
         digest.update(b"\0")
     return [f"bender_sources={len(sources)}:{digest.hexdigest()[:16]}"]
-
-
-def _vcs_local_sources(root: Path, build: dict[str, Any]) -> list[Path]:
-    """The repo-local files the generated filelist names, for VCS ``simv`` dep tracking.
-
-    Same two keys, resolved the same way, as `generate_filelist`: ``sources`` (additive tb
-    components) and ``stubs`` (override sources), plus every header reachable through
-    ``incdirs``. Kept in step with that function -- a file the filelist compiles but this
-    omits is a file whose edit VCS silently ignores.
-
-    Headers are globbed because ``+incdir+`` is a search path with no file list. They
-    matter: an assertion-macro header is edited far more often than the RTL including it,
-    and a missed dep there is the exact shape of a stale-``simv`` pass -- the build reports
-    up to date and the previous binary runs.
-
-    The RTL the bender filelist names is covered too, through
-    `_bender_filelist_sources`: it reaches VCS as one ``-f`` line, so without the
-    per-file deps an edit to vendored or DUT RTL leaves ``simv`` up to date.
-    """
-    paths = [
-        repo_path(root, value)
-        for key in ("sources", "stubs")
-        for value in as_str_list(build.get(key), f"build.{key}")
-    ]
-    for value in as_str_list(build.get("incdirs"), "build.incdirs"):
-        incdir = repo_path(root, value)
-        if incdir.is_dir():
-            for pattern in ("*.svh", "*.vh"):
-                paths.extend(sorted(incdir.glob(pattern)))
-    paths.extend(_bender_filelist_sources(root, build))
-    seen: set[Path] = set()
-    unique: list[Path] = []
-    for path in paths:
-        if path not in seen:
-            seen.add(path)
-            unique.append(path)
-    return unique
 
 
 def _verilator_public_scope_fingerprint(root: Path, build: dict[str, Any]) -> list[str]:
@@ -847,21 +800,14 @@ def run_subprocess(
 
 def get_cocotb_runner():
     try:
-        from cocotb.runner import get_runner
-
-        return get_runner
-    except ImportError:
-        pass
-
-    try:
         from cocotb_tools.runner import get_runner
 
         return get_runner
     except ImportError as exc:
         raise ConfigError(
-            "cocotb runner support is required for cocotb_verilator stages. "
-            "Launch via `python3 tools/dv/run_dv.py` so the uv-managed DV environment "
-            f"provides cocotb (current interpreter: {sys.executable})"
+            "cocotb's Python runner (cocotb_tools.runner, cocotb >= 2.0) is required for "
+            "cocotb stages. Launch via `python3 tools/dv/run_dv.py` so the uv-managed DV "
+            f"environment provides cocotb (current interpreter: {sys.executable})"
         ) from exc
 
 
@@ -877,20 +823,19 @@ def cocotb_make_jobs(jobs: int):
     """
     patched: list[tuple[Any, int]] = []
     if jobs > 1:
-        for module_name in ("cocotb.runner", "cocotb_tools.runner"):
-            try:
-                module = importlib.import_module(module_name)
-            except ImportError:
-                continue
-            if hasattr(module, "MAX_PARALLEL_BUILD_JOBS"):
-                old_value = int(getattr(module, "MAX_PARALLEL_BUILD_JOBS"))
-                setattr(module, "MAX_PARALLEL_BUILD_JOBS", jobs)
-                patched.append((module, old_value))
+        try:
+            from cocotb_tools import runner as cocotb_runner
+        except ImportError:
+            pass
+        else:
+            if hasattr(cocotb_runner, "MAX_PARALLEL_BUILD_JOBS"):
+                patched.append((cocotb_runner, int(cocotb_runner.MAX_PARALLEL_BUILD_JOBS)))
+                cocotb_runner.MAX_PARALLEL_BUILD_JOBS = jobs
     try:
         yield
     finally:
         for module, old_value in patched:
-            setattr(module, "MAX_PARALLEL_BUILD_JOBS", old_value)
+            module.MAX_PARALLEL_BUILD_JOBS = old_value
 
 
 @contextmanager
@@ -914,7 +859,7 @@ def cocotb_public_scope(vlt_path: str):
     wedging at the timeout.
 
     This wraps ``Verilator._build_command`` at runtime rather than editing the
-    generated ``cocotb_tools/runner.py`` in the venv, which ``sim/run.sh`` recreates.
+    installed ``cocotb_tools/runner.py``, which ``uv sync`` recreates.
     """
     if not vlt_path:
         yield
@@ -922,15 +867,13 @@ def cocotb_public_scope(vlt_path: str):
     if not Path(vlt_path).is_file():
         raise ConfigError(f"configured Verilator public_scope file does not exist: {vlt_path}")
     patched: list[tuple[Any, Any]] = []
-    for module_name in ("cocotb.runner", "cocotb_tools.runner"):
-        try:
-            module = importlib.import_module(module_name)
-        except ImportError:
-            continue
-        cls = getattr(module, "Verilator", None)
-        original = getattr(cls, "_build_command", None)
-        if cls is None or original is None:
-            continue
+    try:
+        module = importlib.import_module("cocotb_tools.runner")
+    except ImportError:
+        module = None
+    cls = getattr(module, "Verilator", None)
+    original = getattr(cls, "_build_command", None)
+    if cls is not None and original is not None:
 
         def make_wrapper(orig: Any, vlt: str) -> Any:
             def _build_command(self: Any) -> Any:
@@ -1161,11 +1104,10 @@ def verilator_compile(
     )
 
 
-# cocotb is the single test framework across simulators. Use the Python runner for tools it
-# supports well, and use cocotb's classic Makefile flow for VCS because cocotb.runner has no VCS
-# backend in cocotb 1.9.x.
-COCOTB_RUNNER_TOOLS = {"verilator", "xcelium"}
-COCOTB_MAKE_TOOLS = {"vcs"}
+# cocotb is the single test framework across simulators, and every simulator goes through
+# cocotb's Python runner (``cocotb_tools.runner``): one cocotb version, one launch path. The
+# classic Makefile flow is not used anywhere.
+COCOTB_RUNNER_TOOLS = {"verilator", "xcelium", "vcs"}
 
 
 def _cocotb_build_args(
@@ -1199,12 +1141,19 @@ def _cocotb_build_args(
             str(filelist),
         ]
     if tool == "vcs":
+        # cocotb's Vcs runner supplies -full64/-sverilog/-debug_access+all/+acc+3, loads its VPI
+        # library and adds -top; it has no timescale argument, so the [build.vcs] timescale
+        # (simulator default 1ns/1ps) is passed here, as the UVM flow does.
+        vcs_cfg = build_vcs_cfg(build)
+        timescale = str(vcs_cfg.get("timescale", "")).strip()
         return [
-            "-f",
-            str(filelist),
-            *defines,
+            *([f"-timescale={timescale}"] if timescale else []),
             *(target_flags(run_target, "vcs") or target_flags(compile_target, "vcs")),
             *(args.comp_arg or []),
+            *defines,
+            *vcs_build_args(options, vcs_cfg, _build_jobs_arg(args)),
+            "-f",
+            str(filelist),
         ]
     # xcelium: cocotb's runner loads its VPI and sets -access automatically; we add sources + knobs.
     xcelium_cfg = build_xcelium_cfg(build)
@@ -1241,10 +1190,57 @@ def _render_run_test_args(
     ctx = {"seed": str(seed)}
     if repo_root is not None:
         ctx["repo_root"] = str(repo_root)
-    return [
-        *_render_list(as_str_list(run_mode.get("args"), "run_mode.args"), ctx),
-        *_render_list(list(test.args or []), ctx),
-    ]
+    return _last_plusarg_wins(
+        [
+            *_render_list(as_str_list(run_mode.get("args"), "run_mode.args"), ctx),
+            *_render_list(list(test.args or []), ctx),
+        ]
+    )
+
+
+def _plusarg_key(arg: str) -> str | None:
+    if arg.startswith("+") and "=" in arg:
+        return arg.split("=", 1)[0]
+    return None
+
+
+def _last_plusarg_wins(rendered: list[str]) -> list[str]:
+    """Return a new list where a later scalar `+key=value` wins.
+
+    A testlist entry is more specific than the run mode it runs under, so when
+    both set the same plusarg the entry is meant to override. `$value$plusargs`
+    returns the *first* match, so leaving both on the command line hands the win
+    to the run mode and the entry's value never reaches the design -- an
+    override that reads as effective and is not. Whether that is visible depends
+    on the simulator, because nothing reports the discarded one.
+
+    Only scalar `+key=value` forms are collapsed. Bare flags, non-plusarg
+    arguments, and every `+uvm_set_*` occurrence keep their relative order:
+    UVM consumes each `+uvm_set_type_override=` / `+uvm_set_config_*` /
+    `+uvm_set_verbosity=` / `+uvm_set_severity=` independently, so two
+    type overrides share a key and collapsing them would drop one.
+
+    Each drop is printed. Silently discarding an argument the config author
+    wrote is the same class of problem as the one this function exists to fix:
+    the command line stops matching the config and nothing says so.
+    """
+    final_at: dict[str, int] = {}
+    for index, arg in enumerate(rendered):
+        key = _plusarg_key(arg)
+        if key is None or key.startswith("+uvm_set_"):
+            continue
+        final_at[key] = index
+    kept: list[str] = []
+    for index, arg in enumerate(rendered):
+        key = _plusarg_key(arg)
+        if key is not None and key in final_at and final_at[key] != index:
+            print(
+                f"PLUSARG: dropping {arg} -- overridden by {rendered[final_at[key]]}",
+                flush=True,
+            )
+            continue
+        kept.append(arg)
+    return kept
 
 
 def _firmware_target(test: TestEntry | None, item: str | None) -> str:
@@ -1431,57 +1427,6 @@ def c_compile_stage(
     return rc
 
 
-def _make_append(name: str, values: list[str]) -> list[str]:
-    return [f"{name} += {value}" for value in values]
-
-
-def _cocotb_config_exe(python_exe: Path | None = None) -> str:
-    candidate = (python_exe or Path(sys.executable)).with_name("cocotb-config")
-    return str(candidate) if candidate.exists() else "cocotb-config"
-
-
-def _cocotb_version(python_exe: Path) -> str | None:
-    try:
-        return subprocess.check_output(
-            [str(python_exe), "-c", "import cocotb; print(cocotb.__version__)"],
-            text=True,
-            stderr=subprocess.DEVNULL,
-        ).strip()
-    except (OSError, subprocess.CalledProcessError):
-        return None
-
-
-def _cocotb_major(version: str) -> int | None:
-    match = re.match(r"^(\d+)", version)
-    return int(match.group(1)) if match else None
-
-
-def _vcs_cocotb_python(root: Path) -> Path:
-    """Select a cocotb<2 interpreter for VCS classic make."""
-    candidates = [root / "venv" / "bin" / "python", Path(sys.executable)]
-    seen: set[Path] = set()
-    checked: list[str] = []
-    for python_exe in candidates:
-        if python_exe in seen or not python_exe.exists():
-            continue
-        seen.add(python_exe)
-        version = _cocotb_version(python_exe)
-        checked.append(f"{python_exe} ({version or 'no cocotb'})")
-        if version is not None and (_cocotb_major(version) or 99) < 2:
-            return python_exe
-    raise ConfigError(
-        "VCS classic cocotb make requires cocotb < 2.0. Checked: "
-        + "; ".join(checked)
-        + ". Install the repo requirements into the selected Python environment."
-    )
-
-
-def _first_cocotb_module(catalog: TestCatalog) -> str:
-    for test in catalog.tests.values():
-        return test.module
-    return "dummy_test"
-
-
 def _safe_build_component(value: str) -> str:
     return re.sub(r"[^A-Za-z0-9_.-]+", "_", value.strip()) or "default"
 
@@ -1540,6 +1485,7 @@ def _cocotb_build_info(
             {
                 "tool": tool,
                 "target": target_name,
+                "repo_root": str(root),
                 "build_dir": str(base_build),
                 "build_cov_dir": str(base_build / "cov_build.vdb"),
                 "cov_dir": str(base_build / "coverage"),
@@ -1599,150 +1545,6 @@ def _cocotb_build_info(
     }
 
 
-def _cocotb_vcs_makefile(
-    *,
-    flow: Flow,
-    root: Path,
-    sim_cfg: dict[str, Any],
-    catalog: TestCatalog,
-    args: argparse.Namespace,
-    item: str | None,
-    seed: int,
-    item_dir: Path,
-    makefile: Path,
-    results_xml: Path,
-    cov_dir: Path,
-    waves_dir: Path,
-    for_build: bool,
-) -> dict[str, Any]:
-    build = build_cfg(flow, sim_cfg)
-    cocotb_data = cocotb_cfg(flow, sim_cfg)
-    compile_target = selected_compile_target(sim_cfg)
-    run_target = selected_run_target(sim_cfg)
-    options = build_options_cfg(build)
-    cov = coverage_cfg(sim_cfg)
-    filelist = repo_path(root, str(build.get("filelist", "")))
-    top_module = str(build.get("top_module", ""))
-    if not top_module:
-        raise ConfigError(f"{flow.path}: [build].top_module is required")
-    build_info = _cocotb_build_info(flow, root, sim_cfg, args, "vcs")
-    sim_build = build_info["sim_build"]
-    module = catalog.tests[item].module if item else _first_cocotb_module(catalog)
-
-    ctx = {
-        "run_dir": str(item_dir),
-        "results_dir": str(results_xml.parent),
-        "results_xml": str(results_xml),
-        "cov_dir": str(cov_dir),
-        "build_dir": str(sim_build),
-        "build_cov_dir": str(sim_build / "cov_build.vdb"),
-        "seed": str(seed),
-        "tool": "vcs",
-        "item": item or "",
-    }
-    compile_args = [
-        "-f",
-        str(filelist),
-        *[f"+define+{define}" for define in config_list(compile_target, "defines")],
-        *[f"+define+{define}" for define in (args.define or [])],
-        *(target_flags(run_target, "vcs") or target_flags(compile_target, "vcs")),
-        *(args.comp_arg or []),
-    ]
-    sim_args = []
-    if item is not None:
-        test = catalog.tests[item]
-        run_mode = selected_run_mode(sim_cfg, test, args)
-        sim_args = [
-            *sim_global_args(sim_cfg),
-            *_render_run_test_args(run_mode, test, seed, root),
-            *(args.sim_arg or []),
-            *(args.plusarg or []),
-        ]
-
-    if args.cov:
-        vcs_cov = cov.get("vcs", {}) if isinstance(cov.get("vcs", {}), dict) else {}
-        compile_args += _render_list(
-            as_str_list(vcs_cov.get("compile_args"), "coverage.vcs.compile_args"),
-            ctx,
-        )
-        sim_args += _render_list(
-            as_str_list(vcs_cov.get("sim_args"), "coverage.vcs.sim_args"),
-            ctx,
-        )
-        if not args.dry_run and not for_build:
-            cov_dir.mkdir(parents=True, exist_ok=True)
-    wave_format = _wave_format(args, "vcs")
-    if wave_format and item is not None:
-        if not args.dry_run:
-            waves_dir.mkdir(parents=True, exist_ok=True)
-        ucli_path = item_dir / "scripts" / f"waves.{item}.ucli"
-        _vcs_wave_ucli(
-            ucli_path=ucli_path,
-            waves_dir=waves_dir,
-            item=item,
-            top=top_module,
-            wave_format=wave_format,
-            range_info=_wave_range(args),
-            dry_run=args.dry_run,
-        )
-        sim_args += ["-ucli", "-i", str(ucli_path)]
-
-    python_paths = cocotb_python_paths(root, cocotb_data)
-    vcs_python = _vcs_cocotb_python(root)
-    env = os.environ.copy()
-    # cocotb's classic make flow runs the simulator as a separate process whose embedded
-    # interpreter loads the venv's libpython (via cocotb-config) but does NOT auto-activate the
-    # venv. The Python runner (verilator/xcelium) runs in-process so it inherits this venv's
-    # site-packages for free; here we must add them and mark VIRTUAL_ENV so the embedded
-    # interpreter finds cocotb. VCS classic make is pinned to cocotb 1.9.x because
-    # cocotb 2.0's load_entry(argv) signature is incompatible with this VCS flow.
-    venv_site = subprocess.check_output(
-        [
-            str(vcs_python),
-            "-c",
-            "import sysconfig; print('\\n'.join(p for p in {sysconfig.get_paths().get('purelib'), sysconfig.get_paths().get('platlib')} if p))",
-        ],
-        text=True,
-    ).splitlines()
-    env["PYTHONPATH"] = os.pathsep.join(
-        str(path) for path in [*python_paths, *venv_site] if str(path)
-    )
-    env["VIRTUAL_ENV"] = str(vcs_python.parents[1])
-    env["RANDOM_SEED"] = str(seed)
-    env["PATH"] = os.pathsep.join([str(vcs_python.parent), env.get("PATH", "")])
-    env = apply_option_env(options, env, None)
-    if wave_format and item is not None:
-        env = _vcs_wave_env(env, wave_format, bool(args.dry_run))
-
-    make_lines = [
-        "# Generated by tools/dv/run_dv.py. Do not edit.",
-        "SIM := vcs",
-        "TOPLEVEL_LANG := verilog",
-        f"TOPLEVEL := {top_module}",
-        f"MODULE := {module}",
-        f"RANDOM_SEED := {seed}",
-        f"COCOTB_RESULTS_FILE := {results_xml}",
-        f"SIM_BUILD := {sim_build}",
-        "",
-        *_make_append("COMPILE_ARGS", compile_args),
-        *_make_append("SIM_ARGS", sim_args),
-        *vcs_simv_compile_deps(_vcs_top_file(root, build), _vcs_local_sources(root, build)),
-        "",
-        f"include $(shell {_cocotb_config_exe(vcs_python)} --makefiles)/Makefile.sim",
-        "",
-        ".PHONY: compile",
-        "compile: $(SIM_BUILD)/simv",
-        "",
-    ]
-    write_text_file(makefile, "\n".join(make_lines), args.dry_run)
-    return {
-        "env": env,
-        "sim_build": sim_build,
-        "rebuild": bool(build_info["rebuild"]),
-        "target_name": build_info["target_name"],
-    }
-
-
 def cocotb_build(
     flow: Flow,
     root: Path,
@@ -1756,53 +1558,10 @@ def cocotb_build(
     env_path: Path,
 ) -> int:
     """Build the reusable cocotb simulator model before per-test simulation."""
-    if tool not in COCOTB_RUNNER_TOOLS | COCOTB_MAKE_TOOLS:
+    if tool not in COCOTB_RUNNER_TOOLS:
         raise ConfigError(f"cocotb build supports tool verilator|xcelium|vcs, got `{tool}`")
 
     console = console_from_args(args)
-    target_name = _target_name(sim_cfg)
-    if tool in COCOTB_MAKE_TOOLS:
-        make_dir = stage_dir / "make"
-        makefile = make_dir / f"Makefile.{tool}"
-        results_xml = stage_dir / "results" / "results.xml"
-        cov_dir = stage_dir / "coverage"
-        waves_dir = stage_dir / "waves"
-        data = _cocotb_vcs_makefile(
-            flow=flow,
-            root=root,
-            sim_cfg=sim_cfg,
-            catalog=catalog,
-            args=args,
-            item=None,
-            seed=as_int(args.seed, "seed") or 1,
-            item_dir=stage_dir,
-            makefile=makefile,
-            results_xml=results_xml,
-            cov_dir=cov_dir,
-            waves_dir=waves_dir,
-            for_build=True,
-        )
-        console.artifact("build", f"{data['sim_build']} (rebuild={data['rebuild']})")
-        console.artifact("makefile", makefile)
-        if data["rebuild"] and not args.dry_run:
-            vcs_force_rebuild(data["sim_build"])
-        rc = run_subprocess(
-            ["make", "-f", str(makefile), "compile"],
-            root,
-            log_path,
-            args.dry_run,
-            script_path,
-            env_path,
-            args.quiet,
-            cwd=make_dir,
-            env=data["env"],
-            verbose=args.verbose,
-            timeout_sec=args.timeout,
-        )
-        if rc == 0:
-            _mark_cocotb_prebuilt(args, target_name)
-        return rc
-
     info = _cocotb_build_info(flow, root, sim_cfg, args, tool)
     build = info["build"]
     target_name = info["target_name"]
@@ -1833,7 +1592,7 @@ def cocotb_build(
     write_script(
         script_path,
         root,
-        [sys.executable, "-c", "from cocotb.runner import get_runner"],
+        [sys.executable, "-c", "from cocotb_tools.runner import get_runner"],
         args.dry_run,
     )
     write_env_snapshot(env_path, env, args.dry_run)
@@ -1868,93 +1627,6 @@ def cocotb_build(
                     )
     _mark_cocotb_prebuilt(args, target_name)
     return 0
-
-
-def _cocotb_make_sim(
-    flow: Flow,
-    root: Path,
-    sim_cfg: dict[str, Any],
-    catalog: TestCatalog,
-    item: str,
-    args: argparse.Namespace,
-    tool: str,
-    item_dir: Path,
-    log_path: Path,
-    script_path: Path,
-    env_path: Path,
-    seed: int,
-) -> int:
-    run_mode = selected_run_mode(sim_cfg, catalog.tests[item], args)
-    cocotb_data = cocotb_cfg(flow, sim_cfg)
-
-    results_dir = item_dir / "results"
-    waves_dir = item_dir / "waves"
-    cov_dir = item_dir / "coverage"
-    make_dir = item_dir / "make"
-    makefile = make_dir / f"Makefile.{tool}"
-    results_xml = results_dir / "results.xml"
-    data = _cocotb_vcs_makefile(
-        flow=flow,
-        root=root,
-        sim_cfg=sim_cfg,
-        catalog=catalog,
-        args=args,
-        item=item,
-        seed=seed,
-        item_dir=item_dir,
-        makefile=makefile,
-        results_xml=results_xml,
-        cov_dir=cov_dir,
-        waves_dir=waves_dir,
-        for_build=False,
-    )
-
-    console = console_from_args(args)
-    console.artifact("xml", results_xml)
-    console.artifact("makefile", makefile)
-    if data["rebuild"] and not _is_cocotb_prebuilt(args, data["target_name"]):
-        console.artifact("build", f"{data['sim_build']} (rebuild={data['rebuild']})")
-        if not args.dry_run:
-            vcs_force_rebuild(data["sim_build"])
-    if args.cov:
-        console.artifact("coverage", cov_dir)
-    if not args.dry_run:
-        results_dir.mkdir(parents=True, exist_ok=True)
-        _stage_firmware_outputs(root, sim_cfg, catalog.tests[item], make_dir)
-        # The Python cocotb runner (verilator/xcelium) chdir's to test_dir, so tests load their
-        # memory images by test_dir-relative $readmemh paths. cocotb's classic VCS make flow runs
-        # in make_dir instead; stage the test_dir memory images into make_dir so the same relative
-        # paths resolve identically under VCS (runtime-generated images under out/ are written by
-        # the test into this same cwd).
-        test_dir = repo_path(root, str(cocotb_data.get("test_dir", "")))
-        if test_dir.is_dir():
-            for pattern in ("*.hex", "*.parhex"):
-                for src in sorted(test_dir.glob(pattern)):
-                    shutil.copy2(src, make_dir / src.name)
-        # cocotb's classic VCS make flow runs in make_dir, so stage the time-0 image there.
-        _run_sim_prestage(
-            root,
-            cocotb_data,
-            item,
-            seed,
-            make_dir,
-            sim_args=_render_run_test_args(run_mode, catalog.tests[item], seed, root),
-        )
-    # The make flow compiles and runs in one invocation, so the timeout bounds both.
-    timeout_sec = resolve_timeout_sec(sim_cfg, catalog.tests[item], run_mode, args)
-    return run_subprocess(
-        ["make", "-f", str(makefile)],
-        root,
-        log_path,
-        args.dry_run,
-        script_path,
-        env_path,
-        args.quiet,
-        cwd=make_dir,
-        env=data["env"],
-        verbose=args.verbose,
-        timeout_sec=timeout_sec,
-    )
 
 
 def _run_sim_prestage(
@@ -2018,23 +1690,8 @@ def cocotb_sim(
     env_path: Path,
     seed: int,
 ) -> int:
-    if tool not in COCOTB_RUNNER_TOOLS | COCOTB_MAKE_TOOLS:
+    if tool not in COCOTB_RUNNER_TOOLS:
         raise ConfigError(f"cocotb sim supports tool verilator|xcelium|vcs, got `{tool}`")
-    if tool in COCOTB_MAKE_TOOLS:
-        return _cocotb_make_sim(
-            flow,
-            root,
-            sim_cfg,
-            catalog,
-            item,
-            args,
-            tool,
-            item_dir,
-            log_path,
-            script_path,
-            env_path,
-            seed,
-        )
 
     info = _cocotb_build_info(flow, root, sim_cfg, args, tool)
     build = info["build"]
@@ -2068,6 +1725,8 @@ def cocotb_sim(
         coverage_ctx = {
             "cov_dir": str(cov_dir),
             "build_dir": str(sim_build),
+            "build_cov_dir": str(sim_build / "cov_build.vdb"),
+            "repo_root": str(root),
             "tool": tool,
             "target": target_name,
             "item": item,
@@ -2103,16 +1762,34 @@ def cocotb_sim(
                 dry_run=args.dry_run,
             )
             test_args += ["-input", str(tcl_path)]
+        elif tool == "vcs":
+            ucli_path = item_dir / "scripts" / f"waves.{item}.ucli"
+            _vcs_wave_ucli(
+                ucli_path=ucli_path,
+                waves_dir=waves_dir,
+                item=item,
+                top=top_module,
+                wave_format=wave_format,
+                range_info=_wave_range(args),
+                dry_run=args.dry_run,
+            )
+            test_args += ["-ucli", "-i", str(ucli_path)]
 
     python_paths = cocotb_python_paths(root, cocotb_data)
     env = os.environ.copy()
     env["PYTHONPATH"] = os.pathsep.join(str(path) for path in python_paths if str(path))
     env["RANDOM_SEED"] = str(seed)
+    # The directory the model was elaborated into. A coverage run builds under
+    # <tool>/coverage, so a test that records which model it simulated must
+    # read this rather than assume the plain <tool> path.
+    env["OCAH_SIM_BUILD_DIR"] = str(sim_build)
     env = apply_option_env(
         options,
         env,
         build_verilator_cfg(build) if tool == "verilator" else None,
     )
+    if tool == "vcs" and wave_format:
+        env = _vcs_wave_env(env, wave_format, bool(args.dry_run))
     public_scope_vlt = ""
     if tool == "verilator":
         _scope_rel = str(build_verilator_cfg(build).get("public_scope") or "").strip()
@@ -2185,10 +1862,7 @@ for path in payload["python_paths"]:
     if path and path not in sys.path:
         sys.path.insert(0, path)
 
-try:
-    from cocotb.runner import get_runner
-except ImportError:
-    from cocotb_tools.runner import get_runner
+from cocotb_tools.runner import get_runner
 
 @contextmanager
 def scoped_public_scope(vlt_path):
@@ -2200,7 +1874,7 @@ def scoped_public_scope(vlt_path):
     if not Path(vlt_path).is_file():
         raise RuntimeError(f"configured Verilator public_scope file does not exist: {{vlt_path}}")
     patched = []
-    for module_name in ("cocotb.runner", "cocotb_tools.runner"):
+    for module_name in ("cocotb_tools.runner",):
         try:
             module = importlib.import_module(module_name)
         except ImportError:
@@ -2239,7 +1913,7 @@ def scoped_verilator_wave_format(tool, wave_format):
         return
     import importlib
     patched = []
-    for module_name in ("cocotb.runner", "cocotb_tools.runner"):
+    for module_name in ("cocotb_tools.runner",):
         try:
             module = importlib.import_module(module_name)
         except ImportError:
@@ -2305,6 +1979,17 @@ with scoped_public_scope(payload["public_scope_vlt"]), scoped_verilator_wave_for
         )
     else:
         print(f"# cocotb {{payload['tool']}} build skipped: pre-built during elaborate", flush=True)
+        # `runner.build()` is what normally populates the runner's source
+        # lists, and Xcelium's `_test_command` concatenates all three to decide
+        # whether any VHDL source needs `-vhpi`. On the pre-built path build()
+        # never runs, so those attributes are absent and `test()` raises with an
+        # AttributeError before the simulator is ever launched. Only the missing
+        # ones are filled, so a cocotb version that does set them keeps its own
+        # values. Empty is the correct value here: this flow compiles from a
+        # file list rather than from runner sources, and has no VHDL.
+        for _src_attr in ("_sources", "_vhdl_sources", "_verilog_sources"):
+            if not hasattr(runner, _src_attr):
+                setattr(runner, _src_attr, [])
 
     runner.test(
         hdl_toplevel=payload["top_module"],
@@ -2498,6 +2183,7 @@ def _vcs_resolve_build(
         {
             "tool": "vcs",
             "target": target_name,
+            "repo_root": str(root),
             "build_dir": str(build_dir),
             "build_cov_dir": str(build_dir / "cov_build.vdb"),
             "cov_dir": str(build_dir / "coverage"),

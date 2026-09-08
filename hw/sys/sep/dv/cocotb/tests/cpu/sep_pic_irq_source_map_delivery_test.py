@@ -19,7 +19,7 @@ two extras come from the run seed and are patched into the firmware param
 block. Distinct from `sep_mailbox_plic_test` (ONE source) and from
 `sep_irq_ip_to_aggregator_test` (no_cpu, aggregate vector, no ISR).
 
-Firmware-self-checking: the firmware returns its error count and start.S emits
+Firmware-self-checking: the firmware returns its error count and fw/startup/crt0.s emits
 the PASS / FAIL magic on the 0x8000_0000 mailbox, which the boot scoreboard
 gates on. Per source: CHK-DELIVER, CHK-IP-RW1C, CHK-ONEHOT; plus CHK-NONVAC,
 CHK-PIC-COMPLETE, and CHK-RANDCFG (patched list echoed).
@@ -38,13 +38,14 @@ from env.sep_boot_scoreboard import SepBootScoreboard
 from env.sep_dtcm_param_patch import patch_param_block
 from env.sep_seeded_rng import SepSeededRng
 from sep_base_test import sep_base_test
+from sep_reg_meta import sym
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
 _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "pic_irq_source_map_test")
 _ITCM_HEX = os.path.join(_FW_DIR, "pic_irq_source_map_test.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "pic_irq_source_map_test.dtcm.hex")
 
-_ICCM_BASE = 0xC000_0000
+_ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
 _MAX_RUN_CYCLES = 5_000_000
 _NO_BOOT_CYCLES = 80_000
 _PROGRESS_EVERY = 5_000
@@ -136,9 +137,31 @@ class sep_pic_irq_source_map_delivery_test(sep_base_test):
                 f"(missing {cfg.scenario_needle()!r} in console; "
                 "patch was inert or the image is stale)"
             )
+        # The whole-run checkers must have reported.
+        for needle in ("CHK-NONVAC PASS:", "CHK-PIC-COMPLETE PASS:"):
+            if needle not in console:
+                raise AssertionError(f"firmware missing {needle!r}")
+        # Cardinality: one line of each per-source checker for every selected
+        # source. The PASS magic cannot show that a source was skipped; a count
+        # short of len(cfg.sources) can.
+        want = len(cfg.sources)
+        for label in ("CHK-DELIVER PASS:", "CHK-ONEHOT PASS:", "CHK-IP-RW1C PASS:"):
+            got = console.count(label)
+            if got != want:
+                raise AssertionError(
+                    f"firmware emitted {got} {label!r} lines, expected {want} "
+                    f"(one per source in {list(cfg.sources)})"
+                )
+        # Only now is the verdict known to be a real PASS.
+        assert self.sb.fw_done and self.sb.fw_pass, (
+            "firmware did not signal a PASS verdict; the console needles above "
+            "are not a verdict on their own"
+        )
         self.logger.info(
-            "CHK-RANDCFG PASS: MUST %s + extras %s (seed=%d)",
+            "CHK-RANDCFG PASS: MUST %s + extras %s (seed=%d); %d sources each "
+            "reported CHK-DELIVER / CHK-ONEHOT / CHK-IP-RW1C",
             list(cfg.must),
             list(cfg.extras),
             cfg.seed,
+            want,
         )

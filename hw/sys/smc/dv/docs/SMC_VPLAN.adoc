@@ -196,8 +196,8 @@ _addresses_ inside the PLL / PVT / extension macro windows. PLL/PVT
 windows are *adopter placeholders* (`pll_wrap` / `pvt_wrap`: OKAY + 0);
 extension remains DECERR. Enumerated addresses therefore prove
 bounded handshake only — *not* clock programming, PVT sensing, or
-per-register content. Those PLL/PVT protocol tests live in
-`deferred.toml` (`rtl_placeholder`) and must not be reported as feature
+per-register content. Those PLL/PVT protocol tests are not ported
+(`rtl_placeholder`) and must not be reported as feature
 PASS. Decode/route itself is covered by `smc_macro_axil_routing_test`
 (S13a). Affected (treat as _reachability/bounded_):
 
@@ -273,40 +273,40 @@ cool reset, cleared on cold)
 
 |`SCRATCH_COLD_WARM_7` |0xC000_289C |RW |Cold+warm-domain scratch
 
-|`CHIP_CONFIG_VERSION_LO` |0xC000_2900 |RO |Chip config version low;
+|`CHIP_CONFIG_VERSION_LO` |0xC000_2900 |R |Chip config version low;
 *must equal 0x0001_00A0*
 
-|`CHIP_CONFIG_VERSION_HI` |0xC000_2904 |RO |Chip config version high
+|`CHIP_CONFIG_VERSION_HI` |0xC000_2904 |R |Chip config version high
 
-|`CHIP_CONFIG_CHIP_ID` |0xC000_2908 |RO |Chip identifier
+|`CHIP_CONFIG_CHIP_ID` |0xC000_2908 |R |Chip identifier
 
-|`CHIP_CONFIG_LC_STATE` |0xC000_290C |RO |Lifecycle-state fuses
+|`CHIP_CONFIG_LC_STATE` |0xC000_290C |R |Lifecycle-state fuses
 
-|`CHIP_CONFIG_RAS_BANK_INFO` |0xC000_2910 |RO |RAS bank/instance info
+|`CHIP_CONFIG_RAS_BANK_INFO` |0xC000_2910 |R |RAS bank/instance info
 
-|`NDMRESET_PROCESS` |0xC000_2A04 |RO |NDM reset process bitmap
+|`NDMRESET_PROCESS` |0xC000_2A04 |R |NDM reset process bitmap
 
-|`NDMRESET_CLUSTER_COUNT` |0xC000_2A08 |RO |Cluster count for NDM reset
+|`NDMRESET_CLUSTER_COUNT` |0xC000_2A08 |R |Cluster count for NDM reset
 broadcast
 
-|`I3C0_HCI_VERSION` |0xC000_5000 |RO |I3C CSR window on the real OCA
+|`I3C0_HCI_VERSION` |0xC000_5000 |R |I3C CSR window on the real OCA
 core; *expect OKAY + `0x120`*
 
-|`AVS_READBACK` |0xC000_8004 |RO |AVSBus master readback
+|`AVS_READBACK` |0xC000_8004 |R |AVSBus master readback
 
-|`AVS_DEBUG_READBACK` |0xC000_8008 |RO |AVSBus debug readback
+|`AVS_DEBUG_READBACK` |0xC000_8008 |R |AVSBus debug readback
 
-|`AVS_NORMAL_STATUS` |0xC000_8020 |RO |AVSBus normal status
+|`AVS_NORMAL_STATUS` |0xC000_8020 |R |AVSBus normal status
 
-|`AVS_SLAVE_STATUS` |0xC000_8024 |RO |AVSBus slave status
+|`AVS_SLAVE_STATUS` |0xC000_8024 |R |AVSBus slave status
 
-|`AVS_FIFOS_STATUS` |0xC000_8028 |RO |AVSBus FIFO occupancy
+|`AVS_FIFOS_STATUS` |0xC000_8028 |R |AVSBus FIFO occupancy
 
 |`AVS_INTERRUPT` |0xC000_8030 |RW1C |AVSBus interrupt status
 
 |`AVS_INTERRUPT_MASK` |0xC000_8034 |RW |AVSBus interrupt mask
 
-|`AVS_INTERRUPT_CLEAR` |0xC000_8038 |WO |AVSBus interrupt clear (reads
+|`AVS_INTERRUPT_CLEAR` |0xC000_8038 |W |AVSBus interrupt clear (reads
 as 0)
 
 |`CPU_CTRL_RESET_VECTOR_0` |0xC001_0000 |RW |CPU reset vector 0
@@ -330,7 +330,7 @@ address
 
 |`CPU_DEBUG_BUS_MUX` |0xC001_0210 |RW |CPU-debug bus multiplexer
 
-|`SMC_ATTRIBUTES` |0xC001_1000 |RO |Static SMC attributes (RTL constant)
+|`SMC_ATTRIBUTES` |0xC001_1000 |R |Static SMC attributes (RTL constant)
 
 |`ALIAS_REMAP_0_START` |0xC001_2000 |RW |Local-master alias remap entry
 0 start
@@ -359,7 +359,7 @@ start addr
 |`OUTBOUND_FILTER_0_END` |0xC001_6010 |RW |Outbound filter entry 0 end
 addr
 
-|`MAILBOX0_STATUS` |0xC001_8010 |RO |Outbound mailbox 0 status
+|`MAILBOX0_STATUS` |0xC001_8010 |R |Outbound mailbox 0 status
 (empty/full/level)
 
 |`MAILBOX0_ERROR_FLAGS` |0xC001_8018 |RW1C |Outbound mailbox 0 error
@@ -377,7 +377,7 @@ threshold
 
 |`LOG_ENGINE_CTRL` |0xC000_A200 |RW |Log-engine control
 
-|`OCTS_STATUS` |0xC000_E008 |RO |OCTS system timer status
+|`OCTS_STATUS` |0xC000_E008 |R |OCTS system timer status
 |=======================================================================
 
 [[smc-p0-verification-test-cases]]
@@ -777,9 +777,11 @@ exists
 |Merge legacy RD/WR, NACK, FIFO, timeout/stretch into two dense protocol
 tests after I2C BFM/VIP
 
-|I3C |`smc_i3c_to_fabric_test` (`HCI_VERSION` decode);
+|I3C |`smc_i3c_to_fabric_test` (`HCI_VERSION` decode only; not in
+`smoke` / `canonical_top*` / `project_p0`);
 CCC/IBI/sanity → deferred |P0/P1 |Green proves fabric→real OCA core
-decode; CCC/IBI stay with the IP-level DV
+decode; do not treat it as I3C protocol PASS. CCC/IBI stay with the
+IP-level DV
 
 |iJTAG / JTAG / DFT |`smc_ijtag_basic_test`;
 `smc_jtag_dmi_smoke_test`; `smc_efuse_jtag_lc_negative_test` |P0/P1
@@ -856,13 +858,14 @@ the SMC P0 Verification Test Cases table above (for tests in P0) or in
 §P1 Test Plan below (for depth tests that are canonical members but sit
 in P1). This section only records the group membership and its purpose.
 
-* *`canonical_top6`* — minimum CI smoke: `smc_canonical_smoke_test`,
-`smc_register_sanity_test`, `smc_default_reg_rd_test`,
-`smc_mailbox_irq_test`, `smc_i3c_to_fabric_test`,
-`smc_axi_error_response_depth_test`.
-* *`canonical_top10`* — adds: `smc_flr_sanity_test`,
-`smc_i2c_master_target_test`, `smc_ijtag_basic_test`,
+* *`canonical_top6`* — minimum CI smoke (five live members):
+`smc_canonical_smoke_test`, `smc_register_sanity_test`,
+`smc_default_reg_rd_test`, `smc_mailbox_irq_test`,
 `smc_input_output_fabric_wr_rd_test`.
+`smc_i3c_to_fabric_test` is HCI_VERSION decode only and is not in this group.
+* *`canonical_top10`* — adds: `smc_flr_sanity_test`,
+`smc_i2c_master_target_test`, `smc_ijtag_basic_test`
+(fabric wr/rd is already in top6).
 * *`canonical_top20`* — adds: `smc_cpu_to_sep_axi_test`,
 `smc_efuse_otp_clock_test`, `smc_pll_pvt_clock_config_test`,
 `smc_gpio_irq_active_test`, `smc_sideband_protocol_smoke_test`,
@@ -904,8 +907,7 @@ tests = [
     "smc_register_sanity_test",
     "smc_default_reg_rd_test",
     "smc_mailbox_irq_test",
-    "smc_i3c_to_fabric_test",
-    "smc_axi_error_response_depth_test",
+    "smc_input_output_fabric_wr_rd_test",
 ]
 
 [[groups]]
@@ -915,8 +917,6 @@ tests = [
     "smc_register_sanity_test",
     "smc_default_reg_rd_test",
     "smc_mailbox_irq_test",
-    "smc_i3c_to_fabric_test",
-    "smc_axi_error_response_depth_test",
     "smc_flr_sanity_test",
     "smc_i2c_master_target_test",
     "smc_ijtag_basic_test",
@@ -930,15 +930,12 @@ tests = [
     "smc_register_sanity_test",
     "smc_default_reg_rd_test",
     "smc_mailbox_irq_test",
-    "smc_i3c_to_fabric_test",
-    "smc_axi_error_response_depth_test",
     "smc_flr_sanity_test",
     "smc_i2c_master_target_test",
     "smc_ijtag_basic_test",
     "smc_input_output_fabric_wr_rd_test",
     "smc_cpu_to_sep_axi_test",
     "smc_efuse_otp_clock_test",
-    "smc_pll_pvt_clock_config_test",
     "smc_gpio_irq_active_test",
     "smc_sideband_protocol_smoke_test",
     "smc_uart_spi_log_engine_test",
@@ -981,7 +978,7 @@ CSR clock-gate coverage
 |=======================================================================
 
 The PLL / PVT / extension windows are handshake responders, not functional
-macro models; those rows live in `testlists/deferred.toml` and are not
+macro models; those rows are not ported and are not
 reportable as feature PASS. I3C CCC/IBI stays with the IP-level DV. SAMPLE-only
 bring-up tests stay in the broad `smoke` regression until an active driver
 promotes them.
@@ -1089,7 +1086,7 @@ output responder |`smc_input_output_fabric_wr_rd_test`,
 
 |P1-7 |`i3c_protocol` |CSR+HCI fabric window; CCC/IBI depth deferred
 |`smc_i3c_to_fabric_test` (green); `smc_i3c_ccc_ibi_full_test`
-(`deferred.toml`). Former `smc_i3c_oca_write_read_sanity_test` /
+(not ported). Former `smc_i3c_oca_write_read_sanity_test` /
 `smc_i3c_ibi_ccc_depth_test` names were never enrolled — intents map
 here.
 
@@ -1379,7 +1376,7 @@ The empty `p1_coverage_gap_r5` testlist was removed from
 [width="100%",cols="10%,37%,28%,25%",options="header",]
 |=======================================================================
 |# |P1 Category |Disposition |Notes
-|P1-18+ |`pvt_analog` |`smc_pvt_droop_test` → `deferred.toml`
+|P1-18+ |`pvt_analog` |`smc_pvt_droop_test` — not ported
 (`rtl_placeholder`) |PVT droop-monitor window (0xC000_7400). Kept as
 shelved body until real adopter PVT IP replaces OKAY/DECERR wraps.
 
@@ -1388,8 +1385,7 @@ deleted DV DFX stub / bare-SMC decode path, not `smc_wrapper`
 production RTL. Not re-enrolled.
 |=======================================================================
 
-*Round 5 aggregate*: no green testlist tag. Droop coverage remains in
-`testlists/deferred.toml` only.
+*Round 5 aggregate*: no green testlist tag. Droop coverage is not ported.
 
 [[p1-coverage-gap-test-cases-fabric_testplan-detail]]
 ===== P1 Coverage-Gap Test Cases (fabric_testplan detail)
@@ -1600,7 +1596,7 @@ hooks* *CLEARED* (`tb_cpu_ecc_inject_*` on scratch bank0)
 |P2-8 |`dfd_dbs_fault_inject` |TB token `0xDB5C_AFE1` on
 `tb_dfd_fault_inject` — *not* `smc_dfd_wrap` / `hw/ip/dfd` |*DEFERRED*
 (`tb_glue` / `not_dut_rtl`): `smc_dfd_dbs_fault_inject_test` in
-`deferred.toml`; reopen when real DFD path is exercised |B
+not ported; reopen when real DFD path is exercised |B
 
 |P2-9 |`jtag_dmi_access` |Firmware boot (P2-1) prerequisite
 |*IMPLEMENTED*: `smc_jtag_dmi_smoke_test` (dmstatus.version==2) |B
@@ -1836,7 +1832,7 @@ transaction plus recovery
 
 |I3C |I3C0 pin VIP built; CCC/IBI model still next
 |`smc_i3c_to_fabric_test` (green fabric); depth →
-`smc_i3c_ccc_ibi_full_test` (`deferred.toml`) |Fabric stub signature
+`smc_i3c_ccc_ibi_full_test` (not ported) |Fabric stub signature
 already green; reopen HCI/CCC/IBI after real core + DAT/DCT
 
 |iJTAG / JTAG / DFT |CPU JTAG pins lifted into `tb_top`; TAP access

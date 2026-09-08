@@ -4,12 +4,11 @@
 
 from __future__ import annotations
 
-import os
-
 import cocotb
 from env.dtp_tap_device import DTP_DEFAULT_IDCODE
 from env.dtp_types import DtpJtagInstr, DtpTapState
 from ocah_jtag_vip import OcahJtagChecker
+from ocah_lib import OcahKnobs
 
 from .dtp_jtag_base_test_seq import dtp_jtag_base_test_seq
 
@@ -32,10 +31,10 @@ class dtp_jtag_tlr_reset_test_seq(dtp_jtag_base_test_seq):
         )
         self.attach_tap_checker(checker)
         # DTP_JTAG_TAP_CHECKER_NEGATIVE=1 is the documented negative-validation
-        # hook: it deliberately desyncs the TAP reference model so the next
+        # hook: it desyncs the TAP reference model so the next
         # state check must FAIL, proving the checker rejects a bad prediction
         # end to end.
-        negative = os.environ.get("DTP_JTAG_TAP_CHECKER_NEGATIVE", "0") not in ("", "0")
+        negative = OcahKnobs.is_set("DTP_JTAG_TAP_CHECKER_NEGATIVE")
 
         states = [
             DtpTapState.RUN_TEST_IDLE,

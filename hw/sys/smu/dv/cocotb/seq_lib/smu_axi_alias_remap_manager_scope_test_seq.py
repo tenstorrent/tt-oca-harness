@@ -5,12 +5,12 @@
 SEP=0 honest scope (no sep_in / no Force):
   S3  J2A programs alias region[0], writes via alias window, proves remapped
       SPM consumer readback (jtag manager path through smc_alias_remap_wrap).
-  S1  DEFERRED-NOTE — DMA data_accel observe needs DMA bring-up.
-  S2  DEFERRED-NOTE — Log Engine observe needs log_engine stimulus.
-  S4/S5 DEFERRED-NOTE — commercial SF-245 / SF-252 (unchanged).
+  S1  not covered: DMA data_accel observe needs DMA bring-up.
+  S2  not covered: Log Engine observe needs log_engine stimulus.
+  S4/S5 not covered: commercial SF-245 / SF-252.
 
-Commercial hierarchical AW watch on axi_to_input_mux_req.* replaced by
-SPM consumer proof at the remapped target (same address math).
+The remapped target is proven by SPM consumer readback (same address math)
+rather than by a hierarchical AW watch on axi_to_input_mux_req.*.
 """
 
 from __future__ import annotations

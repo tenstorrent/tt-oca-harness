@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""P1 coverage-gap round 3: per-mailbox field sweep.
+"""Per-mailbox field sweep.
 
-Round 1/2 only touched STATUS. Each outbound mailbox exposes 6+ CSR
+Each outbound mailbox exposes 6+ CSR
 fields at fixed offsets. This test reads STATUS + ERROR_FLAGS +
 WIRQT + RIRQT + IRQEN + IRQS from outbound mailboxes 0-3 to prove
 every mailbox's field decode is alive.
@@ -23,7 +23,7 @@ from .smc_csr_seq_utils import SmcCsrSeq
 
 _CLOCK_GATE_CONTROL = smc_addr(
     "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
-)  # base_config offset 0x18 (was 0x30 before HANG_DET_* added)
+)  # base_config offset 0x18
 _MAILBOX_CG_EN = 1 << 1
 _OUTBOUND_MAILBOX_BASE = smc_addr("SMC_TOP_SMC_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR")
 _MAILBOX_STRIDE = 0x1000
@@ -47,7 +47,7 @@ class smc_mailbox_field_sweep_test_seq(SmcCsrSeq):
         # Every mailbox field read must return OKAY: csr_read routes through the
         # scoreboard's item.resp_ok assert, so a mis-decoded field (DECERR/hang)
         # fails the test. These outbound mailbox fields are real and reachable in
-        # the OSS bench (all return OKAY). csr_read_bounded is intentionally NOT
+        # the OSS bench (all return OKAY). csr_read_bounded is NOT
         # used here — it would tolerate a dead field and make the sweep vacuous.
         for i in range(_MAILBOX_COUNT):
             for name, off in _FIELD_OFFSETS:
