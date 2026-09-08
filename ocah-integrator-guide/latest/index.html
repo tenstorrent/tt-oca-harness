@@ -293,27 +293,34 @@ plumbing are in <a href="#smu-firmware-programming-order">Firmware programming o
 <h4 id="address-map-collateral"><a class="anchor" href="#address-map-collateral"></a><a class="link" href="#address-map-collateral">2.1.1. Register collateral</a></h4>
 <div class="paragraph">
 <p>The machine-readable address map ships in the repository tree; integrators
-consume it from the release checkout or tarball rather than a separate package:</p>
+consume it from the release checkout or tarball rather than a separate package.
+The source of truth is distributed by ownership: each subsystem or IP keeps its
+canonical register sources and generated outputs beside its implementation.
+The <code>integration/</code> directory centralizes symlinks to that distributed
+collateral so an integrator does not have to discover every owner-local path.</p>
 </div>
-<div class="ulist">
-<ul>
-<li>
-<p>System tops: <code>hw/sys/&lt;sys&gt;/regs/&lt;sys&gt;.rdl</code> (e.g. <code>hw/sys/sep/regs/sep.rdl</code>,
-<code>hw/sys/smc/regs/smc.rdl</code>).</p>
-</li>
-<li>
-<p>IP blocks: <code>hw/ip/&lt;ip&gt;/regs/&lt;ip&gt;.rdl</code>.</p>
-</li>
-<li>
-<p>Vendored blocks: <code>vendor/&#8230;&#8203;/overlay/regs/&lt;ip&gt;/regs/&lt;ip&gt;.rdl</code> or
-<code>vendor/&#8230;&#8203;/overlay/rdl/&lt;ip&gt;.rdl</code>.</p>
-</li>
-<li>
-<p>Generated outputs per block: <code>&lt;block&gt;/regs/gen/{c,sv,svh,py,ral,adoc,html,ipxact}/</code>
-— C headers, SystemVerilog packages, Python models, UVM RAL, documentation, and
-IEEE 1685-2014 IP-XACT component descriptions.</p>
-</li>
-</ul>
+<div class="paragraph">
+<p><code>integration/rdl/&lt;subsystem&gt;/</code> is a flat, self-contained list of the SystemRDL
+files required by that subsystem. Filenames remain unchanged, and shared
+dependencies appear in every subsystem that needs them. Non-RDL support files
+needed by relative includes remain at the <code>integration/rdl/</code> root&#8201;&#8212;&#8201;for
+example, <code>integration/rdl/i3c_defines.svh</code> sits there because both
+<code>integration/rdl/smc/registers.rdl</code> and <code>integration/rdl/smu/registers.rdl</code>
+reach it through the I3C core&#8217;s own parent-relative include
+(<code>../i3c_defines.svh</code>), and that relative path only resolves if the header is
+one directory above every subsystem folder that needs it. The matching
+generated IEEE 1685-2014 component descriptions use the same flat subsystem
+organization under <code>integration/ipxact/&lt;subsystem&gt;/</code>.</p>
+</div>
+<div class="paragraph">
+<p>These directories are generated symlink indexes; run
+<code>python3 scripts/collect_integration.py</code> after adding or moving collateral.
+Their canonical targets remain under <code>hw/sys/&lt;sys&gt;/regs/</code>,
+<code>hw/ip/&lt;ip&gt;/regs/</code>, <code>hw/common/axi/</code>, and <code>vendor/&#8230;&#8203;</code>&#8201;&#8212;&#8201;the <code>regs/</code> element
+of every component&#8217;s directory layout, described in
+<a href="../../ocah-contributing/latest/guidelines.html#component-directory-organization" class="xref page">the
+Contributing Guide</a>. Other generated outputs remain under each owner&#8217;s
+<code>regs/gen/{c,sv,svh,py,ral,adoc,html,ipxact}/</code> directory.</p>
 </div>
 <div class="paragraph">
 <p>For the architecture-level responsibility split between the integrator, firmware,
@@ -9533,8 +9540,9 @@ are produced, and what an adopter has to change when integrating OCAH into their
 own flow and cell library.</p>
 </div>
 <div class="paragraph">
-<p>The collateral ships with the harness. Each block carries its own constraints in
-<code>hw/sys/&lt;block&gt;/synth/</code>:</p>
+<p>The collateral ships with the harness. <code>integration/constraint/&lt;block&gt;/synth/</code>
+groups it by system while preserving the original filenames and relative path
+depth:</p>
 </div>
 <div class="ulist">
 <ul>
@@ -9552,8 +9560,12 @@ overrides.</p>
 </ul>
 </div>
 <div class="paragraph">
-<p>The two pieces shared by every block live in <code>flows/synth/constraints/</code>:
-<code>async_clock_groups.tcl</code> and <code>cdc_max_delay_procs.tcl</code>.</p>
+<p>The shared <code>async_clock_groups.tcl</code> and <code>cdc_max_delay_procs.tcl</code> helpers are
+under <code>integration/constraint/shared/</code>. These are symlink indexes: the
+canonical per-system files remain under <code>hw/sys/&lt;block&gt;/synth/</code>, and the
+canonical shared helpers remain under <code>flows/synth/constraints/</code>. Regenerate
+the index with <code>python3 scripts/collect_integration.py</code> after changing the
+collateral inventory.</p>
 </div>
 <div class="sect2">
 <h3 id="why-crossings-are-bounded-rather-than-timed"><a class="anchor" href="#why-crossings-are-bounded-rather-than-timed"></a><a class="link" href="#why-crossings-are-bounded-rather-than-timed">6.1. Why crossings are bounded rather than timed</a></h3>

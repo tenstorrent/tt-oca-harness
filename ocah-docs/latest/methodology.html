@@ -1216,35 +1216,10 @@ replace those interfaces with AMBA versions.</p>
 <div class="sect2">
 <h3 id="component-directory-organization"><a class="anchor" href="#component-directory-organization"></a><a class="link" href="#component-directory-organization">1.25. Component Directory Organization</a></h3>
 <div class="paragraph">
-<p>All components will have a uniform directory structure which has the
-following elements:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p>README.md : component overview and quick start guide in Markdown
-format</p>
-</li>
-<li>
-<p>doc/ : detailed AsciiDoc documentation (architecture.adoc, interface.adoc,
-memmap.adoc, index.adoc)</p>
-</li>
-<li>
-<p>rtl : all SystemVerilog modules &lt;component&gt;_*.sv</p>
-</li>
-<li>
-<p>tb : unit level Verilator tests</p>
-</li>
-<li>
-<p>regs/ : &lt;component&gt;.rdl SystemRDL CSR memory map definition and generated collateral</p>
-</li>
-<li>
-<p>syn : logic synthesis constraints (optional)</p>
-</li>
-<li>
-<p>lint : lint waiver files</p>
-</li>
-</ul>
+<p>Every <code>hw/ip/&lt;ip&gt;/</code> and <code>hw/sys/&lt;sys&gt;/</code> component follows the same directory
+template, detailed in
+<a href="../../ocah-contributing/latest/guidelines.html#component-directory-organization" class="xref page">the
+Contributing Guide</a>.</p>
 </div>
 </div>
 <div class="sect2">

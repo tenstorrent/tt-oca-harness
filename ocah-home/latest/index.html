@@ -216,6 +216,195 @@ alongside the OCA Architecture specification and the OCA Compliance program.
 </div>
 </div>
 <div class="sect1">
+<h2 id="ecosystem-repositories"><a class="anchor" href="#ecosystem-repositories"></a><a class="link" href="#ecosystem-repositories">Ecosystem repositories</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The OCA Harness ecosystem itself spans a small family of Tenstorrent-owned
+repositories, each covering a distinct part of building and using OCAH:</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 14.2857%;">
+<col style="width: 14.2857%;">
+<col style="width: 28.5714%;">
+<col style="width: 42.8572%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Package</th>
+<th class="tableblock halign-left valign-top">Upstream</th>
+<th class="tableblock halign-left valign-top">Repository</th>
+<th class="tableblock halign-left valign-top">Role in the ecosystem</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">tt-oca-harness</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tenstorrent</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent/tt-oca-harness">tenstorrent/tt-oca-harness</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">This repository: OCAH&#8217;s RTL, documentation, and register/IP-XACT tooling</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">tt-oca-harness-aou</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tenstorrent</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent/tt-oca-harness-aou">tenstorrent/tt-oca-harness-aou</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI-over-UCIe (AoU) bridge RTL, a component of OCAH&#8217;s RTL collateral</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">tt-oca-harness-model</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tenstorrent</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent/tt-oca-harness-model">tenstorrent/tt-oca-harness-model</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Virtual platform of the harness for rapid prototyping</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>OCAH also reuses third-party open-source IP rather than reimplementing it.
+Tenstorrent generally maintains a fork of each such dependency to support
+coordinated development, keeps it synchronized with the upstream project, and
+contributes suitable changes back upstream where possible. The exact
+revisions and subsets imported into this repository are defined in
+<code>Bender.yml</code>; the
+<a href="../../ocah-contributing/latest/workflows.html#vendor-packages" class="xref page">Contributing Guide</a>
+explains how Bender materializes and updates them.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 14.2857%;">
+<col style="width: 14.2857%;">
+<col style="width: 28.5714%;">
+<col style="width: 42.8572%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Package</th>
+<th class="tableblock halign-left valign-top">Upstream</th>
+<th class="tableblock halign-left valign-top">Repository</th>
+<th class="tableblock halign-left valign-top">Role in OCAH</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OpenTitan</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">lowRISC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent/tt-opentitan">tenstorrent/tt-opentitan</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Common primitives, cryptography, entropy, and timers</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Common Verification</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PULP Platform</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent/tt-common_verification">tenstorrent/tt-common_verification</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Vendored so PULP-derived dependencies resolve a consistent local copy; not
+directly used by OCAH</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Common Cells</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PULP Platform</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent/tt-common_cells">tenstorrent/tt-common_cells</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reusable RTL cells used by interconnect and DMA components</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">APB</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PULP Platform</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent/tt-apb">tenstorrent/tt-apb</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Advanced Peripheral Bus components</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PULP Platform</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent/tt-axi">tenstorrent/tt-axi</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Advanced eXtensible Interface components</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">iDMA</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PULP Platform</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent/tt-iDMA">tenstorrent/tt-iDMA</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Intelligent direct memory access engine</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UNBENT</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PULP Platform</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent-forks/unbent">tenstorrent-forks/unbent</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI bus-error-unit wrapper for chiplet integrators; not instantiated in
+OCAH&#8217;s own RTL</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI Stream</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PULP Platform</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent/tt-axi_stream">tenstorrent/tt-axi_stream</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Compiled into iDMA&#8217;s generated backend bundle; OCAH&#8217;s AXI-only DMA
+configuration does not instantiate it</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OBI</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PULP Platform</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent/tt-obi">tenstorrent/tt-obi</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Supplies the types iDMA&#8217;s OBI backend headers reference; OCAH does not
+instantiate an OBI bus</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Register Interface</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PULP Platform</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent/tt-register_interface">tenstorrent/tt-register_interface</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI-to-register bridge (<code>axi_to_reg_v2</code>) used by the iDMA control interface</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adams Bridge</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CHIPS Alliance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/chipsalliance/adams-bridge">chipsalliance/adams-bridge</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Post-quantum cryptography engine</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Caliptra RTL</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CHIPS Alliance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/chipsalliance/caliptra-rtl">chipsalliance/caliptra-rtl</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key-vault client helpers for Adams Bridge</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">VeeR EL2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CHIPS Alliance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent/tt-Cores-VeeR-EL2">tenstorrent/tt-Cores-VeeR-EL2</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP processor core</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">PicoRV32</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">YosysHQ</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent/tt-picorv32">tenstorrent/tt-picorv32</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Key Manager processor core</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C Core</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CHIPS Alliance / Antmicro</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent/tt-i3c-core">tenstorrent/tt-i3c-core</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C controller and target</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Caliptra RTL for I3C</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CHIPS Alliance</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/tenstorrent/caliptra-rtl-fork">tenstorrent/caliptra-rtl-fork</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI and common RTL used by I3C</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">cocotbext-i3c</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Antmicro</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><a href="https://github.com/antmicro/cocotbext-i3c">antmicro/cocotbext-i3c</a></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C target verification model vendored for the I3C DV testbench; not yet
+exercised by an active test</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The SMC&#8217;s Rocket CPU cluster is a further exception: it is generated
+SystemVerilog output of the
+<a href="https://chipyard.readthedocs.io/en/stable/Generators/Rocket.html">Chipyard
+Rocket-chip</a> Chisel generator rather than a checked-out upstream source
+tree, so there is no upstream repository to fork or pin. It lives flat in
+the repository under
+<code>hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/</code>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
 <h2 id="learn-more"><a class="anchor" href="#learn-more"></a><a class="link" href="#learn-more">Learn more</a></h2>
 <div class="sectionbody">
 <div class="ulist">
