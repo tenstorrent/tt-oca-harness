@@ -4,7 +4,7 @@
 
 # Helper for running repo commands in the OCAH toolchain container. See tools/docker/README.md.
 #
-#   Usage: docker-run.sh <build|ensure|verify|run CMD...|run-here CMD...|shell|doc-html [trm|integrator|programmer|appnotes|home|contributing|all]|doc-pdf [trm|integrator|programmer|appnotes]|doc-stage|eda-run CMD...|eda-shell>#   'doc-html all' builds the real combined multi-book site (antora-playbook.yml) -- this is what gets deployed
+#   Usage: docker-run.sh <build|ensure|verify|run CMD...|run-here CMD...|shell|build-nix|nixos-shell|doc-html [trm|integrator|programmer|appnotes|home|contributing|all]|doc-pdf [trm|integrator|programmer|appnotes]|doc-stage|eda-run CMD...|eda-shell>#   'doc-html all' builds the real combined multi-book site (antora-playbook.yml) -- this is what gets deployed
 #   'doc-stage' adds PDFs + .nojekyll on top of an already-built combined site -- pure file copying, no Docker/Node needed. Run after doc-html all + doc-pdf.
 #   build     (re)build firmware image + publish to shared tarball cache
 #   ensure    make firmware image available (local -> cache -> build); auto-run
@@ -21,6 +21,10 @@
 #      OCAH_DOC_HTML_IMAGE     prebuilt Antora image
 #      OCAH_DOC_PDF_IMAGE      prebuilt Asciidoctor image
 #      OCAH_EDA_IMAGE          prebuilt yosys/slang/verible image (see flows/)
+#      OCAH_USE_NIX_IMAGE      Use a nix-build image containing all tooling required,
+#                               rather than the above images
+#      OCAH_NIX_IMAGE_WITH_UV  Bundle uv-installed dependencies into nix-built image
+#                               (true/false, default: false)
 #      OCAH_DOCKER_UIDGID      container --user (default: empty for rootless
 #                               podman, caller's uid:gid for docker; set empty to
 #                               run as each image's own default user)
@@ -40,12 +44,16 @@ set -euo pipefail
 # otherwise be bound at a path that resolves under one of the read-only rootfs
 # mounts, where bwrap cannot create the mount point.
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+
+NIXOS_IMAGE="${OCAH_NIX_IMAGE:-docker.io/nixos/nix:latest}"
+
+NIX_IMAGE_NAME=$([[ "${OCAH_NIX_IMAGE_WITH_UV:-false}" == true ]] && echo "ocah-uv-container" || echo "ocah-container")
+
 IMAGE="${OCAH_DOCKER_IMAGE:-ocah-toolchain}"
 DOC_HTML_IMAGE="${OCAH_DOC_HTML_IMAGE:-docker.io/antora/antora:3.1.10}"
 DOC_PDF_IMAGE="${OCAH_DOC_PDF_IMAGE:-docker.io/asciidoctor/docker-asciidoctor:1.106.0@sha256:6266e05784c2d8ece9d9fe5e593b12c3beebebbc467135fd6f4a56269c93cea3}"
 EDA_IMAGE="${OCAH_EDA_IMAGE:-hpretl/iic-osic-tools:2025.12}"
 
-NIX_IMAGE="${OCAH_NIX_IMAGE:-docker.io/nixos/nix:latest}"
 
 # Firmware image provisioning. The ocah-toolchain image is built locally and
 # published to no registry, so bare `run` on a fresh host would try (and fail)
@@ -157,67 +165,137 @@ USER_FLAGS=()
 image_hash() { sha256sum "${DOCKER_CTX}/Dockerfile" | cut -c1-16; }
 image_cache_tar() { echo "${DOCKER_CACHE_DIR}/${IMAGE##*/}-$(image_hash).tar"; }
 
+# Run a command in an environment with a nix binary. This will run locally if it
+# detects a nix binary, to be able to make use of cached files in the store. On
+# hosts without nix installed, it will use NIXOS_IMAGE, which defaults to
+# docker.io/nixos/nix
+nixos_run() {
+    # Nix Flakes and Nix-Command are required for this - enable them
+    local NIX_CONFIG="experimental-features = nix-command flakes"
+    if command -v nix >/dev/null 2>&1; then
+        NIX_CONFIG="$NIX_CONFIG" bash -c "$*"
+    else
+        # The repo in the container is owned by root, so nix/git will by default give untrusted errors when interacting with it.
+        local GIT_ALLOW_CMD="git config --global --add safe.directory \$(pwd) &&
+            git config --global --add safe.directory \$(pwd)/hw/sys/sep/bootrom/prod/tools/tt-boot-manifest &&"
+        run_image $NIXOS_IMAGE -it sh -c "
+            export NIX_CONFIG=\"$NIX_CONFIG\"
+            export PS1=\"\[\e[1;36m\]NixOS >\[\e[0m\] \"
+            $GIT_ALLOW_CMD
+            $@
+        "
+    fi
+}
+
+# Open a NixOS Shell
+nixos_shell() {
+    nixos_run bash
+}
+
 # Build the firmware image (labeled with the Dockerfile hash) and publish it to
 # the shared tarball cache when one is configured and writable. A publish
 # failure is a warning, not a build failure.
 build_image() {
-  local hash
-  hash="$(image_hash)"
-  "$ENGINE" ${PODMAN_STORAGE_FLAGS} build --label "ocah.dockerfile.sha=${hash}" \
-    -t "$IMAGE" "$DOCKER_CTX"
-  [[ -n "$DOCKER_CACHE_DIR" ]] || return 0
-  local tar
-  tar="$(image_cache_tar)"
-  if mkdir -p "$DOCKER_CACHE_DIR" 2>/dev/null; then
-    local tmp="${tar}.$$.tmp"
-    if "$ENGINE" ${PODMAN_STORAGE_FLAGS} save -o "$tmp" "$IMAGE" 2>/dev/null &&
-      mv -f "$tmp" "$tar" 2>/dev/null; then
-      echo "docker-run: published image cache $tar" >&2
+    if [[ "${OCAH_USE_NIX_IMAGE:-false}" == true ]]; then
+        local hash
+        hash="$(image_hash)"
+        "$ENGINE" ${PODMAN_STORAGE_FLAGS} build --label "ocah.dockerfile.sha=${hash}" \
+            -t "$IMAGE" "$DOCKER_CTX"
+        [[ -n "$DOCKER_CACHE_DIR" ]] || return 0
+        local tar
+        tar="$(image_cache_tar)"
+        if mkdir -p "$DOCKER_CACHE_DIR" 2>/dev/null; then
+            local tmp="${tar}.$$.tmp"
+            if "$ENGINE" ${PODMAN_STORAGE_FLAGS} save -o "$tmp" "$IMAGE" 2>/dev/null &&
+            mv -f "$tmp" "$tar" 2>/dev/null; then
+            echo "docker-run: published image cache $tar" >&2
+            else
+            rm -f "$tmp" 2>/dev/null || true
+            echo "docker-run: warning: could not publish image cache to $tar" >&2
+            fi
+        else
+            echo "docker-run: warning: cache dir $DOCKER_CACHE_DIR not writable; not publishing" >&2
+        fi
     else
-      rm -f "$tmp" 2>/dev/null || true
-      echo "docker-run: warning: could not publish image cache to $tar" >&2
+        local flake_output image_location
+        flake_output=$([[ "${OCAH_NIX_IMAGE_WITH_UV:-false}" == true ]] && echo "with_uv_deps" || echo "without_uv_deps")
+        if [[ -n "$DOCKER_CACHE_DIR" ]]; then
+            image_location="$(nix_image_cache_tar)"
+        else
+            image_location="local/nix-container-image.tar.gz"
+        fi
+        nixos_run "nix build \$(pwd)#dockerContainers.x86_64-linux.$flake_output &&
+            cp -f --update=all \$(readlink result) $image_location &&
+            echo \"Built Container Image\" &&
+            rm -f result ||
+            {
+                echo \"Container Image Build Failed\" >&2;
+                rm -f result;
+                exit 1;
+            }
+        "
+        "$ENGINE" ${PODMAN_STORAGE_FLAGS} load -i "$image_location"
     fi
-  else
-    echo "docker-run: warning: cache dir $DOCKER_CACHE_DIR not writable; not publishing" >&2
-  fi
 }
 
-build_nix_image() {
-    local NIX="nix --extra-experimental-features nix-command --extra-experimental-features flakes"
-    run_image_1to1 $NIX_IMAGE -it sh -c "
-        git config --global --add safe.directory \$(pwd) &&
-        git config --global --add safe.directory \$(pwd)/hw/sys/sep/bootrom/prod/tools/tt-boot-manifest &&
-        $NIX build .#dockerContainers.x86_64-linux.stream > nix-container-image && echo \"Build Container Image\" || { echo \"Container Build Failed\" >&2; rm -f nix-container-image; exit 1; }
-        chmod 664 nix-container-image
-        chown root:root nix-container-image
-        echo \"Fixed Permissions of Container Image\"
-    "
+nix_image_hash() {
+    local flake_output
+    flake_output=$([[ "${OCAH_NIX_IMAGE_WITH_UV:-false}" == true ]] && echo "with_uv_deps" || echo "without_uv_deps")
+    nixos_run "nix eval \$(pwd)#containerHashes.$flake_output 2> /dev/null" | tr -d '"'
 }
-
-nix-shell() {
-    run_image_1to1 $NIX_IMAGE -it bash
+nix_image_cache_tar() {
+    echo "${DOCKER_CACHE_DIR}/${NIX_IMAGE_NAME##*/}-$(nix_image_hash).tar.gz"
 }
 
 # Ensure $IMAGE is available locally: reuse a matching local image (verified by
 # the Dockerfile-hash label), else load the shared tarball cache, else build and
 # publish. Use `build` to force a rebuild regardless of what is already present.
 ensure_image() {
-  local hash tar
-  hash="$(image_hash)"
-  if [ "$("$ENGINE" ${PODMAN_STORAGE_FLAGS} image ${PODMAN_RUN_FLAGS} inspect \
-    --format '{{ index .Config.Labels "ocah.dockerfile.sha" }}' "$IMAGE" 2>/dev/null)" = "$hash" ]; then
-    return 0
-  fi
-  if [[ -n "$DOCKER_CACHE_DIR" ]]; then
-    tar="$(image_cache_tar)"
-    if [ -r "$tar" ]; then
-      echo "docker-run: loading $IMAGE from cache $tar" >&2
-      "$ENGINE" ${PODMAN_STORAGE_FLAGS} load -i "$tar"
-      return 0
+    if [[ "${OCAH_USE_NIX_IMAGE:-false}" == false ]]; then
+        local hash tar
+        hash="$(image_hash)"
+        if [ "$("$ENGINE" ${PODMAN_STORAGE_FLAGS} image ${PODMAN_RUN_FLAGS} inspect \
+            --format '{{ index .Config.Labels "ocah.dockerfile.sha" }}' "$IMAGE" 2>/dev/null)" = "$hash" ]; then
+            return 0
+        fi
+        if [[ -n "$DOCKER_CACHE_DIR" ]]; then
+            tar="$(image_cache_tar)"
+            if [ -r "$tar" ]; then
+            echo "docker-run: loading $IMAGE from cache $tar" >&2
+            "$ENGINE" ${PODMAN_STORAGE_FLAGS} load -i "$tar"
+            return 0
+            fi
+        fi
+        echo "docker-run: $IMAGE (hash $hash) absent locally and in cache; building" >&2
+        build_image
+    else
+        local flake_hash
+        flake_hash=$(nix_image_hash)
+        # Test for loaded image in podman
+        if "$ENGINE" ${PODMAN_STORAGE_FLAGS} images | grep -qE "${NIX_IMAGE_NAME} *${flake_hash}"; then
+            return 0
+        fi
+        # Check Cache or local image file
+        if [[ -n "$DOCKER_CACHE_DIR" ]]; then
+            local tar
+            tar="$(nix_image_cache_tar)"
+            if [ -r "$tar" ]; then
+                echo "docker-run: loading $NIX_IMAGE from cache $tar" >&2
+                "$ENGINE" ${PODMAN_STORAGE_FLAGS} load -i "$tar"
+                return 0
+            fi
+        else
+            local_tar="local/nix-container-image.tar.gz"
+            tar_repotag=$(nixos_run "tar -xOf $local_tar manifest.json | nix run nixpkgs#jq -- -r '.[0].RepoTags[0]'")
+            if [[ "$tar_repotag" == "$NIX_IMAGE" ]]; then
+                echo "docker-run: loading $NIX_IMAGE from $local_tar" >&2
+                "$ENGINE" ${PODMAN_STORAGE_FLAGS} load -i "$local_tar"
+                return 0
+            fi
+        fi
+        echo "docker-run: $NIX_IMAGE (hash $flake_hash) absent locally and in cache; building" >&2
+        build_image
     fi
-  fi
-  echo "docker-run: $IMAGE (hash $hash) absent locally and in cache; building" >&2
-  build_image
 }
 
 # run_image IMAGE [-it] CMD... : engine flags before the image, command after it
@@ -353,6 +431,14 @@ run_image_1to1() {
   "$ENGINE" ${PODMAN_STORAGE_FLAGS} run ${PODMAN_RUN_FLAGS} --rm "${f[@]}" \
     "${USER_FLAGS[@]}" -v "${ROOT}:${ROOT}${VOL}" -w "$PWD" "$image" "$@"
 }
+
+if [[ "${OCAH_USE_NIX_IMAGE:-false}" == true ]]; then
+    NIX_IMAGE=$NIX_IMAGE_NAME:$(nix_image_hash)
+    EDA_IMAGE=$NIX_IMAGE
+    IMAGE=$NIX_IMAGE
+    DOC_HTML_IMAGE=$NIX_IMAGE
+    DOC_PDF_IMAGE=$NIX_IMAGE
+fi
 
 # hpretl/iic-osic-tools's entrypoint launches a UI (X11/VNC) by default;
 # `--skip` (must come first) tells it to exec the given command instead.
@@ -518,8 +604,7 @@ doc_stage() {
 
 case "${1:-}" in
 build) build_image ;;
-build-nix) build_nix_image ;;
-nix-shell) nix-shell ;;
+nixos-shell) nixos_shell ;;
 ensure) ensure_image ;;
 verify)
   run riscv64-unknown-elf-gcc --version
