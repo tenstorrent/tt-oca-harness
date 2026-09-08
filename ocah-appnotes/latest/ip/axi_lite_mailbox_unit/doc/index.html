@@ -199,11 +199,10 @@ low-latency data exchange.</p>
 <div class="sect4">
 <h5 id="mailbox-unit-architecture"><a class="anchor" href="#mailbox-unit-architecture"></a><a class="link" href="#mailbox-unit-architecture">Architecture</a></h5>
 <div class="paragraph">
-<p>The SMC Mailbox IP provides inter-processor and inter-chiplet
-communication through a register-based interface. The design separates
-protocol handling from storage implementation, allowing system
-integrators to choose appropriate FIFO implementations while maintaining
-consistent software interfaces.</p>
+<p>The Mailbox IP provides inter-processor and inter-chiplet communication
+through a register-based interface. A single AXI4-Lite slave port is demuxed
+into one register aperture per mailbox direction, and each mailbox pair owns
+the two FIFOs that carry data between its two apertures.</p>
 </div>
 <div class="sect5">
 <h6 id="configuration-parameters"><a class="anchor" href="#configuration-parameters"></a><a class="link" href="#configuration-parameters">Configuration Parameters</a></h6>
@@ -230,12 +229,22 @@ multi-processor coordination</p></td>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>MAILBOX_DEPTH</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">8 entries</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">External FIFO depth for buffering</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Depth of each internal message FIFO</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>MAX_TRANS</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Maximum outstanding AXI4-Lite transactions</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Maximum outstanding AXI4-Lite transactions per demux port</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MAILBOX_BASE_ADDR</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">0x0</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Base address the aperture decode is relative to</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ADDR_WIDTH</code> / <code>DATA_WIDTH</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 / 64</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">AXI4-Lite slave port widths</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>MAILBOX_SIZE</code></p></td>
@@ -255,106 +264,37 @@ pairs):</p>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Address Width</strong>: 18 bits (0x20008 bytes total)</p>
+<p><strong>Total Space</strong>: 2 × <code>MAILBOX_SIZE</code> × <code>NUM_MAILBOXES</code>,
+decoded from a port that is <code>ADDR_WIDTH</code> bits wide</p>
 </li>
 <li>
 <p><strong>Data Width</strong>: 64 bits</p>
 </li>
 <li>
-<p><strong>Per-Mailbox Space</strong>: 0x800 bytes (2KB)</p>
+<p><strong>Per-Aperture Space</strong>: 0x800 bytes (2KB)</p>
 </li>
 <li>
-<p><strong>Decoding</strong>: Efficient address decode logic for up to 32 pairs</p>
+<p><strong>Decoding</strong>: Address bits above <code>$clog2(MAILBOX_SIZE)</code> select one of
+<code>2 × NUM_MAILBOXES</code> apertures</p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
-<p>The 64-bit data width optimizes handling of addresses, data payloads,
-and status information without multi-word transfers. The 2KB allocation
-per mailbox enables threshold configuration, priority handling, and
-diagnostic features.</p>
+<p>The 64-bit data width handles addresses, data payloads and status
+information without multi-word transfers. The 2KB allocation per aperture
+leaves the ten registers sparsely mapped; offsets above the register map are
+unmapped rather than aliased.</p>
 </div>
 </div>
 <div class="sect5">
-<h6 id="hardware-interface"><a class="anchor" href="#hardware-interface"></a><a class="link" href="#hardware-interface">Hardware Interface</a></h6>
+<h6 id="internal-structure"><a class="anchor" href="#internal-structure"></a><a class="link" href="#internal-structure">Internal Structure</a></h6>
 <div class="paragraph">
-<p>The SystemRDL-generated register block provides hardware interfaces to
-external FIFO implementations through two signal structures:</p>
-</div>
-</div>
-<div class="sect5">
-<h6 id="hardware-input-interface-mailbox_wrap__in_t"><a class="anchor" href="#hardware-input-interface-mailbox_wrap__in_t"></a><a class="link" href="#hardware-input-interface-mailbox_wrap__in_t">Hardware Input Interface (mailbox_wrap__in_t)</a></h6>
-<table class="tableblock frame-all grid-all stretch">
-<colgroup>
-<col style="width: 25%;">
-<col style="width: 75%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Signal</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rd_ack</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Read acknowledge for handshake protocol</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>wr_ack</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Write acknowledge for handshake protocol</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rd_data[63:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit read data from external FIFO</p></td>
-</tr>
-</tbody>
-</table>
-<div class="paragraph">
-<p>The acknowledge signals implement handshake protocol for reliable data
-transfer regardless of external FIFO timing. The 64-bit read data
-interface eliminates width conversion overhead.</p>
-</div>
-</div>
-<div class="sect5">
-<h6 id="hardware-output-interface-mailbox_wrap__out_t"><a class="anchor" href="#hardware-output-interface-mailbox_wrap__out_t"></a><a class="link" href="#hardware-output-interface-mailbox_wrap__out_t">Hardware Output Interface (mailbox_wrap__out_t)</a></h6>
-<table class="tableblock frame-all grid-all stretch">
-<colgroup>
-<col style="width: 25%;">
-<col style="width: 75%;">
-</colgroup>
-<thead>
-<tr>
-<th class="tableblock halign-left valign-top">Signal</th>
-<th class="tableblock halign-left valign-top">Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>req</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Transaction request to external FIFO</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>addr[6:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Local address within mailbox space</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>req_is_wr</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Transaction type (1=write, 0=read)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>wr_data[63:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">64-bit write data to external FIFO</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>wr_biten[63:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Byte enable for write data</p></td>
-</tr>
-</tbody>
-</table>
-<div class="paragraph">
-<p>The 7-bit local address enables multiple registers per mailbox. Byte
-enables provide granular write control for external FIFO optimization.</p>
+<p>The unit is an <code>axi_lite_demux</code> in front of <code>NUM_MAILBOXES</code> mailbox instances.
+Each mailbox instance has two AXI4-Lite slave ports, one per aperture, and
+holds two message FIFOs of <code>MAILBOX_DEPTH</code> entries each. The FIFOs are
+cross-coupled between the two ports: the push side of one port is the pop side
+of the other. The FIFOs are internal to the IP; there is no external FIFO
+interface.</p>
 </div>
 </div>
 <div class="sect5">
@@ -365,55 +305,39 @@ enables provide granular write control for external FIFO optimization.</p>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
-<p><strong>Address Decode</strong>: Register block decodes mailbox instance and
-operation type</p>
+<p><strong>Aperture Decode</strong>: The demux selects an aperture from the address bits
+above <code>$clog2(MAILBOX_SIZE)</code>, relative to <code>MAILBOX_BASE_ADDR</code></p>
 </li>
 <li>
-<p><strong>Hardware Interface</strong>: Generates <code>req</code>, <code>addr</code>, <code>req_is_wr</code> signals
-to external FIFO</p>
+<p><strong>Register Decode</strong>: The mailbox slave port decodes the offset within the
+aperture into one of the ten registers</p>
 </li>
 <li>
-<p><strong>FIFO Processing</strong>: External logic processes request according to
-timing characteristics</p>
+<p><strong>FIFO Access</strong>: <code>WRITE_DATA</code> pushes the port&#8217;s write FIFO, <code>READ_DATA</code> pops
+the port&#8217;s read FIFO; full and empty conditions set the error flags described
+in the Error Handling table</p>
 </li>
 <li>
-<p><strong>Acknowledge</strong>: External FIFO asserts <code>rd_ack</code>/<code>wr_ack</code> when complete</p>
-</li>
-<li>
-<p><strong>AXI Response</strong>: Register block completes AXI4-Lite protocol</p>
+<p><strong>Response</strong>: The B and R responses are emitted through spill registers,
+giving one cycle of latency and keeping the response path free of
+combinational paths from the request</p>
 </li>
 </ol>
-</div>
-<div class="paragraph">
-<p>This coordination mechanism maintains consistent AXI4-Lite timing while
-allowing external FIFOs to optimize internal operations for specific
-performance or resource requirements.</p>
 </div>
 </div>
 <div class="sect5">
 <h6 id="bidirectional-communication"><a class="anchor" href="#bidirectional-communication"></a><a class="link" href="#bidirectional-communication">Bidirectional Communication</a></h6>
 <div class="paragraph">
-<p>Each mailbox pair provides separate inbound and outbound register
-spaces:</p>
-</div>
-<div class="ulist">
-<ul>
-<li>
-<p><strong>Inbound Space</strong>: Optimized for low-latency command processing</p>
-</li>
-<li>
-<p><strong>Outbound Space</strong>: Optimized for high-throughput status/telemetry
-transfer</p>
-</li>
-<li>
-<p><strong>Independence</strong>: No mutual interference or resource contention</p>
-</li>
-</ul>
+<p>Each mailbox pair provides two register apertures, conventionally used as an
+outbound and an inbound direction. The two are not independent storage: they
+share the same pair of FIFOs, so <code>WRITE_DATA</code> in one aperture is what
+<code>READ_DATA</code> in the other aperture returns. Both apertures hang off the same
+AXI4-Lite slave port, so a local agent can drive either end; the direction
+naming reflects intended use, not an access restriction.</p>
 </div>
 <div class="paragraph">
-<p>Separate register spaces enable different optimization strategies per
-direction. Interrupt generation integrates with external FIFO status
-reporting for event notification.</p>
+<p>Separate apertures give each direction its own thresholds, status, error flags
+and interrupt output.</p>
 </div>
 </div>
 <div class="sect5">
@@ -506,70 +430,37 @@ transmission or buffer availability.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">FIFO data available for efficient retrieval scheduling</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Overflow Error</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Write to full FIFO (fault detection)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Underflow Error</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Read from empty FIFO (fault detection)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Access Error</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Write to full FIFO or read from empty FIFO; both set the same
+error interrupt bit (fault detection)</p></td>
 </tr>
 </tbody>
 </table>
 <div class="paragraph">
-<p>Each interrupt output aggregates these sources. Threshold-based
-interrupts reduce polling overhead. Error interrupts enable fault
-recovery and diagnostic analysis.</p>
+<p>Each interrupt output aggregates these sources and is level-triggered and
+active high. Threshold-based interrupts reduce polling overhead; error
+interrupts enable fault recovery and diagnostic analysis.</p>
 </div>
 </div>
 </div>
 <div class="sect4">
 <h5 id="mailbox-unit-interface"><a class="anchor" href="#mailbox-unit-interface"></a><a class="link" href="#mailbox-unit-interface">Interface</a></h5>
 <div class="paragraph">
-<p>The Mailbox Unit provides both struct-based and flattened AXI4-Lite
-interfaces (selectable via generation template).</p>
+<p>The Mailbox Unit exposes a single struct-based AXI4-Lite slave port. All
+mailbox apertures are decoded from this one port by an internal demux.</p>
 </div>
 <div class="sect5">
 <h6 id="axi4-lite-interface"><a class="anchor" href="#axi4-lite-interface"></a><a class="link" href="#axi4-lite-interface">AXI4-Lite Interface</a></h6>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">input  mailbox_axil_req_t  mailbox_axi_req_i,
-output mailbox_axil_resp_t mailbox_axi_resp_o</code></pre>
+<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">input  axi_req_t  mailbox_axi_req_i,
+output axi_resp_t mailbox_axi_resp_o</code></pre>
 </div>
 </div>
-</div>
-<div class="sect5">
-<h6 id="flattened-interface"><a class="anchor" href="#flattened-interface"></a><a class="link" href="#flattened-interface">Flattened Interface</a></h6>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code class="language-sourceCode hljs" data-lang="sourceCode">// Write Address Channel
-input  logic            awvalid_i,
-output logic            awready_o,
-input  addr_t           awaddr_i,
-input  axi_pkg::prot_t  awprot_i,
-
-// Write Data Channel
-input  logic            wvalid_i,
-output logic            wready_o,
-input  data_t           wdata_i,
-input  strb_t           wstrb_i,
-
-// Write Response Channel
-output logic            bvalid_o,
-input  logic            bready_i,
-output axi_pkg::resp_t  bresp_o,
-
-// Read Address Channel
-input  logic            arvalid_i,
-output logic            arready_o,
-input  addr_t           araddr_i,
-input  axi_pkg::prot_t  arprot_i,
-
-// Read Data Channel
-output logic            rvalid_o,
-input  logic            rready_i,
-output data_t           rdata_o,
-output axi_pkg::resp_t  rresp_o</code></pre>
-</div>
+<div class="paragraph">
+<p>The request and response struct types are supplied by the integrator through
+the <code>axi_req_t</code>/<code>axi_resp_t</code> parameters, together with the per-channel types
+<code>aw_chan_t</code>, <code>w_chan_t</code>, <code>b_chan_t</code>, <code>ar_chan_t</code> and <code>r_chan_t</code>.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 1. Interface Characteristics</caption>
@@ -586,19 +477,19 @@ output axi_pkg::resp_t  rresp_o</code></pre>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Address Width</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">18 bits (s_axil_araddr[17:0])</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ADDR_WIDTH</code> parameter</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Data Width</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">64 bits</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DATA_WIDTH</code> parameter</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Strobe Width</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">8 bits</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>DATA_WIDTH</code>/8</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Total Address Space</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">0x20008 bytes (up to 32 mailbox pairs)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2 × <code>MAILBOX_SIZE</code> × <code>NUM_MAILBOXES</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Protocol</p></td>
@@ -630,7 +521,7 @@ output logic [NUM_MAILBOXES-1:0] outbound_interrupt_o</code></pre>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Type</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Configurable (default: level-triggered)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Level-triggered (the unit ties the underlying <code>IrqEdgeTrig</code> to 0)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Polarity</p></td>
@@ -638,7 +529,8 @@ output logic [NUM_MAILBOXES-1:0] outbound_interrupt_o</code></pre>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Sources</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Write threshold, read threshold, overflow, underflow</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Write threshold, read threshold, and a single shared error bit
+(read from empty or write to full)</p></td>
 </tr>
 </tbody>
 </table>
@@ -696,15 +588,15 @@ input logic test_en_i    // Test enable for DFT</code></pre>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Latency</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Single-cycle FIFO access (when not full/empty)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">One clock cycle; the R and B responses pass through spill registers</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Throughput</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">One 64-bit transfer per clock cycle</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Pipeline Depth</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Configurable via MAX_TRANS (default: 32)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Outstanding Transactions</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MAX_TRANS</code> per demux port (default: 32)</p></td>
 </tr>
 </tbody>
 </table>
@@ -724,12 +616,33 @@ input logic test_en_i    // Test enable for DFT</code></pre>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Read from empty FIFO</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Sets <code>read_error</code> flag, returns previous data</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Read from empty FIFO (<code>READ_DATA</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Sets <code>read_error</code> in ERROR_FLAGS and the
+error bit in IRQS; returns <code>0xFEEDDEAD</code> with SLVERR</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Write to full FIFO</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Sets <code>write_error</code> flag, discards new data</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Write to full FIFO (<code>WRITE_DATA</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Sets <code>write_error</code> in ERROR_FLAGS and the
+error bit in IRQS; discards the data and responds SLVERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Read from write-only <code>WRITE_DATA</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Returns <code>0xFEEDC0DE</code> with OKAY; no FIFO
+access and no error flag</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Write to a read-only register (<code>READ_DATA</code>, <code>STATUS</code>, <code>ERROR_FLAGS</code>, <code>IRQP</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Write is ignored, responds SLVERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Access to an unmapped offset inside an aperture (0x50 and above)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Read returns
+0 with SLVERR; write is ignored with SLVERR</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Read of ERROR_FLAGS</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Both flags clear on read; an error raised in the same cycle as
+the clearing read is retained</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Interrupt Generation</p></td>
@@ -754,7 +667,8 @@ input logic test_en_i    // Test enable for DFT</code></pre>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Address Space</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">4KB per mailbox pair; Total = 4KB × NUM_MAILBOXES × 2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MAILBOX_SIZE</code> (2KB) per aperture, 4KB per mailbox pair;
+Total = 4KB × NUM_MAILBOXES</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Software</strong></p></td>
@@ -775,9 +689,9 @@ sequencing; single clock domain (no CDC required)</p></td>
 <div class="sect5">
 <h6 id="address-space-organization"><a class="anchor" href="#address-space-organization"></a><a class="link" href="#address-space-organization">Address Space Organization</a></h6>
 <div class="paragraph">
-<p>Each mailbox instance occupies a dedicated 2KB (0x800) address space.
-The total address space is 0x20008 bytes supporting up to 64 mailbox
-instances (32 pairs):</p>
+<p>Each mailbox aperture occupies a dedicated 2KB (0x800) address space.
+The total address space is 0x20000 bytes supporting up to 64 mailbox
+apertures (32 pairs):</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -789,8 +703,7 @@ Base + 0x02000 - 0x027FF: Outbound Mailbox 2
 Base + 0x02800 - 0x02FFF: Inbound Mailbox 2
 ...
 Base + 0x1F000 - 0x1F7FF: Outbound Mailbox 31
-Base + 0x1F800 - 0x1FFFF: Inbound Mailbox 31
-Base + 0x20000 - 0x20007: MAILBOX_RSVD (Reserved space)</code></pre>
+Base + 0x1F800 - 0x1FFFF: Inbound Mailbox 31</code></pre>
 </div>
 </div>
 <div class="dlist">
@@ -800,28 +713,36 @@ Base + 0x20000 - 0x20007: MAILBOX_RSVD (Reserved space)</code></pre>
 <div class="ulist">
 <ul>
 <li>
-<p><strong>Per-Mailbox Size</strong>: 2KB (0x800)</p>
+<p><strong>Per-Aperture Size</strong>: <code>MAILBOX_SIZE</code>, 2KB (0x800)</p>
 </li>
 <li>
-<p><strong>Total Address Space</strong>: 0x20008 bytes</p>
+<p><strong>Total Address Space</strong>: 0x20000 bytes for 32 pairs</p>
 </li>
 <li>
-<p><strong>Address Width</strong>: 18 bits</p>
+<p><strong>Decoded Address Span</strong>: 17 bits for 32 pairs; the slave port itself is
+<code>ADDR_WIDTH</code> bits wide (32 in the SMC and SEP integrations)</p>
 </li>
 <li>
-<p><strong>Maximum Mailboxes</strong>: 32 pairs (64 instances)</p>
+<p><strong>Maximum Mailboxes</strong>: 32 pairs (64 apertures)</p>
 </li>
 </ul>
 </div>
 </dd>
 </dl>
 </div>
+<div class="paragraph">
+<p>The two apertures of a pair are the two ends of the same pair of FIFOs:
+<code>WRITE_DATA</code> in the outbound aperture pushes the FIFO that <code>READ_DATA</code> in the
+paired inbound aperture pops, and vice versa. Both ends are reachable from the
+same AXI4-Lite slave port.</p>
+</div>
 </div>
 <div class="sect5">
 <h6 id="per-mailbox-register-map"><a class="anchor" href="#per-mailbox-register-map"></a><a class="link" href="#per-mailbox-register-map">Per-Mailbox Register Map</a></h6>
 <div class="paragraph">
-<p>Within each 4KB mailbox address space, registers are organized as
-follows:</p>
+<p>Within each 2KB mailbox aperture, registers are organized as follows.
+Offsets are spaced by <code>DATA_WIDTH</code>/8, so they are 8 bytes apart in the
+64-bit configurations used today:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <caption class="title">Table 4. Register Address Map</caption>
@@ -868,7 +789,7 @@ follows:</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ERROR_FLAGS</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">R</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Error flags (write/read errors)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Error flags (write/read errors), clear on read</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">0x20</p></td>
@@ -910,10 +831,14 @@ follows:</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CTRL</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">64-bit</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">W</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Control register (FIFO flush)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Control register (FIFO flush); the flush bits are
+not registered, so reads return 0 with OKAY</p></td>
 </tr>
 </tbody>
 </table>
+<div class="paragraph">
+<p>Offsets 0x50 and above within an aperture are unmapped and respond SLVERR.</p>
+</div>
 </div>
 <div class="sect5">
 <h6 id="address-examples"><a class="anchor" href="#address-examples"></a><a class="link" href="#address-examples">Address Examples</a></h6>
