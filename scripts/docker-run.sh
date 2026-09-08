@@ -48,6 +48,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 NIXOS_IMAGE="${OCAH_NIX_IMAGE:-docker.io/nixos/nix:latest}"
 
 NIX_IMAGE_NAME=$([[ "${OCAH_NIX_IMAGE_WITH_UV:-false}" == true ]] && echo "ocah-uv-container" || echo "ocah-container")
+USE_NIX_IMAGE="${OCAH_USE_NIX_IMAGE:-false}" # Set to true to make default
+NIX_IMAGE_WITH_UV="${OCAH_NIX_IMAGE_WITH_UV:-false}"
 
 IMAGE="${OCAH_DOCKER_IMAGE:-ocah-toolchain}"
 DOC_HTML_IMAGE="${OCAH_DOC_HTML_IMAGE:-docker.io/antora/antora:3.1.10}"
@@ -204,7 +206,7 @@ nixos_shell() {
 # the shared tarball cache when one is configured and writable. A publish
 # failure is a warning, not a build failure.
 build_image() {
-    if [[ "${OCAH_USE_NIX_IMAGE:-false}" == true ]]; then
+    if [[ "${USE_NIX_IMAGE:-false}" == true ]]; then
         local hash
         hash="$(image_hash)"
         "$ENGINE" ${PODMAN_STORAGE_FLAGS} build --label "ocah.dockerfile.sha=${hash}" \
@@ -226,7 +228,7 @@ build_image() {
         fi
     else
         local flake_output image_location
-        flake_output=$([[ "${OCAH_NIX_IMAGE_WITH_UV:-false}" == true ]] && echo "with_uv_deps" || echo "without_uv_deps")
+        flake_output=$([[ "${NIX_IMAGE_WITH_UV:-false}" == true ]] && echo "with_uv_deps" || echo "without_uv_deps")
         if [[ -n "$DOCKER_CACHE_DIR" ]]; then
             image_location="$(nix_image_cache_tar)"
         else
@@ -248,7 +250,7 @@ build_image() {
 
 nix_image_hash() {
     local flake_output
-    flake_output=$([[ "${OCAH_NIX_IMAGE_WITH_UV:-false}" == true ]] && echo "with_uv_deps" || echo "without_uv_deps")
+    flake_output=$([[ "${NIX_IMAGE_WITH_UV:-false}" == true ]] && echo "with_uv_deps" || echo "without_uv_deps")
     nixos_run "nix eval \$(pwd)#containerHashes.$flake_output 2> /dev/null" | tr -d '"'
 }
 nix_image_cache_tar() {
@@ -259,7 +261,7 @@ nix_image_cache_tar() {
 # the Dockerfile-hash label), else load the shared tarball cache, else build and
 # publish. Use `build` to force a rebuild regardless of what is already present.
 ensure_image() {
-    if [[ "${OCAH_USE_NIX_IMAGE:-false}" == false ]]; then
+    if [[ "${USE_NIX_IMAGE:-false}" == false ]]; then
         local hash tar
         hash="$(image_hash)"
         if [ "$("$ENGINE" ${PODMAN_STORAGE_FLAGS} image ${PODMAN_RUN_FLAGS} inspect \
@@ -440,7 +442,7 @@ run_image_1to1() {
     "${USER_FLAGS[@]}" -v "${ROOT}:${ROOT}${VOL}" -w "$PWD" "$image" "$@"
 }
 
-if [[ "${OCAH_USE_NIX_IMAGE:-false}" == true ]]; then
+if [[ "${USE_NIX_IMAGE:-false}" == true ]]; then
     NIX_IMAGE=$NIX_IMAGE_NAME:$(nix_image_hash)
     EDA_IMAGE=$NIX_IMAGE
     IMAGE=$NIX_IMAGE
