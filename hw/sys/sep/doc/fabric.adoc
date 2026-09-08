@@ -282,9 +282,9 @@ source ID is programmable, lockable and reset by SEP reset.
 incoming transactions.
 
 |DTEE |Reserved. Would rely on the DTEE indicator in the transactions
-(confidential bit) to qualify incoming transactions. The group-ID matching
-this would use is disabled at build time for SEP, so the criterion is not
-available.
+(confidential bit) to qualify incoming transactions. TODO: Confidential
+bit will be defined in future revisions, right now there is no hardware
+to qualify this. 
 
 |Regular |Relies on PMA/PMP or page table for protection. No special
 action required by SEP.
