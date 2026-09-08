@@ -123,7 +123,7 @@ hw/sys/sep/dv/
     sep_tb_if.sv            # SEP-local TB interface of the SV-UVM shape
     sep_outbound_mbx.sv     # FW console / PASS magic
     efuse_preloads/         # committed default OTP image
-    interfaces/
+    sram_preloads/          # committed SRAM images
   shims/
     cpu/sep_cpu_stub.sv     # no_cpu LSU splice
     analog/entropy_ring_oscillator.sv

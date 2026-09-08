@@ -89,8 +89,8 @@ document.
 Attach to a DUT or TB port, or `bind` into the IP. Do not add a Python path to
 DUT-internal nets: `sep_public_scope.vlt` keeps public marks off the fabric.
 
-`cov/sv/` holds the Phase 1 cover-property modules. A `--cov` run of the `all`
-group is the evidence that each Phase 1 bin fired.
+Phase 1 cover-property modules land in `cov/sv/` when they are written. A
+`--cov` run of the `all` group is the evidence that each Phase 1 bin fired.
 
 === Phase 1 coverage definitions
 

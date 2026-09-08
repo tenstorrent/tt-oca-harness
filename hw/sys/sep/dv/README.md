@@ -300,7 +300,6 @@ binding.
 ```
 hw/sys/sep/dv/
 ├── cocotb/              # flow-first: cocotb owns env + stimulus + tests
-│   ├── assertions/      #   optional Python assertion helpers (empty)
 │   ├── env/             #   PyUVM env: agents, scoreboards, config
 │   ├── seq_lib/         #   sequences (scenarios)
 │   ├── tests/           #   @pyuvm.test() entries, grouped by subsystem
@@ -309,8 +308,9 @@ hw/sys/sep/dv/
 │   ├── env/             #   sep_env_pkg: types, cfgs, ref models, scoreboard, env
 │   ├── seq_lib/         #   sep_seq_lib_pkg: operations + scenario sequences
 │   └── tests/           #   thin test classes + sep_tests.sv include manifest
-├── cov/                 # cov/config/<tool>/ (questa, vcs, verilator, xcelium)
-│                        #   and cov/sv/. `--cov` is graded on VCS ([coverage.vcs]).
+├── cov/                 # VCS code-coverage scope (`cov/config/vcs/`). `--cov`
+│                        #   is graded on VCS ([coverage.vcs]). Phase 1 cover
+│                        #   properties land in cov/sv/ when they are written.
 ├── docs/                # testbench architecture + verification plan (AsciiDoc)
 ├── fw/                  # OSS-owned firmware — see fw/fw.mk
 │   ├── fw.mk            #   shared-engine dispatcher (c_compile)
@@ -339,13 +339,11 @@ hw/sys/sep/dv/
 │   ├── efuse_preloads/  #   efuse_configurations/*.toml declare OTP images by
 │   │                    #   register/field; sep_efuse_default.hex is the one
 │   │                    #   committed image (a random-vector snapshot)
-│   ├── sram_preloads/   #   committed SRAM images (e.g. sep_warm_handler.hex)
-│   └── interfaces/      #   (SV interfaces — empty)
+│   └── sram_preloads/   #   committed SRAM images (e.g. sep_warm_handler.hex)
 ├── testlists/           # native TOML testlists (all.toml + per-subsystem leaves)
 ├── sep_sim_cfg.toml     # block build/filelist manifest, run modes, tool knobs
 ├── sep_public_scope.vlt # scoped Verilator public list (narrow on purpose: a global
 │                        #   --public-flat-rw wedges the Verilator model)
-├── sep_sim.core         # FuseSoC-style manifest for external consumers
 ├── build/               # generated: per-tool models + build/runs/<run-id>/ logs (gitignored)
 └── README.md
 ```

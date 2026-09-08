@@ -58,7 +58,7 @@ kind = "clean"
 paths = ["{run_dir}", "hw/sys/sep/dv/build"]
 
 [build]
-# Native build is driven by the Bender/filelist keys below; .core files are external-only.
+# Native build is driven by the Bender/filelist keys below.
 top_module = "sep_uvm_top"
 top_file = "hw/sys/sep/dv/tb/tb_top.sv"
 # Extra tb sources compiled alongside tb_top: the outbound mailbox console/PASS
