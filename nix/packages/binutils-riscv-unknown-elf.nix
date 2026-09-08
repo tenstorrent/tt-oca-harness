@@ -16,8 +16,12 @@ stdenv.mkDerivation rec {
     hash = "sha256-ziAX4FnWPmfduSQOnU7EnCiTYFA1zWDpKtUxd/Q3cjc=";
   };
 
-  nativeBuildInputs = [ bison flex texinfo ];
-  buildInputs       = [ zlib ];
+  nativeBuildInputs = [
+    bison
+    flex
+    texinfo
+  ];
+  buildInputs = [ zlib ];
 
   configureFlags = [
     "--target=riscv64-unknown-elf"

@@ -2,7 +2,8 @@
 {
   systemc,
   ...
-}: systemc.overrideAttrs (old: {
-  cmakeFlags = (old.cmakeFlags or []) ++ [ "-DCMAKE_CXX_STANDARD=20" ];
-  configureFlags = (old.configureFlags or []) ++ [ "CXXFLAGS=\"-std=c++20\"" ];
+}:
+systemc.overrideAttrs (old: {
+  cmakeFlags = (old.cmakeFlags or [ ]) ++ [ "-DCMAKE_CXX_STANDARD=20" ];
+  configureFlags = (old.configureFlags or [ ]) ++ [ "CXXFLAGS=\"-std=c++20\"" ];
 })

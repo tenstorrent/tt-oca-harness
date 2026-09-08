@@ -1,8 +1,11 @@
 {
   symlinkJoin,
-  openssl
+  openssl,
 }:
 symlinkJoin {
   name = "openssl-merged";
-  paths = [ openssl.dev openssl.out ];
+  paths = [
+    openssl.dev
+    openssl.out
+  ];
 }

@@ -12,9 +12,9 @@ stdenv.mkDerivation rec {
 
   src = fetchFromGitHub {
     owner = "accellera-official";
-    repo  = "cci";
-    rev   = "v${version}";
-    sha256  = "sha256-UyStnzZcB8ZgyHlVRR8IGeyrHAs+N38b02caHxUA5Fs=";
+    repo = "cci";
+    rev = "v${version}";
+    sha256 = "sha256-UyStnzZcB8ZgyHlVRR8IGeyrHAs+N38b02caHxUA5Fs=";
   };
 
   postPatch = ''
@@ -31,10 +31,13 @@ stdenv.mkDerivation rec {
 
   nativeBuildInputs = [ cmake ];
 
-  buildInputs = [ systemc20 rapidjson ];
+  buildInputs = [
+    systemc20
+    rapidjson
+  ];
 
   configureFlags = [ "CXXFLAGS=\"-std=c++20\"" ];
-  
+
   cmakeFlags = [
     "-DCMAKE_PREFIX_PATH=${systemc20}"
     "-DSYSTEMCCCI_BUILD_TESTS=OFF"

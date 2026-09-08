@@ -17,8 +17,8 @@ buildNpmPackage {
   npmDepsHash = "sha256-NCrEZuwpb98YRF+OhzmasgreanrJLqKQ2aJIh+/rcdc=";
   dontNpmBuild = true;
 
-  PUPPETEER_SKIP_DOWNLOAD=1;
-    
+  PUPPETEER_SKIP_DOWNLOAD = 1;
+
   installPhase = ''
     runHook preInstall
     mkdir -p $out/lib/node_modules/asciidoctor-kroki

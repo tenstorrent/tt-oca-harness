@@ -35,11 +35,11 @@ stdenv.mkDerivation {
 
   enableParallelBuilding = true;
 
-  makeFlags = [ 
-    "BOOST_ROOT=${boost-merged}" 
-    "STATIC_LINK=0" 
-    "MEM_CALLBACKS=1" 
-    "EXTRA_CXXFLAGS=-std=gnu++20" 
+  makeFlags = [
+    "BOOST_ROOT=${boost-merged}"
+    "STATIC_LINK=0"
+    "MEM_CALLBACKS=1"
+    "EXTRA_CXXFLAGS=-std=gnu++20"
   ];
 
   installPhase = ''

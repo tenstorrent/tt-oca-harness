@@ -15,6 +15,7 @@ Currently the flake defines the following outputs:
 - `dockerContainers.${system}` - Defines builds of x86_64-linux Docker containers for different build platforms, the containers able to be built are as follows:
   - `without_uv_deps` - Corresponds roughly to the `without_uv_deps` shell - a container including all package dependencies of OCAH, minus UV packages.
   - `with_uv_deps` - Corresponds similarly to the `with_uv_deps` shell - contains all dependencies of OCAH, including UV Packages. This may be useful in an airgapped system, as it provides all dependencies in a single image.
+- `formatter.${system}` - Declares a formatter able to be run with `nix fmt`
     
 
 ### `.envrc`

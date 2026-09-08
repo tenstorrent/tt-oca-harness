@@ -615,6 +615,7 @@ doc_stage() {
 case "${1:-}" in
 build) build_image ;;
 nixos-shell) nixos_shell ;;
+nix-fmt) nixos_run "nix fmt" ;;
 ensure) ensure_image ;;
 verify)
   run riscv64-unknown-elf-gcc --version

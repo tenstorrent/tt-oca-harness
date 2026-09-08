@@ -5,17 +5,18 @@
   ...
 }:
 let
-  uv_loader = import ./nix/load-uv-env.nix {inherit inputs;};
+  uv_loader = import ./nix/load-uv-env.nix { inherit inputs; };
   uv_loaded = uv_loader pkgs;
-in {
+in
+{
   ocah_env = rec {
     # Bypass NPX for MDlint
     OCAH_MARKDOWNLINT = "${pkgs.markdownlint-cli}/bin/markdownlint";
     # Documentation Variables - bypass NPX
     OCAH_ANTORA = "${pkgs.ocah-antora}/bin/antora";
-    OCAH_NO_INSTALL_NPM_DEPS="1";
+    OCAH_NO_INSTALL_NPM_DEPS = "1";
     # Run Synth Natively, rather than (nesting) container
-    OCAH_EDA_SKIP_CONTAINERS="1";
+    OCAH_EDA_SKIP_CONTAINERS = "1";
     # VP Env Variables
     SYSTEMC_HOME = "${pkgs.systemc20}";
     CCI_HOME = "${pkgs.systemc-cci}";
@@ -24,68 +25,82 @@ in {
     OPENSSL_ROOT = "${pkgs.openssl-merged}";
     WHISPER_HOME = "${pkgs.whisper}";
     CMAKE_CXX_STANDARD = "20";
-  } // (if (bundle_uv) then rec {
-    # UV Bypass Rules
-    UV_NO_SYNC = "1";
-    UV_PYTHON = uv_loaded.pythonSet.python.interpreter;
-    UV_PYTHON_DOWNLOADS = "never";
-    OCAH_DV_SKIP_UV="1";
-    OCAH_CLANG_FORMAT_SKIP_UV="1";
-    OCAH_TCLINT_SKIP_UV="1";
-    OCAH_MYPY_SKIP_UV="1";
-    OCAH_CODESPELL_SKIP_UV="1";
-    OCAH_PRE_COMMIT_SKIP_UV="1";
-    OCAH_RUFF_SKIP_UV="1";
-    OCAH_SHELLCHECK_SKIP_UV="1";
-    OCAH_TOMLLINT_SKIP_UV="1";
-    OCAH_YAMLLINT_SKIP_UV="1";
-    # Find Python+libraries correctly
-    PYTHON = "${uv_loaded.venv}/bin/python";
-    # Register Generation Binaries
-    OCAH_REG_PYTHON = PYTHON;
-    OCAH_REG_PEAKRDL = "${uv_loaded.venv}/bin/peakrdl";
-    OCAH_REG_SKIP_UV_SYNC = "1";
-  } else {});
-  ocah_pkgs = with pkgs; [
-    uv
-    # Documentation Tools
-    ocah-antora
-    asciidoctor
-    # Build Tools
-    gnumake
-    bender
-    verilator
-    sv-lang
-    gcc
-    ccache
-    riscv-unknown-elf-toolchain
-    cmake
-    # Linters
-    verible
-    svlint
-    checkmake
-    markdownlint-cli
-    # Synthesis
-    pdk-ciel
-    yosys
-    # Libraries
-    lz4
-    zlib
-    libvncserver
-    doxygen
-    # Other Tools
-    surfer
-    graphviz
-    # VP Dependencies
-    openssl-merged
-    systemc20
-    systemc-cci
-    boost-merged
-    whisper
-  ] ++ (if (bundle_uv) then [
-    # Load the UV Environment Defined in uv.lock
-    uv_loaded.venv
-  ] else [
-    
-  ]);
+  }
+  // (
+    if (bundle_uv) then
+      rec {
+        # UV Bypass Rules
+        UV_NO_SYNC = "1";
+        UV_PYTHON = uv_loaded.pythonSet.python.interpreter;
+        UV_PYTHON_DOWNLOADS = "never";
+        OCAH_DV_SKIP_UV = "1";
+        OCAH_CLANG_FORMAT_SKIP_UV = "1";
+        OCAH_TCLINT_SKIP_UV = "1";
+        OCAH_MYPY_SKIP_UV = "1";
+        OCAH_CODESPELL_SKIP_UV = "1";
+        OCAH_PRE_COMMIT_SKIP_UV = "1";
+        OCAH_RUFF_SKIP_UV = "1";
+        OCAH_SHELLCHECK_SKIP_UV = "1";
+        OCAH_TOMLLINT_SKIP_UV = "1";
+        OCAH_YAMLLINT_SKIP_UV = "1";
+        # Find Python+libraries correctly
+        PYTHON = "${uv_loaded.venv}/bin/python";
+        # Register Generation Binaries
+        OCAH_REG_PYTHON = PYTHON;
+        OCAH_REG_PEAKRDL = "${uv_loaded.venv}/bin/peakrdl";
+        OCAH_REG_SKIP_UV_SYNC = "1";
+      }
+    else
+      { }
+  );
+  ocah_pkgs =
+    with pkgs;
+    [
+      uv
+      # Documentation Tools
+      ocah-antora
+      asciidoctor
+      # Build Tools
+      gnumake
+      bender
+      verilator
+      sv-lang
+      gcc
+      ccache
+      riscv-unknown-elf-toolchain
+      cmake
+      # Linters
+      verible
+      svlint
+      checkmake
+      markdownlint-cli
+      # Synthesis
+      pdk-ciel
+      yosys
+      # Libraries
+      lz4
+      zlib
+      libvncserver
+      doxygen
+      # Other Tools
+      surfer
+      graphviz
+      # VP Dependencies
+      openssl-merged
+      systemc20
+      systemc-cci
+      boost-merged
+      whisper
+    ]
+    ++ (
+      if (bundle_uv) then
+        [
+          # Load the UV Environment Defined in uv.lock
+          uv_loaded.venv
+        ]
+      else
+        [
+
+        ]
+    );
 }

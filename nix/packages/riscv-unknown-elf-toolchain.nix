@@ -9,8 +9,12 @@
   ...
 }:
 symlinkJoin {
-  name  = "riscv-toolchain";
-  paths = [ gcc-riscv-unknown-elf binutils-riscv-unknown-elf picolibc-riscv-unknown-elf ];
+  name = "riscv-toolchain";
+  paths = [
+    gcc-riscv-unknown-elf
+    binutils-riscv-unknown-elf
+    picolibc-riscv-unknown-elf
+  ];
   postBuild = ''
     picolibc_specdir="${picolibc-riscv-unknown-elf}/lib/gcc/riscv64-unknown-elf/15"
     picolibc_includedir="${picolibc-riscv-unknown-elf}/riscv64-unknown-elf/include"

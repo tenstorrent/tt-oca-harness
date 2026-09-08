@@ -1,8 +1,11 @@
 {
   symlinkJoin,
-  boost
+  boost,
 }:
 symlinkJoin {
   name = "boost-merged";
-  paths = [ boost.dev boost ];
+  paths = [
+    boost.dev
+    boost
+  ];
 }

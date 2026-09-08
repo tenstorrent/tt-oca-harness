@@ -21,22 +21,24 @@
   ...
 }:
 stdenv.mkDerivation rec {
-  pname   = "gcc-riscv64-unknown-elf";
+  pname = "gcc-riscv64-unknown-elf";
   version = "15.3.0";
-  
+
   src = fetchurl {
-    url  = "mirror://gnu/gcc/gcc-${version}/gcc-${version}.tar.xz";
+    url = "mirror://gnu/gcc/gcc-${version}/gcc-${version}.tar.xz";
     hash = "sha256-+lnBvu+JlfJ8TXHB3yJ1hxiTFdPm+v8btDBuYbDFMOs=";
   };
-  
+
   patches =
     let
-      salsaRaw = name: hash:
+      salsaRaw =
+        name: hash:
         fetchurl {
-          url  = "https://salsa.debian.org/debian/gcc-riscv64-unknown-elf/-/raw/debian/debian/patches/${name}";
+          url = "https://salsa.debian.org/debian/gcc-riscv64-unknown-elf/-/raw/debian/debian/patches/${name}";
           inherit hash;
         };
-    in [
+    in
+    [
       (salsaRaw "0001-Ignore-document-errors-during-build.patch" "sha256-0QfdGxYioSaszv2tceRM6alwKefDRH8dovqFxfLccvI=")
       (salsaRaw "0002-Add-more-multi-lib-for-rv32-and-rv64.patch" "sha256-8L9x7SBbHrz3ehFMLM9h8TyVbJkNWYvJg2oO0xDoIN8=")
       (salsaRaw "0003-riscv-Preserve-qnan-fraction-and-sign.patch" "sha256-z7Hq5gklrH92mW2A4+Q5mjnoiGpeSLqU6JczzcT00ls=")
@@ -47,19 +49,35 @@ stdenv.mkDerivation rec {
       (salsaRaw "0011-driver-Add-if-driverlang-spec-function.patch" "sha256-CpBvpayMoTCpWvThjBtuLLVCUfeAAgUzLQfrsSINKzI=")
       (salsaRaw "0012-picolibc-Add-C-bits-when-linking-with-C-driver.patch" "sha256-2tpiAXA+4gNex0zDc3KhXeE8oAoM7Aj3DecYvyGD9pY=")
     ];
-  
+
   nativeBuildInputs = [
-    binutils-riscv-unknown-elf gawk bison flex texinfo gperf autoconf automake libtool m4
+    binutils-riscv-unknown-elf
+    gawk
+    bison
+    flex
+    texinfo
+    gperf
+    autoconf
+    automake
+    libtool
+    m4
   ];
-  
-  buildInputs = [ gmp mpfr libmpc isl zlib makeWrapper ];
-  
+
+  buildInputs = [
+    gmp
+    mpfr
+    libmpc
+    isl
+    zlib
+    makeWrapper
+  ];
+
   preConfigure = ''
     configureScript=$(pwd)/configure
     mkdir ../build
     cd ../build
   '';
-  
+
   configureFlags = [
     "--target=riscv64-unknown-elf"
     "--with-arch=rv64imafdc"
@@ -96,13 +114,13 @@ stdenv.mkDerivation rec {
     "RANLIB_FOR_TARGET=riscv64-unknown-elf-ranlib"
     "READELF_FOR_TARGET=riscv64-unknown-elf-readelf"
     "STRIP_FOR_TARGET=riscv64-unknown-elf-strip"
-  
+
   ];
-  
+
   hardeningDisable = [ "format" ];
-  
+
   enableParallelBuilding = true;
-  
+
   postInstall = ''
     for prog in $out/bin/*; do
         wrapProgram $prog --prefix PATH : ${lib.makeBinPath [ binutils-riscv-unknown-elf ]}
