@@ -3,3 +3,4 @@
 
 * xref:index.adoc[Integrator Guide]
 ** xref:revision.adoc[Revision History]
+** xref:index.adoc#aou-integration[AXI-over-UCIe Bridge (AoU) Integration]

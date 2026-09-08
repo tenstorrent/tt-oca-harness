@@ -2019,6 +2019,19 @@ This section is currently under development. Content will be added to describe
 SMN integration procedures, network topology, and management interfaces.
 ====
 
+[[aou-integration]]
+== AXI-over-UCIe Bridge (AoU) Integration
+
+:sectnums!:
+ifdef::backend-pdf[]
+:aou-imagesdir: {docdir}/../../../vendor/tenstorrent/aou/upstream/DOC/MAS/assets
+include::../../../vendor/tenstorrent/aou/upstream/DOC/MAS/integration.adoc[leveloffset=+1]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+include::aou:partial$integration.adoc[leveloffset=+1]
+endif::backend-html5[]
+:sectnums:
+
 [[project-defines]]
 == Project Defines
 

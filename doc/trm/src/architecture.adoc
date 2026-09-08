@@ -391,5 +391,13 @@ endif::backend-html5[]
 include::smn.placeholder.adoc[]
 
 // AOU
-// TODO remove adoc below and follow SMC example
-include::aou.placeholder.adoc[]
+[[axi-over-ucie-bridge]]
+ifdef::backend-pdf[]
+:aou-imagesdir: {docdir}/../../../vendor/tenstorrent/aou/upstream/DOC/MAS/assets
+include::../../../vendor/tenstorrent/aou/upstream/DOC/MAS/index.adoc[leveloffset=0]
+endif::backend-pdf[]
+ifdef::backend-html5[]
+:aou-integration-xref: ocah-integrator-guide:ROOT:index.adoc
+:aou-software-xref: ocah-programmer-guide:ROOT:index.adoc
+include::aou:partial$index.adoc[leveloffset=0]
+endif::backend-html5[]
