@@ -68,7 +68,8 @@ and peer chiplets on the right. Show adopter-owned connections explicitly.
 [.datasheet-section]
 AT A GLANCE
 
-Use a compact table for stable architectural capacities and interface widths.
+Use a compact table with columns "Feature" and "Defaults" for stable
+architectural capacities and interface widths.
 Label reference-configuration values and do not present uncharacterized
 frequency, area, or power as product specifications.
 |===
@@ -88,8 +89,9 @@ Group concise feature bullets by function.
 [.datasheet-section]
 INTERFACES AND CONFIGURATION
 
-Identify externally meaningful interfaces, widths, compile-time options, and
-reference defaults.
+Use a table with columns "Feature" and "Integration options" to identify
+externally meaningful interfaces, widths, compile-time options, and reference
+defaults.
 
 a|
 // datasheet-section: integration-dependencies
