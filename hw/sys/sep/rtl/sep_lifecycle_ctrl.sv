@@ -236,9 +236,8 @@ module sep_lifecycle_ctrl #(
   assign dbg_disable_o.smc_otp_jtag2axi = 1'b0;
   assign dbg_disable_o.sep_otp_jtag2axi = 1'b0;
 
-  // DFT-inserted fuse access paths. No functional logic drives these; they exist for
-  // an adopter's DFT insertion to connect to, and are composed here so that the whole
-  // gating condition stays inside the lifecycle controller.
+  // DFT-inserted fuse access paths. No functional logic consumes these;
+  // They exist for an adopter's DFT insertion to connect to
   assign sep_fuse_dft_disable_o = case_3_dis || !feat_ctrl_sec_dis_ovrd.sep_fuse_dbg;
   assign smc_fuse_dft_disable_o = case_2_dis || !feat_ctrl_sec_dis_ovrd.smc_fuse_dbg;
 
