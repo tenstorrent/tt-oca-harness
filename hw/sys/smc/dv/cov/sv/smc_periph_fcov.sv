@@ -266,10 +266,7 @@ module smc_periph_fcov #(
     cp_core2pad_en: coverpoint core2pad_en;
     cp_pad2core_en: coverpoint pad2core_en;
     cp_en_count: coverpoint en_count {
-      bins none = {0};
-      bins one = {1};
-      bins few = {[2 : 8]};
-      bins many = default;
+      bins none = {0}; bins one = {1}; bins few = {[2 : 8]}; bins many = default;
     }
     x_gpio_dir: cross cp_core2pad_en, cp_pad2core_en;
   endgroup
@@ -293,20 +290,21 @@ module smc_periph_fcov #(
   cg_gpio_state u_cg_gpio_state = new();
   cg_irq_sources u_cg_irq_sources = new();
 
+  // Bit order matches the cp_* indices in cg_irq_sources.
+  wire [8:0] irq_sources = {irq_hang_any_e, irq_efuse_locked_e, irq_temp_e, irq_telemetry_e,
+                            irq_avsbus_e, irq_mailbox_e, irq_uart_e, irq_gpio_e, irq_sync_e};
+
   always_ff @(posedge clk_periph_i) begin
     if (!in_reset) begin
       u_cg_i2c0_bus.sample(i2c0_scl_dut_low_i, i2c0_sda_dut_low_i, i2c0_scl_ext_low_i,
                            i2c0_sda_ext_low_i, i2c0_enable_i);
-      u_cg_gpio_state.sample(gpio_core2pad_any_i, gpio_core2pad_en_any_i,
-                             gpio_pad2core_en_any_i, core2pad_en_count);
+      u_cg_gpio_state.sample(gpio_core2pad_any_i, gpio_core2pad_en_any_i, gpio_pad2core_en_any_i,
+                             core2pad_en_count);
     end
   end
 
   always_ff @(posedge clk_smc_i) begin
-    if (!in_reset) begin
-      u_cg_irq_sources.sample({irq_hang_any_e, irq_efuse_locked_e, irq_temp_e, irq_telemetry_e,
-                               irq_avsbus_e, irq_mailbox_e, irq_uart_e, irq_gpio_e, irq_sync_e});
-    end
+    if (!in_reset) u_cg_irq_sources.sample(irq_sources);
   end
 `endif
 

@@ -329,9 +329,7 @@ module smc_fabric_fcov (
   // Commercial-simulator covergroup: the downstream AXI-Lite interface
   // concurrency cross. Per-manager AXI crosses live in smc_axi_chan_fcov.
   // ------------------------------------------------------------------
-  covergroup cg_axil_masters with function sample (
-      logic dtp_csr, logic external, logic efuse_bank
-  );
+  covergroup cg_axil_masters with function sample (logic dtp_csr, logic external, logic efuse_bank);
     option.per_instance = 1;
     cp_dtp_csr: coverpoint dtp_csr;
     cp_external: coverpoint external;
@@ -350,11 +348,7 @@ module smc_fabric_fcov (
       bins wrap = {2'b10};
       illegal_bins reserved = {2'b11};
     }
-    cp_wstrb: coverpoint wstrb {
-      bins none = {8'h00};
-      bins full = {8'hFF};
-      bins partial = default;
-    }
+    cp_wstrb: coverpoint wstrb {bins none = {8'h00}; bins full = {8'hFF}; bins partial = default;}
     x_size_burst: cross cp_awsize, cp_awburst;
   endgroup
 

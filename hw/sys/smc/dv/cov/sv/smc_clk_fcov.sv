@@ -227,9 +227,7 @@ module smc_clk_fcov #(
     x_smc_periph: cross cp_smc_bucket, cp_periph_bucket;
   endgroup
 
-  covergroup cg_clk_gate with function sample (
-      logic cg_en, logic busy, logic clk_toggling
-  );
+  covergroup cg_clk_gate with function sample (logic cg_en, logic busy, logic clk_toggling);
     option.per_instance = 1;
     cp_cg_en: coverpoint cg_en;
     cp_busy: coverpoint busy;

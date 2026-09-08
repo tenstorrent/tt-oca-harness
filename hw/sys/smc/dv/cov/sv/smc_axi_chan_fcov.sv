@@ -117,10 +117,7 @@ module smc_axi_chan_fcov (
       bins long_burst = default;
     }
     cp_bresp: coverpoint bresp {
-      bins okay = {2'b00};
-      bins exokay = {2'b01};
-      bins slverr = {2'b10};
-      bins decerr = {2'b11};
+      bins okay = {2'b00}; bins exokay = {2'b01}; bins slverr = {2'b10}; bins decerr = {2'b11};
     }
     x_len_resp: cross cp_awlen, cp_bresp;
   endgroup
@@ -134,10 +131,7 @@ module smc_axi_chan_fcov (
       bins long_burst = default;
     }
     cp_rresp: coverpoint rresp {
-      bins okay = {2'b00};
-      bins exokay = {2'b01};
-      bins slverr = {2'b10};
-      bins decerr = {2'b11};
+      bins okay = {2'b00}; bins exokay = {2'b01}; bins slverr = {2'b10}; bins decerr = {2'b11};
     }
     x_len_resp: cross cp_arlen, cp_rresp;
   endgroup
