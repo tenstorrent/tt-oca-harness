@@ -419,10 +419,12 @@ partition "Manifest retry loop [C12–C14]" {
   endif
 }
 partition "One-shot state [C15–C17]" {
-  :demotion decision -> DEMOTE_1 (+lock);
+  :demotion decision (no write yet);
   :BL2 pair -> bl0_state;
   :lock fuse secrets (SET-only);
   :[C17] re-verify locks;
+  :DEMOTE_1 <- decision (+lock)
+  -- last fuse state BL0 changes;
   :enroll boot-state measurement
   (soft PCR slot 1) -> bl0_state;
 }
@@ -1949,14 +1951,36 @@ executes exactly once, only after the manifest has fully validated, and is never
    demotion out for this boot regardless of manifest content.
 3. [[req-SEP-ROM-DEM-030]]*[SEP-ROM-DEM-030]* Otherwise, if `BL1_DEMOTION_VALID` (bit 0) is
    set, the ROM shall write `DEMOTE_1` with `demote = BL1_DEMOTION_ENABLE` (bit 1) and
-   `lock = 1`. If bit 0 is clear, the ROM shall leave `DEMOTE_1` untouched and unlocked
-   (the decision is deferred to a later stage).
-4. [[req-SEP-ROM-DEM-040]]*[SEP-ROM-DEM-040]* The ROM shall never write `DEMOTE_2` except in
+   `lock = 1`. If bit 0 is clear, the ROM shall write `DEMOTE_1` with `demote = 0, lock = 1`,
+   closing the register in the non-demoted state — *unless* the manifest states a BL2
+   demotion request, meaning `BL2_DEMOTION_VALID` **and** `BL2_DEMOTION_ENABLE` (bits 3:2)
+   are both set. That is the only case in which `DEMOTE_1` may be left untouched and
+   unlocked, so that BL2 can apply the demotion it asked for.
+4. [[req-SEP-ROM-DEM-035]]*[SEP-ROM-DEM-035]* The `DEMOTE_1` write shall be ordered after the
+   fuse-secret read-locks of [C15]/[C17]: the demotion register is the last fuse state BL0
+   changes, so a fault while writing it cannot leave the secret fuses readable. Consequently
+   anything that must *read* a secret shall run before the lock, not between the lock and the
+   demotion write.
+5. [[req-SEP-ROM-DEM-040]]*[SEP-ROM-DEM-040]* The ROM shall never write `DEMOTE_2` except in
    the `PROD_END` lock-out case. The BL2 pair (bits 3:2) shall be recorded in
-   `bl0_state.bl2_demotion_decision` for BL1 to apply.
-5. [[req-SEP-ROM-DEM-050]]*[SEP-ROM-DEM-050]* The applied demotion state shall be an input
+   `bl0_state.bl2_demotion_decision` for BL1 to apply, as the conjunction of
+   `BL2_DEMOTION_VALID` and `BL2_DEMOTION_ENABLE` — the same predicate that governs the
+   unlock in SEP-ROM-DEM-030, so the recorded decision cannot contradict the register state.
+6. [[req-SEP-ROM-DEM-050]]*[SEP-ROM-DEM-050]* The applied demotion state shall be an input
    to the attestation measurement (<<sec:attestation>>), so a demoted boot is
    distinguishable in the measurement chain.
+
+[WARNING]
+====
+The default in SEP-ROM-DEM-030 is deliberately *closed*. An earlier revision of this
+requirement said that a clear `BL1_DEMOTION_VALID` left `DEMOTE_1` "untouched and unlocked",
+and the ROM implemented exactly that — so any manifest that simply did not assert bit 0 left
+the BL1 demotion register writable by whatever ran next. Since a `lock` bit is the only thing
+that makes a demotion register's value final, that is a fail-open: it hands later software
+the ability to demote the device's security posture. Leaving the register open is justified
+only by a genuine BL2 request, which is why both bits 3:2 are required, not just the ENABLE
+bit — a stray ENABLE on a manifest that never stated a BL2 pair is not a request.
+====
 
 [[fig:demotion]]
 .Demotion decision flow
@@ -1976,11 +2000,16 @@ else (no)
   if (BL1_DEMOTION_VALID (bit 0) ?) then (yes)
     :DEMOTE_1 <- demote = bit 1, lock=1;
   else (no)
-    :DEMOTE_1 untouched, unlocked
-    (deferred);
+    if (BL2 pair VALID and ENABLE (bits 3:2) ?) then (yes)
+      :DEMOTE_1 untouched, unlocked
+      (BL2 applies it);
+    else (no)
+      :DEMOTE_1 <- demote=0, lock=1
+      (closed, nothing asked);
+    endif
   endif
   :bl0_state.bl2_demotion_decision
-  <- bits 3:2 (BL2 pair);
+  <- BL2 VALID and ENABLE;
   :DEMOTE_2 never written by BL0;
   detach
 endif
@@ -1989,11 +2018,13 @@ endif
 
 [WARNING]
 ====
-*IMPLEMENTATION GAP* — the ROM parses the OCA `demotion_control` pairs and honours the BL1
-pair's `VALID` qualifier, but records only a single boolean for the BL2 decision: it reads
-`BL2_ENABLE` without consulting `BL2_VALID`, so "not specified" and "specified as no
-demotion" are indistinguishable to BL1. Preserving the BL2 `VALID` qualifier in `bl0_state`
-is the remaining work; the pair semantics above are normative.
+*IMPLEMENTATION GAP* — the ROM now honours *both* pairs' `VALID` qualifiers: the BL2
+decision is recorded as `BL2_VALID` ∧ `BL2_ENABLE`, and the same predicate governs whether
+`DEMOTE_1` is left unlocked, so the register state and the recorded decision cannot
+disagree. What remains is a representation limit rather than a policy one:
+`bl0_state.bl2_demotion_decision` is a single boolean, so "not specified" and "specified as
+no demotion" both arrive at BL1 as `false` and stay indistinguishable. Closing that needs a
+two-bit field in the hand-off block. The pair semantics above are normative.
 ====
 
 [[sec:payload]]
@@ -2896,10 +2927,13 @@ field is unread by the ROM and the validation library. |<<sec:secure_boot>>
 performs read-only validation and records the commit directive in `bl0_state`, and SEP BL1
 owns the fuse programming. Anti-rollback and revocation are therefore checked by BL0 and
 advanced by BL1. |<<sec:secure_boot>>
-|Demotion directive source |*gap (narrowed)* |OCA `demotion_control` pairs are parsed and the
-BL1 pair's `VALID` qualifier is honoured. The BL2 decision still records `BL2_ENABLE` alone,
-so `bl0_state` cannot distinguish "not specified" from "specified as no demotion".
-|<<sec:demotion>>
+|Demotion directive source |*gap (narrowed further)* |OCA `demotion_control` pairs are parsed
+and *both* pairs' `VALID` qualifiers are now honoured: the BL2 decision records
+`BL2_VALID` ∧ `BL2_ENABLE`, so a stray `ENABLE` on a manifest that stated no BL2 pair no
+longer reads as a demotion request, and the same predicate governs the `DEMOTE_1` unlock so
+the two cannot disagree. Still open: `bl0_state.bl2_demotion_decision` is a single bit, so it
+cannot distinguish "not specified" from "specified as no demotion". Closing that needs a
+two-bit field in the hand-off block, not a policy change. |<<sec:demotion>>
 |Payload gap zeroing |*gap (should)* |Un-hashed inter-image bytes not zeroed after
 validation (legacy ROM did). |<<sec:payload>>
 |Attestation measurement |*unmerged* |Soft measurement enrollment implemented
@@ -2947,7 +2981,7 @@ evaluation (research R13); boot never depends on programmed fuses. |<<sec:spi>>
 [[sec:req_index]]
 ==== Requirement Index
 
-All 94 tagged requirements. Each ID links to its definition.
+All 95 tagged requirements. Each ID links to its definition.
 
 [[tbl:req_index]]
 .Requirement index
@@ -3071,10 +3105,12 @@ consumer |<<sec:entropy>>
 |<<sec:demotion>>
 |<<req-SEP-ROM-DEM-020,SEP-ROM-DEM-020>> |PROD_END: never demote; lock both registers
 |<<sec:demotion>>
-|<<req-SEP-ROM-DEM-030,SEP-ROM-DEM-030>> |BL1 pair → DEMOTE_1 write+lock (or defer)
+|<<req-SEP-ROM-DEM-030,SEP-ROM-DEM-030>> |BL1 pair → DEMOTE_1 write+lock; closed
+non-demoted by default, left open only on a stated BL2 request |<<sec:demotion>>
+|<<req-SEP-ROM-DEM-035,SEP-ROM-DEM-035>> |DEMOTE_1 write ordered after the fuse-secret lock
 |<<sec:demotion>>
-|<<req-SEP-ROM-DEM-040,SEP-ROM-DEM-040>> |BL0 never writes DEMOTE_2; BL2 pair recorded
-|<<sec:demotion>>
+|<<req-SEP-ROM-DEM-040,SEP-ROM-DEM-040>> |BL0 never writes DEMOTE_2; BL2 pair recorded as
+VALID ∧ ENABLE |<<sec:demotion>>
 |<<req-SEP-ROM-DEM-050,SEP-ROM-DEM-050>> |Demotion state feeds the measurement
 |<<sec:demotion>>
 |<<req-SEP-ROM-PL-010,SEP-ROM-PL-010>> |TOC structural validation rules |<<sec:payload>>

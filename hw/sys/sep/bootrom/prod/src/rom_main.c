@@ -393,23 +393,22 @@ __attribute__((noreturn)) static void rom_manifest_validate_handoff(
     }
 
     // ── [C15] Demotion decisions ──
-    // Demotion decision flow:
-    //   DEMOTE_1: BL1 demotion register
-    //   DEMOTE_2: BL2 demotion register (written by BL1, not BL0)
+    //   DEMOTE_1: BL1 demotion register, BL0's to write.
+    //   DEMOTE_2: BL2 demotion register, BL1's to write (except the PROD_END lock).
     //
     // Logic:
-    //   PROD_END: never demote, lock both registers.
-    //   BL1 pair valid: DEMOTE_1 takes the manifest's value and is locked.
-    //   BL2 deferred: store the decision in bl0_state for BL1/KDF. DEMOTE_1 is
-    //     still written and locked in the non-demoted state UNLESS BL2 actually
-    //     requested demotion -- that request is the only case in which the
-    //     register is left unlocked. Skipping the write whenever the BL1 valid
-    //     bit was clear left DEMOTE_1 unwritten and unlocked for later software
-    //     to set at will.
-    //   DEMOTE_2 is never written by BL0 (except PROD_END lock).
+    //   PROD_END: never demote; DEMOTE_2 locked here, DEMOTE_1 by the defaults below.
+    //   BL1 demotion valid: DEMOTE_1 takes the manifest's value and is locked.
+    //   BL2 requested demotion: DEMOTE_1 left unlocked so BL2 can apply it. This
+    //     is the ONLY case in which the register is left open.
+    //   Otherwise: DEMOTE_1 written non-demoted and locked.
     //
-    // The register write itself is deferred until after the fuse secrets are
-    // locked; only the decision is taken here. See the [C15] block below.
+    // The default is closed. Skipping the write whenever the BL1 valid bit was
+    // clear left DEMOTE_1 unwritten and unlocked on any manifest that simply did
+    // not assert it, so later software could set it at will -- it failed open.
+    //
+    // Only the decision is taken here; the register write is deferred until after
+    // the fuse secrets are locked. See the deferred write below [C17].
     bool demotion_reg = false;
     bool lock_demotion = true;
     {
@@ -424,18 +423,27 @@ __attribute__((noreturn)) static void rom_manifest_validate_handoff(
             // demotion_control field: the VALID bit says whether demotion is
             // specified at all, the ENABLE bit says what the value is.
             uint32_t dc = rom_oca_demotion_control();
-            bool bl2_demote = (dc & OCA_DEMOTE_BL2_ENABLE) != 0u;
+            // Both the VALID and the ENABLE bit, not ENABLE alone: a manifest
+            // that never stated a BL2 pair has not asked for anything, and
+            // treating a stray ENABLE as a request would leave DEMOTE_1 open on
+            // the strength of a bit the producer never meant. The same predicate
+            // has to drive the unlock decision below and the value recorded for
+            // BL1, or the two disagree and BL1 tries to demote a locked register.
+            bool bl2_demote = (dc & (OCA_DEMOTE_BL2_VALID | OCA_DEMOTE_BL2_ENABLE)) ==
+                              (OCA_DEMOTE_BL2_VALID | OCA_DEMOTE_BL2_ENABLE);
 
             if (dc & OCA_DEMOTE_BL1_VALID) {
                 // BL1 manifest decides demotion, and the register is always locked.
                 demotion_reg = (dc & OCA_DEMOTE_BL1_ENABLE) != 0u;
                 simputsdec24("BL1_DEMOTE=", demotion_reg);
             } else if (bl2_demote) {
-                // The only case that leaves the register unlocked, so that BL2
-                // can still apply the demotion it asked for.
+                // The only case that leaves the register unlocked, so that BL2 can
+                // still apply the demotion it asked for.
                 lock_demotion = false;
                 simputs("DEMOTE: BL2 deferred, unlocked\n");
             } else {
+                // Nothing asked for demotion: close the register non-demoted
+                // rather than leaving it open.
                 simputs("DEMOTE: BL2 deferred, lock non-demoted\n");
             }
 
@@ -457,12 +465,12 @@ __attribute__((noreturn)) static void rom_manifest_validate_handoff(
     }
     report_status(STATUS_TYPE_INFO, SEP_MSG_FUSE_SECRETS_LOCKED);
 
-    // ── Demotion register write (deferred from the decision above) ──
+    // ── [C15] DEMOTE_1 write (deferred from the decision above) ──
     // Ordered after the secret lock deliberately: the demotion register is the
-    // last fuse state BL0 changes, so any fault while writing it cannot leave
-    // the secret fuses readable. Anything that needs to READ a secret -- the UID
-    // key derivation, and the boot measurement when it lands -- must therefore
-    // run before the lock, not here.
+    // last fuse state BL0 changes, so a fault while writing it cannot leave the
+    // secret fuses readable. The corollary is that anything needing to READ a
+    // secret -- the UID key derivation, and the boot measurement when it lands --
+    // must run before the lock, not here.
     if (lock_demotion) {
         lc_write_demotion(demotion_reg, true);
         simputs("DEMOTE_LOCKED\n");
