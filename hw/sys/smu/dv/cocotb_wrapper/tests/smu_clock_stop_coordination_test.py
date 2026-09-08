@@ -26,7 +26,7 @@ class smu_clock_stop_coordination_test(smu_base_test):
 
     async def run_scenario(self) -> None:
         self.logger.info(
-            "DUT_TAG=BARE smu_clock_stop_coordination_test SMU_ALL_006 under "
+            "DUT_TAG=WRAPPER smu_clock_stop_coordination_test SMU_ALL_006 under "
             "--dut smu SEP=0 (BOOT-STALL/IC-RESET/CLKSTOP-AGG only)"
         )
         seq = smu_clock_stop_coordination_test_seq(self)

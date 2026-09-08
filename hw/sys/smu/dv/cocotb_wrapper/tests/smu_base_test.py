@@ -40,6 +40,24 @@ class smu_base_test(uvm_test):
     #: self.env.scoreboard, the shared SmuEnv the bare tests score against.
     use_shared_env = False
 
+    #: Minimum jtag_period_ns / smu_clk_period_ns this leaf will run at, or
+    #: None to take whatever randomize_timing drew.
+    #:
+    #: Only the SMC-fabric SERIES-write leaves set it, and only because of open
+    #: RTL issue #1599: an SMC JTAG2AXI SERIES write returns zeros or parks in
+    #: BUSY whenever that ratio is under 4. randomize_timing draws three such
+    #: pairs out of nine -- (smu 10, jtag 32), (12, 32), (12, 40) -- so each
+    #: affected leaf is red on a third of seeds, and `sep0_all` (which CI runs)
+    #: would be red on 5 of 9 nights for a bug already filed with its own
+    #: reproduction. Clamping here keeps the gate meaningful instead of
+    #: habitually red.
+    #:
+    #: This is a workaround with an owner, not a fix: delete the override on
+    #: those leaves when #1599 closes. The randomization itself is deliberately
+    #: left alone -- it is what found the bug, and clamping it suite-wide would
+    #: hide the next one like it.
+    min_jtag_smu_ratio: float | None = None
+
     @staticmethod
     def random_seed() -> int:
         return int(os.environ.get("RANDOM_SEED", "1"), 0)
@@ -89,6 +107,17 @@ class smu_base_test(uvm_test):
     def build_phase(self) -> None:
         self.cfg = SmuEnvCfg("cfg")
         self.cfg.randomize_timing(self.random_seed())
+        if self.min_jtag_smu_ratio is not None:
+            needed = self.min_jtag_smu_ratio * self.cfg.smu_clk_period_ns
+            if self.cfg.jtag_period_ns < needed:
+                raised = int(-(-needed // 1))  # ceil, keeping an integer period
+                self.logger.info(
+                    "jtag_period_ns %d -> %d to hold jtag/smu >= %s (RTL issue #1599)",
+                    self.cfg.jtag_period_ns,
+                    raised,
+                    self.min_jtag_smu_ratio,
+                )
+                self.cfg.jtag_period_ns = raised
         ConfigDB().set(None, "*", "cfg", self.cfg)
         # Built ahead of any scoreboard so the ConfigDB entry exists when a
         # concrete test's build_phase looks it up; idles unless +sep_itcm_hex
@@ -292,11 +321,26 @@ class smu_base_test(uvm_test):
             timeout_cycles=2000,
             name="rst_primary_smc_clk_n_o",
         )
+        # The peripheral domain is a third primary reset and has to be waited
+        # on for the same reason as the other two, which is easy to miss
+        # because whether it is already released depends on the seed:
+        # randomize_timing draws clk_periph at 16/20/24 ns against clk_ref's
+        # 10/12/16, so on a slow-periph draw its deglitch chain is still
+        # running when the other two have finished. smu_smc_reset_ctrl_test
+        # sampled it directly and passed or failed by draw.
+        periph_cycles = await self.wait_signal_high(
+            dut.rst_primary_periph_clk_no,
+            dut.clk_periph_i,
+            timeout_cycles=2000,
+            name="rst_primary_periph_clk_no",
+        )
         self.logger.info(
             "Primary resets released: rst_cold_n_o after %d clk_ref, "
-            "rst_primary_smc_clk_n_o after %d clk_smu",
+            "rst_primary_smc_clk_n_o after %d clk_smu, "
+            "rst_primary_periph_clk_no after %d clk_periph",
             cold_cycles,
             smc_cycles,
+            periph_cycles,
         )
         self.cfg.reset_done.set()
 

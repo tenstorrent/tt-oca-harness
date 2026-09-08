@@ -19,7 +19,7 @@ class smu_axi_filter_out_instance_matrix_test(smu_base_test):
 
     async def run_scenario(self) -> None:
         self.logger.info(
-            "DUT_TAG=BARE smu_axi_filter_out_instance_matrix_test "
+            "DUT_TAG=WRAPPER smu_axi_filter_out_instance_matrix_test "
             "TierA FAB_SMC_025 SEP=0 J2A S1-only"
         )
         seq = smu_axi_filter_out_instance_matrix_test_seq(self)

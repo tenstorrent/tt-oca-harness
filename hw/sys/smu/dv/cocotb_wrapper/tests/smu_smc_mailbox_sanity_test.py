@@ -16,7 +16,7 @@ class smu_smc_mailbox_sanity_test(smu_base_test):
     use_shared_env = True
 
     async def run_scenario(self) -> None:
-        self.logger.info("DUT_TAG=BARE smu_smc_mailbox_sanity_test TierC mailbox-CSR SEP=0 J2A")
+        self.logger.info("DUT_TAG=WRAPPER smu_smc_mailbox_sanity_test TierC mailbox-CSR SEP=0 J2A")
         seq = smu_smc_mailbox_sanity_test_seq(self)
         await seq.run()
         assert seq.s1_ok and seq.s2_ok and seq.s3_ok and seq.s4_ok, (

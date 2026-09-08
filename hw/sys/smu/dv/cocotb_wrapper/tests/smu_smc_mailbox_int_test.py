@@ -23,7 +23,7 @@ class smu_smc_mailbox_int_test(smu_base_test):
 
     async def run_scenario(self) -> None:
         self.logger.info(
-            "DUT_TAG=BARE smu_smc_mailbox_int_test SMU_ALL_004 r8 SEP=0 EXT.S2 width DECODE"
+            "DUT_TAG=WRAPPER smu_smc_mailbox_int_test SMU_ALL_004 r8 SEP=0 EXT.S2 width DECODE"
         )
         seq = smu_smc_mailbox_int_test_seq(self)
         await seq.run()

@@ -19,7 +19,7 @@ class smu_dtp_jtag_smc_cpu_register_test(smu_base_test):
 
     async def run_scenario(self) -> None:
         self.logger.info(
-            "DUT_TAG=BARE smu_dtp_jtag_smc_cpu_register_test "
+            "DUT_TAG=WRAPPER smu_dtp_jtag_smc_cpu_register_test "
             "TierC DTP-JTAG-SMC-CPU-REGISTER SEP=0 JTAG"
         )
         seq = smu_dtp_jtag_smc_cpu_register_test_seq(self)

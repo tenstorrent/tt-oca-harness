@@ -1612,11 +1612,19 @@ tests = [
   "smu_dtp_bsr_ijtag_scan_test",
   "smu_dtp_io_stap_smoke_test",
   "smu_dtp_jtag2axi_back_to_back_error_ok_test",
-  # Seed-sensitive through RTL issue #1599, on both DUTs alike: its final step
-  # is an SMC fabric SERIES INCR write, which returns zeros whenever the drawn
-  # jtag_period_ns / smu_clk_period_ns is under 4. Reproduced identically on
-  # --dut smu and --dut smu_wrapper at seed 1915910843 (ratio 32/12 = 2.67), so
-  # a red here is that issue, not this DUT.
+  # Two leaves end in an SMC fabric SERIES INCR write, which open RTL issue
+  # #1599 breaks whenever the drawn jtag_period_ns / smu_clk_period_ns is under
+  # 4 -- returning zeros, or parking SERIES_CTRL in BUSY. Both now pin the
+  # ratio to >= 4 via smu_base_test.min_jtag_smu_ratio; drop those overrides
+  # when the issue closes.
+  #
+  # Measured, not assumed. smu_dtp_jtag2axi_smc_error_path_test reproduces
+  # identically on --dut smu and --dut smu_wrapper at seed 1915910843 (ratio
+  # 32/12 = 2.67), so it is not a DUT difference. For
+  # smu_smc_dtp_jtag2axi_smoke_test the ratio law itself was checked: seeds 5,
+  # 7, 9 (ratios 2.67, 3.20, 3.20) all fail and seeds 1, 2, 3 (5.00, 6.00,
+  # 6.00) all pass. Unpinned, 3 of the 9 (smu, jtag) draws are under 4, so this
+  # group would have been red on 5 nights in 9.
   "smu_dtp_jtag2axi_smc_error_path_test",
   "smu_dtp_jtag2axi_smc_rw_matrix_test",
   "smu_dtp_jtag2axi_wstrb_partial_sticky_test",

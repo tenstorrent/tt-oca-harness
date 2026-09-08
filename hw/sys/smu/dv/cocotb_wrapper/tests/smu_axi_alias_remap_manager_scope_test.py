@@ -19,7 +19,7 @@ class smu_axi_alias_remap_manager_scope_test(smu_base_test):
 
     async def run_scenario(self) -> None:
         self.logger.info(
-            "DUT_TAG=BARE smu_axi_alias_remap_manager_scope_test "
+            "DUT_TAG=WRAPPER smu_axi_alias_remap_manager_scope_test "
             "TierA FAB_SMC_018 SEP=0 J2A S3-only"
         )
         seq = smu_axi_alias_remap_manager_scope_test_seq(self)

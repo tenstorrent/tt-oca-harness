@@ -19,7 +19,7 @@ class smu_dtp_jtag2axi_wstrb_partial_sticky_test(smu_base_test):
 
     async def run_scenario(self) -> None:
         self.logger.info(
-            "DUT_TAG=BARE smu_dtp_jtag2axi_wstrb_partial_sticky_test "
+            "DUT_TAG=WRAPPER smu_dtp_jtag2axi_wstrb_partial_sticky_test "
             "TierC JTAG2AXI-WSTRB-NBR SEP=0 JTAG"
         )
         seq = smu_dtp_jtag2axi_wstrb_partial_sticky_test_seq(self)

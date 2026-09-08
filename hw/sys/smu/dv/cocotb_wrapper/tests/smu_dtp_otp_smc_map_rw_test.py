@@ -17,7 +17,7 @@ class smu_dtp_otp_smc_map_rw_test(smu_base_test):
 
     async def run_scenario(self) -> None:
         self.logger.info(
-            "DUT_TAG=BARE smu_dtp_otp_smc_map_rw_test TierC DTP-OTP-SMC-MAP-RW SEP=0 JTAG"
+            "DUT_TAG=WRAPPER smu_dtp_otp_smc_map_rw_test TierC DTP-OTP-SMC-MAP-RW SEP=0 JTAG"
         )
         seq = smu_dtp_otp_smc_map_rw_test_seq(self)
         await seq.run()

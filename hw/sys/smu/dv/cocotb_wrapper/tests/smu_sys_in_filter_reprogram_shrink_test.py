@@ -19,7 +19,7 @@ class smu_sys_in_filter_reprogram_shrink_test(smu_base_test):
 
     async def run_scenario(self) -> None:
         self.logger.info(
-            "DUT_TAG=BARE smu_sys_in_filter_reprogram_shrink_test "
+            "DUT_TAG=WRAPPER smu_sys_in_filter_reprogram_shrink_test "
             "TierA SYS-IN shrink SEP=0 J2A+s_axi"
         )
         seq = smu_sys_in_filter_reprogram_shrink_test_seq(self)
