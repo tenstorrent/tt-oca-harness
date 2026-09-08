@@ -66,7 +66,8 @@ addrmap straps {
     // --------------------------------------------------
     // Address Map
     //
-    // STRAPS_HI must stay at STRAPS_LO + 4. Certain DV writes write to both STRAPS_LO and HI with one write
+    // STRAPS_HI must stay at STRAPS_LO + 4: firmware and DV both read the pair as
+    // one 64-bit access at the STRAPS_LO address.
     // --------------------------------------------------
 
     STRAPS_LO                       STRAPS_LO               @ 0x0;
