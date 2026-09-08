@@ -63,7 +63,7 @@ class sep_drbg_axil_adapter_port_arbitration_test(sep_base_test):
 
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()
-        veh = AdapterPortVehicle(self)
+        veh = AdapterPortVehicle()
 
         # Control first: a lone write and a lone read must retire. A vehicle
         # that cannot complete an access on its own would report every

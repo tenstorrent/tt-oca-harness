@@ -76,8 +76,7 @@ RESP_OKAY = 0
 class AdapterPortVehicle:
     """Drives one ordering at the vehicle port and reports what happened."""
 
-    def __init__(self, test) -> None:
-        self.test = test
+    def __init__(self) -> None:
         self.dut = cocotb.top
 
     def _chan(self) -> int | None:
@@ -114,18 +113,15 @@ class AdapterPortVehicle:
         to the channel overlap rather than to this driver or to the axil32
         responder behind the adapter.
         """
-        d = self.dut
         out: dict = {}
 
         # Lone write: AW and W together, no AR. Nothing gates the write side
-        # when ar_valid is low, so this must complete.
-        await self.reset()
+        # when ar_valid is low, so this must complete. run_order resets first.
         obs = await self.run_order("control-write", 0, 0, None)
         out["write"] = obs
 
         # Lone read: AR only. Nothing gates the read side when aw_valid and
         # w_valid are low.
-        await self.reset()
         obs = await self.run_order("control-read", None, None, 0)
         out["read"] = obs
 
@@ -135,7 +131,6 @@ class AdapterPortVehicle:
         # the cause of their stall -- the two zero-gap controls above say
         # nothing about it, and excluding it by reading the RTL would be
         # taking the answer from the design under test.
-        await self.reset()
         obs = await self.run_order("control-gapped-write", 0, GAP_CYCLES, None)
         out["gapped-write"] = obs
         return out
