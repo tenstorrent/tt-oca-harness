@@ -22,6 +22,7 @@ includes = [
     "power.toml",
     "register.toml",
     "reset.toml",
+    "rtl_issue.toml",
     "spi.toml",
     "uart.toml",
     "vplan_triplets.toml",
@@ -75,10 +76,10 @@ name = "all"
 #                                 fake_bfm: raises on entry rather than standing
 #                                 in for a pad VIP that does not exist
 #
-# Two enrolled tests are also held out of this group, both red for a filed RTL
+# Four enrolled tests are also held out of this group, all red for a filed RTL
 # reason rather than a test defect. They keep their own [[tests]] entries and
 # run on demand; holding them out is a dv_policy §2 LINKED-ISSUE disposition,
-# not a waiver, and neither should be re-added until its issue closes.
+# not a waiver, and none should be re-added until its issue closes.
 #
 #   smc_remap_cla_test          -- its CLA reset sweep passes (82 registers, 6
 #                                  with discriminating non-zero resets), but the
@@ -89,6 +90,14 @@ name = "all"
 #                                  registers (wrap_to_live=7 read_alias=6). That
 #                                  is #585. Already recorded as held out in
 #                                  vplan_triplets.toml.
+#
+# The other two are the `rtl_issue` group, whose whole purpose is to be red --
+# they are the runnable evidence for #1602 and #1603. rtl_issue.toml is included
+# above so their names resolve and the file is reachable; the group is how they
+# are run. See that file for the conventions.
+#
+#   smc_gpio_irq_mask_deassert_test   #1602
+#   smc_efuse_read_timeout_status_test #1603
 tests = [
     "smc_5agent_observability_test",
     "smc_6agent_observability_test",
