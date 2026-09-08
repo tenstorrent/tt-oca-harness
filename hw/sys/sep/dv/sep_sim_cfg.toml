@@ -77,9 +77,10 @@ sources = [
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32_wb.sv",
   "hw/sys/sep/dv/tb/sep_outbound_mbx.sv",
   # Clean-room AXI4 protocol checker, instantiated on the m_axi and s_axi
-  # buses at the foot of tb_top. Assertion bodies are guarded by
-  # OCAH_INC_ASSERT, which Verilator does not define, so it elaborates to an
-  # empty module there and the rules are live only under VCS.
+  # buses at the foot of tb_top. The Verilator targets pass no --assert, so
+  # Verilator drops its two-state rules; the X-hygiene rules are gated by
+  # OCAH_INC_ASSERT, which Verilator does not define. The rules are live
+  # under VCS.
   "hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv",
 ]
 # `stubs` are Verilator/VCS-compat overrides, listed ahead of
