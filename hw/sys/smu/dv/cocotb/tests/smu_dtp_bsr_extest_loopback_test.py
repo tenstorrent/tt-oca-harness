@@ -14,7 +14,7 @@ STUB:DECLARED
   site: tb_top jtag_bsr_host_scan_in_i <- jtag_bsr_host_scan_out_o
   length: DTP_BSR_MODEL_LEN (compact 8-bit model)
   scope: TB EXTEST DR path only — NOT LIVE pad BSR / SEP STAP proof
-  real-path: deferred until a pad-BSR / STAP model is enrolled
+  real-path: needs a pad-BSR / STAP model
 
 Patterns whose retimed expectation is all-zero are forbidden: the JTAG driver's
 _logic_int maps X/Z TDO to 0, which would make an all-zero expect can't-fail.
@@ -31,7 +31,6 @@ import random
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
-from env import cocotb_compat as _cocotb_compat
 from ocah_jtag_vip import OcahJtagMasterSequence
 from seq_lib.smu_jtag_helpers import (
     DTP_BSR_MODEL_LEN,
@@ -40,8 +39,6 @@ from seq_lib.smu_jtag_helpers import (
     make_smu_jtag_tap,
 )
 from smu_base_test import smu_base_test
-
-_cocotb_compat.apply()
 
 # Nonzero-only: VIP X/Z->0 would false-pass an all-zero expect.
 _PATTERNS = (0xFF, 0xA5, 0x5A, 0xC3, 0x3C, 0x01)

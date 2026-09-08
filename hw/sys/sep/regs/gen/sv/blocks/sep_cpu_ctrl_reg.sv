@@ -251,7 +251,6 @@ module sep_cpu_ctrl_reg (
         logic SMU_REGION_SIZE;
         logic SMC_FUSE_SENSE_STATUS;
         logic SEP_FUSE_SENSE_STATUS;
-        logic SEP_STRAPS;
         logic SEP_SW_DEBUG;
         logic SEP_NMI_VEC;
         logic SEP_NMI_VEC_LOCK;
@@ -300,7 +299,6 @@ module sep_cpu_ctrl_reg (
         decoded_reg_strb.SMU_REGION_SIZE = cpuif_req_masked & (cpuif_addr == 13'h110);
         decoded_reg_strb.SMC_FUSE_SENSE_STATUS = cpuif_req_masked & (cpuif_addr == 13'h140) & !cpuif_req_is_wr;
         decoded_reg_strb.SEP_FUSE_SENSE_STATUS = cpuif_req_masked & (cpuif_addr == 13'h150) & !cpuif_req_is_wr;
-        decoded_reg_strb.SEP_STRAPS = cpuif_req_masked & (cpuif_addr == 13'h160) & !cpuif_req_is_wr;
         decoded_reg_strb.SEP_SW_DEBUG = cpuif_req_masked & (cpuif_addr == 13'h178);
         decoded_reg_strb.SEP_NMI_VEC = cpuif_req_masked & (cpuif_addr == 13'h180);
         decoded_reg_strb.SEP_NMI_VEC_LOCK = cpuif_req_masked & (cpuif_addr == 13'h188);
@@ -1613,10 +1611,6 @@ module sep_cpu_ctrl_reg (
         end
         if(rd_mux_addr == 13'h150) begin
             readback_data_var[0] = hwif_in.SEP_FUSE_SENSE_STATUS.sep_fuse_sense_done.next;
-        end
-        if(rd_mux_addr == 13'h160) begin
-            readback_data_var[0] = hwif_in.SEP_STRAPS.test_en.next;
-            readback_data_var[1] = hwif_in.SEP_STRAPS.bypass_mem_repair.next;
         end
         if(rd_mux_addr == 13'h178) begin
             readback_data_var[31:0] = field_storage.SEP_SW_DEBUG.sep_sw_debug.value;

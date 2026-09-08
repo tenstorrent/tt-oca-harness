@@ -14,8 +14,8 @@
 |Primary simulator |Verilator
 |Reference testbench architecture |`SMU_TB_ARCH.adoc`
 |Live test bodies |59 under `cocotb/tests/`, 56 of them enrolled
-|Enrolled leaf entries |55 in `sep0_p4_all`, 53 in `sep0_all`
-|Non-enrolled inventory |123 entries in `testlists/deferred.toml`, 28 bodies under `cocotb/tests_deferred/`
+|Enrolled leaf entries |54 in `sep0_p4_all`, 52 in `sep0_all`
+|Non-enrolled inventory |28 bodies under `cocotb/tests_deferred/`
 |===
 
 This plan describes what the SMU open-source suite verifies and against which
@@ -72,9 +72,10 @@ no enrolled test may reach into the DUT with Force or deposit.
 === Enrolled Test Summary
 
 The 56 enrolled tests — the union of the enrolled groups — with the testlist
-leaf each is declared in. Fifty-five of them are in `sep0_p4_all`;
+leaf each is declared in. Fifty-four of them are in `sep0_p4_all`;
 `smu_ext_boot_seq_gate_test` is enrolled only through `smoke`, `top10`, `smc`
-and `phase1` (see <<smu-known-limitations,Known Limitations>>).
+and `phase1`, and `smu_smc_mailbox_int_test` only through `smc`
+(see <<smu-known-limitations,Known Limitations>>).
 
 [cols="2,1,3",options="header",]
 |===
@@ -122,7 +123,7 @@ and `phase1` (see <<smu-known-limitations,Known Limitations>>).
 |`smu_otp_vs_fabric_map_race_test` |dtp |OTP vs fabric MAP last-writer
 |`smu_sep_smoke_test` |deferred |SMU_ALL_007 RST-PRIMARY + CTM.S2/S3 (SEP=0 bare)
 |`smu_smc_dtp_jtag2axi_smoke_test` |dtp |SMC fabric J2A smoke (SEP=0, no Force)
-|`smu_smc_gpio_strap_sanity_test` |smc |STRAPS_* track captured_straps_i
+|`smu_smc_mailbox_int_test` |smc |ext_mailbox_interrupts width DECODE (SMU_ALL_004)
 |`smu_smc_mailbox_sanity_test` |smc |outbound-0 STATUS/IRQEN via fabric J2A (SEP=0)
 |`smu_smc_reset_ctrl_test` |smc |primary/cold/periph reset release under SMU SEP=0
 |`smu_smc_security_demote_pm_test` |smc |SEP=0 demote / lc_state observe-only
@@ -151,10 +152,9 @@ so the map cannot drift away from what the test does.
 |===
 |Population |Count
 |Live test bodies (`cocotb/tests/`) |59
-|Enrolled in `sep0_p4_all` |55
-|Enrolled in `sep0_all` (nightly) |53
+|Enrolled in `sep0_p4_all` |54
+|Enrolled in `sep0_all` (nightly) |52
 |Non-enrolled bodies (`cocotb/tests_deferred/`) |28
-|Non-enrolled catalog entries (`testlists/deferred.toml`) |123
 |===
 
 === Regression Groups
@@ -165,22 +165,23 @@ so the map cannot drift away from what the test does.
 |`smoke` |4 |
 |`top5` |5 |
 |`top10` |11 |
-|`phase1` |49 |
-|`smc` |12 |
+|`phase1` |48 |
+|`smc` |11 |
 |`dtp` |29 |
 |`phase2_smc_dtp` |2 |
-|`phase2` |50 |
+|`phase2` |49 |
 |`phase3_corner` |3 |
 |`phase3` |5 |
 |`fabric` |14 |
 |`phase4_sep0` |19 |
-|`sep0_all` |53 |
-|`sep0_p4_all` |55 |
+|`sep0_all` |52 |
+|`sep0_p4_all` |54 |
 |===
 
-`sep0_all` is the group `.github/workflows/sim.yml` runs as the SMU nightly,
-with three reseeds per test. `smoke` is what pull requests run. `smoke` is not a
-subset of `sep0_all`.
+`sep0_all` is the group `.github/workflows/regress.yml` runs as the SMU
+nightly (one seed per test) and weekly (three seeds per test). `smoke` is what
+pull requests run (`.github/workflows/sim.yml`). `smoke` is not a subset of
+`sep0_all`.
 
 [[smu-known-limitations]]
 === Known Limitations
@@ -188,11 +189,11 @@ subset of `sep0_all`.
 * *`smoke` is not a subset of `sep0_all`.* `smu_ext_boot_seq_gate_test` is in
   `smoke`, `top10`, `smc` and `phase1` but in neither `sep0_all` nor
   `sep0_p4_all`, so the nightly does not run a test every pull request does.
-  Whether it belongs in `sep0_all` or stays pull-request-only is open in #493.
+  #485 keeps it PR-only. Re-enrollment is a later #493 choice.
 
 * *SEP=1 is out of scope here.* Everything in this plan runs with `SEP=0`. The
   dual-firmware SEP-under-SMU work is gated on the SEP instruction-fetch
-  blocker and is catalogued in `testlists/deferred.toml`, not enrolled.
+  blocker and is not ported.
 * *The wrapper is a separate surface.* `--dut smu_wrapper` proves production-pin
   boot and elaboration. Its PASSes are labelled `DUT_TAG=WRAPPER` and are not
   counted as `sep0_all` density evidence.

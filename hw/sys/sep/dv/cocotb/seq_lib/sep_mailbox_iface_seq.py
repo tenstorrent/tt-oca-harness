@@ -7,9 +7,9 @@ the SEP/CPU side of the two-port cross-FIFO, reachable with NO inbound filter. T
 is the TX-path test (as in the reference suite): WRITE_DATA pushes the TX FIFO; READ_DATA
 pops the RX FIFO, which is empty on bare-sep (no peer port wired) -> read returns
 the 0xFEEDDEAD sentinel + SLVERR. Over the CPU-LSU master WRITE_DATA is accessed as
-a single native 64-bit beat = one FIFO entry (a 32-bit sub-word write to WRITE_DATA
-+0x04 SLVERRs; the 32->64 combine exists only on the external 32-bit-downsized
-smn_inbound path, not here). 32-bit CSRs use 4-byte beats.
+a single native 64-bit beat = one FIFO entry. Each register in this block owns a
+whole AxiDataWidth/8 = 8-byte decode range (axi_lite_mailbox.sv:269-272), so the
+push side is addressed only at +0x00. 32-bit CSRs use 4-byte beats.
 
 Register constants + the golden depth model live in env/sep_mbox_golden.py.
 """
@@ -19,7 +19,7 @@ from __future__ import annotations
 from env.sep_axi_agent import SepAxiOp
 from env.sep_mbox_golden import (
     CLOCK_GATE_CTRL,
-    CLOCK_GATE_MAILBOX,
+    CLOCK_GATE_IMPL_MASK,
     CTRL,
     OUTBOUND_BASE,
     READ_DATA,
@@ -37,7 +37,7 @@ class SepMbox(SepAxiRegDriver):
 
     async def ungate_clock(self) -> None:
         cur = await self._rd(CLOCK_GATE_CTRL)
-        await self._wr(CLOCK_GATE_CTRL, cur | CLOCK_GATE_MAILBOX)
+        await self._wr(CLOCK_GATE_CTRL, cur | CLOCK_GATE_IMPL_MASK)
 
     # --- 32-bit CSRs --------------------------------------------------------
     async def wr_csr(self, off: int, val: int) -> None:
@@ -73,6 +73,37 @@ class SepMbox(SepAxiRegDriver):
             length=8,
             size=None,
             expect_error=expect_error,
+        )
+        await self.test.start_seq(seq)
+        return seq.resp_code, seq.rdata
+
+    async def push32(self, byte_off: int, value: int) -> int:
+        """Write 4 bytes into WRITE_DATA at ``byte_off`` (0 or 4).
+
+        A sub-word beat on the 64-bit push register. Every register in this
+        block owns a whole 8-byte decode range, so +0x04 addresses the SAME
+        register as +0x00 rather than a separately addressable high word.
+        Returns the AXI resp_code.
+        """
+        seq = SepAxiAccessSeq(
+            f"mbox_push32_{byte_off:#x}",
+            op=SepAxiOp.WRITE,
+            addr=OUTBOUND_BASE + WRITE_DATA + byte_off,
+            wdata=value,
+            length=4,
+            size=2,
+        )
+        await self.test.start_seq(seq)
+        return seq.resp_code
+
+    async def rd_write_data(self) -> tuple[int, int]:
+        """Read the write-only WRITE_DATA register. Returns (resp, data)."""
+        seq = SepAxiAccessSeq(
+            "mbox_rd_wdata",
+            op=SepAxiOp.READ,
+            addr=OUTBOUND_BASE + WRITE_DATA,
+            length=8,
+            size=None,
         )
         await self.test.start_seq(seq)
         return seq.resp_code, seq.rdata

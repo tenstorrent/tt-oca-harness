@@ -2,9 +2,12 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[fuse-controller-otp-fuse-controller-otp]]
-==== Fuse Controller (OTP)
+==== OTP Fuse Controller
 
 image::SEP_OTP_Fuse_Bank.png[SEP_OTP_Fuse_Bank,scaledwidth=90.0%]
+
+The One-Time Programmable (OTP) fuse controller stores persistent
+chiplet policy.
 
 When SEP is released from reset (chiplet_cold_reset), the sensing FSM
 automatically copies each fuse field into its dedicated memory-mapped
@@ -254,18 +257,18 @@ each required (owner, algorithm) the manifest must carry a signature verified
 against that owner's burned, non-revoked key of that type; all required pairs
 must verify, and any signature from a non-required owner is ignored.
 
-|CHIPLET_PUBK_PQC_HASH0 |24 |256 |true |true |Chiplet owner ML-DSA (PQC)
+|CHIPLET_PUBK_PQC_HASH0 |24 |256 |true |true |Chiplet owner ML-DSA PQC
 authentication key 0 hash, fused. PQC counterpart of CHIPLET_PUBK_HASH0.
 
-|CHIPLET_PUBK_PQC_HASH1 |25 |256 |true |true |Chiplet owner ML-DSA (PQC)
+|CHIPLET_PUBK_PQC_HASH1 |25 |256 |true |true |Chiplet owner ML-DSA PQC
 authentication key 1 hash, fused. PQC counterpart of CHIPLET_PUBK_HASH1.
 
 |SIP_PUBK_PQC_HASH0 |26 |256 |true |true |Hash digest of the SiP owner's
-ML-DSA (PQC) root public key for secure boot (slot 0). PQC counterpart of
+ML-DSA PQC root public key for secure boot (slot 0). PQC counterpart of
 SIP_PUBK_HASH0.
 
 |SYS_PUBK_PQC_HASH |27 |256 |true |true |Hash digest of the system owner's
-ML-DSA (PQC) root public key for secure boot. PQC counterpart of
+ML-DSA PQC root public key for secure boot. PQC counterpart of
 SYS_PUBK_HASH.
 
 |SIP_PUBK_HASH1 |28 |256 |true |true |Hash digest of the SiP owner's root
@@ -273,7 +276,7 @@ public key for secure boot, slot 1. Second slot so the SiP owner retains a
 usable root key after revoking slot 0 via CHIPLET_PUBK_REVOKE[24].
 
 |SIP_PUBK_PQC_HASH1 |29 |256 |true |true |Hash digest of the SiP owner's ML-DSA
-(PQC) root public key for secure boot, slot 1. PQC counterpart of
+PQC root public key for secure boot, slot 1. PQC counterpart of
 SIP_PUBK_HASH1; revocable via CHIPLET_PUBK_REVOKE[25].
 
 |SEP_CHIPLET_ID |30 |256 |true |true |Per-owner chiplet public identity fuse

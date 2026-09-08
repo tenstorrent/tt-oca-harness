@@ -200,7 +200,7 @@ class dtp_dbg_disable_scan_matrix_test_seq(dtp_scan_base_test_seq):
         self.fcov.sample_aux("recovery", context="all_clear_after_all_disabled")
 
         self.fcov.require_cells(SCAN_FIELDS)
-        self.fcov.write_artifact(seed=self.random_seed())
+        self.fcov.write_artifact(seed=self.scenario_seed)
         self.log_summary(
             "Debug-disable scan matrix",
             rows=len(rows),

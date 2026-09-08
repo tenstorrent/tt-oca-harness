@@ -44,7 +44,9 @@ class SmcOutputAxiMonitor(uvm_component):
         self.r_resp_tally = {0: 0, 1: 0, 2: 0, 3: 0, None: 0}
         self.b_resp_tally = {0: 0, 1: 0, 2: 0, 3: 0, None: 0}
         # SYS_OUT slave may inject SLVERR (U1-2); DECERR is never expected.
-        self.allow_slverr = True
+        # Default False: a testcase that expects SYS_OUT SLVERR opts in with
+        # `mon.allow_slverr = True` (smc_output_fabric_slverr_inject_test).
+        self.allow_slverr = False
 
     def snapshot(self) -> dict[str, int]:
         return {

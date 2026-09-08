@@ -4,10 +4,10 @@
 
 SEP=0 honest scope (no sep_in / no Force / no ext_out peer):
   S1  J2A program then readback on instances 0/1/8/15 (DECODE independence)
-  S2  DEFERRED-NOTE only — identical_struct_in_vs_out needs ext_out (SF-239)
-  S3  DEFERRED-NOTE only — outbound pairwise isolation needs ext_out (SF-239)
+  S2  not covered: identical_struct_in_vs_out needs ext_out (SF-239)
+  S3  not covered: outbound pairwise isolation needs ext_out (SF-239)
 
-Commercial SPM/global egress windows replaced by distinct signature ranges;
+Distinct signature ranges stand in for the commercial SPM/global egress windows;
 S1 proves CSR addressing/aliasing only, not egress traffic.
 """
 

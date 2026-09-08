@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Self-contained AES-256-ECB encryption golden for the KM->AES sideload KAT.
+"""Self-contained AES encryption golden: ECB, CBC and CTR at 128/192/256.
+
+Serves the KM->AES sideload KAT and the AES mode x key-size breadth test.
 
 Pure-Python, with no third-party crypto dependency so the environment stays
 self-contained. A

@@ -988,7 +988,7 @@ addrmap sep_efuse_map {
         field {
             sw = r;
             hw = rw;
-            desc = "Chiplet owner ML-DSA (PQC) authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.";
+            desc = "Chiplet owner ML-DSA PQC authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.";
         } key_hash[255:0] = 0x0;
     };
 
@@ -998,7 +998,7 @@ addrmap sep_efuse_map {
         field {
             sw = r;
             hw = rw;
-            desc = "Hash digest of the SiP owner's ML-DSA (PQC) root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.";
+            desc = "Hash digest of the SiP owner's ML-DSA PQC root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.";
         } key_hash[255:0] = 0x0;
     };
 
@@ -1008,7 +1008,7 @@ addrmap sep_efuse_map {
         field {
             sw = r;
             hw = rw;
-            desc = "Hash digest of the system owner's ML-DSA (PQC) root public key for secure boot. PQC counterpart of SYS_PUBK_HASH.";
+            desc = "Hash digest of the system owner's ML-DSA PQC root public key for secure boot. PQC counterpart of SYS_PUBK_HASH.";
         } key_hash[255:0] = 0x0;
     };
 

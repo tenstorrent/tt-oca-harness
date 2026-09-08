@@ -23,9 +23,8 @@ from seq_lib.smu_jtag_helpers import (
 MAP_BASE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_BASE_ADDR")
 MAP_SIZE = smc_addr("SMC_TOP_SMC_EFUSE_MAP_SIZE")
 RESERVED_SYM = "SMC_TOP_SMC_EFUSE_MAP_RESERVED_BASE_ADDR"
-# Spaced, 8-byte-aligned indices. RESERVED[0] is 0xC0007AFC (addr[2]=1);
-# a fabric 4B read there returned 0x0 while OTP+shadow stuck (seed-1).
-# BIRA (0xC0007048) is 8-byte aligned; match that.
+# Spaced indices at 8-byte-aligned addresses: RESERVED[0] is 0xC0007AFC
+# (addr[2]=1), so odd indices align like BIRA (0xC0007048).
 RESERVED_IDX = (1, 9, 17)
 PATTERNS = (0xA11C_E001, 0xB22D_F112, 0xC33E_0223)
 REWRITE0 = 0xD44F_1334

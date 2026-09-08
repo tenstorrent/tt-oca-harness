@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP-local iJTAG and STAP/3DCR reference models.
 
-These models intentionally describe the public OSS DTP testbench shape. The
+These models describe the public OSS DTP testbench shape. The
 external iJTAG instrument scan inputs are looped back from their scan outputs,
 so the SIB model checks routing, security gating, and observable control
 signals without pretending there is an instrument VIP behind the loopback.

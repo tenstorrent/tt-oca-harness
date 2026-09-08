@@ -255,24 +255,6 @@ typedef union {
     uint64_t w;
 } sep_cpu_ctrl__SEP_FUSE_SENSE_STATUS_t;
 
-// reg - sep_cpu_ctrl::SEP_STRAPS
-#define SEP_CPU_CTRL__SEP_STRAPS__TEST_EN_bm 0x1
-#define SEP_CPU_CTRL__SEP_STRAPS__TEST_EN_bp 0
-#define SEP_CPU_CTRL__SEP_STRAPS__TEST_EN_bw 1
-#define SEP_CPU_CTRL__SEP_STRAPS__TEST_EN_reset 0x0
-#define SEP_CPU_CTRL__SEP_STRAPS__BYPASS_MEM_REPAIR_bm 0x2
-#define SEP_CPU_CTRL__SEP_STRAPS__BYPASS_MEM_REPAIR_bp 1
-#define SEP_CPU_CTRL__SEP_STRAPS__BYPASS_MEM_REPAIR_bw 1
-#define SEP_CPU_CTRL__SEP_STRAPS__BYPASS_MEM_REPAIR_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t test_en :1;
-        uint32_t bypass_mem_repair :1;
-        uint32_t :30;
-    } f;
-    uint32_t w;
-} sep_cpu_ctrl__SEP_STRAPS_t;
-
 // reg - sep_cpu_ctrl::SEP_SW_DEBUG
 #define SEP_CPU_CTRL__SEP_SW_DEBUG__SEP_SW_DEBUG_bm 0xffffffff
 #define SEP_CPU_CTRL__SEP_SW_DEBUG__SEP_SW_DEBUG_bp 0
@@ -518,9 +500,7 @@ typedef struct __attribute__ ((__packed__)) {
     sep_cpu_ctrl__SMC_FUSE_SENSE_STATUS_t SMC_FUSE_SENSE_STATUS;
     uint8_t RESERVED_148_14f[0x8];
     sep_cpu_ctrl__SEP_FUSE_SENSE_STATUS_t SEP_FUSE_SENSE_STATUS;
-    uint8_t RESERVED_158_15f[0x8];
-    sep_cpu_ctrl__SEP_STRAPS_t SEP_STRAPS;
-    uint8_t RESERVED_164_177[0x14];
+    uint8_t RESERVED_158_177[0x20];
     sep_cpu_ctrl__SEP_SW_DEBUG_t SEP_SW_DEBUG;
     sep_cpu_ctrl__SEP_NMI_VEC_nmi_vec_a3690e40_t SEP_NMI_VEC;
     sep_cpu_ctrl__SEP_NMI_VEC_LOCK_t SEP_NMI_VEC_LOCK;

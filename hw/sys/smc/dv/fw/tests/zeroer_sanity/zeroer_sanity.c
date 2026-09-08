@@ -66,7 +66,14 @@ int secondary_main(void) {
 
     if (hartid == 0) {
         return main();
-    } else {
+    }
+
+    /* Harts 1-3 park here for the whole run. The loop is required, not
+     * decorative: a `wfi` may return spuriously, so a single one would let the
+     * hart fall out of this function. */
+    while (true) {
         __asm__("wfi");
     }
+
+    return 0;
 }

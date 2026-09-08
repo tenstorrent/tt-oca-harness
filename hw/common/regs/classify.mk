@@ -138,6 +138,8 @@ OCAH_REG_PLAIN_BLOCK_IDS     := $(filter-out $(OCAH_REG_COMPOSITE_BLOCK_IDS),$(O
 # wrapper/top RDLs that include sibling blocks by bare filename. The relocated
 # OpenTitan overlay blocks hmac/kmac/otbn (like edn) pull the shared
 # opentitan_udps.rdl fragment by bare include, so they need the catalog too.
+# smc_cla is a leaf but composes the six generated dfd_<blk> RDLs, which live in
+# the tt-hw-debug overlay include dir the catalog already globs.
 OCAH_REG_CATALOG_SEARCH_BLOCKS ?= \
   edn \
   hmac \
@@ -148,6 +150,7 @@ OCAH_REG_CATALOG_SEARCH_BLOCKS ?= \
   otbn \
   sep_external \
   smc \
+  smc_cla \
   telemetry_receiver_wrap \
   uart_log_engine_wrap \
   uart_wrap

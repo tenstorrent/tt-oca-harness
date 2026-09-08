@@ -7,7 +7,7 @@ Honest SEP=0 scope (no sep_in_master, no Force):
   S2  dual-slot   — inst0 secure + inst1 NS overlap admits both prot[1]
   S3  clear       — BlockByDefault DECERR + poison for both
 
-Commercial FAB_SMC_026 outbound/S4/S5 matrix remains deferred (needs peer master).
+The commercial FAB_SMC_026 outbound/S4/S5 matrix needs a peer master and is not covered.
 """
 
 from __future__ import annotations

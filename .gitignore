@@ -1,6 +1,4 @@
 .venv/
-# VCS classic cocotb 1.9.x stack provisioned by hw/sys/sep/dv/sim/run.sh --tool vcs
-/venv/
 .bender/
 # Bender knowledge-graph cache emitted next to .bender/ by the flist/graph flows
 # (e.g. `make -C hw/sys/smu -f flow.mk ocah-lint-slang-flist`).
@@ -8,14 +6,17 @@
 __pycache__/
 *.pyc
 
-# Optional repositories cloned by make nonfree-init. The bare pattern also
-# covers a symlink into a companion checkout, which "nonfree/" does not match.
-nonfree
-nonfree/
+# Optional repositories cloned by make nonfree-init. No trailing slash, so a
+# symlink into a companion checkout is covered too; anchored, so a nested path
+# that happens to be named nonfree is not.
+/nonfree
 
 # Transient per-block build outputs. The build_ot* variants come from the SEP
-# boot ROM BUILD_DIR overrides (OpenTitan SPI DMA/PIO boot images).
+# boot ROM BUILD_DIR overrides (OpenTitan SPI DMA/PIO boot images); build_dual is
+# the dual-SMC DV tree, kept separate from build/ so concurrent --rebuild runs do
+# not race on bender filelist generation (hw/sys/smc/dv/smc_dual_sim_cfg.toml).
 **/build/
+**/build_dual/
 **/build_ot/
 **/build_ot_pio/
 

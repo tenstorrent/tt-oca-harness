@@ -1,0 +1,1 @@
+../../vendor/chipsalliance/i3c-core/upstream/src/i3c_defines.svh

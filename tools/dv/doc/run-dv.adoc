@@ -11,8 +11,7 @@ builds a concrete stage plan, invokes the selected backend, and writes durable
 logs and schema-version-1 result files.
 
 _Native_ means the flow is owned by this runner end to end — stage plan,
-tool invocation, and results — in contrast to wrapped or external flows such
-as the classic VCS Make/VPI path.
+tool invocation, and results — in contrast to wrapped or external flows.
 
 [NOTE]
 ====
@@ -623,7 +622,8 @@ original tool or history.
 
 Coverage merge/report accepts at most one known target and one known build
 fingerprint. A multi-target run cannot be merged as one coverage database;
-all-unknown legacy input provenance is accepted as a compatibility fallback.
+pass `--target NAME` to compile every selected test on one elaboration.
+All-unknown legacy input provenance is accepted as a compatibility fallback.
 Coverage-only replay resolves the current/default target rather than restoring
 an original non-default target; use replay only when target and build-affecting
 configuration still match. This is especially important for the VCS design
@@ -652,8 +652,12 @@ python3 tools/dv/run_dv.py \
 
 When scheduler mode executes `sim` or `regress`, seeds are fresh random
 positive integers and are recorded in leaf and regression results. `--seed` is
-rejected for those scheduler runs. Reproduce a leaf as a single simulation
-with the recorded item and seed:
+rejected for those scheduler runs. Each cocotb simulation process receives the
+leaf seed as `RANDOM_SEED` and the directory its model was elaborated into as
+`OCAH_SIM_BUILD_DIR` (`<tool>/coverage` under the DUT build directory for a
+`--cov` run), so a test that records which model it simulated reads that
+variable instead of assuming the plain `<tool>` path. Reproduce a leaf as a
+single simulation with the recorded item and seed:
 
 [source,bash]
 ----
@@ -710,7 +714,7 @@ Override them with `--wave-retention {all,failed,none}`. Kept wave directories
 include a copied log and `debug_context.json` with viewer and same-seed replay
 commands.
 
-On VCS (both the cocotb make flow and the standalone UVM flow), dumping is
+On VCS (both the cocotb flow and the standalone UVM flow), dumping is
 driven by a generated UCLI script (`scripts/waves.<test>.ucli`, passed as
 `simv -ucli -i`), so no testbench dump hooks are required. `fsdb` needs Verdi:
 the runner resolves `VERDI_HOME` (explicit env first, then derived from `verdi`
@@ -735,8 +739,8 @@ record the requested range and set `range_supported` to false.
 The standalone UVM/VCS flow gains dump access by elaborating with
 `-debug_access+all` when waves are requested. A waves run that skips
 elaboration (`--stage sim` against a simv built without waves) cannot dump;
-rerun with the elaborate stage included or `--rebuild`. The cocotb make flow
-always compiles with `-debug_access`, so its cached build needs no rebuild.
+rerun with the elaborate stage included or `--rebuild`. cocotb's VCS runner
+always compiles with `-debug_access+all`, so its cached build needs no rebuild.
 If a wave-enabled simulation produces no wave file, the runner prints a
 warning and records it in the run's wave metadata.
 ====
@@ -769,6 +773,11 @@ warning and records it in the run's wave metadata.
 
 |`--run-mode NAME`
 |Override the test/default run mode.
+
+|`--target NAME`
+|Override every selected test's build target. Omitted, each test keeps its
+own target. With `--cov`, a selection that still plans more than one target
+is refused before compile.
 
 |`--overlay PATH`
 |Apply one adopter overlay config (append-only) on top of the merged DUT
@@ -804,8 +813,8 @@ result files.
 Firmware/model preparation may still occur.
 
 |`--rebuild`
-|Request a fresh cocotb model build for the Verilator/Xcelium Python-runner
-paths. The classic VCS Make path remains dependency-driven and incremental.
+|Request a fresh cocotb model build (Verilator, Xcelium, and VCS all go through
+cocotb's Python runner, so `--rebuild` behaves the same on each).
 
 |`--timeout SEC`
 |Bound supported subprocess stages and override the configured simulation-leaf
@@ -1044,33 +1053,61 @@ ambiguous positive evidence produces `UNKNOWN`, which should fail CI closed.
 
 == Continuous integration
 
-The `sim` GitHub workflow (`.github/workflows/sim.yml`) runs simulator jobs on
-GitHub-hosted runners in two tiers:
+Two GitHub workflows run simulator jobs on GitHub-hosted runners. Both run
+each DUT through the composite action `.github/actions/dv-run` (toolchain
+setup, `run_dv.py`, the native result gate, and the artifact upload), so the
+callers differ only in their matrix and tier policy, and a regression-tier
+change can never alter the pull-request gate:
 
 [cols="<2,<4,<5",options="header"]
 |===
-|Tier |Trigger |Behavior
+|Tier |Workflow and trigger |Behavior
 
 |`smoke`
-|`pull_request`, `push` to `main`, default `workflow_dispatch`
-|`--items smoke --sim-jobs 2` for every CI-qualified DUT/tool pair. Target:
-under 30 minutes of wall clock per pull request.
+|`sim.yml`: `pull_request`, `push` to `main`, `workflow_dispatch`
+|`--items smoke --sim-jobs 2` for `dtp`, `sep`, `smu`, and `smc`, 60-minute
+budget per job. Target: under 30 minutes of wall clock per pull request. The
+job names `verilator-smoke (<dut>)` are the stable check contexts.
 
 |`nightly`
-|Daily `schedule` (18:00 UTC), or `workflow_dispatch` with `tier=nightly`
-|Each DUT's configured `nightly_items` group runs with `--reseed 3 --sim-jobs
-4`. DTP (`all`), SEP (`no_cpu`), and SMU (`sep0_all`) collect reference-only
-Verilator coverage; the score is published but does not determine test
-pass/fail. SEP and SMU instrument line/branch/expression/user but not toggle
-coverage (see `[coverage.verilator]` in each DUT's sim config for the sizing
-rationale); DTP uses the simulator default (all forms). SMC runs without
-coverage until separately qualified. Nightly is not a
-merge gate; a red nightly run is a triage signal, and the SEP testlist
-documents the reveals its class regression is expected to carry.
+|`regress.yml`: `schedule` Sunday to Friday at 18:00 UTC, or
+`workflow_dispatch` with `tier=nightly`
+|One random seed per test of each DUT's regression group at `--sim-jobs 4`:
+DTP `all`, SEP `no_cpu`, SMU `sep0_all`; SMC `smoke` and the three
+`cross_trigger` benches' `all` groups run with `--reseed 3`. No coverage; the
+budgets are sized for the standard runner. Nightly is not a merge gate; a red
+nightly run is a triage signal, and the SEP testlist documents the reveals its
+class regression is expected to carry.
+
+|`weekly`
+|`regress.yml`: `schedule` Saturday at 18:00 UTC, or `workflow_dispatch`
+with `tier=weekly`
+|The coverage regression the dashboard publishes. DTP `all` collects
+reference-only Verilator coverage; SEP `no_cpu` and SMU `sep0_all` add
+`--cov` once the repository variable `DV_LARGE_RUNNER` names a larger
+runner, because their coverage-instrumented model builds exceed the standard
+runner's memory, and DTP reseeds three times on that runner. SMC `smoke` and
+the three `cross_trigger` benches' `all` groups run at three seeds with
+coverage. `--sim-jobs` follows the runner core count. The score is published
+but does not determine test pass/fail. SEP, SMU, and DTP instrument
+line/branch/expression/user and SMC line/branch/user, none with toggle, and
+every coverage block compiles the generated model per file
+(`--output-groups 0`; see `[coverage.verilator]` in each DUT's sim config for
+the sizing and build rationale). The `cross_trigger` benches use the
+simulator default (all forms).
 |===
 
-Pull requests never run the `all` regression; the tier is selected by the
-triggering event, so PR cost stays bounded by the smoke group.
+Pull requests never run the `all` regression; `sim.yml` carries only the
+smoke matrix, so PR cost stays bounded by the smoke group. The larger-runner
+promotion is a repository variable rather than a workflow edit:
+
+[source,bash]
+----
+gh variable set DV_LARGE_RUNNER --body ubuntu-latest-16-cores
+----
+
+A label with no matching runner does not fail fast (the job queues until it
+times out), so the default stays the always-present standard runner.
 
 Each job writes an explicit per-run directory
 (`build/ci/runs/<dut>/<tool>/<tier>/<run-id>`; the workflow run id keeps the
@@ -1078,11 +1115,11 @@ recorded run identity unique for downstream trend history), gates on the
 native run-level `result.json` (`schema_version` 1, matching `flow`/`tool`,
 `status` `PASS`). Coverage-enabled jobs additionally require a numeric score
 and recorded report/summary paths, but do not enforce a score threshold. The
-workflow uploads
-`dv-run-<dut>-<tool>-<tier>` with 14-day retention, including on failure;
-per-leaf Verilator `coverage.dat` inputs are excluded after merge while the
-merged coverage report and normalized summary remain. Explicit run directories
-never create or update the `latest` symlink.
+action uploads `dv-run-<dut>-<tool>-<tier>` (14-day retention, 30 for the
+weekly tier), including on failure; per-leaf Verilator `coverage.dat` inputs
+are excluded after merge while the merged coverage report and normalized
+summary remain. Explicit run directories never create or update the `latest`
+symlink.
 
 === CI support matrix
 
@@ -1091,17 +1128,20 @@ never create or update the `latest` symlink.
 |Support level |DUT / tool |Notes
 
 |CI-run
-|`dtp`, `sep`, `smu`, `smc` + Verilator
-|Hosted `sim` matrix at current head. Smoke runs on every pull request and
-push to `main`; nightly reseeds each DUT's `nightly_items` group (`all` /
-`no_cpu` / `sep0_all` / `smoke`). Main protection requires the stable
-`verilator-smoke (dtp)` and `verilator-smoke (sep)` pull-request contexts in
-addition to the GitLab mirror context. A failed, cancelled, or missing DTP or
-SEP smoke result blocks merge. SMU and SMC smoke run in the same matrix but
-are not required contexts.
+|`dtp`, `sep`, `smu`, `smc` + Verilator; `cross_trigger_port`,
+`cross_trigger_matrix`, `cross_trigger_network` + Verilator (regression
+tiers only)
+|Hosted `sim` and `regress` matrices at current head. Smoke runs on every
+pull request and push to `main`; the nightly and weekly tiers run each DUT's
+regression group (`all` / `no_cpu` / `sep0_all` / `smoke`). Main protection
+requires the stable `verilator-smoke (dtp)` and `verilator-smoke (sep)`
+pull-request contexts in addition to the GitLab mirror context. A failed,
+cancelled, or missing DTP or SEP smoke result blocks merge. SMU and SMC smoke
+run in the same matrix but are not required contexts; the `cross_trigger`
+benches are enrolled in the regression tiers only.
 
 |Configured, not CI-qualified
-|`dtp --framework uvm` + VCS; `smu_wrapper` cocotb flow
+|`dtp --framework uvm` + VCS; `sep --framework uvm` + VCS; `smc --framework uvm` + VCS; `smu --framework uvm` + VCS; `smu_wrapper` cocotb flow
 |Valid configs exercised by maintainers with licensed tools or carrying
 historical local results only. Not run by hosted CI; do not add to the
 workflow matrix without a qualifying run at head.
@@ -1125,6 +1165,9 @@ job maps a group to its UVM-implemented subset:
 ----
 python3 tools/dv/run_dv.py --dut dtp --framework uvm --items smoke --skip-unimplemented
 python3 tools/dv/run_dv.py --dut dtp --framework uvm --items jtag2axi --skip-unimplemented
+python3 tools/dv/run_dv.py --dut sep --framework uvm --items smoke --skip-unimplemented
+python3 tools/dv/run_dv.py --dut smc --framework uvm --items smoke --skip-unimplemented
+python3 tools/dv/run_dv.py --dut smu --framework uvm --items smoke --skip-unimplemented
 ----
 
 Each (DUT, framework) pair a DUT implements is one _framework view_: the DUT
@@ -1143,13 +1186,14 @@ validation even in cocotb-only CI.
 
 `--validate-configs` proves config schema consistency across all DUTs; it
 does not qualify a simulator. Qualification evidence for a DUT/tool pair is a
-successful `sim` workflow run at head — link the run URL when promoting a
-pair into the CI-run tier.
+successful `sim` or `regress` workflow run at head — link the run URL when
+promoting a pair into the CI-run tier.
 
 `--cores`, `--mem-mb`, and `--walltime` are executor metadata only and
 enforce nothing locally or in CI. The enforceable controls are the job
-`timeout-minutes` (60 smoke / 90 nightly), the pinned cached Verilator
-build, and the `--sim-jobs`/`--build-jobs` fan-out.
+`timeout-minutes` each caller sets (60 for smoke; per DUT for the regression
+tiers), the pinned cached Verilator build, and the `--sim-jobs`/`--build-jobs`
+fan-out.
 
 == Troubleshooting
 
@@ -1177,7 +1221,11 @@ bridge), so an import failure reported here reproduces in a real run and an
 import that only works with extra ambient packages does not mask one. The
 probe assigns the simulation-time `cocotb.log` attribute the way cocotb's
 initialization does before importing test modules, so modules that touch it
-at import scope are not false-flagged. The
+at import scope are not false-flagged. Modules are probed 20 per child
+interpreter with a 120-second budget per batch; a batch that exceeds it is
+retried once with twice the budget, and only a batch that exceeds both is
+reported as failed. `OCAH_DOCTOR_PROBE_TIMEOUT=<seconds>` replaces the
+per-batch budget on a slow filesystem. The
 shared VIP check imports `ocah_axi_vip` from its in-repo root
 (`hw/common/dv/vip`); no `pip install` of `hw/common/dv` is required. The
 doctor does not check out a license or comprehensively probe Bender, Make,
@@ -1195,13 +1243,6 @@ structured result and absent positive log summary correctly fail closed.
 scheduler may insert a model prebuild, and a cocotb simulation may build its
 model, but the generated filelist and required firmware outputs must already
 exist. Run the missing preparation stages first, or use the implicit path.
-
-=== VCS cannot load cocotb
-
-The classic VCS Make/VPI path currently requires a cocotb version earlier than
-2.0. The runner checks `<repo>/venv/bin/python` before the active interpreter.
-Provision that environment with a compatible cocotb version before selecting
-VCS.
 
 === Coverage was collected but no report appeared
 

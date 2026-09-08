@@ -26,9 +26,9 @@ class dtp_jtag2axi_series_corner_all_bridges_test(dtp_base_test):
         sequences = await self.start_looped_seq(
             dtp_jtag2axi_robustness_test_seq,
             "series_corner_all_bridges",
-            specific_env="DTP_JTAG2AXI_SERIES_CORNER_ALL_BRIDGES_TEST_LOOPS",
+            specific_knob="DTP_JTAG2AXI_SERIES_CORNER_ALL_BRIDGES_TEST_LOOPS",
             default_loops=16,
-            group_env="DTP_JTAG2AXI_TEST_LOOPS",
+            group_knob="DTP_JTAG2AXI_TEST_LOOPS",
             scenario="series_corner_all_bridges",
         )
         for seq in sequences:

@@ -87,12 +87,21 @@ class SepOtbnComputeCfg:
 class SepOtbnCompute(SepOtbn):
     """Load a compute program, stage DMEM operands, execute, read the result."""
 
-    async def run_cell(self, op: str, a: int, b: int) -> tuple[int, int]:
+    async def run_cell(self, op: str, a: int, b: int, expect: int) -> tuple[int, int]:
         await self.load_program(otbn_compute_prog(op))
         await self.write_dmem(0, a)
         await self.write_dmem(4, b)
-        await self.write_dmem(8, 0)
+        # Seed the result word with the golden's exact complement rather than 0.
+        # An `and`/`xor` golden can legitimately be 0, so a zero seed lets a
+        # program that never stores its result pass the comparison. The
+        # complement can never equal the golden, so the sentinel readback below
+        # is a real missing-store detector.
+        sentinel = expect ^ 0xFFFF_FFFF
+        await self.write_dmem(8, sentinel)
         await self.execute()
         err = await self.read_errbits()
         result = await self.read_dmem(8)
+        assert result != sentinel, (
+            f"OTBN {op} left DMEM[8] at the sentinel 0x{sentinel:08x}: no result stored"
+        )
         return err, result

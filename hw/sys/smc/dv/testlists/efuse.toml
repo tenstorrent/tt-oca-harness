@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+[[tests]]
+name = "smc_efuse_otp_clock_test"
+module = "smc_efuse_otp_clock_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smoke", "ci", "project_p0", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_efuse_otp_clock_config_depth_test"
+module = "smc_efuse_otp_clock_config_depth_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "depth_efuse", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_efuse_chip_config_read_test"
+module = "smc_efuse_chip_config_read_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "depth_efuse", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_efuse_map_read_test"
+module = "smc_efuse_map_read_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_efuse_shim_ctrl_test"
+module = "smc_efuse_shim_ctrl_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "pyuvm"]
+run_modes = ["smoke"]
+
+# smc_pll_cgm_awm_config_test — not ported (rtl_placeholder)
+
+[[groups]]
+name = "depth_efuse"
+tests = [
+    "smc_efuse_otp_clock_config_depth_test",
+    "smc_efuse_chip_config_read_test",
+    "smc_efuse_locked_access_interrupt_test",
+    "smc_efuse_boundary_signals_test",
+    "smc_efuse_read_program_timeout_test",
+]

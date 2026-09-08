@@ -13,7 +13,7 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_hang_detector_plic_route_test(smc_base_test):
-    """peripheral_interrupts[31] carries the hang OR into cpu_interrupts."""
+    """peripheral_interrupts[30] carries the hang OR into cpu_interrupts."""
 
     auto_protocol_vip = False
 

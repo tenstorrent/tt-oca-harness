@@ -23,6 +23,36 @@ tools = ["verilator", "xcelium", "vcs"]
 path = "testlists/all.toml"
 format = "toml_list"
 
+# The vendored adams_bridge abr_reg has two immediate assertions on
+# external_wr_ack / external_rd_ack (abr_reg.sv). They fire once at t=0 fs,
+# before reset releases, because the ack strobes are still X and an X fails
+# `assert(!ack || ...)`. Benign X-init in third-party IP whose datapath OSS DV
+# does not exercise.
+#
+# They live in the POST-reset branch of an always_ff, so they are REAL runtime
+# protocol checks -- waiving them by file:line alone would also hide a genuine
+# runtime violation. Two patterns are therefore needed, and they work as a pair:
+#
+#   ignore    -- drops the "Error:" line, which VCS prints WITHOUT a timestamp.
+#   hard-fail -- the companion line DOES carry the timestamp
+#                ("...abr_reg.sv", 67: ...: started at 0fs failed at 0 fs).
+#                Matching "failed at <non-zero>" turns any post-time-0 firing of
+#                those exact assertions back into a hard failure.
+#
+# So the t=0 X-init noise is waived and nothing else is: a real runtime abr_reg
+# violation still fails the run, loudly, on the timestamped line.
+#
+# ($assertoff in the TB does not work here -- it races the always_ff's own
+# time-0 evaluation and the assertion fires first.)
+[pass_fail]
+extra_ignore_patterns = [
+  'abr_reg\.sv.*at time 0',
+  'abr_reg\.sv", (67|69):',
+]
+extra_hard_fail_patterns = [
+  'abr_reg\.sv", (67|69):.*failed at [1-9]',
+]
+
 [native.stages.clean]
 kind = "clean"
 paths = ["{run_dir}", "hw/sys/sep/dv/build"]
@@ -47,23 +77,16 @@ sources = [
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32_wb.sv",
   "hw/sys/sep/dv/tb/sep_outbound_mbx.sv",
   # Clean-room AXI4 protocol checker, instantiated on the m_axi and s_axi
-  # buses at the foot of tb_top. Assertion bodies are guarded by
-  # OCAH_INC_ASSERT, which Verilator does not define, so it elaborates to an
-  # empty module there and the rules are live only under VCS.
+  # buses at the foot of tb_top. The Verilator targets pass no --assert, so
+  # Verilator drops its two-state rules; the X-hygiene rules are gated by
+  # OCAH_INC_ASSERT, which Verilator does not define. The rules are live
+  # under VCS.
   "hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv",
-  # After bender flist so abr_wrapper_key_reg_pkg is already declared (see exclude_files).
-  "hw/sys/sep/dv/shims/crypto/abr_wrapper_key_reg_stub.sv",
-]
-# PeakRDL abr_wrapper_key_reg miscompiles under Verilator 5.046 (nested-struct
-# aggregate / hwif_in tied-'0 fold -> missing __PVT__MLKEM_SHARED_KEY). Drop the
-# generated block from every target's bender flist; the stub above replaces it.
-# Package files (*_reg_pkg.sv) stay — substring match is on this exact basename.
-exclude_files = [
-  "hw/ip/key_manager/regs/gen/sv/abr_wrapper_key_reg.sv",
 ]
 # `stubs` are Verilator/VCS-compat overrides, listed ahead of
-# the bender filelist so -Wno-MODDUP "first definition wins" selects them. prim_sync2 retargets
-# the public prim_flop_2sync (it imports NO packages, so prepending it is safe).
+# the bender filelist so -Wno-MODDUP "first definition wins" selects them.
+# The analog RO shim is the only prepended override (no package imports).
+# SEP uses the product prim_sync2 (hw/common/och_prim/rtl/prim_sync2.sv).
 #
 # The sep_cpu stub is NOT prepended: it imports DUT packages (sep_pkg/el2_pkg) that are declared
 # only inside the bender filelist, so a prepended copy would reference them before declaration.
@@ -72,7 +95,6 @@ exclude_files = [
 # where every DUT package is already declared. The stub is then the single sep_cpu definition (no
 # MODDUP), and the full-CPU `default` target keeps the real sep_cpu untouched.
 stubs = [
-  "hw/sys/sep/dv/shims/prim/prim_sync2.sv",
   "hw/sys/sep/dv/shims/analog/entropy_ring_oscillator.sv",
 ]
 filelist = "hw/sys/sep/dv/build/sep_dut_compile.f"
@@ -127,19 +149,64 @@ public_scope = "hw/sys/sep/dv/sep_public_scope.vlt"
 # it lets the write-path loop settle to the same fixed point VCS/trace reach.
 extra_args = ["-fno-dfg"]
 
+[coverage.vcs]
+# Restate the simulator defaults (`-cm`, `-cm_dir`) because a DUT table replaces
+# the list rather than appending to it, then add the scope file.
+#
+# VCS-only because only this table applies the compile-time scope. A `--cov`
+# run on another simulator grades an unscoped denominator. Coverage runs take
+# `--target default` (one full-CPU elaboration; no_cpu force-splices the LSU
+# VIP). Edit `sep_cov_scope.hier` then `--rebuild` -- the file is not
+# fingerprinted.
+#
+# Scope has to be applied at COMPILE time. `urg -hier` prunes the report pages
+# but still computes the headline score over the whole database, so the only way
+# to keep the testbench out of the number is to keep it out of the database:
+# `-cm_hier` limits what gets instrumented. That also shrinks the per-leaf
+# databases and the sim time.
+#
+# The per-leaf dump is the inherited `[vcs.coverage_defaults].sim_args`
+# (`-cm` + `-cm_dir {cov_dir}/simv.vdb`). Do not restate it here: an identical
+# list is a deprecated duplicate and the runner refuses the config.
+compile_args = [
+  "-cm",
+  "line+cond+tgl+fsm+branch+assert",
+  "-cm_dir",
+  "{build_cov_dir}",
+  "-cm_hier",
+  "{repo_root}/hw/sys/sep/dv/cov/config/vcs/sep_cov_scope.hier",
+  # Extends the SAME scope file from code coverage to assertion coverage.
+  # `-cm_hier` alone governs line/cond/fsm/tgl/branch only, so without this the
+  # excluded hierarchy is gone from the code metrics but still graded for
+  # assertions -- measured on the merged database: sep_cpu, u_m_axi_sva and
+  # u_s_axi_sva each reported an ASSERT score with every code column `--`.
+  # `-cm_common_hier` is a Limited Customer Availability feature; VCS refuses the
+  # compile without `-lca` ("The '-cm_common_hier' flow requires a special
+  # option"). No extra licence is needed -- only the opt-in switch.
+  "-lca",
+  "-cm_common_hier",
+]
+
+# Records the measured toggle-instrumentation cost so a future Verilator
+# coverage flow does not rediscover it. That run needs its own scope story
+# before its number is quotable.
 [coverage.verilator]
-# Instrument line/branch (--coverage-line), expression, and SVL user coverage;
-# toggle instrumentation stays off for this DUT. On this model toggle points
-# are ~95% of the coverage database (~0.5 GB per test leaf, tens of GB across
-# a reseeded regression before merge) and the costliest instrumentation at sim
-# time; without toggle the same regression's coverage stays in the low GB
-# range and fits standard CI runner disk. Replaces the simulator-default
-# `--coverage` (which enables all forms including toggle).
-build_args = ["--coverage-line", "--coverage-expr", "--coverage-user"]
+# Not the graded number. Only [coverage.vcs] applies the compile-time scope.
+# `--cov --tool verilator` fails C++ compile on 5.046 (`__PVT__MLKEM_SHARED_KEY`
+# under `VM_COVERAGE=1`); 5.050 compiles.
+# Toggle stays off: on this model it is ~95% of the database (~0.5 GB per leaf)
+# and the costliest sim instrumentation. Replaces the simulator-default
+# `--coverage`.
+# --output-groups 0 compiles the generated .cpp files one by one instead of
+# in --build-jobs groups. Verilator groups by file count, and on a
+# coverage-instrumented model one group can become a translation unit of
+# several hundred MB that a hosted runner cannot compile (measured on SMC).
+build_args = ["--coverage-line", "--coverage-expr", "--coverage-user", "--output-groups", "0"]
 
 [frameworks.cocotb]
-# Flow-first layout: cocotb env/seq_lib/tests live under cocotb/ (room for a
-# future uvm/ sibling). python_root puts env/ + seq_lib/ on the import path.
+# Flow-first layout: cocotb env/seq_lib/tests live under cocotb/, the SV-UVM
+# realization under its uvm/ sibling. python_root puts env/ + seq_lib/ on the
+# import path.
 python_root = "hw/sys/sep/dv/cocotb"
 test_dir = "hw/sys/sep/dv/cocotb/tests"
 # Shared cocotb VIP (ocah_spi_vip, ocah_axi_vip, ...) lives at hw/common/dv/vip;
@@ -230,6 +297,9 @@ outputs = [
 # NOTE: as in [c_build.default], argv goes through str.format() and the runlib
 # rejects every placeholder except {fw_target} -- braces of any kind, including
 # shell ${...} expansion, are unavailable here. Use "$VAR" and $(...) instead.
+# DCCM_SCRUB_BYTES is left at the product default here, as it now is in every
+# boot_rom variant: vector.S's scrub establishes DCCM's ECC itself, which is what
+# happens on silicon, so the testbench does not stand in for it.
 cwd = "."
 argv = [
   "bash",
@@ -274,11 +344,30 @@ outputs = [
 # unimplemented sep_external aperture, the bus error raises NMI, and the CPU
 # leaves the boot flow through the reset NMI vector in ICCM. Clearing both keeps
 # the linked bootcode to what the open DUT implements.
+# DCCM_SCRUB_BYTES is left at the product default (0x20000, matching vector.S's
+# own #ifndef fallback). vector.S scrubs all 128KiB of DCCM before the C runtime
+# starts, and because a store writes its ECC, that scrub is what establishes
+# DCCM's ECC state -- on silicon, where DCCM powers up with random contents and
+# random ECC, and here.
+#
+# This variant used to override it to 0 and let the testbench's backdoor TCM load
+# supply ECC instead (tb_top.sv writes bd_riscv_ecc32 alongside every preloaded
+# word), on the grounds that the scrub then bought no coverage. Two reasons that
+# is no longer done: it substitutes the testbench for firmware on a step the
+# firmware owns, and it masked the ROM's own check -- the preload put the correct
+# g_data_init value into DCCM, which is exactly what
+# rom_check_runtime_init_or_fail() reads to prove vector.S's .data copy ran, so a
+# broken copy loop would still have passed.
+#
+# The scrub costs 2047 cycles on sep_rom_non_secure_boot_test (923653 with it vs
+# 921606 without, same test and ROM), i.e. 0.22%. An earlier version of this
+# comment claimed ~3.9x wall clock; that figure never reconciled with observed
+# run times and was wrong.
 cwd = "."
 argv = [
   "bash",
   "-lc",
-  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_TC\" ]; then for c in /tools_soc/opensrc/riscv-gnu-toolchain/2025.01.20-rhel-8.10/bin \"$HOME\"/.local/opt/xpack-riscv-none-elf-gcc-*/bin; do if [ -x \"$c/riscv64-unknown-elf-gcc\" ]; then RV_TC=\"$c\"; RV_PFX=riscv64-unknown-elf-; break; fi; if [ -x \"$c/riscv-none-elf-gcc\" ]; then RV_TC=\"$c\"; RV_PFX=riscv-none-elf-; break; fi; done; fi; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; ROM_DIR=hw/sys/sep/bootrom/prod; if [ -n \"$RV_TC\" ] && \"$RV_TC/$RV_PFX\"gcc -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then GCC_P=$(printf %s \"$RV_PFX\" | sed 's/-$//'); make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= ot-toolchain-images GCC_PREFIX=\"$RV_TC/$GCC_P\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] host toolchain has no picolibc; building the OT boot ROM in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX ./scripts/docker-run.sh run-here make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= ot-toolchain-images; else echo \"error: no picolibc-enabled RISC-V toolchain and no scripts/docker-run.sh\" >&2; exit 1; fi; make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= pack-images secure_boot_spi",
+  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; RV_PFX=\"$RISCV_PREFIX\"; if [ -z \"$RV_TC\" ]; then for c in /tools_soc/opensrc/riscv-gnu-toolchain/2025.01.20-rhel-8.10/bin \"$HOME\"/.local/opt/xpack-riscv-none-elf-gcc-*/bin; do if [ -x \"$c/riscv64-unknown-elf-gcc\" ]; then RV_TC=\"$c\"; RV_PFX=riscv64-unknown-elf-; break; fi; if [ -x \"$c/riscv-none-elf-gcc\" ]; then RV_TC=\"$c\"; RV_PFX=riscv-none-elf-; break; fi; done; fi; if [ -z \"$RV_PFX\" ]; then RV_PFX=riscv64-unknown-elf-; if [ -n \"$RV_TC\" ] && [ ! -x \"$RV_TC/riscv64-unknown-elf-gcc\" ] && [ -x \"$RV_TC/riscv-none-elf-gcc\" ]; then RV_PFX=riscv-none-elf-; fi; fi; ROM_DIR=hw/sys/sep/bootrom/prod; if [ -n \"$RV_TC\" ] && \"$RV_TC/$RV_PFX\"gcc -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then GCC_P=$(printf %s \"$RV_PFX\" | sed 's/-$//'); make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= ot-toolchain-images GCC_PREFIX=\"$RV_TC/$GCC_P\" RISCV_TOOLCHAIN=\"$RV_TC\" RISCV_PREFIX=\"$RV_PFX\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] host toolchain has no picolibc; building the OT boot ROM in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX ./scripts/docker-run.sh run-here make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= ot-toolchain-images; else echo \"error: no picolibc-enabled RISC-V toolchain and no scripts/docker-run.sh\" >&2; exit 1; fi; make -C \"$ROM_DIR\" NONFREE_ROOT= NONFREE_BOOTCODE_SOURCES= pack-images secure_boot_spi encrypted_boot_spi",
 ]
 outputs = [
   "hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
@@ -288,6 +377,11 @@ outputs = [
   "hw/sys/sep/bootrom/prod/build_ot/boot_rom.sym",
   "hw/sys/sep/bootrom/prod/build/non_secure_boot.bin",
   "hw/sys/sep/bootrom/prod/build/secure_boot.bin",
+  # The SMC-SRAM staged image, produced by the same `pack-images` rule as the two
+  # .bin files above. Declared because sep_boot_recovery_test passes it as
+  # +sep_smc_mem_hex, and an undeclared input would let `--stage sim` start and
+  # then die inside $readmemh instead of failing the output check.
+  "hw/sys/sep/bootrom/prod/build/smc_mem.hex",
 ]
 
 [c_build.boot_rom_ot_pio]
@@ -307,6 +401,9 @@ outputs = [
 # The same toolchain probe is duplicated in five argv blocks; a fix must be
 # applied in all five. Folding it into a script under tools/dv/ would also
 # retire the no-braces constraint.
+# DCCM_SCRUB_BYTES is left at the product default, as in every boot_rom variant.
+# See [c_build.boot_rom_ot] for why the testbench no longer supplies DCCM's ECC
+# in place of vector.S's scrub.
 cwd = "."
 argv = [
   "bash",
@@ -370,7 +467,7 @@ description = "CPU firmware boot: VeeR EL2 owns its master buses and fetches fir
 timeout_sec = 3600
 args = ["+cpu_boot"]
 
-# One [targets.<name>] owns both compile and run knobs.
+# One [targets.<name>] merges the former [compile_targets]/[run_targets] split.
 # Tool-specific flags live under [targets.<name>.tools.<tool>].
 # cocotb's runner forces a global --public-flat-rw. The runlib cocotb_public_scope() integration
 # drops it and substitutes the scoped public config in `public_scope` above, because cocotb only
@@ -393,7 +490,9 @@ args = ["+cpu_boot"]
 #   * default            (cpu_all_live)     : full VeeR CPU; m_axi + j_axi live.
 #   * lsu_stub_all_live  (CPU stubbed)      : no VeeR; m_axi + j_axi live.
 #
-# Daily commit/push validation is three class regressions, not one mixed `all` run:
+# Daily commit/push validation is the two class regressions, not one mixed `all`
+# run. `rom_fw` is a separate owner's class, not a member of `all`; run it only
+# when Boot ROM firmware is in scope:
 #   python3 tools/dv/run_dv.py --dut sep --items no_cpu --regress \
 #       --tool verilator --stage flist --stage hdl_compile --stage sim
 #   python3 tools/dv/run_dv.py --dut sep --items cpu --regress \
@@ -406,9 +505,9 @@ args = ["+cpu_boot"]
 # no_cpu, and bounds CPU firmware fanout while keeping the Verilator model
 # single-threaded by default.
 #
-# `default` is the FALLBACK target -- unassigned tests + every cpu test land here safely
-# (full CPU supports both run modes). no_cpu tests select lsu_stub_all_live for the sim
-# speedup.
+# `default` is the FALLBACK target. On VCS the full CPU supports both run modes:
+# no_cpu force-splices the LSU VIP. Verilator no_cpu still selects
+# lsu_stub_all_live. Coverage runs pass `--target default`.
 #
 # NOTE: the common Verilator -Wno-fatal/UNOPTFLAT/... flags come from the profile's
 # [target_defaults.default] (native.toml). Each target re-states the three SEP -Wno flags;
@@ -420,10 +519,6 @@ defines = [
   "SEP_SMN_INBOUND_AXI_LIVE",
   "SEP_JTAG_AXIL_LIVE",
 ]
-# abr_wrapper_key_reg stub swap is DUT-wide ([build].exclude_files + sources):
-# sep_crypto_abr_wrapper instantiates u_abr_key_csr again; Verilator still cannot
-# compile the PeakRDL-generated block (see shims/crypto/abr_wrapper_key_reg_stub.sv).
-
 [targets.default.tools.verilator]
 flags = [
   # PeakRDL reg blocks reset their axil_resp_buffer struct-array via an NBA in a
@@ -478,3 +573,57 @@ sources = [
 
 [targets.lsu_stub_all_live.tools.verilator]
 flags = ["-Wno-BLKLOOPINIT", "-Wno-UNUSEDSIGNAL", "-Wno-UNUSEDPARAM"]
+
+# SystemVerilog UVM view (`--dut sep --framework uvm`, VCS): the same DUT recipe
+# (Bender targets, stubs) with the shared framework library and AXI VIP
+# manifests ahead of the DUT sources, the
+# SEP-local TB interface, and the two bench packages. A framework `[build]` list
+# replaces the DUT-level one rather than appending to it, so the TB collateral
+# both flows compile is restated here; the AXI protocol SVA comes from the VIP
+# manifest, and the picorv32 KM core is left to the Bender flist (VCS rejects
+# a module declared twice). The tool allowlist is restated because the DUT's
+# top-level `tools` list would otherwise override the profile's.
+[frameworks.uvm]
+description = "SEP SV-UVM smoke flow (VCS)"
+default_tool = "vcs"
+tools = ["vcs"]
+
+[frameworks.uvm.build]
+source_lists = [
+  "hw/common/dv/vip/ocah_lib/uvm/sources.toml",
+  "hw/common/dv/vip/ocah_axi_vip/uvm/sources.toml",
+]
+filelist = "hw/sys/sep/dv/build/uvm/sep_uvm_compile.f"
+bender_filelist = "hw/sys/sep/dv/build/uvm/sep_uvm_bender.f"
+work_dir = "hw/sys/sep/dv/build/uvm"
+# hw/sys/sep/regs/gen/svh carries the generated register header sep_env_pkg
+# includes for addresses, reset values, and field masks.
+incdirs = [
+  "hw/sys/sep/dv/tb",
+  "hw/common/assert",
+  "hw/sys/sep/regs/gen/svh",
+  "hw/sys/sep/dv/uvm/env",
+  "hw/sys/sep/dv/uvm/seq_lib",
+  "hw/sys/sep/dv/uvm/tests",
+]
+sources = [
+  "hw/sys/sep/dv/tb/sep_outbound_mbx.sv",
+  "hw/sys/sep/dv/tb/sep_tb_if.sv",
+  "hw/sys/sep/dv/uvm/env/sep_env_pkg.sv",
+  "hw/sys/sep/dv/uvm/seq_lib/sep_seq_lib_pkg.sv",
+]
+
+[frameworks.uvm.sim]
+args = ["+UVM_VERBOSITY=UVM_MEDIUM"]
+
+# The no_cpu scenarios select target = "lsu_stub_all_live" (CPU stubbed, the
+# stub is the sole LSU driver); the full-CPU default target force-splices the
+# LSU request on VCS. Both share one SV-UVM build tree, partitioned by input
+# fingerprint like the cocotb targets.
+[frameworks.uvm.targets.default]
+description = "SEP SV-UVM full-CPU target"
+build_dir = "hw/sys/sep/dv/build/uvm"
+
+[frameworks.uvm.targets.lsu_stub_all_live]
+description = "SEP SV-UVM no_cpu target: CPU stubbed, LSU driven by the shared AXI VIP master"
+build_dir = "hw/sys/sep/dv/build/uvm"

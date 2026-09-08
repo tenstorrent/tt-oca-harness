@@ -33,7 +33,7 @@ resets the primary TAP, and drives stimulus through the OCAH BFMs:
 . *Stimulus*: standard protocols use the unified OCAH VIP wrappers — `ocah_jtag_vip`
 (`OcahJtagMasterDriver`) for the JTAG TAP, and `ocah_axi_vip` (`OcahAxiSlaveAgent`, AXI-Lite wrappers,
 `OcahAxiLiteMasterAgent`) for the SMC fabric / OTP debug and XTRIG CSR buses. DTP-specific
-protocols (boundary-scan / STAP loopbacks, IEEE 1687 iJTAG SIB networks, OCH CTP/CTM)
+protocols (boundary-scan / STAP loopbacks, IEEE 1687 iJTAG SIB networks, OCAH CTP/CTM)
 use OCAH-local models in `env/` (see Open-Source BFM Policy).
 . *Checking*: a scoreboard / reference model compares observed TAP scan data, AXI
 transactions, and cross-trigger routing against expected behavior. Unless a procedure
@@ -74,8 +74,8 @@ selectable in the public testlists.
 |Boundary scan loopback |OCAH-local scan responder in `env/`
 |STAP host ports |`ocah_jtag_vip` reactive slave devices (one downstream TAP per port, test-attached; wire loopback otherwise)
 |IEEE 1687 iJTAG SIB networks |OCAH-local iJTAG SIB model in `env/`
-|OCH CTP protocol |OCAH-local CTP BFM in `env/`
-|OCH CTM routing |OCAH-local CTM BFM and monitors in `env/`
+|OCAH CTP protocol |OCAH-local CTP BFM in `env/`
+|OCAH CTM routing |OCAH-local CTM BFM and monitors in `env/`
 |===
 
 === Scenario-Expanded Test Summary
@@ -1207,7 +1207,7 @@ a. Verify TMP_STATUS[1] = 0 after the escape.
 a. Verify `jtag_ic_reset_ovrd_o[0]` = 1 (= `!reset_enable[0]`) and `jtag_ic_reset_ctrl_n_o[0]` = 0.
 b. Set RESET_ENABLE[0]=1 (disable override); verify `jtag_ic_reset_ovrd_o[0]` = 0 (upstream reset passes through), confirming the active-low `ovrd_o = !reset_enable` mapping.
 . Set RESET_HOLD=0 with a known RESET_ENABLE / RESET_CONTROL pattern; Update-DR.
-. Force Test-Logic-Reset (TLR); re-read IC_RESET.
+. Force TLR (Test-Logic-Reset); re-read IC_RESET.
 a. Verify the programmed pattern is preserved.
 . Repeat reset_hold=0 TLR preservation with seeded random enable/control patterns.
 . Set RESET_HOLD=1 with a non-default pattern; force TLR and verify IC_RESET returns to its default all-ones value and override outputs deassert.

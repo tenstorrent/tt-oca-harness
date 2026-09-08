@@ -22,6 +22,11 @@ class smc_i2c_error_fifo_depth_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.I2C,
             type(self).__name__,
+            # Conservative stimulus floor: 59 accesses observed in the retained
+            # regression run; the I2C STATUS/FIFO polls are a timing-dependent
+            # remainder, so the floor is set below the observed count. Literal
+            # here, not read from `seq.accesses`.
+            min_csr_accesses=45,
             csr_accesses=seq.accesses,
             proxy=False,
             details="I2C0 LSIO SCL/SDA release and pull-low behavior checked",

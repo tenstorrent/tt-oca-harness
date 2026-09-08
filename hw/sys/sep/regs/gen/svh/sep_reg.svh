@@ -3705,8 +3705,6 @@ localparam int unsigned SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_REG_OFFSET           
 localparam int unsigned SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_REG_ADDR                                               = 32'h10A30140;
 localparam int unsigned SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_REG_OFFSET                                             = 32'h00000150;
 localparam int unsigned SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_REG_ADDR                                               = 32'h10A30150;
-localparam int unsigned SEP_CPU_CTRL_SEP_STRAPS_REG_OFFSET                                                        = 32'h00000160;
-localparam int unsigned SEP_CPU_CTRL_SEP_STRAPS_REG_ADDR                                                          = 32'h10A30160;
 localparam int unsigned SEP_CPU_CTRL_SEP_SW_DEBUG_REG_OFFSET                                                      = 32'h00000178;
 localparam int unsigned SEP_CPU_CTRL_SEP_SW_DEBUG_REG_ADDR                                                        = 32'h10A30178;
 localparam int unsigned SEP_CPU_CTRL_SEP_NMI_VEC_REG_OFFSET                                                       = 32'h00000180;
@@ -4398,7 +4396,6 @@ localparam longint unsigned SEP_CPU_CTRL_SMU_GLOBAL_BASE_ADDR_REG_DEFAULT       
 localparam longint unsigned SEP_CPU_CTRL_SMU_REGION_SIZE_REG_DEFAULT                                              = 64'h0000000040000000;
 localparam longint unsigned SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_REG_DEFAULT                                        = 64'h0000000000000000;
 localparam longint unsigned SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_REG_DEFAULT                                        = 64'h0000000000000000;
-localparam longint unsigned SEP_CPU_CTRL_SEP_STRAPS_REG_DEFAULT                                                   = 32'h00000000;
 localparam longint unsigned SEP_CPU_CTRL_SEP_SW_DEBUG_REG_DEFAULT                                                 = 64'h0000000000000000;
 localparam longint unsigned SEP_CPU_CTRL_SEP_NMI_VEC_REG_DEFAULT                                                  = 64'h00000000C0000100;
 localparam longint unsigned SEP_CPU_CTRL_SEP_NMI_VEC_LOCK_REG_DEFAULT                                             = 64'h0000000000000000;
@@ -5523,7 +5520,7 @@ localparam int unsigned ENTROPY_SOURCE_SHA256_STATUS_BUSY_SHIFT                 
 localparam int unsigned ENTROPY_SOURCE_SHA256_STATUS_INPUT_COUNT_MASK                                             = 32'hF0;
 localparam int unsigned ENTROPY_SOURCE_SHA256_STATUS_INPUT_COUNT_SHIFT                                            = 4;
 
-localparam int unsigned ENTROPY_SOURCE_SHA256_STATUS_OUTPUT_COUNT_MASK                                            = 32'h700;
+localparam int unsigned ENTROPY_SOURCE_SHA256_STATUS_OUTPUT_COUNT_MASK                                            = 32'hF00;
 localparam int unsigned ENTROPY_SOURCE_SHA256_STATUS_OUTPUT_COUNT_SHIFT                                           = 8;
 
 localparam int unsigned ENTROPY_SOURCE_FIFO_CTRL_ENABLE_MASK                                                      = 32'h1;
@@ -6599,12 +6596,6 @@ localparam     int unsigned SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_SMC_FUSE_SENSE_DO
 
 localparam longint unsigned SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_SEP_FUSE_SENSE_DONE_MASK                           = 64'h1;
 localparam     int unsigned SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_SEP_FUSE_SENSE_DONE_SHIFT                          = 0;
-
-localparam int unsigned SEP_CPU_CTRL_SEP_STRAPS_TEST_EN_MASK                                                      = 32'h1;
-localparam int unsigned SEP_CPU_CTRL_SEP_STRAPS_TEST_EN_SHIFT                                                     = 0;
-
-localparam int unsigned SEP_CPU_CTRL_SEP_STRAPS_BYPASS_MEM_REPAIR_MASK                                            = 32'h2;
-localparam int unsigned SEP_CPU_CTRL_SEP_STRAPS_BYPASS_MEM_REPAIR_SHIFT                                           = 1;
 
 localparam longint unsigned SEP_CPU_CTRL_SEP_SW_DEBUG_SEP_SW_DEBUG_MASK                                           = 64'hFFFFFFFF;
 localparam     int unsigned SEP_CPU_CTRL_SEP_SW_DEBUG_SEP_SW_DEBUG_SHIFT                                          = 0;
@@ -8435,7 +8426,7 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [2:0]   output_count ;
+    logic [3:0]   output_count ;
     logic [3:0]   input_count ;
     logic [2:0]   rsvd_0 ;
     logic [0:0]   busy ;
@@ -9586,13 +9577,6 @@ typedef struct packed {
 typedef struct packed {
     logic [0:0]   sep_fuse_sense_done ;
 } sep_cpu_ctrl_sep_fuse_sense_status_reg_t;
-
-
-
-typedef struct packed {
-    logic [0:0]   bypass_mem_repair ;
-    logic [0:0]   test_en ;
-} sep_cpu_ctrl_sep_straps_reg_t;
 
 
 

@@ -209,7 +209,7 @@ ifdef::backend-pdf[]
 include::../../../ip/entropy_source/regs/gen/adoc/entropy_source.adoc[]
 endif::backend-pdf[]
 
-==== DRBG (CSRNG and EDN)
+==== DRBG
 
 The DRBG wraps a CSRNG (AES-CTR-DRBG per NIST SP 800-90A) and an EDN
 (see <<drbg,Architecture>>). Their register maps are reported here.

@@ -123,9 +123,7 @@ class dtp_ijtag_scan_test_seq(dtp_scan_base_test_seq):
 
     async def run_dft(self) -> None:
         self.log_banner("iJTAG DFT secure/non-secure access")
-        # Non-secure DFT only.
         await self.check_pattern(0b010, context="dft.nonsecure_only")
-        # Secure DFT only.
         await self.check_pattern(0b100, context="dft.secure_only")
         gate_cases = [
             ("secure_gated", 0b100, {"dft_secure": 1}),

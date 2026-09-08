@@ -4,10 +4,12 @@
 [[smu-deferred-disposition]]
 == SMU deferred and OUT disposition
 
-This table is the v0.5.0 source of truth for every named entry in
-`testlists/deferred.toml`. The file is not included by `testlists/all.toml`.
-Nothing in it is enrolled in `sep0_all` or the wrapper regressions, and a
-raise stub must not be reported as PASS.
+This table is the v0.5.0 source of truth for every name that was catalogued
+in the removed `testlists/deferred.toml` ledger; with that file gone, this
+document is the record. Nothing listed here is enrolled in `sep0_all` or the
+wrapper regressions, and a raise stub must not be reported as PASS. The bodies
+themselves live under `cocotb/tests_deferred/`, each carrying its blocker in
+its docstring.
 
 Buckets:
 
@@ -16,14 +18,14 @@ Buckets:
 * `child-TB-owned` — protocol or CPU depth belongs to the SMC, SEP, or DTP TB.
 * `waived` — superseded, toggle-as-pass, stimulus-pin gap, or leftover catalog name.
 
-Related enrolled-set work that is *not* a deferred.toml restore:
+Related enrolled-set work that is *not* a restore from this catalog:
 
-* #490 / #491 re-enable or prove no-Force JTAG2AXI, OTP, filter, and ATOP on names that are already in `fabric.toml` / `dtp.toml`.
+* The enrolled no-Force JTAG2AXI / OTP / filter set is `sep0_all` and is recorded in `SMU_SEP0_COMPONENT_SIGNOFF.adoc` (#490). ATOP reject is OUT (#491).
 * #493 decides whether `smu_ext_boot_seq_gate_test` (in `smoke` / `phase1`, not in `sep0_all`) belongs on the nightly.
-* `smu_smc_mailbox_int_test` is enrolled in the `smc` group and is not in `deferred.toml`. Adding it to `sep0_all` is an enrollment question for #481, not a restore.
+* `smu_smc_mailbox_int_test` is enrolled in the `smc` group and is not in this catalog. It stays OUT of `sep0_all` (#481).
 
 Live group counts in `testlists/all.toml`, `README.md`, and `SMU_VPLAN.adoc`
-must stay aligned: `phase1` = 49, `sep0_all` = 53, deferred catalog = 123.
+must stay aligned: `phase1` = 48, `sep0_all` = 52, deferred catalog = 123.
 
 [cols="3,2,2,2,5",options="header"]
 |===

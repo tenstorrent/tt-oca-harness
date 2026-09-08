@@ -2120,8 +2120,6 @@ SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_REG_OFFSET = 0x00000140
 SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_REG_ADDR = 0x10A30140
 SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_REG_OFFSET = 0x00000150
 SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_REG_ADDR = 0x10A30150
-SEP_CPU_CTRL_SEP_STRAPS_REG_OFFSET = 0x00000160
-SEP_CPU_CTRL_SEP_STRAPS_REG_ADDR = 0x10A30160
 SEP_CPU_CTRL_SEP_SW_DEBUG_REG_OFFSET = 0x00000178
 SEP_CPU_CTRL_SEP_SW_DEBUG_REG_ADDR = 0x10A30178
 SEP_CPU_CTRL_SEP_NMI_VEC_REG_OFFSET = 0x00000180
@@ -6835,7 +6833,7 @@ class ENTROPY_SOURCE_SHA256_STATUS_reg_t(Structure):
         ('busy', c_uint16, 1),
         ('rsvd_0', c_uint16, 3),
         ('input_count', c_uint16, 4),
-        ('output_count', c_uint16, 3),
+        ('output_count', c_uint16, 4),
     ]
 
 ENTROPY_SOURCE_SHA256_STATUS_REG_DEFAULT = 0x00000000
@@ -10891,35 +10889,6 @@ class SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_reg_u(Union):
     def __init__(self, *args, **kwargs):
         super(SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_reg_u, self).__init__(*args, **kwargs)
         self.val = SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-SEP_CPU_CTRL_SEP_STRAPS_REG_DEFAULT = 0x00000000
-class SEP_CPU_CTRL_SEP_STRAPS_reg_t(Structure):
-    _fields_ = [
-        ('test_en', c_uint8, 1),
-        ('bypass_mem_repair', c_uint8, 1),
-    ]
-
-SEP_CPU_CTRL_SEP_STRAPS_REG_DEFAULT = 0x00000000
-
-class SEP_CPU_CTRL_SEP_STRAPS_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', SEP_CPU_CTRL_SEP_STRAPS_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(SEP_CPU_CTRL_SEP_STRAPS_reg_u, self).__init__(*args, **kwargs)
-        self.val = SEP_CPU_CTRL_SEP_STRAPS_REG_DEFAULT
 
     def as_bytes(self):
         size = 4 if isinstance(self.val, c_uint32) else 8

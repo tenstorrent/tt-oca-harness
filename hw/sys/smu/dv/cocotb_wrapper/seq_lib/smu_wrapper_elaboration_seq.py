@@ -19,7 +19,7 @@ class SmuWrapperElaborationSeq:
 
     When ``+expected_sep=1`` (anchor ``smu_wrapper_elaboration_sep_rtl_test``),
     executes the SMU_ALL_001 card steps and emits the card's ``CHK-*`` lines.
-    The SEP=0 leaf keeps the legacy wrapper-elaboration evidence tokens.
+    The SEP=0 leaf emits the wrapper-elaboration evidence tokens.
     """
 
     BOUND_REF_CYCLES = 500
@@ -103,7 +103,7 @@ class SmuWrapperElaborationSeq:
         raise AssertionError(f"{name} timeout: expected={expected} observed={last} limit={limit}")
 
     async def _run_legacy_no_sep(self, expected_sep: int) -> None:
-        """Legacy no-SEP wrapper smoke evidence (SMU_ALL_008 owns SEP=0 compose)."""
+        """No-SEP wrapper smoke evidence (SMU_ALL_008 owns SEP=0 compose)."""
         self.log.info("=" * 70)
         self.log.info("TEST: production smu_wrapper profile and reset propagation")
         self.log.info("=" * 70)
@@ -204,8 +204,8 @@ class SmuWrapperElaborationSeq:
             "S2",
             "ACTION SMU-COMPOSE-BLOCKS.S1: hierarchical compose clk identity",
         )
-        # FIND-001 (A): presence from hierarchical DUT clk observes that track
-        # toggling clk_smu_i — not hardwired obs_compose_*_present_o.
+        # Presence from hierarchical DUT clk observes that track toggling
+        # clk_smu_i.
         compose_levels = await self._assert_compose_hier_clk_identity(dut)
         self.log.info(
             "CHK-SMU-COMPOSE-BLOCKS-S1: PASS "
@@ -416,15 +416,13 @@ class SmuWrapperElaborationSeq:
             "ACTION SMU-SEP-PARAM.S1: SEP xbar present and lc_state_o from SEP",
         )
         assert self._sample(dut.sep_enabled_o, "sep_enabled_o") == 1
-        # FIND-001 (A): xbar/SEP presence via hierarchical clk identity, not
-        # hardwired present_o flags.
+        # xbar/SEP presence via hierarchical clk identity.
         xbar_levels = await self._assert_compose_hier_clk_identity(dut, samples_per_edge=2)
         assert xbar_levels["sep"] == xbar_levels["top"]
         assert xbar_levels["xbar"] == xbar_levels["top"]
-        # FIND-002 (A): lc_state=from_sep only after live SEP source equals
-        # boundary lc_state_o. SEP eFuse LC_STATE default is 0xF0, so a
-        # boundary value of 0xf0 under SEP=1 is expected when the hierarchical
-        # SEP export matches — not a fabricated from_sep label on a SEP=0 tie.
+        # lc_state=from_sep only after the live SEP source equals boundary
+        # lc_state_o. SEP eFuse LC_STATE default is 0xF0, so a boundary value of
+        # 0xf0 under SEP=1 is expected when the hierarchical SEP export matches.
         sep_lc = self._sample(dut.obs_sep_lc_state_o, "obs_sep_lc_state_o")
         lc_now = self._sample(dut.lc_state_o, "lc_state_o")
         assert sep_lc == lc_now, (
