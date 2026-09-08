@@ -10,6 +10,7 @@ clock/reset bring-up and each gets its own inbound AXI master.
 
 from __future__ import annotations
 
+import logging
 import os
 import subprocess
 import sys
@@ -18,6 +19,7 @@ from pathlib import Path
 import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, with_timeout
+from env.smc_cpu_trace_monitor import SmcCpuTraceState, symbol_file_for_image, watch_cpu_trace
 from ocah_axi_vip import OcahAxiMasterAgent
 
 # This file lives at hw/sys/smc/dv/cocotb/tests/<this>.py, so the DV root is six
@@ -209,11 +211,49 @@ class DualCsr:
 
 
 class SmcDualHarness:
-    """Clock/reset bring-up plus per-instance idle pin defaults."""
+    """Clock/reset bring-up, per-instance idle pin defaults, and CPU trace state."""
 
     def __init__(self) -> None:
         self.dut = cocotb.top
         self.log = cocotb.log
+        # One hart-0 processor-state reconstruction per instance, sampled from
+        # bring_up onward; failure messages embed cpu_trace_report().
+        self.cpu_trace = {
+            inst: SmcCpuTraceState(f"{inst}-hart0", cocotb.log) for inst in ("dut", "bfm")
+        }
+
+    def _attach_cpu_symbols(self) -> None:
+        """Attach the staged listings of each instance's image, when present.
+
+        The target boots the production ROM (``+rom_bin64`` -> ``prod_rom.sym``)
+        and may later run the OCCP payload (``+occp_payload_sym``); the
+        controller runs the DV rom-mode image (``+bfm_rom_hex`` -> ``.rom.sym``).
+        A missing listing leaves that instance's PCs numeric.
+        """
+        rom = cocotb.plusargs.get("rom_bin64")
+        if rom is not None:
+            derived = symbol_file_for_image("rom_bin64", str(rom))
+            if derived is not None:
+                self.cpu_trace["dut"].attach_symbol_file(derived)
+        payload_sym = cocotb.plusargs.get("occp_payload_sym")
+        if payload_sym is not None:
+            self.cpu_trace["dut"].attach_symbol_file(str(payload_sym))
+        ctrl = cocotb.plusargs.get("bfm_rom_hex")
+        if ctrl is not None:
+            derived = symbol_file_for_image("bfm_rom_hex", str(ctrl))
+            if derived is not None:
+                self.cpu_trace["bfm"].attach_symbol_file(derived)
+
+    def cpu_trace_report(self) -> str:
+        """Both instances' symbolized processor state, for assertion messages."""
+        lines: list[str] = []
+        for state in self.cpu_trace.values():
+            lines.extend(f"    {line}" for line in state.report_lines(ring_tail=16))
+        return "\n".join(lines)
+
+    def dump_cpu_trace(self, level: int = logging.INFO) -> None:
+        for state in self.cpu_trace.values():
+            state.dump(level)
 
     def idle_pins(self, *, hold_dut_boot: bool, hold_bfm_boot: bool) -> None:
         dut = self.dut
@@ -261,6 +301,17 @@ class SmcDualHarness:
         cocotb.start_soon(Clock(dut.clk_ref_i, REF_CLK_PERIOD_NS, unit="ns").start())
         cocotb.start_soon(Clock(dut.clk_smc_i, SMC_CLK_PERIOD_NS, unit="ns").start())
         cocotb.start_soon(Clock(dut.clk_periph_i, PERIPH_CLK_PERIOD_NS, unit="ns").start())
+        self._attach_cpu_symbols()
+        for inst, state in self.cpu_trace.items():
+            cocotb.start_soon(
+                watch_cpu_trace(
+                    dut,
+                    dut.clk_smc_i,
+                    state,
+                    prefix=f"{inst}_cpu_trace",
+                    reset_name=f"{inst}_cpu_core_reset_n",
+                )
+            )
 
         await ClockCycles(dut.clk_ref_i, 10)
         self.log.info("asserting powergood on both instances")

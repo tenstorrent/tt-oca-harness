@@ -98,6 +98,12 @@ default, and under the bare `+define+UVM` (set by the native profile's
 `docs/SMC_TB_ARCH.adoc` ("SystemVerilog UVM Realization"); the framework
 conventions it follows are in `hw/common/dv/docs/uvm-framework.adoc`.
 
+`cocotb/env/smc_cpu_trace_monitor.py` is the passive hart-0 processor-state
+monitor (symbolized call stack, trap records, hang watch) that both the
+single-instance and the dual bench run; a failing test ends with its dump in
+the log. `cocotb/env/smc_virt_console.py` decodes the firmware virtual console
+on scratch register 2 for both benches.
+
 ## Run
 
 ```bash
