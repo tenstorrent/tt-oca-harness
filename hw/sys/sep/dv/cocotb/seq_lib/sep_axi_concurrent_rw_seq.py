@@ -485,9 +485,7 @@ class SepAxiConcurrentRw:
             at,
             cal,
         )
-        return AxiTimingProfile(
-            aw_delay=holds["aw"], w_delay=holds["w"], ar_delay=holds["ar"]
-        )
+        return AxiTimingProfile(aw_delay=holds["aw"], w_delay=holds["w"], ar_delay=holds["ar"])
 
     async def run_cell(self, cfg: SepAxiConcurrentRwCfg) -> str | None:
         """Drive the one calibrated cell. None when it passed.

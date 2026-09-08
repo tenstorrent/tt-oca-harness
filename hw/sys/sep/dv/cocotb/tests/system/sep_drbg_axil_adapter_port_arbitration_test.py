@@ -136,9 +136,7 @@ class sep_drbg_axil_adapter_port_arbitration_test(sep_base_test):
                 continue
 
             covered.append(order)
-            self.logger.info(
-                "CHK-PORT-PROGRESS OK: %s retired both accesses; %s", order, summary
-            )
+            self.logger.info("CHK-PORT-PROGRESS OK: %s retired both accesses; %s", order, summary)
 
         # A stimulus miss is reported before a DUT verdict: a cell that never
         # presented its ordering says nothing about the arbitration either way,

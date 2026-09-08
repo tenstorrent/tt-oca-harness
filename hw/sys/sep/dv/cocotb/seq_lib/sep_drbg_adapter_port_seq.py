@@ -231,9 +231,7 @@ class AdapterPortVehicle:
                 break
 
         obs["presented"] = self._classify(obs["valid"])
-        obs["retired"] = (b_seen or aw_off is None or w_off is None) and (
-            r_seen or ar_off is None
-        )
+        obs["retired"] = (b_seen or aw_off is None or w_off is None) and (r_seen or ar_off is None)
         return obs
 
     @staticmethod
