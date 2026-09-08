@@ -510,8 +510,8 @@ ALIAS0_ATTRS = SMC_ALIAS_REMAP_0__REGION_REGION_ATTRS_REG_ADDR
 _RESET_SWEEP_ACCESSES = 8 + 24 + 8 + 4  # MMODE + ALIAS + XVISOR resets + XVISOR probe
 # resets + scratch wr/rd/restore + deny + the full-aperture reset sweep. The
 # sweep length is taken from the table built off the generated register map
-# (57 software-owned rows of the 103 in smc_cla.rdl); it is guarded by an
-# explicit `len(CLA_RESET_SWEEP) >= 55` assert in `_cla_window`, so a generated
+# (82 software-owned rows of the 137 in the generated CLA map); it is guarded
+# by an explicit `len(CLA_RESET_SWEEP) >= 82` assert in `_cla_window`, so a generated
 # map that lost rows fails loudly instead of silently lowering this floor.
 _CLA_ACCESSES = 2 + 4 + 3 + len(CLA_RESET_SWEEP)
 _REMAP_ACCESSES = 6 + 6 + 2 + 4  # filters + program/readback + off + restore
@@ -690,6 +690,10 @@ class smc_remap_cla_test_seq(SmcCsrSeq):
             "same run.",
             len(CLA_RESET_SWEEP),
             len(CLA_SWEEP_NONZERO),
+            "a non-zero reset value",
+        )
+        hole_offs = "/".join(
+            f"+0x{addr - SMC_CLA_REG_MAP_BASE_ADDR:X}" for _, addr in CLA_UNMAPPED_PROBES
         )
         hole_offs = "/".join(
             f"+0x{addr - SMC_CLA_REG_MAP_BASE_ADDR:X}" for _, addr in CLA_UNMAPPED_PROBES
