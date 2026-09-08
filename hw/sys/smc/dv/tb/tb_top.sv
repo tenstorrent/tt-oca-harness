@@ -2509,7 +2509,6 @@ module smc_dual_inst
         .ext_debug_bus_i            ('0),
         .test_en_i                  (1'b0),
         .scan_rst_ni                (1'b1),
-        .captured_straps_i          ('0),
         // Without an external BISR/MBIST agent the boot sequencer waits forever
         // if these stay low (same fix as the single-instance half /
         // tb_wrapper_top.sv).
