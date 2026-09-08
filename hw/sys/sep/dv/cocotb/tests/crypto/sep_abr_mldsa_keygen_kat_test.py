@@ -2,8 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Adams Bridge ML-DSA-87 keyGen NIST KAT on the ABR aperture.
 
-no_cpu host-AXI. Software-written seed path only (the key-CSR stub zeros
-shares, so the key-vault seed path is not honest here). Public key is
+no_cpu host-AXI. Software-written seed path only. Public key is
 compared word-for-word against the vendored NIST ACVP vector. Sensitivity:
 flip one seed bit and the key must differ. PIC [34] is proven live via
 error_intr_trig (0->1, W1C -> 0) before the KAT, then stays low at
