@@ -2,7 +2,6 @@
 SPDX-License-Identifier: Apache-2.0
 SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 -->
-
 # SMU OCAH Open-Source TB
 
 OCAH open-source DV testbench for the **SMU (System Management Unit)**.
@@ -24,19 +23,20 @@ candidate coverage-target and waiver-field decision (#484), and
 [`docs/SMU_SEP0_COMPONENT_SIGNOFF.adoc`](docs/SMU_SEP0_COMPONENT_SIGNOFF.adoc)
 for the SEP=0 component signoff record (#481 / #482 / #483 / #490 / #491).
 
-**Executable contract:** enrolled groups in [`testlists/all.toml`](testlists/all.toml)
-— enrolled `all` **56**, `smoke` **4**, `smc` **11**, `dtp` **29**,
-`fabric` **14**, `sep0_all` **52**, `sep0_p4_all` **54** (no Force;
-product-pin CTM; `sep0_all` is 51 PASS / 1 FAIL on the cited nightly).
-
+**Executable contract:** enrolled groups in
+[`testlists/wrapper.toml`](testlists/wrapper.toml) — live green `all` **81**,
+`sep0_all` **53** (no Force; product-pin CTM). `--dut smu_wrapper` is the DUT;
+[`testlists/all.toml`](testlists/all.toml) holds the two bare-`smu` leaves that
+stayed, for the reasons recorded there.
 **Green / signoff policy:** no DUT Force / no TB placeholder.
 Raise-stub bodies live under `cocotb/tests_deferred/` and are not ported —
 **not** reportable as PASS.
 
-**Groups:** `smoke` for a fast gate, `smc` / `dtp` / `fabric` by area,
-`sep0_all` / `sep0_p4_all` for the SEP=0 package, and `all` for the
-unique enrolled set (see `testlists/all.toml`).
-
+**Group ladder:** `build_smoke` ⊂ `smoke` ⊂ `all`, and `sep0_all` ⊂ `all`
+(see `testlists/wrapper.toml`). `sep0_all` and `smoke` are siblings, not nested:
+`sep0_all` is the toolchain-free SEP=0 set CI runs, while `smoke` reaches the
+SEP=1 elaboration and both firmware smokes and so needs the RISC-V toolchain.
+`all` is the union plus the SEP=1 firmware set.
 **OUT / deferred** (SEP=1 / interop / toggle / `needs_real_lcc`): not ported.
 Every named entry is classified in
 [`docs/SMU_DEFERRED_DISPOSITION.adoc`](docs/SMU_DEFERRED_DISPOSITION.adoc).
@@ -44,7 +44,7 @@ None of those names is a v0.5.0 restore; raise stubs are not reportable as PASS.
 
 ```
 smu_<scenario>_test
-  └─ SmuEnv (`cocotb/env/smu_env.py`)
+  └─ SmuEnv (`common/smu_dv_env/smu_env.py`)
        ├─ SMC boot / scratch + mailbox observation
        ├─ DTP JTAG TAP BFM
        ├─ External SMN AXI master / OcahAxiSlaveAgent
@@ -56,14 +56,14 @@ smu_<scenario>_test
 | `tb/tb_top.sv` | `smu_uvm_top` — bare `smu #(.SEP(0))` density TB; one module, two shapes (cocotb pins by default, SV-UVM harness under `UVM`) |
 | `tb/smu_tb_signal_list.svh`, `tb/smu_tb_if.sv` | The TB signals declared once for both shapes; the SMU-local TB interface of the SV-UVM view |
 | `uvm/{env,seq_lib,tests}/` | SV-UVM realization (`--framework uvm`, VCS) |
-| `cocotb/{env,seq_lib,tests}/` | Live enrolled PyUVM tests |
-| `cocotb/tests_deferred/` | Raise stubs (catalog only); each body's docstring carries its blocker |
-| `testlists/all.toml` | Enrolled SEP=0 groups (`sep0_all` = 52) |
-| `smu_sim_cfg.toml` | `--dut smu` sim defaults |
-| `smu_wrapper_sim_cfg.toml` | `--dut smu_wrapper` production-wrapper baseline |
+| `cocotb/tests/` | The residual bare-`smu` test bodies plus their base test |
+| `common/{smu_dv_env,seq_lib}/` | The PyUVM env and sequence library, shared by both DUTs |
+| `cocotb/tests_deferred/` | Force-era raise stubs (catalog only); each body's docstring carries its blocker |
+| `testlists/all.toml` | Residual `--dut smu` leaves (2) || `smu_sim_cfg.toml` | `--dut smu` sim defaults |
+| `smu_wrapper_sim_cfg.toml` | `--dut smu_wrapper` sim defaults |
 | `tb/tb_wrapper_top.sv` | `smu_wrapper_uvm_top` — `hw/top/smu_wrapper` harness |
-| `cocotb_wrapper/{env,seq_lib,tests}/` | Wrapper-baseline PyUVM tests |
-| `testlists/wrapper.toml` | Wrapper baseline (≠ `sep0_all` signoff) |
+| `cocotb_wrapper/{env,tests}/` | PyUVM tests on this DUT |
+| `testlists/wrapper.toml` | The SMU regression (`all` = 81, `sep0_all` = 53) |
 | `fw/`, `tools/` | Firmware, readiness |
 
 ## BFM Policy
@@ -76,26 +76,30 @@ smu_<scenario>_test
 | SMC scratch / mailbox | Backdoor + cocotb polling |
 | Cross-trigger / iJTAG | OCAH-local BFM |
 
-## Running (Phase-1 SEP=0)
+## Running
 
 ```bash
 # Simulator and bender on PATH (see AGENTS.md for the with/without-companion paths).
 mkdir -p "${TMPDIR:?set TMPDIR to a large local scratch directory}"
 
-python3 tools/dv/run_dv.py --dut smu --build-only
-python3 tools/dv/run_dv.py --dut smu --items smoke --dry-run
+python3 tools/dv/run_dv.py --dut smu_wrapper --build-only
+python3 tools/dv/run_dv.py --dut smu_wrapper --items sep0_all --dry-run
 
-python3 tools/dv/run_dv.py --dut smu --items smoke
-python3 tools/dv/run_dv.py --dut smu --items smc
-python3 tools/dv/run_dv.py --dut smu --items sep0_all
+# SEP=0 release set: no RISC-V toolchain, no c_compile stage.
+python3 tools/dv/run_dv.py --dut smu_wrapper --items sep0_all
+
+# The whole regression, including the SEP=1 firmware tests (needs the
+# toolchain; the firmware c_compiles dominate the wall time).
+python3 tools/dv/run_dv.py --dut smu_wrapper --items all
+
+# The residual bare DUT: two leaves (see testlists/all.toml for why).
 python3 tools/dv/run_dv.py --dut smu --items all
-
-python3 tools/dv/run_dv.py --dut smu --items all --tool xcelium --cov
 ```
 
-Groups: `all` (56), `smoke` (4), `smc` (11), `dtp` (29), `fabric` (14),
-`sep0_all` (52), `sep0_p4_all` (54).
-
+Groups (`testlists/wrapper.toml`): `build_smoke` (2), `smoke` (4),
+`sep0_all` (53), `all` (81), `migrated_fabric` (14), `migrated_smc` (12),
+`migrated_dtp` (27), `sep_real_fw` (14), `sep_lifecycle` (6), `sep_chain` (2),
+`sep_entropy` (1), `sep_rtl_only` (2).
 ### SystemVerilog UVM framework (`--framework uvm`)
 
 The SV-UVM view shares this DV root, sim config, and testlist with the cocotb
@@ -158,15 +162,17 @@ ties off is promoted into `tb/smu_tb_if.sv` first; a new embedded-IP
 feature reuses that IP bench's reference model and scoreboard through
 `smu_env` and `smu_scoreboard`.
 
-## Signoff sources (dual TB)
+## Signoff source
 
 | Source | DUT | Signoff role |
 |--------|-----|--------------|
-| Bare `--dut smu` | `tb/tb_top.sv` (`DUT_TAG=BARE`) | Density / CSR / fabric SEP=0 — `sep0_all` (52) |
-| Wrapper `--dut smu_wrapper` | `tb/tb_wrapper_top.sv` (`DUT_TAG=WRAPPER`) | Production-pin boot / elab smoke — **≠** `sep0_all` density signoff |
-
-Do not merge wrapper smoke PASS into bare `sep0_all` evidence. Logs carry
-`DUT_TAG=` so scoreboards stay distinguishable.
+| `--dut smu_wrapper` | `tb/tb_wrapper_top.sv` (`DUT_TAG=WRAPPER`) | The SMU regression: SEP=0 density / CSR / fabric / DTP (`sep0_all` = 53) plus the SEP=1 firmware set (`all` = 81) |
+| `--dut smu` | `tb/tb_top.sv` (`DUT_TAG=BARE`) | Two leaves: `smu_dtp_jtag2axi_abort_mid_op_test`, which needs an unterminated OTP interface, and `smu_dtp_jtag_smoke_test`, which carries the SV-UVM binding (the SV-UVM harness is this TB's `UVM` shape) |
+This used to be a dual-TB signoff, with a bare density catalog that wrapper
+smoke was explicitly not allowed to substitute for. The bare catalog was
+migrated onto `smu_wrapper` -- the same `smu` with the open-source IP
+integration attached -- and retired, so there is one source now. Logs still
+carry `DUT_TAG=`.
 
 ## Production-wrapper baseline (`--dut smu_wrapper`)
 
@@ -371,14 +377,18 @@ seeds, and those run paths on the tracking GitHub issue.
 
 ## Enrollment
 
-The `SEP=0` `tb_top.sv`, `SmuEnv` and the sequence library are in place:
-59 live test bodies under `cocotb/tests/`, 28 non-enrolled bodies under
-`cocotb/tests_deferred/`. Two bodies under `cocotb/tests/` are present but
-not enrolled -- `smu_ext_axi_global_addr_smoke_test`, blocked because the
-OSS `s_axi` is a LOCAL aperture so `GLOBAL_BASE + offset` DECERRs (its
-docstring carries that reason), and `smu_smc_gpio_strap_sanity_test`,
-blocked because strap capture is adopter-owned so the reset_unit
-`STRAPS_*` CSRs and the strap bus this test drove no longer exist here.
-`smu_base_test` is the base class. `sep0_all` (52) is the SMU regression group
-in `.github/workflows/regress.yml` (nightly at one seed per test, weekly at
-three).
+`smu_wrapper` carries the regression: 81 enrolled leaves green, of which 53 are
+the toolchain-free SEP=0 set CI runs (`.github/workflows/regress.yml`, nightly
+at one seed per test, weekly at three) and the rest are the SEP=1 firmware
+tests. 28 non-enrolled bodies remain under `cocotb/tests_deferred/`.
+
+Three leaves are enrolled but not in the wrapper's `all`, each with its reason
+on its own group: the two `sep_smc_sram_blocked` images, and
+`smu_dtp_jtag2axi_abort_mid_op_test`, which stayed on the bare DUT along with
+`smu_dtp_jtag_smoke_test` (there for the SV-UVM binding; its cocotb side is
+enrolled here in `migrated_dtp`).
+
+Two bodies under `cocotb/tests/` predate the migration, are enrolled nowhere,
+and have no wrapper twin: `smu_ext_axi_global_addr_smoke_test` (the OSS `s_axi`
+is a LOCAL aperture, so `GLOBAL_BASE + offset` DECERRs) and
+`smu_smc_gpio_strap_sanity_test`. Their docstrings carry the reasons.

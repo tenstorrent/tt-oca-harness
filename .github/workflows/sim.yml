@@ -90,6 +90,15 @@ jobs:
             runner: ubuntu-latest
           - dut: sep
             runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
+          # smu_wrapper carries the SMU regression; the bare smu DUT is down to
+          # the one leaf that needs an unterminated OTP interface. Both are
+          # gated here so neither rots. `items` defaults to `smoke` below;
+          # smu_wrapper overrides it because its own `smoke` group reaches the
+          # SEP=1 firmware tests, and this runner has Verilator and nothing
+          # else -- `smoke_sep0` is the toolchain-free equivalent.
+          - dut: smu_wrapper
+            runner: ubuntu-latest
+            items: smoke_sep0
           - dut: smu
             runner: ubuntu-latest
           - dut: smc
@@ -116,6 +125,6 @@ jobs:
           dut: ${{ matrix.dut }}
           tool: verilator
           tier: smoke
-          items: smoke
+          items: ${{ matrix.items || 'smoke' }}
           sim-jobs: 2
           run-dir: build/ci/runs/${{ matrix.dut }}/verilator/smoke/${{ github.run_id }}
