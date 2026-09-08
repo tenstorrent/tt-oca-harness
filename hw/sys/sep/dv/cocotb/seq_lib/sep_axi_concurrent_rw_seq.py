@@ -65,9 +65,12 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import RisingEdge
+from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
 from ocah_axi_vip import AxiTimingProfile
 from sep_reg_meta import sym
+
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
 RESP_OKAY = 0
 
@@ -108,9 +111,12 @@ CONCURRENT_ORDERS: tuple[tuple[str, int], ...] = (
 ORDER_NAMES = tuple(name for name, _gap in CONCURRENT_ORDERS)
 ORDER_GAP = dict(CONCURRENT_ORDERS)
 
-# INTR_ENABLE on both blocks is a 3-bit enable field; the value only has to be
-# a bit pattern that differs from its complement under the compare mask.
-INTR_ENABLE_MASK = 0x7
+# The writable width of INTR_ENABLE is NOT assumed. The two blocks implement
+# different numbers of interrupts, so a hardcoded mask is wrong for one of them
+# and a bit that does not exist reads back 0 -- which looks exactly like a
+# dropped write and would be reported as a DUT defect. `probe_mask()` measures
+# it per lane instead. This upper bound only bounds the probe.
+INTR_ENABLE_PROBE = 0xFFFF_FFFF
 
 
 class SepAxiConcurrentRwCfg:
@@ -133,7 +139,10 @@ class SepAxiConcurrentRwCfg:
         self.gap = ORDER_GAP[order]
         rng = SepSeededRng(seed)
         self.wr_addr, self.rd_addr = LANE_ADDRS[lane]
-        self.value = rng.randrange(1, INTR_ENABLE_MASK + 1)
+        # A candidate pattern only. run_cell narrows it to the bits the
+        # register is measured to actually implement, so the seed cannot pick
+        # a value whose set bits do not exist on this lane.
+        self.value = rng.randrange(1, 8)
 
     @property
     def key(self) -> tuple[str, str]:
@@ -254,6 +263,7 @@ class SepAxiConcurrentRw:
         # is what attributes a channel stagger to the master or to the fabric
         # between them, instead of inferring one from the other.
         self._mon = env.axi_monitor if bus == "s_axi" else env.ext_axi_monitor
+        self._start = test.start_seq if bus == "s_axi" else test.start_ext_seq
         # One cell per leaf, so these are scalars, not tallies.
         self.cal: dict[str, int] | None = None
         self.presented: str | None = None
@@ -293,31 +303,49 @@ class SepAxiConcurrentRw:
         return drv
 
     async def _wr(self, addr: int, data: int, *, allow_timeout: bool = False) -> int | None:
-        """The write response, or None when it did not retire in time."""
-        res = await self._master().write_bytes_result(
-            addr,
-            (data & 0xFFFF_FFFF).to_bytes(4, "little"),
+        """One write through the SEP AXI sequencer; returns its response.
+
+        `allow_timeout` is accepted and ignored -- see the note below on why
+        this path cannot meet a wedged adapter.
+
+        Deliberately the sequencer path rather than the VIP master directly:
+        the scoreboard is fed from the agent's analysis port, and a test whose
+        every access bypassed it would finish with no positive evidence and
+        could never report a pass, whatever the DUT did. Only the OVERLAPPING
+        pair bypasses the sequencer, because concurrency is the one thing the
+        sequencer cannot express.
+        """
+        seq = SepAxiAccessSeq(
+            f"conc_wr_0x{addr:08x}",
+            op=SepAxiOp.WRITE,
+            addr=addr,
+            wdata=data & 0xFFFF_FFFF,
+            length=4,
             size=2,
-            check_response=False,
-            timeout_ns=CELL_TIMEOUT_NS,
-            allow_timeout=allow_timeout,
         )
-        return None if res.timed_out else res.resp
+        # No allow_timeout on this path, and none needed: every sequencer
+        # access this walk makes -- calibration, prime, readback -- happens
+        # BEFORE the overlapping pair, so none of them can meet a wedged
+        # adapter. A hang here would mean the lane was already stuck on
+        # arrival, which is a hard error and should surface as one rather than
+        # be folded into an arbitration verdict.
+        await self._start(seq)
+        return seq.resp_code
 
     async def _rd(self, addr: int, *, allow_timeout: bool = False) -> tuple[int | None, int]:
-        """(response, data). The response is None when the read did not retire."""
-        res = await self._master().read_bytes_result(
-            addr,
-            4,
+        """One read through the SEP AXI sequencer; returns (response, data).
+
+        `allow_timeout` is accepted and ignored, as for `_wr`.
+        """
+        seq = SepAxiAccessSeq(
+            f"conc_rd_0x{addr:08x}",
+            op=SepAxiOp.READ,
+            addr=addr,
+            length=4,
             size=2,
-            check_response=False,
-            timeout_ns=CELL_TIMEOUT_NS,
-            allow_timeout=allow_timeout,
         )
-        if res.timed_out:
-            return None, 0
-        data = int.from_bytes(res.data_bytes, "little") if res.data_bytes else res.data
-        return res.resp, data & 0xFFFF_FFFF
+        await self._start(seq)
+        return seq.resp_code, seq.rdata & 0xFFFF_FFFF
 
     async def probe_read(self, addr: int) -> int:
         """Plain read used to confirm a lane is reachable from this bus.
@@ -327,6 +355,23 @@ class SepAxiConcurrentRw:
         """
         resp, _data = await self._rd(addr, allow_timeout=True)
         return -1 if resp is None else resp
+
+    async def probe_mask(self, addr: int) -> int:
+        """The writable bits of `addr`, measured rather than assumed.
+
+        Writes all-ones and reads back: what sticks is writable. The two
+        blocks implement different interrupt counts, so a hardcoded width is
+        wrong for one of them, and a non-existent bit reads back 0 -- which is
+        indistinguishable from a dropped write and would be reported as a DUT
+        defect. Measuring removes that whole failure mode.
+        """
+        resp = await self._wr(addr, INTR_ENABLE_PROBE)
+        if resp != RESP_OKAY:
+            return 0
+        resp, mask = await self._rd(addr)
+        if resp != RESP_OKAY:
+            return 0
+        return mask
 
     async def calibrate(self, cfg: SepAxiConcurrentRwCfg) -> dict[str, int] | None:
         """Measure when AW, W and AR reach the adapter port, in issue cycles.
@@ -469,6 +514,32 @@ class SepAxiConcurrentRw:
         drv = self._driver()
         tag = f"[{cfg.order} {cfg.lane}]"
 
+        mask = await self.probe_mask(cfg.wr_addr)
+        if mask == 0:
+            return (
+                f"{tag} no writable bit found at 0x{cfg.wr_addr:08x}; the data "
+                f"compare would be vacuous, so the cell cannot distinguish a "
+                f"dropped concurrent write from a register that stores nothing"
+            )
+        self.mask = mask
+        # Narrow the seed's pattern to bits that exist here, and keep it
+        # non-zero and different from its complement, or the compare proves
+        # nothing.
+        value = cfg.value & mask
+        if value == 0 or value == mask:
+            value = mask & ~(mask >> 1) if mask else 0
+        if value == 0:
+            return (
+                f"{tag} measured mask 0x{mask:x} leaves no value that differs "
+                f"from its complement; the data compare would be vacuous"
+            )
+        self.test.logger.info(
+            "CHK-CONCURRENT-CAL: %s writable mask at 0x%08x measured as 0x%x",
+            cfg.lane,
+            cfg.wr_addr,
+            mask,
+        )
+
         cal = await self.calibrate(cfg)
         if cal is None:
             return f"{tag} calibration failed; the cell was not driven"
@@ -481,17 +552,17 @@ class SepAxiConcurrentRw:
         # Prime the complement so the concurrent write always changes the
         # field. A prime of the reset value would leave the register at zero,
         # which a dropped write also produces.
-        prime = (~cfg.value) & INTR_ENABLE_MASK
+        prime = (~value) & mask
         prime_resp = await self._wr(cfg.wr_addr, prime, allow_timeout=True)
         if prime_resp is None:
             return f"{tag} prime write to 0x{cfg.wr_addr:08x} did not retire"
         if prime_resp != RESP_OKAY:
             return f"{tag} prime write to 0x{cfg.wr_addr:08x} refused"
         resp, staged = await self._rd(cfg.wr_addr, allow_timeout=True)
-        if resp != RESP_OKAY or (staged & INTR_ENABLE_MASK) != prime:
+        if resp != RESP_OKAY or (staged & mask) != prime:
             return (
                 f"{tag} prime readback 0x{staged:08x} != 0x{prime:08x} under "
-                f"mask 0x{INTR_ENABLE_MASK:x}; the cell cannot tell a dropped "
+                f"mask 0x{mask:x}; the cell cannot tell a dropped "
                 f"concurrent write from a register that never took the prime"
             )
 
@@ -502,7 +573,7 @@ class SepAxiConcurrentRw:
             wr = cocotb.start_soon(
                 self._master().write_bytes_result(
                     cfg.wr_addr,
-                    (cfg.value & INTR_ENABLE_MASK).to_bytes(4, "little"),
+                    (value & mask).to_bytes(4, "little"),
                     size=2,
                     check_response=False,
                     timeout_ns=CELL_TIMEOUT_NS,
@@ -575,18 +646,18 @@ class SepAxiConcurrentRw:
         resp, after = await self._rd(cfg.wr_addr, allow_timeout=True)
         if resp != RESP_OKAY:
             return f"{tag} readback resp={resp}"
-        if (after & INTR_ENABLE_MASK) != (cfg.value & INTR_ENABLE_MASK):
+        if (after & mask) != (value & mask):
             hint = ""
-            if (after & INTR_ENABLE_MASK) == prime:
+            if (after & mask) == prime:
                 hint = (
                     " -- the write did not land; an adapter whose pending-write "
                     "state is consumed or cleared by the overlapping read fails "
                     "exactly here"
                 )
             return (
-                f"{tag} 0x{cfg.wr_addr:08x}: wrote 0x{cfg.value:08x} over "
+                f"{tag} 0x{cfg.wr_addr:08x}: wrote 0x{value:08x} over "
                 f"0x{prime:08x}, read 0x{after:08x} under mask "
-                f"0x{INTR_ENABLE_MASK:x} with AR overlapping{hint}"
+                f"0x{mask:x} with AR overlapping{hint}"
             )
 
         self.covered = obs.overlap_cycles

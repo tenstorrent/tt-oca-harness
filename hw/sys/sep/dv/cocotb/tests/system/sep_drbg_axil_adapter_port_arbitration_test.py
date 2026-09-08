@@ -21,6 +21,11 @@ Division of labour, deliberately: this leaf grades the MODULE's arbitration,
 the fabric-driven leaves grade the SEP integration. Neither substitutes for
 the other, and this one does not claim the integration.
 
+CHK-PORT-ANCHOR: a plain read of the live CSRNG lane answers OKAY before the
+vehicle is touched. The vehicle is a TB-owned instance, so without this the
+leaf could pass against a DUT that never left reset, and the scoreboard --
+fed from the AXI agent -- would see no transaction and refuse a pass at all.
+
 CHK-PORT-CONTROL: a lone write, a lone read, and a write whose AW and W are
 separated by the same gap the overlap cells use, all retire AND answer OKAY.
 The gapped leg is what excludes the channel separation itself as the cause of
@@ -47,7 +52,10 @@ longest run of held-valids-with-no-ready, which is the stall signature itself.
 from __future__ import annotations
 
 import pyuvm
+from env.sep_axi_agent import SepAxiOp
 from sep_base_test import sep_base_test
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
+from seq_lib.sep_axi_concurrent_rw_seq import LANE_ADDRS
 from seq_lib.sep_drbg_adapter_port_seq import (
     GAP_CYCLES,
     ORDER_NAMES,
@@ -63,6 +71,33 @@ class sep_drbg_axil_adapter_port_arbitration_test(sep_base_test):
 
     async def run_scenario(self) -> None:
         await self.bring_up_no_cpu()
+
+        # Anchor on the real DUT before touching the vehicle. Two reasons:
+        # the scoreboard is fed from the AXI agent and a leaf that drove only
+        # the TB vehicle would end with no positive evidence and could never
+        # report a pass; and it confirms the DUT lane this module is
+        # instantiated for is actually alive, so a green result here cannot
+        # come from a design that never came out of reset.
+        anchor = SepAxiAccessSeq(
+            "tbadp_anchor_read",
+            op=SepAxiOp.READ,
+            addr=LANE_ADDRS["csrng"][0],
+            length=4,
+            size=2,
+        )
+        await self.start_seq(anchor)
+        assert anchor.resp_code == RESP_OKAY, (
+            f"CHK-PORT-ANCHOR FAIL: a plain read of the live CSRNG lane at "
+            f"0x{LANE_ADDRS['csrng'][0]:08x} answered resp={anchor.resp_code}; "
+            f"the DUT is not up, so nothing this leaf observes on the vehicle "
+            f"would say anything about the design"
+        )
+        self.logger.info(
+            "CHK-PORT-ANCHOR PASS: live CSRNG lane read 0x%08x = 0x%x (OKAY)",
+            LANE_ADDRS["csrng"][0],
+            anchor.rdata & 0xFFFFFFFF,
+        )
+
         veh = AdapterPortVehicle()
 
         # Control first: a lone write and a lone read must retire. A vehicle
