@@ -67,7 +67,10 @@ subsystem. The SMU provides chiplet functions such as clock, voltage and reset
 management in addition to Root of Trust (RoT) services in a physically isolated
 environment.
 
-The configuration can be changed to remove the SEP and its associated interfaces.
+SEP inclusion is selected independently for each SMU instance. A multi-chiplet
+system may contain SEP-equipped primary and secondary chiplets, together with
+secondary chiplets that omit SEP. The integrator defines the security hierarchy
+and the propagation of lifecycle and debug controls between chiplets.
 
 // datasheet-section: system-context
 [.datasheet-section]
@@ -163,7 +166,8 @@ INTEGRATION DEPENDENCIES
   memory apertures. Change memory apertures only after outstanding transactions
   have completed.
 * If SEP is not configured, the default tie-offs do not provide security
-  authorization; define a no-SEP debug and security policy.
+  authorization; define a no-SEP debug and security policy. Omitting SEP does
+  not automatically place the chiplet under another SEP's protection.
 * Replace zero-valued JTAG identity and SEP security-token fields; supply
   reviewed firmware, provisioning, recovery, and update policy.
 * Provide production clocks, reset/CDC constraints, power sequencing, pads,
