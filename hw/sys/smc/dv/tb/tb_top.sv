@@ -1295,6 +1295,7 @@ module smc_uvm_top
         u_dut.u_smc.cpu_interrupts[smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS + 31];
     assign tb_gpio_pad57      = u_dut.u_smc.pad2core_i[BOOT_STALL_PAD];
     assign tb_uart_irq_any    = |uart_interrupt;
+    assign tb_uart_irq_combined = u_dut.u_smc.peripheral_interrupts[21:18];
     assign tb_mailbox_irq_any = |u_dut.u_smc.peripheral_interrupts[7:0];
     assign tb_avsbus_irq      = u_dut.u_smc.peripheral_interrupts[22];
     assign tb_telemetry_irq_any = |u_dut.u_smc.peripheral_interrupts[10:8];

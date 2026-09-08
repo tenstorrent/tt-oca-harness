@@ -42,10 +42,24 @@ timeout_sec = 1800
 tags = ["rtl_issue", "efuse", "pyuvm"]
 run_modes = ["smoke"]
 
+[[tests]]
+# The same defect as #1602 in a second IP. log_engine.rdl:159-161 records the
+# intended `hwenable` binding -- an output mask -- as commented out, and
+# log_engine.sv:489-496 puts the enable on the set path while driving irq_o
+# from INTR_STATUS unqualified. i2c_core.sv:981 and :995-1010 are identical, so
+# the finding is a pattern rather than one IP's bug.
+name = "smc_log_engine_intr_mask_test"
+module = "smc_log_engine_intr_mask_test"
+seed = 1
+timeout_sec = 1800
+tags = ["rtl_issue", "uart", "pyuvm"]
+run_modes = ["smoke"]
+
 [[groups]]
 name = "rtl_issue"
 tests = [
     "smc_gpio_irq_mask_deassert_test",
     "smc_efuse_read_timeout_status_test",
+    "smc_log_engine_intr_mask_test",
 ]
-expected_count = 2
+expected_count = 3

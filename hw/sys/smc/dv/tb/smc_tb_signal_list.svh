@@ -149,6 +149,12 @@
 `SMC_TB_OUT(logic [3:0], tb_ndmreset_process)
 `SMC_TB_OUT(logic, tb_ndmreset_irq)
 `SMC_TB_OUT(logic, tb_uart_irq_any)
+// The UART line the PLIC actually sees: smc_peripherals_cdc.sv:309 ORs the
+// 16550 IRQ, the UART error line and the log-engine IRQ into one bit per
+// instance, and smc_peripherals.sv:1159 routes them to
+// peripheral_interrupts[21:18]. `tb_uart_irq_any` above is the 16550 half
+// only, so the log engine is not observable through it.
+`SMC_TB_OUT(logic [3:0], tb_uart_irq_combined)
 `SMC_TB_OUT(logic, tb_mailbox_irq_any)
 `SMC_TB_OUT(logic, tb_avsbus_irq)
 `SMC_TB_OUT(logic, tb_telemetry_irq_any)
