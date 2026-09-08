@@ -270,6 +270,35 @@ for (i = 0; i < MULTITHREAD; i++) {
     end_counter();
     stop_time();
 
+    /* Gate the verdict on the CRCs the run just produced.
+     *
+     * core_init_state / core_bench_list / core_bench_state / core_bench_matrix
+     * each fold their return value into one of these accumulators, and the
+     * `if (res->crcX == 0)` guards above mean an accumulator that is still zero
+     * is one whose kernel produced nothing. Requiring all four non-zero is
+     * therefore evidence that each of the three benchmark kernels ran and
+     * returned data.
+     *
+     * What this does NOT do is validate against CoreMark's published golden
+     * CRCs for the seed set: those values are not in this tree, so a wrong
+     * answer that is wrong consistently would still pass. Closing that needs
+     * the reference validation block and its expected values, which is a
+     * separate piece of work. */
+    if (results[0].crc == 0 || results[0].crclist == 0 || results[0].crcmatrix == 0 ||
+        results[0].crcstate == 0) {
+        simputs("[ERROR] CoreMark produced a zero CRC accumulator:\n");
+        simputshex32("  crc       = ", results[0].crc);
+        simputshex32("  crclist   = ", results[0].crclist);
+        simputshex32("  crcmatrix = ", results[0].crcmatrix);
+        simputshex32("  crcstate  = ", results[0].crcstate);
+        test_fail(0);
+    }
+
+    simputshex32("CoreMark crc       = ", results[0].crc);
+    simputshex32("CoreMark crclist   = ", results[0].crclist);
+    simputshex32("CoreMark crcmatrix = ", results[0].crcmatrix);
+    simputshex32("CoreMark crcstate  = ", results[0].crcstate);
+
     test_pass(0);
 
     while (1) {

@@ -144,3 +144,45 @@ tests = [
     "smc_smbus_alert_suspend_test",
     "smc_i2c_target_smbus_test",
 ]
+
+[[tests]]
+name = "smc_i2c_master_target_test"
+module = "smc_i2c_master_target_test"
+seed = 1
+timeout_sec = 1800
+tags = [
+    "smoke", "ci", "pyuvm"
+]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_smbus_pmbus_test"
+module = "smc_smbus_pmbus_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c_depth", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_smbus_hostnotify_test"
+module = "smc_smbus_hostnotify_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c_depth", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_smbus_alert_ara_test"
+module = "smc_smbus_alert_ara_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c_depth", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_i2c_multi_instance_test"
+module = "smc_i2c_multi_instance_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "pyuvm"]
+run_modes = ["smoke"]

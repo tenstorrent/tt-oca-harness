@@ -209,9 +209,9 @@ args = ["+skip_fuse_sense"]
 # XMR mirror) go 0->1->0, plus the IP INTR_STATE RW1C contract and one-hot isolation.
 # Then one through-adapter SLVERR on the DMA register hole and on the
 # HMAC, KMAC and OTBN CSR gaps. Those latch DMA_BUS_ERR_STATUS /
-# PERIPH_BUS_ERR_STATUS and bits 39 / 41; each matching CLEAR write returns
+# PERIPH_BUS_ERR_STATUS and bits 40 / 42; each matching CLEAR write returns
 # them. This leaf does not start a DMA transfer, so it does not prove
-# host_path_err / bit 40.
+# host_path_err / bit 41.
 # no_cpu (host drives AXI); +skip_fuse_sense (INTR_TEST is independent of OTP/entropy).
 name = "sep_irq_ip_to_aggregator_test"
 module = "system.sep_irq_ip_to_aggregator_test"
@@ -398,6 +398,47 @@ seed = 1
 reseed = 3
 timeout_sec = 3600
 tags = ["fabric", "axi", "protocol", "system", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+# All three AW/W/AR orderings at a drbg_axil64_lane_adapter port. The
+# fabric-driven leaves below reach the DUT's own adapters but can present only
+# the aw-then-ar ordering: the crossbar delivers W one cycle after AW and
+# re-serializes to that order whatever the master presents, which
+# CHK-CONCURRENT-CAL measures at both ends. This leaf drives a TB-owned second
+# instance of the same module at its port, so every legal ordering is
+# presentable to the cycle and the vehicle's own reset clears a wedge between
+# cells. It grades the MODULE; the leaves below grade the integration.
+name = "sep_drbg_axil_adapter_port_arbitration_test"
+module = "system.sep_drbg_axil_adapter_port_arbitration_test"
+seed = 1
+reseed = 1
+timeout_sec = 3600
+tags = ["fabric", "axi", "protocol", "system", "trng", "drbg"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+name = "sep_drbg_axil_concurrent_csrng_aw_then_ar_test"
+module = "system.sep_drbg_axil_concurrent_csrng_aw_then_ar_test"
+seed = 1
+reseed = 1
+timeout_sec = 3600
+tags = ["fabric", "axi", "protocol", "system", "trng", "drbg"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+name = "sep_drbg_axil_concurrent_edn_aw_then_ar_test"
+module = "system.sep_drbg_axil_concurrent_edn_aw_then_ar_test"
+seed = 1
+reseed = 1
+timeout_sec = 3600
+tags = ["fabric", "axi", "protocol", "system", "trng", "drbg"]
 run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]

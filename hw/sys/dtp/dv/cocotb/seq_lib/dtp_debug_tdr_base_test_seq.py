@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import cocotb
 from env.dtp_tap_device import (
     DTP_DEBUG_CONTROL_LEN,
     DTP_EXPECTED_JTAG_CAPS,
@@ -378,9 +377,9 @@ class dtp_debug_tdr_base_test_seq(dtp_jtag_base_test_seq):
         )
 
     async def set_clk_stop_requests(self, value: int, cycles: int = 4) -> None:
-        """Drive the CLA clock-stop request vector exposed by the OSS TB."""
+        """Drive the CLA clock-stop request vector on dtp_tb_if."""
         assert value < (1 << DTP_NUM_CLK_STOP_REQ), (
             f"xtrig_clk_stop_req value 0x{value:x} exceeds {DTP_NUM_CLK_STOP_REQ} bits"
         )
-        cocotb.top.xtrig_clk_stop_req.value = value
+        self.cfg.tb_if.ctrl.xtrig_clk_stop_req.value = value
         await self.wait_sys_cycles(cycles)

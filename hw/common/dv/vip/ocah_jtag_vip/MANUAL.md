@@ -270,13 +270,20 @@ The SV side of this package compiles through the VIP-owned ordered manifest
 `uvm/sources.toml` (incdirs + sources): a consuming DUT lists that manifest in
 its `[frameworks.uvm.build].source_lists` and the runner expands it ahead of
 the DUT's own sources — never hand-copy these paths into a DUT sim config, and
-never add them to Bender or Verilator filelists. Its contents:
+never add them to Bender filelists. The one entry a cocotb/Verilator build
+lists directly in its `[build].sources` is `sva/ocah_jtag_sva.sv`, whose
+two-state rules run there. Its contents:
 
 - `interface/ocah_jtag_if.sv` — shared pin-level IEEE 1149.1 interface
   (JTAG pins only; reused by any DUT).
 - `cov/ocah_jtag_cov.sv` — commercial-simulator-only functional-coverage
   collateral.
 - `sva/ocah_jtag_sva.sv` — clean-room SVA protocol rules for the TAP pins.
+  Two trees by simulator capability: the TDO-timing and TAP-state rules use
+  `OCAH_SVA_ASSERT` (`hw/common/assert/ocah_sva_macros.svh`) and run on every
+  simulator, Verilator included under `--assert`; the X-hygiene rules and the
+  covers use `OCAH_ASSERT` / `OCAH_COVER` and run on four-state simulators
+  only.
 - `uvm/ocah_jtag_uvm_pkg.sv` — the SV-UVM VIP: item/config/driver/monitor/
   sequencer/agent plus the encoding-agnostic TAP reference model;
   `ocah_jtag_master_env` is the commercial-overridable unit that DUT envs

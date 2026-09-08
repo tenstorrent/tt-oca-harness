@@ -10,6 +10,8 @@ from typing import Any
 from cocotb.triggers import Event
 from pyuvm import uvm_object
 
+__all__ = ["DtpEnvCfg"]
+
 
 class DtpEnvCfg(uvm_object):
     """Shared environment configuration / handshakes for the DTP UVM TB."""
@@ -51,6 +53,9 @@ class DtpEnvCfg(uvm_object):
         # = every port keeps its wire loopback), plus the per-port slave
         # sequence and device map published by DtpStapDsAgent.
         self.stap_ds_attach: set[str] = set()
+        # DtpTbIf handle published by the base test; agents and sequences bind
+        # to the HDL top through it.
+        self.tb_if: Any = None
         self.stap_ds_seq: dict[str, Any] = {}
         self.stap_ds_device: dict[str, Any] = {}
 

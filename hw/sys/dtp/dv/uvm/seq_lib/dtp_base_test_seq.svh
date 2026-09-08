@@ -6,10 +6,11 @@
 // (JTAG operations on p_sequencer.m_jtag_seqr, CSR AXI-Lite operations on
 // p_sequencer.m_xtrig_seqr in the XTRIG family, responder backdoor through
 // the slave sequences). It never touches a driver or a VIP virtual
-// interface; the two written exceptions are tb_vif (the DTP-local TB
-// interface: reset sequencing, dbg_disable stimulus, DUT observables) and
-// jtag_vif (the reset-family scenarios hold TRST across TCK cycles), both
-// plumbed by the base test.
+// interface; the written exceptions are the DTP-local TB interfaces tb_vif
+// (reset sequencing, dbg_disable stimulus, control-domain observables),
+// scan_vif (scan-network observables and downstream-TAP attach), xtrig_vif
+// (cross-trigger pins), and jtag_vif (the reset-family scenarios hold TRST
+// across TCK cycles), all plumbed by the base test.
 //
 // The scenario layer tracks the TAP state itself (m_tap_state) and hands it
 // to every JTAG operation, since the VIP sequence's model lives inside the
@@ -41,8 +42,10 @@ class dtp_base_test_seq extends ocah_sequence;
 
   // Plumbed by the test before start(): the DTP-local TB interface (reset
   // ladder, dbg_disable stimulus, observables) and the test configuration.
-  virtual dtp_tb_if tb_vif;
-  dtp_test_cfg      test_cfg;
+  virtual dtp_tb_if    tb_vif;
+  virtual dtp_scan_if  scan_vif;
+  virtual dtp_xtrig_if xtrig_vif;
+  dtp_test_cfg         test_cfg;
   // Plumbed by the test for scenarios that hold or sequence TRST directly
   // (reset family). Safe alongside the VIP driver, which drives trst_n only
   // while executing a TAP_RESET item.

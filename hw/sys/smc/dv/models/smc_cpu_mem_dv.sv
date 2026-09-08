@@ -55,7 +55,19 @@ module smc_cpu_mem_dv
   localparam int unsigned BANK_STRIPE_BYTES = 64;
   localparam int unsigned BYTES_PER_ENTRY = 8;
   localparam int unsigned ENTRIES_PER_STRIPE = BANK_STRIPE_BYTES / BYTES_PER_ENTRY;
-  localparam int unsigned MAX_LINEAR_WORDS = 4096;
+  // Staging depth for the +smc_scratch_ram_hex backdoor, in 64-bit words.
+  //
+  // 4096 words is 32 KB, and firmware images in this tree already exceed it --
+  // the largest occp_* rom image is over 5000 words. Anything past the end of
+  // this array is dropped by $readmemh, and a truncated image boots into
+  // whatever the tail of it happened to be, so the cap has to sit above the
+  // largest image rather than near it. 32768 words is 256 KB, a quarter of the
+  // 1 MB scratch (NUM_SRAM_BANKS * SCRATCH_WORDS * BYTES_PER_ENTRY), and the
+  // array is per-bank so raising it further costs NUM_SRAM_BANKS times as much
+  // simulator memory.
+  //
+  // Over-length is reported below rather than left silent.
+  localparam int unsigned MAX_LINEAR_WORDS = 32768;
 
   logic        magic_hit_scratch;
   logic        magic_hit_dcache;
@@ -187,6 +199,8 @@ module smc_cpu_mem_dv
       int    bank_i;
       int    entry_i;
       int    loaded_words;
+      int    file_words;
+      logic [SMC_4CORE_SCRATCH_RAM_DATA_WIDTH-1:0] scan_word;
       logic [SMC_4CORE_SCRATCH_RAM_DATA_WIDTH-1:0] linear_mem [0:MAX_LINEAR_WORDS-1];
 
       #0.2;
@@ -215,8 +229,28 @@ module smc_cpu_mem_dv
             end
           end
           if (bank == 0) begin
-            $display("[smc_cpu_mem_dv] stripe-loaded scratch %s (bank0 nonzero=%0d)", scratch_path,
-                     loaded_words);
+            // Count the words the file actually holds, so an image longer than
+            // the staging array is reported instead of silently truncated. A
+            // truncated image boots into whatever its tail happened to be,
+            // which is far harder to diagnose than a loud line here.
+            file_words = 0;
+            scratch_fd = $fopen(scratch_path, "r");
+            while (!$feof(scratch_fd)) begin
+              if ($fscanf(scratch_fd, "%h", scan_word) == 1) begin
+                file_words++;
+              end else begin
+                void'($fgetc(scratch_fd));
+              end
+            end
+            $fclose(scratch_fd);
+            if (file_words > int'(MAX_LINEAR_WORDS)) begin
+              $error({"[smc_cpu_mem_dv] scratch image %s holds %0d words but the ",
+                      "backdoor stages only %0d -- the image is TRUNCATED and the CPU will ",
+                      "fetch whatever the cut left behind. Raise MAX_LINEAR_WORDS."},
+                     scratch_path, file_words, MAX_LINEAR_WORDS);
+            end
+            $display("[smc_cpu_mem_dv] stripe-loaded scratch %s (%0d words in file, bank0 nonzero=%0d)",
+                     scratch_path, file_words, loaded_words);
           end
         end else if (bank == 0) begin
           $display("[smc_cpu_mem_dv] WARN: missing scratch %s", scratch_path);

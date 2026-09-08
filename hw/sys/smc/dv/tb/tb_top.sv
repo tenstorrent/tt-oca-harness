@@ -258,6 +258,23 @@ module smc_uvm_top
     output logic [31:0] dut_scratch_read_count /*verilator public_flat_rw*/,
     output logic [57:0] dut_wb_pc0 /*verilator public_flat_rw*/,
     output logic [57:0] bfm_wb_pc0 /*verilator public_flat_rw*/,
+    // Hart 0 retirement record per instance (Rocket CSR trace bundle) and the
+    // core reset that masks it; the writeback registers behind the bundle have
+    // no reset. Consumer: cocotb/env/smc_cpu_trace_monitor.py.
+    output logic        dut_cpu_core_reset_n /*verilator public_flat_rw*/,
+    output logic        dut_cpu_trace_valid /*verilator public_flat_rw*/,
+    output logic [57:0] dut_cpu_trace_pc /*verilator public_flat_rw*/,
+    output logic [31:0] dut_cpu_trace_insn /*verilator public_flat_rw*/,
+    output logic        dut_cpu_trace_exc /*verilator public_flat_rw*/,
+    output logic [63:0] dut_cpu_trace_cause /*verilator public_flat_rw*/,
+    output logic [57:0] dut_cpu_trace_tval /*verilator public_flat_rw*/,
+    output logic        bfm_cpu_core_reset_n /*verilator public_flat_rw*/,
+    output logic        bfm_cpu_trace_valid /*verilator public_flat_rw*/,
+    output logic [57:0] bfm_cpu_trace_pc /*verilator public_flat_rw*/,
+    output logic [31:0] bfm_cpu_trace_insn /*verilator public_flat_rw*/,
+    output logic        bfm_cpu_trace_exc /*verilator public_flat_rw*/,
+    output logic [63:0] bfm_cpu_trace_cause /*verilator public_flat_rw*/,
+    output logic [57:0] bfm_cpu_trace_tval /*verilator public_flat_rw*/,
 
     // ------------------------------------------------------------------
     // Read-only peek into the TARGET's scratch SRAM.
@@ -1320,6 +1337,20 @@ module smc_uvm_top
     assign tb_cpu_debug_dmactive_ack =
         u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.debug_dmactiveAck;
 
+    // Hart 0 retirement record (Rocket CSR trace bundle), masked while the
+    // core is in reset.
+    `define SMC_HART0_CSR u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.u_digital_top.tile_prci_domain.element_reset_domain_rockettile.core.csr
+    assign tb_cpu_core_reset_n = u_dut.u_smc.u_smc_cpu_wrapper.core_reset_n[0];
+    assign tb_cpu_trace_valid  = tb_cpu_core_reset_n ? `SMC_HART0_CSR.io_trace_0_valid : 1'b0;
+    assign tb_cpu_trace_pc     = tb_cpu_core_reset_n ? `SMC_HART0_CSR.io_trace_0_iaddr : '0;
+    assign tb_cpu_trace_insn   = tb_cpu_core_reset_n ? `SMC_HART0_CSR.io_trace_0_insn : '0;
+    assign tb_cpu_trace_exc    = tb_cpu_core_reset_n ? `SMC_HART0_CSR.io_trace_0_exception : 1'b0;
+    assign tb_cpu_trace_cause  = tb_cpu_core_reset_n ? `SMC_HART0_CSR.io_cause : '0;
+    assign tb_cpu_trace_tval   = tb_cpu_core_reset_n ? `SMC_HART0_CSR.io_tval : '0;
+    `undef SMC_HART0_CSR
+    assign tb_cpu_scratch2 =
+        u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu_ctrl_wrap.scratch_reg[2];
+
     // TB glue: pulse tb_dfd_fault_inject to latch a deterministic token. This
     // is NOT smc_dfd_wrap / hw/ip/dfd coverage.
     // Hart0 PC can be X before CPU bring-up, so do not sample hierarchical PC
@@ -1774,6 +1805,26 @@ module smc_uvm_top
         u_dut.u_smc_wrapper.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.wb_reg_pc_raw[0];
     assign bfm_wb_pc0 =
         u_bfm.u_smc_wrapper.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.wb_reg_pc_raw[0];
+
+    // Hart 0 retirement record per instance, masked while that core is in reset.
+    `define SMC_DUT_HART0_CSR u_dut.u_smc_wrapper.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.u_digital_top.tile_prci_domain.element_reset_domain_rockettile.core.csr
+    `define SMC_BFM_HART0_CSR u_bfm.u_smc_wrapper.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.u_digital_top.tile_prci_domain.element_reset_domain_rockettile.core.csr
+    assign dut_cpu_core_reset_n = u_dut.u_smc_wrapper.u_smc.u_smc_cpu_wrapper.core_reset_n[0];
+    assign dut_cpu_trace_valid  = dut_cpu_core_reset_n ? `SMC_DUT_HART0_CSR.io_trace_0_valid : 1'b0;
+    assign dut_cpu_trace_pc     = dut_cpu_core_reset_n ? `SMC_DUT_HART0_CSR.io_trace_0_iaddr : '0;
+    assign dut_cpu_trace_insn   = dut_cpu_core_reset_n ? `SMC_DUT_HART0_CSR.io_trace_0_insn : '0;
+    assign dut_cpu_trace_exc    = dut_cpu_core_reset_n ? `SMC_DUT_HART0_CSR.io_trace_0_exception : 1'b0;
+    assign dut_cpu_trace_cause  = dut_cpu_core_reset_n ? `SMC_DUT_HART0_CSR.io_cause : '0;
+    assign dut_cpu_trace_tval   = dut_cpu_core_reset_n ? `SMC_DUT_HART0_CSR.io_tval : '0;
+    assign bfm_cpu_core_reset_n = u_bfm.u_smc_wrapper.u_smc.u_smc_cpu_wrapper.core_reset_n[0];
+    assign bfm_cpu_trace_valid  = bfm_cpu_core_reset_n ? `SMC_BFM_HART0_CSR.io_trace_0_valid : 1'b0;
+    assign bfm_cpu_trace_pc     = bfm_cpu_core_reset_n ? `SMC_BFM_HART0_CSR.io_trace_0_iaddr : '0;
+    assign bfm_cpu_trace_insn   = bfm_cpu_core_reset_n ? `SMC_BFM_HART0_CSR.io_trace_0_insn : '0;
+    assign bfm_cpu_trace_exc    = bfm_cpu_core_reset_n ? `SMC_BFM_HART0_CSR.io_trace_0_exception : 1'b0;
+    assign bfm_cpu_trace_cause  = bfm_cpu_core_reset_n ? `SMC_BFM_HART0_CSR.io_cause : '0;
+    assign bfm_cpu_trace_tval   = bfm_cpu_core_reset_n ? `SMC_BFM_HART0_CSR.io_tval : '0;
+    `undef SMC_DUT_HART0_CSR
+    `undef SMC_BFM_HART0_CSR
 
     // ------------------------------------------------------------------
     // Controller I3C TX-port snoop (see the port comment). Passive: it only
@@ -2491,7 +2542,6 @@ module smc_dual_inst
         .isolate_req_o              (),
         .ss_reset_complete_i        ('1),
         .ss_config_o                (),
-        .ss_reset_ctrl_o            (),
         .sync_irq_o                 (),
         .disable_sram_auto_init_i   (1'b1),
         .init_mem_done_o            (init_mem_done_o),
@@ -2509,7 +2559,6 @@ module smc_dual_inst
         .ext_debug_bus_i            ('0),
         .test_en_i                  (1'b0),
         .scan_rst_ni                (1'b1),
-        .captured_straps_i          ('0),
         // Without an external BISR/MBIST agent the boot sequencer waits forever
         // if these stay low (same fix as the single-instance half /
         // tb_wrapper_top.sv).

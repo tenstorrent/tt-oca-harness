@@ -4,7 +4,9 @@
 
 from __future__ import annotations
 
-from pyuvm import uvm_component
+from pyuvm import ConfigDB, UVMConfigItemNotFound, uvm_component
+
+__all__ = ["SmuSepBootScoreboard", "SmuSmcBootScoreboard"]
 
 
 class SmuSmcBootScoreboard(uvm_component):
@@ -72,13 +74,19 @@ class SmuSepBootScoreboard(uvm_component):
     ICCM_END = 0xC004_0000
 
     def build_phase(self) -> None:
+        # Retirement evidence lives in the SEP CPU trace monitor, which
+        # smu_base_test builds before any scoreboard. check_phase fails loudly
+        # when it is absent: skipping the PC-advance check would vacuously pass
+        # a core that never booted.
+        try:
+            self.trace_mon = ConfigDB().get(self, "", "sep_trace_mon")
+        except UVMConfigItemNotFound:
+            self.trace_mon = None
         self.reset_low_seen = False
         self.reset_high_seen = False
         self.fuse_low_seen = False
         self.fuse_high_seen = False
         self.smc_arm_seen = False
-        self.trace_count = 0
-        self.pcs: set[int] = set()
         self.boot_rom_seen = False
         self.iccm_seen = False
         self.max_dccm_writes = 0
@@ -93,13 +101,13 @@ class SmuSepBootScoreboard(uvm_component):
     def sample_arm(self, smc_pass: int) -> None:
         self.smc_arm_seen |= bool(smc_pass)
 
-    def sample_trace(self, valid: int, pc: int) -> None:
-        if valid:
-            pc &= 0xFFFF_FFFF
-            self.trace_count += 1
-            self.pcs.add(pc)
-            self.boot_rom_seen |= self.BOOT_ROM_BASE <= pc < self.BOOT_ROM_END
-            self.iccm_seen |= self.ICCM_BASE <= pc < self.ICCM_END
+    @property
+    def trace_count(self) -> int:
+        return self.trace_mon.trace_count if self.trace_mon is not None else 0
+
+    @property
+    def pcs(self) -> set[int]:
+        return self.trace_mon.pcs if self.trace_mon is not None else set()
 
     def sample_windows(self, *, boot_rom_seen: int, iccm_seen: int) -> None:
         """Fold in the TB's sticky fetch-window detectors.
@@ -161,6 +169,8 @@ class SmuSepBootScoreboard(uvm_component):
             self.console_text(),
         )
         errors: list[str] = []
+        if self.trace_mon is None:
+            errors.append("no SEP CPU trace monitor attached (sep_trace_mon missing from ConfigDB)")
         if not self.reset_low_seen:
             errors.append("SEP reset was never observed asserted")
         if not self.reset_high_seen:

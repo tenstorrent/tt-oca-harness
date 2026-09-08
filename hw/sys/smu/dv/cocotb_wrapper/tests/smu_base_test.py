@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import sys
 from pathlib import Path
@@ -21,6 +22,8 @@ for _path in (_COCOTB_ROOT, _OSS_HW_ROOT / "common" / "dv" / "vip"):
         sys.path.insert(0, _path_text)
 
 from env.smu_env_cfg import SmuEnvCfg  # noqa: E402
+from env.smu_sep_cpu_trace_monitor import SmuSepCpuTraceMonitor  # noqa: E402
+from seq_lib.sep_fw_common import load_syms  # noqa: E402
 
 
 class smu_base_test(uvm_test):
@@ -43,6 +46,12 @@ class smu_base_test(uvm_test):
         self.cfg = SmuEnvCfg("cfg")
         self.cfg.randomize_timing(self.random_seed())
         ConfigDB().set(None, "*", "cfg", self.cfg)
+        # Built ahead of any scoreboard so the ConfigDB entry exists when a
+        # concrete test's build_phase looks it up; idles unless +sep_itcm_hex
+        # names a SEP image.
+        self.sep_trace_mon = SmuSepCpuTraceMonitor("sep_trace_mon", self)
+        ConfigDB().set(None, "*", "sep_trace_mon", self.sep_trace_mon)
+        self._attach_sep_symbols()
         self.logger.info(
             "SMU seed=%d clocks(ref/smu/periph/wdt)=%d/%d/%d/%dns "
             "reset(powergood/hold/post)=%d/%d/%d cycles",
@@ -55,6 +64,30 @@ class smu_base_test(uvm_test):
             self.cfg.reset_hold_cycles,
             self.cfg.post_reset_cycles,
         )
+
+    def _attach_sep_symbols(self) -> None:
+        """Feed the staged nm listing of the SEP image to the trace monitor.
+
+        ``+sep_sym`` names it explicitly; otherwise the ``+sep_itcm_hex`` stem
+        selects ``<stem>.tcm.sym`` (SEP firmware engine) or ``<stem>.sym``
+        (``fw/build_firmware.py``) in the simulator cwd. A missing listing
+        degrades to numeric PCs and never fails the test.
+        """
+        explicit = cocotb.plusargs.get("sep_sym")
+        itcm = cocotb.plusargs.get("sep_itcm_hex")
+        if explicit is not None:
+            candidates = [str(explicit)]
+        elif itcm is not None:
+            stem = Path(str(itcm)).name.split(".", 1)[0]
+            candidates = [f"{stem}.tcm.sym", f"{stem}.sym"]
+        else:
+            return
+        for path in candidates:
+            syms = load_syms(path, include_weak=True)
+            if syms:
+                self.sep_trace_mon.attach_symbols(syms, path)
+                return
+        self.logger.info("no SEP symbol listing among %s; trace PCs stay numeric", candidates)
 
     def start_clocks(self) -> None:
         dut = cocotb.top
@@ -183,5 +216,9 @@ class smu_base_test(uvm_test):
     async def run_phase(self) -> None:
         self.raise_objection()
         await self.bring_up()
-        await self.run_scenario()
+        try:
+            await self.run_scenario()
+        except Exception:  # noqa: BLE001 -- re-raised once the SEP state is in the log
+            self.sep_trace_mon.dump_diagnostics(logging.ERROR)
+            raise
         self.drop_objection()
