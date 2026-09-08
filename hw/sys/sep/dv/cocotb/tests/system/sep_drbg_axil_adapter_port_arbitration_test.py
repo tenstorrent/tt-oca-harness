@@ -51,8 +51,8 @@ from sep_base_test import sep_base_test
 from seq_lib.sep_drbg_adapter_port_seq import (
     GAP_CYCLES,
     ORDER_NAMES,
-    RESP_OKAY,
     PORT_ORDERS,
+    RESP_OKAY,
     AdapterPortVehicle,
 )
 
