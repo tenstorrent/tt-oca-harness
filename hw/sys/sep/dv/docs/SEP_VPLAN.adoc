@@ -19,8 +19,8 @@
 |Register export |`hw/sys/sep/regs/gen/` (via `env/sep_reg_meta.py`)
 |How to run |`README.md` in this DV tree (`tools/dv/run_dv.py --dut sep`)
 |Phase 1 test cases |32
-|Phase 2 test cases |56
-|Cocotb total |88 (`testlists/all.toml` `expected_count`)
+|Phase 2 test cases |59
+|Cocotb total |91 (`testlists/all.toml` `expected_count`)
 |Phase 3 |SV-UVM bench bring-up; 1 bound scenario (`sep_axi_smoke_test`)
 |===
 
@@ -4580,9 +4580,18 @@ watermark together; no vehicle asserts that pair today.
 
 *Scope*: the MODULE's arbitration, not the SEP integration. The DUT's own lane adapters sit behind the crossbar, which delivers W one cycle after AW and re-serializes every write to that order whatever a master presents -- `CHK-CONCURRENT-CAL` on the two fabric-driven leaves measures the gap at both ends and reports it as fabric-introduced. A same-cycle AW/W/AR presentation and a W-before-AW presentation are therefore not producible at a DUT adapter port from the fabric side, which is why this vehicle exists. It is a second instance of the same RTL module with its own reset and no fabric in front of it: every legal ordering is presentable to the cycle, and a wedged cell is cleared without resetting the DUT, so the three verdicts are independent. It claims nothing about the integration; the two leaves that follow own that half.
 
+*Test Procedure*:
+
+[arabic]
+. Read the live CSRNG lane and require OKAY before the vehicle is touched (`CHK-PORT-ANCHOR`).
+. On the vehicle, retire a lone write, a lone read, and an AW-then-W gap with no AR, each answering OKAY (`CHK-PORT-CONTROL`).
+. Present each of the three legal AW/W/AR orderings at the vehicle port. Confirm the port presented the named ordering (`CHK-PORT-STIM`) and that both accesses retire in bound (`CHK-PORT-PROGRESS`). Reset the vehicle between cells.
+
+*Checkers*:
+
 [cols="1,4"]
 |===
-|Check |Contract
+|Checker |Contract
 
 |CHK-PORT-ANCHOR
 |A plain read of the live CSRNG lane answers OKAY before the vehicle is touched. The vehicle is a TB-owned instance, so without this the leaf could report a pass against a DUT that never left reset; it also puts a transaction through the AXI agent, which the scoreboard requires as positive evidence before it will allow a pass at all.
@@ -4596,6 +4605,8 @@ watermark together; no vehicle asserts that pair today.
 |CHK-PORT-PROGRESS
 |Both accesses retire: BVALID and RVALID are both seen within a bounded cycle count. The stall this bounds is a stable, legal `1'b0` on all three readys, which no X-check and no protocol assertion can see, so the check also records the longest run of held-valids-with-every-ready-low, which is the stall signature itself.
 |===
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
 *Parked on an RTL fix*: `CHK-PORT-PROGRESS` fails on all three orderings while `CHK-PORT-CONTROL` passes. The lone write retires with `aw`/`w` handshaking on the first cycle and BVALID at cycle 3 carrying OKAY; the lone read retires with RVALID at cycle 3, also OKAY; the gapped write handshakes AW at cycle 0 and W at cycle 4 and retires with BVALID at cycle 7, OKAY; all three show zero stalled cycles. The response code is part of the control, not decoration: an access the adapter rejects as unsupported is answered SLVERR straight out of `StIdle` with nothing forwarded, and retires just as promptly, so a control that watched only the valid would accept a dead forwarding leg. The cycle count matters for the same reason -- a forwarded write cannot answer before the downstream leg has taken it. The three overlap cells then hold the port with every ready low for the whole bound -- the same-cycle cell with no handshake at all, the AW-first cell after AW alone has handshaked, and the W-first cell after W alone has handshaked. Those last two are the partially-committed states the arbitration analysis predicts. Reported to the open issue that raised concurrent AW/W/AR arbitration on this adapter. Recorded as a real failure and deliberately not converted to an expected failure.
 
@@ -4620,19 +4631,30 @@ watermark together; no vehicle asserts that pair today.
 
 *Scope*: one lane, one ordering, one leaf. A stalled adapter cannot be recovered inside a simulation -- the port stays held and the master stays stuck on it -- so a second cell after a wedge would measure the wedge rather than itself.
 
+*Test Procedure*:
+
+[arabic]
+. Measure the CSRNG `INTR_ENABLE` writable width, then a lone write and a lone read, and place the AW-then-AR overlap from the measured crossbar latencies (`CHK-CONCURRENT-CAL`).
+. Present that overlap on `INTR_ENABLE` / `INTR_STATE`. Confirm the CSRNG adapter port (`drbg_csrng_axil_chan_o`) saw the named ordering (`CHK-CONCURRENT-STIM`).
+. Require both accesses to retire and the write to land (`CHK-CONCURRENT-LAND`).
+
+*Checkers*:
+
 [cols="1,4"]
 |===
-|Check |Contract
+|Checker |Contract
 
 |CHK-CONCURRENT-CAL
 |The register's writable width is measured, not assumed: all-ones is written and read back, and the seed's pattern is narrowed to the bits that stick. The two blocks implement different interrupt counts, so a hardcoded width is wrong for one of them and a non-existent bit reads back 0 -- indistinguishable from a dropped write. A lone write and a lone read, neither of which can deadlock, then measure when AW, W and AR arrive at the adapter port through the crossbar. The overlap is then placed from those measured latencies: on broken RTL the first overlap is terminal, so the placement cannot be retried and must not be guessed, and a placement the measured latency cannot reach is reported unreachable rather than fired blind. The same measurement records the AW-to-W gap at the master and at the port and states which side introduced it -- master 0 cycles, port 1 cycle, so the stagger is the fabric's. That is also the evidence that plain untimed traffic already puts AW and AR in the same cycle whenever a store and a load are in flight together.
 
 |CHK-CONCURRENT-STIM
-|The ordering the ADAPTER PORT presented, read off `drbg_csrng_axil_chan_o` (or `drbg_edn_axil_chan_o` on the EDN leaf), not the ordering requested and not the presentation at `s_axi`. The crossbar restaggers the channels, so a presentation at the TB master is not evidence of one at the arbitration point. The leaf is covered only when that presentation is the named ordering. A different overlap, or a cell that missed its overlap, is reported unreachable and does not count as this leaf.
+|The ordering the ADAPTER PORT presented, read off `drbg_csrng_axil_chan_o`, not the ordering requested and not the presentation at `s_axi`. The crossbar restaggers the channels, so a presentation at the TB master is not evidence of one at the arbitration point. The leaf is covered only when that presentation is the named ordering. A different overlap, or a cell that missed its overlap, is reported unreachable and does not count as this leaf.
 
 |CHK-CONCURRENT-LAND
 |Both accesses retire and the write lands. The stall is a stable legal `1'b0` on all three readys, so the check is a bounded timeout plus a data compare against a complement prime; the prime makes a dropped write read back as the prime rather than as a plausible value. The check also records the longest run of held-valids-with-every-ready-low.
 |===
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
 *Parked on an RTL fix*: `CHK-CONCURRENT-LAND` fails. With AW presented and AR arriving while W is still outstanding, the CSRNG lane adapter port holds its valids for the whole bound with `aw_ready`, `w_ready` and `ar_ready` all low and no channel ever handshaking. The stall is permanent: nothing in the adapter can clear it, since neither side may withdraw a VALID and no ready ever rises. That a following access to the same lane also fails to retire was observed while developing the vehicle and is not re-asserted by this leaf, whose cell ends at the wedge. Reported to the open issue that raised this. Recorded as a real failure and deliberately not converted to an expected failure.
 
@@ -4654,6 +4676,31 @@ watermark together; no vehicle asserts that pair today.
 *Randomization*: RANDCFG -- as <<sep_drbg_axil_concurrent_csrng_aw_then_ar_test>>.
 
 *Objective*: The same contract on the second lane adapter, the EDN control path. `drbg.sv` instantiates `drbg_axil64_lane_adapter` twice, so the two lanes are separate hardware and a defect in one instance is not evidence about the other. The checks are those of <<sep_drbg_axil_concurrent_csrng_aw_then_ar_test>>, with the probe on `drbg_edn_axil_chan_o` and the access pair on the EDN block's own registers.
+
+*Test Procedure*:
+
+[arabic]
+. Measure the EDN `INTR_ENABLE` writable width, then a lone write and a lone read, and place the AW-then-AR overlap from the measured crossbar latencies (`CHK-CONCURRENT-CAL`).
+. Present that overlap on the EDN block's own registers. Confirm the EDN adapter port (`drbg_edn_axil_chan_o`) saw the named ordering (`CHK-CONCURRENT-STIM`).
+. Require both accesses to retire and the write to land (`CHK-CONCURRENT-LAND`).
+
+*Checkers*:
+
+[cols="1,4"]
+|===
+|Checker |Contract
+
+|CHK-CONCURRENT-CAL
+|Same contract as <<sep_drbg_axil_concurrent_csrng_aw_then_ar_test>>, on the EDN interrupt registers. The writable width is measured on this block; the lone write and lone read measure arrival at `drbg_edn_axil_chan_o`.
+
+|CHK-CONCURRENT-STIM
+|The ordering the EDN adapter port presented, read off `drbg_edn_axil_chan_o`, not the ordering requested and not the presentation at `s_axi`.
+
+|CHK-CONCURRENT-LAND
+|Both accesses retire and the write lands. The stall signature is the same held-valids-with-every-ready-low bound as the CSRNG leaf.
+|===
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
 *Parked on an RTL fix*: `CHK-CONCURRENT-LAND` fails identically -- the EDN lane adapter port holds its valids to the bound with all three readys low. That both instances fail the same way, and that the TB-instantiated third instance does too, is what shows the defect is in the module rather than in one integration.
 
@@ -5618,11 +5665,11 @@ contracts owned by the vault test, and the wipe security contract.
 |===
 |Item |Count
 |Phase 1 tests |32
-|Phase 2 tests |56
-|Cocotb total |88
+|Phase 2 tests |59
+|Cocotb total |91
 |Phase 3 |1 SV-UVM scenario bound (`sep_axi_smoke_test`)
 |Iconic scorecard rows |58 in-scope: 56 PROVEN, 1 PARTIAL, 1 GAP (see <<iconic-scorecard>>)
-|Coded and failing |1 (`sep_crypto_per_ip_reset_isolation_test`; graded GAP; see <<known-limitations>>)
+|Coded and failing |4 (`sep_crypto_per_ip_reset_isolation_test`; `sep_drbg_axil_adapter_port_arbitration_test`; `sep_drbg_axil_concurrent_csrng_aw_then_ar_test`; `sep_drbg_axil_concurrent_edn_aw_then_ar_test`; parked on RTL, not expected-fail; see <<known-limitations>>)
 |===
 
 === Regression Groups
