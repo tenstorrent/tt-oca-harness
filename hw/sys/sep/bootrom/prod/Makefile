@@ -71,7 +71,12 @@ SRAM_SCRUB_BYTES ?= 0
 # Default 1 preserves today's behaviour; the default may flip once nothing needs
 # the SRAM path.
 BL1_SRAM_EXEC_ENABLE ?= 1
-ROM_ICCM_CLEAR_ENABLE ?= 0
+# ICCM ECC establishment. The BL1 copy writes BL1's own words with valid ECC, so
+# only words past its end can be fetched having never been written; a pad at
+# hand-off covers those. Set ROM_ICCM_CLEAR_FULL=1 to scrub all of ICCM at [C9b]
+# instead, which also clears power-up residue at a cost of ~2M cycles.
+ROM_ICCM_CLEAR_ENABLE ?= 1
+ROM_ICCM_CLEAR_FULL ?= 0
 PMP_ENABLE ?= 1
 PMP_LOCK   ?= 0
 BUILD_TYPE ?= test
@@ -201,6 +206,7 @@ CFLAGS   := -Os -ffreestanding -fno-builtin -fdata-sections -ffunction-sections 
 	-DDCCM_SCRUB_BYTES=$(DCCM_SCRUB_BYTES) -DSRAM_SCRUB_BYTES=$(SRAM_SCRUB_BYTES) \
 	-DPMP_ENABLE=$(PMP_ENABLE) -DPMP_LOCK=$(PMP_LOCK) -DTEST_BUILD=1 -DSEP_BL0 -DDEBUG \
 	-DROM_ICCM_CLEAR_ENABLE=$(ROM_ICCM_CLEAR_ENABLE) \
+	-DROM_ICCM_CLEAR_FULL=$(ROM_ICCM_CLEAR_FULL) \
 	-DBL1_SRAM_EXEC_ENABLE=$(BL1_SRAM_EXEC_ENABLE) \
 	-DBOOT_SPI_CONTROLLER_OT=$(BOOT_SPI_CONTROLLER_OT) \
 	-DBOOT_OT_SPI_USE_PIO=$(BOOT_OT_SPI_USE_PIO) \
@@ -292,7 +298,7 @@ $(OCA_OBJ_DIR):
 BUILD_FLAGS := CTRL_OT=$(BOOT_SPI_CONTROLLER_OT) USE_PIO=$(BOOT_OT_SPI_USE_PIO) \
 	PROFILE=$(BOOT_OT_SPI_PROFILE) BUILD_TYPE=$(BUILD_TYPE) \
 	PMP_ENABLE=$(PMP_ENABLE) PMP_LOCK=$(PMP_LOCK) \
-	BL1_SRAM_EXEC=$(BL1_SRAM_EXEC_ENABLE) \
+	BL1_SRAM_EXEC=$(BL1_SRAM_EXEC_ENABLE) ICCM_FULL=$(ROM_ICCM_CLEAR_FULL) \
 	DCCM_SCRUB=$(DCCM_SCRUB_BYTES) SRAM_SCRUB=$(SRAM_SCRUB_BYTES) \
 	NONFREE=$(if $(NONFREE_ROOT),1,0) \
 	OCA_CLASSIC=$(OCA_SUPPORT_CLASSIC) OCA_PQC=$(OCA_SUPPORT_PQC) \

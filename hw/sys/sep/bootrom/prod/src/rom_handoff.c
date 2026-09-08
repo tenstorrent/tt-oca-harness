@@ -43,6 +43,12 @@
 // image another vendor published as BLSTAGE1 cannot be booted here.
 #define SEP_BL1_IMAGE_TYPE "TT_SEP  BLSTAGE1"
 
+// Bytes zeroed past BL1's image so the IFU cannot fetch a word that was never
+// written. The 64-bit fetch granule is the documented part; the rest is margin
+// for sequential prefetch, whose depth is not specified. Unused when
+// ROM_ICCM_CLEAR_FULL scrubs the whole region at [C9b].
+#define ICCM_ECC_PAD_BYTES 256u
+
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
@@ -178,6 +184,31 @@ uint32_t rom_handoff_bl1(void) {
     }
 
     img_length = (img_length + 3u) & ~3u;
+
+#if ROM_ICCM_CLEAR_ENABLE && !ROM_ICCM_CLEAR_FULL
+    // The copy below writes BL1's own words with valid ECC; this covers the
+    // words past its end that the IFU may still fetch. pad_start rounds down to
+    // the 64-bit ECC granule, so a granule holding both image and past-the-end
+    // bytes is covered; the copy runs after the pad and restores the image
+    // bytes in it. Clamped to ICCM so a BL1 sized near the top of the region
+    // cannot push the pad out of bounds.
+    if (bl1_in_iccm) {
+        const uint32_t iccm_end = OCH_SEP_TOP_SEP_ICCM_BASE_ADDR + OCH_SEP_TOP_SEP_ICCM_SIZE;
+        const uint32_t pad_start = (load_addr + img_length) & ~7u;
+        if (pad_start < iccm_end) {
+            uint32_t pad_len = iccm_end - pad_start;
+            if (pad_len > ICCM_ECC_PAD_BYTES) {
+                pad_len = ICCM_ECC_PAD_BYTES;
+            }
+            uint32_t pad_err = sep_dma_zero(pad_start, pad_len);
+            if (pad_err) {
+                simputs("ICCM_PAD_FAIL\n");
+                return OCA_BOOT_ERR_BL1_BAD_ADDR;
+            }
+            simputshex32("ICCM_PAD=", pad_start);
+        }
+    }
+#endif
 
     // ── Step 2: Copy BL1 to its ICCM load address ──
     report_status(STATUS_TYPE_INFO, SEP_MSG_BL1_COPY);

@@ -285,32 +285,24 @@ static void rom_iccm_clear(void) {
     simputshex32("ICCM_BASE=", ROM_ICCM_BASE);
     simputshex32("ICCM_SIZE=", ROM_ICCM_SIZE_BYTES);
 
-    // The clear is what establishes ICCM's ECC, exactly as the vector.S scrub
-    // does for DCCM: a write carries its ECC, and on silicon ICCM powers up with
-    // random contents and random ECC. BL1 executes from ICCM, and the IFU fetches
-    // 64 bits at a time, so a fetch near the end of BL1's image can reach a word
-    // the BL1 load never wrote. Leaving that to the testbench's backdoor TCM load
-    // would put a testbench in charge of a step the firmware owns.
+    // ICCM powers up with random contents and random ECC, and the IFU fetches
+    // 64 bits at a time, so any word it reads must have been written first.
+    // ROM_ICCM_CLEAR_FULL scrubs the whole region here; otherwise the hand-off
+    // establishes ECC over BL1's image and a pad past its end.
     //
-    // It goes through the DMA because the CPU cannot store to ICCM at all: ICCM
-    // shares VeeR region 0xC with DCCM, so every ICCM address faults as unmapped
-    // and the store never reaches the bus. sep_dma_zero() also handles the
-    // address remap an ICCM destination needs.
-    //
-    // sep_dma_init() runs here rather than relying on [C10c], which comes later.
-    // Programming the enabled-memory-range registers twice is harmless.
-    //
-    // ROM_ICCM_CLEAR_ENABLE is 0 for simulation and MUST be 1 for release; the
-    // Makefile carries the cost and the residual risk. The disabled branch
-    // reports SKIP, never OK.
-#if ROM_ICCM_CLEAR_ENABLE
+    // The fill goes through the DMA because the CPU cannot store to ICCM: ICCM
+    // shares VeeR region 0xC with DCCM, so every ICCM address faults as
+    // unmapped. sep_dma_zero() also handles the address remap ICCM needs.
+#if ROM_ICCM_CLEAR_ENABLE && ROM_ICCM_CLEAR_FULL
     sep_dma_init();
     uint32_t err = sep_dma_zero(ROM_ICCM_BASE, ROM_ICCM_SIZE_BYTES);
     if (err) {
         simputs("ICCM_CLR_FAIL\n");
         rom_err_fail(err);
     }
-    simputs("ICCM_CLR_OK\n");
+    simputs("ICCM_CLR_FULL\n");
+#elif ROM_ICCM_CLEAR_ENABLE
+    simputs("ICCM_CLR_HANDOFF\n");
 #else
     simputs("ICCM_CLR_SKIP\n");
 #endif
