@@ -52,7 +52,6 @@ int main(void) {
     spi_controller__CTRL_t ctrl;
     uint32_t dummy_rx;
 
-
     /* Enable controller (required for event signals to be valid) */
     ctrl.w = SPI_CONTROLLER__CTRL_reset;
     ctrl.f.SPIEN = 1;

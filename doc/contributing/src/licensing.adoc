@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: CC-BY-4.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 == Licensing
@@ -58,26 +58,4 @@ for their system bus interfaces. OCAHwill use AMBA APB and AXI4, so again, these
 When adopting and potentially modifying third party modules, make sure
 to follow all of the license rules such as keeping all attribution
 comments in the file headers.
-
-== Use of CLAs
-
-A Contributor License Agreement (CLA) defines the terms under which contributions can be made to a project.
-
-It is key to the successful functioning of an open source project and offers critical support to three separate groups:
-
-- Ensures that the project has the right to distribute the contribution.
-- Confirms the contributor's ownership and grants licenses to the project.
-- Provides protection for recipients and users of the contributions.
-
-=== What does the project CLA cover?
-
-TODO
-
-=== How is the project CLA implemented?
-
-TODO
-
-== Use of copyright messages
-
-TODO
 

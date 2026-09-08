@@ -4,10 +4,7 @@
 OcahSpiFlash — OCAH-stable NOR-flash device BFM for SPI / QSPI / OSPI.
 
 This module provides a self-contained, cocotb-native flash device behavioural
-model.  It does NOT depend on any external cocotb extension package.  When
-``cocotbext-spi`` (schang412, MIT) is later added to the project Python
-environment the implementation can delegate to it while keeping this public
-API unchanged — see the "Migration plan" section of README.md.
+model.  It does NOT depend on any external cocotb extension package.
 
 Supported commands
 ------------------
@@ -31,7 +28,7 @@ Mode mapping
 ------------
   "single" — CS_N, SCK, MOSI (DQ0 out), MISO (DQ1 in)
   "quad"   — CS_N, SCK, DQ[3:0] bidirectional
-  "octal"  — CS_N, SCK, DQ[7:0] bidirectional  (stub; see OCTAL_TODO below)
+  "octal"  — CS_N, SCK, DQ[7:0] bidirectional  (single-bit data timing; see below)
 
 The model is deterministic by default.  All memory is initialised to 0xFF
 (erased state).
@@ -40,10 +37,10 @@ The model is deterministic by default.  All memory is initialised to 0xFF
 import enum
 import logging
 import os
-from typing import Dict, List, Optional, Any, Callable
+from typing import Any, Callable, Dict, List, Optional
 
 import cocotb
-from cocotb.triggers import RisingEdge, FallingEdge, First, Timer
+from cocotb.triggers import FallingEdge, First, RisingEdge
 
 __all__ = ["OcahSpiFlash", "OcahSpiFlashError", "SpiMode"]
 
@@ -51,34 +48,37 @@ __all__ = ["OcahSpiFlash", "OcahSpiFlashError", "SpiMode"]
 # Constants
 # ---------------------------------------------------------------------------
 
-_CMD_JEDEC_ID      = 0x9F
-_CMD_READ          = 0x03
-_CMD_FAST_READ     = 0x0B
-_CMD_READ_SR1      = 0x05
-_CMD_READ_SR2      = 0x35
-_CMD_WRITE_ENABLE  = 0x06
+_CMD_JEDEC_ID = 0x9F
+_CMD_READ = 0x03
+_CMD_FAST_READ = 0x0B
+_CMD_READ_SR1 = 0x05
+_CMD_READ_SR2 = 0x35
+_CMD_WRITE_ENABLE = 0x06
 _CMD_WRITE_DISABLE = 0x04
-_CMD_PAGE_PROGRAM  = 0x02
-_CMD_SECTOR_ERASE  = 0x20
+_CMD_PAGE_PROGRAM = 0x02
+_CMD_SECTOR_ERASE = 0x20
 
-_PAGE_SIZE   = 256    # bytes
-_SECTOR_SIZE = 4096   # bytes — standard 4KB sector
+_PAGE_SIZE = 256  # bytes
+_SECTOR_SIZE = 4096  # bytes — standard 4KB sector
 
 
 # ---------------------------------------------------------------------------
 # Enumerations
 # ---------------------------------------------------------------------------
 
+
 class SpiMode(str, enum.Enum):
     """Supported SPI width modes."""
+
     SINGLE = "single"
-    QUAD   = "quad"
-    OCTAL  = "octal"
+    QUAD = "quad"
+    OCTAL = "octal"
 
 
 # ---------------------------------------------------------------------------
 # Error types
 # ---------------------------------------------------------------------------
+
 
 class OcahSpiFlashError(RuntimeError):
     """Raised when the flash BFM encounters an unrecoverable protocol error."""
@@ -87,6 +87,7 @@ class OcahSpiFlashError(RuntimeError):
 # ---------------------------------------------------------------------------
 # Main flash device BFM
 # ---------------------------------------------------------------------------
+
 
 class OcahSpiFlash:
     """
@@ -156,39 +157,33 @@ class OcahSpiFlash:
         verbose: bool = False,
     ):
         self.name = name
-        self.log  = logging.getLogger(name)
+        self.log = logging.getLogger(name)
 
-        self._cs_n    = cs_n
-        self._sclk    = sclk
-        self._mosi    = mosi
-        self._miso    = miso
-        self._dq_out  = dq_out
-        self._dq_in   = dq_in
+        self._cs_n = cs_n
+        self._sclk = sclk
+        self._mosi = mosi
+        self._miso = miso
+        self._dq_out = dq_out
+        self._dq_in = dq_in
 
         self._mode = SpiMode(mode)
         if self._mode == SpiMode.SINGLE and (mosi is None or miso is None):
-            raise OcahSpiFlashError(
-                f"{name}: mode='single' requires mosi and miso handles"
-            )
-        if self._mode in (SpiMode.QUAD, SpiMode.OCTAL) and (
-            dq_out is None or dq_in is None
-        ):
-            raise OcahSpiFlashError(
-                f"{name}: mode='{mode}' requires dq_out and dq_in handles"
-            )
+            raise OcahSpiFlashError(f"{name}: mode='single' requires mosi and miso handles")
+        if self._mode in (SpiMode.QUAD, SpiMode.OCTAL) and (dq_out is None or dq_in is None):
+            raise OcahSpiFlashError(f"{name}: mode='{mode}' requires dq_out and dq_in handles")
 
-        self._jedec_id    = jedec_id & 0xFFFFFF
-        self._flash_size  = flash_size
-        self._addr_bytes  = addr_bytes
-        self._verbose     = verbose
+        self._jedec_id = jedec_id & 0xFFFFFF
+        self._flash_size = flash_size
+        self._addr_bytes = addr_bytes
+        self._verbose = verbose
 
         # Flash memory storage — initialised to erased state (0xFF).
-        self._mem: bytearray = bytearray(b'\xff' * flash_size)
+        self._mem: bytearray = bytearray(b"\xff" * flash_size)
 
         # Status registers
         self._sr1 = status_reg1 & 0xFF
         self._sr2 = status_reg2 & 0xFF
-        self._wel = False   # Write Enable Latch
+        self._wel = False  # Write Enable Latch
 
         # Command callbacks (extensible by subclasses or tests)
         self._cmd_callbacks: Dict[int, Callable] = {}
@@ -211,19 +206,22 @@ class OcahSpiFlash:
         if jedec_env:
             try:
                 self._jedec_id = int(jedec_env, 16) & 0xFFFFFF
-                self.log.info("%s: JEDEC ID overridden by plusarg: 0x%06X",
-                              self.name, self._jedec_id)
+                self.log.info(
+                    "%s: JEDEC ID overridden by plusarg: 0x%06X", self.name, self._jedec_id
+                )
             except ValueError:
-                self.log.warning("%s: invalid +spi_flash_jedec_id=%s (ignored)",
-                                 self.name, jedec_env)
+                self.log.warning(
+                    "%s: invalid +spi_flash_jedec_id=%s (ignored)", self.name, jedec_env
+                )
 
         preload_env = os.environ.get("COCOTB_PLUSARG_spi_flash_preload")
         if preload_env:
             try:
                 self.preload(preload_env)
             except Exception as exc:  # noqa: BLE001
-                self.log.warning("%s: +spi_flash_preload=%s failed: %s",
-                                 self.name, preload_env, exc)
+                self.log.warning(
+                    "%s: +spi_flash_preload=%s failed: %s", self.name, preload_env, exc
+                )
 
     # ------------------------------------------------------------------
     # Public configuration API
@@ -258,23 +256,19 @@ class OcahSpiFlash:
         if isinstance(source, str):
             with open(source, "rb") as fh:
                 data = fh.read()
-            self.log.info("%s: preloaded %d bytes from %s",
-                          self.name, len(data), source)
+            self.log.info("%s: preloaded %d bytes from %s", self.name, len(data), source)
         else:
             data = bytes(source)
-            self.log.info("%s: preloaded %d bytes from object",
-                          self.name, len(data))
+            self.log.info("%s: preloaded %d bytes from object", self.name, len(data))
 
         if len(data) > self._flash_size:
             raise OcahSpiFlashError(
                 f"{self.name}: preload data ({len(data)} B) exceeds "
                 f"flash size ({self._flash_size} B)"
             )
-        self._mem[:len(data)] = data
+        self._mem[: len(data)] = data
 
-    def register_command_callback(
-        self, opcode: int, fn: Callable
-    ) -> None:
+    def register_command_callback(self, opcode: int, fn: Callable) -> None:
         """Register a callback for a custom or overridden command.
 
         Parameters
@@ -319,9 +313,13 @@ class OcahSpiFlash:
             return
         self._running = True
         self._task = cocotb.start_soon(self._protocol_engine())
-        self.log.info("%s: started (mode=%s, JEDEC=0x%06X, size=%dMB)",
-                      self.name, self._mode.value,
-                      self._jedec_id, self._flash_size // (1024 * 1024))
+        self.log.info(
+            "%s: started (mode=%s, JEDEC=0x%06X, size=%dMB)",
+            self.name,
+            self._mode.value,
+            self._jedec_id,
+            self._flash_size // (1024 * 1024),
+        )
 
     async def stop(self) -> None:
         """Stop the flash device BFM."""
@@ -331,8 +329,7 @@ class OcahSpiFlash:
         if self._task is not None:
             self._task.kill()
             self._task = None
-        self.log.info("%s: stopped (%d transactions served)",
-                      self.name, len(self._transactions))
+        self.log.info("%s: stopped (%d transactions served)", self.name, len(self._transactions))
 
     # ------------------------------------------------------------------
     # Transaction history
@@ -360,8 +357,7 @@ class OcahSpiFlash:
         end = addr + length
         if end > self._flash_size:
             raise OcahSpiFlashError(
-                f"{self.name}: read_memory addr=0x{addr:X} len={length} "
-                f"exceeds flash size"
+                f"{self.name}: read_memory addr=0x{addr:X} len={length} exceeds flash size"
             )
         return bytes(self._mem[addr:end])
 
@@ -370,8 +366,7 @@ class OcahSpiFlash:
         end = addr + len(data)
         if end > self._flash_size:
             raise OcahSpiFlashError(
-                f"{self.name}: write_memory addr=0x{addr:X} len={len(data)} "
-                f"exceeds flash size"
+                f"{self.name}: write_memory addr=0x{addr:X} len={len(data)} exceeds flash size"
             )
         self._mem[addr:end] = data
 
@@ -389,24 +384,23 @@ class OcahSpiFlash:
             try:
                 await self._handle_transaction()
             except Exception as exc:  # noqa: BLE001
-                self.log.error("%s: exception in transaction handler: %s",
-                               self.name, exc)
+                self.log.error("%s: exception in transaction handler: %s", self.name, exc)
 
     async def _handle_transaction(self) -> None:
         """Handle a single SPI transaction (CS low to CS high)."""
         opcode = await self._recv_byte_single()
-        addr   = 0
+        addr = 0
         rx_data: bytearray = bytearray()
-        tx_data: bytes     = b""
+        tx_data: bytes = b""
 
         if self._verbose:
             self.log.debug("%s: opcode=0x%02X", self.name, opcode)
 
         # Check for registered callback override first.
         if opcode in self._cmd_callbacks:
-            addr    = await self._recv_addr() if self._addr_bytes > 0 else 0
+            addr = await self._recv_addr() if self._addr_bytes > 0 else 0
             payload = await self._recv_remaining()
-            result  = await self._cmd_callbacks[opcode](opcode, addr, payload)
+            result = await self._cmd_callbacks[opcode](opcode, addr, payload)
             if result:
                 await self._send_bytes(result)
             self._log_transaction(opcode, addr, result or b"", payload)
@@ -414,11 +408,13 @@ class OcahSpiFlash:
 
         # --- JEDEC ID ---
         if opcode == _CMD_JEDEC_ID:
-            jedec_bytes = bytes([
-                (self._jedec_id >> 16) & 0xFF,
-                (self._jedec_id >>  8) & 0xFF,
-                (self._jedec_id      ) & 0xFF,
-            ])
+            jedec_bytes = bytes(
+                [
+                    (self._jedec_id >> 16) & 0xFF,
+                    (self._jedec_id >> 8) & 0xFF,
+                    (self._jedec_id) & 0xFF,
+                ]
+            )
             await self._send_bytes_active(jedec_bytes)
             tx_data = jedec_bytes
 
@@ -445,7 +441,7 @@ class OcahSpiFlash:
 
         # --- READ (slow, 1-1-1) ---
         elif opcode == _CMD_READ:
-            addr    = await self._recv_addr()
+            addr = await self._recv_addr()
             tx_data = await self._do_read(addr)
 
         # --- FAST READ (1-1-1 + 8-bit dummy) ---
@@ -457,11 +453,10 @@ class OcahSpiFlash:
         # --- PAGE PROGRAM ---
         elif opcode == _CMD_PAGE_PROGRAM:
             if not self._wel:
-                self.log.warning("%s: PAGE PROGRAM while WEL=0 — ignored",
-                                 self.name)
+                self.log.warning("%s: PAGE PROGRAM while WEL=0 — ignored", self.name)
                 await self._drain_to_cs_high()
             else:
-                addr    = await self._recv_addr()
+                addr = await self._recv_addr()
                 rx_data = await self._recv_remaining()
                 self._do_page_program(addr, rx_data)
                 self._wel = False
@@ -469,16 +464,16 @@ class OcahSpiFlash:
         # --- SECTOR ERASE (4 KB) ---
         elif opcode == _CMD_SECTOR_ERASE:
             if not self._wel:
-                self.log.warning("%s: SECTOR ERASE while WEL=0 — ignored",
-                                 self.name)
+                self.log.warning("%s: SECTOR ERASE while WEL=0 — ignored", self.name)
             else:
                 addr = await self._recv_addr()
                 self._do_sector_erase(addr)
                 self._wel = False
 
         else:
-            self.log.warning("%s: unknown opcode 0x%02X — draining to CS deassert",
-                             self.name, opcode)
+            self.log.warning(
+                "%s: unknown opcode 0x%02X — draining to CS deassert", self.name, opcode
+            )
             await self._drain_to_cs_high()
 
         self._log_transaction(opcode, addr, tx_data, bytes(rx_data))
@@ -503,14 +498,13 @@ class OcahSpiFlash:
     def _do_page_program(self, addr: int, data: bytearray) -> None:
         """Program bytes into flash, respecting page-program OR semantics."""
         page_base = addr & ~(_PAGE_SIZE - 1)
-        page_off  = addr & (_PAGE_SIZE - 1)
+        page_off = addr & (_PAGE_SIZE - 1)
         for i, byte_val in enumerate(data):
             page_addr = page_base + ((page_off + i) % _PAGE_SIZE)
             if page_addr < self._flash_size:
                 # NOR program: can only clear bits (AND semantics)
                 self._mem[page_addr] &= byte_val
-        self.log.debug("%s: PAGE PROGRAM addr=0x%06X len=%d",
-                       self.name, addr, len(data))
+        self.log.debug("%s: PAGE PROGRAM addr=0x%06X len=%d", self.name, addr, len(data))
 
     def _do_sector_erase(self, addr: int) -> None:
         """Erase a 4 KB sector (set all bytes to 0xFF)."""
@@ -538,9 +532,7 @@ class OcahSpiFlash:
         for _ in range(8):
             await First(RisingEdge(self._sclk), RisingEdge(self._cs_n))
             if int(self._cs_n.value) != 0:
-                raise OcahSpiFlashError(
-                    f"{self.name}: CS deasserted during byte receive"
-                )
+                raise OcahSpiFlashError(f"{self.name}: CS deasserted during byte receive")
             mosi_sig = self._mosi if self._mode == SpiMode.SINGLE else self._dq_out
             bit = int(mosi_sig.value) & 0x1
             byte_val = (byte_val << 1) | bit
@@ -557,7 +549,7 @@ class OcahSpiFlash:
         for bit_idx in range(7, -1, -1):
             await First(FallingEdge(self._sclk), RisingEdge(self._cs_n))
             if int(self._cs_n.value) != 0:
-                return   # CS deasserted mid-byte; silently stop
+                return  # CS deasserted mid-byte; silently stop
             bit = (byte_val >> bit_idx) & 0x1
             miso_sig = self._miso if self._mode == SpiMode.SINGLE else self._dq_in
             miso_sig.value = bit
@@ -599,42 +591,33 @@ class OcahSpiFlash:
             await RisingEdge(self._cs_n)
 
     # ------------------------------------------------------------------
-    # Quad / Octal helpers (OCTAL_TODO)
+    # Quad / Octal modes
     # ------------------------------------------------------------------
-    # NOTE: Full quad-SPI (4-bit simultaneous I/O for data phase) requires
-    # knowing which DQ bits carry data, and whether the DQ bus is driven by
-    # the BFM or the controller on a given phase.  A production implementation
-    # should model the bidirectional turnaround precisely.
-    #
-    # Current behaviour for mode="quad" and mode="octal":
-    #   - Command byte is received on DQ0 (bit 0 of dq_out), 1-bit at a time.
-    #   - Address bytes are received on DQ0, 1-bit at a time.
-    #   - Data phase uses DQ0 (send) / DQ0 (receive) in single-bit mode.
-    #
-    # OCTAL_TODO: Replace _recv_byte_single / _send_byte_single with quad-/
-    # octal-wide implementations once the DDR turnaround timing is confirmed
-    # against the SEP xSPI PHY interface.  Until then, quad/octal instantiate
-    # correctly and run the protocol engine but use single-bit I/O only.
+    # mode="quad" and mode="octal" bind the DQ bus but run the single-bit
+    # engine: the command byte, the address bytes, and the data phase all use
+    # DQ0 (bit 0 of dq_out / dq_in), one bit per SCK. Multi-bit data lanes
+    # and the bidirectional bus turnaround are not modeled.
 
     # ------------------------------------------------------------------
     # Internal bookkeeping
     # ------------------------------------------------------------------
 
-    def _log_transaction(
-        self, opcode: int, addr: int,
-        data_out: bytes, data_in: bytes
-    ) -> None:
+    def _log_transaction(self, opcode: int, addr: int, data_out: bytes, data_in: bytes) -> None:
         """Append a transaction record to the history list."""
         rec = {
-            "opcode":   opcode,
-            "addr":     addr,
-            "data_out": data_out,   # bytes sent from flash to controller
-            "data_in":  data_in,    # bytes received from controller
-            "ok":       True,
+            "opcode": opcode,
+            "addr": addr,
+            "data_out": data_out,  # bytes sent from flash to controller
+            "data_in": data_in,  # bytes received from controller
+            "ok": True,
         }
         self._transactions.append(rec)
         if self._verbose:
             self.log.debug(
                 "%s: txn opcode=0x%02X addr=0x%06X out=%d B in=%d B",
-                self.name, opcode, addr, len(data_out), len(data_in)
+                self.name,
+                opcode,
+                addr,
+                len(data_out),
+                len(data_in),
             )

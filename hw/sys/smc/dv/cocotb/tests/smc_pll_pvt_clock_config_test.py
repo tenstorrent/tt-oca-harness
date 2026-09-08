@@ -1,15 +1,15 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC OSS PLL/PVT clock CSR precheck — DEFERRED (rtl_placeholder).
+"""# deferred: rtl_placeholder
+SMC OSS PLL/PVT clock CSR precheck — DEFERRED (rtl_placeholder).
 
-Shelved until real adopter PLL/PVT IP replaces integration OKAY wraps.
-See testlists/deferred.toml.
+Needs real adopter PLL/PVT IP in place of the integration OKAY wraps.
+Not ported.
 """
 
 from __future__ import annotations
 
 import pyuvm
-
 from smc_base_test import smc_base_test
 
 
@@ -20,5 +20,5 @@ class smc_pll_pvt_clock_config_test(smc_base_test):
     async def run_scenario(self) -> None:
         raise AssertionError(
             "smc_pll_pvt_clock_config_test deferred: exercises pll/pvt "
-            "placeholder wraps only. See testlists/deferred.toml."
+            "placeholder wraps only. Not ported."
         )

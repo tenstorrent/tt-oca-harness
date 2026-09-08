@@ -1,12 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Sequence for smu_smc_smoke_test (SMU_ALL_003 rev 6).
+"""Sequence for smu_smc_smoke_test (SMU_ALL_003).
 
 DV-CARD:          SMU_ALL_003   ANCHOR: smu_smc_smoke_test
-DV-CARD-REVISION: 6   RECORD-SHA256: b3f504a0350089e1b8867785d30aa618dd4c31a9fc7dcef2192f8ff42ada6380
-DV-CARD-SOURCE:   hw/sys/smu/dv/tb/SMU_ALL_VPLAN_DETAIL.md @ artifact_revision 6   ENV: cocotb
 
-Approved OWNS (card r6 / plan r3):
+Owns:
   SMC-FAB-DUAL-NET.S2 — local peripherals/config registers use AXI4-Lite LP
   SMC-FAB-DUAL-NET.S3 — both networks carry 64-bit data without truncation
 
@@ -22,11 +20,11 @@ from __future__ import annotations
 import time
 
 import cocotb
-from cocotb.triggers import ClockCycles, RisingEdge, Timer
+from cocotb.triggers import ClockCycles, RisingEdge
 
 
 class smu_smc_smoke_test_seq:
-    """SMU_ALL_003 r6: SMC dual-network LP dest + SPEC 64-bit data observe."""
+    """SMU_ALL_003: SMC dual-network LP dest + SPEC 64-bit data observe."""
 
     BOUND_CYCLES = 2000
     SETTLE_CYCLES = 32
@@ -76,9 +74,7 @@ class smu_smc_smoke_test_seq:
 
     def _require_child(self, parent, name: str):
         if not hasattr(parent, name):
-            raise AssertionError(
-                f"missing hierarchical child {name} under {parent}"
-            )
+            raise AssertionError(f"missing hierarchical child {name} under {parent}")
         return getattr(parent, name)
 
     def _nbits(self, signal, name: str) -> int:
@@ -90,9 +86,7 @@ class smu_smc_smoke_test_seq:
             try:
                 n = len(signal)
             except TypeError as exc:
-                raise AssertionError(
-                    f"width observe fail: cannot measure {name}"
-                ) from exc
+                raise AssertionError(f"width observe fail: cannot measure {name}") from exc
         if n <= 0:
             raise AssertionError(f"width observe fail: {name} n_bits={n}")
         _ = self._sample(signal, name)
@@ -148,20 +142,15 @@ class smu_smc_smoke_test_seq:
         # rem = data + data/8 = 9*data/8 → data = rem*8/9
         if rem <= 0 or (rem * 8) % 9 != 0:
             raise AssertionError(
-                f"AXI4-Lite packed={packed} not invertible to data width "
-                f"(addr={addr_w} rem={rem})"
+                f"AXI4-Lite packed={packed} not invertible to data width (addr={addr_w} rem={rem})"
             )
         data_w = (rem * 8) // 9
         if cls._axil_req_bits(addr_w, data_w) != packed:
-            raise AssertionError(
-                f"AXI4-Lite invert mismatch: packed={packed} → data={data_w}"
-            )
+            raise AssertionError(f"AXI4-Lite invert mismatch: packed={packed} → data={data_w}")
         return data_w
 
     @classmethod
-    def _derive_axi4_data_width(
-        cls, packed: int, addr_w: int, id_w: int, user_w: int
-    ) -> int:
+    def _derive_axi4_data_width(cls, packed: int, addr_w: int, id_w: int, user_w: int) -> int:
         """Invert AXI4 packing for data width (strb = data/8)."""
         aw_wo_data = (
             id_w
@@ -203,9 +192,7 @@ class smu_smc_smoke_test_seq:
             )
         data_w = (rem * 8) // 9
         if cls._axi4_req_bits(addr_w, data_w, id_w, user_w) != packed:
-            raise AssertionError(
-                f"AXI4 invert mismatch: packed={packed} → data={data_w}"
-            )
+            raise AssertionError(f"AXI4 invert mismatch: packed={packed} → data={data_w}")
         return data_w
 
     async def _wait_eq(
@@ -222,16 +209,10 @@ class smu_smc_smoke_test_seq:
             await RisingEdge(clk)
             last = self._sample(signal, label)
             if last == expect:
-                self._timeout_paths.append(
-                    f"{label}: bound={bound} ok last={last}"
-                )
+                self._timeout_paths.append(f"{label}: bound={bound} ok last={last}")
                 return last
-        self._timeout_paths.append(
-            f"{label}: bound={bound} EXPIRED last={last}"
-        )
-        raise AssertionError(
-            f"TIMEOUT {label}: bound={bound} last_state={last} expect={expect}"
-        )
+        self._timeout_paths.append(f"{label}: bound={bound} EXPIRED last={last}")
+        raise AssertionError(f"TIMEOUT {label}: bound={bound} last_state={last} expect={expect}")
 
     def _resolve_dual_net_hierarchy(self, dut):
         """Walk bare SMU→SMC fabric dual-network instances (CONNECTIVITY)."""
@@ -315,12 +296,8 @@ class smu_smc_smoke_test_seq:
         gpio_req = self._require_child(lp_periph, "gpio_req_o")
         cfg_req = self._require_child(lp_cfg, "smc_base_config_req_o")
 
-        expect_periph_lite = self._axil_req_bits(
-            self.SPEC_ADDR_LOCAL, self.SPEC_PERIPH_LITE_DATA
-        )
-        expect_cfg_lite = self._axil_req_bits(
-            self.SPEC_ADDR_LOCAL, self.SPEC_DATA_WIDTH
-        )
+        expect_periph_lite = self._axil_req_bits(self.SPEC_ADDR_LOCAL, self.SPEC_PERIPH_LITE_DATA)
+        expect_cfg_lite = self._axil_req_bits(self.SPEC_ADDR_LOCAL, self.SPEC_DATA_WIDTH)
 
         label = "s2_dest_attachment_settle"
         last_cfg_rst = last_per_rst = None
@@ -384,9 +361,7 @@ class smu_smc_smoke_test_seq:
                 f"data={self.SPEC_DATA_WIDTH})"
             )
         if dest_cells != 2:
-            raise AssertionError(
-                f"SMC-FAB-DUAL-NET.S2 dest cells={dest_cells} expect=2"
-            )
+            raise AssertionError(f"SMC-FAB-DUAL-NET.S2 dest cells={dest_cells} expect=2")
 
         detail_s2 = (
             "net=AXI4-Lite "
@@ -422,18 +397,13 @@ class smu_smc_smoke_test_seq:
             "ACTION SMC-FAB-DUAL-NET.S3: derive data-bus width from SPEC "
             "packing formula on AXI4 HP and AXI4-Lite LP nets",
         )
-        self._log(
-            "COVERAGE SMC-FAB-DUAL-NET.S3 cells: "
-            "net=AXI4,data=64 net=AXI4-Lite,data=64"
-        )
+        self._log("COVERAGE SMC-FAB-DUAL-NET.S3 cells: net=AXI4,data=64 net=AXI4-Lite,data=64")
 
         local = hier["local_fabric"]
         if not hasattr(local, "input_axi_req_i"):
             raise AssertionError("unobservable AXI4 HP packed bus input_axi_req_i")
         if not hasattr(local, "axil_smc_base_config_req_o"):
-            raise AssertionError(
-                "unobservable AXI4-Lite LP packed bus axil_smc_base_config_req_o"
-            )
+            raise AssertionError("unobservable AXI4-Lite LP packed bus axil_smc_base_config_req_o")
 
         hp_packed = self._nbits(local.input_axi_req_i, "local_fabric.input_axi_req_i")
         lp_packed = self._nbits(
@@ -453,8 +423,7 @@ class smu_smc_smoke_test_seq:
 
         if hp_data != self.SPEC_DATA_WIDTH:
             raise AssertionError(
-                f"AXI4 HP data_width={hp_data} expect={self.SPEC_DATA_WIDTH} "
-                f"(packed={hp_packed})"
+                f"AXI4 HP data_width={hp_data} expect={self.SPEC_DATA_WIDTH} (packed={hp_packed})"
             )
         if lp_data != self.SPEC_DATA_WIDTH:
             raise AssertionError(
@@ -463,13 +432,9 @@ class smu_smc_smoke_test_seq:
             )
 
         # Secondary falsifier only: 32-bit Lite contrast must not equal LP64.
-        expect_lite32 = self._axil_req_bits(
-            self.SPEC_ADDR_LOCAL, self.SPEC_PERIPH_LITE_DATA
-        )
+        expect_lite32 = self._axil_req_bits(self.SPEC_ADDR_LOCAL, self.SPEC_PERIPH_LITE_DATA)
         if lp_packed == expect_lite32:
-            raise AssertionError(
-                "AXI4-Lite config network collapsed to 32-bit Lite packing"
-            )
+            raise AssertionError("AXI4-Lite config network collapsed to 32-bit Lite packing")
 
         net_cells = 0
         if hp_data == self.SPEC_DATA_WIDTH:
@@ -477,9 +442,7 @@ class smu_smc_smoke_test_seq:
         if lp_data == self.SPEC_DATA_WIDTH:
             net_cells += 1
         if net_cells != 2:
-            raise AssertionError(
-                f"SMC-FAB-DUAL-NET.S3 net cells={net_cells} expect=2"
-            )
+            raise AssertionError(f"SMC-FAB-DUAL-NET.S3 net cells={net_cells} expect=2")
 
         detail_s3 = (
             f"net=AXI4,data={hp_data} "
@@ -510,8 +473,7 @@ class smu_smc_smoke_test_seq:
         # ------------------------------------------------------------------
         self._mark_step(
             "S4",
-            "TIMEOUT: every bounded wait names finite bound + fail-on-expiry "
-            "+ last-state",
+            "TIMEOUT: every bounded wait names finite bound + fail-on-expiry + last-state",
         )
         for line in self._timeout_paths:
             self._log(f"TIMEOUT-PATH {line}")
@@ -523,13 +485,9 @@ class smu_smc_smoke_test_seq:
             )
         for i, line in enumerate(self._timeout_paths):
             if "bound=" not in line:
-                raise AssertionError(
-                    f"CHK-TIMEOUT-PATHS[{i}] missing finite bound: {line}"
-                )
+                raise AssertionError(f"CHK-TIMEOUT-PATHS[{i}] missing finite bound: {line}")
             if "ok last=" not in line and "EXPIRED last=" not in line:
-                raise AssertionError(
-                    f"CHK-TIMEOUT-PATHS[{i}] missing last-state: {line}"
-                )
+                raise AssertionError(f"CHK-TIMEOUT-PATHS[{i}] missing last-state: {line}")
         chk_to = (
             "CHK-TIMEOUT-PATHS: every bounded wait names finite bound, "
             f"fail-on-expiry path, and last-state diagnostic "
@@ -545,9 +503,7 @@ class smu_smc_smoke_test_seq:
         )
 
         self._step_ts["PASS"] = time.monotonic()
-        self._log(
-            "SMU_ALL_003 sequence complete (PASS term recorded for NONVAC fence)"
-        )
+        self._log("SMU_ALL_003 sequence complete (PASS term recorded for NONVAC fence)")
 
         order = ["S1", "S2", "S3", "S4", "PASS"]
         for step_id in order:
@@ -557,14 +513,12 @@ class smu_smc_smoke_test_seq:
             if self._step_ts[a] >= self._step_ts[b]:
                 raise AssertionError(f"CHK-NONVAC order fail: {a} not before {b}")
         deltas_ns = [
-            int((self._step_ts[b] - self._step_ts[a]) * 1e9)
-            for a, b in zip(order, order[1:])
+            int((self._step_ts[b] - self._step_ts[a]) * 1e9) for a, b in zip(order, order[1:])
         ]
         positive_deltas = sum(1 for d in deltas_ns if d > 0)
         if positive_deltas != 4:
             raise AssertionError(
-                f"CHK-NONVAC positive-delta count fail: {positive_deltas} "
-                f"deltas_ns={deltas_ns}"
+                f"CHK-NONVAC positive-delta count fail: {positive_deltas} deltas_ns={deltas_ns}"
             )
         self._log("CHK-NONVAC: ordered fence S1<S2<S3<S4<PASS all present")
         sb.expect_eq(

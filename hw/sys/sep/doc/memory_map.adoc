@@ -55,6 +55,14 @@ remap.
 
 The remaining subsystems are mapped into regions 1 and 2 for the EL2 CPU.
 
+Each row below is the address *aperture* reserved for a unit, not the extent that
+decodes. Within an aperture, only the unit's register extent responds; the
+remainder is reserved and returns DECERR. Reads and writes there never reach the
+unit, so an address that owns no register cannot alias onto one.
+
+The crypto region, 0x1090_0000 - 0x1094_FFFF (OTBN through ABR), accepts
+single-beat transactions only; see <<crypto-single-beat-only>>.
+
 [width="100%",cols="<20%,<20%,<20%,<20%,<20%",options="header",]
 |=======================================================================
 |Base Address |End Address |Size |Unit |Description
@@ -65,7 +73,7 @@ The remaining subsystems are mapped into regions 1 and 2 for the EL2 CPU.
 |0x1080_0000 |0x1080_0FFF |4 kB |DMA |DMA CSR
 |0x1080_1000 |0x1080_1FFF |4 kB |WDT |Watchdog Timer
 |0x1080_2000 |0x1080_2FFF |4 kB |SRB |Dual Scratch Register Banks
-|0x1080_3000 |0x1080_3007 |8 B |RST_CTRL |SEP Reset Controller (software reset for KM and crypto accelerators)
+|0x1080_3000 |0x1080_3007 |8 B |RST_CTRL |SEP Reset Controller (software reset for KM, the crypto accelerators and the TRNG)
 |0x1080_3008 |0x108F_FFFF |1,043 kB |_RSV_ |reserved
 |0x1090_0000 |0x1090_FFFF |64kB |OTBN |Public Key processor memory and CSR
 |0x1091_0000 |0x1091_0FFF |4 kB |AES |Block Cipher
@@ -79,7 +87,8 @@ The remaining subsystems are mapped into regions 1 and 2 for the EL2 CPU.
 |0x1092_0000 |0x1092_0FFF |4 kB |KM |Key Manager
 |0x1092_1000 |0x1092_FFFF | |_RSV_ |Reserved
 |0x1093_0000 |0x1093_7FFF |32 kB |OTP |Fuse Control and Shadow Memory
-|0x1093_8000 |0x1094_FFFF | |_RSV_ |Reserved
+|0x1093_8000 |0x1093_FFFF |32 kB |_RSV_ |Reserved
+|0x1094_0000 |0x1094_FFFF |64 kB |ABR |Adams Bridge post-quantum accelerator (ML-DSA-87 / ML-KEM-1024) CSR aperture
 |0x1095_0000 |0x1095_FFFF |64 kB |EPOOL |Entropy Pool FIFO (read-only drain; writes return SLVERR). Filled by native EDN.
 |0x1096_0000 |0x109F_FFFF | |_RSV_ |Reserved
 |0x10A0_0000 |0x10A3_FFFF |256 kB |SYS |System Bus I/F
@@ -95,9 +104,9 @@ The remaining subsystems are mapped into regions 1 and 2 for the EL2 CPU.
 === Detailed Register Map
 
 The following register tables are generated from the SEP register description
-(RDL) sub-blocks under `hw/sys/sep/regs/`, plus the Entropy Source IP block
-under `hw/ip/entropy_source/regs/`. Each entry corresponds to a unit in the SEP
-memory map above.
+(RDL) sub-blocks under `hw/sys/sep/regs/`, plus the eFuse MMR and Entropy Source
+IP blocks under `hw/ip/efuse/regs/` and `hw/ip/entropy_source/regs/`. Each entry
+corresponds to a unit in the SEP memory map above.
 
 ==== CPU Control and Interrupts
 
@@ -136,6 +145,9 @@ include::../regs/gen/adoc/blocks/sep_lifecycle_ctrl.adoc[]
 endif::backend-pdf[]
 
 ==== Scratch and eFuse
+
+The eFuse MMR block is an IP-level block (`hw/ip/efuse/regs/`); its register map
+is generated from the IP RDL rather than the SEP aggregate.
 
 ifdef::backend-html5[]
 ++++
@@ -197,7 +209,7 @@ ifdef::backend-pdf[]
 include::../../../ip/entropy_source/regs/gen/adoc/entropy_source.adoc[]
 endif::backend-pdf[]
 
-==== DRBG (CSRNG and EDN)
+==== DRBG
 
 The DRBG wraps a CSRNG (AES-CTR-DRBG per NIST SP 800-90A) and an EDN
 (see <<drbg,Architecture>>). Their register maps are reported here.

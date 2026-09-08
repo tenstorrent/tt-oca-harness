@@ -25,7 +25,7 @@
 # Note that a popular way of reducing the number of exponentiations during the
 # prime generation consists in performing trial divisions with small prime
 # numbers, which efficiently filters out a significant amount of composite
-# candidiates before the first exponentiation. It is however not clear how such
+# candidates before the first exponentiation. It is however not clear how such
 # trial division can be implemented without causing leakage on the individual
 # bits of the candidate prime.
 #
@@ -735,7 +735,7 @@ fold_bignum:
  * This function computes the inversion of a single 256-bit word modulo 2^256
  * using the Newton-Raphson algorithm.
  *
- * The key identity is the follwing:
+ * The key identity is the following:
  *
  *   x * y = 1 mod 2^k ==> x * y * (2 - x * y) mod 2^(2 * k)
  *

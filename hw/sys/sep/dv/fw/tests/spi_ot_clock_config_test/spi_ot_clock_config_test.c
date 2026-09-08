@@ -42,7 +42,6 @@ int main(void) {
     int pass = 1;
     spi_controller__CFG_t cfg;
 
-
     /* Step 1: Verify CFG default */
     printf("Step 1: CFG default check\n");
     cfg.w = READ_REG(OCH_SEP_TOP_SPI_CONTROLLER_CFG_BASE_ADDR);

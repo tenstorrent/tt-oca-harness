@@ -90,8 +90,20 @@ package km_drbg_sampler_reg_pkg;
     } km_drbg_sampler__status_reg__stream_err__out_t;
 
     typedef struct {
+        logic [7:0] value;
+        logic wr_swacc;
+    } km_drbg_sampler__status_reg__count_bad__out_t;
+
+    typedef struct {
+        logic [15:0] value;
+        logic wr_swacc;
+    } km_drbg_sampler__status_reg__count_good__out_t;
+
+    typedef struct {
         km_drbg_sampler__status_reg__timeout_err__out_t timeout_err;
         km_drbg_sampler__status_reg__stream_err__out_t stream_err;
+        km_drbg_sampler__status_reg__count_bad__out_t count_bad;
+        km_drbg_sampler__status_reg__count_good__out_t count_good;
     } km_drbg_sampler__status_reg__out_t;
 
     typedef struct {

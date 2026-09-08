@@ -5,8 +5,7 @@
 //
 // AXI to TileLink UL Bridge for secure_dma module
 
-module sep_dma_wrap
-#(
+module sep_dma_wrap #(
   // Local parameter for register address width
   parameter int unsigned REG_ADDR_WIDTH = 32,
   parameter bit [REG_ADDR_WIDTH-1:0]                SECURE_DMA_REG_MAP_BASE_ADDR = 32'h20000000,
@@ -34,6 +33,14 @@ module sep_dma_wrap
 
   // Aggregated fatal alert (alert pulse | integ_fail of all channels).
   output logic                                      dma_alert_o,
+
+  // Bridge fault reporting. Both are held until dma_err_clr_i; a fault arriving in
+  // the same cycle as the clear still latches. They are NOT cleared by a CPU-only
+  // reset (sep_cpu_reset_n is a subset of this block's rst_ni), so firmware must
+  // treat an assertion at boot as possibly stale rather than a fresh fault.
+  output logic                                      dma_reg_bus_err_o,
+  output logic                                      dma_host_intg_err_o,
+  input  logic                                      dma_err_clr_i,
 
   // Register Interface (AXI Slave)
   input  sep_pkg::sep_32_64_6_12_axi_req_t            reg_req_i,
@@ -83,10 +90,6 @@ module sep_dma_wrap
   sep_pkg::sep_32_64_3_12_axi_req_t  dma_axi_req_raw;
   sep_pkg::sep_32_64_3_12_axi_resp_t dma_axi_resp_raw;
 
-  // Unused error signals from converters
-  logic axi_to_tlul_err;
-  logic tlul_to_axi_intg_err;
-
   // CTN Interface (tied off)
   tlul_pkg::tl_d2h_t ctn_tl_d2h;
 
@@ -101,9 +104,9 @@ module sep_dma_wrap
   //////////////
 
   secure_dma #(
-	  .AlertAsyncOn           (AlertAsyncOn),
-	  .AlertSkewCycles        (AlertSkewCycles),
-	  .EnableDataIntgGen      (EnableDataIntgGen),
+    .AlertAsyncOn           (AlertAsyncOn),
+    .AlertSkewCycles        (AlertSkewCycles),
+    .EnableDataIntgGen      (EnableDataIntgGen),
     .EnableRspDataIntgCheck (EnableRspDataIntgCheck),
     .TlUserRsvd             (TlUserRsvd),
     .SysRaclRole            (SysRaclRole),
@@ -112,34 +115,34 @@ module sep_dma_wrap
     .RaclErrorRsp           (RaclErrorRsp),
     .RaclPolicySelVec       (RaclPolicySelVec)
   ) u_secure_dma (
-	  .clk_i                  (clk_i),
-	  .rst_ni                 (rst_ni),
-	  .scanmode_i             (prim_mubi_pkg::mubi4_bool_to_mubi(test_en_i)),
+    .clk_i                  (clk_i),
+    .rst_ni                 (rst_ni),
+    .scanmode_i             (prim_mubi_pkg::mubi4_bool_to_mubi(test_en_i)),
 
-	  .lsio_trigger_i         (lsio_trigger_i),
-	  .intr_dma_done_o        (intr_dma_done_o),
+    .lsio_trigger_i         (lsio_trigger_i),
+    .intr_dma_done_o        (intr_dma_done_o),
     .intr_dma_chunk_done_o  (intr_dma_chunk_done_o),
     .intr_dma_error_o       (intr_dma_error_o),
 
-	  .alert_rx_i             (dma_alert_rx),
-	  .alert_tx_o             (dma_alert_tx),
+    .alert_rx_i             (dma_alert_rx),
+    .alert_tx_o             (dma_alert_tx),
 
-	  .racl_policies_i        ('0),
-	  .racl_error_o           (/* UNUSED */),
+    .racl_policies_i        ('0),
+    .racl_error_o           (/* UNUSED */),
 
-	  // Register Interface
-	  .tl_d_i                 (tl_d_i),
-	  .tl_d_o                 (tl_d_o),
+    // Register Interface
+    .tl_d_i                 (tl_d_i),
+    .tl_d_o                 (tl_d_o),
 
-	  // DMA SEP Master Interface
+    // DMA SEP Master Interface
     .host_tl_h_i            (host_tl_h_i),
     .host_tl_h_o            (host_tl_h_o),
 
-	  // CTN Interface
-	  .ctn_tl_d2h_i           (ctn_tl_d2h),
-	  .ctn_tl_h2d_o           (/* UNUSED */),
+    // CTN Interface
+    .ctn_tl_d2h_i           (ctn_tl_d2h),
+    .ctn_tl_h2d_o           (/* UNUSED */),
 
-	  // System Interface
+    // System Interface
     .sys_i                  ('0),
     .sys_o                  (/* UNUSED */)
   );
@@ -220,7 +223,8 @@ module sep_dma_wrap
     .axi_lite_rsp_o  (axi_lite_slv_resp),
     .tl_o            (tl_d_i),
     .tl_i            (tl_d_o),
-    .err_o           (axi_to_tlul_err)
+    .err_o           (dma_reg_bus_err_o),
+    .err_clr_i       (dma_err_clr_i)
   );
 
   //////////////////////////////////////////////////////
@@ -245,7 +249,8 @@ module sep_dma_wrap
     .tl_o            (host_tl_h_i),
     .axi_lite_req_o  (axi_lite_mst_req),
     .axi_lite_rsp_i  (axi_lite_mst_resp),
-    .err_o           (tlul_to_axi_intg_err)
+    .err_o           (dma_host_intg_err_o),
+    .err_clr_i       (dma_err_clr_i)
   );
 
   // Convert AXI-Lite to AXI (before data width conversion)
@@ -299,17 +304,17 @@ module sep_dma_wrap
   //    therefore change the local base start to be offset by the SRAM start address
   //    and the size to be SRAM start address smaller
   axi_window_remap #(
-      .axi_req_t      (sep_pkg::sep_32_64_3_12_axi_req_t),
-      .axi_resp_t     (sep_pkg::sep_32_64_3_12_axi_resp_t),
-      .AXI_ADDR_WIDTH (32)
+    .axi_req_t      (sep_pkg::sep_32_64_3_12_axi_req_t),
+    .axi_resp_t     (sep_pkg::sep_32_64_3_12_axi_resp_t),
+    .AXI_ADDR_WIDTH (32)
   ) u_dma_local_alias_remap (
-      .slv_req_i          (dma_axi_req_raw),
-      .slv_resp_o         (dma_axi_resp_raw),
-      .mst_req_o          (dma_req_o),
-      .mst_resp_i         (dma_resp_i),
-      .local_alias_base_i (sep_local_base_addr_i),
-      .region_size_i      (sep_pkg::SEP_LOCAL_ALIAS_REGION_SIZE[31:0]),
-      .target_base_i      (sep_pkg::SEP_LOCAL_ALIAS_REGION_BASE[31:0])
+    .slv_req_i          (dma_axi_req_raw),
+    .slv_resp_o         (dma_axi_resp_raw),
+    .mst_req_o          (dma_req_o),
+    .mst_resp_i         (dma_resp_i),
+    .local_alias_base_i (sep_local_base_addr_i),
+    .region_size_i      (sep_pkg::SEP_LOCAL_ALIAS_REGION_SIZE[31:0]),
+    .target_base_i      (sep_pkg::SEP_LOCAL_ALIAS_REGION_BASE[31:0])
   );
 
   ///////////////////

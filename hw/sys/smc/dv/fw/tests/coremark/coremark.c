@@ -270,170 +270,40 @@ for (i = 0; i < MULTITHREAD; i++) {
     end_counter();
     stop_time();
 
+    /* Gate the verdict on the CRCs the run just produced.
+     *
+     * core_init_state / core_bench_list / core_bench_state / core_bench_matrix
+     * each fold their return value into one of these accumulators, and the
+     * `if (res->crcX == 0)` guards above mean an accumulator that is still zero
+     * is one whose kernel produced nothing. Requiring all four non-zero is
+     * therefore evidence that each of the three benchmark kernels ran and
+     * returned data.
+     *
+     * What this does NOT do is validate against CoreMark's published golden
+     * CRCs for the seed set: those values are not in this tree, so a wrong
+     * answer that is wrong consistently would still pass. Closing that needs
+     * the reference validation block and its expected values, which is a
+     * separate piece of work. */
+    if (results[0].crc == 0 || results[0].crclist == 0 || results[0].crcmatrix == 0 ||
+        results[0].crcstate == 0) {
+        simputs("[ERROR] CoreMark produced a zero CRC accumulator:\n");
+        simputshex32("  crc       = ", results[0].crc);
+        simputshex32("  crclist   = ", results[0].crclist);
+        simputshex32("  crcmatrix = ", results[0].crcmatrix);
+        simputshex32("  crcstate  = ", results[0].crcstate);
+        test_fail(0);
+    }
+
+    simputshex32("CoreMark crc       = ", results[0].crc);
+    simputshex32("CoreMark crclist   = ", results[0].crclist);
+    simputshex32("CoreMark crcmatrix = ", results[0].crcmatrix);
+    simputshex32("CoreMark crcstate  = ", results[0].crcstate);
+
     test_pass(0);
 
     while (1) {
         __asm__ __volatile__("wfi");
     }
-    //     total_time = get_time();
-    //     /* get a function of the input to report */
-    //     seedcrc = crc16(results[0].seed1, seedcrc);
-    //     seedcrc = crc16(results[0].seed2, seedcrc);
-    //     seedcrc = crc16(results[0].seed3, seedcrc);
-    //     seedcrc = crc16(results[0].size, seedcrc);
-
-    //     switch (seedcrc)
-    //     {                /* test known output for common seeds */
-    //         case 0x8a02: /* seed1=0, seed2=0, seed3=0x66, size 2000 per algorithm */
-    //             known_id = 0;
-    //             ee_printf("6k performance run parameters for coremark.\n");
-    //             break;
-    //         case 0x7b05: /*  seed1=0x3415, seed2=0x3415, seed3=0x66, size 2000 per
-    //                         algorithm */
-    //             known_id = 1;
-    //             ee_printf("6k validation run parameters for coremark.\n");
-    //             break;
-    //         case 0x4eaf: /* seed1=0x8, seed2=0x8, seed3=0x8, size 400 per algorithm
-    //                       */
-    //             known_id = 2;
-    //             ee_printf("Profile generation run parameters for coremark.\n");
-    //             break;
-    //         case 0xe9f5: /* seed1=0, seed2=0, seed3=0x66, size 666 per algorithm */
-    //             known_id = 3;
-    //             ee_printf("2K performance run parameters for coremark.\n");
-    //             break;
-    //         case 0x18f2: /*  seed1=0x3415, seed2=0x3415, seed3=0x66, size 666 per
-    //                         algorithm */
-    //             known_id = 4;
-    //             ee_printf("2K validation run parameters for coremark.\n");
-    //             break;
-    //         default:
-    //             total_errors = -1;
-    //             break;
-    //     }
-    //     if (known_id >= 0)
-    //     {
-    //         for (i = 0; i < default_num_contexts; i++)
-    //         {
-    //             results[i].err = 0;
-    //             if ((results[i].execs & ID_LIST)
-    //                 && (results[i].crclist != list_known_crc[known_id]))
-    //             {
-    //                 ee_printf("[%u]ERROR! list crc 0x%04x - should be 0x%04x\n",
-    //                           i,
-    //                           results[i].crclist,
-    //                           list_known_crc[known_id]);
-    //                 results[i].err++;
-    //             }
-    //             if ((results[i].execs & ID_MATRIX)
-    //                 && (results[i].crcmatrix != matrix_known_crc[known_id]))
-    //             {
-    //                 ee_printf("[%u]ERROR! matrix crc 0x%04x - should be 0x%04x\n",
-    //                           i,
-    //                           results[i].crcmatrix,
-    //                           matrix_known_crc[known_id]);
-    //                 results[i].err++;
-    //             }
-    //             if ((results[i].execs & ID_STATE)
-    //                 && (results[i].crcstate != state_known_crc[known_id]))
-    //             {
-    //                 ee_printf("[%u]ERROR! state crc 0x%04x - should be 0x%04x\n",
-    //                           i,
-    //                           results[i].crcstate,
-    //                           state_known_crc[known_id]);
-    //                 results[i].err++;
-    //             }
-    //             total_errors += results[i].err;
-    //         }
-    //     }
-    //     total_errors += check_data_types();
-    //     /* and report results */
-    //     ee_printf("CoreMark Size    : %lu\n", (long unsigned)results[0].size);
-    //     ee_printf("Total ticks      : %lu\n", (long unsigned)total_time);
-    // #if HAS_FLOAT
-    //     ee_printf("Total time (secs): %f\n", time_in_secs(total_time));
-    //     if (time_in_secs(total_time) > 0)
-    //         ee_printf("Iterations/Sec   : %f\n",
-    //                   default_num_contexts * results[0].iterations
-    //                       / time_in_secs(total_time));
-    // #else
-    //     ee_printf("Total time (secs): %d\n", time_in_secs(total_time));
-    //     if (time_in_secs(total_time) > 0)
-    //         ee_printf("Iterations/Sec   : %d\n",
-    //                   default_num_contexts * results[0].iterations
-    //                       / time_in_secs(total_time));
-    // #endif
-    //     if (time_in_secs(total_time) < 10)
-    //     {
-    //         ee_printf(
-    //             "ERROR! Must execute for at least 10 secs for a valid result!\n");
-    //         total_errors++;
-    //     }
-
-    //     ee_printf("Iterations       : %lu\n",
-    //               (long unsigned)default_num_contexts * results[0].iterations);
-    //     ee_printf("Compiler version : %s\n", COMPILER_VERSION);
-    //     ee_printf("Compiler flags   : %s\n", COMPILER_FLAGS);
-    // #if (MULTITHREAD > 1)
-    //     ee_printf("Parallel %s : %d\n", PARALLEL_METHOD, default_num_contexts);
-    // #endif
-    //     ee_printf("Memory location  : %s\n", MEM_LOCATION);
-    //     /* output for verification */
-    //     ee_printf("seedcrc          : 0x%04x\n", seedcrc);
-    //     if (results[0].execs & ID_LIST)
-    //         for (i = 0; i < default_num_contexts; i++)
-    //             ee_printf("[%d]crclist       : 0x%04x\n", i, results[i].crclist);
-    //     if (results[0].execs & ID_MATRIX)
-    //         for (i = 0; i < default_num_contexts; i++)
-    //             ee_printf("[%d]crcmatrix     : 0x%04x\n", i, results[i].crcmatrix);
-    //     if (results[0].execs & ID_STATE)
-    //         for (i = 0; i < default_num_contexts; i++)
-    //             ee_printf("[%d]crcstate      : 0x%04x\n", i, results[i].crcstate);
-    //     for (i = 0; i < default_num_contexts; i++)
-    //         ee_printf("[%d]crcfinal      : 0x%04x\n", i, results[i].crc);
-    //     if (total_errors == 0)
-    //     {
-    //         ee_printf(
-    //             "Correct operation validated. See README.md for run and reporting "
-    //             "rules.\n");
-    // #if HAS_FLOAT
-    //         if (known_id == 3)
-    //         {
-    //             ee_printf("CoreMark 1.0 : %f / %s %s",
-    //                       default_num_contexts * results[0].iterations
-    //                           / time_in_secs(total_time),
-    //                       COMPILER_VERSION,
-    //                       COMPILER_FLAGS);
-    // #if defined(MEM_LOCATION) && !defined(MEM_LOCATION_UNSPEC)
-    //             ee_printf(" / %s", MEM_LOCATION);
-    // #else
-    //             ee_printf(" / %s", mem_name[MEM_METHOD]);
-    // #endif
-
-    // #if (MULTITHREAD > 1)
-    //             ee_printf(" / %d:%s", default_num_contexts, PARALLEL_METHOD);
-    // #endif
-    //             ee_printf("\n");
-    //         }
-    // #endif
-    //     }
-    //     if (total_errors > 0)
-    //         ee_printf("Errors detected\n");
-    //     if (total_errors < 0)
-    //         ee_printf(
-    //             "Cannot validate operation for these seed values, please compare "
-    //             "with results on a known platform.\n");
-
-    // #if (MEM_METHOD == MEM_MALLOC)
-    //     for (i = 0; i < MULTITHREAD; i++)
-    //         portable_free(results[i].memblock[0]);
-    // #endif
-    //     /* And last call any target specific code for finalizing */
-    //     portable_fini(&(results[0].port));
-
-    //     test_pass(0);
-
-    //     return MAIN_RETURN_VAL;
 }
 
 /*

@@ -360,7 +360,7 @@ mod_mul_320x128:
  *
  * Returns c = a * b mod p
  *
- * Uses a specialized algorithm to quicly multiply modulo the P-256 coordinate
+ * Uses a specialized algorithm to quickly multiply modulo the P-256 coordinate
  * modulus p = 2^256 - 2^224 + 2^192 + 2^96 - 1.
  *
  * This code has been proven correct in Coq here against a simplified model of
@@ -1271,7 +1271,7 @@ scalar_mult_int:
   la        x3, p256_b
   bn.lid    x2, 0(x3)
 
-  /* get randomized projective coodinates of curve point
+  /* get randomized projective coordinates of curve point
      P = (x_p, y_p, z_p) = (w8, w9, w10) = (w14, w15, w16) =
      (x*z mod p, y*z mod p, z) */
   li        x10, 24
@@ -1340,7 +1340,7 @@ scalar_mult_int:
 
     /* N.B. The L bit here is secret. For side channel protection in the
        selects below, it is vital that neither option is equal to the
-       destionation register (e.g. bn.sel w0, w0, w1). In this case, the
+       destination register (e.g. bn.sel w0, w0, w1). In this case, the
        hamming distance from the destination's previous value to its new value
        will be 0 in one of the cases and potentially reveal L.
 

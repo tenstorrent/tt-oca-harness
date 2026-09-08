@@ -46,9 +46,9 @@ class SmuScoreboard(uvm_component):
         if evidence:
             return _normalize_token(evidence)
         # Auto-attach mapped FEATURE tokens only when the check name contains
-        # the TOKEN or CHK id itself. Do NOT fuzzy-match expect-string keywords
-        # (e.g. "ovrd"/"stall"/"reset") — that prematurely logged FEATURE tokens
-        # on idle/bring-up compares (EVIDENCE-TOKEN-CONDITIONAL).
+        # the TOKEN or CHK id itself; matching expect-string keywords (e.g.
+        # "ovrd"/"stall"/"reset") would log FEATURE tokens on idle/bring-up
+        # compares (EVIDENCE-TOKEN-CONDITIONAL).
         rows = TEST_EVIDENCE.get(self.testcase_name or "", [])
         name_u = str(name).upper().replace("-", "_")
         for chk_id, token, _expect in rows:
@@ -88,9 +88,7 @@ class SmuScoreboard(uvm_component):
         self.checks += 1
         if observed != expected:
             self.errors += 1
-            self.logger.error(
-                "CHECK FAIL %s: expected %s, got %s", name, expected, observed
-            )
+            self.logger.error("CHECK FAIL %s: expected %s, got %s", name, expected, observed)
             raise AssertionError(f"{name}: expected {expected}, got {observed}")
         token = self._resolve_token(name, evidence)
         self.logger.info("CHECK PASS %s: %s", name, observed)
@@ -150,24 +148,18 @@ class SmuScoreboard(uvm_component):
                 f"or align check names to FEATURE_LIST TOKENs."
             )
         for chk_id, token, expect in rows:
-            self.logger.info(
-                "FEATURE PROVEN %s -> %s (%s)", chk_id, token, expect
-            )
+            self.logger.info("FEATURE PROVEN %s -> %s (%s)", chk_id, token, expect)
 
     def check_phase(self) -> None:
         if self.checks == 0:
-            raise AssertionError(
-                "SmuScoreboard: zero checks executed - refusing vacuous PASS"
-            )
+            raise AssertionError("SmuScoreboard: zero checks executed - refusing vacuous PASS")
         if self.errors != 0:
             raise AssertionError(
                 f"SmuScoreboard: {self.errors} check(s) failed out of {self.checks}"
             )
         # Non-vacuity evidence token required by leaf contracts
         self._log_evidence("CHK-NONVAC")
-        self.logger.info(
-            "SmuScoreboard: %d check(s) passed with zero errors", self.checks
-        )
+        self.logger.info("SmuScoreboard: %d check(s) passed with zero errors", self.checks)
         if self._evidence_tokens:
             self.logger.info(
                 "EVIDENCE_SUMMARY: %d token(s) - %s",

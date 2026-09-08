@@ -19,19 +19,11 @@ UART_LOG_ENGINE_CTRL = smc_indexed_addr(
 UART0_THR = smc_indexed_addr(
     "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR", 0
 )  # also THR / DLL (DLAB)
-UART0_IER = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR", 0
-)
-UART0_LCR = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LCR_BASE_ADDR", 0
-)
-UART0_LSR = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR", 0
-)
+UART0_IER = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR", 0)
+UART0_LCR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LCR_BASE_ADDR", 0)
+UART0_LSR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR", 0)
 
-CLOCK_GATE_CONTROL = smc_addr(
-    "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
-)
+CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 
 UART_EN = 0x1
 LCR_DLAB = 0x80
@@ -51,9 +43,8 @@ class smc_uart_loopback_test_seq(SmcCsrSeq):
     async def body(self) -> None:
         # start_seq assigns seq.cfg = env.cfg (includes randomized periph period).
         periph_ns = int(getattr(self.cfg, "periph_clk_period_ns", 10) or 10)
-        self.divisor = max(
-            1, int(round(1.0 / ((periph_ns * 1e-9) * 16 * BAUD)))
-        )
+        # Baud generator divides by (divisor + 1); divisor 0 disables TX/RX.
+        self.divisor = max(1, int(round(1.0 / ((periph_ns * 1e-9) * 16 * BAUD))) - 1)
         cocotb.log.info(
             "UART DUT TX: periph_clk=%dns baud=%d divisor=%d",
             periph_ns,
@@ -71,7 +62,7 @@ class smc_uart_loopback_test_seq(SmcCsrSeq):
         await self.csr_write("UART0_DLM", UART0_IER, (self.divisor >> 8) & 0xFF)
         await self.csr_write("UART0_LCR_8N1", UART0_LCR, LCR_8N1)
 
-        # Allow divisor reload to settle (legacy 16550 TB waits ~default*16).
+        # Allow divisor reload to settle.
         await ClockCycles(cocotb.top.clk_smc_i, max(64, self.divisor * 16))
 
         try:

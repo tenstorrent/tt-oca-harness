@@ -18,9 +18,7 @@ from .smc_csr_seq_utils import SmcCsrSeq
 EFUSE_INTERFACE_CTRL = smc_addr(
     "SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR"
 )
-EFUSE_SHIM_CTRL = smc_bootrom_addr(
-    "SMC_TOP_SMC_EXTERNAL_MANDATORY_EFUSE_SHIM_CTRL_BASE_ADDR"
-)
+EFUSE_SHIM_CTRL = smc_bootrom_addr("SMC_TOP_SMC_EXTERNAL_MANDATORY_EFUSE_SHIM_CTRL_BASE_ADDR")
 
 
 class smc_efuse_shim_ctrl_test_seq(SmcCsrSeq):

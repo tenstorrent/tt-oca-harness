@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# SPDX-FileCopyrightText: (c) 2024-2026 Tenstorrent Inc. All Rights Reserved.
+# SPDX-FileCopyrightText: 2024-2026 Tenstorrent USA, Inc.
 #
 # sep_drbg_scoreboard.py
 #
@@ -32,11 +32,10 @@ from collections import Counter, deque
 _CSRNG_MAX_GLEN = (1 << 12) - 1
 
 import cocotb
-from cocotb.triggers import RisingEdge, ReadOnly, NextTimeStep
+from cocotb.triggers import NextTimeStep, ReadOnly, RisingEdge
 from cocotb.utils import get_sim_time
-
-from sep_noise_golden import SepNoiseGolden
 from sep_entropy_golden import SepEntropyGolden
+from sep_noise_golden import SepNoiseGolden
 
 
 def _safe_int(sig):
@@ -47,9 +46,13 @@ def _safe_int(sig):
         return None
 
 
+def _fmt_word(val, hexw: int) -> str:
+    """Hex word for the report log; X/Z stays visible instead of throwing."""
+    return "X/Z" if val is None else f"{val:0{hexw}x}"
+
+
 class _StreamResult:
-    __slots__ = ("name", "width", "matches", "mismatches", "dut_items",
-                 "pairs", "first_mismatch")
+    __slots__ = ("name", "width", "matches", "mismatches", "dut_items", "pairs", "first_mismatch")
 
     def __init__(self, name, width):
         self.name = name
@@ -57,44 +60,48 @@ class _StreamResult:
         self.matches = 0
         self.mismatches = 0
         self.dut_items = 0
-        self.pairs = []            # first N (idx, expected, actual, ok)
+        self.pairs = []  # first N (idx, expected, actual, ok)
         self.first_mismatch = None  # (idx, expected, actual)
 
 
 class SepDrbgScoreboard:
     """Chained CHK1..CHK5 comparator driven off a co-driven golden."""
 
-    CAPTURE_N = 64    # (exp, act) pairs retained per stream for the log
+    CAPTURE_N = 64  # (exp, act) pairs retained per stream for the log
 
-    # per-stream: (golden expected-queue attr, probe width bits). The four crypto
-    # EDN sinks have no golden queue here (None): the SEP EDN fans genbits to the
-    # crypto leg via an arbiter, so bit-exact per-sink prediction needs the reference suite
-    # AXIS1-golden-tap + arbiter-assignment trace (sep_drbg_real_sink_multi_*). Until
-    # that is ported, crypto sinks run in OBSERVE mode (positive beat evidence, no
-    # value compare); CHK5_km keeps its golden queue for the controlled-firmware case.
+    # per-stream: (golden expected-queue attr, probe width bits). Crypto-EDN
+    # sinks have no chain queue here (None): routing compares each post-adapter
+    # beat to the AXIS1 word the adapter granted that cycle. CHK5_km keeps its
+    # own golden queue for the controlled-firmware case.
     _STREAMS = {
-        "CHK1_decor":     ("expected_decor_bytes", 96),
-        "CHK2_compress":  ("expected_compress_words", 32),
-        "CHK3_seed":      ("expected_seed", 384),
-        "CHK4_genbits":   ("expected_genbits", 128),
-        "CHK5_km":        ("expected_km_words", 32),
-        "CHK5_aes":       (None, 32),
-        "CHK5_kmac":      (None, 32),
-        "CHK5_otbn_rnd":  (None, 32),
+        "CHK1_decor": ("expected_decor_bytes", 96),
+        "CHK2_compress": ("expected_compress_words", 32),
+        "CHK3_seed": ("expected_seed", 384),
+        "CHK4_genbits": ("expected_genbits", 128),
+        "CHK5_km": ("expected_km_words", 32),
+        "CHK5_aes": (None, 32),
+        "CHK5_kmac": (None, 32),
+        "CHK5_otbn_rnd": (None, 32),
         "CHK5_otbn_urnd": (None, 32),
-        "CHK5_pool":      (None, 32),
+        "CHK5_pool": (None, 32),
     }
 
     # score-map name -> CHK5 stream key.
     _SINK_KEYS = {
-        "km": "CHK5_km", "aes": "CHK5_aes", "kmac": "CHK5_kmac",
-        "otbn_rnd": "CHK5_otbn_rnd", "otbn_urnd": "CHK5_otbn_urnd",
+        "km": "CHK5_km",
+        "aes": "CHK5_aes",
+        "kmac": "CHK5_kmac",
+        "otbn_rnd": "CHK5_otbn_rnd",
+        "otbn_urnd": "CHK5_otbn_urnd",
         "pool": "CHK5_pool",
     }
     # crypto-EDN sink stream key -> bit/word index into the packed crypto_edn_*_o
     # probe vectors (drbg_axis_edn_adapter client order: AES,KMAC,OTBN-RND,OTBN-URND).
     _CRYPTO_SINK_IDX = {
-        "CHK5_aes": 0, "CHK5_kmac": 1, "CHK5_otbn_rnd": 2, "CHK5_otbn_urnd": 3,
+        "CHK5_aes": 0,
+        "CHK5_kmac": 1,
+        "CHK5_otbn_rnd": 2,
+        "CHK5_otbn_urnd": 3,
     }
 
     @staticmethod
@@ -109,21 +116,32 @@ class SepDrbgScoreboard:
             return v
         raise ValueError(f"unsupported {what} mode: {v!r}")
 
-    def __init__(self, dut, logger, *, strict=False, noise_mode="unbiased",
-                 noise_seed_base=0x1234_5678, golden_kwargs=None, warmup=4,
-                 chk2_backdoor=False, score_km=True, score_sinks=None):
+    def __init__(
+        self,
+        dut,
+        logger,
+        *,
+        strict=False,
+        noise_mode="unbiased",
+        noise_seed_base=0x1234_5678,
+        golden_kwargs=None,
+        warmup=4,
+        chk2_backdoor=False,
+        score_km=True,
+        score_sinks=None,
+    ):
         self.dut = dut
         self.log = logger
         self.strict = strict
-        # CHK5 is per-sink. Each entropy sink scores in one of three modes:
-        #   golden   -- bit-exact compare of the sink's EDN beats against the golden
-        #               queue. Only when the consumer pull order is controlled/
-        #               predictable (KM controlled firmware). NOT yet available for
-        #               the crypto sinks (needs the reference arbiter-assignment trace).
-        #   observe  -- require real post-mux/post-adapter beats but do not value-
-        #               compare them. Use for rom_main (firmware-driven KM pull) and
-        #               for every crypto sink until the multi-sink golden is ported.
-        #   disabled -- the sink is not scored (idle in this test).
+        # CHK5 is per-sink. Each entropy sink scores in one of:
+        #   golden     -- bit-exact. Crypto sinks compare each post-adapter beat
+        #                 to the AXIS1 word granted that cycle (one or more live
+        #                 clients). KM compares against its controlled-firmware
+        #                 queue.
+        #   membership -- every delivered word is a CHK4 genbits word; order is
+        #                 not scored (firmware-driven KM pull).
+        #   observe    -- require real beats, no value compare (rom_main).
+        #   disabled   -- the sink is not scored (idle in this test).
         #
         # The KM sink is configured via the back-compat score_km kwarg
         # (True->golden, False->disabled, or an explicit mode string). The crypto
@@ -134,25 +152,16 @@ class SepDrbgScoreboard:
         self.sink_mode["km"] = self._norm_mode(score_km, what="score_km")
         for name, mode in dict(score_sinks or {}).items():
             if name not in self._SINK_KEYS:
-                raise ValueError(f"unknown entropy sink: {name!r} "
-                                 f"(known: {sorted(self._SINK_KEYS)})")
+                raise ValueError(
+                    f"unknown entropy sink: {name!r} (known: {sorted(self._SINK_KEYS)})"
+                )
             mode = self._norm_mode(mode, what=f"score_sinks[{name}]")
             self.sink_mode[name] = mode
-        # Crypto-sink "golden" = bit-exact per-sink ROUTING: compare the sink's
-        # post-adapter beats word-for-word against the AXIS1 pre-adapter golden tap
-        # (which is itself chained to the CHK4 genbits golden in report()). The
-        # drbg_axis_edn_adapter is round-robin, so this in-order equality only holds
-        # when EXACTLY ONE crypto sink is active (the others parked -> never request,
-        # so the arbiter grants the live sink every word in order). Multiple
-        # concurrent crypto sinks in golden mode would need the reference suite per-endpoint
-        # block-assignment trace (not ported); reject that here.
-        _crypto_golden = [n for n in ("aes", "kmac", "otbn_rnd", "otbn_urnd")
-                          if self.sink_mode[n] == "golden"]
-        if len(_crypto_golden) > 1:
-            raise NotImplementedError(
-                "CHK5 golden mode for >1 concurrent crypto sink needs the reference suite "
-                f"per-endpoint arbiter-assignment trace (requested: {_crypto_golden}). "
-                "Use a single golden crypto sink (others parked/observe).")
+        # Crypto-sink "golden" = bit-exact ROUTING: each post-adapter beat equals
+        # the AXIS1 word the adapter granted that cycle. One monitor owns axis1_q
+        # so N live golden sinks cannot steal words from each other. A same-cycle
+        # dual grant is a fail (prim_arbiter_ppc is one-hot). Single-sink golden
+        # is the N=1 case of the same rule.
         # Back-compat aliases retained for callers/reporting.
         self.km_score_mode = self.sink_mode["km"]
         self.score_km = self.km_score_mode == "golden"
@@ -166,10 +175,16 @@ class SepDrbgScoreboard:
         # silent hole, not a pass). Override via set_min_matches() for a longer
         # coverage test that demands deeper streams.
         self._min_matches = {
-            "CHK1_decor": 8, "CHK2_compress": 4,
-            "CHK3_seed": 1, "CHK4_genbits": 1, "CHK5_km": 1,
-            "CHK5_aes": 1, "CHK5_kmac": 1,
-            "CHK5_otbn_rnd": 1, "CHK5_otbn_urnd": 1, "CHK5_pool": 1,
+            "CHK1_decor": 8,
+            "CHK2_compress": 4,
+            "CHK3_seed": 1,
+            "CHK4_genbits": 1,
+            "CHK5_km": 1,
+            "CHK5_aes": 1,
+            "CHK5_kmac": 1,
+            "CHK5_otbn_rnd": 1,
+            "CHK5_otbn_urnd": 1,
+            "CHK5_pool": 1,
         }
         # Per-stream warmup: only CHK1 needs it (the decorrelator SR seed lands
         # mid-stream). CHK2..CHK5 are exact-chained from the CHK1-verified decor
@@ -216,16 +231,17 @@ class SepDrbgScoreboard:
         self._crypto_fips_ok = 0
         self._crypto_fips_bad = 0
         self._genbits_in_gen = 0
-        self._gen_lengths = Counter()   # observed blocks-per-Generate histogram
+        self._gen_lengths = Counter()  # observed blocks-per-Generate histogram
 
         # CHK5 per-sink ROUTING (golden crypto sink) + genbits-chain membership state.
-        # axis1_q: live ordered crypto-leg AXIS1 words (popped per AES beat for the
-        # in-order per-sink compare). _axis1_words/_km_words: every tapped word, for
+        # axis1_q: live ordered crypto-leg AXIS1 words (popped once per granted
+        # post-adapter beat). _axis1_words/_km_words: every tapped word, for
         # the report-time membership tally against the verified-genbits multiset.
         # _genbits_words: Counter of the 32-bit slices of every CHK4-verified genbits
         # block (the golden pool both sinks must draw from).
-        self._axis1_needed = any(self.sink_mode[n] == "golden"
-                                 for n in ("aes", "kmac", "otbn_rnd", "otbn_urnd"))
+        self._axis1_needed = any(
+            self.sink_mode[n] == "golden" for n in ("aes", "kmac", "otbn_rnd", "otbn_urnd")
+        )
         # Pool is the sole client of mux-leg [2], so golden routing is AXIS2==pool
         # native beats in order (the AXIS1/AES analog).
         self._axis2_needed = self.sink_mode["pool"] == "golden"
@@ -235,31 +251,33 @@ class SepDrbgScoreboard:
         self._axis2_words = []
         self._km_words = []
         self._pool_words = []
-        # Per-crypto-sink membership stash: every post-adapter EDN word delivered to
-        # each sink, tallied against the genbits-golden multiset in report(). Used
-        # when >1 crypto sink is active concurrently (AES+KMAC) -- the round-robin
-        # arbiter determines which word goes to which endpoint, so per-sink ORDER is
-        # not golden-predictable, but each delivered word must still be a genuine
-        # genbits word (stronger than observe, the multi-crypto-sink analog of the KM
-        # membership case).
+        # Per-crypto-sink beat stash: every post-adapter EDN word + sim-time, used
+        # by sink_beats() / sink_beat_times() and by membership tally in report().
         self._sink_words = {n: [] for n in ("aes", "kmac", "otbn_rnd", "otbn_urnd")}
         self._genbits_words = Counter()
         self._axis1_member_hits = 0
         self._axis1_member_misses = 0
         self._axis2_member_hits = 0
         self._axis2_member_misses = 0
+        # Granted/accepted beat whose packed data probe is X/Z. That is a
+        # malformed routed beat, not "didn't happen" -- report() fails on it.
+        self._xz_routed_beats = 0
+        # Adapter-protocol violation on the crypto-EDN leg: a same-cycle dual
+        # grant, or an ack with an empty AXIS1 queue. The offending client may be
+        # one this test does not score, so the per-sink results cannot carry it --
+        # report() fails on this counter instead.
+        self._routing_protocol_fails = 0
         # Contention evidence: the sim-time (ns) of every post-adapter crypto-EDN beat
         # per sink, index-aligned with _sink_words. Two sinks whose beat time-spans
         # OVERLAP were being granted EDN words during an overlapping window -- i.e. the
-        # round-robin arbiter (u_axis_edn_crypto) time-multiplexed two live clients
+        # round-robin arbiter (u_axis_edn_crypto_s3c_scan) served two live clients
         # (real contention), not one sink drained fully before the other. Exposed via
         # sink_beat_times(); a stricter same-cycle-req overlap does not occur with this
         # stimulus (brief req pulses separated by long AXI config), so the beat-window
         # form is the honest sufficient proof.
         self._sink_beat_times = {n: [] for n in ("aes", "kmac", "otbn_rnd", "otbn_urnd")}
 
-        self.results = {k: _StreamResult(k, w)
-                        for k, (_, w) in self._STREAMS.items()}
+        self.results = {k: _StreamResult(k, w) for k, (_, w) in self._STREAMS.items()}
         self._skip = dict(self._warmup)
         self._tasks = []
         # Live runtime flag (not a one-shot fork decision). CHK5 sink / AXIS1
@@ -276,13 +294,19 @@ class SepDrbgScoreboard:
         # the overflow-robust observation point. Only fork the live backdoor
         # wire-tap monitor (entropy_stream_data_o) when explicitly selected.
         self._tasks = [
-            cocotb.start_soon(self._drive_noise()),   # CHK1 runs inline here
+            cocotb.start_soon(self._drive_noise()),  # CHK1 runs inline here
             # CHK3: capture the seed on the REAL CSRNG seed handshake
             # (seed_valid && es_ack), not merely seed_valid -- the value the CSRNG
             # actually accepted.
-            cocotb.start_soon(self._mon_handshake_rise(
-                "CHK3_seed", d.drbg_seed_valid_o, d.drbg_es_ack_o, d.drbg_es_bits_o,
-                mask=(1 << 384) - 1)),
+            cocotb.start_soon(
+                self._mon_handshake_rise(
+                    "CHK3_seed",
+                    d.drbg_seed_valid_o,
+                    d.drbg_es_ack_o,
+                    d.drbg_es_bits_o,
+                    mask=(1 << 384) - 1,
+                )
+            ),
             # CHK4: golden genbits compare + protocol (FIPS flag, gen_last/glen).
             cocotb.start_soon(self._mon_genbits()),
             # CHK5: EDN->sink beats, per sink. CHK5_km is the Key Manager AXIS
@@ -305,16 +329,32 @@ class SepDrbgScoreboard:
         if self.km_score_mode == "golden":
             # CHK5_km golden-match -- only when the KM entropy consumption is
             # golden-predictable (controlled KM firmware); disabled for rom_main.
-            self._tasks.append(cocotb.start_soon(self._mon_handshake(
-                "CHK5_km", d.km_entropy_tvalid_o, d.km_entropy_tready_o,
-                d.km_entropy_tdata_o, mask=0xFFFFFFFF)))
+            self._tasks.append(
+                cocotb.start_soon(
+                    self._mon_handshake(
+                        "CHK5_km",
+                        d.km_entropy_tvalid_o,
+                        d.km_entropy_tready_o,
+                        d.km_entropy_tdata_o,
+                        mask=0xFFFFFFFF,
+                    )
+                )
+            )
         elif self.km_score_mode == "observe":
             # CHK5_km alive mode: positive proof that KM consumed real post-mux
             # EDN words, without pretending rom_main's pull order is bit-exact
             # golden-predictable.
-            self._tasks.append(cocotb.start_soon(self._mon_handshake_observed(
-                "CHK5_km", d.km_entropy_tvalid_o, d.km_entropy_tready_o,
-                d.km_entropy_tdata_o, mask=0xFFFFFFFF)))
+            self._tasks.append(
+                cocotb.start_soon(
+                    self._mon_handshake_observed(
+                        "CHK5_km",
+                        d.km_entropy_tvalid_o,
+                        d.km_entropy_tready_o,
+                        d.km_entropy_tdata_o,
+                        mask=0xFFFFFFFF,
+                    )
+                )
+            )
         elif self.km_score_mode == "membership":
             # CHK5_km membership: rom_main's pull ORDER is firmware-driven (not
             # golden-predictable), but every word the KM consumes must still be a
@@ -322,38 +362,51 @@ class SepDrbgScoreboard:
             # checks membership in the verified-genbits multiset (stronger than observe).
             self._tasks.append(cocotb.start_soon(self._mon_km_membership()))
         # Crypto sinks: native EDN req/ack beat off the packed probe vectors.
+        # Golden sinks share one routing monitor so N live clients pop AXIS1
+        # in grant order instead of racing on axis1_q.
+        golden_sinks = []
         for key, idx in self._CRYPTO_SINK_IDX.items():
             name = key.split("_", 1)[1]  # CHK5_otbn_rnd -> otbn_rnd
             if self.sink_mode[name] == "observe":
-                self._tasks.append(cocotb.start_soon(
-                    self._mon_edn_sink(key, idx, observe=True)))
+                self._tasks.append(cocotb.start_soon(self._mon_edn_sink(key, idx, observe=True)))
             elif self.sink_mode[name] == "golden":
-                # Bit-exact per-sink routing: each post-adapter beat == the next
-                # AXIS1 word (in-order; valid because this is the only active crypto
-                # sink -> the round-robin arbiter grants it every word in order).
-                self._tasks.append(cocotb.start_soon(
-                    self._mon_edn_sink_golden(key, idx)))
+                golden_sinks.append((idx, key, name))
             elif self.sink_mode[name] == "membership":
-                # Per-sink membership: stash each post-adapter beat; report() checks
-                # every word is a genbits-golden word. Order is arbiter-determined
-                # (>1 concurrent crypto sink) so not scored -- the multi-crypto-sink
-                # analog of the KM membership case.
-                self._tasks.append(cocotb.start_soon(
-                    self._mon_edn_sink_membership(idx, name)))
+                # Per-sink membership: stash each post-adapter beat; report()
+                # checks every word is a genbits-golden word. Use when the
+                # pull order is not grant-predictable (firmware-driven).
+                self._tasks.append(cocotb.start_soon(self._mon_edn_sink_membership(idx, name)))
+        if golden_sinks:
+            self._tasks.append(cocotb.start_soon(self._mon_edn_sinks_routed(golden_sinks)))
         # Pool sink (EDN endpoint [2]): one native client behind u_axis_edn_pool.
         if self.sink_mode["pool"] == "observe":
-            self._tasks.append(cocotb.start_soon(self._mon_handshake_observed(
-                "CHK5_pool", d.pool_edn_req_o, d.pool_edn_ack_o,
-                d.pool_edn_bus_o, mask=0xFFFFFFFF,
-                fips_check=self._note_pool_fips)))
+            self._tasks.append(
+                cocotb.start_soon(
+                    self._mon_handshake_observed(
+                        "CHK5_pool",
+                        d.pool_edn_req_o,
+                        d.pool_edn_ack_o,
+                        d.pool_edn_bus_o,
+                        mask=0xFFFFFFFF,
+                        fips_check=self._note_pool_fips,
+                    )
+                )
+            )
         elif self.sink_mode["pool"] == "golden":
             self._tasks.append(cocotb.start_soon(self._mon_pool_edn_golden()))
         elif self.sink_mode["pool"] == "membership":
             self._tasks.append(cocotb.start_soon(self._mon_pool_edn_membership()))
         if self.chk2_backdoor:
-            self._tasks.append(cocotb.start_soon(self._mon_level(
-                "CHK2_compress", d.esrc_compress_vld_o, d.esrc_compress_data_o,
-                mask=0xFFFFFFFF)))
+            self._tasks.append(
+                cocotb.start_soon(
+                    self._mon_level(
+                        "CHK2_compress",
+                        d.esrc_compress_vld_o,
+                        d.esrc_compress_data_o,
+                        mask=0xFFFFFFFF,
+                    )
+                )
+            )
 
     def enable_chk5(self) -> None:
         """Arm CHK5 monitors. Call after the seed, before EDN enable."""
@@ -371,46 +424,53 @@ class SepDrbgScoreboard:
         leaves a rotating difference that matches the sampled byte ff[28:21] only
         while it sits outside bits[28:21] and mismatches when it rotates in --
         exactly the intermittent CHK1 pattern seen when syncing on decor alone.
-        And ff_stage resets ONLY on rst_ni (CTRL.RESET zeroes the SAMPLE, not the
-        SR), with decor_bytes lagging the true SR reset by a full divider period,
-        so the reset phase is not recoverable from decor_bytes.
+        The full TRNG reset resets ff_stage through the entropy-source rst_ni.
+        Detect the bring-up pulse from the explicit gated-reset probe. Ignore
+        the initial asserted level at cold reset: first observe release, then
+        the software-controlled TRNG reset assertion.
 
-        So: drive noise from the start, wait for the CTRL.RESET decor->0 and let
-        the SR refill a few samples, then SNAPSHOT the real 12x29 ff_stage
-        (esrc_decor_sr_o) and seed the golden from it. From there the golden
-        free-runs the whole CHK1..CHK5 chain on the read-back esrc_noise_o."""
+        So: drive noise from the start, wait for the TRNG reset, then seed from
+        the pre-edge 12x29 ff_stage snapshot on the first valid decor sample
+        whose bytes prove that snapshot's phase. From there the golden free-runs
+        the whole CHK1..CHK5 chain on the read-back esrc_noise_o."""
         d = self.dut
         d.esrc_noise_ext_i.value = 0
-        state = "wait_reset"
+        state = "wait_release"
         prev_decor = None
         prev_probe = None
-        changes = 0
         while True:
             dut_decor = _safe_int(d.esrc_decor_bytes_o)
+            decor_valid = _safe_int(d.esrc_decor_valid_o) or 0
             whiten_push = _safe_int(d.esrc_whiten_push_o) or 0
             gsr = self.golden.decor_sr_word()
-            changed = (dut_decor is not None and prev_decor is not None
-                       and dut_decor != prev_decor)
+            changed = dut_decor is not None and prev_decor is not None and dut_decor != prev_decor
 
-            if state == "wait_reset":
-                # CTRL.RESET (rst_n = rst_ni & ~CTRL.RESET) soft-resets the WHOLE
-                # entropy_source: decorrelator SR, SHA, FIFO. decor->0 marks it.
+            trng_rst_n = _safe_int(d.trng_gated_rst_n_probe_o)
+            if state == "wait_release":
+                if trng_rst_n == 1:
+                    state = "wait_reset"
+            elif state == "wait_reset":
+                # The coordinated TRNG reset resets the complete entropy_source:
+                # decorrelator SR, SHA, FIFO, and CSRs.
                 # Restart the decor-sample chain so its SHA starts at sample 0.
-                if changed and dut_decor == 0:
-                    state, changes = "wait_fill", 0
+                if trng_rst_n == 0:
+                    state = "wait_deassert"
                     self.chain = SepEntropyGolden(**self._gk)
                     self._reset_results()
+            elif state == "wait_deassert":
+                if trng_rst_n == 1:
+                    state = "wait_fill"
             elif state == "wait_fill":
-                # Let the SR fully refill (>=3 samples => 29-bit SR is past its
-                # fill) so the ff_stage snapshot is a live, fully-shifted state.
-                if changed:
-                    changes += 1
-                    if changes >= 3 and prev_probe:
-                        self._seed_golden(prev_probe)
+                # entropy_byte_sample_o captures the pre-edge ff_stage. The
+                # previous cycle's probe is that exact state; require its byte
+                # projection to match before locking the free-running golden.
+                if decor_valid and prev_probe is not None and dut_decor is not None:
+                    self._seed_golden(prev_probe)
+                    if self.golden.decor_sr_word() == dut_decor:
                         state = "locked"
                         self.log.info(
-                            "CHK1 golden seeded from live ff_stage @ decor=%024x",
-                            dut_decor)
+                            "CHK1 golden seeded from live ff_stage @ decor=%024x", dut_decor
+                        )
             elif state == "locked" and changed:
                 # SRs are in lockstep -> gsr (golden ff[28:21]) equals the DUT's
                 # registered decor sample on every decor-change cycle.
@@ -422,7 +482,7 @@ class SepDrbgScoreboard:
             # upstream backpressure), so feeding every decor-valid would misframe
             # the SHA 16:1 blocks after block 0. The held decor byte word at the
             # accept cycle is BIW-compressed into the word the whitener consumes.
-            if state != "wait_reset" and whiten_push and dut_decor is not None:
+            if state in ("wait_fill", "locked") and whiten_push and dut_decor is not None:
                 self.chain.feed_decor_sample(dut_decor)
 
             prev_decor = dut_decor
@@ -443,9 +503,8 @@ class SepDrbgScoreboard:
         self.golden.seed_decor_sr(sr_packed, clk_divider=8)
 
     def _reset_results(self):
-        """Clear per-stream stats (called at the CTRL.RESET that begins the run)."""
-        self.results = {k: _StreamResult(k, w)
-                        for k, (_, w) in self._STREAMS.items()}
+        """Clear per-stream stats (called at the TRNG reset that begins the run)."""
+        self.results = {k: _StreamResult(k, w) for k, (_, w) in self._STREAMS.items()}
         self._skip = dict(self._warmup)
         # Drop any pre-reset genbits/sink words so the CHK5 membership pool only
         # holds the real post-reset run (pre-reset genbits are X/garbage).
@@ -464,6 +523,8 @@ class SepDrbgScoreboard:
         self._axis1_member_misses = 0
         self._axis2_member_hits = 0
         self._axis2_member_misses = 0
+        self._xz_routed_beats = 0
+        self._routing_protocol_fails = 0
         # Pre-reset genbits are X/garbage, so any Generate they opened is not a
         # real unterminated command -- drop the segmentation state with them.
         self._genbits_in_gen = 0
@@ -487,7 +548,7 @@ class SepDrbgScoreboard:
         if self._skip[key] > 0:
             self._skip[key] -= 1
             return
-        ok = (expected == actual)
+        ok = expected == actual
         if ok:
             r.matches += 1
         else:
@@ -507,10 +568,10 @@ class SepDrbgScoreboard:
             r.mismatches += 1
             return
         exp = q.popleft()
-        if self._skip[key] > 0:          # warmup: drain but don't score
+        if self._skip[key] > 0:  # warmup: drain but don't score
             self._skip[key] -= 1
             return
-        ok = (exp == actual)
+        ok = exp == actual
         if ok:
             r.matches += 1
         else:
@@ -527,6 +588,15 @@ class SepDrbgScoreboard:
         r.matches += 1
         if len(r.pairs) < self.CAPTURE_N:
             r.pairs.append((r.dut_items - 1, None, actual, True))
+
+    def _note_xz_routed(self, where: str) -> None:
+        """A completed handshake whose packed data is X/Z. Fail in report()."""
+        self._xz_routed_beats += 1
+        self.log.error(
+            "CHK5 ROUTING FAIL: %s completed a beat with X/Z packed data "
+            "(unobservable, not 'didn't happen')",
+            where,
+        )
 
     # --------------------------------------------------------------- monitors
     async def _mon_level(self, key, vld, sig, *, mask):
@@ -548,11 +618,14 @@ class SepDrbgScoreboard:
             await ReadOnly()
             if (_safe_int(vld) or 0) and (_safe_int(rdy) or 0):
                 v = _safe_int(sig)
-                if v is not None:
-                    self._record(key, v & mask)
+                if v is None:
+                    self._note_xz_routed(key)
+                    continue
+                if key == "CHK5_km":
+                    self._km_words.append(v & 0xFFFFFFFF)
+                self._record(key, v & mask)
 
-    async def _mon_handshake_observed(self, key, vld, rdy, sig, *, mask,
-                                     fips_check=None):
+    async def _mon_handshake_observed(self, key, vld, rdy, sig, *, mask, fips_check=None):
         """One observed item per tvalid && tready beat, with no golden compare."""
         while True:
             await RisingEdge(self.dut.clk_i)
@@ -563,8 +636,12 @@ class SepDrbgScoreboard:
                 if fips_check is not None:
                     fips_check()
                 v = _safe_int(sig)
-                if v is not None:
-                    self._record_observed(key, v & mask)
+                if v is None:
+                    self._note_xz_routed(key)
+                    continue
+                if key == "CHK5_km":
+                    self._km_words.append(v & 0xFFFFFFFF)
+                self._record_observed(key, v & mask)
 
     def _note_pool_fips(self) -> None:
         """Sample pool_edn_fips_o on a completed pool EDN beat."""
@@ -596,12 +673,14 @@ class SepDrbgScoreboard:
             if req and ack:
                 self._note_crypto_fips(idx)
                 bus = _safe_int(d.crypto_edn_bus_o)
-                if bus is not None:
-                    v = (bus >> (32 * idx)) & 0xFFFFFFFF
-                    if observe:
-                        self._record_observed(key, v)
-                    else:
-                        self._record(key, v)
+                if bus is None:
+                    self._note_xz_routed(key)
+                    continue
+                v = (bus >> (32 * idx)) & 0xFFFFFFFF
+                if observe:
+                    self._record_observed(key, v)
+                else:
+                    self._record(key, v)
 
     async def _mon_axis1_tap(self):
         """Capture every accepted AXIS1 beat (crypto-leg pre-adapter word stream,
@@ -617,10 +696,12 @@ class SepDrbgScoreboard:
             await ReadOnly()
             if (_safe_int(d.axis1_tvalid_o) or 0) and (_safe_int(d.axis1_tready_o) or 0):
                 w = _safe_int(d.axis1_tdata_o)
-                if w is not None:
-                    w &= 0xFFFFFFFF
-                    self.axis1_q.append(w)
-                    self._axis1_words.append(w)
+                if w is None:
+                    self._note_xz_routed("AXIS1")
+                    continue
+                w &= 0xFFFFFFFF
+                self.axis1_q.append(w)
+                self._axis1_words.append(w)
 
     async def _mon_axis2_tap(self):
         """Capture every accepted AXIS2 beat (entropy-pool pre-adapter word stream,
@@ -634,10 +715,12 @@ class SepDrbgScoreboard:
             await ReadOnly()
             if (_safe_int(d.axis2_tvalid_o) or 0) and (_safe_int(d.axis2_tready_o) or 0):
                 w = _safe_int(d.axis2_tdata_o)
-                if w is not None:
-                    w &= 0xFFFFFFFF
-                    self.axis2_q.append(w)
-                    self._axis2_words.append(w)
+                if w is None:
+                    self._note_xz_routed("AXIS2")
+                    continue
+                w &= 0xFFFFFFFF
+                self.axis2_q.append(w)
+                self._axis2_words.append(w)
 
     async def _mon_pool_edn_golden(self):
         """Bit-exact pool ROUTING: each post-adapter pool beat equals the next AXIS2
@@ -654,6 +737,9 @@ class SepDrbgScoreboard:
                 self._note_pool_fips()
                 bus = _safe_int(d.pool_edn_bus_o)
                 if bus is None:
+                    self._note_xz_routed("CHK5_pool")
+                    exp = self.axis2_q.popleft() if self.axis2_q else None
+                    self._record_pair("CHK5_pool", exp, None)
                     continue
                 v = bus & 0xFFFFFFFF
                 exp = self.axis2_q.popleft() if self.axis2_q else None
@@ -672,14 +758,111 @@ class SepDrbgScoreboard:
             if req and ack:
                 self._note_pool_fips()
                 bus = _safe_int(d.pool_edn_bus_o)
-                if bus is not None:
-                    self._pool_words.append(bus & 0xFFFFFFFF)
+                if bus is None:
+                    self._note_xz_routed("CHK5_pool membership")
+                    continue
+                self._pool_words.append(bus & 0xFFFFFFFF)
 
-    async def _mon_edn_sink_golden(self, key, idx):
-        """Bit-exact per-sink ROUTING: on each post-adapter beat to crypto sink `idx`,
-        the delivered word must equal the next AXIS1 golden word (in-order). An ack
-        with an empty AXIS1 queue (the sink consumed a word the tap never saw) is a
-        routing/ordering error -> recorded as a mismatch."""
+    def _stash_sink_beat(self, name, word):
+        """Record one post-adapter beat for sink_beats() / sink_beat_times()."""
+        self._sink_words[name].append(word)
+        self._sink_beat_times[name].append(get_sim_time("ns"))
+
+    async def _mon_edn_sinks_routed(self, sinks):
+        """Bit-exact CHK5 ROUTING for one or more crypto sinks.
+
+        Every adapter grant consumes the next AXIS1 word, including grants to
+        clients this test does not score (OTBN wipe, parked-but-still-live
+        endpoints). Scoring only the named golden sinks and leaving those
+        other acks unpopped assigns the wrong AXIS1 word to AES/KMAC.
+
+        A same-cycle dual grant is a routing fail: prim_arbiter_ppc grants
+        one client per beat. An ack with an empty AXIS1 queue is a mismatch
+        (the sink took a word the tap never saw).
+        """
+        golden_by_idx = {idx: (key, name) for idx, key, name in sinks}
+        idx_name = {idx: key.split("_", 1)[1] for key, idx in self._CRYPTO_SINK_IDX.items()}
+        d = self.dut
+        while True:
+            await RisingEdge(d.clk_i)
+            if not self.chk5_enable:
+                continue
+            await ReadOnly()
+            reqs = _safe_int(d.crypto_edn_req_o) or 0
+            acks = _safe_int(d.crypto_edn_ack_o) or 0
+            granted = [idx for idx in range(4) if ((reqs >> idx) & 1) and ((acks >> idx) & 1)]
+            if not granted:
+                continue
+            bus = _safe_int(d.crypto_edn_bus_o)
+            if bus is None:
+                names = [idx_name[idx] for idx in granted]
+                self._note_xz_routed(f"crypto-EDN grant {names}")
+                if len(granted) == 1:
+                    exp = self.axis1_q.popleft() if self.axis1_q else None
+                    idx = granted[0]
+                    self._note_crypto_fips(idx)
+                    if idx in golden_by_idx:
+                        key, _name = golden_by_idx[idx]
+                        self._record_pair(key, exp, None)
+                else:
+                    for idx in granted:
+                        self._note_crypto_fips(idx)
+                        if idx in golden_by_idx:
+                            key, _name = golden_by_idx[idx]
+                            self._record_pair(key, None, None)
+                continue
+            if len(granted) > 1:
+                names = [idx_name[idx] for idx in granted]
+                self._routing_protocol_fails += 1
+                self.log.error(
+                    "CHK5 ROUTING FAIL: same-cycle dual crypto-EDN grant %s "
+                    "(adapter must grant one client per AXIS1 beat)",
+                    names,
+                )
+                for idx in granted:
+                    self._note_crypto_fips(idx)
+                    v = (bus >> (32 * idx)) & 0xFFFFFFFF
+                    if idx in golden_by_idx:
+                        key, name = golden_by_idx[idx]
+                        self._stash_sink_beat(name, v)
+                        self._record_pair(key, None, v)
+                continue
+            idx = granted[0]
+            self._note_crypto_fips(idx)
+            v = (bus >> (32 * idx)) & 0xFFFFFFFF
+            exp = self.axis1_q.popleft() if self.axis1_q else None
+            if idx in golden_by_idx:
+                key, name = golden_by_idx[idx]
+                self._stash_sink_beat(name, v)
+                self._record_pair(key, exp, v)
+            elif exp is None:
+                self._routing_protocol_fails += 1
+                self.log.error(
+                    "CHK5 ROUTING FAIL: %s acked with empty AXIS1 "
+                    "(unscored client consumed a word the tap never saw)",
+                    idx_name[idx],
+                )
+
+    async def _mon_km_membership(self):
+        """Stash every KM AXIS beat word; report() checks genbits-golden membership."""
+        d = self.dut
+        while True:
+            await RisingEdge(d.clk_i)
+            if not self.chk5_enable:
+                continue
+            await ReadOnly()
+            if (_safe_int(d.km_entropy_tvalid_o) or 0) and (_safe_int(d.km_entropy_tready_o) or 0):
+                w = _safe_int(d.km_entropy_tdata_o)
+                if w is None:
+                    self._note_xz_routed("CHK5_km membership")
+                    continue
+                self._km_words.append(w & 0xFFFFFFFF)
+
+    async def _mon_edn_sink_membership(self, idx, name):
+        """Stash every native-EDN beat word delivered to crypto sink `idx` (the cycle
+        the client asserts edn_req and the adapter pulses edn_ack). report() checks
+        each stashed word is a genbits-golden word. Use when the pull order is
+        not grant-scored (firmware-driven)."""
         d = self.dut
         while True:
             await RisingEdge(d.clk_i)
@@ -692,44 +875,9 @@ class SepDrbgScoreboard:
                 self._note_crypto_fips(idx)
                 bus = _safe_int(d.crypto_edn_bus_o)
                 if bus is None:
+                    self._note_xz_routed(f"CHK5_{name} membership")
                     continue
-                v = (bus >> (32 * idx)) & 0xFFFFFFFF
-                exp = self.axis1_q.popleft() if self.axis1_q else None
-                self._record_pair(key, exp, v)
-
-    async def _mon_km_membership(self):
-        """Stash every KM AXIS beat word; report() checks genbits-golden membership."""
-        d = self.dut
-        while True:
-            await RisingEdge(d.clk_i)
-            if not self.chk5_enable:
-                continue
-            await ReadOnly()
-            if (_safe_int(d.km_entropy_tvalid_o) or 0) and (_safe_int(d.km_entropy_tready_o) or 0):
-                w = _safe_int(d.km_entropy_tdata_o)
-                if w is not None:
-                    self._km_words.append(w & 0xFFFFFFFF)
-
-    async def _mon_edn_sink_membership(self, idx, name):
-        """Stash every native-EDN beat word delivered to crypto sink `idx` (the cycle
-        the client asserts edn_req and the adapter pulses edn_ack). report() checks
-        each stashed word is a genbits-golden word. Used for >1 concurrent crypto
-        sink (AES+KMAC), where the round-robin arbiter picks the endpoint per word so
-        per-sink ORDER is not golden-predictable, but every word is genuine genbits."""
-        d = self.dut
-        while True:
-            await RisingEdge(d.clk_i)
-            if not self.chk5_enable:
-                continue
-            await ReadOnly()
-            req = ((_safe_int(d.crypto_edn_req_o) or 0) >> idx) & 1
-            ack = ((_safe_int(d.crypto_edn_ack_o) or 0) >> idx) & 1
-            if req and ack:
-                self._note_crypto_fips(idx)
-                bus = _safe_int(d.crypto_edn_bus_o)
-                if bus is not None:
-                    self._sink_words[name].append((bus >> (32 * idx)) & 0xFFFFFFFF)
-                    self._sink_beat_times[name].append(get_sim_time("ns"))
+                self._stash_sink_beat(name, (bus >> (32 * idx)) & 0xFFFFFFFF)
 
     async def _mon_handshake_rise(self, key, a, b, sig, *, mask):
         """One item per RISING edge of (a && b) -- a req/ack handshake completing.
@@ -805,6 +953,15 @@ class SepDrbgScoreboard:
         """
         return len(self._km_words)
 
+    def km_words(self):
+        """The Key-Manager AXIS entropy words tapped so far, in beat order.
+
+        Populated in every CHK5_km mode (golden, observe, membership), so a caller
+        can compare a word the KM firmware later stored to KM SRAM against the
+        word the DUT actually delivered on the AXIS endpoint. Returns a copy.
+        """
+        return list(self._km_words)
+
     def completed_generate_lengths(self):
         """Observed blocks-per-Generate histogram: {blocks_in_command: how_many_commands}.
 
@@ -833,8 +990,7 @@ class SepDrbgScoreboard:
         `name` (aes/kmac/otbn_rnd/otbn_urnd) so far -- the membership-stash length.
         Live: callable mid-run to snapshot a sink's beat count before/after a window."""
         if name not in self._sink_words:
-            raise ValueError(f"unknown crypto sink {name!r} "
-                             f"(known: {sorted(self._sink_words)})")
+            raise ValueError(f"unknown crypto sink {name!r} (known: {sorted(self._sink_words)})")
         return len(self._sink_words[name])
 
     def sink_beat_times(self, name):
@@ -843,8 +999,9 @@ class SepDrbgScoreboard:
         sinks whose returned time-spans overlap were granted EDN words during an
         overlapping window -- positive arbiter-contention evidence (CHK-OVERLAP)."""
         if name not in self._sink_beat_times:
-            raise ValueError(f"unknown crypto sink {name!r} "
-                             f"(known: {sorted(self._sink_beat_times)})")
+            raise ValueError(
+                f"unknown crypto sink {name!r} (known: {sorted(self._sink_beat_times)})"
+            )
         return list(self._sink_beat_times[name])
 
     # --------------------------------------------------------------- tuning
@@ -880,11 +1037,17 @@ class SepDrbgScoreboard:
         # KM then AXIS1 against a working copy (removal), so over-consumption shows as a
         # miss. KM "membership" populates the CHK5_km result here (rom_main pull order
         # is firmware-driven -> not bit-exact ORDER, but each word IS a genbits word).
-        crypto_membership = [n for n in ("aes", "kmac", "otbn_rnd", "otbn_urnd")
-                             if self.sink_mode[n] == "membership"]
+        crypto_membership = [
+            n for n in ("aes", "kmac", "otbn_rnd", "otbn_urnd") if self.sink_mode[n] == "membership"
+        ]
         pool_membership = self.sink_mode["pool"] == "membership"
-        if (self.km_score_mode == "membership" or self._axis1_needed
-                or self._axis2_needed or crypto_membership or pool_membership):
+        if (
+            self.km_score_mode == "membership"
+            or self._axis1_needed
+            or self._axis2_needed
+            or crypto_membership
+            or pool_membership
+        ):
             pool = Counter(self._genbits_words)
             if self.km_score_mode == "membership":
                 rkm = self.results["CHK5_km"]
@@ -897,26 +1060,42 @@ class SepDrbgScoreboard:
                         rkm.mismatches += 1
                         if rkm.first_mismatch is None:
                             rkm.first_mismatch = (rkm.dut_items - 1, None, w)
-                self.log.info("CHK5_km membership: %d/%d KM AXIS words are genbits-golden "
-                              "words (rom_main pull order is firmware-driven, not scored)",
-                              rkm.matches, rkm.dut_items)
-            # Per-sink crypto membership (AES/KMAC/... concurrent). KM leg and crypto
-            # leg are disjoint draws from genbits, and the crypto sinks are disjoint
-            # slices of the crypto-leg AXIS1 stream, so removal order does not matter.
+                self.log.info(
+                    "CHK5_km membership: %d/%d KM AXIS words are genbits-golden "
+                    "words (rom_main pull order is firmware-driven, not scored)",
+                    rkm.matches,
+                    rkm.dut_items,
+                )
+            # Per-sink crypto membership. Those words are slices of the crypto-leg
+            # AXIS1 stream. When a golden crypto sink is also live the AXIS1 tally
+            # below removes every AXIS1 beat from `pool`; scoring membership against
+            # the same Counter would double-count (AES golden + KMAC membership
+            # would miss the KMAC beats a second time). Membership-only (no AXIS1
+            # tap) still removes from the shared pool so over-consumption vs KM /
+            # pool still shows.
+            member_pool = (
+                (Counter(self._genbits_words) if self._axis1_needed else pool)
+                if crypto_membership
+                else pool
+            )
             for name in crypto_membership:
                 r = self.results[self._SINK_KEYS[name]]
                 for w in self._sink_words[name]:
                     r.dut_items += 1
-                    if pool[w] > 0:
-                        pool[w] -= 1
+                    if member_pool[w] > 0:
+                        member_pool[w] -= 1
                         r.matches += 1
                     else:
                         r.mismatches += 1
                         if r.first_mismatch is None:
                             r.first_mismatch = (r.dut_items - 1, None, w)
-                self.log.info("CHK5_%s membership: %d/%d crypto-EDN words are genbits-"
-                              "golden words (concurrent-arbiter routing order not scored)",
-                              name, r.matches, r.dut_items)
+                self.log.info(
+                    "CHK5_%s membership: %d/%d crypto-EDN words are genbits-"
+                    "golden words (concurrent-arbiter routing order not scored)",
+                    name,
+                    r.matches,
+                    r.dut_items,
+                )
             if self._axis1_needed:
                 for w in self._axis1_words:
                     if pool[w] > 0:
@@ -924,14 +1103,17 @@ class SepDrbgScoreboard:
                         self._axis1_member_hits += 1
                     else:
                         self._axis1_member_misses += 1
-                self.log.info("CHK5_axis1 membership: %d/%d crypto-leg AXIS1 words are "
-                              "genbits-golden words",
-                              self._axis1_member_hits,
-                              self._axis1_member_hits + self._axis1_member_misses)
+                self.log.info(
+                    "CHK5_axis1 membership: %d/%d crypto-leg AXIS1 words are genbits-golden words",
+                    self._axis1_member_hits,
+                    self._axis1_member_hits + self._axis1_member_misses,
+                )
                 if self._axis1_member_misses or self._axis1_member_hits == 0:
-                    self.log.error("CHK5_axis1 membership FAIL: %d crypto-leg words NOT in "
-                                   "the genbits golden (or none seen) -- routing/chain broken",
-                                   self._axis1_member_misses)
+                    self.log.error(
+                        "CHK5_axis1 membership FAIL: %d crypto-leg words NOT in "
+                        "the genbits golden (or none seen) -- routing/chain broken",
+                        self._axis1_member_misses,
+                    )
                     any_fail = True
             if pool_membership:
                 r = self.results["CHK5_pool"]
@@ -944,8 +1126,11 @@ class SepDrbgScoreboard:
                         r.mismatches += 1
                         if r.first_mismatch is None:
                             r.first_mismatch = (r.dut_items - 1, None, w)
-                self.log.info("CHK5_pool membership: %d/%d pool EDN words are genbits-"
-                              "golden words", r.matches, r.dut_items)
+                self.log.info(
+                    "CHK5_pool membership: %d/%d pool EDN words are genbits-golden words",
+                    r.matches,
+                    r.dut_items,
+                )
             if self._axis2_needed:
                 for w in self._axis2_words:
                     if pool[w] > 0:
@@ -953,14 +1138,17 @@ class SepDrbgScoreboard:
                         self._axis2_member_hits += 1
                     else:
                         self._axis2_member_misses += 1
-                self.log.info("CHK5_axis2 membership: %d/%d pool-leg AXIS2 words are "
-                              "genbits-golden words",
-                              self._axis2_member_hits,
-                              self._axis2_member_hits + self._axis2_member_misses)
+                self.log.info(
+                    "CHK5_axis2 membership: %d/%d pool-leg AXIS2 words are genbits-golden words",
+                    self._axis2_member_hits,
+                    self._axis2_member_hits + self._axis2_member_misses,
+                )
                 if self._axis2_member_misses or self._axis2_member_hits == 0:
-                    self.log.error("CHK5_axis2 membership FAIL: %d pool-leg words NOT in "
-                                   "the genbits golden (or none seen) -- routing/chain broken",
-                                   self._axis2_member_misses)
+                    self.log.error(
+                        "CHK5_axis2 membership FAIL: %d pool-leg words NOT in "
+                        "the genbits golden (or none seen) -- routing/chain broken",
+                        self._axis2_member_misses,
+                    )
                     any_fail = True
 
         keys = ["CHK1_decor", "CHK2_compress", "CHK3_seed", "CHK4_genbits"]
@@ -970,88 +1158,132 @@ class SepDrbgScoreboard:
             if mode in ("golden", "observe", "membership"):
                 keys.append(key)
             elif name == "km":
-                self.log.info("CHK5_km disabled; KM entropy consumption must be "
-                              "covered functionally by the test")
+                self.log.info(
+                    "CHK5_km disabled; KM entropy consumption must be "
+                    "covered functionally by the test"
+                )
         for key in keys:
             r = self.results[key]
             sink_name = key.split("_", 1)[1] if key.startswith("CHK5_") else None
             sink_md = self.sink_mode[sink_name] if sink_name is not None else None
             if sink_md == "observe":
-                self.log.info("%-14s observed_beats=%d (alive mode: no bit-exact compare)",
-                              r.name, r.matches)
+                self.log.info(
+                    "%-14s observed_beats=%d (alive mode: no bit-exact compare)", r.name, r.matches
+                )
             elif sink_md == "membership":
-                self.log.info("%-14s membership match=%d/%d (each a genbits-golden word; "
-                              "pull order firmware-driven, not order-scored)",
-                              r.name, r.matches, r.dut_items)
+                self.log.info(
+                    "%-14s membership match=%d/%d (each a genbits-golden word; "
+                    "pull order firmware-driven, not order-scored)",
+                    r.name,
+                    r.matches,
+                    r.dut_items,
+                )
             else:
                 # Crypto-golden sinks have no chain queue (_STREAMS name is None) and
                 # score via _record_pair (axis1 routing); show no "golden left" for them.
                 qname = self._STREAMS[key][0]
                 left = len(self._expected_q(key)) if qname else 0
-                self.log.info("%-14s dut_items=%d match=%d mismatch=%d (golden left=%d)",
-                              r.name, r.dut_items, r.matches, r.mismatches, left)
+                self.log.info(
+                    "%-14s dut_items=%d match=%d mismatch=%d (golden left=%d)",
+                    r.name,
+                    r.dut_items,
+                    r.matches,
+                    r.mismatches,
+                    left,
+                )
             hexw = max(1, r.width // 4)
-            for (idx, exp, act, ok) in r.pairs[:12]:
-                es = "----" if exp is None else f"{exp:0{hexw}x}"
+            for idx, exp, act, ok in r.pairs[:12]:
+                es = "----" if exp is None else _fmt_word(exp, hexw)
                 if sink_md == "observe":
-                    self.log.info("    [%-2d] OBS act=%0*x", idx, hexw, act)
+                    self.log.info("    [%-2d] OBS act=%s", idx, _fmt_word(act, hexw))
                 else:
-                    self.log.info("    [%-2d] %s exp=%s act=%0*x",
-                                  idx, "OK " if ok else "XX!", es, hexw, act)
+                    self.log.info(
+                        "    [%-2d] %s exp=%s act=%s",
+                        idx,
+                        "OK " if ok else "XX!",
+                        es,
+                        _fmt_word(act, hexw),
+                    )
             if r.first_mismatch is not None:
                 idx, exp, act = r.first_mismatch
-                es = "----" if exp is None else f"{exp:0{hexw}x}"
-                self.log.info("    first mismatch [%d] exp=%s act=%0*x",
-                              idx, es, hexw, act)
+                es = "----" if exp is None else _fmt_word(exp, hexw)
+                self.log.info(
+                    "    first mismatch [%d] exp=%s act=%s", idx, es, _fmt_word(act, hexw)
+                )
             if r.mismatches > 0:
                 any_fail = True
             # Minimum-evidence: a checkpoint that never scored (or scored too few)
             # is a silent hole -- fail it, don't pass vacuously.
             need = self._min_matches.get(key, 1)
             if r.matches < need:
-                self.log.error("    %s INSUFFICIENT EVIDENCE: matches=%d < min=%d "
-                               "(checkpoint never fired / under-exercised)",
-                               r.name, r.matches, need)
+                self.log.error(
+                    "    %s INSUFFICIENT EVIDENCE: matches=%d < min=%d "
+                    "(checkpoint never fired / under-exercised)",
+                    r.name,
+                    r.matches,
+                    need,
+                )
                 any_fail = True
+        if self._xz_routed_beats:
+            self.log.error(
+                "CHK5 ROUTING FAIL: %d accepted beat(s) had X/Z packed data", self._xz_routed_beats
+            )
+            any_fail = True
+        if self._routing_protocol_fails:
+            self.log.error(
+                "CHK5 ROUTING FAIL: %d crypto-EDN adapter-protocol violation(s) "
+                "(dual grant, or ack with empty AXIS1)",
+                self._routing_protocol_fails,
+            )
+            any_fail = True
         # Protocol checks (CHK3/CHK4 semantics, independent of value match).
         if self._fips_violations:
-            self.log.error("CHK4 FIPS violation: %d genbits with genbits_fips_o != 1",
-                           self._fips_violations)
+            self.log.error(
+                "CHK4 FIPS violation: %d genbits with genbits_fips_o != 1", self._fips_violations
+            )
             any_fail = True
         pool_fips_n = self._pool_fips_ok + self._pool_fips_bad
         if pool_fips_n:
             if self._pool_fips_bad:
                 self.log.error(
                     "CHK5_pool FIPS FAIL: %d/%d beats with pool_edn_fips_o != 1",
-                    self._pool_fips_bad, pool_fips_n)
+                    self._pool_fips_bad,
+                    pool_fips_n,
+                )
                 any_fail = True
             else:
                 self.log.info(
-                    "CHK5_pool FIPS PASS: %d beats with pool_edn_fips_o=1",
-                    self._pool_fips_ok)
+                    "CHK5_pool FIPS PASS: %d beats with pool_edn_fips_o=1", self._pool_fips_ok
+                )
         crypto_fips_n = self._crypto_fips_ok + self._crypto_fips_bad
         if crypto_fips_n:
             if self._crypto_fips_bad:
                 self.log.error(
                     "CHK5 crypto FIPS FAIL: %d/%d beats with crypto_edn_fips_o != 1",
-                    self._crypto_fips_bad, crypto_fips_n)
+                    self._crypto_fips_bad,
+                    crypto_fips_n,
+                )
                 any_fail = True
             else:
                 self.log.info(
-                    "CHK5 crypto FIPS PASS: %d beats with crypto_edn_fips_o=1",
-                    self._crypto_fips_ok)
+                    "CHK5 crypto FIPS PASS: %d beats with crypto_edn_fips_o=1", self._crypto_fips_ok
+                )
         # Generate segmentation. gen_last IS a per-Generate-command terminator:
         # csrng_cmd_stage sets cmd_gen_cnt_last when the genbits down-counter
-        # reaches its final beat (csrng_cmd_stage.sv:379, :447), ships it as
+        # reaches its final beat (csrng_cmd_stage.sv:380, :448), ships it as
         # acmd_bus[16] ("glast"), and csrng_core latches it into gen_last_q at
-        # acmd_sop (csrng_core.sv:750) to drive ctr_drbg_gen.req_glast_i. So each
+        # acmd_sop (csrng_core.sv:748-751) to drive ctr_drbg_gen.req_glast_i. So each
         # Generate command ends with exactly one glast beat, and that is where its
         # single trailing Update lands.
-        self.log.info("CHK4 Generate segmentation: %d completed commands, blocks/cmd %s, "
-                      "%d block(s) in the open command (seq-commanded glen=%d, legal=%s)",
-                      sum(self._gen_lengths.values()),
-                      dict(sorted(self._gen_lengths.items())) or "{}",
-                      self._genbits_in_gen, self.glen, sorted(self.legal_gen_lengths))
+        self.log.info(
+            "CHK4 Generate segmentation: %d completed commands, blocks/cmd %s, "
+            "%d block(s) in the open command (seq-commanded glen=%d, legal=%s)",
+            sum(self._gen_lengths.values()),
+            dict(sorted(self._gen_lengths.items())) or "{}",
+            self._genbits_in_gen,
+            self.glen,
+            sorted(self.legal_gen_lengths),
+        )
         # State plainly when the segmentation check had nothing to act on. These
         # runs never observe a completed Generate command -- gen_last is a level
         # held from acmd_sop and EDN's own commanded glen is larger than the block
@@ -1059,33 +1291,41 @@ class SepDrbgScoreboard:
         # Update boundary is taken from the DUT unchecked. Say so rather than let
         # a silent zero read as coverage.
         if not self._gen_lengths and self.results["CHK4_genbits"].dut_items:
-            self.log.info("CHK4 segmentation NOT EXERCISED: no Generate command completed "
-                          "in this run (%d genbits observed), so gen_last was never seen "
-                          "asserted and the trailing-Update boundary is unverified. "
-                          "Closing this needs an independent probe of the commanded glen "
-                          "inside csrng_cmd_stage.",
-                          self.results["CHK4_genbits"].dut_items)
+            self.log.info(
+                "CHK4 segmentation NOT EXERCISED: no Generate command completed "
+                "in this run (%d genbits observed), so gen_last was never seen "
+                "asserted and the trailing-Update boundary is unverified. "
+                "Closing this needs an independent probe of the commanded glen "
+                "inside csrng_cmd_stage.",
+                self.results["CHK4_genbits"].dut_items,
+            )
         # A completed command must carry a legal number of blocks. glen is a
         # GenBitsCtrWidth field, so a segment can never exceed its maximum, and a
         # zero-length segment would mean gen_last fired with no genbits at all.
         # When the caller declares the lengths its endpoints request
         # (golden_kwargs["legal_gen_lengths"]) anything else is a hard failure.
         for seg_len, count in sorted(self._gen_lengths.items()):
-            bad = (seg_len < 1) or (seg_len > _CSRNG_MAX_GLEN) or (
-                self.legal_gen_lengths is not None and seg_len not in self.legal_gen_lengths)
+            bad = (
+                (seg_len < 1)
+                or (seg_len > _CSRNG_MAX_GLEN)
+                or (self.legal_gen_lengths is not None and seg_len not in self.legal_gen_lengths)
+            )
             if bad:
-                self.log.error("CHK4 illegal Generate segmentation: %d command(s) emitted "
-                               "%d blocks; legal=%s (max %d). gen_last landed somewhere the "
-                               "commanded glen cannot explain, so the trailing CTR_DRBG "
-                               "Update ran at the wrong point.",
-                               count, seg_len,
-                               sorted(self.legal_gen_lengths) if self.legal_gen_lengths
-                               else ">=1", _CSRNG_MAX_GLEN)
+                self.log.error(
+                    "CHK4 illegal Generate segmentation: %d command(s) emitted "
+                    "%d blocks; legal=%s (max %d). gen_last landed somewhere the "
+                    "commanded glen cannot explain, so the trailing CTR_DRBG "
+                    "Update ran at the wrong point.",
+                    count,
+                    seg_len,
+                    sorted(self.legal_gen_lengths) if self.legal_gen_lengths else ">=1",
+                    _CSRNG_MAX_GLEN,
+                )
                 any_fail = True
-        self.log.info("==== end report (strict=%s, any_fail=%s) ====",
-                      self.strict, any_fail)
+        self.log.info("==== end report (strict=%s, any_fail=%s) ====", self.strict, any_fail)
         if self.strict and any_fail:
             raise AssertionError(
                 "sep_drbg_scoreboard: CHK1..CHK5 failure (mismatch / insufficient "
-                "evidence / protocol violation)")
+                "evidence / protocol violation)"
+            )
         return not any_fail

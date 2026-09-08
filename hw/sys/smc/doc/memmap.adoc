@@ -14,10 +14,9 @@ be either the local alias (`LOCAL_BASE`, fixed read-only at
 `0xC000_0000`) or the global system address (`GLOBAL_BASE`,
 programmable by firmware). The fabric routes transactions to SMC
 resources identically regardless of which base is used, as long as the
-access falls inside the relevant local or global aperture. The current
-SMC `REGION_SIZE` CSR reset is 16 MiB for the chiplet-global aperture;
-the input fabric's internal local-alias window is controlled by the RTL
-`LOCAL_ALIAS_REGION_SIZE` parameter, currently fixed at 16 MiB.
+access falls inside the relevant local or global aperture. Both
+apertures are sized by the SMC `REGION_SIZE` CSR, which resets to
+16 MiB and may be reprogrammed by firmware.
 Addresses are 32-bit aligned and follow standard AXI4-Lite addressing
 conventions. For details on how `LOCAL_BASE` and `GLOBAL_BASE` relate
 and how an adopter maps this aperture into the system address space,
@@ -63,7 +62,8 @@ telemetry, system timer, DTP control, and DFT status
 remapping, and filtering
 
 |BASE + 0x001_8000 - BASE + 0x003_7FFF |128KB |Mailbox |Inter-processor
-communication mailbox (32 channels: 16 inbound + 16 outbound)
+communication mailbox (32 bidirectional pairs: 32 inbound + 32 outbound
+mailboxes)
 
 |BASE + 0x003_8000 - BASE + 0x003_83FF |1KB |Data Processing |DMA controller and
 memory zeroer
@@ -161,8 +161,8 @@ filtering
 |Outbound Filters |BASE + 0x001_6000 + (N×0x20) |16 instances |Outbound traffic
 filtering
 
-|Mailbox |BASE + 0x001_8000 - BASE + 0x003_7FFF |32 channels |Inter-processor
-communication (16 inbound + 16 outbound)
+|Mailbox |BASE + 0x001_8000 - BASE + 0x003_7FFF |32 pairs |Inter-processor
+communication (32 inbound + 32 outbound)
 
 |DMA Controller |BASE + 0x003_8000 - BASE + 0x003_81FF |1 instance |Direct memory
 access controller
@@ -248,6 +248,11 @@ layer
 |Component |Address Range |Instance |Description
 |Vendor I3C Controllers |BASE + 0x040_4000 + (N×0x400) |6 instances |Vendor
 I3C controller wrappers (nonfree overlay)
+
+|Captured GPIO Straps |BASE + 0x040_5800 (`STRAPS_LO`), BASE + 0x040_5804
+(`STRAPS_HI`) |1 instance |Values latched from the bonded GPIO pads at cold
+reset, read-only to software. Strap capture is adopter-owned, so these live in
+the external window rather than the SMC core; the boot ROM reads them from here.
 |=======================================================================
 
 The unallocated remainder of the window is passed through to the chip-level

@@ -3,8 +3,6 @@
 """Structural production-wrapper sequence used before firmware bring-up.
 
 DV-CARD:          SMU_ALL_001   ANCHOR: smu_wrapper_elaboration_sep_rtl_test
-DV-CARD-REVISION: 2   RECORD-SHA256: 4e5e5594db63d991c8012442ba4bd759549b907e0779d3dd1d9b91b93f61b1cb
-DV-CARD-SOURCE:   hw/sys/smu/dv/tb/SMU_ALL_VPLAN_DETAIL.md @ artifact_revision 2   ENV: cocotb
 """
 
 from __future__ import annotations
@@ -21,7 +19,7 @@ class SmuWrapperElaborationSeq:
 
     When ``+expected_sep=1`` (anchor ``smu_wrapper_elaboration_sep_rtl_test``),
     executes the SMU_ALL_001 card steps and emits the card's ``CHK-*`` lines.
-    The SEP=0 leaf keeps the legacy wrapper-elaboration evidence tokens.
+    The SEP=0 leaf emits the wrapper-elaboration evidence tokens.
     """
 
     BOUND_REF_CYCLES = 500
@@ -67,13 +65,7 @@ class SmuWrapperElaborationSeq:
                 "xbar": self._sample(dut.obs_xbar_clk_o, "obs_xbar_clk_o"),
             }
             last_levels = levels
-            if not (
-                levels["smc"]
-                == levels["sep"]
-                == levels["dtp"]
-                == levels["xbar"]
-                == top
-            ):
+            if not (levels["smc"] == levels["sep"] == levels["dtp"] == levels["xbar"] == top):
                 mismatches += 1
             await FallingEdge(dut.clk_smu_i)
             await Timer(1, unit="ns")
@@ -87,17 +79,10 @@ class SmuWrapperElaborationSeq:
                 "xbar": self._sample(dut.obs_xbar_clk_o, "obs_xbar_clk_o"),
             }
             last_levels = levels
-            if not (
-                levels["smc"]
-                == levels["sep"]
-                == levels["dtp"]
-                == levels["xbar"]
-                == top
-            ):
+            if not (levels["smc"] == levels["sep"] == levels["dtp"] == levels["xbar"] == top):
                 mismatches += 1
         assert mismatches == 0, (
-            "compose hierarchical clk identity fail: "
-            f"mismatches={mismatches} last={last_levels}"
+            f"compose hierarchical clk identity fail: mismatches={mismatches} last={last_levels}"
         )
         assert seen_top == {0, 1}, (
             "compose presence needs toggling clk_smu_i (non-constant identity): "
@@ -111,22 +96,14 @@ class SmuWrapperElaborationSeq:
             await RisingEdge(self.dut.clk_ref_i)
             last = self._sample(signal, name)
             if last == expected:
-                self._timeout_paths.append(
-                    f"{name}: bound={limit} ok last={last} cycle={cycle}"
-                )
-                self.log.info(
-                    "%s reached expected=%d at poll cycle %d", name, expected, cycle
-                )
+                self._timeout_paths.append(f"{name}: bound={limit} ok last={last} cycle={cycle}")
+                self.log.info("%s reached expected=%d at poll cycle %d", name, expected, cycle)
                 return cycle
-        self._timeout_paths.append(
-            f"{name}: bound={limit} EXPIRED last={last}"
-        )
-        raise AssertionError(
-            f"{name} timeout: expected={expected} observed={last} limit={limit}"
-        )
+        self._timeout_paths.append(f"{name}: bound={limit} EXPIRED last={last}")
+        raise AssertionError(f"{name} timeout: expected={expected} observed={last} limit={limit}")
 
     async def _run_legacy_no_sep(self, expected_sep: int) -> None:
-        """Legacy no-SEP wrapper smoke evidence (SMU_ALL_008 owns SEP=0 compose)."""
+        """No-SEP wrapper smoke evidence (SMU_ALL_008 owns SEP=0 compose)."""
         self.log.info("=" * 70)
         self.log.info("TEST: production smu_wrapper profile and reset propagation")
         self.log.info("=" * 70)
@@ -178,14 +155,11 @@ class SmuWrapperElaborationSeq:
         pairs_ok = sum(
             1
             for a, b in zip(order, order[1:])
-            if a in self._step_ts
-            and b in self._step_ts
-            and self._step_ts[a] < self._step_ts[b]
+            if a in self._step_ts and b in self._step_ts and self._step_ts[a] < self._step_ts[b]
         )
         if pairs_ok != len(order) - 1:
             raise AssertionError(
-                f"CHK-NONVAC ordered fence fail: pairs_ok={pairs_ok} "
-                f"expect={len(order) - 1}"
+                f"CHK-NONVAC ordered fence fail: pairs_ok={pairs_ok} expect={len(order) - 1}"
             )
         self.log.info(
             "CHK-NONVAC: ordered fence S1<S2<S3<PASS (pairs_ok=%d)",
@@ -230,8 +204,8 @@ class SmuWrapperElaborationSeq:
             "S2",
             "ACTION SMU-COMPOSE-BLOCKS.S1: hierarchical compose clk identity",
         )
-        # FIND-001 (A): presence from hierarchical DUT clk observes that track
-        # toggling clk_smu_i — not hardwired obs_compose_*_present_o.
+        # Presence from hierarchical DUT clk observes that track toggling
+        # clk_smu_i.
         compose_levels = await self._assert_compose_hier_clk_identity(dut)
         self.log.info(
             "CHK-SMU-COMPOSE-BLOCKS-S1: PASS "
@@ -442,15 +416,13 @@ class SmuWrapperElaborationSeq:
             "ACTION SMU-SEP-PARAM.S1: SEP xbar present and lc_state_o from SEP",
         )
         assert self._sample(dut.sep_enabled_o, "sep_enabled_o") == 1
-        # FIND-001 (A): xbar/SEP presence via hierarchical clk identity, not
-        # hardwired present_o flags.
+        # xbar/SEP presence via hierarchical clk identity.
         xbar_levels = await self._assert_compose_hier_clk_identity(dut, samples_per_edge=2)
         assert xbar_levels["sep"] == xbar_levels["top"]
         assert xbar_levels["xbar"] == xbar_levels["top"]
-        # FIND-002 (A): lc_state=from_sep only after live SEP source equals
-        # boundary lc_state_o. SEP eFuse LC_STATE default is 0xF0, so a
-        # boundary value of 0xf0 under SEP=1 is expected when the hierarchical
-        # SEP export matches — not a fabricated from_sep label on a SEP=0 tie.
+        # lc_state=from_sep only after the live SEP source equals boundary
+        # lc_state_o. SEP eFuse LC_STATE default is 0xF0, so a boundary value of
+        # 0xf0 under SEP=1 is expected when the hierarchical SEP export matches.
         sep_lc = self._sample(dut.obs_sep_lc_state_o, "obs_sep_lc_state_o")
         lc_now = self._sample(dut.lc_state_o, "lc_state_o")
         assert sep_lc == lc_now, (
@@ -481,9 +453,7 @@ class SmuWrapperElaborationSeq:
             )
         for i, line in enumerate(self._timeout_paths):
             if "bound=" not in line:
-                raise AssertionError(
-                    f"CHK-TIMEOUT-PATHS[{i}] missing finite bound field: {line}"
-                )
+                raise AssertionError(f"CHK-TIMEOUT-PATHS[{i}] missing finite bound field: {line}")
             if "ok last=" not in line and "EXPIRED last=" not in line:
                 raise AssertionError(
                     f"CHK-TIMEOUT-PATHS[{i}] missing last-state diagnostic: {line}"
@@ -503,9 +473,7 @@ class SmuWrapperElaborationSeq:
         for a, b in zip(order, order[1:]):
             if self._step_ts[a] >= self._step_ts[b]:
                 raise AssertionError(f"CHK-NONVAC order fail: {a} not before {b}")
-        self.log.info(
-            "CHK-NONVAC: Ordered fence S1<S2<S3<S4<S5<S6<S7<S8<PASS all hold"
-        )
+        self.log.info("CHK-NONVAC: Ordered fence S1<S2<S3<S4<S5<S6<S7<S8<PASS all hold")
 
     async def run(self) -> None:
         expected_sep_arg = cocotb.plusargs.get("expected_sep")

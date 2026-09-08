@@ -4,8 +4,7 @@
 ifndef ocah_lint_tclint_mk
 ocah_lint_tclint_mk := 1
 
-OCAH_LINT_TCL_DIR := $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))
-include $(OCAH_LINT_TCL_DIR)/../common.mk
+include $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_LIST))))/../preamble.mk
 
 # Path to lint/format, scoped by filesystem rather than by block. Not named
 # PATH=, which would override the shell's own command-search PATH. Empty
@@ -20,6 +19,14 @@ ocah_tcl_files = $(shell find $(ocah_tcl_root) -name '*.tcl' -not -path '*/build
 
 ocah_tcl_check_files = @[ -n "$(strip $(ocah_tcl_files))" ] || { echo "error: no .tcl files under $(if $(TCL_PATH),$(TCL_PATH),repo root)" >&2; exit 1; }
 
+ifndef OCAH_TCLINT_SKIP_UV
+TCLINT = $(OCAH_UV_RUN) tclint
+TCLFMT = $(OCAH_UV_RUN) tclfmt
+else
+TCLINT = tclint
+TCLFMT = tclfmt
+endif
+
 ## @section Lint (tclint)
 
 ## Lint Tcl sources with tclint (no autofix; hand-fix reported violations).
@@ -29,7 +36,7 @@ ocah_tcl_check_files = @[ -n "$(strip $(ocah_tcl_files))" ] || { echo "error: no
 .PHONY: ocah-lint-tcl
 ocah-lint-tcl:
 	$(ocah_tcl_check_files)
-	$(UV) --directory "$(OCAH_ROOT)" run --locked tclint --no-check-style --style-line-length 100 $(ocah_tcl_files)
+	$(TCLINT) --no-check-style --style-line-length 100 $(ocah_tcl_files)
 
 OCAH_PHONY += ocah-lint-tcl
 
@@ -40,14 +47,14 @@ OCAH_PHONY += ocah-lint-tcl
 .PHONY: ocah-format-tcl
 ocah-format-tcl:
 	$(ocah_tcl_check_files)
-	$(UV) --directory "$(OCAH_ROOT)" run --locked tclfmt --in-place --spaces-in-braces $(ocah_tcl_files)
+	$(TCLFMT) --in-place --spaces-in-braces $(ocah_tcl_files)
 
 ## Check Tcl formatting without modifying files (CI-friendly: exit 0 clean, 1 would-reformat).
 ## @param TCL_PATH=flows/synth Optional path to scope the check; default repo root
 .PHONY: ocah-format-tcl-check
 ocah-format-tcl-check:
 	$(ocah_tcl_check_files)
-	$(UV) --directory "$(OCAH_ROOT)" run --locked tclfmt --check --spaces-in-braces $(ocah_tcl_files)
+	$(TCLFMT) --check --spaces-in-braces $(ocah_tcl_files)
 
 OCAH_PHONY += ocah-format-tcl ocah-format-tcl-check
 

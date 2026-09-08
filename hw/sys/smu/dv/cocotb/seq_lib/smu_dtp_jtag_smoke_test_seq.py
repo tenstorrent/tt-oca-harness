@@ -1,10 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Sequence for smu_dtp_jtag_smoke_test (SMU_ALL_005 rev 9).
+"""Sequence for smu_dtp_jtag_smoke_test (SMU_ALL_005).
 
 DV-CARD:          SMU_ALL_005   ANCHOR: smu_dtp_jtag_smoke_test
-DV-CARD-REVISION: 9   RECORD-SHA256: d1b60225e167bf1eae0232095647a37e7077704f340f2a4b37ad864fbc56f57d
-DV-CARD-SOURCE:   hw/sys/smu/dv/tb/SMU_ALL_VPLAN_DETAIL.md @ artifact_revision 9   ENV: cocotb
 
 Allocated (PTAP only):
   DTP-JTAG-PTAP.S1 — IDCODE instruction returns configured IDCODE fields
@@ -31,7 +29,7 @@ from seq_lib.smu_jtag_helpers import (
 
 
 class smu_dtp_jtag_smoke_test_seq:
-    """SMU_ALL_005 r9: PTAP IDCODE / BYPASS / TRST+POR → TLR."""
+    """SMU_ALL_005: PTAP IDCODE / BYPASS / TRST+POR → TLR."""
 
     BYPASS_PATTERN = 0xA5A5_A5A5
     BYPASS_WIDTH = 32
@@ -79,9 +77,7 @@ class smu_dtp_jtag_smoke_test_seq:
         await jtag.step_tms(tms)
         last = self._sample_tap_state()
         if last == int(expect):
-            self._timeout_paths.append(
-                f"{label}: bound={self.BOUND_TCK} ok last=0x{last:x}"
-            )
+            self._timeout_paths.append(f"{label}: bound={self.BOUND_TCK} ok last=0x{last:x}")
             return last
         hold_tms = (
             0
@@ -99,9 +95,7 @@ class smu_dtp_jtag_smoke_test_seq:
             await jtag.step_tms(hold_tms)
             last = self._sample_tap_state()
             if last == int(expect):
-                self._timeout_paths.append(
-                    f"{label}: bound={self.BOUND_TCK} ok last=0x{last:x}"
-                )
+                self._timeout_paths.append(f"{label}: bound={self.BOUND_TCK} ok last=0x{last:x}")
                 return last
         self._timeout_paths.append(
             f"{label}: bound={self.BOUND_TCK} EXPIRED last="
@@ -125,9 +119,7 @@ class smu_dtp_jtag_smoke_test_seq:
             await jtag.step_tms(hold_tms)
             last = self._sample_tap_state()
             if last == int(expect):
-                self._timeout_paths.append(
-                    f"{label}: bound={self.BOUND_TCK} ok last=0x{last:x}"
-                )
+                self._timeout_paths.append(f"{label}: bound={self.BOUND_TCK} ok last=0x{last:x}")
                 return last
         self._timeout_paths.append(
             f"{label}: bound={self.BOUND_TCK} EXPIRED last="
@@ -152,13 +144,10 @@ class smu_dtp_jtag_smoke_test_seq:
             await RisingEdge(self.dut.clk_ref_i)
             last = self._sample_tap_state()
             if last == int(expect):
-                self._timeout_paths.append(
-                    f"{label}: bound={bound} ok last=0x{last:x}"
-                )
+                self._timeout_paths.append(f"{label}: bound={bound} ok last=0x{last:x}")
                 return last
         self._timeout_paths.append(
-            f"{label}: bound={bound} EXPIRED last="
-            f"{'None' if last is None else f'0x{last:x}'}"
+            f"{label}: bound={bound} EXPIRED last={'None' if last is None else f'0x{last:x}'}"
         )
         raise AssertionError(
             f"TIMEOUT {label}: bound={bound} last_state={last} "
@@ -184,13 +173,9 @@ class smu_dtp_jtag_smoke_test_seq:
         await jtag.goto_state(OcahJtagState.RUN_TEST_IDLE)
         idle = self._sample_tap_state()
         if idle != int(OcahJtagState.RUN_TEST_IDLE):
-            idle = await self._wait_state(
-                jtag, OcahJtagState.RUN_TEST_IDLE, label="s1_rti"
-            )
+            idle = await self._wait_state(jtag, OcahJtagState.RUN_TEST_IDLE, label="s1_rti")
         else:
-            self._timeout_paths.append(
-                f"s1_rti: bound={self.BOUND_TCK} ok last=0x{idle:x}"
-            )
+            self._timeout_paths.append(f"s1_rti: bound={self.BOUND_TCK} ok last=0x{idle:x}")
         self._log(
             f"BASELINE: jtag_ptap_state=0x{idle:x} "
             f"(RUN_TEST_IDLE) idcode_expect=0x{DTP_DEFAULT_IDCODE:08x}"
@@ -216,13 +201,9 @@ class smu_dtp_jtag_smoke_test_seq:
         # Confirm TAP returned to RTI after IDCODE (bounded)
         st = self._sample_tap_state()
         if st != int(OcahJtagState.RUN_TEST_IDLE):
-            st = await self._wait_state(
-                jtag, OcahJtagState.RUN_TEST_IDLE, label="s2_idcode_rti"
-            )
+            st = await self._wait_state(jtag, OcahJtagState.RUN_TEST_IDLE, label="s2_idcode_rti")
         else:
-            self._timeout_paths.append(
-                f"s2_idcode_rti: bound={self.BOUND_TCK} ok last=0x{st:x}"
-            )
+            self._timeout_paths.append(f"s2_idcode_rti: bound={self.BOUND_TCK} ok last=0x{st:x}")
         decoded = self._sample(dut.jtag_ptap_inst_decoded, "jtag_ptap_inst_decoded")
         detail_s1 = (
             f"idcode=0x{idcode:08x} expect=0x{expect:08x} "
@@ -257,9 +238,7 @@ class smu_dtp_jtag_smoke_test_seq:
                 jtag, OcahJtagState.SELECT_DR_SCAN, label="s3_select_dr"
             )
         else:
-            self._timeout_paths.append(
-                f"s3_select_dr: bound={self.BOUND_TCK} ok last=0x{st_sel:x}"
-            )
+            self._timeout_paths.append(f"s3_select_dr: bound={self.BOUND_TCK} ok last=0x{st_sel:x}")
 
         st_cap = await self._wait_state_after_step(
             jtag, 0, OcahJtagState.CAPTURE_DR, label="s3_capture_dr"
@@ -283,13 +262,9 @@ class smu_dtp_jtag_smoke_test_seq:
         await jtag.step_tms(0)  # UPDATE_DR -> RTI
         st_rti = self._sample_tap_state()
         if st_rti != int(OcahJtagState.RUN_TEST_IDLE):
-            st_rti = await self._wait_state(
-                jtag, OcahJtagState.RUN_TEST_IDLE, label="s3_back_rti"
-            )
+            st_rti = await self._wait_state(jtag, OcahJtagState.RUN_TEST_IDLE, label="s3_back_rti")
         else:
-            self._timeout_paths.append(
-                f"s3_back_rti: bound={self.BOUND_TCK} ok last=0x{st_rti:x}"
-            )
+            self._timeout_paths.append(f"s3_back_rti: bound={self.BOUND_TCK} ok last=0x{st_rti:x}")
 
         expected_tdo = (pattern & 0x7FFF_FFFF) << 1
         got = int(captured) & 0xFFFF_FFFF
@@ -335,9 +310,7 @@ class smu_dtp_jtag_smoke_test_seq:
         dut.jtag_trst.value = 0
         for _ in range(self.TRST_CYCLES):
             await jtag.step_tms(1)
-        tlr_trst = await self._wait_tap_eq_ref(
-            OcahJtagState.TEST_LOGIC_RESET, label="s4_trst_tlr"
-        )
+        tlr_trst = await self._wait_tap_eq_ref(OcahJtagState.TEST_LOGIC_RESET, label="s4_trst_tlr")
         dut.jtag_trst.value = 1
         await ClockCycles(dut.clk_ref_i, 4)
         jtag._state = OcahJtagState.TEST_LOGIC_RESET
@@ -361,9 +334,7 @@ class smu_dtp_jtag_smoke_test_seq:
             )
 
         dut.powergood_i.value = 0
-        tlr_por = await self._wait_tap_eq_ref(
-            OcahJtagState.TEST_LOGIC_RESET, label="s4_por_tlr"
-        )
+        tlr_por = await self._wait_tap_eq_ref(OcahJtagState.TEST_LOGIC_RESET, label="s4_por_tlr")
         # Restore power-good / cold-reset baseline for scoreboard teardown
         dut.powergood_i.value = 1
         await ClockCycles(dut.clk_ref_i, self.POR_RECOVER_REF)
@@ -378,7 +349,6 @@ class smu_dtp_jtag_smoke_test_seq:
             f"cells=rst=TRST,rst=POR,state=Test-Logic-Reset"
         )
         self._log(f"CHK-DTP-JTAG-PTAP-S3: PASS ({detail_s3})")
-        # Non-tautological integer TAP-state pair (FIND-001): not bool==True.
         tlr = int(OcahJtagState.TEST_LOGIC_RESET)
         sb.expect_eq(
             "CHK-DTP-JTAG-PTAP-S3 TRST+POR → TLR",
@@ -392,8 +362,7 @@ class smu_dtp_jtag_smoke_test_seq:
         # ------------------------------------------------------------------
         self._mark_step(
             "S5",
-            "TIMEOUT: every bounded wait names finite bound + fail-on-expiry "
-            "+ last TAP state",
+            "TIMEOUT: every bounded wait names finite bound + fail-on-expiry + last TAP state",
         )
         for line in self._timeout_paths:
             self._log(f"TIMEOUT-PATH {line}")
@@ -405,13 +374,9 @@ class smu_dtp_jtag_smoke_test_seq:
             )
         for i, line in enumerate(self._timeout_paths):
             if "bound=" not in line:
-                raise AssertionError(
-                    f"CHK-TIMEOUT-PATHS[{i}] missing finite bound: {line}"
-                )
+                raise AssertionError(f"CHK-TIMEOUT-PATHS[{i}] missing finite bound: {line}")
             if "ok last=" not in line and "EXPIRED last=" not in line:
-                raise AssertionError(
-                    f"CHK-TIMEOUT-PATHS[{i}] missing last-state: {line}"
-                )
+                raise AssertionError(f"CHK-TIMEOUT-PATHS[{i}] missing last-state: {line}")
         self._log(
             "CHK-TIMEOUT-PATHS: Finite bound on S5; expiry fails with "
             f"last-state diagnostics (paths={n_paths} "
@@ -426,9 +391,7 @@ class smu_dtp_jtag_smoke_test_seq:
         )
 
         self._step_ts["PASS"] = time.monotonic()
-        self._log(
-            "SMU_ALL_005 sequence complete (PASS term recorded for NONVAC fence)"
-        )
+        self._log("SMU_ALL_005 sequence complete (PASS term recorded for NONVAC fence)")
         order = ["S1", "S2", "S3", "S4", "S5", "PASS"]
         for step_id in order:
             if step_id not in self._step_ts:
@@ -437,14 +400,12 @@ class smu_dtp_jtag_smoke_test_seq:
             if self._step_ts[a] >= self._step_ts[b]:
                 raise AssertionError(f"CHK-NONVAC order fail: {a} not before {b}")
         deltas_ns = [
-            int((self._step_ts[b] - self._step_ts[a]) * 1e9)
-            for a, b in zip(order, order[1:])
+            int((self._step_ts[b] - self._step_ts[a]) * 1e9) for a, b in zip(order, order[1:])
         ]
         positive_deltas = sum(1 for d in deltas_ns if d > 0)
         if positive_deltas != 5:
             raise AssertionError(
-                f"CHK-NONVAC positive-delta count fail: {positive_deltas} "
-                f"deltas_ns={deltas_ns}"
+                f"CHK-NONVAC positive-delta count fail: {positive_deltas} deltas_ns={deltas_ns}"
             )
         self._log("CHK-NONVAC: Ordered fence S1<S2<S3<S4<S5<PASS all hold")
         sb.expect_eq(

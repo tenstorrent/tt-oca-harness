@@ -869,14 +869,6 @@ static int occp_send_generic_get_command(test_context_t *ctx, uint64_t i3c_addr,
     }
 
     inject_header_errors_if_enabled(ctx, (uint8_t *)&header_word, sizeof(header_word));
-    //  if (ctx->type == DRIVER_TYPE_I3C) {
-    //    /* Optional header injection for GET* header */
-    //    ctx->drv.i3c_drv->send_payload_stream(ctx->drv.i3c_drv, i3c_addr, (uint8_t*)&header_word,
-    //    sizeof(header_word));
-    //  } else {
-    //    ctx->drv.i2c_drv->ctrlr_send_data_w_timeout(ctx->drv.i2c_drv, (uint8_t*)&header_word,
-    //    sizeof(header_word), ctx->timeout);
-    //  }
     uint8_t *tx_buf = occp_tx_buf;
 
     memcpy(tx_buf, &header_word, sizeof(header_word));
@@ -1571,14 +1563,6 @@ void check_occp_status_data(test_context_t *ctx, uint32_t status_data, int exp_i
     uint16_t actual_error = (status_data >> 16) & 0xFF;
     int has_error = 0;
     simputshex32("Status Data: ", status_data);
-    //  if (actual_error != ctx->exp_occp_last_error) {
-    //      simputs("GET_STATUS: FAIL - Last OCCP error mismatch ");
-    //      simputshex16("exp=0x", (uint16_t)ctx->exp_occp_last_error);
-    //      simputshex16(" got=0x", (uint16_t)actual_error);
-    //      simputs("\n");
-    //      ctx->overall_result = false;
-    //      has_error = 1;
-    //  }
     uint8_t actual_cmd_count = (status_data >> 8) & 0xFF;
     if (actual_cmd_count != ctx->cmd_count) {
         simputs("GET_STATUS: FAIL - Command count mismatch ");
@@ -1598,13 +1582,6 @@ void check_occp_status_data(test_context_t *ctx, uint32_t status_data, int exp_i
         has_error = 1;
     }
     uint8_t actual_boot_status = (status_data)&0xF;
-    // if (actual_boot_status != exp_boot_status) {
-    //  TODO: uncomment this when occp boot status is implemented
-    /* Boot status mismatch detailed print disabled to avoid printf pulls */
-    //      simputs(err_msg);
-    //      ctx->overall_result = false;
-    //      has_error = 1;
-    //}
     if (has_error == 0) {
         simputs("GET_STATUS: PASS\n");
     }
@@ -1939,12 +1916,6 @@ void execute_random_commands(test_context_t *ctx, int num_commands) {
                     return;
                 }
                 // TODO: what is this expected to be?
-                //        if ((status_data & 0xF) != exp_boot_status) {
-                //          simputs("GET_OCCP_BOOT_STATUS: FAIL\n");
-                //          simputshex32("Expected: ", exp_boot_status);
-                //          simputshex32("Actual: ", status_data);
-                //          ctx->overall_result = false;
-                //        }
                 simputs("GET_OCCP_BOOT_STATUS: PASS\n");
             } else {
                 if (ctx->invalid_len_err_inject_enable) {
@@ -1987,14 +1958,6 @@ void execute_random_commands(test_context_t *ctx, int num_commands) {
                     simputs("GET_OCCP_INTERFACE_STATUS command timed out as expected\n");
                     return;
                 }
-                //        if (!error_inject_enb && ((status_data & 0xF) != exp_interface_status)) {
-                //          simputs("GET_OCCP_INTERFACE_STATUS: FAIL\n");
-                //          simputshex32("Expected: ", exp_interface_status);
-                //          simputshex32("Actual: ", status_data);
-                //          ctx->overall_result = false;
-                //        } else {
-                //          simputs("GET_OCCP_INTERFACE_STATUS: PASS\n");
-                //        }
                 simputs("GET_OCCP_INTERFACE_STATUS: PASS\n");
             } else {
                 if (ctx->invalid_len_err_inject_enable) {
@@ -2013,15 +1976,7 @@ void execute_random_commands(test_context_t *ctx, int num_commands) {
                     simputs("GET_OCCP_ERROR_CODE command timed out as expected\n");
                     return;
                 }
-                //        if (!error_inject_enb && ((status_data & 0xFF) !=
-                //        ctx->exp_occp_last_error)) {
-                //          simputs("GET_OCCP_ERROR_CODE: FAIL\n");
-                //          simputshex32("Expected: ", ctx->exp_occp_last_error);
-                //          simputshex32("Actual: ", status_data);
-                //          ctx->overall_result = false;
-                //        } else {
                 simputs("GET_OCCP_ERROR_CODE: PASS\n");
-                //}
             } else {
                 if (ctx->invalid_len_err_inject_enable) {
                     simputs("GET_OCCP_ERROR_CODE errored under length injection (expected)\n");
@@ -2281,7 +2236,7 @@ bool occp_status_matches_expected(uint32_t status_value, occp_fw_id_t expected_f
     if (actual_fw_id != (uint8_t)expected_fw_id) return false;
 
     /* For SMC BL0 error messages, apply spec-defined matching granularity:
-     * - Some errors use upper nibblesk wih 0x1FF per spe)
+     * - Some errors use upper nibblesk with 0x1FF per spe)
      * - Some use lower nibble (mask wit 0xFF0)
      * - Others have no nibble data (match full 12-bit class within 16-bit)
      */

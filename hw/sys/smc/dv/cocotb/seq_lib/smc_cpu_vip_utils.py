@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -25,6 +26,7 @@ from smc_reg import (  # noqa: E402
     SMC_CPU_CTRL_RESET_VECTOR_2__REG_ADDR,
     SMC_CPU_CTRL_RESET_VECTOR_3__REG_ADDR,
     SMC_CPU_CTRL_SCRATCH_0__REG_ADDR,
+    SMC_CPU_CTRL_SCRATCH_3__REG_ADDR,
 )
 
 CPU_CTRL_RESET_VECTOR_0 = SMC_CPU_CTRL_RESET_VECTOR_0__REG_ADDR
@@ -34,6 +36,9 @@ CPU_CTRL_RESET_VECTOR_3 = SMC_CPU_CTRL_RESET_VECTOR_3__REG_ADDR
 CPU_CTRL_RESET_CTRL = SMC_CPU_CTRL_RESET_CTRL_REG_ADDR
 CPU_CTRL_RESET_TIMEOUT = SMC_CPU_CTRL_RESET_TIMEOUT_REG_ADDR
 CPU_CTRL_SCRATCH_0 = SMC_CPU_CTRL_SCRATCH_0__REG_ADDR
+# SEED_REG in fw/include/smc_test.h, read by init_test() to seed its LFSR.
+# Same register smc_occp_dual_defs.py calls SCRATCH_FW_SEED.
+SCRATCH_FW_SEED = SMC_CPU_CTRL_SCRATCH_3__REG_ADDR
 
 # Freedom-metal __metal_synchronize_harts uses CLINT MSIP as a barrier.
 CLINT_MSIP_0 = 0xC800_0000
@@ -49,7 +54,7 @@ CPU_RESET_VECTOR_SCRATCH = 0xC006_0000
 CPU_RESET_CTRL_DEFAULT = CPU_CTRL_RESET_CTRL_REG_DEFAULT & 0xFFFF_FFFF
 # Hold cores (reset_n=0) while keeping uncore out of reset (bit 8).
 CPU_RESET_CTRL_HOLD_CORES = 0x0000_0100
-# Pulse-start bits [7:4] for cores 0-3 (see legacy smc_api.pulse_core_reset).
+# Pulse-start bits [7:4] for cores 0-3.
 CPU_RESET_CTRL_PULSE_ALL = CPU_RESET_CTRL_DEFAULT | 0x0000_00F0  # 0x1FF
 # debug_reset_n_n0_scan[24] defaults to 0 (DM held in reset). DMI/dmstatus
 # needs this bit set; FW and U7-3 release it explicitly.
@@ -61,12 +66,16 @@ CPU_RESET_TIMEOUT_FORCE = 0x0001_0020
 CPU_FW_SUCCESS_MAGIC = 0xACAF_ACA1
 CPU_FW_FAIL_MASK = 0xFFFF_0000
 CPU_FW_FAIL_VALUE = 0xBAD0_0000
+# TEST_FAIL in fw/include/smc_test.h. test_fail() latches it over any
+# 0xBAD0xxxx code the test wrote first, so it is the value most firmware
+# failures actually leave behind.
+CPU_FW_TEST_FAIL = 0xFFFF_FFFF
 
-# Sync-free min_pass image posts magic here (scratch SRAM), because cluster
-# MMIO to CPU_CTRL SCRATCH may not be reachable until more fabric bring-up.
-CPU_FW_SRAM_MAILBOX = 0xC006_0100
+# Name kept for callers. min_pass posts 0xACAFACA1 to CPU_CTRL SCRATCH_0
+# (0xC0039080), not to scratch SRAM. The boot verdict reads that CSR.
+CPU_FW_SRAM_MAILBOX = CPU_CTRL_SCRATCH_0
 
-# smc_padring.sv: boot_stall is lsio pad 57 (was 60 before 68->65 GPIO shrink).
+# boot_stall is an lsio pad; smc_padring.sv holds the assignment.
 BOOT_STALL_PAD = 57
 
 # Backward-compatible aliases.
@@ -74,29 +83,55 @@ CPU_RESET_VECTOR = CPU_RESET_VECTOR_ROM
 CPU_RESET_RELEASE_ALL = CPU_RESET_CTRL_PULSE_ALL
 
 
-async def check_cpu_bfm_observability() -> None:
-    """Check the reset/powergood signals used by the CPU master-BFM substitute."""
-    dut = cocotb.top
+# Bound for the post-bring-up observability state this helper claims to observe.
+# Every caller runs after reset release, so anything beyond this is a real
+# failure of the powergood / reset-release contract rather than slow timing.
+CPU_BFM_OBS_TIMEOUT_CYCLES = 2000
+# Exact post-bring-up expectation: powergood stable and both observed resets
+# released (active-low, so 1). Value-checked, not just logged.
+CPU_BFM_OBS_EXPECTED = (
+    ("powergood_stable_o", 1),
+    ("rst_primary_smc_clk_no", 1),
+    ("rst_wdt_smc_clk_no", 1),
+)
 
-    await ClockCycles(dut.clk_smc_i, 8)
-    signals = [
-        dut.powergood_stable_o,
-        dut.rst_primary_smc_clk_no,
-        dut.rst_wdt_smc_clk_no,
-    ]
-    for signal in signals:
-        assert signal.value.is_resolvable, f"{signal._name} is not resolvable"
-    assert int(dut.powergood_stable_o.value) == 1, "Powergood did not stabilize"
-    cocotb.log.info(
-        "CPU BFM observability powergood=%d rst_primary=%d rst_wdt=%d",
-        int(dut.powergood_stable_o.value),
-        int(dut.rst_primary_smc_clk_no.value),
-        int(dut.rst_wdt_smc_clk_no.value),
+
+async def check_cpu_bfm_observability() -> None:
+    """Check the reset/powergood signals used by the CPU master-BFM substitute.
+
+    Bounded poll until powergood is stable AND both observed resets are
+    released, then assert that exact state. Expiry fails with the last observed
+    values (X/Z reported as such, never resolved blindly).
+    """
+    dut = cocotb.top
+    observed: dict[str, int | None] = {}
+    for _ in range(CPU_BFM_OBS_TIMEOUT_CYCLES):
+        for name, _want in CPU_BFM_OBS_EXPECTED:
+            value = getattr(dut, name).value
+            observed[name] = int(value) if value.is_resolvable else None
+        if all(observed[name] == want for name, want in CPU_BFM_OBS_EXPECTED):
+            cocotb.log.info(
+                "CHK-CPU-BFM-OBSERVABILITY: powergood_stable_o=%d "
+                "rst_primary_smc_clk_no=%d rst_wdt_smc_clk_no=%d "
+                "(all resolvable and at their exact post-bring-up levels)",
+                observed["powergood_stable_o"],
+                observed["rst_primary_smc_clk_no"],
+                observed["rst_wdt_smc_clk_no"],
+            )
+            return
+        await ClockCycles(dut.clk_smc_i, 1)
+    detail = ", ".join(
+        f"{name}={'X/Z' if observed.get(name) is None else observed[name]} (expected {want})"
+        for name, want in CPU_BFM_OBS_EXPECTED
+    )
+    raise AssertionError(
+        "CPU BFM observability never reached the post-bring-up state within "
+        f"{CPU_BFM_OBS_TIMEOUT_CYCLES} clk_smc_i cycles: {detail}"
     )
 
 
 def _set_boot_stall(asserted: bool) -> None:
-    """Drive padring pad 57 (boot_stall, active-high) via TB GPIO override."""
+    """Drive the boot_stall pad (active-high) via the TB GPIO override."""
     dut = cocotb.top
     if not hasattr(dut, "tb_gpio_ext_drive_en"):
         return
@@ -158,9 +193,7 @@ async def _release_held_cpu_boot(seq, reset_vector: int, *, settle_cycles: int =
 
     _set_boot_stall(False)
     await ClockCycles(cocotb.top.clk_smc_i, settle_cycles * 4)
-    cocotb.log.info(
-        "CPU boot: released +smc_hold_cpu_boot with vector=0x%08x", reset_vector
-    )
+    cocotb.log.info("CPU boot: released +smc_hold_cpu_boot with vector=0x%08x", reset_vector)
 
 
 async def _pulse_core_reset(seq, reset_vector: int, *, settle_cycles: int = 32) -> None:
@@ -212,7 +245,8 @@ async def check_cpu_firmware_boot_contract(
       * ``+smc_rom_hex=<path>`` — ROM window preload (vector 0xC004_0000)
       * ``+smc_scratch_ram_hex=<path>`` — scratch ECC hex, 64B-striped across
         32 banks (vector 0xC006_0000)
-      * ``+smc_hold_cpu_boot`` — assert pad57 from time-0 (preferred for scratch)
+      * ``+smc_hold_cpu_boot`` — assert boot_stall from time-0 (preferred for
+        scratch)
 
     Paths must be absolute (or resolvable from the simulator cwd under
     ``attempt_*/make``). If both plusargs are present, scratch wins.
@@ -226,8 +260,7 @@ async def check_cpu_firmware_boot_contract(
     if image_path is None:
         if require_image:
             raise AssertionError(
-                "CPU firmware boot requires +smc_rom_hex=<path> or "
-                "+smc_scratch_ram_hex=<path>"
+                "CPU firmware boot requires +smc_rom_hex=<path> or +smc_scratch_ram_hex=<path>"
             )
         return {
             "boot_checked": False,
@@ -236,21 +269,39 @@ async def check_cpu_firmware_boot_contract(
             "scratch_writes": int(dut.tb_cpu_scratch_write_count.value),
         }
 
-    reset_vector = (
-        CPU_RESET_VECTOR_SCRATCH if boot_from_scratch else CPU_RESET_VECTOR_ROM
-    )
+    reset_vector = CPU_RESET_VECTOR_SCRATCH if boot_from_scratch else CPU_RESET_VECTOR_ROM
     cocotb.log.info(
-        "CPU firmware boot start image=%s source=%s reset_vector=0x%08x "
-        "expected_magic=0x%08x",
+        "CPU firmware boot start image=%s source=%s reset_vector=0x%08x expected_magic=0x%08x",
         image_path,
         "scratch" if boot_from_scratch else "rom",
         reset_vector,
         CPU_FW_SUCCESS_MAGIC,
     )
 
-    # Clear CSR mailbox (SEP can reach CPU_CTRL). Scratch/D$ PASS is observed
-    # via tb_cpu_fw_mailbox (SEP cannot AXI to 0xC006_xxxx).
+    # CPU_CTRL is decoded off the front port ahead of the cluster, so SEP_IN
+    # reaches it whatever the cluster is doing.
+    #
+    # The verdict is read from CPU_CTRL SCRATCH_0 over SEP_IN, which is where
+    # `test_pass()` / `test_fail()` in fw/include/smc_test.h put it:
+    # write_scratch() is an MMIO store to SMC_TOP_SMC_CPU_CTRL_SCRATCH, not to
+    # the scratch RAM.
+    #
+    # Clear it and read the clear back. SCRATCH_0 is plain storage that no reset
+    # in this sequence touches, so without the read-back a residual value from
+    # an earlier test -- TEST_ROM_PASS 0x77777777, or a stale TEST_PASS -- would
+    # be indistinguishable from one this run's firmware wrote.
     await seq.csr_write("CPU_BOOT_SCRATCH0_CLEAR", CPU_CTRL_SCRATCH_0, 0)
+    await seq.csr_read("CPU_BOOT_SCRATCH0_CLEAR_RB", CPU_CTRL_SCRATCH_0, expected=0)
+
+    # init_test() in fw/include/smc_test.h seeds its LFSR from SCRATCH_3
+    # (SEED_REG). Nothing else publishes it, so a firmware test that randomises
+    # runs off whatever was left in that register. Publish this run's seed --
+    # the same RANDOM_SEED the environment randomisation uses -- so firmware
+    # randomisation is reproducible from the testlist seed rather than from
+    # residue.
+    fw_seed = int(os.environ.get("RANDOM_SEED", "1"), 0) & 0xFFFF_FFFF
+    await seq.csr_write("CPU_BOOT_SEED_PUBLISH", SCRATCH_FW_SEED, fw_seed, length=8)
+    await seq.csr_read("CPU_BOOT_SEED_RB", SCRATCH_FW_SEED, expected=fw_seed)
 
     # Capture fetch baselines BEFORE release: the I$ fill can complete
     # during the post-release settle window, so a post-release baseline would
@@ -259,8 +310,7 @@ async def check_cpu_firmware_boot_contract(
     baseline_scratch_reads = int(dut.tb_cpu_scratch_read_count.value)
     baseline_scratch_writes = int(dut.tb_cpu_scratch_write_count.value)
     cocotb.log.info(
-        "CPU boot baselines (pre-release) rom_reads=%d scratch_reads=%d "
-        "scratch_writes=%d",
+        "CPU boot baselines (pre-release) rom_reads=%d scratch_reads=%d scratch_writes=%d",
         baseline_rom_reads,
         baseline_scratch_reads,
         baseline_scratch_writes,
@@ -272,23 +322,34 @@ async def check_cpu_firmware_boot_contract(
         await _pulse_core_reset(seq, reset_vector)
 
     last_csr = 0
-    # The boot image is short; poll TB sideband + CSR mailbox.
+    # The boot image is short; poll the CSR the firmware actually writes.
+    #
+    # tb_cpu_fw_mailbox is deliberately NOT part of the verdict. It is driven by
+    # the FW_MAGIC snoop in models/smc_cpu_mem_dv.sv, which watches the scratch
+    # RAM and L1 D-cache *write ports* -- not the CPU_CTRL SCRATCH CSR that
+    # test_pass() stores to. So for any image that reports through smc_test.h it
+    # never fires, and the dcache half matches any 32-bit window of written data
+    # (the snoop steps bit_base across the 144-bit beat), which would grant PASS
+    # to a run whose firmware never reported one. It stays wired as
+    # observability and is logged below, but it cannot decide the outcome.
     for _ in range(2000):
         await ClockCycles(dut.clk_smc_i, 100)
-        last_csr = await seq.csr_read(
-            "CPU_BOOT_SCRATCH0_POLL", CPU_CTRL_SCRATCH_0
-        )
+        last_csr = await seq.csr_read("CPU_BOOT_SCRATCH0_POLL", CPU_CTRL_SCRATCH_0)
+        # Sampled and reported, never used to decide -- see the note above.
         fw_valid = int(dut.tb_cpu_fw_mailbox_valid.value)
         fw_mbox = int(dut.tb_cpu_fw_mailbox.value) if fw_valid else 0
-        last_pass = (
-            fw_mbox
-            if fw_mbox == CPU_FW_SUCCESS_MAGIC
-            else last_csr
-        )
-        if (last_pass & CPU_FW_FAIL_MASK) == CPU_FW_FAIL_VALUE:
+        last_pass = last_csr
+        # TEST_FAIL from fw/include/smc_test.h. Without this the fail path is
+        # invisible and every firmware failure presents as a poll-bound
+        # expiry with no diagnosis.
+        if last_pass == CPU_FW_TEST_FAIL:
             raise AssertionError(
-                f"CPU firmware reported failure code 0x{last_pass:08x}"
+                f"CPU firmware reported TEST_FAIL (SCRATCH_0=0x{last_pass:08x}); "
+                f"see the [ERROR] lines and SCRATCH_2 error status in this log "
+                f"for the failing check"
             )
+        if (last_pass & CPU_FW_FAIL_MASK) == CPU_FW_FAIL_VALUE:
+            raise AssertionError(f"CPU firmware reported failure code 0x{last_pass:08x}")
         if last_pass == CPU_FW_SUCCESS_MAGIC:
             rom_reads = int(dut.tb_cpu_rom_read_count.value)
             scratch_reads = int(dut.tb_cpu_scratch_read_count.value)

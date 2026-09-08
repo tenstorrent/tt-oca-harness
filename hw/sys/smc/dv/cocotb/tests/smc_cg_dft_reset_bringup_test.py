@@ -2,16 +2,14 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """
 DV-CARD: SMCCGP0_003 ANCHOR: smc_cg_dft_reset_bringup_test
-DV-CARD-REVISION: 1 RECORD-SHA256: 14b3775169e65fc707b9fdcd7c6dec6f9d817c002225fc23bbe4eaeefa702640
-DV-CARD-SOURCE: hw/sys/smc/dv/tb/SMC_CLOCK_GATING_P0_VPLAN_DETAIL.md @ artifact_revision 1 ENV: cocotb
 """
 
 from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_cg_dft_reset_bringup_test_seq import smc_cg_dft_reset_bringup_test_seq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
@@ -30,6 +28,9 @@ class smc_cg_dft_reset_bringup_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.ZEROER_DMA,
             type(self).__name__,
+            # Directed stimulus floor: 2 SEP_IN AXI CLOCK_GATE_CONTROL
+            # accesses. Literal here, not read from `seq.accesses`.
+            min_csr_accesses=2,
             csr_accesses=seq.accesses,
             timeouts=seq.timeouts,
             proxy=False,

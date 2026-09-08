@@ -7,18 +7,18 @@
 #include "och_sep_common.h"
 #include "sep.h"
 #include "sep_outbound_filter.h" /* common: sep_outbound_filter_init() (proven 0x80000000 egress) */
-#include "sep_smc_bringup.h" /* common: sep_smc_open_window / _bringup_from_sram (SEP_SMU_003) */
+#include "sep_smc_bringup.h"     /* common: sep_smc_open_window / _bringup_from_sram */
 #include "smu_sep_ext_axi_protocol.h"
 
 /*
- * SEP_SMU_016  smu_sep_ext_axi_combined_probe_test  --  SEP external-egress firmware.
+ * smu_sep_ext_axi_combined_probe_test  --  SEP external-egress firmware.
  *
  * Cloned from fw/sep/tests/sep_smc_notify (the existing real SEP firmware that opens
  * its outbound filter and writes 0xA5A55A5A/0xCAFEBABE to 0x80000000) so that test is
  * left undisturbed.  The SEP is BOTH the primary that releases the SMC and the outbound
  * producer for the SEP->ext_out leg.  It:
  *   S1  (SEP is the PRIMARY, runs FIRST) releases the four SMC cores over the SEP->SMC alias
- *       -- identical to SEP_SMU_003's SEP fw: sep_smc_open_window() opens the outbound egress
+ *       -- identical to the smc_sep_xbar SEP fw: sep_smc_open_window() opens the outbound egress
  *       window over the SEP->SMC region, then sep_smc_bringup_from_sram() waits (bounded, same
  *       poll-limit idiom) for the SMC image cookie in SRAM and, once present, re-vectors +
  *       pulses reset on all four SMC cores.  Without this the SMC never boots, SMC_READY never
@@ -45,7 +45,7 @@
  *
  * The outbound/inbound filter blocks are write-only programming interfaces (a CPU read
  * of one stalls), so only the aperture CSRs are read back in firmware; the filter
- * values are verified DV-side by passive DUT reads (same policy as SEP_SMU_003).
+ * values are verified DV-side by passive DUT reads (same policy as smc_sep_xbar).
  *
  * allow_ns is an exact AxPROT[1] match (traffic_filter.sv), so each inbound window is
  * programmed with a SECURE rule (rule0) AND an NS rule (rule1) covering the same range
@@ -125,7 +125,7 @@ static int wait_reg_eq(uintptr_t addr, uint32_t expected) {
 
 static int run_sep_ext_axi_sequence(void) {
     /* S1 (SEP is the PRIMARY, runs FIRST): release the four SMC cores over the SEP->SMC alias,
-     * exactly as SEP_SMU_003's SEP fw. Open the outbound egress window over the SEP->SMC region
+     * exactly as the smc_sep_xbar SEP fw. Open the outbound egress window over the SEP->SMC region
      * (0x40000000..0x800000FF), then sep_smc_bringup_from_sram() waits (bounded, same poll-limit
      * idiom) for the SMC image cookie in SRAM and only then re-vectors + pulses reset on all four
      * SMC cores. Without this the SMC never boots and SMC_READY never appears. The later

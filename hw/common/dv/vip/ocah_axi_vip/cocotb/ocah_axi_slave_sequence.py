@@ -77,7 +77,7 @@ class OcahAxiSlaveSequence:
         data = self.read(addr, length)
         lines = []
         for off in range(0, len(data), width):
-            chunk = data[off:off + width]
+            chunk = data[off : off + width]
             lines.append(f"{addr + off:08x}: " + " ".join(f"{byte:02x}" for byte in chunk))
         return "\n".join(lines)
 
@@ -85,8 +85,14 @@ class OcahAxiSlaveSequence:
         """Program a one-shot non-OKAY response at ``addr``."""
         self.driver.inject_error(addr, resp, read=read, write=write)
 
+    def inject_id_corruption(
+        self, *, mask: int = 0x1, read: bool = True, write: bool = True
+    ) -> None:
+        """Arm one-shot response-ID corruption (BID/RID XOR ``mask``)."""
+        self.driver.inject_id_corruption(mask=mask, read=read, write=write)
+
     def clear_errors(self) -> None:
-        """Clear all programmed one-shot response errors."""
+        """Clear all programmed one-shot response errors and ID corruption."""
         self.driver.clear_errors()
 
     def enable_backpressure(self, *, channels: Iterable[str], stall_cycles: int) -> None:

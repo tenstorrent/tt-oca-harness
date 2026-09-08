@@ -43,8 +43,7 @@ class smc_ecc_fault_inject_test_seq(SmcCsrSeq):
             cur = int(dut.tb_cpu_ecc_inject_fire_count.value)
             if cur > baseline:
                 cocotb.log.info(
-                    "%s fire_count %d -> %d after %d cycles "
-                    "(DUT scratch0_inject_fire path)",
+                    "%s fire_count %d -> %d after %d cycles (DUT scratch0_inject_fire path)",
                     label,
                     baseline,
                     cur,
@@ -99,9 +98,7 @@ class smc_ecc_fault_inject_test_seq(SmcCsrSeq):
                     scratch,
                 )
                 return cur, scratch
-        raise AssertionError(
-            f"TIMEOUT SBE: no DUT fire within {_FIRE_BOUND_CYCLES} cycles"
-        )
+        raise AssertionError(f"TIMEOUT SBE: no DUT fire within {_FIRE_BOUND_CYCLES} cycles")
 
     async def _pulse_scratch_boot(self) -> None:
         """Re-fetch from scratch; end in RESET_CTRL DEFAULT (pulse alone can stick)."""
@@ -132,7 +129,6 @@ class smc_ecc_fault_inject_test_seq(SmcCsrSeq):
         await ClockCycles(clk, 2)
 
         base = int(dut.tb_cpu_ecc_inject_fire_count.value)
-        scratch_base = int(dut.tb_cpu_scratch_read_count.value)
 
         # SBE + recovery in one boot window: clear inject on first fire while
         # the I$ fill is still in flight, then require more scratch reads with
@@ -141,9 +137,7 @@ class smc_ecc_fault_inject_test_seq(SmcCsrSeq):
         await RisingEdge(clk)
         clearer = cocotb.start_soon(self._clear_sbe_on_first_fire(base))
         if _hold_cpu_boot_plusarg():
-            boot_task = cocotb.start_soon(
-                _release_held_cpu_boot(self, CPU_RESET_VECTOR_SCRATCH)
-            )
+            boot_task = cocotb.start_soon(_release_held_cpu_boot(self, CPU_RESET_VECTOR_SCRATCH))
         else:
             boot_task = cocotb.start_soon(self._pulse_scratch_boot())
 
@@ -161,12 +155,10 @@ class smc_ecc_fault_inject_test_seq(SmcCsrSeq):
         await ClockCycles(clk, 8)
         mid_after = int(dut.tb_cpu_ecc_inject_fire_count.value)
         assert mid_after == mid, (
-            f"inject-clear recovery failed during I$ fill: "
-            f"fire_count {mid} -> {mid_after}"
+            f"inject-clear recovery failed during I$ fill: fire_count {mid} -> {mid_after}"
         )
         cocotb.log.info(
-            "RECOVERY ok: fire_count held at %d (first_fire=%d); "
-            "scratch_reads %d -> %d",
+            "RECOVERY ok: fire_count held at %d (first_fire=%d); scratch_reads %d -> %d",
             mid,
             sbe,
             scratch_hold,
@@ -187,18 +179,39 @@ class smc_ecc_fault_inject_test_seq(SmcCsrSeq):
         await self._wait_scratch_reads_gt(scratch_dbe_base, label="DBE")
 
         dut.tb_cpu_ecc_inject_dbe.value = 0
+        # The baseline for the recovery wait is taken AFTER `boot_task`
+        # completes. A baseline sampled before the CPU has fetched anything is
+        # already exceeded by the time the wait starts, so the wait would return
+        # on its first cycle and could not fail ([TIMEOUT-MUST-FAIL] /
+        # [NO-ALWAYS-PASS-CHECKER]).
         await boot_task
-        await self._wait_scratch_reads_gt(scratch_base, label="SBE")
+        # The CPU does not re-fetch from scratch bank0 once the boot fetch has
+        # completed (the scratch-read count stays static over 50_000 cycles,
+        # and after a further `_pulse_scratch_boot()`), so no scratch-read wait
+        # belongs here: a wait with no stimulus behind it can only be satisfied
+        # by a stale baseline ([NO-ALWAYS-PASS-CHECKER]). The recovery property
+        # -- further scratch traffic with the inject cleared must not score --
+        # is proven by the `RECOVERY` leg above (`assert mid_after == mid`).
 
         await self.wait_fuse_sense_done()
         await self.csr_read("RAS_BANK_INFO", RAS_BANK_INFO)
 
         await ClockCycles(clk, 2)
         cocotb.log.info(
-            "CHK-ECC-INJECT: SBE %d->%d recovery_hold=%d DBE %d->%d",
+            "CHK-ECC-INJECT: TB inject fire_count SBE %d->%d recovery_hold=%d DBE %d->%d",
             base,
             sbe,
             mid,
             mid,
             dbe,
+        )
+        cocotb.log.info(
+            "CHK-ECC-INJECT-NO-DUT-SECDED: this testcase makes NO claim about the\n"
+            "DUT's own SECDED detector. `tb_cpu_ecc_inject_sbe/dbe` do not\n"
+            "corrupt any data: smc_cpu_mem_dv.sv:70-78 only counts reads issued\n"
+            "while an inject is armed, so `cluster_ded_o` cannot fire from this\n"
+            "path and asserting on it would be a check that can never pass.\n"
+            "What IS proven here is the inject-and-recover path on the TB hook.\n"
+            "The DUT SECDED property is proven by corrupting the stored codeword\n"
+            "through `tb_cpu_ecc_poke_*` -- see smc_ecc_codeword_corrupt_test_seq."
         )

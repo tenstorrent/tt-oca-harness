@@ -30,7 +30,7 @@
     // reg - entropy_source.CTRL
     class entropy_source__CTRL extends uvm_reg;
         `uvm_object_utils(entropy_source__CTRL)
-        rand uvm_reg_field RESET;
+        rand uvm_reg_field RSVD0;
         rand uvm_reg_field MODULE_ENABLE;
         rand uvm_reg_field AUTOTUNE_ENABLE;
         rand uvm_reg_field BYPASS_ENTROPY_COMPRESSOR;
@@ -42,8 +42,8 @@
         endfunction : new
 
         virtual function void build();
-            this.RESET = uvm_reg_field::type_id::create("RESET");
-            this.RESET.configure(this, 1, 0, "RW", 0, 'h0, 1, 1, 0);
+            this.RSVD0 = uvm_reg_field::type_id::create("RSVD0");
+            this.RSVD0.configure(this, 1, 0, "RO", 0, 'h0, 1, 1, 0);
             this.MODULE_ENABLE = uvm_reg_field::type_id::create("MODULE_ENABLE");
             this.MODULE_ENABLE.configure(this, 1, 1, "RW", 0, 'h1, 1, 1, 0);
             this.AUTOTUNE_ENABLE = uvm_reg_field::type_id::create("AUTOTUNE_ENABLE");
@@ -56,21 +56,6 @@
             this.SHA256_WHITENING_ENABLE.configure(this, 1, 28, "RW", 0, 'h1, 1, 1, 0);
         endfunction : build
     endclass : entropy_source__CTRL
-
-    // reg - entropy_source.STATUS
-    class entropy_source__STATUS extends uvm_reg;
-        `uvm_object_utils(entropy_source__STATUS)
-        rand uvm_reg_field RSVD;
-
-        function new(string name = "entropy_source__STATUS");
-            super.new(name, 32, UVM_NO_COVERAGE);
-        endfunction : new
-
-        virtual function void build();
-            this.RSVD = uvm_reg_field::type_id::create("RSVD");
-            this.RSVD.configure(this, 1, 0, "RO", 1, 'h0, 1, 1, 0);
-        endfunction : build
-    endclass : entropy_source__STATUS
 
     // reg - entropy_source.DEBUG_CTRL
     class entropy_source__DEBUG_CTRL extends uvm_reg;
@@ -215,7 +200,7 @@
             this.INPUT_COUNT = uvm_reg_field::type_id::create("INPUT_COUNT");
             this.INPUT_COUNT.configure(this, 4, 4, "RO", 1, 'h0, 1, 1, 0);
             this.OUTPUT_COUNT = uvm_reg_field::type_id::create("OUTPUT_COUNT");
-            this.OUTPUT_COUNT.configure(this, 3, 8, "RO", 1, 'h0, 1, 1, 0);
+            this.OUTPUT_COUNT.configure(this, 4, 8, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : entropy_source__SHA256_STATUS
 
@@ -285,7 +270,7 @@
 
         virtual function void build();
             this.ENABLE = uvm_reg_field::type_id::create("ENABLE");
-            this.ENABLE.configure(this, 8, 0, "RW", 0, 'h7, 1, 1, 0);
+            this.ENABLE.configure(this, 3, 0, "RW", 0, 'h7, 1, 1, 0);
             this.REPETITION_LIMIT = uvm_reg_field::type_id::create("REPETITION_LIMIT");
             this.REPETITION_LIMIT.configure(this, 8, 8, "RW", 0, 'h19, 1, 1, 0);
         endfunction : build
@@ -358,8 +343,6 @@
     class entropy_source__APT_PATTERN_COUNT_1BIT extends uvm_reg;
         `uvm_object_utils(entropy_source__APT_PATTERN_COUNT_1BIT)
         rand uvm_reg_field PATTERN_COUNT;
-        rand uvm_reg_field TARGET_PATTERN;
-        rand uvm_reg_field SAMPLES_PROCESSED;
 
         function new(string name = "entropy_source__APT_PATTERN_COUNT_1BIT");
             super.new(name, 32, UVM_NO_COVERAGE);
@@ -368,10 +351,6 @@
         virtual function void build();
             this.PATTERN_COUNT = uvm_reg_field::type_id::create("PATTERN_COUNT");
             this.PATTERN_COUNT.configure(this, 16, 0, "RO", 1, 'h0, 1, 1, 0);
-            this.TARGET_PATTERN = uvm_reg_field::type_id::create("TARGET_PATTERN");
-            this.TARGET_PATTERN.configure(this, 4, 16, "RO", 1, 'h0, 1, 1, 0);
-            this.SAMPLES_PROCESSED = uvm_reg_field::type_id::create("SAMPLES_PROCESSED");
-            this.SAMPLES_PROCESSED.configure(this, 10, 20, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : entropy_source__APT_PATTERN_COUNT_1BIT
 
@@ -379,8 +358,6 @@
     class entropy_source__APT_PATTERN_COUNT_2BIT extends uvm_reg;
         `uvm_object_utils(entropy_source__APT_PATTERN_COUNT_2BIT)
         rand uvm_reg_field PATTERN_COUNT;
-        rand uvm_reg_field TARGET_PATTERN;
-        rand uvm_reg_field SAMPLES_PROCESSED;
 
         function new(string name = "entropy_source__APT_PATTERN_COUNT_2BIT");
             super.new(name, 32, UVM_NO_COVERAGE);
@@ -389,54 +366,8 @@
         virtual function void build();
             this.PATTERN_COUNT = uvm_reg_field::type_id::create("PATTERN_COUNT");
             this.PATTERN_COUNT.configure(this, 16, 0, "RO", 1, 'h0, 1, 1, 0);
-            this.TARGET_PATTERN = uvm_reg_field::type_id::create("TARGET_PATTERN");
-            this.TARGET_PATTERN.configure(this, 4, 16, "RO", 1, 'h0, 1, 1, 0);
-            this.SAMPLES_PROCESSED = uvm_reg_field::type_id::create("SAMPLES_PROCESSED");
-            this.SAMPLES_PROCESSED.configure(this, 10, 20, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : entropy_source__APT_PATTERN_COUNT_2BIT
-
-    // reg - entropy_source.APT_PATTERN_COUNT_3BIT
-    class entropy_source__APT_PATTERN_COUNT_3BIT extends uvm_reg;
-        `uvm_object_utils(entropy_source__APT_PATTERN_COUNT_3BIT)
-        rand uvm_reg_field PATTERN_COUNT;
-        rand uvm_reg_field TARGET_PATTERN;
-        rand uvm_reg_field SAMPLES_PROCESSED;
-
-        function new(string name = "entropy_source__APT_PATTERN_COUNT_3BIT");
-            super.new(name, 32, UVM_NO_COVERAGE);
-        endfunction : new
-
-        virtual function void build();
-            this.PATTERN_COUNT = uvm_reg_field::type_id::create("PATTERN_COUNT");
-            this.PATTERN_COUNT.configure(this, 10, 0, "RO", 1, 'h0, 1, 1, 0);
-            this.TARGET_PATTERN = uvm_reg_field::type_id::create("TARGET_PATTERN");
-            this.TARGET_PATTERN.configure(this, 4, 10, "RO", 1, 'h0, 1, 1, 0);
-            this.SAMPLES_PROCESSED = uvm_reg_field::type_id::create("SAMPLES_PROCESSED");
-            this.SAMPLES_PROCESSED.configure(this, 10, 20, "RO", 1, 'h0, 1, 1, 0);
-        endfunction : build
-    endclass : entropy_source__APT_PATTERN_COUNT_3BIT
-
-    // reg - entropy_source.APT_PATTERN_COUNT_4BIT
-    class entropy_source__APT_PATTERN_COUNT_4BIT extends uvm_reg;
-        `uvm_object_utils(entropy_source__APT_PATTERN_COUNT_4BIT)
-        rand uvm_reg_field PATTERN_COUNT;
-        rand uvm_reg_field TARGET_PATTERN;
-        rand uvm_reg_field SAMPLES_PROCESSED;
-
-        function new(string name = "entropy_source__APT_PATTERN_COUNT_4BIT");
-            super.new(name, 32, UVM_NO_COVERAGE);
-        endfunction : new
-
-        virtual function void build();
-            this.PATTERN_COUNT = uvm_reg_field::type_id::create("PATTERN_COUNT");
-            this.PATTERN_COUNT.configure(this, 10, 0, "RO", 1, 'h0, 1, 1, 0);
-            this.TARGET_PATTERN = uvm_reg_field::type_id::create("TARGET_PATTERN");
-            this.TARGET_PATTERN.configure(this, 4, 10, "RO", 1, 'h0, 1, 1, 0);
-            this.SAMPLES_PROCESSED = uvm_reg_field::type_id::create("SAMPLES_PROCESSED");
-            this.SAMPLES_PROCESSED.configure(this, 10, 20, "RO", 1, 'h0, 1, 1, 0);
-        endfunction : build
-    endclass : entropy_source__APT_PATTERN_COUNT_4BIT
 
     // reg - entropy_source.APT_PROPORTION_1BIT
     class entropy_source__APT_PROPORTION_1BIT extends uvm_reg;
@@ -452,51 +383,6 @@
             this.LIMIT.configure(this, 16, 0, "RW", 0, 'h4b0, 1, 1, 0);
         endfunction : build
     endclass : entropy_source__APT_PROPORTION_1BIT
-
-    // reg - entropy_source.APT_PROPORTION_2BIT
-    class entropy_source__APT_PROPORTION_2BIT extends uvm_reg;
-        `uvm_object_utils(entropy_source__APT_PROPORTION_2BIT)
-        rand uvm_reg_field LIMIT;
-
-        function new(string name = "entropy_source__APT_PROPORTION_2BIT");
-            super.new(name, 32, UVM_NO_COVERAGE);
-        endfunction : new
-
-        virtual function void build();
-            this.LIMIT = uvm_reg_field::type_id::create("LIMIT");
-            this.LIMIT.configure(this, 10, 0, "RW", 0, 'h80, 1, 1, 0);
-        endfunction : build
-    endclass : entropy_source__APT_PROPORTION_2BIT
-
-    // reg - entropy_source.APT_PROPORTION_3BIT
-    class entropy_source__APT_PROPORTION_3BIT extends uvm_reg;
-        `uvm_object_utils(entropy_source__APT_PROPORTION_3BIT)
-        rand uvm_reg_field LIMIT;
-
-        function new(string name = "entropy_source__APT_PROPORTION_3BIT");
-            super.new(name, 32, UVM_NO_COVERAGE);
-        endfunction : new
-
-        virtual function void build();
-            this.LIMIT = uvm_reg_field::type_id::create("LIMIT");
-            this.LIMIT.configure(this, 10, 0, "RW", 0, 'h40, 1, 1, 0);
-        endfunction : build
-    endclass : entropy_source__APT_PROPORTION_3BIT
-
-    // reg - entropy_source.APT_PROPORTION_4BIT
-    class entropy_source__APT_PROPORTION_4BIT extends uvm_reg;
-        `uvm_object_utils(entropy_source__APT_PROPORTION_4BIT)
-        rand uvm_reg_field LIMIT;
-
-        function new(string name = "entropy_source__APT_PROPORTION_4BIT");
-            super.new(name, 32, UVM_NO_COVERAGE);
-        endfunction : new
-
-        virtual function void build();
-            this.LIMIT = uvm_reg_field::type_id::create("LIMIT");
-            this.LIMIT.configure(this, 10, 0, "RW", 0, 'h20, 1, 1, 0);
-        endfunction : build
-    endclass : entropy_source__APT_PROPORTION_4BIT
 
     // reg - entropy_source.APT_PROPORTION_LO
     class entropy_source__APT_PROPORTION_LO extends uvm_reg;
@@ -530,48 +416,6 @@
             this.COUNT_10.configure(this, 16, 16, "RO", 1, 'h0, 1, 1, 0);
         endfunction : build
     endclass : entropy_source__MARKOV_TEST_COUNTS_0
-
-    // reg - entropy_source.MARKOV_TEST_COUNTS_1
-    class entropy_source__MARKOV_TEST_COUNTS_1 extends uvm_reg;
-        `uvm_object_utils(entropy_source__MARKOV_TEST_COUNTS_1)
-        rand uvm_reg_field COUNT_00;
-        rand uvm_reg_field COUNT_11;
-
-        function new(string name = "entropy_source__MARKOV_TEST_COUNTS_1");
-            super.new(name, 32, UVM_NO_COVERAGE);
-        endfunction : new
-
-        virtual function void build();
-            this.COUNT_00 = uvm_reg_field::type_id::create("COUNT_00");
-            this.COUNT_00.configure(this, 16, 0, "RO", 1, 'h0, 1, 1, 0);
-            this.COUNT_11 = uvm_reg_field::type_id::create("COUNT_11");
-            this.COUNT_11.configure(this, 16, 16, "RO", 1, 'h0, 1, 1, 0);
-        endfunction : build
-    endclass : entropy_source__MARKOV_TEST_COUNTS_1
-
-    // reg - entropy_source.MARKOV_TEST_PROBABILITIES
-    class entropy_source__MARKOV_TEST_PROBABILITIES extends uvm_reg;
-        `uvm_object_utils(entropy_source__MARKOV_TEST_PROBABILITIES)
-        rand uvm_reg_field PROB_01;
-        rand uvm_reg_field PROB_10;
-        rand uvm_reg_field PROB_00;
-        rand uvm_reg_field PROB_11;
-
-        function new(string name = "entropy_source__MARKOV_TEST_PROBABILITIES");
-            super.new(name, 32, UVM_NO_COVERAGE);
-        endfunction : new
-
-        virtual function void build();
-            this.PROB_01 = uvm_reg_field::type_id::create("PROB_01");
-            this.PROB_01.configure(this, 8, 0, "RO", 1, 'h0, 1, 1, 0);
-            this.PROB_10 = uvm_reg_field::type_id::create("PROB_10");
-            this.PROB_10.configure(this, 8, 8, "RO", 1, 'h0, 1, 1, 0);
-            this.PROB_00 = uvm_reg_field::type_id::create("PROB_00");
-            this.PROB_00.configure(this, 8, 16, "RO", 1, 'h0, 1, 1, 0);
-            this.PROB_11 = uvm_reg_field::type_id::create("PROB_11");
-            this.PROB_11.configure(this, 8, 24, "RO", 1, 'h0, 1, 1, 0);
-        endfunction : build
-    endclass : entropy_source__MARKOV_TEST_PROBABILITIES
 
     // reg - entropy_source.RING_OSC_ENABLE
     class entropy_source__RING_OSC_ENABLE extends uvm_reg;
@@ -1370,7 +1214,6 @@
         `uvm_object_utils(entropy_source)
         rand entropy_source__COMPONENT_ID COMPONENT_ID;
         rand entropy_source__CTRL CTRL;
-        rand entropy_source__STATUS STATUS;
         rand entropy_source__DEBUG_CTRL DEBUG_CTRL;
         rand entropy_source__INTR_STATUS INTR_STATUS;
         rand entropy_source__INTR_ENABLE INTR_ENABLE;
@@ -1386,16 +1229,9 @@
         rand entropy_source__REPETITION_TEST_COUNT REPETITION_TEST_COUNT;
         rand entropy_source__APT_PATTERN_COUNT_1BIT APT_PATTERN_COUNT_1BIT;
         rand entropy_source__APT_PATTERN_COUNT_2BIT APT_PATTERN_COUNT_2BIT;
-        rand entropy_source__APT_PATTERN_COUNT_3BIT APT_PATTERN_COUNT_3BIT;
-        rand entropy_source__APT_PATTERN_COUNT_4BIT APT_PATTERN_COUNT_4BIT;
         rand entropy_source__APT_PROPORTION_1BIT APT_PROPORTION_1BIT;
-        rand entropy_source__APT_PROPORTION_2BIT APT_PROPORTION_2BIT;
-        rand entropy_source__APT_PROPORTION_3BIT APT_PROPORTION_3BIT;
-        rand entropy_source__APT_PROPORTION_4BIT APT_PROPORTION_4BIT;
         rand entropy_source__APT_PROPORTION_LO APT_PROPORTION_LO;
         rand entropy_source__MARKOV_TEST_COUNTS_0 MARKOV_TEST_COUNTS_0;
-        rand entropy_source__MARKOV_TEST_COUNTS_1 MARKOV_TEST_COUNTS_1;
-        rand entropy_source__MARKOV_TEST_PROBABILITIES MARKOV_TEST_PROBABILITIES;
         rand entropy_source__RING_OSC_ENABLE RING_OSC_ENABLE;
         rand entropy_source__RING_OSC_TUNE RING_OSC_TUNE;
         rand entropy_source__RING_OSC_CTRL RING_OSC_CTRL;
@@ -1462,11 +1298,6 @@
 
             this.CTRL.build();
             this.default_map.add_reg(this.CTRL, 'h4);
-            this.STATUS = entropy_source__STATUS::type_id::create("STATUS");
-            this.STATUS.configure(this);
-
-            this.STATUS.build();
-            this.default_map.add_reg(this.STATUS, 'h8);
             this.DEBUG_CTRL = entropy_source__DEBUG_CTRL::type_id::create("DEBUG_CTRL");
             this.DEBUG_CTRL.configure(this);
 
@@ -1542,36 +1373,11 @@
 
             this.APT_PATTERN_COUNT_2BIT.build();
             this.default_map.add_reg(this.APT_PATTERN_COUNT_2BIT, 'h54);
-            this.APT_PATTERN_COUNT_3BIT = entropy_source__APT_PATTERN_COUNT_3BIT::type_id::create("APT_PATTERN_COUNT_3BIT");
-            this.APT_PATTERN_COUNT_3BIT.configure(this);
-
-            this.APT_PATTERN_COUNT_3BIT.build();
-            this.default_map.add_reg(this.APT_PATTERN_COUNT_3BIT, 'h58);
-            this.APT_PATTERN_COUNT_4BIT = entropy_source__APT_PATTERN_COUNT_4BIT::type_id::create("APT_PATTERN_COUNT_4BIT");
-            this.APT_PATTERN_COUNT_4BIT.configure(this);
-
-            this.APT_PATTERN_COUNT_4BIT.build();
-            this.default_map.add_reg(this.APT_PATTERN_COUNT_4BIT, 'h5c);
             this.APT_PROPORTION_1BIT = entropy_source__APT_PROPORTION_1BIT::type_id::create("APT_PROPORTION_1BIT");
             this.APT_PROPORTION_1BIT.configure(this);
 
             this.APT_PROPORTION_1BIT.build();
             this.default_map.add_reg(this.APT_PROPORTION_1BIT, 'h60);
-            this.APT_PROPORTION_2BIT = entropy_source__APT_PROPORTION_2BIT::type_id::create("APT_PROPORTION_2BIT");
-            this.APT_PROPORTION_2BIT.configure(this);
-
-            this.APT_PROPORTION_2BIT.build();
-            this.default_map.add_reg(this.APT_PROPORTION_2BIT, 'h64);
-            this.APT_PROPORTION_3BIT = entropy_source__APT_PROPORTION_3BIT::type_id::create("APT_PROPORTION_3BIT");
-            this.APT_PROPORTION_3BIT.configure(this);
-
-            this.APT_PROPORTION_3BIT.build();
-            this.default_map.add_reg(this.APT_PROPORTION_3BIT, 'h68);
-            this.APT_PROPORTION_4BIT = entropy_source__APT_PROPORTION_4BIT::type_id::create("APT_PROPORTION_4BIT");
-            this.APT_PROPORTION_4BIT.configure(this);
-
-            this.APT_PROPORTION_4BIT.build();
-            this.default_map.add_reg(this.APT_PROPORTION_4BIT, 'h6c);
             this.APT_PROPORTION_LO = entropy_source__APT_PROPORTION_LO::type_id::create("APT_PROPORTION_LO");
             this.APT_PROPORTION_LO.configure(this);
 
@@ -1582,16 +1388,6 @@
 
             this.MARKOV_TEST_COUNTS_0.build();
             this.default_map.add_reg(this.MARKOV_TEST_COUNTS_0, 'h80);
-            this.MARKOV_TEST_COUNTS_1 = entropy_source__MARKOV_TEST_COUNTS_1::type_id::create("MARKOV_TEST_COUNTS_1");
-            this.MARKOV_TEST_COUNTS_1.configure(this);
-
-            this.MARKOV_TEST_COUNTS_1.build();
-            this.default_map.add_reg(this.MARKOV_TEST_COUNTS_1, 'h84);
-            this.MARKOV_TEST_PROBABILITIES = entropy_source__MARKOV_TEST_PROBABILITIES::type_id::create("MARKOV_TEST_PROBABILITIES");
-            this.MARKOV_TEST_PROBABILITIES.configure(this);
-
-            this.MARKOV_TEST_PROBABILITIES.build();
-            this.default_map.add_reg(this.MARKOV_TEST_PROBABILITIES, 'h88);
             this.RING_OSC_ENABLE = entropy_source__RING_OSC_ENABLE::type_id::create("RING_OSC_ENABLE");
             this.RING_OSC_ENABLE.configure(this);
 

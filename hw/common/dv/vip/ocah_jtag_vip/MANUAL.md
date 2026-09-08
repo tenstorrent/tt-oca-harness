@@ -261,8 +261,60 @@ stay meaningful.
 
 The DTP `dtp_jtag_base_test_seq.attach_tap_checker()` hook wires these checks
 into TAP navigation automatically; `DTP_JTAG_TAP_CHECKER_NEGATIVE=1` runs the
-documented negative validation (a deliberately desynced model must FAIL the
+documented negative validation (a desynced model must FAIL the
 `dtp_jtag_tlr_reset_test` run).
+
+## SystemVerilog Layer (interface / sva / cov / uvm)
+
+The SV side of this package compiles through the VIP-owned ordered manifest
+`uvm/sources.toml` (incdirs + sources): a consuming DUT lists that manifest in
+its `[frameworks.uvm.build].source_lists` and the runner expands it ahead of
+the DUT's own sources — never hand-copy these paths into a DUT sim config, and
+never add them to Bender filelists. The one entry a cocotb/Verilator build
+lists directly in its `[build].sources` is `sva/ocah_jtag_sva.sv`, whose
+two-state rules run there. Its contents:
+
+- `interface/ocah_jtag_if.sv` — shared pin-level IEEE 1149.1 interface
+  (JTAG pins only; reused by any DUT).
+- `cov/ocah_jtag_cov.sv` — commercial-simulator-only functional-coverage
+  collateral.
+- `sva/ocah_jtag_sva.sv` — clean-room SVA protocol rules for the TAP pins.
+  Two trees by simulator capability: the TDO-timing and TAP-state rules use
+  `OCAH_SVA_ASSERT` (`hw/common/assert/ocah_sva_macros.svh`) and run on every
+  simulator, Verilator included under `--assert`; the X-hygiene rules and the
+  covers use `OCAH_ASSERT` / `OCAH_COVER` and run on four-state simulators
+  only.
+- `uvm/ocah_jtag_uvm_pkg.sv` — the SV-UVM VIP: item/config/driver/monitor/
+  sequencer/agent plus the encoding-agnostic TAP reference model;
+  `ocah_jtag_master_env` is the commercial-overridable unit that DUT envs
+  instantiate (see the DTP SV-UVM flow for a consuming integration).
+
+## UVM Env Surface Convention
+
+Both shipped OCAH VIPs (`ocah_jtag_vip`, `ocah_axi_vip`) follow one surface
+convention, with the JTAG master env as the reference template:
+
+- **Side tokens.** Side-specific components — config, driver, sequencer,
+  sequence, agent, env, and agent-attached monitors — carry the side token
+  (`_master_*` / `_slave_*`). Wire-level observation classes — items, bus
+  monitors, reference models, scoreboards, checkers, coverage subscribers,
+  and the passive observation env — are side-neutral: they observe
+  DUT-generated traffic regardless of which VIP side, if any, is active.
+- **config_db fields.** An env-wrapped unit resolves its config from field
+  `cfg` and republishes the same object to its children as `cfg`. A
+  standalone reactive agent (the slave stacks) resolves the side-tokened
+  field `slave_cfg` instead.
+- **Payload-named analysis ports.** An observation port is named
+  `<kind>_ap` after the class it streams, mirroring the cocotb monitor
+  callback names: `event_ap` (`ocah_jtag_event`), `scan_ap`
+  (`ocah_jtag_scan_item`), `item_ap` (`ocah_axi_item`). Port names differ
+  across VIPs because the payloads differ, and the name tells a DUT env what
+  it is subscribing to.
+- **Frozen surface is env-top-level handles only.** Everything a DUT env,
+  test, or sequence may depend on is a direct member of the VIP env — the
+  env promotes child handles (`m_sequencer` on `ocah_jtag_master_env` and
+  `ocah_axi_master_env`, `m_checker` on `ocah_axi_env`) rather than
+  letting consumers reach through its children.
 
 ## Backend And License Status
 

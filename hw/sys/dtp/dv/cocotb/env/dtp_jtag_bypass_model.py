@@ -7,6 +7,8 @@ from __future__ import annotations
 import random
 from dataclasses import dataclass
 
+from ocah_lib import OcahRng
+
 from .dtp_types import DtpJtagInstr
 
 __all__ = ["DtpBypassCaseCfg", "DtpBypassRefModel", "DtpBypassSuiteCfg"]
@@ -14,36 +16,6 @@ __all__ = ["DtpBypassCaseCfg", "DtpBypassRefModel", "DtpBypassSuiteCfg"]
 BYPASS_00 = int(DtpJtagInstr.BYPASS_00)
 BYPASS_3F = int(DtpJtagInstr.BYPASS_3F)
 _BYPASS_OPCODES = (BYPASS_00, BYPASS_3F)
-
-
-def _bit_mask(width: int) -> int:
-    return (1 << width) - 1
-
-
-def _salted_rng(seed: int, label: str) -> random.Random:
-    salt = sum((index + 1) * ord(char) for index, char in enumerate(label))
-    return random.Random(seed ^ salt)
-
-
-def _directed_patterns(
-    width: int, *, seed: int, label: str, random_count: int
-) -> tuple[int, ...]:
-    mask = _bit_mask(width)
-    patterns = [
-        0,
-        mask,
-        0xAAAA_AAAA_AAAA_AAAA & mask,
-        0x5555_5555_5555_5555 & mask,
-        0xA5A5_5A5A_C3C3_3C3C & mask,
-        0x0123_4567_89AB_CDEF & mask,
-    ]
-    for bit_pos in sorted({0, width // 4, width // 2, (3 * width) // 4, width - 1}):
-        patterns.append(1 << bit_pos)
-        patterns.append(mask ^ (1 << bit_pos))
-    rng = _salted_rng(seed, label)
-    for _ in range(random_count):
-        patterns.append(rng.getrandbits(width) & mask)
-    return tuple(dict.fromkeys(patterns))
 
 
 @dataclass(frozen=True)
@@ -61,14 +33,10 @@ class DtpBypassCaseCfg:
             raise ValueError(f"unsupported DTP BYPASS opcode 0x{self.instruction:02x}")
         if self.width <= 0:
             raise ValueError(f"BYPASS width must be positive, got {self.width}")
-        if self.pattern < 0 or self.pattern > _bit_mask(self.width):
-            raise ValueError(
-                f"BYPASS pattern 0x{self.pattern:x} does not fit width {self.width}"
-            )
+        if self.pattern < 0 or self.pattern > OcahRng.bit_mask(self.width):
+            raise ValueError(f"BYPASS pattern 0x{self.pattern:x} does not fit width {self.width}")
         if self.capture_bit not in (0, 1):
-            raise ValueError(
-                f"BYPASS capture_bit must be 0 or 1, got {self.capture_bit}"
-            )
+            raise ValueError(f"BYPASS capture_bit must be 0 or 1, got {self.capture_bit}")
 
     @property
     def check_id(self) -> str:
@@ -108,11 +76,10 @@ class DtpBypassSuiteCfg:
 
         cases: list[DtpBypassCaseCfg] = []
         for instruction in _BYPASS_OPCODES:
-            patterns = _directed_patterns(
+            patterns = OcahRng.directed_patterns(
                 width,
-                seed=seed,
-                label=f"bypass_{instruction:02x}",
-                random_count=random_count,
+                random_count,
+                random.Random(OcahRng.salted_seed(seed, f"bypass_{instruction:02x}")),
             )
             for index, pattern in enumerate(patterns):
                 cases.append(
@@ -139,10 +106,10 @@ class DtpBypassRefModel:
 
     @staticmethod
     def predict(case: DtpBypassCaseCfg) -> int:
-        shifted_input = case.pattern & _bit_mask(max(case.width - 1, 0))
+        shifted_input = case.pattern & OcahRng.bit_mask(max(case.width - 1, 0))
         return (case.capture_bit & 0x1) | (shifted_input << 1)
 
     @staticmethod
     def direct_passthrough(case: DtpBypassCaseCfg) -> int:
         """Return the non-delayed TDI value used only for non-vacuity checks."""
-        return case.pattern & _bit_mask(case.width)
+        return case.pattern & OcahRng.bit_mask(case.width)

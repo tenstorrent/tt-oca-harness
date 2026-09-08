@@ -14,7 +14,6 @@ ignore:
     - .pytest_cache/
     - .git/
     - .venv/
-    - venv/
     - node_modules/
     - .bender/
     - .bender-kg/
@@ -47,3 +46,5 @@ ignore:
     - hw/sys/sep/dv/fw/tests/common_otbn/serialize/parse_helpers.py
     # pulp-platform vendored script (ETH Zurich copyright)
     - scripts/ci/slang_to_rdjson.py
+    # Whetstone benchmark (Painter Engineering copyright; see LICENSES/LicenseRef-Whetstone.txt)
+    - hw/sys/smc/dv/fw/tests/whetstone/whetstone.c
