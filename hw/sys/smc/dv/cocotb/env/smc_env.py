@@ -7,7 +7,8 @@ Agent / monitor honesty (U6-1):
     sampling, not protocol BFMs.
   * Protocol / traffic agents: sep_in_axi (alias: sys_axi) / sys_in_axi /
     jtag_axi / protocol_vip.
-  * Passive monitors: axi_monitor (SEP_IN), output_axi_monitor (SYS_OUT, U6-2).
+  * Passive monitors: axi_monitor (SEP_IN), output_axi_monitor (SYS_OUT, U6-2),
+    cpu_trace_mon (hart-0 retirement trace; idle without a firmware image).
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ from pyuvm import ConfigDB, uvm_env
 from .smc_axi_monitor import SmcAxiMonitor
 from .smc_axil_agent import SmcAxilAgent
 from .smc_clk_agent import SmcClkAgent
+from .smc_cpu_trace_monitor import SmcCpuTraceMonitor
 from .smc_gpio_agent import SmcGpioAgent
 from .smc_i2c_agent import SmcI2cAgent
 from .smc_irq_agent import SmcIrqAgent
@@ -56,6 +58,7 @@ class SmcEnv(uvm_env):
         # --- Bus monitors ---
         self.axi_monitor = SmcAxiMonitor("axi_monitor", self)
         self.output_axi_monitor = SmcOutputAxiMonitor("output_axi_monitor", self)
+        self.cpu_trace_mon = SmcCpuTraceMonitor("cpu_trace_mon", self)
         self.scoreboard = SmcScoreboard("scoreboard", self)
 
     def connect_phase(self) -> None:

@@ -2,9 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """GPIO external interrupt VIP helpers for SMC OSS tests.
 
-Callers: ``smc_gpio_irq_active_test``, ``smc_external_interrupts_test``,
-``smc_gpio_strap_sanity_test`` -- each runs ``smc_gpio_irq_active_test_seq``
-first, which programs GPIO0 as RX + interrupt_enable + interrupt_type=active-low
+Caller: ``smc_gpio_irq_active_test``, which runs ``smc_gpio_irq_active_test_seq``
+first, programming GPIO0 as RX + interrupt_enable + interrupt_type=active-low
 level (DATA_CTRL field bits sourced from generated ``gpio_intf.h``).
 
 Public interface:

@@ -98,6 +98,8 @@ class dtp_base_test extends ocah_test;
     if (!$cast(dtp_seq, seq))
       `uvm_fatal(get_type_name(), "scenario sequence is not a dtp_base_test_seq")
     dtp_seq.tb_vif       = m_env.tb_vif;
+    dtp_seq.scan_vif     = m_env.scan_vif;
+    dtp_seq.xtrig_vif    = m_env.xtrig_vif;
     dtp_seq.jtag_vif     = m_env.m_jtag_cfg.vif;
     dtp_seq.test_cfg     = test_cfg;
     dtp_seq.evidence     = m_env.m_jtag_checker;
@@ -143,14 +145,14 @@ class dtp_base_test extends ocah_test;
   endtask
 
   // Route each selected STAP host port to its downstream device (the
-  // dtp_tb_if enables feed the tb_top host-TDI muxes) before bring-up, so
+  // dtp_scan_if enables feed the tb_top host-TDI muxes) before bring-up, so
   // the attachment is static for the whole run.
   protected function void attach_stap_ds();
     bit [DtpStapCount-1:0] mask = test_cfg.stap_ds_attach_mask;
-    m_env.tb_vif.stap_io_ds_en     = mask[0];
-    m_env.tb_vif.stap_smc_ds_en    = mask[1];
-    m_env.tb_vif.stap_sep_ds_en    = mask[2];
-    m_env.tb_vif.stap_extra0_ds_en = mask[3];
+    m_env.scan_vif.stap_io_ds_en     = mask[0];
+    m_env.scan_vif.stap_smc_ds_en    = mask[1];
+    m_env.scan_vif.stap_sep_ds_en    = mask[2];
+    m_env.scan_vif.stap_extra0_ds_en = mask[3];
     if (mask != '0)
       `uvm_info(get_type_name(), $sformatf(
                 "downstream STAP TAPs attached: mask=0b%04b (io,smc,sep,extra0)", mask), UVM_LOW)

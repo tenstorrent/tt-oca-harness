@@ -1,0 +1,1 @@
+../../../../hw/sys/smu/synth/smu_cdc_max_delay_generated.tcl

@@ -9,7 +9,7 @@ confirmation (#487). It is not an approval. Do not treat a merged copy of
 this file as designer sign-off.
 
 The executable contract remains `testlists/all.toml`. Feature credit is
-only the enrolled `sep0_all` set (53) plus the two pull-request-only names
+only the enrolled `sep0_all` set (52) plus the two pull-request-only names
 called out below. Deferred raise stubs, wrapper PASSes, and SEP=1 work are
 OUT.
 
@@ -18,7 +18,7 @@ OUT.
 |Field |Value
 |Status |CANDIDATE — awaiting SMU designer confirmation in-repo
 |Spec source |`hw/sys/smu/doc/SMU_SPEC.md` Features 1–7
-|Enrolled nightly |`sep0_all` = 53 (`--dut smu`)
+|Enrolled nightly |`sep0_all` = 52 (`--dut smu`)
 |PR smoke |`smoke` = 4 (includes `smu_ext_boot_seq_gate_test`, not in `sep0_all`)
 |Evidence map |`cocotb/env/smu_evidence_map.py` `TEST_EVIDENCE`
 |Deferred catalog |`docs/SMU_DEFERRED_DISPOSITION.adoc` (disposition in #488)
@@ -64,7 +64,8 @@ emits; the map must not invent a checkbox the body cannot prove.
 `smu_ext_boot_seq_gate_test` (F1, SMU_006) and `smu_smc_mailbox_int_test`
 (F1) are enrolled in `smoke` / `phase1` / `smc` but not in `sep0_all`.
 They stay on the candidate list as PR-only. #493 decides whether the boot
-gate joins the nightly; #481 decides the mailbox-int enrollment.
+gate joins the nightly; `smu_smc_mailbox_int_test` stays OUT of
+`sep0_all` (in `smc` only) per #481.
 
 [cols="3,1,2,3",options="header",]
 |===
@@ -77,7 +78,7 @@ gate joins the nightly; #481 decides the mailbox-int enrollment.
 |`smu_smc_mailbox_int_test` |F1 |smc (not sep0_all) |`CHK-SMC-MBX-IRQ-EXT-S2`
 |`smu_smc_wdt_sanity_test` |F1 |phase1, sep0_all |`WDT_UNLOCK_OK`
 |`smu_smc_wdt_timeout_irq_test` |F1 |phase1, sep0_all |`WDT_WDOGIP0`
-|`smu_smc_gpio_strap_sanity_test` |F1 |phase1, sep0_all |`SMC_STRAP_OK`
+|`smu_smc_gpio_strap_sanity_test` |F1 |not in live groups (#1478) |`SMC_STRAP_OK`
 |`smu_system_timer_octs_test` |F1 |phase1, sep0_all |`CHK-OCTS-COUNT-MONOTONIC`
 |`smu_smc_security_demote_pm_test` |F7 |phase1, sep0_all |`DEMOTE_TIEOFF_OBS`
 |`smu_i3c_mem_port_connectivity_test` |F4 |phase1, sep0_all |`CHK-SUB-AXIL-LOCAL-S1`
@@ -126,7 +127,7 @@ gate joins the nightly; #481 decides the mailbox-int enrollment.
 |`smu_xtrig_ctm_illegal_phase_test` |F6 |sep0_all |`XT_ILLEGAL_PHASE`
 |===
 
-`sep0_p4_all` (55) adds `smu_ic_reset_ss_domain_matrix_test` and
+`sep0_p4_all` (54) adds `smu_ic_reset_ss_domain_matrix_test` and
 `smu_dtp_bsr_extest_loopback_test`. Those two stay P4 deepeners, not the
 v0.5.0 nightly denominator.
 
@@ -143,8 +144,8 @@ v0.5.0 nightly denominator.
 * The commercial names `main_wrapper` and `main_wrapper_por` are not in
   this tree. The wrapper successors are
   `smu_wrapper_elaboration_no_sep_test` (elaboration / reset) and
-  `smu_wrapper_elaboration_sep_rtl_test` (SEP=1 elab, quarantined). See
-  #261. Do not invent a bare-`smu` test under those names.
+  `smu_wrapper_elaboration_sep_rtl_test` (SEP=1 elab, wrapper `smoke`).
+  See #261. Do not invent a bare-`smu` test under those names.
 
 [[smu-focused-gaps]]
 === Focused gaps (not absorbed here)
@@ -153,9 +154,9 @@ v0.5.0 nightly denominator.
 |===
 |Gap |Owner |Tracker
 |Designer confirmation of this subset |SMU designer |#487 (this file)
-|Traceability approval after the subset is signed |SMU design owner + DV lead |#479
+|Traceability approval after the subset is signed |SMU design owner + DV lead |#479 (`SMU_SCOPE_TRACEABILITY.adoc`)
 |Whether `smu_ext_boot_seq_gate_test` joins `sep0_all` |SMU DV |#493
-|Whether `smu_smc_mailbox_int_test` joins `sep0_all` |SMU DV |#481
+|`smu_smc_mailbox_int_test` stays OUT of `sep0_all` (in `smc` only) |SMU DV |#481
 |SEP=1 / F2 / F5 |SEP=1 track |#493
 |123 deferred names |SMU DV |#488
 |Commercial `main_wrapper*` names |SMU DV |#261

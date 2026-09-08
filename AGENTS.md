@@ -291,6 +291,7 @@ Whatever the testbench, these hold:
 | `hw/sys/` | Subsystems: `smc`, `sep`, `smu`, `dtp` |
 | `hw/top/` | Top-level integration and wrapper sources |
 | `doc/` | AsciiDoc products: `trm`, `integrator`, `programmer`, `user`, `appnotes`, `contributing` |
+| `integration/` | Generated, grouped symlink indexes for integrator-facing RDL, IP-XACT and timing constraints |
 | `flows/` | Lint, format and synthesis flow makefiles |
 | `vendor/` | Vendored packages as `<Org>/<Repo>/upstream/`; never hand-edit those. Modify upstream files through the sibling `patches/`, and keep TT-owned additions in `overlay/`, which `bender vendor init` leaves alone |
 | `tools/` | Register, doc, DV and container tooling |
@@ -305,6 +306,9 @@ committed output always corresponds to the RDL sources.
 ```bash
 make regen-regs
 ```
+
+After adding or moving integration collateral, regenerate the grouped symlink indexes with
+`python3 scripts/collect_integration.py`.
 
 The RDL is the register specification: it describes the address map and the registers'
 behaviour, not the RTL that implements them. Naming a module, a package or an address slice in

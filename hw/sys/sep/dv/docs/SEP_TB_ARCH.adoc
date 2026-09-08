@@ -126,8 +126,6 @@ hw/sys/sep/dv/
     interfaces/
   shims/
     cpu/sep_cpu_stub.sv     # no_cpu LSU splice
-    prim/prim_sync2.sv
-    crypto/abr_wrapper_key_reg_stub.sv
     analog/entropy_ring_oscillator.sv
   cocotb/
     env/                    # agents, monitors, goldens, scoreboards
@@ -168,7 +166,7 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 |Entropy noise |`esrc_noise_ext_i` forces the decorrelator input (deterministic)
 |FW console |`sep_outbound_mbx` watches outbound mailbox stores (PASS/FAIL magic)
 |CPU trace |Exports EL2 `el2_trace_pkt_t` fields for `SepCpuTraceMonitor`
-|Observation probes |eFuse shadow, scratch, KM/OTBN counters, entropy CHK probes, IRQ aggregate, AXI-Lite split handshakes, KM internal AXI-Lite SVA bind — observation-only unless listed as a signed-off inject
+|Observation probes |eFuse shadow, scratch, KM/OTBN counters, entropy CHK probes, IRQ aggregate, AXI-Lite split handshakes, DRBG lane-adapter channel packs (`drbg_csrng_axil_chan_o` / `drbg_edn_axil_chan_o`), KM internal AXI-Lite SVA bind — observation-only unless listed as a signed-off inject
 |===
 
 Signed-off exceptions (do not extend without owner approval):
@@ -180,7 +178,12 @@ Signed-off exceptions (do not extend without owner approval):
 * *`tb_backdoor_mem` image init* — power-up / hex load into public macro arrays
   (not runtime pass-faking).
 * *Observation-only XMR probe ports* — continuous assigns out of the DUT for
-  scoreboards that have no CSR mirror (entropy CHK chain, IRQ aggregate, …).
+  scoreboards that have no CSR mirror (entropy CHK chain, IRQ aggregate,
+  `drbg_csrng_axil_chan_o` / `drbg_edn_axil_chan_o` at each DUT lane
+  adapter's AXI-Lite-64 port — the three-ready interlock has no CSR
+  mirror; signed off 2026-09-07). The TB-owned `u_tbadp_vehicle` instance
+  is idle and held in reset unless a port-arbitration leaf releases it;
+  it is not a DUT XMR.
 * *Key Manager internal AXI-Lite SVA bind* — observation-only `bind` of
   `ocah_axi_sva` on `cpu_axil_*` / `rst_warm_sync_n`. No TB master can
   reach that port. Protocol, not data.
@@ -212,7 +215,9 @@ errors and at least one observed transaction.
 
 Passive raw-pin integrity monitor (in-TB substitute for Verilator-disabled RTL
 assertions). LSU bus fails on DECERR; external bus tallies DECERR because the
-inbound filter may block by design.
+inbound filter may block by design. Also bounds slave READY wait on AW/W/AR
+to ``cfg.axi_timeout_ns``: a permanent ``1'b0`` is legal AXI and not X, so
+the protocol SVA cannot see it.
 
 ==== Entropy / crypto goldens and `SepDrbgScoreboard`
 
@@ -339,8 +344,8 @@ wrapper's struct port, so flash tests need no mux step.
 
 ==== Kept TB shims
 
-`shims/` holds the `sep_cpu` stub (no_cpu build), `prim_sync2`, the ABR key-CSR
-Verilator stub, and the entropy ring-oscillator. `tb/sep_outbound_mbx.sv` (the fw
+`shims/` holds the `sep_cpu` stub (no_cpu build) and the entropy
+ring-oscillator. `tb/sep_outbound_mbx.sv` (the fw
 console / PASS monitor) is also kept — it services a real wrapper output port,
 not a memory model.
 
@@ -498,8 +503,8 @@ run gates on a coverage percentage. Do not mix the two numbers.
 Bender targets are `["sep", "sep_el2", "sep_wrapper"]` only — never
 `"simulation"` (licensed I/O / padring). Verilator override shims under
 `shims/` are listed ahead of the Bender filelist so first-def-wins selects
-them (`sep_cpu` stub on no_cpu, `prim_sync2` port remap, ABR key-reg stub,
-entropy RO). Proprietary IPs stay out of the filelist rather than being
+them (`sep_cpu` stub on no_cpu, entropy RO). Proprietary
+IPs stay out of the filelist rather than being
 blackbox-stubbed. Scoped `sep_public_scope.vlt` replaces global
 `--public-flat-rw` so AXI ready/valid cones stay optimizable.
 
@@ -542,9 +547,9 @@ halves are split by tool dependency, so each runs where its tools are:
 `pack-images`:: Pure Python; its deps come from the submodule's own
   `pyproject.toml`, installed on demand by `uv` (no `pip3 install` needed).
 
-`[c_build.boot_rom]` performs exactly these two steps. It probes the host
-toolchain for picolibc first and builds natively when the probe succeeds; the
-container is the *fallback* for a host whose toolchain has no picolibc:
+`[c_build.boot_rom]` performs exactly these two steps. An explicit
+`$RISCV_TOOLCHAIN` must provide picolibc; when it is unset, the build uses the
+OCAH container. It does not probe a site or `$HOME` toolchain path:
 
 [source,bash]
 ----
@@ -648,7 +653,7 @@ from their manifests (`ocah_lib/uvm/sources.toml`,
 `ocah_axi_vip/uvm/sources.toml`, listed in
 `[frameworks.uvm.build].source_lists` and expanded ahead of the DUT's own
 sources), then the TB collateral both flows compile (the picorv32 KM core
-files, `sep_outbound_mbx`, the `abr_wrapper_key_reg` shim), `sep_tb_if`,
+files, `sep_outbound_mbx`), `sep_tb_if`,
 `sep_env_pkg`, `sep_seq_lib_pkg`, and `tb_top.sv` last.
 
 The scoreboard is always on and compares only. Each feature has its own

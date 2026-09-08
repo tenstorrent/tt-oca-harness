@@ -13,6 +13,7 @@ from .dtp_jtag_agent import DtpJtagAgent, DtpJtagDriver
 from .dtp_jtag_item import DtpJtagItem, DtpJtagOp
 from .dtp_scoreboard import DtpScoreboard
 from .dtp_tap_device import DtpTapDevice
+from .dtp_tb_if import DtpTbIf
 from .dtp_types import (
     DTP_IR_WIDTH,
     SMC_DBG_AXSIZE_8B,
@@ -35,6 +36,7 @@ __all__ = [
     "DtpJtagItem",
     "DtpJtagOp",
     "DtpTapDevice",
+    "DtpTbIf",
     "DTP_IR_WIDTH",
     "DtpJtagInstr",
     "DtpJtag2AxiOp",

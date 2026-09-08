@@ -70,24 +70,4 @@ class SmcUartVip:
         return int(value)
 
 
-async def uart_pin_wire_proof(byte_val: int = 0x55, baud: int = 115200) -> bool:
-    """P2-A / P2-13: prove the UART0 RX pad accepts UART-timed bit transitions."""
-    try:
-        vip = SmcUartVip(baud=baud)
-    except SmcUartVipError as exc:
-        cocotb.log.warning("UART proof skipped: %s", exc)
-        return False
-    await vip.drive_frame(bytes([byte_val]))
-    dut = cocotb.top
-    tx_val = dut.tb_uart0_tx_from_dut.value
-    cocotb.log.info(
-        "UART pin-wire proof: drove 0x%02X @%d baud; tb_uart0_tx_from_dut=%s (resolvable=%s)",
-        byte_val,
-        baud,
-        str(tx_val),
-        tx_val.is_resolvable,
-    )
-    return True
-
-
-__all__ = ["SmcUartVip", "SmcUartVipError", "uart_pin_wire_proof"]
+__all__ = ["SmcUartVip", "SmcUartVipError"]

@@ -37,7 +37,6 @@ filesets:
     files:
       - tb/tb_top.sv
       - tb/sep_outbound_mbx.sv
-      - shims/prim/prim_sync2.sv
     file_type: systemVerilogSource
 
   files_tests:

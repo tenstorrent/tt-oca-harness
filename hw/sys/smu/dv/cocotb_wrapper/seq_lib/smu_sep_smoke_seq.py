@@ -11,12 +11,13 @@ from cocotb.triggers import RisingEdge
 
 
 class SmuSepSmokeSeq:
-    """Collect reset, trace, and TCM evidence until SEP boot readiness.
+    """Collect reset, fetch-window, and TCM evidence until SEP boot readiness.
 
     The sequence finishes as soon as the scoreboard has every required
     boot-readiness evidence item (boot-ROM fetch, ICCM execution, DCCM
-    stores, SMC arm). Console bytes on the external AXI path are sampled
-    for information only.
+    stores, SMC arm); the retirement count and distinct-PC set come from
+    the SEP CPU trace monitor. Console bytes on the external AXI path are
+    sampled for information only.
     """
 
     def __init__(self, test, scoreboard) -> None:
@@ -93,13 +94,9 @@ class SmuSepSmokeSeq:
             sep_fuse = self.test.read_int(
                 self.dut.sep_fuse_sense_done_o, "sep_fuse_sense_done_o", allow_xz=True
             )
-            valid = self.test.read_int(
-                self.dut.sep_trace_valid_o, "sep_trace_valid_o", allow_xz=True
-            )
             pc = self.test.read_int(self.dut.sep_pc_o, "sep_pc_o", allow_xz=True)
             self.sb.sample_status(reset_n=sep_reset, fuse_done=sep_fuse)
             self.sb.sample_arm(self.test.read_int(self.dut.smc_test_pass_o, "smc_test_pass_o"))
-            self.sb.sample_trace(valid, pc)
             self.sb.sample_windows(
                 boot_rom_seen=self.test.read_int(
                     self.dut.sep_boot_rom_fetch_seen_o,

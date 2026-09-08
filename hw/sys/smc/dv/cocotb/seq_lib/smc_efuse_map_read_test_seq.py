@@ -191,11 +191,27 @@ class smc_efuse_map_read_test_seq(SmcCsrSeq):
             f"{len(EFUSE_MAP_READS)} rows -- the sweep can no longer "
             "discriminate a stuck map window from a working one"
         )
+        # Split the rows by what each one proves. A blocked row's expectation is
+        # the SPEC error-slave signature, so it predicts a refusal and says
+        # nothing about fuse content; an unlocked row compares the preload word
+        # and is the content proof. Naming both in the token keeps a reader from
+        # counting the first kind as the second.
+        blocked = [r for r in EFUSE_MAP_READS if r[2] == EFUSE_BLOCKED_READ_DATA]
+        content = [r for r in EFUSE_MAP_READS if r[2] != EFUSE_BLOCKED_READ_DATA]
+        assert content, (
+            "every SMC_EFUSE_MAP row expects the blocked signature, so no read "
+            "in this sweep proves fuse content"
+        )
         cocotb.log.info(
-            "CHK-EFUSE-MAP-READ: %s (expectations derived from "
-            "assets/smc_efuse_default.hex + SMC_EFUSE_MAP LOCKS read-lock bits, "
-            "%d distinct values)",
-            "; ".join(f"{name}@0x{addr:08x}==0x{exp:08x}" for name, addr, exp in EFUSE_MAP_READS),
+            "CHK-EFUSE-MAP-READ: %d content rows compared against "
+            "assets/smc_efuse_default.hex (%s); %d blocked rows compared against "
+            "the SPEC error-slave signature 0x%08x, which predicts a refusal and "
+            "is not a content proof (%s); %d distinct values overall",
+            len(content),
+            "; ".join(f"{n}@0x{a:08x}==0x{e:08x}" for n, a, e in content),
+            len(blocked),
+            EFUSE_BLOCKED_READ_DATA,
+            "; ".join(f"{n}@0x{a:08x}" for n, a, _e in blocked) or "none",
             len(distinct),
         )
         self.chk_seen.add("CHK-EFUSE-MAP-READ")

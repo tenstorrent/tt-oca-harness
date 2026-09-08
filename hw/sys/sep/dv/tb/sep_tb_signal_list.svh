@@ -330,6 +330,50 @@
 `SEP_TB_OUT(logic [127:0], drbg_genbits_data_o)  // CHK4: CTR_DRBG genbits block
 `SEP_TB_OUT(logic, drbg_genbits_fips_o)  // CHK4: genbits fips flag
 `SEP_TB_OUT(logic, drbg_gen_last_o)  // CHK4: last genbits of a Generate
+
+// drbg_axil64_lane_adapter channel-arbitration probes, one 6-bit vector per
+// lane, at the adapter's own AXI-Lite-64 port. The crossbar and
+// axi_to_axi_lite sit between the TB master and this port, so a same-cycle
+// AW/W/AR presentation at s_axi/m_axi is not evidence of a same-cycle
+// presentation HERE, which is where the arbitration decision is made. Bit
+// order: {ar_ready, w_ready, aw_ready, ar_valid, w_valid, aw_valid}.
+// All three ready bits low while their valid bits are held is the stall
+// signature: the adapter has accepted nothing and no channel can retire.
+`SEP_TB_OUT(logic [5:0], drbg_csrng_axil_chan_o)  // CSRNG lane adapter port
+`SEP_TB_OUT(logic [5:0], drbg_edn_axil_chan_o)  // EDN lane adapter port
+
+// Port-level arbitration vehicle for drbg_axil64_lane_adapter.
+//
+// The crossbar between a SEP master and the DUT's own lane adapters delivers
+// W one cycle after AW and re-serializes to that order whatever the master
+// presents (CHK-CONCURRENT-CAL logs the two gaps), so a same-cycle AW/W/AR
+// presentation and a W-before-AW presentation cannot be produced at the DUT
+// adapter port from the fabric side. This is a SECOND, TB-OWNED instance of
+// the same module with its own reset, driven straight from cocotb, so every
+// legal channel ordering is presentable and a wedged cell can be cleared
+// without resetting the DUT.
+//
+// It proves the MODULE's arbitration contract, not the SEP integration. The
+// fabric-driven leaves keep that half: `drbg_{csrng,edn}_axil_chan_o` above
+// observe the real DUT adapters.
+`SEP_TB_IN(logic, tbadp_rst_ni_i)  // vehicle reset, independent of rst_ni
+`SEP_TB_IN(logic, tbadp_aw_valid_i)
+`SEP_TB_IN(logic [31:0], tbadp_aw_addr_i)
+`SEP_TB_IN(logic, tbadp_w_valid_i)
+`SEP_TB_IN(logic [63:0], tbadp_w_data_i)
+`SEP_TB_IN(logic [7:0], tbadp_w_strb_i)
+`SEP_TB_IN(logic, tbadp_b_ready_i)
+`SEP_TB_IN(logic, tbadp_ar_valid_i)
+`SEP_TB_IN(logic [31:0], tbadp_ar_addr_i)
+`SEP_TB_IN(logic, tbadp_r_ready_i)
+// {ar_ready, w_ready, aw_ready, ar_valid, w_valid, aw_valid} at the vehicle
+// port, the same bit order as the DUT-side probes.
+`SEP_TB_OUT(logic [5:0], tbadp_chan_o)
+`SEP_TB_OUT(logic, tbadp_b_valid_o)
+`SEP_TB_OUT(logic, tbadp_r_valid_o)
+`SEP_TB_OUT(logic [63:0], tbadp_r_data_o)
+`SEP_TB_OUT(logic [1:0], tbadp_b_resp_o)  // BRESP: OKAY vs the unsupported-access SLVERR
+`SEP_TB_OUT(logic [1:0], tbadp_r_resp_o)  // RRESP: same, for the read leg
 `SEP_TB_OUT(logic, km_entropy_tvalid_o)  // CHK5: post-mux EDN->KM tvalid (entropy_muxed_req[0])
 `SEP_TB_OUT(logic [31:0], km_entropy_tdata_o)  // CHK5: post-mux EDN->KM tdata word
 `SEP_TB_OUT(logic, km_entropy_tready_o)  // CHK5: KM tready (entropy_muxed_rsp[0]) -> real handshake
