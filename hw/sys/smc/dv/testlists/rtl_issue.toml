@@ -43,11 +43,12 @@ tags = ["rtl_issue", "efuse", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
-# The same defect as #1602 in a second IP. log_engine.rdl:159-161 records the
-# intended `hwenable` binding -- an output mask -- as commented out, and
-# log_engine.sv:489-496 puts the enable on the set path while driving irq_o
-# from INTR_STATUS unqualified. i2c_core.sv:981 and :995-1010 are identical, so
-# the finding is a pattern rather than one IP's bug.
+# Issue #1635 -- INTERRUPT_ENABLE gates the interrupt set path instead of
+# masking the output. log_engine.rdl:159-161 records the intended `hwenable`
+# binding -- an output mask -- as commented out, and log_engine.sv:489-496 puts
+# the enable on the set path while driving irq_o from INTR_STATUS unqualified.
+# gpio.sv (#1602) and i2c_core.sv:981,995-1010 have the same shape, which is
+# why #1635 is filed as the pattern and #1602 stays as the GPIO instance.
 name = "smc_log_engine_intr_mask_test"
 module = "smc_log_engine_intr_mask_test"
 seed = 1

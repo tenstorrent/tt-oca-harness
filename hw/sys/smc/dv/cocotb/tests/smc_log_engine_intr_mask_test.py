@@ -6,9 +6,9 @@ EXPECTED TO FAIL against current RTL. Enrolled in the `rtl_issue` group only --
 no `ci` tag, not in `smoke`. Its purpose is to hold the evidence in a runnable
 form; when the RTL is fixed it should move into the `uart` group.
 
-Same defect as #1602 in a different IP: the interrupt enable gates the set path
-instead of masking the output. log_engine.rdl:159-161 records the intended
-`hwenable` binding as commented out.
+Issue #1635: the interrupt enable gates the set path instead of masking the
+output. log_engine.rdl:159-161 records the intended `hwenable` binding as
+commented out. #1602 is the GPIO instance of the same pattern.
 """
 
 from __future__ import annotations
