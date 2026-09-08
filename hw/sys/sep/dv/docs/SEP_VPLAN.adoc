@@ -395,6 +395,21 @@ appears.
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
 |The same ordering walk driven from the SMN inbound master. m_axi reaches the same eleven IP blocks through the inbound filter, which denies by default, so the walk opens allow windows from the CPU-LSU side first. The sixteen `INBOUND_FILTER_CTRL` blocks are excluded and counted: those CSRs gate the access in flight, so writing them mid-walk would measure filter reprogramming rather than adapter ordering. Unlike the CPU-LSU splice, this path grants a W-first handshake.
+|`sep_drbg_axil_adapter_port_arbitration_test`
+|no_cpu, +skip_fuse_sense
+|TB-instantiated `drbg_axil64_lane_adapter`
+|All three legal AW/W/AR orderings at a `drbg_axil64_lane_adapter` port. AW, W and AR are independent channels (IHI 0022 A3.3) and a master may not deassert a VALID before its handshake completes (A3.2.1), so an adapter that gates its write side on `ar_valid` while gating its read side on `aw_valid`/`w_valid` can hold all three readys low with no way out. The DUT's own adapters cannot be presented every ordering from the fabric -- the crossbar delivers W one cycle after AW and re-serializes to that order whatever the master does -- so this leaf drives a TB-owned second instance of the same module at its port, with its own reset so a wedged cell is cleared between orderings. A lone write and a lone read are required to retire first, which is what makes a stall attributable to the channel overlap. Grades the MODULE; the two leaves below grade the SEP integration. *Parked on an RTL fix*: red -- see <<known-limitations>>.
+
+|`sep_drbg_axil_concurrent_csrng_aw_then_ar_test`
+|no_cpu, +skip_fuse_sense
+|ocah_axi_vip
+|The same arbitration contract on the DUT's own CSRNG lane adapter, reached as ordinary CSR traffic over the SEP fabric. AR is presented while a write is half committed. Calibration measures where each channel arrives at the adapter port, so the overlap is placed from measured latency rather than guessed -- on broken RTL the first overlap is terminal and cannot be retried. Overlap is confirmed at the adapter's own port, not at the TB master. *Parked on an RTL fix*: red -- see <<known-limitations>>.
+
+|`sep_drbg_axil_concurrent_edn_aw_then_ar_test`
+|no_cpu, +skip_fuse_sense
+|ocah_axi_vip
+|The same contract on the second DUT lane adapter, the EDN control path. `drbg.sv` instantiates `drbg_axil64_lane_adapter` twice, so a defect in one instance is not evidence about the other. *Parked on an RTL fix*: red -- see <<known-limitations>>.
+
 |`sep_axi_strobe_window_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -4548,6 +4563,101 @@ watermark together; no vehicle asserts that pair today.
 
 '''''
 
+[[sep_drbg_axil_adapter_port_arbitration_test]]
+===== `sep_drbg_axil_adapter_port_arbitration_test`
+
+*Phase*: 2
+
+*Bucket*: Fabric and remap
+
+*Run mode*: `no_cpu`, `+skip_fuse_sense`
+
+*VIP / Model*: TB-instantiated `drbg_axil64_lane_adapter` (`u_tbadp_vehicle` in `tb/tb_top.sv`), driven pin-level from cocotb
+
+*Randomization*: none. The three orderings are fixed and all three run on every seed; the contract is a cycle alignment, not a data pattern.
+
+*Objective*: AW, W and AR are independent AXI channels (IHI 0022 A3.3), and a master may not deassert a VALID before its handshake completes (A3.2.1). `drbg_axil64_lane_adapter` computes, in `StIdle`, `aw_ready` and `w_ready` gated on `!ar_valid` and `ar_ready` gated on `!aw_valid && !w_valid`. A presentation that puts AR alongside a write therefore leaves every ready low with no channel able to go first and neither side able to withdraw, so the port is held until reset. This leaf presents all three legal orderings at the port and requires both accesses to retire under each.
+
+*Scope*: the MODULE's arbitration, not the SEP integration. The DUT's own lane adapters sit behind the crossbar, which delivers W one cycle after AW and re-serializes every write to that order whatever a master presents -- `CHK-CONCURRENT-CAL` on the two fabric-driven leaves measures the gap at both ends and reports it as fabric-introduced. A same-cycle AW/W/AR presentation and a W-before-AW presentation are therefore not producible at a DUT adapter port from the fabric side, which is why this vehicle exists. It is a second instance of the same RTL module with its own reset and no fabric in front of it: every legal ordering is presentable to the cycle, and a wedged cell is cleared without resetting the DUT, so the three verdicts are independent. It claims nothing about the integration; the two leaves that follow own that half.
+
+[cols="1,4"]
+|===
+|Check |Contract
+
+|CHK-PORT-ANCHOR
+|A plain read of the live CSRNG lane answers OKAY before the vehicle is touched. The vehicle is a TB-owned instance, so without this the leaf could report a pass against a DUT that never left reset; it also puts a transaction through the AXI agent, which the scoreboard requires as positive evidence before it will allow a pass at all.
+
+|CHK-PORT-CONTROL
+|Three legs, all required to retire AND to answer OKAY, before any overlap cell runs. A lone write and a lone read show the vehicle and the AXI-Lite-32 responder behind the adapter are alive at all -- without them a broken driver would report every ordering as stalled and imitate the defect exactly. A third leg drives AW and then W four cycles later with no AR, the same separation the `aw-then-ar` and `w-then-ar` cells use, so the separation itself is excluded as the cause of their stall by observation rather than by reading the design under test. The response code carries the other half: an access the adapter rejects as unsupported is answered SLVERR straight out of `StIdle` with nothing forwarded and retires just as promptly, so OKAY is what shows the forwarding leg is alive, and OKAY at the 64-bit port cannot be produced without the downstream handshake.
+
+|CHK-PORT-STIM
+|The ordering the port actually presented, read off `tbadp_chan_o` rather than taken from the offsets requested. A cell whose presentation does not match is a stimulus failure and is reported as one, never scored as coverage -- a cell that did not overlap says nothing about the arbitration in either direction.
+
+|CHK-PORT-PROGRESS
+|Both accesses retire: BVALID and RVALID are both seen within a bounded cycle count. The stall this bounds is a stable, legal `1'b0` on all three readys, which no X-check and no protocol assertion can see, so the check also records the longest run of held-valids-with-every-ready-low, which is the stall signature itself.
+|===
+
+*Parked on an RTL fix*: `CHK-PORT-PROGRESS` fails on all three orderings while `CHK-PORT-CONTROL` passes. The lone write retires with `aw`/`w` handshaking on the first cycle and BVALID at cycle 3 carrying OKAY; the lone read retires with RVALID at cycle 3, also OKAY; the gapped write handshakes AW at cycle 0 and W at cycle 4 and retires with BVALID at cycle 7, OKAY; all three show zero stalled cycles. The response code is part of the control, not decoration: an access the adapter rejects as unsupported is answered SLVERR straight out of `StIdle` with nothing forwarded, and retires just as promptly, so a control that watched only the valid would accept a dead forwarding leg. The cycle count matters for the same reason -- a forwarded write cannot answer before the downstream leg has taken it. The three overlap cells then hold the port with every ready low for the whole bound -- the same-cycle cell with no handshake at all, the AW-first cell after AW alone has handshaked, and the W-first cell after W alone has handshaked. Those last two are the partially-committed states the arbitration analysis predicts. Reported to the open issue that raised concurrent AW/W/AR arbitration on this adapter. Recorded as a real failure and deliberately not converted to an expected failure.
+
+*Not claimed*: the SEP integration. That a fabric master can drive this adapter into the stall is proven separately, and only for the one ordering the fabric can present.
+
+'''''
+
+[[sep_drbg_axil_concurrent_csrng_aw_then_ar_test]]
+===== `sep_drbg_axil_concurrent_csrng_aw_then_ar_test`
+
+*Phase*: 2
+
+*Bucket*: Fabric and remap
+
+*Run mode*: `no_cpu`, `+skip_fuse_sense`
+
+*VIP / Model*: ocah_axi_vip
+
+*Randomization*: RANDCFG -- the seed varies the staged register value only. The channel placement is measured per build, not drawn, so a seed replays the cell without pinning it to a latency the fabric may have changed.
+
+*Objective*: The same arbitration contract as <<sep_drbg_axil_adapter_port_arbitration_test>>, but on the DUT's own CSRNG lane adapter and reached the way software reaches it. The two lane adapters sit on the CSRNG and EDN control buses (`drbg.sv` `u_csrng_axil_adapter` / `u_edn_axil_adapter`, fed from `sep_crypto.sv` `csrng_axil` / `edn_axil`), which is the path every SEP-level CSRNG and EDN register access already takes, so the stall is reachable by ordinary CSR traffic rather than by a corner the fabric cannot present. The cell writes the block's `INTR_ENABLE` and reads its `INTR_STATE` concurrently, so both accesses are behind the same adapter.
+
+*Scope*: one lane, one ordering, one leaf. A stalled adapter cannot be recovered inside a simulation -- the port stays held and the master stays stuck on it -- so a second cell after a wedge would measure the wedge rather than itself.
+
+[cols="1,4"]
+|===
+|Check |Contract
+
+|CHK-CONCURRENT-CAL
+|The register's writable width is measured, not assumed: all-ones is written and read back, and the seed's pattern is narrowed to the bits that stick. The two blocks implement different interrupt counts, so a hardcoded width is wrong for one of them and a non-existent bit reads back 0 -- indistinguishable from a dropped write. A lone write and a lone read, neither of which can deadlock, then measure when AW, W and AR arrive at the adapter port through the crossbar. The overlap is then placed from those measured latencies: on broken RTL the first overlap is terminal, so the placement cannot be retried and must not be guessed, and a placement the measured latency cannot reach is reported unreachable rather than fired blind. The same measurement records the AW-to-W gap at the master and at the port and states which side introduced it -- master 0 cycles, port 1 cycle, so the stagger is the fabric's. That is also the evidence that plain untimed traffic already puts AW and AR in the same cycle whenever a store and a load are in flight together.
+
+|CHK-CONCURRENT-STIM
+|The ordering the ADAPTER PORT presented, read off `drbg_csrng_axil_chan_o` (or `drbg_edn_axil_chan_o` on the EDN leaf), not the ordering requested and not the presentation at `s_axi`. The crossbar restaggers the channels, so a presentation at the TB master is not evidence of one at the arbitration point. The leaf is covered only when that presentation is the named ordering. A different overlap, or a cell that missed its overlap, is reported unreachable and does not count as this leaf.
+
+|CHK-CONCURRENT-LAND
+|Both accesses retire and the write lands. The stall is a stable legal `1'b0` on all three readys, so the check is a bounded timeout plus a data compare against a complement prime; the prime makes a dropped write read back as the prime rather than as a plausible value. The check also records the longest run of held-valids-with-every-ready-low.
+|===
+
+*Parked on an RTL fix*: `CHK-CONCURRENT-LAND` fails. With AW presented and AR arriving while W is still outstanding, the CSRNG lane adapter port holds its valids for the whole bound with `aw_ready`, `w_ready` and `ar_ready` all low and no channel ever handshaking. The stall is permanent: nothing in the adapter can clear it, since neither side may withdraw a VALID and no ready ever rises. That a following access to the same lane also fails to retire was observed while developing the vehicle and is not re-asserted by this leaf, whose cell ends at the wedge. Reported to the open issue that raised this. Recorded as a real failure and deliberately not converted to an expected failure.
+
+*Not claimed*: the other two orderings in that analysis. A true same-cycle AW+W+AR presentation and a W-before-AW presentation are not reachable at a DUT adapter port from a SEP master, for the reason `CHK-CONCURRENT-CAL` measures. They are graded on <<sep_drbg_axil_adapter_port_arbitration_test>> instead, at the module's port. `CHK-CONCURRENT-CAL` logs the measured arrivals, so a fabric change that closes the stagger would make them placeable here and visible.
+
+'''''
+
+[[sep_drbg_axil_concurrent_edn_aw_then_ar_test]]
+===== `sep_drbg_axil_concurrent_edn_aw_then_ar_test`
+
+*Phase*: 2
+
+*Bucket*: Fabric and remap
+
+*Run mode*: `no_cpu`, `+skip_fuse_sense`
+
+*VIP / Model*: ocah_axi_vip
+
+*Randomization*: RANDCFG -- as <<sep_drbg_axil_concurrent_csrng_aw_then_ar_test>>.
+
+*Objective*: The same contract on the second lane adapter, the EDN control path. `drbg.sv` instantiates `drbg_axil64_lane_adapter` twice, so the two lanes are separate hardware and a defect in one instance is not evidence about the other. The checks are those of <<sep_drbg_axil_concurrent_csrng_aw_then_ar_test>>, with the probe on `drbg_edn_axil_chan_o` and the access pair on the EDN block's own registers.
+
+*Parked on an RTL fix*: `CHK-CONCURRENT-LAND` fails identically -- the EDN lane adapter port holds its valids to the bound with all three readys low. That both instances fail the same way, and that the TB-instantiated third instance does too, is what shows the defect is in the module rather than in one integration.
+
+
 [[sep_axi_partial_lane_read_test]]
 ===== `sep_axi_partial_lane_read_test`
 
@@ -5546,6 +5656,36 @@ constraint is not an open defect.
 |===
 |Topic |Contract
 
+|`drbg_axil64_lane_adapter` concurrent AW/W/AR arbitration (hardware)
+|The adapter arbitrates its write channels against `ar_valid` and its read channel against `aw_valid`/`w_valid`. In `StIdle` it computes `aw_ready = !aw_pending_q && !ar_valid`, `w_ready = !w_pending_q && !ar_valid` and `ar_ready = !aw_pending_q && !w_pending_q && !aw_valid && !w_valid`, so a presentation that puts AR alongside a write leaves every ready low. No channel can go first, no pending bit is set, the state does not advance, and AXI forbids either side deasserting a VALID before its handshake completes (IHI 0022 A3.2.1), so the port is held until reset. Three vehicles reproduce it: the two DUT lane adapters over the SEP fabric (<<sep_drbg_axil_concurrent_csrng_aw_then_ar_test>>, <<sep_drbg_axil_concurrent_edn_aw_then_ar_test>>) and a TB-instantiated third instance driven at its port (<<sep_drbg_axil_adapter_port_arbitration_test>>), which reaches all three legal orderings and passes a lone-write / lone-read control first.
+
+The stall is invisible to the checks the module already carries: the `ASSERT_KNOWN` checks at the bottom of the file confirm the ready signals are not X, and a stalled-but-stable `1'b0` satisfies that. It needs no exotic alignment either -- `CHK-CONCURRENT-CAL` measures plain untimed traffic arriving with AW and AR in the same cycle, so any store and load in flight together can reach it.
+
+Two of the three orderings are not reachable at a DUT adapter port from a SEP
+master, and the cause is the fabric rather than the stimulus. Two independent
+lines of evidence agree.
+
+Structurally, `axi_demux_simple.sv` gates W forwarding on the AW handshake --
+`w_select_valid = w_cnt_up | (|w_open)` at line 312, consumed at line 497 --
+so W can never be forwarded to a downstream port before its own AW has been
+accepted. A W-before-AW presentation therefore cannot exist at the adapter
+port.
+
+The same-cycle AW+W gap is empirical, not a spill-parameter argument.
+`sep_crypto_axi_interconnect` sets both `SpillAw` and `SpillW` to 1, so it
+does not explain a one-cycle stagger. `CHK-CONCURRENT-CAL` measures master
+gap 0 / port gap 1 on both DUT lanes. A write-only sweep of thirteen master
+timing profiles (write-only, so no cell can deadlock) produced port AW-to-W
+gaps of 1, 2, 3, 4, 5, 7 and 9 cycles and never 0. `aw_delay=N` shifts AW
+and W together and leaves the gap at 1, because the profile releases the
+trailing write channel off the leading one rather than placing either
+absolutely; `w_delay=N` only widens the gap. A master-side profile can
+delay a channel, never advance one, so the minimum reachable gap is the
+fabric's own.
+
+Both orderings are graded on the port-driven vehicle instead, which is why that
+vehicle exists rather than being a convenience. All three leaves are red and are deliberately not converted to expected failures. Reported to the open issue that raised the concurrent arbitration question; the RTL fix is owned there, not here.
+
 |`dbg_disable` ladder: `dfd` and `dft_secure` (spec-vs-RTL)
 |The DTP path table in the lifecycle chapter and `sep_lifecycle_ctrl.sv` disagree on two of the eleven debug-disable bits. The table puts the DFD iJTAG path at Case 1 (`SIP_DBG` alone) and the secure DFT iJTAG path at Case 3; the RTL gates both at Case 2 (`SIP_DBG` and `CHIPLET_DBG`). The two divergences run in opposite directions and only one of them is safe.
 
@@ -5597,7 +5737,7 @@ constraint is not an open defect.
 |JTAG MMR token-block access
 |`hw/sys/sep/doc/periphs.adoc` allows the MMR token block and denies the shadow, the program/read interface, and the SHIM. No checker claims DECERR on the MMR token block. Inbound ownership under correct programming (CFG, outbound CFG, remap banks, and region CSRs outside every allow window) is owned by `sep_fabric_inbound_filter_rule_matrix_test` `CHK-OWNERSHIP`.
 |RTL assertions are backend-dependent
-|What participates depends on the backend. Under Verilator, `prim_assert.sv`, `abr_prim_assert.sv` and `ocah_assert.svh` all gate their macros on `VERILATOR`, so design and vendored-IP SVA — the `ocah_axi_sva` protocol bind included — expand to nothing. Under VCS those macros are live. The shared native profile also defines `COMMON_CELLS_ASSERTS_OFF`, so the PULP `common_cells` inline assertions are off on every backend. Where a checker proves a property, that checker is the whole of the proof on Verilator; no assertion layer sits underneath it there.
+|What participates depends on the backend. Under Verilator, `prim_assert.sv`, `abr_prim_assert.sv` and `ocah_assert.svh` all gate their macros on `VERILATOR`, so design and vendored-IP SVA expand to nothing, and the SEP Verilator targets pass no `--assert`, so the two-state `ocah_axi_sva` rules are dropped as well. Under VCS those macros are live. The shared native profile also defines `COMMON_CELLS_ASSERTS_OFF`, so the PULP `common_cells` inline assertions are off on every backend. Where a checker proves a property, that checker is the whole of the proof on Verilator; no assertion layer sits underneath it there.
 
 |Entropy-pool interrupt numbering (spec)
 |`hw/sys/sep/doc/crypto.adoc` numbers the two entropy-pool interrupts one lower than the canonical table in `hw/sys/sep/doc/interrupts.adoc`. PIC source IDs are 1-based, so aggregation index 36/37 is PIC source 37/38; firmware following `crypto.adoc` would enable and mask the wrong two sources. No checker asserts this today; do not XFAIL it.

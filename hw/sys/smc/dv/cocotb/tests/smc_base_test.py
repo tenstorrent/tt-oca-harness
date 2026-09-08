@@ -9,6 +9,7 @@ work to `run_scenario()`.
 from __future__ import annotations
 
 import hashlib
+import logging
 import os
 import sys
 from datetime import datetime, timezone
@@ -30,6 +31,7 @@ from env.smc_env import SmcEnv
 from env.smc_env_cfg import SmcEnvCfg
 from env.smc_probe_liveness import reset_probe_ledger, watch_probe_liveness
 from env.smc_protocol_vip_item import SmcProtocolVipItem, SmcProtocolVipKind
+from env.smc_virt_console import VirtConsole
 from seq_lib._one_shot import _OneShot
 
 # Test-class-name -> protocol VIP kind for the auto-record at the end of
@@ -63,8 +65,6 @@ _PROTOCOL_VIP_TESTS = {
     "smc_pll_dvfs_depth_test": SmcProtocolVipKind.CLOCK,
     "smc_static_cg_sanity_test": SmcProtocolVipKind.CLOCK,
     "smc_gpio_irq_active_test": SmcProtocolVipKind.GPIO_IRQ,
-    "smc_gpio_strap_sanity_test": SmcProtocolVipKind.GPIO_IRQ,
-    "smc_external_interrupts_test": SmcProtocolVipKind.GPIO_IRQ,
     "smc_uart_spi_log_engine_test": SmcProtocolVipKind.UART_LOG,
     "smc_uart_log_engine_reg_rw_test": SmcProtocolVipKind.UART_LOG,
     "smc_uart_log_engine_error_boundary_test": SmcProtocolVipKind.UART_LOG,
@@ -583,6 +583,10 @@ class smc_base_test(uvm_test):
         # the reset agent COOL_RST_LO op.
         dut.rst_cool_ni.value = 1
         cocotb.start_soon(watch_probe_liveness(dut))
+        # Firmware virtual console (scratch 2); decoded lines go to the log as
+        # they complete.
+        self.virt_console = VirtConsole(dut.tb_cpu_scratch2, "smc-fw")
+        cocotb.start_soon(self.virt_console.run())
         cocotb.start_soon(Clock(dut.clk_ref_i, self.cfg.ref_clk_period_ns, units="ns").start())
         cocotb.start_soon(Clock(dut.clk_smc_i, self.cfg.smc_clk_period_ns, units="ns").start())
         cocotb.start_soon(
@@ -668,8 +672,13 @@ class smc_base_test(uvm_test):
         # ([BUILD-MODEL-IDENTITY]). Raises rather than logging a placeholder.
         log_build_model_identity()
         await self._bring_up()
-        await self.run_probe_positive_controls()
-        await self.run_scenario()
+        try:
+            await self.run_probe_positive_controls()
+            await self.run_scenario()
+        except Exception:  # noqa: BLE001 -- re-raised once the CPU state is in the log
+            self.virt_console.flush()
+            self.env.cpu_trace_mon.dump_diagnostics(logging.ERROR)
+            raise
         test_name = type(self).__name__
         # Prefer the per-test class attribute; fall back to the name map.
         kind = self.protocol_vip_kind or _PROTOCOL_VIP_TESTS.get(test_name)

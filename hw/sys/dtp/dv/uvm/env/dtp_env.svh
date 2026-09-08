@@ -19,7 +19,7 @@
 //     volatile status and reset-cleared selects the memory-shadow model
 //     cannot describe: the DTP scoreboard's xtrig_csr feature owns that);
 //   * one ocah_jtag_slave_agent per STAP host port as the downstream TAP the
-//     tests may splice behind it (dtp_tb_if.stap_<x>_ds_en; default keeps
+//     tests may splice behind it (dtp_scan_if.stap_<x>_ds_en; default keeps
 //     the wire loopback), with the device map from dtp_types;
 //   * one dtp_<feature>_ref_model per scoreboard feature, each a subscriber
 //     on the monitor stream its feature is judged on (the JTAG event and
@@ -34,8 +34,10 @@
 class dtp_env extends ocah_env;
   `uvm_component_utils(dtp_env)
 
-  dtp_env_cfg       cfg;
-  virtual dtp_tb_if tb_vif;
+  dtp_env_cfg          cfg;
+  virtual dtp_tb_if    tb_vif;
+  virtual dtp_scan_if  scan_vif;
+  virtual dtp_xtrig_if xtrig_vif;
 
   // Primary TAP: shared VIP master env on the ocah_jtag_if published by tb_top.
   ocah_jtag_master_config m_jtag_cfg;
@@ -96,6 +98,10 @@ class dtp_env extends ocah_env;
       `uvm_fatal(get_type_name(), "dtp_env_cfg `env_cfg` not found in uvm_config_db")
     if (!uvm_config_db#(virtual dtp_tb_if)::get(this, "", "tb_vif", tb_vif))
       `uvm_fatal(get_type_name(), "virtual dtp_tb_if `tb_vif` not found in uvm_config_db")
+    if (!uvm_config_db#(virtual dtp_scan_if)::get(this, "", "scan_vif", scan_vif))
+      `uvm_fatal(get_type_name(), "virtual dtp_scan_if `scan_vif` not found in uvm_config_db")
+    if (!uvm_config_db#(virtual dtp_xtrig_if)::get(this, "", "xtrig_vif", xtrig_vif))
+      `uvm_fatal(get_type_name(), "virtual dtp_xtrig_if `xtrig_vif` not found in uvm_config_db")
     tb_vif.clk_period_ns = cfg.clk_period_ns;
     `uvm_info(get_type_name(), {"env cfg: ", cfg.convert2string()}, UVM_MEDIUM)
 
@@ -206,7 +212,7 @@ class dtp_env extends ocah_env;
     m_fsm_checker.require_activity = cfg.jtag_activity_required;
 
     m_scan_window = dtp_scan_window_monitor::type_id::create("m_scan_window", this);
-    m_scan_window.tb_vif = tb_vif;
+    m_scan_window.scan_vif = scan_vif;
 
     m_scan_builder = ocah_jtag_scan_builder::type_id::create("m_scan_builder", this);
   endfunction

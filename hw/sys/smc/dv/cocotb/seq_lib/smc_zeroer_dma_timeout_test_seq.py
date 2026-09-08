@@ -422,11 +422,11 @@ class smc_zeroer_dma_timeout_test_seq(output_fabric_pass_all_cfg_seq):
             f"(baseline={start_writes}); "
             f"COV cells={cells_hit}; functional-coverage-report={report_path}"
         )
-        await self._prove_status_busy_lifecycle(ctrl_status)
+        await self._prove_status_busy_lifecycle()
 
         cocotb.log.info("SMC_006 scenario PASS")
 
-    async def _prove_status_busy_lifecycle(self, cleared_before: int) -> None:
+    async def _prove_status_busy_lifecycle(self) -> None:
         """Observe CTRL_STATUS.STATUS 0 -> 1 -> 0 on a long zeroing.
 
         Without this, every STATUS compare in the testcase is against 0, and a
@@ -437,6 +437,9 @@ class smc_zeroer_dma_timeout_test_seq(output_fabric_pass_all_cfg_seq):
         observation that separates those, so it is observed here rather than
         argued for in a comment.
         """
+        # Sampled here rather than inherited from the caller's earlier read, so
+        # the cleared leg is observed at the point the lifecycle claims it.
+        cleared_before = await self.csr_read("ZEROER_STATUS_CLEARED", ZEROER_CTRL_STATUS)
         assert not (cleared_before & STATUS_BM), (
             f"CTRL_STATUS pre-trigger read {cleared_before:#018x} already has "
             f"STATUS set (mask {STATUS_BM:#018x}); the lifecycle cannot start "

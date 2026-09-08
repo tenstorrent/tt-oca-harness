@@ -163,7 +163,7 @@
 `SMC_TB_IN(logic, tb_ext_interrupt_0_i)
 `SMC_TB_OUT(logic, tb_ext_interrupt_0_sync)
 // Reset-unit captured GPIO straps (wrapper [63:0]; STRAPS_LO/HI use [60:0]).
-// Unique vs smc_gpio_strap_sanity_test (GPIO0 IRQ pads, not this pin).
+// Unique vs GPIO0 IRQ pads (`smc_gpio_irq_active_test`); this pin is strap capture.
 `SMC_TB_IN(logic [63:0], tb_captured_straps)
 // Subsystem reset-complete pin (prim_sync3 → SS_RESET_COMPLETE CSR). Idle 1.
 `SMC_TB_IN(logic [31:0], tb_ss_reset_complete)
@@ -413,6 +413,20 @@
 // U7-3: Rocket DM active + ack after dmcontrol.dmactive write.
 `SMC_TB_OUT(logic, tb_cpu_debug_dmactive)
 `SMC_TB_OUT(logic, tb_cpu_debug_dmactive_ack)
+// Hart 0 retirement record from the Rocket CSR trace bundle, and the core
+// reset that masks it: the writeback registers behind the bundle have no
+// reset, so the fields hold X in a four-state simulator until the core runs.
+// Consumer: cocotb/env/smc_cpu_trace_monitor.py.
+`SMC_TB_OUT(logic, tb_cpu_core_reset_n)
+`SMC_TB_OUT(logic, tb_cpu_trace_valid)
+`SMC_TB_OUT(logic [57:0], tb_cpu_trace_pc)
+`SMC_TB_OUT(logic [31:0], tb_cpu_trace_insn)
+`SMC_TB_OUT(logic, tb_cpu_trace_exc)
+`SMC_TB_OUT(logic [63:0], tb_cpu_trace_cause)
+`SMC_TB_OUT(logic [57:0], tb_cpu_trace_tval)
+// Scratch 2 is the firmware virtual console (smc_scratchpad.h
+// SMC_SCRATCH_SIM_VIRT_CONSOLE); cocotb/env/smc_virt_console.py decodes it.
+`SMC_TB_OUT(logic [31:0], tb_cpu_scratch2)
 
 // U7-1: ECC SBE/DBE inject into scratch bank0 reads + fire count.
 // fire_count tracks DUT cpu_scratch0_inject_fire only (real bank0 reads

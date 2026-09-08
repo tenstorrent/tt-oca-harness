@@ -84,7 +84,6 @@ FW_DEFAULT_TEST_MODE := sram
 # the BFM half drives the OCCP protocol against the DUT running the prod ROM.
 FW_TEST_MODE_occp_sanity := rom
 FW_TEST_MODE_occp_master := rom
-FW_TEST_MODE_i3c_raw_master := rom
 FW_TEST_MODE_occp_boot_sequence_status_test := rom
 FW_TEST_MODE_occp_comprehensive_error_verification_test := rom
 FW_TEST_MODE_occp_crc_err_injection_test := rom

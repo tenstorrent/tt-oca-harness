@@ -7,12 +7,19 @@ See [`docs/index.adoc`](docs/index.adoc) for the chapter set:
 architecture, [`docs/SMU_VPLAN.adoc`](docs/SMU_VPLAN.adoc) for the
 verification plan, and
 [`docs/SMU_FEATURE_LIST.adoc`](docs/SMU_FEATURE_LIST.adoc) for the
-candidate v0.5.0 SEP=0 feature subset, and
+candidate v0.5.0 SEP=0 feature subset (unsigned; #487),
+[`docs/SMU_SCOPE_TRACEABILITY.adoc`](docs/SMU_SCOPE_TRACEABILITY.adoc)
+for the candidate requirement-to-test matrix (unsigned; #479), and
 [`docs/SMU_DEFERRED_DISPOSITION.adoc`](docs/SMU_DEFERRED_DISPOSITION.adoc)
-for the v0.5.0 deferred/OUT classification of the 123-entry catalog.
+for the v0.5.0 deferred/OUT classification of the 123-entry catalog,
+[`docs/SMU_RELEASE_MATRIX.adoc`](docs/SMU_RELEASE_MATRIX.adoc) for the
+v0.5.0 release regression matrix (#485), and
+[`docs/SMU_SEP0_COMPONENT_SIGNOFF.adoc`](docs/SMU_SEP0_COMPONENT_SIGNOFF.adoc)
+for the SEP=0 component signoff record (#481 / #482 / #483 / #490 / #491).
 
 **Executable contract:** enrolled groups in [`testlists/all.toml`](testlists/all.toml)
-— live green `phase1` **49**, `sep0_all` **53** (no Force; product-pin CTM).
+— enrolled `phase1` **48**, `sep0_all` **52** (no Force; product-pin CTM;
+`sep0_all` is 51 PASS / 1 FAIL on the cited nightly).
 
 **Green / signoff policy:** no DUT Force / no TB placeholder.
 Raise-stub bodies live under `cocotb/tests_deferred/` and are not ported —
@@ -41,7 +48,7 @@ smu_<scenario>_test
 | `uvm/{env,seq_lib,tests}/` | SV-UVM realization (`--framework uvm`, VCS) |
 | `cocotb/{env,seq_lib,tests}/` | Live enrolled PyUVM tests |
 | `cocotb/tests_deferred/` | Raise stubs (catalog only); each body's docstring carries its blocker |
-| `testlists/all.toml` | Enrolled SEP=0 groups (`sep0_all` = 53) |
+| `testlists/all.toml` | Enrolled SEP=0 groups (`sep0_all` = 52) |
 | `smu_sim_cfg.toml` | `--dut smu` sim defaults |
 | `smu_wrapper_sim_cfg.toml` | `--dut smu_wrapper` production-wrapper baseline |
 | `tb/tb_wrapper_top.sv` | `smu_wrapper_uvm_top` — `hw/top/smu_wrapper` harness |
@@ -76,9 +83,9 @@ python3 tools/dv/run_dv.py --dut smu --items phase1
 python3 tools/dv/run_dv.py --dut smu --items phase1 --tool xcelium --cov
 ```
 
-Groups: `smoke` (4), `top5` (5), `top10` (11), `phase1` (49), `smc` (12),
-`dtp` (29), `fabric` (14), `phase2` (50), `phase3` (5), `phase4_sep0` (19),
-`sep0_all` (53), `sep0_p4_all` (55).
+Groups: `smoke` (4), `top5` (5), `top10` (11), `phase1` (48), `smc` (11),
+`dtp` (29), `fabric` (14), `phase2` (49), `phase3` (5), `phase4_sep0` (19),
+`sep0_all` (52), `sep0_p4_all` (54).
 
 ### SystemVerilog UVM framework (`--framework uvm`)
 
@@ -146,7 +153,7 @@ feature reuses that IP bench's reference model and scoreboard through
 
 | Source | DUT | Signoff role |
 |--------|-----|--------------|
-| Bare `--dut smu` | `tb/tb_top.sv` (`DUT_TAG=BARE`) | Density / CSR / fabric SEP=0 — `phase1` (49), `sep0_all` (53) |
+| Bare `--dut smu` | `tb/tb_top.sv` (`DUT_TAG=BARE`) | Density / CSR / fabric SEP=0 — `phase1` (48), `sep0_all` (52) |
 | Wrapper `--dut smu_wrapper` | `tb/tb_wrapper_top.sv` (`DUT_TAG=WRAPPER`) | Production-pin boot / elab smoke — **≠** `sep0_all` density signoff |
 
 Do not merge wrapper smoke PASS into bare `sep0_all` evidence. Logs carry
@@ -335,7 +342,14 @@ seeds, and those run paths on the tracking GitHub issue.
 
 ## Enrollment
 
-`smu_ext_axi_global_addr_smoke_test` under `cocotb/tests/` is not enrolled:
-the OSS `s_axi` is a LOCAL aperture, so `GLOBAL_BASE + offset` DECERRs; its
-docstring carries that reason. `sep0_all` is the SMU regression group in
-`.github/workflows/regress.yml`.
+The `SEP=0` `tb_top.sv`, `SmuEnv` and the sequence library are in place:
+59 live test bodies under `cocotb/tests/`, 28 non-enrolled bodies under
+`cocotb/tests_deferred/`. Two bodies under `cocotb/tests/` are present but
+not enrolled -- `smu_ext_axi_global_addr_smoke_test`, blocked because the
+OSS `s_axi` is a LOCAL aperture so `GLOBAL_BASE + offset` DECERRs (its
+docstring carries that reason), and `smu_smc_gpio_strap_sanity_test`,
+blocked because strap capture is adopter-owned so the reset_unit
+`STRAPS_*` CSRs and the strap bus this test drove no longer exist here.
+`smu_base_test` is the base class. `sep0_all` (52) is the SMU regression group
+in `.github/workflows/regress.yml` (nightly at one seed per test, weekly at
+three).

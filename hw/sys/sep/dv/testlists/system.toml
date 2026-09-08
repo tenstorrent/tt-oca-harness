@@ -403,6 +403,47 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
+# All three AW/W/AR orderings at a drbg_axil64_lane_adapter port. The
+# fabric-driven leaves below reach the DUT's own adapters but can present only
+# the aw-then-ar ordering: the crossbar delivers W one cycle after AW and
+# re-serializes to that order whatever the master presents, which
+# CHK-CONCURRENT-CAL measures at both ends. This leaf drives a TB-owned second
+# instance of the same module at its port, so every legal ordering is
+# presentable to the cycle and the vehicle's own reset clears a wedge between
+# cells. It grades the MODULE; the leaves below grade the integration.
+name = "sep_drbg_axil_adapter_port_arbitration_test"
+module = "system.sep_drbg_axil_adapter_port_arbitration_test"
+seed = 1
+reseed = 1
+timeout_sec = 3600
+tags = ["fabric", "axi", "protocol", "system", "trng", "drbg"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+name = "sep_drbg_axil_concurrent_csrng_aw_then_ar_test"
+module = "system.sep_drbg_axil_concurrent_csrng_aw_then_ar_test"
+seed = 1
+reseed = 1
+timeout_sec = 3600
+tags = ["fabric", "axi", "protocol", "system", "trng", "drbg"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
+name = "sep_drbg_axil_concurrent_edn_aw_then_ar_test"
+module = "system.sep_drbg_axil_concurrent_edn_aw_then_ar_test"
+seed = 1
+reseed = 1
+timeout_sec = 3600
+tags = ["fabric", "axi", "protocol", "system", "trng", "drbg"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
 # The same sweep driven from the SMN inbound master. m_axi reaches the same
 # eleven IP block adapters through the inbound filter, so an adapter that
 # mishandles a channel ordering has to be caught from both TB-driven buses.

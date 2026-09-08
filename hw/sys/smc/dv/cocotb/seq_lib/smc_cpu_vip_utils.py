@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -25,6 +26,7 @@ from smc_reg import (  # noqa: E402
     SMC_CPU_CTRL_RESET_VECTOR_2__REG_ADDR,
     SMC_CPU_CTRL_RESET_VECTOR_3__REG_ADDR,
     SMC_CPU_CTRL_SCRATCH_0__REG_ADDR,
+    SMC_CPU_CTRL_SCRATCH_3__REG_ADDR,
 )
 
 CPU_CTRL_RESET_VECTOR_0 = SMC_CPU_CTRL_RESET_VECTOR_0__REG_ADDR
@@ -34,6 +36,9 @@ CPU_CTRL_RESET_VECTOR_3 = SMC_CPU_CTRL_RESET_VECTOR_3__REG_ADDR
 CPU_CTRL_RESET_CTRL = SMC_CPU_CTRL_RESET_CTRL_REG_ADDR
 CPU_CTRL_RESET_TIMEOUT = SMC_CPU_CTRL_RESET_TIMEOUT_REG_ADDR
 CPU_CTRL_SCRATCH_0 = SMC_CPU_CTRL_SCRATCH_0__REG_ADDR
+# SEED_REG in fw/include/smc_test.h, read by init_test() to seed its LFSR.
+# Same register smc_occp_dual_defs.py calls SCRATCH_FW_SEED.
+SCRATCH_FW_SEED = SMC_CPU_CTRL_SCRATCH_3__REG_ADDR
 
 # Freedom-metal __metal_synchronize_harts uses CLINT MSIP as a barrier.
 CLINT_MSIP_0 = 0xC800_0000
@@ -61,10 +66,14 @@ CPU_RESET_TIMEOUT_FORCE = 0x0001_0020
 CPU_FW_SUCCESS_MAGIC = 0xACAF_ACA1
 CPU_FW_FAIL_MASK = 0xFFFF_0000
 CPU_FW_FAIL_VALUE = 0xBAD0_0000
+# TEST_FAIL in fw/include/smc_test.h. test_fail() latches it over any
+# 0xBAD0xxxx code the test wrote first, so it is the value most firmware
+# failures actually leave behind.
+CPU_FW_TEST_FAIL = 0xFFFF_FFFF
 
-# Sync-free min_pass image posts magic here (scratch SRAM), because cluster
-# MMIO to CPU_CTRL SCRATCH may not be reachable until more fabric bring-up.
-CPU_FW_SRAM_MAILBOX = 0xC006_0100
+# Name kept for callers. min_pass posts 0xACAFACA1 to CPU_CTRL SCRATCH_0
+# (0xC0039080), not to scratch SRAM. The boot verdict reads that CSR.
+CPU_FW_SRAM_MAILBOX = CPU_CTRL_SCRATCH_0
 
 # boot_stall is an lsio pad; smc_padring.sv holds the assignment.
 BOOT_STALL_PAD = 57
@@ -272,12 +281,27 @@ async def check_cpu_firmware_boot_contract(
     # CPU_CTRL is decoded off the front port ahead of the cluster, so SEP_IN
     # reaches it whatever the cluster is doing.
     #
-    # Scratch/D$ PASS is observed via tb_cpu_fw_mailbox rather than an AXI read
-    # of the scratch window. SEP_IN does reach that window, but only with the
-    # warm domain out of reset and every core released; while boot_stall is held
-    # the access never gets a response at all. The mailbox snoop needs neither
-    # condition.
+    # The verdict is read from CPU_CTRL SCRATCH_0 over SEP_IN, which is where
+    # `test_pass()` / `test_fail()` in fw/include/smc_test.h put it:
+    # write_scratch() is an MMIO store to SMC_TOP_SMC_CPU_CTRL_SCRATCH, not to
+    # the scratch RAM.
+    #
+    # Clear it and read the clear back. SCRATCH_0 is plain storage that no reset
+    # in this sequence touches, so without the read-back a residual value from
+    # an earlier test -- TEST_ROM_PASS 0x77777777, or a stale TEST_PASS -- would
+    # be indistinguishable from one this run's firmware wrote.
     await seq.csr_write("CPU_BOOT_SCRATCH0_CLEAR", CPU_CTRL_SCRATCH_0, 0)
+    await seq.csr_read("CPU_BOOT_SCRATCH0_CLEAR_RB", CPU_CTRL_SCRATCH_0, expected=0)
+
+    # init_test() in fw/include/smc_test.h seeds its LFSR from SCRATCH_3
+    # (SEED_REG). Nothing else publishes it, so a firmware test that randomises
+    # runs off whatever was left in that register. Publish this run's seed --
+    # the same RANDOM_SEED the environment randomisation uses -- so firmware
+    # randomisation is reproducible from the testlist seed rather than from
+    # residue.
+    fw_seed = int(os.environ.get("RANDOM_SEED", "1"), 0) & 0xFFFF_FFFF
+    await seq.csr_write("CPU_BOOT_SEED_PUBLISH", SCRATCH_FW_SEED, fw_seed, length=8)
+    await seq.csr_read("CPU_BOOT_SEED_RB", SCRATCH_FW_SEED, expected=fw_seed)
 
     # Capture fetch baselines BEFORE release: the I$ fill can complete
     # during the post-release settle window, so a post-release baseline would
@@ -298,13 +322,32 @@ async def check_cpu_firmware_boot_contract(
         await _pulse_core_reset(seq, reset_vector)
 
     last_csr = 0
-    # The boot image is short; poll TB sideband + CSR mailbox.
+    # The boot image is short; poll the CSR the firmware actually writes.
+    #
+    # tb_cpu_fw_mailbox is deliberately NOT part of the verdict. It is driven by
+    # the FW_MAGIC snoop in models/smc_cpu_mem_dv.sv, which watches the scratch
+    # RAM and L1 D-cache *write ports* -- not the CPU_CTRL SCRATCH CSR that
+    # test_pass() stores to. So for any image that reports through smc_test.h it
+    # never fires, and the dcache half matches any 32-bit window of written data
+    # (the snoop steps bit_base across the 144-bit beat), which would grant PASS
+    # to a run whose firmware never reported one. It stays wired as
+    # observability and is logged below, but it cannot decide the outcome.
     for _ in range(2000):
         await ClockCycles(dut.clk_smc_i, 100)
         last_csr = await seq.csr_read("CPU_BOOT_SCRATCH0_POLL", CPU_CTRL_SCRATCH_0)
+        # Sampled and reported, never used to decide -- see the note above.
         fw_valid = int(dut.tb_cpu_fw_mailbox_valid.value)
         fw_mbox = int(dut.tb_cpu_fw_mailbox.value) if fw_valid else 0
-        last_pass = fw_mbox if fw_mbox == CPU_FW_SUCCESS_MAGIC else last_csr
+        last_pass = last_csr
+        # TEST_FAIL from fw/include/smc_test.h. Without this the fail path is
+        # invisible and every firmware failure presents as a poll-bound
+        # expiry with no diagnosis.
+        if last_pass == CPU_FW_TEST_FAIL:
+            raise AssertionError(
+                f"CPU firmware reported TEST_FAIL (SCRATCH_0=0x{last_pass:08x}); "
+                f"see the [ERROR] lines and SCRATCH_2 error status in this log "
+                f"for the failing check"
+            )
         if (last_pass & CPU_FW_FAIL_MASK) == CPU_FW_FAIL_VALUE:
             raise AssertionError(f"CPU firmware reported failure code 0x{last_pass:08x}")
         if last_pass == CPU_FW_SUCCESS_MAGIC:

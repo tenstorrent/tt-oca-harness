@@ -40,6 +40,7 @@ side-neutral and carries no token.
 | `cocotb/ocah_axi_item.py` | Generic AXI/AXI-Lite transaction items and result dataclasses (side-neutral) |
 | `cocotb/ocah_axi_monitor.py` | Passive item-producing bus monitors (side-neutral) |
 | `cocotb/ocah_axi_checker.py` | Item-level protocol checker (side-neutral) |
+| `cocotb/ocah_axi_config.py` | Bus geometry and interface-scope binding (side-neutral; twin of `uvm/ocah_axi_config.svh`) |
 | `cocotb/ocah_axi_types.py` | Response/protection code constants and value-conversion helpers (side-neutral) |
 | `cov/ocah_axi_cov.sv` | Commercial-simulator functional coverage hook |
 
@@ -79,6 +80,34 @@ via the `prot=` argument.
 
 Do not import `cocotbext.axi.AxiMaster`, `AxiLiteMaster`, `AxiRam`, or backend
 response enums in new OCAH tests. Add missing behavior to this wrapper instead.
+
+## Bus Geometry
+
+`interface/ocah_axi_if.sv` instantiates at its default (maximum) member
+widths wherever the SV-UVM layer needs one `virtual ocah_axi_if` type; the
+real bus geometry lives in the configuration on both sides. In SV the
+`ocah_axi_config` widths mask what the monitor samples. In cocotb the
+engines size byte lanes from the signals they are handed, so `OcahAxiConfig`
+carries the same widths and `bus()` returns a cocotbext bus over a view of
+the scope: every geometry-bearing member (`awaddr`, `araddr`, `wdata`,
+`rdata`, `wstrb`, and for AXI4 the ID and user sidebands when their width is
+non-zero) reports the configured width, reads return its low bits, and
+writes drive the low bits with the bits above held at zero. A member already
+at the configured width passes through unchanged, so one call binds a flat
+port bundle (`prefix=`) or an interface handle alike; a configured width
+wider than the member raises at binding.
+
+```python
+from ocah_axi_vip import OcahAxiConfig, OcahAxiLiteSlaveAgent, OcahAxiProtocol
+
+otp = OcahAxiConfig(protocol=OcahAxiProtocol.AXI4_LITE, addr_width=32, data_width=32)
+ram = OcahAxiLiteSlaveAgent(otp.bus(dut.u_smc_otp_axil_if), dut.clk_i, dut.rst_ni).sequence
+```
+
+The `dv/` harness binds the 32-bit stacks onto default-geometry instances
+and judges every sub-word offset of the 8-byte member lane, the backdoor
+view, and the idle upper lanes (`ocah_axi_lite_geometry_test`,
+`ocah_axi_geometry_test`).
 
 ## AXI4-Lite Master
 
@@ -405,12 +434,15 @@ The SV side of this package compiles through the VIP-owned ordered manifest
 `uvm/sources.toml` (incdirs + sources): a consuming DUT lists that manifest in
 its `[frameworks.uvm.build].source_lists` and the runner expands it ahead of
 the DUT's own sources — never hand-copy these paths into a DUT sim config, and
-never add them to Bender or Verilator filelists. The manifest is the complete
-VIP layer; unused modules simply do not elaborate. Its contents:
+never add them to Bender filelists. The one entry a cocotb/Verilator build
+lists directly in its `[build].sources` is `sva/ocah_axi_sva.sv`, whose
+two-state rules run there. The manifest is the complete VIP layer; unused
+modules simply do not elaborate. Its contents:
 
 - `interface/ocah_axi_if.sv` — flat AXI4/AXI4-Lite monitor interface
   (default = maximum widths so `virtual ocah_axi_if` is one type; geometry
-  lives in `ocah_axi_config`; Lite adapters tie the AXI4-only fields).
+  lives in `ocah_axi_config` on the SV side and `OcahAxiConfig` on the cocotb
+  side; Lite adapters tie the AXI4-only fields).
 - `sva/ocah_axi_sva.sv` — clean-room SVA protocol rules
   (`OCAH_AXI_*` asserts + `OCAH_AXI_C_*` covers): reset-VALID, per-channel
   stability/hold/X-hygiene, burst legality (reserved encoding, size,
@@ -418,7 +450,11 @@ VIP layer; unused modules simply do not elaborate. Its contents:
   lane-window, B/R ordering and ID matching, EXOKAY-exclusive, and the Lite
   response-legality rules. `IS_LITE` selects the subset; `en_i` is the
   runtime suppress knob. Rules are implemented from IHI 0022 rule
-  descriptions only — no third-party checker source was consulted.
+  descriptions only — no third-party checker source was consulted. Two
+  trees by simulator capability: the two-state rules use `OCAH_SVA_ASSERT`
+  (`hw/common/assert/ocah_sva_macros.svh`) and run on every simulator,
+  Verilator included under `--assert`; the X-hygiene rules and the covers
+  use `OCAH_ASSERT` / `OCAH_COVER` and run on four-state simulators only.
 - `sv/ocah_axil_ram_responder.sv`, `sv/ocah_axi_ram_responder.sv` —
   behavioral error-injectable RAM responders (SV analogue of the cocotb
   fault RAMs) with port-driven arm/addr/resp/direction error controls.

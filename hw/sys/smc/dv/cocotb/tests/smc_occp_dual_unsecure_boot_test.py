@@ -66,10 +66,12 @@ Required plusargs:
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import cocotb
 from cocotb.triggers import ClockCycles
+from env.smc_virt_console import VirtConsole
 from smc_dual_base_test import DualCsr, SmcDualHarness, random_seed
 from smc_occp_dual_defs import (
     CPU_RESET_VECTOR_ROM,
@@ -94,7 +96,6 @@ from smc_occp_dual_defs import (
     post_code_error,
     required_plusarg,
 )
-from smc_virt_console import VirtConsole
 
 # Target ROM boot to its OCCP command loop. Measured at ~250 us of sim time in
 # the single-instance smc_prod_rom_occp_ready_test; this bound is ~10x that.
@@ -509,7 +510,8 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
             f"  controller wb_pc0={int(dut.bfm_wb_pc0.value):#x} "
             f"rom_reads={int(dut.bfm_rom_read_count.value)}\n"
             f"controller firmware trace:\n{bfm_console.tail()}\n"
-            f"target firmware trace:\n{dut_console.tail()}"
+            f"target firmware trace:\n{dut_console.tail()}\n"
+            f"CPU state:\n{harness.cpu_trace_report()}"
         )
 
     passv = 0
@@ -540,7 +542,8 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
                 f"{_tx_snoop(dut)}\n"
                 f"  I3C bus [{format_activity(bus_activity(dut))}]\n"
                 f"controller firmware trace:\n{bfm_console.tail()}\n"
-                f"target firmware trace:\n{dut_console.tail()}"
+                f"target firmware trace:\n{dut_console.tail()}\n"
+                f"CPU state:\n{harness.cpu_trace_report()}"
             )
 
         # Has the image arrived in the target's SRAM yet? Checking the first and
@@ -581,7 +584,8 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
                 f"rom_reads={int(dut.dut_rom_read_count.value)}\n"
                 f"  I3C bus [{format_activity(bus_activity(dut))}]\n"
                 f"controller firmware trace:\n{bfm_console.tail()}\n"
-                f"target firmware trace:\n{dut_console.tail()}"
+                f"target firmware trace:\n{dut_console.tail()}\n"
+                f"CPU state:\n{harness.cpu_trace_report()}"
             )
         if passv == TEST_PASS:
             break
@@ -625,7 +629,8 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
             f"wb_pc0={int(dut.bfm_wb_pc0.value):#x}\n"
             f"  I3C bus [{format_activity(bus_activity(dut))}]\n"
             f"controller firmware trace (last lines):\n{bfm_console.tail()}\n"
-            f"target firmware trace (last lines):\n{dut_console.tail()}"
+            f"target firmware trace (last lines):\n{dut_console.tail()}\n"
+            f"CPU state:\n{harness.cpu_trace_report()}"
         )
 
     # ------------------------------------------------------------------
@@ -720,6 +725,7 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
     # the transferred image. Sample it now rather than relying only on the
     # scratch values.
     final_pc = int(dut.dut_wb_pc0.value)
+    harness.dump_cpu_trace(logging.INFO)
     pc_parked_in_payload = target_addr <= final_pc < target_addr + payload_size
     assert pc_in_payload or pc_parked_in_payload, (
         f"target scratch shows the payload's results, but its retired PC "
