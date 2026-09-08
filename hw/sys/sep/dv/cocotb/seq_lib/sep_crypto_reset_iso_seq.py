@@ -35,7 +35,7 @@ SW_RESET_N = sym("SEP_RESET_CTRL_SW_RESET_N_REG_ADDR")
 SW_RESET_N_DEFAULT = SEP_RESET_CTRL.reset32("SW_RESET_N")
 RST_KM, RST_OTBN, RST_AES, RST_HMAC, RST_KMAC, RST_TRNG = 0, 1, 2, 3, 4, 5
 RESP_OKAY = 0
-RESP_DECERR = 3
+RESP_SLVERR = 2
 
 _ISOLATE = (
     Path(__file__).resolve().parents[6]
@@ -48,21 +48,26 @@ _ISOLATE = (
 )
 
 
-def _isolate_decerr_data() -> int:
+def _isolate_error_data() -> int:
     """The payload axi_lite_isolate drives on a terminated read.
 
     Scraped rather than hand-copied so a change to the isolate's own literal
     surfaces here at import instead of turning the read check into a compare
-    against a stale constant.
+    against a stale constant. Accepts either ``IsolateErrorData`` or the
+    older ``DecErrData`` name so the helper stays importable across the
+    isolate error-response vendor update.
     """
     text = _ISOLATE.read_text(encoding="utf-8")
-    m = re.search(r"localparam data_t DecErrData\s*=\s*data_t'\('h([0-9A-Fa-f]+)\)", text)
+    m = re.search(
+        r"localparam data_t (?:IsolateErrorData|DecErrData)\s*=\s*data_t'\('h([0-9A-Fa-f]+)\)",
+        text,
+    )
     if not m:
-        raise RuntimeError(f"DecErrData not found in {_ISOLATE}")
+        raise RuntimeError(f"isolate error-data localparam not found in {_ISOLATE}")
     return int(m.group(1), 16)
 
 
-ISOLATE_DECERR_DATA = _isolate_decerr_data()
+ISOLATE_ERROR_DATA = _isolate_error_data()
 # DIGEST_0 has no generated REG_DEFAULT; OpenTitan HMAC clears it to 0 on rst_ni.
 HMAC_DIGEST_RESET = 0
 
