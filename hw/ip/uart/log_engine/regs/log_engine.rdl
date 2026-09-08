@@ -48,7 +48,7 @@ addrmap log_engine #(
             sw = rw;
             hw = r;
             desc = "Log Region Start Address High.";
-        } LOG_REGION_ADDR_HI[63:32] = 0x0;
+        } LOG_REGION_ADDR_HI[55:32] = 0x0;
     };
 
     reg LOG_WRITE_ADDR {

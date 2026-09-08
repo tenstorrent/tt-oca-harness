@@ -96,6 +96,7 @@
 #define MASK_11_BIT_INTR 0x00000011u // INTR_{STATUS,ENABLE,TEST} bits {4,0}
 #define MASK_16_BIT 0x0000FFFFu      // LOG_CTRL[i].LOG_LEN
 #define MASK_20_BIT 0x000FFFFFu      // LOG_REGION_SIZE
+#define MASK_24_BIT 0x00FFFFFFu      // LOG_REGION_ADDR_HI
 #define MASK_32_BIT 0xFFFFFFFFu
 
 static const uint32_t PATTERNS[] = {
@@ -226,9 +227,12 @@ int main(void) {
     rw_walk_one(WRAP0_LE_BASE + LE_REGION_SIZE_OFF, MASK_20_BIT, 0x100201);
 
     // LOG_REGION_ADDR is a 64-bit register accessed as two 32-bit words.
-    // RDL: offset+0 → LO, offset+4 → HI.  Both 32 valid bits.
+    // RDL: offset+0 → LO (32 valid bits), offset+4 → HI (24 valid bits).
+    // HI stops at bit 23 because the log fetch address is 56 bits
+    // (log_engine_pkg::LOG_FETCH_ADDR_WIDTH = smc_pkg::AXI_ADDR_WIDTH), so
+    // register bits [63:56] are reserved and read back as 0.
     rw_walk_one(WRAP0_LE_BASE + LE_REGION_ADDR_OFF, MASK_32_BIT, 0x100202);     // LO
-    rw_walk_one(WRAP0_LE_BASE + LE_REGION_ADDR_OFF + 4, MASK_32_BIT, 0x100203); // HI
+    rw_walk_one(WRAP0_LE_BASE + LE_REGION_ADDR_OFF + 4, MASK_24_BIT, 0x100203); // HI
 
     // LOG_WRITE_ADDR — full 32 bits.
     rw_walk_one(WRAP0_LE_BASE + LE_WRITE_ADDR_OFF, MASK_32_BIT, 0x100204);

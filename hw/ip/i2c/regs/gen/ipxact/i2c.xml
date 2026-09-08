@@ -1922,7 +1922,7 @@ specified in system clock cycles.
                 <ipxact:value>'h0</ipxact:value>
               </ipxact:reset>
             </ipxact:resets>
-            <ipxact:bitWidth>31</ipxact:bitWidth>
+            <ipxact:bitWidth>20</ipxact:bitWidth>
             <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>

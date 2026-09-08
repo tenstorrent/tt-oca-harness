@@ -58,7 +58,7 @@ package log_engine_reg_pkg;
     } log_engine__LOG_REGION_ADDR__LOG_REGION_ADDR_LO__out_t;
 
     typedef struct {
-        logic [31:0] value;
+        logic [23:0] value;
     } log_engine__LOG_REGION_ADDR__LOG_REGION_ADDR_HI__out_t;
 
     typedef struct {

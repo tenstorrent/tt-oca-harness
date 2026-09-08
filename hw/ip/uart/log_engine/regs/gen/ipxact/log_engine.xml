@@ -79,7 +79,7 @@ Log Engine and resets all FSMs, flops, and FIFOs.</ipxact:description>
                 <ipxact:value>'h0</ipxact:value>
               </ipxact:reset>
             </ipxact:resets>
-            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:bitWidth>24</ipxact:bitWidth>
             <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>

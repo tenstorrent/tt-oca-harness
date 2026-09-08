@@ -29,7 +29,9 @@ module entropy_sha256_whitener (
 
     output      logic       busy_o,
     output      logic [3:0] input_count_o,
-    output      logic [2:0] output_count_o
+    // 4 bits: output_word_count_q holds 0..SHA256_DIGEST_WORDS (8), and 8 is the
+    // "done outputting" state, so a 3-bit port would alias 8 back to 0.
+    output      logic [3:0] output_count_o
 );
 
     /////////////////////

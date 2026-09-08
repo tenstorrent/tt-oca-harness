@@ -825,14 +825,16 @@ Log Engine and resets all FSMs, flops, and FIFOs.</ipxact:description>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>LOG_REGION_ADDR_HI</ipxact:name>
-            <ipxact:description>Log Region Start Address High.</ipxact:description>
+            <ipxact:description>Log Region Start Address High. Only 24 bits wide: the log fetch address
+is LOG_FETCH_ADDR_WIDTH (56) bits, matching smc_pkg::AXI_ADDR_WIDTH, so
+bits [63:56] of the register are reserved and read as 0.</ipxact:description>
             <ipxact:bitOffset>32</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
                 <ipxact:value>'h0</ipxact:value>
               </ipxact:reset>
             </ipxact:resets>
-            <ipxact:bitWidth>32</ipxact:bitWidth>
+            <ipxact:bitWidth>24</ipxact:bitWidth>
             <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>

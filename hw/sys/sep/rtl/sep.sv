@@ -1089,9 +1089,18 @@ module sep
             8'b0,
 
             // [351:336] Interrupt signals
+            //   [351]     intr_wdog_timer_bark
+            //   [350:343] sep_mailbox_interrupt  (NUM_MAILBOXES = 8, one bit per mailbox)
+            //   [342]     km_mbox_irq
+            //   [341]     entropy_source_irq
+            //   [340]     ext_trng_irq
+            //   [339]     intr_dma_done
+            //   [338]     intr_dma_chunk_done
+            //   [337]     intr_dma_error
+            //   [336]     Reserved padding
             intr_wdog_timer_bark, sep_mailbox_interrupt, km_mbox_irq,
             entropy_source_irq, ext_trng_irq, intr_dma_done, intr_dma_chunk_done, intr_dma_error,
-            8'b0,
+            1'b0,
 
             // [335:320] Reset and security status
             sep_reset_n, wdt_timer_rst_req, security_disable, 13'b0,
@@ -1129,8 +1138,9 @@ module sep
             sep_efuse_token_match_chiplet_debug,  // [213:208]
 
             // [207:192] Local masters address-remap hit debug
-            10'b0,                        // [207:198] Reserved padding
-            local_masters_remap_debug,    // [197:192]
+            //   remap_debug_t is 2 x $clog2(NUM_LOCAL_MASTER_ALIAS_REMAP_REGIONS) = 8 bits
+            8'b0,                         // [207:200] Reserved padding
+            local_masters_remap_debug,    // [199:196] aw_remap_hit_debug, [195:192] ar_remap_hit_debug
 
             // [191:176] Outbound filter hit debug
             {(16 - 2*$clog2(sep_pkg::OUTBOUND_FILTER_NUM_FILTERS)){1'b0}},

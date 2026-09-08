@@ -85,8 +85,9 @@ addrmap entropy_source {
         field {
             sw = r;
             hw = w;
-            desc = "Number of 32-bit digest words remaining for output.";
-        } OUTPUT_COUNT[10:8] = 3'h0;
+            desc = "Number of 32-bit digest words already output from the 256-bit digest.
+                    Counts 0 to 8; 8 means the digest has been fully read out.";
+        } OUTPUT_COUNT[11:8] = 4'h0;
     };
 
     reg DEBUG_CTRL {

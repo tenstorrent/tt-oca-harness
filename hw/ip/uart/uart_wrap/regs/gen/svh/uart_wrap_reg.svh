@@ -659,7 +659,7 @@ localparam int unsigned LOG_ENGINE_LOG_REGION_SIZE_LOG_REGION_SIZE_SHIFT        
 localparam longint unsigned LOG_ENGINE_LOG_REGION_ADDR_LOG_REGION_ADDR_LO_MASK                                    = 64'hFFFFFFFF;
 localparam     int unsigned LOG_ENGINE_LOG_REGION_ADDR_LOG_REGION_ADDR_LO_SHIFT                                   = 0;
 
-localparam longint unsigned LOG_ENGINE_LOG_REGION_ADDR_LOG_REGION_ADDR_HI_MASK                                    = 64'hFFFFFFFF00000000;
+localparam longint unsigned LOG_ENGINE_LOG_REGION_ADDR_LOG_REGION_ADDR_HI_MASK                                    = 64'hFFFFFF00000000;
 localparam     int unsigned LOG_ENGINE_LOG_REGION_ADDR_LOG_REGION_ADDR_HI_SHIFT                                   = 32;
 
 localparam int unsigned LOG_ENGINE_LOG_WRITE_ADDR_LOG_WRITE_ADDR_MASK                                             = 32'hFFFFFFFF;
@@ -854,7 +854,7 @@ typedef struct packed {
 
 
 typedef struct packed {
-    logic [31:0]   log_region_addr_hi ;
+    logic [23:0]   log_region_addr_hi ;
     logic [31:0]   log_region_addr_lo ;
 } log_engine_log_region_addr_reg_t;
 
