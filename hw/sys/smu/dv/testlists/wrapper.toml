@@ -120,12 +120,8 @@ args = [
 # are compared inside the SEP; the TB only reads the firmware's verdict off the
 # STDOUT mailbox handshake.
 #
-# This is the first test to exercise the SEP outbound mailbox path in this
-# wrapper. Bringing it up found a firmware ordering bug: sep_smu_sanity emitted
-# its first STAGE_BEACON before sep_outbound_filter_init(), and the SEP outbound
-# filter is BlockByDefault=1, so that store faulted, crt0's _trap jumped to
-# _finish, and the firmware died before opening the window it needed. Fixed by
-# opening the window first (see the comment in sep_smu_sanity.c).
+# The image opens the SEP outbound mailbox window before the first
+# STAGE_BEACON. The outbound filter is BlockByDefault=1.
 [[tests]]
 name = "smu_sep_sanity_test"
 module = "smu_sep_sanity_test"
@@ -151,14 +147,11 @@ args = [
 # table, so a stage compiled out is reported as not covered rather than passed.
 #
 # The AES stage needs entropy: OpenTitan AES reseeds its masking PRNG from
-# crypto-EDN, and without it the stage spun in wait_for_idle (99.5% of retires
-# landed on wait_for_idle+0x10..0x18), which read as an AES defect but was a
-# missing prerequisite. The image calls sep_entropy_bringup() before that stage
-# and parks in a separate entropy fail loop if it does not complete, so the two
-# causes stay distinguishable. +esrc_noise_force supplies the raw noise
-# the ring oscillators cannot generate under Verilator -- the same exception
-# hw/sys/sep/dv takes. HMAC and KMAC need no entropy and are also proven green
-# by smu_sep_sanity_test.
+# crypto-EDN. The image calls sep_entropy_bringup() before that stage and
+# parks in a separate entropy fail loop if it does not complete, so a missing
+# prerequisite is not scored as an AES defect. +esrc_noise_force supplies the
+# raw noise the ring oscillators cannot generate under Verilator -- the same
+# exception hw/sys/sep/dv takes. HMAC and KMAC need no entropy.
 [[tests]]
 name = "smu_sep_modules_test"
 module = "smu_sep_modules_test"
@@ -376,12 +369,9 @@ args = [
 # and the linker drops the symbol. The verdict is the testbench's golden compare
 # of the remap table, gated on the offsets having changed during the run.
 #
-# Bringing this up exposed a race in the observer, not a design problem: the
-# firmware emits no fence between its remap stores and the tail jump into the
-# pass loop, so sampling the table the instant the pass PC retires reads the
-# pre-write value. The sequence now drains for SETTLE_CYCLES first. Confirmed
-# end to end -- 10 AW into sep_system_csr, 2 reaching region 0's register block,
-# and both offsets matching golden.
+# The firmware emits no fence between its remap stores and the tail jump
+# into the pass loop. The sequence drains for SETTLE_CYCLES before sampling
+# the remap table, then compares both region-0 offsets against golden.
 [[tests]]
 name = "smu_sep_remap_test"
 module = "smu_sep_remap_test"
@@ -517,11 +507,9 @@ args = [
   "+sep_sym=sep_smc_notify.tcm.sym",
 ]
 
-# Primary TAP driven from cocotb, with the SEP running. First wrapper test to
-# drive JTAG rather than only pulse it into reset, and the enabler for the
-# DTP/SEP probe anchors: those need a TAP that answers. Uses hello_world as the
-# SEP payload -- the SEP only has to stay alive, which is also what the last
-# checker proves (TAP access must not disturb a running SEP).
+# Primary TAP driven from cocotb, with the SEP running. The TAP must answer
+# so DTP/SEP probe anchors can use it. hello_world is the SEP payload; TAP
+# access must not disturb a running SEP.
 [[tests]]
 name = "smu_wrapper_jtag_ptap_test"
 module = "smu_wrapper_jtag_ptap_test"
@@ -540,13 +528,12 @@ args = [
   "+sep_dtcm_hex=hello_world.dtcm.hex",
 ]
 
-# Firmware-driven SEP lifecycle flow. The SEP LCC is the source of the chiplet's
-# lifecycle posture and three consumers act on it (lc_state -> SMC,
-# dbg_disable -> DTP, feat_ctrl); the only SMU-level check before this was one
-# static sample of lc_state_o at the boundary. The firmware drives the DEMOTE
-# registers -- the one LCC input software owns -- and the sequence checks the
-# posture moved at the consumers, not just inside the register block. The
-# write-once DEMOTE lock is what keeps the demote stages non-vacuous.
+# Firmware-driven SEP lifecycle flow. The SEP LCC is the source of the
+# chiplet's lifecycle posture. Three consumers act on it (lc_state -> SMC,
+# dbg_disable -> DTP, feat_ctrl). The firmware drives the DEMOTE registers
+# and the sequence checks the posture moved at the consumers, not only
+# inside the register block. The write-once DEMOTE lock keeps the demote
+# stages non-vacuous.
 [[tests]]
 name = "smu_sep_lcc_flow_test"
 module = "smu_sep_lcc_flow_test"
