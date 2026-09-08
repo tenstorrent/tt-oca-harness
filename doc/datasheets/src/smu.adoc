@@ -87,7 +87,7 @@ AT A GLANCE
 
 [cols="43,57",options="header"]
 !===
-!Item !Checked-in SMU configuration
+!Feature !Defaults
 !Headline configuration !`DefaultCfg`, `SEP=1`: 4-core SMC + SEP + DTP
 !Alternate configuration !`NoSepCfg`, `SEP=0`: 4-core SMC + DTP
 !Full-config fabric !3 AXI4 inputs by 3 outputs; 2 runtime address rules
@@ -147,7 +147,7 @@ INTERFACES AND CONFIGURATION
 
 [cols="37,63",options="header"]
 !===
-!Boundary !Integration-visible interface
+!Feature !Integration options
 !Clocks and resets !SMU, reference, peripheral, telemetry, SEP watchdog, and
 entropy-sample clocks; cold reset, power-good, boot/repair, DFT, and reset outputs
 !System fabric !Inbound and outbound 56-address/64-data AXI4; programmable SMC
