@@ -63,8 +63,10 @@
  * range was [SEP_SRAM_BASE, SEP_BOOT_ROM_BASE), which is a different memory
  * entirely -- and the comment above the check said "must be within ICCM" while
  * the constants said SRAM, so the code and its own documentation disagreed. */
-.equ WARM_HANDLER_RANGE_BASE,  OCH_SEP_TOP_SEP_ICCM_BASE_ADDR
-.equ WARM_HANDLER_RANGE_END,   OCH_SEP_TOP_SEP_ICCM_BASE_ADDR + OCH_SEP_TOP_SEP_ICCM_SIZE
+.equ WARM_HANDLER_ICCM_BASE,   OCH_SEP_TOP_SEP_ICCM_BASE_ADDR
+.equ WARM_HANDLER_ICCM_END,    OCH_SEP_TOP_SEP_ICCM_BASE_ADDR + OCH_SEP_TOP_SEP_ICCM_SIZE
+.equ WARM_HANDLER_SRAM_BASE,   OCH_SEP_TOP_SEP_SRAM_BASE_ADDR
+.equ WARM_HANDLER_SRAM_END,    OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + OCH_SEP_TOP_SEP_SRAM_SIZE
 
 /* MEM_REPAIR boot gate. Mirrors include/sep_smc_interface.h -- the C side owns
  * these numbers, so they must be changed in both places together. Kept as .equ
@@ -200,7 +202,7 @@ _start:
      *   1. Read cold_scratch[7]
      *   2. If zero → cold boot
      *   3. If non-zero: range check against
-     *      [WARM_HANDLER_RANGE_BASE, WARM_HANDLER_RANGE_END) = SEP ICCM
+     *      SEP SRAM or ICCM (either is a legal BL1 region)
      *   4. If valid: jump to handler, leaving the slot INTACT
      *   5. If invalid: hang
      *   The cold path poisons with -1, deliberately out of range, so an
@@ -213,11 +215,31 @@ _start:
     lw      t1, 0(t0)              /* t1 = warm handler address */
     beqz    t1, cold_boot          /* zero → cold boot */
 
-    /* Range check: WARM_HANDLER_RANGE_BASE <= handler < WARM_HANDLER_RANGE_END */
-    li      t2, WARM_HANDLER_RANGE_BASE
-    bltu    t1, t2, warm_reset_hang /* handler < range base → invalid → hang */
-    li      t2, WARM_HANDLER_RANGE_END
-    bgeu    t1, t2, warm_reset_hang /* handler >= range end → invalid → hang */
+    /* Range check: the handler must sit where BL1 may execute from, and per
+     * SEP-ROM-MAN-060 that is EITHER SEP SRAM or ICCM -- placement follows the
+     * manifest's TOC entry, so accepting only one region would reject a
+     * legitimate handler for the other. SRAM base is below ICCM base, so the
+     * ICCM window is tested first and anything below it falls through to SRAM. */
+    li      t2, WARM_HANDLER_ICCM_BASE
+    bltu    t1, t2, .Lwarm_try_sram /* below ICCM → maybe SRAM */
+    li      t2, WARM_HANDLER_ICCM_END
+    bltu    t1, t2, .Lwarm_range_ok /* inside ICCM → valid */
+    j       warm_reset_hang         /* at/above ICCM end → invalid → hang */
+.Lwarm_try_sram:
+#if BL1_SRAM_EXEC_ENABLE
+    /* SRAM execution is permitted in this build, so a handler there is valid.
+     * This must track rom_handoff.c's cold-path policy exactly: accepting a
+     * warm handler in a region the cold path would refuse to boot would let a
+     * warm reset re-enter code the ROM would never have launched. */
+    li      t2, WARM_HANDLER_SRAM_BASE
+    bltu    t1, t2, warm_reset_hang /* below SRAM → invalid → hang */
+    li      t2, WARM_HANDLER_SRAM_END
+    bgeu    t1, t2, warm_reset_hang /* at/above SRAM end → invalid → hang */
+#else
+    /* ICCM-only build: anything outside ICCM is invalid, SRAM included. */
+    j       warm_reset_hang
+#endif
+.Lwarm_range_ok:
 
     /* Valid warm handler found.  Announce the decision BEFORE transferring
      * control: once we jr, the ROM never runs again, so this store is the only

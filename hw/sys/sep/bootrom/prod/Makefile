@@ -60,6 +60,17 @@ SRAM_SCRUB_BYTES ?= 0
 # silicon powers up random. With it off, only the ICCM words the BL1 load writes
 # have valid ECC -- not the rest of the image's last 64-bit fetch line when the
 # BL1 length is not 8-byte aligned. Off here because the clear costs ~1.8M cycles.
+# BL1 execution from SEP SRAM. ICCM is the secure execution space and is always
+# permitted; SRAM is additionally permitted by default because debug and special
+# applications need it (a BL1 linked for SRAM, or an image staged where the LSU
+# can read it too). Set to 0 to lock the ROM down to ICCM-only execution: the ROM
+# then refuses a BL1 whose TOC load_addr lies in SRAM, and vector.S likewise
+# refuses a warm-reset handler there -- both have to move together or a warm
+# reset would re-enter a region the cold path would not have booted.
+#
+# Default 1 preserves today's behaviour; the default may flip once nothing needs
+# the SRAM path.
+BL1_SRAM_EXEC_ENABLE ?= 1
 ROM_ICCM_CLEAR_ENABLE ?= 0
 PMP_ENABLE ?= 1
 PMP_LOCK   ?= 0
@@ -190,12 +201,14 @@ CFLAGS   := -Os -ffreestanding -fno-builtin -fdata-sections -ffunction-sections 
 	-DDCCM_SCRUB_BYTES=$(DCCM_SCRUB_BYTES) -DSRAM_SCRUB_BYTES=$(SRAM_SCRUB_BYTES) \
 	-DPMP_ENABLE=$(PMP_ENABLE) -DPMP_LOCK=$(PMP_LOCK) -DTEST_BUILD=1 -DSEP_BL0 -DDEBUG \
 	-DROM_ICCM_CLEAR_ENABLE=$(ROM_ICCM_CLEAR_ENABLE) \
+	-DBL1_SRAM_EXEC_ENABLE=$(BL1_SRAM_EXEC_ENABLE) \
 	-DBOOT_SPI_CONTROLLER_OT=$(BOOT_SPI_CONTROLLER_OT) \
 	-DBOOT_OT_SPI_USE_PIO=$(BOOT_OT_SPI_USE_PIO) \
 	-DBOOT_OT_SPI_PROFILE=$(BOOT_OT_SPI_PROFILE) \
 	$(CC_ABI)
 ASFLAGS  := -x assembler-with-cpp -mno-relax -I$(INCLUDE_DIR) $(REG_INCLUDE_DIRS) \
 	-DDCCM_SCRUB_BYTES=$(DCCM_SCRUB_BYTES) -DPMP_ENABLE=$(PMP_ENABLE) -DPMP_LOCK=$(PMP_LOCK) \
+	-DBL1_SRAM_EXEC_ENABLE=$(BL1_SRAM_EXEC_ENABLE) \
 	$(CC_ABI)
 LDFLAGS  := -nostdlib -Wl,--gc-sections -Wl,--no-relax -T $(LINK_DIR)/rom.ld $(CC_ABI)
 
@@ -279,6 +292,7 @@ $(OCA_OBJ_DIR):
 BUILD_FLAGS := CTRL_OT=$(BOOT_SPI_CONTROLLER_OT) USE_PIO=$(BOOT_OT_SPI_USE_PIO) \
 	PROFILE=$(BOOT_OT_SPI_PROFILE) BUILD_TYPE=$(BUILD_TYPE) \
 	PMP_ENABLE=$(PMP_ENABLE) PMP_LOCK=$(PMP_LOCK) \
+	BL1_SRAM_EXEC=$(BL1_SRAM_EXEC_ENABLE) \
 	DCCM_SCRUB=$(DCCM_SCRUB_BYTES) SRAM_SCRUB=$(SRAM_SCRUB_BYTES) \
 	NONFREE=$(if $(NONFREE_ROOT),1,0) \
 	OCA_CLASSIC=$(OCA_SUPPORT_CLASSIC) OCA_PQC=$(OCA_SUPPORT_PQC) \

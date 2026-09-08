@@ -234,8 +234,9 @@ boot flow. Addresses are as seen by the SEP CPU.
 [frame=ends]
 |===
 |*Region* |*Base* |*Size* |*Boot-flow role*
-|SEP SRAM |`0x10000000` |256 KiB |Destination for the manifest and payload; BL1 executes from
-here. Cleared by the ROM before use ([C9a]).
+|SEP SRAM |`0x10000000` |256 KiB |Destination for the manifest and payload; BL1 may also
+execute from here when `BL1_SRAM_EXEC_ENABLE` permits it (<<sec:manifest>>). Cleared by the ROM
+before use ([C9a]).
 |Boot ROM |`0x10040000` |64 KiB |BL0 code, `.rodata`, ROM metadata (version + self-hash), and
 the load image (LMA) of `.data`. Execute/read only.
 |Secure DMA |`0x10800000` |4 KiB |DMA engine registers.
@@ -264,7 +265,8 @@ PHY registers).
 `[0x4000_0000, 0xC000_0000)` outbound. See <<tbl:smc_window>>.
 |STDOUT mailbox |`0x80000000` |4 B |DV PASS/FAIL magic words and mailbox character output.
 Only egress window opened at cold boot.
-|ICCM |`0xC0000000` |256 KiB |Cleared by the ROM ([C9b]); available to BL1.
+|ICCM |`0xC0000000` |256 KiB |Cleared by the ROM ([C9b]); the secure BL1 execution
+region, always permitted (<<sec:manifest>>).
 |DCCM |`0xC0040000` |128 KiB |BL0 runtime data: `.data`, `.bss`, stack, and the `bl0_state`
 hand-off block at the top (<<sec:handoff>>).
 |PIC |`0xC0080000` |— |Interrupts stay disabled in BL0.
@@ -661,13 +663,17 @@ a placeholder in both this document and the code.
 
 A watchdog-initiated warm reset resets the SEP CPU (all CSRs return to reset values) but
 preserves ICCM, DCCM, SEP SRAM, and the warm scratch registers. Since BL1 arms the WDT and
-runs from SRAM, a WDT bark lands the core back at the ROM's `_start` while BL1's state is
+runs from its TOC-selected region, a WDT bark lands the core back at the ROM's `_start` while
+BL1's state is
 still resident. The warm-reset path returns control to BL1 with minimal disturbance.
 
 ===== Protocol
 
 *BL1 side (contract):* before arming the WDT, BL1 writes the address of its warm-reset
-handler to `warm_scratch[0]` (`0x10802080`). The handler must lie in SEP SRAM. BL1 re-arms
+handler to `cold_scratch[7]`. The handler must lie in a permitted BL1 execution region --
+the same set `BL1_SRAM_EXEC_ENABLE` governs, because accepting a warm handler where the
+cold path would refuse to boot would let a warm reset re-enter code the ROM would never
+have launched. BL1 re-arms
 this value as needed; a value of zero means "no warm handler — treat any reset as cold".
 
 *ROM side:*
@@ -750,7 +756,8 @@ execute before validation completes.
    `mseccfg.MMWP`) shall be in effect.
 3. [[req-SEP-ROM-PMP-030]]*[SEP-ROM-PMP-030]* The regions that will hold next-stage code
    (SEP SRAM and ICCM) shall be writable but *non-executable* (`RW-`) for the entire
-   validation portion of the boot. Execute permission for the BL1 launch region shall be
+   validation portion of the boot. Execute permission for whichever region BL1 was loaded
+   into shall be
    granted only at hand-off, after the pre-hand-off self-check passes.
 4. [[req-SEP-ROM-PMP-040]]*[SEP-ROM-PMP-040]* Data windows shall be limited to the regions
    the ROM demonstrably needs: DCCM (`RW`), the STDOUT mailbox, the SEP peripheral block
@@ -869,11 +876,12 @@ literal CSR values.
 |0 |Boot ROM |`0x10040000` |64 KiB |R-X |`0x04017FFF` |BL0 itself
 |1 |DCCM |`0xC0040000` |128 KiB |RW- |`0x30013FFF` |runtime data, stack, `bl0_state`
 |2 |Mailbox |`0x80000000` |4 KiB |RW- |`0x200007FF` |STDOUT mailbox window
-|3 |SEP SRAM |`0x10000000` |256 KiB |RWX |`0x0401FFFF` |manifest/payload staging; BL1 launch
-region — *this specification requires RW- until hand-off*
+|3 |SEP SRAM |`0x10000000` |256 KiB |RWX |`0x0401FFFF` |manifest/payload staging; a BL1 launch
+region when `BL1_SRAM_EXEC_ENABLE` permits — *this specification requires RW- until hand-off*
 |4 |Peripherals |`0x10800000` |4 MiB |RW- |`0x0421FFFF` |DMA, scratch, crypto, lifecycle,
 efuse, SPI hosts
-|5 |ICCM |`0xC0000000` |256 KiB |RWX |`0x30007FFF` |BL1 code region — *this specification
+|5 |ICCM |`0xC0000000` |256 KiB |RWX |`0x30007FFF` |the secure BL1 code region, always a
+launch target — *this specification
 requires RW- until hand-off*
 |6 |SMC/local window |`0xC0000000` |256 MiB |RW- |`0x31FFFFFF` |overlaps entries 1/5; the
 lower-numbered entry takes precedence for its sub-range
@@ -1537,9 +1545,29 @@ type as follows (matching the retired TBL1 semantics):
   `load_addr + entry_point`, where `entry_point` is a byte offset into the image.
 * [[req-SEP-ROM-MAN-060]]*[SEP-ROM-MAN-060]* Before the copy, the ROM shall validate the
   placement from the (already hash-verified) TOC entry: `[load_addr, load_addr + length)`
-  shall lie entirely within SEP SRAM, `entry_point < length`, and the copy shall not be
-  permitted to corrupt the staged manifest before validation completes (the copy happens
-  strictly after all checks pass, at hand-off).
+  shall lie entirely within *one permitted execution region*, `entry_point < length`, and the
+  copy shall not be permitted to corrupt the staged manifest before validation completes (the
+  copy happens strictly after all checks pass, at hand-off).
++
+The permitted regions are:
++
+--
+* *ICCM* — always permitted. This is the secure execution space: the IFU fetches BL1 from
+  here, and the LSU cannot store to it at all (ICCM shares VeeR region `0xC` with DCCM, so
+  `el2_lsu_addrcheck` faults any ICCM address), which is why the copy is issued by the DMA
+  rather than a CPU `memcpy` regardless of destination.
+* *SEP SRAM* — permitted only when the ROM is built with `BL1_SRAM_EXEC_ENABLE` non-zero.
+  It exists for debug and special applications that need BL1 where the LSU can also reach it.
+  **The default is enabled**, preserving the historical behaviour; an adopter that wants the
+  tighter policy compiles it out, and the ROM then refuses an SRAM `load_addr` with
+  `BL1_SRAM_EXEC_DISABLED` on the console ahead of the generic range refusal, so a locked-down
+  build is diagnosable rather than looking like a malformed image.
+--
++
+Placement is therefore a property of the image the manifest describes, bounded by what the
+build permits — not a single address the ROM is compiled for. `load_addr` sits in the signed
+manifest but is still attacker-chosen among otherwise valid images, so "inside a permitted
+region" is the check that matters.
 
 [NOTE]
 ====
@@ -2440,7 +2468,7 @@ integrity-checks the block via these.
 ===== Release and Jump ([C18])
 
 1. [[req-SEP-ROM-HOFF-060]]*[SEP-ROM-HOFF-060]* Only after the self-check passes shall the
-   ROM release the PMP execution fence for the BL1 launch region — a single rewrite of the
+   ROM release the PMP execution fence for the region BL1 was loaded into — a single rewrite of the
    locked BL1-region rule under `mseccfg.RLB=1` (SEP-ROM-PMP-080, <<sec:pmp_mechanism>>).
    The release shall be the last write before the jump sequence.
 2. The BL1 image is copied from its staged payload location to its TOC entry's `load_addr`,
@@ -3075,8 +3103,9 @@ post-self-check |<<sec:pmp>>
 |<<sec:manifest>>
 |<<req-SEP-ROM-MAN-050,SEP-ROM-MAN-050>> |Launch BLSTAGE1 image at its TOC
 `load_addr`/`entry_point` |<<sec:manifest>>
-|<<req-SEP-ROM-MAN-060,SEP-ROM-MAN-060>> |Placement validated (SRAM bounds, entry < length);
-copy after validation only |<<sec:manifest>>
+|<<req-SEP-ROM-MAN-060,SEP-ROM-MAN-060>> |Placement validated against a permitted execution
+region (ICCM always; SRAM per `BL1_SRAM_EXEC_ENABLE`, default on), entry < length; copy after
+validation only |<<sec:manifest>>
 |<<req-SEP-ROM-SB-010,SEP-ROM-SB-010>> |PROD/PROD_END enforce secure boot
 |<<sec:secure_boot>>
 |<<req-SEP-ROM-SB-020,SEP-ROM-SB-020>> |TEST_DEV/RMA: either trigger enables

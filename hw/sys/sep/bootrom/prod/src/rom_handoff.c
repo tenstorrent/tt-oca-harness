@@ -125,16 +125,47 @@ uint32_t rom_handoff_bl1(void) {
 
     // The TOC entry's load_addr/entry_point are authenticated but arbitrary:
     // the library checks them for internal consistency, never against this
-    // device's memory map. Confining the copy to ICCM is the ROM's job. Bounds
-    // come from the generated register map rather than hand-written constants,
-    // so an RDL change moves them here too.
-    if (bl1.length > (uint64_t)OCH_SEP_TOP_SEP_ICCM_SIZE
-        || !contains_range(OCH_SEP_TOP_SEP_ICCM_BASE_ADDR, OCH_SEP_TOP_SEP_ICCM_SIZE,
-                           (size_t)bl1.load_addr, (size_t)bl1.length)) {
+    // device's memory map. Confining the copy to a region BL1 may legally
+    // occupy is the ROM's job.
+    //
+    // BOTH SEP SRAM and ICCM are legal (SEP-ROM-MAN-060). Placement is a
+    // property of the image the manifest describes, not a ROM build option, so
+    // the ROM honours whichever region the TOC entry names and refuses anything
+    // outside both -- load_addr lives in the signed manifest but is still
+    // attacker-chosen among valid images, so "in one of the two" is the check
+    // that matters, not "equal to a constant this build was compiled for".
+    //
+    // The copy goes through the DMA either way: the LSU cannot store to ICCM at
+    // all (it shares VeeR region 0xC with DCCM, so el2_lsu_addrcheck faults any
+    // ICCM address), and the DMA engine reaches both. Bounds come from the
+    // generated register map, so an RDL change moves them here too.
+    // contains_range() rejects a length that would overflow, so no separate
+    // size guard is needed.
+    // ICCM is the secure execution space and is always permitted. SRAM is
+    // permitted only when BL1_SRAM_EXEC_ENABLE is set -- it exists for debug and
+    // special applications, and an adopter can compile it out to lock the ROM
+    // down to ICCM-only execution. Default is enabled (see the Makefile knob).
+    const bool sram_span =
+        contains_range(OCH_SEP_TOP_SEP_SRAM_BASE_ADDR, OCH_SEP_TOP_SEP_SRAM_SIZE,
+                       (size_t)bl1.load_addr, (size_t)bl1.length);
+    const bool bl1_in_iccm =
+        contains_range(OCH_SEP_TOP_SEP_ICCM_BASE_ADDR, OCH_SEP_TOP_SEP_ICCM_SIZE,
+                       (size_t)bl1.load_addr, (size_t)bl1.length);
+    const bool bl1_in_sram = (BL1_SRAM_EXEC_ENABLE != 0) && sram_span;
+
+    if (!bl1_in_sram && !bl1_in_iccm) {
+        // Distinguish "nowhere legal" from "would have been legal, but this
+        // build forbids SRAM execution" -- otherwise an adopter who locks the
+        // ROM down and then boots a debug image gets an unattributable range
+        // error and no hint that a build flag caused it.
+        if (sram_span) {
+            simputs("BL1_SRAM_EXEC_DISABLED\n");
+        }
         simputs("BL1_ADDR_RANGE\n");
         report_status(STATUS_TYPE_ERROR, SEP_MSG_BL1_BAD_ADDR);
         return OCA_BOOT_ERR_BL1_BAD_ADDR;
     }
+    simputs(bl1_in_iccm ? "BL1_DST=ICCM\n" : "BL1_DST=SRAM\n");
     if (bl1.entry_point >= bl1.length) {
         simputs("BL1_ENTRY_RANGE\n");
         report_status(STATUS_TYPE_ERROR, SEP_MSG_BL1_ENTRY_INVALID);
