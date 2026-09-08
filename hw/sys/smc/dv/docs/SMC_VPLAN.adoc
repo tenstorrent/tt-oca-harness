@@ -9,9 +9,10 @@
 This plan covers the SMC subsystem as it is verified in the open-source
 harness: the `smc_wrapper` DUT driven over SEP_IN AXI and AXI-Lite, with
 cocotb/PyUVM as the primary framework and an SV-UVM view for the scenarios
-that carry one. 156 testcases are enrolled. The `all` group is 149 of
-them: five dual / production-ROM leaves build a different DUT, and two
-enrolled leaves are held out against #585 and #1488.
+that carry one. 158 testcases are enrolled. The `all` group is 151 of
+them: `smc_deadspace_decode_test` (#585) and `smc_remap_cla_test`
+(#1488) stay enrolled and run on demand; they are held out of the
+sign-off sweep. Five dual / production-ROM leaves build a different DUT.
 
 Every entry below names a testcase that exists and runs. Where the harness
 cannot reach a feature, the testcase is not listed here as enrolled; it is
@@ -1251,7 +1252,9 @@ enrolled through `dual_*` and `occp_*` rather than `all`.
 |assertion |<value>: seeded readback of 0x<value> resp=
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `balanced_ip`.
+*Pass Criteria*: not a sign-off PASS. The leaf is enrolled and runs on
+demand; it is held out of `all` against #585 (wrap-to-live aliasing).
+Known Limitations records the hole. Groups: `balanced_ip`.
 
 '''''
 
@@ -1578,7 +1581,9 @@ enrolled through `dual_*` and `occp_*` rather than `all`.
 |assertion |expected at least <value> value-checked reads
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `balanced_ip`.
+*Pass Criteria*: not a sign-off PASS. The leaf is enrolled and runs on
+demand; it is held out of `all` against #1488 (CLA deny-leg hang at
+0xC016_0038). Known Limitations records the hole. Groups: `balanced_ip`.
 
 '''''
 
@@ -6414,7 +6419,8 @@ enrolled through `dual_*` and `occp_*` rather than `all`.
 [cols=",",options="header",]
 |===
 |Metric |Count
-|Enrolled open-source testcases |156
+|Enrolled open-source testcases |158
+|`all` sign-off group |151
 |Feature areas |16
 |Regression groups |29
 |===
@@ -6424,7 +6430,7 @@ enrolled through `dual_*` and `occp_*` rather than `all`.
 [cols=",,",options="header",]
 |===
 |Group |Tests |Purpose
-|`all` |149 |The single-instance regression. It is not every enrolled testcase: the 5 OCCP entries build a different DUT, and 2 more are held out against #585 and #1488
+|`all` |151 |Sign-off sweep; two enrolled leaves held out against #585 / #1488. Five OCCP / dual leaves build a different DUT.
 |`avsbus_depth` |2 |avsbus depth coverage
 |`axil` |2 |axil coverage
 |`balanced_ip` |99 |One-per-IP breadth run used for routine regression
@@ -6455,6 +6461,52 @@ enrolled through `dual_*` and `occp_*` rather than `all`.
 |`vplan_triplets` |43 |vplan triplets coverage
 |===
 
+[[coverage-matrix]]
+=== Coverage Matrix
+
+Block coverage across the live groups (`smoke`, `balanced_ip`, `all`).
+Group names are the ones `testlists/all.toml` resolves. This table is the
+design-side claim; the per-leaf cards below are the detail.
+
+[cols="2,3,3",options="header",]
+|===
+|Block / edge |`smoke` / `balanced_ip` |`all` (sign-off)
+|Reset / powergood / cool / FLR |`smc_cold_reset_test`, `smc_canonical_smoke_test`, `smc_flr_sanity_test` |same plus the reset cluster
+|CSR / scratch / chip-config |`smc_register_sanity_test`, `smc_default_reg_rd_test` |same plus `smc_register_boundary_depth_test`
+|SEP_IN / local fabric |`smc_i3c_to_fabric_test`, `smc_local_fabric_csr_depth_test` |same plus fabric depth
+|Mailbox / IRQ |`smc_mailbox_irq_test` |same plus mailbox depth
+|I2C protocol |`smc_i2c_master_target_test` |same plus the I2C cluster
+|JTAG / iJTAG |`smc_ijtag_basic_test` |same plus DMI / DFX
+|eFuse / OTP / LC-gated JTAG |`smc_efuse_otp_clock_test` |same plus <<lifecycle-gated-efuse-jtag-access-control-coverage-gap>>
+|GPIO / ext IRQ |`smc_gpio_irq_active_test` |same plus the GPIO cluster
+|UART / log / sideband |`smc_sideband_protocol_smoke_test` |same plus UART / AVSBus / OCTS
+|ECC / DFD / DBS |`smc_ecc_dfd_dbs_sanity_test` |same plus diagnostic depth
+|Deadspace aliasing (#585) |`smc_deadspace_decode_test` (on demand) |held out of `all`
+|CLA / ALIAS_REMAP (#1488) |`smc_remap_cla_test` (on demand) |held out of `all`
+|===
+
+[[lifecycle-gated-efuse-jtag-access-control-coverage-gap]]
+=== Lifecycle-Gated eFuse JTAG Access Control
+
+`smc_efuse_wrapper` gates JTAG-to-eFuse access on `lc_state_i`. A blocked
+transaction returns DECERR with data `0xBADCAB1E`. This matrix is the
+checker ground truth for `smc_efuse_jtag_lc_access_matrix_test`.
+`smc_efuse_jtag_lc_negative_test` covers the CSR-observable subset
+(`CHIP_CONFIG_LC_STATE` plus the always-allowed CHIPLET_ID / PACKAGE_ID
+reads). Residual: `feat_ctrl` bit 37 `SMC_FUSE_TEST` is not consumed by
+SMC; that connection stays a negative item.
+
+[cols="2,2,2,3",options="header",]
+|===
+|SMC LC state (raw) |JTAG eFuse write |JTAG eFuse read (non-ID) |JTAG read CHIPLET_ID / PACKAGE_ID
+|TEST_DEV `0x0` |allow |allow |allow
+|PROD `0x1` |BLOCK (DECERR/`0xBADCAB1E`) |BLOCK |allow
+|RMA_SIP `0x2`,`0x3` |BLOCK |BLOCK |allow
+|RMA_CHIPLET `0x6`,`0x7` |allow |allow |allow
+|PROD_END `0x8` |allow |allow |allow
+|differential-decode integrity error |BLOCK |BLOCK |BLOCK (no ID exception)
+|===
+
 === Known Limitations
 
 [cols=",,",options="header",]
@@ -6466,4 +6518,6 @@ enrolled through `dual_*` and `occp_*` rather than `all`.
 |The I3C DAT/DCT RAM is not present in `tb_top` |CCC/IBI scenarios that need device-address-table state cannot run; `smc_i3c_to_fabric_test` is decode-only |Restore the DAT/DCT model, or drive the sequences from a full I3C host model
 |The DTP CSR window has no responder |AXI-Lite accesses to it would wedge, so the boundary is left idle rather than answered by a placeholder |Connect the DTP CSR subordinate; SMU already connects the same port
 |SV covergroups are not supported by Verilator |Functional coverage is Python-side on the open-source flow |See `SMC_FCOV.adoc`
+|`smc_deadspace_decode_test` measures wrap-to-live aliasing (#585) |Held out of `all`; the card does not claim sign-off PASS |Close #585, then return the leaf to `all`
+|`smc_remap_cla_test` CLA deny-leg hang at 0xC016_0038 (#1488) |Held out of `all`; the card does not claim sign-off PASS |Close #1488, then return the leaf to `all`
 |===
