@@ -206,6 +206,11 @@ ROM_ELF_SECTIONS := --only-section=.text --only-section=.text.* --only-section=.
 DTCM_ELF_SECTIONS := --only-section=.data --only-section=.data.* --only-section=.sdata --only-section=.sdata.* \
 	--only-section=.bss --only-section=.bss.* --only-section=.sbss --only-section=.sbss.*
 
+# A recipe that dies partway must not leave its target behind: $(ELF) is linked and
+# then patched in place, so a failed insert would otherwise leave an unpatched ELF
+# that make considers up to date and skips on the next run.
+.DELETE_ON_ERROR:
+
 .PHONY: all clean bl1_test ensure-pack-deps toolchain-images toolchain-images-build \
         ot-toolchain-images ot-pio-toolchain-images
 all: toolchain-images oca-images
@@ -347,9 +352,14 @@ $(OBJS): | $(OTBN_APP_C)
 $(NONFREE_BOOTCODE_OBJS): $(BUILD_DIR)/%.o: | $(BUILD_DIR)
 	$(GCC_PREFIX)-gcc $(CFLAGS) -c "$(filter %/$*.c,$(NONFREE_BOOTCODE_SOURCES))" -o "$@"
 
-$(ELF): $(BUILD_DIR) $(OBJS) $(LINK_DIR)/rom.ld
+# The ROM-hash insert is not optional. g_rom_sha256_str (src/rom_metadata.c) ships as
+# an all-zero placeholder, and a silently skipped insert leaves it that way -- which
+# any consumer of the embedded hash reads as a valid-looking empty value. Errors are
+# no longer swallowed, and the script is a real prerequisite so the ELF relinks when
+# it changes.
+$(ELF): $(BUILD_DIR) $(OBJS) $(LINK_DIR)/rom.ld $(INSERT_SHA256)
 	$(GCC_PREFIX)-gcc $(LDFLAGS) $(OBJS) -o "$@"
-	python3 $(INSERT_SHA256) --gcc-prefix $(GCC_PREFIX) -o "$@" "$@" 2>/dev/null || true
+	python3 $(INSERT_SHA256) --gcc-prefix $(GCC_PREFIX) -o "$@" "$@"
 	$(GCC_PREFIX)-objdump -d -S "$@" > "$(BUILD_DIR)/boot_rom.dis"
 	$(GCC_PREFIX)-nm -B -n "$@" > "$(BUILD_DIR)/boot_rom.sym"
 
