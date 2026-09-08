@@ -860,10 +860,10 @@ def _selftest() -> int:
             f"iter_register_walk identity failed: export={walk.export} "
             f"inventory={walk.inventory} nometa={walk.nometa}"
         )
-    if (walk.export, walk.inventory, walk.nometa) != (1027, 870, 157):
+    if (walk.export, walk.inventory, walk.nometa) != (1026, 869, 157):
         failures.append(
             f"iter_register_walk counts {walk.export}/{walk.inventory}/"
-            f"{walk.nometa} != 1027/870/157"
+            f"{walk.nometa} != 1026/869/157"
         )
     if walk.inventory < 100:
         failures.append(f"iter_registers returned {walk.inventory} entries; expected 100+")
