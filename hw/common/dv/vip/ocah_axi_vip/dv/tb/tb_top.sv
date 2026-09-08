@@ -16,6 +16,11 @@
 //             selftests (AW/W launch skew, deferred BREADY/RREADY,
 //             partial strobes) with the handshakes observable at the
 //             nets.
+//   u_wide_axi_if, u_wide_axil_if — default-geometry ocah_axi_if instances
+//             (64-bit address and data, 16-bit ID and user); the geometry
+//             selftests bind the 32-bit VIP stacks to them through
+//             OcahAxiConfig so the member bits above the configured
+//             geometry are observable.
 //
 // All nets are driven from cocotb (--public-flat-rw); nothing here has
 // drivers, so the lint waivers below cover the whole module.
@@ -161,6 +166,20 @@ module ocah_axi_vip_tb_top;
 
   /* verilator lint_on UNUSEDSIGNAL */
   /* verilator lint_on UNDRIVEN */
+
+`ifndef UVM
+  // ------------------------------------------------------------------
+  // wide: default-geometry ocah_axi_if instances (cocotb shape)
+  // ------------------------------------------------------------------
+  ocah_axi_if u_wide_axi_if (
+    .aclk(clk),
+    .aresetn(rst_n)
+  );
+  ocah_axi_if u_wide_axil_if (
+    .aclk(clk),
+    .aresetn(rst_n)
+  );
+`endif
 
 `ifdef UVM
   // ------------------------------------------------------------------

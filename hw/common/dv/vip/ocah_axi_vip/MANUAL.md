@@ -40,6 +40,7 @@ side-neutral and carries no token.
 | `cocotb/ocah_axi_item.py` | Generic AXI/AXI-Lite transaction items and result dataclasses (side-neutral) |
 | `cocotb/ocah_axi_monitor.py` | Passive item-producing bus monitors (side-neutral) |
 | `cocotb/ocah_axi_checker.py` | Item-level protocol checker (side-neutral) |
+| `cocotb/ocah_axi_config.py` | Bus geometry and interface-scope binding (side-neutral; twin of `uvm/ocah_axi_config.svh`) |
 | `cocotb/ocah_axi_types.py` | Response/protection code constants and value-conversion helpers (side-neutral) |
 | `cov/ocah_axi_cov.sv` | Commercial-simulator functional coverage hook |
 
@@ -79,6 +80,34 @@ via the `prot=` argument.
 
 Do not import `cocotbext.axi.AxiMaster`, `AxiLiteMaster`, `AxiRam`, or backend
 response enums in new OCAH tests. Add missing behavior to this wrapper instead.
+
+## Bus Geometry
+
+`interface/ocah_axi_if.sv` instantiates at its default (maximum) member
+widths wherever the SV-UVM layer needs one `virtual ocah_axi_if` type; the
+real bus geometry lives in the configuration on both sides. In SV the
+`ocah_axi_config` widths mask what the monitor samples. In cocotb the
+engines size byte lanes from the signals they are handed, so `OcahAxiConfig`
+carries the same widths and `bus()` returns a cocotbext bus over a view of
+the scope: every geometry-bearing member (`awaddr`, `araddr`, `wdata`,
+`rdata`, `wstrb`, and for AXI4 the ID and user sidebands when their width is
+non-zero) reports the configured width, reads return its low bits, and
+writes drive the low bits with the bits above held at zero. A member already
+at the configured width passes through unchanged, so one call binds a flat
+port bundle (`prefix=`) or an interface handle alike; a configured width
+wider than the member raises at binding.
+
+```python
+from ocah_axi_vip import OcahAxiConfig, OcahAxiLiteSlaveAgent, OcahAxiProtocol
+
+otp = OcahAxiConfig(protocol=OcahAxiProtocol.AXI4_LITE, addr_width=32, data_width=32)
+ram = OcahAxiLiteSlaveAgent(otp.bus(dut.u_smc_otp_axil_if), dut.clk_i, dut.rst_ni).sequence
+```
+
+The `dv/` harness binds the 32-bit stacks onto default-geometry instances
+and judges every sub-word offset of the 8-byte member lane, the backdoor
+view, and the idle upper lanes (`ocah_axi_lite_geometry_test`,
+`ocah_axi_geometry_test`).
 
 ## AXI4-Lite Master
 
@@ -410,7 +439,8 @@ VIP layer; unused modules simply do not elaborate. Its contents:
 
 - `interface/ocah_axi_if.sv` — flat AXI4/AXI4-Lite monitor interface
   (default = maximum widths so `virtual ocah_axi_if` is one type; geometry
-  lives in `ocah_axi_config`; Lite adapters tie the AXI4-only fields).
+  lives in `ocah_axi_config` on the SV side and `OcahAxiConfig` on the cocotb
+  side; Lite adapters tie the AXI4-only fields).
 - `sva/ocah_axi_sva.sv` — clean-room SVA protocol rules
   (`OCAH_AXI_*` asserts + `OCAH_AXI_C_*` covers): reset-VALID, per-channel
   stability/hold/X-hygiene, burst legality (reserved encoding, size,
