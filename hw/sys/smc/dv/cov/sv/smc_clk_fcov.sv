@@ -1,0 +1,256 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+//
+// SMC clock and clock-gating functional coverage.
+//
+// Carries the `clk_bucket` intent of SMC_FCOV.adoc in a different shape. The
+// Python bin is `(ref_edges // 50, smc_edges // 50, periph_edges // 50)`,
+// whose unique count tracks how many seeds ran rather than which clock
+// relationships were exercised, and a cover point cannot express a bucket
+// index. The points here cover the relationship between the three domains
+// and the clock-gating behaviour, both of which have real hit-or-miss states.
+//
+// One instance in the shared tb_top serves both flows. Every port is a
+// smc_tb_signal_list.svh signal.
+//
+// CONVENTION (see dtp_fcov.sv): every cover-property body and disable-iff
+// argument is a single continuous-assign wire; no declaration initializers
+// on always_ff-driven variables; declare wires before use.
+
+`include "ocah_fcov_macros.svh"
+
+module smc_clk_fcov #(
+  // Ref-clock cycles per measurement window for the domain-ratio points.
+  parameter int unsigned WindowCycles = 1024
+) (
+  input wire clk_ref_i,
+  input wire clk_smc_i,
+  input wire clk_periph_i,
+  input wire rst_cold_ni,
+
+  // DFT gate override.
+  input wire test_en_i,
+
+  // I2C clock gate.
+  input wire i2c_cg_en_i,
+
+  // DMA clock gate.
+  input wire dma_cg_en_i,
+  input wire dma_gated_clk_i,
+  input wire dma_busy_i,
+  input wire dma_frontend_busy_i,
+  input wire dma_backend_busy_i,
+  input wire dma_gater_busy_i,
+
+  // Zeroer clock gates (separate axi / reg clocks).
+  input wire zeroer_cg_en_i,
+  input wire zeroer_gated_axi_clk_i,
+  input wire zeroer_gated_reg_clk_i,
+  input wire zeroer_busy_i,
+  input wire zeroer_bus_active_i
+);
+
+  wire in_reset = (rst_cold_ni !== 1'b1);
+
+  // ------------------------------------------------------------------
+  // Domain ratio — which relative clock speeds a seed actually produced.
+  // The per-domain counters run in their own clock domains and are read
+  // at a ref-clock window boundary; this is an observation, not a check,
+  // so a read landing on an increment only shifts a ratio by one count.
+  // ------------------------------------------------------------------
+  localparam int unsigned CntWidth = 32;
+
+  logic [CntWidth-1:0] cnt_ref_q;
+  logic [CntWidth-1:0] cnt_smc_q;
+  logic [CntWidth-1:0] cnt_periph_q;
+  always_ff @(posedge clk_ref_i) cnt_ref_q <= cnt_ref_q + 1'b1;
+  always_ff @(posedge clk_smc_i) cnt_smc_q <= cnt_smc_q + 1'b1;
+  always_ff @(posedge clk_periph_i) cnt_periph_q <= cnt_periph_q + 1'b1;
+
+  logic [CntWidth-1:0] win_ref_q, win_smc_q, win_periph_q;
+  logic window_tick_q;
+  wire window_boundary = (cnt_ref_q % WindowCycles) == '0;
+
+  always_ff @(posedge clk_ref_i) begin
+    if (window_boundary) begin
+      win_ref_q <= cnt_ref_q;
+      win_smc_q <= cnt_smc_q;
+      win_periph_q <= cnt_periph_q;
+      window_tick_q <= 1'b1;
+    end else begin
+      window_tick_q <= 1'b0;
+    end
+  end
+
+  wire [CntWidth-1:0] d_ref = cnt_ref_q - win_ref_q;
+  wire [CntWidth-1:0] d_smc = cnt_smc_q - win_smc_q;
+  wire [CntWidth-1:0] d_periph = cnt_periph_q - win_periph_q;
+
+  // A window that produced no edges at all on a domain is the liveness
+  // hole worth naming; the three ordering relations are the ratio bins.
+  wire smc_stalled_e = window_tick_q && (d_ref != '0) && (d_smc == '0);
+  wire periph_stalled_e = window_tick_q && (d_ref != '0) && (d_periph == '0);
+  `OCAH_FCOV_COVER(c_clk_smc_stalled_window, smc_stalled_e, clk_ref_i, in_reset)
+  `OCAH_FCOV_COVER(c_clk_periph_stalled_window, periph_stalled_e, clk_ref_i, in_reset)
+
+  wire smc_faster_e = window_tick_q && (d_smc > d_ref);
+  wire smc_equal_e = window_tick_q && (d_smc == d_ref) && (d_ref != '0);
+  wire smc_slower_e = window_tick_q && (d_smc < d_ref) && (d_smc != '0);
+  `OCAH_FCOV_COVER(c_clk_ratio_smc_faster_than_ref, smc_faster_e, clk_ref_i, in_reset)
+  `OCAH_FCOV_COVER(c_clk_ratio_smc_equal_ref, smc_equal_e, clk_ref_i, in_reset)
+  `OCAH_FCOV_COVER(c_clk_ratio_smc_slower_than_ref, smc_slower_e, clk_ref_i, in_reset)
+
+  wire periph_faster_e = window_tick_q && (d_periph > d_ref);
+  wire periph_equal_e = window_tick_q && (d_periph == d_ref) && (d_ref != '0);
+  wire periph_slower_e = window_tick_q && (d_periph < d_ref) && (d_periph != '0);
+  `OCAH_FCOV_COVER(c_clk_ratio_periph_faster_than_ref, periph_faster_e, clk_ref_i, in_reset)
+  `OCAH_FCOV_COVER(c_clk_ratio_periph_equal_ref, periph_equal_e, clk_ref_i, in_reset)
+  `OCAH_FCOV_COVER(c_clk_ratio_periph_slower_than_ref, periph_slower_e, clk_ref_i, in_reset)
+
+  wire smc_faster_than_periph_e = window_tick_q && (d_smc > d_periph) && (d_periph != '0);
+  wire periph_faster_than_smc_e = window_tick_q && (d_periph > d_smc) && (d_smc != '0);
+  `OCAH_FCOV_COVER(c_clk_ratio_smc_faster_than_periph, smc_faster_than_periph_e, clk_ref_i,
+                   in_reset)
+  `OCAH_FCOV_COVER(c_clk_ratio_periph_faster_than_smc, periph_faster_than_smc_e, clk_ref_i,
+                   in_reset)
+
+  // ------------------------------------------------------------------
+  // Clock-gate enables at both values. This is the `i2c_state` (resolvable,
+  // cg_en) intent split so the un-driven half is a named hole: the Python
+  // bin saturates at unique=1 precisely because cg_en never toggles.
+  // ------------------------------------------------------------------
+  wire i2c_cg_open_e = (i2c_cg_en_i === 1'b1);
+  wire i2c_cg_closed_e = (i2c_cg_en_i === 1'b0);
+  `OCAH_FCOV_COVER(c_i2c_cg_open, i2c_cg_open_e, clk_periph_i, in_reset)
+  `OCAH_FCOV_COVER(c_i2c_cg_closed, i2c_cg_closed_e, clk_periph_i, in_reset)
+
+  wire dma_cg_open_e = (dma_cg_en_i === 1'b1);
+  wire dma_cg_closed_e = (dma_cg_en_i === 1'b0);
+  `OCAH_FCOV_COVER(c_dma_cg_open, dma_cg_open_e, clk_smc_i, in_reset)
+  `OCAH_FCOV_COVER(c_dma_cg_closed, dma_cg_closed_e, clk_smc_i, in_reset)
+
+  wire zeroer_cg_open_e = (zeroer_cg_en_i === 1'b1);
+  wire zeroer_cg_closed_e = (zeroer_cg_en_i === 1'b0);
+  `OCAH_FCOV_COVER(c_zeroer_cg_open, zeroer_cg_open_e, clk_smc_i, in_reset)
+  `OCAH_FCOV_COVER(c_zeroer_cg_closed, zeroer_cg_closed_e, clk_smc_i, in_reset)
+
+  wire test_en_gate_override_e = (test_en_i === 1'b1);
+  `OCAH_FCOV_COVER(c_cg_test_en_override, test_en_gate_override_e, clk_smc_i, in_reset)
+
+  // ------------------------------------------------------------------
+  // Gated clocks actually toggling / actually held. A gate enable that is
+  // never observed with its downstream clock moving is not proof the gate
+  // works; these two points separate the enable from its effect.
+  // ------------------------------------------------------------------
+  logic dma_gated_clk_q, zeroer_axi_clk_q, zeroer_reg_clk_q;
+  always_ff @(posedge clk_smc_i) begin
+    dma_gated_clk_q <= dma_gated_clk_i;
+    zeroer_axi_clk_q <= zeroer_gated_axi_clk_i;
+    zeroer_reg_clk_q <= zeroer_gated_reg_clk_i;
+  end
+
+  wire dma_clk_toggling = (dma_gated_clk_i !== dma_gated_clk_q);
+  wire zeroer_axi_clk_toggling = (zeroer_gated_axi_clk_i !== zeroer_axi_clk_q);
+  wire zeroer_reg_clk_toggling = (zeroer_gated_reg_clk_i !== zeroer_reg_clk_q);
+
+  wire dma_clk_running_e = dma_cg_open_e && dma_clk_toggling;
+  wire dma_clk_held_e = dma_cg_closed_e && !dma_clk_toggling;
+  `OCAH_FCOV_COVER(c_dma_gated_clk_running, dma_clk_running_e, clk_smc_i, in_reset)
+  `OCAH_FCOV_COVER(c_dma_gated_clk_held, dma_clk_held_e, clk_smc_i, in_reset)
+
+  wire zeroer_axi_running_e = zeroer_cg_open_e && zeroer_axi_clk_toggling;
+  wire zeroer_axi_held_e = zeroer_cg_closed_e && !zeroer_axi_clk_toggling;
+  wire zeroer_reg_running_e = zeroer_reg_clk_toggling;
+  wire zeroer_reg_held_e = !zeroer_reg_clk_toggling && zeroer_cg_closed_e;
+  `OCAH_FCOV_COVER(c_zeroer_gated_axi_clk_running, zeroer_axi_running_e, clk_smc_i, in_reset)
+  `OCAH_FCOV_COVER(c_zeroer_gated_axi_clk_held, zeroer_axi_held_e, clk_smc_i, in_reset)
+  `OCAH_FCOV_COVER(c_zeroer_gated_reg_clk_running, zeroer_reg_running_e, clk_smc_i, in_reset)
+  `OCAH_FCOV_COVER(c_zeroer_gated_reg_clk_held, zeroer_reg_held_e, clk_smc_i, in_reset)
+
+  // ------------------------------------------------------------------
+  // Busy / gate agreement. The four DMA frontend-backend busy states and
+  // the gate response to each are the clock-gating contract; the
+  // busy-with-gate-closed point is the one that should stay empty.
+  // ------------------------------------------------------------------
+  wire dma_busy_fe0_be0_e = (dma_frontend_busy_i === 1'b0) && (dma_backend_busy_i === 1'b0);
+  wire dma_busy_fe0_be1_e = (dma_frontend_busy_i === 1'b0) && (dma_backend_busy_i === 1'b1);
+  wire dma_busy_fe1_be0_e = (dma_frontend_busy_i === 1'b1) && (dma_backend_busy_i === 1'b0);
+  wire dma_busy_fe1_be1_e = (dma_frontend_busy_i === 1'b1) && (dma_backend_busy_i === 1'b1);
+  `OCAH_FCOV_COVER(c_dma_busy_fe0_be0, dma_busy_fe0_be0_e, clk_smc_i, in_reset)
+  `OCAH_FCOV_COVER(c_dma_busy_fe0_be1, dma_busy_fe0_be1_e, clk_smc_i, in_reset)
+  `OCAH_FCOV_COVER(c_dma_busy_fe1_be0, dma_busy_fe1_be0_e, clk_smc_i, in_reset)
+  `OCAH_FCOV_COVER(c_dma_busy_fe1_be1, dma_busy_fe1_be1_e, clk_smc_i, in_reset)
+
+  wire dma_gate_open_on_busy_e = (dma_gater_busy_i === 1'b1) && dma_cg_open_e;
+  wire dma_gate_closed_when_idle_e = (dma_gater_busy_i === 1'b0) && dma_cg_closed_e;
+  wire dma_hyst_window_e = (dma_gater_busy_i === 1'b0) && dma_cg_open_e;
+  `OCAH_FCOV_COVER(c_dma_gate_open_on_busy, dma_gate_open_on_busy_e, clk_smc_i, in_reset)
+  `OCAH_FCOV_COVER(c_dma_gate_closed_when_idle, dma_gate_closed_when_idle_e, clk_smc_i, in_reset)
+  `OCAH_FCOV_COVER(c_dma_gate_hysteresis_window, dma_hyst_window_e, clk_smc_i, in_reset)
+
+  wire dma_busy_seen_e = (dma_busy_i === 1'b1);
+  `OCAH_FCOV_COVER(c_dma_busy_seen, dma_busy_seen_e, clk_smc_i, in_reset)
+
+  wire zeroer_gate_open_on_busy_e = (zeroer_busy_i === 1'b1) && zeroer_cg_open_e;
+  wire zeroer_gate_closed_when_idle_e = (zeroer_busy_i === 1'b0) && zeroer_cg_closed_e;
+  wire zeroer_bus_active_e = (zeroer_bus_active_i === 1'b1);
+  wire zeroer_reg_clk_resume_e = zeroer_bus_active_e && zeroer_reg_clk_toggling;
+  `OCAH_FCOV_COVER(c_zeroer_gate_open_on_busy, zeroer_gate_open_on_busy_e, clk_smc_i, in_reset)
+  `OCAH_FCOV_COVER(c_zeroer_gate_closed_when_idle, zeroer_gate_closed_when_idle_e, clk_smc_i,
+                   in_reset)
+  `OCAH_FCOV_COVER(c_zeroer_bus_active, zeroer_bus_active_e, clk_smc_i, in_reset)
+  `OCAH_FCOV_COVER(c_zeroer_reg_clk_resume_on_access, zeroer_reg_clk_resume_e, clk_smc_i, in_reset)
+
+`ifndef VERILATOR
+  // ------------------------------------------------------------------
+  // Commercial-simulator covergroups: the crosses a flat cover-property
+  // list cannot express, plus a real bucketed view of the domain ratios.
+  // ------------------------------------------------------------------
+  covergroup cg_clk_ratio with function sample (
+      logic [31:0] ref_edges, logic [31:0] smc_edges, logic [31:0] periph_edges
+  );
+    option.per_instance = 1;
+    cp_smc_bucket: coverpoint (smc_edges * 4) / (ref_edges == 0 ? 1 : ref_edges) {
+      bins stalled = {0};
+      bins slower = {[1 : 3]};
+      bins same = {4};
+      bins faster[] = {[5 : 32]};
+      bins much_faster = default;
+    }
+    cp_periph_bucket: coverpoint (periph_edges * 4) / (ref_edges == 0 ? 1 : ref_edges) {
+      bins stalled = {0};
+      bins slower = {[1 : 3]};
+      bins same = {4};
+      bins faster[] = {[5 : 32]};
+      bins much_faster = default;
+    }
+    x_smc_periph: cross cp_smc_bucket, cp_periph_bucket;
+  endgroup
+
+  covergroup cg_clk_gate with function sample (
+      logic cg_en, logic busy, logic clk_toggling
+  );
+    option.per_instance = 1;
+    cp_cg_en: coverpoint cg_en;
+    cp_busy: coverpoint busy;
+    cp_toggling: coverpoint clk_toggling;
+    x_gate_contract: cross cp_cg_en, cp_busy, cp_toggling;
+  endgroup
+
+  cg_clk_ratio u_cg_clk_ratio = new();
+  cg_clk_gate u_cg_dma_gate = new();
+  cg_clk_gate u_cg_zeroer_gate = new();
+
+  always_ff @(posedge clk_ref_i) begin
+    if (window_tick_q && !in_reset) u_cg_clk_ratio.sample(d_ref, d_smc, d_periph);
+  end
+
+  always_ff @(posedge clk_smc_i) begin
+    if (!in_reset) begin
+      u_cg_dma_gate.sample(dma_cg_en_i, dma_gater_busy_i, dma_clk_toggling);
+      u_cg_zeroer_gate.sample(zeroer_cg_en_i, zeroer_busy_i, zeroer_axi_clk_toggling);
+    end
+  end
+`endif
+
+endmodule : smc_clk_fcov
