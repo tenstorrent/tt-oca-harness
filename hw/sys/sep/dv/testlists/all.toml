@@ -58,7 +58,7 @@ tests = ["sep_axi_smoke_test"]
 # a coverage run grades. expected_count fails the run when membership drifts
 # from the class groups instead of silently shrinking the suite.
 name = "all"
-expected_count = 88
+expected_count = 91
 tests = [
     "sep_axi_smoke_test",
     "sep_address_map_test",
@@ -145,6 +145,9 @@ tests = [
     "sep_axi_partial_lane_read_test",
     "sep_axi_order_sweep_test",
     "sep_axi_order_sweep_m_axi_test",
+    "sep_drbg_axil_adapter_port_arbitration_test",
+    "sep_drbg_axil_concurrent_csrng_aw_then_ar_test",
+    "sep_drbg_axil_concurrent_edn_aw_then_ar_test",
     "sep_entropy_pool_aperture_test",
     "sep_locked_field_access_irq_path_test",
     "sep_abr_mldsa_keygen_kat_test",
@@ -246,6 +249,9 @@ tests = [
     "sep_axi_partial_lane_read_test",
     "sep_axi_order_sweep_test",
     "sep_axi_order_sweep_m_axi_test",
+    "sep_drbg_axil_adapter_port_arbitration_test",
+    "sep_drbg_axil_concurrent_csrng_aw_then_ar_test",
+    "sep_drbg_axil_concurrent_edn_aw_then_ar_test",
     "sep_entropy_pool_aperture_test",
     "sep_locked_field_access_irq_path_test",
     "sep_abr_mldsa_keygen_kat_test",

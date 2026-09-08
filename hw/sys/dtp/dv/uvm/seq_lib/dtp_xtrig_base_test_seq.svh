@@ -11,7 +11,7 @@
 //     config/status/stretch registers) and typed write/read/check accessors,
 //   * the CTM routing model (env dtp_xtrig_ctm_model, the cocotb
 //     DtpCtmRefModel twin) cross-checked on every programmed route,
-//   * the cross-trigger pin surface over dtp_tb_if (CTM src/dst req-ack
+//   * the cross-trigger pin surface over dtp_xtrig_if (CTM src/dst req-ack
 //     pairs for the internal CTs, CTP pad din/dout/en quartets), with
 //     pulse drivers, masked-signal polls, width measurement, and quiet
 //     windows,
@@ -96,8 +96,8 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
   // ------------------------------------------------------------------
   task body();
     string ids[$];
-    if (tb_vif == null || test_cfg == null)
-      `uvm_fatal(get_type_name(), "tb_vif/test_cfg not plumbed by the test")
+    if (tb_vif == null || xtrig_vif == null || test_cfg == null)
+      `uvm_fatal(get_type_name(), "tb_vif/xtrig_vif/test_cfg not plumbed by the test")
     seed_scenario_rng();
     scenario_required_ids(scenario, ids);
     attach_xtrig_checker(ids);
@@ -337,41 +337,41 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
   endtask
 
   // ------------------------------------------------------------------
-  // Cross-trigger pin surface over dtp_tb_if.
+  // Cross-trigger pin surface over dtp_xtrig_if.
   // ------------------------------------------------------------------
   task clear_xtrig_inputs();
-    tb_vif.xtrig_ctm_src_ack     <= '0;
-    tb_vif.xtrig_ctm_dst_req     <= '0;
-    tb_vif.xtrig_ctp_req_out_din <= '0;
-    tb_vif.xtrig_ctp_req_in_din  <= '0;
-    tb_vif.xtrig_ctp_ack_in_din  <= '0;
-    tb_vif.xtrig_ctp_ack_out_din <= '0;
+    xtrig_vif.xtrig_ctm_src_ack     <= '0;
+    xtrig_vif.xtrig_ctm_dst_req     <= '0;
+    xtrig_vif.xtrig_ctp_req_out_din <= '0;
+    xtrig_vif.xtrig_ctp_req_in_din  <= '0;
+    xtrig_vif.xtrig_ctp_ack_in_din  <= '0;
+    xtrig_vif.xtrig_ctp_ack_out_din <= '0;
     wait_sys_cycles(1);
   endtask
 
   // Named cross-trigger observable read (zero-extended to 32 bits).
   function bit [31:0] xtrig_pin(string name);
     case (name)
-      "xtrig_ctm_src_req":         return 32'(tb_vif.xtrig_ctm_src_req);
-      "xtrig_ctm_dst_ack":         return 32'(tb_vif.xtrig_ctm_dst_ack);
-      "xtrig_ctm_src_ack":         return 32'(tb_vif.xtrig_ctm_src_ack);
-      "xtrig_ctm_dst_req":         return 32'(tb_vif.xtrig_ctm_dst_req);
-      "xtrig_ctp_req_out_dout":    return 32'(tb_vif.xtrig_ctp_req_out_dout);
-      "xtrig_ctp_req_out_dout_en": return 32'(tb_vif.xtrig_ctp_req_out_dout_en);
-      "xtrig_ctp_req_out_din":     return 32'(tb_vif.xtrig_ctp_req_out_din);
-      "xtrig_ctp_req_out_din_en":  return 32'(tb_vif.xtrig_ctp_req_out_din_en);
-      "xtrig_ctp_req_in_dout":     return 32'(tb_vif.xtrig_ctp_req_in_dout);
-      "xtrig_ctp_req_in_dout_en":  return 32'(tb_vif.xtrig_ctp_req_in_dout_en);
-      "xtrig_ctp_req_in_din":      return 32'(tb_vif.xtrig_ctp_req_in_din);
-      "xtrig_ctp_req_in_din_en":   return 32'(tb_vif.xtrig_ctp_req_in_din_en);
-      "xtrig_ctp_ack_in_dout":     return 32'(tb_vif.xtrig_ctp_ack_in_dout);
-      "xtrig_ctp_ack_in_dout_en":  return 32'(tb_vif.xtrig_ctp_ack_in_dout_en);
-      "xtrig_ctp_ack_in_din":      return 32'(tb_vif.xtrig_ctp_ack_in_din);
-      "xtrig_ctp_ack_in_din_en":   return 32'(tb_vif.xtrig_ctp_ack_in_din_en);
-      "xtrig_ctp_ack_out_dout":    return 32'(tb_vif.xtrig_ctp_ack_out_dout);
-      "xtrig_ctp_ack_out_dout_en": return 32'(tb_vif.xtrig_ctp_ack_out_dout_en);
-      "xtrig_ctp_ack_out_din":     return 32'(tb_vif.xtrig_ctp_ack_out_din);
-      "xtrig_ctp_ack_out_din_en":  return 32'(tb_vif.xtrig_ctp_ack_out_din_en);
+      "xtrig_ctm_src_req":         return 32'(xtrig_vif.xtrig_ctm_src_req);
+      "xtrig_ctm_dst_ack":         return 32'(xtrig_vif.xtrig_ctm_dst_ack);
+      "xtrig_ctm_src_ack":         return 32'(xtrig_vif.xtrig_ctm_src_ack);
+      "xtrig_ctm_dst_req":         return 32'(xtrig_vif.xtrig_ctm_dst_req);
+      "xtrig_ctp_req_out_dout":    return 32'(xtrig_vif.xtrig_ctp_req_out_dout);
+      "xtrig_ctp_req_out_dout_en": return 32'(xtrig_vif.xtrig_ctp_req_out_dout_en);
+      "xtrig_ctp_req_out_din":     return 32'(xtrig_vif.xtrig_ctp_req_out_din);
+      "xtrig_ctp_req_out_din_en":  return 32'(xtrig_vif.xtrig_ctp_req_out_din_en);
+      "xtrig_ctp_req_in_dout":     return 32'(xtrig_vif.xtrig_ctp_req_in_dout);
+      "xtrig_ctp_req_in_dout_en":  return 32'(xtrig_vif.xtrig_ctp_req_in_dout_en);
+      "xtrig_ctp_req_in_din":      return 32'(xtrig_vif.xtrig_ctp_req_in_din);
+      "xtrig_ctp_req_in_din_en":   return 32'(xtrig_vif.xtrig_ctp_req_in_din_en);
+      "xtrig_ctp_ack_in_dout":     return 32'(xtrig_vif.xtrig_ctp_ack_in_dout);
+      "xtrig_ctp_ack_in_dout_en":  return 32'(xtrig_vif.xtrig_ctp_ack_in_dout_en);
+      "xtrig_ctp_ack_in_din":      return 32'(xtrig_vif.xtrig_ctp_ack_in_din);
+      "xtrig_ctp_ack_in_din_en":   return 32'(xtrig_vif.xtrig_ctp_ack_in_din_en);
+      "xtrig_ctp_ack_out_dout":    return 32'(xtrig_vif.xtrig_ctp_ack_out_dout);
+      "xtrig_ctp_ack_out_dout_en": return 32'(xtrig_vif.xtrig_ctp_ack_out_dout_en);
+      "xtrig_ctp_ack_out_din":     return 32'(xtrig_vif.xtrig_ctp_ack_out_din);
+      "xtrig_ctp_ack_out_din_en":  return 32'(xtrig_vif.xtrig_ctp_ack_out_din_en);
       "xtrig_axil_awvalid_count":  return tb_vif.xtrig_axil_awvalid_count;
       "xtrig_axil_wvalid_count":   return tb_vif.xtrig_axil_wvalid_count;
       "xtrig_axil_arvalid_count":  return tb_vif.xtrig_axil_arvalid_count;
@@ -402,47 +402,49 @@ class dtp_xtrig_base_test_seq extends dtp_base_test_seq;
   endfunction
 
   task drive_internal_dst_pulse(int unsigned int_idx, int unsigned cycles = 1);
-    tb_vif.xtrig_ctm_dst_req <= tb_vif.xtrig_ctm_dst_req | (XtrigNumIntCt'(1) << int_idx);
+    xtrig_vif.xtrig_ctm_dst_req <= xtrig_vif.xtrig_ctm_dst_req | (XtrigNumIntCt'(1) << int_idx);
     wait_sys_cycles(cycles);
-    tb_vif.xtrig_ctm_dst_req <= tb_vif.xtrig_ctm_dst_req & ~(XtrigNumIntCt'(1) << int_idx);
+    xtrig_vif.xtrig_ctm_dst_req <= xtrig_vif.xtrig_ctm_dst_req & ~(XtrigNumIntCt'(1) << int_idx);
   endtask
 
   task drive_ctp_req_out_din_pulse(int unsigned ctp_idx, int unsigned cycles = 2);
-    tb_vif.xtrig_ctp_req_out_din <= tb_vif.xtrig_ctp_req_out_din | (XtrigNumCtp'(1) << ctp_idx);
+    xtrig_vif.xtrig_ctp_req_out_din <= xtrig_vif.xtrig_ctp_req_out_din | (XtrigNumCtp'(1) << ctp_idx);
     wait_sys_cycles(cycles);
-    tb_vif.xtrig_ctp_req_out_din <= tb_vif.xtrig_ctp_req_out_din & ~(XtrigNumCtp'(1) << ctp_idx);
+    xtrig_vif.xtrig_ctp_req_out_din <= xtrig_vif.xtrig_ctp_req_out_din & ~(XtrigNumCtp'(1) << ctp_idx);
   endtask
 
   task drive_ctp_p2p_req_in(int unsigned ctp_idx, bit value);
     if (value)
-      tb_vif.xtrig_ctp_req_in_din <= tb_vif.xtrig_ctp_req_in_din | (XtrigNumCtp'(1) << ctp_idx);
-    else tb_vif.xtrig_ctp_req_in_din <= tb_vif.xtrig_ctp_req_in_din & ~(XtrigNumCtp'(1) << ctp_idx);
+      xtrig_vif.xtrig_ctp_req_in_din <= xtrig_vif.xtrig_ctp_req_in_din | (XtrigNumCtp'(1) << ctp_idx);
+    else
+      xtrig_vif.xtrig_ctp_req_in_din <= xtrig_vif.xtrig_ctp_req_in_din & ~(XtrigNumCtp'(1) << ctp_idx);
     wait_sys_cycles(1);
   endtask
 
   task drive_ctp_p2p_ack_in(int unsigned ctp_idx, bit value);
     if (value)
-      tb_vif.xtrig_ctp_ack_in_din <= tb_vif.xtrig_ctp_ack_in_din | (XtrigNumCtp'(1) << ctp_idx);
-    else tb_vif.xtrig_ctp_ack_in_din <= tb_vif.xtrig_ctp_ack_in_din & ~(XtrigNumCtp'(1) << ctp_idx);
+      xtrig_vif.xtrig_ctp_ack_in_din <= xtrig_vif.xtrig_ctp_ack_in_din | (XtrigNumCtp'(1) << ctp_idx);
+    else
+      xtrig_vif.xtrig_ctp_ack_in_din <= xtrig_vif.xtrig_ctp_ack_in_din & ~(XtrigNumCtp'(1) << ctp_idx);
     wait_sys_cycles(1);
   endtask
 
   task drive_ctp_ack_in_mask(bit [31:0] mask, int unsigned cycles = 3);
-    tb_vif.xtrig_ctp_ack_in_din <= XtrigNumCtp'(mask);
+    xtrig_vif.xtrig_ctp_ack_in_din <= XtrigNumCtp'(mask);
     wait_sys_cycles(cycles);
-    tb_vif.xtrig_ctp_ack_in_din <= '0;
+    xtrig_vif.xtrig_ctp_ack_in_din <= '0;
   endtask
 
   task pulse_ctm_dst_req(bit [31:0] mask, int unsigned cycles = 1);
-    tb_vif.xtrig_ctm_dst_req <= XtrigNumIntCt'(mask);
+    xtrig_vif.xtrig_ctm_dst_req <= XtrigNumIntCt'(mask);
     wait_sys_cycles(cycles);
-    tb_vif.xtrig_ctm_dst_req <= '0;
+    xtrig_vif.xtrig_ctm_dst_req <= '0;
   endtask
 
   task pulse_ctm_src_ack(bit [31:0] mask, int unsigned cycles = 1);
-    tb_vif.xtrig_ctm_src_ack <= XtrigNumIntCt'(mask);
+    xtrig_vif.xtrig_ctm_src_ack <= XtrigNumIntCt'(mask);
     wait_sys_cycles(cycles);
-    tb_vif.xtrig_ctm_src_ack <= '0;
+    xtrig_vif.xtrig_ctm_src_ack <= '0;
   endtask
 
   // Pulse system reset while the cross-trigger inputs idle (the cocotb

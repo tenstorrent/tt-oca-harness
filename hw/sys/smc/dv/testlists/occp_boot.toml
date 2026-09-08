@@ -1,4 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 schema_version = 1
 
 # OCCP boot family: the real production boot ROM as the OCCP target.
@@ -32,7 +33,6 @@ firmware = { name = "prod_rom", mode = "bootrom" }
 args = [
     "+rom_bin64=prod_rom.bin64",
     "+smc_hold_cpu_boot",
-    "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[groups]]

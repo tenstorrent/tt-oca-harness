@@ -6,7 +6,7 @@
 // the env's scan reference models (dtp_ijtag_sib_model, dtp_stap_3dcr_model):
 //
 //   * temporal scan-control windows: the env's dtp_scan_window_monitor
-//     counts high samples of named dtp_tb_if observables once per TCK cycle
+//     counts high samples of named dtp_scan_if observables once per TCK cycle
 //     (on the JTAG monitor's falling-edge events, where every control has
 //     settled), so a gated operation proves ZERO pulses over a whole scan
 //     and an enabled one proves the expected pulses occurred (post-scan

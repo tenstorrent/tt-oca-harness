@@ -73,3 +73,27 @@ tests = [
     "smc_gpio_p0_mux_test",
     "smc_gpio_filter_access_sep_test",
 ]
+
+[[tests]]
+name = "smc_gpio_irq_active_test"
+module = "smc_gpio_irq_active_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smoke", "ci", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_gpio_ctrl_full_sweep_test"
+module = "smc_gpio_ctrl_full_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_gpio_intf_full_sweep_test"
+module = "smc_gpio_intf_full_sweep_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "pyuvm"]
+run_modes = ["smoke"]

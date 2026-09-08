@@ -166,7 +166,7 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 |Entropy noise |`esrc_noise_ext_i` forces the decorrelator input (deterministic)
 |FW console |`sep_outbound_mbx` watches outbound mailbox stores (PASS/FAIL magic)
 |CPU trace |Exports EL2 `el2_trace_pkt_t` fields for `SepCpuTraceMonitor`
-|Observation probes |eFuse shadow, scratch, KM/OTBN counters, entropy CHK probes, IRQ aggregate, AXI-Lite split handshakes, KM internal AXI-Lite SVA bind — observation-only unless listed as a signed-off inject
+|Observation probes |eFuse shadow, scratch, KM/OTBN counters, entropy CHK probes, IRQ aggregate, AXI-Lite split handshakes, DRBG lane-adapter channel packs (`drbg_csrng_axil_chan_o` / `drbg_edn_axil_chan_o`), KM internal AXI-Lite SVA bind — observation-only unless listed as a signed-off inject
 |===
 
 Signed-off exceptions (do not extend without owner approval):
@@ -178,7 +178,12 @@ Signed-off exceptions (do not extend without owner approval):
 * *`tb_backdoor_mem` image init* — power-up / hex load into public macro arrays
   (not runtime pass-faking).
 * *Observation-only XMR probe ports* — continuous assigns out of the DUT for
-  scoreboards that have no CSR mirror (entropy CHK chain, IRQ aggregate, …).
+  scoreboards that have no CSR mirror (entropy CHK chain, IRQ aggregate,
+  `drbg_csrng_axil_chan_o` / `drbg_edn_axil_chan_o` at each DUT lane
+  adapter's AXI-Lite-64 port — the three-ready interlock has no CSR
+  mirror; signed off 2026-09-07). The TB-owned `u_tbadp_vehicle` instance
+  is idle and held in reset unless a port-arbitration leaf releases it;
+  it is not a DUT XMR.
 * *Key Manager internal AXI-Lite SVA bind* — observation-only `bind` of
   `ocah_axi_sva` on `cpu_axil_*` / `rst_warm_sync_n`. No TB master can
   reach that port. Protocol, not data.
@@ -210,7 +215,9 @@ errors and at least one observed transaction.
 
 Passive raw-pin integrity monitor (in-TB substitute for Verilator-disabled RTL
 assertions). LSU bus fails on DECERR; external bus tallies DECERR because the
-inbound filter may block by design.
+inbound filter may block by design. Also bounds slave READY wait on AW/W/AR
+to ``cfg.axi_timeout_ns``: a permanent ``1'b0`` is legal AXI and not X, so
+the protocol SVA cannot see it.
 
 ==== Entropy / crypto goldens and `SepDrbgScoreboard`
 
@@ -540,9 +547,9 @@ halves are split by tool dependency, so each runs where its tools are:
 `pack-images`:: Pure Python; its deps come from the submodule's own
   `pyproject.toml`, installed on demand by `uv` (no `pip3 install` needed).
 
-`[c_build.boot_rom]` performs exactly these two steps. It probes the host
-toolchain for picolibc first and builds natively when the probe succeeds; the
-container is the *fallback* for a host whose toolchain has no picolibc:
+`[c_build.boot_rom]` performs exactly these two steps. An explicit
+`$RISCV_TOOLCHAIN` must provide picolibc; when it is unset, the build uses the
+OCAH container. It does not probe a site or `$HOME` toolchain path:
 
 [source,bash]
 ----
