@@ -1089,15 +1089,6 @@ module sep
             8'b0,
 
             // [351:336] Interrupt signals
-            //   [351]     intr_wdog_timer_bark
-            //   [350:343] sep_mailbox_interrupt  (NUM_MAILBOXES = 8, one bit per mailbox)
-            //   [342]     km_mbox_irq
-            //   [341]     entropy_source_irq
-            //   [340]     ext_trng_irq
-            //   [339]     intr_dma_done
-            //   [338]     intr_dma_chunk_done
-            //   [337]     intr_dma_error
-            //   [336]     Reserved padding
             intr_wdog_timer_bark, sep_mailbox_interrupt, km_mbox_irq,
             entropy_source_irq, ext_trng_irq, intr_dma_done, intr_dma_chunk_done, intr_dma_error,
             1'b0,

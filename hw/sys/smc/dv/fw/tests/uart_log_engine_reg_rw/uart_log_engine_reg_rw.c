@@ -228,9 +228,6 @@ int main(void) {
 
     // LOG_REGION_ADDR is a 64-bit register accessed as two 32-bit words.
     // RDL: offset+0 → LO (32 valid bits), offset+4 → HI (24 valid bits).
-    // HI stops at bit 23 because the log fetch address is 56 bits
-    // (log_engine_pkg::LOG_FETCH_ADDR_WIDTH = smc_pkg::AXI_ADDR_WIDTH), so
-    // register bits [63:56] are reserved and read back as 0.
     rw_walk_one(WRAP0_LE_BASE + LE_REGION_ADDR_OFF, MASK_32_BIT, 0x100202);     // LO
     rw_walk_one(WRAP0_LE_BASE + LE_REGION_ADDR_OFF + 4, MASK_24_BIT, 0x100203); // HI
 
