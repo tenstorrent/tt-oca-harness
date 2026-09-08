@@ -1547,8 +1547,12 @@ module sep_uvm_top
     assign drbg_genbits_data_o  = `SEP_DRBG.u_csrng.u_csrng_core.u_csrng_ctr_drbg.bits_data_o;
     assign drbg_genbits_fips_o  = `SEP_DRBG.u_csrng.u_csrng_core.u_csrng_ctr_drbg.bits_fips_o;
     assign drbg_gen_last_o      = `SEP_DRBG.u_csrng.u_csrng_core.gen_last_q;
-    // drbg_axil64_lane_adapter arbitration, sampled at each adapter's own
-    // AXI-Lite-64 port: {ar_ready, w_ready, aw_ready, ar_valid, w_valid, aw_valid}.
+    // drbg_axil64_lane_adapter arbitration, sampled at each DUT adapter's
+    // own AXI-Lite-64 port:
+    // {ar_ready, w_ready, aw_ready, ar_valid, w_valid, aw_valid}.
+    // Observation-only (SIGNED OFF 2026-09-07 by yenhenglai). No CSR mirrors
+    // the three-ready interlock, and a frontdoor timeout names only that the
+    // access did not retire. Outside the tb s_axi / m_axi ready/valid cones.
     assign drbg_csrng_axil_chan_o = {
         `SEP_DRBG.u_csrng_axil_adapter.axil64_rsp_o.ar_ready,
         `SEP_DRBG.u_csrng_axil_adapter.axil64_rsp_o.w_ready,

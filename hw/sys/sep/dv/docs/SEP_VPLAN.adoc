@@ -4114,13 +4114,13 @@ watermark together; no vehicle asserts that pair today.
 |A lone write and a lone read, neither of which can deadlock, measure when AW, W and AR arrive at the adapter port through the crossbar. The overlap is then placed from those measured latencies: on broken RTL the first overlap is terminal, so the placement cannot be retried and must not be guessed, and a placement the measured latency cannot reach is reported unreachable rather than fired blind. The same measurement records the AW-to-W gap at the master and at the port and states which side introduced it -- master 0 cycles, port 1 cycle, so the stagger is the fabric's. That is also the evidence that plain untimed traffic already puts AW and AR in the same cycle whenever a store and a load are in flight together.
 
 |CHK-CONCURRENT-STIM
-|The ordering the ADAPTER PORT presented, read off `drbg_csrng_axil_chan_o`, not the ordering requested and not the presentation at `s_axi`. The crossbar restaggers the channels, so a presentation at the TB master is not evidence of one at the arbitration point. A cell that missed its intended overlap at the port is reported unreachable and does not count as covered.
+|The ordering the ADAPTER PORT presented, read off `drbg_csrng_axil_chan_o` (or `drbg_edn_axil_chan_o` on the EDN leaf), not the ordering requested and not the presentation at `s_axi`. The crossbar restaggers the channels, so a presentation at the TB master is not evidence of one at the arbitration point. The leaf is covered only when that presentation is the named ordering. A different overlap, or a cell that missed its overlap, is reported unreachable and does not count as this leaf.
 
 |CHK-CONCURRENT-LAND
 |Both accesses retire and the write lands. The stall is a stable legal `1'b0` on all three readys, so the check is a bounded timeout plus a data compare against a complement prime; the prime makes a dropped write read back as the prime rather than as a plausible value. The check also records the longest run of held-valids-with-every-ready-low.
 |===
 
-*Parked on an RTL fix*: `CHK-CONCURRENT-LAND` fails. With AW presented and AR arriving while W is still outstanding, the CSRNG lane adapter port holds its valids for the whole bound with `aw_ready`, `w_ready` and `ar_ready` all low and no channel ever handshaking,. The stall is permanent: nothing in the adapter can clear it, since neither side may withdraw a VALID and no ready ever rises. That a following access to the same lane also fails to retire was observed while developing the vehicle and is not re-asserted by this leaf, whose cell ends at the wedge. Reported to the open issue that raised this. Recorded as a real failure and deliberately not converted to an expected failure.
+*Parked on an RTL fix*: `CHK-CONCURRENT-LAND` fails. With AW presented and AR arriving while W is still outstanding, the CSRNG lane adapter port holds its valids for the whole bound with `aw_ready`, `w_ready` and `ar_ready` all low and no channel ever handshaking. The stall is permanent: nothing in the adapter can clear it, since neither side may withdraw a VALID and no ready ever rises. That a following access to the same lane also fails to retire was observed while developing the vehicle and is not re-asserted by this leaf, whose cell ends at the wedge. Reported to the open issue that raised this. Recorded as a real failure and deliberately not converted to an expected failure.
 
 *Not claimed*: the other two orderings in that analysis. A true same-cycle AW+W+AR presentation and a W-before-AW presentation are not reachable at a DUT adapter port from a SEP master, for the reason `CHK-CONCURRENT-CAL` measures. They are graded on <<sep_drbg_axil_adapter_port_arbitration_test>> instead, at the module's port. `CHK-CONCURRENT-CAL` logs the measured arrivals, so a fabric change that closes the stagger would make them placeable here and visible.
 
@@ -5206,17 +5206,19 @@ Structurally, `axi_demux_simple.sv` gates W forwarding on the AW handshake --
 `w_select_valid = w_cnt_up | (|w_open)` at line 312, consumed at line 497 --
 so W can never be forwarded to a downstream port before its own AW has been
 accepted. A W-before-AW presentation therefore cannot exist at the adapter
-port. Separately, `axi_demux` defaults `SpillAw = 1'b1` and `SpillW = 1'b0`
-and `sep_crypto_axi_interconnect` overrides neither, so AW crosses a spill
-register that W does not.
+port.
 
-Empirically, a write-only sweep of thirteen master timing profiles (write-only,
-so no cell can deadlock) produced port AW-to-W gaps of 1, 2, 3, 4, 5, 7 and 9
-cycles and never 0. `aw_delay=N` shifts AW and W together and leaves the gap at
-1, because the profile releases the trailing write channel off the leading one
-rather than placing either absolutely; `w_delay=N` only widens the gap. A
-master-side profile can delay a channel, never advance one, so the minimum
-reachable gap is the fabric's own.
+The same-cycle AW+W gap is empirical, not a spill-parameter argument.
+`sep_crypto_axi_interconnect` sets both `SpillAw` and `SpillW` to 1, so it
+does not explain a one-cycle stagger. `CHK-CONCURRENT-CAL` measures master
+gap 0 / port gap 1 on both DUT lanes. A write-only sweep of thirteen master
+timing profiles (write-only, so no cell can deadlock) produced port AW-to-W
+gaps of 1, 2, 3, 4, 5, 7 and 9 cycles and never 0. `aw_delay=N` shifts AW
+and W together and leaves the gap at 1, because the profile releases the
+trailing write channel off the leading one rather than placing either
+absolutely; `w_delay=N` only widens the gap. A master-side profile can
+delay a channel, never advance one, so the minimum reachable gap is the
+fabric's own.
 
 Both orderings are graded on the port-driven vehicle instead, which is why that
 vehicle exists rather than being a convenience. All three leaves are red and are deliberately not converted to expected failures. Reported to the open issue that raised the concurrent arbitration question; the RTL fix is owned there, not here.

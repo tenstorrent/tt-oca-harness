@@ -63,8 +63,6 @@ failing alignment exactly.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 import cocotb
 from cocotb.triggers import RisingEdge
 from env.sep_seeded_rng import SepSeededRng
@@ -83,30 +81,6 @@ READY_BITS = AW_READY | W_READY | AR_READY
 # adapter: a healthy CSRNG register access retires in well under this, and the
 # failure this bounds is unbounded by construction.
 CELL_TIMEOUT_NS = 20_000
-
-
-@dataclass(frozen=True)
-class ConcurrentCell:
-    """One lane under one AW/W/AR presentation ordering."""
-
-    lane: str  # "csrng" or "edn"
-    order: str
-    wr_addr: int
-    rd_addr: int
-    value: int
-    aw_delay: int
-    w_delay: int
-    ar_delay: int
-
-    @property
-    def profile(self) -> AxiTimingProfile:
-        return AxiTimingProfile(
-            aw_delay=self.aw_delay, w_delay=self.w_delay, ar_delay=self.ar_delay
-        )
-
-    @property
-    def key(self) -> tuple[str, str]:
-        return (self.lane, self.order)
 
 
 # Each lane writes INTR_ENABLE and reads INTR_STATE in the same block, so the
@@ -182,8 +156,7 @@ class AdapterPortObserver:
     `1'b0` on the ready signals, which no X-check or protocol assertion sees.
     """
 
-    def __init__(self, test, lane: str) -> None:
-        self.test = test
+    def __init__(self, lane: str) -> None:
         self.lane = lane
         self.signal = getattr(cocotb.top, f"drbg_{lane}_axil_chan_o")
         self.reset()
@@ -365,7 +338,7 @@ class SepAxiConcurrentRw:
         channel never arrived, so a missing measurement cannot be silently
         read as zero.
         """
-        obs = AdapterPortObserver(self.test, cfg.lane)
+        obs = AdapterPortObserver(cfg.lane)
 
         obs.start()
         self._mon.arm_write_order()
@@ -522,7 +495,7 @@ class SepAxiConcurrentRw:
                 f"concurrent write from a register that never took the prime"
             )
 
-        obs = AdapterPortObserver(self.test, cfg.lane)
+        obs = AdapterPortObserver(cfg.lane)
         obs.start()
         drv.set_timing(profile)
         try:
@@ -578,14 +551,10 @@ class SepAxiConcurrentRw:
                 f"(AMBA IHI 0022 A3.2.1). {self.observation}"
             )
 
-        # No overlap at the port is no evidence either way. WHICH overlapping
-        # state the fabric produced is not this leaf's to choose: the crossbar
-        # decides whether AW is accepted before AR lands, so "aw-then-ar",
-        # "w-then-ar" and "interlock" are all a genuine AR-over-write overlap
-        # and any of them satisfies this leaf. Selecting between them
-        # deliberately is what the port-driven vehicle is for.
-        overlapped = self.presented in ("aw-then-ar", "w-then-ar", "interlock")
-        if not overlapped or obs.overlap_cycles == 0:
+        # The named leaf is covered only when THIS ordering is what the port
+        # presented. A different overlap after an RTL fix would pass the
+        # arbitration contract on a different cell than the leaf name claims.
+        if self.presented != cfg.order or obs.overlap_cycles == 0:
             self.unreachable = (
                 f"requested {cfg.order}, port presented {self.presented}, "
                 f"{obs.overlap_cycles} overlap cycles"
