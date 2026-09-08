@@ -18,7 +18,6 @@ added as the project matures.
 [[smc]]
 == SMC
 
-[[smc-per-core-reset]]
 === Per-Core Reset
 
 ifdef::backend-html5[]
