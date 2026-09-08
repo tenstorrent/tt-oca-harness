@@ -39,8 +39,8 @@
 //   [C13.10]  crypto validation (version/revocation/RSA-3072/decrypt/payload hash)
 //   [C15]   demotion decisions + lock fuse secrets + boot measurement
 //   [C17]   confirm fuse secrets locked
-//   [C18]   BL1 handoff (copy → jump)
-//   [C16]   stack canary check
+//   [C16]   stack canary check -- before [C18], which does not return
+//   [C18]   BL1 handoff (copy → jump); BL1 signals PASS, not BL0
 //   [C19]   unified error convergence (rom_err_fail)
 //
 // TODO(C15): UID key derivation into the key vault. A key must be derived from
@@ -372,8 +372,8 @@ static uint32_t rom_spi_init(const struct boot_straps *straps, uint16_t sysclk_m
 // Loads manifest via DMA from SPI/SMC SRAM, validates structure,
 // locks fuse secrets, and hands off to BL1.
 // spi_status: result of spi_init(); non-zero skips the primary manifest retry.
-static void rom_manifest_validate_handoff(const struct boot_straps *straps, uint32_t spi_status,
-                                          uint32_t lc_state) {
+__attribute__((noreturn)) static void rom_manifest_validate_handoff(
+    const struct boot_straps *straps, uint32_t spi_status, uint32_t lc_state) {
     // ── [C12–C14] manifest load ──
     report_status(STATUS_TYPE_INFO, SEP_MSG_MANIFEST_LOAD_START);
     uint32_t mfst_err = rom_manifest_boot(straps, spi_status);
@@ -476,6 +476,21 @@ static void rom_manifest_validate_handoff(const struct boot_straps *straps, uint
     // of the format this commit removes. oca_boot.h exposes no digest accessor
     // yet, and what the measurement commits to is a verifier-facing contract, so
     // it is restored in its own commit rather than wired to an inline offset here.
+
+
+    // ── [C16] Stack canary check ──
+    // Verify the canary placed at __stack_bottom is still intact; if corrupted,
+    // the stack overflowed into .bss.
+    //
+    // Checked here for two reasons. It has to be after [C12-C14], which is where
+    // the stack actually peaks -- the RSA-3072 modexp, SHA-256 and AES all run
+    // inside rom_manifest_boot() -- so checking before that call would measure
+    // the canary ahead of the deepest frame and prove nothing. And it has to be
+    // before [C18], because rom_handoff_bl1() jumps to BL1 and does not return:
+    // this is the last instant at which the ROM can still refuse to hand off.
+    if (*(volatile uint32_t *)__stack_bottom != STACK_CANARY_VALUE) {
+        rom_err_fail(ROM_ERR_STACK_OVERFLOW);
+    }
 
     // ── [C18] BL1 handoff ──
     {
@@ -656,7 +671,8 @@ void rom_main(void) {
 
     // ── [C16] Stack canary write ──
     // Place canary at __stack_bottom (lowest stack address, just above .bss).
-    // Checked before PASS to detect stack overflow during boot.
+    // Re-verified at [C16] just before the BL1 hand-off, which is after the
+    // deepest frames the boot reaches (see the check site).
     *(volatile uint32_t *)__stack_bottom = STACK_CANARY_VALUE;
 
     // ── [C10c] DMA init ──
@@ -700,29 +716,15 @@ void rom_main(void) {
     // SMC scratch coordination (manifest/status buffer handoff).
     rom_smc_coordination_probe();
 
-    // ── [C16] Stack canary check ──
-    // Verify the canary placed at __stack_bottom is still intact. If corrupted,
-    // the stack overflowed into .bss — fatal error.
+    // ── [C12–C14] Manifest load / validate + [C15/C17] fuse lock + [C16] canary
+    //    + [C18] handoff ──
+    // Does not return. Every path out of it either jumps to BL1 or converges on
+    // rom_err_fail(), which is why [C16] lives inside the callee rather than
+    // after this call -- it sat here until now and could never execute.
     //
-    // Checked BEFORE the handoff, not after: rom_manifest_validate_handoff()
-    // never returns (every path either enters BL1 or ends in the noreturn
-    // rom_err_fail), so a check placed after the call is unreachable and the
-    // canary was never actually read.
-    if (*(volatile uint32_t *)__stack_bottom != STACK_CANARY_VALUE) {
-        rom_err_fail(ROM_ERR_STACK_OVERFLOW);
-    }
-
-    // ── [C12–C14] Manifest load / validate + [C15/C17] fuse lock + [C18] handoff ──
+    // The ROM has no PASS path of its own either. BL1 signals the testbench: in
+    // DV, bl1_pass_test writes MAGIC0 + PASS to the STDOUT mailbox itself, with
+    // the same magic words the ROM used to write here. So there is deliberately
+    // nothing after this call.
     rom_manifest_validate_handoff(&straps, spi_status, lc_state);
-
-    // ── Done ──
-    // Unreachable: rom_manifest_validate_handoff() above never returns. The ROM
-    // therefore never reports PASS -- a successful boot ends in BL1, which
-    // reports it.
-    report_status(STATUS_TYPE_DEBUG, SEP_MSG_ROM_MAIN_BEFORE_PASS);
-
-    // If DV doesn't stop CPU immediately on fw_done, park here.
-    for (;;) {
-        __asm__ volatile("wfi");
-    }
 }

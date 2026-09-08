@@ -2462,10 +2462,10 @@ endif
 *IMPLEMENTATION GAP* — three items:
 
 * The gate-ledger self-check is implemented (commit `3de14630f`) but not yet on `main`.
-* The stack-canary re-check in `rom_main()` sits *after* the hand-off call, which does not
-  return on success — on the success path it never executes. The canary (and stack-top)
-  verification must move into the pre-hand-off self-check to satisfy
-  SEP-ROM-HOFF-010/-020.
+* The stack-top verification (SEP-ROM-HOFF-020) is not implemented: nothing compares the
+  frame address at hand-off against the linker stack top. The canary half of this item is
+  now closed — the re-check runs inside `rom_manifest_validate_handoff()` immediately
+  before `rom_handoff_bl1()`, which satisfies SEP-ROM-HOFF-010.
 * The PMP release step (SEP-ROM-HOFF-060) is not implemented (see <<sec:pmp>>).
 ====
 
@@ -2723,7 +2723,9 @@ denotes a following 16-bit payload word.
 |`ROM_ERR_HANDOFF_SELFCHECK_FAILED`; `OCA_BOOT_ERR_NO_BL1` / `_BL1_TOO_LARGE` /
 `_BL1_BAD_ADDR`
 |[C16] canary |— |`ROM_ERR_STACK_OVERFLOW`
-|PASS (DV builds) |`ROM_MAIN_BEFORE_PASS` (DEBUG); mailbox `MAGIC0` + `PASS` |—
+|PASS (DV builds) |none from the ROM -- BL1 signals it. `rom_handoff_bl1()` does not
+return, so BL0 has no post-handoff path; in DV `bl1_pass_test` writes the `MAGIC0` +
+`PASS` words to the STDOUT mailbox itself once it is running |—
 |===
 
 [appendix]
@@ -2880,9 +2882,11 @@ does not come up. The whole-chain testbench grant it replaces is unused; simulat
 forces only the ESRC noise source. |<<sec:entropy>>
 |Handoff self-check ledger |*unmerged* |Implemented (commit `3de14630f`); not on `main`.
 |<<sec:handoff>>
-|Stack canary / stack-top at hand-off |*gap* |Canary re-check sits after the (non-returning)
-hand-off call — dead on the success path; stack-top check absent. Must move into the
-self-check. |<<sec:handoff>>
+|Stack canary / stack-top at hand-off |*partial* |Canary re-check **closed**: it now runs
+immediately before `rom_handoff_bl1()`, after the crypto stages where the stack actually
+peaks, and the comparison is present in the binary (it was previously dead-stripped, sitting
+after the non-returning hand-off call). Stack-top check still absent (SEP-ROM-HOFF-020).
+|<<sec:handoff>>
 |Secure-boot escalation flag |*gap* |`unauthenticated_flags` bit 0 not implemented; the
 field is unread by the ROM and the validation library. |<<sec:secure_boot>>
 |RMA secure-boot policy |*ratified* |Secure boot is manifest-optional in both RMA states
