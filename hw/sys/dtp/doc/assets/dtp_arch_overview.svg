@@ -64,8 +64,8 @@
   <text x="310" y="293" class="label" text-anchor="middle" font-weight="bold">iJTAG SIB Network</text>
   <text x="310" y="309" class="small" text-anchor="middle">Secure DFT · Non-secure DFT · DFD</text>
 
-  <!-- PTAP → iJTAG (dashed, via x=175) -->
-  <polyline points="175,156 175,270"
+  <!-- PTAP → iJTAG (dashed, via x=480 — right of STAP x=150..320) -->
+  <polyline points="320,140 480,140 480,270"
             fill="none" stroke="#4a7baa" stroke-width="1" stroke-dasharray="4 2"
             marker-end="url(#arr-b)"/>
 
@@ -140,8 +140,8 @@
   <text x="620" y="362" class="small" text-anchor="middle" font-weight="bold">Internal CT</text>
   <text x="620" y="378" class="small" text-anchor="middle">xtrig_ctm_src/dst_*</text>
 
-  <!-- CTM → Internal CT -->
-  <polyline points="710,115 722,115 722,366 710,366"
+  <!-- CTM → Internal CT (routed at x=520, left of aggregator x=530..920) -->
+  <polyline points="530,144 520,144 520,366 530,366"
             fill="none" stroke="#aa4a4a" stroke-width="1" stroke-dasharray="4 2"
             marker-end="url(#arr-r)"/>
 

@@ -46,12 +46,14 @@ specified by the TMS-Hold bit of the 3DCR, otherwise it follows the PTAP TMS
 signal.
 
 The following diagram illustrates the STAP architecture and the details of the
-3DCR register. Optional input pipeline stages (SCAN_IN_PIPE on `client_scan_in_i`
-and TDI_LOCKUP on `host_tdi_i`) are not shown; both default to disabled in the
-DTP integration. The security gate masks `stap_sel`, `host_tdo_o`, and
-`update_en` when `security_disable_i` is asserted. `host_tdo_oen_o` and
-`host_tap_ctrl_o` are independent combinational outputs derived from `stap_sel`
-and TAP control signals, not outputs of the security gate.
+3DCR register. Optional input pipeline stages are not shown: SCAN_IN_PIPE on
+`client_scan_in_i` defaults to disabled for all DTP instances; TDI_LOCKUP on
+`host_tdi_i` defaults to disabled but is enabled for the I/O STAP
+(`gen_stap_io`) to provide timing margin for the die boundary crossing. The
+security gate masks `stap_sel`, `host_tdo_o`, and `update_en` when
+`security_disable_i` is asserted. `host_tdo_oen_o` and `host_tap_ctrl_o` are
+independent combinational outputs derived from `stap_sel` and TAP control
+signals, not outputs of the security gate.
 
 image::stap_module_diagram.svg[STAP Module Diagram showing SIB mux, 3DCR register and lifecycle enable gating,scaledwidth=90.0%]
 
