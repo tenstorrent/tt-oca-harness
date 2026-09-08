@@ -591,3 +591,30 @@
     white-space: normal;
     word-break: normal;
 }
+
+/* ========================================
+   VERSION SELECTOR CONTEXT TOGGLE
+   The .context div inside .nav-panel-explore is the collapsed bottom-left
+   version selector that toggles the expanded component list. It contains
+   a .title span (full product name) and a .version span ("latest").
+   Truncating .title here prevents the long product name from wrapping
+   across multiple lines while keeping it readable on hover (title attr)
+   and preserving the full name in the expanded .components list.
+   The selector is scoped to .nav-panel-explore so no global .title
+   elements are affected.
+   ======================================== */
+.nav-panel-explore .context {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow: hidden;
+}
+
+.nav-panel-explore .context .title {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    min-width: 0;
+    flex: 1 1 0;
+}
