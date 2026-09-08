@@ -28,6 +28,10 @@ the status to `Beta`, cite evidence in `content-readiness.md`, and do not put
 unresolved placeholders in a release source. Keep the rendered result to one or
 two US Letter pages.
 
+Use `Feature` and `Defaults` as the column headings in **At a Glance** tables,
+and `Feature` and `Integration options` in **Interfaces and configuration**
+tables. State the reference configuration in the accompanying text.
+
 Build and validate all available sheets from the repository root:
 
 ```console

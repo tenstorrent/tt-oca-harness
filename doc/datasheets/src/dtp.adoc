@@ -87,7 +87,7 @@ AT A GLANCE
 
 [cols="42,58",options="header"]
 !===
-!Item !DTP RTL top-level configuration
+!Feature !Defaults
 !External / internal triggers !16 CTPs / 10 internal interfaces
 !Clock-stop request inputs !9
 !Cross-trigger CSR port !32-bit address, 32-bit data AXI4-Lite
@@ -145,7 +145,7 @@ INTERFACES AND CONFIGURATION
 
 [cols="38,62",options="header"]
 !===
-!Boundary !Integration-visible controls
+!Feature !Integration options
 !Clocks and resets !System clock/reset, JTAG TCK/TRST_N, JTAG power-on reset,
 scan reset, test enable
 !Lifecycle policy !Active-high, per-path debug and test disable controls
