@@ -4572,11 +4572,15 @@ watermark together; no vehicle asserts that pair today.
 
 *Run mode*: `no_cpu`, `+skip_fuse_sense`
 
-*VIP / Model*: TB-instantiated `drbg_axil64_lane_adapter` (`u_tbadp_vehicle` in `tb/tb_top.sv`), driven pin-level from cocotb
+*Source Module*: `sep_drbg_axil_adapter_port_arbitration_test`
+
+*BFM / Model*: TB-instantiated `drbg_axil64_lane_adapter` (`u_tbadp_vehicle` in `tb/tb_top.sv`), driven pin-level from cocotb
 
 *Randomization*: none. The three orderings are fixed and all three run on every seed; the contract is a cycle alignment, not a data pattern.
 
 *Objective*: AW, W and AR are independent AXI channels (IHI 0022 A3.3), and a master may not deassert a VALID before its handshake completes (A3.2.1). `drbg_axil64_lane_adapter` computes, in `StIdle`, `aw_ready` and `w_ready` gated on `!ar_valid` and `ar_ready` gated on `!aw_valid && !w_valid`. A presentation that puts AR alongside a write therefore leaves every ready low with no channel able to go first and neither side able to withdraw, so the port is held until reset. This leaf presents all three legal orderings at the port and requires both accesses to retire under each.
+
+*Test Coverage*: All three legal AW/W/AR orderings at the TB-owned adapter port.
 
 *Scope*: the MODULE's arbitration, not the SEP integration. The DUT's own lane adapters sit behind the crossbar, which delivers W one cycle after AW and re-serializes every write to that order whatever a master presents -- `CHK-CONCURRENT-CAL` on the two fabric-driven leaves measures the gap at both ends and reports it as fabric-introduced. A same-cycle AW/W/AR presentation and a W-before-AW presentation are therefore not producible at a DUT adapter port from the fabric side, which is why this vehicle exists. It is a second instance of the same RTL module with its own reset and no fabric in front of it: every legal ordering is presentable to the cycle, and a wedged cell is cleared without resetting the DUT, so the three verdicts are independent. It claims nothing about the integration; the two leaves that follow own that half.
 
@@ -4623,11 +4627,15 @@ watermark together; no vehicle asserts that pair today.
 
 *Run mode*: `no_cpu`, `+skip_fuse_sense`
 
-*VIP / Model*: ocah_axi_vip
+*Source Module*: `sep_drbg_axil_concurrent_csrng_aw_then_ar_test`
+
+*BFM / Model*: ocah_axi_vip
 
 *Randomization*: RANDCFG -- the seed varies the staged register value only. The channel placement is measured per build, not drawn, so a seed replays the cell without pinning it to a latency the fabric may have changed.
 
 *Objective*: The same arbitration contract as <<sep_drbg_axil_adapter_port_arbitration_test>>, but on the DUT's own CSRNG lane adapter and reached the way software reaches it. The two lane adapters sit on the CSRNG and EDN control buses (`drbg.sv` `u_csrng_axil_adapter` / `u_edn_axil_adapter`, fed from `sep_crypto.sv` `csrng_axil` / `edn_axil`), which is the path every SEP-level CSRNG and EDN register access already takes, so the stall is reachable by ordinary CSR traffic rather than by a corner the fabric cannot present. The cell writes the block's `INTR_ENABLE` and reads its `INTR_STATE` concurrently, so both accesses are behind the same adapter.
+
+*Test Coverage*: One AW-then-AR overlap at the DUT CSRNG lane adapter.
 
 *Scope*: one lane, one ordering, one leaf. A stalled adapter cannot be recovered inside a simulation -- the port stays held and the master stays stuck on it -- so a second cell after a wedge would measure the wedge rather than itself.
 
@@ -4671,11 +4679,15 @@ watermark together; no vehicle asserts that pair today.
 
 *Run mode*: `no_cpu`, `+skip_fuse_sense`
 
-*VIP / Model*: ocah_axi_vip
+*Source Module*: `sep_drbg_axil_concurrent_edn_aw_then_ar_test`
+
+*BFM / Model*: ocah_axi_vip
 
 *Randomization*: RANDCFG -- as <<sep_drbg_axil_concurrent_csrng_aw_then_ar_test>>.
 
 *Objective*: The same contract on the second lane adapter, the EDN control path. `drbg.sv` instantiates `drbg_axil64_lane_adapter` twice, so the two lanes are separate hardware and a defect in one instance is not evidence about the other. The checks are those of <<sep_drbg_axil_concurrent_csrng_aw_then_ar_test>>, with the probe on `drbg_edn_axil_chan_o` and the access pair on the EDN block's own registers.
+
+*Test Coverage*: One AW-then-AR overlap at the DUT EDN lane adapter.
 
 *Test Procedure*:
 
