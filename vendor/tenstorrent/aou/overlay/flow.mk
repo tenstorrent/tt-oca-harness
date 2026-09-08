@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 # AoU (AXI-over-UCIe) lint/synth flow descriptor for the vendored
-# `vendor/tenstorrent/aou-rtl` package. Lives in `overlay/`, alongside other
+# `vendor/tenstorrent/aou` package. Lives in `overlay/`, alongside other
 # TT-specific collateral layered onto vendored packages.
 FLOW_DIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 include $(FLOW_DIR)/../../../../flows/preamble.mk

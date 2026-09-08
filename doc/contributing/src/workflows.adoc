@@ -633,10 +633,10 @@ Scheduled and manually dispatched pipelines always run in full.
 
 | `lint-sv-slang`
 | `lint-sv-slang/smu`, `lint-sv-slang/aou`
-| `make lint-slang-all BLOCK=smu` / `BLOCK=aou-rtl`
+| `make lint-slang-all BLOCK=smu` / `BLOCK=aou`
 
 | `lint-sv-verilator`
-| `lint-sv-verilator/<block>` for `aou-rtl`, `dtp`, `sep`, `smc`, and `smu`
+| `lint-sv-verilator/<block>` for `aou`, `dtp`, `sep`, `smc`, and `smu`
 | `make lint-verilator-all [BLOCK=<block>]`
 
 | `lint-sv-verible` (disabled in CI)
