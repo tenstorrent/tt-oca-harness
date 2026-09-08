@@ -616,7 +616,56 @@ interrupt is sent out of the SMU to the system’s interrupt controller
 all other resources we only use inboxes on both ends of the transaction.</p>
 </div>
 <div class="paragraph">
-<p>The SEP mailboxes have 64-bit data inputs while SEP is a 32-bit system. This means that each 64-bit input word is mapped to two 32-bit words. The SEP host can access both the low-order and high-order words.</p>
+<p>The SEP mailboxes have 64-bit data registers while SEP is a 32-bit system.
+Registers sit on an 8-byte stride and are decoded by which 8-byte slot the
+address falls in, so a register&#8217;s low and high halves alias to the same
+register. The SEP CPU is RV32 and can reach only one half per instruction,
+which makes every half-word access a full-register access at the mailbox:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>A read of <code>READ_DATA</code> at either half pops one FIFO entry. The mailbox drives
+the whole entry; the CPU keeps the half selected by address bit 2 and discards
+the other. Reading both halves consumes two entries.</p>
+</li>
+<li>
+<p>A write of <code>WRITE_DATA</code> at either half pushes one entry, with bytes outside
+the write strobe pushed as zero. A 32-bit store to the low half enqueues
+<code>{32&#8217;h0, data}</code>.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>SEP can use either half, but never both halves of one entry, so a SEP-visible
+payload is 32 bits per entry and both ends must agree on which half carries
+it. SEP firmware uses the low half at the register base offset.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+This depends on the mailbox aperture staying side-effect in <code>mrac</code>.
+Clearing side-effect enables the core&#8217;s load-to-load forwarding and
+speculative accesses, both of which pop entries unpredictably.
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Mailbox type is a configuration, not a hardware variant. Every mailbox is an
+identical instance of the same block; what makes one an ISS mailbox and
+another an STEE or Regular mailbox is the inbound traffic filter entry that
+covers its 4 kB aperture. The filter blocks by default, so a mailbox with no
+enabled entry over its aperture is unreachable from the fabric, and
+reprogramming an entry retypes that mailbox at run time. An entry pairs an
+address range with the qualification criteria below, plus separate read and
+write permissions and a write-once lock bit. See <a href="#sep-traffic-filter-decode">Traffic Filter Decode</a>
+for the SEP filter instances and <a href="#axi-traffic-filter">[axi-traffic-filter]</a> for the entry
+registers and the decode algorithm used to program them.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -642,8 +691,10 @@ incoming transactions.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DTEE</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved. Relies on the DTEE indicator in the transactions
-(confidential bit) to qualify incoming transactions.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved. Would rely on the DTEE indicator in the transactions
+(confidential bit) to qualify incoming transactions. TODO: Confidential
+bit will be defined in future revisions, right now there is no hardware
+to qualify this.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Regular</p></td>
