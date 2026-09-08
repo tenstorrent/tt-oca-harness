@@ -13,16 +13,18 @@ from .smc_csr_seq_utils import SmcCsrSeq
 
 # Structured map (PeakRDL smc_addr.h), not a flat word array.
 # LOCKS lo/hi match words 0/1 of assets/smc_efuse_default.hex (smoke default).
-# CHIPLET_ID / PACKAGE_ID are read-locked → OKAY + 0xBADCAB1E (covered by
-# smc_efuse_jtag_lc_negative_test); probe unlocked fields here.
+# That golden read-locks JTAG_PUBLIC_IDENTITY and SPARE[0] (they return OKAY + 0xBADCAB1E,
+# a path covered by smc_efuse_jtag_lc_negative_test), so the targets below are
+# the read-unlocked ones: SMC_CONFIG and SPARE[2] are write-locked only.
 EFUSE_MAP_READS = [
     ("EFUSE_MAP_LOCKS_LO", smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR"),
      0xA5A5_5A5A),
     ("EFUSE_MAP_LOCKS_HI", smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR") + 4,
      0xDEAD_BEEF),
-    ("EFUSE_MAP_BIRA", smc_addr("SMC_TOP_SMC_EFUSE_MAP_BIRA_BASE_ADDR"), None),
-    ("EFUSE_MAP_RESERVED_0", smc_indexed_addr(
-        "SMC_TOP_SMC_EFUSE_MAP_RESERVED_BASE_ADDR", 0), None),
+    ("EFUSE_MAP_SMC_CONFIG", smc_addr("SMC_TOP_SMC_EFUSE_MAP_SMC_CONFIG_BASE_ADDR"),
+     None),
+    ("EFUSE_MAP_SPARE_2", smc_indexed_addr(
+        "SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR", 2), None),
 ]
 
 

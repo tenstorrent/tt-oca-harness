@@ -89,9 +89,10 @@ memory environment required for subsequent boot phases.
 registers. Hardware straps, sampled from GPIO pins during power-on reset,
 determine fundamental system behavior including chiplet role (primary or
 secondary), boot mode selection, and feature enables. Efuse data provides
-device-specific configuration including I2C/I3C addresses, security settings,
-and chiplet identification. This configuration data drives all subsequent
-initialization decisions.
+device-specific configuration including I2C/I3C addresses, the OCCP transport
+timeout, and platform configuration bits such as ROM endianness and SRAM
+auto-zero. This configuration data drives all subsequent initialization
+decisions.
 
 For a secondary chiplet, Phase 1.5 performs PLL (Phase-Locked Loop)
 configuration to establish the primary system clock. The ROM firmware configures

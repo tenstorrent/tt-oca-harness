@@ -10,7 +10,7 @@ Drives product ports only:
 Under PROD (raw 0x1):
 
   * non-identity read / write → BLOCK (DECERR + 0xBADCAB1E)
-  * CHIPLET_ID / PACKAGE_ID read → ALLOW (not DECERR; timeout fails)
+  * JTAG_PUBLIC_IDENTITY read → ALLOW (not DECERR; timeout fails)
 
 Also records ``CHIP_CONFIG_LC_STATE`` over SEP_IN with an exact expected
 matching the packed ``tb_lc_state`` value. Full multi-state matrix lives in
@@ -32,9 +32,8 @@ import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
 from smc_base_test import smc_base_test
 from seq_lib.smc_efuse_jtag_lc_negative_test_seq import (
-    SMC_EFUSE_MAP_CHIPLET_ID,
+    SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY,
     SMC_EFUSE_MAP_LOCKS,
-    SMC_EFUSE_MAP_PACKAGE_ID,
     smc_efuse_jtag_lc_negative_test_seq,
 )
 from seq_lib.smc_jtag_vip_utils import check_cpu_jtag_pin_vip
@@ -78,10 +77,7 @@ class smc_efuse_jtag_lc_negative_test(smc_base_test):
         # Negative: non-identity blocked; identity exception still allowed.
         await self._check_read("PROD", "NON_ID", SMC_EFUSE_MAP_LOCKS, expect_block=True)
         await self._check_read(
-            "PROD", "CHIPLET_ID", SMC_EFUSE_MAP_CHIPLET_ID, expect_block=False
-        )
-        await self._check_read(
-            "PROD", "PACKAGE_ID", SMC_EFUSE_MAP_PACKAGE_ID, expect_block=False
+            "PROD", "JTAG_PUBLIC_IDENTITY", SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY, expect_block=False
         )
         await self._check_write("PROD", SMC_EFUSE_MAP_LOCKS, expect_block=True)
 
@@ -101,8 +97,8 @@ class smc_efuse_jtag_lc_negative_test(smc_base_test):
             proxy=False,
             details=(
                 "PROD JTAG eFuse: NON_ID/write BLOCK (DECERR+0xBADCAB1E); "
-                "CHIPLET_ID/PACKAGE_ID ALLOW via resp=OKAY "
-                "(identity rdata not scored on Verilator stub); "
+                "JTAG_PUBLIC_IDENTITY ALLOW via resp=OKAY "
+                "(jtag_public_identity rdata not scored on Verilator stub); "
                 "CHIP_CONFIG_LC_STATE exact; CPU JTAG pins checked"
             ),
         )
@@ -163,8 +159,8 @@ class smc_efuse_jtag_lc_negative_test(smc_base_test):
                 )
             return
         # ALLOW: response-code contract only. Verilator eFuse stub still
-        # returns 0xBADCAB1E on the allow path — do not treat rdata as a
-        # chiplet/package identity golden (value proof deferred to sensed HW).
+        # returns 0xBADCAB1E on the allow path — do not treat rdata as an
+        # identity golden (value proof deferred to sensed HW).
         if code != RESP_OKAY:
             self.errors.append(
                 f"[{label}] {cls} read @0x{addr:08x} expected ALLOW "

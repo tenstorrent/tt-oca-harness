@@ -15,9 +15,9 @@ asserts the block/allow outcome against the RTL-derived matrix:
   * writes and non-identity reads are blocked (routed to
     ``prim_axi_lite_err_slv`` -> SLVERR, read data ``0xBADCAB1E``) in
     PROD (raw 0x1) and RMA_SIP (raw 0x2/0x3);
-  * CHIPLET_ID / PACKAGE_ID reads stay allowed in every non-sigint state; and
+  * JTAG_PUBLIC_IDENTITY reads stay allowed in every non-sigint state; and
   * a lifecycle differential-decode integrity error blocks everything,
-    including the identity-read exception.
+    including the jtag_public_identity-read exception.
 """
 
 from __future__ import annotations
@@ -39,8 +39,7 @@ from seq_lib.smc_addr_map import smc_addr
 
 # JTAG-side eFuse (full SMC-local) addresses (PeakRDL smc_addr.h).
 EFUSE_MAP_NON_ID = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
-EFUSE_MAP_CHIPLET_ID = smc_addr("SMC_TOP_SMC_EFUSE_MAP_CHIPLET_ID_BASE_ADDR")
-EFUSE_MAP_PACKAGE_ID = smc_addr("SMC_TOP_SMC_EFUSE_MAP_PACKAGE_ID_BASE_ADDR")
+EFUSE_MAP_JTAG_PUBLIC_IDENTITY = smc_addr("SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR")
 
 BLOCK_SIGNATURE = 0xBADCAB1E  # prim_axi_lite_err_slv RESP_DATA (wrapper override)
 
@@ -90,19 +89,18 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
         # (raw, sigint, label): expected read-block per address class and
         # expected write-block (write has no ID exception).
         matrix = [
-            (LC_TEST_DEV, False, "TEST_DEV", False, False, False, False),
-            (LC_PROD, False, "PROD", True, False, False, True),
-            (LC_RMA_SIP, False, "RMA_SIP", True, False, False, True),
-            (LC_RMA_CHIPLET, False, "RMA_CHIPLET", False, False, False, False),
-            (LC_PROD_END, False, "PROD_END", False, False, False, False),
-            (LC_TEST_DEV, True, "SIGINT", True, True, True, True),
+            (LC_TEST_DEV, False, "TEST_DEV", False, False, False),
+            (LC_PROD, False, "PROD", True, False, True),
+            (LC_RMA_SIP, False, "RMA_SIP", True, False, True),
+            (LC_RMA_CHIPLET, False, "RMA_CHIPLET", False, False, False),
+            (LC_PROD_END, False, "PROD_END", False, False, False),
+            (LC_TEST_DEV, True, "SIGINT", True, True, True),
         ]
 
-        for (raw, sigint, label, blk_nonid, blk_chip, blk_pkg, blk_wr) in matrix:
+        for (raw, sigint, label, blk_nonid, blk_id, blk_wr) in matrix:
             await self._set_lc_state(raw, sigint)
             await self._check_read(label, "NON_ID", EFUSE_MAP_NON_ID, blk_nonid)
-            await self._check_read(label, "CHIPLET_ID", EFUSE_MAP_CHIPLET_ID, blk_chip)
-            await self._check_read(label, "PACKAGE_ID", EFUSE_MAP_PACKAGE_ID, blk_pkg)
+            await self._check_read(label, "JTAG_PUBLIC_IDENTITY", EFUSE_MAP_JTAG_PUBLIC_IDENTITY, blk_id)
             await self._check_write(label, EFUSE_MAP_NON_ID, blk_wr)
 
         # Restore a benign lifecycle state.
@@ -118,7 +116,7 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
             proxy=False,
             details=(
                 "lc_state_i-driven JTAG eFuse access-control matrix "
-                "(PROD/RMA_SIP block + CHIPLET_ID/PACKAGE_ID exception + "
+                "(PROD/RMA_SIP block + JTAG_PUBLIC_IDENTITY exception + "
                 "sigint lockdown), block signature 0xBADCAB1E verified"
             ),
         )

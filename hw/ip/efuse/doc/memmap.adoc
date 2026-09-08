@@ -21,10 +21,30 @@ address spaces:
 
 ====== Shadow Registers
 
-The shadow registers provide cached access to eFuse contents, including
-chiplet identification, package information, I2C/I3C address configuration
-(9 instances for I2C_I3C_ID[0:8]), and other system configuration data.
-These registers are automatically loaded from the physical eFuse array during boot.
+The shadow registers provide cached access to eFuse contents, automatically loaded
+from the physical eFuse array during boot. For the SMC instance these hold a
+JTAG-public identity window (`JTAG_PUBLIC_IDENTITY`, 256 bits, opaque to the
+harness and adopter-defined), I2C/I3C address configuration (9 instances for
+I2C_I3C_ID[0:8]), boot and platform configuration, and a spare region held for
+allocation after the RTL freezes. The generated table below is authoritative for
+addresses, widths and access rights.
+
+The SMC map is 1 KiB, and every address within it belongs to exactly one field.
+Three properties of the layout constrain how it may be extended:
+
+* `LOCKS` holds two bits per field, a write lock and a read lock, and occupies the
+  first 64 bits of the map. It is itself a meta-field: hardware never applies lock
+  bits to it.
+* That yields 32 lockable field slots, which is a hard ceiling rather than a
+  convention. A 33rd slot widens the lock vector beyond `LOCKS` into the following
+  register, whose bits would then be interpreted as lock state.
+* The map must remain gapless. An address that no field covers resolves to the
+  meta-field sentinel, which is exempt from lock checks, so a hole in the layout
+  would be an unlockable window into the bank.
+
+Spare regions are harness-owned and carry no defined meaning until allocated. This
+lets software claim eFuse storage after the RTL is frozen without altering the
+address map or the lock assignment.
 
 ifdef::backend-html5[]
 ++++

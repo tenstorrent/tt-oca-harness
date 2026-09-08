@@ -950,7 +950,7 @@ here.
 |P1-8 |`jtag_tap` |TAP-level IDCODE + DTMCS strict, eFuse LC negative
 (NOTE: `smc_efuse_jtag_lc_negative_test` now covers the CSR-observable
 subset — records `CHIP_CONFIG_LC_STATE` + reads the always-allowed
-`CHIPLET_ID`/`PACKAGE_ID` identity registers + CPU JTAG pin check. The
+`JTAG_PUBLIC_IDENTITY` register + CPU JTAG pin check. The
 full JTAG-side block/allow matrix (DECERR+`0xBADCAB1E` in PROD/RMA_SIP,
 identity-read exception, sigint lockdown) is now covered by
 `smc_efuse_jtag_lc_access_matrix_test` — see
@@ -1525,11 +1525,10 @@ received from SEP; decoded by `prim_diff_decode_multi`):
 
 * Write (AW) is blocked when `is_prod_or_rma_sip || lc_sigint_err`.
 * Read (AR) is blocked when
-`(is_prod_or_rma_sip && !(is_rd_chiplet_id || is_rd_package_id)) || lc_sigint_err`.
+`(is_prod_or_rma_sip && !is_rd_identity) || lc_sigint_err`.
 * `is_prod_or_rma_sip = (lc_state_raw == 4'b0001 [PROD]) || (lc_state_raw[3:1] == 3'b001 [RMA_SIP: 0x2/0x3])`.
-* `is_rd_chiplet_id` / `is_rd_package_id` are the
-`SMC_EFUSE_MAP_CHIPLET_ID` / `SMC_EFUSE_MAP_PACKAGE_ID` address windows
-(each base `+0x1F`).
+* `is_rd_jtag_public_identity` is the `SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY` address window
+(base `+0x1F`).
 * A blocked transaction is routed to `prim_axi_lite_err_slv`, which —
 because the SMC wrapper overrides only `RESP_DATA` and leaves `RESP` at
 its `RESP_DECERR` default — returns a *DECERR* response with data
@@ -1545,7 +1544,7 @@ not-DECERR — is the block/allow discriminator, corroborated by the
 [width="100%",cols="21%,18%,26%,35%",options="header",]
 |=======================================================================
 |SMC LC state (raw) |JTAG eFuse write |JTAG eFuse read (non-ID) |JTAG
-read CHIPLET_ID / PACKAGE_ID
+read JTAG_PUBLIC_IDENTITY
 |TEST_DEV `0x0` |allow |allow |allow
 
 |PROD `0x1` |*BLOCK* (DECERR/`0xBADCAB1E`) |*BLOCK* |allow
@@ -1567,8 +1566,8 @@ read CHIPLET_ID / PACKAGE_ID
 toggle, so despite its name it never touched the eFuse access-control
 policy. It has been rebased onto `smc_efuse_jtag_lc_negative_test_seq`,
 which now records `CHIP_CONFIG_LC_STATE` and reads the always-allowed
-`CHIPLET_ID` / `PACKAGE_ID` identity registers (the CSR-observable
-subset). It still cannot drive `lc_state_i`, issue a JTAG-side eFuse
+`JTAG_PUBLIC_IDENTITY` register (the CSR-observable subset). It still cannot drive
+`lc_state_i`, issue a JTAG-side eFuse
 access, or observe the block decision / `0xBADCAB1E` signature — those
 remain the P2-15 gap.
 2.  Historically the SMC OSS TB drove CSRs only through SEP_IN AXI and
@@ -1603,9 +1602,9 @@ unaffected. The eFuse access-control demux runs on `clk_smc_i`, so the
 `ej_axi` master shares the SEP_IN AXI clock/reset.
 * *Procedure:* for each LC state in \{TEST_DEV, PROD, RMA_SIP,
 RMA_CHIPLET, PROD_END} and for the integrity-error case, drive
-`lc_state_i`, then issue JTAG-side eFuse writes and reads (CHIPLET_ID
-@0xC000_B008, PACKAGE_ID @0xC000_B028, and a non-ID address
-@0xC000_B000), and assert each outcome against the access matrix above.
+`lc_state_i`, then issue JTAG-side eFuse writes and reads (JTAG_PUBLIC_IDENTITY
+@0xC000_7008 and a non-ID address @0xC000_7000), and assert each
+outcome against the access matrix above.
 Allowed accesses are bounded (the real eFuse controller may OKAY or time
 out on a Verilator stub); blocked accesses are deterministic via the
 `0xBADCAB1E` err-slv signature.
@@ -1617,8 +1616,8 @@ spec for each driven state — the signal a polarity/decode bug corrupts.
 reads additionally carry the `0xBADCAB1E` err-slv signature.
 ** `efuse_jtag_allow_chk`: allowed accesses are _not_ DECERR (OKAY on
 silicon, SLVERR on the un-sensed Verilator stub).
-** `efuse_jtag_id_exception_chk`: CHIPLET_ID / PACKAGE_ID reads are
-allowed in PROD / RMA_SIP.
+** `efuse_jtag_id_exception_chk`: JTAG_PUBLIC_IDENTITY reads are allowed in
+PROD / RMA_SIP.
 ** `efuse_jtag_sigint_chk`: an LC differential-decode integrity error
 blocks all accesses, including the ID exception.
 * *Pass criteria:* every LC-state × operation outcome matches the
@@ -1629,7 +1628,7 @@ lifecycle-gating polarity/decode error on the SMC side.
 (`--items smc_efuse_jtag_lc_access_matrix_test`).
 
 *Functional coverage:* add `cg_efuse_jtag_lc_access` = \{LC state} ×
-\{write, read-nonID, read-CHIPLET_ID, read-PACKAGE_ID} × \{allow,
+\{write, read-nonID, read-JTAG_PUBLIC_IDENTITY} × \{allow,
 block}, plus a `sigint × {allow, block}` bin, sampled from the spec
 matrix rather than the RTL.
 

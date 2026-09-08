@@ -351,7 +351,7 @@ SRAM contents across resets.
 
 The SMC implements Built-In Redundancy Analysis (BIRA) memory repair to address
 manufacturing defects in SRAM arrays. Repair uses redundant memory elements
-configured with data stored in eFuse memory, replacing defective cells detected
+configured by an external repair controller, replacing defective cells detected
 during manufacturing test.
 
 Memory repair executes automatically during boot after eFuse sensing completes
@@ -378,11 +378,11 @@ completion.
 
 **Repair Data:**
 
-Repair data is stored in the eFuse BIRA shadow register as a 16-kilobit
-`repair_data` field. The eFuse controller reads this data during fuse sensing
-and makes it available through shadow registers. The external memory repair
-controller must read repair data from `shadow_regs_o` and apply it to SRAM
-arrays according to your memory architecture.
+The SMC fuse map does not allocate storage for repair data. Your external memory
+repair controller must source it from wherever your manufacturing flow keeps it
+and apply it to SRAM arrays according to your memory architecture. If you want it
+held in SMC fuses, assign one or more of the `SPARE` regions in the fuse map to
+that purpose; the whole fuse map is exposed on `shadow_regs_o` after fuse sensing.
 
 **Status Monitoring:**
 

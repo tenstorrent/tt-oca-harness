@@ -55,8 +55,12 @@ SMC_OTP_AXSIZE_4B = 2
 # Relative probe used by P1 CAPS/BUSY (routes to SHIM when MAP base is abs).
 SMC_OTP_DEFAULT_PROBE_ADDR = 0x80
 # Absolute SMC eFuse map window (smc_reg.svh / INTERFACE_SEL decode).
+# STALE: the map moved to 0xC000_7000 and 0xC000_B000 is now DTP_CTRL_REG, so these
+# probes do not reach the eFuse at all. Correcting it changes what the DFT tests
+# actually touch, so it is paired work with the nonfree tests that import the name
+# below rather than a drive-by fix here.
 SMC_EFUSE_MAP_BASE = 0xC000_B000
-# BIRA word @ +0x80 — WRITE_UNLOCK in smc_efuse_pkg::EfuseFieldMap.
+# Probe word @ +0x80, which is WRITE_UNLOCK in smc_efuse_pkg::EfuseFieldMap.
 SMC_EFUSE_MAP_BIRA_WORD = SMC_EFUSE_MAP_BASE + 0x80
 
 DBG_BOOT_STALL_BIT = 0
