@@ -5664,7 +5664,7 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 |`CHK-DUAL-I3C-IDLE` |The shared I3C0 wired-AND resolves, and resolves high, with no driver
 |===
 
-*Pass Criteria*: every checker above holds; a bound expiry or an unresolvable sample raises. Enrolled in: `dual_all`, `dual_smoke`.
+*Pass Criteria*: `CHK-DUAL-I3C-INDEXING`, `CHK-DUAL-ELAB`, `CHK-DUAL-RESET`, `CHK-DUAL-FUSE-SENSE`, `CHK-DUAL-BOOT-STALL`, `CHK-DUAL-MEM-INIT` (and 1 more) hold after their compares; a bound expiry or an unresolvable sample raises. Enrolled in: `dual_all`, `dual_smoke`.
 
 '''''
 
@@ -5777,7 +5777,7 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 |`CHK-OCCP-PAYLOAD-EXECUTED` |Target scratch 0 holds `TEST_PASS`, written by the payload
 |===
 
-*Pass Criteria*: every checker above holds. Enrolled in: `dual_all`, `occp_dual`.
+*Pass Criteria*: `CHK-OCCP-TARGET-READY`, `CHK-OCCP-PRECONDITION`, `CHK-OCCP-FW-SEED`, `CHK-OCCP-PAYLOAD-STAGED`, `CHK-OCCP-HOST-PROTOCOL`, `CHK-OCCP-TRANSFER-LANDED` (and 4 more) hold after their compares. Enrolled in: `dual_all`, `occp_dual`.
 
 '''''
 
