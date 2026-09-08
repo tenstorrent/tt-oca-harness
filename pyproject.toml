@@ -102,10 +102,13 @@ exclude = '''(?x)^(
 #   is reverted by the next `regen-regs` run, so the real fix belongs upstream.
 # - chipyard_generated_files/crossbars/ot_pkg mirror flows/lint/verible.mk's
 #   own excludes: generated or OpenTitan-origin RTL this repo doesn't hand-edit.
+# - integration collateral is a symlink index over sources covered here or
+#   intentionally skipped at their canonical generated/vendor locations.
 # - dv/fw/include/metal and dv/fw/tests/coremark* are upstream SiFive Metal
 #   HAL and EEMBC CoreMark sources, copied in rather than hand-maintained here.
 skip = """\
 vendor,nonfree,.git,\
+*/integration/rdl/*,*/integration/ipxact/*,*/integration/constraint/*,\
 */regs/gen,*/chipyard_generated_files,*/crossbars,*/ot_pkg,\
 */dv/fw/include/metal,*/dv/fw/tests/coremark,coremark.h,\
 *.png,*.svg,*.woff,*.woff2,*.pdf,*.hex,*.parhex,*.core,uv.lock,*.lock\

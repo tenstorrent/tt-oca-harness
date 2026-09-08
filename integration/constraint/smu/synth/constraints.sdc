@@ -1,0 +1,1 @@
+../../../../hw/sys/smu/synth/constraints.sdc
