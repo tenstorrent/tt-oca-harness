@@ -5,16 +5,16 @@
 // Auto-Handshake Data Synchronizer
 //
 //--------------------------------------------------
- module prim_sync_data_autohs #(
-    parameter int unsigned WIDTH = 1,
-    parameter int unsigned DEPTH = 2    // default currently 2 in order to not break existing usage
+module prim_sync_data_autohs #(
+  parameter int unsigned WIDTH = 1,
+  parameter int unsigned DEPTH = 2    // default currently 2 in order to not break existing usage
 ) (
-    input  logic             i_clk_src,
-    input  logic             i_reset_src_n,
-    input  logic [WIDTH-1:0] i_data,
-    input  logic             i_clk_dst,
-    input  logic             i_reset_dst_n,
-    output logic [WIDTH-1:0] o_data
+  input  logic             i_clk_src,
+  input  logic             i_reset_src_n,
+  input  logic [WIDTH-1:0] i_data,
+  input  logic             i_clk_dst,
+  input  logic             i_reset_dst_n,
+  output logic [WIDTH-1:0] o_data
 );
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -32,33 +32,33 @@
   logic  clk2_ack_toggle_reg;
 
 
-  if (DEPTH == 2) begin : g_depth_2
+  if (DEPTH == 2) begin : gen_depth_2
     prim_flop_2sync_r sync_req_toggle (
-        .i_CK     (i_clk_dst),
-        .i_RN     (i_reset_dst_n),
-        .i_D      (clk1_req_toggle_reg),
-        .o_Q      (clk2_req_toggle)
+      .i_CK     (i_clk_dst),
+      .i_RN     (i_reset_dst_n),
+      .i_D      (clk1_req_toggle_reg),
+      .o_Q      (clk2_req_toggle)
     );
 
     prim_flop_2sync_r sync_ack_toggle (
-        .i_CK     (i_clk_src),
-        .i_RN     (i_reset_src_n),
-        .i_D      (clk2_ack_toggle_reg),
-        .o_Q      (clk1_ack_toggle)
+      .i_CK     (i_clk_src),
+      .i_RN     (i_reset_src_n),
+      .i_D      (clk2_ack_toggle_reg),
+      .o_Q      (clk1_ack_toggle)
     );
-  end else begin : g_depth_3
+  end else begin : gen_depth_3
     prim_flop_3sync_r sync_req_toggle (
-        .i_CK     (i_clk_dst),
-        .i_RN     (i_reset_dst_n),
-        .i_D      (clk1_req_toggle_reg),
-        .o_Q      (clk2_req_toggle)
+      .i_CK     (i_clk_dst),
+      .i_RN     (i_reset_dst_n),
+      .i_D      (clk1_req_toggle_reg),
+      .o_Q      (clk2_req_toggle)
     );
 
     prim_flop_3sync_r sync_ack_toggle (
-        .i_CK     (i_clk_src),
-        .i_RN     (i_reset_src_n),
-        .i_D      (clk2_ack_toggle_reg),
-        .o_Q      (clk1_ack_toggle)
+      .i_CK     (i_clk_src),
+      .i_RN     (i_reset_src_n),
+      .i_D      (clk2_ack_toggle_reg),
+      .o_Q      (clk1_ack_toggle)
     );
   end
 
@@ -127,7 +127,7 @@
 
   logic clk2_val_sample;
 
-  assign  clk2_val_sample = !clk2_req_ongoing_reg && (clk2_req_toggle != clk2_req_toggle_reg);
+  assign clk2_val_sample = !clk2_req_ongoing_reg && (clk2_req_toggle != clk2_req_toggle_reg);
 
   logic [WIDTH-1:0] clk2_val_reg;
 

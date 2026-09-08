@@ -19,7 +19,7 @@
 
 ======
 
-[cols="1,1,1,3", options="header"]
+[cols="1,4,1,6", options="header"]
 .Register Map
 |===
 | Address | Name | Access | Description
@@ -33,28 +33,28 @@
 | 0x70 | TOKEN_MATCH_FAULT | R a| Token comparator redundancy fault status. The token match logic is triple redundant and is not a majority vote: all three comparators must agree and each must drive a legal differential pair. A bit sets when the comparators for that token disagree, which may indicate a fault injection or FIB attack. The corresponding token_match_status then reads the error code 6'b111111 and an interrupt is raised to the SEP CPU. Bits are sticky until reset.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .RMA_SIP_TOKEN_I[8] Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `token` | RW | - a| Portion of writeable version of RMA_*_TOKEN, hashed, and compared with fused value to allow LC to change states.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .RMA_CHIPLET_TOKEN_I[8] Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `token` | RW | - a| Portion of writeable version of RMA_*_TOKEN, hashed, and compared with fused value to allow LC to change states.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SEC_DISABLE_TOKEN_I[8] Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `token` | RW | - a| Portion of writeable version of SEC_DISABLE_TOKEN, hashed, and compared with the post silicon injected values to allow security_disable.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TOKEN_EOP Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -66,7 +66,7 @@
 | 0 | `rma_sip_token_go` | W | 0x0 a| Write 1 to indicate that all token data has been written; this generates a pulse to begin token hashing.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .RMA_SIP_TOKEN_MATCH Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -74,7 +74,7 @@
 | 5:0 | `token_match_status` | R | 0x0 a| Store the status of the token match.  Match = 6'b010101, Mismatch = 6'b101010, Error = 6'b111111
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .RMA_CHIPLET_TOKEN_MATCH Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -82,7 +82,7 @@
 | 5:0 | `token_match_status` | R | 0x0 a| Store the status of the token match.  Match = 6'b010101, Mismatch = 6'b101010, Error = 6'b111111
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SEC_DISABLE_TOKEN_MATCH Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -90,7 +90,7 @@
 | 5:0 | `token_match_status` | R | 0x0 a| Store the status of the token match.  Match = 6'b010101, Mismatch = 6'b101010, Error = 6'b111111
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TOKEN_MATCH_FAULT Register
 |===
 | Bits | Field | Access | Reset | Description

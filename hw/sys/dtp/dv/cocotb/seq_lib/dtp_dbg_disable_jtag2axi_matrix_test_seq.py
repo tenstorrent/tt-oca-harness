@@ -59,13 +59,21 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq(dtp_jtag2axi_base_test_seq):
         cfg = self.target_cfg(target)
         before = await self.target_activity_counts(target)
         await self.write_target_single_and_check(target, addr, data, context=f"{context}.write")
-        await self.expect_target_activity(target, before=before, read=False, context=f"{context}.write")
+        await self.expect_target_activity(
+            target, before=before, read=False, context=f"{context}.write"
+        )
         before = await self.target_activity_counts(target)
         await self.read_target_single_and_check(target, addr, data, context=f"{context}.read")
-        await self.expect_target_activity(target, before=before, read=True, context=f"{context}.read")
+        await self.expect_target_activity(
+            target, before=before, read=True, context=f"{context}.read"
+        )
         self.fcov.sample_cell(
-            cfg.dbg_disable_bit, 0, ALLOWED,
-            mask=mask, operation="single_write_read", result="activity+readback_ok",
+            cfg.dbg_disable_bit,
+            0,
+            ALLOWED,
+            mask=mask,
+            operation="single_write_read",
+            result="activity+readback_ok",
         )
 
     async def check_blocked(self, target: str, addr: int, data: int, *, mask, context: str) -> int:
@@ -92,8 +100,12 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq(dtp_jtag2axi_base_test_seq):
             sentinel,
         )
         self.fcov.sample_cell(
-            cfg.dbg_disable_bit, 1, BLOCKED,
-            mask=mask, operation="single_write_gated", result="no_activity+sentinel_intact",
+            cfg.dbg_disable_bit,
+            1,
+            BLOCKED,
+            mask=mask,
+            operation="single_write_gated",
+            result="no_activity+sentinel_intact",
         )
         return sentinel
 
@@ -106,7 +118,10 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq(dtp_jtag2axi_base_test_seq):
             self.log_iteration(row_idx + 1, len(rows), "row=%s mask=%s", label, mask)
             full = full_dbg_disable(mask)
             self.fcov.sample_mask(
-                {self.target_cfg(t).dbg_disable_bit: full[self.target_cfg(t).dbg_disable_bit] for t in MATRIX_TARGETS}
+                {
+                    self.target_cfg(t).dbg_disable_bit: full[self.target_cfg(t).dbg_disable_bit]
+                    for t in MATRIX_TARGETS
+                }
             )
             await self.set_dbg_disable_vector(mask)
 
@@ -148,13 +163,16 @@ class dtp_dbg_disable_jtag2axi_matrix_test_seq(dtp_jtag2axi_base_test_seq):
                     recover_addr = addr + 4 * cfg.beat_bytes
                     recover_data = (0xFEED_0000 | (row_idx << 4)) & self.data_mask(cfg.default_size)
                     await self.check_allowed(
-                        target, recover_addr, recover_data,
-                        mask=full_dbg_disable({}), context=f"{label}.{target}.recovery",
+                        target,
+                        recover_addr,
+                        recover_data,
+                        mask=full_dbg_disable({}),
+                        context=f"{label}.{target}.recovery",
                     )
                 self.fcov.sample_aux("recovery", context=label)
 
         self.fcov.require_cells(tuple(self.target_cfg(t).dbg_disable_bit for t in MATRIX_TARGETS))
-        self.fcov.write_artifact(seed=self.random_seed())
+        self.fcov.write_artifact(seed=self.scenario_seed)
         self.log_summary(
             "Debug-disable JTAG2AXI matrix",
             rows=len(rows),

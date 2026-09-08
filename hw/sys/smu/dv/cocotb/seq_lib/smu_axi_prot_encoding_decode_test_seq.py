@@ -3,7 +3,7 @@
 """OSS SMU Tier A: inbound AxPROT[1] decode via allow_ns=0 (FAB_SMC_029 S9 subset).
 
 SEP=0 honest scope: JTAG2AXI filter program + s_axi stimulus only.
-Commercial S1–S8 (GPIO PoC AXI-Lite exact-match) needs sep_in_master — deferred.
+Commercial S1–S8 (GPIO PoC AXI-Lite exact-match) need sep_in_master and are not covered.
 """
 
 from __future__ import annotations
@@ -80,9 +80,7 @@ class smu_axi_prot_encoding_decode_test_seq:
 
     async def _axi_rd(self, master, addr: int, prot: int):
         async def _do():
-            result = await master.read_bytes_result(
-                addr, 4, prot=prot, check_response=False
-            )
+            result = await master.read_bytes_result(addr, 4, prot=prot, check_response=False)
             return result.data, result.resp
 
         try:
@@ -99,8 +97,7 @@ class smu_axi_prot_encoding_decode_test_seq:
             last = resp
             if resp == want:
                 self._log(
-                    f"FILTER_READY {label} prot=0x{prot:x} want={resp_name(want)} "
-                    f"poll={poll}"
+                    f"FILTER_READY {label} prot=0x{prot:x} want={resp_name(want)} poll={poll}"
                 )
                 return
             await ClockCycles(self.dut.clk_smu_i, FILTER_READY_STEP)
@@ -110,17 +107,13 @@ class smu_axi_prot_encoding_decode_test_seq:
         )
 
     async def _j2a_wr(self, jtag, addr: int, data: int, name: str) -> None:
-        st, _ = await jtag2axi_single_write(
-            jtag, addr, data, require_complete=True
-        )
+        st, _ = await jtag2axi_single_write(jtag, addr, data, require_complete=True)
         if st != J2A_STATUS_SUCCESS:
             raise AssertionError(f"J2A WR {name} status={st}")
         self._log(f"J2A WR {name} @0x{addr:08x} data=0x{data:x}")
 
     async def _j2a_rd(self, jtag, addr: int, name: str) -> int:
-        st, rdata = await jtag2axi_single_read(
-            jtag, addr, require_complete=True
-        )
+        st, rdata = await jtag2axi_single_read(jtag, addr, require_complete=True)
         if st != J2A_STATUS_SUCCESS:
             raise AssertionError(f"J2A RD {name} status={st}")
         return int(rdata)
@@ -129,14 +122,10 @@ class smu_axi_prot_encoding_decode_test_seq:
         await self._j2a_wr(jtag, smc_indexed_addr(_IN_CFG, 1), 0, "DIS_I1")
         await self._j2a_wr(jtag, smc_indexed_addr(_IN_START, 0), lo, "S9_START")
         await self._j2a_wr(jtag, smc_indexed_addr(_IN_END, 0), hi, "S9_END")
-        await self._j2a_wr(
-            jtag, smc_indexed_addr(_IN_CFG, 0), CFG_SECURE_ONLY, "S9_CONFIG"
-        )
+        await self._j2a_wr(jtag, smc_indexed_addr(_IN_CFG, 0), CFG_SECURE_ONLY, "S9_CONFIG")
         rb = await self._j2a_rd(jtag, smc_indexed_addr(_IN_CFG, 0), "S9_RB")
         if (rb & _CFG_CMP_MASK) != (CFG_SECURE_ONLY & _CFG_CMP_MASK):
-            raise AssertionError(
-                f"S9 CONFIG rb mismatch want=0x{CFG_SECURE_ONLY:x} got=0x{rb:x}"
-            )
+            raise AssertionError(f"S9 CONFIG rb mismatch want=0x{CFG_SECURE_ONLY:x} got=0x{rb:x}")
 
     async def run(self) -> None:
         dut = self.dut
@@ -152,17 +141,13 @@ class smu_axi_prot_encoding_decode_test_seq:
             raise AssertionError(f"IDCODE want 0x1 got 0x{idcode:08x}")
         sb.expect_eq("CHK-SMU-PROT-J2A-READY", idcode, 0x1)
 
-        master = await make_smu_axi_master(
-            dut, dut.clk_smu_i, dut.rst_primary_smc_clk_no
-        )
+        master = await make_smu_axi_master(dut, dut.clk_smu_i, dut.rst_primary_smc_clk_no)
         probe = SMC_CHIP_CONFIG_VERSION_LO
         lo, hi = page_align_window(probe, probe)
         await self._program_secure_window(jtag, lo, hi)
 
         # Warm filter path with one known-good secure encoding.
-        await self._await_resp(
-            master, probe, 0x1, RESP_OKAY, "S9_warm_secure"
-        )
+        await self._await_resp(master, probe, 0x1, RESP_OKAY, "S9_warm_secure")
 
         for prot in range(8):
             label = PROT_LABELS[prot]
@@ -170,8 +155,7 @@ class smu_axi_prot_encoding_decode_test_seq:
             _val, resp = await self._axi_rd(master, probe, prot)
             if resp != want:
                 raise AssertionError(
-                    f"S9 prot=0x{prot:x} ({label}) expected {resp_name(want)} "
-                    f"got {resp_name(resp)}"
+                    f"S9 prot=0x{prot:x} ({label}) expected {resp_name(want)} got {resp_name(resp)}"
                 )
             self._log(
                 f"CHK-SMU-PROT-S9 cell prot=0x{prot:x} {label} "

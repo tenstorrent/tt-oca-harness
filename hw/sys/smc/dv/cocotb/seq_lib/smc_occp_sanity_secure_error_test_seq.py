@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """P2-2 / U7-6: public secure-error negative via OTP program-fail + signature gate.
 
-Legacy OCCP is ROM firmware on the chiplet TB. On the OSS smc_wrapper unit TB the
+Proprietary OCCP is ROM firmware on the chiplet TB. On the OSS smc_wrapper unit TB the
 public security hooks that are reachable without proprietary OCCP ROM are:
 
   1. OTP PROGRAM failure injection (secure programming error).
@@ -21,13 +21,9 @@ from cocotb.triggers import ClockCycles, RisingEdge
 from .smc_addr_map import smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
-EFUSE_PROGRAM_CTRL = smc_addr(
-    "SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR"
-)
+EFUSE_PROGRAM_CTRL = smc_addr("SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR")
 EFUSE_MAP_0 = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
-CHIP_CONFIG_VERSION_LO = smc_addr(
-    "SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_BASE_ADDR"
-)
+CHIP_CONFIG_VERSION_LO = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_BASE_ADDR")
 
 OTP_WORD0_MARKER = 0xA5A55A5A
 _PROG_DATA = 1 << 16
@@ -54,9 +50,7 @@ class smc_occp_sanity_secure_error_test_seq(SmcCsrSeq):
 
         # Positive: signature / identity readable and matches preload marker.
         map0 = await self.csr_read("EFUSE_MAP_0", EFUSE_MAP_0)
-        assert map0 == OTP_WORD0_MARKER, (
-            f"positive signature gate failed: map0=0x{map0:08x}"
-        )
+        assert map0 == OTP_WORD0_MARKER, f"positive signature gate failed: map0=0x{map0:08x}"
         ver = await self.csr_read("CHIP_CONFIG_VERSION_LO", CHIP_CONFIG_VERSION_LO)
         assert ver == 0x0001_00A0, f"CHIP_CONFIG_VERSION_LO unexpected 0x{ver:08x}"
 
@@ -81,9 +75,7 @@ class smc_occp_sanity_secure_error_test_seq(SmcCsrSeq):
             prog_before,
             prog_after,
         )
-        assert prog_after == prog_before, (
-            "secure program-fail must not sticky-OR OTP bits"
-        )
+        assert prog_after == prog_before, "secure program-fail must not sticky-OR OTP bits"
 
         # Positive recovery burn (second attempt succeeds).
         await self.csr_write(

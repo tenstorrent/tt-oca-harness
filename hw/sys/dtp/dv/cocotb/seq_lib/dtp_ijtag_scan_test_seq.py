@@ -13,7 +13,9 @@ from .dtp_scan_base_test_seq import dtp_scan_base_test_seq
 class dtp_ijtag_scan_test_seq(dtp_scan_base_test_seq):
     """Run one iJTAG scenario selected by the public wrapper."""
 
-    async def check_stored_sib_across_gate(self, sib: str, open_pattern: int, *, context: str) -> None:
+    async def check_stored_sib_across_gate(
+        self, sib: str, open_pattern: int, *, context: str
+    ) -> None:
         """Prove a gated Update-DR does not modify stored SIB state and that
         access resumes without TAP reset after the disable clears."""
         disable_field = IJTAG_SIB_DISABLE[sib]
@@ -33,7 +35,9 @@ class dtp_ijtag_scan_test_seq(dtp_scan_base_test_seq):
         await self.enable_all_debug()
         window = self.start_scan_window((f"{prefix}_select",))
         _, signals = await self.observe_ijtag_controls(0b000, context=f"{context}.post_release")
-        self.check_scan_window(window, quiet=(f"{prefix}_select",), context=f"{context}.post_release_window")
+        self.check_scan_window(
+            window, quiet=(f"{prefix}_select",), context=f"{context}.post_release_window"
+        )
         self.check_observable(signals, f"{prefix}_select", 0, context=f"{context}.post_release")
         # Resume without reset: a sanctioned open now succeeds.
         await self.check_pattern(open_pattern, context=f"{context}.resume")
@@ -62,7 +66,9 @@ class dtp_ijtag_scan_test_seq(dtp_scan_base_test_seq):
         await self.enable_all_debug()
         await self.program_ijtag_sibs(0, context="cleanup")
 
-    async def check_pattern(self, pattern: int, *, dbg_disable: dict[str, int] | None = None, context: str) -> None:
+    async def check_pattern(
+        self, pattern: int, *, dbg_disable: dict[str, int] | None = None, context: str
+    ) -> None:
         await self.check_ijtag_pattern(pattern, dbg_disable=dbg_disable, context=context)
 
     async def run_sib_all_off(self) -> None:
@@ -76,7 +82,9 @@ class dtp_ijtag_scan_test_seq(dtp_scan_base_test_seq):
             "dft_nonsecure": rng.randrange(2),
             "dfd": rng.randrange(2),
         }
-        await self.check_pattern(0b000, dbg_disable=random_disable, context="all_off.random_disable")
+        await self.check_pattern(
+            0b000, dbg_disable=random_disable, context="all_off.random_disable"
+        )
         _, signals = await self.observe_ijtag_controls(0, context="all_off.recheck")
         for name in IJTAG_SIB_ORDER:
             prefix = {"dft_secure": "jtag_dft_secure", "dft": "jtag_dft", "dfd": "jtag_dfd"}[name]
@@ -115,9 +123,7 @@ class dtp_ijtag_scan_test_seq(dtp_scan_base_test_seq):
 
     async def run_dft(self) -> None:
         self.log_banner("iJTAG DFT secure/non-secure access")
-        # Non-secure DFT only.
         await self.check_pattern(0b010, context="dft.nonsecure_only")
-        # Secure DFT only.
         await self.check_pattern(0b100, context="dft.secure_only")
         gate_cases = [
             ("secure_gated", 0b100, {"dft_secure": 1}),
@@ -146,4 +152,3 @@ class dtp_ijtag_scan_test_seq(dtp_scan_base_test_seq):
             await self.check_pattern(pattern, dbg_disable=dbg, context=f"dfd.random_{idx}")
         await self.check_stored_sib_across_gate("dfd", 0b001, context="dfd.stored")
         self.log_summary("iJTAG DFD", random_iterations=8)
-

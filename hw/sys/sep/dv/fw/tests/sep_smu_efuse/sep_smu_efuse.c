@@ -24,12 +24,29 @@ static int run_efuse_reg_sequence(void) {
         return -1;
     if (rw_check32(OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_BASE_ADDR, 0x00000001u) != 0)
         return -2;
+        /*
+         * External efuse shim CSR path.
+         *
+         * EFUSE_TIMING_CTRL_7/8 exist only in register maps that generate the wide
+         * shim block. This tree generates a narrow one whose only register is
+         * EFUSE_BANK_INIT_TIME, so cover the shim through that instead of dropping
+         * the block entirely. The substitution proves the same thing the original
+         * pair was there to prove -- the shim CSR path is alive and read/writable --
+         * and nothing more: on this map TIMING_CTRL_7/8 are NOT exercised, because
+         * they do not exist.
+         */
+#ifdef OCH_SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_7_BASE_ADDR
     if (rw_check32(OCH_SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_7_BASE_ADDR,
                    0x0000ABCDu) != 0)
         return -3;
     if (rw_check32(OCH_SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_TIMING_CTRL_8_BASE_ADDR,
                    0x00000020u) != 0)
         return -4;
+#else
+    if (rw_check32(OCH_SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_BASE_ADDR,
+                   0x00000020u) != 0)
+        return -3;
+#endif
 
     /* Read-only touchpoint to ensure token map access is alive. */
     (void)READ_REG(OCH_SEP_TOP_EFUSE_MMR_TOKEN_EOP_BASE_ADDR);

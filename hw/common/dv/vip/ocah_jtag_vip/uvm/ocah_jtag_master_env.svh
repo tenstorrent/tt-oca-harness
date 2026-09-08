@@ -22,49 +22,45 @@
 //   ocah_jtag_master_env::type_id::set_type_override(<vendor>_jtag_env::get_type())
 
 class ocah_jtag_master_env extends uvm_env;
-    `uvm_component_utils(ocah_jtag_master_env)
+  `uvm_component_utils(ocah_jtag_master_env)
 
-    ocah_jtag_master_config       cfg;
-    ocah_jtag_master_agent     m_agent;
+  ocah_jtag_master_config       cfg;
+  ocah_jtag_master_agent     m_agent;
 
-    // Optional functional-coverage subscriber (cfg.en_cov; commercial-sim
-    // flows only). Its scan_export stays available for a DUT env that owns a
-    // scan builder.
-    ocah_jtag_cov       m_cov;
+  // Optional functional-coverage subscriber (cfg.en_cov; commercial-sim
+  // flows only). Its scan_export stays available for a DUT env that owns a
+  // scan builder.
+  ocah_jtag_cov       m_cov;
 
-    // Frozen surface.
-    ocah_jtag_master_sequencer m_sequencer;
-    uvm_analysis_port #(ocah_jtag_event) event_ap;
+  // Frozen surface.
+  ocah_jtag_master_sequencer m_sequencer;
+  uvm_analysis_port #(ocah_jtag_event) event_ap;
 
-    function new(string name = "ocah_jtag_master_env", uvm_component parent = null);
-        super.new(name, parent);
-    endfunction
+  function new(string name = "ocah_jtag_master_env", uvm_component parent = null);
+    super.new(name, parent);
+  endfunction
 
-    function void build_phase(uvm_phase phase);
-        super.build_phase(phase);
-        if (cfg == null &&
-            !uvm_config_db#(ocah_jtag_master_config)::get(this, "", "cfg", cfg))
-            `uvm_fatal(get_type_name(), "ocah_jtag_master_config `cfg` not found in uvm_config_db")
-        event_ap = new("event_ap", this);
-        uvm_config_db#(ocah_jtag_master_config)::set(this, "m_agent*", "cfg", cfg);
-        m_agent = ocah_jtag_master_agent::type_id::create("m_agent", this);
-        if (cfg.en_cov) begin
-            if (!cfg.en_monitor)
-                `uvm_fatal(get_type_name(),
-                    "cfg.en_cov requires cfg.en_monitor (coverage samples the event stream)")
-            uvm_config_db#(ocah_jtag_master_config)::set(this, "m_cov*", "cfg", cfg);
-            m_cov = ocah_jtag_cov::type_id::create("m_cov", this);
-        end
-    endfunction
+  function void build_phase(uvm_phase phase);
+    super.build_phase(phase);
+    if (cfg == null && !uvm_config_db#(ocah_jtag_master_config)::get(this, "", "cfg", cfg))
+      `uvm_fatal(get_type_name(), "ocah_jtag_master_config `cfg` not found in uvm_config_db")
+    event_ap = new("event_ap", this);
+    uvm_config_db#(ocah_jtag_master_config)::set(this, "m_agent*", "cfg", cfg);
+    m_agent = ocah_jtag_master_agent::type_id::create("m_agent", this);
+    if (cfg.en_cov) begin
+      if (!cfg.en_monitor)
+        `uvm_fatal(get_type_name(),
+                   "cfg.en_cov requires cfg.en_monitor (coverage samples the event stream)")
+      uvm_config_db#(ocah_jtag_master_config)::set(this, "m_cov*", "cfg", cfg);
+      m_cov = ocah_jtag_cov::type_id::create("m_cov", this);
+    end
+  endfunction
 
-    function void connect_phase(uvm_phase phase);
-        super.connect_phase(phase);
-        if (cfg.is_active == UVM_ACTIVE)
-            m_sequencer = m_agent.m_sequencer;
-        if (cfg.en_monitor)
-            m_agent.m_monitor.event_ap.connect(event_ap);
-        if (m_cov != null)
-            m_agent.m_monitor.event_ap.connect(m_cov.analysis_export);
-    endfunction
+  function void connect_phase(uvm_phase phase);
+    super.connect_phase(phase);
+    if (cfg.is_active == UVM_ACTIVE) m_sequencer = m_agent.m_sequencer;
+    if (cfg.en_monitor) m_agent.m_monitor.event_ap.connect(event_ap);
+    if (m_cov != null) m_agent.m_monitor.event_ap.connect(m_cov.analysis_export);
+  endfunction
 
 endclass : ocah_jtag_master_env

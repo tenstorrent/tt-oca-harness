@@ -11,29 +11,19 @@ from typing import Optional
 
 import cocotb
 from cocotb.triggers import ClockCycles
-
 from ocah_jtag_vip import OcahJtagDevice, OcahJtagMasterDriver
 
 # Lifecycle ungating: use seq_lib.smu_lcc_helpers (SEP=1 eFuse→LCC).
 # SEP=0 gen_no_sep ties sep_feat_ctrl='1' (enable); J2A opens after TCK sync.
-# Force-based helpers were removed.
 
 _REPO_ROOT = Path(__file__).resolve().parents[6]
-_JTAG_INST_PKG = (
-    _REPO_ROOT / "hw" / "ip" / "jtag" / "jtag_ptap" / "rtl" / "jtag_inst_reg_pkg.sv"
-)
-_JTAG_PTAP_ARCH = (
-    _REPO_ROOT / "hw" / "ip" / "jtag" / "jtag_ptap" / "doc" / "architecture.adoc"
-)
+_JTAG_INST_PKG = _REPO_ROOT / "hw" / "ip" / "jtag" / "jtag_ptap" / "rtl" / "jtag_inst_reg_pkg.sv"
+_JTAG_PTAP_ARCH = _REPO_ROOT / "hw" / "ip" / "jtag" / "jtag_ptap" / "doc" / "architecture.adoc"
 _IR_ENUM_RE = re.compile(r"^\s+(\w+_INSTR)\s+=\s+6'h([0-9A-Fa-f]+)")
 _JTAG_CAPS_SEP_DBG_RE = re.compile(r"^\|(\d+) \|sep_dbg_en \|")
-_JTAG2AXI_CAPS_FIELD_RE = re.compile(
-    r"^\|(\d+)(?::(\d+))? \|(\w+) \|"
-)
+_JTAG2AXI_CAPS_FIELD_RE = re.compile(r"^\|(\d+)(?::(\d+))? \|(\w+) \|")
 _SMU_PKG = _REPO_ROOT / "hw" / "sys" / "smu" / "rtl" / "smu_pkg.sv"
-_SMU_OTP_PL_RE = re.compile(
-    r"SMC_OTP_(RD|WR)_PL_DEPTH:\s+2'h([0-9A-Fa-f]+)"
-)
+_SMU_OTP_PL_RE = re.compile(r"SMC_OTP_(RD|WR)_PL_DEPTH:\s+2'h([0-9A-Fa-f]+)")
 
 
 @lru_cache(maxsize=1)
@@ -91,9 +81,7 @@ def _jtag2axi_caps_field_lsb() -> dict[str, int]:
     need = ("rd_pl_depth", "wr_pl_depth", "data_size", "addr_size", "bus_type")
     missing = [n for n in need if n not in out]
     if missing:
-        raise RuntimeError(
-            f"JTAG2AXI_CAPS fields {missing} missing from {_JTAG_PTAP_ARCH}"
-        )
+        raise RuntimeError(f"JTAG2AXI_CAPS fields {missing} missing from {_JTAG_PTAP_ARCH}")
     return out
 
 
@@ -133,9 +121,7 @@ def _jtag2axi_caps_encodings() -> dict[str, int]:
             if m:
                 bus_lite = int(m.group(1))
     if data_size_4b is None or bus_lite is None:
-        raise RuntimeError(
-            f"JTAG2AXI_CAPS encodings missing from {_JTAG_PTAP_ARCH}"
-        )
+        raise RuntimeError(f"JTAG2AXI_CAPS encodings missing from {_JTAG_PTAP_ARCH}")
     return {"data_size_4b": data_size_4b, "bus_axi4_lite": bus_lite}
 
 
@@ -188,11 +174,7 @@ def stap_sib_pattern(name: str, enabled: int = 1) -> int:
 
 def stap_3dcr_payload(*, config_hold: int, stap_sel: int, tms_hold: int) -> int:
     """LSB-first STAP 3DCR: config_hold, stap_sel, tms_hold."""
-    return (
-        (config_hold & 0x1)
-        | ((stap_sel & 0x1) << 1)
-        | ((tms_hold & 0x1) << 2)
-    )
+    return (config_hold & 0x1) | ((stap_sel & 0x1) << 1) | ((tms_hold & 0x1) << 2)
 
 
 def stap_3dcr_scan_word(
@@ -204,17 +186,15 @@ def stap_3dcr_scan_word(
     close_sib: int = 0,
 ) -> tuple[int, int]:
     """SIB bits then 3-bit 3DCR; width = len(SMU_STAP_ORDER) + STAP_3DCR_WIDTH."""
-    payload = stap_3dcr_payload(
-        config_hold=config_hold, stap_sel=stap_sel, tms_hold=tms_hold
-    )
-    value = (close_sib & 0x1) << (
-        len(SMU_STAP_ORDER) - 1 - SMU_STAP_ORDER.index(name)
-    )
+    payload = stap_3dcr_payload(config_hold=config_hold, stap_sel=stap_sel, tms_hold=tms_hold)
+    value = (close_sib & 0x1) << (len(SMU_STAP_ORDER) - 1 - SMU_STAP_ORDER.index(name))
     value |= payload << len(SMU_STAP_ORDER)
     return value, len(SMU_STAP_ORDER) + STAP_3DCR_WIDTH
 
 
-def ptap_prefixed(stap_word: int, stap_width: int, *, config_hold: int = 1, select: int = 1) -> tuple[int, int]:
+def ptap_prefixed(
+    stap_word: int, stap_width: int, *, config_hold: int = 1, select: int = 1
+) -> tuple[int, int]:
     """Prefix PTAP 3DCR bits so TAP_3DCR DR shifts do not clear stap_select.
 
     Scan order is TDI -> 2-bit PTAP 3DCR -> STAP SIB chain. LSB-first, so
@@ -233,9 +213,7 @@ DTP_IR_SMC_AXI_SERIES_DATA_INCR = dtp_ir_opcode("SMC_AXI_SERIES_DATA_INCR_INSTR"
 DTP_IR_SMC_OTP_JTAG2AXI_CAPS = dtp_ir_opcode("SMC_OTP_JTAG2AXI_CAPS_INSTR")
 DTP_IR_SMC_OTP_AXI_SINGLE_OP = dtp_ir_opcode("SMC_OTP_AXI_SINGLE_OP_INSTR")
 DTP_IR_SMC_OTP_AXI_SERIES_CTRL = dtp_ir_opcode("SMC_OTP_AXI_SERIES_CTRL_INSTR")
-DTP_IR_SMC_OTP_AXI_SERIES_DATA_NO_INCR = dtp_ir_opcode(
-    "SMC_OTP_AXI_SERIES_DATA_NO_INCR_INSTR"
-)
+DTP_IR_SMC_OTP_AXI_SERIES_DATA_NO_INCR = dtp_ir_opcode("SMC_OTP_AXI_SERIES_DATA_NO_INCR_INSTR")
 DTP_IR_SEP_OTP_JTAG2AXI_CAPS = dtp_ir_opcode("SEP_OTP_JTAG2AXI_CAPS_INSTR")
 DTP_IR_SEP_OTP_AXI_SINGLE_OP = dtp_ir_opcode("SEP_OTP_AXI_SINGLE_OP_INSTR")
 DTP_IR_JTAG_CAPS = dtp_ir_opcode("JTAG_CAPS_INSTR")
@@ -562,8 +540,7 @@ def read_smc_reset_ctrl_bit(dut, leaf: str, idx: int | None = None) -> int:
             packed = ctrl.value
             if not packed.is_resolvable:
                 raise AssertionError(
-                    f"X/Z sample on jtag_smc_reset_ctrl (packed) for {leaf}[{idx}]: "
-                    f"{packed}"
+                    f"X/Z sample on jtag_smc_reset_ctrl (packed) for {leaf}[{idx}]: {packed}"
                 )
             return (int(packed) >> bit) & 1
         except AssertionError:
@@ -578,9 +555,7 @@ def read_smc_reset_ctrl_bit(dut, leaf: str, idx: int | None = None) -> int:
             except Exception:  # noqa: BLE001
                 v = vec.value
                 if not v.is_resolvable:
-                    raise AssertionError(
-                        f"X/Z sample on jtag_smc_reset_ctrl.{leaf}: {v}"
-                    )
+                    raise AssertionError(f"X/Z sample on jtag_smc_reset_ctrl.{leaf}: {v}")
                 return (int(v) >> idx) & 1
         raise AssertionError(f"Cannot read jtag_smc_reset_ctrl.{leaf}[{idx}]")
 
@@ -594,9 +569,7 @@ def read_smc_reset_ctrl_bit(dut, leaf: str, idx: int | None = None) -> int:
         )
     packed = ctrl.value
     if not packed.is_resolvable:
-        raise AssertionError(
-            f"X/Z sample on jtag_smc_reset_ctrl (packed) for {leaf}: {packed}"
-        )
+        raise AssertionError(f"X/Z sample on jtag_smc_reset_ctrl (packed) for {leaf}: {packed}")
     return (int(packed) >> _SMC_RESET_CTRL_BITS[leaf]) & 1
 
 
@@ -665,9 +638,7 @@ async def otp_jtag2axi_series_ctrl(
     size: int = SMC_OTP_AXSIZE_4B,
     reset: int = 0,
 ) -> None:
-    raw = pack_otp_series_ctrl(
-        op, addr, pipeline_depth=pipeline_depth, size=size, reset=reset
-    )
+    raw = pack_otp_series_ctrl(op, addr, pipeline_depth=pipeline_depth, size=size, reset=reset)
     await jtag.write("SMC_OTP_AXI_SERIES_CTRL", raw)
     require_jtag_tdo_resolved(f"OTP SERIES_CTRL issue op={op} @0x{addr:08x}")
 
@@ -709,9 +680,7 @@ async def otp_jtag2axi_series_data_no_incr(
             f"OTP series data width {8 * (1 << size)} != registered "
             f"{SMC_OTP_SERIES_DATA_NO_INCR_LEN}"
         )
-    capt = await jtag.read(
-        "SMC_OTP_AXI_SERIES_DATA_NO_INCR", shift_value=data & mask
-    )
+    capt = await jtag.read("SMC_OTP_AXI_SERIES_DATA_NO_INCR", shift_value=data & mask)
     require_jtag_tdo_resolved("OTP SERIES_DATA_NO_INCR")
     return int(capt) & mask
 
@@ -781,9 +750,7 @@ async def jtag2axi_single_write(
             break
         await ClockCycles(cocotb.top.clk_smu_i, 16)
     if require_complete and status == J2A_STATUS_BUSY:
-        raise TimeoutError(
-            f"JTAG2AXI write stuck BUSY after {poll_limit} polls @ {addr:#x}"
-        )
+        raise TimeoutError(f"JTAG2AXI write stuck BUSY after {poll_limit} polls @ {addr:#x}")
     return status, rdata
 
 
@@ -806,9 +773,7 @@ async def jtag2axi_single_read(
             break
         await ClockCycles(cocotb.top.clk_smu_i, 16)
     if require_complete and status == J2A_STATUS_BUSY:
-        raise TimeoutError(
-            f"JTAG2AXI read stuck BUSY after {poll_limit} polls @ {addr:#x}"
-        )
+        raise TimeoutError(f"JTAG2AXI read stuck BUSY after {poll_limit} polls @ {addr:#x}")
     return status, rdata
 
 
@@ -821,9 +786,7 @@ async def jtag2axi_series_ctrl(
     size: int = SMC_DBG_AXSIZE_8B,
     reset: int = 0,
 ) -> None:
-    raw = pack_smc_series_ctrl(
-        op, addr, pipeline_depth=pipeline_depth, size=size, reset=reset
-    )
+    raw = pack_smc_series_ctrl(op, addr, pipeline_depth=pipeline_depth, size=size, reset=reset)
     await jtag.write("SMC_AXI_SERIES_CTRL", raw)
     require_jtag_tdo_resolved(f"SMC SERIES_CTRL issue op={op} @0x{addr:08x}")
 
@@ -860,8 +823,7 @@ async def jtag2axi_series_data_incr(
     mask = smc_series_data_mask(size)
     if 8 * (1 << size) != SMC_DBG_SERIES_DATA_LEN:
         raise AssertionError(
-            f"SMC series data width {8 * (1 << size)} != registered "
-            f"{SMC_DBG_SERIES_DATA_LEN}"
+            f"SMC series data width {8 * (1 << size)} != registered {SMC_DBG_SERIES_DATA_LEN}"
         )
     capt = await jtag.read("SMC_AXI_SERIES_DATA_INCR", shift_value=data & mask)
     require_jtag_tdo_resolved("SMC SERIES_DATA_INCR")
@@ -878,9 +840,7 @@ async def jtag2axi_series_incr_write(
     poll_limit: int = 64,
 ) -> int:
     mask = smc_series_data_mask(size)
-    await jtag2axi_series_ctrl(
-        jtag, J2A_OP_WRITE, addr, pipeline_depth=pipeline_depth, size=size
-    )
+    await jtag2axi_series_ctrl(jtag, J2A_OP_WRITE, addr, pipeline_depth=pipeline_depth, size=size)
     await jtag2axi_series_data_incr(jtag, data & mask, size=size)
     await ClockCycles(cocotb.top.clk_smu_i, 64)
     *_, status = await jtag2axi_series_ctrl_status(
@@ -897,9 +857,7 @@ async def jtag2axi_series_incr_read(
     pipeline_depth: int = 1,
     poll_limit: int = 64,
 ) -> tuple[int, int]:
-    await jtag2axi_series_ctrl(
-        jtag, J2A_OP_READ, addr, pipeline_depth=pipeline_depth, size=size
-    )
+    await jtag2axi_series_ctrl(jtag, J2A_OP_READ, addr, pipeline_depth=pipeline_depth, size=size)
     await jtag2axi_series_data_incr(jtag, 0, size=size)
     await ClockCycles(cocotb.top.clk_smu_i, 64)
     *_, status = await jtag2axi_series_ctrl_status(
@@ -940,9 +898,7 @@ async def otp_jtag2axi_single_read(
             break
         await ClockCycles(cocotb.top.clk_smu_i, 16)
     if require_complete and status == J2A_STATUS_BUSY:
-        raise TimeoutError(
-            f"OTP JTAG2AXI read stuck BUSY after {poll_limit} polls @ {addr:#x}"
-        )
+        raise TimeoutError(f"OTP JTAG2AXI read stuck BUSY after {poll_limit} polls @ {addr:#x}")
     return status, rdata
 
 
@@ -969,9 +925,7 @@ async def otp_jtag2axi_single_write(
             break
         await ClockCycles(cocotb.top.clk_smu_i, 16)
     if require_complete and status == J2A_STATUS_BUSY:
-        raise TimeoutError(
-            f"OTP JTAG2AXI write stuck BUSY after {poll_limit} polls @ {addr:#x}"
-        )
+        raise TimeoutError(f"OTP JTAG2AXI write stuck BUSY after {poll_limit} polls @ {addr:#x}")
     return status, rdata
 
 
@@ -1019,9 +973,7 @@ def axi64_unpack32(addr: int, beat: int) -> int:
     return beat & 0xFFFF_FFFF
 
 
-async def wdt_unlock(
-    jtag: OcahJtagMasterDriver, magic: int = WDT_KEY_MAGIC
-) -> int:
+async def wdt_unlock(jtag: OcahJtagMasterDriver, magic: int = WDT_KEY_MAGIC) -> int:
     """Write CORE0 WDT KEY once; lane packing follows the map address."""
     from seq_lib.smu_addr_map import smc_addr
 

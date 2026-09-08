@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import cocotb
 from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly
+from ocah_jtag_vip import OcahJtagMasterDriver
 from pyuvm import (
     ConfigDB,
     uvm_agent,
@@ -18,8 +19,6 @@ from pyuvm import (
     uvm_driver,
     uvm_sequencer,
 )
-
-from ocah_jtag_vip import OcahJtagMasterDriver
 
 from .dtp_jtag_item import DtpJtagItem, DtpJtagOp
 from .dtp_tap_device import DtpTapDevice
@@ -309,5 +308,4 @@ class DtpJtagAgent(uvm_agent):
 
     def connect_phase(self) -> None:
         self.driver.seq_item_port.connect(self.sequencer.seq_item_export)
-        # Expose the driver's completed-transaction stream as the agent's port.
         self.ap = self.driver.ap

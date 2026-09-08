@@ -36,7 +36,6 @@ never reads as a full sweep.
 from __future__ import annotations
 
 import pyuvm
-
 from sep_base_test import sep_base_test
 from seq_lib.sep_axi_order_sweep_seq import (
     S_AXI_CELL_FLOOR,
@@ -77,8 +76,12 @@ class sep_axi_order_sweep_test(sep_base_test):
             elif cell.key in sweep.dropped:
                 self.logger.info(
                     "CHK-ORDER-LAND DROP: %s %dB %s.%s not driven (%s)",
-                    cell.order, SIZE_BYTES[cell.size], cell.info.block,
-                    cell.info.name, sweep.dropped[cell.key])
+                    cell.order,
+                    SIZE_BYTES[cell.size],
+                    cell.info.block,
+                    cell.info.name,
+                    sweep.dropped[cell.key],
+                )
 
         report = sweep.coverage_report(cfg)
         if fails:
@@ -102,7 +105,9 @@ class sep_axi_order_sweep_test(sep_base_test):
         )
         self.logger.info(
             "CHK-ORDER-LAND PASS: %d cell(s) verified across %d block(s)",
-            compares, len(sweep.blocks_hit))
+            compares,
+            len(sweep.blocks_hit),
+        )
 
         missing_cross = cfg.cross_cells() - set(sweep.cross_covered)
         assert not missing_cross, (
@@ -111,7 +116,9 @@ class sep_axi_order_sweep_test(sep_base_test):
         )
         self.logger.info(
             "CHK-ORDER-XSIZE PASS: %d/%d (ordering x size) cell(s) verified",
-            len(sweep.cross_covered), len(cfg.cross_cells()))
+            len(sweep.cross_covered),
+            len(cfg.cross_cells()),
+        )
 
         # The displacement check needs a second register in the block to
         # write; a cell in a single-register block proves the land contract
@@ -125,8 +132,9 @@ class sep_axi_order_sweep_test(sep_base_test):
             f"({report})"
         )
         self.logger.info(
-            "CHK-ORDER-DISPLACE PASS: %d follow-on write(s) landed on the "
-            "register they addressed", sweep.witnessed)
+            "CHK-ORDER-DISPLACE PASS: %d follow-on write(s) landed on the register they addressed",
+            sweep.witnessed,
+        )
 
         # CHK-ORDER-STIM: the ordering each cell PRESENTED on the bus, read
         # off the AW/W valid assertions rather than taken from the profile
@@ -134,18 +142,20 @@ class sep_axi_order_sweep_test(sep_base_test):
         # not match, so reaching here means all three orderings were driven.
         want = {o for o, _a, _w in WRITE_ORDERS}
         assert set(sweep.stim_seen) == want, (
-            f"CHK-ORDER-STIM FAIL: presented {sorted(sweep.stim_seen)}, "
-            f"expected {sorted(want)}"
+            f"CHK-ORDER-STIM FAIL: presented {sorted(sweep.stim_seen)}, expected {sorted(want)}"
         )
         self.logger.info(
             "CHK-ORDER-STIM PASS: presented %s; slave handshake %s",
             " ".join(f"{k}={v}" for k, v in sorted(sweep.stim_seen.items())),
-            " ".join(f"{k}={v}" for k, v in sorted(sweep.hs_seen.items())))
+            " ".join(f"{k}={v}" for k, v in sorted(sweep.hs_seen.items())),
+        )
 
         self.logger.info(
             "CHK-COVERAGE PASS: %d cell(s) run, at or above the floor of %d",
-            compares, self.CELL_FLOOR)
+            compares,
+            self.CELL_FLOOR,
+        )
         self.logger.info("CHK-COVERAGE: %s", report)
         self.logger.info(
-            "CHK-RANDCFG PASS: %d/%d cells from seed %d",
-            compares, cfg.n_cells(), cfg.seed)
+            "CHK-RANDCFG PASS: %d/%d cells from seed %d", compares, cfg.n_cells(), cfg.seed
+        )

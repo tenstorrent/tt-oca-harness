@@ -2,10 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMU OSS env package."""
 
-from . import cocotb_compat as _cocotb_compat
-
-_cocotb_compat.apply()
-
 from .smu_env import SmuEnv
 from .smu_env_cfg import SmuEnvCfg
 from .smu_fcov import SmuFcov

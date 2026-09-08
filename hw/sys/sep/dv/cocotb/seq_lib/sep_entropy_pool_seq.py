@@ -15,10 +15,10 @@ from pathlib import Path
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
-from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
-from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from sep_reg_meta import ENTROPY_SOURCE
 
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
+from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_esrc_bringup_seq import EDN_CTRL, EDN_CTRL_AUTO, ESRC_CTRL
 
 _XBAR = Path(__file__).resolve().parents[3] / "rtl" / "sep_local_axi_xbar.sv"
@@ -59,14 +59,16 @@ IRQ_FILL_STALL = 37
 # (the defect the 16-bit unique-case exists to catch). A seed that only
 # probes 0x18 never sees that class: 0x18 is the unused [4:3]=11 code.
 _ALIAS_UNMAPPED = (
-    0x20,    # -> status  0x00 if [4:0] only
-    0x28,    # -> irq     0x08 if [4:0] only
-    0x30,    # -> pop     0x10 if [4:0] only
-    0x100,   # -> status  0x00 if [7:0] only
+    0x20,  # -> status  0x00 if [4:0] only
+    0x28,  # -> irq     0x08 if [4:0] only
+    0x30,  # -> pop     0x10 if [4:0] only
+    0x100,  # -> status  0x00 if [7:0] only
     0x1000,  # -> status  0x00 if [11:0] only
     0x8000,  # -> status  0x00 if [14:0] only
 )
-# Unique-dead extra: SLVERR even under a 2-bit [4:3] decode.
+# Unique-dead extras: SLVERR even under a 2-bit [4:3] decode. All three are
+# walked every seed -- 0x18 is the unused [4:3]=11 code and catches a class the
+# other two do not, so a seeded pick of one could miss it.
 _UNIQUE_DEAD = (0x18, 0x40, 0x80)
 
 # Legal disable: MODULE_ENABLE=0, every other CTRL field at its reset (including
@@ -91,13 +93,14 @@ class SepEntropyPoolCfg:
         rng = SepSeededRng(seed)
         self.extra_pops = rng.randrange(1, 5)
         self.alias_offs = _ALIAS_UNMAPPED
-        self.unmapped_off = rng.choice(_UNIQUE_DEAD)
+        self.unmapped_offs = _UNIQUE_DEAD
 
     def summary(self) -> str:
         aliases = ",".join(f"0x{o:x}" for o in self.alias_offs)
         return (
             f"seed={self.seed} extra_pops={self.extra_pops} "
-            f"alias=[{aliases}] extra_dead=0x{self.unmapped_off:x}"
+            f"alias=[{aliases}] "
+            f"extra_dead=[{','.join(f'0x{o:x}' for o in self.unmapped_offs)}]"
         )
 
 
@@ -158,7 +161,7 @@ def _selftest() -> None:
     assert STALL_THRESH == 4096
     cfg = SepEntropyPoolCfg(1)
     assert cfg.alias_offs == _ALIAS_UNMAPPED
-    assert cfg.unmapped_off in _UNIQUE_DEAD
+    assert cfg.unmapped_offs == (0x18, 0x40, 0x80)
     assert 1 <= cfg.extra_pops <= 4
     # The three pinned testlist seeds must all still walk the alias set.
     for pinned in (1, 2, 3):

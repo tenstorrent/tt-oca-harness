@@ -97,8 +97,7 @@ class smu_ext_boot_seq_gate_test_seq:
                 raise AssertionError(f"ext_boot_seq_done_i not 0 during S2: {gate}")
             if fuse != 0:
                 raise AssertionError(
-                    f"fuse_reset_n_delayed_o released while gated at sample "
-                    f"{gated_samples}"
+                    f"fuse_reset_n_delayed_o released while gated at sample {gated_samples}"
                 )
             gated_samples += 1
 
@@ -160,9 +159,7 @@ class smu_ext_boot_seq_gate_test_seq:
             self._log(f"TIMEOUT-PATH {line}")
         n_paths = len(self._timeout_paths)
         for i, line in enumerate(self._timeout_paths):
-            if "bound=" not in line or (
-                "ok last=" not in line and "EXPIRED last=" not in line
-            ):
+            if "bound=" not in line or ("ok last=" not in line and "EXPIRED last=" not in line):
                 raise AssertionError(f"CHK-TIMEOUT-PATHS[{i}] shape fail: {line}")
         chk_to = (
             "CHK-TIMEOUT-PATHS: every bounded wait names finite bound, "
@@ -179,18 +176,15 @@ class smu_ext_boot_seq_gate_test_seq:
 
         self._step_ts["PASS"] = time.monotonic()
         self._log("SMU_006 sequence complete (PASS term recorded for NONVAC fence)")
-        # Measured ordered-fence pairs (not True/True literals).
+        # Ordered-fence pairs from the measured step timestamps.
         order = ["S2", "S3", "S4", "PASS"]
         pairs_ok = sum(
             1
             for a, b in zip(order, order[1:])
-            if a in self._step_ts
-            and b in self._step_ts
-            and self._step_ts[a] < self._step_ts[b]
+            if a in self._step_ts and b in self._step_ts and self._step_ts[a] < self._step_ts[b]
         )
         chk_nonvac = (
-            f"CHK-NONVAC: ordered fence S2<S3<S4<PASS "
-            f"(pairs_ok={pairs_ok} expect={len(order) - 1})"
+            f"CHK-NONVAC: ordered fence S2<S3<S4<PASS (pairs_ok={pairs_ok} expect={len(order) - 1})"
         )
         self._log(chk_nonvac)
         sb.expect_eq(

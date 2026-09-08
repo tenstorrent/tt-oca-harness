@@ -9,7 +9,7 @@ authoritative-map probes.
 Deny-path (DECERR / err_slv poison) and filter allow/OKAY are out of scope here:
 SYS_IN BlockByDefault + gated JTAG2AXI prevent a frontdoor allow under SEP=0;
 claiming DECERR without that allow would violate NEGATIVE-NEEDS-POSITIVE-CONTROL.
-Filter program / allow contrast stays deferred (see tests_deferred filter suite).
+Filter program / allow contrast is not covered here (see tests_deferred).
 """
 
 from __future__ import annotations
@@ -19,7 +19,6 @@ import random
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
-
 from seq_lib.smu_addr_map import SMC_CHIP_CONFIG_VERSION_LO, smc_addr
 from seq_lib.smu_axi_helpers import (
     axi_read32_resp_ids_bounded,
@@ -45,7 +44,7 @@ class smu_axi_id_width_conversion_test(smu_base_test):
         seed = self.random_seed()
         rng = random.Random(seed ^ 0xFAB_1D00)
         # Distinct non-zero 8-bit IDs per probe (seeded traffic).
-        arids = []
+        arids: list[int] = []
         while len(arids) < len(PROBE_ADDRS):
             arid = rng.randint(1, 0xFF)
             if arid not in arids:
@@ -57,9 +56,7 @@ class smu_axi_id_width_conversion_test(smu_base_test):
         )
 
         await ClockCycles(dut.clk_smu_i, 50)
-        master = await make_smu_axi_master(
-            dut, dut.clk_smu_i, dut.rst_primary_smc_clk_no
-        )
+        master = await make_smu_axi_master(dut, dut.clk_smu_i, dut.rst_primary_smc_clk_no)
 
         for idx, addr in enumerate(PROBE_ADDRS):
             arid = arids[idx]

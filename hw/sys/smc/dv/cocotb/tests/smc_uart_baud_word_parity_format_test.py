@@ -6,10 +6,10 @@ from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_uart_baud_word_parity_format_test_seq import (
     smc_uart_baud_word_parity_format_test_seq,
 )
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
@@ -25,6 +25,11 @@ class smc_uart_baud_word_parity_format_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.UART_LOG,
             type(self).__name__,
+            # Conservative stimulus floor: 1330-1373 accesses observed across
+            # the retained regression runs (per-combo LSR/RBR polls vary with
+            # timing), so the floor is set below the minimum observed. Literal
+            # here, not read from `seq.accesses`.
+            min_csr_accesses=1000,
             csr_accesses=seq.accesses,
             proxy=False,
             details=f"baud/format combos={seq.combos_ok}",

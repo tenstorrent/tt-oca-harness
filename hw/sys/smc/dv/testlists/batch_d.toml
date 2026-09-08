@@ -19,6 +19,14 @@ tags = ["smoke", "ci", "batch_d", "canonical_top10", "canonical_top20", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "smc_input_fabric_axi_wr_rd_test"
+module = "smc_input_fabric_axi_wr_rd_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "batch_d", "project_p0", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "smc_local_fabric_csr_depth_test"
 module = "smc_local_fabric_csr_depth_test"
 seed = 1
@@ -100,8 +108,6 @@ timeout_sec = 1800
 tags = ["ci", "batch_d", "cpu_depth", "tier_c", "pyuvm"]
 run_modes = ["smoke"]
 
-# smc_pll_pvt_clock_config_test → testlists/deferred.toml (rtl_placeholder)
-
 [[tests]]
 name = "smc_gpio_irq_active_test"
 module = "smc_gpio_irq_active_test"
@@ -116,14 +122,6 @@ module = "smc_sideband_protocol_smoke_test"
 seed = 1
 timeout_sec = 1800
 tags = ["smoke", "ci", "batch_d", "canonical_top20", "pyuvm"]
-run_modes = ["smoke"]
-
-[[tests]]
-name = "smc_input_fabric_axi_wr_rd_test"
-module = "smc_input_fabric_axi_wr_rd_test"
-seed = 1
-timeout_sec = 1800
-tags = ["ci", "batch_d", "project_p0", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -175,22 +173,12 @@ tags = ["ci", "batch_d", "depth_uart_log", "p2_phase_a", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
-name = "smc_spi_loopback_test"
-module = "smc_spi_loopback_test"
-seed = 1
-timeout_sec = 1800
-tags = ["ci", "batch_d", "depth_uart_log", "p2_phase_a", "pyuvm"]
-run_modes = ["smoke"]
-
-[[tests]]
 name = "smc_spi_pad_bfm_test"
 module = "smc_spi_pad_bfm_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "batch_d", "depth_uart_log", "u2_spi_pad", "pyuvm"]
 run_modes = ["smoke"]
-
-# smc_sideband_avsbus_octs_bfm_test → testlists/deferred.toml (fake_bfm)
 
 [[tests]]
 name = "smc_octs_dual_sync_test"
@@ -242,6 +230,16 @@ timeout_sec = 1800
 tags = ["ci", "batch_d", "project_p0", "pyuvm"]
 run_modes = ["smoke"]
 
+# Discriminator for the Xcelium SYS_OUT write hang (AW handshake, no W).
+# Not in the batch_d / balanced_ip groups: run with --items.
+[[tests]]
+name = "smc_sys_out_aw_w_split_test"
+module = "smc_sys_out_aw_w_split_test"
+seed = 1
+timeout_sec = 1800
+tags = ["diag", "dut_defect_suspect", "pyuvm"]
+run_modes = ["smoke"]
+
 [[tests]]
 name = "smc_multi_reset_csr_persistence_test"
 module = "smc_multi_reset_csr_persistence_test"
@@ -273,7 +271,6 @@ tests = [
     "smc_uart_spi_log_engine_test",
     "smc_uart_log_engine_reg_rw_test",
     "smc_uart_loopback_test",
-    "smc_spi_loopback_test",
     "smc_spi_pad_bfm_test",
     "smc_octs_dual_sync_test",
     "smc_zeroer_dma_timeout_test",

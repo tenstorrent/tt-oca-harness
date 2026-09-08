@@ -17,24 +17,24 @@ Tests IBI transmission from target to controller with payload data:
 Uses i3c_api.py for all I3C operations.
 """
 
-import cocotb
 import logging
-import sys
 import os
-from cocotb.triggers import RisingEdge, Timer, ClockCycles
-from cocotbext.axi import AxiLiteBus, AxiLiteMaster
+import sys
 
-from i3c_api import I3CHelper, I3CController, I3CTarget, PioIntrStatus
+import cocotb
+from cocotb.triggers import ClockCycles, RisingEdge, Timer
+from cocotbext.axi import AxiLiteBus, AxiLiteMaster
+from i3c_api import I3CController, I3CHelper, I3CTarget, PioIntrStatus
 
 # Import register addresses for immediate write handling
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../data/registers/py_headers'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../data/registers/py_headers"))
 from I3CCSR_reg import (
-    PIOCONTROL_COMMAND_PORT_REG_ADDR,
-    PIOCONTROL_RESPONSE_PORT_REG_ADDR,
-    PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
     I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR,
-    I3C_EC_TTI_RX_DESC_QUEUE_PORT_REG_ADDR,
     I3C_EC_TTI_RX_DATA_PORT_REG_ADDR,
+    I3C_EC_TTI_RX_DESC_QUEUE_PORT_REG_ADDR,
+    PIOCONTROL_COMMAND_PORT_REG_ADDR,
+    PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
+    PIOCONTROL_RESPONSE_PORT_REG_ADDR,
 )
 
 # Address mapping
@@ -56,9 +56,7 @@ class TB:
     async def setup_axi_master(self):
         await Timer(100, units="ns")
         bus = AxiLiteBus.from_prefix(self.dut, "axi")
-        self.axi_master = AxiLiteMaster(
-            bus, self.dut.clk, self.dut.rst_n, reset_active_level=False
-        )
+        self.axi_master = AxiLiteMaster(bus, self.dut.clk, self.dut.rst_n, reset_active_level=False)
         self.axi_master.write_if.log.setLevel(logging.ERROR)
         self.axi_master.read_if.log.setLevel(logging.ERROR)
         self.log.info("AXI-Lite master connected")
@@ -101,17 +99,17 @@ def build_immediate_write_cmd(data_bytes, dat_idx=0, tid=0):
 
     # Build cmd_lo
     cmd_lo = (
-        (attr << 0) |           # [2:0] attr = 1 (ImmediateDataTransfer)
-        (tid << 3) |            # [6:3] tid
-        (0 << 7) |              # [14:7] cmd (unused for private)
-        (0 << 15) |             # [15] cp = 0 (no command)
-        (dat_idx << 16) |       # [20:16] dev_idx
-        (0 << 21) |             # [22:21] reserved
-        (dtt << 23) |           # [25:23] dtt (number of valid bytes)
-        (0 << 26) |             # [28:26] mode = SDR0
-        (0 << 29) |             # [29] rnw = 0 (write)
-        (1 << 30) |             # [30] wroc = 1 (response on completion)
-        (1 << 31)               # [31] toc = 1 (terminate on completion)
+        (attr << 0)  # [2:0] attr = 1 (ImmediateDataTransfer)
+        | (tid << 3)  # [6:3] tid
+        | (0 << 7)  # [14:7] cmd (unused for private)
+        | (0 << 15)  # [15] cp = 0 (no command)
+        | (dat_idx << 16)  # [20:16] dev_idx
+        | (0 << 21)  # [22:21] reserved
+        | (dtt << 23)  # [25:23] dtt (number of valid bytes)
+        | (0 << 26)  # [28:26] mode = SDR0
+        | (0 << 29)  # [29] rnw = 0 (write)
+        | (1 << 30)  # [30] wroc = 1 (response on completion)
+        | (1 << 31)  # [31] toc = 1 (terminate on completion)
     )
 
     # Build cmd_hi - pack data bytes (little-endian)
@@ -122,7 +120,7 @@ def build_immediate_write_cmd(data_bytes, dat_idx=0, tid=0):
     return cmd_lo, cmd_hi
 
 
-@cocotb.test(timeout_time=5000, timeout_unit='us')
+@cocotb.test(timeout_time=5000, timeout_unit="us")
 async def i3c_ibi_sanity(dut):
     """I3C IBI sanity test: SETDASA + GETBCR + SETMRL + IBI transmission."""
     tb = TB(dut)
@@ -163,8 +161,10 @@ async def i3c_ibi_sanity(dut):
     await ctrl.enable_ibi_interrupts(ibi_threshold=1)
 
     # SETDASA
-    tb.log.info(f"Sending SETDASA (static=0x{TARGET_STATIC_ADDR:02X}, "
-                f"dynamic=0x{TARGET_DYNAMIC_ADDR:02X})...")
+    tb.log.info(
+        f"Sending SETDASA (static=0x{TARGET_STATIC_ADDR:02X}, "
+        f"dynamic=0x{TARGET_DYNAMIC_ADDR:02X})..."
+    )
     ok, resp = await ctrl.send_setdasa(TARGET_STATIC_ADDR, TARGET_DYNAMIC_ADDR)
     tb.log.info(f"  Response: 0x{resp:08X}, success={ok}")
     assert ok, f"SETDASA failed with response 0x{resp:08X}"
@@ -201,8 +201,9 @@ async def i3c_ibi_sanity(dut):
     # Target sends IBI
     mdb = 0xAA  # Example MDB value
     ibi_payload_data = [0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88]
-    tb.log.info(f"Target writing IBI: mdb=0x{mdb:02X}, "
-                f"payload={[f'0x{b:02X}' for b in ibi_payload_data]}")
+    tb.log.info(
+        f"Target writing IBI: mdb=0x{mdb:02X}, payload={[f'0x{b:02X}' for b in ibi_payload_data]}"
+    )
     ok = await tgt.write_ibi(mdb, ibi_payload_data)
     assert ok, "Target write_ibi failed"
 
@@ -238,7 +239,7 @@ async def i3c_ibi_sanity(dut):
     await ClockCycles(dut.clk, 100)
 
 
-@cocotb.test(timeout_time=5000, timeout_unit='us')
+@cocotb.test(timeout_time=5000, timeout_unit="us")
 async def i3c_ibi_during_broadcast(dut):
     """
     I3C IBI during broadcast test: Target sends IBI when controller starts
@@ -272,7 +273,7 @@ async def i3c_ibi_during_broadcast(dut):
 
     tb.log.info("Initializing target...")
     await tgt.initialize(TARGET_STATIC_ADDR)
-    #await tgt.configure_timing_od_i3c()
+    # await tgt.configure_timing_od_i3c()
     tb.log.info("Configuring target thresholds...")
     await tgt.configure_thresholds(tx_buf=2, tx_start=0, rx_buf=1, rx_start=0)
 
@@ -283,8 +284,10 @@ async def i3c_ibi_during_broadcast(dut):
     await ctrl.enable_ibi_interrupts(ibi_threshold=1)
 
     # SETDASA
-    tb.log.info(f"Sending SETDASA (static=0x{TARGET_STATIC_ADDR:02X}, "
-                f"dynamic=0x{TARGET_DYNAMIC_ADDR:02X})...")
+    tb.log.info(
+        f"Sending SETDASA (static=0x{TARGET_STATIC_ADDR:02X}, "
+        f"dynamic=0x{TARGET_DYNAMIC_ADDR:02X})..."
+    )
     ok, resp = await ctrl.send_setdasa(TARGET_STATIC_ADDR, TARGET_DYNAMIC_ADDR)
     tb.log.info(f"  Response: 0x{resp:08X}, success={ok}")
     assert ok, f"SETDASA failed with response 0x{resp:08X}"
@@ -322,15 +325,15 @@ async def i3c_ibi_during_broadcast(dut):
     write_data = [0xDE, 0xAD, 0xBE, 0xEF]
 
     # Step 1: Queue IBI on target
-    tb.log.info(f"Target queueing IBI: mdb=0x{mdb:02X}, "
-                f"payload={[f'0x{b:02X}' for b in ibi_payload_data]}")
+    tb.log.info(
+        f"Target queueing IBI: mdb=0x{mdb:02X}, payload={[f'0x{b:02X}' for b in ibi_payload_data]}"
+    )
     ok = await tgt.write_ibi(mdb, ibi_payload_data)
     assert ok, "Target write_ibi failed"
 
     # Step 2: Queue immediate write command on controller
     # This will start the transfer with broadcast 0x7e
-    tb.log.info(f"Controller queueing immediate write: "
-                f"data={[f'0x{b:02X}' for b in write_data]}")
+    tb.log.info(f"Controller queueing immediate write: data={[f'0x{b:02X}' for b in write_data]}")
     cmd_lo, cmd_hi = build_immediate_write_cmd(write_data, dat_idx=0, tid=1)
     tb.log.debug(f"  cmd_lo=0x{cmd_lo:08X}, cmd_hi=0x{cmd_hi:08X}")
 
@@ -364,8 +367,7 @@ async def i3c_ibi_during_broadcast(dut):
     # Step 5: Wait for immediate write response (should complete after IBI)
     tb.log.info("Waiting for immediate write response (should complete after IBI)...")
     ok, reg = await helper.poll_field(
-        ctrl.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
-        PioIntrStatus, 'resp_ready_stat'
+        ctrl.base + PIOCONTROL_PIO_INTR_STATUS_REG_ADDR, PioIntrStatus, "resp_ready_stat"
     )
     assert ok, "Timeout waiting for immediate write response"
 
@@ -377,7 +379,7 @@ async def i3c_ibi_during_broadcast(dut):
 
     # Step 6: Verify target received the write data
     tb.log.info("Verifying target received write data...")
-    TTI_RX_DESC_THLD_STAT = (1 << 11)
+    TTI_RX_DESC_THLD_STAT = 1 << 11
     for _ in range(1000):
         tgt_status = await helper.read(tgt.base + I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR)
         if tgt_status & TTI_RX_DESC_THLD_STAT:
@@ -401,7 +403,7 @@ async def i3c_ibi_during_broadcast(dut):
         rx_data.extend(unpacked)
         bytes_remaining -= bytes_to_take
 
-    rx_data = rx_data[:len(write_data)]
+    rx_data = rx_data[: len(write_data)]
     tb.log.info(f"  Target received: {[f'0x{b:02X}' for b in rx_data]}")
     assert rx_data == write_data, f"Write data mismatch: {rx_data} != {write_data}"
     tb.log.info("Write data verification: PASSED")

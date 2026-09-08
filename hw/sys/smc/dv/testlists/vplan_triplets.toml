@@ -90,6 +90,12 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci", "vplan_gap", "depth_efuse", "tier_c", "pyuvm"]
 run_modes = ["smoke"]
+# The read-lock precondition of this scenario is supplied by this asset (word 0
+# sets CHIPLET_ID_READ_LOCK), so it is named here rather than inherited silently
+# from the bench-wide default in smc_sim_cfg.toml.
+args = [
+    "+smc_efuse_hex={repo_root}/hw/sys/smc/dv/assets/smc_efuse_default.hex",
+]
 
 # BFM: ext_boot_seq_done hold keeps fuse_reset_n low after sense (G6).
 [[tests]]
@@ -109,8 +115,6 @@ seed = 1
 timeout_sec = 1800
 tags = ["ci", "vplan_gap", "depth_efuse", "tier_c", "pyuvm"]
 run_modes = ["smoke"]
-
-# smc_pll_dvfs_depth_test / smc_static_cg_sanity_test → deferred.toml (rtl_placeholder)
 
 [[tests]]
 name = "smc_gpio_strap_sanity_test"
@@ -200,7 +204,6 @@ run_modes = ["smoke"]
 # Both +rom_hex and +smc_rom_hex point at min_pass so the smoke-mode
 # default smc_rom_default.hex cannot remain the sole identity (OCAH loads
 # the first +rom_hex; smc_cpu_mem_dv then prefers +smc_rom_hex).
-# (main #172 c_compile hello_world.ecc.scratch path intentionally not used.)
 args = [
     "+smc_hold_cpu_boot",
     "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
@@ -280,11 +283,6 @@ args = [
     "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
     "+smc_scratch_ram_hex={repo_root}/hw/sys/smc/dv/assets/min_pass.ecc.hex",
 ]
-
-# smc_dfd_dbs_fault_inject_test moved to deferred.toml (tb_glue / not_dut_rtl).
-# Kept out of vplan_gaps CI — TB latches 0xDB5C_AFE1, does not exercise smc_dfd_wrap.
-# smc_deadspace_decode_test stays in [[tests]] (no ci tag) but is kept out of
-# this group until a kept log shows I2C refused and wrap_to_live=0.
 
 [[groups]]
 name = "vplan_gaps"

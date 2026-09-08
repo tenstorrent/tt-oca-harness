@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[cols="1,1,1,3", options="header"]
+[cols="1,4,1,6", options="header"]
 .Register Map
 |===
 | Address | Name | Access | Description
@@ -17,32 +17,32 @@
 | 0x48 | CTRL | W a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .WRITE_DATA Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `write_data` | W | 0x0 a| Write data to mailbox fifo
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .READ_DATA Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `read_data` | R | 0x0 a| Read data from mailbox fifo
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:4 | `Reserved` | - | - a| Reserved
-| 3 | `read_level_above_thresh` | R | 0x0 a| If set, read fifo level is higher than threshhold set in RIRQT
-| 2 | `write_level_above_thresh` | R | 0x0 a| If set, write fifo level is higher than threshhold set in WIRQT
+| 3 | `read_level_above_thresh` | R | 0x0 a| If set, read fifo level is higher than threshold set in RIRQT
+| 2 | `write_level_above_thresh` | R | 0x0 a| If set, write fifo level is higher than threshold set in WIRQT
 | 1 | `full` | R | 0x0 a| 0: Space is available to write, 1: Space is not available to write
 | 0 | `empty` | R | 0x0 a| 0: Data is available to read, 1: Data is not available to read
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .ERROR_FLAGS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -51,7 +51,7 @@
 | 0 | `read_error` | R | 0x0 a| Attempted read from an empty mailbox
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .WIRQT Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -59,7 +59,7 @@
 | 7:0 | `wirqt` | RW | 0x0 a| When the usage pointer of the FIFO connected to the W channel exceeds this value, a write threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the write FIFO is full.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .RIRQT Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -67,7 +67,7 @@
 | 7:0 | `rirqt` | RW | 0x0 a| When the fill pointer of the FIFO connected to the R channel exceeds this value, a read threshold IRQ is triggered and the corresponding STATUS register bit is set. When a value larger than or equal to the MailboxDepth parameter is written to this register, it gets reduced to MailboxDepth - 1 to ensure an IRQ is triggered when the read FIFO is full.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .IRQS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -92,7 +92,7 @@ On write:
 [1]: Acknowledge and clear interrupt request
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .IRQEN Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -105,7 +105,7 @@ On write:
 [1]: Write threshold IRQ enabled
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .IRQP Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -118,7 +118,7 @@ On write:
 [1]: Write threshold IRQ pending
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CTRL Register
 |===
 | Bits | Field | Access | Reset | Description

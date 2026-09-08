@@ -22,6 +22,7 @@
 ### 1.1 Verification Objectives
 
 This guide provides a systematic approach to verify:
+
 - ✓ All registers reset to correct default values
 - ✓ All writable bits in RW registers function correctly
 - ✓ All read-only bits remain unaffected by writes
@@ -32,14 +33,15 @@ This guide provides a systematic approach to verify:
 
 | Category | Count | Verification Focus |
 |----------|-------|-------------------|
-| **Read-Only (RO)** | 26 | Default values, HW update behavior |
-| **Read-Write (RW)** | 15 | Default values, write masks, pattern tests |
-| **Write-Only (WO)** | 1 | Side effects (cannot verify readback) |
-| **Write-1-Clear (W1C)** | 1 | Set/clear behavior |
+| **Read-Only (R/O)** | 26 | Default values, HW update behavior |
+| **Read-Write (R/W)** | 15 | Default values, write masks, pattern tests |
+| **Write-Only (W/O)** | 1 | Side effects (cannot verify readback) |
+| **Write-1-Clear (W1/C)** | 1 | Set/clear behavior |
 
 ### 1.3 Test Prerequisites
 
 Before starting verification:
+
 1. Apply hardware reset (`presetn`)
 2. Configure clocks (APB clock, RO sample clock)
 
@@ -173,8 +175,9 @@ Step 3: Verify health status defaults
 ### 2.5 Default Check Summary
 
 **Total Registers**: 42
+
 - **Check immediately**: 30 registers
-- **Skip (WO)**: 1 register (INTR_TEST)
+- **Skip (W/O)**: 1 register (INTR_TEST)
 - **Check after disabling health tests**: 11 registers (status/counters)
 
 ---
@@ -214,77 +217,92 @@ After all patterns tested:
 ### 3.4 RW Registers Under Test
 
 #### CTRL (0x04)
+
 - **Write Mask**: 0x13FF0112
 - **Writable Bits**: [28] SHA256_WHITENING_ENABLE, [25:16] DOWNSAMPLE_RATE, [8] BYPASS_COMPRESSOR, [4] AUTOTUNE_ENABLE, [1] MODULE_ENABLE
 - **Default**: 0x10000002
 
 **Example Test**:
+
 ```
 Write: 0xFFFFFFFF
 Read:  0x13FF0112  ← Only writable bits set
 ```
 
 #### DEBUG_CTRL (0x0C)
+
 - **Write Mask**: 0x000007FF
 - **Writable Bits**: [10:8] SELECT_FREQ_DIV, [7:0] SELECT_SIGNAL
 - **Default**: 0x00000000
 
 #### INTR_ENABLE (0x14)
+
 - **Write Mask**: 0x11111111
 - **Writable Bits**: [28] NOISE_OBS_OVERFLOW, [24] BIW_OBS_OVERFLOW, [20] AUTOTUNE_FAIL, [16] PERSISTENT_FAILURE, [12] FIFO_UNDERFLOW, [8] FIFO_OVERFLOW, [4] FIFO_ERROR, [0] HEALTH_TEST_FAILED
 - **Default**: 0x00000000
 
 #### FIFO_CTRL (0x20)
+
 - **Write Mask**: 0x00000011
 - **Writable Bits**: [4] ENTROPY_CHURN_ENABLE, [0] ENABLE
 - **Default**: 0x00000001
 
 #### HEALTH_TEST_CTRL (0x30)
+
 - **Write Mask**: 0x0000FF07
 - **Writable Bits**: [15:8] REPETITION_LIMIT, [2:0] ENABLE
 - **Default**: 0x00001907
 
 #### HEALTH_TEST_WINDOW_SIZE (0x34)
+
 - **Write Mask**: 0x0000FFFF
 - **Writable Bits**: [15:0] SIZE
 - **Default**: 0x00000800
 
 #### MARKOV_TEST_PROB_THRESHOLDS (0x38)
+
 - **Write Mask**: 0xFFFFFFFF
 - **Writable Bits**: [31:16] PROB_10_THRESHOLD, [15:0] PROB_01_THRESHOLD
 - **Default**: 0x006404B0
 
 #### APT_PROPORTION_1BIT (0x60)
+
 - **Write Mask**: 0x0000FFFF
 - **Writable Bits**: [15:0] LIMIT
 - **Default**: 0x000004B0 (1200)
 
 #### APT_PROPORTION_LO (0x70)
+
 - **Write Mask**: 0x0000FFFF
 - **Writable Bits**: [15:0] LIMIT
 - **Default**: 0x00000350 (848)
 
 #### RING_OSC_ENABLE (0x90)
+
 - **Write Mask**: 0x00FFFFFF
 - **Writable Bits**: [23:12] SAMPLE_CLK_ENABLE, [11:0] ENABLE
 - **Default**: 0x00FFFFFF
 
 #### RING_OSC_TUNE (0x94)
+
 - **Write Mask**: 0x00FFFFFF
 - **Writable Bits**: [23:12] SAMPLE_CLK_DETUNE, [11:0] DETUNE
 - **Default**: 0x00000000
 
 #### RING_OSC_CTRL (0x98)
+
 - **Write Mask**: 0x00000FFF
 - **Writable Bits**: [11:0] SAMPLE_CLK_SELECT
 - **Default**: 0x00000FFF
 
 #### DECORRELATOR_CTRL (0xA0)
+
 - **Write Mask**: 0xFFFFFFFF
 - **Writable Bits**: [31:12] SAMPLE_CLK_DIV, [11:0] BYPASS
 - **Default**: 0x0003F000
 
 #### DECORRELATOR_MASK (0xA4)
+
 - **Write Mask**: 0x000000FF
 - **Writable Bits**: [7:0] ENTROPY_BYTE_MASK
 - **Default**: 0x000000FF
@@ -298,6 +316,7 @@ Read:  0x13FF0112  ← Only writable bits set
 ### 3.6 Pattern Test Summary
 
 **Total RW Registers**: 15
+
 - **Pattern test**: 13 registers
 - **Skip (special)**: 2 registers (INTR_STATUS, INTR_TEST)
 
@@ -631,6 +650,7 @@ After completing all tests:
 ## 8. Quick Reference: Test Pseudo-Code
 
 ### Default Value Test
+
 ```
 reset_device()
 for each readable register:
@@ -639,6 +659,7 @@ for each readable register:
 ```
 
 ### RW Pattern Test
+
 ```
 patterns = [0x00000000, 0xFFFFFFFF, 0x5555AAAA, 0xAAAA5555]
 for each RW register:
@@ -650,6 +671,7 @@ for each RW register:
 ```
 
 ### Write Mask Test
+
 ```
 for each RW register:
     write_register(address, 0xFFFFFFFF)
@@ -658,6 +680,7 @@ for each RW register:
 ```
 
 ### W1C Test
+
 ```
 for each interrupt bit:
     inject_interrupt(bit)

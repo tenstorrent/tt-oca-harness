@@ -5,7 +5,7 @@
  * Software Reset Test
  *
  * Verifies KMAC software reset via SEP Reset Controller (0x10A50000).
- * Per OCH spec: KMAC starts in reset (kmac_sw_rst_n=0 by default);
+ * Per OCAH spec: KMAC starts in reset (kmac_sw_rst_n=0 by default);
  * firmware must write 1 to bit[4] to release before use.
  *
  * Steps:

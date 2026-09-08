@@ -27,17 +27,16 @@ the SEP xSPI path) need a single, versioned flash device model so that:
 | Mode    | Description                                           | Status      |
 |---------|-------------------------------------------------------|-------------|
 | single  | Standard 1-bit SPI (MOSI/MISO), Mode 0 (CPOL=0/CPHA=0) | Full        |
-| quad    | 4-bit data bus (QSPI); command/address still 1-bit   | Partial (see note below) |
-| octal   | 8-bit data bus (OSPI/xSPI); SDR only                 | Stub (see note below)    |
+| quad    | 4-bit data bus (QSPI); command/address still 1-bit   | Single-bit data timing (see note below) |
+| octal   | 8-bit data bus (OSPI/xSPI); SDR only                 | Single-bit data timing (see note below) |
 
 **Quad/Octal note:** Command and address bytes are always received in 1-bit
-mode.  The data phase uses the same 1-bit engine until a full multi-bit
-turnaround implementation is added.  The `OCTAL_TODO` comment in
-`ocah_spi_flash.py` marks the code path.  Tests that only need JEDEC ID, page
-program, and read on QSPI/OSPI paths will work correctly with the current
-implementation.
+mode, and the data phase uses the same 1-bit engine on DQ0, so the quad and
+octal personalities differ from single only in pin binding. JEDEC ID, page
+program, and read work on QSPI/OSPI paths under that model; multi-bit data
+lanes and the bidirectional turnaround are not modeled.
 
-DDR (Double Data Rate) octal mode is out of scope for this revision.
+DDR (Double Data Rate) octal mode is out of scope.
 
 ---
 
@@ -76,36 +75,10 @@ ocah_spi_vip/
 
 ---
 
-## External dependency: cocotbext-spi
+## Dependencies
 
-This package currently uses a **self-contained cocotb-native implementation**
-and does NOT require any external cocotb extension package.
-
-When `cocotbext-spi` (schang412/cocotbext-spi, MIT) is added to the project
-Python environment, the internal implementation can delegate to it while
-keeping this public API unchanged.  Pin the version as shown below.
-
-### Migration plan
-
-1. Add to `requirements.txt` or `pyproject.toml`:
-   ```
-   cocotbext-spi==0.1.7    # or later pinned stable release
-   ```
-2. Replace the `_recv_byte_single` / `_send_byte_single` internals in
-   `ocah_spi_flash.py` with calls to `cocotbext_spi.SpiDeviceBus` /
-   `SpiDevice` from that package.
-3. Verify the public API (`init_signals`, `preload`, `set_jedec_id`,
-   `start`, `stop`) remains unchanged — no test changes should be needed.
-
-For quad/octal support, `cocotbext-qspi` and `cocotbext-ospi` candidates are
-listed in the SEP shim inventory but their licenses and APIs have not been
-confirmed.  Do not add them as hard dependencies until reviewed.
-
-### To check the current environment
-
-```bash
-pip show cocotbext-spi
-```
+This package is a self-contained cocotb-native implementation and requires no
+external cocotb extension package.
 
 ---
 
@@ -234,6 +207,7 @@ unless `set_jedec_id()` or `preload()` is called individually after
 construction.
 
 Example (VCS):
+
 ```
 +spi_flash_jedec_id=EF4018 +spi_flash_preload=/path/to/firmware.bin
 ```
@@ -243,6 +217,7 @@ Example (VCS):
 ## Determinism
 
 By default this model is fully deterministic:
+
 - Flash memory initialises to 0xFF (erased state).
 - JEDEC ID is the constructor-supplied constant.
 - No random delays or random data.
@@ -268,16 +243,15 @@ works for both flash types.
 
 ---
 
-## Known gaps and TODOs
+## Limitations
 
-| Gap | Location | Note |
-|-----|----------|------|
-| Full quad/octal multi-bit data phase | `ocah_spi_flash.py` `OCTAL_TODO` | Single-bit I/O used for all modes |
-| DDR (double data rate) octal         | `ocah_sep_spi_flash.py` `DDR_TODO` | Out of scope; needs PHY timing spec |
-| 4-byte (32-bit) address mode         | `ocah_spi_flash.py` | Default is 3-byte; set `addr_bytes=4` in constructor |
-| Dual-SPI (1-1-2 read)                | not implemented | MOSI returns at read-data phase; out of scope |
-| SPI Mode 1/2/3 (CPOL/CPHA variants) | not implemented | Only Mode 0 (CPOL=0 CPHA=0) |
-| cocotbext-spi delegation             | README migration plan | Pending package availability in project env |
+| Limitation | Note |
+|-----|------|
+| Quad/octal multi-bit data phase | Single-bit data timing on DQ0 for all modes |
+| DDR (double data rate) octal | Out of scope |
+| 4-byte (32-bit) address mode | Default is 3-byte; set `addr_bytes=4` in the constructor |
+| Dual-SPI (1-1-2 read) | Out of scope; MOSI returns at the read-data phase |
+| SPI Mode 1/2/3 (CPOL/CPHA variants) | Only Mode 0 (CPOL=0 CPHA=0) |
 
 ## Hierarchical VIP Layout
 
@@ -286,8 +260,7 @@ This package follows the OCAH hierarchical VIP convention (see
 code lives in `cocotb/`, and the root `__init__.py` is a thin shim
 re-exporting the stable public API — always import
 `from ocah_spi_vip import <Class>`, never from the subfolders.
-`interface/` (shared SV interfaces) and `uvm/`
-(SV-UVM agent + env) are added as they land for this protocol. The SV-UVM
+This package has no `interface/` or `uvm/` realization. The SV-UVM
 template and the commercial-VIP plug-in contract (env-level factory
 override, user-implemented API wrapper, monitor closing, nested vendor
 interface) are documented in `../ocah_jtag_vip/README.md`

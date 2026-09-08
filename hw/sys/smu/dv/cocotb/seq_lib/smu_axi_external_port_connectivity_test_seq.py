@@ -4,7 +4,7 @@
 
 DV-CARD:          SMU_ALL_002   ANCHOR: smu_axi_external_port_connectivity_test
 
-Approved OWNS (card r4 / plan r3):
+Owns:
   SMU-PORT-SMN-AXI.S1 — inbound 56/64-bit on smu_axi_in reaches SMC via
     direct IW converters (bare tb_top SEP=0; required_cells dir=in +
     dest=smc_aperture only).
@@ -134,9 +134,7 @@ class smu_axi_external_port_connectivity_test_seq:
         iw_in = self._require_child(gen, "u_iw_conv_smc_in")
         iw_out = self._require_child(gen, "u_iw_conv_smc_out")
         if hasattr(gen, "u_smu_axi_xbar"):
-            raise AssertionError(
-                "SEP=0 elaboration fail: u_smu_axi_xbar present under gen_no_sep"
-            )
+            raise AssertionError("SEP=0 elaboration fail: u_smu_axi_xbar present under gen_no_sep")
 
         # Live clk identity: converters track clk_smu_i (CONNECTIVITY, not force).
         await RisingEdge(dut.clk_smu_i)
@@ -146,8 +144,7 @@ class smu_axi_external_port_connectivity_test_seq:
         out_clk = self._sample(iw_out.clk_i, "u_iw_conv_smc_out.clk_i")
         if not (in_clk == out_clk == top_clk):
             raise AssertionError(
-                f"direct IW converter clk identity fail: "
-                f"top={top_clk} in={in_clk} out={out_clk}"
+                f"direct IW converter clk identity fail: top={top_clk} in={in_clk} out={out_clk}"
             )
 
         sep_base = self._sample(dut.sep_global_base_o, "sep_global_base_o")
@@ -175,20 +172,14 @@ class smu_axi_external_port_connectivity_test_seq:
         # ------------------------------------------------------------------
         self._mark_step(
             "S1",
-            "SETUP: SEP=0 bare tb_top bring-up; clocks/resets stable; "
-            "smu_axi_in BFM peer live",
+            "SETUP: SEP=0 bare tb_top bring-up; clocks/resets stable; smu_axi_in BFM peer live",
         )
         # Baseline aperture observe (SEP tied off under SEP=0).
         sep_base = self._sample(dut.sep_global_base_o, "sep_global_base_o")
         sep_size = self._sample(dut.sep_region_size_o, "sep_region_size_o")
-        self._log(
-            f"baseline sep_global_base_o=0x{sep_base:x} "
-            f"sep_region_size_o=0x{sep_size:x}"
-        )
+        self._log(f"baseline sep_global_base_o=0x{sep_base:x} sep_region_size_o=0x{sep_size:x}")
 
-        master = await make_smu_axi_master(
-            dut, dut.clk_smu_i, dut.rst_primary_smc_clk_no
-        )
+        master = await make_smu_axi_master(dut, dut.clk_smu_i, dut.rst_primary_smc_clk_no)
 
         # ------------------------------------------------------------------
         # S2 SMU-PORT-SMN-AXI.S1 — inbound reaches SMC via direct IW path
@@ -198,10 +189,8 @@ class smu_axi_external_port_connectivity_test_seq:
             "ACTION SMU-PORT-SMN-AXI.S1: 56/64-bit smu_axi_in write/read "
             f"@0x{self.IN_PROBE:08x} (SMC aperture / direct IW)",
         )
-        # required_cells (approved FL after FIND-001 split): dir=in, dest=smc_aperture
-        self._log(
-            "COVERAGE SMU-PORT-SMN-AXI.S1 cells: dir=in dest=smc_aperture"
-        )
+        # required_cells: dir=in, dest=smc_aperture
+        self._log("COVERAGE SMU-PORT-SMN-AXI.S1 cells: dir=in dest=smc_aperture")
 
         self._log(
             f"SEED: {self._seed} WRITE_ID=0x{self.WRITE_ID:x} "
@@ -214,26 +203,20 @@ class smu_axi_external_port_connectivity_test_seq:
         # Path reached SMC: BlockByDefault → DECERR, or programmed → OKAY.
         if wresp not in (RESP_OKAY, RESP_DECERR):
             raise AssertionError(
-                f"inbound BRESP unexpected {resp_name(wresp)} "
-                f"(expect OKAY|DECERR proving SMC path)"
+                f"inbound BRESP unexpected {resp_name(wresp)} (expect OKAY|DECERR proving SMC path)"
             )
         if w_bid != self.WRITE_ID:
-            raise AssertionError(
-                f"inbound BID mismatch: bid=0x{w_bid:x} awid=0x{self.WRITE_ID:x}"
-            )
+            raise AssertionError(f"inbound BID mismatch: bid=0x{w_bid:x} awid=0x{self.WRITE_ID:x}")
 
         rdata, rresp, r_arid, r_rid = await self._axi_read_bounded(
             master, self.IN_PROBE, self.READ_ID
         )
         if rresp not in (RESP_OKAY, RESP_DECERR):
             raise AssertionError(
-                f"inbound RRESP unexpected {resp_name(rresp)} "
-                f"(expect OKAY|DECERR proving SMC path)"
+                f"inbound RRESP unexpected {resp_name(rresp)} (expect OKAY|DECERR proving SMC path)"
             )
         if r_rid != self.READ_ID:
-            raise AssertionError(
-                f"inbound RID mismatch: rid=0x{r_rid:x} arid=0x{self.READ_ID:x}"
-            )
+            raise AssertionError(f"inbound RID mismatch: rid=0x{r_rid:x} arid=0x{self.READ_ID:x}")
         # When BlockByDefault DECERR, err_slv poison confirms SMC consumer.
         if rresp == RESP_DECERR:
             poison = rdata & 0xFFFF_FFFF
@@ -266,12 +249,8 @@ class smu_axi_external_port_connectivity_test_seq:
             "ACTION SMU-SEP-PARAM.S2: observe SEP=0 direct SMC↔external "
             "ID converters (no 3x3 xbar / no live SEP)",
         )
-        detail, sep_base_s3, sep_size_s3 = await self._observe_direct_iw_converters(
-            dut
-        )
-        self._log(
-            f"COVERAGE SMU-SEP-PARAM.S2 cells: sep=0 path=direct_smc_ext ({detail})"
-        )
+        detail, sep_base_s3, sep_size_s3 = await self._observe_direct_iw_converters(dut)
+        self._log(f"COVERAGE SMU-SEP-PARAM.S2 cells: sep=0 path=direct_smc_ext ({detail})")
         self._log(f"CHK-SMU-SEP-PARAM-S2: PASS ({detail})")
         # Non-tautological scoreboard: SEP aperture outputs must stay tied off.
         sb.expect_eq(
@@ -303,9 +282,7 @@ class smu_axi_external_port_connectivity_test_seq:
                 f"expect {self.EXPECTED_TIMEOUT_PATHS}"
             )
         for i, line in enumerate(self._timeout_paths):
-            if "bound=" not in line or (
-                "ok last=" not in line and "EXPIRED last=" not in line
-            ):
+            if "bound=" not in line or ("ok last=" not in line and "EXPIRED last=" not in line):
                 raise AssertionError(f"CHK-TIMEOUT-PATHS[{i}] shape fail: {line}")
             if f"bound={self.AXI_TIMEOUT_NS}ns" not in line:
                 raise AssertionError(
@@ -333,16 +310,14 @@ class smu_axi_external_port_connectivity_test_seq:
         for a, b in zip(order, order[1:]):
             if self._step_ts[a] >= self._step_ts[b]:
                 raise AssertionError(f"CHK-NONVAC order fail: {a} not before {b}")
-        # Timestamp deltas from wall-clock marks (not decorative True/True).
+        # Timestamp deltas from wall-clock marks.
         deltas_ns = [
-            int((self._step_ts[b] - self._step_ts[a]) * 1e9)
-            for a, b in zip(order, order[1:])
+            int((self._step_ts[b] - self._step_ts[a]) * 1e9) for a, b in zip(order, order[1:])
         ]
         positive_deltas = sum(1 for d in deltas_ns if d > 0)
         if positive_deltas != 4:
             raise AssertionError(
-                f"CHK-NONVAC positive-delta count fail: {positive_deltas} "
-                f"deltas_ns={deltas_ns}"
+                f"CHK-NONVAC positive-delta count fail: {positive_deltas} deltas_ns={deltas_ns}"
             )
         self._log("CHK-NONVAC: Ordered fence S1<S2<S3<S4<PASS all hold")
         sb.expect_eq(

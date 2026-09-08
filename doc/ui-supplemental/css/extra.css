@@ -182,7 +182,7 @@
 
 /* Logo swap: hide default text title, show OCA logo image instead */
 .navbar-brand a.navbar-item {
-    background: url("../img/oca.png") no-repeat left center;
+    background: url("../img/oca_black.svg") no-repeat left center;
     background-size: contain;
     text-indent: -9999px;
     width: 120px;
@@ -217,6 +217,7 @@
 }
 
 .nav-panel-menu .nav-link,
+.nav-panel-menu .nav-text,
 .nav-panel-menu a {
     color: #ffffff !important;
     font-family: var(--oca-font-body);
@@ -396,11 +397,11 @@
 .footer .footer-tt-link {
     display: inline-flex;
     text-decoration: none;
+    vertical-align: middle;
 }
 
 .footer .footer-tt-icon {
     height: 20px;
-    vertical-align: middle;
 }
 
 /* De-emphasized license attribution, kept for MPL-2.0 compliance rather

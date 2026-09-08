@@ -5,7 +5,7 @@
 Snoops a top-level AXI bus directly (by signal prefix) -- independent of the
 cocotbext-axi master, which resolves X/Z away in ``int.from_bytes(resp.data)``.
 This is the in-testbench substitute for the RTL SVA assertions, which the OSS
-Verilator build cannot run (gated off by ``DISABLE_ASSERT``/``SYNTHESIS``). It
+Verilator build cannot run (gated off by ``VERILATOR``). It
 checks, per accepted bus beat:
 
   * **read-data integrity** -- an accepted R beat (``rvalid && rready``) that
@@ -82,6 +82,9 @@ class SepAxiMonitor(uvm_component):
         self.r_beats = 0
         self.b_resps = 0
         self.resp_tally = {0: 0, 1: 0, 2: 0, 3: 0, None: 0}
+        # Ordered RRESP capture window; None when closed. See start_beat_capture.
+        # Entries are None when a beat's rresp does not resolve to an int.
+        self._beat_capture: list[int | None] | None = None
         # Credits for intentional negative-path DECERR beats (see arm_expected_decerr).
         self._armed_decerr = 0
         # Write-channel ordering. VALID assertion is the stimulus this bench
@@ -96,6 +99,28 @@ class SepAxiMonitor(uvm_component):
         self.last_write_stim: str | None = None
         self.last_write_hs: str | None = None
         self.expected_decerr_seen = 0
+
+    def start_beat_capture(self) -> None:
+        """Record the ordered RRESP of every following R beat until taken.
+
+        The tally answers how many beats carried each code; it cannot answer
+        WHICH beat carried which, and a per-beat extent rule needs the order.
+        The AXI master collapses a read burst to one response (the cocotbext
+        beat loop keeps the last non-OKAY RRESP), so the ordered sequence has to
+        come from the bus.
+
+        The caller owns quiescence: any R beat on this bus while capture is open
+        is appended, so a capture spanning unrelated traffic returns a sequence
+        longer than the burst. Compare the length against the beats issued and
+        treat a mismatch as no evidence rather than as a verdict.
+        """
+        self._beat_capture = []
+
+    def take_beat_capture(self) -> list[int | None]:
+        """Return the captured RRESP sequence and close the window."""
+        captured: list[int | None] = self._beat_capture or []
+        self._beat_capture = None
+        return captured
 
     def arm_expected_decerr(self, n: int = 1) -> None:
         """Tolerate the next ``n`` DECERR beats on this bus as intentional.
@@ -135,8 +160,7 @@ class SepAxiMonitor(uvm_component):
     @property
     def write_order_cycles(self) -> tuple:
         """(aw_valid, w_valid, aw_handshake, w_handshake) cycle numbers."""
-        return (self._aw_valid_cycle, self._w_valid_cycle,
-                self._aw_hs_cycle, self._w_hs_cycle)
+        return (self._aw_valid_cycle, self._w_valid_cycle, self._aw_hs_cycle, self._w_hs_cycle)
 
     def _decerr(self, chan: str) -> None:
         """Handle a DECERR beat: consume an armed credit or fail."""
@@ -156,10 +180,23 @@ class SepAxiMonitor(uvm_component):
     async def run_phase(self) -> None:
         dut = cocotb.top
         p = self.bus_prefix
-        sig = {n: getattr(dut, f"{p}_{n}", None)
-               for n in ("rvalid", "rready", "rdata", "rresp",
-                         "bvalid", "bready", "bresp", "araddr",
-                         "awvalid", "awready", "wvalid", "wready")}
+        sig = {
+            n: getattr(dut, f"{p}_{n}", None)
+            for n in (
+                "rvalid",
+                "rready",
+                "rdata",
+                "rresp",
+                "bvalid",
+                "bready",
+                "bresp",
+                "araddr",
+                "awvalid",
+                "awready",
+                "wvalid",
+                "wready",
+            )
+        }
         if any(sig[n] is None for n in ("rvalid", "rready", "rdata")):
             self.logger.info("%s read channel not found; AXI monitor idle", p)
             return
@@ -167,8 +204,7 @@ class SepAxiMonitor(uvm_component):
         self.logger.info("SEP AXI monitor active on %s bus (fail_decerr=%s)", p, self.fail_decerr)
         has_b = sig["bvalid"] is not None and sig["bready"] is not None
 
-        has_aw = all(sig[n] is not None
-                     for n in ("awvalid", "awready", "wvalid", "wready"))
+        has_aw = all(sig[n] is not None for n in ("awvalid", "awready", "wvalid", "wready"))
 
         while True:
             await RisingEdge(dut.clk_i)
@@ -178,27 +214,27 @@ class SepAxiMonitor(uvm_component):
                     self._aw_valid_cycle = self.cycles
                 if _hi(sig["wvalid"]) and self._w_valid_cycle is None:
                     self._w_valid_cycle = self.cycles
-                if (_hi(sig["awvalid"]) and _hi(sig["awready"])
-                        and self._aw_hs_cycle is None):
+                if _hi(sig["awvalid"]) and _hi(sig["awready"]) and self._aw_hs_cycle is None:
                     self._aw_hs_cycle = self.cycles
-                if (_hi(sig["wvalid"]) and _hi(sig["wready"])
-                        and self._w_hs_cycle is None):
+                if _hi(sig["wvalid"]) and _hi(sig["wready"]) and self._w_hs_cycle is None:
                     self._w_hs_cycle = self.cycles
-                self.last_write_stim = self._order(
-                    self._aw_valid_cycle, self._w_valid_cycle)
-                self.last_write_hs = self._order(
-                    self._aw_hs_cycle, self._w_hs_cycle)
+                self.last_write_stim = self._order(self._aw_valid_cycle, self._w_valid_cycle)
+                self.last_write_hs = self._order(self._aw_hs_cycle, self._w_hs_cycle)
             if _hi(sig["rvalid"]) and _hi(sig["rready"]):
                 self.r_beats += 1
                 code = _resp(sig["rresp"]) if sig["rresp"] is not None else None
                 self.resp_tally[code if code in (0, 1, 2, 3) else None] += 1
+                if self._beat_capture is not None:
+                    self._beat_capture.append(code)
                 # All-X only fails on a *successful* response (an error beat may
                 # legitimately carry X data).
                 if code in (0, 1) and _is_all_x(sig["rdata"]):
                     addr = _resp(sig["araddr"]) if sig["araddr"] is not None else None
                     where = f" (last AR addr ~0x{addr:08x})" if addr is not None else ""
-                    self._fail(f"OKAY R beat returned all-X data{where} -- "
-                               "non-responding/uninitialised register path")
+                    self._fail(
+                        f"OKAY R beat returned all-X data{where} -- "
+                        "non-responding/uninitialised register path"
+                    )
                 if code == 3 and self.fail_decerr:
                     self._decerr("R")
             if has_b and _hi(sig["bvalid"]) and _hi(sig["bready"]):
@@ -214,7 +250,9 @@ class SepAxiMonitor(uvm_component):
         self.logger.info(
             "SEP AXI monitor [%s]: %d R beats, %d B resps; R-resp tally %s; "
             "%d expected DECERR; 0 errors",
-            self.bus_prefix, self.r_beats, self.b_resps,
+            self.bus_prefix,
+            self.r_beats,
+            self.b_resps,
             ", ".join(f"{_RESP_NAME[k]}={v}" for k, v in self.resp_tally.items() if v),
             self.expected_decerr_seen,
         )

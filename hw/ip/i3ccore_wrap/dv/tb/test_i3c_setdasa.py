@@ -12,57 +12,57 @@ This test verifies basic I3C controller-to-target communication:
 - Perform a private READ (target -> controller): 4 bytes [0x11, 0x22, 0x33, 0x44]
 """
 
-import cocotb
 import logging
-import sys
 import os
-from cocotb.triggers import RisingEdge, Timer, ClockCycles
+import sys
 
+import cocotb
+from cocotb.triggers import ClockCycles, RisingEdge, Timer
 from cocotbext.axi import AxiLiteBus, AxiLiteMaster
 
 # Add path to register headers
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../data/registers/py_headers'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../data/registers/py_headers"))
 
 from I3CCSR_reg import (
-    # Base registers
-    I3CBASE_HC_CONTROL_REG_ADDR,
-    I3CBASE_CONTROLLER_DEVICE_ADDR_REG_ADDR,
-    # PIO registers
-    PIOCONTROL_COMMAND_PORT_REG_ADDR,
-    PIOCONTROL_RESPONSE_PORT_REG_ADDR,
-    PIOCONTROL_TX_DATA_PORT_REG_ADDR,
-    PIOCONTROL_RX_DATA_PORT_REG_ADDR,
-    PIOCONTROL_QUEUE_THLD_CTRL_REG_ADDR,
-    PIOCONTROL_DATA_BUFFER_THLD_CTRL_REG_ADDR,
-    PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
-    PIOCONTROL_PIO_INTR_STATUS_ENABLE_REG_ADDR,
-    PIOCONTROL_PIO_INTR_SIGNAL_ENABLE_REG_ADDR,
-    PIOCONTROL_PIO_CONTROL_REG_ADDR,
     # DAT memory
     DAT_MEM_BASE_ADDR,
+    I3C_EC_SOCMGMTIF_T_F_REG_REG_ADDR,
+    I3C_EC_SOCMGMTIF_T_FREE_REG_REG_ADDR,
+    I3C_EC_SOCMGMTIF_T_HD_DAT_REG_REG_ADDR,
+    I3C_EC_SOCMGMTIF_T_HD_STA_REG_REG_ADDR,
+    I3C_EC_SOCMGMTIF_T_HIGH_REG_REG_ADDR,
+    I3C_EC_SOCMGMTIF_T_LOW_REG_REG_ADDR,
+    # Timing registers
+    I3C_EC_SOCMGMTIF_T_R_REG_REG_ADDR,
+    I3C_EC_SOCMGMTIF_T_SU_DAT_REG_REG_ADDR,
+    I3C_EC_SOCMGMTIF_T_SU_STA_REG_REG_ADDR,
+    I3C_EC_SOCMGMTIF_T_SU_STO_REG_REG_ADDR,
     # Standby controller mode
     I3C_EC_STDBYCTRLMODE_STBY_CR_CONTROL_REG_ADDR,
     I3C_EC_STDBYCTRLMODE_STBY_CR_DEVICE_ADDR_REG_ADDR,
-    # Timing registers
-    I3C_EC_SOCMGMTIF_T_R_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_F_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_SU_DAT_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_HD_DAT_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_HIGH_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_LOW_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_HD_STA_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_SU_STA_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_SU_STO_REG_REG_ADDR,
-    I3C_EC_SOCMGMTIF_T_FREE_REG_REG_ADDR,
-    # TTI registers
-    I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR,
+    I3C_EC_TTI_DATA_BUFFER_THLD_CTRL_REG_ADDR,
     I3C_EC_TTI_INTERRUPT_ENABLE_REG_ADDR,
     I3C_EC_TTI_INTERRUPT_FORCE_REG_ADDR,
-    I3C_EC_TTI_RX_DESC_QUEUE_PORT_REG_ADDR,
+    # TTI registers
+    I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR,
     I3C_EC_TTI_RX_DATA_PORT_REG_ADDR,
-    I3C_EC_TTI_TX_DESC_QUEUE_PORT_REG_ADDR,
+    I3C_EC_TTI_RX_DESC_QUEUE_PORT_REG_ADDR,
     I3C_EC_TTI_TX_DATA_PORT_REG_ADDR,
-    I3C_EC_TTI_DATA_BUFFER_THLD_CTRL_REG_ADDR,
+    I3C_EC_TTI_TX_DESC_QUEUE_PORT_REG_ADDR,
+    I3CBASE_CONTROLLER_DEVICE_ADDR_REG_ADDR,
+    # Base registers
+    I3CBASE_HC_CONTROL_REG_ADDR,
+    # PIO registers
+    PIOCONTROL_COMMAND_PORT_REG_ADDR,
+    PIOCONTROL_DATA_BUFFER_THLD_CTRL_REG_ADDR,
+    PIOCONTROL_PIO_CONTROL_REG_ADDR,
+    PIOCONTROL_PIO_INTR_SIGNAL_ENABLE_REG_ADDR,
+    PIOCONTROL_PIO_INTR_STATUS_ENABLE_REG_ADDR,
+    PIOCONTROL_PIO_INTR_STATUS_REG_ADDR,
+    PIOCONTROL_QUEUE_THLD_CTRL_REG_ADDR,
+    PIOCONTROL_RESPONSE_PORT_REG_ADDR,
+    PIOCONTROL_RX_DATA_PORT_REG_ADDR,
+    PIOCONTROL_TX_DATA_PORT_REG_ADDR,
 )
 
 # =============================================================================
@@ -72,7 +72,7 @@ from I3CCSR_reg import (
 # Instance 1 (Target):     0x1000 - 0x1FFF
 
 CTRL_BASE = 0x0000  # Controller (instance 0)
-TGT_BASE = 0x1000   # Target (instance 1)
+TGT_BASE = 0x1000  # Target (instance 1)
 
 # Target static address to use
 TARGET_STATIC_ADDR = 0x10
@@ -136,35 +136,35 @@ TTI_DATA_BUFFER_THLD_CTRL = I3C_EC_TTI_DATA_BUFFER_THLD_CTRL_REG_ADDR
 # =============================================================================
 
 # DATA_BUFFER_THLD_CTRL bit fields (ThldIsPow=1: threshold = 2^(N+1))
-TX_BUF_THLD_MASK = 0x00000007       # bits [2:0]
-TX_START_THLD_SHIFT = 16            # bits [18:16]
+TX_BUF_THLD_MASK = 0x00000007  # bits [2:0]
+TX_START_THLD_SHIFT = 16  # bits [18:16]
 TX_START_THLD_MASK = 0x00070000
-RX_BUF_THLD_SHIFT = 8               # bits [10:8]
-RX_BUF_THLD_MASK = 0x00000700       # bits [10:8]
-RX_START_THLD_SHIFT = 24            # bits [26:24]
-RX_START_THLD_MASK = 0x07000000     # bits [26:24]
+RX_BUF_THLD_SHIFT = 8  # bits [10:8]
+RX_BUF_THLD_MASK = 0x00000700  # bits [10:8]
+RX_START_THLD_SHIFT = 24  # bits [26:24]
+RX_START_THLD_MASK = 0x07000000  # bits [26:24]
 
 # PIO_INTR_STATUS bits
-PIO_TX_THLD_STAT = (1 << 0)         # TX queue threshold status
-PIO_RX_THLD_STAT = (1 << 1)         # RX queue threshold status
-PIO_IBI_STATUS_THLD_STAT = (1 << 2) # IBI queue threshold status
-PIO_CMD_QUEUE_READY_STAT = (1 << 3) # CMD queue ready status
-PIO_RESP_READY_STAT = (1 << 4)      # Response ready status
+PIO_TX_THLD_STAT = 1 << 0  # TX queue threshold status
+PIO_RX_THLD_STAT = 1 << 1  # RX queue threshold status
+PIO_IBI_STATUS_THLD_STAT = 1 << 2  # IBI queue threshold status
+PIO_CMD_QUEUE_READY_STAT = 1 << 3  # CMD queue ready status
+PIO_RESP_READY_STAT = 1 << 4  # Response ready status
 
 # TTI DATA_BUFFER_THLD_CTRL bit fields (ThldIsPow=1: threshold = 2^(N+1))
-TTI_TX_DATA_THLD_SHIFT = 0      # bits [2:0]
+TTI_TX_DATA_THLD_SHIFT = 0  # bits [2:0]
 TTI_TX_DATA_THLD_MASK = 0x00000007
-TTI_TX_START_THLD_SHIFT = 16    # bits [18:16]
+TTI_TX_START_THLD_SHIFT = 16  # bits [18:16]
 TTI_TX_START_THLD_MASK = 0x00070000
-TTI_RX_DATA_THLD_SHIFT = 8      # bits [10:8]
+TTI_RX_DATA_THLD_SHIFT = 8  # bits [10:8]
 TTI_RX_DATA_THLD_MASK = 0x00000700
-TTI_RX_START_THLD_SHIFT = 24    # bits [26:24]
+TTI_RX_START_THLD_SHIFT = 24  # bits [26:24]
 TTI_RX_START_THLD_MASK = 0x07000000
 
 # TTI interrupt bit definitions (same positions for ENABLE and FORCE registers)
-TTI_RX_DESC_STAT = (1 << 0)         # RX_DESC_STAT interrupt (bit 0)
-TTI_TX_DATA_THLD_STAT = (1 << 8)    # TX_DATA_THLD_STAT interrupt (bit 8)
-TTI_RX_DATA_THLD_STAT = (1 << 9)    # RX_DATA_THLD_STAT interrupt (bit 9)
+TTI_RX_DESC_STAT = 1 << 0  # RX_DESC_STAT interrupt (bit 0)
+TTI_TX_DATA_THLD_STAT = 1 << 8  # TX_DATA_THLD_STAT interrupt (bit 8)
+TTI_RX_DATA_THLD_STAT = 1 << 9  # RX_DATA_THLD_STAT interrupt (bit 9)
 
 
 # =============================================================================
@@ -172,21 +172,21 @@ TTI_RX_DATA_THLD_STAT = (1 << 9)    # RX_DATA_THLD_STAT interrupt (bit 9)
 # =============================================================================
 
 # HC_CONTROL bits
-HC_CONTROL_BUS_ENABLE = (1 << 31)
+HC_CONTROL_BUS_ENABLE = 1 << 31
 
 # PIO_CONTROL bits
-PIO_CONTROL_ENABLE = (1 << 0)
+PIO_CONTROL_ENABLE = 1 << 0
 
 # STBY_CR_CONTROL bits
-STBY_CR_ENABLE_INIT_ACM_INIT = (0b01 << 30)     # ACM_INIT mode (active controller)
-STBY_CR_ENABLE_INIT_SCM_RUNNING = (0b10 << 30)  # SCM_RUNNING mode (standby/target)
-STBY_CR_DAA_SETDASA_ENABLE = (1 << 14)
-STBY_CR_DAA_ENTDAA_ENABLE = (1 << 13)
-STBY_CR_DAA_SETAASA_ENABLE = (1 << 12)
-STBY_CR_TARGET_XACT_ENABLE = (1 << 12)
+STBY_CR_ENABLE_INIT_ACM_INIT = 0b01 << 30  # ACM_INIT mode (active controller)
+STBY_CR_ENABLE_INIT_SCM_RUNNING = 0b10 << 30  # SCM_RUNNING mode (standby/target)
+STBY_CR_DAA_SETDASA_ENABLE = 1 << 14
+STBY_CR_DAA_ENTDAA_ENABLE = 1 << 13
+STBY_CR_DAA_SETAASA_ENABLE = 1 << 12
+STBY_CR_TARGET_XACT_ENABLE = 1 << 12
 
 # STBY_CR_DEVICE_ADDR bits
-STBY_CR_STATIC_ADDR_VALID = (1 << 15)
+STBY_CR_STATIC_ADDR_VALID = 1 << 15
 
 
 class TB:
@@ -205,9 +205,7 @@ class TB:
         await Timer(100, units="ns")
 
         bus = AxiLiteBus.from_prefix(self.dut, "axi")
-        self.axi_master = AxiLiteMaster(
-            bus, self.dut.clk, self.dut.rst_n, reset_active_level=False
-        )
+        self.axi_master = AxiLiteMaster(bus, self.dut.clk, self.dut.rst_n, reset_active_level=False)
 
         # Suppress verbose AXI logging
         self.axi_master.write_if.log.setLevel(logging.ERROR)
@@ -238,7 +236,9 @@ class TB:
         await self.axi_master.write_dword(addr, data)
         self.log.debug(f"Write [0x{addr:08X}] = 0x{data:08X}")
 
-    async def write_and_verify(self, addr: int, data: int, name: str = "", mask: int = 0xFFFFFFFF) -> int:
+    async def write_and_verify(
+        self, addr: int, data: int, name: str = "", mask: int = 0xFFFFFFFF
+    ) -> int:
         """Write register and poll-read to confirm (comparing only masked bits).
 
         Args:
@@ -253,7 +253,9 @@ class TB:
 
         # Compare only the bits we wrote (some registers have RO bits with reset values)
         if (readback & mask) == (data & mask):
-            self.log.info(f"  {name} @ 0x{addr:03X}: wrote 0x{data:08X}, verified OK (mask=0x{mask:08X})")
+            self.log.info(
+                f"  {name} @ 0x{addr:03X}: wrote 0x{data:08X}, verified OK (mask=0x{mask:08X})"
+            )
         else:
             self.log.error(
                 f"  {name} @ 0x{addr:03X}: wrote 0x{data:08X}, "
@@ -277,7 +279,7 @@ class TB:
         self.log.info(f"  DATA_BUFFER_THLD_CTRL before: 0x{current:08X}")
 
         # Clear TX fields and set new values
-        new_val = (current & ~(TX_BUF_THLD_MASK | TX_START_THLD_MASK))
+        new_val = current & ~(TX_BUF_THLD_MASK | TX_START_THLD_MASK)
         new_val |= (tx_buf_thld & 0x7) | ((tx_start_thld & 0x7) << TX_START_THLD_SHIFT)
         await self.write_register(base_addr + DATA_BUFFER_THLD_CTRL, new_val)
 
@@ -285,10 +287,14 @@ class TB:
         readback = await self.read_register(base_addr + DATA_BUFFER_THLD_CTRL)
         self.log.info(f"  DATA_BUFFER_THLD_CTRL: wrote 0x{new_val:08X}, readback 0x{readback:08X}")
 
-        self.log.info(f"  TX thresholds: TX_BUF_THLD={tx_buf_thld} (>={2**(tx_buf_thld+1)} free entries), "
-                      f"TX_START_THLD={tx_start_thld} ({'disabled' if tx_start_thld == 0 else f'>={2**(tx_start_thld+1)} filled'})")
+        self.log.info(
+            f"  TX thresholds: TX_BUF_THLD={tx_buf_thld} (>={2 ** (tx_buf_thld + 1)} free entries), "
+            f"TX_START_THLD={tx_start_thld} ({'disabled' if tx_start_thld == 0 else f'>={2 ** (tx_start_thld + 1)} filled'})"
+        )
 
-    async def configure_rx_thresholds(self, base_addr: int, rx_buf_thld: int, rx_data_thld: int = 0):
+    async def configure_rx_thresholds(
+        self, base_addr: int, rx_buf_thld: int, rx_data_thld: int = 0
+    ):
         """Configure RX FIFO thresholds for large transfers.
 
         Note: ThldIsPow=1, so actual threshold = 2^(value+1)
@@ -300,15 +306,17 @@ class TB:
         self.log.info(f"  DATA_BUFFER_THLD_CTRL before: 0x{current:08X}")
 
         # Clear RX fields and set new values
-        new_val = (current & ~(RX_BUF_THLD_MASK | RX_START_THLD_MASK))
-        new_val |= ((rx_buf_thld & 0x7) << RX_BUF_THLD_SHIFT)
+        new_val = current & ~(RX_BUF_THLD_MASK | RX_START_THLD_MASK)
+        new_val |= (rx_buf_thld & 0x7) << RX_BUF_THLD_SHIFT
         await self.write_register(base_addr + DATA_BUFFER_THLD_CTRL, new_val)
 
         # Verify the write
         readback = await self.read_register(base_addr + DATA_BUFFER_THLD_CTRL)
         self.log.info(f"  DATA_BUFFER_THLD_CTRL: wrote 0x{new_val:08X}, readback 0x{readback:08X}")
 
-        self.log.info(f"  RX thresholds: RX_BUF_THLD={rx_buf_thld} (>={2**(rx_buf_thld+1)} filled entries)")
+        self.log.info(
+            f"  RX thresholds: RX_BUF_THLD={rx_buf_thld} (>={2 ** (rx_buf_thld + 1)} filled entries)"
+        )
 
     async def enable_pio_interrupt(self, base_addr: int, interrupt_bits: int):
         """Enable PIO interrupt status monitoring.
@@ -323,7 +331,9 @@ class TB:
 
         # Verify the enable was written correctly
         readback = await self.read_register(base_addr + PIO_INTR_STATUS_ENABLE)
-        self.log.info(f"  PIO_INTR_STATUS_ENABLE: wrote 0x{new_value:08X}, readback 0x{readback:08X}")
+        self.log.info(
+            f"  PIO_INTR_STATUS_ENABLE: wrote 0x{new_value:08X}, readback 0x{readback:08X}"
+        )
 
         # Wait a few cycles for status bit to be sampled from HW
         await ClockCycles(self.dut.clk, 5)
@@ -333,7 +343,9 @@ class TB:
         self.log.info(f"  PIO_INTR_STATUS after enable: 0x{status:08X}")
         self.log.info(f"  Enabled PIO interrupts: 0x{interrupt_bits:08X}")
 
-    async def poll_pio_interrupt(self, base_addr: int, interrupt_bits: int, max_polls: int = 10000) -> bool:
+    async def poll_pio_interrupt(
+        self, base_addr: int, interrupt_bits: int, max_polls: int = 10000
+    ) -> bool:
         """Poll for PIO interrupt status bits to be set.
 
         Returns True if interrupt detected, False if timeout.
@@ -341,13 +353,19 @@ class TB:
         for i in range(max_polls):
             status = await self.read_register(base_addr + PIO_INTR_STATUS)
             if status & interrupt_bits:
-                self.log.info(f"  PIO interrupt 0x{interrupt_bits:X} detected after {i + 1} polls (status=0x{status:08X})")
+                self.log.info(
+                    f"  PIO interrupt 0x{interrupt_bits:X} detected after {i + 1} polls (status=0x{status:08X})"
+                )
                 return True
             await ClockCycles(self.dut.clk, 10)
-        self.log.warning(f"  PIO interrupt 0x{interrupt_bits:X} not detected after {max_polls} polls")
+        self.log.warning(
+            f"  PIO interrupt 0x{interrupt_bits:X} not detected after {max_polls} polls"
+        )
         return False
 
-    async def configure_tti_rx_thresholds(self, base_addr: int, rx_data_thld: int, rx_start_thld: int):
+    async def configure_tti_rx_thresholds(
+        self, base_addr: int, rx_data_thld: int, rx_start_thld: int
+    ):
         """Configure TTI RX FIFO thresholds for large transfers.
 
         Note: ThldIsPow=1, so actual threshold = 2^(value+1)
@@ -357,14 +375,18 @@ class TB:
         # Read current value to preserve TX thresholds
         current = await self.read_register(base_addr + TTI_DATA_BUFFER_THLD_CTRL)
         # Clear RX fields and set new values
-        new_val = (current & ~(TTI_RX_DATA_THLD_MASK | TTI_RX_START_THLD_MASK))
-        new_val |= ((rx_data_thld & 0x7) << TTI_RX_DATA_THLD_SHIFT)
-        new_val |= ((rx_start_thld & 0x7) << TTI_RX_START_THLD_SHIFT)
+        new_val = current & ~(TTI_RX_DATA_THLD_MASK | TTI_RX_START_THLD_MASK)
+        new_val |= (rx_data_thld & 0x7) << TTI_RX_DATA_THLD_SHIFT
+        new_val |= (rx_start_thld & 0x7) << TTI_RX_START_THLD_SHIFT
         await self.write_register(base_addr + TTI_DATA_BUFFER_THLD_CTRL, new_val)
-        self.log.info(f"  TTI RX thresholds: RX_DATA_THLD={rx_data_thld} (>={2**(rx_data_thld+1)} entries), "
-                      f"RX_START_THLD={rx_start_thld}")
+        self.log.info(
+            f"  TTI RX thresholds: RX_DATA_THLD={rx_data_thld} (>={2 ** (rx_data_thld + 1)} entries), "
+            f"RX_START_THLD={rx_start_thld}"
+        )
 
-    async def configure_tti_tx_thresholds(self, base_addr: int, tx_data_thld: int, tx_start_thld: int):
+    async def configure_tti_tx_thresholds(
+        self, base_addr: int, tx_data_thld: int, tx_start_thld: int
+    ):
         """Configure TTI TX FIFO thresholds for large transfers.
 
         Note: ThldIsPow=1, so actual threshold = 2^(value+1)
@@ -374,12 +396,14 @@ class TB:
         # Read current value to preserve RX thresholds
         current = await self.read_register(base_addr + TTI_DATA_BUFFER_THLD_CTRL)
         # Clear TX fields and set new values
-        new_val = (current & ~(TTI_TX_DATA_THLD_MASK | TTI_TX_START_THLD_MASK))
-        new_val |= ((tx_data_thld & 0x7) << TTI_TX_DATA_THLD_SHIFT)
-        new_val |= ((tx_start_thld & 0x7) << TTI_TX_START_THLD_SHIFT)
+        new_val = current & ~(TTI_TX_DATA_THLD_MASK | TTI_TX_START_THLD_MASK)
+        new_val |= (tx_data_thld & 0x7) << TTI_TX_DATA_THLD_SHIFT
+        new_val |= (tx_start_thld & 0x7) << TTI_TX_START_THLD_SHIFT
         await self.write_register(base_addr + TTI_DATA_BUFFER_THLD_CTRL, new_val)
-        self.log.info(f"  TTI TX thresholds: TX_DATA_THLD={tx_data_thld} (>={2**(tx_data_thld+1)} free entries), "
-                      f"TX_START_THLD={tx_start_thld}")
+        self.log.info(
+            f"  TTI TX thresholds: TX_DATA_THLD={tx_data_thld} (>={2 ** (tx_data_thld + 1)} free entries), "
+            f"TX_START_THLD={tx_start_thld}"
+        )
 
     async def enable_tti_interrupt(self, base_addr: int, interrupt_bits: int):
         """Enable TTI interrupt status monitoring."""
@@ -404,7 +428,8 @@ class TB:
 # Test Cases
 # =============================================================================
 
-@cocotb.test(skip=True, timeout_time=100, timeout_unit='us')
+
+@cocotb.test(skip=True, timeout_time=100, timeout_unit="us")
 async def test_setdasa(dut):
     """
     DEPRECATED / SKIPPED — superseded by the cocotb-api tests.
@@ -457,35 +482,29 @@ async def test_setdasa(dut):
     # Enable bus: HC_CONTROL.BUS_ENABLE = 1
     # Mask: only BUS_ENABLE[31] - other bits are RO with reset values
     await tb.write_and_verify(
-        CTRL_BASE + HC_CONTROL,
-        HC_CONTROL_BUS_ENABLE,
-        "HC_CONTROL",
-        mask=0x80000000
+        CTRL_BASE + HC_CONTROL, HC_CONTROL_BUS_ENABLE, "HC_CONTROL", mask=0x80000000
     )
 
     # Enable PIO: PIO_CONTROL.ENABLE = 1
     # Mask: only ENABLE[0]
     await tb.write_and_verify(
-        CTRL_BASE + PIO_CONTROL,
-        PIO_CONTROL_ENABLE,
-        "PIO_CONTROL",
-        mask=0x00000001
+        CTRL_BASE + PIO_CONTROL, PIO_CONTROL_ENABLE, "PIO_CONTROL", mask=0x00000001
     )
 
     # Configure I3C timing registers (SoC Management Interface)
     # Values match controller_active.sv lines 289-298 for I2C/I3C Open Drain FSM timing
     # These are in clock cycles
     tb.log.info("  Configuring timing registers...")
-    await tb.write_register(CTRL_BASE + T_HIGH_REG, 25)      # SCL high period
-    await tb.write_register(CTRL_BASE + T_LOW_REG, 25)       # SCL low period
-    await tb.write_register(CTRL_BASE + T_R_REG, 5)          # Rise time
-    await tb.write_register(CTRL_BASE + T_F_REG, 1)          # Fall time
-    await tb.write_register(CTRL_BASE + T_HD_STA_REG, 10)     # Hold time for START
-    await tb.write_register(CTRL_BASE + T_SU_STA_REG, 10)     # Setup time for START
-    await tb.write_register(CTRL_BASE + T_SU_STO_REG, 10)     # Setup time for STOP
-    await tb.write_register(CTRL_BASE + T_SU_DAT_REG, 3)     # Data setup time
-    await tb.write_register(CTRL_BASE + T_HD_DAT_REG, 1)     # Data hold time
-    await tb.write_register(CTRL_BASE + T_FREE_REG, 25)       # Bus free time (t_buf)
+    await tb.write_register(CTRL_BASE + T_HIGH_REG, 25)  # SCL high period
+    await tb.write_register(CTRL_BASE + T_LOW_REG, 25)  # SCL low period
+    await tb.write_register(CTRL_BASE + T_R_REG, 5)  # Rise time
+    await tb.write_register(CTRL_BASE + T_F_REG, 1)  # Fall time
+    await tb.write_register(CTRL_BASE + T_HD_STA_REG, 10)  # Hold time for START
+    await tb.write_register(CTRL_BASE + T_SU_STA_REG, 10)  # Setup time for START
+    await tb.write_register(CTRL_BASE + T_SU_STO_REG, 10)  # Setup time for STOP
+    await tb.write_register(CTRL_BASE + T_SU_DAT_REG, 3)  # Data setup time
+    await tb.write_register(CTRL_BASE + T_HD_DAT_REG, 1)  # Data hold time
+    await tb.write_register(CTRL_BASE + T_FREE_REG, 25)  # Bus free time (t_buf)
     tb.log.info("  Timing registers configured")
 
     # Configure STBY_CR_CONTROL for controller:
@@ -495,7 +514,7 @@ async def test_setdasa(dut):
         CTRL_BASE + STBY_CR_CONTROL,
         STBY_CR_ENABLE_INIT_ACM_INIT,
         "STBY_CR_CONTROL (controller)",
-        mask=0xC0000000  # Only STBY_CR_ENABLE_INIT[31:30]
+        mask=0xC0000000,  # Only STBY_CR_ENABLE_INIT[31:30]
     )
 
     # Configure DAT entry 0 with target static and dynamic addresses
@@ -507,14 +526,14 @@ async def test_setdasa(dut):
     # to assign the target's new I3C dynamic address. We set it to the same
     # value as the static address for simplicity in this test.
     dat_entry_lo = (
-        (TARGET_STATIC_ADDR << 0) |     # static_address[6:0]
-        (TARGET_DYNAMIC_ADDR << 16)     # dynamic_address[7:0]
+        (TARGET_STATIC_ADDR << 0)  # static_address[6:0]
+        | (TARGET_DYNAMIC_ADDR << 16)  # dynamic_address[7:0]
     )
     await tb.write_and_verify(
         CTRL_BASE + DAT_BASE,
         dat_entry_lo,
         "DAT[0] (low)",
-        mask=0x00FF007F  # dynamic_address[23:16] + static_address[6:0]
+        mask=0x00FF007F,  # dynamic_address[23:16] + static_address[6:0]
     )
 
     # =========================================================================
@@ -529,10 +548,7 @@ async def test_setdasa(dut):
     # Mask: STATIC_ADDR_VALID[15] + STATIC_ADDR[6:0]
     stby_cr_device_addr = TARGET_STATIC_ADDR | STBY_CR_STATIC_ADDR_VALID
     await tb.write_and_verify(
-        TGT_BASE + STBY_CR_DEVICE_ADDR,
-        stby_cr_device_addr,
-        "STBY_CR_DEVICE_ADDR",
-        mask=0x0000807F
+        TGT_BASE + STBY_CR_DEVICE_ADDR, stby_cr_device_addr, "STBY_CR_DEVICE_ADDR", mask=0x0000807F
     )
 
     # Configure STBY_CR_CONTROL:
@@ -542,15 +558,15 @@ async def test_setdasa(dut):
     # - DAA_ENTDAA_ENABLE[13] = 0
     # - DAA_SETAASA_ENABLE[11] = 0
     stby_cr_control = (
-        STBY_CR_ENABLE_INIT_SCM_RUNNING |
-        STBY_CR_DAA_SETDASA_ENABLE |
-        STBY_CR_TARGET_XACT_ENABLE  # Enable target to receive private transactions
+        STBY_CR_ENABLE_INIT_SCM_RUNNING
+        | STBY_CR_DAA_SETDASA_ENABLE
+        | STBY_CR_TARGET_XACT_ENABLE  # Enable target to receive private transactions
     )
     await tb.write_and_verify(
         TGT_BASE + STBY_CR_CONTROL,
         stby_cr_control,
         "STBY_CR_CONTROL",
-        mask=0xC0005000  # STBY_CR_ENABLE_INIT[31:30] + DAA_SETDASA[14] + TARGET_XACT[12]
+        mask=0xC0005000,  # STBY_CR_ENABLE_INIT[31:30] + DAA_SETDASA[14] + TARGET_XACT[12]
     )
 
     # =========================================================================
@@ -579,13 +595,13 @@ async def test_setdasa(dut):
     #
     # NOTE: write_queue expects TWO 32-bit writes to form one 64-bit command entry
     cmd_desc_lo = (
-        (0x2 << 0) |        # attr = AddressAssignment
-        (0x0 << 3) |        # tid = 0
-        (0x87 << 7) |       # cmd = SETDASA (directed)
-        (0x0 << 16) |       # dev_idx = 0
-        (0x1 << 26) |       # dev_count = 1
-        (0x1 << 30) |       # wroc = 1
-        (0x1 << 31)         # toc = 1
+        (0x2 << 0)  # attr = AddressAssignment
+        | (0x0 << 3)  # tid = 0
+        | (0x87 << 7)  # cmd = SETDASA (directed)
+        | (0x0 << 16)  # dev_idx = 0
+        | (0x1 << 26)  # dev_count = 1
+        | (0x1 << 30)  # wroc = 1
+        | (0x1 << 31)  # toc = 1
     )
     cmd_desc_hi = 0x00000000  # DWORD 1 is reserved
 
@@ -654,7 +670,9 @@ async def test_setdasa(dut):
         if target_dyn_addr == expected_dyn_addr:
             tb.log.info(f"  SUCCESS: Target received dynamic address 0x{expected_dyn_addr:02X}")
         else:
-            tb.log.error(f"  FAILED: Expected dynamic address 0x{expected_dyn_addr:02X}, got 0x{target_dyn_addr:02X}")
+            tb.log.error(
+                f"  FAILED: Expected dynamic address 0x{expected_dyn_addr:02X}, got 0x{target_dyn_addr:02X}"
+            )
 
     # =========================================================================
     # Step 6: Private Write Test - Controller writes data to Target
@@ -686,17 +704,17 @@ async def test_setdasa(dut):
     # DWORD 0 (lower):
     data_length = 4
     cmd_desc_lo = (
-        (0x0 << 0) |        # attr = RegularTransfer (0)
-        (0x1 << 3) |        # tid = 1
-        (0x0 << 7) |        # cmd = 0 (private write, no CCC)
-        (0x0 << 15) |       # cp = 0 (command not present)
-        (0x0 << 16) |       # dev_idx = 0 (target in DAT[0])
-        (0x0 << 24) |       # sre = 0 (short read error disable)
-        (0x0 << 25) |       # dbp = 0 (no defining byte)
-        (0x0 << 26) |       # mode = 0 (SDR0)
-        (0x0 << 29) |       # rnw = 0 (WRITE direction)
-        (0x1 << 30) |       # wroc = 1 (response on completion)
-        (0x1 << 31)         # toc = 1 (terminate on completion)
+        (0x0 << 0)  # attr = RegularTransfer (0)
+        | (0x1 << 3)  # tid = 1
+        | (0x0 << 7)  # cmd = 0 (private write, no CCC)
+        | (0x0 << 15)  # cp = 0 (command not present)
+        | (0x0 << 16)  # dev_idx = 0 (target in DAT[0])
+        | (0x0 << 24)  # sre = 0 (short read error disable)
+        | (0x0 << 25)  # dbp = 0 (no defining byte)
+        | (0x0 << 26)  # mode = 0 (SDR0)
+        | (0x0 << 29)  # rnw = 0 (WRITE direction)
+        | (0x1 << 30)  # wroc = 1 (response on completion)
+        | (0x1 << 31)  # toc = 1 (terminate on completion)
     )
 
     # DWORD 1 (upper): data_length in upper 16 bits
@@ -731,7 +749,9 @@ async def test_setdasa(dut):
         tid = (response >> 24) & 0xF
         resp_data_len = response & 0xFFFF
 
-        tb.log.info(f"    ERR_STATUS: {err_status} {'(Success)' if err_status == 0 else '(ERROR!)'}")
+        tb.log.info(
+            f"    ERR_STATUS: {err_status} {'(Success)' if err_status == 0 else '(ERROR!)'}"
+        )
         tb.log.info(f"    TID: {tid}")
         tb.log.info(f"    DATA_LENGTH: {resp_data_len}")
 
@@ -742,8 +762,9 @@ async def test_setdasa(dut):
     tb.log.info("Reading Target RX FIFO")
     tb.log.info("-" * 40)
 
-
-    await ClockCycles(dut.clk, 300)  # Wait some cycles for data to be processed and appear in RX FIFO
+    await ClockCycles(
+        dut.clk, 300
+    )  # Wait some cycles for data to be processed and appear in RX FIFO
     # Enable and force the RX interrupts since we only have 1 DWORD (below default threshold of 4)
     # Step 1: Enable the interrupts
     tb.log.info("  Enabling RX_DESC_STAT and RX_DATA_THLD interrupts...")
@@ -770,7 +791,7 @@ async def test_setdasa(dut):
         rx_data & 0xFF,
         (rx_data >> 8) & 0xFF,
         (rx_data >> 16) & 0xFF,
-        (rx_data >> 24) & 0xFF
+        (rx_data >> 24) & 0xFF,
     ]
     tb.log.info(f"  Received bytes: {[f'0x{b:02X}' for b in rx_bytes]}")
 
@@ -805,10 +826,12 @@ async def test_setdasa(dut):
     tb.log.info(f"  Test data: {[f'0x{b:02X}' for b in read_test_data]}")
 
     # Pack 4 bytes into 32-bit word (little-endian)
-    target_tx_word = (read_test_data[0] |
-                      (read_test_data[1] << 8) |
-                      (read_test_data[2] << 16) |
-                      (read_test_data[3] << 24))
+    target_tx_word = (
+        read_test_data[0]
+        | (read_test_data[1] << 8)
+        | (read_test_data[2] << 16)
+        | (read_test_data[3] << 24)
+    )
     tb.log.info(f"  Target TX word: 0x{target_tx_word:08X}")
 
     # Write TX descriptor (data_length in upper 16 bits)
@@ -826,17 +849,17 @@ async def test_setdasa(dut):
     # Regular transfer descriptor for private READ
     # Key difference from WRITE: rnw = 1 (READ direction)
     cmd_desc_lo = (
-        (0x0 << 0) |        # attr = RegularTransfer (0)
-        (0x2 << 3) |        # tid = 2 (different from write)
-        (0x0 << 7) |        # cmd = 0 (private, no CCC)
-        (0x0 << 15) |       # cp = 0 (command not present)
-        (0x0 << 16) |       # dev_idx = 0 (target in DAT[0])
-        (0x0 << 24) |       # sre = 0 (short read error disable)
-        (0x0 << 25) |       # dbp = 0 (no defining byte)
-        (0x0 << 26) |       # mode = 0 (SDR0)
-        (0x1 << 29) |       # rnw = 1 (READ direction!)
-        (0x1 << 30) |       # wroc = 1 (response on completion)
-        (0x1 << 31)         # toc = 1 (terminate on completion)
+        (0x0 << 0)  # attr = RegularTransfer (0)
+        | (0x2 << 3)  # tid = 2 (different from write)
+        | (0x0 << 7)  # cmd = 0 (private, no CCC)
+        | (0x0 << 15)  # cp = 0 (command not present)
+        | (0x0 << 16)  # dev_idx = 0 (target in DAT[0])
+        | (0x0 << 24)  # sre = 0 (short read error disable)
+        | (0x0 << 25)  # dbp = 0 (no defining byte)
+        | (0x0 << 26)  # mode = 0 (SDR0)
+        | (0x1 << 29)  # rnw = 1 (READ direction!)
+        | (0x1 << 30)  # wroc = 1 (response on completion)
+        | (0x1 << 31)  # toc = 1 (terminate on completion)
     )
 
     # DWORD 1 (upper): data_length in upper 16 bits
@@ -872,7 +895,9 @@ async def test_setdasa(dut):
         tid = (response >> 24) & 0xF
         resp_data_len = response & 0xFFFF
 
-        tb.log.info(f"    ERR_STATUS: {err_status} {'(Success)' if err_status == 0 else '(ERROR!)'}")
+        tb.log.info(
+            f"    ERR_STATUS: {err_status} {'(Success)' if err_status == 0 else '(ERROR!)'}"
+        )
         tb.log.info(f"    TID: {tid}")
         tb.log.info(f"    DATA_LENGTH: {resp_data_len}")
 
@@ -892,7 +917,7 @@ async def test_setdasa(dut):
         ctrl_rx_data & 0xFF,
         (ctrl_rx_data >> 8) & 0xFF,
         (ctrl_rx_data >> 16) & 0xFF,
-        (ctrl_rx_data >> 24) & 0xFF
+        (ctrl_rx_data >> 24) & 0xFF,
     ]
     tb.log.info(f"  Received bytes: {[f'0x{b:02X}' for b in ctrl_rx_bytes]}")
 
@@ -961,8 +986,8 @@ async def test_large_private_write(dut):
     tb.log.info("=" * 60)
     tb.log.info("Starting Large Private Write Test (268 bytes)")
     tb.log.info("=" * 60)
-    tb.log.info(f"TX FIFO depth: 64 entries (256 bytes)")
-    tb.log.info(f"Transfer size: 67 entries (268 bytes)")
+    tb.log.info("TX FIFO depth: 64 entries (256 bytes)")
+    tb.log.info("Transfer size: 67 entries (268 bytes)")
 
     # Wait for simulation to initialize
     await Timer(500, units="ns")
@@ -981,17 +1006,11 @@ async def test_large_private_write(dut):
     tb.log.info("-" * 40)
 
     await tb.write_and_verify(
-        CTRL_BASE + HC_CONTROL,
-        HC_CONTROL_BUS_ENABLE,
-        "HC_CONTROL",
-        mask=0x80000000
+        CTRL_BASE + HC_CONTROL, HC_CONTROL_BUS_ENABLE, "HC_CONTROL", mask=0x80000000
     )
 
     await tb.write_and_verify(
-        CTRL_BASE + PIO_CONTROL,
-        PIO_CONTROL_ENABLE,
-        "PIO_CONTROL",
-        mask=0x00000001
+        CTRL_BASE + PIO_CONTROL, PIO_CONTROL_ENABLE, "PIO_CONTROL", mask=0x00000001
     )
 
     # Configure timing registers
@@ -1011,17 +1030,12 @@ async def test_large_private_write(dut):
         CTRL_BASE + STBY_CR_CONTROL,
         STBY_CR_ENABLE_INIT_ACM_INIT,
         "STBY_CR_CONTROL (controller)",
-        mask=0xC0000000
+        mask=0xC0000000,
     )
 
     # Configure DAT entry 0
     dat_entry_lo = (TARGET_STATIC_ADDR << 0) | (TARGET_DYNAMIC_ADDR << 16)
-    await tb.write_and_verify(
-        CTRL_BASE + DAT_BASE,
-        dat_entry_lo,
-        "DAT[0] (low)",
-        mask=0x00FF007F
-    )
+    await tb.write_and_verify(CTRL_BASE + DAT_BASE, dat_entry_lo, "DAT[0] (low)", mask=0x00FF007F)
 
     # =========================================================================
     # Step 2: Configure Target (Instance 1) - Same as test_setdasa
@@ -1032,22 +1046,14 @@ async def test_large_private_write(dut):
 
     stby_cr_device_addr = TARGET_STATIC_ADDR | STBY_CR_STATIC_ADDR_VALID
     await tb.write_and_verify(
-        TGT_BASE + STBY_CR_DEVICE_ADDR,
-        stby_cr_device_addr,
-        "STBY_CR_DEVICE_ADDR",
-        mask=0x0000807F
+        TGT_BASE + STBY_CR_DEVICE_ADDR, stby_cr_device_addr, "STBY_CR_DEVICE_ADDR", mask=0x0000807F
     )
 
     stby_cr_control = (
-        STBY_CR_ENABLE_INIT_SCM_RUNNING |
-        STBY_CR_DAA_SETDASA_ENABLE |
-        STBY_CR_TARGET_XACT_ENABLE
+        STBY_CR_ENABLE_INIT_SCM_RUNNING | STBY_CR_DAA_SETDASA_ENABLE | STBY_CR_TARGET_XACT_ENABLE
     )
     await tb.write_and_verify(
-        TGT_BASE + STBY_CR_CONTROL,
-        stby_cr_control,
-        "STBY_CR_CONTROL",
-        mask=0xC0005000
+        TGT_BASE + STBY_CR_CONTROL, stby_cr_control, "STBY_CR_CONTROL", mask=0xC0005000
     )
 
     # =========================================================================
@@ -1058,8 +1064,13 @@ async def test_large_private_write(dut):
     tb.log.info("-" * 40)
 
     cmd_desc_lo = (
-        (0x2 << 0) | (0x0 << 3) | (0x87 << 7) |
-        (0x0 << 16) | (0x1 << 26) | (0x1 << 30) | (0x1 << 31)
+        (0x2 << 0)
+        | (0x0 << 3)
+        | (0x87 << 7)
+        | (0x0 << 16)
+        | (0x1 << 26)
+        | (0x1 << 30)
+        | (0x1 << 31)
     )
     cmd_desc_hi = 0x00000000
     await tb.write_register(CTRL_BASE + COMMAND_PORT, cmd_desc_lo)
@@ -1074,7 +1085,7 @@ async def test_large_private_write(dut):
     for _ in range(max_polls):
         device_addr_reg = await tb.read_register(TGT_BASE + STBY_CR_DEVICE_ADDR)
         if (device_addr_reg >> 31) & 0x1:
-            tb.log.info(f"  Target dynamic address assigned")
+            tb.log.info("  Target dynamic address assigned")
             break
         await ClockCycles(dut.clk, 10)
 
@@ -1145,7 +1156,7 @@ async def test_large_private_write(dut):
     # Helper function to read a batch of RX data (8-bit entries packed into 32-bit words)
     async def read_rx_batch(max_bytes: int):
         """Read up to max_bytes from target RX FIFO."""
-        bytes_read = []
+        bytes_read: list[int] = []
         # RX FIFO is 8-bit entries, but we read 32-bit words (4 bytes per read)
         words_to_read = (max_bytes + 3) // 4
         tb.log.info(f"      read_rx_batch: max_bytes={max_bytes}, words_to_read={words_to_read}")
@@ -1166,10 +1177,14 @@ async def test_large_private_write(dut):
 
     # Write first 32 entries (128 bytes)
     entries_to_write = min(tx_batch_size, total_tx_entries - tx_entries_written)
-    tb.log.info(f"  Writing initial batch 1: {entries_to_write} entries ({entries_to_write * 4} bytes)...")
+    tb.log.info(
+        f"  Writing initial batch 1: {entries_to_write} entries ({entries_to_write * 4} bytes)..."
+    )
     await write_tx_batch(tx_entries_written, entries_to_write)
     tx_entries_written += entries_to_write
-    tb.log.info(f"  Batch 1 complete: {tx_entries_written} entries written, {total_tx_entries - tx_entries_written} remaining")
+    tb.log.info(
+        f"  Batch 1 complete: {tx_entries_written} entries written, {total_tx_entries - tx_entries_written} remaining"
+    )
 
     # After writing 32 entries: 32 entries in FIFO, 32 free, still >= 32 threshold
     # Write second 32 entries
@@ -1179,10 +1194,14 @@ async def test_large_private_write(dut):
 
     entries_to_write = min(tx_batch_size, total_tx_entries - tx_entries_written)
     if entries_to_write > 0:
-        tb.log.info(f"  Writing initial batch 2: {entries_to_write} entries ({entries_to_write * 4} bytes)...")
+        tb.log.info(
+            f"  Writing initial batch 2: {entries_to_write} entries ({entries_to_write * 4} bytes)..."
+        )
         await write_tx_batch(tx_entries_written, entries_to_write)
         tx_entries_written += entries_to_write
-        tb.log.info(f"  Batch 2 complete: {tx_entries_written} entries written, {total_tx_entries - tx_entries_written} remaining")
+        tb.log.info(
+            f"  Batch 2 complete: {tx_entries_written} entries written, {total_tx_entries - tx_entries_written} remaining"
+        )
 
     # Now FIFO has 64 entries (full), 0 free entries, TX_THLD_STAT = FALSE
     tb.log.info(f"  TX FIFO filled with {tx_entries_written} entries before issuing command")
@@ -1190,7 +1209,9 @@ async def test_large_private_write(dut):
     # Debug: Check PIO status after filling FIFO
     pio_after_fill = await tb.read_register(CTRL_BASE + PIO_INTR_STATUS)
     tb.log.info(f"  PIO_INTR_STATUS after fill: 0x{pio_after_fill:08X}")
-    tb.log.info(f"  TX_THLD_STAT after fill: {'SET' if pio_after_fill & PIO_TX_THLD_STAT else 'CLEAR'} (should be CLEAR if FIFO full)")
+    tb.log.info(
+        f"  TX_THLD_STAT after fill: {'SET' if pio_after_fill & PIO_TX_THLD_STAT else 'CLEAR'} (should be CLEAR if FIFO full)"
+    )
 
     # =========================================================================
     # Step 7: Issue Private Write Command
@@ -1201,14 +1222,14 @@ async def test_large_private_write(dut):
 
     data_length = total_bytes
     cmd_desc_lo = (
-        (0x0 << 0) |        # attr = RegularTransfer
-        (0x1 << 3) |        # tid = 1
-        (0x0 << 7) |        # cmd = 0 (private write)
-        (0x0 << 15) |       # cp = 0
-        (0x0 << 16) |       # dev_idx = 0
-        (0x0 << 29) |       # rnw = 0 (WRITE)
-        (0x1 << 30) |       # wroc = 1
-        (0x1 << 31)         # toc = 1
+        (0x0 << 0)  # attr = RegularTransfer
+        | (0x1 << 3)  # tid = 1
+        | (0x0 << 7)  # cmd = 0 (private write)
+        | (0x0 << 15)  # cp = 0
+        | (0x0 << 16)  # dev_idx = 0
+        | (0x0 << 29)  # rnw = 0 (WRITE)
+        | (0x1 << 30)  # wroc = 1
+        | (0x1 << 31)  # toc = 1
     )
     cmd_desc_hi = data_length << 16
 
@@ -1253,15 +1274,27 @@ async def test_large_private_write(dut):
     tb.log.info(f"  Initial PIO_INTR_STATUS: 0x{initial_pio_status:08X}")
     tb.log.info(f"  Initial PIO_INTR_STATUS_ENABLE: 0x{initial_enable:08X}")
     tb.log.info(f"  PIO_TX_THLD_STAT bit mask: 0x{PIO_TX_THLD_STAT:08X}")
-    tb.log.info(f"  TX_THLD_STAT in initial: {'SET' if initial_pio_status & PIO_TX_THLD_STAT else 'CLEAR'}")
-    tb.log.info(f"  Decoding PIO_INTR_STATUS bits:")
-    tb.log.info(f"    TX_THLD_STAT (bit 0): {'SET' if initial_pio_status & (1<<0) else 'CLEAR'}")
-    tb.log.info(f"    RX_THLD_STAT (bit 1): {'SET' if initial_pio_status & (1<<1) else 'CLEAR'}")
-    tb.log.info(f"    IBI_STATUS_THLD_STAT (bit 2): {'SET' if initial_pio_status & (1<<2) else 'CLEAR'}")
-    tb.log.info(f"    CMD_QUEUE_READY_STAT (bit 3): {'SET' if initial_pio_status & (1<<3) else 'CLEAR'}")
-    tb.log.info(f"    RESP_READY_STAT (bit 4): {'SET' if initial_pio_status & (1<<4) else 'CLEAR'}")
-    tb.log.info(f"    TRANSFER_ABORT_STAT (bit 5): {'SET' if initial_pio_status & (1<<5) else 'CLEAR'}")
-    tb.log.info(f"    TRANSFER_ERR_STAT (bit 9): {'SET' if initial_pio_status & (1<<9) else 'CLEAR'}")
+    tb.log.info(
+        f"  TX_THLD_STAT in initial: {'SET' if initial_pio_status & PIO_TX_THLD_STAT else 'CLEAR'}"
+    )
+    tb.log.info("  Decoding PIO_INTR_STATUS bits:")
+    tb.log.info(f"    TX_THLD_STAT (bit 0): {'SET' if initial_pio_status & (1 << 0) else 'CLEAR'}")
+    tb.log.info(f"    RX_THLD_STAT (bit 1): {'SET' if initial_pio_status & (1 << 1) else 'CLEAR'}")
+    tb.log.info(
+        f"    IBI_STATUS_THLD_STAT (bit 2): {'SET' if initial_pio_status & (1 << 2) else 'CLEAR'}"
+    )
+    tb.log.info(
+        f"    CMD_QUEUE_READY_STAT (bit 3): {'SET' if initial_pio_status & (1 << 3) else 'CLEAR'}"
+    )
+    tb.log.info(
+        f"    RESP_READY_STAT (bit 4): {'SET' if initial_pio_status & (1 << 4) else 'CLEAR'}"
+    )
+    tb.log.info(
+        f"    TRANSFER_ABORT_STAT (bit 5): {'SET' if initial_pio_status & (1 << 5) else 'CLEAR'}"
+    )
+    tb.log.info(
+        f"    TRANSFER_ERR_STAT (bit 9): {'SET' if initial_pio_status & (1 << 9) else 'CLEAR'}"
+    )
 
     for iteration in range(max_iterations):
         # Debug: Log first few iterations and then periodically
@@ -1274,9 +1307,11 @@ async def test_large_private_write(dut):
 
         # Debug: Log when PIO status changes or periodically
         if pio_status != last_pio_status or iteration < 5:
-            tb.log.info(f"    [iter {iteration}] PIO_INTR_STATUS: 0x{pio_status:08X} "
-                       f"(TX_THLD={'SET' if pio_status & PIO_TX_THLD_STAT else 'CLR'}, "
-                       f"RESP_RDY={'SET' if pio_status & PIO_RESP_READY_STAT else 'CLR'})")
+            tb.log.info(
+                f"    [iter {iteration}] PIO_INTR_STATUS: 0x{pio_status:08X} "
+                f"(TX_THLD={'SET' if pio_status & PIO_TX_THLD_STAT else 'CLR'}, "
+                f"RESP_RDY={'SET' if pio_status & PIO_RESP_READY_STAT else 'CLR'})"
+            )
             last_pio_status = pio_status
 
         # Check TX: Need to refill controller TX FIFO?
@@ -1291,8 +1326,10 @@ async def test_large_private_write(dut):
             tx_entries_written += entries_to_write
             remaining_tx_entries -= entries_to_write
             tx_refill_count += 1
-            tb.log.info(f"    TX refill #{tx_refill_count}: wrote {entries_to_write} entries "
-                       f"(total: {tx_entries_written}, remaining: {remaining_tx_entries})")
+            tb.log.info(
+                f"    TX refill #{tx_refill_count}: wrote {entries_to_write} entries "
+                f"(total: {tx_entries_written}, remaining: {remaining_tx_entries})"
+            )
 
         # Check RX: Need to drain target RX FIFO? (only check occasionally to avoid blocking)
         if iteration % 10 == 0:
@@ -1303,8 +1340,10 @@ async def test_large_private_write(dut):
                     batch_data = await read_rx_batch(bytes_to_read)
                     received_bytes.extend(batch_data)
                     rx_drain_count += 1
-                    tb.log.info(f"    RX drain #{rx_drain_count}: read {len(batch_data)} bytes "
-                               f"(total: {len(received_bytes)})")
+                    tb.log.info(
+                        f"    RX drain #{rx_drain_count}: read {len(batch_data)} bytes "
+                        f"(total: {len(received_bytes)})"
+                    )
                 await tb.clear_tti_interrupt(TGT_BASE, TTI_RX_DATA_THLD_STAT)
 
         # Check if transfer is complete via RESP_READY_STAT in PIO_INTR_STATUS
@@ -1313,7 +1352,9 @@ async def test_large_private_write(dut):
             response = await tb.read_register(CTRL_BASE + RESPONSE_PORT)
             tb.log.info(f"    [iter {iteration}] Response detected: 0x{response:08X}")
             if remaining_tx_entries > 0:
-                tb.log.warning(f"  Response received but {remaining_tx_entries} TX entries remaining!")
+                tb.log.warning(
+                    f"  Response received but {remaining_tx_entries} TX entries remaining!"
+                )
             tb.log.info(f"  Transfer complete after {iteration + 1} iterations")
             break
 
@@ -1339,7 +1380,9 @@ async def test_large_private_write(dut):
         err_status = (response >> 28) & 0xF
         tid = (response >> 24) & 0xF
         resp_data_len = response & 0xFFFF
-        tb.log.info(f"    ERR_STATUS: {err_status} {'(Success)' if err_status == 0 else '(ERROR!)'}")
+        tb.log.info(
+            f"    ERR_STATUS: {err_status} {'(Success)' if err_status == 0 else '(ERROR!)'}"
+        )
         tb.log.info(f"    TID: {tid}")
         tb.log.info(f"    DATA_LENGTH: {resp_data_len}")
 
@@ -1375,7 +1418,9 @@ async def test_large_private_write(dut):
     rx_err_status = (rx_desc >> 28) & 0xF
     tb.log.info(f"  RX Descriptor: 0x{rx_desc:08X}")
     tb.log.info(f"    Byte count: {rx_byte_count}")
-    tb.log.info(f"    Error status: {rx_err_status} {'(Success)' if rx_err_status == 0 else '(ERROR!)'}")
+    tb.log.info(
+        f"    Error status: {rx_err_status} {'(Success)' if rx_err_status == 0 else '(ERROR!)'}"
+    )
 
     # Verify data
     tb.log.info("-" * 40)
@@ -1390,7 +1435,9 @@ async def test_large_private_write(dut):
     for i in range(min(len(test_data), len(received_bytes))):
         if test_data[i] != received_bytes[i]:
             if mismatch_count < 10:  # Only log first 10 mismatches
-                tb.log.error(f"    Byte {i}: expected 0x{test_data[i]:02X}, got 0x{received_bytes[i]:02X}")
+                tb.log.error(
+                    f"    Byte {i}: expected 0x{test_data[i]:02X}, got 0x{received_bytes[i]:02X}"
+                )
             mismatch_count += 1
             data_match = False
 
@@ -1410,8 +1457,8 @@ async def test_large_private_write(dut):
     tb.log.info("Large Private Write Test Completed")
     tb.log.info("=" * 60)
     tb.log.info(f"  Transfer size: {total_bytes} bytes")
-    tb.log.info(f"  TX FIFO depth: 64 entries (256 bytes)")
-    tb.log.info(f"  RX FIFO depth: 64 entries (64 bytes)")
+    tb.log.info("  TX FIFO depth: 64 entries (256 bytes)")
+    tb.log.info("  RX FIFO depth: 64 entries (64 bytes)")
     tb.log.info(f"  TX refills during transfer: {tx_refill_count}")
     tb.log.info(f"  RX drains during transfer: {rx_drain_count}")
     tb.log.info(f"  RX descriptor byte count: {rx_byte_count}")
@@ -1460,17 +1507,11 @@ async def test_large_private_read(dut):
     tb.log.info("-" * 40)
 
     await tb.write_and_verify(
-        CTRL_BASE + HC_CONTROL,
-        HC_CONTROL_BUS_ENABLE,
-        "HC_CONTROL",
-        mask=0x80000000
+        CTRL_BASE + HC_CONTROL, HC_CONTROL_BUS_ENABLE, "HC_CONTROL", mask=0x80000000
     )
 
     await tb.write_and_verify(
-        CTRL_BASE + PIO_CONTROL,
-        PIO_CONTROL_ENABLE,
-        "PIO_CONTROL",
-        mask=0x00000001
+        CTRL_BASE + PIO_CONTROL, PIO_CONTROL_ENABLE, "PIO_CONTROL", mask=0x00000001
     )
 
     # Configure timing registers
@@ -1490,17 +1531,12 @@ async def test_large_private_read(dut):
         CTRL_BASE + STBY_CR_CONTROL,
         STBY_CR_ENABLE_INIT_ACM_INIT,
         "STBY_CR_CONTROL (controller)",
-        mask=0xC0000000
+        mask=0xC0000000,
     )
 
     # Configure DAT entry 0
     dat_entry_lo = (TARGET_STATIC_ADDR << 0) | (TARGET_DYNAMIC_ADDR << 16)
-    await tb.write_and_verify(
-        CTRL_BASE + DAT_BASE,
-        dat_entry_lo,
-        "DAT[0] (low)",
-        mask=0x00FF007F
-    )
+    await tb.write_and_verify(CTRL_BASE + DAT_BASE, dat_entry_lo, "DAT[0] (low)", mask=0x00FF007F)
 
     # =========================================================================
     # Step 2: Configure Target (Instance 1)
@@ -1511,22 +1547,14 @@ async def test_large_private_read(dut):
 
     stby_cr_device_addr = TARGET_STATIC_ADDR | STBY_CR_STATIC_ADDR_VALID
     await tb.write_and_verify(
-        TGT_BASE + STBY_CR_DEVICE_ADDR,
-        stby_cr_device_addr,
-        "STBY_CR_DEVICE_ADDR",
-        mask=0x0000807F
+        TGT_BASE + STBY_CR_DEVICE_ADDR, stby_cr_device_addr, "STBY_CR_DEVICE_ADDR", mask=0x0000807F
     )
 
     stby_cr_control = (
-        STBY_CR_ENABLE_INIT_SCM_RUNNING |
-        STBY_CR_DAA_SETDASA_ENABLE |
-        STBY_CR_TARGET_XACT_ENABLE
+        STBY_CR_ENABLE_INIT_SCM_RUNNING | STBY_CR_DAA_SETDASA_ENABLE | STBY_CR_TARGET_XACT_ENABLE
     )
     await tb.write_and_verify(
-        TGT_BASE + STBY_CR_CONTROL,
-        stby_cr_control,
-        "STBY_CR_CONTROL",
-        mask=0xC0005000
+        TGT_BASE + STBY_CR_CONTROL, stby_cr_control, "STBY_CR_CONTROL", mask=0xC0005000
     )
 
     # =========================================================================
@@ -1537,8 +1565,13 @@ async def test_large_private_read(dut):
     tb.log.info("-" * 40)
 
     cmd_desc_lo = (
-        (0x2 << 0) | (0x0 << 3) | (0x87 << 7) |
-        (0x0 << 16) | (0x1 << 26) | (0x1 << 30) | (0x1 << 31)
+        (0x2 << 0)
+        | (0x0 << 3)
+        | (0x87 << 7)
+        | (0x0 << 16)
+        | (0x1 << 26)
+        | (0x1 << 30)
+        | (0x1 << 31)
     )
     cmd_desc_hi = 0x00000000
     await tb.write_register(CTRL_BASE + COMMAND_PORT, cmd_desc_lo)
@@ -1553,7 +1586,7 @@ async def test_large_private_read(dut):
     for _ in range(max_polls):
         device_addr_reg = await tb.read_register(TGT_BASE + STBY_CR_DEVICE_ADDR)
         if (device_addr_reg >> 31) & 0x1:
-            tb.log.info(f"  Target dynamic address assigned")
+            tb.log.info("  Target dynamic address assigned")
             break
         await ClockCycles(dut.clk, 10)
 
@@ -1568,19 +1601,19 @@ async def test_large_private_read(dut):
 
     # Target TX threshold: interrupt when >= 32 free entries (tx_data_thld=4, 2^(4+1)=32)
     await tb.configure_tti_tx_thresholds(TGT_BASE, tx_data_thld=4, tx_start_thld=0)
-    tb.log.info(f"  Configured target TX threshold: tx_data_thld=4 (32 free entries)")
+    tb.log.info("  Configured target TX threshold: tx_data_thld=4 (32 free entries)")
 
     # Controller RX threshold: interrupt when >= 4 filled entries (rx_buf_thld=1, 2^(1+1)=4)
     await tb.configure_rx_thresholds(CTRL_BASE, rx_buf_thld=1, rx_data_thld=0)
-    tb.log.info(f"  Configured controller RX threshold: rx_buf_thld=1 (4 filled entries)")
+    tb.log.info("  Configured controller RX threshold: rx_buf_thld=1 (4 filled entries)")
 
     # Enable target TX threshold interrupt
     await tb.enable_tti_interrupt(TGT_BASE, TTI_TX_DATA_THLD_STAT)
-    tb.log.info(f"  Enabled TTI_TX_DATA_THLD_STAT interrupt on target")
+    tb.log.info("  Enabled TTI_TX_DATA_THLD_STAT interrupt on target")
 
     # Enable controller RX threshold and response ready interrupts
     await tb.enable_pio_interrupt(CTRL_BASE, PIO_RX_THLD_STAT | PIO_RESP_READY_STAT)
-    tb.log.info(f"  Enabled PIO_RX_THLD_STAT and PIO_RESP_READY_STAT on controller")
+    tb.log.info("  Enabled PIO_RX_THLD_STAT and PIO_RESP_READY_STAT on controller")
 
     # =========================================================================
     # Step 5: Generate test data
@@ -1605,14 +1638,18 @@ async def test_large_private_read(dut):
     for i in range(entries_to_prefill):
         byte_offset = i * 4
         if byte_offset + 4 <= total_bytes:
-            word = (test_data[byte_offset + 3] << 24 |
-                   test_data[byte_offset + 2] << 16 |
-                   test_data[byte_offset + 1] << 8 |
-                   test_data[byte_offset])
+            word = (
+                test_data[byte_offset + 3] << 24
+                | test_data[byte_offset + 2] << 16
+                | test_data[byte_offset + 1] << 8
+                | test_data[byte_offset]
+            )
             await tb.write_register(TGT_BASE + TTI_TX_DATA_PORT, word)
             bytes_prefilled += 4
 
-    tb.log.info(f"  Pre-filled {bytes_prefilled} bytes ({entries_to_prefill} entries) to target TX FIFO")
+    tb.log.info(
+        f"  Pre-filled {bytes_prefilled} bytes ({entries_to_prefill} entries) to target TX FIFO"
+    )
 
     # Write TX descriptor - tells target total bytes to send
     tx_desc = total_bytes << 16  # byte count in upper 16 bits
@@ -1627,21 +1664,23 @@ async def test_large_private_read(dut):
     tb.log.info("-" * 40)
 
     cmd_desc_lo = (
-        (0x0 << 0) |           # attr = RegularTransfer
-        (0x3 << 3) |           # tid = 3
-        (0x0 << 7) |           # cmd = 0 (private, no CCC)
-        (0x0 << 15) |          # cp = 0 (command not present)
-        (0x0 << 16) |          # dev_idx = 0 (target in DAT[0])
-        (0x0 << 26) |          # mode = 0 (SDR0)
-        (0x1 << 29) |          # rnw = 1 (READ)
-        (0x1 << 30) |          # wroc = 1
-        (0x1 << 31)            # toc = 1
+        (0x0 << 0)  # attr = RegularTransfer
+        | (0x3 << 3)  # tid = 3
+        | (0x0 << 7)  # cmd = 0 (private, no CCC)
+        | (0x0 << 15)  # cp = 0 (command not present)
+        | (0x0 << 16)  # dev_idx = 0 (target in DAT[0])
+        | (0x0 << 26)  # mode = 0 (SDR0)
+        | (0x1 << 29)  # rnw = 1 (READ)
+        | (0x1 << 30)  # wroc = 1
+        | (0x1 << 31)  # toc = 1
     )
     cmd_desc_hi = total_bytes << 16  # data_length
 
     await tb.write_register(CTRL_BASE + COMMAND_PORT, cmd_desc_lo)
     await tb.write_register(CTRL_BASE + COMMAND_PORT, cmd_desc_hi)
-    tb.log.info(f"  Issued READ command for {total_bytes} bytes from DAT[0] (addr 0x{TARGET_DYNAMIC_ADDR:02x})")
+    tb.log.info(
+        f"  Issued READ command for {total_bytes} bytes from DAT[0] (addr 0x{TARGET_DYNAMIC_ADDR:02x})"
+    )
 
     # =========================================================================
     # Step 8: Main loop - refill target TX and drain controller RX
@@ -1679,18 +1718,22 @@ async def test_large_private_read(dut):
 
                 for _ in range(entries_to_write):
                     if tx_byte_offset + 4 <= total_bytes:
-                        word = (test_data[tx_byte_offset + 3] << 24 |
-                               test_data[tx_byte_offset + 2] << 16 |
-                               test_data[tx_byte_offset + 1] << 8 |
-                               test_data[tx_byte_offset])
+                        word = (
+                            test_data[tx_byte_offset + 3] << 24
+                            | test_data[tx_byte_offset + 2] << 16
+                            | test_data[tx_byte_offset + 1] << 8
+                            | test_data[tx_byte_offset]
+                        )
                         await tb.write_register(TGT_BASE + TTI_TX_DATA_PORT, word)
                         tx_byte_offset += 4
                         bytes_written += 4
                         tx_bytes_remaining -= 4
 
                 tx_refill_count += 1
-                tb.log.info(f"  [Iter {iteration}] TX refill #{tx_refill_count}: wrote {bytes_written} bytes, {tx_bytes_remaining} remaining")
-       
+                tb.log.info(
+                    f"  [Iter {iteration}] TX refill #{tx_refill_count}: wrote {bytes_written} bytes, {tx_bytes_remaining} remaining"
+                )
+
         # Check controller PIO interrupt status
         pio_status = await tb.read_register(CTRL_BASE + PIO_INTR_STATUS)
 
@@ -1708,7 +1751,9 @@ async def test_large_private_read(dut):
                 bytes_read += 4
 
             rx_drain_count += 1
-            tb.log.info(f"  [Iter {iteration}] RX drain #{rx_drain_count}: read {bytes_read} bytes, total {len(received_bytes)} received")
+            tb.log.info(
+                f"  [Iter {iteration}] RX drain #{rx_drain_count}: read {bytes_read} bytes, total {len(received_bytes)} received"
+            )
 
         # Check for response ready
         if pio_status & PIO_RESP_READY_STAT:
@@ -1742,7 +1787,9 @@ async def test_large_private_read(dut):
     for i in range(min(len(received_bytes), len(test_data))):
         if received_bytes[i] != test_data[i]:
             if mismatch_count < 10:
-                tb.log.error(f"  Mismatch at byte {i}: expected 0x{test_data[i]:02x}, got 0x{received_bytes[i]:02x}")
+                tb.log.error(
+                    f"  Mismatch at byte {i}: expected 0x{test_data[i]:02x}, got 0x{received_bytes[i]:02x}"
+                )
             mismatch_count += 1
             data_match = False
 
@@ -1762,8 +1809,8 @@ async def test_large_private_read(dut):
     tb.log.info("Large Private Read Test Completed")
     tb.log.info("=" * 60)
     tb.log.info(f"  Transfer size: {total_bytes} bytes")
-    tb.log.info(f"  Target TX FIFO depth: 64 entries (256 bytes)")
-    tb.log.info(f"  Controller RX FIFO depth: 64 entries (256 bytes)")
+    tb.log.info("  Target TX FIFO depth: 64 entries (256 bytes)")
+    tb.log.info("  Controller RX FIFO depth: 64 entries (256 bytes)")
     tb.log.info(f"  TX refills during transfer: {tx_refill_count}")
     tb.log.info(f"  RX drains during transfer: {rx_drain_count}")
     tb.log.info(f"  RX descriptor byte count: {rx_byte_count}")

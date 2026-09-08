@@ -25,13 +25,12 @@
 // monotonic, MMR1 >= MMR0 reads. A torn/stale/cross-attributed mux response
 // shows up as a nonzero backward / bad_tag / bad_uid count -> FAIL.
 //
-// OSS delta vs the reference suite: the reference UVM sequence deposits an UVM_DONE marker to release
-// a host loop that otherwise waits; cocotb cannot deposit an internal register
-// without a force port, so the OSS host loop is a FIXED contended window and the
-// observer is read-only. Mutual non-starvation is proven by the host completing
-// all CONTENDED_LOOPS (final COUNT) AND the KM making progress (CHANGES > 0) in
-// the same window -- equivalent-or-stronger evidence than a single sampled
-// before/after window plus a release handshake.
+// OSS delta vs the reference suite: the reference UVM sequence deposits an UVM_DONE marker to
+// release a host loop that otherwise waits; cocotb cannot deposit an internal register without a
+// force port, so the OSS host loop is a FIXED contended window and the observer is read-only.
+// Mutual non-starvation is proven by the host completing all CONTENDED_LOOPS (final COUNT) AND the
+// KM making progress (CHANGES > 0) in the same window -- equivalent-or-stronger evidence than a
+// single sampled before/after window plus a release handshake.
 
 #include <stdint.h>
 

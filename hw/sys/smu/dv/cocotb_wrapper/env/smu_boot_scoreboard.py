@@ -61,8 +61,7 @@ class SmuSepBootScoreboard(uvm_component):
     This is the boot-readiness bar of the SMU-level SEP smoke (mirroring the
     internal `smu_sep_smoke_test` contract): SEP must be observed fetching
     from the boot-ROM entry window and then executing firmware from ICCM.
-    Console/STDOUT checking over the external AXI path is out of scope here
-    and tracked separately (issue #3939).
+    Console/STDOUT checking over the external AXI path is out of scope here.
     """
 
     MIN_DISTINCT_PCS = 16
@@ -178,13 +177,11 @@ class SmuSepBootScoreboard(uvm_component):
             errors.append("SEP never executed in the ICCM range")
         if self.trace_count < self.MIN_TRACES:
             errors.append(
-                f"SEP retired {self.trace_count} instructions; "
-                f"minimum is {self.MIN_TRACES}"
+                f"SEP retired {self.trace_count} instructions; minimum is {self.MIN_TRACES}"
             )
         if len(self.pcs) < self.MIN_DISTINCT_PCS:
             errors.append(
-                f"SEP observed {len(self.pcs)} distinct PCs; "
-                f"minimum is {self.MIN_DISTINCT_PCS}"
+                f"SEP observed {len(self.pcs)} distinct PCs; minimum is {self.MIN_DISTINCT_PCS}"
             )
         if self.max_dccm_writes == 0:
             errors.append("SEP firmware never stored results into DCCM")

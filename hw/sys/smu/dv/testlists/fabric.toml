@@ -34,8 +34,6 @@ timeout_sec = 1800
 tags = ["fabric", "phase1"]
 run_modes = ["fabric"]
 
-# smu_smc_global_base_remap_test → testlists/deferred.toml
-
 [[tests]]
 name = "smu_axi_atomic_operation_test"
 module = "smu_axi_atomic_operation_test"
@@ -71,7 +69,7 @@ timeout_sec = 1800
 tags = ["fabric", "phase1", "tier_a_pilot", "depth"]
 run_modes = ["fabric"]
 
-# Tier A: outbound filter instance CSR DECODE (FAB_SMC_025 S1; S2/S3 deferred).
+# Tier A: outbound filter instance CSR DECODE (FAB_SMC_025 S1; S2/S3 not covered).
 [[tests]]
 name = "smu_axi_filter_out_instance_matrix_test"
 module = "smu_axi_filter_out_instance_matrix_test"
@@ -98,7 +96,7 @@ timeout_sec = 1800
 tags = ["fabric", "phase1", "tier_c", "depth"]
 run_modes = ["fabric"]
 
-# Tier A: alias-remap manager scope (FAB_SMC_018 S3 J2A; S1/S2/S4/S5 deferred).
+# Tier A: alias-remap manager scope (FAB_SMC_018 S3 J2A; S1/S2/S4/S5 not covered).
 [[tests]]
 name = "smu_axi_alias_remap_manager_scope_test"
 module = "smu_axi_alias_remap_manager_scope_test"

@@ -184,12 +184,12 @@ class OcahUartMasterDriver:
 
             self.log.debug("%s: TX byte 0x%02X", self.name, b)
 
-            signal.value = 0                       # start bit
+            signal.value = 0  # start bit
             await Timer(bit_ns, "ns")
-            for k in range(bits):                  # data bits, LSB first
+            for k in range(bits):  # data bits, LSB first
                 signal.value = (b >> k) & 1
                 await Timer(bit_ns, "ns")
-            signal.value = 1                       # stop bit(s)
+            signal.value = 1  # stop bit(s)
             await Timer(stop_ns, "ns")
 
             self._stats["bytes_driven"] += 1

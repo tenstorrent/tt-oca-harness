@@ -5,8 +5,8 @@
 from __future__ import annotations
 
 import pyuvm
-from smc_base_test import smc_base_test
 from seq_lib.smc_ndm_reset_test_seq import smc_ndm_reset_test_seq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
@@ -18,6 +18,21 @@ class smc_ndm_reset_test(smc_base_test):
     async def run_scenario(self) -> None:
         seq = smc_ndm_reset_test_seq("ndm_reset_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
-        assert seq.count_ok and seq.bits_ok, (
-            f"ndm handshake incomplete count={seq.count_ok} bits={seq.bits_ok}"
+        # The verdict of this testcase is carried by the sequence, not by this
+        # module. Its DUT-sensitive, fail-capable content is the
+        # `expected=`-bearing NDMRESET_REQUEST / NDMRESET_PROCESS readbacks
+        # (scoreboard-enforced at `env/smc_scoreboard.py`), the bounded
+        # `_await_pins` handshakes that raise on expiry, and the PROCESS
+        # write-to-`process_o` path. Any comparison restated here would sit
+        # downstream of an assert the sequence already made and could not fail
+        # ([NO-ALWAYS-PASS-CHECKER]).
+        #
+        # The single line below is a ZERO-ACTIVITY GUARD, not a DUT check: it
+        # catches a sequence body that never ran at all, which would otherwise
+        # leave the testcase green with no stimulus issued
+        # ([NO-ZERO-ACTIVITY-PASS]).
+        assert seq.bits_swept, (
+            f"the per-cluster handshake swept no bits "
+            f"(cluster_count={seq.cluster_count}); no per-bit REQUEST/PROCESS "
+            f"stimulus was issued in this run"
         )

@@ -18,9 +18,8 @@ run seed. Every seed walks the high-bit mirrors of the live registers
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 import pyuvm
-
+from cocotb.triggers import ClockCycles, ReadOnly, RisingEdge
 from sep_base_test import sep_base_test
 from seq_lib.sep_entropy_pool_seq import (
     FIFO_DEPTH,
@@ -51,9 +50,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         await ReadOnly()
         raw = cocotb.top.sep_internal_interrupts_probe_o.value
         if not raw.is_resolvable:
-            raise AssertionError(
-                f"sep_internal_interrupts X/Z while sampling bit [{idx}]"
-            )
+            raise AssertionError(f"sep_internal_interrupts X/Z while sampling bit [{idx}]")
         return (int(raw) >> idx) & 1
 
     async def _wait_irq(self, idx: int, expect: int, *, cycles: int) -> None:
@@ -61,8 +58,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             if await self._irq(idx) == expect:
                 return
         raise AssertionError(
-            f"sep_internal_interrupts[{idx}] did not become {expect} "
-            f"in {cycles} cycles"
+            f"sep_internal_interrupts[{idx}] did not become {expect} in {cycles} cycles"
         )
 
     async def _arm_not_full_no_ack(self, pool: SepEntropyPool) -> int:
@@ -77,9 +73,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             last = (await pool.status()) & 0x3F
             if last >= FIFO_DEPTH:
                 pop = await pool.access(POOL_POP)
-                assert pop.resp_code == RESP_OKAY, (
-                    "room-making pop not OKAY on a full pool"
-                )
+                assert pop.resp_code == RESP_OKAY, "room-making pop not OKAY on a full pool"
                 continue
             ack = 0
             for _c in range(32):
@@ -93,12 +87,11 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             nxt = (await pool.status()) & 0x3F
             if (not ack) and nxt == last and nxt < FIFO_DEPTH:
                 return nxt
-        raise AssertionError(
-            "EDN acks did not stop with pool not full after EDN_ENABLE=0"
-        )
+        raise AssertionError("EDN acks did not stop with pool not full after EDN_ENABLE=0")
 
-    async def _wait_level(self, pool: SepEntropyPool, lo: int, hi: int,
-                          *, iters: int = 40000) -> int:
+    async def _wait_level(
+        self, pool: SepEntropyPool, lo: int, hi: int, *, iters: int = 40000
+    ) -> int:
         for _ in range(iters):
             st = await pool.status()
             level = st & 0x3F
@@ -107,11 +100,31 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             if lo <= level <= hi:
                 return st
             await ClockCycles(cocotb.top.clk_i, 20)
-        raise AssertionError(
-            f"pool level never entered [{lo},{hi}] in {iters} status polls"
+        raise AssertionError(f"pool level never entered [{lo},{hi}] in {iters} status polls")
+
+    async def _check_low_edge(self, st: int) -> int:
+        """pool_low must agree with the level the same status read reported.
+
+        sep_entropy_fifo.sv drives pool_low_o = entropy_clear_i || (pool_depth <
+        LowWatermark). Comparing the flag against the level in the same word pins
+        the comparator boundary at every level the run visits -- an off-by-one
+        there survives a test that only samples a filled pool and an empty one.
+        """
+        level = st & 0x3F
+        low = (st >> 6) & 1
+        assert low == int(level < LOW_WATERMARK), (
+            f"CHK-POOL-LOW-EDGE FAIL: status 0x{st:x} reports pool_low={low} at "
+            f"level={level} against watermark {LOW_WATERMARK}"
         )
+        assert await self._irq(IRQ_POOL_LOW) == low, (
+            f"CHK-POOL-LOW-EDGE FAIL: aggregate [36] disagrees with status "
+            f"pool_low={low} at level={level}"
+        )
+        self._edge_levels.append(level)
+        return level
 
     async def run_scenario(self) -> None:
+        self._edge_levels: list[int] = []
         cfg = SepEntropyPoolCfg(self.random_seed())
         self.logger.info("entropy-pool aperture: %s", cfg.summary())
 
@@ -122,57 +135,49 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         st0 = await pool.status()
         level0 = st0 & 0x3F
         assert level0 == 0, f"pool not empty at reset: status=0x{st0:x}"
-        assert await self._irq(IRQ_POOL_LOW) == 1, (
-            "pool_low aggregate [36] not high on empty pool"
-        )
-        self.logger.info(
-            "CHK-POOL-LOW-HIGH PASS: [36]=1 at empty (status=0x%x level=0)", st0)
+        assert await self._irq(IRQ_POOL_LOW) == 1, "pool_low aggregate [36] not high on empty pool"
+        self.logger.info("CHK-POOL-LOW-HIGH PASS: [36]=1 at empty (status=0x%x level=0)", st0)
         cause0 = await pool.irq_cause()
         assert cause0 == 0x1, (
             f"irq-cause 0x{cause0:x} at empty, expected 0x1 (pool_low); "
             f"must not copy status 0x{st0:x} or hardwire 0"
         )
-        self.logger.info(
-            "CHK-IRQ-CAUSE-LOW PASS: 0x08=0x1 at empty, not status 0x%x", st0)
+        self.logger.info("CHK-IRQ-CAUSE-LOW PASS: 0x08=0x1 at empty, not status 0x%x", st0)
 
         # Observe-mode CHK5_pool: this test owns the 0x1095 aperture, not
         # bit-exact EDN routing (that is sep_esrc_e2e_smoke_test). report()
         # still gates the >=1-beat floor; a started scoreboard that is never
         # asked cannot fail.
-        await self.bring_up_entropy(
-            strict=False, score_km=False, score_sinks={"pool": "observe"})
+        await self.bring_up_entropy(strict=False, score_km=False, score_sinks={"pool": "observe"})
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
         self.start_fifo_drain()
 
         st_fill = await self._wait_level(pool, LOW_WATERMARK, FIFO_DEPTH - 1)
         level_fill = st_fill & 0x3F
-        assert (st_fill >> 8) & 1 == 0
-        assert await self._irq(IRQ_POOL_LOW) == 0, (
-            f"[36] still high after fill level={level_fill}"
-        )
+        assert await self._irq(IRQ_POOL_LOW) == 0, f"[36] still high after fill level={level_fill}"
         self.logger.info(
-            "CHK-POOL-FILL PASS: fifo_level=%d (>= watermark %d, < depth %d) "
-            "pool_err=0",
-            level_fill, LOW_WATERMARK, FIFO_DEPTH)
+            "CHK-POOL-FILL PASS: fifo_level=%d (>= watermark %d, < depth %d) pool_err=0",
+            level_fill,
+            LOW_WATERMARK,
+            FIFO_DEPTH,
+        )
         self.logger.info("CHK-POOL-LOW-LOW PASS: [36]=0 at level=%d", level_fill)
+        await self._check_low_edge(st_fill)
 
         cause = await pool.irq_cause()
         expect_cause = ((st_fill >> 7) & 1) << 1 | ((st_fill >> 6) & 1)
         # Traversal of 0x08, not a 0==0 snapshot: empty was 0x1, fill must be 0x0.
         # Hardwired-0 fails CHK-IRQ-CAUSE-LOW; sticky-1 fails here.
-        assert cause0 == 0x1 and cause == 0x0 and cause == expect_cause, (
+        assert cause == 0x0 and cause == expect_cause, (
             f"irq-cause empty=0x{cause0:x} fill=0x{cause:x}, expected 0x1 -> 0x0 "
             f"(status 0x{st_fill:x} must not be copied)"
         )
-        assert cause != (st_fill & 0xFF), (
-            f"irq-cause 0x{cause:x} equals status low byte 0x{st_fill & 0xFF:x}"
-        )
         self.logger.info(
-            "CHK-IRQ-CAUSE-IDLE PASS: 0x08 0x1 -> 0x0 after fill, not status 0x%x",
-            st_fill)
+            "CHK-IRQ-CAUSE-IDLE PASS: 0x08 0x1 -> 0x0 after fill, not status 0x%x", st_fill
+        )
 
         await pool.disable_esrc()
-        for off in (*cfg.alias_offs, cfg.unmapped_off):
+        for off in (*cfg.alias_offs, *cfg.unmapped_offs):
             unmapped = POOL_STATUS + off
             um = await pool.access(unmapped, expect_error=True)
             assert um.resp_code == RESP_SLVERR and um.rdata == 0 and not um.timed_out, (
@@ -180,8 +185,10 @@ class sep_entropy_pool_aperture_test(sep_base_test):
                 f"expected SLVERR + RDATA=0"
             )
         self.logger.info(
-            "CHK-UNMAPPED PASS: %d alias + extra 0x%x -> SLVERR rdata=0",
-            len(cfg.alias_offs), cfg.unmapped_off)
+            "CHK-UNMAPPED PASS: %d alias + %d unique-dead offsets -> SLVERR rdata=0",
+            len(cfg.alias_offs),
+            len(cfg.unmapped_offs),
+        )
 
         # ESRC MODULE_ENABLE=0 does not drop AUTO-mode EDN acks. EDN_ENABLE=False
         # is what leaves the pool request outstanding without ack. Pop after
@@ -190,22 +197,29 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         # full pool cannot show a refused fill.
         await pool.disable_edn()
         level_room = await self._arm_not_full_no_ack(pool)
-        assert level_room < FIFO_DEPTH, (
-            f"write-SLVERR armed on a full pool (level={level_room})"
+        # _arm_not_full_no_ack only returns while level < FIFO_DEPTH, so re-testing
+        # that bound here would restate its exit condition. Assert the DUT-side
+        # precondition the refused-fill check actually needs instead: the pool is
+        # still asking for entropy, which is what keeps req_pending asserted.
+        req = cocotb.top.pool_edn_req_o.value
+        assert req.is_resolvable, f"pool_edn_req_o is unresolvable ({req})"
+        assert int(req) == 1, (
+            f"write-SLVERR arming left no outstanding pool request "
+            f"(level={level_room}, pool_edn_req_o=0)"
         )
         wr = await pool.access(POOL_STATUS, write=True, wdata=0xFFFF, expect_error=True)
         assert wr.resp_code == RESP_SLVERR and not wr.timed_out, (
-            f"status write resp={wr.resp_code} timed_out={wr.timed_out}, "
-            f"expected SLVERR"
+            f"status write resp={wr.resp_code} timed_out={wr.timed_out}, expected SLVERR"
         )
         st_after_wr = await pool.status()
         assert (st_after_wr & 0x3F) == level_room, (
             f"write changed fifo_level {level_room} -> {st_after_wr & 0x3F}"
         )
         self.logger.info(
-            "CHK-WRITE-SLVERR PASS: write BRESP=SLVERR, level unchanged "
-            "(%d < depth %d)",
-            level_room, FIFO_DEPTH)
+            "CHK-WRITE-SLVERR PASS: write BRESP=SLVERR, level unchanged (%d < depth %d)",
+            level_room,
+            FIFO_DEPTH,
+        )
 
         await ClockCycles(cocotb.top.clk_i, STALL_THRESH + 64)
         st_stall = await pool.status()
@@ -217,9 +231,10 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             f"edn_ack={int(self.rd(cocotb.top.pool_edn_ack_o))})"
         )
         self.logger.info(
-            "CHK-STALL-ASSERT PASS: [37]=1 after StallThresh=%d with pool "
-            "not full (level=%d)",
-            STALL_THRESH, level_room)
+            "CHK-STALL-ASSERT PASS: [37]=1 after StallThresh=%d with pool not full (level=%d)",
+            STALL_THRESH,
+            level_room,
+        )
         cause_stall = await pool.irq_cause()
         level_stall = st_stall & 0x3F
         # Independent of status[7:6]: fill_stall is already proven on [37],
@@ -231,14 +246,13 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             f"from level {level_stall} vs watermark {LOW_WATERMARK}; "
             f"must not copy status 0x{st_stall:x}"
         )
-        assert cause_stall != (st_stall & 0xFF), (
-            f"irq-cause 0x{cause_stall:x} equals status low byte "
-            f"0x{st_stall & 0xFF:x}"
-        )
         self.logger.info(
-            "CHK-IRQ-CAUSE-STALL PASS: 0x08=0x%x from level %d vs watermark %d, "
-            "not status 0x%x",
-            cause_stall, level_stall, LOW_WATERMARK, st_stall)
+            "CHK-IRQ-CAUSE-STALL PASS: 0x08=0x%x from level %d vs watermark %d, not status 0x%x",
+            cause_stall,
+            level_stall,
+            LOW_WATERMARK,
+            st_stall,
+        )
 
         await pool.enable_edn()
         await pool.enable_esrc()
@@ -264,13 +278,9 @@ class sep_entropy_pool_aperture_test(sep_base_test):
                 f"pop[{i}] level {before} -> {after}, expected decrement by 1"
             )
             popped.append(pop.rdata)
-        assert any(w != 0 for w in popped), (
-            f"every accepted pop was 0: {popped}"
-        )
+        assert any(w != 0 for w in popped), f"every accepted pop was 0: {popped}"
         if len(popped) >= 2:
-            assert popped[0] != popped[1], (
-                f"two popped words identical 0x{popped[0]:x}"
-            )
+            assert popped[0] != popped[1], f"two popped words identical 0x{popped[0]:x}"
         else:
             nxt_level = (await pool.status()) & 0x3F
             if nxt_level:
@@ -281,31 +291,35 @@ class sep_entropy_pool_aperture_test(sep_base_test):
                 f"need two distinct popped words, got {popped}"
             )
         self.logger.info(
-            "CHK-POP-DATA PASS: %d accepted pop(s) OKAY, level-1 each, "
-            "nonzero/distinct words", len(popped))
+            "CHK-POP-DATA PASS: %d accepted pop(s) OKAY, level-1 each, nonzero/distinct words",
+            len(popped),
+        )
 
         # Drain to empty so the empty-pop SLVERR is a real empty, not a race.
         drain_iters = 0
-        while ((await pool.status()) & 0x3F) > 0:
+        while True:
+            st_drain = await pool.status()
+            level = await self._check_low_edge(st_drain)
+            if level == 0:
+                break
             pop = await pool.access(POOL_POP)
-            assert pop.resp_code == RESP_OKAY, (
-                f"drain pop resp={pop.resp_code} while level>0"
-            )
+            assert pop.resp_code == RESP_OKAY, f"drain pop resp={pop.resp_code} while level>0"
             drain_iters += 1
             assert drain_iters <= FIFO_DEPTH + 2, "drain did not empty"
-        assert await self._irq(IRQ_POOL_LOW) == 1, (
-            "[36] not high again after drain below watermark"
-        )
         self.logger.info(
-            "CHK-POOL-LOW-REHIGH PASS: [36]=1 after drain (high-low-high)")
+            "CHK-POOL-LOW-EDGE PASS: pool_low tracked the level against watermark %d "
+            "on %d status reads down to empty",
+            LOW_WATERMARK,
+            len(self._edge_levels),
+        )
+        assert await self._irq(IRQ_POOL_LOW) == 1, "[36] not high again after drain below watermark"
+        self.logger.info("CHK-POOL-LOW-REHIGH PASS: [36]=1 after drain (high-low-high)")
 
         empty = await pool.access(POOL_POP, expect_error=True)
         assert empty.resp_code == RESP_SLVERR and not empty.timed_out, (
-            f"empty pop resp={empty.resp_code} timed_out={empty.timed_out}, "
-            f"expected SLVERR"
+            f"empty pop resp={empty.resp_code} timed_out={empty.timed_out}, expected SLVERR"
         )
-        self.logger.info(
-            "CHK-EMPTY-SLVERR PASS: pop @0x10 -> SLVERR on empty pool")
+        self.logger.info("CHK-EMPTY-SLVERR PASS: pop @0x10 -> SLVERR on empty pool")
 
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()

@@ -18,7 +18,6 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
-
 from seq_lib.smu_axi_helpers import wait_signal_high
 from seq_lib.smu_jtag_helpers import (
     SMU_IC_RESET_DEFAULT,
@@ -30,10 +29,6 @@ from seq_lib.smu_jtag_helpers import (
     read_smc_reset_ctrl_bit,
 )
 from smu_base_test import smu_base_test
-
-from env import cocotb_compat as _cocotb_compat
-
-_cocotb_compat.apply()
 
 
 @pyuvm.test()

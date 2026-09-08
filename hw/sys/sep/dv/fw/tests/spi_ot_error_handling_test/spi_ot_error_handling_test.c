@@ -94,7 +94,6 @@ int main(void) {
     uint32_t i;
     int timeout;
 
-
     /* Enable controller */
     ctrl.w = SPI_CONTROLLER__CTRL_reset;
     ctrl.f.SPIEN = 1;

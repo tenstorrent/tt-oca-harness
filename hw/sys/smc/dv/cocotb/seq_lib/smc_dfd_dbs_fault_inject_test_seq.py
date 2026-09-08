@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""TB-glue demo (deferred): pulse tb_dfd_fault_inject → latch 0xDB5C_AFE1.
+"""TB-glue demo: pulse tb_dfd_fault_inject → latch 0xDB5C_AFE1.
 
 DOES NOT DEFEND: smc_dfd_wrap / hw/ip/dfd CLA / trace-RAM (real DFD RTL).
 DEFENDS only: TB public capture ports wired in tb_top.sv.
@@ -8,10 +8,10 @@ DEFENDS only: TB public capture ports wired in tb_top.sv.
 
 from __future__ import annotations
 
-from .smc_addr_map import smc_addr
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 
+from .smc_addr_map import smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
 # Keep a diagnostic CSR touch so the test still exercises SEP_IN.

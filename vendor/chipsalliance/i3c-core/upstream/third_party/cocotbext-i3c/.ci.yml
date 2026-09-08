@@ -1,3 +1,0 @@
-include:
-  - project: cocotbext-i3c-ci
-    file: ci.yml

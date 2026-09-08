@@ -20,12 +20,12 @@
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31</td><td>pad2core</td><td>R</td><td>0x0</td><td>PAD2SOC Value</td></tr>
 <tr><td>30:26</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
-<tr><td>25</td><td>lsio_enable</td><td>R</td><td>0x0</td><td>When set, this bit indicates that the pad being driving by the LSIO</td></tr>
+<tr><td>25</td><td>lsio_enable</td><td>R</td><td>0x0</td><td>LSIO hardware request status. Set while lsio_interface_select_i is asserted and<br>lsio_disable is clear. Because the hardware LSIO request outranks interface_enable,<br>a set value also means the LSIO plane is driving this pad&#x27;s data and direction.<br>This field does not reflect a software-forced selection via lsio_select, which ranks<br>below the register interface - it reads 0 in that case even when LSIO drives the pad.</td></tr>
 <tr><td>24:22</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>21:20</td><td>interrupt_type</td><td>RW</td><td>0x0</td><td>Interrupt type - 0: active-high level, 1: active-low level, 2: rising edge, 3: falling edge</td></tr>
-<tr><td>19</td><td>lsio_disable</td><td>RW</td><td>0x0</td><td>When set, LSIO acceses will be blocked from the GPIO interface</td></tr>
+<tr><td>19</td><td>lsio_disable</td><td>RW</td><td>0x0</td><td>When set, LSIO accesses will be blocked from the GPIO interface</td></tr>
 <tr><td>18</td><td>interrupt_enable</td><td>RW</td><td>0x0</td><td>Interrupt Enable.</td></tr>
-<tr><td>17</td><td>lsio_select</td><td>RW</td><td>0x0</td><td>Force LSIO interface to be used. interface_enable has higher priority over this</td></tr>
+<tr><td>17</td><td>lsio_select</td><td>RW</td><td>0x0</td><td>Force the LSIO interface to be used from software, when no hardware LSIO request is<br>present on this pad. interface_enable has higher priority over this bit. This ranking<br>applies to this software force bit only: the hardware lsio_interface_select_i input<br>outranks interface_enable. Use lsio_disable to gate both.</td></tr>
 <tr><td>16</td><td>interface_enable</td><td>RW</td><td>0x0</td><td>Register Interface Enable. Setting this chooses register values to drive the PAD. This includes core2pad, enable_rx_tx, and pad2core</td></tr>
 <tr><td>15:6</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>5:4</td><td>enable_rx_tx</td><td>RW</td><td>0x0</td><td>Direction control. 2&#x27;b00: Neither RX nor TX enabled. 2&#x27;b01: TX enabled. 2&#x27;b10: RX enabled. 2&#x27;b11: Both enabled</td></tr>

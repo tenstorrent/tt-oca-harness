@@ -1,21 +1,5 @@
-// *************************************************************************
-// *
-// * Tenstorrent CONFIDENTIAL
-// * __________________
-// *
-// *  Tenstorrent Inc.
-// *  All Rights Reserved.
-// *
-// * NOTICE:  All information contained herein is, and remains the property
-// * of Tenstorrent Inc.  The intellectual and technical concepts contained
-// * herein are proprietary to Tenstorrent Inc, and may be covered by U.S.,
-// * Canadian and Foreign Patents, patents in process, and are protected by
-// * trade secret or copyright law.  Dissemination of this information or
-// * reproduction of this material is strictly forbidden unless prior
-// * written permission is obtained from Tenstorrent Inc.
-// *
-// *************************************************************************
-
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 /*
     The register memory map is in the following order:
@@ -60,7 +44,6 @@
 
 
 module mmrs
-import dfd_pkg::*;
 import cla_mmr_pkg::*;
 import ntr_sink_mmr_pkg::*;
 import dst_sink_mmr_pkg::*;
@@ -117,8 +100,7 @@ import dst_mmr_pkg::*;
     localparam int unsigned NUM_NTRACE_INST_SAFE = (NUM_NTRACE_INST > 0) ? NUM_NTRACE_INST : 32'd1,
 
     /* verilator lint_off WIDTHEXPAND */
-    localparam NUM_MMR_BLOCKS = (TRACE_SINK_SUPPORT ? (unsigned'(DST_SINK_EN) + unsigned'(NTR_SINK_EN) + 32'd1) : 32'd0) + unsigned'(NUM_CLA_INST) + unsigned'(NUM_DST_INST) + unsigned'(NUM_NTRACE_INST),
-    localparam NUM_JT_BLOCKS  = (TRACE_SINK_SUPPORT ? (unsigned'(DST_SINK_EN) + unsigned'(NTR_SINK_EN) + 32'd1) : 32'd0) + unsigned'(NUM_CLA_INST) + unsigned'(NUM_DST_INST) + unsigned'(NUM_NTRACE_INST)
+    localparam NUM_MMR_BLOCKS = (TRACE_SINK_SUPPORT ? (unsigned'(DST_SINK_EN) + unsigned'(NTR_SINK_EN) + 32'd1) : 32'd0) + unsigned'(NUM_CLA_INST) + unsigned'(NUM_DST_INST) + unsigned'(NUM_NTRACE_INST)
     /* verilator lint_on WIDTHEXPAND */
 
 
@@ -127,21 +109,21 @@ import dst_mmr_pkg::*;
     input logic        i_rst_n,
     input logic        i_critical_signal_hold,
 
+    input logic [NUM_CLA_INST_SAFE-1:0] i_cla_fuse_dis,
     input logic        i_test_icg_en,
     input logic        i_test_reset_en,
     input logic        i_test_reset_n,
 
-    input logic        i_cla_fuse_dis,
     input logic [NUM_CLA_INST_SAFE-1:0] i_cla_clk_dis,
     input logic [NUM_CLA_INST_SAFE-1:0] i_cla_clk_dis_ctrl,
     input logic [NUM_CLA_INST_SAFE-1:0] i_cla_func_clamp,
 
-    input logic        i_dst_fuse_dis,
+    input logic [NUM_DST_INST_SAFE-1:0] i_dst_fuse_dis,
     input logic [NUM_DST_INST_SAFE-1:0] i_dst_clk_dis,
     input logic [NUM_DST_INST_SAFE-1:0] i_dst_clk_dis_ctrl,
     input logic [NUM_DST_INST_SAFE-1:0] i_dst_func_clamp,
 
-    input logic        i_ntr_fuse_dis,
+    input logic [NUM_NTRACE_INST_SAFE-1:0] i_ntr_fuse_dis,
     input logic [NUM_NTRACE_INST_SAFE-1:0] i_ntr_clk_dis,
     input logic [NUM_NTRACE_INST_SAFE-1:0] i_ntr_clk_dis_ctrl,
     input logic [NUM_NTRACE_INST_SAFE-1:0] i_ntr_func_clamp,
@@ -335,6 +317,7 @@ import dst_mmr_pkg::*;
     logic funnel_gated_func_clamp;
     logic intf_gated_func_clamp;
     logic all_blocks_gated_func_clamp;
+    logic all_blocks_fuse_dis;
 
     for (genvar ii = 0; ii < NUM_CLA_INST; ii++) begin : cla_ipx_clk_rst_ctrl_gen
 
@@ -345,7 +328,7 @@ import dst_mmr_pkg::*;
             .i_clk_dis_ctrl(i_cla_clk_dis_ctrl[ii]),
             .i_test_icg_en(i_test_icg_en),
             .i_reset_n(i_rst_n),
-            .i_fuse_dis(i_cla_fuse_dis),
+            .i_fuse_dis(i_cla_fuse_dis[ii]),
             .i_test_reset_n(i_test_reset_n),
             .i_test_reset_en(i_test_reset_en),
             .i_func_clamp(i_cla_func_clamp[ii]),
@@ -372,7 +355,7 @@ import dst_mmr_pkg::*;
             .i_clk_dis_ctrl(i_dst_clk_dis_ctrl[ii]),
             .i_test_icg_en(i_test_icg_en),
             .i_reset_n(i_rst_n),
-            .i_fuse_dis(i_dst_fuse_dis),
+            .i_fuse_dis(i_dst_fuse_dis[ii]),
             .i_test_reset_n(i_test_reset_n),
             .i_test_reset_en(i_test_reset_en),
             .i_func_clamp(i_dst_func_clamp[ii]),
@@ -396,7 +379,7 @@ import dst_mmr_pkg::*;
             .i_clk_dis_ctrl(i_ntr_clk_dis_ctrl[ii]),
             .i_test_icg_en(i_test_icg_en),
             .i_reset_n(i_rst_n),
-            .i_fuse_dis(i_ntr_fuse_dis),
+            .i_fuse_dis(i_ntr_fuse_dis[ii]),
             .i_test_reset_n(i_test_reset_n),
             .i_test_reset_en(i_test_reset_en),
             .i_func_clamp(i_ntr_func_clamp[ii]),
@@ -468,7 +451,7 @@ import dst_mmr_pkg::*;
         .i_clk_dis_ctrl((&i_cla_clk_dis_ctrl) & (&i_dst_clk_dis_ctrl) & (&i_ntr_clk_dis_ctrl) & i_dst_sink_clk_dis_ctrl & i_ntr_sink_clk_dis_ctrl & i_funnel_clk_dis_ctrl),
         .i_test_icg_en(i_test_icg_en),
         .i_reset_n(i_rst_n),
-        .i_fuse_dis(i_cla_fuse_dis & i_dst_fuse_dis & i_ntr_fuse_dis & i_dst_sink_fuse_dis & i_ntr_sink_fuse_dis & i_funnel_fuse_dis),
+        .i_fuse_dis(all_blocks_fuse_dis),
         .i_test_reset_n(i_test_reset_n),
         .i_test_reset_en(i_test_reset_en),
         .i_func_clamp(all_blocks_gated_func_clamp),
@@ -486,6 +469,18 @@ import dst_mmr_pkg::*;
                                        & (DST_SINK_EN        ? dst_sink_gated_func_clamp : 1'b1)
                                        & (NTR_SINK_EN        ? ntr_sink_gated_func_clamp : 1'b1)
                                        & (TRACE_SINK_SUPPORT ? funnel_gated_func_clamp   : 1'b1);
+
+    // Same rule for the fuse: now that CLA/DST/NTRACE fuses are per-instance,
+    // the MMR interface may only be fused off when *every* present instance of
+    // *every* present block is fused off. Blocks absent from this flavor
+    // contribute the AND-identity (1'b1) rather than their undriven zero-safe
+    // degenerate bit.
+    assign all_blocks_fuse_dis = (CLA_EN            ? (&i_cla_fuse_dis) : 1'b1)
+                               & (DST_EN            ? (&i_dst_fuse_dis) : 1'b1)
+                               & (NTR_EN            ? (&i_ntr_fuse_dis) : 1'b1)
+                               & (DST_SINK_EN       ? i_dst_sink_fuse_dis : 1'b1)
+                               & (NTR_SINK_EN       ? i_ntr_sink_fuse_dis : 1'b1)
+                               & (TRACE_SINK_SUPPORT ? i_funnel_fuse_dis  : 1'b1);
 
     logic [NUM_CLA_INST_SAFE-1:0] cla_reset_n_warm_ovrride;
     logic [NUM_DST_INST_SAFE-1:0] dst_reset_n_warm_ovrride;
@@ -554,11 +549,10 @@ import dst_mmr_pkg::*;
     assign s_mmr_axi_rvalid  = s_mmr_axi_rsp.r_valid;
 
     // APB to Mmr Signals
-    logic                [NUM_MMR_BLOCKS-1:0] conv_MmrCs;
-    // Shared block (chip) select decoder inputs, driven per-interface below.
+    logic                [NUM_MMR_BLOCKS-1:0] mmr_blk_sel;
+    // Shared block (chip) select decoder input, driven per-interface below.
     logic          [MMR_ADDR_WIDTH-1:0] cs_decode_addr;
-    logic                               cs_decode_vld;
-    // AXI-only converter outputs used to feed the shared decoder.
+    // Bus (APB or AXI) request valid; held until the request is accepted.
     logic                               conv_MmrReqVld;
     logic          [MMR_ADDR_WIDTH-1:0] conv_MmrAddr_full;
     localparam int unsigned NUM_MMR_BLOCKS_ALIGNED = 2**$clog2(NUM_MMR_BLOCKS);
@@ -574,14 +568,12 @@ import dst_mmr_pkg::*;
 
     logic                 			          MmrHit;
     logic            [MMR_DATA_WIDTH-1:0] MmrRdData;
+    logic            [MMR_DATA_WIDTH-1:0] rsp_data;
 
-    // Per-block delay logic outputs
+    // Central request/response control (mmr_req_ctrl)
     logic                [NUM_MMR_BLOCKS-1:0] MmrCs;
-    logic                [NUM_MMR_BLOCKS-1:0] MmrCs_d1_vec;
-    logic                [NUM_MMR_BLOCKS-1:0] MmrCs_d3_vec;
-    logic                [NUM_MMR_BLOCKS-1:0] MmrRdCs_d2_vec;
-    logic                                     int_MmrHit_NTR_SINK, int_MmrHit_DST_SINK;
-    logic                                     MmrRdVld;
+    logic                                     bus_req_rdy;
+    logic                                     rsp_vld, rsp_err;
 
     // DST
     logic                          [NUM_DST_INST_SAFE-1:0] MmrHit_DST;
@@ -608,68 +600,80 @@ import dst_mmr_pkg::*;
     logic                                    MmrHit_FUNNEL;
     logic           [MMR_DATA_WIDTH-1:0] MmrRdData_FUNNEL;
 
-    logic   NtrRamRd, DstRamRd;
-    logic   NtrRamAddr, DstRamAddr;
-
-
     assign MmrAddr8B   = {MmrAddr[12-1:3], 3'b000};
     assign MmrWrData8B = {(64/MMR_DATA_WIDTH){MmrWrData}};
+    assign MmrWrStrb8B = (MmrAddr[2] == 1'b0) ? {1'b0, MmrWrStrb[0]} : {MmrWrStrb[0], 1'b0};
+    assign MmrWrInstrType = '0;
 
-    // JTAG address decode (same pattern as APB/AXI decoder)
-    logic [NUM_MMR_BLOCKS-1:0] jt_cs_decoded;
-    logic [NUM_JT_BLOCKS-1:0] jt_tr_eff_mmr_req_vld_with_fuse_chk;
-    logic [NUM_JT_BLOCKS-1:0] jt_wr_rsp_vld_vec, jt_rd_req_pend_vec, jt_rsp_vld_vec;
-
-    // MMR Access Clamping per block (raw clamp condition, no conv_MmrCs gating)
-    // Common vector for APB (clamp_hit) and AXI (FuseBlockDisable).
+    // MMR Access Clamping per block (raw clamp condition, no select gating).
+    // Common vector for the APB error response and the AXI FuseBlockDisable.
     logic [NUM_MMR_BLOCKS-1:0] mmr_clamp_vec;
 
-    // detects if the MMR access is trying to access a clamped block
-    logic                      clamp_hit;
-    logic                      clamp_hit_q;
-
+    // JTAG address decode (same pattern as the bus decoder below).  The request
+    // is arbitrated against the bus inside mmr_req_ctrl.
+    logic [NUM_MMR_BLOCKS-1:0] jt_blk_sel;
 
     always_comb begin
-        jt_cs_decoded = '0;
+        jt_blk_sel = '0;
         if (i_jtag_mmr_req_vld) begin
-            jt_cs_decoded = (NUM_MMR_BLOCKS)'(1) << (i_jtag_mmr_req_addr[MMR_ADDR_WIDTH-1:12] - MMR_BASE_ADDRESS[MMR_ADDR_WIDTH-1:12]);
+            jt_blk_sel = (NUM_MMR_BLOCKS)'(1) << (i_jtag_mmr_req_addr[MMR_ADDR_WIDTH-1:12] - MMR_BASE_ADDRESS[MMR_ADDR_WIDTH-1:12]);
         end
     end
-    // Per-block JTAG fuse check: a decoded block only produces a valid request
-    assign jt_tr_eff_mmr_req_vld_with_fuse_chk = jt_cs_decoded & ~mmr_clamp_vec;
 
-    always_comb begin
-        MmrWrEn = conv_MmrWrEn | (i_jtag_mmr_req_vld & i_jtag_mmr_req_we);
-        MmrWrStrb = (|conv_MmrCs & MmrWrEn) ? conv_MmrWrStrb : {1'b0,(i_jtag_mmr_req_vld & i_jtag_mmr_req_we)};
+    // A clamped block was addressed: captured with the request by mmr_req_ctrl
+    // and returned as rsp_err alongside the response.
+    logic clamp_hit;
+    assign clamp_hit = |(mmr_blk_sel & mmr_clamp_vec);
 
-        MmrAddr = i_jtag_mmr_req_vld ? i_jtag_mmr_req_addr[12-1:0] : conv_MmrAddr;
-        MmrWrData = i_jtag_mmr_req_vld ? i_jtag_mmr_req_data : conv_MmrWrData;
+    // Read data is qualified by MmrHit so that an access to an offset that is
+    // not implemented inside a mapped block returns 0 instead of the value
+    // left on the shared mux.
+    assign rsp_data            = (|MmrHit) ? MmrRdData : '0;
+    assign o_jtag_mmr_rsp_data = rsp_data;
 
-        o_jtag_mmr_rsp_data = MmrRdData;
-        o_jtag_mmr_rsp_vld = |jt_rsp_vld_vec;
+    mmr_req_ctrl #(
+        .NUM_MMR_BLOCKS     (NUM_MMR_BLOCKS),
+        .MMR_PIPE_LAT       (2),
+        .NTR_SINK_EN        (NTR_SINK_EN),
+        .DST_SINK_EN        (DST_SINK_EN),
+        .NTR_SINK_BLK_IDX   (NTR_SINK_BLK_IDX),
+        .DST_SINK_BLK_IDX   (DST_SINK_BLK_IDX),
+        .NTR_RAMDATA_OFFSET (12'(NTR_SINK_TRRAMDATA_REG_ADDR)),
+        .DST_RAMDATA_OFFSET (12'(DST_SINK_TRDSTRAMDATA_REG_ADDR))
+    ) u_mmr_req_ctrl (
+        .clk             (intf_gated_clock),
+        .reset_n         (intf_gated_reset_n),
 
-        MmrRdVld = (NtrRamRd | DstRamRd) ? |MmrCs_d3_vec : |MmrRdCs_d2_vec;
-        MmrHit_NTR_SINK  = NtrRamRd ? MmrCs_d3_vec[NTR_SINK_BLK_IDX] : int_MmrHit_NTR_SINK;
-        MmrHit_DST_SINK  = DstRamRd ? MmrCs_d3_vec[DST_SINK_BLK_IDX] : int_MmrHit_DST_SINK;
+        .bus_req_vld     (conv_MmrReqVld),
+        .bus_req_we      (conv_MmrWrEn),
+        .bus_req_blk_sel (mmr_blk_sel),
+        .bus_req_addr    (conv_MmrAddr),
+        .bus_req_data    (conv_MmrWrData),
+        .bus_req_strb    (conv_MmrWrStrb),
+        .bus_req_err     (clamp_hit),
+        .bus_req_rdy     (bus_req_rdy),
 
-        trRamDataRdEn = NtrRamRd & ~MmrWrEn & (MmrAddr == 12'(MMR_ADDR_WIDTH'(NTR_SINK_TRRAMDATA_REG_ADDR) + MMR_ADDR_WIDTH'(MMR_BASE_ADDRESS) + MMR_ADDR_WIDTH'('h1000) * (MMR_ADDR_WIDTH'(DST_SINK_EN) + MMR_ADDR_WIDTH'(NTR_SINK_EN)))) & ~MmrCs_d1_vec[NTR_SINK_BLK_IDX];
-        trdstRamDataRdEn = DstRamRd & ~MmrWrEn & (MmrAddr == 12'(MMR_ADDR_WIDTH'(DST_SINK_TRDSTRAMDATA_REG_ADDR) + MMR_ADDR_WIDTH'(MMR_BASE_ADDRESS) + MMR_ADDR_WIDTH'('h1000) * MMR_ADDR_WIDTH'(DST_SINK_EN))) & ~MmrCs_d1_vec[DST_SINK_BLK_IDX];
-    end
+        .jt_req_vld      (i_jtag_mmr_req_vld),
+        .jt_req_we       (i_jtag_mmr_req_we),
+        .jt_req_blk_sel  (jt_blk_sel),
+        .jt_req_addr     (i_jtag_mmr_req_addr[12-1:0]),
+        .jt_req_data     (i_jtag_mmr_req_data),
+        .jt_rsp_vld      (o_jtag_mmr_rsp_vld),
 
-    // APB clamp-hit detection (flopped to align with the APB access phase).
-    assign clamp_hit = |(conv_MmrCs & mmr_clamp_vec);
+        .TraceRamWrEn    (TraceRamWrEn),
+        .ram_rd_en_ntr   (trRamDataRdEn),
+        .ram_rd_en_dst   (trdstRamDataRdEn),
 
+        .MmrCs           (MmrCs),
+        .MmrWrEn         (MmrWrEn),
+        .MmrRegSel       (MmrRegSel),
+        .MmrWrStrb       (MmrWrStrb),
+        .MmrAddr         (MmrAddr),
+        .MmrWrData       (MmrWrData),
 
-   generic_dff #(
-       .WIDTH       ($bits(logic)),
-       .RESET_VALUE ('0)
-   ) clamp_hit_q_ff (
-       .clk   (intf_gated_clock),
-       .rst_n (intf_gated_reset_n),
-       .en    ('1),
-       .in    (clamp_hit),
-       .out   (clamp_hit_q)
-   );
+        .rsp_vld         (rsp_vld),
+        .rsp_err         (rsp_err)
+    );
 
     // --------------------------------------------------------------------------
     // WARL Checks for Trace RAM Start and Limit (NTR sink trace RAM).
@@ -716,20 +720,24 @@ import dst_mmr_pkg::*;
 			.out   (MmrRdData)
 		);
 
+
+    // Shared one-hot block (chip) select decoder for both APB and AXI paths.
+    // Each interface supplies the request address and a single-cycle request
+    // qualifier (cs_decode_addr/conv_MmrReqVld); the block index is derived from
+    // the 4KB-granular address offset from MMR_BASE_ADDRESS.
     always_comb begin
-        conv_MmrCs = '0;
-        if (cs_decode_vld)
-            conv_MmrCs = NUM_MMR_BLOCKS'((NUM_MMR_BLOCKS_ALIGNED)'(1)
+        mmr_blk_sel = '0;
+        if (conv_MmrReqVld)
+            mmr_blk_sel = NUM_MMR_BLOCKS'((NUM_MMR_BLOCKS_ALIGNED)'(1)
                        << (cs_decode_addr[MMR_ADDR_WIDTH-1:12]
                            - MMR_BASE_ADDRESS[MMR_ADDR_WIDTH-1:12]));
     end
 
     if (!USE_AXI_INTF) begin : gen_apb_inf_blk
 
-        // APB: full address is available directly; apb2mmr emits a single-cycle
-        // request valid (conv_MmrReqVld) that qualifies the shared decoder.
+        // APB: full address is available directly; apb2mmr holds the request
+        // valid (conv_MmrReqVld) until it is accepted, qualifying the decoder.
         assign cs_decode_addr = MMR_ADDR_WIDTH'(paddr);
-        assign cs_decode_vld  = conv_MmrReqVld;
 
         // Unused AXI slave interface in APB mode: tie off the response struct so
         // the module-scope unpack drives the s_mmr_axi_* outputs to a known value.
@@ -747,8 +755,7 @@ import dst_mmr_pkg::*;
             .ADDR_WIDTH(MMR_ADDR_WIDTH),
             .BASE_ADDR(MMR_BASE_ADDRESS),
             .DATA_WIDTH(MMR_DATA_WIDTH),
-            .NUM_MMR_BLOCKS(NUM_MMR_BLOCKS),
-            .INST_WIDTH(2)
+            .NUM_MMR_BLOCKS(NUM_MMR_BLOCKS)
         ) u_apb2mmr (
             .clk        (intf_gated_clock),
             .reset_n    (intf_gated_reset_n),
@@ -761,17 +768,14 @@ import dst_mmr_pkg::*;
             .pready     (apb_conv_pready),
             .prdata     (apb_conv_prdata),
             .pslverr    (apb_conv_pslverr),
-            .MmrCs      (conv_MmrReqVld),
+            .MmrCs      (conv_MmrReqVld),  // Level request; block select decoded externally
             .MmrWrEn    (conv_MmrWrEn),
             .MmrWrStrb  (conv_MmrWrStrb),
-            .MmrWrStrb8B(MmrWrStrb8B),
-            .MmrRegSel  (MmrRegSel),
             .MmrAddr    (conv_MmrAddr),
             .MmrWrData  (conv_MmrWrData),
-            .MmrWrInstrType(MmrWrInstrType),
-            .MmrHit     (MmrHit),
-            .MmrRdData  (MmrRdData),
-            .MmrError   (clamp_hit_q)
+            .MmrRdData  (rsp_data),
+            .rsp_vld    (rsp_vld),
+            .rsp_err    (rsp_err)
         );
     end else begin : gen_axi_intf_blk
 
@@ -817,20 +821,15 @@ import dst_mmr_pkg::*;
             assign mmr_block_addr_mask[i] = {{(MMR_ADDR_WIDTH-12){1'b1}}, 12'h0};
         end
 
-        assign MmrRegSel = MmrWrEn;
-        assign MmrWrStrb8B = (MmrAddr[2] == 1'b0) ? {1'b0, MmrWrStrb[0]} : {MmrWrStrb[0], 1'b0};
-        assign MmrWrInstrType = '0;
-
         // Unused APB interface in AXI mode: tie off the APB response outputs.
         assign pready  = 1'b0;
         assign prdata  = '0;
         assign pslverr = 1'b0;
 
-        // AXI: the converter drives a single-cycle request valid + full-width
-        // address. Feed the shared decoder with the full address; the register
-        // offset to the blocks is the low 12 bits.
+        // AXI: the converter holds the request valid until i_req_rdy and
+        // presents a latched full-width address. Feed the shared decoder with
+        // the full address; the register offset to the blocks is the low 12 bits.
         assign cs_decode_addr = conv_MmrAddr_full;
-        assign cs_decode_vld  = conv_MmrReqVld;
         assign conv_MmrAddr   = conv_MmrAddr_full[12-1:0];
 
         axi_xbar #(
@@ -859,6 +858,7 @@ import dst_mmr_pkg::*;
             .mst_ports_req_o      (xbar_req),
             .mst_ports_resp_i     (xbar_rsp),
             .addr_map_i           (mmr_slv_map),
+
             .en_default_mst_port_i('0),
             .default_mst_port_i   ('0)
         );
@@ -867,6 +867,7 @@ import dst_mmr_pkg::*;
             .axi_req_t      (s_mmr_axi_req_t),
             .axi_rsp_t      (s_mmr_axi_rsp_t),
             .AXI_ID_WIDTH   (MMR_AXI_ID_WIDTH),
+
             .PART_4B_WREN   (0),
             .CPL_SRCID_WIDTH(1),
             .CPL_SRCID      (1'b0),
@@ -882,8 +883,8 @@ import dst_mmr_pkg::*;
             .axi_req_i                                (xbar_req),
             .axi_rsp_o                                (xbar_rsp),
 
-            .o_req_vld                                (conv_MmrReqVld),  // Single-bit request valid; block select decoded externally
-            .i_req_rdy                                (1'b1), // FIXME maybe use a flopped MmrHit/MmrCs
+            .o_req_vld                                (conv_MmrReqVld),  // Level request; block select decoded externally
+            .i_req_rdy                                (bus_req_rdy),
             .i_wr_rsp_stall                           (1'b0),
             .o_wr_init_req                            (),
             .o_we                                     (conv_MmrWrEn),
@@ -891,10 +892,16 @@ import dst_mmr_pkg::*;
             .o_wrbyteen                               (),
             .o_addr                                   (conv_MmrAddr_full),
             .o_data                                   (conv_MmrWrData),
-            .i_data                                   (MmrRdData),
-            .i_data_valid                             (|MmrHit),
+            .i_data                                   (rsp_data),
+            .i_data_valid                             (rsp_vld),
             .o_busy                                   (),
             .state_dbg_o                              (),
+
+
+
+
+
+
 
             .FilStartAddr                             ('0),
             .FilAddrMask                              ('0),
@@ -912,26 +919,6 @@ import dst_mmr_pkg::*;
 
                 assign mmr_clamp_vec[BLK_IDX] = ntr_gated_func_clamp[ii];
                 assign ntr_func_enable[ii] = NtrMmrs[ii].Trtecontrol.Trteactive;
-
-                mmr_read_delay #(
-                    .HAS_JTAG(1)
-                ) u_ntr_csr_rd_delay (
-                    .clk           (ntr_gated_clock[ii]),
-                    .reset_n       (ntr_gated_reset_n[ii]),
-                    .conv_MmrCs    (conv_MmrCs[BLK_IDX]),
-                    .MmrWrEn       (MmrWrEn),
-                    .TraceRamWrEn  (1'b0),
-                    .is_ram_addr   (1'b0),
-                    .jt_mmr_req_vld(jt_tr_eff_mmr_req_vld_with_fuse_chk[BLK_IDX]),
-                    .jt_mmr_req_we (i_jtag_mmr_req_we),
-                    .jt_wr_rsp_vld (jt_wr_rsp_vld_vec[BLK_IDX]),
-                    .jt_rd_req_pend(jt_rd_req_pend_vec[BLK_IDX]),
-                    .jt_rsp_vld    (jt_rsp_vld_vec[BLK_IDX]),
-                    .MmrCs         (MmrCs[BLK_IDX]),
-                    .MmrCs_d1      (MmrCs_d1_vec[BLK_IDX]),
-                    .MmrCs_d3      (MmrCs_d3_vec[BLK_IDX]),
-                    .MmrRdCs_d2    (MmrRdCs_d2_vec[BLK_IDX])
-                );
 
                 ntr_mmr #(
                     // .BASE_ADDR  (BASE_ADDR + 23'h9000 * ii),
@@ -978,31 +965,9 @@ import dst_mmr_pkg::*;
     end
     if (NTR_SINK_EN) begin : ntr_sink_csr_gen_blk
 
-        assign NtrRamAddr = (MmrAddr == NTR_SINK_TRRAMDATA_REG_ADDR);
-        assign NtrRamRd = ~MmrWrEn && MmrCs[NTR_SINK_BLK_IDX] && NtrRamAddr;
-
         assign mmr_clamp_vec[NTR_SINK_BLK_IDX] = ntr_sink_gated_func_clamp;
 
         assign ntr_sink_func_enable = NtrSinkMmrs.Trramcontrol.Trramactive;
-        mmr_read_delay #(
-            .HAS_JTAG(1)
-        ) u_ntr_sink_rd_delay (
-            .clk           (ntr_sink_gated_clock),
-            .reset_n       (ntr_sink_gated_reset_n),
-            .conv_MmrCs    (conv_MmrCs[NTR_SINK_BLK_IDX] & (~ntr_sink_gated_func_clamp)),
-            .MmrWrEn       (MmrWrEn),
-            .TraceRamWrEn  (TraceRamWrEn),
-            .is_ram_addr   (NtrRamAddr),
-            .jt_mmr_req_vld(jt_tr_eff_mmr_req_vld_with_fuse_chk[NTR_SINK_BLK_IDX]),
-            .jt_mmr_req_we (i_jtag_mmr_req_we),
-            .jt_wr_rsp_vld (jt_wr_rsp_vld_vec[NTR_SINK_BLK_IDX]),
-            .jt_rd_req_pend(jt_rd_req_pend_vec[NTR_SINK_BLK_IDX]),
-            .jt_rsp_vld    (jt_rsp_vld_vec[NTR_SINK_BLK_IDX]),
-            .MmrCs         (MmrCs[NTR_SINK_BLK_IDX]),
-            .MmrCs_d1      (MmrCs_d1_vec[NTR_SINK_BLK_IDX]),
-            .MmrCs_d3      (MmrCs_d3_vec[NTR_SINK_BLK_IDX]),
-            .MmrRdCs_d2    (MmrRdCs_d2_vec[NTR_SINK_BLK_IDX])
-        );
 
         ntr_sink_mmr #(
             // .BASE_ADDR(BASE_ADDR),
@@ -1019,7 +984,7 @@ import dst_mmr_pkg::*;
             .MmrWrData                  (MmrWrData),
             .MmrWrInstrType             (MmrWrInstrType),
             .MmrWrReady                 (),
-            .MmrHit                     (int_MmrHit_NTR_SINK),
+            .MmrHit                     (MmrHit_NTR_SINK),
             .MmrRdData                  (MmrRdData_NTR_SINK),
             .MmrHitList                 (),
             .MmrUpdateEn                (),
@@ -1058,10 +1023,8 @@ import dst_mmr_pkg::*;
     end else begin : no_ntr_sink_csr_gen_blk
         assign ntr_sink_func_enable = '0;
         assign NtrSinkMmrs = '0;
-        assign int_MmrHit_NTR_SINK = '0;
+        assign MmrHit_NTR_SINK = '0;
         assign MmrRdData_NTR_SINK = '0;
-        assign NtrRamAddr = '0;
-        assign NtrRamRd = '0;
         end
 
     if (NUM_DST_INST > 0) begin : dst_csr_gen_blk
@@ -1070,26 +1033,6 @@ import dst_mmr_pkg::*;
 
                 assign mmr_clamp_vec[BLK_IDX] = dst_gated_func_clamp[ii];
                 assign dst_func_enable[ii] = DstMmrs[ii].Trdstcontrol.Trdstactive;
-
-                mmr_read_delay #(
-                    .HAS_JTAG(1)
-                ) u_dst_csr_rd_delay (
-                    .clk           (dst_gated_clock[ii]),
-                    .reset_n       (dst_gated_reset_n[ii]),
-                    .conv_MmrCs    (conv_MmrCs[BLK_IDX]),
-                    .MmrWrEn       (MmrWrEn),
-                    .TraceRamWrEn  (1'b0),
-                    .is_ram_addr   (1'b0),
-                    .jt_mmr_req_vld(jt_tr_eff_mmr_req_vld_with_fuse_chk[BLK_IDX]),
-                    .jt_mmr_req_we (i_jtag_mmr_req_we),
-                    .jt_wr_rsp_vld (jt_wr_rsp_vld_vec[BLK_IDX]),
-                    .jt_rd_req_pend(jt_rd_req_pend_vec[BLK_IDX]),
-                    .jt_rsp_vld    (jt_rsp_vld_vec[BLK_IDX]),
-                    .MmrCs         (MmrCs[BLK_IDX]),
-                    .MmrCs_d1      (MmrCs_d1_vec[BLK_IDX]),
-                    .MmrCs_d3      (MmrCs_d3_vec[BLK_IDX]),
-                    .MmrRdCs_d2    (MmrRdCs_d2_vec[BLK_IDX])
-                );
 
                     dst_mmr #(
                         // .BASE_ADDR  (BASE_ADDR + 23'h9000 * ii),
@@ -1135,31 +1078,8 @@ import dst_mmr_pkg::*;
     end
     if (DST_SINK_EN) begin : dst_sink_csr_gen_blk
 
-        assign DstRamAddr = (MmrAddr == DST_SINK_TRDSTRAMDATA_REG_ADDR);
-        assign DstRamRd = ~MmrWrEn && MmrCs[DST_SINK_BLK_IDX] && DstRamAddr;
-
         assign mmr_clamp_vec[DST_SINK_BLK_IDX] = dst_sink_gated_func_clamp;
         assign dst_sink_func_enable = DstSinkMmrs.Trdstramcontrol.Trdstramactive;
-
-        mmr_read_delay #(
-            .HAS_JTAG(1)
-        ) u_dst_sink_rd_delay (
-            .clk           (dst_sink_gated_clock),
-            .reset_n       (dst_sink_gated_reset_n),
-            .conv_MmrCs    (conv_MmrCs[DST_SINK_BLK_IDX] & (~dst_sink_gated_func_clamp)),
-            .MmrWrEn       (MmrWrEn),
-            .TraceRamWrEn  (TraceRamWrEn),
-            .is_ram_addr   (DstRamAddr),
-            .jt_mmr_req_vld(jt_tr_eff_mmr_req_vld_with_fuse_chk[DST_SINK_BLK_IDX]),
-            .jt_mmr_req_we (i_jtag_mmr_req_we),
-            .jt_wr_rsp_vld (jt_wr_rsp_vld_vec[DST_SINK_BLK_IDX]),
-            .jt_rd_req_pend(jt_rd_req_pend_vec[DST_SINK_BLK_IDX]),
-            .jt_rsp_vld    (jt_rsp_vld_vec[DST_SINK_BLK_IDX]),
-            .MmrCs         (MmrCs[DST_SINK_BLK_IDX]),
-            .MmrCs_d1      (MmrCs_d1_vec[DST_SINK_BLK_IDX]),
-            .MmrCs_d3      (MmrCs_d3_vec[DST_SINK_BLK_IDX]),
-            .MmrRdCs_d2    (MmrRdCs_d2_vec[DST_SINK_BLK_IDX])
-        );
 
         dst_sink_mmr #(
             // .BASE_ADDR(BASE_ADDR),
@@ -1175,7 +1095,7 @@ import dst_mmr_pkg::*;
             .MmrWrData                                (Warl_Muxed_MmrWrData),
             .MmrWrInstrType                           (MmrWrInstrType),
             .MmrWrReady                               (),
-            .MmrHit                                   (int_MmrHit_DST_SINK),
+            .MmrHit                                   (MmrHit_DST_SINK),
             .MmrRdData                                (MmrRdData_DST_SINK),
             .MmrHitList                               (),
             .MmrUpdateEn                              (),
@@ -1211,10 +1131,8 @@ import dst_mmr_pkg::*;
     end else begin : no_dst_sink_csr_gen_blk
         assign dst_sink_func_enable = '0;
         assign DstSinkMmrs = '0;
-        assign int_MmrHit_DST_SINK = '0;
+        assign MmrHit_DST_SINK = '0;
         assign MmrRdData_DST_SINK = '0;
-        assign DstRamAddr = '0;
-        assign DstRamRd = '0;
         end
 
     if (CLA_EN) begin : cla_csr_gen_blk
@@ -1223,27 +1141,6 @@ import dst_mmr_pkg::*;
 
                 assign mmr_clamp_vec[BLK_IDX] = cla_gated_func_clamp[ii];
                 assign cla_func_enable[ii] = ClaMmrs[ii].Cdbgclactrlstatus.EnableCla;
-
-                    mmr_read_delay #(
-                        .HAS_JTAG(1)
-                    ) u_cla_csr_rd_delay (
-                    .clk           (cla_gated_clock[ii]),
-                    .reset_n       (cla_gated_reset_n[ii]),
-                    .conv_MmrCs    (conv_MmrCs[BLK_IDX]),
-                    .MmrWrEn       (MmrWrEn),
-                    .TraceRamWrEn  (1'b0),
-                    .is_ram_addr   (1'b0),
-                    .jt_mmr_req_vld(jt_tr_eff_mmr_req_vld_with_fuse_chk[BLK_IDX]),
-                    .jt_mmr_req_we (i_jtag_mmr_req_we),
-                    .jt_wr_rsp_vld (jt_wr_rsp_vld_vec[BLK_IDX]),
-                    .jt_rd_req_pend(jt_rd_req_pend_vec[BLK_IDX]),
-                    .jt_rsp_vld    (jt_rsp_vld_vec[BLK_IDX]),
-                    .MmrCs         (MmrCs[BLK_IDX]),
-                    .MmrCs_d1      (MmrCs_d1_vec[BLK_IDX]),
-                    .MmrCs_d3      (MmrCs_d3_vec[BLK_IDX]),
-                    .MmrRdCs_d2    (MmrRdCs_d2_vec[BLK_IDX])
-                    );
-
 
             cla_mmr #(
                 // .BASE_ADDR(BASE_ADDR + 23'h9000 * ii ),
@@ -1357,8 +1254,8 @@ import dst_mmr_pkg::*;
                     .ClaMmrCdbgclaxtriggertimestretch(ClaMmrs[ii].Cdbgclaxtriggertimestretch),
                     .ClaMmrCdbgclatimestamp      (ClaMmrs[ii].Cdbgclatimestamp),
                     .ClaMmrCdbgclatimestampsync  (ClaMmrs[ii].Cdbgclatimestampsync),
+                    .ClaMmrCdbgclatimestampoffset  (ClaMmrs[ii].Cdbgclatimestampoffset),
                     .ClaMmrCdbgclatimestampconfig(ClaMmrs[ii].Cdbgclatimestampconfig),
-                    .ClaMmrCrscratchpad          (ClaMmrs[ii].Crscratchpad),
                     .ClaMmrScratch               (ClaMmrs[ii].Scratch),
                     .ClaMmrCdbglfsr              (ClaMmrs[ii].Cdbglfsr),
                     .ClaMmrCdbglfsrmask          (ClaMmrs[ii].Cdbglfsrmask),
@@ -1442,26 +1339,6 @@ import dst_mmr_pkg::*;
         assign mmr_clamp_vec[FUNNEL_BLK_IDX] = funnel_gated_func_clamp;
         assign funnel_func_enable = FunnelMmrs.Trfunnelcontrol.Trfunnelactive;
 
-        mmr_read_delay #(
-            .HAS_JTAG(1)
-        ) u_funnel_rd_delay (
-                .clk           (funnel_gated_clock),
-                .reset_n       (funnel_gated_reset_n),
-            .conv_MmrCs    (conv_MmrCs[FUNNEL_BLK_IDX]),
-            .MmrWrEn       (MmrWrEn),
-            .TraceRamWrEn  (1'b0),
-            .is_ram_addr   (1'b0),
-            .jt_mmr_req_vld(jt_tr_eff_mmr_req_vld_with_fuse_chk[FUNNEL_BLK_IDX]),
-            .jt_mmr_req_we (i_jtag_mmr_req_we),
-            .jt_wr_rsp_vld (jt_wr_rsp_vld_vec[FUNNEL_BLK_IDX]),
-            .jt_rd_req_pend(jt_rd_req_pend_vec[FUNNEL_BLK_IDX]),
-            .jt_rsp_vld    (jt_rsp_vld_vec[FUNNEL_BLK_IDX]),
-            .MmrCs         (MmrCs[FUNNEL_BLK_IDX]),
-            .MmrCs_d1      (MmrCs_d1_vec[FUNNEL_BLK_IDX]),
-            .MmrCs_d3      (MmrCs_d3_vec[FUNNEL_BLK_IDX]),
-            .MmrRdCs_d2    (MmrRdCs_d2_vec[FUNNEL_BLK_IDX])
-        );
-
         funnel_mmr #(
             // .BASE_ADDR(BASE_ADDR), // Ensure that modifications to BASE_ADDR reflect in surrounding logic and apb2mmr.sv
             // .ADDR_W(MMR_ADDR_WIDTH)
@@ -1497,18 +1374,10 @@ import dst_mmr_pkg::*;
 
     end else begin : no_funnel_csr_gen_blk
 
+        assign funnel_func_enable = '0;
         assign FunnelMmrs = '0;
         assign MmrHit_FUNNEL = '0;
         assign MmrRdData_FUNNEL = '0;
-        if (FUNNEL_BLK_IDX > 0) begin : gen_funnel_tieoff
-            assign MmrCs[FUNNEL_BLK_IDX]              = 1'b0;
-            assign MmrCs_d1_vec[FUNNEL_BLK_IDX]       = 1'b0;
-            assign MmrCs_d3_vec[FUNNEL_BLK_IDX]       = 1'b0;
-            assign MmrRdCs_d2_vec[FUNNEL_BLK_IDX]     = 1'b0;
-            assign jt_wr_rsp_vld_vec[FUNNEL_BLK_IDX]   = 1'b0;
-            assign jt_rd_req_pend_vec[FUNNEL_BLK_IDX]  = 1'b0;
-            assign jt_rsp_vld_vec[FUNNEL_BLK_IDX]      = 1'b0;
-        end
     end
 
 

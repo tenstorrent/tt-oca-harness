@@ -15,12 +15,7 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import RisingEdge
-
 from smu_base_test import smu_base_test
-
-from env import cocotb_compat as _cocotb_compat
-
-_cocotb_compat.apply()
 
 SEP0_LC_STATE = 0xF0
 HOLD_CYCLES = 16
@@ -49,17 +44,11 @@ class smu_smc_security_demote_pm_test(smu_base_test):
             dem2 = _sample(dut.lcc_demote_state_2_o, "lcc_demote_state_2_o") & 0x3
             lc = _sample(dut.lc_state_o, "lc_state_o") & 0xFF
             if dem1 != 0:
-                raise AssertionError(
-                    f"demote_1 mid-hold cycle={cycle} last={dem1}"
-                )
+                raise AssertionError(f"demote_1 mid-hold cycle={cycle} last={dem1}")
             if dem2 != 0:
-                raise AssertionError(
-                    f"demote_2 mid-hold cycle={cycle} last={dem2}"
-                )
+                raise AssertionError(f"demote_2 mid-hold cycle={cycle} last={dem2}")
             if lc != SEP0_LC_STATE:
-                raise AssertionError(
-                    f"lc_state mid-hold cycle={cycle} last=0x{lc:02x}"
-                )
+                raise AssertionError(f"lc_state mid-hold cycle={cycle} last=0x{lc:02x}")
 
         sb.expect_eq(
             "SEP=0 lcc_demote_state_1_o",
@@ -78,6 +67,4 @@ class smu_smc_security_demote_pm_test(smu_base_test):
             SEP0_LC_STATE,
         )
 
-        self.logger.info(
-            "smu_smc_security_demote_pm_test: demote tie-off + lc_state=0xf0 OK"
-        )
+        self.logger.info("smu_smc_security_demote_pm_test: demote tie-off + lc_state=0xf0 OK")

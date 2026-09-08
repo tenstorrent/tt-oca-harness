@@ -4,11 +4,8 @@
 
 from __future__ import annotations
 
-import os
-
 import cocotb
 from cocotb.triggers import ClockCycles, ReadOnly
-
 from env.dtp_jtag_item import DtpJtagItem, DtpJtagOp
 from env.dtp_types import (
     SMC_DBG_AXSIZE_8B,
@@ -16,13 +13,14 @@ from env.dtp_types import (
     DtpJtag2AxiStatus,
     DtpJtagInstr,
     get_jtag2axi_target,
-    pack_single_op,
     pack_series_ctrl,
     pack_series_data,
-    unpack_single_op,
+    pack_single_op,
     unpack_series_ctrl,
     unpack_series_data,
+    unpack_single_op,
 )
+from ocah_lib import OcahKnobs
 
 from .dtp_base_test_seq import dtp_base_test_seq
 
@@ -170,9 +168,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             expected=expected,
         )
 
-    def scoreboard_arm_strobes(
-        self, target: str, wstrb: int, addr: int, *, context: str
-    ) -> None:
+    def scoreboard_arm_strobes(self, target: str, wstrb: int, addr: int, *, context: str) -> None:
         """Arm the intent write strobes for the next observed write."""
         scoreboard = self.axi_scoreboard
         if scoreboard is None:
@@ -186,9 +182,7 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             context=f"{context} target={target} source=stimulus-wstrb",
         )
 
-    def scoreboard_expect_completion(
-        self, target: str, status: int, *, context: str
-    ) -> None:
+    def scoreboard_expect_completion(self, target: str, status: int, *, context: str) -> None:
         """Emit CHK-AXI-COMPLETION: the bridge left BUSY within the poll bound."""
         scoreboard = self.axi_scoreboard
         if scoreboard is None:
@@ -274,10 +268,10 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         # non-OKAY is classified as EXPECTED. One credit covers
         # the single op; direction narrows when only one side is armed.
         # DTP_AXI_SCOREBOARD_NEGATIVE=1 is the documented negative-validation
-        # hook: it deliberately arms the WRONG response so the run must FAIL,
+        # hook: it arms the WRONG response so the run must FAIL,
         # proving the checker rejects a bad expectation end to end.
         armed_resp = int(resp)
-        if os.environ.get("DTP_AXI_SCOREBOARD_NEGATIVE", "0") not in ("", "0"):
+        if OcahKnobs.is_set("DTP_AXI_SCOREBOARD_NEGATIVE"):
             armed_resp = 2 if armed_resp == 3 else 3
             self.log.warning(
                 "NEGATIVE VALIDATION: arming resp=%d instead of injected resp=%d",
@@ -334,7 +328,9 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         return rng.randrange(0, (max_addr // align) + 1) * align
 
     def read_target_mem_int(self, target: str, addr: int, size: int) -> int:
-        return int.from_bytes(self.target_memory(target).read(addr, self.size_bytes(size)), "little")
+        return int.from_bytes(
+            self.target_memory(target).read(addr, self.size_bytes(size)), "little"
+        )
 
     def write_target_mem_int(self, target: str, addr: int, value: int, size: int) -> None:
         payload = (value & self.data_mask(size)).to_bytes(self.size_bytes(size), "little")
@@ -909,4 +905,3 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
             f"{context}: expected {target} {key.upper()} activity within {timeout_cycles} "
             f"cycles, before={before}, after={after}"
         )
-

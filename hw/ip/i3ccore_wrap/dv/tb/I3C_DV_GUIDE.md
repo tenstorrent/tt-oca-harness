@@ -79,6 +79,7 @@ tb/
 **Purpose**: SystemVerilog testbench top-level that instantiates the I3C core wrapper and provides simulation infrastructure.
 
 **Features**:
+
 - **Clock/Reset Generation**: 100MHz clock, 10-cycle reset assertion
 - **AXI4-Lite Interface**: Flattened signals for cocotb access
   - Write Address Channel: `axi_awaddr`, `axi_awprot`, `axi_awvalid`, `axi_awready`
@@ -101,6 +102,7 @@ tb/
 **Purpose**: Core Python API providing reusable classes for all I3C operations.
 
 **Classes**:
+
 - `I3CHelper`: Low-level register I/O wrapper around AXI-Lite
 - `I3CController`: High-level controller operations (init, CCC, private transfers, IBI)
 - `I3CTarget`: High-level target operations (init, IBI transmission, descriptor management)
@@ -126,6 +128,7 @@ This API abstracts the complexity of register programming, command descriptor fo
 **Purpose**: Test orchestration, compilation, waveform management.
 
 **Key Features**:
+
 - Single test execution: `make MODULE=<name>`
 - Regression suite: `make all_tests` (runs all 9 test modules)
 - Waveform control: `make WAVES=1` enables FSDB dumping
@@ -136,15 +139,18 @@ This API abstracts the complexity of register programming, command descriptor fo
 ### Hardware Configuration
 
 **Dual-Instance Setup**:
+
 - **Instance 0 (Controller)**: Base address `0x0000`, drives SCL, initiates transactions
 - **Instance 1 (Target)**: Base address `0x1000`, responds to commands, can send IBI
 
 **Bus Topology**:
+
 - **SCL**: Only controller (instance 0) drives; target cannot drive SCL
 - **SDA**: Open-drain shared bus; both instances can pull low for data/ACK
 - **Pull-up**: Testbench models implicit pull-up (signal high when neither drives low)
 
 **Address Space**:
+
 - Controller registers: `0x0000` - `0x0FFF` (4KB)
 - Target registers: `0x1000` - `0x1FFF` (4KB)
 
@@ -212,17 +218,20 @@ make verdi  # Open waveforms in Verdi
 ### Log Interpretation
 
 **Pass Example**:
+
 ```
 test_i3c_write_read_sanity.test_write_read_sanity PASS
 ```
 
 **Fail Example**:
+
 ```
 test_i3c_write_read_sanity.test_write_read_sanity FAIL
 AssertionError: Expected 0xDEADBEEF, got 0xDEADBEE0
 ```
 
 **Regression Summary** (from `make all_tests`):
+
 ```
 === Test Summary ===
 PASSED: 9
@@ -906,7 +915,7 @@ async def private_read(self, target, tx_data, dat_idx=0):
     return err_status == 0, response, rx_data
 ```
 
-### 4.5 CCC (Common Command Code) Commands
+### 4.5 CCC (Common Command Codes) Commands
 
 CCC commands are standardized I3C protocol commands for device configuration and status retrieval.
 
@@ -1027,7 +1036,7 @@ async def getmrl(self, dat_idx=0):
     return None, None
 ```
 
-#### SET CCC (Write to Target)
+#### SET CCC (write to target)
 
 SET CCCs configure target parameters.
 
@@ -1566,6 +1575,7 @@ ok, resp, rx_data = await ctrl.private_write([0xDE, 0xAD, 0xBE, 0xEF], target, d
 ```
 
 Returns:
+
 - `ok`: True if no error
 - `resp`: Response descriptor (32-bit)
 - `rx_data`: Data received by target
@@ -1579,6 +1589,7 @@ ok, resp, ctrl_rx_data = await ctrl.private_read(target, tx_data=[0x11, 0x22, 0x
 ```
 
 Returns:
+
 - `ok`: True if no error
 - `resp`: Response descriptor
 - `ctrl_rx_data`: Data received by controller
@@ -1610,6 +1621,7 @@ ok, ibi_id, mdb, payload = await ctrl.read_ibi()
 ```
 
 Returns:
+
 - `ok`: True if no error
 - `ibi_id`: Target address that sent IBI
 - `mdb`: Mandatory Data Byte
@@ -1746,6 +1758,7 @@ Tests are organized into 5 levels of complexity, from basic register access to a
 **Purpose**: Basic 4-byte bidirectional transfer validation.
 
 **Test Flow**:
+
 1. Initialize controller and target
 2. Send SETDASA to assign dynamic address
 3. Private write: Controller → Target [0xDE, 0xAD, 0xBE, 0xEF]
@@ -1759,6 +1772,7 @@ Tests are organized into 5 levels of complexity, from basic register access to a
 **Purpose**: 500-byte write test to validate FIFO queue handling.
 
 **Test Flow**:
+
 1. SETDASA
 2. Generate 500-byte incremental pattern: [0x00, 0x01, ..., 0xFF, 0x00, ...]
 3. Private write in 4-byte chunks (125 command descriptors)
@@ -1772,6 +1786,7 @@ Tests are organized into 5 levels of complexity, from basic register access to a
 **Purpose**: 500-byte read test to validate RX FIFO capacity.
 
 **Test Flow**:
+
 1. SETDASA
 2. Controller issues read command for 500 bytes
 3. Target fills TX FIFO with incremental pattern
@@ -1785,6 +1800,7 @@ Tests are organized into 5 levels of complexity, from basic register access to a
 **Purpose**: Immediate data transfer (data embedded in command descriptor).
 
 **Test Flow**:
+
 1. SETDASA
 2. Private write using immediate descriptor (≤4 bytes)
 3. Data sent in `cmd_hi` field (no TX FIFO write)
@@ -1800,6 +1816,7 @@ Tests are organized into 5 levels of complexity, from basic register access to a
 **Purpose**: Full CCC command sequence validation.
 
 **Test Flow**:
+
 1. SETDASA to assign dynamic address
 2. GETBCR: Read Bus Characteristics Register (1 byte)
    - Verify IBI capability bit (bit 5)
@@ -2051,24 +2068,28 @@ Upper 32 bits (cmd_hi):
 **Examples**:
 
 **SETDASA Broadcast**:
+
 ```
 cmd_lo = 0x8000_0287  (attr=2, ccc=0x87, toc=1, wroc=1)
 cmd_hi = 0x0000_0000
 ```
 
 **Private Write (4 bytes)**:
+
 ```
 cmd_lo = 0xC400_0000  (attr=0, rnw=0, toc=1, wroc=1)
 cmd_hi = 0x0004_0000  (data_length=4)
 ```
 
 **Private Read (4 bytes)**:
+
 ```
 cmd_lo = 0xE400_0000  (attr=0, rnw=1, toc=1, wroc=1)
 cmd_hi = 0x0004_0000  (data_length=4)
 ```
 
 **Immediate Write (2 bytes, data=0xAB, 0xCD)**:
+
 ```
 cmd_lo = 0xC180_0001  (attr=1, dtt=2, toc=1, wroc=1)
 cmd_hi = 0x0000_CDAB  (data packed little-endian)
@@ -2173,9 +2194,11 @@ Examples:
   register_value = 2 → threshold = 8 bytes
   register_value = 3 → threshold = 16 bytes
 ```
+
 For Command/Response (or TX/RX Descriptors for TTI): actual_threshold_bytes = register value
 
 See HCI 7.5.5 and 7.5.6
+
 ---
 
 ## 9. Test Execution Examples
@@ -2286,16 +2309,19 @@ make verdi
 **Key Signals to Monitor**:
 
 **I3C Bus**:
+
 - `tb_i3ccore.scl_i[0]`, `tb_i3ccore.scl_o[0]` (controller SCL)
 - `tb_i3ccore.sda_i[0]`, `tb_i3ccore.sda_o[0]` (controller SDA)
 - `tb_i3ccore.sda_i[1]`, `tb_i3ccore.sda_o[1]` (target SDA)
 
 **AXI-Lite**:
+
 - `tb_i3ccore.axi_awaddr`, `tb_i3ccore.axi_awvalid`, `tb_i3ccore.axi_awready`
 - `tb_i3ccore.axi_wdata`, `tb_i3ccore.axi_wvalid`, `tb_i3ccore.axi_wready`
 - `tb_i3ccore.axi_rdata`, `tb_i3ccore.axi_rvalid`, `tb_i3ccore.axi_rready`
 
 **Interrupts**:
+
 - `tb_i3ccore.irq[0]` (controller interrupt)
 - `tb_i3ccore.irq[1]` (target interrupt)
 

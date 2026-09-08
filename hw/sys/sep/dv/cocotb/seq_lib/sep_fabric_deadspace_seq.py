@@ -39,6 +39,7 @@ from sep_reg_meta import (
     reg_write_destructive,
     sym,
 )
+
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_irq_aggregator_seq import CSRNG_BASE, EDN_BASE
 
@@ -53,8 +54,16 @@ RESP_DECERR = 3
 # the pointer advances, FIFO_STATUS.LEVEL drops, and an empty FIFO raises
 # INTR_STATUS.FIFO_UNDERFLOW into whatever test runs next.
 _WATCH_SKIP_SUFFIX = (
-    "INTR_TEST", "ALERT_TEST", "TXDATA", "RXDATA", "WRITE_DATA",
-    "READ_DATA", "RDATA", "GENBITS", "CMD", "CMD_REQ",
+    "INTR_TEST",
+    "ALERT_TEST",
+    "TXDATA",
+    "RXDATA",
+    "WRITE_DATA",
+    "READ_DATA",
+    "RDATA",
+    "GENBITS",
+    "CMD",
+    "CMD_REQ",
 )
 
 
@@ -101,7 +110,8 @@ def _watch_skip(name: str) -> bool:
 
 def _sep_watch(base: int, alloc: int) -> tuple[int, ...]:
     addrs = [
-        addr for _block, name, addr in iter_addrs()
+        addr
+        for _block, name, addr in iter_addrs()
         if base <= addr < base + alloc and not _watch_skip(name)
     ]
     return tuple(sorted(set(addrs)))
@@ -109,8 +119,7 @@ def _sep_watch(base: int, alloc: int) -> tuple[int, ...]:
 
 def _ot_watch(ip: str, base: int, alloc: int) -> tuple[int, ...]:
     addrs = [
-        base + off for name, off in ot_reg_offsets(ip)
-        if off < alloc and not _watch_skip(name)
+        base + off for name, off in ot_reg_offsets(ip) if off < alloc and not _watch_skip(name)
     ]
     return tuple(sorted(set(addrs)))
 
@@ -118,14 +127,15 @@ def _ot_watch(ip: str, base: int, alloc: int) -> tuple[int, ...]:
 def _ot_named(ip: str, base: int, alloc: int, names) -> frozenset[int]:
     """Watched addresses of an OT block whose register name is in ``names``."""
     return frozenset(
-        base + off for name, off in ot_reg_offsets(ip)
+        base + off
+        for name, off in ot_reg_offsets(ip)
         if off < alloc and not _watch_skip(name) and name in names
     )
 
 
 def dead_windows() -> tuple[DeadWindow, ...]:
     """Source-derived windows. Allocated size is never the RTL truncate width."""
-    esrc_base = 0x1091_6000
+    esrc_base = sym("ENTROPY_SOURCE_REG_MAP_BASE_ADDR")
     return (
         DeadWindow(
             "secure_dma",
@@ -176,11 +186,17 @@ def dead_windows() -> tuple[DeadWindow, ...]:
             ot_reg_map_size("entropy_source"),
             _ot_watch("entropy_source", esrc_base, ot_reg_map_size("entropy_source")),
             hw_updating=_ot_named(
-                "entropy_source", esrc_base, ot_reg_map_size("entropy_source"),
-                reg_hw_updating("entropy_source")),
+                "entropy_source",
+                esrc_base,
+                ot_reg_map_size("entropy_source"),
+                reg_hw_updating("entropy_source"),
+            ),
             write_destructive=_ot_named(
-                "entropy_source", esrc_base, ot_reg_map_size("entropy_source"),
-                reg_write_destructive("entropy_source")),
+                "entropy_source",
+                esrc_base,
+                ot_reg_map_size("entropy_source"),
+                reg_write_destructive("entropy_source"),
+            ),
         ),
         DeadWindow(
             "km_mailbox",
@@ -250,10 +266,7 @@ class SepDeadspaceCfg:
         missing = {name for name, _a, _op in DEADSPACE_ANCHORS if name not in self.windows}
         if missing:
             raise RuntimeError(f"anchor window(s) not in dead_windows(): {sorted(missing)}")
-        probes = [
-            DeadProbe(name, addr, op, True)
-            for name, addr, op in DEADSPACE_ANCHORS
-        ]
+        probes = [DeadProbe(name, addr, op, True) for name, addr, op in DEADSPACE_ANCHORS]
         rng = SepSeededRng(seed)
         taken = {(p.window, p.addr, p.op) for p in probes}
         # Windows that could not supply their full random quota within the spin
@@ -289,8 +302,7 @@ class SepDeadspaceCfg:
         n_anchor = sum(1 for p in self.probes if p.anchor)
         n_rand = len(self.probes) - n_anchor
         short = " ".join(
-            f"{name}={got}/{want}"
-            for name, (got, want) in sorted(self.short_windows.items())
+            f"{name}={got}/{want}" for name, (got, want) in sorted(self.short_windows.items())
         )
         return (
             f"seed={self.seed} probes={len(self.probes)} "
@@ -310,11 +322,20 @@ class SepDeadspace:
         self.flavour_findings: list[str] = []
 
     async def _access(
-        self, op: SepAxiOp, addr: int, *, wdata: int = 0, expect_error: bool = False,
+        self,
+        op: SepAxiOp,
+        addr: int,
+        *,
+        wdata: int = 0,
+        expect_error: bool = False,
     ) -> tuple[int, int, bool]:
         seq = SepAxiAccessSeq(
             f"dead_{op.value}_0x{addr:08x}",
-            op=op, addr=addr, wdata=wdata, length=4, size=2,
+            op=op,
+            addr=addr,
+            wdata=wdata,
+            length=4,
+            size=2,
             expect_error=expect_error,
         )
         await self.test.start_seq(seq)
@@ -322,7 +343,7 @@ class SepDeadspace:
 
     async def burst_across_extent(
         self, win
-    ) -> tuple[int, int, bool, list[int], list[tuple[int, int]]]:
+    ) -> tuple[int, list[int], bool, list[int], list[tuple[int, int]], list[int | None]]:
         """Read an INCR burst that starts inside the extent and ends past it.
 
         AXI routes a burst on its FIRST address and a burst may not cross a 4 KB
@@ -333,12 +354,19 @@ class SepDeadspace:
         DECERR and never reaches the unit.
 
         Returns the start address, the responses the master reported, the
-        timeout flag, the four beats, and a single-beat read of each of the same
-        addresses. The responses cover the burst, not one entry per beat.
+        timeout flag, the four beats, a single-beat read of each of the same
+        addresses, and the per-beat response vector the passive monitor observed.
+
+        The master collapses a read burst to one response: the cocotbext-axi
+        beat loop keeps the last non-OKAY RRESP and discards the rest, so
+        ``seq.resp_list`` cannot say which beats were refused. The passive
+        monitor records every R beat separately and publishes the whole vector
+        at RLAST, so the per-beat contract is read from there instead.
         """
-        beats = 4                     # two live beats, then two past the extent
+        beats = 4  # two live beats, then two past the extent
         start = win.dead_lo - 4 * (beats // 2)
         mon = self.test.env.axi_monitor
+        mon.start_beat_capture()
         # The later beats land in dead space, so a correct fabric answers this
         # burst with an error. Credit those beats and hand back whatever the
         # fabric did not use: without the credit the monitor reports a correct
@@ -346,12 +374,41 @@ class SepDeadspace:
         # block starts refusing.
         mon.arm_expected_decerr(beats)
         seq = SepAxiAccessSeq(
-            f"dead_burst_0x{start:08x}", op=SepAxiOp.READ, addr=start,
-            length=4 * beats, size=2, expect_error=True,
+            f"dead_burst_0x{start:08x}",
+            op=SepAxiOp.READ,
+            addr=start,
+            length=4 * beats,
+            size=2,
+            expect_error=True,
             allow_unverified_write_resp=True,
         )
         await self.test.start_seq(seq)
-        used = sum(1 for r in seq.resp_list if r == RESP_DECERR)
+        # Per-beat responses come from the monitor; the master has only the
+        # collapsed one. The capture window records every R beat on this bus, not
+        # this burst's beats specifically, so quiescence and the length check
+        # below are what make the vector attributable to this burst.
+        captured = mon.take_beat_capture()
+        # Only a complete, fully resolved sequence is evidence. A shorter one
+        # means beats were not observed and a longer one means unrelated traffic
+        # shared the window, so neither is attributable to this burst. An entry
+        # that did not resolve to an int is not evidence either, and it must not
+        # be read as a refusal: the checker fails a beat that answers OKAY past
+        # the extent, so an unresolved beat there would otherwise pass by
+        # default. Rejecting the whole vector sends the window to the tally
+        # instead, where it is named rather than counted as proof.
+        usable = len(captured) == beats and all(r is not None for r in captured)
+        mon_resps = [r for r in captured if r is not None] if usable else []
+        # Credit from the per-beat vector when it is available: the collapsed
+        # response holds at most one entry, so crediting from it releases beats
+        # the fabric did refuse. That over-release can only make the monitor
+        # report a refusal it was told to expect, never absorb one it was not:
+        # release_expected_decerr floors at zero, so the failure direction is a
+        # spurious monitor error, not a swallowed DECERR.
+        used = (
+            sum(1 for r in mon_resps if r == RESP_DECERR)
+            if mon_resps
+            else sum(1 for r in seq.resp_list if r == RESP_DECERR)
+        )
         if beats > used:
             mon.release_expected_decerr(beats - used)
         words = [(seq.rdata >> (32 * i)) & 0xFFFF_FFFF for i in range(beats)]
@@ -363,12 +420,11 @@ class SepDeadspace:
             past = start + 4 * i >= win.dead_lo
             if past:
                 mon.arm_expected_decerr(1)
-            r, d, _to = await self._access(
-                SepAxiOp.READ, start + 4 * i, expect_error=past)
+            r, d, _to = await self._access(SepAxiOp.READ, start + 4 * i, expect_error=past)
             if past and r != RESP_DECERR:
                 mon.release_expected_decerr(1)
             singles.append((r, d))
-        return start, list(seq.resp_list), seq.timed_out, words, singles
+        return (start, list(seq.resp_list), seq.timed_out, words, singles, mon_resps)
 
     async def snapshot(self, win) -> dict[int, int]:
         snap: dict[int, int] = {}
@@ -385,7 +441,9 @@ class SepDeadspace:
         if volatile:
             self.log.info(
                 "%s: %d self-changing watch address(es) dropped from no-alias",
-                win.name, len(volatile))
+                win.name,
+                len(volatile),
+            )
         return snap
 
     async def restore(self, win, snap: dict[int, int]) -> None:
@@ -407,7 +465,11 @@ class SepDeadspace:
         self.test.logger.info(
             "deadspace restore: %s restored %d of %d register(s); %d skipped as "
             "write-destructive (a write-back would clear or re-set them)",
-            win.name, len(snap) - skipped, len(snap), skipped)
+            win.name,
+            len(snap) - skipped,
+            len(snap),
+            skipped,
+        )
 
     async def probe(self, win, item: DeadProbe, snap: dict[int, int]) -> list[str]:
         """Return failure strings. Empty means this probe matched the spec."""
@@ -420,11 +482,16 @@ class SepDeadspace:
         mon.arm_expected_decerr(1)
         if item.op == "w":
             resp, _rd, timed_out = await self._access(
-                SepAxiOp.WRITE, item.addr, wdata=0xFFFF_FFFF, expect_error=True,
+                SepAxiOp.WRITE,
+                item.addr,
+                wdata=0xFFFF_FFFF,
+                expect_error=True,
             )
         else:
             resp, rdata, timed_out = await self._access(
-                SepAxiOp.READ, item.addr, expect_error=True,
+                SepAxiOp.READ,
+                item.addr,
+                expect_error=True,
             )
             # `memory_map.adoc` makes two statements about the reserved
             # remainder: it returns DECERR, and an access there never reaches
@@ -497,7 +564,13 @@ class SepDeadspace:
             self.test.logger.info(
                 "deadspace scope: %s %s 0x%08x compared %d of %d watched "
                 "register(s); %d skipped as hardware-updating",
-                win.name, item.op, item.addr, len(after), len(snap), skipped)
+                win.name,
+                item.op,
+                item.addr,
+                len(after),
+                len(snap),
+                skipped,
+            )
             changed = {
                 addr: (snap[addr], after[addr])
                 for addr in snap
@@ -509,8 +582,7 @@ class SepDeadspace:
                     for addr, (old, new) in sorted(changed.items())
                 )
                 fails.append(
-                    f"{win.name} {item.op} 0x{item.addr:08x} changed live "
-                    f"register(s) {detail}"
+                    f"{win.name} {item.op} 0x{item.addr:08x} changed live register(s) {detail}"
                 )
                 await self.restore(win, snap)
         return fails

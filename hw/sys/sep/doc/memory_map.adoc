@@ -60,6 +60,9 @@ decodes. Within an aperture, only the unit's register extent responds; the
 remainder is reserved and returns DECERR. Reads and writes there never reach the
 unit, so an address that owns no register cannot alias onto one.
 
+The crypto region, 0x1090_0000 - 0x1094_FFFF (OTBN through ABR), accepts
+single-beat transactions only; see <<crypto-single-beat-only>>.
+
 [width="100%",cols="<20%,<20%,<20%,<20%,<20%",options="header",]
 |=======================================================================
 |Base Address |End Address |Size |Unit |Description
@@ -206,7 +209,7 @@ ifdef::backend-pdf[]
 include::../../../ip/entropy_source/regs/gen/adoc/entropy_source.adoc[]
 endif::backend-pdf[]
 
-==== DRBG (CSRNG and EDN)
+==== DRBG
 
 The DRBG wraps a CSRNG (AES-CTR-DRBG per NIST SP 800-90A) and an EDN
 (see <<drbg,Architecture>>). Their register maps are reported here.

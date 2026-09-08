@@ -19,11 +19,17 @@
 // (jtag_tap_ctrlr in jtag_intf_unit), so the client port is the decoded
 // {tms,trst_n,tck} struct plus tdi/tdo -- effectively raw JTAG pins.
 //
-// The STAP/iJTAG scan chains are looped back (scan_in = scan_out). The
+// The BSR/iJTAG scan chains are looped back (scan_in = scan_out). Each STAP
+// host port loops its TDO back onto its TDI by default; a per-port
+// jtag_stap_<x>_ds_en input instead splices the TB's downstream TAP
+// (jtag_stap_<x>_tdo out, jtag_stap_<x>_tdi in) behind the port, so the
+// STAP-selection scenarios prove forwarding against a real IEEE 1149.1
+// device (the UVM shape binds four ocah_jtag_vip slave agents there). The
 // functional ports are otherwise pin-exposed: the JTAG2AXI and SMC/SEP OTP
 // AXI-Lite managers are answered by AXI memory/RAM BFMs on flattened
-// struct <-> signal adapters, and the XTRIG CSR AXI-Lite and clock-stop
-// request inputs are driven by the env (the UVM shape ties them off below).
+// struct <-> signal adapters, and the XTRIG CSR AXI-Lite, cross-trigger
+// CTM/CTP, and clock-stop request inputs are driven by the env (the UVM
+// shape drives them from the shared AXI master agent and dtp_tb_if below).
 
 `timescale 1ps/1fs
 
@@ -95,7 +101,8 @@ module dtp_uvm_top
     logic dft_secure_scan_out;
     logic dft_scan_out;
 
-    // STAP TAP host ports: loop tdi <- tdo.
+    // STAP TAP host ports: tdi <- tdo loopback, or the attached downstream
+    // TAP's TDO when the port's ds_en is set.
     jtag_tap_ctrl_t stap_io_tap_ctrl;
     jtag_tap_ctrl_t stap_smc_tap_ctrl;
     jtag_tap_ctrl_t stap_sep_tap_ctrl;
@@ -105,6 +112,19 @@ module dtp_uvm_top
     logic stap_sep_tdo;
     logic stap_extra_tdo  [0:0];
     logic stap_extra_tdo_oen [0:0];
+    logic stap_io_host_tdi;
+    logic stap_smc_host_tdi;
+    logic stap_sep_host_tdi;
+    logic stap_extra_host_tdi [0:0];
+
+    assign jtag_stap_io_tdo     = stap_io_tdo;
+    assign jtag_stap_smc_tdo    = stap_smc_tdo;
+    assign jtag_stap_sep_tdo    = stap_sep_tdo;
+    assign jtag_stap_extra0_tdo = stap_extra_tdo[0];
+    assign stap_io_host_tdi      = jtag_stap_io_ds_en     ? jtag_stap_io_tdi     : stap_io_tdo;
+    assign stap_smc_host_tdi     = jtag_stap_smc_ds_en    ? jtag_stap_smc_tdi    : stap_smc_tdo;
+    assign stap_sep_host_tdi     = jtag_stap_sep_ds_en    ? jtag_stap_sep_tdi    : stap_sep_tdo;
+    assign stap_extra_host_tdi[0] = jtag_stap_extra0_ds_en ? jtag_stap_extra0_tdi : stap_extra_tdo[0];
 
     // IC_RESET default slice structs are one `{ovrd, val}` pair per slice in
     // this standalone OSS DTP instantiation. Flatten them for cocotb sampling.
@@ -283,6 +303,15 @@ module dtp_uvm_top
         end
     end
 
+    // Reset-assertion counters: observables the scoreboard predictors
+    // re-baseline on (CSR shadow, TAP instruction) without an edge wait in
+    // class code. Both shapes count; the UVM harness mirrors them into
+    // dtp_tb_if.
+    logic [31:0] sys_rst_assert_count = '0;
+    logic [31:0] por_assert_count     = '0;
+    always @(negedge rst_n_i)      sys_rst_assert_count <= sys_rst_assert_count + 32'd1;
+    always @(negedge pwr_on_rst_ni) por_assert_count    <= por_assert_count + 32'd1;
+
     // Flat slave inputs (from AxiRam) -> DUT resp struct
     always_comb begin
         axi_smc_dbg_resp          = '{default: '0};
@@ -433,27 +462,27 @@ module dtp_uvm_top
         .jtag_bsr_host_scan_in_i          (bsr_scan_out),
         .jtag_bsr_host_scan_out_o         (bsr_scan_out),
 
-        // I/O STAP host (loopback)
+        // I/O STAP host (loopback, or the downstream TAP when ds_en)
         .jtag_stap_io_host_tap_ctrl_o     (stap_io_tap_ctrl),
-        .jtag_stap_io_host_tdi_i          (stap_io_tdo),
+        .jtag_stap_io_host_tdi_i          (stap_io_host_tdi),
         .jtag_stap_io_host_tdo_o          (stap_io_tdo),
         .jtag_stap_io_host_tdo_oen_o      (jtag_stap_io_tdo_oen),
 
-        // SMC debug STAP host (loopback)
+        // SMC debug STAP host (loopback, or the downstream TAP when ds_en)
         .jtag_stap_smc_host_tap_ctrl_o    (stap_smc_tap_ctrl),
-        .jtag_stap_smc_host_tdi_i         (stap_smc_tdo),
+        .jtag_stap_smc_host_tdi_i         (stap_smc_host_tdi),
         .jtag_stap_smc_host_tdo_o         (stap_smc_tdo),
         .jtag_stap_smc_host_tdo_oen_o     (jtag_stap_smc_tdo_oen),
 
-        // SEP debug STAP host (loopback)
+        // SEP debug STAP host (loopback, or the downstream TAP when ds_en)
         .jtag_stap_sep_host_tap_ctrl_o    (stap_sep_tap_ctrl),
-        .jtag_stap_sep_host_tdi_i         (stap_sep_tdo),
+        .jtag_stap_sep_host_tdi_i         (stap_sep_host_tdi),
         .jtag_stap_sep_host_tdo_o         (stap_sep_tdo),
         .jtag_stap_sep_host_tdo_oen_o     (jtag_stap_sep_tdo_oen),
 
-        // Extra STAP hosts (loopback, 1 port by default)
+        // Extra STAP hosts (1 port by default; loopback or downstream TAP)
         .jtag_stap_extra_host_tap_ctrl_o  (stap_extra_tap_ctrl),
-        .jtag_stap_extra_host_tdi_i       (stap_extra_tdo),
+        .jtag_stap_extra_host_tdi_i       (stap_extra_host_tdi),
         .jtag_stap_extra_host_tdo_o       (stap_extra_tdo),
         .jtag_stap_extra_host_tdo_oen_o   (stap_extra_tdo_oen),
 
@@ -686,7 +715,7 @@ module dtp_uvm_top
     // Cross-trigger coverage (CTP / CTM): CSR-write decode plus the
     // cross-trigger GPIO and matrix handshake pins, all in the system-clock
     // domain. The SV-UVM shape ties these inputs quiescent, so the bins
-    // collect only where the stimulus exists (the cocotb flow today).
+    // collect only where the stimulus exists (the cocotb flow).
     dtp_xtrig_fcov u_dtp_xtrig_fcov (
         .clk_i                 (clk_i),
         .rst_ni                (rst_n_i),
@@ -713,9 +742,10 @@ module dtp_uvm_top
     // ------------------------------------------------------------------
     import uvm_pkg::*;
 
-    // 100 MHz system clock; TCK is bit-banged by the sequence via the vif.
+    // System clock with the period the env publishes on dtp_tb_if from the
+    // seeded test cfg (10..100 ns); TCK is bit-banged by the VIP driver.
     initial clk_i = 1'b0;
-    always #5ns clk_i = ~clk_i;
+    always #(u_tb_if.clk_period_ns * 0.5ns) clk_i = ~clk_i;
 
     ocah_jtag_if u_jtag_if ();
     dtp_tb_if    u_tb_if ();
@@ -728,10 +758,12 @@ module dtp_uvm_top
     assign u_jtag_if.tdo     = jtag_tdo;
     assign u_jtag_if.tdo_oen = jtag_tdo_oen;
 
-    // DTP-local resets (test-sequenced) and TAP-state observable.
-    assign rst_n_i           = u_tb_if.sys_rst_n;
-    assign pwr_on_rst_ni     = u_tb_if.por_rst_n;
-    assign u_tb_if.tap_state = jtag_ptap_state;
+    // DTP-local resets (test-sequenced), reset counters, and TAP-state observable.
+    assign rst_n_i                      = u_tb_if.sys_rst_n;
+    assign pwr_on_rst_ni                = u_tb_if.por_rst_n;
+    assign u_tb_if.sys_rst_assert_count = sys_rst_assert_count;
+    assign u_tb_if.por_assert_count     = por_assert_count;
+    assign u_tb_if.tap_state            = jtag_ptap_state;
 
     // Decoded-IR and boundary-scan control observables: the
     // basic-JTAG instruction checks read these through dtp_tb_if.
@@ -742,11 +774,90 @@ module dtp_uvm_top
     assign u_tb_if.jtag_bsr_update_en  = jtag_bsr_update_en;
 
     // Lifecycle debug disables and clock-stop requests: sequences drive the
-    // typed dbg_disable_t through dtp_tb_if (init '1 = fail-closed, so the
-    // sanity test's behavior is unchanged; JTAG2AXI sequences clear the
-    // disables they need).
-    assign xtrig_clk_stop_req = '0;
+    // typed dbg_disable_t and the CLA clock-stop request vector through
+    // dtp_tb_if (dbg_disable init '1 = fail-closed; clk_stop_req init '0 =
+    // quiescent; the debug-TDR sequences drive the requests they need).
+    assign xtrig_clk_stop_req = u_tb_if.xtrig_clk_stop_req;
     assign dbg_disable        = u_tb_if.dbg_disable;
+
+    // Debug-TDR observables: DEBUG_CONTROL clock-stop / boot-stall outputs
+    // and the flattened IC_RESET slice outputs for the debug-TDR checks.
+    assign u_tb_if.stop_clks                = stop_clks;
+    assign u_tb_if.cla_clock_stop_en        = cla_clock_stop_en;
+    assign u_tb_if.jtag_boot_stall          = jtag_boot_stall;
+    assign u_tb_if.jtag_boot_stall_ovrd     = jtag_boot_stall_ovrd;
+    assign u_tb_if.jtag_ic_reset_smc_ovrd   = jtag_ic_reset_smc_ovrd;
+    assign u_tb_if.jtag_ic_reset_smc_ctrl_n = jtag_ic_reset_smc_ctrl_n;
+    assign u_tb_if.jtag_ic_reset_sep_ovrd   = jtag_ic_reset_sep_ovrd;
+    assign u_tb_if.jtag_ic_reset_sep_ctrl_n = jtag_ic_reset_sep_ctrl_n;
+    assign u_tb_if.jtag_ic_reset_ext_ovrd   = jtag_ic_reset_ext_ovrd;
+    assign u_tb_if.jtag_ic_reset_ext_ctrl_n = jtag_ic_reset_ext_ctrl_n;
+
+    // Scan-network observables: iJTAG SIB scan controls, STAP forwarding
+    // pins, and the extended STAP host scan controls for the scan-scenario
+    // temporal windows.
+    assign u_tb_if.jtag_dft_secure_select     = jtag_dft_secure_select;
+    assign u_tb_if.jtag_dft_secure_shift_en   = jtag_dft_secure_shift_en;
+    assign u_tb_if.jtag_dft_secure_capture_en = jtag_dft_secure_capture_en;
+    assign u_tb_if.jtag_dft_secure_update_en  = jtag_dft_secure_update_en;
+    assign u_tb_if.jtag_dft_select            = jtag_dft_select;
+    assign u_tb_if.jtag_dft_shift_en          = jtag_dft_shift_en;
+    assign u_tb_if.jtag_dft_capture_en        = jtag_dft_capture_en;
+    assign u_tb_if.jtag_dft_update_en         = jtag_dft_update_en;
+    assign u_tb_if.jtag_dfd_select            = jtag_dfd_select;
+    assign u_tb_if.jtag_dfd_shift_en          = jtag_dfd_shift_en;
+    assign u_tb_if.jtag_dfd_capture_en        = jtag_dfd_capture_en;
+    assign u_tb_if.jtag_dfd_update_en         = jtag_dfd_update_en;
+    assign u_tb_if.jtag_stap_io_tms           = jtag_stap_io_tms;
+    assign u_tb_if.jtag_stap_io_tdo_oen       = jtag_stap_io_tdo_oen;
+    assign u_tb_if.jtag_stap_smc_tms          = jtag_stap_smc_tms;
+    assign u_tb_if.jtag_stap_smc_tdo_oen      = jtag_stap_smc_tdo_oen;
+    assign u_tb_if.jtag_stap_sep_tms          = jtag_stap_sep_tms;
+    assign u_tb_if.jtag_stap_sep_tdo_oen      = jtag_stap_sep_tdo_oen;
+    assign u_tb_if.jtag_stap_extra0_tms       = jtag_stap_extra0_tms;
+    assign u_tb_if.jtag_stap_extra0_tdo_oen   = jtag_stap_extra0_tdo_oen;
+    assign u_tb_if.jtag_stap_host_select      = jtag_stap_host_select;
+    assign u_tb_if.jtag_stap_host_shift_en    = jtag_stap_host_shift_en;
+    assign u_tb_if.jtag_stap_host_capture_en  = jtag_stap_host_capture_en;
+    assign u_tb_if.jtag_stap_host_update_en   = jtag_stap_host_update_en;
+
+    // Downstream STAP TAPs: one ocah_jtag_if per STAP host
+    // port, wired from the port's forwarded tck/tms/trst_n and its TDO; the
+    // shared ocah_jtag_vip slave agent answers on tdo, routed back into the
+    // host TDI when the sequence sets dtp_tb_if.stap_<x>_ds_en (default 0
+    // keeps the wire loopback).
+    ocah_jtag_if u_stap_io_ds_if ();
+    ocah_jtag_if u_stap_smc_ds_if ();
+    ocah_jtag_if u_stap_sep_ds_if ();
+    ocah_jtag_if u_stap_extra0_ds_if ();
+
+    assign u_stap_io_ds_if.tck        = jtag_stap_io_tck;
+    assign u_stap_io_ds_if.tms        = jtag_stap_io_tms;
+    assign u_stap_io_ds_if.trst_n     = jtag_stap_io_trst_n;
+    assign u_stap_io_ds_if.tdi        = jtag_stap_io_tdo;
+    assign jtag_stap_io_tdi           = u_stap_io_ds_if.tdo;
+    assign jtag_stap_io_ds_en         = u_tb_if.stap_io_ds_en;
+
+    assign u_stap_smc_ds_if.tck       = jtag_stap_smc_tck;
+    assign u_stap_smc_ds_if.tms       = jtag_stap_smc_tms;
+    assign u_stap_smc_ds_if.trst_n    = jtag_stap_smc_trst_n;
+    assign u_stap_smc_ds_if.tdi       = jtag_stap_smc_tdo;
+    assign jtag_stap_smc_tdi          = u_stap_smc_ds_if.tdo;
+    assign jtag_stap_smc_ds_en        = u_tb_if.stap_smc_ds_en;
+
+    assign u_stap_sep_ds_if.tck       = jtag_stap_sep_tck;
+    assign u_stap_sep_ds_if.tms       = jtag_stap_sep_tms;
+    assign u_stap_sep_ds_if.trst_n    = jtag_stap_sep_trst_n;
+    assign u_stap_sep_ds_if.tdi       = jtag_stap_sep_tdo;
+    assign jtag_stap_sep_tdi          = u_stap_sep_ds_if.tdo;
+    assign jtag_stap_sep_ds_en        = u_tb_if.stap_sep_ds_en;
+
+    assign u_stap_extra0_ds_if.tck    = jtag_stap_extra0_tck;
+    assign u_stap_extra0_ds_if.tms    = jtag_stap_extra0_tms;
+    assign u_stap_extra0_ds_if.trst_n = jtag_stap_extra0_trst_n;
+    assign u_stap_extra0_ds_if.tdi    = jtag_stap_extra0_tdo;
+    assign jtag_stap_extra0_tdi       = u_stap_extra0_ds_if.tdo;
+    assign jtag_stap_extra0_ds_en     = u_tb_if.stap_extra0_ds_en;
 
     // SMC OTP AXI-Lite responder: the shared ocah_axi_vip UVM slave agent
     // answers JTAG2AXI OTP traffic. The slave interface carries
@@ -796,6 +907,52 @@ module dtp_uvm_top
     assign smc_otp_axil_rdata   = u_smc_otp_slave_if.rdata[31:0];
     assign smc_otp_axil_rresp   = u_smc_otp_slave_if.rresp;
     assign smc_otp_axil_rvalid  = u_smc_otp_slave_if.rvalid;
+
+    // SEP OTP AXI-Lite responder: a third shared ocah_axi_vip UVM slave
+    // agent (same pattern as the SMC OTP port) answers JTAG2AXI SEP OTP
+    // traffic.
+    ocah_axi_if u_sep_otp_slave_if (.aclk(clk_i), .aresetn(rst_n_i));
+    assign u_sep_otp_slave_if.awaddr   = 64'(sep_otp_axil_awaddr);
+    assign u_sep_otp_slave_if.awprot   = sep_otp_axil_awprot;
+    assign u_sep_otp_slave_if.awvalid  = sep_otp_axil_awvalid;
+    assign u_sep_otp_slave_if.awid     = '0;
+    assign u_sep_otp_slave_if.awlen    = '0;
+    assign u_sep_otp_slave_if.awsize   = 3'd2;
+    assign u_sep_otp_slave_if.awburst  = 2'b01;
+    assign u_sep_otp_slave_if.awlock   = 1'b0;
+    assign u_sep_otp_slave_if.awcache  = '0;
+    assign u_sep_otp_slave_if.awqos    = '0;
+    assign u_sep_otp_slave_if.awregion = '0;
+    assign u_sep_otp_slave_if.awuser   = '0;
+    assign u_sep_otp_slave_if.wdata    = 64'(sep_otp_axil_wdata);
+    assign u_sep_otp_slave_if.wstrb    = 8'(sep_otp_axil_wstrb);
+    assign u_sep_otp_slave_if.wlast    = 1'b1;
+    assign u_sep_otp_slave_if.wuser    = '0;
+    assign u_sep_otp_slave_if.wvalid   = sep_otp_axil_wvalid;
+    assign u_sep_otp_slave_if.bready   = sep_otp_axil_bready;
+    assign u_sep_otp_slave_if.araddr   = 64'(sep_otp_axil_araddr);
+    assign u_sep_otp_slave_if.arprot   = sep_otp_axil_arprot;
+    assign u_sep_otp_slave_if.arvalid  = sep_otp_axil_arvalid;
+    assign u_sep_otp_slave_if.arid     = '0;
+    assign u_sep_otp_slave_if.arlen    = '0;
+    assign u_sep_otp_slave_if.arsize   = 3'd2;
+    assign u_sep_otp_slave_if.arburst  = 2'b01;
+    assign u_sep_otp_slave_if.arlock   = 1'b0;
+    assign u_sep_otp_slave_if.arcache  = '0;
+    assign u_sep_otp_slave_if.arqos    = '0;
+    assign u_sep_otp_slave_if.arregion = '0;
+    assign u_sep_otp_slave_if.aruser   = '0;
+    assign u_sep_otp_slave_if.rready   = sep_otp_axil_rready;
+
+    // Responder-side signals: agent driver -> DUT response inputs.
+    assign sep_otp_axil_awready = u_sep_otp_slave_if.awready;
+    assign sep_otp_axil_wready  = u_sep_otp_slave_if.wready;
+    assign sep_otp_axil_bresp   = u_sep_otp_slave_if.bresp;
+    assign sep_otp_axil_bvalid  = u_sep_otp_slave_if.bvalid;
+    assign sep_otp_axil_arready = u_sep_otp_slave_if.arready;
+    assign sep_otp_axil_rdata   = u_sep_otp_slave_if.rdata[31:0];
+    assign sep_otp_axil_rresp   = u_sep_otp_slave_if.rresp;
+    assign sep_otp_axil_rvalid  = u_sep_otp_slave_if.rvalid;
 
     // SMC fabric AXI4 responder: the shared ocah_axi_vip UVM slave agent
     // (same pattern as the SMC OTP port) answers JTAG2AXI fabric traffic.
@@ -899,6 +1056,52 @@ module dtp_uvm_top
     assign u_smc_otp_axil_if.ruser    = '0;
     assign u_smc_otp_axil_if.rvalid   = smc_otp_axil_rvalid;
     assign u_smc_otp_axil_if.rready   = smc_otp_axil_rready;
+
+    ocah_axi_if u_sep_otp_axil_if (.aclk(clk_i), .aresetn(rst_n_i));
+    assign u_sep_otp_axil_if.awaddr   = 64'(sep_otp_axil_awaddr);
+    assign u_sep_otp_axil_if.awprot   = sep_otp_axil_awprot;
+    assign u_sep_otp_axil_if.awvalid  = sep_otp_axil_awvalid;
+    assign u_sep_otp_axil_if.awready  = sep_otp_axil_awready;
+    assign u_sep_otp_axil_if.awid     = '0;
+    assign u_sep_otp_axil_if.awlen    = '0;
+    assign u_sep_otp_axil_if.awsize   = 3'd2;
+    assign u_sep_otp_axil_if.awburst  = 2'b01;
+    assign u_sep_otp_axil_if.awlock   = 1'b0;
+    assign u_sep_otp_axil_if.awcache  = '0;
+    assign u_sep_otp_axil_if.awqos    = '0;
+    assign u_sep_otp_axil_if.awregion = '0;
+    assign u_sep_otp_axil_if.awuser   = '0;
+    assign u_sep_otp_axil_if.wdata    = 64'(sep_otp_axil_wdata);
+    assign u_sep_otp_axil_if.wstrb    = 8'(sep_otp_axil_wstrb);
+    assign u_sep_otp_axil_if.wlast    = 1'b1;
+    assign u_sep_otp_axil_if.wuser    = '0;
+    assign u_sep_otp_axil_if.wvalid   = sep_otp_axil_wvalid;
+    assign u_sep_otp_axil_if.wready   = sep_otp_axil_wready;
+    assign u_sep_otp_axil_if.bid      = '0;
+    assign u_sep_otp_axil_if.bresp    = sep_otp_axil_bresp;
+    assign u_sep_otp_axil_if.buser    = '0;
+    assign u_sep_otp_axil_if.bvalid   = sep_otp_axil_bvalid;
+    assign u_sep_otp_axil_if.bready   = sep_otp_axil_bready;
+    assign u_sep_otp_axil_if.araddr   = 64'(sep_otp_axil_araddr);
+    assign u_sep_otp_axil_if.arprot   = sep_otp_axil_arprot;
+    assign u_sep_otp_axil_if.arvalid  = sep_otp_axil_arvalid;
+    assign u_sep_otp_axil_if.arready  = sep_otp_axil_arready;
+    assign u_sep_otp_axil_if.arid     = '0;
+    assign u_sep_otp_axil_if.arlen    = '0;
+    assign u_sep_otp_axil_if.arsize   = 3'd2;
+    assign u_sep_otp_axil_if.arburst  = 2'b01;
+    assign u_sep_otp_axil_if.arlock   = 1'b0;
+    assign u_sep_otp_axil_if.arcache  = '0;
+    assign u_sep_otp_axil_if.arqos    = '0;
+    assign u_sep_otp_axil_if.arregion = '0;
+    assign u_sep_otp_axil_if.aruser   = '0;
+    assign u_sep_otp_axil_if.rid      = '0;
+    assign u_sep_otp_axil_if.rdata    = 64'(sep_otp_axil_rdata);
+    assign u_sep_otp_axil_if.rresp    = sep_otp_axil_rresp;
+    assign u_sep_otp_axil_if.rlast    = 1'b1;
+    assign u_sep_otp_axil_if.ruser    = '0;
+    assign u_sep_otp_axil_if.rvalid   = sep_otp_axil_rvalid;
+    assign u_sep_otp_axil_if.rready   = sep_otp_axil_rready;
 
     ocah_axi_if u_m_axi_if (.aclk(clk_i), .aresetn(rst_n_i));
     assign u_m_axi_if.awid     = 16'(m_axi_awid);
@@ -1009,6 +1212,50 @@ module dtp_uvm_top
     );
 
     ocah_axi_sva #(
+        .IS_LITE    (1'b1),
+        .ADDR_WIDTH (32),
+        .DATA_WIDTH (32),
+        .ID_WIDTH   (1)
+    ) u_sep_otp_axil_sva (
+        .aclk    (clk_i),
+        .aresetn (rst_n_i),
+        .en_i    (u_tb_if.axi_sva_en),
+        .awid    ('0),
+        .awaddr  (sep_otp_axil_awaddr),
+        .awlen   ('0),
+        .awsize  (3'd2),
+        .awburst (2'b01),
+        .awlock  (1'b0),
+        .awprot  (sep_otp_axil_awprot),
+        .awvalid (sep_otp_axil_awvalid),
+        .awready (sep_otp_axil_awready),
+        .wdata   (sep_otp_axil_wdata),
+        .wstrb   (sep_otp_axil_wstrb),
+        .wlast   (1'b1),
+        .wvalid  (sep_otp_axil_wvalid),
+        .wready  (sep_otp_axil_wready),
+        .bid     ('0),
+        .bresp   (sep_otp_axil_bresp),
+        .bvalid  (sep_otp_axil_bvalid),
+        .bready  (sep_otp_axil_bready),
+        .arid    ('0),
+        .araddr  (sep_otp_axil_araddr),
+        .arlen   ('0),
+        .arsize  (3'd2),
+        .arburst (2'b01),
+        .arlock  (1'b0),
+        .arprot  (sep_otp_axil_arprot),
+        .arvalid (sep_otp_axil_arvalid),
+        .arready (sep_otp_axil_arready),
+        .rid     ('0),
+        .rdata   (sep_otp_axil_rdata),
+        .rresp   (sep_otp_axil_rresp),
+        .rlast   (1'b1),
+        .rvalid  (sep_otp_axil_rvalid),
+        .rready  (sep_otp_axil_rready)
+    );
+
+    ocah_axi_sva #(
         .IS_LITE    (1'b0),
         .ADDR_WIDTH (56),
         .DATA_WIDTH (64),
@@ -1060,38 +1307,162 @@ module dtp_uvm_top
     assign u_tb_if.smc_otp_axil_awvalid_count = smc_otp_axil_awvalid_count;
     assign u_tb_if.smc_otp_axil_wvalid_count  = smc_otp_axil_wvalid_count;
     assign u_tb_if.smc_otp_axil_arvalid_count = smc_otp_axil_arvalid_count;
+    assign u_tb_if.sep_otp_axil_awvalid_count = sep_otp_axil_awvalid_count;
+    assign u_tb_if.sep_otp_axil_wvalid_count  = sep_otp_axil_wvalid_count;
+    assign u_tb_if.sep_otp_axil_arvalid_count = sep_otp_axil_arvalid_count;
 
-    // SEP OTP AXI-Lite responder: still idle-ready, never responding (no
-    // sep_otp traffic is generated by the UVM flow yet — documented stretch).
-    assign sep_otp_axil_awready = 1'b1;
-    assign sep_otp_axil_wready  = 1'b1;
-    assign sep_otp_axil_bresp   = 2'b00;
-    assign sep_otp_axil_bvalid  = 1'b0;
-    assign sep_otp_axil_arready = 1'b1;
-    assign sep_otp_axil_rdata   = 32'h0;
-    assign sep_otp_axil_rresp   = 2'b00;
-    assign sep_otp_axil_rvalid  = 1'b0;
+    // XTRIG CSR AXI-Lite initiator: the shared ocah_axi_vip UVM master agent
+    // drives the CSR port (the initiator mirror of the slave-port pattern:
+    // the agent's driver procedurally drives the request-side signals on the
+    // master interface, routed out to the DUT here, and the TB wires only
+    // the DUT-driven response signals back in).
+    ocah_axi_if u_xtrig_master_if (.aclk(clk_i), .aresetn(rst_n_i));
+    assign xtrig_axil_awaddr  = u_xtrig_master_if.awaddr[31:0];
+    assign xtrig_axil_awprot  = u_xtrig_master_if.awprot;
+    assign xtrig_axil_awvalid = u_xtrig_master_if.awvalid;
+    assign xtrig_axil_wdata   = u_xtrig_master_if.wdata[31:0];
+    assign xtrig_axil_wstrb   = u_xtrig_master_if.wstrb[3:0];
+    assign xtrig_axil_wvalid  = u_xtrig_master_if.wvalid;
+    assign xtrig_axil_bready  = u_xtrig_master_if.bready;
+    assign xtrig_axil_araddr  = u_xtrig_master_if.araddr[31:0];
+    assign xtrig_axil_arprot  = u_xtrig_master_if.arprot;
+    assign xtrig_axil_arvalid = u_xtrig_master_if.arvalid;
+    assign xtrig_axil_rready  = u_xtrig_master_if.rready;
 
-    // XTRIG AXI-Lite subordinate: no CSR traffic.
-    assign xtrig_axil_awaddr  = 32'h0;
-    assign xtrig_axil_awprot  = 3'b000;
-    assign xtrig_axil_awvalid = 1'b0;
-    assign xtrig_axil_wdata   = 32'h0;
-    assign xtrig_axil_wstrb   = 4'h0;
-    assign xtrig_axil_wvalid  = 1'b0;
-    assign xtrig_axil_bready  = 1'b0;
-    assign xtrig_axil_araddr  = 32'h0;
-    assign xtrig_axil_arprot  = 3'b000;
-    assign xtrig_axil_arvalid = 1'b0;
-    assign xtrig_axil_rready  = 1'b0;
+    // Response-side signals: DUT subordinate -> agent driver/monitor.
+    assign u_xtrig_master_if.awready = xtrig_axil_awready;
+    assign u_xtrig_master_if.wready  = xtrig_axil_wready;
+    assign u_xtrig_master_if.bresp   = xtrig_axil_bresp;
+    assign u_xtrig_master_if.bvalid  = xtrig_axil_bvalid;
+    assign u_xtrig_master_if.bid     = '0;
+    assign u_xtrig_master_if.buser   = '0;
+    assign u_xtrig_master_if.arready = xtrig_axil_arready;
+    assign u_xtrig_master_if.rdata   = 64'(xtrig_axil_rdata);
+    assign u_xtrig_master_if.rresp   = xtrig_axil_rresp;
+    assign u_xtrig_master_if.rvalid  = xtrig_axil_rvalid;
+    assign u_xtrig_master_if.rid     = '0;
+    assign u_xtrig_master_if.rlast   = 1'b1;
+    assign u_xtrig_master_if.ruser   = '0;
 
-    // Cross-trigger CTM/CTP stimulus inputs: quiescent.
-    assign xtrig_ctm_src_ack     = '0;
-    assign xtrig_ctm_dst_req     = '0;
-    assign xtrig_ctp_req_out_din = '0;
-    assign xtrig_ctp_req_in_din  = '0;
-    assign xtrig_ctp_ack_in_din  = '0;
-    assign xtrig_ctp_ack_out_din = '0;
+    ocah_axi_if u_xtrig_axil_if (.aclk(clk_i), .aresetn(rst_n_i));
+    assign u_xtrig_axil_if.awaddr   = 64'(xtrig_axil_awaddr);
+    assign u_xtrig_axil_if.awprot   = xtrig_axil_awprot;
+    assign u_xtrig_axil_if.awvalid  = xtrig_axil_awvalid;
+    assign u_xtrig_axil_if.awready  = xtrig_axil_awready;
+    assign u_xtrig_axil_if.awid     = '0;
+    assign u_xtrig_axil_if.awlen    = '0;
+    assign u_xtrig_axil_if.awsize   = 3'd2;
+    assign u_xtrig_axil_if.awburst  = 2'b01;
+    assign u_xtrig_axil_if.awlock   = 1'b0;
+    assign u_xtrig_axil_if.awcache  = '0;
+    assign u_xtrig_axil_if.awqos    = '0;
+    assign u_xtrig_axil_if.awregion = '0;
+    assign u_xtrig_axil_if.awuser   = '0;
+    assign u_xtrig_axil_if.wdata    = 64'(xtrig_axil_wdata);
+    assign u_xtrig_axil_if.wstrb    = 8'(xtrig_axil_wstrb);
+    assign u_xtrig_axil_if.wlast    = 1'b1;
+    assign u_xtrig_axil_if.wuser    = '0;
+    assign u_xtrig_axil_if.wvalid   = xtrig_axil_wvalid;
+    assign u_xtrig_axil_if.wready   = xtrig_axil_wready;
+    assign u_xtrig_axil_if.bid      = '0;
+    assign u_xtrig_axil_if.bresp    = xtrig_axil_bresp;
+    assign u_xtrig_axil_if.buser    = '0;
+    assign u_xtrig_axil_if.bvalid   = xtrig_axil_bvalid;
+    assign u_xtrig_axil_if.bready   = xtrig_axil_bready;
+    assign u_xtrig_axil_if.araddr   = 64'(xtrig_axil_araddr);
+    assign u_xtrig_axil_if.arprot   = xtrig_axil_arprot;
+    assign u_xtrig_axil_if.arvalid  = xtrig_axil_arvalid;
+    assign u_xtrig_axil_if.arready  = xtrig_axil_arready;
+    assign u_xtrig_axil_if.arid     = '0;
+    assign u_xtrig_axil_if.arlen    = '0;
+    assign u_xtrig_axil_if.arsize   = 3'd2;
+    assign u_xtrig_axil_if.arburst  = 2'b01;
+    assign u_xtrig_axil_if.arlock   = 1'b0;
+    assign u_xtrig_axil_if.arcache  = '0;
+    assign u_xtrig_axil_if.arqos    = '0;
+    assign u_xtrig_axil_if.arregion = '0;
+    assign u_xtrig_axil_if.aruser   = '0;
+    assign u_xtrig_axil_if.rid      = '0;
+    assign u_xtrig_axil_if.rdata    = 64'(xtrig_axil_rdata);
+    assign u_xtrig_axil_if.rresp    = xtrig_axil_rresp;
+    assign u_xtrig_axil_if.rlast    = 1'b1;
+    assign u_xtrig_axil_if.ruser    = '0;
+    assign u_xtrig_axil_if.rvalid   = xtrig_axil_rvalid;
+    assign u_xtrig_axil_if.rready   = xtrig_axil_rready;
+
+    ocah_axi_sva #(
+        .IS_LITE    (1'b1),
+        .ADDR_WIDTH (32),
+        .DATA_WIDTH (32),
+        .ID_WIDTH   (1)
+    ) u_xtrig_axil_sva (
+        .aclk    (clk_i),
+        .aresetn (rst_n_i),
+        .en_i    (u_tb_if.axi_sva_en),
+        .awid    ('0),
+        .awaddr  (xtrig_axil_awaddr),
+        .awlen   ('0),
+        .awsize  (3'd2),
+        .awburst (2'b01),
+        .awlock  (1'b0),
+        .awprot  (xtrig_axil_awprot),
+        .awvalid (xtrig_axil_awvalid),
+        .awready (xtrig_axil_awready),
+        .wdata   (xtrig_axil_wdata),
+        .wstrb   (xtrig_axil_wstrb),
+        .wlast   (1'b1),
+        .wvalid  (xtrig_axil_wvalid),
+        .wready  (xtrig_axil_wready),
+        .bid     ('0),
+        .bresp   (xtrig_axil_bresp),
+        .bvalid  (xtrig_axil_bvalid),
+        .bready  (xtrig_axil_bready),
+        .arid    ('0),
+        .araddr  (xtrig_axil_araddr),
+        .arlen   ('0),
+        .arsize  (3'd2),
+        .arburst (2'b01),
+        .arlock  (1'b0),
+        .arprot  (xtrig_axil_arprot),
+        .arvalid (xtrig_axil_arvalid),
+        .arready (xtrig_axil_arready),
+        .rid     ('0),
+        .rdata   (xtrig_axil_rdata),
+        .rresp   (xtrig_axil_rresp),
+        .rlast   (1'b1),
+        .rvalid  (xtrig_axil_rvalid),
+        .rready  (xtrig_axil_rready)
+    );
+
+    // XTRIG CSR request-activity pulse-counter mirrors for sequences.
+    assign u_tb_if.xtrig_axil_awvalid_count = xtrig_axil_awvalid_count;
+    assign u_tb_if.xtrig_axil_wvalid_count  = xtrig_axil_wvalid_count;
+    assign u_tb_if.xtrig_axil_arvalid_count = xtrig_axil_arvalid_count;
+
+    // Cross-trigger CTM/CTP pin surface: sequences drive the request-side
+    // vectors and observe the DUT-driven vectors through dtp_tb_if (init '0
+    // = quiescent, matching the cocotb agent's idle state).
+    assign xtrig_ctm_src_ack     = u_tb_if.xtrig_ctm_src_ack;
+    assign xtrig_ctm_dst_req     = u_tb_if.xtrig_ctm_dst_req;
+    assign xtrig_ctp_req_out_din = u_tb_if.xtrig_ctp_req_out_din;
+    assign xtrig_ctp_req_in_din  = u_tb_if.xtrig_ctp_req_in_din;
+    assign xtrig_ctp_ack_in_din  = u_tb_if.xtrig_ctp_ack_in_din;
+    assign xtrig_ctp_ack_out_din = u_tb_if.xtrig_ctp_ack_out_din;
+
+    assign u_tb_if.xtrig_ctm_src_req         = xtrig_ctm_src_req;
+    assign u_tb_if.xtrig_ctm_dst_ack         = xtrig_ctm_dst_ack;
+    assign u_tb_if.xtrig_ctp_req_out_dout    = xtrig_ctp_req_out_dout;
+    assign u_tb_if.xtrig_ctp_req_out_dout_en = xtrig_ctp_req_out_dout_en;
+    assign u_tb_if.xtrig_ctp_req_out_din_en  = xtrig_ctp_req_out_din_en;
+    assign u_tb_if.xtrig_ctp_req_in_dout     = xtrig_ctp_req_in_dout;
+    assign u_tb_if.xtrig_ctp_req_in_dout_en  = xtrig_ctp_req_in_dout_en;
+    assign u_tb_if.xtrig_ctp_req_in_din_en   = xtrig_ctp_req_in_din_en;
+    assign u_tb_if.xtrig_ctp_ack_in_dout     = xtrig_ctp_ack_in_dout;
+    assign u_tb_if.xtrig_ctp_ack_in_dout_en  = xtrig_ctp_ack_in_dout_en;
+    assign u_tb_if.xtrig_ctp_ack_in_din_en   = xtrig_ctp_ack_in_din_en;
+    assign u_tb_if.xtrig_ctp_ack_out_dout    = xtrig_ctp_ack_out_dout;
+    assign u_tb_if.xtrig_ctp_ack_out_dout_en = xtrig_ctp_ack_out_dout_en;
+    assign u_tb_if.xtrig_ctp_ack_out_din_en  = xtrig_ctp_ack_out_din_en;
 
     // Non-reusable test classes compile as part of this top (module scope).
     `include "dtp_tests.sv"
@@ -1101,8 +1472,17 @@ module dtp_uvm_top
         uvm_config_db#(virtual dtp_tb_if)::set(null, "*", "tb_vif", u_tb_if);
         uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "smc_otp_axil_vif", u_smc_otp_axil_if);
         uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "smc_otp_slave_vif", u_smc_otp_slave_if);
+        uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "sep_otp_axil_vif", u_sep_otp_axil_if);
+        uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "sep_otp_slave_vif", u_sep_otp_slave_if);
         uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "smc_axi_slave_vif", u_smc_axi_slave_if);
         uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "m_axi_vif", u_m_axi_if);
+        uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "xtrig_master_vif", u_xtrig_master_if);
+        uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "xtrig_axil_vif", u_xtrig_axil_if);
+        uvm_config_db#(virtual ocah_jtag_if)::set(null, "*", "stap_io_ds_vif", u_stap_io_ds_if);
+        uvm_config_db#(virtual ocah_jtag_if)::set(null, "*", "stap_smc_ds_vif", u_stap_smc_ds_if);
+        uvm_config_db#(virtual ocah_jtag_if)::set(null, "*", "stap_sep_ds_vif", u_stap_sep_ds_if);
+        uvm_config_db#(virtual ocah_jtag_if)::set(null, "*", "stap_extra0_ds_vif",
+                                                  u_stap_extra0_ds_if);
         run_test();
     end
 `endif

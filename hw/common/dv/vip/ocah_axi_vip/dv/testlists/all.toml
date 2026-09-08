@@ -20,6 +20,45 @@ timeout_sec = 600
 tags = ["smoke", "ci", "axi_id"]
 run_modes = ["smoke"]
 
+[[tests]]
+name = "ocah_axi_lite_channel_skew_test"
+# cocotb-only: the SV-UVM master's skew knobs are exercised by its own flow.
+module = { cocotb = "ocah_axi_lite_channel_skew_test" }
+seed = 1
+timeout_sec = 600
+tags = ["smoke", "ci", "axi_lite"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "ocah_axi_lite_ready_hold_test"
+module = { cocotb = "ocah_axi_lite_ready_hold_test" }
+seed = 1
+timeout_sec = 600
+tags = ["smoke", "ci", "axi_lite"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "ocah_axi_lite_partial_strobe_test"
+module = { cocotb = "ocah_axi_lite_partial_strobe_test" }
+seed = 1
+timeout_sec = 600
+tags = ["smoke", "ci", "axi_lite"]
+run_modes = ["smoke"]
+
 [[groups]]
 name = "smoke"
-tests = ["ocah_axi_id_match_test", "ocah_axi_id_mismatch_test"]
+tests = [
+    "ocah_axi_id_match_test",
+    "ocah_axi_id_mismatch_test",
+    "ocah_axi_lite_channel_skew_test",
+    "ocah_axi_lite_ready_hold_test",
+    "ocah_axi_lite_partial_strobe_test",
+]
+
+[[groups]]
+name = "axi_lite"
+tests = [
+    "ocah_axi_lite_channel_skew_test",
+    "ocah_axi_lite_ready_hold_test",
+    "ocah_axi_lite_partial_strobe_test",
+]

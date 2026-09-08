@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import cocotb
 import pyuvm
-
 from seq_lib.smu_wrapper_elaboration_seq import SmuWrapperElaborationSeq
 from smu_base_test import smu_base_test
 
@@ -29,7 +28,7 @@ class smu_wrapper_elaboration_test(smu_base_test):
         await SmuWrapperElaborationSeq(self).run()
 
         expected_sep = int(cocotb.plusargs.get("expected_sep", "0"), 0)
-        # Legacy profile token retained for no_sep leaf / merge-gate greps.
+        # no_sep leaf evidence token; the merge gate greps for it.
         # SEP=1 card evidence is emitted inside the sequence (CHK-SMU-*).
         if expected_sep == 0:
             # CHK-NONVAC is emitted by the sequence after its ordered fence.

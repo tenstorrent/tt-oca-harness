@@ -7,17 +7,20 @@ holds every entropy consumer before resetting TRNG, proves the pool is empty
 and its stale data cannot be read, fully reinitializes the entropy complex while
 consumers remain held, and restores consumers only after fresh pool progress.
 It also proves all three internal CSR ports return DECERR while isolated, then
-resets with all external-source mux legs selected and proves the external TRNG
-CSR responder and source-select register remain outside the reset domain. The
-new JTAG reset pair is exercised to hold and release the same coordinated reset.
+resets with all external-source mux legs selected and proves the external
+source-select register remains outside the reset domain. The external TRNG
+aperture itself is terminated by a permanent DECERR error slave in this build,
+so its response is a build invariant and its domain membership is not claimed.
+The JTAG reset pair holds and releases the same coordinated reset.
 
 When software clears SW_RESET_N.trng_sw_rst_n, the coordinator stops accepting
-new ESRC/CSRNG/EDN CSR traffic, drains accepted transactions on all three AXI
-ports, and asserts the shared reset only after every port reports isolated.
+new ESRC/CSRNG/EDN CSR traffic, drains accepted transactions on all three
+converted AXI-Lite paths, and asserts the shared reset only after every path
+reports isolated.
 Buffered post-mux and pool entropy is cleared with the reset. While held, new
 CSR accesses receive DECERR. Setting trng_sw_rst_n releases the internal blocks,
-keeps their ports isolated for one release cycle, and then restores normal CSR
-traffic; firmware must reconfigure ESRC, CSRNG, and EDN before using entropy.
+releases their isolation, and restores normal CSR traffic; firmware must
+reconfigure ESRC, CSRNG, and EDN before using entropy.
 """
 
 from __future__ import annotations
@@ -25,23 +28,25 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, with_timeout
-
 from env.sep_axi_agent import SepAxiOp
-from env.sep_reg_meta import sym
+from env.sep_reg_meta import CSRNG, EDN, sym
+from ocah_axi_vip import worst_resp
 from sep_base_test import sep_base_test
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
-from seq_lib.sep_entropy_pool_seq import POOL_POP, POOL_STATUS
+from seq_lib.sep_entropy_pool_seq import POOL_POP, POOL_STATUS, RESP_SLVERR
 from seq_lib.sep_esrc_bringup_seq import (
     SepEsrcConfigSeq,
     SepEsrcEnableEdnSeq,
     SepEsrcEnableGeneratorsSeq,
 )
-from ocah_axi_vip.cocotb.ocah_axi_results import worst_resp
 from seq_lib.sep_sw_reset_seq import SW_RESET_N_BIT, SepSwReset
 
-
 # RDL-described addresses come from the generated SEP map. The external TRNG
-# responder is an integration aperture rather than a register block.
+# responder is an integration aperture rather than a register block: in this
+# build its only responder is the DECERR error slave u_ext_trng_axil_err_slv
+# (hw/top/sep_ip_integration.sv), and its passthrough leg carries no isolate
+# unit (hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv). Its DECERR is therefore
+# a build invariant used as a liveness baseline, not reset-domain evidence.
 ESRC_COMPONENT_ID = sym("ENTROPY_SOURCE_COMPONENT_ID_REG_ADDR")
 ESRC_CTRL = sym("ENTROPY_SOURCE_CTRL_REG_ADDR")
 ESRC_FIPS_LOCK = sym("ENTROPY_SOURCE_FIPS_LOCK_REG_ADDR")
@@ -51,6 +56,7 @@ EDN_INTR_STATE = sym("EDN_INTR_STATE_REG_ADDR")
 EDN_INTR_ENABLE = sym("EDN_INTR_ENABLE_REG_ADDR")
 EXT_TRNG_CSR = 0x1091_7000
 EXT_TRNG_SRC_SEL = sym("SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_REG_ADDR")
+
 
 @pyuvm.test()
 class sep_trng_reset_recovery_test(sep_base_test):
@@ -105,7 +111,26 @@ class sep_trng_reset_recovery_test(sep_base_test):
         )
 
         initial_level = await self._wait_pool_level(nonzero=True)
-        self.logger.info("initial entropy-pool level=%d", initial_level)
+        self.logger.info(
+            "CHK-TRNG-FILL PASS: genbits produced, ESRC FIPS_LOCK set, pool level=%d",
+            initial_level,
+        )
+
+        # Both INTR_ENABLEs reset to 0, so a 0-before/0-after read
+        # proves nothing. Drive them to their full implemented masks first, so the
+        # post-reset zero is a real 1->0 return to the register-map reset.
+        csrng_ie = CSRNG.mask("INTR_ENABLE")
+        edn_ie = EDN.mask("INTR_ENABLE")
+        await self._write(CSRNG_INTR_ENABLE, csrng_ie)
+        await self._write(EDN_INTR_ENABLE, edn_ie)
+        csrng_ie_set = (await self._read(CSRNG_INTR_ENABLE)).rdata & csrng_ie
+        edn_ie_set = (await self._read(EDN_INTR_ENABLE)).rdata & edn_ie
+        assert csrng_ie_set == csrng_ie, (
+            f"CSRNG INTR_ENABLE did not take 0x{csrng_ie:x} before the reset: 0x{csrng_ie_set:x}"
+        )
+        assert edn_ie_set == edn_ie, (
+            f"EDN INTR_ENABLE did not take 0x{edn_ie:x} before the reset: 0x{edn_ie_set:x}"
+        )
 
         resets = SepSwReset(self)
         saved = await resets.read_back()
@@ -146,7 +171,11 @@ class sep_trng_reset_recovery_test(sep_base_test):
         for _ in range(1_000):
             if int(cocotb.top.trng_gated_rst_n_probe_o.value) == 0:
                 assert int(cocotb.top.trng_axi_isolated_probe_o.value) == 0x7, (
-                    "shared TRNG reset asserted before all three AXI ports isolated"
+                    "shared TRNG reset asserted before all three AXI-Lite paths isolated"
+                )
+                self.logger.info(
+                    "CHK-TRNG-ISOLATE-ALL PASS: all three AXI-Lite paths reported "
+                    "isolated before the shared TRNG reset asserted"
                 )
                 break
             await ClockCycles(cocotb.top.clk_i, 1)
@@ -159,21 +188,32 @@ class sep_trng_reset_recovery_test(sep_base_test):
             await with_timeout(event.wait(), 10_000, "ns")
             drain_responses.append(event.data)
         drain_codes = [worst_resp(getattr(response, "resp", None)) for response in drain_responses]
+        # Return credits for accesses that drained without DECERR.
+        self.env.axi_monitor.release_expected_decerr(
+            3 - sum(1 for code in drain_codes if code == 3)
+        )
         assert all(code in (0, 3) for code in drain_codes), (
             f"in-flight TRNG CSR accesses returned unexpected responses {drain_codes}"
         )
         assert 0 in drain_codes, "no pre-reset TRNG CSR access drained successfully"
+        self.logger.info(
+            "CHK-TRNG-DRAIN PASS: in-flight ESRC/CSRNG/EDN reads resolved %s "
+            "(no hang, no SLVERR); at least one drained OKAY",
+            drain_codes,
+        )
 
         await ClockCycles(cocotb.top.clk_i, 20)
         assert int(cocotb.top.entropy_pool_packer_depth_o.value) == 0, (
             "TRNG reset did not scrub the half-packed entropy word"
         )
+        self.logger.info(
+            "CHK-TRNG-PACKER PASS: the parked half-packed entropy word was scrubbed "
+            "by the coordinated reset"
+        )
 
         # Once the coordinated reset is active, each internal CSR isolate must
         # reject new traffic without forwarding it into the reset domain.
-        # The two 32-bit DRBG register probes are unaligned to the 64-bit SEP
-        # bus and therefore each return two DECERR beats.
-        self.env.axi_monitor.arm_expected_decerr(6)
+        self.env.axi_monitor.arm_expected_decerr(3)
         for name, addr in (
             ("esrc", ESRC_COMPONENT_ID),
             ("csrng", CSRNG_INTR_ENABLE),
@@ -183,29 +223,56 @@ class sep_trng_reset_recovery_test(sep_base_test):
             assert isolated_csr.resp_code == 3, (
                 f"{name} CSR did not return DECERR while TRNG was isolated"
             )
+        self.logger.info(
+            "CHK-TRNG-DECERR PASS: all three internal CSR apertures returned DECERR "
+            "while isolated, none forwarded into the reset domain"
+        )
 
+        self.env.axi_monitor.arm_expected_decerr(1)
         ext_csr_during = await self._read(EXT_TRNG_CSR, expect_error=True)
+        # Liveness baseline only: this aperture answers DECERR from a permanent
+        # error slave whether or not it sits inside the TRNG reset domain, so the
+        # pair cannot distinguish the two. Domain membership is claimed from the
+        # source-select readback below, which is a real register.
         assert ext_csr_during.resp_code == ext_csr_before.resp_code, (
-            "internal TRNG reset changed the external TRNG CSR response"
+            "external TRNG aperture stopped answering with its build-invariant "
+            f"DECERR across the reset: before={ext_csr_before.resp_code} "
+            f"during={ext_csr_during.resp_code}"
         )
         assert ((await self._read(EXT_TRNG_SRC_SEL)).rdata & 0x7) == 0x7, (
             "internal TRNG reset changed the external source selection"
         )
+        self.logger.info(
+            "CHK-TRNG-EXTERNAL PASS: EXT_TRNG_SRC_SEL still reads all three legs "
+            "selected after the internal reset, so the source-select CSR is outside "
+            "the TRNG reset domain (aperture DECERR is a build invariant, not claimed)"
+        )
 
-        # Prove the JTAG override owns the same coordinated reset request. The
-        # override outranks the CSR, so releasing the SW bit underneath it must
-        # not bring the domain back; dropping the override returns ownership to
-        # software.
+        # JTAG overrides the final reset after the isolation sequence.
+        # Release software reset underneath it and prove isolation clears while
+        # the final reset remains asserted.
         jtag_reset = cocotb.top.jtag_trng_rst_hold_i
         jtag_reset.value = 1
         await resets.release("trng")
-        await ClockCycles(cocotb.top.clk_i, 20)
-        self.env.axi_monitor.arm_expected_decerr(1)
-        jtag_held = await self._read(ESRC_COMPONENT_ID, expect_error=True)
-        assert jtag_held.resp_code == 3, "JTAG override did not hold TRNG in reset"
+        for _ in range(1_000):
+            assert int(cocotb.top.trng_gated_rst_n_probe_o.value) == 0, (
+                "software release bypassed the final JTAG TRNG reset override"
+            )
+            if int(cocotb.top.trng_axi_isolated_probe_o.value) == 0:
+                break
+            await ClockCycles(cocotb.top.clk_i, 1)
+        else:
+            raise AssertionError("TRNG isolation did not clear during JTAG reset")
 
         jtag_reset.value = 0
         await ClockCycles(cocotb.top.clk_i, 4)
+        assert int(cocotb.top.trng_gated_rst_n_probe_o.value) == 1, (
+            "TRNG reset did not release after the final JTAG override cleared"
+        )
+        self.logger.info(
+            "CHK-TRNG-JTAG PASS: the JTAG override held the coordinated reset through a "
+            "software release, isolation cleared under it, and the reset lifted when it dropped"
+        )
 
         held = await resets.read_back()
         for consumer in ("km", "otbn", "aes", "kmac"):
@@ -215,11 +282,23 @@ class sep_trng_reset_recovery_test(sep_base_test):
         assert held & (1 << SW_RESET_N_BIT["trng"]), (
             "TRNG was not released for ordered reinitialization"
         )
+        self.logger.info(
+            "CHK-TRNG-CONSUMERS-HELD PASS: km/otbn/aes/kmac stayed held while TRNG was "
+            "released for reinitialization (SW_RESET_N=0x%08x)",
+            held,
+        )
         assert not ((await self._read(ESRC_FIPS_LOCK)).rdata & 0x1), (
             "shared TRNG reset did not clear ESRC FIPS_LOCK"
         )
-        assert ((await self._read(CSRNG_INTR_ENABLE)).rdata & 0xFFFF_FFFF) == 0
-        assert ((await self._read(EDN_INTR_ENABLE)).rdata & 0xFFFF_FFFF) == 0
+        csrng_ie_after = (await self._read(CSRNG_INTR_ENABLE)).rdata & csrng_ie
+        edn_ie_after = (await self._read(EDN_INTR_ENABLE)).rdata & edn_ie
+        assert csrng_ie_after == 0, (
+            f"CSRNG INTR_ENABLE did not return to its reset: 0x{csrng_ie_set:x} -> "
+            f"0x{csrng_ie_after:x}"
+        )
+        assert edn_ie_after == 0, (
+            f"EDN INTR_ENABLE did not return to its reset: 0x{edn_ie_set:x} -> 0x{edn_ie_after:x}"
+        )
 
         # CTRL[0] is reserved RAZ/WI; writing it must not alter neighboring
         # fields.
@@ -227,6 +306,14 @@ class sep_trng_reset_recovery_test(sep_base_test):
         await self._write(ESRC_CTRL, esrc_ctrl | 0x1)
         esrc_ctrl_after = (await self._read(ESRC_CTRL)).rdata & 0xFFFF_FFFF
         assert esrc_ctrl_after == esrc_ctrl, "reserved ESRC CTRL[0] is not RAZ/WI"
+        self.logger.info(
+            "CHK-TRNG-CSR-RESET PASS: ESRC FIPS_LOCK cleared, CSRNG INTR_ENABLE "
+            "0x%x->0x%x and EDN 0x%x->0x%x returned to reset, CTRL[0] still RAZ/WI",
+            csrng_ie_set,
+            csrng_ie_after,
+            edn_ie_set,
+            edn_ie_after,
+        )
 
         # TRNG is released for reinitialization, but EDN is reset/disabled and
         # consumers remain held. The synchronous clear must have removed every
@@ -234,13 +321,21 @@ class sep_trng_reset_recovery_test(sep_base_test):
         # all three source legs back to the internal DRBG.
         await self._wait_pool_level(nonzero=False)
         empty_pop = await self._read(POOL_POP, length=8, expect_error=True)
-        assert empty_pop.resp_code != 0, "empty pool returned OKAY after TRNG reset"
+        # sep_entropy_fifo.sv answers an empty pop, and a pending read during
+        # clear, with RESP_SLVERR on both paths. Accepting any non-OKAY would let
+        # a DECERR pass -- and a DECERR here would mean the aperture had fallen
+        # into the reset domain, which is the opposite of what this proves.
+        assert empty_pop.resp_code == RESP_SLVERR, (
+            f"empty pool resp={empty_pop.resp_code} after TRNG reset, expected SLVERR"
+        )
         assert empty_pop.rdata == 0, "empty pool exposed stale pre-reset entropy"
+        self.logger.info(
+            "CHK-TRNG-STALE PASS: pool drained to 0 and the empty pop was refused with "
+            "rdata=0, so no pre-reset entropy survived"
+        )
 
         cfg = self.entropy_cfg
-        await self.start_seq(
-            SepEsrcConfigSeq("esrc_reconfig", cfg=cfg, reset_trng=False)
-        )
+        await self.start_seq(SepEsrcConfigSeq("esrc_reconfig", cfg=cfg, reset_trng=False))
         await self.start_seq(SepEsrcEnableGeneratorsSeq("esrc_restart_gens"))
         assert await self.wait_seed_ready(), "ESRC did not produce a fresh seed after reset"
         await self.start_seq(SepEsrcEnableEdnSeq("edn_restart"))
@@ -251,6 +346,11 @@ class sep_trng_reset_recovery_test(sep_base_test):
         fresh_level = await self._wait_pool_level(nonzero=True)
         fresh_pop = await self._read(POOL_POP, length=8)
         assert fresh_pop.resp_ok, "fresh entropy-pool read failed after recovery"
+        self.logger.info(
+            "CHK-TRNG-FRESH PASS: ESRC produced a fresh seed, FIPS_LOCK was restored, "
+            "and the pool refilled to %d and served an OKAY pop",
+            fresh_level,
+        )
         await self.check_entropy_alerts_zero()
 
         await resets.restore_after_trng_reinit(saved)

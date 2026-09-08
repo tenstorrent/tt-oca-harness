@@ -100,7 +100,7 @@ module otbn_predecode
   logic alu_bignum_trn_is_trn1;
 
   // BN MAC static control signals
-  logic                  mac_bignum_op_en;
+  logic                  mac_bignum_mac_en;
   logic                  mac_bignum_is_vec;
   logic                  mac_bignum_is_mod;
   logic                  mac_bignum_is_lane;
@@ -228,7 +228,7 @@ module otbn_predecode
     flags_mac_update   = '0;
     flags_ispr_wr      = '0;
 
-    mac_bignum_op_en           = 1'b0;
+    mac_bignum_mac_en          = 1'b0;
     mac_bignum_is_vec          = 1'b0;
     mac_bignum_is_mod          = 1'b0;
     mac_bignum_is_lane         = 1'b0;
@@ -519,7 +519,7 @@ module otbn_predecode
               rf_ren_a_bignum    = 1'b1;
               rf_ren_b_bignum    = 1'b1;
               rf_we_bignum       = 1'b1;
-              mac_bignum_op_en   = 1'b1;
+              mac_bignum_mac_en  = 1'b1;
               mac_bignum_is_vec  = 1'b1;
               mac_bignum_is_mod  = imem_rdata_i[14:12] == 3'b100;
               mac_bignum_is_lane = imem_rdata_i[27];
@@ -689,7 +689,7 @@ module otbn_predecode
         InsnOpcodeBignumMulqacc: begin
           rf_ren_a_bignum         = 1'b1;
           rf_ren_b_bignum         = 1'b1;
-          mac_bignum_op_en        = 1'b1;
+          mac_bignum_mac_en       = 1'b1;
 
           mac_bignum_op_a_qw_sel    = imem_rdata_i[26:25];
           mac_bignum_op_b_elem0_sel = imem_rdata_i[28:27] * 2;
@@ -761,18 +761,26 @@ module otbn_predecode
         CsrMod4, CsrMod5, CsrMod6, CsrMod7: ispr_addr = IsprMod;
         CsrRnd:                             ispr_addr = IsprRnd;
         CsrUrnd:                            ispr_addr = IsprUrnd;
+        CsrMaiCtrl:                         ispr_addr = IsprMaiCtrl;
+        CsrMaiStatus:                       ispr_addr = IsprMaiStatus;
         default: ;
       endcase
     end else begin
       unique case (wsr_addr)
-        WsrMod:    ispr_addr = IsprMod;
-        WsrRnd:    ispr_addr = IsprRnd;
-        WsrUrnd:   ispr_addr = IsprUrnd;
-        WsrAcc:    ispr_addr = IsprAcc;
-        WsrKeyS0L: ispr_addr = IsprKeyS0L;
-        WsrKeyS0H: ispr_addr = IsprKeyS0H;
-        WsrKeyS1L: ispr_addr = IsprKeyS1L;
-        WsrKeyS1H: ispr_addr = IsprKeyS1H;
+        WsrMod:      ispr_addr = IsprMod;
+        WsrRnd:      ispr_addr = IsprRnd;
+        WsrUrnd:     ispr_addr = IsprUrnd;
+        WsrAcc:      ispr_addr = IsprAcc;
+        WsrKeyS0L:   ispr_addr = IsprKeyS0L;
+        WsrKeyS0H:   ispr_addr = IsprKeyS0H;
+        WsrKeyS1L:   ispr_addr = IsprKeyS1L;
+        WsrKeyS1H:   ispr_addr = IsprKeyS1H;
+        WsrMaiResS0: ispr_addr = IsprMaiResS0;
+        WsrMaiResS1: ispr_addr = IsprMaiResS1;
+        WsrMaiIn0S0: ispr_addr = IsprMaiIn0S0;
+        WsrMaiIn0S1: ispr_addr = IsprMaiIn0S1;
+        WsrMaiIn1S0: ispr_addr = IsprMaiIn1S0;
+        WsrMaiIn1S1: ispr_addr = IsprMaiIn1S1;
         default: ;
       endcase
     end
@@ -815,7 +823,7 @@ module otbn_predecode
   assign alu_bignum_predec_o.shift_dir[AluShiftDirRight] = alu_bignum_shift_en &
                                                            alu_bignum_shift_right;
 
-  assign mac_bignum_predec_raw_o.op_en               = mac_bignum_op_en;
+  assign mac_bignum_predec_raw_o.mac_en              = mac_bignum_mac_en;
   assign mac_bignum_predec_raw_o.is_vec              = mac_bignum_is_vec;
   assign mac_bignum_predec_raw_o.is_mod              = mac_bignum_is_mod;
   assign mac_bignum_predec_raw_o.is_lane             = mac_bignum_is_lane;
@@ -832,6 +840,7 @@ module otbn_predecode
   assign mac_bignum_predec_raw_o.mul_add_en          = '0;
   assign mac_bignum_predec_raw_o.c_add_en            = '0;
   assign mac_bignum_predec_raw_o.add_mod_en          = '0;
+  assign mac_bignum_predec_raw_o.acc_qw_sel          = '0;
   assign mac_bignum_predec_raw_o.acc_merger_en       = '0;
   assign mac_bignum_predec_raw_o.mul_shift_en        = '0;
   assign mac_bignum_predec_raw_o.mul_merger_en       = '0;

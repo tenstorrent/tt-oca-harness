@@ -7,6 +7,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import cocotb
+
 from .smc_csr_seq_utils import SmcCsrSeq
 
 # Generated PeakRDL map (hw/sys/smc/regs/gen/py/smc_reg.py).
@@ -51,33 +53,77 @@ from smc_reg import (  # noqa: E402
 # I3C HCI windows are covered by smc_i3c_to_fabric_test at 0xC000_5000.
 # Tuple: (name, addr, expected, length)
 LOCAL_FABRIC_READS = [
-    ("SMC_BASE_CONFIG_GLOBAL_BASE", SMC_BASE_CONFIG_GLOBAL_BASE_REG_ADDR,
-     SMC_BASE_CONFIG_GLOBAL_BASE_REG_DEFAULT, 8),
-    ("CLOCK_GATE_CONTROL", SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_REG_ADDR,
-     SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_REG_DEFAULT, 8),
-    ("MAILBOX0_OUT_ERROR_FLAGS", SMC_MAILBOX_OUTBOUND_MAILBOX_0_ERROR_FLAGS_REG_ADDR,
-     AXIL_MAILBOX_ERROR_REG_DEFAULT, 8),
-    ("ALIAS0_START", SMC_ALIAS_REMAP_0__REGION_REGION_START_REG_ADDR,
-     REMAP_REGION_REGION_START_REG_DEFAULT, 8),
-    ("ALIAS0_ATTRS", SMC_ALIAS_REMAP_0__REGION_REGION_ATTRS_REG_ADDR,
-     REMAP_REGION_REGION_ATTRS_REG_DEFAULT, 8),
-    ("OUTBOUND0_FILTER_CONFIG", SMC_OUTBOUND_FILTER_CTRL_0__FILTER_CONFIG_REG_ADDR,
-     FILTER_CTRL_FILTER_CONFIG_REG_DEFAULT, 8),
-    ("OUTBOUND0_START", SMC_OUTBOUND_FILTER_CTRL_0__START_ADDR_REG_ADDR,
-     FILTER_CTRL_START_ADDR_REG_DEFAULT, 8),
-    ("UART0_LOG_ENGINE_CTRL",
-     SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_0__UART_LOG_ENGINE_CTRL_CTRL_REG_ADDR,
-     UART_LOG_ENGINE_CTRL_CTRL_REG_DEFAULT, 4),
-    ("UART0_LSR", SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_0__UART_LSR_REG_ADDR,
-     UART_16550_MAIN_LSR_REG_DEFAULT, 4),
-    ("LOG_ENGINE0_CTRL",
-     SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_0__LOG_ENGINE_CTRL_REG_ADDR,
-     LOG_ENGINE_CTRL_REG_DEFAULT, 4),
-    ("ZEROER_DEST_ADDR", ZEROER_CTRL_DEST_ADDR_REG_ADDR,
-     ZEROER_CTRL_DEST_ADDR_REG_DEFAULT, 8),
-    ("ZEROER_SIZE", ZEROER_CTRL_SIZE_REG_ADDR,
-     ZEROER_CTRL_SIZE_REG_DEFAULT, 8),
+    (
+        "SMC_BASE_CONFIG_GLOBAL_BASE",
+        SMC_BASE_CONFIG_GLOBAL_BASE_REG_ADDR,
+        SMC_BASE_CONFIG_GLOBAL_BASE_REG_DEFAULT,
+        8,
+    ),
+    (
+        "CLOCK_GATE_CONTROL",
+        SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_REG_ADDR,
+        SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_REG_DEFAULT,
+        8,
+    ),
+    (
+        "MAILBOX0_OUT_ERROR_FLAGS",
+        SMC_MAILBOX_OUTBOUND_MAILBOX_0_ERROR_FLAGS_REG_ADDR,
+        AXIL_MAILBOX_ERROR_REG_DEFAULT,
+        8,
+    ),
+    (
+        "ALIAS0_START",
+        SMC_ALIAS_REMAP_0__REGION_REGION_START_REG_ADDR,
+        REMAP_REGION_REGION_START_REG_DEFAULT,
+        8,
+    ),
+    (
+        "ALIAS0_ATTRS",
+        SMC_ALIAS_REMAP_0__REGION_REGION_ATTRS_REG_ADDR,
+        REMAP_REGION_REGION_ATTRS_REG_DEFAULT,
+        8,
+    ),
+    (
+        "OUTBOUND0_FILTER_CONFIG",
+        SMC_OUTBOUND_FILTER_CTRL_0__FILTER_CONFIG_REG_ADDR,
+        FILTER_CTRL_FILTER_CONFIG_REG_DEFAULT,
+        8,
+    ),
+    (
+        "OUTBOUND0_START",
+        SMC_OUTBOUND_FILTER_CTRL_0__START_ADDR_REG_ADDR,
+        FILTER_CTRL_START_ADDR_REG_DEFAULT,
+        8,
+    ),
+    (
+        "UART0_LOG_ENGINE_CTRL",
+        SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_0__UART_LOG_ENGINE_CTRL_CTRL_REG_ADDR,
+        UART_LOG_ENGINE_CTRL_CTRL_REG_DEFAULT,
+        4,
+    ),
+    (
+        "UART0_LSR",
+        SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_0__UART_LSR_REG_ADDR,
+        UART_16550_MAIN_LSR_REG_DEFAULT,
+        4,
+    ),
+    (
+        "LOG_ENGINE0_CTRL",
+        SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_0__LOG_ENGINE_CTRL_REG_ADDR,
+        LOG_ENGINE_CTRL_REG_DEFAULT,
+        4,
+    ),
+    ("ZEROER_DEST_ADDR", ZEROER_CTRL_DEST_ADDR_REG_ADDR, ZEROER_CTRL_DEST_ADDR_REG_DEFAULT, 8),
+    ("ZEROER_SIZE", ZEROER_CTRL_SIZE_REG_ADDR, ZEROER_CTRL_SIZE_REG_DEFAULT, 8),
 ]
+
+
+# Independent floor, written out here rather than computed from the table the
+# body walks. Every entry of LOCAL_FABRIC_READS carries a non-null `expected`, so
+# each read must book one scoreboard VALUE compare -- not merely one access.
+# Other testcases lean on this sweep for their own `covered_by_live` claims,
+# which is exactly why its own gate may not be a self-count.
+LOCAL_FABRIC_MIN_VALUE_CHECKS = 12
 
 
 class smc_local_fabric_csr_depth_test_seq(SmcCsrSeq):
@@ -85,8 +131,38 @@ class smc_local_fabric_csr_depth_test_seq(SmcCsrSeq):
 
     def __init__(self, name: str = "smc_local_fabric_csr_depth_test_seq") -> None:
         super().__init__(name)
+        self.value_checks: int | None = None
 
     async def body(self) -> None:
+        sb = self.env.scoreboard
+        before = sb.sys_axi_value_checks_seen
         for name, addr, expected, length in LOCAL_FABRIC_READS:
             await self.csr_read(name, addr, expected, length=length)
-        assert self.accesses == len(LOCAL_FABRIC_READS), "local fabric CSR sweep mismatch"
+        # Loop integrity PLUS the scoreboard cross-check: `self.accesses` on its
+        # own is a counter this sequence bumps unconditionally and cannot see a
+        # mis-bound analysis path ([NO-ZERO-ACTIVITY-PASS]).
+        self.assert_all_reachable(len(LOCAL_FABRIC_READS), "local_fabric_csr")
+        # The read-back proof itself lives in SmcScoreboard._check_sys_axi, which
+        # books a value check only after an exact rdata compare has PASSED.
+        # Reconciling that measured tally against the stimulus this sweep issued
+        # is what makes "the twelve registers were read back correctly" a claim
+        # the run can fail: an `expected` that went None, a partial analysis-path
+        # loss, or an item-type change all land here instead of passing silently.
+        self.value_checks = sb.sys_axi_value_checks_seen - before
+        assert self.value_checks >= LOCAL_FABRIC_MIN_VALUE_CHECKS, (
+            f"local_fabric_csr: the scoreboard performed {self.value_checks} "
+            f"exact value compare(s) for this sweep, expected at least "
+            f"{LOCAL_FABRIC_MIN_VALUE_CHECKS} -- one per register in "
+            f"{[entry[0] for entry in LOCAL_FABRIC_READS]}. An access-only sweep "
+            f"proves decode, not register content"
+        )
+        cocotb.log.info(
+            "CHK-LOCAL-FABRIC-CSR-DEPTH: %d local-fabric CSR windows read over "
+            "SEP_IN AXI and %d of them value-compared against their generated "
+            "RDL reset value by the scoreboard (delta measured across this "
+            "sequence, so bring-up traffic cannot be counted toward the floor): "
+            "%s",
+            len(LOCAL_FABRIC_READS),
+            self.value_checks,
+            ", ".join(entry[0] for entry in LOCAL_FABRIC_READS),
+        )

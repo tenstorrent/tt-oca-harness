@@ -39,8 +39,7 @@ class smc_jtag_boot_stall_sanity_test_seq(SmcCsrSeq):
                     return
             await RisingEdge(clk)
         raise AssertionError(
-            f"{label}: tb_boot_stall_combined_o!={expect} "
-            f"last={dut.tb_boot_stall_combined_o.value}"
+            f"{label}: tb_boot_stall_combined_o!={expect} last={dut.tb_boot_stall_combined_o.value}"
         )
 
     async def _stay_low(self, dut, label: str) -> None:
@@ -88,7 +87,9 @@ class smc_jtag_boot_stall_sanity_test_seq(SmcCsrSeq):
         cocotb.log.info("CHK-JTAG-BOOT-STALL-LOCK: combined stayed 0 after ovrd drop")
         await self.wait_fuse_sense_done()
         got = await self.csr_read("SCRATCH_COLD_WARM_0", SCRATCH_COLD_WARM_0, expected=0)
-        cocotb.log.info("CHK-JTAG-BOOT-STALL-WARM: SCRATCH_COLD_WARM_0=0x%x after JTAG release", got)
+        cocotb.log.info(
+            "CHK-JTAG-BOOT-STALL-WARM: SCRATCH_COLD_WARM_0=0x%x after JTAG release", got
+        )
         cocotb.log.info(
             "CHK-JTAG-BOOT-STALL-BASIC: hold=%s ovrd=%s lock=%s",
             self.held_ok,

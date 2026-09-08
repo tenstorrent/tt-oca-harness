@@ -23,24 +23,29 @@ observation ports).
 from __future__ import annotations
 
 import cocotb
-from cocotb.triggers import RisingEdge, ClockCycles
 import pyuvm
-
+from cocotb.triggers import ClockCycles, RisingEdge
+from env.sep_drbg_scoreboard import SepDrbgScoreboard
 from sep_base_test import sep_base_test
-from seq_lib.sep_aes_seq import SepAes, AES_TRIGGER, AES_TRIGGER_PRNG_RESEED
+from seq_lib.sep_aes_seq import AES_TRIGGER, AES_TRIGGER_PRNG_RESEED, SepAes
 from seq_lib.sep_esrc_bringup_seq import (
     SepEntropyCfg,
     SepEsrcConfigSeq,
-    SepEsrcEnableGeneratorsSeq,
     SepEsrcEnableEdnSeq,
+    SepEsrcEnableGeneratorsSeq,
 )
-from env.sep_drbg_scoreboard import SepDrbgScoreboard
 
 _AES_BIT = 0
 _URND_BIT = 3
 _BOTH = (1 << _AES_BIT) | (1 << _URND_BIT)
 _DUAL_REQ_CYCLES = 50_000
-_GRANT_WAIT_CYCLES = 200_000
+# Enough consecutive grants to see the arbiter alternate, and the floor below
+# which the sample says nothing. Literals, so the asserts do not move with the
+# collection loop.
+_GRANT_SAMPLE_TARGET = 16
+_GRANT_MIN_SAMPLES = 4
+_GRANT_POLLS = 200_000
+_GRANT_POLL_CYCLES = 20
 
 
 def _req() -> int:
@@ -92,7 +97,9 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
         )
         self.logger.info(
             "CHK-DUAL-REQ PASS: crypto_edn_req bits 0x%x (AES bit %d + URND bit %d)",
-            dual_seen, _AES_BIT, _URND_BIT,
+            dual_seen,
+            _AES_BIT,
+            _URND_BIT,
         )
 
         # Same entropy bring-up as the other no_cpu consumers, split so the
@@ -100,8 +107,11 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
         cfg = SepEntropyCfg()
         self.entropy_cfg = cfg
         self.drbg_sb = SepDrbgScoreboard(
-            dut, self.logger, strict=True,
-            golden_kwargs=cfg.golden_kwargs(), chk2_backdoor=cfg.chk2_backdoor,
+            dut,
+            self.logger,
+            strict=True,
+            golden_kwargs=cfg.golden_kwargs(),
+            chk2_backdoor=cfg.chk2_backdoor,
             score_km=False,
             score_sinks={"aes": "golden", "otbn_urnd": "golden"},
         )
@@ -138,27 +148,27 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
         cocotb.start_soon(_monitor())
         await self.start_seq(SepEsrcEnableEdnSeq("esrc_enable_edn"))
 
-        for _ in range(_GRANT_WAIT_CYCLES):
-            if (
-                _AES_BIT in grants
-                and _URND_BIT in grants
-                and any(a != b for a, b in zip(grants, grants[1:]))
-            ):
+        # Collect grants for a fixed budget and let the asserts below decide.
+        # Breaking out on the same condition the asserts test would make them
+        # restatements of the loop guard, unable to fail at their own sites.
+        for _ in range(_GRANT_POLLS):
+            if len(grants) >= _GRANT_SAMPLE_TARGET:
                 break
-            await ClockCycles(dut.clk_i, 20)
-        else:
-            raise AssertionError(
-                "crypto-EDN grants did not alternate "
-                f"(grants={grants[:16]} dual_grants={dual_grants[:16]})"
-            )
+            await ClockCycles(dut.clk_i, _GRANT_POLL_CYCLES)
+        assert len(grants) >= _GRANT_MIN_SAMPLES, (
+            f"CHK-NO-STARVE FAIL: only {len(grants)} post-adapter grants observed in "
+            f"{_GRANT_POLLS} polls of {_GRANT_POLL_CYCLES} cycles, need "
+            f"{_GRANT_MIN_SAMPLES} to judge sharing "
+            f"(grants={grants[:16]} dual_grants={dual_grants[:16]})"
+        )
 
         assert _AES_BIT in grants and _URND_BIT in grants, (
-            "CHK-NO-STARVE FAIL: a requesting client got no edn_ack "
-            f"(grants={grants})"
+            f"CHK-NO-STARVE FAIL: a requesting client got no edn_ack (grants={grants})"
         )
         self.logger.info(
             "CHK-NO-STARVE PASS: both clients acked (AES grants=%d URND grants=%d)",
-            grants.count(_AES_BIT), grants.count(_URND_BIT),
+            grants.count(_AES_BIT),
+            grants.count(_URND_BIT),
         )
 
         # AES masking reseeds pulse edn_req per beat, so a same-cycle dual-req
@@ -170,18 +180,23 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
         )
         self.logger.info(
             "CHK-GRANT-ALT PASS: consecutive grants alternate (grants=%s dual_grants=%s)",
-            grants[:12], dual_grants[:12],
+            grants[:12],
+            dual_grants[:12],
         )
 
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
+        # The grant sample above establishes how much traffic each client
+        # actually took, so the routing floors are held to that rather than to
+        # the scoreboard's default of one beat.
+        self.drbg_sb.set_min_matches(CHK5_aes=_GRANT_MIN_SAMPLES, CHK5_otbn_urnd=_GRANT_MIN_SAMPLES)
         assert self.drbg_sb.report()
         ra = self.drbg_sb.results["CHK5_aes"]
         ru = self.drbg_sb.results["CHK5_otbn_urnd"]
-        assert ra.mismatches == 0 and ru.mismatches == 0
         self.logger.info(
             "CHK-ROUTING PASS: CHK5_aes match=%d and CHK5_otbn_urnd match=%d "
             "equal the AXIS1 grant-order stream (mismatch=0)",
-            ra.matches, ru.matches)
-        self.logger.info(
-            "CHK1..CHK4 bit-exact + CHK5_aes/CHK5_otbn_urnd ROUTING PASS")
+            ra.matches,
+            ru.matches,
+        )
+        self.logger.info("CHK1..CHK4 bit-exact + CHK5_aes/CHK5_otbn_urnd ROUTING PASS")

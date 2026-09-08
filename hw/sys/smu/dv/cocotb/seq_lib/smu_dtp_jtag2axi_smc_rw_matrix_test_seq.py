@@ -73,9 +73,7 @@ class smu_dtp_jtag2axi_smc_rw_matrix_test_seq:
             raise AssertionError(f"X/Z on {name}: {val}")
         return int(val)
 
-    async def _wr(
-        self, jtag, addr: int, data: int, *, wstrb: int, size: int, name: str
-    ) -> None:
+    async def _wr(self, jtag, addr: int, data: int, *, wstrb: int, size: int, name: str) -> None:
         st, _ = await jtag2axi_single_write(
             jtag,
             addr,
@@ -120,22 +118,17 @@ class smu_dtp_jtag2axi_smc_rw_matrix_test_seq:
 
         idcode = await jtag.read_idcode()
         if idcode != DTP_DEFAULT_IDCODE:
-            raise AssertionError(
-                f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}"
-            )
+            raise AssertionError(f"IDCODE want 0x{DTP_DEFAULT_IDCODE:x} got 0x{idcode:08x}")
         sb.expect_eq("CHK-J2A-MATRIX-JTAG-READY", idcode, DTP_DEFAULT_IDCODE)
 
         gate = self._sample_int("tb_smc_jtag2axi_security_disable") & 1
         if gate != 0:
-            raise AssertionError(
-                f"SMC J2A still gated after TCK sync: security_disable={gate}"
-            )
+            raise AssertionError(f"SMC J2A still gated after TCK sync: security_disable={gate}")
         caps = int(await jtag.read("SMC_JTAG2AXI_CAPS")) & ((1 << 14) - 1)
         require_jtag_tdo_resolved("SMC J2A CAPS")
         if caps != DTP_EXPECTED_SMC_JTAG2AXI_CAPS:
             raise AssertionError(
-                f"SMC J2A CAPS=0x{caps:04x} "
-                f"want 0x{DTP_EXPECTED_SMC_JTAG2AXI_CAPS:04x}"
+                f"SMC J2A CAPS=0x{caps:04x} want 0x{DTP_EXPECTED_SMC_JTAG2AXI_CAPS:04x}"
             )
         self.s1_ok = True
         self._log(f"CHK-J2A-MATRIX-GATE-OPEN disable={gate} caps=0x{caps:04x}")
@@ -153,8 +146,8 @@ class smu_dtp_jtag2axi_smc_rw_matrix_test_seq:
             payload = (DEFAULT_DATA ^ (0x1111_1111_1111_1111 * size)) & window
             write_data = (SIZE_OUTER & ~window) | payload
             # Bridge byte-enables follow WSTRB, not AxSIZE: SIZE=0 + WSTRB=0xFF
-            # stores the full beat (seed-1 FAIL 0xa5a5…a5ef). Issue the matching
-            # WSTRB width; 8-byte read must keep SIZE_SEED outside that window.
+            # stores the full beat. Issue the matching WSTRB width; the 8-byte
+            # read must keep SIZE_SEED outside that window.
             wstrb = _full_wstrb(size)
             want = apply_axi_wstrb(SIZE_SEED, write_data, wstrb, 8)
             await self._wr(
@@ -173,9 +166,7 @@ class smu_dtp_jtag2axi_smc_rw_matrix_test_seq:
                 size=size,
                 name=f"SIZE{size}",
             )
-            got = await self._rd(
-                jtag, addr, size=SMC_DBG_AXSIZE_8B, name=f"SIZE{size}"
-            )
+            got = await self._rd(jtag, addr, size=SMC_DBG_AXSIZE_8B, name=f"SIZE{size}")
             if got != want:
                 raise AssertionError(
                     f"SIZE{size} @0x{addr:08x} want 0x{want:016x} got 0x{got:016x} "
@@ -211,9 +202,7 @@ class smu_dtp_jtag2axi_smc_rw_matrix_test_seq:
                 size=SMC_DBG_AXSIZE_8B,
                 name=f"WSTRB-{tag}",
             )
-            got = await self._rd(
-                jtag, addr, size=SMC_DBG_AXSIZE_8B, name=f"WSTRB-{tag}"
-            )
+            got = await self._rd(jtag, addr, size=SMC_DBG_AXSIZE_8B, name=f"WSTRB-{tag}")
             want = apply_axi_wstrb(0, pattern, wstrb, 8)
             if got != want:
                 raise AssertionError(
@@ -221,8 +210,7 @@ class smu_dtp_jtag2axi_smc_rw_matrix_test_seq:
                 )
             partial_obs.append((wstrb, got))
             self._log(
-                f"CHK-J2A-MATRIX-WSTRB-{tag} @0x{addr:08x} "
-                f"wstrb=0x{wstrb:02x} data=0x{got:016x}"
+                f"CHK-J2A-MATRIX-WSTRB-{tag} @0x{addr:08x} wstrb=0x{wstrb:02x} data=0x{got:016x}"
             )
         self.s3_ok = True
         sb.expect_eq(
@@ -257,9 +245,7 @@ class smu_dtp_jtag2axi_smc_rw_matrix_test_seq:
                 f"data=0x{ver_data:08x} want SUCCESS+0x{VERSION_LO_RESET:08x}"
             )
         self.s4_ok = True
-        self._log(
-            f"CHK-J2A-MATRIX-STICKY status=SUCCESS VERSION_LO=0x{ver_data:08x}"
-        )
+        self._log(f"CHK-J2A-MATRIX-STICKY status=SUCCESS VERSION_LO=0x{ver_data:08x}")
         sb.expect_eq(
             "CHK-J2A-MATRIX-STICKY",
             (sticky, ver_data),

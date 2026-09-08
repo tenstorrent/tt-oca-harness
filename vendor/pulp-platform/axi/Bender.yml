@@ -18,11 +18,11 @@ package:
     - "Nils Wistoff <nwistoff@iis.ee.ethz.ch>"
     - "Florian Zaruba <zarubaf@iis.ee.ethz.ch>"
 
-# Sources are vendored from upstream pulp-platform/axi into upstream/ via the `vendor_package`
-# entry in the root Bender.yml (bender vendor init), pinned at the fork merge-base
-# (v0.39.9-13-g808e7b3). The TT-local delta is applied as the numbered, atomic patches in
-# patches/ (0001 AXI5-Lite feature, 0002 TT helper modules axi_hidestrb/axi_cdc_clearable/
-# axi_spill_regs, 0003 in-place RTL edits, 0004 verif) — see the package README. It is a mix of
+# Sources are vendored from tenstorrent/tt-axi into upstream/ via the `vendor_package` entry in
+# the root Bender.yml (bender vendor init), at the revision pinned there. The remaining TT-local
+# delta is applied as the numbered, atomic patches in patches/ (0001 AXI5-Lite feature, 0002 TT
+# helper modules axi_hidestrb/axi_cdc_clearable/axi_spill_regs, 0003 in-place RTL edits, 0004
+# verif). It is a mix of
 # in-place edits (axi_pkg/axi_intf/typedef.svh/assign.svh/...) plus TT-authored modules that do
 # not exist upstream (axi5_lite_* family, axi_hidestrb, axi_cdc_clearable, axi_spill_regs, ...).
 # The TT Bender target gating (axi_rtl / axi_simulation) is reproduced from the fork because
@@ -81,6 +81,7 @@ sources:
     - upstream/src/axi_lite_demux.sv
     - upstream/src/axi_lite_dw_converter.sv
     - upstream/src/axi_lite_from_mem.sv
+    - upstream/src/axi_lite_isolate.sv
     - upstream/src/axi_lite_join.sv
     - upstream/src/axi_lite_lfsr.sv
     - upstream/src/axi_lite_mailbox.sv
