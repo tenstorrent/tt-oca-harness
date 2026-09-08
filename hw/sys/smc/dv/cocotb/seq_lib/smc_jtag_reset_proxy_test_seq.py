@@ -4,9 +4,7 @@
 
 from __future__ import annotations
 
-import cocotb
-from cocotb.triggers import ClockCycles
-from env.smc_reset_item import SmcResetItem, SmcResetOp
+from env.smc_reset_item import RESET_SAMPLE_FIELDS, SmcResetItem, SmcResetOp
 from env.smc_sys_axi_agent import SmcSysAxiItem, SmcSysAxiOp
 
 from .smc_addr_map import smc_addr
@@ -15,6 +13,13 @@ from .smc_base_test_seq import smc_base_test_seq
 CHIP_CONFIG_VERSION_LO = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR")
 SCRATCH_COLD_2 = smc_addr("SMC_TOP_SMC_MISC_WRAP_SCRATCH_COLD_BASE_ADDR") + 0x8
 SCRATCH_PATTERN = 0x1A7A_0002
+
+# Same bounds smc_flr_sanity_test_seq uses for the cool-reset handshake.
+# smc_reset_ctrl de-glitches rst_cool_ni over 32 clk_ref_i samples
+# (docs/SMC_VPLAN.adoc), so any hold shorter than that is silently rejected and
+# no reset is taken at all.
+COOL_ASSERT_BOUND_REF = 400
+COOL_RECOVER_BOUND_REF = 4000
 
 
 class smc_jtag_reset_proxy_test_seq(smc_base_test_seq):
@@ -51,19 +56,73 @@ class smc_jtag_reset_proxy_test_seq(smc_base_test_seq):
         item.op = op
         await self.dispatch_reset(item)
 
+    _SEND_KEYS = frozenset(
+        [f"expect_{f}" for f in RESET_SAMPLE_FIELDS] + ["expect_left_stable", "timeout_ref_cycles"]
+    )
+
+    async def _wait_reset_state(self, label: str, bound: int, **expects) -> SmcResetItem:
+        """Bounded WAIT_STATE handshake carrying exact expected reset levels.
+
+        The expectations travel on the item, so a window that never matches
+        fails in the scoreboard with the last observed state rather than being
+        absorbed here ([TIMEOUT-MUST-FAIL] / [NO-BLIND-DELAY-SYNC]). Same guard
+        as SmcResetSeqBase._send: a mistyped ``expect_*`` would otherwise become
+        a silent non-check.
+        """
+        bad = set(expects) - self._SEND_KEYS
+        assert not bad, f"unknown reset item keyword(s) {sorted(bad)} (typo = silent non-check)"
+        item = SmcResetItem(label)
+        item.op = SmcResetOp.WAIT_STATE
+        item.timeout_ref_cycles = bound
+        for field, value in expects.items():
+            setattr(item, field, value)
+        await self.dispatch_reset(item)
+        return item
+
     async def body(self) -> None:
         await self._read("CHIP_CONFIG_VERSION_LO", CHIP_CONFIG_VERSION_LO, expected=0x0001_00A0)
         await self._write("SCRATCH_COLD_2", SCRATCH_COLD_2, SCRATCH_PATTERN)
         await self._read("SCRATCH_COLD_2", SCRATCH_COLD_2, expected=SCRATCH_PATTERN)
 
+        # Hold rst_cool_ni low until the reset is observed taken, then release
+        # it and wait for the observed release. A fixed hold is not usable here:
+        # anything below smc_reset_ctrl's 32-sample de-glitch window is
+        # rejected, no reset is taken, and the recovery reads below would
+        # re-read CSRs that never went anywhere -- a DUT ignoring rst_cool_ni
+        # entirely would look identical.
         await self._reset_op("cool_rst_lo", SmcResetOp.COOL_RST_LO)
-        await ClockCycles(cocotb.top.clk_ref_i, 20)
+        await self._wait_reset_state(
+            "cool_asserted",
+            COOL_ASSERT_BOUND_REF,
+            expect_powergood_stable=1,
+            expect_rst_cold_stable_ref_clk_n=1,
+            expect_rst_primary_ref_clk_n=0,
+            expect_rst_primary_smc_clk_n=0,
+            expect_left_stable=True,
+        )
         await self._reset_op("cool_rst_hi", SmcResetOp.COOL_RST_HI)
-        await ClockCycles(cocotb.top.clk_ref_i, 200)
+        await self._wait_reset_state(
+            "cool_released",
+            COOL_RECOVER_BOUND_REF,
+            expect_powergood_stable=1,
+            expect_rst_cold_stable_ref_clk_n=1,
+            expect_rst_primary_ref_clk_n=1,
+            expect_rst_primary_smc_clk_n=1,
+            expect_rst_wdt_smc_clk_n=1,
+        )
+        # The warm domain the CSRs live in returns through the fuse/warm release
+        # pipe; wait on that handshake before touching CSRs again.
+        await self.wait_fuse_sense_done()
 
+        # SCRATCH_COLD_2 is in the cold domain, so a taken cool reset must NOT
+        # have cleared the pattern written before it. Reading it back here is
+        # what makes the reset above load-bearing rather than incidental.
         await self._read(
             "CHIP_CONFIG_VERSION_LO_RECOVERY", CHIP_CONFIG_VERSION_LO, expected=0x0001_00A0
         )
+        await self._read("SCRATCH_COLD_2_PERSISTED", SCRATCH_COLD_2, expected=SCRATCH_PATTERN)
         await self._write("SCRATCH_COLD_2_RESTORE", SCRATCH_COLD_2, 0)
         await self._read("SCRATCH_COLD_2_RESTORE", SCRATCH_COLD_2, expected=0)
-        assert self.accesses == 6, "JTAG reset proxy access mismatch"
+        assert self.accesses == 7, (
+            f"JTAG reset proxy access mismatch: issued {self.accesses}, expected 7"
+        )

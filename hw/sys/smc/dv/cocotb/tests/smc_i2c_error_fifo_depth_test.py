@@ -1,6 +1,18 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC OSS I2C error/FIFO depth pin-level test."""
+"""SMC OSS I2C CSR-decode and SCL/SDA pin-override depth test.
+
+PROXY, not an error/FIFO-depth test. This module runs the same
+``smc_i2c_master_target_test_seq`` body as ``smc_i2c_master_target_test``:
+I2C0 host/target CSR decode plus LSIO SCL/SDA release and pull-low checks.
+
+It measures no FIFO depth -- ``FIFO_STATUS`` is never read, and the only
+``FIFO_CTRL`` accesses are ``RXRST | FMTRST`` resets -- and it injects no error:
+``CONTROLLER_EVENTS`` is written W1C to clear and read only to decorate failure
+messages, so no event bit is ever asserted. The residual gap -- FIFO-depth and
+error-injection coverage -- is recorded under DOES NOT DEFEND in this
+testcase's VPLAN entry.
+"""
 
 from __future__ import annotations
 
@@ -27,7 +39,16 @@ class smc_i2c_error_fifo_depth_test(smc_base_test):
             # remainder, so the floor is set below the observed count. Literal
             # here, not read from `seq.accesses`.
             min_csr_accesses=45,
-            csr_accesses=seq.accesses,
-            proxy=False,
-            details="I2C0 LSIO SCL/SDA release and pull-low behavior checked",
+            # The scoreboard's own per-bus tally, stamped by the driver that
+            # completed each access, rather than `seq.accesses`, which the
+            # sequence increments on dispatch regardless of what came back.
+            csr_accesses=self.env.scoreboard.axi_accesses_by_bus.get("SEP_IN AXI", 0),
+            # This IS a proxy: it stands in for I2C error/FIFO-depth coverage.
+            proxy=True,
+            details=(
+                "PROXY for I2C error/FIFO-depth coverage: I2C0 CSR decode plus "
+                "LSIO SCL/SDA release and pull-low behaviour checked. No FIFO "
+                "depth measured (FIFO_STATUS never read) and no error injected "
+                "(CONTROLLER_EVENTS only cleared and reported)"
+            ),
         )

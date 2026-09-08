@@ -3,9 +3,13 @@
 """U7-1 / P2-7: ECC SBE/DBE inject hooks on scratch bank0.
 
 DEFENDS: with inject armed, a real scratch bank0 read advances
-tb_cpu_ecc_inject_fire_count via DUT cpu_scratch0_inject_fire; clearing
-inject lets further scratch reads proceed without incrementing (recovery).
-DOES NOT DEFEND: Rocket ECC syndrome CSR / precise RAS recovery FW policy.
+tb_cpu_ecc_inject_fire_count via DUT cpu_scratch0_inject_fire; clearing inject
+holds that counter while further scratch reads are still arriving. The claim is
+the contrast between those two halves -- the hold alone is true for every DUT
+state, because both inject pins are TB inputs and both are 0.
+DOES NOT DEFEND: Rocket ECC syndrome CSR / precise RAS recovery FW policy, nor
+any DUT SECDED behaviour -- the hook counts qualifying reads and corrupts no
+data.
 """
 
 from __future__ import annotations
@@ -151,18 +155,53 @@ class smc_ecc_fault_inject_test_seq(SmcCsrSeq):
         scratch_hold = int(dut.tb_cpu_scratch_read_count.value)
 
         # Recovery: further scratch traffic with inject clear must not score.
+        #
+        # `fire_count` is incremented by
+        # models/smc_cpu_mem_dv.sv:scratch0_inject_fire_q, whose enable term is
+        #   scratch_ram_req_i[0].en && !wmode && (ecc_inject_sbe_i || ecc_inject_dbe_i)
+        # -- both inject pins are TB inputs and both are 0 here, so
+        # `mid_after == mid` alone is true for every DUT state and cannot fail
+        # on any RTL. What carries the claim is the CONTRAST across
+        # the two halves of this run, on the same counter:
+        #   armed   (inject=1) -> the counter advanced, asserted below and
+        #                         originally established by _wait_fire_count_gt
+        #                         inside _clear_sbe_on_first_fire, which raises
+        #                         on expiry;
+        #   cleared (inject=0) -> the counter holds WHILE further scratch reads
+        #                         are still arriving, which
+        #                         _wait_scratch_reads_gt raises on if they stop.
+        # Both halves are needed: the first is what makes the second mean
+        # anything, and the traffic gate is what stops "no reads happened" from
+        # masquerading as recovery.
+        #
+        # Scope, stated because the counter name invites over-reading it: this
+        # proves the injection hook is gated by its enable pins and that scratch
+        # traffic survives the clear. It does NOT prove Rocket SECDED behaviour
+        # -- no corrupted data is forced onto any macro response anywhere in
+        # this bench (CHK-ECC-INJECT-NO-DUT-SECDED says the same).
+        assert sbe > base, (
+            f"inject-armed half of the recovery contrast never happened: "
+            f"fire_count {base} -> {sbe} while ecc_inject_sbe_i was 1, so the "
+            f"hold below is vacuous"
+        )
         await self._wait_scratch_reads_gt(scratch_hold, label="RECOVERY")
         await ClockCycles(clk, 8)
         mid_after = int(dut.tb_cpu_ecc_inject_fire_count.value)
+        scratch_after = int(dut.tb_cpu_scratch_read_count.value)
         assert mid_after == mid, (
-            f"inject-clear recovery failed during I$ fill: fire_count {mid} -> {mid_after}"
+            f"inject-clear recovery failed during I$ fill: fire_count {mid} -> "
+            f"{mid_after} with both inject pins 0 (armed half advanced "
+            f"{base} -> {sbe}; scratch_reads {scratch_hold} -> {scratch_after})"
         )
         cocotb.log.info(
-            "RECOVERY ok: fire_count held at %d (first_fire=%d); scratch_reads %d -> %d",
-            mid,
+            "CHK-ECC-INJECT-RECOVERY: armed fire_count %d -> %d, then with "
+            "inject cleared held at %d across scratch_reads %d -> %d "
+            "(hook gating, not DUT SECDED)",
+            base,
             sbe,
+            mid_after,
             scratch_hold,
-            int(dut.tb_cpu_scratch_read_count.value),
+            scratch_after,
         )
 
         # DBE while the first-boot I$ fill is still settling — a later
