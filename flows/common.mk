@@ -21,7 +21,7 @@ OCAH_FLOW_COMMON_DEFINES ?= -D SYNTHESIS=1
 OCAH_FLOW_TIMESCALE ?= 1ns/1ps
 
 # Discover per-block flow descriptors, including vendored IP overlays (e.g.
-# vendor/tenstorrent/aou-rtl/overlay/flow.mk).
+# vendor/tenstorrent/aou/overlay/flow.mk).
 OCAH_FLOW_MKS := $(wildcard $(OCAH_ROOT)/hw/sys/*/flow.mk $(OCAH_ROOT)/hw/ip/*/flow.mk $(OCAH_ROOT)/hw/ip/*/*/flow.mk $(OCAH_ROOT)/vendor/*/*/overlay/flow.mk)
 
 # Directory containing a given flow.mk.

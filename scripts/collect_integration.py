@@ -41,7 +41,7 @@ def production_rdl_sources() -> list[Path]:
             "hw/common/axi/*/regs/**/*.rdl",
             "hw/common/regs/*.rdl",
             "vendor/*/*/overlay/**/*.rdl",
-            "vendor/tenstorrent/aou-rtl/upstream/csr/*.rdl",
+            "vendor/tenstorrent/aou/upstream/csr/*.rdl",
             "vendor/chipsalliance/i3c-core/upstream/src/rdl/*.rdl",
         )
         if "gen" not in path.parts and "memory_interface" not in path.parts
@@ -86,8 +86,8 @@ def owner_root(path: Path) -> Path:
             if "regs" in relative.parts[overlay_index + 1 :]:
                 return ROOT.joinpath(*relative.parts[: overlay_index + 4])
             return ROOT.joinpath(*relative.parts[: overlay_index + 2])
-        if "aou-rtl" in relative.parts:
-            return ROOT / "vendor/tenstorrent/aou-rtl/upstream/csr"
+        if "aou" in relative.parts:
+            return ROOT / "vendor/tenstorrent/aou/upstream/csr"
         if "i3c-core" in relative.parts:
             return ROOT / "vendor/chipsalliance/i3c-core/upstream/src"
     return path.parent
