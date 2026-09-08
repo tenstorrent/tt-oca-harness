@@ -428,6 +428,8 @@ CLA_RESET_SWEEP = _cla_reset_sweep()
 # Non-zero-reset rows carry the discrimination; asserted below so a generated
 # map that lost them cannot silently turn the sweep into 82 reads of zero.
 CLA_SWEEP_NONZERO = tuple(r for r in CLA_RESET_SWEEP if r[2] != 0)
+
+
 def _cla_unmapped_probes(count: int = 3) -> tuple[tuple[str, int], ...]:
     """In-window offsets that map to no register, taken from the generated map.
 
@@ -440,6 +442,10 @@ def _cla_unmapped_probes(count: int = 3) -> tuple[tuple[str, int], ...]:
     mapped = {
         getattr(_r, n) for n in dir(_r) if n.startswith("SMC_CLA_") and n.endswith("_REG_ADDR")
     }
+    assert mapped, (
+        "generated smc_reg has no SMC_CLA_*_REG_ADDR symbols; the deny-leg "
+        "derivation would treat every offset as a hole"
+    )
     out = []
     for off in range(0, 0x3000, 4):
         addr = SMC_CLA_REG_MAP_BASE_ADDR + off
@@ -685,13 +691,18 @@ class smc_remap_cla_test_seq(SmcCsrSeq):
             len(CLA_RESET_SWEEP),
             len(CLA_SWEEP_NONZERO),
         )
+        hole_offs = "/".join(
+            f"+0x{addr - SMC_CLA_REG_MAP_BASE_ADDR:X}" for _, addr in CLA_UNMAPPED_PROBES
+        )
         for name, addr in CLA_UNMAPPED_PROBES:
             await self.csr_read_expect_resp_zero(name, addr, RESP_SLVERR)
         cocotb.log.info(
-            "CHK-CLA-WINDOW-DENY: the three unmapped in-window offsets +0x8/+0xC/"
-            "+0x30 (holes in the dst_sink block that opens the aperture) each "
+            "CHK-CLA-WINDOW-DENY: the %d unmapped in-window offsets %s "
+            "(holes derived from the generated CLA map) each "
             "returned resp=%d (SLVERR) with rdata=0, while the registers around "
             "answered OKAY in the same run",
+            len(CLA_UNMAPPED_PROBES),
+            hole_offs,
             RESP_SLVERR,
         )
 

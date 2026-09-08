@@ -244,10 +244,10 @@ module smc_cpu_mem_dv
             end
             $fclose(scratch_fd);
             if (file_words > int'(MAX_LINEAR_WORDS)) begin
-              $display({"[smc_cpu_mem_dv] ERROR: scratch image %s holds %0d words but the ",
-                        "backdoor stages only %0d -- the image is TRUNCATED and the CPU will ",
-                        "fetch whatever the cut left behind. Raise MAX_LINEAR_WORDS."},
-                       scratch_path, file_words, MAX_LINEAR_WORDS);
+              $error({"[smc_cpu_mem_dv] scratch image %s holds %0d words but the ",
+                      "backdoor stages only %0d -- the image is TRUNCATED and the CPU will ",
+                      "fetch whatever the cut left behind. Raise MAX_LINEAR_WORDS."},
+                     scratch_path, file_words, MAX_LINEAR_WORDS);
             end
             $display("[smc_cpu_mem_dv] stripe-loaded scratch %s (%0d words in file, bank0 nonzero=%0d)",
                      scratch_path, file_words, loaded_words);

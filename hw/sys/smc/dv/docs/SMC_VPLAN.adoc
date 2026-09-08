@@ -9,8 +9,9 @@
 This plan covers the SMC subsystem as it is verified in the open-source
 harness: the `smc_wrapper` DUT driven over SEP_IN AXI and AXI-Lite, with
 cocotb/PyUVM as the primary framework and an SV-UVM view for the scenarios
-that carry one. 153 testcases are enrolled, and the `all` group is
-the whole of them.
+that carry one. 156 testcases are enrolled. The `all` group is 149 of
+them: five dual / production-ROM leaves build a different DUT, and two
+enrolled leaves are held out against #585 and #1488.
 
 Every entry below names a testcase that exists and runs. Where the harness
 cannot reach a feature, the testcase is not listed here as enrolled; it is

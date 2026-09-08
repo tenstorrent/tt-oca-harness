@@ -71,9 +71,9 @@ CPU_FW_FAIL_VALUE = 0xBAD0_0000
 # failures actually leave behind.
 CPU_FW_TEST_FAIL = 0xFFFF_FFFF
 
-# Sync-free min_pass image posts magic here (scratch SRAM), because cluster
-# MMIO to CPU_CTRL SCRATCH may not be reachable until more fabric bring-up.
-CPU_FW_SRAM_MAILBOX = 0xC006_0100
+# Name kept for callers. min_pass posts 0xACAFACA1 to CPU_CTRL SCRATCH_0
+# (0xC0039080), not to scratch SRAM. The boot verdict reads that CSR.
+CPU_FW_SRAM_MAILBOX = CPU_CTRL_SCRATCH_0
 
 # boot_stall is an lsio pad; smc_padring.sv holds the assignment.
 BOOT_STALL_PAD = 57

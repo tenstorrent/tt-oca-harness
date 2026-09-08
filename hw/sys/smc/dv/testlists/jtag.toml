@@ -39,7 +39,7 @@ tags = ["ci", "project_p0", "pyuvm"]
 run_modes = ["smoke"]
 
 # Discriminator for the Xcelium SYS_OUT write hang (AW handshake, no W).
-# Not in the batch_d / balanced_ip groups: run with --items.
+# Not in balanced_ip: run with --items smc_dbs_idle_test.
 
 [[groups]]
 name = "jtag_depth"
