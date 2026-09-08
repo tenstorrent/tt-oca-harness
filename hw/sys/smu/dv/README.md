@@ -206,6 +206,11 @@ The verdict is always the firmware's own — a named terminal loop, or the STDOU
 mailbox handshake — and the testbench only observes. `seq_lib/sep_fw_common.py`
 holds the symbol lookup and PC attribution; `seq_lib/sep_terminal_loop_seq.py`
 is the shared loop classifier that most of these subclass in a few lines.
+`cocotb_wrapper/env/smu_sep_cpu_trace_monitor.py` is the passive SEP
+processor-state monitor every wrapper test builds: a failing scenario ends with
+its symbolized SEP call stack, trap records, and recent-PC tail in the log, and
+`+sep_trace_log` streams every retirement to `sep_trace.log` (see
+`docs/SMU_TB_ARCH.adoc`).
 
 | Test | Firmware | Pass evidence |
 |------|----------|---------------|

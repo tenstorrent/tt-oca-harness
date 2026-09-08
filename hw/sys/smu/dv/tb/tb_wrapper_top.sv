@@ -93,6 +93,13 @@ module smu_wrapper_uvm_top (
   output logic [31:0] smc_scratch_write_count_o,
   output logic        sep_trace_valid_o,
   output logic [31:0] sep_pc_o,
+  // Remaining fields of the EL2 retirement record (el2_trace_pkt_t), for the
+  // cocotb processor-state monitor.
+  output logic [31:0] sep_trace_insn_o,
+  output logic        sep_trace_exc_o,
+  output logic [4:0]  sep_trace_ecause_o,
+  output logic        sep_trace_interrupt_o,
+  output logic [31:0] sep_trace_tval_o,
   output logic [31:0] sep_inst_count_o,
   output logic [31:0] sep_iccm_write_count_o,
   output logic [31:0] sep_dccm_write_count_o,
@@ -581,6 +588,16 @@ module smu_wrapper_uvm_top (
         sep_reset_n ? sep_cpu_trace.trace_rv_i_valid_ip : 1'b0;
   assign sep_pc_o =
         sep_reset_n ? sep_cpu_trace.trace_rv_i_address_ip : '0;
+  assign sep_trace_insn_o =
+        sep_reset_n ? sep_cpu_trace.trace_rv_i_insn_ip : '0;
+  assign sep_trace_exc_o =
+        sep_reset_n ? sep_cpu_trace.trace_rv_i_exception_ip : 1'b0;
+  assign sep_trace_ecause_o =
+        sep_reset_n ? sep_cpu_trace.trace_rv_i_ecause_ip : '0;
+  assign sep_trace_interrupt_o =
+        sep_reset_n ? sep_cpu_trace.trace_rv_i_interrupt_ip : 1'b0;
+  assign sep_trace_tval_o =
+        sep_reset_n ? sep_cpu_trace.trace_rv_i_tval_ip : '0;
 
   // Observe SEP run-gate nets. Use ifdef (not generate-if) so the no-SEP
   // compile never resolves gen_sep hierarchy XMRs.
