@@ -298,14 +298,14 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         observed = 0
         for _ in range(cycles):
             await ReadOnly()
-            observed = int(getattr(self.xtrig.dut, name).value) & mask
+            observed = self.xtrig.sample_signal(name) & mask
             await ClockCycles(self.xtrig.clk, 1)
             if observed == (expected & mask):
                 self.log.info("Observed %s mask=0x%x expected=0x%x %s", name, mask, expected, label)
                 break
         else:
             await ReadOnly()
-            observed = int(getattr(self.xtrig.dut, name).value) & mask
+            observed = self.xtrig.sample_signal(name) & mask
         self.check_evidence(
             self.CHK_SIGNAL, f"{name}.mask", observed, expected & mask, context=label
         )
@@ -366,9 +366,9 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             )
             await self.wait_signal_mask(signal, ctp_outputs, ctp_outputs, label=f"{label}.ctp")
             if mode == XTRIG_CTP_MODE_P2P:
-                self.xtrig.dut.xtrig_ctp_ack_in_din.value = ctp_outputs
+                self.xtrig.set_ctp_ack_in_din(ctp_outputs)
                 await ClockCycles(self.xtrig.clk, 3)
-                self.xtrig.dut.xtrig_ctp_ack_in_din.value = 0
+                self.xtrig.set_ctp_ack_in_din(0)
         if int_outputs:
             await self.wait_signal_mask(
                 "xtrig_ctm_src_req", int_outputs, int_outputs, label=f"{label}.internal"
@@ -696,9 +696,9 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             )
             if not self.is_ctp_port(output_port):
                 ack_mask = 1 << self.int_idx_from_port(output_port)
-                self.xtrig.dut.xtrig_ctm_src_ack.value = ack_mask
+                self.xtrig.set_ctm_src_ack(ack_mask)
                 await ClockCycles(self.xtrig.clk, 1)
-                self.xtrig.dut.xtrig_ctm_src_ack.value = 0
+                self.xtrig.set_ctm_src_ack(0)
         self.log_summary("dst_port_sweep", outputs=XTRIG_NUM_CTM_PORTS)
 
     # ------------------------------------------------------------------

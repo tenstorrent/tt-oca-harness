@@ -23,7 +23,7 @@ sequences inherit `dtp_base_test_seq` (common TAP building blocks). Each test ha
 its own sequence file: `tests/<name>.py` runs `seq_lib/<name>_seq.py`.
 
 - `docs/` — public verification plan, TB architecture, and functional-coverage plan. The design specification and the register maps are designer-owned: `../doc/` (DTP integration plus the JTAG and cross-trigger IP chapters) and the SystemRDL under `hw/ip/cross_trigger/*/regs/`.
-- `tb/` — SystemVerilog testbench top (`dtp_uvm_top`, shared by the cocotb and SV-UVM flows) and `dtp_tb_if`.
+- `tb/` — SystemVerilog testbench top (`dtp_uvm_top`, one framework-neutral core shared by the cocotb and SV-UVM flows) and the `dtp_tb_if`, `dtp_scan_if`, and `dtp_xtrig_if` TB interfaces.
 - `env/` — UVM env: config, JTAG agent, AXI memory agent, scoreboard, TDR encoders.
 - `seq_lib/` — reusable UVM sequences (the VPLAN scenarios).
 - `tests/` — `uvm_test` classes (one `@pyuvm.test()` per file, VPLAN-named).
@@ -53,14 +53,14 @@ The ownership and promotion checklist is in `hw/common/dv/README.md`.
 
 ### Downstream STAP TAPs
 
-Each STAP host port (`jtag_stap_{io,smc,sep,extra0}_host_*`) exposes three TB
-signals: `jtag_stap_<x>_tdo` (the host TDO, i.e. the downstream TAP's TDI),
-`jtag_stap_<x>_tdi` (the downstream TAP's TDO back into the host TDI), and
-`jtag_stap_<x>_ds_en`. With `ds_en=0` (the default for every scenario) the
-port's TDI is its own TDO: the wire loopback. With `ds_en=1` the bench splices
-a reactive `ocah_jtag_vip` slave device behind the port (cocotb:
-`env/dtp_stap_ds_agent.py`; SV-UVM: four `ocah_jtag_slave_agent`s in
-`dtp_env`), one IEEE 1149.1 TAP per port with a 5-bit IR, a distinct IDCODE,
+Each STAP host port (`jtag_stap_{io,smc,sep,extra0}_host_*`) has one
+downstream `ocah_jtag_if` instance in tb_top (`u_stap_<x>_ds_if`, wired from
+the port's forwarded TAP pins and its TDO) and one attach enable,
+`dtp_scan_if.stap_<x>_ds_en`. With the enable clear (the default for every
+scenario) the port's TDI is its own TDO: the wire loopback. With it set the
+bench splices a reactive `ocah_jtag_vip` slave device on that instance behind
+the port (cocotb: `env/dtp_stap_ds_agent.py`; SV-UVM: four
+`ocah_jtag_slave_agent`s in `dtp_env`), one IEEE 1149.1 TAP per port with a 5-bit IR, a distinct IDCODE,
 and one writable `DS_TDR` of a distinct width. The four
 `dtp_3dcr_stap_sel_*_test` scenarios attach all four ports (test attribute
 `stap_ds_attach` / `stap_ds_attach_mask()`) and prove selection, gating,
@@ -180,9 +180,10 @@ python3 tools/dv/run_dv.py --dut dtp --framework uvm --seed 1 \
   --items dtp_jtag2axi_smc_axi_single_write_read_test
 ```
 
-Both frameworks share ONE testbench top module — `dtp_uvm_top` in `tb/tb_top.sv` —
-with the bare `+define+UVM` (set by the `[frameworks.uvm]` overlay) switching it from the
-cocotb ported shape to the self-contained SV-UVM shape. The class library
+Both frameworks share ONE testbench top module — `dtp_uvm_top` in `tb/tb_top.sv`, a
+framework-neutral core whose interface instances both frameworks consume — with the bare
+`+define+UVM` (set by the `[frameworks.uvm]` overlay) adding the SV-UVM harness block
+(clock generator, protocol SVA, `uvm_config_db` publication, `run_test()`). The class library
 realizes the same component tree as the cocotb side with identical
 basenames, on the shared framework bases of `hw/common/dv/vip/ocah_lib/`:
 `uvm/env/dtp_env_pkg.sv` (DUT types and codecs, `dtp_test_cfg` and the
@@ -199,7 +200,8 @@ VIP sequence APIs, and the scenario virtual sequences on
 `dtp_base_test`, `include`d by tb_top). The pin-level JTAG interface and
 agent are the shared `hw/common/dv/vip/ocah_jtag_vip/` `interface/` and
 `uvm/` collateral; DTP-local resets, observables, and the harness clock
-period ride `tb/dtp_tb_if.sv`. The test cfg randomizes the system-clock and
+period ride `tb/dtp_tb_if.sv`, the scan-network observables `tb/dtp_scan_if.sv`,
+and the cross-trigger pins `tb/dtp_xtrig_if.sv`. The test cfg randomizes the system-clock and
 TCK periods from `--seed` exactly as the cocotb env cfg does. The UVM
 library comes from the simulator (`-ntb_opts uvm`). `dtp_sanity_test`
 carries the full VPLAN 0.1 semantics: deterministic 32-edge TAP FSM closure
