@@ -52,9 +52,16 @@ module smc_cpu_mem_dv
   localparam logic [31:0] FW_MAGIC = 32'hACAF_ACA1;
 
   localparam int unsigned SCRATCH_WORDS = 1 << SMC_4CORE_SCRATCH_RAM_ADDR_WIDTH;
-  localparam int unsigned BANK_STRIPE_BYTES = 64;
-  localparam int unsigned BYTES_PER_ENTRY = 8;
-  localparam int unsigned ENTRIES_PER_STRIPE = BANK_STRIPE_BYTES / BYTES_PER_ENTRY;
+  // Bank/entry decode: smc_scratch_map_pkg, which cites the cluster RTL it was
+  // read out of. Imported rather than restated so the loader and the tb_top
+  // peeks cannot drift apart.
+  localparam int unsigned BANK_STRIPE_BYTES =
+      smc_scratch_map_pkg::SCRATCH_BANK_STRIPE_BYTES;
+  localparam int unsigned BYTES_PER_ENTRY =
+      smc_scratch_map_pkg::SCRATCH_BYTES_PER_ENTRY;
+  localparam int unsigned BANKS_PER_GROUP =
+      smc_scratch_map_pkg::SCRATCH_BANKS_PER_GROUP;
+  localparam int unsigned GROUP_BYTES = smc_scratch_map_pkg::SCRATCH_GROUP_BYTES;
   // Staging depth for the +smc_scratch_ram_hex backdoor, in 64-bit words.
   //
   // 4096 words is 32 KB, and firmware images in this tree already exceed it --
@@ -215,12 +222,8 @@ module smc_cpu_mem_dv
           loaded_words = 0;
           for (word_i = 0; word_i < int'(MAX_LINEAR_WORDS); word_i++) begin
             offset_i = word_i * int'(BYTES_PER_ENTRY);
-            bank_i   = (offset_i / int'(BANK_STRIPE_BYTES)) % int'(NUM_SRAM_BANKS);
-            entry_i  = (offset_i /
-                                      (int'(BANK_STRIPE_BYTES) * int'(NUM_SRAM_BANKS)))
-                                   * int'(ENTRIES_PER_STRIPE)
-                                   + (offset_i % int'(BANK_STRIPE_BYTES)) /
-                                     int'(BYTES_PER_ENTRY);
+            bank_i   = int'(smc_scratch_map_pkg::smc_scratch_bank(unsigned'(offset_i)));
+            entry_i  = int'(smc_scratch_map_pkg::smc_scratch_entry(unsigned'(offset_i)));
             if (bank_i == bank && entry_i < int'(SCRATCH_WORDS) && linear_mem[word_i] !== 'x) begin
               u_mems.gen_scratch_rams[bank].mem.mem.mem[entry_i] = linear_mem[word_i];
               if (linear_mem[word_i] != '0) begin
@@ -256,9 +259,11 @@ module smc_cpu_mem_dv
                       "fetch whatever the cut left behind. Raise MAX_LINEAR_WORDS."},
                      scratch_path, file_words, MAX_LINEAR_WORDS);
             end
-            $display("[smc_cpu_mem_dv] stripe params BANK_STRIPE_BYTES=%0d BYTES_PER_ENTRY=%0d ENTRIES_PER_STRIPE=%0d NUM_SRAM_BANKS=%0d SCRATCH_WORDS=%0d",
-                     BANK_STRIPE_BYTES, BYTES_PER_ENTRY, ENTRIES_PER_STRIPE,
-                     NUM_SRAM_BANKS, SCRATCH_WORDS);
+            $display({"[smc_cpu_mem_dv] stripe params BANK_STRIPE_BYTES=%0d ",
+                      "BYTES_PER_ENTRY=%0d BANKS_PER_GROUP=%0d GROUP_BYTES=%0d ",
+                      "NUM_SRAM_BANKS=%0d SCRATCH_WORDS=%0d"},
+                     BANK_STRIPE_BYTES, BYTES_PER_ENTRY, BANKS_PER_GROUP,
+                     GROUP_BYTES, NUM_SRAM_BANKS, SCRATCH_WORDS);
             $display("[smc_cpu_mem_dv] stripe-loaded scratch %s (%0d words in file, bank0 nonzero=%0d)",
                      scratch_path, file_words, loaded_words);
           end

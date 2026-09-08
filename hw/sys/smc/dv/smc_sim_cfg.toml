@@ -103,7 +103,9 @@ sources = [
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_subreg_arb.sv",
   # DV collateral for the CPU memory macros: counters, FW mailbox, the ECC
   # inject hook and the image backdoors, bound into smc_ip_integration.
-  # Not in the Bender wrapper target -- only this TB binds it.
+  # Not in the Bender wrapper target -- only this TB binds it. The map package
+  # holds the scratch bank/entry decode both it and tb_top.sv use.
+  "hw/sys/smc/dv/models/smc_scratch_map_pkg.sv",
   "hw/sys/smc/dv/models/smc_cpu_mem_dv.sv",
 ]
 
@@ -428,6 +430,7 @@ sources = [
   "vendor/tenstorrent/tt-hw-debug/upstream/rtl/trace/trace_mem_sink.sv",
   # TB collateral shared with the cocotb flow.
   "vendor/pulp-platform/axi/upstream/src/axi_sim_mem.sv",
+  "hw/sys/smc/dv/models/smc_scratch_map_pkg.sv",
   "hw/sys/smc/dv/models/smc_cpu_mem_dv.sv",
   "hw/sys/smc/dv/tb/smc_tb_if.sv",
   "hw/sys/smc/dv/uvm/env/smc_env_pkg.sv",

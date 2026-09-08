@@ -106,10 +106,6 @@ name = "all"
 #   smc_efuse_read_timeout_status_test #1603
 #   smc_log_engine_intr_mask_test      #1635, the pattern behind #1602
 #   smc_i2c_intr_mask_test             #1635, third IP
-#
-# smc_fw_hello_world_test is out for a different reason again: the firmware
-# plumbing works but the image parks before main(). fw.toml records the measured
-# state. Enroll it when it passes.
 tests = [
     "smc_5agent_observability_test",
     "smc_6agent_observability_test",
@@ -167,6 +163,7 @@ tests = [
     "smc_filter_field_sweep_test",
     "smc_filter_multi_entry_test",
     "smc_flr_sanity_test",
+    "smc_fw_hello_world_test",
     "smc_gpio_boot_stall_test",
     "smc_gpio_ctrl_full_sweep_test",
     "smc_gpio_filter_access_sep_test",

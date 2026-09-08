@@ -244,17 +244,15 @@ async def _compare_image_in_memory(seq, boot_from_scratch: bool, reset_vector: i
     the firmware that was built".
 
     It reads the *linear* address over SEP_IN AXI and compares against the
-    *linear* file at the same offset, so it does not re-implement the 64B/32-bank
-    stripe decode internal to smc_cpu_mem_dv.
+    *linear* file at the same offset, so it does not re-implement the bank/entry
+    decode internal to smc_cpu_mem_dv.
 
-    A MISMATCH narrows the problem but does not on its own name the culprit. It
-    means the AXI view of scratch and the built image disagree, and there are
-    two ways that happens: the stripe loader wrote the words to the wrong
-    places, or the AXI address-to-bank decode differs from the loader's model.
-    `smc_dual_axi_sram_probe_test` already records that those two views agree at
-    offset 0 and disagree elsewhere, so neither can be assumed correct here.
-    Settling it needs the cluster's own bank decode, which this report does not
-    have -- which is why this is a report and not an assertion.
+    A MISMATCH means the AXI view of scratch and the built image disagree, which
+    now points at the loader: `smc_dual_axi_sram_probe_test` requires the same
+    decode to agree with AXI across both stripe bits, the wrap of the four-bank
+    cycle and a group boundary, so a decode that is wrong in any of those fields
+    fails there first. It stays a report rather than an assertion because it
+    only ever runs on a path that is already failing for its own reason.
 
     The sidecar is `<name>.sram.bin`, staged by [c_build.default] beside the
     .ecc.hex. Returns a report string; any reason it cannot compare is reported
@@ -293,8 +291,8 @@ async def check_cpu_firmware_boot_contract(
 
     Plusargs:
       * ``+smc_rom_hex=<path>`` — ROM window preload (vector 0xC004_0000)
-      * ``+smc_scratch_ram_hex=<path>`` — scratch ECC hex, 64B-striped across
-        32 banks (vector 0xC006_0000)
+      * ``+smc_scratch_ram_hex=<path>`` — scratch ECC hex, scattered across the
+        32 banks by smc_scratch_map_pkg (vector 0xC006_0000)
       * ``+smc_hold_cpu_boot`` — assert boot_stall from time-0 (preferred for
         scratch)
 

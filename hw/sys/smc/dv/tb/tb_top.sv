@@ -1912,26 +1912,17 @@ module smc_uvm_top
 
     assign dual_present_o = 1'b1;
 
-    // Scratch SRAM striping, from chipyard_4core_mem_pkg: 32 banks, round-robin
-    // every 64 bytes, 8 bytes per entry. Used by the peek decode below.
-    //
-    // This decode is only known-correct at offset 0. Measured by
-    // smc_dual_axi_sram_probe_test: patterns written and read back over AXI at
-    // 0xC0066400/+8/+0x40 all verify while this formula reports zero for every
-    // one of them. Nothing gates on the peek for that reason.
-    localparam int unsigned SCRATCH_BANK_STRIPE_BYTES = 64;
-    localparam int unsigned SCRATCH_BYTES_PER_ENTRY   = 8;
-    localparam int unsigned SCRATCH_ENTRIES_PER_STRIPE =
-        SCRATCH_BANK_STRIPE_BYTES / SCRATCH_BYTES_PER_ENTRY;
+    // Scratch SRAM bank/entry decode. smc_scratch_map_pkg holds the one copy
+    // of it and cites the cluster RTL it was read out of; see that file before
+    // changing anything here.
     localparam int unsigned SCRATCH_NUM_BANKS = chipyard_4core_mem_pkg::NUM_SRAM_BANKS;
 
     // ------------------------------------------------------------------
     // Target scratch peek (read-only; see the port comment).
     //
-    // Same 64-byte round-robin stripe decode the rest of this block uses, then
-    // a per-bank mux. The bank selector has to be a mux over constant generate
-    // indices, because a hierarchical reference into a generate block needs a
-    // constant index.
+    // Same decode the image loader uses, then a per-bank mux. The bank
+    // selector has to be a mux over constant generate indices, because a
+    // hierarchical reference into a generate block needs a constant index.
     // ------------------------------------------------------------------
     logic [$clog2(SCRATCH_NUM_BANKS)-1:0] peek_bank;
     logic [$clog2(SCRATCH_NUM_BANKS)-1:0] bfm_peek_bank;
@@ -1945,13 +1936,10 @@ module smc_uvm_top
     logic [chipyard_4core_mem_pkg::SMC_4CORE_SCRATCH_RAM_DATA_WIDTH-1:0] peek_word;
 
     always_comb begin
-        peek_bank  = (tb_dut_scratch_peek_offset / SCRATCH_BANK_STRIPE_BYTES)
-                     % SCRATCH_NUM_BANKS;
-        peek_entry = (tb_dut_scratch_peek_offset /
-                        (SCRATCH_BANK_STRIPE_BYTES * SCRATCH_NUM_BANKS))
-                     * SCRATCH_ENTRIES_PER_STRIPE
-                     + (tb_dut_scratch_peek_offset % SCRATCH_BANK_STRIPE_BYTES)
-                       / SCRATCH_BYTES_PER_ENTRY;
+        peek_bank  = smc_scratch_map_pkg::smc_scratch_bank(
+                         32'(tb_dut_scratch_peek_offset));
+        peek_entry = smc_scratch_map_pkg::smc_scratch_entry(
+                         32'(tb_dut_scratch_peek_offset));
     end
 
     // The CPU memory macros live inside smc_ip_integration, so the DV
@@ -1979,13 +1967,10 @@ module smc_uvm_top
     end
 
     always_comb begin
-        bfm_peek_bank  = (tb_bfm_scratch_peek_offset / SCRATCH_BANK_STRIPE_BYTES)
-                         % SCRATCH_NUM_BANKS;
-        bfm_peek_entry = (tb_bfm_scratch_peek_offset /
-                            (SCRATCH_BANK_STRIPE_BYTES * SCRATCH_NUM_BANKS))
-                         * SCRATCH_ENTRIES_PER_STRIPE
-                         + (tb_bfm_scratch_peek_offset % SCRATCH_BANK_STRIPE_BYTES)
-                           / SCRATCH_BYTES_PER_ENTRY;
+        bfm_peek_bank  = smc_scratch_map_pkg::smc_scratch_bank(
+                             32'(tb_bfm_scratch_peek_offset));
+        bfm_peek_entry = smc_scratch_map_pkg::smc_scratch_entry(
+                             32'(tb_bfm_scratch_peek_offset));
     end
 
     for (genvar b = 0; b < SCRATCH_NUM_BANKS; b++) begin : gen_bfm_peek_bank

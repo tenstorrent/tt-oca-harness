@@ -174,10 +174,10 @@ def _payload_entry_offset(sym_path: str) -> int:
 async def _peek_target_scratch(dut, offset: int) -> tuple[int, int]:
     """Read one 64-bit word of the target's scratch SRAM, plus its ECC bits.
 
-    Read-only, and INFORMATIONAL ONLY -- it reproduces the striped bank/entry
-    decode that is known wrong at non-zero offsets, so nothing gates on it. See
-    the longer note at the landing check below, and
-    docs/occp_dual_boot_jump_rootcause.md.
+    Read-only, and informational -- nothing gates on it. It resolves the offset
+    with smc_scratch_map_pkg, the same decode smc_dual_axi_sram_probe_test holds
+    against AXI, so a mismatch here is now worth reading rather than expected.
+    See the note at the landing check below.
 
     Used to separate "the OCCP writes never landed" from "they landed and the
     core still would not execute them" when triaging a failure. An AXI read of
@@ -707,11 +707,12 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
             target_addr,
         )
     else:
-        cocotb.log.info(
-            "NOTE: target SRAM peek did not match at %#010x. Expected: the "
-            "striped-backdoor decode is unreliable at non-zero offsets (see "
-            "comment above). The pass rests on scratch 0 and the retired PC, "
-            "not on this peek.",
+        cocotb.log.warning(
+            "NOTE: target SRAM peek did not match at %#010x. The pass rests on "
+            "scratch 0 and the retired PC, not on this peek -- but the decode "
+            "behind the peek is checked against AXI by "
+            "smc_dual_axi_sram_probe_test, so this is no longer an expected "
+            "disagreement and is worth reading.",
             target_addr,
         )
 

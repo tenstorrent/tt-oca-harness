@@ -6298,30 +6298,33 @@ the wrong reason.
 
 *BFM / Model*: `SmcDualHarness` with the inbound AXI manager (`bfm_axi`, SEP_IN); production boot ROM on both instances
 
-*Objective*: Measure that an inbound AXI manager reaches the CPU scratch SRAM window.
+*Objective*: Measure that an inbound AXI manager reaches the CPU scratch SRAM window, and hold the backdoor bank/entry decode against it.
 
 *Test Coverage*:
 
 * Front-door AXI write and readback into the CPU scratch banks, which is how the OCCP boot flow stages its payload.
-* Three distinct patterns, one of them across a 64-byte bank stripe boundary.
+* Six distinct patterns, placed one per field of the scratch decode: the two stripe bits (`address[7:6]`), the wrap of the four-bank cycle at +0x100, the entry low bits (`address[5:3]`), and the next 128 KB group (`address[19:17]`).
+* `smc_scratch_map_pkg`, the decode the `+smc_scratch_ram_hex` image loader in `smc_cpu_mem_dv.sv` uses to scatter firmware across the 32 banks. It is read out of the cluster's own decode -- `OCAH4CORECluster_TLXbar_mbus_i1_o33_a32d64s11k1z3u.sv:700-755` for the bank and `OCAH4CORECluster_TLRAM.sv:308` for the entry -- and this testcase is where that reading is measured rather than assumed.
 
 *Test Procedure*:
 
 [arabic]
 . Bring both instances up with `boot_stall` released, so the CPU cluster front port answers.
 . Read each probe address before its write; the banks are not auto-initialised, so the pre-write value is reported and not asserted on.
-. Write each of the three patterns over `bfm_axi` and read the address back.
+. Write each of the six patterns over `bfm_axi` and read the address back.
 . Require every readback to equal exactly the pattern written.
+. Peek the same offset through the hierarchical backdoor and require the macro word it resolves to hold that same pattern.
 
 *Checkers*:
 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-AXI-SCRATCH-REACHABLE` |Every pattern read back exactly as written, including the one crossing a bank stripe, so neither a stuck default subordinate nor a single-bank decode can satisfy it
+|`CHK-AXI-SCRATCH-REACHABLE` |Every pattern read back exactly as written, including the ones crossing a bank stripe and a group boundary, so neither a stuck default subordinate nor a single-bank decode can satisfy it
+|`CHK-SCRATCH-BACKDOOR-DECODE` |For every offset, the macro word `smc_scratch_map_pkg` resolves to holds what AXI wrote. Checked only where the AXI readback already matched, so a decode complaint cannot be raised about a write that never took
 |===
 
-*Pass Criteria*: every pattern reads back exactly as written; any mismatch raises. `init_mem_done_o` and the hierarchical scratch peek are reported and gate nothing -- the peek's striped decode is only known-good at offset 0. Enrolled in: `dual_all`, `dual_smoke`.
+*Pass Criteria*: every pattern reads back exactly as written and the backdoor resolves to the same macro word; any mismatch raises. Measured on Verilator 5.050: with the earlier flat 32-bank round-robin model the backdoor agreed with AXI only below +0x100, and the +0x100 pattern is in this list because that is the first offset where the two models part. `init_mem_done_o` is reported and gates nothing. Enrolled in: `dual_all`, `dual_smoke`.
 
 '''''
 
@@ -6591,9 +6594,9 @@ the wrong reason.
 
 *Test Coverage*:
 
-* The firmware path end to end, and nothing else: c_compile, output staging by basename, the 64B-striped scratch load, the reset-vector handoff, crt0 and picolibc init across four harts, and the MMIO store to CPU_CTRL SCRATCH_0.
+* The firmware path end to end, and nothing else: c_compile, output staging by basename, the scratch load through `smc_scratch_map_pkg`, the reset-vector handoff, crt0 and picolibc init across four harts, and the MMIO store to CPU_CTRL SCRATCH_0.
 * The image is `test_pass(0)` and a `wfi` loop, so no DUT feature is under test.
-* Not a duplicate of `smc_cpu_firmware_boot_test`, and the two cannot be merged. That one boots `min_pass.rom.hex` from the ROM window -- a four-line hand-assembled stub that deliberately avoids crt0 and the hart barrier -- and its `CHK-ROM-IS-TARGET` requires that no scratch image be supplied. This one requires one. So they cover the ROM path and the c_compile-plus-striped-scratch path respectively, and share no CHK token.
+* Not a duplicate of `smc_cpu_firmware_boot_test`, and the two cannot be merged. That one boots `min_pass.rom.hex` from the ROM window -- a four-line hand-assembled stub that deliberately avoids crt0 and the hart barrier -- and its `CHK-ROM-IS-TARGET` requires that no scratch image be supplied. This one requires one. So they cover the ROM path and the c_compile-plus-scratch path respectively, and share no CHK token.
 
 *Test Procedure*:
 
@@ -6611,7 +6614,7 @@ the wrong reason.
 |`CHK-FW-HELLO-WORLD-BOOT` |The firmware's own PASS word is read back from CPU_CTRL SCRATCH_0 after a cleared-and-verified start
 |===
 
-*Pass Criteria*: the PASS magic is read back. **Currently fails**, and the failure is measured rather than assumed: the CPU executes the image and then parks in crt0 before `main`, with no hart trapping. The failure report carries per-hart PCs, per-hart mcause/mepc, and a comparison of the image reachable over AXI against the built image. Held out of `all` until it passes; see `testlists/fw.toml`. Enrolled in: `fw`.
+*Pass Criteria*: the PASS magic is read back. Measured PASS on Verilator 5.050: 0xACAFACA1 in CPU_CTRL SCRATCH_0, 612 scratch reads and 8 scratch writes. It failed until the scratch load was corrected -- the image parked in crt0 before `main` because `smc_cpu_mem_dv` scattered it with a flat 32-bank round-robin, so every word past +0x100 went to a bank the CPU never fetches from; `smc_scratch_map_pkg` now carries the cluster's own decode and `smc_dual_axi_sram_probe_test` holds it against AXI. No `ci` tag: the hosted runners have no RISC-V toolchain. The failure report retained from that debug carries per-hart PCs, per-hart mcause/mepc, and a comparison of the image reachable over AXI against the built image. Enrolled in: `all`, `fw`.
 
 '''''
 
@@ -6669,7 +6672,7 @@ the wrong reason.
 [cols=",,",options="header",]
 |===
 |Group |Tests |Purpose
-|`all` |153 |The package regression, single-instance plus the three dual bring-up scenarios. Nine of the 162 enrolled are out: two on measured runtime (`smc_occp_dual_unsecure_boot_test`, `smc_prod_rom_occp_ready_test`), two against #585 and #1488, the four `rtl_issue` reproducers whose job is to fail, and `smc_fw_hello_world_test` until its image reaches main()
+|`all` |154 |The package regression, single-instance plus the three dual bring-up scenarios. Eight of the 162 enrolled are out: two on measured runtime (`smc_occp_dual_unsecure_boot_test`, `smc_prod_rom_occp_ready_test`), two against #585 and #1488, and the four `rtl_issue` reproducers whose job is to fail
 |`avsbus_depth` |2 |avsbus depth coverage
 |`axil` |2 |axil coverage
 |`balanced_ip` |99 |One-per-IP breadth run used for routine regression
