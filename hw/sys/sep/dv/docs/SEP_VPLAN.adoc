@@ -213,7 +213,7 @@ feature has no legal knob space (a strap, a single named handshake).
 |`sep_irq_ip_to_aggregator_test`
 |no_cpu
 |ocah_axi_vip
-|Proves that interrupts owned by the entropy blocks reach the SEP interrupt aggregator on the correct bit, using each block's real interrupt-test register rather than a forced wire. Also latches the DMA register-path bus-error bit and the HMAC, KMAC and OTBN peripheral-bridge bits with a through-adapter SLVERR, watches aggregator bits 39 and 41, and clears both.
+|Proves that interrupts owned by the entropy blocks reach the SEP interrupt aggregator on the correct bit, using each block's real interrupt-test register rather than a forced wire. Also latches the DMA register-path bus-error bit and the HMAC, KMAC and OTBN peripheral-bridge bits with a through-adapter SLVERR, watches aggregator bits 40 and 42, and clears both.
 |`sep_drbg_real_sink_multi_km_aes_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip, entropy golden
@@ -564,7 +564,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 
 |DMA host-path command integrity
 |PROVEN
-|`sep_dma_basic_test`. A DMA-issued command under `dma_host_intg_inject_i` raises exclusive `host_path_err` and aggregator bit 40; a DMA transfer whose destination sits past the DMA CSR window raises the same bit with the pin low (fabric DECERR). `DMA_BUS_ERR_CLEAR` returns both status bits and the aggregator bit to 0; a legal copy then matches the source.
+|`sep_dma_basic_test`. A DMA-issued command under `dma_host_intg_inject_i` raises exclusive `host_path_err` and aggregator bit 41; a DMA transfer whose destination sits past the DMA CSR window raises the same bit with the pin low (fabric DECERR). `DMA_BUS_ERR_CLEAR` returns both status bits and the aggregator bit to 0; a legal copy then matches the source.
 
 |SRAM datapath
 |PROVEN
@@ -1812,7 +1812,7 @@ recovery. Those sit on the Phase 3 holding note <<phase-3>>.
 
 *VIP / Model*: ocah_axi_vip
 
-*Objective*: Proves that interrupts owned by the entropy blocks reach the SEP interrupt aggregator on the correct bit, using each block's real interrupt-test register rather than a forced wire. After that walk, one in-window unmapped read through the Secure DMA adapter and one through each HMAC, KMAC and OTBN adapter must complete SLVERR, latch the matching `DMA_BUS_ERR_STATUS` / `PERIPH_BUS_ERR_STATUS` bit, raise aggregator bits 39 and 41, and clear on the matching CLEAR write.
+*Objective*: Proves that interrupts owned by the entropy blocks reach the SEP interrupt aggregator on the correct bit, using each block's real interrupt-test register rather than a forced wire. After that walk, one in-window unmapped read through the Secure DMA adapter and one through each HMAC, KMAC and OTBN adapter must complete SLVERR, latch the matching `DMA_BUS_ERR_STATUS` / `PERIPH_BUS_ERR_STATUS` bit, raise aggregator bits 40 and 42, and clear on the matching CLEAR write.
 
 *Test Procedure*:
 
@@ -1822,10 +1822,10 @@ recovery. Those sit on the Phase 3 holding note <<phase-3>>.
 . Enable the interrupt and write the real test bit.
 . Wait for the matching aggregator bit to assert; confirm the other covered bits stay low.
 . Clear the test bit and the pending state; wait for deassertion.
-. Confirm both bus-error STATUS registers and aggregator bits 39 and 41 read 0.
-. Read the unused word between the last DMA `INTR_SRC_ADDR` and the first `INTR_SRC_WR_VAL`; require SLVERR, exclusive `reg_path_err`, and bit 39.
-. Write `DMA_BUS_ERR_CLEAR`; STATUS and bit 39 read 0.
-. Read the unused word between the HMAC CSRs and the message FIFO; require SLVERR, exclusive `hmac`, and bit 41. Write `PERIPH_BUS_ERR_CLEAR.hmac`; STATUS and bit 41 read 0.
+. Confirm both bus-error STATUS registers and aggregator bits 40 and 42 read 0.
+. Read the unused word between the last DMA `INTR_SRC_ADDR` and the first `INTR_SRC_WR_VAL`; require SLVERR, exclusive `reg_path_err`, and bit 40.
+. Write `DMA_BUS_ERR_CLEAR`; STATUS and bit 40 read 0.
+. Read the unused word between the HMAC CSRs and the message FIFO; require SLVERR, exclusive `hmac`, and bit 42. Write `PERIPH_BUS_ERR_CLEAR.hmac`; STATUS and bit 42 read 0.
 . Repeat for the KMAC CSR/STATE gap (`kmac`) and the OTBN CSR/IMEM gap (`otbn`).
 
 *Checkers*:
@@ -1838,16 +1838,16 @@ recovery. Those sit on the Phase 3 holding note <<phase-3>>.
 |CHK-NONVAC
 |A non-zero number of AXI transactions was observed, so the run cannot pass having done nothing. This is a transaction floor, not a per-source minimum: no assertion requires that all six sources ran. The six per-source lines are what evidence that.
 |CHK-BUSERR-BASE
-|`DMA_BUS_ERR_STATUS` and `PERIPH_BUS_ERR_STATUS` read 0, and aggregator bits 39 and 41 read 0, before either fault. A stuck-high latch fails here.
+|`DMA_BUS_ERR_STATUS` and `PERIPH_BUS_ERR_STATUS` read 0, and aggregator bits 40 and 42 read 0, before either fault. A stuck-high latch fails here.
 |CHK-BUSERR-DMA
-|The DMA hole read completes SLVERR, not DECERR. `DMA_BUS_ERR_STATUS` is exactly `reg_path_err`. Aggregator bit 39 is 1; bits 40 and 41 stay 0.
+|The DMA hole read completes SLVERR, not DECERR. `DMA_BUS_ERR_STATUS` is exactly `reg_path_err`. Aggregator bit 40 is 1; bits 41 and 42 stay 0.
 |CHK-BUSERR-PERIPH
-|Each HMAC, KMAC and OTBN hole read completes SLVERR, not DECERR. `PERIPH_BUS_ERR_STATUS` is exactly that block's bit. Aggregator bit 41 is 1; bit 39 stays 0.
+|Each HMAC, KMAC and OTBN hole read completes SLVERR, not DECERR. `PERIPH_BUS_ERR_STATUS` is exactly that block's bit. Aggregator bit 42 is 1; bit 40 stays 0.
 |CHK-BUSERR-CLR
 |Each matching CLEAR write returns its STATUS word and its aggregator bit to 0. The CLEAR registers are write-only single-pulse fields that always read 0, so their read value is not graded.
 |===
 
-*Not claimed*: DMA host-path integrity (`host_path_err` / bit 40) — this leaf does not start a DMA transfer, so the host-adapter checker never sees `a_valid`. AES, CSRNG, EDN and WDT register-bridge bits — those adapter windows are packed to the last register. Lockstep punch-through. Per-block clear isolation: each hole is raised and cleared on its own, so no run holds two peripheral bits at once. The aggregator OR is likewise never driven by more than one source at a time. Persistence across a CPU-only reset, and the rule that a fault arriving in the clear cycle still latches, are unproven. The misaligned-offset and access-control terms of `reg_path_err` are unproven.
+*Not claimed*: DMA host-path integrity (`host_path_err` / bit 41) — this leaf does not start a DMA transfer, so the host-adapter checker never sees `a_valid`. AES, CSRNG, EDN and WDT register-bridge bits — those adapter windows are packed to the last register. Lockstep punch-through. Per-block clear isolation: each hole is raised and cleared on its own, so no run holds two peripheral bits at once. The aggregator OR is likewise never driven by more than one source at a time. Persistence across a CPU-only reset, and the rule that a fault arriving in the clear cycle still latches, are unproven. The misaligned-offset and access-control terms of `reg_path_err` are unproven.
 
 '''''
 
@@ -2632,8 +2632,8 @@ is why they are asserted from Python probes rather than left to the SVA.
 . The aperture is a `sep_crypto` demux rule at `ABR_REG_MAP_BASE_ADDR` (`hw/sys/sep/rtl/sep_crypto_pkg.sv`), reachable from the CPU-LSU master the way the OTBN tests already reach their block.
 . It is *not* behind an `axi_lite_isolate` unit: unlike the ESRC, CSRNG and EDN legs, the external TRNG passthrough in `hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv` carries none.
 . Accesses are 32-bit beats (`AxSIZE=2`) because this path has no width converter.
-. `hw/sys/sep/dv/shims/crypto/abr_wrapper_key_reg_stub.sv` replaces the Key-Manager-side key CSR block only; the ABR register block behind this aperture is real RTL.
-. The stub ties every key share and `key_valid` to zero, so only the software-written seed path is honest here.
+. The Key-Manager-side key CSR is the generated PeakRDL `abr_wrapper_key_reg`. The ABR register block behind this aperture is real RTL.
+. This leaf writes the seed window over the bus. The key-vault seed path is not claimed.
 
 *Checkers*:
 
@@ -2666,9 +2666,7 @@ match, so a cached or constant engine passes the first leg and fails the second.
 stuck-low aggregator cannot satisfy both `CHK-PIC-ERROR` and `CHK-PIC-NOTIF`.
 
 *Not claimed*: ML-KEM-1024, ML-DSA sign/verify, and the key-vault seed path — a
-green keyGen closes none of them. `abr_wrapper_key_reg_stub.sv` ties every key
-share and `key_valid` to zero, so only the software-written seed path is honest
-here.
+green keyGen closes none of them. This leaf writes the seed window over the bus.
 
 
 '''''
@@ -2906,7 +2904,7 @@ immediate neighbour, and nothing records which indices a regression covered.
 |CHK-WIRQT
 |The write-threshold interrupt state matches the golden prediction, the pending register is gated by the enable (IRQP drops when IRQEN is cleared, IRQS stays), and the interrupt re-asserts after write-one-to-clear while still above threshold.
 |CHK-ERR-RD
-|A read of the empty FIFO returns SLVERR, the error sentinel data, and a sticky read-error flag with read-clear semantics. Deny is distinguished three ways.
+|A read of the empty FIFO returns SLVERR, the vendor block's `0xFEEDDEAD` sentinel (PULP `vendor/pulp-platform/axi/upstream/src/axi_lite_mailbox.sv` line 377), and a sticky read-error flag with read-clear semantics. The `read_error` flag is the documented contract (`hw/ip/axi_lite_mailbox_unit/doc/interface.adoc`); the sentinel value is a vendor constant with no TT-side specification, so the golden traces it to that source. Deny is distinguished three ways.
 |CHK-ERR-IRQ / CHK-ERR-WR / CHK-ERR-WR-IRQ
 |The error interrupt sets and clears on write-one-to-clear; a write to the full FIFO returns SLVERR and sets the write-error flag, with its own interrupt.
 |CHK-FLUSH
@@ -2914,7 +2912,7 @@ immediate neighbour, and nothing records which indices a regression covered.
 |CHK-SUBWORD-PUSH
 |Write-side contract: a 4-byte `WRITE_DATA` beat is a whole push. Two 4-byte beats, at `+0x00` and then `+0x04`, are each answered OKAY and each occupy their own FIFO entry, so occupancy advances by two. `+0x04` is the same 8-byte register, not a high half. STATUS carries no exact depth, so occupancy is read through the write threshold programmed to 1: `write_level_above` must be clear after the first beat and set after the second. This does not grade the spec's two-word read of an incoming 64-bit message — see <<known-limitations>>.
 |CHK-WDATA-RD
-|The push register is write-only: a read of it returns the block's documented `0xFEEDC0DE` constant with an OKAY response — not a FIFO entry and not an error — and leaves the transmit occupancy unchanged, re-compared against the golden afterwards.
+|The push register is write-only: a read of it returns the vendor block's `0xFEEDC0DE` constant (PULP `vendor/pulp-platform/axi/upstream/src/axi_lite_mailbox.sv` line 370, inherited through `axi_lite_mailbox_unit.sv`) with an OKAY response — not a FIFO entry and not an error — and leaves the transmit occupancy unchanged, re-compared against the golden afterwards.
 |===
 
 *Deferred*: the read half of the threshold pair. `RIRQT` and
@@ -3246,7 +3244,7 @@ deferred rather than covered.
 . While the range registers are still writable: `RANGE_VALID=0` raises `range_valid_error`, and an enabled range whose limit sits below its base raises exclusive `base_limit_error` with `STATUS.done` clear. Then lock `RANGE_REGWEN`.
 . Walk INCR / FIXED / WRAP × 1B/2B/4B; consume the seed-patched SCENARIO line.
 . Provoke one invalid opcode, then four exclusive address-alignment refusals; a clean copy after each error class proves the engine recovers.
-. With `dma_host_intg_inject_i` high, one legal SRAM copy raises exclusive `host_path_err` and aggregator bit 40. `DMA_BUS_ERR_CLEAR` returns STATUS and bit 40 to 0. A legal copy with the pin low then matches the source snapshot.
+. With `dma_host_intg_inject_i` high, one legal SRAM copy raises exclusive `host_path_err` and aggregator bit 41. `DMA_BUS_ERR_CLEAR` returns STATUS and bit 41 to 0. A legal copy with the pin low then matches the source snapshot.
 . With the pin low, one copy whose destination is the first word past the DMA CSR window raises exclusive `host_path_err` from the fabric DECERR. CLEAR and a legal recovery copy follow.
 
 *Checkers*:
@@ -3271,9 +3269,9 @@ deferred rather than covered.
 |CHK-ERR-ADDR
 |The address validation the engine applies before it moves a byte. Four refused descriptors, each asserting its `ERROR_CODE` bit *exclusively*: a 4-byte transfer whose source is not 4-byte aligned raises `src_addr_error`, the same on the destination raises `dst_addr_error`, a 2-byte transfer on an odd source raises `src_addr_error`, and a 2-byte transfer on an odd destination raises `dst_addr_error`. None may set `STATUS.done`, and a clean copy after the four proves the engine recovers. The inverted-range leg sits in `CHK-RANGE-REGWEN`, which must run before the one-way range lock closes.
 |CHK-HOSTINTG
-|A DMA-issued host command under `dma_host_intg_inject_i` raises exactly `DMA_BUS_ERR_STATUS.host_path_err`. Aggregator bit 40 is 1 and bit 39 stays 0. `DMA_BUS_ERR_CLEAR` returns STATUS and bit 40 to 0. A legal copy with the pin low then matches the independent source snapshot. Each leg also requires the transfer to terminate, so a wedged engine cannot pass on a latch raised from its first command.
+|A DMA-issued host command under `dma_host_intg_inject_i` raises exactly `DMA_BUS_ERR_STATUS.host_path_err`. Aggregator bit 41 is 1 and bit 40 stays 0. `DMA_BUS_ERR_CLEAR` returns STATUS and bit 41 to 0. A legal copy with the pin low then matches the independent source snapshot. Each leg also requires the transfer to terminate, so a wedged engine cannot pass on a latch raised from its first command.
 |CHK-HOSTFABRIC
-|A DMA transfer whose destination is the first word past the DMA CSR window, with the inject pin low, raises exactly `host_path_err`. `DMA_BUS_ERR_CLEAR` returns STATUS and the CLEAR register to 0. A legal copy then matches the independent source snapshot.
+|A DMA transfer whose destination is the first word past the DMA CSR window, with the inject pin low, raises exactly `host_path_err`. `DMA_BUS_ERR_CLEAR` returns STATUS to 0. The CLEAR register is a write-only single-pulse field that always reads 0, so its read value is not graded. A legal copy then matches the independent source snapshot.
 |CHK-RAND-REP
 |Mode and width cells walk every seed; src/dst/length/fill come from the run seed.
 |===
