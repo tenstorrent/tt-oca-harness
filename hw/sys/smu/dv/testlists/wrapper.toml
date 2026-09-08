@@ -1200,21 +1200,11 @@ tests = [
   "smu_no_sep_configuration_test",
   "smu_smc_mailbox_int_test",
   "smu_smc_mailbox_sanity_test",
+  "smu_smc_reset_ctrl_test",
   "smu_smc_security_demote_pm_test",
   "smu_smc_wdt_sanity_test",
   "smu_smc_wdt_timeout_irq_test",
   "smu_system_timer_octs_test",
-]
-
-# Migrated and not yet green here. smu_smc_reset_ctrl_test samples
-# rst_cold_stable_ref_clk_no as 0 where the bare DUT reads 1. The pin is
-# wired and the rest of its resets agree, so this is the first candidate for
-# a real profile difference rather than a testbench gap -- the wrapper adds
-# smc_ip_integration between the reset controller and this observable.
-[[groups]]
-name = "migrated_smc_pending"
-tests = [
-  "smu_smc_reset_ctrl_test",
 ]
 
 # Migrated bare-smu DTP leaves.
@@ -1402,7 +1392,7 @@ args = [
 
 [[tests]]
 name = "smu_dtp_jtag_smoke_test"
-module = "{'cocotb': 'smu_dtp_jtag_smoke_test', 'uvm': 'smu_dtp_jtag_smoke_test'}"
+module = "smu_dtp_jtag_smoke_test"
 target = "compile_smu_chiplet_no_sep"
 firmware = { name = "elaboration", mode = "elaboration" }
 seed = 1
@@ -1611,21 +1601,38 @@ args = [
 ]
 
 # Migrated bare-smu DTP leaves proven on this DUT.
-# Migrated bare-smu DTP leaves proven on this DUT.
 [[groups]]
 name = "migrated_dtp"
 tests = [
+  "smu_boot_stall_jtag_cold_reset_matrix_test",
+  "smu_boot_stall_vs_ic_reset_priority_test",
+  "smu_clock_stop_coordination_test",
+  "smu_dft_dtp_boot_stall_test",
+  "smu_dft_gpio_boot_stall_test",
+  "smu_dtp_bsr_ijtag_scan_test",
+  "smu_dtp_io_stap_smoke_test",
   "smu_dtp_jtag2axi_back_to_back_error_ok_test",
+  # Seed-sensitive through RTL issue #1599, on both DUTs alike: its final step
+  # is an SMC fabric SERIES INCR write, which returns zeros whenever the drawn
+  # jtag_period_ns / smu_clk_period_ns is under 4. Reproduced identically on
+  # --dut smu and --dut smu_wrapper at seed 1915910843 (ratio 32/12 = 2.67), so
+  # a red here is that issue, not this DUT.
   "smu_dtp_jtag2axi_smc_error_path_test",
   "smu_dtp_jtag2axi_smc_rw_matrix_test",
   "smu_dtp_jtag2axi_wstrb_partial_sticky_test",
   "smu_dtp_jtag_smc_cpu_register_test",
+  "smu_dtp_jtag_smoke_test",
+  "smu_dtp_otp_smc_complete_rw_test",
   "smu_dtp_otp_smc_map_rw_test",
   "smu_dtp_otp_smc_series_error_test",
   "smu_dtp_ptap_otp_instr_scan_test",
+  "smu_dtp_smc_stap_smoke_test",
   "smu_ic_reset_dual_domain_illegal_test",
+  "smu_ic_reset_smc_multi_domain_test",
   "smu_jtag2axi_vs_smn_same_csr_race_test",
   "smu_jtag_chain_enhanced_test",
+  "smu_jtag_reset_override_test",
+  "smu_otp_vs_fabric_map_race_test",
   "smu_smc_dtp_jtag2axi_smoke_test",
   "smu_xtrig_ctm_illegal_phase_test",
   "smu_xtrig_ctm_remap_test",
@@ -1633,42 +1640,39 @@ tests = [
 
 # Migrated, enrolled to stay visible, not yet passing here.
 #
-# The boot-stall and IC-reset group shares one cause. What it is not, measured
-# rather than assumed, on smu_dft_dtp_boot_stall_test:
+# The boot-stall / IC-reset / STAP group that used to live here is gone: all of
+# it came from one `ifndef SMU_NO_SEP` in tb/tb_wrapper_top.sv that had grown
+# past the SEP backdoor it was meant to guard and swallowed seventeen
+# SEP-independent observation assigns. Its `else` re-drove only the sep_*
+# pins, so under +define+SMU_NO_SEP -- the profile every migrated DTP leaf
+# runs -- those seventeen outputs had no driver and read a constant 0. The
+# design was right the whole time; the tap_ctrl structs were correct at every
+# point along the path, which is why the write always landed and read back.
 #
-#   Not the write. All four DEBUG_CONTROL writes land and read back exactly --
-#   0x0/0x1/0x2/0x3 in, 0x0/0x1/0x2/0x3 out -- while every output bit stays 0.
+# smu_dtp_jtag2axi_abort_mid_op_test is a different thing, and not a defect in
+# either the DUT or the testbench. It aborts an OTP op mid-flight, so it first
+# has to see SINGLE_OP report BUSY. On the bare DUT the OTP interface is tied
+# off and the op hangs BUSY forever, which makes that trivially observable.
+# smu_wrapper runs the real SMC eFuse model from smc_ip_integration, which
+# answers: status is already SUCCESS when the first poll shifts out.
 #
-#   Not the observation point. smu's internal wire, dtp's output port and
-#   jtag_debug_ctrl_reg's own debug_ctrl_reg_q all read 0 here.
+# The window is not a tuning problem. Polling with no settle does not help --
+# one SINGLE_OP DR shift is 39 bits of TCK (~1.5us at the randomized JTAG
+# periods) against an OTP that responds in tens of clk_smu, so the op is always
+# finished before any JTAG capture completes. A deep-pipeline SERIES read was
+# tried as a way to keep beats outstanding across a shift; it does not work,
+# because SERIES_CTRL's status field reports the control transaction, not the
+# data pipeline, and it reads SUCCESS on both DUTs (that variant regressed the
+# bare DUT too, and was reverted).
 #
-#   Not the JTAG stimulus. Probing jtag_ptap_state and jtag_ptap_inst_decoded
-#   after each write gives state 2 (SELECT_DR_SCAN) and the DEBUG_CONTROL
-#   one-hot on *both* DUTs, identically -- and the bare one passes. So the TAP
-#   walk and the instruction decode are the same; the divergence is downstream
-#   of the scan register and only in this build.
-#
-#   Not the DUT. The same RTL updates correctly under tb_top.sv.
-#
-# What is left is why debug_ctrl_reg_q holds its update value on one build and
-# not the other, with the same stimulus reaching the same register.
+# So the scenario is unreachable through the JTAG SINGLE_OP/SERIES interface on
+# a DUT whose OTP actually responds. Enrolled here to stay visible rather than
+# quietly dropped; making it real needs a way to hold the OTP response off
+# (a stallable eFuse model hook), which is a testbench feature, not a fix.
 [[groups]]
 name = "migrated_dtp_pending"
 tests = [
-  "smu_boot_stall_jtag_cold_reset_matrix_test",  # jtag_boot_stall_ovrd reads 0; the tap is wired, the value is not what the bare DUT shows
-  "smu_boot_stall_vs_ic_reset_priority_test",  # same boot-stall override value
-  "smu_clock_stop_coordination_test",  # dtp_stop_clks_o still unexposed
-  "smu_dft_dtp_boot_stall_test",  # same boot-stall override value
-  "smu_dft_gpio_boot_stall_test",  # fuse_reset low after bring-up
-  "smu_dtp_bsr_ijtag_scan_test",  # BSR select never asserts; loopback is wired, the scan-control select is not reaching it
-  "smu_dtp_io_stap_smoke_test",  # IO STAP tck never toggles
-  "smu_dtp_jtag2axi_abort_mid_op_test",  # needs an outstanding OTP op; none is observed
-  "smu_dtp_jtag_smoke_test",  # under triage
-  "smu_dtp_otp_smc_complete_rw_test",  # smc_shadow_regs unreachable from this hierarchy
-  "smu_dtp_smc_stap_smoke_test",  # SMC STAP trst_n stays 0
-  "smu_ic_reset_smc_multi_domain_test",  # smc cold override reads 0
-  "smu_jtag_reset_override_test",  # ext override reads 0
-  "smu_otp_vs_fabric_map_race_test",  # smc_shadow_regs unreachable from this hierarchy
+  "smu_dtp_jtag2axi_abort_mid_op_test",  # real OTP model completes before the BUSY poll; needs a SERIES op
 ]
 
 # Default `--items all` for smu_wrapper: every test in this file that can pass.

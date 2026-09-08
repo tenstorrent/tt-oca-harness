@@ -227,6 +227,19 @@ module smu_wrapper_uvm_top (
   input  wire logic                                     xtrig_clk_stop_req,
   output logic [dtp_pkg::DEFAULT_NUM_INT_CT-3:0]        xtrig_ctm_dst_ack,
   output logic [dtp_pkg::DEFAULT_NUM_INT_CT-3:0]        xtrig_ctm_src_req,
+  // DTP clock-stop grant, as tb/tb_top.sv exposes it. Left unconnected here
+  // until smu_clock_stop_coordination_test migrated onto this DUT and found
+  // no pin to sample.
+  output logic                                          dtp_stop_clks_o,
+  // The CLA's own clock-stop enable, one level inside smu. Paired with
+  // dtp_stop_clks_o above: the test proves the aggregate grant follows the
+  // per-source enable, so both have to be visible.
+  output logic                                          dtp_cla_clock_stop_en,
+  // SMC eFuse shadow map. seq_lib.smu_jtag_helpers.shadow_map_word32 reads
+  // this by name to cross-check an OTP write against the shadow copy the SMC
+  // actually sees; with the port unconnected it returned None and the two OTP
+  // leaves could not score.
+  output smc_efuse_pkg::efuse_map_t                     smc_shadow_regs,
   output logic                                          tb_stap_io_tck,
   output logic                                          tb_stap_smc_tck,
   output logic                                          tb_stap_smc_tms,
@@ -996,33 +1009,6 @@ module smu_wrapper_uvm_top (
         u_dut.u_smu.gen_sep.u_sep.sep_system_peripherals.u_stee_remap.remap_table[0].offset;
 
   assign sep_xbar_global_base_o = u_dut.u_smu.sep_global_base_o;
-  assign rst_cold_stable_ref_clk_no = rst_cold_stable_ref_clk_n;
-  assign jtag_boot_stall          = smu_scope_boot_stall_val;
-  assign jtag_boot_stall_ovrd     = smu_scope_boot_stall_ovrd;
-  assign jtag_ic_reset_ext_ovrd   = ic_reset_ext_w.ovrd;
-  assign jtag_ic_reset_ext_ctrl_n = ic_reset_ext_w.val;
-  assign jtag_ic_reset_smc_ovrd   = u_dut.u_smu.jtag_smc_reset_ctrl.ovrd.cold_reset_n_ovrd;
-  assign jtag_ic_reset_smc_ctrl_n = u_dut.u_smu.jtag_smc_reset_ctrl.val.cold_reset_n_val;
-  // Read the DTP output port, not smu's internal wire between the two
-  // instances: Verilator collapses that wire here and the XMR reads a constant
-  // 0 while the register behind it holds the right value. The DEBUG_CONTROL
-  // readback proves the design is fine -- this was an observation bug.
-  // The same nets tb_top.sv reads. They sit at 0 here even though the
-  // DEBUG_CONTROL shift path works -- see migrated_dtp_pending in
-  // testlists/wrapper.toml for what that means.
-  assign smu_scope_boot_stall_val  = u_dut.u_smu.boot_stall_jtag_val;
-  assign smu_scope_boot_stall_ovrd = u_dut.u_smu.boot_stall_jtag_ovrd;
-  assign tb_stap_io_tck      = stap_io_ctrl_w.tck;
-  assign tb_stap_smc_tck     = u_dut.u_smu.dtp_smc_stap_tap_ctrl.tck;
-  assign tb_stap_smc_tms     = u_dut.u_smu.dtp_smc_stap_tap_ctrl.tms;
-  assign tb_stap_smc_trst_n  = u_dut.u_smu.dtp_smc_stap_tap_ctrl.trst_n;
-  assign tb_stap_smc_tdi     = u_dut.u_smu.u_smc.smc_cpu_jtag_TDI_i;
-  assign tb_stap_smc_tdo_oen = u_dut.u_smu.u_dtp.jtag_stap_smc_host_tdo_oen_o;
-  assign tb_bsr_select = bsr_ctrl_w.select;
-  assign tb_smc_jtag2axi_security_disable =
-        u_dut.u_smu.u_dtp.u_jtag_intf_unit.u_jtag_ptap.smc_jtag2axi_security_disable;
-  assign tb_otp_jtag2axi_security_disable =
-        u_dut.u_smu.u_dtp.u_jtag_intf_unit.u_jtag_ptap.smc_otp_jtag2axi_security_disable;
   assign sep_xbar_region_size_o = u_dut.u_smu.sep_region_size_o[31:0];
 
   always_ff @(posedge clk_smu_i or negedge rst_cold_ni) begin
@@ -1080,6 +1066,58 @@ module smu_wrapper_uvm_top (
   assign sep_csr_last_aw_addr_o  = '0;
   assign sep_csr_errslv_aw_count_o = '0;
 `endif
+
+  // ------------------------------------------------------------------
+  // DTP / JTAG observation taps -- SEP-independent, so outside the
+  // `ifndef SMU_NO_SEP` block above.
+  //
+  // These lived inside that block. The block's `else` re-drives only the
+  // sep_* observables, so under +define+SMU_NO_SEP -- the profile every
+  // migrated DTP leaf runs -- each pin below was left with no driver and read
+  // a constant 0. That is what the "reads 0 through three observation points"
+  // symptom was: not the design, not Verilator collapsing a net, just an
+  // `ifndef` that swallowed more than it meant to. The tap_ctrl structs
+  // themselves were correct at every point along the path.
+  // ------------------------------------------------------------------
+  assign rst_cold_stable_ref_clk_no = rst_cold_stable_ref_clk_n;
+  assign jtag_boot_stall          = smu_scope_boot_stall_val;
+  assign jtag_boot_stall_ovrd     = smu_scope_boot_stall_ovrd;
+  assign jtag_ic_reset_ext_ovrd   = ic_reset_ext_w.ovrd;
+  assign jtag_ic_reset_ext_ctrl_n = ic_reset_ext_w.val;
+  assign jtag_ic_reset_smc_ovrd   = u_dut.u_smu.jtag_smc_reset_ctrl.ovrd.cold_reset_n_ovrd;
+  assign jtag_ic_reset_smc_ctrl_n = u_dut.u_smu.jtag_smc_reset_ctrl.val.cold_reset_n_val;
+  // Read the DTP output port, not smu's internal wire between the two
+  // instances: Verilator collapses that wire here and the XMR reads a constant
+  // 0 while the register behind it holds the right value.
+  assign smu_scope_boot_stall_val  = u_dut.u_smu.boot_stall_jtag_val;
+  assign smu_scope_boot_stall_ovrd = u_dut.u_smu.boot_stall_jtag_ovrd;
+  assign tb_stap_io_tck      = stap_io_ctrl_w.tck;
+  assign tb_stap_smc_tck     = u_dut.u_smu.dtp_smc_stap_tap_ctrl.tck;
+  assign tb_stap_smc_tms     = u_dut.u_smu.dtp_smc_stap_tap_ctrl.tms;
+  assign tb_stap_smc_trst_n  = u_dut.u_smu.dtp_smc_stap_tap_ctrl.trst_n;
+  assign tb_stap_smc_tdi     = u_dut.u_smu.u_smc.smc_cpu_jtag_TDI_i;
+  assign tb_stap_smc_tdo_oen = u_dut.u_smu.u_dtp.jtag_stap_smc_host_tdo_oen_o;
+  // Boot-stall GPIO pad (smc_padring: boot_stall_o = lsio_pad2core_data[57]).
+  // The port existed but nothing drove the pad, so asserting it did nothing
+  // and smu_dft_gpio_boot_stall_test saw fuse_reset ungated.
+  //
+  // Unlike tb_top.sv, which ORs the TB value into a pad2core vector at the
+  // smu boundary, smu_wrapper brings out a real bidirectional pad bus --
+  // smc_ip_integration puts a prim_pad_shim on every pin -- so the drive goes
+  // onto the wire itself, weak (pull) elsewhere so a core output still wins.
+  assign gpio_pad_io[57] = gpio_boot_stall_drive_i ? 1'b1 : 1'bz;
+
+  // smu.sv no longer forwards the peripheral-domain primary reset to its own
+  // boundary, so read it off the SMC the way tb_top.sv does. Declared but
+  // undriven here until smu_smc_reset_ctrl_test came across.
+  assign rst_primary_periph_clk_no = u_dut.u_smu.u_smc.rst_primary_periph_clk_no;
+
+  assign dtp_cla_clock_stop_en = u_dut.u_smu.dtp_cla_clock_stop_en;
+  assign tb_bsr_select = bsr_ctrl_w.select;
+  assign tb_smc_jtag2axi_security_disable =
+        u_dut.u_smu.u_dtp.u_jtag_intf_unit.u_jtag_ptap.smc_jtag2axi_security_disable;
+  assign tb_otp_jtag2axi_security_disable =
+        u_dut.u_smu.u_dtp.u_jtag_intf_unit.u_jtag_ptap.smc_otp_jtag2axi_security_disable;
 
   // ------------------------------------------------------------------
   // External SMN AXI4 egress: the shared slave agent answers on u_axi_out_if
@@ -1316,7 +1354,7 @@ module smu_wrapper_uvm_top (
     .jtag_dft_host_scan_in_i   (1'b0),
     .jtag_dft_host_scan_out_o  (),
 
-    .dtp_stop_clks_o (),
+    .dtp_stop_clks_o (dtp_stop_clks_o),
     .jtag_ptap_state_o (jtag_ptap_state),
     .jtag_ptap_inst_decoded_o (jtag_ptap_inst_decoded),
     .jtag_ic_reset_ext_o (ic_reset_ext_w),
@@ -1352,7 +1390,7 @@ module smu_wrapper_uvm_top (
     .smu_axi_out_req_o (smu_axi_out_req),
     .smu_axi_out_resp_i (smu_axi_out_resp),
 
-    .smc_shadow_regs_o (),
+    .smc_shadow_regs_o (smc_shadow_regs),
     .lsio_interface_select_o (),
     .gpio_pad_io (gpio_pad_io),
     .rst_cool_n_from_pin_i (1'b1),
