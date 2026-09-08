@@ -1248,7 +1248,7 @@ module smc_uvm_top
     assign tb_rst_warm_smc_clk_n = u_dut.u_smc.rst_warm_smc_clk_n;
     assign efuse_shadow_probe_o =
         u_dut.u_smc.u_smc_peripherals.u_smc_efuse_wrapper.u_efuse_interface_controller
-            .u_efuse_shadow_regs.shadow_efuse_o;
+            .u_efuse_shadow_regs_s3c_scan.shadow_efuse_o;
     // eFuse bank storage is smc_ip_integration's efuse_bank_model
     // (hw/ip/efuse/dv/models/efuse_bank_model.sv). Its "programmed" and "OTP"
     // storage collapse into the same register file, so programmed_word0

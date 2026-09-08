@@ -460,7 +460,7 @@ module efuse_interface_controller #(
   efuse_interface_ctrl_reg_pkg::efuse_interface_ctrl__in_t fuse_interface_ctrl_hwif_in;
   efuse_interface_ctrl_reg_pkg::efuse_interface_ctrl__out_t fuse_interface_ctrl_hwif_out;
 
-  efuse_interface_ctrl_reg u_efuse_interface_ctrl_reg (
+  efuse_interface_ctrl_reg u_efuse_interface_ctrl_reg_s3c_scan (
     .clk        (clk_i),
     .arst_n     (rst_ni),
 
@@ -552,7 +552,7 @@ module efuse_interface_controller #(
     .efuse_word_counter_t(efuse_word_counter_t),
     .fuse_command_req_t(fuse_command_req_t),
     .fuse_command_resp_t(fuse_command_resp_t)
-  ) u_efuse_program_interface (
+  ) u_efuse_program_interface_s3c_scan (
     .clk_i                        (clk_i),
     .rst_ni                       (reset_n_o),
     .test_en_i                    (test_en_i),
@@ -626,7 +626,7 @@ module efuse_interface_controller #(
     .fuse_command_req_t(fuse_command_req_t),
     .fuse_command_resp_t(fuse_command_resp_t),
     .efuse_data_t(efuse_data_t)
-  ) u_efuse_read_interface (
+  ) u_efuse_read_interface_s3c_scan (
     .clk_i               (clk_i),
     .rst_ni              (reset_n_o),
     .test_en_i           (test_en_i),
@@ -699,7 +699,7 @@ module efuse_interface_controller #(
 
     .efuse_map_t         (efuse_map_t)
 
-  ) u_efuse_shadow_regs (
+  ) u_efuse_shadow_regs_s3c_scan (
     .clk_i      (clk_i),
     .rst_ni     (rst_ni),
 

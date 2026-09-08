@@ -1230,7 +1230,7 @@ module sep_uvm_top
     // Flatten the sensed shadow array (efuse_map_t, NumEfuseBits wide) to the
     // top-level probe port; word i occupies bits [32*i +: 32], matching values[i].
     assign efuse_shadow_probe_o =
-        `SEP_CORE.sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs.shadow_efuse_o;
+        `SEP_CORE.sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs_s3c_scan.shadow_efuse_o;
 
     // SEP scratch-cold CSR words [0..7], each `data.value` [31:0]. Explicit
     // per-index assigns avoid a cross-hierarchy indexed XMR (same style as the

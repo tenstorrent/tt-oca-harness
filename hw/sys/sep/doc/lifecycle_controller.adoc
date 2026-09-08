@@ -629,7 +629,7 @@ everything else.
 
 |*1a* +
 (non-scannable; confidentiality)
-|UIDs (`CHIPLET_UID`, `SIP_UID`, `SYS_UID`); `*_TOKEN_I` JTAG input registers (`SEC_DIS_TOKEN_I`, `RMA_SIP_TOKEN_I`, `RMA_CHIPLET_TOKEN_I`); `CLASS_KEY`
+|UIDs (`CHIPLET_UID`, `SIP_UID`, `SYS_UID`); `*_TOKEN_I` JTAG input registers (`SEC_DIS_TOKEN_I`, `RMA_SIP_TOKEN_I`, `RMA_CHIPLET_TOKEN_I`); `CLASS_KEY`; raw fuse read-back data.
 |No
 |No
 |*Excluded* from all scan chains. *Confidentiality* rationale: these registers hold the actual secrets; the data lives *in* them, so the only safe option is to keep them off every scan chain.

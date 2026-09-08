@@ -89,7 +89,7 @@ module efuse_program_interface #(
   logic program_err_q, program_err_d;
   logic program_done_q, program_done_d;
   logic program_busy_q, program_busy_d;
-  efuse_data_t program_read_back_data_q, program_read_back_data_d;
+  efuse_data_t program_read_back_data_q_n0_scan, program_read_back_data_d;
 
   // Address error signal
   logic program_addr_error_d;
@@ -102,7 +102,7 @@ module efuse_program_interface #(
     program_err_d = program_err_q;
     program_done_d = program_done_q;
     program_busy_d = program_busy_q;
-    program_read_back_data_d = program_read_back_data_q;
+    program_read_back_data_d = program_read_back_data_q_n0_scan;
     fuse_command_req_d = fuse_command_req_q;
 
     program_timeout_event = 1'b0;
@@ -203,7 +203,7 @@ module efuse_program_interface #(
       program_err_q <= 1'b0;
       program_done_q <= 1'b0;
       program_busy_q <= 1'b0;
-      program_read_back_data_q <= efuse_data_t'(0);
+      program_read_back_data_q_n0_scan <= efuse_data_t'(0);
       timeout_count_q <= 'd0;
     end else begin
       program_state_q <= program_state_d;
@@ -211,7 +211,7 @@ module efuse_program_interface #(
       program_err_q <= program_err_d;
       program_done_q <= program_done_d;
       program_busy_q <= program_busy_d;
-      program_read_back_data_q <= program_read_back_data_d;
+      program_read_back_data_q_n0_scan <= program_read_back_data_d;
       timeout_count_q <= timeout_count_d;
     end
   end
@@ -231,7 +231,7 @@ module efuse_program_interface #(
   assign program_busy_o = program_busy_q;
   assign program_done_o = program_done_q;
   assign program_error_o = program_err_q;
-  assign program_read_back_data_o = program_read_back_data_q;
+  assign program_read_back_data_o = program_read_back_data_q_n0_scan;
   assign fuse_command_req_o = fuse_command_req_q;
   assign is_program_timeout_debug_o = program_timeout_event;
 
