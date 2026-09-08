@@ -235,7 +235,9 @@ module smc_cpu_mem_dv
             // which is far harder to diagnose than a loud line here.
             file_words = 0;
             scratch_fd = $fopen(scratch_path, "r");
-            while (!$feof(scratch_fd)) begin
+            while (!$feof(
+                scratch_fd
+            )) begin
               if ($fscanf(scratch_fd, "%h", scan_word) == 1) begin
                 file_words++;
               end else begin
@@ -246,11 +248,12 @@ module smc_cpu_mem_dv
             if (file_words > int'(MAX_LINEAR_WORDS)) begin
               $error({"[smc_cpu_mem_dv] scratch image %s holds %0d words but the ",
                       "backdoor stages only %0d -- the image is TRUNCATED and the CPU will ",
-                      "fetch whatever the cut left behind. Raise MAX_LINEAR_WORDS."},
-                     scratch_path, file_words, MAX_LINEAR_WORDS);
+                      "fetch whatever the cut left behind. Raise MAX_LINEAR_WORDS."}, scratch_path,
+                       file_words, MAX_LINEAR_WORDS);
             end
-            $display("[smc_cpu_mem_dv] stripe-loaded scratch %s (%0d words in file, bank0 nonzero=%0d)",
-                     scratch_path, file_words, loaded_words);
+            $display(
+                "[smc_cpu_mem_dv] stripe-loaded scratch %s (%0d words in file, bank0 nonzero=%0d)",
+                scratch_path, file_words, loaded_words);
           end
         end else if (bank == 0) begin
           $display("[smc_cpu_mem_dv] WARN: missing scratch %s", scratch_path);
