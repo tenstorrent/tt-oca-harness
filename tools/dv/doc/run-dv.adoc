@@ -1133,7 +1133,7 @@ symlink.
 tiers only)
 |Hosted `sim` and `regress` matrices at current head. Smoke runs on every
 pull request and push to `main`; the nightly and weekly tiers run each DUT's
-regression group (`all` / `no_cpu` / `sep0_all` / `smoke`). Main protection
+regression group (`all` / `cpu_stub` / `sep0_all` / `smoke`). Main protection
 requires the stable `verilator-smoke (dtp)` and `verilator-smoke (sep)`
 pull-request contexts in addition to the GitLab mirror context. A failed,
 cancelled, or missing DTP or SEP smoke result blocks merge. SMU and SMC smoke

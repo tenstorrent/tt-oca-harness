@@ -1,42 +1,51 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # SEP OSS firmware
 
-Self-contained boot firmware for the SEP OSS DV environment. No libc and no
-internal headers — only the OSS drivers here and a handful of SEP hardware
-addresses, so this tree migrates with the DV env.
+Self-contained boot firmware for the SEP OSS DV environment. Tests supply
+`main()` and link against `libsep.a`. The shared DV firmware engine
+(`hw/common/dv/fw/compile.mk`, driven by `fw.mk`) emits the gitignored
+`.itcm` / `.dtcm` hex images under `fw/build/tests/<name>/`.
 
 ```
 fw/
-  build/      shared startup + linker + make rules
-    start.S        minimal VeeR EL2 crt0 (PMA, bss, sp, call main, PASS/FAIL magic)
-    sep_tcm.ld     ICCM (0xC0000000) / DCCM (0xC0040000) layout
-    common.mk      build rules: ELF -> .itcm.hex / .dtcm.hex (objcopy -O verilog)
-  drivers/    reusable SEP device drivers
-    sep_mailbox.h          STDOUT mailbox (0x80000000) console
-    sep_outbound_filter.h  open the outbound filter window
-  tests/
-    hello_world/   prints a banner + returns PASS
+  fw.mk         dispatcher: make -f fw.mk dv-fw-tests TEST=<name>
+  toolchain.mk  RISC-V prefix / ISA
+  drivers/      device drivers (mailbox, DMA, SPI, PIC, eFuse, …)
+  include/      firmware-visible headers
+  link/         TCM linker scripts (`link/modes/tcm.ld`)
+  startup/      crt0
+  tests/        per-test C sources (hello_world, DMA, SPI, …)
+  build/        generated images (gitignored)
 ```
+
+The production Boot ROM lives outside this tree, at `hw/sys/sep/bootrom/prod/`.
 
 ## Build
 
-A RISC-V bare-metal GCC must be on `PATH` (rv32imc / ilp32; no picolibc needed):
+`--stage c_compile` is the canonical path. It needs a RISC-V GCC with picolibc
+(`--specs=picolibc.specs`). Host installs without picolibc fall back to
+`scripts/docker-run.sh`.
 
 ```bash
-cd fw/tests/hello_world
-make                                  # default GCC_PREFIX=riscv64-unknown-elf
-# or: make CC=/path/to/riscv64-unknown-elf-gcc
+python3 tools/dv/run_dv.py --dut sep --items sep_hello_world_test \
+  --stage c_compile --stage flist --stage hdl_compile --stage sim
 ```
 
-This produces `hello_world.itcm.hex` and `hello_world.dtcm.hex`, which the DV
-boot test (`tests/sep_hello_world_test.py`) backdoor-loads into the TCM
-responder.
+To build one image by hand from the repository root:
 
-> The OSS `run_dv.py` flow has no `cgen` stage — firmware is built here, then
-> `run_dv.py --dut sep --items sep_hello_world_test --stage sim` boots it.
+```bash
+make -C hw/sys/sep/dv/fw -f fw.mk dv-fw-tests TEST=hello_world OCAH_ROOT="$PWD"
+```
+
+That writes `fw/build/tests/hello_world/hello_world.{itcm,dtcm}.hex`. The DV
+test `sep_hello_world_test` backdoor-loads those into the TCM macros.
+
+`RISCV_TOOLCHAIN` + `RISCV_PREFIX` is the toolchain contract the shared engine
+accepts. Leave them unset to use the stage's probe (site toolchain, local xPack,
+then the container).
 
 ## Adding a test
 
 1. `fw/tests/<name>/<name>.c` with `int main(void)` (return 0 = PASS).
-2. `fw/tests/<name>/Makefile`: `TEST := <name>` then `include ../../build/common.mk`.
-3. Point the DV test at `<name>.itcm.hex` / `.dtcm.hex`.
+2. Discover it through `fw.mk` / `compile.mk` (no per-test Makefile).
+3. Point the testlist entry at `firmware = "<name>"` so `c_compile` builds it.

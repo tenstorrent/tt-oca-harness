@@ -486,7 +486,7 @@ named checker evidence and the iconic-feature scorecard in
 link:SEP_VPLAN.adoc[SEP_VPLAN]. RTL code-coverage close-out is Phase 3 work.
 Code coverage is instrumented but unthresholded, and is a different number from
 feature coverage. `[coverage.verilator]` in `sep_sim_cfg.toml` instruments line,
-expression and user coverage (toggle stays off) and the nightly `no_cpu`
+expression and user coverage (toggle stays off) and the nightly `cpu_stub`
 regression collects it, but `cov/config/<tool>/` holds no coverage policy and no
 run gates on a coverage percentage. Do not mix the two numbers.
 
@@ -714,7 +714,7 @@ python3 tools/dv/run_dv.py --dut sep --items all --tag smoke --stage sim
 python3 tools/dv/run_dv.py --dut sep --items sep_axi_smoke_test \
   --stage flist --stage hdl_compile --stage sim
 python3 tools/dv/run_dv.py --dut sep --items sep_address_map_test --stage sim --seed 1
-python3 tools/dv/run_dv.py --dut sep --items no_cpu --regress \
+python3 tools/dv/run_dv.py --dut sep --items cpu_stub --regress \
   --tool verilator --stage flist --stage hdl_compile --stage sim
 python3 tools/dv/run_dv.py --dut sep --items cpu --regress \
   --tool verilator --stage flist --stage hdl_compile --stage sim
