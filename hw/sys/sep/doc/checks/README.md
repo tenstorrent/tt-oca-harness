@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 # SEP doc consistency checks
 
 Mechanical checks for `hw/sys/sep/doc/`. Each one cross-references the specification against

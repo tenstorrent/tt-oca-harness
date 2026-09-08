@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # Full SPI image for the SEP boot ROM: the OTP-anchored-key OCA bundle placed at
 # both manifest slots the ROM reads.
 #

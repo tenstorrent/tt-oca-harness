@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 # OCA-classic non-secure boot image for the SEP boot ROM.
 #
 # Paths are relative to hw/sys/sep/bootrom/prod (the packer's cwd -- the Makefile
