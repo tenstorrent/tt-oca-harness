@@ -5,7 +5,9 @@
   cmake,
   ninja,
   yosys,
-  python3
+  python3,
+  tomlplusplus,
+  ...
 }:
 stdenv.mkDerivation (finalAttrs: {
   pname = "yosys-slang";
@@ -31,12 +33,7 @@ stdenv.mkDerivation (finalAttrs: {
         rev = "boost-1.91.0";
         hash = "sha256-/a3wW6hMQwxrxs7pX3KKZGKFTm78HALaquBAwDMJfq4="; 
       }}")
-    (lib.cmakeFeature "FETCHCONTENT_SOURCE_DIR_TOMLPLUSPLUS" "${fetchFromGitHub {
-        owner = "marzer";
-        repo = "tomlplusplus";
-        rev = "v3.4.0";
-        hash = "sha256-h5tbO0Rv2tZezY58yUbyRVpsfRjY3i+5TPkkxr6La8M=";
-      }}")
+    (lib.cmakeFeature "FETCHCONTENT_SOURCE_DIR_TOMLPLUSPLUS" "${tomlplusplus.src}")
     (lib.cmakeBool "FETCHCONTENT_FULLY_DISCONNECTED" true)
   ];
   postPatch = ''

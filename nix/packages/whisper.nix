@@ -1,3 +1,4 @@
+# The version of whisper packaged here is not final yet - awaiting https://github.com/tenstorrent/tt-oca-harness/pull/#1586 merge
 {
   stdenv,
   fetchFromGitHub,

@@ -7,12 +7,12 @@
   zlib,
   ...
 }:
-stdenv.mkDerivation {
+stdenv.mkDerivation rec {
   pname = "binutils-riscv64-unknown-elf";
   version = "2.44";
 
   src = fetchurl {
-    url = "mirror://gnu/binutils/binutils-2.44.tar.xz";
+    url = "mirror://gnu/binutils/binutils-${version}.tar.xz";
     hash = "sha256-ziAX4FnWPmfduSQOnU7EnCiTYFA1zWDpKtUxd/Q3cjc=";
   };
 
