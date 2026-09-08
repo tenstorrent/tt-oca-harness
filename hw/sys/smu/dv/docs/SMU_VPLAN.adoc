@@ -14,7 +14,7 @@
 |Primary simulator |Verilator
 |Reference testbench architecture |`SMU_TB_ARCH.adoc`
 |Live test bodies |59 under `cocotb/tests/`, 56 of them enrolled
-|Enrolled leaf entries |55 in `sep0_p4_all`, 53 in `sep0_all`
+|Enrolled leaf entries |54 in `sep0_p4_all`, 52 in `sep0_all`
 |Non-enrolled inventory |28 bodies under `cocotb/tests_deferred/`
 |===
 
@@ -151,9 +151,8 @@ so the map cannot drift away from what the test does.
 |===
 |Population |Count
 |Live test bodies (`cocotb/tests/`) |59
-|Enrolled in `sep0_p4_all` |55
-|Enrolled in `sep0_all` (nightly) |53
-|Non-enrolled bodies (`cocotb/tests_deferred/`) |28
+|Enrolled in `sep0_p4_all` |54
+|Enrolled in `sep0_all` (nightly) |52
 |Non-enrolled bodies (`cocotb/tests_deferred/`) |28
 |===
 
@@ -165,17 +164,17 @@ so the map cannot drift away from what the test does.
 |`smoke` |4 |
 |`top5` |5 |
 |`top10` |11 |
-|`phase1` |49 |
-|`smc` |12 |
+|`phase1` |48 |
+|`smc` |11 |
 |`dtp` |29 |
 |`phase2_smc_dtp` |2 |
-|`phase2` |50 |
+|`phase2` |49 |
 |`phase3_corner` |3 |
 |`phase3` |5 |
 |`fabric` |14 |
 |`phase4_sep0` |19 |
-|`sep0_all` |53 |
-|`sep0_p4_all` |55 |
+|`sep0_all` |52 |
+|`sep0_p4_all` |54 |
 |===
 
 `sep0_all` is the group `.github/workflows/regress.yml` runs as the SMU

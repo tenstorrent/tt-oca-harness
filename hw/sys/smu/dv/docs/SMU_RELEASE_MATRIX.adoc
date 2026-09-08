@@ -16,11 +16,12 @@ mandatory job.
 |===
 |Tier |Command |Group size |Seeds |Blocks
 |PR |`--dut smu --tool verilator --items smoke` |4 |1 |PR merge (`sim.yml`)
-|Nightly |`--dut smu --tool verilator --items sep0_all` |53 |1 |v0.5.0 release qualification (`regress.yml`)
-|Weekly |`--dut smu --tool verilator --items sep0_all` |53 |3 |Coverage / dashboard; same group as nightly
+|Nightly |`--dut smu --tool verilator --items sep0_all` |52 |1 |v0.5.0 release qualification (`regress.yml`)
+|Weekly |`--dut smu --tool verilator --items sep0_all` |52 |3 |Coverage / dashboard; same group as nightly
 |===
 
-Issue text that said nightly is `53 × 3` is stale. Nightly is one seed;
+Issue text that said nightly is `53 × 3` is stale. The live group is 52.
+Nightly is one seed;
 weekly is three. A red nightly is not a PR merge gate (`regress.yml`
 says so) but it *does* block the #478 release package.
 
@@ -45,9 +46,9 @@ says so) but it *does* block the #478 release package.
 Candidate SHA `a273033a0`. Scheduled nightly run
 https://github.com/tenstorrent/tt-oca-harness/actions/runs/34051136716
 keeps JUnit, per-test logs, and `result.json` on artifact
-`dv-run-smu-verilator-nightly`. Score: 51 PASS / 1 FAIL / 52 reported
-leaves (group claims 53). The FAIL is `smu_xtrig_ctm_remap_test` (#482;
-fix in #1572). That leaf does not change this matrix.
+`dv-run-smu-verilator-nightly`. Score: 51 PASS / 1 FAIL on the 52-member
+`sep0_all` group. The FAIL is `smu_xtrig_ctm_remap_test` (#482; fix in
+#1572). That leaf does not change this matrix.
 
 [[smu-release-approval]]
 === Component approval (unsigned)

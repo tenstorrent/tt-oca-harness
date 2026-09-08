@@ -46,11 +46,15 @@ Residual CI scoping (coverage gate, Verilator CI honesty) stays on
 [[smc-release-evidence]]
 === Retained evidence
 
-Candidate SHA `a273033a0`. Scheduled nightly
-https://github.com/tenstorrent/tt-oca-harness/actions/runs/34051136716
-(`verilator-nightly (smc)` SUCCESS) and weekly run 33982997638 keep
-JUnit, per-test logs, and `result.json` on artifact
-`dv-run-smc-verilator-nightly`. 35 named leaves × 3 seeds, all PASS.
+The `verilator-nightly (smc)` job of run 34051136716 on `a273033a0`
+passed
+(https://github.com/tenstorrent/tt-oca-harness/actions/runs/34051136716/job/101534871072)
+and keeps JUnit, per-test logs, and `result.json` on artifact
+`dv-run-smc-verilator-nightly`. The `verilator-weekly (smc)` job of run
+33982997638 ran on ancestor `97b9cef40` and passed
+(https://github.com/tenstorrent/tt-oca-harness/actions/runs/33982997638/job/101351466849);
+its artifact is `dv-run-smc-verilator-weekly`. Both jobs are 35 named
+leaves × 3 seeds, all PASS.
 
 [[smc-release-approval]]
 === Component approval (unsigned)
