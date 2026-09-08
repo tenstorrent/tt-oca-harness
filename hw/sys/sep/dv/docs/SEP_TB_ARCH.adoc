@@ -126,8 +126,6 @@ hw/sys/sep/dv/
     interfaces/
   shims/
     cpu/sep_cpu_stub.sv     # no_cpu LSU splice
-    prim/prim_sync2.sv
-    crypto/abr_wrapper_key_reg_stub.sv
     analog/entropy_ring_oscillator.sv
   cocotb/
     env/                    # agents, monitors, goldens, scoreboards
@@ -339,8 +337,8 @@ wrapper's struct port, so flash tests need no mux step.
 
 ==== Kept TB shims
 
-`shims/` holds the `sep_cpu` stub (no_cpu build), `prim_sync2`, the ABR key-CSR
-Verilator stub, and the entropy ring-oscillator. `tb/sep_outbound_mbx.sv` (the fw
+`shims/` holds the `sep_cpu` stub (no_cpu build) and the entropy
+ring-oscillator. `tb/sep_outbound_mbx.sv` (the fw
 console / PASS monitor) is also kept — it services a real wrapper output port,
 not a memory model.
 
@@ -498,8 +496,8 @@ run gates on a coverage percentage. Do not mix the two numbers.
 Bender targets are `["sep", "sep_el2", "sep_wrapper"]` only — never
 `"simulation"` (licensed I/O / padring). Verilator override shims under
 `shims/` are listed ahead of the Bender filelist so first-def-wins selects
-them (`sep_cpu` stub on no_cpu, `prim_sync2` port remap, ABR key-reg stub,
-entropy RO). Proprietary IPs stay out of the filelist rather than being
+them (`sep_cpu` stub on no_cpu, entropy RO). Proprietary
+IPs stay out of the filelist rather than being
 blackbox-stubbed. Scoped `sep_public_scope.vlt` replaces global
 `--public-flat-rw` so AXI ready/valid cones stay optimizable.
 
@@ -648,7 +646,7 @@ from their manifests (`ocah_lib/uvm/sources.toml`,
 `ocah_axi_vip/uvm/sources.toml`, listed in
 `[frameworks.uvm.build].source_lists` and expanded ahead of the DUT's own
 sources), then the TB collateral both flows compile (the picorv32 KM core
-files, `sep_outbound_mbx`, the `abr_wrapper_key_reg` shim), `sep_tb_if`,
+files, `sep_outbound_mbx`), `sep_tb_if`,
 `sep_env_pkg`, `sep_seq_lib_pkg`, and `tb_top.sv` last.
 
 The scoreboard is always on and compares only. Each feature has its own
