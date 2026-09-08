@@ -77,7 +77,7 @@ required an upstream fix, a commercial simulator, or PeakRDL re-generation.
 |4 |Clock glitch-free |`clk_glitch_free_test` |`smc_clk_glitch_free_test` |`SmcClockObserver` |clk mux select
 |5 |Clock force ref |`clk_force_refclk_test` |`smc_clk_force_refclk_test` |`SmcClockObserver` |ref/smc select
 |6 |PLL observability |`pll_gpio_observe_test` |`smc_pll_observe_test` |`SmcGpioObserver` |PLL lock + GPIO
-|7 |GPIO strap / IRQ |`smc_gpio_irq_active_test` |`smc_gpio_irq_active_test` |`SmcGpioAgent` |gpio_i/o; strap pin is `tb_captured_straps`
+|7 |GPIO strap / IRQ |`smc_gpio_irq_active_test` |`smc_gpio_irq_active_test` |`SmcGpioAgent` |gpio_i/o;
 |8 |I2C clock-gate |already built |`smc_i2c_cg_sanity_test` ✓ |`SmcI2cAgent` (observer) |already in tb_top
 |9 |Hang detector |`smc_hang_detector_sanity_test` |`smc_hang_detector_sanity_test` |`SmcInterruptObserver` |hang IRQ
 |10 |External interrupts |`smc_ext_interrupts_pin_test` |`smc_ext_interrupts_pin_test` |`SmcInterruptAgent` |IRQ in/out
