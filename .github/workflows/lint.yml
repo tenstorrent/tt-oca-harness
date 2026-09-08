@@ -103,7 +103,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        block: [aou-rtl, dtp, sep, smc, smu]
+        block: [aou, dtp, sep, smc, smu]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -481,17 +481,17 @@ jobs:
           echo "$GITHUB_WORKSPACE/slang-bin" >> "$GITHUB_PATH"
       - name: Generate smu filelist (covers smc/sep/dtp too)
         run: make -C hw/sys/smu -f flow.mk ocah-lint-slang-flist OCAH_ROOT="$GITHUB_WORKSPACE"
-      - name: Generate aou-rtl filelist
-        run: make -C vendor/tenstorrent/aou-rtl/overlay -f flow.mk ocah-lint-slang-flist OCAH_ROOT="$GITHUB_WORKSPACE"
+      - name: Generate aou filelist
+        run: make -C vendor/tenstorrent/aou/overlay -f flow.mk ocah-lint-slang-flist OCAH_ROOT="$GITHUB_WORKSPACE"
       - name: Lint smu (slang)
         run: slang -f hw/sys/smu/build/lint/smu.f --top smu --timescale=1ns/1ps --lint-only --single-unit --compat vcs --error-limit 0 --diag-json smu_diags.json || true
       - name: Convert smu diagnostics to rdjson
         run: python3 scripts/ci/slang_to_rdjson.py smu_diags.json > smu_diags.rdjson.json
       - uses: ./.github/actions/reviewdog-report
         with: { log-file: smu_diags.rdjson.json, format: rdjson, name: lint-sv-slang/smu }
-      - name: Lint aou-rtl (slang)
-        run: slang -f vendor/tenstorrent/aou-rtl/overlay/build/lint/AOU_TOP.f --top AOU_TOP --timescale=1ns/1ps --lint-only --single-unit --compat vcs --error-limit 0 --diag-json aou_diags.json || true
-      - name: Convert aou-rtl diagnostics to rdjson
+      - name: Lint aou (slang)
+        run: slang -f vendor/tenstorrent/aou/overlay/build/lint/AOU_TOP.f --top AOU_TOP --timescale=1ns/1ps --lint-only --single-unit --compat vcs --error-limit 0 --diag-json aou_diags.json || true
+      - name: Convert aou diagnostics to rdjson
         run: python3 scripts/ci/slang_to_rdjson.py aou_diags.json > aou_diags.rdjson.json
       - uses: ./.github/actions/reviewdog-report
         with: { log-file: aou_diags.rdjson.json, format: rdjson, name: lint-sv-slang/aou }
