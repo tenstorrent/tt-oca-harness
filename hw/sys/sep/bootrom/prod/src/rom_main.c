@@ -77,6 +77,22 @@ __attribute__((noreturn)) void trap_handler_c(uint32_t mcause, uint32_t mepc, ui
     simputshex32("MV=", mtval);
     simputshex32("MS=", mstatus);
 
+    // On the store / non-blocking-load error NMI, mcause and mtval say almost
+    // nothing: the NMI vectors to SEP_NMI_VEC (0xC0000100) and mtval reads back
+    // zero, so a bad store is indistinguishable from any other fault. VeeR latches
+    // the offending D-bus address in mdseac (0xFC0) and refines the cause in
+    // mscause (0x7FF); printing both turns "the ROM died somewhere" into an
+    // address. MADDR= is the staged manifest pointer, the field most likely to be
+    // the bad address.
+    {
+        uint32_t mdseac, mscause;
+        __asm__ volatile("csrr %0, 0xFC0" : "=r"(mdseac));
+        __asm__ volatile("csrr %0, 0x7FF" : "=r"(mscause));
+        simputshex32("DSEAC=", mdseac);
+        simputshex32("MSC=", mscause);
+        simputshex32("MADDR=", get_bl0_state()->sep_sram_manifest_addr);
+    }
+
     // Verdict on cold_scratch[0], matching what trap_vector_early in vector.S
     // already does -- a fault here and a fault there leave the same evidence.
     rom_test_fail();
