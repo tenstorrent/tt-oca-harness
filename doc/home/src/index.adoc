@@ -34,7 +34,7 @@ repositories, each covering a distinct part of building and using OCAH:
 |tt-oca-harness-aou
 |Tenstorrent
 |https://github.com/tenstorrent/tt-oca-harness-aou[tenstorrent/tt-oca-harness-aou]
-|AXI-over-UCIe (AoU) bridge RTL, a component of OCAH's RTL collateral
+|AXI-over-UCIe Bridge (AoU) RTL, a component of OCAH's RTL collateral
 
 |tt-oca-harness-model
 |Tenstorrent
