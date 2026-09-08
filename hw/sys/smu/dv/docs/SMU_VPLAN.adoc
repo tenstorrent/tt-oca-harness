@@ -2243,6 +2243,7 @@ complete plan: `CHK-SEP-BOOT-HEALTH-VERDICT`, `CHK-SEP-DBG-GATED`,
 [cols=",,",options="header",]
 |===
 |Group |Tests |Notes
+|`all` |56 |Unique enrolled bodies
 |`smoke` |4 |PR gate
 |`smc` |11 |SMC-facing density
 |`dtp` |29 |DTP-facing

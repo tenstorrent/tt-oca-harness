@@ -64,11 +64,12 @@ class smc_register_sanity_test_seq extends smc_base_test_seq;
     attach_evidence('{ChkFuseSense, ChkCsrResp, ChkCsrIdle, ChkCsrReadback, ChkCsrRandom,
                     ChkCsrRestore, ChkNonvac});
     scratch_cases(cases);
-    `uvm_info(get_type_name(),
-              $sformatf(
-                  {"SMC SV-UVM register sanity (smc_register_sanity_test): SEP_IN scratch CSR idle/write/",
-                   "readback/restore on %0d registers; scenario_seed=%0d random_count=%0d"},
-                    cases.size(), scenario_seed, random_count), UVM_LOW)
+    `uvm_info(
+        get_type_name(),
+        $sformatf(
+            {"SMC SV-UVM register sanity (smc_register_sanity_test): SEP_IN scratch CSR idle/write/",
+             "readback/restore on %0d registers; scenario_seed=%0d random_count=%0d"},
+              cases.size(), scenario_seed, random_count), UVM_LOW)
 
     wait_fuse_sense_done();
 

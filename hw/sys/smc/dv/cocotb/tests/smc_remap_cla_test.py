@@ -17,7 +17,7 @@ from smc_base_test import smc_base_test
 # counter: a floor that shrinks with the sequence cannot catch a sequence that
 # silently stops short. Composition: 32 remap-table reset reads + 9 CLA aperture
 # accesses + 18 remap-programming/filter accesses + 82 CLA full-aperture reset
-# reads.
+# reads (32 + 9 + 18 + 82 = 141).
 #
 # The 82 is the software-owned subset of the 137 registers in the generated
 # CLA map -- the remaining registers are hardware-driven and cannot be held
@@ -26,7 +26,7 @@ from smc_base_test import smc_base_test
 # counter). The sequence additionally asserts `len(CLA_RESET_SWEEP) >= 82`, so a
 # generated map that lost rows fails there rather than quietly lowering this
 # floor.
-REMAP_CLA_MIN_CSR_ACCESSES = 116
+REMAP_CLA_MIN_CSR_ACCESSES = 141
 
 
 @pyuvm.test()
