@@ -4,8 +4,6 @@
 
 from __future__ import annotations
 
-import os
-
 from cocotb.triggers import ClockCycles, ReadOnly
 from env.dtp_xtrig_types import (
     XTRIG_CTM_SELECT_MASK,
@@ -34,6 +32,7 @@ from env.dtp_xtrig_types import (
     project_internal_mask,
 )
 from ocah_checker import OcahChecker
+from ocah_lib import OcahKnobs
 
 from .dtp_base_test_seq import dtp_base_test_seq
 
@@ -148,7 +147,7 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
     # CSR helpers
     # ------------------------------------------------------------------
     async def csr_write(self, addr: int, data: int, *, wstrb: int = 0xF, label: str = "") -> int:
-        resp = await self.axil.write(addr, data, wstrb=wstrb)
+        resp = await self.axil.write(addr, data, strb=wstrb)
         self.log.info(
             "XTRIG CSR WRITE %-34s addr=0x%03x data=0x%08x wstrb=0x%x resp=%d",
             label,
@@ -161,7 +160,8 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         return resp
 
     async def csr_read(self, addr: int, *, label: str = "") -> int:
-        data, resp = await self.axil.read(addr)
+        result = await self.axil.read_result(addr)
+        data, resp = result.data, result.resp
         self.log.info(
             "XTRIG CSR READ  %-34s addr=0x%03x data=0x%08x resp=%d",
             label,
@@ -233,7 +233,7 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         # hook: the reference model is programmed with an INVERTED select so
         # CHK-XTRIG-ROUTE-MODEL must fail, proving the model comparison gates
         # pass/fail end to end (route scenarios only).
-        if os.environ.get("DTP_XTRIG_CHECKER_NEGATIVE", "0") not in ("", "0"):
+        if OcahKnobs.is_set("DTP_XTRIG_CHECKER_NEGATIVE"):
             model_mask = (~input_mask) & XTRIG_CTM_SELECT_MASK
             self.log.warning(
                 "NEGATIVE VALIDATION: CTM model select 0x%x instead of 0x%x",
@@ -298,14 +298,14 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         observed = 0
         for _ in range(cycles):
             await ReadOnly()
-            observed = int(getattr(self.xtrig.dut, name).value) & mask
+            observed = self.xtrig.sample_signal(name) & mask
             await ClockCycles(self.xtrig.clk, 1)
             if observed == (expected & mask):
                 self.log.info("Observed %s mask=0x%x expected=0x%x %s", name, mask, expected, label)
                 break
         else:
             await ReadOnly()
-            observed = int(getattr(self.xtrig.dut, name).value) & mask
+            observed = self.xtrig.sample_signal(name) & mask
         self.check_evidence(
             self.CHK_SIGNAL, f"{name}.mask", observed, expected & mask, context=label
         )
@@ -366,9 +366,9 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             )
             await self.wait_signal_mask(signal, ctp_outputs, ctp_outputs, label=f"{label}.ctp")
             if mode == XTRIG_CTP_MODE_P2P:
-                self.xtrig.dut.xtrig_ctp_ack_in_din.value = ctp_outputs
+                self.xtrig.set_ctp_ack_in_din(ctp_outputs)
                 await ClockCycles(self.xtrig.clk, 3)
-                self.xtrig.dut.xtrig_ctp_ack_in_din.value = 0
+                self.xtrig.set_ctp_ack_in_din(0)
         if int_outputs:
             await self.wait_signal_mask(
                 "xtrig_ctm_src_req", int_outputs, int_outputs, label=f"{label}.internal"
@@ -696,9 +696,9 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             )
             if not self.is_ctp_port(output_port):
                 ack_mask = 1 << self.int_idx_from_port(output_port)
-                self.xtrig.dut.xtrig_ctm_src_ack.value = ack_mask
+                self.xtrig.set_ctm_src_ack(ack_mask)
                 await ClockCycles(self.xtrig.clk, 1)
-                self.xtrig.dut.xtrig_ctm_src_ack.value = 0
+                self.xtrig.set_ctm_src_ack(0)
         self.log_summary("dst_port_sweep", outputs=XTRIG_NUM_CTM_PORTS)
 
     # ------------------------------------------------------------------
@@ -754,32 +754,29 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         rng = self.rng("axi_channel_skew")
         d1, d2, d3 = (rng.getrandbits(16) for _ in range(3))
         addr = ctp_stretch_addr(rng.randrange(XTRIG_NUM_CTP))
-        resp = await self.axil.write_skewed(
-            addr, d1, aw_before_w=True, gap_cycles=rng.randint(3, 7), bready_delay=rng.randint(1, 4)
+        result = await self.axil.write_skewed_result(
+            addr, d1, w_valid_delay=rng.randint(3, 7), b_ready_delay=rng.randint(1, 4)
         )
-        self.check_evidence(self.CHK_AXIL, "axi_skew.aw_before_w.bresp", resp, self.AXI_OKAY)
+        self.check_evidence(self.CHK_AXIL, "axi_skew.aw_before_w.bresp", result.resp, self.AXI_OKAY)
         await self.write_read_check(
             addr, d2, d2, mask=XTRIG_CTP_STRETCH_MASK, label="axi_skew.normal_after_aw"
         )
-        resp = await self.axil.write_skewed(
+        result = await self.axil.write_skewed_result(
             addr,
             d3,
-            aw_before_w=False,
-            gap_cycles=rng.randint(3, 7),
-            bready_delay=rng.randint(1, 4),
+            aw_valid_delay=rng.randint(3, 7),
+            b_ready_delay=rng.randint(1, 4),
         )
-        self.check_evidence(self.CHK_AXIL, "axi_skew.w_before_aw.bresp", resp, self.AXI_OKAY)
+        self.check_evidence(self.CHK_AXIL, "axi_skew.w_before_aw.bresp", result.resp, self.AXI_OKAY)
         observed = await self.csr_read(addr, label="axi_skew.final_read")
         self.check_evidence(
             self.CHK_AXIL, "axi_skew.final_stretch", observed & XTRIG_CTP_STRETCH_MASK, d3
         )
-        data, rresp, stable = await self.axil.read_with_rready_hold(
-            addr, hold_cycles=rng.randint(3, 7)
-        )
-        self.check_evidence(self.CHK_AXIL, "axi_skew.rresp", rresp, self.AXI_OKAY)
-        self.check_evidence(self.CHK_AXIL, "axi_skew.rstable", stable, 1)
-        self.check_evidence(self.CHK_AXIL, "axi_skew.rdata", data & XTRIG_CTP_STRETCH_MASK, d3)
-        self.log_summary("axi_channel_skew", final=f"0x{data:08x}")
+        held = await self.axil.read_hold_result(addr, rng.randint(3, 7))
+        self.check_evidence(self.CHK_AXIL, "axi_skew.rresp", held.resp, self.AXI_OKAY)
+        self.check_evidence(self.CHK_AXIL, "axi_skew.rstable", int(held.hold_stable), 1)
+        self.check_evidence(self.CHK_AXIL, "axi_skew.rdata", held.data & XTRIG_CTP_STRETCH_MASK, d3)
+        self.log_summary("axi_channel_skew", final=f"0x{held.data:08x}")
 
     async def run_axi_channel_skew_demux_aw_lock_release(self) -> None:
         self.log_banner("DTP XTRIG AXI-Lite demux AW-lock release")
@@ -805,14 +802,17 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         )
         for idx, (addr, data, aw_first) in enumerate(cases, start=1):
             self.log_iteration(idx, 3, "addr=0x%x data=0x%x aw_first=%d", addr, data, aw_first)
-            resp = await self.axil.write_skewed(
+            gap = rng.randint(4, 8)
+            result = await self.axil.write_skewed_result(
                 addr,
                 data,
-                aw_before_w=aw_first,
-                gap_cycles=rng.randint(4, 8),
-                bready_delay=rng.randint(1, 4),
+                aw_valid_delay=0 if aw_first else gap,
+                w_valid_delay=gap if aw_first else 0,
+                b_ready_delay=rng.randint(1, 4),
             )
-            self.check_evidence(self.CHK_AXIL, f"demux_aw_lock.{idx}.bresp", resp, self.AXI_OKAY)
+            self.check_evidence(
+                self.CHK_AXIL, f"demux_aw_lock.{idx}.bresp", result.resp, self.AXI_OKAY
+            )
             observed = await self.csr_read(addr, label=f"demux_aw_lock.{idx}.readback")
             mask = XTRIG_CTP_CONFIG_MASK if addr >= 0x200 else XTRIG_CTM_SELECT_MASK
             self.check_evidence(
@@ -828,14 +828,22 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         for idx, addr in enumerate(
             (XTRIG_UNMAPPED_BASE + offsets[0] * 4, XTRIG_UNMAPPED_BASE + offsets[1] * 4), start=1
         ):
-            data, resp, stable = await self.axil.read_with_rready_hold(
-                addr, hold_cycles=rng.randint(4, 8)
-            )
+            held = await self.axil.read_hold_result(addr, rng.randint(4, 8))
             self.log_iteration(
-                idx, 2, "unmapped addr=0x%x data=0x%x resp=%d stable=%d", addr, data, resp, stable
+                idx,
+                2,
+                "unmapped addr=0x%x data=0x%x resp=%d stable=%d",
+                addr,
+                held.data,
+                held.resp,
+                int(held.hold_stable),
             )
-            self.check_evidence(self.CHK_AXIL, f"read_decode.{idx}.resp", resp, self.AXI_DECERR)
-            self.check_evidence(self.CHK_AXIL, f"read_decode.{idx}.stable", stable, 1)
+            self.check_evidence(
+                self.CHK_AXIL, f"read_decode.{idx}.resp", held.resp, self.AXI_DECERR
+            )
+            self.check_evidence(
+                self.CHK_AXIL, f"read_decode.{idx}.stable", int(held.hold_stable), 1
+            )
         self.log_summary(
             "axi_channel_skew_read_decode_backpressure", unmapped_base=f"0x{XTRIG_UNMAPPED_BASE:x}"
         )
@@ -845,8 +853,8 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
     # ------------------------------------------------------------------
     # Seeded per-pass port picks: every source/destination CTP and internal CT
     # is interchangeable per spec, so each loop proves the route class on a
-    # different port set. Inputs are kept out of the output masks (as in the
-    # original directed picks) so the isolation check stays meaningful.
+    # different port set. Inputs are kept out of the output masks so the
+    # isolation check stays meaningful.
     async def run_ctm_wire_or_cla_to_ctp(self) -> None:
         rng = self.rng("ctm_wire_or_cla_to_ctp")
         int_in, int_ovl = rng.sample(range(XTRIG_NUM_INT_CT), 2)

@@ -17,12 +17,9 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
-from env import cocotb_compat as _cocotb_compat
 from seq_lib.smu_axi_helpers import wait_signal_high
 from seq_lib.smu_jtag_helpers import make_smu_jtag_tap, pack_debug_control
 from smu_base_test import smu_base_test
-
-_cocotb_compat.apply()
 
 
 @pyuvm.test()

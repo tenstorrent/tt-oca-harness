@@ -8,7 +8,7 @@
  * an error indicator in the handshake scratch register, and recovers to handle
  * subsequent valid requests normally.
  *
- * Spec basis: OCH Specification §Crypto Key Manager — illegal commands trigger
+ * Spec basis: OCAH Specification §Crypto Key Manager — illegal commands trigger
  * an abort/illegal-message response; the protocol must recover and continue
  * handling subsequent valid requests.
  *

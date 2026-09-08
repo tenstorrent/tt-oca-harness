@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# SPDX-FileCopyrightText: (c) 2024-2026 Tenstorrent Inc. All Rights Reserved.
+# SPDX-FileCopyrightText: 2024-2026 Tenstorrent USA, Inc.
 #
 # sep_drbg_scoreboard.py
 #
@@ -270,7 +270,7 @@ class SepDrbgScoreboard:
         # Contention evidence: the sim-time (ns) of every post-adapter crypto-EDN beat
         # per sink, index-aligned with _sink_words. Two sinks whose beat time-spans
         # OVERLAP were being granted EDN words during an overlapping window -- i.e. the
-        # round-robin arbiter (u_axis_edn_crypto) time-multiplexed two live clients
+        # round-robin arbiter (u_axis_edn_crypto_s3c_scan) served two live clients
         # (real contention), not one sink drained fully before the other. Exposed via
         # sink_beat_times(); a stricter same-cycle-req overlap does not occur with this
         # stimulus (brief req pulses separated by long AXI config), so the beat-window
@@ -1270,9 +1270,9 @@ class SepDrbgScoreboard:
                 )
         # Generate segmentation. gen_last IS a per-Generate-command terminator:
         # csrng_cmd_stage sets cmd_gen_cnt_last when the genbits down-counter
-        # reaches its final beat (csrng_cmd_stage.sv:379, :447), ships it as
+        # reaches its final beat (csrng_cmd_stage.sv:380, :448), ships it as
         # acmd_bus[16] ("glast"), and csrng_core latches it into gen_last_q at
-        # acmd_sop (csrng_core.sv:750) to drive ctr_drbg_gen.req_glast_i. So each
+        # acmd_sop (csrng_core.sv:748-751) to drive ctr_drbg_gen.req_glast_i. So each
         # Generate command ends with exactly one glast beat, and that is where its
         # single trailing Update lands.
         self.log.info(

@@ -31,11 +31,14 @@ top_file = "hw/common/dv/vip/ocah_axi_vip/dv/tb/tb_top.sv"
 filelist = "hw/common/dv/vip/ocah_axi_vip/dv/build/ocah_axi_vip_dut_compile.f"
 bender_filelist = "hw/common/dv/vip/ocah_axi_vip/dv/build/ocah_axi_vip_bender.f"
 work_dir = "hw/common/dv/vip/ocah_axi_vip/dv/build"
-# The harness compiles no DUT RTL. The target name matches nothing in the
-# Bender graph on purpose, so the generated filelist carries only the base
-# package closure.
+# The harness compiles no DUT RTL: the target name matches nothing in the
+# Bender graph, so the generated filelist carries only the base package
+# closure.
 common_bender_targets = []
 bender_targets = ["ocah_axi_vip_harness"]
+# The shared interface compiles into the cocotb shape for the default-geometry
+# instances in tb_top; the SV-UVM overlay takes it from the VIP manifest.
+sources = ["hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_if.sv"]
 
 [frameworks.cocotb]
 python_root = "hw/common/dv/vip/ocah_axi_vip/dv/cocotb"

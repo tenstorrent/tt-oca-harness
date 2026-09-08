@@ -1,11 +1,9 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-// Boot manifest and payload structure definitions for OCH SEP ROM.
+// Boot manifest and payload structure definitions for OCAH SEP ROM.
 //
-// Manifest format used by the ROM (manifest_t = 1184 bytes).
-// Adapted for this platform with
-// reference suite-specific address overrides (ICCM base, SPI window, flash offsets).
+// manifest_t is 1184 bytes, packed.
 
 #ifndef __MANIFEST_H_DEFINED__
 #define __MANIFEST_H_DEFINED__
@@ -21,19 +19,13 @@
 #define _PACKED_
 #endif
 
-// =========================================================================
-// Manifest offsets in SPI flash
-// =========================================================================
+// ── Manifest offsets in SPI flash ──
 #define PRIMARY_MANIFEST_OFFSET 0x1000
 #define BACKUP_MANIFEST_OFFSET 0x41000
 
-// =========================================================================
-// reference suite address overrides for memory layout
-// =========================================================================
-// BL1 executes from SRAM.  IFU can fetch instructions from SRAM via
-// the AXI system bus (sep_cpu IFU demux → sep_local_axi_xbar → sram),
-// and LSU can load/store data from SRAM via the same bus.  This allows
-// a single combined BL1 image (.text + .rodata + .data + .bss) in SRAM.
+// ── Memory layout ──
+// SRAM holds the manifest payload the SPI load lands in and is the source of the
+// BL1 copy.
 #ifndef SEP_SRAM_BASE
 #define SEP_SRAM_BASE 0x10000000u // External SRAM base (SEP address map)
 #endif
@@ -41,8 +33,9 @@
 #define SEP_SRAM_SIZE 0x00040000u // 256 KiB
 #endif
 
-// ICCM / DCCM definitions (tightly-coupled memories on VeeR EL2).
-// Kept for reference; BL1 no longer requires the ICCM/DCCM split.
+// ICCM / DCCM definitions (VeeR EL2 tightly-coupled memories). ICCM and DCCM
+// share region 0xC, so any load/store to ICCM faults: BL1 executes from ICCM but
+// its .rodata/.data/.bss go to DCCM, and the DMA delivers the ICCM image.
 #ifndef SEP_IRAM_BASE
 #define SEP_IRAM_BASE 0xC0000000u // ICCM base (VeeR region 0xC, offset 0)
 #endif
@@ -56,14 +49,12 @@
 #define SEP_DRAM_SIZE 0x00020000u // 128 KiB
 #endif
 
-// SPI flash direct-access window base (reference suite address map).
+// SPI flash direct-access window base.
 #ifndef SEP_SPI_BASE
 #define SEP_SPI_BASE 0x30000000u
 #endif
 
-// =========================================================================
-// Manifest constants
-// =========================================================================
+// ── Manifest constants ──
 
 /** Currently supported manifest major version. */
 #define MANIFEST_MAJOR_VERSION 1
@@ -145,9 +136,7 @@
 #define LC_STATES_BIT_RMA_SOP 3
 #define LC_STATES_BIT_RMA_CHIPLET 4
 
-// =========================================================================
-// Structure definitions
-// =========================================================================
+// ── Structure definitions ──
 
 /**
  * Usage constraints.
@@ -261,9 +250,7 @@ struct _PACKED_ toc_header {
     struct toc_entry images[];
 };
 
-// =========================================================================
-// Inline helpers
-// =========================================================================
+// ── Inline helpers ──
 
 /**
  * Get the payload address from the manifest.
@@ -275,11 +262,11 @@ static inline uint8_t *manifest_payload_address(const manifest_t *const manifest
 
 /**
  * Check a SEP BL1 image entry for validity.
- * BL1 is loaded into SRAM where both IFU and LSU can access it.
+ * The load address must lie inside ICCM, where the IFU fetches BL1 from.
  * Returns 0 on success, non-zero on failure.
  */
 static inline uint32_t check_bl1_image(const struct toc_entry *image) {
-    if (!contains_range(SEP_SRAM_BASE, SEP_SRAM_SIZE, (size_t)image->load_addr,
+    if (!contains_range(SEP_IRAM_BASE, SEP_IRAM_SIZE, (size_t)image->load_addr,
                         (size_t)image->length))
         return 1;
 
@@ -288,9 +275,7 @@ static inline uint32_t check_bl1_image(const struct toc_entry *image) {
     return 0;
 }
 
-// =========================================================================
-// reference suite-specific error codes
-// =========================================================================
+// ── Error codes ──
 enum {
     MANIFEST_OK = 0u,
     MANIFEST_ERR_DMA_FAILED = 0x00030001u,
@@ -317,15 +302,15 @@ enum {
     MANIFEST_ERR_KEY_HASH_MISMATCH = 0x00030016u,
     MANIFEST_ERR_PAYLOAD_HASH_MISMATCH = 0x00030017u,
     MANIFEST_ERR_DECRYPT_FAILED = 0x00030018u,
+    MANIFEST_ERR_IMAGE_HASH_MISMATCH = 0x00030019u,
 };
 
-// =========================================================================
-// reference suite-specific API declarations
-// =========================================================================
+// ── API declarations ──
 
 struct boot_straps;
 
-uint32_t rom_manifest_boot(const struct boot_straps *straps, uint32_t spi_status);
+uint32_t rom_manifest_boot(const struct boot_straps *straps, uint32_t spi_status, uint32_t lc_state,
+                           bool sboot_dis);
 uint32_t rom_handoff_bl1(const manifest_t *m);
 void rom_clear_ext_sram(void);
 

@@ -24,6 +24,7 @@ OcahAxiMonitor / OcahAxiLiteMonitor  — Passive transaction monitors with callb
 OcahAxiRefModel       — Shadow memory + expected-response reference model.
 OcahAxiScoreboard     — Evidence-emitting scoreboard over monitor item streams.
 OcahAxiProtocolWatcher / OcahAxiLiteProtocolWatcher — cycle-level rule watchers.
+OcahAxiConfig         — Bus geometry; binds an interface scope at the real widths.
 
 Quick-start
 -----------
@@ -72,13 +73,14 @@ from .ocah_axi_types import (
     RESP_OKAY,
     RESP_SLVERR,
     RESP_TIMEOUT,
+    OcahAxiProtocol,
     resp_name,
     worst_resp,
 )
 
 
 class OcahAxiVipBackendError(ImportError):
-    """Raised when an optional legacy-backed monitor cannot import its backend."""
+    """Raised at construction of a class whose optional backend is not importable."""
 
 
 def _unavailable_class(class_name: str, backend: str):
@@ -94,6 +96,7 @@ def _unavailable_class(class_name: str, backend: str):
 
 
 try:
+    from .ocah_axi_config import OcahAxiConfig
     from .ocah_axi_lite_master_agent import OcahAxiLiteMasterAgent
     from .ocah_axi_lite_master_config import OcahAxiLiteMasterConfig
     from .ocah_axi_lite_master_driver import OcahAxiLiteMasterDriver
@@ -118,6 +121,7 @@ try:
 except ModuleNotFoundError as exc:
     if "cocotbext" not in str(exc):
         raise
+    OcahAxiConfig = _unavailable_class("OcahAxiConfig", "cocotbext-axi")
     OcahAxiMasterAgent = _unavailable_class("OcahAxiMasterAgent", "cocotbext-axi")
     OcahAxiMasterConfig = _unavailable_class("OcahAxiMasterConfig", "cocotbext-axi")
     OcahAxiMasterDriver = _unavailable_class("OcahAxiMasterDriver", "cocotbext-axi")
@@ -197,6 +201,7 @@ __all__ = [
     "OcahAxiLiteSlaveDriver",
     "OcahAxiLiteSlaveSequence",
     # Passive monitors
+    "OcahAxiConfig",
     "OcahAxiMonitor",
     "OcahAxiLiteMonitor",
     # Items and checkers
@@ -222,6 +227,7 @@ __all__ = [
     "OcahAxiReadResult",
     "OcahAxiWriteResult",
     # AXI response code constants
+    "OcahAxiProtocol",
     "RESP_OKAY",
     "RESP_EXOKAY",
     "RESP_SLVERR",

@@ -130,7 +130,7 @@ security-sensitive fuse or SEP operations.
 
 ====== DFD Chain
 
-The Debug Forensics Dump (DFD) chain requires AP debug to be enabled. The SIB
+The Design-for-Debug (DFD) chain requires AP debug to be enabled. The SIB
 gate itself is the least restrictive of the three; the resources reached through
 it are gated again inside the PTAP, where each JTAG2AXI bridge applies its own
 lifecycle condition. This chain grants access to:

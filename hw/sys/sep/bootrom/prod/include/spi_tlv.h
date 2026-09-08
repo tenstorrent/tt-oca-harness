@@ -3,7 +3,7 @@
 
 // SPI parameter TLV used by BL0/ROM SPI init.
 //
-// Minimal SPI TLV definition for the OCH SEP ROM bring-up environment
+// Minimal SPI TLV definition for the OCAH SEP ROM bring-up environment
 // (freestanding, no libc).
 #
 // NOTE: This header intentionally does not depend on the broader status

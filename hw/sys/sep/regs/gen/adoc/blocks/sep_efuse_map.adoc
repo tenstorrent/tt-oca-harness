@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[cols="1,1,1,3", options="header"]
+[cols="1,4,1,6", options="header"]
 .Register Map
 |===
 | Address | Name | Access | Description
@@ -57,7 +57,7 @@
 | 0x3E0 | spare7 | R a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .LOCKS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -127,7 +127,7 @@
 | 0 | `LC_STATE_WRITE_LOCK` | RW | 0x0 a| lc_state_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .LOCKS_SPARE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -150,7 +150,7 @@
 | 0 | `SPARE0_WRITE_LOCK` | RW | 0x0 a| spare0_write_lock (slot 32): when set, spare0 is not write-able.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .LC_STATE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -158,7 +158,7 @@
 | 7:0 | `lc_state` | R | 0xF0 a| Life cycle manufacturing state, differentially encoded: {~raw[3:0], raw[3:0]}
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SBOOT_DIS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -166,7 +166,7 @@
 | 0 | `disable_secure_boot` | R | 0x0 a| Chicken bit to disable secure boot in SEP ROM.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TRANSIENT_RMA_EN Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -174,7 +174,7 @@
 | 0 | `transient_rma_en` | R | 0x0 a| When Transient RMA EN is 1, matching on corresponding *_Tokens will automatically transfer the chip to the corresponding RMA state by setting the LC_STATE reg
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SIP_DIS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -188,7 +188,7 @@
 | 0 | `sep_debug` | RW | 0x0 a| SEP_DBG (bit 0): Coarse-grained debug enable for the SEP scope. 1'b1: SEP-scope debug/scan-dump access disabled and external inbound traffic is filtered. 1'b0: enabled. A local gate only: reaching SEP internal state from an external debugger additionally requires SIP_DBG and CHIPLET_DBG.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SYS_DIS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -202,84 +202,84 @@
 | 0 | `sep_debug` | RW | 0x0 a| SEP_DBG (bit 0): Coarse-grained debug enable for the SEP scope. 1'b1: SEP-scope debug/scan-dump access disabled and external inbound traffic is filtered. 1'b0: enabled. A local gate only: reaching SEP internal state from an external debugger additionally requires SIP_DBG and CHIPLET_DBG.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .RMA_SIP_TOKEN_DIGEST Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `token_digest` | R | 0x0 a| Hash digest of life cycle secret that allows entering RMA_SIP state / Note this is a 256 bit field
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .RMA_CHIPLET_TOKEN_DIGEST Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `token_digest` | R | 0x0 a| Hash digest of life cycle secret that allows entering RMA_CHIPLET state/ Note this is a 256 bit field
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CLASS_KEY Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `key` | R | 0x0 a| Class key that could be used for FW encryption/decryption
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CHIPLET_PUBK_REVOKE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `select` | R | 0x0 a| Global public-key revocation vector covering every boot-verification key of every owner (classical and PQC). SEP ROM embeds a set of public-key hash digests and accesses additional fused key hashes; each key entry maps to one bit here. Once set, SEP ROM rejects the corresponding key. Bit map: [7:0] ROM chiplet-creator classical keys (bits 0,1 are development keys); [15:8] ROM chiplet-creator PQC keys; [16]/[17] CHIPLET_PUBK_HASH0/1; [18]/[19] CHIPLET_PUBK_PQC_HASH0/1; [20]/[21] SIP_PUBK_HASH0 / SIP_PUBK_PQC_HASH0; [22]/[23] SYS_PUBK_HASH / SYS_PUBK_PQC_HASH; [24]/[25] SIP_PUBK_HASH1 / SIP_PUBK_PQC_HASH1; [31:26] reserved. Before the chiplet owner transfers a part to the customer, the development-key bits shall be set (revoked).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .BL1_VERSION Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `version` | R | 0x0 a| Minimum BL1 version that can be loaded by SEPROM
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .BL2_VERSION Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `version` | R | 0x0 a| Minimum BL2 version that can be loaded by BL1. If more boot stages exist, rollback protection can be implemented by BL2.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CHIPLET_UID Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `uid` | R | 0x0 a| Silicon creator's secret device unique ID (also referred to as UDS - Unique Device Secret). The chiplet creator is responsible for CHIPLET_UID provisioning and public identity enrollment. When read-locked, both writability and software visibility are disabled.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SIP_PUBK_HASH0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `key_hash` | R | 0x0 a| Hash digest of SiP owner's root public key for secure boot. The chiplet creator's actual root public key is embedded in the SEPROM; this digest is used to validate that public key.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SIP_UID Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `uid` | R | 0x0 a| SiP owner's secret device unique ID. The SiP owner is responsible for SIP_UID provisioning and public identity enrollment. When read-locked, both writability and software visibility are disabled.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SYS_PUBK_HASH Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `key_hash` | R | 0x0 a| Hash digest of system owner's root public key for secure boot.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SYS_UID Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `uid` | R | 0x0 a| System owner's secret device unique ID. The system owner is responsible for SYS_UID provisioning and public identity enrollment. When read-locked, both writability and software visibility are disabled.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .STATUS_RPT Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -287,7 +287,7 @@
 | 1:0 | `rpt` | R | 0x0 a| BOOTROM report status based on the bit. 2'b00-> bootrom report status based on GPIO; 2'b01->bootrom report status;otherwise, bootrom does not report status
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .ROM_CTL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -296,7 +296,7 @@
 | 0 | `rom_endianness_ctrl` | R | 0x0 a| controls the endianness of the rom data out. 0->little endian; 1->big endian
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SEP_SPI_CTRL_FIELD_EN Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -305,77 +305,77 @@
 | 7:0 | `spi_control_field_en` | R | 0x0 a| 8 bit which indicates the following 8 spi config regs are enabled or not. SPI_CONFIG_EN[7:0] corresponds to SPI config words 1-8. When bit N is set, configuration register N+1 is valid in fuses and will be written into the specified SPI configuration register during SPI controller initialization. 1->enabled; 0->disabled
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SPI_DISCOVERY_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `discovery` | R | 0x0 a| spi discovery control reg
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SPI_PHY_DQ_TIMING Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `dq_timing` | R | 0x0 a| spi phy dq timing reg
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SPI_PHY_DQS_TIMING Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `dqs_timing` | R | 0x0 a| spi phy dqs timing reg
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SPI_PHY_GATE_LPBK Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `gate_lpbk` | R | 0x0 a| spi phy gate lpbk ctrl reg
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SPI_PHY_DLL_SLAVE Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `dll_slave` | R | 0x0 a| spi phy dll slv ctrl reg
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SPI_PHY_DLL_MASTER Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `dll_master` | R | 0x0 a| spi phy dll mst ctrl reg
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SPI_PHY_MISC Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `misc` | R | 0x0 a| spi init phy misc
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SPI_RB_VALID_TIME Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `rb_valid_time` | R | 0x0 a| spi init rb valid time
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CHIPLET_PUBK_HASH0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `key_hash` | R | 0x0 a| Chiplet owner authentication key hash digest, fused. These chiplet owner fused key hashes can be used in addition to the hashes in the ROM itself to authenticate manifests.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CHIPLET_PUBK_HASH1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `key_hash` | R | 0x0 a| Chiplet owner authentication key hash digest, fused. These chiplet owner fused key hashes can be used in addition to the hashes in the ROM itself to authenticate manifests.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .REQUIRED_SIGNERS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -383,7 +383,7 @@
 | 1:0 | `required_signers` | RW | 0x0 a| Owners whose signature is required to authenticate any image loadable by SEP ROM. Per owner, 1 = required, 0 = not-required; the default all-zero value requires no additional owner. [0] SiP owner, [1] system owner. The chiplet creator is the root of trust and always authenticates BL1, so it has no bit here.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .REQUIRED_ALGS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -393,119 +393,119 @@
 | 3:0 | `chiplet_algs` | RW | 0x0 a| Per-owner required signature algorithms for chiplet. Each nibble: bit 0 = classical (ECDSA P-384 or RSA), bit 1 = post-quantum (ML-DSA), bits 3:2 reserved.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CHIPLET_PUBK_PQC_HASH0 Register
 |===
 | Bits | Field | Access | Reset | Description
-| 255:0 | `key_hash` | R | 0x0 a| Chiplet owner ML-DSA (PQC) authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.
+| 255:0 | `key_hash` | R | 0x0 a| Chiplet owner ML-DSA PQC authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CHIPLET_PUBK_PQC_HASH1 Register
 |===
 | Bits | Field | Access | Reset | Description
-| 255:0 | `key_hash` | R | 0x0 a| Chiplet owner ML-DSA (PQC) authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.
+| 255:0 | `key_hash` | R | 0x0 a| Chiplet owner ML-DSA PQC authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SIP_PUBK_PQC_HASH0 Register
 |===
 | Bits | Field | Access | Reset | Description
-| 255:0 | `key_hash` | R | 0x0 a| Hash digest of the SiP owner's ML-DSA (PQC) root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.
+| 255:0 | `key_hash` | R | 0x0 a| Hash digest of the SiP owner's ML-DSA PQC root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SYS_PUBK_PQC_HASH Register
 |===
 | Bits | Field | Access | Reset | Description
-| 255:0 | `key_hash` | R | 0x0 a| Hash digest of the system owner's ML-DSA (PQC) root public key for secure boot. PQC counterpart of SYS_PUBK_HASH.
+| 255:0 | `key_hash` | R | 0x0 a| Hash digest of the system owner's ML-DSA PQC root public key for secure boot. PQC counterpart of SYS_PUBK_HASH.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SIP_PUBK_HASH1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `key_hash` | R | 0x0 a| Hash digest of SiP owner's root public key for secure boot. The chiplet creator's actual root public key is embedded in the SEPROM; this digest is used to validate that public key.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SIP_PUBK_PQC_HASH1 Register
 |===
 | Bits | Field | Access | Reset | Description
-| 255:0 | `key_hash` | R | 0x0 a| Hash digest of the SiP owner's ML-DSA (PQC) root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.
+| 255:0 | `key_hash` | R | 0x0 a| Hash digest of the SiP owner's ML-DSA PQC root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SEP_CHIPLET_ID Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `id` | R | 0x0 a| Per-owner public identity fuse. Personalization input for the Key Manager identity root. Being public, no read protection is required. Individually lockable via LOCKS[58:63] (slots 29-31).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SEP_SIP_ID Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `id` | R | 0x0 a| Per-owner public identity fuse. Personalization input for the Key Manager identity root. Being public, no read protection is required. Individually lockable via LOCKS[58:63] (slots 29-31).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SEP_SYS_ID Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `id` | R | 0x0 a| Per-owner public identity fuse. Personalization input for the Key Manager identity root. Being public, no read protection is required. Individually lockable via LOCKS[58:63] (slots 29-31).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .spare0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .spare1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .spare2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .spare3 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .spare4 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .spare5 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .spare6 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .spare7 Register
 |===
 | Bits | Field | Access | Reset | Description

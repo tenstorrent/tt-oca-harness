@@ -15,7 +15,6 @@ TOPLEVEL_LANG ?= verilog
 
 # VCS-specific settings
 ifeq ($(SIM),vcs)
-    COMPILE_ARGS += +define+COCOTB_SIM=1
     COMPILE_ARGS += -sverilog
     COMPILE_ARGS += -ntb_opts uvm-1.2
     COMPILE_ARGS += -timescale=1ns/1ps

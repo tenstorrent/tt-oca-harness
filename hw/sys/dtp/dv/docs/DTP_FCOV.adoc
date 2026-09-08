@@ -22,7 +22,7 @@ its checker-gated Python ledger (`env/dtp_fcov.py`).
 [cols=",",options="header",]
 |===
 |Field |Value
-|Reference SPEC |`DTP_SPEC.adoc`
+|Design specification |`hw/sys/dtp/doc/index.adoc` (designer-owned)
 |Reference VPLAN |`DTP_VPLAN.adoc`
 |Open-source framework |PyUVM on cocotb
 |Open-source simulator |Verilator
@@ -223,7 +223,7 @@ drive them. `stop_clks_o` checking polls across synchronizer/output latency.
 |===
 |Coverpoint |Bins
 |CAPS register |JTAG_CAPS, SMC_JTAG2AXI_CAPS, SMC_OTP_JTAG2AXI_CAPS, SEP_OTP_JTAG2AXI_CAPS
-|JTAG_CAPS fields |XTRIG counts, STAP/debug enables, IC_RESET counts, instruction enables, OCH version
+|JTAG_CAPS fields |XTRIG counts, STAP/debug enables, IC_RESET counts, instruction enables, OCAH version
 |JTAG2AXI bus type |AXI4 SMC fabric, AXI4-Lite SMC OTP, AXI4-Lite SEP OTP
 |JTAG2AXI geometry |address width, data width, read pipeline depth, write pipeline depth
 |Read stability |repeated reads stable
@@ -254,7 +254,7 @@ capture events.
 
 ==== `ijtag_sib_cg`
 
-*Description*: Covers IEEE 1687 SIB network selection across the DFT Secure, DFT Non-Secure, and DFD (Debug Forensics Dump) chains.
+*Description*: Covers IEEE 1687 SIB network selection across the DFT Secure, DFT Non-Secure, and DFD (Design-for-Debug) chains.
 
 [cols=",",options="header",]
 |===

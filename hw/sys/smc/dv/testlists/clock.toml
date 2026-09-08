@@ -95,3 +95,11 @@ tests = [
     "smc_cg_dft_reset_bringup_test",
     "smc_cg_zeroer_activity_bringup_test",
 ]
+
+[[tests]]
+name = "smc_zeroer_dma_timeout_test"
+module = "smc_zeroer_dma_timeout_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smoke", "ci", "pyuvm"]
+run_modes = ["smoke"]

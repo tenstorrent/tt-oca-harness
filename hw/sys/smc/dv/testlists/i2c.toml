@@ -18,8 +18,8 @@ timeout_sec = 1800
 tags = ["smoke", "ci", "i2c", "pyuvm"]
 run_modes = ["smoke"]
 
-# Nightly Tier A pilot: commercial smc_i2c_p0_rdwr BFM rebuild (I2C0↔I2C1).
-# Requires tb_top +smc_i2c_shared_bus. Not in smoke until Verilator green.
+# Nightly Tier A: commercial smc_i2c_p0_rdwr BFM rebuild (I2C0↔I2C1).
+# Requires tb_top +smc_i2c_shared_bus.
 [[tests]]
 name = "smc_i2c_p0_rdwr_test"
 module = "smc_i2c_p0_rdwr_test"
@@ -144,3 +144,45 @@ tests = [
     "smc_smbus_alert_suspend_test",
     "smc_i2c_target_smbus_test",
 ]
+
+[[tests]]
+name = "smc_i2c_master_target_test"
+module = "smc_i2c_master_target_test"
+seed = 1
+timeout_sec = 1800
+tags = [
+    "smoke", "ci", "pyuvm"
+]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_smbus_pmbus_test"
+module = "smc_smbus_pmbus_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c_depth", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_smbus_hostnotify_test"
+module = "smc_smbus_hostnotify_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c_depth", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_smbus_alert_ara_test"
+module = "smc_smbus_alert_ara_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "i2c_depth", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_i2c_multi_instance_test"
+module = "smc_i2c_multi_instance_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "pyuvm"]
+run_modes = ["smoke"]

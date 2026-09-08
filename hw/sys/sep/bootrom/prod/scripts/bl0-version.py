@@ -3,7 +3,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 #
-# Create a version string for the OCH SEP BL0 firmware.
+# Create a version string for the OCAH SEP BL0 firmware.
 #
 # The version is a semantic version string of the form: X.Y.Z+buildmetadata
 # Where X is the major version, Y is the minor version, Z is the patch version.
@@ -44,7 +44,7 @@ def check_semver(value):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate the OCH SEP version string")
+    parser = argparse.ArgumentParser(description="Generate the OCAH SEP version string")
     parser.add_argument(
         "--build-type",
         "-t",

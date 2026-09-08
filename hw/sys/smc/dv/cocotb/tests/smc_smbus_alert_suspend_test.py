@@ -28,9 +28,18 @@ class smc_smbus_alert_suspend_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.I2C,
             type(self).__name__,
+            # Straight-line accesses plus one mandatory read from each status
+            # poll. Measured 43 on seeds 1-3; the remainder above this bound is
+            # poll iterations that vary with timing.
+            #
+            # No expected_bytes/observed_bytes: `_host_ara_read`'s result is
+            # compared against `_ARA_REPLY` and raises in the sequence, so a
+            # golden here would restate a compare already forced equal.
+            min_csr_accesses=42,
             csr_accesses=seq.accesses,
             proxy=False,
             details=(
-                f"DUT-internal SMBALERT/ARA/SMBSUS ara_ok={seq.ara_ok} sus_ok={seq.suspend_ok}"
+                f"DUT-internal SMBALERT asserted, ARA answered 0x{seq.ara_reply:02X} "
+                f"and hw-cleared it, then SMBSUS asserted and released"
             ),
         )

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// SEP boot-ROM LSU data-read + write-ignored firmware test (OSS rep boot-ROM LSU read). reference suite
-// provenance: uvm_tests/rom sep_rom_uvm_basic_read / sequential_read /
-// content_verify / addr_boundary / write_ignore.
+// SEP boot-ROM LSU data-read + write-ignored firmware test (OSS rep boot-ROM LSU read). reference
+// suite provenance: uvm_tests/rom sep_rom_uvm_basic_read / sequential_read / content_verify /
+// addr_boundary / write_ignore.
 //
 // The boot ROM sits on a DEDICATED CPU port (lsu_rom_axi -> u_boot_rom_axi_mux ->
 // memory_interface -> the OSS tb_boot_rom_responder; the production RTL puts a
@@ -29,11 +29,12 @@
 
 #include <stdint.h>
 
+#include "sep.h"
 #include "sep_outbound_filter.h"
 #include "sep_mailbox.h"
 
-#define ROM_BASE 0x10040000u                 // SEP_BOOT_ROM_MEM_BASE_ADDR
-#define ROM_SIZE 0x00010000u                 // SEP_BOOT_ROM_MEM_SIZE (64 KiB)
+#define ROM_BASE OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR
+#define ROM_SIZE OCH_SEP_TOP_SEP_BOOT_ROM_SIZE
 #define ROM_TOP_LO (ROM_BASE + ROM_SIZE - 8) // top valid 64-bit word, low half
 
 static inline uint32_t rd(uint32_t a) {

@@ -82,7 +82,7 @@ class OcahAxiItem:
         source: str = "",
         metadata: dict[str, Any] | None = None,
     ) -> None:
-        """Python 3.9-compatible keyword-only initializer."""
+        """Keyword-only initializer coercing every field to its plain frozen type."""
         object.__setattr__(self, "protocol", protocol)
         object.__setattr__(self, "direction", direction)
         object.__setattr__(self, "address", int(address))
@@ -283,6 +283,10 @@ class OcahAxiReadResult:
     independently sampled from the live R-channel handshake on the completing
     (RLAST) beat — never a copy of the issued ID.  ``observed_id`` is ``None``
     when no ID was captured (AXI4-Lite buses, timeouts, or a capture miss).
+
+    ``hold_stable`` reports that RVALID stayed asserted with RDATA/RRESP
+    unchanged across a requested RREADY-hold window (``read_hold_result``);
+    it is ``None`` when no hold was requested.
     """
 
     address: int
@@ -295,6 +299,7 @@ class OcahAxiReadResult:
     timed_out: bool = False
     issued_id: int | None = None
     observed_id: int | None = None
+    hold_stable: bool | None = None
     raw: Any = None
 
     @property
@@ -315,5 +320,9 @@ class OcahAxiReadResult:
             source=source,
             timed_out=self.timed_out,
             transaction_id=self.issued_id,
-            metadata={"data": self.data, "observed_id": self.observed_id},
+            metadata={
+                "data": self.data,
+                "observed_id": self.observed_id,
+                "hold_stable": self.hold_stable,
+            },
         )

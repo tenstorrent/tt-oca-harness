@@ -3,12 +3,9 @@
 //
 // SEP outbound AXI-lite mailbox (axil_mailbox) firmware driver.
 //
-// The SEP system-peripheral mailbox block (hw/ip/axi_lite_mailbox_unit) exposes eight
-// outbound mailboxes in the SEP-local fabric at 0x10A0_0000. Each outbound
-// mailbox is a small FIFO with a threshold-based interrupt: writing data past
-// the write threshold (WIRQT) latches the write-IRQ status bit, and the block
-// drives outbound_interrupt_o[m] = |(IRQS & IRQEN) as an active-high level line
-// (the SEP instance builds it level-triggered, IrqEdgeTrig=0/IrqActHigh=1).
+// The SEP system-peripheral mailbox block (hw/ip/axi_lite_mailbox_unit) exposes
+// eight outbound mailboxes. Addresses and IRQ field masks come from generated
+// sep_addr.h / axil_mailbox_sep_wrap.h (via sep.h).
 //
 // In hw/sys/sep/rtl/sep.sv outbound_interrupt_o feeds sep_internal_interrupts[7:0]
 // (one slot per mailbox), so mailbox m -> sep_internal_interrupts[m] -> VeeR EL2
@@ -26,33 +23,30 @@
 
 #include <stdint.h>
 
-// Outbound mailbox 0 register file (0x10A0_0000). Offsets per
-// hw/ip/axi_lite_mailbox_unit.
-#define SEP_AXIL_MBOX0_BASE 0x10A00000u
-#define SEP_AXIL_MBOX0_WRITE_DATA (SEP_AXIL_MBOX0_BASE + 0x00u) // push word into FIFO
-#define SEP_AXIL_MBOX0_STATUS (SEP_AXIL_MBOX0_BASE + 0x10u)     // RO threshold/full/empty
-#define SEP_AXIL_MBOX0_WIRQT (SEP_AXIL_MBOX0_BASE + 0x20u)      // write-IRQ threshold
-#define SEP_AXIL_MBOX0_RIRQT (SEP_AXIL_MBOX0_BASE + 0x28u)      // read-IRQ threshold
-#define SEP_AXIL_MBOX0_IRQS (SEP_AXIL_MBOX0_BASE + 0x30u)       // IRQ status (W1C)
-#define SEP_AXIL_MBOX0_IRQEN (SEP_AXIL_MBOX0_BASE + 0x38u)      // IRQ enable
-#define SEP_AXIL_MBOX0_IRQP (SEP_AXIL_MBOX0_BASE + 0x40u)       // IRQ pending (RO, IRQS & IRQEN)
+#include "sep.h"
 
-// IRQS / IRQEN / IRQP bit fields (axi_lite_mailbox status_q decode).
-#define SEP_AXIL_MBOX_IRQ_WRITE (1u << 0) // write FIFO usage crossed WIRQT
-#define SEP_AXIL_MBOX_IRQ_READ (1u << 1)  // read FIFO usage crossed RIRQT
-#define SEP_AXIL_MBOX_IRQ_ERROR (1u << 2) // FIFO over/underflow error
+#define SEP_AXIL_MBOX0_BASE OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR
+#define SEP_AXIL_MBOX0_WRITE_DATA OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR
+#define SEP_AXIL_MBOX0_STATUS OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_STATUS_BASE_ADDR
+#define SEP_AXIL_MBOX0_WIRQT OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_WIRQT_BASE_ADDR
+#define SEP_AXIL_MBOX0_RIRQT OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_RIRQT_BASE_ADDR
+#define SEP_AXIL_MBOX0_IRQS OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQS_BASE_ADDR
+#define SEP_AXIL_MBOX0_IRQEN OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQEN_BASE_ADDR
+#define SEP_AXIL_MBOX0_IRQP OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQP_BASE_ADDR
+
+#define SEP_AXIL_MBOX_IRQ_WRITE AXIL_MAILBOX__IRQS__WTIRQ_bm
+#define SEP_AXIL_MBOX_IRQ_READ AXIL_MAILBOX__IRQS__RTIRQ_bm
+#define SEP_AXIL_MBOX_IRQ_ERROR AXIL_MAILBOX__IRQS__EIRQ_bm
 #define SEP_AXIL_MBOX_IRQ_ALL \
     (SEP_AXIL_MBOX_IRQ_WRITE | SEP_AXIL_MBOX_IRQ_READ | SEP_AXIL_MBOX_IRQ_ERROR)
 
 // Mailbox 0 outbound interrupt -> sep_internal_interrupts[0] -> PIC source 1.
 #define SEP_AXIL_MBOX0_PIC_SRC 1u
 
-// CLOCK_GATE_CTRL (sep_cpu_ctrl @ 0x10A3_0008). Guarded so a TU that also
-// pulls in sep_entropy.h keeps one definition. SEP_CLOCK_GATE_MAILBOX is
-// not a defined field in this map.
 #ifndef SEP_CLOCK_GATE_CTRL
-#define SEP_CLOCK_GATE_CTRL 0x10A30008u
+#define SEP_CLOCK_GATE_CTRL OCH_SEP_TOP_SEP_CPU_CTRL_CLOCK_GATE_CTRL_BASE_ADDR
 #endif
+// Not a defined CLOCK_GATE_CTRL field in this map (only pka_cg_enable exists).
 #define SEP_CLOCK_GATE_MAILBOX (1u << 2)
 
 static inline uint32_t sep_axil_mbox_rd(uint32_t addr) {

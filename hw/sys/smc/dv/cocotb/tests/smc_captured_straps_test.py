@@ -1,6 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""captured_straps_i to reset_unit STRAPS_LO/HI."""
+"""# deferred: no_dut_port
+captured_straps_i to reset_unit STRAPS_LO/HI — DEFERRED.
+
+`smc_wrapper` declares no `captured_straps_i` port, so `tb_top.sv` exports no
+`tb_captured_straps` tap and the sequence has nothing to drive. It asserts on
+the missing tap rather than passing, so the testcase cannot go green while the
+stimulus does not exist. Enroll it when the wrapper carries the strap pins.
+"""
 
 from __future__ import annotations
 

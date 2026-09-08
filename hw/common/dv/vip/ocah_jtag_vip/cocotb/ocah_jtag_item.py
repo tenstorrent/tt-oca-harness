@@ -30,7 +30,7 @@ class OcahJtagScanItem:
 
     @property
     def type(self) -> str:
-        """Compatibility name for older monitor records."""
+        """Alias of ``kind``."""
         return self.kind
 
     @property
@@ -48,7 +48,7 @@ class OcahJtagScanItem:
         return self.kind == "DR"
 
     def to_record(self) -> dict[str, Any]:
-        """Return a dict matching the legacy monitor callback shape."""
+        """Return the scan as a plain dict keyed by record field name."""
         return {
             "type": self.kind,
             "tdi_value": self.tdi_value,
@@ -61,7 +61,7 @@ class OcahJtagScanItem:
         }
 
     def __getitem__(self, key: str) -> Any:
-        """Allow old examples using `record['tdi_value']` to keep working."""
+        """Dict-style field access over ``to_record()``."""
         return self.to_record()[key]
 
 

@@ -5,7 +5,8 @@
 Proves SMU glue on real TB ports (same class as clock-stop remap):
 
   1. xtrig_ctm_dst_req[7:0] -> dtp_xtrig_ctm_dst_req[9:2]; SMC[1:0] stay 0
-  2. xtrig_ctm_dst_ack stays 0 (wire-OR / no CT peer — by construction)
+  2. xtrig_ctm_dst_ack stays 0 on pulse-sync lanes and acknowledges lane 7,
+     whose nonzero mode bit exercises the configured-mode packing
   3. xtrig_ctm_src_ack[7:0] -> dtp_xtrig_ctm_src_ack[9:2]; ack[1:0] hardwired 0
   4. TB xtrig_ctm_src_req stays idle (0) while only ack is driven (no DTP peer)
 """
@@ -15,10 +16,7 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles, RisingEdge
-from env import cocotb_compat as _cocotb_compat
 from smu_base_test import smu_base_test
-
-_cocotb_compat.apply()
 
 DEST_PATS = (0x01, 0x80, 0xA5, 0x5A)
 SRC_ACK_PATS = (0x01, 0x80, 0x3C)
@@ -76,9 +74,9 @@ class smu_xtrig_ctm_remap_test(smu_base_test):
             )
             sb.expect_eq(f"dst_req pat={pat:#x} SMC[1:0] idle", dtp & 0x3, 0)
             sb.expect_eq(
-                f"dst_req pat={pat:#x} TB ack idle",
+                f"dst_req pat={pat:#x} TB ack follows handshake lane 7 only",
                 _u8(dut.xtrig_ctm_dst_ack, "xtrig_ctm_dst_ack"),
-                0,
+                pat & 0x80,
             )
         dut.xtrig_ctm_dst_req.value = 0
         await _settle()

@@ -58,9 +58,10 @@ RESET_EXCLUDE: dict[tuple[str, str | None], str] = {
     ("SEP_CPU_CTRL", "SEP_TEST_CTRL"): "hw-driven straps",
     ("SEP_CPU_CTRL", "SEP_FUSE_SENSE_STATUS"): "hw-driven fuse-sense status",
     ("SEP_CPU_CTRL", "SMC_FUSE_SENSE_STATUS"): "hw-driven fuse-sense status",
-    ("SEP_CPU_CTRL", "SEP_STRAPS"): "hw-driven straps",
     ("SEP_CPU_CTRL", "TIMEOUT_CLEAR"): "write-only",
     ("SEP_CPU_CTRL", "TIMEOUT_MODE"): "write-only",
+    ("SEP_CPU_CTRL", "DMA_BUS_ERR_CLEAR"): "write-only",
+    ("SEP_CPU_CTRL", "PERIPH_BUS_ERR_CLEAR"): "write-only",
     ("WDT_TIMER", "WKUP_COUNT_HI"): "hw-driven timer",
     ("WDT_TIMER", "WKUP_COUNT_LO"): "hw-driven timer",
     ("WDT_TIMER", "WDOG_COUNT"): "hw-driven timer",
@@ -97,6 +98,7 @@ RESET_EXCLUDE_SUFFIX: dict[str, str] = {
     # INTR_STATUS.FIFO_UNDERFLOW and returns undefined data. Reading one to check
     # a reset value therefore destroys the state it is checking.
     "RDATA": "FIFO",
+    "ERROR_FLAGS": "read-clear",
     "GENBITS": "FIFO",
     "CMD": "trigger",
     "CMD_REQ": "trigger",
@@ -236,6 +238,7 @@ _TOUCH_DENY_NAME: dict[str, str] = {
     "IRQP": "W1C status",
     "ERR_CODE": "W1C status",
     "ERROR_CODE": "W1C status",
+    "ERROR_FLAGS": "read-clear status",
     "WKUP_CAUSE": "W1C status",
     "RANGE_VALID": "arms the range",
     # Thresholds clamp to FIFO depth; export mask is wider than storage.

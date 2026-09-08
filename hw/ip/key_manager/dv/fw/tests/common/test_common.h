@@ -195,6 +195,9 @@ typedef km_mailbox_sep__irq_enable_reg_t KM_MAILBOX_SEP_IRQ_ENABLE_REG_reg_u;
                   last DRBG_SET_NEXT_VALUE; arg=0xFF pulses hwset; result = 1 */
 #define TB_CMD_ABR_SK_IRQ_STATUS_READ \
     0x00000031 /* Read abr_mlkem_sharedkey_irq level; result = 0 or 1 */
+#define TB_CMD_KM_MBOX_READ_DURING_SEP_FLUSH \
+    0x00000032 /* SEP CTRL.FLUSH then KM READ_DATA AR on the flush-active cycle; \
+                  result = 1 if R arrives */
 
 /* Testbench command status */
 #define TB_STATUS_IDLE 0x00000000 /* Ready for command */
@@ -1033,6 +1036,22 @@ static inline int tb_km_mbox_read_with_resp(uint32_t *data_out, uint32_t *resp_o
     *resp_out = TB_CMD_RESULT & 0xFF; /* Response in lower 8 bits */
     *data_out = 0;                    /* Data not meaningful for underflow (SLVERR case) */
     return 1;
+}
+
+/**
+ * Overlap a KM READ_DATA AR with a SEP CTRL.FLUSH pulse.
+ *
+ * The testbench writes SEP CTRL.FLUSH and issues the KM AR on the one-cycle
+ * window where the flush is active. Returns 1 if an R beat arrives.
+ *
+ * @param timeout_cycles Maximum cycles to wait for acknowledgment
+ * @return 1 if the R beat completed, 0 on error/timeout
+ */
+static inline int tb_km_mbox_read_during_sep_flush(uint32_t timeout_cycles) {
+    if (!tb_send_cmd(TB_CMD_KM_MBOX_READ_DURING_SEP_FLUSH, 0, timeout_cycles)) {
+        return 0;
+    }
+    return TB_CMD_RESULT != 0;
 }
 
 /**

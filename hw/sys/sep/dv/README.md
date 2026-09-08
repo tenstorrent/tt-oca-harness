@@ -2,7 +2,8 @@
 # SEP OSS DV
 
 Open-source DV environment for the SEP (Security Processor) subsystem, built on
-cocotb/PyUVM and driven by `tools/dv/run_dv.py --dut sep`.
+cocotb/PyUVM and driven by `tools/dv/run_dv.py --dut sep`, with a SystemVerilog
+UVM realization of the same testbench top selected by `--framework uvm` (VCS).
 
 **DUT** = `sep_wrapper` (`hw/top/sep_wrapper.sv`) — the bare `sep` core
 (`hw/sys/sep/rtl/sep.sv`) plus its IP integration
@@ -16,7 +17,7 @@ Everything the environment needs lives under this tree.
 
 | Need | Why | Notes |
 |---|---|---|
-| Verilator 5.x | the acceptance backend | developed against 5.046 |
+| Verilator 5.x | the acceptance backend | CI pin 5.050 |
 | g++ ≥ 10 | Verilator `--timing` / `-fcoroutines` | RHEL-8's default g++ 8.5 fails with `unrecognized command line option '-fcoroutines'`; `source /opt/rh/gcc-toolset-11/enable` |
 | Python ≥ 3.11 | launcher | `run_dv.py` bootstraps the locked uv-managed DV env itself (root `uv.lock`, `dv` group → cocotb + pyuvm + cocotbext-axi) |
 | RISC-V bare-metal GCC | firmware-boot tests only | not needed for the `smoke` tag |
@@ -81,6 +82,52 @@ The contracts themselves:
 * [`docs/SEP_VPLAN.adoc`](docs/SEP_VPLAN.adoc) — verification plan: per-test
   contracts and checkers, naming rules, VIP policy, iconic feature scorecard.
 
+## Code coverage
+
+`--cov` is collected on VCS. Only `[coverage.vcs]` applies the compile-time
+scope, so that is the graded number. It instruments the build, writes one
+native database per test leaf (`coverage/simv.vdb` under each leaf), and
+merges/reports through the `cov_merge`/`cov_report` stages into
+`<run_dir>/cov/merged.vdb`. That is `-cm line+cond+tgl+fsm+branch+assert` at
+both compile (`{build_cov_dir}`) and sim (`{cov_dir}/simv.vdb`), merged by
+`urg`. `--cov --tool verilator` is not the graded number. Verilator 5.046
+fails that C++ compile (`__PVT__MLKEM_SHARED_KEY` under `VM_COVERAGE=1`);
+5.050 compiles.
+
+```bash
+python3 tools/dv/run_dv.py --dut sep --items all --regress --cov --tool vcs \
+  --target default --sim-jobs 32 --build-jobs 32
+```
+
+`all` is the coverage set: every test the VPLAN grades, which is exactly `no_cpu`
++ `cpu`. Boot ROM firmware (`rom_fw`) is not a member -- another owner, a third
+RTL target, firmware rather than hardware contracts -- so reaching those four
+means naming `rom_fw`. `all`'s `expected_count` fails the run when membership
+drifts from the class groups.
+
+`--target default` compiles the full CPU once. no_cpu leaves force-splice the
+LSU VIP onto the post-remap request; cpu leaves run as firmware. Every leaf is
+one elaboration. Edit `cov/config/vcs/sep_cov_scope.hier` then `--rebuild`.
+
+What the resulting number is not:
+
+* **Not functional coverage.** These are code metrics only. No SV covergroups
+  exist in the cocotb env, so "did we exercise the interesting scenarios" stays
+  with [`docs/SEP_VPLAN.adoc`](docs/SEP_VPLAN.adoc).
+* **The DUT minus the CPU, not the whole DUT.** `cov/config/vcs/sep_cov_scope.hier`
+  excludes the testbench top, the outbound mailbox, the backdoor SMC memory, the
+  AXI SVA module and the CPU subtree at compile time, across both code and
+  assertion coverage (`-cm_hier` with `-cm_common_hier`). Measured on a merged
+  database: the excluded instances leave the hierarchy entirely and `sep_uvm_top`
+  matches `u_dut` in all six columns. So the percentage is the SEP DUT **with the
+  CPU subtree removed** -- quote it that way, never as bare "SEP DUT coverage".
+  `cov/config/vcs/README.md` records the scope and the measurements behind it.
+* **Not a read on assertions.** Assertion coverage counts elaborated assertions
+  only, and SEP gates those through the `prim_assert` shim. Confirm assertions
+  are live before reading that column.
+* **One seed per leaf.** `--regress` takes a fresh seed per leaf, so a randomized
+  test contributes one sample. Pin seeds for any number that gets cited.
+
 ## Two run modes
 
 The run mode selects who owns the CPU master buses. The entries below are
@@ -127,6 +174,54 @@ Key Manager `rom_main` tests declare
 `firmware = { name = "rom_main", mode = "km_rom_main" }` so `c_compile` builds
 the gitignored `rom_main.rom.parhex`.
 
+## SystemVerilog UVM framework (`--framework uvm`)
+
+The SV-UVM view shares this DV root, sim config, and testlist with the cocotb
+flow: `sep_sim_cfg.toml` declares it as the `[frameworks.uvm]` overlay (same
+Bender RTL recipe, stubs, and shims), and `--dut sep --framework uvm` selects
+it. A testlist entry binds both implementations of one scenario
+(`module = { cocotb = "...", uvm = "..." }`), so the same `--items` name
+selects the same VPLAN scenario in either framework; the UVM class name is
+the `uvm` entry (`+UVM_TESTNAME`). Selecting a scenario with no `uvm` entry
+errors; `--skip-unimplemented` runs a group's UVM-implemented subset instead.
+VCS only: Verilator has no SV-UVM support. The bench architecture is in
+`docs/SEP_TB_ARCH.adoc` ("SystemVerilog UVM Realization"); the framework
+conventions it follows are in `hw/common/dv/docs/uvm-framework.adoc`.
+
+`tb/tb_top.sv` is one module with two shapes: the cocotb pin port list by
+default, internal TB signals plus the SV-UVM harness under the bare `UVM`
+define. Every TB signal is declared once in `tb/sep_tb_signal_list.svh`. The
+no_cpu scenarios keep `target = "lsu_stub_all_live"`, so the `sep_cpu` stub is
+the sole LSU driver and the shared `ocah_axi_vip` master drives the `s_axi_*`
+splice through it.
+
+```bash
+# SV-UVM build only (VCS). --skip-unimplemented (or an --items selection) is required:
+# the group holds cocotb-only scenarios.
+python3 tools/dv/run_dv.py --dut sep --framework uvm --build-only --skip-unimplemented
+
+# PyUVM (cocotb) and SV-UVM, same logical scenario name
+python3 tools/dv/run_dv.py --dut sep --items sep_axi_smoke_test --seed 1
+python3 tools/dv/run_dv.py --dut sep --framework uvm --items sep_axi_smoke_test --seed 1
+
+# Smoke group, UVM-implemented subset
+python3 tools/dv/run_dv.py --dut sep --framework uvm --items smoke --skip-unimplemented
+
+# Negative validation: a corrupted scoreboard prediction must make the run FAIL
+python3 tools/dv/run_dv.py --dut sep --framework uvm --items sep_axi_smoke_test \
+  --plusarg +SEP_CSR_SCOREBOARD_NEGATIVE
+
+# Loop and volume knobs (specific-first): +SEP_AXI_SMOKE_TEST_LOOPS=N,
+# +SEP_SYSTEM_TEST_LOOPS=N, +SEP_TEST_LOOPS=N, +SEP_RANDOM_COUNT=N
+python3 tools/dv/run_dv.py --dut sep --framework uvm --items sep_axi_smoke_test \
+  --plusarg +SEP_TEST_LOOPS=4
+```
+
+To port another cocotb scenario: add `uvm/seq_lib/<name>_seq.svh` on
+`sep_base_test_seq`, a thin `uvm/tests/<name>.svh` on `sep_base_test`, list
+both in their package and manifest, and give the testlist entry its `uvm`
+binding.
+
 ## Layout
 
 ```
@@ -137,9 +232,12 @@ hw/sys/sep/dv/
 │   ├── seq_lib/         #   sequences (scenarios)
 │   ├── tests/           #   @pyuvm.test() entries, grouped by subsystem
 │   └── dv_sim_prestage.py  # pre-sim hook (stages out/sep_efuse.hex)
+├── uvm/                 # SV-UVM realization (`--framework uvm`, VCS)
+│   ├── env/             #   sep_env_pkg: types, cfgs, ref models, scoreboard, env
+│   ├── seq_lib/         #   sep_seq_lib_pkg: operations + scenario sequences
+│   └── tests/           #   thin test classes + sep_tests.sv include manifest
 ├── cov/                 # cov/config/<tool>/ (questa, vcs, verilator, xcelium)
-│                        #   and cov/sv/. Verilator coverage flags live in
-│                        #   sep_sim_cfg.toml ([coverage.verilator]).
+│                        #   and cov/sv/. `--cov` is graded on VCS ([coverage.vcs]).
 ├── docs/                # testbench architecture + verification plan (AsciiDoc)
 ├── fw/                  # OSS-owned firmware (drivers/ tests/) — see fw/README.md
 │                        # the Boot ROM lives outside DV, at ../bootrom/prod/
@@ -151,15 +249,18 @@ hw/sys/sep/dv/
 │                        #   (models/regs/gen/c/sep_external.h) via sep.h; the
 │                        #   SV addrmap package is the RTL build input.
 ├── shims/               # SEP-local behavioral sim-models
-│   ├── prim/            #   prim_sync2 → prim_flop_2sync override, prim_assert
 │   ├── cpu/             #   sep_cpu_stub (no_cpu build: LSU demux, no VeeR)
-│   ├── crypto/          #   abr_wrapper_key_reg_stub (Verilator ABR CSR shim)
 │   └── analog/          #   entropy_ring_oscillator
 ├── tb/                  # DUT-only top + helper RTL
-│   ├── tb_top.sv        #   module sep_uvm_top (wraps sep_wrapper) + tb_backdoor_mem
+│   ├── tb_top.sv        #   module sep_uvm_top (wraps sep_wrapper) + tb_backdoor_mem;
+│                        #   one module, two shapes (cocotb pins / SV-UVM harness)
+│   ├── sep_tb_signal_list.svh  # every TB signal, declared once for both shapes
+│   ├── sep_tb_if.sv     #   SEP-local TB interface of the SV-UVM shape
 │   ├── sep_outbound_mbx.sv  # outbound mailbox responder + console/PASS monitor
-│   ├── efuse_preloads/  #   committed default eFuse image (sep_efuse_default.hex)
-│   └── interfaces/      #   SV interfaces
+│   ├── efuse_preloads/  #   efuse_configurations/*.toml declare OTP images by
+│   │                    #   register/field; sep_efuse_default.hex is the one
+│   │                    #   committed image (a random-vector snapshot)
+│   └── interfaces/      #   (SV interfaces — empty for now)
 ├── testlists/           # native TOML testlists (all.toml + per-subsystem leaves)
 ├── sep_sim_cfg.toml     # block build/filelist manifest, run modes, tool knobs
 ├── sep_public_scope.vlt # scoped Verilator public list (narrow on purpose: a global
@@ -175,9 +276,9 @@ The bender filelist uses targets `["sep", "sep_el2", "sep_wrapper"]` only — ne
 `"simulation"`, which pulls licensed I/O and a foundry padring. Verify
 vendor-clean with `tools/dv/check_no_vendor_paths.py`.
 
-`[build].exclude_files` holds only `abr_wrapper_key_reg.sv` — a Verilator
-PeakRDL miscompile workaround, replaced by `shims/crypto/abr_wrapper_key_reg_stub.sv`.
-Proprietary IPs that are not in the OSS checkout are simply not on the filelist.
+`[build].exclude_files` is empty at the DUT level. The `lsu_stub_all_live`
+target excludes `sep_cpu.sv` and appends the CPU stub. Proprietary IPs that
+are not in the OSS checkout are simply not on the filelist.
 
 ## Troubleshooting
 

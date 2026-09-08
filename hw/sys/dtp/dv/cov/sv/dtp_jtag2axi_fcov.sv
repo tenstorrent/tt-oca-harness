@@ -24,68 +24,68 @@
 `include "ocah_fcov_macros.svh"
 
 module dtp_jtag2axi_fcov (
-    input wire logic        tck_i,
-    input wire logic        trst_ni,
-    input wire logic        clk_i,
-    input wire logic        rst_ni,
-    input wire logic [15:0] tap_state_i,
-    input wire logic [63:0] inst_decoded_i,
-    input wire sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable_i,
+  input wire        tck_i,
+  input wire        trst_ni,
+  input wire        clk_i,
+  input wire        rst_ni,
+  input wire [15:0] tap_state_i,
+  input wire [63:0] inst_decoded_i,
+  input wire sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable_i,
 
-    // SMC fabric bridge (AXI4): TCK-domain bridge state + launched-op fields
-    input wire logic [1:0]  smc_axi_status_i,
-    input wire logic        smc_axi_pending_i,
-    input wire logic [1:0]  smc_axi_op_i,
-    input wire logic [55:0] smc_axi_addr_i,
-    input wire logic [2:0]  smc_axi_size_i,
-    input wire logic [7:0]  smc_axi_wstrb_i,
-    // SMC fabric bus handshakes (system-clock domain)
-    input wire logic        smc_axi_awvalid_i,
-    input wire logic        smc_axi_awready_i,
-    input wire logic        smc_axi_wvalid_i,
-    input wire logic        smc_axi_wready_i,
-    input wire logic        smc_axi_bvalid_i,
-    input wire logic        smc_axi_bready_i,
-    input wire logic        smc_axi_arvalid_i,
-    input wire logic        smc_axi_arready_i,
-    input wire logic        smc_axi_rvalid_i,
-    input wire logic        smc_axi_rready_i,
+  // SMC fabric bridge (AXI4): TCK-domain bridge state + launched-op fields
+  input wire [1:0]  smc_axi_status_i,
+  input wire        smc_axi_pending_i,
+  input wire [1:0]  smc_axi_op_i,
+  input wire [55:0] smc_axi_addr_i,
+  input wire [2:0]  smc_axi_size_i,
+  input wire [7:0]  smc_axi_wstrb_i,
+  // SMC fabric bus handshakes (system-clock domain)
+  input wire        smc_axi_awvalid_i,
+  input wire        smc_axi_awready_i,
+  input wire        smc_axi_wvalid_i,
+  input wire        smc_axi_wready_i,
+  input wire        smc_axi_bvalid_i,
+  input wire        smc_axi_bready_i,
+  input wire        smc_axi_arvalid_i,
+  input wire        smc_axi_arready_i,
+  input wire        smc_axi_rvalid_i,
+  input wire        smc_axi_rready_i,
 
-    // SMC OTP bridge (AXI4-Lite)
-    input wire logic [1:0]  smc_otp_status_i,
-    input wire logic        smc_otp_pending_i,
-    input wire logic [1:0]  smc_otp_op_i,
-    input wire logic [31:0] smc_otp_addr_i,
-    input wire logic [2:0]  smc_otp_size_i,
-    input wire logic [3:0]  smc_otp_wstrb_i,
-    input wire logic        smc_otp_awvalid_i,
-    input wire logic        smc_otp_awready_i,
-    input wire logic        smc_otp_wvalid_i,
-    input wire logic        smc_otp_wready_i,
-    input wire logic        smc_otp_bvalid_i,
-    input wire logic        smc_otp_bready_i,
-    input wire logic        smc_otp_arvalid_i,
-    input wire logic        smc_otp_arready_i,
-    input wire logic        smc_otp_rvalid_i,
-    input wire logic        smc_otp_rready_i,
+  // SMC OTP bridge (AXI4-Lite)
+  input wire [1:0]  smc_otp_status_i,
+  input wire        smc_otp_pending_i,
+  input wire [1:0]  smc_otp_op_i,
+  input wire [31:0] smc_otp_addr_i,
+  input wire [2:0]  smc_otp_size_i,
+  input wire [3:0]  smc_otp_wstrb_i,
+  input wire        smc_otp_awvalid_i,
+  input wire        smc_otp_awready_i,
+  input wire        smc_otp_wvalid_i,
+  input wire        smc_otp_wready_i,
+  input wire        smc_otp_bvalid_i,
+  input wire        smc_otp_bready_i,
+  input wire        smc_otp_arvalid_i,
+  input wire        smc_otp_arready_i,
+  input wire        smc_otp_rvalid_i,
+  input wire        smc_otp_rready_i,
 
-    // SEP OTP bridge (AXI4-Lite)
-    input wire logic [1:0]  sep_otp_status_i,
-    input wire logic        sep_otp_pending_i,
-    input wire logic [1:0]  sep_otp_op_i,
-    input wire logic [31:0] sep_otp_addr_i,
-    input wire logic [2:0]  sep_otp_size_i,
-    input wire logic [3:0]  sep_otp_wstrb_i,
-    input wire logic        sep_otp_awvalid_i,
-    input wire logic        sep_otp_awready_i,
-    input wire logic        sep_otp_wvalid_i,
-    input wire logic        sep_otp_wready_i,
-    input wire logic        sep_otp_bvalid_i,
-    input wire logic        sep_otp_bready_i,
-    input wire logic        sep_otp_arvalid_i,
-    input wire logic        sep_otp_arready_i,
-    input wire logic        sep_otp_rvalid_i,
-    input wire logic        sep_otp_rready_i
+  // SEP OTP bridge (AXI4-Lite)
+  input wire [1:0]  sep_otp_status_i,
+  input wire        sep_otp_pending_i,
+  input wire [1:0]  sep_otp_op_i,
+  input wire [31:0] sep_otp_addr_i,
+  input wire [2:0]  sep_otp_size_i,
+  input wire [3:0]  sep_otp_wstrb_i,
+  input wire        sep_otp_awvalid_i,
+  input wire        sep_otp_awready_i,
+  input wire        sep_otp_wvalid_i,
+  input wire        sep_otp_wready_i,
+  input wire        sep_otp_bvalid_i,
+  input wire        sep_otp_bready_i,
+  input wire        sep_otp_arvalid_i,
+  input wire        sep_otp_arready_i,
+  input wire        sep_otp_rvalid_i,
+  input wire        sep_otp_rready_i
 );
 
   // ------------------------------------------------------------------
@@ -117,12 +117,12 @@ module dtp_jtag2axi_fcov (
   // ------------------------------------------------------------------
   // Common TCK-domain scan decode (same shape as dtp_fcov).
   // ------------------------------------------------------------------
-  wire logic in_reset = (trst_ni !== 1'b1);
+  wire in_reset = (trst_ni !== 1'b1);
   logic [15:0] tap_state_q;
   always_ff @(posedge tck_i) tap_state_q <= tap_state_i;
-  wire logic [15:0] tap_state_prev = tap_state_q;
-  wire logic dr_committed = (tap_state_prev == jtag_tap_pkg::UPDATE_DR) && !in_reset;
-  wire logic cap_dr = (tap_state_i == jtag_tap_pkg::CAPTURE_DR) && !in_reset;
+  wire [15:0] tap_state_prev = tap_state_q;
+  wire dr_committed = (tap_state_prev == jtag_tap_pkg::UPDATE_DR) && !in_reset;
+  wire cap_dr = (tap_state_i == jtag_tap_pkg::CAPTURE_DR) && !in_reset;
 
   // ------------------------------------------------------------------
   // Common system-clock reset bookkeeping: reset-assertion events and the
@@ -130,13 +130,13 @@ module dtp_jtag2axi_fcov (
   // preponed, so the per-target phase flops below still show the pre-reset
   // state on that edge.
   // ------------------------------------------------------------------
-  wire logic clk_in_reset = (rst_ni !== 1'b1);
+  wire clk_in_reset = (rst_ni !== 1'b1);
   logic rst_nq;
   logic [7:0] rst_gap_q;
   logic [3:0] rst_events_q;
   logic rst_seen_any_q;
   always_ff @(posedge clk_i) rst_nq <= rst_ni;
-  wire logic rst_fell_e = rst_nq && !rst_ni;
+  wire rst_fell_e = rst_nq && !rst_ni;
 
   always_ff @(posedge clk_i) begin
     if (rst_fell_e) begin
@@ -148,7 +148,7 @@ module dtp_jtag2axi_fcov (
     end
   end
 
-  wire logic reset_back_to_back_e = rst_fell_e && rst_seen_any_q && (rst_gap_q < 8'd64);
+  wire reset_back_to_back_e = rst_fell_e && rst_seen_any_q && (rst_gap_q < 8'd64);
   `OCAH_FCOV_COVER(c_reset_back_to_back, reset_back_to_back_e, clk_i, 1'b0)
 
   // ------------------------------------------------------------------
@@ -156,7 +156,7 @@ module dtp_jtag2axi_fcov (
   // series modes, debug-gating, and error/reset recovery.
   // ------------------------------------------------------------------
   `define DTP_J2A_TCK_FCOV(__t, __dis, __single, __sincr, __snoincr, __sstat)               \
-    wire logic __t``_tdr_sel = |(inst_decoded_i & (__single));                              \
+    wire __t``_tdr_sel = |(inst_decoded_i & (__single));                              \
     logic __t``_pending_q;                                                                  \
     logic __t``_dis_q;                                                                      \
     logic __t``_had_gated_q;                                                                \
@@ -164,12 +164,12 @@ module dtp_jtag2axi_fcov (
     logic __t``_inflight_q;                                                                 \
     logic [2:0] __t``_polls_q;                                                              \
     logic [3:0] __t``_rst_seen_q;                                                           \
-    wire logic __t``_launch_e = __t``_pending_i && !__t``_pending_q;                        \
-    wire logic __t``_poll_e = cap_dr && __t``_tdr_sel;                                      \
-    wire logic __t``_settled_poll_e = __t``_poll_e && !__t``_pending_i && __t``_inflight_q; \
-    wire logic __t``_comp_e = __t``_pending_q && !__t``_pending_i && !in_reset;             \
-    wire logic __t``_success_e = __t``_comp_e && (__t``_status_i == StSuccess);             \
-    wire logic __t``_gated_attempt_e = dr_committed && __t``_tdr_sel && (__dis);            \
+    wire __t``_launch_e = __t``_pending_i && !__t``_pending_q;                        \
+    wire __t``_poll_e = cap_dr && __t``_tdr_sel;                                      \
+    wire __t``_settled_poll_e = __t``_poll_e && !__t``_pending_i && __t``_inflight_q; \
+    wire __t``_comp_e = __t``_pending_q && !__t``_pending_i && !in_reset;             \
+    wire __t``_success_e = __t``_comp_e && (__t``_status_i == StSuccess);             \
+    wire __t``_gated_attempt_e = dr_committed && __t``_tdr_sel && (__dis);            \
     always_ff @(posedge tck_i) begin                                                        \
       __t``_pending_q <= __t``_pending_i;                                                   \
       __t``_dis_q <= (__dis);                                                               \
@@ -187,37 +187,37 @@ module dtp_jtag2axi_fcov (
       else if (__t``_success_e) __t``_had_err_q <= 1'b0;                                    \
       if (__t``_success_e) __t``_rst_seen_q <= rst_events_q;                                \
     end                                                                                     \
-    wire logic __t``_op_write_e = __t``_comp_e && (__t``_op_i == OpWrite);                  \
-    wire logic __t``_op_read_e = __t``_comp_e && (__t``_op_i == OpRead);                    \
-    wire logic __t``_op_nop_e = __t``_poll_e && !__t``_pending_i && !__t``_inflight_q;      \
-    wire logic __t``_status_success_e = __t``_success_e;                                    \
-    wire logic __t``_status_slverr_e = __t``_comp_e && (__t``_status_i == StSlverr);        \
-    wire logic __t``_status_decerr_e = __t``_comp_e && (__t``_status_i == StDecerr);        \
-    wire logic __t``_status_busy_e = __t``_poll_e && __t``_pending_i;                       \
-    wire logic __t``_poll_immediate_e = __t``_settled_poll_e && (__t``_polls_q == 3'd0);    \
-    wire logic __t``_poll_short_e =                                                         \
+    wire __t``_op_write_e = __t``_comp_e && (__t``_op_i == OpWrite);                  \
+    wire __t``_op_read_e = __t``_comp_e && (__t``_op_i == OpRead);                    \
+    wire __t``_op_nop_e = __t``_poll_e && !__t``_pending_i && !__t``_inflight_q;      \
+    wire __t``_status_success_e = __t``_success_e;                                    \
+    wire __t``_status_slverr_e = __t``_comp_e && (__t``_status_i == StSlverr);        \
+    wire __t``_status_decerr_e = __t``_comp_e && (__t``_status_i == StDecerr);        \
+    wire __t``_status_busy_e = __t``_poll_e && __t``_pending_i;                       \
+    wire __t``_poll_immediate_e = __t``_settled_poll_e && (__t``_polls_q == 3'd0);    \
+    wire __t``_poll_short_e =                                                         \
         __t``_settled_poll_e && (__t``_polls_q inside {3'd1, 3'd2, 3'd3});                  \
-    wire logic __t``_poll_long_e = __t``_settled_poll_e && (__t``_polls_q >= 3'd4);         \
-    wire logic __t``_series_incr_e = dr_committed && (|(inst_decoded_i & (__sincr)));       \
-    wire logic __t``_series_no_incr_e = dr_committed && (|(inst_decoded_i & (__snoincr)));  \
-    wire logic __t``_series_stat_e = dr_committed && (|(inst_decoded_i & (__sstat)));       \
-    wire logic __t``_gating_release_e = !(__dis) && __t``_dis_q && __t``_had_gated_q;       \
-    wire logic __t``_gating_recovery_e = __t``_success_e && __t``_had_gated_q;              \
-    wire logic __t``_recovery_rw_after_error_e = __t``_success_e && __t``_had_err_q;        \
-    wire logic __t``_recovery_next_nop_e = __t``_settled_poll_e && __t``_had_err_q;         \
-    wire logic __t``_recovery_reset_abort_e =                                               \
+    wire __t``_poll_long_e = __t``_settled_poll_e && (__t``_polls_q >= 3'd4);         \
+    wire __t``_series_incr_e = dr_committed && (|(inst_decoded_i & (__sincr)));       \
+    wire __t``_series_no_incr_e = dr_committed && (|(inst_decoded_i & (__snoincr)));  \
+    wire __t``_series_stat_e = dr_committed && (|(inst_decoded_i & (__sstat)));       \
+    wire __t``_gating_release_e = !(__dis) && __t``_dis_q && __t``_had_gated_q;       \
+    wire __t``_gating_recovery_e = __t``_success_e && __t``_had_gated_q;              \
+    wire __t``_recovery_rw_after_error_e = __t``_success_e && __t``_had_err_q;        \
+    wire __t``_recovery_next_nop_e = __t``_settled_poll_e && __t``_had_err_q;         \
+    wire __t``_recovery_reset_abort_e =                                               \
         __t``_success_e && (__t``_rst_seen_q != rst_events_q);                              \
-    wire logic [3:0] __t``_lanes =                                                          \
+    wire [3:0] __t``_lanes =                                                          \
         4'($countones(__t``_wstrb_i & ((1 << (1 << __t``_size_i)) - 1)));                   \
-    wire logic __t``_wstrb_none_e = __t``_op_write_e && (__t``_lanes == 4'd0);              \
-    wire logic __t``_wstrb_single_e = __t``_op_write_e && (__t``_lanes == 4'd1);            \
-    wire logic __t``_wstrb_all_e =                                                          \
+    wire __t``_wstrb_none_e = __t``_op_write_e && (__t``_lanes == 4'd0);              \
+    wire __t``_wstrb_single_e = __t``_op_write_e && (__t``_lanes == 4'd1);            \
+    wire __t``_wstrb_all_e =                                                          \
         __t``_op_write_e && (__t``_lanes == 4'((1 << __t``_size_i)));                       \
-    wire logic __t``_wstrb_partial_e = __t``_op_write_e && (__t``_lanes != 4'd0)            \
+    wire __t``_wstrb_partial_e = __t``_op_write_e && (__t``_lanes != 4'd0)            \
         && (__t``_lanes != 4'd1) && (__t``_lanes != 4'((1 << __t``_size_i)));               \
-    wire logic __t``_addr_aligned_e = __t``_comp_e                                          \
+    wire __t``_addr_aligned_e = __t``_comp_e                                          \
         && ((__t``_addr_i & ((1 << __t``_size_i) - 1)) == '0);                              \
-    wire logic __t``_addr_boundary_e = __t``_comp_e                                         \
+    wire __t``_addr_boundary_e = __t``_comp_e                                         \
         && ((32'(__t``_addr_i) + (32'h1 << __t``_size_i)) == 32'(MemBytes));                \
     `OCAH_FCOV_COVER(c_``__t``_op_write, __t``_op_write_e, tck_i, in_reset)                 \
     `OCAH_FCOV_COVER(c_``__t``_op_read, __t``_op_read_e, tck_i, in_reset)                   \
@@ -250,23 +250,23 @@ module dtp_jtag2axi_fcov (
     `OCAH_FCOV_COVER(c_``__t``_addr_aligned, __t``_addr_aligned_e, tck_i, in_reset)         \
     `OCAH_FCOV_COVER(c_``__t``_addr_boundary, __t``_addr_boundary_e, tck_i, in_reset)
 
-  `DTP_J2A_TCK_FCOV(smc_axi, dbg_disable_i.smc_jtag2axi, SmcAxiSingleOp,
-                    SmcAxiSeriesIncr, SmcAxiSeriesNoIncr, SmcAxiSeriesStat)
-  `DTP_J2A_TCK_FCOV(smc_otp, dbg_disable_i.smc_otp_jtag2axi, SmcOtpSingleOp,
-                    SmcOtpSeriesIncr, SmcOtpSeriesNoIncr, SmcOtpSeriesStat)
-  `DTP_J2A_TCK_FCOV(sep_otp, dbg_disable_i.sep_otp_jtag2axi, SepOtpSingleOp,
-                    SepOtpSeriesIncr, SepOtpSeriesNoIncr, SepOtpSeriesStat)
+  `DTP_J2A_TCK_FCOV(smc_axi, dbg_disable_i.smc_jtag2axi, SmcAxiSingleOp, SmcAxiSeriesIncr,
+                    SmcAxiSeriesNoIncr, SmcAxiSeriesStat)
+  `DTP_J2A_TCK_FCOV(smc_otp, dbg_disable_i.smc_otp_jtag2axi, SmcOtpSingleOp, SmcOtpSeriesIncr,
+                    SmcOtpSeriesNoIncr, SmcOtpSeriesStat)
+  `DTP_J2A_TCK_FCOV(sep_otp, dbg_disable_i.sep_otp_jtag2axi, SepOtpSingleOp, SepOtpSeriesIncr,
+                    SepOtpSeriesNoIncr, SepOtpSeriesStat)
   `undef DTP_J2A_TCK_FCOV
 
   // Transfer-size bins (byte widths supported by the target): the SMC fabric
   // bridge carries 1/2/4/8-byte sizes; the OTP AXI-Lite bridges are fixed
   // 4-byte, so only their supported width is declared.
-  wire logic smc_axi_size_1b_e = smc_axi_comp_e && (smc_axi_size_i == 3'd0);
-  wire logic smc_axi_size_2b_e = smc_axi_comp_e && (smc_axi_size_i == 3'd1);
-  wire logic smc_axi_size_4b_e = smc_axi_comp_e && (smc_axi_size_i == 3'd2);
-  wire logic smc_axi_size_8b_e = smc_axi_comp_e && (smc_axi_size_i == 3'd3);
-  wire logic smc_otp_size_4b_e = smc_otp_comp_e && (smc_otp_size_i == 3'd2);
-  wire logic sep_otp_size_4b_e = sep_otp_comp_e && (sep_otp_size_i == 3'd2);
+  wire smc_axi_size_1b_e = smc_axi_comp_e && (smc_axi_size_i == 3'd0);
+  wire smc_axi_size_2b_e = smc_axi_comp_e && (smc_axi_size_i == 3'd1);
+  wire smc_axi_size_4b_e = smc_axi_comp_e && (smc_axi_size_i == 3'd2);
+  wire smc_axi_size_8b_e = smc_axi_comp_e && (smc_axi_size_i == 3'd3);
+  wire smc_otp_size_4b_e = smc_otp_comp_e && (smc_otp_size_i == 3'd2);
+  wire sep_otp_size_4b_e = sep_otp_comp_e && (sep_otp_size_i == 3'd2);
   `OCAH_FCOV_COVER(c_smc_axi_size_1b, smc_axi_size_1b_e, tck_i, in_reset)
   `OCAH_FCOV_COVER(c_smc_axi_size_2b, smc_axi_size_2b_e, tck_i, in_reset)
   `OCAH_FCOV_COVER(c_smc_axi_size_4b, smc_axi_size_4b_e, tck_i, in_reset)
@@ -283,11 +283,11 @@ module dtp_jtag2axi_fcov (
     logic __t``_aw_done_q;                                                                  \
     logic __t``_w_done_q;                                                                   \
     logic __t``_rd_out_q;                                                                   \
-    wire logic __t``_aw_hs = __t``_awvalid_i && __t``_awready_i;                            \
-    wire logic __t``_w_hs = __t``_wvalid_i && __t``_wready_i;                               \
-    wire logic __t``_b_hs = __t``_bvalid_i && __t``_bready_i;                               \
-    wire logic __t``_ar_hs = __t``_arvalid_i && __t``_arready_i;                            \
-    wire logic __t``_r_hs = __t``_rvalid_i && __t``_rready_i;                               \
+    wire __t``_aw_hs = __t``_awvalid_i && __t``_awready_i;                            \
+    wire __t``_w_hs = __t``_wvalid_i && __t``_wready_i;                               \
+    wire __t``_b_hs = __t``_bvalid_i && __t``_bready_i;                               \
+    wire __t``_ar_hs = __t``_arvalid_i && __t``_arready_i;                            \
+    wire __t``_r_hs = __t``_rvalid_i && __t``_rready_i;                               \
     always_ff @(posedge clk_i) begin                                                        \
       if (!rst_ni) begin                                                                    \
         __t``_aw_done_q <= 1'b0;                                                            \
@@ -305,17 +305,17 @@ module dtp_jtag2axi_fcov (
         else if (__t``_r_hs) __t``_rd_out_q <= 1'b0;                                        \
       end                                                                                   \
     end                                                                                     \
-    wire logic __t``_skew_aw_before_w_e = __t``_aw_hs && !__t``_wvalid_i;                   \
-    wire logic __t``_skew_w_before_aw_e =                                                   \
+    wire __t``_skew_aw_before_w_e = __t``_aw_hs && !__t``_wvalid_i;                   \
+    wire __t``_skew_w_before_aw_e =                                                   \
         __t``_wvalid_i && __t``_awvalid_i && !__t``_awready_i;                              \
-    wire logic __t``_read_held_e = __t``_arvalid_i && !__t``_arready_i;                     \
-    wire logic __t``_reset_idle_e = rst_fell_e && !__t``_aw_done_q && !__t``_rd_out_q       \
+    wire __t``_read_held_e = __t``_arvalid_i && !__t``_arready_i;                     \
+    wire __t``_reset_idle_e = rst_fell_e && !__t``_aw_done_q && !__t``_rd_out_q       \
         && !__t``_awvalid_i && !__t``_wvalid_i && !__t``_arvalid_i;                         \
-    wire logic __t``_reset_request_e = rst_fell_e && ((__t``_awvalid_i                      \
+    wire __t``_reset_request_e = rst_fell_e && ((__t``_awvalid_i                      \
         && !__t``_aw_done_q) || (__t``_arvalid_i && !__t``_rd_out_q));                      \
-    wire logic __t``_reset_data_e = rst_fell_e                                              \
+    wire __t``_reset_data_e = rst_fell_e                                              \
         && ((__t``_aw_done_q && !__t``_w_done_q) || (__t``_wvalid_i && !__t``_w_done_q));   \
-    wire logic __t``_reset_response_e = rst_fell_e                                          \
+    wire __t``_reset_response_e = rst_fell_e                                          \
         && ((__t``_aw_done_q && __t``_w_done_q) || __t``_rd_out_q);                         \
     `OCAH_FCOV_COVER(c_``__t``_skew_aw_before_w, __t``_skew_aw_before_w_e, clk_i, clk_in_reset)  \
     `OCAH_FCOV_COVER(c_``__t``_skew_w_before_aw, __t``_skew_w_before_aw_e, clk_i, clk_in_reset)  \
@@ -339,49 +339,41 @@ module dtp_jtag2axi_fcov (
   // Commercial-simulator covergroups mirroring the cover-property bins.
   // Target encoding: 0 = smc_axi, 1 = smc_otp, 2 = sep_otp.
   // ------------------------------------------------------------------
-  covergroup cg_jtag2axi_single_op with function sample(
-      logic [1:0] tgt, logic [1:0] op, logic [2:0] size, logic [3:0] lanes,
-      logic aligned, logic boundary);
+  covergroup cg_jtag2axi_single_op with function sample (
+      logic [1:0] tgt,
+      logic [1:0] op,
+      logic [2:0] size,
+      logic [3:0] lanes,
+      logic aligned,
+      logic boundary
+  );
     option.per_instance = 1;
-    cp_target : coverpoint tgt {
-      bins smc_axi = {2'd0};
-      bins smc_otp = {2'd1};
-      bins sep_otp = {2'd2};
-    }
-    cp_op : coverpoint op {
-      bins read_op = {OpRead};
-      bins write_op = {OpWrite};
-    }
-    cp_size : coverpoint size { bins size_bytes[] = {[0 : 3]}; }
-    cp_wstrb : coverpoint lanes {
+    cp_target: coverpoint tgt {bins smc_axi = {2'd0}; bins smc_otp = {2'd1}; bins sep_otp = {2'd2};}
+    cp_op: coverpoint op {bins read_op = {OpRead}; bins write_op = {OpWrite};}
+    cp_size: coverpoint size {bins size_bytes[] = {[0 : 3]};}
+    cp_wstrb: coverpoint lanes {
       bins none = {4'd0};
       bins single_byte = {4'd1};
       bins partial = {[4'd2 : 4'd7]};
       bins all_bytes = {4'd8};
     }
-    cp_addr : coverpoint {aligned, boundary} {
-      bins aligned_bin = {2'b10};
-      bins boundary_bin = {2'b11};
+    cp_addr: coverpoint {
+      aligned, boundary
+    } {
+      bins aligned_bin = {2'b10}; bins boundary_bin = {2'b11};
     }
   endgroup
 
-  covergroup cg_jtag2axi_response with function sample(
-      logic [1:0] tgt, logic [1:0] status, logic [2:0] polls);
+  covergroup cg_jtag2axi_response with function sample (
+      logic [1:0] tgt, logic [1:0] status, logic [2:0] polls
+  );
     option.per_instance = 1;
-    cp_target : coverpoint tgt {
-      bins smc_axi = {2'd0};
-      bins smc_otp = {2'd1};
-      bins sep_otp = {2'd2};
+    cp_target: coverpoint tgt {bins smc_axi = {2'd0}; bins smc_otp = {2'd1}; bins sep_otp = {2'd2};}
+    cp_status: coverpoint status {
+      bins success = {StSuccess}; bins slverr = {StSlverr}; bins decerr = {StDecerr};
     }
-    cp_status : coverpoint status {
-      bins success = {StSuccess};
-      bins slverr = {StSlverr};
-      bins decerr = {StDecerr};
-    }
-    cp_poll : coverpoint polls {
-      bins immediate = {3'd0};
-      bins short_wait = {[3'd1 : 3'd3]};
-      bins long_wait = {[3'd4 : 3'd7]};
+    cp_poll: coverpoint polls {
+      bins immediate = {3'd0}; bins short_wait = {[3'd1 : 3'd3]}; bins long_wait = {[3'd4 : 3'd7]};
     }
   endgroup
 

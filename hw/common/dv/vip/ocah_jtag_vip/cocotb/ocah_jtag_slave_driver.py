@@ -275,6 +275,14 @@ class OcahJtagSlaveDriver:
     def clear_updates(self) -> None:
         self.engine.clear_updates()
 
+    def device_state(self) -> OcahJtagState:
+        """The device's current TAP controller state."""
+        return self.engine.state
+
+    def active_instruction(self) -> int:
+        """The instruction currently selecting the device's data register."""
+        return self.engine.active_instruction
+
     def get_statistics(self) -> dict[str, Any]:
         return {
             "state": self.engine.state.name,

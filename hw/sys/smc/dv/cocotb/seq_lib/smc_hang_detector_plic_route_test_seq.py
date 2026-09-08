@@ -85,8 +85,8 @@ class smc_hang_detector_plic_route_test_seq(SmcCsrSeq):
         dut = cocotb.top
         await self.wait_fuse_sense_done()
 
-        # The slot used to be tied to zero. Prove it is still quiet at rest, so a
-        # pass below is the route working and not a stuck-high peripheral bit.
+        # Quiet at rest, so a pass below is the route working and not a
+        # stuck-high peripheral bit.
         await self._await_pins(dut, {n: 0 for n in _ROUTE}, "IDLE")
         self.idle_ok = True
         cocotb.log.info("CHK-HANG-PLIC-IDLE: periph[31] and PLIC source pin low at rest")

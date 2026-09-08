@@ -24,6 +24,9 @@ class smc_efuse_permission_boundary_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.EFUSE,
             type(self).__name__,
+            # Directed stimulus floor: 5 SEP_IN AXI eFuse permission-boundary
+            # accesses. Literal here, not read from `seq.accesses`.
+            min_csr_accesses=5,
             csr_accesses=seq.accesses,
             proxy=False,
             details="eFuse chip-config permission boundary and eFuse-bank idle checked",

@@ -6,51 +6,51 @@
 //
 //--------------------------------------------------
 module prim_axi_lite_to_apb_single #(
-    parameter bit PipelineRequest      = 1'b0,   // Pipeline request path
-    parameter bit PipelineResponse     = 1'b0,   // Pipeline response path
-    parameter int unsigned AXI_DATA_WIDTH = 32,
-    parameter int unsigned AXI_ADDR_WIDTH = 32,
+  parameter bit PipelineRequest      = 1'b0,   // Pipeline request path
+  parameter bit PipelineResponse     = 1'b0,   // Pipeline response path
+  parameter int unsigned AXI_DATA_WIDTH = 32,
+  parameter int unsigned AXI_ADDR_WIDTH = 32,
 
-    parameter bit [AXI_ADDR_WIDTH-1:0] ADDR_START = 32'h0,
-    parameter bit [AXI_ADDR_WIDTH:0]   ADDR_END   = 33'h0,
+  parameter bit [AXI_ADDR_WIDTH-1:0] ADDR_START = 32'h0,
+  parameter bit [AXI_ADDR_WIDTH:0]   ADDR_END   = 33'h0,
 
-    localparam type addr_t = logic [  AXI_ADDR_WIDTH-1:0],
-    localparam type data_t = logic [  AXI_DATA_WIDTH-1:0],
-    localparam type strb_t = logic [AXI_DATA_WIDTH/8-1:0]
+  localparam type addr_t = logic [AXI_ADDR_WIDTH-1:0],
+  localparam type data_t = logic [AXI_DATA_WIDTH-1:0],
+  localparam type strb_t = logic [AXI_DATA_WIDTH/8-1:0]
 ) (
-    input logic i_clk,
-    input logic i_reset_n,
+  input logic i_clk,
+  input logic i_reset_n,
 
-    input  logic            i_axi_lite_awvalid,
-    input  addr_t           i_axi_lite_awaddr,
-    input  axi_pkg::prot_t  i_axi_lite_awprot,
-    output logic            o_axi_lite_awready,
-    input  logic            i_axi_lite_wvalid,
-    input  data_t           i_axi_lite_wdata,
-    input  strb_t           i_axi_lite_wstrb,
-    output logic            o_axi_lite_wready,
-    output logic            o_axi_lite_bvalid,
-    output axi_pkg::resp_t  o_axi_lite_bresp,
-    input  logic            i_axi_lite_bready,
-    input  logic            i_axi_lite_arvalid,
-    input  addr_t           i_axi_lite_araddr,
-    input  axi_pkg::prot_t  i_axi_lite_arprot,
-    output logic            o_axi_lite_arready,
-    output logic            o_axi_lite_rvalid,
-    output data_t           o_axi_lite_rdata,
-    output axi_pkg::resp_t  o_axi_lite_rresp,
-    input  logic            i_axi_lite_rready,
+  input  logic            i_axi_lite_awvalid,
+  input  addr_t           i_axi_lite_awaddr,
+  input  axi_pkg::prot_t  i_axi_lite_awprot,
+  output logic            o_axi_lite_awready,
+  input  logic            i_axi_lite_wvalid,
+  input  data_t           i_axi_lite_wdata,
+  input  strb_t           i_axi_lite_wstrb,
+  output logic            o_axi_lite_wready,
+  output logic            o_axi_lite_bvalid,
+  output axi_pkg::resp_t  o_axi_lite_bresp,
+  input  logic            i_axi_lite_bready,
+  input  logic            i_axi_lite_arvalid,
+  input  addr_t           i_axi_lite_araddr,
+  input  axi_pkg::prot_t  i_axi_lite_arprot,
+  output logic            o_axi_lite_arready,
+  output logic            o_axi_lite_rvalid,
+  output data_t           o_axi_lite_rdata,
+  output axi_pkg::resp_t  o_axi_lite_rresp,
+  input  logic            i_axi_lite_rready,
 
-    output logic       o_psel,
-    output logic       o_penable,
-    output logic       o_pwrite,
-    output addr_t      o_paddr,
-    output data_t      o_pwdata,
-    output strb_t      o_pstrb,
-    output logic [2:0] o_pprot,
-    input  logic       i_pready,
-    input  logic       i_pslverr,
-    input  data_t      i_prdata
+  output logic       o_psel,
+  output logic       o_penable,
+  output logic       o_pwrite,
+  output addr_t      o_paddr,
+  output data_t      o_pwdata,
+  output strb_t      o_pstrb,
+  output logic [2:0] o_pprot,
+  input  logic       i_pready,
+  input  logic       i_pslverr,
+  input  data_t      i_prdata
 );
 
   localparam int unsigned EXTENDED_ADDR_WIDTH = AXI_ADDR_WIDTH + 1;
@@ -58,8 +58,8 @@ module prim_axi_lite_to_apb_single #(
   logic [EXTENDED_ADDR_WIDTH-1:0] paddr_out;
 
   AXI_LITE #(
-      .AXI_DATA_WIDTH(AXI_DATA_WIDTH),
-      .AXI_ADDR_WIDTH(EXTENDED_ADDR_WIDTH)
+    .AXI_DATA_WIDTH(AXI_DATA_WIDTH),
+    .AXI_ADDR_WIDTH(EXTENDED_ADDR_WIDTH)
   ) axi_lite ();
 
   typedef struct packed {
@@ -73,28 +73,28 @@ module prim_axi_lite_to_apb_single #(
   };
 
   axi_lite_to_apb_intf #(
-      .NoApbSlaves(1),
-      .NoRules(1),
-      .AddrWidth(EXTENDED_ADDR_WIDTH),
-      .DataWidth(AXI_DATA_WIDTH),
-      .PipelineRequest(PipelineRequest),
-      .PipelineResponse(PipelineResponse),
-      .rule_t(rule_t)
+    .NoApbSlaves(1),
+    .NoRules(1),
+    .AddrWidth(EXTENDED_ADDR_WIDTH),
+    .DataWidth(AXI_DATA_WIDTH),
+    .PipelineRequest(PipelineRequest),
+    .PipelineResponse(PipelineResponse),
+    .rule_t(rule_t)
   ) axi_lite_to_apb (
-      .clk_i(i_clk),
-      .rst_ni(i_reset_n),
-      .slv(axi_lite),
-      .paddr_o(paddr_out),
-      .pprot_o(o_pprot),
-      .pselx_o(o_psel),
-      .penable_o(o_penable),
-      .pwrite_o(o_pwrite),
-      .pwdata_o(o_pwdata),
-      .pstrb_o(o_pstrb),
-      .pready_i(i_pready),
-      .prdata_i(i_prdata),
-      .pslverr_i(i_pslverr),
-      .addr_map_i(ApbRuleT)
+    .clk_i(i_clk),
+    .rst_ni(i_reset_n),
+    .slv(axi_lite),
+    .paddr_o(paddr_out),
+    .pprot_o(o_pprot),
+    .pselx_o(o_psel),
+    .penable_o(o_penable),
+    .pwrite_o(o_pwrite),
+    .pwdata_o(o_pwdata),
+    .pstrb_o(o_pstrb),
+    .pready_i(i_pready),
+    .prdata_i(i_prdata),
+    .pslverr_i(i_pslverr),
+    .addr_map_i(ApbRuleT)
   );
 
   assign o_paddr = paddr_out[AXI_ADDR_WIDTH-1:0];

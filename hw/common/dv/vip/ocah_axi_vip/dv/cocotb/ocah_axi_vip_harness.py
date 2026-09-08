@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Shared setup for the AXI VIP wire-harness selftests.
 
-Two bundles exist in ``tb_top.sv``:
+Three bundles exist in ``tb_top.sv``:
 
 * ``s_axi`` — full stack: ``OcahAxiMasterAgent`` against ``OcahAxiSlaveAgent``
   on the same nets.  Used to prove the blocking result API's response-ID
@@ -11,19 +11,49 @@ Two bundles exist in ``tb_top.sv``:
   ``OcahAxiSlaveAgent``, so armed response-ID corruption is observable with
   ``OcahAxiIdCapture``.  A cocotbext backend master cannot sit on a corrupted
   bundle: it polices response-ID pairing and fails on an ID it never issued.
+* ``l_axi`` — AXI4-Lite stack: ``OcahAxiLiteMasterAgent`` against
+  ``OcahAxiLiteSlaveAgent``, for the lite protocol-control selftests
+  (AW/W launch skew, deferred BREADY/RREADY, partial strobes) with every
+  handshake observable at the flat nets.
+* ``u_wide_axi_if`` / ``u_wide_axil_if`` — default-geometry ``ocah_axi_if``
+  instances (64-bit address and data, 16-bit ID and user). The geometry
+  selftests bind the 32-bit stacks to them through ``OcahAxiConfig`` and
+  judge the member bits above the configured geometry at the raw handles.
+
+The seed accessor and the salted scenario RNG live here: these selftests are
+plain cocotb tests without a base test class.
 """
 
 from __future__ import annotations
 
 import logging
+import os
+import random
+from typing import Any
 
 import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, RisingEdge
-from ocah_axi_vip import OcahAxiMasterAgent, OcahAxiSlaveAgent
+from ocah_axi_vip import (
+    OcahAxiConfig,
+    OcahAxiLiteMasterAgent,
+    OcahAxiLiteSlaveAgent,
+    OcahAxiMasterAgent,
+    OcahAxiProtocol,
+    OcahAxiSlaveAgent,
+)
+from ocah_lib import OcahRng
 
 CLK_PERIOD_NS = 4
 ID_MASK = 0xFF  # tb_top ID signals are 8 bits wide
+_SEED_ENV = "RANDOM_SEED"
+
+# Real bus geometry the geometry selftests bind onto the default-geometry
+# ocah_axi_if instances (whose members are 64/64-bit with 16-bit ID and user).
+WIDE_LITE_GEOMETRY = OcahAxiConfig(protocol=OcahAxiProtocol.AXI4_LITE, addr_width=32, data_width=32)
+WIDE_AXI_GEOMETRY = OcahAxiConfig(
+    protocol=OcahAxiProtocol.AXI4, addr_width=32, data_width=32, id_width=8, user_width=1
+)
 
 log = logging.getLogger("cocotb.tb.ocah_axi_vip_harness")
 
@@ -58,6 +88,98 @@ def build_full_stack(dut, *, timeout_ns: int = 100_000):
         name="harness_s_axi_master",
     )
     return master, slave
+
+
+def build_lite_stack(dut, *, timeout_ns: int = 100_000):
+    """Attach the shared lite master and lite RAM slave agents to the l_axi nets."""
+    slave = OcahAxiLiteSlaveAgent.from_prefix(
+        dut,
+        "l_axi",
+        dut.clk,
+        dut.rst_n,
+        reset_active_level=False,
+        size=2**16,
+        name="harness_l_axi_slave",
+    )
+    master = OcahAxiLiteMasterAgent.from_prefix(
+        dut,
+        "l_axi",
+        dut.clk,
+        dut.rst_n,
+        reset_active_level=False,
+        timeout_ns=timeout_ns,
+        name="harness_l_axi_master",
+    )
+    return master, slave
+
+
+def base_seed() -> int:
+    """Runner-provided seed; the harness's one read of the seed variable."""
+    return int(os.environ.get(_SEED_ENV, "1"), 0)
+
+
+def scenario_rng(label: str) -> random.Random:
+    """Seeded stream for one scenario, salted by ``label``."""
+    return random.Random(OcahRng.salted_seed(base_seed(), label))
+
+
+def build_wide_lite_stack(
+    dut: Any, *, timeout_ns: int = 100_000
+) -> tuple[OcahAxiLiteMasterAgent, OcahAxiLiteSlaveAgent]:
+    """Attach the lite master and lite RAM slave to u_wide_axil_if at 32-bit geometry."""
+    scope = dut.u_wide_axil_if
+    slave = OcahAxiLiteSlaveAgent(
+        WIDE_LITE_GEOMETRY.bus(scope),
+        dut.clk,
+        dut.rst_n,
+        reset_active_level=False,
+        size=2**16,
+        name="harness_wide_axil_slave",
+    )
+    master = OcahAxiLiteMasterAgent(
+        WIDE_LITE_GEOMETRY.bus(scope),
+        dut.clk,
+        dut.rst_n,
+        reset_active_level=False,
+        timeout_ns=timeout_ns,
+        name="harness_wide_axil_master",
+    )
+    return master, slave
+
+
+def build_wide_full_stack(
+    dut: Any, *, timeout_ns: int = 100_000
+) -> tuple[OcahAxiMasterAgent, OcahAxiSlaveAgent]:
+    """Attach the AXI4 master and RAM slave to u_wide_axi_if at 32-bit, 8-bit-ID geometry."""
+    scope = dut.u_wide_axi_if
+    slave = OcahAxiSlaveAgent(
+        WIDE_AXI_GEOMETRY.bus(scope),
+        dut.clk,
+        dut.rst_n,
+        reset_active_level=False,
+        size=2**16,
+        name="harness_wide_axi_slave",
+    )
+    master = OcahAxiMasterAgent(
+        WIDE_AXI_GEOMETRY.bus(scope),
+        dut.clk,
+        dut.rst_n,
+        reset_active_level=False,
+        timeout_ns=timeout_ns,
+        name="harness_wide_axi_master",
+    )
+    return master, slave
+
+
+def upper_lanes(handle: Any, width: int) -> int | None:
+    """Value of the bits of ``handle`` above bit ``width``; ``None`` when any of them is X or Z."""
+    bits = str(handle.value)[:-width]
+    if not bits:
+        return 0
+    try:
+        return int(bits, 2)
+    except ValueError:
+        return None
 
 
 def build_wire_slave(dut):
@@ -102,6 +224,73 @@ def build_wire_slave(dut):
     dut.t_axi_bready.value = 1
     dut.t_axi_rready.value = 1
     return slave
+
+
+def _sample(handle) -> int:
+    """Sample a signal as an int; X resolves to 0."""
+    try:
+        return int(handle.value)
+    except ValueError:
+        return 0
+
+
+_LITE_WRITE_KEYS = (
+    "awvalid",
+    "awready",
+    "awaddr",
+    "wvalid",
+    "wready",
+    "wdata",
+    "wstrb",
+    "bvalid",
+    "bready",
+)
+_LITE_READ_KEYS = ("arvalid", "arready", "araddr", "rvalid", "rready", "rdata", "rresp")
+
+
+async def observe_lite_write(dut, *, max_cycles: int = 400) -> list[dict[str, int]]:
+    """Record the l_axi write channels once per cycle until the B handshake.
+
+    Start as a background task before issuing the transaction; the returned
+    per-cycle sample list is the wire-level truth the tests judge the VIP's
+    skew/deferral claims against (independent of the VIP's own bookkeeping).
+    """
+    samples: list[dict[str, int]] = []
+    for _ in range(max_cycles):
+        await RisingEdge(dut.clk)
+        row = {key: _sample(getattr(dut, f"l_axi_{key}")) for key in _LITE_WRITE_KEYS}
+        samples.append(row)
+        if row["bvalid"] and row["bready"]:
+            return samples
+    raise AssertionError(f"no l_axi B handshake within {max_cycles} cycles")
+
+
+async def observe_lite_read(dut, *, max_cycles: int = 400) -> list[dict[str, int]]:
+    """Record the l_axi read channels once per cycle until the R handshake."""
+    samples: list[dict[str, int]] = []
+    for _ in range(max_cycles):
+        await RisingEdge(dut.clk)
+        row = {key: _sample(getattr(dut, f"l_axi_{key}")) for key in _LITE_READ_KEYS}
+        samples.append(row)
+        if row["rvalid"] and row["rready"]:
+            return samples
+    raise AssertionError(f"no l_axi R handshake within {max_cycles} cycles")
+
+
+def first_cycle(samples: list[dict[str, int]], key: str, *, start: int = 0) -> int | None:
+    """Return the first sample index at or after ``start`` where ``key`` is set."""
+    for index in range(start, len(samples)):
+        if samples[index][key]:
+            return index
+    return None
+
+
+def handshake_cycle(samples: list[dict[str, int]], valid: str, ready: str) -> int | None:
+    """Return the first sample index where ``valid`` and ``ready`` are both set."""
+    for index, row in enumerate(samples):
+        if row[valid] and row[ready]:
+            return index
+    return None
 
 
 async def _wait_ready(clock, ready, *, timeout_cycles: int = 200) -> None:

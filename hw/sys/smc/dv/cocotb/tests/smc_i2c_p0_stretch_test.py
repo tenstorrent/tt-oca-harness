@@ -25,7 +25,15 @@ class smc_i2c_p0_stretch_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.I2C,
             type(self).__name__,
+            # The straight-line count the body must reach: every unconditional
+            # access plus one iteration of each of the three polling loops
+            # (TX_PENDING, RX_STATUS, HOST_IDLE). Measured 34 on seeds 1-4; the
+            # extra beats are poll iterations that vary with timing.
+            min_csr_accesses=30,
             csr_accesses=seq.accesses,
             proxy=False,
-            details=(f"TX_PENDING stretch={seq.stretch_ok} read={seq.read_ok}"),
+            details=(
+                f"I2C0 target stretched TX_PENDING until the host read it back; "
+                f"host received 0x{seq.rx_byte:02X} over {seq.accesses} accesses"
+            ),
         )

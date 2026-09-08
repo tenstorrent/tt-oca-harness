@@ -100,14 +100,6 @@ timeout_sec = 1800
 tags = ["ci", "reset", "flr", "tier_c", "pyuvm"]
 run_modes = ["smoke"]
 
-# BFM: captured_straps_i → STRAPS_LO/HI (not GPIO IRQ strap sanity).
-[[tests]]
-name = "smc_captured_straps_test"
-module = "smc_captured_straps_test"
-seed = 1
-timeout_sec = 1800
-tags = ["ci", "reset", "strap", "tier_c", "pyuvm"]
-run_modes = ["smoke"]
 
 # BFM: ss_reset_complete_i → CSR + SS_WARM_RESET_N SS0 pin (no FW).
 [[tests]]
@@ -150,8 +142,31 @@ tests = [
     "smc_ndm_reset_test",
     "smc_cpu_reset_source_test",
     "smc_cool_reset_from_pcie_test",
-    "smc_captured_straps_test",
     "smc_ss_reset_complete_test",
     "smc_jtag_reset_ctrl_test",
     "smc_cool_reset_x_cold_reset_test",
 ]
+
+[[tests]]
+name = "smc_jtag_reset_proxy_test"
+module = "smc_jtag_reset_proxy_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "jtag_depth", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_flr_sanity_test"
+module = "smc_flr_sanity_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smoke", "ci", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_multi_reset_csr_persistence_test"
+module = "smc_multi_reset_csr_persistence_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smoke", "ci", "pyuvm"]
+run_modes = ["smoke"]

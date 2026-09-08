@@ -21,9 +21,10 @@ source and keep TT's generated RTL as overlay collateral (see below).
 
 ## Patches
 
-The TT delta — all in-place edits to upstream files (no new modules) — is split
-into atomic, numbered patches **by subsystem** (applied in sorted filename order;
-each touches a distinct set of files, so the order is not load-bearing):
+The TT delta — all in-place edits to upstream files (no new modules) — is applied
+as five numbered patches in sorted filename order. Patches 0001 through 0004
+establish the backend, frontend, typedef, and midend customizations. Patch 0005
+updates templates modified by 0001 and 0002, so it must follow both.
 
 ### `patches/0001-tt-idma-backend.patch` — protocol backends + their templates
 
@@ -45,7 +46,11 @@ Edits to `src/include/idma/typedef.svh`.
 
 Edits to the `midend/idma_{nd,mp_dist,mp_split}_midend` modules.
 
-The `.tpl` edits are kept with their subsystem so that regenerating from the
-patched templates reproduces the generated bundle in `overlay/target/rtl/`. When
-rebasing, regenerate from the patched templates rather than hand-editing the
-generated `idma_*` files.
+### `patches/0005-tt-idma-widths.patch` — generated width conversions
+
+Explicitly sizes backend arithmetic, AXI metadata, register-frontend request
+fields, and neutral payload values at their destination widths.
+
+After all five patches are applied, regenerating from the patched templates
+reproduces the generated bundle in `overlay/target/rtl/`. Regenerate from those
+templates rather than hand-editing the generated `idma_*` files.

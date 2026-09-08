@@ -143,7 +143,7 @@ class sep_km_hmac_sideload_kat_test(sep_base_test):
         )
 
         # CHK-B: sideload the handle's key to the HMAC wrapper KEY CSRs.
-        rc = await self.km.key_transfer(handle=handle, dest=KM_DEST_HMAC)
+        rc, _ = await self.km.key_transfer(handle=handle, dest=KM_DEST_HMAC)
         assert rc == 0, f"CMD_KEY_TRANSFER returned rc={rc} (expected 0)"
         self.logger.info("CHK-B CMD_KEY_TRANSFER PASS: rc=0 (key sideloaded to HMAC)")
 

@@ -25,12 +25,21 @@ Checks (each asserts an exact value, so a stuck/X register fails):
                    Cold-domain isolation is CHK-WARM-CLEAR / CHK-WARM-RETAIN
                    (warm bank clears, cold bank retains) -- dbg_sep_reset_n_o has
                    no fan-out from wdt_rst_ni_i, so asserting it stays 1 cannot fail.
+  CHK-BANK-ALIAS : with one distinct pattern in each of the 16 registers, every
+                   index of both banks reads back its OWN pattern -- per-register
+                   storage with no aliasing between indices or between banks.
+                   Cold bank cross-checked word-by-word via scratch_cold_probe_o.
   CHK-WARM-CLEAR : after the warm reset, SCRATCH_WARM[0] == reset default 0x0.
   CHK-WARM-RETAIN: after the warm reset, SCRATCH_COLD[0] == its written pattern
                    (survives). Probe cross-check.
+  CHK-WARM-BANK  : the warm reset clears ALL 8 warm registers and leaves ALL 8
+                   cold registers at their patterns -- the domain split holds per
+                   register, not only at index 0.
   CHK-WARM-RECOVER: SCRATCH_WARM[0] is writable again post-warm-reset.
   CHK-COLD-REINIT: after a cold reset (rst_ni resense), BOTH banks == reset
                    default (stronger than the reference suite). Probe cross-check on the cold bank.
+  CHK-COLD-BANK  : the cold reset clears both banks -- 8 registers each, 16 in
+                   total.
 
 no_cpu / +skip_fuse_sense (the scratch banks are reached over the CPU-LSU AXI
 splice; the reset stimulus is the wdt_rst_ni_i / rst_ni primary inputs -- no OTP
@@ -45,11 +54,16 @@ from cocotb.triggers import ClockCycles
 from sep_base_test import sep_base_test
 from seq_lib.sep_scratch_reset_seq import (
     COLD_PATTERN,
+    COLD_PATTERNS,
     SCRATCH_COLD_0,
+    SCRATCH_COLD_ADDRS,
+    SCRATCH_N,
     SCRATCH_RESET_DEFAULT,
     SCRATCH_WARM_0,
+    SCRATCH_WARM_ADDRS,
     WARM_PATTERN,
     WARM_PATTERN2,
+    WARM_PATTERNS,
     SepScratchReset,
 )
 
@@ -100,6 +114,33 @@ class sep_warm_cold_reset_scratch_test(sep_base_test):
             cold_rb,
         )
 
+        # --- CHK-BANK-ALIAS: every index of both banks stores independently ---
+        # One index cannot prove the address decode: a bank whose registers alias, or
+        # whose warm and cold instances share storage, still passes an index-0 check.
+        await self.scr.write_bank(SCRATCH_WARM_ADDRS, WARM_PATTERNS)
+        await self.scr.write_bank(SCRATCH_COLD_ADDRS, COLD_PATTERNS)
+        warm_bank = await self.scr.read_bank(SCRATCH_WARM_ADDRS)
+        cold_bank = await self.scr.read_bank(SCRATCH_COLD_ADDRS)
+        for idx in range(SCRATCH_N):
+            assert warm_bank[idx] == WARM_PATTERNS[idx], (
+                f"CHK-BANK-ALIAS SCRATCH_WARM[{idx}]=0x{warm_bank[idx]:08x} != "
+                f"0x{WARM_PATTERNS[idx]:08x}"
+            )
+            assert cold_bank[idx] == COLD_PATTERNS[idx], (
+                f"CHK-BANK-ALIAS SCRATCH_COLD[{idx}]=0x{cold_bank[idx]:08x} != "
+                f"0x{COLD_PATTERNS[idx]:08x}"
+            )
+            probe_i = self._scratch_cold_probe(idx)
+            assert probe_i == COLD_PATTERNS[idx], (
+                f"CHK-BANK-ALIAS cold probe[{idx}]=0x{probe_i:08x} != 0x{COLD_PATTERNS[idx]:08x}"
+            )
+        self.logger.info(
+            "CHK-BANK-ALIAS PASS: all %d warm and %d cold scratch registers hold their own "
+            "pattern (probe agrees word-by-word) -- no index or bank aliasing",
+            SCRATCH_N,
+            SCRATCH_N,
+        )
+
         # --- CHK-WARM-RST: wdt_rst_ni pulse drives sep_cpu_reset_n 1->0->1 ---
         await self._check_reset_obs(
             dut.sep_cpu_reset_n_o, "CHK-WARM-RST baseline sep_cpu_reset_n", 1
@@ -137,13 +178,45 @@ class sep_warm_cold_reset_scratch_test(sep_base_test):
             "CHK-WARM-RETAIN PASS: SCRATCH_COLD[0] retained 0x%08x (probe agrees)", cold_post
         )
 
+        # --- CHK-WARM-BANK: the domain split holds for every index, not just 0 ---
+        warm_bank_post = await self.scr.read_bank(SCRATCH_WARM_ADDRS)
+        cold_bank_post = await self.scr.read_bank(SCRATCH_COLD_ADDRS)
+        for idx in range(SCRATCH_N):
+            assert warm_bank_post[idx] == SCRATCH_RESET_DEFAULT, (
+                f"CHK-WARM-BANK SCRATCH_WARM[{idx}]=0x{warm_bank_post[idx]:08x} not cleared "
+                f"by the warm reset"
+            )
+            assert cold_bank_post[idx] == COLD_PATTERNS[idx], (
+                f"CHK-WARM-BANK SCRATCH_COLD[{idx}]=0x{cold_bank_post[idx]:08x} != "
+                f"0x{COLD_PATTERNS[idx]:08x} (cold register lost its value to a warm reset)"
+            )
+            probe_i = self._scratch_cold_probe(idx)
+            assert probe_i == COLD_PATTERNS[idx], (
+                f"CHK-WARM-BANK cold probe[{idx}]=0x{probe_i:08x} != 0x{COLD_PATTERNS[idx]:08x}"
+            )
+        self.logger.info(
+            "CHK-WARM-BANK PASS: the warm reset cleared all %d warm registers and left all "
+            "%d cold registers at their patterns (probe agrees)",
+            SCRATCH_N,
+            SCRATCH_N,
+        )
+
         # --- CHK-WARM-RECOVER: warm bank writable again post-warm-reset ---
         await self.scr.write(SCRATCH_WARM_0, WARM_PATTERN2)
         warm_rec = await self.scr.read(SCRATCH_WARM_0)
         assert warm_rec == WARM_PATTERN2, (
             f"CHK-WARM-RECOVER SCRATCH_WARM[0]=0x{warm_rec:08x} != 0x{WARM_PATTERN2:08x}"
         )
-        self.logger.info("CHK-WARM-RECOVER PASS: SCRATCH_WARM[0] re-written 0x%08x", warm_rec)
+        cold_rec = await self.scr.read(SCRATCH_COLD_0)
+        assert cold_rec == COLD_PATTERNS[0], (
+            f"CHK-WARM-RECOVER SCRATCH_COLD[0]=0x{cold_rec:08x} != 0x{COLD_PATTERNS[0]:08x}"
+        )
+        self.logger.info(
+            "CHK-WARM-RECOVER PASS: warm SCRATCH_WARM[0] re-written 0x%08x, cold "
+            "SCRATCH_COLD[0] still 0x%08x across the warm reset",
+            warm_rec,
+            cold_rec,
+        )
 
         # --- CHK-COLD-REINIT: a cold reset clears BOTH banks (stronger than the reference suite) ---
         # State going in: SCRATCH_COLD[0]=COLD_PATTERN, SCRATCH_WARM[0]=WARM_PATTERN2.
@@ -151,6 +224,33 @@ class sep_warm_cold_reset_scratch_test(sep_base_test):
         # running and the cocotb-driven idle defaults persist across the pulse. Both
         # banks' arst_n deasserts on rst_ni (cold: rst_ni; warm: rst_ni && rst_warm_ni),
         # so both must return to the reset default.
+        # Re-arm BOTH banks first. The warm reset above cleared warm[1..7] and only
+        # warm[0] was rewritten, so without this the cold-reset assertion on those
+        # seven is satisfied by state the warm reset already produced and cannot
+        # detect a cold reset that misses the warm bank.
+        await self.scr.write_bank(SCRATCH_WARM_ADDRS, WARM_PATTERNS)
+        await self.scr.write_bank(SCRATCH_COLD_ADDRS, COLD_PATTERNS)
+        rearm_warm = await self.scr.read_bank(SCRATCH_WARM_ADDRS)
+        rearm_cold = await self.scr.read_bank(SCRATCH_COLD_ADDRS)
+        assert rearm_warm == list(WARM_PATTERNS) and rearm_cold == list(COLD_PATTERNS), (
+            "CHK-COLD-BANK: both banks must hold their patterns before the cold "
+            f"reset, got warm={[hex(v) for v in rearm_warm]} "
+            f"cold={[hex(v) for v in rearm_cold]}"
+        )
+        self.logger.info(
+            "CHK-COLD-BANK PASS (pre-reset arming): %d warm + %d cold registers armed, "
+            "warm[0]=0x%08x warm[%d]=0x%08x cold[0]=0x%08x cold[%d]=0x%08x",
+            SCRATCH_N,
+            SCRATCH_N,
+            rearm_warm[0],
+            SCRATCH_N - 1,
+            rearm_warm[SCRATCH_N - 1],
+            rearm_cold[0],
+            SCRATCH_N - 1,
+            rearm_cold[SCRATCH_N - 1],
+        )
+        await self.scr.write(SCRATCH_WARM_0, WARM_PATTERN2)
+
         await self.resense()
         cold_cold = await self.scr.read(SCRATCH_COLD_0)
         warm_cold = await self.scr.read(SCRATCH_WARM_0)
@@ -168,7 +268,30 @@ class sep_warm_cold_reset_scratch_test(sep_base_test):
             "CHK-COLD-REINIT PASS: both scratch banks reset to 0x%08x", SCRATCH_RESET_DEFAULT
         )
 
+        # --- CHK-COLD-BANK: the cold reset clears every register of both banks ---
+        warm_bank_cold = await self.scr.read_bank(SCRATCH_WARM_ADDRS)
+        cold_bank_cold = await self.scr.read_bank(SCRATCH_COLD_ADDRS)
+        for idx in range(SCRATCH_N):
+            assert cold_bank_cold[idx] == SCRATCH_RESET_DEFAULT, (
+                f"CHK-COLD-BANK SCRATCH_COLD[{idx}]=0x{cold_bank_cold[idx]:08x} not cleared "
+                f"by the cold reset"
+            )
+            assert warm_bank_cold[idx] == SCRATCH_RESET_DEFAULT, (
+                f"CHK-COLD-BANK SCRATCH_WARM[{idx}]=0x{warm_bank_cold[idx]:08x} not cleared "
+                f"by the cold reset"
+            )
+            probe_i = self._scratch_cold_probe(idx)
+            assert probe_i == SCRATCH_RESET_DEFAULT, (
+                f"CHK-COLD-BANK cold probe[{idx}]=0x{probe_i:08x} != reset default"
+            )
+        self.logger.info(
+            "CHK-COLD-BANK PASS: the cold reset cleared all %d registers of both banks "
+            "(probe agrees)",
+            2 * SCRATCH_N,
+        )
+
         self.logger.info(
             "warm/cold reset scratch PASS: warm/cold reset scratch-bank domain partition verified "
-            "(nonvac / warm-rst / warm-clear / warm-retain / warm-recover / cold-reinit)"
+            "(nonvac / bank-alias / warm-rst / warm-clear / warm-retain / warm-bank / "
+            "warm-recover / cold-reinit / cold-bank)"
         )

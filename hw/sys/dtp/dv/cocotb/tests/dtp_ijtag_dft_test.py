@@ -14,6 +14,6 @@ class dtp_ijtag_dft_test(dtp_base_test):
             dtp_ijtag_scan_test_seq,
             "dft",
             scenario="dft",
-            specific_env="DTP_IJTAG_DFT_TEST_LOOPS",
-            group_env="DTP_SCAN_TEST_LOOPS",
+            specific_knob="DTP_IJTAG_DFT_TEST_LOOPS",
+            group_knob="DTP_SCAN_TEST_LOOPS",
         )

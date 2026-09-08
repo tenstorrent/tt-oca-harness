@@ -2515,7 +2515,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
           <ipxact:size>256</ipxact:size>
           <ipxact:field>
             <ipxact:name>key_hash</ipxact:name>
-            <ipxact:description>Chiplet owner ML-DSA (PQC) authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</ipxact:description>
+            <ipxact:description>Chiplet owner ML-DSA PQC authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2533,7 +2533,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
           <ipxact:size>256</ipxact:size>
           <ipxact:field>
             <ipxact:name>key_hash</ipxact:name>
-            <ipxact:description>Chiplet owner ML-DSA (PQC) authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</ipxact:description>
+            <ipxact:description>Chiplet owner ML-DSA PQC authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2551,7 +2551,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
           <ipxact:size>256</ipxact:size>
           <ipxact:field>
             <ipxact:name>key_hash</ipxact:name>
-            <ipxact:description>Hash digest of the SiP owner's ML-DSA (PQC) root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</ipxact:description>
+            <ipxact:description>Hash digest of the SiP owner's ML-DSA PQC root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2569,7 +2569,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
           <ipxact:size>256</ipxact:size>
           <ipxact:field>
             <ipxact:name>key_hash</ipxact:name>
-            <ipxact:description>Hash digest of the system owner's ML-DSA (PQC) root public key for secure boot. PQC counterpart of SYS_PUBK_HASH.</ipxact:description>
+            <ipxact:description>Hash digest of the system owner's ML-DSA PQC root public key for secure boot. PQC counterpart of SYS_PUBK_HASH.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2605,7 +2605,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
           <ipxact:size>256</ipxact:size>
           <ipxact:field>
             <ipxact:name>key_hash</ipxact:name>
-            <ipxact:description>Hash digest of the SiP owner's ML-DSA (PQC) root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</ipxact:description>
+            <ipxact:description>Hash digest of the SiP owner's ML-DSA PQC root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -7319,7 +7319,7 @@ slot's material can be destroyed but its slot never reused.</ipxact:description>
           <ipxact:field>
             <ipxact:name>count_bad</ipxact:name>
             <ipxact:displayName>COUNT_BAD</ipxact:displayName>
-            <ipxact:description>Failed transactions (timeout or error). Saturates at 0xFF.</ipxact:description>
+            <ipxact:description>Failed transactions (timeout or error). Saturates at 0xFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.</ipxact:description>
             <ipxact:bitOffset>8</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -7328,12 +7328,12 @@ slot's material can be destroyed but its slot never reused.</ipxact:description>
             </ipxact:resets>
             <ipxact:bitWidth>8</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>count_good</ipxact:name>
             <ipxact:displayName>COUNT_GOOD</ipxact:displayName>
-            <ipxact:description>Successful words transferred to CPU. Saturates at 0xFFFF.</ipxact:description>
+            <ipxact:description>Successful words transferred to CPU. Saturates at 0xFFFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.</ipxact:description>
             <ipxact:bitOffset>16</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -7342,7 +7342,7 @@ slot's material can be destroyed but its slot never reused.</ipxact:description>
             </ipxact:resets>
             <ipxact:bitWidth>16</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>

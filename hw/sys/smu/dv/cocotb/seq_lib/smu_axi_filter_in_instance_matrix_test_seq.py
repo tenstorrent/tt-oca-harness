@@ -9,7 +9,7 @@ SEP=0 honest scope (no sep_in / no Force):
   S3  address AND src_id AND prot on inst3 CPU_SCRATCH page
   S5  clear then configure admission on VERSION_LO
 
-Commercial SPM/global-aperture windows replaced by local-alias CSR pages.
+Local-alias CSR pages stand in for the commercial SPM/global-aperture windows.
 """
 
 from __future__ import annotations
