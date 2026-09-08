@@ -385,13 +385,19 @@ async def check_cpu_firmware_boot_contract(
     fw_valid = int(dut.tb_cpu_fw_mailbox_valid.value)
     fw_mbox = int(dut.tb_cpu_fw_mailbox.value) if fw_valid else 0
     dc_writes = int(dut.tb_cpu_dcache_write_count.value)
-    wb_pc0 = int(dut.tb_cpu_wb_pc0.value)
     isolate = int(dut.tb_cpu_cluster_isolate.value)
+    # All four harts, because crt0 calls __metal_synchronize_harts before
+    # main() on every sram image: hart 0 waiting in that barrier and hart 0
+    # never being released are indistinguishable from hart 0's PC alone. A hart
+    # still at its reset vector never started; harts stopped at different PCs
+    # inside the barrier are a barrier that never completed.
+    wb_pcs = [int(getattr(dut, f"tb_cpu_wb_pc{i}").value) for i in range(4)]
     raise AssertionError(
         "CPU firmware boot did not reach PASS magic: "
         f"expected=0x{CPU_FW_SUCCESS_MAGIC:08x} last_csr=0x{last_csr:08x} "
         f"tb_mbox=0x{fw_mbox:08x} "
         f"rom_reads={rom_reads} scratch_reads={scratch_reads} "
         f"scratch_writes={scratch_writes} dcache_writes={dc_writes} "
-        f"wb_pc0=0x{wb_pc0:x} isolate={isolate} image={image_path}"
+        + " ".join(f"wb_pc{i}=0x{pc:x}" for i, pc in enumerate(wb_pcs))
+        + f" isolate={isolate} image={image_path}"
     )

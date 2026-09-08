@@ -415,6 +415,12 @@
 `SMC_TB_OUT(logic, tb_cpu_fw_mailbox_valid)
 `SMC_TB_OUT(logic [31:0], tb_cpu_dcache_write_count)
 `SMC_TB_OUT(logic [57:0], tb_cpu_wb_pc0)
+// The other three harts' retired PCs. crt0 calls __metal_synchronize_harts
+// before main() on every sram image, so hart 0 stalling in that barrier and
+// hart 0 never being released look identical through tb_cpu_wb_pc0 alone.
+`SMC_TB_OUT(logic [57:0], tb_cpu_wb_pc1)
+`SMC_TB_OUT(logic [57:0], tb_cpu_wb_pc2)
+`SMC_TB_OUT(logic [57:0], tb_cpu_wb_pc3)
 `SMC_TB_OUT(logic, tb_cpu_cluster_isolate)
 // U7-3: Rocket DM active + ack after dmcontrol.dmactive write.
 `SMC_TB_OUT(logic, tb_cpu_debug_dmactive)
