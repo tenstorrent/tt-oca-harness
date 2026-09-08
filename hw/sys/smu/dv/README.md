@@ -11,9 +11,11 @@ candidate v0.5.0 SEP=0 feature subset (unsigned; #487),
 [`docs/SMU_SCOPE_TRACEABILITY.adoc`](docs/SMU_SCOPE_TRACEABILITY.adoc)
 for the candidate requirement-to-test matrix (unsigned; #479), and
 [`docs/SMU_DEFERRED_DISPOSITION.adoc`](docs/SMU_DEFERRED_DISPOSITION.adoc)
-for the v0.5.0 deferred/OUT classification of the 123-entry catalog, and
+for the v0.5.0 deferred/OUT classification of the 123-entry catalog,
 [`docs/SMU_RELEASE_MATRIX.adoc`](docs/SMU_RELEASE_MATRIX.adoc) for the
-v0.5.0 release regression matrix (#485).
+v0.5.0 release regression matrix (#485), and
+[`docs/SMU_SEP0_COMPONENT_SIGNOFF.adoc`](docs/SMU_SEP0_COMPONENT_SIGNOFF.adoc)
+for the SEP=0 component signoff record (#481 / #482 / #483 / #490 / #491).
 
 **Executable contract:** enrolled groups in [`testlists/all.toml`](testlists/all.toml)
 — enrolled `phase1` **48**, `sep0_all` **52** (no Force; product-pin CTM;
@@ -340,7 +342,14 @@ seeds, and those run paths on the tracking GitHub issue.
 
 ## Enrollment
 
-`smu_ext_axi_global_addr_smoke_test` under `cocotb/tests/` is not enrolled:
-the OSS `s_axi` is a LOCAL aperture, so `GLOBAL_BASE + offset` DECERRs; its
-docstring carries that reason. `sep0_all` is the SMU regression group in
-`.github/workflows/regress.yml`.
+The `SEP=0` `tb_top.sv`, `SmuEnv` and the sequence library are in place:
+59 live test bodies under `cocotb/tests/`, 28 non-enrolled bodies under
+`cocotb/tests_deferred/`. Two bodies under `cocotb/tests/` are present but
+not enrolled -- `smu_ext_axi_global_addr_smoke_test`, blocked because the
+OSS `s_axi` is a LOCAL aperture so `GLOBAL_BASE + offset` DECERRs (its
+docstring carries that reason), and `smu_smc_gpio_strap_sanity_test`,
+blocked because strap capture is adopter-owned so the reset_unit
+`STRAPS_*` CSRs and the strap bus this test drove no longer exist here.
+`smu_base_test` is the base class. `sep0_all` (52) is the SMU regression group
+in `.github/workflows/regress.yml` (nightly at one seed per test, weekly at
+three).

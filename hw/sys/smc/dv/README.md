@@ -12,9 +12,11 @@ requirement-to-test matrix (unsigned; #496),
 `docs/SMC_CANONICAL_BRINGUP_SIGNOFF.adoc` for the canonical bring-up /
 CSR signoff record (#498),
 `docs/SMC_FABRIC_PERIPH_SIGNOFF.adoc` for the fabric / peripheral
-honesty record (#500), and
+honesty record (#500),
 `docs/SMC_RELEASE_MATRIX.adoc` for the v0.5.0 release regression
-matrix (#502).
+matrix (#502), and
+`docs/SMC_RESET_CLOCK_IRQ_SIGNOFF.adoc` for the reset / clock / IRQ
+signoff record (#499).
 
 **Green / signoff policy:** only claim **real DUT RTL paths**.
 I3C CCC/IBI / real-core protocol, adopter PLL/PVT OKAY wraps, and TB-glue
