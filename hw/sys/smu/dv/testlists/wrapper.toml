@@ -1633,18 +1633,25 @@ tests = [
 
 # Migrated, enrolled to stay visible, not yet passing here.
 #
-# The boot-stall and IC-reset group shares one cause, and it is not the
-# observation path. Instrumenting smu_dft_dtp_boot_stall_test showed the
-# DEBUG_CONTROL shift path working perfectly -- writing 0x0/0x1/0x2/0x3 and
-# reading back 0x0/0x1/0x2/0x3 -- while debug_ctrl_reg_q stays 0 for every
-# one of them. Readback comes off the shift register; boot_stall_o and
-# boot_stall_ovrd_o come off the update register. So the TDR is being
-# shifted and never updated: Update-DR is not reaching this register on
-# this testbench. Reading the smu wire, the dtp output port and
-# debug_ctrl_reg_q itself all give 0, which is what rules the observation
-# path out. Not a DUT difference -- the same RTL updates correctly under
-# tb_top.sv -- so the question is what differs in how the two testbenches
-# drive the TAP into Update-DR.
+# The boot-stall and IC-reset group shares one cause. What it is not, measured
+# rather than assumed, on smu_dft_dtp_boot_stall_test:
+#
+#   Not the write. All four DEBUG_CONTROL writes land and read back exactly --
+#   0x0/0x1/0x2/0x3 in, 0x0/0x1/0x2/0x3 out -- while every output bit stays 0.
+#
+#   Not the observation point. smu's internal wire, dtp's output port and
+#   jtag_debug_ctrl_reg's own debug_ctrl_reg_q all read 0 here.
+#
+#   Not the JTAG stimulus. Probing jtag_ptap_state and jtag_ptap_inst_decoded
+#   after each write gives state 2 (SELECT_DR_SCAN) and the DEBUG_CONTROL
+#   one-hot on *both* DUTs, identically -- and the bare one passes. So the TAP
+#   walk and the instruction decode are the same; the divergence is downstream
+#   of the scan register and only in this build.
+#
+#   Not the DUT. The same RTL updates correctly under tb_top.sv.
+#
+# What is left is why debug_ctrl_reg_q holds its update value on one build and
+# not the other, with the same stimulus reaching the same register.
 [[groups]]
 name = "migrated_dtp_pending"
 tests = [
