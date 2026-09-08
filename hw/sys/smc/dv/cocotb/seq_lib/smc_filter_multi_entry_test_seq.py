@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Filter multi-entry sweep (testlist group ``p1_coverage_gap_r2``).
+"""Filter multi-entry sweep.
 
 RTL exposes 16 inbound + 16 outbound filter entries; this sweep covers every
 one of the 32 slots rather than entry 0 of each direction.

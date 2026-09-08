@@ -31,7 +31,6 @@ run_modes = ["dual"]
 firmware = { name = "prod_rom", mode = "bootrom" }
 args = [
     "+rom_bin64=prod_rom.bin64",
-    "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -51,7 +50,6 @@ run_modes = ["dual"]
 firmware = { name = "prod_rom", mode = "bootrom" }
 args = [
     "+rom_bin64=prod_rom.bin64",
-    "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -84,7 +82,6 @@ args = [
     "+bfm_rom_hex=occp_unsecure_boot_test.rom.hex",
     "+occp_payload_bin=hello_world.sram.bin",
     "+occp_payload_sym=hello_world.sram.sym",
-    "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -108,7 +105,6 @@ firmware = { name = "occp_sanity", mode = "occp_sanity" }
 args = [
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=occp_sanity.rom.hex",
-    "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[groups]]
