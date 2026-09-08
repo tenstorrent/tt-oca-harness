@@ -32,7 +32,7 @@
 //
 // Two simulation trees. The two-state rules and the tracking state use
 // `OCAH_SVA_ASSERT / `OCAH_SVA_ASSERT_I (ocah_sva_macros.svh): live on every
-// simulator, evaluated by Verilator under --assert. The X-hygiene rules and
+// SIMULATION compile, evaluated by Verilator under --assert. The X-hygiene rules and
 // the covers use `OCAH_ASSERT / `OCAH_COVER (ocah_assert.svh): live only
 // where OCAH_INC_ASSERT is defined, i.e. on a four-state simulator. Not
 // synthesizable: the tracking state uses queues and associative arrays.
@@ -237,7 +237,7 @@ module ocah_axi_sva #(
       `OCAH_COVER(OCAH_AXI_C_AR_MULTI_BEAT, en_i && arvalid && arready && (arlen > 0), aclk,
                   !aresetn)
 
-`ifndef SYNTHESIS
+`ifdef SIMULATION
       // --------------------------------------------------------------
       // Stateful burst/ID tracking (simulation-only). Ordering within the
       // procedural block is load-bearing: W is processed before B and AR
@@ -398,7 +398,7 @@ module ocah_axi_sva #(
                              (aw_q.size() + wr_done_q.size() <= 2 * MAX_OUTSTANDING))
         end
       end
-`endif  // SYNTHESIS
+`endif  // SIMULATION
 
     end else begin : gen_lite_rules
 
@@ -410,7 +410,7 @@ module ocah_axi_sva #(
       `OCAH_SVA_ASSERT(OCAH_AXIL_R_RESP_LEGAL, (en_i && rvalid && rready) |-> (rresp != RespExokay),
                        aclk, !aresetn)
 
-`ifndef SYNTHESIS
+`ifdef SIMULATION
       // Response-ordering counters (same same-cycle ordering note as AXI4).
       int unsigned lite_wr_addr_cnt = 0;
       int unsigned lite_wr_data_cnt = 0;
@@ -437,7 +437,7 @@ module ocah_axi_sva #(
           end
         end
       end
-`endif  // SYNTHESIS
+`endif  // SIMULATION
 
     end
   endgenerate

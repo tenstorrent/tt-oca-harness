@@ -32,8 +32,8 @@
 //               active only while shifting (§4.5.1)
 //
 // Two simulation trees. The TDO-timing and state rules use `OCAH_SVA_ASSERT /
-// `OCAH_SVA_ASSERT_I (ocah_sva_macros.svh): live on every simulator, evaluated
-// by Verilator under --assert. The X-hygiene rules and the covers use
+// `OCAH_SVA_ASSERT_I (ocah_sva_macros.svh): live on every SIMULATION compile,
+// evaluated by Verilator under --assert. The X-hygiene rules and the covers use
 // `OCAH_ASSERT / `OCAH_COVER (ocah_assert.svh): live only where
 // OCAH_INC_ASSERT is defined, i.e. on a four-state simulator.
 
@@ -95,7 +95,7 @@ module ocah_jtag_sva #(
   `OCAH_COVER(OCAH_JTAG_C_TRST_ASSERTED, en_i && (trst_n === 1'b0), tck, 1'b0)
   `OCAH_COVER(OCAH_JTAG_C_OEN_ACTIVE, en_i && (tdo_oen === 1'b1), tck, !trst_n)
 
-`ifndef SYNTHESIS
+`ifdef SIMULATION
   // ------------------------------------------------------------------
   // TDO timing (§4.5.1): TDO and its output enable change only on the
   // falling edge, i.e. never while TCK is high. Event-driven because the
@@ -109,7 +109,7 @@ module ocah_jtag_sva #(
     if (en_i === 1'b1 && trst_n === 1'b1 && !$isunknown(tdo_oen))
       `OCAH_SVA_ASSERT_I(OCAH_JTAG_OEN_NEGEDGE_ONLY, (tck !== 1'b1))
   end
-`endif  // SYNTHESIS
+`endif  // SIMULATION
 
   generate
     if (EN_STATE_RULES) begin : gen_state_rules

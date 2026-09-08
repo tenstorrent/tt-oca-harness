@@ -49,9 +49,13 @@ do not use the native DV profile. They pass `-D SYNTHESIS=1` from
 |`SIMULATION`
 |Native profile (every DTP DV tool)
 |Marks a simulation compile. Vendored OpenTitan prims in the DTP graph gate
-simulation-only paths on this name.
-|Those prim paths compile in.
-|Those prim paths are omitted.
+simulation-only paths on this name, and the two-state protocol checker macros
+(`hw/common/assert/ocah_sva_macros.svh`) expand to live assertions only under
+it.
+|Those prim paths compile in; the protocol checkers carry their two-state
+rules.
+|Those prim paths are omitted; the two-state checker macros expand to nothing
+(the lint and synthesis view).
 
 |`UVM`
 |Native profile SV-UVM overlay (`[frameworks.uvm]` in `native.toml`; every

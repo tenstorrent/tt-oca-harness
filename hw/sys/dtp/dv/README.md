@@ -89,7 +89,7 @@ rules split into two trees by simulator capability:
 
 | Tree | Macros | Rules | Live on |
 |---|---|---|---|
-| Two-state | `OCAH_SVA_ASSERT` / `OCAH_SVA_ASSERT_I` (`hw/common/assert/ocah_sva_macros.svh`) | reset-VALID, handshake hold and payload stability, burst legality, WLAST/RLAST position, strobe lanes, response ordering and ID matching, JTAG TDO timing, TAP-state encoding and transition legality | every simulator; Verilator evaluates them under `--assert` |
+| Two-state | `OCAH_SVA_ASSERT` / `OCAH_SVA_ASSERT_I` (`hw/common/assert/ocah_sva_macros.svh`) | reset-VALID, handshake hold and payload stability, burst legality, WLAST/RLAST position, strobe lanes, response ordering and ID matching, JTAG TDO timing, TAP-state encoding and transition legality | every `SIMULATION` compile, which the DV profiles set on every simulator; Verilator evaluates them under `--assert` |
 | Four-state | `OCAH_ASSERT` / `OCAH_COVER` (`hw/common/assert/ocah_assert.svh`) | X-hygiene (`*_KNOWN`) and the non-vacuity covers | commercial simulators only: `OCAH_INC_ASSERT` is undefined under Verilator |
 
 The Verilator target passes `--assert --no-assert-case`: `--assert` evaluates

@@ -5,9 +5,10 @@
 //
 // `OCAH_ASSERT and `OCAH_ASSERT_I (ocah_assert_standard_macros.svh) compile
 // out whenever OCAH_INC_ASSERT is undefined, which includes every Verilator
-// build. The macros here stay live in every simulation flow; only synthesis
-// compiles them out. Verilator evaluates them when the build passes --assert
-// and drops them otherwise. They carry rules whose operands are two-state
+// build. The macros here are live wherever SIMULATION is defined, which the
+// DV profiles set for every simulator; lint and synthesis do not set it, so
+// they expand to nothing there. Verilator evaluates them when the build
+// passes --assert and drops them otherwise. They carry rules whose operands are two-state
 // safe (value compares, implications, $stable, $past, bounded repetition); a
 // rule that needs four-state operands ($isunknown, X-propagation) stays on
 // `OCAH_ASSERT so it runs only on a four-state simulator.
@@ -21,10 +22,7 @@
 
 `include "ocah_assert.svh"
 
-`ifdef SYNTHESIS
-`define OCAH_SVA_ASSERT(__name, __prop, __clk, __rst)
-`define OCAH_SVA_ASSERT_I(__name, __prop)
-`else
+`ifdef SIMULATION
 `define OCAH_SVA_ASSERT(__name, __prop, __clk, __rst)                                 \
   __name: assert property (@(posedge __clk) disable iff ((__rst) !== '0) (__prop))  \
     else begin                                                                       \
@@ -36,6 +34,9 @@
     else begin                            \
       `OCAH_ASSERT_ERROR(__name)          \
     end
+`else
+`define OCAH_SVA_ASSERT(__name, __prop, __clk, __rst)
+`define OCAH_SVA_ASSERT_I(__name, __prop)
 `endif
 
 `endif  // OCAH_SVA_MACROS_SVH
