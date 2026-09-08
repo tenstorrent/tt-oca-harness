@@ -56,11 +56,23 @@ timeout_sec = 1800
 tags = ["rtl_issue", "uart", "pyuvm"]
 run_modes = ["smoke"]
 
+[[tests]]
+# Issue #1635, third IP. i2c_core.sv:1000 ANDs the event with the enable before
+# the flop and :981 drives irq_o from INTR_STATE.intr unqualified -- the same
+# shape as log_engine.sv and gpio.sv (#1602).
+name = "smc_i2c_intr_mask_test"
+module = "smc_i2c_intr_mask_test"
+seed = 1
+timeout_sec = 1800
+tags = ["rtl_issue", "i2c", "pyuvm"]
+run_modes = ["smoke"]
+
 [[groups]]
 name = "rtl_issue"
 tests = [
     "smc_gpio_irq_mask_deassert_test",
     "smc_efuse_read_timeout_status_test",
     "smc_log_engine_intr_mask_test",
+    "smc_i2c_intr_mask_test",
 ]
-expected_count = 3
+expected_count = 4

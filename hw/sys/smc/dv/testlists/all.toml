@@ -100,6 +100,7 @@ name = "all"
 #   smc_gpio_irq_mask_deassert_test    #1602
 #   smc_efuse_read_timeout_status_test #1603
 #   smc_log_engine_intr_mask_test      #1635, the pattern behind #1602
+#   smc_i2c_intr_mask_test             #1635, third IP
 #
 # smc_fw_hello_world_test is out for a different reason again: the firmware
 # plumbing works but the image parks before main(). fw.toml records the measured

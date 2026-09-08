@@ -155,6 +155,10 @@
 // peripheral_interrupts[21:18]. `tb_uart_irq_any` above is the 16550 half
 // only, so the log engine is not observable through it.
 `SMC_TB_OUT(logic [3:0], tb_uart_irq_combined)
+// The three I2C instances' PLIC lines (smc_peripherals.sv:1161,
+// peripheral_interrupts[25:23]). tb_i2c_cg_en is the clock gate, not the IRQ;
+// nothing exposed the interrupt itself.
+`SMC_TB_OUT(logic [2:0], tb_i2c_irq)
 `SMC_TB_OUT(logic, tb_mailbox_irq_any)
 `SMC_TB_OUT(logic, tb_avsbus_irq)
 `SMC_TB_OUT(logic, tb_telemetry_irq_any)
