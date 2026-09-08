@@ -13,6 +13,7 @@ includes = [
     "dual.toml",
     "efuse.toml",
     "fabric.toml",
+    "fw.toml",
     "gpio.toml",
     "i2c.toml",
     "irq.toml",
@@ -91,13 +92,18 @@ name = "all"
 #                                  is #585. Already recorded as held out in
 #                                  vplan_triplets.toml.
 #
-# The other two are the `rtl_issue` group, whose whole purpose is to be red --
-# they are the runnable evidence for #1602 and #1603. rtl_issue.toml is included
-# above so their names resolve and the file is reachable; the group is how they
-# are run. See that file for the conventions.
+# The `rtl_issue` group is also out, and being red is its whole purpose -- it is
+# the runnable evidence for filed RTL defects. rtl_issue.toml is included above
+# so the names resolve and the file is reachable; the group is how they are run.
+# See that file for the conventions.
 #
-#   smc_gpio_irq_mask_deassert_test   #1602
+#   smc_gpio_irq_mask_deassert_test    #1602
 #   smc_efuse_read_timeout_status_test #1603
+#   smc_log_engine_intr_mask_test      the #1602 defect in a second IP
+#
+# smc_fw_hello_world_test is out for a different reason again: the firmware
+# plumbing works but the image parks before main(). fw.toml records the measured
+# state. Enroll it when it passes.
 tests = [
     "smc_5agent_observability_test",
     "smc_6agent_observability_test",

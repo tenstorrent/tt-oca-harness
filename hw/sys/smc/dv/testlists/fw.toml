@@ -1,0 +1,68 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+schema_version = 1
+
+# Firmware tests: SMC C images built from hw/sys/smc/dv/fw/tests/ and executed
+# by the CPU cluster, as opposed to the cocotb sequences that drive CSRs from
+# SEP_IN AXI.
+#
+# A `firmware = "<name>"` key is the whole opt-in. The runner inserts the
+# c_compile stage for any run whose selection contains such a test
+# (tools/dv/runlib/cli.py:1982), builds `<name>` through [c_build.default] in
+# smc_sim_cfg.toml, and copies the declared outputs into the per-test simulator
+# directory by basename (tools/dv/runlib/stages.py:_stage_firmware_outputs),
+# hard-failing when one is missing.
+#
+# Plusargs naming a firmware output are therefore bare basenames, never
+# {repo_root} paths. A {repo_root} path points into hw/sys/smc/dv/fw/build/,
+# which is gitignored and outside the staging gate, so `--stage sim` on its own
+# would silently simulate whatever image happened to be left there.
+#
+# No `ci` tag and not in `smoke`: the hosted runners have no RISC-V toolchain,
+# and .github/workflows/regress.yml pins the SMC job to `items: smoke`.
+#
+# Not in the `all` group either, and that is a statement about the image rather
+# than the plumbing. Measured on Verilator 5.050: c_compile PASSES, the image is
+# staged, smc_cpu_mem_dv loads it, and the CPU executes it -- 183 scratch reads
+# and a retired PC of 0xC00600E8, inside the image. It then parks: 0xC00600E8 is
+# the second instruction of a two-instruction loop at `_enter+0xe4`
+# (`lw t1,0(zero)` / `j`) whose own address crt0 has just installed in `mtvec`,
+# so the image aborted before `main` and `test_pass(0)` never ran
+# (scratch_writes=0, dcache_writes=0, CPU_CTRL SCRATCH_0 still 0).
+#
+# What is not yet known is what aborted, and the bench cannot currently say:
+# 124 firmware tests emit their only human-readable output through
+# virt_console.c, which toggles bit[0] per write for an edge-catching observer
+# that does not exist here. Reading `mcause`, or a CPU_CTRL write-channel tap
+# that reassembles the console stream, is the next step. Enroll this test in
+# `all` when it passes -- not before.
+
+[[tests]]
+# The cheapest end-to-end proof that the firmware path works at all:
+# `int main(void) { test_pass(0); }` is one MMIO store, and reaching it
+# exercises c_compile -> .ecc.hex -> 64B-striped scratch load -> reset-vector
+# fetch -> crt0 + picolibc init -> __metal_synchronize_harts across four harts
+# -> the store -> AXI readback of CPU_CTRL SCRATCH_0.
+#
+# +smc_hold_cpu_boot holds boot_stall from t=0 so the sequence programs
+# RESET_VECTOR before any core fetches. Real fuse sense: no +skip_fuse_sense,
+# which dv_policy 1.6 names as the testbench supplying state the DUT should
+# have produced.
+name = "smc_fw_hello_world_test"
+module = "smc_fw_hello_world_test"
+seed = 1
+timeout_sec = 3600
+tags = ["firmware", "cpu", "pyuvm"]
+run_modes = ["smoke"]
+firmware = "hello_world"
+args = [
+    "+smc_hold_cpu_boot",
+    "+smc_scratch_ram_hex=hello_world.ecc.hex",
+]
+
+[[groups]]
+name = "fw"
+tests = [
+    "smc_fw_hello_world_test",
+]
+expected_count = 1
