@@ -82,16 +82,14 @@ class sep_base_test(uvm_test):
     # Which channel poll_boot() gates completion on.
     #
     #   "mailbox"  -- fw_done_o/fw_pass_o from the outbound mailbox decoder
-    #                 (dv/tb/sep_outbound_mbx.sv).  The default, and what every
-    #                 non-rom_fw firmware test uses: the spi/km/cpu payloads
-    #                 report through the mailbox and are not being migrated.
+    #                 (dv/tb/sep_outbound_mbx.sv). The default. spi/km/cpu
+    #                 payloads report through the mailbox.
     #   "scratch0" -- the ROM/BL1 verdict word in cold_scratch[0]
-    #                 (env/sep_verdict.py).  Opt-in, set by rom_fw tests only.
+    #                 (env/sep_verdict.py). Opt-in, set by rom_fw tests only.
     #
-    # Deliberately opt-in rather than a global switch: this attribute decides how
-    # a test concludes it passed, so flipping it for tests whose firmware never
-    # writes cold_scratch[0] would not fail loudly -- they would simply never
-    # complete.  See dv/docs/rom_verdict_scratch0_migration.md.
+    # Opt-in rather than a global switch: this attribute decides how a test
+    # concludes it passed. Flipping it for firmware that never writes
+    # cold_scratch[0] does not fail loudly -- the test never completes.
     verdict_source = "mailbox"
 
     @staticmethod

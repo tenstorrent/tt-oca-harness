@@ -10,11 +10,11 @@ This plan covers **basic legal operating modes** of every SEP IP the OSS suite
 already walks. It is the functional-coverage contract for the PyUVM/Verilator
 flow.
 
-Verilator does not compile SystemVerilog `covergroup`. Collection is
-`cover property` points under `hw/sys/sep/dv/cov/sv/` via `OCAH_FCOV_COVER`
-(`hw/common/assert/ocah_fcov_macros.svh`). Those points land in the Verilator
-database as `user` coverage. Commercial simulators may also compile the same
-bins as covergroups under `` `ifndef VERILATOR ``.
+Verilator does not compile SystemVerilog `covergroup`. This revision specifies
+the Phase 1 bins below. It does not instrument them: `hw/sys/sep/dv/cov/sv/`
+is empty. Feature evidence is the VPLAN checkers and iconic-feature scorecard.
+When cover-property modules are added they use `OCAH_FCOV_COVER`
+(`hw/common/assert/ocah_fcov_macros.svh`) and land in that directory.
 
 [cols=",",options="header"]
 |===
@@ -31,14 +31,14 @@ bins as covergroups under `` `ifndef VERILATOR ``.
 [cols=",,",options="header"]
 |===
 |Metric |Contract |Collection path
-|Phase 1 functional coverage |Every Phase 1 bin below |`cover property` in `cov/sv/`, Verilator `user` coverage
-|Phase 2 functional coverage |Out of this revision |Parked; not implemented
+|Phase 1 functional coverage |Every Phase 1 bin below |Specified only. `cov/sv/` is empty; a `--cov` run is not bin evidence
+|Phase 2 functional coverage |Named future-work set at the end of this plan |Not collected this revision
 |Line / expression coverage |Collected; not a functional-coverage contract |`--coverage-line`, `--coverage-expr`
 |Condition / FSM / toggle / assertion |Commercial signoff |VCS / Xcelium
 |===
 
-Score Phase 1 as the `user` family. Do not mix it with line coverage: the line
-population on this DUT masks the functional bins.
+Do not mix line coverage with the Phase 1 bins: the line population on this
+DUT would mask them.
 
 === Two-Phase Scope
 
@@ -47,50 +47,51 @@ population on this DUT masks the functional bins.
 |Phase |Scope
 |**Phase 1 — this revision** |One basic-mode covergroup per SEP IP. Bins are the
 legal cells a named `all`-group test already walks.
-|**Phase 2 — parked** |Dense enumerations, crosses, window edges, error and
-fault paths, illegal encodings. Specified by name only. Not implemented.
+|**Phase 2 — future work** |Dense enumerations, crosses, window edges, error and
+fault paths, illegal encodings. Named below. Not collected this revision.
 |===
-
-A Phase 2 bin is not part of this revision's contract.
 
 === Coverage Summary
 
-[cols=",,",options="header"]
+[cols=",",options="header"]
 |===
-|IP / path |Phase 1 covergroup |Hitting test
-|AXI fabric decode |`sep_axi_decode_cg` |`sep_axi_smoke_test`, `sep_address_map_test`
-|SRAM |`sep_sram_access_cg` |`sep_sram_smoke_test`
-|Boot ROM |`sep_boot_rom_cg` |`sep_boot_rom_smoke_test`, `sep_boot_rom_lsu_read_test`
-|CPU boot |`sep_cpu_boot_cg` |`sep_hello_world_test`
-|AES |`sep_aes_mode_cg` |`sep_aes_mode_keysize_rand_test`
-|HMAC |`sep_hmac_mode_cg` |`sep_hmac_sha_variant_rand_test`
-|KMAC |`sep_kmac_mode_cg` |`sep_kmac_mode_strength_rand_test`
-|OTBN |`sep_otbn_execute_cg` |`sep_otbn_compute_rand_test`
-|Adams Bridge |`sep_abr_keygen_cg` |`sep_abr_mldsa_keygen_kat_test`
-|ESRC / DRBG / EDN |`sep_esrc_edn_flow_cg` |`sep_esrc_e2e_smoke_test`, `sep_drbg_gen_segmentation_test`
-|Key Manager |`sep_km_command_sideload_cg` |`sep_km_command_set_rand_test`, `sep_km_*_sideload_kat_test`
-|Secure DMA |`sep_dma_copy_hash_cg` |`sep_dma_basic_test`, `sep_dma_hash_test`
-|SPI host |`sep_spi_flash_cg` |`sep_spi_flash_jedec_smoke_test`, `sep_spi_ot_dma_rx_test`, `sep_spi_ot_dma_tx_test`
-|Inbound filter |`sep_inbound_filter_allow_cg` |`sep_fabric_inbound_filter_rule_matrix_test`
-|eFuse |`sep_efuse_sense_cg` |`sep_efuse_sense_test`, `sep_efuse_image_test`
-|Lifecycle |`sep_lc_state_cg` |`sep_efuse_lcc_lc_state_stitch_test`
-|Mailbox / PIC |`sep_mailbox_pic_cg` |`sep_mailbox_plic_test`
-|WDT |`sep_wdt_bark_cg` |`sep_nmi_sanity_test`
-|Warm / cold scratch |`sep_scratch_reset_cg` |`sep_warm_cold_reset_scratch_test`
+|IP / path |Phase 1 covergroup
+|AXI fabric decode |`sep_axi_decode_cg`
+|SRAM |`sep_sram_access_cg`
+|Boot ROM |`sep_boot_rom_cg`
+|CPU boot |`sep_cpu_boot_cg`
+|AES |`sep_aes_mode_cg`
+|HMAC |`sep_hmac_mode_cg`
+|KMAC |`sep_kmac_mode_cg`
+|OTBN |`sep_otbn_execute_cg`
+|Adams Bridge |`sep_abr_keygen_cg`
+|ESRC / DRBG / EDN |`sep_esrc_edn_flow_cg`
+|Key Manager |`sep_km_command_sideload_cg`
+|Secure DMA |`sep_dma_copy_hash_cg`
+|SPI host |`sep_spi_flash_cg`
+|Inbound filter |`sep_inbound_filter_allow_cg`
+|eFuse |`sep_efuse_sense_cg`
+|Lifecycle |`sep_lc_state_cg`
+|Mailbox / PIC |`sep_mailbox_pic_cg`
+|WDT |`sep_wdt_bark_cg`
+|Warm / cold scratch |`sep_scratch_reset_cg`
 |===
 
-Nineteen Phase 1 covergroups. Phase 2 names are listed at the end of this
-document.
+Owning tests are in link:SEP_VPLAN.adoc[SEP_VPLAN].
+
+Nineteen Phase 1 covergroups. None is compiled in this tree. Phase 2 names
+are listed at the end of this document.
 
 === Collection
 
-`OCAH_COVER` compiles out under Verilator. Use `OCAH_FCOV_COVER` only.
+`OCAH_COVER` compiles out under Verilator. Use `OCAH_FCOV_COVER` only, when a
+module exists.
 
 Attach to a DUT or TB port, or `bind` into the IP. Do not add a Python path to
 DUT-internal nets: `sep_public_scope.vlt` keeps public marks off the fabric.
 
-Phase 1 cover-property modules land in `cov/sv/` when they are written. A
-`--cov` run of the `all` group is the evidence that each Phase 1 bin fired.
+`cov/sv/` has no modules this revision. Do not treat a `--cov` run as evidence
+that a Phase 1 bin fired.
 
 === Phase 1 coverage definitions
 
@@ -333,10 +334,10 @@ Bite, wakeup cause, and REGWEN lock are Phase 2.
 |Cold |Cold bank retains the written value across warm reset
 |===
 
-=== Phase 2 — parked (not implemented)
+=== Phase 2 — future work
 
-The groups below stay in the plan as future work. They are not instrumented
-and are not part of this revision's contract.
+The groups below are the named Phase 2 set. They are not instrumented and
+are not part of this revision's collection contract.
 
 ==== Dense legal modes
 
@@ -370,7 +371,7 @@ reseed / CTR DECRYPT), `sep_aes_op_status_cg`, `sep_kmac_cfg_cmd_cg`,
 `sep_km_abr_shared_key_cg`, `sep_km_drbg_sampler_cg`, `sep_km_kmcsr_status_cg`,
 `sep_km_otp_readout_cg`, `sep_km_handover_cg`.
 
-==== Original error / fault groups (still Phase 2)
+==== Error / fault groups
 
 `sep_crypto_bus_error_cg`, `sep_crypto_invalid_encoding_cg`,
 `sep_otbn_err_lock_cg`, `sep_aes_fault_cg`, `sep_crypto_reg_lock_cg`,
@@ -397,7 +398,7 @@ reseed / CTR DECRYPT), `sep_aes_op_status_cg`, `sep_kmac_cfg_cmd_cg`,
 [cols="1,2",options="header"]
 |===
 |Item |Reason
-|SV covergroups under Verilator |Unsupported; cover properties carry the public flow
+|SV covergroups under Verilator |Unsupported. This revision also has no cover-property modules
 |Toggle coverage under Verilator |Database size; commercial flow only
 |`ocah_axi_cov_if` |Commercial-flow asset; not on the Verilator filelist
 |Python probes of DUT internals |No route; public scope stays on `sep_uvm_top`
@@ -408,5 +409,5 @@ reseed / CTR DECRYPT), `sep_aes_op_status_cg`, `sep_kmac_cfg_cmd_cg`,
 
 Add a Phase 1 bin only when an `all`-group test already walks that cell, or
 when a new test is added in the same change. A cell the suite does not walk
-belongs in Phase 2. Keep cover-property instance names stable: the coverage
-policy matches points by hierarchy name.
+belongs in the Phase 2 named set. Keep cover-property instance names stable
+when a module is added: the coverage policy matches points by hierarchy name.

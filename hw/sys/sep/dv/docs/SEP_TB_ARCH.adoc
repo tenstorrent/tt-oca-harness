@@ -19,8 +19,8 @@
 |How to run |`README.md` (`tools/dv/run_dv.py --dut sep`)
 |===
 
-The OCAH open-source SEP testbench follows the canonical `hw/sys/<system>/dv/`
-layout under `hw/sys/sep/dv/`. It uses a PyUVM environment and the unified OCAH
+The OCAH open-source SEP testbench lives under `hw/sys/sep/dv/`. The directory
+layout is `README.md`. It uses a PyUVM environment and the unified OCAH
 BFM packages for AXI, SPI, and (where needed) JTAG. Sibling SMC and DTP envs
 share the same runner and cocotb/PyUVM idioms; this document describes *SEP*.
 
@@ -110,37 +110,8 @@ bring-up helpers rather than re-implementing clock/reset:
 
 === Directory Structure
 
-[source,text]
-----
-hw/sys/sep/dv/
-  docs/
-    index.adoc              # book entry
-    SEP_TB_ARCH.adoc        # this document
-    SEP_VPLAN.adoc          # verification contracts
-  tb/
-    tb_top.sv               # sep_uvm_top: one module, two shapes (cocotb / `UVM)
-    sep_tb_signal_list.svh  # every TB signal, declared once for both shapes
-    sep_tb_if.sv            # SEP-local TB interface of the SV-UVM shape
-    sep_outbound_mbx.sv     # FW console / PASS magic
-    efuse_preloads/         # committed default OTP image
-    sram_preloads/          # committed SRAM images
-  shims/
-    cpu/sep_cpu_stub.sv     # no_cpu LSU splice
-    analog/entropy_ring_oscillator.sv
-  cocotb/
-    env/                    # agents, monitors, goldens, scoreboards
-    seq_lib/                # uvm_sequence stimulus
-    tests/                  # @pyuvm.test leaves (by area)
-    dv_sim_prestage.py      # pre-sim eFuse hex staging
-  uvm/                      # SV-UVM realization (`--framework uvm`, VCS)
-    env/                    # sep_env_pkg: types, cfgs, ref models, scoreboard, env
-    seq_lib/                # sep_seq_lib_pkg: operations + scenario sequences
-    tests/                  # thin test classes + sep_tests.sv manifest
-  fw/                       # bare-metal CPU FW + drivers
-  testlists/                # system/cpu/crypto/... + all.toml
-  sep_sim_cfg.toml          # sole launch config
-  sep_public_scope.vlt      # scoped Verilator public (not --public-flat-rw)
-----
+The `dv/` directory layout is `README.md`. This document describes the
+testbench architecture inside those paths.
 
 === HDL Top
 
@@ -487,8 +458,9 @@ link:SEP_VPLAN.adoc[SEP_VPLAN]. RTL code-coverage close-out is Phase 3 work.
 Code coverage is instrumented but unthresholded, and is a different number from
 feature coverage. `[coverage.verilator]` in `sep_sim_cfg.toml` instruments line,
 expression and user coverage (toggle stays off) and the nightly `cpu_stub`
-regression collects it, but `cov/config/<tool>/` holds no coverage policy and no
-run gates on a coverage percentage. Do not mix the two numbers.
+regression collects it. `cov/config/vcs/coverage_policy.toml` is VCS report
+scope only — no thresholds and no run gate on a percentage. The Verilator,
+Xcelium, and Questa config slots are empty. Do not mix the two numbers.
 
 
 === Canonical RTL and Shim Selection
@@ -681,23 +653,8 @@ with the loop knobs `+SEP_<TEST>_LOOPS`, `+SEP_<GROUP>_LOOPS`,
 PASSED` is emitted only in the base test's `report_phase` when the global
 UVM_ERROR/UVM_FATAL counts are zero, matching the `uvm-log` parser policy.
 
-[source,bash]
-----
-# SV-UVM build only (VCS). --skip-unimplemented (or an --items selection) is required:
-# the group holds cocotb-only scenarios.
-python3 tools/dv/run_dv.py --dut sep --framework uvm --build-only --skip-unimplemented
-
-# PyUVM (cocotb) and SV-UVM, same logical scenario name
-python3 tools/dv/run_dv.py --dut sep --items sep_axi_smoke_test --seed 1
-python3 tools/dv/run_dv.py --dut sep --framework uvm --items sep_axi_smoke_test --seed 1
-
-# Smoke group, UVM-implemented subset
-python3 tools/dv/run_dv.py --dut sep --framework uvm --items smoke --skip-unimplemented
-
-# Negative validation: a corrupted scoreboard prediction must make the run FAIL
-python3 tools/dv/run_dv.py --dut sep --framework uvm --items sep_axi_smoke_test \
-  --plusarg +SEP_CSR_SCOREBOARD_NEGATIVE
-----
+`--framework uvm` selects this `uvm/` shape on VCS. How to invoke it, including
+`--skip-unimplemented` and `+SEP_CSR_SCOREBOARD_NEGATIVE`, is in `README.md`.
 
 To port another cocotb scenario: add `uvm/seq_lib/<name>_seq.svh` on
 `sep_base_test_seq` (operations through the `csr_*` wrappers or a new
@@ -707,21 +664,5 @@ testlist entry its `uvm` binding.
 
 === Build and Run
 
-[source,bash]
-----
-python3 tools/dv/run_dv.py --dut sep --items all --list
-python3 tools/dv/run_dv.py --dut sep --items all --tag smoke --stage sim
-python3 tools/dv/run_dv.py --dut sep --items sep_axi_smoke_test \
-  --stage flist --stage hdl_compile --stage sim
-python3 tools/dv/run_dv.py --dut sep --items sep_address_map_test --stage sim --seed 1
-python3 tools/dv/run_dv.py --dut sep --items cpu_stub --regress \
-  --tool verilator --stage flist --stage hdl_compile --stage sim
-python3 tools/dv/run_dv.py --dut sep --items cpu --regress \
-  --tool verilator --stage flist --stage hdl_compile --stage sim
-python3 tools/dv/run_dv.py --dut sep --framework uvm --items smoke --skip-unimplemented
-----
-
-Firmware-boot leaves need a RISC-V image build first (`fw/fw.mk` or the
-testlist `c_compile` stage). Per-run logs land under
-`hw/sys/sep/dv/build/runs/<run-id>/`. Full prerequisite and mode detail is in
-`README.md`.
+How to build and run is `README.md` in this DV tree. `--framework uvm`
+selects the SystemVerilog UVM shape above.

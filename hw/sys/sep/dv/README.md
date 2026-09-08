@@ -308,30 +308,31 @@ analog), `.gitignore` (SEP-local generated products), `sep_public_scope.vlt`
 
 ```
 hw/sys/sep/dv/
-├── cocotb/              # PyUVM env, sequences, tests
+├── cocotb/              # PyUVM env, sequences, tests; dv_sim_prestage.py
 ├── uvm/                 # SV-UVM realization (`--framework uvm`, VCS)
-├── cov/                 # VCS code-coverage scope; cover properties land in cov/sv/
+├── cov/                 # VCS code-coverage scope (`cov/config/vcs/`); `cov/sv/` is empty this revision
 ├── docs/                # TB architecture, VPLAN, FCOV
 ├── fw/                  # DV firmware (`fw.mk` / `c_compile`)
-├── tb/                  # sep_uvm_top + mailbox + preload images
-├── testlists/
+├── tb/                  # sep_uvm_top, mailbox, preload images
+├── testlists/           # leaf lists + all.toml groups
 ├── models/              # optional: open sep_external RDL + generated headers
 ├── shims/               # optional: sep_cpu stub, analog oscillator
-├── sep_sim_cfg.toml
-├── sep_public_scope.vlt # optional
-├── .gitignore           # optional
-└── README.md
+├── sep_sim_cfg.toml     # native runner config
+├── sep_public_scope.vlt # optional: scoped Verilator public list
+├── .gitignore           # optional: SEP-local generated products
+└── README.md            # how to build and run, and this layout
 ```
 
 ## OSS hygiene
 
-The bender filelist uses targets `["sep", "sep_el2", "sep_wrapper"]` only — never
-`"simulation"`, which pulls licensed I/O and a foundry padring. Verify
-vendor-clean with `tools/dv/check_no_vendor_paths.py`.
+Verify the filelist is vendor-clean:
 
-`[build].exclude_files` is empty at the DUT level. The `lsu_stub_all_live`
-target excludes `sep_cpu.sv` and appends the CPU stub. Proprietary IPs that
-are not in the OSS checkout are simply not on the filelist.
+```bash
+python3 tools/dv/check_no_vendor_paths.py --filelist <sep.flist>
+```
+
+Bender targets, shims, and what stays off the filelist are in
+`docs/SEP_TB_ARCH.adoc` (Canonical RTL and Shim Selection).
 
 ## Troubleshooting
 

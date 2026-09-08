@@ -90,9 +90,8 @@ LEGAL_LC_RAW: Tuple[int, ...] = (
 #   "data"     — freely randomizable keys/digests/UIDs/ctrl fields.
 # Kinds, keyed by generated register name. Everything not named here is "data":
 # freely randomizable. Only the semantics live here -- offsets and lengths are read
-# out of the generated map below, because a hand-written copy of the map is exactly
-# what went stale when LOCKS_SPARE was inserted at 0x008 and shifted every field
-# after it by one word.
+# out of the generated map below. A hand-written copy of the map drifts when
+# the generated layout changes.
 _LOCK_REGS = ("LOCKS", "LOCKS_SPARE")
 _LC_REGS = ("LC_STATE",)
 

@@ -18,8 +18,9 @@
 |Architecture reference |`hw/sys/sep/doc/`
 |Register export |`hw/sys/sep/regs/gen/` (via `env/sep_reg_meta.py`)
 |How to run |`README.md` in this DV tree (`tools/dv/run_dv.py --dut sep`)
-|Phase 1 test cases |31
-|Phase 2 test cases |49
+|Phase 1 test cases |32
+|Phase 2 test cases |56
+|Cocotb total |88 (`testlists/all.toml` `expected_count`)
 |Phase 3 |SV-UVM bench bring-up; 1 bound scenario (`sep_axi_smoke_test`)
 |===
 
@@ -52,7 +53,7 @@ One DUT. Two environments across three phases.
 
 |Phase 3
 |SystemVerilog UVM realization of the same testbench top
-|Bring-up + smoke first, then coverage-driven corners, error/security permutations, and code-coverage close-out. Low overlap with Phase 1 / Phase 2. See <<phase-3>>.
+|Bring-up + smoke first (`sep_axi_smoke_test` is bound in both realizations; see that procedure). Coverage-driven corners and code-coverage close-out follow, with low overlap with Phase 1 / Phase 2. The UVM class library and run recipes are in link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_TB_ARCH]. Contracts this plan does not claim yet are listed in <<phase-3>>.
 |===
 
 [arabic]
@@ -75,6 +76,51 @@ Randomization contract: the *same* config object programs the DUT and the
 golden. Pin the datapath directed first, then upgrade that test to randomized —
 do not ship a one-point stand-in for a matrix. Skip randomization only when the
 feature has no legal knob space (a strap, a single named handshake).
+
+[[audit]]
+Checker contracts in this plan are written against these known ways a check can
+pass while the DUT is unable to fail it.
+
+*An expectation that shares a source with the thing it measures.* A golden must
+not be selected by asking the engine which candidate it agrees with. The HMAC
+software-key word order is pinned from the IP register specification:
+`vendor/lowRISC/opentitan/upstream/hw/ip/hmac/data/hmac.hjson:446-447` states
+`key[1023:0] = {KEY0, KEY1, ... , KEY31}`, so `KEY_0` is the most-significant
+word and the software path needs no reversal. The RTL agrees
+(`hmac.sv:219-221` assigns the key CSRs into the secret-key vector in reverse
+index order), and that agreement is corroboration rather than the source: a
+golden transcribed from the RTL cannot disagree with the RTL. A two-candidate
+scan is legitimate only as a failure diagnostic that separates a word-order
+regression from a general digest fault.
+
+*Golden compared against golden.* An assert between a result already pinned
+bit-exact to its golden and another output of the same model holds with the
+simulator switched off. The degenerate case compares list lengths rather than
+domains — a four-word wrong-mode golden against an eight-word digest.
+
+*A guard whose own constructor makes it unfalsifiable.* Non-vacuity must not
+rest on a relation the configuration builder already guarantees: an unwritten
+(zero-initialised) address required to differ from a pattern built as
+`getrandbits(64) | 1`, or `start_lo != 0` where the config builds that value as
+`(random & ~0xFFF) or 0x1000`.
+
+*A stimulus with no fan-out.* Driving a pin that is unread in the configuration
+under test and asserting that two observables did not move is a DV-invented
+scenario, not a specification claim. `dbg_rstb_i` is routed only into
+`sep_cpu`, so it has no observable in a CPU-stub run, and
+`hw/sys/sep/doc/port_table.adoc` does not require isolation from system reset.
+
+*A tolerance wider than the signal.* A post-event bound above the count the
+window actually reaches passes when the event is ignored. The window must run
+long enough that the pre-event count clears the tolerance by a wide margin.
+
+*A check that reads back nothing.* Walking a register through several encodings
+without reading it back cannot distinguish a register stuck at its reset value
+when those encodings produce byte-identical output for the chosen stimulus.
+
+*Entailed guards.* The absence of a complementary-arm marker, or a deferred
+line, is not a checker; the owning test already fails if a forbidden marker
+appears.
 
 === Naming Rules
 
@@ -468,6 +514,30 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |no_cpu, real fuse sense
 |ocah_axi_vip
 |The walked fields are metal `WRITE_SET_ONLY` in `sep_efuse_pkg::EfuseFieldMap`: `BL1_VERSION`, `BL2_VERSION`, `CHIPLET_PUBK_REVOKE`, `REQUIRED_SIGNERS`, `REQUIRED_ALGS`, plus the Class-1 fields `SIP_DIS` and `SYS_DIS`.
+|`sep_lcc_lc_state_w1s_prod_test`
+|no_cpu, real fuse sense
+|ocah_axi_vip, LCC golden
+|Frontdoor `LC_STATE` write-one-to-set from a sensed production start, including the SIP-token collapse contrast.
+|`sep_lcc_lc_state_w1s_prod_demote_test`
+|no_cpu, real fuse sense
+|ocah_axi_vip, LCC golden
+|Same write-one-to-set path from production with both demotion registers asserted first.
+|`sep_lcc_lc_state_w1s_rma_sip_test`
+|no_cpu, real fuse sense
+|ocah_axi_vip, LCC golden
+|Write-one-to-set from a sensed RMA SIP start.
+|`sep_lcc_lc_state_w1s_rma_chiplet_test`
+|no_cpu, real fuse sense
+|ocah_axi_vip, LCC golden
+|Write-one-to-set from a sensed RMA chiplet start.
+|`sep_lcc_lc_state_w1s_prod_end_test`
+|no_cpu, real fuse sense
+|ocah_axi_vip, LCC golden
+|Write-one-to-set from a sensed production-end start.
+|`sep_lcc_lc_state_w1s_transient_test`
+|no_cpu, real fuse sense
+|ocah_axi_vip, LCC golden
+|Write-one-to-set from a transient start: hold with the enable armed and no token, then the token with no bus write.
 |`sep_sec_dis_override_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip
@@ -504,7 +574,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 |===
 
 [[iconic-scorecard]]
-=== Iconic Feature Scorecard
+==== Iconic Feature Scorecard
 
 The architecture docs under `hw/sys/sep/doc/` define the feature set. An
 *iconic* row is the mode, command, or contract that makes that IP itself.
@@ -815,6 +885,12 @@ The checker table is the fail-able contract.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+The same scenario is bound in the SV-UVM realization (`--framework uvm`). That
+pass keeps these checkers on the CPU-LSU splice over 16 seeded runs, requires
+the always-on scoreboard `cpu_ctrl_csr` feature, and
+`+SEP_CSR_SCOREBOARD_NEGATIVE` must FAIL the scoreboard. Structure and run
+recipes: link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_TB_ARCH].
 
 '''''
 
@@ -5426,109 +5502,17 @@ contracts owned by the vault test, and the wipe security contract.
 
 '''''
 
-[[phase-3]]
-=== Phase 3 — UVM Environment
-
-Phase 3 is the SystemVerilog UVM realization of the SEP bench on the same
-DUT (`sep_wrapper`), the same OSS-safe filelist, and the same testbench top
-(`tb/tb_top.sv`, one module with a cocotb shape and a `UVM` shape). It does
-not extend the cocotb environment: the class library lives under `uvm/`
-on the shared framework bases of `hw/common/dv/vip/ocah_lib/` and drives
-the CPU-LSU splice through the shared `ocah_axi_vip` master. Architecture
-and run recipes are in
-link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_TB_ARCH].
-
-Bring-up and smoke:: `sep_axi_smoke_test` is the first scenario bound in
-both realizations (`module = { cocotb = ..., uvm = ... }` in
-`testlists/system.toml`). The SV-UVM pass keeps the cocotb semantics on
-the CPU-LSU splice — fuse-sense release, the `SEP_LOCAL_BASE_ADDR`
-reset-value read, directed and seeded-random write/readback of
-`SEP_SW_DEBUG`, `SEP_NMI_VEC`, `RAS_BANK_INFO`, and `PKA_CTRL` through
-their generated field masks, and a restore to reset values — over 16
-seeded passes, with named `CHK-*` evidence finalized per pass and the
-always-on scoreboard's `cpu_ctrl_csr` feature required.
-`+SEP_CSR_SCOREBOARD_NEGATIVE` corrupts the scoreboard prediction so the
-run must FAIL, which is the non-vacuity proof of the pass/fail path.
-
-After smoke:: Coverage-driven corners, error and security permutations,
-and code-coverage close-out. Prefer low overlap with Phase 1 / Phase 2:
-a UVM test whose bins the cocotb suite already hits is rejected.
-
-Parked cocotb scorecard vehicles (still Phase 2 ownership, not Phase 3)::
-
-Coded and failing, parked on an RTL fix:
-
-* `sep_crypto_per_ip_reset_isolation_test` — parked by DV-lead decision. Fourteen
-of its fifteen checkers pass; `CHK-ISOLATE-WR` fails because an in-window write
-to an isolated domain answers SLVERR where the isolate emits only DECERR, which
-is a hardware asymmetry and not a DV expectation (see <<known-limitations>>). It
-stays enrolled and stays red: the expected response set is not widened, the entry
-is not converted to an expected failure, and it is not removed from the
-regression group to make the count green. Its scorecard row is `GAP` until the
-hardware is fixed.
-
-Holding notes (candidates, not an execute list)::
-
-[cols="2,4",options="header"]
-|===
-|Name |Intent
-
-|`sep_km_sw_emergency_wipe_test`
-|Frontdoor `KM_WIPE_CTRL.wipe_state` zeroes KPV and raises `WIPE_STATE` (RW1C). Destructive security edge.
-
-|`sep_cpu_sram_aes_sram_test`
-|CPU-firmware KM sideload + AES SRAM round-trip. Crypto itself is already covered more strongly in Phase 1 / Phase 2.
-
-|AES CTR DECRYPT opcode
-|Corner of the Phase 2 AES 9-cell row
-
-|ABR ML-DSA sign / verify, ML-KEM-1024, key-vault seed
-|Slices beyond keyGen
-
-|Entropy pool drain-under-fill / stall-duration
-|Beyond aperture smoke
-
-|Isolate drain-before-reset
-|Outstanding-transaction drain inside the per-domain `axi_lite_isolate` units in `sep_crypto_axi_interconnect.sv`
-
-|Locked-field CPU PIC / ISR
-|PIC claim of aggregator `[33]` (aggregator pulse is Phase 2)
-
-|Health tests / ring oscillator
-|Entropy quality; not the iconic consume path
-
-|ESRC health-test counter redundancy
-|Fault injection on the `prim_count` copies behind the health tests. `prim_count` holds each count twice, up and down, and reports an error only when the two stop summing to the counter maximum; every control reaching them drives both copies, so no stimulus can break the invariant and the path is reachable by a physical fault alone. Inject at the counter state (the vendor's `fpv_force` hook), not at `count_err_o` — forcing the module output proves only that the wire is connected. Monitoring is entirely frontdoor: `MAIN_SM_STATUS.ERR`, `INTR_STATUS.PERSISTENT_FAILURE`, PIC source 16, and `MAIN_SM_STATUS.ALERT` staying 0 to separate a counter fault from an AlertHang trip. Phase 2 proves only that the error bit is clear on the alert path (`CHK-SM-ERR-ZERO`).
-
-|Inbound-filter negative product
-|Negative matrix beyond allow vs block-by-default
-
-|`sep_fabric_global_aperture_remap_test`
-|Non-identity inbound global→local remap
-
-|`sep_lcc_dbg_disable_gate_test`
-|Eleven debug-disable outputs and gating formulas
-
-|Named coverage / negative matrices
-|`sep_cpu_lsu_*_matrix_test`, `sep_fabric_gap_matrix_test`, `sep_irq_extended_connectivity_test`, `sep_efuse_uvm_permission_matrix_test`, and similar deferred names
-
-|KMAC sideload fail-closed + recovery
-|`CFG.sideload=1` START with no valid Key Manager key must fail closed (`ErrKeyNotValid`). `CMD.err_processed` returns the engine to idle with `CFG_REGWEN` open, and the next software-key operation reproduces the pre-error digest. KEY_VALID gating and stale-key reject sit on the same card. Valid-key consume stays with `sep_km_kmac_sideload_kat_test`.
-|===
-
-The holding notes are candidates for the SV-UVM bench, not an execute list.
-
 === Counts
 
 [cols=",",options="header"]
 |===
 |Item |Count
-|Phase 1 tests |31
-|Phase 2 tests |49
-|Cocotb total |80
+|Phase 1 tests |32
+|Phase 2 tests |56
+|Cocotb total |88
 |Phase 3 |1 SV-UVM scenario bound (`sep_axi_smoke_test`)
-|Iconic scorecard rows |54 in-scope: 53 PROVEN, 1 GAP (see <<iconic-scorecard>>)
-|Phase 2 parked, coded and failing |1 (per-IP reset isolation; graded GAP, parked on an RTL fix)
+|Iconic scorecard rows |58 in-scope: 56 PROVEN, 1 PARTIAL, 1 GAP (see <<iconic-scorecard>>)
+|Coded and failing |1 (`sep_crypto_per_ip_reset_isolation_test`; graded GAP; see <<known-limitations>>)
 |===
 
 === Regression Groups
@@ -5548,53 +5532,8 @@ Canonical entry point: `python3 tools/dv/run_dv.py --dut sep …`
 `all` fan-out when closing a change. `rom_fw` is a separate owner's class and is
 not part of `all`.
 
-[[audit]]
-=== Anti-Vacuity Failure Classes
-
-Checker contracts in this plan are written against these known ways a check can pass
-while the DUT is unable to fail it. Several entries above cite this list.
-
-*An expectation that shares a source with the thing it measures.* A golden must not be
-selected by asking the engine which candidate it agrees with. The HMAC software-key
-word order is pinned from the IP register specification:
-`vendor/lowRISC/opentitan/upstream/hw/ip/hmac/data/hmac.hjson:446-447` states
-`key[1023:0] = {KEY0, KEY1, ... , KEY31}`, so `KEY_0` is the most-significant word and
-the software path needs no reversal. The RTL agrees (`hmac.sv:219-221` assigns the key
-CSRs into the secret-key vector in reverse index order), and that agreement is
-corroboration rather than the source: a golden transcribed from the RTL cannot disagree
-with the RTL. A two-candidate scan is legitimate only as a failure diagnostic that
-separates a word-order regression from a general digest fault.
-
-*Golden compared against golden.* An assert between a result already pinned bit-exact to
-its golden and another output of the same model holds with the simulator switched off.
-The degenerate case compares list lengths rather than domains — a four-word wrong-mode
-golden against an eight-word digest.
-
-*A guard whose own constructor makes it unfalsifiable.* Non-vacuity must not rest on a
-relation the configuration builder already guarantees: an unwritten (zero-initialised)
-address required to differ from a pattern built as `getrandbits(64) | 1`, or
-`start_lo != 0` where the config builds that value as `(random & ~0xFFF) or 0x1000`.
-
-*A stimulus with no fan-out.* Driving a pin that is unread in the configuration under
-test and asserting that two observables did not move is a DV-invented scenario, not a
-specification claim. `dbg_rstb_i` is routed only into `sep_cpu`, so it has no observable
-in a CPU-stub run, and `hw/sys/sep/doc/port_table.adoc` does not require isolation from
-system reset.
-
-*A tolerance wider than the signal.* A post-event bound above the count the window
-actually reaches passes when the event is ignored. The window must run long enough that
-the pre-event count clears the tolerance by a wide margin.
-
-*A check that reads back nothing.* Walking a register through several encodings without
-reading it back cannot distinguish a register stuck at its reset value when those
-encodings produce byte-identical output for the chosen stimulus.
-
-*Entailed guards.* The absence of a complementary-arm marker, or a deferred line, is not
-a checker; the owning test already fails if a forbidden marker appears.
-
-'''''
-
 [[known-limitations]]
+[[phase-3]]
 === Known Limitations
 
 This table holds two different kinds of item, and the distinction matters when
@@ -5685,5 +5624,8 @@ This row is about the AP/STEE bank only. The local-master aliaser is a different
 
 |Lifecycle codes with no owner
 |Closed for the encodings, narrowed for the mechanism. `sep_efuse_lcc_lc_state_stitch_test` walks four of the seven named codes on the OTP-program path (`LC_TEST_DEV`, `LC_PROD`, `LC_RMA_SIP_1`, `LC_RMA_CHIP_1`); the `LC_STATE` write-1-to-set leaves add `LC_RMA_SIP_0`, `LC_RMA_CHIP_0` and `LC_PROD_END` as sensed starting states with a `FEAT_CTRL` claim on each, plus two codes outside the named set. What remains unowned is the *pairing*: `LC_RMA_SIP_0`, `LC_RMA_CHIP_0` and `LC_PROD_END` are sensed but never reached by programming a fuse bit, because the OTP image is a t=0 deposit and a fuse survives reset — from a given image only a W1S superset is reachable in one leaf.
+
+|Contracts not claimed (no vehicle in `all`)
+|KM emergency wipe (`KM_WIPE_CTRL.wipe_state`); CPU-firmware AES SRAM round-trip; AES CTR DECRYPT; ABR sign/verify, ML-KEM-1024, and key-vault seed; entropy-pool drain-under-fill / stall-duration; isolate drain-before-reset on the four accelerator domains (the shared TRNG drain is proven); locked-field CPU PIC/ISR; ESRC health-test quality and `prim_count` redundancy fault inject; inbound-filter negative product; non-identity inbound global remap; eleven-output `dbg_disable` gate test; named negative matrices (`sep_cpu_lsu_*_matrix_test`, `sep_fabric_gap_matrix_test`, `sep_irq_extended_connectivity_test`, `sep_efuse_uvm_permission_matrix_test`); KMAC sideload fail-closed + recovery (`ErrKeyNotValid` / `CMD.err_processed`).
 
 |===
