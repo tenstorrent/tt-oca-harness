@@ -215,7 +215,9 @@ errors and at least one observed transaction.
 
 Passive raw-pin integrity monitor (in-TB substitute for Verilator-disabled RTL
 assertions). LSU bus fails on DECERR; external bus tallies DECERR because the
-inbound filter may block by design.
+inbound filter may block by design. Also bounds slave READY wait on AW/W/AR
+to ``cfg.axi_timeout_ns``: a permanent ``1'b0`` is legal AXI and not X, so
+the protocol SVA cannot see it.
 
 ==== Entropy / crypto goldens and `SepDrbgScoreboard`
 
