@@ -271,9 +271,13 @@ do not use the native DV profile. They pass <code>-D SYNTHESIS=1</code> from
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>SIMULATION</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Native profile (every DTP DV tool)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Marks a simulation compile. Vendored OpenTitan prims in the DTP graph gate
-simulation-only paths on this name.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Those prim paths compile in.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Those prim paths are omitted.</p></td>
+simulation-only paths on this name, and the two-state protocol checker macros
+(<code>hw/common/assert/ocah_sva_macros.svh</code>) expand to live assertions only under
+it.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Those prim paths compile in; the protocol checkers carry their two-state
+rules.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Those prim paths are omitted; the two-state checker macros expand to nothing
+(the lint and synthesis view).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>UVM</code></p></td>
@@ -283,28 +287,31 @@ simulation-only paths on this name.</p></td>
 <code>SIMULATION</code>): it adds the SV-UVM harness block to the shared testbench top
 <code>dtp_uvm_top</code> in <code>hw/sys/dtp/dv/tb/tb_top.sv</code>, and the shared assertion
 headers report through <code>uvm_report_error</code> instead of <code>$error</code>.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The harness block compiles: the clock generator on <code>dtp_tb_if.clk</code>, the
-protocol SVA, the test classes, the <code>uvm_config_db</code> publication of every
-interface instance, and <code>run_test()</code>. Required for <code>--framework uvm</code> (VCS).
+<td class="tableblock halign-left valign-top"><p class="tableblock">The harness block compiles: the clock generator on <code>dtp_tb_if.clk</code>, the test
+classes, the <code>uvm_config_db</code> publication of every interface instance, and
+<code>run_test()</code>. Required for <code>--framework uvm</code> (VCS).
 The testbench architecture document (<code>hw/sys/dtp/dv/docs/DTP_TB_ARCH.adoc</code>)
 describes the core the block extends.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Only the framework-neutral core compiles (interface instances, DUT,
-adapters, counters, coverage); cocotb drives the interface members through
-hierarchical handles. Required for the default cocotb/PyUVM flow (cocotb is
+adapters, counters, coverage, protocol SVA); cocotb drives the interface
+members through hierarchical handles. Required for the default cocotb/PyUVM flow (cocotb is
 the default framework, so no define means the core alone). Defining it on a
 cocotb compile adds a second clock generator and <code>run_test()</code> against the
 Python test.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>VERILATOR</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">DTP Verilator overlay</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Tells assertion headers that the compiler is Verilator, which does not
-support concurrent SVA.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">DTP Verilator overlay (Verilator also predefines it)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Tells the assertion headers that the compiler is Verilator, a two-state
+simulator.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>hw/common/assert/ocah_assert.svh</code> and the OpenTitan <code>prim_assert.sv</code> that
 <code>dtp_pkg</code> includes leave <code>OCAH_INC_ASSERT</code> / <code>OCAH_OT_INC_ASSERT</code> undefined, so
-concurrent assertion macros expand to nothing.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">On Verilator, concurrent SVA in those headers is parsed and the compile fails
-or the tool rejects the constructs. On VCS/Xcelium this define is not set, so
+the four-state assertion macros (<code>OCAH_ASSERT</code>, <code>OCAH_COVER</code>, <code>OCAH_OT_ASSERT</code>)
+expand to nothing. The two-state checker macros in
+<code>hw/common/assert/ocah_sva_macros.svh</code> do not test this define; Verilator
+evaluates them under the target&#8217;s <code>--assert</code> flag (below).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">On Verilator, the four-state macro bodies compile in; their <code>$isunknown</code> rules
+pass vacuously on a two-state model. On VCS/Xcelium this define is not set, so
 those headers keep SVA enabled unless another gate (<code>SYNTHESIS</code>) applies.</p></td>
 </tr>
 <tr>
@@ -347,6 +354,15 @@ test configuration.</p></td>
 </tr>
 </tbody>
 </table>
+<div class="paragraph">
+<p>The DTP Verilator overlay also passes the tool flags <code>--assert --no-assert-case</code>
+(<code>[targets.default.tools.verilator].flags</code>). They are simulator options, not
+preprocessor defines: <code>--assert</code> makes Verilator evaluate the concurrent and
+immediate assertions it compiles, which is the two-state protocol SVA set, and
+<code>--no-assert-case</code> leaves the <code>unique</code>/<code>priority</code> case checks of the DUT and
+vendored RTL out of that set. A failing assertion prints an <code>%Error</code> line and
+stops the simulation.</p>
+</div>
 <div class="paragraph">
 <p>The profile overlay&#8217;s explicit define is the only source of <code>UVM</code>: the simulator&#8217;s
 <code>-ntb_opts</code> option selects which UVM library is compiled but does not set
