@@ -45,6 +45,8 @@ DOC_HTML_IMAGE="${OCAH_DOC_HTML_IMAGE:-docker.io/antora/antora:3.1.10}"
 DOC_PDF_IMAGE="${OCAH_DOC_PDF_IMAGE:-docker.io/asciidoctor/docker-asciidoctor:1.106.0@sha256:6266e05784c2d8ece9d9fe5e593b12c3beebebbc467135fd6f4a56269c93cea3}"
 EDA_IMAGE="${OCAH_EDA_IMAGE:-hpretl/iic-osic-tools:2025.12}"
 
+NIX_IMAGE="${OCAH_NIX_IMAGE:-docker.io/nixos/nix:latest}"
+
 # Firmware image provisioning. The ocah-toolchain image is built locally and
 # published to no registry, so bare `run` on a fresh host would try (and fail)
 # to pull it. To avoid every CI runner rebuilding it - and to avoid depending on
@@ -178,6 +180,22 @@ build_image() {
   else
     echo "docker-run: warning: cache dir $DOCKER_CACHE_DIR not writable; not publishing" >&2
   fi
+}
+
+build_nix_image() {
+    local NIX="nix --extra-experimental-features nix-command --extra-experimental-features flakes"
+    run_image_1to1 $NIX_IMAGE -it sh -c "
+        git config --global --add safe.directory \$(pwd) &&
+        git config --global --add safe.directory \$(pwd)/hw/sys/sep/bootrom/prod/tools/tt-boot-manifest &&
+        $NIX build .#dockerContainers.x86_64-linux.stream > nix-container-image && echo \"Build Container Image\" || { echo \"Container Build Failed\" >&2; rm -f nix-container-image; exit 1; }
+        chmod 664 nix-container-image
+        chown root:root nix-container-image
+        echo \"Fixed Permissions of Container Image\"
+    "
+}
+
+nix-shell() {
+    run_image_1to1 $NIX_IMAGE -it bash
 }
 
 # Ensure $IMAGE is available locally: reuse a matching local image (verified by
@@ -500,6 +518,8 @@ doc_stage() {
 
 case "${1:-}" in
 build) build_image ;;
+build-nix) build_nix_image ;;
+nix-shell) nix-shell ;;
 ensure) ensure_image ;;
 verify)
   run riscv64-unknown-elf-gcc --version
