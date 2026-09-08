@@ -1631,10 +1631,20 @@ tests = [
   "smu_xtrig_ctm_remap_test",
 ]
 
-# Migrated, enrolled to stay visible, not yet passing here. These are the
-# leaves that reach furthest into DTP, and the remaining gaps are no longer
-# one systemic fix: some observables are wired but read a different value
-# than the bare DUT, which is where a real profile difference would show.
+# Migrated, enrolled to stay visible, not yet passing here.
+#
+# The boot-stall and IC-reset group shares one cause, and it is not the
+# observation path. Instrumenting smu_dft_dtp_boot_stall_test showed the
+# DEBUG_CONTROL shift path working perfectly -- writing 0x0/0x1/0x2/0x3 and
+# reading back 0x0/0x1/0x2/0x3 -- while debug_ctrl_reg_q stays 0 for every
+# one of them. Readback comes off the shift register; boot_stall_o and
+# boot_stall_ovrd_o come off the update register. So the TDR is being
+# shifted and never updated: Update-DR is not reaching this register on
+# this testbench. Reading the smu wire, the dtp output port and
+# debug_ctrl_reg_q itself all give 0, which is what rules the observation
+# path out. Not a DUT difference -- the same RTL updates correctly under
+# tb_top.sv -- so the question is what differs in how the two testbenches
+# drive the TAP into Update-DR.
 [[groups]]
 name = "migrated_dtp_pending"
 tests = [

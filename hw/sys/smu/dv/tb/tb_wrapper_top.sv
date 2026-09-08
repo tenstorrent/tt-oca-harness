@@ -1003,6 +1003,13 @@ module smu_wrapper_uvm_top (
   assign jtag_ic_reset_ext_ctrl_n = ic_reset_ext_w.val;
   assign jtag_ic_reset_smc_ovrd   = u_dut.u_smu.jtag_smc_reset_ctrl.ovrd.cold_reset_n_ovrd;
   assign jtag_ic_reset_smc_ctrl_n = u_dut.u_smu.jtag_smc_reset_ctrl.val.cold_reset_n_val;
+  // Read the DTP output port, not smu's internal wire between the two
+  // instances: Verilator collapses that wire here and the XMR reads a constant
+  // 0 while the register behind it holds the right value. The DEBUG_CONTROL
+  // readback proves the design is fine -- this was an observation bug.
+  // The same nets tb_top.sv reads. They sit at 0 here even though the
+  // DEBUG_CONTROL shift path works -- see migrated_dtp_pending in
+  // testlists/wrapper.toml for what that means.
   assign smu_scope_boot_stall_val  = u_dut.u_smu.boot_stall_jtag_val;
   assign smu_scope_boot_stall_ovrd = u_dut.u_smu.boot_stall_jtag_ovrd;
   assign tb_stap_io_tck      = stap_io_ctrl_w.tck;
