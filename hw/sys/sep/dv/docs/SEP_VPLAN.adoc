@@ -4073,6 +4073,9 @@ watermark together; no vehicle asserts that pair today.
 |===
 |Check |Contract
 
+|CHK-PORT-ANCHOR
+|A plain read of the live CSRNG lane answers OKAY before the vehicle is touched. The vehicle is a TB-owned instance, so without this the leaf could report a pass against a DUT that never left reset; it also puts a transaction through the AXI agent, which the scoreboard requires as positive evidence before it will allow a pass at all.
+
 |CHK-PORT-CONTROL
 |Three legs, all required to retire AND to answer OKAY, before any overlap cell runs. A lone write and a lone read show the vehicle and the AXI-Lite-32 responder behind the adapter are alive at all -- without them a broken driver would report every ordering as stalled and imitate the defect exactly. A third leg drives AW and then W four cycles later with no AR, the same separation the `aw-then-ar` and `w-then-ar` cells use, so the separation itself is excluded as the cause of their stall by observation rather than by reading the design under test. The response code carries the other half: an access the adapter rejects as unsupported is answered SLVERR straight out of `StIdle` with nothing forwarded and retires just as promptly, so OKAY is what shows the forwarding leg is alive, and OKAY at the 64-bit port cannot be produced without the downstream handshake.
 
@@ -4111,7 +4114,7 @@ watermark together; no vehicle asserts that pair today.
 |Check |Contract
 
 |CHK-CONCURRENT-CAL
-|A lone write and a lone read, neither of which can deadlock, measure when AW, W and AR arrive at the adapter port through the crossbar. The overlap is then placed from those measured latencies: on broken RTL the first overlap is terminal, so the placement cannot be retried and must not be guessed, and a placement the measured latency cannot reach is reported unreachable rather than fired blind. The same measurement records the AW-to-W gap at the master and at the port and states which side introduced it -- master 0 cycles, port 1 cycle, so the stagger is the fabric's. That is also the evidence that plain untimed traffic already puts AW and AR in the same cycle whenever a store and a load are in flight together.
+|The register's writable width is measured, not assumed: all-ones is written and read back, and the seed's pattern is narrowed to the bits that stick. The two blocks implement different interrupt counts, so a hardcoded width is wrong for one of them and a non-existent bit reads back 0 -- indistinguishable from a dropped write. A lone write and a lone read, neither of which can deadlock, then measure when AW, W and AR arrive at the adapter port through the crossbar. The overlap is then placed from those measured latencies: on broken RTL the first overlap is terminal, so the placement cannot be retried and must not be guessed, and a placement the measured latency cannot reach is reported unreachable rather than fired blind. The same measurement records the AW-to-W gap at the master and at the port and states which side introduced it -- master 0 cycles, port 1 cycle, so the stagger is the fabric's. That is also the evidence that plain untimed traffic already puts AW and AR in the same cycle whenever a store and a load are in flight together.
 
 |CHK-CONCURRENT-STIM
 |The ordering the ADAPTER PORT presented, read off `drbg_csrng_axil_chan_o` (or `drbg_edn_axil_chan_o` on the EDN leaf), not the ordering requested and not the presentation at `s_axi`. The crossbar restaggers the channels, so a presentation at the TB master is not evidence of one at the arbitration point. The leaf is covered only when that presentation is the named ordering. A different overlap, or a cell that missed its overlap, is reported unreachable and does not count as this leaf.
