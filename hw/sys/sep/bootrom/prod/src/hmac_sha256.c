@@ -29,6 +29,12 @@
 // for an unset key_length while hmac_en=1 -- so leaving either at 0 makes the
 // operation silently never run.
 #define HMAC_DIGEST_SIZE_SHA2_256 0x1u
+// Message-FIFO capacity in 32-bit entries. From the IP itself:
+// vendor/lowRISC/opentitan/upstream/hw/ip/hmac/rtl/hmac.sv
+//   localparam int MsgFifoDepth = 32;  ... prim_fifo_sync #(.Depth(MsgFifoDepth))
+// Nothing in this tree overrides it. STATUS.fifo_depth counts the same entries.
+#define HMAC_MSG_FIFO_WORDS 32u
+
 #define HMAC_KEY_LENGTH_128 0x1u
 #define HMAC_KEY_LENGTH_256 0x2u
 
@@ -93,12 +99,38 @@ static void fifo_feed(const uint8_t *data, uint32_t len) {
         ++i;
     }
 
-    // Word-aligned bulk transfer.
+    // Word-aligned bulk transfer, one STATUS read per BATCH of writes rather
+    // than per write.
+    //
+    // STATUS.fifo_depth is the FIFO's current occupancy in 32-bit entries,
+    // driven straight from u_msg_fifo's depth_o, and the FIFO is 32 entries
+    // deep (hmac.sv: localparam int MsgFifoDepth = 32, passed as .Depth).
+    // So one read yields a write credit of HMAC_MSG_FIFO_WORDS - fifo_depth.
+    //
+    // Why the credit is safe: the engine drains the FIFO concurrently while we
+    // write, so the free space at the moment of any later write is >= what the
+    // read reported. The credit is therefore a conservative lower bound and can
+    // never overestimate the room available -- which is what makes it correct
+    // to skip the intermediate polls rather than merely faster.
+    //
+    // This matters because the boot measurement hashes the whole ROM region
+    // (~32 KiB): at one status read per word that was ~8k extra MMIO reads,
+    // roughly half the bus traffic of the hash, and MMIO round-trips dominate
+    // this loop in simulation.
+    uint32_t credit = 0u;
     while (i + 4u <= len) {
-        hmac__STATUS_t s;
-        do {
-            s.w = mmio_read32(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR);
-        } while (s.f.fifo_full);
+        if (credit == 0u) {
+            hmac__STATUS_t s;
+            do {
+                s.w = mmio_read32(OCH_SEP_TOP_HMAC_STATUS_BASE_ADDR);
+                // fifo_depth is a 6-bit field, so it can encode values above
+                // the real capacity. Clamp rather than let the unsigned
+                // subtraction wrap into a huge credit.
+                credit = (s.f.fifo_depth >= HMAC_MSG_FIFO_WORDS)
+                             ? 0u
+                             : (HMAC_MSG_FIFO_WORDS - s.f.fifo_depth);
+            } while (credit == 0u);
+        }
 
         uint32_t word;
         // Memcpy-equivalent for strict-aliasing safety.
@@ -109,6 +141,7 @@ static void fifo_feed(const uint8_t *data, uint32_t len) {
         word |= (uint32_t)p[3] << 24;
         mmio_write32(OCH_SEP_TOP_HMAC_MSG_FIFO_BASE_ADDR, word);
         i += 4u;
+        --credit;
     }
 
     // Remaining tail bytes.
