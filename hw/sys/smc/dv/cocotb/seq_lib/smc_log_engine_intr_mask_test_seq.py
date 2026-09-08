@@ -6,14 +6,11 @@
 an unverified transition into tracked evidence, not to pass.
 
 The RDL states the intent, and the RTL does not implement it.
-`hw/ip/uart/log_engine/regs/log_engine.rdl:159-161` carries the binding::
-
-    // TODO: Uncomment after PeakRDL bug fix
-    // TODO // INTR_STATUS.LOG_FETCH_ERR->hwenable = INTR_ENABLE.LOG_FETCH_ERR;
-    // TODO // INTR_STATUS.LOG_WRITE_ERR->hwenable = INTR_ENABLE.LOG_WRITE_ERR;
-
-In SystemRDL `hwenable` on an `intr` field masks the **output**. The workaround
-put the enable on the **set** path instead, which is not the same thing.
+`hw/ip/uart/log_engine/regs/log_engine.rdl:159-161` carries the two
+`INTR_STATUS.<field>->hwenable = INTR_ENABLE.<field>` assignments commented
+out, deferred by a note citing a PeakRDL bug. In SystemRDL `hwenable` on an
+`intr` field masks the **output**; the workaround put the enable on the **set**
+path instead, which is not the same thing.
 `hw/ip/uart/log_engine/rtl/log_engine.sv:489-496`::
 
     assign reg_in.INTR_STATUS.LOG_FETCH_ERR.next =

@@ -324,6 +324,34 @@ enrolled through `dual_*` and `occp_*` rather than `all`.
 |`smc_prod_rom_occp_ready_test` |Production boot ROM reaches its OCCP command processing loop.
 |===
 
+==== RTL ISSUE REPRODUCERS
+
+Tests whose job is to fail. Each holds the runnable evidence for one filed RTL
+defect, so a known bug has a measurement instead of only an issue body. All are
+enrolled through `rtl_issue` alone -- no `ci` tag, not in `smoke`, held out of
+`all` -- and each moves into its owning feature group when its issue closes.
+
+Every one carries an arm leg that must pass before its defect leg is scored.
+Without that, a stuck-at field or a dead probe would satisfy the defect leg for
+the wrong reason.
+
+[cols="2,3",options="header",]
+|===
+|Testcase |Objective
+|`smc_gpio_irq_mask_deassert_test` |#1602: clearing DATA_CTRL.interrupt_enable must de-assert interrupt_o.
+|`smc_efuse_read_timeout_status_test` |#1603: a timed-out eFuse read must set EFUSE_READ_CTRL.READ_STATUS.
+|`smc_log_engine_intr_mask_test` |#1635: INTR_ENABLE must mask the log-engine interrupt output, not its set path.
+|`smc_i2c_intr_mask_test` |#1635: the same, on I2C.
+|===
+
+==== FIRMWARE
+
+[cols="2,3",options="header",]
+|===
+|Testcase |Objective
+|`smc_fw_hello_world_test` |Boot the smallest SMC C image and read the verdict it posts over MMIO.
+|===
+
 === Test Procedures
 
 ==== MISC
@@ -6409,14 +6437,191 @@ enrolled through `dual_*` and `occp_*` rather than `all`.
 
 '''''
 
+[[sec-157-smc_gpio_irq_mask_deassert_test]]
+===== 157 `smc_gpio_irq_mask_deassert_test`
+
+*Source Module*: `smc_gpio_irq_mask_deassert_test`
+
+*BFM / Model*: GPIO pad drive via `tb_gpio_ext_drive_*`; observation on `tb_gpio_irq_any`
+
+*Objective*: #1602: clearing DATA_CTRL.interrupt_enable must de-assert interrupt_o.
+
+*Test Coverage*:
+
+* The mask half of `hw/ip/gpio/doc/architecture.adoc:122`'s `interrupt_o = interrupt_enable && interrupt_trigger`, which no other GPIO test drives.
+
+*Test Procedure*:
+
+[arabic]
+. Program DATA_CTRL armed (RX enable, interface enable, interrupt enable, active-high) and prove the IRQ is low with the pad low.
+. Drive the pad high, require the IRQ to assert, and hold it for 32 cycles.
+. Clear only `interrupt_enable`, leaving the pad high and touching nothing else.
+. Require the IRQ to fall and stay low.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-GPIO-IRQ-MASK-ARM` |Pad high with the enable set asserts the IRQ and holds it, so the mask leg's stimulus is the enable write alone
+|`CHK-GPIO-IRQ-MASK-DEASSERT` |Clearing the enable de-asserts the IRQ. **Expected to fail**: `gpio.sv:253-261` uses the enable as the interrupt flop's clock enable and `:302` drives `interrupt_o` from that flop unqualified
+|===
+
+*Pass Criteria*: both legs hold. Expected to FAIL on the second until #1602 is fixed. Enrolled in: `rtl_issue`.
+
+'''''
+
+[[sec-158-smc_efuse_read_timeout_status_test]]
+===== 158 `smc_efuse_read_timeout_status_test`
+
+*Source Module*: `smc_efuse_read_timeout_status_test`
+
+*BFM / Model*: ocah_axi_vip (AXI) against the eFuse bank model
+
+*Objective*: #1603: a timed-out eFuse read must set EFUSE_READ_CTRL.READ_STATUS.
+
+*Test Coverage*:
+
+* The timeout arm of `efuse_read_interface.sv`'s ST_WAIT_RESP, which never assigns `read_err_d` while `efuse_program_interface.sv` sets `program_err_d` on the identical arm.
+
+*Test Procedure*:
+
+[arabic]
+. Issue a successful read at the RDL default READ_TMO and record READ_CTRL with READ_STATUS clear.
+. Require STATUS.EFUSE_REQ_ERROR clear, so a sticky req-err cannot be mistaken for the timeout path.
+. Force the read to time out and read READ_CTRL again.
+. Require READ_STATUS to be set.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-EFUSE-TMO-RD-STATUS-ARM` |A successful read gives READ_CTRL=0x12000000 with READ_STATUS clear, arming the leg below. Depends on `CHK-EFUSE-READ-STATUS-SET-ON-NO-ENABLE` in smc_efuse_read_program_timeout_test having proven the bit can read 1 at all
+|`CHK-EFUSE-TMO-RD-STATUS-SET` |A timed-out read sets READ_STATUS. **Expected to fail**, and more strongly than #1603 states: READ_CTRL reads 0x12000000 on both the successful and the timed-out read, so the register carries nothing that separates them
+|===
+
+*Pass Criteria*: both legs hold. Expected to FAIL on the second until #1603 is fixed. Enrolled in: `rtl_issue`.
+
+'''''
+
+[[sec-159-smc_log_engine_intr_mask_test]]
+===== 159 `smc_log_engine_intr_mask_test`
+
+*Source Module*: `smc_log_engine_intr_mask_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); observation on `tb_uart_irq_combined[0]`
+
+*Objective*: #1635: INTR_ENABLE must mask the log-engine interrupt output, not its set path.
+
+*Test Coverage*:
+
+* Both consequences of the placement: an interrupt held after the enable is cleared, and an interrupt dropped because it arrived while masked.
+* `INTR_TEST` is `sw = w, singlepulse`, so the stimulus is a one-cycle event on the same line as the real event and needs no bus traffic.
+
+*Test Procedure*:
+
+[arabic]
+. Ungate the UART peripheral clock and require instance 0's PLIC bit to read 0, so nothing below can be credited to the 16550 IRQ or the UART error line.
+. Set INTR_ENABLE, pulse INTR_TEST, require INTR_STATUS to latch and the IRQ to assert, held 32 cycles.
+. Clear INTR_ENABLE only and sample the IRQ.
+. W1C the status, prove it cleared, then pulse INTR_TEST with INTR_ENABLE=0 and set the enable afterwards.
+. Require INTR_STATUS to hold the event.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-LOG-ENGINE-INTR-MASK-ARM` |The set path, the status register and the probe are all alive
+|`CHK-LOG-ENGINE-INTR-MASK-DEASSERT` |Clearing the enable de-asserts the IRQ. **Expected to fail**: `log_engine.sv:496` drives `irq_o` from INTR_STATUS unqualified
+|`CHK-LOG-ENGINE-INTR-MASK-LATCH` |An event arriving while masked is still latched. **Expected to fail**: `log_engine.sv:489-491` ANDs the event with the enable before the flop, so the pulse is lost
+|===
+
+*Pass Criteria*: all three legs hold. Expected to FAIL on the last two until #1635 is fixed. Both are measured before either raises, so neither hides the other. Enrolled in: `rtl_issue`.
+
+'''''
+
+[[sec-160-smc_i2c_intr_mask_test]]
+===== 160 `smc_i2c_intr_mask_test`
+
+*Source Module*: `smc_i2c_intr_mask_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); observation on `tb_i2c_irq[0]`
+
+*Objective*: #1635: the same interrupt-enable placement, on I2C.
+
+*Test Coverage*:
+
+* `CMD_COMPLETE`, whose `(event || test) && enable` set path at `i2c_core.sv:1000` is the exact shape under test.
+* Both the held and the dropped consequence, as for the log engine.
+
+*Test Procedure*:
+
+[arabic]
+. Ungate the I2C peripheral clock and require instance 0's PLIC bit to read 0.
+. Set INTR_ENABLE.CMD_COMPLETE, pulse INTR_TEST, require INTR_STATE to latch and the IRQ to assert, held 32 cycles.
+. Clear INTR_ENABLE only and sample the IRQ.
+. W1C the status, prove it cleared, then pulse INTR_TEST with INTR_ENABLE=0 and set the enable afterwards.
+. Require INTR_STATE to hold the event.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C-INTR-MASK-ARM` |The set path, the status register and the probe are all alive
+|`CHK-I2C-INTR-MASK-DEASSERT` |Clearing the enable de-asserts the IRQ. **Expected to fail**: `i2c_core.sv:981` drives `irq_o` from INTR_STATE.intr unqualified
+|`CHK-I2C-INTR-MASK-LATCH` |An event arriving while masked is still latched. **Expected to fail**: `i2c_core.sv:1000` ANDs the event with the enable before the flop
+|===
+
+*Pass Criteria*: all three legs hold. Expected to FAIL on the last two until #1635 is fixed. Enrolled in: `rtl_issue`.
+
+'''''
+
+[[sec-161-smc_fw_hello_world_test]]
+===== 161 `smc_fw_hello_world_test`
+
+*Source Module*: `smc_fw_hello_world_test`
+
+*BFM / Model*: the SMC C image `fw/tests/hello_world`, executed by the CPU cluster; verdict read over SEP_IN AXI
+
+*Objective*: Boot the smallest SMC C image and read the verdict it posts over MMIO.
+
+*Test Coverage*:
+
+* The firmware path end to end, and nothing else: c_compile, output staging by basename, the 64B-striped scratch load, the reset-vector handoff, crt0 and picolibc init across four harts, and the MMIO store to CPU_CTRL SCRATCH_0.
+* The image is `test_pass(0)` and a `wfi` loop, so no DUT feature is under test.
+
+*Test Procedure*:
+
+[arabic]
+. Build `hello_world` through `[c_build.default]` and stage `hello_world.ecc.hex` beside the simulator.
+. Hold `boot_stall` from t=0, clear CPU_CTRL SCRATCH_0 and read the clear back, so a residual verdict from an earlier test cannot be counted.
+. Program the reset vector, release all four cores, then release `boot_stall`.
+. Poll SCRATCH_0 for the PASS magic, failing on `TEST_FAIL`, on the `0xBAD0_xxxx` namespace, and on the bound expiring.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-FW-HELLO-WORLD-BOOT` |The firmware's own PASS word is read back from CPU_CTRL SCRATCH_0 after a cleared-and-verified start
+|===
+
+*Pass Criteria*: the PASS magic is read back. **Currently fails**, and the failure is measured rather than assumed: the CPU executes the image and then parks in crt0 before `main`, with no hart trapping. The failure report carries per-hart PCs, per-hart mcause/mepc, and a comparison of the image reachable over AXI against the built image. Held out of `all` until it passes; see `testlists/fw.toml`. Enrolled in: `fw`.
+
+'''''
+
+
 === Counts
 
 [cols=",",options="header",]
 |===
 |Metric |Count
-|Enrolled open-source testcases |156
-|Feature areas |16
-|Regression groups |29
+|Enrolled open-source testcases |161
+|Feature areas |18
+|Regression groups |31
 |===
 
 === Regression Groups
@@ -6424,7 +6629,7 @@ enrolled through `dual_*` and `occp_*` rather than `all`.
 [cols=",,",options="header",]
 |===
 |Group |Tests |Purpose
-|`all` |152 |The package regression, single-instance plus the three dual bring-up scenarios. Four testcases are out: two on measured runtime (`smc_occp_dual_unsecure_boot_test`, `smc_prod_rom_occp_ready_test`) and two against #585 and #1488
+|`all` |152 |The package regression, single-instance plus the three dual bring-up scenarios. Nine of the 161 enrolled are out: two on measured runtime (`smc_occp_dual_unsecure_boot_test`, `smc_prod_rom_occp_ready_test`), two against #585 and #1488, the four `rtl_issue` reproducers whose job is to fail, and `smc_fw_hello_world_test` until its image reaches main()
 |`avsbus_depth` |2 |avsbus depth coverage
 |`axil` |2 |axil coverage
 |`balanced_ip` |99 |One-per-IP breadth run used for routine regression
@@ -6437,6 +6642,7 @@ enrolled through `dual_*` and `occp_*` rather than `all`.
 |`depth_uart_log` |1 |depth uart log coverage
 |`dual_all` |4 |Every `SMC_DUAL` two-instance testcase
 |`dual_smoke` |2 |Two-instance bring-up: elaboration and the AXI scratch probe
+|`fw` |1 |Firmware images executed by the CPU cluster
 |`gpio` |8 |gpio coverage
 |`i2c` |14 |i2c coverage
 |`i3c_depth` |1 |i3c depth coverage
@@ -6449,6 +6655,7 @@ enrolled through `dual_*` and `occp_*` rather than `all`.
 |`project_p0_triplets` |38 |project p0 triplets coverage
 |`pyuvm` |35 |Scenarios with a PyUVM implementation
 |`reset` |14 |reset coverage
+|`rtl_issue` |4 |Reproducers for filed RTL defects. Expected to fail; held out of `all`
 |`smoke` |35 |Fast bring-up gate
 |`uart` |6 |uart coverage
 |`vplan_gaps` |24 |vplan gaps coverage
