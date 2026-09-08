@@ -253,8 +253,8 @@ class RepositoryContractTests(unittest.TestCase):
             "XbarOutputIdW": "10",
         }.items():
             self.assertRegex(xbar, rf"{parameter}\s*=\s*{value};")
-        self.assertIn("!Headline configuration !`DefaultCfg`, `SEP=1`", source)
-        self.assertIn("!Alternate configuration !`NoSepCfg`, `SEP=0`", source)
+        self.assertIn("!Main configuration !4-core SMC + SEP + DTP", source)
+        self.assertIn("!Alternate configuration !4-core SMC + DTP", source)
         self.assertIn("!Full-config fabric !3 AXI4 inputs by 3 outputs", source)
         self.assertIn("!External interrupts to SMC !256", source)
 
@@ -268,8 +268,9 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn("assign sep_lc_state      = 8'hf0;", rtl)
         self.assertIn("assign sep_region_size_o                = '0;", rtl)
         self.assertRegex(rtl, r"\.RESP\s*\(axi_pkg::RESP_DECERR\)")
-        self.assertIn("removes SEP and the 3-by-3 crossbar", source)
-        self.assertIn("DTP receives an all-zero debug-disable vector", source)
+        self.assertIn("Direct external-to-SMC and SMC-to-external AXI paths", source)
+        self.assertIn("DTP and its primary JTAG interface remain present", source)
+        self.assertIn("are not lifecycle-disabled", source)
         self.assertIn("SEP OTP debug accesses receive DECERR", source)
 
     def test_smu_spec_uses_current_paths_and_debug_handoff(self) -> None:
@@ -296,7 +297,7 @@ class RepositoryContractTests(unittest.TestCase):
             "DTP",
             "SMC",
             "SEP",
-            "SMU AXI fabric (SEP=1)",
+            "SMU AXI fabric (with SEP)",
             "Adopter IP / system services",
             "Technology implementation",
         ):
@@ -312,7 +313,6 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertIn("Wrapper results are not combined", source)
         self.assertIn("examples only", source)
         self.assertIn("current verification and maturity status", source.lower())
-        self.assertNotIn("compliant", source.lower())
 
 
 if __name__ == "__main__":

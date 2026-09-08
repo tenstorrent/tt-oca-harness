@@ -93,15 +93,17 @@ Before drafting the SMC sheet, resolve or bound:
 
 ## SMU
 
-The initial sheet positions SMU as the composed integration product rather than
-repeating its three component sheets. It names the full `DefaultCfg`, `SEP=1`
-build as the headline reference and bounds the alternate `NoSepCfg`, `SEP=0`
-behavior directly from the elaboration branches in `smu.sv`.
+The sheet positions SMU as the composed integration product with a standardized
+OCAH chiplet interface. Its main configuration is four-core SMC + SEP + DTP,
+corresponding to `DefaultCfg`, `SEP=1`; the alternate omits SEP. The underlying
+configuration fields and no-SEP behavior are recorded here and in `smu.sv`.
+The architectural positioning does not claim completed standards certification
+or product security assessment.
 
 |Priority |Missing or conflicting detail |Current evidence |Required resolution |
 |---|---|---|---|
 |Before publication |Approved public configuration names and support status |`smu_pkg.sv` defines `DefaultCfg` and `NoSepCfg`, but their struct fields are identical; the separate `SEP` parameter selects presence. `smu.sv` implements both elaboration branches. |Approve customer-facing names, declare whether both are release configurations, and publish one complete generated parameter manifest for each. |
-|Before publication |No-SEP security posture |With `SEP=0`, RTL ties `sep_dbg_disable` to zero, reports fixed lifecycle value `8'hf0`, disables SEP endpoints, and returns DECERR on the SEP OTP debug path. |Decide whether debug-open is acceptable without SEP or provide an alternative policy mechanism. Document the meaning of the fixed lifecycle value and all required system enforcement. |
+|Before publication |No-SEP security posture |With `SEP=0`, RTL ties `sep_dbg_disable` to zero, reports fixed lifecycle value `8'hf0`, disables SEP endpoints, and returns DECERR on the SEP OTP debug path. DTP and the SMU's primary JTAG interface remain instantiated. No automatic handoff of debug authorization to another chiplet is implemented by this selection. |Define the system JTAG topology and no-SEP debug/security policy, including any alternative enforcement mechanism. Document the meaning of the fixed lifecycle value and all required system enforcement. |
 |Before publication |Runtime aperture programming and ownership |The full 3-by-3 crossbar accepts CSR-driven SMC/SEP base and size values. RTL asserts non-overlap in simulation but does not freeze updates while traffic is in flight. Unmatched SMC/SEP egress uses the external output; unmatched external ingress decode-errors. |Assign firmware ownership, reset values, programming order, lock/stability rules, containment checks, and permitted error responses. Publish the chiplet-envelope relationship. |
 |Before publication |System boot and handoff contract |SMC owns primary reset and external boot/repair gating; SEP supplies lifecycle, mailbox, watchdog-reset, and debug-disable signals when present. Wrapper smoke observes SMC firmware and real-SEP boot readiness, while broader production boot policy belongs to component firmware owners. |Approve the system sequence from power-good through memory repair, fuse sense, reset release, firmware readiness, lifecycle handoff, failure/recovery, and clock-stop interaction. |
 |Before publication |Reference-wrapper boundary |`hw/top/smu_wrapper.sv` attaches open memory/eFuse/pad and termination models through `smc_ip_integration.sv` and `sep_ip_integration.sv`; the Integrator Guide describes these as examples for replacement. |List which wrapper and model files ship as examples, identify non-synthesizable or non-production behavior, and provide an adopter replacement/qualification checklist. |

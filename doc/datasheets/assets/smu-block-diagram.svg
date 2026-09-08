@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
-<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="480" viewBox="0 0 1000 480">
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="500" viewBox="0 0 1240 500">
   <defs>
     <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
       <path d="M0,0 L8,4 L0,8 z" fill="#484848"/>
@@ -10,10 +10,11 @@
       <path d="M8,0 L0,4 L8,8 z" fill="#484848"/>
     </marker>
     <style>
-      .title { font: 700 24px sans-serif; fill: #103525; }
-      .label { font: 700 17px sans-serif; fill: #103525; }
-      .text { font: 14px sans-serif; fill: #484848; }
-      .small { font: 12px sans-serif; fill: #484848; }
+      text { font-family: Arial, sans-serif; }
+      .title { font-weight: bold; font-size: 24px; fill: #103525; }
+      .label { font-weight: bold; font-size: 17px; fill: #103525; }
+      .text { font-size: 15px; fill: #484848; }
+      .small { font-size: 14px; fill: #484848; }
       .chiplet { fill: #ffffff; stroke: #77736b; stroke-width: 2; stroke-dasharray: 8 5; rx: 12; }
       .smu { fill: #f8f4eb; stroke: #103525; stroke-width: 2.5; rx: 10; }
       .core { fill: #ffffff; stroke: #937027; stroke-width: 2; rx: 8; }
@@ -25,60 +26,63 @@
     </style>
   </defs>
 
-  <text class="title" x="500" y="27" text-anchor="middle">SMU integration boundary</text>
+  <text class="title" x="620" y="27" text-anchor="middle">SMU integration boundary</text>
 
-  <rect class="external" x="15" y="105" width="175" height="215"/>
-  <text class="label" x="102" y="138" text-anchor="middle">External system</text>
-  <text class="text" x="102" y="173" text-anchor="middle">SMN / SoC fabric</text>
-  <text class="text" x="102" y="199" text-anchor="middle">JTAG / scan tools</text>
-  <text class="text" x="102" y="225" text-anchor="middle">clocks / reset / power</text>
-  <text class="text" x="102" y="251" text-anchor="middle">interrupts / telemetry</text>
-  <text class="small" x="102" y="288" text-anchor="middle">adopter-owned policy</text>
+  <rect class="external" x="10" y="105" width="200" height="215"/>
+  <text class="label" x="110" y="138" text-anchor="middle">External system</text>
+  <text class="text" x="110" y="173" text-anchor="middle">SMN / SoC fabric</text>
+  <text class="text" x="110" y="199" text-anchor="middle">JTAG / scan tools</text>
+  <text class="text" x="110" y="225" text-anchor="middle">clocks / reset / power</text>
+  <text class="text" x="110" y="251" text-anchor="middle">interrupts / telemetry</text>
+  <text class="small" x="110" y="288" text-anchor="middle">adopter-owned policy</text>
 
-  <rect class="chiplet" x="220" y="48" width="550" height="405"/>
-  <text class="label" x="245" y="77">OCAH chiplet</text>
+  <rect class="chiplet" x="320" y="48" width="600" height="430"/>
+  <text class="label" x="345" y="77">OCAH chiplet</text>
 
-  <rect class="smu" x="245" y="94" width="500" height="250"/>
-  <text class="label" x="495" y="121" text-anchor="middle">System Management Unit (SMU)</text>
-  <rect class="core" x="266" y="145" width="134" height="78"/>
-  <text class="label" x="333" y="177" text-anchor="middle">DTP</text>
-  <text class="small" x="333" y="201" text-anchor="middle">debug · scan · trigger</text>
-  <rect class="core" x="433" y="145" width="134" height="78"/>
-  <text class="label" x="500" y="177" text-anchor="middle">SMC</text>
-  <text class="small" x="500" y="201" text-anchor="middle">management · reset</text>
-  <rect class="optional" x="600" y="145" width="124" height="78"/>
-  <text class="label" x="662" y="177" text-anchor="middle">SEP</text>
-  <text class="small" x="662" y="201" text-anchor="middle">optional security</text>
-  <rect class="core" x="335" y="257" width="330" height="62"/>
-  <text class="label" x="500" y="283" text-anchor="middle">SMU AXI fabric (SEP=1)</text>
-  <text class="small" x="500" y="304" text-anchor="middle">3 inputs × 3 outputs · runtime apertures · ID conversion</text>
+  <rect class="smu" x="345" y="94" width="550" height="250"/>
+  <text class="label" x="620" y="121" text-anchor="middle">System Management Unit (SMU)</text>
+  <rect class="core" x="365" y="145" width="150" height="78"/>
+  <text class="label" x="440" y="177" text-anchor="middle">DTP</text>
+  <text class="small" x="440" y="201" text-anchor="middle">debug · scan · trigger</text>
+  <rect class="core" x="550" y="145" width="150" height="78"/>
+  <text class="label" x="625" y="177" text-anchor="middle">SMC</text>
+  <text class="small" x="625" y="201" text-anchor="middle">management · reset</text>
+  <rect class="optional" x="735" y="145" width="140" height="78"/>
+  <text class="label" x="805" y="177" text-anchor="middle">SEP</text>
+  <text class="small" x="805" y="201" text-anchor="middle">optional security</text>
+  <rect class="core" x="400" y="260" width="445" height="70"/>
+  <text class="label" x="622" y="282" text-anchor="middle">SMU AXI fabric (with SEP)</text>
+  <text class="small" x="622" y="302" text-anchor="middle">3 inputs × 3 outputs</text>
+  <text class="small" x="622" y="320" text-anchor="middle">Memory apertures · ID conversion</text>
 
-  <rect class="core" x="245" y="374" width="230" height="55"/>
-  <text class="label" x="360" y="398" text-anchor="middle">Adopter IP / system services</text>
-  <text class="small" x="360" y="417" text-anchor="middle">only through connected mappings</text>
-  <rect class="core" x="500" y="374" width="245" height="55"/>
-  <text class="label" x="622" y="398" text-anchor="middle">Technology implementation</text>
-  <text class="small" x="622" y="417" text-anchor="middle">memories · OTP · pads · clocks · entropy</text>
+  <rect class="core" x="345" y="385" width="250" height="76"/>
+  <text class="label" x="470" y="410" text-anchor="middle">Adopter IP / system services</text>
+  <text class="small" x="470" y="440" text-anchor="middle">only through connected mappings</text>
+  <rect class="core" x="615" y="385" width="280" height="76"/>
+  <text class="label" x="755" y="410" text-anchor="middle">Technology implementation</text>
+  <text class="small" x="755" y="432" text-anchor="middle">memories · OTP · pads</text>
+  <text class="small" x="755" y="450" text-anchor="middle">clocks · entropy</text>
 
-  <rect class="chiplet" x="805" y="105" width="180" height="250"/>
-  <text class="label" x="895" y="138" text-anchor="middle">Peer OCAH chiplet</text>
-  <rect class="core" x="829" y="180" width="132" height="76"/>
-  <text class="label" x="895" y="212" text-anchor="middle">SMU / adopter IP</text>
-  <text class="small" x="895" y="236" text-anchor="middle">routed by system</text>
+  <rect class="chiplet" x="1030" y="105" width="200" height="250"/>
+  <text class="label" x="1130" y="138" text-anchor="middle">Peer OCAH chiplet</text>
+  <rect class="core" x="1045" y="190" width="170" height="120"/>
+  <text class="label" x="1130" y="227" text-anchor="middle">SMU / adopter IP</text>
+  <text class="small" x="1130" y="253" text-anchor="middle">routed by system</text>
 
-  <path class="both" d="M190 175 H266"/>
-  <text class="small" x="228" y="164" text-anchor="middle">JTAG</text>
-  <path class="both" d="M190 258 H335"/>
-  <text class="small" x="228" y="277" text-anchor="middle">AXI4</text>
-  <path class="line" d="M190 218 H433"/>
-  <path class="both" d="M400 184 H433"/>
-  <path class="both" d="M567 184 H600"/>
-  <path class="both" d="M333 223 V257"/>
-  <path class="both" d="M500 223 V257"/>
-  <path class="both" d="M662 223 V257"/>
-  <path class="both" d="M665 288 H829"/>
-  <text class="small" x="747" y="277" text-anchor="middle">system fabric</text>
-  <path class="bus" d="M360 344 V359 H622"/>
-  <path class="both" d="M360 359 V374"/>
-  <path class="both" d="M622 319 V374"/>
+  <path class="both" d="M210 175 H365"/>
+  <text class="small" x="265" y="164" text-anchor="middle">JTAG</text>
+  <path class="both" d="M210 280 H400"/>
+  <text class="small" x="265" y="267" text-anchor="middle">AXI4</text>
+  <path class="line" d="M210 239 H532 V210 H550"/>
+  <text class="small" x="265" y="227" text-anchor="middle">clocks / reset</text>
+  <path class="both" d="M515 184 H550"/>
+  <path class="both" d="M700 184 H735"/>
+  <path class="both" d="M440 223 V260"/>
+  <path class="both" d="M625 223 V260"/>
+  <path class="both" d="M805 223 V260"/>
+  <path class="both" d="M845 288 H1045"/>
+  <text class="small" x="965" y="276" text-anchor="middle">system fabric</text>
+  <path class="bus" d="M470 344 V367 H755"/>
+  <path class="both" d="M470 367 V385"/>
+  <path class="both" d="M755 330 V385"/>
 </svg>

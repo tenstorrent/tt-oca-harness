@@ -60,26 +60,20 @@ a|
 [.datasheet-section]
 OVERVIEW
 
-The System Management Unit (SMU) combines the System Management Controller
-(SMC), Debug and Test Ports (DTP), and, by default, the Security Processor
-(SEP). In the full configuration, a 3-input, 3-output AXI4 crossbar routes SMC,
-SEP, and external-system traffic using runtime-programmed SMC and SEP apertures.
-DTP connects JTAG, scan, reset override, cross-trigger, and debug-access paths;
-SMC coordinates management, resets, clocking, interrupts, and peripheral
-services; SEP supplies lifecycle-derived debug controls and security services.
+The System Management Unit (SMU) is a composite module providing a standardized
+OCAH compliant chiplet interface combining SEP, SMC, and DTP sub-blocks into a
+single instantiable subsystem with standardized interfaces to a user defined
+subsystem. The SMU provides chiplet functions such as clock, voltage and reset
+management in addition to Root of Trust (RoT) services in a physically isolated
+environment.
 
-The `smu` RTL top keeps technology-specific memories, OTP/eFuse, clocking,
-sensors, pads, entropy, and selected I/O behind typed integration interfaces.
-The open `smu_wrapper` attaches generic models and example termination for a
-reference build, but is not a characterized production implementation. Setting
-`SEP=0` removes SEP and the 3-by-3 crossbar, connects SMC directly to the stable
-external AXI boundary through ID converters, and applies defined SEP tie-offs.
+The configuration can be changed to remove the SEP and its associated interfaces.
 
 // datasheet-section: system-context
 [.datasheet-section]
 SYSTEM CONTEXT
 
-image::../assets/smu-block-diagram.svg[SMU system context,pdfwidth=4.15in,align=center]
+image::../assets/smu-block-diagram.svg[SMU system context,pdfwidth=4.75in,align=center]
 
 // datasheet-section: at-a-glance
 [.datasheet-section]
@@ -88,8 +82,8 @@ AT A GLANCE
 [cols="43,57",options="header"]
 !===
 !Feature !Defaults
-!Headline configuration !`DefaultCfg`, `SEP=1`: 4-core SMC + SEP + DTP
-!Alternate configuration !`NoSepCfg`, `SEP=0`: 4-core SMC + DTP
+!Main configuration !4-core SMC + SEP + DTP
+!Alternate configuration !4-core SMC + DTP
 !Full-config fabric !3 AXI4 inputs by 3 outputs; 2 runtime address rules
 !AXI4 boundary !56-bit address, 64-bit data, 12-bit user
 !AXI IDs !8-bit input; 10-bit crossbar output; 6-bit SMC/SEP target
@@ -97,11 +91,6 @@ AT A GLANCE
 !Mailbox instances !32 SMC; 8 SEP when present
 !External trigger interfaces !16 CTPs; 8 internal CTs; 8 clock-stop requests
 !===
-
-[.datasheet-small]
-`NoSepCfg` and `DefaultCfg` currently carry the same configuration fields; the
-separate `SEP` parameter selects presence. The adopter must record both values
-to identify a reproducible build.
 
 |===
 
@@ -121,7 +110,7 @@ CAPABILITIES
   SEP-to-SMC mailbox/reset/security status, and SMC-to-DTP cross-trigger control
 * SMC-owned primary reset sequencing, 32 subsystem reset/isolation slots,
   external boot/repair gate, watchdog handoffs, and DTP clock-stop output
-* Lifecycle-derived SEP debug-disable controls feed DTP in the full configuration
+* The SEP lifecycle controller enables or disables DTP debug and test paths
 
 *Full-configuration fabric*
 
@@ -137,6 +126,8 @@ CAPABILITIES
 *No-SEP behavior*
 
 * Direct external-to-SMC and SMC-to-external AXI paths retain the public widths
+* DTP and its primary JTAG interface remain present; DTP debug and test paths
+  are not lifecycle-disabled
 * SEP memory, entropy, I/O, mailbox, lifecycle-error, and status ports are tied
   to defined inactive values; the SEP aperture reports zero size
 * SEP OTP debug accesses receive DECERR and the SEP secondary TAP has no target
@@ -158,7 +149,7 @@ reset-control slice, 16 CTPs, 8 local trigger paths, and 8 clock-stop requests
 interrupts, GPIO/UART events, telemetry, timer, straps, and RAS status
 !Technology interfaces !SMC/SEP ROM and SRAM, eFuse/OTP, I3C table memory,
 trace memory, GPIO pads, PLL/PVT, entropy, and SEP crypto-memory boundaries
-!Build-time !`SEP`, `Cfg`, security-disable token, external entropy count,
+!Build-time !SEP configuration, external entropy sources,
 JTAG functions/identity, SMC CPU selection, and SEP memory/Adams Bridge options
 !===
 
@@ -167,14 +158,12 @@ a|
 [.datasheet-section]
 INTEGRATION DEPENDENCIES
 
-* Select `DefaultCfg`/`SEP=1` or `NoSepCfg`/`SEP=0`; preserve the complete
-  parameter manifest with the release.
+* Decide whether or not to include SEP.
 * Assign non-overlapping chiplet envelopes and program non-overlapping SMC/SEP
-  apertures. Keep aperture controls stable while transactions are in flight and
-  route unsupported atomic requests according to system policy.
-* In `SEP=0`, DTP receives an all-zero debug-disable vector and the lifecycle
-  output uses a fixed tie-off. Do not treat those values as product security
-  authorization; define an acceptable no-SEP debug and lifecycle policy.
+  memory apertures. Change memory apertures only after outstanding transactions
+  have completed.
+* If SEP is not configured, the default tie-offs do not provide security
+  authorization; define a no-SEP debug and security policy.
 * Replace zero-valued JTAG identity and SEP security-token fields; supply
   reviewed firmware, provisioning, recovery, and update policy.
 * Provide production clocks, reset/CDC constraints, power sequencing, pads,
