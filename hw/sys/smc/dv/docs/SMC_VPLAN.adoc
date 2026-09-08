@@ -6673,5 +6673,6 @@ the wrong reason.
 |PLL and PVT are placeholder RTL in this harness |The PLL/PVT scenarios in the wider plan cannot be run: there is no design behind the register interface |Enroll them when the adopter's PLL/PVT blocks are integrated
 |The I3C DAT/DCT RAM is not present in `tb_top` |CCC/IBI scenarios that need device-address-table state cannot run; `smc_i3c_to_fabric_test` is decode-only |Restore the DAT/DCT model, or drive the sequences from a full I3C host model
 |The DTP CSR window has no responder |AXI-Lite accesses to it would wedge, so the boundary is left idle rather than answered by a placeholder |Connect the DTP CSR subordinate; SMU already connects the same port
+|The cluster PLIC aperture (0xC400_0000) is not writable from SEP_IN AXI |No testcase can cover the PLIC register file from the external port. Measured: PRIORITY[1] accepts a write with OKAY and stores nothing; the +2 MB context pages return non-OKAY. `smc_cluster_plic_csr_test` holds the evidence and is not enrolled |Reach it from the CPU, which needs the firmware runner; or expose a write path from SEP_IN
 |SV covergroups are not supported by Verilator |Functional coverage is Python-side on the open-source flow |See `SMC_FCOV.adoc`
 |===

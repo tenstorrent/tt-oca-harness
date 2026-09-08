@@ -52,7 +52,7 @@ name = "all"
 #                                     path, `run_modes = ["prod_rom"]`. Runs as
 #                                     `occp_boot`, and carries the `ci` tag.
 #
-# 12 test modules under cocotb/tests/ are in no testlist. Each carries its
+# 13 test modules under cocotb/tests/ are in no testlist. Each carries its
 # deferral reason in its own docstring, on a leading `# deferred: <tag>` line
 # where one applies:
 #
@@ -76,6 +76,11 @@ name = "all"
 #   smc_sideband_avsbus_octs_bfm_test
 #                                 fake_bfm: raises on entry rather than standing
 #                                 in for a pad VIP that does not exist
+#   smc_cluster_plic_csr_test     no_sep_in_write_path: the PLIC aperture at
+#                                 0xC400_0000 accepts writes with OKAY and
+#                                 stores nothing, and its +2 MB context pages
+#                                 return non-OKAY. Measured; see the docstring
+#                                 and SMC_VPLAN Known Limitations
 #
 # Four enrolled tests are also held out of this group, all red for a filed RTL
 # reason rather than a test defect. They keep their own [[tests]] entries and
