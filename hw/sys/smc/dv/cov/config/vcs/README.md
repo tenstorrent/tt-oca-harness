@@ -26,9 +26,9 @@ set, and cannot:
 - VCS scopes by hierarchy. Vendored pulp `axi` / `common_cells` are structural
   glue instantiated at 20 and 35 distinct places respectively, so no `-tree`
   reaches them without dropping real SMC RTL, and naming all 160 vendored
-  modules with `-module` would be unmaintainable. The VCS file therefore drops
-  the four vendored blocks that *do* sit under one instance each, and leaves
-  pulp glue in.
+  modules with `-module` would be unmaintainable. The VCS file therefore names
+  the two vendored blocks that *do* sit under one instance each — i3c-core and
+  tt-hw-debug — and leaves pulp glue in.
 
 ## What the numbers are
 
@@ -58,9 +58,16 @@ merged database rather than assumed.
 
 ### `../verilator/smc_cov_scope.vlt`
 
-Same intent expressed over source paths: `*/vendor/*`,
-`*/chipyard_generated_files/*`, `*/hw/sys/smc/dv/tb/*`,
-`*/hw/sys/smc/dv/models/*`.
+Same intent expressed over source paths. These are the patterns the file
+carries, verbatim — note the absence of a `/` after the leading `*`, for the
+reason measured under "Verilator glob matching" below:
+
+    coverage_off -file "*hw/sys/smc/dv/tb/tb_top.sv"
+    coverage_off -file "*hw/sys/smc/dv/tb/smc_tb_if.sv"
+    coverage_off -file "*hw/sys/smc/dv/tb/verilator_stubs/*"
+    coverage_off -file "*hw/sys/smc/dv/models/*"
+    coverage_off -file "*chipyard_generated_files/*"
+    coverage_off -file "*vendor/*"
 
 `hw/sys/smc/dv/cov/sv/*` is deliberately **not** excluded — those files carry
 the `OCAH_FCOV_COVER` points that populate the `user` metric family.

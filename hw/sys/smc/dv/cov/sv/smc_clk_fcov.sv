@@ -59,35 +59,71 @@ module smc_clk_fcov #(
   // so a read landing on an increment only shifts a ratio by one count.
   // ------------------------------------------------------------------
   localparam int unsigned CntWidth = 32;
+  localparam int unsigned WinWidth = $clog2(WindowCycles);
+  localparam logic [WinWidth-1:0] WindowLast = WinWidth'(WindowCycles - 1);
 
+  // Every register here carries a reset branch. Without one a 4-state
+  // simulator holds the counters at X for the whole run, the window never
+  // closes, and every ratio point below is unhittable on the commercial
+  // path while still reading as covered-by-omission on Verilator, which
+  // zero-initialises.
   logic [CntWidth-1:0] cnt_ref_q;
   logic [CntWidth-1:0] cnt_smc_q;
   logic [CntWidth-1:0] cnt_periph_q;
-  always_ff @(posedge clk_ref_i) cnt_ref_q <= cnt_ref_q + 1'b1;
-  always_ff @(posedge clk_smc_i) cnt_smc_q <= cnt_smc_q + 1'b1;
-  always_ff @(posedge clk_periph_i) cnt_periph_q <= cnt_periph_q + 1'b1;
-
-  logic [CntWidth-1:0] win_ref_q, win_smc_q, win_periph_q;
-  logic window_tick_q;
-  wire window_boundary = (cnt_ref_q % WindowCycles) == '0;
 
   always_ff @(posedge clk_ref_i) begin
-    if (window_boundary) begin
-      win_ref_q <= cnt_ref_q;
-      win_smc_q <= cnt_smc_q;
-      win_periph_q <= cnt_periph_q;
+    if (in_reset) cnt_ref_q <= '0;
+    else cnt_ref_q <= cnt_ref_q + 1'b1;
+  end
+  always_ff @(posedge clk_smc_i) begin
+    if (in_reset) cnt_smc_q <= '0;
+    else cnt_smc_q <= cnt_smc_q + 1'b1;
+  end
+  always_ff @(posedge clk_periph_i) begin
+    if (in_reset) cnt_periph_q <= '0;
+    else cnt_periph_q <= cnt_periph_q + 1'b1;
+  end
+
+  // The deltas are registered at the closing edge against the base captured
+  // when the window opened, so they span WindowCycles ref edges. Reading
+  // live counters against a base loaded on the same edge would measure a
+  // single cycle instead.
+  logic [WinWidth-1:0] win_cnt_q;
+  logic [CntWidth-1:0] base_ref_q, base_smc_q, base_periph_q;
+  logic [CntWidth-1:0] d_ref_q, d_smc_q, d_periph_q;
+  logic window_tick_q;
+
+  always_ff @(posedge clk_ref_i) begin
+    if (in_reset) begin
+      win_cnt_q <= '0;
+      base_ref_q <= '0;
+      base_smc_q <= '0;
+      base_periph_q <= '0;
+      d_ref_q <= '0;
+      d_smc_q <= '0;
+      d_periph_q <= '0;
+      window_tick_q <= 1'b0;
+    end else if (win_cnt_q == WindowLast) begin
+      win_cnt_q <= '0;
+      d_ref_q <= cnt_ref_q - base_ref_q;
+      d_smc_q <= cnt_smc_q - base_smc_q;
+      d_periph_q <= cnt_periph_q - base_periph_q;
+      base_ref_q <= cnt_ref_q;
+      base_smc_q <= cnt_smc_q;
+      base_periph_q <= cnt_periph_q;
       window_tick_q <= 1'b1;
     end else begin
+      win_cnt_q <= win_cnt_q + 1'b1;
       window_tick_q <= 1'b0;
     end
   end
 
-  wire [CntWidth-1:0] d_ref = cnt_ref_q - win_ref_q;
-  wire [CntWidth-1:0] d_smc = cnt_smc_q - win_smc_q;
-  wire [CntWidth-1:0] d_periph = cnt_periph_q - win_periph_q;
+  wire [CntWidth-1:0] d_ref = d_ref_q;
+  wire [CntWidth-1:0] d_smc = d_smc_q;
+  wire [CntWidth-1:0] d_periph = d_periph_q;
 
-  // A window that produced no edges at all on a domain is the liveness
-  // hole worth naming; the three ordering relations are the ratio bins.
+  // A window in which a domain produced no edge at all while ref ran is the
+  // liveness hole worth naming.
   wire smc_stalled_e = window_tick_q && (d_ref != '0) && (d_smc == '0);
   wire periph_stalled_e = window_tick_q && (d_ref != '0) && (d_periph == '0);
   `OCAH_FCOV_COVER(c_clk_smc_stalled_window, smc_stalled_e, clk_ref_i, in_reset)
@@ -118,19 +154,44 @@ module smc_clk_fcov #(
   // Clock-gate enables at both values. This is the `i2c_state` (resolvable,
   // cg_en) intent split so the un-driven half is a named hole: the Python
   // bin saturates at unique=1 precisely because cg_en never toggles.
+  //
+  // A closed gate is the quiescent state, so an unqualified closed point is
+  // hit at reset release with no stimulus at all. Each closed point is
+  // therefore gated on that same gate having been seen open, which makes it
+  // mean "the gate closes again after opening" -- the half of the contract
+  // the open point cannot show.
   // ------------------------------------------------------------------
   wire i2c_cg_open_e = (i2c_cg_en_i === 1'b1);
-  wire i2c_cg_closed_e = (i2c_cg_en_i === 1'b0);
+  wire dma_cg_open_e = (dma_cg_en_i === 1'b1);
+  wire zeroer_cg_open_e = (zeroer_cg_en_i === 1'b1);
+
+  logic i2c_cg_open_seen_q, dma_cg_open_seen_q, zeroer_cg_open_seen_q;
+  logic dma_busy_seen_q;
+
+  always_ff @(posedge clk_periph_i) begin
+    if (in_reset) i2c_cg_open_seen_q <= 1'b0;
+    else if (i2c_cg_open_e) i2c_cg_open_seen_q <= 1'b1;
+  end
+
+  always_ff @(posedge clk_smc_i) begin
+    if (in_reset) begin
+      dma_cg_open_seen_q <= 1'b0;
+      zeroer_cg_open_seen_q <= 1'b0;
+      dma_busy_seen_q <= 1'b0;
+    end else begin
+      if (dma_cg_open_e) dma_cg_open_seen_q <= 1'b1;
+      if (zeroer_cg_open_e) zeroer_cg_open_seen_q <= 1'b1;
+      if (dma_gater_busy_i === 1'b1) dma_busy_seen_q <= 1'b1;
+    end
+  end
+
+  wire i2c_cg_closed_e = i2c_cg_open_seen_q && (i2c_cg_en_i === 1'b0);
+  wire dma_cg_closed_e = dma_cg_open_seen_q && (dma_cg_en_i === 1'b0);
+  wire zeroer_cg_closed_e = zeroer_cg_open_seen_q && (zeroer_cg_en_i === 1'b0);
   `OCAH_FCOV_COVER(c_i2c_cg_open, i2c_cg_open_e, clk_periph_i, in_reset)
   `OCAH_FCOV_COVER(c_i2c_cg_closed, i2c_cg_closed_e, clk_periph_i, in_reset)
-
-  wire dma_cg_open_e = (dma_cg_en_i === 1'b1);
-  wire dma_cg_closed_e = (dma_cg_en_i === 1'b0);
   `OCAH_FCOV_COVER(c_dma_cg_open, dma_cg_open_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_dma_cg_closed, dma_cg_closed_e, clk_smc_i, in_reset)
-
-  wire zeroer_cg_open_e = (zeroer_cg_en_i === 1'b1);
-  wire zeroer_cg_closed_e = (zeroer_cg_en_i === 1'b0);
   `OCAH_FCOV_COVER(c_zeroer_cg_open, zeroer_cg_open_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_zeroer_cg_closed, zeroer_cg_closed_e, clk_smc_i, in_reset)
 
@@ -153,6 +214,12 @@ module smc_clk_fcov #(
   wire zeroer_axi_clk_toggling = (zeroer_gated_axi_clk_i !== zeroer_axi_clk_q);
   wire zeroer_reg_clk_toggling = (zeroer_gated_reg_clk_i !== zeroer_reg_clk_q);
 
+  // The held points inherit the open-seen qualifier through *_cg_closed_e.
+  // The reg clock is gated by the AXI-Lite snoop rather than by
+  // zeroer_cg_en, so its running point is qualified by bus_active, matching
+  // how the AXI one is qualified by its own enable.
+  wire zeroer_bus_active_e = (zeroer_bus_active_i === 1'b1);
+
   wire dma_clk_running_e = dma_cg_open_e && dma_clk_toggling;
   wire dma_clk_held_e = dma_cg_closed_e && !dma_clk_toggling;
   `OCAH_FCOV_COVER(c_dma_gated_clk_running, dma_clk_running_e, clk_smc_i, in_reset)
@@ -160,8 +227,8 @@ module smc_clk_fcov #(
 
   wire zeroer_axi_running_e = zeroer_cg_open_e && zeroer_axi_clk_toggling;
   wire zeroer_axi_held_e = zeroer_cg_closed_e && !zeroer_axi_clk_toggling;
-  wire zeroer_reg_running_e = zeroer_reg_clk_toggling;
-  wire zeroer_reg_held_e = !zeroer_reg_clk_toggling && zeroer_cg_closed_e;
+  wire zeroer_reg_running_e = zeroer_bus_active_e && zeroer_reg_clk_toggling;
+  wire zeroer_reg_held_e = zeroer_cg_closed_e && !zeroer_reg_clk_toggling;
   `OCAH_FCOV_COVER(c_zeroer_gated_axi_clk_running, zeroer_axi_running_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_zeroer_gated_axi_clk_held, zeroer_axi_held_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_zeroer_gated_reg_clk_running, zeroer_reg_running_e, clk_smc_i, in_reset)
@@ -172,7 +239,11 @@ module smc_clk_fcov #(
   // the gate response to each are the clock-gating contract; the
   // busy-with-gate-closed point is the one that should stay empty.
   // ------------------------------------------------------------------
-  wire dma_busy_fe0_be0_e = (dma_frontend_busy_i === 1'b0) && (dma_backend_busy_i === 1'b0);
+  // fe0_be0 is the idle state, so it carries the busy-seen qualifier and
+  // means "the engine returned to idle after working" rather than "nothing
+  // has happened yet".
+  wire dma_busy_fe0_be0_e = dma_busy_seen_q && (dma_frontend_busy_i === 1'b0)
+      && (dma_backend_busy_i === 1'b0);
   wire dma_busy_fe0_be1_e = (dma_frontend_busy_i === 1'b0) && (dma_backend_busy_i === 1'b1);
   wire dma_busy_fe1_be0_e = (dma_frontend_busy_i === 1'b1) && (dma_backend_busy_i === 1'b0);
   wire dma_busy_fe1_be1_e = (dma_frontend_busy_i === 1'b1) && (dma_backend_busy_i === 1'b1);
@@ -193,7 +264,6 @@ module smc_clk_fcov #(
 
   wire zeroer_gate_open_on_busy_e = (zeroer_busy_i === 1'b1) && zeroer_cg_open_e;
   wire zeroer_gate_closed_when_idle_e = (zeroer_busy_i === 1'b0) && zeroer_cg_closed_e;
-  wire zeroer_bus_active_e = (zeroer_bus_active_i === 1'b1);
   wire zeroer_reg_clk_resume_e = zeroer_bus_active_e && zeroer_reg_clk_toggling;
   `OCAH_FCOV_COVER(c_zeroer_gate_open_on_busy, zeroer_gate_open_on_busy_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_zeroer_gate_closed_when_idle, zeroer_gate_closed_when_idle_e, clk_smc_i,

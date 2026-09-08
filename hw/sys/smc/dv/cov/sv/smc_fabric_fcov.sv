@@ -133,13 +133,13 @@ module smc_fabric_fcov (
   wire axil_dtp_csr_e = (axil_dtp_csr_active_i === 1'b1);
   wire axil_external_e = (axil_external_active_i === 1'b1);
   wire axil_efuse_bank_e = (axil_efuse_bank_active_i === 1'b1);
+  // No all-idle point: idle is the quiescent state, true from reset release
+  // with no stimulus, so it would be covered by construction.
   wire axil_any_e = (axil_any_master_active_i === 1'b1);
-  wire axil_idle_e = (axil_any_master_active_i === 1'b0);
   `OCAH_FCOV_COVER(c_axil_dtp_csr_active, axil_dtp_csr_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_axil_external_active, axil_external_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_axil_efuse_bank_active, axil_efuse_bank_e, clk_smc_i, in_reset)
   `OCAH_FCOV_COVER(c_axil_any_master_active, axil_any_e, clk_smc_i, in_reset)
-  `OCAH_FCOV_COVER(c_axil_all_masters_idle, axil_idle_e, clk_smc_i, in_reset)
 
   // Concurrency: two downstream interfaces active in the same cycle.
   wire [2:0] axil_actives = {axil_dtp_csr_e, axil_external_e, axil_efuse_bank_e};
@@ -342,11 +342,12 @@ module smc_fabric_fcov (
   );
     option.per_instance = 1;
     cp_awsize: coverpoint awsize {bins sizes[] = {[0 : 3]}; bins wide = default;}
+    // The reserved encoding gets a normal bin, not illegal_bins: an
+    // illegal bin turns a hit into a runtime error, which would let this
+    // coverage module end a simulation and change a test's verdict.
+    // Rejecting the encoding is an assertion's job.
     cp_awburst: coverpoint awburst {
-      bins fixed = {2'b00};
-      bins incr = {2'b01};
-      bins wrap = {2'b10};
-      illegal_bins reserved = {2'b11};
+      bins fixed = {2'b00}; bins incr = {2'b01}; bins wrap = {2'b10}; bins reserved = {2'b11};
     }
     cp_wstrb: coverpoint wstrb {bins none = {8'h00}; bins full = {8'hFF}; bins partial = default;}
     x_size_burst: cross cp_awsize, cp_awburst;

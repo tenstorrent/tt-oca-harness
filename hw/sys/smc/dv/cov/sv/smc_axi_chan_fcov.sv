@@ -105,44 +105,45 @@ module smc_axi_chan_fcov (
 
 `ifndef VERILATOR
   // ------------------------------------------------------------------
-  // Commercial-simulator covergroups: the burst-length against
-  // response-code crosses the flat point list cannot express.
+  // Commercial-simulator covergroups: burst-length distribution, sampled on
+  // the address channel, and response codes, sampled on the response
+  // channel.
+  //
+  // There is deliberately no length-against-response cross. AXI lets the
+  // address channel advance while earlier transactions are still
+  // outstanding, so awlen at B accept is not the length of the burst being
+  // responded to; crossing the two would correlate unrelated values.
+  // Building that cross honestly needs the ID-indexed outstanding table this
+  // passive module does not keep.
   // ------------------------------------------------------------------
-  covergroup cg_axi_write with function sample (logic [7:0] awlen, logic [1:0] bresp);
+  covergroup cg_axi_burst_len with function sample (logic [7:0] len);
     option.per_instance = 1;
-    cp_awlen: coverpoint awlen {
+    cp_len: coverpoint len {
       bins single = {0};
       bins short_burst = {[1 : 3]};
       bins mid_burst = {[4 : 15]};
       bins long_burst = default;
     }
-    cp_bresp: coverpoint bresp {
-      bins okay = {2'b00}; bins exokay = {2'b01}; bins slverr = {2'b10}; bins decerr = {2'b11};
-    }
-    x_len_resp: cross cp_awlen, cp_bresp;
   endgroup
 
-  covergroup cg_axi_read with function sample (logic [7:0] arlen, logic [1:0] rresp);
+  covergroup cg_axi_resp with function sample (logic [1:0] resp);
     option.per_instance = 1;
-    cp_arlen: coverpoint arlen {
-      bins single = {0};
-      bins short_burst = {[1 : 3]};
-      bins mid_burst = {[4 : 15]};
-      bins long_burst = default;
-    }
-    cp_rresp: coverpoint rresp {
+    cp_resp: coverpoint resp {
       bins okay = {2'b00}; bins exokay = {2'b01}; bins slverr = {2'b10}; bins decerr = {2'b11};
     }
-    x_len_resp: cross cp_arlen, cp_rresp;
   endgroup
 
-  cg_axi_write u_cg_axi_write = new();
-  cg_axi_read u_cg_axi_read = new();
+  cg_axi_burst_len u_cg_awlen = new();
+  cg_axi_burst_len u_cg_arlen = new();
+  cg_axi_resp u_cg_bresp = new();
+  cg_axi_resp u_cg_rresp = new();
 
   always_ff @(posedge clk_i) begin
     if (!in_reset) begin
-      if (b_accept_e) u_cg_axi_write.sample(awlen_i, bresp_i);
-      if (r_accept_e) u_cg_axi_read.sample(arlen_i, rresp_i);
+      if (aw_accept_e) u_cg_awlen.sample(awlen_i);
+      if (ar_accept_e) u_cg_arlen.sample(arlen_i);
+      if (b_accept_e) u_cg_bresp.sample(bresp_i);
+      if (r_accept_e) u_cg_rresp.sample(rresp_i);
     end
   end
 `endif

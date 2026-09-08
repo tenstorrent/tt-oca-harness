@@ -120,18 +120,16 @@ module smc_periph_fcov #(
   // host traffic sits unconsumed unless enable=1 and scl_i tracks the bus,
   // so the tracking point is the one that makes an enable meaningful.
   wire i2c0_enabled_e = (i2c0_enable_i === 1'b1);
-  wire i2c0_disabled_e = (i2c0_enable_i === 1'b0);
   wire i2c0_sense_tracks_e = i2c0_enabled_e && (i2c0_scl_sense_i === i2c0_scl_i)
       && (i2c0_sda_sense_i === i2c0_sda_i);
   `OCAH_FCOV_COVER(c_i2c0_enabled, i2c0_enabled_e, clk_periph_i, in_reset)
-  `OCAH_FCOV_COVER(c_i2c0_disabled, i2c0_disabled_e, clk_periph_i, in_reset)
   `OCAH_FCOV_COVER(c_i2c0_sense_tracks_bus, i2c0_sense_tracks_e, clk_periph_i, in_reset)
 
-  // SMBALERT# is active low with a pullup when the DUT releases OE.
+  // SMBALERT# is active low with a pullup when the DUT releases OE. Only the
+  // asserted level gets a point: released is the quiescent state, true from
+  // reset with no stimulus, so covering it would prove nothing.
   wire i2c0_smbalert_asserted_e = (i2c0_smbalert_i === 1'b0);
-  wire i2c0_smbalert_released_e = (i2c0_smbalert_i === 1'b1);
   `OCAH_FCOV_COVER(c_i2c0_smbalert_asserted, i2c0_smbalert_asserted_e, clk_periph_i, in_reset)
-  `OCAH_FCOV_COVER(c_i2c0_smbalert_released, i2c0_smbalert_released_e, clk_periph_i, in_reset)
 
   // ------------------------------------------------------------------
   // I3C0 bus activity, SMC side. Scope is deliberately shallow: the CCC
@@ -152,17 +150,11 @@ module smc_periph_fcov #(
   // that the OR-reduced scalar cannot distinguish.
   // ------------------------------------------------------------------
   wire gpio_core2pad_active_e = (gpio_core2pad_any_i === 1'b1);
-  wire gpio_core2pad_idle_e = (gpio_core2pad_any_i === 1'b0);
   wire gpio_core2pad_en_active_e = (gpio_core2pad_en_any_i === 1'b1);
-  wire gpio_core2pad_en_idle_e = (gpio_core2pad_en_any_i === 1'b0);
   wire gpio_pad2core_en_active_e = (gpio_pad2core_en_any_i === 1'b1);
-  wire gpio_pad2core_en_idle_e = (gpio_pad2core_en_any_i === 1'b0);
   `OCAH_FCOV_COVER(c_gpio_core2pad_active, gpio_core2pad_active_e, clk_periph_i, in_reset)
-  `OCAH_FCOV_COVER(c_gpio_core2pad_idle, gpio_core2pad_idle_e, clk_periph_i, in_reset)
   `OCAH_FCOV_COVER(c_gpio_core2pad_en_active, gpio_core2pad_en_active_e, clk_periph_i, in_reset)
-  `OCAH_FCOV_COVER(c_gpio_core2pad_en_idle, gpio_core2pad_en_idle_e, clk_periph_i, in_reset)
   `OCAH_FCOV_COVER(c_gpio_pad2core_en_active, gpio_pad2core_en_active_e, clk_periph_i, in_reset)
-  `OCAH_FCOV_COVER(c_gpio_pad2core_en_idle, gpio_pad2core_en_idle_e, clk_periph_i, in_reset)
 
   logic [$clog2(GpioWidth+1)-1:0] core2pad_en_count;
   always_comb begin
@@ -179,9 +171,24 @@ module smc_periph_fcov #(
   `OCAH_FCOV_COVER(c_gpio_multi_pad_enabled, gpio_multi_pad_enabled_e, clk_periph_i, in_reset)
   `OCAH_FCOV_COVER(c_gpio_output_value_driven, gpio_output_value_set_e, clk_periph_i, in_reset)
 
-  // BOOT_STALL_PAD observed at both values through the pad shim.
-  wire gpio_pad57_high_e = (gpio_pad57_i === 1'b1);
-  wire gpio_pad57_low_e = (gpio_pad57_i === 1'b0);
+  // BOOT_STALL_PAD at both values through the pad shim. Both are product
+  // states, but one of them is whatever the straps leave at power-up, so
+  // each level is qualified by the pad having changed at least once --
+  // otherwise the power-on value is covered with no stimulus at all.
+  logic gpio_pad57_q;
+  logic gpio_pad57_changed_q;
+  always_ff @(posedge clk_periph_i) begin
+    if (in_reset) begin
+      gpio_pad57_q <= gpio_pad57_i;
+      gpio_pad57_changed_q <= 1'b0;
+    end else begin
+      gpio_pad57_q <= gpio_pad57_i;
+      if (gpio_pad57_i !== gpio_pad57_q) gpio_pad57_changed_q <= 1'b1;
+    end
+  end
+
+  wire gpio_pad57_high_e = gpio_pad57_changed_q && (gpio_pad57_i === 1'b1);
+  wire gpio_pad57_low_e = gpio_pad57_changed_q && (gpio_pad57_i === 1'b0);
   `OCAH_FCOV_COVER(c_gpio_boot_stall_pad_high, gpio_pad57_high_e, clk_periph_i, in_reset)
   `OCAH_FCOV_COVER(c_gpio_boot_stall_pad_low, gpio_pad57_low_e, clk_periph_i, in_reset)
 

@@ -126,6 +126,18 @@ hierarchy selector `smc_uvm_top.u_smc_<area>_fcov.c_<area>_<point>`; for the
 per-manager AXI points it is
 `smc_uvm_top.u_smc_fabric_fcov.u_<manager>.c_<point>`.
 
+A point must need stimulus beyond power-up and reset release. The quiescent
+half of a pair — a closed gate, an idle bus, a released open-drain line — is
+true from reset with nothing driving it, so covering it proves nothing and
+inflates the `user` percentage exactly the way the saturated Python tuples
+do. Those halves are either dropped (`c_axil_all_masters_idle`, the GPIO
+`_idle` levels, `c_i2c0_disabled`, `c_i2c0_smbalert_released`) or qualified
+by a sticky flag recording that the active half was seen first, which turns
+"closed" into "closes again after opening" and "idle" into "returned to idle
+after working". `c_gpio_boot_stall_pad_*` is qualified by the pad having
+changed at least once, because which of its two values is the power-on
+default depends on the straps.
+
 Two conventions are load-bearing and were both learned from build failures:
 
 * Every cover-property body and disable-iff argument is a single
@@ -259,8 +271,11 @@ pulp glue that VCS would have to name — so they must be kept in step by hand.
 `cov/config/vcs/README.md` records what each number is, the measured bucket
 split behind the exclusions, and the checklist for the first VCS run.
 
-The scoped Verilator number is *the SMC DUT minus the CPU cluster, all
-vendored RTL and TB code*. Do not quote it as "SMC coverage".
+The scoped Verilator number is *the SMC DUT minus the CPU cluster, the I3C
+core, the lowRISC prims and TB code*. `vendor/pulp-platform/**` and
+`vendor/tenstorrent/tt-hw-debug/**` stay in the denominator — no file pattern
+reaches them, which `cov/config/vcs/README.md` records. Do not quote the
+number as "SMC coverage".
 
 [[aggregator-script]]
 ==== Aggregator script
