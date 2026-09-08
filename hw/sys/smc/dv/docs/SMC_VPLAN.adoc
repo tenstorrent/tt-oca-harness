@@ -113,6 +113,7 @@ verifying the block behind the port.
 |===
 |Testcase |Objective
 |`smc_cg_dft_reset_bringup_test` |LIVE/CONNECTIVITY DFT test_en_i bypass + Zeroer reset-override (Skill 1.5).
+|`smc_cold_reset_lock_test` |SS_COLD_RESET_LOCK is write-one-to-set and masks the reset it guards.
 |`smc_cold_reset_repeated_test` |Run the SMC OSS repeated cold-reset re-assert scenario.
 |`smc_cold_reset_test` |Run the SMC OSS cold-reset / POR / cool SMC_001 scenario.
 |`smc_cool_reset_from_pcie_test` |FLR pin → skip_mem_repair / rst_cool_no / isolate_req_o.
@@ -6615,12 +6616,50 @@ the wrong reason.
 '''''
 
 
+[[sec-162-smc_cold_reset_lock_test]]
+===== 162 `smc_cold_reset_lock_test`
+
+*Source Module*: `smc_cold_reset_lock_test`
+
+*BFM / Model*: ocah_axi_vip (AXI)
+
+*Objective*: SS_COLD_RESET_LOCK is write-one-to-set and masks the reset it guards.
+
+*Test Coverage*:
+
+* `RESET_UNIT.SS_COLD_RESET_LOCK`, which no other testcase reads. Found by the porting necessity analysis: `fw/tests/cold_reset_lock_sanity` was the only thing in the tree touching it, and this covers the same two properties natively rather than adding a firmware dependency.
+* `reset_unit.rdl:87-95` declares `cold_reset_lock[31:0]` as `sw = rw; hw = r; onwrite = woset;` reset 0, so a taken lock cannot be released by software.
+* `smc_subsystem_resets.sv` gates `SS_COLD_RESET_N` writes with `~ss_cold_reset_lock`. `cool_reset_isolate_cfg` records the same fact as its reason for *not* comparing that register, so the masking is asserted here and nowhere else.
+
+*Test Procedure*:
+
+[arabic]
+. Require both bits under test to be clear in SS_COLD_RESET_LOCK, since `woset` means a set bit could not have been cleared by this sequence.
+. Write bit 0 to SS_COLD_RESET_N with nothing locked and read it back, proving the register is writable before any lock exists.
+. Write bit 1 to SS_COLD_RESET_LOCK and require it to set, then write all zeroes and require it to remain set.
+. Write bits 0 and 1 to SS_COLD_RESET_N in one access. Require bit 1 to stay clear and bit 0 to follow the write.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-COLD-RESET-LOCK-ARM` |SS_COLD_RESET_N accepts a write with the lock clear, so "unchanged" later cannot be explained by a register that never changes
+|`CHK-COLD-RESET-LOCK-WOSET` |A set lock bit survives an all-zeroes write, per `onwrite = woset`
+|`CHK-COLD-RESET-LOCK-MASKS-WRITE` |In one write carrying both bits, the locked bit does not follow software while the unlocked bit does -- so the write demonstrably reached the register
+|===
+
+*Pass Criteria*: all three checkers hold. Measured PASS on Verilator 5.050: the lock held 0x2 through an all-zeroes write, and a 0x3 write to SS_COLD_RESET_N read back 0x1. This testcase leaves one lock bit set for the rest of its simulation, which is what `woset` means; each testcase runs its own simulation. Enrolled in: `all`, `reset`.
+
+'''''
+
+
 === Counts
 
 [cols=",",options="header",]
 |===
 |Metric |Count
-|Enrolled open-source testcases |161
+|Enrolled open-source testcases |162
 |Feature areas |18
 |Regression groups |31
 |===
@@ -6630,7 +6669,7 @@ the wrong reason.
 [cols=",,",options="header",]
 |===
 |Group |Tests |Purpose
-|`all` |152 |The package regression, single-instance plus the three dual bring-up scenarios. Nine of the 161 enrolled are out: two on measured runtime (`smc_occp_dual_unsecure_boot_test`, `smc_prod_rom_occp_ready_test`), two against #585 and #1488, the four `rtl_issue` reproducers whose job is to fail, and `smc_fw_hello_world_test` until its image reaches main()
+|`all` |153 |The package regression, single-instance plus the three dual bring-up scenarios. Nine of the 162 enrolled are out: two on measured runtime (`smc_occp_dual_unsecure_boot_test`, `smc_prod_rom_occp_ready_test`), two against #585 and #1488, the four `rtl_issue` reproducers whose job is to fail, and `smc_fw_hello_world_test` until its image reaches main()
 |`avsbus_depth` |2 |avsbus depth coverage
 |`axil` |2 |axil coverage
 |`balanced_ip` |99 |One-per-IP breadth run used for routine regression
@@ -6655,7 +6694,7 @@ the wrong reason.
 |`project_p0` |13 |project p0 coverage
 |`project_p0_triplets` |38 |project p0 triplets coverage
 |`pyuvm` |35 |Scenarios with a PyUVM implementation
-|`reset` |14 |reset coverage
+|`reset` |15 |reset coverage
 |`rtl_issue` |4 |Reproducers for filed RTL defects. Expected to fail; held out of `all`
 |`smoke` |35 |Fast bring-up gate
 |`uart` |6 |uart coverage
