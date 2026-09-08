@@ -60,6 +60,7 @@
 #include "fuse_lock.h"
 #include "hmac_sha256.h"
 #include "lifecycle.h"
+#include "measurement.h"
 #include "sep_dma.h"
 #include "sep_spi.h"
 #include "boot_flash.h"
@@ -173,8 +174,11 @@ enum {
     ROM_ERR_STACK_OVERFLOW = 0x0000F001u,
     ROM_ERR_CRYPTO_SELFTEST_FAILED = 0x0000F002u,
     ROM_ERR_FUSE_SECRETS_NOT_LOCKED = 0x0000F003u,
-    ROM_ERR_MEASUREMENT_FAILED = 0x0000F004u,
-    ROM_ERR_BL0_STATE_OVERLAPS_STACK = 0x0000F005u,
+    // 0x0000F004 is ROM_ERR_HANDOFF_SELFCHECK_FAILED in the spec's registry,
+    // reserved here for the pre-hand-off self-check that has not landed yet.
+    ROM_ERR_ROM_HASH_MISMATCH = 0x0000F005u,
+    ROM_ERR_MEASUREMENT_FAILED = 0x0000F006u,
+    ROM_ERR_BL0_STATE_OVERLAPS_STACK = 0x0000F007u,
 };
 
 // ── [C19] Unified error convergence ──
@@ -469,6 +473,40 @@ __attribute__((noreturn)) static void rom_manifest_validate_handoff(
         }
     }
 
+    // ── [ATT] Enroll the boot-state measurement (soft measurement slot 1) ──
+    // Verified manifest hash plus device state (LC, secure boot, SBOOT_DIS,
+    // demotion). Enrolled after the DEMOTE_1 write above so the record reflects
+    // what BL0 actually applied, not what the manifest asked for.
+    //
+    // Ordered per SEP-ROM-ATT-030: after the demotion decision, before the
+    // fuse-secret locks. The DEMOTE_1 write itself is deferred past those locks
+    // by SEP-ROM-DEM-035, so this records the decision rather than reading the
+    // register back -- demotion_reg and lock_demotion are exactly what will be
+    // written, so the record cannot disagree with the register, and it still
+    // reflects what BL0 applied rather than what the manifest asked for.
+    {
+        const uint8_t *mhash = rom_oca_manifest_hash();
+        if (mhash == NULL) {
+            rom_err_fail(ROM_ERR_MEASUREMENT_FAILED);
+        }
+
+        uint8_t demotion_bits = 0u;
+        if (demotion_reg) {
+            demotion_bits |= MEAS_DEMOTION_BL1_DEMOTE;
+        }
+        if (lock_demotion) {
+            demotion_bits |= MEAS_DEMOTION_BL1_LOCKED;
+        }
+        if (get_bl0_state()->bl2_demotion_decision) {
+            demotion_bits |= MEAS_DEMOTION_BL2_DECISION;
+        }
+
+        if (measurement_enroll_boot_state(mhash, demotion_bits) != 0u) {
+            rom_err_fail(ROM_ERR_MEASUREMENT_FAILED);
+        }
+        simputs("MEAS_BOOT_STATE_OK\n");
+    }
+
     // ── [C15] Lock fuse secrets ──
     report_status(STATUS_TYPE_INFO, SEP_MSG_FUSE_SECRETS_LOCK);
     lock_fuse_secrets();
@@ -494,12 +532,6 @@ __attribute__((noreturn)) static void rom_manifest_validate_handoff(
         simputs("DEMOTE_NOT_LOCKED\n");
     }
 
-    // NOTE: [C15] boot measurement is deliberately absent here. #1581 records a
-    // SHA-256 over the manifest hash, LC state, demotion decision, secure_boot
-    // and sboot_dis, reading the digest from manifest_t.manifest_hash -- a field
-    // of the format this commit removes. oca_boot.h exposes no digest accessor
-    // yet, and what the measurement commits to is a verifier-facing contract, so
-    // it is restored in its own commit rather than wired to an inline offset here.
 
 
     // ── [C16] Stack canary check ──
@@ -666,6 +698,15 @@ void rom_main(void) {
 
     // ── [C8] Crypto/security init ──
     rom_crypto_init();
+
+    // ── [ATT] Verify + enroll the ROM self-hash (soft measurement slot 0) ──
+    // Recomputes SHA-256 over the hashed ROM region and compares it against the
+    // build-time embedded hash before extending soft_pcr[MEAS_SLOT_ROM], so slot 0
+    // attests to what is executing rather than to what the build claimed. Needs
+    // the crypto self-test ([C8]) and bl0_state init ([C9c]), both above.
+    if (measurement_enroll_rom_hash() != 0u) {
+        rom_err_fail(ROM_ERR_ROM_HASH_MISMATCH);
+    }
 
     // ── [C9a] EXT SRAM clear ──
     simputs(">>C9a_SRAM_CLR\n");

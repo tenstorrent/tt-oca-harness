@@ -34,6 +34,7 @@
 #include "errors.h"
 #include "oca_platform.h"
 #include "oca_validator.h"
+#include "oca_variant.h"
 #include "rom_virt_console.h"
 #include "sep.h"
 #include "sep_dma.h"
@@ -61,6 +62,24 @@ const uint8_t *rom_oca_payload(void) {
 }
 size_t rom_oca_payload_len(void) {
     return g_payload_len;
+}
+
+const uint8_t *rom_oca_manifest_hash(void) {
+    if (g_body == NULL) {
+        return NULL;
+    }
+
+    // Located through the library's own variant descriptor rather than a literal
+    // offset: manifest_hash sits at a different place in an OCA-classic body than
+    // in an OCA-PQC one, and both move with the format revision. Asking the
+    // library keeps this correct across a submodule uprev instead of silently
+    // measuring the wrong 32 bytes.
+    oca_result_t st = OCA_OK;
+    const oca_variant_t *v = oca_variant_for_body(g_body, &st);
+    if (v == NULL) {
+        return NULL;
+    }
+    return g_body + v->off_manifest_hash;
 }
 
 uint32_t rom_oca_demotion_control(void) {

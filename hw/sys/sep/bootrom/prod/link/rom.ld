@@ -68,7 +68,7 @@ SECTIONS {
   /* Reserve the top of DCCM for bl0_state so the stack cannot overlap it. MUST
    * equal BL0_STATE_RESERVE_BYTES in include/bl0_state.h; rom_main.c compares
    * the pair at boot and fails loudly if they drift. */
-  __bl0_state_reserve = 128;
+  __bl0_state_reserve = 256;
 
   /* Stack grows downward from below the BL0 state region toward .bss.
    * __stack_top   = highest stack address (initial sp), below BL0 state.

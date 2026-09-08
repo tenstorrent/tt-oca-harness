@@ -107,7 +107,7 @@ OBJS := $(BUILD_DIR)/vector.o $(BUILD_DIR)/rom_main.o $(BUILD_DIR)/rom_metadata.
 	$(BUILD_DIR)/sep_spi.o $(BUILD_DIR)/sep_ot_spi.o $(BUILD_DIR)/sep_dma.o \
 	$(BUILD_DIR)/oca_boot.o $(BUILD_DIR)/rom_handoff.o \
 	$(BUILD_DIR)/rom_mem_clear.o $(BUILD_DIR)/status_ring.o \
-	$(BUILD_DIR)/hmac_sha256.o $(BUILD_DIR)/fuse_lock.o \
+	$(BUILD_DIR)/hmac_sha256.o $(BUILD_DIR)/measurement.o $(BUILD_DIR)/fuse_lock.o \
 	$(BUILD_DIR)/lifecycle.o \
 	$(BUILD_DIR)/rsa_verify.o $(BUILD_DIR)/otbn_driver.o \
 	$(BUILD_DIR)/aes_driver.o $(BUILD_DIR)/kdf.o $(BUILD_DIR)/key_digests.o \

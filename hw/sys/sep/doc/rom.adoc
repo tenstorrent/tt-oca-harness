@@ -2291,6 +2291,13 @@ demotion decision has been applied — and before the fuse-secret locks and hand
 shall compose the boot-state record below, enroll it into slot 1, and store the raw record
 in `bl0_state.meas_boot_record` for BL1. An enrollment failure is fatal
 (`ROM_ERR_MEASUREMENT_FAILED`, `0xF006`).
++
+NOTE: "the demotion decision has been applied" means the decision is settled, not that
+`DEMOTE_1` has been written. SEP-ROM-DEM-035 defers that write until after the
+fuse-secret locks, while this requirement places the enrollment before them, so the record
+carries the decided values rather than a read-back of the register. The two cannot disagree
+— the decided values are exactly what the deferred write applies — and the record still
+reflects what BL0 applied rather than what the manifest requested.
 
 [[tbl:measurement_input]]
 .Boot-state record (`struct boot_state_record`, packed, little-endian, 40 B)
@@ -2690,6 +2697,9 @@ itself, SEP-ROM-STRAP-020).
 embedded hash) (<<sec:attestation>>).
 |`ROM_ERR_MEASUREMENT_FAILED` |`0xF006` |Measurement enrollment failed (hash engine)
 (<<sec:attestation>>).
+|`ROM_ERR_BL0_STATE_OVERLAPS_STACK` |`0xF007` |`BL0_STATE_ADDR` sits below `__stack_top`,
+i.e. `__bl0_state_reserve` in `link/rom.ld` and `BL0_STATE_RESERVE_BYTES` in
+`include/bl0_state.h` have drifted apart (<<sec:handoff>>).
 |===
 
 Manifest-path failures use the `MANIFEST_ERR_*` namespace and map from `oca_result_t`; the
