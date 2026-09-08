@@ -1002,9 +1002,9 @@ rails and power conditions.</p></td>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="../ip/gpio/doc/index.html" class="xref page">GPIO</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">General Purpose Input/Output
-with dual-mode operation and comprehensive interrupt system (64 bonded + 4 unbonded).</p></td>
+with dual-mode operation and comprehensive interrupt system (61 bonded + 4 unbonded).</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">APB4/AXI4-Lite</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">68</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">65</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="../ip/telemetry_receiver/doc/index.html" class="xref page">Telemetry Receiver</a></p></td>
@@ -1046,6 +1046,78 @@ subsystem (chiplet) resets, and the cool reset sequence.</p></td>
 <a href="../ip/avsbus_controller/doc/index.html" class="xref page">AVSBus Controller</a>
 <a href="../ip/gpio/doc/index.html" class="xref page">GPIO</a>
 <a href="../ip/telemetry_receiver/doc/index.html" class="xref page">Telemetry Receiver</a></p>
+</div>
+<div class="sect3">
+<h4 id="peripheral-parameter-settings"><a class="anchor" href="#peripheral-parameter-settings"></a><a class="link" href="#peripheral-parameter-settings">1.3.1. Peripheral Parameter Settings</a></h4>
+<div class="paragraph">
+<p>The SMC sets peripheral parameters at instantiation from <code>smc_config_pkg</code>,
+<code>smc_pkg</code>, and the padring package; these are the authoritative sources.
+Most values match the IP defaults, but the following differ from the default
+documented in the IP&#8217;s own section.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 8. SMC Peripheral Parameter Overrides</caption>
+<colgroup>
+<col style="width: 16%;">
+<col style="width: 38%;">
+<col style="width: 18%;">
+<col style="width: 28%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Peripheral</th>
+<th class="tableblock halign-left valign-top">Parameter</th>
+<th class="tableblock halign-left valign-top">IP default</th>
+<th class="tableblock halign-left valign-top">SMC value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::NUM_MAILBOXES</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::MAILBOX_DEPTH</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I2C</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_config_pkg::I2C_TARGET_RX_FIFO_DEPTH</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">268</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_config_pkg::NUM_I3C</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">6</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MAX_TRANS</code> (threaded from the <code>smc</code> module parameter)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>INPUT_BY_DEFAULT</code> (per instance, from
+<code>smc_padring_pkg::DefaultDirectionMap</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">input on all</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">input on 62 of 65
+GPIOs, output on the remaining 3</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The System Timer OCTS takes no parameters. The eFuse overrides only bus
+widths and interface types. The UART 16550, Log Engine, AVSBus Controller,
+and Telemetry Receiver are configured explicitly through <code>smc_config_pkg</code>,
+but at values equal to their IP defaults.</p>
+</div>
 </div>
 </div>
 <div class="sect2">
@@ -2619,7 +2691,7 @@ sources that support reliable and responsive system monitoring and
 control, summarized in the following table.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 8. SMC interrupt sources</caption>
+<caption class="title">Table 9. SMC interrupt sources</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 25%;">
@@ -3050,7 +3122,7 @@ management, traffic filtering, and security enforcement mechanisms.</p>
 performance and area:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 9. Fabric Configuration Parameters</caption>
+<caption class="title">Table 10. Fabric Configuration Parameters</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 15%;">
@@ -3166,7 +3238,7 @@ transactions to peripherals.</p>
 traffic types:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 10. Network Characteristics</caption>
+<caption class="title">Table 11. Network Characteristics</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 30%;">
@@ -3207,7 +3279,7 @@ The CPU cluster connects to the fabric through AXI4 (high-bandwidth data path) a
 <p>The table below lists the common AXI signal widths shared across all AXI4 fabric interfaces.</p>
 </div>
 <table id="fabric-axi-widths" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 11. AXI Common Signal Widths</caption>
+<caption class="title">Table 12. AXI Common Signal Widths</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 15%;">
@@ -3253,7 +3325,7 @@ The CPU cluster connects to the fabric through AXI4 (high-bandwidth data path) a
 The table below lists the ID width at each point in the fabric.</p>
 </div>
 <table id="fabric-axi-id-widths" class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 12. AXI ID Widths by Fabric Stage</caption>
+<caption class="title">Table 13. AXI ID Widths by Fabric Stage</caption>
 <colgroup>
 <col style="width: 50%;">
 <col style="width: 15%;">
@@ -3327,7 +3399,7 @@ enforcement.</p>
 local and remote resources through the dual-network architecture.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 13. Fabric Traffic Managers</caption>
+<caption class="title">Table 14. Fabric Traffic Managers</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 15%;">
@@ -3393,7 +3465,7 @@ flexible address management between local and global address spaces.</p>
 organized by network type and function.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 14. Fabric Traffic Subordinates</caption>
+<caption class="title">Table 15. Fabric Traffic Subordinates</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 15%;">
@@ -3650,7 +3722,7 @@ attributes:</p>
 encode transaction security and privilege attributes:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 15. Protection Bit Encoding</caption>
+<caption class="title">Table 16. Protection Bit Encoding</caption>
 <colgroup>
 <col style="width: 15%;">
 <col style="width: 15%;">
@@ -3891,7 +3963,7 @@ level and routing path, plus a cacheable flag from the alias remap
 configuration:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 16. Source ID by Traffic Path</caption>
+<caption class="title">Table 17. Source ID by Traffic Path</caption>
 <colgroup>
 <col style="width: 50%;">
 <col style="width: 50%;">
@@ -4084,7 +4156,7 @@ multi-channel operation, scatter-gather transfers, and integration with
 SMC fabric filtering.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 17. DMA Controller Integration</caption>
+<caption class="title">Table 18. DMA Controller Integration</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -4151,7 +4223,7 @@ control plane and data plane operations.</p>
 <p>The DMA controller supports the following configuration parameters:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 18. DMA Configuration Parameters</caption>
+<caption class="title">Table 19. DMA Configuration Parameters</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 15%;">
@@ -4240,7 +4312,7 @@ processing, and transfer descriptor handling.</p>
 <p>The table below describes the frontend control interface.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 19. Frontend Control Interface</caption>
+<caption class="title">Table 20. Frontend Control Interface</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -4326,7 +4398,7 @@ treat the remaining banks as reserved.</p>
 <p>The table below describes the transfer descriptor support.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 20. Transfer Capabilities</caption>
+<caption class="title">Table 21. Transfer Capabilities</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -4427,7 +4499,7 @@ iDMA.</p>
 <p>The table below describes the AXI master interface.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 21. AXI4 Master Characteristics</caption>
+<caption class="title">Table 22. AXI4 Master Characteristics</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -4486,7 +4558,7 @@ access</p></td>
 DMA backend.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 22. Transfer Parameters</caption>
+<caption class="title">Table 23. Transfer Parameters</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -4536,7 +4608,7 @@ DMA backend.</p>
 backend.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 23. Status Monitoring and Control</caption>
+<caption class="title">Table 24. Status Monitoring and Control</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -4591,7 +4663,7 @@ changes</p></td>
 optimization and power management features.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 24. Performance Features</caption>
+<caption class="title">Table 25. Performance Features</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -4639,7 +4711,7 @@ controller optimization</p></td>
 </tbody>
 </table>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 25. Clock Gating Configuration</caption>
+<caption class="title">Table 26. Clock Gating Configuration</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -6530,7 +6602,7 @@ zero without CPU intervention. The unit uses a state machine-based
 architecture with dual clock domains.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 26. Memory Zeroer Integration</caption>
+<caption class="title">Table 27. Memory Zeroer Integration</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -6592,7 +6664,7 @@ sequences</p>
 <p>The zeroer implements a three-state operation model:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 27. State Machine States</caption>
+<caption class="title">Table 28. State Machine States</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 75%;">
@@ -6648,7 +6720,7 @@ optional interrupt</p>
 <div class="sect4">
 <h5 id="axi-master-interface"><a class="anchor" href="#axi-master-interface"></a><a class="link" href="#axi-master-interface">AXI Master Interface</a></h5>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 28. AXI4 Master Characteristics</caption>
+<caption class="title">Table 29. AXI4 Master Characteristics</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -6723,7 +6795,7 @@ and interface isolation.</p>
 <div class="sect4">
 <h5 id="clock-domains"><a class="anchor" href="#clock-domains"></a><a class="link" href="#clock-domains">Clock Domains</a></h5>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 29. Clock Domain Characteristics</caption>
+<caption class="title">Table 30. Clock Domain Characteristics</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 75%;">
@@ -6751,7 +6823,7 @@ independent of AXI activity</p></td>
 <div class="sect4">
 <h5 id="clock-gating"><a class="anchor" href="#clock-gating"></a><a class="link" href="#clock-gating">Clock Gating</a></h5>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 30. Clock Gating Control</caption>
+<caption class="title">Table 31. Clock Gating Control</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -6791,7 +6863,7 @@ independent of AXI activity</p></td>
 <div class="sect5">
 <h6 id="operation-control"><a class="anchor" href="#operation-control"></a><a class="link" href="#operation-control">Operation Control</a></h6>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 31. Configuration and Control</caption>
+<caption class="title">Table 32. Configuration and Control</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -6850,7 +6922,7 @@ independent of AXI activity</p></td>
 <div class="sect3">
 <h4 id="operation-details"><a class="anchor" href="#operation-details"></a><a class="link" href="#operation-details">1.10.3. Operation Details</a></h4>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 32. Data Generation and Control</caption>
+<caption class="title">Table 33. Data Generation and Control</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 70%;">
@@ -6950,7 +7022,7 @@ Protection</em>. This section records how they apply to the SMC eFuse controller
 <div class="sect3">
 <h4 id="smc-efuse-asset-classification"><a class="anchor" href="#smc-efuse-asset-classification"></a><a class="link" href="#smc-efuse-asset-classification">1.11.1. SMC eFuse Asset Classification</a></h4>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 33. SMC eFuse shadow register classification</caption>
+<caption class="title">Table 34. SMC eFuse shadow register classification</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 25%;">
@@ -7041,7 +7113,7 @@ regenerated:</p>
 shadow words 0 and 1.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 34. SMC shadow word allocation</caption>
+<caption class="title">Table 35. SMC shadow word allocation</caption>
 <colgroup>
 <col style="width: 55%;">
 <col style="width: 45%;">
@@ -7156,7 +7228,7 @@ section of the Integration Guide.</p>
 <p>The SMC address space is divided into several major functional regions:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 35. SMC Address Space Layout</caption>
+<caption class="title">Table 36. SMC Address Space Layout</caption>
 <colgroup>
 <col style="width: 20%;">
 <col style="width: 20%;">
@@ -7233,7 +7305,8 @@ remapping, and filtering</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">128KB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Inter-processor
-communication mailbox (32 channels: 16 inbound + 16 outbound)</p></td>
+communication mailbox (32 bidirectional pairs: 32 inbound + 32 outbound
+mailboxes)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x003_8000 - BASE + 0x003_83FF</p></td>
@@ -7294,7 +7367,7 @@ Bus Error Units</p></td>
 components:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 36. SMC Component Address Map</caption>
+<caption class="title">Table 37. SMC Component Address Map</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 25%;">
@@ -7466,9 +7539,9 @@ filtering</p></td>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x001_8000 - BASE + 0x003_7FFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">32 channels</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 pairs</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Inter-processor
-communication (16 inbound + 16 outbound)</p></td>
+communication (32 inbound + 32 outbound)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DMA Controller</p></td>
@@ -7577,7 +7650,7 @@ integration places its vendor I3C controllers (nonfree overlay) here.</p>
 <p>Addresses below are expressed as <code>BASE + offset</code> (<code>BASE</code> = <code>0xC000_0000</code>).</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 37. SMC AXI-Lite External Window — Mandatory Region</caption>
+<caption class="title">Table 38. SMC AXI-Lite External Window — Mandatory Region</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 25%;">
@@ -7648,7 +7721,7 @@ layer</p></td>
 </tbody>
 </table>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 38. SMC AXI-Lite External Window — Supplementary Region (optional)</caption>
+<caption class="title">Table 39. SMC AXI-Lite External Window — Supplementary Region (optional)</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 25%;">
@@ -7694,7 +7767,7 @@ adopter external port.</p>
 interfaces in the following table:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 39. Register Interface Standards</caption>
+<caption class="title">Table 40. Register Interface Standards</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 25%;">
@@ -7740,7 +7813,7 @@ interfaces in the following table:</p>
 <p>The SMC implements the following access control mechanisms:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 40. Access Control Mechanisms</caption>
+<caption class="title">Table 41. Access Control Mechanisms</caption>
 <colgroup>
 <col style="width: 25%;">
 <col style="width: 75%;">
@@ -8188,7 +8261,7 @@ wording in <a href="#peripherals">Peripherals</a>.</p>
 to the individual component documentation:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
-<caption class="title">Table 41. SMC Component Documentation</caption>
+<caption class="title">Table 42. SMC Component Documentation</caption>
 <colgroup>
 <col style="width: 30%;">
 <col style="width: 50%;">

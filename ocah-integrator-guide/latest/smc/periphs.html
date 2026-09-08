@@ -255,9 +255,9 @@ rails and power conditions.</p></td>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="../ip/gpio/doc/index.html" class="xref page">GPIO</a></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">General Purpose Input/Output
-with dual-mode operation and comprehensive interrupt system (64 bonded + 4 unbonded).</p></td>
+with dual-mode operation and comprehensive interrupt system (61 bonded + 4 unbonded).</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">APB4/AXI4-Lite</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">68</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">65</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><a href="../ip/telemetry_receiver/doc/index.html" class="xref page">Telemetry Receiver</a></p></td>
@@ -299,6 +299,78 @@ subsystem (chiplet) resets, and the cool reset sequence.</p></td>
 <a href="../ip/avsbus_controller/doc/index.html" class="xref page">AVSBus Controller</a>
 <a href="../ip/gpio/doc/index.html" class="xref page">GPIO</a>
 <a href="../ip/telemetry_receiver/doc/index.html" class="xref page">Telemetry Receiver</a></p>
+</div>
+<div class="sect3">
+<h4 id="peripheral-parameter-settings"><a class="anchor" href="#peripheral-parameter-settings"></a><a class="link" href="#peripheral-parameter-settings">1.1. Peripheral Parameter Settings</a></h4>
+<div class="paragraph">
+<p>The SMC sets peripheral parameters at instantiation from <code>smc_config_pkg</code>,
+<code>smc_pkg</code>, and the padring package; these are the authoritative sources.
+Most values match the IP defaults, but the following differ from the default
+documented in the IP&#8217;s own section.</p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<caption class="title">Table 2. SMC Peripheral Parameter Overrides</caption>
+<colgroup>
+<col style="width: 16%;">
+<col style="width: 38%;">
+<col style="width: 18%;">
+<col style="width: 28%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Peripheral</th>
+<th class="tableblock halign-left valign-top">Parameter</th>
+<th class="tableblock halign-left valign-top">IP default</th>
+<th class="tableblock halign-left valign-top">SMC value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::NUM_MAILBOXES</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_pkg::MAILBOX_DEPTH</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I2C</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_config_pkg::I2C_TARGET_RX_FIFO_DEPTH</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">268</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">64</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I3C</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_config_pkg::NUM_I3C</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">6</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>MAX_TRANS</code> (threaded from the <code>smc</code> module parameter)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">2</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>INPUT_BY_DEFAULT</code> (per instance, from
+<code>smc_padring_pkg::DefaultDirectionMap</code>)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">input on all</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">input on 62 of 65
+GPIOs, output on the remaining 3</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>The System Timer OCTS takes no parameters. The eFuse overrides only bus
+widths and interface types. The UART 16550, Log Engine, AVSBus Controller,
+and Telemetry Receiver are configured explicitly through <code>smc_config_pkg</code>,
+but at values equal to their IP defaults.</p>
+</div>
 </div>
 </div>
 </article>

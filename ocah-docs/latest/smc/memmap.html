@@ -301,7 +301,8 @@ remapping, and filtering</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">128KB</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Inter-processor
-communication mailbox (32 channels: 16 inbound + 16 outbound)</p></td>
+communication mailbox (32 bidirectional pairs: 32 inbound + 32 outbound
+mailboxes)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x003_8000 - BASE + 0x003_83FF</p></td>
@@ -534,9 +535,9 @@ filtering</p></td>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Mailbox</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">BASE + 0x001_8000 - BASE + 0x003_7FFF</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">32 channels</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 pairs</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Inter-processor
-communication (16 inbound + 16 outbound)</p></td>
+communication (32 inbound + 32 outbound)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DMA Controller</p></td>
