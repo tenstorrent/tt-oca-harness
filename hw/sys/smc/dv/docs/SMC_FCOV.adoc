@@ -223,7 +223,7 @@ promoted protocol-VIP test.
 `protocol_vip`
 |`smc_register_sanity_test` / CSR family |`axil_master`, `protocol_vip`
 |`smc_mailbox_irq_test` |`irq_state`, `protocol_vip`
-|`project_p0` / `balanced_ip` |union of the bins above plus
+|`functional` / `per_ip` |union of the bins above plus
 `protocol_vip` for each promoted area
 |===
 
@@ -365,5 +365,4 @@ cwd and hit `*F,C58EXS` ("database already exists") on the second run.
 |PLL / PVT placeholder windows |`pll_wrap` / `pvt_wrap` complete OKAY+0;
 handshake only, deferred from feature PASS
 |I3C CCC/IBI |Owned by IP-level DV
-|Coverage-progression history |Status record; kept in `local_records.adoc`
 |===

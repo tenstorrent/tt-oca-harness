@@ -24,7 +24,7 @@ includes = [
     "reset.toml",
     "spi.toml",
     "uart.toml",
-    "vplan_triplets.toml",
+    "depth.toml",
 ]
 
 [[groups]]
@@ -77,10 +77,18 @@ name = "all"
 #                                  deny leg never completes: the SEP_IN read at
 #                                  0xC016_0038 times out. That is #1488, the CLA
 #                                  aperture hang, not this test.
+#                                  STALE AS OF 2026-09-08: #1488 was closed as
+#                                  completed on 2026-09-07, so the condition
+#                                  above ("not re-added until its issue closes")
+#                                  is met. Run the test and re-enrol it here if
+#                                  the deny leg now completes; if it still times
+#                                  out, #1488 needs reopening. Do not leave it
+#                                  held out against a closed issue -- that is a
+#                                  waiver wearing a LINKED-ISSUE label.
 #   smc_deadspace_decode_test   -- measures the DUT aliasing deadspace onto live
 #                                  registers (wrap_to_live=7 read_alias=6). That
 #                                  is #585. Already recorded as held out in
-#                                  vplan_triplets.toml.
+#                                  depth.toml.
 tests = [
     "smc_5agent_observability_test",
     "smc_6agent_observability_test",
@@ -314,7 +322,7 @@ tests = [
 ]
 
 [[groups]]
-name = "project_p0"
+name = "functional"
 tests = [
     "smc_cold_reset_test",
     "smc_clk_running_test",
@@ -332,7 +340,7 @@ tests = [
 ]
 
 [[groups]]
-name = "project_p0_triplets"
+name = "functional_depth"
 tests = [
     "smc_cold_reset_test",
     "smc_reset_recovery_matrix_test",
@@ -382,7 +390,7 @@ tests = [
 # remains by proof strength inside each IP and applying a per-IP budget.
 # Reaches 100% of the register-symbol and TB-probe coverage the full 147 reach
 # that is carried by a fail-capable testcase.
-name = "balanced_ip"
+name = "per_ip"
 tests = [
     # --- avsbus (2) ---
     "smc_avsbus_clock_config_proxy_test",
