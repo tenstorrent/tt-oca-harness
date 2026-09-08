@@ -187,9 +187,17 @@ nixos_run() {
     fi
 }
 
-# Open a NixOS Shell
+# Open a shell in the Nix Container - even on a nix-enabled host
 nixos_shell() {
-    nixos_run bash
+    local NIX_CONFIG="experimental-features = nix-command flakes"
+    local GIT_ALLOW_CMD="git config --global --add safe.directory \$(pwd) &&
+        git config --global --add safe.directory \$(pwd)/hw/sys/sep/bootrom/prod/tools/tt-boot-manifest &&"
+    run_image $NIXOS_IMAGE -it sh -c "
+        export NIX_CONFIG=\"$NIX_CONFIG\"
+        export PS1=\"\[\e[1;36m\]NixOS >\[\e[0m\] \"
+        $GIT_ALLOW_CMD
+        bash
+    "
 }
 
 # Build the firmware image (labeled with the Dockerfile hash) and publish it to
