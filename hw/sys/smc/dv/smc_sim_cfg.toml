@@ -160,6 +160,7 @@ argv = [
 ]
 outputs = [
   "hw/sys/smc/dv/fw/build/tests/{fw_target}/{fw_target}.ecc.hex",
+  "hw/sys/smc/dv/fw/build/tests/{fw_target}/{fw_target}.sram.bin",
   "hw/sys/smc/dv/fw/build/tests/{fw_target}/{fw_target}.sram.sym",
   "hw/sys/smc/dv/fw/build/tests/{fw_target}/default_efuse_shadow_reg.preload",
 ]

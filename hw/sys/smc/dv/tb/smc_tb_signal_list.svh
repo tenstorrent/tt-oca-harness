@@ -421,6 +421,18 @@
 `SMC_TB_OUT(logic [57:0], tb_cpu_wb_pc1)
 `SMC_TB_OUT(logic [57:0], tb_cpu_wb_pc2)
 `SMC_TB_OUT(logic [57:0], tb_cpu_wb_pc3)
+// Per-core trap cause and trapped PC, straight off each Rocket CSR file. The
+// retired PC alone cannot tell a trap from a stall: a firmware image parked in
+// crt0's fault loop and one that simply stopped fetching look the same.
+// mcause[63] is the interrupt bit, the low bits the exception code.
+`SMC_TB_OUT(logic [63:0], tb_cpu_mcause0)
+`SMC_TB_OUT(logic [63:0], tb_cpu_mcause1)
+`SMC_TB_OUT(logic [63:0], tb_cpu_mcause2)
+`SMC_TB_OUT(logic [63:0], tb_cpu_mcause3)
+`SMC_TB_OUT(logic [57:0], tb_cpu_mepc0)
+`SMC_TB_OUT(logic [57:0], tb_cpu_mepc1)
+`SMC_TB_OUT(logic [57:0], tb_cpu_mepc2)
+`SMC_TB_OUT(logic [57:0], tb_cpu_mepc3)
 `SMC_TB_OUT(logic, tb_cpu_cluster_isolate)
 // U7-3: Rocket DM active + ack after dmcontrol.dmactive write.
 `SMC_TB_OUT(logic, tb_cpu_debug_dmactive)

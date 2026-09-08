@@ -1337,6 +1337,24 @@ module smc_uvm_top
         u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.wb_reg_pc_raw[2];
     assign tb_cpu_wb_pc3 =
         u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.wb_reg_pc_raw[3];
+    // Core 0's tile domain carries no suffix; 1-3 are _1.._3
+    // (OCAH4CORECluster_DigitalTop.sv:3975-4218).
+    assign tb_cpu_mcause0 = u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu
+        .u_digital_top.tile_prci_domain.element_reset_domain_rockettile.core.csr.reg_mcause;
+    assign tb_cpu_mcause1 = u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu
+        .u_digital_top.tile_prci_domain_1.element_reset_domain_rockettile.core.csr.reg_mcause;
+    assign tb_cpu_mcause2 = u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu
+        .u_digital_top.tile_prci_domain_2.element_reset_domain_rockettile.core.csr.reg_mcause;
+    assign tb_cpu_mcause3 = u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu
+        .u_digital_top.tile_prci_domain_3.element_reset_domain_rockettile.core.csr.reg_mcause;
+    assign tb_cpu_mepc0 = u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu
+        .u_digital_top.tile_prci_domain.element_reset_domain_rockettile.core.csr.reg_mepc;
+    assign tb_cpu_mepc1 = u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu
+        .u_digital_top.tile_prci_domain_1.element_reset_domain_rockettile.core.csr.reg_mepc;
+    assign tb_cpu_mepc2 = u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu
+        .u_digital_top.tile_prci_domain_2.element_reset_domain_rockettile.core.csr.reg_mepc;
+    assign tb_cpu_mepc3 = u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu
+        .u_digital_top.tile_prci_domain_3.element_reset_domain_rockettile.core.csr.reg_mepc;
     assign tb_cpu_cluster_isolate =
         u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.cluster_boundary_isolate;
     assign tb_cpu_debug_dmactive =

@@ -228,6 +228,13 @@ module smc_cpu_mem_dv
               end
             end
           end
+          // Per-bank count. A bank that loaded nothing while the file holds
+          // data for it means the stripe filter above is wrong; every bank
+          // loading its share while an AXI read at the matching address
+          // returns other data means the DUT decodes the address differently
+          // from this model.
+          $display("[smc_cpu_mem_dv] scratch bank %0d loaded %0d nonzero words",
+                   bank, loaded_words);
           if (bank == 0) begin
             // Count the words the file actually holds, so an image longer than
             // the staging array is reported instead of silently truncated. A
@@ -249,6 +256,9 @@ module smc_cpu_mem_dv
                       "fetch whatever the cut left behind. Raise MAX_LINEAR_WORDS."},
                      scratch_path, file_words, MAX_LINEAR_WORDS);
             end
+            $display("[smc_cpu_mem_dv] stripe params BANK_STRIPE_BYTES=%0d BYTES_PER_ENTRY=%0d ENTRIES_PER_STRIPE=%0d NUM_SRAM_BANKS=%0d SCRATCH_WORDS=%0d",
+                     BANK_STRIPE_BYTES, BYTES_PER_ENTRY, ENTRIES_PER_STRIPE,
+                     NUM_SRAM_BANKS, SCRATCH_WORDS);
             $display("[smc_cpu_mem_dv] stripe-loaded scratch %s (%0d words in file, bank0 nonzero=%0d)",
                      scratch_path, file_words, loaded_words);
           end
