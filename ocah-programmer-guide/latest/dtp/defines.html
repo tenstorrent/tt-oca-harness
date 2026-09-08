@@ -268,17 +268,20 @@ simulation-only paths on this name.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Native profile SV-UVM overlay (<code>[frameworks.uvm]</code> in <code>native.toml</code>; every
 <code>--framework uvm</code> DUT)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The first-party SV-UVM framework gate (the same bare-name wording rule as
-<code>SIMULATION</code>): it selects the SV-UVM shape of the shared testbench top
+<code>SIMULATION</code>): it adds the SV-UVM harness block to the shared testbench top
 <code>dtp_uvm_top</code> in <code>hw/sys/dtp/dv/tb/tb_top.sv</code>, and the shared assertion
 headers report through <code>uvm_report_error</code> instead of <code>$error</code>.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The module has no pin-level port list. An in-module harness owns the clock,
-<code>ocah_jtag_if</code> / <code>dtp_tb_if</code> instances, quiescent tie-offs, and <code>run_test()</code>.
-Required for <code>--framework uvm</code> (VCS). The testbench architecture document
-(<code>hw/sys/dtp/dv/docs/DTP_TB_ARCH.adoc</code>) describes that shape.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">The module exposes the cocotb pin-level port list. Required for the default
-cocotb/PyUVM flow (cocotb is the default framework, so no define means the
-cocotb shape). Defining it on a cocotb compile removes those ports and the
-Python tests cannot bind.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The harness block compiles: the clock generator on <code>dtp_tb_if.clk</code>, the
+protocol SVA, the test classes, the <code>uvm_config_db</code> publication of every
+interface instance, and <code>run_test()</code>. Required for <code>--framework uvm</code> (VCS).
+The testbench architecture document (<code>hw/sys/dtp/dv/docs/DTP_TB_ARCH.adoc</code>)
+describes the core the block extends.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Only the framework-neutral core compiles (interface instances, DUT,
+adapters, counters, coverage); cocotb drives the interface members through
+hierarchical handles. Required for the default cocotb/PyUVM flow (cocotb is
+the default framework, so no define means the core alone). Defining it on a
+cocotb compile adds a second clock generator and <code>run_test()</code> against the
+Python test.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>VERILATOR</code></p></td>
