@@ -263,20 +263,16 @@ under Verilator. `sep_smu_otbn` only writes CSRs and needs no entropy.
 
 `smu_sep_ext_axi_test` is built end to end. Its three parties all exist: the SEP
 and SMC firmware halves, and an ext_in AXI master played by the sequence on the
-flat `ext_in_*` pins the testbench now exposes for `cocotbext.axi`
-(`smu_axi_in_req` used to be tied off, so that third party could not exist at
-all). The ext_in master is proven working — it drives real AXI and gets real
-responses, including the DECERR the closed SMC aperture correctly returns.
+flat `ext_in_*` pins the testbench exposes for `cocotbext.axi`. The ext_in
+master drives real AXI and gets real responses, including the DECERR the
+closed SMC aperture correctly returns.
 
-Two things that used to block it no longer do, both measured rather than
-assumed. Preload lifetime: the SMC boot path wrote every word of scratch RAM
-(4096 bus writes, exactly the RAM depth) after the time-zero backdoor load, so
-the image was gone before firmware ran. That is `smc_4core_cpu`'s MEM_ZERO FSM
-establishing valid ECC, and it has an input to hold it off, which
-`tb_wrapper_top.sv` now asserts whenever `+smc_scratch_ram_hex` supplies an
-image — the writes go to 0 and the image survives. Entry: handing over by
-jumping from the ROM left the core carrying the ROM's `mtvec`, so its first trap
-went to address 0. `seq_lib/smc_cpu_revector.py` programs `RESET_VECTOR` on all
+The SMC boot path's MEM_ZERO FSM writes every word of scratch RAM (4096 bus
+writes, exactly the RAM depth) after the time-zero backdoor load unless held
+off. `tb_wrapper_top.sv` asserts that hold whenever `+smc_scratch_ram_hex`
+supplies an image, so the writes go to 0 and the image survives into firmware.
+Handing over by jumping from the ROM leaves the core carrying the ROM's
+`mtvec`; `seq_lib/smc_cpu_revector.py` programs `RESET_VECTOR` on all
 four cores and forces a tile-reset pulse over the DTP's JTAG2AXI instead, the
 way `hw/sys/smc/dv/cocotb/seq_lib/smc_cpu_vip_utils.py` does it over its CSR
 agent.

@@ -74,7 +74,7 @@ args = [
 # Real SEP RTL boot readiness (Manual_SMU_Blocked_SEP_Exec_Regression mirror).
 # Scoreboard bar: boot-ROM fetch, ICCM execution, >=16 distinct PCs, >=256
 # retires, and DCCM result stores. Console/STDOUT over the external AXI path is
-# out of scope here and tracked separately (#3939).
+# out of scope here.
 [[tests]]
 name = "smu_sep_smoke_test"
 module = "smu_sep_smoke_test"
@@ -455,7 +455,8 @@ args = [
 # reconciles the built SMC image's entry and cookie against the protocol
 # constants first, so a relink fails loudly instead of hanging in bring-up.
 #
-# NOT ENROLLED -- blocked on SMC SRAM visibility, not on this test. Everything
+# Enrolled in sep_smc_sram_blocked. Blocked on SMC SRAM visibility, not on
+# this test. Everything
 # up to the cookie poll works: the image contract reconciles (entry 0xC00601B2,
 # cookie 0x41014081), the testbench reports "stripe-loaded scratch
 # smc_sep_xbar.ecc.hex", and the SEP reaches its poll. But the SEP then spins at
