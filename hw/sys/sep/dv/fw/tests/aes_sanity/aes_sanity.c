@@ -95,7 +95,6 @@ int main(void) {
     print_registers();
     printf("AES CSR read/write test - done\n");
 
-    /* Statement include: aes_test1.h walks the AES vector, it is not a header. */
 #include "aes_test1.h"
 
     printf("INFO: end of aes_sanity test\n");
