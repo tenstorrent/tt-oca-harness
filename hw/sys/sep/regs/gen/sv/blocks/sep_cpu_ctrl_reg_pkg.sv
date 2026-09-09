@@ -244,19 +244,6 @@ package sep_cpu_ctrl_reg_pkg;
     } sep_cpu_ctrl__SMU_REGION_SIZE__out_t;
 
     typedef struct {
-        logic [3:0] value;
-    } sep_cpu_ctrl__RAS_BANK_INFO__bank_chip__out_t;
-
-    typedef struct {
-        logic [3:0] value;
-    } sep_cpu_ctrl__RAS_BANK_INFO__bank_instance__out_t;
-
-    typedef struct {
-        sep_cpu_ctrl__RAS_BANK_INFO__bank_chip__out_t bank_chip;
-        sep_cpu_ctrl__RAS_BANK_INFO__bank_instance__out_t bank_instance;
-    } sep_cpu_ctrl__RAS_BANK_INFO__out_t;
-
-    typedef struct {
         logic [31:0] value;
     } sep_cpu_ctrl__SEP_SW_DEBUG__sep_sw_debug__out_t;
 
@@ -375,7 +362,6 @@ package sep_cpu_ctrl_reg_pkg;
         sep_cpu_ctrl__SEP_REGION_SIZE__out_t SEP_REGION_SIZE;
         sep_cpu_ctrl__SMU_GLOBAL_BASE_ADDR__out_t SMU_GLOBAL_BASE_ADDR;
         sep_cpu_ctrl__SMU_REGION_SIZE__out_t SMU_REGION_SIZE;
-        sep_cpu_ctrl__RAS_BANK_INFO__out_t RAS_BANK_INFO;
         sep_cpu_ctrl__SEP_SW_DEBUG__out_t SEP_SW_DEBUG;
         sep_cpu_ctrl__SEP_NMI_VEC_nmi_vec_a3690e40__out_t SEP_NMI_VEC;
         sep_cpu_ctrl__SEP_NMI_VEC_LOCK__out_t SEP_NMI_VEC_LOCK;

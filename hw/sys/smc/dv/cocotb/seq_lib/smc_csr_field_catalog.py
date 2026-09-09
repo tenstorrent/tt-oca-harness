@@ -125,15 +125,6 @@ CSR_FIELD_CATALOG = {
         SmcCsrAccessKind.RO_STATIC,
         _CHIP_ID_RESET,
     ),
-    # RAS_BANK_INFO is a multi-field register (BANK_CHIP / BANK_INSTANCE each
-    # carry their own generated ``*_reset``), so there is no single whole-word
-    # default symbol to compare against; left decode-only.
-    "CHIP_CONFIG_RAS_BANK_INFO": SmcCsrField(
-        "CHIP_CONFIG_RAS_BANK_INFO",
-        smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_RAS_BANK_INFO_BASE_ADDR"),
-        SmcCsrAccessKind.RO_STATIC,
-        None,
-    ),
     # 0xC000_2A00 is NDM_RESET.NDMRESET_REQUEST, not a "status" register: the
     # entry carries the name of the symbol that addresses it so a logged
     # register identity cannot drift from the address actually accessed.

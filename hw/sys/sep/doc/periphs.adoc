@@ -401,7 +401,7 @@ _not support_ this feature and will leave this interface on the
 component unconnected or terminated. Furthermore, there is no SPI Slave
 device present in the SEP peripheral subsystem.
 
-The SEP instantiates a SPI host controller for boot. The `sep_ot_spi_wrap` module wraps the modified OpenTitan-derived `spi_controller` with a native AXI4-Lite slave interface (no TL-UL conversion required). It exposes the standard SPI pad signals (SCK, CS, 4-bit bidirectional I/O), an interrupt output, a busy indicator, and a DMA trigger (`lsio_trigger_o`). The `NUM_CS` parameter controls the number of chip-select outputs. Because this controller is software-driven rather than memory-mapped, an integrator wanting XIP flash access can substitute their own controller at the `sep_io_spi` boundary and drive `spi_irq_i` from it.
+The SEP instantiates a SPI host controller for boot. The `sep_ot_spi_wrap` module wraps the modified OpenTitan-derived `spi_controller` with a native AXI4-Lite slave interface (no TL-UL conversion required). It exposes the standard SPI pad signals (SCK, CS, 4-bit bidirectional I/O), an interrupt output, a busy indicator, and a DMA trigger (`lsio_trigger_o`). The `NUM_CS` parameter controls the number of chip-select outputs. Because this controller is software-driven rather than memory-mapped, an integrator wanting XIP flash access can substitute their own controller at the `sep_io_spi` boundary. The controller's interrupt is consumed internally: it feeds the SEP PIC via `sep_internal_interrupts` (through the `irq` field of `sep_io_spi_req_t`).
 
 Consult the
 https://opentitan.org/book/hw/ip/spi_host/index.html[OpenTitan SPI Host
@@ -433,6 +433,8 @@ register map is reported in <<sep-detailed-register-map>>.
 ==== SEP Reset Controller
 
 The SEP Reset Controller provides software-controllable resets for the Key Manager, crypto accelerators, and internal TRNG complex. It is accessible via AXI4 at generated base address `0x1080_3000`.
+Adams Bridge is the exception: it has no software-reset bit and resets with
+`sep_reset_n`.
 
 The controller contains a single 64-bit register `SW_RESET_N` at offset `0x0` with the following fields:
 
@@ -454,7 +456,7 @@ release an IP from reset and writes `0` to request its software reset.
 Each `SW_RESET_N` bit is a request to a per-domain sequencer. The sequencer
 isolates the domain's AXI4-Lite paths, waits for outstanding transactions to
 drain, and then asserts reset. New transactions presented while isolated
-terminate with DECERR. Isolation remains asserted for the duration of reset and
+terminate with SLVERR. Isolation remains asserted for the duration of reset and
 is released with reset when software removes the request.
 
 An accelerator reset waits for both its host CSR path and Key Manager key path

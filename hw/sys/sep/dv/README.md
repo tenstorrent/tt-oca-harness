@@ -214,7 +214,7 @@ The CPU is held off (`mpc_reset_run_req=0`). Two masters can drive the DUT:
 
 * `sep_axi_smoke_test` — reset-value read of `sep_cpu_ctrl.SEP_LOCAL_BASE_ADDR`
   (`+0x0C8`) for decode sanity, then a masked write/readback walk of
-  `SEP_SW_DEBUG`, `SEP_NMI_VEC`, `RAS_BANK_INFO`, and `PKA_CTRL`.
+  `SEP_SW_DEBUG`, `SEP_NMI_VEC`, and `PKA_CTRL`.
 * `sep_address_map_test` — `sep_cpu_ctrl` sweep plus one CSR per LSU-reachable
   block (DMA, WDT, scratch, reset, OTBN/AES/HMAC/KMAC, CSRNG/EDN/ESRC, ABR,
   entropy pool, lifecycle, KM/AXI mailbox, eFuse shadow, inbound filter,

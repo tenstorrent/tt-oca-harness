@@ -27,9 +27,9 @@ lists only groups `testlists/` defines.
 [cols="2,1,3",options="header",]
 |===
 |Group |Count |Role
-|`smoke` |35 |CI gate; debug breadth over the bring-up scenarios
+|`smoke` |37 |CI gate; debug breadth over the bring-up scenarios
 |`per_ip` |99 |One pass across every IP the bench drives
-|`all` |149 |Every single-instance enrolled testcase
+|`all` |156 |The package regression. Eight of the 164 enrolled are out.
 |===
 
 [[smc-canonical-credit]]

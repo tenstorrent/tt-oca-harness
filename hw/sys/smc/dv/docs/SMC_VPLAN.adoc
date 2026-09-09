@@ -9,10 +9,13 @@
 This plan covers the SMC subsystem as it is verified in the open-source
 harness: the `smc_wrapper` DUT driven over SEP_IN AXI and AXI-Lite, with
 cocotb/PyUVM as the primary framework and an SV-UVM view for the scenarios
-that carry one. 156 testcases are enrolled. The `all` group is 149 of
-them: `smc_deadspace_decode_test` (#585) and `smc_remap_cla_test`
-(#1488) stay enrolled and run on demand; they are held out of the
-sign-off sweep. Five dual / production-ROM leaves build a different DUT.
+that carry one. 164 testcases are enrolled. The `all` group is 156 of
+them. Eight enrolled leaves are out of the sign-off sweep:
+`smc_deadspace_decode_test` (#585) and `smc_remap_cla_test`
+(#1488) stay enrolled and run on demand; two dual / production-ROM
+leaves are held on measured runtime; and four `rtl_issue`
+reproducers are red by design. Three other dual bring-up
+scenarios ride in `all`.
 
 Every entry below names a testcase that exists and runs. Where the harness
 cannot reach a feature, the testcase is not listed here as enrolled; it is
@@ -229,7 +232,7 @@ verifying the block behind the port.
 |===
 |Testcase |Objective
 |`smc_hang_detector_data_timeout_test` |DATA_ACCEL outstanding stall → timeout irq; unique vs SEP/SYS timeout.
-|`smc_hang_detector_plic_route_test` |peripheral_interrupts[31] carries the hang OR into cpu_interrupts.
+|`smc_hang_detector_plic_route_test` |peripheral_interrupts[30] carries the hang OR into cpu_interrupts.
 |`smc_hang_detector_sanity_test` |irq_test fire/clear on sys/sep/data hang detectors + OR.
 |`smc_hang_detector_sys_timeout_test` |SYS_IN outstanding stall → timeout irq; unique vs SEP timeout.
 |`smc_hang_detector_timeout_test` |SEP outstanding stall → timeout irq; unique vs irq_test sanity.
@@ -3509,7 +3512,7 @@ Drive `smc_efuse_otp_burn_shadow_test_seq`. Each checker below is a named compar
 *Test Coverage*:
 
 * **CLOCK_GATE_CONTROL RW depth** (fail-capable, real DUT RTL) -- save, write a pattern, read back under a mask, restore, and re-read against the saved value. Evidence: `CHK-EFUSE-CLOCK-GATE-DEPTH`.
-* **CHIP_CONFIG proxy reads** -- fuse-derived mirror registers. `VERSION_LO` / `VERSION_HI` carry their generated RDL resets; the remaining three are observed only (see below).
+* **CHIP_CONFIG proxy reads** -- fuse-derived mirror registers. `VERSION_LO` / `VERSION_HI` carry their generated RDL resets; the remaining two are observed only (see below).
 
 *Test Procedure*:
 
@@ -4057,13 +4060,13 @@ Drive `smc_hang_detector_data_timeout_test_seq`. Each checker below is a named c
 
 *BFM / Model*: ocah_axi_vip (AXI)
 
-*Objective*: peripheral_interrupts[31] carries the hang OR into cpu_interrupts.
+*Objective*: peripheral_interrupts[30] carries the hang OR into cpu_interrupts.
 
 *Test Coverage*:
 
-* Hang-detector OR reaches the PLIC on peripheral_interrupts[31].
-* Covers the smc_base -> smc_peripherals[31] -> cpu_interrupts route added so FW can service an armed detector.
-* The observation point is the PLIC source pin on `u_smc_cpu_wrapper.interrupts_i` (raw bit NUM_EXT_INTERRUPTS+31 = 287 in the 4-core config, PLIC source ID 288).
+* Hang-detector OR reaches the PLIC on peripheral_interrupts[30].
+* Covers the smc_base -> smc_peripherals[30] -> cpu_interrupts route added so FW can service an armed detector.
+* The observation point is the PLIC source pin on `u_smc_cpu_wrapper.interrupts_i` (raw bit NUM_EXT_INTERRUPTS+30 = 286 in the 4-core config, PLIC source ID 287).
 * PLIC register-level claim/complete needs CPU firmware and is not claimed here.
 
 *Test Procedure*:
@@ -4275,7 +4278,7 @@ Drive `smc_irq_observe_test_seq`. Each checker below is a named compare the DUT 
 
 *Test Coverage*:
 
-* temp_interrupt_i to peripheral_interrupts[27] after CDC.
+* Temp interrupt via ext_interrupts_i[1] to ext_interrupts_smc_clk after CDC. Analog PVT not claimed.
 
 *Test Procedure*:
 

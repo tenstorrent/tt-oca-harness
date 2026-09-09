@@ -54,8 +54,9 @@ distinguished a top-6 from a top-10 except the order the work was done in.
 testcase is actually reachable through.
 
 #1448 landed: `smc_i3c_to_fabric_test` is out of `smoke` and `functional`,
-which is why those counts are 35 and 13. This candidate gives that leaf no
-feature credit either way.
+which is why `functional` is 13. `smoke` is 37 after two later leaves
+(`smc_mailbox_flush_test`, `smc_reset_unit_lock_test`). This candidate
+gives the I3C leaf no feature credit either way.
 
 Open question for the DV lead: keep `smoke` as the release CI gate, or move
 the nightly to `per_ip`. This file does not change `regress.yml`.
