@@ -8,13 +8,10 @@ schema_version = 1
 # Result-reporting policy: only enrolled groups report PASS.
 # Config classes here: `no_sep` run mode = no-SEP; `sep_rtl` = real SEP RTL.
 #
-# SIGNOFF NOTE: `all` here is the whole SMU regression, not a wrapper-only
-# subset of it. This file used to be a separate baseline that explicitly did
-# not substitute for bare `--dut smu_block --items sep0_all`; that stopped being true
-# when the bare catalog was migrated onto this DUT and retired. smu_wrapper
-# instantiates the same smu with the open-source IP integration attached, so
-# there is no second catalog to reconcile against any more. testlists/all.toml
-# now holds one leaf, for the reason recorded there.
+# SIGNOFF NOTE: `all` here is the whole SMU regression. smu_wrapper is the same
+# smu with the open-source IP integration attached, so there is one catalog.
+# testlists/all.toml holds the two --dut smu_block leaves, for the reasons
+# recorded there.
 #
 # Commercial mirror (oca_smu chiplet testlist YAML naming):
 #   SMU_Dev_with_SEP_Regression          = probe/connectivity (no CPU exec)
@@ -1646,41 +1643,25 @@ tests = [
   "smu_xtrig_ctm_remap_test",
 ]
 
-# Migrated, enrolled to stay visible, not yet passing here.
+# Enrolled to stay visible, not passing here.
 #
-# The boot-stall / IC-reset / STAP group that used to live here is gone: all of
-# it came from one `ifndef SMU_NO_SEP` in tb/tb_wrapper_top.sv that had grown
-# past the SEP backdoor it was meant to guard and swallowed seventeen
-# SEP-independent observation assigns. Its `else` re-drove only the sep_*
-# pins, so under +define+SMU_NO_SEP -- the profile every migrated DTP leaf
-# runs -- those seventeen outputs had no driver and read a constant 0. The
-# design was right the whole time; the tap_ctrl structs were correct at every
-# point along the path, which is why the write always landed and read back.
+# smu_dtp_jtag2axi_abort_mid_op_test aborts an OTP op mid-flight, so it first
+# has to see SINGLE_OP report BUSY. The block bench leaves the OTP interface
+# unterminated and the op hangs BUSY, which makes that observable there. Here
+# the real SMC eFuse model from smc_ip_integration answers, and status is
+# already SUCCESS when the first poll shifts out.
 #
-# smu_dtp_jtag2axi_abort_mid_op_test is a different thing, and not a defect in
-# either the DUT or the testbench. It aborts an OTP op mid-flight, so it first
-# has to see SINGLE_OP report BUSY. On the bare DUT the OTP interface is tied
-# off and the op hangs BUSY forever, which makes that trivially observable.
-# smu_wrapper runs the real SMC eFuse model from smc_ip_integration, which
-# answers: status is already SUCCESS when the first poll shifts out.
-#
-# The window is not a tuning problem. Polling with no settle does not help --
-# one SINGLE_OP DR shift is 39 bits of TCK (~1.5us at the randomized JTAG
-# periods) against an OTP that responds in tens of clk_smu, so the op is always
-# finished before any JTAG capture completes. A deep-pipeline SERIES read was
-# tried as a way to keep beats outstanding across a shift; it does not work,
-# because SERIES_CTRL's status field reports the control transaction, not the
-# data pipeline, and it reads SUCCESS on both DUTs (that variant regressed the
-# bare DUT too, and was reverted).
-#
-# So the scenario is unreachable through the JTAG SINGLE_OP/SERIES interface on
-# a DUT whose OTP actually responds. Enrolled here to stay visible rather than
-# quietly dropped; making it real needs a way to hold the OTP response off
-# (a stallable eFuse model hook), which is a testbench feature, not a fix.
+# The window is not a tuning problem: one SINGLE_OP DR shift is 39 bits of TCK
+# (~1.5us at the randomized JTAG periods) against an OTP that responds in tens
+# of clk_smu, so the op finishes before any JTAG capture completes. A
+# deep-pipeline SERIES read does not substitute -- SERIES_CTRL's status field
+# reports the control transaction, not the data pipeline, and reads SUCCESS on
+# both DUTs. Reaching this scenario needs a way to hold the OTP response off
+# (a stallable eFuse model hook), which is a testbench feature.
 [[groups]]
 name = "migrated_dtp_pending"
 tests = [
-  "smu_dtp_jtag2axi_abort_mid_op_test",  # real OTP model completes before the BUSY poll; needs a SERIES op
+  "smu_dtp_jtag2axi_abort_mid_op_test",  # the real OTP model answers before the BUSY poll can capture it
 ]
 
 # PR-gate tier: .github/workflows/sim.yml runs this on every hardware diff.

@@ -3,37 +3,24 @@
 
 schema_version = 1
 
-# Residual testlist for --dut smu_block, the bare `smu #(.SEP(0))` DUT.
+# Testlist for --dut smu_block, the bare `smu #(.SEP(0))` DUT. The SMU
+# regression is testlists/wrapper.toml on --dut smu; these are the two leaves
+# that cannot run there.
 #
-# This file used to carry the whole Phase-1 SEP=0 regression: 56 leaves across
-# smc.toml / dtp.toml / fabric.toml and fifteen overlapping phase and rank
-# groups. All of it now runs on --dut smu, the wrapper bench, which instantiates the same
-# smu with the open-source IP integration attached, so the duplicates were
-# retired rather than maintained twice. testlists/wrapper.toml is the SMU
-# regression; its `all` group is the whole of it.
-#
-# Two leaves stayed, neither because of a defect.
 # smu_dtp_jtag2axi_abort_mid_op_test aborts an OTP operation mid-flight, so it
-# has to observe SINGLE_OP report BUSY first. That is free here, where smu.sv
-# re-exposes the eFuse interface and the TB leaves it unterminated so the
-# operation hangs BUSY forever. On smu_wrapper the real SMC eFuse model answers
-# in tens of clk_smu, against a 39-bit DR shift -- the operation is always
-# finished before any JTAG capture completes, so the window does not exist.
-# Giving it one needs a stallable eFuse hook in the wrapper TB, which is a
-# testbench feature rather than a fix; until then the bare DUT hosts this leaf
-# and this file exists for it.
+# has to observe SINGLE_OP report BUSY first. That is available here, where
+# smu.sv re-exposes the eFuse interface and the TB leaves it unterminated so
+# the operation hangs BUSY. On the wrapper the real SMC eFuse model answers in
+# tens of clk_smu against a 39-bit DR shift, so the operation finishes before
+# any JTAG capture completes and the window does not exist. Reaching it there
+# needs a stallable eFuse hook in the wrapper TB.
 #
-# smu_dtp_jtag_smoke_test stays for a different reason: it is the one VPLAN
-# scenario with an SV-UVM implementation as well as a cocotb one, and the
-# SV-UVM harness is the `UVM` shape of tb/tb_top.sv -- this DUT. Its testlist
-# entry carries the `module = { cocotb, uvm }` binding map that
-# `--dut smu_block --framework uvm` resolves through. The cocotb side also runs on
-# smu_wrapper, enrolled in migrated_dtp, and that is the copy the regression
-# scores; this entry exists so the SV-UVM view keeps a scenario to run.
-#
-# Baseline at retirement: --dut smu_block --items all 56/56 PASS, and every retired
-# leaf green on smu_wrapper (migrated_fabric 14/14, migrated_smc 12/12,
-# migrated_dtp 26/27, the one red being RTL issue #1599 and DUT-independent).
+# smu_dtp_jtag_smoke_test is the one VPLAN scenario with an SV-UVM
+# implementation as well as a cocotb one, and the SV-UVM harness is the `UVM`
+# shape of tb/tb_top.sv -- this DUT. Its entry carries the
+# `module = { cocotb, uvm }` binding map that `--dut smu_block --framework uvm`
+# resolves through. Its cocotb side is enrolled in migrated_dtp on the wrapper,
+# and that is the copy the regression scores.
 
 includes = ["dtp.toml"]
 

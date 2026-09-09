@@ -8,16 +8,17 @@ schema_version = 1
 # hw/common/dv/configs/duts.toml registers as an `alias_of = "smu"` and so
 # resolves to this same config and identity.
 #
-# This is the SMU regression. The bare `smu #(.SEP(0))` block bench that used
-# to own the `smu` name is smu_block_sim_cfg.toml.
+# This is the SMU regression. The bare `smu #(.SEP(0))` block bench is
+# smu_block_sim_cfg.toml.
 #
 # DUT is hw/top/smu_wrapper.sv (smu + smc_ip_integration + sep_ip_integration),
 # pulled through the `smu_wrapper` bender target — same OSS composition as
 # smc_wrapper / sep_wrapper. The CPU memory macros come with
 # smc_ip_integration; the TB keeps the cocotb observe surface.
 #
-# Independent of the residual SEP=0 bare-`smu` catalog in smu_block_sim_cfg.toml;
-# both configs share this DV root and the build/runs evidence directory.
+# Independent of the residual SEP=0 block-bench catalog in
+# smu_block_sim_cfg.toml; both configs share this DV root and the build/runs
+# evidence directory.
 name = "smu"
 profile = "native"
 description = "Production-wrapper OSS baseline: no-SEP and real-SEP smoke"
@@ -74,11 +75,13 @@ bender_targets = [
   "smu_wrapper",
 ]
 # Prepend SEP prim shims so `include` of prim_* resolves to the OSS overlays
-# (see smu_sim_cfg.toml).
+# (see smu_block_sim_cfg.toml).
 incdirs = [
   "hw/sys/sep/dv/shims/prim",
   "hw/sys/smu/dv/tb",
-  # ocah_fcov_macros.svh, included by the cov/sv functional-coverage modules.
+  # ocah_fcov_macros.svh. Kept so an assertion or coverage include resolves
+  # here too; the cov/sv functional-coverage modules themselves are
+  # instantiated in tb/tb_top.sv and compile on smu_block, not here.
   "hw/common/assert",
 ]
 # Licensed/vendor sim collateral pulled by the sep×simulation bender slice is
@@ -127,6 +130,9 @@ sources = [
   # counters and the firmware mailbox. Binds into smc_ip_integration, which
   # holds the memory macros. hw/sys/smc/dv carries the same entry; without it
   # this environment has none of those hooks.
+  # smc_cpu_mem_dv.sv resolves the scratch bank decode through this package;
+  # hw/sys/smc/dv/smc_sim_cfg.toml lists the pair in the same order.
+  "hw/sys/smc/dv/models/smc_scratch_map_pkg.sv",
   "hw/sys/smc/dv/models/smc_cpu_mem_dv.sv",
   # SEP=1 key_manager pulls picorv32; Bender package files are not always
   # on the smu_wrapper closure — mirror sep_sim_cfg.toml.
@@ -166,7 +172,8 @@ python_paths = [
   # to merge rather than be shared by path: its modules import each other as
   # `from seq_lib.x`, so they only resolve inside a package of that name, and
   # `seq_lib` can only ever be one package. The two trees had 49 and 28 modules
-  # and no name in common, so they became one -- see smu_sim_cfg.toml.
+  # and no name in common, so they are one package -- see
+  # smu_block_sim_cfg.toml, which puts the same directory on its path.
   "hw/sys/smu/dv/common",
 ]
 results_dir = "{run_dir}/{item}/results"

@@ -50,7 +50,7 @@ hw/sys/smu/dv/
 
 === Environment Components
 
-`SmuEnv` (`cocotb/env/smu_env.py`) is deliberately thin. It builds the
+`SmuEnv` (`common/smu_dv_env/smu_env.py`) is deliberately thin. It builds the
 scoreboard and reads `SmuEnvCfg` out of the PyUVM `ConfigDB`; the JTAG and AXI
 agents are created on demand by the sequences that need them, against
 `cocotb.top`, rather than being instantiated for every test. The one agent that

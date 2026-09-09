@@ -8,8 +8,8 @@ This chapter freezes the *candidate* SEP=0 feature subset for designer
 confirmation (#487). It is not an approval. Do not treat a merged copy of
 this file as designer sign-off.
 
-The executable contract remains `testlists/all.toml`. Feature credit is
-only the enrolled `sep0_all` set (52) plus the two pull-request-only names
+The executable contract is `testlists/wrapper.toml`. Feature credit is
+only the enrolled `sep0_all` set (53) plus the two pull-request-only names
 called out below. Deferred raise stubs, wrapper PASSes, and SEP=1 work are
 OUT.
 
@@ -18,9 +18,9 @@ OUT.
 |Field |Value
 |Status |CANDIDATE — awaiting SMU designer confirmation in-repo
 |Spec source |`hw/sys/smu/doc/SMU_SPEC.md` Features 1–7
-|Enrolled nightly |`sep0_all` = 52 (`--dut smu`)
+|Enrolled nightly |`sep0_all` = 53 (`--dut smu`)
 |PR smoke |`smoke` = 4 (includes `smu_ext_boot_seq_gate_test`, not in `sep0_all`)
-|Evidence map |`cocotb/env/smu_evidence_map.py` `TEST_EVIDENCE`
+|Evidence map |`common/smu_dv_env/smu_evidence_map.py` `TEST_EVIDENCE`
 |Deferred catalog |`docs/SMU_DEFERRED_DISPOSITION.adoc` (disposition in #488)
 |===
 
@@ -40,7 +40,7 @@ table being empty is intentional.
 [[smu-feature-subset]]
 === v0.5.0 subset
 
-`SMU_SPEC.md` Features 1–7, scoped to `--dut smu_block` with `SEP=0`.
+`SMU_SPEC.md` Features 1–7, scoped to `--dut smu` on its `SEP=0` compile profile.
 
 [cols="1,2,2,3,3",options="header",]
 |===
@@ -137,11 +137,9 @@ v0.5.0 nightly denominator.
 * Every name in `docs/SMU_DEFERRED_DISPOSITION.adoc` is OUT for this subset. #488 is the
   per-row disposition; do not imply those features are done because a
   `TEST_EVIDENCE` row still exists for catalog continuity.
-* `--dut smu` is the wrapper bench and carries `sep0_all` itself. This bullet
-  used to withhold density credit from it, which held while the bare catalog
-  was maintained in parallel; that catalog was migrated here and retired, so
-  the exclusion is gone (`SMU_VPLAN.adoc`). PASSes are still `DUT_TAG=WRAPPER`,
-  and the bare block bench is now `--dut smu_block`.
+* `--dut smu` is the wrapper bench and carries `sep0_all` itself; PASSes are
+  labelled `DUT_TAG=WRAPPER`. The bare block bench is `--dut smu_block`
+  (`SMU_VPLAN.adoc`).
 * The commercial names `main_wrapper` and `main_wrapper_por` are not in
   this tree. The wrapper successors are
   `smu_wrapper_elaboration_no_sep_test` (elaboration / reset) and

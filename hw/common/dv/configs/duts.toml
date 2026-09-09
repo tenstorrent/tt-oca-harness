@@ -20,11 +20,10 @@
 
 schema_version = 1
 
-# `smu` is the SMU regression and is discovered by convention
-# (hw/sys/smu/dv/smu_sim_cfg.toml): smu_wrapper.sv, the same smu with the
-# open-source IP integration attached. `smu_wrapper` is kept as an alias of it
-# because that is the name the catalog, CI and docs used while the two were
-# separate DUTs, and it still names the thing accurately.
+# `smu` is the SMU regression, discovered by convention from
+# hw/sys/smu/dv/smu_sim_cfg.toml: smu_wrapper.sv, the same smu with the
+# open-source IP integration attached. `smu_wrapper` is a second selectable
+# name for it.
 #
 # Frameworks are NOT registered here: a DUT implementing both cocotb and SV-UVM
 # (e.g. dtp, smu_block) declares them as [frameworks.<name>] tables in its one
@@ -33,9 +32,9 @@ schema_version = 1
 root = "hw/sys/smu/dv"
 alias_of = "smu"
 
-# The bare `smu #(.SEP(0))` block bench, tb/tb_top.sv, which was `--dut smu`
-# until its catalog moved to the wrapper. A second sim config in a DV root the
-# convention resolves to `smu`, so it is registered rather than discovered.
+# The bare `smu #(.SEP(0))` block bench, tb/tb_top.sv. A second sim config in
+# a DV root the convention resolves to `smu`, so it is registered rather than
+# discovered.
 [duts.smu_block]
 root = "hw/sys/smu/dv"
 

@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-// Migrated bare-smu leaves reach into the design hierarchically, and this
-// scope decided how far. It used to expose the TB top alone, so any leaf
-// brought across failed at its first XMR with 'missing hierarchical child
-// u_dut'. The module list below matches smu_public_scope.vlt, plus
-// smu_wrapper itself: the same design, one level deeper here because u_dut
-// is the wrapper rather than smu.
+// Leaves reach into the design hierarchically, and this scope decides how
+// far. The module list matches smu_public_scope.vlt plus smu_wrapper itself:
+// the same design, one level deeper here because u_dut is the wrapper rather
+// than smu.
 
 `verilator_config
 public_flat_rw -module "smu_wrapper_uvm_top" -var "*"

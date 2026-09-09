@@ -17,11 +17,11 @@ Do not treat a merged copy as design-owner or DV-lead sign-off.
 |===
 |Field |Value
 |Status |CANDIDATE — awaiting SMU design owner + DV lead approval
-|DUT |`--dut smu` → bare `smu #(.SEP(0))` under `smu_uvm_top`
+|DUT |`--dut smu` → `hw/top/smu_wrapper.sv` under `smu_wrapper_uvm_top`, on its `SEP=0` compile profile (alias `smu_wrapper`)
 |Spec / plan |`hw/sys/smu/doc/SMU_SPEC.md` Features 1–7; `SMU_FEATURE_LIST.adoc`
-|Coverage intent |`smu_fcov.py` scenario bins + `TEST_EVIDENCE` tokens (no Verilator covergroup)
+|Coverage intent |`smu_fcov.py` scenario bins + `TEST_EVIDENCE` tokens. Verilator toggle / FCOV is scoped to `--dut smu_block` (`SMU_COVERAGE_POLICY.adoc`)
 |Checker |`SmuScoreboard` named `evidence=` / `expect_*` tokens + `results.xml`
-|CI tonight |`.github/workflows/sim.yml` PR `smoke`; `.github/workflows/regress.yml` nightly and weekly `sep0_all`
+|CI tonight |`.github/workflows/sim.yml` PR `smoke_sep0`; `.github/workflows/regress.yml` nightly and weekly `sep0_all`
 |===
 
 [[smu-scope-confirmation]]
@@ -46,14 +46,16 @@ Executable membership on `main` today, `--dut smu` only:
 [cols="2,1,3",options="header",]
 |===
 |Group |Count |Role
-|`smoke` |4 |PR gate (`sim.yml`). Includes `smu_ext_boot_seq_gate_test`, which is not in `sep0_all`.
-|`sep0_all` |52 |Nightly and weekly (`regress.yml`). v0.5.0 feature-credit set.
-|`sep0_p4_all` |54 |Adds two P4 deepeners. Not the nightly denominator.
+|`smoke_sep0` |4 |PR gate (`sim.yml`). Toolchain-free; `smoke` reaches the SEP=1 firmware and cannot run on a hosted runner.
+|`sep0_all` |53 |Nightly and weekly (`regress.yml`). v0.5.0 feature-credit set.
+|`all` |81 |Adds the SEP=1 firmware set. Not the nightly denominator.
 |===
 
-`--dut smu_wrapper` (`testlists/wrapper.toml`) is a different evidence
-surface. Its `smoke` / `all` PASSes carry `DUT_TAG=WRAPPER` and are not
-`sep0_all` density credit. CI does not run `--dut smu_wrapper`. See #489.
+`sep0_all` and the SEP=1 groups are two evidence surfaces on one DUT:
+`--dut smu` is the wrapper (`testlists/wrapper.toml`), and CI runs its
+`sep0_all` nightly and weekly. PASSes carry `DUT_TAG=WRAPPER`. The residual
+block bench is `--dut smu_block` (`testlists/all.toml`, two leaves), whose
+PASSes carry `DUT_TAG=BARE` and are not feature credit. See #489.
 
 [[smu-credit-rules]]
 === Credit rules

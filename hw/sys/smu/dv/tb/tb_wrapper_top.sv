@@ -227,9 +227,8 @@ module smu_wrapper_uvm_top (
   input  wire logic                                     xtrig_clk_stop_req,
   output logic [dtp_pkg::DEFAULT_NUM_INT_CT-3:0]        xtrig_ctm_dst_ack,
   output logic [dtp_pkg::DEFAULT_NUM_INT_CT-3:0]        xtrig_ctm_src_req,
-  // DTP clock-stop grant, as tb/tb_top.sv exposes it. Left unconnected here
-  // until smu_clock_stop_coordination_test migrated onto this DUT and found
-  // no pin to sample.
+  // DTP clock-stop grant, as tb/tb_top.sv exposes it. Sampled by
+  // smu_clock_stop_coordination_test.
   output logic                                          dtp_stop_clks_o,
   // The CLA's own clock-stop enable, one level inside smu. Paired with
   // dtp_stop_clks_o above: the test proves the aggregate grant follows the
@@ -1086,9 +1085,9 @@ module smu_wrapper_uvm_top (
   assign jtag_ic_reset_ext_ctrl_n = ic_reset_ext_w.val;
   assign jtag_ic_reset_smc_ovrd   = u_dut.u_smu.jtag_smc_reset_ctrl.ovrd.cold_reset_n_ovrd;
   assign jtag_ic_reset_smc_ctrl_n = u_dut.u_smu.jtag_smc_reset_ctrl.val.cold_reset_n_val;
-  // Read the DTP output port, not smu's internal wire between the two
-  // instances: Verilator collapses that wire here and the XMR reads a constant
-  // 0 while the register behind it holds the right value.
+  // The DTP output port, not smu's internal wire between the two instances.
+  // That wire is collapsed here, so the XMR reads a constant 0 while the
+  // register behind it holds the right value.
   assign smu_scope_boot_stall_val  = u_dut.u_smu.boot_stall_jtag_val;
   assign smu_scope_boot_stall_ovrd = u_dut.u_smu.boot_stall_jtag_ovrd;
   assign tb_stap_io_tck      = stap_io_ctrl_w.tck;

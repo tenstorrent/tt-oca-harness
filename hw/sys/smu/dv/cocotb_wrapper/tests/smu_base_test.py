@@ -111,8 +111,12 @@ class smu_base_test(uvm_test):
             needed = self.min_jtag_smu_ratio * self.cfg.smu_clk_period_ns
             if self.cfg.jtag_period_ns < needed:
                 raised = int(-(-needed // 1))  # ceil, keeping an integer period
-                self.logger.info(
-                    "jtag_period_ns %d -> %d to hold jtag/smu >= %s (RTL issue #1599)",
+                # WARNING, not INFO: every run of an affected leaf says in its log
+                # that it is avoiding the #1599 regime, so the clamp is visible
+                # rather than silent while the issue stays open.
+                self.logger.warning(
+                    "jtag_period_ns %d -> %d to hold jtag/smu >= %s (open RTL issue "
+                    "#1599; remove this override when it closes)",
                     self.cfg.jtag_period_ns,
                     raised,
                     self.min_jtag_smu_ratio,
@@ -169,6 +173,36 @@ class smu_base_test(uvm_test):
                 self.sep_trace_mon.attach_symbols(syms, path)
                 return
         self.logger.info("no SEP symbol listing among %s; trace PCs stay numeric", candidates)
+
+    #: TB inputs no leaf drives unless it exercises that interface. Verilator
+    #: two-state reads an undriven input as 0, but this config also lists vcs
+    #: and xcelium, where it is X -- and an X on AxPROT or a cross-trigger
+    #: request reaches the DUT. Driven here so the idle value is the same on
+    #: every simulator; a leaf that wants them takes them over afterwards.
+    IDLE_INPUTS = (
+        "ext_in_awlock",
+        "ext_in_awcache",
+        "ext_in_awprot",
+        "ext_in_awqos",
+        "ext_in_awregion",
+        "ext_in_arlock",
+        "ext_in_arcache",
+        "ext_in_arprot",
+        "ext_in_arqos",
+        "ext_in_arregion",
+        "ext_in_wuser",
+        "gpio_boot_stall_drive_i",
+        "xtrig_ctm_dst_req",
+        "xtrig_ctm_src_ack",
+        "xtrig_clk_stop_req",
+    )
+
+    def drive_idle_inputs(self) -> None:
+        dut = cocotb.top
+        for name in self.IDLE_INPUTS:
+            handle = getattr(dut, name, None)
+            if handle is not None:
+                handle.value = 0
 
     def start_clocks(self) -> None:
         dut = cocotb.top
@@ -243,13 +277,11 @@ class smu_base_test(uvm_test):
         self.logger.info("Step 0: pre-drive resets high to arm async resets")
         dut.powergood_i.value = 1
         dut.rst_cold_ni.value = 1
-        # This pin used to be tied to 1'b1 inside the TB. It is a driven input
-        # now, so that smu_ext_boot_seq_gate_test can hold it low, and the
-        # default has to be restored here or every leaf that expects the boot
-        # sequence complete sees it deasserted. The bare bring-up does the same.
+        # A driven input, so smu_ext_boot_seq_gate_test can hold it low; every
+        # other leaf needs the asserted default set here or it sees the boot
+        # sequence incomplete. The bare bring-up does the same.
         dut.ext_boot_seq_done_i.value = 1
-        # TRST follows cold reset, as it did when this TB tied trst_n to
-        # rst_cold_ni internally.
+        # TRST follows cold reset.
         dut.jtag_tck.value = 0
         dut.jtag_tms.value = 1
         dut.jtag_trst.value = 1
@@ -258,6 +290,7 @@ class smu_base_test(uvm_test):
         # it (see SmuEsrcNoiseDriver).
         if hasattr(dut, "esrc_noise_ext_i"):
             dut.esrc_noise_ext_i.value = 0
+        self.drive_idle_inputs()
         self.start_clocks()
         await self.jtag_tap_reset()
         await ClockCycles(dut.clk_ref_i, 2)

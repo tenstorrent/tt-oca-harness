@@ -170,14 +170,11 @@ feature reuses that IP bench's reference model and scoreboard through
 | `--dut smu` (alias `smu_wrapper`) | `tb/tb_wrapper_top.sv` (`DUT_TAG=WRAPPER`) | The SMU regression: SEP=0 density / CSR / fabric / DTP (`sep0_all` = 53) plus the SEP=1 firmware set (`all` = 81) |
 | `--dut smu_block` | `tb/tb_top.sv` (`DUT_TAG=BARE`) | Two leaves: `smu_dtp_jtag2axi_abort_mid_op_test`, which needs an unterminated OTP interface, and `smu_dtp_jtag_smoke_test`, which carries the SV-UVM binding (the SV-UVM harness is this TB's `UVM` shape) |
 
-This used to be a dual-TB signoff, with a bare density catalog that wrapper
-smoke was explicitly not allowed to substitute for. That catalog was migrated
-onto the wrapper -- the same `smu` with the open-source IP integration attached
--- and retired, so there is one source now.
+One signoff source: the wrapper is the same `smu` with the open-source IP
+integration attached, so there is no second catalog to reconcile against.
 
-The names follow that: `--dut smu` selects the wrapper, since it is the SMU
-bench, and the bare block bench it replaced is `--dut smu_block`. `smu_wrapper`
-stays registered as an alias of `smu` (`alias_of` in
+`--dut smu` selects the wrapper; the bare block bench is `--dut smu_block`.
+`smu_wrapper` is registered as an alias of `smu` (`alias_of` in
 hw/common/dv/configs/duts.toml), so the two names resolve to one config, one
 build cache and one identity. Logs still carry `DUT_TAG=`.
 

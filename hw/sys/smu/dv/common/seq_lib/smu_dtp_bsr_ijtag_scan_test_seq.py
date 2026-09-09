@@ -61,7 +61,8 @@ class smu_dtp_bsr_ijtag_scan_test_seq:
     async def _count_select(self, acc: dict[str, int]) -> None:
         """Count TCK rises, and the BSR-selected subset, on TCK itself.
 
-        This used to detect TCK edges by sampling jtag_tck on clk_ref_i, which
+        Counts on the TCK edge itself rather than sampling jtag_tck on
+        clk_ref_i: at the randomized clock ratios that sampling
         aliases: SmuEnvCfg.randomize_timing draws jtag_period_ns from
         (32, 40, 48) and ref_clk_period_ns from (8, 10, 12, 16), and 7 of those
         12 pairs leave under two ref samples inside a TCK high phase, so whole

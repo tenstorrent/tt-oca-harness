@@ -7,11 +7,9 @@ schema_version = 1
 # technology-specific interfaces tied off rather than attached to the
 # open-source IP integration. SEP=0 is hardcoded in tb/tb_top.sv.
 #
-# This used to be `--dut smu` and carried the whole SEP=0 regression. That
-# catalog now runs on the wrapper, which `--dut smu` selects; what is left here
-# are the two leaves the wrapper cannot express and the SV-UVM view, whose
-# harness is the `UVM` shape of this TB. testlists/all.toml records both
-# reasons.
+# It carries the two leaves that cannot run on `--dut smu` and the SV-UVM
+# view, whose harness is the `UVM` shape of this TB. testlists/all.toml records
+# why each is here.
 #
 # Executable plan: enrolled groups in testlists/all.toml
 # Two frameworks share this config and one tb_top: cocotb/PyUVM (default) and
@@ -126,12 +124,11 @@ build_jobs = 8
 # the interconnect it wires up was actually exercised. That is the question
 # this DUT can answer and the subsystem packages cannot.
 #
-# WHY THIS IS NOT THE 0.5 GB TOGGLE RUN THIS COMMENT USED TO WARN ABOUT. That
-# figure was toggle over the whole elaborated model, SMC cluster and vendored
-# fabric included. smu_cov_scope.vlt drops all of it at compile time, so the
-# toggle denominator is SMU's own RTL. Scope is what makes toggle affordable
-# here; enabling toggle without it reproduces the database this comment
-# previously recorded.
+# WHY SCOPE IS LOAD-BEARING. Toggle over the whole elaborated model -- SMC
+# cluster and vendored fabric included -- is ~0.5 GB per leaf.
+# smu_cov_scope.vlt drops all of it at compile time, so the toggle denominator
+# is SMU's own RTL. Enabling toggle without the scope file reproduces that
+# database.
 #
 # --output-groups 0 compiles the generated .cpp files one by one instead of
 # in --build-jobs groups. Verilator groups by file count, and on a

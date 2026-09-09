@@ -33,11 +33,10 @@ them to instrument. Toggle instruments nets, which is what an integration
 level owns: whether the interconnect it wires up was actually exercised. Each
 subsystem grades its own internals in its own DV package.
 
-## Why this is not the 0.5 GB toggle run the config used to warn about
+## Why scope is what makes toggle affordable here
 
-`[coverage.verilator]` previously recorded that toggle on this DUT produces a
-~0.5 GB database per leaf. That figure was toggle over the whole elaborated
-model, SMC cluster and vendored fabric included. `smu_cov_scope.vlt` drops all
+Toggle over the whole elaborated model -- SMC cluster and vendored fabric
+included -- produces a ~0.5 GB database per leaf. `smu_cov_scope.vlt` drops all
 of it at compile time:
 
 | | Sites | Model dir | Build |
