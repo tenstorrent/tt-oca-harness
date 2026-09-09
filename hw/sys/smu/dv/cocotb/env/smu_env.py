@@ -13,6 +13,7 @@ class SmuEnv(uvm_env):
     def build_phase(self) -> None:
         self.cfg = ConfigDB().get(self, "", "cfg")
         self.scoreboard = SmuScoreboard("scoreboard", self)
-        # Agents are created on demand by sequences (JTAG / AXI) against cocotb.top.
+        # Agents are created on demand by sequences (JTAG / AXI) against cocotb.top;
+        # the outbound SMN responder is the exception and lives on cfg.axi_out_mem.
         self.jtag = None
         self.axi = None

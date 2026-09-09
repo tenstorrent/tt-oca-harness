@@ -16,7 +16,8 @@
 //
 // Instantiates bare `smu` with SEP=0, flattens JTAG + external SMN AXI for
 // the VIPs. Macro/I3C/DTP CSR boundaries are idle (no TB placeholder
-// terminators); smu_axi_out_sim_slave terminates outbound SMN.
+// terminators); outbound SMN stays a struct port, placed on u_axi_out_if by
+// ocah_axi_struct_bridge for the shared AXI slave agent.
 //
 // Real checkers consume:
 //   - rst_cold_stable_ref_clk_no / rst_primary_* after reset release
@@ -127,16 +128,21 @@ module smu_uvm_top
   assign s_axi_rvalid             = smu_axi_in_resp.r_valid;
   assign smu_axi_in_req.r_ready   = s_axi_rready;
 
-  // External SMN AXI slave.
-  smu_axi_out_sim_slave #(
+  // External SMN AXI4 egress: the shared slave agent answers on u_axi_out_if
+  // in both realizations (cocotb binds the instance, SV-UVM takes the vif
+  // from uvm_config_db); the bridge places the crossbar's struct port on it.
+  ocah_axi_if u_axi_out_if (
+    .aclk    (clk_smu_i),
+    .aresetn (rst_cold_ni)
+  );
+
+  ocah_axi_struct_bridge #(
     .axi_req_t  (smu_axi_xbar_pkg::axi_out_req_t),
-    .axi_resp_t (smu_axi_xbar_pkg::axi_out_resp_t),
-    .AddrWidth  (56)
-  ) u_axi_out_mem (
-    .clk_i      (clk_smu_i),
-    .rst_ni     (rst_cold_ni),
+    .axi_resp_t (smu_axi_xbar_pkg::axi_out_resp_t)
+  ) u_axi_out_bridge (
     .axi_req_i  (smu_axi_out_req),
-    .axi_resp_o (smu_axi_out_resp)
+    .axi_resp_o (smu_axi_out_resp),
+    .axi_if     (u_axi_out_if)
   );
 
   always_ff @(posedge clk_smu_i or negedge rst_cold_ni) begin
@@ -616,9 +622,10 @@ module smu_uvm_top
   // VIP interface on the primary TAP pins, the SMU-local TB interface, the
   // embedded DTP's TB interface (so the DTP bench's reference models and
   // checkers attach unchanged), the JTAG protocol SVA, quiescent tie-offs
-  // for every other cocotb-driven stimulus pin, uvm_config_db publication,
-  // and run_test(). Compiled only when the native uvm flow defines UVM; the
-  // cocotb flow sees only the ported module above.
+  // for every other cocotb-driven stimulus pin, uvm_config_db publication
+  // of the four virtual interfaces (u_axi_out_if lives above, in both
+  // shapes), and run_test(). Compiled only when the native uvm flow
+  // defines UVM; the cocotb flow sees only the ported module above.
   // ------------------------------------------------------------------
   import uvm_pkg::*;
 
@@ -755,6 +762,7 @@ module smu_uvm_top
     uvm_config_db#(virtual smu_tb_if)::set(null, "*", "tb_vif", u_tb_if);
     uvm_config_db#(virtual dtp_tb_if)::set(null, "*", "dtp_tb_vif", u_dtp_tb_if);
     uvm_config_db#(virtual ocah_jtag_if)::set(null, "*", "jtag_vif", u_jtag_if);
+    uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "axi_out_vif", u_axi_out_if);
     run_test();
   end
 `endif
