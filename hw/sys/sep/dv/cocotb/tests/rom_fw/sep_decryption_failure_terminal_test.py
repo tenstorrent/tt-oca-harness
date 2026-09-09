@@ -6,7 +6,7 @@ Procedure variant (b): "corrupt the encrypted payload so the decrypted plaintext
 does not match the TOC magic". One ciphertext bit of the PRIMARY slot is flipped
 in AES-CBC block 0, and the manifest is re-hashed and re-signed with the dev0 key
 so that the only thing wrong with the image is the ciphertext itself
-(``env/sep_payload_mutate.py``).
+(``env/sep_oca_payload.py``).
 
 THE FALSE-PASS THIS TESTCASE IS BUILT TO AVOID. AES-CBC decryption is a
 permutation: it never reports an error for the wrong input, and the ROM's own
@@ -54,7 +54,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyuvm
-from env import sep_payload_mutate as pm
+from env import sep_oca_payload as pm
 from rom_fw.sep_backup_manifest_fail_base import sep_backup_manifest_fail_base
 
 _SEP_ROOT = Path(__file__).resolve().parents[4]

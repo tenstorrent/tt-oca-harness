@@ -38,7 +38,7 @@ that gap rather than reproduce it.
 
 THE MATCHED PAIR IS THE STRONGEST EVIDENCE HERE. This testcase and
 ``sep_firmware_backup_pubkey_rom_0_revoked_key_test`` build their flash image from
-the same two calls -- ``mm.set_identifier(primary)`` and
+the same two calls -- ``mm.break_magic(primary)`` and
 ``select_backup_rom_slot(buf, 0)`` -- so the bytes are identical by construction.
 The ONLY difference between them is one bit of ``CHIPLET_PUBK_REVOKE``. Fuse clear
 boots; bit 0 set is refused with ``KEY_REVOKED idx=0x00000000`` and never reaches
@@ -55,7 +55,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyuvm
-from env import sep_manifest_mutate as mm
+from env import sep_oca_mutate as mm
 from rom_fw.sep_primary_fail_backup_boot_base import (
     MANIFEST_ERR_BAD_MAGIC,
     sep_primary_fail_backup_boot_base,
@@ -112,7 +112,7 @@ class sep_firmware_backup_rom_key_valid_test(sep_primary_fail_backup_boot_base):
         # validate_manifest_header rejects before any hash or crypto work
         # (manifest_load.c), so the trigger cannot interact with the key
         # selection under test.
-        mm.set_identifier(buf, "primary")
+        mm.break_magic(buf, "primary")
 
     def prepare_backup(self, buf: bytearray) -> None:
         got, tbs_changed = select_backup_rom_slot(buf, _VALID_SLOT)

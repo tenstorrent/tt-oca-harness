@@ -70,7 +70,7 @@ architected status ring carries only the generic terminal code and the debug
 console token is the only per-reason evidence available.
 
 ``signature_type`` is one byte at manifest offset 165, INSIDE the hashed TBS
-(``manifest.h`` field order; ``sep_manifest_mutate.OFF_SIGNATURE_TYPE``), so the
+(``manifest.h`` field order; ``sep_oca_mutate.OFF_SIGNATURE_TYPE``), so the
 helper re-hashes. It cannot be a signature-region patch: the field is covered by
 ``manifest_hash``, so an un-rehashed write dies in the manifest loop as a hash
 mismatch and never reaches the type check. No re-sign is needed or possible -- the
@@ -88,7 +88,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyuvm
-from env import sep_manifest_mutate as mm
+from env import sep_oca_mutate as mm
 from rom_fw.sep_primary_fail_backup_boot_base import (
     MANIFEST_ERR_SIG_FAILED,
     sep_primary_fail_backup_boot_base,
@@ -142,14 +142,14 @@ class sep_firmware_primary_invalid_signature_type_test(sep_primary_fail_backup_b
     def corrupt_primary(self, buf: bytearray) -> None:
         # No manifest_identifier corruption: the primary must reach
         # validate_signature.
-        before = mm.get_signature_type(buf, "primary")
+        before = mm.signature_type(buf, "primary")
         assert before == mm.SIG_TYPE_RSA_3072, (
             f"primary signature_type is already {before}, expected "
             f"{mm.SIG_TYPE_RSA_3072} (RSA-3072): the shipped image is not the "
             f"supported-type baseline this testcase mutates away from"
         )
         mm.set_signature_type(buf, "primary", _BAD_SIG_TYPE)
-        got = mm.get_signature_type(buf, "primary")
+        got = mm.signature_type(buf, "primary")
         assert got == _BAD_SIG_TYPE, (
             f"signature_type is 0x{got:02x} after the write, expected "
             f"0x{_BAD_SIG_TYPE:02x}; the mutation did not land"

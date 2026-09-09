@@ -19,7 +19,7 @@ property of the ROM's check order rather than a choice of convenience:
     ``manifest_load.c`` rejects ``offset + length > payload_length`` first, so
     the payload would have to grow past 128 KiB -- roughly 80 ms of extra
     simulated SPI transfer per slot at this testbench's rate, on both slots.
-    ``sep_payload_mutate.set_bl1_zero_length``'s docstring records the analysis.
+    ``sep_oca_payload.set_bl1_zero_length``'s docstring records the analysis.
   * *larger than the spec maximum* is checked at ``rom_handoff.c``
     (``BL1_SIZE`` / ``MANIFEST_ERR_BL1_TOO_LARGE``), which is downstream of
     manifest validation. ``manifest_load.c`` says as much in its own
@@ -41,7 +41,7 @@ end the boot, and would otherwise look the same from the outside.
 from __future__ import annotations
 
 import pyuvm
-from env import sep_payload_mutate as pm
+from env import sep_oca_payload as pm
 from rom_fw.sep_bl1_image_invalid_base import sep_bl1_image_invalid_base
 
 # manifest.h

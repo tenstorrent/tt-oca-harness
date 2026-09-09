@@ -69,7 +69,7 @@ THAN A LIMIT.** F10 item 4 (``batch_runs_0904_vp/FINDINGS.md:588-591``) recommen
 to this batch: sign the chiplet image with a SECOND RSA-3072 key and program ITS
 digest into the chiplet fuse, leaving ``key_digests.c`` slot 0 at dev0, so a ROM
 taking the wrong arm fails on ``PUBK_HASH_MISMATCH`` instead of booting. Nothing
-prevents that here -- ``env/sep_payload_mutate.py`` already has a PEM reader
+prevents that here -- ``env/sep_oca_payload.py`` already has a PEM reader
 (``load_rsa_private_key``) and a PKCS#1 v1.5 signer, and the reference simply
 generates a key with ``openssl genrsa``. It was NOT taken because it means committing
 a new private-key file to this repository, which is a change to the tree's key
@@ -108,7 +108,7 @@ BOTH SLOTS SELECT THE FUSED KEY, AND BOTH ARE RE-SEALED, WHICH IS WHY THE REVOKE
 MEMBERS ARE TERMINAL AND STRICT. The reference sets the selection on primary AND
 backup (``sep_firmware_pub_key_test.py``), so one revocation bit refuses
 both manifests and the retry loop exhausts. This port does the same and then
-re-signs both slots with dev0 (``env/sep_payload_mutate.reseal``), so each slot is a
+re-signs both slots with dev0 (``env/sep_oca_payload.reseal``), so each slot is a
 fully valid, provably bootable manifest bound to the fused key -- ``verify_sealed``
 is re-run after the re-seal to prove it. Revocation is therefore the SOLE cause of
 the rejection, which is the strict form of the property. Note this is stronger than
@@ -141,8 +141,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from env import sep_manifest_mutate as mm
-from env import sep_payload_mutate as pm
+from env import sep_oca_mutate as mm
+from env import sep_oca_payload as pm
 from env import sep_spi_slot_evidence as ev
 from rom_fw.sep_backup_manifest_fail_base import (
     MANIFEST_ERR_KEY_REVOKED,
@@ -176,7 +176,7 @@ def select_chiplet_fuse_key(buf: bytearray, key_index: int) -> tuple[int, int]:
     signature. Unlike the ROM-slot families of R1/R2 this family must leave a
     manifest that would BOOT -- a revocation test whose image was independently
     unbootable would prove nothing about revocation -- so each slot is re-sealed
-    (``env/sep_payload_mutate.reseal``: payload_hash -> manifest_hash -> signature)
+    (``env/sep_oca_payload.reseal``: payload_hash -> manifest_hash -> signature)
     and then re-checked with ``verify_sealed``.
 
     ``verify_signing_key`` runs FIRST, on the untouched slot, so the local signer is
@@ -306,7 +306,7 @@ class _chiplet_key_mixin:
         # The fuse holds the digest little-endian by 32-bit word, because
         # read_fuse_key() (manifest_crypto.c) rebuilds the byte array from
         # eight mmio_read32() results, byte 0 first.
-        want = int.from_bytes(mm.ROM_KEY0_DIGEST, "little")
+        want = int.from_bytes(mm.rom_key_digest(0), "little")
         assert mine == want, (
             f"CHIPLET_PUBK_HASH{key} is 0x{mine:064x}, expected 0x{want:064x} -- the "
             f"little-endian SHA-256 of the dev0 modulus (key_digests.c:18-21). The "

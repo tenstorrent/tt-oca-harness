@@ -114,8 +114,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyuvm
-from env import sep_manifest_mutate as mm
-from env import sep_payload_mutate as pm
+from env import sep_oca_mutate as mm
+from env import sep_oca_payload as pm
 from env import sep_spi_slot_evidence as ev
 from rom_fw.sep_backup_manifest_fail_base import (
     MANIFEST_ERR_KEY_HASH_MISMATCH,
@@ -231,7 +231,7 @@ class sep_firmware_chiplet_pubkey_0_wrong_digest_test(sep_backup_manifest_fail_b
             f"at manifest_crypto.c:228, before the digest bind at :236, so a revoked "
             f"chiplet key would refuse this image before the check under test ran"
         )
-        want = int.from_bytes(mm.ROM_KEY0_DIGEST, "little")
+        want = int.from_bytes(mm.rom_key_digest(0), "little")
         h0 = image.field_int("CHIPLET_PUBK_HASH0")
         h1 = image.field_int("CHIPLET_PUBK_HASH1")
         assert h0 != 0 and h0 != want, (

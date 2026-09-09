@@ -54,7 +54,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyuvm
-from env import sep_manifest_mutate as mm
+from env import sep_oca_mutate as mm
 from rom_fw.sep_backup_manifest_fail_base import (
     MANIFEST_ERR_SIG_FAILED,
     sep_backup_manifest_fail_base,
@@ -103,14 +103,14 @@ class sep_firmware_backup_invalid_signature_type_test(sep_backup_manifest_fail_b
     )
 
     def corrupt_backup(self, buf: bytearray) -> None:
-        before = mm.get_signature_type(buf, "backup")
+        before = mm.signature_type(buf, "backup")
         assert before == mm.SIG_TYPE_RSA_3072, (
             f"backup signature_type is already {before}, expected "
             f"{mm.SIG_TYPE_RSA_3072} (RSA-3072): the shipped image is not the "
             f"supported-type baseline this testcase mutates away from"
         )
         mm.set_signature_type(buf, "backup", _BAD_SIG_TYPE)
-        got = mm.get_signature_type(buf, "backup")
+        got = mm.signature_type(buf, "backup")
         assert got == _BAD_SIG_TYPE, (
             f"signature_type is 0x{got:02x} after the write, expected "
             f"0x{_BAD_SIG_TYPE:02x}; the mutation did not land"

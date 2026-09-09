@@ -88,8 +88,8 @@ import hashlib
 from pathlib import Path
 
 import pyuvm
-from env import sep_manifest_mutate as mm
-from env import sep_payload_mutate as pm
+from env import sep_oca_mutate as mm
+from env import sep_oca_payload as pm
 from env import sep_spi_slot_evidence as ev
 from rom_fw.sep_backup_manifest_fail_base import (
     MANIFEST_ERR_SIG_FAILED,
@@ -172,7 +172,7 @@ class sep_otbn_rsa_verify_failure_test(sep_backup_manifest_fail_base):
     def _prove_slot(self, buf, slot: str, tag: str, n: int, e: int) -> bytes:
         """Log the recovered hash for ``slot`` and return it."""
         base = mm.slot_base(slot)
-        tbs = bytes(buf[base : base + mm.TBS_LEN])
+        tbs = bytes(buf[base : base + mm.SIGNED_REGION_END])
         sig = bytes(buf[base + mm.OFF_SIGNATURE : base + mm.OFF_SIGNATURE + pm.RSA_KEY_BYTES])
         stored = bytes(buf[base + mm.OFF_MANIFEST_HASH : base + mm.OFF_MANIFEST_HASH + 32])
         em = _recovered_em(buf, slot, n, e)
@@ -192,10 +192,10 @@ class sep_otbn_rsa_verify_failure_test(sep_backup_manifest_fail_base):
         return extracted
 
     def _corrupt(self, buf: bytearray, slot: str, byte_index: int, mask: int) -> None:
-        n, e, _d = pm.load_rsa_private_key()
+        n, e, _d = pm.slot_signing_key(buf, slot)
         base = mm.slot_base(slot)
         stored = bytes(buf[base + mm.OFF_MANIFEST_HASH : base + mm.OFF_MANIFEST_HASH + 32])
-        tbs_before = bytes(buf[base : base + mm.TBS_LEN])
+        tbs_before = bytes(buf[base : base + mm.SIGNED_REGION_END])
 
         # BEFORE. The shipped slot must verify, and the value OTBN recovers must
         # BE manifest_hash. Without this the run could be rejecting an image that
@@ -214,7 +214,7 @@ class sep_otbn_rsa_verify_failure_test(sep_backup_manifest_fail_base):
         # AFTER. The write landed, the TBS is untouched, and the recovered value
         # is no longer manifest_hash -- which is exactly what verify_pkcs1_v15()
         # compares (rsa_verify.c:100-105).
-        assert bytes(buf[base : base + mm.TBS_LEN]) == tbs_before, (
+        assert bytes(buf[base : base + mm.SIGNED_REGION_END]) == tbs_before, (
             f"{slot}: the signature flip changed TBS bytes; the slot would be "
             f"rejected as MANIFEST_HASH_MISMATCH in the manifest loop and RSA "
             f"would never run"

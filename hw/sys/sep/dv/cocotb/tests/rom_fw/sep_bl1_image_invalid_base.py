@@ -27,7 +27,7 @@ testcases untouched.
 
 THE CRYPTO CHAIN IS LEFT ON, AND THAT IS THE POINT. Because the payload is
 mutated, ``payload_hash`` (inside the TBS) changes, so the slot must be re-hashed
-and re-signed with the dev0 key -- see ``env/sep_payload_mutate.py``. The
+and re-signed with the dev0 key -- see ``env/sep_oca_payload.py``. The
 alternative, running with secure boot disabled, would reach the same BL1 check
 through a path production never takes. ``CHK-CRYPTO-RAN`` below is what turns
 "the signature still verified" from an assumption into an observation.
@@ -202,7 +202,7 @@ class sep_bl1_image_invalid_base(sep_backup_manifest_fail_base):
         # CHK-CRYPTO-RAN: secure boot was enforced and the signature verified, for
         # BOTH slots. This is what proves the defect is being caught by the payload
         # validator rather than by the crypto chain -- and it is the check that
-        # would fail first if the re-seal in sep_payload_mutate were wrong, which
+        # would fail first if the re-seal in sep_oca_payload were wrong, which
         # is precisely the failure mode that would otherwise masquerade as a
         # correct negative result.
         assert not any(_SBOOT_OFF in line for line in console), (

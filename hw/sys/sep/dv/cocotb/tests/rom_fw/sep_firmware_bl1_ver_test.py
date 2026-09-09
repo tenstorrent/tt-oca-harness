@@ -129,7 +129,7 @@ why removing either would have been a weakening rather than a tidy-up.
 BOTH SLOTS ARE RE-SIGNED. ``security_version`` sits inside the TBS
 (``bootrom/prod/include/manifest.h:218``, offset 162), so raising it invalidates the
 manifest hash and the
-shipped dev0 signature. ``env/sep_payload_mutate.reseal`` re-hashes and re-signs with
+shipped dev0 signature. ``env/sep_oca_payload.reseal`` re-hashes and re-signs with
 the same dev0 key, and ``verify_signing_key`` proves beforehand that the local signer
 reproduces the packer's shipped signature byte for byte -- so the re-seal is sound by
 construction rather than by assertion. The DUT's own OTBN then verifies the result
@@ -147,8 +147,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyuvm
-from env import sep_manifest_mutate as mm
-from env import sep_payload_mutate as pm
+from env import sep_oca_mutate as mm
+from env import sep_oca_payload as pm
 from env import sep_spi_slot_evidence as ev
 from rom_fw.sep_rom_ot_dma_boot_test import (
     SECURE_FLASH_IMAGE,

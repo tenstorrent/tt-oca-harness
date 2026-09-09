@@ -395,6 +395,16 @@ def verify_sealed(buf, slot: str, *, check_toc: bool = True) -> None:
     verify_signing_key(buf, slot)
 
 
+def slot_signing_key(buf, slot: str) -> tuple[int, int, int]:
+    """``(n, e, d)`` for the key ``slot``'s manifest selects.
+
+    Which key signed a slot is a property of the slot, not a fixed default: the
+    manifest names one of the ROM slots in ``public_key_select_classic`` and only
+    that key's PEM can verify or re-sign it.
+    """
+    return load_rsa_private_key(rom_signing_key(mm.get_public_key_sel(buf, slot)))
+
+
 def verify_signing_key(buf, slot: str) -> int:
     """Prove the slot's signature verifies under the key it selects. Returns the slot.
 

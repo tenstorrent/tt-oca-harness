@@ -3,7 +3,7 @@
 """Primary manifest fails the public-key hash bind; the backup boots.
 
 STIMULUS. One bit of the primary manifest's RSA-3072 modulus is flipped
-(``sep_manifest_mutate.corrupt_public_key``) and the TBS is re-hashed, so the
+(``sep_oca_mutate.corrupt_public_key``) and the TBS is re-hashed, so the
 slot is structurally perfect and fails at exactly one place: the comparison of
 SHA-256(modulus) against the digest the ROM has compiled in for the selected slot
 (``manifest_crypto.c:124-136,190-196``). The backup is untouched and still binds
@@ -27,7 +27,7 @@ possible difference, before the modulus reaches the verifier.
 The reason for the substitution is that the tree ships exactly one RSA signing key
 (``tools/tt-boot-manifest/tests/signing_keys/rsa_private_key.dev0.pem``), so the
 re-signed form would need a second key and a build step, which these Python-only
-mutations deliberately avoid (``sep_manifest_mutate`` module docstring). If a
+mutations deliberately avoid (``sep_oca_mutate`` module docstring). If a
 second RSA key is ever added, a re-signed variant is worth having alongside this
 one; it is a different claim, not a better version of this one.
 
@@ -60,7 +60,7 @@ import os
 from pathlib import Path
 
 import pyuvm
-from env import sep_manifest_mutate as mm
+from env import sep_oca_mutate as mm
 from env import sep_spi_slot_evidence as ev
 from rom_fw.sep_rom_ot_dma_boot_test import SECURE_FLASH_IMAGE, sep_rom_ot_dma_boot_test
 

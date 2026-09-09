@@ -141,8 +141,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from env import sep_manifest_mutate as mm
-from env import sep_payload_mutate as pm
+from env import sep_oca_mutate as mm
+from env import sep_oca_payload as pm
 from env import sep_spi_slot_evidence as ev
 from rom_fw.sep_backup_manifest_fail_base import (
     MANIFEST_ERR_KEY_REVOKED,
@@ -179,9 +179,9 @@ def select_primary_rom_slot(buf: bytearray, slot_index: int) -> tuple[int, bool]
     signature goes stale -- harmless only because revocation is reached first.
     """
     base = mm.slot_base("primary")
-    tbs_before = bytes(buf[base : base + mm.TBS_LEN])
+    tbs_before = bytes(buf[base : base + mm.SIGNED_REGION_END])
     mm.set_public_key_sel(buf, "primary", selection=PUBK_SEL_ROM_KEY, index=slot_index)
-    tbs_after = bytes(buf[base : base + mm.TBS_LEN])
+    tbs_after = bytes(buf[base : base + mm.SIGNED_REGION_END])
     tbs_changed = tbs_before != tbs_after
 
     got = mm.get_public_key_sel(buf, "primary")
@@ -205,7 +205,10 @@ def select_primary_rom_slot(buf: bytearray, slot_index: int) -> tuple[int, bool]
         # The selector write invalidated the signature. Assert that too: if the
         # signature somehow still verified, the write did not land in the TBS and
         # the selector under test is not the one the ROM will read.
-        n, e_pub, _d = pm.load_rsa_private_key()
+        # The key that signed the shipped image, not the one the mutated
+        # selector now names: verifying under a different key would fail for
+        # that reason instead of because the signed region changed.
+        n, e_pub, _d = pm.load_rsa_private_key(pm.rom_signing_key(0))
         sig = bytes(buf[base + mm.OFF_SIGNATURE : base + mm.OFF_SIGNATURE + pm.RSA_KEY_BYTES])
         assert not pm.verify_pkcs1v15_sha256(tbs_after, sig, n, e_pub), (
             "primary signature still verifies after the selector was changed; the "

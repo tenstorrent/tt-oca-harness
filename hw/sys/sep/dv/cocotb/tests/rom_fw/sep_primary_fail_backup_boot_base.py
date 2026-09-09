@@ -35,12 +35,12 @@ THE BACKUP MUST BE PROVABLY VALID, and this base asserts that rather than assumi
 it. After the subclass has planted its primary defect, two checks run over the
 backup:
 
-  * :func:`sep_payload_mutate.verify_sealed` -- TOC magic, the TOC/manifest
+  * :func:`sep_oca_payload.verify_sealed` -- TOC magic, the TOC/manifest
     payload-length agreement, ``payload_hash``, every image digest,
     ``manifest_hash`` over the TBS, and an RSA verification of the shipped
     signature against the **dev0 modulus read from the signing-key PEM**
-    (``sep_payload_mutate.py``); and
-  * :func:`sep_manifest_mutate.verify_public_key` -- SHA-256 of the modulus the
+    (``sep_oca_payload.py``); and
+  * :func:`sep_oca_mutate.verify_public_key` -- SHA-256 of the modulus the
     manifest actually CARRIES equals the ROM's compiled-in slot-0 digest.
 
 The second is what makes the first mean what it appears to mean: together they
@@ -81,7 +81,7 @@ import os
 from pathlib import Path
 
 from env import sep_oca_mutate as mm
-from env import sep_payload_mutate as pm
+from env import sep_oca_payload as pm
 from env import sep_spi_slot_evidence as ev
 from rom_fw.sep_rom_ot_dma_boot_test import SECURE_FLASH_IMAGE, sep_rom_ot_dma_boot_test
 

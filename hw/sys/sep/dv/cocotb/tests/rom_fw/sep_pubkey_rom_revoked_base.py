@@ -55,7 +55,7 @@ Slot 0 is therefore the STRICTEST member of this family, not a case to avoid: it
 is the only one whose backup manifest is valid in every other respect. It is also
 the matched partner of ``sep_firmware_backup_rom_key_valid_test``, which applies
 the IDENTICAL flash stimulus (:func:`select_backup_rom_slot` with slot 0, after the
-same ``mm.set_identifier`` failover trigger)
+same ``mm.break_magic`` failover trigger)
 and differs only in leaving ``CHIPLET_PUBK_REVOKE`` clear -- fuse clear boots,
 bit 0 set is refused, on the same bytes.
 
@@ -74,8 +74,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from env import sep_manifest_mutate as mm
-from env import sep_payload_mutate as pm
+from env import sep_oca_mutate as mm
+from env import sep_oca_payload as pm
 from rom_fw.sep_backup_manifest_fail_base import (
     MANIFEST_ERR_KEY_REVOKED,
     sep_backup_manifest_fail_base,
@@ -94,7 +94,7 @@ def select_backup_rom_slot(buf: bytearray, slot_index: int) -> tuple[int, bool]:
     Shared with ``sep_firmware_backup_rom_key_valid_test`` so that the positive
     case and the revoke-0 case apply the SAME stimulus to the SAME bytes by
     construction rather than through two copies that could drift apart. Both
-    callers pair it with the standard ``mm.set_identifier(buf, "primary")``
+    callers pair it with the standard ``mm.break_magic(buf, "primary")``
     failover trigger, so with ``slot_index == 0`` the two produce byte-identical
     flash images and differ only in ``CHIPLET_PUBK_REVOKE``. Returns
     ``(encoded_selector, tbs_changed)``.
@@ -109,9 +109,9 @@ def select_backup_rom_slot(buf: bytearray, slot_index: int) -> tuple[int, bool]:
     ``RSA_VERIFY_START`` to prove that rather than assume it.
     """
     base = mm.slot_base("backup")
-    tbs_before = bytes(buf[base : base + mm.TBS_LEN])
+    tbs_before = bytes(buf[base : base + mm.SIGNED_REGION_END])
     mm.set_public_key_sel(buf, "backup", selection=PUBK_SEL_ROM_KEY, index=slot_index)
-    tbs_after = bytes(buf[base : base + mm.TBS_LEN])
+    tbs_after = bytes(buf[base : base + mm.SIGNED_REGION_END])
     tbs_changed = tbs_before != tbs_after
 
     got = mm.get_public_key_sel(buf, "backup")
@@ -135,7 +135,10 @@ def select_backup_rom_slot(buf: bytearray, slot_index: int) -> tuple[int, bool]:
         # The selector write invalidated the signature. Assert that too: if the
         # signature somehow still verified, the write did not land in the TBS and
         # the selector under test is not the one the ROM will read.
-        n, e_pub, _d = pm.load_rsa_private_key()
+        # The key that signed the shipped image, not the one the mutated
+        # selector now names: verifying under a different key would fail for
+        # that reason instead of because the signed region changed.
+        n, e_pub, _d = pm.load_rsa_private_key(pm.rom_signing_key(0))
         sig = bytes(buf[base + mm.OFF_SIGNATURE : base + mm.OFF_SIGNATURE + pm.RSA_KEY_BYTES])
         assert not pm.verify_pkcs1v15_sha256(tbs_after, sig, n, e_pub), (
             "backup signature still verifies after the selector was changed; the "
