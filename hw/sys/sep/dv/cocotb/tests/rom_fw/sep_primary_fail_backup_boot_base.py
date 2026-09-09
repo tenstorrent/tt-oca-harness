@@ -7,26 +7,26 @@ the defect and the run is terminal; here the primary carries it, the ROM falls
 over, and a valid backup completes the boot. Subclasses supply the primary defect
 and the verdict it must produce.
 
-WHY THE RECOVERY IS THE RESULT, NOT A SIDE EFFECT. ``manifest_crypto_validate`` is
-called from inside the per-slot attempt, so a cryptographic rejection returns into
-``rom_manifest_boot``'s retry loop rather than ending the boot
-(``manifest_load.c``). Grendel treats these primary-side rejections as
-warnings and expects a completed boot from the backup, so a port that ended
-terminally would be testing a different requirement.
+WHY THE RECOVERY IS THE RESULT, NOT A SIDE EFFECT. Signature verification runs
+inside the per-slot attempt, so a cryptographic rejection returns into
+``rom_manifest_boot``'s retry loop rather than ending the boot (``oca_boot.c``,
+and SEP-ROM-RETRY-030: the retry unit is the whole per-slot chain). These members
+expect a completed boot from the backup, so a port that ended terminally would be
+testing a different requirement.
 
-A PRECONDITION THE ``SIG_VALID`` COUNT ENCODES, AND WHICH IS NOT PARAMETERISED.
-:meth:`check_transport` requires ``SIG_VALID`` exactly once, which silently assumes
-that every member's PRIMARY is refused at or before ``validate_signature``. That
-holds for all members today -- their defects are the manifest magic, the signature
-type, the signature value, the key selection, the key index, key revocation and the
-security version, all of which return before ``manifest_crypto.c``. It would NOT
-hold for a member whose primary defect sits DOWNSTREAM of the signature: a payload
-hash mismatch (``manifest_crypto.c``), a decryption failure  or a TOC
-error (``manifest_load.c``). Such a primary legitimately prints ``SIG_VALID``,
+A PRECONDITION THE ``RSA_VERIFY_OK`` COUNT ENCODES, AND WHICH IS NOT PARAMETERISED.
+:meth:`check_transport` requires ``RSA_VERIFY_OK`` exactly once, which silently
+assumes that every member's PRIMARY is refused at or before signature
+verification. That holds for all members today -- their defects are the manifest
+magic, the signature type, the signature value, the key selection, the key index,
+key revocation and the security version, all of which return before the verifier
+runs. It would NOT hold for a member whose primary defect sits DOWNSTREAM of the
+signature: a payload hash mismatch, a decryption failure or a TOC error. Such a
+primary legitimately prints ``RSA_VERIFY_OK``,
 the count becomes 2, and this base would fail it for the wrong reason. Anyone adding
 that shape must parameterise this the way ``primary_expected_rsa_starts`` is
-parameterised -- ``primary_expected_sig_valids: int = 0`` and
-``assert n_sig == 1 + primary_expected_sig_valids`` -- rather than relax the count.
+parameterised -- ``primary_expected_rsa_oks: int = 0`` and
+``assert n_sig == 1 + primary_expected_rsa_oks`` -- rather than relax the count.
 Recorded here rather than done now because changing it is an executable edit to a
 base with nine dependants and would invalidate their current evidence for no present
 gain.
@@ -53,26 +53,26 @@ ORDERING IS THE SUBSTANCE. Presence of a marker says nothing about which slot
 produced it, so :meth:`check_transport` asserts the full chain -- primary read,
 primary verdict, primary error, backup read, signature verified, manifest
 accepted -- and additionally that the primary's own console token appears exactly
-once and that ``SIG_VALID`` appears exactly once, the backup's.
+once and that ``RSA_VERIFY_OK`` appears exactly once, the backup's.
 
 WHERE THE PRIMARY'S REJECTION SITS RELATIVE TO THE VERIFIER IS DECLARED, NOT
 ASSUMED. Most defects ported onto this base are refused upstream of
-``rsa_3072_verify`` (``manifest_crypto.c``), so the primary's modulus must
+the RSA verifier (``rsa_verify.c``), so the primary's modulus must
 never reach the verifier; a member whose defect IS the signature value has to
 reach it. ``primary_expected_rsa_starts`` makes each member state which of the two
 it is, and :meth:`check_transport` then asserts that branch in full: with 0, the
-first ``RSA_VERIFY_START`` must follow the backup read and the total must be 1;
-with 1, the primary's own ``RSA_VERIFY_START`` must sit between the primary read
+first ``RSA_EXEC`` must follow the backup read and the total must be 1;
+with 1, the primary's own ``RSA_EXEC`` must sit between the primary read
 and the primary error and the total must be 2. Asserting only the consequence of a
 branch is not the same as asserting which branch was taken, so both the count and
 the position are pinned -- a member that silently changed which arm rejected it
 would otherwise keep passing.
 
 Slot identity is asserted on ``MANIFEST_SRC=`` and on the device's own transaction
-addresses, never on the ``MANIFEST_PRIMARY`` / ``MANIFEST_BACKUP`` label: the ROM
-derives the label from the retry counter but the offset from the (possibly
-rotated) slot index (``manifest_load.c``), so under ``rotate_update``
-the label and the slot disagree. The offset cannot lie.
+addresses rather than on the ``MANIFEST_PRIMARY`` / ``MANIFEST_BACKUP`` label.
+The ROM now derives both from the slot index (``oca_boot.c``), so under
+``rotate_update`` the label and the offset agree -- but the offset is the device's
+own statement of what it read, so it stays the evidence.
 """
 
 from __future__ import annotations
@@ -80,7 +80,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from env import sep_manifest_mutate as mm
+from env import sep_oca_mutate as mm
 from env import sep_payload_mutate as pm
 from env import sep_spi_slot_evidence as ev
 from rom_fw.sep_rom_ot_dma_boot_test import SECURE_FLASH_IMAGE, sep_rom_ot_dma_boot_test
@@ -92,9 +92,10 @@ MANIFEST_ERR_VERSION_ROLLBACK = 0x0003_0014
 
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
-_RSA_START = "RSA_VERIFY_START"  # manifest_crypto.c
-_SIG_VALID = "SIG_VALID"  # manifest_crypto.c
-_CRYPTO_OK = "CRYPTO_VALIDATE_OK"  # manifest_crypto.c
+# rsa_verify.c. CRYPTO_VALIDATE_OK has no OCA counterpart: the
+# slot being accepted is what MANIFEST_OK says, and it is already required below.
+_RSA_EXEC = "RSA_EXEC"
+_RSA_OK = "RSA_VERIFY_OK"
 _MANIFEST_OK = "MANIFEST_OK"
 _LC_PROD = "LC=PROD"
 
@@ -116,7 +117,7 @@ class sep_primary_fail_backup_boot_base(sep_rom_ot_dma_boot_test):
     primary_defect_marker: str = ""
     # ROM error code the PRIMARY slot must be rejected with.
     primary_expected_error: int = 0
-    # How many times the PRIMARY slot drives rsa_3072_verify. 0 for every defect
+    # How many times the PRIMARY slot drives the RSA verifier. 0 for every defect
     # refused upstream of the verifier -- the default, so no existing member's
     # behaviour changes -- and 1 for a member whose defect is the signature value
     # itself. See the module docstring: this is a declaration of which arm rejects
@@ -147,20 +148,22 @@ class sep_primary_fail_backup_boot_base(sep_rom_ot_dma_boot_test):
     # --- wiring ------------------------------------------------------------
     @classmethod
     def _markers(cls) -> tuple[tuple[str, ...], tuple[str, ...]]:
+        # One per-slot failure report, not two: OCA converges every rejection on
+        # MANIFEST_ERR=<code> (oca_boot.c), where Grendel also printed a
+        # crypto-level CRYPTO_FAIL=<code>. The code is the same, so the
+        # attribution is as specific as it was.
         slot_err = f"MANIFEST_ERR=0x{cls.primary_expected_error:08x}"
-        crypto_fail = f"CRYPTO_FAIL=0x{cls.primary_expected_error:08x}"
         required = (
             _LC_PROD,
             _PRIMARY_SRC,
             slot_err,
             _BACKUP_SRC,
-            _RSA_START,
-            _SIG_VALID,
-            _CRYPTO_OK,
+            _RSA_EXEC,
+            _RSA_OK,
             _MANIFEST_OK,
         )
         if cls.primary_defect_marker:
-            required += (cls.primary_defect_marker, crypto_fail)
+            required += (cls.primary_defect_marker,)
         return required, (_SBOOT_OFF, _ALL_FAILED, _SBOOT_DIS_FUSE)
 
     def __init__(self, *args, **kwargs) -> None:
@@ -237,8 +240,8 @@ class sep_primary_fail_backup_boot_base(sep_rom_ot_dma_boot_test):
         i_psrc = index_of(_PRIMARY_SRC)
         i_perr = index_of(slot_err)
         i_bsrc = index_of(_BACKUP_SRC)
-        i_rsa = index_of(_RSA_START)
-        i_sig = index_of(_SIG_VALID)
+        i_rsa = index_of(_RSA_EXEC)
+        i_sig = index_of(_RSA_OK)
         i_ok = index_of(_MANIFEST_OK)
 
         # CHK-FAILOVER: the primary was read, rejected for the planted reason, and
@@ -274,25 +277,25 @@ class sep_primary_fail_backup_boot_base(sep_rom_ot_dma_boot_test):
 
         # CHK-RSA-ARM: the member declared whether the PRIMARY reaches the
         # verifier, and both the count and the position of the primary's own
-        # RSA_VERIFY_START are asserted from that declaration. Neither half alone
+        # RSA_EXEC occurrences are asserted from that declaration. Neither half alone
         # is enough: a count of 2 with both occurrences after the backup read
         # would not be a primary-side signature failure, and a correctly placed
         # occurrence with the wrong total would mean a slot this stimulus does not
         # account for also drove the verifier.
-        n_rsa = sum(1 for line in console if _RSA_START in line)
+        n_rsa = sum(1 for line in console if _RSA_EXEC in line)
         expected_rsa = 1 + self.primary_expected_rsa_starts
         assert n_rsa == expected_rsa, (
-            f"{_RSA_START} appeared {n_rsa} times, expected exactly {expected_rsa} "
+            f"{_RSA_EXEC} appeared {n_rsa} times, expected exactly {expected_rsa} "
             f"(the backup's, plus {self.primary_expected_rsa_starts} declared for "
             f"the primary). Console: {console}"
         )
         if self.primary_expected_rsa_starts == 0:
-            # The primary's defect is refused upstream of rsa_3072_verify
-            # (manifest_crypto.c), so a modulus that reached the verifier
+            # The primary's defect is refused upstream of the RSA verifier
+            # (rsa_verify.c), so a modulus that reached the verifier
             # would mean the ROM took the checks in a different order than this
             # stimulus assumes. "Rejected eventually" is not the same result.
             assert i_rsa > i_bsrc, (
-                f"{_RSA_START}@{i_rsa} appeared before the backup slot was read"
+                f"{_RSA_EXEC}@{i_rsa} appeared before the backup slot was read"
                 f"@{i_bsrc}: the primary reached the RSA verifier, but this member "
                 f"declares primary_expected_rsa_starts=0. Console: {console}"
             )
@@ -300,32 +303,32 @@ class sep_primary_fail_backup_boot_base(sep_rom_ot_dma_boot_test):
             # The defect IS the signature value, so the primary MUST reach the
             # verifier -- and its run has to sit inside the primary's own attempt.
             assert i_psrc < i_rsa < i_perr, (
-                f"{_RSA_START}@{i_rsa} does not sit between the primary read"
+                f"{_RSA_EXEC}@{i_rsa} does not sit between the primary read"
                 f"@{i_psrc} and the primary error@{i_perr}: the primary did not "
                 f"drive the verifier, so its rejection is not a signature verdict. "
                 f"Console: {console}"
             )
 
-        # Exactly one slot's signature verified. SIG_VALID is printed only after
-        # rsa_3072_verify returns 0 (manifest_crypto.c), so a second
+        # Exactly one slot's signature verified. RSA_VERIFY_OK is printed only
+        # after the verifier returns success (rsa_verify.c:179), so a second
         # occurrence would mean two slots were accepted in one run.
-        n_sig = sum(1 for line in console if _SIG_VALID in line)
+        n_sig = sum(1 for line in console if _RSA_OK in line)
         assert n_sig == 1, (
-            f"{_SIG_VALID} appeared {n_sig} times, expected exactly 1 (the "
+            f"{_RSA_OK} appeared {n_sig} times, expected exactly 1 (the "
             f"backup's). Console: {console}"
         )
 
         # CHK-RECOVERED: the boot came from the backup, and its signature really
-        # verified. SIG_VALID is only printed after rsa_3072_verify returns 0
-        # (manifest_crypto.c), so this is the crypto chain passing, not a
+        # verified. RSA_VERIFY_OK is only printed after the verifier returns
+        # success (rsa_verify.c:179), so this is the crypto chain passing, not a
         # skipped one.
         assert i_bsrc < i_sig < i_ok, (
             f"the accepted manifest is not the backup's: {_BACKUP_SRC}@{i_bsrc} -> "
-            f"{_SIG_VALID}@{i_sig} -> {_MANIFEST_OK}@{i_ok}. Console: {console}"
+            f"{_RSA_OK}@{i_sig} -> {_MANIFEST_OK}@{i_ok}. Console: {console}"
         )
         self.logger.info(
             "CHK-PRIMARY-FAILOVER: primary@%d -> %s@%d -> backup@%d -> "
-            "RSA_VERIFY_START@%d -> SIG_VALID@%d -> MANIFEST_OK@%d",
+            "RSA_EXEC@%d -> RSA_VERIFY_OK@%d -> MANIFEST_OK@%d",
             i_psrc,
             slot_err,
             i_perr,
