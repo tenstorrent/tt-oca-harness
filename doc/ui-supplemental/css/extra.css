@@ -594,27 +594,35 @@
 
 /* ========================================
    VERSION SELECTOR CONTEXT TOGGLE
-   The .context div inside .nav-panel-explore is the collapsed bottom-left
-   version selector that toggles the expanded component list. It contains
-   a .title span (full product name) and a .version span ("latest").
-   Truncating .title here prevents the long product name from wrapping
-   across multiple lines while keeping it readable on hover (title attr)
-   and preserving the full name in the expanded .components list.
-   The selector is scoped to .nav-panel-explore so no global .title
-   elements are affected.
+   The .context element inside .nav-panel-explore is a native <button>
+   (supplied by the nav-explore.hbs partial override) that toggles the
+   expanded component/version list. The bundle's site.js attaches the
+   panel-toggle click handler to .querySelector(".context"), so a button
+   with class="context" receives both mouse clicks and keyboard Enter/Space.
+   The collapsed view shows only the version pill; the full product name is
+   exposed via aria-label on the button and remains visible in the expanded
+   .components list. Selectors are scoped to .nav-panel-explore only.
    ======================================== */
 .nav-panel-explore .context {
+    appearance: none;
+    -webkit-appearance: none;
+    background: none;
+    border: none;
     cursor: pointer;
     display: flex;
     align-items: center;
     gap: 6px;
-    overflow: hidden;
+    padding: 6px 10px;
+    width: 100%;
+    text-align: left;
+    font-family: var(--oca-font-mono);
+    font-size: 0.68rem;
+    color: var(--oca-text);
+    background-color: var(--oca-cream);
+    border-top: 2px solid var(--oca-green);
 }
 
-.nav-panel-explore .context .title {
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-    min-width: 0;
-    flex: 1 1 0;
+.nav-panel-explore .context:focus-visible {
+    outline: 3px solid var(--oca-gold-accessible);
+    outline-offset: -3px;
 }
