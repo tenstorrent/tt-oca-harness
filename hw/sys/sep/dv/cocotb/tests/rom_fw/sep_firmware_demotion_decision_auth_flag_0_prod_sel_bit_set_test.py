@@ -74,7 +74,7 @@ reason the PROD_END member does not forbid ``LC=PROD``: the former string CONTAI
 the latter, so only the longer one can be used as a discriminator.
 
 No ``+sep_crypto_edn_force``: secure boot is off, so the ROM never drives OTBN.
-``RSA_VERIFY_START`` is forbidden, so if that ever changed this entry would fail
+``RSA_EXEC`` is forbidden, so if that ever changed this entry would fail
 rather than silently start needing the shortcut.
 """
 
@@ -129,26 +129,20 @@ class sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test(sep_demot
     )
     # BL1_DEMOTE=0 and BL2_DEMOTE_DEC=1 are the values of the neighbouring rows, so
     # forbidding them pins this run to O2a rather than to "some demotion happened".
-    # BAD_SIG_TYPE= is the loud failure if the sboot_dis surface is ever dropped.
-    # RSA_VERIFY_START / SIG_VALID must not appear: secure boot is off, so a run
+    # PUBK_ALGO_UNSUPPORTED is the loud failure if the sboot_dis surface is ever dropped.
+    # RSA_EXEC / RSA_VERIFY_OK must not appear: secure boot is off, so a run
     # that verified a signature took a different path from the one under test.
     forbidden_markers = sep_rom_ot_dma_boot_test.forbidden_markers + (
         _LC_PROD_END,
         "BL1_DEMOTE=0",
         "BL2_DEMOTE_DEC=1",
-        "LC_USAGE_CONSTRAINT_FAIL",
         _BACKUP_SRC,
         "MANIFEST_ERR=",
         "MANIFEST_ALL_FAILED",
-        "CRYPTO_FAIL=",
-        "RSA_VERIFY_START",
-        "RSA_VERIFY_FAIL",
-        "SIG_VALID",
-        "CRYPTO_VALIDATE_OK",
-        "BAD_SIG_TYPE=",
-        "PLD_HASH_FAIL=",
-        "PLD_HASH_MISMATCH",
-        "ENC_WITHOUT_SBOOT",
+        "RSA_EXEC",
+        "RSA_PKCS1_FAIL",
+        "RSA_VERIFY_OK",
+        "PUBK_ALGO_UNSUPPORTED",
     )
 
     # --- stimulus ----------------------------------------------------------

@@ -3,9 +3,8 @@
 """Primary manifest names an unassigned public-key source; the backup boots.
 
 The PRIMARY's ``public_key_sel.selection`` is set to 3 -- one of the three
-encodings (3, 6, 7) that name no key source, ``manifest.h`` assigning only
-0, 1, 2, 4 and 5. All three fall through the same ``default:`` arm
-(``manifest_crypto.c``), which prints ``BAD_KEY_SEL`` and returns
+encodings (3, 6, 7) that name no key source,  assigning only
+0, 1, 2, 4 and 5. All three fall through the same ``default:`` arm, which prints ``PUBK_SEL_AMBIGUOUS`` and returns
 ``MANIFEST_ERR_SIG_FAILED``; a fixed value makes the run reproducible and lets the
 test assert the exact ``PUBK_SEL=`` the ROM echoed.
 
@@ -30,18 +29,18 @@ PLATFORM ADAPTATION -- MARKER. The reference expects
 ``report_status`` call for it anywhere under ``bootrom/prod/src``, so the
 architected status ring carries only the generic terminal code and the debug
 console token is the only per-reason evidence available. Hence the
-unassigned-source arm's ``BAD_KEY_SEL`` is required here instead.
-``BAD_KEY_IDX`` -- a bad ROM key INDEX, a different arm -- is forbidden below so
+unassigned-source arm's ``PUBK_SEL_AMBIGUOUS`` is required here instead.
+``PUBK_SLOT_RESERVED`` -- a bad ROM key INDEX, a different arm -- is forbidden below so
 the two cannot be confused.
 
 ``public_key_sel`` is at offset 166, inside the TBS, so the helper re-hashes. No
 re-sign: the selection is rejected before ``rsa_3072_verify``, so the primary's
 now-stale signature is never examined, and the shared base forbids any
-``RSA_VERIFY_START`` before the backup read to check that rather than assume it.
+``RSA_EXEC`` before the backup read to check that rather than assume it.
 
 Needs ``+sep_crypto_edn_force``: the backup is valid, so the full RSA-3072 modexp
 runs on OTBN, which parks in UrndRefresh until EDN grants entropy. The RSA
-assertions are untouched, so ``SIG_VALID`` still means the signature verified.
+assertions are untouched, so ``RSA_VERIFY_OK`` still means the signature verified.
 """
 
 from __future__ import annotations
@@ -63,7 +62,7 @@ _EFUSE_PRELOAD = (
     / "sep_efuse_lc_prod.toml"
 )
 
-# manifest.h assigns 0, 1, 2, 4, 5. 3, 6 and 7 name nothing; the reference
+#  assigns 0, 1, 2, 4, 5. 3, 6 and 7 name nothing; the reference
 # draws from exactly that set (sep_firmware_secure_boot_test.py).
 _BAD_SELECTION = 3
 # public_key_sel is {index:4, selection:3} -- index 0, selection 3 -> 0x0030.
@@ -78,24 +77,22 @@ _BACKUP_SEL_ECHO = "PUBK_SEL=0x00000000"
 class sep_firmware_primary_invalid_public_key_selection_test(sep_primary_fail_backup_boot_base):
     """Primary names key source 3 -> rejected -> backup boots."""
 
-    primary_defect_marker = "BAD_KEY_SEL"
+    primary_defect_marker = "PUBK_SEL_AMBIGUOUS"
     primary_expected_error = MANIFEST_ERR_SIG_FAILED
     efuse_preload = _EFUSE_PRELOAD
     # Both selectors must be echoed: the primary's bad one and the backup's good
     # one. Without the second, "the backup booted" would not be tied to a slot.
     extra_required = (_PRIMARY_SEL_ECHO, _BACKUP_SEL_ECHO)
-    # BAD_KEY_IDX is the discriminator against the index arm, which shares this
+    # PUBK_SLOT_RESERVED is the discriminator against the index arm, which shares this
     # error code. The rest must not fire at all: the primary is rejected at the
     # selection and the backup is valid, so nothing else may complain.
     extra_forbidden = (
-        "BAD_KEY_IDX",
-        "BAD_SIG_TYPE=",
-        "ROM_KEY_EMPTY",
-        "FUSE_KEY_EMPTY",
-        "PUBK_HASH_MISMATCH",
-        "KEY_REVOKED",
-        "VERSION_ROLLBACK",
-        "RSA_VERIFY_FAIL",
+        "PUBK_SLOT_RESERVED",
+        "PUBK_ALGO_UNSUPPORTED",
+        "PUBK_SLOT_UNPROVISIONED",
+        "PUBK_OTP_EMPTY",
+        "PUBK_UNAUTHORIZED",
+        "RSA_PKCS1_FAIL",
     )
 
     def corrupt_primary(self, buf: bytearray) -> None:
@@ -123,9 +120,9 @@ class sep_firmware_primary_invalid_public_key_selection_test(sep_primary_fail_ba
     def check_efuse(self, image) -> None:
         bl1_ver = image.field_int("BL1_VERSION")
         assert bl1_ver == 0, (
-            f"BL1_VERSION is 0x{bl1_ver:x}, expected 0: the rollback check runs "
-            f"before key selection (manifest_crypto.c:364 then :369) and would "
-            f"reject the primary for a different reason"
+            f"BL1_VERSION is 0x{bl1_ver:x}, expected 0: anti-rollback cannot reject a "
+            f"manifest when the device carries no security flags, and that is what "
+            f"keeps this verdict attributable to the check under test"
         )
         revoke = image.field_int("CHIPLET_PUBK_REVOKE")
         assert revoke == 0, (
@@ -143,16 +140,16 @@ class sep_firmware_primary_invalid_public_key_selection_test(sep_primary_fail_ba
             return -1
 
         i_psel = index_of(_PRIMARY_SEL_ECHO)
-        i_bad = index_of("BAD_KEY_SEL")
+        i_bad = index_of("PUBK_SEL_AMBIGUOUS")
         i_bsrc = index_of(f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}")
         i_bsel = index_of(_BACKUP_SEL_ECHO)
 
         # CHK-PUBKSEL-ATTRIBUTION: the ROM read THIS testcase's selector out of the
-        # primary and complained about it immediately. Without the echo, BAD_KEY_SEL
+        # primary and complained about it immediately. Without the echo, PUBK_SEL_AMBIGUOUS
         # could belong to any malformed selection, including one not planted here.
         assert 0 <= i_psel < i_bad < i_bsrc, (
-            f"the BAD_KEY_SEL verdict is not attributable to the primary's planted "
-            f"selector: {_PRIMARY_SEL_ECHO}@{i_psel} -> BAD_KEY_SEL@{i_bad} -> "
+            f"the PUBK_SEL_AMBIGUOUS verdict is not attributable to the primary's planted "
+            f"selector: {_PRIMARY_SEL_ECHO}@{i_psel} -> PUBK_SEL_AMBIGUOUS@{i_bad} -> "
             f"backup@{i_bsrc}. Console: {console}"
         )
         # CHK-BACKUP-SELECTOR: the recovering slot used the valid ROM-key selector,
@@ -162,7 +159,7 @@ class sep_firmware_primary_invalid_public_key_selection_test(sep_primary_fail_ba
             f"the booting slot's key selection is unattributed. Console: {console}"
         )
         self.logger.info(
-            "CHK-PUBKSEL-FAILOVER: primary %s@%d -> BAD_KEY_SEL@%d -> backup@%d -> %s@%d",
+            "CHK-PUBKSEL-FAILOVER: primary %s@%d -> PUBK_SEL_AMBIGUOUS@%d -> backup@%d -> %s@%d",
             _PRIMARY_SEL_ECHO,
             i_psel,
             i_bad,

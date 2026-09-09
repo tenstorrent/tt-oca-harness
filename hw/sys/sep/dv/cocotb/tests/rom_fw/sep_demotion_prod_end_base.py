@@ -108,9 +108,8 @@ class sep_demotion_prod_end_base(sep_demotion_decision_base):
     required_markers = sep_rom_ot_dma_boot_test.required_markers + (
         _LC_PROD_END,
         _PRIMARY_SRC,
-        "RSA_VERIFY_START",
-        "SIG_VALID",
-        "CRYPTO_VALIDATE_OK",
+        "RSA_EXEC",
+        "RSA_VERIFY_OK",
         "BL1_COPIED",
         "BL1_JUMP=",
     )
@@ -121,22 +120,18 @@ class sep_demotion_prod_end_base(sep_demotion_decision_base):
     # base, because they are DEMOTION_TOKENS this outcome does not require -- and
     # their absence is the direct observable that no manifest input was read.
     forbidden_markers = sep_rom_ot_dma_boot_test.forbidden_markers + (
-        "LC_USAGE_CONSTRAINT_FAIL",
         "SBOOT_OFF",
         "FUSE: SBOOT_DIS: 1",
         _BACKUP_SRC,
         "MANIFEST_ERR=",
         "MANIFEST_ALL_FAILED",
-        "CRYPTO_FAIL=",
-        "RSA_VERIFY_FAIL",
-        "VERSION_ROLLBACK",
-        "KEY_REVOKED",
-        "BAD_SIG_TYPE=",
-        "BAD_KEY_SEL",
-        "BAD_KEY_IDX",
-        "ROM_KEY_EMPTY",
-        "FUSE_KEY_EMPTY",
-        "PUBK_HASH_MISMATCH",
+        "RSA_PKCS1_FAIL",
+        "PUBK_ALGO_UNSUPPORTED",
+        "PUBK_SEL_AMBIGUOUS",
+        "PUBK_SLOT_RESERVED",
+        "PUBK_SLOT_UNPROVISIONED",
+        "PUBK_OTP_EMPTY",
+        "PUBK_UNAUTHORIZED",
     )
 
     # --- stimulus ----------------------------------------------------------

@@ -6,8 +6,7 @@ A signed image authenticating and booting under PROD: full RSA-3072 chain, then
 handoff to BL1.
 
 WHAT THIS DOES NOT ESTABLISH -- read before extending. It does not exercise a
-distinct "enforce arm". In ``secure_boot_enabled()``
-(``manifest_load.c:233-239``) the lifecycle is consulted only inside
+distinct "enforce arm". In ``secure_boot_enabled()`` the lifecycle is consulted only inside
 ``if (!mfst_flag && ...)``; with the manifest's secure_boot flag SET that branch is
 never taken and the function returns true on every lifecycle. The instruction path
 is therefore the same one ``sep_rom_ot_secure_boot_test`` takes under TEST_DEV, so
@@ -16,7 +15,7 @@ no lifecycle-precedence claim may be made from a pass. The sibling
 
 What it does add: the PROD path through ``rom_lifecycle_policy`` (LC decode,
 validation, and the production feature-control masking it applies) and the PROD bit
-of the manifest's ``life_cycle_states`` constraint (``manifest_load.c:371-381``).
+of the manifest's ``life_cycle_states`` constraint.
 The lifecycle assertion in :meth:`build_efuse_image` keeps that honest -- without
 it the OTP could silently be TEST_DEV again.
 

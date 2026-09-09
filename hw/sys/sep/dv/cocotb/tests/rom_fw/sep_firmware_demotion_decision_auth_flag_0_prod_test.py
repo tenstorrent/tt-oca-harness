@@ -11,8 +11,7 @@ first of those for the mechanism and the second for ``+SECURE_BOOT_DIS``.
 sets ``demotion_control`` BL1_DEMOTION_ENABLE -- the BL1 demotion request -- while
 BL1_DEMOTION_VALID stays clear. ``rom_main.c`` therefore does not take
 the first arm, never executes, and the request is discarded: BL0
-takes the ``else``, prints ``DEMOTE: BL2 deferred, lock non-demoted``
-, writes DEMOTE_1 **not demoted, locked**.
+takes the ``else``, prints ``DEMOTE: BL2 deferred, lock non-demoted``, writes DEMOTE_1 **not demoted, locked**.
 
 A ROM that read ``demotion_control`` BL1_DEMOTION_ENABLE without first testing BL1_DEMOTION_VALID -- or that
 ORed the two -- would write ``demote = 1`` here and this testcase would fail on
@@ -52,7 +51,7 @@ write-one-to-set with no hardware clear (``sep_lifecycle_ctrl.rdl:23-36``), so
 neither field can be walked back by BL1 or by anything after it.
 
 No ``+sep_crypto_edn_force``: secure boot is off, so the ROM never drives OTBN.
-``RSA_VERIFY_START`` is forbidden, so if that ever changed this entry would fail
+``RSA_EXEC`` is forbidden, so if that ever changed this entry would fail
 rather than silently start needing the shortcut.
 """
 

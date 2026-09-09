@@ -16,7 +16,7 @@ ROM's compiled-in digest, and a dev0 signature that still verifies. The stimulus
 does not corrupt it at all: it re-writes the selector to the value it already
 holds, which the base class detects and turns into a ``verify_sealed()``
 assertion. Revocation is therefore the ONLY possible cause of the rejection, and
-``RSA_VERIFY_START`` / ``SIG_VALID`` are the load-bearing forbids -- a revocation
+``RSA_EXEC`` / ``RSA_VERIFY_OK`` are the load-bearing forbids -- a revocation
 check that did nothing would let this image boot.
 
 It is the matched partner of ``sep_firmware_backup_rom_key_valid_test``, which

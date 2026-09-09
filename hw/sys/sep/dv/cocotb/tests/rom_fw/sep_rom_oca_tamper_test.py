@@ -34,20 +34,19 @@ tampering visible next to the assertion it justifies.
 from __future__ import annotations
 
 import pyuvm
+from env import sep_oca_mutate as mm
 from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
 from rom_fw.sep_rom_ot_secure_boot_test import sep_rom_ot_secure_boot_test
 
-# Manifest slot offsets in the packed image, matching the ROM's compiled-in
-# PRIMARY_MANIFEST_OFFSET / BACKUP_MANIFEST_OFFSET.
-_PRIMARY_MANIFEST_OFFSET = 0x1000
-_BACKUP_MANIFEST_OFFSET = 0x41000
+_PRIMARY_MANIFEST_OFFSET = mm.PRIMARY_MANIFEST_OFFSET
+_BACKUP_MANIFEST_OFFSET = mm.BACKUP_MANIFEST_OFFSET
 # Byte to corrupt, relative to a manifest's start: inside CHIPLET_ID (OFF_CHIPLET_ID
 # = 40, 32 bytes wide). Deliberately not in the unsigned tail past 3172, where a
 # flip would change nothing the hash covers and the boot would succeed.
 _TAMPER_OFFSET = 64
 
-# 0x0003_000D == OCA_FAIL_MANIFEST_HASH (13), reported per slot.
-_MANIFEST_ERR = "MANIFEST_ERR=0x0003000d"
+# The staged body no longer hashes to manifest_hash; reported per slot.
+_MANIFEST_ERR = f"MANIFEST_ERR=0x{mm.boot_err('OCA_FAIL_MANIFEST_HASH'):08x}"
 # Printed once both slots have been tried and rejected.
 _ALL_FAILED = "MANIFEST_ALL_FAILED"
 

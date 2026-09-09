@@ -27,7 +27,7 @@ What differs from the SMC-SRAM sibling:
     test would silently prove nothing -- hence the explicit path assertions below.
   * ``OcahSpiFlash`` answers on the SPI pads, preloaded with the packed image at
     flash offset 0. The packer lays the primary manifest at 0x1000, which is
-    exactly ``PRIMARY_MANIFEST_OFFSET`` (manifest.h), so the ROM's fixed offsets
+    exactly ``PRIMARY_MANIFEST_OFFSET``, so the ROM's fixed offsets
     line up with the image with no fixups.
 
 The SMC responder is still present (target ``rom_boot``): the ROM reads its straps,

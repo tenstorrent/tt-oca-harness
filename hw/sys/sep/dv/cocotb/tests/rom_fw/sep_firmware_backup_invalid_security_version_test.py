@@ -6,15 +6,15 @@ The primary's ``manifest_identifier`` is corrupted to force failover, then the
 backup's ``security_version`` is set to 3 against a ``BL1_VERSION`` fuse whose
 thermometer count is 8, so the backup asks to run an older version than the part
 accepts. The check is a single comparison (``manifest_ver < fuse_ver``,
-``manifest_crypto.c``), so a fixed pair exercises the same code as a random
+), so a fixed pair exercises the same code as a random
 one while letting the test assert the exact ``FUSE_VER=`` and ``MFST_VER=`` the ROM
 read.
 
-``security_version`` is at manifest offset 162, inside the TBS, so the mutation
-invalidates ``manifest_hash`` and the helper re-hashes. It does NOT re-sign and
-does not need to: the rollback check runs before signature verification, so the
-stale signature is never reached. That ordering is asserted, not assumed --
-``RSA_VERIFY_START`` is forbidden, so a ROM that verified the signature first would
+``manifest_security_version`` is at offset 2042, inside the signed region, so the
+mutation invalidates ``manifest_hash`` and the helper re-hashes. It does NOT
+re-sign and does not need to: anti-rollback is checked before the signature, so
+the stale signature is never reached. That ordering is asserted, not assumed --
+``RSA_EXEC`` is forbidden, so a ROM that verified the signature first would
 fail this test loudly instead of passing on an unintended hash or signature error.
 """
 
@@ -47,14 +47,14 @@ _BACKUP_SECURITY_VERSION = 3
 class sep_firmware_backup_invalid_security_version_test(sep_backup_manifest_fail_base):
     """Primary BAD_MAGIC -> failover -> backup version below the fuse -> terminal."""
 
-    backup_defect_marker = "VERSION_ROLLBACK"
+    backup_defect_marker = f"MANIFEST_ERR=0x{MANIFEST_ERR_VERSION_ROLLBACK:08x}"
     expected_error = MANIFEST_ERR_VERSION_ROLLBACK
     efuse_preload = _EFUSE_PRELOAD
     # The rollback check must reject before the signature is verified. If RSA ran,
     # the ROM took the checks in a different order than this test's stimulus
     # assumes (the backup's signature is stale after the re-hash), and the verdict
     # would not be a rollback verdict.
-    extra_forbidden = ("RSA_VERIFY_START", "SIG_VALID", "CRYPTO_VALIDATE_OK")
+    extra_forbidden = ("RSA_EXEC", "RSA_VERIFY_OK", "MANIFEST_OK")
 
     def corrupt_backup(self, buf: bytearray) -> None:
         mm.set_security_version(buf, "backup", _BACKUP_SECURITY_VERSION)

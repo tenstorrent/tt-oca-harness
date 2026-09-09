@@ -3,7 +3,7 @@
 """TP053-S: BL1 image size out of range, so BL0 must reject before the copy.
 
 The SEP BL1 entry's ``length`` is set to zero in BOTH manifest slots. The ROM
-rejects each slot at ``manifest_load.c`` -- ``IMAGE_LEN_ZERO idx=0`` then
+rejects each slot -- ``IMAGE_LEN_ZERO idx=0`` then
 ``MANIFEST_ERR_IMAGE_OOB`` -- so the primary fails, the backup is retried, it
 fails the same way, and the boot terminates without BL1 ever being copied into
 SRAM or entered.
@@ -14,15 +14,15 @@ BL1 size. **Only the zero class is exercised here**, and the omission is a
 property of the ROM's check order rather than a choice of convenience:
 
   * *larger than IRAM* would have to reach ``check_bl1_image``'s containment arm
-    (``manifest.h``, ``BL1_ADDR_RANGE``), which with the shipped
+    (``BL1_ADDR_RANGE``), which with the shipped
     ``load_addr`` of 0xC0000000 needs ``length > 0x40000``. But
-    ``manifest_load.c`` rejects ``offset + length > payload_length`` first, so
+     rejects ``offset + length > payload_length`` first, so
     the payload would have to grow past 128 KiB -- roughly 80 ms of extra
     simulated SPI transfer per slot at this testbench's rate, on both slots.
     ``sep_oca_payload.set_bl1_zero_length``'s docstring records the analysis.
   * *larger than the spec maximum* is checked at ``rom_handoff.c``
     (``BL1_SIZE`` / ``MANIFEST_ERR_BL1_TOO_LARGE``), which is downstream of
-    manifest validation. ``manifest_load.c`` says as much in its own
+    manifest validation.  says as much in its own
     comment: by the time handoff runs, the slot has already been accepted. Both
     of that gate's arms are therefore already rejected upstream, and it cannot be
     reached from a manifest at all.
@@ -41,23 +41,23 @@ end the boot, and would otherwise look the same from the outside.
 from __future__ import annotations
 
 import pyuvm
+from env import sep_oca_mutate as mm
 from env import sep_oca_payload as pm
 from rom_fw.sep_bl1_image_invalid_base import sep_bl1_image_invalid_base
 
-# manifest.h
-MANIFEST_ERR_IMAGE_OOB = 0x0003_000E
+MANIFEST_ERR_BL1_TOO_LARGE = mm.rom_boot_err("OCA_BOOT_ERR_BL1_TOO_LARGE")
 
 
 @pyuvm.test()
 class sep_bl1_size_invalid_test(sep_bl1_image_invalid_base):
     """BL1 length zero in both slots: rejected before the copy into SRAM."""
 
-    backup_defect_marker = "IMAGE_LEN_ZERO"
-    expected_error = MANIFEST_ERR_IMAGE_OOB
-    # Rejections that would mean the run stopped for a reason other than the
-    # planted zero length. IMAGE_LEN_ALIGN and the two BL1 arms all sit on the
-    # same path and would each end the boot in a way that looks similar.
-    sibling_markers = ("IMAGE_LEN_ALIGN", "BL1_ADDR_RANGE", "BL1_ENTRY_RANGE")
+    backup_defect_marker = "BL1_SIZE"
+    expected_error = MANIFEST_ERR_BL1_TOO_LARGE
+    # The other two arms of the same check. Each ends the boot the same way, and
+    # BL1_ENTRY_RANGE in particular is what a zero length reports as if the length
+    # arm ran second -- so its absence is what pins the attribution.
+    sibling_markers = ("BL1_ADDR_RANGE", "BL1_ENTRY_RANGE")
 
     def mutate_bl1(self, buf: bytearray, slot: str) -> None:
         before = pm.bl1_field(buf, slot, pm.E_LENGTH)

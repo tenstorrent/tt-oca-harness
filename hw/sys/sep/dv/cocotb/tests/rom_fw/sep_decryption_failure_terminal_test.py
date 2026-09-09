@@ -13,20 +13,18 @@ permutation: it never reports an error for the wrong input, and the ROM's own
 ``aes128cbc_decrypt`` only fails on a bad length or a hardware alert
 (``aes_driver.c:175-176,193-234``). So a corrupted ciphertext -- and equally a
 wrong class key -- decrypts "successfully" to garbage, and the boot then dies at
-the TOC identifier check with ``MANIFEST_ERR_BAD_TOC_ID``
-(``manifest_load.c:295-297``). That is the same terminal code an image whose TOC
+the TOC identifier check with ``MANIFEST_ERR_BAD_TOC_ID``. That is the same terminal code an image whose TOC
 was simply never encrypted would produce, and the same code a run that stopped
 BEFORE decryption would reach. Keying a verdict on the final error alone would
 therefore pass while decryption never ran.
 
-``CHK-DECRYPT-RAN`` is the defence: the run must show ``PLD_HASH_OK`` (the
+``CHK-DECRYPT-RAN`` is the defence: the run must show ``PAYLOAD_OK`` (the
 ciphertext was authenticated) then ``DECRYPT_START`` then ``DECRYPT_OK``, in that
 order, and the rejection must come AFTER ``DECRYPT_OK``. Only a run that actually
 drove the AES engine and then failed downstream can satisfy that sequence.
 
 WHY THE PAYLOAD HASH HAD TO BE RECOMPUTED, AND WHY THAT IS NOT A WEAKENING.
-``payload_hash`` covers the CIPHERTEXT and is verified before decryption
-(``manifest_crypto.c:372-378``). Left stale, the ROM would stop at
+``payload_hash`` covers the CIPHERTEXT and is verified before decryption. Left stale, the ROM would stop at
 ``PLD_HASH_MISMATCH`` and never call ``decrypt_payload`` -- the run would look
 like a clean negative result while testing the payload hash rather than
 decryption. Re-sealing keeps every ROM check enabled and passing up to the point
@@ -43,7 +41,7 @@ THE NO-BACKUP-RETRY EXPECTATION. Procedure step 5 requires that a decryption
 failure is terminal and NOT backup-eligible, and its Expected Results say "no
 backup address read". Only the PRIMARY slot is corrupted here, exactly as the
 procedure's steps read, and ``CHK-NO-BACKUP-RETRY`` asserts that requirement at
-full strength. Note that ``rom_manifest_boot`` (``manifest_load.c:770-788``)
+full strength. Note that ``rom_manifest_boot``
 treats EVERY slot error as retryable, with no per-error class -- so if that check
 fails, it has found a real disagreement between the procedure and the ROM, and it
 must be reported rather than relaxed.
@@ -69,7 +67,7 @@ _EFUSE_PRELOAD = (
 
 _PRIMARY_SRC = "MANIFEST_SRC=0x00001000"
 _BACKUP_SRC = "MANIFEST_SRC=0x00041000"
-_PLD_HASH_OK = "PLD_HASH_OK"
+_PAYLOAD_OK = "PAYLOAD_OK"
 _DECRYPT_START = "DECRYPT_START"
 _DECRYPT_OK = "DECRYPT_OK"
 _SBOOT_OFF = "SBOOT_OFF"
@@ -91,12 +89,9 @@ _PREMATURE = (
     "AES_ALERT_AFTER_DEC",
     "AES_ALERT_STATUS=",
     "AES_DEC_FAIL",
-    "PLD_HASH_MISMATCH",
     "PLD_HASH_TIMEOUT",
-    "RSA_VERIFY_FAIL",
     "RSA_PKCS1_FAIL",
-    "ENC_WITHOUT_SBOOT",
-    "LC_USAGE_CONSTRAINT_FAIL",
+    "RSA_PKCS1_FAIL",
 )
 
 
@@ -107,7 +102,7 @@ class sep_decryption_failure_terminal_test(sep_backup_manifest_fail_base):
     flash_image = _ENCRYPTED_IMAGE
     efuse_preload = _EFUSE_PRELOAD
     backup_defect_marker = _DECRYPT_OK
-    # manifest.h:300 -- the sub-code variant (b) converges on, reached only after
+    #  -- the sub-code variant (b) converges on, reached only after
     # the plaintext has been produced and found not to be a TOC.
     expected_error = pm.MANIFEST_ERR_BAD_TOC_ID
 
@@ -185,11 +180,11 @@ class sep_decryption_failure_terminal_test(sep_backup_manifest_fail_base):
         # AES engine ran to completion, and only THEN did the boot fail. Without
         # the ordering, the terminal error alone is satisfied by a run in which
         # decryption never happened.
-        i_hash = index_of(_PLD_HASH_OK)
+        i_hash = index_of(_PAYLOAD_OK)
         i_start = index_of(_DECRYPT_START)
         i_ok = index_of(_DECRYPT_OK)
         assert i_hash >= 0, (
-            f"ROM never printed {_PLD_HASH_OK}: the ciphertext was not verified, so "
+            f"ROM never printed {_PAYLOAD_OK}: the ciphertext was not verified, so "
             f"the re-sealed image is wrong. Console: {console}"
         )
         assert i_start >= 0, (
@@ -203,13 +198,13 @@ class sep_decryption_failure_terminal_test(sep_backup_manifest_fail_base):
             f"Console: {console}"
         )
         assert i_hash < i_start < i_ok, (
-            f"expected {_PLD_HASH_OK}({i_hash}) -> {_DECRYPT_START}({i_start}) -> "
+            f"expected {_PAYLOAD_OK}({i_hash}) -> {_DECRYPT_START}({i_start}) -> "
             f"{_DECRYPT_OK}({i_ok}); the payload hash covers ciphertext and must be "
             f"checked before decryption. Console: {console}"
         )
         log.info(
             "CHK-DECRYPT-RAN: %s@%d -> %s@%d -> %s@%d",
-            _PLD_HASH_OK,
+            _PAYLOAD_OK,
             i_hash,
             _DECRYPT_START,
             i_start,

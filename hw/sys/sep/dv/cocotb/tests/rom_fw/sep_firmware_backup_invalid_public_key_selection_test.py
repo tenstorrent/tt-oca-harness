@@ -4,20 +4,19 @@
 
 The primary's ``manifest_identifier`` is corrupted to force failover, then the
 backup's ``public_key_sel.selection`` is set to 3 -- one of the three encodings
-(3, 6, 7) that name no key source. All three fall through the same ``default:`` arm
-(``manifest_crypto.c:143-221``); a fixed value makes the run reproducible and lets
+(3, 6, 7) that name no key source. All three fall through the same ``default:`` arm; a fixed value makes the run reproducible and lets
 the test assert the exact ``PUBK_SEL=`` the ROM echoed.
 
 PLATFORM ADAPTATION.
 
 *Marker.* This ROM has no ``INVALID_KEY_INDEX`` status. The unassigned-selection
-arm prints ``BAD_KEY_SEL`` and returns ``MANIFEST_ERR_SIG_FAILED``; a bad ROM key
-*index* is a different arm printing ``BAD_KEY_IDX``. This test follows the stimulus
-(a bad source, not a bad index) and requires ``BAD_KEY_SEL``.
+arm prints ``PUBK_SEL_AMBIGUOUS`` and returns ``MANIFEST_ERR_SIG_FAILED``; a bad ROM key
+*index* is a different arm printing ``PUBK_SLOT_RESERVED``. This test follows the stimulus
+(a bad source, not a bad index) and requires ``PUBK_SEL_AMBIGUOUS``.
 
 ``public_key_sel`` is at offset 166, inside the TBS, so the helper re-hashes. No
 re-sign: the selection is rejected before the signature is verified, and
-``RSA_VERIFY_START`` is forbidden so that ordering is checked rather than assumed.
+``RSA_EXEC`` is forbidden so that ordering is checked rather than assumed.
 """
 
 from __future__ import annotations
@@ -39,7 +38,7 @@ _EFUSE_PRELOAD = (
     / "sep_efuse_lc_prod.toml"
 )
 
-# manifest.h:109-114 assigns 0,1,2,4,5. 3, 6 and 7 name nothing.
+#  assigns 0,1,2,4,5. 3, 6 and 7 name nothing.
 _BAD_SELECTION = 3
 _BAD_PUBK_SEL_VALUE = (_BAD_SELECTION & 0x7) << 4  # index 0, selection 3 -> 0x0030
 
@@ -48,16 +47,15 @@ _BAD_PUBK_SEL_VALUE = (_BAD_SELECTION & 0x7) << 4  # index 0, selection 3 -> 0x0
 class sep_firmware_backup_invalid_public_key_selection_test(sep_backup_manifest_fail_base):
     """Primary BAD_MAGIC -> failover -> backup names key source 3 -> terminal."""
 
-    backup_defect_marker = "BAD_KEY_SEL"
+    backup_defect_marker = "PUBK_SEL_AMBIGUOUS"
     expected_error = MANIFEST_ERR_SIG_FAILED
     efuse_preload = _EFUSE_PRELOAD
     # The selection must be rejected before any key is loaded or verified.
     extra_forbidden = (
-        "RSA_VERIFY_START",
-        "SIG_VALID",
-        "CRYPTO_VALIDATE_OK",
-        "BAD_KEY_IDX",
-        "FUSE_KEY_EMPTY",
+        "RSA_EXEC",
+        "RSA_VERIFY_OK",
+        "PUBK_SLOT_RESERVED",
+        "PUBK_OTP_EMPTY",
     )
 
     def corrupt_backup(self, buf: bytearray) -> None:
@@ -77,8 +75,9 @@ class sep_firmware_backup_invalid_public_key_selection_test(sep_backup_manifest_
     def check_efuse(self, image) -> None:
         bl1_ver = image.field_int("BL1_VERSION")
         assert bl1_ver == 0, (
-            f"BL1_VERSION is 0x{bl1_ver:x}, expected 0: the rollback check runs "
-            f"before key selection and would terminate the run first"
+            f"BL1_VERSION is 0x{bl1_ver:x}, expected 0: anti-rollback cannot reject a "
+            f"manifest when the device carries no security flags, and that is what "
+            f"keeps this verdict attributable to the check under test"
         )
         assert image.field_int("CHIPLET_PUBK_REVOKE") == 0, (
             "CHIPLET_PUBK_REVOKE must be 0; revocation is keyed off the selected "
@@ -91,7 +90,7 @@ class sep_firmware_backup_invalid_public_key_selection_test(sep_backup_manifest_
         # attributable to this stimulus and not to some other malformed selector.
         marker = f"PUBK_SEL=0x{_BAD_PUBK_SEL_VALUE:08x}"
         assert any(marker in line for line in console), (
-            f"ROM never printed {marker}: the BAD_KEY_SEL verdict cannot be "
+            f"ROM never printed {marker}: the PUBK_SEL_AMBIGUOUS verdict cannot be "
             f"attributed to the selection this test planted. Console: {console}"
         )
         self.logger.info("CHK-PUBKSEL-ECHO: ROM read %s", marker)

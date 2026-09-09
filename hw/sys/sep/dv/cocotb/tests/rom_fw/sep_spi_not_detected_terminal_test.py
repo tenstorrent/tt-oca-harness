@@ -58,9 +58,9 @@ _FW_DIR = os.path.join(_SEP_ROOT, "bootrom", "prod", "build_ot")
 _FLASH_IMAGE = os.path.join(_SEP_ROOT, "bootrom", "prod", "build", "oca_non_secure_boot.bin")
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 
-# manifest.h -- an erased slot fails the identifier check in
+#  -- an erased slot fails the identifier check in
 # the magic check, before the hash check.
-MANIFEST_ERR_BAD_MAGIC = 0x0003_0002
+MANIFEST_ERR_BAD_MAGIC = mm.boot_err("OCA_FAIL_MAGIC")
 # status_values.h, errors.h -> STATUS_ENCODE(STATUS_TYPE_ERROR, x).
 SEP_MSG_MANIFEST_LOAD_FAILED = 0x213
 # status_for_result() maps OCA_FAIL_MAGIC to this, so a rejected slot reports the

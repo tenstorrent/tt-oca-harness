@@ -11,7 +11,7 @@ MATCHED PAIR. This testcase and ``sep_firmware_chiplet_pubkey_0_revoke_test`` bu
 their flash image from the SAME call, ``select_chiplet_fuse_key(buf, 0)``, so the two
 run byte-identical images and differ ONLY in ``CHIPLET_PUBK_REVOKE`` bit 16. Fuse
 bit clear boots from the primary; bit set refuses BOTH manifests with
-``KEY_REVOKED idx=0x00000010`` and never reaches ``RSA_VERIFY_START``.
+``KEY_REVOKED idx=0x00000010`` and never reaches ``RSA_EXEC``.
 
 Everything else -- why the fused-key arm is distinct code, why the revoke bit is 16
 and not the reference's 6, why ROM development key 0 is revoked here, why the

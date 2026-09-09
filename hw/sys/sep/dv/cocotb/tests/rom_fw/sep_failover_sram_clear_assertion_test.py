@@ -10,8 +10,8 @@ EXT SRAM **and** SMC SRAM. Only the first exists in this ROM.
 
   * **EXT SRAM -- covered here, in full.** ``rom_manifest_boot()`` calls
     ``clear_sram_region(SRAM_BASE, SRAM_SIZE)`` on the retry path
-    (``bootrom/prod/src/manifest_load.c:776``), which zeroes the whole 256 KiB at
-    ``bootrom/prod/src/manifest_load.c:693-699``. It is compiled in
+    (``bootrom/prod/src/), which zeroes the whole 256 KiB at
+    ``bootrom/prod/src/. It is compiled in
     unconditionally. In ``bootrom/prod/build_ot/boot_rom.dis`` it is the loop
 
         10042740: lui  a4,0x10000        ; a4 = 0x1000_0000  = SRAM_BASE
@@ -40,9 +40,9 @@ EXT SRAM **and** SMC SRAM. Only the first exists in this ROM.
     built with it CLEAR -- ``bootrom/prod/configs/non_secure_boot_test.yaml:32,101``,
     ``secure_boot_test.yaml`` and ``encrypted_boot_test.yaml`` all set
     ``use_ext_sram: 0``. The ROM side is not: ``FLAG_ARGS_BIT_USE_EXT_SRAM``
-    (``bootrom/prod/include/manifest.h:88``) is referenced nowhere under
+    (``bootrom/prod/include/) is referenced nowhere under
     ``bootrom/prod/src/`` or ``bootrom/prod/include/`` apart from that ``#define``,
-    and the payload load (``manifest_load.c``) unconditionally targets
+    and the payload load unconditionally targets
     ``dest + payload_offset`` with ``dest == SRAM_BASE``.
     THIS RUN OBSERVES THE DEVIATION rather than inferring it. The backup manifest
     it boots logs ``flag_args=0x00000000`` (CHK-STIMULUS-SPI), i.e. USE_EXT clear,
@@ -59,8 +59,7 @@ EXT SRAM **and** SMC SRAM. Only the first exists in this ROM.
     ``ring buffer address: 0x40060000``), so a wholesale SMC SRAM clear would
     destroy the ROM's own reporting channel.
     Second, independent reason the window does not exist there: the only path whose
-    manifest comes from SMC SRAM runs ``num_retries = 0``
-    (``manifest_load.c``), so it has no backup retry at all.
+    manifest comes from SMC SRAM runs ``num_retries = 0``, so it has no backup retry at all.
     See FINDINGS F19 and its correction F21. This test asserts nothing about SMC
     SRAM and must not be booked as covering that half of F038.
 
@@ -125,7 +124,7 @@ from rom_fw.sep_spi_primary_fail_backup_test import sep_spi_primary_fail_backup_
 from sep_reg_meta import sym
 
 # 0x1000_0000. From the RDL export, not a literal, so the test cannot drift from
-# the address the ROM's SRAM_BASE macro resolves to (manifest_load.c).
+# the address the ROM's SRAM_BASE macro resolves to.
 _SRAM_BASE = sym("SEP_SRAM_MEM_BASE_ADDR")
 # prim_ram_1p_adv Depth for u_sep_sram: 256 KiB / 8 B (hw/top/sep_ip_integration.sv:148).
 _SRAM_WORDS = 32768
@@ -152,7 +151,7 @@ _ERASED_WORD = int.from_bytes(bytes([mm.ERASED_BYTE]) * _WORD_BYTES, "little")
 # already asserted by the parent on MANIFEST_SRC= and the device transactions;
 # MANIFEST_BACKUP is used here only to mark "the second attempt has begun", which
 # is what it means regardless of which slot the retry counter selected.
-_PRIMARY_ERR = f"MANIFEST_ERR=0x{0x0003_0002:08x}"
+_PRIMARY_ERR = f"MANIFEST_ERR=0x{mm.boot_err('OCA_FAIL_MAGIC'):08x}"
 _BACKUP_LABEL = "MANIFEST_BACKUP"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
 
@@ -449,7 +448,7 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
         # --- the clear itself ---------------------------------------------------
         assert self._cleared is not None, (
             f"CHK-SRAM-CLEARED FAIL: word[{_LAST_WORD}] never reached 0, so the "
-            f"failover clear at manifest_load.c:776 did not run to completion between "
+            f"failover clear did not run to completion between "
             f"the primary rejection and the end of the boot. Console: {console}"
         )
         assert self._cleared["nonzero_count"] == 0, (
@@ -460,7 +459,7 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
                 for i, v in self._cleared["nonzero_sample"]
             )
             + ". clear_sram_region(SRAM_BASE, SRAM_SIZE) is specified to zero the "
-            "whole 256 KiB (manifest_load.c:693-699,776)."
+            "whole 256 KiB."
         )
         self.logger.info(
             "CHK-SRAM-CLEARED: at t=%sns all %d words (0x%08x..0x%08x, %d KiB) read 0 "
@@ -527,8 +526,8 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
             "is built with it CLEAR (bootrom/prod/configs/*_test.yaml use_ext_sram: 0), "
             "which this run observes as flag_args=0x00000000 on the manifest it booted. "
             "What is missing is the ROM's consuming branch: FLAG_ARGS_BIT_USE_EXT_SRAM "
-            "(manifest.h:88) is referenced nowhere under bootrom/prod/src, and "
-            "manifest_load.c:647-657 staged this payload in EXT SRAM regardless "
+            " is referenced nowhere under bootrom/prod/src, and "
+            " staged this payload in EXT SRAM regardless "
             "(COPY_SRC=0x10002000; LOAD=0xC0000000 is BL1's ICCM destination). So the "
             "SMC clear has nothing to "
             "assert against. Consistently, boot_rom.dis has no store loop over "

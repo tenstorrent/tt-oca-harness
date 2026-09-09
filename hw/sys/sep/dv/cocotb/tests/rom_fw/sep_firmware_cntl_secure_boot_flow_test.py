@@ -31,9 +31,8 @@ from env import sep_oca_mutate as mm
 from rom_fw.sep_rom_ot_dma_boot_test import SECURE_FLASH_IMAGE, sep_rom_ot_dma_boot_test
 
 _LC_PROD = "LC=PROD"
-_RSA_START = "RSA_VERIFY_START"
-_SIG_VALID = "SIG_VALID"
-_CRYPTO_OK = "CRYPTO_VALIDATE_OK"
+_RSA_START = "RSA_EXEC"
+_RSA_VERIFY_OK = "RSA_VERIFY_OK"
 # The failure signature of this testcase: the ROM honoured the cleared manifest
 # flag and skipped authentication in PROD.
 _SBOOT_OFF = "SBOOT_OFF"
@@ -47,6 +46,8 @@ _EFUSE_PRELOAD = (
     / "sep_efuse_lc_prod.toml"
 )
 
+_CRYPTO_OK = "MANIFEST_OK"
+
 
 @pyuvm.test()
 class sep_firmware_cntl_secure_boot_flow_test(sep_rom_ot_dma_boot_test):
@@ -56,7 +57,7 @@ class sep_firmware_cntl_secure_boot_flow_test(sep_rom_ot_dma_boot_test):
     required_markers = sep_rom_ot_dma_boot_test.required_markers + (
         _LC_PROD,
         _RSA_START,
-        _SIG_VALID,
+        _RSA_VERIFY_OK,
         _CRYPTO_OK,
     )
     forbidden_markers = sep_rom_ot_dma_boot_test.forbidden_markers + (

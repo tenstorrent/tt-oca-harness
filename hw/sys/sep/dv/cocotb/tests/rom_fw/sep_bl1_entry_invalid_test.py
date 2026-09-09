@@ -2,9 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """TP053-E: BL1 ``entry_point`` outside the image, so BL0 must not jump to it.
 
-``check_bl1_image`` rejects ``entry_point >= length`` (``manifest.h:286``), and
+``check_bl1_image`` rejects ``entry_point >= length``, and
 ``validate_manifest_payload`` prints ``BL1_ENTRY_RANGE`` and returns
-``MANIFEST_ERR_BL1_BAD_ADDR`` (``manifest_load.c:434-439``). Both slots carry the
+``MANIFEST_ERR_BL1_BAD_ADDR``. Both slots carry the
 defect, so the ROM tries the primary, retries the backup and terminates.
 
 THE STIMULUS IS THE BOUNDARY VALUE. ``entry_point`` is set to exactly ``length``
@@ -34,11 +34,10 @@ class sep_bl1_entry_invalid_test(sep_bl1_image_invalid_base):
 
     backup_defect_marker = "BL1_ENTRY_RANGE"
     expected_error = pm.MANIFEST_ERR_BL1_BAD_ADDR
-    # The other arm of the same function. It shares this test's error code, so
-    # only the marker separates them.
-    # Plus the size rejections, which sit AHEAD of the BL1 check: if one of them
-    # fired, the entry point was never reached.
-    sibling_markers = ("BL1_ADDR_RANGE", "IMAGE_LEN_ZERO", "IMAGE_LEN_ALIGN")
+    # The placement arm shares this test's error code, so only the marker
+    # separates them. BL1_SIZE sits AHEAD of the entry-point comparison, so if it
+    # fired the entry point was never reached.
+    sibling_markers = ("BL1_ADDR_RANGE", "BL1_SIZE")
 
     def mutate_bl1(self, buf: bytearray, slot: str) -> None:
         length = pm.bl1_field(buf, slot, pm.E_LENGTH)

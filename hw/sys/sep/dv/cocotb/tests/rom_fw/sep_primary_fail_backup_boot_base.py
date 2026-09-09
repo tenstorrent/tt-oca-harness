@@ -85,7 +85,6 @@ from env import sep_oca_payload as pm
 from env import sep_spi_slot_evidence as ev
 from rom_fw.sep_rom_ot_dma_boot_test import SECURE_FLASH_IMAGE, sep_rom_ot_dma_boot_test
 
-# manifest.h
 # Rejection codes the ROM prints as MANIFEST_ERR=<code>, derived from the
 # validator's result enum rather than copied: the enum renumbers as the library
 # grows, and a stale value fails a test for the wrong reason while still reading

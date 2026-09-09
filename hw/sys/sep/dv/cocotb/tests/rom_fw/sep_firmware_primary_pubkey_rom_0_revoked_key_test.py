@@ -13,11 +13,11 @@ THIS IS THE ONLY TERMINAL MEMBER OF THE FAMILY, and the reason is structural. Th
 shipped image gives BOTH slots ``rom_key_index: 0``
 (``configs/secure_boot_test.yaml:43-45`` primary, backup), so bit 0
 refuses the primary AND the backup, the retry loop exhausts, and the run ends in
-``MANIFEST_ALL_FAILED`` (``manifest_load.c``). Slots 1-5 fail over and boot.
+``MANIFEST_ALL_FAILED``. Slots 1-5 fail over and boot.
 The reference expects exactly this split -- ``PRIMARY_PUBKEY_ROM_0_REVOKED_KEY``
 ends at ``ERROR: REVOKED_KEY``
 with no ``COPY_AND_EXEC_IMAGE``, while ``PRIMARY_PUBKEY_ROM_1_REVOKED_KEY`` ends in
-``COPY_AND_EXEC_IMAGE / EXEC_IMAGE`` (, in a list running).
+``COPY_AND_EXEC_IMAGE / EXEC_IMAGE``.
 
 IT IS ALSO THE STRICTEST MEMBER, not the awkward one. Slot 0 is the only populated
 digest (``key_digests.c``) and the slot the image is signed against, so the
@@ -37,12 +37,12 @@ PLATFORM ADAPTATION -- MARKER. The reference asserts the architected
 (``bootrom/prod/include/status_values.h:13``) but never emits it -- there is no
 ``report_status`` call for it anywhere under ``bootrom/prod/src`` -- so the
 architected ring carries only the generic terminal code. The dedicated error code
-``MANIFEST_ERR_KEY_REVOKED`` (0x00030015, ``manifest.h``) is unshared, and the
+``MANIFEST_ERR_KEY_REVOKED`` is unshared, and the
 console token ``KEY_REVOKED idx=0x00000000`` is the per-reason evidence; both are
 required, once per slot for the token.
 
 No ``+sep_crypto_edn_force``: revocation precedes the signature step, so OTBN is
-never driven and ``RSA_VERIFY_START`` is forbidden.
+never driven and ``RSA_EXEC`` is forbidden.
 """
 
 from __future__ import annotations

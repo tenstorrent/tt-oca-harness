@@ -4,17 +4,16 @@
 
 The ``BL1_VERSION`` fuse sets a minimum security version of 1, the PRIMARY carries
 0 and is refused as a rollback, and the BACKUP carries exactly 1 and boots.
-``check_security_version`` is a single comparison, ``manifest_ver < fuse_ver``
-(``manifest_crypto.c``), reached from ``manifest_crypto_validate:364``.
+``check_security_version`` is a single comparison, ``manifest_ver < fuse_ver``, reached from ``manifest_crypto_validate:364``.
 
 THE ORDERING IS ESTABLISHED, NOT ASSUMED, AND IT IS WHY THIS TESTCASE CAN NAME ITS
-REASON. ``check_security_version`` runs at ``manifest_crypto.c``, BEFORE
+REASON. ``check_security_version`` runs, BEFORE
 ``validate_signature`` -- so the rollback verdict preempts signature
 type, key selection, revocation and RSA. That is what makes
-``MANIFEST_ERR_VERSION_ROLLBACK`` (0x00030014, ``manifest.h``) a DEDICATED code
+``MANIFEST_ERR_VERSION_ROLLBACK`` -- ``OCA_FAIL_SECURITY_VERSION``, a DEDICATED code
 rather than another user of the shared ``MANIFEST_ERR_SIG_FAILED``, and it is why
 this testcase asserts the intended REASON instead of merely "it was rejected":
-the run must show ``VERSION_ROLLBACK`` exactly once, on the primary, with the two
+the run must show that code exactly once, on the primary, with the two
 values the ROM actually compared, and must never reach ``PUBK_SEL=`` on the
 primary.
 
@@ -53,7 +52,7 @@ sealed and the rollback is the only thing wrong with it.
 
 Needs ``+sep_crypto_edn_force``: the backup is valid, so the full RSA-3072 modexp
 runs on OTBN, which parks in UrndRefresh until EDN grants entropy. The RSA
-assertions are untouched, so ``SIG_VALID`` still means the signature verified.
+assertions are untouched, so ``RSA_VERIFY_OK`` still means the signature verified.
 """
 
 from __future__ import annotations
@@ -76,14 +75,17 @@ _EFUSE_PRELOAD = (
     / "sep_efuse_lc_prod_secver1.toml"
 )
 
-# Thermometer count of BL1_VERSION in the preload above, and the versions the two
-# slots carry. The ROM rejects when manifest < fuse, so 0 is refused and 1 -- the
-# equality boundary -- must be accepted.
+# BL1_VERSION in the preload above, and the flag words the two slots carry.
+# security_version is a 128-flag bitmap: the manifest must carry every flag the
+# device has, so a rejection is (device & ~manifest) != 0. Slot 0 omits the
+# device's only flag and is refused; slot 1 carries exactly it, the boundary that
+# must be accepted.
 _FUSE_SECURITY_VERSION = 1
 _PRIMARY_SECURITY_VERSION = 0
 _BACKUP_SECURITY_VERSION = 1
 
-# manifest_crypto.c -- the two values the ROM echoes before comparing them.
+# The low 32 flags of each side, echoed by plat_get_security_version before the
+# comparison. That width is what the fuse bank backs.
 _FUSE_VER_ECHO = f"FUSE_VER=0x{_FUSE_SECURITY_VERSION:08x}"
 _PRIMARY_VER_ECHO = f"MFST_VER=0x{_PRIMARY_SECURITY_VERSION:08x}"
 _BACKUP_VER_ECHO = f"MFST_VER=0x{_BACKUP_SECURITY_VERSION:08x}"
@@ -93,25 +95,25 @@ _BACKUP_VER_ECHO = f"MFST_VER=0x{_BACKUP_SECURITY_VERSION:08x}"
 class sep_firmware_primary_invalid_security_version_test(sep_primary_fail_backup_boot_base):
     """Primary below the rollback floor -> rejected -> backup at the floor boots."""
 
-    primary_defect_marker = "VERSION_ROLLBACK"
+    primary_defect_marker = f"MANIFEST_ERR=0x{MANIFEST_ERR_VERSION_ROLLBACK:08x}"
     primary_expected_error = MANIFEST_ERR_VERSION_ROLLBACK
     efuse_preload = _EFUSE_PRELOAD
-    # Both slots' comparisons must be visible. Without the pair, VERSION_ROLLBACK
-    # could have been produced by any version pair, including one this stimulus
-    # did not create.
+    # Both slots' comparisons must be visible. Without the pair the rejection code
+    # could have been produced by any flag pair, including one this stimulus did
+    # not create.
     extra_required = (_FUSE_VER_ECHO, _PRIMARY_VER_ECHO, _BACKUP_VER_ECHO)
-    # None of these may fire. The primary is rejected upstream of key selection,
-    # so every one of them appearing on the primary would mean the rollback check
-    # did not preempt it; and the backup is valid, so none may fire there either.
+    # None of these may fire. Anti-rollback runs after key authorization and
+    # before the signature, so a key refusal here would mean the primary died
+    # ahead of the comparison this test is about, and RSA_PKCS1_FAIL would mean it
+    # got past one. The backup is valid, so none may fire there either.
     extra_forbidden = (
-        "BAD_SIG_TYPE=",
-        "BAD_KEY_IDX",
-        "BAD_KEY_SEL",
-        "ROM_KEY_EMPTY",
-        "FUSE_KEY_EMPTY",
-        "PUBK_HASH_MISMATCH",
-        "KEY_REVOKED",
-        "RSA_VERIFY_FAIL",
+        "PUBK_ALGO_UNSUPPORTED",
+        "PUBK_SLOT_RESERVED",
+        "PUBK_SEL_AMBIGUOUS",
+        "PUBK_SLOT_UNPROVISIONED",
+        "PUBK_OTP_EMPTY",
+        "PUBK_UNAUTHORIZED",
+        "RSA_PKCS1_FAIL",
     )
 
     def corrupt_primary(self, buf: bytearray) -> None:
@@ -196,29 +198,30 @@ class sep_firmware_primary_invalid_security_version_test(sep_primary_fail_backup
                     return i
             return -1
 
+        _ROLLBACK_ERR = f"MANIFEST_ERR=0x{MANIFEST_ERR_VERSION_ROLLBACK:08x}"
         i_pver = index_of(_PRIMARY_VER_ECHO)
-        i_roll = index_of("VERSION_ROLLBACK")
+        i_roll = index_of(_ROLLBACK_ERR)
         i_bsrc = index_of(f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}")
         i_bver = index_of(_BACKUP_VER_ECHO)
-        i_psel = index_of("PUBK_SEL=")
+        i_prsa = index_of("RSA_EXEC")
 
         # CHK-ROLLBACK-PAIR: the ROM read the primary's version and refused it, in
         # that order. The echo is what ties the verdict to this stimulus's version
         # pair rather than to any pair that would also roll back.
         assert 0 <= i_pver < i_roll < i_bsrc, (
             f"the rollback verdict is not attributable to the primary's version: "
-            f"{_PRIMARY_VER_ECHO}@{i_pver} -> VERSION_ROLLBACK@{i_roll} -> "
+            f"{_PRIMARY_VER_ECHO}@{i_pver} -> {_ROLLBACK_ERR}@{i_roll} -> "
             f"backup@{i_bsrc}. Console: {console}"
         )
-        # CHK-ROLLBACK-PREEMPTS-KEYSEL: this is the ordering claim, and it is
-        # asserted rather than argued. validate_signature echoes PUBK_SEL= as its
-        # second act (manifest_crypto.c); if the FIRST such echo in the whole
-        # run came before the backup read, the primary reached key selection and
-        # the rollback check did not preempt it.
-        assert i_psel > i_bsrc, (
-            f"PUBK_SEL=@{i_psel} appeared before the backup read@{i_bsrc}: the "
-            f"primary reached key selection, so check_security_version did not "
-            f"preempt validate_signature. Console: {console}"
+        # CHK-ROLLBACK-PREEMPTS-SIGNATURE: the ordering claim, asserted rather
+        # than argued. Anti-rollback is checked after the root key is authorized
+        # and BEFORE the signature, so the primary must never reach the verifier:
+        # if the first RSA_EXEC in the run came before the backup read, a manifest
+        # below the floor was handed to the verifier anyway.
+        assert i_prsa > i_bsrc, (
+            f"RSA_EXEC@{i_prsa} appeared before the backup read@{i_bsrc}: the "
+            f"primary reached the verifier, so the rollback check did not preempt "
+            f"the signature. Console: {console}"
         )
         # CHK-BACKUP-ACCEPTED-AT-FLOOR: the recovering slot's version was read and
         # accepted. Equality is the boundary the ROM must pass, so this is the
@@ -235,8 +238,8 @@ class sep_firmware_primary_invalid_security_version_test(sep_primary_fail_backup
             f"Console: {console}"
         )
         self.logger.info(
-            "CHK-ROLLBACK-FAILOVER: %s + %s@%d -> VERSION_ROLLBACK@%d -> backup@%d "
-            "-> %s@%d accepted at the floor; PUBK_SEL= first seen at %d, after the "
+            "CHK-ROLLBACK-FAILOVER: %s + %s@%d -> rollback@%d -> backup@%d "
+            "-> %s@%d accepted at the floor; RSA_EXEC first seen at %d, after the "
             "backup read",
             _FUSE_VER_ECHO,
             _PRIMARY_VER_ECHO,
@@ -245,5 +248,5 @@ class sep_firmware_primary_invalid_security_version_test(sep_primary_fail_backup
             i_bsrc,
             _BACKUP_VER_ECHO,
             i_bver,
-            i_psel,
+            i_prsa,
         )

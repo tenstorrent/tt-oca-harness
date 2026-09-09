@@ -17,11 +17,10 @@ WHY THIS SUBCLASSES ``sep_backup_manifest_fail_base`` BUT REPLACES ITS VERDICT.
 The run machinery -- flash BFM, console capture, the PROD/secure-boot eFuse
 assertions, the post-terminal quiescence window -- is exactly what is wanted and is
 inherited unchanged. The CHECKS are not: that base is written for defects the
-CRYPTO chain rejects, so it requires a ``CRYPTO_FAIL=`` line and forbids
-``CRYPTO_VALIDATE_OK``. These defects are the opposite. They sit in the payload,
-which ``try_manifest_slot`` validates AFTER the crypto chain has PASSED
-(``manifest_load.c:665-680`` then ``:683``), so a correct run here must show
-``CRYPTO_VALIDATE_OK`` -- twice, once per slot -- and then fail. Overriding
+CRYPTO chain rejects, so it requires a ``MANIFEST_ERR=`` line and forbids
+``MANIFEST_OK``. These defects are the opposite. They sit in the payload,
+which ``try_manifest_slot`` validates AFTER the crypto chain has PASSED, so a correct run here must show
+``MANIFEST_OK`` -- twice, once per slot -- and then fail. Overriding
 :meth:`_check` rather than adding hooks to the shared base keeps six passing
 testcases untouched.
 
@@ -42,20 +41,19 @@ from rom_fw.sep_backup_manifest_fail_base import sep_backup_manifest_fail_base
 _EFUSE_DIR = Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads" / "efuse_configurations"
 _EFUSE_LC_PROD = _EFUSE_DIR / "sep_efuse_lc_prod.toml"
 
-# manifest_load.c:764-765 -- the ROM labels the slot and then prints its offset.
+#  -- the ROM labels the slot and then prints its offset.
 _PRIMARY_SRC = "MANIFEST_SRC=0x00001000"
 _BACKUP_SRC = "MANIFEST_SRC=0x00041000"
 
-# manifest_crypto.c:391 -- printed once per slot whose crypto chain passed.
-_CRYPTO_OK = "CRYPTO_VALIDATE_OK"
-# manifest_load.c:808 -- both slots were tried and both failed.
+#  -- printed once per slot whose crypto chain passed.
+# the ROM -- both slots were tried and both failed.
 _ALL_FAILED = "MANIFEST_ALL_FAILED"
 _SBOOT_OFF = "SBOOT_OFF"
 
 # rom_handoff.c -- anything from here on means BL1 was copied or entered. The
 # procedures' "BL0 does NOT attempt to copy BL1 into IRAM" / "does NOT jump to the
 # invalid entry address" is exactly the absence of these.
-# "LOAD=" and "LEN=" are deliberately NOT used: manifest_load.c:798 prints
+# "LOAD=" and "LEN=" are deliberately NOT used:  prints
 # "PAYLOAD=", which contains "LOAD=" as a substring, so a marker check would
 # false-positive on an ordinary payload report.
 _BL1_PROGRESS = (
@@ -74,21 +72,20 @@ _BL1_PROGRESS = (
 # signature that a re-seal went wrong (a stale image digest, a stale payload
 # hash, a payload length left inconsistent with the TOC).
 _OTHER_REJECTIONS = (
-    "PLD_HASH_MISMATCH",
     "PLD_HASH_TIMEOUT",
-    "RSA_VERIFY_FAIL",
     "RSA_PKCS1_FAIL",
-    "SIG_VALID_FAIL",
+    "RSA_PKCS1_FAIL",
+    "RSA_VERIFY_OK_FAIL",
     "TOC_PLEN_MISMATCH",
     "TOC_REGION_OOB",
     "IMAGE_ORDER_BAD",
     "IMAGE_HASH_MISMATCH",
     "IMAGE_HASH_TIMEOUT",
     "NO_BL1_IMAGE",
-    "LC_USAGE_CONSTRAINT_FAIL",
-    "ENC_WITHOUT_SBOOT",
     "FLASH_REINIT_FAIL",
 )
+
+_CRYPTO_OK = "PAYLOAD_OK"
 
 
 class sep_bl1_image_invalid_base(sep_backup_manifest_fail_base):

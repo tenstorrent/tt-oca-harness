@@ -4,15 +4,15 @@
 
 The revoking member of the chiplet fused-key pair for key 0.
 ``CHIPLET_PUBK_REVOKE`` bit 16 refuses ``CHIPLET_PUBK_HASH0``
-(``manifest_crypto.c`` selects that index, tests it), and because BOTH
+( selects that index, tests it), and because BOTH
 manifest slots select the same fused key the retry loop exhausts and the run ends in
 ``MANIFEST_ALL_FAILED``.
 
 THE STRICT FORM OF THE PROPERTY. Both slots are re-signed with dev0 and re-checked
 with ``verify_sealed`` before the run, so each is a fully valid, provably bootable
 manifest bound to fused key 0. One fuse bit refuses two good images, and revocation
-is the sole possible cause -- ``ROM_KEY_EMPTY``, ``FUSE_KEY_EMPTY``,
-``PUBK_HASH_MISMATCH``, ``RSA_VERIFY_START`` and ``SIG_VALID`` are all forbidden.
+is the sole possible cause -- ``PUBK_SLOT_UNPROVISIONED``, ``PUBK_OTP_EMPTY``,
+``PUBK_UNAUTHORIZED``, ``RSA_EXEC`` and ``RSA_VERIFY_OK`` are all forbidden.
 The ROM-slot revoke families of batches R1 and R2 could only reach this strict form
 at slot 0 (``FINDINGS.md`` R01); here both members reach it.
 

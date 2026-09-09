@@ -19,7 +19,7 @@ evidence that the ROM saw the intended combination.
 
 WHY BOTH ARMS IT IS NOT MUST BE FORBIDDEN. ``BOOT_RECOVERY`` and
 ``BOOT_SECONDARY`` converge immediately: both set a boot_mode and then fall into
-the same ``WAIT_SMC_MANIFEST`` loop (``manifest_load.c:717-728``). A recovery run
+the same ``WAIT_SMC_MANIFEST`` loop. A recovery run
 and a secondary run therefore produce nearly identical consoles, and without
 forbidding ``BOOT_SECONDARY`` a testcase whose recovery strap silently did
 nothing would still boot and still pass. That marker, not the successful boot, is
@@ -46,15 +46,15 @@ _STRAPS_LO_ECHO = f"STRAPS_LO=0x{_STRAPS_LO_RECOVERY:08x}"
 _STRAP_PRIMARY_ECHO = "STRAP primary=1"  # boot_straps.c:32
 _STRAP_RECOVERY_ECHO = " recovery=1"  # boot_straps.c:33
 _RECOVERY_MARKER = "BOOT_RECOVERY"  # rom_main.c:635
-_WAIT_SMC = "WAIT_SMC_MANIFEST"  # manifest_load.c:720
+_WAIT_SMC = "WAIT_SMC_MANIFEST"  #
 # smc_sram_base (0x4006_0000, sep_smc_interface.h:57,162-164) + the manifest
-# offset the responder publishes in SMC scratch[8] (0x1000). manifest_load.c:765.
+# offset the responder publishes in SMC scratch[8] (0x1000).
 #
 # NOTE ON WHAT THE PROCEDURE SAYS: TP004 step 3 describes the offset as published
 # in "SMC scratch 13/14". This ROM does not read those -- SMC_SCRATCH_SEP_SAFE_
 # SRAM_START/SIZE (sep_smc_interface.h:103-104) are declared and never used --
 # and takes the offset from SMC_SCRATCH_MANIFEST_ADDR_IDX = 8
-# (manifest_load.c:725). The implementation follows the ROM.
+# The implementation follows the ROM.
 _SMC_MANIFEST_SRC = "MANIFEST_SRC=0x40061000"
 _MANIFEST_OK = "MANIFEST_OK"
 # Printed by BL1 after the handoff and by nothing in the ROM, so it is the

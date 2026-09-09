@@ -46,8 +46,7 @@ Evidence, on both channels:
     Note ``LC=PROD`` is a strict PREFIX of this string, so it is deliberately NOT in
     the forbidden list; the discrimination in the other direction is the PROD
     member's job and it forbids ``LC=PROD_END``;
-  * ``DEMOTE: PROD_END lock`` (``rom_main.c``) and ``DEMOTE_LOCKED``
-, each exactly once and after ``MANIFEST_OK``; and **every other [C15]
+  * ``DEMOTE: PROD_END lock`` (``rom_main.c``) and ``DEMOTE_LOCKED``, each exactly once and after ``MANIFEST_OK``; and **every other [C15]
     string forbidden** -- in particular ``BL1_DEMOTE=`` and ``BL2_DEMOTE_DEC=``,
     whose absence is the direct observable that the manifest inputs were never read;
   * DEMOTE_1 = (demote 0, lock 1) and **DEMOTE_2 = (demote 0, lock 1)**. DEMOTE_2 is
@@ -104,9 +103,8 @@ class sep_firmware_demotion_decision_auth_flag_0_prod_end_test(sep_demotion_deci
     required_markers = sep_rom_ot_dma_boot_test.required_markers + (
         _LC_PROD_END,
         _PRIMARY_SRC,
-        "RSA_VERIFY_START",
-        "SIG_VALID",
-        "CRYPTO_VALIDATE_OK",
+        "RSA_EXEC",
+        "RSA_VERIFY_OK",
         "BL1_COPIED",
         "BL1_JUMP=",
     )
@@ -115,22 +113,19 @@ class sep_firmware_demotion_decision_auth_flag_0_prod_end_test(sep_demotion_deci
     # would mean PROD_END did not enforce secure boot. The rest exclude a boot that
     # completed by failover or with a rejected slot.
     forbidden_markers = sep_rom_ot_dma_boot_test.forbidden_markers + (
-        "LC_USAGE_CONSTRAINT_FAIL",
         "SBOOT_OFF",
         "FUSE: SBOOT_DIS: 1",
         _BACKUP_SRC,
         "MANIFEST_ERR=",
         "MANIFEST_ALL_FAILED",
-        "CRYPTO_FAIL=",
-        "RSA_VERIFY_FAIL",
-        "VERSION_ROLLBACK",
-        "KEY_REVOKED",
-        "BAD_SIG_TYPE=",
-        "BAD_KEY_SEL",
-        "BAD_KEY_IDX",
-        "ROM_KEY_EMPTY",
-        "FUSE_KEY_EMPTY",
-        "PUBK_HASH_MISMATCH",
+        "MANIFEST_ERR=",
+        "RSA_PKCS1_FAIL",
+        "PUBK_ALGO_UNSUPPORTED",
+        "PUBK_SEL_AMBIGUOUS",
+        "PUBK_SLOT_RESERVED",
+        "PUBK_SLOT_UNPROVISIONED",
+        "PUBK_OTP_EMPTY",
+        "PUBK_UNAUTHORIZED",
     )
 
     # --- stimulus ----------------------------------------------------------

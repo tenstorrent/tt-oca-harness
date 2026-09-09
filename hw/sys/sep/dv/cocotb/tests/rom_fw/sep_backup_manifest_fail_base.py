@@ -20,7 +20,7 @@ This ROM runs the manifest loop and the crypto chain as two separate stages
 and usage constraints, and only after a slot passes does
 the crypto stage checks security_version, key selection and the
 signature. So a backup with a cryptographic defect legitimately prints
-``MANIFEST_OK`` first and then fails with ``CRYPTO_FAIL=`` -- which is why
+``MANIFEST_OK`` first and then fails with ``MANIFEST_ERR=`` -- which is why
 ``MANIFEST_OK`` is not in the forbidden list.
 
 ``SepBootScoreboard`` is not used: it requires ``fw_done`` and ``fw_pass``, and the
@@ -346,7 +346,7 @@ class sep_backup_manifest_fail_base(sep_base_test):
         i_primary = index_of(_PRIMARY_SRC)
         i_primary_err = index_of(primary_err)
         i_backup = index_of(_BACKUP_SRC)
-        crypto_fail = f"CRYPTO_FAIL=0x{self.expected_error:08x}"
+        crypto_fail = f"MANIFEST_ERR=0x{self.expected_error:08x}"
         i_crypto = index_of(crypto_fail)
 
         # CHK-PRIMARY: the primary slot was attempted and rejected for the reason

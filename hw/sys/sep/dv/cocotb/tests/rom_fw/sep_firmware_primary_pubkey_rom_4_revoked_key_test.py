@@ -21,10 +21,9 @@ image rather than trusting the slot number.
 
 WHAT THIS MEMBER PINS. Slot 4 has no compiled-in digest
 (``key_digests.c`` populates slot 0 only), so without the revocation bit it
-would be refused as ``ROM_KEY_EMPTY``. Here the fuse bit changes the verdict,
-because ``validate_signature`` consults the fuse bitmap
-(``manifest_crypto.c``) BEFORE the digest table.
-``ROM_KEY_EMPTY`` is therefore the load-bearing forbid: seeing it would mean
+would be refused as ``PUBK_SLOT_UNPROVISIONED``. Here the fuse bit changes the verdict,
+because ``validate_signature`` consults the fuse bitmap BEFORE the digest table.
+``PUBK_SLOT_UNPROVISIONED`` is therefore the load-bearing forbid: seeing it would mean
 revocation was evaluated late, or not at all.
 
 NARROWING vs THE REFERENCE, DISCLOSED. The reference re-signs its primary with
@@ -34,13 +33,13 @@ manifest bound to slot 4 and its test proves "revocation refuses a provably good
 image". Only ``rsa_private_key.dev0.pem`` ships here, so the selector write leaves
 the dev0 signature stale and this member proves the weaker property that
 revocation PREEMPTS the empty-digest arm. The stale signature is never examined --
-``RSA_VERIFY_START`` must not appear before the backup read and the total count is
+``RSA_EXEC`` must not appear before the backup read and the total count is
 pinned to 1 -- so the verdict stays attributable to revocation. Slot 0 carries the
 family's strict form.
 
 Needs ``+sep_crypto_edn_force``: the backup is valid, so the full RSA-3072 modexp
 runs on OTBN, which parks in UrndRefresh until EDN grants entropy. It grants
-OTBN's EDN handshakes only; the RSA assertions are untouched, so ``SIG_VALID``
+OTBN's EDN handshakes only; the RSA assertions are untouched, so ``RSA_VERIFY_OK``
 still means the signature really verified.
 """
 

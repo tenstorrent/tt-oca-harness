@@ -22,8 +22,7 @@ from env import sep_oca_mutate as mm
 from env import sep_spi_slot_evidence as ev
 from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
 
-# rom_spi_init() failure makes the ROM skip the primary slot outright
-# (manifest_load.c:547-550), so the subject of this test never happens.
+# rom_spi_init() failure makes the ROM skip the primary slot outright, so the subject of this test never happens.
 _SPI_INIT_OK = "SPI_INIT_OK"
 _SPI_INIT_ERR = "SPI_INIT_ERR="
 

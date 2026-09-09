@@ -35,8 +35,8 @@ not. It needs the FUSE to differ from ``public_key_digests[0]``, plus a NEGATIVE
 assertion:
 
   * **correct ROM:** ``read_fuse_key`` returns the decoy, ``check_pubkey_hash``
-    fails on it (``manifest_crypto.c``), both slots are refused,
-    ``MANIFEST_ALL_FAILED``, ``CRYPTO_FAIL=0x00030016``;
+    fails on it, both slots are refused,
+    ``MANIFEST_ALL_FAILED``, ``MANIFEST_ERR=`` carrying the unauthorized-key code;
   * **ROM comparing against the compiled-in table:** the modulus matches, the
     image verifies, the part **boots** -- and this testcase FAILS.
 
@@ -60,13 +60,13 @@ image, two manifests differing only in ``public_key_sel``, opposite verdicts.
 That is the mirror of the matched-pair-on-one-image shape batches R1 and R2 used.
 
 **WHAT IT DOES NOT CATCH, stated because R07 overstates this and the
-overstatement was inherited.** R07 cites ``manifest_crypto.c`` -- which
+overstatement was inherited.** R07 cites  -- which
 records that the fuse-key digest addresses were once derived as
 ``CHIPLET_PUBK_REVOKE + 0x100/0x120`` instead of ``+0x110/0x130`` -- as "exactly
 the shape a digest-source test discriminates". It is not. That base lands
 ``0x10`` BELOW ``CHIPLET_PUBK_HASH0``, so ``read_fuse_key`` returns four
 unrelated non-zero words followed by HASH0's first four: a digest that matches
-nothing, producing ``PUBK_HASH_MISMATCH`` and ``0x00030016`` -- the outcome this
+nothing, producing ``PUBK_UNAUTHORIZED`` and the unauthorized-key code -- the outcome this
 testcase REQUIRES. **A revival of that specific historical bug would pass here.**
 The class this testcase closes is "the ROM compared against the wrong SOURCE",
 not "the ROM read a malformed address"; the second is covered by the positive
@@ -85,7 +85,7 @@ shape batches R1 and R2 established, applied to the digest instead of to a
 revocation bit.
 
 Revocation must not be what refuses this image, or the digest comparison is never
-reached: ``check_pubkey_revoked`` runs at ``manifest_crypto.c`` and
+reached: ``check_pubkey_revoked`` runs and
 ``check_pubkey_hash`` only. So ``CHIPLET_PUBK_REVOKE`` bits 16 and 17
 are CLEAR, ``PUBK_REVOKE=0x00000001`` is required exactly twice (the fuse word
 the ROM read, once per slot, proving the revocation check ran and PERMITTED the
@@ -97,15 +97,14 @@ ignored ``public_key_sel.selection`` and took the ROM-key arm with index 0 would
 print ``KEY_REVOKED idx=0x00000000`` and refuse the image for the wrong reason.
 Forbidding ``KEY_REVOKED`` catches that too.
 
-``RSA_VERIFY_START`` and ``SIG_VALID`` are forbidden: the digest bind precedes
-``rsa_3072_verify`` (``manifest_crypto.c`` then), so a run that
+``RSA_EXEC`` and ``RSA_VERIFY_OK`` are forbidden: the digest bind precedes
+``rsa_3072_verify`` ( then), so a run that
 reached the verifier did not fail where this testcase says it failed. No
 ``+sep_crypto_edn_force`` is passed, and none is needed.
 
 ``PUBK_HASH_TIMEOUT`` is forbidden as well, and it is not decoration:
-``check_pubkey_hash`` returns ``MANIFEST_ERR_SIG_FAILED`` on a SHA-256 timeout
-(``manifest_crypto.c``) and ``MANIFEST_ERR_KEY_HASH_MISMATCH`` only on a
-real mismatch, so requiring ``0x00030016`` already excludes the
+``check_pubkey_hash`` returns ``MANIFEST_ERR_SIG_FAILED`` on a SHA-256 timeout and ``MANIFEST_ERR_KEY_HASH_MISMATCH`` only on a
+real mismatch, so requiring the unauthorized-key code already excludes the
 timeout path -- but the console token names it directly.
 """
 
@@ -133,16 +132,16 @@ _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
 
 _CHIPLET_KEY = 0
-# manifest.h -- public_key_sel is {index:4, selection:3}, so a selection of
+#  -- public_key_sel is {index:4, selection:3}, so a selection of
 # PUBK_SEL_FUSE_KEY_0 with index 0 encodes as 0x10, a value the ROM-key arm cannot
 # produce.
 _PUBK_SEL_VALUE = (mm.PUBK_SEL_FUSE_KEY_0 & 0x7) << 4
-_PUBK_SEL_ECHO = f"PUBK_SEL=0x{_PUBK_SEL_VALUE:08x}"  # manifest_crypto.c
+_PUBK_SEL_ECHO = f"PUBK_SEL=0x{_PUBK_SEL_VALUE:08x}"  #
 # Only ROM dev key 0. Bits 16/17 (CHIPLET_PUBK_HASH0/1, sep_efuse_map.rdl:727) are
 # deliberately clear -- see the docstring.
 _REVOKE_BITMAP = 1 << 0
-_REVOKE_ECHO = f"PUBK_REVOKE=0x{_REVOKE_BITMAP:08x}"  # manifest_crypto.c
-_HASH_MISMATCH = "PUBK_HASH_MISMATCH"  # manifest_crypto.c
+_REVOKE_ECHO = f"PUBK_REVOKE=0x{_REVOKE_BITMAP:08x}"  #
+_HASH_MISMATCH = "PUBK_UNAUTHORIZED"  #
 
 
 @pyuvm.test()
@@ -159,19 +158,15 @@ class sep_firmware_chiplet_pubkey_0_wrong_digest_test(sep_backup_manifest_fail_b
     # chiplet revoke; the RSA markers prove the digest bind stopped the run before
     # the verifier; the rest are the other rejecting arms of validate_signature.
     extra_forbidden = (
-        "KEY_REVOKED",
-        "ROM_KEY_EMPTY",
-        "FUSE_KEY_EMPTY",
+        "PUBK_SLOT_UNPROVISIONED",
+        "PUBK_OTP_EMPTY",
         "PUBK_HASH_TIMEOUT",
-        "RSA_VERIFY_START",
-        "RSA_VERIFY_FAIL",
-        "SIG_VALID",
-        "CRYPTO_VALIDATE_OK",
-        "BAD_KEY_IDX",
-        "BAD_KEY_SEL",
-        "BAD_SIG_TYPE=",
-        "VERSION_ROLLBACK",
-        "LC_USAGE_CONSTRAINT_FAIL",
+        "RSA_EXEC",
+        "RSA_PKCS1_FAIL",
+        "RSA_VERIFY_OK",
+        "PUBK_SLOT_RESERVED",
+        "PUBK_SEL_AMBIGUOUS",
+        "PUBK_ALGO_UNSUPPORTED",
         ROM_ARM_KEY_REVOKED,
     )
 
@@ -228,7 +223,7 @@ class sep_firmware_chiplet_pubkey_0_wrong_digest_test(sep_backup_manifest_fail_b
             f"-- exactly bit 0 (ROM dev key 0, the ROM-key-arm counterfactual). Bits "
             f"{PUBK_REVOKE_BIT_CHIPLET_HASH[0]} and "
             f"{PUBK_REVOKE_BIT_CHIPLET_HASH[1]} MUST be clear: revocation is tested "
-            f"at manifest_crypto.c:228, before the digest bind at :236, so a revoked "
+            f", before the digest bind at :236, so a revoked "
             f"chiplet key would refuse this image before the check under test ran"
         )
         want = int.from_bytes(mm.rom_key_digest(0), "little")
@@ -238,8 +233,8 @@ class sep_firmware_chiplet_pubkey_0_wrong_digest_test(sep_backup_manifest_fail_b
             f"CHIPLET_PUBK_HASH0 is 0x{h0:064x}; it must be NON-ZERO and NOT the "
             f"dev0 digest 0x{want:064x}. This is the fuse PUBK_SEL_FUSE_KEY_0 "
             f"selects and the whole defect of this run. Zero would make it a "
-            f"FUSE_KEY_EMPTY testcase instead (read_fuse_key's non-zero test at "
-            f"manifest_crypto.c:148-150, token at :233), and the real digest would "
+            f"PUBK_OTP_EMPTY testcase instead (read_fuse_key's non-zero test at "
+            f", token at :233), and the real digest would "
             f"make it the positive member"
         )
         assert h1 == want, (
@@ -251,9 +246,9 @@ class sep_firmware_chiplet_pubkey_0_wrong_digest_test(sep_backup_manifest_fail_b
         )
         bl1_ver = image.field_int("BL1_VERSION")
         assert bl1_ver == 0, (
-            f"BL1_VERSION is 0x{bl1_ver:x}, expected 0: the rollback check runs "
-            f"before key selection (manifest_crypto.c:364 then :369) and would end "
-            f"the run before the fused-key path is reached"
+            f"BL1_VERSION is 0x{bl1_ver:x}, expected 0: anti-rollback cannot reject a "
+            f"manifest when the device carries no security flags, and that is what "
+            f"keeps this verdict attributable to the check under test"
         )
         self.logger.info(
             "CHK-STIMULUS-WRONG-DIGEST: CHIPLET_PUBK_REVOKE=0x%08x (bit 0 only, "
@@ -310,7 +305,7 @@ class sep_firmware_chiplet_pubkey_0_wrong_digest_test(sep_backup_manifest_fail_b
                 f"slot). Console: {console}"
             )
 
-        crypto_fail = f"CRYPTO_FAIL=0x{self.expected_error:08x}"
+        crypto_fail = f"MANIFEST_ERR=0x{self.expected_error:08x}"
         hits = [i for i, line in enumerate(console) if crypto_fail in line]
         assert len(hits) == 2, (
             f"{crypto_fail} appeared {len(hits)} times at {hits}, expected exactly 2 "
@@ -323,7 +318,7 @@ class sep_firmware_chiplet_pubkey_0_wrong_digest_test(sep_backup_manifest_fail_b
             f"Console: {console}"
         )
         assert any("MANIFEST_ALL_FAILED" in line for line in console), (
-            f"ROM never printed MANIFEST_ALL_FAILED (manifest_load.c:808): the retry "
+            f"ROM never printed MANIFEST_ALL_FAILED: the retry "
             f"loop did not exhaust. Console: {console}"
         )
         self.logger.info(

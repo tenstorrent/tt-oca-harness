@@ -66,7 +66,6 @@ class sep_firmware_demotion_decision_auth_flag_0_unauth_flag_0_prod_sel_bit_set_
     demotion_values = ("BL1_DEMOTE=1", "BL2_DEMOTE_DEC=1")
 
     # rom_main.c lc_write_demotion(demotion_reg=true, lock=true). The lock is
-    # the load-bearing half here -- see the docstring. DEMOTE_2 is written only at
-    # , i.e. only at PROD_END.
+    # the load-bearing half here -- see the docstring. DEMOTE_2 is written only at, i.e. only at PROD_END.
     expect_demote_1 = (1, 1)
     expect_demote_2 = (0, 0)

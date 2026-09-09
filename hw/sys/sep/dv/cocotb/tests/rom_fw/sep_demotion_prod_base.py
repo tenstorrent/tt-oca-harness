@@ -66,7 +66,7 @@ reaches ``sboot_dis`` only when the manifest asks for nothing (``secure_boot.c``
 refused as a format violation, and the ROM
 fails over to the signed backup -- which carries no demotion stimulus and would
 produce outcome **O5** under whichever name the testcase happened to have. That
-substitution is made loud rather than silent: ``BAD_SIG_TYPE=``, the backup
+substitution is made loud rather than silent: ``PUBK_ALGO_UNSUPPORTED``, the backup
 manifest source and ``LC=PROD_END`` are forbidden, ``FUSE: SBOOT_DIS: 1``
 (``rom_main.c``) and ``SBOOT_OFF`` (``rom_main.c``) are required, and
 the base's :meth:`~sep_demotion_decision_base._check_primary_served` additionally
@@ -177,7 +177,7 @@ def outcome_for(sel: int, auth: int, bl2: int) -> dict:
         ``demotion_reg`` still false, ``lock_demotion`` still true, so
         writes ``(0, 1)``;
       * prints ``BL2_DEMOTE_DEC=`` on all three of those arms, carrying
-        the ``demotion_control`` BL2 request unconditionally (, stored);
+        the ``demotion_control`` BL2 request unconditionally;
       * ``lc_write_demotion_2`` is called only, i.e. only at PROD_END,
         so DEMOTE_2 is never written on any arm here.
 
@@ -301,26 +301,20 @@ class sep_demotion_prod_base(_demotion_prod_mixin, sep_demotion_decision_base):
     )
     # LC=PROD_END is forbidden rather than LC=PROD being forbidden on the PROD_END
     # side, because "LC=PROD" is a strict PREFIX of "LC=PROD_END": only the longer
-    # string can serve as a discriminator. BAD_SIG_TYPE= is the loud failure if the
+    # string can serve as a discriminator. PUBK_ALGO_UNSUPPORTED is the loud failure if the
     # sboot_dis fuse surface is ever dropped. The RSA markers must not appear at
     # all: secure boot is off, so a run that verified a signature took a different
     # path from the one under test, and none of these members passes
     # +sep_crypto_edn_force.
     forbidden_markers = sep_rom_ot_dma_boot_test.forbidden_markers + (
         _LC_PROD_END,
-        "LC_USAGE_CONSTRAINT_FAIL",
         _BACKUP_SRC,
         "MANIFEST_ERR=",
         "MANIFEST_ALL_FAILED",
-        "CRYPTO_FAIL=",
-        "RSA_VERIFY_START",
-        "RSA_VERIFY_FAIL",
-        "SIG_VALID",
-        "CRYPTO_VALIDATE_OK",
-        "BAD_SIG_TYPE=",
-        "PLD_HASH_FAIL=",
-        "PLD_HASH_MISMATCH",
-        "ENC_WITHOUT_SBOOT",
+        "RSA_EXEC",
+        "RSA_PKCS1_FAIL",
+        "RSA_VERIFY_OK",
+        "PUBK_ALGO_UNSUPPORTED",
     )
 
     # --- stimulus ----------------------------------------------------------

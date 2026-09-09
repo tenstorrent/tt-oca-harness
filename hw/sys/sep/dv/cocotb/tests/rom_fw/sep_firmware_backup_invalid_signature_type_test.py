@@ -4,46 +4,45 @@
 
 The primary's ``manifest_identifier`` is corrupted to force failover, then the
 backup's ``signature_type`` is set to 0. ``validate_signature`` accepts only
-``MANIFEST_SIG_TYPE_RSA_3072`` (1, ``manifest.h``) and refuses anything else
-with ``BAD_SIG_TYPE=`` (``manifest_crypto.c``).
+``MANIFEST_SIG_TYPE_RSA_3072`` (1, ) and refuses anything else
+with ``PUBK_ALGO_UNSUPPORTED``.
 
 WHY 0, AND WHY A FIXED VALUE. The reference draws from
 ``random.choice([0, random.randint(3, 10)])``,
 so 0 is one of its own values; it is deliberately NOT 2, because 2 is
-``MANIFEST_SIG_TYPE_ECC_P_256`` (``manifest.h``) and the reference avoids the
+``MANIFEST_SIG_TYPE_ECC_P_256`` and the reference avoids the
 one non-RSA type its packer treats specially. The ROM's check is a single ``!=``
 against RSA-3072, so every value in that set exercises the identical arm, and
-fixing it is what lets this testcase assert the exact ``BAD_SIG_TYPE=`` the ROM
+fixing it is what lets this testcase assert the exact ``PUBK_ALGO_UNSUPPORTED`` the ROM
 echoed rather than accepting any value at all -- the same reason
 ``sep_firmware_backup_invalid_public_key_selection_test`` fixes its selection.
 
 THE ROM DOES VALIDATE TYPE SEPARATELY FROM VALUE, AND THIS TEST PROVES IT RATHER
 THAN ASSUMING IT. The type check is the FIRST arm of ``validate_signature``,
-ahead even of the ``PUBK_SEL=`` echo at ``manifest_crypto.c``. So ``PUBK_SEL=``
+ahead even of the ``PUBK_SEL=`` echo. So ``PUBK_SEL=``
 is forbidden below: the primary died at BAD_MAGIC before any crypto ran, so if the
 selector is echoed at all it can only be the backup's, which would mean the type
 check did not preempt key selection. That single forbid is what turns "the ROM
 rejected it" into "the ROM rejected it AT the type check".
 
 WHY THIS IS NOT THE SAME TESTCASE AS ``sep_firmware_backup_invalid_signature_test``.
-Both return ``MANIFEST_ERR_SIG_FAILED`` (0x0003000c, ``manifest.h``), which six
+Both return ``MANIFEST_ERR_SIG_FAILED``, which six
 arms of ``validate_signature`` share, so the error code cannot tell them apart.
 The status ring does not close the gap either: the only ring difference between
-the two is that the ROM-key arm re-reports ``SEP_MSG_VALIDATE_CHECK``
-(``manifest_crypto.c``) once the selector has been accepted, which is a
+the two is that the ROM-key arm re-reports ``SEP_MSG_VALIDATE_CHECK`` once the selector has been accepted, which is a
 side effect of reaching a LATER arm rather than a statement of the rejection
 reason -- and neither testcase asserts it. The console token is what actually
-discriminates. This testcase therefore requires ``BAD_SIG_TYPE=0x00000000`` and
-forbids ``RSA_VERIFY_START`` and ``RSA_VERIFY_FAIL``; its sibling requires
-``RSA_VERIFY_FAIL``, which this run must never produce. Asserting the shared code
+discriminates. This testcase therefore requires ``PUBK_ALGO_UNSUPPORTED0x00000000`` and
+forbids ``RSA_EXEC`` and ``RSA_PKCS1_FAIL``; its sibling requires
+``RSA_PKCS1_FAIL``, which this run must never produce. Asserting the shared code
 alone would make the two interchangeable.
 
 ``signature_type`` is one byte at manifest offset 165, INSIDE the TBS, so the
 helper re-hashes. It cannot be a signature-region patch: the field is covered by
 ``manifest_hash``, so an un-rehashed write dies in the manifest loop as a hash
 mismatch and never reaches the type check at all. No re-sign is needed or possible
--- the type is rejected before ``rsa_3072_verify`` (``manifest_crypto.c``), so
-the now-stale signature is never examined, and ``RSA_VERIFY_START`` being
+-- the type is rejected before ``rsa_3072_verify``, so
+the now-stale signature is never examined, and ``RSA_EXEC`` being
 forbidden is what checks that ordering instead of assuming it.
 
 No ``+sep_crypto_edn_force``: OTBN is never driven on either slot.
@@ -71,8 +70,8 @@ _EFUSE_PRELOAD = (
 # One of the reference's own values (sep_firmware_secure_boot_test.py), fixed
 # so the echoed value is assertable. See the docstring for why not 2.
 _BAD_SIG_TYPE = 0
-# manifest_crypto.c -- simputshex32("BAD_SIG_TYPE=", signature_type).
-_BAD_SIG_TYPE_ECHO = f"BAD_SIG_TYPE=0x{_BAD_SIG_TYPE:08x}"
+#  -- simputshex32("PUBK_ALGO_UNSUPPORTED", signature_type).
+_BAD_SIG_TYPE_ECHO = "PUBK_ALGO_UNSUPPORTED"
 
 
 @pyuvm.test()
@@ -83,23 +82,20 @@ class sep_firmware_backup_invalid_signature_type_test(sep_backup_manifest_fail_b
     expected_error = MANIFEST_ERR_SIG_FAILED
     efuse_preload = _EFUSE_PRELOAD
     # PUBK_SEL= is the load-bearing one: it is the very next thing
-    # validate_signature prints (manifest_crypto.c), so its absence proves the
-    # type check ran FIRST rather than merely eventually. RSA_VERIFY_FAIL is the
+    # validate_signature prints, so its absence proves the
+    # type check ran FIRST rather than merely eventually. RSA_PKCS1_FAIL is the
     # discriminator against the signature-VALUE sibling, which shares this error
     # code. The rest are the later arms, none of which may be reached.
     extra_forbidden = (
         "PUBK_SEL=",
-        "RSA_VERIFY_START",
-        "RSA_VERIFY_FAIL",
-        "SIG_VALID",
-        "CRYPTO_VALIDATE_OK",
-        "BAD_KEY_IDX",
-        "BAD_KEY_SEL",
-        "ROM_KEY_EMPTY",
-        "FUSE_KEY_EMPTY",
-        "PUBK_HASH_MISMATCH",
-        "KEY_REVOKED",
-        "VERSION_ROLLBACK",
+        "RSA_EXEC",
+        "RSA_PKCS1_FAIL",
+        "RSA_VERIFY_OK",
+        "PUBK_SLOT_RESERVED",
+        "PUBK_SEL_AMBIGUOUS",
+        "PUBK_SLOT_UNPROVISIONED",
+        "PUBK_OTP_EMPTY",
+        "PUBK_UNAUTHORIZED",
     )
 
     def corrupt_backup(self, buf: bytearray) -> None:
@@ -128,13 +124,13 @@ class sep_firmware_backup_invalid_signature_type_test(sep_backup_manifest_fail_b
         )
 
     def check_efuse(self, image) -> None:
-        # Both of these are evaluated before validate_signature is even entered
-        # (manifest_crypto.c), so either being non-zero would end the
+        # Both of these are evaluated before validate_signature is even entered, so either being non-zero would end the
         # run with a different verdict and make this testcase vacuous.
         bl1_ver = image.field_int("BL1_VERSION")
         assert bl1_ver == 0, (
-            f"BL1_VERSION is 0x{bl1_ver:x}, expected 0: the rollback check runs "
-            f"before validate_signature and would terminate the run first"
+            f"BL1_VERSION is 0x{bl1_ver:x}, expected 0: anti-rollback cannot reject a "
+            f"manifest when the device carries no security flags, and that is what "
+            f"keeps this verdict attributable to the check under test"
         )
         revoke = image.field_int("CHIPLET_PUBK_REVOKE")
         assert revoke == 0, (
