@@ -277,6 +277,12 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_sboot_dis.toml",
+  # The image is signed, so the library validates the signature even with
+  # SBOOT_DIS set, and RSA on OTBN needs EDN entropy. The ROM brings the chain
+  # up for real; the ring oscillators do not self-oscillate in simulation, so
+  # the noise source has to be forced or the ESRC health test fails and the
+  # boot stops after PUBK_AUTHORIZED.
+  "+esrc_noise_force",
 ]
 
 [[tests]]
