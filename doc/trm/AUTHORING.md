@@ -167,6 +167,89 @@ images. Use explicit column widths in tables (`[cols="20%,15%,65%"]`) to
 prevent mid-word wrapping in the PDF. Page size and margins are set by the
 production theme (`doc/theme.yml`); do not prescribe them in page source files.
 
+### 7a. Image viewer
+
+Block diagrams inside `.doc .imageblock` that are not already linked and are not
+logos or icons are automatically enhanced with a zoom/pan viewer. JavaScript
+wraps the image in a keyboard-operable button; clicking or pressing Enter/Space
+opens a modal overlay.
+
+**Eligibility rules** (implemented in `doc/ui-supplemental/js/image-viewer.js`):
+
+- Image must be inside `.doc .imageblock` (AsciiDoc `image::` block macro).
+- Image must **not** be wrapped in an `<a>` (i.e., no `link=` attribute on
+  the `image::` macro).
+- Image must **not** be inside `.navbar`, `.footer` or `.home-panel`.
+
+**Controls** — toolbar buttons and keyboard shortcuts:
+
+| Action | Button | Keyboard |
+|---|---|---|
+| Zoom in | `+` button | `+` or `=` |
+| Zoom out | `−` button | `-` |
+| Fit to screen | `⤢` button | `0` |
+| Pan left/right/up/down | `◀ ▶ ▲ ▼` buttons | Arrow keys |
+| Open original in new tab | `↗` button | — |
+| Close | `✕` button | Escape |
+
+**Fit behaviour**: Fit scales the image to fill the available stage regardless
+of how small that ratio is (e.g. wide diagrams at narrow mobile viewports).
+Zooming beyond fit is always available up to 8×. Fit resets pan to centre.
+
+**Light backing**: The viewer applies a white background to the image element
+so that SVG and PNG diagrams with transparent backgrounds remain readable; the
+dark panel surround is unchanged.
+
+**Modal isolation**: While the viewer is open, all background content is made
+inert so keyboard focus cannot leave the modal. Site shortcuts (`n`/`N`/`j`/`k`
+and search) are suppressed until the viewer closes; prior inert states are
+restored exactly.
+
+**Accessible names**: The trigger button is labelled "View enlarged: <caption>"
+when a figure caption is present, or "View enlarged: <alt text>" for uncaptioned
+figures.
+
+Do not add `link=` to block diagrams that should be viewer-eligible. If an image
+should open a specific URL instead of the viewer, add `link=<url>` to the image
+macro; the viewer will skip it automatically.
+
+The viewer is purely presentational HTML — captions, alt text and the image
+itself render normally when JavaScript is unavailable.
+
+### 7b. Wide tables with local horizontal scroll
+
+Tables whose content overflows the article width at some viewport sizes should
+use a passthrough HTML scroll wrapper in the HTML backend only, following this
+pattern (see PTAP `architecture.adoc` for a worked example):
+
+```adoc
+ifdef::backend-html5[]
+++++
+<div class="ptap-module-hierarchy-scroll" tabindex="0" aria-label="Table description, scrollable">
+++++
+endif::backend-html5[]
+
+[.ptap-module-hierarchy,width="100%",cols="<30%,<45%,<25%",options="header"]
+|===
+| ...
+|===
+
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
+```
+
+The role class (e.g. `.ptap-module-hierarchy`) must have a matching CSS rule in
+`extra.css` that sets `overflow-wrap: anywhere` on cells and `table-layout: auto`
+on the table. The scroll wrapper class (e.g. `.ptap-module-hierarchy-scroll`)
+must have `overflow-x: auto` in `extra.css`. The `tabindex="0"` on the wrapper
+makes the scroll area keyboard-operable.
+
+The PDF backend sees none of the passthrough HTML and uses the column widths
+from the table attribute block directly.
+
 Generated register documentation comes from SystemRDL (`.rdl`) sources. PDF
 includes use `hw/<...>/regs/gen/adoc/`; HTML includes use staged partials from
 `hw/<...>/regs/gen/html/`. Do not copy field descriptions into prose and do not

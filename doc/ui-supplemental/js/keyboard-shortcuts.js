@@ -70,6 +70,10 @@
   }
 
   document.addEventListener('keydown', function (e) {
+    // Suppress all shortcuts while the image viewer modal is open; the viewer
+    // handles its own key events and must not leak into page navigation.
+    if (window.ocahViewerOpen) return;
+
     // Cmd+K (Mac) / Ctrl+K (Windows/Linux) - checked first, and allowed to
     // fire even while already focused in the search box (harmless no-op).
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {

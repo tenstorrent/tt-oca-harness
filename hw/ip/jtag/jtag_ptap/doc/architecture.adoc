@@ -16,7 +16,13 @@ image::ptap_module_diagram.svg[PTAP Module Diagram showing TAP controller, instr
 
 The PTAP implementation instantiates the following submodules:
 
-[width="100%",cols="<30%,<45%,<25%",options="header"]
+ifdef::backend-html5[]
+++++
+<div class="ptap-module-hierarchy-scroll" tabindex="0" aria-label="Module Hierarchy table, scrollable">
+++++
+endif::backend-html5[]
+
+[.ptap-module-hierarchy,width="100%",cols="<30%,<45%,<25%",options="header"]
 |===
 |Module |Purpose |Conditional
 
@@ -76,6 +82,12 @@ The PTAP implementation instantiates the following submodules:
 |JTAG-to-AXI bridge for SMC system fabric
 |When `SMC_DBG_ENABLE=1`
 |===
+
+ifdef::backend-html5[]
+++++
+</div>
+++++
+endif::backend-html5[]
 
 === TAP Controller State Machine
 

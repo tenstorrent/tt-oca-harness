@@ -706,6 +706,42 @@
 }
 
 /* ========================================
+   WIDE TABLE CONTAINMENT — PTAP Module Hierarchy
+   The AsciiDoc source wraps the Module Hierarchy table in a passthrough
+   <div class="ptap-module-hierarchy-scroll"> (HTML backend only), mirroring
+   the pattern used by the DTP port reference table. The table also carries
+   role class [.ptap-module-hierarchy] for styling.
+   Allows long identifiers and conditional expressions to wrap naturally
+   while providing local horizontal scroll at narrow viewports.
+   The tabindex="0" on the wrapper is set explicitly in the AsciiDoc
+   passthrough HTML, making the scroll area keyboard-operable.
+   ======================================== */
+
+/* Scroll wrapper — passthrough div in the AsciiDoc source */
+.ptap-module-hierarchy-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.ptap-module-hierarchy-scroll:focus-visible {
+    outline: 3px solid var(--oca-gold-accessible);
+    outline-offset: 1px;
+}
+
+/* Table itself — allow wrapping of long identifiers and conditions */
+.doc table.ptap-module-hierarchy {
+    width: 100%;
+    table-layout: auto;
+}
+
+.doc table.ptap-module-hierarchy td,
+.doc table.ptap-module-hierarchy th,
+.doc table.ptap-module-hierarchy code {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+/* ========================================
    VERSION SELECTOR CONTEXT TOGGLE
    The .context element inside .nav-panel-explore is a native <button>
    (supplied by the nav-explore.hbs partial override) that toggles the
