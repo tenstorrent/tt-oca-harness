@@ -82,25 +82,19 @@ This project incorporates code from the following third-party sources:
     hw/sys/smc/dv/fw/drivers/, hw/sys/smc/dv/fw/startup/, and
     hw/sys/smc/bootrom/prod/
 
-11. Whetstone benchmark
-    Copyright (C) Texas Instruments Incorporated and
-    Copyright (c) 1998 Painter Engineering, Inc.
-    Distributed under the terms retained in the source file.
-    Source: hw/sys/smc/dv/fw/tests/whetstone/whetstone.c
-
-12. EEMBC CoreMark
+11. EEMBC CoreMark
     Copyright (c) 2018 Embedded Microprocessor Benchmark Consortium (EEMBC)
     Licensed under the Apache License, Version 2.0
     Source: hw/sys/smc/dv/fw/tests/coremark/
 
-13. Rocket Chip plusarg reader
+12. Rocket Chip plusarg reader
     Copyright 2016-2017 SiFive, Inc.
     Licensed under the Apache License, Version 2.0
     Project: https://github.com/chipsalliance/rocket-chip
     Source:
     hw/sys/smc/rtl/smc_cpu/chipyard_generated_files/plusarg_reader.v
 
-14. Antora default UI and Antora Lunr Extension
+13. Antora default UI and Antora Lunr Extension
     Copyright their respective contributors
     Licensed under the Mozilla Public License, Version 2.0
     Projects: https://gitlab.com/antora/antora-ui-default and
@@ -108,7 +102,7 @@ This project incorporates code from the following third-party sources:
     The default UI is used to build the documentation site. A bundled Lunr UI
     source file is retained at doc/ui-supplemental/js/search-ui.js.
 
-15. axe-core and @axe-core/playwright
+14. axe-core and @axe-core/playwright
     Copyright Deque Systems, Inc. and contributors
     Licensed under the Mozilla Public License, Version 2.0
     Project: https://github.com/dequelabs/axe-core

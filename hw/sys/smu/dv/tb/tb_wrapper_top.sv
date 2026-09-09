@@ -423,9 +423,20 @@ module smu_wrapper_uvm_top (
   // Matches smu_wrapper XTRIG_NUM_INT_CT (= DEFAULT_NUM_INT_CT - 2).
   logic [dtp_pkg::DEFAULT_NUM_INT_CT-3:0] xtrig_ctm_src_req;
 
+  // smc_4core_cpu zeroes the whole scratch RAM at boot to establish valid ECC
+  // (its MEM_ZERO FSM, gated by this input). That runs after the time-zero
+  // +smc_scratch_ram_hex load, so an image placed there does not survive to
+  // first fetch. Hold the FSM off whenever a test supplies such an image;
+  // hw/sys/smc/dv holds it off unconditionally.
+  logic smc_disable_sram_auto_init = 1'b0;
+  initial begin : smc_scratch_preload_gates_auto_init
+    string scratch_hex_path;
+    smc_disable_sram_auto_init = $value$plusargs("smc_scratch_ram_hex=%s", scratch_hex_path);
+  end
+
   // CPU memory macros live inside smc_ip_integration, so the ROM request is
   // observed hierarchically.
-  chipyard_4core_mem_pkg::rom_req_t            rom_intf_req;
+  chipyard_4core_mem_pkg::rom_req_t rom_intf_req;
   assign rom_intf_req = u_dut.u_smc_ip_integration.rom_intf_req;
   assign smc_scratch_read_count_o =
         u_dut.u_smc_ip_integration.u_smc_cpu_mem_dv.scratch_ram_read_count_q;
@@ -969,21 +980,19 @@ module smu_wrapper_uvm_top (
 `endif
 
   // ------------------------------------------------------------------
-  // External SMN AXI slave — SEP rom_boot / SMC SYS_OUT posture. Firmware
-  // console / PASS magic is a TB observe snoop on the same wires (SEP
-  // sep_outbound_mbx decode), not a second bus terminator.
+  // External SMN AXI4 egress: the shared slave agent answers on u_axi_out_if
+  // (cocotb binds the instance); the bridge places the cut's struct port on
+  // it. Firmware console / PASS magic is a TB observe snoop on the same
+  // wires (SEP sep_outbound_mbx decode), not a second responder.
   // ------------------------------------------------------------------
   localparam logic [31:0] FW_STDOUT_ADDR = 32'h8000_0000;
   localparam logic [31:0] FW_MAGIC0 = 32'hA5A5_5A5A;
   localparam logic [31:0] FW_MAGIC_PASS = 32'hCAFE_BABE;
   localparam logic [31:0] FW_MAGIC_FAIL = 32'hDEAD_BEEF;
 
-  smu_axi_xbar_pkg::axi_out_req_t  [0:0] axi_out_mem_req;
-  smu_axi_xbar_pkg::axi_out_resp_t [0:0] axi_out_mem_resp;
-
-  // Register the boundary channels so the terminator sees edge-aligned
+  // Register the boundary channels so the responder sees edge-aligned
   // request signals: the crossbar's ext_out aw_valid settles late in the
-  // cycle. The cut also keeps the terminator's ready out of the crossbar's
+  // cycle. The cut also keeps the responder's ready out of the crossbar's
   // combinational cone.
   smu_axi_xbar_pkg::axi_out_req_t  axi_out_cut_req;
   smu_axi_xbar_pkg::axi_out_resp_t axi_out_cut_resp;
@@ -1005,18 +1014,18 @@ module smu_wrapper_uvm_top (
     .mst_resp_i (axi_out_cut_resp)
   );
 
-  assign axi_out_mem_req[0] = axi_out_cut_req;
-  assign axi_out_cut_resp   = axi_out_mem_resp[0];
+  ocah_axi_if u_axi_out_if (
+    .aclk    (clk_smu_i),
+    .aresetn (rst_cold_n_o)
+  );
 
-  smu_axi_out_sim_slave #(
+  ocah_axi_struct_bridge #(
     .axi_req_t  (smu_axi_xbar_pkg::axi_out_req_t),
-    .axi_resp_t (smu_axi_xbar_pkg::axi_out_resp_t),
-    .AddrWidth  (56)
-  ) u_axi_out_mem (
-    .clk_i      (clk_smu_i),
-    .rst_ni     (rst_cold_n_o),
-    .axi_req_i  (axi_out_mem_req[0]),
-    .axi_resp_o (axi_out_mem_resp[0])
+    .axi_resp_t (smu_axi_xbar_pkg::axi_out_resp_t)
+  ) u_axi_out_bridge (
+    .axi_req_i  (axi_out_cut_req),
+    .axi_resp_o (axi_out_cut_resp),
+    .axi_if     (u_axi_out_if)
   );
 
   logic [55:0] axi_out_aw_addr_q;
@@ -1116,7 +1125,7 @@ module smu_wrapper_uvm_top (
       end
 
       // Firmware console / PASS magic (SEP sep_outbound_mbx decode) — observe
-      // only; the terminator owns resp.
+      // only; the slave agent owns resp.
       if (axi_out_w_fire && axi_out_to_stdout) begin
         if (smu_axi_out_req.w.strb == 8'h01) begin
           fw_char_o       <= smu_axi_out_req.w.data[7:0];
@@ -1285,7 +1294,7 @@ module smu_wrapper_uvm_top (
     .ss_reset_ctrl_o (),
     .sync_irq_o (),
 
-    .disable_sram_auto_init_i (1'b0),
+    .disable_sram_auto_init_i (smc_disable_sram_auto_init),
     .init_mem_done_o,
     .chiplet_is_primary_i (1'b1),
     .timer_count_o (),
@@ -1307,6 +1316,8 @@ module smu_wrapper_uvm_top (
     .sep_extintsrc_req_i ('0),
     .lcc_demote_state_1_o (),
     .lcc_demote_state_2_o (),
+    .sep_fuse_dft_disable_o (),
+    .smc_fuse_dft_disable_o (),
     .sep_fuse_sense_done_o,
     .clk_sep_wdt_i,
     .secure_tm_req_i (secure_tm_req),

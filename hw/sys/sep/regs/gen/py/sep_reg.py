@@ -9137,14 +9137,11 @@ class SEP_EFUSE_MAP_LC_DISABLE_reg_t(Structure):
     _fields_ = [
         ('sep_debug', c_uint64, 1),
         ('chiplet_dbg', c_uint64, 1),
-        ('debug_reserved_dbg1', c_uint64, 14),
+        ('sep_fuse_dbg', c_uint64, 1),
+        ('smc_fuse_dbg', c_uint64, 1),
+        ('debug_reserved_dbg1', c_uint64, 20),
         ('sip_debug', c_uint64, 1),
-        ('debug_reserved_dbg2', c_uint64, 15),
-        ('sep_fuse_test', c_uint64, 1),
-        ('test_reserved_lo', c_uint64, 4),
-        ('smc_fuse_test', c_uint64, 1),
-        ('fuse_vendor_test', c_uint64, 1),
-        ('test_reserved', c_uint64, 9),
+        ('debug_reserved_dbg2', c_uint64, 23),
         ('func_reserved', c_uint64, 16),
     ]
 

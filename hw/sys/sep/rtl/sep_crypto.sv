@@ -73,6 +73,8 @@ module sep_crypto #(
   output logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0]     lc_state_o,     // To SMC
   output sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl_o,
   output sep_lifecycle_ctrl_pkg::dbg_disable_t         dbg_disable_o,  // To DTP
+  output logic                               sep_fuse_dft_disable_o,   // To DFT insertion
+  output logic                               smc_fuse_dft_disable_o,   // To DFT insertion
   output logic                               lc_sigint_err_o,
   output sep_efuse_pkg::efuse_map_t      shadow_regs_o,
   output logic                               fuse_sense_done_o,
@@ -719,11 +721,12 @@ module sep_crypto #(
     .reset_n_i            (rst_ni),
     .test_en_i            (test_en_i),
 
-    .security_disable_i   (security_disable_o), // From efuse wrapper
-    .secure_tm_i          (secure_tm_o),        // From efuse wrapper
-    .shadow_regs_i        (shadow_regs_o),      // From efuse wrapper
+    .security_disable_i   (security_disable_o),
+    .shadow_regs_i        (shadow_regs_o),
     .feat_ctrl_o          (feat_ctrl_o),
     .dbg_disable_o        (dbg_disable_o),
+    .sep_fuse_dft_disable_o (sep_fuse_dft_disable_o),
+    .smc_fuse_dft_disable_o (smc_fuse_dft_disable_o),
     .lcc_demote_state_1_o (lcc_demote_state_1_o),
     .lcc_demote_state_2_o (lcc_demote_state_2_o),
     .lc_sigint_err_o      (lc_sigint_err_o),

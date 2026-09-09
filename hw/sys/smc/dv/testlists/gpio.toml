@@ -7,7 +7,7 @@ name = "smc_gpio_observe_test"
 module = "smc_gpio_observe_test"
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "ci", "gpio", "project_p0", "pyuvm"]
+tags = ["smoke", "ci", "gpio", "functional", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -40,7 +40,7 @@ name = "smc_gpio_p0_int_test"
 module = "smc_gpio_p0_int_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "gpio", "gpio_depth", "tier_c", "pyuvm"]
+tags = ["ci", "gpio", "gpio_depth", "pyuvm"]
 run_modes = ["smoke"]
 
 # BFM rebuild of FW gpio_p0_mux_test (interface_enable vs lsio_select).
@@ -49,7 +49,7 @@ name = "smc_gpio_p0_mux_test"
 module = "smc_gpio_p0_mux_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "gpio", "gpio_depth", "tier_c", "pyuvm"]
+tags = ["ci", "gpio", "gpio_depth", "pyuvm"]
 run_modes = ["smoke"]
 
 # BFM rebuild of gpio_filter_access_sep (ACCESS_FILTER AxPROT allow/deny).
@@ -58,7 +58,7 @@ name = "smc_gpio_filter_access_sep_test"
 module = "smc_gpio_filter_access_sep_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "gpio", "gpio_depth", "tier_c", "pyuvm"]
+tags = ["ci", "gpio", "gpio_depth", "pyuvm"]
 run_modes = ["smoke"]
 
 [[groups]]

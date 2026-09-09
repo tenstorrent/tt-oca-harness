@@ -40,8 +40,8 @@ Isolation proof (both directions, then the remaining isolated bits):
                     claimed. KM (bit 0) stays held at the reset default and is
                     not claimed.
   * CHK-ISOLATE-*   while HMAC's SW_RESET_N is held, the same DIGEST_0 address
-                    that just returned OKAY + the golden digest returns DECERR
-                    on read; a write to HMAC CFG also DECERR; AES DATA_OUT_0
+                    that just returned OKAY + the golden digest returns SLVERR
+                    on read; a write to HMAC CFG also SLVERR; AES DATA_OUT_0
                     on the sibling port stays OKAY; SW_RESET_N readback shows
                     the HMAC bit low; after release DIGEST_0 is OKAY at its
                     reset value. Drain-before-reset is not claimed.
@@ -82,9 +82,9 @@ from seq_lib.sep_crypto_reset_iso_seq import (
     ENG_KMAC,
     ENG_OTBN,
     HMAC_DIGEST_RESET,
-    ISOLATE_DECERR_DATA,
-    RESP_DECERR,
+    ISOLATE_ERROR_DATA,
     RESP_OKAY,
+    RESP_SLVERR,
     RST_HMAC,
     SW_RESET_N_DEFAULT,
     SepCryptoResetIso,
@@ -277,9 +277,9 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         )
         self.logger.info("CHK-REVERSE PASS: HMAC reset cleared its own DIGEST; AES DATA_OUT intact")
 
-        # ---- Isolate window: HMAC held in reset; same DIGEST_0 must DECERR --
+        # ---- Isolate window: HMAC held in reset; same DIGEST_0 must SLVERR --
         # Re-establish a live HMAC result so the pre-window beat is OKAY + the
-        # golden (an unmapped address cannot produce OKAY -> DECERR -> OKAY).
+        # golden (an unmapped address cannot produce OKAY -> SLVERR -> OKAY).
         # AES still holds C from Case B; that is the sibling-OKAY witness.
         h_digest = await self._run_hmac()
         pre = await self.rst.probe(HMAC_DIGEST_0)
@@ -299,42 +299,35 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         )
         self.logger.info("CHK-ISOLATE-LANDED PASS: SW_RESET_N=0x%08x HMAC bit held", sw)
 
-        self.env.axi_monitor.arm_expected_decerr(1)
         iso_rd = await self.rst.probe(HMAC_DIGEST_0, expect_error=True)
-        assert iso_rd.resp_code == RESP_DECERR and not iso_rd.timed_out, (
+        assert iso_rd.resp_code == RESP_SLVERR and not iso_rd.timed_out, (
             f"in-window HMAC DIGEST_0 read resp={iso_rd.resp_code} "
-            f"timed_out={iso_rd.timed_out}, expected DECERR (not hang/OKAY/SLVERR)"
+            f"timed_out={iso_rd.timed_out}, expected SLVERR (not hang/OKAY/DECERR)"
         )
-        # axi_lite_isolate answers a terminated read with its own DecErrData
+        # axi_lite_isolate answers a terminated read with its own IsolateErrorData
         # literal (vendor/pulp-platform/axi/upstream/src/axi_lite_isolate.sv:154,
         # driven onto r.data at :172), and axi_burst_splitter_gran passes the R
         # channel through unmodified. Matching it attributes the termination to
         # the isolate rather than to any responder that happens to decode-error.
-        assert iso_rd.rdata == ISOLATE_DECERR_DATA, (
-            f"in-window HMAC DIGEST_0 read returned DECERR with rdata="
-            f"0x{iso_rd.rdata:08x}, not the isolate's DecErrData "
-            f"0x{ISOLATE_DECERR_DATA:08x}; the read was terminated elsewhere"
+        assert iso_rd.rdata == ISOLATE_ERROR_DATA, (
+            f"in-window HMAC DIGEST_0 read returned SLVERR with rdata="
+            f"0x{iso_rd.rdata:08x}, not the isolate's IsolateErrorData "
+            f"0x{ISOLATE_ERROR_DATA:08x}; the read was terminated elsewhere"
         )
         self.logger.info(
-            "CHK-ISOLATE-DECERR PASS: HMAC DIGEST_0 read -> DECERR (resp=%d) with the "
-            "isolate's DecErrData 0x%08x",
+            "CHK-ISOLATE-SLVERR PASS: HMAC DIGEST_0 read -> SLVERR (resp=%d) with the "
+            "isolate's IsolateErrorData 0x%08x",
             iso_rd.resp_code,
             iso_rd.rdata,
         )
 
-        self.env.axi_monitor.arm_expected_decerr(1)
         iso_wr = await self.rst.probe(HMAC_CFG, write=True, wdata=0x1, expect_error=True)
-        if iso_wr.resp_code != RESP_DECERR:
-            # The credit armed above is only consumed by a DECERR beat. Left
-            # standing it would absorb the next unexpected DECERR anywhere on
-            # this bus, including the sibling and reopen probes below.
-            self.env.axi_monitor.release_expected_decerr(1)
-        assert iso_wr.resp_code == RESP_DECERR and not iso_wr.timed_out, (
+        assert iso_wr.resp_code == RESP_SLVERR and not iso_wr.timed_out, (
             f"in-window HMAC CFG write resp={iso_wr.resp_code} "
-            f"timed_out={iso_wr.timed_out}, expected DECERR"
+            f"timed_out={iso_wr.timed_out}, expected SLVERR"
         )
         self.logger.info(
-            "CHK-ISOLATE-WR PASS: HMAC CFG write -> DECERR (resp=%d)", iso_wr.resp_code
+            "CHK-ISOLATE-WR PASS: HMAC CFG write -> SLVERR (resp=%d)", iso_wr.resp_code
         )
 
         sib = await self.rst.probe(AES_DATA_OUT_0)

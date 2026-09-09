@@ -36,7 +36,8 @@
 `SEP_TB_IN(logic, mpc_reset_run_req)
 // TEST_EN strap (frontdoor DUT input). Latched into secure_tm on fuse-sense-done
 // (or on cold-reset release when security_disable is set). Default 0 = functional
-// mode; drive 1 before sense to open FEAT_CTRL[47:32].
+// mode; drive 1 before sense to latch secure_tm. SECURE_TM does not qualify
+// feature control.
 `SEP_TB_IN(logic, test_en_strap_i)
 // JTAG SW-reset hold (frontdoor DUT input jtag_sep_reset_ctrl_i). When 1,
 // that engine is held in SW reset regardless of SW_RESET_N, so it never
@@ -463,6 +464,12 @@
 // additionally for the SEP S-TAP. Exported whole rather than bit by bit
 // so a field added to the struct widens the vector.
 `SEP_TB_OUT(logic [$bits(sep_lifecycle_ctrl_pkg::dbg_disable_t)-1:0], dbg_disable_all_o)
+// DFT-inserted fuse-path disables. Real DUT outputs (sep_wrapper), not
+// internal probes: no functional consumer and no CSR mirror. Disable
+// polarity: SEP is Case 3 AND sep_fuse_dbg (bit 2), inverted; SMC is
+// Case 2 AND smc_fuse_dbg (bit 3), inverted.
+`SEP_TB_OUT(logic, sep_fuse_dft_disable_o)
+`SEP_TB_OUT(logic, smc_fuse_dft_disable_o)
 // WDT bite reset request: a REAL `sep` output port (sep.sv wdt_timer_rst_req_o,
 // asserted when the WDT count reaches BITE_THOLD). Brought out so the
 // reset/WDT sanity test (`sep_reset_wdt_sanity_test`) can observe the bite ->

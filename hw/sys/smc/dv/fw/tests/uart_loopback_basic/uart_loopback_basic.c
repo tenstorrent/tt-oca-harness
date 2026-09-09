@@ -109,7 +109,6 @@ int main(void) {
     const uint32_t uart_base = get_uart_reg_base(uart_idx);
     const uint32_t divisor = 1u;
 
-    // peripherals_out_of_reset();
     uart_enable_single(uart_idx);
     uart_init_loopback_basic(uart_base, divisor);
 
