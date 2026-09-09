@@ -8,7 +8,7 @@ digest ``SEP_SEC_DISABLE_TOKEN``. ``tb_top`` binds that parameter to
 SHA-256 of the all-zero 32-byte token so a frontdoor write of zeros can
 match. A nonzero token still mismatches. On match, ``sec_dis`` asserts and
 ``FEAT_CTRL`` follows ``feat_ctrl_expected(..., sec_dis=1)`` (all features
-on, test group still gated by ``SECURE_TM=0``). A later mismatch drops
+on). A later mismatch drops
 ``sec_dis`` and restores the fail-closed PROD golden. The test does not
 force ``sec_dis``.
 

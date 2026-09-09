@@ -22,6 +22,7 @@ from env.sep_lcc_golden import (
     DBG_DISABLE_UNCLAIMED,
     LC_PROD,
     LC_TEST_DEV,
+    SIP_DBG_BIT,
     dbg_disable_expected,
     dbg_disable_unpack,
     feat_ctrl_expected,
@@ -74,15 +75,22 @@ class sep_lcc_demote_feat_ctrl_matrix_test(sep_base_test):
                 f"{tag}: dbg_disable.{name}={got[name]} expected {exp} for "
                 f"FEAT_CTRL=0x{feat_ctrl:016x} "
                 f"(sep_dbg={feat_ctrl & 1} chiplet_dbg={(feat_ctrl >> 1) & 1} "
-                f"sip_dbg={(feat_ctrl >> 16) & 1})"
+                f"sip_dbg={(feat_ctrl >> SIP_DBG_BIT) & 1})"
             )
-        self.logger.info(
-            "CHK-DBG-DISABLE PASS: %s %d of %d bits match the gating ladder (unclaimed: %s)",
-            tag,
-            len(want),
-            len(want) + len(DBG_DISABLE_UNCLAIMED),
-            ", ".join(DBG_DISABLE_UNCLAIMED),
-        )
+        if DBG_DISABLE_UNCLAIMED:
+            self.logger.info(
+                "CHK-DBG-DISABLE PASS: %s %d of %d bits match the gating ladder (unclaimed: %s)",
+                tag,
+                len(want),
+                len(want) + len(DBG_DISABLE_UNCLAIMED),
+                ", ".join(DBG_DISABLE_UNCLAIMED),
+            )
+        else:
+            self.logger.info(
+                "CHK-DBG-DISABLE PASS: %s all %d bits match the gating ladder",
+                tag,
+                len(want),
+            )
 
     async def _check_cell(
         self,
@@ -92,12 +100,11 @@ class sep_lcc_demote_feat_ctrl_matrix_test(sep_base_test):
         demote_2: int,
         tag: str,
     ) -> None:
-        # SEC_DIS forces FEAT_CTRL to all-ones before the SECURE_TM mask, so
-        # feeding the probe into the golden would make a stuck-at-1 probe agree
-        # with a stuck-at-1 DUT at every cell in the matrix -- the whole walk
-        # would pass with the decode bypassed. This test presents no SEC_DIS
-        # token, so the value is known in advance: assert it and pass the
-        # literal.
+        # SEC_DIS forces FEAT_CTRL to all-ones, so feeding the probe into the
+        # golden would make a stuck-at-1 probe agree with a stuck-at-1 DUT at
+        # every cell in the matrix -- the whole walk would pass with the decode
+        # bypassed. This test presents no SEC_DIS token, so the value is known
+        # in advance: assert it and pass the literal.
         sec_dis = int(cocotb.top.lcc_security_disable_probe_o.value) & 0x1
         assert sec_dis == 0, (
             "SEC_DIS is asserted but this test never presents a token; with it "
