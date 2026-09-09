@@ -270,7 +270,10 @@ module = "rom_fw.sep_firmware_device_cntl_non_secure_boot_flow_test"
 target = "rom_boot"
 firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
 seed = 1
-timeout_sec = 7200
+# Same budget as the other full-RSA-3072 entries: the modexp on OTBN dominates
+# the run, and 7200 was set when the ESRC health test stopped this boot before
+# it reached the modexp at all.
+timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "lifecycle", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
