@@ -20,139 +20,140 @@ package smc_efuse_pkg;
 
   // Shadow register layout preserved from the legacy generated sub-block header.
   typedef struct packed {
-      logic [0:0]   spare27_read_lock ;
-      logic [0:0]   spare27_write_lock ;
-      logic [0:0]   spare26_read_lock ;
-      logic [0:0]   spare26_write_lock ;
-      logic [0:0]   spare25_read_lock ;
-      logic [0:0]   spare25_write_lock ;
-      logic [0:0]   spare24_read_lock ;
-      logic [0:0]   spare24_write_lock ;
-      logic [0:0]   spare23_read_lock ;
-      logic [0:0]   spare23_write_lock ;
-      logic [0:0]   spare22_read_lock ;
-      logic [0:0]   spare22_write_lock ;
-      logic [0:0]   spare21_read_lock ;
-      logic [0:0]   spare21_write_lock ;
-      logic [0:0]   spare20_read_lock ;
-      logic [0:0]   spare20_write_lock ;
-      logic [0:0]   spare19_read_lock ;
-      logic [0:0]   spare19_write_lock ;
-      logic [0:0]   spare18_read_lock ;
-      logic [0:0]   spare18_write_lock ;
-      logic [0:0]   spare17_read_lock ;
-      logic [0:0]   spare17_write_lock ;
-      logic [0:0]   spare16_read_lock ;
-      logic [0:0]   spare16_write_lock ;
-      logic [0:0]   spare15_read_lock ;
-      logic [0:0]   spare15_write_lock ;
-      logic [0:0]   spare14_read_lock ;
-      logic [0:0]   spare14_write_lock ;
-      logic [0:0]   spare13_read_lock ;
-      logic [0:0]   spare13_write_lock ;
-      logic [0:0]   spare12_read_lock ;
-      logic [0:0]   spare12_write_lock ;
-      logic [0:0]   spare11_read_lock ;
-      logic [0:0]   spare11_write_lock ;
-      logic [0:0]   spare10_read_lock ;
-      logic [0:0]   spare10_write_lock ;
-      logic [0:0]   spare9_read_lock ;
-      logic [0:0]   spare9_write_lock ;
-      logic [0:0]   spare8_read_lock ;
-      logic [0:0]   spare8_write_lock ;
-      logic [0:0]   spare7_read_lock ;
-      logic [0:0]   spare7_write_lock ;
-      logic [0:0]   spare6_read_lock ;
-      logic [0:0]   spare6_write_lock ;
-      logic [0:0]   spare5_read_lock ;
-      logic [0:0]   spare5_write_lock ;
-      logic [0:0]   spare4_read_lock ;
-      logic [0:0]   spare4_write_lock ;
-      logic [0:0]   spare3_read_lock ;
-      logic [0:0]   spare3_write_lock ;
-      logic [0:0]   spare2_read_lock ;
-      logic [0:0]   spare2_write_lock ;
-      logic [0:0]   spare1_read_lock ;
-      logic [0:0]   spare1_write_lock ;
-      logic [0:0]   spare0_read_lock ;
-      logic [0:0]   spare0_write_lock ;
-      logic [0:0]   occp_transport_timeout_read_lock ;
-      logic [0:0]   occp_transport_timeout_write_lock ;
-      logic [0:0]   smc_config_read_lock ;
-      logic [0:0]   smc_config_write_lock ;
-      logic [0:0]   i2c_i3c_id_read_lock ;
-      logic [0:0]   i2c_i3c_id_write_lock ;
-      logic [0:0]   jtag_public_identity_read_lock ;
-      logic [0:0]   jtag_public_identity_write_lock ;
+    logic [0:0]   spare27_read_lock ;
+    logic [0:0]   spare27_write_lock ;
+    logic [0:0]   spare26_read_lock ;
+    logic [0:0]   spare26_write_lock ;
+    logic [0:0]   spare25_read_lock ;
+    logic [0:0]   spare25_write_lock ;
+    logic [0:0]   spare24_read_lock ;
+    logic [0:0]   spare24_write_lock ;
+    logic [0:0]   spare23_read_lock ;
+    logic [0:0]   spare23_write_lock ;
+    logic [0:0]   spare22_read_lock ;
+    logic [0:0]   spare22_write_lock ;
+    logic [0:0]   spare21_read_lock ;
+    logic [0:0]   spare21_write_lock ;
+    logic [0:0]   spare20_read_lock ;
+    logic [0:0]   spare20_write_lock ;
+    logic [0:0]   spare19_read_lock ;
+    logic [0:0]   spare19_write_lock ;
+    logic [0:0]   spare18_read_lock ;
+    logic [0:0]   spare18_write_lock ;
+    logic [0:0]   spare17_read_lock ;
+    logic [0:0]   spare17_write_lock ;
+    logic [0:0]   spare16_read_lock ;
+    logic [0:0]   spare16_write_lock ;
+    logic [0:0]   spare15_read_lock ;
+    logic [0:0]   spare15_write_lock ;
+    logic [0:0]   spare14_read_lock ;
+    logic [0:0]   spare14_write_lock ;
+    logic [0:0]   spare13_read_lock ;
+    logic [0:0]   spare13_write_lock ;
+    logic [0:0]   spare12_read_lock ;
+    logic [0:0]   spare12_write_lock ;
+    logic [0:0]   spare11_read_lock ;
+    logic [0:0]   spare11_write_lock ;
+    logic [0:0]   spare10_read_lock ;
+    logic [0:0]   spare10_write_lock ;
+    logic [0:0]   spare9_read_lock ;
+    logic [0:0]   spare9_write_lock ;
+    logic [0:0]   spare8_read_lock ;
+    logic [0:0]   spare8_write_lock ;
+    logic [0:0]   spare7_read_lock ;
+    logic [0:0]   spare7_write_lock ;
+    logic [0:0]   spare6_read_lock ;
+    logic [0:0]   spare6_write_lock ;
+    logic [0:0]   spare5_read_lock ;
+    logic [0:0]   spare5_write_lock ;
+    logic [0:0]   spare4_read_lock ;
+    logic [0:0]   spare4_write_lock ;
+    logic [0:0]   spare3_read_lock ;
+    logic [0:0]   spare3_write_lock ;
+    logic [0:0]   spare2_read_lock ;
+    logic [0:0]   spare2_write_lock ;
+    logic [0:0]   spare1_read_lock ;
+    logic [0:0]   spare1_write_lock ;
+    logic [0:0]   spare0_read_lock ;
+    logic [0:0]   spare0_write_lock ;
+    logic [0:0]   occp_transport_timeout_read_lock ;
+    logic [0:0]   occp_transport_timeout_write_lock ;
+    logic [0:0]   smc_config_read_lock ;
+    logic [0:0]   smc_config_write_lock ;
+    logic [0:0]   i2c_i3c_id_read_lock ;
+    logic [0:0]   i2c_i3c_id_write_lock ;
+    logic [0:0]   jtag_public_identity_read_lock ;
+    logic [0:0]   jtag_public_identity_write_lock ;
   } smc_efuse_map_locks_reg_t;
 
 
 
-  typedef struct packed {
-      logic [255:0]   value ;
-  } smc_efuse_map_jtag_public_identity_reg_t;
+  typedef struct packed {logic [255:0] value;} smc_efuse_map_jtag_public_identity_reg_t;
+
+
+
+  typedef struct packed {logic [63:0] interface_id;} smc_efuse_map_i2c_i3c_id_reg_t;
 
 
 
   typedef struct packed {
-      logic [63:0]   interface_id ;
-  } smc_efuse_map_i2c_i3c_id_reg_t;
-
-
-
-  typedef struct packed {
-      logic [47:0]   config_rsvd_high ;
-      logic [0:0]    dft_ignore_error ;
-      logic [6:0]    config_rsvd_mid ;
-      logic [0:0]    sram_auto_zero_disable ;
-      logic [5:0]    config_rsvd_low ;
-      logic [0:0]    rom_flip_endianness ;
+    logic [47:0]   config_rsvd_high ;
+    logic [0:0]    dft_ignore_error ;
+    logic [6:0]    config_rsvd_mid ;
+    logic [0:0]    sram_auto_zero_disable ;
+    logic [5:0]    config_rsvd_low ;
+    logic [0:0]    rom_flip_endianness ;
   } smc_efuse_map_smc_config_reg_t;
 
 
 
   typedef struct packed {
-      logic [31:0]   timeout_rsvd ;
-      logic [31:0]   timeout ;
+    logic [31:0]   timeout_rsvd ;
+    logic [31:0]   timeout ;
   } smc_efuse_map_occp_transport_timeout_reg_t;
 
 
 
-  typedef struct packed {
-      logic [255:0]   rsvd ;
-  } smc_efuse_map_spare_reg_t;
+  typedef struct packed {logic [255:0] rsvd;} smc_efuse_map_spare_reg_t;
 
 
 
   typedef struct packed {
-      smc_efuse_map_spare_reg_t [27:0] spare;
-      smc_efuse_map_occp_transport_timeout_reg_t occp_transport_timeout;
-      smc_efuse_map_smc_config_reg_t smc_config;
-      smc_efuse_map_i2c_i3c_id_reg_t [8:0] i2c_i3c_id;
-      smc_efuse_map_jtag_public_identity_reg_t jtag_public_identity;
-      smc_efuse_map_locks_reg_t locks;
+    smc_efuse_map_spare_reg_t [27:0] spare;
+    smc_efuse_map_occp_transport_timeout_reg_t occp_transport_timeout;
+    smc_efuse_map_smc_config_reg_t smc_config;
+    smc_efuse_map_i2c_i3c_id_reg_t [8:0] i2c_i3c_id;
+    smc_efuse_map_jtag_public_identity_reg_t jtag_public_identity;
+    smc_efuse_map_locks_reg_t locks;
   } smc_efuse_map_regmap_t;
   `include "efuse_typedef.svh"
 
   // NumFuseWordWidth MAX is 32 bits
-  localparam int unsigned NumEfuseBits = 8 * 1024;                        // 8192 bits
+  localparam int unsigned NumEfuseBits = 8 * 1024;  // 8192 bits
   localparam int unsigned NumFuseWordWidth = 32;
 
   localparam int unsigned NumFuseWords = NumEfuseBits / NumFuseWordWidth; // 256 words --- word == access granularity
-  localparam int unsigned NumFuseBytes = NumFuseWords * 4;                // 1024 bytes
+  localparam int unsigned NumFuseBytes = NumFuseWords * 4;  // 1024 bytes
 
-  localparam int unsigned NumFuseBitsWidth = $clog2(NumEfuseBits);      // 13 bits to encode 8192 bits <- used to create bit address type for bank
-  localparam int unsigned NumFuseByteWidth = $clog2(NumFuseBytes);      // 10 bits to encode 1024 bytes <- used to create byte address type for bank
-  localparam int unsigned NumFuseWordsWidth = $clog2(NumFuseWords);     // 8 bits to encode 256 words <- used to create counter type for bank - because we count by words
+  localparam int unsigned NumFuseBitsWidth = $clog2(
+      NumEfuseBits
+  );  // 13 bits to encode 8192 bits <- used to create bit address type for bank
+  localparam int unsigned NumFuseByteWidth = $clog2(
+      NumFuseBytes
+  );  // 10 bits to encode 1024 bytes <- used to create byte address type for bank
+  localparam int unsigned NumFuseWordsWidth = $clog2(
+      NumFuseWords
+  );  // 8 bits to encode 256 words <- used to create counter type for bank - because we count by words
   localparam int unsigned SHADOW_REG_BITS = NumEfuseBits;
 
-  typedef logic [NumFuseBitsWidth-1:0]  efuse_addr_bit_t;
-  typedef logic [NumFuseByteWidth-1:0]  efuse_addr_byte_t;
-  typedef logic [NumFuseWordWidth-1:0]  efuse_data_t;
+  typedef logic [NumFuseBitsWidth-1:0] efuse_addr_bit_t;
+  typedef logic [NumFuseByteWidth-1:0] efuse_addr_byte_t;
+  typedef logic [NumFuseWordWidth-1:0] efuse_data_t;
   typedef logic [NumFuseWordsWidth-1:0] efuse_word_counter_t;
 
   // Common interface types for efuse commands and responses
-  `EFUSE_COMMAND_REQ_T(fuse_command_req_t, efuse_addr_bit_t, efuse_data_t, efuse_word_counter_t, efuse_pkg::fuse_command_e)
+  `EFUSE_COMMAND_REQ_T(fuse_command_req_t, efuse_addr_bit_t, efuse_data_t, efuse_word_counter_t,
+                       efuse_pkg::fuse_command_e)
   `EFUSE_COMMAND_RESP_T(fuse_command_resp_t, efuse_data_t)
 
   // Spare region count follows the RDL, so adding or removing a spare region updates the field
@@ -172,11 +173,11 @@ package smc_efuse_pkg;
   localparam logic READ_LOCK = 1'b1;
 
   // Physical OTP bits covered by LOCKS
-  localparam int unsigned LockFieldBits = $bits(smc_efuse_map_locks_reg_t); // 64
+  localparam int unsigned LockFieldBits = $bits(smc_efuse_map_locks_reg_t);  // 64
 
   typedef struct packed {
-      logic [NumEfuseBits-LockFieldBits-1:0] reserved;
-      logic [LockFieldBits-1:0]              locks;
+    logic [NumEfuseBits-LockFieldBits-1:0] reserved;
+    logic [LockFieldBits-1:0]              locks;
   } efuse_lock_view_t;
 
   typedef union packed {
@@ -188,9 +189,11 @@ package smc_efuse_pkg;
   // Class 1 storage is selected by field identity; all locations and widths
   // are derived directly from the generated RDL metadata.
   localparam efuse_pkg::shadow_word_range_map_t Class1ShadowRanges = '{
-      0: efuse_pkg::make_shadow_word_range(
-          efuse_offset(SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR),
-          LockFieldBits, NumFuseWordWidth),
+      0:
+      efuse_pkg::make_shadow_word_range
+      (
+          efuse_offset(SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR), LockFieldBits, NumFuseWordWidth
+      ),
       default: '0
   };
 
@@ -242,13 +245,18 @@ package smc_efuse_pkg;
     // SPARE[0..NumSpareRegions-1] take slots 4 onwards, one each. The last one runs to the end of
     // the map so the bank is fully tiled.
     for (int unsigned k = 0; k < NumSpareRegions; k++) begin
-      map[5 + k] = '{
+      map[5+k] = '{
           idx: efuse_pkg::EFUSE_FIELD_MAP_IDX_WIDTH'(4 + k),
           lock: {WRITE_UNLOCK, READ_UNLOCK},
           start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(k)),
-          end_addr: (k == NumSpareRegions-1)
-                      ? (smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SIZE-1)
-                      : (efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(k+1))-1)
+          end_addr:
+          (
+          k == NumSpareRegions - 1
+          ) ?
+          (smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SIZE - 1)
+          : (
+          efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(k + 1)) - 1
+          )
       };
     end
 
