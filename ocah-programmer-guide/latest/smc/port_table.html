@@ -624,7 +624,7 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_EXT_INTERRUPTS-1:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">External interrupt inputs. Width is config-dependent: 32 (1-core) or 256 (4-core). Maps directly to <code>cpu_interrupts_o[NUM_EXT_INTERRUPTS-1:0]</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External interrupt inputs. Width is config-dependent: 32 (1-core) or 256 (4-core). Synchronized to <code>clk_smc</code> (3-stage) in <code>smc_base</code>, then drives internal interrupts to the SMC CPU.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">External sources → Interrupt aggregator</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A, tie to '0 if unused</p></td>
 </tr>
@@ -633,7 +633,7 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[7:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SEP → SMC mailbox interrupt inputs (8 channels). Routed through <code>peripheral_interrupts[7:0]</code> → <code>cpu_interrupts_o[NUM_EXT_INTERRUPTS+7 : NUM_EXT_INTERRUPTS]</code> (1-core: bits 39–32, 4-core: bits 263–256).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP → SMC mailbox interrupt inputs (8 channels). Routed to internal interrupts to the SMC CPU.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP → Interrupt aggregator</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A, tie to '0 if unused</p></td>
 </tr>
@@ -642,7 +642,7 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SEP watchdog reset (active low). Active-low polarity is inverted before routing to <code>peripheral_interrupts[26]</code> → <code>cpu_interrupts_o[NUM_EXT_INTERRUPTS+26]</code> (1-core: bit 58, 4-core: bit 282).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP watchdog reset (active low). Active-low polarity is inverted before routing to internal interrupts to the SMC CPU.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP → Interrupt aggregator</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
@@ -683,15 +683,6 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>temp_interrupt_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PVT temperature sensor interrupt. Routes to <code>peripheral_interrupts[27]</code> → <code>cpu_interrupts_o[NUM_EXT_INTERRUPTS+27]</code> (1-core: bit 59, 4-core: bit 283).</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PVT wrap → Interrupt aggregator</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A, tie to '0 if unused</p></td>
-</tr>
-<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>lc_state_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
@@ -699,24 +690,6 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle state input, differentially encoded.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle controller → SMC Internal Registers</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">From SEP; tie to 8&#8217;hf0 if unused (encoded TEST_DEV)</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ras_bank_chip_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[3:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RAS bank chip selection output.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC Internal Registers → RAS system</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ras_bank_instance_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[3:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">RAS bank instance selection output.</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SMC Internal Registers → RAS system</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>ext_mailbox_interrupts_o</code></p></td>

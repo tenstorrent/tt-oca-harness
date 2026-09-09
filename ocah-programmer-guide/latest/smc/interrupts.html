@@ -309,7 +309,7 @@ PLIC source ID is <code>cpu_interrupts_o</code> bit index + 1.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-systemverilog hljs" data-lang="systemverilog">cpu_interrupts_o[NUM_EXT_INTERRUPTS-1:0]        = ext_interrupts_i;
+<pre class="highlightjs highlight"><code class="language-systemverilog hljs" data-lang="systemverilog">cpu_interrupts_o[NUM_EXT_INTERRUPTS-1:0]        = ext_interrupts_smc_clk; // ext_interrupts_i after 3-stage sync to clk_smc
 cpu_interrupts_o[NUM_EXT_INTERRUPTS+:32]        = peripheral_interrupts_i;
 cpu_interrupts_o[(NUM_EXT_INTERRUPTS+32)+:32]   = mailbox_interrupts;
 cpu_interrupts_o[(NUM_EXT_INTERRUPTS+64)]       = tdr_dbg_ctrl_clocks_stopped_by_cla_o;
@@ -354,8 +354,9 @@ human-readable; implementation signal names are called out in the
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[31:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">External interrupts</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Integration-defined external interrupt inputs</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>hw/sys/smc/rtl/smc_base.sv</code> drives
-<code>cpu_interrupts_o[NUM_EXT_INTERRUPTS-1:0] = ext_interrupts_i</code>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>hw/sys/smc/rtl/smc_base.sv</code> synchronizes <code>ext_interrupts_i</code> to <code>clk_smc</code>
+(<code>prim_sync3 u_ext_interrupts_sync3</code>) and drives
+<code>cpu_interrupts_o[NUM_EXT_INTERRUPTS-1:0] = ext_interrupts_smc_clk</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>256</code></p></td>
@@ -580,38 +581,30 @@ i2c_irqs_smc_clk[2]</code>.</p></td>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>283</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>59</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Temperature sensor interrupt</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">PVT temperature interrupt</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Locked field access</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse locked-field access violation interrupt</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[27] =
-temp_interrupt_i</code>.</p></td>
+locked_field_access_interrupt</code>, sourced from the eFuse controller path.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>284</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>60</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Locked field access</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">eFuse locked-field access violation interrupt</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO interrupt OR, lower half</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OR-reduction across the lower half of bonded GPIO interrupt sources</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[28] =
-locked_field_access_interrupt</code>, sourced from the eFuse controller path.</p></td>
+|gpio_interrupt[smc_pkg::NUM_BONDED_GPIO/2-1:0]</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>285</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>61</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO interrupt OR, lower half</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">OR-reduction across the lower half of bonded GPIO interrupt sources</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO interrupt OR, upper half</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">OR-reduction across the upper half of bonded GPIO interrupt sources</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[29] =
-|gpio_interrupt[smc_pkg::NUM_BONDED_GPIO/2-1:0]</code>.</p></td>
+|gpio_interrupt[smc_pkg::NUM_BONDED_GPIO-1:smc_pkg::NUM_BONDED_GPIO/2]</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>286</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>62</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">GPIO interrupt OR, upper half</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">OR-reduction across the upper half of bonded GPIO interrupt sources</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[30] =
-|gpio_interrupt[smc_pkg::NUM_BONDED_GPIO-1:smc_pkg::NUM_BONDED_GPIO/2]</code>.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>287</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>63</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">AXI hang detector OR</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OR of the three AXI hang detectors (sys_axi, sep_axi, data_accel). Asserts
 while any detector&#8217;s <code>irq_o</code> is high, so software must read
@@ -621,7 +614,15 @@ CPU AXI master is not covered here; it is covered by the watchdog.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_base.sv</code> OR-reduces <code>hang_irq_sys_axi | hang_irq_sep_axi |
 hang_irq_data_accel</code> onto <code>axi_hang_irq_o</code>; <code>smc.sv</code> routes that back into
 <code>u_smc_peripherals</code>, and <code>smc_peripherals.sv</code> drives
-<code>peripheral_interrupts_o[31] = axi_hang_irq_i</code>.</p></td>
+<code>peripheral_interrupts_o[30] = axi_hang_irq_i</code>.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>287</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>63</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Unused peripheral interrupt slots; tied to zero</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>peripheral_interrupts_o</code> is initialized to <code>'0</code>, and bit 31 is never
+overwritten in <code>smc_peripherals.sv</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[319:288]</code></p></td>

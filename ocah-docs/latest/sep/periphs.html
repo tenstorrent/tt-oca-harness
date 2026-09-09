@@ -929,7 +929,7 @@ component unconnected or terminated. Furthermore, there is no SPI Slave
 device present in the SEP peripheral subsystem.</p>
 </div>
 <div class="paragraph">
-<p>The SEP instantiates a SPI host controller for boot. The <code>sep_ot_spi_wrap</code> module wraps the modified OpenTitan-derived <code>spi_controller</code> with a native AXI4-Lite slave interface (no TL-UL conversion required). It exposes the standard SPI pad signals (SCK, CS, 4-bit bidirectional I/O), an interrupt output, a busy indicator, and a DMA trigger (<code>lsio_trigger_o</code>). The <code>NUM_CS</code> parameter controls the number of chip-select outputs. Because this controller is software-driven rather than memory-mapped, an integrator wanting XIP flash access can substitute their own controller at the <code>sep_io_spi</code> boundary and drive <code>spi_irq_i</code> from it.</p>
+<p>The SEP instantiates a SPI host controller for boot. The <code>sep_ot_spi_wrap</code> module wraps the modified OpenTitan-derived <code>spi_controller</code> with a native AXI4-Lite slave interface (no TL-UL conversion required). It exposes the standard SPI pad signals (SCK, CS, 4-bit bidirectional I/O), an interrupt output, a busy indicator, and a DMA trigger (<code>lsio_trigger_o</code>). The <code>NUM_CS</code> parameter controls the number of chip-select outputs. Because this controller is software-driven rather than memory-mapped, an integrator wanting XIP flash access can substitute their own controller at the <code>sep_io_spi</code> boundary. The controller&#8217;s interrupt is consumed internally: it feeds the SEP PIC via <code>sep_internal_interrupts</code> (through the <code>irq</code> field of <code>sep_io_spi_req_t</code>).</p>
 </div>
 <div class="paragraph">
 <p>Consult the
