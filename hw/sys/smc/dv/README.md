@@ -14,7 +14,9 @@ CSR signoff record (#498),
 `docs/SMC_FABRIC_PERIPH_SIGNOFF.adoc` for the fabric / peripheral
 honesty record (#500),
 `docs/SMC_RELEASE_MATRIX.adoc` for the v0.5.0 release regression
-matrix (#502), and
+matrix (#502),
+`docs/SMC_COVERAGE_POLICY.adoc` for the candidate coverage-target
+and waiver-field decision (#501), and
 `docs/SMC_RESET_CLOCK_IRQ_SIGNOFF.adoc` for the reset / clock / IRQ
 signoff record (#499).
 

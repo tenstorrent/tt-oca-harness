@@ -117,8 +117,8 @@ _PROTOCOL_VIP_TESTS = {
 # ==================================================== build-model identity ====
 # `[BUILD-MODEL-IDENTITY]`. The SMC sim stage runs with `do_build: False` and
 # reuses a prebuilt model out of the SHARED path hw/sys/smc/dv/build/cocotb/<tool>
-# (<tool>/coverage for a `--cov` run; run_dv.py exports the directory it built
-# into as OCAH_SIM_BUILD_DIR), so the run's own hdl_compile log records only
+# (`<tool>/<target>/coverage` for a `--cov` VCS run; run_dv.py exports that leaf
+# as OCAH_SIM_BUILD_DIR), so the run's own hdl_compile log records only
 # "Nothing to be done for 'default'"
 # and the kept log cannot say what RTL it simulated. The build directory is
 # overwritten in place by the next `--rebuild`, so an identity recovered by hand
@@ -132,11 +132,14 @@ _PROTOCOL_VIP_TESTS = {
 _MODEL_ROOT_REL = Path("hw") / "sys" / "smc" / "dv" / "build" / "cocotb"
 _COMPILE_FLIST_REL = Path("hw") / "sys" / "smc" / "dv" / "build" / "smc_dut_compile.f"
 
-# tool -> (model artifact, resolved-compile-input list) relative to the tool's
-# build directory. The model artifact is the thing the simulator actually ran.
+# tool -> (model artifact, resolved-compile-input list) relative to the leaf
+# elaboration directory `_model_build_dir` returns. The model artifact is the
+# thing the simulator actually ran. VCS writes `simv` in that leaf
+# (`<tool>/<target>` or `<tool>/<target>/coverage`); the `default/` segment
+# belongs in the directory, not in this relative path.
 _MODEL_ARTIFACTS: dict[str, tuple[str, str | None]] = {
     "verilator": ("smc_uvm_top", "Vtop__ver.d"),
-    "vcs": ("default/simv", None),
+    "vcs": ("simv", None),
     "xcelium": ("xrun_snapshot", "xrun_build.log"),
 }
 
@@ -217,16 +220,20 @@ def _mtime_utc(path: Path) -> str:
 
 
 def _model_build_dir(root: Path, tool: str) -> Path:
-    """Return the build directory the simulated model was elaborated into.
+    """Return the leaf directory the simulated model was elaborated into.
 
-    run_dv.py exports it as OCAH_SIM_BUILD_DIR (a coverage run builds under
-    <tool>/coverage); the shared <tool> path is the fallback for a launch that
-    did not come through run_dv.py.
+    run_dv.py exports that leaf as OCAH_SIM_BUILD_DIR, including
+    `<tool>/<target>/coverage` on a `--cov` VCS run. Without it, VCS falls
+    back to the non-coverage default leaf under the shared cocotb build tree;
+    other tools use the tool directory itself.
     """
     exported = os.environ.get("OCAH_SIM_BUILD_DIR")
     if exported:
         return Path(exported)
-    return root / _MODEL_ROOT_REL / tool
+    base = root / _MODEL_ROOT_REL / tool
+    if tool == "vcs":
+        return base / "default"
+    return base
 
 
 def _require(path: Path, what: str) -> Path:

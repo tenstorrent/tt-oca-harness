@@ -615,3 +615,182 @@ python3 tools/dv/run_dv.py --dut smc \
 saturated bins (`axil_master`, `gpio_state`, `i2c_state`, `irq_state`) required
 an active driver — which the later AXI master / JTAG2AXI promotions delivered.
 
+[[native-coverage-baseline]]
+=== Native coverage baseline (2026-09-07)
+
+First recorded native-database baseline for SMC. It is *not* from a local run:
+see the local-toolchain note below.
+
+Source: weekly CI run 33982997638 (2026-09-05), artifact
+`dv-run-smc-verilator-weekly`, `items: smoke`, reseed 3, 105/105 PASS,
+coverage status PASS, `Verilator 5.050 2026-07-01 rev v5.050`.
+
+[cols=",",options="header",]
+|===================
+|Metric |Percent
+|line |61.90
+|branch |53.63
+|total |55.73
+|===================
+
+`threshold` was 0.0 (reference-only) and `threshold_met` true, i.e. nothing was
+being enforced. Two families are absent from that run:
+
+* `user` — `--coverage-user` was enabled but SMC had no cover point to
+  populate it. The `cov/sv/` modules close that gap; their points have not yet
+  run in CI.
+* `expression` — the SMC `[coverage.verilator]` `build_args` omit
+  `--coverage-expr`, which the dtp config passes.
+
+Recomputing that run's `cov/merged.dat` by who owns the code (39602 points,
+17531 unhit):
+
+[cols=",,,",options="header",]
+|=============================================
+|Bucket |Unhit |Total |Hit %
+|`vendor/**` (third party) |8615 |19437 |55.7
+|`smc_cpu` chipyard generated |5528 |10774 |48.7
+|`hw/ip/**` (IP-level owned) |2856 |6941 |58.9
+|`hw/sys/smc/**` (SMC DV target) |349 |1657 |78.9
+|`hw/common/**` |164 |708 |76.8
+|`smc_cpu` (other) |11 |67 |83.6
+|`hw/top/**` |8 |18 |55.6
+|=============================================
+
+The headline 55.7% is a denominator artifact: vendored RTL plus the
+chipyard-generated CPU cluster are 76% of the denominator and neither is
+SMC-level DV's to close. SMC's own RTL is at 78.9%.
+
+==== Coverage scope, applied 2026-09-08
+
+Both flows now scope the denominator at compile time, following SEP
+(`hw/sys/sep/dv/cov/config/vcs/README.md`) — SEP measured that a report-time
+filter prunes report pages and still grades the whole database.
+
+* `cov/config/verilator/smc_cov_scope.vlt` — `coverage_off -file`, wired into
+  `[coverage.verilator].build_args`. This is the graded public path.
+* `cov/config/vcs/smc_cov_scope.hier` — `-cm_hier` + `-cm_common_hier`, wired
+  into a new `[coverage.vcs]`. **Never run**: no VCS binary was available.
+
+`--coverage-expr` was also added; SMC was the only one of sep/dtp/smc without
+it, which is why `expression` was missing from every SMC run.
+
+Projected over the CI database above:
+
+[cols=",,,,",options="header",]
+|==========================================
+|Scope |Points |Total |line |branch
+|none |39602 |55.73% |61.90 |53.63
+|Verilator, measured behaviour |20306 |61.73% |66.59 |59.50
+|Verilator, if its known gap closed |9227 |63.83% |65.88 |62.77
+|VCS |17629 |64.85% |73.00 |61.22
+|==========================================
+
+Projections of scope alone. That database predates `--coverage-expr` and the
+`cov/sv/` points, so the next run's denominator and headline both move.
+
+===== Verilator `coverage_off -file` behaves in two ways worth knowing
+
+Both established by building and counting `__vlCoverInsert` sites in the
+generated model, because a wrong scope changes nothing and warns about
+nothing — the build passes either way.
+
+. *The pattern matches the path as Verilator opened the file*, not the
+  absolute path it records in the generated code. The filelist is absolute but
+  `+incdir+`-resolved files are opened relative, so `*/vendor/*` scopes only
+  half the tree. Never put `/` straight after the leading `*`; `*vendor/*`
+  matches both forms.
+. *Two vendored trees cannot be reached by any file pattern.*
+  `vendor/pulp-platform/**` (27942 sites) and
+  `vendor/tenstorrent/tt-hw-debug/**` (13030 sites) did not move for
+  `*vendor/*`, `*pulp-platform/*` or `*tt-hw-debug/*`, while 95.3% of the rest
+  of `vendor/` dropped out. Working theory: they are the structural glue
+  Verilator inlines into its parents. The ineffective patterns were removed
+  rather than left in — config that looks like scope and does nothing is worse
+  than a documented gap.
+
+Verified on the committed configuration: `chipyard_generated_files`,
+`hw/sys/smc/dv/tb/` and `hw/sys/smc/dv/models/` all reach zero cover-insert
+sites, `hw/sys/smc/rtl/` keeps its 3250, and `hw/sys/smc/dv/cov/sv/` keeps its
+1442 — the functional-coverage points are not scoped out.
+
+==== Local `--cov` runs abort at exit (site toolchain)
+
+`--cov` cannot be measured locally. Every leaf reaches its cocotb PASS summary
+and then the process aborts on `free(): invalid pointer` (SIGABRT, runner exit
+250) as Verilator writes the coverage database, so *no* `coverage.dat` is
+produced. Reproduces in about 12 s with one test; 105/105 leaves hit it.
+
+Eliminated as causes, each by experiment:
+
+[cols=",",options="header",]
+|==========================================================
+|Hypothesis |Result
+|Flow or tool version |`dtp` and `cross_trigger_port` both collect coverage
+cleanly on the same local Verilator
+|`[build.verilator].ccache` |Abort persists with `CCACHE_DISABLE=1` and a
+cleared Mdir
+|`disable_public_flat_rw` / `.vlt` public scope |Abort persists with
+`--public-flat-rw` restored
+|`low_mem_make` |Dead key — the string appears nowhere under `tools/`
+|A specific coverage family |Abort persists with `--coverage-line` alone
+|Instrumented memory macros |Abort persists with `coverage_off -file` on
+`prim_rom` / `prim_ram_1p` / `prim_ram_2p` / `prim_ram_1p_adv` /
+`smc_cpu_mem_dv` / `generic_mem_model` / `trace_mem`
+|==========================================================
+
+What it is not: a regression in the DV code. Non-coverage builds pass (36/36,
+2026-09-03) and the same suite passes with coverage in CI.
+
+The one confirmed difference is the simulator binary. CI builds Verilator from
+source at tag `v5.050` and reports `rev v5.050`; the locally installed 5.050
+module reports `rev v5.050 (mod)`, a patched vendor build. Check
+`verilator --version` for the `(mod)` suffix before assuming a local coverage
+failure is a DV problem.
+
+The symptom is heap corruption surfacing at exit, so the offending write is
+not necessarily in the coverage path itself — coverage instrumentation changes
+the model's memory layout, which is enough to turn a latent out-of-bounds
+write fatal. Pinning it needs an ASan build of the model; `gdb` cannot be used
+as a wrapper here because it breaks cocotb's embedded-Python initialisation.
+
+All three locally installed Verilator builds were tried; none can collect SMC
+coverage:
+
+[cols=",",options="header",]
+|=========================================================
+|Version |Result
+|5.036 (`rev v5.036`, clean) |Elaboration fails: `%Error-PKGNODECL`
+`prim_cipher_pkg` not predeclared (`prim_subst_perm.sv:56`)
+|5.046 (`rev v5.046 (mod)`) |C++ build fails: `g++: unrecognized command line
+option '-fcoroutines'` on `verilated_cov.o` / `verilated_timing.o`
+|5.050 (`rev v5.050 (mod)`) |Builds and runs; aborts at the coverage write
+|=========================================================
+
+Practical consequence: collect SMC coverage from the weekly CI job, not
+locally. Local `--cov --build-only` still confirms the instrumented model
+builds, which is how the `cov/sv/` modules were checked in.
+
+===== What was verified locally instead
+
+The abort blocks the SMC model, not the cover-point mechanism. That was
+verified end to end on a standalone harness (`smc_reset_fcov` instantiated in
+a small top, driven through a power-up / release / re-assert sequence):
+
+* *Points reach the database.* 22 `user` points recorded — one per
+  `OCAH_FCOV_COVER` in the module — 14 hit, 8 unhit, and the unhit set is
+  exactly the reset sources the harness does not drive.
+* *Naming is the policy selector shape.* `<top>.<instance>.c_<area>_<point>`,
+  so `smc_uvm_top.u_smc_reset_fcov.c_reset_op_cold_asserted` in the real TB.
+* *The project parser accepts it.* `parse_verilator_details` returns
+  `details_available` with no warnings, 22 `user` observations, and every
+  selector field populated (`metric_family`, `native_metric`, `hierarchy`,
+  `source`, `line`, `covered`, `count`, stable `VLTCOV-` id).
+* *The policy engine matches a hole to a point.* A `[[holes]]` entry with
+  `hierarchy = "*.c_reset_op_warm_asserted"` matched exactly one observation
+  through `apply_coverage_policy`, with no warnings.
+
+What is therefore still unproven locally: the SMC-model numbers themselves,
+and the `expression` family. Both come from the first weekly CI run that
+carries this configuration.
+

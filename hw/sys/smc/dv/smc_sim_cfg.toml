@@ -46,6 +46,8 @@ bender_targets = ["smc", "smc_wrapper"]
 incdirs = [
   "hw/sys/sep/dv/shims/prim",
   "hw/sys/smc/dv/tb",
+  # ocah_fcov_macros.svh, included by the cov/sv functional-coverage modules.
+  "hw/common/assert",
 ]
 exclude_files = [
   "hw/oss-example/wrapper/smc/smc_padring_ext.sv",
@@ -107,6 +109,16 @@ sources = [
   # holds the scratch bank/entry decode both it and tb_top.sv use.
   "hw/sys/smc/dv/models/smc_scratch_map_pkg.sv",
   "hw/sys/smc/dv/models/smc_cpu_mem_dv.sv",
+  # Flow-shared functional-coverage modules (cov/sv/): compiled in BOTH flows --
+  # this list feeds the cocotb/Verilator filelist, and the
+  # [frameworks.uvm.build] sources list (which replaces this one) repeats the
+  # entries. Instantiated in tb/tb_top.sv, single-instance body only.
+  "hw/sys/smc/dv/cov/sv/smc_reset_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_clk_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_periph_fcov.sv",
+  # smc_axi_chan_fcov leads: smc_fabric_fcov instantiates it three times.
+  "hw/sys/smc/dv/cov/sv/smc_axi_chan_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_fabric_fcov.sv",
 ]
 
 [build.verilator]
@@ -117,6 +129,41 @@ ccache = true
 
 [build.options]
 build_jobs = 8
+
+[coverage.vcs]
+# Commercial signoff path, transplanted from the sep config
+# (hw/sys/sep/dv/sep_sim_cfg.toml [coverage.vcs]). NOT YET RUN: no VCS binary
+# was available where this was written, so treat the first run as bring-up and
+# work through the checklist in cov/config/vcs/README.md.
+#
+# Restate the simulator defaults (`-cm`, `-cm_dir`) because a DUT table
+# replaces the list rather than appending to it, then add the scope file.
+#
+# Scope has to be applied at COMPILE time. `urg -hier` prunes the report pages
+# but still computes the headline score over the whole database, so the only
+# way to keep the CPU cluster and the vendored blocks out of the number is to
+# keep them out of the database: `-cm_hier` limits what gets instrumented.
+# Edit `smc_cov_scope.hier` then `--rebuild` -- the file is not fingerprinted.
+#
+# `-cm_common_hier` extends the SAME scope file from code coverage to assertion
+# coverage; `-cm_hier` alone governs line/cond/fsm/tgl/branch only, so without
+# it the excluded hierarchy leaves the code metrics but is still graded for
+# assertions. It is a Limited Customer Availability feature, so VCS refuses the
+# compile without `-lca` -- an opt-in switch, not a separate licence.
+#
+# The per-leaf dump is the inherited `[vcs.coverage_defaults].sim_args`
+# (`-cm` + `-cm_dir {cov_dir}/simv.vdb`). Do not restate it here: an identical
+# list is a deprecated duplicate and the runner refuses the config.
+compile_args = [
+  "-cm",
+  "line+cond+tgl+fsm+branch+assert",
+  "-cm_dir",
+  "{build_cov_dir}",
+  "-cm_hier",
+  "{repo_root}/hw/sys/smc/dv/cov/config/vcs/smc_cov_scope.hier",
+  "-lca",
+  "-cm_common_hier",
+]
 
 [coverage.verilator]
 # Instrument line/branch (--coverage-line) and SVL user coverage; toggle
@@ -130,7 +177,22 @@ build_jobs = 8
 # C++ into a single translation unit that the compiler did not finish in
 # two hours; per-file compilation keeps every unit and every compiler
 # process bounded (46-minute build on six cores, ~12 MB database per leaf).
-build_args = ["--coverage-line", "--coverage-user", "--output-groups", "0"]
+#
+# --coverage-expr matches the sep and dtp configs; without it the `expression`
+# metric family is absent from every SMC run.
+#
+# smc_cov_scope.vlt applies the coverage scope at COMPILE time, so what it
+# drops never enters the database. See cov/config/vcs/README.md for what the
+# scoped number is and why; the sibling .hier file carries the same intent for
+# VCS and has to be kept in step by hand.
+build_args = [
+  "--coverage-line",
+  "--coverage-expr",
+  "--coverage-user",
+  "--output-groups",
+  "0",
+  "{repo_root}/hw/sys/smc/dv/cov/config/verilator/smc_cov_scope.vlt",
+]
 
 [frameworks.cocotb]
 python_root = "hw/sys/smc/dv/cocotb"
@@ -186,8 +248,8 @@ outputs = [
 # bytes. Leave it on.
 #
 # The ROM's own Makefile is standalone and needs a picolibc-enabled RISC-V
-# toolchain. Use an explicit $RISCV_TOOLCHAIN, else
-# scripts/docker-run.sh run-here. No site or PATH probe. Same contract as
+# toolchain, which most hosts do not carry, so probe for one and fall back to
+# the OCAH toolchain container. Same host-vs-container split as
 # hw/sys/sep/dv/sep_sim_cfg.toml's [c_build.boot_rom].
 #
 # NOTE: as in [c_build.default], argv goes through str.format() and the runlib
@@ -197,7 +259,7 @@ cwd = "."
 argv = [
   "bash",
   "-lc",
-  "set -e; EFUSE=hw/sys/smc/dv/efuse_preload; PY=.venv/bin/python3; if [ ! -x \"$PY\" ]; then PY=python3; fi; \"$PY\" $EFUSE/generate_efuse_preload.py $EFUSE/configurations/default_efuse.toml --output_file hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex; ROM_DIR=hw/sys/smc/bootrom/prod; RV_TC=\"$RISCV_TOOLCHAIN\"; if [ -n \"$RV_TC\" ]; then make -C \"$ROM_DIR\" I3C_CORE=swap ENABLE_RELEASE_PRINTS=1 RISCV_TOOLCHAIN=\"$RV_TC\" toolchain-images-build; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; building the SMC boot ROM in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here make -C \"$ROM_DIR\" I3C_CORE=swap ENABLE_RELEASE_PRINTS=1 RISCV_PREFIX=riscv64-unknown-elf- toolchain-images-build; else echo \"error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset\" >&2; exit 1; fi; make -C \"$ROM_DIR\" I3C_CORE=swap ENABLE_RELEASE_PRINTS=1 pack-images",
+  "set -e; EFUSE=hw/sys/smc/dv/efuse_preload; PY=.venv/bin/python3; if [ ! -x \"$PY\" ]; then PY=python3; fi; \"$PY\" $EFUSE/generate_efuse_preload.py $EFUSE/configurations/default_efuse.toml --output_file hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex; ROM_DIR=hw/sys/smc/bootrom/prod; RV_TC=\"$RISCV_TOOLCHAIN\"; if [ -n \"$RV_TC\" ]; then CC_PROBE=\"$RV_TC/riscv64-unknown-elf-gcc\"; else CC_PROBE=riscv64-unknown-elf-gcc; fi; if \"$CC_PROBE\" -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then make -C \"$ROM_DIR\" I3C_CORE=swap ENABLE_RELEASE_PRINTS=1 RISCV_TOOLCHAIN=\"$RV_TC\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] host toolchain has no picolibc; building the SMC boot ROM in the OCAH toolchain container\"; ./scripts/docker-run.sh run make -C \"$ROM_DIR\" I3C_CORE=swap ENABLE_RELEASE_PRINTS=1; else echo \"error: no picolibc-enabled RISC-V toolchain and no scripts/docker-run.sh\" >&2; exit 1; fi",
 ]
 # prod_rom.bin64 is exactly 16384 64-bit lines, matching the CPU ROM array
 # (prim_rom Width=64 Depth=16384 in OCAH4CORECluster_rom_ext), so it loads via
@@ -230,7 +292,7 @@ cwd = "."
 argv = [
   "bash",
   "-lc",
-  "set -e; EFUSE=hw/sys/smc/dv/efuse_preload; PY=.venv/bin/python3; if [ ! -x \"$PY\" ]; then PY=python3; fi; \"$PY\" $EFUSE/generate_efuse_preload.py $EFUSE/configurations/default_efuse.toml --output_file hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex; ROM_DIR=hw/sys/smc/bootrom/prod; FW='make ocah-dv-fw-tests TARGET=smc TEST=occp_unsecure_boot_test && make ocah-dv-fw-tests TARGET=smc TEST=hello_world'; RV_TC=\"$RISCV_TOOLCHAIN\"; if [ -n \"$RV_TC\" ]; then make -C \"$ROM_DIR\" I3C_CORE=swap ENABLE_RELEASE_PRINTS=1 RISCV_TOOLCHAIN=\"$RV_TC\" toolchain-images-build; eval \"$FW\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; building the dual-OCCP toolchain images in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here bash -lc 'make -C hw/sys/smc/bootrom/prod I3C_CORE=swap ENABLE_RELEASE_PRINTS=1 RISCV_PREFIX=riscv64-unknown-elf- toolchain-images-build && make ocah-dv-fw-tests TARGET=smc TEST=occp_unsecure_boot_test RISCV_PREFIX=riscv64-unknown-elf- && make ocah-dv-fw-tests TARGET=smc TEST=hello_world RISCV_PREFIX=riscv64-unknown-elf-'; else echo \"error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset\" >&2; exit 1; fi; make -C \"$ROM_DIR\" I3C_CORE=swap ENABLE_RELEASE_PRINTS=1 pack-images",
+  "set -e; EFUSE=hw/sys/smc/dv/efuse_preload; PY=.venv/bin/python3; if [ ! -x \"$PY\" ]; then PY=python3; fi; \"$PY\" $EFUSE/generate_efuse_preload.py $EFUSE/configurations/default_efuse.toml --output_file hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex; ROM_DIR=hw/sys/smc/bootrom/prod; FW='make ocah-dv-fw-tests TARGET=smc TEST=occp_unsecure_boot_test && make ocah-dv-fw-tests TARGET=smc TEST=hello_world'; RV_TC=\"$RISCV_TOOLCHAIN\"; if [ -n \"$RV_TC\" ]; then CC_PROBE=\"$RV_TC/riscv64-unknown-elf-gcc\"; else CC_PROBE=riscv64-unknown-elf-gcc; fi; if \"$CC_PROBE\" -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then make -C \"$ROM_DIR\" I3C_CORE=swap ENABLE_RELEASE_PRINTS=1 RISCV_TOOLCHAIN=\"$RV_TC\"; eval \"$FW\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] host toolchain has no picolibc; building the dual-OCCP images in the OCAH toolchain container\"; ./scripts/docker-run.sh run bash -lc 'make -C hw/sys/smc/bootrom/prod I3C_CORE=swap ENABLE_RELEASE_PRINTS=1 && make ocah-dv-fw-tests TARGET=smc TEST=occp_unsecure_boot_test && make ocah-dv-fw-tests TARGET=smc TEST=hello_world'; else echo \"error: no picolibc-enabled RISC-V toolchain and no scripts/docker-run.sh\" >&2; exit 1; fi",
 ]
 outputs = [
   "hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex",
@@ -253,7 +315,7 @@ cwd = "."
 argv = [
   "bash",
   "-lc",
-  "set -e; EFUSE=hw/sys/smc/dv/efuse_preload; PY=.venv/bin/python3; if [ ! -x \"$PY\" ]; then PY=python3; fi; \"$PY\" $EFUSE/generate_efuse_preload.py $EFUSE/configurations/default_efuse.toml --output_file hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex; ROM_DIR=hw/sys/smc/bootrom/prod; FW='make ocah-dv-fw-tests TARGET=smc TEST=occp_sanity'; RV_TC=\"$RISCV_TOOLCHAIN\"; if [ -n \"$RV_TC\" ]; then make -C \"$ROM_DIR\" I3C_CORE=swap ENABLE_RELEASE_PRINTS=1 RISCV_TOOLCHAIN=\"$RV_TC\" toolchain-images-build; eval \"$FW\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; building the OCCP sanity toolchain images in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here bash -lc 'make -C hw/sys/smc/bootrom/prod I3C_CORE=swap ENABLE_RELEASE_PRINTS=1 RISCV_PREFIX=riscv64-unknown-elf- toolchain-images-build && make ocah-dv-fw-tests TARGET=smc TEST=occp_sanity RISCV_PREFIX=riscv64-unknown-elf-'; else echo \"error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset\" >&2; exit 1; fi; make -C \"$ROM_DIR\" I3C_CORE=swap ENABLE_RELEASE_PRINTS=1 pack-images",
+  "set -e; EFUSE=hw/sys/smc/dv/efuse_preload; PY=.venv/bin/python3; if [ ! -x \"$PY\" ]; then PY=python3; fi; \"$PY\" $EFUSE/generate_efuse_preload.py $EFUSE/configurations/default_efuse.toml --output_file hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex; ROM_DIR=hw/sys/smc/bootrom/prod; FW='make ocah-dv-fw-tests TARGET=smc TEST=occp_sanity'; RV_TC=\"$RISCV_TOOLCHAIN\"; if [ -n \"$RV_TC\" ]; then CC_PROBE=\"$RV_TC/riscv64-unknown-elf-gcc\"; else CC_PROBE=riscv64-unknown-elf-gcc; fi; if \"$CC_PROBE\" -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then make -C \"$ROM_DIR\" I3C_CORE=swap ENABLE_RELEASE_PRINTS=1 RISCV_TOOLCHAIN=\"$RV_TC\"; eval \"$FW\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] host toolchain has no picolibc; building the OCCP sanity images in the OCAH toolchain container\"; ./scripts/docker-run.sh run bash -lc 'make -C hw/sys/smc/bootrom/prod I3C_CORE=swap ENABLE_RELEASE_PRINTS=1 && make ocah-dv-fw-tests TARGET=smc TEST=occp_sanity'; else echo \"error: no picolibc-enabled RISC-V toolchain and no scripts/docker-run.sh\" >&2; exit 1; fi",
 ]
 outputs = [
   "hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex",
@@ -432,6 +494,14 @@ sources = [
   "vendor/pulp-platform/axi/upstream/src/axi_sim_mem.sv",
   "hw/sys/smc/dv/models/smc_scratch_map_pkg.sv",
   "hw/sys/smc/dv/models/smc_cpu_mem_dv.sv",
+  # Flow-shared functional-coverage modules; the same five entries the
+  # [build] sources list carries for the cocotb/Verilator flow.
+  "hw/sys/smc/dv/cov/sv/smc_reset_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_clk_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_periph_fcov.sv",
+  # smc_axi_chan_fcov leads: smc_fabric_fcov instantiates it three times.
+  "hw/sys/smc/dv/cov/sv/smc_axi_chan_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_fabric_fcov.sv",
   "hw/sys/smc/dv/tb/smc_tb_if.sv",
   "hw/sys/smc/dv/uvm/env/smc_env_pkg.sv",
   "hw/sys/smc/dv/uvm/seq_lib/smc_seq_lib_pkg.sv",
