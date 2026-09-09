@@ -17,7 +17,8 @@ Do not treat a merged copy as design-owner or DV-lead sign-off.
 |Status |CANDIDATE — awaiting SMU design owner + DV lead approval
 |Release group |`--dut smu --items sep0_all` (live size in
 `SMU_RELEASE_MATRIX.adoc`)
-|Public metric |toggle
+|Public metric |toggle (the #484 decision). Weekly `--cov` on this
+tree does not collect it — see below
 |Numeric target |none until an owner signs a measured number
 |===
 
@@ -27,17 +28,23 @@ Do not treat a merged copy as design-owner or DV-lead sign-off.
 [cols="2,3,3",options="header",]
 |===
 |Path |What it collects |Where it runs
-|Public Verilator |toggle on the SMU interconnect after compile-time
-scope |weekly `--cov` only when `DV_LARGE_RUNNER` is set
-(`regress.yml`). Nightly does not collect.
+|Public Verilator |line / expr / user, because
+`smu_sim_cfg.toml` `[coverage.verilator]` leaves toggle off
+(disk and sim-time cost over the unscoped model) |weekly `--cov` only
+when `DV_LARGE_RUNNER` is set (`regress.yml`). Nightly does not collect.
+|Intended public metric |toggle on the SMU interconnect after
+compile-time scope |not collected on this PR. Collection is #1662,
+which turns toggle on over `smu_cov_scope.vlt`. Until that lands, no
+weekly database contains a toggle family this chapter can grade.
 |Commercial |toggle / code / assertion databases under the licensed
 flow |not a public CI job; not a substitute for the public weekly
 |===
 
-ahsiao confirmed SMU grades toggle. The DUT is an integration shell:
-`smu.sv` is wiring, and Verilator emits no line / branch / expression
-sites under `hw/sys/smu/rtl/`. A Python `smu_fcov.py` sampler is not
-the release metric and is not a gate.
+The DUT is an integration shell: `smu.sv` is wiring, and Verilator
+emits no line / branch / expression sites under `hw/sys/smu/rtl/`.
+That is why the intended metric is toggle rather than the families
+today's weekly run actually writes. A Python `smu_fcov.py` sampler is
+not the release metric and is not a gate.
 
 There is no checked-in 98%-after-waiver figure. Do not invent one.
 
@@ -67,7 +74,9 @@ ConfigError on the first run.
 
 Every `[[holes]]` row that #492 writes must carry:
 
-* `tool`, `metric_family` (`toggle`), `hierarchy` or file selector
+* `tool`, `metric_family` (the family that database actually holds:
+line / expr / user today; `toggle` once #1662 lands), `hierarchy` or
+file selector
 * `category` (`out_of_scope` / `excluded` / `waived` / `open`)
 * `disposition`
 * `owner`
@@ -84,6 +93,6 @@ and the owner signs the threshold.
 [cols="2,3,2,3",options="header",]
 |===
 |Role |Name |Date |Result
-|SMU DV lead | | |pending
+|SMU DV lead |ahsiao | |pending
 |SMU design owner | | |pending
 |===
