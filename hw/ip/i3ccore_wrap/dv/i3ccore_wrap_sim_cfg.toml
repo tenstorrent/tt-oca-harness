@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # I3C core wrapper block TB (native cocotb). DUT = i3ccore_wrapper under
-# tb_i3ccore; tests stay in dv/tb/ (same modules as the VCS Makefile).
+# tb_i3ccore; the SV top and coverage interface stay in dv/tb/, the cocotb
+# env and test modules live in dv/cocotb/.
 # Launch: python3 tools/dv/run_dv.py --dut i3ccore_wrap
 
 schema_version = 1
@@ -44,8 +45,9 @@ sources = [
 ]
 
 [cocotb]
-python_root = "hw/ip/i3ccore_wrap/dv/tb"
-test_dir = "hw/ip/i3ccore_wrap/dv/tb"
+# Uniform flow-first layout: cocotb env/tests live under cocotb/.
+python_root = "hw/ip/i3ccore_wrap/dv/cocotb"
+test_dir = "hw/ip/i3ccore_wrap/dv/cocotb/tests"
 python_paths = [
   "hw/ip/i3ccore_wrap/regs/gen/py",
   "vendor/chipsalliance/i3c-core/upstream/third_party/cocotbext-i3c/src",

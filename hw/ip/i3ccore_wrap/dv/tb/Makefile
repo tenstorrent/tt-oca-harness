@@ -42,6 +42,10 @@ endif
 # Resolve the repository root relative to this Makefile.
 PROJECT_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))../../../../..)
 
+# The SV top and coverage interface live here in tb/; the cocotb env package
+# and the test modules live under dv/cocotb/.
+COCOTB_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))../cocotb)
+
 # Compilation arguments
 # The filelist supplies the assertion macros required by dependency RTL; do not
 # pre-include them here.
@@ -100,7 +104,7 @@ endif
 
 # Cocotb configuration
 export COCOTB_REDUCED_LOG_FMT=1
-export PYTHONPATH := $(PWD):$(PROJECT_ROOT)/vendor/chipsalliance/i3c-core/upstream/third_party/cocotbext-i3c/src:$(PYTHONPATH)
+export PYTHONPATH := $(COCOTB_ROOT):$(COCOTB_ROOT)/tests:$(PROJECT_ROOT)/vendor/chipsalliance/i3c-core/upstream/third_party/cocotbext-i3c/src:$(PYTHONPATH)
 
 # Python shared library workaround
 ifndef LIBPYTHON_LOC
