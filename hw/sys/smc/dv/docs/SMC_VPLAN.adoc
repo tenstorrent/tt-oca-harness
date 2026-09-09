@@ -1909,7 +1909,7 @@ Drive `smc_jtag_reset_ctrl_test_seq`. Each checker below is a named compare the 
 *Test Coverage*:
 
 * JTAG-adjacent reset recovery proxy sequence.
-* DEFENDS: rst_cool_ni is held low until the reset is observed taken (rst_primary_ref_clk_n and rst_primary_smc_clk_n both 0 while powergood and cold stay 1), then released and the release observed; the cold-domain SCRATCH_COLD_2 pattern written beforehand survives it; CHIP_CONFIG_VERSION_LO reads its generated reset value on both sides.
+* DEFENDS: rst_cool_ni is held low until the reset is observed taken (rst_primary_ref_clk_n and rst_primary_smc_clk_n both 0 while powergood and cold stay 1), then released and the release observed; the cold-domain SCRATCH_COLD_2 pattern written beforehand is cleared to its generated reset; CHIP_CONFIG_VERSION_LO reads its generated reset value on both sides.
 * DOES NOT DEFEND: any JTAG TAP protocol behaviour beyond the CPU JTAG pin checks; the reset here is a cool-reset proxy, not a JTAG-initiated reset.
 
 *Test Procedure*:
@@ -1924,10 +1924,14 @@ Drive `smc_jtag_reset_proxy_test_seq`. Each checker below is a named compare the
 |`CHK-CPU-JTAG-DTMCS` |Named compare in `smc_jtag_vip_utils.py`; the run fails if it mismatches
 |`CHK-CPU-JTAG-IDCODE` |Named compare in `smc_jtag_vip_utils.py`; the run fails if it mismatches
 |`CHK-CPU-JTAG-SCAN-ACTIVITY` |Named compare in `smc_jtag_vip_utils.py`; the run fails if it mismatches
+|`cool_asserted` |Bounded WAIT_STATE: reset observed taken while held; expiry fails with the last observed state
+|`cool_released` |Bounded WAIT_STATE: reset observed released; expiry fails with the last observed state
+|scoreboard |SCRATCH_COLD_2_CLEARED reads the generated reset, so the cool reset was taken and cleared the pattern written before it
+|scoreboard |SCRATCH_COLD_2_REWRITE reads back the pattern, so the register is writable again after the reset
 |===
 
 
-*Pass Criteria*: `CHK-CPU-JTAG-DTMCS`, `CHK-CPU-JTAG-IDCODE`, `CHK-CPU-JTAG-SCAN-ACTIVITY` hold after their compares. Enrolled in: `all`, `jtag_depth`, `project_p0_triplets`.
+*Pass Criteria*: `CHK-CPU-JTAG-DTMCS`, `CHK-CPU-JTAG-IDCODE`, `CHK-CPU-JTAG-SCAN-ACTIVITY` hold after their compares. Enrolled in: `all`, `jtag_depth`, `functional_depth`.
 '''''
 
 [[sec-048-smc_mixed_boot_stall_test]]
@@ -2895,10 +2899,11 @@ Drive `smc_ecc_fault_inject_test_seq`. Each checker below is a named compare the
 |Checker |Description
 |`CHK-ECC-INJECT` |Named compare in `smc_ecc_fault_inject_test_seq.py`; the run fails if it mismatches
 |`CHK-ECC-INJECT-NO-DUT-SECDED` |Named compare in `smc_ecc_fault_inject_test_seq.py`; the run fails if it mismatches
+|`CHK-ECC-INJECT-RECOVERY` |Reports both halves of the contrast: the armed advance and the cleared hold, with the scratch-read counts they were taken over
 |===
 
 
-*Pass Criteria*: `CHK-ECC-INJECT`, `CHK-ECC-INJECT-NO-DUT-SECDED` hold after their compares. Enrolled in: `all`, `balanced_ip`, `vplan_gaps`.
+*Pass Criteria*: `CHK-ECC-INJECT`, `CHK-ECC-INJECT-NO-DUT-SECDED`, `CHK-ECC-INJECT-RECOVERY` hold after their compares. Enrolled in: `all`, `per_ip`, `coverage_closure`.
 '''''
 
 [[sec-076-smc_mutex_semaphore_test]]

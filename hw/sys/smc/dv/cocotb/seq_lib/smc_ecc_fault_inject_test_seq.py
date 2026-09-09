@@ -163,27 +163,27 @@ class smc_ecc_fault_inject_test_seq(SmcCsrSeq):
         # `mid_after == mid` alone is true for every DUT state and cannot fail
         # on any RTL. What carries the claim is the CONTRAST across
         # the two halves of this run, on the same counter:
-        #   armed   (inject=1) -> the counter advanced, asserted below and
-        #                         originally established by _wait_fire_count_gt
-        #                         inside _clear_sbe_on_first_fire, which raises
-        #                         on expiry;
+        #   armed   (inject=1) -> the counter advanced. The fail-capable check
+        #                         for this half is _clear_sbe_on_first_fire's
+        #                         own bound: it returns only once
+        #                         fire_count > baseline and raises on expiry, so
+        #                         reaching this line at all is that half's
+        #                         evidence. No assert is restated here -- `sbe >
+        #                         base` would be true by construction and would
+        #                         read as a check that cannot fail.
         #   cleared (inject=0) -> the counter holds WHILE further scratch reads
         #                         are still arriving, which
         #                         _wait_scratch_reads_gt raises on if they stop.
         # Both halves are needed: the first is what makes the second mean
         # anything, and the traffic gate is what stops "no reads happened" from
-        # masquerading as recovery.
+        # masquerading as recovery. Both counts are carried in the token below
+        # so a reader can see the contrast without the source.
         #
         # Scope, stated because the counter name invites over-reading it: this
         # proves the injection hook is gated by its enable pins and that scratch
         # traffic survives the clear. It does NOT prove Rocket SECDED behaviour
         # -- no corrupted data is forced onto any macro response anywhere in
         # this bench (CHK-ECC-INJECT-NO-DUT-SECDED says the same).
-        assert sbe > base, (
-            f"inject-armed half of the recovery contrast never happened: "
-            f"fire_count {base} -> {sbe} while ecc_inject_sbe_i was 1, so the "
-            f"hold below is vacuous"
-        )
         await self._wait_scratch_reads_gt(scratch_hold, label="RECOVERY")
         await ClockCycles(clk, 8)
         mid_after = int(dut.tb_cpu_ecc_inject_fire_count.value)
