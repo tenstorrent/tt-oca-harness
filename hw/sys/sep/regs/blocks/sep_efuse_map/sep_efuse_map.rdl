@@ -602,83 +602,60 @@ addrmap sep_efuse_map {
     };
 
     reg LC_DISABLE {
-        desc = "An owner's (SiP or System) feature control vector. When set (1'b1), the corresponding feature is disabled. Spec: OCAH v0.5.9 disable-vector layout (lifecycle_controller.adoc §2.2).";
+        desc = "An owner's feature control vector. When set (1'b1), the corresponding feature is disabled. Layout: see the Disable Vector Format section of lifecycle_controller.adoc.";
 
-        // --- DBG_1 group [15:0] - gated by DEMOTE_1 ---
+        // --- DBG_1 group [23:0] - gated by DEMOTE_1 ---
 
         field {
             sw = rw;
             onwrite = woset;
             hw = rw;
-            desc = "SEP_DBG (bit 0): Coarse-grained debug enable for the SEP scope. 1'b1: SEP-scope debug/scan-dump access disabled and external inbound traffic is filtered. 1'b0: enabled.";
+            desc = "SEP_DBG (bit 0): Coarse-grained debug enable for the SEP scope. 1'b1: SEP-scope debug/scan-dump access disabled and external inbound traffic is filtered. 1'b0: enabled. A local gate only: reaching SEP internal state from an external debugger additionally requires SIP_DBG and CHIPLET_DBG.";
         } sep_debug[0:0] = 0x0;
 
         field {
             sw = rw;
             onwrite = woset;
             hw = rw;
-            desc = "CHIPLET_DBG (bit 1): Coarse-grained debug enable for the chiplet scope. 1'b1: chiplet-scope debug/scan-dump access disabled. 1'b0: enabled. Does not gate the crypto/KM secret-bearing chain.";
+            desc = "CHIPLET_DBG (bit 1): Coarse-grained debug enable for the chiplet scope. 1'b1: chiplet-scope debug/scan-dump access disabled. 1'b0: enabled. Never acts alone: an external debugger reaches chiplet-internal resources only when SIP_DBG is open as well. Contributes to the reachability of the crypto/KM secure chain but never authorizes a dump from it.";
         } chiplet_dbg[1:1] = 0x0;
 
         field {
             sw = rw;
             onwrite = woset;
             hw = rw;
-            desc = "Reserved for adopter-defined DBG_1 debug scan chains (bits 15:2).";
-        } debug_reserved_dbg1[15:2] = 0x0;
-
-        // --- DBG_2 group [31:16] - gated by DEMOTE_2 ---
+            desc = "SEP_FUSE_DBG (bit 2): 1'b1: the DFT-inserted access path into the SEP OTP is disabled. 1'b0: enabled. Also covers the OTP IP-vendor test and calibration interface, which is reachable only over that inserted path. The functional JTAG2AXIL path to the OTP is always available and is not gated by this bit.";
+        } sep_fuse_dbg[2:2] = 0x0;
 
         field {
             sw = rw;
             onwrite = woset;
             hw = rw;
-            desc = "SIP_DBG (bit 16): Coarse-grained debug enable for the inter-chiplet debug-bypass path (e.g. forwarding external debug to downstream chiplets via outbound JTAG PTAP). 1'b1: disabled. 1'b0: enabled.";
-        } sip_debug[16:16] = 0x0;
+            desc = "SMC_FUSE_DBG (bit 3): 1'b1: the DFT-inserted access path into the SMC OTP is disabled. 1'b0: enabled. Produced by SEP-LCC feat_ctrl_o, exported on the SEP boundary, and consumed by SMC to gate its own inserted fuse path.";
+        } smc_fuse_dbg[3:3] = 0x0;
 
         field {
             sw = rw;
             onwrite = woset;
             hw = rw;
-            desc = "Reserved for adopter-defined DBG_2 debug scan chains (bits 31:17).";
-        } debug_reserved_dbg2[31:17] = 0x0;
+            desc = "Reserved for adopter-defined local (DBG_1) debug scan chains (bits 23:4).";
+        } debug_reserved_dbg1[23:4] = 0x0;
 
-        // --- Test group [47:32] (SECURE_TM final gate forces this entire group to 0 when SECURE_TM=0) ---
-
-        field {
-            sw = rw;
-            onwrite = woset;
-            hw = rw;
-            desc = "SEP_FUSE_TEST (bit 32): 1'b1: SEP fuse controller and fuse-block interface scan is disabled. 1'b0: enabled.";
-        } sep_fuse_test[32:32] = 0x0;
+        // --- DBG_2 group [47:24] - gated by DEMOTE_2 ---
 
         field {
             sw = rw;
             onwrite = woset;
             hw = rw;
-            desc = "Reserved for adopter-defined test scan chains (bits 36:33).";
-        } test_reserved_lo[36:33] = 0x0;
+            desc = "SIP_DBG (bit 24): Coarse-grained debug enable for the SiP scope: the inter-chiplet debug-bypass gate that admits external (PTAP) debug traffic into this chiplet and forwards it onward to the next chiplet via the outbound JTAG PTAP. 1'b1: disabled. 1'b0: enabled.";
+        } sip_debug[24:24] = 0x0;
 
         field {
             sw = rw;
             onwrite = woset;
             hw = rw;
-            desc = "SMC_FUSE_TEST (bit 37): 1'b1: SMC fuse controller and fuse-block interface scan is disabled. 1'b0: enabled. Exported on SEP boundary; consumed by SMC to gate its fuse-test path. TODO(AMBIG-5): No SEP output port for this bit exists and the SMC feat_ctrl_i port is deleted — this bit has no RTL consumer in the current implementation. Arch must define the forwarding path (e.g. a new SEP output) before this bit can enforce its intent.";
-        } smc_fuse_test[37:37] = 0x0;
-
-        field {
-            sw = rw;
-            onwrite = woset;
-            hw = rw;
-            desc = "FUSE_VENDOR_TEST (bit 38): 1'b1: OTP IP-vendor test and calibration interface is disabled. 1'b0: enabled. Used during ATE for vendor-specific OTP test and internal-voltage calibration. TODO(AMBIG-5): No RTL consumer exists for this bit in the current implementation. Arch must define the forwarding path before this bit can be enforced.";
-        } fuse_vendor_test[38:38] = 0x0;
-
-        field {
-            sw = rw;
-            onwrite = woset;
-            hw = rw;
-            desc = "Reserved for adopter-defined test scan chains (bits 47:39).";
-        } test_reserved[47:39] = 0x0;
+            desc = "Reserved for adopter-defined inter-chiplet-bypass (DBG_2) debug scan chains (bits 47:25).";
+        } debug_reserved_dbg2[47:25] = 0x0;
 
         // --- Function group [63:48] ---
 

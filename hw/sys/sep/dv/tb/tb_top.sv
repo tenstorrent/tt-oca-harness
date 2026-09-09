@@ -486,9 +486,12 @@ module sep_uvm_top
         .sep_io_spi_req_o             (sep_io_spi_req_w),
         .sep_io_spi_rsp_i             ('{sd: {2'b00, spi_miso_i, 1'b0}}),
 
-        // New wrapper status/debug outputs: observability only, left open.
+        // Wrapper status/debug outputs. Unconnected ports have no consumer
+        // in this TB; the rest are real DUT outputs brought to tb ports.
         .lc_state_o                   (),
         .dbg_disable_o                (dbg_disable_w),
+        .sep_fuse_dft_disable_o       (sep_fuse_dft_disable_o),
+        .smc_fuse_dft_disable_o       (smc_fuse_dft_disable_o),
         .lc_sigint_err_o              (lcc_sigint_err_probe_o),
         .security_disable_o           (lcc_security_disable_probe_o),
         .secure_tm_o                  (secure_tm_o),

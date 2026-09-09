@@ -12,13 +12,21 @@ ignored, and that rst_ni releases the lock.
 
 from __future__ import annotations
 
-from env.sep_lcc_golden import LC_PROD, LC_TEST_DEV
+from env.sep_lcc_golden import (
+    LC_PROD,
+    LC_TEST_DEV,
+    SEP_FUSE_DBG_BIT,
+    SMC_FUSE_DBG_BIT,
+)
 from env.sep_seeded_rng import SepSeededRng
 
 # Distinct non-zero disable vectors so decoded FEAT_CTRL differs per cell.
 # The pinned pair stays small (a few W1S bits) so the second DIS cell is
 # reachable from DIS=0 in one OTP image.
 DIS_ZERO = (0, 0)
+# Close the named fuse-dbg bits while the DTP cases can still be open
+# (PROD + both demotes, sep_debug still 1). Required discrete cell.
+FUSE_DBG_DIS_MASK = (1 << SEP_FUSE_DBG_BIT) | (1 << SMC_FUSE_DBG_BIT)
 
 LC_WALK = (LC_TEST_DEV, LC_PROD)
 
@@ -39,17 +47,21 @@ class SepLccDemoteMatrixCfg:
         self.dis_zero = DIS_ZERO
         extra = (1 << self.extra_dbg1_bit) | (1 << self.extra_dbg2_bit)
         # SIP_DIS bit 0 disables sep_debug unless TEST_DEV demote_1 forces it.
-        self.dis_pinned = (extra | 0x1, extra)
+        self.dis_fuse_dbg = (FUSE_DBG_DIS_MASK, FUSE_DBG_DIS_MASK)
+        self.dis_pinned = (extra | FUSE_DBG_DIS_MASK | 0x1, extra | FUSE_DBG_DIS_MASK)
 
     def summary(self) -> str:
         return (
             f"seed={self.seed} lc={self.lc_states} "
-            f"dis_zero={self.dis_zero} dis_pinned="
+            f"dis_zero={self.dis_zero} dis_fuse_dbg="
+            f"(0x{self.dis_fuse_dbg[0]:x},0x{self.dis_fuse_dbg[1]:x}) "
+            f"dis_pinned="
             f"(0x{self.dis_pinned[0]:016x},0x{self.dis_pinned[1]:016x}) "
             f"extra_dbg1_bit={self.extra_dbg1_bit} extra_dbg2_bit={self.extra_dbg2_bit} "
             f"lock_group={self.lock_group}"
         )
 
     def n_cells(self) -> int:
-        # TEST_DEV+PROD at DIS=0 (8) and PROD at the pinned DIS (4).
-        return 12
+        # TEST_DEV+PROD at DIS=0 (8), PROD compose cell for bits 2/3 (1),
+        # and PROD at the pinned DIS (4).
+        return 13
