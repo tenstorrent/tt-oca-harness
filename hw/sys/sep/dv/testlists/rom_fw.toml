@@ -442,6 +442,11 @@ args = [
 ]
 
 [[tests]]
+# NEEDS THE VERILATOR FLOW, which is this DUT's default -- the runlib has no
+# per-test tool key, so nothing enforces it. The scenario reads the SRAM array
+# through cocotb.top at gen_ram_inst[0].u_mem.mem, which resolves under Verilator
+# via sep_public_scope.vlt and not under VCS, where the walk fails on the
+# generate index and the test errors before simulating.
 # TP080 -- the EXT SRAM is cleared between the primary rejection and the backup
 # fetch. Subclasses the entry above and inherits its stimulus and every one of its
 # failover checks unchanged; what it adds is an SRAM scoreboard.
