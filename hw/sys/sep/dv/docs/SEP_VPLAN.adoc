@@ -3062,9 +3062,9 @@ green keyGen closes none of them. This leaf writes the seed window over the bus.
 [arabic]
 . Every seed walks the high-bit mirrors of the three live registers, plus all three unique-dead offsets, so a truncated decode cannot hide behind a seeded pick.
 . The block is a 64 KB crossbar target at `entropy_fifo.main` (`0x1095_0000`).
-  Depth 32, `LowWatermark` 8, and `StallThresh` 4096 are the architecture
-  numbers in `hw/sys/sep/doc/fabric.adoc`; the sequence uses those constants,
-  not RTL scrape.
+  Depth 32, `LowWatermark` 8, and `StallThresh` 4096 are independent goldens
+  in the sequence (the `sep_entropy_fifo` defaults). They are not scraped
+  from RTL.
 . It fills from the native EDN endpoint after the shared entropy bring-up.
 
 *Checkers*:

@@ -50,10 +50,7 @@ routing to SMC/SMN resources.
 The *Entropy Pool* target is `sep_entropy_fifo` (0x1095_0000): a 64-bit
 read-only entropy drain aperture, filled autonomously by a native EDN
 endpoint on a separate hardware path (not this crossbar). Writes to it
-terminate with `BRESP=SLVERR`. The architecture contract for this target
-is a 32-entry packed 64-bit pool, `pool_low` while occupancy is below 8,
-and `fill_stall` after 4096 cycles with a pending EDN request and no ack.
-Live offsets are status `0x00`, irq-cause `0x08`, and pop `0x10`.
+terminate with `BRESP=SLVERR`.
 
 The *System Interface* initiator is the external inbound master. It does
 not attach to this crossbar directly; it enters SEP through the dedicated

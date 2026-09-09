@@ -3,8 +3,9 @@
 """Entropy-pool aperture driver (sep_entropy_pool_aperture_test).
 
 64-bit AXI-Lite drain of ``sep_entropy_fifo`` at the fabric Entropy Pool
-target (``hw/sys/sep/doc/fabric.adoc``): status ``0x00``, irq-cause ``0x08``,
-pop ``0x10``; every other in-window offset and every write is SLVERR.
+target (``0x1095_0000``). Live offsets from the pool module: status
+``0x00``, irq-cause ``0x08``, pop ``0x10``; every other in-window offset
+and every write is SLVERR.
 """
 
 from __future__ import annotations
@@ -17,8 +18,9 @@ from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_esrc_bringup_seq import EDN_CTRL, EDN_CTRL_AUTO, ESRC_CTRL
 
-# Architecture contract from hw/sys/sep/doc/fabric.adoc (Entropy Pool target).
-# A DUT that drifts from these numbers fails the watermark / stall checkers.
+# Independent goldens for the occupancy / stall checkers. Defaults match
+# sep_entropy_fifo (FifoDepth, LowWatermark, StallThresh). They are not
+# imported from RTL, so a DUT that changes those defaults fails.
 POOL_BASE = 0x1095_0000
 POOL_STATUS = POOL_BASE + 0x00
 POOL_IRQ_CAUSE = POOL_BASE + 0x08
