@@ -37,10 +37,10 @@ the defect is a *value* the ROM should accept or reject on policy rather than a
 broken seal.
 
 BOTH PAYLOAD DIGESTS COME FROM THE PACKER. ``oca.payload.compute_payload_hashes``
-computes them, so this module does not restate the chain construction. That is
-deliberate: OCA evolved this format out of Grendel's and the chain is one of the
-things it added, so a layer derived from the Grendel mutator would silently omit
-it and reseal images the ROM then rejects.
+computes them, so this module does not restate the chain construction and cannot
+drift from it. A digest this layer computed itself would be a second opinion on
+something the packer already owns, and a reseal that got it wrong produces an
+image the ROM rejects for a field :func:`verify_sealed` called sound.
 
 The signer is stdlib-only, by necessity rather than preference: the DV virtualenv
 has no ``cryptography``. It is PKCS#1 v1.5 over SHA-256 with a 384-byte modulus,
@@ -73,12 +73,11 @@ OFF_PAYLOAD_ENCRYPTION_CONTROL = K.OFF_PAYLOAD_ENCRYPTION_CONTROL
 # ---------------------------------------------------------------------------
 # Payload TOC
 # ---------------------------------------------------------------------------
-# OCA evolved this layout out of Grendel's, so some of it looks familiar and
-# none of it should be assumed. The header keeps the magic at 0, payload_length
-# at 8 and image_count at 16, and adds format version fields at 4 and 6. An
-# ENTRY shares only `type` at 0: OCA inserts group, version, security_version
-# and target_chiplet_id, ends with a 128-byte description, and is 276 bytes.
-# Every offset here is read from constants.py for that reason.
+# Header: magic at 0, format version at 4 and 6, payload_length at 8,
+# image_count at 16, 32 bytes total. An entry is 276 bytes -- type, group,
+# offset, length, version, security_version, load_addr, entry_point,
+# target_chiplet_id, a 64-byte hash field and a 128-byte description. Every
+# offset is read from constants.py rather than restated here.
 TOC_MAGIC = K.PTOC_MAGIC
 TOC_OFF_PAYLOAD_LENGTH = K.OFF_TOC_PAYLOAD_LENGTH
 TOC_OFF_IMAGE_COUNT = K.OFF_TOC_IMAGE_COUNT
@@ -93,9 +92,8 @@ E_LOAD_ADDR = K.OFF_TOC_ENTRY_LOAD_ADDR
 E_ENTRY_POINT = K.OFF_TOC_ENTRY_ENTRY_POINT
 E_HASH = K.OFF_TOC_ENTRY_HASH
 
-# The BL1 image's 16-byte type string, as the ROM matches it
-# (rom_handoff.c SEP_BL1_IMAGE_TYPE). A type is ASCII here, not the integer
-# Grendel used.
+# The BL1 image's 16-byte ASCII type string, as the ROM matches it
+# (rom_handoff.c SEP_BL1_IMAGE_TYPE).
 IMAGE_TYPE_SEP_BL1 = b"TT_SEP  BLSTAGE1"
 
 # ---------------------------------------------------------------------------

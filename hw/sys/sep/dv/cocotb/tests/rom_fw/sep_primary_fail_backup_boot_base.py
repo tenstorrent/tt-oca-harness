@@ -96,8 +96,8 @@ MANIFEST_ERR_VERSION_ROLLBACK = mm.boot_err("OCA_FAIL_SECURITY_VERSION")
 
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
-# rsa_verify.c. CRYPTO_VALIDATE_OK has no OCA counterpart: the
-# slot being accepted is what MANIFEST_OK says, and it is already required below.
+# rsa_verify.c. "The slot was accepted" is what MANIFEST_OK says, and it is
+# already required below, so there is no separate marker for it.
 _RSA_EXEC = "RSA_EXEC"
 _RSA_OK = "RSA_VERIFY_OK"
 _MANIFEST_OK = "MANIFEST_OK"
@@ -152,10 +152,8 @@ class sep_primary_fail_backup_boot_base(sep_rom_ot_dma_boot_test):
     # --- wiring ------------------------------------------------------------
     @classmethod
     def _markers(cls) -> tuple[tuple[str, ...], tuple[str, ...]]:
-        # One per-slot failure report, not two: OCA converges every rejection on
-        # MANIFEST_ERR=<code> (oca_boot.c), where Grendel also printed a
-        # crypto-level CRYPTO_FAIL=<code>. The code is the same, so the
-        # attribution is as specific as it was.
+        # Every per-slot rejection is reported as MANIFEST_ERR=<code>
+        # (oca_boot.c), so the code is what attributes the refusal.
         slot_err = f"MANIFEST_ERR=0x{cls.primary_expected_error:08x}"
         required = (
             _LC_PROD,

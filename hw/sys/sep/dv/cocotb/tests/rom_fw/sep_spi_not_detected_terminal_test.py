@@ -33,7 +33,7 @@ ROM last reported.
 ``SPI_INIT_OK`` is required and ``"SPI init failed, using backup manifest"``
 forbidden, so the controller demonstrably came up and BOTH addresses were really
 read. Without those, a dead controller would skip the primary outright
-(``manifest_load.c``) and still reach a terminal error.
+and still reach a terminal error.
 """
 
 from __future__ import annotations
@@ -59,7 +59,7 @@ _FLASH_IMAGE = os.path.join(_SEP_ROOT, "bootrom", "prod", "build", "oca_non_secu
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 
 # manifest.h -- an erased slot fails the identifier check in
-# validate_manifest_header (manifest_load.c), before the hash check.
+# the magic check, before the hash check.
 MANIFEST_ERR_BAD_MAGIC = 0x0003_0002
 # status_values.h, errors.h -> STATUS_ENCODE(STATUS_TYPE_ERROR, x).
 SEP_MSG_MANIFEST_LOAD_FAILED = 0x213
@@ -279,7 +279,7 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
         )
 
         # A failed controller also reaches a terminal error, by skipping the
-        # primary outright (manifest_load.c), without reading either
+        # primary outright, without reading either
         # address.
         assert any(_SPI_INIT_OK in line for line in console), (
             f"ROM never printed {_SPI_INIT_OK}: the SPI controller did not come "

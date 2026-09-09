@@ -56,7 +56,7 @@ _STRAP_ROTATE_ECHO = " rotate=1"  # boot_straps.c:34
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
 _MANIFEST_OK = "MANIFEST_OK"
-# manifest_load.c:764 prints this only for retry == 1, so its absence is what
+# The ROM prints this only for the second attempt, so its absence is what
 # says the rotated slot was the FIRST attempt and not a fallback.
 # The slot label, which follows the slot rather than the retry counter, so on a
 # rotated boot the first attempt is the backup. MANIFEST_PRIMARY appearing would

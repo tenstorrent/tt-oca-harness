@@ -29,12 +29,10 @@ against the shipped image rather than trusting it:
     it checks the signature, so a mutation meant to be rejected before the RSA
     step needs no key. One that must survive PAST signature verification does.
 
-THIS DIFFERS FROM GRENDEL IN A WAY TESTS FEEL. Grendel's ``flag_args`` -- BL2
-demotion and the secure-boot flag -- sat outside the hashed region, so those bits
-could be flipped for free and still boot. OCA's ``demotion_control`` (offset 172)
-and ``secure_boot_control`` (182) are inside the signed region. A test that needs
-a manifest which *requests* a policy should get it from the pack config, not by
-mutation; mutation is for values that must be refused.
+DEMOTION AND SECURE-BOOT POLICY ARE SIGNED. ``demotion_control`` (offset 172)
+and ``secure_boot_control`` (182) are inside the signed region, so a test that
+needs a manifest which *requests* a policy should get it from the pack config
+rather than by mutation. Mutation here is for values that must be refused.
 
 LAYOUT COMES FROM THE PACKER, NOT FROM HERE. Offsets are loaded from the
 tt-oca-manifest submodule's ``src/oca/constants.py`` and the manifest_hash field
@@ -107,8 +105,8 @@ def _load_oca():
 K, MF, PF = _load_oca()
 
 # Slot offsets in the packed image, matching the ROM's compiled-in
-# PRIMARY_MANIFEST_OFFSET / BACKUP_MANIFEST_OFFSET. Unchanged from the Grendel
-# packer, and asserted against the shipped image by verify_layout().
+# PRIMARY_MANIFEST_OFFSET / BACKUP_MANIFEST_OFFSET, and asserted against the
+# shipped image by verify_layout().
 PRIMARY_MANIFEST_OFFSET = 0x1000
 BACKUP_MANIFEST_OFFSET = 0x41000
 
@@ -413,7 +411,7 @@ def security_version(buf: bytes, slot: str) -> int:
     A FLAG FIELD, not a counter. Anti-rollback requires the manifest to be a bit
     superset of the device-stored value -- ``(device & ~manifest) == 0`` -- so a
     manifest fails by *omitting* a flag the device already has, not by carrying a
-    smaller number. Grendel's equivalent was a u16 compared for magnitude.
+    smaller number.
     """
     require_classic(buf, slot)
     base = slot_base(slot) + OFF_SECURITY_VERSION
@@ -455,8 +453,8 @@ OFF_SELECTOR_BITS = K.OFF_SELECTOR_BITS
 SELECTOR_BITS_LEN = 16
 SELECTOR_BITS_USED_LIMIT = K.SELECTOR_BITS_USED_LIMIT
 
-# One Grendel life_cycle_states field became three, one per identity scope, each
-# with its own selector bit.
+# A lifecycle constraint is per identity scope: three fields, each with its own
+# selector bit.
 OFF_LIFECYCLE_STATES = {
     "chiplet": K.OFF_LIFECYCLE_CHIPLET_STATES,
     "package": K.OFF_LIFECYCLE_PACKAGE_STATES,
@@ -617,7 +615,7 @@ OFF_PUBLIC_KEY = K.OFF_PUBLIC_KEY_CLASSIC
 PUBLIC_KEY_SEL_LEN = 16
 MODULUS_LEN = K.RSA_3072_MODULUS_BYTES
 
-# Selection kinds, keeping the names the Grendel API used, mapped onto slots.
+# Selection kinds, mapped onto bitmap slots by key_slot_for().
 PUBK_SEL_ROM_KEY = 0
 PUBK_SEL_FUSE_KEY_0 = 1
 PUBK_SEL_FUSE_KEY_1 = 2

@@ -18,7 +18,7 @@ because the defect marker no longer identifies a slot on its own.
 This ROM runs the manifest loop and the crypto chain as two separate stages
 (``rom_main.c`` then ``oca_boot.c``): ``rom_manifest_boot`` checks each slot's structure, hash
 and usage constraints, and only after a slot passes does
-``manifest_crypto_validate`` check security_version, key selection and the
+the crypto stage checks security_version, key selection and the
 signature. So a backup with a cryptographic defect legitimately prints
 ``MANIFEST_OK`` first and then fails with ``CRYPTO_FAIL=`` -- which is why
 ``MANIFEST_OK`` is not in the forbidden list.

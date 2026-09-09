@@ -1362,9 +1362,8 @@ metadata layer carrying every security control; the payload is the collection of
 images. The SEP ROM consumes the *Open Chiplet Atlas (OCA) CLASSIC* manifest format, produced
 and validated by the `tt-oca-manifest` tooling.
 
-NOTE: The legacy `"TBL1"` format (1184-byte `manifest_t`) is *retired*. The ROM parses the
-OCA format only, by linking the freestanding OCA validation library; the bespoke parser and
-its `manifest.h` are deleted. A `"TBL1"` image now fails at the magic check.
+NOTE: The ROM parses the OCA format only, by linking the freestanding OCA validation
+library. An image whose magic matches no OCA variant fails at the magic check.
 
 ===== Format Summary
 
@@ -1536,7 +1535,7 @@ per SEP-ROM-SPI-020 (or the SMC-SRAM bounds for recovery/secondary, SEP-ROM-SMC-
 Image placement comes from the payload TOC itself: per OCA Boot Manifest Specification
 (draft v0.8) Table 6, every TOC entry carries a `load_addr` and an `entry_point`, each
 "interpreted on a per-image-type basis". OCAH defines the interpretation for the BL1 image
-type as follows (matching the retired TBL1 semantics):
+type as follows:
 
 * [[req-SEP-ROM-MAN-050]]*[SEP-ROM-MAN-050]* The ROM shall launch the first TOC entry whose
   16-byte type string is `"OCAHSEP BLSTAGE1"` — vendor string `"OCAHSEP "` (space-padded to
@@ -2914,8 +2913,7 @@ changed is not lost.
 |===
 |*Item* |*Status* |*Summary* |*Where*
 |OCA CLASSIC manifest |*closed* |The ROM links the freestanding OCA validation library and
-supplies platform callbacks; the legacy `"TBL1"` parser is deleted. Verified on the VP and
-in RTL simulation. |<<sec:manifest>>
+supplies platform callbacks. Verified on the VP and in RTL simulation. |<<sec:manifest>>
 |Key selection encoding |*closed* |The OCA 128-bit select bitmap resolves to one slot, and
 the manifest's revoke bitmap is read and unioned with the device fuse. |<<sec:secure_boot>>
 |Root key authorization |*closed* |Added to the validation library during integration: the
@@ -3004,7 +3002,7 @@ that ratification. BL1-side PCRV registration is future work. |<<sec:attestation
 but the construction is explicitly subject to change. |<<sec:payload>>
 |BL1 load address / entry point |*resolved* |Per OCA Boot Manifest Spec v0.8 Table 6, TOC
 entries carry `load_addr`/`entry_point`; OCAH interpretation for `"OCAHSEP BLSTAGE1"`
-pinned in SEP-ROM-MAN-050/-060 (matches retired TBL1 semantics). |<<sec:manifest>>
+pinned in SEP-ROM-MAN-050/-060. |<<sec:manifest>>
 |`tt-oca-manifest` layout tables |*closed* |Re-verified against the upreved submodule
 (2026-09-02). <<tbl:toc_entry>> matches `oca_layout.h` / `constants.py` (276 B, entry `hash`
 at 80) and per-entry TOC hashes are verified. <<tbl:manifest_fields>> was still recorded
