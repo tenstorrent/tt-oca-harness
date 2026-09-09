@@ -132,10 +132,10 @@ _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
 
 _CHIPLET_KEY = 0
-#  -- public_key_sel is {index:4, selection:3}, so a selection of
-# PUBK_SEL_FUSE_KEY_0 with index 0 encodes as 0x10, a value the ROM-key arm cannot
-# produce.
-_PUBK_SEL_VALUE = (mm.PUBK_SEL_FUSE_KEY_0 & 0x7) << 4
+# public_key_select is a slot bitmap, so the fused chiplet key is named by its own
+# slot number -- outside [0, 8), the range the ROM classical arm serves, so this
+# value cannot be produced by a ROM-key selection.
+_PUBK_SEL_VALUE = mm.key_slot_for(mm.PUBK_SEL_FUSE_KEY_0)
 _PUBK_SEL_ECHO = f"PUBK_SEL=0x{_PUBK_SEL_VALUE:08x}"  #
 # Only ROM dev key 0. Bits 16/17 (CHIPLET_PUBK_HASH0/1, sep_efuse_map.rdl:727) are
 # deliberately clear -- see the docstring.

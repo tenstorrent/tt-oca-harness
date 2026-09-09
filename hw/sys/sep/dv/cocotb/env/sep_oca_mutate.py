@@ -698,6 +698,21 @@ SIG_TYPE_NO_SIGNATURE = 0
 ENCODING_RAW = K.OcaClassicSignatureEncoding.RAW_BYTES.value
 
 _KEY_DIGESTS_C = _SEP_ROOT / "bootrom" / "prod" / "src" / "key_digests.c"
+_OCA_PLATFORM_C = _SEP_ROOT / "bootrom" / "prod" / "src" / "oca_platform.c"
+
+# The slot bitmap's regions, as the ROM's own dispatch divides them. Each names a
+# DIFFERENT refusal, so a test that means one must not land in another:
+#   [0, NUM_ROM_KEYS)                 provisioned ROM classical keys
+#   [NUM_ROM_KEYS, CLASSICAL_LAST]    PUBK_SLOT_UNPROVISIONED
+#   (CLASSICAL_LAST, PQC_LAST]        PUBK_SLOT_PQC_UNSUPPORTED
+#   (PQC_LAST, SLOT_MAX]              fuse-held chiplet keys
+#   (SLOT_MAX, ...)                   PUBK_SLOT_RESERVED
+KEY_SLOT_ROM_CLASSICAL_LAST = _c_define(_OCA_PLATFORM_C, "OCA_KEY_SLOT_ROM_CLASSICAL_LAST")
+KEY_SLOT_ROM_PQC_LAST = _c_define(_OCA_PLATFORM_C, "OCA_KEY_SLOT_ROM_PQC_LAST")
+KEY_SLOT_MAX = _c_define(_OCA_PLATFORM_C, "OCA_KEY_SLOT_MAX")
+# The boundary values a test asserts on: the smallest slot of each refusal.
+KEY_SLOT_FIRST_UNPROVISIONED = PUBK_SEL_NUM_ROM_KEYS
+KEY_SLOT_FIRST_RESERVED = KEY_SLOT_MAX + 1
 
 
 def key_slot_for(selection: int, index: int = 0) -> int:
@@ -726,6 +741,27 @@ def set_public_key_sel(buf: bytearray, slot: str, *, selection: int, index: int 
     buf[base : base + PUBLIC_KEY_SEL_LEN] = field
     rehash(buf, slot)
     return bit
+
+
+def set_public_key_slots(buf: bytearray, slot: str, bits: tuple[int, ...]) -> tuple[int, ...]:
+    """Name several key slots at once, i.e. plant the ambiguity refusal.
+
+    The validator refuses a bitmap naming more than one anchor rather than
+    picking, so this is the stimulus for that arm. One bit is a selection, not an
+    ambiguity -- use :func:`set_public_key_sel` for that.
+    """
+    require_classic(buf, slot)
+    if len(bits) < 2:
+        raise ValueError("an ambiguous bitmap needs at least two slots")
+    field = bytearray(PUBLIC_KEY_SEL_LEN)
+    for bit in bits:
+        if not 0 <= bit < 8 * PUBLIC_KEY_SEL_LEN:
+            raise ValueError(f"slot {bit} is outside the {8 * PUBLIC_KEY_SEL_LEN}-bit bitmap")
+        field[bit // 8] |= 1 << (bit % 8)
+    base = slot_base(slot) + OFF_PUBLIC_KEY_SEL
+    buf[base : base + PUBLIC_KEY_SEL_LEN] = field
+    rehash(buf, slot)
+    return bits
 
 
 def get_public_key_sel(buf: bytes, slot: str) -> int:

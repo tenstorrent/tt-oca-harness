@@ -1,37 +1,34 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Backup manifest names a ROM key index outside the table -> terminal.
+"""Backup manifest names a reserved key slot -> terminal.
 
 The primary's ``manifest_identifier`` is corrupted to force failover, then the
-backup's ``public_key_sel`` keeps ``selection = PUBK_SEL_ROM_KEY`` and sets
-``index = 6``. ``validate_signature`` rejects ``index >= PUBK_SEL_NUM_ROM_KEYS``
-(6, ) with ``PUBK_SLOT_RESERVED``.
+backup's ``public_key_select`` names slot 26. The format reserves ``[31:26]``, so
+the platform refuses it with ``PUBK_SLOT_RESERVED`` before looking for an anchor.
 
-WHY 6 AND NOT 15. Six is ``PUBK_SEL_NUM_ROM_KEYS`` exactly -- the smallest index
-the bound must refuse. A larger value would pass just as well against a ROM that
-had written ``>`` instead of ``>=``, so only the boundary pins the comparison. The
-field is four bits wide (``{index:4, selection:3}``, ), so 6
-is representable and no other field is disturbed.
+WHY 26 AND NOT 31. Twenty-six is ``OCA_KEY_SLOT_MAX + 1`` exactly -- the smallest
+slot the bound must refuse. A larger value would pass just as well against a ROM
+that had written ``>=`` instead of ``>``, so only the boundary pins the
+comparison. Slot 25 is a fuse-held chiplet key and would be accepted, which is
+what makes this the boundary rather than merely a large number.
 
 THIS IS A DIFFERENT ARM FROM ``sep_firmware_backup_invalid_public_key_selection_test``.
-That testcase makes ``selection`` name no key SOURCE (3, 6 or 7) and lands in the
-``default:`` arm printing ``PUBK_SEL_AMBIGUOUS``. This one
-keeps a valid source and makes the INDEX out of range. Both return
+That testcase names TWO slots and is refused for ambiguity, before any slot
+number is resolved. This one names exactly one slot, which is resolved and
+echoed, and then refused for being reserved. Both return
 ``MANIFEST_ERR_SIG_FAILED``, so ``PUBK_SEL_AMBIGUOUS`` is forbidden here and
 ``PUBK_SLOT_RESERVED`` is required -- the console token is the only discriminator.
 
-THE LOAD-BEARING FORBID IS ``PUBK_REVOKE=``. The index bound runs BEFORE
-``check_pubkey_revoked`` ( then), and
-that ordering is a security property rather than a detail: the ROM indexes the
-revocation bitmap with ``1u << index``, so an index
-the bound let through would shift by 6 or more and consult a bit that belongs to
-no ROM slot. Forbidding the fuse echo proves the bound stopped it first.
-``PUBK_SLOT_UNPROVISIONED`` is forbidden for the same reason one step later: an out-of-range
-index must never reach ``public_key_digests[index]``, which would read
-past the six-entry table.
+THE LOAD-BEARING FORBID IS ``PUBK_REVOKE=``. The reserved-range check runs inside
+``is_key_authorized``, which the validator calls BEFORE the revocation check, and
+that ordering is a security property rather than a detail: revocation indexes its
+bitmap by slot number, so a reserved slot the bound let through would consult a
+bit belonging to no key. Forbidding the fuse echo proves the bound stopped it
+first. ``PUBK_SLOT_UNPROVISIONED`` is forbidden for the same reason one step
+later: a reserved slot must never reach the anchor lookup.
 
-``public_key_sel`` is at offset 166, inside the TBS, so the helper re-hashes. No
-re-sign: the index is rejected before ``rsa_3072_verify``, so the stale signature
+``public_key_select`` is inside the signed region, so the helper re-hashes. No
+re-sign: the slot is rejected before the verifier runs, so the stale signature
 is never examined, and ``RSA_EXEC`` is forbidden to check that rather than
 assume it.
 
@@ -58,9 +55,8 @@ _EFUSE_PRELOAD = (
 )
 
 # The boundary: the smallest index the ROM key table does not contain.
-_BAD_INDEX = mm.PUBK_SEL_NUM_ROM_KEYS
-# public_key_sel is {index:4, selection:3}; PUBK_SEL_ROM_KEY is 0.
-_PUBK_SEL_VALUE = _BAD_INDEX & 0xF
+_BAD_INDEX = mm.KEY_SLOT_FIRST_RESERVED
+_PUBK_SEL_VALUE = _BAD_INDEX
 _PUBK_SEL_ECHO = f"PUBK_SEL=0x{_PUBK_SEL_VALUE:08x}"
 
 
@@ -91,25 +87,17 @@ class sep_firmware_backup_rom_key_index_invalid_test(sep_backup_manifest_fail_ba
         mm.set_public_key_sel(buf, "backup", selection=0, index=_BAD_INDEX)
         got = mm.get_public_key_sel(buf, "backup")
         assert got == _PUBK_SEL_VALUE, (
-            f"public_key_sel encoded as 0x{got:04x}, expected "
-            f"0x{_PUBK_SEL_VALUE:04x} (selection=PUBK_SEL_ROM_KEY, "
-            f"index={_BAD_INDEX})"
+            f"backup public_key_sel names slot {got}, expected "
+            f"{_PUBK_SEL_VALUE} (the first reserved slot)"
         )
-        # The selection half must still name the ROM-key source, or this would be
-        # the PUBK_SEL_AMBIGUOUS testcase wearing this one's name.
-        selection = (got >> 4) & 0x7
-        assert selection == 0, (
-            f"public_key_sel.selection is {selection}, expected 0 "
-            f"(PUBK_SEL_ROM_KEY): the index bound is only reached on the ROM-key "
-            f"arm"
-        )
+        # Exactly one bit, or this would be the PUBK_SEL_AMBIGUOUS testcase
+        # wearing this one's name. get_public_key_sel raises on any other count,
+        # so reaching here at all is the assertion.
         mm.verify_layout(buf, "backup")
         self.logger.info(
-            "CHK-STIMULUS-KEY-INDEX: backup public_key_sel=0x%04x (ROM key source, "
-            "index %d == PUBK_SEL_NUM_ROM_KEYS, the smallest out-of-range value), "
-            "TBS re-hashed",
+            "CHK-STIMULUS-KEY-INDEX: backup public_key_sel names slot %d "
+            "(== OCA_KEY_SLOT_MAX + 1, the smallest reserved slot), re-hashed",
             got,
-            _BAD_INDEX,
         )
 
     def check_efuse(self, image) -> None:

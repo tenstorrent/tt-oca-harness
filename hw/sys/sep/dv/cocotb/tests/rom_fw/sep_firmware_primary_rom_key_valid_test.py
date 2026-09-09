@@ -25,7 +25,7 @@ required, and none of them is boot completion:
     check ran and PERMITTED this slot rather than being skipped. This marker alone
     does NOT prove the ROM-key arm was taken: ``check_pubkey_revoked`` is called
     from the fuse-key arm too. What excludes that arm is
-    the ``PUBK_SEL=0x00000000`` value -- ``{index:4, selection:3}`` makes 0x0000 uniquely "selection=PUBK_SEL_ROM_KEY,
+    the ``PUBK_SEL=0x00000000`` value -- slot 0 is ROM classical key 0,
     index=0" -- together with ``PUBK_SEL_AMBIGUOUS`` and ``PUBK_OTP_EMPTY`` being
     forbidden;
   * ``RSA_EXEC`` then ``RSA_VERIFY_OK`` then ``MANIFEST_OK``, in that

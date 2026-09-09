@@ -168,9 +168,8 @@ ROM_ARM_KEY_REVOKED = "PUBK_SEL=0x00000000"
 def select_chiplet_fuse_key(buf: bytearray, key_index: int) -> tuple[int, int]:
     """Point BOTH slots' ``public_key_sel`` at CHIPLET fused key ``key_index``, re-sealed.
 
-    ``public_key_sel`` is ``{index:4, selection:3}`` and lives
-    inside the TBS, so the write invalidates ``manifest_hash`` and the shipped dev0
-    signature. Unlike the ROM-slot families of R1/R2 this family must leave a
+    ``public_key_select`` is a 128-bit slot bitmap inside the signed region, so
+    the write invalidates ``manifest_hash`` and the shipped signature. Unlike the ROM-slot families of R1/R2 this family must leave a
     manifest that would BOOT -- a revocation test whose image was independently
     unbootable would prove nothing about revocation -- so each slot is re-sealed
     (``env/sep_oca_payload.reseal``: payload_hash -> manifest_hash -> signature)
@@ -346,8 +345,8 @@ class sep_chiplet_pubkey_valid_base(_chiplet_key_mixin, sep_rom_ot_dma_boot_test
 
       * ``PUBK_SEL=0x000000{10,20}`` exactly once -- the selector the ROM read out of
         the primary. The VALUE is what excludes the
-        ROM-key arm on the stimulus side: ``{index:4, selection:3}`` makes 0x10 uniquely "selection=PUBK_SEL_FUSE_KEY_0,
-        index=0";
+        ROM-key arm on the stimulus side: slot 16 is CHIPLET_PUBK_HASH0, outside
+        the [0, 8) range the ROM classical arm serves;
       * ``PUBK_REVOKE=0x00000001`` exactly once -- the fuse word
         ``check_pubkey_revoked`` read, proving the
         revocation check ran and PERMITTED this key. Note this marker does NOT by

@@ -44,10 +44,11 @@ _EFUSE_PRELOAD = (
     / "sep_efuse_lc_prod.toml"
 )
 
-# key_digests.c populates slot 0 only. Slot 1 is the first empty one.
-_EMPTY_SLOT = 1
-# public_key_sel is {index:4, selection:3}; PUBK_SEL_ROM_KEY is 0.
-_PUBK_SEL_VALUE = _EMPTY_SLOT & 0xF
+# The first ROM classical slot key_digests.c does not provision. Slots 0..5 all
+# carry a digest, so naming one of those would exercise the digest COMPARISON,
+# not the empty-slot refusal this testcase is about.
+_EMPTY_SLOT = mm.KEY_SLOT_FIRST_UNPROVISIONED
+_PUBK_SEL_VALUE = _EMPTY_SLOT
 
 
 @pyuvm.test()
@@ -71,8 +72,8 @@ class sep_firmware_backup_unpopulated_rom_key_slot_test(sep_backup_manifest_fail
         mm.set_public_key_sel(buf, "backup", selection=0, index=_EMPTY_SLOT)
         got = mm.get_public_key_sel(buf, "backup")
         assert got == _PUBK_SEL_VALUE, (
-            f"public_key_sel encoded as 0x{got:04x}, expected 0x{_PUBK_SEL_VALUE:04x} "
-            f"(selection=ROM_KEY, index={_EMPTY_SLOT})"
+            f"backup public_key_sel names slot {got}, expected {_PUBK_SEL_VALUE} "
+            f"(the first unprovisioned ROM classical slot)"
         )
         mm.verify_layout(buf, "backup")
         self.logger.info(

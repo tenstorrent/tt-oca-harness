@@ -18,9 +18,9 @@ reading the selector and the revocation bitmap and then verifying with them:
     PERMITTED this slot rather than being skipped. Note this marker alone does
     NOT prove the ROM-key arm was taken: ``check_pubkey_revoked`` is called from
     the fuse-key arm too. What excludes that arm is
-    the ``PUBK_SEL=0x00000000`` value above -- ``{index:4, selection:3}`` makes 0x0000 uniquely "selection=PUBK_SEL_ROM_KEY,
-    index=0" -- together with ``PUBK_SEL_AMBIGUOUS`` and ``PUBK_OTP_EMPTY`` being
-    forbidden below;
+    the ``PUBK_SEL=0x00000000`` value above -- slot 0 is ROM classical key 0 --
+    together with ``PUBK_SEL_AMBIGUOUS`` and ``PUBK_OTP_EMPTY`` being forbidden
+    below;
   * ``RSA_EXEC`` then ``RSA_VERIFY_OK`` -- the modulus reached the verifier
     and the signature really verified, which only
     happens after the index bound, the revocation check and the digest bind have

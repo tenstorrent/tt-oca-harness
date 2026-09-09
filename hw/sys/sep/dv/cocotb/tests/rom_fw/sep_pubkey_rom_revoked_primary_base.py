@@ -149,8 +149,7 @@ from rom_fw.sep_primary_fail_backup_boot_base import sep_primary_fail_backup_boo
 
 _EFUSE_DIR = Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads" / "efuse_configurations"
 
-# public_key_sel is {index:4, selection:3}; PUBK_SEL_ROM_KEY
-# is 0, so a ROM-slot selector is just the index.
+# A ROM classical key is named by its own bitmap slot number.
 PUBK_SEL_ROM_KEY = 0
 
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"

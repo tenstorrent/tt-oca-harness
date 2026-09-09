@@ -38,9 +38,10 @@ _EFUSE_PRELOAD = (
     / "sep_efuse_lc_prod.toml"
 )
 
-#  assigns 0,1,2,4,5. 3, 6 and 7 name nothing.
-_BAD_SELECTION = 3
-_BAD_PUBK_SEL_VALUE = (_BAD_SELECTION & 0x7) << 4  # index 0, selection 3 -> 0x0030
+# Two provisioned ROM key slots named at once. Both are individually valid, so
+# the refusal can only be the ambiguity itself -- naming one valid and one
+# invalid slot would leave the verdict attributable to either.
+_AMBIGUOUS_SLOTS = (0, 1)
 
 
 @pyuvm.test()
@@ -59,17 +60,23 @@ class sep_firmware_backup_invalid_public_key_selection_test(sep_backup_manifest_
     )
 
     def corrupt_backup(self, buf: bytearray) -> None:
-        mm.set_public_key_sel(buf, "backup", selection=_BAD_SELECTION, index=0)
-        got = mm.get_public_key_sel(buf, "backup")
-        assert got == _BAD_PUBK_SEL_VALUE, (
-            f"public_key_sel encoded as 0x{got:04x}, expected 0x{_BAD_PUBK_SEL_VALUE:04x}"
-        )
+        mm.set_public_key_slots(buf, "backup", _AMBIGUOUS_SLOTS)
+        # get_public_key_sel refuses to resolve a bitmap naming more than one
+        # slot, which is the property this stimulus is planting.
+        try:
+            got = mm.get_public_key_sel(buf, "backup")
+        except AssertionError:
+            pass
+        else:
+            raise AssertionError(
+                f"backup public_key_sel resolved to a single slot {got}; the "
+                f"bitmap should name {_AMBIGUOUS_SLOTS}"
+            )
         mm.verify_layout(buf, "backup")
         self.logger.info(
-            "CHK-STIMULUS-PUBKSEL: backup public_key_sel=0x%04x "
-            "(selection=%d, unassigned), TBS re-hashed",
-            got,
-            _BAD_SELECTION,
+            "CHK-STIMULUS-PUBKSEL: backup public_key_sel names slots %s, both "
+            "individually valid, re-hashed",
+            _AMBIGUOUS_SLOTS,
         )
 
     def check_efuse(self, image) -> None:
@@ -81,16 +88,21 @@ class sep_firmware_backup_invalid_public_key_selection_test(sep_backup_manifest_
         )
         assert image.field_int("CHIPLET_PUBK_REVOKE") == 0, (
             "CHIPLET_PUBK_REVOKE must be 0; revocation is keyed off the selected "
-            "index and would produce a different verdict"
+            "slot and would produce a different verdict"
         )
 
     def _check(self, console, status_seq, fw_done, fw_pass, retired) -> None:
         super()._check(console, status_seq, fw_done, fw_pass, retired)
-        # The value the ROM actually read out of the manifest, so the verdict is
-        # attributable to this stimulus and not to some other malformed selector.
-        marker = f"PUBK_SEL=0x{_BAD_PUBK_SEL_VALUE:08x}"
-        assert any(marker in line for line in console), (
-            f"ROM never printed {marker}: the PUBK_SEL_AMBIGUOUS verdict cannot be "
-            f"attributed to the selection this test planted. Console: {console}"
+        # PUBK_SEL= is refused BEFORE it can be echoed: the ambiguity is detected
+        # inside the resolution loop, so no slot number is ever printed for this
+        # slot. Its absence for anything but the booting slot is therefore the
+        # positive evidence that resolution stopped rather than picked.
+        sels = [line for line in console if "PUBK_SEL=" in line]
+        assert not sels, (
+            f"ROM echoed a resolved slot {sels}: an ambiguous bitmap must be "
+            f"refused before resolution completes. Console: {console}"
         )
-        self.logger.info("CHK-PUBKSEL-ECHO: ROM read %s", marker)
+        self.logger.info(
+            "CHK-PUBKSEL-UNRESOLVED: no PUBK_SEL= echo, so neither of %s was picked",
+            _AMBIGUOUS_SLOTS,
+        )
