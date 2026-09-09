@@ -633,7 +633,7 @@ module smc_peripherals #(
 
     .test_en_i                  (test_en_i),
     .scan_rst_ni                (scan_rst_ni),
-    .clk_test_i                 (1'b0),
+    .clk_test_i                 (clk_periph_i),
 
     .cur_state_debug_o          (avsbus_cur_state_debug)
   );
