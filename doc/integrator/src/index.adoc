@@ -502,9 +502,7 @@ completion.
 
 The SMC fuse map does not allocate storage for repair data. Your external memory
 repair controller must source it from wherever your manufacturing flow keeps it
-and apply it to SRAM arrays according to your memory architecture. If you want it
-held in SMC fuses, assign one or more of the `SPARE` regions in the fuse map to
-that purpose; the whole fuse map is exposed on `shadow_regs_o` after fuse sensing.
+and apply it to SRAM arrays according to your memory architecture.
 
 **Status Monitoring:**
 
