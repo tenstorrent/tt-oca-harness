@@ -21,14 +21,13 @@ LOCATION and its pass/fail ENCODING, confirmed from RTL.
     (0xC001_0000). Corrected under A51, together with three other drifted
     offsets (scratch base and both fuse-map entries).
 
-    Note what this testcase could NOT do, because it shapes how much the run
-    below proves: the SMC was a flat behavioural ``axi_sim_mem`` that answered at
-    whatever address the ROM presented, so every candidate offset "worked" and no
-    test in this suite could fail on the address. That is precisely how the drift
-    survived a green regression. ``tb_top.sv`` now carries an address-decode
+    Note what this testcase does NOT do, because it shapes how much the run
+    below proves: the SMC responder is a flat memory that answers at whatever
+    address the ROM presents, so every candidate offset "works" and no test in
+    this suite can fail on the address. ``tb_top.sv`` carries an address-decode
     check (``smc_addr_violations_o``) that errors on any SEP->SMC access outside
     a window declared in ``smc_addr.h``, so the class of defect is detectable
-    from here on -- but this test still does not target the address itself.
+    -- but this test does not target the address itself.
 
 THE GATE THIS ARM EXERCISES, AND THAT IT CHANGED. It used to read
 ``mem_repair_success`` alone, and this test used to inject 0x02. That was a
@@ -86,8 +85,9 @@ must be treated as unverified:
      itself is covered by ``sep_mbist_fail_continue_test``, but that test enters
      it from the REPAIR failure; no test reaches the fuse from an MBIST failure.
 
-Item 4 is WRITABLE, not structurally unreachable: the flat ``axi_sim_mem`` cannot
-make ``mbist_done`` rise mid-run, but ``+sep_dft_status=00000002`` leaves it clear
+Item 4 is WRITABLE, not structurally unreachable: this test leaves the SMC
+responder's word static, so ``mbist_done`` never rises mid-run, but
+``+sep_dft_status=00000002`` leaves it clear
 so the loop runs its full 10000 iterations and then times out -- exercising both
 the back edge and the timeout exit in one run, for roughly 300K cycles. Stimulus
 for items 1 and 2 exists as well (``+sep_straps_lo`` / ``+sep_straps_hi``);
@@ -103,6 +103,7 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import RisingEdge
+from env.sep_smc_mem import SMC_DFT_STATUS_ADDR, SMC_SCRATCH10_ADDR
 from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
 
 # Must match +sep_dft_status in the testlist entry.
@@ -175,6 +176,8 @@ class sep_firmware_mbist_pass_test(sep_rom_ot_dma_boot_test):
         claims below are only meaningful against the whole sequence.
         """
         dut = cocotb.top
+        smc_mem = self.cfg.smc_mem
+        assert smc_mem is not None, "SMC responder not bound (rom_boot target only)"
         last_status = None
         last_s10 = None
         last_dft = None
@@ -185,11 +188,11 @@ class sep_firmware_mbist_pass_test(sep_rom_ot_dma_boot_test):
                 if status != last_status:
                     last_status = status
                     self._status_seq.append(status)
-                s10 = self.rd(dut.smc_scratch10_probe_o) & 0xFFFF_FFFF
+                s10 = smc_mem.read32(SMC_SCRATCH10_ADDR)
                 if s10 != last_s10:
                     last_s10 = s10
                     self._s10_seq.append(s10)
-                dft = self.rd(dut.smc_dft_status_probe_o) & 0xFFFF_FFFF
+                dft = smc_mem.read32(SMC_DFT_STATUS_ADDR)
                 if dft != last_dft:
                     last_dft = dft
                     self._dft_seq.append(dft)
