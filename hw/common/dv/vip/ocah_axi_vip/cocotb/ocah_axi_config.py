@@ -35,7 +35,21 @@ _STRB_MEMBERS = ("wstrb",)
 _ID_MEMBERS = ("awid", "bid", "arid", "rid")
 _USER_MEMBERS = ("awuser", "wuser", "buser", "aruser", "ruser")
 _MEMBER_VIEW_OWN = frozenset({"_handle", "_width", "_physical", "_mask"})
-_SCOPE_VIEW_OWN = frozenset({"_scope", "_widths"})
+_SCOPE_VIEW_OWN = frozenset({"_scope", "_widths", "_prefix"})
+# Every member an AXI4 / AXI4-Lite scope can carry. cocotb_bus locates signals by
+# scanning dir() of the entity, and dir() of a cocotb handle lists only what VPI
+# iteration enumerates, which for an SV interface instance under VCS is none of
+# its members. A by-name lookup resolves them on every simulator, so the view
+# reports the members it can resolve by name rather than trusting iteration.
+_BUS_MEMBERS = (
+    "awid", "awaddr", "awlen", "awsize", "awburst", "awlock", "awcache", "awprot",
+    "awqos", "awregion", "awuser", "awvalid", "awready",
+    "wdata", "wstrb", "wlast", "wuser", "wvalid", "wready",
+    "bid", "bresp", "buser", "bvalid", "bready",
+    "arid", "araddr", "arlen", "arsize", "arburst", "arlock", "arcache", "arprot",
+    "arqos", "arregion", "aruser", "arvalid", "arready",
+    "rid", "rdata", "rresp", "rlast", "ruser", "rvalid", "rready",
+)  # fmt: skip
 
 
 @dataclass(frozen=True)
@@ -90,7 +104,7 @@ class OcahAxiConfig:
         bundle (``<prefix>_awaddr`` ...) the way ``from_prefix`` does. Every
         agent, monitor, and watcher of this package accepts the returned bus.
         """
-        view = _ScopeView(scope, self.member_widths(prefix))
+        view = _ScopeView(scope, self.member_widths(prefix), prefix)
         bus_type = AxiLiteBus if self.protocol is OcahAxiProtocol.AXI4_LITE else AxiBus
         if prefix:
             return bus_type.from_prefix(view, prefix)
@@ -154,9 +168,10 @@ class _MemberView:
 class _ScopeView:
     """A hierarchy handle whose listed members are presented through ``_MemberView``."""
 
-    def __init__(self, scope: Any, widths: Mapping[str, int]) -> None:
+    def __init__(self, scope: Any, widths: Mapping[str, int], prefix: str | None = None) -> None:
         self._scope = scope
         self._widths = dict(widths)
+        self._prefix = prefix
 
     def __getattr__(self, name: str) -> Any:
         if name in _SCOPE_VIEW_OWN:
@@ -168,4 +183,9 @@ class _ScopeView:
         return _MemberView(handle, width)
 
     def __dir__(self) -> list[str]:
-        return list(dir(self._scope))
+        names = set(dir(self._scope))
+        for member in _BUS_MEMBERS:
+            name = f"{self._prefix}_{member}" if self._prefix else member
+            if name not in names and hasattr(self._scope, name):
+                names.add(name)
+        return sorted(names)
