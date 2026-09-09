@@ -33,11 +33,11 @@ package sep_lifecycle_ctrl_pkg;
     // SMC fabric JTAG-to-AXI bridge: enables JTAG-driven AXI read/write access
     // to the SMC fabric register space.
     logic smc_jtag2axi;
-    // SMC OTP JTAG-to-AXI bridge: enables JTAG-driven access to the SMC fuse
-    // controller register interface (SMC_FUSE_TEST scope).
+    // SMC OTP JTAG-to-AXI bridge: JTAG-driven access to the SMC fuse
+    // controller register interface. Remains enabled.
     logic smc_otp_jtag2axi;
-    // SEP OTP JTAG-to-AXI bridge: enables JTAG-driven access to the SEP fuse
-    // controller register interface (SEP_FUSE_TEST scope).
+    // SEP OTP JTAG-to-AXI bridge: JTAG-driven access to the SEP fuse
+    // controller register interface. Remains enabled.
     logic sep_otp_jtag2axi;
   } dbg_disable_t;
 
