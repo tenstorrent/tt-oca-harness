@@ -13,8 +13,6 @@ No Force/deposit. No DTP-FEAT-GATE.* / INT-FEAT-CTRL-DTP-GATE (re-homed to 008).
 
 from __future__ import annotations
 
-from seq_lib.smu_tb_pins import smc_primary_reset, smu_scope
-
 import time
 
 import cocotb
@@ -29,6 +27,7 @@ from seq_lib.smu_jtag_helpers import (
     pack_debug_control,
     pack_ic_reset_ports,
 )
+from seq_lib.smu_tb_pins import smc_primary_reset, smu_scope
 
 
 class smu_clock_stop_coordination_test_seq:

@@ -21,6 +21,7 @@ from collections import Counter
 
 import cocotb
 from cocotb.triggers import RisingEdge
+
 from seq_lib.sep_fw_common import addr_of, format_pc_profile, load_syms
 
 # Goldens are the firmware's own constants (sep_smu_remap.c).

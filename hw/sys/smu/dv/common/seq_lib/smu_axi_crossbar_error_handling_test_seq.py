@@ -11,8 +11,6 @@ No Force/deposit. Reuses SMU_ALL_005 PTAP leave-TLR helper pattern.
 
 from __future__ import annotations
 
-from seq_lib.smu_tb_pins import smc_primary_reset
-
 import os
 import random
 import time
@@ -22,6 +20,7 @@ from cocotb.triggers import ClockCycles, RisingEdge
 from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_jtag_helpers import make_smu_jtag_tap
+from seq_lib.smu_tb_pins import smc_primary_reset
 
 
 class smu_axi_crossbar_error_handling_test_seq:

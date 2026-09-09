@@ -8,9 +8,9 @@ not exist under that generate arm. Does not drive the crossbar.
 
 from __future__ import annotations
 
-from seq_lib.smu_tb_pins import smu_scope
-
 import cocotb
+
+from seq_lib.smu_tb_pins import smu_scope
 
 
 class smu_axi_xbar_structure_test_seq:

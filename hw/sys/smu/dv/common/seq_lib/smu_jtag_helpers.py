@@ -4,8 +4,6 @@
 
 from __future__ import annotations
 
-from seq_lib.smu_tb_pins import smu_scope
-
 import re
 from functools import lru_cache
 from pathlib import Path
@@ -14,6 +12,8 @@ from typing import Optional
 import cocotb
 from cocotb.triggers import ClockCycles
 from ocah_jtag_vip import OcahJtagDevice, OcahJtagMasterDriver
+
+from seq_lib.smu_tb_pins import smu_scope
 
 # Lifecycle ungating: use seq_lib.smu_lcc_helpers (SEP=1 eFuse→LCC).
 # SEP=0 gen_no_sep ties sep_feat_ctrl='1' (enable); J2A opens after TCK sync.

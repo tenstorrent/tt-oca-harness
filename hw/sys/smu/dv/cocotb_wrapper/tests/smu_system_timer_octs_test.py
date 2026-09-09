@@ -16,7 +16,9 @@ class smu_system_timer_octs_test(smu_base_test):
     use_shared_env = True
 
     async def run_scenario(self) -> None:
-        self.logger.info("DUT_TAG=WRAPPER smu_system_timer_octs_test TierC SYS-TIMER-OCTS SEP=0 J2A")
+        self.logger.info(
+            "DUT_TAG=WRAPPER smu_system_timer_octs_test TierC SYS-TIMER-OCTS SEP=0 J2A"
+        )
         seq = smu_system_timer_octs_test_seq(self)
         await seq.run()
         assert seq.s1_ok and seq.s2_ok and seq.s3_ok, (

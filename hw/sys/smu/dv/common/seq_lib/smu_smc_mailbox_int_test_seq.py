@@ -14,12 +14,12 @@ No mailbox MMIO; no Force/deposit on ext_mailbox_interrupts.
 
 from __future__ import annotations
 
-from seq_lib.smu_tb_pins import smc_primary_reset
-
 import time
 
 import cocotb
 from cocotb.triggers import RisingEdge
+
+from seq_lib.smu_tb_pins import smc_primary_reset
 
 
 class smu_smc_mailbox_int_test_seq:

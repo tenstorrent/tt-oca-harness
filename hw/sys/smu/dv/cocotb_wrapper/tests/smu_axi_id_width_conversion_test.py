@@ -25,8 +25,8 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
 from seq_lib.smu_addr_map import SMC_CHIP_CONFIG_VERSION_LO, smc_addr
-from seq_lib.smu_tb_pins import smc_primary_reset
 from seq_lib.smu_axi_helpers import axi_read32_resp_ids_bounded, make_smu_axi_master, resp_name
+from seq_lib.smu_tb_pins import smc_primary_reset
 from smu_base_test import smu_base_test
 
 PROBE_ADDRS = (
@@ -55,9 +55,7 @@ class smu_axi_id_width_conversion_test(smu_base_test):
 
         # bring_up has already blocked until rst_primary_smc_clk_n_o released.
         await ClockCycles(dut.clk_smu_i, 50)
-        master = await make_smu_axi_master(
-            dut, dut.clk_smu_i, smc_primary_reset(dut)
-        )
+        master = await make_smu_axi_master(dut, dut.clk_smu_i, smc_primary_reset(dut))
 
         sb = self.env.scoreboard
         for idx, addr in enumerate(PROBE_ADDRS):

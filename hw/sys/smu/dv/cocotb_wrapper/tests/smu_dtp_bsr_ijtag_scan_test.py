@@ -16,7 +16,9 @@ class smu_dtp_bsr_ijtag_scan_test(smu_base_test):
     use_shared_env = True
 
     async def run_scenario(self) -> None:
-        self.logger.info("DUT_TAG=WRAPPER smu_dtp_bsr_ijtag_scan_test TierC DTP-BSR-IJTAG SEP=0 JTAG")
+        self.logger.info(
+            "DUT_TAG=WRAPPER smu_dtp_bsr_ijtag_scan_test TierC DTP-BSR-IJTAG SEP=0 JTAG"
+        )
         seq = smu_dtp_bsr_ijtag_scan_test_seq(self)
         await seq.run()
         assert seq.s1_ok and seq.s2_ok and seq.s3_ok, (

@@ -39,6 +39,7 @@ import os
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
+
 from seq_lib.sep_fw_common import addr_of, load_syms
 from seq_lib.wrapper_jtag import (
     J2A_OP_READ,

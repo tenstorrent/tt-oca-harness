@@ -14,8 +14,6 @@ until a legal ATOP driver and a filter-allow / OKAY positive control exist
 
 from __future__ import annotations
 
-from seq_lib.smu_tb_pins import smc_primary_reset
-
 import random
 
 import cocotb
@@ -27,6 +25,7 @@ from seq_lib.smu_axi_helpers import (
     make_smu_axi_master,
     resp_name,
 )
+from seq_lib.smu_tb_pins import smc_primary_reset
 from smu_base_test import smu_base_test
 
 

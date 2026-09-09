@@ -4,8 +4,6 @@
 
 from __future__ import annotations
 
-from seq_lib.smu_tb_pins import smc_primary_reset
-
 import os
 import sys
 from pathlib import Path
@@ -15,6 +13,7 @@ from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, Timer
 from ocah_axi_vip import OcahAxiSlaveAgent
 from pyuvm import ConfigDB, uvm_test
+from seq_lib.smu_tb_pins import smc_primary_reset
 
 _COCOTB_ROOT = Path(__file__).resolve().parents[1]
 for _path in (_COCOTB_ROOT,):
@@ -22,9 +21,9 @@ for _path in (_COCOTB_ROOT,):
     if _s not in sys.path:
         sys.path.insert(0, _s)
 
+from seq_lib.smu_axi_helpers import wait_signal_high
 from smu_dv_env.smu_env import SmuEnv
 from smu_dv_env.smu_env_cfg import SmuEnvCfg
-from seq_lib.smu_axi_helpers import wait_signal_high
 
 
 class smu_base_test(uvm_test):

@@ -42,7 +42,9 @@ AXI_TIMEOUT_NS = 200_000
 AXI_BOUND_LABEL = "bound=200us"
 
 
-async def make_smu_axi_master(dut, clk, reset, *, prefix: str | None = None) -> OcahAxiMasterSequence:
+async def make_smu_axi_master(
+    dut, clk, reset, *, prefix: str | None = None
+) -> OcahAxiMasterSequence:
     """Master on the SMU AXI slave, named by whichever TB top is loaded.
 
     tb/tb_top.sv flattens it as ``s_axi_*``; tb/tb_wrapper_top.sv exposes the

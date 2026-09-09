@@ -22,6 +22,7 @@ stopped", which a PC profile of the SEP alone cannot.
 from __future__ import annotations
 
 import cocotb
+
 from seq_lib.sep_terminal_loop_seq import SepTerminalLoopSeq
 
 SMC_PHASES = {

@@ -14,13 +14,12 @@ Must FAIL if sticky broken or TRST fails to clear DEBUG_CONTROL.
 
 from __future__ import annotations
 
-from seq_lib.smu_tb_pins import smc_primary_reset
-
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
 from seq_lib.smu_axi_helpers import wait_signal_high
 from seq_lib.smu_jtag_helpers import make_smu_jtag_tap, pack_debug_control
+from seq_lib.smu_tb_pins import smc_primary_reset
 from smu_base_test import smu_base_test
 
 

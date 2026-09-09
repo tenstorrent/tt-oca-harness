@@ -17,12 +17,12 @@ Independent expects from pinned hw/sys/smc/doc/fabric.adoc
 
 from __future__ import annotations
 
-from seq_lib.smu_tb_pins import smc_primary_reset, smu_scope
-
 import time
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
+
+from seq_lib.smu_tb_pins import smc_primary_reset, smu_scope
 
 
 class smu_smc_smoke_test_seq:

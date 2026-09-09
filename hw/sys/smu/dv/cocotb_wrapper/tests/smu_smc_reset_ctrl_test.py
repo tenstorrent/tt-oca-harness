@@ -4,12 +4,10 @@
 
 from __future__ import annotations
 
-from seq_lib.smu_tb_pins import smc_primary_reset
-
 import cocotb
 import pyuvm
 from cocotb.triggers import RisingEdge
-from seq_lib.smu_tb_pins import cold_stable_reset
+from seq_lib.smu_tb_pins import cold_stable_reset, smc_primary_reset
 from smu_base_test import smu_base_test
 
 HOLD_CYCLES = 100

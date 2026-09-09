@@ -4,8 +4,6 @@
 
 from __future__ import annotations
 
-from seq_lib.smu_tb_pins import smc_primary_reset
-
 import cocotb
 from cocotb.triggers import ClockCycles
 from ocah_axi_vip import RESP_OKAY
@@ -35,6 +33,7 @@ from seq_lib.smu_jtag_helpers import (
     make_smu_jtag_tap,
     require_jtag_tdo_resolved,
 )
+from seq_lib.smu_tb_pins import smc_primary_reset
 
 VERSION_LO = SMC_CHIP_CONFIG_VERSION_LO
 VERSION_LO_RESET = SMC_CHIP_CONFIG_VERSION_LO_RESET

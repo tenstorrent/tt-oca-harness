@@ -17,8 +17,6 @@ SMU_ALL_008 — out of scope for this card.
 
 from __future__ import annotations
 
-from seq_lib.smu_tb_pins import smc_primary_reset, smu_scope
-
 import os
 import random
 import time
@@ -34,6 +32,7 @@ from seq_lib.smu_axi_helpers import (
     make_smu_axi_master,
     resp_name,
 )
+from seq_lib.smu_tb_pins import smc_primary_reset, smu_scope
 
 # SMC SYS_IN BlockByDefault err_slv poison (low 32b).
 SMC_FILTER_POISON_LO = 0xBADCAB1E

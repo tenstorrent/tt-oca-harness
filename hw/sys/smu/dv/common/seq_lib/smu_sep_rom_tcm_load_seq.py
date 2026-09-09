@@ -34,6 +34,7 @@ from collections import Counter
 
 import cocotb
 from cocotb.triggers import RisingEdge
+
 from seq_lib.sep_fw_common import addr_of, format_pc_profile, load_syms
 
 # From the image's own .equ block.

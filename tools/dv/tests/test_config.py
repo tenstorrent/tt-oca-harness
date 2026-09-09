@@ -434,7 +434,7 @@ class DutRegistryAliases(unittest.TestCase):
 
     def test_alias_entry_is_accepted(self):
         reg = self._registry(
-            'schema_version = 1\n'
+            "schema_version = 1\n"
             '[duts.widget]\nroot = "hw/sys/widget/dv"\n'
             '[duts.widget_alt]\nroot = "hw/sys/widget/dv"\nalias_of = "widget"\n'
         )
@@ -444,7 +444,7 @@ class DutRegistryAliases(unittest.TestCase):
     def test_self_alias_is_rejected(self):
         with self.assertRaises(ConfigError) as ctx:
             self._registry(
-                'schema_version = 1\n'
+                "schema_version = 1\n"
                 '[duts.widget]\nroot = "hw/sys/widget/dv"\nalias_of = "widget"\n'
             )
         self.assertIn("cannot point at itself", str(ctx.exception))
@@ -452,7 +452,7 @@ class DutRegistryAliases(unittest.TestCase):
     def test_alias_chain_is_rejected(self):
         with self.assertRaises(ConfigError) as ctx:
             self._registry(
-                'schema_version = 1\n'
+                "schema_version = 1\n"
                 '[duts.a]\nroot = "hw/sys/a/dv"\n'
                 '[duts.b]\nroot = "hw/sys/a/dv"\nalias_of = "a"\n'
                 '[duts.c]\nroot = "hw/sys/a/dv"\nalias_of = "b"\n'
@@ -462,8 +462,7 @@ class DutRegistryAliases(unittest.TestCase):
     def test_empty_alias_is_rejected(self):
         with self.assertRaises(ConfigError) as ctx:
             self._registry(
-                'schema_version = 1\n'
-                '[duts.widget]\nroot = "hw/sys/widget/dv"\nalias_of = ""\n'
+                'schema_version = 1\n[duts.widget]\nroot = "hw/sys/widget/dv"\nalias_of = ""\n'
             )
         self.assertIn("non-empty string", str(ctx.exception))
 

@@ -14,8 +14,6 @@ Local-alias CSR pages stand in for the commercial SPM/global-aperture windows.
 
 from __future__ import annotations
 
-from seq_lib.smu_tb_pins import smc_primary_reset
-
 import cocotb
 from cocotb.triggers import ClockCycles, with_timeout
 from ocah_axi_vip import PROT_NONSECURE, PROT_PRIVILEGED, RESP_DECERR, RESP_OKAY
@@ -37,6 +35,7 @@ from seq_lib.smu_jtag_helpers import (
     jtag2axi_single_write,
     make_smu_jtag_tap,
 )
+from seq_lib.smu_tb_pins import smc_primary_reset
 
 _F_READ = filter_ctrl_bm("FILTER_CTRL__FILTER_CONFIG__READ_ALLOWED_bm")
 _F_WRITE = filter_ctrl_bm("FILTER_CTRL__FILTER_CONFIG__WRITE_ALLOWED_bm")

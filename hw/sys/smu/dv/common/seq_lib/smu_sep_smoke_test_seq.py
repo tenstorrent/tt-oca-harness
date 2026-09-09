@@ -12,14 +12,13 @@ No Force/deposit. No SEP-sysif/LC/SEC_DIS/mem/fuse/WDT/alias/CTM.S1/CTP/DTP-CSR.
 
 from __future__ import annotations
 
-from seq_lib.smu_tb_pins import smc_primary_reset, smu_scope
-
 import time
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
 
 from seq_lib.smu_jtag_helpers import make_smu_jtag_tap, pack_debug_control
+from seq_lib.smu_tb_pins import smc_primary_reset, smu_scope
 
 DEST_PATS = (0x01, 0x80, 0xA5, 0x5A)
 PULSE_DEST_PATS = (0x01, 0x20, 0x25, 0x5A)

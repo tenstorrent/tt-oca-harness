@@ -15,8 +15,6 @@ domain asserts while stall is active.
 
 from __future__ import annotations
 
-from seq_lib.smu_tb_pins import smc_primary_reset
-
 import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
@@ -30,6 +28,7 @@ from seq_lib.smu_jtag_helpers import (
     pack_ic_reset_ports,
     read_smc_reset_ctrl_bit,
 )
+from seq_lib.smu_tb_pins import smc_primary_reset
 from smu_base_test import smu_base_test
 
 

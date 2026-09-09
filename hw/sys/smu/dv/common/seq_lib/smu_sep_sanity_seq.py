@@ -31,6 +31,7 @@ from collections import Counter
 
 import cocotb
 from cocotb.triggers import RisingEdge
+
 from seq_lib.sep_fw_common import format_pc_profile, load_syms
 
 SEP_ICCM_BASE = 0xC000_0000

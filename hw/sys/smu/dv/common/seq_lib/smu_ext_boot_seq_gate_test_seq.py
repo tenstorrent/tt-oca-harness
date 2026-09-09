@@ -9,12 +9,12 @@ Observes fuse_reset_n_delayed_o — the RTL consumer gated by ext_boot_seq_done_
 
 from __future__ import annotations
 
-from seq_lib.smu_tb_pins import smc_primary_reset
-
 import time
 
 import cocotb
 from cocotb.triggers import ClockCycles, RisingEdge
+
+from seq_lib.smu_tb_pins import smc_primary_reset
 
 
 class smu_ext_boot_seq_gate_test_seq:

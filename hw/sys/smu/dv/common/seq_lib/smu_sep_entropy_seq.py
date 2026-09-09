@@ -32,6 +32,7 @@ import os
 
 import cocotb
 from cocotb.triggers import RisingEdge
+
 from seq_lib.esrc_noise import SmuEsrcNoiseDriver
 from seq_lib.sep_fw_common import addr_of, load_syms
 
