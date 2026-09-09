@@ -248,7 +248,7 @@ module smc_efuse_wrapper
         .is_rma_chiplet_token_match_debug (),
 
         .sec_disable_token_o              (),
-        .token_match_fault_o              (), // LC token matching not present on SMC (HAS_LC_STATE=0)
+        .token_match_fault_o              (),
 
         .locked_field_access_interrupt_o  (locked_field_access_interrupt_o)
     );
