@@ -35,9 +35,12 @@ import pyuvm
 from rom_fw.sep_rom_ot_dma_boot_test import SECURE_FLASH_IMAGE, sep_rom_ot_dma_boot_test
 
 _LC_PROD = "LC=PROD"
-_RSA_START = "RSA_VERIFY_START"
-_SIG_VALID = "SIG_VALID"
-_CRYPTO_OK = "CRYPTO_VALIDATE_OK"
+# The OCA vocabulary, as sep_rom_ot_secure_boot_test uses it. PUBK_AUTHORIZED is
+# the key-authorization step, RSA_EXEC the modexp starting, RSA_VERIFY_OK the
+# signature verifying. MANIFEST_OK and PAYLOAD_OK come from the base class.
+_PUBK_AUTH = "PUBK_AUTHORIZED"
+_RSA_EXEC = "RSA_EXEC"
+_RSA_OK = "RSA_VERIFY_OK"
 # Must not appear: it would mean the ROM decided secure boot was off in PROD.
 _SBOOT_OFF = "SBOOT_OFF"
 # Must not appear: the fuse chicken bit is 0 in this image, so a ROM reporting 1
@@ -60,9 +63,9 @@ class sep_firmware_enforced_secure_boot_flow_test(sep_rom_ot_dma_boot_test):
     flash_image = SECURE_FLASH_IMAGE
     required_markers = sep_rom_ot_dma_boot_test.required_markers + (
         _LC_PROD,
-        _RSA_START,
-        _SIG_VALID,
-        _CRYPTO_OK,
+        _PUBK_AUTH,
+        _RSA_EXEC,
+        _RSA_OK,
     )
     forbidden_markers = sep_rom_ot_dma_boot_test.forbidden_markers + (
         _SBOOT_OFF,

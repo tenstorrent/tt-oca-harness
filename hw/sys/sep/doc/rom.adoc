@@ -1695,8 +1695,17 @@ gating, the attestation measurement, and the hand-off self-check.
    and is never authenticated; an attacker flipping it can only subject themselves to more
    verification.)
 4. [[req-SEP-ROM-SB-040]]*[SEP-ROM-SB-040]* The `SBOOT_DIS` fuse (chicken bit) set shall
-   disable secure boot regardless of the other inputs. It is a fused, manufacturing-time
-   escape hatch; an unauthenticated manifest flag shall not override a fused control.
+   disable secure boot *unless the signed* `secure_boot_control` bit 0 is set. It is a fused,
+   manufacturing-time escape hatch over the device's own inputs — the lifecycle state and the
+   fuse itself — and the *unauthenticated* escalation flag shall not override it.
++
+An image that asks to be verified is verified. The precedence is
+`secure_boot_control` first, then the device's disable, then the device's enforcement view,
+so a manifest can only ever raise the requirement: a mis-provisioned fuse or a defective
+lifecycle reporter cannot put a production image on an unverified path. `SBOOT_DIS` therefore
+governs images that do not carry the signed request, which is what a manufacturing escape
+hatch needs to do. Every signed image this tree packs sets the bit, so on those the fuse has
+no effect.
 
 [[tbl:sb_truth]]
 .Secure-boot decision truth table
@@ -1707,11 +1716,13 @@ gating, the attestation measurement, and the hand-off self-check.
 |*LC state* |*`SBOOT_DIS`* |*signed `secure_boot_control[0]`* |*unauth escalation bit*
 |*Secure boot*
 |PROD / PROD_END |0 |— |— |*enforced*
-|PROD / PROD_END |1 |— |— |off (chicken bit)
+|PROD / PROD_END |1 |1 |— |*on* (manifest outranks the fuse)
+|PROD / PROD_END |1 |0 |— |off (chicken bit)
 |TEST_DEV / RMA |0 |1 |— |*on* (manifest-declared)
 |TEST_DEV / RMA |0 |0 |1 |*on* (forced by escalation flag)
 |TEST_DEV / RMA |0 |0 |0 |off
-|TEST_DEV / RMA |1 |— |— |off
+|TEST_DEV / RMA |1 |1 |— |*on* (manifest outranks the fuse)
+|TEST_DEV / RMA |1 |0 |— |off
 |===
 
 [NOTE]
@@ -3120,7 +3131,7 @@ validation only |<<sec:manifest>>
 |<<sec:secure_boot>>
 |<<req-SEP-ROM-SB-030,SEP-ROM-SB-030>> |Escalation flag is escalation-only
 |<<sec:secure_boot>>
-|<<req-SEP-ROM-SB-040,SEP-ROM-SB-040>> |SBOOT_DIS fuse disables regardless
+|<<req-SEP-ROM-SB-040,SEP-ROM-SB-040>> |SBOOT_DIS disables unless signed secure_boot_control asks
 |<<sec:secure_boot>>
 |<<req-SEP-ROM-SB-045,SEP-ROM-SB-045>> |Key selector must resolve to exactly one slot
 |<<sec:secure_boot>>
