@@ -241,9 +241,11 @@ before use ([C9a]).
 the load image (LMA) of `.data`. Execute/read only.
 |Secure DMA |`0x10800000` |4 KiB |DMA engine registers.
 |Watchdog timer |`0x10801000` |4 KiB |Not armed by BL0 (BL1 owns it).
-|SEP cold scratch |`0x10802000` |— |`cold_scratch[n]` at `0x10802000 + 8·n`; reset by any SEP
-reset. See <<tbl:scratch_regs>>.
-|SEP warm scratch |`0x10802080` |— |`warm_scratch[n]`; survives warm (WDT) reset. See
+|SEP cold scratch |`0x10802000` |— |`cold_scratch[n]` at `0x10802000 + 8·n`; reads 0 after a
+cold reset and *retains* across a warm (WDT) reset. See <<tbl:scratch_regs>>.
+|SEP warm scratch |`0x10802080` |— |`warm_scratch[n]`; *cleared* by a warm (WDT) reset — its
+`arst_n` is `sep_reset_n & wdt_rst_ni`. Not usable for state that must survive the reset it
+dispatches from, which is why the warm-handler pointer lives in the cold bank. See
 <<tbl:scratch_regs>>.
 |SEP reset control |`0x10803000` |4 KiB |Not used by BL0.
 |OTBN |`0x10900000` |regs + IMEM (`0x10904000`) + DMEM (`0x10908000`) |RSA-3072 verification
@@ -321,9 +323,10 @@ cold boot entry; DV PASS/FAIL codes.
 `STATUS_OUT()` encoded status word lands here (<<sec:status>>).
 |`cold_scratch[2]` |`0x10802010` |any reset |Virtual console: packed debug text, decoded by
 the DV monitor. Debug builds only.
-|`warm_scratch[0]` |`0x10802080` |cold reset only |Warm-reset re-entry pointer: BL1 writes its
+|`cold_scratch[7]` |`0x10802038` |any reset |Warm-reset re-entry pointer: BL1 writes its
 warm handler address here before arming the WDT; the ROM consumes and poisons it
-(<<sec:warm_reset>>).
+(<<sec:warm_reset>>). The COLD bank, because the value must survive the very reset it
+dispatches from (<<sec:warm_reset>>).
 |===
 
 [[sec:overview]]
@@ -350,7 +353,7 @@ partition "Reset stub (vector.S)" {
   :hart 0 gate (others park in wfi);
   :mtvec -> trap_vector;
   :MRAC CSR 0x7C0;
-  if (warm_scratch[0] != 0 ?) then (yes)
+  if (cold_scratch[7] != 0 ?) then (yes)
     if (in SEP SRAM range ?) then (yes)
       :poison scratch, jr handler;
       #e6f0f8:resume BL1 (warm reset);
@@ -360,7 +363,7 @@ partition "Reset stub (vector.S)" {
       detach
     endif
   else (no — cold boot)
-    :clear warm_scratch[0];
+    :clear cold_scratch[7];
   endif
   :sp/gp setup;
   :outbound AXI filter -> mailbox window;
@@ -534,10 +537,10 @@ before any other memory or MMIO access:
 
 ===== Cold Boot Environment Setup
 
-On the cold-boot path (`warm_scratch[0]` = 0), the stub then establishes the C execution
+On the cold-boot path (`cold_scratch[7]` = 0), the stub then establishes the C execution
 environment:
 
-1. `warm_scratch[0]` is defensively cleared.
+1. `cold_scratch[7]` is defensively cleared.
 2. The stack pointer is set to `__stack_top` and the global pointer to `__global_pointer$`
    (both in DCCM, from the linker script `link/rom.ld`).
 3. *Outbound AXI filter.* [[req-SEP-ROM-CPU-040]]*[SEP-ROM-CPU-040]* The SEP outbound AXI
@@ -570,7 +573,7 @@ start
 :mtvec -> trap_vector;
 :MRAC CSR 0x7C0 = 0xAAAAAAA8;
 :warm-reset check (see Warm-Reset chapter);
-:clear warm_scratch[0];
+:clear cold_scratch[7];
 :sp = __stack_top, gp;
 :outbound filter: open 4 B mailbox window
 (CONFIG written last, after fence w,w);
@@ -678,17 +681,19 @@ this value as needed; a value of zero means "no warm handler — treat any reset
 
 *ROM side:*
 
-1. [[req-SEP-ROM-CPU-110]]*[SEP-ROM-CPU-110]* The ROM shall read `warm_scratch[0]` before any
+1. [[req-SEP-ROM-CPU-110]]*[SEP-ROM-CPU-110]* The ROM shall read `cold_scratch[7]` before any
    DCCM access (no stack, no scrub, no `.data`/`.bss` writes), so that a warm reset preserves
    BL1's runtime state in DCCM intact.
 2. If the value is zero, the boot is a cold boot; the ROM defensively clears
-   `warm_scratch[0]` and proceeds (<<sec:cpu_init>>).
+   `cold_scratch[7]` and proceeds (<<sec:cpu_init>>).
 3. [[req-SEP-ROM-CPU-120]]*[SEP-ROM-CPU-120]* A non-zero value shall be accepted only if it
-   lies within SEP SRAM: `0x1000_0000 &#8804; addr < 0x1004_0000` (i.e. `[SEP_SRAM_MEM_BASE,
-   SEP_BOOT_ROM_MEM_BASE)`). The bounds are exclusive of the ROM itself and of every other
-   region.
+   lies within a permitted BL1 execution region — ICCM
+   (`[SEP_ICCM_MEM_BASE, SEP_ICCM_MEM_BASE + SEP_ICCM_SIZE)`) or SEP SRAM
+   (`[SEP_SRAM_MEM_BASE, SEP_SRAM_MEM_BASE + SEP_SRAM_SIZE)`). Both bounds are exclusive of
+   the ROM itself and of every other region. The two are tested separately: accepting only
+   one would reject a legitimate handler running from the other.
 4. [[req-SEP-ROM-CPU-130]]*[SEP-ROM-CPU-130]* Before jumping to a valid handler, the ROM
-   shall poison `warm_scratch[0]` (write 0) so a subsequent reset cannot re-enter a stale
+   shall poison `cold_scratch[7]` (write 0) so a subsequent reset cannot re-enter a stale
    handler. The jump is taken with CSRs at reset values; the warm handler owns all further
    setup (sp, `mtvec`, PMP).
 5. [[req-SEP-ROM-CPU-140]]*[SEP-ROM-CPU-140]* An out-of-range non-zero value shall cause the
@@ -706,16 +711,16 @@ skinparam ActivityDiamondBackgroundColor #fdf6e3
 start
 :hart 0 at _start;
 :set mtvec, configure MRAC;
-:read warm_scratch[0];
+:read cold_scratch[7];
 if (value == 0 ?) then (yes — cold boot)
-  :clear warm_scratch[0];
+  :clear cold_scratch[7];
   :cold boot init
   (stack, filter, PMP, scrub,
   .data/.bss, rom_main);
   detach
 else (no)
   if (SRAM_BASE <= value < ROM_BASE ?) then (yes — valid)
-    :poison warm_scratch[0] (write 0);
+    :poison cold_scratch[7] (write 0);
     :jr to BL1 warm handler;
     detach
   else (no — invalid)
@@ -730,7 +735,7 @@ endif
 ====
 The warm path intentionally performs *no* security re-validation: it never touches the
 manifest, fuses, or crypto. Its security rests on (a) the range check above, (b) the fact
-that only software that has already passed secure boot (BL1) can write `warm_scratch[0]`,
+that only software that has already passed secure boot (BL1) can write `cold_scratch[7]`,
 and (c) `warm_scratch[]` being reset on any cold (full) reset.
 ====
 
@@ -1543,8 +1548,9 @@ type as follows:
   the ROM shall copy it from its staged location to the entry's `load_addr` and jump to
   `load_addr + entry_point`, where `entry_point` is a byte offset into the image.
 * [[req-SEP-ROM-MAN-060]]*[SEP-ROM-MAN-060]* Before the copy, the ROM shall validate the
-  placement from the (already hash-verified) TOC entry: `[load_addr, load_addr + length)`
-  shall lie entirely within *one permitted execution region*, `entry_point < length`, and the
+  placement from the (already hash-verified) TOC entry: `length` shall be non-zero,
+  `[load_addr, load_addr + length)` shall lie entirely within *one permitted execution
+  region*, `entry_point < length`, and the
   copy shall not be permitted to corrupt the staged manifest before validation completes (the
   copy happens strictly after all checks pass, at hand-off). This validation runs *per slot*,
   within the retry unit (<<req-SEP-ROM-RETRY-030,SEP-ROM-RETRY-030>>), so a slot whose BL1 is
@@ -2831,7 +2837,7 @@ the governing "shall".
 [frame=ends]
 |===
 |*Check* |*Inputs* |*Pass condition* |*Failure code* |*Ordering / requirement*
-|Warm-handler range |`warm_scratch[0]` |`0` (cold) or within SEP SRAM |hang (no code)
+|Warm-handler range |`cold_scratch[7]` |`0` (cold) or within ICCM or SEP SRAM |hang (no code)
 |Before any DCCM access. CPU-110..140
 |Runtime init |`.data`/`.bss` sentinels |pattern intact, bss zero |`0xB001` |First check in
 `rom_main`. CPU-060
@@ -2876,7 +2882,8 @@ keys zeroized |`OCA_FAIL_DECRYPT` |Only after ciphertext hash. PL-030/-070/-080
 |TOC structure |TOC header/entries |count/bounds/alignment/overlap rules
 |`OCA_FAIL_PAYLOAD_TOC` |PL-010
 |BL1 presence + placement |TOC entry type, `load_addr`, `entry_point`, `length` |`BLSTAGE1`
-entry present; `[load_addr, load_addr+length)` within SEP SRAM; `entry_point < length`
+entry present; `length` non-zero; `[load_addr, load_addr+length)` within one permitted
+execution region; `entry_point < length`
 |`OCA_BOOT_ERR_NO_BL1`/`_BL1_BAD_ADDR`/`_BL1_TOO_LARGE` |PL-020, MAN-050/-060
 |Demotion authority |validated manifest, LC |PROD_END lock-out; pairs per
 <<tbl:demotion_bits>> |— (directive, not check) |Only post-validation, one-shot.
@@ -3061,9 +3068,9 @@ windows |<<sec:cpu_init>>
 |<<sec:cpu_init>>
 |<<req-SEP-ROM-CPU-100,SEP-ROM-CPU-100>> |SRAM + ICCM cleared before external content
 |<<sec:cpu_init>>
-|<<req-SEP-ROM-CPU-110,SEP-ROM-CPU-110>> |Warm-scratch read before any DCCM access
+|<<req-SEP-ROM-CPU-110,SEP-ROM-CPU-110>> |Warm-handler slot read before any DCCM access
 |<<sec:warm_reset>>
-|<<req-SEP-ROM-CPU-120,SEP-ROM-CPU-120>> |Warm handler accepted only within SEP SRAM
+|<<req-SEP-ROM-CPU-120,SEP-ROM-CPU-120>> |Warm handler accepted only within ICCM or SEP SRAM
 |<<sec:warm_reset>>
 |<<req-SEP-ROM-CPU-130,SEP-ROM-CPU-130>> |Poison warm scratch before jump
 |<<sec:warm_reset>>
