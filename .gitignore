@@ -105,3 +105,4 @@ tools/a11y/node_mo#dules/
 tools/a11y/report/
 
 local/
+.direnv/
