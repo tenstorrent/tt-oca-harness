@@ -1,13 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""PROD, selector bit 17 set, BL1 demotion flag CLEAR -> not demoted, locked.
+"""PROD, BL1_DEMOTION_VALID set, ENABLE clear -> not demoted, locked.
 
 Outcome **O3a** of the [C15] decision table in
 ``rom_fw/sep_demotion_decision_base.py``; the PROD stimulus it shares with the
 other three PROD members is in ``rom_fw/sep_demotion_prod_base.py``.
 
 This is the arm where the manifest decides, deciding NOT to demote.
-``selector_bits`` bit 17 is set, so ``rom_main.c`` takes the first arm and
+BL1_DEMOTION_VALID is set, so ``rom_main.c`` takes the first arm and
 copies ``demotion_control`` BL1_DEMOTION_ENABLE -- which is clear -- into
 ``demotion_reg``, printing ``BL1_DEMOTE=0``.
 ``lock_demotion`` keeps its initialiser, so writes DEMOTE_1

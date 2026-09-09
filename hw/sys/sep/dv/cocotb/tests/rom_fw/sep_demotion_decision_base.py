@@ -18,35 +18,36 @@ and ``rom_fw/sep_demotion_prod_end_base.py``.
 THE MECHANISM, ESTABLISHED ONCE FOR THE WHOLE DEMOTION GROUP
 ============================================================================
 
-The decision is ``rom_main.c`` and it reads exactly FOUR inputs:
+The decision is ``rom_main.c`` ``[C15]`` and it reads exactly FOUR inputs, three of
+which are bits of one signed manifest field:
 
-  ==========================================  ==============
-  input                                       source
-  ==========================================  ==============
-  ``lc_state``                                eFuse LC_STATE
-  ``usage_constraints.selector_bits`` bit 17  manifest
-  ``demotion_control`` BL1_DEMOTION_ENABLE           manifest
+  ========================================  ==================
+  input                                     source
+  ========================================  ==================
+  ``lc_state``                              eFuse LC_STATE
+  ``demotion_control`` BL1_DEMOTION_VALID   manifest
+  ``demotion_control`` BL1_DEMOTION_ENABLE  manifest
   ``demotion_control`` BL2 request          manifest
-  ==========================================  ==============
+  ========================================  ==================
 
-Bit positions: ``SELECTOR_BIT_BL1_DEMOTION`` is 17 because
-``SELECTOR_BIT_LIFE_CYCLE_STATES`` is ``DEVICE_ID_NUM_WORDS * 2`` = 16
-(``oca_layout.h``); ``USAGE_CONSTRAINTS_FLAGS_BIT_BL1_DEMOTION`` is 0
-(``oca_layout.h``); ``BL2_DEMOTION_ENABLE`` is 0 (``oca_layout.h``).
+``demotion_control`` is a u16 at manifest offset 172, inside the signed region.
+Bits 0..3 are BL1_DEMOTION_VALID, BL1_DEMOTION_ENABLE, BL2_DEMOTION_VALID and
+BL2_DEMOTION_ENABLE (``oca_layout.h``, and ``oca_boot.h``'s ``OCA_DEMOTE_*``
+mirror them). The BL2 *request* is the conjunction of its pair: a manifest that
+never stated the pair has asked for nothing, and the ROM treats a lone ENABLE as
+no request at all.
 
 **THE COLLAPSE, AND IT IS THE MOST IMPORTANT THING IN THIS FILE.** ``rom_main.c``
-short-circuits on ``lc_state == LC_STATE_PROD_END`` and returns from the block having
-read NONE of the three manifest inputs -- the selector bit is not consulted until
-, ``demotion_control`` not until, and ``demotion_control`` not until
-, all inside the ``else``. So **at PROD_END every combination of
-the three manifest inputs produces the identical outcome.** The tracker holds five
-PROD_END demotion items; they are FIVE STIMULI ON ONE OBSERVABLE, not five coverage
-points. This member covers that outcome once, under the name the tracker gives it,
-and says so.
+short-circuits on ``lc_state == LC_STATE_PROD_END`` and returns from the block
+having read NO manifest input at all: ``demotion_control`` is only fetched inside
+the ``else``. So **at PROD_END every value of the field produces the identical
+outcome.** The tracker holds five PROD_END demotion items; they are FIVE STIMULI
+ON ONE OBSERVABLE, not five coverage points. This member covers that outcome
+once, under the name the tracker gives it, and says so.
 
 The seven distinct observables of the whole block, derived from the source and
-confirmed here on RTL. ``sel`` = ``demotion_control`` BL1_DEMOTION_VALID, ``auth`` =
-``demotion_control`` BL1_DEMOTION_ENABLE, ``bl2`` = the ``demotion_control`` BL2 request.
+confirmed here on RTL. ``sel`` = BL1_DEMOTION_VALID, ``auth`` =
+BL1_DEMOTION_ENABLE, ``bl2`` = the BL2 request.
 
 **THE REGISTER COLUMNS ARE ``(demote, lock)`` TUPLES, IN THE SAME FORM AS
 ``expect_demote_1`` / ``expect_demote_2`` BELOW.** They are deliberately NOT the
@@ -147,7 +148,7 @@ chain and the disclosures in one place for all eight members.
 
 **R4's TWO PROD_END ITEMS ARE COVERED-BY-O1 AND SAY SO.** They are
 ``no_flag_prod_end`` (all three manifest inputs clear) and
-``no_flag_prod_end_sel_bit_set`` (selector bit 17 set). Both produce the O1 outcome
+``no_flag_prod_end_sel_bit_set`` (BL1_DEMOTION_VALID set). Both produce the O1 outcome
 that R3's ``auth_flag_0_prod_end`` member already covers, so neither adds a ROM path.
 They are not equally weak, and the difference is in what a FAILURE would mean rather
 than in the outcome: with ``sel = 1`` at PROD_END the O1 outcome is reachable only if

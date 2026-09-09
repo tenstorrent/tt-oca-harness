@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""PROD + selector bit 17 + BL1 demotion flag -> DEMOTE_1 demoted and locked.
+"""PROD + BL1_DEMOTION_VALID + ENABLE -> DEMOTE_1 demoted and locked.
 
 Outcome **O2a** of the [C15] decision table in
 ``rom_fw/sep_demotion_decision_base.py``, which is where the mechanism, the collapse
 map and the disclosed gaps are written out once. Read that first.
 
-This is the row where the manifest actually decides. ``selector_bits`` bit 17 is set,
+This is the row where the manifest actually decides. BL1_DEMOTION_VALID is set,
 so ``rom_main.c`` takes the first arm and copies
 ``demotion_control`` BL1_DEMOTION_ENABLE into ``demotion_reg``;
 the ``demotion_control`` BL2 request is clear, so ``BL2_DEMOTE_DEC=0``; and ``lock_demotion`` keeps its
@@ -104,7 +104,7 @@ _LC_STATES_PROD_ONLY = 1 << mm.LIFECYCLE_STATE_BITS["PROD"]
 
 @pyuvm.test()
 class sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test(sep_demotion_decision_base):
-    """PROD, selector bit 17 set, BL1 demotion flag set -> DEMOTE_1 demoted and locked."""
+    """PROD, BL1_DEMOTION_VALID set, ENABLE set -> DEMOTE_1 demoted and locked."""
 
     efuse_preload = EFUSE_DIR / "sep_efuse_lc_prod_sboot_dis.toml"
     expected_lc_raw = _LC_RAW_PROD

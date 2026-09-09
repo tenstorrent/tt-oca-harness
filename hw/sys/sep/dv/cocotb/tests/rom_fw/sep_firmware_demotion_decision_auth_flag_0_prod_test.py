@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""PROD, selector bit 17 CLEAR, BL1 demotion flag set -> the flag is IGNORED.
+"""PROD, BL1_DEMOTION_VALID clear, ENABLE set -> the flag is IGNORED.
 
 Outcome **O5** of the [C15] decision table in
 ``rom_fw/sep_demotion_decision_base.py``; the PROD stimulus it shares with the
@@ -9,12 +9,12 @@ first of those for the mechanism and the second for ``+SECURE_BOOT_DIS``.
 
 **THIS IS A NEGATIVE CONTROL, AND THAT IS ITS WHOLE VALUE.** ``+AUTH_FLAG_0``
 sets ``demotion_control`` BL1_DEMOTION_ENABLE -- the BL1 demotion request -- while
-``selector_bits`` bit 17 stays clear. ``rom_main.c`` therefore does not take
+BL1_DEMOTION_VALID stays clear. ``rom_main.c`` therefore does not take
 the first arm, never executes, and the request is discarded: BL0
 takes the ``else``, prints ``DEMOTE: BL2 deferred, lock non-demoted``
 , writes DEMOTE_1 **not demoted, locked**.
 
-A ROM that read ``demotion_control`` BL1_DEMOTION_ENABLE without first testing the selector bit -- or that
+A ROM that read ``demotion_control`` BL1_DEMOTION_ENABLE without first testing BL1_DEMOTION_VALID -- or that
 ORed the two -- would write ``demote = 1`` here and this testcase would fail on
 the register channel. **The falsifying claim is ``expect_demote_1 = (0, 1)``
 against a manifest that asked for demotion.**
@@ -64,7 +64,7 @@ from rom_fw.sep_demotion_prod_base import sep_demotion_prod_base
 
 @pyuvm.test()
 class sep_firmware_demotion_decision_auth_flag_0_prod_test(sep_demotion_prod_base):
-    """PROD, selector bit clear, BL1 flag set: request ignored, DEMOTE_1 (0, 1)."""
+    """PROD, BL1_DEMOTION_VALID clear, ENABLE set: request ignored, DEMOTE_1 (0, 1)."""
 
     # +LC_STATE_PROD +AUTH_FLAG_0, no +SET_SELECTOR_BIT_17 and no +UNAUTH_FLAG_0
     # (bootcode_regression.yaml).

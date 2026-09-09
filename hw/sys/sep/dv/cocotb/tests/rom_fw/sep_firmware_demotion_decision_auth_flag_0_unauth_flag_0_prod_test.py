@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""PROD, selector bit CLEAR, BL2 demotion requested -> DEMOTE_1 left UNWRITTEN.
+"""PROD, BL1_DEMOTION_VALID clear, BL2 demotion requested -> DEMOTE_1 left UNWRITTEN.
 
 Outcome **O4** of the [C15] decision table in
 ``rom_fw/sep_demotion_decision_base.py``; the PROD stimulus it shares with the
@@ -19,7 +19,7 @@ where:
     DEMOTE_1 is left entirely unwritten at its reset value.
 
 ``+AUTH_FLAG_0`` is also set and is IGNORED, for the same reason as in the O5
-sibling: ``selector_bits`` bit 17 is clear, so ``rom_main.c`` does not take
+sibling: ``demotion_control`` BL1_DEMOTION_VALID is clear, so ``rom_main.c`` does not take
 the first arm and ``demotion_control`` is never read. The deferral is
 decided by the ``demotion_control`` BL2 request alone (, tested).
 

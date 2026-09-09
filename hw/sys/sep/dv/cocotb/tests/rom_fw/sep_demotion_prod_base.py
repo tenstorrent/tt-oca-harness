@@ -165,7 +165,7 @@ def outcome_for(sel: int, auth: int, bl2: int) -> dict:
 
     Transcribed from the ROM's own control flow, not from any run:
 
-      * ``rom_main.c`` ``if (sel & (1 << SELECTOR_BIT_BL1_DEMOTION))`` ->
+      * ``rom_main.c`` ``if (dc & OCA_DEMOTE_BL1_VALID)`` ->
         ``demotion_reg = flags[0]``  and ``BL1_DEMOTE=``;
         ``lock_demotion`` keeps its initialiser, so writes
         DEMOTE_1 ``(demote = auth, lock = 1)``;
@@ -264,7 +264,7 @@ class _demotion_prod_mixin:
                 "transcription of the ROM's control flow"
             )
         # Value forbids, derived from the member's own inputs so that a member
-        # cannot pass on a neighbouring row's console. When the selector bit is
+        # cannot pass on a neighbouring row's console. When BL1_DEMOTION_VALID is
         # clear the ROM never prints BL1_DEMOTE= at all, and the base already
         # forbids that whole token, so only the BL2 value needs a forbid here.
         value_forbids = [f"BL2_DEMOTE_DEC={1 - cls._BL2}"]
@@ -358,7 +358,7 @@ class sep_demotion_prod_base(_demotion_prod_mixin, sep_demotion_decision_base):
         """Read all five mutated fields back out of the packed image.
 
         Not duplication of the console. The ROM echoes ``demotion_control`` BL1_DEMOTION_ENABLE only when the
-        selector bit is set and never echoes the selector bit itself, so on three
+        BL1_DEMOTION_VALID is set and never echoes VALID itself, so on three
         of the four members at least one input is invisible in the log and a
         stimulus that silently failed to land would produce exactly the log a
         correct run produces. The lesson is

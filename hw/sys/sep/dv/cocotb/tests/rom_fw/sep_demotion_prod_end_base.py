@@ -11,7 +11,7 @@ EVERY MEMBER OF THIS BASE PRODUCES THE SAME OUTCOME, BY CONSTRUCTION
 
 ``rom_main.c`` short-circuits on ``lc_state == LC_STATE_PROD_END`` and returns
 from the block having read NONE of the three manifest demotion inputs -- the
-selector bit is not consulted until, ``demotion_control`` not
+``demotion_control`` is not read at all: the block returns before
 until, and ``demotion_control`` not until, all inside the ``else`` at
 . So the outcome is **O1** for every combination of those three inputs,
 and this base fixes the expected outcome rather than deriving it from a member's
@@ -22,7 +22,7 @@ own docstring and in its status row's ``flow_deviation``.
 What still differs between members, and is therefore still declared per member,
 is the STIMULUS -- and with it what a failure would mean. With ``_SEL = 1`` the
 O1 outcome is reachable only if preempts the selector-bit arm at
-: a ROM that tested the selector bit first would produce O3a, which
+: a ROM that tested BL1_DEMOTION_VALID first would produce O3a, which
 differs on DEMOTE_2 (never written) and prints ``BL1_DEMOTE=0`` and
 ``BL2_DEMOTE_DEC=0`` where O1 prints ``DEMOTE: PROD_END lock``. With all three
 inputs clear there is no such control, because the two orderings agree.
@@ -36,7 +36,7 @@ WHAT THE MEMBERS SHARE
     encoding rule, ``hw/ip/efuse/rtl/efuse_pkg.sv:51-59`` for ``LC_PROD_END``)
     are recorded in the preload itself.
   * Both slots' ``life_cycle_states`` narrowed from the shipped ``0x7`` to
-    PROD_END only, and both re-sealed. ``selector_bits`` bit 16 is set in the
+    PROD_END only, and both re-sealed. This base sets the chiplet lifecycle selector bit in the
     shipped image, so ``oca_boot.c`` maps the live LC state into
     that bitmap and refuses the manifest with ``LC_USAGE_CONSTRAINT_FAIL`` if the
     bit is clear. The boot therefore cannot complete unless the ROM decoded raw
@@ -86,7 +86,7 @@ class sep_demotion_prod_end_base(sep_demotion_decision_base):
     # Subclass contract: the three manifest demotion inputs this member plants.
     # The ROM reads none of them on this path -- that IS the property under test --
     # so they are asserted from the artefact instead.
-    _SEL = 0  # usage_constraints.selector_bits bit 17
+    _SEL = 0  # demotion_control BL1_DEMOTION_VALID
     _AUTH = 0  # demotion_control bit 0
     _BL2 = 0  # demotion_control bit 0
 

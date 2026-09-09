@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""PROD, selector bit 17 set, BOTH demotion flags set -> BL1 wins and locks.
+"""PROD, BL1_DEMOTION_VALID set, BOTH demotion flags set -> BL1 wins and locks.
 
 Outcome **O2b** of the [C15] decision table in
 ``rom_fw/sep_demotion_decision_base.py``; the PROD stimulus it shares with the
@@ -15,16 +15,16 @@ bit routes into the first arm, so ``demotion_reg`` is taken from ``demotion_cont
  is an ``else if`` and is therefore unreachable in this run.
 
 The falsifying claim is on the LOCK bit. A ROM that let the ``demotion_control`` BL2 request reach
-``lock_demotion`` -- by testing it before the selector bit, or by clearing the
+``lock_demotion`` -- by testing it before BL1_DEMOTION_VALID, or by clearing the
 lock whenever the BL2 flag is set -- would produce ``DEMOTE_NOT_LOCKED`` and
 ``lcc_demote_lock_1_probe_o == 0``, i.e. outcome O4. **This member requires
 DEMOTE_1 to read (demote 1, lock 1) with ``DEMOTE_LOCKED`` on the console and
 ``DEMOTE_NOT_LOCKED`` forbidden, so that ROM fails here and only here.** R3's O2a
 sibling cannot make the claim: it leaves the ``demotion_control`` BL2 request clear, so nothing is
-competing with the selector bit.
+competing with BL1_DEMOTION_VALID.
 
 **AND THE ROM RESOLVES MORE THAN THE REFERENCE CHECKS.** Grendel's checker
-inspects the BL2 flag only when the selector bit is CLEAR
+inspects the BL2 request only when BL1_DEMOTION_VALID is CLEAR
 (``sep_demotion_uid_checker.py``); with it set it looks at
 ``AUTH_FLAG_0`` alone, so O2a and O2b produce an identical
 ``expected_patterns`` list there and the reference cannot tell them apart. This
