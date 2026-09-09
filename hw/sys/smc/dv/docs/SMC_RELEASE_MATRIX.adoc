@@ -6,7 +6,7 @@
 
 This chapter records the #502 decision. The mandatory qualification set
 is the *live* CI matrix: `--dut smc --items smoke` on Verilator for PR,
-nightly, and weekly. It is not revised to `canonical_top6`.
+nightly, and weekly. It is not narrowed to a smaller tier.
 
 `--dut smc` already instantiates `smc_wrapper`. There is no separate
 `--dut smc_wrapper` job.
@@ -17,28 +17,26 @@ nightly, and weekly. It is not revised to `canonical_top6`.
 [cols="2,2,1,1,3",options="header",]
 |===
 |Tier |Command |Group size |Seeds |Blocks
-|PR |`--dut smc --tool verilator --items smoke` |35 |1 |PR merge (`sim.yml`)
-|Nightly |`--dut smc --tool verilator --items smoke` |35 |3 |v0.5.0 release qualification (`regress.yml`)
-|Weekly |`--dut smc --tool verilator --items smoke` |35 |3 |Coverage / dashboard; same group
+|PR |`--dut smc --tool verilator --items smoke` |37 |1 |PR merge (`sim.yml`)
+|Nightly |`--dut smc --tool verilator --items smoke` |37 |3 |v0.5.0 release qualification (`regress.yml`)
+|Weekly |`--dut smc --tool verilator --items smoke` |37 |3 |Coverage / dashboard; same group
 |===
 
 Issue text that said `smoke` = 36 and still seats
 `smc_i3c_to_fabric_test` is stale. #1448 dropped that decode leaf.
-Live `testlists/all.toml` is `smoke` = 35, `canonical_top6` = 5,
-`canonical_top10` = 8, `canonical_top20` = 17. `smoke` already contains
-every `canonical_top20` name plus SAMPLE observe.
+Live `testlists/all.toml` is `smoke` = 37.
 
-Do not replace the nightly with `canonical_top6`. That would drop the
-credited FLR / I2C / iJTAG / fabric-filter / persist leaves from the
-mandatory job.
+No testlist defines a `canonical_top6` / `top10` / `top20` tier;
+`SMC_SCOPE_TRACEABILITY.adoc` records `per_ip` (99) as their successor. Group
+sizes here are the ones `testlists/` actually defines.
 
 [[smc-release-credit]]
 === Credit versus the CI group
 
 `smoke` is debug breadth. Feature credit is the SCOPE YES rows, not
 every SAMPLE observe name in the group. `smc_i3c_to_fabric_test` is
-HCI_VERSION decode (`proxy=True`) and is not in `smoke` / `canonical_top*`
-/ `project_p0`. Stub-signature SLVERR members are gone.
+HCI_VERSION decode (`proxy=True`) and is not in `smoke` / `functional`.
+Stub-signature SLVERR members are gone.
 
 Residual CI scoping (coverage gate, Verilator CI honesty) stays on
 #507 / #508. This chapter does not absorb them.

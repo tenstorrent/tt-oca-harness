@@ -25,7 +25,7 @@ I3C CCC/IBI / real-core protocol, adopter PLL/PVT OKAY wraps, and TB-glue
 demos (e.g. hardcoded DFD capture token) are not ported
 — not reportable as feature PASS. `smc_i3c_to_fabric_test` is
 **decode only** (fabric → real OCA core `HCI_VERSION`) and is **not**
-in `smoke` or `project_p0`. Run it via `i3c_depth`
+in `smoke` or `functional`. Run it via `i3c_depth`
 or by name. Checklist:
 
 **`allow_timeout` review gate:** default `False`. New `allow_timeout=True`
@@ -33,11 +33,37 @@ call sites need a one-line rationale comment at the call (what hangs without
 it, and why that is still a real DUT path). Inventory: `smc_*_utils.py` /
 cluster helpers — do not add silently in PRs.
 
+## Prerequisites
+
+| Need | Why | Notes |
+|---|---|---|
+| Verilator 5.050 | the functional acceptance backend | `module load verilator/5.050`. 5.050 specifically: 5.046 miscompiles the C++ init of nested unpacked structs this TB elaborates |
+| g++ 13.2.1 | C++20 for cocotb `-fcoroutines` | `module load gcc/13.2.1`. RHEL-8's default g++ 8.5 fails with `unrecognized command line option '-fcoroutines'` |
+| Python ≥ 3.11 | launcher | `tools/dv/run_dv.py` bootstraps the locked uv-managed DV env itself (root `uv.lock`, `dv` group → cocotb + pyuvm + cocotbext-axi) |
+| RISC-V bare-metal GCC | firmware-boot tests only (`fw/`) | not needed for the `smoke` tag or any CSR-only test |
+| VCS | `--framework uvm`, and `--cov` coverage | Verilator has no SV-UVM support; see `frameworks` in `simulators.toml` |
+
+Environment variables the DV code itself reads (all optional — every one has a
+default, and the runner sets the first three):
+
+| Variable | Effect |
+|---|---|
+| `RANDOM_SEED` | seeds every randomized scenario and the eFuse image regeneration; a run is reproducible from it |
+| `OCH_ROOT` | repo root override for asset and register-map lookup |
+| `OCAH_SIM_BUILD_DIR` | exported sim build directory, used to locate the elaborated model |
+| `SMC_DV_RUN_LOGDIR` | where a sequence writes its coverage artefact |
+| `COCOTB_RESULTS_FILE` | cocotb `results.xml` path; PASS/FAIL classification reads it |
+
+The SV-UVM loop knobs (`SMC_TEST_LOOPS`, `SMC_<TEST>_LOOPS`) are **plusargs**,
+not environment variables — see the `--framework uvm` section.
+
 ## Present but not enrolled
 
-These modules exist under `cocotb/tests/` and are not in `testlists/all.toml`.
-The blocker tag lives in each file's docstring (`# deferred: <reason>`). SMU's
-matching catalog is `hw/sys/smu/dv/cocotb/tests_deferred/`.
+These 12 modules exist under `cocotb/tests/` and are in no testlist, so they
+are not in `all`. The blocker tag lives in each file's docstring
+(`# deferred: <reason>`); `testlists/all.toml` carries the same list beside the
+`all` group, and `docs/SMC_DEFERRED_DISPOSITION.adoc` is the disposition of
+record. SMU's matching catalog is `hw/sys/smu/dv/cocotb/tests_deferred/`.
 
 | Test | Reason |
 |------|--------|
@@ -51,10 +77,11 @@ matching catalog is `hw/sys/smu/dv/cocotb/tests_deferred/`.
 | `smc_pvt_droop_test` | `rtl_placeholder` |
 | `smc_sideband_avsbus_octs_bfm_test` | `fake_bfm` — no pad BFM |
 | `smc_dfd_dbs_fault_inject_test` | `tb_glue` — hardcoded capture token, not `smc_dfd_wrap` |
+| `smc_captured_straps_test` | `no_dut_port` — `smc_wrapper` declares no `captured_straps_i`, so there is no tap to drive |
+| `smc_clint_csr_test` | the `0xC8xx_xxxx` cluster-local window folds onto `0xC0xx_xxxx` on SEP_IN, so the reads never reach the CLINT |
 
-Two enrolled carve-outs keep their measured reason next to the stimulus:
-`HYST_LEGAL_LO` in `smc_clk_multi_window_test_seq.py` (0..7) and the
-`smc_clint_csr_test` docstring (cluster-local fold).
+One enrolled carve-out keeps its measured reason next to the stimulus:
+`HYST_LEGAL_LO` in `smc_clk_multi_window_test_seq.py` (0..7, #1235).
 
 ## Single DUT
 
@@ -84,25 +111,69 @@ so the bare DUT name selects the wrapper-based TB.
 | Concern | Handling |
 |---------|----------|
 | PeakRDL nested hwif structs break Verilator C++ codegen | `disable_public_flat_rw` + `smc_public_scope.vlt`; the real RTL compiles |
-| Product `och_prim` `prim_sync2/3` use private `.i_CK` ports, unlike the OSS OT-style cells | DV `prim_sync*` tooling stubs remap them; product RTL is untouched |
+| `och_prim` `prim_sync2/3` start with X on the first flop stage and the X persists, because the wrapper port exposes no `rst_ni` | DV `prim_sync*` tooling stubs are the same two-stage flop with explicit `initial` values, so the synchronizer resolves without an external reset; product RTL is untouched. The ports are identical (`i_clk` / `i_d` / `o_q`) — port remapping is **not** the reason, and `.i_CK` appears only in the `prim_sync*r` resettable variants, which these stubs do not replace |
 
 ## Layout
 
+Every directory and top-level file under `dv/` is listed here. This table is
+the authoritative layout; `docs/SMC_TB_ARCH.adoc` sketches a subset and defers
+to this one.
+
 ```
 hw/sys/smc/dv/
-├── cocotb/                 # PyUVM env, seq_lib, tests
-├── uvm/                    # SV-UVM env, seq_lib, tests (--framework uvm, VCS)
-├── models/                 # pll/pvt PeakRDL wraps (adopter placeholders)
-├── tb/                     # tb_top.sv (cocotb + UVM shapes), smc_tb_signal_list.svh,
-│                           # smc_tb_if.sv, verilator_stubs/
-├── testlists/
-├── assets/                 # preloaded memory/fuse images the testlists pass by
-│                           # plusarg (ROM hex, eFuse shadow, scratch stripes)
-├── fw/                     # C firmware the CPU-boot scenarios execute; built by
-│                           # the toolchain container, not by the DV runner
-├── cov/                    # functional-coverage collection and merge inputs
-├── docs/                   # VPLAN, FCOV and TB architecture
-└── smc_sim_cfg.toml        # both frameworks: [frameworks.cocotb] + [frameworks.uvm]
+├── cocotb/                 # flow-first: PyUVM env + stimulus + tests
+│   ├── assertions/         #   cocotb Python checkers
+│   ├── env/                #   agents, scoreboard, monitors, env cfg
+│   ├── seq_lib/            #   sequences (the VPLAN scenarios) + shared VIP helpers
+│   └── tests/              #   @pyuvm.test() entries, one per VPLAN testcase
+├── uvm/                    # SV-UVM realization (--framework uvm, VCS)
+│   ├── env/                #   smc_env_pkg: types, cfgs, ref model, scoreboard, env
+│   ├── seq_lib/            #   smc_seq_lib_pkg: operations + scenario sequences
+│   └── tests/              #   thin test classes + smc_tests.sv include manifest
+├── cov/                    # coverage collateral: cov/config/<tool>/ (questa,
+│                           #   vcs, verilator, xcelium) and cov/sv/. --cov is
+│                           #   graded on VCS; see docs/SMC_FCOV.adoc
+├── docs/                   # index.adoc plus the role chapters: TB_ARCH (test
+│                           #   development, environment, run recipes), VPLAN,
+│                           #   FCOV, and the scope/disposition/signoff records
+├── models/                 # SMC-local sim models: axil_okay_slv.sv,
+│                           #   smc_cpu_mem_dv.sv (observability counters + the
+│                           #   time-0 ROM/scratch image backdoors), the pll/pvt
+│                           #   adopter placeholder wraps, and models/regs/ their
+│                           #   PeakRDL sources + generated views.
+│                           #   Each stand-in is declared in models/README.md
+├── fw/                     # OSS-owned SMC firmware built into the CPU-boot
+│                           #   tests: common/ drivers/ include/ link/ startup/
+│                           #   scripts/ tests/ plus fw.mk, toolchain.mk,
+│                           #   postprocess.mk. Needs the RISC-V toolchain; not
+│                           #   required by the `smoke` tag. The Boot ROM is NOT
+│                           #   here — it lives outside DV at ../bootrom/prod/
+├── efuse_preload/          # generator for the committed eFuse OTP images:
+│                           #   efuse_schema.toml declares the fields,
+│                           #   configurations/*.toml an image, and
+│                           #   generate_efuse_preload.py / randomize_efuse.py
+│                           #   emit the assets/ hex. Build-time tooling, not
+│                           #   part of any test's proof path
+├── assets/                 # the committed images those generators produce plus
+│                           #   the ROM/ECC ones: smc_efuse_default.hex,
+│                           #   smc_rom_default.hex, min_pass.rom.hex,
+│                           #   min_pass.ecc.hex, default_efuse_shadow_reg.preload
+├── tb/                     # DUT-only top + helper RTL: tb_top.sv (module
+│                           #   smc_uvm_top, one module with a cocotb pin shape
+│                           #   and an SV-UVM harness shape),
+│                           #   smc_tb_signal_list.svh (every TB signal declared
+│                           #   once, shared by both shapes), smc_tb_if.sv,
+│                           #   smc_public_scope.vlt, verilator_stubs/
+├── testlists/              # native TOML testlists: all.toml aggregates the
+│                           #   per-feature leaves
+├── smc_sim_cfg.toml        # sole launch config: build/filelist manifest, run
+│                           #   modes, tool knobs, [frameworks.cocotb] +
+│                           #   [frameworks.uvm]
+├── smc_sim.core            # optional FuseSoC/CAPI-2 view for an external
+│                           #   consumer; run_dv.py does not parse it
+├── build/                  # generated: per-tool models and build/runs/<run-id>/
+│                           #   logs (gitignored, never committed)
+└── README.md
 ```
 
 `assets/`, `fw/`, `models/` and `uvm/` are outside the five directories the DV
@@ -170,7 +241,10 @@ predicted by `smc_scratch_csr_ref_model` and paired by the always-on
 # without it the runner selects the cocotb-only scenarios and stops before compiling.
 python3 tools/dv/run_dv.py --dut smc --framework uvm --build-only --skip-unimplemented
 
-# Full regression: every test this package defines.
+# Full single-instance regression: the `all` group, 149 of the 156 enrolled
+# testcases. Not every test the package defines -- 5 build a different DUT
+# (`dual_all` / `dual_smoke` / `occp_dual` / `occp_boot`) and 2 are held out
+# against a filed RTL issue. `testlists/all.toml` names all 7 and why.
 python3 tools/dv/run_dv.py --dut smc --items all --tool verilator --regress
 
 # PyUVM (cocotb) and SV-UVM, same logical scenario name

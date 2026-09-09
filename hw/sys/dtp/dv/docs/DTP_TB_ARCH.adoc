@@ -298,7 +298,7 @@ from the observation under check.
 [cols=",,,,",options="header",]
 |===
 |Feature |Reference model (model it holds) |Observed stream |Contract |Required by
-|`ir_decode` |`dtp_ir_decode_ref_model` (`dtp_jtag_ir_model`) on the JTAG event stream and the reconstructed IR scans |`dtp_tb_if.inst_decoded`, sampled when the expected item arrives |Once a plain 6-bit instruction becomes active (the cycle leaving Update-IR), the decoded one-hot equals `1 << instruction` |every JTAG-driving test (default)
+|`ir_decode` |`dtp_ir_decode_ref_model` (`dtp_jtag_ir_model`) on the JTAG event stream and the reconstructed IR scans |`dtp_tb_if.inst_decoded`, sampled when the expected item arrives |Once an instruction becomes active (the cycle leaving Update-IR), the decoded one-hot equals `1 << instruction`; the active instruction is the plain 6-bit scan's opcode, or the Capture-IR pattern (the IDCODE opcode) when the scan reaches Update-IR without a Shift-IR cycle |every JTAG-driving test (default)
 |`idcode` |`dtp_idcode_ref_model` (`dtp_jtag_ir_model`) on the scan and event streams |Reconstructed DR scans (TDO bits) |While IDCODE is active (after TAP reset or an explicit load), the shifted-out low 32 bits equal the DTP device identification |IDCODE, sanity, reset-family tests
 |`bypass` |`dtp_bypass_ref_model` (`dtp_jtag_ir_model`) on the scan and event streams |Reconstructed DR scans (TDO bits) |Under a bypass-class instruction the TDO is TDI delayed by one TCK; INV_BYPASS the inverted delayed image behind a captured 1; ZERO_LENGTH_BYPASS TDI itself |bypass, inverted bypass, zero-length bypass, undefined-instruction, sanity tests
 |`xtrig_csr` |`dtp_xtrig_csr_ref_model` (`dtp_xtrig_csr_model`) on the XTRIG monitor stream |Passive XTRIG AXI-Lite monitor items (read data) |Every OKAY read of a CSR with a readback contract (CTM selects, CTP CONFIG, STRETCH_MULT) equals the shadow rebuilt from the observed writes and cleared on every reset (`dtp_tb_if` reset counters) |every cross-trigger test but the decode-error scenario
@@ -310,10 +310,13 @@ from the observation under check.
 Composed scans (a wider instruction scan spanning the STAP chain, or a DR
 scan after one) make the primary-TAP instruction unrecoverable at this level,
 so the JTAG reference models stand down until the next plain instruction load
-or TAP reset. STATUS reads carry no data contract. A reference model on a
-one-to-one stream publishes one expected item per observed item, marking the
-ones outside its contract as carrying none, so the two streams stay in
-lockstep; the bridge request model publishes one item per launched
+or TAP reset. An instruction scan that reaches Update-IR without a Shift-IR
+cycle latches the Capture-IR pattern, 01 in the two LSBs and zeros above
+(IEEE 1149.1 7.1.1, `jtag_inst_reg`), which is the IDCODE opcode; the models
+track it as an IDCODE load. STATUS reads carry no data contract. A reference
+model on a one-to-one stream publishes one expected item per observed item,
+marking the ones outside its contract as carrying none, so the two streams
+stay in lockstep; the bridge request model publishes one item per launched
 transaction on the lane of its port. The bridge model follows the jtag2axi
 update, capture, and completion rules (single-operation rejection while
 pending, the series address and read budget per CTRL programming, the
