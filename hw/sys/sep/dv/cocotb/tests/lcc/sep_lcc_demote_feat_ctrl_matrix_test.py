@@ -121,8 +121,7 @@ class sep_lcc_demote_feat_ctrl_matrix_test(sep_base_test):
                 f"sip_dbg={(feat_ctrl >> SIP_DBG_BIT) & 1})"
             )
         self.logger.info(
-            "CHK-FUSE-DFT-DIS PASS: %s sep=%d smc=%d "
-            "(sep_fuse_dbg=%d smc_fuse_dbg=%d)",
+            "CHK-FUSE-DFT-DIS PASS: %s sep=%d smc=%d (sep_fuse_dbg=%d smc_fuse_dbg=%d)",
             tag,
             got["sep_fuse_dft_disable"],
             got["smc_fuse_dft_disable"],
@@ -204,9 +203,7 @@ class sep_lcc_demote_feat_ctrl_matrix_test(sep_base_test):
         n += 1
         return n
 
-    async def _program_dis_bits(
-        self, image: SepEfuseImage, sip_mask: int, sys_mask: int
-    ) -> None:
+    async def _program_dis_bits(self, image: SepEfuseImage, sip_mask: int, sys_mask: int) -> None:
         """W1S each mask into the matching SIP_DIS / SYS_DIS word of this image."""
         for name, mask in (("SIP_DIS", sip_mask), ("SYS_DIS", sys_mask)):
             fld = SepEfuseImage.field(name)
@@ -298,9 +295,7 @@ class sep_lcc_demote_feat_ctrl_matrix_test(sep_base_test):
         await self.resense(max_cycles=_MAX_SENSE_CYCLES)
         await self.start_seq(SepLccDemoteSeq(group=2))
         await self.start_seq(SepLccDemoteSeq(group=1))
-        await self._check_cell(
-            image, demote_1=1, demote_2=1, tag="PROD/dis_fuse_dbg/d11"
-        )
+        await self._check_cell(image, demote_1=1, demote_2=1, tag="PROD/dis_fuse_dbg/d11")
         cells += 1
 
         sip1, sys1 = cfg.dis_pinned

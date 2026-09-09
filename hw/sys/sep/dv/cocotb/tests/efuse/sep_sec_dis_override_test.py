@@ -63,9 +63,7 @@ class sep_sec_dis_override_test(sep_base_test):
             # Override is all ones in the chapter and in the RTL (`security_disable_i
             # ? 64'hffff_ffff_ffff_ffff`). That constant is the contract, not a
             # collapse. The fail-closed word above is the contrast.
-            assert feat == M64, (
-                f"{label} FAIL: override golden 0x{feat:016x} is not all ones"
-            )
+            assert feat == M64, f"{label} FAIL: override golden 0x{feat:016x} is not all ones"
         else:
             assert feat not in (0, M64), (
                 f"{label} FAIL: fail-closed golden collapsed to 0x{feat:016x}"
