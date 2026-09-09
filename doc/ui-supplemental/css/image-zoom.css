@@ -122,7 +122,10 @@
     cursor: grabbing;
 }
 
-/* The image itself — transform applied by JS */
+/* The image itself — transform applied by JS.
+   White backing ensures transparent PNG/SVG diagrams remain readable
+   against the dark panel; the stage background shows through around
+   the image when scaled below natural size. */
 .ocah-viewer-img {
     display: block;
     max-width: none;
@@ -130,6 +133,7 @@
     transform-origin: center center;
     user-select: none;
     -webkit-user-drag: none;
+    background: #fff;
 }
 
 /* ---- Keyboard-hint hint text (sr-only equivalent) ---------------------- */

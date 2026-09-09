@@ -600,8 +600,8 @@
    role class [.ptap-module-hierarchy] for styling.
    Allows long identifiers and conditional expressions to wrap naturally
    while providing local horizontal scroll at narrow viewports.
-   The a11y-patches.js script adds tabindex="0" to any scroll container
-   whose scrollWidth > clientWidth, making the area keyboard-operable.
+   The tabindex="0" on the wrapper is set explicitly in the AsciiDoc
+   passthrough HTML, making the scroll area keyboard-operable.
    ======================================== */
 
 /* Scroll wrapper — passthrough div in the AsciiDoc source */
