@@ -124,7 +124,6 @@ int main(void) {
 
     // Note: peripherals_out_of_reset() is no longer needed as peripherals
     // are automatically released from reset
-    // peripherals_out_of_reset();
 
     simputs("\n");
     simputs("################################################\n");

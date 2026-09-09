@@ -629,7 +629,7 @@ everything else.
 
 |*1a* +
 (non-scannable; confidentiality)
-|UIDs (`CHIPLET_UID`, `SIP_UID`, `SYS_UID`); `*_TOKEN_I` JTAG input registers (`SEC_DIS_TOKEN_I`, `RMA_SIP_TOKEN_I`, `RMA_CHIPLET_TOKEN_I`); `CLASS_KEY`
+|UIDs (`CHIPLET_UID`, `SIP_UID`, `SYS_UID`); `*_TOKEN_I` JTAG input registers (`SEC_DIS_TOKEN_I`, `RMA_SIP_TOKEN_I`, `RMA_CHIPLET_TOKEN_I`); `CLASS_KEY`; raw fuse read-back data.
 |No
 |No
 |*Excluded* from all scan chains. *Confidentiality* rationale: these registers hold the actual secrets; the data lives *in* them, so the only safe option is to keep them off every scan chain.
@@ -865,11 +865,20 @@ test and calibration interface, which is reachable only over this path.
 
 |DFT-inserted SMC fuse path |Case 2 `& SMC_FUSE_DBG` |
 
-|SEP / SMC OTP JTAG2AXIL path |*Ungated* |This path reaches only the fuse
-controller's register interface, whose own per-field `LOCKS` read/write access
-control is the enforcement point, so a feature control bit would be redundant.
+|SEP OTP JTAG2AXIL path |*Ungated* |Reaches the whole SEP eFuse interface: the
+shadow register map, the token-input MMRs, and the eFuse interface control
+registers, fuse program and read controls included. No feature control bit gates
+it. Enforcement is per-field `LOCKS` plus a wrapper access policy that, in PROD,
+RMA_SIP, or on an LC differential-decode integrity error, admits only the MMR
+region for both reads and writes, so an RMA token can still be presented.
 `LOCKS` is only in force once sensed, so this depends on nothing on this path
 being able to execute before fuse sensing completes.
+
+|SMC OTP JTAG2AXIL path |*Ungated* |Reaches the whole SMC eFuse interface on the
+same terms, under a stricter access policy. SMC holds no `LC_STATE` fuse field
+of its own; its wrapper decodes the state forwarded from SEP. In PROD or RMA_SIP
+it admits no writes at all and only reads of `CHIPLET_ID` and `PACKAGE_ID`; on an
+integrity error it admits nothing.
 |=======================================================================
 
 Two consequences are worth stating explicitly.

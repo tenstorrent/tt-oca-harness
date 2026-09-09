@@ -24,8 +24,7 @@ class smc_ijtag_basic_test(smc_base_test):
         seq = smc_ijtag_basic_test_seq("ijtag_basic_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
         # Returns the tb_cpu_jtag_tck rising edges it measured at the pin, and
-        # asserts them against MIN_CPU_JTAG_TCK_EDGES inside the helper. Before
-        # round 3 the JTAG scans on this record had NO activity floor at all --
+        # asserts them against MIN_CPU_JTAG_TCK_EDGES inside the helper:
         # `min_csr_accesses` below counts SEP_IN AXI CSR traffic from
         # smc_ijtag_basic_test_seq, which is unrelated to the TAP.
         tck_edges = await check_cpu_jtag_pin_vip()

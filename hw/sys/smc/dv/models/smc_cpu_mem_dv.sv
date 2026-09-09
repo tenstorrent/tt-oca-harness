@@ -12,8 +12,11 @@
 // Provides, for the SMC testbench only:
 //   * observability counters (ROM / scratch read+write / dcache write)
 //   * the firmware mailbox magic detector
-//   * bank0 ECC fault injection, forced onto the macro response so the CPU
-//     consumes the corrupted data
+//   * bank0 ECC fault-injection HOOK: a counter of scratch bank0 reads taken
+//     while ecc_inject_sbe_i / ecc_inject_dbe_i are asserted. It does NOT
+//     corrupt the macro response -- there is no force anywhere in this bench --
+//     so nothing downstream observes DUT SECDED behaviour. Treat the counter as
+//     evidence that the hook is reached and gated, never as ECC coverage.
 //   * the +smc_rom_hex / +smc_scratch_ram_hex time-zero image backdoors
 //
 // The SMU testbenches do not bind it. They load their SMC ROM through
@@ -52,10 +55,26 @@ module smc_cpu_mem_dv
   localparam logic [31:0] FW_MAGIC = 32'hACAF_ACA1;
 
   localparam int unsigned SCRATCH_WORDS = 1 << SMC_4CORE_SCRATCH_RAM_ADDR_WIDTH;
-  localparam int unsigned BANK_STRIPE_BYTES = 64;
-  localparam int unsigned BYTES_PER_ENTRY = 8;
-  localparam int unsigned ENTRIES_PER_STRIPE = BANK_STRIPE_BYTES / BYTES_PER_ENTRY;
-  localparam int unsigned MAX_LINEAR_WORDS = 4096;
+  // Bank/entry decode: smc_scratch_map_pkg, which cites the cluster RTL it was
+  // read out of. Imported rather than restated so the loader and the tb_top
+  // peeks cannot drift apart.
+  localparam int unsigned BANK_STRIPE_BYTES = smc_scratch_map_pkg::SCRATCH_BANK_STRIPE_BYTES;
+  localparam int unsigned BYTES_PER_ENTRY = smc_scratch_map_pkg::SCRATCH_BYTES_PER_ENTRY;
+  localparam int unsigned BANKS_PER_GROUP = smc_scratch_map_pkg::SCRATCH_BANKS_PER_GROUP;
+  localparam int unsigned GROUP_BYTES = smc_scratch_map_pkg::SCRATCH_GROUP_BYTES;
+  // Staging depth for the +smc_scratch_ram_hex backdoor, in 64-bit words.
+  //
+  // 4096 words is 32 KB, and firmware images in this tree already exceed it --
+  // the largest occp_* rom image is over 5000 words. Anything past the end of
+  // this array is dropped by $readmemh, and a truncated image boots into
+  // whatever the tail of it happened to be, so the cap has to sit above the
+  // largest image rather than near it. 32768 words is 256 KB, a quarter of the
+  // 1 MB scratch (NUM_SRAM_BANKS * SCRATCH_WORDS * BYTES_PER_ENTRY), and the
+  // array is per-bank so raising it further costs NUM_SRAM_BANKS times as much
+  // simulator memory.
+  //
+  // Over-length is reported below rather than left silent.
+  localparam int unsigned MAX_LINEAR_WORDS = 32768;
 
   logic        magic_hit_scratch;
   logic        magic_hit_dcache;
@@ -67,8 +86,10 @@ module smc_cpu_mem_dv
   logic [31:0] scratch_ram_write_count_q;
   logic        scratch0_inject_fire_q;
 
-  // Bank0 ECC injection itself is a force on smc_ip_integration's response
-  // net and lives in the testbench; this only counts the qualifying reads.
+  // Counts scratch bank0 reads taken while an inject pin is asserted. No data
+  // is corrupted: there is no force on smc_ip_integration's response net here
+  // or in tb_top. A consumer of this counter is observing the hook's gating,
+  // not the CPU's ECC response.
   always_ff @(posedge scratch_ram_req_i[0].clk or negedge rst_ni) begin
     if (!rst_ni) begin
       scratch0_inject_fire_q <= 1'b0;
@@ -187,6 +208,8 @@ module smc_cpu_mem_dv
       int    bank_i;
       int    entry_i;
       int    loaded_words;
+      int    file_words;
+      logic [SMC_4CORE_SCRATCH_RAM_DATA_WIDTH-1:0] scan_word;
       logic [SMC_4CORE_SCRATCH_RAM_DATA_WIDTH-1:0] linear_mem [0:MAX_LINEAR_WORDS-1];
 
       #0.2;
@@ -201,12 +224,8 @@ module smc_cpu_mem_dv
           loaded_words = 0;
           for (word_i = 0; word_i < int'(MAX_LINEAR_WORDS); word_i++) begin
             offset_i = word_i * int'(BYTES_PER_ENTRY);
-            bank_i   = (offset_i / int'(BANK_STRIPE_BYTES)) % int'(NUM_SRAM_BANKS);
-            entry_i  = (offset_i /
-                                      (int'(BANK_STRIPE_BYTES) * int'(NUM_SRAM_BANKS)))
-                                   * int'(ENTRIES_PER_STRIPE)
-                                   + (offset_i % int'(BANK_STRIPE_BYTES)) /
-                                     int'(BYTES_PER_ENTRY);
+            bank_i   = int'(smc_scratch_map_pkg::smc_scratch_bank(unsigned'(offset_i)));
+            entry_i  = int'(smc_scratch_map_pkg::smc_scratch_entry(unsigned'(offset_i)));
             if (bank_i == bank && entry_i < int'(SCRATCH_WORDS) && linear_mem[word_i] !== 'x) begin
               u_mems.gen_scratch_rams[bank].mem.mem.mem[entry_i] = linear_mem[word_i];
               if (linear_mem[word_i] != '0) begin
@@ -214,9 +233,43 @@ module smc_cpu_mem_dv
               end
             end
           end
+          // Per-bank count. A bank that loaded nothing while the file holds
+          // data for it means the stripe filter above is wrong; every bank
+          // loading its share while an AXI read at the matching address
+          // returns other data means the DUT decodes the address differently
+          // from this model.
+          $display("[smc_cpu_mem_dv] scratch bank %0d loaded %0d nonzero words", bank,
+                   loaded_words);
           if (bank == 0) begin
-            $display("[smc_cpu_mem_dv] stripe-loaded scratch %s (bank0 nonzero=%0d)", scratch_path,
-                     loaded_words);
+            // Count the words the file actually holds, so an image longer than
+            // the staging array is reported instead of silently truncated. A
+            // truncated image boots into whatever its tail happened to be,
+            // which is far harder to diagnose than a loud line here.
+            file_words = 0;
+            scratch_fd = $fopen(scratch_path, "r");
+            while (!$feof(
+                scratch_fd
+            )) begin
+              if ($fscanf(scratch_fd, "%h", scan_word) == 1) begin
+                file_words++;
+              end else begin
+                void'($fgetc(scratch_fd));
+              end
+            end
+            $fclose(scratch_fd);
+            if (file_words > int'(MAX_LINEAR_WORDS)) begin
+              $error({"[smc_cpu_mem_dv] scratch image %s holds %0d words but the ",
+                      "backdoor stages only %0d -- the image is TRUNCATED and the CPU will ",
+                      "fetch whatever the cut left behind. Raise MAX_LINEAR_WORDS."}, scratch_path,
+                       file_words, MAX_LINEAR_WORDS);
+            end
+            $display({"[smc_cpu_mem_dv] stripe params BANK_STRIPE_BYTES=%0d ",
+                      "BYTES_PER_ENTRY=%0d BANKS_PER_GROUP=%0d GROUP_BYTES=%0d ",
+                      "NUM_SRAM_BANKS=%0d SCRATCH_WORDS=%0d"}, BANK_STRIPE_BYTES, BYTES_PER_ENTRY,
+                       BANKS_PER_GROUP, GROUP_BYTES, NUM_SRAM_BANKS, SCRATCH_WORDS);
+            $display(
+                "[smc_cpu_mem_dv] stripe-loaded scratch %s (%0d words in file, bank0 nonzero=%0d)",
+                scratch_path, file_words, loaded_words);
           end
         end else if (bank == 0) begin
           $display("[smc_cpu_mem_dv] WARN: missing scratch %s", scratch_path);

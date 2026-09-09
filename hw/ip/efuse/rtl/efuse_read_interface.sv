@@ -84,7 +84,7 @@ module efuse_read_interface #(
   logic read_err_q, read_err_d;
   logic read_done_q, read_done_d;
   logic read_busy_q, read_busy_d;
-  efuse_data_t read_back_data_q, read_back_data_d;
+  efuse_data_t read_back_data_q_n0_scan, read_back_data_d;
 
   // Address error signal
   logic read_addr_error_d;
@@ -97,7 +97,7 @@ module efuse_read_interface #(
     read_err_d = read_err_q;
     read_done_d = read_done_q;
     read_busy_d = read_busy_q;
-    read_back_data_d = read_back_data_q;
+    read_back_data_d = read_back_data_q_n0_scan;
     fuse_command_req_d = FUSE_COMMAND_REQ_DEFAULT;
 
     read_timeout_event = 1'b0;
@@ -119,9 +119,7 @@ module efuse_read_interface #(
             read_done_d = 1'b1;
             read_err_d = 1'b1;
             read_addr_error_d = 1'b1;
-            // Out-of-bounds read returns data=0 (issue #2750 response a):
-            // skip the OTP access and clear the data register so a stale
-            // value from a prior in-range read cannot leak via an OOB read.
+            // Out-of-bounds read returns data=0
             read_back_data_d = efuse_data_t'(0);
           end else begin
             read_state_d = ST_WAIT_RESP;
@@ -156,7 +154,7 @@ module efuse_read_interface #(
         end else begin
           read_done_d = 1'b0;
           read_busy_d = 1'b1;
-          read_back_data_d = read_back_data_q;
+          read_back_data_d = read_back_data_q_n0_scan;
           fuse_command_req_d = fuse_command_req_q;
 
           if (read_req_timeout_en_i && timeout_count_d >= read_req_timeout_cycles_i) begin
@@ -195,7 +193,7 @@ module efuse_read_interface #(
       read_err_q <= 1'b0;
       read_done_q <= 1'b0;
       read_busy_q <= 1'b0;
-      read_back_data_q <= '0;
+      read_back_data_q_n0_scan <= '0;
 
       timeout_count_q <= 1'b0;
     end else begin
@@ -204,7 +202,7 @@ module efuse_read_interface #(
       read_err_q <= read_err_d;
       read_done_q <= read_done_d;
       read_busy_q <= read_busy_d;
-      read_back_data_q <= read_back_data_d;
+      read_back_data_q_n0_scan <= read_back_data_d;
 
       timeout_count_q <= timeout_count_d;
     end
@@ -225,7 +223,7 @@ module efuse_read_interface #(
   assign read_busy_o = read_busy_q;
   assign read_done_o = read_done_q;
   assign read_error_o = read_err_q;
-  assign read_back_data_o = read_back_data_q;
+  assign read_back_data_o = read_back_data_q_n0_scan;
   assign is_read_timeout_debug_o = read_timeout_event;
 
   always_comb begin

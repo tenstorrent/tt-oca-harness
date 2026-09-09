@@ -3,8 +3,8 @@
 
 // Boot strap parsing implementation for OROM.
 //
-// Reads SMC straps via the SEP outbound window (SMC_LOCAL_BASE_ADDR + offset)
-// and populates a boot_straps structure using OCAH dynamic addresses.
+// Reads captured GPIO straps from the SMC external supplementary window and
+// populates a boot_straps structure.
 
 #include "boot_straps.h"
 #include "rom_mmio.h"

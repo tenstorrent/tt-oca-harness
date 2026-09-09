@@ -7,7 +7,7 @@
 // carries a contract at all (compare = 0 pairs and drops without a record,
 // so a reference model can publish one item per observed item and keep the
 // two streams in lockstep). Used by ir_decode, idcode, bypass, xtrig_csr,
-// and xtrig_decode. The cocotb realization has no twin yet (its scoreboard
+// and xtrig_decode. The cocotb realization has no twin (its scoreboard
 // checks inline; see DTP_TB_ARCH).
 
 class dtp_expected_item extends ocah_sequence_item;

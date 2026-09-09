@@ -9,9 +9,9 @@ it:
                                                  +-> dbg_disable -> DTP
                                                  +-> feat_ctrl
 
-Until now the only SMU-level check here was a single static sample of
-`lc_state_o` at the SMU boundary. That proves the wire exists. It does not prove
-the LCC responds to anything, and it says nothing about the other two legs.
+A single static sample of `lc_state_o` at the SMU boundary proves the wire
+exists; it does not prove the LCC responds to anything, and it says nothing
+about the other two legs.
 
 hw/sys/sep/dv/fw/tests/sep_smu_lcc_flow drives the one input software owns --
 the DEMOTE registers -- and parks in a per-stage loop. This sequence adds the

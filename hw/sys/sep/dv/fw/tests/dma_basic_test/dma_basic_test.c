@@ -302,8 +302,8 @@ static int chk_range_regwen(void) {
     wr(OCH_SEP_TOP_SECURE_DMA_ENABLED_MEMORY_RANGE_LIMIT_BASE_ADDR, 0x00001000u);
     wr(OCH_SEP_TOP_SECURE_DMA_RANGE_VALID_BASE_ADDR, 0x1u);
     st = dma_run(src_base, dst_base, 0x10u, 0x10u, SEP_DMA_WIDTH_4B,
-                 SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
-                 SECURE_DMA__SRC_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_COPY);
+                 SECURE_DMA__SRC_CONFIG__INCREMENT_bm, SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
+                 SEP_DMA_OPCODE_COPY);
     err = rd(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
     // EXCLUSIVE compare: an ERROR_CODE that raises base_limit_error together with
     // an address or width bit means the block mis-classified the fault, and a
@@ -426,20 +426,23 @@ static int chk_copy_mode(void) {
     for (uint32_t i = 0; i < nwords; i++) {
         exp[i] = snap[i];
     }
-    e += run_mode("CHK-COPY-MODE INCR", copy_bytes, copy_bytes, SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
-                  SECURE_DMA__SRC_CONFIG__INCREMENT_bm, exp, nwords, SENT);
+    e +=
+        run_mode("CHK-COPY-MODE INCR", copy_bytes, copy_bytes, SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
+                 SECURE_DMA__SRC_CONFIG__INCREMENT_bm, exp, nwords, SENT);
 
     // (2) FIXED src (re-read in place) + INCR dst: dst[i] = src[0] (replicate).
     for (uint32_t i = 0; i < nwords; i++) {
         exp[i] = snap[0];
     }
-    e += run_mode("CHK-COPY-MODE FIXED-src", copy_bytes, copy_bytes, SECURE_DMA__SRC_CONFIG__WRAP_bm,
-                  SECURE_DMA__SRC_CONFIG__INCREMENT_bm, exp, nwords, SENT);
+    e +=
+        run_mode("CHK-COPY-MODE FIXED-src", copy_bytes, copy_bytes, SECURE_DMA__SRC_CONFIG__WRAP_bm,
+                 SECURE_DMA__SRC_CONFIG__INCREMENT_bm, exp, nwords, SENT);
 
     // (3) INCR src + FIXED dst (overwrite in place): dst[0] = src[last], dst[1] untouched.
     exp[0] = snap[nwords - 1u];
     e += run_mode("CHK-COPY-MODE FIXED-dst", copy_bytes, copy_bytes,
-                  SECURE_DMA__SRC_CONFIG__INCREMENT_bm, SECURE_DMA__SRC_CONFIG__WRAP_bm, exp, 1, SENT);
+                  SECURE_DMA__SRC_CONFIG__INCREMENT_bm, SECURE_DMA__SRC_CONFIG__WRAP_bm, exp, 1,
+                  SENT);
 
     // (4) WRAP src (chunk < total) + INCR dst: two chunks of half words; the source
     // wraps to its start each chunk, so dst = first half twice.
@@ -501,7 +504,8 @@ static int chk_width(void) {
         wr(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, STATUS_RW1C);
     }
     if (!e) {
-        sep_mbx_puts("CHK-WIDTH PASS: TRANSFER_WIDTH 1B/2B/4B each read back as written, copies byte-exact\n");
+        sep_mbx_puts("CHK-WIDTH PASS: TRANSFER_WIDTH 1B/2B/4B each read back as written, copies "
+                     "byte-exact\n");
     }
     return e;
 }
@@ -564,8 +568,8 @@ static int chk_err_addr(void) {
     const uint32_t nwords = copy_bytes / 4u;
 
     for (uint32_t c = 0; c < ncells; c++) {
-        uint32_t st = dma_run(cells[c].src, cells[c].dst, copy_bytes, copy_bytes,
-                              cells[c].width, SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
+        uint32_t st = dma_run(cells[c].src, cells[c].dst, copy_bytes, copy_bytes, cells[c].width,
+                              SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
                               SECURE_DMA__SRC_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_COPY);
         uint32_t err = rd(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
         if (!(st & SECURE_DMA__STATUS__ERROR_bm) || err != cells[c].want) {
@@ -847,8 +851,7 @@ static int chk_host_fabric(void) {
                           SECURE_DMA__SRC_CONFIG__INCREMENT_bm,
                           SECURE_DMA__SRC_CONFIG__INCREMENT_bm, SEP_DMA_OPCODE_COPY);
     uint32_t err = rd(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR);
-    if (!(st & SECURE_DMA__STATUS__DONE_bm) || (st & SECURE_DMA__STATUS__ERROR_bm) ||
-        err != 0) {
+    if (!(st & SECURE_DMA__STATUS__DONE_bm) || (st & SECURE_DMA__STATUS__ERROR_bm) || err != 0) {
         sep_mbx_puts("FAIL: CHK-HOSTFABRIC recovery copy did not succeed (status ");
         sep_mbx_puthex(st);
         sep_mbx_puts(" err ");

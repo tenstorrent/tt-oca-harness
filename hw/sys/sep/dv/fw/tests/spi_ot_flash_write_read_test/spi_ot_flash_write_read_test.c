@@ -156,7 +156,6 @@ int main(void) {
     uint32_t i;
     spi_controller__CMD_t cmd;
 
-
     init_spi_controller();
     printf("SPI controller enabled: CLKDIV=%d\n\n", SPI_CLKDIV);
 

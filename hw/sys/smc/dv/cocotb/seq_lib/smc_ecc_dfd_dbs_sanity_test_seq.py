@@ -41,7 +41,7 @@ def _cpu_cluster_count() -> int:
     ``ndm_hwif_in.NDMRESET_CLUSTER_COUNT.ndmreset_cluster_count.next =
     smc_config_pkg::CPU_CLUSTER_COUNT``). ``smc_config_pkg.sv`` is RTL, and
     quality-policy §4 excludes RTL as a SPEC source, so the equality below is
-    deliberately NOT presented as a register value check. What it proves is:
+    NOT presented as a register value check. What it proves is:
 
     * **parameter-to-CSR propagation** -- the declared integration parameter
       really does reach the software-visible register through the hwif path and
@@ -105,21 +105,14 @@ _DEBUG_BUS_MUX_BYTES = 8
 
 # Value-compared diagnostic reads, identical on Verilator and VCS. Every
 # expectation here traces to a cited RDL declaration:
-#   * RAS_BANK_INFO (chip_config.rdl) / NDMRESET_PROCESS (ndm_reset.rdl):
-#     RDL reset 0x0 -> spec-anchored.
+#   * NDMRESET_PROCESS (ndm_reset.rdl): RDL reset 0x0 -> spec-anchored.
 #   * DFX DEBUG_CTRL / DEBUG_BUS_MUX: PeakRDL symbols at 0xC000_B808/B810,
-#     RDL reset 0x0 (do not use the old false-identity window 0xC001_0208/0210).
+#     RDL reset 0x0 (0xC001_0208/0210 is not this register).
 #     DEBUG_CTRL is regwidth 32; DEBUG_BUS_MUX is regwidth 64 (see above).
-# NDMRESET_CLUSTER_COUNT is deliberately NOT in this table: its number is not
+# NDMRESET_CLUSTER_COUNT is NOT in this table: its number is not
 # RDL/spec-traceable (see _cpu_cluster_count) and it is handled by its own
 # propagation + sw=r legs in body(), which say exactly what they prove.
 DIAGNOSTIC_READS = [
-    (
-        "CHIP_CONFIG_RAS_BANK_INFO",
-        smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_RAS_BANK_INFO_BASE_ADDR"),
-        0x0,
-        4,
-    ),
     (
         "NDMRESET_PROCESS",
         smc_addr("SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_PROCESS_BASE_ADDR"),

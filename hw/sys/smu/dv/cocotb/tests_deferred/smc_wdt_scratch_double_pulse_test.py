@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smc_wdt_scratch_double_pulse_test — DEFERRED (needs_real_lcc / needs SEP=1 / no Force).
 
-Was: WDT Force double pulse. Re-enable with legal TB pin / frontdoor / real LCC.
+Needs a legal TB pin, frontdoor stimulus, or real LCC for the WDT double pulse.
 Not ported (needs_real_lcc, sep1).
 """
 

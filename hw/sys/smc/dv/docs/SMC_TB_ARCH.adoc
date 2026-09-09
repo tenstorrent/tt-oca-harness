@@ -33,8 +33,33 @@ and models are Python.
 for coverage. Driven by `tools/dv/run_dv.py`.
 * *Single DUT*: `--dut smc` → `smc_sim_cfg.toml`, top
 `smc_uvm_top` (`tb/tb_top.sv`) instantiating `hw/top/smc_wrapper.sv`.
-PLL/PVT/eFuse/pads/CPU mem live inside the wrapper; TB still provides
-SYS_OUT AXI + I3C DAT/DCT responders and a DTP CSR err_slv.
+PLL/PVT/eFuse/pads/CPU mem and the I3C DAT/DCT/RLT memories live inside
+the wrapper. The TB still provides the SYS_OUT AXI responder
+(`axi_sim_mem`). The DTP CSR boundary is idle: `axil_dtp_csr_resp` is
+tied off, with no TB `err_slv` (SMU already wires that port to DTP).
+
+`hw/common/dv/configs/duts.toml` does not register an `smc` alias of
+`smc_wrapper`. The runner discovers `--dut smc` from this DV root.
+`smu_wrapper` is a different DUT in that file and is not this bench.
+
+Placeholder PLL/PVT OKAY+0 wraps, idle DTP CSR, and I3C decode-only
+(`proxy=True`) are not feature proof. See `SMC_SCOPE_TRACEABILITY.adoc`
+and `SMC_DEFERRED_DISPOSITION.adoc`.
+
+[[smc-tb-arch-review]]
+=== Architecture review (unsigned)
+
+This chapter is the live hierarchy and VIP disposition for #497. Filling
+the row, or an in-repo review comment that quotes this chapter and accepts
+it, is what #497 needs. The empty table is intentional.
+
+[cols="2,3,2,3",options="header",]
+|===
+|Role |Name |Date |Result
+|SMC design owner | | |pending
+|SMC DV lead | | |pending
+|VIP owner | | |pending
+|===
 
 [[vip-selection-policy]]
 === VIP Selection Policy
@@ -142,7 +167,7 @@ Promotion history, by area — each group moved from CSR-only proxy to
 |I3C |`smc_i3c_to_fabric_test` |I3C0 resolved SCL/SDA exposed; external pull-low/release verified via `check_i3c0_external_pull_low`; the CSR window gate is HCI_VERSION decode. The test records `proxy=True` — no protocol-level VIP traffic runs
 |CPU JTAG |`smc_ijtag_basic_test`, `smc_chiplet_reg_jtag_test`, `smc_efuse_jtag_lc_negative_test`, `smc_jtag_dft_timeout_proxy_test`, `smc_jtag_reset_proxy_test` |TCK/TMS/TDI/reset/TDO exposed with fixed ID fields; resolvable TDO required
 |Mailbox |`smc_mailbox_irq_test`, `smc_mailbox_data_error_test`, `smc_mailbox_event_irq_test` |DV-only `tb_sep_mailbox_interrupts` source + `tb_mailbox_irq_any` checker prove SEP mailbox interrupt bits reach the SMC peripheral vector
-|GPIO / external IRQ |`smc_gpio_irq_active_test`, `smc_gpio_strap_sanity_test`, `smc_external_interrupts_test` |DV-only `tb_gpio_ext_drive_en/value`; GPIO0 as active-low input IRQ, checker verifies deassert/assert/deassert
+|GPIO / external IRQ |`smc_gpio_irq_active_test`, `smc_ext_interrupts_pin_test` |DV-only `tb_gpio_ext_drive_en/value`; GPIO0 as active-low input IRQ, checker verifies deassert/assert/deassert. Strap capture is `tb_captured_straps`; that leaf is not enrolled (`no_dut_port`).
 |Sideband (AVSBus/OCTS) |`smc_avsbus_sanity_test`, `smc_avsbus_status_depth_test`, `smc_avsbus_clock_config_proxy_test`, `smc_octs_sanity_test` |`tb_avsbus_irq`, `tb_telemetry_irq_any`, `tb_avsbus_cur_state_debug` bounded observability alongside real CSR decode/timeout. These tests record `proxy=True`; full promotion needs a real pad-level AVSBus/OCTS BFM
 |CPU / OCCP |`smc_cpu_sanity_test`, `smc_cpu_ctrl_scratch_window_test`, `smc_cpu_ctrl_map_depth_test`, `smc_cpu_to_sep_axi_test`, `smc_occp_sanity_secure_error_test` |SEP_IN AXI master-BFM substitutes for firmware traffic; CPU-control map + scratch write/read/restore + reset/powergood checks
 |eFuse / OTP |`smc_efuse_permission_boundary_test`, `smc_efuse_chip_config_read_test`, `smc_efuse_otp_clock_config_depth_test`, `smc_efuse_otp_clock_test` |eFuse-derived chip-config surface for version/LC/RAS semantics + OTP clock-gate restore + eFuse-bank AXI-Lite idle checker
@@ -150,7 +175,7 @@ Promotion history, by area — each group moved from CSR-only proxy to
 |CSR catalog |`smc_default_reg_rd_test`, `smc_register_boundary_depth_test`, `smc_register_sanity_test` |`smc_csr_field_catalog.py` classifies restore-safe RW scratch, RO static chip-config/eFuse-derived, and RO status fields; tests validate fields against the catalog before read/write/restore
 |=================================================================================================================================================================================================================================================================================================================================================================================================
 
-After all promotions, `vplan_triplets` held at 48/48 PASS on both simulators,
+After all promotions, `depth` held at 48/48 PASS on both simulators,
 confirming the promoted tests did not regress the broader planned suite.
 
 [[loopback-proofs]]
@@ -234,21 +259,28 @@ SmcEnv
 hw/sys/smc/dv/
 ├── cocotb/                 # PyUVM env / seq_lib / tests
 ├── uvm/                    # SV-UVM env / seq_lib / tests (--framework uvm)
-├── models/{mem,regs}/      # TB responders + pll/pvt PeakRDL wraps
+├── models/                 # TB responders + models/regs/ pll/pvt PeakRDL wraps
 ├── tb/                     # tb_top.sv (both shapes), smc_tb_signal_list.svh,
 │                           # smc_tb_if.sv, verilator_stubs/
 ├── testlists/              # per-feature TOML leaves + all.toml
 ├── assets/                 # ROM/eFuse/shadow preload images
 ├── smc_sim_cfg.toml  # sole launch config (tb_top → smc_wrapper), both frameworks
-└── docs/                   # index.adoc, SMC_TB_ARCH, SMC_VPLAN, SMC_FCOV
+└── docs/                   # index.adoc, TB_ARCH, VPLAN, FCOV, SCOPE, DEFERRED
 ....
+
+NOTE: `dv/README.md` carries the authoritative directory layout. The sketch
+above is the subset this chapter refers to; when the two disagree the README
+is right.
 
 [[hdl-top]]
 === HDL Top
 
 `tb/tb_top.sv` instantiates `hw/top/smc_wrapper.sv` as `smc_uvm_top`. PLL, PVT,
-eFuse, pads and CPU memory live inside the wrapper. The TB still provides the
-SYS_OUT AXI responder, the I3C DAT/DCT responders, and the DTP CSR err_slv.
+eFuse, pads, CPU memory, and the I3C DAT/DCT/RLT table memories live inside
+the wrapper. The TB still provides the SYS_OUT AXI responder (`axi_sim_mem`).
+The DTP CSR port is a `smc_wrapper` boundary: the TB ties
+`axil_dtp_csr_resp` to zero and does not instantiate an `err_slv`. Tests that
+need a DTP CSR subordinate stay unenrolled (`needs_dtp_csr_sub`).
 
 The module has two shapes selected by the bare `UVM` define. Every TB signal
 is declared exactly once in `tb/smc_tb_signal_list.svh` and expanded by the
@@ -266,7 +298,8 @@ takes over (see <<sv-uvm-realization>>).
 |SYS_OUT AXI |TB responder; `tb_output_axi_*` counters
 |CPU JTAG TAP |Exposes `tb_cpu_jtag_{tck,tms,tdi,tdo,reset}` for `SmcJtagTap`
 |I2C0 |Split-port `tb_i2c0_scl/sda` + `tb_i2c0_*_ext_low`
-|I3C0 |Pad-level `check_i3c0_external_pull_low`; no protocol VIP
+|I3C0 |Pad-level `check_i3c0_external_pull_low`; DAT/DCT/RLT sit inside `smc_ip_integration`; no protocol VIP
+|DTP CSR |Idle `smc_wrapper` boundary; resp tied off; no TB terminator
 |GPIO |DV-only `tb_gpio_ext_drive_en/value`
 |Mailbox |DV-only `tb_sep_mailbox_interrupts` + `tb_mailbox_irq_any`
 |Sideband |`tb_avsbus_irq`, `tb_telemetry_irq_any`, `tb_avsbus_cur_state_debug`
@@ -286,7 +319,8 @@ Agents are split by *honesty class* — this is the defining SMC structure:
 `sys_in_axi_agent` (`sys_axi`), `jtag_axi_agent` (`jtag_axi`) — all
 `SmcSysAxiDriver` subclasses over `ocah_axi_vip.OcahAxiMasterAgent`, differing only
 by `bus_prefix`; plus `protocol_vip_agent` (records scenario evidence items).
-* *Passive monitors*: `axi_monitor` (SEP_IN), `output_axi_monitor` (SYS_OUT).
+* *Passive monitors*: `axi_monitor` (SEP_IN), `output_axi_monitor` (SYS_OUT),
+`cpu_trace_mon` (hart-0 retirement trace, <<cpu-trace-monitor>>).
 
 Every agent's analysis port connects to the single `SmcScoreboard`.
 
@@ -322,6 +356,43 @@ consistency (passed, non-empty scenario/details, `timeouts <= csr_accesses`)
 and an optional byte-level golden (`expected_bytes` vs `observed_bytes`).
 
 `check_phase()` asserts total evidence `> 0` (non-vacuity house rule).
+
+[[cpu-trace-monitor]]
+==== Processor-state monitor — `cocotb/env/smc_cpu_trace_monitor.py`
+
+Hart 0 of the Rocket cluster has no external trace port; `tb_top.sv` reaches
+its CSR trace bundle by hierarchical reference (`io_trace_0_valid` = retire or
+exception, `io_trace_0_iaddr`, `io_trace_0_insn`, `io_trace_0_exception`, plus
+`io_cause` with bit 63 = interrupt and `io_tval`) and exports it as
+`tb_cpu_trace_*` on the single-instance bench and `dut_cpu_trace_*` /
+`bfm_cpu_trace_*` on the `SMC_DUAL` bench, masked while that core's
+`core_reset_n` is asserted (the writeback registers behind the bundle have no
+reset). `tb_cpu_scratch2` exports the firmware virtual console the way the dual
+bench's `dut_scratch2`/`bfm_scratch2` do; `env/smc_virt_console.py` decodes it
+and `smc_base_test` logs every completed line.
+
+`SmcCpuTraceState` reconstructs, from one sample per `clk_smc_i`:
+
+PC history:: retirement count, distinct-PC set, and a 512-entry ring of the
+  most recent retirements.
+Shadow call stack:: RV64IMAC decode of linking `jal`/`jalr`/`c.jalr` (ra/t0),
+  returns through ra/t0, and `mret`; exception retirements push a trap frame
+  that `mret` pops. RV64C has no `c.jal`, so only `c.jalr` links in the
+  compressed decode. A core reset flushes the stack; tallies survive.
+Trap records:: cycle, PC, decoded mcause, tval; the first eight log at WARNING,
+  the rest at DEBUG.
+Hang watch:: a 20k-cycle retirement-free gap out of reset logs one warning with
+  a full dump — diagnostic only, `wfi` and terminal loops are legitimate.
+
+`SmcEnv` builds `cpu_trace_mon` for every test; it idles unless `+smc_rom_hex`,
+`+smc_scratch_ram_hex` or `+rom_bin64` names an image, and attaches the
+matching staged listing (`<test>.sram.sym` / `<test>.rom.sym` from the shared
+firmware engine, `prod_rom.sym` from the production ROM Makefile, or an
+explicit `+smc_sym`). A scenario that raises ends with the symbolized call
+stack, trap records, and recent-PC tail at error level before the assertion;
+`+smc_trace_log` streams every retirement to `smc_trace.log`. The dual bench
+runs one `SmcCpuTraceState` per instance from `SmcDualHarness.bring_up` and
+appends both reports to its failure messages.
 
 [[clock-and-reset-strategy]]
 === Clock and Reset Strategy
@@ -693,7 +764,7 @@ loaded host.
 |===========================================================================================================================================================
 |Purpose |Flag
 |Single test |`--items smc_cold_reset_test`
-|Feature subset |`--tag reset` / `axil` / `clock` / `i2c` / `irq` / `gpio` / `combined` / `batch_b` / `batch_c` / `batch_d` / `project_p0` / `mailbox_depth`
+|Feature subset |`--items` / `--tag` `reset` / `axil` / `clock` / `i2c` / `irq` / `gpio` / `combined` / `depth_reg` / `mailbox_depth` / `depth_efuse` / `cpu_depth` / `jtag_depth` / `depth_fabric` / `avsbus_depth` / `functional` / `smoke`
 |Multi-seed |`--seed N` (exported as `RANDOM_SEED` → `randomize_timing(seed)`)
 |Force clean rebuild |`--rebuild`
 |List tests / DUTs |`--list` (combine with `--dut smc` for SMC details)
@@ -716,19 +787,27 @@ hw/sys/smc/dv/testlists/
 ├── gpio.toml
 ├── axil.toml
 ├── combined.toml       # combined / canonical observer tests
-├── batch_b.toml        # real SEP_IN AXI CSR tests + AXI timeout/mailbox depth
-├── batch_c.toml        # active I2C/iJTAG CSR prechecks + I3C CSR smoke
-├── batch_d.toml        # FLR + TOP-20 CSR/precheck representatives
-├── vplan_triplets.toml # 16 functional modules x 3 tests
-├── p1_coverage_gap*.toml  # coverage-gap depth rounds 1-5
-└── wrapper.toml        # deferred smc_wrapper catalog
+├── register.toml       # CSR sanity, default-read and boundary depth
+├── mailbox.toml        # mailbox CSR, IRQ and multi-instance
+├── efuse.toml          # eFuse map, OTP and permission boundary
+├── cpu.toml            # CPU, cluster, ECC, SPM and DMA
+├── jtag.toml           # JTAG, iJTAG, DFD and debug-bus
+├── fabric.toml         # fabric routing, filters, remap and dead space
+├── power.toml          # AVSBus, OCTS, telemetry and WDT
+├── spi.toml            # SPI pad BFM
+├── uart.toml           # UART and log engine
+├── dual.toml           # dual-SMC elaboration and cross-instance probes
+├── occp_boot.toml      # prod-ROM OCCP readiness
+└── depth.toml # 16 functional modules x 3 tests
 ....
 
 `--tag smoke` and `--tag pyuvm` resolve through `all.toml` groups. Treat this as
 the broad debug regression, not the coverage-minimal canonical set.
 
-`--tag project_p0` matches the 14 SMC P0 testcase names tracked by GitHub
-Project 335 / issue `tenstorrent/tt-oca-hw#2891`. Four names are compatibility
+`--tag functional` matches 15 testcases; the `functional` *group* holds 13. The
+two are separate selectors and the counts are not interchangeable: `--tag`
+matches every entry carrying the tag, `--items functional` resolves the group
+membership in `all.toml`. Four names in the set are compatibility
 wrappers over stronger local sequences: `smc_mailbox_idle_test`,
 `smc_input_fabric_axi_wr_rd_test`, `smc_avsbus_sanity_test`, and
 `smc_dbs_idle_test`.
@@ -755,7 +834,7 @@ coverage density. New migrated tests should normally land in a depth tag first:
 |`depth_uart_log` |UART/SPI/log-engine register and error-boundary coverage |`smc_uart_log_engine_reg_rw_test`
 |=======================================================================================================================================================
 
-Do not add depth tests to `canonical_top20` just because they pass. Canonical
+Do not add depth tests to `per_ip` just because they pass. That group
 groups stay coverage-minimal; a depth test enters canonical only if it replaces
 an older representative with strictly better coverage.
 
@@ -764,19 +843,19 @@ an older representative with strictly better coverage.
 
 The SMC plan follows the SEP OSS VPLAN structure: define a coverage universe,
 choose the fewest high-density tests, and track the infrastructure each selected
-test needs. The canonical set is cumulative:
+test needs.
 
 [cols=",,",options="header",]
-|======================================================================================================================================================================================
-|Tier |Goal |State at last sign-off
-|`TOP-6` |minimum CI smoke with real stimulus |live `canonical_top6` has five real-DUT members. `smc_i3c_to_fabric_test` is HCI_VERSION decode only and is not in this group
-|`TOP-10` |high-value functional breadth |live `canonical_top10` has eight members. Protocol-complete I3C/sideband still need VIP work
-|`TOP-20` |minimal full-breadth target |live `canonical_top20` has seventeen members. Several other paths stay bounded until deeper infra lands
-|======================================================================================================================================================================================
+|===
+|Group |Goal |Note
+|`smoke` |fast CI gate with real stimulus |Bring-up scenarios that must hold before anything else is worth running
+|`per_ip` |one scenario per IP, full breadth |The routine regression; a failure here names the IP directly
+|`all` |every enrolled testcase |The full package, run before sign-off
+|===
 
-Do not add a test to a `canonical_top*` group until it has active stimulus and at
-least one Verilator PASS. Keep weak SAMPLE-only variants under the broad
-`smoke`/feature groups for debug.
+Do not add a test to `smoke` or `per_ip` until it has active stimulus and at
+least one Verilator PASS. Keep weak SAMPLE-only variants under the feature
+groups for debug.
 
 [[fast-real-axi-loop]]
 ==== Fast real-AXI loop
@@ -786,9 +865,9 @@ edits to sequences, scoreboards, or testlists should use `--stage sim`:
 
 [source,bash]
 ----
-python3 tools/dv/run_dv.py --dut smc --tag canonical_top6  --tool verilator --stage sim
-python3 tools/dv/run_dv.py --dut smc --tag canonical_top20 --tool verilator --stage sim
-python3 tools/dv/run_dv.py --dut smc --tag project_p0      --tool verilator --stage sim
+python3 tools/dv/run_dv.py --dut smc --tag smoke        --tool verilator --stage sim
+python3 tools/dv/run_dv.py --dut smc --tag per_ip  --tool verilator --stage sim
+python3 tools/dv/run_dv.py --dut smc --tag functional      --tool verilator --stage sim
 python3 tools/dv/run_dv.py --dut smc --tag mailbox_depth   --tool verilator --stage sim
 ----
 
@@ -881,16 +960,16 @@ python3 tools/dv/run_dv.py --dut smc --tag reset --tool xcelium
 python3 tools/dv/run_dv.py --dut smc --tag smoke --tool verilator
 
 # Canonical tiers (sim-only after the one-time model build)
-python3 tools/dv/run_dv.py --dut smc --tag canonical_top6  --tool verilator --stage sim
-python3 tools/dv/run_dv.py --dut smc --tag canonical_top20 --tool verilator --stage sim
+python3 tools/dv/run_dv.py --dut smc --tag smoke        --tool verilator --stage sim
+python3 tools/dv/run_dv.py --dut smc --tag per_ip  --tool verilator --stage sim
 
 # GitHub Project 335 / #2891 P0 names (14 tests) and category triplets
-python3 tools/dv/run_dv.py --dut smc --tag project_p0 --tool verilator --stage sim
-python3 tools/dv/run_dv.py --dut smc --items project_p0_triplets --tool verilator --stage sim
+python3 tools/dv/run_dv.py --dut smc --tag functional --tool verilator --stage sim
+python3 tools/dv/run_dv.py --dut smc --items functional_depth --tool verilator --stage sim
 
 # VPLAN migration triplets (16 functional modules x 3 tests) and gap slate
-python3 tools/dv/run_dv.py --dut smc --items vplan_triplets --tool verilator --stage sim
-python3 tools/dv/run_dv.py --dut smc --items vplan_gaps --tool verilator --stage sim
+python3 tools/dv/run_dv.py --dut smc --items depth --tool verilator --stage sim
+python3 tools/dv/run_dv.py --dut smc --items coverage_closure --tool verilator --stage sim
 
 # Static checks before running any sim
 python3 -m py_compile \
@@ -915,8 +994,7 @@ those SVA macros out (the unused profile define `DISABLE_ASSERT` does not),
 and concurrent SVA in that bind is withheld under `VERILATOR`. Fix: drive
 `.aw.atop = '0` on
 `sep_axi_in_req`, `sys_axi_in_req`, and `jtag_axi_in_req`. A one-time `--rebuild`
-is required for the change to take effect; afterwards `canonical_top20` reached
-20/20 on Xcelium.
+of those three AXI request paths was 20/20 on Xcelium.
 
 *High-impedance CSR reads broke cocotbext-axi.* `smc_default_reg_rd_test` and
 `smc_register_boundary_depth_test` raised `ValueError: Unresolvable bit in binary string: 'z'` when a CSR read returned `z` on undriven fields. Verilator's

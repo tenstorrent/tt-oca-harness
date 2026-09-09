@@ -2,10 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Primary TAP reachable on the production wrapper, with the SEP running.
 
-This is the first wrapper test to drive JTAG rather than only pulse it into
-reset, and it is the enabler for the DTP/SEP probe anchors: those need a TAP
-that answers, and until now the wrapper tied TMS high and pulsed TCK from
-inside the testbench.
+This test drives JTAG on the wrapper rather than only pulsing it into reset;
+the DTP/SEP probe anchors need a TAP that answers.
 
 What it proves, in order:
 
@@ -21,7 +19,7 @@ What it proves, in order:
   S5  The IC_RESET override bits are clear. Every wrapper test rests on this --
       an asserted override holds SMC cold/fuse reset and the SEP never fetches,
       which is exactly the failure the base test's TAP reset walk exists to
-      prevent -- and nothing checked it until now.
+      prevent.
 """
 
 from __future__ import annotations

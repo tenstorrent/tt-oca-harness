@@ -20,18 +20,22 @@ import re
 _NM_LINE = re.compile(r"^([0-9a-fA-F]+)\s+(\S)\s+(\S+)\s*$")
 
 
-def load_syms(path: str) -> list[tuple[int, str]]:
+def load_syms(path: str, *, include_weak: bool = False) -> list[tuple[int, str]]:
     """Parse an `nm -B -n` dump into a sorted (addr, name) list of text symbols.
 
     Data and absolute symbols are dropped: keeping them would mis-attribute PCs
-    to whichever constant happened to sit below the address.
+    to whichever constant happened to sit below the address. ``include_weak``
+    adds the W/w entries: picolibc exports several weak entry points that are
+    the only name a PC inside them has, which matters for backtraces but not
+    for the exact-name contract lookups.
     """
+    types = ("T", "t", "W", "w") if include_weak else ("T", "t")
     out: list[tuple[int, str]] = []
     try:
         with open(path, "r", encoding="ascii", errors="replace") as stream:
             for line in stream:
                 match = _NM_LINE.match(line.strip())
-                if match and match.group(2) in ("T", "t"):
+                if match and match.group(2) in types:
                     out.append((int(match.group(1), 16), match.group(3)))
     except OSError:
         return []

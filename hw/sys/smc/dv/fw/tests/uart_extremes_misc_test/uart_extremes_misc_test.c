@@ -229,7 +229,6 @@ int main(void) {
     const uint32_t uart_idx = 0u; // Use a single representative UART instance.
     const uint32_t uart_base = get_uart_reg_base(uart_idx);
 
-    // peripherals_out_of_reset();
     uart_enable_single(uart_idx);
     uart_init_8n1_loopback(uart_base);
 

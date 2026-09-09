@@ -1,25 +1,28 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// DTP-local TB interface for the SV-UVM flow: the harness clock period,
-// system/power-on resets (sequenced by the test), reset-assertion counters,
-// and the DUT-produced one-hot IEEE 1149.1 TAP state used by the FSM
-// reference-model checks. Deliberately separate from the shared
-// ocah_jtag_if, which carries generic JTAG pins only. The cocotb realization
-// exposes the same members as the DtpTbIf accessor over the top's ports.
+// DTP control-domain TB interface, shared by the cocotb and SV-UVM flows:
+// the system clock and its period, the test-sequenced resets and their
+// assertion counters, the lifecycle debug disables, the TAP-state and
+// debug-TDR observables the checkers read, the request-activity pulse
+// counters tb_top derives from the bus pins, and the SVA enables.
+// The scan-network observables live in dtp_scan_if and the cross-trigger
+// pins in dtp_xtrig_if; the primary TAP pins are on the shared ocah_jtag_if.
 //
-// The JTAG2AXI additions carry the test-drivable lifecycle
-// debug disables, the SVA suppress knobs, and mirrors of the tb_top
-// request-activity pulse counters, so sequences never reach into tb_top
-// hierarchy directly. Both AXI responders are shared ocah_axi_vip UVM slave
-// agents; error injection is programmed through their slave sequences, not
-// TB error ports.
+// cocotb deposits the clock, the resets, and the stimulus members through
+// hierarchical handles (env/dtp_tb_if.py); SV-UVM sequences reach the same
+// members through the virtual interface, and the harness block in tb_top
+// generates the clock from clk_period_ns.
 
 interface dtp_tb_if;
 
   // System-clock period the harness clock generator reads, set by the env
   // from dtp_env_cfg (the test cfg randomizes it from the runner seed).
   int unsigned clk_period_ns = 10;
+
+  // System clock: cocotb drives it with Clock(); the SV-UVM harness toggles
+  // it every half period.
+  logic clk = 1'b0;
 
   // Driven by the TB (reset sequencing owned by the test/sequence).
   logic por_rst_n;
@@ -37,17 +40,11 @@ interface dtp_tb_if;
   // (jtag_inst_reg_pkg::jtag_instruction_decoded_e) for CHK-IR-DECODE.
   jtag_inst_reg_pkg::jtag_instruction_decoded_e inst_decoded;
 
-  // Driven by the DUT top: boundary-scan chain control observables for the
-  // basic-JTAG instruction checks.
-  logic jtag_bsr_select;
-  logic jtag_bsr_shift_en;
-  logic jtag_bsr_capture_en;
-  logic jtag_bsr_update_en;
-
   // Lifecycle debug disables (sep_lifecycle_ctrl_pkg::dbg_disable_t,
   // active-high: 1 = interface disabled). Init '1 = fail-closed, matching
   // the DUT synchronizers' reset value; JTAG2AXI sequences must clear the
-  // target's disable first.
+  // target's disable first. cocotb packs the struct from its field table
+  // in declaration order.
   sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable = '1;
 
   // Runtime enable for the shared AXI protocol SVA checkers.
@@ -56,7 +53,8 @@ interface dtp_tb_if;
   // Runtime enable for the shared JTAG protocol SVA checker.
   logic jtag_sva_en = 1'b1;
 
-  // Request-activity pulse-counter mirrors (driven by tb_top).
+  // Request-activity pulse-counter mirrors (driven by tb_top): no-activity
+  // security evidence sampled from the bus pins.
   logic [31:0] smc_axi_awvalid_count;
   logic [31:0] smc_axi_wvalid_count;
   logic [31:0] smc_axi_arvalid_count;
@@ -66,6 +64,9 @@ interface dtp_tb_if;
   logic [31:0] sep_otp_axil_awvalid_count;
   logic [31:0] sep_otp_axil_wvalid_count;
   logic [31:0] sep_otp_axil_arvalid_count;
+  logic [31:0] xtrig_axil_awvalid_count;
+  logic [31:0] xtrig_axil_wvalid_count;
+  logic [31:0] xtrig_axil_arvalid_count;
 
   // Debug-TDR observables (driven by tb_top): DEBUG_CONTROL clock-stop /
   // boot-stall outputs and the flattened IC_RESET slice outputs.
@@ -83,74 +84,5 @@ interface dtp_tb_if;
   // CLA clock-stop request vector (driven by debug-TDR sequences; init
   // quiescent so unrelated tests see no requests).
   logic [dtp_pkg::DEFAULT_NUM_CLK_STOP_REQ-1:0] xtrig_clk_stop_req = '0;
-
-  // Scan-network observables (driven by tb_top): iJTAG SIB scan controls,
-  // STAP forwarding pins, and the extended STAP host scan controls for
-  // the scan-scenario temporal windows.
-  logic jtag_dft_secure_select;
-  logic jtag_dft_secure_shift_en;
-  logic jtag_dft_secure_capture_en;
-  logic jtag_dft_secure_update_en;
-  logic jtag_dft_select;
-  logic jtag_dft_shift_en;
-  logic jtag_dft_capture_en;
-  logic jtag_dft_update_en;
-  logic jtag_dfd_select;
-  logic jtag_dfd_shift_en;
-  logic jtag_dfd_capture_en;
-  logic jtag_dfd_update_en;
-  logic jtag_stap_io_tms;
-  logic jtag_stap_io_tdo_oen;
-  logic jtag_stap_smc_tms;
-  logic jtag_stap_smc_tdo_oen;
-  logic jtag_stap_sep_tms;
-  logic jtag_stap_sep_tdo_oen;
-  logic jtag_stap_extra0_tms;
-  logic jtag_stap_extra0_tdo_oen;
-  logic jtag_stap_host_select;
-  logic jtag_stap_host_shift_en;
-  logic jtag_stap_host_capture_en;
-  logic jtag_stap_host_update_en;
-
-  // Downstream STAP TAP attach enables (driven by the test before
-  // bring-up; default 0 keeps each STAP host port's wire loopback). With
-  // a port's enable set, tb_top routes the shared ocah_jtag_vip slave
-  // device's TDO into that STAP's host TDI.
-  logic stap_io_ds_en     = 1'b0;
-  logic stap_smc_ds_en    = 1'b0;
-  logic stap_sep_ds_en    = 1'b0;
-  logic stap_extra0_ds_en = 1'b0;
-
-  // Cross-trigger CTM/CTP pin surface. Request-side vectors are driven by
-  // the XTRIG sequences (init '0 = quiescent, matching the cocotb agent's
-  // idle state); the remaining vectors are DUT-driven observables. The
-  // internal-CT ports use the src/dst req-ack pairs; the external CTPs use
-  // the pad-cell din/dout/en quartets.
-  logic [dtp_pkg::DEFAULT_NUM_INT_CT-1:0] xtrig_ctm_src_ack = '0;
-  logic [dtp_pkg::DEFAULT_NUM_INT_CT-1:0] xtrig_ctm_dst_req = '0;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_out_din = '0;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_in_din  = '0;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_in_din  = '0;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_out_din = '0;
-
-  logic [dtp_pkg::DEFAULT_NUM_INT_CT-1:0] xtrig_ctm_src_req;
-  logic [dtp_pkg::DEFAULT_NUM_INT_CT-1:0] xtrig_ctm_dst_ack;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_out_dout;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_out_dout_en;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_out_din_en;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_in_dout;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_in_dout_en;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_req_in_din_en;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_in_dout;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_in_dout_en;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_in_din_en;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_out_dout;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_out_dout_en;
-  logic [dtp_pkg::DEFAULT_NUM_CTP-1:0]    xtrig_ctp_ack_out_din_en;
-
-  // XTRIG CSR request-activity pulse-counter mirrors (driven by tb_top).
-  logic [31:0] xtrig_axil_awvalid_count;
-  logic [31:0] xtrig_axil_wvalid_count;
-  logic [31:0] xtrig_axil_arvalid_count;
 
 endinterface : dtp_tb_if

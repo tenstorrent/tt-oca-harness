@@ -216,7 +216,6 @@ class smc_smbus_hostnotify_test_seq(SmcCsrSeq):
             "DUT Host Notify ACQDATA words=%s",
             [f"(sig={acq_signal(w)},0x{acq_abyte(w):02X})" for w in words],
         )
-        assert words, "DUT ACQDATA empty after Host Notify"
 
         # Exact expected frame: START(host addr, W) + 3 HN data bytes + STOP.
         expect = [pack_acq((_HOST_ADDR << 1) | 0, I2C_ACQ_SIGNAL_START)]

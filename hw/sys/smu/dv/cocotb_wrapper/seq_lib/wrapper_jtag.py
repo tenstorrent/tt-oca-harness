@@ -4,7 +4,7 @@
 
 The wrapper testbench exposes the same `jtag_tck/tms/trst/tdi/tdo` pins the
 bare `--dut smu` harness does, so `OcahJtagMasterDriver` binds to either DUT
-unchanged. This module is deliberately a small local copy of the binding rather
+unchanged. This module is a small local copy of the binding rather
 than an import from the bare tree's `seq_lib`: the wrapper flow keeps its own
 PyUVM root precisely so module names do not collide with that catalog, and both
 trees define `seq_lib`.

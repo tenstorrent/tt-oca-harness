@@ -74,7 +74,7 @@ args = [
 # Real SEP RTL boot readiness (Manual_SMU_Blocked_SEP_Exec_Regression mirror).
 # Scoreboard bar: boot-ROM fetch, ICCM execution, >=16 distinct PCs, >=256
 # retires, and DCCM result stores. Console/STDOUT over the external AXI path is
-# out of scope here and tracked separately (#3939).
+# out of scope here.
 [[tests]]
 name = "smu_sep_smoke_test"
 module = "smu_sep_smoke_test"
@@ -120,12 +120,8 @@ args = [
 # are compared inside the SEP; the TB only reads the firmware's verdict off the
 # STDOUT mailbox handshake.
 #
-# This is the first test to exercise the SEP outbound mailbox path in this
-# wrapper. Bringing it up found a firmware ordering bug: sep_smu_sanity emitted
-# its first STAGE_BEACON before sep_outbound_filter_init(), and the SEP outbound
-# filter is BlockByDefault=1, so that store faulted, crt0's _trap jumped to
-# _finish, and the firmware died before opening the window it needed. Fixed by
-# opening the window first (see the comment in sep_smu_sanity.c).
+# The image opens the SEP outbound mailbox window before the first
+# STAGE_BEACON. The outbound filter is BlockByDefault=1.
 [[tests]]
 name = "smu_sep_sanity_test"
 module = "smu_sep_sanity_test"
@@ -151,14 +147,11 @@ args = [
 # table, so a stage compiled out is reported as not covered rather than passed.
 #
 # The AES stage needs entropy: OpenTitan AES reseeds its masking PRNG from
-# crypto-EDN, and without it the stage spun in wait_for_idle (99.5% of retires
-# landed on wait_for_idle+0x10..0x18), which read as an AES defect but was a
-# missing prerequisite. The image calls sep_entropy_bringup() before that stage
-# and parks in a separate entropy fail loop if it does not complete, so the two
-# causes stay distinguishable. +esrc_noise_force supplies the raw noise
-# the ring oscillators cannot generate under Verilator -- the same exception
-# hw/sys/sep/dv takes. HMAC and KMAC need no entropy and are also proven green
-# by smu_sep_sanity_test.
+# crypto-EDN. The image calls sep_entropy_bringup() before that stage and
+# parks in a separate entropy fail loop if it does not complete, so a missing
+# prerequisite is not scored as an AES defect. +esrc_noise_force supplies the
+# raw noise the ring oscillators cannot generate under Verilator -- the same
+# exception hw/sys/sep/dv takes. HMAC and KMAC need no entropy.
 [[tests]]
 name = "smu_sep_modules_test"
 module = "smu_sep_modules_test"
@@ -233,31 +226,38 @@ args = [
 # exists for. The external master is played by the sequence on the flat ext_in_*
 # pins tb_wrapper_top.sv exposes. Protocol and every address
 # come from the firmwares' shared header
-# hw/sys/sep/dv/fw/tests/common/smu_sep_ext_axi_protocol.h. The SMC ROM
-# smu_sep_ext_axi_arm hands control to the scratch-RAM half, and the sequence
-# reconciles its jump target against smu_sep_ext_axi_smc_entry in the built
-# .sram.sym (confirmed 0xC006_01B2).
+# hw/sys/sep/dv/fw/tests/common/smu_sep_ext_axi_protocol.h.
+# The sequence re-vectors the SMC cores to smu_sep_ext_axi_smc_entry, read from
+# the built .sram.sym, over JTAG2AXI.
 #
-# NOT ENROLLED -- blocked on a preload lifetime problem, not on this test.
-# The SMC-side image is placed by the +smc_scratch_ram_hex backdoor at time
-# zero, and the SMC boot path then writes EVERY word of scratch RAM before any
-# firmware can use it: measured 4096 bus writes (exactly the RAM depth) against
-# a counter that reads 0 at sequence start, so the wipe happens after the load,
-# during the run. It is not this test's doing -- swapping in the plain
-# non-jumping ROM (smu_sep_arm, one store then wfi) produces the same 4096
-# writes. Consequence: the image is gone by the time the ROM jumps, the
-# scratch-RAM half never reaches its S2/S3, CPU_CTRL scratch6 (SMC_READY) stays
-# 0, the SMC aperture is never opened, and the master's reads of SMC globals
-# come back DECERR (resp=3, data 0xbadcab1e).
+# Enrolled in sep_smc_sram_blocked. The preload is handled: smc_4core_cpu
+# zeroes the scratch RAM at boot to establish valid ECC, and
+# tb_wrapper_top.sv holds that FSM off whenever +smc_scratch_ram_hex
+# supplies an image, so the image survives.
 #
-# The ext_in half itself is proven working by that same evidence: the master
-# drives real AXI and gets real responses on the boundary it was given.
+# The hand-off is handled too. Jumping to the image from the ROM left the core
+# carrying the ROM's state -- mtvec among it -- so its first trap went to address
+# 0. seq_lib/smc_cpu_revector.py does what the firmware's own header calls the
+# SEP-driven or cocotb-backdoor boot instead: RESET_VECTOR on all four cores and
+# a forced tile-reset pulse, over the DTP's JTAG2AXI, the way
+# hw/sys/smc/dv/cocotb/seq_lib/smc_cpu_vip_utils.py does it over its CSR agent.
 #
-# Unblocking means loading the scratch image AFTER that initialisation instead
-# of at time zero; the stripe load lives in
-# hw/sys/smc/dv/models/smc_cpu_mem_dv.sv. smu_sep_smc_xbar_test reads a cookie
-# out of the same RAM and so depends on the same lifetime, on top of its own
-# routing blocker.
+# That sequence is applied, not merely issued, and was checked against the
+# design's own gating rather than against its own return codes. A JTAG2AXI write
+# to CPU_CTRL lands: writing SCRATCH_0 moves the value the testbench observes on
+# smc_scratch_0_o off the 0xACAFACA1 the ROM left. With the writes landing at the
+# right time, smc_cpu_ctrl_wrap reaches force_apply=1 / withhold=0 -- the cluster
+# never drains, so the RESET_TIMEOUT force is what applies the reset, exactly the
+# path that register exists for -- and all four cores go to core_reset_n=0 and
+# then back to 1. The tile reset really is taken and released.
+#
+# What still blocks this test is that nothing follows the release: neither the
+# ROM nor the scratch read counter moves again, and no further instruction
+# retires, so the cores issue no fetch at all rather than fetching the wrong
+# thing. The image itself is present -- the backdoor reports its stripe load.
+# Whatever answers that also answers smu_sep_smc_xbar_test, which is blocked on
+# the CPU-private-SRAM limit this group is named for; neither test in the group
+# can report PASS until then.
 [[tests]]
 name = "smu_sep_ext_axi_test"
 module = "smu_sep_ext_axi_test"
@@ -268,7 +268,7 @@ timeout_sec = 3600
 tags = ["firmware", "sep", "smc", "real_rtl", "real_fw", "interop"]
 run_modes = ["sep_rtl"]
 args = [
-  "+rom_hex=smu_sep_ext_axi_arm.rom.hex",
+  "+rom_hex=smu_sep_arm.rom.hex",
   "+smc_efuse_hex=smc_efuse_default.hex",
   "+sep_efuse_hex=sep_efuse_default.hex",
   "+sep_boot_rom_hex=smu_sep_boot_rom.hex",
@@ -369,12 +369,9 @@ args = [
 # and the linker drops the symbol. The verdict is the testbench's golden compare
 # of the remap table, gated on the offsets having changed during the run.
 #
-# Bringing this up exposed a race in the observer, not a design problem: the
-# firmware emits no fence between its remap stores and the tail jump into the
-# pass loop, so sampling the table the instant the pass PC retires reads the
-# pre-write value. The sequence now drains for SETTLE_CYCLES first. Confirmed
-# end to end -- 10 AW into sep_system_csr, 2 reaching region 0's register block,
-# and both offsets matching golden.
+# The firmware emits no fence between its remap stores and the tail jump
+# into the pass loop. The sequence drains for SETTLE_CYCLES before sampling
+# the remap table, then compares both region-0 offsets against golden.
 [[tests]]
 name = "smu_sep_remap_test"
 module = "smu_sep_remap_test"
@@ -448,7 +445,8 @@ args = [
 # reconciles the built SMC image's entry and cookie against the protocol
 # constants first, so a relink fails loudly instead of hanging in bring-up.
 #
-# NOT ENROLLED -- blocked on SMC SRAM visibility, not on this test. Everything
+# Enrolled in sep_smc_sram_blocked. Blocked on SMC SRAM visibility, not on
+# this test. Everything
 # up to the cookie poll works: the image contract reconciles (entry 0xC00601B2,
 # cookie 0x41014081), the testbench reports "stripe-loaded scratch
 # smc_sep_xbar.ecc.hex", and the SEP reaches its poll. But the SEP then spins at
@@ -509,11 +507,9 @@ args = [
   "+sep_sym=sep_smc_notify.tcm.sym",
 ]
 
-# Primary TAP driven from cocotb, with the SEP running. First wrapper test to
-# drive JTAG rather than only pulse it into reset, and the enabler for the
-# DTP/SEP probe anchors: those need a TAP that answers. Uses hello_world as the
-# SEP payload -- the SEP only has to stay alive, which is also what the last
-# checker proves (TAP access must not disturb a running SEP).
+# Primary TAP driven from cocotb, with the SEP running. The TAP must answer
+# so DTP/SEP probe anchors can use it. hello_world is the SEP payload; TAP
+# access must not disturb a running SEP.
 [[tests]]
 name = "smu_wrapper_jtag_ptap_test"
 module = "smu_wrapper_jtag_ptap_test"
@@ -532,13 +528,12 @@ args = [
   "+sep_dtcm_hex=hello_world.dtcm.hex",
 ]
 
-# Firmware-driven SEP lifecycle flow. The SEP LCC is the source of the chiplet's
-# lifecycle posture and three consumers act on it (lc_state -> SMC,
-# dbg_disable -> DTP, feat_ctrl); the only SMU-level check before this was one
-# static sample of lc_state_o at the boundary. The firmware drives the DEMOTE
-# registers -- the one LCC input software owns -- and the sequence checks the
-# posture moved at the consumers, not just inside the register block. The
-# write-once DEMOTE lock is what keeps the demote stages non-vacuous.
+# Firmware-driven SEP lifecycle flow. The SEP LCC is the source of the
+# chiplet's lifecycle posture. Three consumers act on it (lc_state -> SMC,
+# dbg_disable -> DTP, feat_ctrl). The firmware drives the DEMOTE registers
+# and the sequence checks the posture moved at the consumers, not only
+# inside the register block. The write-once DEMOTE lock keeps the demote
+# stages non-vacuous.
 [[tests]]
 name = "smu_sep_lcc_flow_test"
 module = "smu_sep_lcc_flow_test"

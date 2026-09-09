@@ -25,17 +25,13 @@ class smc_i2c_master_target_test(smc_base_test):
             f"ara={seq.dut_smbus_ara_ok}"
         )
         # Byte verdict: owned solely by the sequence, where the bytes are
-        # measured. `assert got == bytes([_I2C_WRITE_BYTE])`
-        # (smc_i2c_master_target_test_seq.py:355, EEPROM VIP mem[0x10]) and
-        # `assert rdata == _SMBUS_ARA_REPLY` (:480, I2C0_RDATA from the ARA
-        # responder) both run *before* the sequence returns, so a test-level
-        # `obs == exp` compare here -- and the scoreboard's
-        # `expected_bytes`/`observed_bytes` compare it fed -- were downstream of
-        # those asserts on the same constants: guaranteed equal, unable to fail
-        # on any RTL, yet presented as the byte golden ([NO-DUMMY-DEAD-CODE]).
-        # Both duplicates are removed; the measured values are still reported
-        # below (and in `details=` on the protocol-VIP record) so the kept log
-        # carries what was read, without restating a compare it did not make.
+        # measured. `assert got == bytes([_I2C_WRITE_BYTE])` (EEPROM VIP
+        # mem[0x10]) and `assert rdata == _SMBUS_ARA_REPLY` (I2C0_RDATA from the
+        # ARA responder) both run *before* the sequence returns, so a test-level
+        # `obs == exp` compare here would sit downstream of those asserts on the
+        # same constants and could not fail on any RTL ([NO-DUMMY-DEAD-CODE]).
+        # The measured values are reported below (and in `details=` on the
+        # protocol-VIP record) so the kept log carries what was read.
         obs = seq.obs_host_write + seq.obs_smbus_ara
         self.logger.info(
             "I2C U4-2 measured bytes 0x%s (EEPROM VIP mem[0x10]=0x%s + "

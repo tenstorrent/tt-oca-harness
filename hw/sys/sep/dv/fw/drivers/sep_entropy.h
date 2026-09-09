@@ -75,7 +75,8 @@
 // div64 is 63<<12. 63 in the low bits lands 0x3F0 in the field instead --
 // divide-by-1009, 16x slower than the register's own reset value, which pushes
 // one 2048-sample health window past any reasonable simulation budget.
-#define SEP_DECOR_CTRL_DIV64 (63u << ENTROPY_SOURCE__DECORRELATOR_CTRL__SAMPLE_CLK_DIV_bp) // 0x0003F000
+#define SEP_DECOR_CTRL_DIV64 \
+    (63u << ENTROPY_SOURCE__DECORRELATOR_CTRL__SAMPLE_CLK_DIV_bp) // 0x0003F000
 
 // MAIN_SM_STATUS, the entropy_src_main_sm boot gate. BOOT_PHASE_DONE gates
 // entropy_stream_valid, so enabling EDN before it issues an Instantiate against

@@ -2,8 +2,8 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // Encoding-stable AXI types for the ocah_axi_vip SV-UVM layer. Response codes
-// match the cocotb layer's results.py (OKAY=0/EXOKAY=1/SLVERR=2/DECERR=3) so
-// evidence values are directly comparable across frameworks.
+// match the cocotb layer's ocah_axi_types.py (OKAY=0/EXOKAY=1/SLVERR=2/DECERR=3)
+// so evidence values are directly comparable across frameworks.
 
 typedef enum logic [1:0] {
   OCAH_AXI_RESP_OKAY   = 2'd0,

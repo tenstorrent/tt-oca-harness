@@ -5,11 +5,7 @@
 These helpers drive the public CPU JTAG TAP via ``cocotbext.jtag`` and verify
 the IDCODE register returns the expected value composed from the
 ``smc_cpu_jtag_{mfr_id,part_number,version}_i`` straps wired in
-``tb_top.sv``. After the upgrade the old line-level pull-low pattern is
-subsumed by the full TAP reset + IDCODE capture.
-
-API surface kept compatible with the previous helpers so the JTAG triplet
-tests do not need touching beyond import paths.
+``tb_top.sv`` through a full TAP reset + IDCODE capture.
 """
 
 from __future__ import annotations
@@ -54,7 +50,7 @@ DTMCS_RESERVED_HI_SHIFT = 15
 # VIP's own bookkeeping: an `OcahJtagMasterDriver` that returned early, or a
 # GatedClock/RX-FSM desync that stopped driving TCK, collapses the count.
 #
-# The floor is the payload-bit contract of the two scans below, deliberately
+# The floor is the payload-bit contract of the two scans below,
 # ignoring every TAP-reset, state-navigation and idle-delay cycle so it stays a
 # strict lower bound on any correct execution:
 #   IR width 5 (IEEE 1149.1 5-bit instruction register, SmcCpuTapDevice)
@@ -95,10 +91,7 @@ class _TckEdgeCounter:
 
     def stop(self) -> int:
         if self._task is not None:
-            if hasattr(self._task, "cancel"):
-                self._task.cancel()
-            else:  # pragma: no cover - cocotb 1.x fallback
-                self._task.kill()
+            self._task.cancel()
             self._task = None
         return self.edges
 
@@ -138,7 +131,7 @@ async def check_cpu_jtag_pin_vip() -> int:
     # Count TCK at the pin across BOTH scans (see MIN_CPU_JTAG_TCK_EDGES).
     tck_counter = _TckEdgeCounter(dut.tb_cpu_jtag_tck).start()
     await tap.reset_tap()
-    # ``check=False`` on purpose: read_idcode() still enforces the IEEE 1149.1
+    # ``check=False``: read_idcode() still enforces the IEEE 1149.1
     # plausibility rules (not 0/all-ones, bit[0] == 1), but the exact 32-bit
     # comparison against EXPECTED_CPU_TAP_IDCODE happens exactly once, here, so
     # this is the single fail-capable comparison site rather than a duplicate of
@@ -222,13 +215,6 @@ async def check_cpu_jtag_idcode_and_bypass() -> int:
     idcode = await tap.read_idcode(check=True)
     await tap.bypass()
     return idcode
-
-
-# ``check_cpu_jtag_dtmcs()`` was removed: it had no caller anywhere under
-# ``hw/sys/smc/dv`` and its docstring advertised a "non-fatal by default" DTMCS
-# read that no test could rely on ([NO-DUMMY-DEAD-CODE]). The DTMCS read is now
-# only reachable through ``check_cpu_jtag_pin_vip`` above, where every field
-# except the advisory ``idle`` hint carries a fail-capable expectation.
 
 
 __all__ = [

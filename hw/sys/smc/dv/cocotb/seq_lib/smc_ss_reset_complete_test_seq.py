@@ -44,10 +44,7 @@ class smc_ss_reset_complete_test_seq(SmcCsrSeq):
         #     three words come from plain `csr_read` with NO `expected=`, and
         #     this sequence only asserts bit 0 of the asserted/released reads,
         #     so a full-word compare at testcase level genuinely covers the
-        #     other 31 bits.
-        # The previous comment here claimed all of them "fail on a wrong value
-        # rather than only on an early return", which is true only of
-        # `warm_csr` ([NO-ALWAYS-PASS-CHECKER]).
+        #     other 31 bits ([NO-ALWAYS-PASS-CHECKER]).
         self.idle_csr: int | None = None
         self.drop_csr: int | None = None
         self.restore_csr: int | None = None

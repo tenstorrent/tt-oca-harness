@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //
-// OSS smu_wrapper harness for the native cocotb/PyUVM flow (issue #3357).
-// Instantiates hw/top/smu_wrapper.sv (logical ports); the CPU memory macros
-// come with smc_ip_integration inside it — same OSS composition pattern as
-// smc_wrapper / sep_wrapper.
+// OSS smu_wrapper harness for the native cocotb/PyUVM flow.
+// Instantiates hw/top/smu_wrapper.sv (logical ports); the CPU and I3C table
+// memory macros come with smc_ip_integration inside it, following the same OSS
+// composition pattern as smc_wrapper / sep_wrapper.
 
 `timescale 1ps / 1fs
 
@@ -11,8 +11,7 @@ module smu_wrapper_uvm_top (
   input  wire logic clk_smu_i,
   // Primary JTAG TAP, driven from cocotb exactly as the bare `--dut smu`
   // harness drives it (tb/tb_top.sv), so OcahJtagMasterDriver works against
-  // either DUT. Previously this TB pulsed TCK internally with TMS tied high;
-  // that walk now lives in the base test, which every wrapper test runs.
+  // either DUT; the base test's TAP reset walk runs in every wrapper test.
   input  wire logic jtag_tck,
   input  wire logic jtag_tms,
   input  wire logic jtag_trst,   // active-low
@@ -37,16 +36,14 @@ module smu_wrapper_uvm_top (
   output logic      jtag_tdo,
   output logic      jtag_tdo_oen,
   // IC_RESET override bits as the SMC and SEP reset controllers see them.
-  // Every wrapper test depends on these being clear -- an asserted override
-  // holds cold/fuse reset and the SEP never fetches -- but until now that was
-  // an assumption the TB made and nothing checked.
+  // Every wrapper test depends on these being clear: an asserted override
+  // holds cold/fuse reset and the SEP never fetches.
   output logic [67:0] ic_reset_smc_ovrd_o,
   output logic        ic_reset_sep_ovrd_any_o,
   // SEP lifecycle-controller fan-out. The LCC decides the chiplet's posture
-  // and three different consumers act on it, but until now only lc_state_o
-  // was sampled -- and only once, statically, at the SMU boundary. These make
-  // the other two legs observable so a test can prove the posture actually
-  // reaches DTP and SMC rather than merely existing on a port.
+  // and three consumers act on it; lc_state_o alone shows the SMU boundary.
+  // These expose the DTP and SMC legs so a test can prove the posture reaches
+  // them rather than merely existing on a port.
   output logic [1:0]  lcc_demote_state_1_o,
   output logic [1:0]  lcc_demote_state_2_o,
   output logic [63:0] lcc_feat_ctrl_o,
@@ -96,6 +93,13 @@ module smu_wrapper_uvm_top (
   output logic [31:0] smc_scratch_write_count_o,
   output logic        sep_trace_valid_o,
   output logic [31:0] sep_pc_o,
+  // Remaining fields of the EL2 retirement record (el2_trace_pkt_t), for the
+  // cocotb processor-state monitor.
+  output logic [31:0] sep_trace_insn_o,
+  output logic        sep_trace_exc_o,
+  output logic [4:0]  sep_trace_ecause_o,
+  output logic        sep_trace_interrupt_o,
+  output logic [31:0] sep_trace_tval_o,
   output logic [31:0] sep_inst_count_o,
   output logic [31:0] sep_iccm_write_count_o,
   output logic [31:0] sep_dccm_write_count_o,
@@ -221,8 +225,8 @@ module smu_wrapper_uvm_top (
   // Hierarchical SEP lifecycle source (for lc_state=from_sep identity).
   // Under SMU_NO_SEP this is tied off; checkers must not treat that as from_sep.
   output logic [7:0]  obs_sep_lc_state_o,
-  // Legacy compile-time present flags — not used by SMU_ALL_001 FAIL-ON path
-  // (presence is proven via hierarchical clk/rst identity observes below).
+  // Compile-time present flags, diagnostic only: SMU_ALL_001 proves presence
+  // from the hierarchical clk/rst identity observes below.
   output logic        obs_compose_smc_present_o,
   output logic        obs_compose_sep_present_o,
   output logic        obs_compose_dtp_present_o,
@@ -311,26 +315,22 @@ module smu_wrapper_uvm_top (
   // ------------------------------------------------------------------
   // ESRC raw-noise force.
   // ------------------------------------------------------------------
-  // POLICY EXCEPTION. This DV root's rule is "no DUT Force" (see README), and
-  // this is the single named exception, adopted deliberately to match
-  // hw/sys/sep/dv/tb/tb_top.sv, which calls the same thing "the one permitted
-  // force (raw noise at the source)".
+  // POLICY EXCEPTION. This DV root's rule is "no DUT Force" (see README); this
+  // is the single named exception, the same one hw/sys/sep/dv/tb/tb_top.sv
+  // calls "the one permitted force (raw noise at the source)".
   //
-  // Why it is not a way around the logic under test: the ESRC ring
-  // oscillators rely on `#delay` feedback, which Verilator ignores, so the 12
-  // noise lanes never toggle and no entropy is produced at all. The force
-  // replaces an analogue behaviour the simulator cannot model, at the very
-  // first node of the chain. Everything downstream -- decorrelator,
-  // compressor, SHA, CSRNG, EDN -- is the real RTL doing real work on the
-  // driven sequence. Nothing downstream is forced; the probes are read-only.
+  // The ESRC ring oscillators rely on `#delay` feedback, which Verilator
+  // ignores, so the 12 noise lanes never toggle and no entropy is produced.
+  // The force replaces that analogue behaviour at the first node of the chain;
+  // everything downstream -- decorrelator, compressor, SHA, CSRNG, EDN -- is
+  // the real RTL working on the driven sequence, and the probes are read-only.
   //
-  // Scope of the exception, and nothing beyond it:
+  // Scope:
   //   * only under +esrc_noise_force,
   //   * only dcor.noise_i on the 12 generator lanes,
   //   * downstream taps observe, never drive.
-  // Note the SEP TB also carries a +sep_crypto_edn_force that grants OTBN's
-  // EDN handshakes directly and bypasses the chain. That one is NOT adopted
-  // here: it would skip the logic these tests exist to exercise.
+  // The SEP TB's +sep_crypto_edn_force, which grants OTBN's EDN handshakes
+  // directly and bypasses the chain, has no counterpart here.
 `ifndef SMU_NO_SEP
   logic [11:0] esrc_noise_d;
   assign esrc_noise_d = esrc_noise_ext_i;
@@ -350,9 +350,7 @@ module smu_wrapper_uvm_top (
     force u_dut.u_smu.gen_sep.u_sep.sep_crypto.u_sep_trng                      \
         .u_entropy_source_s3c_scan.u_generator_complex.gen_ecmplx[i]             \
         .u_generator.u_decorrelator.noise_i = esrc_noise_d[i]
-  // Plain `always`: `force` is a procedural continuous override, so always_ff
-  // semantics do not apply. No `release` is needed -- the force is plusarg
-  // gated and each test is its own elaboration.
+
   always @(posedge clk_smu_i) begin
     if ($test$plusargs("esrc_noise_force")) begin
       `SMU_ESRC_NOISE_FORCE(0);
@@ -425,9 +423,20 @@ module smu_wrapper_uvm_top (
   // Matches smu_wrapper XTRIG_NUM_INT_CT (= DEFAULT_NUM_INT_CT - 2).
   logic [dtp_pkg::DEFAULT_NUM_INT_CT-3:0] xtrig_ctm_src_req;
 
-  // CPU memory macros are inside smc_ip_integration now, so the ROM request
-  // is observed hierarchically instead of on a wrapper passthrough port.
-  chipyard_4core_mem_pkg::rom_req_t            rom_intf_req;
+  // smc_4core_cpu zeroes the whole scratch RAM at boot to establish valid ECC
+  // (its MEM_ZERO FSM, gated by this input). That runs after the time-zero
+  // +smc_scratch_ram_hex load, so an image placed there does not survive to
+  // first fetch. Hold the FSM off whenever a test supplies such an image;
+  // hw/sys/smc/dv holds it off unconditionally.
+  logic smc_disable_sram_auto_init = 1'b0;
+  initial begin : smc_scratch_preload_gates_auto_init
+    string scratch_hex_path;
+    smc_disable_sram_auto_init = $value$plusargs("smc_scratch_ram_hex=%s", scratch_hex_path);
+  end
+
+  // CPU memory macros live inside smc_ip_integration, so the ROM request is
+  // observed hierarchically.
+  chipyard_4core_mem_pkg::rom_req_t rom_intf_req;
   assign rom_intf_req = u_dut.u_smc_ip_integration.rom_intf_req;
   assign smc_scratch_read_count_o =
         u_dut.u_smc_ip_integration.u_smc_cpu_mem_dv.scratch_ram_read_count_q;
@@ -460,11 +469,6 @@ module smu_wrapper_uvm_top (
   logic        sep_reset_n;
   sep_pkg::sep_cpu_trace_t sep_cpu_trace;
   logic                    secure_tm_req;
-
-  i3c_pkg::dat_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dat_src;
-  i3c_pkg::dct_mem_src_t  [smc_config_pkg::NUM_I3C-1:0] i3c_dct_src;
-  assign i3c_dat_src = '0;
-  assign i3c_dct_src = '0;
 
   assign secure_tm_req = 1'b0;
   // ------------------------------------------------------------------
@@ -595,6 +599,16 @@ module smu_wrapper_uvm_top (
         sep_reset_n ? sep_cpu_trace.trace_rv_i_valid_ip : 1'b0;
   assign sep_pc_o =
         sep_reset_n ? sep_cpu_trace.trace_rv_i_address_ip : '0;
+  assign sep_trace_insn_o =
+        sep_reset_n ? sep_cpu_trace.trace_rv_i_insn_ip : '0;
+  assign sep_trace_exc_o =
+        sep_reset_n ? sep_cpu_trace.trace_rv_i_exception_ip : 1'b0;
+  assign sep_trace_ecause_o =
+        sep_reset_n ? sep_cpu_trace.trace_rv_i_ecause_ip : '0;
+  assign sep_trace_interrupt_o =
+        sep_reset_n ? sep_cpu_trace.trace_rv_i_interrupt_ip : 1'b0;
+  assign sep_trace_tval_o =
+        sep_reset_n ? sep_cpu_trace.trace_rv_i_tval_ip : '0;
 
   // Observe SEP run-gate nets. Use ifdef (not generate-if) so the no-SEP
   // compile never resolves gen_sep hierarchy XMRs.
@@ -775,9 +789,7 @@ module smu_wrapper_uvm_top (
     sep_dtcm_path  = "smu_sep_smoke.dtcm.hex";
     // +sep_no_tcm_preload selects the boot-ROM-only flow, where the image
     // running from ROM loads the TCM itself (secure DMA) instead of being
-    // placed there by this loader. Opt-in on purpose: for every other test a
-    // missing TCM image stays fatal, because silently booting a zeroed ICCM
-    // is exactly the failure this loader exists to prevent.
+    // placed there by this loader.
     no_tcm_preload = $test$plusargs("sep_no_tcm_preload") != 0;
     if (no_tcm_preload) begin
       $display("[smu_wrapper_uvm_top] +sep_no_tcm_preload: TCM zeroed, firmware loads it");
@@ -968,21 +980,19 @@ module smu_wrapper_uvm_top (
 `endif
 
   // ------------------------------------------------------------------
-  // External SMN AXI slave — SEP rom_boot / SMC SYS_OUT posture. Firmware
-  // console / PASS magic is a TB observe snoop on the same wires (SEP
-  // sep_outbound_mbx decode), not a second bus terminator.
+  // External SMN AXI4 egress: the shared slave agent answers on u_axi_out_if
+  // (cocotb binds the instance); the bridge places the cut's struct port on
+  // it. Firmware console / PASS magic is a TB observe snoop on the same
+  // wires (SEP sep_outbound_mbx decode), not a second responder.
   // ------------------------------------------------------------------
   localparam logic [31:0] FW_STDOUT_ADDR = 32'h8000_0000;
   localparam logic [31:0] FW_MAGIC0 = 32'hA5A5_5A5A;
   localparam logic [31:0] FW_MAGIC_PASS = 32'hCAFE_BABE;
   localparam logic [31:0] FW_MAGIC_FAIL = 32'hDEAD_BEEF;
 
-  smu_axi_xbar_pkg::axi_out_req_t  [0:0] axi_out_mem_req;
-  smu_axi_xbar_pkg::axi_out_resp_t [0:0] axi_out_mem_resp;
-
-  // Register the boundary channels so the terminator sees edge-aligned
+  // Register the boundary channels so the responder sees edge-aligned
   // request signals: the crossbar's ext_out aw_valid settles late in the
-  // cycle. The cut also keeps the terminator's ready out of the crossbar's
+  // cycle. The cut also keeps the responder's ready out of the crossbar's
   // combinational cone.
   smu_axi_xbar_pkg::axi_out_req_t  axi_out_cut_req;
   smu_axi_xbar_pkg::axi_out_resp_t axi_out_cut_resp;
@@ -1004,18 +1014,18 @@ module smu_wrapper_uvm_top (
     .mst_resp_i (axi_out_cut_resp)
   );
 
-  assign axi_out_mem_req[0] = axi_out_cut_req;
-  assign axi_out_cut_resp   = axi_out_mem_resp[0];
+  ocah_axi_if u_axi_out_if (
+    .aclk    (clk_smu_i),
+    .aresetn (rst_cold_n_o)
+  );
 
-  smu_axi_out_sim_slave #(
+  ocah_axi_struct_bridge #(
     .axi_req_t  (smu_axi_xbar_pkg::axi_out_req_t),
-    .axi_resp_t (smu_axi_xbar_pkg::axi_out_resp_t),
-    .AddrWidth  (56)
-  ) u_axi_out_mem (
-    .clk_i      (clk_smu_i),
-    .rst_ni     (rst_cold_n_o),
-    .axi_req_i  (axi_out_mem_req[0]),
-    .axi_resp_o (axi_out_mem_resp[0])
+    .axi_resp_t (smu_axi_xbar_pkg::axi_out_resp_t)
+  ) u_axi_out_bridge (
+    .axi_req_i  (axi_out_cut_req),
+    .axi_resp_o (axi_out_cut_resp),
+    .axi_if     (u_axi_out_if)
   );
 
   logic [55:0] axi_out_aw_addr_q;
@@ -1114,8 +1124,8 @@ module smu_wrapper_uvm_top (
         smu_axi_out_read_count_o <= smu_axi_out_read_count_o + 32'd1;
       end
 
-      // Firmware console / PASS magic (retired tb_smu_axi_responder /
-      // SEP sep_outbound_mbx decode) — observe only; the terminator owns resp.
+      // Firmware console / PASS magic (SEP sep_outbound_mbx decode) — observe
+      // only; the slave agent owns resp.
       if (axi_out_w_fire && axi_out_to_stdout) begin
         if (smu_axi_out_req.w.strb == 8'h01) begin
           fw_char_o       <= smu_axi_out_req.w.data[7:0];
@@ -1268,11 +1278,8 @@ module smu_wrapper_uvm_top (
     .fuse_reset_n_delayed_o,
     .skip_mem_repair_o (),
     .ext_boot_seq_done_i (1'b1),
-    .temp_interrupt_i (1'b0),
     .lc_state_o (lc_state),
     .lc_sigint_err_o (),
-    .ras_bank_chip_o (),
-    .ras_bank_instance_o (),
     .ndmreset_request_i ('0),
     .ndmreset_process_o (),
     .ext_mailbox_interrupts_o (ext_mailbox_interrupts),
@@ -1284,7 +1291,7 @@ module smu_wrapper_uvm_top (
     .ss_reset_ctrl_o (),
     .sync_irq_o (),
 
-    .disable_sram_auto_init_i (1'b0),
+    .disable_sram_auto_init_i (smc_disable_sram_auto_init),
     .init_mem_done_o,
     .chiplet_is_primary_i (1'b1),
     .timer_count_o (),
@@ -1301,19 +1308,15 @@ module smu_wrapper_uvm_top (
     .mbist_pass_i (1'b1),
     .mbist_abort_i (1'b0),
 
-    .spi_irq_i (1'b0),
     .sep_cpu_trace_o (sep_cpu_trace),
     .sep_extintsrc_req_i ('0),
     .lcc_demote_state_1_o (),
     .lcc_demote_state_2_o (),
+    .sep_fuse_dft_disable_o (),
+    .smc_fuse_dft_disable_o (),
     .sep_fuse_sense_done_o,
     .clk_sep_wdt_i,
     .secure_tm_req_i (secure_tm_req),
-
-    .i3c_dat_mem_src_i (i3c_dat_src),
-    .i3c_dat_mem_sink_o (),
-    .i3c_dct_mem_src_i (i3c_dct_src),
-    .i3c_dct_mem_sink_o (),
 
     .ext_debug_bus_i ('0),
     .gpio_interrupt_o (),

@@ -72,7 +72,7 @@ static int test_alias_hit_miss_comprehensive(void) {
             uint32_t miss_addr =
                 ALIAS_SRC_BASE + 0x1000000 + miss_test * 0x100000; // beyond all alias ranges
 
-            test_axi_transaction(miss_addr, 4, AXI_READ); // expect miss
+            test_axi_transaction(miss_addr, 4, AXI_READ);           // expect miss
             test_axi_transaction(miss_addr + 0x1000, 4, AXI_WRITE); // expect miss
         }
     }
@@ -97,7 +97,8 @@ static int test_overlapping_priority_scenarios(void) {
             if (setup_output_remap_region_extended(priority, region_start, dest_addr,
                                                    1, // enable
                                                    priority % 2,
-                                                   0xFFE00000 | (priority << 16), // different mask modes
+                                                   0xFFE00000 |
+                                                       (priority << 16), // different mask modes
                                                    CACHE_ATTR_NORMAL_NC + priority) != 0) {
                 return -1;
             }

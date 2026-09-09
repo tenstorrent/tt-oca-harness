@@ -20,14 +20,27 @@ class smc_efuse_chip_config_read_test(smc_base_test):
     async def run_scenario(self) -> None:
         seq = smc_efuse_chip_config_read_test_seq("efuse_chip_config_read_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
+        # Backed by the positive control the sequence takes first.
         await check_efuse_otp_observability()
+        # Four chip-config reset-value expectations plus the eFuse-shim
+        # expectation the positive control carries.
+        assert self.env.scoreboard.sys_axi_value_checks_seen >= 5, (
+            "fewer than 5 SEP_IN AXI value compares reached the scoreboard: the "
+            "chip-config reset-value expectations were not checked"
+        )
         await self.record_protocol_vip(
             SmcProtocolVipKind.EFUSE,
             type(self).__name__,
-            # Directed stimulus floor: 5 SEP_IN AXI chip-config CSR reads.
-            # Literal here, not read from `seq.accesses`.
-            min_csr_accesses=5,
-            csr_accesses=seq.accesses,
+            # Directed stimulus floor: 5 SEP_IN AXI chip-config CSR reads plus
+            # 1 eFuse-shim positive-control read. Literal here, not read from
+            # `seq.accesses`.
+            min_csr_accesses=6,
+            # The scoreboard's own per-bus tally, stamped by the driver that
+            # completed each access, rather than `seq.accesses`.
+            csr_accesses=self.env.scoreboard.axi_accesses_by_bus.get("SEP_IN AXI", 0),
             proxy=False,
-            details="eFuse-derived chip-config version/LC/RAS surface checked",
+            details=(
+                "eFuse-derived chip-config version/LC/RAS surface checked, with "
+                "the eFuse-bank activity positive control and idle leg"
+            ),
         )

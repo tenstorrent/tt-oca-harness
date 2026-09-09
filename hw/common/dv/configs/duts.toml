@@ -10,7 +10,7 @@
 #
 # Register only DUTs whose sim config exists: every registered entry is loaded and validated
 # before any run or diagnostic, so a stale entry blocks all flows. Conventional DUTs
-# (e.g. SMC/SEP) are discovered automatically once their `<name>_sim_cfg.toml` is ported.
+# (e.g. SMC/SEP) are discovered automatically from their `<name>_sim_cfg.toml`.
 # Non-conventional aliases — such as `smu_wrapper` sharing hw/sys/smu/dv with a separate sim
 # config for the production-wrapper baseline flow — must be registered here when their
 # configs are added.

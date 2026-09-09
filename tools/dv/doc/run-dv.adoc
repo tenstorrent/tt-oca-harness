@@ -11,8 +11,7 @@ builds a concrete stage plan, invokes the selected backend, and writes durable
 logs and schema-version-1 result files.
 
 _Native_ means the flow is owned by this runner end to end — stage plan,
-tool invocation, and results — in contrast to wrapped or external flows such
-as the classic VCS Make/VPI path.
+tool invocation, and results — in contrast to wrapped or external flows.
 
 [NOTE]
 ====
@@ -715,7 +714,7 @@ Override them with `--wave-retention {all,failed,none}`. Kept wave directories
 include a copied log and `debug_context.json` with viewer and same-seed replay
 commands.
 
-On VCS (both the cocotb make flow and the standalone UVM flow), dumping is
+On VCS (both the cocotb flow and the standalone UVM flow), dumping is
 driven by a generated UCLI script (`scripts/waves.<test>.ucli`, passed as
 `simv -ucli -i`), so no testbench dump hooks are required. `fsdb` needs Verdi:
 the runner resolves `VERDI_HOME` (explicit env first, then derived from `verdi`
@@ -740,8 +739,8 @@ record the requested range and set `range_supported` to false.
 The standalone UVM/VCS flow gains dump access by elaborating with
 `-debug_access+all` when waves are requested. A waves run that skips
 elaboration (`--stage sim` against a simv built without waves) cannot dump;
-rerun with the elaborate stage included or `--rebuild`. The cocotb make flow
-always compiles with `-debug_access`, so its cached build needs no rebuild.
+rerun with the elaborate stage included or `--rebuild`. cocotb's VCS runner
+always compiles with `-debug_access+all`, so its cached build needs no rebuild.
 If a wave-enabled simulation produces no wave file, the runner prints a
 warning and records it in the run's wave metadata.
 ====
@@ -814,8 +813,8 @@ result files.
 Firmware/model preparation may still occur.
 
 |`--rebuild`
-|Request a fresh cocotb model build for the Verilator/Xcelium Python-runner
-paths. The classic VCS Make path remains dependency-driven and incremental.
+|Request a fresh cocotb model build (Verilator, Xcelium, and VCS all go through
+cocotb's Python runner, so `--rebuild` behaves the same on each).
 
 |`--timeout SEC`
 |Bound supported subprocess stages and override the configured simulation-leaf
@@ -1074,7 +1073,7 @@ job names `verilator-smoke (<dut>)` are the stable check contexts.
 |`regress.yml`: `schedule` Sunday to Friday at 18:00 UTC, or
 `workflow_dispatch` with `tier=nightly`
 |One random seed per test of each DUT's regression group at `--sim-jobs 4`:
-DTP `all`, SEP `no_cpu`, SMU `sep0_all`; SMC `smoke` and the three
+DTP `all`, SEP `cpu_stub`, SMU `sep0_all`; SMC `smoke` and the three
 `cross_trigger` benches' `all` groups run with `--reseed 3`. No coverage; the
 budgets are sized for the standard runner. Nightly is not a merge gate; a red
 nightly run is a triage signal, and the SEP testlist documents the reveals its
@@ -1084,7 +1083,7 @@ class regression is expected to carry.
 |`regress.yml`: `schedule` Saturday at 18:00 UTC, or `workflow_dispatch`
 with `tier=weekly`
 |The coverage regression the dashboard publishes. DTP `all` collects
-reference-only Verilator coverage; SEP `no_cpu` and SMU `sep0_all` add
+reference-only Verilator coverage; SEP `cpu_stub` and SMU `sep0_all` add
 `--cov` once the repository variable `DV_LARGE_RUNNER` names a larger
 runner, because their coverage-instrumented model builds exceed the standard
 runner's memory, and DTP reseeds three times on that runner. SMC `smoke` and
@@ -1134,7 +1133,7 @@ symlink.
 tiers only)
 |Hosted `sim` and `regress` matrices at current head. Smoke runs on every
 pull request and push to `main`; the nightly and weekly tiers run each DUT's
-regression group (`all` / `no_cpu` / `sep0_all` / `smoke`). Main protection
+regression group (`all` / `cpu_stub` / `sep0_all` / `smoke`). Main protection
 requires the stable `verilator-smoke (dtp)` and `verilator-smoke (sep)`
 pull-request contexts in addition to the GitLab mirror context. A failed,
 cancelled, or missing DTP or SEP smoke result blocks merge. SMU and SMC smoke
@@ -1142,7 +1141,7 @@ run in the same matrix but are not required contexts; the `cross_trigger`
 benches are enrolled in the regression tiers only.
 
 |Configured, not CI-qualified
-|`dtp --framework uvm` + VCS; `smc --framework uvm` + VCS; `smu_wrapper` cocotb flow
+|`dtp --framework uvm` + VCS; `sep --framework uvm` + VCS; `smc --framework uvm` + VCS; `smu --framework uvm` + VCS; `smu_wrapper` cocotb flow
 |Valid configs exercised by maintainers with licensed tools or carrying
 historical local results only. Not run by hosted CI; do not add to the
 workflow matrix without a qualifying run at head.
@@ -1166,7 +1165,9 @@ job maps a group to its UVM-implemented subset:
 ----
 python3 tools/dv/run_dv.py --dut dtp --framework uvm --items smoke --skip-unimplemented
 python3 tools/dv/run_dv.py --dut dtp --framework uvm --items jtag2axi --skip-unimplemented
+python3 tools/dv/run_dv.py --dut sep --framework uvm --items smoke --skip-unimplemented
 python3 tools/dv/run_dv.py --dut smc --framework uvm --items smoke --skip-unimplemented
+python3 tools/dv/run_dv.py --dut smu --framework uvm --items smoke --skip-unimplemented
 ----
 
 Each (DUT, framework) pair a DUT implements is one _framework view_: the DUT
@@ -1220,7 +1221,11 @@ bridge), so an import failure reported here reproduces in a real run and an
 import that only works with extra ambient packages does not mask one. The
 probe assigns the simulation-time `cocotb.log` attribute the way cocotb's
 initialization does before importing test modules, so modules that touch it
-at import scope are not false-flagged. The
+at import scope are not false-flagged. Modules are probed 20 per child
+interpreter with a 120-second budget per batch; a batch that exceeds it is
+retried once with twice the budget, and only a batch that exceeds both is
+reported as failed. `OCAH_DOCTOR_PROBE_TIMEOUT=<seconds>` replaces the
+per-batch budget on a slow filesystem. The
 shared VIP check imports `ocah_axi_vip` from its in-repo root
 (`hw/common/dv/vip`); no `pip install` of `hw/common/dv` is required. The
 doctor does not check out a license or comprehensively probe Bender, Make,
@@ -1238,13 +1243,6 @@ structured result and absent positive log summary correctly fail closed.
 scheduler may insert a model prebuild, and a cocotb simulation may build its
 model, but the generated filelist and required firmware outputs must already
 exist. Run the missing preparation stages first, or use the implicit path.
-
-=== VCS cannot load cocotb
-
-The classic VCS Make/VPI path currently requires a cocotb version earlier than
-2.0. The runner checks `<repo>/venv/bin/python` before the active interpreter.
-Provision that environment with a compatible cocotb version before selecting
-VCS.
 
 === Coverage was collected but no report appeared
 

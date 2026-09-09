@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 -tree sep_uvm_top 1
 -tree sep_uvm_top.u_smc_mem
 -tree sep_uvm_top.u_mbx

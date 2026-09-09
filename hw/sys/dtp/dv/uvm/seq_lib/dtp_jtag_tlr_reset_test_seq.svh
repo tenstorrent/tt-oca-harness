@@ -15,7 +15,7 @@
 //     walks, or missed IDCODE restores).
 // Per-cycle walk legality lives in the env's dtp_tap_fsm_checker (aggregate
 // CHK-TAP-STATE armed by the test). +DTP_JTAG_TAP_CHECKER_NEGATIVE arms a
-// deliberately WRONG expected IDCODE so the run must FAIL (the same
+// WRONG expected IDCODE so the run must FAIL (the same
 // convention as dtp_sanity_test_seq), proving the TLR-selects-IDCODE
 // evidence path rejects a bad expectation end to end.
 //

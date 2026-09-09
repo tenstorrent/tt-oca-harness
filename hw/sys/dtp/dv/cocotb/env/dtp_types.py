@@ -418,7 +418,7 @@ def pack_series_ctrl(
 ) -> int:
     """Pack a target-specific *_AXI_SERIES_CTRL DR value.
 
-    Bit ordering matches the legacy DTP cocotb helper and RTL scan direction:
+    Bit ordering follows the RTL scan direction:
     OP in the low bits, then SIZE, pipeline depth, ADDR, and RESET as the MSB.
     """
     cfg = get_jtag2axi_target(target)

@@ -36,7 +36,7 @@ DTP_SMC_ADDR_WIDTH = 56
 DTP_SMC_DATA_WIDTH = 64
 DTP_OTP_ADDR_WIDTH = 32
 DTP_OTP_DATA_WIDTH = 32
-# The current OSS TB uses a compact local scan model for boundary-scan scenarios.
+# The OSS TB uses a compact local scan model for boundary-scan scenarios.
 DTP_BSR_MODEL_LEN = 8
 
 

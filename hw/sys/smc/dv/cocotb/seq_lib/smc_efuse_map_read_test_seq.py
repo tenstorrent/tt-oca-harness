@@ -39,7 +39,7 @@ blocked outcome *is* derivable from the sources above: the RESERVED region's
 observed block comes from the hardware field-map lock (``rule_t.lock[0]``,
 ``architecture.adoc:179-201``), which is fused into the array rather than
 published in any artifact this testbench can read, so an expectation for it
-could only have been copied off the DUT. All four reads now carry an exact,
+could only have been copied off the DUT. All four reads carry an exact,
 independently sourced expectation.
 """
 
@@ -82,7 +82,7 @@ def _map_expect(addr: int, lock_field: str | None) -> int:
 # Every SMC_EFUSE_MAP region that has BOTH a generated base address and a
 # generated `*_READ_LOCK` bit in blocks/smc_efuse_map.h, so `_map_expect` can
 # derive an exact expectation for it from the preload asset plus the generated
-# map. Excluded on purpose:
+# map. Excluded:
 #   * `RESERVED_0..64` -- see the module docstring: its blocked outcome is not
 #     independently derivable, so a compare on it would not be evidence.
 #   * `SPI_CONFIG` / `SPI_CTRL_FIELD_ENABLE` -- a LOCKS read-lock bit exists for
@@ -191,11 +191,27 @@ class smc_efuse_map_read_test_seq(SmcCsrSeq):
             f"{len(EFUSE_MAP_READS)} rows -- the sweep can no longer "
             "discriminate a stuck map window from a working one"
         )
+        # Split the rows by what each one proves. A blocked row's expectation is
+        # the SPEC error-slave signature, so it predicts a refusal and says
+        # nothing about fuse content; an unlocked row compares the preload word
+        # and is the content proof. Naming both in the token keeps a reader from
+        # counting the first kind as the second.
+        blocked = [r for r in EFUSE_MAP_READS if r[2] == EFUSE_BLOCKED_READ_DATA]
+        content = [r for r in EFUSE_MAP_READS if r[2] != EFUSE_BLOCKED_READ_DATA]
+        assert content, (
+            "every SMC_EFUSE_MAP row expects the blocked signature, so no read "
+            "in this sweep proves fuse content"
+        )
         cocotb.log.info(
-            "CHK-EFUSE-MAP-READ: %s (expectations derived from "
-            "assets/smc_efuse_default.hex + SMC_EFUSE_MAP LOCKS read-lock bits, "
-            "%d distinct values)",
-            "; ".join(f"{name}@0x{addr:08x}==0x{exp:08x}" for name, addr, exp in EFUSE_MAP_READS),
+            "CHK-EFUSE-MAP-READ: %d content rows compared against "
+            "assets/smc_efuse_default.hex (%s); %d blocked rows compared against "
+            "the SPEC error-slave signature 0x%08x, which predicts a refusal and "
+            "is not a content proof (%s); %d distinct values overall",
+            len(content),
+            "; ".join(f"{n}@0x{a:08x}==0x{e:08x}" for n, a, e in content),
+            len(blocked),
+            EFUSE_BLOCKED_READ_DATA,
+            "; ".join(f"{n}@0x{a:08x}" for n, a, _e in blocked) or "none",
             len(distinct),
         )
         self.chk_seen.add("CHK-EFUSE-MAP-READ")

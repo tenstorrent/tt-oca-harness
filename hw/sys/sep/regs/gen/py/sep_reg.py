@@ -2120,8 +2120,6 @@ SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_REG_OFFSET = 0x00000140
 SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_REG_ADDR = 0x10A30140
 SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_REG_OFFSET = 0x00000150
 SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_REG_ADDR = 0x10A30150
-SEP_CPU_CTRL_RAS_BANK_INFO_REG_OFFSET = 0x00000170
-SEP_CPU_CTRL_RAS_BANK_INFO_REG_ADDR = 0x10A30170
 SEP_CPU_CTRL_SEP_SW_DEBUG_REG_OFFSET = 0x00000178
 SEP_CPU_CTRL_SEP_SW_DEBUG_REG_ADDR = 0x10A30178
 SEP_CPU_CTRL_SEP_NMI_VEC_REG_OFFSET = 0x00000180
@@ -9137,14 +9135,11 @@ class SEP_EFUSE_MAP_LC_DISABLE_reg_t(Structure):
     _fields_ = [
         ('sep_debug', c_uint64, 1),
         ('chiplet_dbg', c_uint64, 1),
-        ('debug_reserved_dbg1', c_uint64, 14),
+        ('sep_fuse_dbg', c_uint64, 1),
+        ('smc_fuse_dbg', c_uint64, 1),
+        ('debug_reserved_dbg1', c_uint64, 20),
         ('sip_debug', c_uint64, 1),
-        ('debug_reserved_dbg2', c_uint64, 15),
-        ('sep_fuse_test', c_uint64, 1),
-        ('test_reserved_lo', c_uint64, 4),
-        ('smc_fuse_test', c_uint64, 1),
-        ('fuse_vendor_test', c_uint64, 1),
-        ('test_reserved', c_uint64, 9),
+        ('debug_reserved_dbg2', c_uint64, 23),
         ('func_reserved', c_uint64, 16),
     ]
 
@@ -10891,35 +10886,6 @@ class SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_reg_u(Union):
     def __init__(self, *args, **kwargs):
         super(SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_reg_u, self).__init__(*args, **kwargs)
         self.val = SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_REG_DEFAULT
-
-    def as_bytes(self):
-        size = 4 if isinstance(self.val, c_uint32) else 8
-        return self.val.to_bytes(size, 'little')
-
-    @classmethod
-    def from_bytes(cls, byte_seq):
-        instance = cls()
-        instance.val = int.from_bytes(byte_seq, 'little')
-        return instance
-
-SEP_CPU_CTRL_RAS_BANK_INFO_REG_DEFAULT = 0x00000000
-class SEP_CPU_CTRL_RAS_BANK_INFO_reg_t(Structure):
-    _fields_ = [
-        ('bank_chip', c_uint8, 4),
-        ('bank_instance', c_uint8, 4),
-    ]
-
-SEP_CPU_CTRL_RAS_BANK_INFO_REG_DEFAULT = 0x00000000
-
-class SEP_CPU_CTRL_RAS_BANK_INFO_reg_u(Union):
-    _fields_ = [
-        ('val', c_uint32),
-        ('f', SEP_CPU_CTRL_RAS_BANK_INFO_reg_t),
-    ]
-
-    def __init__(self, *args, **kwargs):
-        super(SEP_CPU_CTRL_RAS_BANK_INFO_reg_u, self).__init__(*args, **kwargs)
-        self.val = SEP_CPU_CTRL_RAS_BANK_INFO_REG_DEFAULT
 
     def as_bytes(self):
         size = 4 if isinstance(self.val, c_uint32) else 8

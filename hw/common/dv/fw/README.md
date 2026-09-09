@@ -54,8 +54,8 @@ headers under each block's `regs/gen/c/`.
 
 ## Toolchain contract
 
-`RISCV_TOOLCHAIN` is intentionally empty by default (do not commit site-specific
-paths). When empty the build uses `riscv64-unknown-elf-*` from `PATH`; when set
+`RISCV_TOOLCHAIN` is empty by default (do not commit site-specific paths).
+When empty the build uses `riscv64-unknown-elf-*` from `PATH`; when set
 it must point at a **directory** containing those tools:
 
 ```
@@ -81,7 +81,7 @@ macros from the generated address headers).
   modeled with open CSRs:
   - *PLL wrap* — placeholder footprint; no generated `SMC_PLL_WRAP_*` / `PLL_CNTL_*`
     / `CGM_*` / `AWM_*` definitions.
-  - *I3C wrap* — open surface is `oca_i3c_wrap`; legacy Cadence wrap names are not
+  - *I3C wrap* — open surface is `oca_i3c_wrap`; vendor Cadence wrap names are not
     emitted.
 
   Adopter overlay headers can be force-included locally without committing them:
@@ -90,5 +90,5 @@ macros from the generated address headers).
   make ocah-dv-fw-libs TARGET=smc FW_EXTRA_CFLAGS="-include /path/to/smc_rename_stub.h"
   ```
 
-This tree intentionally does not fetch a toolchain, vendor picolibc, or
-generate ROM images.
+This tree does not fetch a toolchain, vendor picolibc, or generate ROM
+images.

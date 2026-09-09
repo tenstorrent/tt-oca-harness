@@ -3,9 +3,8 @@
 """# deferred: needs_i3c_dat_dct
 SMC OSS PyUVM I3C directed-SDR protocol test — DEFERRED.
 
-TB I3C DAT/DCT prim_ram removed (no-placeholder policy). Re-enable when real
-DAT/DCT macros (or product-backed mem) are present. Not ported
-(needs_i3c_dat_dct).
+No TB I3C DAT/DCT RAM (no-placeholder policy); needs real DAT/DCT macros or
+product-backed memory. Not ported (needs_i3c_dat_dct).
 """
 
 from __future__ import annotations

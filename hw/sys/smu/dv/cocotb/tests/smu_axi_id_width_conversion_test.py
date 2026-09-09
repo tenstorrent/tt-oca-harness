@@ -9,7 +9,7 @@ authoritative-map probes.
 Deny-path (DECERR / err_slv poison) and filter allow/OKAY are out of scope here:
 SYS_IN BlockByDefault + gated JTAG2AXI prevent a frontdoor allow under SEP=0;
 claiming DECERR without that allow would violate NEGATIVE-NEEDS-POSITIVE-CONTROL.
-Filter program / allow contrast stays deferred (see tests_deferred filter suite).
+Filter program / allow contrast is not covered here (see tests_deferred).
 """
 
 from __future__ import annotations

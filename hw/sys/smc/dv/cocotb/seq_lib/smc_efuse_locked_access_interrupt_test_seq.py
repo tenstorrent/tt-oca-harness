@@ -8,7 +8,7 @@ DECLARED PRECONDITION -- the read-lock is supplied by the bench, not the DUT.
 the adopter-supplied simulation stand-in for the OTP macro,
 `hw/ip/efuse/dv/models/efuse_bank_model.sv`, `$readmemh`s that asset into the
 bank at time 0 under `+smc_efuse_hex` (named on this testcase's `[[tests]]`
-entry in `hw/sys/smc/dv/testlists/vplan_triplets.toml`). The read-lock leg
+entry in `hw/sys/smc/dv/testlists/depth.toml`). The read-lock leg
 therefore proves that the DUT ENFORCES a lock it found already set; it does not
 prove a lock can be established through the fuse-programming path. The
 write-lock leg does establish its own lock, through the real `LOCKS` CSR write
@@ -64,7 +64,7 @@ _DRAIN = 8
 
 
 class smc_efuse_locked_access_interrupt_test_seq(SmcCsrSeq):
-    """CHIPLET_ID lock IRQ via lifted peripheral_interrupts[28]."""
+    """CHIPLET_ID lock IRQ via lifted peripheral_interrupts[27]."""
 
     def __init__(self, name: str = "smc_efuse_locked_access_interrupt_test_seq") -> None:
         super().__init__(name)

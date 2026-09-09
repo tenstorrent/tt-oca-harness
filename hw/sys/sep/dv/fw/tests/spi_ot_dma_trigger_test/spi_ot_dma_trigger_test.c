@@ -65,7 +65,6 @@ int main(void) {
     spi_controller__STATUS_t status;
     uint32_t read_val;
 
-
     /* Enable controller with SPI_TX_WATERMARK=4 */
     ctrl.w = 0;
     ctrl.f.RX_WATERMARK = 1;

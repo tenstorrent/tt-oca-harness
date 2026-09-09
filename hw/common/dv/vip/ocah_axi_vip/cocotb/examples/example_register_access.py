@@ -18,8 +18,8 @@ Assumptions / conventions
 --------------------------
 - Clock is driven externally by the test; these snippets call cocotb.start_soon
   for the Clock helper before using the masters.
-- Interface names shown (axil_if, axi_if) match the signal definitions in
-  axi4_lite_intf.sv and axi4_intf.sv respectively.
+- Interface names shown (axil_if, axi_if) stand for the testbench's AXI4-Lite
+  and AXI4 interface instance handles.
 - All data values are plain Python ints; no cocotb BinaryValue objects.
 - DUT register addresses shown below are illustrative; substitute the actual
   address map from your register specification.

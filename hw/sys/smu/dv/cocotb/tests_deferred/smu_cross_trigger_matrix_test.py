@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_cross_trigger_matrix_test — DEFERRED (needs_real_lcc / needs SEP=1 / no Force).
 
-Was: CTM Force matrix. Re-enable with legal TB pin / frontdoor / real LCC.
+Needs a legal TB pin, frontdoor stimulus, or real LCC for the CTM matrix.
 Not ported (needs_real_lcc, sep1).
 """
 
