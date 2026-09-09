@@ -63,7 +63,9 @@ _SEP_ROOT = Path(__file__).resolve().parents[3]
 _OCA_SRC = _SEP_ROOT / "bootrom" / "prod" / "tools" / "tt-oca-manifest" / "src" / "oca"
 
 # constants must precede validators, which manifest imports.
-_OCA_MODULES = ("constants", "validators", "manifest")
+# Dependency order: constants, then validators, then toc, which payload
+# imports, then manifest.
+_OCA_MODULES = ("constants", "validators", "toc", "payload", "manifest")
 
 
 def _load_oca():
@@ -99,10 +101,10 @@ def _load_oca():
         sys.modules[full] = module
         spec.loader.exec_module(module)
         loaded[name] = module
-    return loaded["constants"], loaded["manifest"]
+    return loaded["constants"], loaded["manifest"], loaded["payload"]
 
 
-K, MF = _load_oca()
+K, MF, PF = _load_oca()
 
 # Slot offsets in the packed image, matching the ROM's compiled-in
 # PRIMARY_MANIFEST_OFFSET / BACKUP_MANIFEST_OFFSET. Unchanged from the Grendel

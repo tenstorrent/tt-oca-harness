@@ -6,12 +6,16 @@ Companion to :mod:`sep_oca_mutate`, which owns the manifest body. Everything her
 concerns what the manifest points AT -- the payload TOC, the images it lists, and
 the two digests plus one signature that seal the pair together.
 
-WHAT SEALING MEANS HERE. Three things have to agree or the ROM rejects the slot
+WHAT SEALING MEANS HERE. Four things have to agree or the ROM rejects the slot
 before any planted defect is reached:
 
   1. each TOC entry's ``hash`` is SHA-256 over ``payload[offset:offset+length]``;
-  2. the manifest's ``payload_hash`` is SHA-256 over
-     ``payload[:payload_hashed_length]``;
+  2. the manifest's ``payload_hash`` covers the stored bytes the consumer
+     authenticates first -- the whole ciphertext when encrypted, the TOC bytes
+     otherwise, which is what ``payload_hashed_length`` spans in each case;
+  2b. the manifest's ``payload_hash_chain`` is the iterative chain
+     ``h = SHA-256(TOC bytes)``, then ``h = SHA-256(h || SHA-256(image))`` per
+     entry, which anchors the recovered plaintext back to the manifest;
   3. the manifest's ``signature_classic`` is RSA-3072 PKCS#1-v1.5-SHA256 over the
      signed region, and ``manifest_hash`` is SHA-256 of that same region.
 
@@ -31,6 +35,12 @@ one's modulus hashes to the matching ``digest_rom_key<N>`` in the generated
 the signed region can be re-sealed and still boot, which is what a test needs when
 the defect is a *value* the ROM should accept or reject on policy rather than a
 broken seal.
+
+BOTH PAYLOAD DIGESTS COME FROM THE PACKER. ``oca.payload.compute_payload_hashes``
+computes them, so this module does not restate the chain construction. That is
+deliberate: OCA evolved this format out of Grendel's and the chain is one of the
+things it added, so a layer derived from the Grendel mutator would silently omit
+it and reseal images the ROM then rejects.
 
 The signer is stdlib-only, by necessity rather than preference: the DV virtualenv
 has no ``cryptography``. It is PKCS#1 v1.5 over SHA-256 with a 384-byte modulus,
@@ -57,16 +67,18 @@ OFF_PAYLOAD_OFFSET = K.OFF_PAYLOAD_OFFSET
 OFF_PAYLOAD_LENGTH = K.OFF_PAYLOAD_LENGTH
 OFF_PAYLOAD_HASHED_LENGTH = K.OFF_PAYLOAD_HASHED_LENGTH
 OFF_PAYLOAD_HASH = K.OFF_PAYLOAD_HASH
+OFF_PAYLOAD_HASH_CHAIN = K.OFF_PAYLOAD_HASH_CHAIN
 OFF_PAYLOAD_ENCRYPTION_CONTROL = K.OFF_PAYLOAD_ENCRYPTION_CONTROL
 
 # ---------------------------------------------------------------------------
 # Payload TOC
 # ---------------------------------------------------------------------------
-# The header agrees with Grendel's -- magic at 0, payload_length at 8,
-# image_count at 16, and the magic is PTOC in both, because Grendel had already
-# adopted OCA's payload TOC. The ENTRY layout does not agree: OCA inserts group,
-# version, security_version and target_chiplet_id, and ends with a 128-byte
-# description, so every field past `type` moved.
+# OCA evolved this layout out of Grendel's, so some of it looks familiar and
+# none of it should be assumed. The header keeps the magic at 0, payload_length
+# at 8 and image_count at 16, and adds format version fields at 4 and 6. An
+# ENTRY shares only `type` at 0: OCA inserts group, version, security_version
+# and target_chiplet_id, ends with a 128-byte description, and is 276 bytes.
+# Every offset here is read from constants.py for that reason.
 TOC_MAGIC = K.PTOC_MAGIC
 TOC_OFF_PAYLOAD_LENGTH = K.OFF_TOC_PAYLOAD_LENGTH
 TOC_OFF_IMAGE_COUNT = K.OFF_TOC_IMAGE_COUNT
@@ -298,6 +310,20 @@ def describe_bl1(buf, slot: str) -> str:
 # ---------------------------------------------------------------------------
 # The anchor, and re-sealing
 # ---------------------------------------------------------------------------
+def _packer_payload_hashes(buf, slot: str) -> tuple[bytes, bytes]:
+    """``(payload_hash_field, payload_hash_chain_field)`` per the packer.
+
+    Cleartext only: the chain is over plaintext, which an encrypted payload does
+    not expose here.
+    """
+    p = payload_base(buf, slot)
+    p_len = manifest_payload_length(buf, slot)
+    toc_bytes = payload_hashed_length(buf, slot)
+    payload = read_bytes(buf, p, p_len)
+    ranges = [(_u64(buf, e + E_OFFSET), _u64(buf, e + E_LENGTH)) for e in toc_entries(buf, slot)]
+    return mm.PF.compute_payload_hashes(payload, toc_bytes, ranges)
+
+
 def verify_sealed(buf, slot: str, *, check_toc: bool = True) -> None:
     """Reproduce the ROM's structural and cryptographic checks over ``slot``.
 
@@ -326,7 +352,7 @@ def verify_sealed(buf, slot: str, *, check_toc: bool = True) -> None:
     calc = hashlib.sha256(read_bytes(buf, p, hashed)).digest()
     if stored != calc:
         raise AssertionError(
-            f"{slot} payload_hash does not equal sha256(payload[:{hashed}]) "
+            f"{slot} payload_hash does not cover payload[:{hashed}] "
             f"(stored {stored.hex()}, computed {calc.hex()}); either the slot is not "
             f"sealed or OFF_PAYLOAD_HASH/OFF_PAYLOAD_HASHED_LENGTH are wrong"
         )
@@ -355,6 +381,18 @@ def verify_sealed(buf, slot: str, *, check_toc: bool = True) -> None:
                     f"payload[{off}:{off + ln}]); the ROM would reject this as an "
                     f"entry-hash failure, not the planted defect"
                 )
+
+        want_hash, want_chain = _packer_payload_hashes(buf, slot)
+        got_chain = bytes(
+            buf[base + OFF_PAYLOAD_HASH_CHAIN : base + OFF_PAYLOAD_HASH_CHAIN + mm.DIGEST_LEN]
+        )
+        if got_chain != want_chain[: mm.DIGEST_LEN]:
+            raise AssertionError(
+                f"{slot} payload_hash_chain does not match the packer's chain over "
+                f"the TOC and its images (stored {got_chain.hex()}, computed "
+                f"{want_chain[: mm.DIGEST_LEN].hex()}); the ROM confirms this after "
+                f"hashing every image, so a stale chain rejects the slot"
+            )
 
     verify_signing_key(buf, slot)
 
@@ -412,10 +450,21 @@ def reseal(buf: bytearray, slot: str, *, check_toc: bool = True) -> int:
             buf[e + E_HASH : e + E_HASH + mm.DIGEST_LEN] = digest
 
     base = mm.slot_base(slot)
-    hashed = payload_hashed_length(buf, slot)
-    buf[base + OFF_PAYLOAD_HASH : base + OFF_PAYLOAD_HASH + mm.DIGEST_LEN] = hashlib.sha256(
-        read_bytes(buf, p, hashed)
-    ).digest()
+    if check_toc:
+        # Both fields from the packer, so the chain construction lives in one
+        # place and a format change reaches this module for free.
+        h_field, chain_field = _packer_payload_hashes(buf, slot)
+        buf[base + OFF_PAYLOAD_HASH : base + OFF_PAYLOAD_HASH + mm.HASH_FIELD_SIZE] = h_field
+        buf[base + OFF_PAYLOAD_HASH_CHAIN : base + OFF_PAYLOAD_HASH_CHAIN + mm.HASH_FIELD_SIZE] = (
+            chain_field
+        )
+    else:
+        # Ciphertext: payload_hash covers the stored bytes, and the chain covers
+        # plaintext this module cannot see, so it is left alone.
+        hashed = payload_hashed_length(buf, slot)
+        buf[base + OFF_PAYLOAD_HASH : base + OFF_PAYLOAD_HASH + mm.DIGEST_LEN] = hashlib.sha256(
+            read_bytes(buf, p, hashed)
+        ).digest()
 
     mm.rehash(buf, slot)
 
