@@ -77,7 +77,7 @@ make ocah-vp-test      # run the pytest suites
 make ocah-vp-boot-run BOOT_ARGS="--boot primary"
 ```
 
-Or work in this directory directly — `make help` lists everything:
+Or work in this directory directly — `make help` lists every target:
 
 ```bash
 cd virtual_platform

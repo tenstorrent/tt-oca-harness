@@ -17,8 +17,8 @@
 # SMC_BUILD_DIR). 'make vp' neither downloads nor builds Whisper.
 #
 # A C++20-capable compiler (g++ >= 10) must be on PATH, or set CXX=...;
-# 'make check-cxx' verifies it. 'make help' lists every target and variable.
-# The repo-level entry points are the ocah-vp-* targets in vp.mk.
+# 'make check-cxx' verifies it. 'make help' lists the targets, README.md the
+# variables. The repo-level entry points are the ocah-vp-* targets in vp.mk.
 # =============================================================================
 
 SHELL       := /usr/bin/env
@@ -390,75 +390,27 @@ DEP_STAMP     := $(VP_DIR)/.vp-config-stamp$(VP_TAG_SUFFIX)
 SMC_CONFIG_SIG := $(VP_CONFIG_SIG)|$(WHISPER_HOME)|pic
 SMC_DEP_STAMP  := $(VP_DIR)/.vp-config-stamp-smc$(VP_TAG_SUFFIX)
 
-.PHONY: help scratch-build scratch-build-smc download deps deps-info vp vp-clean clean env enable_vp \
+.PHONY: scratch-build scratch-build-smc download deps deps-info vp vp-clean clean env enable_vp \
         systemc boost openssl cci whisper submodule-init check-tt-oca-harness-model check-cxx smoke \
         smc-vp smu-vp smc-test smu-test smc-clean \
         boot-build boot-secure-image boot-run fw-run vp-test vp-py-deps FORCE
 
 # =============================================================================
 # Help
+#
+# Generated from the ## docblocks on the targets below by the repo-wide flow in
+# help.mk; README.md documents the variables.
 # =============================================================================
-help:
-	@echo "OCAH Virtual Platform build (mirrors tt-oca-harness-model CI)"
-	echo ""
-	echo "Primary targets (sep-vp):"
-	echo "  scratch-build  - clean, then build all deps and sep-vp from scratch"
-	echo "  vp             - build/rebuild sep-vp (incremental; deps assumed built)"
-	echo "  vp-clean       - wipe vp/build and reconfigure + rebuild sep-vp"
-	echo "  clean          - remove downloads/, local/, and tt-oca-harness-model/vp/build{,_smc}"
-	echo "  deps-info      - show where each dependency resolves and why"
-	echo "  check-cxx      - verify the compiler on PATH can build C++$(CXX_STD)"
-	echo "  env/enable_vp  - write setup_environment.sh to source for running a VP standalone"
-	echo ""
-	echo "SMC / SMU targets (opt-in — these build the Whisper ISS first;"
-	echo "  'make vp' never does, and needs no Whisper):"
-	echo "  smc-vp         - build/rebuild smc-vp        (-> vp/build_smc$(VP_TAG_SUFFIX))"
-	echo "  smu-vp         - build/rebuild smu-vp + libsmc_cluster_smu.so (same tree)"
-	echo "  smc-test       - run the model's SMC firmware suite  (SMC_ARGS=\"smc-uart-test\")"
-	echo "  smu-test       - run the model's SMU firmware suite  (SMU_ARGS=smu-link-test)"
-	echo "  whisper        - resolve/build the Whisper ISS only"
-	echo "  smc-clean      - wipe vp/build_smc and rebuild both"
-	echo "  scratch-build-smc - clean, then build deps + Whisper + smc-vp + smu-vp"
-	echo ""
-	echo "Phase targets:"
-	echo "  download       - fetch the dependency source tarballs into downloads/"
-	echo "  deps           - resolve or build SystemC, Boost, OpenSSL, CCI"
-	echo "  systemc boost openssl cci - resolve/build a single dependency"
-	echo "  submodule-init - init the tt-oca-harness-model submodule (recursive)"
-	echo "  smoke          - (optional) build+run a sw/sep-vp-tests test in sep-vp"
-	echo ""
-	echo "Firmware test harness (sepvp/ + tests/):"
-	echo "  boot-build       - build the SEP boot ROM, OpenTitan SPI variant (-> build_ot/boot_rom.elf)"
-	echo "  boot-secure-image- generate the signed SPI image (-> build/secure_boot.spi_preload)"
-	echo "  boot-run         - build + run boot_rom.elf on sep-vp (BOOT_ARGS=\"--boot primary ...\")"
-	echo "  fw-run           - build + run a hw/sys/sep/dv/fw test (FW_TEST=<name>, FW_ARGS=...)"
-	echo "  vp-test          - run the pytest harness suite (PYTEST_ARGS=...)"
-	echo "  vp-py-deps       - sync harness Python deps into the uv venv (uv sync --group vp)"
-	echo ""
-	echo "Key variables (override on the command line):"
-	echo "  CXX=$(CXX)   CXX_STD=$(CXX_STD)   NPROC=$(NPROC)"
-	echo "  VP_CONTAINER=1 (build AND run in the ocah-toolchain container — no native"
-	echo "    toolchain needed; artifacts land in local-ctr/ and vp/build-ctr)"
-	echo "  VP_SYS_DEPS=$(VP_SYS_DEPS) (auto: use adequate system Boost/OpenSSL; 0: hermetic local builds)"
-	echo "  BOOST_MIN=$(BOOST_MIN) (minimum acceptable system BOOST_VERSION)"
-	echo "  SYSTEMC_VERSION=$(SYSTEMC_VERSION)  BOOST_VERSION=$(BOOST_VERSION)  OPENSSL_VERSION=$(OPENSSL_VERSION)  CCI_VERSION=$(CCI_VERSION)"
-	echo "  WHISPER_REV=$(WHISPER_REV) (Whisper ISS revision for smc-vp/smu-vp)"
-	echo "  SYSTEMC_HOME / BOOST_ROOT / OPENSSL_ROOT / CCI_HOME / WHISPER_HOME  (point at an"
-	echo "    existing install; set one EMPTY, e.g. 'make vp BOOST_ROOT=', to re-enable"
-	echo "    auto-resolution)"
-	echo "  RISCV_PREFIX= (SMC/SMU firmware toolchain prefix; auto-detected when unset)"
-	echo ""
-	echo "Examples:"
-	echo "  make scratch-build"
-	echo "  make vp"
-	echo "  make env && source setup_environment.sh   # then run a VP directly"
-	echo "  make deps BOOST_ROOT=/path/to/boost OPENSSL_ROOT=/path/to/openssl-3"
-	echo "  make smc-vp smu-vp VP_CONTAINER=1"
-	echo "  make smu-test VP_CONTAINER=1 SMU_ARGS=smu-link-test"
+HELP_TITLE       = "OCAH Virtual Platform"
+HELP_DESCRIPTION = "Build and run sep-vp, smc-vp and smu-vp, and the SEP firmware test harness"
+include $(OCAH_ROOT)/help.mk
 
 # =============================================================================
 # Aggregate phases
 # =============================================================================
+## @section Virtual platform (sep-vp)
+
+## Clean, then build every dependency and sep-vp from scratch.
 scratch-build:
 	@echo "[VP] === Scratch build: clean -> deps -> vp ==="
 	$(MAKE) clean
@@ -468,41 +420,46 @@ scratch-build:
 	echo "[VP] === Scratch build complete: $(SEP_VP_BIN) ==="
 	echo "[VP]     Run sep-vp standalone with:  source $(ENV_SCRIPT)"
 
+## Build/rebuild sep-vp (incremental; dependencies assumed built).
+vp: vp-build
+
+## Wipe vp/build, then reconfigure and rebuild sep-vp.
+vp-clean:
+	@echo "[VP] Clean reconfigure of vp/build..."
+	rm -rf $(VP_BUILD_DIR)
+	$(MAKE) vp
+
+# =============================================================================
+# Dependency, toolchain and source phases
+# =============================================================================
+## @section Dependencies, toolchain and sources
+
+## Fetch the dependency source tarballs into downloads/.
 download: $(SYSTEMC_TARBALL) $(BOOST_TARBALL) $(OPENSSL_TARBALL) $(CCI_TARBALL)
 
+## Resolve or build SystemC, Boost, OpenSSL and CCI.
 deps: $(SYSTEMC_SENTINEL) $(BOOST_SENTINEL) $(OPENSSL_SENTINEL) $(CCI_SENTINEL)
 	@$(DEPS_INFO)
 
+## Report where each dependency resolves to and why.
 deps-info:
 	@$(DEPS_INFO)
 
+## Resolve or build SystemC alone.
 systemc: $(SYSTEMC_SENTINEL)
+## Resolve or build Boost alone.
 boost:   $(BOOST_SENTINEL)
+## Resolve or build OpenSSL alone.
 openssl: $(OPENSSL_SENTINEL)
+## Resolve or build CCI alone.
 cci:     $(CCI_SENTINEL)
+## Resolve or build the Whisper ISS alone (smc-vp/smu-vp only).
 whisper: $(WHISPER_SENTINEL)
-
-vp: vp-build
-
-# SMC/SMU are opt-in. `make vp` stays exactly as it was: SEP-only, no Whisper,
-# no new download. Whisper is a large source dependency and the majority of VP
-# developers work on SEP, so making the default target pay for it would be a
-# regression for them.
-scratch-build-smc:
-	@echo "[VP] === Scratch build (SMC/SMU): clean -> deps -> whisper -> smc-vp + smu-vp ==="
-	$(MAKE) clean
-	$(MAKE) deps
-	$(MAKE) whisper
-	$(MAKE) smc-vp
-	$(MAKE) smu-vp
-	$(MAKE) env
-	echo "[VP] === Scratch build complete: $(SMC_VP_BIN)"
-	echo "[VP]                             $(SMU_VP_BIN)"
-	echo "[VP]                             $(SMU_CLUSTER_LIB)"
 
 # =============================================================================
 # Compiler capability check (order-only prereq of every compile step)
 # =============================================================================
+## Verify the compiler on PATH can build the C++ standard the VP requires.
 check-cxx:
 	@if ! echo 'int main(){return 0;}' | $(CXX) -std=c++$(CXX_STD) -x c++ - -o /dev/null 2>/dev/null; then
 	  echo "[VP] ERROR: '$(CXX)' cannot compile C++$(CXX_STD)." >&2
@@ -696,6 +653,7 @@ endif
 # =============================================================================
 # Source preparation (submodules)
 # =============================================================================
+## Initialize the tt-oca-harness-model submodule, recursively.
 submodule-init:
 	@echo "[VP] Initializing the tt-oca-harness-model submodule (recursive)..."
 	git -C $(OCAH_ROOT) submodule update --init --recursive virtual_platform/tt-oca-harness-model
@@ -757,14 +715,10 @@ vp-build: | $(VP_BUILD_DIR)/Makefile check-cxx
 # forcing a rebuild themselves; the real build path is `vp` / `vp-build`.
 $(SEP_VP_BIN): | vp-build
 
-vp-clean:
-	@echo "[VP] Clean reconfigure of vp/build..."
-	rm -rf $(VP_BUILD_DIR)
-	$(MAKE) vp
-
 # =============================================================================
 # SMC / SMU configure + build (opt-in; the Whisper-enabled tree)
 # =============================================================================
+## @section SMC / SMU (opt-in; these build the Whisper ISS first)
 
 # This environment must be present for the BUILD steps too, not just the
 # configure: WHISPER_HOME decides whether the smc/smu targets are generated at
@@ -837,9 +791,23 @@ $(SMC_BUILD_DIR)/Makefile: $(SMC_DEP_STAMP) $(SYSTEMC_SENTINEL) $(BOOST_SENTINEL
 	  fi
 	done
 
+## Clean, then build every dependency, Whisper, smc-vp and smu-vp.
+scratch-build-smc:
+	@echo "[VP] === Scratch build (SMC/SMU): clean -> deps -> whisper -> smc-vp + smu-vp ==="
+	$(MAKE) clean
+	$(MAKE) deps
+	$(MAKE) whisper
+	$(MAKE) smc-vp
+	$(MAKE) smu-vp
+	$(MAKE) env
+	echo "[VP] === Scratch build complete: $(SMC_VP_BIN)"
+	echo "[VP]                             $(SMU_VP_BIN)"
+	echo "[VP]                             $(SMU_CLUSTER_LIB)"
+
 # PHONY for the same reason vp-build is: CMake owns the source/header
 # dependency graph, and keying on the binary would shadow its finer-grained
 # tracking.
+## Build/rebuild smc-vp into vp/build_smc (incremental).
 smc-vp: | $(SMC_BUILD_DIR)/Makefile check-cxx
 	@echo "[VP] Building smc-vp (incremental, via CMake)..."
 	$(call SMC_BUILD_TARGET,smc-vp)
@@ -847,6 +815,7 @@ smc-vp: | $(SMC_BUILD_DIR)/Makefile check-cxx
 
 # Two artifacts: the executable and the cluster DSO it loads at run time. They
 # must travel together (see SMU_CLUSTER_LIB above).
+## Build/rebuild smu-vp and its companion libsmc_cluster_smu.so (same tree).
 smu-vp: | $(SMC_BUILD_DIR)/Makefile check-cxx
 	@echo "[VP] Building smu-vp + libsmc_cluster_smu.so (incremental, via CMake)..."
 	$(call SMC_BUILD_TARGET,smu-vp)
@@ -857,6 +826,7 @@ smu-vp: | $(SMC_BUILD_DIR)/Makefile check-cxx
 $(SMC_VP_BIN): | smc-vp
 $(SMU_VP_BIN) $(SMU_CLUSTER_LIB): | smu-vp
 
+## Wipe vp/build_smc, then reconfigure and rebuild smc-vp and smu-vp.
 smc-clean:
 	@echo "[VP] Clean reconfigure of vp/build_smc..."
 	rm -rf $(SMC_BUILD_DIR)
@@ -865,7 +835,9 @@ smc-clean:
 # =============================================================================
 # Clean (build artifacts only; tt-oca-harness-model source is left intact)
 # =============================================================================
+## @section Cleaning and environment
 
+## Remove downloads/, local/ and both vp/build trees.
 clean:
 	@echo "[VP] Removing downloads/, local/, and tt-oca-harness-model/vp/build{,_smc}..."
 	rm -rf $(DOWNLOAD_DIR) $(LOCAL_DIR) $(VP_BUILD_DIR) $(SMC_BUILD_DIR) \
@@ -924,7 +896,8 @@ echo "  smu-vp      : $$(command -v smu-vp 2>/dev/null || echo '(not built; make
 echo "  SYSTEMC_HOME: $$SYSTEMC_HOME"
 endef
 
-env enable_vp:
+## Write setup_environment.sh: source it to run a built VP standalone.
+env:
 	@echo "[VP] Generating environment script: $(ENV_SCRIPT)"
 	$(file >$(ENV_SCRIPT),$(ENV_SCRIPT_BODY))
 	if [ ! -x "$(SEP_VP_BIN)" ]; then \
@@ -932,6 +905,9 @@ env enable_vp:
 	fi
 	echo "[VP] Wrote $(ENV_SCRIPT). Use it with:"
 	echo "        source $(ENV_SCRIPT)"
+
+## Alias for env.
+enable_vp: env
 
 # =============================================================================
 # Guards
@@ -949,7 +925,10 @@ check-tt-oca-harness-model:
 # =============================================================================
 # Optional smoke test (best-effort; not part of scratch-build/vp)
 # =============================================================================
+## @section SEP firmware test harness
 
+## Build and run one sw/sep-vp-tests test in sep-vp; skips if it cannot.
+## @param SW_TEST=sep-gpio-test Which test to build and run
 smoke: vp
 	@echo "[VP] Smoke: build + run sw/sep-vp-tests/$(SW_TEST) in sep-vp"
 	TESTDIR="$(SIM_DIR)/sw/sep-vp-tests/$(SW_TEST)"
@@ -983,6 +962,7 @@ smoke: vp
 # Firmware test harness (sepvp/ runner + tests/ pytest suite)
 # =============================================================================
 # --inexact so a previously synced dv group is not stripped from the venv.
+## Sync the harness Python dependencies into the repo's uv venv.
 vp-py-deps:
 	@echo "[VP] Syncing harness Python deps (uv sync --inexact --group vp)..."
 	cd $(OCAH_ROOT) && $(UV) sync --inexact --group vp
@@ -990,6 +970,7 @@ vp-py-deps:
 # The bootrom's ot-toolchain-images target owns the BUILD_DIR/flag mapping and
 # does NOT run pack-images, which needs uv and the tt-boot-manifest submodule;
 # the ELF the VP boots does not.
+## Build the SEP boot ROM, OpenTitan SPI variant (-> build_ot/boot_rom.elf).
 boot-build:
 	@echo "[VP] Building the SEP boot ROM, OpenTitan SPI variant..."
 	$(FW_ENV)
@@ -998,6 +979,7 @@ boot-build:
 
 # Needs uv on PATH and the tt-boot-manifest submodule initialized
 # (git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-boot-manifest).
+## Generate the signed SPI image the OT-negative pytest suite needs.
 boot-secure-image:
 	@echo "[VP] Generating the signed SPI image (secure_boot.spi_preload)..."
 	$(FW_ENV)
@@ -1006,6 +988,7 @@ boot-secure-image:
 
 #   make boot-run BOOT_ARGS="--boot primary --until SEP_MSG_PRIMARY_CHIPLET"
 #   make boot-run BOOT_ARGS="--boot secondary --timeout 30"
+## Build the boot ROM and run it on sep-vp; BOOT_ARGS reaches the sepvp CLI.
 boot-run: boot-build $(SEP_VP_BIN)
 	@echo "[VP] Running boot_rom.elf on sep-vp ($(BOOT_ARGS))..."
 	export SEP_VP_BIN="$(SEP_VP_BIN)"
@@ -1013,6 +996,8 @@ boot-run: boot-build $(SEP_VP_BIN)
 
 # Tests live in hw/sys/sep/dv/fw/tests/ and are built by the shared DV firmware
 # engine (default link mode tcm -> build/tests/<t>/<t>.tcm.elf).
+## Build a hw/sys/sep/dv/fw test and run it on sep-vp; FW_ARGS reaches the CLI.
+## @param FW_TEST=hello_world Which DV firmware test to build and run
 fw-run: $(SEP_VP_BIN)
 	@if [ -z "$(FW_TEST)" ]; then \
 	  echo "[VP] ERROR: set FW_TEST=<name>, e.g. make fw-run FW_TEST=hello_world" >&2; exit 1; \
@@ -1026,6 +1011,8 @@ fw-run: $(SEP_VP_BIN)
 
 # One invocation: every suite lives under virtual_platform/tests, whose rootdir
 # is virtual_platform.
+## Run the pytest harness suite; builds firmware unless told not to.
+## @param PYTEST_ARGS=--no-build Extra pytest arguments, e.g. "--no-build -k bootcode"
 vp-test: $(SEP_VP_BIN)
 	@$(PYTHON) -c "import pexpect, yaml, pytest, toml, elftools" 2>/dev/null || $(MAKE) vp-py-deps
 	$(FW_ENV)
@@ -1042,6 +1029,7 @@ vp-test: $(SEP_VP_BIN)
 # tree of their own: run_smc_vp_tests.sh's find_vp_binary() probes
 # vp/build/bin/smc-vp -- the SEP tree -- before it looks at VP_BUILD_DIR.
 # =============================================================================
+## @section SMC / SMU firmware suites
 
 # Shared environment for both runners. RISCV_TOOLCHAIN is our knob; the runners
 # take RISCV_TOOLCHAIN_PATH, a base dir containing bin/<prefix>gcc.
@@ -1057,6 +1045,8 @@ fi
 if [ -n "$(RISCV_PREFIX)" ]; then export RISCV_PREFIX="$(RISCV_PREFIX)"; fi
 endef
 
+## Run the model's SMC firmware suite on smc-vp.
+## @param SMC_ARGS=smc-uart-test One test instead of the whole suite
 smc-test: $(SMC_VP_BIN)
 	@echo "[VP] Running the SMC VP firmware suite ($(if $(SMC_ARGS),$(SMC_ARGS),all tests))..."
 	$(SMC_TEST_ENV)
@@ -1064,6 +1054,8 @@ smc-test: $(SMC_VP_BIN)
 	cd $(SIM_DIR)/sw/smc-vp-tests && ./run_smc_vp_tests.sh $(SMC_ARGS)
 
 # A test passes only when BOTH the SMC and SEP halves print PASS.
+## Run the model's SMU firmware suite on smu-vp (both subsystems at once).
+## @param SMU_ARGS=smu-link-test One test instead of the whole suite
 smu-test: $(SMU_VP_BIN)
 	@echo "[VP] Running the SMU VP firmware suite ($(if $(SMU_ARGS),$(SMU_ARGS),all tests))..."
 	$(SMC_TEST_ENV)
