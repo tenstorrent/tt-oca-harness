@@ -555,6 +555,61 @@ module smu_uvm_top
         ({{(smc_pkg::NUM_GPIO_WRAPS-1){1'b0}}, gpio_boot_stall_drive_i}
          << 57);
 
+  // ------------------------------------------------------------------
+  // Functional coverage (cov/sv/): shared by both tb shapes. The modules
+  // carry cover-property points, which land in the `user` metric family
+  // under --coverage-user, plus commercial-only covergroups internally.
+  // Every port below is a smu_tb_signal_list.svh signal, so no
+  // hierarchical reference and no public-scope change is needed.
+  // ------------------------------------------------------------------
+  smu_boot_fcov u_smu_boot_fcov (
+    .clk_ref_i                   (clk_ref_i),
+    .clk_smu_i                   (clk_smu_i),
+    .powergood_i                 (powergood_i),
+    .rst_cold_ni                 (rst_cold_ni),
+    .ext_boot_seq_done_i         (ext_boot_seq_done_i),
+    .rst_cold_stable_ref_clk_ni  (rst_cold_stable_ref_clk_no),
+    .rst_primary_ref_clk_ni      (rst_primary_ref_clk_no),
+    .rst_primary_smc_clk_ni      (rst_primary_smc_clk_no),
+    .rst_primary_periph_clk_ni   (rst_primary_periph_clk_no),
+    .init_mem_done_i             (init_mem_done_o),
+    .fuse_sense_done_i           (fuse_sense_done_o),
+    .fuse_reset_n_delayed_i      (fuse_reset_n_delayed_o),
+    .jtag_boot_stall_ovrd_i      (jtag_boot_stall_ovrd),
+    .jtag_boot_stall_i           (jtag_boot_stall),
+    .gpio_boot_stall_drive_i     (gpio_boot_stall_drive_i),
+    .lc_state_i                  (lc_state_o),
+    .lc_sigint_err_i             (lc_sigint_err_o),
+    .lcc_demote_state_1_i        (lcc_demote_state_1_o),
+    .lcc_demote_state_2_i        (lcc_demote_state_2_o)
+  );
+
+  smu_xbar_fcov u_smu_xbar_fcov (
+    .clk_smu_i                (clk_smu_i),
+    .rst_cold_ni              (rst_cold_ni),
+    .sep_global_base_i        (sep_global_base_o),
+    .sep_region_size_i        (sep_region_size_o),
+    .smc_global_base_i        (smc_global_base_o),
+    .smc_region_size_i        (smc_region_size_o),
+    .s_axi_awvalid_i          (s_axi_awvalid),
+    .s_axi_awready_i          (s_axi_awready),
+    .s_axi_wvalid_i           (s_axi_wvalid),
+    .s_axi_wready_i           (s_axi_wready),
+    .s_axi_wlast_i            (s_axi_wlast),
+    .s_axi_bvalid_i           (s_axi_bvalid),
+    .s_axi_bready_i           (s_axi_bready),
+    .s_axi_bresp_i            (s_axi_bresp),
+    .s_axi_arvalid_i          (s_axi_arvalid),
+    .s_axi_arready_i          (s_axi_arready),
+    .s_axi_rvalid_i           (s_axi_rvalid),
+    .s_axi_rready_i           (s_axi_rready),
+    .s_axi_rlast_i            (s_axi_rlast),
+    .s_axi_rresp_i            (s_axi_rresp),
+    .axi_in_awvalid_count_i   (smu_axi_in_awvalid_count),
+    .axi_out_awvalid_count_i  (smu_axi_out_awvalid_count),
+    .axil_external_active_i   (tb_axil_external_active)
+  );
+
 `ifdef UVM
   // ------------------------------------------------------------------
   // SV-UVM harness (`--dut smu --framework uvm`): clocks, the shared JTAG
