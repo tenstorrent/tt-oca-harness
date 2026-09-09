@@ -7,6 +7,7 @@ The ``sepvp`` package is deliberately not installed (no editable install); this
 top-level conftest makes it importable and loads the shared plugin for every
 suite under tests/.
 """
+
 import sys
 from pathlib import Path
 

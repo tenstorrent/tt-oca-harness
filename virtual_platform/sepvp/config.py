@@ -10,7 +10,7 @@ YAML file, and the SPI flash is a prebuilt raw ``.bin``.
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Union
 
 from sepvp import fuses
 from sepvp.inifile import Override
@@ -30,20 +30,20 @@ class SimConfig:
 
     name: str
     elf: PathLike
-    flash_image: Optional[PathLike] = None      # prebuilt raw .bin staged to data/flash_memory.bin
-    spi_preload: Optional[PathLike] = None      # $readmemh .spi_preload image, loaded VP-side
-    otp: Optional[PathLike] = None              # YAML fuse-map path
+    flash_image: Optional[PathLike] = None  # prebuilt raw .bin staged to data/flash_memory.bin
+    spi_preload: Optional[PathLike] = None  # $readmemh .spi_preload image, loaded VP-side
+    otp: Optional[PathLike] = None  # YAML fuse-map path
     # --- boot straps (och_sep_ss1.smc.*) ---
-    boot: str = "secondary"                     # "primary" (SPI boot) | "secondary" (wait SMC)
-    recovery: bool = False                      # boot_recovery: wait for SMC manifest (implies primary)
-    rotate_update: bool = False                 # use rotated (backup) manifest slot
-    bl0_pll_clk: bool = False                   # init PLL from fuses vs refclk
-    status_report_disable: bool = False         # skip status-ring init (also suppresses SEP_STATUS)
+    boot: str = "secondary"  # "primary" (SPI boot) | "secondary" (wait SMC)
+    recovery: bool = False  # boot_recovery: wait for SMC manifest (implies primary)
+    rotate_update: bool = False  # use rotated (backup) manifest slot
+    bl0_pll_clk: bool = False  # init PLL from fuses vs refclk
+    status_report_disable: bool = False  # skip status-ring init (also suppresses SEP_STATUS)
     # --- decoded-output channels ---
-    sim_out: bool = True                        # [SIM_OUT] debug console (DEBUG firmware builds only)
-    sep_status: bool = True                     # [SEP_STATUS] production status decoder
+    sim_out: bool = True  # [SIM_OUT] debug console (DEBUG firmware builds only)
+    sep_status: bool = True  # [SEP_STATUS] production status decoder
     # --- misc ---
-    boot_timeout: int = 120                     # seconds; sep-vp never self-terminates
+    boot_timeout: int = 120  # seconds; sep-vp never self-terminates
     extra_ini: List[Override] = field(default_factory=list)  # raw (section, key, value) overrides
 
     def __post_init__(self):

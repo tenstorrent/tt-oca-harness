@@ -14,7 +14,6 @@ absent with --no-build) skips with a reason.
 """
 
 import pytest
-
 from sepvp.config import SimConfig
 
 pytestmark = pytest.mark.fw_sep

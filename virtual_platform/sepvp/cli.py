@@ -33,25 +33,49 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--bin", required=True, metavar="ELF", help="firmware ELF to run")
     p.add_argument("--name", help="run name (working dir under logs/sepvp/); default from ELF")
     p.add_argument("--spi", metavar="FLASH.bin", help="prebuilt raw SPI flash image")
-    p.add_argument("--otp", metavar="FUSES", help="fuse-map: YAML (VP-native) or RTL eFuse-config .toml")
+    p.add_argument(
+        "--otp", metavar="FUSES", help="fuse-map: YAML (VP-native) or RTL eFuse-config .toml"
+    )
     # straps
-    p.add_argument("--boot", choices=["primary", "secondary"], default="secondary",
-                   help="boot mode (primary = SPI boot; secondary = wait for SMC). Default: secondary")
+    p.add_argument(
+        "--boot",
+        choices=["primary", "secondary"],
+        default="secondary",
+        help="boot mode (primary = SPI boot; secondary = wait for SMC). Default: secondary",
+    )
     p.add_argument("--recovery", action="store_true", help="boot_recovery strap (implies primary)")
-    p.add_argument("--rotate-update", action="store_true", help="use the rotated (backup) manifest slot")
+    p.add_argument(
+        "--rotate-update", action="store_true", help="use the rotated (backup) manifest slot"
+    )
     p.add_argument("--bl0-pll-clk", action="store_true", help="init PLL from fuses (vs refclk)")
-    p.add_argument("--status-report-disable", action="store_true",
-                   help="set the status_report_disable strap (also suppresses SEP_STATUS)")
+    p.add_argument(
+        "--status-report-disable",
+        action="store_true",
+        help="set the status_report_disable strap (also suppresses SEP_STATUS)",
+    )
     # channels
-    p.add_argument("--no-sep-status", dest="sep_status", action="store_false",
-                   help="disable the [SEP_STATUS] production-status decoder")
-    p.add_argument("--no-sim-out", dest="sim_out", action="store_false",
-                   help="disable the [SIM_OUT] debug console")
+    p.add_argument(
+        "--no-sep-status",
+        dest="sep_status",
+        action="store_false",
+        help="disable the [SEP_STATUS] production-status decoder",
+    )
+    p.add_argument(
+        "--no-sim-out",
+        dest="sim_out",
+        action="store_false",
+        help="disable the [SIM_OUT] debug console",
+    )
     # run control
-    p.add_argument("--until", metavar="SEP_MSG_NAME",
-                   help="run until this SEP_STATUS message appears (success); else fail on timeout")
+    p.add_argument(
+        "--until",
+        metavar="SEP_MSG_NAME",
+        help="run until this SEP_STATUS message appears (success); else fail on timeout",
+    )
     p.add_argument("--timeout", type=int, default=120, help="seconds to run (default 120)")
-    p.add_argument("--ini-only", action="store_true", help="print the generated overlay ini and exit")
+    p.add_argument(
+        "--ini-only", action="store_true", help="print the generated overlay ini and exit"
+    )
     # platform overrides
     p.add_argument("--sep-vp-bin", help="path to the sep-vp executable")
     p.add_argument("--base-ini", help="base accellera_config.ini to @include")

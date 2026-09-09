@@ -64,6 +64,11 @@ extend-exclude = [
   "**/build_ot_pio",
   "**/regs/gen/py",
   "hw/sys/sep/bootrom/prod/tools/tt-boot-manifest",
+  # The VP simulator is a submodule, so it is not covered by a .gitignore the
+  # way virtual_platform/'s own downloads/ and local*/ trees are.
+  "virtual_platform/tt-oca-harness-model",
+  "virtual_platform/downloads",
+  "virtual_platform/local*",
 ]
 
 [tool.ruff.lint]

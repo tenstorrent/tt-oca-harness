@@ -42,11 +42,13 @@ _STATUS_LINE = SEP_STATUS_PREFIX + _STATUS_BODY
 
 # A production ERROR-type status line (the default negative assertion).
 SEP_STATUS_ERROR_RE = SEP_STATUS_PREFIX + _STATUS_BODY.format(
-    stage=r"\S+", type="ERROR", name=r"SEP_MSG_\w+")
+    stage=r"\S+", type="ERROR", name=r"SEP_MSG_\w+"
+)
 
 # Any production status line, regardless of severity — for "no status was emitted" assertions.
 SEP_STATUS_ANY_RE = SEP_STATUS_PREFIX + _STATUS_BODY.format(
-    stage=r"\S+", type=r"\S+", name=r"SEP_MSG_\w+")
+    stage=r"\S+", type=r"\S+", name=r"SEP_MSG_\w+"
+)
 
 
 class HarnessError(Exception):
@@ -135,7 +137,9 @@ class Harness:
 
     def expect_hex32(self, value_name, separator=" = ", timeout=None):
         """Match ``<value_name><sep>0xXXXXXXXX`` and return the int."""
-        match = self.expect(rf"{re.escape(value_name)}{separator}(0x[0-9A-Fa-f]{{8}})", timeout=timeout)
+        match = self.expect(
+            rf"{re.escape(value_name)}{separator}(0x[0-9A-Fa-f]{{8}})", timeout=timeout
+        )
         return int(match.group(1), 16)
 
     # -- SEP_STATUS production-status assertions -------------------------------
@@ -152,7 +156,7 @@ class Harness:
         pattern = _STATUS_LINE.format(stage=stage, type=type_pat, name=re.escape(name))
 
         if allow_error is None:
-            allow_error = (type == "ERROR")
+            allow_error = type == "ERROR"
         error_patterns = [] if allow_error else None
         return self.expect(pattern, error_patterns=error_patterns, timeout=timeout)
 
@@ -164,7 +168,9 @@ class Harness:
         *expect_pass* (if given) within *timeout*, then terminate the process.
         """
         if expect_pass is not None:
-            self.expect(expect_pass, timeout=timeout if timeout is not None else self.config.boot_timeout)
+            self.expect(
+                expect_pass, timeout=timeout if timeout is not None else self.config.boot_timeout
+            )
         self.close()
 
     def close(self):

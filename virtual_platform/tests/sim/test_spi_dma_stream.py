@@ -24,7 +24,6 @@ import subprocess
 from pathlib import Path
 
 import pytest
-
 from sepvp import paths
 
 pytestmark = pytest.mark.spi_dma
@@ -47,8 +46,10 @@ def _env(request):
 
 def _require_prereqs(request):
     tc = request.config.getoption("--riscv-toolchain")
-    if not ((tc and (Path(tc) / "bin" / "riscv64-unknown-elf-gcc").exists())
-            or shutil.which("riscv64-unknown-elf-gcc")):
+    if not (
+        (tc and (Path(tc) / "bin" / "riscv64-unknown-elf-gcc").exists())
+        or shutil.which("riscv64-unknown-elf-gcc")
+    ):
         pytest.skip("RISC-V toolchain not found (PATH or --riscv-toolchain/RISCV_TOOLCHAIN)")
     if not paths.sep_vp_bin().is_file():
         pytest.skip(f"sep-vp not built ({paths.sep_vp_bin()})")
@@ -73,8 +74,12 @@ def _run_make(request, *make_args):
     """
     vp = f"timeout -k 5 {SIM_TIMEOUT} {paths.sep_vp_bin()}"
     res = subprocess.run(
-        ["make", *make_args, f"VP={vp}"], cwd=str(FW_DIR), env=_env(request),
-        capture_output=True, text=True, timeout=TIMEOUT,
+        ["make", *make_args, f"VP={vp}"],
+        cwd=str(FW_DIR),
+        env=_env(request),
+        capture_output=True,
+        text=True,
+        timeout=TIMEOUT,
     )
     return res.stdout + "\n" + res.stderr
 
@@ -82,8 +87,9 @@ def _run_make(request, *make_args):
 @pytest.fixture(autouse=True)
 def _cleanup(request):
     yield
-    subprocess.run(["make", "distclean"], cwd=str(FW_DIR),
-                   env=_env(request), capture_output=True, text=True)
+    subprocess.run(
+        ["make", "distclean"], cwd=str(FW_DIR), env=_env(request), capture_output=True, text=True
+    )
 
 
 def test_spi_dma_streaming_drain(request):

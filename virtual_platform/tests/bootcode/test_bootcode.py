@@ -13,7 +13,6 @@ that test is skipped until manifest staging lands (see test_full_boot_to_bl1).
 """
 
 import pytest
-
 import shared
 from sepvp.config import SimConfig
 from sepvp.harness import SEP_STATUS_ANY_RE, SIM_OUT_PREFIX

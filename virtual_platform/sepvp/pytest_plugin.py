@@ -55,14 +55,26 @@ def pytest_addoption(parser):
     g = parser.getgroup("sepvp", "SEP virtual-platform harness")
     g.addoption("--vp-bin", default=None, help="path to the sep-vp executable")
     g.addoption("--vp-timeout", type=int, default=120, help="default per-run boot timeout (s)")
-    g.addoption("--no-build", dest="build", action="store_false", default=True,
-                help="do not rebuild firmware before running")
-    g.addoption("--build-type", choices=["test", "release"], default="test",
-                help="firmware build type: test (DEBUG/SIM_OUT) or release")
+    g.addoption(
+        "--no-build",
+        dest="build",
+        action="store_false",
+        default=True,
+        help="do not rebuild firmware before running",
+    )
+    g.addoption(
+        "--build-type",
+        choices=["test", "release"],
+        default="test",
+        help="firmware build type: test (DEBUG/SIM_OUT) or release",
+    )
     g.addoption("--stream", action="store_true", help="tee sep-vp stdout to the console")
-    g.addoption("--riscv-toolchain", default=paths.default_riscv_toolchain(),
-                help="RISC-V toolchain prefix dir (its bin/ is prepended to PATH for firmware "
-                     "builds; default: $RISCV_TOOLCHAIN, empty = use PATH as-is)")
+    g.addoption(
+        "--riscv-toolchain",
+        default=paths.default_riscv_toolchain(),
+        help="RISC-V toolchain prefix dir (its bin/ is prepended to PATH for firmware "
+        "builds; default: $RISCV_TOOLCHAIN, empty = use PATH as-is)",
+    )
 
 
 def pytest_configure(config):
@@ -113,10 +125,21 @@ def _native_fw_toolchain(env):
     if _NATIVE_TOOLCHAIN_OK is None:
         try:
             r = subprocess.run(
-                ["riscv64-unknown-elf-gcc", "--specs=picolibc.specs",
-                 "-x", "c", "-c", "-", "-o", os.devnull],
-                input="int main(void){return 0;}", env=env,
-                capture_output=True, text=True, timeout=60,
+                [
+                    "riscv64-unknown-elf-gcc",
+                    "--specs=picolibc.specs",
+                    "-x",
+                    "c",
+                    "-c",
+                    "-",
+                    "-o",
+                    os.devnull,
+                ],
+                input="int main(void){return 0;}",
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=60,
             )
             _NATIVE_TOOLCHAIN_OK = r.returncode == 0
         except (FileNotFoundError, subprocess.TimeoutExpired):
@@ -134,8 +157,7 @@ def _make(config, *make_args, cwd, container_ok=True):
     env = _fw_env(config)
     argv = ["make", *make_args]
     if container_ok and not _native_fw_toolchain(env):
-        argv = [str(paths.OCAH_ROOT / "scripts" / "docker-run.sh"),
-                "run-here", "make", *make_args]
+        argv = [str(paths.OCAH_ROOT / "scripts" / "docker-run.sh"), "run-here", "make", *make_args]
     return subprocess.run(argv, cwd=str(cwd), env=env, capture_output=True, text=True)
 
 
@@ -154,8 +176,13 @@ def bootcode_elf(request):
     modeled). The named variant target is used instead of `all` because pack-images
     needs uv + the tt-boot-manifest submodule, which the ELF does not."""
     if request.config.getoption("build"):
-        res = _make(request.config, "-C", str(paths.BOOTCODE_DIR),
-                    "ot-toolchain-images", cwd=paths.OCAH_ROOT)
+        res = _make(
+            request.config,
+            "-C",
+            str(paths.BOOTCODE_DIR),
+            "ot-toolchain-images",
+            cwd=paths.OCAH_ROOT,
+        )
         if res.returncode != 0:
             pytest.fail(f"bootcode build failed:\n{res.stdout[-2000:]}\n{res.stderr[-2000:]}")
     if not paths.BOOTCODE_ELF.is_file():
@@ -173,12 +200,19 @@ def secure_boot_preload(request):
     submodule initialized (git submodule update --init
     hw/sys/sep/bootrom/prod/tools/tt-boot-manifest)."""
     if request.config.getoption("build"):
-        res = _make(request.config, "-C", str(paths.BOOTCODE_DIR),
-                    "secure_boot_spi", cwd=paths.OCAH_ROOT, container_ok=False)
+        res = _make(
+            request.config,
+            "-C",
+            str(paths.BOOTCODE_DIR),
+            "secure_boot_spi",
+            cwd=paths.OCAH_ROOT,
+            container_ok=False,
+        )
         if res.returncode != 0:
             pytest.skip(
                 "secure_boot_spi build failed (tt-boot-manifest submodule initialized? "
-                f"uv on PATH?):\n{res.stdout[-1500:]}\n{res.stderr[-1500:]}")
+                f"uv on PATH?):\n{res.stdout[-1500:]}\n{res.stderr[-1500:]}"
+            )
     if not paths.SECURE_BOOT_PRELOAD.is_file():
         pytest.skip(f"{paths.SECURE_BOOT_PRELOAD} not present; build it or drop --no-build")
     return paths.SECURE_BOOT_PRELOAD
@@ -191,20 +225,28 @@ def fw_test_builder(request):
     Tests are built by the shared DV firmware engine at the repo root
     (`make ocah-dv-fw-tests TARGET=sep TEST=<name>`), which drops
     build/tests/<name>/<name>.tcm.elf (default link mode)."""
+
     def _build(name):
         test_dir = paths.FW_TESTS_DIR / name
         if not test_dir.is_dir():
             pytest.skip(f"hw/sys/sep/dv/fw/tests/{name} not found")
         if request.config.getoption("build"):
-            res = _make(request.config, "-C", str(paths.OCAH_ROOT),
-                        "ocah-dv-fw-tests", "TARGET=sep", f"TEST={name}",
-                        cwd=paths.OCAH_ROOT)
+            res = _make(
+                request.config,
+                "-C",
+                str(paths.OCAH_ROOT),
+                "ocah-dv-fw-tests",
+                "TARGET=sep",
+                f"TEST={name}",
+                cwd=paths.OCAH_ROOT,
+            )
             if res.returncode != 0:
                 pytest.skip(f"dv fw test {name} build failed:\n{res.stderr[-1500:]}")
         elf = paths.fw_test_elf(name)
         if not elf.is_file():
             pytest.skip(f"{elf.name} not present after build")
         return elf
+
     return _build
 
 

@@ -98,16 +98,20 @@ class SepVpHarness(Harness):
         ]
         if self.config.spi_preload:
             overrides.append(
-                ("string", "och_sep_ss1.spiPreload",
-                 str(Path(self.config.spi_preload).resolve())))
+                ("string", "och_sep_ss1.spiPreload", str(Path(self.config.spi_preload).resolve()))
+            )
         if self.config.flash_image:
             # The raw-binary backdoor is opt-in via `spiBackdoorFile`; the platform no
             # longer falls back to an implicit data/flash_memory.bin when spiPreload is
             # absent, so the staged image has to be named explicitly or the manifest
             # reads hit erased 0xFF flash.
             overrides.append(
-                ("string", "och_sep_ss1.spiBackdoorFile",
-                 str((self.run_dir / _FLASH_REL).resolve())))
+                (
+                    "string",
+                    "och_sep_ss1.spiBackdoorFile",
+                    str((self.run_dir / _FLASH_REL).resolve()),
+                )
+            )
         return overrides
 
     def render_ini(self) -> str:

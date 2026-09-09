@@ -16,10 +16,10 @@ from pathlib import Path
 
 # virtual_platform/sepvp/paths.py
 _THIS = Path(__file__).resolve()
-SEPVP_DIR = _THIS.parent                       # .../sepvp
-VP_DIR = SEPVP_DIR.parent                      # .../virtual_platform
-OCAH_ROOT = VP_DIR.parent                      # repo root (tt-oca-harness)
-SIM_DIR = VP_DIR / "tt-oca-harness-model"                # the SystemC platform source (submodule)
+SEPVP_DIR = _THIS.parent  # .../sepvp
+VP_DIR = SEPVP_DIR.parent  # .../virtual_platform
+OCAH_ROOT = VP_DIR.parent  # repo root (tt-oca-harness)
+SIM_DIR = VP_DIR / "tt-oca-harness-model"  # the SystemC platform source (submodule)
 
 # --- sep-vp platform -------------------------------------------------------
 VP_BUILD_DIR = SIM_DIR / "vp" / "build"
@@ -52,6 +52,7 @@ FW_TEST_BUILD_DIR = FW_DIR / "build" / "tests"
 
 # Default per-run working-directory root (logs + staged artifacts land here).
 LOGS_DIR = VP_DIR / "logs" / "sepvp"
+
 
 def default_riscv_toolchain() -> str:
     """Optional RISC-V cross-toolchain prefix for firmware builds.

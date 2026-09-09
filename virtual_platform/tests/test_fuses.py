@@ -10,7 +10,6 @@ run in any environment (unlike the bootcode/fw_sep integration suites).
 import warnings
 
 import pytest
-
 from sepvp import fuses
 
 EF = "och_sep_ss1.sep_efuse."
@@ -32,10 +31,13 @@ def test_yaml_symbolic_lc_state_mirrors_lc_ctrl():
 
 
 def test_yaml_scalar_and_array_typing():
-    ov = _by_key(fuses.overrides_from_map(
-        {"sboot_dis": 1, "locks_lo": "0xA800", "chiplet_uid": [1, 2, 3, 4, 5, 6, 7, 8]}))
+    ov = _by_key(
+        fuses.overrides_from_map(
+            {"sboot_dis": 1, "locks_lo": "0xA800", "chiplet_uid": [1, 2, 3, 4, 5, 6, 7, 8]}
+        )
+    )
     assert ov[EF + "sboot_dis"] == ("uint", 1)
-    assert ov[EF + "locks_lo"] == ("uint", 0xA800)      # hex string parsed
+    assert ov[EF + "locks_lo"] == ("uint", 0xA800)  # hex string parsed
     assert ov[EF + "chiplet_uid"] == ("string", [1, 2, 3, 4, 5, 6, 7, 8])
 
 
@@ -43,20 +45,27 @@ def test_yaml_scalar_and_array_typing():
 # TOML path (RTL/UVM eFuse config) — the new ingestion
 # --------------------------------------------------------------------------- #
 def _reg(value, fieldname="v", **flags):
-    body = {"read_locked": "False", "write_locked": "False", "fields": {fieldname: {"value": value}}}
+    body = {
+        "read_locked": "False",
+        "write_locked": "False",
+        "fields": {fieldname: {"value": value}},
+    }
     body.update(flags)
     return body
 
 
-@pytest.mark.parametrize("enc, raw", [
-    (0xF0, 0x0),   # TEST_DEV
-    (0xE1, 0x1),   # PROD
-    (0xD2, 0x2),   # RMA_SIP
-])
+@pytest.mark.parametrize(
+    "enc, raw",
+    [
+        (0xF0, 0x0),  # TEST_DEV
+        (0xE1, 0x1),  # PROD
+        (0xD2, 0x2),  # RMA_SIP
+    ],
+)
 def test_toml_lc_state_differential_decode(enc, raw):
     ov = _by_key(fuses.overrides_from_toml({"LC_STATE": _reg(enc, "lc_state")}))
     assert ov[EF + "lc_state"] == ("uint", raw)
-    assert ov[LC] == ("int", raw)          # both models set from one entry
+    assert ov[LC] == ("int", raw)  # both models set from one entry
 
 
 def test_toml_lc_state_non_differential_warns_but_uses_low_nibble():
@@ -67,11 +76,11 @@ def test_toml_lc_state_non_differential_warns_but_uses_low_nibble():
 
 def test_toml_256bit_field_splits_little_endian():
     # word[0] must be the least-significant 32 bits (matches RTL bit-packer + VP load).
-    val = 0x54e01f1d0eb208a04dbd502a53bda99b
+    val = 0x54E01F1D0EB208A04DBD502A53BDA99B
     ov = _by_key(fuses.overrides_from_toml({"CLASS_KEY": _reg(val, "key")}))
     section, words = ov[EF + "class_key"]
     assert section == "string"
-    assert words == [0x53bda99b, 0x4dbd502a, 0x0eb208a0, 0x54e01f1d, 0, 0, 0, 0]
+    assert words == [0x53BDA99B, 0x4DBD502A, 0x0EB208A0, 0x54E01F1D, 0, 0, 0, 0]
 
 
 def test_toml_64bit_field_splits_lo_hi():
@@ -83,14 +92,33 @@ def test_toml_64bit_field_splits_lo_hi():
 def test_toml_locks_derived_from_read_lock_flags():
     # Read-locking the 6th/7th/8th non-LOCKS registers (idx 5,6,7) => bits 11,13,15 = 0xA800,
     # exactly what generate_efuse_preload.py packs and what efuse_vp.ini uses for bl1_pass.
-    order = ["LC_STATE", "SBOOT_DIS", "TRANSIENT_RMA_EN", "SiP_DIS", "SYS_DIS",
-             "RMA_SIP_TOKEN", "RMA_CHIPLET_TOKEN", "CLASS_KEY"]
-    field = {"LC_STATE": "lc_state", "SBOOT_DIS": "disable_secure_boot",
-             "TRANSIENT_RMA_EN": "transient_rma_en", "SiP_DIS": "sip_dis", "SYS_DIS": "sys_dis",
-             "RMA_SIP_TOKEN": "token", "RMA_CHIPLET_TOKEN": "token", "CLASS_KEY": "key"}
+    order = [
+        "LC_STATE",
+        "SBOOT_DIS",
+        "TRANSIENT_RMA_EN",
+        "SiP_DIS",
+        "SYS_DIS",
+        "RMA_SIP_TOKEN",
+        "RMA_CHIPLET_TOKEN",
+        "CLASS_KEY",
+    ]
+    field = {
+        "LC_STATE": "lc_state",
+        "SBOOT_DIS": "disable_secure_boot",
+        "TRANSIENT_RMA_EN": "transient_rma_en",
+        "SiP_DIS": "sip_dis",
+        "SYS_DIS": "sys_dis",
+        "RMA_SIP_TOKEN": "token",
+        "RMA_CHIPLET_TOKEN": "token",
+        "CLASS_KEY": "key",
+    }
     locked = {"RMA_SIP_TOKEN", "RMA_CHIPLET_TOKEN", "CLASS_KEY"}
-    cfg = {r: _reg(0xE1 if r == "LC_STATE" else 0, field[r],
-                   read_locked="True" if r in locked else "False") for r in order}
+    cfg = {
+        r: _reg(
+            0xE1 if r == "LC_STATE" else 0, field[r], read_locked="True" if r in locked else "False"
+        )
+        for r in order
+    }
     ov = _by_key(fuses.overrides_from_toml(cfg))
     assert ov[EF + "locks_lo"] == ("uint", 0xA800)
 
@@ -107,29 +135,38 @@ def test_toml_write_lock_bit_positions():
 
 def test_toml_no_lock_flags_emits_no_locks_override():
     # A partial hand-TOML with no lock flags must not clobber the base locks_lo default.
-    ov = _by_key(fuses.overrides_from_toml({"SBOOT_DIS": {"fields": {"disable_secure_boot": {"value": 1}}}}))
+    ov = _by_key(
+        fuses.overrides_from_toml({"SBOOT_DIS": {"fields": {"disable_secure_boot": {"value": 1}}}})
+    )
     assert EF + "locks_lo" not in ov
     assert ov[EF + "sboot_dis"] == ("uint", 1)
 
 
 def test_toml_spi_ctrl_fans_out_and_drops_unmapped_fields():
-    cfg = {"SEP_SPI_CTRL": {"fields": {
-        "spi_control_field_en": {"value": 0x3},
-        "smu_pll_sysclk": {"value": 0x400},                 # no VP param -> dropped
-        "rsvd": {"value": 0},                                # dropped
-        "spi_ctrl_discovery_ctrl_reg": {"value": 0xABCD},
-        "spi_ctrl_init_rb_valid_time": {"value": 0x10},
-    }}}
+    cfg = {
+        "SEP_SPI_CTRL": {
+            "fields": {
+                "spi_control_field_en": {"value": 0x3},
+                "smu_pll_sysclk": {"value": 0x400},  # no VP param -> dropped
+                "rsvd": {"value": 0},  # dropped
+                "spi_ctrl_discovery_ctrl_reg": {"value": 0xABCD},
+                "spi_ctrl_init_rb_valid_time": {"value": 0x10},
+            }
+        }
+    }
     ov = _by_key(fuses.overrides_from_toml(cfg))
     assert ov[EF + "sep_spi_ctrl_field_en"] == ("uint", 0x3)
     assert ov[EF + "spi_discovery_ctrl"] == ("uint", 0xABCD)
     assert ov[EF + "spi_rb_valid_time"] == ("uint", 0x10)
-    assert EF + "spi_phy_misc" not in ov                     # field absent -> not emitted
+    assert EF + "spi_phy_misc" not in ov  # field absent -> not emitted
 
 
 def test_toml_rom_ctrl_combines_endianness_and_swap():
-    cfg = {"SEP_ROM_CTRL": {"fields": {
-        "rom_endianness_ctrl": {"value": 1}, "rom_swap_ctrl": {"value": 0b10101}}}}
+    cfg = {
+        "SEP_ROM_CTRL": {
+            "fields": {"rom_endianness_ctrl": {"value": 1}, "rom_swap_ctrl": {"value": 0b10101}}
+        }
+    }
     ov = _by_key(fuses.overrides_from_toml(cfg))
     assert ov[EF + "sep_rom_ctrl"] == ("uint", 1 | (0b10101 << 1))
 
@@ -142,8 +179,10 @@ def test_toml_unmapped_register_warns():
 def test_toml_reserved_registers_ignored_without_warning():
     # No lock flags => nothing at all (RESERVED value dropped, no locks_lo, no warning).
     with warnings.catch_warnings():
-        warnings.simplefilter("error")   # any warning fails the test
-        ov = _by_key(fuses.overrides_from_toml({"RESERVED_0": {"fields": {"rsvd": {"value": 0xDEAD}}}}))
+        warnings.simplefilter("error")  # any warning fails the test
+        ov = _by_key(
+            fuses.overrides_from_toml({"RESERVED_0": {"fields": {"rsvd": {"value": 0xDEAD}}}})
+        )
     assert ov == {}
 
 
@@ -160,7 +199,8 @@ def test_load_dispatches_toml_by_extension(tmp_path):
     p = tmp_path / "cfg.toml"
     p.write_text(
         "[LC_STATE]\nwrite_locked='False'\nread_locked='False'\n"
-        "  [LC_STATE.fields.lc_state]\n  value = 0xE1\n")
+        "  [LC_STATE.fields.lc_state]\n  value = 0xE1\n"
+    )
     ov = _by_key(fuses.load(p))
     assert ov[EF + "lc_state"] == ("uint", 0x1)
 
@@ -178,7 +218,8 @@ def test_toml_and_yaml_agree_for_equivalent_prod_config(tmp_path):
     toml_p = tmp_path / "c.toml"
     toml_p.write_text(
         "[LC_STATE]\n  [LC_STATE.fields.lc_state]\n  value = 0xE1\n"
-        "[SBOOT_DIS]\n  [SBOOT_DIS.fields.disable_secure_boot]\n  value = 0x0\n")
+        "[SBOOT_DIS]\n  [SBOOT_DIS.fields.disable_secure_boot]\n  value = 0x0\n"
+    )
     from_toml = _by_key(fuses.load(toml_p))
     from_yaml = _by_key(fuses.overrides_from_map({"lc_state": "PROD", "sboot_dis": 0}))
     assert from_toml[EF + "lc_state"] == from_yaml[EF + "lc_state"]
