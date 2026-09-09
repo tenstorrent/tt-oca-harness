@@ -145,11 +145,11 @@ cocotb_log = "{run_dir}/{item}/logs/{item}.log"
 # Build the selected SMC C test and declare every time-zero preload consumed by
 # the firmware boot test. run_dv stages these basenames into the simulator cwd.
 #
-# The DV test images need a picolibc-enabled RISC-V toolchain, which most hosts
-# do not carry, so probe for one and fall back to the OCAH toolchain container.
-# [c_build.bootrom], [c_build.dual_occp] and [c_build.occp_sanity] below all do
-# this; without it here, every `firmware = "<name>"` test fails at c_compile
-# with "RISC-V toolchain not found" on any host that lacks the toolchain.
+# The DV test images need a picolibc-enabled RISC-V toolchain. Use an explicit
+# $RISCV_TOOLCHAIN, else scripts/docker-run.sh run-here. No site or PATH probe.
+# Same contract as [c_build.bootrom], [c_build.dual_occp] and
+# [c_build.occp_sanity] below. Without it, every `firmware = "<name>"` test
+# fails at c_compile on any host that does not carry the toolchain.
 #
 # NOTE: argv goes through str.format() and the runlib rejects every placeholder
 # except {fw_target} -- braces of any kind, including shell ${...} expansion,
@@ -158,7 +158,7 @@ cwd = "."
 argv = [
   "bash",
   "-lc",
-  "set -e; FW='make ocah-dv-fw-tests TARGET=smc TEST={fw_target}'; RV_TC=\"$RISCV_TOOLCHAIN\"; if [ -n \"$RV_TC\" ]; then CC_PROBE=\"$RV_TC/riscv64-unknown-elf-gcc\"; else CC_PROBE=riscv64-unknown-elf-gcc; fi; if \"$CC_PROBE\" -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then eval \"$FW\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] host toolchain has no picolibc; building the SMC DV test image in the OCAH toolchain container\"; ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=smc TEST={fw_target}; else echo \"error: no picolibc-enabled RISC-V toolchain and no scripts/docker-run.sh\" >&2; exit 1; fi; cp hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload hw/sys/smc/dv/fw/build/tests/{fw_target}/",
+  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; if [ -n \"$RV_TC\" ]; then make ocah-dv-fw-tests TARGET=smc TEST={fw_target} RISCV_TOOLCHAIN=\"$RV_TC\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; building the SMC DV test image in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here make ocah-dv-fw-tests TARGET=smc TEST={fw_target} RISCV_PREFIX=riscv64-unknown-elf-; else echo \"error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset\" >&2; exit 1; fi; cp hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload hw/sys/smc/dv/fw/build/tests/{fw_target}/",
 ]
 outputs = [
   "hw/sys/smc/dv/fw/build/tests/{fw_target}/{fw_target}.ecc.hex",

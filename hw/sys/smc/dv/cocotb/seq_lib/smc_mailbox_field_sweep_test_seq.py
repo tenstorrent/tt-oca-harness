@@ -36,6 +36,8 @@ import re
 import sys
 from pathlib import Path
 
+import cocotb
+
 from .smc_addr_map import smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
@@ -111,10 +113,23 @@ class smc_mailbox_field_sweep_test_seq(SmcCsrSeq):
                 for name, off in fields:
                     addr = base + i * _MAILBOX_STRIDE + off
                     await self.csr_read(f"MBOX_{port}_{i}_{name}", addr)
+        cocotb.log.info(
+            "CHK-MBOX-FIELD-DECODE: every one of the %d field reads returned OKAY "
+            "across %d mailboxes on %d ports",
+            EXPECTED_ACCESSES - 3,
+            _MAILBOX_COUNT,
+            len(_PORTS),
+        )
         await self.csr_write("CLOCK_GATE_CONTROL_RESTORE", _CLOCK_GATE_CONTROL, cg)
         assert self.accesses == EXPECTED_ACCESSES, (
             f"mailbox field sweep mismatch: got {self.accesses}, expected "
             f"{EXPECTED_ACCESSES} -- one read per readable register of "
             f"{_MAILBOX_COUNT} mailboxes on each of {len(_PORTS)} ports, counted "
             f"from the generated map"
+        )
+        cocotb.log.info(
+            "CHK-MBOX-FIELD-COUNT: %d accesses, matching the register count the "
+            "generated map holds rather than the length of any list this "
+            "testcase owns",
+            EXPECTED_ACCESSES,
         )
