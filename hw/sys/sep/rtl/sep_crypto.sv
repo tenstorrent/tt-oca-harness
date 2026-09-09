@@ -575,7 +575,7 @@ module sep_crypto #(
     .axil_resp_t    (km_intf_pkg::km_axil_resp_t)
   ) u_abr_key_err_slv (
     .clk_i       (clk_i),
-    .rst_ni      (sep_reset_ni),
+    .rst_ni      (rst_ni),
     .axil_req_i  (abr_key_axil_isolated_req),
     .axil_resp_o (abr_key_axil_isolated_resp)
   );
