@@ -1,3 +1,8 @@
+<!--
+SPDX-License-Identifier: Apache-2.0
+SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+-->
+
 # SMU OCAH Open-Source TB
 
 OCAH open-source DV testbench for the **SMU (System Management Unit)**.
@@ -18,14 +23,17 @@ v0.5.0 release regression matrix (#485), and
 for the SEP=0 component signoff record (#481 / #482 / #483 / #490 / #491).
 
 **Executable contract:** enrolled groups in [`testlists/all.toml`](testlists/all.toml)
-— enrolled `phase1` **48**, `sep0_all` **52** (no Force; product-pin CTM;
-`sep0_all` is 51 PASS / 1 FAIL on the cited nightly).
+— enrolled `all` **56**, `smoke` **4**, `smc` **11**, `dtp` **29**,
+`fabric` **14**, `sep0_all` **52**, `sep0_p4_all` **54** (no Force;
+product-pin CTM; `sep0_all` is 51 PASS / 1 FAIL on the cited nightly).
 
 **Green / signoff policy:** no DUT Force / no TB placeholder.
 Raise-stub bodies live under `cocotb/tests_deferred/` and are not ported —
 **not** reportable as PASS.
 
-**Group ladder:** `smoke` ⊂ `top5` ⊂ `top10` ⊂ `phase1` (see `testlists/all.toml`).
+**Groups:** `smoke` for a fast gate, `smc` / `dtp` / `fabric` by area,
+`sep0_all` / `sep0_p4_all` for the SEP=0 package, and `all` for the
+unique enrolled set (see `testlists/all.toml`).
 
 **OUT / deferred** (SEP=1 / interop / toggle / `needs_real_lcc`): not ported.
 Every named entry is classified in
@@ -76,15 +84,14 @@ python3 tools/dv/run_dv.py --dut smu --build-only
 python3 tools/dv/run_dv.py --dut smu --items smoke --dry-run
 
 python3 tools/dv/run_dv.py --dut smu --items smoke
-python3 tools/dv/run_dv.py --dut smu --items top5
-python3 tools/dv/run_dv.py --dut smu --items top10
-python3 tools/dv/run_dv.py --dut smu --items phase1
+python3 tools/dv/run_dv.py --dut smu --items smc
+python3 tools/dv/run_dv.py --dut smu --items sep0_all
+python3 tools/dv/run_dv.py --dut smu --items all
 
-python3 tools/dv/run_dv.py --dut smu --items phase1 --tool xcelium --cov
+python3 tools/dv/run_dv.py --dut smu --items all --tool xcelium --cov
 ```
 
-Groups: `smoke` (4), `top5` (5), `top10` (11), `phase1` (48), `smc` (11),
-`dtp` (29), `fabric` (14), `phase2` (49), `phase3` (5), `phase4_sep0` (19),
+Groups: `all` (56), `smoke` (4), `smc` (11), `dtp` (29), `fabric` (14),
 `sep0_all` (52), `sep0_p4_all` (54).
 
 ### SystemVerilog UVM framework (`--framework uvm`)
@@ -153,7 +160,7 @@ feature reuses that IP bench's reference model and scoreboard through
 
 | Source | DUT | Signoff role |
 |--------|-----|--------------|
-| Bare `--dut smu` | `tb/tb_top.sv` (`DUT_TAG=BARE`) | Density / CSR / fabric SEP=0 — `phase1` (48), `sep0_all` (52) |
+| Bare `--dut smu` | `tb/tb_top.sv` (`DUT_TAG=BARE`) | Density / CSR / fabric SEP=0 — `sep0_all` (52) |
 | Wrapper `--dut smu_wrapper` | `tb/tb_wrapper_top.sv` (`DUT_TAG=WRAPPER`) | Production-pin boot / elab smoke — **≠** `sep0_all` density signoff |
 
 Do not merge wrapper smoke PASS into bare `sep0_all` evidence. Logs carry
@@ -253,6 +260,7 @@ than on a test defect — see the notes on their testlist entries:
 | Test | Group | Blocked on |
 |------|-------|-----------|
 | `smu_sep_smc_xbar_test` | `sep_smc_sram_blocked` | SEP-driven SMC bring-up polls SMC SRAM for an image cookie, but that RAM sits on the CPU-private memory interface, so a master arriving through sys-inbound cannot see it. Also blocks `sep_smc_interop` and `sep_smc_mbox_irq`. |
+| `smu_sep_ext_axi_test` | `sep_smc_sram_blocked` | Tile reset is taken and released, then no core fetches: neither the ROM nor the scratch read counter moves again. The preload and re-vector both land. |
 
 `smu_sep_modules_test` and `sep_smu_aes` are enrolled in `sep_real_fw`: the
 entropy stack is brought up by firmware (`sep_entropy_bringup()` in
@@ -260,20 +268,39 @@ entropy stack is brought up by firmware (`sep_entropy_bringup()` in
 `+esrc_noise_force` supplying the raw noise the ring oscillators cannot generate
 under Verilator. `sep_smu_otbn` only writes CSRs and needs no entropy.
 
-`smu_sep_ext_axi_test` builds end to end and is blocked on the same preload
-problem. Its three parties are the SEP and SMC firmware halves, and an ext_in
-AXI master played by the sequence on the flat `ext_in_*` pins the testbench
-exposes for `cocotbext.axi`. `smu_sep_ext_axi_arm` is an SMC ROM
-that hands control to the scratch-RAM half, and the sequence reconciles its jump
-target against `smu_sep_ext_axi_smc_entry` in the built `.sram.sym`.
+`smu_sep_ext_axi_test` is built end to end. Its three parties all exist: the SEP
+and SMC firmware halves, and an ext_in AXI master played by the sequence on the
+flat `ext_in_*` pins the testbench exposes for `cocotbext.axi`. The ext_in
+master drives real AXI and gets real responses, including the DECERR the
+closed SMC aperture correctly returns.
 
-What blocks it is preload lifetime: the SMC boot path writes every word of
-scratch RAM (4096 bus writes, exactly the RAM depth) after the time-zero
-backdoor load, so the image is gone before firmware runs. The plain non-jumping
-ROM produces the same 4096 writes, so it is not the handoff. The ext_in master
-drives real AXI and gets real responses, including the DECERR the closed SMC
-aperture returns. The stripe load lives in
-`hw/sys/smc/dv/models/smc_cpu_mem_dv.sv`.
+The SMC boot path's MEM_ZERO FSM writes every word of scratch RAM (4096 bus
+writes, exactly the RAM depth) after the time-zero backdoor load unless held
+off. `tb_wrapper_top.sv` asserts that hold whenever `+smc_scratch_ram_hex`
+supplies an image, so the writes go to 0 and the image survives into firmware.
+Handing over by jumping from the ROM leaves the core carrying the ROM's
+`mtvec`; `seq_lib/smc_cpu_revector.py` programs `RESET_VECTOR` on all
+four cores and forces a tile-reset pulse over the DTP's JTAG2AXI instead, the
+way `hw/sys/smc/dv/cocotb/seq_lib/smc_cpu_vip_utils.py` does it over its CSR
+agent.
+
+That sequence is applied, not merely issued, and was checked against the
+design's own gating rather than its own return codes. A JTAG2AXI write to
+CPU_CTRL lands: writing `SCRATCH_0` moves the value observed on
+`smc_scratch_0_o` off the `0xACAFACA1` the ROM left. Issued at the right time —
+after the SMC has left reset, since `RESET_VECTOR` resets to its own default and
+vectors programmed earlier are simply thrown away — `smc_cpu_ctrl_wrap` reaches
+`force_apply=1` / `withhold=0`, and all four cores go to `core_reset_n=0` and
+back to 1. The cluster never drains, so the `RESET_TIMEOUT` force is what
+applies the reset, which is what that register exists for. The tile reset really
+is taken and released.
+
+What still blocks it is that nothing follows the release: neither the ROM nor
+the scratch read counter moves again and no further instruction retires, so the
+cores issue no fetch at all rather than fetching the wrong thing. The image
+itself is present; the backdoor reports its stripe load. Whatever answers that
+also answers `smu_sep_smc_xbar_test`, blocked on the CPU-private-SRAM limit, and
+both tests sit in the `sep_smc_sram_blocked` group until then.
 
 The SEP smoke is a boot-readiness anchor mirroring the internal
 `smu_sep_smoke_test` contract; console/STDOUT checking over the external AXI

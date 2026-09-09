@@ -213,7 +213,6 @@ def main() -> int:
             "smu_smc_smoke",
             "smu_sep_smoke",
             "smu_sep_bidirect",
-            "smu_sep_ext_axi",
             "all",
         ),
         required=True,
@@ -230,11 +229,6 @@ def main() -> int:
         # SMC half of the SEP<->SMC handshake; the SEP half is the picolibc
         # image sep_smu_bidirect, built by the SEP fw engine.
         build_smc_rom("smu_sep_bidirect_arm")
-        build_sep_boot_rom()
-    if args.target in ("smu_sep_ext_axi", "all"):
-        # ROM that hands the SMC over to the scratch-RAM image; see the comment
-        # in its main.c for why the handoff has to happen from the ROM.
-        build_smc_rom("smu_sep_ext_axi_arm")
         build_sep_boot_rom()
     return 0
 
