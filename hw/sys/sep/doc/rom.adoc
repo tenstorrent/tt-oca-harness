@@ -1547,7 +1547,9 @@ type as follows (matching the retired TBL1 semantics):
   placement from the (already hash-verified) TOC entry: `[load_addr, load_addr + length)`
   shall lie entirely within *one permitted execution region*, `entry_point < length`, and the
   copy shall not be permitted to corrupt the staged manifest before validation completes (the
-  copy happens strictly after all checks pass, at hand-off).
+  copy happens strictly after all checks pass, at hand-off). This validation runs *per slot*,
+  within the retry unit (<<req-SEP-ROM-RETRY-030,SEP-ROM-RETRY-030>>), so a slot whose BL1 is
+  absent or unplaceable falls back to the other slot rather than ending the boot.
 +
 The permitted regions are:
 +
@@ -2560,8 +2562,14 @@ for the fallback attempt.
 [[req-SEP-ROM-RETRY-030]]*[SEP-ROM-RETRY-030]* The retry unit shall be the *entire*
 per-slot validation chain: transport read, structural validation, manifest hash, usage
 constraints, secure-boot crypto (revocation, signature, anti-rollback), payload staging,
-decryption, and every payload hash check. A failure anywhere in that chain fails the *slot*,
-not the boot, until no slot remains.
+decryption, every payload hash check, and the BL1 loadability check
+(<<req-SEP-ROM-MAN-060,SEP-ROM-MAN-060>>: a BLSTAGE1 entry is present and its placement is
+permitted). A failure anywhere in that chain fails the *slot*, not the boot, until no slot
+remains.
+
+The BL1 check is inside the unit because a slot describing a BL1 this device cannot load is
+an unusable slot, and the backup may well be usable. Only the *copy and jump* wait for
+hand-off — those mutate state, the check does not.
 
 [[req-SEP-ROM-RETRY-040]]*[SEP-ROM-RETRY-040]* Between attempts the ROM shall return to a
 clean state: the staged SRAM region is zeroed (no partially validated bytes survive into the
@@ -3197,8 +3205,8 @@ re-verified |<<sec:handoff>>
 for SMC paths |<<sec:retry>>
 |<<req-SEP-ROM-RETRY-020,SEP-ROM-RETRY-020>> |SPI-init failure skips first slot, reinit
 for fallback |<<sec:retry>>
-|<<req-SEP-ROM-RETRY-030,SEP-ROM-RETRY-030>> |Retry unit = entire validation chain
-|<<sec:retry>>
+|<<req-SEP-ROM-RETRY-030,SEP-ROM-RETRY-030>> |Retry unit = entire validation chain,
+BL1 loadability included |<<sec:retry>>
 |<<req-SEP-ROM-RETRY-040,SEP-ROM-RETRY-040>> |Clean state between attempts |<<sec:retry>>
 |<<req-SEP-ROM-RETRY-050,SEP-ROM-RETRY-050>> |All failures converge in rom_err_fail
 |<<sec:retry>>
