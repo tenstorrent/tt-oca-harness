@@ -59,10 +59,17 @@ class sep_sec_dis_override_test(sep_base_test):
     async def _check_feat(self, sec_dis: int, label: str) -> int:
         observed = int(cocotb.top.lcc_security_disable_probe_o.value) & 0x1
         feat = feat_ctrl_expected(LC_PROD, _SIP_DIS, _SYS_DIS, demote_1=0, sec_dis=sec_dis)
-        assert feat != (M64 if sec_dis else 0), (
-            f"{label} FAIL: golden collapsed to a vacuous constant "
-            f"0x{feat:016x} for sec_dis={sec_dis}"
-        )
+        if sec_dis:
+            # Override is all ones in the chapter and in the RTL (`security_disable_i
+            # ? 64'hffff_ffff_ffff_ffff`). That constant is the contract, not a
+            # collapse. The fail-closed word above is the contrast.
+            assert feat == M64, (
+                f"{label} FAIL: override golden 0x{feat:016x} is not all ones"
+            )
+        else:
+            assert feat not in (0, M64), (
+                f"{label} FAIL: fail-closed golden collapsed to 0x{feat:016x}"
+            )
         ctl = SepLccFeatCtrlCheckSeq(feat)
         await self.start_seq(ctl)
         assert observed == sec_dis and ctl.feat_ctrl == feat, (

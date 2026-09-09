@@ -707,7 +707,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 
 |Debug-disable gating ladder (`dbg_disable`)
 |PROVEN
-|`sep_lcc_demote_feat_ctrl_matrix_test` (`CHK-DBG-DISABLE`). All eleven bits match the DTP gating ladder for the same `FEAT_CTRL` the cell just verified, across the whole demote matrix. `dft_secure` is Case 3 and `dfd` is Case 1. The DFT-inserted fuse-path disables are separate ports and are not claimed here.
+|`sep_lcc_demote_feat_ctrl_matrix_test` (`CHK-DBG-DISABLE`, `CHK-FUSE-DFT-DIS`). All eleven `dbg_disable` bits match the DTP gating ladder for the same `FEAT_CTRL` the cell just verified, across the whole demote matrix. `dft_secure` is Case 3 and `dfd` is Case 1. The DFT-inserted fuse-path ports are separate DUT outputs, not members of `dbg_disable`: `sep_fuse_dft_disable` is Case 3 AND `sep_fuse_dbg`, inverted; `smc_fuse_dft_disable` is Case 2 AND `smc_fuse_dbg`, inverted. The compose cell closes those two bits while Case 2 and Case 3 stay open.
 
 |Local-master alias remap datapath
 |PROVEN
@@ -3664,9 +3664,11 @@ both lock flavours of one seed-selected spare.
 
 [arabic]
 . Walk TEST_DEV and PROD at DIS=0 through the four demote cells.
+. W1S `sep_fuse_dbg` / `smc_fuse_dbg` and check PROD with both demotes set, so those bits close while Case 2 and Case 3 stay open.
 . W1S a seed-pinned DIS pair and walk the four demote cells at PROD.
 . Every cell's inbound probe is OKAY iff `sep_debug=1`, else DECERR.
 . Every cell's `dbg_disable` vector matches the DTP gating ladder for that same `FEAT_CTRL`.
+. Every cell's `sep_fuse_dft_disable` / `smc_fuse_dft_disable` ports match the compose of that same `FEAT_CTRL`.
 . Lock one seed-selected `DEMOTE` at 0; a later demote write is ignored.
 . `rst_ni` releases the lock; the same demote write then lands.
 
@@ -3680,13 +3682,15 @@ both lock flavours of one seed-selected spare.
 |CHK-LIVE-GATE
 |External access of the LC shadow is OKAY when `sep_debug=1` and DECERR when `sep_debug=0`. Not CSR storage alone.
 |CHK-RAND-REP
-|Twelve demote cells ran in one invocation.
+|Thirteen demote cells ran in one invocation (eight DIS=0, one fuse-dbg compose, four pinned DIS).
 |CHK-DEMOTE-LOCK
 |With `lock` set and `demote` still 0, a later demote write is ignored and `feat_ctrl` stays at the undemoted golden.
 |CHK-DEMOTE-LOCK-RESET
 |After `rst_ni` the lock is 0 and the same demote write lands.
 |CHK-DBG-DISABLE
 |All eleven `dbg_disable` bits match the DTP gating ladder for the same `FEAT_CTRL` the cell just verified. `dft_secure` is Case 3 and `dfd` is Case 1.
+|CHK-FUSE-DFT-DIS
+|`sep_fuse_dft_disable` equals Case 3 AND `sep_fuse_dbg`, inverted. `smc_fuse_dft_disable` equals Case 2 AND `smc_fuse_dbg`, inverted. The compose cell keeps Case 2 and Case 3 open while bits 2 and 3 are closed, so a golden that ignores those bits fails there.
 |===
 
 '''''

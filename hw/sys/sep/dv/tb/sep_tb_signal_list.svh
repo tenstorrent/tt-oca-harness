@@ -464,6 +464,12 @@
 // additionally for the SEP S-TAP. Exported whole rather than bit by bit
 // so a field added to the struct widens the vector.
 `SEP_TB_OUT(logic [$bits(sep_lifecycle_ctrl_pkg::dbg_disable_t)-1:0], dbg_disable_all_o)
+// DFT-inserted fuse-path disables. Real DUT outputs (sep_wrapper), not
+// internal probes: no functional consumer and no CSR mirror. Disable
+// polarity: SEP is Case 3 AND sep_fuse_dbg (bit 2), inverted; SMC is
+// Case 2 AND smc_fuse_dbg (bit 3), inverted.
+`SEP_TB_OUT(logic, sep_fuse_dft_disable_o)
+`SEP_TB_OUT(logic, smc_fuse_dft_disable_o)
 // WDT bite reset request: a REAL `sep` output port (sep.sv wdt_timer_rst_req_o,
 // asserted when the WDT count reaches BITE_THOLD). Brought out so the
 // reset/WDT sanity test (`sep_reset_wdt_sanity_test`) can observe the bite ->

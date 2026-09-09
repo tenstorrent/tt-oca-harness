@@ -75,6 +75,8 @@ DBG2_MASK = ((1 << 24) - 1) << 24  # bits [47:24]
 DEBUG_MASK = DBG1_MASK | DBG2_MASK  # bits [47:0]
 FUNC_MASK = ((1 << 16) - 1) << 48  # bits [63:48]
 SIP_DBG_BIT = 24
+SEP_FUSE_DBG_BIT = 2
+SMC_FUSE_DBG_BIT = 3
 
 
 def lc_state_name(raw: int) -> str:
@@ -273,6 +275,8 @@ _LCC_GOLDEN_VECTORS: tuple[tuple[int, int, int, dict[str, int], int], ...] = (
         {"secure_tm": 1},
         0xF000_F000_F000_F000,
     ),
+    # Named fuse-dbg bits (2, 3) bind in TEST_DEV when both DIS vectors set them.
+    (LC_TEST_DEV, 0xC, 0xC, {}, M64 ^ 0xC),
 )
 
 
@@ -337,6 +341,26 @@ def selftest() -> None:
     assert got["dft_secure"] == 0
     assert got["stap_sep"] == 0
 
+    # Fuse-path disables: a granular bit is an extra AND, not a substitute.
+    closed = sip_chip_sep  # cases open, bits 2/3 closed
+    got = fuse_dft_disable_expected(closed)
+    assert got["sep_fuse_dft_disable"] == 1
+    assert got["smc_fuse_dft_disable"] == 1
+    opened = closed | (1 << SEP_FUSE_DBG_BIT) | (1 << SMC_FUSE_DBG_BIT)
+    got = fuse_dft_disable_expected(opened)
+    assert got["sep_fuse_dft_disable"] == 0
+    assert got["smc_fuse_dft_disable"] == 0
+    # Case 2 open, Case 3 closed, both granular bits open: only SEP stays disabled.
+    case2_only = sip_chip | (1 << SEP_FUSE_DBG_BIT) | (1 << SMC_FUSE_DBG_BIT)
+    got = fuse_dft_disable_expected(case2_only)
+    assert got["smc_fuse_dft_disable"] == 0
+    assert got["sep_fuse_dft_disable"] == 1
+    # Cases closed, granular bits open: both stay disabled.
+    granular_only = (1 << SEP_FUSE_DBG_BIT) | (1 << SMC_FUSE_DBG_BIT)
+    got = fuse_dft_disable_expected(granular_only)
+    assert got["sep_fuse_dft_disable"] == 1
+    assert got["smc_fuse_dft_disable"] == 1
+
 
 # ---------------------------------------------------------------------------
 # dbg_disable
@@ -362,8 +386,36 @@ DBG_DISABLE_WIDTH = len(DBG_DISABLE_FIELDS)
 # Every packed dbg_disable bit is claimed. The DTP path table and the RTL
 # agree on the three nested cases: Case 1 SIP_DBG, Case 2 plus CHIPLET_DBG,
 # Case 3 plus SEP_DBG. The DFT-inserted fuse-path disables are separate
-# ports, not members of this struct, and are not claimed here.
+# DUT ports; ``fuse_dft_disable_expected`` owns those.
 DBG_DISABLE_UNCLAIMED: tuple[str, ...] = ()
+
+
+def _dbg_cases(feat_ctrl: int) -> tuple[int, int, int]:
+    """Nested DTP cases as enable polarity (1 = case open)."""
+    sep_dbg = (feat_ctrl >> 0) & 1
+    chiplet_dbg = (feat_ctrl >> 1) & 1
+    sip_dbg = (feat_ctrl >> SIP_DBG_BIT) & 1
+    case1 = sip_dbg
+    case2 = sip_dbg & chiplet_dbg
+    case3 = case2 & sep_dbg
+    return case1, case2, case3
+
+
+def fuse_dft_disable_expected(feat_ctrl: int) -> dict[str, int]:
+    """Expected DFT-inserted fuse-path disables for a FEAT_CTRL value.
+
+    ``sep_fuse_dft_disable`` is Case 3 AND ``sep_fuse_dbg`` (bit 2), inverted
+    to disable polarity. ``smc_fuse_dft_disable`` is Case 2 AND
+    ``smc_fuse_dbg`` (bit 3), inverted. A granular bit is an additional
+    term, not a substitute for its case.
+    """
+    _case1, case2, case3 = _dbg_cases(feat_ctrl)
+    sep_fuse_dbg = (feat_ctrl >> SEP_FUSE_DBG_BIT) & 1
+    smc_fuse_dbg = (feat_ctrl >> SMC_FUSE_DBG_BIT) & 1
+    return {
+        "sep_fuse_dft_disable": 1 - (case3 & sep_fuse_dbg),
+        "smc_fuse_dft_disable": 1 - (case2 & smc_fuse_dbg),
+    }
 
 
 def dbg_disable_expected(feat_ctrl: int) -> dict[str, int]:
@@ -381,13 +433,7 @@ def dbg_disable_expected(feat_ctrl: int) -> dict[str, int]:
     while it is closed, which is what makes SEP_DBG alone insufficient to reach
     SEP internal state.
     """
-    sep_dbg = (feat_ctrl >> 0) & 1
-    chiplet_dbg = (feat_ctrl >> 1) & 1
-    sip_dbg = (feat_ctrl >> SIP_DBG_BIT) & 1
-
-    case1 = sip_dbg
-    case2 = sip_dbg & chiplet_dbg
-    case3 = case2 & sep_dbg
+    case1, case2, case3 = _dbg_cases(feat_ctrl)
 
     exp = {
         "stap_io": 1 - case1,
