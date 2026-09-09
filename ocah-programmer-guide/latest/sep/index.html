@@ -475,7 +475,7 @@ chain (never scannable):</p>
 <ul>
 <li>
 <p>Class 1a (confidentiality): UIDs, <code>CLASS_KEY</code>, token-plaintext input
-registers (<code>*_TOKEN_I</code>).</p>
+registers (<code>*_TOKEN_I</code>), raw fuse read-back data.</p>
 </li>
 <li>
 <p>Class 1b (integrity): <code>LOCKS</code>/<code>LOCKS_SPARE</code>, <code>LC_STATE</code>, <code>SIP_DIS</code>, <code>SYS_DIS</code>,
@@ -2417,8 +2417,8 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 <tr><td>0xC</td><td><a href="#LC_STATE">LC_STATE</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x10</td><td><a href="#SBOOT_DIS">SBOOT_DIS</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x14</td><td><a href="#TRANSIENT_RMA_EN">TRANSIENT_RMA_EN</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x18</td><td><a href="#SIP_DIS">SIP_DIS</a></td><td>RW</td><td>An owner&#x27;s (SiP or System) feature control vector. When set (1&#x27;b1), the corresponding feature is disabled. Spec: OCAH v0.5.9 disable-vector layout (lifecycle_controller.adoc §2.2).</td></tr>
-<tr><td>0x20</td><td><a href="#SYS_DIS">SYS_DIS</a></td><td>RW</td><td>An owner&#x27;s (SiP or System) feature control vector. When set (1&#x27;b1), the corresponding feature is disabled. Spec: OCAH v0.5.9 disable-vector layout (lifecycle_controller.adoc §2.2).</td></tr>
+<tr><td>0x18</td><td><a href="#SIP_DIS">SIP_DIS</a></td><td>RW</td><td>An owner&#x27;s feature control vector. When set (1&#x27;b1), the corresponding feature is disabled. Layout: see the Disable Vector Format section of lifecycle_controller.adoc.</td></tr>
+<tr><td>0x20</td><td><a href="#SYS_DIS">SYS_DIS</a></td><td>RW</td><td>An owner&#x27;s feature control vector. When set (1&#x27;b1), the corresponding feature is disabled. Layout: see the Disable Vector Format section of lifecycle_controller.adoc.</td></tr>
 <tr><td>0x28</td><td><a href="#RMA_SIP_TOKEN_DIGEST">RMA_SIP_TOKEN_DIGEST</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x48</td><td><a href="#RMA_CHIPLET_TOKEN_DIGEST">RMA_CHIPLET_TOKEN_DIGEST</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x68</td><td><a href="#CLASS_KEY">CLASS_KEY</a></td><td>R</td><td>-</td></tr>
@@ -2575,31 +2575,25 @@ is generated from the IP RDL rather than the SEP aggregate.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:48</td><td>func_reserved</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined functional feature gating (bits 63:48).</td></tr>
-<tr><td>47:39</td><td>test_reserved</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined test scan chains (bits 47:39).</td></tr>
-<tr><td>38</td><td>fuse_vendor_test</td><td>RW</td><td>0x0</td><td>FUSE_VENDOR_TEST (bit 38): 1&#x27;b1: OTP IP-vendor test and calibration interface is disabled. 1&#x27;b0: enabled. Used during ATE for vendor-specific OTP test and internal-voltage calibration. TODO(AMBIG-5): No RTL consumer exists for this bit in the current implementation. Arch must define the forwarding path before this bit can be enforced.</td></tr>
-<tr><td>37</td><td>smc_fuse_test</td><td>RW</td><td>0x0</td><td>SMC_FUSE_TEST (bit 37): 1&#x27;b1: SMC fuse controller and fuse-block interface scan is disabled. 1&#x27;b0: enabled. Exported on SEP boundary; consumed by SMC to gate its fuse-test path. TODO(AMBIG-5): No SEP output port for this bit exists and the SMC feat_ctrl_i port is deleted — this bit has no RTL consumer in the current implementation. Arch must define the forwarding path (e.g. a new SEP output) before this bit can enforce its intent.</td></tr>
-<tr><td>36:33</td><td>test_reserved_lo</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined test scan chains (bits 36:33).</td></tr>
-<tr><td>32</td><td>sep_fuse_test</td><td>RW</td><td>0x0</td><td>SEP_FUSE_TEST (bit 32): 1&#x27;b1: SEP fuse controller and fuse-block interface scan is disabled. 1&#x27;b0: enabled.</td></tr>
-<tr><td>31:17</td><td>debug_reserved_dbg2</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined DBG_2 debug scan chains (bits 31:17).</td></tr>
-<tr><td>16</td><td>sip_debug</td><td>RW</td><td>0x0</td><td>SIP_DBG (bit 16): Coarse-grained debug enable for the inter-chiplet debug-bypass path (e.g. forwarding external debug to downstream chiplets via outbound JTAG PTAP). 1&#x27;b1: disabled. 1&#x27;b0: enabled.</td></tr>
-<tr><td>15:2</td><td>debug_reserved_dbg1</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined DBG_1 debug scan chains (bits 15:2).</td></tr>
-<tr><td>1</td><td>chiplet_dbg</td><td>RW</td><td>0x0</td><td>CHIPLET_DBG (bit 1): Coarse-grained debug enable for the chiplet scope. 1&#x27;b1: chiplet-scope debug/scan-dump access disabled. 1&#x27;b0: enabled. Does not gate the crypto/KM secret-bearing chain.</td></tr>
-<tr><td>0</td><td>sep_debug</td><td>RW</td><td>0x0</td><td>SEP_DBG (bit 0): Coarse-grained debug enable for the SEP scope. 1&#x27;b1: SEP-scope debug/scan-dump access disabled and external inbound traffic is filtered. 1&#x27;b0: enabled.</td></tr>
+<tr><td>47:25</td><td>debug_reserved_dbg2</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined inter-chiplet-bypass (DBG_2) debug scan chains (bits 47:25).</td></tr>
+<tr><td>24</td><td>sip_debug</td><td>RW</td><td>0x0</td><td>SIP_DBG (bit 24): Coarse-grained debug enable for the SiP scope: the inter-chiplet debug-bypass gate that admits external (PTAP) debug traffic into this chiplet and forwards it onward to the next chiplet via the outbound JTAG PTAP. 1&#x27;b1: disabled. 1&#x27;b0: enabled.</td></tr>
+<tr><td>23:4</td><td>debug_reserved_dbg1</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined local (DBG_1) debug scan chains (bits 23:4).</td></tr>
+<tr><td>3</td><td>smc_fuse_dbg</td><td>RW</td><td>0x0</td><td>SMC_FUSE_DBG (bit 3): 1&#x27;b1: the DFT-inserted access path into the SMC OTP is disabled. 1&#x27;b0: enabled. Produced by SEP-LCC feat_ctrl_o, exported on the SEP boundary, and consumed by SMC to gate its own inserted fuse path.</td></tr>
+<tr><td>2</td><td>sep_fuse_dbg</td><td>RW</td><td>0x0</td><td>SEP_FUSE_DBG (bit 2): 1&#x27;b1: the DFT-inserted access path into the SEP OTP is disabled. 1&#x27;b0: enabled. Also covers the OTP IP-vendor test and calibration interface, which is reachable only over that inserted path. The functional JTAG2AXIL path to the OTP is always available and is not gated by this bit.</td></tr>
+<tr><td>1</td><td>chiplet_dbg</td><td>RW</td><td>0x0</td><td>CHIPLET_DBG (bit 1): Coarse-grained debug enable for the chiplet scope. 1&#x27;b1: chiplet-scope debug/scan-dump access disabled. 1&#x27;b0: enabled. Never acts alone: an external debugger reaches chiplet-internal resources only when SIP_DBG is open as well. Contributes to the reachability of the crypto/KM secure chain but never authorizes a dump from it.</td></tr>
+<tr><td>0</td><td>sep_debug</td><td>RW</td><td>0x0</td><td>SEP_DBG (bit 0): Coarse-grained debug enable for the SEP scope. 1&#x27;b1: SEP-scope debug/scan-dump access disabled and external inbound traffic is filtered. 1&#x27;b0: enabled. A local gate only: reaching SEP internal state from an external debugger additionally requires SIP_DBG and CHIPLET_DBG.</td></tr>
 </table>
 <h3 id="SYS_DIS">SYS_DIS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:48</td><td>func_reserved</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined functional feature gating (bits 63:48).</td></tr>
-<tr><td>47:39</td><td>test_reserved</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined test scan chains (bits 47:39).</td></tr>
-<tr><td>38</td><td>fuse_vendor_test</td><td>RW</td><td>0x0</td><td>FUSE_VENDOR_TEST (bit 38): 1&#x27;b1: OTP IP-vendor test and calibration interface is disabled. 1&#x27;b0: enabled. Used during ATE for vendor-specific OTP test and internal-voltage calibration. TODO(AMBIG-5): No RTL consumer exists for this bit in the current implementation. Arch must define the forwarding path before this bit can be enforced.</td></tr>
-<tr><td>37</td><td>smc_fuse_test</td><td>RW</td><td>0x0</td><td>SMC_FUSE_TEST (bit 37): 1&#x27;b1: SMC fuse controller and fuse-block interface scan is disabled. 1&#x27;b0: enabled. Exported on SEP boundary; consumed by SMC to gate its fuse-test path. TODO(AMBIG-5): No SEP output port for this bit exists and the SMC feat_ctrl_i port is deleted — this bit has no RTL consumer in the current implementation. Arch must define the forwarding path (e.g. a new SEP output) before this bit can enforce its intent.</td></tr>
-<tr><td>36:33</td><td>test_reserved_lo</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined test scan chains (bits 36:33).</td></tr>
-<tr><td>32</td><td>sep_fuse_test</td><td>RW</td><td>0x0</td><td>SEP_FUSE_TEST (bit 32): 1&#x27;b1: SEP fuse controller and fuse-block interface scan is disabled. 1&#x27;b0: enabled.</td></tr>
-<tr><td>31:17</td><td>debug_reserved_dbg2</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined DBG_2 debug scan chains (bits 31:17).</td></tr>
-<tr><td>16</td><td>sip_debug</td><td>RW</td><td>0x0</td><td>SIP_DBG (bit 16): Coarse-grained debug enable for the inter-chiplet debug-bypass path (e.g. forwarding external debug to downstream chiplets via outbound JTAG PTAP). 1&#x27;b1: disabled. 1&#x27;b0: enabled.</td></tr>
-<tr><td>15:2</td><td>debug_reserved_dbg1</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined DBG_1 debug scan chains (bits 15:2).</td></tr>
-<tr><td>1</td><td>chiplet_dbg</td><td>RW</td><td>0x0</td><td>CHIPLET_DBG (bit 1): Coarse-grained debug enable for the chiplet scope. 1&#x27;b1: chiplet-scope debug/scan-dump access disabled. 1&#x27;b0: enabled. Does not gate the crypto/KM secret-bearing chain.</td></tr>
-<tr><td>0</td><td>sep_debug</td><td>RW</td><td>0x0</td><td>SEP_DBG (bit 0): Coarse-grained debug enable for the SEP scope. 1&#x27;b1: SEP-scope debug/scan-dump access disabled and external inbound traffic is filtered. 1&#x27;b0: enabled.</td></tr>
+<tr><td>47:25</td><td>debug_reserved_dbg2</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined inter-chiplet-bypass (DBG_2) debug scan chains (bits 47:25).</td></tr>
+<tr><td>24</td><td>sip_debug</td><td>RW</td><td>0x0</td><td>SIP_DBG (bit 24): Coarse-grained debug enable for the SiP scope: the inter-chiplet debug-bypass gate that admits external (PTAP) debug traffic into this chiplet and forwards it onward to the next chiplet via the outbound JTAG PTAP. 1&#x27;b1: disabled. 1&#x27;b0: enabled.</td></tr>
+<tr><td>23:4</td><td>debug_reserved_dbg1</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined local (DBG_1) debug scan chains (bits 23:4).</td></tr>
+<tr><td>3</td><td>smc_fuse_dbg</td><td>RW</td><td>0x0</td><td>SMC_FUSE_DBG (bit 3): 1&#x27;b1: the DFT-inserted access path into the SMC OTP is disabled. 1&#x27;b0: enabled. Produced by SEP-LCC feat_ctrl_o, exported on the SEP boundary, and consumed by SMC to gate its own inserted fuse path.</td></tr>
+<tr><td>2</td><td>sep_fuse_dbg</td><td>RW</td><td>0x0</td><td>SEP_FUSE_DBG (bit 2): 1&#x27;b1: the DFT-inserted access path into the SEP OTP is disabled. 1&#x27;b0: enabled. Also covers the OTP IP-vendor test and calibration interface, which is reachable only over that inserted path. The functional JTAG2AXIL path to the OTP is always available and is not gated by this bit.</td></tr>
+<tr><td>1</td><td>chiplet_dbg</td><td>RW</td><td>0x0</td><td>CHIPLET_DBG (bit 1): Coarse-grained debug enable for the chiplet scope. 1&#x27;b1: chiplet-scope debug/scan-dump access disabled. 1&#x27;b0: enabled. Never acts alone: an external debugger reaches chiplet-internal resources only when SIP_DBG is open as well. Contributes to the reachability of the crypto/KM secure chain but never authorizes a dump from it.</td></tr>
+<tr><td>0</td><td>sep_debug</td><td>RW</td><td>0x0</td><td>SEP_DBG (bit 0): Coarse-grained debug enable for the SEP scope. 1&#x27;b1: SEP-scope debug/scan-dump access disabled and external inbound traffic is filtered. 1&#x27;b0: enabled. A local gate only: reaching SEP internal state from an external debugger additionally requires SIP_DBG and CHIPLET_DBG.</td></tr>
 </table>
 <h3 id="RMA_SIP_TOKEN_DIGEST">RMA_SIP_TOKEN_DIGEST</h3>
 <table>
@@ -4570,8 +4564,8 @@ SEP aggregate.</p>
 <tr><td>0x1100C</td><td><a href="#LC_STATE">LC_STATE</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x11010</td><td><a href="#SBOOT_DIS">SBOOT_DIS</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x11014</td><td><a href="#TRANSIENT_RMA_EN">TRANSIENT_RMA_EN</a></td><td>R</td><td>-</td></tr>
-<tr><td>0x11018</td><td><a href="#SIP_DIS">SIP_DIS</a></td><td>RW</td><td>An owner&#x27;s (SiP or System) feature control vector. When set (1&#x27;b1), the corresponding feature is disabled. Spec: OCAH v0.5.9 disable-vector layout (lifecycle_controller.adoc §2.2).</td></tr>
-<tr><td>0x11020</td><td><a href="#SYS_DIS">SYS_DIS</a></td><td>RW</td><td>An owner&#x27;s (SiP or System) feature control vector. When set (1&#x27;b1), the corresponding feature is disabled. Spec: OCAH v0.5.9 disable-vector layout (lifecycle_controller.adoc §2.2).</td></tr>
+<tr><td>0x11018</td><td><a href="#SIP_DIS">SIP_DIS</a></td><td>RW</td><td>An owner&#x27;s feature control vector. When set (1&#x27;b1), the corresponding feature is disabled. Layout: see the Disable Vector Format section of lifecycle_controller.adoc.</td></tr>
+<tr><td>0x11020</td><td><a href="#SYS_DIS">SYS_DIS</a></td><td>RW</td><td>An owner&#x27;s feature control vector. When set (1&#x27;b1), the corresponding feature is disabled. Layout: see the Disable Vector Format section of lifecycle_controller.adoc.</td></tr>
 <tr><td>0x11028</td><td><a href="#RMA_SIP_TOKEN_DIGEST">RMA_SIP_TOKEN_DIGEST</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x11048</td><td><a href="#RMA_CHIPLET_TOKEN_DIGEST">RMA_CHIPLET_TOKEN_DIGEST</a></td><td>R</td><td>-</td></tr>
 <tr><td>0x11068</td><td><a href="#CLASS_KEY">CLASS_KEY</a></td><td>R</td><td>-</td></tr>
@@ -4962,31 +4956,25 @@ SEP aggregate.</p>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:48</td><td>func_reserved</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined functional feature gating (bits 63:48).</td></tr>
-<tr><td>47:39</td><td>test_reserved</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined test scan chains (bits 47:39).</td></tr>
-<tr><td>38</td><td>fuse_vendor_test</td><td>RW</td><td>0x0</td><td>FUSE_VENDOR_TEST (bit 38): 1&#x27;b1: OTP IP-vendor test and calibration interface is disabled. 1&#x27;b0: enabled. Used during ATE for vendor-specific OTP test and internal-voltage calibration. TODO(AMBIG-5): No RTL consumer exists for this bit in the current implementation. Arch must define the forwarding path before this bit can be enforced.</td></tr>
-<tr><td>37</td><td>smc_fuse_test</td><td>RW</td><td>0x0</td><td>SMC_FUSE_TEST (bit 37): 1&#x27;b1: SMC fuse controller and fuse-block interface scan is disabled. 1&#x27;b0: enabled. Exported on SEP boundary; consumed by SMC to gate its fuse-test path. TODO(AMBIG-5): No SEP output port for this bit exists and the SMC feat_ctrl_i port is deleted — this bit has no RTL consumer in the current implementation. Arch must define the forwarding path (e.g. a new SEP output) before this bit can enforce its intent.</td></tr>
-<tr><td>36:33</td><td>test_reserved_lo</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined test scan chains (bits 36:33).</td></tr>
-<tr><td>32</td><td>sep_fuse_test</td><td>RW</td><td>0x0</td><td>SEP_FUSE_TEST (bit 32): 1&#x27;b1: SEP fuse controller and fuse-block interface scan is disabled. 1&#x27;b0: enabled.</td></tr>
-<tr><td>31:17</td><td>debug_reserved_dbg2</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined DBG_2 debug scan chains (bits 31:17).</td></tr>
-<tr><td>16</td><td>sip_debug</td><td>RW</td><td>0x0</td><td>SIP_DBG (bit 16): Coarse-grained debug enable for the inter-chiplet debug-bypass path (e.g. forwarding external debug to downstream chiplets via outbound JTAG PTAP). 1&#x27;b1: disabled. 1&#x27;b0: enabled.</td></tr>
-<tr><td>15:2</td><td>debug_reserved_dbg1</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined DBG_1 debug scan chains (bits 15:2).</td></tr>
-<tr><td>1</td><td>chiplet_dbg</td><td>RW</td><td>0x0</td><td>CHIPLET_DBG (bit 1): Coarse-grained debug enable for the chiplet scope. 1&#x27;b1: chiplet-scope debug/scan-dump access disabled. 1&#x27;b0: enabled. Does not gate the crypto/KM secret-bearing chain.</td></tr>
-<tr><td>0</td><td>sep_debug</td><td>RW</td><td>0x0</td><td>SEP_DBG (bit 0): Coarse-grained debug enable for the SEP scope. 1&#x27;b1: SEP-scope debug/scan-dump access disabled and external inbound traffic is filtered. 1&#x27;b0: enabled.</td></tr>
+<tr><td>47:25</td><td>debug_reserved_dbg2</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined inter-chiplet-bypass (DBG_2) debug scan chains (bits 47:25).</td></tr>
+<tr><td>24</td><td>sip_debug</td><td>RW</td><td>0x0</td><td>SIP_DBG (bit 24): Coarse-grained debug enable for the SiP scope: the inter-chiplet debug-bypass gate that admits external (PTAP) debug traffic into this chiplet and forwards it onward to the next chiplet via the outbound JTAG PTAP. 1&#x27;b1: disabled. 1&#x27;b0: enabled.</td></tr>
+<tr><td>23:4</td><td>debug_reserved_dbg1</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined local (DBG_1) debug scan chains (bits 23:4).</td></tr>
+<tr><td>3</td><td>smc_fuse_dbg</td><td>RW</td><td>0x0</td><td>SMC_FUSE_DBG (bit 3): 1&#x27;b1: the DFT-inserted access path into the SMC OTP is disabled. 1&#x27;b0: enabled. Produced by SEP-LCC feat_ctrl_o, exported on the SEP boundary, and consumed by SMC to gate its own inserted fuse path.</td></tr>
+<tr><td>2</td><td>sep_fuse_dbg</td><td>RW</td><td>0x0</td><td>SEP_FUSE_DBG (bit 2): 1&#x27;b1: the DFT-inserted access path into the SEP OTP is disabled. 1&#x27;b0: enabled. Also covers the OTP IP-vendor test and calibration interface, which is reachable only over that inserted path. The functional JTAG2AXIL path to the OTP is always available and is not gated by this bit.</td></tr>
+<tr><td>1</td><td>chiplet_dbg</td><td>RW</td><td>0x0</td><td>CHIPLET_DBG (bit 1): Coarse-grained debug enable for the chiplet scope. 1&#x27;b1: chiplet-scope debug/scan-dump access disabled. 1&#x27;b0: enabled. Never acts alone: an external debugger reaches chiplet-internal resources only when SIP_DBG is open as well. Contributes to the reachability of the crypto/KM secure chain but never authorizes a dump from it.</td></tr>
+<tr><td>0</td><td>sep_debug</td><td>RW</td><td>0x0</td><td>SEP_DBG (bit 0): Coarse-grained debug enable for the SEP scope. 1&#x27;b1: SEP-scope debug/scan-dump access disabled and external inbound traffic is filtered. 1&#x27;b0: enabled. A local gate only: reaching SEP internal state from an external debugger additionally requires SIP_DBG and CHIPLET_DBG.</td></tr>
 </table>
 <h3 id="SYS_DIS">SYS_DIS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>63:48</td><td>func_reserved</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined functional feature gating (bits 63:48).</td></tr>
-<tr><td>47:39</td><td>test_reserved</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined test scan chains (bits 47:39).</td></tr>
-<tr><td>38</td><td>fuse_vendor_test</td><td>RW</td><td>0x0</td><td>FUSE_VENDOR_TEST (bit 38): 1&#x27;b1: OTP IP-vendor test and calibration interface is disabled. 1&#x27;b0: enabled. Used during ATE for vendor-specific OTP test and internal-voltage calibration. TODO(AMBIG-5): No RTL consumer exists for this bit in the current implementation. Arch must define the forwarding path before this bit can be enforced.</td></tr>
-<tr><td>37</td><td>smc_fuse_test</td><td>RW</td><td>0x0</td><td>SMC_FUSE_TEST (bit 37): 1&#x27;b1: SMC fuse controller and fuse-block interface scan is disabled. 1&#x27;b0: enabled. Exported on SEP boundary; consumed by SMC to gate its fuse-test path. TODO(AMBIG-5): No SEP output port for this bit exists and the SMC feat_ctrl_i port is deleted — this bit has no RTL consumer in the current implementation. Arch must define the forwarding path (e.g. a new SEP output) before this bit can enforce its intent.</td></tr>
-<tr><td>36:33</td><td>test_reserved_lo</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined test scan chains (bits 36:33).</td></tr>
-<tr><td>32</td><td>sep_fuse_test</td><td>RW</td><td>0x0</td><td>SEP_FUSE_TEST (bit 32): 1&#x27;b1: SEP fuse controller and fuse-block interface scan is disabled. 1&#x27;b0: enabled.</td></tr>
-<tr><td>31:17</td><td>debug_reserved_dbg2</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined DBG_2 debug scan chains (bits 31:17).</td></tr>
-<tr><td>16</td><td>sip_debug</td><td>RW</td><td>0x0</td><td>SIP_DBG (bit 16): Coarse-grained debug enable for the inter-chiplet debug-bypass path (e.g. forwarding external debug to downstream chiplets via outbound JTAG PTAP). 1&#x27;b1: disabled. 1&#x27;b0: enabled.</td></tr>
-<tr><td>15:2</td><td>debug_reserved_dbg1</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined DBG_1 debug scan chains (bits 15:2).</td></tr>
-<tr><td>1</td><td>chiplet_dbg</td><td>RW</td><td>0x0</td><td>CHIPLET_DBG (bit 1): Coarse-grained debug enable for the chiplet scope. 1&#x27;b1: chiplet-scope debug/scan-dump access disabled. 1&#x27;b0: enabled. Does not gate the crypto/KM secret-bearing chain.</td></tr>
-<tr><td>0</td><td>sep_debug</td><td>RW</td><td>0x0</td><td>SEP_DBG (bit 0): Coarse-grained debug enable for the SEP scope. 1&#x27;b1: SEP-scope debug/scan-dump access disabled and external inbound traffic is filtered. 1&#x27;b0: enabled.</td></tr>
+<tr><td>47:25</td><td>debug_reserved_dbg2</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined inter-chiplet-bypass (DBG_2) debug scan chains (bits 47:25).</td></tr>
+<tr><td>24</td><td>sip_debug</td><td>RW</td><td>0x0</td><td>SIP_DBG (bit 24): Coarse-grained debug enable for the SiP scope: the inter-chiplet debug-bypass gate that admits external (PTAP) debug traffic into this chiplet and forwards it onward to the next chiplet via the outbound JTAG PTAP. 1&#x27;b1: disabled. 1&#x27;b0: enabled.</td></tr>
+<tr><td>23:4</td><td>debug_reserved_dbg1</td><td>RW</td><td>0x0</td><td>Reserved for adopter-defined local (DBG_1) debug scan chains (bits 23:4).</td></tr>
+<tr><td>3</td><td>smc_fuse_dbg</td><td>RW</td><td>0x0</td><td>SMC_FUSE_DBG (bit 3): 1&#x27;b1: the DFT-inserted access path into the SMC OTP is disabled. 1&#x27;b0: enabled. Produced by SEP-LCC feat_ctrl_o, exported on the SEP boundary, and consumed by SMC to gate its own inserted fuse path.</td></tr>
+<tr><td>2</td><td>sep_fuse_dbg</td><td>RW</td><td>0x0</td><td>SEP_FUSE_DBG (bit 2): 1&#x27;b1: the DFT-inserted access path into the SEP OTP is disabled. 1&#x27;b0: enabled. Also covers the OTP IP-vendor test and calibration interface, which is reachable only over that inserted path. The functional JTAG2AXIL path to the OTP is always available and is not gated by this bit.</td></tr>
+<tr><td>1</td><td>chiplet_dbg</td><td>RW</td><td>0x0</td><td>CHIPLET_DBG (bit 1): Coarse-grained debug enable for the chiplet scope. 1&#x27;b1: chiplet-scope debug/scan-dump access disabled. 1&#x27;b0: enabled. Never acts alone: an external debugger reaches chiplet-internal resources only when SIP_DBG is open as well. Contributes to the reachability of the crypto/KM secure chain but never authorizes a dump from it.</td></tr>
+<tr><td>0</td><td>sep_debug</td><td>RW</td><td>0x0</td><td>SEP_DBG (bit 0): Coarse-grained debug enable for the SEP scope. 1&#x27;b1: SEP-scope debug/scan-dump access disabled and external inbound traffic is filtered. 1&#x27;b0: enabled. A local gate only: reaching SEP internal state from an external debugger additionally requires SIP_DBG and CHIPLET_DBG.</td></tr>
 </table>
 <h3 id="RMA_SIP_TOKEN_DIGEST">RMA_SIP_TOKEN_DIGEST</h3>
 <table>
@@ -11507,7 +11495,7 @@ everything else.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>1a</strong><br>
 (non-scannable; confidentiality)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">UIDs (<code>CHIPLET_UID</code>, <code>SIP_UID</code>, <code>SYS_UID</code>); <code>*_TOKEN_I</code> JTAG input registers (<code>SEC_DIS_TOKEN_I</code>, <code>RMA_SIP_TOKEN_I</code>, <code>RMA_CHIPLET_TOKEN_I</code>); <code>CLASS_KEY</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UIDs (<code>CHIPLET_UID</code>, <code>SIP_UID</code>, <code>SYS_UID</code>); <code>*_TOKEN_I</code> JTAG input registers (<code>SEC_DIS_TOKEN_I</code>, <code>RMA_SIP_TOKEN_I</code>, <code>RMA_CHIPLET_TOKEN_I</code>); <code>CLASS_KEY</code>; raw fuse read-back data.</p></td>
 <td class="tableblock halign-center valign-top"><p class="tableblock">No</p></td>
 <td class="tableblock halign-center valign-top"><p class="tableblock">No</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Excluded</strong> from all scan chains. <strong>Confidentiality</strong> rationale: these registers hold the actual secrets; the data lives <strong>in</strong> them, so the only safe option is to keep them off every scan chain.</p></td>
@@ -11870,13 +11858,25 @@ test and calibration interface, which is reachable only over this path.</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SEP / SMC OTP JTAG2AXIL path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP OTP JTAG2AXIL path</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Ungated</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">These bridges remain enabled. This path
-reaches only the fuse controller&#8217;s register interface, which enforces access:
-per-field <code>LOCKS</code>, and in PROD and RMA_SIP a restriction to the token-input
-MMRs. <code>LOCKS</code> is only in force once sensed, so nothing on this path may execute
-before fuse sensing completes.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reaches the whole SEP eFuse interface: the
+shadow register map, the token-input MMRs, and the eFuse interface control
+registers, fuse program and read controls included. No feature control bit gates
+it. Enforcement is per-field <code>LOCKS</code> plus a wrapper access policy that, in PROD,
+RMA_SIP, or on an LC differential-decode integrity error, admits only the MMR
+region for both reads and writes, so an RMA token can still be presented.
+<code>LOCKS</code> is only in force once sensed, so this depends on nothing on this path
+being able to execute before fuse sensing completes.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC OTP JTAG2AXIL path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Ungated</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reaches the whole SMC eFuse interface on the
+same terms, under a stricter access policy. SMC holds no <code>LC_STATE</code> fuse field
+of its own; its wrapper decodes the state forwarded from SEP. In PROD or RMA_SIP
+it admits no writes at all and only reads of <code>CHIPLET_ID</code> and <code>PACKAGE_ID</code>; on an
+integrity error it admits nothing.</p></td>
 </tr>
 </tbody>
 </table>

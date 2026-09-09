@@ -1178,7 +1178,7 @@ everything else.</p>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>1a</strong><br>
 (non-scannable; confidentiality)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">UIDs (<code>CHIPLET_UID</code>, <code>SIP_UID</code>, <code>SYS_UID</code>); <code>*_TOKEN_I</code> JTAG input registers (<code>SEC_DIS_TOKEN_I</code>, <code>RMA_SIP_TOKEN_I</code>, <code>RMA_CHIPLET_TOKEN_I</code>); <code>CLASS_KEY</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">UIDs (<code>CHIPLET_UID</code>, <code>SIP_UID</code>, <code>SYS_UID</code>); <code>*_TOKEN_I</code> JTAG input registers (<code>SEC_DIS_TOKEN_I</code>, <code>RMA_SIP_TOKEN_I</code>, <code>RMA_CHIPLET_TOKEN_I</code>); <code>CLASS_KEY</code>; raw fuse read-back data.</p></td>
 <td class="tableblock halign-center valign-top"><p class="tableblock">No</p></td>
 <td class="tableblock halign-center valign-top"><p class="tableblock">No</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Excluded</strong> from all scan chains. <strong>Confidentiality</strong> rationale: these registers hold the actual secrets; the data lives <strong>in</strong> them, so the only safe option is to keep them off every scan chain.</p></td>
@@ -1541,13 +1541,25 @@ test and calibration interface, which is reachable only over this path.</p></td>
 <td class="tableblock halign-left valign-top"></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SEP / SMC OTP JTAG2AXIL path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP OTP JTAG2AXIL path</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Ungated</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">These bridges remain enabled. This path
-reaches only the fuse controller&#8217;s register interface, which enforces access:
-per-field <code>LOCKS</code>, and in PROD and RMA_SIP a restriction to the token-input
-MMRs. <code>LOCKS</code> is only in force once sensed, so nothing on this path may execute
-before fuse sensing completes.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reaches the whole SEP eFuse interface: the
+shadow register map, the token-input MMRs, and the eFuse interface control
+registers, fuse program and read controls included. No feature control bit gates
+it. Enforcement is per-field <code>LOCKS</code> plus a wrapper access policy that, in PROD,
+RMA_SIP, or on an LC differential-decode integrity error, admits only the MMR
+region for both reads and writes, so an RMA token can still be presented.
+<code>LOCKS</code> is only in force once sensed, so this depends on nothing on this path
+being able to execute before fuse sensing completes.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC OTP JTAG2AXIL path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>Ungated</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Reaches the whole SMC eFuse interface on the
+same terms, under a stricter access policy. SMC holds no <code>LC_STATE</code> fuse field
+of its own; its wrapper decodes the state forwarded from SEP. In PROD or RMA_SIP
+it admits no writes at all and only reads of <code>CHIPLET_ID</code> and <code>PACKAGE_ID</code>; on an
+integrity error it admits nothing.</p></td>
 </tr>
 </tbody>
 </table>

@@ -869,6 +869,24 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_fuse_dft_disable_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Gate for the DFT-inserted access path into the SEP OTP, composed as Case 3 AND <code>SEP_FUSE_DBG</code>. Unconnected in the functional design; an adopter&#8217;s DFT insertion connects it.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adopter DFT insertion</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Leave open if no path is inserted</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_fuse_dft_disable_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Gate for the DFT-inserted access path into the SMC OTP, composed as Case 2 AND <code>SMC_FUSE_DBG</code>. Unconnected in the functional design; an adopter&#8217;s DFT insertion connects it.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Adopter DFT insertion</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Leave open if no path is inserted</p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>lc_sigint_err_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
