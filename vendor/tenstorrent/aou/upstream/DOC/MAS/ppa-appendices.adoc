@@ -148,6 +148,7 @@ The FIFO depth of the two RPs are identical.
 
 _Table 10. AOU_CORE Area (measured at an ++FDI_CFG_SP_64B++-equivalent configuration; numbers will scale up for ++FDI_CFG_*_128B++ configurations due to the 88 \-> 140 R/W FIFO depth bump.)_
 
+ifndef::release[]
 [[appendix-a-records-of-changes]]
 == Appendix A. Records of Changes
 
@@ -163,6 +164,7 @@ _Table 10. AOU_CORE Area (measured at an ++FDI_CFG_SP_64B++-equivalent configura
 |======================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================
 
 _Table 11. Record of Changes_
+endif::release[]
 
 [[appendix-b-referenced-documents]]
 == Appendix B. Referenced Documents

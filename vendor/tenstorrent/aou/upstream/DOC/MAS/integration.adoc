@@ -93,17 +93,17 @@ a|　
 a|　
 a|output
 a|　
-a|I_AOU_APB_SI0_PREADY
+a|O_AOU_APB_SI0_PREADY
 
 a|　
 a|output
 a|+[31:0]+
-a|I_AOUAPB_SI0_PRDATA
+a|O_AOU_APB_SI0_PRDATA
 
 a|　
 a|output
 a|　
-a|I_AOU_APB_SI0_PSLVERR
+a|O_AOU_APB_SI0_PSLVERR
 
 a|　
 a|　
@@ -653,12 +653,12 @@ a|I_INT_FSM_IN_ACTIVE
 a|
 a|input
 a|
-a|I MST BUS CLEANY COMPLETE
+a|I_MST_BUS_CLEANY_COMPLETE
 
 a|
 a|input
 a|
-a|I SLV BUS CLEANY COMPLETE
+a|I_SLV_BUS_CLEANY_COMPLETE
 
 a|
 a|output

@@ -21,7 +21,7 @@ endif::[]
 |INT_DEACTIVATE_START |W1C |Asserted when deactivation of the AOU Protocol layer is required.
 |INT_SI0_ID_MISMATCH |W1C |Asserted when AXI subordinate port received with an AXI ID response that does not match any transaction
 |INT_MI0_ID_MISMATCH |W1C |Asserted when AXI manager port received with an AXI ID response that does not match any transaction
-|INT_EARLY_RESP_ERR |W1C |Asserted when B response error occurs on early responsed B response
+|INT_EARLY_RESP_ERR |W1C |Asserted when B response error occurs on early responded B response
 |INT_REQ_LINKRESET |W1C |Asserted when AOU_CORE encounters AOU SPEC protocol violation. Request link to go LinkReset.
 |=================================================================================================================================
 

@@ -9,7 +9,7 @@ endif::[]
 [[axi-over-ucie-bridge]]
 == AXI-Over-UCIe Bridge (AoU)
 
-The microarchitecture follows the AXI over UCIe protocol specification at https://www.openchipletatlas.org/specifications/aou/latest.
+The microarchitecture follows the AXI over UCIe protocol specification at https://www.openchipletatlas.org/specifications/aou/latest. This chapter reproduces the AOU_CORE Microarchitecture Specification, originally authored by BOS Semiconductors.
 
 :sectnums!:
 include::overview.adoc[leveloffset=+1]

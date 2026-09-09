@@ -260,7 +260,25 @@ Early response applies only to *bufferable* writes ([.monospaced]#++AWCACHE[0] =
 
 The following diagram shows the message flow for a bufferable write when the remote die returns a successful response.
 
-image::aou-sequence-01.svg[]
+[plantuml]
+....
+@startuml
+participant "Local AXI Manager" as LM
+participant "Local AOU" as LA
+participant "Remote AOU" as RA
+participant "Remote AXI Subordinate" as RS
+
+LM -> LA: AW (AWCACHE[0]=1) + W (WLAST)
+note over LA: AW+WLAST received, record in early table
+LA --> LM: B (early, BRESP=OKAY)
+note over LA: Early response returned before FDI transmission
+LA -> RA: WriteReq + WriteData (via FDI)
+RA -> RS: AW + W
+RS --> RA: B (BRESP=OKAY)
+RA -> LA: WriteResp message (via FDI)
+note over LA: Actual BRESP consumed silently (not forwarded)
+@enduml
+....
 
 When the actual B response arrives from the remote die for a transaction that already received an early response, the controller consumes it internally: [.monospaced]#++O_AXI_S_BVALID++# is held low (the local AXI manager sees no second response) while [.monospaced]#++O_AXI_M_BREADY++# is asserted high (the response is drained from the AOU RX path).
 
@@ -269,7 +287,26 @@ When the actual B response arrives from the remote die for a transaction that al
 
 If the actual B response from the remote die carries an error ([.monospaced]#++BRESP[1] = 1++#, indicating SLVERR or DECERR), the error cannot be reported via the AXI B channel because the early OKAY response was already returned to the local AXI manager. Instead, the error is reported via interrupt and SFR capture.
 
-image::aou-sequence-02.svg[]
+[plantuml]
+....
+@startuml
+participant "Local AXI Manager" as LM
+participant "Local AOU" as LA
+participant "Remote AOU" as RA
+participant "Remote AXI Subordinate" as RS
+
+LM -> LA: AW (AWCACHE[0]=1) + W (WLAST)
+LA --> LM: B (early, BRESP=OKAY)
+LA -> RA: WriteReq + WriteData (via FDI)
+RA -> RS: AW + W
+RS --> RA: B (BRESP=SLVERR)
+RA -> LA: WriteResp message (via FDI)
+note over LA: Detects BRESP[1]=1 on consumed response
+note over LA: Captures BID and BRESP in SFR
+LA -> LM: INT_EARLY_RESP_ERR interrupt
+note over LM: SW reads SFR, then writes 1 to WRITE_RESP_ERR to clear
+@enduml
+....
 
 The interrupt fires when the consumed response has [.monospaced]#++BRESP[1] = 1++#. SW must:
 
@@ -308,7 +345,30 @@ When [.monospaced]#++r_aw_cnt == WR_MO_CNT++#, [.monospaced]#++AWREADY++# and [.
 
 The [.monospaced]#++O_PENDING_CNT_OVER++# signal (exposed via the interrupt controller) fires if a write handshake is attempted while the counter is already at the limit, serving as a diagnostic for system-hang detection.
 
-image::aou-sequence-03.svg[]
+[plantuml]
+....
+@startuml
+participant "Local AXI Manager" as LM
+participant "Local AOU" as LA
+participant "Remote AOU" as RA
+
+LM -> LA: AW0 + W0 (bufferable)
+LA --> LM: B0 (early OKAY)
+LM -> LA: AW1 + W1 (bufferable)
+LA --> LM: B1 (early OKAY)
+note over LM, LA: ... writes continue ...
+LM -> LA: AW31 + W31 (bufferable)
+LA --> LM: B31 (early OKAY)
+note over LA: Table full (r_aw_cnt == WR_MO_CNT)
+LM ->x LA: AW32 + W32 (stalled, AWREADY=0)
+note over LA: FDI TX continues draining queued writes to remote
+RA --> LA: WriteResp for TXN0
+note over LA: TXN0 entry freed, r_aw_cnt decrements
+LA -> LM: AWREADY reasserted
+LM -> LA: AW32 + W32 (accepted)
+LA --> LM: B32 (early OKAY)
+@enduml
+....
 
 [[aou-376-mixed-ordering----bufferable-before-non-bufferable-same-id]]
 ==== 3.7.6. Mixed Ordering \-- Bufferable Before Non-Bufferable (Same ID)
@@ -324,7 +384,32 @@ When a bufferable write (TXN0) is followed by a non-bufferable write (TXN1) on t
 
 The local AXI manager sees: early B for TXN0 first, then actual B for TXN1 \-- correct AXI ID ordering is preserved.
 
-image::aou-sequence-04.svg[]
+[plantuml]
+....
+@startuml
+participant "Local AXI Manager" as LM
+participant "Local AOU" as LA
+participant "Remote AOU" as RA
+participant "Remote AXI Subordinate" as RS
+
+LM -> LA: AW0 (AWCACHE[0]=1, ID=X) + W0
+note over LA: TXN0: same_id_tr_cnt=0, early_go=1
+LA --> LM: B0 (early OKAY, ID=X)
+LM -> LA: AW1 (AWCACHE[0]=0, ID=X) + W1
+note over LA: TXN1: bufferable=0, waits for actual B
+LA -> RA: WriteReq0 + WriteData0
+LA -> RA: WriteReq1 + WriteData1
+RA -> RS: AW0 + W0
+RS --> RA: B0 (OKAY)
+RA -> LA: WriteResp0
+note over LA: TXN0 actual B consumed silently (bufferable, out=1)
+RA -> RS: AW1 + W1
+RS --> RA: B1 (OKAY)
+RA -> LA: WriteResp1
+note over LA: TXN1 actual B forwarded (non-bufferable)
+LA --> LM: B1 (actual OKAY, ID=X)
+@enduml
+....
 
 [[aou-377-mixed-ordering----non-bufferable-before-bufferable-same-id]]
 ==== 3.7.7. Mixed Ordering \-- Non-Bufferable Before Bufferable (Same ID)
@@ -338,7 +423,33 @@ When a non-bufferable write (TXN0) is followed by a bufferable write (TXN1) on t
 
 This is the key latency impact of mixed-cacheability ordering: the bufferable writepass:[']s early response is delayed until the preceding non-bufferable same-ID write fully completes its round trip through the remote die. The early-response latency benefit is lost for that transaction. Software or interconnect designers should be aware that interleaving non-bufferable writes ahead of bufferable writes on the same ID negates the early-response advantage for those bufferable transactions.
 
-image::aou-sequence-05.svg[]
+[plantuml]
+....
+@startuml
+participant "Local AXI Manager" as LM
+participant "Local AOU" as LA
+participant "Remote AOU" as RA
+participant "Remote AXI Subordinate" as RS
+
+LM -> LA: AW0 (AWCACHE[0]=0, ID=X) + W0
+note over LA: TXN0: bufferable=0, no early B
+LM -> LA: AW1 (AWCACHE[0]=1, ID=X) + W1
+note over LA: TXN1: same_id_tr_cnt=1, early_go=0 (blocked)
+LA -> RA: WriteReq0 + WriteData0
+LA -> RA: WriteReq1 + WriteData1
+RA -> RS: AW0 + W0
+RS --> RA: B0 (OKAY)
+RA -> LA: WriteResp0
+note over LA: TXN0 actual B forwarded (non-bufferable)
+LA --> LM: B0 (actual OKAY, ID=X)
+note over LA: TXN1 same_id_tr_cnt decrements to 0, early_go=1
+LA --> LM: B1 (early OKAY, ID=X)
+RA -> RS: AW1 + W1
+RS --> RA: B1 (OKAY)
+RA -> LA: WriteResp1
+note over LA: TXN1 actual B consumed silently (bufferable)
+@enduml
+....
 
 [[aou-378-enabledisable-procedure]]
 ==== 3.7.8. Enable/Disable Procedure
@@ -398,7 +509,26 @@ A depth-16 synchronous FIFO decouples the AW and W channels. The AW is issued on
 [caption=""]
 .Figure 13. Write Aggregation \-- Narrow-to-Wide Beat Merging
 [[figure-13]]
-image::aou-sequence-06.svg[]
+[plantuml]
+....
+@startuml
+participant "Splitter Output" as S
+participant "Aggregator" as AGG
+participant "AXI Manager" as M
+
+S -> AGG: AW (AWSIZE=256b, AWLEN=15)
+note over AGG: Promote AWSIZE=1024b, AWLEN=3
+S -> AGG: W beat 0 (256b)
+S -> AGG: W beat 1 (256b)
+S -> AGG: W beat 2 (256b)
+S -> AGG: W beat 3 (256b, OR-merge complete)
+AGG -> M: AW (AWSIZE=1024b, AWLEN=3)
+AGG -> M: W beat 0 (1024b merged)
+note over AGG: Repeat for remaining 3 merged beats
+M --> AGG: B response
+AGG --> S: B response (forwarded)
+@enduml
+....
 
 [[aou-383-read-aggregation]]
 ==== 3.8.3. Read Aggregation

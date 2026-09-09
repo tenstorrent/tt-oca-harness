@@ -9,14 +9,10 @@ ifndef::aou-integration-xref[]
 :aou-integration-xref: integration.adoc
 endif::[]
 
-Apache License Release
-
-AOU_CORE Microarchitecture specification
-
-Version 1.00, Feb.27 2026
-
-[[bos-semiconductors]]
-== BOS Semiconductors
+Apache License Release +
+AOU_CORE Microarchitecture specification +
+Version 1.00, Feb.27 2026 +
+BOS Semiconductors
 
 [[aou-1-introduction]]
 == 1. Introduction
