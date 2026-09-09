@@ -8,11 +8,11 @@ honoured only in TEST_DEV and RMA, and ignored under PROD. So the stimulus is
 lifecycle PROD, ``SBOOT_DIS = 0``, and a manifest whose ``secure_boot`` flag is
 CLEARED. The ROM must still authenticate.
 
-``boot_arguments.flag_args`` sits at manifest offset 1168, outside the TBS region
+``demotion_control`` sits at manifest offset 1168, outside the TBS region
 [0..743] that ``manifest_hash`` covers and the signature is computed over. Clearing
 bit 30 therefore leaves a genuinely signed manifest that merely requests non-secure
 boot -- exactly the adversary this check exists to stop, and stronger than
-re-packing an unsigned image. ``sep_manifest_mutate.verify_layout`` re-derives the
+re-packing an unsigned image. ``sep_oca_mutate.verify_layout`` re-derives the
 hash afterwards, so layout drift cannot turn this into an accidental
 hash-mismatch test.
 
@@ -27,7 +27,7 @@ import os
 from pathlib import Path
 
 import pyuvm
-from env import sep_manifest_mutate as mm
+from env import sep_oca_mutate as mm
 from rom_fw.sep_rom_ot_dma_boot_test import SECURE_FLASH_IMAGE, sep_rom_ot_dma_boot_test
 
 _LC_PROD = "LC=PROD"
@@ -69,13 +69,13 @@ class sep_firmware_cntl_secure_boot_flow_test(sep_rom_ot_dma_boot_test):
         # backup's flag set would let a failover quietly satisfy the test for the
         # wrong reason.
         for slot in ("primary", "backup"):
-            before = mm.get_flag_args(buf, slot)
-            assert (before >> mm.FLAG_ARGS_BIT_SECURE_BOOT) & 1 == 1, (
-                f"{slot} manifest already has secure_boot=0 (flag_args="
+            before = mm.secure_boot_control(buf, slot)
+            assert before & mm.SECURE_BOOT_ENFORCED_BIT, (
+                f"{slot} manifest already has secure_boot=0 (demotion_control="
                 f"0x{before:08x}); clearing it would be a no-op and the override "
                 f"would be untested"
             )
-            mm.set_flag_args_bit(buf, slot, mm.FLAG_ARGS_BIT_SECURE_BOOT, False)
+            mm.clear_secure_boot(buf, slot)
             # Proves the mutation left the signed region intact: verify_layout
             # recomputes sha256(TBS) and compares it to the stored manifest_hash.
             mm.verify_layout(buf, slot)

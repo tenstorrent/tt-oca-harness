@@ -8,20 +8,20 @@ other three PROD members is in ``rom_fw/sep_demotion_prod_base.py``. Read the
 first of those for the mechanism and the second for ``+SECURE_BOOT_DIS``.
 
 **THIS IS A NEGATIVE CONTROL, AND THAT IS ITS WHOLE VALUE.** ``+AUTH_FLAG_0``
-sets ``usage_constraints.flags`` bit 0 -- the BL1 demotion request -- while
+sets ``demotion_control`` BL1_DEMOTION_ENABLE -- the BL1 demotion request -- while
 ``selector_bits`` bit 17 stays clear. ``rom_main.c`` therefore does not take
 the first arm, never executes, and the request is discarded: BL0
 takes the ``else``, prints ``DEMOTE: BL2 deferred, lock non-demoted``
 , writes DEMOTE_1 **not demoted, locked**.
 
-A ROM that read ``flags[0]`` without first testing the selector bit -- or that
+A ROM that read ``demotion_control`` BL1_DEMOTION_ENABLE without first testing the selector bit -- or that
 ORed the two -- would write ``demote = 1`` here and this testcase would fail on
 the register channel. **The falsifying claim is ``expect_demote_1 = (0, 1)``
 against a manifest that asked for demotion.**
 
 Two members of the family have that property and neither of the other five does:
-this one and the O4 sibling, which also sets ``flags[0]`` with the selector clear
-and would catch a ROM that routed into the selector arm on ``flags[0]`` alone.
+this one and the O4 sibling, which also sets ``demotion_control`` BL1_DEMOTION_ENABLE with the selector clear
+and would catch a ROM that routed into the selector arm on ``demotion_control`` BL1_DEMOTION_ENABLE alone.
 They are not interchangeable, because they catch it through different failures --
 here a WRONG VALUE in a written register, there a register written AT ALL. R3's
 O2a member sets both bits, so its ``demote = 1`` is correct under either reading,
@@ -36,7 +36,7 @@ bit clear its checker expects ``STATUS: DEMOTION_NOT_SELECTED`` regardless of
 row count.** ``no_flag_prod`` (tracker row 111, not in this batch) drives
 (sel, auth, bl2) = (0, 0, 0) and produces this same O5 outcome, so it is
 covered-by-O5. On the DEMOTION inputs the two differ only in
-``usage_constraints.flags`` bit 0 -- which this member asserts from the packed
+``demotion_control`` BL1_DEMOTION_ENABLE -- which this member asserts from the packed
 image before the run, because the ROM never echoes it on this path. They are not
 identical stimuli overall: ``bootcode_regression.yaml`` carries no
 ``+SECURE_BOOT_DIS``, so a port of that row would run a SIGNED primary with

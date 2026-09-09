@@ -20,8 +20,8 @@ where:
 
 ``+AUTH_FLAG_0`` is also set and is IGNORED, for the same reason as in the O5
 sibling: ``selector_bits`` bit 17 is clear, so ``rom_main.c`` does not take
-the first arm and ``usage_constraints.flags`` is never read. The deferral is
-decided by ``flag_args`` bit 0 alone (, tested).
+the first arm and ``demotion_control`` is never read. The deferral is
+decided by the ``demotion_control`` BL2 request alone (, tested).
 
 **THE UNWRITTEN REGISTER IS ASSERTED THROUGH THE TRANSITION RECORD, NOT THROUGH
 AN END-OF-RUN READ, AND THAT IS DELIBERATE.** ``expect_demote_1 = (0, 0)`` is

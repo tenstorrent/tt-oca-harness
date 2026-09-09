@@ -10,7 +10,7 @@ WHAT THIS TESTCASE ACTUALLY PROVES, stated precisely because the honest claim is
 narrower than the name suggests. The stimulus is "the manifest requests BL1 demotion
 and the part is at PROD_END", and the required behaviour is that **the request is not
 honoured**: ``rom_main.c`` short-circuits on ``lc_state == LC_STATE_PROD_END``
-before ``usage_constraints.flags`` is read, so the ROM writes DEMOTE_1
+before ``demotion_control`` is read, so the ROM writes DEMOTE_1
 non-demoted and locked, additionally locks DEMOTE_2, and boots. The demotion flag
 being SET rather than clear is what makes this a test of the override rather than of
 the default.
@@ -29,7 +29,7 @@ three ROM paths newly covered, not one: the demotion short-circuit above,
 ``lc_state_enforces_secure_boot`` returning true for PROD_END
 (``bootrom/prod/src/lifecycle.c:69-73``) so the crypto chain runs on the lifecycle's
 authority, and ``lc_state_to_manifest_bit`` mapping PROD_END to
-``LC_STATES_BIT_PROD_END`` (``lifecycle.c``).
+the PROD_END lifecycle bit (``lifecycle.c``).
 
 **THE LIFECYCLE DECODE IS ASSERTED, NOT ASSUMED.** Both slots' ``life_cycle_states``
 are narrowed from the shipped 0x7 to 0x4 -- PROD_END only -- exactly as the reference
@@ -66,7 +66,7 @@ so a full RSA-3072 modexp runs on OTBN. The RSA assertions are untouched.
 from __future__ import annotations
 
 import pyuvm
-from env import sep_manifest_mutate as mm
+from env import sep_oca_mutate as mm
 from rom_fw.sep_demotion_decision_base import (
     EFUSE_DIR,
     narrow_life_cycle_states,
@@ -80,8 +80,8 @@ _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
 
 # lifecycle.h -- the raw 4-bit LC state the preload's 0x78 encodes.
 _LC_RAW_PROD_END = 0x8
-# manifest.h -- LC_STATES_BIT_PROD_END, the only bit this testcase permits.
-_LC_STATES_PROD_END_ONLY = 1 << mm.LC_STATES_BIT_PROD_END
+# The only lifecycle bit this testcase permits.
+_LC_STATES_PROD_END_ONLY = 1 << mm.LIFECYCLE_STATE_BITS["PROD_END"]
 
 
 @pyuvm.test()
@@ -138,7 +138,7 @@ class sep_firmware_demotion_decision_auth_flag_0_prod_end_test(sep_demotion_deci
         # +AUTH_FLAG_0 -> usage_constraints.BL1_demotion, i.e. flags bit 0
         # (sep_demotion_uid_checker.py sets it on the PRIMARY only, and the
         # reference's own decision table makes it the BL1 demotion request).
-        mm.set_usage_flags_bit(buf, "primary", mm.USAGE_CONSTRAINTS_FLAGS_BIT_BL1_DEMOTION, True)
+        mm.set_demotion(buf, "primary", bl1_valid=False, bl1_enable=True)
         # Narrowing life_cycle_states is the last in-TBS write, and it re-seals both
         # slots, so the flag write above is inside the region that gets re-signed.
         narrow_life_cycle_states(
@@ -146,10 +146,10 @@ class sep_firmware_demotion_decision_auth_flag_0_prod_end_test(sep_demotion_deci
         )
 
     def check_manifest_stimulus(self, buf: bytearray) -> None:
-        flags = mm.usage_flags(buf, "primary")
-        bit = (flags >> mm.USAGE_CONSTRAINTS_FLAGS_BIT_BL1_DEMOTION) & 1
+        dc = mm.demotion_control(buf, "primary")
+        bit = (dc >> mm.DEMOTION_BITS["BL1_DEMOTION_ENABLE"]) & 1
         assert bit == 1, (
-            f"primary usage_constraints.flags is 0x{flags:08x} with the BL1 demotion "
+            f"primary demotion_control is 0x{dc:04x} with the BL1 demotion enable "
             f"bit clear. This testcase's entire content is 'the manifest REQUESTS "
             f"demotion and PROD_END refuses it', and the ROM never echoes this field "
             f"on the PROD_END path (rom_main.c:383 returns before :395), so a "
@@ -159,26 +159,25 @@ class sep_firmware_demotion_decision_auth_flag_0_prod_end_test(sep_demotion_deci
         # The other two manifest demotion inputs stay CLEAR, so this run isolates
         # the flag. Their being ignored is part of the same short-circuit, but a
         # testcase named auth_flag_0 must not silently also drive them.
-        sel = mm.selector_bits(buf, "primary")
-        sel_bit = (sel >> mm.SELECTOR_BIT_BL1_DEMOTION) & 1
-        bl2 = (mm.get_flag_args(buf, "primary") >> mm.FLAG_ARGS_BIT_BL2_DEMOTION) & 1
+        sel_bit = (dc >> mm.DEMOTION_BITS["BL1_DEMOTION_VALID"]) & 1
+        bl2 = ((dc >> mm.DEMOTION_BITS["BL2_DEMOTION_VALID"]) & 1) & (
+            (dc >> mm.DEMOTION_BITS["BL2_DEMOTION_ENABLE"]) & 1
+        )
         assert sel_bit == 0 and bl2 == 0, (
-            f"primary selector_bits[{mm.SELECTOR_BIT_BL1_DEMOTION}]={sel_bit} and "
-            f"flag_args[{mm.FLAG_ARGS_BIT_BL2_DEMOTION}]={bl2}; both must be 0 so "
+            f"primary demotion_control=0x{dc:04x} has BL1_VALID={sel_bit} and BL2 "
+            f"request={bl2}; both must be 0 so "
             f"this run drives the AUTH flag alone, as the tracker row names it"
         )
-        lcs = mm.life_cycle_states(buf, "primary")
+        lcs = mm.lifecycle_states(buf, "primary", "chiplet")
         assert lcs == _LC_STATES_PROD_END_ONLY, (
             f"primary life_cycle_states is 0x{lcs:08x}, expected "
             f"0x{_LC_STATES_PROD_END_ONLY:08x} (PROD_END only)"
         )
         self.logger.info(
-            "CHK-STIMULUS-DEMOTION: primary usage_constraints.flags bit %d = 1 "
-            "(BL1 demotion REQUESTED), selector_bits[%d] = 0, flag_args[%d] = 0, "
+            "CHK-STIMULUS-DEMOTION: primary demotion_control bit %d = 1 "
+            "(BL1 demotion REQUESTED with BL1_VALID clear and no BL2 request), "
             "life_cycle_states = 0x%08x. The ROM must ignore all three because the "
             "part is at PROD_END",
-            mm.USAGE_CONSTRAINTS_FLAGS_BIT_BL1_DEMOTION,
-            mm.SELECTOR_BIT_BL1_DEMOTION,
-            mm.FLAG_ARGS_BIT_BL2_DEMOTION,
+            dc,
             lcs,
         )

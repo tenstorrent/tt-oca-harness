@@ -11,8 +11,8 @@ EVERY MEMBER OF THIS BASE PRODUCES THE SAME OUTCOME, BY CONSTRUCTION
 
 ``rom_main.c`` short-circuits on ``lc_state == LC_STATE_PROD_END`` and returns
 from the block having read NONE of the three manifest demotion inputs -- the
-selector bit is not consulted until, ``usage_constraints.flags`` not
-until, and ``flag_args`` not until, all inside the ``else`` at
+selector bit is not consulted until, ``demotion_control`` not
+until, and ``demotion_control`` not until, all inside the ``else`` at
 . So the outcome is **O1** for every combination of those three inputs,
 and this base fixes the expected outcome rather than deriving it from a member's
 declarations. **Five tracker rows share this one observable.** They are five
@@ -74,8 +74,8 @@ _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
 
 # lifecycle.h -- the raw 4-bit LC state the preload's 0x78 encodes.
 LC_RAW_PROD_END = 0x8
-# manifest.h -- LC_STATES_BIT_PROD_END, the only state these members permit.
-LC_STATES_PROD_END_ONLY = 1 << mm.LC_STATES_BIT_PROD_END
+# The only lifecycle state these members permit.
+LC_STATES_PROD_END_ONLY = 1 << mm.LIFECYCLE_STATE_BITS["PROD_END"]
 
 PROD_END_PRELOAD = EFUSE_DIR / "sep_efuse_lc_prod_end.toml"
 
@@ -87,8 +87,8 @@ class sep_demotion_prod_end_base(sep_demotion_decision_base):
     # The ROM reads none of them on this path -- that IS the property under test --
     # so they are asserted from the artefact instead.
     _SEL = 0  # usage_constraints.selector_bits bit 17
-    _AUTH = 0  # usage_constraints.flags bit 0
-    _BL2 = 0  # boot_arguments.flag_args bit 0
+    _AUTH = 0  # demotion_control bit 0
+    _BL2 = 0  # demotion_control bit 0
 
     efuse_preload = PROD_END_PRELOAD
     expected_lc_raw = LC_RAW_PROD_END
@@ -148,14 +148,16 @@ class sep_demotion_prod_end_base(sep_demotion_decision_base):
         The primary must stay fully signed here, unlike on the PROD members:
         PROD_END enforces secure boot, so an unsigned primary would be refused.
         """
-        if self._SEL:
-            mm.set_selector_bit(buf, "primary", mm.SELECTOR_BIT_BL1_DEMOTION, True)
-        if self._AUTH:
-            mm.set_usage_flags_bit(
-                buf, "primary", mm.USAGE_CONSTRAINTS_FLAGS_BIT_BL1_DEMOTION, True
-            )
-        if self._BL2:
-            mm.set_flag_args_bit(buf, "primary", mm.FLAG_ARGS_BIT_BL2_DEMOTION, True)
+        # One field, one write: the BL2 request is the conjunction of its own
+        # pair, so a member's _BL2 sets both of those bits.
+        mm.set_demotion(
+            buf,
+            "primary",
+            bl1_valid=bool(self._SEL),
+            bl1_enable=bool(self._AUTH),
+            bl2_valid=bool(self._BL2),
+            bl2_enable=bool(self._BL2),
+        )
         narrow_life_cycle_states(
             self, buf, LC_STATES_PROD_END_ONLY, reseal_slots=("primary", "backup")
         )
@@ -177,16 +179,17 @@ class sep_demotion_prod_end_base(sep_demotion_decision_base):
         This method is the offline half: it proves the mutation landed in the image
         before the transport is involved at all.
         """
-        sel_bits = mm.selector_bits(buf, "primary")
-        sel = (sel_bits >> mm.SELECTOR_BIT_BL1_DEMOTION) & 1
-        flags = mm.usage_flags(buf, "primary")
-        auth = (flags >> mm.USAGE_CONSTRAINTS_FLAGS_BIT_BL1_DEMOTION) & 1
-        bl2 = (mm.get_flag_args(buf, "primary") >> mm.FLAG_ARGS_BIT_BL2_DEMOTION) & 1
-        lcs = mm.life_cycle_states(buf, "primary")
+        dc = mm.demotion_control(buf, "primary")
+        sel = (dc >> mm.DEMOTION_BITS["BL1_DEMOTION_VALID"]) & 1
+        auth = (dc >> mm.DEMOTION_BITS["BL1_DEMOTION_ENABLE"]) & 1
+        bl2 = ((dc >> mm.DEMOTION_BITS["BL2_DEMOTION_VALID"]) & 1) & (
+            (dc >> mm.DEMOTION_BITS["BL2_DEMOTION_ENABLE"]) & 1
+        )
+        lcs = mm.lifecycle_states(buf, "primary", "chiplet")
 
         assert (sel, auth, bl2) == (self._SEL, self._AUTH, self._BL2), (
-            f"primary demotion inputs decoded as selector_bits[17]={sel}, "
-            f"usage_flags[0]={auth}, flag_args[0]={bl2}; this testcase plants "
+            f"primary demotion_control=0x{dc:04x} decodes as BL1_VALID={sel}, "
+            f"BL1_ENABLE={auth}, BL2 request={bl2}; this testcase plants "
             f"({self._SEL}, {self._AUTH}, {self._BL2}). The ROM ignores all three "
             f"at PROD_END, so no console line reflects it and a wrong triple "
             f"would still produce a green run. The other channel that can see it "
@@ -197,15 +200,14 @@ class sep_demotion_prod_end_base(sep_demotion_decision_base):
             f"0x{LC_STATES_PROD_END_ONLY:08x} (PROD_END only)"
         )
         self.logger.info(
-            "CHK-STIMULUS-DEMOTION: primary selector_bits[%d]=%d, usage_flags[%d]=%d, "
-            "flag_args[%d]=%d, life_cycle_states=0x%08x. rom_main.c:383 must ignore "
-            "all three because the part is at PROD_END, and their absence from the "
-            "console is asserted by forbidding BL1_DEMOTE= and BL2_DEMOTE_DEC=",
-            mm.SELECTOR_BIT_BL1_DEMOTION,
+            "CHK-STIMULUS-DEMOTION: primary demotion_control=0x%04x (BL1_VALID=%d "
+            "BL1_ENABLE=%d BL2 request=%d), chiplet lifecycle_states=0x%08x. The "
+            "ROM must ignore all of it because the part is at PROD_END, and their "
+            "absence from the console is asserted by forbidding BL1_DEMOTE= and "
+            "BL2_DEMOTE_DEC=",
+            dc,
             sel,
-            mm.USAGE_CONSTRAINTS_FLAGS_BIT_BL1_DEMOTION,
             auth,
-            mm.FLAG_ARGS_BIT_BL2_DEMOTION,
             bl2,
             lcs,
         )

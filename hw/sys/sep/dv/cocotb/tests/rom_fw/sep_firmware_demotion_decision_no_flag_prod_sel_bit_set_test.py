@@ -8,7 +8,7 @@ other three PROD members is in ``rom_fw/sep_demotion_prod_base.py``.
 
 This is the arm where the manifest decides, deciding NOT to demote.
 ``selector_bits`` bit 17 is set, so ``rom_main.c`` takes the first arm and
-copies ``usage_constraints.flags`` bit 0 -- which is clear -- into
+copies ``demotion_control`` BL1_DEMOTION_ENABLE -- which is clear -- into
 ``demotion_reg``, printing ``BL1_DEMOTE=0``.
 ``lock_demotion`` keeps its initialiser, so writes DEMOTE_1
 **not demoted but LOCKED**.
@@ -45,8 +45,8 @@ covered-by-O3a. It is not the same stimulus overall: it adds ``+UNAUTH_FLAG_30``
 enforced secure boot. Neither difference is a demotion input. The
 remaining uncovered outcome of the seven is **O3b**
 (``unauth_flag_0_prod_sel_bit_set``, tracker row 116): selector set, BL1 flag
-clear, BL2 flag SET. It is the case that would fail a ROM which ORed ``flags[0]``
-with ``flag_args[0]`` into DEMOTE_1, and it is in no batch's assignment.
+clear, BL2 flag SET. It is the case that would fail a ROM which ORed ``demotion_control`` BL1_DEMOTION_ENABLE
+with the ``demotion_control`` BL2 request into DEMOTE_1, and it is in no batch's assignment.
 
 No ``+sep_crypto_edn_force``: secure boot is off, so the ROM never drives OTBN.
 """

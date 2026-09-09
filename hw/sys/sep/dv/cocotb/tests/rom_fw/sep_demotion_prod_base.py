@@ -42,14 +42,14 @@ This is the single most expensive thing the VP half of this run learned, and it
 is inherited here rather than rediscovered (``batch_runs_0904_vp/FINDINGS.md``
 F11 item 1, which RETRACTS an earlier instruction). The reference's plusarg:
 
-  * sets ``primary.manifest.boot_arguments.secure_boot = 0``, which the packer
+  * sets ``secure_boot: 0``, which the packer
     turns into TWO packed-field changes, not one -- see below;
   * **and** burns the ``sboot_dis`` eFuse, constrained to equal the plusarg.
 
 Both are ported. The eFuse preload ``sep_efuse_lc_prod_sboot_dis.toml`` burns the
 fuse, and :func:`apply_secure_boot_dis` writes both manifest fields:
 
-  * ``flag_args`` bit 30 (``FLAG_ARGS_BIT_SECURE_BOOT``, ``manifest.h``)
+  * ``secure_boot_control`` bit 0 (``FLAG_ARGS_BIT_SECURE_BOOT``, ``manifest.h``)
     cleared -- the field ``secure_boot_enabled`` reads at ``manifest_load.c``.
     It sits OUTSIDE the TBS (``manifest.h``), so clearing it needs no
     re-hash and no re-sign;
@@ -96,7 +96,7 @@ duplication is named HERE ONLY -- that member carries no reference back to this
 module, because editing it is exactly what was declined** -- so a future packer
 change must be applied in both places and this paragraph is the only thing that
 says so. Both copies are anchored by the same two assertions
-(``signature_type == NO_SIGNATURE`` and ``flag_args`` bit 30 clear), so a change
+(``signature_type == NO_SIGNATURE`` and ``secure_boot_control`` bit 0 clear), so a change
 that broke one would fail the other loudly rather than silently.
 """
 
@@ -122,7 +122,7 @@ _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
 
 # lifecycle.h -- the raw 4-bit LC state the preload's 0xE1 encodes.
 LC_RAW_PROD = 0x1
-# manifest.h -- LC_STATES_BIT_PROD, the only state these members permit.
+# The only lifecycle state these members permit.
 LC_STATES_PROD_ONLY = 1 << mm.LIFECYCLE_STATE_BITS["PROD"]
 
 PROD_SBOOT_DIS_PRELOAD = EFUSE_DIR / "sep_efuse_lc_prod_sboot_dis.toml"
@@ -179,7 +179,7 @@ def outcome_for(sel: int, auth: int, bl2: int) -> dict:
         ``demotion_reg`` still false, ``lock_demotion`` still true, so
         writes ``(0, 1)``;
       * prints ``BL2_DEMOTE_DEC=`` on all three of those arms, carrying
-        ``flag_args[0]`` unconditionally (, stored);
+        the ``demotion_control`` BL2 request unconditionally (, stored);
       * ``lc_write_demotion_2`` is called only, i.e. only at PROD_END,
         so DEMOTE_2 is never written on any arm here.
 
@@ -360,7 +360,7 @@ class sep_demotion_prod_base(_demotion_prod_mixin, sep_demotion_decision_base):
     def check_manifest_stimulus(self, buf: bytearray) -> None:
         """Read all five mutated fields back out of the packed image.
 
-        Not duplication of the console. The ROM echoes ``flags[0]`` only when the
+        Not duplication of the console. The ROM echoes ``demotion_control`` BL1_DEMOTION_ENABLE only when the
         selector bit is set and never echoes the selector bit itself, so on three
         of the four members at least one input is invisible in the log and a
         stimulus that silently failed to land would produce exactly the log a

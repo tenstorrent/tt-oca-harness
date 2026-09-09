@@ -13,7 +13,7 @@ every combination of them produces this same outcome. Batch R3 already covered O
 with ``sep_firmware_demotion_decision_auth_flag_0_prod_end_test``. This row drives
 the *baseline* combination -- all three inputs clear -- which is the one
 combination for which the PROD_END short-circuit is not even load-bearing: a ROM
-that evaluated ``selector_bits[17]`` first would take the ``else`` at
+that evaluated ``demotion_control`` BL1_DEMOTION_VALID first would take the ``else`` at
 ``rom_main.c``, and the only difference would be the console tokens and
 DEMOTE_2. So unlike its ``sel_bit_set`` sibling, this member is not a negative
 control on the short-circuit ORDER; it is the null stimulus.

@@ -14,7 +14,7 @@ produces the same observable and batch R3 already covered it with
 path. What it adds is a **negative control on the short-circuit ORDER**:
 
   * ``selector_bits`` bit 17 is SET. If did not preempt, the
-    ROM would take the first arm of the ``else``, copy ``usage_constraints.flags``
+    ROM would take the first arm of the ``else``, copy ``demotion_control``
     bit 0 into ``demotion_reg``, and produce outcome **O3a** -- which differs from
     O1 on four independent observables at once: ``BL1_DEMOTE=0`` present,
     ``BL2_DEMOTE_DEC=0`` present, ``DEMOTE: PROD_END lock`` absent, and DEMOTE_2
@@ -31,7 +31,7 @@ path. What it adds is a **negative control on the short-circuit ORDER**:
     precisely because their consoles are identical.
 
 Neither of the other two PROD_END rows can make that claim. R3's
-``auth_flag_0_prod_end`` sets ``flags[0]`` with the selector CLEAR, so the ROM
+``auth_flag_0_prod_end`` sets ``demotion_control`` BL1_DEMOTION_ENABLE with the selector CLEAR, so the ROM
 would ignore the flag under either ordering; ``no_flag_prod_end`` leaves all three
 inputs clear, so the two orderings agree exactly. **The selector bit is the one
 manifest input whose value changes the non-PROD_END outcome on its own, which is

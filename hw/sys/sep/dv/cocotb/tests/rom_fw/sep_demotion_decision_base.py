@@ -25,8 +25,8 @@ The decision is ``rom_main.c`` and it reads exactly FOUR inputs:
   ==========================================  ==============
   ``lc_state``                                eFuse LC_STATE
   ``usage_constraints.selector_bits`` bit 17  manifest
-  ``usage_constraints.flags`` bit 0           manifest
-  ``boot_arguments.flag_args`` bit 0          manifest
+  ``demotion_control`` BL1_DEMOTION_ENABLE           manifest
+  ``demotion_control`` BL2 request          manifest
   ==========================================  ==============
 
 Bit positions: ``SELECTOR_BIT_BL1_DEMOTION`` is 17 because
@@ -37,7 +37,7 @@ Bit positions: ``SELECTOR_BIT_BL1_DEMOTION`` is 17 because
 **THE COLLAPSE, AND IT IS THE MOST IMPORTANT THING IN THIS FILE.** ``rom_main.c``
 short-circuits on ``lc_state == LC_STATE_PROD_END`` and returns from the block having
 read NONE of the three manifest inputs -- the selector bit is not consulted until
-, ``usage_constraints.flags`` not until, and ``flag_args`` not until
+, ``demotion_control`` not until, and ``demotion_control`` not until
 , all inside the ``else``. So **at PROD_END every combination of
 the three manifest inputs produces the identical outcome.** The tracker holds five
 PROD_END demotion items; they are FIVE STIMULI ON ONE OBSERVABLE, not five coverage
@@ -45,8 +45,8 @@ points. This member covers that outcome once, under the name the tracker gives i
 and says so.
 
 The seven distinct observables of the whole block, derived from the source and
-confirmed here on RTL. ``sel`` = ``selector_bits[17]``, ``auth`` =
-``usage_constraints.flags[0]``, ``bl2`` = ``flag_args[0]``.
+confirmed here on RTL. ``sel`` = ``demotion_control`` BL1_DEMOTION_VALID, ``auth`` =
+``demotion_control`` BL1_DEMOTION_ENABLE, ``bl2`` = the ``demotion_control`` BL2 request.
 
 **THE REGISTER COLUMNS ARE ``(demote, lock)`` TUPLES, IN THE SAME FORM AS
 ``expect_demote_1`` / ``expect_demote_2`` BELOW.** They are deliberately NOT the

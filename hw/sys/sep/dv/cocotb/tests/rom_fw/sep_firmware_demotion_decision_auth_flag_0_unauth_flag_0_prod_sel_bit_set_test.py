@@ -7,20 +7,20 @@ Outcome **O2b** of the [C15] decision table in
 other three PROD members is in ``rom_fw/sep_demotion_prod_base.py``.
 
 **THIS IS THE PRECEDENCE TEST, and it is the only member of the family that can
-be one.** Both requests are present at once: ``usage_constraints.flags`` bit 0
-asks BL0 to demote now, and ``boot_arguments.flag_args`` bit 0 asks for the
+be one.** Both requests are present at once: ``demotion_control`` BL1_DEMOTION_ENABLE
+asks BL0 to demote now, and ``demotion_control`` BL2 request asks for the
 decision to be deferred to BL2. ``rom_main.c`` resolves it -- the selector
-bit routes into the first arm, so ``demotion_reg`` is taken from ``flags[0]``
+bit routes into the first arm, so ``demotion_reg`` is taken from ``demotion_control`` BL1_DEMOTION_ENABLE
  and ``lock_demotion`` is never touched. The deferral arm at
  is an ``else if`` and is therefore unreachable in this run.
 
-The falsifying claim is on the LOCK bit. A ROM that let ``flag_args[0]`` reach
+The falsifying claim is on the LOCK bit. A ROM that let the ``demotion_control`` BL2 request reach
 ``lock_demotion`` -- by testing it before the selector bit, or by clearing the
 lock whenever the BL2 flag is set -- would produce ``DEMOTE_NOT_LOCKED`` and
 ``lcc_demote_lock_1_probe_o == 0``, i.e. outcome O4. **This member requires
 DEMOTE_1 to read (demote 1, lock 1) with ``DEMOTE_LOCKED`` on the console and
 ``DEMOTE_NOT_LOCKED`` forbidden, so that ROM fails here and only here.** R3's O2a
-sibling cannot make the claim: it leaves ``flag_args[0]`` clear, so nothing is
+sibling cannot make the claim: it leaves the ``demotion_control`` BL2 request clear, so nothing is
 competing with the selector bit.
 
 **AND THE ROM RESOLVES MORE THAN THE REFERENCE CHECKS.** Grendel's checker

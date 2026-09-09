@@ -8,8 +8,8 @@ map and the disclosed gaps are written out once. Read that first.
 
 This is the row where the manifest actually decides. ``selector_bits`` bit 17 is set,
 so ``rom_main.c`` takes the first arm and copies
-``usage_constraints.flags`` bit 0 into ``demotion_reg``;
-``flag_args`` bit 0 is clear, so ``BL2_DEMOTE_DEC=0``; and ``lock_demotion`` keeps its
+``demotion_control`` BL1_DEMOTION_ENABLE into ``demotion_reg``;
+the ``demotion_control`` BL2 request is clear, so ``BL2_DEMOTE_DEC=0``; and ``lock_demotion`` keeps its
 initialiser, so DEMOTE_1 is written **demoted and locked**  and DEMOTE_2 is
 never written at all. It is the exact complement of the PROD_END member on the
 register channel:
@@ -25,13 +25,13 @@ register channel:
 **``+SECURE_BOOT_DIS`` DRIVES TWO SURFACES AND BOTH ARE PORTED.** This is the
 instruction the VP half arrived at only after retracting an earlier one
 (``batch_runs_0904_vp/FINDINGS.md`` F11 item 1): the reference's plusarg sets
-``primary.manifest.boot_arguments.secure_boot = 0``
+``secure_boot: 0``
 **and** burns the ``sboot_dis`` fuse, constrained to equal the plusarg.
 Reading only the manifest surface produced the VP half's worst error. Both are ported
 here: the eFuse preload burns SBOOT_DIS, and the manifest is mutated on both of the
 fields the packer would have changed --
 
-  * ``flag_args`` bit 30 (``FLAG_ARGS_BIT_SECURE_BOOT``) cleared. This is the field
+  * ``secure_boot_control`` bit 0 cleared. This is the field
     ``secure_boot_enabled`` reads at ``manifest_load.c``, and it sits OUTSIDE the
     TBS (``manifest.h``), so clearing it needs no re-hash;
   * ``signature_type`` set to ``NO_SIGNATURE`` (0), because the packer forces exactly
@@ -79,7 +79,7 @@ rather than silently start needing the shortcut.
 from __future__ import annotations
 
 import pyuvm
-from env import sep_manifest_mutate as mm
+from env import sep_oca_mutate as mm
 from rom_fw.sep_demotion_decision_base import (
     EFUSE_DIR,
     narrow_life_cycle_states,
@@ -97,8 +97,8 @@ _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
 
 # lifecycle.h -- the raw 4-bit LC state the preload's 0xE1 encodes.
 _LC_RAW_PROD = 0x1
-# manifest.h -- LC_STATES_BIT_PROD, the only bit this testcase permits.
-_LC_STATES_PROD_ONLY = 1 << mm.LC_STATES_BIT_PROD
+# The only lifecycle bit this testcase permits.
+_LC_STATES_PROD_ONLY = 1 << mm.LIFECYCLE_STATE_BITS["PROD"]
 
 
 @pyuvm.test()
@@ -155,12 +155,11 @@ class sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test(sep_demot
     def mutate_manifest(self, buf: bytearray) -> None:
         # +SET_SELECTOR_BIT_17 -> usage_constraints.selectors.BL1_demotion
         # (sep_demotion_uid_checker.py).
-        mm.set_selector_bit(buf, "primary", mm.SELECTOR_BIT_BL1_DEMOTION, True)
+        mm.set_demotion(buf, "primary", bl1_valid=True, bl1_enable=True)
         # +AUTH_FLAG_0 -> usage_constraints.BL1_demotion (:438-440).
-        mm.set_usage_flags_bit(buf, "primary", mm.USAGE_CONSTRAINTS_FLAGS_BIT_BL1_DEMOTION, True)
         # +SECURE_BOOT_DIS, manifest surface 1: the flag secure_boot_enabled reads
         # (manifest_load.c). Outside the TBS, so no re-hash.
-        mm.set_flag_args_bit(buf, "primary", mm.FLAG_ARGS_BIT_SECURE_BOOT, False)
+        mm.clear_secure_boot(buf, "primary")
         # +SECURE_BOOT_DIS, manifest surface 2: the packer would have forced
         # NO_SIGNATURE (manifest_signing.py), so the reference's primary is
         # unsigned and this one is too.
@@ -171,27 +170,27 @@ class sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test(sep_demot
         narrow_life_cycle_states(self, buf, _LC_STATES_PROD_ONLY, reseal_slots=("backup",))
 
     def check_manifest_stimulus(self, buf: bytearray) -> None:
-        sel = mm.selector_bits(buf, "primary")
-        sel_bit = (sel >> mm.SELECTOR_BIT_BL1_DEMOTION) & 1
-        flags = mm.usage_flags(buf, "primary")
-        auth = (flags >> mm.USAGE_CONSTRAINTS_FLAGS_BIT_BL1_DEMOTION) & 1
-        fa = mm.get_flag_args(buf, "primary")
-        bl2 = (fa >> mm.FLAG_ARGS_BIT_BL2_DEMOTION) & 1
-        sb = (fa >> mm.FLAG_ARGS_BIT_SECURE_BOOT) & 1
-        sigtype = mm.get_signature_type(buf, "primary")
-        lcs = mm.life_cycle_states(buf, "primary")
+        dc = mm.demotion_control(buf, "primary")
+        sel_bit = (dc >> mm.DEMOTION_BITS["BL1_DEMOTION_VALID"]) & 1
+        auth = (dc >> mm.DEMOTION_BITS["BL1_DEMOTION_ENABLE"]) & 1
+        bl2 = ((dc >> mm.DEMOTION_BITS["BL2_DEMOTION_VALID"]) & 1) & (
+            (dc >> mm.DEMOTION_BITS["BL2_DEMOTION_ENABLE"]) & 1
+        )
+        sb = mm.secure_boot_control(buf, "primary") & mm.SECURE_BOOT_ENFORCED_BIT
+        sigtype = mm.signature_type(buf, "primary")
+        lcs = mm.lifecycle_states(buf, "primary", "chiplet")
         assert (sel_bit, auth, bl2) == (1, 1, 0), (
-            f"primary demotion inputs are selector_bits[17]={sel_bit}, "
-            f"usage_flags[0]={auth}, flag_args[0]={bl2}; O2a needs (1, 1, 0). Any "
-            f"other triple is a different row of the decision table, and rows O2a "
-            f"and O2b differ only in flag_args[0] -- which the ROM echoes as "
+            f"primary demotion_control=0x{dc:04x} decodes as BL1_VALID={sel_bit}, "
+            f"BL1_ENABLE={auth}, BL2 request={bl2}; O2a needs (1, 1, 0). Any other "
+            f"triple is a different row of the decision table, and rows O2a and O2b "
+            f"differ only in the BL2 request -- which the ROM echoes as "
             f"BL2_DEMOTE_DEC=, so getting it wrong here would fail on the console "
             f"rather than silently, but the artefact is where the stimulus is proven"
         )
         assert sb == 0, (
-            f"primary flag_args bit {mm.FLAG_ARGS_BIT_SECURE_BOOT} is still set "
-            f"(flag_args=0x{fa:08x}): the manifest surface of +SECURE_BOOT_DIS did "
-            f"not land"
+            f"primary secure_boot_control still asks for enforcement "
+            f"(0x{mm.secure_boot_control(buf, 'primary'):02x}): the manifest surface "
+            f"of +SECURE_BOOT_DIS did not land, and a signed request outranks the fuse"
         )
         assert sigtype == mm.SIG_TYPE_NO_SIGNATURE, (
             f"primary signature_type is {sigtype}, expected "
@@ -204,19 +203,16 @@ class sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test(sep_demot
             f"0x{_LC_STATES_PROD_ONLY:08x} (PROD only)"
         )
         # The manifest hash must still be valid even though the slot is unsigned:
-        # manifest_check_integrity (manifest_load.c) runs regardless of secure
+        # The integrity check runs regardless of secure
         # boot, so a stale hash would reject the primary before the demotion block.
         mm.verify_layout(buf, "primary")
         self.logger.info(
-            "CHK-STIMULUS-DEMOTION: primary selector_bits[%d]=1, usage_flags[%d]=1, "
-            "flag_args[%d]=0, flag_args[%d]=0 (secure_boot cleared), signature_type="
-            "%d (NO_SIGNATURE), life_cycle_states=0x%08x, manifest hash valid. This "
-            "is decision-table row O2a, and it can only boot because the SBOOT_DIS "
-            "fuse is burned",
-            mm.SELECTOR_BIT_BL1_DEMOTION,
-            mm.USAGE_CONSTRAINTS_FLAGS_BIT_BL1_DEMOTION,
-            mm.FLAG_ARGS_BIT_BL2_DEMOTION,
-            mm.FLAG_ARGS_BIT_SECURE_BOOT,
+            "CHK-STIMULUS-DEMOTION: primary demotion_control=0x%04x (BL1_VALID=1 "
+            "BL1_ENABLE=1, no BL2 request), secure_boot_control=0, signature_type=%d "
+            "(NO_SIGNATURE), chiplet lifecycle_states=0x%08x, manifest hash valid. "
+            "This is decision-table row O2a, and it can only boot because the "
+            "SBOOT_DIS fuse is burned",
+            dc,
             sigtype,
             lcs,
         )
