@@ -111,13 +111,6 @@ shadow register is not writable. When read-locked, neither software nor JTAG can
 read the corresponding shadow register or fuse field. The fuse-sensing FSM is
 _always_ able to read the fuses in order to populate the shadow registers.
 
-Per-field lock slots (v0.5.22):
-[none]
-* Slots  0–28: original fields (LC_STATE through SIP_PUBK_PQC_HASH1) — LOCKS[57:0]
-* Slots 29–31: v0.5.22 identity fuses (SEP_CHIPLET_ID, SEP_SIP_ID, SEP_SYS_ID) — LOCKS[63:58]
-* Slots 32–39: v0.5.22 spare fields (spare0–spare7) — LOCKS_SPARE[15:0]
-* Slots 40–47: unassigned — LOCKS_SPARE[31:16] (reserved for future fields)
-
 |LC_STATE |1 |32 (use only 4 bits) |set-only |true |Life-cycle state of the
 chiplet. *_LC_STATE shall never be write-locked or read-locked by the
 corresponding LOCKS bits_*. LC_STATE[3] and LC_STATE[0] are set-only.
@@ -214,18 +207,14 @@ reserved.
 
 |SPI_CONFIG |19 |288 |true |true |SPI discovery has 8 configuration values
 as well as 1 enable bitfield. Each word is 32-bits in length: [0]
-SPI_CONFIG_EN Enable for each of the following 8 SPI_CONFIG field words.
-SPI_CONFIG_EN[7:0] corresponds to registers 1-8 below. When bit N is set
-in this field, then configuration register N+1 is valid in fuses and
-that value will be read from fuses and written into the specified SPI
-configuration register during the SPI controller initialization.
-SPI_CONFIG_EN[31:8] are reserved. [1] SPI_CTRL_DISCOVERY_CTRL_REG [2]
-SPI_CTRL_INIT_PHY_DQ_TIMING_REG_ADDR phy_dq_timing_reg [3]
-SPI_CTRL_INIT_PHY_DQS_TIMING_REG_ADDR phy_dqs_timing_reg [4]
-SPI_CTRL_INIT_PHY_GATE_LPBK_CTRL_REG_ADDR phy_gate_lpbk_ctrl_reg [5]
-SPI_CTRL_INIT_PHY_DLL_SLAVE_CTRL_REG_ADDR phy_dll_slave_ctrl_reg [6]
-SPI_CTRL_INIT_PHY_DLL_MASTER_CTRL_REG_ADDR phy_dll_master_ctrl_reg [7]
-SEP_SPI_PHY_MISC [8] INIT_RB_VALID_TIME
+SPI_CONFIG_EN [1] SPI_DISCOVERY_CTRL [2] SPI_PHY_DQ_TIMING
+[3] SPI_PHY_DQS_TIMING [4] SPI_PHY_GATE_LPBK [5] SPI_PHY_DLL_SLAVE
+[6] SPI_PHY_DLL_MASTER [7] SPI_PHY_MISC [8] SPI_RB_VALID_TIME.
+SPI_CONFIG_EN[7:0] is the enable for the 8 SPI_CONFIG field words above and
+corresponds to registers 1-8. When bit N is set in this field, then
+configuration register N+1 is valid in fuses. SPI_CONFIG_EN[18:8] is
+SMU_PLL_SYSCLK, the configured sysclk PLL frequency in MHz, ignored when 0.
+SPI_CONFIG_EN[31:19] are reserved.
 
 |CHIPLET_PUBK_HASH0 |20 |256 |true |true |Hash of chiplet-owner authentication
 key 0, fused. These fused chiplet-owner key hashes can be used in addition to
