@@ -153,6 +153,7 @@ module efuse_read_interface #(
           if (read_req_timeout_en_i && timeout_count_d >= read_req_timeout_cycles_i) begin
             read_done_d = 1'b1;
             read_busy_d = 1'b0;
+            read_err_d = 1'b1;
             read_back_data_d = efuse_data_t'(0);
             fuse_command_req_d = FUSE_COMMAND_REQ_DEFAULT;
             read_state_d = ST_READ_IDLE;

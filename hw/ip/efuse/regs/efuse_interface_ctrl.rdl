@@ -144,7 +144,7 @@ addrmap efuse_interface_ctrl {
         field {
             sw=r;
             hw=w;
-            desc="0: No Error.  1: Logic error, assert read_go when read is not enabled";
+            desc="0: No Error.  1: Error. Set when read_go is asserted while read is not enabled, the address is out of bounds, or the read request times out.";
         } read_status [26:26] = 0x0;
 
         field {
