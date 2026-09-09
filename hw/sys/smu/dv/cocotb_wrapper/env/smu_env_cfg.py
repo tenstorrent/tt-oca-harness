@@ -7,6 +7,7 @@ from __future__ import annotations
 import random
 
 from cocotb.triggers import Event
+from ocah_axi_vip import OcahAxiConfig, OcahAxiProtocol, OcahAxiSlaveSequence
 from pyuvm import uvm_object
 
 
@@ -24,6 +25,19 @@ class SmuEnvCfg(uvm_object):
         self.reset_hold_cycles = 12
         self.post_reset_cycles = 24
         self.reset_done = Event("smu_reset_done")
+        # Outbound SMN AXI4 egress: the crossbar's ext_out geometry
+        # (smu_axi_xbar_pkg axi_out_*), the responder's sparse memory span, and
+        # the slave sequence smu_base_test.bring_up binds to u_axi_out_if
+        # (backdoor memory access, one-shot faults).
+        self.axi_out_geometry = OcahAxiConfig(
+            protocol=OcahAxiProtocol.AXI4,
+            addr_width=56,
+            data_width=64,
+            id_width=10,
+            user_width=12,
+        )
+        self.axi_out_mem_size = 1 << 56
+        self.axi_out_mem: OcahAxiSlaveSequence | None = None
 
     def randomize_timing(self, seed: int) -> None:
         """Choose reproducible clock ratios and reset timing."""

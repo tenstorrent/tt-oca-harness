@@ -71,7 +71,7 @@ smu_<scenario>_test
 | Interface | VIP / Model |
 |-----------|-------------|
 | Primary JTAG TAP | `ocah_jtag_vip` |
-| External SMN AXI4 | `ocah_axi_vip` (`OcahAxiSlaveAgent` / master) |
+| External SMN AXI4 | `ocah_axi_vip`: `OcahAxiSlaveAgent` on the outbound boundary (struct port bridged by `ocah_axi_struct_bridge`), master on the inbound pins |
 | SMC OTP AXI-Lite (over JTAG2AXI) | `ocah_axi_vip` AXI-Lite |
 | SMC scratch / mailbox | Backdoor + cocotb polling |
 | Cross-trigger / iJTAG | OCAH-local BFM |
