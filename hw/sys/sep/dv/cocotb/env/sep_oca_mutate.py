@@ -36,13 +36,16 @@ and ``secure_boot_control`` (182) are inside the signed region. A test that need
 a manifest which *requests* a policy should get it from the pack config, not by
 mutation; mutation is for values that must be refused.
 
-OFFSETS COME FROM THE PACKER, NOT FROM HERE. Every constant is loaded from the
-tt-oca-manifest submodule's ``src/oca/constants.py``, which is the authority for
-manifest layout. It is loaded by file path rather than imported as ``oca.constants``
-because the package's ``__init__`` pulls in the packer's crypto dependencies and
-the DV virtualenv has none; ``constants.py`` itself needs only the stdlib. A
-failure to load is raised, never defaulted: a literal fallback would drift
-silently the first time the format moved.
+LAYOUT COMES FROM THE PACKER, NOT FROM HERE. Offsets are loaded from the
+tt-oca-manifest submodule's ``src/oca/constants.py`` and the manifest_hash field
+is built by its ``manifest.compute_manifest_hash``, so the packer stays the one
+authority for both the offsets and the field's shape. The three modules are
+loaded by path under a bare ``oca`` package rather than imported normally,
+because the real ``__init__`` reaches ``entry`` -> ``encryption`` ->
+``cryptography``, which the DV virtualenv does not have; ``constants``,
+``validators`` and ``manifest`` themselves need only the stdlib. A failure to
+load is raised, never defaulted: a literal fallback would drift silently the
+first time the format moved.
 
 Run ``python3 sep_oca_mutate.py`` to check the layout assumptions against every
 packed image in ``bootrom/prod/build``.
@@ -52,35 +55,54 @@ from __future__ import annotations
 
 import hashlib
 import importlib.util
+import sys
+import types
 from pathlib import Path
 
 _SEP_ROOT = Path(__file__).resolve().parents[3]
-_OCA_CONSTANTS = (
-    _SEP_ROOT / "bootrom" / "prod" / "tools" / "tt-oca-manifest" / "src" / "oca" / "constants.py"
-)
+_OCA_SRC = _SEP_ROOT / "bootrom" / "prod" / "tools" / "tt-oca-manifest" / "src" / "oca"
+
+# constants must precede validators, which manifest imports.
+_OCA_MODULES = ("constants", "validators", "manifest")
 
 
-def _load_oca_constants():
-    """Load the packer's constants module from its file, without its package.
+def _load_oca():
+    """Load the packer's stdlib-only modules under a bare ``oca`` package.
 
-    Importing ``oca.constants`` would run ``oca/__init__.py``, which reaches
-    ``oca.encryption`` and therefore ``cryptography`` -- absent from the DV
-    virtualenv. ``constants.py`` imports only the stdlib, so it loads alone.
+    The real ``oca/__init__.py`` imports ``entry``, which reaches ``encryption``
+    and therefore ``cryptography`` -- absent from the DV virtualenv. Registering
+    an empty package under the same name lets the submodules' relative imports
+    resolve without it. The name has to be ``oca`` for those imports to work, and
+    nothing else provides it, but an already-imported real package is reused
+    rather than shadowed.
     """
-    if not _OCA_CONSTANTS.is_file():
+    missing = [n for n in _OCA_MODULES if not (_OCA_SRC / f"{n}.py").is_file()]
+    if missing:
         raise ImportError(
-            f"{_OCA_CONSTANTS} not found. It is the authority for OCA manifest "
-            f"offsets, and hardcoding them here would drift the first time the "
-            f"format moved. Check out the tt-oca-manifest submodule under "
-            f"bootrom/prod/tools/."
+            f"{_OCA_SRC} is missing {', '.join(missing)}. The packer is the "
+            f"authority for OCA manifest layout, and hardcoding it here would "
+            f"drift the first time the format moved. Check out the "
+            f"tt-oca-manifest submodule under bootrom/prod/tools/."
         )
-    spec = importlib.util.spec_from_file_location("_oca_constants", _OCA_CONSTANTS)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+    if "oca" not in sys.modules:
+        pkg = types.ModuleType("oca")
+        pkg.__path__ = [str(_OCA_SRC)]
+        sys.modules["oca"] = pkg
+    loaded = {}
+    for name in _OCA_MODULES:
+        full = f"oca.{name}"
+        if full in sys.modules:
+            loaded[name] = sys.modules[full]
+            continue
+        spec = importlib.util.spec_from_file_location(full, _OCA_SRC / f"{name}.py")
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[full] = module
+        spec.loader.exec_module(module)
+        loaded[name] = module
+    return loaded["constants"], loaded["manifest"]
 
 
-K = _load_oca_constants()
+K, MF = _load_oca()
 
 # Slot offsets in the packed image, matching the ROM's compiled-in
 # PRIMARY_MANIFEST_OFFSET / BACKUP_MANIFEST_OFFSET. Unchanged from the Grendel
@@ -130,9 +152,10 @@ OFF_SIGNATURE = K.OFF_SIGNATURE_CLASSIC
 OFF_SIGNATURE_TYPE = K.OFF_SIGNATURE_TYPE_CLASSIC
 OFF_SIGNATURE_SIZE = K.OFF_SIGNATURE_SIZE_CLASSIC
 
-# A digest field is 64 bytes wide with the SHA-256 in the low 32 and the rest
-# 0x00, so writing one means writing 32 bytes and leaving the tail alone.
+# A digest field is HASH_FIELD_SIZE wide with the SHA-256 in the low DIGEST_LEN
+# bytes and the rest 0x00.
 DIGEST_LEN = 32
+HASH_FIELD_SIZE = K.HASH_FIELD_SIZE
 
 # Erased-flash byte. Matches the BFM's backing store and its out-of-range read
 # value (ocah_spi_flash.py), so an erased region and an address past the end of
@@ -184,10 +207,14 @@ def slot_span(image: bytes | int, slot: str) -> tuple[int, int]:
     return start, end
 
 
-def signed_region_hash(buf: bytes, base: int) -> bytes:
-    """SHA-256 over the manifest's signed region, whichever variant it is."""
-    end = variant_at(buf, base).signed_region_end
-    return hashlib.sha256(bytes(buf[base : base + end])).digest()
+def manifest_hash_field(buf: bytes, base: int) -> bytes:
+    """The manifest_hash field the packer would write for this body.
+
+    Delegates to the packer so the digest and the field's zero padding come from
+    the same code that produced the shipped images.
+    """
+    v = variant_at(buf, base)
+    return MF.compute_manifest_hash(bytes(buf[base : base + v.signed_region_end]), v)
 
 
 def verify_layout(buf: bytes, slot: str) -> None:
@@ -201,8 +228,8 @@ def verify_layout(buf: bytes, slot: str) -> None:
     """
     base = slot_base(slot)
     v = require_classic(buf, slot)
-    stored = bytes(buf[base + OFF_MANIFEST_HASH : base + OFF_MANIFEST_HASH + DIGEST_LEN])
-    calc = signed_region_hash(buf, base)
+    stored = bytes(buf[base + OFF_MANIFEST_HASH : base + OFF_MANIFEST_HASH + HASH_FIELD_SIZE])
+    calc = manifest_hash_field(buf, base)
     if stored != calc:
         raise AssertionError(
             f"{slot} manifest_hash does not equal "
@@ -215,12 +242,13 @@ def verify_layout(buf: bytes, slot: str) -> None:
 def rehash(buf: bytearray, slot: str) -> None:
     """Recompute ``manifest_hash`` after a mutation inside the signed region.
 
-    Writes the 32-byte digest and leaves the field's zero tail alone.
+    Writes the whole field, padding included, so a stale tail cannot survive a
+    rehash.
     """
     require_classic(buf, slot)
     base = slot_base(slot)
-    buf[base + OFF_MANIFEST_HASH : base + OFF_MANIFEST_HASH + DIGEST_LEN] = signed_region_hash(
-        buf, base
+    buf[base + OFF_MANIFEST_HASH : base + OFF_MANIFEST_HASH + HASH_FIELD_SIZE] = (
+        manifest_hash_field(buf, base)
     )
 
 
@@ -476,7 +504,7 @@ def _selftest() -> int:
     if not images:
         print(f"no packed images in {build}; run `make oca-images` first")
         return 1
-    print(f"constants from {_OCA_CONSTANTS}")
+    print(f"layout from {_OCA_SRC} ({', '.join(_OCA_MODULES)})")
     print(f"  magic={MANIFEST_MAGIC!r} body={BODY_SIZE} signed=[0,{SIGNED_REGION_END})")
     print(f"  hash@{OFF_MANIFEST_HASH} sig@{OFF_SIGNATURE}\n")
     bad = classic = pqc = 0
