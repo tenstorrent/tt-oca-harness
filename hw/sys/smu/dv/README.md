@@ -25,7 +25,7 @@ for the SEP=0 component signoff record (#481 / #482 / #483 / #490 / #491).
 
 **Executable contract:** enrolled groups in
 [`testlists/wrapper.toml`](testlists/wrapper.toml) — live green `all` **81**,
-`sep0_all` **53** (no Force; product-pin CTM). `--dut smu_wrapper` is the DUT;
+`sep0_all` **53** (no Force; product-pin CTM). `--dut smu` is the DUT;
 [`testlists/all.toml`](testlists/all.toml) holds the two bare-`smu` leaves that
 stayed, for the reasons recorded there.
 **Green / signoff policy:** no DUT Force / no TB placeholder.
@@ -59,8 +59,9 @@ smu_<scenario>_test
 | `cocotb/tests/` | The residual bare-`smu` test bodies plus their base test |
 | `common/{smu_dv_env,seq_lib}/` | The PyUVM env and sequence library, shared by both DUTs |
 | `cocotb/tests_deferred/` | Force-era raise stubs (catalog only); each body's docstring carries its blocker |
-| `testlists/all.toml` | Residual `--dut smu` leaves (2) || `smu_sim_cfg.toml` | `--dut smu` sim defaults |
-| `smu_wrapper_sim_cfg.toml` | `--dut smu_wrapper` sim defaults |
+| `testlists/all.toml` | Residual `--dut smu_block` leaves (2) |
+| `smu_block_sim_cfg.toml` | `--dut smu_block` sim defaults |
+| `smu_sim_cfg.toml` | `--dut smu` sim defaults (`smu_wrapper` is a registered alias) |
 | `tb/tb_wrapper_top.sv` | `smu_wrapper_uvm_top` — `hw/top/smu_wrapper` harness |
 | `cocotb_wrapper/{env,tests}/` | PyUVM tests on this DUT |
 | `testlists/wrapper.toml` | The SMU regression (`all` = 81, `sep0_all` = 53) |
@@ -82,18 +83,18 @@ smu_<scenario>_test
 # Simulator and bender on PATH (see AGENTS.md for the with/without-companion paths).
 mkdir -p "${TMPDIR:?set TMPDIR to a large local scratch directory}"
 
-python3 tools/dv/run_dv.py --dut smu_wrapper --build-only
-python3 tools/dv/run_dv.py --dut smu_wrapper --items sep0_all --dry-run
+python3 tools/dv/run_dv.py --dut smu --build-only
+python3 tools/dv/run_dv.py --dut smu --items sep0_all --dry-run
 
 # SEP=0 release set: no RISC-V toolchain, no c_compile stage.
-python3 tools/dv/run_dv.py --dut smu_wrapper --items sep0_all
+python3 tools/dv/run_dv.py --dut smu --items sep0_all
 
 # The whole regression, including the SEP=1 firmware tests (needs the
 # toolchain; the firmware c_compiles dominate the wall time).
-python3 tools/dv/run_dv.py --dut smu_wrapper --items all
-
-# The residual bare DUT: two leaves (see testlists/all.toml for why).
 python3 tools/dv/run_dv.py --dut smu --items all
+
+# The residual bare block bench: two leaves (see testlists/all.toml for why).
+python3 tools/dv/run_dv.py --dut smu_block --items all
 ```
 
 Groups (`testlists/wrapper.toml`): `build_smoke` (2), `smoke` (4),
@@ -104,7 +105,7 @@ Groups (`testlists/wrapper.toml`): `build_smoke` (2), `smoke` (4),
 
 The SV-UVM view shares this DV root, sim config, and testlist with the cocotb
 flow: `smu_sim_cfg.toml` declares it as the `[frameworks.uvm]` overlay (same
-Bender RTL recipe), and `--dut smu --framework uvm` selects it. A testlist
+Bender RTL recipe), and `--dut smu_block --framework uvm` selects it. A testlist
 scenario carries both implementations in its `module` binding map
 (`module = { cocotb = "...", uvm = "..." }`), so the same `--items` name
 selects the same VPLAN scenario in either framework; the UVM class name is
@@ -128,25 +129,25 @@ and paired by the always-on scoreboard, and the sequence records named
 ```bash
 # SV-UVM build only (VCS). --skip-unimplemented (or an --items selection) is required:
 # without it the runner selects the cocotb-only scenarios and stops before compiling.
-python3 tools/dv/run_dv.py --dut smu --framework uvm --build-only --skip-unimplemented
+python3 tools/dv/run_dv.py --dut smu_block --framework uvm --build-only --skip-unimplemented
 
 # PyUVM (cocotb) and SV-UVM, same logical scenario name
-python3 tools/dv/run_dv.py --dut smu --items smu_dtp_jtag_smoke_test --tool verilator
-python3 tools/dv/run_dv.py --dut smu --framework uvm --items smu_dtp_jtag_smoke_test --seed 1
+python3 tools/dv/run_dv.py --dut smu_block --items smu_dtp_jtag_smoke_test --tool verilator
+python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smu_dtp_jtag_smoke_test --seed 1
 
 # Smoke group, UVM-implemented subset
-python3 tools/dv/run_dv.py --dut smu --framework uvm --items smoke --skip-unimplemented
+python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smoke --skip-unimplemented
 
 # Negative validation: a wrong expected IDCODE in both the reference model and
 # the scenario evidence must FAIL the run
-python3 tools/dv/run_dv.py --dut smu --framework uvm --items smu_dtp_jtag_smoke_test \
+python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smu_dtp_jtag_smoke_test \
   --plusarg +SMU_PTAP_IDCODE_NEGATIVE
 
 # Loop-count knobs, resolved specific-first (per test, per group, suite-wide);
 # every looped test runs at least 16 seeded passes by default
-python3 tools/dv/run_dv.py --dut smu --framework uvm --items smu_dtp_jtag_smoke_test \
+python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smu_dtp_jtag_smoke_test \
   --plusarg +SMU_DTP_JTAG_SMOKE_TEST_LOOPS=4
-python3 tools/dv/run_dv.py --dut smu --framework uvm --items smoke --skip-unimplemented \
+python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smoke --skip-unimplemented \
   --plusarg +SMU_TEST_LOOPS=1
 ```
 
@@ -166,18 +167,24 @@ feature reuses that IP bench's reference model and scoreboard through
 
 | Source | DUT | Signoff role |
 |--------|-----|--------------|
-| `--dut smu_wrapper` | `tb/tb_wrapper_top.sv` (`DUT_TAG=WRAPPER`) | The SMU regression: SEP=0 density / CSR / fabric / DTP (`sep0_all` = 53) plus the SEP=1 firmware set (`all` = 81) |
-| `--dut smu` | `tb/tb_top.sv` (`DUT_TAG=BARE`) | Two leaves: `smu_dtp_jtag2axi_abort_mid_op_test`, which needs an unterminated OTP interface, and `smu_dtp_jtag_smoke_test`, which carries the SV-UVM binding (the SV-UVM harness is this TB's `UVM` shape) |
+| `--dut smu` (alias `smu_wrapper`) | `tb/tb_wrapper_top.sv` (`DUT_TAG=WRAPPER`) | The SMU regression: SEP=0 density / CSR / fabric / DTP (`sep0_all` = 53) plus the SEP=1 firmware set (`all` = 81) |
+| `--dut smu_block` | `tb/tb_top.sv` (`DUT_TAG=BARE`) | Two leaves: `smu_dtp_jtag2axi_abort_mid_op_test`, which needs an unterminated OTP interface, and `smu_dtp_jtag_smoke_test`, which carries the SV-UVM binding (the SV-UVM harness is this TB's `UVM` shape) |
+
 This used to be a dual-TB signoff, with a bare density catalog that wrapper
-smoke was explicitly not allowed to substitute for. The bare catalog was
-migrated onto `smu_wrapper` -- the same `smu` with the open-source IP
-integration attached -- and retired, so there is one source now. Logs still
-carry `DUT_TAG=`.
+smoke was explicitly not allowed to substitute for. That catalog was migrated
+onto the wrapper -- the same `smu` with the open-source IP integration attached
+-- and retired, so there is one source now.
 
-## Production-wrapper baseline (`--dut smu_wrapper`)
+The names follow that: `--dut smu` selects the wrapper, since it is the SMU
+bench, and the bare block bench it replaced is `--dut smu_block`. `smu_wrapper`
+stays registered as an alias of `smu` (`alias_of` in
+hw/common/dv/configs/duts.toml), so the two names resolve to one config, one
+build cache and one identity. Logs still carry `DUT_TAG=`.
 
-A second sim config in this DV root builds `hw/top/smu_wrapper.sv` (via the
-`smu_wrapper` Bender target) with two compile profiles:
+## Compile profiles (`--dut smu`)
+
+`smu_sim_cfg.toml` builds `hw/top/smu_wrapper.sv` (via the `smu_wrapper` Bender
+target) with two compile profiles:
 
 - `compile_smu_chiplet_no_sep`: wrapper with `NoSepCfg`, `SEP=0`.
 - `compile_smu_chiplet_sep_rtl`: wrapper with `DefaultCfg`, `SEP=1` and the
@@ -201,7 +208,7 @@ Verilator tooling shims (`prim_sync2/3`) are shared from
 ```bash
 python3 hw/sys/smu/dv/tools/smu_wrapper_tb_readiness_test.py --phase source
 
-python3 tools/dv/run_dv.py --dut smu_wrapper \
+python3 tools/dv/run_dv.py --dut smu \
   --items smu_wrapper_elaboration_no_sep_test --stage flist
 python3 hw/sys/smu/dv/tools/smu_wrapper_tb_readiness_test.py \
   --phase filelist \
@@ -361,11 +368,11 @@ mkdir -p "${TMPDIR:?set TMPDIR to a large local scratch directory}"
 # per-tool overrides (e.g. Homebrew): RISCV_GCC/RISCV_OBJCOPY/RISCV_NM.
 
 # Full baseline (regression: no --seed; both profiles incl. real-SEP boot):
-python3 tools/dv/run_dv.py --dut smu_wrapper --items smoke \
+python3 tools/dv/run_dv.py --dut smu --items smoke \
   --stage flist --stage c_compile --stage hdl_compile --stage sim
 
 # Single test, cached model (--seed only with a single item):
-python3 tools/dv/run_dv.py --dut smu_wrapper --items smu_sep_smoke_test \
+python3 tools/dv/run_dv.py --dut smu --items smu_sep_smoke_test \
   --seed 1 --stage c_compile --stage sim
 ```
 

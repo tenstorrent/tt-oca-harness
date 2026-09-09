@@ -90,16 +90,16 @@ jobs:
             runner: ubuntu-latest
           - dut: sep
             runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
-          # smu_wrapper carries the SMU regression; the bare smu DUT is down to
-          # the one leaf that needs an unterminated OTP interface. Both are
-          # gated here so neither rots. `items` defaults to `smoke` below;
-          # smu_wrapper overrides it because its own `smoke` group reaches the
+          # `smu` carries the SMU regression (smu_wrapper.sv); `smu_block` is the
+          # bare block bench, down to the two leaves that cannot run on `smu`.
+          # Both are gated here so neither rots. `items` defaults to `smoke`
+          # below; `smu` overrides it because its own `smoke` group reaches the
           # SEP=1 firmware tests, and this runner has Verilator and nothing
           # else -- `smoke_sep0` is the toolchain-free equivalent.
-          - dut: smu_wrapper
+          - dut: smu
             runner: ubuntu-latest
             items: smoke_sep0
-          - dut: smu
+          - dut: smu_block
             runner: ubuntu-latest
           - dut: smc
             runner: ubuntu-latest

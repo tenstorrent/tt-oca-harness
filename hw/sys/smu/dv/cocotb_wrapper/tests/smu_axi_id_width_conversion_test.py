@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_axi_id_width_conversion_test - the SEP=0 ID converter, on the wrapper.
 
-Same claim as the bare `--dut smu` leaf of this name: under SEP=0, smu_axi_in
+Same claim as the bare `--dut smu_block` leaf of this name: under SEP=0, smu_axi_in
 (8-bit ID) feeds axi_iw_converter -> SMC SYS_IN (6-bit ID), and the converter
 path completes with RID == ARID on authoritative-map probes.
 

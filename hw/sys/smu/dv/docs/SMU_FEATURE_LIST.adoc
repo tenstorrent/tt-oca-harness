@@ -40,7 +40,7 @@ table being empty is intentional.
 [[smu-feature-subset]]
 === v0.5.0 subset
 
-`SMU_SPEC.md` Features 1–7, scoped to `--dut smu` with `SEP=0`.
+`SMU_SPEC.md` Features 1–7, scoped to `--dut smu_block` with `SEP=0`.
 
 [cols="1,2,2,3,3",options="header",]
 |===
@@ -137,10 +137,11 @@ v0.5.0 nightly denominator.
 * Every name in `docs/SMU_DEFERRED_DISPOSITION.adoc` is OUT for this subset. #488 is the
   per-row disposition; do not imply those features are done because a
   `TEST_EVIDENCE` row still exists for catalog continuity.
-* `--dut smu_wrapper` (`smu_wrapper_elaboration_no_sep_test`,
-  `smu_smc_smoke_test` on the wrapper) is a production-pin surface. Its
-  PASSes are `DUT_TAG=WRAPPER` and are not `sep0_all` density credit
-  (`SMU_VPLAN.adoc`).
+* `--dut smu` is the wrapper bench and carries `sep0_all` itself. This bullet
+  used to withhold density credit from it, which held while the bare catalog
+  was maintained in parallel; that catalog was migrated here and retired, so
+  the exclusion is gone (`SMU_VPLAN.adoc`). PASSes are still `DUT_TAG=WRAPPER`,
+  and the bare block bench is now `--dut smu_block`.
 * The commercial names `main_wrapper` and `main_wrapper_por` are not in
   this tree. The wrapper successors are
   `smu_wrapper_elaboration_no_sep_test` (elaboration / reset) and

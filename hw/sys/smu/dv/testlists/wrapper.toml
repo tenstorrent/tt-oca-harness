@@ -3,14 +3,14 @@
 
 schema_version = 1
 
-# The SMU regression, run via `run_dv.py --dut smu_wrapper`. Compile profiles
-# are the [targets.*] tables in smu_wrapper_sim_cfg.toml selected per test.
+# The SMU regression, run via `run_dv.py --dut smu`. Compile profiles
+# are the [targets.*] tables in smu_sim_cfg.toml selected per test.
 # Result-reporting policy: only enrolled groups report PASS.
 # Config classes here: `no_sep` run mode = no-SEP; `sep_rtl` = real SEP RTL.
 #
 # SIGNOFF NOTE: `all` here is the whole SMU regression, not a wrapper-only
 # subset of it. This file used to be a separate baseline that explicitly did
-# not substitute for bare `--dut smu --items sep0_all`; that stopped being true
+# not substitute for bare `--dut smu_block --items sep0_all`; that stopped being true
 # when the bare catalog was migrated onto this DUT and retired. smu_wrapper
 # instantiates the same smu with the open-source IP integration attached, so
 # there is no second catalog to reconcile against any more. testlists/all.toml
@@ -98,7 +98,7 @@ args = [
 
 # Real SEP DV firmware (hw/sys/sep/dv/fw/tests/sep_smu_boot_health), the same
 # image the internal SMU suite boots. Needs the OCAH toolchain container -- see
-# [c_build.sep_boot_health] in smu_wrapper_sim_cfg.toml -- so it is enrolled in
+# [c_build.sep_boot_health] in smu_sim_cfg.toml -- so it is enrolled in
 # `sep_real_fw` rather than the default merge gate until CI carries the image.
 [[tests]]
 name = "smu_sep_boot_health_test"
@@ -791,7 +791,7 @@ tests = [
   "smu_wrapper_elaboration_sep_rtl_test",
 ]
 
-# Migration pilot: the first bare-`--dut smu` leaf brought onto this DUT. It
+# Migration pilot: the first bare-`--dut smu_block` leaf brought onto this DUT. It
 # needs no firmware -- the TB is the AXI master -- and no new pins: the AXI
 # slave is ext_in_* here against s_axi_* there, and the SMC reset observable is
 # rst_primary_smc_clk_n_o against rst_primary_smc_clk_no. Held out of `all`
@@ -810,7 +810,7 @@ args = [
   "+smc_efuse_hex=smc_efuse_default.hex",
 ]
 
-# Migrated from the bare `--dut smu` fabric group. Same modules and the same
+# Migrated from the bare `--dut smu_block` fabric group. Same modules and the same
 # sequences -- seq_lib is shared and resolves its pins by role -- so these
 # are the same claims made against the production wrapper. Held in their own
 # group until the bare twins retire, so nothing is counted twice.
@@ -1619,7 +1619,7 @@ tests = [
   # when the issue closes.
   #
   # Measured, not assumed. smu_dtp_jtag2axi_smc_error_path_test reproduces
-  # identically on --dut smu and --dut smu_wrapper at seed 1915910843 (ratio
+  # identically on --dut smu_block and --dut smu at seed 1915910843 (ratio
   # 32/12 = 2.67), so it is not a DUT difference. For
   # smu_smc_dtp_jtag2axi_smoke_test the ratio law itself was checked: seeds 5,
   # 7, 9 (ratios 2.67, 3.20, 3.20) all fail and seeds 1, 2, 3 (5.00, 6.00,
@@ -1690,7 +1690,7 @@ tests = [
 # else, so anything needing the RISC-V toolchain cannot run on a hosted runner.
 # These four are the no-SEP profile with `elaboration` firmware.
 #
-# It is the old bare `--dut smu` PR gate, carried across: that group was
+# It is the old bare `--dut smu_block` PR gate, carried across: that group was
 # smu_smc_smoke_test / smu_dtp_jtag_smoke_test / smu_no_sep_configuration_test
 # / smu_ext_boot_seq_gate_test. The first needs SMC ROM firmware, so the
 # no-SEP elaboration test takes its place here and the SMC firmware smoke
@@ -1709,7 +1709,7 @@ tests = [
 # needs no RISC-V toolchain and no c_compile stage -- which is what let the
 # bare DUT's group of this name run on a hosted runner, and is why the name
 # moved here rather than being replaced when that catalog was retired.
-# .github/workflows/regress.yml selects it as `--dut smu_wrapper --items
+# .github/workflows/regress.yml selects it as `--dut smu --items
 # sep0_all`; keep that property when adding to it.
 [[groups]]
 name = "sep0_all"
@@ -1771,7 +1771,7 @@ tests = [
 
 # Default `--items all` for smu_wrapper: every test in this file that can pass.
 #
-# This is the only DUT now. The bare `--dut smu` leaves were retired once their
+# This is the only DUT now. The bare `--dut smu_block` leaves were retired once their
 # twins here were proven, so this group is the whole SMU regression rather than
 # the wrapper-native half of it -- the 52 migrated leaves and the pilot are
 # enrolled below alongside the tests written against this DUT.

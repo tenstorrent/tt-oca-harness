@@ -2262,9 +2262,13 @@ complete plan: `CHK-SEP-BOOT-HEALTH-VERDICT`, `CHK-SEP-DBG-GATED`,
 * *SEP=1 is out of scope here.* Everything in this plan runs with `SEP=0`. The
   dual-firmware SEP-under-SMU work is gated on the SEP instruction-fetch
   blocker and is not ported.
-* *The wrapper is a separate surface.* `--dut smu_wrapper` proves production-pin
-  boot and elaboration. Its PASSes are labelled `DUT_TAG=WRAPPER` and are not
-  counted as `sep0_all` density evidence.
+* *The wrapper is the surface.* `--dut smu` is the wrapper bench and carries
+  `sep0_all` itself; the bare block bench it replaced is `--dut smu_block`.
+  This bullet used to say the wrapper was a separate surface whose PASSes could
+  not count as `sep0_all` density evidence -- true while the two catalogs were
+  maintained separately, and no longer, since the density catalog was migrated
+  onto the wrapper and the duplicates retired. PASSes are still labelled
+  `DUT_TAG=WRAPPER`.
 * *123 catalogued entries are not enrolled*, against 28 bodies under
   `cocotb/tests_deferred/`. The rest are named for catalog continuity and have
   no body at all. Per-entry v0.5.0 bucket, owner, and reintroduction trigger

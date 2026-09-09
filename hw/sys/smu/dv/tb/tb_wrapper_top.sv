@@ -9,7 +9,7 @@
 
 module smu_wrapper_uvm_top (
   input  wire logic clk_smu_i,
-  // Primary JTAG TAP, driven from cocotb exactly as the bare `--dut smu`
+  // Primary JTAG TAP, driven from cocotb exactly as the bare `--dut smu_block`
   // harness drives it (tb/tb_top.sv), so OcahJtagMasterDriver works against
   // either DUT; the base test's TAP reset walk runs in every wrapper test.
   input  wire logic jtag_tck,

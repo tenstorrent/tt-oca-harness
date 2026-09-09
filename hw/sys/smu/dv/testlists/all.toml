@@ -3,11 +3,11 @@
 
 schema_version = 1
 
-# Residual testlist for --dut smu, the bare `smu #(.SEP(0))` DUT.
+# Residual testlist for --dut smu_block, the bare `smu #(.SEP(0))` DUT.
 #
 # This file used to carry the whole Phase-1 SEP=0 regression: 56 leaves across
 # smc.toml / dtp.toml / fabric.toml and fifteen overlapping phase and rank
-# groups. All of it now runs on --dut smu_wrapper, which instantiates the same
+# groups. All of it now runs on --dut smu, the wrapper bench, which instantiates the same
 # smu with the open-source IP integration attached, so the duplicates were
 # retired rather than maintained twice. testlists/wrapper.toml is the SMU
 # regression; its `all` group is the whole of it.
@@ -27,11 +27,11 @@ schema_version = 1
 # scenario with an SV-UVM implementation as well as a cocotb one, and the
 # SV-UVM harness is the `UVM` shape of tb/tb_top.sv -- this DUT. Its testlist
 # entry carries the `module = { cocotb, uvm }` binding map that
-# `--dut smu --framework uvm` resolves through. The cocotb side also runs on
+# `--dut smu_block --framework uvm` resolves through. The cocotb side also runs on
 # smu_wrapper, enrolled in migrated_dtp, and that is the copy the regression
 # scores; this entry exists so the SV-UVM view keeps a scenario to run.
 #
-# Baseline at retirement: --dut smu --items all 56/56 PASS, and every retired
+# Baseline at retirement: --dut smu_block --items all 56/56 PASS, and every retired
 # leaf green on smu_wrapper (migrated_fabric 14/14, migrated_smc 12/12,
 # migrated_dtp 26/27, the one red being RTL issue #1599 and DUT-independent).
 

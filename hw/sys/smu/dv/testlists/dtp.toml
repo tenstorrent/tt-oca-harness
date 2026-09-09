@@ -3,8 +3,8 @@
 
 schema_version = 1
 
-# The residual `--dut smu` leaves. The rest of this stream was migrated onto
-# --dut smu_wrapper and retired; testlists/all.toml records why these two
+# The residual `--dut smu_block` leaves. The rest of this stream was migrated onto
+# --dut smu and retired; testlists/all.toml records why these two
 # stayed.
 # Executable contract: enrolled groups in this file / testlists/all.toml
 
@@ -21,7 +21,7 @@ run_modes = ["dtp"]
 # SV-UVM realization's harness is the `UVM` shape of tb/tb_top.sv, which is
 # this DUT, and this is the only scenario bound to it (uvm/tests/ carries
 # smu_dtp_jtag_smoke_test.svh and its base). Retiring the entry took
-# `--dut smu --framework uvm --items smu_dtp_jtag_smoke_test` with it. The
+# `--dut smu_block --framework uvm --items smu_dtp_jtag_smoke_test` with it. The
 # cocotb side of the same scenario also runs on smu_wrapper, where it is
 # enrolled in migrated_dtp; that copy is the one the regression scores.
 [[tests]]
