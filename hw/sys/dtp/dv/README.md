@@ -80,6 +80,28 @@ or without it — is in [`../doc/defines.adoc`](../doc/defines.adoc). Runtime
 environment variables and plusargs in the commands below are not preprocessor
 defines.
 
+## Protocol assertions
+
+The shared protocol checkers `ocah_jtag_sva` (primary TAP) and `ocah_axi_sva`
+(SMC OTP, SEP OTP, and XTRIG AXI4-Lite; SMC AXI4) are instantiated in the
+framework-neutral core of `tb/tb_top.sv`, so both frameworks run them. Their
+rules split into two trees by simulator capability:
+
+| Tree | Macros | Rules | Live on |
+|---|---|---|---|
+| Two-state | `OCAH_SVA_ASSERT` / `OCAH_SVA_ASSERT_I` (`hw/common/assert/ocah_sva_macros.svh`) | reset-VALID, handshake hold and payload stability, burst legality, WLAST/RLAST position, strobe lanes, response ordering and ID matching, JTAG TDO timing, TAP-state encoding and transition legality | every `SIMULATION` compile, which the DV profiles set on every simulator; Verilator evaluates them under `--assert` |
+| Four-state | `OCAH_ASSERT` / `OCAH_COVER` (`hw/common/assert/ocah_assert.svh`) | X-hygiene (`*_KNOWN`) and the non-vacuity covers | commercial simulators only: `OCAH_INC_ASSERT` is undefined under Verilator |
+
+The Verilator target passes `--assert --no-assert-case`: `--assert` evaluates
+the two-state set, `--no-assert-case` keeps the `unique`/`priority` case checks
+of the DUT and vendored RTL out of it. A failing assertion prints an `%Error`
+line and stops the simulation; the parser policy hard-fails the test on that
+line. `dtp_tb_if.jtag_sva_en` / `axi_sva_en` are the runtime suppress knobs
+(default on). The JTAG checker's reset input is TRST AND power-on reset, the
+TAP controller's effective reset. A new rule with two-state-safe operands goes on
+`OCAH_SVA_ASSERT`; one that needs `$isunknown` or X-propagation goes on
+`OCAH_ASSERT`.
+
 ## Running
 
 ```bash
@@ -183,7 +205,7 @@ python3 tools/dv/run_dv.py --dut dtp --framework uvm --seed 1 \
 Both frameworks share ONE testbench top module — `dtp_uvm_top` in `tb/tb_top.sv`, a
 framework-neutral core whose interface instances both frameworks consume — with the bare
 `+define+UVM` (set by the `[frameworks.uvm]` overlay) adding the SV-UVM harness block
-(clock generator, protocol SVA, `uvm_config_db` publication, `run_test()`). The class library
+(clock generator, `uvm_config_db` publication, `run_test()`). The class library
 realizes the same component tree as the cocotb side with identical
 basenames, on the shared framework bases of `hw/common/dv/vip/ocah_lib/`:
 `uvm/env/dtp_env_pkg.sv` (DUT types and codecs, `dtp_test_cfg` and the

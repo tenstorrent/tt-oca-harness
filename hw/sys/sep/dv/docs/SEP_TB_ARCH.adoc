@@ -547,9 +547,9 @@ halves are split by tool dependency, so each runs where its tools are:
 `pack-images`:: Pure Python; its deps come from the submodule's own
   `pyproject.toml`, installed on demand by `uv` (no `pip3 install` needed).
 
-`[c_build.boot_rom]` performs exactly these two steps. It probes the host
-toolchain for picolibc first and builds natively when the probe succeeds; the
-container is the *fallback* for a host whose toolchain has no picolibc:
+`[c_build.boot_rom]` performs exactly these two steps. An explicit
+`$RISCV_TOOLCHAIN` must provide picolibc; when it is unset, the build uses the
+OCAH container. It does not probe a site or `$HOME` toolchain path:
 
 [source,bash]
 ----

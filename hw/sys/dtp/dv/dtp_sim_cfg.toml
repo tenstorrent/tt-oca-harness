@@ -39,13 +39,16 @@ common_bender_targets = [
 # DUT and simulation targets.
 bender_targets = ["dtp", "simulation"]
 incdirs = ["hw/common/assert"]
-# Shared TB interfaces and flow-shared functional-coverage modules (cov/sv/):
-# this list feeds the cocotb/Verilator filelist; the [frameworks.uvm.build]
-# sources list (which replaces this one) takes the VIP interfaces from the VIP
-# manifests and repeats the DTP entries.
+# Shared TB interfaces, the shared protocol SVA checkers, and the flow-shared
+# functional-coverage modules (cov/sv/): this list feeds the cocotb/Verilator
+# filelist; the [frameworks.uvm.build] sources list (which replaces this one)
+# takes the VIP interfaces and checkers from the VIP manifests and repeats the
+# DTP entries.
 sources = [
   "hw/common/dv/vip/ocah_jtag_vip/interface/ocah_jtag_if.sv",
   "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_if.sv",
+  "hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv",
+  "hw/common/dv/vip/ocah_axi_vip/sva/ocah_axi_sva.sv",
   "hw/sys/dtp/dv/tb/dtp_tb_if.sv",
   "hw/sys/dtp/dv/tb/dtp_scan_if.sv",
   "hw/sys/dtp/dv/tb/dtp_xtrig_if.sv",
@@ -107,10 +110,15 @@ description = "DTP cocotb target for public JTAG/JTAG2AXI smoke and coverage"
 build_dir = "hw/sys/dtp/dv/build/cocotb"   # per-tool subdir appended: cocotb/<tool>
 
 [targets.default.tools.verilator]
+# --assert evaluates the two-state protocol SVA (a failure prints %Error and
+# stops the run); --no-assert-case keeps the unique/priority-case checks of the
+# DUT and vendored RTL out of that set.
 flags = [
   "-Wno-BLKLOOPINIT",
   "+define+VERILATOR",
   "+define+ASSERTS_OFF",
+  "--assert",
+  "--no-assert-case",
 ]
 
 [coverage.verilator]
@@ -127,7 +135,7 @@ build_args = ["--coverage-line", "--coverage-expr", "--coverage-user", "--output
 # --- SV-UVM framework overlay (selected by `--framework uvm`; VCS via the shared native
 # profile). Shares the DUT RTL recipe above; only the SV-UVM deltas live here. ONE tb_top module
 # for both frameworks: +define+UVM (below) adds the harness block of tb/tb_top.sv (clock
-# generator, SVA, uvm_config_db publication, run_test()), which `include`s uvm/tests/dtp_tests.sv.
+# generator, uvm_config_db publication, run_test()), which `include`s uvm/tests/dtp_tests.sv.
 [frameworks.uvm]
 description = "DTP SV-UVM smoke flow (VCS)"
 

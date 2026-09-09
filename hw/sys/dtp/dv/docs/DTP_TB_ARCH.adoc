@@ -139,8 +139,9 @@ dtp_env                       composes; drives nothing; checks no protocol
   -> ocah_jtag_checker        env-owned aggregate evidence, finalized once
 
 tb/tb_top.sv                  one framework-neutral core: interface instances, DUT,
-                              adapters, counters, coverage; the UVM block adds the
-                              clock generator, SVA, config_db publication, run_test()
+                              adapters, counters, coverage, protocol SVA; the UVM
+                              block adds the clock generator, config_db publication,
+                              run_test()
   dtp_tb_if                   control domain: clock and period, resets and counters,
                               dbg_disable, TAP-state and debug-TDR observables,
                               request-activity counters, SVA enables
@@ -214,12 +215,12 @@ hw/sys/dtp/dv/
 `tb/tb_top.sv` (`dtp_uvm_top`) is one framework-neutral core with no ports: it
 instantiates the TB interfaces, the `dtp` DUT, the adapters between the DUT's
 packed structs and the interface members, the reset and request-activity
-counters, and the functional-coverage modules. Both realizations consume the
-same interface instances: SV-UVM through `uvm_config_db`, cocotb through the
-hierarchical handles `DtpTbIf` (`cocotb/env/dtp_tb_if.py`) holds. The `UVM`
-define adds the harness block: the clock generator on `dtp_tb_if.clk`, the
-protocol SVA, the test classes, the `uvm_config_db` publication of every
-instance, and `run_test()`. The `ocah_axi_if` instances carry the interface's
+counters, the functional-coverage modules, and the protocol SVA checkers. Both
+realizations consume the same interface instances: SV-UVM through
+`uvm_config_db`, cocotb through the hierarchical handles `DtpTbIf`
+(`cocotb/env/dtp_tb_if.py`) holds. The `UVM` define adds the harness block:
+the clock generator on `dtp_tb_if.clk`, the test classes, the `uvm_config_db`
+publication of every instance, and `run_test()`. The `ocah_axi_if` instances carry the interface's
 default geometry so the SV-UVM layer sees one virtual type; cocotb binds them
 through `OcahAxiConfig.bus()` at each bus's real geometry.
 
@@ -428,9 +429,10 @@ and `default_loops`.
 
 === Checking Strategy
 
-Four checking places, each owned once, in this order of authority. All emit
-the `CHK-<ID> PASS|FAIL expected= observed= context=` grammar and finalize
-exactly once with a `CHECKER_SUMMARY`.
+Five checking places, each owned once, in this order of authority. The four
+class-level places emit the `CHK-<ID> PASS|FAIL expected= observed= context=`
+grammar and finalize exactly once with a `CHECKER_SUMMARY`; the protocol SVA
+report through their assertion action blocks.
 
 [cols=",,,",options="header",]
 |===
@@ -439,6 +441,7 @@ exactly once with a `CHECKER_SUMMARY`.
 |Env subscribers |`dtp_tap_fsm_checker` (per-cycle TAP legality, closure on demand), `dtp_scan_window_monitor` (temporal scan-control windows) |JTAG monitor event stream |Any illegal transition; zero activity when activity is required; a gated control pulsing inside a window
 |Passive `ocah_axi_env` per port |Response codes, addresses, data, strobes, completion, ordering; expected non-OKAY responses armed by the scenario alongside the injection |The VIP's own monitor and reference model |Any protocol violation; zero checks or a missing required ID when the test armed the recorder
 |Per-scenario checkers and the env aggregate |Scenario intents by named ID (`CHK-BYPASS-*`, `CHK-IR-DECODE`, `CHK-DBG-*`, `CHK-SCAN-*`, `CHK-DS-*`, `CHK-XTRIG-*`, `CHK-AXI-*`), non-vacuity, the pin-level scan cross-check |The scenario's reads through the reusable operations; the env `ocah_jtag_checker` |A retained failure, zero checks, or a missing required ID at finalize
+|Protocol SVA in the `tb_top.sv` core (`ocah_jtag_sva` on the primary TAP, `ocah_axi_sva` per bus) |Pin-level IEEE 1149.1 and IHI 0022 rules: the two-state set on every simulator (Verilator under `--assert`), the X-hygiene set on four-state simulators |The flat TB nets, gated by `dtp_tb_if.jtag_sva_en` / `axi_sva_en` |Any rule violation: `%Error` and a simulation stop under Verilator, `uvm_error` under SV-UVM
 |===
 
 Negative validation proves each checking path can fail:
@@ -476,9 +479,9 @@ passed.
 
 There is exactly ONE testbench top module: `dtp_uvm_top` in `tb/tb_top.sv`,
 a framework-neutral core with no ports (interface instances, DUT, adapters,
-counters, coverage) shared between both realizations. The bare `+define+UVM`
-(set by the native profile's `[frameworks.uvm]` overlay) adds the harness
-block: the clock generator (period from `dtp_tb_if`), the protocol SVA, the
+counters, coverage, protocol SVA) shared between both realizations. The bare
+`+define+UVM` (set by the native profile's `[frameworks.uvm]` overlay) adds
+the harness block: the clock generator (period from `dtp_tb_if`), the
 `uvm_config_db` publication of every interface instance, the test classes,
 and `run_test()`.
 Preprocessor defines used by DTP compiles, including `UVM`, are listed in
