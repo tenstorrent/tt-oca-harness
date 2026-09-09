@@ -129,12 +129,15 @@ tags = ["ci", "reset", "flr", "tier_c", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
-# RESET_UNIT.SS_COLD_RESET_LOCK had no enrolled coverage. reset_unit.rdl:87-95
-# declares cold_reset_lock[31:0] as sw=rw with onwrite=woset, so a taken lock
-# cannot be released, and smc_subsystem_resets.sv gates SS_COLD_RESET_N writes
-# with ~ss_cold_reset_lock. Both are asserted here and nowhere else.
-name = "smc_cold_reset_lock_test"
-module = "smc_cold_reset_lock_test"
+# RESET_UNIT.SS_COLD_RESET_LOCK and SS_CONFIG_LOCK had no enrolled coverage.
+# reset_unit.rdl:87-95 and :18-26 declare both as sw=rw with onwrite=woset, so a
+# taken lock cannot be released, and smc_subsystem_resets.sv gates each target's
+# writes with the inverted lock. Both properties, on both pairs, are asserted
+# here and nowhere else. One testcase rather than two: the registers have the
+# same declaration and the same gate, so a second would differ only in two
+# addresses.
+name = "smc_reset_unit_lock_test"
+module = "smc_reset_unit_lock_test"
 seed = 1
 timeout_sec = 1800
 tags = ["ci", "reset", "pyuvm"]
@@ -146,7 +149,7 @@ tests = [
     "smc_cold_reset_test",
     "smc_powergood_glitch_test",
     "smc_cold_reset_repeated_test",
-    "smc_cold_reset_lock_test",
+    "smc_reset_unit_lock_test",
     "smc_reset_recovery_matrix_test",
     "smc_gpio_boot_stall_test",
     "smc_jtag_boot_stall_sanity_test",

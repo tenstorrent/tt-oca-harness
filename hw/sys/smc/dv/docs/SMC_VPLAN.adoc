@@ -114,7 +114,7 @@ verifying the block behind the port.
 |===
 |Testcase |Objective
 |`smc_cg_dft_reset_bringup_test` |LIVE/CONNECTIVITY DFT test_en_i bypass + Zeroer reset-override (Skill 1.5).
-|`smc_cold_reset_lock_test` |SS_COLD_RESET_LOCK is write-one-to-set and masks the reset it guards.
+|`smc_reset_unit_lock_test` |SS_COLD_RESET_LOCK and SS_CONFIG_LOCK are write-one-to-set and mask the registers they guard.
 |`smc_cold_reset_repeated_test` |Run the SMC OSS repeated cold-reset re-assert scenario.
 |`smc_cold_reset_test` |Run the SMC OSS cold-reset / POR / cool SMC_001 scenario.
 |`smc_cool_reset_from_pcie_test` |FLR pin → skip_mem_repair / rst_cool_no / isolate_req_o.
@@ -278,7 +278,7 @@ verifying the block behind the port.
 |Testcase |Objective
 |`smc_mailbox_data_error_test` |Run mailbox write/read data and illegal access response checks.
 |`smc_mailbox_event_irq_test` |Run mailbox IRQ-control decode plus real sync IRQ injection.
-|`smc_mailbox_field_sweep_test` |P1 coverage-gap round 3: per-mailbox 6-field sweep x 4 outbound.
+|`smc_mailbox_field_sweep_test` |Per-mailbox 7-field sweep across 4 outbound and 4 inbound ports.
 |`smc_mailbox_flush_test` |CTRL.wflush empties the write FIFO, measured through the STATUS level bit.
 |`smc_mailbox_idle_test` |Run the mailbox idle/proxy scenario tracked by the P0 project issue.
 |`smc_mailbox_inbound_test` |P1 coverage-gap depth: inbound mailbox 0 STATUS/ERROR/IRQEN precheck.
@@ -5692,33 +5692,31 @@ the wrong reason.
 
 *BFM / Model*: ocah_axi_vip (AXI)
 
-*Objective*: P1 coverage-gap round 3: per-mailbox 6-field sweep x 4 outbound.
+*Objective*: Every readable field of mailboxes 0-3 decodes, on the inbound port as well as the outbound one.
 
 *Test Coverage*:
 
-* STATUS +0x010
-* ERROR_FLAGS +0x018
-* WIRQT +0x020
-* RIRQT +0x028
-* IRQEN +0x038
-* IRQS +0x030 (write-1-to-clear)
+* The seven readable registers of each port, checked against `axil_mailbox.rdl:214-224` rather than trusted as a list: STATUS +0x010, ERROR_FLAGS +0x018, WIRQT +0x020, RIRQT +0x028, IRQS +0x030 (write-1-to-clear), IRQEN +0x038, IRQP +0x040 (`irqs_q & irqen_q`, read-only derived).
+* Three of the ten registers per port are deliberately out, each for a stated reason. WRITE_DATA +0x000 and READ_DATA +0x008 are omitted because a read pops the paired port's FIFO, which is state this sweep must not disturb. CTRL +0x048 is `sw = w` flush strobes with nothing to read; its effect is covered by `smc_mailbox_flush_test`.
+* Both ports. IRQP and the inbound port were added after a measured pass over the whole regression's AXI transactions found that no enrolled testcase drove IRQP on either port, or IRQS / WIRQT / RIRQT / IRQP on the inbound one. The miss was structural -- an offset list that stops short, on a port that was never swept, stays silent as the block grows -- which is why the list is now written against the RDL with a reason for each omission.
 
 *Test Procedure*:
 
 [arabic]
-. Drive the sequence `smc_mailbox_field_sweep_test_seq` over the interfaces named above.
-. Compare every access against its stated expectation in the scoreboard.
-. Emit the evidence tokens listed under Checkers.
+. Read CLOCK_GATE_CONTROL, set MAILBOX_CG_EN, and restore the original value at the end.
+. Read all seven fields of mailboxes 0-3 on the outbound port, then the same on the inbound port.
+. Require the access count to equal 3 + ports x mailboxes x fields, so a field silently dropped from the list fails rather than shrinking the sweep.
 
 *Checkers*:
 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|assertion |mailbox field sweep mismatch: got <value>, expected <value>
+|`CHK-MBOX-FIELD-DECODE` |Every one of the 56 field reads returns OKAY. `csr_read` routes through the scoreboard's `item.resp_ok` assert, so a mis-decoded field answers DECERR or hangs and fails. `csr_read_bounded` is deliberately not used: it would tolerate a dead field and make the sweep vacuous
+|`CHK-MBOX-FIELD-COUNT` |The access count matches the list length, so the sweep cannot quietly shrink
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`.
+*Pass Criteria*: both checkers hold and the scoreboard reports zero errors. Measured PASS on Verilator 5.050 with all 56 reads returning OKAY. Enrolled in: `all`.
 
 '''''
 
@@ -6621,40 +6619,44 @@ the wrong reason.
 '''''
 
 
-[[sec-162-smc_cold_reset_lock_test]]
-===== 162 `smc_cold_reset_lock_test`
+[[sec-162-smc_reset_unit_lock_test]]
+===== 162 `smc_reset_unit_lock_test`
 
-*Source Module*: `smc_cold_reset_lock_test`
+*Source Module*: `smc_reset_unit_lock_test`
 
 *BFM / Model*: ocah_axi_vip (AXI)
 
-*Objective*: SS_COLD_RESET_LOCK is write-one-to-set and masks the reset it guards.
+*Objective*: SS_COLD_RESET_LOCK and SS_CONFIG_LOCK are write-one-to-set and mask the registers they guard.
 
 *Test Coverage*:
 
 * `RESET_UNIT.SS_COLD_RESET_LOCK`, which no other testcase reads. Found by the porting necessity analysis: `fw/tests/cold_reset_lock_sanity` was the only thing in the tree touching it, and this covers the same two properties natively rather than adding a firmware dependency.
-* `reset_unit.rdl:87-95` declares `cold_reset_lock[31:0]` as `sw = rw; hw = r; onwrite = woset;` reset 0, so a taken lock cannot be released by software.
-* `smc_subsystem_resets.sv` gates `SS_COLD_RESET_N` writes with `~ss_cold_reset_lock`. `cool_reset_isolate_cfg` records the same fact as its reason for *not* comparing that register, so the masking is asserted here and nowhere else.
+* `RESET_UNIT.SS_CONFIG_LOCK`, driven by nothing at all. Found by the measured pass over the regression's AXI transactions -- the symbol-name filter could not see it, because no testcase names it in any form.
+* `reset_unit.rdl:87-95` and `:18-26` declare both lock fields as `sw = rw; hw = r; onwrite = woset;` reset 0, so a taken lock cannot be released by software.
+* `smc_subsystem_resets.sv` gates each target with the inverted lock: `SS_COLD_RESET_N` with `~ss_cold_reset_lock`, and `SS_CONFIG` at `:81` with `config_filtered_wr_mask = (~ss_config_lock) & ss_config_wr_mask`. `cool_reset_isolate_cfg` records the cold-reset half from the other side, as its reason for *not* comparing that register, so the masking is asserted here and nowhere else.
+* One testcase rather than two: the registers have the same declaration and the same gate, so a second would differ only in two addresses. The three checkers run once per pair and are tagged with it, and the sequence requires all six tokens, so a pair silently dropped from the list fails rather than shrinking the test.
 
 *Test Procedure*:
 
+For each of the two (target, lock) pairs:
+
 [arabic]
-. Require both bits under test to be clear in SS_COLD_RESET_LOCK, since `woset` means a set bit could not have been cleared by this sequence.
-. Write bit 0 to SS_COLD_RESET_N with nothing locked and read it back, proving the register is writable before any lock exists.
-. Write bit 1 to SS_COLD_RESET_LOCK and require it to set, then write all zeroes and require it to remain set.
-. Write bits 0 and 1 to SS_COLD_RESET_N in one access. Require bit 1 to stay clear and bit 0 to follow the write.
+. Require both bits under test to be clear in the lock, since `woset` means a set bit could not have been cleared by this sequence.
+. Write bit 0 to the target with nothing locked and read it back, proving the register is writable before any lock exists.
+. Write bit 1 to the lock and require it to set, then write all zeroes and require it to remain set.
+. Write bits 0 and 1 to the target in one access. Require bit 1 to stay clear and bit 0 to follow the write.
 
 *Checkers*:
 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-COLD-RESET-LOCK-ARM` |SS_COLD_RESET_N accepts a write with the lock clear, so "unchanged" later cannot be explained by a register that never changes
-|`CHK-COLD-RESET-LOCK-WOSET` |A set lock bit survives an all-zeroes write, per `onwrite = woset`
-|`CHK-COLD-RESET-LOCK-MASKS-WRITE` |In one write carrying both bits, the locked bit does not follow software while the unlocked bit does -- so the write demonstrably reached the register
+|`CHK-RESET-LOCK-ARM[<pair>]` |The target accepts a write with the lock clear, so "unchanged" later cannot be explained by a register that never changes
+|`CHK-RESET-LOCK-WOSET[<pair>]` |A set lock bit survives an all-zeroes write, per `onwrite = woset`
+|`CHK-RESET-LOCK-MASKS-WRITE[<pair>]` |In one write carrying both bits, the locked bit does not follow software while the unlocked bit does -- so the write demonstrably reached the register
 |===
 
-*Pass Criteria*: all three checkers hold. Measured PASS on Verilator 5.050: the lock held 0x2 through an all-zeroes write, and a 0x3 write to SS_COLD_RESET_N read back 0x1. This testcase leaves one lock bit set for the rest of its simulation, which is what `woset` means; each testcase runs its own simulation. Enrolled in: `all`, `reset`.
+*Pass Criteria*: all six checkers hold, three per pair. Measured PASS on Verilator 5.050: each lock held 0x2 through an all-zeroes write, and a 0x3 write to its target read back 0x1. This testcase leaves one bit set in each lock for the rest of its simulation, which is what `woset` means; each testcase runs its own simulation. Enrolled in: `all`, `reset`.
 
 '''''
 
@@ -6709,7 +6711,7 @@ the wrong reason.
 
 *Test Coverage*:
 
-* `OUTBOUND_MAILBOX_0.CTRL` @0x48, which no other testcase reached. The miss is structural rather than accidental: `smc_mailbox_field_sweep_test` walks the port by offset and its list stops at IRQEN @0x38, so CTRL @0x48 and IRQP @0x40 fall off the end. IRQP is accounted for -- `smc_mailbox_multi_instance_test` records it as `irqs_q & irqen_q`, read-only derived -- and CTRL was not.
+* `OUTBOUND_MAILBOX_0.CTRL` @0x48, which no other testcase reached. The miss is structural rather than accidental: `smc_mailbox_field_sweep_test` walked the port by an offset list that stopped at IRQEN @0x38, so CTRL @0x48 and IRQP @0x40 fell off the end. IRQP has since been added to that sweep, on both ports; CTRL cannot be, because it is write-only.
 * The register cannot be a readback test. `axil_mailbox.rdl:195-208` makes both fields `sw = w; hw = r`: they are flush strobes, not storage, so a write/read-back pair would compare against whatever the register file returns for a write-only address and prove nothing. What is testable is the effect, and `STATUS.write_level_above_thresh` @0x10 bit 2 reports it.
 * Addresses from `smc_addr.h`, field masks from `axil_mailbox.h`, rather than offsets added to a base ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
 
