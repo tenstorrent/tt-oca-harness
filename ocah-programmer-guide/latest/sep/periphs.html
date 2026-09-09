@@ -1032,7 +1032,7 @@ release an IP from reset and writes <code>0</code> to request its software reset
 <p>Each <code>SW_RESET_N</code> bit is a request to a per-domain sequencer. The sequencer
 isolates the domain&#8217;s AXI4-Lite paths, waits for outstanding transactions to
 drain, and then asserts reset. New transactions presented while isolated
-terminate with DECERR. Isolation remains asserted for the duration of reset and
+terminate with SLVERR. Isolation remains asserted for the duration of reset and
 is released with reset when software removes the request.</p>
 </div>
 <div class="paragraph">
