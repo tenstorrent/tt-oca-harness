@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-name: ocah-contributing
+name: ocah-starting
 title: Open Chiplet Atlas Harness (OCAH) Getting Started and Contributing Guide
 version: latest
 start_page: index.adoc
@@ -17,5 +17,5 @@ asciidoc:
     idseparator: '-'
     safe-mode: unsafe
     allow-uri-read: ''
-    basedir: doc/contributing
+    basedir: doc/starting
     verbose: ''

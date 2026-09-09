@@ -48,7 +48,7 @@ coordinated development, keeps it synchronized with the upstream project, and
 contributes suitable changes back upstream where possible. The exact
 revisions and subsets imported into this repository are defined in
 `Bender.yml`; the
-xref:ocah-contributing:ROOT:workflows.adoc#vendor-packages[Contributing Guide]
+xref:ocah-starting:ROOT:workflows.adoc#vendor-packages[Getting Started Guide]
 explains how Bender materializes and updates them.
 
 [cols="1,1,2,3",options="header"]
@@ -163,7 +163,7 @@ the repository under
 
 == Explore the documentation
 
-xref:ocah-contributing::index.adoc[Starting with OCAH]:: How to get started
+xref:ocah-starting::index.adoc[Starting with OCAH]:: How to get started
 with and contribute to the project
 xref:ocah-docs::index.adoc[Technical Reference Manual]:: Architecture and
 register-level detail for every OCAH subsystem
