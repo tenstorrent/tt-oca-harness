@@ -9,6 +9,14 @@ blocks (`smc`, `sep`, `smu`, `dtp`) plus vendored IP packages (currently
 [`tools/docker/README.md`](../../../tools/docker/README.md) for how the
 container is invoked.
 
+**Status: work in progress.** What is here is an initial set of scripts -
+enough to elaborate and map the four `hw/sys` blocks, not a qualified
+synthesis flow. Timing constraints are not wired in at all (see
+[Timing constraints](#timing-constraints-constraintssdc-vs-the-abc-driving-cellload-model)
+below), so the timing and area reports carry no weight. Commands, layout and
+reports will keep changing as the flow matures; until then, use it at your own
+risk.
+
 ## Commands
 
 ```bash
