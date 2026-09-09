@@ -654,7 +654,7 @@ module smc_base #(
   // is excluded -- covered by the watchdog). Snoop is local; config comes from
   // the cpu_ctrl register block (u_internal_regs). The three irqs are OR'd into
   // a single fault line on axi_hang_irq_o, which smc.sv feeds back into
-  // smc_peripherals to land on peripheral_interrupts[31] -> PLIC source 288.
+  // smc_peripherals to land on peripheral_interrupts[30] -> PLIC source 287.
   // Software reads the per-detector HANG_DET_*_CTRL registers to tell which
   // master stalled.
   logic hang_irq_sys_axi, hang_irq_sep_axi, hang_irq_data_accel;
@@ -728,7 +728,7 @@ module smc_base #(
     .irq_o            (hang_irq_data_accel)
   );
 
-  // Combined fault out to smc.sv, which routes it to peripheral_interrupts[31]
+  // Combined fault out to smc.sv, which routes it to peripheral_interrupts[30]
   assign axi_hang_irq_o = hang_irq_sys_axi | hang_irq_sep_axi | hang_irq_data_accel;
 
 endmodule

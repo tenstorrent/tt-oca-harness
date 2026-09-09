@@ -255,24 +255,6 @@ typedef union {
     uint64_t w;
 } sep_cpu_ctrl__SEP_FUSE_SENSE_STATUS_t;
 
-// reg - sep_cpu_ctrl::RAS_BANK_INFO
-#define SEP_CPU_CTRL__RAS_BANK_INFO__BANK_CHIP_bm 0xf
-#define SEP_CPU_CTRL__RAS_BANK_INFO__BANK_CHIP_bp 0
-#define SEP_CPU_CTRL__RAS_BANK_INFO__BANK_CHIP_bw 4
-#define SEP_CPU_CTRL__RAS_BANK_INFO__BANK_CHIP_reset 0x0
-#define SEP_CPU_CTRL__RAS_BANK_INFO__BANK_INSTANCE_bm 0xf0
-#define SEP_CPU_CTRL__RAS_BANK_INFO__BANK_INSTANCE_bp 4
-#define SEP_CPU_CTRL__RAS_BANK_INFO__BANK_INSTANCE_bw 4
-#define SEP_CPU_CTRL__RAS_BANK_INFO__BANK_INSTANCE_reset 0x0
-typedef union {
-    struct __attribute__ ((__packed__)) {
-        uint32_t bank_chip :4;
-        uint32_t bank_instance :4;
-        uint32_t :24;
-    } f;
-    uint32_t w;
-} sep_cpu_ctrl__RAS_BANK_INFO_t;
-
 // reg - sep_cpu_ctrl::SEP_SW_DEBUG
 #define SEP_CPU_CTRL__SEP_SW_DEBUG__SEP_SW_DEBUG_bm 0xffffffff
 #define SEP_CPU_CTRL__SEP_SW_DEBUG__SEP_SW_DEBUG_bp 0
@@ -518,9 +500,7 @@ typedef struct __attribute__ ((__packed__)) {
     sep_cpu_ctrl__SMC_FUSE_SENSE_STATUS_t SMC_FUSE_SENSE_STATUS;
     uint8_t RESERVED_148_14f[0x8];
     sep_cpu_ctrl__SEP_FUSE_SENSE_STATUS_t SEP_FUSE_SENSE_STATUS;
-    uint8_t RESERVED_158_16f[0x18];
-    sep_cpu_ctrl__RAS_BANK_INFO_t RAS_BANK_INFO;
-    uint8_t RESERVED_174_177[0x4];
+    uint8_t RESERVED_158_177[0x20];
     sep_cpu_ctrl__SEP_SW_DEBUG_t SEP_SW_DEBUG;
     sep_cpu_ctrl__SEP_NMI_VEC_nmi_vec_a3690e40_t SEP_NMI_VEC;
     sep_cpu_ctrl__SEP_NMI_VEC_LOCK_t SEP_NMI_VEC_LOCK;

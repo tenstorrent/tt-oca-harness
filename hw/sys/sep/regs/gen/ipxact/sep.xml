@@ -17361,35 +17361,6 @@ When this is 1, it is safe to send requests to the SMC.</ipxact:description>
             </ipxact:field>
           </ipxact:register>
           <ipxact:register>
-            <ipxact:name>RAS_BANK_INFO</ipxact:name>
-            <ipxact:addressOffset>'h170</ipxact:addressOffset>
-            <ipxact:size>32</ipxact:size>
-            <ipxact:field>
-              <ipxact:name>bank_chip</ipxact:name>
-              <ipxact:description>Chiplet type ID</ipxact:description>
-              <ipxact:bitOffset>0</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>4</ipxact:bitWidth>
-              <ipxact:access>read-write</ipxact:access>
-            </ipxact:field>
-            <ipxact:field>
-              <ipxact:name>bank_instance</ipxact:name>
-              <ipxact:description>Chiplet instance ID</ipxact:description>
-              <ipxact:bitOffset>4</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>4</ipxact:bitWidth>
-              <ipxact:access>read-write</ipxact:access>
-            </ipxact:field>
-          </ipxact:register>
-          <ipxact:register>
             <ipxact:name>SEP_SW_DEBUG</ipxact:name>
             <ipxact:addressOffset>'h178</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>

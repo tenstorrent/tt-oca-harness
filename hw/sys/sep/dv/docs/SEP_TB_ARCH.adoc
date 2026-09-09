@@ -650,8 +650,8 @@ the UVM class name equals the scenario name (testlist
 so `--items <name>` selects the same scenario in either realization. The
 first bound scenario is `sep_axi_smoke_test`: fuse-sense release, the
 `SEP_LOCAL_BASE_ADDR` reset-value read, directed and seeded-random
-write/readback of `SEP_SW_DEBUG`, `SEP_NMI_VEC`, `RAS_BANK_INFO`, and
-`PKA_CTRL` through their generated field masks, and a restore to reset
+write/readback of `SEP_SW_DEBUG`, `SEP_NMI_VEC`, and `PKA_CTRL` through
+their generated field masks, and a restore to reset
 values, with the non-vacuity count of real CPU-LSU CSR accesses as
 evidence. Every looped UVM test runs at least 16 scenario passes
 (`ocah_test.MinDefaultLoops`), each seeded `+ntb_random_seed` + pass index,

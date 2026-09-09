@@ -508,7 +508,6 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 
 # interrupts
 set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {ext_interrupts_i*}] -add_delay
-set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports temp_interrupt_i] -add_delay
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {ext_mailbox_interrupts_o*}] -add_delay
 # `gpio_interrupt_o*` / `uart_interrupt_o*` are real `smu` top-level
 # interrupt outputs, modeled the same as the other SMUCLK-domain interrupt
@@ -530,8 +529,6 @@ set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 
 # RAS
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports cluster_ded_o] -add_delay
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {ras_bank_chip_o*}] -add_delay
-set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {ras_bank_instance_o*}] -add_delay
 
 # NDM
 set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports {ndmreset_request_i*}] -add_delay
@@ -761,9 +758,6 @@ set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_cloc
 # traceability.
 # set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {sep_crypto_entropy_req_o*}] -add_delay
 # set_input_delay  [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {sep_crypto_entropy_rsp_i*}] -add_delay
-
-# SEP SPI Interface
-set_input_delay  [expr $clock_periods(ck_feedthru_PERIOD)*0.5]  -clock [get_clock ck_feedthru] [get_ports spi_irq_i] -add_delay
 
 # SEP External
 set_output_delay [expr $clock_periods(SYSCLK_PERIOD)*0.5]       -clock [get_clock SMUCLK] [get_ports {sep_external_req_o*}] -add_delay
