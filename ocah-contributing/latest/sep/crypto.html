@@ -275,10 +275,10 @@ the Key Manager or the destination accelerator enters software reset.</p>
 <div class="paragraph">
 <p>Alerts from all crypto components are collected by 11 <code>prim_alert_receiver</code>
 instances within <code>sep_crypto</code> and aggregated into a single <code>crypto_alert_o</code>
-output. Each accelerator has its own software-controllable reset. The SEP Reset
-Controller drains and isolates both its host and Key Manager paths before
-asserting reset; a Key Manager reset similarly drains all of its key paths. The
-entropy source, CSRNG, and EDN share one coordinated reset. See
+output. Each accelerator except Adams Bridge has its own software-controllable
+reset. The SEP Reset Controller drains and isolates both its host and Key Manager
+paths before asserting reset; a Key Manager reset similarly drains all of its
+key paths. The entropy source, CSRNG, and EDN share one coordinated reset. See
 <a href="#sep-reset-controller">[sep-reset-controller]</a> and <a href="#sep-trng-reset">[sep-trng-reset]</a>.</p>
 </div>
 <div class="paragraph">

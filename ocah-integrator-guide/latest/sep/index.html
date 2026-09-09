@@ -8651,10 +8651,10 @@ the Key Manager or the destination accelerator enters software reset.</p>
 <div class="paragraph">
 <p>Alerts from all crypto components are collected by 11 <code>prim_alert_receiver</code>
 instances within <code>sep_crypto</code> and aggregated into a single <code>crypto_alert_o</code>
-output. Each accelerator has its own software-controllable reset. The SEP Reset
-Controller drains and isolates both its host and Key Manager paths before
-asserting reset; a Key Manager reset similarly drains all of its key paths. The
-entropy source, CSRNG, and EDN share one coordinated reset. See
+output. Each accelerator except Adams Bridge has its own software-controllable
+reset. The SEP Reset Controller drains and isolates both its host and Key Manager
+paths before asserting reset; a Key Manager reset similarly drains all of its
+key paths. The entropy source, CSRNG, and EDN share one coordinated reset. See
 <a href="#sep-reset-controller">SEP Reset Controller</a> and <a href="#sep-trng-reset">Resetting the TRNG</a>.</p>
 </div>
 <div class="paragraph">
@@ -10028,7 +10028,9 @@ register map is reported in <a href="#sep-detailed-register-map">Detailed Regist
 <div class="sect3">
 <h4 id="sep-reset-controller"><a class="anchor" href="#sep-reset-controller"></a><a class="link" href="#sep-reset-controller">1.10.3. SEP Reset Controller</a></h4>
 <div class="paragraph">
-<p>The SEP Reset Controller provides software-controllable resets for the Key Manager, crypto accelerators, and internal TRNG complex. It is accessible via AXI4 at generated base address <code>0x1080_3000</code>.</p>
+<p>The SEP Reset Controller provides software-controllable resets for the Key Manager, crypto accelerators, and internal TRNG complex. It is accessible via AXI4 at generated base address <code>0x1080_3000</code>.
+Adams Bridge is the exception: it has no software-reset bit and resets with
+<code>sep_reset_n</code>.</p>
 </div>
 <div class="paragraph">
 <p>The controller contains a single 64-bit register <code>SW_RESET_N</code> at offset <code>0x0</code> with the following fields:</p>
