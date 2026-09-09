@@ -41,11 +41,10 @@ Isolation proof (both directions, then the remaining isolated bits):
                     not claimed.
   * CHK-ISOLATE-*   while HMAC's SW_RESET_N is held, the same DIGEST_0 address
                     that just returned OKAY + the golden digest returns DECERR
-                    on read with axi_lite_isolate DecErrData; a write to HMAC
-                    CFG completes SLVERR; AES DATA_OUT_0 on the sibling port
-                    stays OKAY; SW_RESET_N readback shows the HMAC bit low;
-                    after release DIGEST_0 is OKAY at its reset value.
-                    Drain-before-reset is not claimed.
+                    on read; a write to HMAC CFG also DECERR; AES DATA_OUT_0
+                    on the sibling port stays OKAY; SW_RESET_N readback shows
+                    the HMAC bit low; after release DIGEST_0 is OKAY at its
+                    reset value. Drain-before-reset is not claimed.
   * CHK-TRNG-NEIGHBORS  idle HMAC DIGEST and AES DATA_OUT survive a shared
                     TRNG-only reset, so resetting the entropy complex does not
                     reach the accelerator domains.
@@ -86,7 +85,6 @@ from seq_lib.sep_crypto_reset_iso_seq import (
     ISOLATE_DECERR_DATA,
     RESP_DECERR,
     RESP_OKAY,
-    RESP_SLVERR,
     RST_HMAC,
     SW_RESET_N_DEFAULT,
     SepCryptoResetIso,
@@ -324,13 +322,19 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             iso_rd.rdata,
         )
 
+        self.env.axi_monitor.arm_expected_decerr(1)
         iso_wr = await self.rst.probe(HMAC_CFG, write=True, wdata=0x1, expect_error=True)
-        assert iso_wr.resp_code == RESP_SLVERR and not iso_wr.timed_out, (
+        if iso_wr.resp_code != RESP_DECERR:
+            # The credit armed above is only consumed by a DECERR beat. Left
+            # standing it would absorb the next unexpected DECERR anywhere on
+            # this bus, including the sibling and reopen probes below.
+            self.env.axi_monitor.release_expected_decerr(1)
+        assert iso_wr.resp_code == RESP_DECERR and not iso_wr.timed_out, (
             f"in-window HMAC CFG write resp={iso_wr.resp_code} "
-            f"timed_out={iso_wr.timed_out}, expected SLVERR"
+            f"timed_out={iso_wr.timed_out}, expected DECERR"
         )
         self.logger.info(
-            "CHK-ISOLATE-WR PASS: HMAC CFG write -> SLVERR (resp=%d)", iso_wr.resp_code
+            "CHK-ISOLATE-WR PASS: HMAC CFG write -> DECERR (resp=%d)", iso_wr.resp_code
         )
 
         sib = await self.rst.probe(AES_DATA_OUT_0)

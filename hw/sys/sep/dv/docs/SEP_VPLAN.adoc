@@ -331,7 +331,7 @@ appears.
 |`sep_trng_reset_recovery_test`
 |no_cpu, +skip_fuse_sense, +esrc_noise_force
 |ocah_axi_vip, entropy golden
-|The counterpart for the one reset shared by ESRC, CSRNG and EDN: the pool is filled from the internal chain, every consumer is held, and the reset must wait for all three converted AXI-Lite paths to isolate before it asserts. Proves the pool scrubs its stale and half-packed data, that the isolated paths answer DECERR (`axi_lite_isolate`) while the external source-select register stays outside the domain, and that recovery is fresh-only and ordered — consumers are released only after fresh pool progress.
+|The counterpart for the one reset shared by ESRC, CSRNG and EDN: the pool is filled from the internal chain, every consumer is held, and the reset must wait for all three converted AXI-Lite paths to isolate before it asserts. Proves the pool scrubs its stale and half-packed data, that the isolated paths answer SLVERR while the external source-select register stays outside the domain, and that recovery is fresh-only and ordered — consumers are released only after fresh pool progress.
 |`sep_abr_mldsa_keygen_kat_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -738,8 +738,8 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_nmi_sanity_test`, `sep_reset_wdt_sanity_test`, `sep_wdt_aon_timer_internals_test`
 
 |Per-IP `SW_RESET_N` isolation
-|PROVEN
-|`sep_crypto_per_ip_reset_isolation_test`. Isolated HMAC read completes DECERR with `axi_lite_isolate` DecErrData — that payload is the isolate attribution. Isolated HMAC write completes without hang or OKAY (observed SLVERR on this interconnect; the isolate module itself answers DECERR on B, so the write flavour is not isolate-attributed). Sibling AES stays OKAY. Drain-before-reset for the four accelerator domains stays Phase 3. Drain-before-reset for the shared TRNG domain is on the `Coordinated TRNG reset and ordered recovery` row.
+|GAP
+|`sep_crypto_per_ip_reset_isolation_test` is red, so this feature has no passing vehicle and cannot hold a credit. Isolated read and write must complete SLVERR, and the isolated read must carry the isolate's own error-data payload. The leaf stays red until the vendored isolate modules emit SLVERR on a terminating response; see <<known-limitations>>. The row returns to `PROVEN` when the vehicle is green. Drain-before-reset for the four accelerator domains stays Phase 3. Drain-before-reset for the shared TRNG domain is on the `Coordinated TRNG reset and ordered recovery` row.
 
 |Scratch bank reset domains (warm vs cold)
 |PROVEN
@@ -747,7 +747,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 
 |Coordinated TRNG reset and ordered recovery
 |PROVEN
-|`sep_trng_reset_recovery_test`. One `SW_RESET_N` bit resets ESRC, CSRNG and EDN together, and the reset waits for all three converted AXI-Lite paths to report isolated, so drain-before-reset is covered here rather than deferred. Also covers the pool scrub, DECERR while isolated (`axi_lite_isolate`), in-flight drain completing OKAY or DECERR, the external source-select register staying outside the domain, and the JTAG hold/release pair. The external TRNG aperture is a permanent DECERR error slave in this build, so its own domain membership is not claimed.
+|`sep_trng_reset_recovery_test`. One `SW_RESET_N` bit resets ESRC, CSRNG and EDN together, and the reset waits for all three converted AXI-Lite paths to report isolated, so drain-before-reset is covered here rather than deferred. Also covers the pool scrub, SLVERR while isolated, the external source-select register staying outside the domain, and the JTAG hold/release pair. The external TRNG aperture is a permanent DECERR error slave in this build, so its own domain membership is not claimed. The isolate-response flavour follows the vendored isolate modules; see <<known-limitations>>.
 
 |Clock-gate CSR
 |PROVEN
@@ -2854,13 +2854,13 @@ one word and parks, which is enough for the legality check to execute.
 |CHK-OTBN
 |OTBN `LOAD_CHECKSUM` (rst_ni CSR) survives an AES reset and clears to its register-map reset on OTBN's own pulse. DMEM holds the staged mark across the AES neighbour pulse (cross-domain leak). OTBN's own reset runs a secure wipe, so DMEM retention across that pulse is not claimed.
 |CHK-ISOLATE-PRE
-|HMAC `DIGEST_0` answers OKAY with the live golden digest before the isolate request, so the later DECERR is at a live mapped address.
+|HMAC `DIGEST_0` answers OKAY with the live golden digest before the isolate request, so the later SLVERR is at a live mapped address.
 |CHK-ISOLATE-LANDED
 |`SW_RESET_N` readback shows the HMAC bit held, so a refusal cannot be a missed write.
-|CHK-ISOLATE-DECERR
-|During the window a read of the same `DIGEST_0` completes DECERR, not OKAY, SLVERR, or hang, and carries `axi_lite_isolate`'s own error-data payload. The payload attributes the termination to the isolate rather than to any responder that happens to decode-error.
+|CHK-ISOLATE-SLVERR
+|During the window a read of the same `DIGEST_0` completes SLVERR, not OKAY, DECERR, or hang, and carries `axi_lite_isolate`'s own error-data payload, scraped from that module at import. The payload is what attributes the termination to the isolate rather than to any responder that happens to slave-error.
 |CHK-ISOLATE-WR
-|During the window a write to HMAC `CFG` completes SLVERR, not OKAY, DECERR, or hang. The write target is the RW `CFG` register, not the RO digest. The write path on this interconnect terminates SLVERR; the isolate-attributed read is the DECERR+payload check above.
+|During the window a write to HMAC `CFG` completes SLVERR. The write target is the RW `CFG` register, not the RO digest.
 |CHK-ISOLATE-SIBLING
 |AES `DATA_OUT_0` answers OKAY with the held ciphertext in the same HMAC window (port-scoped, not a global bus kill).
 |CHK-ISOLATE-REOPEN
@@ -2875,11 +2875,15 @@ one word and parks, which is enough for the legality check to execute.
 *Scope limit*: scope walks AES, HMAC, KMAC and OTBN. The Key Manager bit stays at
 its reset default (a different mechanism) and is not claimed.
 
+*Parked on an RTL fix* (DV-lead decision): the isolate checkers stay red
+until the vendored isolate modules emit SLVERR on a terminating response.
+The matching test update lands with that RTL change. The leaf is not
+converted to an expected failure.
+
 *Not claimed*: drain-before-reset for these four domains. The `CHK-ISOLATE-*`
-rows cover in-window isolated read/write termination and sibling OKAY only.
-The shared TRNG domain grades drain-before-reset in
-<<sep_trng_reset_recovery_test>>. Key Manager isolate termination and SMC
-CPU-MMIO isolate are not claimed.
+rows cover in-window SLVERR and sibling OKAY only. The shared TRNG domain
+grades drain-before-reset in <<sep_trng_reset_recovery_test>>. Key Manager
+isolate termination and SMC CPU-MMIO isolate are not claimed.
 
 '''''
 
@@ -2930,11 +2934,11 @@ source path stays outside the domain, and recovery admits only fresh entropy.
 |CHK-TRNG-ISOLATE-ALL
 |While the reset is requested the isolate probe reads all three ports isolated. This is the drain-before-reset evidence: the reset does not assert until ESRC, CSRNG and EDN have all reported isolated.
 |CHK-TRNG-DRAIN
-|Every in-flight pre-reset access completes either OKAY or DECERR — never SLVERR and never a hang — and at least one completes OKAY, so accepted traffic provably drained rather than being dropped. DECERR is the isolate terminating a request that had not yet been accepted.
+|Every in-flight pre-reset access completes either OKAY or SLVERR — never DECERR and never a hang — and at least one completes OKAY, so accepted traffic provably drained rather than being dropped.
 |CHK-TRNG-PACKER
 |The entropy pool's packer depth is zero, so a half-packed word does not survive the reset.
-|CHK-TRNG-DECERR
-|All three internal CSR ports answer DECERR while isolated (`axi_lite_isolate`).
+|CHK-TRNG-SLVERR
+|All three internal CSR ports answer SLVERR while isolated.
 |CHK-TRNG-EXTERNAL
 |The source-select register still reads all three legs selected after the internal reset, so the source-select CSR is outside the TRNG reset domain. The external TRNG aperture itself is terminated by a permanent DECERR error slave in this build (`hw/top/sep_ip_integration.sv`, `u_ext_trng_axil_err_slv`) and its passthrough leg carries no isolate unit (`hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv`), so the before/after DECERR pair is a build invariant kept as the liveness baseline for that read, not as reset-domain evidence. Domain membership for the aperture needs a real responder behind it and is not claimed.
 |CHK-TRNG-JTAG
@@ -5679,8 +5683,8 @@ contracts owned by the vault test, and the wipe security contract.
 |Phase 2 tests |59
 |Cocotb total |91
 |Phase 3 |1 SV-UVM scenario bound (`sep_axi_smoke_test`)
-|Iconic scorecard rows |58 in-scope: 57 PROVEN, 1 PARTIAL, 0 GAP (see <<iconic-scorecard>>)
-|Coded and failing |3 (`sep_drbg_axil_adapter_port_arbitration_test`; `sep_drbg_axil_concurrent_csrng_aw_then_ar_test`; `sep_drbg_axil_concurrent_edn_aw_then_ar_test`; parked on RTL, not expected-fail; see <<known-limitations>>)
+|Iconic scorecard rows |58 in-scope: 56 PROVEN, 1 PARTIAL, 1 GAP (see <<iconic-scorecard>>)
+|Coded and failing |4 (`sep_crypto_per_ip_reset_isolation_test`; `sep_drbg_axil_adapter_port_arbitration_test`; `sep_drbg_axil_concurrent_csrng_aw_then_ar_test`; `sep_drbg_axil_concurrent_edn_aw_then_ar_test`; parked on RTL, not expected-fail; see <<known-limitations>>)
 |===
 
 === Regression Groups
@@ -5775,8 +5779,8 @@ vehicle exists rather than being a convenience. All three leaves are red and are
 |Dead-space refusal flavour (specification)
 |`memory_map.adoc` names DECERR for the reserved remainder inside an aperture. `spi_controller` refuses a dead-space write with SLVERR. The access is refused either way, which is the contract `sep_fabric_deadspace_decode_test` asserts, so the flavour is reported as `DEADSPACE-FLAVOUR` for the design owner and is not failed. Which error responses are permitted is the open question.
 
-|Terminating isolate response flavour (hardware)
-|While a crypto or TRNG domain is held in software reset, a new read of an isolated CSR aperture completes DECERR and, on the crypto HMAC digest path, carries `axi_lite_isolate` DecErrData. A new write of the isolated HMAC `CFG` aperture completes SLVERR. In-flight TRNG CSR traffic that drains across the isolate handshake completes OKAY or DECERR. Key Manager isolate termination and SMC CPU-MMIO isolate are not claimed.
+|Terminating isolate response is SLVERR (hardware)
+|While a crypto or TRNG domain is held in software reset, a new access of an isolated aperture must complete SLVERR, not OKAY, DECERR, or hang. An isolated crypto read must also carry the isolate's own error-data literal, scraped from `axi_lite_isolate` at import. `sep_crypto_per_ip_reset_isolation_test` stays red until the vendored isolate modules emit SLVERR; it is not converted to an expected failure. `sep_trng_reset_recovery_test` remains the passing coordinated-reset vehicle; its isolate-response flavour follows the same vendor change. Key Manager isolate termination and SMC CPU-MMIO isolate are not claimed.
 
 |OSS hygiene exclusions
 |No licensed/proprietary IP in the build. Bender targets stay `sep` / `sep_el2` / `sep_wrapper` only.
