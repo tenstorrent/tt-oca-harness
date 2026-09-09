@@ -62,6 +62,7 @@ verifying the block behind the port.
 |`smc_combined_observability_test` |SMC OSS PyUVM combined-observability test.
 |`smc_default_reg_rd_test` |Run a compact OSS-safe default-register read sweep.
 |`smc_ext_interrupts_pin_test` |ext_interrupts_i[0] after prim_sync3.
+|`smc_fw_plic_claim_test` |Firmware programs the cluster PLIC and claims ext_interrupts_i[0] through it.
 |`smc_register_boundary_depth_test` |Run a compact safe register-boundary sweep.
 |`smc_register_sanity_test` |Run the SMC OSS register-sanity scenario.
 |===
@@ -278,6 +279,7 @@ verifying the block behind the port.
 |`smc_mailbox_data_error_test` |Run mailbox write/read data and illegal access response checks.
 |`smc_mailbox_event_irq_test` |Run mailbox IRQ-control decode plus real sync IRQ injection.
 |`smc_mailbox_field_sweep_test` |P1 coverage-gap round 3: per-mailbox 6-field sweep x 4 outbound.
+|`smc_mailbox_flush_test` |CTRL.wflush empties the write FIFO, measured through the STATUS level bit.
 |`smc_mailbox_idle_test` |Run the mailbox idle/proxy scenario tracked by the P0 project issue.
 |`smc_mailbox_inbound_test` |P1 coverage-gap depth: inbound mailbox 0 STATUS/ERROR/IRQEN precheck.
 |`smc_mailbox_irq_test` |Run mailbox status and IRQ-control CSR checks.
@@ -6657,12 +6659,89 @@ the wrong reason.
 '''''
 
 
+[[sec-163-smc_fw_plic_claim_test]]
+===== 163 `smc_fw_plic_claim_test`
+
+*Source Module*: `smc_fw_plic_claim_test`
+
+*BFM / Model*: the SMC C image `fw/tests/plic_sanity`, executed by the CPU cluster; stimulus on `tb_ext_interrupt_0_i`, verdict read over SEP_IN AXI
+
+*Objective*: Firmware programs the cluster PLIC and claims a real external interrupt through it.
+
+*Test Coverage*:
+
+* The cluster PLIC's enable, priority, threshold and claim-complete path, which **no cocotb sequence in this package can reach**. The 0xC400_0000 aperture answers SEP_IN AXI reads but takes no writes from it -- measured by `smc_cluster_plic_csr_test`, which sits in the tree unenrolled carrying that finding. The CPU is the only master that can program it, so firmware is not a stylistic choice here.
+* The loop `smc_ext_interrupts_pin_test` states in its own docstring that it leaves open: that testcase follows `ext_interrupts_i[0]` through `prim_sync3` and "does not claim PLIC". `smc_hang_detector_plic_route_test` checks a route with testbench probes and reads no PLIC register either. This closes it end to end: pin -> synchroniser -> gateway -> enable and priority against threshold -> MEIP -> trap -> claim -> the ID the CPU reads back -> complete.
+* PLIC source 1, which is `cpu_interrupts[0]` and therefore `ext_interrupts_i[0]`: source IDs are the line index plus one because ID 0 is reserved, and `smc_base.sv:251` puts `ext_interrupts` at the bottom of the vector. The image's own `TEST_INTERRUPT_ID` was 23 and is now 1, because `tb_top.sv:1181` ties `ext_interrupts_i[255:1]` to zero -- source 23 is a line nothing can raise, so the handler would never run and the testcase would time out instead of measuring anything.
+* No forced internal state: the stimulus is a DUT input pin and everything between it and the verdict is the DUT ([NO-FORCED-INTERNAL-STATE]).
+
+*Test Procedure*:
+
+[arabic]
+. Build `plic_sanity` through `[c_build.default]`, stage `plic_sanity.ecc.hex`, hold `boot_stall` from t=0, clear CPU_CTRL SCRATCH_0 and read the clear back.
+. Program the reset vector and release. The image clears every context's enable words, gives the eight contexts distinct thresholds, registers a handler for source 1, enables it, publishes the arm word 0xAAAA_AAAA and parks in `wfi`.
+. Require the arm word before any verdict. A PASS not preceded by it is failed: the image would have reached its verdict without passing through the state the stimulus acts on.
+. Hold the pin low for 2000 further `clk_smc_i` cycles and require SCRATCH_0 to still read the arm word.
+. Drive `ext_interrupts_i[0]` high and poll for the verdict.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-FW-PLIC-QUIET` |With the PLIC armed and the pin still low, SCRATCH_0 does not move. Without this the PASS could have come from any interrupt already pending, and the testcase would be satisfied by a DUT that traps on something else
+|`CHK-FW-PLIC-STIMULUS` |The pin rises only after the quiet window, so the verdict below is ordered after the stimulus rather than merely coincident with it
+|`CHK-FW-PLIC-CLAIM` |The firmware's own PASS word reaches CPU_CTRL SCRATCH_0. Its handler calls `test_fail(0)` on a claimed ID other than the registered one, and the boot contract raises on `TEST_FAIL`, so a wrong claim fails rather than passes
+|===
+
+*Pass Criteria*: all three checkers hold. Measured PASS on Verilator 5.050 in 150 s: the arm word appears at 1.568 ms, the quiet window holds it for 2000 cycles, and the pass magic follows the pin at 1.589 ms. The verdict poll is bounded at 6000 iterations of 100 `clk_smc_i` cycles, 2.5x the measured need -- the image spends most of that time in `__metal_driver_riscv_plic0_init`, which walks all 336 sources over MMIO. No `ci` tag: the hosted runners have no RISC-V toolchain. Enrolled in: `all`, `fw`.
+
+'''''
+
+[[sec-164-smc_mailbox_flush_test]]
+===== 164 `smc_mailbox_flush_test`
+
+*Source Module*: `smc_mailbox_flush_test`
+
+*BFM / Model*: ocah_axi_vip (AXI)
+
+*Objective*: CTRL.wflush empties the write FIFO it claims to flush.
+
+*Test Coverage*:
+
+* `OUTBOUND_MAILBOX_0.CTRL` @0x48, which no other testcase reached. The miss is structural rather than accidental: `smc_mailbox_field_sweep_test` walks the port by offset and its list stops at IRQEN @0x38, so CTRL @0x48 and IRQP @0x40 fall off the end. IRQP is accounted for -- `smc_mailbox_multi_instance_test` records it as `irqs_q & irqen_q`, read-only derived -- and CTRL was not.
+* The register cannot be a readback test. `axil_mailbox.rdl:195-208` makes both fields `sw = w; hw = r`: they are flush strobes, not storage, so a write/read-back pair would compare against whatever the register file returns for a write-only address and prove nothing. What is testable is the effect, and `STATUS.write_level_above_thresh` @0x10 bit 2 reports it.
+* Addresses from `smc_addr.h`, field masks from `axil_mailbox.h`, rather than offsets added to a base ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
+
+*Test Procedure*:
+
+[arabic]
+. Enable the mailbox clock gate, then write WIRQT := 0 and read it back, so "above threshold" has a known meaning and the port is proven writable.
+. Require `STATUS.write_level_above_thresh` to read 0 with nothing pushed.
+. Push one word into WRITE_DATA and require the same bit to read 1.
+. Write CTRL.wflush and require the bit to return to 0.
+. Restore the clock-gate register.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-MBOX-FLUSH-ARM` |One word pushed with WIRQT=0 raises `STATUS.write_level_above_thresh`. This is the positive control: without it the check below is satisfied by a STATUS that reads zero for every reason including a dead one ([NEGATIVE-NEEDS-POSITIVE-CONTROL])
+|`CHK-MBOX-FLUSH` |After CTRL.wflush the bit is clear again. Nothing in this bench drains the outbound write FIFO on its own -- its far side is the paired inbound port's read side, reached only by an explicit INBOUND_READ_DATA access -- so a level that falls between the two checks fell because of the flush
+|===
+
+*Pass Criteria*: both checkers hold. Measured PASS on Verilator 5.050: the level bit read 0, then 0x4 after the push, then 0 after the flush. Enrolled in: `all`.
+
+'''''
+
+
 === Counts
 
 [cols=",",options="header",]
 |===
 |Metric |Count
-|Enrolled open-source testcases |162
+|Enrolled open-source testcases |164
 |Feature areas |18
 |Regression groups |31
 |===
@@ -6672,7 +6751,7 @@ the wrong reason.
 [cols=",,",options="header",]
 |===
 |Group |Tests |Purpose
-|`all` |154 |The package regression, single-instance plus the three dual bring-up scenarios. Eight of the 162 enrolled are out: two on measured runtime (`smc_occp_dual_unsecure_boot_test`, `smc_prod_rom_occp_ready_test`), two against #585 and #1488, and the four `rtl_issue` reproducers whose job is to fail
+|`all` |156 |The package regression, single-instance plus the three dual bring-up scenarios. Eight of the 164 enrolled are out: two on measured runtime (`smc_occp_dual_unsecure_boot_test`, `smc_prod_rom_occp_ready_test`), two against #585 and #1488, and the four `rtl_issue` reproducers whose job is to fail
 |`avsbus_depth` |2 |avsbus depth coverage
 |`axil` |2 |axil coverage
 |`balanced_ip` |99 |One-per-IP breadth run used for routine regression
@@ -6685,7 +6764,7 @@ the wrong reason.
 |`depth_uart_log` |1 |depth uart log coverage
 |`dual_all` |4 |Every `SMC_DUAL` two-instance testcase
 |`dual_smoke` |2 |Two-instance bring-up: elaboration and the AXI scratch probe
-|`fw` |1 |Firmware images executed by the CPU cluster
+|`fw` |2 |Firmware images executed by the CPU cluster
 |`gpio` |8 |gpio coverage
 |`i2c` |14 |i2c coverage
 |`i3c_depth` |1 |i3c depth coverage
@@ -6715,6 +6794,6 @@ the wrong reason.
 |PLL and PVT are placeholder RTL in this harness |The PLL/PVT scenarios in the wider plan cannot be run: there is no design behind the register interface |Enroll them when the adopter's PLL/PVT blocks are integrated
 |The I3C DAT/DCT RAM is not present in `tb_top` |CCC/IBI scenarios that need device-address-table state cannot run; `smc_i3c_to_fabric_test` is decode-only |Restore the DAT/DCT model, or drive the sequences from a full I3C host model
 |The DTP CSR window has no responder |AXI-Lite accesses to it would wedge, so the boundary is left idle rather than answered by a placeholder |Connect the DTP CSR subordinate; SMU already connects the same port
-|The cluster PLIC aperture (0xC400_0000) is not writable from SEP_IN AXI |No testcase can cover the PLIC register file from the external port. Measured: PRIORITY[1] accepts a write with OKAY and stores nothing; the +2 MB context pages return non-OKAY. `smc_cluster_plic_csr_test` holds the evidence and is not enrolled |Reach it from the CPU, which needs the firmware runner; or expose a write path from SEP_IN
+|The cluster PLIC aperture (0xC400_0000) is not writable from SEP_IN AXI |No *cocotb* testcase can cover the PLIC register file from the external port. Measured: PRIORITY[1] accepts a write with OKAY and stores nothing; the +2 MB context pages return non-OKAY. `smc_cluster_plic_csr_test` holds that evidence and is not enrolled; its four register-level properties -- context independence across the eight threshold pages, source 0 and PENDING read-only, PENDING tracking a real interrupt -- are still uncovered and turn green the day a write path exists. The PLIC's *function* is covered: `smc_fw_plic_claim_test` programs it from the CPU and claims through it |Expose a write path from SEP_IN, or extend the firmware image to read back what it programmed
 |SV covergroups are not supported by Verilator |Functional coverage is Python-side on the open-source flow |See `SMC_FCOV.adoc`
 |===

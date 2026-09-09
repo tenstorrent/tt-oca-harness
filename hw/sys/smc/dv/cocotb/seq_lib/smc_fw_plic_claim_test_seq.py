@@ -1,0 +1,120 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+"""Firmware programs the cluster PLIC, then claims a real external interrupt.
+
+`fw/tests/plic_sanity/plic_sanity.c` clears every context's enable words, gives
+the eight contexts distinct thresholds, registers a handler for one source,
+enables it, publishes an arm word, and parks in `wfi`. Its handler fails on a
+claimed ID other than the one registered and only then calls `test_pass(0)`.
+
+Why this is worth a firmware test when the package prefers cocotb sequences:
+
+* **The CPU is the only master that can program this PLIC.** The aperture at
+  0xC400_0000 answers SEP_IN AXI reads but takes no writes from it -- measured
+  by `smc_cluster_plic_csr_test`, which is in the tree unenrolled with that
+  finding. So the enable/threshold/priority path simply cannot be driven from
+  a cocotb sequence in this integration, and firmware is not a stylistic
+  preference here but the only route.
+* **Nothing else claims.** `smc_ext_interrupts_pin_test` says so in its own
+  docstring -- it watches `ext_interrupts_i[0]` through the synchroniser and
+  "does not claim PLIC". `smc_hang_detector_plic_route_test` checks a route
+  with testbench probes and reads no PLIC register. This closes that loop:
+  pin -> synchroniser -> gateway -> enable and priority against threshold ->
+  MEIP -> trap -> claim -> the ID the CPU reads back -> complete.
+
+The stimulus is `ext_interrupts_i[0]`, driven on the same `tb_ext_interrupt_0_i`
+that `smc_ext_interrupts_pin_test` drives. No forced internal state: the pin is
+a DUT input, and everything between it and the verdict is the DUT
+([NO-FORCED-INTERNAL-STATE]).
+
+Ordering is what makes it a measurement rather than a coincidence:
+
+1. The arm word has to arrive first. `check_cpu_firmware_boot_contract` fails a
+   PASS that was never preceded by it, so an image that reached its verdict
+   without going through the wait state cannot be counted.
+2. The pin stays low for a bounded window after the arm word, and SCRATCH_0
+   must still hold the arm word at the end of it. Without this the PASS could
+   have come from any interrupt already pending, and the whole testcase would
+   be satisfied by a DUT that traps on something else.
+3. Only then does the pin rise.
+"""
+
+from __future__ import annotations
+
+import cocotb
+from cocotb.triggers import ClockCycles
+
+from .smc_cpu_vip_utils import CPU_CTRL_SCRATCH_0, check_cpu_firmware_boot_contract
+from .smc_csr_seq_utils import SmcCsrSeq
+
+# `write_scratch(0, 0xaaaaaaaa)` in plic_sanity.c, published after the PLIC is
+# programmed and immediately before the wfi loop.
+FW_ARMED_WORD = 0xAAAA_AAAA
+
+# How long the pin stays low after the arm word, in clk_smc_i cycles. Long
+# enough that a spontaneous trap-and-claim would have landed: the firmware
+# takes well under this to get from its own store to the wfi.
+QUIET_CYCLES = 2_000
+
+# Verdict-poll bound, in units of 100 clk_smc_i cycles. This image is slow
+# before it arms: __metal_driver_riscv_plic0_init walks all 336 sources,
+# disabling each and zeroing its priority, and plic_sanity.c clears every
+# context's enable words on top of that -- each one an MMIO round trip across
+# the cluster boundary. Measured on Verilator 5.050: the arm word appears at
+# 1.568 ms and the verdict at 1.589 ms, so PASS needs about 2400 iterations and
+# the default 2000 expires with hart0 still inside that loop at
+# __metal_driver_riscv_plic0_init+0x8a. 6000 is 2.5x the measurement, which
+# leaves headroom without making a genuine failure cost half an hour of
+# wall-clock before it reports.
+POLL_ITERATIONS = 6_000
+
+
+class smc_fw_plic_claim_test_seq(SmcCsrSeq):
+    """Arm the firmware, prove nothing fires on its own, then raise the pin."""
+
+    def __init__(self, name: str = "smc_fw_plic_claim_test_seq") -> None:
+        super().__init__(name)
+        self.boot: dict[str, object] = {}
+        self.quiet_ok = False
+
+    async def _raise_ext_irq0(self) -> None:
+        dut = cocotb.top
+        assert hasattr(dut, "tb_ext_interrupt_0_i"), "tb_ext_interrupt_0_i missing"
+
+        # Negative control first: with the PLIC armed and the pin still low,
+        # the verdict must not move.
+        await ClockCycles(dut.clk_smc_i, QUIET_CYCLES)
+        still = await self.csr_read("PLIC_QUIET_SCRATCH0", CPU_CTRL_SCRATCH_0)
+        assert still == FW_ARMED_WORD, (
+            f"CHK-FW-PLIC-QUIET: SCRATCH_0 moved to 0x{still:08x} during "
+            f"{QUIET_CYCLES} cycles with the PLIC armed and "
+            f"ext_interrupts_i[0] still low. Whatever produced that was not "
+            f"the interrupt this testcase raises, so a later PASS would not "
+            f"be evidence for the claim path."
+        )
+        self.quiet_ok = True
+        cocotb.log.info(
+            "CHK-FW-PLIC-QUIET: SCRATCH_0 held 0x%08x for %d cycles with the pin "
+            "low, so the verdict below depends on the pin.",
+            FW_ARMED_WORD,
+            QUIET_CYCLES,
+        )
+
+        dut.tb_ext_interrupt_0_i.value = 1
+        cocotb.log.info(
+            "CHK-FW-PLIC-STIMULUS: ext_interrupts_i[0] driven high; PLIC source 1"
+        )
+
+    async def body(self) -> None:
+        cocotb.top.tb_ext_interrupt_0_i.value = 0
+        self.boot = await check_cpu_firmware_boot_contract(
+            self,
+            require_image=True,
+            arm_value=FW_ARMED_WORD,
+            on_armed=self._raise_ext_irq0,
+            poll_iterations=POLL_ITERATIONS,
+        )
+        cocotb.log.info(
+            "CHK-FW-PLIC-CLAIM: %s",
+            ", ".join(f"{k}={v}" for k, v in sorted(self.boot.items())),
+        )

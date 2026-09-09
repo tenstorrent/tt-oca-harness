@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import os
 import sys
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 
 import cocotb
@@ -285,9 +286,26 @@ async def _compare_image_in_memory(seq, boot_from_scratch: bool, reset_vector: i
 
 
 async def check_cpu_firmware_boot_contract(
-    seq, *, require_image: bool = False
+    seq,
+    *,
+    require_image: bool = False,
+    arm_value: int | None = None,
+    on_armed: Callable[[], Awaitable[None]] | None = None,
+    poll_iterations: int = 2000,
 ) -> dict[str, int | bool | str]:
     """Check CPU firmware boot when a ROM or scratch image was preloaded.
+
+    ``poll_iterations`` bounds the verdict poll at 100 clk_smc_i cycles each.
+    The default suits an image that goes straight to its verdict; raise it for
+    one that does real setup first, and put the measured figure in the caller
+    rather than picking a round number.
+
+    ``arm_value`` is for images that report twice: once to say "I have set
+    myself up and am now waiting for the testbench", then again with the
+    verdict. Give it the first word and the poll requires it to appear before
+    the pass magic -- an image that jumps straight to PASS has skipped its own
+    setup and is failed rather than believed. ``on_armed`` is awaited once, at
+    that point, and is where the stimulus the image is waiting for belongs.
 
     Plusargs:
       * ``+smc_rom_hex=<path>`` — ROM window preload (vector 0xC004_0000)
@@ -370,6 +388,7 @@ async def check_cpu_firmware_boot_contract(
         await _pulse_core_reset(seq, reset_vector)
 
     last_csr = 0
+    armed = arm_value is None
     # The boot image is short; poll the CSR the firmware actually writes.
     #
     # tb_cpu_fw_mailbox is deliberately NOT part of the verdict. It is driven by
@@ -380,7 +399,7 @@ async def check_cpu_firmware_boot_contract(
     # (the snoop steps bit_base across the 144-bit beat), which would grant PASS
     # to a run whose firmware never reported one. It stays wired as
     # observability and is logged below, but it cannot decide the outcome.
-    for _ in range(2000):
+    for _ in range(poll_iterations):
         await ClockCycles(dut.clk_smc_i, 100)
         last_csr = await seq.csr_read("CPU_BOOT_SCRATCH0_POLL", CPU_CTRL_SCRATCH_0)
         # Sampled and reported, never used to decide -- see the note above.
@@ -390,6 +409,16 @@ async def check_cpu_firmware_boot_contract(
         # TEST_FAIL from fw/include/smc_test.h. Without this the fail path is
         # invisible and every firmware failure presents as a poll-bound
         # expiry with no diagnosis.
+        if arm_value is not None and not armed and last_pass == arm_value:
+            armed = True
+            cocotb.log.info(
+                "CPU firmware armed: SCRATCH_0=0x%08x. Applying the stimulus it "
+                "is waiting for.",
+                last_pass,
+            )
+            if on_armed is not None:
+                await on_armed()
+            continue
         if last_pass == CPU_FW_TEST_FAIL:
             raise AssertionError(
                 f"CPU firmware reported TEST_FAIL (SCRATCH_0=0x{last_pass:08x}); "
@@ -399,6 +428,14 @@ async def check_cpu_firmware_boot_contract(
         if (last_pass & CPU_FW_FAIL_MASK) == CPU_FW_FAIL_VALUE:
             raise AssertionError(f"CPU firmware reported failure code 0x{last_pass:08x}")
         if last_pass == CPU_FW_SUCCESS_MAGIC:
+            # PASS without the arm word having been seen means the image
+            # reached its verdict without passing through the state it was
+            # supposed to wait in, so the stimulus proved nothing.
+            assert armed, (
+                f"CPU firmware reached PASS without ever publishing its arm "
+                f"word 0x{arm_value:08x}. The verdict did not depend on the "
+                f"stimulus this testcase applies."
+            )
             rom_reads = int(dut.tb_cpu_rom_read_count.value)
             scratch_reads = int(dut.tb_cpu_scratch_read_count.value)
             scratch_writes = int(dut.tb_cpu_scratch_write_count.value)
@@ -450,6 +487,7 @@ async def check_cpu_firmware_boot_contract(
         for i, (c, e) in enumerate(zip(causes, mepcs))
     )
     image_report = await _compare_image_in_memory(seq, boot_from_scratch, reset_vector)
+    armed_report = "" if arm_value is None else f" armed={armed}"
     raise AssertionError(
         "CPU firmware boot did not reach PASS magic: "
         f"expected=0x{CPU_FW_SUCCESS_MAGIC:08x} last_csr=0x{last_csr:08x} "
@@ -459,5 +497,5 @@ async def check_cpu_firmware_boot_contract(
         + " ".join(f"wb_pc{i}=0x{pc:x}" for i, pc in enumerate(wb_pcs))
         + f" {trap_report}"
         + f" {image_report}"
-        + f" isolate={isolate} image={image_path}"
+        + f" isolate={isolate}{armed_report} image={image_path}"
     )
