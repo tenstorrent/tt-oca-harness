@@ -767,20 +767,28 @@ def corrupt_public_key(buf: bytearray, slot: str, *, offset: int = 0) -> int:
     return offset
 
 
-def flip_signature_byte(buf: bytearray, slot: str, *, offset: int = 0) -> int:
-    """Flip one signature byte. Returns the offset flipped.
+def flip_signature_byte(
+    buf: bytearray, slot: str, *, byte_index: int = 0, xor_mask: int = 0x01
+) -> int:
+    """XOR one signature byte. Returns the byte's offset within the field.
 
-    No rehash: the signature is outside the signed region, so the manifest hash
+    No rehash: the signature sits outside the signed region, so the manifest hash
     still matches and the run reaches signature verification -- which is the
     point, since a hash mismatch would reject the image earlier and prove nothing
     about the verifier.
+
+    The default is a single-bit flip. A minimal change is the stronger stimulus:
+    it leaves the signature the right length and shape, so it exercises the
+    verifier's arithmetic rather than an early structural refusal.
     """
     require_classic(buf, slot)
     span = OFF_MANIFEST_HASH - OFF_SIGNATURE
-    if not 0 <= offset < span:
-        raise ValueError(f"offset {offset} is outside the {span}-byte signature field")
-    buf[slot_base(slot) + OFF_SIGNATURE + offset] ^= 0xFF
-    return offset
+    if not 0 <= byte_index < span:
+        raise ValueError(f"byte_index {byte_index} is outside the {span}-byte signature field")
+    if not 0 <= xor_mask <= 0xFF or xor_mask == 0:
+        raise ValueError(f"xor_mask must be a non-zero byte, got {xor_mask}")
+    buf[slot_base(slot) + OFF_SIGNATURE + byte_index] ^= xor_mask
+    return byte_index
 
 
 def _selftest() -> int:

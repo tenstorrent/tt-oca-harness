@@ -1569,7 +1569,7 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
-  "+sep_crypto_edn_force",
+  "+esrc_noise_force",
 ]
 
 [[tests]]
