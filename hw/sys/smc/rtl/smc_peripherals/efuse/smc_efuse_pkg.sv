@@ -86,15 +86,9 @@ package smc_efuse_pkg;
     logic [0:0]   jtag_public_identity_write_lock ;
   } smc_efuse_map_locks_reg_t;
 
-
-
   typedef struct packed {logic [255:0] value;} smc_efuse_map_jtag_public_identity_reg_t;
 
-
-
   typedef struct packed {logic [63:0] interface_id;} smc_efuse_map_i2c_i3c_id_reg_t;
-
-
 
   typedef struct packed {
     logic [47:0]   config_rsvd_high ;
@@ -160,11 +154,8 @@ package smc_efuse_pkg;
   // count with it.
   localparam int unsigned NumSpareRegions = int'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SPARE_NUM);
 
-  // 4 functional fields + NumSpareRegions spare regions (idx 0-31) + LOCKS meta-field (idx 6'h3F).
-  // 32 real slots is the ceiling: efuse_shadow_regs derives LOCK_VECTOR_BITS = 2*(FIELDS-1) and
-  // efuse_guard indexes smc_efuse_map_locks_reg_t directly, so a 33rd real field would address
-  // past the end of the 64-bit LOCKS register.
-  localparam int unsigned NUM_EFUSE_FIELDS = 1 + 4 + NumSpareRegions;
+  // LOCKS meta-field + 4 functional fields + NumSpareRegions spare regions (idx 0-31).
+  localparam int unsigned NUM_EFUSE_FIELDS = 5 + NumSpareRegions;
   localparam logic [efuse_pkg::EFUSE_FIELD_MAP_IDX_WIDTH-1:0] LOCKS_META_IDX = '1;
   localparam logic [1:0] WRITE_UNLOCK = 2'b00;
   localparam logic [1:0] WRITE_SET_ONLY = 2'b10;
@@ -173,7 +164,7 @@ package smc_efuse_pkg;
   localparam logic READ_LOCK = 1'b1;
 
   // Physical OTP bits covered by LOCKS
-  localparam int unsigned LockFieldBits = $bits(smc_efuse_map_locks_reg_t);  // 64
+  localparam int unsigned LockFieldBits = $bits(smc_efuse_map_locks_reg_t);
 
   typedef struct packed {
     logic [NumEfuseBits-LockFieldBits-1:0] reserved;
@@ -200,17 +191,10 @@ package smc_efuse_pkg;
   // Lock field Description
   // lock[2:1] write: 00 -> unlock;11 -> lock ;10 -> set only;
   // lock[0]  read: 0 -> readable; 1 -> read locked
-
-  // Entries ascend in address, and every real field's slot index is dense from zero: the lock
-  // vector is built by concatenating shadow words from offset 0 and slot n is read at bits
-  // 2n/2n+1, so a hole would push later fields past the end of the vector. The map must also tile
-  // the whole bank, because an unmapped address resolves to the LOCKS_META_IDX sentinel, which is
-  // never lock-checked -- programmable OTP that could never be locked.
   function automatic efuse_pkg::rule_t [NUM_EFUSE_FIELDS-1:0] build_efuse_field_map();
     efuse_pkg::rule_t [NUM_EFUSE_FIELDS-1:0] map;
 
-    // LOCKS meta-field (idx LOCKS_META_IDX = 6'h3F); hardware never applies lock bits to this
-    // entry. Covers the 64-bit LOCKS register.
+    // Hardware never applies lock bits to this entry.
     map[0] = '{
         idx: LOCKS_META_IDX,
         lock: {WRITE_SET_ONLY, READ_UNLOCK},
@@ -242,8 +226,7 @@ package smc_efuse_pkg;
         end_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SPARE_BASE_ADDR(0))-1
     };
 
-    // SPARE[0..NumSpareRegions-1] take slots 4 onwards, one each. The last one runs to the end of
-    // the map so the bank is fully tiled.
+    // SPARE[0..NumSpareRegions-1] take slots 4 onwards, one each.
     for (int unsigned k = 0; k < NumSpareRegions; k++) begin
       map[5+k] = '{
           idx: efuse_pkg::EFUSE_FIELD_MAP_IDX_WIDTH'(4 + k),
