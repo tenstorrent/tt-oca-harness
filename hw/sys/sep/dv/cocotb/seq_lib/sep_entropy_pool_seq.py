@@ -2,16 +2,12 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Entropy-pool aperture driver (sep_entropy_pool_aperture_test).
 
-64-bit AXI-Lite drain of ``sep_entropy_fifo`` at the local-xbar
-``entropy_fifo.main`` window. Offsets from ``hw/sys/sep/rtl/sep_entropy_fifo.sv``:
-status ``0x00``, irq-cause ``0x08``, pop ``0x10``; every other in-window offset
-and every write is SLVERR. Depth=32, LowWatermark=8, StallThresh=4096.
+64-bit AXI-Lite drain of ``sep_entropy_fifo`` at the fabric Entropy Pool
+target (``hw/sys/sep/doc/fabric.adoc``): status ``0x00``, irq-cause ``0x08``,
+pop ``0x10``; every other in-window offset and every write is SLVERR.
 """
 
 from __future__ import annotations
-
-import re
-from pathlib import Path
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
@@ -21,33 +17,15 @@ from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_esrc_bringup_seq import EDN_CTRL, EDN_CTRL_AUTO, ESRC_CTRL
 
-_XBAR = Path(__file__).resolve().parents[3] / "rtl" / "sep_local_axi_xbar.sv"
-_FIFO = Path(__file__).resolve().parents[3] / "rtl" / "sep_entropy_fifo.sv"
-
-
-def _xbar_entropy_fifo_base() -> int:
-    text = _XBAR.read_text(encoding="utf-8")
-    m = re.search(r"entropy_fifo\.main:\s*0x([0-9A-Fa-f]+)", text)
-    if not m:
-        raise RuntimeError(f"entropy_fifo.main base not found in {_XBAR}")
-    return int(m.group(1), 16)
-
-
-def _fifo_param(name: str) -> int:
-    text = _FIFO.read_text(encoding="utf-8")
-    m = re.search(rf"parameter int unsigned {name}\s*=\s*(\d+)", text)
-    if not m:
-        raise RuntimeError(f"{name} not found in {_FIFO}")
-    return int(m.group(1))
-
-
-POOL_BASE = _xbar_entropy_fifo_base()
+# Architecture contract from hw/sys/sep/doc/fabric.adoc (Entropy Pool target).
+# A DUT that drifts from these numbers fails the watermark / stall checkers.
+POOL_BASE = 0x1095_0000
 POOL_STATUS = POOL_BASE + 0x00
 POOL_IRQ_CAUSE = POOL_BASE + 0x08
 POOL_POP = POOL_BASE + 0x10
-FIFO_DEPTH = _fifo_param("FifoDepth")
-LOW_WATERMARK = _fifo_param("LowWatermark")
-STALL_THRESH = _fifo_param("StallThresh")
+FIFO_DEPTH = 32
+LOW_WATERMARK = 8
+STALL_THRESH = 4096
 
 RESP_OKAY = 0
 RESP_SLVERR = 2
