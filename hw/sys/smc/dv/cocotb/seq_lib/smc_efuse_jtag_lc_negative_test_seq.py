@@ -13,14 +13,18 @@ from __future__ import annotations
 from .smc_addr_map import smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
+# TODO(#1040): eFuse map reworked — update these address constants.
+#   CHIPLET_ID (0x008, 256-bit) + PACKAGE_ID (0x028, 256-bit) are gone.
+#   Replaced by a single JTAG_PUBLIC_IDENTITY register at offset 0x008 (256-bit).
+#   New symbol: SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR
+#   Remove SMC_EFUSE_MAP_CHIPLET_ID and SMC_EFUSE_MAP_PACKAGE_ID; replace with
+#   a single SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY constant.
+
 # PeakRDL smc_addr.h — SMC_EFUSE_MAP identity / lock windows.
-CHIP_CONFIG_LC_STATE = smc_addr(
-    "SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_BASE_ADDR"
-)
+CHIP_CONFIG_LC_STATE = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_BASE_ADDR")
 SMC_EFUSE_MAP_LOCKS = smc_addr("SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR")
-SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY = smc_addr(
-    "SMC_TOP_SMC_EFUSE_MAP_JTAG_PUBLIC_IDENTITY_BASE_ADDR"
-)
+SMC_EFUSE_MAP_CHIPLET_ID = smc_addr("SMC_TOP_SMC_EFUSE_MAP_CHIPLET_ID_BASE_ADDR")
+SMC_EFUSE_MAP_PACKAGE_ID = smc_addr("SMC_TOP_SMC_EFUSE_MAP_PACKAGE_ID_BASE_ADDR")
 
 
 class smc_efuse_jtag_lc_negative_test_seq(SmcCsrSeq):
