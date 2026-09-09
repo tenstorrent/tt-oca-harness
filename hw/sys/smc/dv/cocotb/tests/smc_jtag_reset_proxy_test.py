@@ -42,13 +42,13 @@ class smc_jtag_reset_proxy_test(smc_base_test):
             # completed each access, rather than `seq.accesses`, which the
             # sequence increments on dispatch regardless of what came back.
             csr_accesses=self.env.scoreboard.axi_accesses_by_bus.get("SEP_IN AXI", 0),
-            # Directed stimulus floor: 7 SEP_IN AXI JTAG reset-proxy CSR
+            # Directed stimulus floor: 8 SEP_IN AXI JTAG reset-proxy CSR
             # accesses. Literal here, not read from `seq.accesses`.
-            min_csr_accesses=7,
+            min_csr_accesses=8,
             proxy=True,
             details=(
                 "CPU JTAG TCK/TMS/TDI/reset driven and TDO checked; cool reset "
-                "observed asserted and released, and cold-domain SCRATCH_COLD_2 "
-                "persisted across it"
+                "observed asserted and released, SCRATCH_COLD_2 cleared to its "
+                "generated reset by it, and writable again afterwards"
             ),
         )

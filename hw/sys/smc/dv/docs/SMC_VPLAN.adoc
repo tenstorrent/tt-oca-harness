@@ -124,7 +124,7 @@ verifying the block behind the port.
 |`smc_irq_during_powergood_glitch_test` |SMC OSS PyUVM IRQ-during-powergood-glitch test.
 |`smc_jtag_boot_stall_sanity_test` |JTAG boot-stall override clears sticky while pad 57 is held.
 |`smc_jtag_reset_ctrl_test` |Struct pin mux; not boot-stall JTAG, FLR, or rst_cool_ni proxy.
-|`smc_jtag_reset_proxy_test` |Run JTAG-adjacent CSR health checks plus CPU JTAG pin checks.
+|`smc_jtag_reset_proxy_test` |Run JTAG-adjacent CSR health checks across an observed cool reset, plus CPU JTAG pin checks.
 |`smc_mixed_boot_stall_test` |GPIO gates fuse_reset; JTAG ovrd releases; val=1 cannot re-stall.
 |`smc_multi_reset_csr_persistence_test` |Run CSR access/persistence checks around a public cool reset pulse.
 |`smc_ndm_reset_test` |Per-cluster NDM handshake without Force or firmware.
@@ -166,9 +166,9 @@ verifying the block behind the port.
 |`smc_ecc_codeword_ded_test` |Two flipped codeword bits: the CPU raises cluster_ded_o.
 |`smc_ecc_codeword_sec_test` |One flipped codeword bit: the CPU reads the bank and DED stays low.
 |`smc_ecc_dfd_dbs_sanity_test` |Run the diagnostic representative CSR precheck.
-|`smc_ecc_fault_inject_test` |SBE inject fires during scratch FW boot; inject clear recovers.
+|`smc_ecc_fault_inject_test` |The scratch bank0 ECC inject hook is reached during FW boot and is gated by its enable pins.
 |`smc_mutex_semaphore_test` |CPU_CTRL MUTEX/SEMA over SEP_IN AXI (expectations from cpu_ctrl.rdl).
-|`smc_occp_sanity_secure_error_test` |Secure program-fail negative + recovery burn / signature positive.
+|`smc_occp_sanity_secure_error_test` |Secure program-fail completes and reports done; recovery burn programs bit0; signature positive gate.
 |`smc_reference_counter_test` |64-bit refclk counter rate check; not the OCTS timer.
 |`smc_spm_mem_boundary_test` |SPM first/next/last 64-bit word write/readback via SEP_IN AXI.
 |===
@@ -199,7 +199,7 @@ verifying the block behind the port.
 |`smc_efuse_otp_burn_shadow_test` |Fuse sense + shadow read + PROGRAM command/status through DUT CSRs.
 |`smc_efuse_otp_clock_config_depth_test` |Run eFuse OTP clock/timing register programming depth checks.
 |`smc_efuse_otp_clock_test` |Run the eFuse/OTP and clock-control CSR precheck.
-|`smc_efuse_permission_boundary_test` |Run eFuse-derived chip-config reads until raw OTP permission paths respond.
+|`smc_efuse_permission_boundary_test` |PROXY -- run eFuse-derived chip-config reads until raw OTP permission paths respond.
 |`smc_efuse_read_program_timeout_test` |timeout_enable\|0 aborts; default timeout recovers OTP bit0.
 |`smc_efuse_shim_ctrl_test` |P1 coverage-gap depth: EFUSE_INTERFACE + SHIM_CTRL probe.
 |===
@@ -241,7 +241,7 @@ verifying the block behind the port.
 [cols="2,3",options="header",]
 |===
 |Testcase |Objective
-|`smc_i2c_error_fifo_depth_test` |Run I2C CSR decode plus SCL/SDA pin override depth checks.
+|`smc_i2c_error_fifo_depth_test` |PROXY -- run I2C CSR decode plus SCL/SDA pin override depth checks.
 |`smc_i2c_fifo_full_test` |FMT/TX full+empty and RX/ACQ empty STATUS (CSR-only).
 |`smc_i2c_master_target_test` |U4-2: OVRD + DUT host write + SMBus PEC write + ARA read on pads.
 |`smc_i2c_multi_instance_test` |P1 coverage-gap depth: I2C_1/2 + I2C_CTRL CSR sweep.
@@ -299,7 +299,7 @@ verifying the block behind the port.
 |Testcase |Objective
 |`smc_uart_baud_word_parity_format_test` |UART0 loopback divisor × frame-format sweep with masked RX check.
 |`smc_uart_error_conditions_test` |UART parity / overrun / break line-status proofs.
-|`smc_uart_extremes_misc_test` |UART0 SCR R/W + idle LSR quiet check.
+|`smc_uart_extremes_misc_test` |UART0 SCR R/W + idle LSR.DR quiet check.
 |`smc_uart_irq_sources_priority_test` |UART0 IER gating, natural clears, and multi-source IIR priority.
 |`smc_uart_log_engine_error_boundary_test` |Run log-engine CSR R/W depth as the error/boundary checker.
 |`smc_uart_log_engine_reg_rw_test` |Run UART/log-engine register write/readback/restore checks.
@@ -5289,7 +5289,7 @@ Drive `smc_uart_error_conditions_test_seq`. Each checker below is a named compar
 
 * UART0 SCR R/W without LCR/MCR/ECR side-effects; idle LSR has no DR.
 * DEFENDS: only LSR.DR in the idle window, and only because this sequence has a same-run positive control (`_positive_dr_then_idle`) that drives DR to 1 and back to 0, so a stuck-at-0 DR fails.
-* DOES NOT DEFEND: LSR.OE/PE/FE/BI. Nothing in this sequence can drive those bits to 1, so an idle-window check on them would be an unbacked negative that a tied-off bit passes identically. They are claimed by `smc_uart_error_conditions_test`, which drives each and back.
+* DOES NOT DEFEND: LSR.OE/PE/FE/BI. Nothing in this sequence can drive those bits to 1, so an idle-window check on them would be an unbacked negative that a tied-off bit passes identically. They are claimed by `smc_uart_error_conditions_test`, which raises PE and OE individually and break as FE and BI together, each and back; no testcase in this package raises FE on its own.
 
 *Test Procedure*:
 
@@ -5735,14 +5735,14 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 |`mailbox_depth` |1 |mailbox depth coverage
 |`occp_boot` |1 |Production boot ROM reaching its OCCP command loop
 |`occp_dual` |1 |OCCP unsecure boot between two real SMCs
-|`functional` |13 |project p0 coverage
-|`functional_depth` |38 |project p0 triplets coverage
+|`functional` |13 |core functional gate
+|`functional_depth` |38 |core functional gate plus its depth companions
 |`pyuvm` |35 |Scenarios with a PyUVM implementation
 |`reset` |14 |reset coverage
 |`smoke` |35 |Fast bring-up gate
 |`uart` |6 |uart coverage
-|`coverage_closure` |24 |vplan gaps coverage
-|`depth` |43 |vplan triplets coverage
+|`coverage_closure` |24 |closes features that previously had no testcase
+|`depth` |43 |cross-feature depth testcases
 |===
 
 [[coverage-matrix]]

@@ -804,8 +804,10 @@ hw/sys/smc/dv/testlists/
 `--tag smoke` and `--tag pyuvm` resolve through `all.toml` groups. Treat this as
 the broad debug regression, not the coverage-minimal canonical set.
 
-`--tag functional` matches the 14 SMC P0 testcase names tracked by GitHub
-Project 335 / issue `tenstorrent/tt-oca-hw#2891`. Four names are compatibility
+`--tag functional` matches 15 testcases; the `functional` *group* holds 13. The
+two are separate selectors and the counts are not interchangeable: `--tag`
+matches every entry carrying the tag, `--items functional` resolves the group
+membership in `all.toml`. Four names in the set are compatibility
 wrappers over stronger local sequences: `smc_mailbox_idle_test`,
 `smc_input_fabric_axi_wr_rd_test`, `smc_avsbus_sanity_test`, and
 `smc_dbs_idle_test`.

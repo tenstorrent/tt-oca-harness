@@ -61,14 +61,19 @@ class smc_cg_dft_reset_bringup_test_seq(SmcCsrSeq):
         # Read back: without this, a write that landed nowhere leaves the
         # gating enables at whatever they were, and every "clock still runs"
         # compare below then passes for the wrong reason.
-        back = await self.csr_read(
-            "CLOCK_GATE_CONTROL_VERIFY", CLOCK_GATE_CONTROL, expected=nxt, length=8
-        )
-        assert (int(back) & (DMA_CG_EN | ZEROER_CG_EN | CG_HYST_MASK)) == (
-            nxt & (DMA_CG_EN | ZEROER_CG_EN | CG_HYST_MASK)
-        ), (
+        #
+        # No `expected=` on this read. The scoreboard compares the whole 64-bit
+        # word, and the claim here is only that the three fields this function
+        # programs took the write; asserting the other 61 bits would also
+        # assert that nothing else in CLOCK_GATE_CONTROL is hardware-updated,
+        # which this testcase does not establish. The masked compare below is
+        # the claim, and it is fail-capable on its own.
+        back = await self.csr_read("CLOCK_GATE_CONTROL_VERIFY", CLOCK_GATE_CONTROL, length=8)
+        programmed = DMA_CG_EN | ZEROER_CG_EN | CG_HYST_MASK
+        assert (int(back) & programmed) == (nxt & programmed), (
             f"CLOCK_GATE_CONTROL readback 0x{int(back):016x} does not carry the "
-            f"programmed gating enables/hysteresis from 0x{nxt:016x}"
+            f"programmed gating enables/hysteresis from 0x{nxt:016x} "
+            f"(compared under mask 0x{programmed:016x})"
         )
 
     async def _reset_op(self, op: SmcResetOp) -> SmcResetItem:
@@ -264,16 +269,22 @@ class smc_cg_dft_reset_bringup_test_seq(SmcCsrSeq):
             label="RESET_OVERRIDE_RELEASE",
         )
 
-        # ---- S5: A-B-A. Out of reset, still in functional mode, gating still
-        # enabled and both blocks idle -- the gaters must take the clocks back.
+        # ---- S5: A-B-A. Out of reset, in functional mode, gating programmed
+        # again and both blocks idle -- the gaters must take the clocks back.
         # This is the one measurement in the testcase whose value no earlier
         # assert pins: a `test_en_i` input that latches high on first assertion,
         # a bypass term that never clears, or a reset override that never
         # releases all leave these three at IDLE_OBSERVE and fail here.
         cg.log_step(
             "S5",
-            "reset released, test_en_i=0, gating still enabled: the same three clocks must re-gate",
+            "reset released, test_en_i=0, gating re-programmed: the same three clocks must re-gate",
         )
+        # The cold reset in S3 restored CLOCK_GATE_CONTROL to its generated
+        # reset, where both enables are 0 (smc_base_config.h:
+        # CLOCK_GATE_CONTROL__DMA_CG_EN_reset = 0x0). Re-program them before
+        # observing the re-gate: without this the gaters are correctly disabled
+        # and the bounded wait below expires against a DUT that is behaving.
+        await self._program_cg(dma_en=True, zeroer_en=True)
         dma_regate_at, _ = await cg.wait_gated_off(
             dut,
             "tb_dma_gated_clk",
