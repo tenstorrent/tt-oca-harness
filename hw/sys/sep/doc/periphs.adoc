@@ -433,6 +433,8 @@ register map is reported in <<sep-detailed-register-map>>.
 ==== SEP Reset Controller
 
 The SEP Reset Controller provides software-controllable resets for the Key Manager, crypto accelerators, and internal TRNG complex. It is accessible via AXI4 at generated base address `0x1080_3000`.
+Adams Bridge is the exception: it has no software-reset bit and resets with
+`sep_reset_n`.
 
 The controller contains a single 64-bit register `SW_RESET_N` at offset `0x0` with the following fields:
 
