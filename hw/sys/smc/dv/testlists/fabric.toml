@@ -28,7 +28,7 @@ name = "smc_input_fabric_axi_wr_rd_test"
 module = "smc_input_fabric_axi_wr_rd_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "project_p0", "pyuvm"]
+tags = ["ci", "functional", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
