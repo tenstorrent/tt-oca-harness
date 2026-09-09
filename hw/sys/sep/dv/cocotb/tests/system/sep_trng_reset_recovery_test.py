@@ -6,7 +6,7 @@ The test fills the fabric entropy pool from the internal ESRC->CSRNG->EDN path,
 holds every entropy consumer before resetting TRNG, proves the pool is empty
 and its stale data cannot be read, fully reinitializes the entropy complex while
 consumers remain held, and restores consumers only after fresh pool progress.
-It also proves all three internal CSR ports return SLVERR while isolated, then
+It also proves all three internal CSR ports return DECERR while isolated, then
 resets with all external-source mux legs selected and proves the external
 source-select register remains outside the reset domain. The external TRNG
 aperture itself is terminated by a permanent DECERR error slave in this build,
@@ -18,7 +18,7 @@ new ESRC/CSRNG/EDN CSR traffic, drains accepted transactions on all three
 converted AXI-Lite paths, and asserts the shared reset only after every path
 reports isolated.
 Buffered post-mux and pool entropy is cleared with the reset. While held, new
-CSR accesses receive SLVERR. Setting trng_sw_rst_n releases the internal blocks,
+CSR accesses receive DECERR. Setting trng_sw_rst_n releases the internal blocks,
 releases their isolation, and restores normal CSR traffic; firmware must
 reconfigure ESRC, CSRNG, and EDN before using entropy.
 """
@@ -159,8 +159,9 @@ class sep_trng_reset_recovery_test(sep_base_test):
         # Queue one access to each internal CSR aperture before the SW reset
         # write. The AXI master can have these reads outstanding together while
         # the coordinator drains all three isolates. Accepted reads complete;
-        # any not yet accepted are terminated with SLVERR, and none may hang.
+        # any not yet accepted are terminated with DECERR, and none may hang.
         axi_driver = self.env.axi_agent.driver
+        self.env.axi_monitor.arm_expected_decerr(3)
         drain_reads = [
             axi_driver.axi.init_read(address=addr, length=4, size=2)
             for addr in (ESRC_COMPONENT_ID, CSRNG_INTR_STATE, EDN_INTR_STATE)
@@ -187,13 +188,17 @@ class sep_trng_reset_recovery_test(sep_base_test):
             await with_timeout(event.wait(), 10_000, "ns")
             drain_responses.append(event.data)
         drain_codes = [worst_resp(getattr(response, "resp", None)) for response in drain_responses]
-        assert all(code in (0, RESP_SLVERR) for code in drain_codes), (
+        # Return credits for accesses that drained without DECERR.
+        self.env.axi_monitor.release_expected_decerr(
+            3 - sum(1 for code in drain_codes if code == 3)
+        )
+        assert all(code in (0, 3) for code in drain_codes), (
             f"in-flight TRNG CSR accesses returned unexpected responses {drain_codes}"
         )
         assert 0 in drain_codes, "no pre-reset TRNG CSR access drained successfully"
         self.logger.info(
             "CHK-TRNG-DRAIN PASS: in-flight ESRC/CSRNG/EDN reads resolved %s "
-            "(no hang, no DECERR); at least one drained OKAY",
+            "(no hang, no SLVERR); at least one drained OKAY",
             drain_codes,
         )
 
@@ -208,17 +213,18 @@ class sep_trng_reset_recovery_test(sep_base_test):
 
         # Once the coordinated reset is active, each internal CSR isolate must
         # reject new traffic without forwarding it into the reset domain.
+        self.env.axi_monitor.arm_expected_decerr(3)
         for name, addr in (
             ("esrc", ESRC_COMPONENT_ID),
             ("csrng", CSRNG_INTR_ENABLE),
             ("edn", EDN_INTR_ENABLE),
         ):
             isolated_csr = await self._read(addr, expect_error=True)
-            assert isolated_csr.resp_code == RESP_SLVERR, (
-                f"{name} CSR did not return SLVERR while TRNG was isolated"
+            assert isolated_csr.resp_code == 3, (
+                f"{name} CSR did not return DECERR while TRNG was isolated"
             )
         self.logger.info(
-            "CHK-TRNG-SLVERR PASS: all three internal CSR apertures returned SLVERR "
+            "CHK-TRNG-DECERR PASS: all three internal CSR apertures returned DECERR "
             "while isolated, none forwarded into the reset domain"
         )
 
