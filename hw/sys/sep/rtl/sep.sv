@@ -163,6 +163,8 @@ module sep #(
 
   output logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0] lc_state_o,
   output sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable_o,
+  output logic sep_fuse_dft_disable_o,
+  output logic smc_fuse_dft_disable_o,
   output logic lc_sigint_err_o,
   output logic security_disable_o,
   output logic secure_tm_o,
@@ -849,6 +851,8 @@ NUM_EXT_DEMUX_PORTS
     .lc_state_o                             (lc_state_o),
     .feat_ctrl_o                            (feat_ctrl),
     .dbg_disable_o                          (dbg_disable_o),
+    .sep_fuse_dft_disable_o                 (sep_fuse_dft_disable_o),
+    .smc_fuse_dft_disable_o                 (smc_fuse_dft_disable_o),
     .lc_sigint_err_o                        (lc_sigint_err_o),
     .shadow_regs_o                          (),
     .fuse_sense_done_o                      (sep_fuse_sense_done_o),

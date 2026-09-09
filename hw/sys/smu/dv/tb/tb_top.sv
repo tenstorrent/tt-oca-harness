@@ -518,6 +518,8 @@ module smu_uvm_top
     .sep_extintsrc_req_i         ('0),
     .lcc_demote_state_1_o        (lcc_demote_state_1_o),
     .lcc_demote_state_2_o        (lcc_demote_state_2_o),
+    .sep_fuse_dft_disable_o      (),
+    .smc_fuse_dft_disable_o      (),
     .sep_fuse_sense_done_o       (),
     .clk_sep_wdt_i               (clk_smu_i),
     .secure_tm_req_i             (secure_tm_req),

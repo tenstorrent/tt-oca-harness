@@ -342,6 +342,11 @@ module smu #(
   output logic [1:0]  lcc_demote_state_2_o,
   output logic secure_tm_o,
 
+  // Gates for the DFT-inserted OTP access paths. Unconnected in the functional
+  // design: an adopter's DFT insertion adds the paths and connects these.
+  output logic sep_fuse_dft_disable_o,
+  output logic smc_fuse_dft_disable_o,
+
   output logic  sep_fuse_sense_done_o,
 
   // SEP WDT clock (passthrough from smu_wrapper)
@@ -959,6 +964,8 @@ module smu #(
 
       .lc_state_o                    (sep_lc_state),
       .dbg_disable_o                 (sep_dbg_disable),
+      .sep_fuse_dft_disable_o        (sep_fuse_dft_disable_o),
+      .smc_fuse_dft_disable_o        (smc_fuse_dft_disable_o),
       .lc_sigint_err_o               (sep_lc_sigint_err),
       .security_disable_o            (sep_security_disable),
       .secure_tm_o                   (secure_tm_o),
@@ -1158,6 +1165,11 @@ module smu #(
     // ==================================================================
     assign sep_security_disable = 1'b0;
     assign secure_tm_o = 1'b0;
+
+    // No lifecycle controller in this configuration, so nothing can authorise the
+    // inserted fuse paths; hold them disabled.
+    assign sep_fuse_dft_disable_o = 1'b1;
+    assign smc_fuse_dft_disable_o = 1'b1;
 
     // ==================================================================
     // Lifecycle state -- original standalone behavior

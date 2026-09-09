@@ -261,6 +261,11 @@ module smu_wrapper
   output logic [1:0]  lcc_demote_state_1_o,
   output logic [1:0]  lcc_demote_state_2_o,
 
+  // Gates for the DFT-inserted OTP access paths, surfaced beside the eFuse shims
+  // an adopter's DFT insertion attaches to.
+  output logic  sep_fuse_dft_disable_o,
+  output logic  smc_fuse_dft_disable_o,
+
   output logic  sep_fuse_sense_done_o,
 
   // SEP WDT clock
