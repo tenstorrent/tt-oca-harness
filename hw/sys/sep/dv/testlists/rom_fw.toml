@@ -157,8 +157,8 @@ args = [
   # live noise stream. Everything above the noise source -- the startup health
   # tests, CSRNG, EDN and the command handshakes -- is brought up for real by the
   # ROM itself, and the RSA assertions are untouched, so a pass still means the
-  # signature really verified. This replaces the old +sep_crypto_edn_force grant,
-  # which bypassed the whole chain.
+  # signature really verified. It replaces an older grant that
+  # bypassed the whole chain by forcing EDN.
   "+esrc_noise_force",
 ]
 
@@ -262,7 +262,7 @@ args = [
 # is also what keeps the t=0 sensed image and the run-time shadow-compare golden
 # the same file.
 #
-# No +sep_crypto_edn_force here, unlike the secure-boot entry: SBOOT_DIS means the
+# No +esrc_noise_force here, unlike the secure-boot entry: SBOOT_DIS means the
 # ROM never drives OTBN, so there is no EDN handshake to grant. If this test ever
 # needs that plusarg, the fuse override has stopped working.
 name = "sep_firmware_device_cntl_non_secure_boot_flow_test"
@@ -325,12 +325,12 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
-  "+sep_crypto_edn_force",
+  "+esrc_noise_force",
 ]
 
 [[tests]]
 # Primary rejected, failover, backup signature fails RSA.
-# Needs +sep_crypto_edn_force: this is the one of the three failover ports whose
+# Needs +esrc_noise_force: this is the one of the three failover ports whose
 # defect is only detectable by actually running the modexp on OTBN.
 name = "sep_firmware_backup_invalid_signature_test"
 module = "rom_fw.sep_firmware_backup_invalid_signature_test"
@@ -344,13 +344,13 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
-  "+sep_crypto_edn_force",
+  "+esrc_noise_force",
 ]
 
 [[tests]]
 # Primary rejected, failover, backup version below the fuse.
-# No +sep_crypto_edn_force: the rollback check precedes the signature check, so
-# OTBN is never driven. The test forbids RSA_VERIFY_START, so if that ordering ever
+# No +esrc_noise_force: the rollback check precedes the signature check, so
+# OTBN is never driven. The test forbids RSA_EXEC, so if that ordering ever
 # changed this entry would fail rather than silently start needing the shortcut.
 name = "sep_firmware_backup_invalid_security_version_test"
 module = "rom_fw.sep_firmware_backup_invalid_security_version_test"
@@ -368,7 +368,7 @@ args = [
 
 [[tests]]
 # Primary rejected, failover, backup names an unassigned public-key source.
-# No +sep_crypto_edn_force for the same reason as the entry
+# No +esrc_noise_force for the same reason as the entry
 # above: the selection is rejected before any key is loaded.
 name = "sep_firmware_backup_invalid_public_key_selection_test"
 module = "rom_fw.sep_firmware_backup_invalid_public_key_selection_test"
@@ -388,7 +388,7 @@ args = [
 # Backup selects a ROM key slot with no compiled-in digest. The verification
 # modulus comes from the manifest, so an unpopulated slot must fail closed:
 # skipping the digest bind would verify a manifest against a modulus it supplied
-# itself. Everything else about the backup is valid, so ROM_KEY_EMPTY is the only
+# itself. Everything else about the backup is valid, so PUBK_SLOT_UNPROVISIONED is the only
 # available verdict. Same PROD OTP as the sibling key tests -- an unrevoked slot
 # and BL1_VERSION 0, so neither revocation nor rollback preempts the check.
 name = "sep_firmware_backup_unpopulated_rom_key_slot_test"
@@ -409,7 +409,7 @@ args = [
 # Single SPI detected at the primary address.
 # Non-secure image and no +sep_efuse_preload: this is a transport test, so the
 # default TEST_DEV OTP keeps the run free of secure-boot failure modes that would
-# say nothing about flash addressing. No +sep_crypto_edn_force for the same reason
+# say nothing about flash addressing. No +esrc_noise_force for the same reason
 # -- no RSA runs on this path, so if this entry ever needs it, the image is wrong.
 name = "sep_spi_detect_success_test"
 module = "rom_fw.sep_spi_detect_success_test"
@@ -461,20 +461,15 @@ args = [
 # 1. It covers the EXT SRAM half of TP080 only, and the reason the other half is
 #    missing is NOT that someone forgot a memset. sep-boot-flow.puml asks for
 #    the SMC SRAM clear only "if SMC SRAM used", and puml:384-392 decides "used"
-#    from the manifest USE_EXT bit. The stimulus side of that is implemented and in
-#    use: the packer emits the bit (bootrom/prod/tools/tt-boot-manifest/src/
-#    pack_images.py) and every image this tree boots is built with it CLEAR
-#    (bootrom/prod/configs/non_secure_boot_test.yaml:32,101 and its secure/encrypted
-#    siblings all set use_ext_sram: 0). What is missing is the ROM's consuming
-#    branch: FLAG_ARGS_BIT_USE_EXT_SRAM (bootrom/prod/include/manifest.h:88) is
-#    referenced nowhere under bootrom/prod/src, and manifest_load.c stages
-#    the payload in EXT SRAM regardless. The run observes exactly that -- it boots a
+#    from a manifest bit declaring it. The OCA manifest declares no such bit, so
+#    there is nothing for a producer to set and nothing for the ROM to branch on:
+#    the payload is staged in EXT SRAM unconditionally. The run observes exactly
+#    that -- it boots a
 #    manifest with flag_args=0x00000000 and then logs COPY_SRC=0x10002000, i.e. the
 #    payload staged in EXT SRAM (LOAD=0xC0000000 is BL1's ICCM destination, not the
 #    staging area). So there is nothing for an SMC-clear
 #    assertion to check. (Independently, the only path whose manifest comes from SMC
-#    SRAM runs num_retries = 0, manifest_load.c, so it has no retry window at
-#    all.) The test asserts nothing about SMC SRAM and says so in its own log
+#    SRAM runs with no retries, so it has no retry window at all.) The test asserts nothing about SMC SRAM and says so in its own log
 #    (CHK-SCOPE). Full evidence: FINDINGS F19 and its correction F21, in
 #    aegissocspec's .dv/artifacts/boot_rom/rtl_batch_runs/FINDINGS.md (that path is
 #    in the SPEC repo, not this one).
@@ -646,7 +641,7 @@ args = [
 #
 # Unsigned image and the default TEST_DEV OTP: slot selection is upstream of the
 # crypto chain, so secure boot here would only add failure modes that say nothing
-# about rotation. No +sep_crypto_edn_force for the same reason.
+# about rotation. No +esrc_noise_force for the same reason.
 name = "sep_rotate_update_set_test"
 module = "rom_fw.sep_rotate_update_set_test"
 target = "rom_boot"
@@ -664,10 +659,11 @@ args = [
 [[tests]]
 # Primary manifest's public-key hash does not bind; the backup boots.
 #
-# Needs +sep_crypto_edn_force: the BACKUP is valid, so the full RSA-3072 modexp
+# Needs +esrc_noise_force: the BACKUP is valid, so the full RSA-3072 modexp
 # runs on OTBN, which parks in UrndRefresh until EDN grants entropy. Same DV
-# shortcut as the other secure-boot entries -- it grants OTBN's EDN handshakes
-# only, and the RSA assertions are untouched, so SIG_VALID still means the
+# shortcut as the other secure-boot entries -- it forces the noise
+# source and lets the ROM bring the chain up
+# only, and the RSA assertions are untouched, so RSA_VERIFY_OK still means the
 # signature really verified.
 #
 # Timeout matches the other entries that run a modexp.
@@ -683,7 +679,7 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
-  "+sep_crypto_edn_force",
+  "+esrc_noise_force",
 ]
 
 [[tests]]
@@ -692,8 +688,8 @@ args = [
 # backup-fail family whose PRIMARY defect is the one under test rather than a
 # BAD_MAGIC failover trigger.
 #
-# No +sep_crypto_edn_force: the hash bind precedes the signature step, so OTBN is
-# never driven. The test forbids RSA_VERIFY_START, so if that ordering ever
+# No +esrc_noise_force: the hash bind precedes the signature step, so OTBN is
+# never driven. The test forbids RSA_EXEC, so if that ordering ever
 # changed this entry would fail rather than silently start needing the shortcut.
 name = "sep_firmware_backup_invalid_key_hash_test"
 module = "rom_fw.sep_firmware_backup_invalid_key_hash_test"
@@ -717,10 +713,10 @@ args = [
 # _REVOKED_SLOT = 5. Its own OTP image is the rest of the stimulus:
 # sep_efuse_lc_prod_pubk_revoke5.toml is sep_efuse_lc_prod.toml plus exactly that
 # one bit. Slot 5 also has no compiled-in digest, so this entry additionally pins
-# the ORDER -- revocation before the digest table -- by forbidding ROM_KEY_EMPTY.
+# the ORDER -- revocation before the digest table -- by forbidding PUBK_SLOT_UNPROVISIONED.
 #
-# No +sep_crypto_edn_force: revocation precedes the signature step, so OTBN is
-# never driven and RSA_VERIFY_START is forbidden.
+# No +esrc_noise_force: revocation precedes the signature step, so OTBN is
+# never driven and RSA_EXEC is forbidden.
 name = "sep_firmware_backup_pubkey_rom_5_revoked_key_test"
 module = "rom_fw.sep_firmware_backup_pubkey_rom_5_revoked_key_test"
 target = "rom_boot"
@@ -737,9 +733,9 @@ args = [
 [[tests]]
 # TP053-S: BL1 image size out of range. Both slots carry a zero-length SEP BL1
 # TOC entry, re-hashed and re-signed with dev0 so the crypto chain still passes
-# and the rejection is the payload validator's (manifest_load.c).
+# and the rejection is the payload validator's.
 # PROD + secure boot: the BL1 checks must be reached by the production path.
-# +sep_crypto_edn_force is required -- the RSA verify runs on both slots before
+# +esrc_noise_force is required -- the RSA verify runs on both slots before
 # the payload is validated, and OTBN's EDN client would otherwise stall.
 name = "sep_bl1_size_invalid_test"
 module = "rom_fw.sep_bl1_size_invalid_test"
@@ -753,12 +749,12 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
-  "+sep_crypto_edn_force",
+  "+esrc_noise_force",
 ]
 
 [[tests]]
 # TP053-E: BL1 entry_point == length, the smallest value check_bl1_image rejects
-# (manifest.h). Same shape as the size arm; only the mutated field and the
+#. Same shape as the size arm; only the mutated field and the
 # expected console marker differ.
 name = "sep_bl1_entry_invalid_test"
 module = "rom_fw.sep_bl1_entry_invalid_test"
@@ -772,7 +768,7 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
-  "+sep_crypto_edn_force",
+  "+esrc_noise_force",
 ]
 
 [[tests]]
@@ -780,9 +776,10 @@ args = [
 # AES engine runs and the plaintext then fails the TOC identifier check.
 # PROD + CLASS_KEY preload: PROD enforces the crypto chain from the lifecycle, and
 # CLASS_KEY is the KBKDF root the ROM derives the AES key from.
-# +sep_crypto_edn_force covers EDN client 0 (AES) as well as OTBN's 2/3; without
-# it the AES masking PRNG never leaves reseed and the run hangs after
-# DECRYPT_START (see sep_rom_oca_encrypted_boot_test).
+# +esrc_noise_force brings the whole chain up, so every EDN client is served --
+# AES on client 0 as well as OTBN's 2 and 3. Without it the AES masking PRNG
+# never leaves reseed and the run hangs after DECRYPT_START (see
+# sep_rom_oca_encrypted_boot_test).
 #
 # ################ THIS TEST IS EXPECTED TO FAIL. DO NOT "FIX" IT. ################
 #
@@ -826,7 +823,7 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_class_key.toml",
-  "+sep_crypto_edn_force",
+  "+esrc_noise_force",
 ]
 
 [[tests]]
@@ -962,13 +959,13 @@ args = [
 # terminal. Distinct from sep_firmware_backup_invalid_signature_test, which puts
 # BAD_MAGIC on the primary and therefore covers neither the "invalid signature is
 # a retryable class" leg nor the OTBN result itself: it requires only
-# RSA_VERIFY_FAIL, which manifest_crypto.c also prints when OTBN fails to
+# RSA_PKCS1_FAIL, which is also reached when OTBN fails to
 # init, load or execute. This entry requires RSA_EXEC then RSA_PKCS1_FAIL per
 # slot and forbids the three engine-error markers.
 #
-# +sep_crypto_edn_force is required (OTBN parks in UrndRefresh with no entropy
-# chain up), hence the dv_shortcut tag. It grants EDN handshakes only and leaves
-# every RSA input and assertion alone.
+# +esrc_noise_force is required (OTBN parks in UrndRefresh with no entropy
+# chain up), hence the dv_shortcut tag. It forces the noise source only; the
+# health tests, CSRNG, EDN and every RSA input and assertion are untouched.
 #
 # ### THIS IS ONE OF THE SLOWEST TESTS IN THE GROUP. Budget ~35-45 minutes. ###
 # Two full RSA-3072 modular exponentiations run on the real OTBN, one per slot,
@@ -994,7 +991,7 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
-  "+sep_crypto_edn_force",
+  "+esrc_noise_force",
 ]
 
 [[tests]]
@@ -1012,8 +1009,8 @@ args = [
 # Matched pair with sep_firmware_backup_rom_key_valid_test, which runs the
 # identical flash image with the fuse clear and boots.
 #
-# No +sep_crypto_edn_force: revocation precedes the signature step, so OTBN is
-# never driven and RSA_VERIFY_START is forbidden.
+# No +esrc_noise_force: revocation precedes the signature step, so OTBN is
+# never driven and RSA_EXEC is forbidden.
 name = "sep_firmware_backup_pubkey_rom_0_revoked_key_test"
 module = "rom_fw.sep_firmware_backup_pubkey_rom_0_revoked_key_test"
 target = "rom_boot"
@@ -1038,10 +1035,10 @@ args = [
 # one bit, and the test asserts the bitmap is EXACTLY that bit, so a rejection
 # cannot come from a slot it did not select.
 # Slot 1 has no compiled-in digest, so this entry also pins the ORDER --
-# revocation before the digest table -- by forbidding ROM_KEY_EMPTY.
+# revocation before the digest table -- by forbidding PUBK_SLOT_UNPROVISIONED.
 #
-# No +sep_crypto_edn_force: revocation precedes the signature step, so OTBN is
-# never driven and RSA_VERIFY_START is forbidden.
+# No +esrc_noise_force: revocation precedes the signature step, so OTBN is
+# never driven and RSA_EXEC is forbidden.
 name = "sep_firmware_backup_pubkey_rom_1_revoked_key_test"
 module = "rom_fw.sep_firmware_backup_pubkey_rom_1_revoked_key_test"
 target = "rom_boot"
@@ -1066,10 +1063,10 @@ args = [
 # one bit, and the test asserts the bitmap is EXACTLY that bit, so a rejection
 # cannot come from a slot it did not select.
 # Slot 2 has no compiled-in digest, so this entry also pins the ORDER --
-# revocation before the digest table -- by forbidding ROM_KEY_EMPTY.
+# revocation before the digest table -- by forbidding PUBK_SLOT_UNPROVISIONED.
 #
-# No +sep_crypto_edn_force: revocation precedes the signature step, so OTBN is
-# never driven and RSA_VERIFY_START is forbidden.
+# No +esrc_noise_force: revocation precedes the signature step, so OTBN is
+# never driven and RSA_EXEC is forbidden.
 name = "sep_firmware_backup_pubkey_rom_2_revoked_key_test"
 module = "rom_fw.sep_firmware_backup_pubkey_rom_2_revoked_key_test"
 target = "rom_boot"
@@ -1094,10 +1091,10 @@ args = [
 # one bit, and the test asserts the bitmap is EXACTLY that bit, so a rejection
 # cannot come from a slot it did not select.
 # Slot 3 has no compiled-in digest, so this entry also pins the ORDER --
-# revocation before the digest table -- by forbidding ROM_KEY_EMPTY.
+# revocation before the digest table -- by forbidding PUBK_SLOT_UNPROVISIONED.
 #
-# No +sep_crypto_edn_force: revocation precedes the signature step, so OTBN is
-# never driven and RSA_VERIFY_START is forbidden.
+# No +esrc_noise_force: revocation precedes the signature step, so OTBN is
+# never driven and RSA_EXEC is forbidden.
 name = "sep_firmware_backup_pubkey_rom_3_revoked_key_test"
 module = "rom_fw.sep_firmware_backup_pubkey_rom_3_revoked_key_test"
 target = "rom_boot"
@@ -1122,10 +1119,10 @@ args = [
 # one bit, and the test asserts the bitmap is EXACTLY that bit, so a rejection
 # cannot come from a slot it did not select.
 # Slot 4 has no compiled-in digest, so this entry also pins the ORDER --
-# revocation before the digest table -- by forbidding ROM_KEY_EMPTY.
+# revocation before the digest table -- by forbidding PUBK_SLOT_UNPROVISIONED.
 #
-# No +sep_crypto_edn_force: revocation precedes the signature step, so OTBN is
-# never driven and RSA_VERIFY_START is forbidden.
+# No +esrc_noise_force: revocation precedes the signature step, so OTBN is
+# never driven and RSA_EXEC is forbidden.
 name = "sep_firmware_backup_pubkey_rom_4_revoked_key_test"
 module = "rom_fw.sep_firmware_backup_pubkey_rom_4_revoked_key_test"
 target = "rom_boot"
@@ -1144,17 +1141,17 @@ args = [
 # Primary rejected, failover, backup declares an unsupported signature TYPE.
 #
 # Distinct from sep_firmware_backup_invalid_signature_test, which corrupts the
-# signature VALUE. Both return MANIFEST_ERR_SIG_FAILED (0x0003000c), which six
-# arms of manifest_crypto.c share, so the error code cannot tell them apart --
+# signature VALUE. Both return MANIFEST_ERR_SIG_FAILED, which several
+# arms of the signature path share, so the error code cannot tell them apart --
 # each entry must forbid the other's discriminating token. This one requires
-# BAD_SIG_TYPE=0x00000000 and forbids RSA_VERIFY_START / RSA_VERIFY_FAIL.
+# PUBK_ALGO_UNSUPPORTED and forbids RSA_EXEC / RSA_PKCS1_FAIL.
 #
 # It also forbids PUBK_SEL=, which is the load-bearing assertion: the type check
-# is the first arm of validate_signature (manifest_crypto.c), ahead of
+# is the first arm of validate_signature, ahead of
 # the selector echo, so an absent echo is what proves the type check
 # preempted key selection rather than merely preceding the verdict.
 #
-# No +sep_crypto_edn_force: OTBN is never driven on either slot.
+# No +esrc_noise_force: OTBN is never driven on either slot.
 name = "sep_firmware_backup_invalid_signature_type_test"
 module = "rom_fw.sep_firmware_backup_invalid_signature_type_test"
 target = "rom_boot"
@@ -1170,21 +1167,21 @@ args = [
 ]
 
 [[tests]]
-# Primary rejected, failover, backup names ROM key index 6 -- the smallest
-# value outside the six-entry table (PUBK_SEL_NUM_ROM_KEYS, manifest.h), so
-# the bound is pinned at its boundary rather than at an arbitrary large index.
+# Primary rejected, failover, backup names key slot 26 -- OCA_KEY_SLOT_MAX + 1,
+# the smallest slot the format reserves, so the bound is pinned at its boundary
+# rather than at an arbitrary large slot number. Slot 25 would be accepted.
 #
 # Different arm from sep_firmware_backup_invalid_public_key_selection_test: that
-# one makes `selection` name no key SOURCE (BAD_KEY_SEL); this one keeps a valid
-# source and makes the INDEX out of range (BAD_KEY_IDX). Same error code, so each
+# one makes `selection` name no key SOURCE (PUBK_SEL_AMBIGUOUS); this one keeps a valid
+# source and makes the INDEX out of range (PUBK_SLOT_RESERVED). Same error code, so each
 # forbids the other's token.
 #
 # The load-bearing forbid is PUBK_REVOKE=: the ROM indexes the revocation bitmap
-# with 1u << index (manifest_crypto.c), so an out-of-range index that reached
+# with 1u << index, so an out-of-range index that reached
 # it would shift onto a bit belonging to no ROM slot. Forbidding the fuse echo
 # proves the bound stopped it first.
 #
-# No +sep_crypto_edn_force: OTBN is never driven on either slot.
+# No +esrc_noise_force: OTBN is never driven on either slot.
 name = "sep_firmware_backup_rom_key_index_invalid_test"
 module = "rom_fw.sep_firmware_backup_rom_key_index_invalid_test"
 target = "rom_boot"
@@ -1209,13 +1206,13 @@ args = [
 # A positive test that passed because key selection never ran would prove
 # nothing, so "it booted" is not the criterion. The entry requires the ROM to
 # echo PUBK_SEL=0x00000000 and PUBK_REVOKE=0x00000000 on the BACKUP and then
-# reach RSA_VERIFY_START and SIG_VALID, in that order. The reference asserts less
+# reach RSA_EXEC and RSA_VERIFY_OK, in that order. The reference asserts less
 # than this -- its own pattern list omits the ROM-key marker its primary-side
 # twin requires.
 #
-# Needs +sep_crypto_edn_force: the backup is valid, so the full RSA-3072 modexp
-# runs on OTBN, which parks in UrndRefresh until EDN grants entropy. It grants
-# OTBN's EDN handshakes only; the RSA assertions are untouched, so SIG_VALID
+# Needs +esrc_noise_force: the backup is valid, so the full RSA-3072 modexp
+# runs on OTBN, which parks in UrndRefresh until EDN grants entropy. It forces the noise
+# source only; the RSA assertions are untouched, so RSA_VERIFY_OK
 # still means the signature really verified.
 name = "sep_firmware_backup_rom_key_valid_test"
 module = "rom_fw.sep_firmware_backup_rom_key_valid_test"
@@ -1229,7 +1226,7 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
-  "+sep_crypto_edn_force",
+  "+esrc_noise_force",
 ]
 
 [[tests]]
@@ -1241,10 +1238,10 @@ args = [
 # the backup, so this is a failover-and-recover entry, not a terminal one.
 #
 # Marker substitution: this ROM has no INVALID_KEY_INDEX status, so the console
-# token BAD_KEY_SEL is the only per-reason evidence. BAD_KEY_IDX is forbidden so
+# token PUBK_SEL_AMBIGUOUS is the only per-reason evidence. PUBK_SLOT_RESERVED is forbidden so
 # the unassigned-SOURCE arm cannot be confused with the bad-INDEX arm.
 #
-# Needs +sep_crypto_edn_force: the backup is valid and runs a full modexp.
+# Needs +esrc_noise_force: the backup is valid and runs a full modexp.
 name = "sep_firmware_primary_invalid_public_key_selection_test"
 module = "rom_fw.sep_firmware_primary_invalid_public_key_selection_test"
 target = "rom_boot"
@@ -1257,7 +1254,7 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
-  "+sep_crypto_edn_force",
+  "+esrc_noise_force",
 ]
 
 [[tests]]
@@ -1269,15 +1266,15 @@ args = [
 # backup is raised to 1 and RE-SEALED with the dev0 key that ships in this tree.
 # Re-signing keeps the ROM's signature check enabled and passing on a
 # legitimately signed image -- the same thing the reference's packer does for
-# this scenario -- and env/sep_payload_mutate.verify_signing_key proves the local
+# this scenario -- and env/sep_oca_payload.verify_signing_key proves the local
 # signer reproduces the shipped signature byte for byte first.
 #
-# The rollback check runs before key selection (manifest_crypto.c),
-# and the entry asserts that ordering rather than assuming it: PUBK_SEL= must not
+# Anti-rollback runs after the root key is authorized and BEFORE the signature,
+# and the entry asserts that ordering rather than assuming it: RSA_EXEC must not
 # appear before the backup read, so the verdict is the intended REASON and not
 # merely a rejection.
 #
-# Needs +sep_crypto_edn_force: the backup is valid and runs a full modexp.
+# Needs +esrc_noise_force: the backup is valid and runs a full modexp.
 name = "sep_firmware_primary_invalid_security_version_test"
 module = "rom_fw.sep_firmware_primary_invalid_security_version_test"
 target = "rom_boot"
@@ -1290,7 +1287,7 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_secver1.toml",
-  "+sep_crypto_edn_force",
+  "+esrc_noise_force",
 ]
 
 [[tests]]
@@ -1308,7 +1305,7 @@ args = [
 # THE ONLY TERMINAL MEMBER, and structurally so: the shipped image gives both
 # slots rom_key_index 0 (configs/secure_boot_test.yaml:43-45), so one
 # bit refuses the primary AND the backup and the retry loop exhausts
-# (MANIFEST_ALL_FAILED, manifest_load.c). Slots 1-5 fail over and boot. The
+# (MANIFEST_ALL_FAILED). Slots 1-5 fail over and boot. The
 # base measures that from the image instead of testing slot == 0.
 #
 # It is also the STRICTEST member. Slot 0 is the one populated digest
@@ -1319,8 +1316,8 @@ args = [
 # one fuse bit. Matched pair with sep_firmware_primary_rom_key_valid_test, which
 # runs the identical image with the fuse clear and boots from the primary.
 #
-# No +sep_crypto_edn_force: revocation precedes the signature step, so OTBN is
-# never driven and RSA_VERIFY_START is forbidden.
+# No +esrc_noise_force: revocation precedes the signature step, so OTBN is
+# never driven and RSA_EXEC is forbidden.
 name = "sep_firmware_primary_pubkey_rom_0_revoked_key_test"
 module = "rom_fw.sep_firmware_primary_pubkey_rom_0_revoked_key_test"
 target = "rom_boot"
@@ -1352,14 +1349,14 @@ args = [
 # reference grades the primary rejection WARNING and ends in EXEC_IMAGE.
 #
 # Slot 1 has no compiled-in digest (key_digests.c), so this entry also pins
-# the ORDER -- revocation before the digest table -- by forbidding ROM_KEY_EMPTY.
+# the ORDER -- revocation before the digest table -- by forbidding PUBK_SLOT_UNPROVISIONED.
 # Narrowing vs the reference, disclosed in the module docstring: the reference
 # re-signs its primary with slot 1's own key, which this tree does not ship, so
 # this member proves the weaker "revocation preempts the empty-digest arm".
 #
-# Needs +sep_crypto_edn_force: the backup is valid and runs a full RSA-3072
-# modexp on OTBN. It grants OTBN's EDN handshakes only; the RSA assertions are
-# untouched, so SIG_VALID still means the signature really verified.
+# Needs +esrc_noise_force: the backup is valid and runs a full RSA-3072
+# modexp on OTBN. It forces the noise source only; the RSA assertions are
+# untouched, so RSA_VERIFY_OK still means the signature really verified.
 name = "sep_firmware_primary_pubkey_rom_1_revoked_key_test"
 module = "rom_fw.sep_firmware_primary_pubkey_rom_1_revoked_key_test"
 target = "rom_boot"
@@ -1372,7 +1369,7 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_pubk_revoke1.toml",
-  "+sep_crypto_edn_force",
+  "+esrc_noise_force",
 ]
 
 [[tests]]
@@ -1392,14 +1389,14 @@ args = [
 # reference grades the primary rejection WARNING and ends in EXEC_IMAGE.
 #
 # Slot 2 has no compiled-in digest (key_digests.c), so this entry also pins
-# the ORDER -- revocation before the digest table -- by forbidding ROM_KEY_EMPTY.
+# the ORDER -- revocation before the digest table -- by forbidding PUBK_SLOT_UNPROVISIONED.
 # Narrowing vs the reference, disclosed in the module docstring: the reference
 # re-signs its primary with slot 2's own key, which this tree does not ship, so
 # this member proves the weaker "revocation preempts the empty-digest arm".
 #
-# Needs +sep_crypto_edn_force: the backup is valid and runs a full RSA-3072
-# modexp on OTBN. It grants OTBN's EDN handshakes only; the RSA assertions are
-# untouched, so SIG_VALID still means the signature really verified.
+# Needs +esrc_noise_force: the backup is valid and runs a full RSA-3072
+# modexp on OTBN. It forces the noise source only; the RSA assertions are
+# untouched, so RSA_VERIFY_OK still means the signature really verified.
 name = "sep_firmware_primary_pubkey_rom_2_revoked_key_test"
 module = "rom_fw.sep_firmware_primary_pubkey_rom_2_revoked_key_test"
 target = "rom_boot"
@@ -1412,7 +1409,7 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_pubk_revoke2.toml",
-  "+sep_crypto_edn_force",
+  "+esrc_noise_force",
 ]
 
 [[tests]]
@@ -1432,14 +1429,14 @@ args = [
 # reference grades the primary rejection WARNING and ends in EXEC_IMAGE.
 #
 # Slot 3 has no compiled-in digest (key_digests.c), so this entry also pins
-# the ORDER -- revocation before the digest table -- by forbidding ROM_KEY_EMPTY.
+# the ORDER -- revocation before the digest table -- by forbidding PUBK_SLOT_UNPROVISIONED.
 # Narrowing vs the reference, disclosed in the module docstring: the reference
 # re-signs its primary with slot 3's own key, which this tree does not ship, so
 # this member proves the weaker "revocation preempts the empty-digest arm".
 #
-# Needs +sep_crypto_edn_force: the backup is valid and runs a full RSA-3072
-# modexp on OTBN. It grants OTBN's EDN handshakes only; the RSA assertions are
-# untouched, so SIG_VALID still means the signature really verified.
+# Needs +esrc_noise_force: the backup is valid and runs a full RSA-3072
+# modexp on OTBN. It forces the noise source only; the RSA assertions are
+# untouched, so RSA_VERIFY_OK still means the signature really verified.
 name = "sep_firmware_primary_pubkey_rom_3_revoked_key_test"
 module = "rom_fw.sep_firmware_primary_pubkey_rom_3_revoked_key_test"
 target = "rom_boot"
@@ -1452,7 +1449,7 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_pubk_revoke3.toml",
-  "+sep_crypto_edn_force",
+  "+esrc_noise_force",
 ]
 
 [[tests]]
@@ -1472,14 +1469,14 @@ args = [
 # reference grades the primary rejection WARNING and ends in EXEC_IMAGE.
 #
 # Slot 4 has no compiled-in digest (key_digests.c), so this entry also pins
-# the ORDER -- revocation before the digest table -- by forbidding ROM_KEY_EMPTY.
+# the ORDER -- revocation before the digest table -- by forbidding PUBK_SLOT_UNPROVISIONED.
 # Narrowing vs the reference, disclosed in the module docstring: the reference
 # re-signs its primary with slot 4's own key, which this tree does not ship, so
 # this member proves the weaker "revocation preempts the empty-digest arm".
 #
-# Needs +sep_crypto_edn_force: the backup is valid and runs a full RSA-3072
-# modexp on OTBN. It grants OTBN's EDN handshakes only; the RSA assertions are
-# untouched, so SIG_VALID still means the signature really verified.
+# Needs +esrc_noise_force: the backup is valid and runs a full RSA-3072
+# modexp on OTBN. It forces the noise source only; the RSA assertions are
+# untouched, so RSA_VERIFY_OK still means the signature really verified.
 name = "sep_firmware_primary_pubkey_rom_4_revoked_key_test"
 module = "rom_fw.sep_firmware_primary_pubkey_rom_4_revoked_key_test"
 target = "rom_boot"
@@ -1492,7 +1489,7 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_pubk_revoke4.toml",
-  "+sep_crypto_edn_force",
+  "+esrc_noise_force",
 ]
 
 [[tests]]
@@ -1512,14 +1509,14 @@ args = [
 # reference grades the primary rejection WARNING and ends in EXEC_IMAGE.
 #
 # Slot 5 has no compiled-in digest (key_digests.c), so this entry also pins
-# the ORDER -- revocation before the digest table -- by forbidding ROM_KEY_EMPTY.
+# the ORDER -- revocation before the digest table -- by forbidding PUBK_SLOT_UNPROVISIONED.
 # Narrowing vs the reference, disclosed in the module docstring: the reference
 # re-signs its primary with slot 5's own key, which this tree does not ship, so
 # this member proves the weaker "revocation preempts the empty-digest arm".
 #
-# Needs +sep_crypto_edn_force: the backup is valid and runs a full RSA-3072
-# modexp on OTBN. It grants OTBN's EDN handshakes only; the RSA assertions are
-# untouched, so SIG_VALID still means the signature really verified.
+# Needs +esrc_noise_force: the backup is valid and runs a full RSA-3072
+# modexp on OTBN. It forces the noise source only; the RSA assertions are
+# untouched, so RSA_VERIFY_OK still means the signature really verified.
 name = "sep_firmware_primary_pubkey_rom_5_revoked_key_test"
 module = "rom_fw.sep_firmware_primary_pubkey_rom_5_revoked_key_test"
 target = "rom_boot"
@@ -1532,7 +1529,7 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_pubk_revoke5.toml",
-  "+sep_crypto_edn_force",
+  "+esrc_noise_force",
 ]
 
 [[tests]]
@@ -1547,16 +1544,16 @@ args = [
 #
 # The ONLY entry in this group whose PRIMARY drives the verifier, and it says so:
 # primary_expected_rsa_starts = 1, so the shared base requires the primary's own
-# RSA_VERIFY_START between the primary read and the primary error and a total of
+# RSA_EXEC between the primary read and the primary error and a total of
 # exactly 2 across the run. Every other member declares 0.
 #
 # Distinct from sep_firmware_primary_invalid_signature_type_test, which shares
-# error code 0x0003000c (manifest.h, six arms): this entry pins the VALUED token
+# the same error code: this entry pins the VALUED token
 # PUBK_SEL=0x00000000 to TWO occurrences, one per slot, and requires
-# RSA_VERIFY_FAIL; that one pins the BARE token PUBK_SEL= to ONE and forbids
-# RSA_VERIFY_FAIL. Either half alone makes them mutually exclusive on one log.
+# RSA_PKCS1_FAIL; that one pins the BARE token PUBK_SEL= to ONE and forbids
+# RSA_PKCS1_FAIL. Either half alone makes them mutually exclusive on one log.
 #
-# Needs +sep_crypto_edn_force: TWO full modexps run here.
+# Needs +esrc_noise_force: TWO full modexps run here.
 name = "sep_firmware_primary_invalid_signature_test"
 module = "rom_fw.sep_firmware_primary_invalid_signature_test"
 target = "rom_boot"
@@ -1580,17 +1577,17 @@ args = [
 # The field is inside the hashed TBS, so the helper re-hashes; no re-sign, because
 # the type is refused before rsa_3072_verify.
 #
-# The type check is the FIRST arm of validate_signature (manifest_crypto.c),
+# The type check is the FIRST arm of validate_signature,
 # ahead even of the PUBK_SEL= echo, and that is what this entry proves
 # rather than assumes: PUBK_SEL= is pinned to exactly ONE occurrence, the booting
-# backup's. Its signature-VALUE sibling pins the same token to TWO. RSA_VERIFY_FAIL
+# backup's. Its signature-VALUE sibling pins the same token to TWO. RSA_PKCS1_FAIL
 # is forbidden here and required there, so the two cannot pass on one log.
 #
 # Marker substitution: this ROM defines SEP_MSG_INVALID_SIGNATURE_TYPE
-# (status_values.h) and never emits it, so BAD_SIG_TYPE=0x00000000 on the debug
+# (status_values.h) and never emits it, so PUBK_ALGO_UNSUPPORTED on the debug
 # console is the only per-reason evidence.
 #
-# Needs +sep_crypto_edn_force: the backup is valid and runs a full modexp.
+# Needs +esrc_noise_force: the backup is valid and runs a full modexp.
 name = "sep_firmware_primary_invalid_signature_type_test"
 module = "rom_fw.sep_firmware_primary_invalid_signature_type_test"
 target = "rom_boot"
@@ -1603,29 +1600,30 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
-  "+sep_crypto_edn_force",
+  "+esrc_noise_force",
 ]
 
 [[tests]]
 # PRIMARY names a ROM key index outside the table; the backup boots.
 #
-# index = 6 == PUBK_SEL_NUM_ROM_KEYS (manifest.h), the smallest value the
+# index = 6 == PUBK_SEL_NUM_ROM_KEYS, the smallest value the
 # bound must refuse and the boundary of the reference's own range(6,16). A larger
 # value would also pass against a ROM that wrote > instead of >=.
 #
 # The load-bearing check is a COUNT, not a forbid, and the difference matters:
-# the index bound runs before check_pubkey_revoked (manifest_crypto.c then
-#), which is a security property because the ROM shifts by the index
-# (1u << index). The backup-side sibling can forbid PUBK_REVOKE= outright;
+# the reserved-range check runs inside is_key_authorized, which the validator
+# calls before the revocation check. That is a security property because
+# revocation indexes its bitmap by slot number. The backup-side sibling can
+# forbid PUBK_REVOKE= outright;
 # here the booting backup legitimately prints it, so the entry requires exactly
-# ONE occurrence and only after the backup read. ROM_KEY_EMPTY is forbidden for
+# ONE occurrence and only after the backup read. PUBK_SLOT_UNPROVISIONED is forbidden for
 # the same reason one step later.
 #
 # Different arm from sep_firmware_primary_invalid_public_key_selection_test, which
-# makes selection name no key SOURCE and prints BAD_KEY_SEL; both share
-# 0x0003000c, so BAD_KEY_SEL is forbidden here and BAD_KEY_IDX required.
+# makes selection name no key SOURCE and prints PUBK_SEL_AMBIGUOUS; both share
+# 0x0003000c, so PUBK_SEL_AMBIGUOUS is forbidden here and PUBK_SLOT_RESERVED required.
 #
-# Needs +sep_crypto_edn_force: the backup is valid and runs a full modexp.
+# Needs +esrc_noise_force: the backup is valid and runs a full modexp.
 name = "sep_firmware_primary_rom_key_index_invalid_test"
 module = "rom_fw.sep_firmware_primary_rom_key_index_invalid_test"
 target = "rom_boot"
@@ -1638,7 +1636,7 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
-  "+sep_crypto_edn_force",
+  "+esrc_noise_force",
 ]
 
 [[tests]]
@@ -1655,7 +1653,7 @@ args = [
 # so "it booted" is not the criterion. Four channels are required: PUBK_SEL=
 # 0x00000000 and PUBK_REVOKE=0x00000000 each EXACTLY ONCE (the backup is never
 # read, so a second echo means an unselected slot reached key selection);
-# RSA_VERIFY_START -> SIG_VALID -> CRYPTO_VALIDATE_OK in that order after the
+# RSA_EXEC -> RSA_VERIFY_OK -> MANIFEST_OK in that order after the
 # selector; and the DEVICE side -- not one read inside the backup slot span, which
 # is the only channel that can say the PRIMARY served the boot, because a silent
 # failover also reaches MANIFEST_OK.
@@ -1669,8 +1667,8 @@ args = [
 # (status_values.h) and never emits it, so the console echoes above are the
 # substitution.
 #
-# Needs +sep_crypto_edn_force: the primary is valid and runs a full RSA-3072
-# modexp on OTBN. The RSA assertions are untouched, so SIG_VALID still means the
+# Needs +esrc_noise_force: the primary is valid and runs a full RSA-3072
+# modexp on OTBN. The RSA assertions are untouched, so RSA_VERIFY_OK still means the
 # signature really verified.
 name = "sep_firmware_primary_rom_key_valid_test"
 module = "rom_fw.sep_firmware_primary_rom_key_valid_test"
@@ -1684,7 +1682,7 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
-  "+sep_crypto_edn_force",
+  "+esrc_noise_force",
 ]
 
 
@@ -1692,7 +1690,7 @@ args = [
 # BL1 security version EQUAL to the BL1_VERSION fuse floor -> accepted, boots.
 #
 # The ACCEPT boundary of check_security_version, which rejects only when
-# manifest_ver < fuse_ver (manifest_crypto.c). Both slots are raised to
+# manifest_ver < fuse_ver. Both slots are raised to
 # security_version 36 and re-signed with dev0; the fuse floor is also 36.
 #
 # A DELIBERATELY DIFFERENT CASE FROM THE REFERENCE, and the docstring says so at
@@ -1718,7 +1716,7 @@ args = [
 # popcounts need at least 36 bits; the manifest is raised to match, so the accept
 # boundary is preserved.
 #
-# Needs +sep_crypto_edn_force: the primary is valid and runs a full RSA-3072 modexp.
+# Needs +esrc_noise_force: the primary is valid and runs a full RSA-3072 modexp.
 name = "sep_firmware_bl1_ver_test"
 module = "rom_fw.sep_firmware_bl1_ver_test"
 target = "rom_boot"
@@ -1731,7 +1729,7 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_bl1ver36_spread.toml",
-  "+sep_crypto_edn_force",
+  "+esrc_noise_force",
 ]
 
 
@@ -1741,24 +1739,23 @@ args = [
 # One of four entries sharing ONE implementation,
 # rom_fw/sep_chiplet_pubkey_base.py; this module's only substantive line is
 # _CHIPLET_KEY = 0 and the base it picks. THE FUSED-KEY ARM IS DISTINCT CODE, not
-# the ROM-key arm behind a different selector: validate_signature branches at
-# manifest_crypto.c and the fused arm has its own fuse addressing, its
-# own revocation bit and its own FUSE_KEY_EMPTY. These four items do not overlap the
+# the ROM-key arm behind a different selector: the platform dispatches on the
+# slot's bitmap region, and the fused arm has its own fuse addressing, its
+# own revocation bit and its own PUBK_OTP_EMPTY. These four items do not overlap the
 # pubkey_rom_* families of batches R1 and R2.
 #
 # The preload does three things, each closing a different hole:
 # CHIPLET_PUBK_HASH0 = SHA-256 of the dev0 modulus (the only usable RSA key here);
 # CHIPLET_PUBK_HASH1 = a one-bit-flipped DECOY, so a ROM reading the wrong chiplet
-# fuse fails PUBK_HASH_MISMATCH rather than booting -- a live guard, since
-# manifest_crypto.c records that this ROM once read the wrong fuse words;
-# and CHIPLET_PUBK_REVOKE bit 0 revokes ROM development key 0, which is inert on the
-# correct ROM but makes a fall-through to the ROM-key arm print
-# KEY_REVOKED idx=0x00000000, which this entry forbids.
+# fuse fails PUBK_UNAUTHORIZED rather than booting; and CHIPLET_PUBK_REVOKE bit 0
+# revokes ROM development key 0, which is inert on the correct ROM but makes a
+# fall-through to the ROM-key arm resolve slot 0, printing PUBK_SEL=0x00000000,
+# which this entry forbids.
 #
 # Matched pair with sep_firmware_chiplet_pubkey_0_revoke_test: byte-identical flash
 # image, one CHIPLET_PUBK_REVOKE bit apart.
 #
-# Needs +sep_crypto_edn_force: the primary verifies and runs a real RSA-3072 modexp.
+# Needs +esrc_noise_force: the primary verifies and runs a real RSA-3072 modexp.
 name = "sep_firmware_chiplet_pubkey_0_test"
 module = "rom_fw.sep_firmware_chiplet_pubkey_0_test"
 target = "rom_boot"
@@ -1771,7 +1768,7 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_chiplet_key0.toml",
-  "+sep_crypto_edn_force",
+  "+esrc_noise_force",
 ]
 
 
@@ -1792,18 +1789,18 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_chiplet_key1.toml",
-  "+sep_crypto_edn_force",
+  "+esrc_noise_force",
 ]
 
 
 [[tests]]
 # CHIPLET FUSED key 0 REVOKED -> both manifests refused -> terminal.
 #
-# CHIPLET_PUBK_REVOKE bit 16 refuses CHIPLET_PUBK_HASH0 (manifest_crypto.c
-# selects the index tests it). Both slots select the same fused key and both
+# CHIPLET_PUBK_REVOKE bit 16 refuses CHIPLET_PUBK_HASH0 -- revocation indexes
+# its bitmap by the same slot number the selector names. Both slots select the same fused key and both
 # are re-signed with dev0 and re-checked with verify_sealed before the run, so one
 # fuse bit refuses two provably bootable manifests and the retry loop exhausts
-# (MANIFEST_ALL_FAILED, manifest_load.c).
+# (MANIFEST_ALL_FAILED).
 #
 # THE STRICT FORM, for BOTH members. The ROM-slot revoke families of R1/R2 could
 # only reach it at slot 0, because slots 1-5 have no populated digest and keep a
@@ -1814,8 +1811,8 @@ args = [
 # CHIPLET_PUBK_HASH0/1, while sep_firmware_pubkey_test.sv encodes 0x40/0x80,
 # which are unused ROM-slot bits in this map.
 #
-# No +sep_crypto_edn_force: revocation precedes rsa_3072_verify
-# (manifest_crypto.c), so OTBN is never driven and RSA_VERIFY_START is
+# No +esrc_noise_force: revocation precedes rsa_3072_verify
+#, so OTBN is never driven and RSA_EXEC is
 # forbidden. Matched pair with sep_firmware_chiplet_pubkey_0_test.
 name = "sep_firmware_chiplet_pubkey_0_revoke_test"
 module = "rom_fw.sep_firmware_chiplet_pubkey_0_revoke_test"
@@ -1869,7 +1866,7 @@ args = [
 #
 # Both slots' life_cycle_states are narrowed to 0x4 -- PROD_END only -- so the boot
 # cannot complete unless the ROM decoded the lifecycle correctly
-# (manifest_load.c).
+#.
 #
 # THE REGISTER CHANNEL IS THE POINT. Every demotion console string is printed from a
 # local computed one line earlier, so a ROM that decided correctly and wrote the
@@ -1882,7 +1879,7 @@ args = [
 # decision feeding the KBKDF salt and the three SKS UID keys (:62-140,
 #). This ROM derives nothing from it in BL0, so only the DECISION is ported.
 #
-# Needs +sep_crypto_edn_force: PROD_END enforces secure boot, so a real modexp runs.
+# Needs +esrc_noise_force: PROD_END enforces secure boot, so a real modexp runs.
 name = "sep_firmware_demotion_decision_auth_flag_0_prod_end_test"
 module = "rom_fw.sep_firmware_demotion_decision_auth_flag_0_prod_end_test"
 target = "rom_boot"
@@ -1895,7 +1892,7 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_end.toml",
-  "+sep_crypto_edn_force",
+  "+esrc_noise_force",
 ]
 
 
@@ -1917,14 +1914,14 @@ args = [
 # forced to NO_SIGNATURE as manifest_signing.py does.
 #
 # THE TWO SURFACES ARE COUPLED, which is what makes the port non-vacuous: an unsigned
-# primary can only boot because the fuse is burned (manifest_load.c precedes the
-# PROD rule). Drop the fuse and PROD refuses the primary at
-# BAD_SIG_TYPE=0x00000000 and falls over to the backup, producing outcome O5 under
-# this name -- so BAD_SIG_TYPE=, the backup source and LC=PROD_END are forbidden and
+# primary can only boot because the fuse is burned, which the secure-boot
+# decision consults ahead of the lifecycle view. Drop the fuse and PROD refuses the primary at
+# PUBK_ALGO_UNSUPPORTED and falls over to the backup, producing outcome O5 under
+# this name -- so PUBK_ALGO_UNSUPPORTED, the backup source and LC=PROD_END are forbidden and
 # FUSE: SBOOT_DIS: 1 is required.
 #
-# No +sep_crypto_edn_force: secure boot is off, so OTBN is never driven and
-# RSA_VERIFY_START is forbidden. If that ordering ever changed this entry would fail
+# No +esrc_noise_force: secure boot is off, so OTBN is never driven and
+# RSA_EXEC is forbidden. If that ordering ever changed this entry would fail
 # rather than silently start needing the shortcut.
 #
 # HALF-PORT, disclosed, exactly as for the PROD_END sibling: the DECISION only, not
@@ -1975,7 +1972,7 @@ args = [
 # :165-283). This ROM derives nothing from it in BL0 (rom_main.c
 # stores it for BL1), so only the DECISION is ported.
 #
-# Needs +sep_crypto_edn_force: PROD_END enforces secure boot (lifecycle.c),
+# Needs +esrc_noise_force: PROD_END enforces secure boot (lifecycle.c),
 # so a real RSA-3072 modexp runs on OTBN.
 name = "sep_firmware_demotion_decision_no_flag_prod_end_test"
 module = "rom_fw.sep_firmware_demotion_decision_no_flag_prod_end_test"
@@ -1989,7 +1986,7 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_end.toml",
-  "+sep_crypto_edn_force",
+  "+esrc_noise_force",
 ]
 
 [[tests]]
@@ -2012,7 +2009,7 @@ args = [
 #
 # HALF-PORT, disclosed, exactly as for the sibling above.
 #
-# Needs +sep_crypto_edn_force: PROD_END enforces secure boot (lifecycle.c).
+# Needs +esrc_noise_force: PROD_END enforces secure boot (lifecycle.c).
 name = "sep_firmware_demotion_decision_no_flag_prod_end_sel_bit_set_test"
 module = "rom_fw.sep_firmware_demotion_decision_no_flag_prod_end_sel_bit_set_test"
 target = "rom_boot"
@@ -2025,7 +2022,7 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_end.toml",
-  "+sep_crypto_edn_force",
+  "+esrc_noise_force",
 ]
 
 [[tests]]
@@ -2045,14 +2042,14 @@ args = [
 # 30 cleared AND signature_type = NO_SIGNATURE, manifest_signing.py).
 # Reading only the manifest surface produced the VP half's worst error, retracted
 # as batch_runs_0904_vp/FINDINGS.md F11 item 1. The two are COUPLED: an unsigned
-# primary boots only because manifest_load.c short-circuits before the PROD
-# rule, so dropping the fuse would refuse the primary at
-# BAD_SIG_TYPE= and fail over to the backup, producing O5 under whatever name the
-# testcase had. BAD_SIG_TYPE=, the backup manifest source and LC=PROD_END are
+# primary boots only because the burned fuse is consulted ahead of the
+# lifecycle view, so dropping the fuse would refuse the primary at
+# PUBK_ALGO_UNSUPPORTED and fail over to the backup, producing O5 under whatever name the
+# testcase had. PUBK_ALGO_UNSUPPORTED, the backup manifest source and LC=PROD_END are
 # forbidden and FUSE: SBOOT_DIS: 1 is required, so that substitution is loud.
 #
-# No +sep_crypto_edn_force: secure boot is off, so OTBN is never driven and
-# RSA_VERIFY_START is forbidden.
+# No +esrc_noise_force: secure boot is off, so OTBN is never driven and
+# RSA_EXEC is forbidden.
 #
 # COLLAPSE NOTE: no_flag_prod (tracker row 111, not in this batch) drives
 # (0, 0, 0) and produces this same O5 outcome; the two differ only in the
@@ -2094,7 +2091,7 @@ args = [
 # +AUTH_FLAG_0 is also set and is ignored, for the same reason as in the O5
 # sibling. +SECURE_BOOT_DIS is ported on both surfaces; see the O5 entry above.
 #
-# No +sep_crypto_edn_force: secure boot is off.
+# No +esrc_noise_force: secure boot is off.
 #
 # COLLAPSE NOTE: unauth_flag_0_prod (tracker row 112, not in this batch) drives
 # (0, 0, 1) and produces this same O4 outcome.
@@ -2132,7 +2129,7 @@ args = [
 # bit.
 #
 # +SECURE_BOOT_DIS is ported on both surfaces; see the O5 entry above. No
-# +sep_crypto_edn_force: secure boot is off.
+# +esrc_noise_force: secure boot is off.
 #
 # COLLAPSE NOTE: unauth_flag_30_prod_sel_bit_set (tracker row 119, not in this
 # batch) drives the same three demotion inputs and differs only on the
@@ -2174,7 +2171,7 @@ args = [
 # BL2_DEMOTE_DEC=0 -- a STRENGTHENING over the reference, disclosed as such.
 #
 # +SECURE_BOOT_DIS is ported on both surfaces; see the O5 entry above. No
-# +sep_crypto_edn_force: secure boot is off.
+# +esrc_noise_force: secure boot is off.
 #
 # HALF-PORT, disclosed, as for every member of this group.
 name = "sep_firmware_demotion_decision_auth_flag_0_unauth_flag_0_prod_sel_bit_set_test"
@@ -2212,7 +2209,7 @@ args = [
 # so this testcase and sep_firmware_chiplet_pubkey_1_test are a matched pair on the
 # FUSE side: one fuse image, two manifests differing only in public_key_sel,
 # opposite verdicts. What it does NOT catch is the historical +0x100/+0x120
-# wrong-ADDRESS derivation (manifest_crypto.c): that base reads a digest
+# wrong-ADDRESS derivation: that base reads a digest
 # matching nothing and so produces the mismatch this entry already requires. R07
 # conflates the two classes; the positive members cover the address one.
 #
@@ -2226,8 +2223,8 @@ args = [
 # NO TRACKER ROW AND NO STATUS IS CLAIMED. This is not one of batch R4's six
 # assigned items; it is R07's remedy. The Coordinator owns testcase_tracker.csv.
 #
-# No +sep_crypto_edn_force: the digest bind precedes rsa_3072_verify
-# (manifest_crypto.c), so OTBN is never driven and RSA_VERIFY_START
+# No +esrc_noise_force: the digest bind precedes rsa_3072_verify
+#, so OTBN is never driven and RSA_EXEC
 # is forbidden. Two slot attempts, zero modexps.
 name = "sep_firmware_chiplet_pubkey_0_wrong_digest_test"
 module = "rom_fw.sep_firmware_chiplet_pubkey_0_wrong_digest_test"

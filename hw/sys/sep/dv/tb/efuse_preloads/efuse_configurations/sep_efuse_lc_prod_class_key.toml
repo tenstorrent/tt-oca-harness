@@ -6,7 +6,7 @@
 #
 # sep_decryption_failure_terminal_test needs the opposite trade. Its stimulus is a
 # corrupted CIPHERTEXT, and the manifest is re-hashed and re-signed with the dev0
-# key afterwards (cocotb/env/sep_payload_mutate.py), so the signature is valid by
+# key afterwards (cocotb/env/sep_oca_payload.py), so the signature is valid by
 # construction and cannot mask anything. PROD then buys the stronger precondition:
 # secure_boot_enabled() enforces the crypto chain from the LIFECYCLE rather than
 # from a manifest flag (manifest_load.c:278-288), so the run cannot silently
