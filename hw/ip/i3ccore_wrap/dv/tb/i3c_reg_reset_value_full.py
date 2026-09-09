@@ -2,21 +2,14 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 """
-I3C Register Reset-Value Sweep  (Test Plan #24)
+ I3C Register Reset-Value Sweep
 
 Reads real config & status registers after reset and compares each against the
 reset value published by the generated register map.
 
 Both halves of every row — the offset AND the expected value — are resolved by
-symbol from I3CCSR_reg, never hand-copied. That is deliberate: the previous
-version of this file carried a hand-written offset table in which 6 of 12
-entries addressed a different register than the name they were logged under
-(HC_CAPABILITIES read CONTROLLER_DEVICE_ADDR; QUEUE_THLD_CTRL read QUEUE_SIZE;
-DATA_BUFFER_THLD_CTRL read ALT_QUEUE_SIZE; PIO_CONTROL read PIO_INTR_FORCE; and
-TTI_CONTROL / TTI_INTERRUPT_ENABLE read unmapped space, which returns 0x0). A
-stale symbol now raises AttributeError at import instead of silently reading
-the wrong address, and a regenerated map moves offsets and reset values
-together.
+symbol from I3CCSR_reg, never hand-copied. A stale symbol raises AttributeError
+at import, and a regenerated map moves offsets and reset values together.
 
 Deliberately avoids:
   - FIFO/data ports (COMMAND/RESPONSE/TX_DATA/RX_DATA/IBI) — reading these

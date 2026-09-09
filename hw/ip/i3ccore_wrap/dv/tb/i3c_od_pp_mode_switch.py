@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 """
-I3C OD->PP Mode Switch  (Test Plan #28)
+ I3C OD->PP Mode Switch
 
 Runs back-to-back transfers that exercise the controller muxing between the
 Open-Drain (broadcast/address phase) and Push-Pull (payload) timing banks.

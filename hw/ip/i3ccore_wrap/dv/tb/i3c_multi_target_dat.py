@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 """
-I3C Multi-Target DAT  (Test Plan #38)
+ I3C Multi-Target DAT
 
 Programs multiple Device Address Table entries and exercises addressing the
 real target via index 0 while index 1 points to a non-responding address

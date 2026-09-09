@@ -2,44 +2,12 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 """
-I3C Target-TX Capacity Limit Demonstration (DE evidence test)
+I3C Target-TX Capacity Test
 
-Proves that a target response larger than the TTI TX data queue capacity can
-NEVER be transmitted correctly, because `descriptor_tx.sv` gates transfer
-start on the WHOLE payload being resident:
-
-    // descriptor_tx.sv:105 (OCH line refs at 2026-07-03)
-    tx_start = !tx_pending && descriptor_valid &&
-               (tti_tx_queue_depth_i + 1 >= data_len_words);
-
-With `TTI_TX_FIFO_DEPTH = 64` DWORDs (i3c_defines.svh) plus the one word held
-in the Nto8 width converter, the largest startable response is 65 words =
-260 bytes. For anything larger, `data_len_words > 65` and tx_start can never
-assert -- even with a perfect streaming firmware that tops up the queue as
-space frees (the gate compares against the FULL message length, so the queue
-can never "catch up"). Meanwhile the bus FSM ACKs the controller's read as
-soon as the TX DESCRIPTOR is visible (i3c_target_fsm gates the read-ACK on
-tx_desc_avail, not on tx_start), so the read data phase runs with no valid
-byte stream -> corrupted data instead of a clean NACK.
-
-Four legs, identical flow, only the length changes:
-  leg A: 256 bytes ( 64 words <= 65)  -> expect PASS   (control)
-  leg B: 260 bytes ( 65 words == 65)  -> expect PASS   (exact capacity edge)
-  leg C: 512 bytes (128 words  > 65)  -> expect PASS per spec; FAILED on the
-         original RTL (first byte replayed x512 -- the bug evidence), PASSES
-         with the OCH streaming fixes (descriptor_tx/i3c_target_fsm)
-  leg D: 515 bytes (>capacity AND non-word-aligned) -> streaming path with a
-         partial last word (byte_counter + Nto8 flush interaction)
-
-All legs assert the spec-correct expectation (full-length, byte-exact data).
-Do NOT weaken leg C to "expected failure" -- a FAIL here is the deliverable.
-
-Related: chiplet-level smc_occp_undersize_body_test hit the small-response
-flavor of the same ACK-before-tx_start hole (desc-first fw order, stale first
-byte re-transmitted 7x on the bus); fw side is fixed by data-first ordering,
-which works ONLY for <= 260 B. This test covers the > 260 B leg that no fw
-ordering can fix. See I3C_TICKET_VERIFICATION_SUMMARY.md and
-i3c_long_read_sanity (500 B, "Data mismatch" for the same root cause).
+Transfer start requires the complete response to fit in the 64-word TX queue
+plus the width converter's pending word. The test checks the 256-byte control
+case, the 260-byte boundary, and larger word-aligned and unaligned responses.
+Every response must complete with its full byte-exact payload.
 """
 
 import cocotb
@@ -74,7 +42,7 @@ LEGS = [
 
 
 class TB:
-    """Minimal testbench (same shape as i3c_write_read_sanity)."""
+    """AXI-Lite testbench wrapper for the target-TX capacity test."""
 
     def __init__(self, dut):
         self.dut = dut
@@ -100,13 +68,10 @@ class TB:
 
 
 async def clear_leg_state(h, ctrl, tgt, log, tag):
-    """W1C-clear sticky interrupt status on both sides between legs.
+    """Clear sticky controller and target interrupt status between legs.
 
-    private_read leaves TX_DESC_COMPLETE (and friends) set in the target's
-    TTI INTERRUPT_STATUS; the next leg's main loop would break out on the
-    STALE flag before transferring anything (observed: leg B "completed"
-    400 ns after its descriptor write with 16/260 bytes written). The API
-    never clears these, so the test does per-leg hygiene here.
+    Uncleared completion status can terminate the next leg before it transfers
+    data.
     """
     tgt_st = await h.read(tgt.base + I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR)
     if tgt_st:
@@ -190,9 +155,7 @@ async def test_tx_capacity_512(dut):
         tb.log.info(f"  {name}: ok={ok} received={got} match={match}")
     tb.log.info("=" * 60)
 
-    # Spec-correct expectation for EVERY leg: full-length, byte-exact data.
-    # On current RTL leg C fails (tx_start can never fire for 128 words) --
-    # that assertion failure is the evidence this test exists to produce.
+    # Every leg must complete with its full byte-exact payload.
     for name, n in LEGS:
         ok, got, match = results[name]
         assert ok, f"[{name}] read did not complete cleanly (got {got}/{n})"

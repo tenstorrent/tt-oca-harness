@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 """
-I3C Random Transfer Stress  (Test Plan #44)
+ I3C Random Transfer Stress
 
 Directed-random private write/read transfers with random direction/length/data,
 checked for integrity each iteration via the built-in scoreboard.

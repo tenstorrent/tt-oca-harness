@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 """
-I3C Error: Parity Injection  (Test Plan #36)
+I3C Error: Parity Injection
 
 Two cocotb tests:
 
@@ -16,38 +16,25 @@ Two cocotb tests:
       inside one data byte of an immediate write, which breaks that byte's T-bit
       parity, and the target's TE2 check must fire.
 
-How the injection works
------------------------
 In I3C SDR every data byte is followed by a T-bit which, for a controller->target
-write, is the odd parity of that byte. The target recomputes it and compares:
-
-    i3c_target_fsm.sv:267   assign parity_bit = ^{last_byte, 1'b1};
-    i3c_target_fsm.sv:745   te2_err_priv_wr = te2_err_det_en_i &&
-                                              (parity_bit != bus_rx_rsp_i.data[0]);
-
-so flipping any single data bit makes the recomputed parity disagree with the T-bit
-that was actually transmitted.
+write, is the odd parity of that byte. Flipping any single data bit makes the
+target's recomputed parity disagree with the transmitted T-bit.
 
 The flip needs a TB hook (`sda_corrupt`, tb_i3ccore.sv) because `sda_shared` is a
 continuous assign -- a cocotb deposit on it would be overwritten at the next
 evaluation. `sda_corrupt` has no continuous driver, so cocotb can drive it, and it is
 XOR-ed into the shared bus.
 
-Two independent checkers, both derived from RTL + spec rather than from observed
-behaviour:
+Two independent checkers validate the result:
 
   1. TARGET_ERR_CNT_TE2 (offset 0x244) increments by exactly 1.
-     tti.sv:709-710 increments it on te2_err_i, saturating at 0xFF.
   2. The corrupted byte -- and every byte after it in the same transfer -- must NOT
-     reach the target RX FIFO:
-        i3c_target_fsm.sv:339  parity_err latches on te2_err_priv_wr until target idle
-        i3c_target_fsm.sv:356  rx_fifo_wvalid_raw = ... && !(te2_err_priv_wr || parity_err)
-     So injecting into byte k of an N-byte write must leave exactly k bytes received.
+     reach the target RX FIFO because parity_err suppresses RX FIFO writes until the
+     target returns idle. Injecting into byte k must leave exactly k bytes received.
 
 Attribution note: te2_err_o = te2_err_ccc | te2_err_priv_wr
-(controller_standby_i3c.sv:629), so the counter also advances on CCC data-parity
-errors. No CCC traffic is issued inside the injection window here, so a +1 is
-attributable to the private write.
+so the counter also advances on CCC data-parity errors. No CCC traffic is issued
+inside the injection window, so a +1 is attributable to the private write.
 """
 import os
 import sys
@@ -96,7 +83,7 @@ async def _enable_te2_detection(helper, tgt, log):
 
 
 async def _te2_count(helper, tgt):
-    """TARGET_ERR_CNT_TE2.CNT — 8-bit, saturates at 0xFF (tti.sv:710)."""
+    """Return the saturating 8-bit TARGET_ERR_CNT_TE2.CNT field."""
     return (await helper.read(tgt.base + I3C_EC_TTI_TARGET_ERR_CNT_TE2_REG_ADDR)) & 0xFF
 
 
@@ -206,10 +193,7 @@ async def test_error_status_baseline(dut):
 
     data = [0xDE, 0xAD, 0xBE, 0xEF]
     ok, resp, rx = await ctrl.private_write(data, tgt, dat_idx=0)
-    # ERR_STATUS is bits [31:28] per MIPI I3C HCI v1.2 section 8.5 Table 146. The old
-    # slice (resp >> 27) & 0x3 read {ERR_STATUS[0], TID[3]} -- neither field -- so
-    # `err == 0` was satisfied by every EVEN error code, including the 0x2 PARITY this
-    # test is named for.
+    # MIPI I3C HCI v1.2 Table 146 encodes ERR_STATUS in bits [31:28].
     err = (resp >> 28) & 0xF
     tb.log.info(f"baseline write resp=0x{resp:08X} err_status={err}")
     assert ok, f"baseline transfer failed resp=0x{resp:08X}"
@@ -291,9 +275,8 @@ async def test_error_parity_inject(dut):
         f"(i3c_target_fsm.sv:745) and tti.sv:709-710 increments TARGET_ERR_CNT_TE2 on it."
     )
 
-    # Checker 2: the corrupted byte and everything after it must be suppressed.
-    # parity_err latches until target idle (i3c_target_fsm.sv:339) and gates
-    # rx_fifo_wvalid_raw (:356), so only the bytes BEFORE the flip may be received.
+    # Checker 2: parity_err remains asserted until target idle and suppresses RX FIFO
+    # writes, so only the bytes before the corrupted byte may be received.
     expected_rx = WRITE_DATA[:INJECT_BYTE]
     if n_bad is None:
         received = []

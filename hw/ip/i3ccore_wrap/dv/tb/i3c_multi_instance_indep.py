@@ -2,16 +2,16 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 """
-I3C Multi-Instance Independence  (Test Plan #39)
+ I3C Multi-Instance Independence
 
 Confirms the wrapper's AXI-Lite address decode isolates the two instances:
 writing instance-0's register space must not disturb instance-1's, and each
 instance retains its own value.
 
-Constrained-random: a random (non-zero, field-legal) pattern is used instead of
-a fixed 0x01010101 (shared framework, seed from +seed/SEED/default). Each byte
-is in 0..7 so it round-trips QUEUE_THLD_CTRL exactly; isolation is checked by
-giving the two instances distinct values and swapping them.
+Constrained-random: a random non-zero, field-legal pattern is used (shared
+framework, seed from +seed/SEED/default). Each byte is in 0..7 so it round-trips
+QUEUE_THLD_CTRL exactly; isolation is checked by giving the two instances
+distinct values and swapping them.
 The DAT region (0x400+) is avoided: it is external SRAM, not a 32-bit scratch.
 """
 import cocotb

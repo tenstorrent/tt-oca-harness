@@ -142,8 +142,7 @@ module tb_i3ccore;
     // sda_corrupt has NO continuous driver, so cocotb can drive it directly; XOR-ing it
     // into the shared bus is the only way to corrupt a bit here, because sda_shared
     // itself is a continuous assign and a cocotb deposit on it would be overwritten at
-    // the next evaluation. It rests at 0, so every test that does not inject sees the
-    // bus behave exactly as before.
+    // the next evaluation. A zero value leaves the shared SDA signal unchanged.
     logic sda_corrupt;
     initial sda_corrupt = 1'b0;
 
@@ -183,8 +182,7 @@ module tb_i3ccore;
         .NUM_I3C(NUM_I3C),
         .I3C_REG_ADDR_WIDTH(I3C_REG_ADDR_WIDTH),
         .BASE_ADDR(BASE_ADDR),
-        // Must be >= the per-instance map (DAT@0x400, DCT@0x800) and the API's
-        // TGT_BASE=0x1000; the 0x500 default mis-decodes target accesses to inst 0.
+        // The spacing must cover each instance's 0x1000-byte address window.
         .INSTANCE_SPACING(32'h1000)
     ) u_dut (
         .clk_i(clk),
@@ -250,21 +248,11 @@ module tb_i3ccore;
     //--------------------------------------------------------------------------
     // DAT/DCT/RLT memory.
     //
-    // Default: the single-cycle write-forwarding behavioral RAM below. This is
-    // not a debug fallback in this tree -- it is the only model available.
-    // i3c-core's memory primitives are deliberately not vendored here
-    // (exclude_from_upstream: "src/libs/mem" in
-    // vendor/chipsalliance/i3c-core/Bender.yml), so prim_ram_1p_adv /
-    // prim_ram_2p do not exist in the OSS checkout, and the SMC integration ties
-    // the DAT/DCT port off rather than instantiating an SRAM
-    // (hw/sys/smc/dv/tb/tb_top.sv).
+    // DAT and DCT use single-cycle write-forwarding behavioral memories by
+    // default. Read data must be available one cycle after the request because
+    // flow_active captures it on the following cycle.
     //
-    // Single-cycle read latency is required, not incidental: flow_active
-    // captures DAT read data one cycle after the request, so a two-cycle
-    // (output-pipelined) SRAM makes it sample X -- hence EnableOutputPipeline(0)
-    // in the opt-in branch below.
-    //
-    // Define I3C_SRAM_DAT_MEM to swap in real SRAMs once they are available.
+    // Define I3C_SRAM_DAT_MEM to select compatible SRAM implementations.
     //--------------------------------------------------------------------------
 `ifndef I3C_SRAM_DAT_MEM
     for (genvar gi = 0; gi < NUM_I3C; gi++) begin : gen_i3c_mem

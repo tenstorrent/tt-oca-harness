@@ -10,9 +10,8 @@ constraint primitives and adds I3C protocol-specific generators and a
 declarative transaction object.
 
 Generic primitives (seed mgmt, in_range, weighted, banded, rand_bytes) live in
-that core so it can be promoted to hw/common/dv/ once a second TB needs it; only
-the I3C knowledge
-(reserved addresses, MWL/MRL, threshold reachability, IBI, transfers) lives here.
+that core; only the I3C knowledge (reserved addresses, MWL/MRL, threshold
+reachability, IBI, transfers) lives here.
 
 Example
 -------

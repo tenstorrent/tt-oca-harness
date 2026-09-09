@@ -4,27 +4,12 @@
 `ifndef _I3C_COVERAGE_IF_SV_
 `define _I3C_COVERAGE_IF_SV_
 
-//***************************************************************************
-//
-// Tenstorrent CONFIDENTIAL
-// __________________
-//
-//  Tenstorrent Inc.
-//  All Rights Reserved.
-//
-//---------------------------------------------------------------------------
-// INTERFACE: i3c_coverage_if
-//---------------------------------------------------------------------------
-//
 // I3C functional-coverage interface for the OCA I3C controller block.
 // Observes the shared I3C bus (SDA/SCL), the OD/PP mode select, interrupts,
-// and the AXI-Lite command/response ports, and samples covergroups derived
-// from I3C_COVERAGE_POINT.md.
+// and the AXI-Lite command/response ports.
 //
 // All covergroups are guarded by +define+I3C_COVERAGE so the interface always
 // compiles (inert) when coverage is not requested.
-//
-//***************************************************************************
 
 interface i3c_coverage_if (
     input logic        clk,
@@ -133,7 +118,7 @@ interface i3c_coverage_if (
     // Covergroups
     //***********************************************************************
 
-    // Command-descriptor coverage (CMD_DESC_CG / CCC_CODE_CG)
+    // Command-descriptor coverage
     covergroup i3c_cmd_cg @(posedge cmd_sample);
         cp_attr: coverpoint cmd_attr {
             bins regular      = {3'h0};
@@ -159,7 +144,7 @@ interface i3c_coverage_if (
         cx_attr_rnw: cross cp_attr, cp_rnw;
     endgroup
 
-    // Response coverage (RESP_DESC_CG / ERR_TYPE_CG)
+    // Response coverage
     covergroup i3c_resp_cg @(posedge resp_sample);
         cp_err: coverpoint resp_err {
             bins success = {4'h0};
@@ -170,7 +155,7 @@ interface i3c_coverage_if (
         }
     endgroup
 
-    // Bus mode + protocol coverage (TIMING_BANK_CG, protocol events)
+    // Bus mode and protocol-event coverage
     covergroup i3c_bus_cg @(posedge start_evt or posedge stop_evt);
         cp_mode:  coverpoint sel_od_pp { bins od = {1'b0}; bins pp = {1'b1}; }
         cp_start: coverpoint start_evt { bins start = {1'b1}; }

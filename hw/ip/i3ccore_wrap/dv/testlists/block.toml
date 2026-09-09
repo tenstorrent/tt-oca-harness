@@ -157,14 +157,6 @@ tags = ["ibi"]
 run_modes = ["block"]
 
 [[tests]]
-name = "i3c_hotjoin"
-module = "i3c_hotjoin"
-seed = 1
-timeout_sec = 1800
-tags = ["skip-known"]
-run_modes = ["block"]
-
-[[tests]]
 name = "i3c_error_parity_inject"
 module = "i3c_error_parity_inject"
 seed = 1

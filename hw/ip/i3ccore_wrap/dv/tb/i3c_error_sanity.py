@@ -96,11 +96,8 @@ async def wait_for_9th_scl_and_check_nack(dut, log):
     log.info("NACK monitor: Monitoring SCL for 9th rising edge...")
     scl_edge_count = 0
 
-    # (A)-fix: monitor the shared open-drain BUS level (scl_i/sda_i = scl_shared/sda_shared in
-    # tb_i3ccore.sv), NOT a single instance's scl_o/sda_o. Per tb_i3ccore.sv the per-instance
-    # scl_o/sda_o are tied 0 with the actual drive carried on the OE lane, so the old code watched
-    # a wire that never toggles: "wait for Start" fell through at t=0 and the SCL-edge wait then
-    # spun forever -> SimTimeoutError. Both scl_i bits carry the same shared value; use bit 0.
+    # Monitor the resolved open-drain bus through scl_i[0] and sda_i[0];
+    # per-instance outputs do not represent the shared bus level.
     def bus_scl():
         return int(dut.scl_i.value) & 1
 
@@ -239,12 +236,9 @@ async def i3c_error_wrong_addr(dut):
     assert ok, "Target did not receive dynamic address"
     assert dyn_addr == TARGET_DYNAMIC_ADDR
 
-    # --- Positive control for the immediate-write descriptor path ---
-    # The negative leg below requires a NON-zero err_status. On its own that passes
-    # forever against a systematically malformed descriptor: a permanent error looks
-    # identical to a correctly detected address NACK. So prove the SAME
-    # build_immediate_write_cmd path returns err_status == 0x0 SUCCESS against the
-    # address that IS assigned (DAT index 0) before asking it to fail.
+    # First require the immediate-write descriptor path to succeed against the
+    # assigned address, preventing malformed descriptors from satisfying the
+    # negative case.
     tb.log.info("-" * 60)
     tb.log.info("Positive control: immediate write to the ASSIGNED address (DAT 0)")
     tb.log.info("-" * 60)
@@ -378,7 +372,7 @@ async def i3c_fifo_overflow(dut):
     tb.log.info(f"  Response: 0x{resp:08X}, success={ok}")
     assert ok, f"SETDASA failed with response 0x{resp:08X}"
 
-    # Verify target got dynamic addressZ
+    # Verify the target received its dynamic address.
     ok, dyn_addr = await tgt.wait_dynamic_addr()
     tb.log.info(f"  Target dynamic address: 0x{dyn_addr:02X}, valid={ok}")
     assert ok, "Target did not receive dynamic address"
@@ -386,11 +380,11 @@ async def i3c_fifo_overflow(dut):
 
     bytes_per_entry = 4
     dat_idx = 0
-    # Read the controller RX data FIFO size from QUEUE_SIZE so the read length is
-    # always larger than the FIFO (overflow guaranteed) regardless of the build's
-    # FIFO depth. QUEUE_SIZE = {tx_data_buffer_size[31:24], rx_data_buffer_size[23:16],
-    # ibi_status_size[15:8], cr_queue_size[7:0]}; the data-buffer fields are HCI-encoded
-    # as 2^(N+1) entries. (The old code hard-coded the obsolete 8-entry / 32-byte FIFO.)
+    # Derive RX FIFO capacity from QUEUE_SIZE and request a larger transfer to
+    # guarantee overflow regardless of the configured depth. QUEUE_SIZE =
+    # {tx_data_buffer_size[31:24], rx_data_buffer_size[23:16],
+    # ibi_status_size[15:8], cr_queue_size[7:0]}; data-buffer sizes are encoded as
+    # 2^(N+1) entries.
     queue_size_reg = await helper.read(ctrl.base + PIOCONTROL_QUEUE_SIZE_REG_ADDR)
     rx_fifo_entries = 1 << (((queue_size_reg >> 16) & 0xFF) + 1)
     rx_fifo_bytes = rx_fifo_entries * bytes_per_entry
@@ -417,20 +411,14 @@ async def i3c_fifo_overflow(dut):
     tb.log.info(f"  Data length: {data_len} bytes")
     tb.log.info(f"  Target TX threshold: {tx_bytes_per_interrupt} bytes ({tx_entries_per_interrupt} entries)")
 
-    # --- Arm the target TX BEFORE issuing the read ---
-    # The i3c-core target NACKs a private-read address when its TX queue is empty
-    # (i3c_target_fsm.sv CheckSByte/CheckFByte gate the address ACK on tx_desc_avail;
-    # the I3C target has no clock-stretch). This is spec-compliant, so the target must
-    # be armed first (same ordering as i3c_api.py::private_read). The RX overflow is
-    # then caused by NOT draining the controller RX while the target keeps streaming.
+    # Arm the target before issuing the read because it NACKs a private-read
+    # address while its TX queue is empty. The overflow is caused by leaving the
+    # controller RX FIFO undrained while the target streams data.
     bytes_written = 0  # bytes written to target TX FIFO
     loop_count = 0
 
-    # Wait for target TX descriptor queue to have space via QUEUE_STATUS, and fail on
-    # expiry. TX_DESC_THLD_STAT is NOT a reliable ready signal here -- the shared API
-    # says so and polls tx_desc_queue_full instead (i3c_api.py private_read) -- which is
-    # why the old TX_DESC_THLD_STAT loop demoted a real expiry to a warning and then
-    # wrote the descriptor anyway on an unestablished precondition.
+    # Poll QUEUE_STATUS for target TX descriptor space because TX_DESC_THLD_STAT is
+    # not a reliable readiness indication.
     ok, _qs = await helper.poll_field_clear(
         tgt.base + I3C_EC_TTI_QUEUE_STATUS_REG_ADDR,
         TtiQueueStatus, 'tx_desc_queue_full', max_polls=1000, interval=10)
@@ -444,14 +432,9 @@ async def i3c_fifo_overflow(dut):
     await helper.write(tgt.base + I3C_EC_TTI_TX_DESC_QUEUE_PORT_REG_ADDR, tx_desc)
     tb.log.debug(f"  Wrote TX descriptor 0x{tx_desc:08X} (byte_count={data_len})")
 
-    # Pre-fill the target TX to its streaming start threshold (fill until TX_DATA_QUEUE_FULL
-    # or the whole message) BEFORE issuing the read. The swap i3c-core target only ACKs a
-    # private read once its TX queue holds min(whole message, start-threshold) words
-    # (descriptor_tx.sv tx_desc_avail gate); arming a single threshold chunk (the old code)
-    # is now NACKed (err_status=0x5) at the address, before any data flows, so the RX overflow
-    # could never be reached. Filling to FULL first mirrors real fw (i3c_hci_driver.c
-    # hci_target_tx) and i3c_api.py::private_read; the overflow is still produced below by NOT
-    # draining the controller RX while the target streams the (larger-than-FIFO) payload.
+    # Before issuing the read, prefill until the target TX queue is full or the
+    # complete payload is queued. The target only ACKs when enough data is queued
+    # to start the transfer.
     _TTI_QUEUE_STATUS = 0x210            # I3C_EC_TTI QUEUE_STATUS (offset from i3c base)
     _TTI_TX_DATA_QUEUE_FULL = (1 << 6)
     while bytes_written < data_len:
@@ -500,9 +483,8 @@ async def i3c_fifo_overflow(dut):
             bytes_written += chunk
             tb.log.debug(f"  Wrote {chunk} bytes to target TX, total={bytes_written}/{data_len}")
 
-        # NOTE: Intentionally NOT draining controller RX FIFO to cause overflow!
-        # The controller RX FIFO is small (8 entries * 4 bytes = 32 bytes)
-        # With 500 bytes and no draining, it will overflow
+        # Do not drain the controller RX FIFO; the requested length exceeds its
+        # runtime-derived capacity.
 
         await ClockCycles(dut.clk, 10)
 
@@ -675,37 +657,12 @@ async def i3c_tx_fifo_underflow(dut):
 
 @cocotb.test(timeout_time=10000, timeout_unit='us')
 async def i3c_ibi_fifo_overflow(dut):
-    """I3C IBI FIFO overflow: a full IBI Queue must stop the controller ACKing IBIs.
+    """A full IBI Queue must stop the controller ACKing incoming IBIs.
 
-    Verifies the MIPI I3C HCI v1.2 §6.5.4 (IBI Queue Operation) rule that "the Bus
-    Controller Logic will accept (i.e., will ACK) incoming IBIs unless the IBI Queue
-    becomes full".
-
-    This test:
-    1. Initialize controller and target, perform SETDASA
-    2. Enable IBI on both sides
-    3. Read IBI FIFO size dynamically from QUEUE_SIZE register
-    4. Target sends a first IBI sized to fill the IBI Queue completely; the controller
-       ACKing and receiving it is the positive control that the IBI path is alive
-    5. DO NOT read from the controller IBI FIFO, so it stays full
-    6. Target sends a second IBI; assert on the bus that the controller NACKs it
-
-    Deliberately NOT checked: whether a regular private write still completes while the
-    IBI Queue is left full and unserviced. An earlier version asserted that, and the
-    assertion did not hold. It was removed rather than repaired because the
-    specification gives no basis for it: section 6.5.4 says nothing about a full IBI
-    Queue's effect on Transfer Command processing, and where the spec does address a
-    full IBI buffer (section 5.4, IBI Data Ring) it explicitly permits the Host
-    Controller to use "clock Stalling" -- which would block subsequent transfers. So
-    "the bus keeps working" is not a specified property of this state, and asserting it
-    held the DUT to an expectation it never owed. Leaving the queue full and unserviced
-    is also not a state software may legitimately hold.
-
-    NOTE for future editors: cocotb echoes this docstring into sim.log, and TTEM scans
-    that log with a pass/fail regex. Keep the prose here clear of the tokens that regex
-    looks for -- the past tense of "fail", a non-zero FAIL= count, and Python's
-    exception-trace keyword -- or a passing test gets reported as a failure. That
-    happened twice while writing this very note.
+    Per MIPI I3C HCI v1.2 section 6.5.4, the controller accepts incoming IBIs
+    unless the IBI Queue is full. The test fills the queue with one IBI, leaves
+    it unread, and verifies that the next IBI is NACKed on the bus. It does not
+    require unrelated transfers to progress while the queue remains full.
     """
     tb = TB(dut)
 
@@ -758,8 +715,8 @@ async def i3c_ibi_fifo_overflow(dut):
     assert ok, "Target did not receive dynamic address"
     assert dyn_addr == TARGET_DYNAMIC_ADDR
 
-    # (A)-fix: program the DAT IBI-payload policy from the target's BCR[2], else the
-    # controller aborts inbound IBIs (ibi_abort = ibi_reject | ~ibi_payload).
+    # Program DAT.ibi_payload from BCR[2]; the controller aborts inbound IBIs
+    # when this policy bit is clear.
     await ctrl.configure_target_ibi(0, TARGET_STATIC_ADDR, TARGET_DYNAMIC_ADDR)
 
     # GETBCR - Verify IBI capability
@@ -828,10 +785,8 @@ async def i3c_ibi_fifo_overflow(dut):
     ibi_payload_2 = rand_bytes(r, 4)          # small payload for second IBI
     tb.log.info(f"Target writing IBI #2: mdb=0x{mdb_2:02X}, payload_size={len(ibi_payload_2)}")
 
-    # (A)-fix: ARM the NACK monitor BEFORE triggering IBI #2. The old order (queue IBI #2, then
-    # issue a private write, then start monitoring) raced: the IBI's arbitration/NACK could
-    # complete on the bus before the monitor started, so the monitor would instead latch onto the
-    # following private write's (legitimately ACKed) address and wrongly report "no NACK".
+    # Arm the NACK monitor before queuing IBI #2 so it observes that IBI's
+    # arbitration attempt.
     monitor_task = cocotb.start_soon(wait_for_9th_scl_and_check_nack(dut, tb.log))
 
     # Queue IBI #2 -- the transaction the monitor observes is this IBI's arbitration attempt
@@ -842,18 +797,12 @@ async def i3c_ibi_fifo_overflow(dut):
     assert nack_detected, "Controller did not NACK the second IBI as expected!"
     tb.log.info("Controller correctly NACKed the second IBI (IBI FIFO full)")
 
-    # Let the target finish with IBI #2 before ending, so the test does not leave an
-    # in-flight arbitration attempt behind. The target retries a NACKed IBI according to
-    # TTI_CONTROL.ibi_retry_num (i3c_target_fsm.sv:286), which is 0 out of reset, so this
-    # settles after its single retry. The result is logged, not asserted: the IBI can
-    # never succeed while the queue stays full, so "done" here means "gave up", and the
-    # spec does not define which of those the target must report.
+    # Wait for IBI #2 to settle before ending. With zero retries and a full queue
+    # it cannot succeed, but its terminal status is unspecified and is not asserted.
     ok, last_ibi_status = await tgt.wait_ibi_done()
     tb.log.info(f"  Target IBI #2 settled: done={ok}, status={last_ibi_status} "
                 f"(cannot succeed while the IBI Queue stays full)")
 
-    # Every line below is a measured result: the ACK/receive of IBI #1 (positive
-    # control) and the bus-level NACK of IBI #2 were both asserted above.
     tb.log.info("=" * 60)
     tb.log.info("SUCCESS: IBI FIFO Overflow Test Complete")
     tb.log.info("  IBI FIFO was filled completely and left unread")

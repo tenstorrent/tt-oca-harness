@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 """
-I3C AXI-Lite Protocol  (Test Plan #40)
+I3C AXI-Lite Protocol
 
 Exercises AXI-Lite register access with response checking:
   - mapped write / read-back round-trip (BRESP/RRESP must be OKAY)
@@ -96,9 +96,8 @@ async def test_axi_protocol(dut):
         f"HC_CONTROL mismatch 0x{hc:08X} != 0x{HC_CONTROL_DEFAULT:08X}"
     )
 
-    # Prove a non-OKAY expectation fails the helper (resp mismatch is fatal).
-    # Real DUT unmapped decode still aliases to inst0 today (no err_slv on the
-    # default demux select), so this is the reliable negative gate for F-01.
+    # Verify that an expected-response mismatch raises an error. Unmapped accesses
+    # alias to instance 0 and cannot provide a DUT-generated negative response.
     raised = False
     try:
         await helper.read(hc_addr, expect_resp=AxiResp.SLVERR)

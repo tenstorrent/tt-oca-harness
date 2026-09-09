@@ -203,8 +203,6 @@ def build_immediate_write_cmd(data_bytes, dat_idx=0, tid=0):
                [20:16] dev_idx, [15] cp, [14:7] cmd, [6:3] tid, [2:0] attr
       DWORD 1: data bytes, little-endian ([7:0] = byte 0)
 
-    NOTE: i3c_error_sanity.py carries a local copy of this that predates this helper;
-    new tests should use this one.
     """
     dtt = len(data_bytes)
     attr = 0x1  # ImmediateDataTransfer
@@ -1466,11 +1464,8 @@ class I3CTarget:
 
         Sets TTI_CONTROL.IBI_EN bit to enable IBI transmission capability.
 
-        NOTE: IBI_EN is set at RESET -- TTI_CONTROL's generated reset value is
-        0x1400, i.e. ibi_en (bit 12) AND hj_en (bit 10) are both already 1. So this
-        call is normally a no-op, and *omitting* it does NOT disable IBI generation.
-        A test that needs IBI generation off must call disable_ibi_mode() and verify
-        the read-back; see i3c_ibi_nack_disabled.
+        IBI_EN resets asserted, so this call is normally idempotent. Use
+        disable_ibi_mode() to suppress IBI generation.
         """
         # Read TTI_CONTROL register
         tti_ctrl_val = await self.h.read(self.base + I3C_EC_TTI_CONTROL_REG_ADDR)

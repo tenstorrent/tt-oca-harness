@@ -2,10 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 """
-I3C Push-Pull Timing Transfer  (Test Plan #27)
+ I3C Push-Pull Timing Transfer
 
 Runs a private write/read using the Push-Pull timing bank (configure_timing_pp).
-Closes the gap that PP timing is configured but never exercised by data.
+Verifies data transfers using the configured Push-Pull timing bank.
 
 Constrained-random length + data (shared framework, seed from +seed/SEED/default).
 """

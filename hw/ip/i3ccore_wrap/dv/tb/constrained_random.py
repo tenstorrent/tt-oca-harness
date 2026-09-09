@@ -10,12 +10,8 @@ generate + clamp + rejection sampling + weighting). This covers ranges,
 exclusion sets, ordering dependencies and biasing — none of which need a
 SAT/SMT solver — so this module is dependency-free.
 
-This file contains **no IP-specific knowledge**: the I3C domain layer lives
-next door in ``i3c_rand.py``, which imports these primitives and adds the
-protocol-specific generators and transaction object. It sits beside its only
-consumer per the promotion policy in hw/common/dv/README.md ("start new
-behavior beside its first consumer"); promote it to hw/common/dv/ when a second
-TB needs it.
+This module contains IP-independent randomization primitives; I3C-specific
+generators are provided by ``i3c_rand``.
 
 Usage
 -----

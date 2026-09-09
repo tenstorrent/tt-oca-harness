@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 """
-I3C IBI Payload-Size Variants  (Test Plan #33)
+ I3C IBI Payload-Size Variants
 
 Target issues IBIs with varying payload sizes and the controller verifies the
 received MDB + payload for each.
@@ -26,7 +26,7 @@ N_RANDOM = 4
 async def test_ibi_payload_variants(dut):
     tb, helper, ctrl, tgt = await make_env(dut)
     await bring_up_and_assign(ctrl, tgt)
-    # (A)-fix: program the DAT IBI-payload policy from the target's BCR[2], else the
+    # Program the DAT IBI-payload policy from the target's BCR[2], else the
     # controller aborts inbound IBIs (ibi_abort = ibi_reject | ~ibi_payload).
     # The returned bit is the programmed policy: if the internal GETBCR failed it is
     # left clear and every inbound IBI is aborted, so it has to be asserted.
@@ -64,8 +64,6 @@ async def test_ibi_payload_variants(dut):
         assert ok, "IBI read failed"
         assert got_mdb == mdb, f"MDB mismatch: got 0x{got_mdb:02X} != sent 0x{mdb:02X}"
         # read_ibi truncates to the descriptor's data_length, so this compare is exact.
-        # Without it a 0-byte, truncated, or arbitrary payload all passed identically --
-        # which is the property the module docstring claims to verify.
         assert list(got_payload) == list(payload), (
             f"IBI payload mismatch at len={n}: got {[f'0x{b:02X}' for b in got_payload]} "
             f"!= sent {[f'0x{b:02X}' for b in payload]}"

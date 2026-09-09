@@ -7,7 +7,6 @@ I3C Core Wrapper Cocotb Test
 This test verifies basic functionality of the i3ccore_wrapper module:
 - Reset release and initialization
 - AXI-Lite register access
-- Basic I3C bus activity (future)
 """
 
 import os
@@ -30,10 +29,8 @@ from cocotb.handle import Force, Release
 # Import tests from other test files
 from i3c_error_sanity import i3c_error_wrong_addr, i3c_fifo_overflow
 
-# sim_handle resolves a VCS-style hierarchical path to a cocotb handle. It lives
-# in the SMC TB tree, which is not part of the open checkout, so it is optional:
-# without it the DAT/DCT backing-SRAM X-clearing below is skipped (the behavioral
-# RAM in tb_i3ccore.sv already resets to 0, so the tests still hold).
+# sim_handle is optional; when unavailable, DAT/DCT backdoor initialization is
+# skipped. The behavioral memory model resets these arrays to zero.
 sim_handle = None
 OCH_ROOT = os.getenv("OCH_ROOT")
 if OCH_ROOT:
@@ -173,19 +170,12 @@ class TB:
 
     def init_dat_dct_memory(self):
         """
-        Initialize DAT and DCT memories to 0 using backdoor access.
+        Initialize DAT and DCT backing memories to zero through optional
+        hierarchical access.
 
-        This uses hierarchical access to directly write the memory arrays.
-        Must be called after simulation starts but can be before or after reset.
-
-        Hierarchy (from Verdi):
-        tb_i3ccore.u_dut.gen_i3c_inst[0].u_i3c_wrapper.gen_dat_dct_memory.
-            {dat,dct}_memory.u_mem.gen_generic.u_impl_generic.mem
+        This prevents unresolved power-on values from reaching AXI reads.
         """
-        # Path variants to try - sim_handle can resolve VCS-style paths.
-        # Current TB models the DAT/DCT SRAM at the tb_i3ccore top level as
-        # gen_i3c_mem[gi].i3c_{dat,dct}_memory (see tb_i3ccore.sv). The older
-        # u_dut.* variants are kept for backward compatibility.
+        # Try supported hierarchy variants until a backing-memory handle resolves.
         dat_paths = [
             "gen_i3c_mem[0].i3c_dat_memory.u_mem.gen_generic.u_impl_generic.mem",
             "u_dut.u_i3c_wrapper.gen_dat_dct_memory.dat_memory.u_mem.gen_generic.u_impl_generic.mem",
@@ -241,7 +231,7 @@ class TB:
                 # Debug: read before write
                 self.log.info(f"DCT[0] before write: {dct_mem[0].value}")
                 for i in range(depth):
-                    # Force then Release — see DAT note above.
+                    # Release the forced value so hardware writes can update the entry.
                     dct_mem[i].value = Force(0)
                     dct_mem[i].value = Release()
                 # Debug: read after write
@@ -310,7 +300,7 @@ class TB:
 
     async def read_and_verify(self, addr: int, expected: int, name: str):
         """
-        Read a register and verify it matches the expected value.
+        Read a register and log whether it matches the expected value.
 
         Args:
             addr: Register address
@@ -336,14 +326,7 @@ class TB:
 
 @cocotb.test()
 async def test_basic_compilation(dut):
-    """
-    Test basic compilation and instantiation.
-
-    Verifies:
-    - DUT instantiation succeeds
-    - Reset releases correctly
-    - Basic signals are valid (not X/Z)
-    """
+    """Smoke-test DUT instantiation and reset, then log interface signals."""
     tb = TB(dut)
 
     tb.log.info("=" * 60)
@@ -380,12 +363,9 @@ async def test_basic_compilation(dut):
 @cocotb.test()
 async def test_register_access(dut):
     """
-    Test AXI-Lite register read/write access with value verification.
+    Read selected AXI-Lite registers and log reset-value mismatches.
 
-    Tests access to I3C controller registers from:
-    - base_registers.rdl: HCI_VERSION, HC_CAPABILITIES, section offsets
-    - pio_registers.rdl: Queue thresholds, sizes, PIO control
-    - ec_registers.rdl: Standby controller mode registers
+    The test covers base, PIO, extended-capability, and DCT address regions.
     """
     tb = TB(dut)
 
@@ -439,19 +419,6 @@ async def test_register_access(dut):
     tb.log.info("=" * 60)
     tb.log.info("Register access test PASSED!")
     tb.log.info("=" * 60)
-
-
-# NOTE: a skip=True `test_i3c_loopback` placeholder used to sit here. It was removed
-# rather than enabled. Its stated reason for being skipped -- "requires the
-# cocotbext-i3c target model ... enable when I3C target model is integrated" -- was
-# obsolete: this TB instantiates NUM_I3C=2 copies of the i3ccore RTL as controller +
-# target (tb_i3ccore.sv, CTRL_BASE/TGT_BASE in i3c_test_base.py), so no cocotbext
-# target model is needed, and controller<->target loopback is already covered with
-# payload comparison and exact ERR_STATUS checks by i3c_write_read_sanity,
-# i3c_long_write_sanity, i3c_long_read_sanity, i3c_immediate_write_sanity and
-# i3c_max_length_transfer. Its body was three TODOs that logged
-# "I3C loopback test PASSED (placeholder)!" -- enabling it would have been a
-# pass-without-checking, so deletion was the only non-misleading option.
 
 
 # =============================================================================
@@ -612,7 +579,7 @@ WRITABLE_REGISTERS = [
 
     # -------------------------------------------------------------------------
     # EC Registers - Target Transaction Interface (target_transaction_interface.rdl)
-    # TTI follows StdbyCtrlMode (16 DWORDs = 0x40 bytes), so TTI @ 0x1C0
+    # The generated register map places TTI at 0x200.
     # -------------------------------------------------------------------------
     # TTI_CONTROL @ 0x1C4 - IBI_RETRY_NUM[15:13], IBI_EN[12], CRR_EN[11], HJ_EN[10]
     (0x1C4, 0x0000FC00, "TTI_CONTROL", "target_transaction_interface.rdl"),
@@ -631,7 +598,7 @@ WRITABLE_REGISTERS = [
 
     # -------------------------------------------------------------------------
     # EC Registers - SoC Management Interface (soc_management_interface.rdl)
-    # SoCMgmtIf follows TTI (16 DWORDs = 0x40 bytes), so SoCMgmtIf @ 0x200
+    # The generated register map places SoCMgmtIf at 0x300.
     # -------------------------------------------------------------------------
     # SOC_MGMT_CONTROL @ 0x204
     (0x204, 0xFFFFFFFF, "SOC_MGMT_CONTROL", "soc_management_interface.rdl"),

@@ -47,7 +47,6 @@ tests = [
     "i3c_broadcast_ccc",
     "i3c_ibi_payload_variants",
     "i3c_ibi_nack_disabled",
-    "i3c_hotjoin",
     "i3c_error_parity_inject",
     "i3c_error_target_abort",
     "i3c_multi_target_dat",

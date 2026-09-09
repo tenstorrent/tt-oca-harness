@@ -12,7 +12,7 @@ MODULE ?= test_i3ccore
 ALL_TEST_MODULES = test_i3ccore i3c_immediate_write_sanity i3c_write_read_sanity i3c_long_write_sanity i3c_long_read_sanity i3c_direct_ccc_sanity i3c_ibi_sanity i3c_error_sanity \
     i3c_reg_reset_value_full i3c_full_ccc_matrix i3c_setnewda i3c_pp_timing_transfer i3c_od_pp_mode_switch \
     i3c_threshold_sweep i3c_max_length_transfer i3c_back_to_back i3c_broadcast_ccc i3c_ibi_payload_variants \
-    i3c_ibi_nack_disabled i3c_hotjoin i3c_error_parity_inject i3c_error_target_abort i3c_multi_target_dat \
+    i3c_ibi_nack_disabled i3c_error_parity_inject i3c_error_target_abort i3c_multi_target_dat \
     i3c_multi_instance_indep i3c_axi_protocol i3c_recovery_reset_iface i3c_reset_mid_transaction \
     i3c_random_ccc_stress i3c_random_transfer_stress i3c_tx_capacity_512
 
@@ -39,14 +39,12 @@ ifdef SEED
     export SEED
 endif
 
-# Project root: five levels up (hw/ip/i3ccore_wrap/dv/tb -> repo root).
+# Resolve the repository root relative to this Makefile.
 PROJECT_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))../../../../..)
 
 # Compilation arguments
-# Include the filelist and testbench. The vendored register_interface drops the
-# fork's prim_assert collision-avoidance include on purpose (see
-# vendor/pulp-platform/register_interface/Bender.yml), so nothing is pre-included
-# here; the flist carries the assert macros the dependency RTL needs.
+# The filelist supplies the assertion macros required by dependency RTL; do not
+# pre-include them here.
 COMPILE_ARGS += -f $(PWD)/i3ccore_filelist.f
 COMPILE_ARGS += $(PWD)/i3c_coverage_if.sv
 COMPILE_ARGS += $(PWD)/tb_i3ccore.sv
@@ -59,10 +57,8 @@ ifeq ($(I3C_COVERAGE),1)
     SIM_ARGS += -cm line+cond+fsm+tgl+branch
 endif
 
-# DAT/DCT memory: the behavioral write-forwarding RAM in tb_i3ccore.sv is the
-# default because i3c-core's memory primitives are not vendored in this tree
-# (see the note in tb_i3ccore.sv). Set I3C_SRAM_DAT_MEM=1 to instantiate a real
-# prim_ram_1p_adv_i3ccore instead, once one is available.
+# DAT/DCT uses the behavioral write-forwarding RAM by default. Set
+# I3C_SRAM_DAT_MEM=1 only when prim_ram_1p_adv_i3ccore is available.
 ifeq ($(I3C_SRAM_DAT_MEM),1)
     COMPILE_ARGS += +define+I3C_SRAM_DAT_MEM
 endif
@@ -244,21 +240,8 @@ ifdef WAVES
     PLUSARGS += +WAVE_FILE=$(WAVE_FILE)
 endif
 
-# Generate filelist via the repository's own bender wrapper (ocah.mk).
-# The smc target carries the i3c-core sources plus hw/ip/i3ccore_wrap/rtl.
-# Nothing is filtered out: `module i3c` comes from the vendored
-# upstream/src/i3c.sv (AXI mode, selected by I3C_USE_AXI in i3c_defines.svh),
-# which is what rtl/i3c_wrapper.sv instantiates -- it passes AxiDataWidth /
-# AxiUserWidth / AxiIdWidth and drives awuser_i/awid_i, none of which exist on
-# the AXI-Lite-only rtl/i3c.sv. upstream/src/i3c_wrapper.sv is already dropped
-# by exclude_from_upstream in Bender.yml, so it never reaches the flist.
-#
-# Target set = the repo's canonical common set (hw/sys/smc/dv/smc_wrapper_sim_cfg.toml
-# `common_bender_targets`, mirrored by flows/common.mk) plus `smc`. Notably
-# register_interface_l1: the OSS de-fork stopped bundling OpenTitan prim packages
-# inside the register_interface fork, so prim_subreg_pkg/prim_mubi_pkg now come
-# from that target (see vendor/pulp-platform/register_interface/Bender.yml). Without
-# it prim_ram_1p_adv_ext.sv fails with "prim_mubi_pkg is not a package".
+# Generate the complete AXI-mode I3C filelist. register_interface_l1 supplies
+# the primitive packages required by the register-interface RAM.
 BENDER_TARGETS := \
 	-t tech_cells_generic_exclude_deprecated \
 	-t tech_cells_generic_exclude_tc_sram \
@@ -346,7 +329,6 @@ help:
 	@echo "  make MODULE=i3c_error_sanity TESTCASE=i3c_fifo_overflow    # Run one specific test"
 	@echo "  make verdi                                       # View waveforms"
 
-# NOTE: For some reason this isn't working.
 test_module_separate:
 	@if [ -z "$(MODULE)" ]; then \
 		echo "ERROR: MODULE not specified"; \

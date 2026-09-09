@@ -2,11 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 """
-IBI diagnostic (NOT a test-plan item) — B7 probe.
+IBI receive diagnostic.
 
-Single 24-byte-payload IBI (MDB + 24 = 25 bytes = 7 dwords, nominally within the
-8-dword IBI_BUFFER_DEPTH). 16-byte payloads pass (ibi_payload_variants) but 24
-hangs, so capture a waveform of where the controller IBI RX stalls.
+Exercises an IBI containing an MDB and a 24-byte payload, which fits within the
+configured eight-DWORD IBI buffer.
 """
 import cocotb
 from cocotb.triggers import ClockCycles
@@ -20,10 +19,8 @@ async def test_ibi_diag(dut):
     await ctrl.enable_ibi_interrupts(ibi_threshold=1)
     await tgt.enable_ibi_mode()
 
-    # configure_target_ibi returns the DAT ibi_payload bit it programmed. If its
-    # internal GETBCR failed the bit is left clear and the controller aborts every
-    # inbound IBI (ibi_abort = ibi_reject | ~ibi_payload), which would make the probe
-    # below measure the abort path instead of the stall it exists to find.
+    # Require DAT.ibi_payload so the controller accepts the inbound IBI instead of
+    # exercising its abort path.
     ibi_payload_bit = await ctrl.configure_target_ibi(0, 0x10, 0x10)
     assert ibi_payload_bit, (
         "DAT ibi_payload bit not set (GETBCR likely failed) -- the controller would "

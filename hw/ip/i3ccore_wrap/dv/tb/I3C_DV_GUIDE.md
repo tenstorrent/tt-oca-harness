@@ -2355,10 +2355,8 @@ The following features are not yet validated and represent opportunities for exp
 
 #### Hot-Join Sequences
 
-- **Hot-Join**: New devices joining the I3C bus after initialization
-- **Dynamic Address Assignment**: Assigning addresses to newly joined devices
-- **Impact**: Allows plug-and-play device discovery
-- **Recommendation**: Add tests for dynamic device addition if supported
+- **Out of scope**: this wrapper / vendored core does not support hot-join
+  (`hotjoin_done` is tied off). No DV coverage is planned.
 
 #### Legacy I2C Compatibility Mode
 

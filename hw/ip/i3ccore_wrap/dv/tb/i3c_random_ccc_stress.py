@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 """
-I3C Random CCC Stress  (Test Plan #43)
+ I3C Random CCC Stress
 
 Directed-random CCC ordering: repeatedly pick a CCC from the supported set in
 random order and issue it, stressing the command FSM. SET values are drawn from
@@ -29,11 +29,7 @@ async def test_random_ccc_stress(dut):
 
     # shadow model of the last programmed MWL/MRL for SET/GET self-checking
     shadow = {"mwl": None, "mrl": None}
-    # Count comparisons actually executed. The GET handlers used to skip their compare
-    # whenever the matching SET had not been drawn yet, so a draw in which a GET
-    # precedes every SET of the same register executed ZERO comparisons and still
-    # passed. The shadow is seeded below and a directed GET of each runs after the
-    # loop, so these counters are asserted non-zero at the end.
+    # Require at least one MWL and MRL comparison regardless of randomized ordering.
     compares = {"mwl": 0, "mrl": 0}
 
     async def ccc_getbcr():

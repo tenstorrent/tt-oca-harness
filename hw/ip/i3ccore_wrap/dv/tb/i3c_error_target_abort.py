@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 """
-I3C Error: Target Read Abort  (Test Plan #37)
+I3C Error: Target Read Abort
 
 The controller requests `requested_len` bytes but the target only supplies
 `supplied_len < requested_len` and then ends the data phase with its T-bit. Both
@@ -19,11 +19,6 @@ decides whether that short receive is an error:
                               stimulus must yield ERR_STATUS 0x7
                               I3C_SHORT_READ_ERR.
 
-Running both is what makes the pair diagnostic rather than just two cases: if one
-produces a response descriptor and the other does not, the difference isolates the
-reporting gate from the short-read *detection*, which is otherwise indistinguishable
-from "short-read responses are simply not implemented".
-
 A response is mandatory in BOTH cases. HCI v1.2 §PIO Mode: "Response Descriptor
 structures shall be generated for all Command Descriptors with field WROC having a
 value of 1'b1, for all Direct Read or Direct GET CCCs (i.e., as with any Read-type
@@ -35,15 +30,9 @@ Constrained-random: `requested_len` and `supplied_len` are randomized (shared
 framework, seed from +seed/SEED/default) with `supplied < requested`, both
 dword-aligned, so the short-read datapath sees a range of gaps.
 
-Unlike the previous scaffold, this drives the read command length and the target TX
-byte-count *independently* (the `private_read` helper ties them together, which
-produces a clean read with no mismatch).
-
-Scoreboard: a bounded response poll gives the "does not hang" property, but that
-alone is NOT the scenario -- an address NACK raises resp_ready_stat just as well as a
-real short read, which is how the earlier version passed while zero bytes moved. So
-the outcome is checked exactly, and the bounded wait carries last-state diagnostics
-that distinguish "data moved, only the response is missing" from "nothing moved".
+The read command length and target TX byte count are driven independently. A bounded
+response poll checks completion, and the response status and received length
+distinguish a short read from an address NACK.
 """
 import cocotb
 from cocotb.triggers import ClockCycles
@@ -102,15 +91,9 @@ async def _drive_short_read(dut, tb, helper, ctrl, tgt, r, sre):
     tb.log.info(f"Short read (sre={sre}): controller requests {requested_len}B, "
                 f"target supplies {supplied_len}B")
 
-    # --- Arm the target BEFORE issuing the read ---
-    # The target NACKs a private-read address while its TX queue is empty (the I3C
-    # target has no clock-stretch) and the controller treats that NACK as terminal, so
-    # issuing the command first yields ERR_STATUS 0x5 NACK with ZERO bytes moved --
-    # not the short read this test exists to create. Same ordering as
-    # i3c_api.py::private_read, which documents the contract.
-    #
-    # Wait for TX descriptor queue space via QUEUE_STATUS and fail on expiry.
-    # TX_DESC_THLD_STAT is not a reliable ready signal here (i3c_api.py says so).
+    # Arm the target before issuing the read because an empty TX queue causes an
+    # address NACK. Poll QUEUE_STATUS because TX_DESC_THLD_STAT is not a reliable
+    # readiness indication.
     ok, _qs = await helper.poll_field_clear(
         tgt.base + I3C_EC_TTI_QUEUE_STATUS_REG_ADDR,
         TtiQueueStatus, 'tx_desc_queue_full', max_polls=1000, interval=10)

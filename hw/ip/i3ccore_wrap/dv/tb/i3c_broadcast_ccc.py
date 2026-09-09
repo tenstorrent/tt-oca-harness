@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 """
-I3C Broadcast CCC  (Test Plan #32)
+I3C Broadcast CCC
 
 Exercises Broadcast CCCs (MIPI I3C Basic Table 16/17):
   - Broadcast ENEC  = 0x00

@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 """
-I3C Reset Mid-Transaction  (Test Plan #42)
+I3C Reset Mid-Transaction
 
 Asserts reset during an active transaction stream and confirms the device
 recovers cleanly: after re-init + SETDASA, a fresh transfer succeeds.

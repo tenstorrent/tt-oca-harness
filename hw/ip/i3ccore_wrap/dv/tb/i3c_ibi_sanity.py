@@ -151,8 +151,6 @@ async def i3c_ibi_sanity(dut):
 
     tb.log.info("Initializing target...")
     await tgt.initialize(TARGET_STATIC_ADDR)
-    # await tgt.configure_timing_od_i3c()
-    # await tgt.configure_timing_pp()
     tb.log.info("Configuring target thresholds...")
     await tgt.configure_thresholds(tx_buf=2, tx_start=0, rx_buf=1, rx_start=0)
 
@@ -175,7 +173,7 @@ async def i3c_ibi_sanity(dut):
     assert ok, "Target did not receive dynamic address"
     assert dyn_addr == TARGET_DYNAMIC_ADDR
 
-    # (A)-fix: program the DAT IBI-payload policy from the target's BCR[2], else the
+    # Program the DAT IBI-payload policy from the target's BCR[2], else the
     # controller aborts inbound IBIs (ibi_abort = ibi_reject | ~ibi_payload).
     await ctrl.configure_target_ibi(0, TARGET_STATIC_ADDR, TARGET_DYNAMIC_ADDR)
 
@@ -262,11 +260,6 @@ async def i3c_ibi_during_broadcast(dut):
     IBA_INCLUDE=0 a private write to the very Target that wants to interrupt is
     unwinnable for the IBI: both drive the same 7 address bits (0x10), and the Target
     then loses on RnW because the controller drives 0 (write) while the Target drives 1.
-    An earlier version of this test left IBA_INCLUDE at 0, so any IBI that appeared to
-    go first did so only because the Target happened to grab the bus before the
-    controller started -- sequential, not arbitration, and dependent on a race the test
-    did not control.
-
     Verified here:
       1. IBA_INCLUDE reads back as 1, so the arbitration window exists by specification
       2. The IBI reaches the controller, and its MDB and payload match what was sent
@@ -305,7 +298,6 @@ async def i3c_ibi_during_broadcast(dut):
 
     tb.log.info("Initializing target...")
     await tgt.initialize(TARGET_STATIC_ADDR)
-    #await tgt.configure_timing_od_i3c()
     tb.log.info("Configuring target thresholds...")
     await tgt.configure_thresholds(tx_buf=2, tx_start=0, rx_buf=1, rx_start=0)
 
@@ -339,7 +331,7 @@ async def i3c_ibi_during_broadcast(dut):
     assert ok, "Target did not receive dynamic address"
     assert dyn_addr == TARGET_DYNAMIC_ADDR
 
-    # (A)-fix: program the DAT IBI-payload policy from the target's BCR[2], else the
+    # Program the DAT IBI-payload policy from the target's BCR[2], else the
     # controller aborts inbound IBIs (ibi_abort = ibi_reject | ~ibi_payload).
     await ctrl.configure_target_ibi(0, TARGET_STATIC_ADDR, TARGET_DYNAMIC_ADDR)
 

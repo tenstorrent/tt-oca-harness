@@ -2,30 +2,21 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 """
-I3C IBI when Disabled  (Test Plan #34)
+I3C IBI when Disabled
 
 With target IBI generation NOT enabled, a real IBI attempt must not be serviced:
 the controller's PIO_INTR_STATUS.ibi_status_thld_stat has to stay clear.
 
-Two legs, because a negative result is only meaningful against a positive control:
+The test uses two cases so the negative result is checked against a positive control:
 
-  1. Negative leg  -- target IBI mode left disabled, an IBI descriptor is queued
+  1. Negative case -- target IBI mode is disabled, an IBI descriptor is queued
      anyway, and the controller must NOT latch an IBI over the observation window.
   2. Positive control -- target IBI mode is then enabled and the IBI IS serviced.
      Without this leg a permanently dead IBI path would produce the same clear
      status as correctly-suppressed IBI generation.
 
-The previous version never queued an IBI at all (it just omitted
-enable_ibi_mode()), so the "NACK" it claimed to check was never requested, and it
-would have passed against RTL in which a disabled target happily transmits IBIs.
-
-IMPORTANT -- why omitting enable_ibi_mode() is not enough: TTI_CONTROL's generated
-reset value is 0x1400, so ibi_en (bit 12) is ALREADY SET out of reset. IBI
-generation must therefore be switched OFF explicitly and the read-back verified,
-or the "disabled" leg is silently running with IBI enabled. (Measured: with ibi_en
-left at its reset value the queued IBI is transmitted and the controller latches
-PIO_INTR_STATUS.ibi_status_thld_stat, exactly as the RTL specifies --
-i3c_target_fsm.sv: ibi_pending = ibi_byte_valid_i && ibi_enable_i && ...)
+TTI_CONTROL.ibi_en resets asserted, so the test explicitly clears and verifies
+the bit before the negative case.
 """
 import os
 import sys
@@ -48,7 +39,7 @@ async def test_ibi_nack_disabled(dut):
     tb, helper, ctrl, tgt = await make_env(dut)
     await bring_up_and_assign(ctrl, tgt)
 
-    # Controller is ready to receive IBIs, but target IBI mode is left disabled
+    # Enable controller IBI reception before explicitly disabling target generation.
     await ctrl.enable_ibi_interrupts(ibi_threshold=1)
 
     # Run a normal transfer to confirm the bus is still healthy

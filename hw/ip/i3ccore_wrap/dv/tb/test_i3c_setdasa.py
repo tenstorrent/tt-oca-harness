@@ -407,26 +407,10 @@ class TB:
 @cocotb.test(skip=True, timeout_time=100, timeout_unit='us')
 async def test_setdasa(dut):
     """
-    DEPRECATED / SKIPPED — superseded by the cocotb-api tests.
+    Legacy register-level SETDASA sequence.
 
-    This legacy register-level test drives the controller through a hand-written
-    sequence whose bus/timing setup does not bring the SCL generator up: waveform
-    debug (gen_i3c_inst[0] flow_active) shows the controller asserting
-    i3c_tx_valid_o with the bus held idle (i3c_tx_ready_i never asserts), so both
-    SETDASA and the following private write stall at the bus level (the SETDASA
-    "response" read is garbage 0x0000FFFE). The same flow works through the
-    cocotb i3c_api, so the SETDASA + private write/read feature is fully covered
-    by i3c_write_read_sanity / i3c_setnewda / i3c_full_ccc_matrix (all passing).
-    Kept (skipped) for reference; revive only with a corrected timing/bus bring-up.
-
-    Test SETDASA command from controller to target.
-
-    Steps:
-    1. Configure controller (instance 0): enable bus and PIO
-    2. Configure target (instance 1): set static address, enable SETDASA
-    3. Configure DAT entry on controller with target's static address
-    4. Send SETDASA command
-    5. Verify response
+    The test is skipped because its timing setup does not start SCL, causing
+    SETDASA and subsequent transfers to stall.
     """
     tb = TB(dut)
 
@@ -472,9 +456,8 @@ async def test_setdasa(dut):
         mask=0x00000001
     )
 
-    # Configure I3C timing registers (SoC Management Interface)
-    # Values match controller_active.sv lines 289-298 for I2C/I3C Open Drain FSM timing
-    # These are in clock cycles
+    # Configure I3C timing registers (SoC Management Interface).
+    # Open-drain timing values are expressed in clock cycles.
     tb.log.info("  Configuring timing registers...")
     await tb.write_register(CTRL_BASE + T_HIGH_REG, 25)      # SCL high period
     await tb.write_register(CTRL_BASE + T_LOW_REG, 25)       # SCL low period
@@ -608,7 +591,7 @@ async def test_setdasa(dut):
     response = await tb.read_register(CTRL_BASE + RESPONSE_PORT)
     tb.log.info(f"  Response: 0x{response:08X}")
 
-    # TODO: Parse response and verify success
+    # TODO: Assert the response error status and transaction ID before continuing.
     # Response format from i3c_pkg.sv response_desc_t:
     #   err_status[11:8] = error status
     #   data_length[23:12] = data length
@@ -937,7 +920,7 @@ async def test_large_private_write(dut):
 
     TX FIFO depth = 64 entries x 4 bytes = 256 bytes
     RX FIFO depth = 64 entries x 1 byte = 64 bytes
-    Test transfer = 268 bytes
+    Test transfer = 272 bytes
 
     This test demonstrates threshold-based FIFO management for large transfers:
     - Controller TX: Refill TX FIFO when TX_THLD_STAT triggers (>=32 free entries)
@@ -948,21 +931,21 @@ async def test_large_private_write(dut):
     2. Configure TX thresholds: TX_START_THLD=0, TX_BUF_THLD=4 (32 entries)
     3. Configure RX thresholds: RX_START_THLD=0, RX_DATA_THLD=4 (32 entries)
     4. Fill TX FIFO with first 64 entries (256 bytes)
-    5. Issue command for 268-byte transfer
+    5. Issue command for 272-byte transfer
     6. Main loop (concurrent TX refill + RX drain):
        - Check TX_THLD_STAT: Refill TX FIFO if triggered
        - Check RX_DATA_THLD_STAT: Drain RX FIFO if triggered
        - Exit when response is ready
     7. Read remaining RX data after transfer completes
-    8. Verify all 268 bytes received correctly (no RX overflow error)
+    8. Verify all 272 bytes received correctly (no RX overflow error)
     """
     tb = TB(dut)
 
     tb.log.info("=" * 60)
-    tb.log.info("Starting Large Private Write Test (268 bytes)")
+    tb.log.info("Starting Large Private Write Test (272 bytes)")
     tb.log.info("=" * 60)
     tb.log.info(f"TX FIFO depth: 64 entries (256 bytes)")
-    tb.log.info(f"Transfer size: 67 entries (268 bytes)")
+    tb.log.info("Transfer size: 68 entries (272 bytes)")
 
     # Wait for simulation to initialize
     await Timer(500, units="ns")
@@ -1091,7 +1074,7 @@ async def test_large_private_write(dut):
     await tb.enable_pio_interrupt(CTRL_BASE, PIO_TX_THLD_STAT | PIO_RESP_READY_STAT)
 
     # Target RX: RX_DATA_THLD=0 (interrupt when >=2 entries filled), RX_START_THLD=0
-    # Lower threshold ensures we can drain remaining bytes below the old 32-entry threshold
+    # The lower threshold makes a sub-32-entry tail drainable.
     await tb.configure_tti_rx_thresholds(TGT_BASE, rx_data_thld=0, rx_start_thld=0)
     await tb.enable_tti_interrupt(TGT_BASE, TTI_RX_DATA_THLD_STAT)
 
@@ -1196,7 +1179,7 @@ async def test_large_private_write(dut):
     # Step 7: Issue Private Write Command
     # =========================================================================
     tb.log.info("-" * 40)
-    tb.log.info("Issuing Private Write Command (268 bytes)")
+    tb.log.info(f"Issuing Private Write Command ({total_bytes} bytes)")
     tb.log.info("-" * 40)
 
     data_length = total_bytes
@@ -1424,10 +1407,10 @@ async def test_large_private_write(dut):
 @cocotb.test(skip=True)
 async def test_large_private_read(dut):
     """
-    Test large private read transfer that exceeds FIFO depth.
+    Test a private read transfer at the FIFO capacity.
 
-    This test verifies that a 272-byte (68-entry) private read transfer
-    works correctly when it exceeds the FIFO depths:
+    This test verifies that a 256-byte (64-entry) private read transfer
+    works correctly at the FIFO capacities:
     - Target TX FIFO: 64 entries (256 bytes)
     - Controller RX FIFO: 64 entries (256 bytes)
 
@@ -1564,7 +1547,7 @@ async def test_large_private_read(dut):
     tb.log.info("Configuring TX/RX Thresholds for Large Read")
     tb.log.info("-" * 40)
 
-    total_bytes = 256  # 68 entries * 4 bytes = 272 bytes
+    total_bytes = 256  # 64 entries * 4 bytes
 
     # Target TX threshold: interrupt when >= 32 free entries (tx_data_thld=4, 2^(4+1)=32)
     await tb.configure_tti_tx_thresholds(TGT_BASE, tx_data_thld=4, tx_start_thld=0)
@@ -1718,28 +1701,11 @@ async def test_large_private_read(dut):
     if not response_ready:
         tb.log.error(f"  Timeout after {max_iterations} iterations waiting for response")
 
-    # =========================================================================
-    # Drain any remaining RX data
-    # =========================================================================
-    # tb.log.info("-" * 40)
-    # tb.log.info("Draining any remaining RX data")
-    # tb.log.info("-" * 40)
-
     # Read response descriptor
     resp_lo = await tb.read_register(CTRL_BASE + RESPONSE_QUEUE_PORT)
     rx_byte_count = (resp_lo >> 11) & 0xFFFF
     rx_err_status = (resp_lo >> 28) & 0xF
     tb.log.info(f"  Response: byte_count={rx_byte_count}, err_status={rx_err_status}")
-
-    # # Read any remaining data
-    # remaining_reads = (rx_byte_count - len(received_bytes) + 3) // 4
-    # if remaining_reads > 0:
-    #     tb.log.info(f"  Reading {remaining_reads} remaining entries from RX FIFO")
-    #     for _ in range(remaining_reads):
-    #         rx_word = await tb.read_register(CTRL_BASE + RX_DATA_PORT)
-    #         for j in range(4):
-    #             if len(received_bytes) < rx_byte_count:
-    #                 received_bytes.append((rx_word >> (j * 8)) & 0xFF)
 
     tb.log.info(f"  Total bytes received: {len(received_bytes)}")
 

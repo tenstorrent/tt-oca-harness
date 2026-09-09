@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 """
-I3C SETNEWDA  (Test Plan #26)
+I3C SETNEWDA
 
 Assigns a dynamic address via SETDASA, then re-assigns it with SETNEWDA
 (CCC 0x88) and confirms a private transfer still works on the new address.
