@@ -335,10 +335,10 @@ class sep_firmware_bl1_ver_test(sep_rom_ot_dma_boot_test):
         # device flags this testcase burned, read the manifest value this testcase
         # wrote, and then let the boot proceed -- in that order. Presence alone
         # would be satisfied by a run that never compared the two.
-        assert 0 <= i_psrc < i_fuse < i_mfst < i_rsa < i_sig < i_ok, (
+        assert 0 <= i_psrc < i_mfst < i_fuse < i_rsa < i_sig < i_ok, (
             f"the rollback check did not run on the primary in the architected "
-            f"order: primary@{i_psrc} -> {_FUSE_VER_ECHO}@{i_fuse} -> "
-            f"{_MFST_VER_ECHO}@{i_mfst} -> {_RSA_START}@{i_rsa} -> "
+            f"order: primary@{i_psrc} -> {_MFST_VER_ECHO}@{i_mfst} -> "
+            f"{_FUSE_VER_ECHO}@{i_fuse} -> {_RSA_START}@{i_rsa} -> "
             f"{_RSA_VERIFY_OK}@{i_sig} -> {_CRYPTO_OK}@{i_ok}. Console: {console}"
         )
         # CHK-ROLLBACK-AFTER-KEYSEL-BEFORE-SIGNATURE: anti-rollback sits BETWEEN
@@ -347,8 +347,8 @@ class sep_firmware_bl1_ver_test(sep_rom_ot_dma_boot_test):
         # decision before this check can reject, and the reject siblings rely on a
         # rolled-back manifest never being handed to the verifier.
         assert 0 <= i_sel < i_fuse < i_rsa, (
-            f"the version check is not between key selection and the verifier: "
-            f"{_PUBK_SEL}@{i_sel} -> {_FUSE_VER_ECHO}@{i_fuse} -> "
+            f"the version comparison is not between key selection and the "
+            f"verifier: {_PUBK_SEL}@{i_sel} -> {_FUSE_VER_ECHO}@{i_fuse} -> "
             f"{_RSA_START}@{i_rsa}. Console: {console}"
         )
         # Exactly once each. One slot is attempted and there is no retry, so a
@@ -363,10 +363,10 @@ class sep_firmware_bl1_ver_test(sep_rom_ot_dma_boot_test):
             "CHK-ROLLBACK-BOUNDARY: primary@%d -> %s@%d -> %s@%d (equal, so accepted) "
             "-> %s@%d -> %s@%d -> %s@%d, each exactly once; and it followed %s@%d",
             i_psrc,
-            _FUSE_VER_ECHO,
-            i_fuse,
             _MFST_VER_ECHO,
             i_mfst,
+            _FUSE_VER_ECHO,
+            i_fuse,
             _RSA_START,
             i_rsa,
             _RSA_VERIFY_OK,

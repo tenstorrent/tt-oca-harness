@@ -21,8 +21,6 @@
 
 #include "oca_platform.h"
 
-#include "oca_layout.h"
-#include "oca_boot.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -627,15 +625,12 @@ static oca_result_t plat_get_security_version(uint8_t out[16]) {
     // read.
     fuse_read_bytes(OCH_SEP_TOP_SEP_EFUSE_MAP_BL1_VERSION_BASE_ADDR, out, 16u);
 
-    // Both sides of the rollback comparison, at the only point SEP code holds
-    // them together: the verdict is a single result code, and which flag the
-    // manifest failed to carry is not recoverable from it. Low 32 flags only --
-    // that is the width the fuse bank backs.
+    // The device's side of the rollback comparison. The verdict is a single
+    // result code, so which flags the device holds is not recoverable from it.
+    // Low 32 flags only -- that is the width the fuse bank backs. The manifest's
+    // side is echoed by oca_boot.c before validation, where the staged body is
+    // in hand.
     simputshex32("FUSE_VER=", oca_flags_low32(out));
-    const uint8_t *body = rom_oca_body();
-    if (body != NULL) {
-        simputshex32("MFST_VER=", oca_flags_low32(body + OCA_OFF_MANIFEST_SECURITY_VERSION));
-    }
     return OCA_OK;
 }
 

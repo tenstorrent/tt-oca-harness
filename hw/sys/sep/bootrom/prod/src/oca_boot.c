@@ -25,6 +25,8 @@
 
 #include "oca_boot.h"
 
+#include "oca_layout.h"
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -261,6 +263,16 @@ static uint32_t try_manifest_slot(uint32_t src_addr, bool from_spi, int64_t regi
         0u) {
         return OCA_BOOT_ERR_DMA;
     }
+
+    // The manifest's CLAIMED security-version flags, before anything has
+    // authenticated them. Echoed here rather than beside the device's own value
+    // because rom_oca_body() deliberately means "the accepted slot's body" and is
+    // still NULL at this point; the pair is recoverable from the order, and every
+    // slot that reaches the comparison prints both.
+    simputshex32("MFST_VER=", (uint32_t)body[OCA_OFF_MANIFEST_SECURITY_VERSION] |
+                                  ((uint32_t)body[OCA_OFF_MANIFEST_SECURITY_VERSION + 1] << 8) |
+                                  ((uint32_t)body[OCA_OFF_MANIFEST_SECURITY_VERSION + 2] << 16) |
+                                  ((uint32_t)body[OCA_OFF_MANIFEST_SECURITY_VERSION + 3] << 24));
 
     // One context spans the whole staged sequence: authentication happens here,
     // the payload check happens further down, and the second needs to know what
