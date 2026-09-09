@@ -379,16 +379,12 @@
 `SMC_TB_OUT(logic, tb_axil_efuse_bank_active)
 `SMC_TB_OUT(logic, tb_axil_any_master_active)
 
-// Output-fabric observability (U6-2). SLVERR uses axi_sim_mem werr/rerr
-// (pulp API), not a DUT Force / starve knob.
+// Output-fabric observability (U6-2). SLVERR on this boundary comes from
+// the SYS_OUT slave agent's fault programming, not a DUT Force / starve knob.
 `SMC_TB_OUT(logic [31:0], tb_output_axi_write_count)
 `SMC_TB_OUT(logic [31:0], tb_output_axi_read_count)
 `SMC_TB_OUT(logic [55:0], tb_output_axi_last_addr)
 `SMC_TB_OUT(logic [63:0], tb_output_axi_last_wdata)
-// Program TB-owned axi_sim_mem.werr/rerr (byte addr); not a DUT Force.
-`SMC_TB_IN(logic, tb_output_err_we)
-`SMC_TB_IN(logic [55:0], tb_output_err_addr)
-`SMC_TB_IN(logic [1:0], tb_output_err_resp)
 // U6-2: SYS_OUT AXI slave response handshake for SmcOutputAxiMonitor.
 `SMC_TB_OUT(logic, tb_output_axi_bvalid)
 `SMC_TB_OUT(logic, tb_output_axi_bready)
@@ -406,7 +402,7 @@
 `SMC_TB_OUT(logic, tb_output_axi_wvalid)
 `SMC_TB_OUT(logic, tb_output_axi_wready)
 // TB-owned SYS_OUT R/B hold. After AW/AR accept, hides r_valid/b_valid
-// from the DUT and hides r_ready/b_ready from axi_sim_mem so the beat
+// from the DUT and hides r_ready/b_ready from the responder so the beat
 // stays outstanding. DATA hang detector snoops data_accel (DMA/zeroer
 // master), which stalls when SYS_OUT never completes. Idle 0.
 `SMC_TB_IN(logic, tb_output_axi_resp_hold)

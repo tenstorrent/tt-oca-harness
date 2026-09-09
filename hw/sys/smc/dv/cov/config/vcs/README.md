@@ -48,7 +48,6 @@ they are not comparable to each other either.
 ### `smc_cov_scope.hier` (VCS)
 
     -tree smc_uvm_top 1                     TB top's own body, children kept
-    -tree smc_uvm_top.u_output_mem          SYS_OUT axi_sim_mem responder
     -tree ...u_smc_cpu_wrapper.gen_4core_cpu  chipyard-generated CPU cluster
     -tree ...u_smc_peripherals.u_i3ccore_wrapper  vendored i3c-core
     -tree ...u_internal_regs.u_smc_dfd_wrap   vendored tt-hw-debug trace/mmr
@@ -122,9 +121,10 @@ which is the working theory — not a confirmed cause. The ineffective patterns
 were removed rather than left in place: config that looks like scope and does
 nothing is worse than a documented gap.
 
-Consequences: the SYS_OUT `axi_sim_mem` responder is pulp and stays scored,
-and the scoped denominator is 20306 rather than 9227. The VCS `.hier` file has
-no equivalent gap for the blocks it names by instance.
+Consequences: the scoped denominator is 20306 rather than 9227. The SYS_OUT
+responder is the shared VIP slave agent, class code with no RTL to score; only
+its interface instance and struct bridge sit in the TB body. The VCS `.hier`
+file has no equivalent gap for the blocks it names by instance.
 
 These are projections of the scope alone, not predictions of the next run.
 That database was collected without `--coverage-expr` and without the

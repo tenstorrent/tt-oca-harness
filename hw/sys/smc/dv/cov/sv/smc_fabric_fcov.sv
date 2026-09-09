@@ -287,8 +287,8 @@ module smc_fabric_fcov (
   `OCAH_FCOV_COVER(c_efuse_jtag_rresp_decerr, ej_rresp_decerr_e, clk_smc_i, in_reset)
 
   // ------------------------------------------------------------------
-  // SYS_OUT outbound side. SLVERR here comes from the TB-owned
-  // axi_sim_mem werr/rerr programming, not a DUT force.
+  // SYS_OUT outbound side. SLVERR here comes from the SYS_OUT slave agent's
+  // fault programming, not a DUT force.
   // ------------------------------------------------------------------
   wire out_aw_accept_e = (out_awvalid_i === 1'b1) && (out_awready_i === 1'b1);
   wire out_w_accept_e = (out_wvalid_i === 1'b1) && (out_wready_i === 1'b1);

@@ -34,9 +34,15 @@ for coverage. Driven by `tools/dv/run_dv.py`.
 * *Single DUT*: `--dut smc` → `smc_sim_cfg.toml`, top
 `smc_uvm_top` (`tb/tb_top.sv`) instantiating `hw/top/smc_wrapper.sv`.
 PLL/PVT/eFuse/pads/CPU mem and the I3C DAT/DCT/RLT memories live inside
-the wrapper. The TB still provides the SYS_OUT AXI responder
-(`axi_sim_mem`). The DTP CSR boundary is idle: `axil_dtp_csr_resp` is
-tied off, with no TB `err_slv` (SMU already wires that port to DTP).
+the wrapper. The TB provides the SYS_OUT AXI responder: the shared
+`ocah_axi_vip` slave agent on the `ocah_axi_if` instance `u_output_axi_if`,
+which `ocah_axi_struct_bridge` feeds from the wrapper's struct port
+(`SmcEnvCfg.sys_out_mem` is its slave sequence for backdoor access and
+one-shot faults; the dual bench binds one agent per instance). The responder
+follows the SMC primary reset, so a cool reset drops the outstanding SYS_OUT
+responses instead of returning them into the reset CPU cluster. The DTP CSR
+boundary is idle: `axil_dtp_csr_resp` is tied off, with no TB `err_slv` (SMU
+already wires that port to DTP).
 
 `hw/common/dv/configs/duts.toml` does not register an `smc` alias of
 `smc_wrapper`. The runner discovers `--dut smc` from this DV root.
@@ -277,7 +283,9 @@ is right.
 
 `tb/tb_top.sv` instantiates `hw/top/smc_wrapper.sv` as `smc_uvm_top`. PLL, PVT,
 eFuse, pads, CPU memory, and the I3C DAT/DCT/RLT table memories live inside
-the wrapper. The TB still provides the SYS_OUT AXI responder (`axi_sim_mem`).
+the wrapper. The TB provides the SYS_OUT AXI responder (the shared
+`ocah_axi_vip` slave agent behind `ocah_axi_struct_bridge`; in the SV-UVM
+realization `smc_env.m_sys_out_slave_agent` on `sys_out_vif`).
 The DTP CSR port is a `smc_wrapper` boundary: the TB ties
 `axil_dtp_csr_resp` to zero and does not instantiate an `err_slv`. Tests that
 need a DTP CSR subordinate stay unenrolled (`needs_dtp_csr_sub`).
@@ -671,9 +679,9 @@ Compile order is explicit and load-bearing: the library and VIP layers come
 from their manifests (`ocah_lib/uvm/sources.toml`,
 `ocah_axi_vip/uvm/sources.toml`, listed in
 `[frameworks.uvm.build].source_lists` and expanded ahead of the DUT's own
-sources), then the TB collateral both flows compile (the SYS_OUT
-`axi_sim_mem` responder and `smc_cpu_mem_dv`), `smc_tb_if`, the generated SMC
-address map, `smc_env_pkg`, `smc_seq_lib_pkg`, and `tb_top.sv` last.
+sources), then the TB collateral both flows compile (`smc_cpu_mem_dv`),
+`smc_tb_if`, the generated SMC address map, `smc_env_pkg`, `smc_seq_lib_pkg`,
+and `tb_top.sv` last.
 
 The scoreboard is always on and compares only. Each feature has its own
 reference model on the shared `ocah_ref_model` base: `smc_scratch_csr_ref_model`
