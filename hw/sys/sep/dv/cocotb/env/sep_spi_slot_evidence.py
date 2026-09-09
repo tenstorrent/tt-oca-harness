@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
-from env import sep_manifest_mutate as mm
+from env import sep_oca_mutate as mm
 
 # ocah_spi_flash.py:55-56. The ROM's manifest and payload fetches are plain and
 # fast reads; the other opcodes the model decodes (JEDEC ID, status, program,

@@ -119,7 +119,7 @@ import pyuvm
 from cocotb.handle import Immediate
 from cocotb.triggers import ClockCycles
 from cocotb.utils import get_sim_time
-from env import sep_manifest_mutate as mm
+from env import sep_oca_mutate as mm
 from env.sep_rom_console import rom_console_task
 from rom_fw.sep_spi_primary_fail_backup_test import sep_spi_primary_fail_backup_test
 from sep_reg_meta import sym

@@ -4,7 +4,7 @@
 
 STIMULUS. Both slot spans are erased to 0xFF, so the single device answers at both
 addresses but neither holds a boot slot. See the "slot erasure" section of
-``env/sep_manifest_mutate.py`` for why erasure rather than field corruption.
+``env/sep_oca_mutate.py`` for why erasure rather than field corruption.
 
 ``SepBootScoreboard`` is deliberately NOT used: it asserts ``fw_done and fw_pass``
 (``env/sep_boot_scoreboard.py:79-84``), while the correct outcome here is
@@ -37,7 +37,7 @@ from pathlib import Path
 import cocotb
 import pyuvm
 from cocotb.triggers import RisingEdge
-from env import sep_manifest_mutate as mm
+from env import sep_oca_mutate as mm
 from env import sep_spi_slot_evidence as ev
 from env.sep_efuse_image import LC_TEST_DEV, SepEfuseImage
 from env.sep_rom_console import log_scratch_cold, rom_console_task
