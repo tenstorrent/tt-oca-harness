@@ -165,7 +165,7 @@ module smc_misc_wrap #(
   // Chip Config Registers //
   ///////////////////////////
 
-  chip_config_reg_pkg::chip_config__in_t      hwif_in;
+  chip_config_reg_pkg::chip_config__in_t hwif_in;
 
   chip_config_reg smc_chip_config_reg (
     .clk(clk_i),
