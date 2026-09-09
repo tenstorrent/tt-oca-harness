@@ -546,10 +546,75 @@ def set_demotion_bit(buf: bytearray, slot: str, name: str, value: bool) -> int:
     return field & 0xFFFF
 
 
+def set_demotion(
+    buf: bytearray,
+    slot: str,
+    *,
+    bl1_valid: bool = False,
+    bl1_enable: bool = False,
+    bl2_valid: bool = False,
+    bl2_enable: bool = False,
+) -> int:
+    """Write the whole demotion_control field at once. Returns the field.
+
+    One call rather than four set_demotion_bit() calls: the bits are one
+    decision, and setting them separately would rehash once per bit and leave
+    intermediate states that mean something different from the intended one.
+    Bits not named are cleared, so the field says exactly what the caller asked
+    for and nothing carried over from the shipped image.
+    """
+    require_classic(buf, slot)
+    field = 0
+    for name, on in (
+        ("BL1_DEMOTION_VALID", bl1_valid),
+        ("BL1_DEMOTION_ENABLE", bl1_enable),
+        ("BL2_DEMOTION_VALID", bl2_valid),
+        ("BL2_DEMOTION_ENABLE", bl2_enable),
+    ):
+        if on:
+            field |= 1 << DEMOTION_BITS[name]
+    base = slot_base(slot) + OFF_DEMOTION_CONTROL
+    buf[base : base + 2] = field.to_bytes(2, "little")
+    rehash(buf, slot)
+    return field
+
+
 def secure_boot_control(buf: bytes, slot: str) -> int:
     """``secure_boot_control`` (u8). Bit 0 is the signed enforcement request."""
     require_classic(buf, slot)
     return buf[slot_base(slot) + OFF_SECURE_BOOT_CONTROL]
+
+
+def clear_secure_boot(buf: bytearray, slot: str) -> None:
+    """Make a slot validly UNSIGNED, not merely un-enforced.
+
+    Clearing the enforced bit alone produces a manifest the ROM refuses: with
+    secure boot off the parser requires the slot to carry no crypto material at
+    all, and returns OCA_FAIL_SECURE_BOOT_INVARIANT if the signature, public key,
+    key-select, or any of the type/encoding bytes is non-zero. A test that only
+    cleared the bit would see a manifest rejection where it expected its own
+    stimulus.
+
+    So this zeroes the whole set, which is what the packer emits for
+    ``secure_boot: 0``. The signature is outside the signed region and the rest
+    are inside it; the rehash at the end covers them.
+    """
+    require_classic(buf, slot)
+    base = slot_base(slot)
+    for off, length in (
+        (OFF_SIGNATURE, K.SIGNATURE_CLASSIC_SIZE),
+        (OFF_PUBLIC_KEY, K.PUBLIC_KEY_CLASSIC_SIZE),
+        (OFF_PUBLIC_KEY_SEL, PUBLIC_KEY_SEL_LEN),
+    ):
+        buf[base + off : base + off + length] = bytes(length)
+    for off in (
+        OFF_SIGNATURE_TYPE,
+        K.OFF_SIGNATURE_ENCODING_CLASSIC,
+        OFF_PUBLIC_KEY_ENCODING,
+        OFF_SECURE_BOOT_CONTROL,
+    ):
+        buf[base + off] = 0
+    rehash(buf, slot)
 
 
 def set_secure_boot_enforced(buf: bytearray, slot: str, value: bool) -> int:

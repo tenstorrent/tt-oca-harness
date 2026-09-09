@@ -60,7 +60,7 @@ docstring is its own evidence record. The duplication is named here and there.
 
 from __future__ import annotations
 
-from env import sep_manifest_mutate as mm
+from env import sep_oca_mutate as mm
 from rom_fw.sep_demotion_decision_base import (
     EFUSE_DIR,
     narrow_life_cycle_states,

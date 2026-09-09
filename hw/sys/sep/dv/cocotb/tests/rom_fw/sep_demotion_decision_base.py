@@ -234,8 +234,8 @@ from pathlib import Path
 
 import cocotb
 from cocotb.triggers import RisingEdge
-from env import sep_manifest_mutate as mm
-from env import sep_payload_mutate as pm
+from env import sep_oca_mutate as mm
+from env import sep_oca_payload as pm
 from env import sep_spi_slot_evidence as ev
 from rom_fw.sep_rom_ot_dma_boot_test import (
     SECURE_FLASH_IMAGE,
@@ -388,14 +388,22 @@ class sep_demotion_decision_base(sep_rom_ot_dma_boot_test):
         # DEVICE to have returned exactly these bytes. See that method for why the
         # offline artefact check is not sufficient on its own.
         pbase = mm.slot_base("primary")
+        # Whole fields, not prefixes: selector_bits is 16 bytes and reading 8 of
+        # it would leave half the stimulus unwitnessed.
         self._planted = {
             mm.OFF_SELECTOR_BITS: bytes(
-                buf[pbase + mm.OFF_SELECTOR_BITS : pbase + mm.OFF_SELECTOR_BITS + 8]
+                buf[
+                    pbase + mm.OFF_SELECTOR_BITS : pbase
+                    + mm.OFF_SELECTOR_BITS
+                    + mm.SELECTOR_BITS_LEN
+                ]
             ),
-            mm.OFF_USAGE_FLAGS: bytes(
-                buf[pbase + mm.OFF_USAGE_FLAGS : pbase + mm.OFF_USAGE_FLAGS + 4]
+            mm.OFF_DEMOTION_CONTROL: bytes(
+                buf[pbase + mm.OFF_DEMOTION_CONTROL : pbase + mm.OFF_DEMOTION_CONTROL + 2]
             ),
-            mm.OFF_FLAG_ARGS: bytes(buf[pbase + mm.OFF_FLAG_ARGS : pbase + mm.OFF_FLAG_ARGS + 4]),
+            mm.OFF_SECURE_BOOT_CONTROL: bytes(
+                buf[pbase + mm.OFF_SECURE_BOOT_CONTROL : pbase + mm.OFF_SECURE_BOOT_CONTROL + 1]
+            ),
         }
         for slot in ("primary", "backup"):
             self.logger.info("CHK-STIMULUS-%s: %s", slot.upper(), mm.describe(buf, slot))
@@ -705,9 +713,9 @@ class sep_demotion_decision_base(sep_rom_ot_dma_boot_test):
         fix is to stitch the reads, not to drop the check.
         """
         names = {
-            mm.OFF_SELECTOR_BITS: "usage_constraints.selector_bits",
-            mm.OFF_USAGE_FLAGS: "usage_constraints.flags",
-            mm.OFF_FLAG_ARGS: "boot_arguments.flag_args",
+            mm.OFF_SELECTOR_BITS: "selector_bits",
+            mm.OFF_DEMOTION_CONTROL: "demotion_control",
+            mm.OFF_SECURE_BOOT_CONTROL: "secure_boot_control",
         }
         assert getattr(self, "_planted", None), (
             "no planted-stimulus snapshot: mutate_flash_image() did not run, so the "
@@ -744,42 +752,50 @@ class sep_demotion_decision_base(sep_rom_ot_dma_boot_test):
 def narrow_life_cycle_states(
     test, buf: bytearray, allowed: int, *, reseal_slots: tuple[str, ...]
 ) -> None:
-    """Narrow BOTH slots' ``life_cycle_states`` to a single state, and say why.
+    """Constrain BOTH slots to a single chiplet lifecycle state, and say why.
 
-    The shipped image permits TEST_DEV | PROD | PROD_END (0x7,
-    ``configs/secure_boot_test.yaml:54``), so it boots under any of the
-    three and the run's acceptance says nothing about which state the ROM decoded.
-    The reference narrows it per lifecycle -- 0x2 for PROD and 0x4 for PROD_END,
-    written to both slots -- and this port does the same. It is
-    also a STRENGTHENING: ``selector_bits`` bit 16 is already set in the shipped
-    image, so the ROM maps the live LC state to a bit and refuses the manifest with
-    ``LC_USAGE_CONSTRAINT_FAIL`` if it is clear (``manifest_load.c``). The
-    boot therefore cannot succeed unless the ROM decoded the lifecycle this testcase
-    is named for.
+    The packed image selects no usage constraints at all, so it boots under any
+    lifecycle and the run's acceptance says nothing about which state the ROM
+    decoded. Selecting the chiplet lifecycle and narrowing it to one state makes
+    the boot itself the evidence: with the selector bit set the ROM maps the live
+    LC state to a bit and refuses the manifest when it is clear, so the run cannot
+    succeed unless the ROM decoded the lifecycle this testcase is named for.
+
+    The CHIPLET scope only. SEP provisions no package or system lifecycle --
+    ``plat_get_lifecycle_state`` reports ``OCA_HW_UNAVAILABLE`` for both -- and a
+    selected constraint the device cannot evaluate fails the slot
+    (SEP-ROM-MAN-040), so selecting either would refuse the manifest for a reason
+    that has nothing to do with demotion.
     """
     for slot in ("primary", "backup"):
-        mm.set_life_cycle_states(buf, slot, allowed)
-        got = mm.life_cycle_states(buf, slot)
+        mm.set_lifecycle_states(buf, slot, allowed, "chiplet")
+        got = mm.lifecycle_states(buf, slot, "chiplet")
         assert got == allowed, (
-            f"{slot} life_cycle_states reads back 0x{got:08x} after the write, "
-            f"expected 0x{allowed:08x}"
+            f"{slot} chiplet lifecycle_states reads back 0x{got:08x} after the "
+            f"write, expected 0x{allowed:08x}"
         )
-        sel = mm.selector_bits(buf, slot)
-        assert sel & (1 << mm.SELECTOR_BIT_LIFE_CYCLE_STATES), (
-            f"{slot} selector_bits is 0x{sel:016x} with bit "
-            f"{mm.SELECTOR_BIT_LIFE_CYCLE_STATES} clear, so the ROM would SKIP the "
-            f"lifecycle usage-constraint check entirely (manifest_load.c:540) and "
-            f"narrowing life_cycle_states would assert nothing"
+        bit = mm.SELECTOR_BIT_LIFECYCLE["chiplet"]
+        sel = mm.set_selector_bit(buf, slot, bit, True)
+        assert sel & (1 << bit), (
+            f"{slot} selector_bits is 0x{sel:032x} with bit {bit} clear after the "
+            f"write, so the ROM would skip the lifecycle constraint entirely and "
+            f"narrowing lifecycle_states would assert nothing"
         )
+        for scope in ("package", "system"):
+            other = mm.SELECTOR_BIT_LIFECYCLE[scope]
+            assert not sel & (1 << other), (
+                f"{slot} selects the {scope} lifecycle (selector bit {other}), which "
+                f"SEP cannot report: the slot would be refused under SEP-ROM-MAN-040 "
+                f"rather than reaching the demotion decision"
+            )
     for slot in reseal_slots:
         pm.reseal(buf, slot)
         pm.verify_sealed(buf, slot)
     test.logger.info(
-        "CHK-STIMULUS-LC-CONSTRAINT: both slots life_cycle_states 0x%08x -> "
-        "0x%08x with selector bit %d set, so manifest_load.c:540-549 must map the "
-        "live LC state into this bitmap for the boot to proceed; re-sealed slots: %s",
-        mm.SHIPPED_LIFE_CYCLE_STATES,
+        "CHK-STIMULUS-LC-CONSTRAINT: both slots chiplet lifecycle_states -> 0x%08x "
+        "with selector bit %d set, so the ROM must map the live LC state into this "
+        "bitmap for the boot to proceed; re-sealed slots: %s",
         allowed,
-        mm.SELECTOR_BIT_LIFE_CYCLE_STATES,
+        mm.SELECTOR_BIT_LIFECYCLE["chiplet"],
         ", ".join(reseal_slots) or "(none)",
     )
