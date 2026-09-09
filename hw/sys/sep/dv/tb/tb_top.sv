@@ -1488,13 +1488,13 @@ module sep_uvm_top
     // RND/URND handshakes directly so OTBN can leave UrndRefresh and run; the
     // real entropy_source -> CSRNG -> EDN path is bypassed and NOT exercised.
     //
-    // NO TEST PASSES THIS ANY MORE. The SEP boot ROM brings the real entropy
-    // chain up itself (src/sep_entropy.c), so the ROM crypto tests take
-    // +esrc_noise_force -- which injects only raw noise, because the ring
-    // oscillators do not self-oscillate in simulation, and leaves the
-    // DRBG/CSRNG/EDN handshakes real. That also fixes what this force could not:
-    // forcing edn_ack violates the EDN req/ack data-hold protocol and trips
-    // prim_sync_reqack_data's SyncReqAckDataHold* assertions.
+    // Prefer +esrc_noise_force. The SEP boot ROM brings the real entropy chain up
+    // itself (src/sep_entropy.c), so a crypto test needs only raw noise injected
+    // -- the ring oscillators do not self-oscillate in simulation -- and the
+    // DRBG/CSRNG/EDN handshakes stay real. This force cannot do that: forcing
+    // edn_ack violates the EDN req/ack data-hold protocol and trips
+    // prim_sync_reqack_data's SyncReqAckDataHold* assertions. Testlist entries
+    // still passing it are being migrated.
     //
     // Kept for now as a debug lever only. It is a candidate for deletion once
     // the real-entropy path has some mileage.

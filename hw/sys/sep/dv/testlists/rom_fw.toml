@@ -281,11 +281,10 @@ args = [
 
 [[tests]]
 # Enforced secure boot under PROD.
-# +sep_crypto_edn_force is required: the full RSA-3072 chain runs on OTBN, which
-# parks in UrndRefresh until EDN grants entropy, and the ROM brings up no entropy
-# chain. Same DV shortcut as sep_rom_ot_secure_boot_test, and it grants OTBN's EDN
-# handshakes only -- the RSA assertions are untouched, so a pass still means the
-# signature really verified.
+# The full RSA-3072 chain runs on OTBN, which parks in UrndRefresh until EDN
+# grants entropy. The ROM brings that chain up itself, so this needs only
+# +esrc_noise_force for the noise source, as sep_rom_ot_secure_boot_test does.
+# The RSA assertions are untouched, so a pass still means the signature verified.
 name = "sep_firmware_enforced_secure_boot_flow_test"
 module = "rom_fw.sep_firmware_enforced_secure_boot_flow_test"
 target = "rom_boot"
@@ -298,7 +297,7 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
-  "+sep_crypto_edn_force",
+  "+esrc_noise_force",
 ]
 
 [[tests]]
@@ -519,9 +518,9 @@ args = [
 
 [[tests]]
 # Signed AND encrypted payload. Needs its own OTP: the ROM derives the AES key
-# from the CLASS_KEY fuse, which must carry configs/encrypted_boot_test.yaml's
-# encryption_key_input. +sep_crypto_edn_force covers OTBN (RSA) and AES
-# (decrypt). The image is built by `make encrypted_boot_spi`.
+# from the CLASS_KEY fuse, which must carry the OCA config's encryption_key_input.
+# Both OTBN (RSA) and AES (decrypt) draw from EDN, which the ROM brings up, so
+# +esrc_noise_force is what this needs. The image is built by `make oca-images`.
 name = "sep_firmware_encrypted_boot_test"
 module = "rom_fw.sep_firmware_encrypted_boot_test"
 target = "rom_boot"
@@ -534,7 +533,7 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_class_key.toml",
-  "+sep_crypto_edn_force",
+  "+esrc_noise_force",
 ]
 
 [[tests]]
