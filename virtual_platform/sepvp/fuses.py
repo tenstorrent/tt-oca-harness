@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Translate a fuse-map into sep-vp ``och_sep_ss1.sep_efuse.*`` ini overrides.
 
 sep-vp has no OTP image loader; every fuse is a CCI parameter applied at
@@ -165,14 +168,18 @@ def _field_value(fields: dict, name: str, default: int = 0) -> int:
 
 def _sole_field_value(reg: str, fields: dict) -> int:
     """Value of a register's single meaningful (non-``rsvd``) field; 0 if none."""
-    named = [(n, b["value"]) for n, b in fields.items()
-             if n != "rsvd" and isinstance(b, dict) and "value" in b]
+    named = [
+        (n, b["value"])
+        for n, b in fields.items()
+        if n != "rsvd" and isinstance(b, dict) and "value" in b
+    ]
     if not named:
         return 0
     if len(named) > 1:
         raise ValueError(
             f"register {reg} has multiple value-bearing fields "
-            f"{[n for n, _ in named]}; expected exactly one")
+            f"{[n for n, _ in named]}; expected exactly one"
+        )
     return _to_int(named[0][1])
 
 
@@ -180,8 +187,7 @@ def _split_words(value: int, n: int = 8) -> List[int]:
     """Split an integer into *n* little-endian 32-bit words (word[0] = bits 31:0)."""
     value = _to_int(value)
     if value >> (32 * n):
-        warnings.warn(
-            f"fuse value {value:#x} exceeds {32 * n} bits; truncating to {n} words")
+        warnings.warn(f"fuse value {value:#x} exceeds {32 * n} bits; truncating to {n} words")
     return [(value >> (32 * i)) & 0xFFFFFFFF for i in range(n)]
 
 
@@ -192,7 +198,8 @@ def _lc_state_from_diff(enc) -> int:
     if (enc >> 4) != ((~raw) & 0xF):
         warnings.warn(
             f"LC_STATE value {enc:#04x} is not cleanly differential-encoded "
-            f"({{~raw,raw}}); using low nibble {raw:#x} as the sep-vp lc_state code")
+            f"({{~raw,raw}}); using low nibble {raw:#x} as the sep-vp lc_state code"
+        )
     return raw
 
 
@@ -238,7 +245,8 @@ def overrides_from_toml(config: dict) -> List[Override]:
             if v >> 32:
                 warnings.warn(
                     f"register {reg} value {v:#x} exceeds 32 bits; "
-                    f"sep-vp param {target} takes the low 32 bits only")
+                    f"sep-vp param {target} takes the low 32 bits only"
+                )
             overrides.append(("uint", _EFUSE_PREFIX + target, v & 0xFFFFFFFF))
         elif kind == "uint_lohi":
             v = _sole_field_value(reg, fields)
@@ -255,8 +263,7 @@ def overrides_from_toml(config: dict) -> List[Override]:
         elif kind == "rom_ctrl":
             end = _field_value(fields, "rom_endianness_ctrl")
             swap = _field_value(fields, "rom_swap_ctrl")
-            overrides.append(
-                ("uint", _EFUSE_PREFIX + target, (end & 0x1) | ((swap & 0x1F) << 1)))
+            overrides.append(("uint", _EFUSE_PREFIX + target, (end & 0x1) | ((swap & 0x1F) << 1)))
         elif kind == "spi_ctrl":
             for fname, vp in _SPI_CTRL_FIELD_MAP.items():
                 if fname in fields:
@@ -273,13 +280,15 @@ def overrides_from_toml(config: dict) -> List[Override]:
         if derived_locks >> 32:
             warnings.warn(
                 f"LOCKS vector {derived_locks:#x} sets bits above 31; sep-vp exposes "
-                f"only locks_lo (low 32 bits), so higher lock bits are dropped")
+                f"only locks_lo (low 32 bits), so higher lock bits are dropped"
+            )
         overrides.append(("uint", _EFUSE_PREFIX + "locks_lo", derived_locks & 0xFFFFFFFF))
 
     if unmapped:
         warnings.warn(
             "fuse-map TOML has registers with no sep-vp param (ignored): "
-            + ", ".join(sorted(set(unmapped))))
+            + ", ".join(sorted(set(unmapped)))
+        )
     return overrides
 
 
@@ -308,12 +317,12 @@ def load_toml(otp_path) -> List[Override]:
     except ImportError as e:
         raise RuntimeError(
             "reading a .toml fuse-map requires the 'toml' package "
-            "(uv sync --group vp; it is in pyproject.toml's vp dependency group)") from e
+            "(uv sync --group vp; it is in pyproject.toml's vp dependency group)"
+        ) from e
     with open(path) as f:
         data = toml.load(f)
     if not isinstance(data, dict):
-        raise ValueError(
-            f"fuse-map {path} must be a TOML table of REGISTER.fields.<name>.value")
+        raise ValueError(f"fuse-map {path} must be a TOML table of REGISTER.fields.<name>.value")
     return overrides_from_toml(data)
 
 

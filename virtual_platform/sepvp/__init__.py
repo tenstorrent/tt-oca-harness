@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """sepvp — a Python runner + harness for the SEP virtual platform (sep-vp).
 
 Launches a compiled SEP firmware ELF on the ``sep-vp`` SystemC virtual platform with

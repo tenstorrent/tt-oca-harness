@@ -163,6 +163,27 @@ That one image also carries the OCAH virtual platform's toolchain (g++, cmake, B
 OpenSSL, the runner's Python), so `make -C virtual_platform vp VP_CONTAINER=1` builds and
 runs `sep-vp` in it. The `vp-*` subcommands are aliases onto the same image.
 
+The model builds three VP executables and the harness builds all three. `sep-vp` is the
+default; `smc-vp` and `smu-vp` (the SMC+SEP integration, which runs both subsystems in
+one process) are **opt-in**, because asking for either first builds the Whisper ISS into
+`local/` — `make vp` never does, and needs no Whisper. They share a second build tree,
+`vp/build_smc`, since `WHISPER_HOME` is read at configure time and decides whether those
+platforms are generated at all. Their tests delegate to the model's own
+`sw/{smc,smu}-vp-tests` runners rather than the SEP-specific `sepvp` package. The image
+needs no extra packages for them.
+
+```bash
+make -C virtual_platform smc-vp smu-vp VP_CONTAINER=1
+make -C virtual_platform smc-test VP_CONTAINER=1   # SMC_ARGS=<one-test>
+make -C virtual_platform smu-test VP_CONTAINER=1   # SMU_ARGS=<one-test>
+```
+
+`smu-vp` has a companion artifact, `libsmc_cluster_smu.so`, built beside the target
+rather than into `bin/`. `smu-vp` bakes that build-tree path into its RUNPATH, so it runs
+in place — but a copy made without the `.so` binds silently to the build tree and then
+fails once that tree is gone. Carry both, or source the generated
+`setup_environment*.sh`, which puts its directory on `LD_LIBRARY_PATH`.
+
 ```bash
 ./scripts/docker-run.sh build     # build the image once
 ./scripts/docker-run.sh verify    # prints the compiler version and multilib list

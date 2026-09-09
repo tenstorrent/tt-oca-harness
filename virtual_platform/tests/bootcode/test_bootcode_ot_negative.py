@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Bootcode negative paths over the OpenTitan SPI controller, on sep-vp.
 
 Boots ``boot_rom.elf`` built for the OpenTitan controller with the secure-DMA drain
@@ -33,7 +36,6 @@ import struct
 from pathlib import Path
 
 import pytest
-
 from sepvp import paths
 from sepvp.config import SimConfig
 
@@ -54,6 +56,7 @@ OFF_PAYLOAD_LEN = 600
 OFF_PAYLOAD_OFFSET = 1160
 TBS_BYTE = 20  # any byte inside [0,744) that is not a header-validated field
 
+
 def _preload_raw(preload: Path) -> bytes:
     """Convert a `$readmemh` preload (`@addr` + hex bytes) to a raw image."""
     data = bytearray()
@@ -66,16 +69,17 @@ def _preload_raw(preload: Path) -> bytes:
 
 # --- crafters: pristine raw image -> tampered image -------------------------
 
+
 def _craft_both_bad(raw: bytes) -> bytes:
     b = bytearray(raw)
-    b[PRIMARY_OFFSET + OFF_MAGIC] ^= 0xFF   # corrupt primary magic
-    b[BACKUP_OFFSET + OFF_MAGIC] ^= 0xFF    # corrupt backup magic too (image ships a valid one)
+    b[PRIMARY_OFFSET + OFF_MAGIC] ^= 0xFF  # corrupt primary magic
+    b[BACKUP_OFFSET + OFF_MAGIC] ^= 0xFF  # corrupt backup magic too (image ships a valid one)
     return bytes(b)
 
 
 def _craft_hash_tamper(raw: bytes) -> bytes:
     b = bytearray(raw)
-    b[PRIMARY_OFFSET + TBS_BYTE] ^= 0xFF    # flip a byte in the hashed region -> SHA mismatch
+    b[PRIMARY_OFFSET + TBS_BYTE] ^= 0xFF  # flip a byte in the hashed region -> SHA mismatch
     return bytes(b)
 
 
@@ -88,7 +92,7 @@ def _craft_payload_overlap(raw: bytes) -> bytes:
 def _craft_payload_too_large(raw: bytes) -> bytes:
     b = bytearray(raw)
     struct.pack_into("<q", b, PRIMARY_OFFSET + OFF_PAYLOAD_OFFSET, 0x3F000)  # off+len > SRAM
-    b[BACKUP_OFFSET + OFF_MAGIC] ^= 0xFF    # kill the valid backup so the ROM halts
+    b[BACKUP_OFFSET + OFF_MAGIC] ^= 0xFF  # kill the valid backup so the ROM halts
     return bytes(b)
 
 
@@ -96,19 +100,19 @@ def _craft_rotate_to_backup(raw: bytes) -> bytes:
     b = bytearray(raw)
     poff = struct.unpack_from("<q", raw, PRIMARY_OFFSET + OFF_PAYLOAD_OFFSET)[0]
     plen = struct.unpack_from("<Q", raw, PRIMARY_OFFSET + OFF_PAYLOAD_LEN)[0]
-    slot_len = poff + plen                                   # manifest header + payload span
-    b[BACKUP_OFFSET:BACKUP_OFFSET + slot_len] = raw[PRIMARY_OFFSET:PRIMARY_OFFSET + slot_len]
-    b[PRIMARY_OFFSET + OFF_MAGIC] ^= 0xFF                    # force a rotate to the (valid) backup
+    slot_len = poff + plen  # manifest header + payload span
+    b[BACKUP_OFFSET : BACKUP_OFFSET + slot_len] = raw[PRIMARY_OFFSET : PRIMARY_OFFSET + slot_len]
+    b[PRIMARY_OFFSET + OFF_MAGIC] ^= 0xFF  # force a rotate to the (valid) backup
     return bytes(b)
 
 
 # (name, crafter, expected SEP_MSG, status type)
 CASES = [
-    ("both_bad",          _craft_both_bad,          "SEP_MSG_MANIFEST_LOAD_FAILED",      "ERROR"),
-    ("hash_tamper",       _craft_hash_tamper,       "SEP_MSG_INVALID_MANIFEST_HASH",     "ERROR"),
-    ("payload_overlap",   _craft_payload_overlap,   "SEP_MSG_PAYLOAD_OVERLAPS_MANIFEST", "ERROR"),
-    ("payload_too_large", _craft_payload_too_large, "SEP_MSG_MANIFEST_LOAD_FAILED",      "ERROR"),
-    ("rotate_to_backup",  _craft_rotate_to_backup,  "SEP_MSG_STARTING_BL1",              "INFO"),
+    ("both_bad", _craft_both_bad, "SEP_MSG_MANIFEST_LOAD_FAILED", "ERROR"),
+    ("hash_tamper", _craft_hash_tamper, "SEP_MSG_INVALID_MANIFEST_HASH", "ERROR"),
+    ("payload_overlap", _craft_payload_overlap, "SEP_MSG_PAYLOAD_OVERLAPS_MANIFEST", "ERROR"),
+    ("payload_too_large", _craft_payload_too_large, "SEP_MSG_MANIFEST_LOAD_FAILED", "ERROR"),
+    ("rotate_to_backup", _craft_rotate_to_backup, "SEP_MSG_STARTING_BL1", "INFO"),
 ]
 
 
@@ -123,15 +127,22 @@ def ot_bootcode_elf(bootcode_elf):
     return bootcode_elf
 
 
-@pytest.mark.parametrize("name,craft,expect_msg,expect_type", CASES,
-                         ids=[c[0] for c in CASES])
-def test_ot_manifest_negative(vp, ot_bootcode_elf, secure_boot_preload, tmp_path,
-                              name, craft, expect_msg, expect_type):
+@pytest.mark.parametrize("name,craft,expect_msg,expect_type", CASES, ids=[c[0] for c in CASES])
+def test_ot_manifest_negative(
+    vp, ot_bootcode_elf, secure_boot_preload, tmp_path, name, craft, expect_msg, expect_type
+):
     """Craft a tampered flash image and assert the ROM's reject/rotate/halt decision."""
     img = tmp_path / f"{name}.bin"
     img.write_bytes(craft(_preload_raw(secure_boot_preload)))
-    t = vp(SimConfig(name=f"ot_neg_{name}", elf=str(ot_bootcode_elf),
-                     flash_image=str(img), boot="primary", boot_timeout=TIMEOUT))
+    t = vp(
+        SimConfig(
+            name=f"ot_neg_{name}",
+            elf=str(ot_bootcode_elf),
+            flash_image=str(img),
+            boot="primary",
+            boot_timeout=TIMEOUT,
+        )
+    )
     t.spawn()
     match = t.expect_status(expect_msg, type=expect_type, timeout=TIMEOUT)
     if expect_type == "ERROR":

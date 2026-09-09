@@ -132,7 +132,32 @@ if [[ "$ENGINE" == podman ]]; then
     if _fuse_overlayfs="$(command -v fuse-overlayfs 2>/dev/null)"; then
         PODMAN_STORAGE_FLAGS+=" --storage-opt=mount_program=${_fuse_overlayfs}"
     fi
-    PODMAN_RUN_FLAGS="--userns=keep-id"
+    # --userns=keep-id makes the container see the caller's own uid rather than
+    # root. It needs the account's subuid allocation to be wide enough to map
+    # that uid inside the namespace: podman maps container uids 0..uid-1 onto
+    # the subuid range before pinning container uid == host uid. A large
+    # (LDAP/AD-assigned) uid with the customary 65536-wide range therefore does
+    # not fit, and podman fails before the container starts:
+    #   chowning container workdir to container root:
+    #   chown .../merged/work: invalid argument
+    # Rootless podman's DEFAULT mapping already maps container root to the
+    # caller's uid, so bind-mounted output comes out caller-owned either way
+    # (that is the same reason --user is not passed below) - so drop the flag
+    # instead of failing. Force it either way with OCAH_PODMAN_KEEP_ID=1/0.
+    PODMAN_RUN_FLAGS=""
+    if [[ -n "${OCAH_PODMAN_KEEP_ID:-}" ]]; then
+        [[ "$OCAH_PODMAN_KEEP_ID" == 1 ]] && PODMAN_RUN_FLAGS="--userns=keep-id"
+    else
+        _uid="$(id -u)"
+        # Sum every range granted to this account (by name or by uid); absent
+        # /etc/subuid or no entry yields 0, which correctly disables the flag.
+        _subuids="$(awk -F: -v u="$(id -un)" -v n="$_uid" \
+            '$1 == u || $1 == n { c += $3 } END { print c + 0 }' \
+            /etc/subuid 2>/dev/null)"
+        if [[ "${_subuids:-0}" -gt "$_uid" ]]; then
+            PODMAN_RUN_FLAGS="--userns=keep-id"
+        fi
+    fi
 else
     VOL=""
     PODMAN_STORAGE_FLAGS=""
