@@ -151,15 +151,18 @@ static uint32_t bl1_locate(oca_image_info_t *bl1, bool *in_iccm, bool report) {
         report_status(STATUS_TYPE_ERROR, SEP_MSG_BL1_BAD_ADDR);
         return OCA_BOOT_ERR_BL1_BAD_ADDR;
     }
-    if (bl1->entry_point >= bl1->length) {
-        simputs("BL1_ENTRY_RANGE\n");
-        report_status(STATUS_TYPE_ERROR, SEP_MSG_BL1_ENTRY_INVALID);
-        return OCA_BOOT_ERR_BL1_BAD_ADDR;
-    }
+    // Length before entry point: `entry_point >= length` holds for every
+    // entry_point when length is zero, so the other order reports a zero-length
+    // image as a bad entry point and never reaches this arm at all.
     if ((uint32_t)bl1->length == 0u) {
         simputs("BL1_SIZE\n");
         report_status(STATUS_TYPE_ERROR, SEP_MSG_BL1_SIZE_INVALID);
         return OCA_BOOT_ERR_BL1_TOO_LARGE;
+    }
+    if (bl1->entry_point >= bl1->length) {
+        simputs("BL1_ENTRY_RANGE\n");
+        report_status(STATUS_TYPE_ERROR, SEP_MSG_BL1_ENTRY_INVALID);
+        return OCA_BOOT_ERR_BL1_BAD_ADDR;
     }
 
     if (in_iccm != NULL) {
