@@ -303,6 +303,85 @@ def describe(buf: bytes, slot: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Structural and anti-rollback fields
+# ---------------------------------------------------------------------------
+OFF_MAGIC = 0
+OFF_SECURITY_VERSION = K.OFF_MANIFEST_SECURITY_VERSION
+SECURITY_VERSION_LEN = 16
+
+
+def break_magic(buf: bytearray, slot: str, value: bytes = b"\x99\x99\x99\x99") -> bytes:
+    """Corrupt a slot's magic so the ROM refuses it. Returns what was written.
+
+    The standard primary->backup failover trigger. Deliberately does NOT rehash:
+    the magic leads the body and ``oca_peek_manifest`` reads it before anything
+    reads or hashes the rest, so the slot is rejected before the stale hash is
+    ever examined. Rehashing is also impossible after the fact -- every helper
+    here resolves the variant from the magic.
+    """
+    variant_at(buf, slot_base(slot))  # a valid manifest really was here
+    if len(value) != 4:
+        raise ValueError("magic is 4 bytes")
+    if value in (K.OCAC_MAGIC, K.OCAP_MAGIC):
+        raise ValueError(f"{value!r} is a valid magic; that is not a mutation")
+    base = slot_base(slot) + OFF_MAGIC
+    buf[base : base + 4] = value
+    return value
+
+
+def set_signature_type(buf: bytearray, slot: str, value: int) -> int:
+    """Write ``signature_type_classic``. Returns the value written.
+
+    Inside the signed region, so this rehashes. The ROM accepts only RSA-3072
+    (SEP-ROM-SB-090), and the validator refuses anything it cannot verify, so
+    every other value is a rejection rather than an alternative algorithm.
+    """
+    require_classic(buf, slot)
+    if not 0 <= value <= 0xFF:
+        raise ValueError(f"signature_type is one byte, got {value}")
+    buf[slot_base(slot) + OFF_SIGNATURE_TYPE] = value
+    rehash(buf, slot)
+    return value
+
+
+def security_version(buf: bytes, slot: str) -> int:
+    """``manifest_security_version`` as a 128-bit integer.
+
+    A FLAG FIELD, not a counter. Anti-rollback requires the manifest to be a bit
+    superset of the device-stored value -- ``(device & ~manifest) == 0`` -- so a
+    manifest fails by *omitting* a flag the device already has, not by carrying a
+    smaller number. Grendel's equivalent was a u16 compared for magnitude.
+    """
+    require_classic(buf, slot)
+    base = slot_base(slot) + OFF_SECURITY_VERSION
+    return int.from_bytes(bytes(buf[base : base + SECURITY_VERSION_LEN]), "little")
+
+
+def set_security_version(buf: bytearray, slot: str, value: int) -> int:
+    """Write the 128-bit security-version flag field. Returns what was written."""
+    require_classic(buf, slot)
+    mask = (1 << (8 * SECURITY_VERSION_LEN)) - 1
+    value &= mask
+    base = slot_base(slot) + OFF_SECURITY_VERSION
+    buf[base : base + SECURITY_VERSION_LEN] = value.to_bytes(SECURITY_VERSION_LEN, "little")
+    rehash(buf, slot)
+    return value
+
+
+def clear_security_version_bit(buf: bytearray, slot: str, bit: int) -> int:
+    """Clear one security-version flag, i.e. plant an anti-rollback failure.
+
+    This is the rollback stimulus under the superset rule: the device keeps a
+    flag the manifest no longer asserts. Clearing a bit the device does not have
+    set proves nothing, so the bit has to be one the OTP carries.
+    """
+    require_classic(buf, slot)
+    if not 0 <= bit < 8 * SECURITY_VERSION_LEN:
+        raise ValueError(f"bit {bit} is outside the {8 * SECURITY_VERSION_LEN}-bit field")
+    return set_security_version(buf, slot, security_version(buf, slot) & ~(1 << bit))
+
+
+# ---------------------------------------------------------------------------
 # Usage constraints
 # ---------------------------------------------------------------------------
 # A manifest states which constraints it wants enforced in selector_bits, then
@@ -741,6 +820,39 @@ def _selftest() -> int:
             # Every one of those rehashed, so the slot must still verify.
             verify_layout(u, "primary")
             verify_usage_constraints_layout(u, "primary")
+
+            # break_magic makes the slot unrecognisable and leaves the hash
+            # stale on purpose, so nothing that resolves the variant works after.
+            b = bytearray(buf)
+            break_magic(b, "primary")
+            try:
+                variant_at(b, slot_base("primary"))
+            except AssertionError:
+                pass
+            else:
+                print(f"  FAIL {img.name}: magic still resolved after break_magic")
+                bad += 1
+            if bytes(b[slot_base("backup") :]) != bytes(buf[slot_base("backup") :]):
+                print(f"  FAIL {img.name}: break_magic touched the other slot")
+                bad += 1
+
+            # signature_type and the security-version flags round-trip and rehash.
+            t = bytearray(buf)
+            if set_signature_type(t, "primary", SIG_TYPE_ECDSA_P256) != SIG_TYPE_ECDSA_P256:
+                print(f"  FAIL {img.name}: signature_type round trip")
+                bad += 1
+            verify_layout(t, "primary")
+            sv = security_version(buf, "primary")
+            t = bytearray(buf)
+            set_security_version(t, "primary", sv | (1 << 7))
+            if not security_version(t, "primary") & (1 << 7):
+                print(f"  FAIL {img.name}: security_version bit did not set")
+                bad += 1
+            clear_security_version_bit(t, "primary", 7)
+            if security_version(t, "primary") & (1 << 7):
+                print(f"  FAIL {img.name}: security_version bit did not clear")
+                bad += 1
+            verify_layout(t, "primary")
             # rehash is a no-op on an unmutated image, and restores the stored
             # digest after a mutation inside the signed region.
             m = bytearray(buf)
