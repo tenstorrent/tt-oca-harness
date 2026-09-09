@@ -423,9 +423,20 @@ module smu_wrapper_uvm_top (
   // Matches smu_wrapper XTRIG_NUM_INT_CT (= DEFAULT_NUM_INT_CT - 2).
   logic [dtp_pkg::DEFAULT_NUM_INT_CT-3:0] xtrig_ctm_src_req;
 
+  // smc_4core_cpu zeroes the whole scratch RAM at boot to establish valid ECC
+  // (its MEM_ZERO FSM, gated by this input). That runs after the time-zero
+  // +smc_scratch_ram_hex load, so an image placed there does not survive to
+  // first fetch. Hold the FSM off whenever a test supplies such an image;
+  // hw/sys/smc/dv holds it off unconditionally.
+  logic smc_disable_sram_auto_init = 1'b0;
+  initial begin : smc_scratch_preload_gates_auto_init
+    string scratch_hex_path;
+    smc_disable_sram_auto_init = $value$plusargs("smc_scratch_ram_hex=%s", scratch_hex_path);
+  end
+
   // CPU memory macros live inside smc_ip_integration, so the ROM request is
   // observed hierarchically.
-  chipyard_4core_mem_pkg::rom_req_t            rom_intf_req;
+  chipyard_4core_mem_pkg::rom_req_t rom_intf_req;
   assign rom_intf_req = u_dut.u_smc_ip_integration.rom_intf_req;
   assign smc_scratch_read_count_o =
         u_dut.u_smc_ip_integration.u_smc_cpu_mem_dv.scratch_ram_read_count_q;
@@ -1285,7 +1296,7 @@ module smu_wrapper_uvm_top (
     .ss_reset_ctrl_o (),
     .sync_irq_o (),
 
-    .disable_sram_auto_init_i (1'b0),
+    .disable_sram_auto_init_i (smc_disable_sram_auto_init),
     .init_mem_done_o,
     .chiplet_is_primary_i (1'b1),
     .timer_count_o (),

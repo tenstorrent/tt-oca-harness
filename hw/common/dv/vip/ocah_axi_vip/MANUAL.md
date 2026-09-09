@@ -434,8 +434,10 @@ The SV side of this package compiles through the VIP-owned ordered manifest
 `uvm/sources.toml` (incdirs + sources): a consuming DUT lists that manifest in
 its `[frameworks.uvm.build].source_lists` and the runner expands it ahead of
 the DUT's own sources — never hand-copy these paths into a DUT sim config, and
-never add them to Bender or Verilator filelists. The manifest is the complete
-VIP layer; unused modules simply do not elaborate. Its contents:
+never add them to Bender filelists. The one entry a cocotb/Verilator build
+lists directly in its `[build].sources` is `sva/ocah_axi_sva.sv`, whose
+two-state rules run there. The manifest is the complete VIP layer; unused
+modules simply do not elaborate. Its contents:
 
 - `interface/ocah_axi_if.sv` — flat AXI4/AXI4-Lite monitor interface
   (default = maximum widths so `virtual ocah_axi_if` is one type; geometry
@@ -448,7 +450,11 @@ VIP layer; unused modules simply do not elaborate. Its contents:
   lane-window, B/R ordering and ID matching, EXOKAY-exclusive, and the Lite
   response-legality rules. `IS_LITE` selects the subset; `en_i` is the
   runtime suppress knob. Rules are implemented from IHI 0022 rule
-  descriptions only — no third-party checker source was consulted.
+  descriptions only — no third-party checker source was consulted. Two
+  trees by simulator capability: the two-state rules use `OCAH_SVA_ASSERT`
+  (`hw/common/assert/ocah_sva_macros.svh`) and run on every simulator,
+  Verilator included under `--assert`; the X-hygiene rules and the covers
+  use `OCAH_ASSERT` / `OCAH_COVER` and run on four-state simulators only.
 - `sv/ocah_axil_ram_responder.sv`, `sv/ocah_axi_ram_responder.sv` —
   behavioral error-injectable RAM responders (SV analogue of the cocotb
   fault RAMs) with port-driven arm/addr/resp/direction error controls.

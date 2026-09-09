@@ -35,6 +35,8 @@ from cocotb.triggers import RisingEdge
 from ocah_axi_vip import OcahAxiMasterDriver
 from seq_lib.sep_fw_common import addr_of, load_syms
 from seq_lib.sep_terminal_loop_seq import SepTerminalLoopSeq
+from seq_lib.smc_cpu_revector import revector_smc_cores
+from seq_lib.wrapper_jtag import make_wrapper_ptap
 
 # --- protocol constants (smu_sep_ext_axi_protocol.h) -------------------------
 SMC_READY = 0x1605_0001
@@ -69,13 +71,11 @@ DECERR_ADDR = 0x8000_2000
 
 AXI_RESP_OKAY = 0
 
-# EXTAXI_SMC_ENTRY. The SMC ROM (hw/sys/smu/dv/fw/tests/smu_sep_ext_axi_arm)
-# jumps here to start the scratch-RAM half, and hardcodes the same literal
-# because the SMU firmware builder cannot see the SEP protocol header. The
-# header itself marks it "RECONCILE vs built image", so reconcile it: a relink
-# that moves the entry must fail here rather than land the ROM's jump in the
-# middle of an instruction.
-SMC_ENTRY = 0xC006_01B2
+# EXTAXI_SMC_ENTRY, where the SMC cores are re-vectored to start the scratch-RAM
+# half. Taken from the built image's symbol table rather than the literal the
+# protocol header carries, which that header itself marks "RECONCILE vs built
+# image": a relink that moves the entry has to fail here rather than drop the
+# cores into the middle of an instruction.
 SMC_ENTRY_SYM = "smu_sep_ext_axi_smc_entry"
 
 
@@ -207,8 +207,8 @@ class SmuSepExtAxiSeq(SepTerminalLoopSeq):
         """Is the SMC core running the scratch-RAM half at all?
 
         The ROM marker says the ROM ran; the scratch fetch counter says control
-        actually reached the image the ROM jumps to. Without both, an aperture
-        that never opens is unattributable.
+        actually reached the preloaded scratch image after the re-vector.
+        Without both, an aperture that never opens is unattributable.
         """
         rd = self._rd(cocotb.top.smc_scratch_read_count_o, "smc_scratch_rd")
         wr = self._rd(cocotb.top.smc_scratch_write_count_dv_o, "smc_scratch_wr")
@@ -225,40 +225,34 @@ class SmuSepExtAxiSeq(SepTerminalLoopSeq):
             "in S2 was never opened either"
         )
 
-    def _check_smc_entry(self) -> None:
-        """Reconcile the ROM's hardcoded jump target against the built image."""
+    def _smc_entry(self) -> int:
+        """Entry of the preloaded SMC image, taken from its symbol table."""
         sym_path = str(cocotb.plusargs.get("smc_sym", ""))
-        if not sym_path:
-            self.log.info(
-                "no +smc_sym: SMC entry 0x%08x NOT reconciled against the built "
-                "image, so a relink that moved it would not be caught here",
-                SMC_ENTRY,
-            )
-            return
+        assert sym_path, (
+            "+smc_sym is required: the cores are re-vectored to "
+            f"{SMC_ENTRY_SYM}, and a hardcoded address would silently survive a "
+            "relink that moved it"
+        )
         syms = load_syms(sym_path)
         assert syms, f"no usable symbol table at {sym_path}"
-        actual = addr_of(syms, SMC_ENTRY_SYM)
-        assert actual == SMC_ENTRY, (
-            f"{SMC_ENTRY_SYM} is at 0x{actual:08x} in {sym_path} but the SMC ROM "
-            f"jumps to 0x{SMC_ENTRY:08x}; update EXTAXI_SMC_ENTRY in "
-            "smu_sep_ext_axi_protocol.h, the ROM's main.c and this constant "
-            "together, or the handoff lands mid-instruction"
-        )
-        self.log.info(
-            "SMC entry reconciled: %s = 0x%08x matches the ROM jump target",
-            SMC_ENTRY_SYM,
-            actual,
-        )
+        entry = addr_of(syms, SMC_ENTRY_SYM)
+        self.log.info("SMC entry %s = 0x%08x (from %s)", SMC_ENTRY_SYM, entry, sym_path)
+        return entry
 
     async def run(self) -> None:
         self.log.info("=" * 70)
         self.log.info("TEST: ext_in-driven SEP+SMC routing in the OSS SMU wrapper")
         self.log.info("=" * 70)
-        self._check_smc_entry()
-        # Snapshot before anything runs: if scratch RAM has already been written
-        # wholesale by this point, the backdoor image was overwritten after the
-        # time-zero load and no amount of protocol work will help.
-        self.log.info("SMC liveness at sequence start: %s", self._smc_liveness())
+        # Start the SMC half. Its image is in scratch RAM; only a tile reset
+        # makes the Rocket frontend latch a new vector, so re-vector rather than
+        # hand over from the ROM.
+        smc_entry = self._smc_entry()
+        jtag = make_wrapper_ptap()
+        await self.test.jtag_tap_reset()
+        await revector_smc_cores(self.test, jtag, smc_entry)
+        # Liveness snapshot after the re-vector: the ROM marker and the scratch
+        # counters are the baseline the failure message compares against.
+        self.log.info("SMC liveness after re-vector: %s", self._smc_liveness())
 
         driver = cocotb.start_soon(self._drive())
         try:

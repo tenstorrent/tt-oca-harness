@@ -82,16 +82,14 @@ class sep_base_test(uvm_test):
     # Which channel poll_boot() gates completion on.
     #
     #   "mailbox"  -- fw_done_o/fw_pass_o from the outbound mailbox decoder
-    #                 (dv/tb/sep_outbound_mbx.sv).  The default, and what every
-    #                 non-rom_fw firmware test uses: the spi/km/cpu payloads
-    #                 report through the mailbox and are not being migrated.
+    #                 (dv/tb/sep_outbound_mbx.sv). The default. spi/km/cpu
+    #                 payloads report through the mailbox.
     #   "scratch0" -- the ROM/BL1 verdict word in cold_scratch[0]
-    #                 (env/sep_verdict.py).  Opt-in, set by rom_fw tests only.
+    #                 (env/sep_verdict.py). Opt-in, set by rom_fw tests only.
     #
-    # Deliberately opt-in rather than a global switch: this attribute decides how
-    # a test concludes it passed, so flipping it for tests whose firmware never
-    # writes cold_scratch[0] would not fail loudly -- they would simply never
-    # complete.  See dv/docs/rom_verdict_scratch0_migration.md.
+    # Opt-in rather than a global switch: this attribute decides how a test
+    # concludes it passed. Flipping it for firmware that never writes
+    # cold_scratch[0] does not fail loudly -- the test never completes.
     verdict_source = "mailbox"
 
     @staticmethod
@@ -208,6 +206,19 @@ class sep_base_test(uvm_test):
             self._set_if_exists(dut, f"{prefix}_arvalid", 0)
             self._set_if_exists(dut, f"{prefix}_bready", 1)
             self._set_if_exists(dut, f"{prefix}_rready", 1)
+
+        # Hold the TB-owned drbg_axil64_lane_adapter arbitration vehicle in
+        # reset with its request channels idle. It is a live instance in every
+        # build, so leaving its inputs unresolved would drive X into its
+        # ASSERT_KNOWN checks in tests that never use it.
+        # sep_drbg_axil_adapter_port_arbitration_test releases it itself.
+        self._set_if_exists(dut, "tbadp_rst_ni_i", 0)
+        for pin in ("aw_valid", "w_valid", "ar_valid"):
+            self._set_if_exists(dut, f"tbadp_{pin}_i", 0)
+        for pin in ("aw_addr", "ar_addr", "w_data", "w_strb"):
+            self._set_if_exists(dut, f"tbadp_{pin}_i", 0)
+        for pin in ("b_ready", "r_ready"):
+            self._set_if_exists(dut, f"tbadp_{pin}_i", 1)
 
     def _check_efuse_shadow_after_sense(self) -> None:
         """Backdoor-compare sensed shadow data for real eFuse-image sense runs."""
@@ -1056,7 +1067,52 @@ class sep_base_test(uvm_test):
         """Override with the per-test stimulus."""
         raise NotImplementedError
 
+    def _log_run_identity(self) -> None:
+        """Record what built and ran this, in the log itself.
+
+        A log that names no commit and no build directory cannot be bound to
+        the sources it is offered as evidence for -- the freshness question
+        becomes unanswerable rather than answered, and unlike other gaps it
+        cannot be retrofitted: if the run never recorded its identity, no
+        later effort recovers it. Cheap here, impossible later.
+        """
+        import os
+        import subprocess
+
+        rev = os.environ.get("SEP_DV_GIT_REV")
+        if not rev:
+            try:
+                rev = subprocess.run(
+                    ["git", "rev-parse", "HEAD"],
+                    cwd=os.path.dirname(os.path.abspath(__file__)),
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                ).stdout.strip()
+            except (OSError, subprocess.SubprocessError):
+                rev = ""
+        # A dirty tree is part of the identity: the commit alone would name
+        # sources the run did not use.
+        dirty = ""
+        try:
+            dirty = subprocess.run(
+                ["git", "status", "--porcelain", "--untracked-files=no"],
+                cwd=os.path.dirname(os.path.abspath(__file__)),
+                capture_output=True,
+                text=True,
+                timeout=15,
+            ).stdout.strip()
+        except (OSError, subprocess.SubprocessError):
+            pass
+        self.logger.info(
+            "RUN-IDENTITY: commit=%s%s work-dir=%s",
+            rev or "unknown",
+            " (tree dirty: uncommitted sources)" if dirty else "",
+            os.environ.get("SEP_DV_RUN_DIR") or os.getcwd(),
+        )
+
     async def run_phase(self) -> None:
         self.raise_objection()
+        self._log_run_identity()
         await self.run_scenario()
         self.drop_objection()

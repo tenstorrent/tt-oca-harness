@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 # TEST_DEV lifecycle carrying the class key the encrypted-payload test decrypts.
 #
 # CLASS_KEY is the KBKDF root: ROM derives the payload AES key from it, so this
