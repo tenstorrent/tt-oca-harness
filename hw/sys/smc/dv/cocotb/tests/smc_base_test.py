@@ -28,10 +28,11 @@ for _path in (_COCOTB_ROOT, _OSS_HW_ROOT / "common" / "dv" / "vip"):
         sys.path.insert(0, _path_str)
 
 from env.smc_env import SmcEnv
-from env.smc_env_cfg import SmcEnvCfg
+from env.smc_env_cfg import SYS_OUT_AXI_GEOMETRY, SYS_OUT_MEM_SIZE, SmcEnvCfg
 from env.smc_probe_liveness import reset_probe_ledger, watch_probe_liveness
 from env.smc_protocol_vip_item import SmcProtocolVipItem, SmcProtocolVipKind
 from env.smc_virt_console import VirtConsole
+from ocah_axi_vip import OcahAxiSlaveAgent
 from seq_lib._one_shot import _OneShot
 
 # Test-class-name -> protocol VIP kind for the auto-record at the end of
@@ -580,11 +581,6 @@ class smc_base_test(uvm_test):
             dut.tb_octs_sync_load_ext.value = 0
         if hasattr(dut, "tb_octs_cnt_credit_ext"):
             dut.tb_octs_cnt_credit_ext.value = 0
-        # Output-fabric SLVERR inject (U1-2): off by default.
-        if hasattr(dut, "tb_output_err_we"):
-            dut.tb_output_err_we.value = 0
-            dut.tb_output_err_resp.value = 0
-            dut.tb_output_err_addr.value = 0
         # Cool reset starts deasserted (released) so the cool-domain logic
         # does not block the cold-reset bring-up. Tests can drive it low via
         # the reset agent COOL_RST_LO op.
@@ -594,6 +590,18 @@ class smc_base_test(uvm_test):
         # they complete.
         self.virt_console = VirtConsole(dut.tb_cpu_scratch2, "smc-fw")
         cocotb.start_soon(self.virt_console.run())
+        # The SYS_OUT responder exists before the first clock edge so the
+        # boundary's READY signals are driven from time zero. It follows the
+        # SMC primary reset: a cool reset drops the outstanding responses
+        # instead of returning them into the reset CPU cluster.
+        self.cfg.sys_out_mem = OcahAxiSlaveAgent(
+            SYS_OUT_AXI_GEOMETRY.bus(dut.u_output_axi_if),
+            dut.clk_smc_i,
+            dut.rst_primary_smc_clk_no,
+            reset_active_level=False,
+            size=SYS_OUT_MEM_SIZE,
+            name="smc_sys_out",
+        ).sequence
         cocotb.start_soon(Clock(dut.clk_ref_i, self.cfg.ref_clk_period_ns, units="ns").start())
         cocotb.start_soon(Clock(dut.clk_smc_i, self.cfg.smc_clk_period_ns, units="ns").start())
         cocotb.start_soon(

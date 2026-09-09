@@ -15,7 +15,7 @@ expectation is the truncated value 0, not a `<= 63` bound that no RTL can
 violate.
 
 Sweep gaps {0, 1, 32, 63, 64} plus seed extras are all driven and all exactly
-asserted, but only {32, 63, 64} are BOOKED as covered cells: the 0..7 band is
+asserted, but only {32, 63, 64} are BOOKED as covered cells: the 0..8 band is
 carried as UNPROVEN and must not be counted as covered by any closure
 report -- see P2_LOW_BAND_EXCLUSION_REASON.
 """
@@ -176,17 +176,17 @@ P2_REQUIRED_SWEEP_GAPS = (32, 63, 64)
 # construction must fail here instead of quietly renaming the fence term.
 P2_GRADED_CELL_NAMES = ("hyst-gap=32", "hyst-gap=63", "hyst-gap=64")
 
-# The 0..7 hysteresis band is SWEPT and exactly asserted below, but it is NOT
+# The 0..8 hysteresis band is SWEPT at 0 and 1 and exactly asserted below, but it is NOT
 # booked as covered by this testcase's coverage artifact: the DMA command never
 # completes at legal hysteresis 0 and 1 when dma_cg_en=1, so the within-1-cycle
-# hysteresis-scaling proof holds for 8..63 only. Booking `hyst-gap=0` /
+# hysteresis-scaling proof holds for 9..63 only. Booking `hyst-gap=0` /
 # `hyst-gap=1` as hit here
 # would claim coverage of a band whose DUT behaviour is under dispute, so the
 # two gaps stay as stimulus and as a fail-capable compare.
 P2_LOW_BAND_SWEEP_GAPS = (0, 1)
 P2_LOW_BAND_EXCLUSION_REASON = (
     "tenstorrent/tt-oca-harness#1235 (DMA command never completes at legal "
-    "hysteresis 0 and 1 when dma_cg_en=1): the 0..7 "
+    "hysteresis 0 and 1 when dma_cg_en=1): the 0..8 "
     "hysteresis band is UNPROVEN and must not be counted as covered by any "
     "closure report. Swept and exactly asserted here, but not booked."
 )
@@ -802,7 +802,7 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
         assert not missing_required, f"sweep required cells not observed: {missing_required}"
         # Coverage artifact grades the FL required_cells, and books a cell only
         # from a measurement that passed its exact compare -- not from a
-        # restatement of the required list. The 0..7 band is swept above but
+        # restatement of the required list. The 0..8 band is swept above but
         # excluded from the booking per P2_LOW_BAND_EXCLUSION_REASON.
         cells_hit = [f"hyst-gap={g}" for g in P2_REQUIRED_SWEEP_GAPS if g in sweep_results]
         cell_measurements = {
