@@ -865,11 +865,11 @@ test and calibration interface, which is reachable only over this path.
 
 |DFT-inserted SMC fuse path |Case 2 `& SMC_FUSE_DBG` |
 
-|SEP / SMC OTP JTAG2AXIL path |*Ungated* |This path reaches only the fuse
-controller's register interface, whose own per-field `LOCKS` read/write access
-control is the enforcement point, so a feature control bit would be redundant.
-`LOCKS` is only in force once sensed, so this depends on nothing on this path
-being able to execute before fuse sensing completes.
+|SEP / SMC OTP JTAG2AXIL path |*Ungated* |These bridges remain enabled. This path
+reaches only the fuse controller's register interface, which enforces access:
+per-field `LOCKS`, and in PROD and RMA_SIP a restriction to the token-input
+MMRs. `LOCKS` is only in force once sensed, so nothing on this path may execute
+before fuse sensing completes.
 |=======================================================================
 
 Two consequences are worth stating explicitly.
