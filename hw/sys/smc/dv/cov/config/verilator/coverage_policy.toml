@@ -1,0 +1,98 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+#
+# SMC Verilator coverage policy.
+#
+# REFERENCE-ONLY. No [[thresholds]] yet, and no [[holes]] yet. It exists so the
+# SMC coverage scope has a version-controlled, auditable carrier, and so the
+# threshold is set by the owner on measured numbers rather than inherited from
+# a default nobody signed (issue #501 is explicit that SMC must not take an
+# unwritten 98%).
+#
+# Two mechanisms, do not confuse them:
+#
+#   smc_cov_scope.vlt   `coverage_off` -> the point never enters the database.
+#                       Structural OUT: code this DUT does not own.
+#   [[holes]] here      the point exists and is not hit, carried with a
+#                       rationale, an owner and a review date.
+#
+# ---------------------------------------------------------------------------
+# Measured baseline, unscoped
+# ---------------------------------------------------------------------------
+# Weekly CI run 33982997638 (2026-09-05), artifact dv-run-smc-verilator-weekly,
+# items `smoke`, reseed 3, 105/105 PASS, coverage PASS.
+# Tool: Verilator 5.050 2026-07-01 rev v5.050.
+#
+#   line   61.8977   branch 53.6252   total 55.7320
+#   threshold 0.0 (reference-only), threshold_met true -- nothing enforced.
+#
+# `user` is absent from that run: `--coverage-user` was on but SMC had no cover
+# point to populate it. `expression` is absent because the build_args omitted
+# `--coverage-expr`. Both are fixed now (cov/sv/ modules; --coverage-expr
+# added), and neither has run in CI yet.
+#
+# ---------------------------------------------------------------------------
+# Where the unhit points were (39602 points, 17531 unhit)
+# ---------------------------------------------------------------------------
+#   bucket                                unhit    total    hit%   % denom
+#   vendor/** (third party)                8615    19437   55.7%     49%
+#   smc_cpu chipyard generated             5528    10774   48.7%     27%
+#   hw/ip/** (IP-level owned)              2856     6941   58.9%     18%
+#   hw/sys/smc/** (SMC DV target)           349     1657   78.9%      4%
+#   hw/common/**                            164      708   76.8%      2%
+#
+# Third-party RTL plus the generated CPU cluster were 76% of the denominator.
+#
+# ---------------------------------------------------------------------------
+# Scope, now applied
+# ---------------------------------------------------------------------------
+# smc_cov_scope.vlt drops the chipyard-generated CPU cluster, TB code and most
+# vendored RTL at compile time, following the SEP precedent
+# (hw/sys/sep/dv/cov/config/vcs/README.md). Replaying the scope as it actually
+# behaves over the CI database above:
+#
+#   scope                              points    total    line   branch
+#   none                                39602   55.73%   61.90    53.63
+#   this .vlt (measured behaviour)      20306   61.73%   66.59    59.50
+#   this .vlt if its known gap closed    9227   63.83%   65.88    62.77
+#
+# The gap: `coverage_off -file "*vendor/*"` does not reach
+# vendor/pulp-platform/** or vendor/tenstorrent/tt-hw-debug/**, so those stay
+# in the denominator. Four builds were counted to establish that no file
+# pattern reaches them; see cov/config/vcs/README.md.
+#
+# `hw/ip/**` is deliberately kept in: it is Tenstorrent IP that SMC integrates,
+# and integration coverage of those blocks is part of what SMC-level DV is for.
+#
+# The scoped number is "the SMC DUT minus the CPU cluster, the I3C core, the
+# lowRISC prims and TB code" -- not "SMC coverage". Quote it that way.
+#
+# All three rows are projections of scope alone. That database predates both
+# `--coverage-expr` and the cov/sv/ points, which are now in the build and add
+# an `expression` and a `user` family; re-derive from the first run that
+# carries them rather than treating any row here as the new baseline.
+#
+# ---------------------------------------------------------------------------
+# What is still open
+# ---------------------------------------------------------------------------
+# 1. THRESHOLDS. Owner-approved numbers, per #501, against the scoped
+#    denominator above. When set, add a headline rule with
+#    `population = "effective"` plus a `raw` rule so post-waiver growth cannot
+#    hide behind waivers, and `max_unclassified_points = 0` -- that is the knob
+#    that makes a run fail closed on a new, unclassified hole.
+#
+# 2. HOLES. The cov/sv/ cover points have not run in CI yet, so the `user`
+#    family has no measured result and every [[holes]] entry for it would be
+#    invented. After the first weekly run that carries them, each unhit point
+#    gets an entry here with its own selector, category, disposition,
+#    rationale, owner, reviewer, date, and an issue link where the disposition
+#    is actionable.
+#
+#    Four are already predictable from the scoreboard's own evidence -- it logs
+#    `unbackable-by-TB = axil_dtp_csr_active, gpio_core2pad_any,
+#    gpio_core2pad_en_any, gpio_pad2core_en_any` -- but they are written up
+#    only once a run confirms them.
+
+schema_version = 1
+dut = "smc"
+scope_epoch = "smc-fcov-v1"
