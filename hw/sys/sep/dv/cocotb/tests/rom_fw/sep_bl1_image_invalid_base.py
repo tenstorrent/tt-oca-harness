@@ -85,7 +85,10 @@ _OTHER_REJECTIONS = (
     "FLASH_REINIT_FAIL",
 )
 
-_CRYPTO_OK = "PAYLOAD_OK"
+# MANIFEST_OK, not PAYLOAD_OK: the claim is that the defect is caught downstream
+# of the crypto chain, and one member's defect is caught BY the payload validator
+# rather than after it, so PAYLOAD_OK does not appear for it at all.
+_CRYPTO_OK = "MANIFEST_OK"
 
 
 class sep_bl1_image_invalid_base(sep_backup_manifest_fail_base):
@@ -210,13 +213,13 @@ class sep_bl1_image_invalid_base(sep_backup_manifest_fail_base):
         n_crypto = count_of(_CRYPTO_OK)
         assert n_crypto >= 2, (
             f"{_CRYPTO_OK} appeared {n_crypto} time(s); both slots must clear the "
-            f"whole crypto chain (security version, RSA signature, payload hash) "
-            f"before their payload is validated, so a count below two means a slot "
-            f"was rejected earlier and the BL1 verdict below is not what stopped "
-            f"it. Console: {console}"
+            f"manifest crypto chain (security version, root key, RSA signature) "
+            f"before their payload is examined, so a count below two means a slot "
+            f"was rejected earlier and the verdict below is not what stopped it. "
+            f"Console: {console}"
         )
         log.info(
-            "CHK-CRYPTO-RAN: %s seen %d times; signature and payload hash verified on both slots",
+            "CHK-CRYPTO-RAN: %s seen %d times; the manifest chain cleared on both slots",
             _CRYPTO_OK,
             n_crypto,
         )
