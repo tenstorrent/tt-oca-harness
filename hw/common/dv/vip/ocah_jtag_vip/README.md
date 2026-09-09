@@ -152,7 +152,9 @@ state-encoding/transition legality, TRST/TMS-walk reset behavior, and the
 TDO-enable shift-only window, each citing its IEEE Std 1149.1 clause). It is
 instantiated at TB scope next to flattened nets or bound into a hierarchy,
 with a runtime `en_i` suppress knob; the DTP integration wires it to the
-primary TAP with `dtp_tb_if.jtag_sva_en`.
+primary TAP with `dtp_tb_if.jtag_sva_en`. The TDO-timing and TAP-state rules
+run on every simulator (Verilator under `--assert`); the X-hygiene rules run
+on four-state simulators only.
 
 The package also ships an encoding-agnostic IEEE 1149.1 TAP model
 (`ocah_jtag_tap_state_e`, `ocah_jtag_next_state()`, and the shortest-path

@@ -586,36 +586,23 @@ image::jtag2axi_series_data_error3.svg[.AXISeriesDataWithErrorStatus when AXISer
 |n-1:0 |data |RW |0 |Data value to read/write. The read data is from the previous read access.
 |===
 
-===== Security and Lifecycle Control
+===== Debug Disable
 
-The PTAP integrates with the chiplet lifecycle controller through the
-`feat_ctrl_i` input signal to enforce security policies on debug interfaces.
-This 64-bit feature control vector originates from the SEP eFuse controller and
-determines which debug features are accessible based on the current lifecycle
-state. `feat_ctrl_i` is enable-polarity (1 = feature enabled).
+The PTAP has three per-bridge debug-disable inputs. The JTAG interface unit
+synchronizes those bits to TCK and presents them here as ready-to-gate signals.
+Each input is active-high: when it is 1, the corresponding `jtag2axi` instance
+blocks AXI transaction generation.
 
-The PTAP derives three independent security disable signals from the feature
-control vector. Each bridge is enabled only when *all* of its listed enables are
-asserted, so it is disabled when *any* one of them is deasserted:
-
-[width="100%",cols="<25%,<37%,<38%",options="header"]
+[width="100%",cols="<40%,<60%",options="header"]
 |===
-|Debug Interface |Enabled When Feature Control Satisfies |Security Disable Signal
+|Debug Interface |Disable Input
 
 |SMC Fabric JTAG2AXI
-|`feat_ctrl_i.soc_debug \&\& feat_ctrl_i.ap_debug`
-|`!feat_ctrl_i.soc_debug \|\| !feat_ctrl_i.ap_debug`
+|`smc_jtag2axi_security_disable_i`
 
 |SMC OTP JTAG2AXIL
-|`feat_ctrl_i.fuse_test \&\& feat_ctrl_i.soc_debug \&\& feat_ctrl_i.ap_debug`
-|`!feat_ctrl_i.fuse_test \|\| !feat_ctrl_i.soc_debug \|\| !feat_ctrl_i.ap_debug`
+|`smc_otp_jtag2axi_security_disable_i`
 
 |SEP OTP JTAG2AXIL
-|`feat_ctrl_i.fuse_test \&\& feat_ctrl_i.sep_debug \&\& feat_ctrl_i.soc_debug \&\& feat_ctrl_i.ap_debug`
-|`!feat_ctrl_i.fuse_test \|\| !feat_ctrl_i.sep_debug \|\| !feat_ctrl_i.soc_debug \|\| !feat_ctrl_i.ap_debug`
+|`sep_otp_jtag2axi_security_disable_i`
 |===
-
-Each derived security disable signal feeds into the corresponding `jtag2axi`
-module instance. When a debug interface is disabled by lifecycle state, the
-JTAG2AXI module blocks all AXI transaction generation, preventing unauthorized
-access to memory-mapped debug registers and system resources.

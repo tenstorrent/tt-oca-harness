@@ -33,10 +33,10 @@ package sep_lifecycle_ctrl_pkg;
     // SMC fabric JTAG-to-AXI bridge: enables JTAG-driven AXI read/write access
     // to the SMC fabric register space.
     logic smc_jtag2axi;
-    // SMC OTP JTAG-to-AXI bridge. Ungated: the path reaches only the fuse
-    // controller register interface, whose per-field LOCKS access control is the
-    // enforcement point. Distinct from the DFT-inserted SMC fuse path, which is
-    // gated by smc_fuse_dft_disable_o.
+    // SMC OTP JTAG-to-AXI bridge. Ungated, so this stays 0: the path reaches the
+    // whole SMC eFuse interface, and enforcement is the per-field LOCKS access
+    // control plus the wrapper's LC-state access policy. Distinct from the
+    // DFT-inserted SMC fuse path, which is gated by smc_fuse_dft_disable_o.
     logic smc_otp_jtag2axi;
     // SEP OTP JTAG-to-AXI bridge. Ungated for the same reason as the SMC one, and
     // likewise distinct from the DFT-inserted SEP fuse path gated by

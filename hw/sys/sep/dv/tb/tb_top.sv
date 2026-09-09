@@ -1815,9 +1815,10 @@ module sep_uvm_top
     // bug in the VIP or a sequence rather than a DUT bug. That is the value:
     // it stops an illegal transaction being blamed on the DUT.
     //
-    // Assertion bodies are guarded by OCAH_INC_ASSERT (hw/common/assert),
-    // which Verilator does not define, so both instances elaborate to empty
-    // modules there and cost nothing. The rules are live under VCS.
+    // The Verilator targets pass no --assert, so Verilator drops the
+    // two-state rules; the X-hygiene rules are gated by OCAH_INC_ASSERT
+    // (hw/common/assert), which Verilator does not define. The rules are
+    // live under VCS.
     //
     // m_axi ties en_i high: it is TB-driven in both run modes. s_axi is gated
     // by the run mode, for the reason stated at its instance. A test that needs

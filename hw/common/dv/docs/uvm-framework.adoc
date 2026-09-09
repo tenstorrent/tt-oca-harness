@@ -105,6 +105,14 @@ flow:
   its `*_sequence` API classes. A missing operation is added to the VIP API
   (where every DUT inherits it), never inlined as raw driver or virtual
   -interface manipulation in DUT code.
+. *One responder for every DUT-mastered AXI boundary.* The shared VIP slave
+  agent (`ocah_axi_slave_agent` / `OcahAxiSlaveAgent`) answers it:
+  edge-sampled through the clocking block, memory-backed, preloaded and
+  fault-programmed through `ocah_axi_slave_sequence`. A port the bench
+  flattens to pins attaches directly; a port that stays a request/response
+  struct inside `tb_top` is placed on an `ocah_axi_if` instance through
+  `ocah_axi_struct_bridge` and attaches the same way. No bench instantiates a
+  vendored simulation memory or a DUT-local terminator on such a boundary.
 . *Shared evidence mechanics.* Every checker extends
   `ocah_checker_uvm_pkg::ocah_checker`; protocol and DUT checkers carry only
   their own checks and identity, never a copy of the recording, severity

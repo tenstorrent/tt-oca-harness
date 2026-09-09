@@ -46,6 +46,8 @@ bender_targets = ["smc", "smc_wrapper"]
 incdirs = [
   "hw/sys/sep/dv/shims/prim",
   "hw/sys/smc/dv/tb",
+  # ocah_fcov_macros.svh, included by the cov/sv functional-coverage modules.
+  "hw/common/assert",
 ]
 exclude_files = [
   "hw/oss-example/wrapper/smc/smc_padring_ext.sv",
@@ -105,6 +107,16 @@ sources = [
   # inject hook and the image backdoors, bound into smc_ip_integration.
   # Not in the Bender wrapper target -- only this TB binds it.
   "hw/sys/smc/dv/models/smc_cpu_mem_dv.sv",
+  # Flow-shared functional-coverage modules (cov/sv/): compiled in BOTH flows --
+  # this list feeds the cocotb/Verilator filelist, and the
+  # [frameworks.uvm.build] sources list (which replaces this one) repeats the
+  # entries. Instantiated in tb/tb_top.sv, single-instance body only.
+  "hw/sys/smc/dv/cov/sv/smc_reset_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_clk_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_periph_fcov.sv",
+  # smc_axi_chan_fcov leads: smc_fabric_fcov instantiates it three times.
+  "hw/sys/smc/dv/cov/sv/smc_axi_chan_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_fabric_fcov.sv",
 ]
 
 [build.verilator]
@@ -115,6 +127,41 @@ ccache = true
 
 [build.options]
 build_jobs = 8
+
+[coverage.vcs]
+# Commercial signoff path, transplanted from the sep config
+# (hw/sys/sep/dv/sep_sim_cfg.toml [coverage.vcs]). NOT YET RUN: no VCS binary
+# was available where this was written, so treat the first run as bring-up and
+# work through the checklist in cov/config/vcs/README.md.
+#
+# Restate the simulator defaults (`-cm`, `-cm_dir`) because a DUT table
+# replaces the list rather than appending to it, then add the scope file.
+#
+# Scope has to be applied at COMPILE time. `urg -hier` prunes the report pages
+# but still computes the headline score over the whole database, so the only
+# way to keep the CPU cluster and the vendored blocks out of the number is to
+# keep them out of the database: `-cm_hier` limits what gets instrumented.
+# Edit `smc_cov_scope.hier` then `--rebuild` -- the file is not fingerprinted.
+#
+# `-cm_common_hier` extends the SAME scope file from code coverage to assertion
+# coverage; `-cm_hier` alone governs line/cond/fsm/tgl/branch only, so without
+# it the excluded hierarchy leaves the code metrics but is still graded for
+# assertions. It is a Limited Customer Availability feature, so VCS refuses the
+# compile without `-lca` -- an opt-in switch, not a separate licence.
+#
+# The per-leaf dump is the inherited `[vcs.coverage_defaults].sim_args`
+# (`-cm` + `-cm_dir {cov_dir}/simv.vdb`). Do not restate it here: an identical
+# list is a deprecated duplicate and the runner refuses the config.
+compile_args = [
+  "-cm",
+  "line+cond+tgl+fsm+branch+assert",
+  "-cm_dir",
+  "{build_cov_dir}",
+  "-cm_hier",
+  "{repo_root}/hw/sys/smc/dv/cov/config/vcs/smc_cov_scope.hier",
+  "-lca",
+  "-cm_common_hier",
+]
 
 [coverage.verilator]
 # Instrument line/branch (--coverage-line) and SVL user coverage; toggle
@@ -128,7 +175,22 @@ build_jobs = 8
 # C++ into a single translation unit that the compiler did not finish in
 # two hours; per-file compilation keeps every unit and every compiler
 # process bounded (46-minute build on six cores, ~12 MB database per leaf).
-build_args = ["--coverage-line", "--coverage-user", "--output-groups", "0"]
+#
+# --coverage-expr matches the sep and dtp configs; without it the `expression`
+# metric family is absent from every SMC run.
+#
+# smc_cov_scope.vlt applies the coverage scope at COMPILE time, so what it
+# drops never enters the database. See cov/config/vcs/README.md for what the
+# scoped number is and why; the sibling .hier file carries the same intent for
+# VCS and has to be kept in step by hand.
+build_args = [
+  "--coverage-line",
+  "--coverage-expr",
+  "--coverage-user",
+  "--output-groups",
+  "0",
+  "{repo_root}/hw/sys/smc/dv/cov/config/verilator/smc_cov_scope.vlt",
+]
 
 [frameworks.cocotb]
 python_root = "hw/sys/smc/dv/cocotb"
@@ -418,6 +480,14 @@ sources = [
   # TB collateral shared with the cocotb flow.
   "vendor/pulp-platform/axi/upstream/src/axi_sim_mem.sv",
   "hw/sys/smc/dv/models/smc_cpu_mem_dv.sv",
+  # Flow-shared functional-coverage modules; the same five entries the
+  # [build] sources list carries for the cocotb/Verilator flow.
+  "hw/sys/smc/dv/cov/sv/smc_reset_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_clk_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_periph_fcov.sv",
+  # smc_axi_chan_fcov leads: smc_fabric_fcov instantiates it three times.
+  "hw/sys/smc/dv/cov/sv/smc_axi_chan_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_fabric_fcov.sv",
   "hw/sys/smc/dv/tb/smc_tb_if.sv",
   "hw/sys/smc/dv/uvm/env/smc_env_pkg.sv",
   "hw/sys/smc/dv/uvm/seq_lib/smc_seq_lib_pkg.sv",

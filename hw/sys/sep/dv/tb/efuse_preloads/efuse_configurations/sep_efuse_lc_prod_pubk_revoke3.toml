@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 # PROD lifecycle with ROM public-key slot 3 revoked.
 #
 # CHIPLET_PUBK_REVOKE.select[7:0] is the ROM chiplet-creator classical key

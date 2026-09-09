@@ -12,8 +12,11 @@
 // Provides, for the SMC testbench only:
 //   * observability counters (ROM / scratch read+write / dcache write)
 //   * the firmware mailbox magic detector
-//   * bank0 ECC fault injection, forced onto the macro response so the CPU
-//     consumes the corrupted data
+//   * bank0 ECC fault-injection HOOK: a counter of scratch bank0 reads taken
+//     while ecc_inject_sbe_i / ecc_inject_dbe_i are asserted. It does NOT
+//     corrupt the macro response -- there is no force anywhere in this bench --
+//     so nothing downstream observes DUT SECDED behaviour. Treat the counter as
+//     evidence that the hook is reached and gated, never as ECC coverage.
 //   * the +smc_rom_hex / +smc_scratch_ram_hex time-zero image backdoors
 //
 // The SMU testbenches do not bind it. They load their SMC ROM through
@@ -79,8 +82,10 @@ module smc_cpu_mem_dv
   logic [31:0] scratch_ram_write_count_q;
   logic        scratch0_inject_fire_q;
 
-  // Bank0 ECC injection itself is a force on smc_ip_integration's response
-  // net and lives in the testbench; this only counts the qualifying reads.
+  // Counts scratch bank0 reads taken while an inject pin is asserted. No data
+  // is corrupted: there is no force on smc_ip_integration's response net here
+  // or in tb_top. A consumer of this counter is observing the hook's gating,
+  // not the CPU's ECC response.
   always_ff @(posedge scratch_ram_req_i[0].clk or negedge rst_ni) begin
     if (!rst_ni) begin
       scratch0_inject_fire_q <= 1'b0;
@@ -235,7 +240,9 @@ module smc_cpu_mem_dv
             // which is far harder to diagnose than a loud line here.
             file_words = 0;
             scratch_fd = $fopen(scratch_path, "r");
-            while (!$feof(scratch_fd)) begin
+            while (!$feof(
+                scratch_fd
+            )) begin
               if ($fscanf(scratch_fd, "%h", scan_word) == 1) begin
                 file_words++;
               end else begin
@@ -246,11 +253,12 @@ module smc_cpu_mem_dv
             if (file_words > int'(MAX_LINEAR_WORDS)) begin
               $error({"[smc_cpu_mem_dv] scratch image %s holds %0d words but the ",
                       "backdoor stages only %0d -- the image is TRUNCATED and the CPU will ",
-                      "fetch whatever the cut left behind. Raise MAX_LINEAR_WORDS."},
-                     scratch_path, file_words, MAX_LINEAR_WORDS);
+                      "fetch whatever the cut left behind. Raise MAX_LINEAR_WORDS."}, scratch_path,
+                       file_words, MAX_LINEAR_WORDS);
             end
-            $display("[smc_cpu_mem_dv] stripe-loaded scratch %s (%0d words in file, bank0 nonzero=%0d)",
-                     scratch_path, file_words, loaded_words);
+            $display(
+                "[smc_cpu_mem_dv] stripe-loaded scratch %s (%0d words in file, bank0 nonzero=%0d)",
+                scratch_path, file_words, loaded_words);
           end
         end else if (bank == 0) begin
           $display("[smc_cpu_mem_dv] WARN: missing scratch %s", scratch_path);
