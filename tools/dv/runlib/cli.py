@@ -1182,7 +1182,7 @@ def list_flows(flows: dict[str, Flow], simulators: dict[str, Any]) -> None:
             )
         )
 
-    widths:list[int] = [22, 4, 14, 46]
+    widths: list[int] = [22, 4, 14, 46]
 
     print(
         f"{BOLD}{'NAME':<{widths[0]}} {'KIND':<{widths[1]}} {'FRAMEWORKS':<{widths[2]}} {'TOOLS':<{widths[3]}} {'DESCRIPTION'}{NORMAL}"
