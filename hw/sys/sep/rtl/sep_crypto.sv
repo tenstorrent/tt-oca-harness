@@ -548,7 +548,10 @@ module sep_crypto #(
   assign intr_abr_notif_o = abr_notif_intr;
   assign unused_abr_busy  = abr_busy;
 `else
-  // Adams Bridge engine compiled out.
+  // Adams Bridge engine compiled out. Both terminators share the interconnect's
+  // rst_ni domain: the ABR AXI port has no host isolate, and the KM key isolate
+  // is also on rst_ni. The wrapper above stays on sep_reset_ni so the engine is
+  // held through eFuse sense (same boot reset as KM cold).
   // (1) Terminate the ABR control/status AXI aperture with DECERR.
   axi_err_slv #(
     .AxiIdWidth (sep_pkg::SEP_32_64_6_12_ID_WIDTH),
@@ -575,7 +578,7 @@ module sep_crypto #(
     .axil_resp_t    (km_intf_pkg::km_axil_resp_t)
   ) u_abr_key_err_slv (
     .clk_i       (clk_i),
-    .rst_ni      (sep_reset_ni),
+    .rst_ni      (rst_ni),
     .axil_req_i  (abr_key_axil_isolated_req),
     .axil_resp_o (abr_key_axil_isolated_resp)
   );
