@@ -17,3 +17,11 @@ public_flat_rw -module "prim_ram_2p" -var "mem"
 public_flat_rd -module "smc_efuse_wrapper" -var "lc_state_smc_raw"
 public_flat_rd -module "smc_efuse_wrapper" -var "lc_sigint_err"
 public_flat_rd -module "smc_efuse_wrapper" -var "is_prod_or_rma_sip"
+// Trap cause and trapped PC, per core. The cluster exposes only the retired PC
+// (smc_4core_cpu.sv:259 `o_wb_reg_pc`), so a firmware image that traps and one
+// that simply stopped fetching are indistinguishable from outside. READ-ONLY
+// for the same reason as the lifecycle signals above: the firmware boot tests
+// only sample these, and publishing them read-only keeps
+// `[NO-FORCED-INTERNAL-STATE]` structurally true.
+public_flat_rd -module "OCAH4CORECluster_CSRFile" -var "reg_mcause"
+public_flat_rd -module "OCAH4CORECluster_CSRFile" -var "reg_mepc"

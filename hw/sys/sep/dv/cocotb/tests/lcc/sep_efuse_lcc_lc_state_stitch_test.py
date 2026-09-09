@@ -114,6 +114,10 @@ class _lcc_otp_program_seq(pyuvm.uvm_sequence):
         # one retry). Read back by the test to prove the retry path was actually
         # exercised rather than passing vacuously.
         self.retry_count = 0
+        # Last PROGRAM_CTRL status word. The blocked-strap path inspects
+        # PROGRAM_DONE+PROGRAM_ERR here instead of inferring a bank write
+        # from fail-injection credit (that credit re-arms on every rst_ni).
+        self.last_status = 0
 
     async def _access(
         self,
@@ -195,6 +199,7 @@ class _lcc_otp_program_seq(pyuvm.uvm_sequence):
             for _ in range(200):
                 await ClockCycles(cocotb.top.clk_i, 1)
                 status = await self._read(_EFUSE_PROGRAM_CTRL, "program_status")
+                self.last_status = status
                 if not (status & (1 << 25)):
                     continue
 
@@ -252,23 +257,8 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
         await self.start_seq(seq)
         self._total_program_retries += seq.retry_count
         if raw == LC_PROD:
-            # Unique proof the strap-up attempt never reached the OTP bank:
-            # fail-injection is consumed only on a real APB program
-            # (efuse_bank_model wr_setup). If the guard held, the credit is
-            # still there and this first real program of bit 96 must retry.
             assert self._secure_tm_prog_blocked, (
                 "test bug: PROD program ran without a strap-up block attempt"
-            )
-            assert seq.retry_count >= 1, (
-                "CHK-SECURE-TM-PROG-BLOCK: the strap-up attempt on bit 96 "
-                "consumed OTP fail-injection, so the command reached the "
-                "OTP bank; efuse_guard must empty the request"
-            )
-            self.logger.info(
-                "CHK-SECURE-TM-PROG-BLOCK PASS: OTP bit[%d] failed after "
-                "PROGRAM_ERR while secure_tm=1; first real program still "
-                "retried (guard never reached the OTP bank)",
-                bit_addr,
             )
         image.set_lc_state(raw)
         await self.resense(max_cycles=_MAX_SENSE_CYCLES)
@@ -423,30 +413,31 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
                 )
 
                 # CHK-SECURE-TM-PROG-BLOCK: while the strap is up, efuse_guard
-                # empties the fuse command request (efuse_guard.sv:110) and the
-                # program interface completes with PROGRAM_DONE+ERR because
-                # secure_tm_blocked_i is set (efuse_program_interface.sv ST_WAIT_RESP).
-                # That is a failed completion, not a starved DONE. Prove the
-                # attempt does not succeed here; the unique "never reached the
-                # OTP bank" half is that the same bit still consumes
-                # fail-injection on the first real program after the strap drops.
+                # empties the fuse command request and the program interface
+                # completes with PROGRAM_DONE+ERR because secure_tm_blocked_i
+                # is set. That is a failed completion, not a starved DONE.
+                # The status word is the evidence — not fail-injection credit,
+                # which re-arms on the resense that must follow to drop the
+                # latched strap.
                 blocked = _lcc_otp_program_seq(_LC_STATE_BIT_BASE + 0, max_attempts=2)
                 try:
                     await self.start_seq(blocked)
                 except AssertionError as exc:
-                    msg = str(exc)
-                    if "failed after" not in msg:
+                    status = blocked.last_status
+                    done = (status >> 25) & 1
+                    err = (status >> 26) & 1
+                    if not (done and err):
                         raise AssertionError(
                             "CHK-SECURE-TM-PROG-BLOCK: expected PROGRAM_DONE+ERR "
                             "(secure_tm_blocked completes the program FSM with "
-                            "error); got "
-                            f"{msg!r}"
+                            f"error); status=0x{status:08x} ({exc})"
                         ) from exc
                     self._secure_tm_prog_blocked = True
                     self.logger.info(
-                        "CHK-SECURE-TM-PROG-BLOCK: OTP bit[%d] PROGRAM_ERR "
-                        "while secure_tm=1 (command did not succeed)",
+                        "CHK-SECURE-TM-PROG-BLOCK PASS: OTP bit[%d] "
+                        "PROGRAM_DONE+ERR (status=0x%08x) while secure_tm=1",
                         _LC_STATE_BIT_BASE,
+                        status,
                     )
                 else:
                     raise AssertionError(

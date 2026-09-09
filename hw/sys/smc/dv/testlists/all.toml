@@ -13,6 +13,7 @@ includes = [
     "dual.toml",
     "efuse.toml",
     "fabric.toml",
+    "fw.toml",
     "gpio.toml",
     "i2c.toml",
     "irq.toml",
@@ -22,6 +23,7 @@ includes = [
     "power.toml",
     "register.toml",
     "reset.toml",
+    "rtl_issue.toml",
     "spi.toml",
     "uart.toml",
     "depth.toml",
@@ -34,15 +36,23 @@ name = "all"
 #
 # It is not every test the package defines, and the difference is deliberate.
 #
-# Five tests build a different DUT and so cannot ride in one sweep:
-# smc_dual_elaboration_test, smc_dual_axi_sram_probe_test,
-# smc_occp_sanity_test and smc_occp_dual_unsecure_boot_test carry
-# `target = "dual"`, which elaborates SMC_DUAL; smc_prod_rom_occp_ready_test
-# needs `run_modes = ["prod_rom"]` so the production ROM's reset vector is not
-# zeroed by the smoke-mode backdoor. They run as `dual_all` / `dual_smoke` /
-# `occp_dual` / `occp_boot`, and each has a VPLAN entry under OCCP.
+# The three `target = "dual"` bring-up scenarios are in: the runner builds both
+# targets in one invocation and schedules each testcase against its own, so a
+# second SMC_DUAL elaboration is the only extra cost and it is paid once.
 #
-# 12 test modules under cocotb/tests/ are in no testlist. Each carries its
+# Two testcases are held out on measured runtime alone. Both are correct and
+# both are green; putting them here would turn a four-minute package run into a
+# multi-hour one, and nothing about them needs to gate every review:
+#
+#   smc_occp_dual_unsecure_boot_test  ~2.1 h. A full sram image crosses a
+#                                     ~2.6 MHz serial bus that Verilator
+#                                     simulates cycle by cycle. Runs as
+#                                     `dual_all` / `occp_dual`.
+#   smc_prod_rom_occp_ready_test      the production ROM's whole reset-to-OCCP
+#                                     path, `run_modes = ["prod_rom"]`. Runs as
+#                                     `occp_boot`, and carries the `ci` tag.
+#
+# 13 test modules under cocotb/tests/ are in no testlist. Each carries its
 # deferral reason in its own docstring, on a leading `# deferred: <tag>` line
 # where one applies:
 #
@@ -66,11 +76,16 @@ name = "all"
 #   smc_sideband_avsbus_octs_bfm_test
 #                                 fake_bfm: raises on entry rather than standing
 #                                 in for a pad VIP that does not exist
+#   smc_cluster_plic_csr_test     no_sep_in_write_path: the PLIC aperture at
+#                                 0xC400_0000 accepts writes with OKAY and
+#                                 stores nothing, and its +2 MB context pages
+#                                 return non-OKAY. Measured; see the docstring
+#                                 and SMC_VPLAN Known Limitations
 #
-# Two enrolled tests are also held out of this group, both red for a filed RTL
+# Four enrolled tests are also held out of this group, all red for a filed RTL
 # reason rather than a test defect. They keep their own [[tests]] entries and
 # run on demand; holding them out is a dv_policy §2 LINKED-ISSUE disposition,
-# not a waiver, and neither should be re-added until its issue closes.
+# not a waiver, and none should be re-added until its issue closes.
 #
 #   smc_remap_cla_test          -- its CLA reset sweep passes (82 registers, 6
 #                                  with discriminating non-zero resets), but the
@@ -89,6 +104,16 @@ name = "all"
 #                                  registers (wrap_to_live=7 read_alias=6). That
 #                                  is #585. Already recorded as held out in
 #                                  depth.toml.
+#
+# The `rtl_issue` group is also out, and being red is its whole purpose -- it is
+# the runnable evidence for filed RTL defects. rtl_issue.toml is included above
+# so the names resolve and the file is reachable; the group is how they are run.
+# See that file for the conventions.
+#
+#   smc_gpio_irq_mask_deassert_test    #1602
+#   smc_efuse_read_timeout_status_test #1603
+#   smc_log_engine_intr_mask_test      #1635, the pattern behind #1602
+#   smc_i2c_intr_mask_test             #1635, third IP
 tests = [
     "smc_5agent_observability_test",
     "smc_6agent_observability_test",
@@ -123,6 +148,8 @@ tests = [
     "smc_dfx_status_abort_test",
     "smc_dma_cg_activity_test",
     "smc_dma_sanity_test",
+    "smc_dual_axi_sram_probe_test",
+    "smc_dual_elaboration_test",
     "smc_ecc_codeword_ded_test",
     "smc_ecc_codeword_sec_test",
     "smc_ecc_dfd_dbs_sanity_test",
@@ -143,6 +170,8 @@ tests = [
     "smc_filter_field_sweep_test",
     "smc_filter_multi_entry_test",
     "smc_flr_sanity_test",
+    "smc_fw_hello_world_test",
+    "smc_fw_plic_claim_test",
     "smc_gpio_boot_stall_test",
     "smc_gpio_ctrl_full_sweep_test",
     "smc_gpio_filter_access_sep_test",
@@ -190,6 +219,7 @@ tests = [
     "smc_mailbox_data_error_test",
     "smc_mailbox_event_irq_test",
     "smc_mailbox_field_sweep_test",
+    "smc_mailbox_flush_test",
     "smc_mailbox_idle_test",
     "smc_mailbox_inbound_test",
     "smc_mailbox_irq_test",
@@ -199,6 +229,7 @@ tests = [
     "smc_mutex_semaphore_test",
     "smc_ndm_reset_test",
     "smc_occp_sanity_secure_error_test",
+    "smc_occp_sanity_test",
     "smc_octs_dual_sync_test",
     "smc_octs_sanity_test",
     "smc_output_fabric_slverr_inject_test",
@@ -209,6 +240,7 @@ tests = [
     "smc_register_boundary_depth_test",
     "smc_register_sanity_test",
     "smc_reset_recovery_matrix_test",
+    "smc_reset_unit_lock_test",
     "smc_reset_unit_sanity_test",
     "smc_sideband_protocol_smoke_test",
     "smc_smbus_alert_ara_test",
@@ -244,6 +276,11 @@ tests = [
 [[groups]]
 name = "smoke"
 tests = [
+    # The two leaves this package added most recently. Both are toolchain-free
+    # and about a second each, and `smoke` is the only group any CI workflow
+    # schedules, so a leaf outside it is covered by manual runs alone.
+    "smc_mailbox_flush_test",
+    "smc_reset_unit_lock_test",
     "smc_cold_reset_test",
     "smc_powergood_glitch_test",
     "smc_cold_reset_repeated_test",

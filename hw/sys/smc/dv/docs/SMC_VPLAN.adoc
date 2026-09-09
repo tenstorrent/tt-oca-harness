@@ -9,10 +9,13 @@
 This plan covers the SMC subsystem as it is verified in the open-source
 harness: the `smc_wrapper` DUT driven over SEP_IN AXI and AXI-Lite, with
 cocotb/PyUVM as the primary framework and an SV-UVM view for the scenarios
-that carry one. 156 testcases are enrolled. The `all` group is 149 of
-them: `smc_deadspace_decode_test` (#585) and `smc_remap_cla_test`
-(#1488) stay enrolled and run on demand; they are held out of the
-sign-off sweep. Five dual / production-ROM leaves build a different DUT.
+that carry one. 164 testcases are enrolled. The `all` group is 156 of
+them. Eight enrolled leaves are out of the sign-off sweep:
+`smc_deadspace_decode_test` (#585) and `smc_remap_cla_test`
+(#1488) stay enrolled and run on demand; two dual / production-ROM
+leaves are held on measured runtime; and four `rtl_issue`
+reproducers are red by design. Three other dual bring-up
+scenarios ride in `all`.
 
 Every entry below names a testcase that exists and runs. Where the harness
 cannot reach a feature, the testcase is not listed here as enrolled; it is
@@ -63,6 +66,7 @@ verifying the block behind the port.
 |`smc_combined_observability_test` |SMC OSS PyUVM combined-observability test.
 |`smc_default_reg_rd_test` |Run a compact OSS-safe default-register read sweep.
 |`smc_ext_interrupts_pin_test` |ext_interrupts_i[0] after prim_sync3.
+|`smc_fw_plic_claim_test` |Firmware programs the cluster PLIC and claims ext_interrupts_i[0] through it.
 |`smc_register_boundary_depth_test` |Run a compact safe register-boundary sweep.
 |`smc_register_sanity_test` |Run the SMC OSS register-sanity scenario.
 |===
@@ -114,6 +118,7 @@ verifying the block behind the port.
 |===
 |Testcase |Objective
 |`smc_cg_dft_reset_bringup_test` |LIVE/CONNECTIVITY DFT test_en_i bypass + Zeroer reset-override (Skill 1.5).
+|`smc_reset_unit_lock_test` |SS_COLD_RESET_LOCK and SS_CONFIG_LOCK are write-one-to-set and mask the registers they guard.
 |`smc_cold_reset_repeated_test` |Run the SMC OSS repeated cold-reset re-assert scenario.
 |`smc_cold_reset_test` |Run the SMC OSS cold-reset / POR / cool SMC_001 scenario.
 |`smc_cool_reset_from_pcie_test` |FLR pin → skip_mem_repair / rst_cool_no / isolate_req_o.
@@ -277,7 +282,8 @@ verifying the block behind the port.
 |Testcase |Objective
 |`smc_mailbox_data_error_test` |Run mailbox write/read data and illegal access response checks.
 |`smc_mailbox_event_irq_test` |Run mailbox IRQ-control decode plus real sync IRQ injection.
-|`smc_mailbox_field_sweep_test` |P1 coverage-gap round 3: per-mailbox 6-field sweep x 4 outbound.
+|`smc_mailbox_field_sweep_test` |Per-mailbox 7-field sweep across 4 outbound and 4 inbound ports.
+|`smc_mailbox_flush_test` |CTRL.wflush empties the write FIFO, measured through the STATUS level bit.
 |`smc_mailbox_idle_test` |Run the mailbox idle/proxy scenario tracked by the P0 project issue.
 |`smc_mailbox_inbound_test` |P1 coverage-gap depth: inbound mailbox 0 STATUS/ERROR/IRQEN precheck.
 |`smc_mailbox_irq_test` |Run mailbox status and IRQ-control CSR checks.
@@ -323,6 +329,34 @@ enrolled through `dual_*` and `occp_*` rather than `all`.
 |`smc_occp_sanity_test` |One SMC issues OCCP GET_VERSION at another and reports through an OCCP WRITE.
 |`smc_occp_dual_unsecure_boot_test` |OCCP unsecure boot end to end between two real SMCs over the shared I3C bus.
 |`smc_prod_rom_occp_ready_test` |Production boot ROM reaches its OCCP command processing loop.
+|===
+
+==== RTL ISSUE REPRODUCERS
+
+Tests whose job is to fail. Each holds the runnable evidence for one filed RTL
+defect, so a known bug has a measurement instead of only an issue body. All are
+enrolled through `rtl_issue` alone -- no `ci` tag, not in `smoke`, held out of
+`all` -- and each moves into its owning feature group when its issue closes.
+
+Every one carries an arm leg that must pass before its defect leg is scored.
+Without that, a stuck-at field or a dead probe would satisfy the defect leg for
+the wrong reason.
+
+[cols="2,3",options="header",]
+|===
+|Testcase |Objective
+|`smc_gpio_irq_mask_deassert_test` |#1602: clearing DATA_CTRL.interrupt_enable must de-assert interrupt_o.
+|`smc_efuse_read_timeout_status_test` |#1603: a timed-out eFuse read must set EFUSE_READ_CTRL.READ_STATUS.
+|`smc_log_engine_intr_mask_test` |#1635: INTR_ENABLE must mask the log-engine interrupt output, not its set path.
+|`smc_i2c_intr_mask_test` |#1635: the same, on I2C.
+|===
+
+==== FIRMWARE
+
+[cols="2,3",options="header",]
+|===
+|Testcase |Objective
+|`smc_fw_hello_world_test` |Boot the smallest SMC C image and read the verdict it posts over MMIO.
 |===
 
 === Test Procedures
@@ -5018,32 +5052,31 @@ Drive `smc_mailbox_event_irq_test_seq`. Each checker below is a named compare th
 
 *BFM / Model*: ocah_axi_vip (AXI)
 
-*Objective*: P1 coverage-gap round 3: per-mailbox 6-field sweep x 4 outbound.
+*Objective*: Every readable field of mailboxes 0-3 decodes, on the inbound port as well as the outbound one.
 
 *Test Coverage*:
 
-* STATUS +0x010
-* ERROR_FLAGS +0x018
-* WIRQT +0x020
-* RIRQT +0x028
-* IRQEN +0x038
-* IRQS +0x030 (write-1-to-clear)
+* The seven readable registers of each port, checked against `axil_mailbox.rdl:214-224` rather than trusted as a list: STATUS +0x010, ERROR_FLAGS +0x018, WIRQT +0x020, RIRQT +0x028, IRQS +0x030 (write-1-to-clear), IRQEN +0x038, IRQP +0x040 (`irqs_q & irqen_q`, read-only derived).
+* Three of the ten registers per port are deliberately out, each for a stated reason. WRITE_DATA +0x000 and READ_DATA +0x008 are omitted because a read pops the paired port's FIFO, which is state this sweep must not disturb. CTRL +0x048 is `sw = w` flush strobes with nothing to read; its effect is covered by `smc_mailbox_flush_test`.
+* Both ports, and the swept set **derived from the generated map** rather than listed: `_swept_fields` enumerates every `SMC_MAILBOX_<port>_MAILBOX_0_*_REG_OFFSET` symbol in `regs/gen/py/smc_reg.py` and removes the three that cannot be read. A hand-maintained list cannot guard itself -- an access count computed from the list the loop walks matches for any list content -- so deriving it from the map is what makes the anti-shrink claim true rather than circular. Measured over the whole regression's AXI transactions, `IRQP` on either port and `IRQS` / `WIRQT` / `RIRQT` / `IRQP` on the inbound port are reached by this testcase and by nothing else, which is what a silent shrink would cost.
 
 *Test Procedure*:
 
-Drive `smc_mailbox_field_sweep_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
-
+[arabic]
+. Read CLOCK_GATE_CONTROL, set MAILBOX_CG_EN, and restore the original value at the end.
+. Read all seven fields of mailboxes 0-3 on the outbound port, then the same on the inbound port.
+. Require the access count to equal the number of readable registers the generated map holds, times the mailboxes, times the ports, plus the three clock-gate accesses.
 
 *Checkers*:
 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|— |This leaf emits no `CHK-*` token. Fail paths are the sequence asserts.
+|`CHK-MBOX-FIELD-DECODE` |Every one of the 56 field reads returns OKAY. `csr_read` routes through the scoreboard's `item.resp_ok` assert, so a mis-decoded field answers DECERR or hangs and fails. `csr_read_bounded` is deliberately not used: it would tolerate a dead field and make the sweep vacuous
+|`CHK-MBOX-FIELD-COUNT` |The access count matches the register count in the generated map, not the length of any list this testcase owns. Dropping a read from the loop fails; so does the map growing a register the sweep does not read. The one remaining way to narrow the sweep is to add a name to the `_UNREADABLE` table, which is pinned at three entries and requires a written reason, so it cannot happen silently
 |===
 
-
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`.
+*Pass Criteria*: both checkers hold and the scoreboard reports zero errors. Measured PASS on Verilator 5.050 with all 56 reads returning OKAY. Enrolled in: `all`.
 
 '''''
 
@@ -5563,30 +5596,33 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 
 *BFM / Model*: `SmcDualHarness` with the inbound AXI manager (`bfm_axi`, SEP_IN); production boot ROM on both instances
 
-*Objective*: Measure that an inbound AXI manager reaches the CPU scratch SRAM window.
+*Objective*: Measure that an inbound AXI manager reaches the CPU scratch SRAM window, and hold the backdoor bank/entry decode against it.
 
 *Test Coverage*:
 
 * Front-door AXI write and readback into the CPU scratch banks, which is how the OCCP boot flow stages its payload.
-* Three distinct patterns, one of them across a 64-byte bank stripe boundary.
+* Six distinct patterns, placed one per field of the scratch decode: the two stripe bits (`address[7:6]`), the wrap of the four-bank cycle at +0x100, the entry low bits (`address[5:3]`), and the next 128 KB group (`address[19:17]`).
+* `smc_scratch_map_pkg`, the decode the `+smc_scratch_ram_hex` image loader in `smc_cpu_mem_dv.sv` uses to scatter firmware across the 32 banks. It is read out of the cluster's own decode -- `OCAH4CORECluster_TLXbar_mbus_i1_o33_a32d64s11k1z3u.sv:700-755` for the bank and `OCAH4CORECluster_TLRAM.sv:308` for the entry -- and this testcase is where that reading is measured rather than assumed.
 
 *Test Procedure*:
 
 [arabic]
 . Bring both instances up with `boot_stall` released, so the CPU cluster front port answers.
 . Read each probe address before its write; the banks are not auto-initialised, so the pre-write value is reported and not asserted on.
-. Write each of the three patterns over `bfm_axi` and read the address back.
+. Write each of the six patterns over `bfm_axi` and read the address back.
 . Require every readback to equal exactly the pattern written.
+. Peek the same offset through the hierarchical backdoor and require the macro word it resolves to hold that same pattern.
 
 *Checkers*:
 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-AXI-SCRATCH-REACHABLE` |Every pattern read back exactly as written, including the one crossing a bank stripe, so neither a stuck default subordinate nor a single-bank decode can satisfy it
+|`CHK-AXI-SCRATCH-REACHABLE` |Every pattern read back exactly as written, including the ones crossing a bank stripe and a group boundary, so neither a stuck default subordinate nor a single-bank decode can satisfy it
+|`CHK-SCRATCH-BACKDOOR-DECODE` |For every offset, the macro word `smc_scratch_map_pkg` resolves to holds what AXI wrote. Checked only where the AXI readback already matched, so a decode complaint cannot be raised about a write that never took
 |===
 
-*Pass Criteria*: every pattern reads back exactly as written; any mismatch raises. `init_mem_done_o` and the hierarchical scratch peek are reported and gate nothing -- the peek's striped decode is only known-good at offset 0. Enrolled in: `dual_all`, `dual_smoke`.
+*Pass Criteria*: every pattern reads back exactly as written and the backdoor resolves to the same macro word; any mismatch raises. Measured PASS on Verilator 5.050, all six offsets. The +0x100 pattern carries the weight: it is the first offset at which a flat 32-bank round-robin model parts from the cluster's four-bank-per-group decode, so a backdoor built on the wrong model agrees with AXI below it and disagrees from there on. `init_mem_done_o` is reported and gates nothing. Enrolled in: `dual_all`, `dual_smoke`.
 
 '''''
 
@@ -5703,15 +5739,312 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 
 '''''
 
+[[sec-157-smc_gpio_irq_mask_deassert_test]]
+===== 157 `smc_gpio_irq_mask_deassert_test`
+
+*Source Module*: `smc_gpio_irq_mask_deassert_test`
+
+*BFM / Model*: GPIO pad drive via `tb_gpio_ext_drive_*`; observation on `tb_gpio_irq_any`
+
+*Objective*: #1602: clearing DATA_CTRL.interrupt_enable must de-assert interrupt_o.
+
+*Test Coverage*:
+
+* The mask half of `hw/ip/gpio/doc/architecture.adoc:122`'s `interrupt_o = interrupt_enable && interrupt_trigger`, which no other GPIO test drives.
+
+*Test Procedure*:
+
+[arabic]
+. Program DATA_CTRL armed (RX enable, interface enable, interrupt enable, active-high) and prove the IRQ is low with the pad low.
+. Drive the pad high, require the IRQ to assert, and hold it for 32 cycles.
+. Clear only `interrupt_enable`, leaving the pad high and touching nothing else.
+. Require the IRQ to fall and stay low.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-GPIO-IRQ-MASK-ARM` |Pad high with the enable set asserts the IRQ and holds it, so the mask leg's stimulus is the enable write alone
+|`CHK-GPIO-IRQ-MASK-DEASSERT` |Clearing the enable de-asserts the IRQ. **Expected to fail**: `gpio.sv:253-261` uses the enable as the interrupt flop's clock enable and `:302` drives `interrupt_o` from that flop unqualified
+|===
+
+*Pass Criteria*: both legs hold. Expected to FAIL on the second until #1602 is fixed. Enrolled in: `rtl_issue`.
+
+'''''
+
+[[sec-158-smc_efuse_read_timeout_status_test]]
+===== 158 `smc_efuse_read_timeout_status_test`
+
+*Source Module*: `smc_efuse_read_timeout_status_test`
+
+*BFM / Model*: ocah_axi_vip (AXI) against the eFuse bank model
+
+*Objective*: #1603: a timed-out eFuse read must set EFUSE_READ_CTRL.READ_STATUS.
+
+*Test Coverage*:
+
+* The timeout arm of `efuse_read_interface.sv`'s ST_WAIT_RESP, which never assigns `read_err_d` while `efuse_program_interface.sv` sets `program_err_d` on the identical arm.
+
+*Test Procedure*:
+
+[arabic]
+. Issue a successful read at the RDL default READ_TMO and record READ_CTRL with READ_STATUS clear.
+. Require STATUS.EFUSE_REQ_ERROR clear, so a sticky req-err cannot be mistaken for the timeout path.
+. Force the read to time out and read READ_CTRL again.
+. Require READ_STATUS to be set.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-EFUSE-TMO-RD-STATUS-ARM` |A successful read gives READ_CTRL=0x12000000 with READ_STATUS clear, arming the leg below. Depends on `CHK-EFUSE-READ-STATUS-SET-ON-NO-ENABLE` in smc_efuse_read_program_timeout_test having proven the bit can read 1 at all
+|`CHK-EFUSE-TMO-RD-STATUS-SET` |A timed-out read sets READ_STATUS. **Expected to fail**, and more strongly than #1603 states: READ_CTRL reads 0x12000000 on both the successful and the timed-out read, so the register carries nothing that separates them
+|===
+
+*Pass Criteria*: both legs hold. Expected to FAIL on the second until #1603 is fixed. Enrolled in: `rtl_issue`.
+
+'''''
+
+[[sec-159-smc_log_engine_intr_mask_test]]
+===== 159 `smc_log_engine_intr_mask_test`
+
+*Source Module*: `smc_log_engine_intr_mask_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); observation on `tb_uart_irq_combined[0]`
+
+*Objective*: #1635: INTR_ENABLE must mask the log-engine interrupt output, not its set path.
+
+*Test Coverage*:
+
+* Both consequences of the placement: an interrupt held after the enable is cleared, and an interrupt dropped because it arrived while masked.
+* `INTR_TEST` is `sw = w, singlepulse`, so the stimulus is a one-cycle event on the same line as the real event and needs no bus traffic.
+
+*Test Procedure*:
+
+[arabic]
+. Ungate the UART peripheral clock and require instance 0's PLIC bit to read 0, so nothing below can be credited to the 16550 IRQ or the UART error line.
+. Set INTR_ENABLE, pulse INTR_TEST, require INTR_STATUS to latch and the IRQ to assert, held 32 cycles.
+. Clear INTR_ENABLE only and sample the IRQ.
+. W1C the status, prove it cleared, then pulse INTR_TEST with INTR_ENABLE=0 and set the enable afterwards.
+. Require INTR_STATUS to hold the event.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-LOG-ENGINE-INTR-MASK-ARM` |The set path, the status register and the probe are all alive
+|`CHK-LOG-ENGINE-INTR-MASK-DEASSERT` |Clearing the enable de-asserts the IRQ, holds it de-asserted for the same span the arm leg holds it asserted, and leaves INTR_STATUS still carrying the bit -- the last is what separates an output mask from a repair that simply clears the status. **Expected to fail**: `log_engine.sv:496` drives `irq_o` from INTR_STATUS unqualified
+|`CHK-LOG-ENGINE-INTR-MASK-LATCH` |An event arriving while masked is still latched. **Expected to fail**: `log_engine.sv:489-491` ANDs the event with the enable before the flop, so the pulse is lost
+|===
+
+*Pass Criteria*: all three legs hold. Expected to FAIL on the last two until #1635 is fixed. Both are measured before either raises, so neither hides the other. Enrolled in: `rtl_issue`.
+
+'''''
+
+[[sec-160-smc_i2c_intr_mask_test]]
+===== 160 `smc_i2c_intr_mask_test`
+
+*Source Module*: `smc_i2c_intr_mask_test`
+
+*BFM / Model*: ocah_axi_vip (AXI); observation on `tb_i2c_irq[0]`
+
+*Objective*: #1635: the same interrupt-enable placement, on I2C.
+
+*Test Coverage*:
+
+* `CMD_COMPLETE`, whose `(event || test) && enable` set path at `i2c_core.sv:1000` is the exact shape under test.
+* Both the held and the dropped consequence, as for the log engine.
+
+*Test Procedure*:
+
+[arabic]
+. Ungate the I2C peripheral clock and require instance 0's PLIC bit to read 0.
+. Set INTR_ENABLE.CMD_COMPLETE, pulse INTR_TEST, require INTR_STATE to latch and the IRQ to assert, held 32 cycles.
+. Clear INTR_ENABLE only and sample the IRQ.
+. W1C the status, prove it cleared, then pulse INTR_TEST with INTR_ENABLE=0 and set the enable afterwards.
+. Require INTR_STATE to hold the event.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-I2C-INTR-MASK-ARM` |The set path, the status register and the probe are all alive
+|`CHK-I2C-INTR-MASK-DEASSERT` |Clearing the enable de-asserts the IRQ, holds it de-asserted for the same span the arm leg holds it asserted, and leaves INTR_STATE still carrying the bit -- the last is what separates an output mask from a repair that simply clears the state. **Expected to fail**: `i2c_core.sv:981` drives `irq_o` from INTR_STATE.intr unqualified
+|`CHK-I2C-INTR-MASK-LATCH` |An event arriving while masked is still latched. **Expected to fail**: `i2c_core.sv:1000` ANDs the event with the enable before the flop
+|===
+
+*Pass Criteria*: all three legs hold. Expected to FAIL on the last two until #1635 is fixed. Enrolled in: `rtl_issue`.
+
+'''''
+
+[[sec-161-smc_fw_hello_world_test]]
+===== 161 `smc_fw_hello_world_test`
+
+*Source Module*: `smc_fw_hello_world_test`
+
+*BFM / Model*: the SMC C image `fw/tests/hello_world`, executed by the CPU cluster; verdict read over SEP_IN AXI
+
+*Objective*: Boot the smallest SMC C image and read the verdict it posts over MMIO.
+
+*Test Coverage*:
+
+* The firmware path end to end, and nothing else: c_compile, output staging by basename, the scratch load through `smc_scratch_map_pkg`, the reset-vector handoff, crt0 and picolibc init across four harts, and the MMIO store to CPU_CTRL SCRATCH_0.
+* The image is `test_pass(0)` and a `wfi` loop, so no DUT feature is under test.
+* Not a duplicate of `smc_cpu_firmware_boot_test`, and the two cannot be merged. That one boots `min_pass.rom.hex` from the ROM window -- a four-line hand-assembled stub that deliberately avoids crt0 and the hart barrier -- and its `CHK-ROM-IS-TARGET` requires that no scratch image be supplied. This one requires one. So they cover the ROM path and the c_compile-plus-scratch path respectively, and share no CHK token.
+
+*Test Procedure*:
+
+[arabic]
+. Build `hello_world` through `[c_build.default]` and stage `hello_world.ecc.hex` beside the simulator.
+. Hold `boot_stall` from t=0, clear CPU_CTRL SCRATCH_0 and read the clear back, so a residual verdict from an earlier test cannot be counted.
+. Program the reset vector, release all four cores, then release `boot_stall`.
+. Poll SCRATCH_0 for the PASS magic, failing on `TEST_FAIL`, on the `0xBAD0_xxxx` namespace, and on the bound expiring.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-FW-HELLO-WORLD-BOOT` |The firmware's own PASS word is read back from CPU_CTRL SCRATCH_0 after a cleared-and-verified start
+|===
+
+*Pass Criteria*: the PASS magic is read back. Measured PASS on Verilator 5.050: 0xACAFACA1 in CPU_CTRL SCRATCH_0, 612 scratch reads, 8 scratch writes, and the image resident in scratch banks 0-3 only. That bank distribution is part of the evidence: it is what the `smc_scratch_map_pkg` decode predicts for a 9 KB image, and an image spread across all 32 banks would mean the loader disagrees with the cluster and the CPU is fetching where the image was never written. No `ci` tag: the hosted runners have no RISC-V toolchain. On failure the report carries per-hart PCs, per-hart mcause/mepc, and a comparison of the image reachable over AXI against the built image, which is what distinguishes a mis-loaded image from a trapping one. Enrolled in: `all`, `fw`.
+
+'''''
+
+
+[[sec-162-smc_reset_unit_lock_test]]
+===== 162 `smc_reset_unit_lock_test`
+
+*Source Module*: `smc_reset_unit_lock_test`
+
+*BFM / Model*: ocah_axi_vip (AXI)
+
+*Objective*: SS_COLD_RESET_LOCK and SS_CONFIG_LOCK are write-one-to-set and mask the registers they guard.
+
+*Test Coverage*:
+
+* `RESET_UNIT.SS_COLD_RESET_LOCK`, which no other testcase reads. Found by the porting necessity analysis: `fw/tests/cold_reset_lock_sanity` was the only thing in the tree touching it, and this covers the same two properties natively rather than adding a firmware dependency.
+* `RESET_UNIT.SS_CONFIG_LOCK`, driven by nothing at all. Found by the measured pass over the regression's AXI transactions -- the symbol-name filter could not see it, because no testcase names it in any form.
+* `reset_unit.rdl:87-95` and `:18-26` declare both lock fields as `sw = rw; hw = r; onwrite = woset;` reset 0, so a taken lock cannot be released by software.
+* `smc_subsystem_resets.sv` gates each target with the inverted lock: `SS_COLD_RESET_N` with `~ss_cold_reset_lock`, and `SS_CONFIG` at `:81` with `config_filtered_wr_mask = (~ss_config_lock) & ss_config_wr_mask`. `cool_reset_isolate_cfg` records the cold-reset half from the other side, as its reason for *not* comparing that register, so the masking is asserted here and nowhere else.
+* One testcase rather than two: the registers have the same declaration and the same gate, so a second would differ only in two addresses. The three checkers run once per pair and are tagged with it, and the sequence requires all six tokens, so a pair silently dropped from the list fails rather than shrinking the test.
+
+*Test Procedure*:
+
+For each of the two (target, lock) pairs:
+
+[arabic]
+. Require both bits under test to be clear in the lock, since `woset` means a set bit could not have been cleared by this sequence.
+. Write bit 0 to the target with nothing locked and read it back, proving the register is writable before any lock exists.
+. Write bit 1 to the lock and require it to set, then write all zeroes and require it to remain set.
+. Write bits 0 and 1 to the target in one access. Require bit 1 to stay clear and bit 0 to follow the write.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-RESET-LOCK-ARM[<pair>]` |The target accepts a write with the lock clear, so "unchanged" later cannot be explained by a register that never changes
+|`CHK-RESET-LOCK-WOSET[<pair>]` |A set lock bit survives an all-zeroes write, per `onwrite = woset`
+|`CHK-RESET-LOCK-MASKS-WRITE[<pair>]` |In one write carrying both bits, the locked bit does not follow software while the unlocked bit does -- so the write demonstrably reached the register
+|===
+
+*Pass Criteria*: all six checkers hold, three per pair. Measured PASS on Verilator 5.050: each lock held 0x2 through an all-zeroes write, and a 0x3 write to its target read back 0x1. This testcase leaves one bit set in each lock for the rest of its simulation, which is what `woset` means; each testcase runs its own simulation. Enrolled in: `all`, `reset`.
+
+'''''
+
+
+[[sec-163-smc_fw_plic_claim_test]]
+===== 163 `smc_fw_plic_claim_test`
+
+*Source Module*: `smc_fw_plic_claim_test`
+
+*BFM / Model*: the SMC C image `fw/tests/plic_sanity`, executed by the CPU cluster; stimulus on `tb_ext_interrupt_0_i`, verdict read over SEP_IN AXI
+
+*Objective*: Firmware programs the cluster PLIC and claims a real external interrupt through it.
+
+*Test Coverage*:
+
+* The cluster PLIC's enable, priority, threshold and claim-complete path, which **no cocotb sequence in this package can reach**. The 0xC400_0000 aperture answers SEP_IN AXI reads but takes no writes from it -- measured by `smc_cluster_plic_csr_test`, which sits in the tree unenrolled carrying that finding. The CPU is the only master that can program it, so firmware is not a stylistic choice here.
+* The loop `smc_ext_interrupts_pin_test` states in its own docstring that it leaves open: that testcase follows `ext_interrupts_i[0]` through `prim_sync3` and "does not claim PLIC". `smc_hang_detector_plic_route_test` checks a route with testbench probes and reads no PLIC register either. This closes it end to end: pin -> synchroniser -> gateway -> enable and priority against threshold -> MEIP -> trap -> claim -> the ID the CPU reads back -> complete.
+* PLIC source 1, which is `cpu_interrupts[0]` and therefore `ext_interrupts_i[0]`: source IDs are the line index plus one because ID 0 is reserved, and `smc_base.sv:251` puts `ext_interrupts` at the bottom of the vector. It is source 1 and not another because `tb_top.sv:1181` ties `ext_interrupts_i[255:1]` to zero and exposes only bit 0 -- any other external source is a line nothing can raise, so the handler would never run and the testcase would time out instead of measuring anything.
+* No forced internal state: the stimulus is a DUT input pin and everything between it and the verdict is the DUT ([NO-FORCED-INTERNAL-STATE]).
+
+*Test Procedure*:
+
+[arabic]
+. Build `plic_sanity` through `[c_build.default]`, stage `plic_sanity.ecc.hex`, hold `boot_stall` from t=0, clear CPU_CTRL SCRATCH_0 and read the clear back.
+. Program the reset vector and release. The image clears every context's enable words, gives the eight contexts distinct thresholds, registers a handler for source 1, enables it, publishes the arm word 0xAAAA_AAAA and parks in `wfi`.
+. Require the arm word before any verdict. A PASS not preceded by it is failed: the image would have reached its verdict without passing through the state the stimulus acts on.
+. Hold the pin low for 2000 further `clk_smc_i` cycles and require SCRATCH_0 to still read the arm word.
+. Drive `ext_interrupts_i[0]` high and poll for the verdict.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-FW-PLIC-QUIET` |With the PLIC armed and the pin still low, SCRATCH_0 does not move. Without this the PASS could have come from any interrupt already pending, and the testcase would be satisfied by a DUT that traps on something else
+|`CHK-FW-PLIC-STIMULUS` |The pin rises only after the quiet window, so the verdict below is ordered after the stimulus rather than merely coincident with it
+|`CHK-FW-PLIC-CLAIM` |The firmware's own PASS word reaches CPU_CTRL SCRATCH_0, and only a claim of the registered source can put it there. `riscv_plic0.c:106-107` dispatches `metal_exint_table[idx]` on the index the claim register returned, and the image registers a handler at one index only -- every other source reaches `__metal_plic0_default_handler`, which posts no verdict. The handler's own ID compare is unreachable for that reason and is not credited here
+|===
+
+*Pass Criteria*: all three checkers hold. Measured PASS on Verilator 5.050 in 150 s: the arm word appears at 1.568 ms, the quiet window holds it for 2000 cycles, and the pass magic follows the pin at 1.589 ms. The verdict poll is bounded at 6000 iterations of 100 `clk_smc_i` cycles, 2.5x the measured need -- the image spends most of that time in `__metal_driver_riscv_plic0_init`, which walks all 336 sources over MMIO. No `ci` tag: the hosted runners have no RISC-V toolchain. Enrolled in: `all`, `fw`.
+
+'''''
+
+[[sec-164-smc_mailbox_flush_test]]
+===== 164 `smc_mailbox_flush_test`
+
+*Source Module*: `smc_mailbox_flush_test`
+
+*BFM / Model*: ocah_axi_vip (AXI)
+
+*Objective*: CTRL.wflush empties the write FIFO it claims to flush.
+
+*Test Coverage*:
+
+* `OUTBOUND_MAILBOX_0.CTRL` @0x48, which no other testcase reaches. `smc_mailbox_field_sweep_test` covers every other readable register of the port, on both directions, but cannot cover this one: a sweep reads, and CTRL is write-only.
+* The register cannot be a readback test. `axil_mailbox.rdl:195-208` makes both fields `sw = w; hw = r`: they are flush strobes, not storage, so a write/read-back pair would compare against whatever the register file returns for a write-only address and prove nothing. What is testable is the effect, and `STATUS.write_level_above_thresh` @0x10 bit 2 reports it.
+* Addresses from `smc_addr.h`, field masks from `axil_mailbox.h`, rather than offsets added to a base ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
+
+*Test Procedure*:
+
+[arabic]
+. Enable the mailbox clock gate, then write WIRQT := 0 and read it back, so "above threshold" has a known meaning and the port is proven writable.
+. Require `STATUS.write_level_above_thresh` to read 0 with nothing pushed.
+. Push one word into WRITE_DATA and require the same bit to read 1.
+. Write CTRL.wflush and require the bit to return to 0.
+. Restore the clock-gate register.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-MBOX-FLUSH-ARM` |One word pushed with WIRQT=0 raises `STATUS.write_level_above_thresh`. This is the positive control: without it the check below is satisfied by a STATUS that reads zero for every reason including a dead one ([NEGATIVE-NEEDS-POSITIVE-CONTROL])
+|`CHK-MBOX-FLUSH` |After CTRL.wflush the bit is clear again. Nothing in this bench drains the outbound write FIFO on its own -- its far side is the paired inbound port's read side, reached only by an explicit INBOUND_READ_DATA access -- so a level that falls between the two checks fell because of the flush
+|===
+
+*Pass Criteria*: both checkers hold. Measured PASS on Verilator 5.050: the level bit read 0, then 0x4 after the push, then 0 after the flush. Enrolled in: `all`.
+
+'''''
+
+
 === Counts
 
 [cols=",",options="header",]
 |===
 |Metric |Count
-|Enrolled open-source testcases |156
-|`all` sign-off group |149
-|Feature areas |16
-|Regression groups |29
+|Enrolled open-source testcases |164
+|`all` sign-off group |156
+|Feature areas |18
+|Regression groups |31
 |===
 
 === Regression Groups
@@ -5719,7 +6052,7 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 [cols=",,",options="header",]
 |===
 |Group |Tests |Purpose
-|`all` |149 |Sign-off sweep; two enrolled leaves held out against #585 / #1488. Five OCCP / dual leaves build a different DUT.
+|`all` |156 |Sign-off sweep, single-instance plus the three dual bring-up scenarios. Eight of the 164 enrolled leaves are out: two held against #585 and #1488 (`smc_deadspace_decode_test`, `smc_remap_cla_test`), two on measured runtime (`smc_occp_dual_unsecure_boot_test`, `smc_prod_rom_occp_ready_test`), and the four `rtl_issue` reproducers whose job is to fail
 |`avsbus_depth` |2 |avsbus depth coverage
 |`axil` |2 |axil coverage
 |`per_ip` |99 |One-per-IP breadth run used for routine regression
@@ -5732,6 +6065,7 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 |`depth_uart_log` |1 |depth uart log coverage
 |`dual_all` |4 |Every `SMC_DUAL` two-instance testcase
 |`dual_smoke` |2 |Two-instance bring-up: elaboration and the AXI scratch probe
+|`fw` |2 |Firmware images executed by the CPU cluster
 |`gpio` |8 |gpio coverage
 |`i2c` |14 |i2c coverage
 |`i3c_depth` |1 |i3c_depth coverage
@@ -5743,8 +6077,9 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 |`functional` |13 |core functional gate
 |`functional_depth` |38 |core functional gate plus its depth companions
 |`pyuvm` |35 |Scenarios with a PyUVM implementation
-|`reset` |14 |reset coverage
-|`smoke` |35 |Fast bring-up gate
+|`reset` |15 |reset coverage
+|`rtl_issue` |4 |Reproducers for filed RTL defects. Expected to fail; held out of `all`
+|`smoke` |37 |Fast bring-up gate
 |`uart` |6 |uart coverage
 |`coverage_closure` |24 |closes features that previously had no testcase
 |`depth` |43 |cross-feature depth testcases
@@ -5806,6 +6141,7 @@ SMC; that connection stays a negative item.
 |PLL and PVT are placeholder RTL in this harness |The PLL/PVT scenarios in the wider plan cannot be run: there is no design behind the register interface |Enroll them when the adopter's PLL/PVT blocks are integrated
 |The I3C DAT/DCT RAM is not present in `tb_top` |CCC/IBI scenarios that need device-address-table state cannot run; `smc_i3c_to_fabric_test` is decode-only |Restore the DAT/DCT model, or drive the sequences from a full I3C host model
 |The DTP CSR window has no responder |AXI-Lite accesses to it would wedge, so the boundary is left idle rather than answered by a placeholder |Connect the DTP CSR subordinate; SMU already connects the same port
+|The cluster PLIC aperture (0xC400_0000) is not writable from SEP_IN AXI |No *cocotb* testcase can cover the PLIC register file from the external port. Measured: PRIORITY[1] accepts a write with OKAY and stores nothing; the +2 MB context pages return non-OKAY. `smc_cluster_plic_csr_test` holds that evidence and is not enrolled; its four register-level properties -- context independence across the eight threshold pages, source 0 and PENDING read-only, PENDING tracking a real interrupt -- are still uncovered and turn green the day a write path exists. The PLIC's *function* is covered: `smc_fw_plic_claim_test` programs it from the CPU and claims through it |Expose a write path from SEP_IN, or extend the firmware image to read back what it programmed
 |SV covergroups are not supported by Verilator |Functional coverage is Python-side on the open-source flow |See `SMC_FCOV.adoc`
 |`smc_deadspace_decode_test` measures wrap-to-live aliasing (#585) |Held out of `all`; the card does not claim sign-off PASS |Close #585, then return the leaf to `all`
 |`smc_remap_cla_test` CLA deny-leg hang at 0xC016_0038 (#1488) |Held out of `all`; the card does not claim sign-off PASS |Close #1488, then return the leaf to `all`
