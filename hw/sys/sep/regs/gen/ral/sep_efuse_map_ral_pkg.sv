@@ -332,14 +332,11 @@
         `uvm_object_utils(sep_efuse_map__SIP_DIS)
         rand uvm_reg_field sep_debug;
         rand uvm_reg_field chiplet_dbg;
+        rand uvm_reg_field sep_fuse_dbg;
+        rand uvm_reg_field smc_fuse_dbg;
         rand uvm_reg_field debug_reserved_dbg1;
         rand uvm_reg_field sip_debug;
         rand uvm_reg_field debug_reserved_dbg2;
-        rand uvm_reg_field sep_fuse_test;
-        rand uvm_reg_field test_reserved_lo;
-        rand uvm_reg_field smc_fuse_test;
-        rand uvm_reg_field fuse_vendor_test;
-        rand uvm_reg_field test_reserved;
         rand uvm_reg_field func_reserved;
 
         function new(string name = "sep_efuse_map__SIP_DIS");
@@ -351,22 +348,16 @@
             this.sep_debug.configure(this, 1, 0, "W1S", 1, 'h0, 1, 1, 0);
             this.chiplet_dbg = uvm_reg_field::type_id::create("chiplet_dbg");
             this.chiplet_dbg.configure(this, 1, 1, "W1S", 1, 'h0, 1, 1, 0);
+            this.sep_fuse_dbg = uvm_reg_field::type_id::create("sep_fuse_dbg");
+            this.sep_fuse_dbg.configure(this, 1, 2, "W1S", 1, 'h0, 1, 1, 0);
+            this.smc_fuse_dbg = uvm_reg_field::type_id::create("smc_fuse_dbg");
+            this.smc_fuse_dbg.configure(this, 1, 3, "W1S", 1, 'h0, 1, 1, 0);
             this.debug_reserved_dbg1 = uvm_reg_field::type_id::create("debug_reserved_dbg1");
-            this.debug_reserved_dbg1.configure(this, 14, 2, "W1S", 1, 'h0, 1, 1, 0);
+            this.debug_reserved_dbg1.configure(this, 20, 4, "W1S", 1, 'h0, 1, 1, 0);
             this.sip_debug = uvm_reg_field::type_id::create("sip_debug");
-            this.sip_debug.configure(this, 1, 16, "W1S", 1, 'h0, 1, 1, 0);
+            this.sip_debug.configure(this, 1, 24, "W1S", 1, 'h0, 1, 1, 0);
             this.debug_reserved_dbg2 = uvm_reg_field::type_id::create("debug_reserved_dbg2");
-            this.debug_reserved_dbg2.configure(this, 15, 17, "W1S", 1, 'h0, 1, 1, 0);
-            this.sep_fuse_test = uvm_reg_field::type_id::create("sep_fuse_test");
-            this.sep_fuse_test.configure(this, 1, 32, "W1S", 1, 'h0, 1, 1, 0);
-            this.test_reserved_lo = uvm_reg_field::type_id::create("test_reserved_lo");
-            this.test_reserved_lo.configure(this, 4, 33, "W1S", 1, 'h0, 1, 1, 0);
-            this.smc_fuse_test = uvm_reg_field::type_id::create("smc_fuse_test");
-            this.smc_fuse_test.configure(this, 1, 37, "W1S", 1, 'h0, 1, 1, 0);
-            this.fuse_vendor_test = uvm_reg_field::type_id::create("fuse_vendor_test");
-            this.fuse_vendor_test.configure(this, 1, 38, "W1S", 1, 'h0, 1, 1, 0);
-            this.test_reserved = uvm_reg_field::type_id::create("test_reserved");
-            this.test_reserved.configure(this, 9, 39, "W1S", 1, 'h0, 1, 1, 0);
+            this.debug_reserved_dbg2.configure(this, 23, 25, "W1S", 1, 'h0, 1, 1, 0);
             this.func_reserved = uvm_reg_field::type_id::create("func_reserved");
             this.func_reserved.configure(this, 16, 48, "W1S", 1, 'h0, 1, 1, 0);
         endfunction : build
@@ -377,14 +368,11 @@
         `uvm_object_utils(sep_efuse_map__SYS_DIS)
         rand uvm_reg_field sep_debug;
         rand uvm_reg_field chiplet_dbg;
+        rand uvm_reg_field sep_fuse_dbg;
+        rand uvm_reg_field smc_fuse_dbg;
         rand uvm_reg_field debug_reserved_dbg1;
         rand uvm_reg_field sip_debug;
         rand uvm_reg_field debug_reserved_dbg2;
-        rand uvm_reg_field sep_fuse_test;
-        rand uvm_reg_field test_reserved_lo;
-        rand uvm_reg_field smc_fuse_test;
-        rand uvm_reg_field fuse_vendor_test;
-        rand uvm_reg_field test_reserved;
         rand uvm_reg_field func_reserved;
 
         function new(string name = "sep_efuse_map__SYS_DIS");
@@ -396,22 +384,16 @@
             this.sep_debug.configure(this, 1, 0, "W1S", 1, 'h0, 1, 1, 0);
             this.chiplet_dbg = uvm_reg_field::type_id::create("chiplet_dbg");
             this.chiplet_dbg.configure(this, 1, 1, "W1S", 1, 'h0, 1, 1, 0);
+            this.sep_fuse_dbg = uvm_reg_field::type_id::create("sep_fuse_dbg");
+            this.sep_fuse_dbg.configure(this, 1, 2, "W1S", 1, 'h0, 1, 1, 0);
+            this.smc_fuse_dbg = uvm_reg_field::type_id::create("smc_fuse_dbg");
+            this.smc_fuse_dbg.configure(this, 1, 3, "W1S", 1, 'h0, 1, 1, 0);
             this.debug_reserved_dbg1 = uvm_reg_field::type_id::create("debug_reserved_dbg1");
-            this.debug_reserved_dbg1.configure(this, 14, 2, "W1S", 1, 'h0, 1, 1, 0);
+            this.debug_reserved_dbg1.configure(this, 20, 4, "W1S", 1, 'h0, 1, 1, 0);
             this.sip_debug = uvm_reg_field::type_id::create("sip_debug");
-            this.sip_debug.configure(this, 1, 16, "W1S", 1, 'h0, 1, 1, 0);
+            this.sip_debug.configure(this, 1, 24, "W1S", 1, 'h0, 1, 1, 0);
             this.debug_reserved_dbg2 = uvm_reg_field::type_id::create("debug_reserved_dbg2");
-            this.debug_reserved_dbg2.configure(this, 15, 17, "W1S", 1, 'h0, 1, 1, 0);
-            this.sep_fuse_test = uvm_reg_field::type_id::create("sep_fuse_test");
-            this.sep_fuse_test.configure(this, 1, 32, "W1S", 1, 'h0, 1, 1, 0);
-            this.test_reserved_lo = uvm_reg_field::type_id::create("test_reserved_lo");
-            this.test_reserved_lo.configure(this, 4, 33, "W1S", 1, 'h0, 1, 1, 0);
-            this.smc_fuse_test = uvm_reg_field::type_id::create("smc_fuse_test");
-            this.smc_fuse_test.configure(this, 1, 37, "W1S", 1, 'h0, 1, 1, 0);
-            this.fuse_vendor_test = uvm_reg_field::type_id::create("fuse_vendor_test");
-            this.fuse_vendor_test.configure(this, 1, 38, "W1S", 1, 'h0, 1, 1, 0);
-            this.test_reserved = uvm_reg_field::type_id::create("test_reserved");
-            this.test_reserved.configure(this, 9, 39, "W1S", 1, 'h0, 1, 1, 0);
+            this.debug_reserved_dbg2.configure(this, 23, 25, "W1S", 1, 'h0, 1, 1, 0);
             this.func_reserved = uvm_reg_field::type_id::create("func_reserved");
             this.func_reserved.configure(this, 16, 48, "W1S", 1, 'h0, 1, 1, 0);
         endfunction : build

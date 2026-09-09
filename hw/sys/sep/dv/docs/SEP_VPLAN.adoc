@@ -778,8 +778,8 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_efuse_rma_token_rand_test` (`CHK-FAULT-RESET`). The set-only phases prove the fault bits survive a valid retry; only this one separates that from a latch that never clears. After the two zeros it re-arms once, so the phase ends on a zero-to-one transition rather than on a wedged detector that stays at 0.
 
 |Debug-disable gating ladder (`dbg_disable`)
-|PARTIAL
-|`sep_lcc_demote_feat_ctrl_matrix_test` (`CHK-DBG-DISABLE`). Nine of the eleven bits are checked against the DTP path gating ladder for the same `FEAT_CTRL` the cell just verified, across the whole demote matrix. `dft_secure` and `dfd` are deliberately unclaimed: the path table in the lifecycle chapter and the RTL disagree on both, and they diverge in opposite directions -- `dfd` is stricter in the RTL, `dft_secure` is more permissive. See <<known-limitations>>.
+|PROVEN
+|`sep_lcc_demote_feat_ctrl_matrix_test` (`CHK-DBG-DISABLE`, `CHK-FUSE-DFT-DIS`). All eleven `dbg_disable` bits match the DTP gating ladder for the same `FEAT_CTRL` the cell just verified, across the whole demote matrix. `dft_secure` is Case 3 and `dfd` is Case 1. The DFT-inserted fuse-path ports are separate DUT outputs, not members of `dbg_disable`: `sep_fuse_dft_disable` is Case 3 AND `sep_fuse_dbg`, inverted; `smc_fuse_dft_disable` is Case 2 AND `smc_fuse_dbg`, inverted. The compose cell closes those two bits while Case 2 and Case 3 stay open.
 
 |Local-master alias remap datapath
 |PROVEN
@@ -1563,7 +1563,7 @@ starved it to a handful of writes fails.
 . Program the production state through the ungated write-one-to-set bit, handling injected physical failures by clearing status and retrying; cold reset and re-sense.
 . Pin the two disable overrides to distinct non-zero vectors so each decoded feature-control word is a different non-trivial value; check the state reached the controller and that feature control matches the golden model.
 . Repeat for the two token-gated return-material-authorisation states.
-. After the initial TEST_DEV check with TEST_EN=0, raise the strap, re-sense, and prove the DFT group opens. The strap is then lowered again; the rest of the walk runs at `secure_tm=0`.
+. After the initial TEST_DEV check with TEST_EN=0, raise the strap, re-sense, and prove `secure_tm_o` follows the strap while `FEAT_CTRL` stays on the same golden. The strap is then lowered again; the rest of the walk runs at `secure_tm=0`.
 . Inject a broken LC_STATE pair at the LCC decoder input; prove fail-closed FEAT_CTRL=0; release and restore.
 
 *Checkers*:
@@ -1574,13 +1574,13 @@ starved it to a handful of writes fails.
 |CHK-LC-INPUT
 |The state sourced from fuses reaches the lifecycle controller, for each of the four states — with no forced or deposited value anywhere on the path. The state read back is also checked for legal encoding and a legal forward transition, using the code the DUT returned rather than the code the test programmed.
 |CHK-GOLDEN
-|The feature-control output matches the golden decode at each of the four states, at the pinned override vectors, with demote at its reset value. The four-state walk runs at `secure_tm=0`; TEST_DEV is additionally re-checked at `secure_tm=1`, which is where the DFT group opening is proven (step 5). Demote is not written here — the demoted branches are covered by `sep_lcc_uvm_inbound_filter_gating_test`. See <<lcc-golden-from-spec>>.
+|The feature-control output matches the golden decode at each of the four states, at the pinned override vectors, with demote at its reset value. The four-state walk runs at `secure_tm=0`; TEST_DEV is additionally re-checked at `secure_tm=1`, and both legs use the same golden because SECURE_TM does not qualify feature control. Demote is not written here — the demoted branches are covered by `sep_lcc_uvm_inbound_filter_gating_test`. See <<lcc-golden-from-spec>>.
 |CHK-OTP-RETRY
 |An injected physical program failure is observed, cleared and retried to success.
 |CHK-NONVAC
 |The pinned overrides break all-ones symmetry: the four expected feature-control words are mutually distinct, so a decode that ignored its inputs would differ from the golden at three of the four states.
 |CHK-SECURE-TM
-|The TEST_EN strap is driven frontdoor. After the initial TEST_DEV sense with the strap at 0, FEAT_CTRL[47:32] is 0 and `secure_tm_o` is 0. After the strap is raised and the image is re-sensed, `secure_tm_o` is 1 and the DFT group matches the golden (non-zero under the pinned disable vectors).
+|The TEST_EN strap is driven frontdoor. After the initial TEST_DEV sense with the strap at 0, `secure_tm_o` is 0 and `FEAT_CTRL` matches the TEST_DEV golden. After the strap is raised and the image is re-sensed, `secure_tm_o` is 1 and `FEAT_CTRL` still matches that same golden. SECURE_TM does not qualify feature control.
 |CHK-SECRET-BLANK
 |The Class-1a secret disconnect, proven as a transition on one image rather than as a single observation. With the strap at 0 the staged `CLASS_KEY` is present in the sensed shadow; with it raised the same field reads 0 (`sep_efuse_pkg.sv` `SecretShadowRanges`). The staged value is asserted non-zero first, so a DUT that never sensed the secret at all cannot satisfy the blanked half.
 |CHK-SECURE-TM-PROG-BLOCK
@@ -1588,7 +1588,7 @@ starved it to a handful of writes fails.
 |CHK-SIGINT
 |A signed-off force breaks the LC_STATE pair at the LCC decoder input. Observation is the DUT `lc_sigint_err_o` probe plus an AXI `FEAT_CTRL` readback of 0 (fail-closed, `SEC_DIS` observed 0). Release restores both.
 |CHK-SECURE-TM-OFF / CHK-SECURE-TM-ON
-|The two legs of the strap walk, taken as a transition on one image: with the TEST_EN strap at 0, `secure_tm_o` is 0 and `FEAT_CTRL[47:32]` is 0; after the strap is raised and the image is re-sensed, `secure_tm_o` is 1 and `FEAT_CTRL[47:32]` is `0xf000`. A DFT group that stayed closed, or one that was open all along, fails one leg or the other.
+|The two legs of the strap walk, taken as a transition on one image: with the TEST_EN strap at 0, `secure_tm_o` is 0; after the strap is raised and the image is re-sensed, `secure_tm_o` is 1. `FEAT_CTRL` equals the same TEST_DEV golden on both legs.
 |CHK-SIGINT-RELEASE
 |Releasing the signed-off force returns `lcc_sigint_err_probe_o` to 0, so the fail-closed state is recoverable and the probe is not stuck high.
 |===
@@ -1603,7 +1603,7 @@ The lifecycle golden is derived from the specification, not from the RTL.
 `cocotb/env/sep_lcc_golden.py` reads `hw/sys/sep/doc/lifecycle_controller.adoc` (the
 per-LC-state feature-control profile). Under that decode a PROD demotion relaxes its
 debug group to `~(SIP_DIS | SYS_DIS)`, Function always takes both vectors, and
-`DEMOTE_1` / `DEMOTE_2` act independently on `[15:0]` and `[31:16]`. The import-time
+`DEMOTE_1` / `DEMOTE_2` act independently on `[23:0]` and `[47:24]`. The import-time
 KAT set includes a `DEMOTE_2`-only vector, a both-demoted vector, and a PROD vector
 with a `DBG_1` bit disabled.
 
@@ -2425,7 +2425,7 @@ entry requires exactly two.
 |CHK-PROD-BLOCK
 |The external read is refused with a specific decode error, not a timeout.
 |CHK-DEMOTE-INDEP
-|`DEMOTE_2` alone opens DBG_2 `[31:16]` and leaves DBG_1 `[15:0]` closed, so the two demote registers act per-group rather than sharing a priority. `sep_debug` is bit 0, inside DBG_1, so it must still read 0 — and the external port must still be blocked, which is a second, independent consequence of the same property. `DEMOTE_2` is driven first deliberately: the demote field is write-once-set and cannot be cleared, so this is the only order in which this DUT can show one group opening without the other. Before this row existed, `DEMOTE_2` was never written by any test here — it appeared only in the golden, so the specification's DEMOTE_2 column rested on the golden's import-time KAT comparing the model against itself.
+|`DEMOTE_2` alone opens DBG_2 `[47:24]` and leaves DBG_1 `[23:0]` closed, so the two demote registers act per-group rather than sharing a priority. `sep_debug` is bit 0, inside DBG_1, so it must still read 0 — and the external port must still be blocked, which is a second, independent consequence of the same property. `DEMOTE_2` is driven first deliberately: the demote field is write-once-set and cannot be cleared, so this is the only order in which this DUT can show one group opening without the other. Before this row existed, `DEMOTE_2` was never written by any test here — it appeared only in the golden, so the specification's DEMOTE_2 column rested on the golden's import-time KAT comparing the model against itself.
 |CHK-DEMOTE
 |The demote register accepts a write and reads back.
 |CHK-DBG-FEAT
@@ -4128,9 +4128,11 @@ both lock flavours of one seed-selected spare.
 
 [arabic]
 . Walk TEST_DEV and PROD at DIS=0 through the four demote cells.
+. W1S `sep_fuse_dbg` / `smc_fuse_dbg` and check PROD with both demotes set, so those bits close while Case 2 and Case 3 stay open.
 . W1S a seed-pinned DIS pair and walk the four demote cells at PROD.
 . Every cell's inbound probe is OKAY iff `sep_debug=1`, else DECERR.
-. Every cell's `dbg_disable` vector matches the DTP gating ladder for that same `FEAT_CTRL`, except `dft_secure` and `dfd`.
+. Every cell's `dbg_disable` vector matches the DTP gating ladder for that same `FEAT_CTRL`.
+. Every cell's `sep_fuse_dft_disable` / `smc_fuse_dft_disable` ports match the compose of that same `FEAT_CTRL`.
 . Lock one seed-selected `DEMOTE` at 0; a later demote write is ignored.
 . `rst_ni` releases the lock; the same demote write then lands.
 
@@ -4144,13 +4146,15 @@ both lock flavours of one seed-selected spare.
 |CHK-LIVE-GATE
 |External access of the LC shadow is OKAY when `sep_debug=1` and DECERR when `sep_debug=0`. Not CSR storage alone.
 |CHK-RAND-REP
-|Twelve demote cells ran in one invocation.
+|Thirteen demote cells ran in one invocation (eight DIS=0, one fuse-dbg compose, four pinned DIS).
 |CHK-DEMOTE-LOCK
 |With `lock` set and `demote` still 0, a later demote write is ignored and `feat_ctrl` stays at the undemoted golden.
 |CHK-DEMOTE-LOCK-RESET
 |After `rst_ni` the lock is 0 and the same demote write lands.
 |CHK-DBG-DISABLE
-|Nine of the eleven `dbg_disable` bits match the DTP gating ladder for the same `FEAT_CTRL` the cell just verified. `dft_secure` and `dfd` are unclaimed: the path table and the RTL disagree, and they diverge in opposite directions -- `dfd` is stricter in the RTL, `dft_secure` is more permissive.
+|All eleven `dbg_disable` bits match the DTP gating ladder for the same `FEAT_CTRL` the cell just verified. `dft_secure` is Case 3 and `dfd` is Case 1.
+|CHK-FUSE-DFT-DIS
+|`sep_fuse_dft_disable` equals Case 3 AND `sep_fuse_dbg`, inverted. `smc_fuse_dft_disable` equals Case 2 AND `smc_fuse_dbg`, inverted. The compose cell keeps Case 2 and Case 3 open while bits 2 and 3 are closed, so a golden that ignores those bits fails there.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
@@ -5116,7 +5120,7 @@ error path works.
 . The comparator hashes the written `SEC_DISABLE_TOKEN_I` and compares it to the metal expected digest reconstructed from `SEP_SEC_DISABLE_TOKEN` (`hw/ip/efuse/rtl/efuse_token_processing.sv`, `hw/sys/sep/doc/token_processing.adoc`).
 . After `release_no_cpu_reset`, write the all-zero token before `sep_fuse_sense_done_o`. Match must assert, and `sep_cpu_reset_n_o` must stay 0 while sense is still open (`ext_boot_seq_done_i` is already 1, so sense is the only held term).
 . Wait for sense-done. Token `1` mismatches.
-. On a later match, `sec_dis` asserts and `FEAT_CTRL` follows feat_ctrl_expected(..., sec_dis=1) (test group still gated by SECURE_TM=0).
+. On a later match, `sec_dis` asserts and `FEAT_CTRL` follows feat_ctrl_expected(..., sec_dis=1).
 
 *Checkers*:
 
@@ -5134,7 +5138,7 @@ error path works.
 |CHK-MATCH
 |Written all-zero token returns `SEC_DISABLE_TOKEN_MATCH=0x15`.
 |CHK-OVERRIDE
-|After the match, sec_dis=1 and `FEAT_CTRL` equals the override golden (SECURE_TM=0 clears the test group).
+|After the match, sec_dis=1 and `FEAT_CTRL` equals the override golden (all ones).
 |CHK-DEACTIVATE
 |A later token=1 returns mismatch again.
 |CHK-RESTORE
@@ -5683,7 +5687,7 @@ contracts owned by the vault test, and the wipe security contract.
 |Phase 2 tests |59
 |Cocotb total |91
 |Phase 3 |1 SV-UVM scenario bound (`sep_axi_smoke_test`)
-|Iconic scorecard rows |58 in-scope: 56 PROVEN, 1 PARTIAL, 1 GAP (see <<iconic-scorecard>>)
+|Iconic scorecard rows |58 in-scope: 57 PROVEN, 1 GAP (see <<iconic-scorecard>>)
 |Coded and failing |4 (`sep_crypto_per_ip_reset_isolation_test`; `sep_drbg_axil_adapter_port_arbitration_test`; `sep_drbg_axil_concurrent_csrng_aw_then_ar_test`; `sep_drbg_axil_concurrent_edn_aw_then_ar_test`; parked on RTL, not expected-fail; see <<known-limitations>>)
 |===
 
@@ -5747,13 +5751,6 @@ fabric's own.
 
 Both orderings are graded on the port-driven vehicle instead, which is why that
 vehicle exists rather than being a convenience. All three leaves are red and are deliberately not converted to expected failures. Reported to the open issue that raised the concurrent arbitration question; the RTL fix is owned there, not here.
-
-|`dbg_disable` ladder: `dfd` and `dft_secure` (spec-vs-RTL)
-|The DTP path table in the lifecycle chapter and `sep_lifecycle_ctrl.sv` disagree on two of the eleven debug-disable bits. The table puts the DFD iJTAG path at Case 1 (`SIP_DBG` alone) and the secure DFT iJTAG path at Case 3; the RTL gates both at Case 2 (`SIP_DBG` and `CHIPLET_DBG`). The two divergences run in opposite directions and only one of them is safe.
-
-`dfd`: the RTL disables in more states than the table requires, so it closes a path the specification would leave open. Fail-safe.
-
-`dft_secure`: the RTL disables in *fewer* states. `dbg_disable` is active high, so Case 3 means `!SIP_DBG || !CHIPLET_DBG || !SEP_DBG` and the RTL omits the `SEP_DBG` term. At `SIP_DBG=1, CHIPLET_DBG=1, SEP_DBG=0` the specification says the secure DFT scan chain must be closed and the RTL leaves it open. This is the permissive direction on a chain the chapter's Class-2 rule treats as never-dumpable, so it is a security-relevant gap and not a neutral ambiguity. `CHK-DBG-DISABLE` therefore checks the other nine bits and leaves these two unclaimed: asserting either side would turn an open architecture question into a DV opinion. Tracked as issues 450 (`dft_secure`) and 1576 (`dfd`). When arch rules, the golden gains the bit and the scorecard row moves from `PARTIAL` to `PROVEN`.
 
 |Token-comparator collapse inject (`3'b001`)
 |`tb_top` mode `3'b001` forces instance 0 to a collapsed pair and leaves instances 1 and 2 as a legal match. The fault output is the OR of collapse and disagree, so `CHK-COLLAPSE` does not prove the collapse detector exists. Isolating that term needs all three pairs alike and `compute_comparison_vld_i=1`. SEC_DISABLE's valid is the sticky digest valid, not the RMA `digest_vld && fuse_sense_done` term, so an all-alike force with SEC valid still 0 is expected not to raise that rail. The inject stays at `3'b001` until a kept run isolates the term.
