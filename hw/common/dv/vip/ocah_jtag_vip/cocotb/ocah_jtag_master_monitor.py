@@ -235,7 +235,9 @@ class OcahJtagMasterMonitor:
                     )
                 )
 
-            if previous == OcahJtagState.UPDATE_IR and pending_ir is not None:
+            if previous == OcahJtagState.UPDATE_IR:
+                # Without a Shift-IR cycle the register latches its
+                # device-specific Capture-IR pattern, unknown here.
                 self._active_instruction = pending_ir
                 pending_ir = None
 
