@@ -37,7 +37,7 @@ WHAT THE MEMBERS SHARE
     are recorded in the preload itself.
   * Both slots' ``life_cycle_states`` narrowed from the shipped ``0x7`` to
     PROD_END only, and both re-sealed. ``selector_bits`` bit 16 is set in the
-    shipped image, so ``manifest_load.c`` maps the live LC state into
+    shipped image, so ``oca_boot.c`` maps the live LC state into
     that bitmap and refuses the manifest with ``LC_USAGE_CONSTRAINT_FAIL`` if the
     bit is clear. The boot therefore cannot complete unless the ROM decoded raw
     0x8 as PROD_END. This mirrors the reference, which narrows per lifecycle

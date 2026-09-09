@@ -32,11 +32,11 @@ here: the eFuse preload burns SBOOT_DIS, and the manifest is mutated on both of 
 fields the packer would have changed --
 
   * ``secure_boot_control`` bit 0 cleared. This is the field
-    ``secure_boot_enabled`` reads at ``manifest_load.c``, and it sits OUTSIDE the
-    TBS (``manifest.h``), so clearing it needs no re-hash;
+    ``secure_boot_control`` is read at ``secure_boot.c``, and it sits OUTSIDE the
+    TBS (``oca_layout.h``), so clearing it needs no re-hash;
   * ``signature_type`` set to ``NO_SIGNATURE`` (0), because the packer forces exactly
     that whenever a config sets ``secure_boot: 0``
-    (``bootrom/prod/tools/tt-boot-manifest/src/manifest_signing.py:43-45``, value from
+    (the packer, value from
     ``pack_images_constants.py``). The reference's primary manifest is therefore
     genuinely UNSIGNED, and this port reproduces that rather than running a signed
     image with one flag cleared.
@@ -68,7 +68,7 @@ satisfied by an unusable backup.
 **THE LIFECYCLE DECODE IS ASSERTED, NOT ASSUMED.** Both slots' ``life_cycle_states``
 are narrowed from the shipped 0x7 to 0x2 -- PROD only -- exactly as the reference
 does (``sep_demotion_uid_checker.py``,), and ``selector_bits``
-bit 16 is already set, so ``manifest_load.c`` refuses the manifest unless the
+bit 16 is already set, so ``oca_boot.c`` refuses the manifest unless the
 ROM decoded raw 0x1 as PROD. ``LC=PROD_END`` is forbidden for the complementary
 reason the PROD_END member does not forbid ``LC=PROD``: the former string CONTAINS
 the latter, so only the longer one can be used as a discriminator.
@@ -92,8 +92,7 @@ from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
 _LC_PROD = "LC=PROD"  # lifecycle.c
 _LC_PROD_END = "LC=PROD_END"  # lifecycle.c
 _SBOOT_DIS_FUSE = "FUSE: SBOOT_DIS: 1"  # rom_main.c
-_SBOOT_OFF = "SBOOT_OFF"  # manifest_load.c
-_PLD_HASH_OK = "PLD_HASH_OK"  # manifest_crypto.c
+_SBOOT_OFF = "SBOOT_OFF"  # rom_main.c
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
 
@@ -125,7 +124,6 @@ class sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test(sep_demot
         _SBOOT_DIS_FUSE,
         _PRIMARY_SRC,
         _SBOOT_OFF,
-        _PLD_HASH_OK,
         "BL1_COPIED",
         "BL1_JUMP=",
     )
@@ -157,15 +155,14 @@ class sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test(sep_demot
     def mutate_manifest(self, buf: bytearray) -> None:
         # +SET_SELECTOR_BIT_17 -> usage_constraints.selectors.BL1_demotion
         # (sep_demotion_uid_checker.py).
+        # +SET_SELECTOR_BIT_17 and +AUTH_FLAG_0 together: BL1 demotion specified
+        # and requested.
         mm.set_demotion(buf, "primary", bl1_valid=True, bl1_enable=True)
-        # +AUTH_FLAG_0 -> usage_constraints.BL1_demotion (:438-440).
-        # +SECURE_BOOT_DIS, manifest surface 1: the flag secure_boot_enabled reads
-        # (manifest_load.c). Outside the TBS, so no re-hash.
+        # +SECURE_BOOT_DIS's manifest surface. One call covers both halves the
+        # reference names -- the enforcement request and NO_SIGNATURE -- because
+        # an unsigned slot must also carry no signature, key or key-select bytes.
+        # Inside the signed region, so it re-hashes.
         mm.clear_secure_boot(buf, "primary")
-        # +SECURE_BOOT_DIS, manifest surface 2: the packer would have forced
-        # NO_SIGNATURE (manifest_signing.py), so the reference's primary is
-        # unsigned and this one is too.
-        mm.set_signature_type(buf, "primary", mm.SIG_TYPE_NO_SIGNATURE)
         # Last in-TBS write. The BACKUP is re-sealed so it stays a fully valid
         # alternative; the PRIMARY is deliberately NOT re-sealed -- it is unsigned by
         # construction, and re-signing it would undo the surface just set.

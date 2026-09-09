@@ -31,8 +31,8 @@ The decision is ``rom_main.c`` and it reads exactly FOUR inputs:
 
 Bit positions: ``SELECTOR_BIT_BL1_DEMOTION`` is 17 because
 ``SELECTOR_BIT_LIFE_CYCLE_STATES`` is ``DEVICE_ID_NUM_WORDS * 2`` = 16
-(``manifest.h``); ``USAGE_CONSTRAINTS_FLAGS_BIT_BL1_DEMOTION`` is 0
-(``manifest.h``); ``FLAG_ARGS_BIT_BL2_DEMOTION`` is 0 (``manifest.h``).
+(``oca_layout.h``); ``USAGE_CONSTRAINTS_FLAGS_BIT_BL1_DEMOTION`` is 0
+(``oca_layout.h``); ``BL2_DEMOTION_ENABLE`` is 0 (``oca_layout.h``).
 
 **THE COLLAPSE, AND IT IS THE MOST IMPORTANT THING IN THIS FILE.** ``rom_main.c``
 short-circuits on ``lc_state == LC_STATE_PROD_END`` and returns from the block having

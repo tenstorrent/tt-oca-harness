@@ -34,7 +34,7 @@ the PROD_END lifecycle bit (``lifecycle.c``).
 **THE LIFECYCLE DECODE IS ASSERTED, NOT ASSUMED.** Both slots' ``life_cycle_states``
 are narrowed from the shipped 0x7 to 0x4 -- PROD_END only -- exactly as the reference
 does (``sep_demotion_uid_checker.py``). ``selector_bits``
-bit 16 is set in the shipped image, so ``manifest_load.c`` maps the live LC
+bit 16 is set in the shipped image, so ``oca_boot.c`` maps the live LC
 state into that bitmap and refuses the manifest with ``LC_USAGE_CONSTRAINT_FAIL`` if
 the bit is clear. The boot therefore cannot complete unless the ROM decoded raw 0x8
 as PROD_END. Without this narrowing the shipped 0x7 would accept any of three states

@@ -54,21 +54,21 @@ fuse, and :func:`apply_secure_boot_dis` writes both manifest fields:
     signed region, so clearing it re-hashes;
   * ``signature_type`` forced to ``NO_SIGNATURE`` (0), because the packer forces
     exactly that whenever a config sets ``secure_boot: 0``
-    (``bootrom/prod/tools/tt-boot-manifest/src/manifest_signing.py:43-45``,
+    (the packer,
     value from ``pack_images_constants.py``). The reference's primary manifest
     is therefore genuinely UNSIGNED and this port reproduces that rather than
     running a signed image with one flag cleared.
 
 **The coupling is what makes the port non-vacuous.** With ``signature_type = 0``
 the primary can boot only because the fuse is burned: ``secure_boot_enabled``
-short-circuits on ``sboot_dis`` at ``manifest_load.c`` BEFORE the PROD rule at
+reaches ``sboot_dis`` only when the manifest asks for nothing (``secure_boot.c``) BEFORE the PROD rule at
 . Drop the fuse and PROD enforces secure boot, the unsigned primary is
-refused at ``BAD_SIG_TYPE=0x00000000`` (``manifest_crypto.c``), and the ROM
+refused as a format violation, and the ROM
 fails over to the signed backup -- which carries no demotion stimulus and would
 produce outcome **O5** under whichever name the testcase happened to have. That
 substitution is made loud rather than silent: ``BAD_SIG_TYPE=``, the backup
 manifest source and ``LC=PROD_END`` are forbidden, ``FUSE: SBOOT_DIS: 1``
-(``rom_main.c``) and ``SBOOT_OFF`` (``manifest_load.c``) are required, and
+(``rom_main.c``) and ``SBOOT_OFF`` (``rom_main.c``) are required, and
 the base's :meth:`~sep_demotion_decision_base._check_primary_served` additionally
 proves from the DEVICE side that no read touched the backup span.
 
@@ -114,8 +114,7 @@ from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
 _LC_PROD = "LC=PROD"  # lifecycle.c
 _LC_PROD_END = "LC=PROD_END"  # lifecycle.c
 _SBOOT_DIS_FUSE = "FUSE: SBOOT_DIS: 1"  # rom_main.c
-_SBOOT_OFF = "SBOOT_OFF"  # manifest_load.c
-_PLD_HASH_OK = "PLD_HASH_OK"  # manifest_crypto.c
+_SBOOT_OFF = "SBOOT_OFF"  # rom_main.c
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
 
@@ -297,7 +296,6 @@ class sep_demotion_prod_base(_demotion_prod_mixin, sep_demotion_decision_base):
         _SBOOT_DIS_FUSE,
         _PRIMARY_SRC,
         _SBOOT_OFF,
-        _PLD_HASH_OK,
         "BL1_COPIED",
         "BL1_JUMP=",
     )
@@ -405,7 +403,7 @@ class sep_demotion_prod_base(_demotion_prod_mixin, sep_demotion_decision_base):
             f"0x{LC_STATES_PROD_ONLY:08x} (PROD only)"
         )
         # The manifest hash must still be valid even though the slot is unsigned:
-        # manifest_check_integrity (manifest_load.c) runs regardless of secure
+        # the integrity check runs regardless of secure
         # boot, so a stale hash would reject the primary before the [C15] block.
         mm.verify_layout(buf, "primary")
         self.logger.info(

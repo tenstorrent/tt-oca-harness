@@ -37,7 +37,7 @@ What it does still assert, per run and on both channels:
     word is the only run-time observable on which they differ;
   * that the ROM decoded raw LC 0x8 as PROD_END, because both slots'
     ``life_cycle_states`` are narrowed to PROD_END only and
-    ``manifest_load.c`` refuses the manifest otherwise.
+    ``oca_boot.c`` refuses the manifest otherwise.
 
 The reference expects only ``STATUS: DEMOTION_NOT_SELECTED`` for the PROD_END row
 and appends no lock expectation at all (``sep_demotion_uid_checker.py``).

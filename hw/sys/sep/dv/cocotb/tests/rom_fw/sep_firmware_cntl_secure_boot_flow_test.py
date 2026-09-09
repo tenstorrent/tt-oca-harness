@@ -3,7 +3,7 @@
 """Lifecycle overrides a manifest that asks for non-secure boot (PyUVM).
 
 FEATURE UNDER TEST. The precedence between the manifest flag and the lifecycle in
-``secure_boot_enabled()`` (``manifest_load.c:223-240``): the manifest flag is
+the secure-boot precedence (``secure_boot.c``): the manifest flag is
 honoured only in TEST_DEV and RMA, and ignored under PROD. So the stimulus is
 lifecycle PROD, ``SBOOT_DIS = 0``, and a manifest whose ``secure_boot`` flag is
 CLEARED. The ROM must still authenticate.
