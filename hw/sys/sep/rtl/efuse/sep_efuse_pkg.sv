@@ -10,14 +10,11 @@ package sep_efuse_pkg;
 
   // -------------------------------------------------------------------------
   // Per-register shadow typedefs.
-  // Field order: MSB first (packed struct convention).
+  // Field order: MSB first.
   // -------------------------------------------------------------------------
 
   // LOCKS — 64-bit register (regwidth=64; accesswidth=64), slots 0-31.
   // Each field n owns write-lock at bit 2n, read-lock at bit 2n+1.
-  //   Slots  0-28 : original fields (LC_STATE through SIP_PUBK_PQC_HASH1) — bits [0:57]
-  //   Slots 29-31 : v0.5.22 identity fuses (SEP_CHIPLET_ID / SIP / SYS)  — bits [58:63]
-  // Slots 32-39 (spare0-spare7) and unassigned slots 40-47 live in LOCKS_SPARE.
   typedef struct packed {
     logic [0:0]   sep_sys_id_read_lock ;                // [63]     slot 31
     logic [0:0]   sep_sys_id_write_lock ;               // [62]     slot 31
@@ -85,9 +82,7 @@ package sep_efuse_pkg;
     logic [0:0]   lc_state_write_lock ;                 // [0]      slot  0
   } sep_efuse_map_locks_reg_t;
 
-  // LOCKS_SPARE — 32-bit register (regwidth=32; accesswidth=32), slots 32-47.
-  //   [15:0]  slots 32-39: spare0-spare7 write/read lock pairs
-  //   [31:16] slots 40-47: unassigned, reserved for future lock slots
+  // LOCKS_SPARE — 32-bit register, slots 32-47.
   typedef struct packed {
     logic [15:0]  spare_lock_rsvd ;      // [31:16] slots 40-47, unassigned
     logic [0:0]   spare7_read_lock ;     // [15]    slot 39
@@ -130,21 +125,15 @@ package sep_efuse_pkg;
 
 
   // LC_DISABLE / feature-control disable vector.
-  // Spec: the Disable Vector Format section of lifecycle_controller.adoc.
-  // 1'b1 = feature disabled; feat_ctrl_o is inverted (enable polarity).
-  // Groups:
-  //   DBG_1 [23:0]  — gated by DEMOTE_1 (local debug)
-  //   DBG_2 [47:24] — gated by DEMOTE_2 (inter-chiplet debug bypass)
-  //   Func  [63:48] — always gated by SIP_DIS/SYS_DIS per LC state
   typedef struct packed {
-    logic [15:0]  func_reserved ;         // [63:48] Function group
-    logic [22:0]  debug_reserved_dbg2 ;   // [47:25] DBG_2 reserved
-    logic [0:0]   sip_debug ;             // [24]    SIP_DBG (DBG_2)
-    logic [19:0]  debug_reserved_dbg1 ;   // [23:4]  DBG_1 reserved
-    logic [0:0]   smc_fuse_dbg ;          // [3]     SMC_FUSE_DBG (DBG_1)
-    logic [0:0]   sep_fuse_dbg ;          // [2]     SEP_FUSE_DBG (DBG_1)
-    logic [0:0]   chiplet_dbg ;           // [1]     CHIPLET_DBG (DBG_1)
-    logic [0:0]   sep_debug ;             // [0]     SEP_DBG (DBG_1)
+    logic [15:0]  func_reserved ;
+    logic [22:0]  debug_reserved_dbg2 ;
+    logic [0:0]   sip_debug ;
+    logic [19:0]  debug_reserved_dbg1 ;
+    logic [0:0]   smc_fuse_dbg ;
+    logic [0:0]   sep_fuse_dbg ;
+    logic [0:0]   chiplet_dbg ;
+    logic [0:0]   sep_debug ;
   } sep_efuse_map_lc_disable_reg_t;
 
 
@@ -247,8 +236,6 @@ package sep_efuse_pkg;
   typedef struct packed {logic [31:0] rb_valid_time;} sep_efuse_map_spi_rb_valid_time_reg_t;
 
 
-
-  // Signing-model key hashes (256-bit, field name: key_hash)
   typedef struct packed {logic [255:0] key_hash;} sep_efuse_map_chiplet_pubk_hash_reg_t;
 
 
@@ -267,126 +254,66 @@ package sep_efuse_pkg;
     logic [3:0]    chiplet_algs ;
   } sep_efuse_map_required_algs_reg_t;
 
-
-
   typedef struct packed {logic [255:0] key_hash;} sep_efuse_map_pqc_hash_reg_t;
 
-
-
-  // v0.5.22 public identity fuses (SEP_CHIPLET_ID / SEP_SIP_ID / SEP_SYS_ID)
   typedef struct packed {logic [255:0] id;} sep_efuse_map_sep_id_reg_t;
 
-
-
-  // v0.5.22 individually-lockable 256-bit spare fields
   typedef struct packed {logic [255:0] rsvd;} sep_efuse_map_spare_256_reg_t;
-
-
 
   // -------------------------------------------------------------------------
   // Full shadow-register map (packed, MSB = highest address).
   // Total size must equal NumEfuseBits = 8192.
   // -------------------------------------------------------------------------
   typedef struct packed {
-    // 0x3e0: spare7 (256 bits)
     sep_efuse_map_spare_256_reg_t              spare7 ;
-    // 0x3c0: spare6 (256 bits)
     sep_efuse_map_spare_256_reg_t              spare6 ;
-    // 0x3a0: spare5 (256 bits)
     sep_efuse_map_spare_256_reg_t              spare5 ;
-    // 0x380: spare4 (256 bits)
     sep_efuse_map_spare_256_reg_t              spare4 ;
-    // 0x360: spare3 (256 bits)
     sep_efuse_map_spare_256_reg_t              spare3 ;
-    // 0x340: spare2 (256 bits)
     sep_efuse_map_spare_256_reg_t              spare2 ;
-    // 0x320: spare1 (256 bits)
     sep_efuse_map_spare_256_reg_t              spare1 ;
-    // 0x300: spare0 (256 bits)
     sep_efuse_map_spare_256_reg_t              spare0 ;
-    // 0x2e0: SEP_SYS_ID (256 bits)
     sep_efuse_map_sep_id_reg_t                 sep_sys_id ;
-    // 0x2c0: SEP_SIP_ID (256 bits)
     sep_efuse_map_sep_id_reg_t                 sep_sip_id ;
-    // 0x2a0: SEP_CHIPLET_ID (256 bits)
     sep_efuse_map_sep_id_reg_t                 sep_chiplet_id ;
-    // 0x280: SIP_PUBK_PQC_HASH1 (256 bits)
     sep_efuse_map_pqc_hash_reg_t               sip_pubk_pqc_hash1 ;
-    // 0x260: SIP_PUBK_HASH1 (256 bits)
     sep_efuse_map_sip_pubk_hash_reg_t          sip_pubk_hash1 ;
-    // 0x240: SYS_PUBK_PQC_HASH (256 bits)
     sep_efuse_map_pqc_hash_reg_t               sys_pubk_pqc_hash ;
-    // 0x220: SIP_PUBK_PQC_HASH0 (256 bits)
     sep_efuse_map_pqc_hash_reg_t               sip_pubk_pqc_hash0 ;
-    // 0x200: CHIPLET_PUBK_PQC_HASH1 (256 bits)
     sep_efuse_map_pqc_hash_reg_t               chiplet_pubk_pqc_hash1 ;
-    // 0x1e0: CHIPLET_PUBK_PQC_HASH0 (256 bits)
     sep_efuse_map_pqc_hash_reg_t               chiplet_pubk_pqc_hash0 ;
-    // 0x1dc: REQUIRED_ALGS (32 bits)
     sep_efuse_map_required_algs_reg_t          required_algs ;
-    // 0x1d8: REQUIRED_SIGNERS (32 bits)
     sep_efuse_map_required_signers_v_t         required_signers ;
-    // 0x1b8: CHIPLET_PUBK_HASH1 (256 bits)
     sep_efuse_map_chiplet_pubk_hash_reg_t      chiplet_pubk_hash1 ;
-    // 0x198: CHIPLET_PUBK_HASH0 (256 bits)
     sep_efuse_map_chiplet_pubk_hash_reg_t      chiplet_pubk_hash0 ;
-    // 0x194: SPI_RB_VALID_TIME (32 bits)
     sep_efuse_map_spi_rb_valid_time_reg_t      spi_rb_valid_time ;
-    // 0x190: SPI_PHY_MISC (32 bits)
     sep_efuse_map_spi_phy_misc_reg_t           spi_phy_misc ;
-    // 0x18c: SPI_PHY_DLL_MASTER (32 bits)
     sep_efuse_map_spi_phy_dll_master_reg_t     spi_phy_dll_master ;
-    // 0x188: SPI_PHY_DLL_SLAVE (32 bits)
     sep_efuse_map_spi_phy_dll_slave_reg_t      spi_phy_dll_slave ;
-    // 0x184: SPI_PHY_GATE_LPBK (32 bits)
     sep_efuse_map_spi_phy_gate_lpbk_reg_t      spi_phy_gate_lpbk ;
-    // 0x180: SPI_PHY_DQS_TIMING (32 bits)
     sep_efuse_map_spi_phy_dqs_timing_reg_t     spi_phy_dqs_timing ;
-    // 0x17c: SPI_PHY_DQ_TIMING (32 bits)
     sep_efuse_map_spi_phy_dq_timing_reg_t      spi_phy_dq_timing ;
-    // 0x178: SPI_DISCOVERY_CTRL (32 bits)
     sep_efuse_map_spi_discovery_ctrl_reg_t     spi_discovery_ctrl ;
-    // 0x174: SEP_SPI_CTRL_FIELD_EN (32 bits)
     sep_efuse_map_sep_spi_ctrl_field_en_reg_t  sep_spi_ctrl_field_en ;
-    // 0x170: ROM_CTL (32 bits)
     sep_efuse_map_rom_ctl_reg_t                rom_ctl ;
-    // 0x16c: STATUS_RPT (32 bits)
     sep_efuse_map_status_rpt_reg_t             status_rpt ;
-    // 0x14c: SYS_UID (256 bits)
     sep_efuse_map_sys_uid_reg_t                sys_uid ;
-    // 0x12c: SYS_PUBK_HASH (256 bits)
     sep_efuse_map_sys_pubk_hash_reg_t          sys_pubk_hash ;
-    // 0x10c: SIP_UID (256 bits)
     sep_efuse_map_sip_uid_reg_t                sip_uid ;
-    // 0xec: SIP_PUBK_HASH0 (256 bits)
     sep_efuse_map_sip_pubk_hash_reg_t          sip_pubk_hash0 ;
-    // 0xcc: CHIPLET_UID (256 bits)
     sep_efuse_map_chiplet_uid_reg_t            chiplet_uid ;
-    // 0xac: BL2_VERSION (256 bits)
     sep_efuse_map_bl2_version_reg_t            bl2_version ;
-    // 0x8c: BL1_VERSION (256 bits)
     sep_efuse_map_bl1_version_reg_t            bl1_version ;
-    // 0x88: CHIPLET_PUBK_REVOKE (32 bits)
     sep_efuse_map_chiplet_pubk_revoke_reg_t    chiplet_pubk_revoke ;
-    // 0x68: CLASS_KEY (256 bits)
     sep_efuse_map_class_key_reg_t              class_key ;
-    // 0x48: RMA_CHIPLET_TOKEN_DIGEST (256 bits)
     sep_efuse_map_rma_chiplet_token_digest_reg_t rma_chiplet_token_digest ;
-    // 0x28: RMA_SIP_TOKEN_DIGEST (256 bits)
     sep_efuse_map_rma_sip_token_digest_reg_t   rma_sip_token_digest ;
-    // 0x20: SYS_DIS (64 bits)
     sep_efuse_map_lc_disable_reg_t             sys_dis ;
-    // 0x18: SIP_DIS (64 bits)
     sep_efuse_map_lc_disable_reg_t             sip_dis ;
-    // 0x14: TRANSIENT_RMA_EN (32 bits)
     sep_efuse_map_transient_rma_en_reg_t       transient_rma_en ;
-    // 0x10: SBOOT_DIS (32 bits)
     sep_efuse_map_sboot_dis_reg_t              sboot_dis ;
-    // 0x0c: LC_STATE (32 bits)
     sep_efuse_map_lc_state_reg_t               lc_state ;
-    // 0x08: LOCKS_SPARE (32 bits)
     sep_efuse_map_locks_spare_reg_t            locks_spare ;
-    // 0x00: LOCKS (64 bits)
     sep_efuse_map_locks_reg_t                  locks ;
   } sep_efuse_map_regmap_t;
   `include "apb/typedef.svh"
@@ -394,8 +321,7 @@ package sep_efuse_pkg;
   `include "efuse_typedef.svh"
 
   // Physical fuse array size: 8192 bits = 1024 bytes = 256 × 32-bit words.
-  // Map spans 0x0 (LOCKS) through 0x3FF (end of spare7), ending at 0x400.
-  localparam int unsigned NumEfuseBits = 8 * 1024;  // 8192
+  localparam int unsigned NumEfuseBits = 8 * 1024;
   localparam int unsigned NumFuseWordWidth = 32;
 
   localparam int unsigned NumFuseWords = NumEfuseBits / NumFuseWordWidth;  // 256
@@ -404,8 +330,8 @@ package sep_efuse_pkg;
 
   localparam int unsigned NumFuseBitsWidth = $clog2(NumEfuseBits);
   localparam int unsigned NumFuseByteWidth = $clog2(NumFuseBytes);
+
   // NOTE: $clog2(256)=8 can only represent 0-255, but we need to represent 256 words
-  // Add 1 to ensure we can hold NumFuseWords itself (not just NumFuseWords-1)
   localparam int unsigned NumFuseWordsWidth = $clog2(NumFuseWords + 1);
   localparam int unsigned SHADOW_REG_BITS = NumEfuseBits;
 
@@ -430,14 +356,6 @@ package sep_efuse_pkg;
   `APB_TYPEDEF_ALL(efuse_apb, addr_t, data_t, strb_t)
 
   // 40 real lockable fields (idx 0-39) + LOCKS meta-field (idx 6'h3F).
-  //   Slots  0-28 : original fields (LC_STATE through SIP_PUBK_PQC_HASH1)
-  //   Slots 29-31 : v0.5.22 identity fuses (SEP_CHIPLET_ID, SEP_SIP_ID, SEP_SYS_ID)
-  //   Slots 32-39 : v0.5.22 spare fields (spare0-spare7)
-  //   LOCKS_META_IDX (6'h3F): fixed sentinel for the LOCKS/LOCKS_SPARE meta-entry.
-  //                 Hardware never applies lock bits to this entry. The idx is the
-  //                 max 6-bit value so it cannot collide with a real field slot,
-  //                 regardless of how many real fields are added in future.
-  //                 Unassigned lock slots 40-47 live in LOCKS_SPARE[31:16].
   localparam int unsigned NUM_EFUSE_FIELDS = 41;
   localparam logic [efuse_pkg::EFUSE_FIELD_MAP_IDX_WIDTH-1:0] LOCKS_META_IDX = '1;
   localparam logic [1:0] WRITE_LOCK = 2'b11;
@@ -449,15 +367,13 @@ package sep_efuse_pkg;
   localparam logic SECURE_TM_UNLOCK = 1'b0;
 
   // Physical OTP bits covered by LOCKS + LOCKS_SPARE (the 96-bit lock field).
-  // LOCKS (64-bit) occupies OTP words 0-1, LOCKS_SPARE (32-bit) occupies word 2.
-  // Class1ShadowRanges uses LOCKS_BASE_ADDR with LockFieldBits to cover all three
-  // words, keeping the physical OTP ↔ APB word index 1-to-1.
   localparam int unsigned LockFieldBits = $bits(
       sep_efuse_map_locks_reg_t
   ) + $bits(
       sep_efuse_map_locks_spare_reg_t
-  );  // 96
+  );
 
+  // TODO: Why is this needed?
   // efuse_lock_view_t presents the efuse_map_t union with the full 96-bit
   // lock field at the LSB end, mirroring where LOCKS/LOCKS_SPARE sit in the
   // packed struct. locks[79:0] holds the 80 meaningful lock-pair bits (slots 0-39);
