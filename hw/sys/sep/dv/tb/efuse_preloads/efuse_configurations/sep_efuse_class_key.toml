@@ -2,7 +2,7 @@
 #
 # CLASS_KEY is the KBKDF root: ROM derives the payload AES key from it, so this
 # value must stay byte-identical to the key pack_images.py encrypts with, or
-# sep_firmware_encrypted_boot_test decrypts to garbage. It is a published test
+# sep_rom_oca_encrypted_boot_test decrypts to garbage. It is a published test
 # vector, not a device secret.
 #
 # TEST_DEV rather than PROD on purpose: the test exercises decryption, and PROD

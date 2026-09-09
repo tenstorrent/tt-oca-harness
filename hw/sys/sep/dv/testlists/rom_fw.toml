@@ -517,26 +517,6 @@ args = [
 ]
 
 [[tests]]
-# Signed AND encrypted payload. Needs its own OTP: the ROM derives the AES key
-# from the CLASS_KEY fuse, which must carry the OCA config's encryption_key_input.
-# Both OTBN (RSA) and AES (decrypt) draw from EDN, which the ROM brings up, so
-# +esrc_noise_force is what this needs. The image is built by `make oca-images`.
-name = "sep_firmware_encrypted_boot_test"
-module = "rom_fw.sep_firmware_encrypted_boot_test"
-target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
-seed = 1
-timeout_sec = 14400
-tags = ["boot", "rom", "spi", "secure", "crypto", "encrypted", "cpu", "subsystem", "dv_shortcut"]
-run_modes = ["cpu"]
-args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
-  "+sep_boot_from_spi",
-  "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_class_key.toml",
-  "+esrc_noise_force",
-]
-
-[[tests]]
 # MBIST arm of the boot gate, FAILURE case -- the leg neither existing MBIST
 # test reaches. sep_firmware_mbist_fail_test injects 0xFFFFFFFD, which stops on
 # the REPAIR arm before MBIST is ever evaluated, so without this entry the MBIST
@@ -788,7 +768,7 @@ args = [
 # CLASS_KEY is the KBKDF root the ROM derives the AES key from.
 # +sep_crypto_edn_force covers EDN client 0 (AES) as well as OTBN's 2/3; without
 # it the AES masking PRNG never leaves reseed and the run hangs after
-# DECRYPT_START (see sep_firmware_encrypted_boot_test).
+# DECRYPT_START (see sep_rom_oca_encrypted_boot_test).
 #
 # ################ THIS TEST IS EXPECTED TO FAIL. DO NOT "FIX" IT. ################
 #

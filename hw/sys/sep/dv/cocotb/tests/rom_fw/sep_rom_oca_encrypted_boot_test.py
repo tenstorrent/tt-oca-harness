@@ -75,6 +75,23 @@ _DECRYPT_OK = "DECRYPT_OK"
 # key it would derive from.
 _DECRYPT_NO_SECRET = "DECRYPT_NO_SECRET"
 _DECRYPT_KEY_EMPTY = "DECRYPT_CLASS_KEY_EMPTY"
+
+# A crypto op the IP refuses to start leaves STATUS.hmac_idle asserted, which a
+# completion poll reads as success -- so a garbage digest, and therefore a
+# garbage AES key, would reach decryption looking like a clean run. These are
+# what check_no_error()/check_no_alert() print when that happens.
+_CRYPTO_REJECTED = (
+    "KDF_HMAC_FAIL",
+    "HMAC_ERR_CODE=",
+    "HMAC_START_REJECTED",
+    "HMAC_OP_REJECTED",
+    "SHA_START_REJECTED",
+    "SHA_OP_REJECTED",
+    "AES_INIT_BUSY",
+)
+# This image is valid, so any manifest rejection means a check refused
+# something it should accept.
+_MANIFEST_ERR = "MANIFEST_ERR="
 _KDF_FAIL = "KDF_FAIL"
 _AES_DEC_FAIL = "AES_DEC_FAIL"
 
@@ -89,11 +106,16 @@ class sep_rom_oca_encrypted_boot_test(sep_rom_ot_secure_boot_test):
     # the real weight here: it is printed only after the hash chain over the
     # DECRYPTED bytes matched, so it is what rules out a wrong-key derivation.
     required_markers = sep_rom_ot_secure_boot_test.required_markers + (_DECRYPT_OK,)
-    forbidden_markers = sep_rom_ot_secure_boot_test.forbidden_markers + (
-        _DECRYPT_NO_SECRET,
-        _DECRYPT_KEY_EMPTY,
-        _KDF_FAIL,
-        _AES_DEC_FAIL,
+    forbidden_markers = (
+        sep_rom_ot_secure_boot_test.forbidden_markers
+        + (
+            _DECRYPT_NO_SECRET,
+            _DECRYPT_KEY_EMPTY,
+            _KDF_FAIL,
+            _AES_DEC_FAIL,
+            _MANIFEST_ERR,
+        )
+        + _CRYPTO_REJECTED
     )
 
     def build_efuse_image(self) -> SepEfuseImage:

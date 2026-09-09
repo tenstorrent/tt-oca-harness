@@ -295,7 +295,6 @@ tests = [
     # simulated-time and wall-second figures are not comparable between runs.
     "sep_failover_sram_clear_assertion_test",
     "sep_spi_not_detected_terminal_test",
-    "sep_firmware_encrypted_boot_test",
     "sep_firmware_mbist_pass_test",
     "sep_firmware_mbist_only_fail_test",
     "sep_boot_recovery_test",
