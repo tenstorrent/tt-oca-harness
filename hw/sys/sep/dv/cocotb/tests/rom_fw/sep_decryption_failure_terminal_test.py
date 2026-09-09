@@ -58,7 +58,7 @@ from env import sep_payload_mutate as pm
 from rom_fw.sep_backup_manifest_fail_base import sep_backup_manifest_fail_base
 
 _SEP_ROOT = Path(__file__).resolve().parents[4]
-_ENCRYPTED_IMAGE = str(_SEP_ROOT / "bootrom" / "prod" / "build" / "encrypted_boot.bin")
+_ENCRYPTED_IMAGE = str(_SEP_ROOT / "bootrom" / "prod" / "build" / "oca_encrypted_boot.bin")
 _EFUSE_PRELOAD = (
     Path(__file__).resolve().parents[3]
     / "tb"
