@@ -88,5 +88,5 @@
 # makes a run fail on a new, unclassified hole.
 
 schema_version = 1
-dut = "smu"
+dut = "smu_block"
 scope_epoch = "smu-toggle-v1"

@@ -104,7 +104,7 @@ Groups (`testlists/wrapper.toml`): `build_smoke` (2), `smoke` (4),
 ### SystemVerilog UVM framework (`--framework uvm`)
 
 The SV-UVM view shares this DV root, sim config, and testlist with the cocotb
-flow: `smu_sim_cfg.toml` declares it as the `[frameworks.uvm]` overlay (same
+flow: `smu_block_sim_cfg.toml` declares it as the `[frameworks.uvm]` overlay (same
 Bender RTL recipe), and `--dut smu_block --framework uvm` selects it. A testlist
 scenario carries both implementations in its `module` binding map
 (`module = { cocotb = "...", uvm = "..." }`), so the same `--items` name

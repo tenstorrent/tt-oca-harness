@@ -36,6 +36,12 @@ top_file = "hw/sys/smu/dv/tb/tb_top.sv"
 sources = [
   # External SMN AXI boundary terminator.
   "hw/sys/smu/dv/tb/smu_axi_out_sim_slave.sv",
+  # Flow-shared functional-coverage modules (cov/sv/): compiled in BOTH flows --
+  # this list feeds the cocotb/Verilator filelist, and the
+  # [frameworks.uvm.build] sources list (which replaces this one) repeats the
+  # entries. Instantiated in tb/tb_top.sv.
+  "hw/sys/smu/dv/cov/sv/smu_boot_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_xbar_fcov.sv",
 ]
 filelist = "hw/sys/smu/dv/build/smu_block_dut_compile.f"
 bender_filelist = "hw/sys/smu/dv/build/smu_block_bender.f"
@@ -62,6 +68,8 @@ bender_targets = ["smu", "smc", "dtp", "sep", "sep_el2"]
 incdirs = [
   "hw/sys/sep/dv/shims/prim",
   "hw/sys/smu/dv/tb",
+  # ocah_fcov_macros.svh, included by the cov/sv functional-coverage modules.
+  "hw/common/assert",
 ]
 # Licensed Cadence xSPI is pulled by the sep bender graph but unused under SEP=0 /
 # OpenTitan SPI path. Mirror SEP OSS exclude so VCS stays vendor-clean.
@@ -99,18 +107,50 @@ ccache = true
 build_jobs = 8
 
 [coverage.verilator]
-# Instrument line/branch (--coverage-line), expression, and SVL user coverage;
-# toggle instrumentation stays off for this DUT. SMU compiles the SMC cluster
-# and SEP-adjacent fabric, so with toggle on a single test leaf's coverage
-# database is ~0.5 GB (tens of GB across a reseeded regression before merge),
-# which does not fit standard CI runner disk; toggle is also the costliest
-# instrumentation at sim time. Replaces the simulator-default `--coverage`
-# (which enables all forms including toggle).
+# Toggle plus SVL user coverage, over the scope in
+# cov/config/verilator/smu_cov_scope.vlt. Replaces the simulator-default
+# `--coverage` (which enables all forms).
+#
+# WHY TOGGLE AND NOT LINE/BRANCH/EXPRESSION. This DUT is the bare
+# `smu #(.SEP(0))` interconnect. smu.sv is 1326 lines carrying two always
+# blocks, 79 continuous assigns and one if/case, and it wires SMC, DTP, SEP
+# and the AXI crossbar together. Verilator emits ZERO line, branch or
+# expression instrumentation sites for anything under hw/sys/smu/rtl/ --
+# counted on the built model, not assumed. Every one of the 1350556 sites
+# the previous argument list produced belonged to somebody else: 65.6%
+# vendored, 20.2% the chipyard-generated CPU cluster, 9.8% hw/ip, 3.6%
+# hw/common, 0.7% SMC. Those three families cannot grade SMU because there
+# is nothing of SMU's for them to instrument.
+#
+# Toggle instruments nets, which is what an integration level owns: whether
+# the interconnect it wires up was actually exercised. That is the question
+# this DUT can answer and the subsystem packages cannot.
+#
+# WHY THIS IS NOT THE 0.5 GB TOGGLE RUN THIS COMMENT USED TO WARN ABOUT. That
+# figure was toggle over the whole elaborated model, SMC cluster and vendored
+# fabric included. smu_cov_scope.vlt drops all of it at compile time, so the
+# toggle denominator is SMU's own RTL. Scope is what makes toggle affordable
+# here; enabling toggle without it reproduces the database this comment
+# previously recorded.
+#
 # --output-groups 0 compiles the generated .cpp files one by one instead of
 # in --build-jobs groups. Verilator groups by file count, and on a
 # coverage-instrumented model one group can become a translation unit of
 # several hundred MB that a hosted runner cannot compile (measured on SMC).
-build_args = ["--coverage-line", "--coverage-expr", "--coverage-user", "--output-groups", "0"]
+build_args = [
+  "--coverage-toggle",
+  "--coverage-user",
+  "--output-groups",
+  "0",
+  "{repo_root}/hw/sys/smu/dv/cov/config/verilator/smu_cov_scope.vlt",
+]
+# Named explicitly rather than left to the canonical
+# cov/config/<tool>/coverage_policy.toml discovery, because `smu` and
+# `smu_block` share one hw/sys/smu/dv tree: the canonical path resolves
+# identically for both, and whichever DUT the file does not name fails
+# `--validate-configs` on the dut mismatch. A DUT-qualified filename lets
+# the wrapper `--dut smu` add its own later without collision.
+policy_file = "hw/sys/smu/dv/cov/config/verilator/smu_block_coverage_policy.toml"
 
 [frameworks.cocotb]
 python_root = "hw/sys/smu/dv/cocotb"
@@ -227,6 +267,9 @@ incdirs = [
 sources = [
   # TB collateral shared with the cocotb flow.
   "hw/sys/smu/dv/tb/smu_axi_out_sim_slave.sv",
+  # The same two functional-coverage modules the [build] sources list carries.
+  "hw/sys/smu/dv/cov/sv/smu_boot_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_xbar_fcov.sv",
   # The embedded DTP's bench layer: its TB interface (the reference models and the TAP
   # checker read the DTP observables through it), the generated cross-trigger port address
   # map dtp_types reads (the Bender DUT layer carries only the regblock), and the DTP

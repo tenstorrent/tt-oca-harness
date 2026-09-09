@@ -61,7 +61,7 @@ Not "SMU coverage". Of the 19728 toggle sites:
 
 Every one of those 18591 vendored sites sits under `.u_smc` or `.u_dtp` —
 none is under SMU's own crossbar — so the intent is unambiguous and only the
-mechanism falls short. `cov/config/verilator/smu_coverage_policy.toml` records
+mechanism falls short. `cov/config/verilator/smu_block_coverage_policy.toml` records
 the two hierarchy selectors that close it and why they cannot be written
 before a run exists.
 
@@ -112,8 +112,8 @@ rather than "no stall was ever applied".
 
 ## Status
 
-- The scoped toggle+user model builds; `--validate-configs` passes for both
-  `smu` and `smu_wrapper`.
+- The scoped toggle+user model builds on `--dut smu_block`;
+  `--validate-configs` passes for both `smu` and `smu_block`.
 - **No SMU coverage database exists yet.** The weekly job records
   `coverage: enabled=false, status=SKIP` — its `coverage:` flag is gated on
   `DV_LARGE_RUNNER` — and a local `--cov` run aborts on
@@ -128,8 +128,8 @@ rather than "no stall was ever applied".
 
 ## `policy_file` rather than the canonical path
 
-`smu` and `smu_wrapper` are two DUTs sharing one `hw/sys/smu/dv` tree, so the
+`smu` and `smu_block` are two DUTs sharing one `hw/sys/smu/dv` tree, so the
 canonical `cov/config/<tool>/coverage_policy.toml` discovery resolves
 identically for both and whichever DUT the file does not name fails
 `--validate-configs`. `[coverage.verilator].policy_file` names a DUT-qualified
-file instead, which leaves room for the wrapper to add its own.
+file instead, which leaves room for the wrapper `--dut smu` to add its own.

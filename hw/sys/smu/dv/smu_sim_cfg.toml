@@ -16,8 +16,8 @@ schema_version = 1
 # smc_wrapper / sep_wrapper. The CPU memory macros come with
 # smc_ip_integration; the TB keeps the cocotb observe surface.
 #
-# Independent of the SEP=0 bare-`smu` catalog in smu_sim_cfg.toml; both configs
-# share this DV root and the build/runs evidence directory.
+# Independent of the residual SEP=0 bare-`smu` catalog in smu_block_sim_cfg.toml;
+# both configs share this DV root and the build/runs evidence directory.
 name = "smu"
 profile = "native"
 description = "Production-wrapper OSS baseline: no-SEP and real-SEP smoke"
@@ -146,11 +146,10 @@ ccache = true
 
 [coverage.verilator]
 # Line / branch (--coverage-line), expression, and SVL user coverage. Toggle is
-# deliberately absent, matching smu_sim_cfg.toml and sep_sim_cfg.toml: on these
-# models toggle points are ~95% of the coverage database (~0.5 GB per test leaf)
-# and the costliest instrumentation at sim time. Without it the same regression
-# stays in the low GB range and fits standard CI runner disk. This replaces the
-# simulator default `--coverage`, which would enable every form including toggle.
+# deliberately absent: this DUT elaborates the real SEP/SMC/DTP wrappers, and
+# unscoped toggle is the 0.5 GB-per-leaf case. Scoped toggle from #1662 lives
+# on `--dut smu_block`. This replaces the simulator default `--coverage`, which
+# would enable every form including toggle.
 build_args = ["--coverage-line", "--coverage-expr", "--coverage-user"]
 
 [build.options]
