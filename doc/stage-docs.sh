@@ -213,7 +213,10 @@ integrator)
   cp -f "$AOU_INTEGRATION_GUIDE/integrator.adoc" "$MOD/aou/partials/"
   ;;
 programmer)
-  cp -f "$AOU_DOC/software-operation.adoc" "$MOD/aou/partials/"
+  mkdir -p $MOD/aou/partials $MOD/aou/partials/pdf
+  sed -E "s/Appendix C\./AoU/" "$AOU_DOC/software-operation.adoc" \
+    >"$MOD/aou/partials/software-operation.adoc"
+  cp $MOD/aou/partials/software-operation.adoc $MOD/aou/partials/pdf/
   ;;
 esac
 
