@@ -482,11 +482,9 @@ module sep_uvm_top
 
         // SPI: quad-lane struct boundary, bridged below to the
         // single-lane pad ports (sck/cs_n from req; MOSI = sd[0] out;
-        // MISO returns on rsp.sd[1]). The SPI block IRQ loops back into the
-        // wrapper's interrupt aggregator input.
+        // MISO returns on rsp.sd[1]).
         .sep_io_spi_req_o             (sep_io_spi_req_w),
         .sep_io_spi_rsp_i             ('{sd: {2'b00, spi_miso_i, 1'b0}}),
-        .spi_irq_i                    (sep_io_spi_req_w.irq),
 
         // Wrapper status/debug outputs. Unconnected ports have no consumer
         // in this TB; the rest are real DUT outputs brought to tb ports.

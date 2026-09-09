@@ -94,7 +94,6 @@
 
 |`sep_io_spi_req_o` |`sep_io_spi_req_t` |Output |- |SPI host controller request. |SPI pad interface |N/A
 |`sep_io_spi_rsp_i` |`sep_io_spi_rsp_t` |Input |- |SPI host controller response. |SPI pad interface |N/A
-|`spi_irq_i` |`logic` |Input |1 |SPI interrupt request into the SEP PIC, driven by whichever SPI controller the integration selects. |SPI controller |Tie to '0 if unused
 
 |`lc_state_o` |`logic` |Output |`[2*LC_STATE_BIT_WIDTH-1:0]` |Lifecycle state output (differentially encoded). Routed to SMC and the SMU external output; debug-disable control to DTP is via `dbg_disable_o`. |SMC, SMU external |N/A
 |`dbg_disable_o` |`sep_lifecycle_ctrl_pkg::dbg_disable_t` |Output |- |Typed debug-disable struct routed by SMU to DTP debug-disable control. |SMU → DTP |N/A

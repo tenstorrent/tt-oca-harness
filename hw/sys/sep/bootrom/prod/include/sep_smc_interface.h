@@ -55,7 +55,7 @@ static inline uint32_t sep_get_smc_base(void) {
 // seeded at whatever address the ROM reads, so any offset "works" in simulation.
 #define SMC_SCRATCH_BASE_OFFSET 0x39080u
 
-// Chip config block (VERSION_LO/HI, CHIP_ID, LC_STATE, RAS_BANK_INFO).
+// Chip config block (VERSION_LO/HI, CHIP_ID, LC_STATE).
 #define SMC_CHIP_ID_OFFSET 0x2908u
 
 // SMC fuse map — chiplet/package ID for usage constraints (C13.7).

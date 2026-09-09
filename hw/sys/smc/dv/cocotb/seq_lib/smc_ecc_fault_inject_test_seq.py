@@ -28,7 +28,7 @@ from .smc_cpu_vip_utils import (
 )
 from .smc_csr_seq_utils import SmcCsrSeq
 
-RAS_BANK_INFO = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_RAS_BANK_INFO_BASE_ADDR")
+VERSION_LO = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_BASE_ADDR")
 
 _FIRE_BOUND_CYCLES = 50_000
 _SCRATCH_BOUND_CYCLES = 50_000
@@ -233,7 +233,7 @@ class smc_ecc_fault_inject_test_seq(SmcCsrSeq):
         # is proven by the `RECOVERY` leg above (`assert mid_after == mid`).
 
         await self.wait_fuse_sense_done()
-        await self.csr_read("RAS_BANK_INFO", RAS_BANK_INFO)
+        await self.csr_read("VERSION_LO", VERSION_LO)
 
         await ClockCycles(clk, 2)
         cocotb.log.info(

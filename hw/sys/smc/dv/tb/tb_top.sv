@@ -1178,8 +1178,8 @@ module smc_uvm_top
         .wdt_second_timeout_o       (),
         .smc_global_base_o          (),
         .smc_region_size_o          (),
-        .ext_interrupts_i           ({{(smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS-1){1'b0}},
-                                       tb_ext_interrupt_0_i}),
+        .ext_interrupts_i           ({{(smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS-2){1'b0}},
+                                       tb_temp_interrupt_i, tb_ext_interrupt_0_i}),
         .sep_mailbox_interrupts_i   (tb_sep_mailbox_interrupts),
         .sep_wdt_reset_n_i          (tb_sep_wdt_reset_n),
         .fuse_sense_done_o,
@@ -1187,11 +1187,8 @@ module smc_uvm_top
         .skip_mem_repair_o          (tb_skip_mem_repair_o),
         .ext_boot_seq_done_i        (~tb_hold_ext_boot),
         .sep_security_disable_i     (1'b0),
-        .temp_interrupt_i           (tb_temp_interrupt_i),
         .lc_state_i                 (lc_state_drv),
         .lc_sigint_err_o            (),
-        .ras_bank_chip_o            (),
-        .ras_bank_instance_o        (),
         .ndmreset_request_i         (tb_ndmreset_request),
         .ndmreset_process_o         (tb_ndmreset_process),
         .ext_mailbox_interrupts_o   (),
@@ -1290,9 +1287,9 @@ module smc_uvm_top
     assign tb_axi_hang_irq_sys  = u_dut.u_smc.u_smc_base.hang_irq_sys_axi;
     assign tb_axi_hang_irq_sep  = u_dut.u_smc.u_smc_base.hang_irq_sep_axi;
     assign tb_axi_hang_irq_data = u_dut.u_smc.u_smc_base.hang_irq_data_accel;
-    assign tb_axi_hang_irq_periph31 = u_dut.u_smc.peripheral_interrupts[31];
+    assign tb_axi_hang_irq_periph30 = u_dut.u_smc.peripheral_interrupts[30];
     assign tb_axi_hang_irq_plic_src =
-        u_dut.u_smc.cpu_interrupts[smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS + 31];
+        u_dut.u_smc.cpu_interrupts[smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS + 30];
     assign tb_gpio_pad57      = u_dut.u_smc.pad2core_i[BOOT_STALL_PAD];
     assign tb_uart_irq_any    = |uart_interrupt;
     assign tb_uart_irq_combined = u_dut.u_smc.peripheral_interrupts[21:18];
@@ -1300,8 +1297,8 @@ module smc_uvm_top
     assign tb_mailbox_irq_any = |u_dut.u_smc.peripheral_interrupts[7:0];
     assign tb_avsbus_irq      = u_dut.u_smc.peripheral_interrupts[22];
     assign tb_telemetry_irq_any = |u_dut.u_smc.peripheral_interrupts[10:8];
-    assign tb_efuse_locked_access_irq = u_dut.u_smc.peripheral_interrupts[28];
-    assign tb_temp_interrupt_irq = u_dut.u_smc.peripheral_interrupts[27];
+    assign tb_efuse_locked_access_irq = u_dut.u_smc.peripheral_interrupts[27];
+    assign tb_temp_interrupt_irq = u_dut.u_smc.u_smc_base.ext_interrupts_smc_clk[1];
     assign tb_ext_interrupt_0_sync = u_dut.u_smc.u_smc_base.ext_interrupts_smc_clk[0];
     assign tb_ss0_warm_reset_n = ss_reset_ctrl[0].warm_reset_n;
     assign tb_ndmreset_irq = u_dut.u_smc.peripheral_interrupts[11];
@@ -2735,11 +2732,8 @@ module smc_dual_inst
         .skip_mem_repair_o          (),
         .ext_boot_seq_done_i        (1'b1),
         .sep_security_disable_i     (1'b0),
-        .temp_interrupt_i           (1'b0),
         .lc_state_i                 (lc_state_idle),
         .lc_sigint_err_o            (),
-        .ras_bank_chip_o            (),
-        .ras_bank_instance_o        (),
         .ndmreset_request_i         ('0),
         .ndmreset_process_o         (),
         .ext_mailbox_interrupts_o   (),
