@@ -46,7 +46,7 @@ commercial simulators, together with assertion and full code coverage.
 approved release group or carried as a classified hole in the coverage policy
 |`user` metric family in the native database (`--cov`)
 |Functional coverage (observation) |Every `FUNC_COV_VALUE` bin named below is
-hit by the enrolled `smoke` / `balanced_ip` suite |Python-side counters in `SmcScoreboard`
+hit by the enrolled `smoke` / `per_ip` suite |Python-side counters in `SmcScoreboard`
 |Line/branch/FSM/condition coverage |Collected for signoff in the commercial
 flow |VCS/Xcelium coverage databases (`--cov`)
 |Assertion coverage |Collected for enabled assertions in the commercial flow
