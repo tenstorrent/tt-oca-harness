@@ -185,7 +185,7 @@ class dtp_jtag_base_test_seq extends dtp_base_test_seq;
   // CHK-BSR-SELECT: the boundary-scan chain select observable after an IR
   // load; scenarios assert the VPLAN-expected value for their instruction.
   function void check_bsr_select(bit expected, string context_s);
-    family_check("CHK-BSR-SELECT", "jtag_bsr_select", 64'(tb_vif.jtag_bsr_select), 64'(expected),
+    family_check("CHK-BSR-SELECT", "jtag_bsr_select", 64'(scan_vif.jtag_bsr_select), 64'(expected),
                  context_s);
   endfunction
 

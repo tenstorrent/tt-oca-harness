@@ -146,3 +146,27 @@ tests = [
     "smc_jtag_reset_ctrl_test",
     "smc_cool_reset_x_cold_reset_test",
 ]
+
+[[tests]]
+name = "smc_jtag_reset_proxy_test"
+module = "smc_jtag_reset_proxy_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "jtag_depth", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_flr_sanity_test"
+module = "smc_flr_sanity_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smoke", "ci", "pyuvm"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "smc_multi_reset_csr_persistence_test"
+module = "smc_multi_reset_csr_persistence_test"
+seed = 1
+timeout_sec = 1800
+tags = ["smoke", "ci", "pyuvm"]
+run_modes = ["smoke"]

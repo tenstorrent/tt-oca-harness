@@ -9,7 +9,6 @@ transactions (with results) on an analysis port for the scoreboard.
 
 from __future__ import annotations
 
-import cocotb
 from cocotb.triggers import ClockCycles, NextTimeStep, ReadOnly
 from ocah_jtag_vip import OcahJtagMasterDriver
 from pyuvm import (
@@ -42,24 +41,16 @@ class DtpJtagDriver(uvm_driver):
         self.ap = uvm_analysis_port("ap", self)
         self.jtag: OcahJtagMasterDriver | None = None
         self.tap_device = DtpTapDevice(idle_delay=self.cfg.idle_tck)
-        self.dut = None
+        self.tb_if = ConfigDB().get(self, "", "tb_if")
 
     async def run_phase(self) -> None:
-        self.dut = cocotb.top
         self.jtag = OcahJtagMasterDriver(
-            self.dut,
+            self.tb_if.jtag,
             name="dtp_ptap",
             tck_period_ns=self.cfg.jtag_period_ns,
             ir_width=DTP_IR_WIDTH,
             tap_type="ptap",
-            signal_map={
-                "tck": "jtag_tck",
-                "tms": "jtag_tms",
-                "tdi": "jtag_tdi",
-                "tdo": "jtag_tdo",
-                "trst": "jtag_trst",
-                "tdo_oen": "jtag_tdo_oen",
-            },
+            signal_map=self.tb_if.JTAG_SIGNAL_MAP,
         )
         self.jtag.init_signals()
         # Wait until the base test has clocks running and resets released.
@@ -80,7 +71,7 @@ class DtpJtagDriver(uvm_driver):
         elif item.op is DtpJtagOp.RESET_FSM:
             await jtag.reset_tap()
             await ReadOnly()
-            item.result = int(self.dut.jtag_ptap_state.value)
+            item.result = self.tb_if.sample("jtag_ptap_state")
             await NextTimeStep()
         elif item.op is DtpJtagOp.TMS_STEP:
             await self._drive_tms_step(item)
@@ -124,7 +115,7 @@ class DtpJtagDriver(uvm_driver):
         """Drive one IEEE 1149.1 TMS cycle and sample the DUT TAP state."""
         await self.jtag.step_tms(item.tms)
         await ReadOnly()
-        item.result = int(self.dut.jtag_ptap_state.value)
+        item.result = self.tb_if.sample("jtag_ptap_state")
         await NextTimeStep()
 
     async def _shift_ir(self, item: DtpJtagItem) -> int:
@@ -148,38 +139,33 @@ class DtpJtagDriver(uvm_driver):
 
     async def _set_trst(self, item: DtpJtagItem) -> None:
         """Drive TRST_N directly, tick TCK, and sample the TAP state."""
-        self.dut.jtag_trst.value = item.value & 0x1
+        self.tb_if.jtag.trst_n.value = item.value & 0x1
         for _ in range(max(item.cycles, 1)):
             await self.jtag.step_tms(1)
         await self._sample_observables(item)
 
     async def _pulse_por(self, item: DtpJtagItem) -> None:
         """Pulse power-on reset and sample the primary TAP state."""
-        self.dut.pwr_on_rst_ni.value = 0
+        self.tb_if.por_rst_n.value = 0
         for _ in range(max(item.cycles, 1)):
             await self.jtag.step_tms(1)
-        await ClockCycles(self.dut.clk_i, max(item.cycles, 1))
+        await ClockCycles(self.tb_if.clk, max(item.cycles, 1))
         await self._sample_observables(item)
-        self.dut.pwr_on_rst_ni.value = 1
-        await ClockCycles(self.dut.clk_i, max(item.cycles, 1))
+        self.tb_if.por_rst_n.value = 1
+        await ClockCycles(self.tb_if.clk, max(item.cycles, 1))
 
     async def _sample_observables(self, item: DtpJtagItem) -> None:
-        """Sample cocotb-friendly DTP top-level observables, if present."""
+        """Sample the DTP observables of the domain interfaces by their flat names."""
         await ReadOnly()
-        item.result = int(self.dut.jtag_ptap_state.value)
+        item.result = self.tb_if.sample("jtag_ptap_state")
         item.signals = {"jtag_ptap_state": item.result}
-        if hasattr(self.dut, "jtag_ptap_inst_decoded"):
-            item.decoded = int(self.dut.jtag_ptap_inst_decoded.value)
-            item.signals["jtag_ptap_inst_decoded"] = item.decoded
+        item.decoded = self.tb_if.sample("jtag_ptap_inst_decoded")
+        item.signals["jtag_ptap_inst_decoded"] = item.decoded
         for name in (
             "jtag_bsr_select",
             "jtag_bsr_shift_en",
             "jtag_bsr_capture_en",
             "jtag_bsr_update_en",
-            "jtag_ijtag_select",
-            "jtag_ijtag_shift_en",
-            "jtag_ijtag_capture_en",
-            "jtag_ijtag_update_en",
             "jtag_dft_secure_select",
             "jtag_dft_secure_shift_en",
             "jtag_dft_secure_capture_en",
@@ -261,8 +247,8 @@ class DtpJtagDriver(uvm_driver):
             "xtrig_ctp_ack_out_dout",
             "xtrig_ctp_ack_out_dout_en",
         ):
-            if hasattr(self.dut, name):
-                item.signals[name] = int(getattr(self.dut, name).value)
+            if self.tb_if.has(name):
+                item.signals[name] = self.tb_if.sample(name)
         await NextTimeStep()
 
     async def _read_reg(self, name: str, shift_value: int = 0) -> int:
