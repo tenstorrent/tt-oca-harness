@@ -2739,39 +2739,45 @@ STAP connects to the SEP JTAG debug port when <code>SEP=1</code>; when <code>SEP
 ties <code>sep_stap_tdo_to_dtp = 1&#8217;b0</code> to bypass the SEP STAP return path.</p>
 </div>
 <div class="paragraph">
-<p>Each STAP host interface is gated by lifecycle feature controls, synchronized to
-TCK inside the DTP. <code>feat_ctrl_i</code> is enable-polarity (1 = feature enabled), so a
-STAP host interface is enabled only when all of its required enables are asserted
-and is disabled when any one of them is deasserted.</p>
+<p>Each STAP host interface is gated by a field of <code>dbg_disable_i</code>, synchronized to
+TCK inside the DTP. Each field is active-high (1 = path disabled).</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
 <col style="width: 25%;">
-<col style="width: 35%;">
-<col style="width: 40%;">
+<col style="width: 75%;">
 </colgroup>
 <thead>
 <tr>
 <th class="tableblock halign-left valign-top">STAP</th>
-<th class="tableblock halign-left valign-top">Enabled When</th>
-<th class="tableblock halign-left valign-top">Host Gating Disable Condition</th>
+<th class="tableblock halign-left valign-top">Disable Field</th>
 </tr>
 </thead>
 <tbody>
 <tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">I/O STAP</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.stap_io</code></p></td>
+</tr>
+<tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC debug STAP</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>feat_ctrl_i.soc_debug \&amp;\&amp; feat_ctrl_i.ap_debug</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.stap_smc</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP debug STAP</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>feat_ctrl_i.sep_debug \&amp;\&amp; feat_ctrl_i.soc_debug \&amp;\&amp; feat_ctrl_i.ap_debug</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.sep_debug || !feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.stap_sep</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Extra STAPs</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.stap_extra</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External STAP return path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.stap_host</code></p></td>
 </tr>
 </tbody>
 </table>
 <div class="paragraph">
-<p>The full set of lifecycle-gated debug paths, including the iJTAG chains and the
+<p>The full set of debug-disable-gated paths, including the iJTAG chains and the
 JTAG2AXI bridges, is tabulated in the DTP JTAG integration section of the TRM.</p>
 </div>
 </div>
@@ -2834,12 +2840,12 @@ the dedicated DTP documentation in <code>hw/sys/dtp/doc/</code> for internal des
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>feat_ctrl_i</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_lifecycle_ctrl_pkg::dbg_disable_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle feature control vector gating debug interfaces. Enable-polarity (1 = feature enabled).</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle controller</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Per-path debug/test disables. Active-high (1 = path disabled).</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>

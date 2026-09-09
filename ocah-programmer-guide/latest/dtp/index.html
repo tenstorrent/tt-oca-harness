@@ -244,6 +244,10 @@ aggregation</p>
 <li>
 <p>Optional JTAG-to-AXI bridges for register access</p>
 </li>
+<li>
+<p>Per-path debug-disable inputs that gate STAPs, iJTAG SIBs, and JTAG2AXI
+bridges</p>
+</li>
 </ul>
 </div>
 <div class="paragraph">
@@ -419,6 +423,10 @@ contains the following design blocks and features:</p>
 </ul>
 </div>
 </li>
+<li>
+<p>Per-path debug-disable inputs that gate STAPs, iJTAG SIBs, and JTAG2AXI
+bridges</p>
+</li>
 </ul>
 </div>
 <div class="paragraph">
@@ -565,73 +573,72 @@ output timing margin before the scan path returns to the PTAP.</p>
 </div>
 </div>
 <div class="sect5">
-<h6 id="feature-control-synchronization"><a class="anchor" href="#feature-control-synchronization"></a><a class="link" href="#feature-control-synchronization">Feature Control Synchronization</a></h6>
+<h6 id="debug-disable-synchronization"><a class="anchor" href="#debug-disable-synchronization"></a><a class="link" href="#debug-disable-synchronization">Debug Disable Synchronization</a></h6>
 <div class="paragraph">
-<p>The lifecycle feature control signals originate in the system clock domain and
-must be synchronized to the TCK domain before use. The interface unit implements
-64 individual 2-FF synchronizer chains, one per bit of the feature control
-vector. This per-bit synchronization approach breaks up the CDC timing path that
-would exist if the entire 64-bit vector were synchronized as a single unit.</p>
+<p><code>dbg_disable_i</code> (<code>sep_lifecycle_ctrl_pkg::dbg_disable_t</code>) is in the system clock
+domain and must be synchronized to TCK before use. The interface unit
+synchronizes each bit through a 2-FF chain whose reset value is 1 (fail-closed).
+The synchronized fields gate STAP and SIB selection and are forwarded to the
+PTAP for the JTAG2AXI bridges.</p>
 </div>
 <div class="paragraph">
-<p>The synchronized feature control bits determine security access levels for STAP
-and SIB selection. <code>feat_ctrl_i</code> is enable-polarity (1 = feature enabled). Each
-access point is enabled only when <strong>all</strong> of its listed enables are asserted, so
-it is disabled when <strong>any</strong> one of them is deasserted:</p>
+<p>Each field is active-high (1 = path disabled).</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 20%;">
 <col style="width: 40%;">
-<col style="width: 40%;">
+<col style="width: 60%;">
 </colgroup>
 <thead>
 <tr>
 <th class="tableblock halign-left valign-top">Access Point</th>
-<th class="tableblock halign-left valign-top">Enabled When Feature Control Satisfies</th>
-<th class="tableblock halign-left valign-top">Security Disable Signal</th>
+<th class="tableblock halign-left valign-top">Disable Field</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I/O STAP</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sip_debug</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!sip_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.stap_io</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC Debug STAP</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>soc_debug \&amp;\&amp; ap_debug</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!soc_debug || !ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.stap_smc</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP Debug STAP</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_debug \&amp;\&amp; soc_debug \&amp;\&amp; ap_debug</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!sep_debug || !soc_debug || !ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.stap_sep</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Extra STAPs</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ap_debug</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.stap_extra</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">External STAP return path</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ap_debug</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.stap_host</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DFT Secure SIB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>fuse_test \&amp;\&amp; sep_debug \&amp;\&amp; soc_debug \&amp;\&amp; ap_debug</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!fuse_test || !sep_debug || !soc_debug || !ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.dft_secure</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DFT Non-Secure SIB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>soc_debug \&amp;\&amp; ap_debug</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!soc_debug || !ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.dft_nonsecure</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DFD SIB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ap_debug</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.dfd</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC fabric JTAG2AXI</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.smc_jtag2axi</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC OTP JTAG2AXI</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.smc_otp_jtag2axi</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP OTP JTAG2AXI</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.sep_otp_jtag2axi</code></p></td>
 </tr>
 </tbody>
 </table>
@@ -641,34 +648,28 @@ it is disabled when <strong>any</strong> one of them is deasserted:</p>
 <h5 id="ijtag-network"><a class="anchor" href="#ijtag-network"></a><a class="link" href="#ijtag-network">iJTAG Network</a></h5>
 <div class="paragraph">
 <p>The iJTAG network is organized into three cascaded Segment Insertion Bit (SIB)
-chains with differing security requirements. Each SIB gates access to a specific
-set of debug instruments based on the synchronized feature control signals, and
-requires <strong>all</strong> of the enables listed for it above.</p>
+chains. Each SIB is gated by the corresponding synchronized debug-disable field.</p>
 </div>
 <div class="sect5">
 <h6 id="dft-secure-chain"><a class="anchor" href="#dft-secure-chain"></a><a class="link" href="#dft-secure-chain">DFT Secure Chain</a></h6>
 <div class="paragraph">
-<p>The DFT Secure chain is the most restrictive of the three: it is accessible only
-when fuse test, SEP debug, SOC debug, and AP debug are all enabled. This chain
-is ported out of the DTP for connection to tooling-generated DFT logic such as
-MBIST controllers and scan compression logic.</p>
+<p>The DFT Secure chain is gated by <code>dbg_disable_i.dft_secure</code>. This port is for
+security-sensitive DFT control.</p>
 </div>
 </div>
 <div class="sect5">
 <h6 id="dft-non-secure-chain"><a class="anchor" href="#dft-non-secure-chain"></a><a class="link" href="#dft-non-secure-chain">DFT Non-Secure Chain</a></h6>
 <div class="paragraph">
-<p>The DFT Non-Secure chain requires both SOC debug and AP debug to be enabled.
-This chain provides access to DFT instrumentation that does not involve
-security-sensitive fuse or SEP operations.</p>
+<p>The DFT Non-Secure chain is gated by <code>dbg_disable_i.dft_nonsecure</code>. General DFT
+control is attached to this port.</p>
 </div>
 </div>
 <div class="sect5">
 <h6 id="dfd-chain"><a class="anchor" href="#dfd-chain"></a><a class="link" href="#dfd-chain">DFD Chain</a></h6>
 <div class="paragraph">
-<p>The Design-for-Debug (DFD) chain requires AP debug to be enabled. The SIB
-gate itself is the least restrictive of the three; the resources reached through
-it are gated again inside the PTAP, where each JTAG2AXI bridge applies its own
-lifecycle condition. This chain grants access to:</p>
+<p>The Design-for-Debug (DFD) chain is gated by <code>dbg_disable_i.dfd</code>. The
+resources reached through it are gated again inside the PTAP, where each
+JTAG2AXI bridge is gated by its own disable input. This chain grants access to:</p>
 </div>
 <div class="ulist">
 <ul>
@@ -1086,10 +1087,10 @@ to the BYPASS instruction.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Boot stall override enable</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">security_disable_i</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">dbg_disable_i</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle security disable</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_t</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Active-high per-path debug/test disables (1 = path disabled)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">stap_ext_*</p></td>
@@ -2759,56 +2760,39 @@ and Capture-DR returns the payload from those lanes.</p>
 </div>
 </div>
 <div class="sect4">
-<h5 id="security-and-lifecycle-control"><a class="anchor" href="#security-and-lifecycle-control"></a><a class="link" href="#security-and-lifecycle-control">Security and Lifecycle Control</a></h5>
+<h5 id="debug-disable"><a class="anchor" href="#debug-disable"></a><a class="link" href="#debug-disable">Debug Disable</a></h5>
 <div class="paragraph">
-<p>The PTAP integrates with the chiplet lifecycle controller through the
-<code>feat_ctrl_i</code> input signal to enforce security policies on debug interfaces.
-This 64-bit feature control vector originates from the SEP eFuse controller and
-determines which debug features are accessible based on the current lifecycle
-state. <code>feat_ctrl_i</code> is enable-polarity (1 = feature enabled).</p>
-</div>
-<div class="paragraph">
-<p>The PTAP derives three independent security disable signals from the feature
-control vector. Each bridge is enabled only when <strong>all</strong> of its listed enables are
-asserted, so it is disabled when <strong>any</strong> one of them is deasserted:</p>
+<p>The PTAP has three per-bridge debug-disable inputs. The JTAG interface unit
+synchronizes those bits to TCK and presents them here as ready-to-gate signals.
+Each input is active-high: when it is 1, the corresponding <code>jtag2axi</code> instance
+blocks AXI transaction generation.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 25%;">
-<col style="width: 37%;">
-<col style="width: 38%;">
+<col style="width: 40%;">
+<col style="width: 60%;">
 </colgroup>
 <thead>
 <tr>
 <th class="tableblock halign-left valign-top">Debug Interface</th>
-<th class="tableblock halign-left valign-top">Enabled When Feature Control Satisfies</th>
-<th class="tableblock halign-left valign-top">Security Disable Signal</th>
+<th class="tableblock halign-left valign-top">Disable Input</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC Fabric JTAG2AXI</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>feat_ctrl_i.soc_debug \&amp;\&amp; feat_ctrl_i.ap_debug</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_jtag2axi_security_disable_i</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC OTP JTAG2AXIL</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>feat_ctrl_i.fuse_test \&amp;\&amp; feat_ctrl_i.soc_debug \&amp;\&amp; feat_ctrl_i.ap_debug</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.fuse_test || !feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_otp_jtag2axi_security_disable_i</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP OTP JTAG2AXIL</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>feat_ctrl_i.fuse_test \&amp;\&amp; feat_ctrl_i.sep_debug \&amp;\&amp; feat_ctrl_i.soc_debug \&amp;\&amp; feat_ctrl_i.ap_debug</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.fuse_test || !feat_ctrl_i.sep_debug || !feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_otp_jtag2axi_security_disable_i</code></p></td>
 </tr>
 </tbody>
 </table>
-<div class="paragraph">
-<p>Each derived security disable signal feeds into the corresponding <code>jtag2axi</code>
-module instance. When a debug interface is disabled by lifecycle state, the
-JTAG2AXI module blocks all AXI transaction generation, preventing unauthorized
-access to memory-mapped debug registers and system resources.</p>
-</div>
 </div>
 </div>
 <div class="sect3">
@@ -3140,10 +3124,22 @@ to the BYPASS instruction.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">System reset for AXI bridge modules (active low)</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">feat_ctrl_i</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_jtag2axi_security_disable_i</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">64</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle feature control vector, enable-polarity (1 = feature enabled); security gating for debug interfaces</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Active-high disable for the SMC fabric JTAG2AXI bridge (1 = bridge disabled)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_otp_jtag2axi_security_disable_i</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Active-high disable for the SMC OTP JTAG2AXIL bridge (1 = bridge disabled)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">sep_otp_jtag2axi_security_disable_i</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Active-high disable for the SEP OTP JTAG2AXIL bridge (1 = bridge disabled)</p></td>
 </tr>
 </tbody>
 </table>
@@ -3198,6 +3194,10 @@ connectivity</p>
 <p><strong>Extended STAP Scan Interface</strong>: Port for adding STAPs external to the DTP</p>
 </li>
 </ul>
+</div>
+<div class="paragraph">
+<p>Each STAP has an active-high disable input. When it is asserted, STAP
+selection, host TDO, and 3DCR updates are blocked.</p>
 </div>
 </div>
 <div class="sect3">
@@ -3309,8 +3309,8 @@ signal.</p>
 <div class="paragraph">
 <p>The following diagram illustrates the STAP architecture and the details of the
 3DCR register. The green colored flops are optional, each configured via
-parameters. The red AND gate and nets implement security access lockout when the
-chiplet is not in the correct lifecycle state.</p>
+parameters. The red AND gate and nets implement debug disable when
+<code>security_disable_i</code> is asserted.</p>
 </div>
 <div class="imageblock">
 <div class="content">
@@ -3408,11 +3408,10 @@ additional STAPs closer to their point of use.</p>
 </table>
 </div>
 <div class="sect4">
-<h5 id="security-lockout"><a class="anchor" href="#security-lockout"></a><a class="link" href="#security-lockout">Security Lockout</a></h5>
+<h5 id="debug-disable-2"><a class="anchor" href="#debug-disable-2"></a><a class="link" href="#debug-disable-2">Debug Disable</a></h5>
 <div class="paragraph">
-<p>The security lockout feature prevents unauthorized access to debug TAPs based on
-chiplet lifecycle state. The <code>security_disable_i</code> input controls three aspects
-of STAP operation:</p>
+<p>The <code>security_disable_i</code> input is active-high (1 = STAP disabled). When it is
+asserted, three aspects of STAP operation are blocked:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -3422,29 +3421,27 @@ of STAP operation:</p>
 <thead>
 <tr>
 <th class="tableblock halign-left valign-top">Signal</th>
-<th class="tableblock halign-left valign-top">Security Lockout Behavior</th>
+<th class="tableblock halign-left valign-top">Behavior when asserted</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>stap_sel</code> (internal)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">When <code>security_disable_i=0</code> (debug disabled), <code>stap_sel</code> is forced to 0 regardless of the 3DCR Select bit value. This prevents routing scan data through the downstream TAP.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Forced to 0 regardless of the 3DCR Select bit, so scan data is not routed through the downstream TAP.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>host_tdo_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">When <code>security_disable_i=0</code>, <code>host_tdo_o</code> is forced to 0. This prevents any data from leaking out of the downstream TAP even if the TAP is inadvertently accessed.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Forced to 0, so the downstream TAP cannot leak data on the host TDO even if it is accessed.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>client_reg_scan_ctrl.update_en</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">When <code>security_disable_i=0</code>, the 3DCR register update enable signal is forced to 0. This prevents modification of the STAP configuration when lifecycle state restricts debug access, ensuring the configuration cannot be altered to bypass security controls.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Forced to 0, so the 3DCR cannot be updated while the STAP is disabled.</p></td>
 </tr>
 </tbody>
 </table>
 <div class="paragraph">
-<p>This triple gating approach ensures that STAP selection, TDO output, and
-configuration updates are all blocked when the chiplet lifecycle state restricts
-debug access. The gating logic is implemented combinationally at the module
-output, preventing any timing-dependent bypass paths.</p>
+<p>STAP selection, host TDO, and 3DCR updates are all blocked combinationally at
+the module output, so there is no timing-dependent bypass of the disable.</p>
 </div>
 </div>
 <div class="sect4">
@@ -3559,7 +3556,7 @@ chain to provide additional output timing margin.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">security_disable_i</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Security lockout override (lifecycle control)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Active-high disable (1 = STAP locked out)</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">stap_tdi_o</p></td>
@@ -5619,19 +5616,12 @@ SMU-composed port map.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="lifecycle-feature-control"><a class="anchor" href="#lifecycle-feature-control"></a><a class="link" href="#lifecycle-feature-control">1.8.6. Lifecycle Feature Control</a></h4>
+<h4 id="debug-disable-3"><a class="anchor" href="#debug-disable-3"></a><a class="link" href="#debug-disable-3">1.8.6. Debug Disable</a></h4>
 <div class="paragraph">
-<p>The DTP top level consumes <code>feat_ctrl_i</code> using the SEP lifecycle feature control
-type <code>sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t</code>. That type is reused for
-its bit layout only: the bits themselves are active-high feature <strong>enables</strong> (1 =
-feature enabled), driven by the SEP lifecycle controller. The DTP synchronizes
-<code>feat_ctrl_i</code> into the TCK domain before use, then derives a security disable
-signal per gated path.</p>
-</div>
-<div class="paragraph">
-<p>Because <code>feat_ctrl_i</code> is enable-polarity, a path is enabled only when <strong>all</strong> of
-its required enables are asserted, and is therefore disabled whenever <strong>any</strong> one
-of them is deasserted:</p>
+<p><code>dbg_disable_i</code> (<code>sep_lifecycle_ctrl_pkg::dbg_disable_t</code>) is a per-path
+debug/test disable vector. Each field is active-high (1 = path disabled). The
+JTAG interface unit synchronizes the vector into the TCK domain and applies
+each field to the named path.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -5640,54 +5630,54 @@ of them is deasserted:</p>
 </colgroup>
 <thead>
 <tr>
-<th class="tableblock halign-left valign-top">Gated Path</th>
-<th class="tableblock halign-left valign-top">Security Disable Condition</th>
+<th class="tableblock halign-left valign-top">Path</th>
+<th class="tableblock halign-left valign-top">Disable Field</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I/O STAP host path</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.sip_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.stap_io</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC debug STAP host path</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.stap_smc</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP debug STAP host path</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.sep_debug || !feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.stap_sep</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Extra STAP host paths</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.stap_extra</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">External STAP return path</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.stap_host</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Secure external DFT iJTAG path</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.fuse_test || !feat_ctrl_i.sep_debug || !feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.dft_secure</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Non-secure external DFT iJTAG path</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.dft_nonsecure</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DFD iJTAG path</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.dfd</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC fabric JTAG2AXI path</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.smc_jtag2axi</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC OTP JTAG2AXI path</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.fuse_test || !feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.smc_otp_jtag2axi</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP OTP JTAG2AXI path</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.fuse_test || !feat_ctrl_i.sep_debug || !feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.sep_otp_jtag2axi</code></p></td>
 </tr>
 </tbody>
 </table>
@@ -5700,8 +5690,8 @@ and the AXI state machine is held in idle, so no AXI traffic can be generated at
 all.</p>
 </div>
 <div class="paragraph">
-<p>The STAP and iJTAG conditions are implemented in <code>jtag_intf_unit</code>; the three
-JTAG2AXI conditions are implemented in <code>jtag_ptap</code>.</p>
+<p>The STAP and iJTAG fields are applied in <code>jtag_intf_unit</code>; the three JTAG2AXI
+fields are applied in <code>jtag_ptap</code>.</p>
 </div>
 </div>
 </div>

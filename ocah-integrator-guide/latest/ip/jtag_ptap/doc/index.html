@@ -1784,56 +1784,39 @@ and Capture-DR returns the payload from those lanes.</p>
 </div>
 </div>
 <div class="sect4">
-<h5 id="security-and-lifecycle-control"><a class="anchor" href="#security-and-lifecycle-control"></a><a class="link" href="#security-and-lifecycle-control">Security and Lifecycle Control</a></h5>
+<h5 id="debug-disable"><a class="anchor" href="#debug-disable"></a><a class="link" href="#debug-disable">Debug Disable</a></h5>
 <div class="paragraph">
-<p>The PTAP integrates with the chiplet lifecycle controller through the
-<code>feat_ctrl_i</code> input signal to enforce security policies on debug interfaces.
-This 64-bit feature control vector originates from the SEP eFuse controller and
-determines which debug features are accessible based on the current lifecycle
-state. <code>feat_ctrl_i</code> is enable-polarity (1 = feature enabled).</p>
-</div>
-<div class="paragraph">
-<p>The PTAP derives three independent security disable signals from the feature
-control vector. Each bridge is enabled only when <strong>all</strong> of its listed enables are
-asserted, so it is disabled when <strong>any</strong> one of them is deasserted:</p>
+<p>The PTAP has three per-bridge debug-disable inputs. The JTAG interface unit
+synchronizes those bits to TCK and presents them here as ready-to-gate signals.
+Each input is active-high: when it is 1, the corresponding <code>jtag2axi</code> instance
+blocks AXI transaction generation.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 25%;">
-<col style="width: 37%;">
-<col style="width: 38%;">
+<col style="width: 40%;">
+<col style="width: 60%;">
 </colgroup>
 <thead>
 <tr>
 <th class="tableblock halign-left valign-top">Debug Interface</th>
-<th class="tableblock halign-left valign-top">Enabled When Feature Control Satisfies</th>
-<th class="tableblock halign-left valign-top">Security Disable Signal</th>
+<th class="tableblock halign-left valign-top">Disable Input</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC Fabric JTAG2AXI</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>feat_ctrl_i.soc_debug \&amp;\&amp; feat_ctrl_i.ap_debug</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_jtag2axi_security_disable_i</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC OTP JTAG2AXIL</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>feat_ctrl_i.fuse_test \&amp;\&amp; feat_ctrl_i.soc_debug \&amp;\&amp; feat_ctrl_i.ap_debug</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.fuse_test || !feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_otp_jtag2axi_security_disable_i</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP OTP JTAG2AXIL</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>feat_ctrl_i.fuse_test \&amp;\&amp; feat_ctrl_i.sep_debug \&amp;\&amp; feat_ctrl_i.soc_debug \&amp;\&amp; feat_ctrl_i.ap_debug</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.fuse_test || !feat_ctrl_i.sep_debug || !feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_otp_jtag2axi_security_disable_i</code></p></td>
 </tr>
 </tbody>
 </table>
-<div class="paragraph">
-<p>Each derived security disable signal feeds into the corresponding <code>jtag2axi</code>
-module instance. When a debug interface is disabled by lifecycle state, the
-JTAG2AXI module blocks all AXI transaction generation, preventing unauthorized
-access to memory-mapped debug registers and system resources.</p>
-</div>
 </div>
 </div>
 <div class="sect3">
@@ -2165,10 +2148,22 @@ to the BYPASS instruction.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">System reset for AXI bridge modules (active low)</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">feat_ctrl_i</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_jtag2axi_security_disable_i</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">64</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Lifecycle feature control vector, enable-polarity (1 = feature enabled); security gating for debug interfaces</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Active-high disable for the SMC fabric JTAG2AXI bridge (1 = bridge disabled)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">smc_otp_jtag2axi_security_disable_i</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Active-high disable for the SMC OTP JTAG2AXIL bridge (1 = bridge disabled)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">sep_otp_jtag2axi_security_disable_i</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Active-high disable for the SEP OTP JTAG2AXIL bridge (1 = bridge disabled)</p></td>
 </tr>
 </tbody>
 </table>

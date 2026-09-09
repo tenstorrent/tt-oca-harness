@@ -245,8 +245,8 @@ signal.</p>
 <div class="paragraph">
 <p>The following diagram illustrates the STAP architecture and the details of the
 3DCR register. The green colored flops are optional, each configured via
-parameters. The red AND gate and nets implement security access lockout when the
-chiplet is not in the correct lifecycle state.</p>
+parameters. The red AND gate and nets implement debug disable when
+<code>security_disable_i</code> is asserted.</p>
 </div>
 <div class="imageblock">
 <div class="content">
@@ -344,11 +344,10 @@ additional STAPs closer to their point of use.</p>
 </table>
 </div>
 <div class="sect4">
-<h5 id="security-lockout"><a class="anchor" href="#security-lockout"></a><a class="link" href="#security-lockout">Security Lockout</a></h5>
+<h5 id="debug-disable"><a class="anchor" href="#debug-disable"></a><a class="link" href="#debug-disable">Debug Disable</a></h5>
 <div class="paragraph">
-<p>The security lockout feature prevents unauthorized access to debug TAPs based on
-chiplet lifecycle state. The <code>security_disable_i</code> input controls three aspects
-of STAP operation:</p>
+<p>The <code>security_disable_i</code> input is active-high (1 = STAP disabled). When it is
+asserted, three aspects of STAP operation are blocked:</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -358,29 +357,27 @@ of STAP operation:</p>
 <thead>
 <tr>
 <th class="tableblock halign-left valign-top">Signal</th>
-<th class="tableblock halign-left valign-top">Security Lockout Behavior</th>
+<th class="tableblock halign-left valign-top">Behavior when asserted</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>stap_sel</code> (internal)</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">When <code>security_disable_i=0</code> (debug disabled), <code>stap_sel</code> is forced to 0 regardless of the 3DCR Select bit value. This prevents routing scan data through the downstream TAP.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Forced to 0 regardless of the 3DCR Select bit, so scan data is not routed through the downstream TAP.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>host_tdo_o</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">When <code>security_disable_i=0</code>, <code>host_tdo_o</code> is forced to 0. This prevents any data from leaking out of the downstream TAP even if the TAP is inadvertently accessed.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Forced to 0, so the downstream TAP cannot leak data on the host TDO even if it is accessed.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>client_reg_scan_ctrl.update_en</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">When <code>security_disable_i=0</code>, the 3DCR register update enable signal is forced to 0. This prevents modification of the STAP configuration when lifecycle state restricts debug access, ensuring the configuration cannot be altered to bypass security controls.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Forced to 0, so the 3DCR cannot be updated while the STAP is disabled.</p></td>
 </tr>
 </tbody>
 </table>
 <div class="paragraph">
-<p>This triple gating approach ensures that STAP selection, TDO output, and
-configuration updates are all blocked when the chiplet lifecycle state restricts
-debug access. The gating logic is implemented combinationally at the module
-output, preventing any timing-dependent bypass paths.</p>
+<p>STAP selection, host TDO, and 3DCR updates are all blocked combinationally at
+the module output, so there is no timing-dependent bypass of the disable.</p>
 </div>
 </div>
 <div class="sect4">

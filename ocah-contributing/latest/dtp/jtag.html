@@ -375,19 +375,12 @@ SMU-composed port map.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="lifecycle-feature-control"><a class="anchor" href="#lifecycle-feature-control"></a><a class="link" href="#lifecycle-feature-control">1.6. Lifecycle Feature Control</a></h4>
+<h4 id="debug-disable"><a class="anchor" href="#debug-disable"></a><a class="link" href="#debug-disable">1.6. Debug Disable</a></h4>
 <div class="paragraph">
-<p>The DTP top level consumes <code>feat_ctrl_i</code> using the SEP lifecycle feature control
-type <code>sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t</code>. That type is reused for
-its bit layout only: the bits themselves are active-high feature <strong>enables</strong> (1 =
-feature enabled), driven by the SEP lifecycle controller. The DTP synchronizes
-<code>feat_ctrl_i</code> into the TCK domain before use, then derives a security disable
-signal per gated path.</p>
-</div>
-<div class="paragraph">
-<p>Because <code>feat_ctrl_i</code> is enable-polarity, a path is enabled only when <strong>all</strong> of
-its required enables are asserted, and is therefore disabled whenever <strong>any</strong> one
-of them is deasserted:</p>
+<p><code>dbg_disable_i</code> (<code>sep_lifecycle_ctrl_pkg::dbg_disable_t</code>) is a per-path
+debug/test disable vector. Each field is active-high (1 = path disabled). The
+JTAG interface unit synchronizes the vector into the TCK domain and applies
+each field to the named path.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
@@ -396,54 +389,54 @@ of them is deasserted:</p>
 </colgroup>
 <thead>
 <tr>
-<th class="tableblock halign-left valign-top">Gated Path</th>
-<th class="tableblock halign-left valign-top">Security Disable Condition</th>
+<th class="tableblock halign-left valign-top">Path</th>
+<th class="tableblock halign-left valign-top">Disable Field</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I/O STAP host path</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.sip_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.stap_io</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC debug STAP host path</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.stap_smc</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP debug STAP host path</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.sep_debug || !feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.stap_sep</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Extra STAP host paths</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.stap_extra</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">External STAP return path</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.stap_host</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Secure external DFT iJTAG path</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.fuse_test || !feat_ctrl_i.sep_debug || !feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.dft_secure</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Non-secure external DFT iJTAG path</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.dft_nonsecure</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DFD iJTAG path</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.dfd</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC fabric JTAG2AXI path</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.smc_jtag2axi</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC OTP JTAG2AXI path</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.fuse_test || !feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.smc_otp_jtag2axi</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP OTP JTAG2AXI path</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!feat_ctrl_i.fuse_test || !feat_ctrl_i.sep_debug || !feat_ctrl_i.soc_debug || !feat_ctrl_i.ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.sep_otp_jtag2axi</code></p></td>
 </tr>
 </tbody>
 </table>
@@ -456,8 +449,8 @@ and the AXI state machine is held in idle, so no AXI traffic can be generated at
 all.</p>
 </div>
 <div class="paragraph">
-<p>The STAP and iJTAG conditions are implemented in <code>jtag_intf_unit</code>; the three
-JTAG2AXI conditions are implemented in <code>jtag_ptap</code>.</p>
+<p>The STAP and iJTAG fields are applied in <code>jtag_intf_unit</code>; the three JTAG2AXI
+fields are applied in <code>jtag_ptap</code>.</p>
 </div>
 </div>
 </div>

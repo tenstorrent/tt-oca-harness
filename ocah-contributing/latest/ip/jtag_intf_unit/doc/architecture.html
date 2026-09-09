@@ -288,73 +288,72 @@ output timing margin before the scan path returns to the PTAP.</p>
 </div>
 </div>
 <div class="sect5">
-<h6 id="feature-control-synchronization"><a class="anchor" href="#feature-control-synchronization"></a><a class="link" href="#feature-control-synchronization">Feature Control Synchronization</a></h6>
+<h6 id="debug-disable-synchronization"><a class="anchor" href="#debug-disable-synchronization"></a><a class="link" href="#debug-disable-synchronization">Debug Disable Synchronization</a></h6>
 <div class="paragraph">
-<p>The lifecycle feature control signals originate in the system clock domain and
-must be synchronized to the TCK domain before use. The interface unit implements
-64 individual 2-FF synchronizer chains, one per bit of the feature control
-vector. This per-bit synchronization approach breaks up the CDC timing path that
-would exist if the entire 64-bit vector were synchronized as a single unit.</p>
+<p><code>dbg_disable_i</code> (<code>sep_lifecycle_ctrl_pkg::dbg_disable_t</code>) is in the system clock
+domain and must be synchronized to TCK before use. The interface unit
+synchronizes each bit through a 2-FF chain whose reset value is 1 (fail-closed).
+The synchronized fields gate STAP and SIB selection and are forwarded to the
+PTAP for the JTAG2AXI bridges.</p>
 </div>
 <div class="paragraph">
-<p>The synchronized feature control bits determine security access levels for STAP
-and SIB selection. <code>feat_ctrl_i</code> is enable-polarity (1 = feature enabled). Each
-access point is enabled only when <strong>all</strong> of its listed enables are asserted, so
-it is disabled when <strong>any</strong> one of them is deasserted:</p>
+<p>Each field is active-high (1 = path disabled).</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 20%;">
 <col style="width: 40%;">
-<col style="width: 40%;">
+<col style="width: 60%;">
 </colgroup>
 <thead>
 <tr>
 <th class="tableblock halign-left valign-top">Access Point</th>
-<th class="tableblock halign-left valign-top">Enabled When Feature Control Satisfies</th>
-<th class="tableblock halign-left valign-top">Security Disable Signal</th>
+<th class="tableblock halign-left valign-top">Disable Field</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I/O STAP</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sip_debug</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!sip_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.stap_io</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC Debug STAP</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>soc_debug \&amp;\&amp; ap_debug</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!soc_debug || !ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.stap_smc</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP Debug STAP</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>sep_debug \&amp;\&amp; soc_debug \&amp;\&amp; ap_debug</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!sep_debug || !soc_debug || !ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.stap_sep</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Extra STAPs</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ap_debug</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.stap_extra</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">External STAP return path</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ap_debug</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.stap_host</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DFT Secure SIB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>fuse_test \&amp;\&amp; sep_debug \&amp;\&amp; soc_debug \&amp;\&amp; ap_debug</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!fuse_test || !sep_debug || !soc_debug || !ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.dft_secure</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DFT Non-Secure SIB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>soc_debug \&amp;\&amp; ap_debug</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!soc_debug || !ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.dft_nonsecure</code></p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DFD SIB</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ap_debug</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>!ap_debug</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.dfd</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC fabric JTAG2AXI</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.smc_jtag2axi</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SMC OTP JTAG2AXI</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.smc_otp_jtag2axi</code></p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SEP OTP JTAG2AXI</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>dbg_disable_i.sep_otp_jtag2axi</code></p></td>
 </tr>
 </tbody>
 </table>
@@ -364,34 +363,28 @@ it is disabled when <strong>any</strong> one of them is deasserted:</p>
 <h5 id="ijtag-network"><a class="anchor" href="#ijtag-network"></a><a class="link" href="#ijtag-network">iJTAG Network</a></h5>
 <div class="paragraph">
 <p>The iJTAG network is organized into three cascaded Segment Insertion Bit (SIB)
-chains with differing security requirements. Each SIB gates access to a specific
-set of debug instruments based on the synchronized feature control signals, and
-requires <strong>all</strong> of the enables listed for it above.</p>
+chains. Each SIB is gated by the corresponding synchronized debug-disable field.</p>
 </div>
 <div class="sect5">
 <h6 id="dft-secure-chain"><a class="anchor" href="#dft-secure-chain"></a><a class="link" href="#dft-secure-chain">DFT Secure Chain</a></h6>
 <div class="paragraph">
-<p>The DFT Secure chain is the most restrictive of the three: it is accessible only
-when fuse test, SEP debug, SOC debug, and AP debug are all enabled. This chain
-is ported out of the DTP for connection to tooling-generated DFT logic such as
-MBIST controllers and scan compression logic.</p>
+<p>The DFT Secure chain is gated by <code>dbg_disable_i.dft_secure</code>. This port is for
+security-sensitive DFT control.</p>
 </div>
 </div>
 <div class="sect5">
 <h6 id="dft-non-secure-chain"><a class="anchor" href="#dft-non-secure-chain"></a><a class="link" href="#dft-non-secure-chain">DFT Non-Secure Chain</a></h6>
 <div class="paragraph">
-<p>The DFT Non-Secure chain requires both SOC debug and AP debug to be enabled.
-This chain provides access to DFT instrumentation that does not involve
-security-sensitive fuse or SEP operations.</p>
+<p>The DFT Non-Secure chain is gated by <code>dbg_disable_i.dft_nonsecure</code>. General DFT
+control is attached to this port.</p>
 </div>
 </div>
 <div class="sect5">
 <h6 id="dfd-chain"><a class="anchor" href="#dfd-chain"></a><a class="link" href="#dfd-chain">DFD Chain</a></h6>
 <div class="paragraph">
-<p>The Design-for-Debug (DFD) chain requires AP debug to be enabled. The SIB
-gate itself is the least restrictive of the three; the resources reached through
-it are gated again inside the PTAP, where each JTAG2AXI bridge applies its own
-lifecycle condition. This chain grants access to:</p>
+<p>The Design-for-Debug (DFD) chain is gated by <code>dbg_disable_i.dfd</code>. The
+resources reached through it are gated again inside the PTAP, where each
+JTAG2AXI bridge is gated by its own disable input. This chain grants access to:</p>
 </div>
 <div class="ulist">
 <ul>
