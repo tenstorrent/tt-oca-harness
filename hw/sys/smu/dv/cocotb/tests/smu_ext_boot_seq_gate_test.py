@@ -17,7 +17,7 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_ext_boot_seq_gate_test(smu_base_test):
-    """SMU_006 rev2: ext_boot_seq_done_i gates fuse_reset_n_delayed_o release."""
+    """SMU_006 rev2: ext_boot_seq_done_i gates smc_fuse_reset_n_delayed_o release."""
 
     async def bring_up(self) -> None:
         """Clocks + cold release with boot gate held at 0 (card S1)."""

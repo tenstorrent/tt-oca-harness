@@ -123,7 +123,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |`smu_otp_vs_fabric_map_race_test` |dtp |OTP vs fabric MAP last-writer
 |`smu_sep_smoke_test` |deferred |SMU_ALL_007 RST-PRIMARY + CTM.S2/S3 (SEP=0 bare)
 |`smu_smc_dtp_jtag2axi_smoke_test` |dtp |SMC fabric J2A smoke (SEP=0, no Force)
-|`smu_smc_mailbox_int_test` |smc |ext_mailbox_interrupts width DECODE (SMU_ALL_004)
+|`smu_smc_mailbox_int_test` |smc |smc_ext_mailbox_interrupts width DECODE (SMU_ALL_004)
 |`smu_smc_mailbox_sanity_test` |smc |outbound-0 STATUS/IRQEN via fabric J2A (SEP=0)
 |`smu_smc_reset_ctrl_test` |smc |primary/cold/periph reset release under SMU SEP=0
 |`smu_smc_security_demote_pm_test` |smc |SEP=0 demote / lc_state observe-only
@@ -786,7 +786,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 
 * DEBUG_CONTROL write updates jtag_boot_stall_ovrd / jtag_boot_stall
 * TDR readback matches written fields
-* With stall asserted across cold reset (TRST held deasserted), fuse_reset_n_delayed_o stays low until stall cleared
+* With stall asserted across cold reset (TRST held deasserted), smc_fuse_reset_n_delayed_o stays low until stall cleared
 * Sticky: re-asserting stall after release does not re-gate fuse_reset
 
 *Test Procedure*:
@@ -813,11 +813,11 @@ and `smu_smc_mailbox_int_test` only through `smc`
 
 *Source Module*: `smu_dft_gpio_boot_stall_test`
 
-*Objective*: GPIO boot-stall sticky gating of fuse_reset_n_delayed_o.
+*Objective*: GPIO boot-stall sticky gating of smc_fuse_reset_n_delayed_o.
 
 *Test Coverage*:
 
-* Drive pad bit[57]=1 across cold reset -> fuse_reset_n_delayed_o stays 0
+* Drive pad bit[57]=1 across cold reset -> smc_fuse_reset_n_delayed_o stays 0
 * Clear pad -> fuse_reset rises
 * Re-assert pad after release does not re-gate (sticky)
 
@@ -845,12 +845,12 @@ and `smu_smc_mailbox_int_test` only through `smc`
 
 *Source Module*: `smu_ext_boot_seq_gate_test`
 
-*Objective*: SMU_006 rev2: ext_boot_seq_done_i gates fuse_reset_n_delayed_o release.
+*Objective*: SMU_006 rev2: ext_boot_seq_done_i gates smc_fuse_reset_n_delayed_o release.
 
 *Test Coverage*:
 
 * Sequence for smu_ext_boot_seq_gate_test (SMU_006 rev 2).
-* Observes fuse_reset_n_delayed_o — the RTL consumer gated by ext_boot_seq_done_i (port_table: gates reset release).
+* Observes smc_fuse_reset_n_delayed_o — the RTL consumer gated by ext_boot_seq_done_i (port_table: gates reset release).
 * rst_primary_smc_clk_no is NOT gated by this pin (negative control CHK-PRIMARY-NOT-GATED).
 
 *Test Procedure*:
@@ -1972,7 +1972,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 * Sequence for smu_smc_mailbox_int_test (SMU_ALL_004).
 * DV-CARD: SMU_ALL_004 ANCHOR: smu_smc_mailbox_int_test Approved OWNS (card r8 / plan r3): SMC-MBX-IRQ-EXT.S2 — Width equals NUM_MAILBOXES (32) at the SMU boundary (passive DECODE on bare tb_top SEP=0; required_cells width=32).
 * CHANNELS.S2/S3 and EXT.S1 are owned by SMU_ALL_008 — out of scope.
-* No mailbox MMIO; no Force/deposit on ext_mailbox_interrupts.
+* No mailbox MMIO; no Force/deposit on smc_ext_mailbox_interrupts.
 
 *Test Procedure*:
 

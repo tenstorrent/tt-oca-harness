@@ -37,7 +37,7 @@ class smu_boot_stall_jtag_cold_reset_matrix_test(smu_base_test):
 
         sb.expect_eq(
             "fuse_reset after bring-up",
-            int(dut.fuse_reset_n_delayed_o.value),
+            int(dut.smc_fuse_reset_n_delayed_o.value),
             1,
         )
 
@@ -75,7 +75,7 @@ class smu_boot_stall_jtag_cold_reset_matrix_test(smu_base_test):
         )
         sb.expect_eq(
             "fuse_reset gated while stall sticky",
-            int(dut.fuse_reset_n_delayed_o.value),
+            int(dut.smc_fuse_reset_n_delayed_o.value),
             0,
             evidence="STALL_COLD_STICKY",
         )
@@ -94,14 +94,14 @@ class smu_boot_stall_jtag_cold_reset_matrix_test(smu_base_test):
             0,
         )
         await wait_signal_high(
-            dut.fuse_reset_n_delayed_o,
+            dut.smc_fuse_reset_n_delayed_o,
             dut.clk_smu_i,
             timeout_cycles=2000,
             name="fuse_reset after TRST clear",
         )
         sb.expect_eq(
             "fuse_reset high after TRST clear",
-            int(dut.fuse_reset_n_delayed_o.value),
+            int(dut.smc_fuse_reset_n_delayed_o.value),
             1,
             evidence="STALL_TRST_CLEAR",
         )
@@ -116,7 +116,7 @@ class smu_boot_stall_jtag_cold_reset_matrix_test(smu_base_test):
         sb.expect_eq("re-assert val", int(dut.jtag_boot_stall.value), 1)
         sb.expect_eq(
             "fuse_reset stays high on sticky re-assert",
-            int(dut.fuse_reset_n_delayed_o.value),
+            int(dut.smc_fuse_reset_n_delayed_o.value),
             1,
             evidence="STALL_REASSERT_STICKY",
         )
