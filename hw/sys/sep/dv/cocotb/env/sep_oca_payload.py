@@ -56,6 +56,11 @@ import base64
 import hashlib
 from pathlib import Path
 
+if __package__ in (None, ""):  # run directly, not imported as env.sep_oca_payload
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 from env import sep_oca_mutate as mm
 
 K = mm.K
