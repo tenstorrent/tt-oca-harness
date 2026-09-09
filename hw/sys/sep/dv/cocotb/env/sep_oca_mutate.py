@@ -303,6 +303,52 @@ def describe(buf: bytes, slot: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# ROM error codes
+# ---------------------------------------------------------------------------
+# The ROM prints a rejected slot's reason as MANIFEST_ERR=<code>, where the code
+# is OCA_BOOT_ERR_BASE | oca_result_t (oca_boot.h). Both halves are parsed: the
+# result enum is long, renumbers as the library grows, and a copied value fails
+# a test for the wrong reason -- it reads as "rejected for the planted defect"
+# while actually meaning "rejected for something else".
+_OCA_BOOT_H = _SEP_ROOT / "bootrom" / "prod" / "include" / "oca_boot.h"
+_OCA_VALIDATOR_H = _OCA_SRC.parent.parent / "validators" / "oca" / "lib" / "oca_validator.h"
+
+
+def _c_define(header: Path, name: str) -> int:
+    """Value of a simple ``#define NAME <int>`` in a C header.
+
+    Used for the few bit definitions constants.py does not publish. Parsed
+    rather than copied for the same reason the offsets are: a literal here goes
+    stale silently.
+    """
+    import re
+
+    if not header.is_file():
+        raise ImportError(f"{header} not found; it defines {name}")
+    m = re.search(rf"^#define\s+{name}\s+(0[xX][0-9a-fA-F]+|\d+)", header.read_text(), re.M)
+    if m is None:
+        raise ImportError(f"{header} does not define {name}")
+    return int(m.group(1), 0)
+
+
+def oca_result(name: str) -> int:
+    """Value of an ``OCA_FAIL_*`` / ``OCA_OK`` enumerator, by name."""
+    import re
+
+    if not _OCA_VALIDATOR_H.is_file():
+        raise ImportError(f"{_OCA_VALIDATOR_H} not found; it defines the result enum")
+    m = re.search(rf"^\s*{re.escape(name)}\s*=\s*(\d+)", _OCA_VALIDATOR_H.read_text(), re.M)
+    if m is None:
+        raise AssertionError(f"{_OCA_VALIDATOR_H} does not define {name}")
+    return int(m.group(1))
+
+
+def boot_err(result_name: str) -> int:
+    """The ``MANIFEST_ERR=`` code the ROM prints for one validator result."""
+    return _c_define(_OCA_BOOT_H, "OCA_BOOT_ERR_BASE") | oca_result(result_name)
+
+
+# ---------------------------------------------------------------------------
 # Structural and anti-rollback fields
 # ---------------------------------------------------------------------------
 OFF_MAGIC = 0
@@ -415,23 +461,6 @@ DEMOTION_CONTROL_VALID_MASK = K.DEMOTION_CONTROL_VALID_MASK
 
 OFF_SECURE_BOOT_CONTROL = K.OFF_SECURE_BOOT_CONTROL
 _OCA_LAYOUT_H = _OCA_SRC.parent.parent / "validators" / "oca" / "lib" / "oca_layout.h"
-
-
-def _c_define(header: Path, name: str) -> int:
-    """Value of a simple ``#define NAME <int>`` in a C header.
-
-    Used for the few bit definitions constants.py does not publish. Parsed
-    rather than copied for the same reason the offsets are: a literal here goes
-    stale silently.
-    """
-    import re
-
-    if not header.is_file():
-        raise ImportError(f"{header} not found; it defines {name}")
-    m = re.search(rf"^#define\s+{name}\s+(0[xX][0-9a-fA-F]+|\d+)", header.read_text(), re.M)
-    if m is None:
-        raise ImportError(f"{header} does not define {name}")
-    return int(m.group(1), 0)
 
 
 SECURE_BOOT_ENFORCED_BIT = _c_define(_OCA_LAYOUT_H, "OCA_SECURE_BOOT_ENFORCED_BIT")

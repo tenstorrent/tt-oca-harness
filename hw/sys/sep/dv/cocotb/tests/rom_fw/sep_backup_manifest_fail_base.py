@@ -47,11 +47,15 @@ _SECURE_FLASH_IMAGE = os.path.join(_SEP_ROOT, "bootrom", "prod", "build", "oca_s
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 
 # oca_layout.h / constants.py
-MANIFEST_ERR_BAD_MAGIC = 0x0003_0002
-MANIFEST_ERR_SIG_FAILED = 0x0003_000C
-MANIFEST_ERR_VERSION_ROLLBACK = 0x0003_0014
-MANIFEST_ERR_KEY_REVOKED = 0x0003_0015
-MANIFEST_ERR_KEY_HASH_MISMATCH = 0x0003_0016
+# Rejection codes the ROM prints as MANIFEST_ERR=<code>, derived from the
+# validator's result enum rather than copied: the enum renumbers as the library
+# grows, and a stale value fails a test for the wrong reason while still reading
+# as the planted defect.
+MANIFEST_ERR_BAD_MAGIC = mm.boot_err("OCA_FAIL_MAGIC")
+MANIFEST_ERR_SIG_FAILED = mm.boot_err("OCA_FAIL_SIGNATURE")
+MANIFEST_ERR_VERSION_ROLLBACK = mm.boot_err("OCA_FAIL_SECURITY_VERSION")
+MANIFEST_ERR_KEY_REVOKED = mm.boot_err("OCA_FAIL_ROOT_KEY_REVOKED")
+MANIFEST_ERR_KEY_HASH_MISMATCH = mm.boot_err("OCA_FAIL_ROOT_KEY_UNAUTHORIZED")
 
 # Slot identity is asserted on MANIFEST_SRC=, never on the MANIFEST_PRIMARY /
 # MANIFEST_BACKUP label: the ROM derives the label from the retry counter but the

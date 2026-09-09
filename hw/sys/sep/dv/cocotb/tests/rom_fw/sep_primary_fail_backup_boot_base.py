@@ -86,9 +86,13 @@ from env import sep_spi_slot_evidence as ev
 from rom_fw.sep_rom_ot_dma_boot_test import SECURE_FLASH_IMAGE, sep_rom_ot_dma_boot_test
 
 # manifest.h
-MANIFEST_ERR_BAD_MAGIC = 0x0003_0002
-MANIFEST_ERR_SIG_FAILED = 0x0003_000C
-MANIFEST_ERR_VERSION_ROLLBACK = 0x0003_0014
+# Rejection codes the ROM prints as MANIFEST_ERR=<code>, derived from the
+# validator's result enum rather than copied: the enum renumbers as the library
+# grows, and a stale value fails a test for the wrong reason while still reading
+# as the planted defect.
+MANIFEST_ERR_BAD_MAGIC = mm.boot_err("OCA_FAIL_MAGIC")
+MANIFEST_ERR_SIG_FAILED = mm.boot_err("OCA_FAIL_SIGNATURE")
+MANIFEST_ERR_VERSION_ROLLBACK = mm.boot_err("OCA_FAIL_SECURITY_VERSION")
 
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
