@@ -36,7 +36,8 @@
 `SEP_TB_IN(logic, mpc_reset_run_req)
 // TEST_EN strap (frontdoor DUT input). Latched into secure_tm on fuse-sense-done
 // (or on cold-reset release when security_disable is set). Default 0 = functional
-// mode; drive 1 before sense to open FEAT_CTRL[47:32].
+// mode; drive 1 before sense to latch secure_tm. SECURE_TM does not qualify
+// feature control.
 `SEP_TB_IN(logic, test_en_strap_i)
 // JTAG SW-reset hold (frontdoor DUT input jtag_sep_reset_ctrl_i). When 1,
 // that engine is held in SW reset regardless of SW_RESET_N, so it never

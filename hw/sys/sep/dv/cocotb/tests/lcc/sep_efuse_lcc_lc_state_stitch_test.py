@@ -22,11 +22,12 @@ W1S-monotonic / valid-transition rules (the test-level mirror of the RTL SVA
 state checker); the fixed monotonic chain covers the SVA forward-only and
 terminal-stability properties implicitly.
 
-After the initial TEST_DEV sense (TEST_EN strap = 0, DFT group forced off) the
-test raises the frontdoor ``test_en_strap_i``, re-senses, and proves the latched
-``secure_tm`` opens FEAT_CTRL[47:32]. The strap is then lowered; the rest of the
-walk runs at ``secure_tm=0`` so LC_STATE programming is not blocked by
-``efuse_guard``.
+After the initial TEST_DEV sense (TEST_EN strap = 0) the test raises the
+frontdoor ``test_en_strap_i``, re-senses, and proves the latched
+``secure_tm_o`` follows the strap while ``FEAT_CTRL`` stays on the same
+golden (SECURE_TM does not qualify feature control). The strap is then
+lowered; the rest of the walk runs at ``secure_tm=0`` so LC_STATE
+programming is not blocked by ``efuse_guard``.
 
 ``lc_sigint_err`` has no legal OTP stimulus -- sense regenerates ``{~raw, raw}``.
 The test injects a broken pair at the LCC decoder input (signed-off force) after
@@ -48,7 +49,6 @@ from env.sep_lcc_golden import (
     LC_RMA_CHIP_1,
     LC_RMA_SIP_1,
     LC_TEST_DEV,
-    TEST_MASK,
     is_legal_lc,
     is_valid_lc_transition,
     lc_state_name,
@@ -314,16 +314,17 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
         self._last_observed_feat = feat
 
         if raw == LC_TEST_DEV and not sigint_err:
-            dft = (feat & TEST_MASK) >> 32
             if secure_tm:
-                assert dft != 0, "TEST_DEV + secure_tm=1 must leave DFT bits live"
                 self.logger.info(
-                    "CHK-SECURE-TM-ON PASS: secure_tm_o=1, FEAT_CTRL[47:32]=0x%04x",
-                    dft,
+                    "CHK-SECURE-TM-ON PASS: secure_tm_o=1, FEAT_CTRL=0x%016x "
+                    "(same TEST_DEV golden; SECURE_TM does not qualify feat_ctrl)",
+                    feat,
                 )
             else:
-                assert dft == 0, "TEST_DEV + secure_tm=0 must force DFT group to 0"
-                self.logger.info("CHK-SECURE-TM-OFF PASS: secure_tm_o=0, FEAT_CTRL[47:32]=0")
+                self.logger.info(
+                    "CHK-SECURE-TM-OFF PASS: secure_tm_o=0, FEAT_CTRL=0x%016x",
+                    feat,
+                )
         if sigint_err:
             assert feat == 0, (
                 f"sigint fail-closed expects AXI FEAT_CTRL=0, got 0x{feat:016x} "
