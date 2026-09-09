@@ -218,7 +218,7 @@ module efuse_program_interface #(
   if (1'b1) begin : fuse_cmd_req_s3c_scan
     always_ff @(posedge clk_i or negedge rst_ni) begin
       if (!rst_ni) fuse_command_req_q <= FUSE_COMMAND_REQ_DEFAULT;
-      else         fuse_command_req_q <= fuse_command_req_d;
+      else fuse_command_req_q <= fuse_command_req_d;
     end
   end
 
