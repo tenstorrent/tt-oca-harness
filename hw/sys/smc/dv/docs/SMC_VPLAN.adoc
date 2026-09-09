@@ -6080,7 +6080,7 @@ For each of the two (target, lock) pairs:
 |`pyuvm` |35 |Scenarios with a PyUVM implementation
 |`reset` |15 |reset coverage
 |`rtl_issue` |4 |Reproducers for filed RTL defects. Expected to fail; held out of `all`
-|`smoke` |35 |Fast bring-up gate
+|`smoke` |37 |Fast bring-up gate, and the only group any CI workflow schedules -- `sim.yml` for the PR gate, `regress.yml` for nightly and weekly
 |`uart` |6 |uart coverage
 |`coverage_closure` |24 |closes features that previously had no testcase
 |`depth` |43 |cross-feature depth testcases
