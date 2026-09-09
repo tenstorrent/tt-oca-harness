@@ -303,6 +303,184 @@ def describe(buf: bytes, slot: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Usage constraints
+# ---------------------------------------------------------------------------
+# A manifest states which constraints it wants enforced in selector_bits, then
+# supplies each selected constraint's value in its own field. The ROM fails a
+# slot whose selected constraint it cannot evaluate (SEP-ROM-MAN-040), so
+# selecting a bit and leaving its field unset is a rejection, not a default.
+OFF_SELECTOR_BITS = K.OFF_SELECTOR_BITS
+SELECTOR_BITS_LEN = 16
+SELECTOR_BITS_USED_LIMIT = K.SELECTOR_BITS_USED_LIMIT
+
+# One Grendel life_cycle_states field became three, one per identity scope, each
+# with its own selector bit.
+OFF_LIFECYCLE_STATES = {
+    "chiplet": K.OFF_LIFECYCLE_CHIPLET_STATES,
+    "package": K.OFF_LIFECYCLE_PACKAGE_STATES,
+    "system": K.OFF_LIFECYCLE_SYSTEM_STATES,
+}
+SELECTOR_BIT_LIFECYCLE = {
+    "chiplet": K.SELECTOR_BIT_LIFECYCLE_CHIPLET,
+    "package": K.SELECTOR_BIT_LIFECYCLE_PACKAGE,
+    "system": K.SELECTOR_BIT_LIFECYCLE_SYSTEM,
+}
+LIFECYCLE_STATE_BITS = dict(K.LIFECYCLE_STATE_NAMES)
+LIFECYCLE_STATES_VALID_MASK = K.LIFECYCLE_STATES_VALID_MASK
+
+# Demotion is a standalone u16 here, not a selector bit plus a flags bit. Its
+# four bits match oca_boot.h's OCA_DEMOTE_* exactly.
+OFF_DEMOTION_CONTROL = K.OFF_DEMOTION_CONTROL
+DEMOTION_BITS = dict(K.DEMOTION_CONTROL_FLAG_NAMES)
+DEMOTION_CONTROL_VALID_MASK = K.DEMOTION_CONTROL_VALID_MASK
+
+OFF_SECURE_BOOT_CONTROL = K.OFF_SECURE_BOOT_CONTROL
+_OCA_LAYOUT_H = _OCA_SRC.parent.parent / "validators" / "oca" / "lib" / "oca_layout.h"
+
+
+def _c_define(header: Path, name: str) -> int:
+    """Value of a simple ``#define NAME <int>`` in a C header.
+
+    Used for the few bit definitions constants.py does not publish. Parsed
+    rather than copied for the same reason the offsets are: a literal here goes
+    stale silently.
+    """
+    import re
+
+    if not header.is_file():
+        raise ImportError(f"{header} not found; it defines {name}")
+    m = re.search(rf"^#define\s+{name}\s+(0[xX][0-9a-fA-F]+|\d+)", header.read_text(), re.M)
+    if m is None:
+        raise ImportError(f"{header} does not define {name}")
+    return int(m.group(1), 0)
+
+
+SECURE_BOOT_ENFORCED_BIT = _c_define(_OCA_LAYOUT_H, "OCA_SECURE_BOOT_ENFORCED_BIT")
+
+
+def selector_bits(buf: bytes, slot: str) -> int:
+    """``selector_bits`` as an integer. 128 bits wide here, not 64."""
+    require_classic(buf, slot)
+    base = slot_base(slot) + OFF_SELECTOR_BITS
+    return int.from_bytes(bytes(buf[base : base + SELECTOR_BITS_LEN]), "little")
+
+
+def set_selector_bit(buf: bytearray, slot: str, bit: int, value: bool) -> int:
+    """Set or clear one selector bit. Returns the resulting bitmap."""
+    require_classic(buf, slot)
+    if not 0 <= bit < 8 * SELECTOR_BITS_LEN:
+        raise ValueError(f"selector bit {bit} is outside the 128-bit field")
+    bits = selector_bits(buf, slot)
+    bits = (bits | (1 << bit)) if value else (bits & ~(1 << bit))
+    base = slot_base(slot) + OFF_SELECTOR_BITS
+    buf[base : base + SELECTOR_BITS_LEN] = bits.to_bytes(SELECTOR_BITS_LEN, "little")
+    rehash(buf, slot)
+    return bits
+
+
+def lifecycle_states(buf: bytes, slot: str, scope: str = "chiplet") -> int:
+    """The lifecycle-state bitmap for one identity scope (u32)."""
+    require_classic(buf, slot)
+    if scope not in OFF_LIFECYCLE_STATES:
+        raise ValueError(f"scope must be one of {sorted(OFF_LIFECYCLE_STATES)}, got {scope!r}")
+    base = slot_base(slot) + OFF_LIFECYCLE_STATES[scope]
+    return int.from_bytes(bytes(buf[base : base + 4]), "little")
+
+
+def set_lifecycle_states(buf: bytearray, slot: str, value: int, scope: str = "chiplet") -> int:
+    """Write one scope's lifecycle-state bitmap. Returns what was written.
+
+    Does not touch the selector bit: whether the constraint is enforced and what
+    it permits are separate stimuli, and a test usually wants to vary one.
+    """
+    require_classic(buf, slot)
+    if scope not in OFF_LIFECYCLE_STATES:
+        raise ValueError(f"scope must be one of {sorted(OFF_LIFECYCLE_STATES)}, got {scope!r}")
+    base = slot_base(slot) + OFF_LIFECYCLE_STATES[scope]
+    buf[base : base + 4] = (value & 0xFFFFFFFF).to_bytes(4, "little")
+    rehash(buf, slot)
+    return value & 0xFFFFFFFF
+
+
+def demotion_control(buf: bytes, slot: str) -> int:
+    """``demotion_control`` (u16). Bits per DEMOTION_BITS."""
+    require_classic(buf, slot)
+    base = slot_base(slot) + OFF_DEMOTION_CONTROL
+    return int.from_bytes(bytes(buf[base : base + 2]), "little")
+
+
+def set_demotion_bit(buf: bytearray, slot: str, name: str, value: bool) -> int:
+    """Set or clear one demotion-control bit by name. Returns the field."""
+    require_classic(buf, slot)
+    if name not in DEMOTION_BITS:
+        raise ValueError(f"name must be one of {sorted(DEMOTION_BITS)}, got {name!r}")
+    bit = DEMOTION_BITS[name]
+    field = demotion_control(buf, slot)
+    field = (field | (1 << bit)) if value else (field & ~(1 << bit))
+    base = slot_base(slot) + OFF_DEMOTION_CONTROL
+    buf[base : base + 2] = (field & 0xFFFF).to_bytes(2, "little")
+    rehash(buf, slot)
+    return field & 0xFFFF
+
+
+def secure_boot_control(buf: bytes, slot: str) -> int:
+    """``secure_boot_control`` (u8). Bit 0 is the signed enforcement request."""
+    require_classic(buf, slot)
+    return buf[slot_base(slot) + OFF_SECURE_BOOT_CONTROL]
+
+
+def set_secure_boot_enforced(buf: bytearray, slot: str, value: bool) -> int:
+    """Set or clear the signed secure-boot request. Returns the field.
+
+    Inside the signed region, so this rehashes -- and the ROM checks the hash
+    before the signature, which is what makes clearing the bit a rejected
+    manifest rather than a manifest that boots unverified.
+    """
+    require_classic(buf, slot)
+    field = secure_boot_control(buf, slot)
+    field = (
+        (field | SECURE_BOOT_ENFORCED_BIT) if value else (field & ~SECURE_BOOT_ENFORCED_BIT)
+    ) & 0xFF
+    buf[slot_base(slot) + OFF_SECURE_BOOT_CONTROL] = field
+    rehash(buf, slot)
+    return field
+
+
+def verify_usage_constraints_layout(buf: bytes, slot: str) -> None:
+    """Assert the constraint fields satisfy the format's own invariants.
+
+    A wrong offset lands on neighbouring bytes, which fail these masks -- but
+    only if those bytes are non-zero. The images this tree packs currently select
+    no constraints at all (selector_bits, all three lifecycle_states and
+    demotion_control are zero), so on them this is a weak anchor: it catches an
+    offset that lands on a populated field such as chiplet_id or a version
+    range, and not one that lands on other zeroes. It becomes a real check on the
+    images the demotion and lifecycle families need, which do select
+    constraints. Treat it as an invariant check, not a value anchor.
+    """
+    require_classic(buf, slot)
+    bits = selector_bits(buf, slot)
+    if bits & K.SELECTOR_BITS_RESERVED_MASK:
+        raise AssertionError(
+            f"{slot} selector_bits 0x{bits:032x} sets reserved bits above "
+            f"{SELECTOR_BITS_USED_LIMIT}; OFF_SELECTOR_BITS looks wrong"
+        )
+    for scope in OFF_LIFECYCLE_STATES:
+        lc = lifecycle_states(buf, slot, scope)
+        if lc & ~LIFECYCLE_STATES_VALID_MASK:
+            raise AssertionError(
+                f"{slot} {scope} lifecycle_states 0x{lc:08x} sets bits outside "
+                f"0x{LIFECYCLE_STATES_VALID_MASK:x}; its offset looks wrong"
+            )
+    dc = demotion_control(buf, slot)
+    if dc & ~DEMOTION_CONTROL_VALID_MASK:
+        raise AssertionError(
+            f"{slot} demotion_control 0x{dc:04x} sets bits outside "
+            f"0x{DEMOTION_CONTROL_VALID_MASK:x}; OFF_DEMOTION_CONTROL looks wrong"
+        )
+
+
+# ---------------------------------------------------------------------------
 # Public key selection and the key itself
 # ---------------------------------------------------------------------------
 # public_key_select_classic is a 128-bit bitmap with exactly one bit set; the
@@ -531,6 +709,38 @@ def _selftest() -> int:
 
             verify_layout(buf, "primary")
             verify_layout(buf, "backup")
+            # Constraint fields must satisfy the format's masks, and each
+            # mutator must round-trip and leave the manifest hash consistent.
+            verify_usage_constraints_layout(buf, "primary")
+            u = bytearray(buf)
+            if (
+                set_selector_bit(u, "primary", SELECTOR_BIT_LIFECYCLE["package"], True)
+                & (1 << SELECTOR_BIT_LIFECYCLE["package"])
+                == 0
+            ):
+                print(f"  FAIL {img.name}: selector bit did not set")
+                bad += 1
+            if (
+                set_lifecycle_states(u, "primary", LIFECYCLE_STATES_VALID_MASK, "system")
+                != (LIFECYCLE_STATES_VALID_MASK)
+                or lifecycle_states(u, "primary", "system") != LIFECYCLE_STATES_VALID_MASK
+            ):
+                print(f"  FAIL {img.name}: lifecycle_states round trip")
+                bad += 1
+            if not set_demotion_bit(u, "primary", "BL2_DEMOTION_ENABLE", True) & (
+                1 << DEMOTION_BITS["BL2_DEMOTION_ENABLE"]
+            ):
+                print(f"  FAIL {img.name}: demotion bit did not set")
+                bad += 1
+            want_sb = signature_type(buf, "primary") != SIG_TYPE_NO_SIGNATURE
+            if bool(set_secure_boot_enforced(u, "primary", want_sb) & SECURE_BOOT_ENFORCED_BIT) != (
+                want_sb
+            ):
+                print(f"  FAIL {img.name}: secure_boot_enforced did not follow")
+                bad += 1
+            # Every one of those rehashed, so the slot must still verify.
+            verify_layout(u, "primary")
+            verify_usage_constraints_layout(u, "primary")
             # rehash is a no-op on an unmutated image, and restores the stored
             # digest after a mutation inside the signed region.
             m = bytearray(buf)
