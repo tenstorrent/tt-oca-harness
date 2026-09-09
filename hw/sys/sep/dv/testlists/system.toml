@@ -114,7 +114,7 @@ args = ["+skip_fuse_sense"]
 # entropy) -- then pulse one engine's SW_RESET_N (0x1080_3000, active-low) and prove the
 # sibling's held ciphertext/digest is bit-exact intact while the pulsed engine's own result
 # clears; reverse the roles. Then, while HMAC SW_RESET_N is held, the same DIGEST_0
-# address returns DECERR on read (HMAC CFG write also DECERR) while AES DATA_OUT_0 stays OKAY; after release
+# address returns SLVERR on read (HMAC CFG write also SLVERR) while AES DATA_OUT_0 stays OKAY; after release
 # DIGEST_0 is OKAY at reset. Drain-before-reset is not claimed. no_cpu; +skip_fuse_sense
 # (entropy/crypto independent of OTP lifecycle).
 name = "sep_crypto_per_ip_reset_isolation_test"
