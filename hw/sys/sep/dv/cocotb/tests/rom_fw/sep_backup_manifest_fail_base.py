@@ -16,7 +16,7 @@ same defect" replaces that trigger through :meth:`corrupt_primary` and
 because the defect marker no longer identifies a slot on its own.
 
 This ROM runs the manifest loop and the crypto chain as two separate stages
-(``rom_main.c`` then ``manifest_load.c``): ``rom_manifest_boot`` checks each slot's structure, hash
+(``rom_main.c`` then ``oca_boot.c``): ``rom_manifest_boot`` checks each slot's structure, hash
 and usage constraints, and only after a slot passes does
 ``manifest_crypto_validate`` check security_version, key selection and the
 signature. So a backup with a cryptographic defect legitimately prints
@@ -35,7 +35,7 @@ from pathlib import Path
 
 import cocotb
 from cocotb.triggers import RisingEdge
-from env import sep_manifest_mutate as mm
+from env import sep_oca_mutate as mm
 from env.sep_rom_console import log_scratch_cold, rom_console_task
 from env.sep_verdict import decode_verdict
 from sep_base_test import sep_base_test
@@ -46,7 +46,7 @@ _FW_DIR = os.path.join(_SEP_ROOT, "bootrom", "prod", "build_ot")
 _SECURE_FLASH_IMAGE = os.path.join(_SEP_ROOT, "bootrom", "prod", "build", "oca_secure_boot.bin")
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 
-# manifest.h
+# oca_layout.h / constants.py
 MANIFEST_ERR_BAD_MAGIC = 0x0003_0002
 MANIFEST_ERR_SIG_FAILED = 0x0003_000C
 MANIFEST_ERR_VERSION_ROLLBACK = 0x0003_0014
@@ -55,7 +55,7 @@ MANIFEST_ERR_KEY_HASH_MISMATCH = 0x0003_0016
 
 # Slot identity is asserted on MANIFEST_SRC=, never on the MANIFEST_PRIMARY /
 # MANIFEST_BACKUP label: the ROM derives the label from the retry counter but the
-# offset from the (possibly rotated) slot index (manifest_load.c),
+# offset from the (possibly rotated) slot index (oca_boot.c),
 # so under rotate_update the label and the slot disagree. The offset cannot lie.
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
@@ -100,13 +100,13 @@ class sep_backup_manifest_fail_base(sep_base_test):
     def corrupt_primary(self, buf: bytearray) -> None:
         """Make the primary slot fail, so the backup is reached at all.
 
-        Default is the magic word, rejected by ``validate_manifest_header`` before
+        Default is the magic word, rejected by ``oca_peek_manifest`` before
         any hash or crypto work, so the failover trigger cannot interact with the
         defect under test. A subclass overrides this only when the primary's defect
         is itself part of the scenario, and must set ``primary_expected_error`` to
         match.
         """
-        mm.set_identifier(buf, "primary")
+        mm.break_magic(buf, "primary")
 
     def corrupt_backup(self, buf: bytearray) -> None:
         raise NotImplementedError
@@ -117,7 +117,7 @@ class sep_backup_manifest_fail_base(sep_base_test):
     # --- scenario ----------------------------------------------------------
     def mutate_flash_image(self, buf: bytearray) -> bytearray:
         # Primary: the failover trigger. By default a broken magic word, rejected
-        # by validate_manifest_header before the hash check -- a deterministic
+        # by oca_peek_manifest before the hash check -- a deterministic
         # BAD_MAGIC rather than a verdict that depends on check order, and not the
         # defect under test. See corrupt_primary().
         self.corrupt_primary(buf)
@@ -185,7 +185,7 @@ class sep_backup_manifest_fail_base(sep_base_test):
         # `MANIFEST_SRC=` only says which address the ROM intended to read; the
         # BFM's transaction record says which address the device actually served
         # and in what order, and the successful half of boot_flash_reinit()
-        # (manifest_load.c) prints nothing at all. Two attribute stores, read
+        # (oca_boot.c) prints nothing at all. Two attribute stores, read
         # by nobody else -- no existing subclass references either name, so this
         # cannot change any established behaviour.
         self._flash = flash
