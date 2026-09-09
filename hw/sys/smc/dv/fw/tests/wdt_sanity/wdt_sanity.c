@@ -66,7 +66,6 @@ void wdt_interrupt_handler_stuck(int id, void *priv) {
 
     while (true) { // loop "forever" -- 2nd wdt should hit and reset the cluster
         useless_count++;
-        // write_scratch(3, useless_count);
         // Add small delay to prevent overwhelming AXI bus and causing queue overflow
         // in AXI4UserYanker. This throttles write rate while still allowing watchdog
         // to trigger reset in a timely manner.

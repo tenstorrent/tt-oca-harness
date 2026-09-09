@@ -24,12 +24,12 @@ SAMPLE observe cluster.
 [cols="2,3,2,1",options="header",]
 |===
 |Requirement |Test |Group |Credit
-|Reset / power-good bring-up |`smc_canonical_smoke_test` |`smoke`, `canonical_top6` |YES
-|Mailbox STATUS / IRQ |`smc_mailbox_irq_test` |`smoke`, `canonical_top6` |YES
-|Function-level reset |`smc_flr_sanity_test` |`smoke`, `canonical_top10` |YES
-|GPIO IRQ active |`smc_gpio_irq_active_test` |`smoke`, `canonical_top20` |YES
-|Multi-reset CSR persist |`smc_multi_reset_csr_persistence_test` |`smoke`, `canonical_top20` |YES
-|Cold reset / clk running / IRQ observe |`smc_cold_reset_test`, `smc_clk_running_test`, `smc_irq_observe_test` |`smoke` / `project_p0` |NO (SAMPLE-only)
+|Reset / power-good bring-up |`smc_canonical_smoke_test` |`smoke`, `per_ip` |YES
+|Mailbox STATUS / IRQ |`smc_mailbox_irq_test` |`smoke`, `per_ip` |YES
+|Function-level reset |`smc_flr_sanity_test` |`smoke`, `per_ip` |YES
+|GPIO IRQ active |`smc_gpio_irq_active_test` |`smoke`, `per_ip` |YES
+|Multi-reset CSR persist |`smc_multi_reset_csr_persistence_test` |`smoke`, `per_ip` |YES
+|Cold reset / clk running / IRQ observe |`smc_cold_reset_test`, `smc_clk_running_test`, `smc_irq_observe_test` |`smoke` / `functional` |NO (SAMPLE-only)
 |PLL/PVT clock config |`smc_pll_*` |unenrolled `rtl_placeholder` |NO
 |===
 

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 # PROD lifecycle with a rollback floor of 36, spread across ALL EIGHT fuse words
 # with a DISTINCT popcount in each.
 #

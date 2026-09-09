@@ -149,6 +149,16 @@
 `SMC_TB_OUT(logic [3:0], tb_ndmreset_process)
 `SMC_TB_OUT(logic, tb_ndmreset_irq)
 `SMC_TB_OUT(logic, tb_uart_irq_any)
+// The UART line the PLIC actually sees: smc_peripherals_cdc.sv:309 ORs the
+// 16550 IRQ, the UART error line and the log-engine IRQ into one bit per
+// instance, and smc_peripherals.sv:1159 routes them to
+// peripheral_interrupts[21:18]. `tb_uart_irq_any` above is the 16550 half
+// only, so the log engine is not observable through it.
+`SMC_TB_OUT(logic [3:0], tb_uart_irq_combined)
+// The three I2C instances' PLIC lines (smc_peripherals.sv:1161,
+// peripheral_interrupts[25:23]). tb_i2c_cg_en is the clock gate, not the IRQ;
+// nothing exposed the interrupt itself.
+`SMC_TB_OUT(logic [2:0], tb_i2c_irq)
 `SMC_TB_OUT(logic, tb_mailbox_irq_any)
 `SMC_TB_OUT(logic, tb_avsbus_irq)
 `SMC_TB_OUT(logic, tb_telemetry_irq_any)
@@ -409,6 +419,24 @@
 `SMC_TB_OUT(logic, tb_cpu_fw_mailbox_valid)
 `SMC_TB_OUT(logic [31:0], tb_cpu_dcache_write_count)
 `SMC_TB_OUT(logic [57:0], tb_cpu_wb_pc0)
+// The other three harts' retired PCs. crt0 calls __metal_synchronize_harts
+// before main() on every sram image, so hart 0 stalling in that barrier and
+// hart 0 never being released look identical through tb_cpu_wb_pc0 alone.
+`SMC_TB_OUT(logic [57:0], tb_cpu_wb_pc1)
+`SMC_TB_OUT(logic [57:0], tb_cpu_wb_pc2)
+`SMC_TB_OUT(logic [57:0], tb_cpu_wb_pc3)
+// Per-core trap cause and trapped PC, straight off each Rocket CSR file. The
+// retired PC alone cannot tell a trap from a stall: a firmware image parked in
+// crt0's fault loop and one that simply stopped fetching look the same.
+// mcause[63] is the interrupt bit, the low bits the exception code.
+`SMC_TB_OUT(logic [63:0], tb_cpu_mcause0)
+`SMC_TB_OUT(logic [63:0], tb_cpu_mcause1)
+`SMC_TB_OUT(logic [63:0], tb_cpu_mcause2)
+`SMC_TB_OUT(logic [63:0], tb_cpu_mcause3)
+`SMC_TB_OUT(logic [57:0], tb_cpu_mepc0)
+`SMC_TB_OUT(logic [57:0], tb_cpu_mepc1)
+`SMC_TB_OUT(logic [57:0], tb_cpu_mepc2)
+`SMC_TB_OUT(logic [57:0], tb_cpu_mepc3)
 `SMC_TB_OUT(logic, tb_cpu_cluster_isolate)
 // U7-3: Rocket DM active + ack after dmcontrol.dmactive write.
 `SMC_TB_OUT(logic, tb_cpu_debug_dmactive)

@@ -454,7 +454,7 @@ release an IP from reset and writes `0` to request its software reset.
 Each `SW_RESET_N` bit is a request to a per-domain sequencer. The sequencer
 isolates the domain's AXI4-Lite paths, waits for outstanding transactions to
 drain, and then asserts reset. New transactions presented while isolated
-terminate with DECERR. Isolation remains asserted for the duration of reset and
+terminate with SLVERR. Isolation remains asserted for the duration of reset and
 is released with reset when software removes the request.
 
 An accelerator reset waits for both its host CSR path and Key Manager key path

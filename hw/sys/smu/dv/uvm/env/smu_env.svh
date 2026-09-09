@@ -10,6 +10,9 @@
 //   * the active ocah_jtag_master_env on the primary TAP (the VIP's
 //     commercial-overridable unit) and the smu_virtual_sequencer that
 //     exposes its sequencer to the scenario virtual sequences;
+//   * the memory-backed, fault-capable ocah_axi_slave_agent that answers the
+//     outbound SMN AXI4 boundary on the ocah_axi_if tb_top publishes as
+//     axi_out_vif; its slave sequence rides the virtual sequencer;
 //   * the checking of the embedded DTP with the DTP bench's own
 //     components, reused unchanged: dtp_ir_decode_ref_model,
 //     dtp_idcode_ref_model, and dtp_bypass_ref_model on the JTAG event and
@@ -35,6 +38,11 @@ class smu_env extends ocah_env;
   // Primary TAP: shared VIP master env on the ocah_jtag_if published by tb_top.
   ocah_jtag_master_config m_jtag_cfg;
   ocah_jtag_master_env    m_jtag_env;
+
+  // Outbound SMN AXI4: the shared VIP responder on the ocah_axi_if the
+  // struct bridge feeds in tb_top.
+  ocah_axi_slave_config m_axi_out_slave_cfg;
+  ocah_axi_slave_agent  m_axi_out_slave_agent;
 
   // Observation and evidence: VIP scan reconstruction, aggregate JTAG
   // recorder.
@@ -70,13 +78,15 @@ class smu_env extends ocah_env;
     `uvm_info(get_type_name(), {"env cfg: ", cfg.convert2string()}, UVM_MEDIUM)
 
     build_jtag_master();
+    build_axi_out_slave();
     build_checking();
     m_vseqr = smu_virtual_sequencer::type_id::create("m_vseqr", this);
   endfunction
 
   function void connect_phase(uvm_phase phase);
     super.connect_phase(phase);
-    m_vseqr.m_jtag_seqr = m_jtag_env.m_sequencer;
+    m_vseqr.m_jtag_seqr          = m_jtag_env.m_sequencer;
+    m_vseqr.m_axi_out_slave_seq  = m_axi_out_slave_agent.seq;
     // Per-TCK events: scan reconstruction, the FSM invariant, and the
     // instruction tracking of every DTP reference model.
     m_jtag_env.event_ap.connect(m_scan_builder.analysis_export);
@@ -115,6 +125,23 @@ class smu_env extends ocah_env;
     m_jtag_cfg.tck_half_period = cfg.tck_half_period_ns * 1ns;
     uvm_config_db#(ocah_jtag_master_config)::set(this, "m_jtag_env*", "cfg", m_jtag_cfg);
     m_jtag_env = ocah_jtag_master_env::type_id::create("m_jtag_env", this);
+  endfunction
+
+  // The crossbar's ext_out geometry (smu_axi_xbar_pkg axi_out_*) is stated on
+  // the config; the interface keeps its default widths.
+  protected function void build_axi_out_slave();
+    m_axi_out_slave_cfg = ocah_axi_slave_config::type_id::create("m_axi_out_slave_cfg");
+    if (!uvm_config_db#(virtual ocah_axi_if)::get(this, "", "axi_out_vif", m_axi_out_slave_cfg.vif))
+      `uvm_fatal(get_type_name(), "virtual ocah_axi_if `axi_out_vif` not found in uvm_config_db")
+    m_axi_out_slave_cfg.protocol   = OCAH_AXI_PROTO_AXI4;
+    m_axi_out_slave_cfg.addr_width = smu_axi_xbar_pkg::XbarAddrWidth;
+    m_axi_out_slave_cfg.data_width = smu_axi_xbar_pkg::XbarDataWidth;
+    m_axi_out_slave_cfg.id_width   = smu_axi_xbar_pkg::XbarOutputIdW;
+    m_axi_out_slave_cfg.mem_bytes  = cfg.axi_out_mem_bytes;
+    m_axi_out_slave_cfg.name_tag   = "smu_axi_out";
+    uvm_config_db#(ocah_axi_slave_config)::set(this, "m_axi_out_slave_agent*", "slave_cfg",
+                                               m_axi_out_slave_cfg);
+    m_axi_out_slave_agent = ocah_axi_slave_agent::type_id::create("m_axi_out_slave_agent", this);
   endfunction
 
   protected function void build_checking();

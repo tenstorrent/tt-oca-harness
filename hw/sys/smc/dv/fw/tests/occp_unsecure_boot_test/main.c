@@ -26,8 +26,6 @@ static void run_unsecure_boot_test(test_context_t *ctx) {
     int retval;
 
     // // Execute some random OCCP commands for system stability
-    // simputs("=== Random OCCP Commands (5 commands) ===\n");
-    // execute_random_commands(ctx, 5);
 
     simputs("=== Reading bootcode parameters ===\n");
 

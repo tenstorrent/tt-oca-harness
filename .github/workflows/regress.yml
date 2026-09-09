@@ -96,10 +96,10 @@ jobs:
             runner: ubuntu-latest
             timeout: 210
           - dut: sep
-            # SEP's `all` mixes cpu firmware tests; `no_cpu` is the
+            # SEP's `all` mixes cpu firmware tests; `cpu_stub` is the
             # toolchain-free subset and carries several half-hour KM/DRBG
             # simulations per seed.
-            items: no_cpu
+            items: cpu_stub
             reseed: 1
             coverage: false
             runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
@@ -203,7 +203,7 @@ jobs:
             runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
             timeout: 330
           - dut: sep
-            items: no_cpu
+            items: cpu_stub
             reseed: 1
             coverage: ${{ vars.DV_LARGE_RUNNER != '' }}
             runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
