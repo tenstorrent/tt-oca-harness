@@ -319,7 +319,7 @@ appears.
 |`sep_crypto_edn_round_robin_grant_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, entropy golden
-|`hw/sys/sep/doc/crypto.adoc`: `u_axis_edn_crypto_s3c_scan` (`drbg_axis_edn_adapter`) is a small round-robin native-protocol EDN fan-out to AES, KMAC, OTBN RND, and OTBN URND.
+|Holds AES and OTBN URND `edn_req` together, then grades that both clients are granted and that a prefix of post-adapter grants alternates. Same-cycle dual-request lockstep is not claimed. `hw/sys/sep/doc/crypto.adoc` names the adapter as a native-protocol EDN fan-out to AES, KMAC, OTBN RND, and OTBN URND.
 |`sep_drbg_gen_segmentation_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, entropy golden
@@ -1584,7 +1584,7 @@ starved it to a handful of writes fails.
 |CHK-SECRET-BLANK
 |The Class-1a secret disconnect, proven as a transition on one image rather than as a single observation. With the strap at 0 the staged `CLASS_KEY` is present in the sensed shadow; with it raised the same field reads 0 (`sep_efuse_pkg.sv` `SecretShadowRanges`). The staged value is asserted non-zero first, so a DUT that never sensed the secret at all cannot satisfy the blanked half.
 |CHK-SECURE-TM-PROG-BLOCK
-|`efuse_guard.sv:110` empties the whole fuse command request while `secure_tm` is asserted, so no OTP bit programs -- not only the secrets. The program interface then completes with `PROGRAM_DONE`+`PROGRAM_ERR` because `secure_tm_blocked_i` is set (`efuse_program_interface.sv` `ST_WAIT_RESP`); DONE is not starved. The strap-up attempt on LC_STATE bit 96 is required to fail that way. Unique proof the command never reached the OTP bank: fail-injection is consumed only on a real APB program, so the *same* bit must still retry on the first real program after the strap drops.
+|While `secure_tm` is asserted, a program of LC_STATE bit 96 must complete with `PROGRAM_DONE`+`PROGRAM_ERR` (`PROGRAM_CTRL` bits 25 and 26), not succeed and not starve DONE. That is the software-visible refusal. Unique “the command never reached the OTP bank” is not claimed: fail-injection credit re-arms on every `rst_ni`, and the walk must `resense()` to drop the latched strap, so a later retry cannot witness whether the blocked attempt consumed credit.
 |CHK-SIGINT
 |A signed-off force breaks the LC_STATE pair at the LCC decoder input. Observation is the DUT `lc_sigint_err_o` probe plus an AXI `FEAT_CTRL` readback of 0 (fail-closed, `SEC_DIS` observed 0). Release restores both.
 |CHK-SECURE-TM-OFF / CHK-SECURE-TM-ON
@@ -2738,7 +2738,7 @@ custody chain is explicit.
 |CHK-DUAL-REQ
 |At least one cycle both selected clients have `edn_req` high. Without this, CHK-GRANT-ALT is vacuous.
 |CHK-GRANT-ALT
-|After that dual request, consecutive post-adapter grants go to different clients — the round-robin decision, not interval-span overlap.
+|After that dual request, a prefix of consecutive post-adapter grants strictly alternates between the two clients. A same-client repeat is allowed only after that prefix has already granted both. A grant stream that is one client then the other, with no alternating prefix, fails. Same-cycle dual-`edn_req` grants are not scored: AES reseed pulses, so an ack-time dual sample can be AES-only. This is sharing plus an alternating prefix, not a lockstep proof of `prim_arbiter_ppc` under simultaneous request.
 |CHK-NO-STARVE
 |Each requesting client receives at least one `edn_ack` in the window.
 |CHK-ROUTING
@@ -3062,6 +3062,9 @@ green keyGen closes none of them. This leaf writes the seed window over the bus.
 [arabic]
 . Every seed walks the high-bit mirrors of the three live registers, plus all three unique-dead offsets, so a truncated decode cannot hide behind a seeded pick.
 . The block is a 64 KB crossbar target at `entropy_fifo.main` (`0x1095_0000`).
+  Depth 32, `LowWatermark` 8, and `StallThresh` 4096 are independent goldens
+  in the sequence (the `sep_entropy_fifo` defaults). They are not scraped
+  from RTL.
 . It fills from the native EDN endpoint after the shared entropy bring-up.
 
 *Checkers*:
@@ -3393,7 +3396,9 @@ single run covers every combination.
 |===
 |Checker |Contract
 |CHK-NONVAC
-|No spurious interrupt service before any trigger, over a quiet window with every selected source's interrupt enable already armed.
+|No spurious interrupt service before any trigger, over a quiet window with every selected source's interrupt enable already armed. The default vector-table handler increments `sep_dummy_int_count`; a non-zero count fails this checker, so an unregistered source cannot be swallowed silently.
+|CHK-DUMMY
+|After the source walk the same dummy-handler count is still 0, so an unregistered source did not fire during delivery either.
 |CHK-DELIVER
 |Each source's interrupt reaches the CPU and its handler runs. This also *carries the source-to-PIC-id map*, but by the claim id rather than by which handler ran: the firmware registers ONE shared service routine for every non-mailbox source, so the identity of the running handler distinguishes nothing among them. The routine reads the claim id out of `meihap` and increments the per-source delivery counter selected by that id, and the test waits on that specific counter. A wrong id therefore resolves to no selected source, or to a different one, and the wait expires either way.
 |CHK-ONEHOT
