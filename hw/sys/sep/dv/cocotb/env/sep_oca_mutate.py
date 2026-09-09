@@ -344,8 +344,23 @@ def oca_result(name: str) -> int:
 
 
 def boot_err(result_name: str) -> int:
-    """The ``MANIFEST_ERR=`` code the ROM prints for one validator result."""
+    """The ``MANIFEST_ERR=`` code the ROM prints for one validator result.
+
+    For a rejection the library decided. The ROM's own refusals are separate
+    codes, not compositions of a result -- see :func:`rom_boot_err`.
+    """
     return _c_define(_OCA_BOOT_H, "OCA_BOOT_ERR_BASE") | oca_result(result_name)
+
+
+def rom_boot_err(name: str) -> int:
+    """One of the ROM's own ``OCA_BOOT_ERR_*`` codes, by name.
+
+    These are whole constants in oca_boot.h rather than OCA_BOOT_ERR_BASE OR-ed
+    with a validator result: they cover what the ROM refuses on its own account
+    (no BL1 in the TOC, a placement outside the permitted regions, a storage
+    read failure) and occupy 0x000301xx, clear of the result range.
+    """
+    return _c_define(_OCA_BOOT_H, name)
 
 
 # ---------------------------------------------------------------------------
