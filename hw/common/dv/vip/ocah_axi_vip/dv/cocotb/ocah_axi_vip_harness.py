@@ -19,6 +19,11 @@ Three bundles exist in ``tb_top.sv``:
   instances (64-bit address and data, 16-bit ID and user). The geometry
   selftests bind the 32-bit stacks to them through ``OcahAxiConfig`` and
   judge the member bits above the configured geometry at the raw handles.
+* ``mt_axi`` / ``u_mt_axi_if`` — the struct-port bundle: ``OcahAxiMasterAgent``
+  drives the flat request nets that tb_top packs into a pulp request struct,
+  ``ocah_axi_struct_bridge`` places that struct on ``u_mt_axi_if``, and
+  ``OcahAxiSlaveAgent`` answers there with ``OcahAxiMonitor`` feeding the VIP
+  scoreboard, the topology a block tb_top uses for a struct boundary.
 
 The seed accessor and the salted scenario RNG live here: these selftests are
 plain cocotb tests without a base test class.
@@ -39,6 +44,7 @@ from ocah_axi_vip import (
     OcahAxiLiteMasterAgent,
     OcahAxiLiteSlaveAgent,
     OcahAxiMasterAgent,
+    OcahAxiMonitor,
     OcahAxiProtocol,
     OcahAxiSlaveAgent,
 )
@@ -371,3 +377,33 @@ async def drive_wire_read(
     raise AssertionError(
         f"no R handshake within {timeout_cycles} cycles for read arid=0x{arid:x} addr=0x{addr:08x}"
     )
+
+
+def build_bridge_stack(
+    dut: Any, *, timeout_ns: int = 100_000
+) -> tuple[OcahAxiMasterAgent, OcahAxiSlaveAgent, OcahAxiMonitor]:
+    """Master on the mt_axi struct-side nets; slave agent and monitor on u_mt_axi_if.
+
+    The struct geometry (32-bit address and data, 8-bit ID, 1-bit user) is the
+    one ``WIDE_AXI_GEOMETRY`` binds onto the default-geometry interface.
+    """
+    scope = dut.u_mt_axi_if
+    slave = OcahAxiSlaveAgent(
+        WIDE_AXI_GEOMETRY.bus(scope),
+        dut.clk,
+        dut.rst_n,
+        reset_active_level=False,
+        size=2**16,
+        name="harness_mt_axi_slave",
+    )
+    monitor = OcahAxiMonitor(WIDE_AXI_GEOMETRY.bus(scope), dut.clk, name="harness_mt_axi_monitor")
+    master = OcahAxiMasterAgent.from_prefix(
+        dut,
+        "mt_axi",
+        dut.clk,
+        dut.rst_n,
+        reset_active_level=False,
+        timeout_ns=timeout_ns,
+        name="harness_mt_axi_master",
+    )
+    return master, slave, monitor

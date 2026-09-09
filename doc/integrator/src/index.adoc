@@ -732,19 +732,20 @@ secondary scan chain and drives the internal host outputs low. The SEP debug
 STAP connects to the SEP JTAG debug port when `SEP=1`; when `SEP=0`, the SMU
 ties `sep_stap_tdo_to_dtp = 1'b0` to bypass the SEP STAP return path.
 
-Each STAP host interface is gated by lifecycle feature controls, synchronized to
-TCK inside the DTP. `feat_ctrl_i` is enable-polarity (1 = feature enabled), so a
-STAP host interface is enabled only when all of its required enables are asserted
-and is disabled when any one of them is deasserted.
+Each STAP host interface is gated by a field of `dbg_disable_i`, synchronized to
+TCK inside the DTP. Each field is active-high (1 = path disabled).
 
-[cols="<25%,<35%,<40%",options="header"]
+[cols="<25%,<75%",options="header"]
 |===
-|STAP |Enabled When |Host Gating Disable Condition
-|SMC debug STAP |`feat_ctrl_i.soc_debug \&\& feat_ctrl_i.ap_debug` |`!feat_ctrl_i.soc_debug \|\| !feat_ctrl_i.ap_debug`
-|SEP debug STAP |`feat_ctrl_i.sep_debug \&\& feat_ctrl_i.soc_debug \&\& feat_ctrl_i.ap_debug` |`!feat_ctrl_i.sep_debug \|\| !feat_ctrl_i.soc_debug \|\| !feat_ctrl_i.ap_debug`
+|STAP |Disable Field
+|I/O STAP |`dbg_disable_i.stap_io`
+|SMC debug STAP |`dbg_disable_i.stap_smc`
+|SEP debug STAP |`dbg_disable_i.stap_sep`
+|Extra STAPs |`dbg_disable_i.stap_extra`
+|External STAP return path |`dbg_disable_i.stap_host`
 |===
 
-The full set of lifecycle-gated debug paths, including the iJTAG chains and the
+The full set of debug-disable-gated paths, including the iJTAG chains and the
 JTAG2AXI bridges, is tabulated in the DTP JTAG integration section of the TRM.
 
 ==== DTP Port Interface

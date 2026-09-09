@@ -3,3 +3,6 @@
 
 `verilator_config
 public_flat_rw -module "smu_wrapper_uvm_top" -var "*"
+// The shared AXI VIP interface on the outbound SMN boundary: cocotb binds the
+// slave agent to its members.
+public_flat_rw -module "ocah_axi_if" -var "*"

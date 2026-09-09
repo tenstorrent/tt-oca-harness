@@ -62,7 +62,7 @@ Tokens are the scoreboard `evidence=` / `expect_*` names the test already
 emits; the map must not invent a checkbox the body cannot prove.
 
 `smu_ext_boot_seq_gate_test` (F1, SMU_006) and `smu_smc_mailbox_int_test`
-(F1) are enrolled in `smoke` / `phase1` / `smc` but not in `sep0_all`.
+(F1) are enrolled in `smoke` / `smc` but not in `sep0_all`.
 They stay on the candidate list as PR-only. #493 decides whether the boot
 gate joins the nightly; `smu_smc_mailbox_int_test` stays OUT of
 `sep0_all` (in `smc` only) per #481.
@@ -70,61 +70,61 @@ gate joins the nightly; `smu_smc_mailbox_int_test` stays OUT of
 [cols="3,1,2,3",options="header",]
 |===
 |Test |Feature |Groups |Primary evidence token
-|`smu_smc_smoke_test` |F1 |smoke, phase1, sep0_all |`CHK-SMC-FAB-DUAL-NET-S2`
-|`smu_no_sep_configuration_test` |F1 |smoke, phase1, sep0_all |`CHK-SEP0-LC`
-|`smu_ext_boot_seq_gate_test` |F1 |smoke, phase1 (not sep0_all) |`CHK-BOOT-SEQ-GATE`
-|`smu_smc_reset_ctrl_test` |F1 |phase1, sep0_all |`RST_PRIMARY_SMC_1`
-|`smu_smc_mailbox_sanity_test` |F1 |phase1, sep0_all |`SMC_MBX_CSR_OK`
+|`smu_smc_smoke_test` |F1 |smoke, smc, sep0_all, sep0_p4_all |`CHK-SMC-FAB-DUAL-NET-S2`
+|`smu_no_sep_configuration_test` |F1 |smoke, smc, sep0_all, sep0_p4_all |`CHK-SEP0-LC`
+|`smu_ext_boot_seq_gate_test` |F1 |smoke, smc (not sep0_all) |`CHK-BOOT-SEQ-GATE`
+|`smu_smc_reset_ctrl_test` |F1 |smc, sep0_all, sep0_p4_all |`RST_PRIMARY_SMC_1`
+|`smu_smc_mailbox_sanity_test` |F1 |smc, sep0_all, sep0_p4_all |`SMC_MBX_CSR_OK`
 |`smu_smc_mailbox_int_test` |F1 |smc (not sep0_all) |`CHK-SMC-MBX-IRQ-EXT-S2`
-|`smu_smc_wdt_sanity_test` |F1 |phase1, sep0_all |`WDT_UNLOCK_OK`
-|`smu_smc_wdt_timeout_irq_test` |F1 |phase1, sep0_all |`WDT_WDOGIP0`
+|`smu_smc_wdt_sanity_test` |F1 |smc, sep0_all, sep0_p4_all |`WDT_UNLOCK_OK`
+|`smu_smc_wdt_timeout_irq_test` |F1 |smc, sep0_all, sep0_p4_all |`WDT_WDOGIP0`
 |`smu_smc_gpio_strap_sanity_test` |F1 |not in live groups (#1478) |`SMC_STRAP_OK`
-|`smu_system_timer_octs_test` |F1 |phase1, sep0_all |`CHK-OCTS-COUNT-MONOTONIC`
-|`smu_smc_security_demote_pm_test` |F7 |phase1, sep0_all |`DEMOTE_TIEOFF_OBS`
-|`smu_i3c_mem_port_connectivity_test` |F4 |phase1, sep0_all |`CHK-SUB-AXIL-LOCAL-S1`
-|`smu_dtp_jtag_smoke_test` |F3 |smoke, phase1, sep0_all |`CHK-DTP-JTAG-PTAP-S1`
-|`smu_dft_dtp_boot_stall_test` |F3 |phase1, sep0_all |`STALL_COLD_STICKY`
-|`smu_dft_gpio_boot_stall_test` |F3 |phase1, sep0_all |`STALL_COLD_STICKY`
-|`smu_clock_stop_coordination_test` |F6 |phase1, sep0_all |`CHK-DTP-BOOT-STALL-S1`
-|`smu_jtag_reset_override_test` |F3 |phase1, sep0_all |`IC_RESET_DEFAULT`
-|`smu_xtrig_ctm_remap_test` |F6 |phase1, sep0_all |`XT_CTM_REMAP`
-|`smu_sep_smoke_test` |F1 observe / F6 |phase1, sep0_all |`CHK-SMC-RST-PRIMARY-EXPORT-S1` (SEP=0 bare; not F2 credit)
-|`smu_axi_id_width_conversion_test` |F4 |phase1, sep0_all |`AXI_ID_WIDTH_OK`
-|`smu_axi_crossbar_error_handling_test` |F4 |phase1, sep0_all |`CHK-SMC-PWRGOOD-DTP-POR-S2`
-|`smu_axi_external_port_connectivity_test` |F4 |phase1, sep0_all |`CHK-SMU-PORT-SMN-AXI-S1`
-|`smu_axi_xbar_structure_test` |F4 |phase1, sep0_all |`CHK-XBAR-ABSENT-NO-SEP`
-|`smu_axi_atomic_operation_test` |F4 |phase1, sep0_all |`AXI_NON_ATOP_OK`
-|`smu_axi_filter_allow_ns_test` |F4 |phase1, sep0_all |`CHK-SMU-ALLOW-NS-S1`
-|`smu_sys_in_filter_program_jtag_test` |F4 |phase1, sep0_all |`AXI_FILTER_OKAY`
-|`smu_sys_in_filter_window_edge_test` |F4 |phase1, sep0_all |`AXI_FILTER_OKAY`
-|`smu_sys_in_filter_reprogram_shrink_test` |F4 |phase1, sep0_all |`AXI_FILTER_OKAY`
-|`smu_axi_prot_encoding_decode_test` |F4 |phase1, sep0_all |`CHK-SMU-PROT-S9-MATRIX`
-|`smu_axi_filter_in_instance_matrix_test` |F4 |phase1, sep0_all |`CHK-FILTER-IN-INSTANCES-S1`
-|`smu_axi_filter_out_instance_matrix_test` |F4 |phase1, sep0_all |`CHK-FILTER-OUT-INSTANCES-S1`
-|`smu_fabric_reg_bar_wr_test` |F4 |phase1, sep0_all |`CHK-SUB-AXIL-LOCAL-S2`
-|`smu_axi_alias_remap_manager_scope_test` |F4 |phase1, sep0_all |`CHK-ALIAS-REMAP-SCOPE-S3`
-|`smu_dtp_io_stap_smoke_test` |F3 |phase1, sep0_all |`CHK-DTP-IO-STAP-SCAN`
-|`smu_dtp_smc_stap_smoke_test` |F3 |phase1, sep0_all |`CHK-DTP-SMC-STAP-IDCODE`
-|`smu_dtp_bsr_ijtag_scan_test` |F3 |phase1, sep0_all |`CHK-DTP-BSR-EXTEST-SELECT`
-|`smu_dtp_otp_smc_map_rw_test` |F3 |phase1, sep0_all |`CHK-OTP-SMC-MAP-RW`
-|`smu_dtp_otp_smc_series_error_test` |F3 |phase1, sep0_all |`CHK-OTP-SMC-DECODE-SLVERR`
-|`smu_smc_dtp_jtag2axi_smoke_test` |F3 |phase1, sep0_all |`CHK-JTAG2AXI-SMOKE-SCRATCH`
-|`smu_dtp_jtag2axi_smc_error_path_test` |F3 |sep0_all |`J2A_DECERR_POISON`
-|`smu_dtp_jtag_smc_cpu_register_test` |F3 |sep0_all |`JTAG2AXI_RW_OK`
-|`smu_dtp_jtag2axi_smc_rw_matrix_test` |F3 |sep0_all |`J2A_RW_MATRIX_OK`
-|`smu_dtp_jtag2axi_wstrb_partial_sticky_test` |F3 |sep0_all |`J2A_WSTRB_NEIGHBOR`
-|`smu_dtp_jtag2axi_back_to_back_error_ok_test` |F3 |sep0_all |`J2A_B2B_OK`
-|`smu_dtp_jtag2axi_abort_mid_op_test` |F3 |sep0_all |`J2A_ABORT_RECOVER`
-|`smu_jtag2axi_vs_smn_same_csr_race_test` |F3/F4 |sep0_all |`RACE_J2A_SMN`
-|`smu_otp_vs_fabric_map_race_test` |F3 |sep0_all |`RACE_OTP_FABRIC`
-|`smu_dtp_otp_smc_complete_rw_test` |F3 |sep0_all |`OTP_MAP_RW_OK`
-|`smu_dtp_ptap_otp_instr_scan_test` |F3 |sep0_all |`PTAP_SEP_OTP_CAPS_OK`
-|`smu_jtag_chain_enhanced_test` |F3 |sep0_all |`JTAG_CHAIN_ENHANCED_OK`
-|`smu_boot_stall_jtag_cold_reset_matrix_test` |F3 |sep0_all |`STALL_COLD_STICKY`
-|`smu_ic_reset_smc_multi_domain_test` |F3 |sep0_all |`IC_RESET_DOMAIN_EXCL`
-|`smu_ic_reset_dual_domain_illegal_test` |F3 |sep0_all |`IC_RESET_DUAL_PACK`
-|`smu_boot_stall_vs_ic_reset_priority_test` |F3 |sep0_all |`STALL_VS_IC_RESET`
-|`smu_xtrig_ctm_illegal_phase_test` |F6 |sep0_all |`XT_ILLEGAL_PHASE`
+|`smu_system_timer_octs_test` |F1 |smc, sep0_all, sep0_p4_all |`CHK-OCTS-COUNT-MONOTONIC`
+|`smu_smc_security_demote_pm_test` |F7 |smc, sep0_all, sep0_p4_all |`DEMOTE_TIEOFF_OBS`
+|`smu_i3c_mem_port_connectivity_test` |F4 |smc, sep0_all, sep0_p4_all |`CHK-SUB-AXIL-LOCAL-S1`
+|`smu_dtp_jtag_smoke_test` |F3 |smoke, dtp, sep0_all, sep0_p4_all |`CHK-DTP-JTAG-PTAP-S1`
+|`smu_dft_dtp_boot_stall_test` |F3 |dtp, sep0_all, sep0_p4_all |`STALL_COLD_STICKY`
+|`smu_dft_gpio_boot_stall_test` |F3 |dtp, sep0_all, sep0_p4_all |`STALL_COLD_STICKY`
+|`smu_clock_stop_coordination_test` |F6 |dtp, sep0_all, sep0_p4_all |`CHK-DTP-BOOT-STALL-S1`
+|`smu_jtag_reset_override_test` |F3 |dtp, sep0_all, sep0_p4_all |`IC_RESET_DEFAULT`
+|`smu_xtrig_ctm_remap_test` |F6 |dtp, sep0_all, sep0_p4_all |`XT_CTM_REMAP`
+|`smu_sep_smoke_test` |F1 observe / F6 |dtp, sep0_all, sep0_p4_all |`CHK-SMC-RST-PRIMARY-EXPORT-S1` (SEP=0 bare; not F2 credit)
+|`smu_axi_id_width_conversion_test` |F4 |fabric, sep0_all, sep0_p4_all |`AXI_ID_WIDTH_OK`
+|`smu_axi_crossbar_error_handling_test` |F4 |fabric, sep0_all, sep0_p4_all |`CHK-SMC-PWRGOOD-DTP-POR-S2`
+|`smu_axi_external_port_connectivity_test` |F4 |fabric, sep0_all, sep0_p4_all |`CHK-SMU-PORT-SMN-AXI-S1`
+|`smu_axi_xbar_structure_test` |F4 |fabric, sep0_all, sep0_p4_all |`CHK-XBAR-ABSENT-NO-SEP`
+|`smu_axi_atomic_operation_test` |F4 |fabric, sep0_all, sep0_p4_all |`AXI_NON_ATOP_OK`
+|`smu_axi_filter_allow_ns_test` |F4 |fabric, sep0_all, sep0_p4_all |`CHK-SMU-ALLOW-NS-S1`
+|`smu_sys_in_filter_program_jtag_test` |F4 |fabric, sep0_all, sep0_p4_all |`AXI_FILTER_OKAY`
+|`smu_sys_in_filter_window_edge_test` |F4 |fabric, sep0_all, sep0_p4_all |`AXI_FILTER_OKAY`
+|`smu_sys_in_filter_reprogram_shrink_test` |F4 |fabric, sep0_all, sep0_p4_all |`AXI_FILTER_OKAY`
+|`smu_axi_prot_encoding_decode_test` |F4 |fabric, sep0_all, sep0_p4_all |`CHK-SMU-PROT-S9-MATRIX`
+|`smu_axi_filter_in_instance_matrix_test` |F4 |fabric, sep0_all, sep0_p4_all |`CHK-FILTER-IN-INSTANCES-S1`
+|`smu_axi_filter_out_instance_matrix_test` |F4 |fabric, sep0_all, sep0_p4_all |`CHK-FILTER-OUT-INSTANCES-S1`
+|`smu_fabric_reg_bar_wr_test` |F4 |fabric, sep0_all, sep0_p4_all |`CHK-SUB-AXIL-LOCAL-S2`
+|`smu_axi_alias_remap_manager_scope_test` |F4 |fabric, sep0_all, sep0_p4_all |`CHK-ALIAS-REMAP-SCOPE-S3`
+|`smu_dtp_io_stap_smoke_test` |F3 |dtp, sep0_all, sep0_p4_all |`CHK-DTP-IO-STAP-SCAN`
+|`smu_dtp_smc_stap_smoke_test` |F3 |dtp, sep0_all, sep0_p4_all |`CHK-DTP-SMC-STAP-IDCODE`
+|`smu_dtp_bsr_ijtag_scan_test` |F3 |dtp, sep0_all, sep0_p4_all |`CHK-DTP-BSR-EXTEST-SELECT`
+|`smu_dtp_otp_smc_map_rw_test` |F3 |dtp, sep0_all, sep0_p4_all |`CHK-OTP-SMC-MAP-RW`
+|`smu_dtp_otp_smc_series_error_test` |F3 |dtp, sep0_all, sep0_p4_all |`CHK-OTP-SMC-DECODE-SLVERR`
+|`smu_smc_dtp_jtag2axi_smoke_test` |F3 |dtp, sep0_all, sep0_p4_all |`CHK-JTAG2AXI-SMOKE-SCRATCH`
+|`smu_dtp_jtag2axi_smc_error_path_test` |F3 |dtp, sep0_all, sep0_p4_all |`J2A_DECERR_POISON`
+|`smu_dtp_jtag_smc_cpu_register_test` |F3 |dtp, sep0_all, sep0_p4_all |`JTAG2AXI_RW_OK`
+|`smu_dtp_jtag2axi_smc_rw_matrix_test` |F3 |dtp, sep0_all, sep0_p4_all |`J2A_RW_MATRIX_OK`
+|`smu_dtp_jtag2axi_wstrb_partial_sticky_test` |F3 |dtp, sep0_all, sep0_p4_all |`J2A_WSTRB_NEIGHBOR`
+|`smu_dtp_jtag2axi_back_to_back_error_ok_test` |F3 |dtp, sep0_all, sep0_p4_all |`J2A_B2B_OK`
+|`smu_dtp_jtag2axi_abort_mid_op_test` |F3 |dtp, sep0_all, sep0_p4_all |`J2A_ABORT_RECOVER`
+|`smu_jtag2axi_vs_smn_same_csr_race_test` |F3/F4 |dtp, sep0_all, sep0_p4_all |`RACE_J2A_SMN`
+|`smu_otp_vs_fabric_map_race_test` |F3 |dtp, sep0_all, sep0_p4_all |`RACE_OTP_FABRIC`
+|`smu_dtp_otp_smc_complete_rw_test` |F3 |dtp, sep0_all, sep0_p4_all |`OTP_MAP_RW_OK`
+|`smu_dtp_ptap_otp_instr_scan_test` |F3 |dtp, sep0_all, sep0_p4_all |`PTAP_SEP_OTP_CAPS_OK`
+|`smu_jtag_chain_enhanced_test` |F3 |dtp, sep0_all, sep0_p4_all |`JTAG_CHAIN_ENHANCED_OK`
+|`smu_boot_stall_jtag_cold_reset_matrix_test` |F3 |dtp, sep0_all, sep0_p4_all |`STALL_COLD_STICKY`
+|`smu_ic_reset_smc_multi_domain_test` |F3 |dtp, sep0_all, sep0_p4_all |`IC_RESET_DOMAIN_EXCL`
+|`smu_ic_reset_dual_domain_illegal_test` |F3 |dtp, sep0_all, sep0_p4_all |`IC_RESET_DUAL_PACK`
+|`smu_boot_stall_vs_ic_reset_priority_test` |F3 |dtp, sep0_all, sep0_p4_all |`STALL_VS_IC_RESET`
+|`smu_xtrig_ctm_illegal_phase_test` |F6 |dtp, sep0_all, sep0_p4_all |`XT_ILLEGAL_PHASE`
 |===
 
 `sep0_p4_all` (54) adds `smu_ic_reset_ss_domain_matrix_test` and

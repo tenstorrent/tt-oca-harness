@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 # PROD_END lifecycle, everything else at zero.
 #
 # The first preload in this tree to select PROD_END, and it exists for one ROM

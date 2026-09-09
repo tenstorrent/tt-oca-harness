@@ -1,0 +1,413 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[sep-dv-functional-coverage]]
+== SEP OCAH Open-Source Functional Coverage Plan
+
+=== Overview
+
+This plan covers **basic legal operating modes** of every SEP IP the OSS suite
+already walks. It is the functional-coverage contract for the PyUVM/Verilator
+flow.
+
+Verilator does not compile SystemVerilog `covergroup`. This revision specifies
+the Phase 1 bins below. It does not instrument them: `hw/sys/sep/dv/cov/sv/`
+is empty. Feature evidence is the VPLAN checkers and iconic-feature scorecard.
+When cover-property modules are added they use `OCAH_FCOV_COVER`
+(`hw/common/assert/ocah_fcov_macros.svh`) and land in that directory.
+
+[cols=",",options="header"]
+|===
+|Field |Value
+|DUT |`sep_wrapper`
+|Reference specification |`hw/sys/sep/doc/`
+|Reference VPLAN |`SEP_VPLAN.adoc`
+|Open-source framework |PyUVM on cocotb
+|Open-source simulator |Verilator
+|===
+
+=== Coverage Goals
+
+[cols=",,",options="header"]
+|===
+|Metric |Contract |Collection path
+|Phase 1 functional coverage |Every Phase 1 bin below |Specified only. `cov/sv/` is empty; a `--cov` run is not bin evidence
+|Phase 2 functional coverage |Named future-work set at the end of this plan |Not collected this revision
+|Line / expression coverage |Collected; not a functional-coverage contract |`--coverage-line`, `--coverage-expr`
+|Condition / FSM / toggle / assertion |Commercial signoff |VCS / Xcelium
+|===
+
+Do not mix line coverage with the Phase 1 bins: the line population on this
+DUT would mask them.
+
+=== Two-Phase Scope
+
+[cols="1,3",options="header"]
+|===
+|Phase |Scope
+|**Phase 1 — this revision** |One basic-mode covergroup per SEP IP. Bins are the
+legal cells a named `all`-group test already walks.
+|**Phase 2 — future work** |Dense enumerations, crosses, window edges, error and
+fault paths, illegal encodings. Named below. Not collected this revision.
+|===
+
+=== Coverage Summary
+
+[cols=",",options="header"]
+|===
+|IP / path |Phase 1 covergroup
+|AXI fabric decode |`sep_axi_decode_cg`
+|SRAM |`sep_sram_access_cg`
+|Boot ROM |`sep_boot_rom_cg`
+|CPU boot |`sep_cpu_boot_cg`
+|AES |`sep_aes_mode_cg`
+|HMAC |`sep_hmac_mode_cg`
+|KMAC |`sep_kmac_mode_cg`
+|OTBN |`sep_otbn_execute_cg`
+|Adams Bridge |`sep_abr_keygen_cg`
+|ESRC / DRBG / EDN |`sep_esrc_edn_flow_cg`
+|Key Manager |`sep_km_command_sideload_cg`
+|Secure DMA |`sep_dma_copy_hash_cg`
+|SPI host |`sep_spi_flash_cg`
+|Inbound filter |`sep_inbound_filter_allow_cg`
+|eFuse |`sep_efuse_sense_cg`
+|Lifecycle |`sep_lc_state_cg`
+|Mailbox / PIC |`sep_mailbox_pic_cg`
+|WDT |`sep_wdt_bark_cg`
+|Warm / cold scratch |`sep_scratch_reset_cg`
+|===
+
+Owning tests are in link:SEP_VPLAN.adoc[SEP_VPLAN].
+
+Nineteen Phase 1 covergroups. None is compiled in this tree. Phase 2 names
+are listed at the end of this document.
+
+=== Collection
+
+`OCAH_COVER` compiles out under Verilator. Use `OCAH_FCOV_COVER` only, when a
+module exists.
+
+Attach to a DUT or TB port, or `bind` into the IP. Do not add a Python path to
+DUT-internal nets: `sep_public_scope.vlt` keeps public marks off the fabric.
+
+`cov/sv/` has no modules this revision. Do not treat a `--cov` run as evidence
+that a Phase 1 bin fired.
+
+=== Phase 1 coverage definitions
+
+==== `sep_axi_decode_cg`
+
+*Description*: The LSU splice decodes a live CSR and returns OKAY.
+
+[cols=",",options="header"]
+|===
+|Coverpoint |Bins
+|Reset-value decode |`SEP_LOCAL_BASE_ADDR` reads its specified non-zero reset value
+|Write / readback |A masked write to a live CSR reads back the written bits
+|Response |OKAY
+|===
+
+==== `sep_sram_access_cg`
+
+*Description*: The 64-bit SRAM port accepts a write and returns the same data.
+
+[cols=",",options="header"]
+|===
+|Coverpoint |Bins
+|Write then read |One aligned 64-bit word at the SRAM base
+|Response |OKAY
+|===
+
+==== `sep_boot_rom_cg`
+
+*Description*: The CPU fetches from the Boot ROM, and an LSU read matches the
+loaded image.
+
+[cols=",",options="header"]
+|===
+|Coverpoint |Bins
+|IFU fetch |Retirement from the Boot ROM aperture
+|LSU read |A word read matches the loaded image
+|===
+
+==== `sep_cpu_boot_cg`
+
+*Description*: VeeR EL2 boots firmware and reports PASS.
+
+[cols=",",options="header"]
+|===
+|Coverpoint |Bins
+|Console banner |Expected banner line
+|Firmware PASS |PASS magic
+|PC advance |A non-zero number of distinct retired PCs
+|===
+
+==== `sep_aes_mode_cg`
+
+*Description*: AES legal mode × key-size encrypt. The suite walks nine cells.
+
+[cols=",",options="header"]
+|===
+|Coverpoint |Bins
+|Mode × key size |`{ECB, CBC, CTR}` × `{128, 192, 256}` — 9 cells
+|Encrypt complete |Each cell reaches `OUTPUT_VALID` and a ciphertext
+|===
+
+CTR DECRYPT is Phase 2 (VPLAN Phase 3). GCM phases are Phase 2.
+
+==== `sep_hmac_mode_cg`
+
+*Description*: HMAC SHA-2 variants the suite walks.
+
+[cols=",",options="header"]
+|===
+|Coverpoint |Bins
+|Digest size |SHA2-256, SHA2-384, SHA2-512
+|Keyed hash |Each legal `(digest, key length)` pair the variant test walks
+|Done |`hmac_done` after `hash_process`
+|===
+
+==== `sep_kmac_mode_cg`
+
+*Description*: KMAC-family modes the suite walks.
+
+[cols=",",options="header"]
+|===
+|Coverpoint |Bins
+|SHA3 |224, 256, 384, 512
+|SHAKE |128, 256
+|cSHAKE |128, 256
+|KMAC |128 and 256, with the key lengths the variant test walks
+|Done |Operation complete
+|===
+
+==== `sep_otbn_execute_cg`
+
+*Description*: OTBN runs a compute program to IDLE.
+
+[cols=",",options="header"]
+|===
+|Coverpoint |Bins
+|Command |`EXECUTE`
+|Done |`STATUS` returns to IDLE with `ERR_BITS == 0`
+|===
+
+Secure wipe commands and `LOCKED` are Phase 2.
+
+==== `sep_abr_keygen_cg`
+
+*Description*: Adams Bridge ML-DSA keygen completes.
+
+[cols=",",options="header"]
+|===
+|Coverpoint |Bins
+|Operation |ML-DSA keygen
+|Done |Notification / completion status the KAT checks
+|===
+
+==== `sep_esrc_edn_flow_cg`
+
+*Description*: Entropy leaves ESRC, passes DRBG, and a sink consumes it.
+
+[cols=",",options="header"]
+|===
+|Coverpoint |Bins
+|ESRC seed ready |FIFO / seed-ready observed after bring-up
+|DRBG generate |At least one generate beat
+|EDN consume |At least one sink handshake (`tvalid && tready`)
+|===
+
+Health-test watermarks, FIPS lock, and alerts are Phase 2.
+
+==== `sep_km_command_sideload_cg`
+
+*Description*: The mailbox produces a key and a consumer uses it.
+
+[cols=",",options="header"]
+|===
+|Coverpoint |Bins
+|Generate |`CMD_KEY_GENERATE` success, non-null handle
+|Transfer |`CMD_KEY_TRANSFER` to AES
+|Consume |AES / HMAC / KMAC / OTBN each consume a sideloaded key once
+|===
+
+The full 15-command set, vault slot walk, and SRAM-exec path are Phase 2.
+
+==== `sep_dma_copy_hash_cg`
+
+*Description*: DMA copies memory and computes a hash.
+
+[cols=",",options="header"]
+|===
+|Coverpoint |Bins
+|Memory copy |DONE, destination matches source
+|Hash |DONE, digest matches the firmware golden
+|===
+
+Opcode / range errors are Phase 2.
+
+==== `sep_spi_flash_cg`
+
+*Description*: The OpenTitan SPI host talks to a flash model.
+
+[cols=",",options="header"]
+|===
+|Coverpoint |Bins
+|JEDEC |READ ID completes
+|DMA RX |SRAM holds the preloaded flash pattern
+|DMA TX |Transfer DONE, no SPI error
+|===
+
+==== `sep_inbound_filter_allow_cg`
+
+*Description*: One legal inbound transaction is allowed.
+
+[cols=",",options="header"]
+|===
+|Coverpoint |Bins
+|Allow |An `m_axi_*` access in an allowed window returns OKAY
+|===
+
+The full rule matrix, deny path, and 48-entry winner walk are Phase 2.
+
+==== `sep_efuse_sense_cg`
+
+*Description*: Real fuse sense fills the shadow.
+
+[cols=",",options="header"]
+|===
+|Coverpoint |Bins
+|Sense done |`sep_fuse_sense_done_o`
+|Shadow |Sensed words match the staged image
+|===
+
+Program × lock and set-only walks are Phase 2.
+
+==== `sep_lc_state_cg`
+
+*Description*: One legal lifecycle state decodes to `FEAT_CTRL`.
+
+[cols=",",options="header"]
+|===
+|Coverpoint |Bins
+|LC_STATE |A named legal encoding is sensed
+|FEAT_CTRL |Decode matches the independent golden for that state
+|===
+
+The six-leaf W1S matrix, demote, and token faults are Phase 2.
+
+==== `sep_mailbox_pic_cg`
+
+*Description*: One mailbox interrupt reaches the PIC and the CPU.
+
+[cols=",",options="header"]
+|===
+|Coverpoint |Bins
+|Raise |Mailbox source pending
+|Claim |EL2 claims the source
+|Clear |W1C / deassert, pending reads 0
+|===
+
+The 42-source exclusivity map is Phase 2.
+
+==== `sep_wdt_bark_cg`
+
+*Description*: Watchdog bark reaches NMI.
+
+[cols=",",options="header"]
+|===
+|Coverpoint |Bins
+|Bark |Bark threshold expires
+|NMI |Firmware takes the NMI path
+|===
+
+Bite, wakeup cause, and REGWEN lock are Phase 2.
+
+==== `sep_scratch_reset_cg`
+
+*Description*: Warm scratch clears; cold scratch retains.
+
+[cols=",",options="header"]
+|===
+|Coverpoint |Bins
+|Warm |Warm bank reads 0 after warm reset
+|Cold |Cold bank retains the written value across warm reset
+|===
+
+=== Phase 2 — future work
+
+The groups below are the named Phase 2 set. They are not instrumented and
+are not part of this revision's collection contract.
+
+==== Dense legal modes
+
+These groups enumerate legal cells beyond the basic mode of each IP. The
+`all` suite does not walk them as the Phase 1 contract.
+
+`sep_crypto_bus_access_cg`, `sep_crypto_reset_cg`, `sep_aes_cfg_cg` (GCM /
+reseed / CTR DECRYPT), `sep_aes_op_status_cg`, `sep_kmac_cfg_cmd_cg`,
+`sep_kmac_entropy_cg`, `sep_esrc_noise_gen_cg`, `sep_esrc_conditioning_cg`,
+`sep_esrc_startup_health_cg`, `sep_crypto_intr_cg`, `sep_csrng_cmd_cg`,
+`sep_edn_mode_cg`, `sep_entropy_delivery_cg`, `sep_fabric_dedicated_port_cg`,
+`sep_fabric_inbound_aperture_cg`, `sep_fabric_outbound_route_cg`,
+`sep_remap_alias_cg`, `sep_remap_output_offset_cg`, `sep_filter_entry_cfg_cg`,
+`sep_filter_match_cg`, `sep_filter_range_granule_cg`,
+`sep_filter_default_policy_cg`, `sep_pic_reg_map_cg`, `sep_pic_source_map_cg`,
+`sep_pic_enable_priority_cg`, `sep_pic_gateway_cg`, `sep_pic_delivery_cg`,
+`sep_mbox_transfer_cg`, `sep_cpu_nonpic_irq_cg`, `sep_nmi_vector_cfg_cg`,
+`sep_spi_command_segment_cg`, `sep_spi_pad_interface_cg`,
+`sep_spi_fifo_status_cg`, `sep_spi_interrupt_cg`, `sep_periph_reset_state_cg`,
+`sep_spi_dma_use_case_cg`, `sep_dma_transfer_cg`, `sep_dma_endpoint_cg`,
+`sep_dma_completion_cg`, `sep_dma_range_config_cg`, `sep_clk_domain_cg`,
+`sep_reset_source_cg`, `sep_boot_milestone_cg`, `sep_strap_config_cg`,
+`sep_static_tieoff_cg`, `sep_mem_aperture_cg`, `sep_reset_sw_ctrl_cg`,
+`sep_wdt_config_bark_cg`, `sep_wdt_wakeup_timer_cg`, `sep_cpu_ctrl_reg_cg`,
+`sep_debug_trace_cg`, `sep_efuse_map_geometry_cg`, `sep_efuse_field_value_cg`,
+`sep_lc_feat_ctrl_profile_cg`, `sep_lc_feature_bit_semantics_cg`,
+`sep_dtp_gating_ladder_cg`, `sep_feat_ctrl_export_cg`, `sep_lc_demotion_cg`,
+`sep_token_channel_cg`, `sep_sec_dis_activation_cg`, `sep_km_reset_domain_cg`,
+`sep_km_memory_boot_cg`, `sep_km_mailbox_transport_cg`, `sep_km_command_cg`
+(full 15-ID set), `sep_km_kpv_slot_cg`, `sep_km_key_registry_cg`,
+`sep_km_abr_shared_key_cg`, `sep_km_drbg_sampler_cg`, `sep_km_kmcsr_status_cg`,
+`sep_km_otp_readout_cg`, `sep_km_handover_cg`.
+
+==== Error / fault groups
+
+`sep_crypto_bus_error_cg`, `sep_crypto_invalid_encoding_cg`,
+`sep_otbn_err_lock_cg`, `sep_aes_fault_cg`, `sep_crypto_reg_lock_cg`,
+`sep_crypto_alert_cg`, `sep_drbg_err_inject_cg`, `sep_esrc_fault_alert_cg`,
+`sep_esrc_debug_exposure_cg`, `sep_fabric_periph_err_status_cg`,
+`sep_pic_no_delivery_cg`, `sep_pic_fabric_isolation_cg`,
+`sep_fault_source_report_cg`, `sep_fault_source_ack_cg`,
+`sep_mbox_qualification_cg`, `sep_cpu_ctrl_timeout_inert_cg`,
+`sep_spi_illegal_access_cg`, `sep_spi_error_status_cg`,
+`sep_dma_config_fault_cg`, `sep_dma_error_terminal_cg`,
+`sep_dma_containment_cg`, `sep_wdt_escalation_fault_cg`,
+`sep_reset_scope_retention_cg`, `sep_aperture_reserved_access_cg`,
+`sep_documented_absence_cg`, `sep_lc_sigint_failclosed_cg`,
+`sep_lc_illegal_transition_cg`, `sep_efuse_lock_policy_cg`,
+`sep_lc_demote_lock_cg`, `sep_token_fault_cg`, `sep_sec_dis_robustness_cg`,
+`sep_km_integrity_fault_cg`, `sep_km_mailbox_fault_cg`,
+`sep_km_frame_validation_cg`, `sep_km_cmd_reject_cg`,
+`sep_km_kpv_locked_access_cg`, `sep_km_vault_wipe_cg`,
+`sep_km_exec_protection_cg`, `sep_km_drbg_fault_cg`,
+`sep_km_fault_report_cg`, `sep_km_secret_nonexposure_cg`.
+
+=== Exclusions
+
+[cols="1,2",options="header"]
+|===
+|Item |Reason
+|SV covergroups under Verilator |Unsupported. This revision also has no cover-property modules
+|Toggle coverage under Verilator |Database size; commercial flow only
+|`ocah_axi_cov_if` |Commercial-flow asset; not on the Verilator filelist
+|Python probes of DUT internals |No route; public scope stays on `sep_uvm_top`
+|`rom_fw` class |Other owner; not in `all`
+|===
+
+=== Maintenance
+
+Add a Phase 1 bin only when an `all`-group test already walks that cell, or
+when a new test is added in the same change. A cell the suite does not walk
+belongs in the Phase 2 named set. Keep cover-property instance names stable
+when a module is added: the coverage policy matches points by hierarchy name.

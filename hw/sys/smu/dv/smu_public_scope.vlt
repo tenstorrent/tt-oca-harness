@@ -11,6 +11,9 @@
 // (needs_real_lcc / needs_real_stimulus). Keep public_flat_rw for observe XMRs.
 
 public_flat_rw -module "smu_uvm_top" -var "*"
+// The shared AXI VIP interface on the outbound SMN boundary: cocotb binds the
+// slave agent to its members.
+public_flat_rw -module "ocah_axi_if" -var "*"
 public_flat_rw -module "smu" -var "*"
 public_flat_rw -module "axi_iw_converter" -var "*"
 public_flat_rw -module "dtp" -var "*"
