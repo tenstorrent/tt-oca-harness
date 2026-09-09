@@ -82,8 +82,7 @@ apt clear the VP's floors, so `virtual_platform/Makefile` resolves both to
 That set covers all three executables: `smc-vp` and `smu-vp` need **no extra
 packages** beyond it. Their one additional dependency, the Whisper ISS, is
 source that `virtual_platform/Makefile` clones and builds into `local-ctr/`
-like SystemC and CCI — it is deliberately **not** baked into the image, which
-would re-open the size tradeoff below for everyone. `smc-vp`/`smu-vp` also
+like SystemC and CCI, rather than something baked into the image. They also
 reuse this image's `riscv64-unknown-elf-` for their firmware suites, so there
 is no second cross toolchain either.
 
@@ -97,15 +96,14 @@ make -C virtual_platform smu-test VP_CONTAINER=1   # the model's SMU suite
 ./scripts/docker-run.sh vp-shell                   # interactive, repo bound 1:1
 ```
 
-`vp-build` and `vp-run` are aliases for `build` and `run-here` — one image now
-serves both toolchains. They are kept because a container-built VP links
-the container's glibc and **must also run in the container**, which is why the
-VP path uses the 1:1 host-path mount rather than `/work`: `VP_CONTAINER=1`
-forwards the run/test targets into the container too, and partitions artifacts
-into `local-ctr/`, `vp/build-ctr` and `vp/build_smc-ctr` so they never mix with
-a native build. That partitioning covers the Whisper archives and
-`smu-vp`'s companion `libsmc_cluster_smu.so` as well as the binaries. See
-`virtual_platform/README.md`.
+`vp-build` and `vp-run` are aliases for `build` and `run-here`, one image
+serving both toolchains. A container-built VP links the container's glibc and
+**must also run in the container**, which is why the VP path uses the 1:1
+host-path mount rather than `/work`: `VP_CONTAINER=1` forwards the run/test
+targets into the container too, and partitions artifacts into `local-ctr/`,
+`vp/build-ctr` and `vp/build_smc-ctr` so they never mix with a native build —
+the Whisper archives and `smu-vp`'s companion `libsmc_cluster_smu.so` included.
+See `virtual_platform/README.md`.
 
 ## Container user (UID/GID mapping)
 
