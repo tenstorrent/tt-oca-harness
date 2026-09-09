@@ -212,7 +212,11 @@ stage_module_assets() {
 
 stage_module_assets "$COMMON_ASSETS"
 stage_module_assets "$ASSETS"
-stage_module_assets "$AOU_DOC/assets" aou
+# Antora resolves an unqualified image target in an included partial
+# against the *including* page's own module, not the partial's origin
+# module, so the images must also land in ROOT (every product includes the
+# AOU partial from a ROOT page).
+stage_module_assets "$AOU_DOC/assets" "aou ROOT"
 
 # Postprocess every location that ends up holding a copy of these images --
 # after all copying above is done.
