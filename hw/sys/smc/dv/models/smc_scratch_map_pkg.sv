@@ -5,8 +5,10 @@
 //
 // One definition, used by every backdoor that reaches the scratch macros: the
 // +smc_scratch_ram_hex image loader in smc_cpu_mem_dv.sv and the peek decodes
-// in tb_top.sv. Three copies of an address map is three chances to be wrong in
-// different ways, and the map was in fact wrong in all three before this.
+// in tb_top.sv. Three copies of an address map would be three chances to be
+// wrong in different ways, and a wrong copy is silent: it loads firmware into
+// banks the CPU never fetches from, and every testcase that does not execute
+// that firmware still passes.
 //
 // The mapping is not a flat round-robin. It is read out of the cluster's own
 // decode, in two places:

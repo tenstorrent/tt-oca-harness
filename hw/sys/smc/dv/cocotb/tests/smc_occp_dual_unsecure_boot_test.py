@@ -176,8 +176,8 @@ async def _peek_target_scratch(dut, offset: int) -> tuple[int, int]:
 
     Read-only, and informational -- nothing gates on it. It resolves the offset
     with smc_scratch_map_pkg, the same decode smc_dual_axi_sram_probe_test holds
-    against AXI, so a mismatch here is now worth reading rather than expected.
-    See the note at the landing check below.
+    against AXI, so a mismatch here is worth reading rather than expected. See
+    the note at the landing check below.
 
     Used to separate "the OCCP writes never landed" from "they landed and the
     core still would not execute them" when triaging a failure. An AXI read of
@@ -710,9 +710,9 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
         cocotb.log.warning(
             "NOTE: target SRAM peek did not match at %#010x. The pass rests on "
             "scratch 0 and the retired PC, not on this peek -- but the decode "
-            "behind the peek is checked against AXI by "
-            "smc_dual_axi_sram_probe_test, so this is no longer an expected "
-            "disagreement and is worth reading.",
+            "behind the peek is held against AXI by "
+            "smc_dual_axi_sram_probe_test, so a disagreement here is not "
+            "expected and is worth reading.",
             target_addr,
         )
 

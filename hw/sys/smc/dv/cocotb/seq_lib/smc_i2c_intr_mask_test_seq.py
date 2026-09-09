@@ -55,16 +55,7 @@ I2C_INTR_STATE = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR
 I2C_INTR_ENABLE = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_INTR_ENABLE_BASE_ADDR", _I2C0)
 I2C_INTR_TEST = smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_INTR_TEST_BASE_ADDR", _I2C0)
 
-_I2C_H = (
-    Path(__file__).resolve().parents[6]
-    / "hw"
-    / "ip"
-    / "i2c"
-    / "regs"
-    / "gen"
-    / "c"
-    / "i2c.h"
-)
+_I2C_H = Path(__file__).resolve().parents[6] / "hw" / "ip" / "i2c" / "regs" / "gen" / "c" / "i2c.h"
 CMD_COMPLETE_STATE = _field_mask(_I2C_H, "I2C__INTR_STATE__CMD_COMPLETE_bm")
 CMD_COMPLETE_ENABLE = _field_mask(_I2C_H, "I2C__INTR_ENABLE__CMD_COMPLETE_bm")
 CMD_COMPLETE_TEST = _field_mask(_I2C_H, "I2C__INTR_TEST__CMD_COMPLETE_bm")
@@ -100,14 +91,25 @@ class smc_i2c_intr_mask_test_seq(SmcCsrSeq):
             f"{_IRQ_BOUND} clk_smc_i cycles"
         )
 
-    async def _hold_irq(self, dut, want: int, label: str) -> None:
+    async def _held_irq(self, dut, want: int) -> tuple[int, int] | None:
+        """First (cycle, value) at which the line left `want`, else None.
+
+        Non-raising twin of `_hold_irq`, for the legs that collect their
+        failures instead of raising at the first one.
+        """
         for cycle in range(_HOLD):
             got = self._irq(dut)
-            assert got == want, (
-                f"{label}: tb_i2c_irq[{_I2C0}] left {want} after {cycle} of "
-                f"{_HOLD} hold cycles (read {got})"
-            )
+            if got != want:
+                return (cycle, got)
             await ClockCycles(dut.clk_smc_i, 1)
+        return None
+
+    async def _hold_irq(self, dut, want: int, label: str) -> None:
+        broke = await self._held_irq(dut, want)
+        assert broke is None, (
+            f"{label}: tb_i2c_irq[{_I2C0}] left {want} after {broke[0]} of "
+            f"{_HOLD} hold cycles (read {broke[1]})"
+        )
 
     async def body(self) -> None:
         dut = cocotb.top
@@ -165,12 +167,33 @@ class smc_i2c_intr_mask_test_seq(SmcCsrSeq):
         await ClockCycles(dut.clk_smc_i, _IRQ_BOUND)
         stuck = self._irq(dut)
         still = await self.csr_read("I2C_INTR_STATE_MASKED", I2C_INTR_STATE)
-        if stuck == 0:
+        # Held for the same span the arm leg holds the asserted level, so a
+        # one-cycle sample or a glitch cannot read as a drop.
+        broke = await self._held_irq(dut, 0) if stuck == 0 else None
+        if stuck == 0 and broke is not None:
+            failures.append(
+                f"CHK-I2C-INTR-MASK-DEASSERT: tb_i2c_irq[{_I2C0}] dropped after "
+                f"INTR_ENABLE -> 0x0 but returned to {broke[1]} at hold cycle "
+                f"{broke[0]} of {_HOLD}, with no further stimulus"
+            )
+        elif stuck == 0 and (still & CMD_COMPLETE_STATE) != CMD_COMPLETE_STATE:
+            # The claim is that the ENABLE masks the *output*. A repair that
+            # cleared INTR_STATE instead would also drop the line, and would
+            # satisfy this leg if the state were not required to survive.
+            failures.append(
+                f"CHK-I2C-INTR-MASK-DEASSERT: the line dropped, but INTR_STATE "
+                f"lost the bit too (0x{still:x}, wanted 0x{CMD_COMPLETE_STATE:x} "
+                f"still set). prim_intr_hw.sv:99 masks the output over a latched "
+                f"state, so the state must survive the mask -- a drop that also "
+                f"clears the state is a different mechanism than the one claimed"
+            )
+        elif stuck == 0:
             cocotb.log.info(
                 "CHK-I2C-INTR-MASK-DEASSERT: INTR_ENABLE 0x%x -> 0x0 dropped "
-                "tb_i2c_irq[%d] with INTR_STATE still 0x%x",
+                "tb_i2c_irq[%d] for %d held cycles with INTR_STATE still 0x%x",
                 CMD_COMPLETE_ENABLE,
                 _I2C0,
+                _HOLD,
                 still,
             )
         else:

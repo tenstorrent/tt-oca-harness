@@ -29,16 +29,12 @@ class smc_fw_plic_claim_test(smc_base_test):
     async def run_scenario(self) -> None:
         seq = smc_fw_plic_claim_test_seq("fw_plic_claim_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
-        # The boot contract raises on TEST_FAIL -- which is what the firmware's
-        # handler calls on a claimed ID other than the registered one -- on the
-        # 0xBAD0_xxxx namespace, on a PASS not preceded by the arm word, and on
-        # the poll bound expiring. These two assertions cover what it cannot
-        # say for itself: that a check ran at all, and that the negative
-        # control actually executed rather than being skipped over.
-        assert seq.boot.get("boot_checked") is True, (
-            f"firmware boot was not checked: {seq.boot}"
-        )
+        # The boot contract raises on TEST_FAIL, on the 0xBAD0_xxxx namespace,
+        # on a PASS not preceded by the arm word, and on the poll bound
+        # expiring. These two assertions cover what it cannot say for itself:
+        # that a check ran at all, and that the negative control actually
+        # executed rather than being skipped over.
+        assert seq.boot.get("boot_checked") is True, f"firmware boot was not checked: {seq.boot}"
         assert seq.quiet_ok, (
-            "the quiet window never ran, so the PASS was not shown to depend "
-            "on ext_interrupts_i[0]"
+            "the quiet window never ran, so the PASS was not shown to depend on ext_interrupts_i[0]"
         )

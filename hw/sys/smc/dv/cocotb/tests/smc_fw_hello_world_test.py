@@ -36,6 +36,4 @@ class smc_fw_hello_world_test(smc_base_test):
         # assertion below is the one thing the sequence cannot enforce for
         # itself: that the contract actually ran a check rather than reporting
         # a skip.
-        assert seq.boot.get("boot_checked") is True, (
-            f"firmware boot was not checked: {seq.boot}"
-        )
+        assert seq.boot.get("boot_checked") is True, f"firmware boot was not checked: {seq.boot}"

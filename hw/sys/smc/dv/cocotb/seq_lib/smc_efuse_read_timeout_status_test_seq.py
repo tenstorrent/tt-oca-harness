@@ -37,6 +37,7 @@ import cocotb
 
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_efuse_read_program_timeout_test_seq import (
+    _BIT,
     READ_CTRL,
     READ_DATA,
     READ_DONE,
@@ -49,7 +50,6 @@ from .smc_efuse_read_program_timeout_test_seq import (
     STATUS,
     TMO_CYC_RST_R,
     TMO_EN_R,
-    _BIT,
 )
 
 _POLL = 10_000

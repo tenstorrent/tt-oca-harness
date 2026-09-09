@@ -4,8 +4,17 @@
 
 `fw/tests/plic_sanity/plic_sanity.c` clears every context's enable words, gives
 the eight contexts distinct thresholds, registers a handler for one source,
-enables it, publishes an arm word, and parks in `wfi`. Its handler fails on a
-claimed ID other than the one registered and only then calls `test_pass(0)`.
+enables it, publishes an arm word, and parks in `wfi`. Its handler calls
+`test_pass(0)`.
+
+What ties the verdict to source 1 is the registration, not the ID compare
+inside the handler. `riscv_plic0.c:106-107` dispatches `metal_exint_table[idx]`
+where `idx` is the value the PLIC's claim register returned, and
+`plic_sanity.c` registers a handler at one index only; every other source
+reaches `__metal_plic0_default_handler`, which posts no verdict. So the pass
+word can only follow a claim of the registered source. The handler's own
+`id != TEST_INTERRUPT_ID` branch is unreachable for that same reason and is
+not relied on here.
 
 Why this is worth a firmware test when the package prefers cocotb sequences:
 
@@ -101,9 +110,7 @@ class smc_fw_plic_claim_test_seq(SmcCsrSeq):
         )
 
         dut.tb_ext_interrupt_0_i.value = 1
-        cocotb.log.info(
-            "CHK-FW-PLIC-STIMULUS: ext_interrupts_i[0] driven high; PLIC source 1"
-        )
+        cocotb.log.info("CHK-FW-PLIC-STIMULUS: ext_interrupts_i[0] driven high; PLIC source 1")
 
     async def body(self) -> None:
         cocotb.top.tb_ext_interrupt_0_i.value = 0

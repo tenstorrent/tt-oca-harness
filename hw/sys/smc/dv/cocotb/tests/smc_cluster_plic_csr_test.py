@@ -14,14 +14,15 @@ because the aperture is not writable from SEP_IN AXI. Measured on Verilator
     non-OKAY on write.
 
 So the PLIC is cluster-local in the way that matters: the CPU reaches it over
-its own bus, and the external port does not. That finding is what sent the
-coverage to firmware: `smc_fw_plic_claim_test` programs the PLIC from the CPU
-and claims `ext_interrupts_i[0]` through it, and is enrolled. The PLIC's
-function is therefore no longer uncovered. What this testcase still holds, and
-that one does not, is the register-level properties -- context independence
-across the eight threshold pages, source 0 and PENDING read-only, PENDING
-tracking a real interrupt in both directions -- because the firmware image
-programs the PLIC without reading back what it programmed.
+its own bus, and the external port does not. Which is why the PLIC's function
+is covered from the CPU instead: `smc_fw_plic_claim_test` programs it from
+firmware, claims `ext_interrupts_i[0]` through it, and is enrolled.
+
+What this testcase holds and that one does not is the register-level
+properties -- context independence across the eight threshold pages, source 0
+and PENDING read-only, PENDING tracking a real interrupt in both directions --
+because the firmware image programs the PLIC without reading back what it
+programmed.
 
 The testcase is kept rather than deleted for the same reason
 `smc_clint_csr_test` is kept: `CHK-PLIC-APERTURE-LIVE` is a fail-capable guard

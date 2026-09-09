@@ -412,8 +412,7 @@ async def check_cpu_firmware_boot_contract(
         if arm_value is not None and not armed and last_pass == arm_value:
             armed = True
             cocotb.log.info(
-                "CPU firmware armed: SCRATCH_0=0x%08x. Applying the stimulus it "
-                "is waiting for.",
+                "CPU firmware armed: SCRATCH_0=0x%08x. Applying the stimulus it is waiting for.",
                 last_pass,
             )
             if on_armed is not None:
@@ -483,8 +482,7 @@ async def check_cpu_firmware_boot_contract(
     causes = [int(getattr(dut, f"tb_cpu_mcause{i}").value) for i in range(4)]
     mepcs = [int(getattr(dut, f"tb_cpu_mepc{i}").value) for i in range(4)]
     trap_report = " ".join(
-        f"hart{i}[mcause=0x{c:x} mepc=0x{e:x}]"
-        for i, (c, e) in enumerate(zip(causes, mepcs))
+        f"hart{i}[mcause=0x{c:x} mepc=0x{e:x}]" for i, (c, e) in enumerate(zip(causes, mepcs))
     )
     image_report = await _compare_image_in_memory(seq, boot_from_scratch, reset_vector)
     armed_report = "" if arm_value is None else f" armed={armed}"

@@ -235,10 +235,10 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         self.read_tmo_data = data
 
         # SAME-CONFIGURATION POSITIVE CONTROL for the `data == 0` above
-        # ([NEGATIVE-NEEDS-POSITIVE-CONTROL]). The old recovery leg re-read with
-        # READ_REQ_TIMOUT_ENABLE back at 0, so no read with the timeout ENABLED
-        # was ever shown returning data, and a dead or unmapped READ_DATA
-        # register would have satisfied `data == 0` just as well. Here the
+        # ([NEGATIVE-NEEDS-POSITIVE-CONTROL]). A recovery leg that re-read with
+        # READ_REQ_TIMOUT_ENABLE back at 0 would show no read with the timeout
+        # ENABLED returning data, and a dead or unmapped READ_DATA register
+        # would satisfy `data == 0` just as well. Here the
         # enable bit stays 1 and only the cycle count changes to the RDL default
         # (0x%x), so the difference between this read and the one above is
         # exactly the quantity under test.

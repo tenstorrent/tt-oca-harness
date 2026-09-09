@@ -173,9 +173,7 @@ class smc_cluster_plic_csr_test_seq(SmcCsrSeq):
             f"and its priority register is read-only zero, so storage here means "
             f"the register file decoded an address that should have none"
         )
-        cocotb.log.info(
-            "CHK-PLIC-SOURCE0-RESERVED: PRIORITY[0] stayed 0 through a 0xFF write"
-        )
+        cocotb.log.info("CHK-PLIC-SOURCE0-RESERVED: PRIORITY[0] stayed 0 through a 0xFF write")
         self.chk_seen.add("CHK-PLIC-SOURCE0-RESERVED")
 
         # ---- Enable words are storage ---------------------------------------
@@ -189,8 +187,7 @@ class smc_cluster_plic_csr_test_seq(SmcCsrSeq):
         )
         await self.csr_write("PLIC_CORE0_MEIP_EN0_RESTORE", CORE0_MEIP_ENABLE_0, enable_pre)
         cocotb.log.info(
-            "CHK-PLIC-ENABLE-RW: CORE0_MEIP_ENABLE[0] held 0x%08x and was restored "
-            "to 0x%08x",
+            "CHK-PLIC-ENABLE-RW: CORE0_MEIP_ENABLE[0] held 0x%08x and was restored to 0x%08x",
             pattern,
             enable_pre,
         )
@@ -243,16 +240,16 @@ class smc_cluster_plic_csr_test_seq(SmcCsrSeq):
         await self.csr_write("I2C_INTR_STATE_W1C", I2C_INTR_STATE, CMD_COMPLETE_STATE)
         cleared = await self._wait_pending_bit(0, "pending clear after I2C W1C")
         cocotb.log.info(
-            "CHK-PLIC-PENDING-CLEAR-ON-W1C: clearing the I2C source dropped "
-            "PENDING[%d] to 0x%08x",
+            "CHK-PLIC-PENDING-CLEAR-ON-W1C: clearing the I2C source dropped PENDING[%d] to 0x%08x",
             I2C0_PENDING_WORD,
             cleared[I2C0_PENDING_WORD],
         )
         self.chk_seen.add("CHK-PLIC-PENDING-CLEAR-ON-W1C")
 
         await self.csr_write("I2C_INTR_ENABLE_RESTORE", I2C_INTR_ENABLE, 0)
-        await self.csr_write("PLIC_I2C_SOURCE_PRIORITY_RESTORE",
-                            PRIORITY_0 + 4 * I2C0_PLIC_SOURCE, 0)
+        await self.csr_write(
+            "PLIC_I2C_SOURCE_PRIORITY_RESTORE", PRIORITY_0 + 4 * I2C0_PLIC_SOURCE, 0
+        )
         await self.csr_write("I2C_CG_RESTORE", CLOCK_GATE_CONTROL, cg)
 
         # ---- Context independence -------------------------------------------
@@ -276,8 +273,7 @@ class smc_cluster_plic_csr_test_seq(SmcCsrSeq):
             "context pages, the same class as #585 and #1237"
         )
         cocotb.log.info(
-            "CHK-PLIC-CTX-INDEPENDENT: all %d contexts held their own distinct "
-            "threshold (%s)",
+            "CHK-PLIC-CTX-INDEPENDENT: all %d contexts held their own distinct threshold (%s)",
             len(THRESHOLDS),
             ", ".join(f"{n}={wrote[n]}" for n, _a in THRESHOLDS),
         )

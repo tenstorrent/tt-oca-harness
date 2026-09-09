@@ -129,14 +129,25 @@ class smc_log_engine_intr_mask_test_seq(SmcCsrSeq):
             f"{_IRQ_BOUND} clk_smc_i cycles"
         )
 
-    async def _hold_irq(self, dut, want: int, label: str) -> None:
+    async def _held_irq(self, dut, want: int) -> tuple[int, int] | None:
+        """First (cycle, value) at which the line left `want`, else None.
+
+        Non-raising twin of `_hold_irq`, for the legs that collect their
+        failures instead of raising at the first one.
+        """
         for cycle in range(_HOLD):
             got = self._irq(dut)
-            assert got == want, (
-                f"{label}: tb_uart_irq_combined[0] left {want} after {cycle} of "
-                f"{_HOLD} hold cycles (read {got})"
-            )
+            if got != want:
+                return (cycle, got)
             await ClockCycles(dut.clk_smc_i, 1)
+        return None
+
+    async def _hold_irq(self, dut, want: int, label: str) -> None:
+        broke = await self._held_irq(dut, want)
+        assert broke is None, (
+            f"{label}: tb_uart_irq_combined[0] left {want} after {broke[0]} of "
+            f"{_HOLD} hold cycles (read {broke[1]})"
+        )
 
     async def body(self) -> None:
         dut = cocotb.top
@@ -199,11 +210,35 @@ class smc_log_engine_intr_mask_test_seq(SmcCsrSeq):
         await ClockCycles(dut.clk_smc_i, _IRQ_BOUND)
         stuck = self._irq(dut)
         still = await self.csr_read("LOG_INTR_STATUS_MASKED", LOG_INTR_STATUS)
-        if stuck == 0:
+        # Held for the same span the arm leg holds the asserted level, so a
+        # one-cycle sample or a glitch cannot read as a drop.
+        broke = await self._held_irq(dut, 0) if stuck == 0 else None
+        if stuck == 0 and broke is not None:
+            failures.append(
+                f"CHK-LOG-ENGINE-INTR-MASK-DEASSERT: tb_uart_irq_combined[0] "
+                f"dropped after INTR_ENABLE -> 0x0 but returned to {broke[1]} "
+                f"at hold cycle {broke[0]} of {_HOLD}, with no further stimulus"
+            )
+        elif stuck == 0 and (still & FETCH_ERR_STATUS) != FETCH_ERR_STATUS:
+            # The claim is that the ENABLE masks the *output*. A repair that
+            # cleared INTR_STATUS instead would also drop the line, and would
+            # satisfy this leg if the status were not required to survive.
+            failures.append(
+                f"CHK-LOG-ENGINE-INTR-MASK-DEASSERT: the line dropped, but "
+                f"INTR_STATUS lost the bit too (0x{still:x}, wanted "
+                f"0x{FETCH_ERR_STATUS:x} still set). log_engine.rdl:160 makes "
+                f"INTR_ENABLE an `hwenable` output mask over a latched status, "
+                f"so the status must survive the mask -- a drop that also "
+                f"clears the status is a different mechanism than the one "
+                f"claimed"
+            )
+        elif stuck == 0:
             cocotb.log.info(
                 "CHK-LOG-ENGINE-INTR-MASK-DEASSERT: INTR_ENABLE 0x%x -> 0x0 "
-                "dropped tb_uart_irq_combined[0] with INTR_STATUS still 0x%x",
+                "dropped tb_uart_irq_combined[0] for %d held cycles with "
+                "INTR_STATUS still 0x%x",
                 FETCH_ERR_ENABLE,
+                _HOLD,
                 still,
             )
         else:
