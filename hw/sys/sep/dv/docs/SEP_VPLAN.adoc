@@ -390,7 +390,7 @@ appears.
 |`sep_axi_order_sweep_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|AW and W are independent channels with no ordering requirement between them (IHI 0022 A3.3), so AW-first, W-first and same-cycle are all legal and each must deliver the write without displacing its neighbour. Each block terminates AXI at its own register adapter, so the contract has to hold at each of them: 321 cells over 27 blocks, crossed with 1/2/4-byte sizes on the scratch words. The ordering each cell presented is read off the AW/W valid assertions and asserted against what was requested.
+|AW and W are independent channels with no ordering requirement between them (IHI 0022 A3.3), so AW-first, W-first and same-cycle are all legal and each must deliver the write without displacing its neighbour. Each block terminates AXI at its own register adapter, so the contract has to hold at each of them: 318 cells over 27 blocks, crossed with 1/2/4-byte sizes on the scratch words. The ordering each cell presented is read off the AW/W valid assertions and asserted against what was requested.
 |`sep_axi_order_sweep_m_axi_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -791,7 +791,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 
 |AXI AW/W channel ordering, write landing and neighbour displacement
 |PROVEN
-|`sep_axi_order_sweep_test` (s_axi, 321 cells over 27 blocks, 107 per ordering) and `sep_axi_order_sweep_m_axi_test` (m_axi, 225 over 11, 75 per ordering), all three orderings presented and asserted by `CHK-ORDER-STIM`. Both pass on VCS and on the Verilator merge gate. `m_axi` grants a true W-first handshake; `s_axi` holds `wready` until AW, so its W-first presentation completes same-cycle at the slave, which is the slave's contract and not a stimulus failure.
+|`sep_axi_order_sweep_test` (s_axi, 318 cells over 27 blocks, 106 per ordering) and `sep_axi_order_sweep_m_axi_test` (m_axi, 222 over 11, 74 per ordering), all three orderings presented and asserted by `CHK-ORDER-STIM`. Both pass on VCS and on the Verilator merge gate. `m_axi` grants a true W-first handshake; `s_axi` holds `wready` until AW, so its W-first presentation completes same-cycle at the slave, which is the slave's contract and not a stimulus failure.
 
 |AXI narrow-write strobe and memory windows
 |PROVEN
@@ -4412,11 +4412,11 @@ watermark together; no vehicle asserts that pair today.
 |CHK-RESET
 |Every reset-eligible register reads its exported reset value.
 |CHK-WRITE-LANDS
-|A complement write moves exactly the software-usable mask bits: 19 registers over the full mask, plus 32 inbound START/END over ``mask[31:3]`` whose ``[2:0]`` are pinned by the same-beat wrap model instead.
+|A complement write moves exactly the software-usable mask bits: 18 registers over the full mask, plus 32 inbound START/END over ``mask[31:3]`` whose ``[2:0]`` are pinned by the same-beat wrap model instead.
 |CHK-RO
-|Bits outside the mask stay unchanged across the write bash. Counted only where the register has out-of-mask bits: 48 of the 51 have an all-ones mask, so the compare cannot fail there and is not claimed. Falsifiable on 3 (`PKA_CTRL`, `RAS_BANK_INFO`, `SEP_NMI_VEC`).
+|Bits outside the mask stay unchanged across the write bash. Counted only where the register has out-of-mask bits: 48 of the 50 have an all-ones mask, so the compare cannot fail there and is not claimed. Falsifiable on 2 (`PKA_CTRL`, `SEP_NMI_VEC`).
 |CHK-RESERVED
-|Reserved bits (`mask_all` minus `mask`) read back 0. Counted only where the register has a non-zero reserved field: 1 of the 51 (`SEP_NMI_VEC`, reserved `0x1`).
+|Reserved bits (`mask_all` minus `mask`) read back 0. Counted only where the register has a non-zero reserved field: 1 of the 50 (`SEP_NMI_VEC`, reserved `0x1`).
 |CHK-BLOCK-TOUCH
 |Every side-effect-free export RW storage register — 130 of the 865-register inventory, not one per IP: write a seed-derived ``x``, assert ``(readback & mask) == (x & mask)``, restore reset. Shadowed names take a dual write. The gate is the per-register safety predicate AND the side-effect predicate; the second is required, because the first admits registers whose write drops live beats. `TOUCH_BLOCKS` is the anti-vacuity list, so the sweep fails if any of those nine IPs stops offering a candidate. Excluded registers each carry a tallied reason and the sweep accounts for all 865. Not storage: hardware-owned status and state-machine observability words, the CSRNG reseed counters, an identity register, two read ports, `ENTROPY_SOURCE.FIPS_LOCK` (a sticky lock is never a storage touch), and two selectors that refuse a random mask-legal value — `HT_WATERMARK_NUM`, whose unsupported encodings sanitize, and `NOISE_OBS_CTRL`, whose mask contains a write-only singlepulse field.
 |CHK-RANDCFG

@@ -122,10 +122,10 @@
 `SMC_TB_OUT(logic, tb_axi_hang_irq_sys)
 `SMC_TB_OUT(logic, tb_axi_hang_irq_sep)
 `SMC_TB_OUT(logic, tb_axi_hang_irq_data)
-// Hang IRQ on its way to the PLIC: the peripheral_interrupts[31] slot in
+// Hang IRQ on its way to the PLIC: the peripheral_interrupts[30] slot in
 // smc_peripherals, and the cpu_interrupts bit that is the PLIC source pin
 // on u_smc_cpu_wrapper.interrupts_i. PLIC source ID is that bit index + 1.
-`SMC_TB_OUT(logic, tb_axi_hang_irq_periph31)
+`SMC_TB_OUT(logic, tb_axi_hang_irq_periph30)
 `SMC_TB_OUT(logic, tb_axi_hang_irq_plic_src)
 // Boot-stall product pins: pad vs JTAG override mux, sticky processed out.
 `SMC_TB_OUT(logic, tb_boot_stall_combined_o)
@@ -162,10 +162,10 @@
 `SMC_TB_OUT(logic, tb_mailbox_irq_any)
 `SMC_TB_OUT(logic, tb_avsbus_irq)
 `SMC_TB_OUT(logic, tb_telemetry_irq_any)
-// eFuse locked-shadow access (smc_peripherals peripheral_interrupts[28]).
+// eFuse locked-shadow access (smc_peripherals peripheral_interrupts[27]).
 `SMC_TB_OUT(logic, tb_efuse_locked_access_irq)
-// PVT temperature interrupt pin (smc_wrapper.temp_interrupt_i).
-// Routes to peripheral_interrupts[27]. Idle 0.
+// PVT temperature interrupt. Enters through ext_interrupts_i bus (TB uses bit 1).
+// Synced observe is smc_base.ext_interrupts_smc_clk[1]. Idle 0.
 `SMC_TB_IN(logic, tb_temp_interrupt_i)
 `SMC_TB_OUT(logic, tb_temp_interrupt_irq)
 // One bit of product ext_interrupts_i (wrapper width 256). Idle 0.

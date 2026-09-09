@@ -154,9 +154,6 @@ module sep #(
   output sep_io_pkg::sep_io_spi_req_t sep_io_spi_req_o,
   input  sep_io_pkg::sep_io_spi_rsp_t sep_io_spi_rsp_i,
 
-  // SPI IRQ to the PIC, driven by whichever SPI controller the integration selects
-  input  logic spi_irq_i,
-
   /////////////
   // LC State
   /////////////
@@ -539,7 +536,7 @@ NUM_EXT_DEMUX_PORTS
     sep_internal_interrupts[10]     = intr_dma_error;
     sep_internal_interrupts[11]     = dma_alert;
     sep_internal_interrupts[12]     = wdt_alert;
-    sep_internal_interrupts[13]     = spi_irq_i;
+    sep_internal_interrupts[13]     = sep_io_spi_req_o.irq;
     sep_internal_interrupts[14]     = km_mbox_irq;
     sep_internal_interrupts[15]     = entropy_source_irq;
     sep_internal_interrupts[16]     = ext_trng_irq;

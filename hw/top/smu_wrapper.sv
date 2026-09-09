@@ -193,16 +193,9 @@ module smu_wrapper
   output logic  skip_mem_repair_o,
   input  logic  ext_boot_seq_done_i,
 
-  // PVT
-  input  logic  temp_interrupt_i,
-
   // Lifecycle State (driven by SEP)
   output logic [2*smc_pkg::LC_STATE_WIDTH-1:0]  lc_state_o,
   output logic                                  lc_sigint_err_o,
-
-  // RAS Bank Settings
-  output logic [3:0]  ras_bank_chip_o,
-  output logic [3:0]  ras_bank_instance_o,
 
   // NDM Reset signals
   input  logic [smc_config_pkg::CPU_CLUSTER_COUNT - 1:0]  ndmreset_request_i,
@@ -240,9 +233,6 @@ module smu_wrapper
   input  logic mbist_done_i,
   input  logic mbist_pass_i,
   input  logic mbist_abort_i,
-
-  // SPI IRQ from the selected open or adopter-provided SPI integration
-  input  logic                        spi_irq_i,
 
   // OpenTitan SPI request, surfaced for observation; the loop closes in smu.sv
   output sep_io_pkg::sep_io_spi_req_t  sep_io_spi_req_o,
