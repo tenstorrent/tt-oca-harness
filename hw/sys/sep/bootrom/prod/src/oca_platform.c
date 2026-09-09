@@ -21,6 +21,9 @@
 
 #include "oca_platform.h"
 
+#include "oca_layout.h"
+#include "oca_boot.h"
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -314,6 +317,12 @@ static oca_result_t plat_decrypt_payload(const oca_decrypt_input_t *in,
 #define OCA_KEY_SLOT_ROM_PQC_LAST 15u      // [15:8]
 #define OCA_KEY_SLOT_MAX 25u               // [31:26] reserved
 
+// Low 32 flags of a 16-byte OCA flag field, for the console echoes below.
+static uint32_t oca_flags_low32(const uint8_t *f) {
+    return (uint32_t)f[0] | ((uint32_t)f[1] << 8) | ((uint32_t)f[2] << 16) |
+           ((uint32_t)f[3] << 24);
+}
+
 // Resolve a classical OTP key slot to its digest bank. Returns false for a slot
 // that is not a classical OTP anchor (PQC, or out of the defined range).
 static bool otp_key_digest_addr(uint32_t slot, uint32_t *out_addr) {
@@ -391,6 +400,11 @@ static oca_result_t plat_is_key_authorized(const oca_crypto_blob_t *public_key,
         simputs("PUBK_SEL_EMPTY\n");
         return OCA_FAIL_ROOT_KEY_UNAUTHORIZED;
     }
+
+    // The slot number, not just the verdict: every refusal below names a
+    // reason but not which anchor was asked for, and DV attributes a key
+    // decision to a slot.
+    simputshex32("PUBK_SEL=", (uint32_t)slot);
 
     if ((uint32_t)slot > OCA_KEY_SLOT_MAX) {
         // [31:26] are reserved. A manifest naming one is not describing a key
@@ -595,6 +609,7 @@ static oca_result_t plat_get_root_key_revocation(oca_key_algorithm_t algo, uint8
     // only the low 32 of the 128 revocation bits are backed by fuses here. The
     // rest stay zero.
     fuse_read_bytes(OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_BASE_ADDR, out, 4u);
+    simputshex32("PUBK_REVOKE=", oca_flags_low32(out));
     return OCA_OK;
 }
 
@@ -609,8 +624,18 @@ static oca_result_t plat_get_security_version(uint8_t out[16]) {
     //
     // BL1_VERSION is a 32-byte bank; only its low 16 bytes map onto OCA's
     // 128-bit field. Anything set above bit 127 cannot be expressed and is not
-    // read -- see the note in OCA_MANIFEST_PLAN.md.
+    // read.
     fuse_read_bytes(OCH_SEP_TOP_SEP_EFUSE_MAP_BL1_VERSION_BASE_ADDR, out, 16u);
+
+    // Both sides of the rollback comparison, at the only point SEP code holds
+    // them together: the verdict is a single result code, and which flag the
+    // manifest failed to carry is not recoverable from it. Low 32 flags only --
+    // that is the width the fuse bank backs.
+    simputshex32("FUSE_VER=", oca_flags_low32(out));
+    const uint8_t *body = rom_oca_body();
+    if (body != NULL) {
+        simputshex32("MFST_VER=", oca_flags_low32(body + OCA_OFF_MANIFEST_SECURITY_VERSION));
+    }
     return OCA_OK;
 }
 
