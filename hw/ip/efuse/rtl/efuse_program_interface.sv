@@ -215,7 +215,7 @@ module efuse_program_interface #(
   end
 
   // Fuse command output register: on the Class 2b secure scan chain
-  if (1'b1) begin : fuse_cmd_req_s3c_scan
+  if (1'b1) begin : gen_fuse_cmd_req_s3c_scan
     always_ff @(posedge clk_i or negedge rst_ni) begin
       if (!rst_ni) fuse_command_req_q <= FUSE_COMMAND_REQ_DEFAULT;
       else fuse_command_req_q <= fuse_command_req_d;
