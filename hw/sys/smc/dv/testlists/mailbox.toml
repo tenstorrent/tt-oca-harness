@@ -8,7 +8,7 @@ name = "smc_mailbox_idle_test"
 module = "smc_mailbox_idle_test"
 seed = 1
 timeout_sec = 1800
-tags = ["ci", "axil", "project_p0", "pyuvm"]
+tags = ["ci", "axil", "functional", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]

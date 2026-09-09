@@ -124,7 +124,7 @@ verifying the block behind the port.
 |`smc_irq_during_powergood_glitch_test` |SMC OSS PyUVM IRQ-during-powergood-glitch test.
 |`smc_jtag_boot_stall_sanity_test` |JTAG boot-stall override clears sticky while pad 57 is held.
 |`smc_jtag_reset_ctrl_test` |Struct pin mux; not boot-stall JTAG, FLR, or rst_cool_ni proxy.
-|`smc_jtag_reset_proxy_test` |Run JTAG-adjacent CSR health checks plus CPU JTAG pin checks.
+|`smc_jtag_reset_proxy_test` |Run JTAG-adjacent CSR health checks across an observed cool reset, plus CPU JTAG pin checks.
 |`smc_mixed_boot_stall_test` |GPIO gates fuse_reset; JTAG ovrd releases; val=1 cannot re-stall.
 |`smc_multi_reset_csr_persistence_test` |Run CSR access/persistence checks around a public cool reset pulse.
 |`smc_ndm_reset_test` |Per-cluster NDM handshake without Force or firmware.
@@ -166,9 +166,9 @@ verifying the block behind the port.
 |`smc_ecc_codeword_ded_test` |Two flipped codeword bits: the CPU raises cluster_ded_o.
 |`smc_ecc_codeword_sec_test` |One flipped codeword bit: the CPU reads the bank and DED stays low.
 |`smc_ecc_dfd_dbs_sanity_test` |Run the diagnostic representative CSR precheck.
-|`smc_ecc_fault_inject_test` |SBE inject fires during scratch FW boot; inject clear recovers.
+|`smc_ecc_fault_inject_test` |The scratch bank0 ECC inject hook is reached during FW boot and is gated by its enable pins.
 |`smc_mutex_semaphore_test` |CPU_CTRL MUTEX/SEMA over SEP_IN AXI (expectations from cpu_ctrl.rdl).
-|`smc_occp_sanity_secure_error_test` |Secure program-fail negative + recovery burn / signature positive.
+|`smc_occp_sanity_secure_error_test` |Secure program-fail completes and reports done; recovery burn programs bit0; signature positive gate.
 |`smc_reference_counter_test` |64-bit refclk counter rate check; not the OCTS timer.
 |`smc_spm_mem_boundary_test` |SPM first/next/last 64-bit word write/readback via SEP_IN AXI.
 |===
@@ -199,7 +199,7 @@ verifying the block behind the port.
 |`smc_efuse_otp_burn_shadow_test` |Fuse sense + shadow read + PROGRAM command/status through DUT CSRs.
 |`smc_efuse_otp_clock_config_depth_test` |Run eFuse OTP clock/timing register programming depth checks.
 |`smc_efuse_otp_clock_test` |Run the eFuse/OTP and clock-control CSR precheck.
-|`smc_efuse_permission_boundary_test` |Run eFuse-derived chip-config reads until raw OTP permission paths respond.
+|`smc_efuse_permission_boundary_test` |PROXY -- run eFuse-derived chip-config reads until raw OTP permission paths respond.
 |`smc_efuse_read_program_timeout_test` |timeout_enable\|0 aborts; default timeout recovers OTP bit0.
 |`smc_efuse_shim_ctrl_test` |P1 coverage-gap depth: EFUSE_INTERFACE + SHIM_CTRL probe.
 |===
@@ -241,7 +241,7 @@ verifying the block behind the port.
 [cols="2,3",options="header",]
 |===
 |Testcase |Objective
-|`smc_i2c_error_fifo_depth_test` |Run I2C CSR decode plus SCL/SDA pin override depth checks.
+|`smc_i2c_error_fifo_depth_test` |PROXY -- run I2C CSR decode plus SCL/SDA pin override depth checks.
 |`smc_i2c_fifo_full_test` |FMT/TX full+empty and RX/ACQ empty STATUS (CSR-only).
 |`smc_i2c_master_target_test` |U4-2: OVRD + DUT host write + SMBus PEC write + ARA read on pads.
 |`smc_i2c_multi_instance_test` |P1 coverage-gap depth: I2C_1/2 + I2C_CTRL CSR sweep.
@@ -299,7 +299,7 @@ verifying the block behind the port.
 |Testcase |Objective
 |`smc_uart_baud_word_parity_format_test` |UART0 loopback divisor × frame-format sweep with masked RX check.
 |`smc_uart_error_conditions_test` |UART parity / overrun / break line-status proofs.
-|`smc_uart_extremes_misc_test` |UART0 SCR R/W + idle LSR quiet check.
+|`smc_uart_extremes_misc_test` |UART0 SCR R/W + idle LSR.DR quiet check.
 |`smc_uart_irq_sources_priority_test` |UART0 IER gating, natural clears, and multi-source IIR priority.
 |`smc_uart_log_engine_error_boundary_test` |Run log-engine CSR R/W depth as the error/boundary checker.
 |`smc_uart_log_engine_reg_rw_test` |Run UART/log-engine register write/readback/restore checks.
@@ -364,8 +364,7 @@ Drive `smc_5agent_observability_test_seq`. Each checker below is a named compare
 |===
 
 
-*Pass Criteria*: `CHK-5AGENT-CLK`, `CHK-5AGENT-COMPOSITION`, `CHK-5AGENT-GPIO`, `CHK-5AGENT-I2C`, `CHK-5AGENT-IRQ-IDLE`, `CHK-5AGENT-IRQ-POSITIVE` (and 1 more) hold after their compares. Enrolled in: `all`, `balanced_ip`, `combined`, `pyuvm`, `smoke`.
-
+*Pass Criteria*: `CHK-5AGENT-CLK`, `CHK-5AGENT-COMPOSITION`, `CHK-5AGENT-GPIO`, `CHK-5AGENT-I2C`, `CHK-5AGENT-IRQ-IDLE`, `CHK-5AGENT-IRQ-POSITIVE` (and 1 more) hold after their compares. Enrolled in: `all`, `per_ip`, `combined`, `pyuvm`, `smoke`.
 '''''
 
 [[sec-002-smc_6agent_observability_test]]
@@ -406,8 +405,7 @@ Drive `smc_6agent_observability_test_seq`. Each checker below is a named compare
 |===
 
 
-*Pass Criteria*: `CHK-6AGENT-AXIL`, `CHK-6AGENT-CLK`, `CHK-6AGENT-COMPOSITION`, `CHK-6AGENT-GPIO`, `CHK-6AGENT-I2C`, `CHK-6AGENT-IRQ` (and 1 more) hold after their compares. Enrolled in: `all`, `balanced_ip`, `combined`, `pyuvm`, `smoke`.
-
+*Pass Criteria*: `CHK-6AGENT-AXIL`, `CHK-6AGENT-CLK`, `CHK-6AGENT-COMPOSITION`, `CHK-6AGENT-GPIO`, `CHK-6AGENT-I2C`, `CHK-6AGENT-IRQ` (and 1 more) hold after their compares. Enrolled in: `all`, `per_ip`, `combined`, `pyuvm`, `smoke`.
 '''''
 
 [[sec-003-smc_canonical_smoke_test]]
@@ -443,8 +441,7 @@ Drive `smc_canonical_smoke_test_seq`. Each checker below is a named compare the 
 |===
 
 
-*Pass Criteria*: `CHK-CANONICAL-SMOKE`, `CHK-RESET-WAIT` hold after their compares. Enrolled in: `all`, `balanced_ip`, `combined`, `pyuvm`, `smoke`.
-
+*Pass Criteria*: `CHK-CANONICAL-SMOKE`, `CHK-RESET-WAIT` hold after their compares. Enrolled in: `all`, `per_ip`, `combined`, `pyuvm`, `smoke`.
 '''''
 
 [[sec-004-smc_combined_observability_test]]
@@ -481,8 +478,7 @@ Drive `smc_combined_observability_test_seq`. Each checker below is a named compa
 |===
 
 
-*Pass Criteria*: `CHK-COMBINED-COMPOSITION`, `CHK-COMBINED-I2C`, `CHK-COMBINED-RESET`, `CHK-PROBE-I2C-CG-EN-ALIVE` hold after their compares. Enrolled in: `all`, `balanced_ip`, `combined`, `pyuvm`, `smoke`.
-
+*Pass Criteria*: `CHK-COMBINED-COMPOSITION`, `CHK-COMBINED-I2C`, `CHK-COMBINED-RESET`, `CHK-PROBE-I2C-CG-EN-ALIVE` hold after their compares. Enrolled in: `all`, `per_ip`, `combined`, `pyuvm`, `smoke`.
 '''''
 
 [[sec-005-smc_default_reg_rd_test]]
@@ -520,8 +516,7 @@ Drive `smc_default_reg_rd_test_seq`. Each checker below is a named compare the D
 |===
 
 
-*Pass Criteria*: `CHK-DEFAULT-REG-SWEEP`, `CHK-DEFAULT-REG-VALUE`, `CHK-DEFAULT-REG-VALUE-COMPARE-FLOOR` hold after their compares. Enrolled in: `all`, `balanced_ip`, `project_p0_triplets`, `pyuvm`, `smoke`, `vplan_triplets`.
-
+*Pass Criteria*: `CHK-DEFAULT-REG-SWEEP`, `CHK-DEFAULT-REG-VALUE`, `CHK-DEFAULT-REG-VALUE-COMPARE-FLOOR` hold after their compares. Enrolled in: `all`, `per_ip`, `functional_depth`, `pyuvm`, `smoke`, `depth`.
 '''''
 
 [[sec-006-smc_ext_interrupts_pin_test]]
@@ -587,8 +582,7 @@ Drive `smc_register_boundary_depth_test_seq`. Each checker below is a named comp
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `depth_reg`, `project_p0_triplets`, `vplan_triplets`.
-
+*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `depth_reg`, `functional_depth`, `depth`.
 '''''
 
 [[sec-008-smc_register_sanity_test]]
@@ -626,8 +620,7 @@ Drive `smc_register_sanity_test_seq`. Each checker below is a named compare the 
 |===
 
 
-*Pass Criteria*: `CHK-CSR-IDLE-VALUE`, `CHK-CSR-RANDOM-READBACK`, `CHK-CSR-READBACK`, `CHK-CSR-RESP`, `CHK-CSR-RESTORE`, `CHK-FUSE-SENSE-DONE` (and 1 more) hold after their compares. Enrolled in: `all`, `balanced_ip`, `project_p0`, `project_p0_triplets`, `pyuvm`, `smoke`, `vplan_triplets`.
-
+*Pass Criteria*: `CHK-CSR-IDLE-VALUE`, `CHK-CSR-RANDOM-READBACK`, `CHK-CSR-READBACK`, `CHK-CSR-RESP`, `CHK-CSR-RESTORE`, `CHK-FUSE-SENSE-DONE` (and 1 more) hold after their compares. Enrolled in: `all`, `per_ip`, `functional`, `functional_depth`, `pyuvm`, `smoke`, `depth`.
 '''''
 
 ==== POWER
@@ -661,8 +654,7 @@ Drive `smc_avsbus_clock_config_proxy_test_seq`. Each checker below is a named co
 |===
 
 
-*Pass Criteria*: `CHK-AVSBUS-CG`, `CHK-SIDEBAND-OBSERVABILITY` hold after their compares. Enrolled in: `all`, `avsbus_depth`, `balanced_ip`, `project_p0_triplets`.
-
+*Pass Criteria*: `CHK-AVSBUS-CG`, `CHK-SIDEBAND-OBSERVABILITY` hold after their compares. Enrolled in: `all`, `avsbus_depth`, `per_ip`, `functional_depth`.
 '''''
 
 [[sec-010-smc_avsbus_sanity_test]]
@@ -697,8 +689,7 @@ Drive `smc_avsbus_sanity_test_seq`. Each checker below is a named compare the DU
 |===
 
 
-*Pass Criteria*: `CHK-AVS-DEBUG-READBACK-NONDESTRUCTIVE`, `CHK-AVS-INTERRUPT-MASK`, `CHK-AVS-INTERRUPT-W1C`, `CHK-AVS-READBACK-EMPTY-FIFO-READ`, `CHK-AVS-READBACK-POINTER-ADVANCE`, `CHK-SIDEBAND-OBSERVABILITY` hold after their compares. Enrolled in: `all`, `project_p0`, `project_p0_triplets`, `vplan_triplets`.
-
+*Pass Criteria*: `CHK-AVS-DEBUG-READBACK-NONDESTRUCTIVE`, `CHK-AVS-INTERRUPT-MASK`, `CHK-AVS-INTERRUPT-W1C`, `CHK-AVS-READBACK-EMPTY-FIFO-READ`, `CHK-AVS-READBACK-POINTER-ADVANCE`, `CHK-SIDEBAND-OBSERVABILITY` hold after their compares. Enrolled in: `all`, `functional`, `functional_depth`, `depth`.
 '''''
 
 [[sec-011-smc_avsbus_status_depth_test]]
@@ -728,8 +719,7 @@ Drive `smc_avsbus_status_depth_test_seq`. Each checker below is a named compare 
 |===
 
 
-*Pass Criteria*: `CHK-SIDEBAND-OBSERVABILITY` hold after their compares. Enrolled in: `all`, `avsbus_depth`, `project_p0_triplets`.
-
+*Pass Criteria*: `CHK-SIDEBAND-OBSERVABILITY` hold after their compares. Enrolled in: `all`, `avsbus_depth`, `functional_depth`.
 '''''
 
 [[sec-012-smc_dma_sanity_test]]
@@ -759,8 +749,7 @@ Drive `smc_dma_sanity_test_seq`. Each checker below is a named compare the DUT c
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `balanced_ip`, `vplan_gaps`, `vplan_triplets`.
-
+*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `per_ip`, `coverage_closure`, `depth`.
 '''''
 
 [[sec-013-smc_octs_dual_sync_test]]
@@ -791,8 +780,7 @@ Drive `smc_octs_dual_sync_test_seq`. Each checker below is a named compare the D
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `balanced_ip`.
-
+*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `per_ip`.
 '''''
 
 [[sec-014-smc_octs_sanity_test]]
@@ -822,8 +810,7 @@ Drive `smc_octs_sanity_test_seq`. Each checker below is a named compare the DUT 
 |===
 
 
-*Pass Criteria*: `CHK-SIDEBAND-OBSERVABILITY` hold after their compares. Enrolled in: `all`, `vplan_gaps`, `vplan_triplets`.
-
+*Pass Criteria*: `CHK-SIDEBAND-OBSERVABILITY` hold after their compares. Enrolled in: `all`, `coverage_closure`, `depth`.
 '''''
 
 [[sec-015-smc_sideband_protocol_smoke_test]]
@@ -858,8 +845,7 @@ Drive `smc_sideband_protocol_smoke_test_seq`. Each checker below is a named comp
 |===
 
 
-*Pass Criteria*: `CHK-AVS-DEBUG-READBACK-NONDESTRUCTIVE`, `CHK-AVS-INTERRUPT-MASK`, `CHK-AVS-INTERRUPT-W1C`, `CHK-AVS-READBACK-EMPTY-FIFO-READ`, `CHK-AVS-READBACK-POINTER-ADVANCE` hold after their compares. Enrolled in: `all`, `balanced_ip`, `pyuvm`, `smoke`, `vplan_triplets`.
-
+*Pass Criteria*: `CHK-AVS-DEBUG-READBACK-NONDESTRUCTIVE`, `CHK-AVS-INTERRUPT-MASK`, `CHK-AVS-INTERRUPT-W1C`, `CHK-AVS-READBACK-EMPTY-FIFO-READ`, `CHK-AVS-READBACK-POINTER-ADVANCE` hold after their compares. Enrolled in: `all`, `per_ip`, `pyuvm`, `smoke`, `depth`.
 '''''
 
 [[sec-016-smc_telemetry_receiver_csr_test]]
@@ -891,8 +877,7 @@ Drive `smc_telemetry_receiver_csr_test_seq`. Each checker below is a named compa
 |===
 
 
-*Pass Criteria*: `CHK-TELEMETRY-RECEIVER-CSR` hold after their compares. Enrolled in: `all`, `balanced_ip`.
-
+*Pass Criteria*: `CHK-TELEMETRY-RECEIVER-CSR` hold after their compares. Enrolled in: `all`, `per_ip`.
 '''''
 
 [[sec-017-smc_wdt_key_csr_test]]
@@ -923,8 +908,7 @@ Drive `smc_wdt_key_csr_test_seq`. Each checker below is a named compare the DUT 
 |===
 
 
-*Pass Criteria*: `CHK-WDT-KEY-PROTOCOL` hold after their compares. Enrolled in: `all`, `balanced_ip`.
-
+*Pass Criteria*: `CHK-WDT-KEY-PROTOCOL` hold after their compares. Enrolled in: `all`, `per_ip`.
 '''''
 
 [[sec-018-smc_zeroer_dma_timeout_test]]
@@ -960,8 +944,7 @@ Drive `smc_zeroer_dma_timeout_test_seq`. Each checker below is a named compare t
 |===
 
 
-*Pass Criteria*: `CHK-NONVAC`, `CHK-ZEROER-CTRL-STATUS`, `CHK-ZEROER-REGION-DECODE`, `CHK-ZEROER-REGION-ZEROED`, `CHK-ZEROER-STATUS-BUSY-ASSERTED`, `CHK-ZEROER-STATUS-LIFECYCLE` (and 1 more) hold after their compares. Enrolled in: `all`, `balanced_ip`, `pyuvm`, `smoke`, `vplan_triplets`.
-
+*Pass Criteria*: `CHK-NONVAC`, `CHK-ZEROER-CTRL-STATUS`, `CHK-ZEROER-REGION-DECODE`, `CHK-ZEROER-REGION-ZEROED`, `CHK-ZEROER-STATUS-BUSY-ASSERTED`, `CHK-ZEROER-STATUS-LIFECYCLE` (and 1 more) hold after their compares. Enrolled in: `all`, `per_ip`, `pyuvm`, `smoke`, `depth`.
 '''''
 
 [[sec-019-smc_zeroer_sanity_test]]
@@ -997,8 +980,7 @@ Drive `smc_zeroer_sanity_test_seq`. Each checker below is a named compare the DU
 |===
 
 
-*Pass Criteria*: `CHK-NONVAC`, `CHK-ZEROER-CTRL-STATUS`, `CHK-ZEROER-REGION-DECODE`, `CHK-ZEROER-REGION-ZEROED`, `CHK-ZEROER-STATUS-BUSY-ASSERTED`, `CHK-ZEROER-STATUS-LIFECYCLE` (and 1 more) hold after their compares. Enrolled in: `all`, `vplan_gaps`, `vplan_triplets`.
-
+*Pass Criteria*: `CHK-NONVAC`, `CHK-ZEROER-CTRL-STATUS`, `CHK-ZEROER-REGION-DECODE`, `CHK-ZEROER-REGION-ZEROED`, `CHK-ZEROER-STATUS-BUSY-ASSERTED`, `CHK-ZEROER-STATUS-LIFECYCLE` (and 1 more) hold after their compares. Enrolled in: `all`, `coverage_closure`, `depth`.
 '''''
 
 ==== FABRIC
@@ -1030,8 +1012,7 @@ Drive `smc_axi_error_response_depth_test_seq`. Each checker below is a named com
 |===
 
 
-*Pass Criteria*: `CHK-AXI-ERR-DEPTH` hold after their compares. Enrolled in: `all`, `balanced_ip`, `vplan_gaps`, `vplan_triplets`.
-
+*Pass Criteria*: `CHK-AXI-ERR-DEPTH` hold after their compares. Enrolled in: `all`, `per_ip`, `coverage_closure`, `depth`.
 '''''
 
 [[sec-021-smc_axil_burst_idle_test]]
@@ -1066,8 +1047,7 @@ Drive `smc_axil_burst_idle_test_seq`. Each checker below is a named compare the 
 |===
 
 
-*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-NONVAC`, `CHK-PROBE-AXIL-EXTERNAL-ALIVE` hold after their compares. Enrolled in: `all`, `axil`, `balanced_ip`, `pyuvm`, `smoke`.
-
+*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-NONVAC`, `CHK-PROBE-AXIL-EXTERNAL-ALIVE` hold after their compares. Enrolled in: `all`, `axil`, `per_ip`, `pyuvm`, `smoke`.
 '''''
 
 [[sec-022-smc_axil_idle_test]]
@@ -1098,8 +1078,7 @@ Drive `smc_axil_idle_test_seq`. Each checker below is a named compare the DUT ca
 |===
 
 
-*Pass Criteria*: `CHK-AXIL-IDLE` hold after their compares. Enrolled in: `all`, `axil`, `balanced_ip`, `pyuvm`, `smoke`.
-
+*Pass Criteria*: `CHK-AXIL-IDLE` hold after their compares. Enrolled in: `all`, `axil`, `per_ip`, `pyuvm`, `smoke`.
 '''''
 
 [[sec-023-smc_cpu_to_sep_axi_test]]
@@ -1129,8 +1108,7 @@ Drive `smc_cpu_to_sep_axi_test_seq`. Each checker below is a named compare the D
 |===
 
 
-*Pass Criteria*: `CHK-CPU-BFM-OBSERVABILITY` hold after their compares. Enrolled in: `all`, `project_p0`, `project_p0_triplets`, `pyuvm`, `smoke`, `vplan_triplets`.
-
+*Pass Criteria*: `CHK-CPU-BFM-OBSERVABILITY` hold after their compares. Enrolled in: `all`, `functional`, `functional_depth`, `pyuvm`, `smoke`, `depth`.
 '''''
 
 [[sec-024-smc_deadspace_decode_test]]
@@ -1166,8 +1144,7 @@ Drive `smc_deadspace_decode_test_seq`. Each checker below is a named compare the
 |===
 
 
-*Pass Criteria*: not a sign-off PASS. The leaf is held out of `all` against #585 (wrap-to-live aliasing). Fail paths are the sequence asserts. Known Limitations records the hole. Enrolled in: `balanced_ip`.
-
+*Pass Criteria*: not a sign-off PASS. The leaf is held out of `all` against #585 (wrap-to-live aliasing). Fail paths are the sequence asserts. Known Limitations records the hole. Enrolled in: `per_ip`.
 '''''
 
 [[sec-025-smc_filter_field_sweep_test]]
@@ -1237,8 +1214,7 @@ Drive `smc_filter_multi_entry_test_seq`. Each checker below is a named compare t
 |===
 
 
-*Pass Criteria*: `CHK-FILTER-MULTI-ENTRY-SLOT-IDENTITY` hold after their compares. Enrolled in: `all`, `balanced_ip`.
-
+*Pass Criteria*: `CHK-FILTER-MULTI-ENTRY-SLOT-IDENTITY` hold after their compares. Enrolled in: `all`, `per_ip`.
 '''''
 
 [[sec-027-smc_input_fabric_axi_wr_rd_test]]
@@ -1272,8 +1248,7 @@ Drive `smc_input_fabric_axi_wr_rd_test_seq`. Each checker below is a named compa
 |===
 
 
-*Pass Criteria*: `CHK-ALIAS-REMAP-RESET-DEFAULT`, `CHK-NONVAC` hold after their compares. Enrolled in: `all`, `project_p0`, `project_p0_triplets`.
-
+*Pass Criteria*: `CHK-ALIAS-REMAP-RESET-DEFAULT`, `CHK-NONVAC` hold after their compares. Enrolled in: `all`, `functional`, `functional_depth`.
 '''''
 
 [[sec-028-smc_input_output_fabric_wr_rd_test]]
@@ -1305,8 +1280,7 @@ Drive `smc_input_output_fabric_wr_rd_test_seq`. Each checker below is a named co
 |===
 
 
-*Pass Criteria*: `CHK-ALIAS-REMAP-RESET-DEFAULT`, `CHK-INPUT-OUTPUT-FABRIC-WR-RD`, `CHK-NONVAC` hold after their compares. Enrolled in: `all`, `balanced_ip`, `pyuvm`, `smoke`, `vplan_triplets`.
-
+*Pass Criteria*: `CHK-ALIAS-REMAP-RESET-DEFAULT`, `CHK-INPUT-OUTPUT-FABRIC-WR-RD`, `CHK-NONVAC` hold after their compares. Enrolled in: `all`, `per_ip`, `pyuvm`, `smoke`, `depth`.
 '''''
 
 [[sec-029-smc_local_fabric_csr_depth_test]]
@@ -1336,8 +1310,7 @@ Drive `smc_local_fabric_csr_depth_test_seq`. Each checker below is a named compa
 |===
 
 
-*Pass Criteria*: `CHK-LOCAL-FABRIC-CSR-DEPTH` hold after their compares. Enrolled in: `all`, `balanced_ip`, `depth_fabric`, `project_p0_triplets`, `vplan_triplets`.
-
+*Pass Criteria*: `CHK-LOCAL-FABRIC-CSR-DEPTH` hold after their compares. Enrolled in: `all`, `per_ip`, `depth_fabric`, `functional_depth`, `depth`.
 '''''
 
 [[sec-030-smc_output_fabric_slverr_inject_test]]
@@ -1367,8 +1340,7 @@ Drive `smc_output_fabric_slverr_inject_test_seq`. Each checker below is a named 
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `balanced_ip`, `vplan_gaps`, `vplan_triplets`.
-
+*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `per_ip`, `coverage_closure`, `depth`.
 '''''
 
 [[sec-031-smc_output_fabric_wr_rd_responder_test]]
@@ -1398,8 +1370,7 @@ Drive `smc_output_fabric_wr_rd_responder_test_seq`. Each checker below is a name
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `vplan_gaps`, `vplan_triplets`.
-
+*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `coverage_closure`, `depth`.
 '''''
 
 [[sec-032-smc_output_filter_remap_security_test]]
@@ -1433,8 +1404,7 @@ Drive `smc_output_filter_remap_security_test_seq`. Each checker below is a named
 |===
 
 
-*Pass Criteria*: `CHK-NONVAC`, `CHK-NONVAC-PHASE-FENCE`, `CHK-OUTBOUND-BLOCK-WRITE`, `CHK-OUTBOUND-PASS-ALL` hold after their compares. Enrolled in: `all`, `balanced_ip`, `depth_fabric`, `project_p0_triplets`, `pyuvm`, `smoke`, `vplan_triplets`.
-
+*Pass Criteria*: `CHK-NONVAC`, `CHK-NONVAC-PHASE-FENCE`, `CHK-OUTBOUND-BLOCK-WRITE`, `CHK-OUTBOUND-PASS-ALL` hold after their compares. Enrolled in: `all`, `per_ip`, `depth_fabric`, `functional_depth`, `pyuvm`, `smoke`, `depth`.
 '''''
 
 [[sec-033-smc_remap_cla_test]]
@@ -1472,8 +1442,7 @@ Drive `smc_remap_cla_test_seq`. Each checker below is a named compare the DUT ca
 |===
 
 
-*Pass Criteria*: not a sign-off PASS. Named checkers hold when the leaf is run on demand; it is held out of `all` against #1488 (CLA deny-leg hang at 0xC016_0038). Known Limitations records the hole. Enrolled in: `balanced_ip`.
-
+*Pass Criteria*: not a sign-off PASS. Named checkers hold when the leaf is run on demand; it is held out of `all` against #1488 (CLA deny-leg hang at 0xC016_0038). Known Limitations records the hole. Enrolled in: `per_ip`.
 '''''
 
 [[sec-034-smc_sys_out_aw_w_split_test]]
@@ -1650,8 +1619,7 @@ Drive `smc_cold_reset_test_seq`. Each checker below is a named compare the DUT c
 |===
 
 
-*Pass Criteria*: `CHK-BRINGUP-LEVELS`, `CHK-COLD-ASSERT-PRIMARY`, `CHK-COOL-PRIMARY`, `CHK-INT-COOL-SEQ`, `CHK-INT-POR-COLD`, `CHK-NONVAC` (and 2 more) hold after their compares. Enrolled in: `all`, `balanced_ip`, `project_p0`, `project_p0_triplets`, `pyuvm`, `reset`, `smoke`.
-
+*Pass Criteria*: `CHK-BRINGUP-LEVELS`, `CHK-COLD-ASSERT-PRIMARY`, `CHK-COOL-PRIMARY`, `CHK-INT-COOL-SEQ`, `CHK-INT-POR-COLD`, `CHK-NONVAC` (and 2 more) hold after their compares. Enrolled in: `all`, `per_ip`, `functional`, `functional_depth`, `pyuvm`, `reset`, `smoke`.
 '''''
 
 [[sec-039-smc_cool_reset_from_pcie_test]]
@@ -1723,8 +1691,7 @@ Drive `smc_cool_reset_x_cold_reset_test_seq`. Each checker below is a named comp
 |===
 
 
-*Pass Criteria*: `CHK-FLR-COLD-ISO-LIVE`, `CHK-FLR-COLD-POS-COOL`, `CHK-FLR-COLD-SCRATCH`, `CHK-FLR-COLD-WINS`, `CHK-FLR-COOL-SCRATCH-CLEAR` hold after their compares. Enrolled in: `all`, `balanced_ip`, `reset`.
-
+*Pass Criteria*: `CHK-FLR-COLD-ISO-LIVE`, `CHK-FLR-COLD-POS-COOL`, `CHK-FLR-COLD-SCRATCH`, `CHK-FLR-COLD-WINS`, `CHK-FLR-COOL-SCRATCH-CLEAR` hold after their compares. Enrolled in: `all`, `per_ip`, `reset`.
 '''''
 
 [[sec-041-smc_cpu_reset_source_test]]
@@ -1757,8 +1724,7 @@ Drive `smc_cpu_reset_source_test_seq`. Each checker below is a named compare the
 |===
 
 
-*Pass Criteria*: `CHK-CPU-RST-BASIC`, `CHK-CPU-RST-IDLE`, `CHK-CPU-RST-REL`, `CHK-CPU-RST-SW` hold after their compares. Enrolled in: `all`, `balanced_ip`, `reset`.
-
+*Pass Criteria*: `CHK-CPU-RST-BASIC`, `CHK-CPU-RST-IDLE`, `CHK-CPU-RST-REL`, `CHK-CPU-RST-SW` hold after their compares. Enrolled in: `all`, `per_ip`, `reset`.
 '''''
 
 [[sec-042-smc_flr_sanity_test]]
@@ -1789,8 +1755,7 @@ Drive `smc_flr_sanity_test_seq`. Each checker below is a named compare the DUT c
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `balanced_ip`, `project_p0_triplets`, `pyuvm`, `smoke`, `vplan_triplets`.
-
+*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `per_ip`, `functional_depth`, `pyuvm`, `smoke`, `depth`.
 '''''
 
 [[sec-043-smc_gpio_boot_stall_test]]
@@ -1859,8 +1824,7 @@ Drive `smc_irq_during_powergood_glitch_test_seq`. Each checker below is a named 
 |===
 
 
-*Pass Criteria*: `CHK-IRQ-PG-GLITCH-NO-SPURIOUS` hold after their compares. Enrolled in: `all`, `combined`, `irq`, `project_p0_triplets`, `pyuvm`, `smoke`.
-
+*Pass Criteria*: `CHK-IRQ-PG-GLITCH-NO-SPURIOUS` hold after their compares. Enrolled in: `all`, `combined`, `irq`, `functional_depth`, `pyuvm`, `smoke`.
 '''''
 
 [[sec-045-smc_jtag_boot_stall_sanity_test]]
@@ -1930,8 +1894,7 @@ Drive `smc_jtag_reset_ctrl_test_seq`. Each checker below is a named compare the 
 |===
 
 
-*Pass Criteria*: `CHK-JTAG-RST-BASIC`, `CHK-JTAG-RST-COOL`, `CHK-JTAG-RST-IDLE`, `CHK-JTAG-RST-SS0`, `CHK-JTAG-RST-WARM-SCRATCH` hold after their compares. Enrolled in: `all`, `balanced_ip`, `reset`.
-
+*Pass Criteria*: `CHK-JTAG-RST-BASIC`, `CHK-JTAG-RST-COOL`, `CHK-JTAG-RST-IDLE`, `CHK-JTAG-RST-SS0`, `CHK-JTAG-RST-WARM-SCRATCH` hold after their compares. Enrolled in: `all`, `per_ip`, `reset`.
 '''''
 
 [[sec-047-smc_jtag_reset_proxy_test]]
@@ -1941,16 +1904,17 @@ Drive `smc_jtag_reset_ctrl_test_seq`. Each checker below is a named compare the 
 
 *BFM / Model*: ocah_axi_vip (AXI), ocah_jtag_vip
 
-*Objective*: Run JTAG-adjacent CSR health checks plus CPU JTAG pin checks.
+*Objective*: Run JTAG-adjacent CSR health checks across an observed cool reset, plus CPU JTAG pin checks.
 
 *Test Coverage*:
 
 * JTAG-adjacent reset recovery proxy sequence.
+* DEFENDS: rst_cool_ni is held low until the reset is observed taken (rst_primary_ref_clk_n and rst_primary_smc_clk_n both 0 while powergood and cold stay 1), then released and the release observed; the cold-domain SCRATCH_COLD_2 pattern written beforehand is cleared to its generated reset; CHIP_CONFIG_VERSION_LO reads its generated reset value on both sides.
+* DOES NOT DEFEND: any JTAG TAP protocol behaviour beyond the CPU JTAG pin checks; the reset here is a cool-reset proxy, not a JTAG-initiated reset.
 
 *Test Procedure*:
 
 Drive `smc_jtag_reset_proxy_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
-
 
 *Checkers*:
 
@@ -1960,11 +1924,14 @@ Drive `smc_jtag_reset_proxy_test_seq`. Each checker below is a named compare the
 |`CHK-CPU-JTAG-DTMCS` |Named compare in `smc_jtag_vip_utils.py`; the run fails if it mismatches
 |`CHK-CPU-JTAG-IDCODE` |Named compare in `smc_jtag_vip_utils.py`; the run fails if it mismatches
 |`CHK-CPU-JTAG-SCAN-ACTIVITY` |Named compare in `smc_jtag_vip_utils.py`; the run fails if it mismatches
+|`cool_asserted` |Bounded WAIT_STATE: reset observed taken while held; expiry fails with the last observed state
+|`cool_released` |Bounded WAIT_STATE: reset observed released; expiry fails with the last observed state
+|scoreboard |SCRATCH_COLD_2_CLEARED reads the generated reset, so the cool reset was taken and cleared the pattern written before it
+|scoreboard |SCRATCH_COLD_2_REWRITE reads back the pattern, so the register is writable again after the reset
 |===
 
 
-*Pass Criteria*: `CHK-CPU-JTAG-DTMCS`, `CHK-CPU-JTAG-IDCODE`, `CHK-CPU-JTAG-SCAN-ACTIVITY` hold after their compares. Enrolled in: `all`, `jtag_depth`, `project_p0_triplets`.
-
+*Pass Criteria*: `CHK-CPU-JTAG-DTMCS`, `CHK-CPU-JTAG-IDCODE`, `CHK-CPU-JTAG-SCAN-ACTIVITY` hold after their compares. Enrolled in: `all`, `jtag_depth`, `functional_depth`.
 '''''
 
 [[sec-048-smc_mixed_boot_stall_test]]
@@ -2000,8 +1967,7 @@ Drive `smc_mixed_boot_stall_test_seq`. Each checker below is a named compare the
 |===
 
 
-*Pass Criteria*: `CHK-MIXED-BOOT-STALL-BASIC`, `CHK-MIXED-BOOT-STALL-DROP`, `CHK-MIXED-BOOT-STALL-GPIO`, `CHK-MIXED-BOOT-STALL-OVRD`, `CHK-MIXED-BOOT-STALL-VAL1`, `CHK-MIXED-BOOT-STALL-WARM` hold after their compares. Enrolled in: `all`, `balanced_ip`, `reset`.
-
+*Pass Criteria*: `CHK-MIXED-BOOT-STALL-BASIC`, `CHK-MIXED-BOOT-STALL-DROP`, `CHK-MIXED-BOOT-STALL-GPIO`, `CHK-MIXED-BOOT-STALL-OVRD`, `CHK-MIXED-BOOT-STALL-VAL1`, `CHK-MIXED-BOOT-STALL-WARM` hold after their compares. Enrolled in: `all`, `per_ip`, `reset`.
 '''''
 
 [[sec-049-smc_multi_reset_csr_persistence_test]]
@@ -2041,8 +2007,7 @@ Drive `smc_multi_reset_csr_persistence_test_seq`. Each checker below is a named 
 |===
 
 
-*Pass Criteria*: `CHK-COOL-RESET-ASSERTED`, `CHK-COOL-RESET-CLEARS-WARM-SCRATCH`, `CHK-COOL-RESET-RELEASED`, `CHK-CSR-BASELINE-RO`, `CHK-CSR-POST-COOL-RECOVERY`, `CHK-CSR-PRE-COOL-READBACK` (and 2 more) hold after their compares. Enrolled in: `all`, `balanced_ip`, `pyuvm`, `smoke`, `vplan_triplets`.
-
+*Pass Criteria*: `CHK-COOL-RESET-ASSERTED`, `CHK-COOL-RESET-CLEARS-WARM-SCRATCH`, `CHK-COOL-RESET-RELEASED`, `CHK-CSR-BASELINE-RO`, `CHK-CSR-POST-COOL-RECOVERY`, `CHK-CSR-PRE-COOL-READBACK` (and 2 more) hold after their compares. Enrolled in: `all`, `per_ip`, `pyuvm`, `smoke`, `depth`.
 '''''
 
 [[sec-050-smc_ndm_reset_test]]
@@ -2077,8 +2042,7 @@ Drive `smc_ndm_reset_test_seq`. Each checker below is a named compare the DUT ca
 |===
 
 
-*Pass Criteria*: `CHK-NDM-CLR`, `CHK-NDM-COUNT`, `CHK-NDM-DROP`, `CHK-NDM-IDLE`, `CHK-NDM-PROC`, `CHK-NDM-REQ` hold after their compares. Enrolled in: `all`, `balanced_ip`, `reset`.
-
+*Pass Criteria*: `CHK-NDM-CLR`, `CHK-NDM-COUNT`, `CHK-NDM-DROP`, `CHK-NDM-IDLE`, `CHK-NDM-PROC`, `CHK-NDM-REQ` hold after their compares. Enrolled in: `all`, `per_ip`, `reset`.
 '''''
 
 [[sec-051-smc_powergood_glitch_test]]
@@ -2142,8 +2106,7 @@ Drive `smc_reset_recovery_matrix_test_seq`. Each checker below is a named compar
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `balanced_ip`, `project_p0_triplets`, `pyuvm`, `reset`, `smoke`, `vplan_triplets`.
-
+*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `per_ip`, `functional_depth`, `pyuvm`, `reset`, `smoke`, `depth`.
 '''''
 
 [[sec-053-smc_reset_unit_sanity_test]]
@@ -2175,8 +2138,7 @@ Drive `smc_reset_unit_sanity_test_seq`. Each checker below is a named compare th
 |===
 
 
-*Pass Criteria*: `CHK-RESET-UNIT-PRE`, `CHK-RESET-UNIT-SS-SWEEP`, `CHK-RESET-UNIT-WDT` hold after their compares. Enrolled in: `all`, `balanced_ip`, `reset`.
-
+*Pass Criteria*: `CHK-RESET-UNIT-PRE`, `CHK-RESET-UNIT-SS-SWEEP`, `CHK-RESET-UNIT-WDT` hold after their compares. Enrolled in: `all`, `per_ip`, `reset`.
 '''''
 
 [[sec-054-smc_ss_reset_complete_test]]
@@ -2210,8 +2172,7 @@ Drive `smc_ss_reset_complete_test_seq`. Each checker below is a named compare th
 |===
 
 
-*Pass Criteria*: `CHK-SS-COMPLETE-DROP`, `CHK-SS-COMPLETE-IDLE`, `CHK-SS-COMPLETE-RESTORE`, `CHK-SS-COMPLETE-SCRATCH-RW`, `CHK-SS-WARM-SS0` hold after their compares. Enrolled in: `all`, `balanced_ip`, `reset`.
-
+*Pass Criteria*: `CHK-SS-COMPLETE-DROP`, `CHK-SS-COMPLETE-IDLE`, `CHK-SS-COMPLETE-RESTORE`, `CHK-SS-COMPLETE-SCRATCH-RW`, `CHK-SS-WARM-SS0` hold after their compares. Enrolled in: `all`, `per_ip`, `reset`.
 '''''
 
 [[sec-055-smc_uart_fifo_basic_trigger_reset_test]]
@@ -2244,8 +2205,7 @@ Drive `smc_uart_fifo_basic_trigger_reset_test_seq`. Each checker below is a name
 |===
 
 
-*Pass Criteria*: `CHK-UART-FIFO-RST-RX`, `CHK-UART-FIFO-RST-TX`, `CHK-UART-FIFO-TRIG`, `CHK-UART-FIFO-TRIG-ABOVE-DEPTH` hold after their compares. Enrolled in: `all`, `balanced_ip`, `uart`.
-
+*Pass Criteria*: `CHK-UART-FIFO-RST-RX`, `CHK-UART-FIFO-RST-TX`, `CHK-UART-FIFO-TRIG`, `CHK-UART-FIFO-TRIG-ABOVE-DEPTH` hold after their compares. Enrolled in: `all`, `per_ip`, `uart`.
 '''''
 
 ==== CLOCK
@@ -2279,8 +2239,7 @@ Drive `smc_cg_test_mode_bypass_test_seq`. Each checker below is a named compare 
 |===
 
 
-*Pass Criteria*: `CHK-DFT-BYPASS-DMA`, `CHK-DFT-BYPASS-ZEROER`, `CHK-NONVAC` hold after their compares. Enrolled in: `all`, `balanced_ip`, `clock`.
-
+*Pass Criteria*: `CHK-DFT-BYPASS-DMA`, `CHK-DFT-BYPASS-ZEROER`, `CHK-NONVAC` hold after their compares. Enrolled in: `all`, `per_ip`, `clock`.
 '''''
 
 [[sec-057-smc_cg_zeroer_activity_bringup_test]]
@@ -2348,8 +2307,7 @@ Drive `smc_clk_multi_window_test_seq`. Each checker below is a named compare the
 |===
 
 
-*Pass Criteria*: `CHK-DMA-PAYLOAD-GOLDEN`, `CHK-HYST-WINDOW`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS` hold after their compares. Enrolled in: `all`, `balanced_ip`, `clock`, `project_p0_triplets`, `pyuvm`, `smoke`.
-
+*Pass Criteria*: `CHK-DMA-PAYLOAD-GOLDEN`, `CHK-HYST-WINDOW`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS` hold after their compares. Enrolled in: `all`, `per_ip`, `clock`, `functional_depth`, `pyuvm`, `smoke`.
 '''''
 
 [[sec-059-smc_clk_running_test]]
@@ -2385,8 +2343,7 @@ Drive `smc_clk_running_test_seq`. Each checker below is a named compare the DUT 
 |===
 
 
-*Pass Criteria*: `CHK-ACTIVE-RUNNING`, `CHK-CG-ENABLE-READBACK`, `CHK-DMA-ACTIVITY-UNGATE`, `CHK-DMA-PAYLOAD-GOLDEN`, `CHK-IDLE-GATED-BASELINE`, `CHK-NONVAC` (and 1 more) hold after their compares. Enrolled in: `all`, `clock`, `project_p0`, `project_p0_triplets`, `pyuvm`, `smoke`.
-
+*Pass Criteria*: `CHK-ACTIVE-RUNNING`, `CHK-CG-ENABLE-READBACK`, `CHK-DMA-ACTIVITY-UNGATE`, `CHK-DMA-PAYLOAD-GOLDEN`, `CHK-IDLE-GATED-BASELINE`, `CHK-NONVAC` (and 1 more) hold after their compares. Enrolled in: `all`, `clock`, `functional`, `functional_depth`, `pyuvm`, `smoke`.
 '''''
 
 [[sec-060-smc_dma_cg_activity_test]]
@@ -2427,8 +2384,7 @@ Drive `smc_dma_cg_activity_test_seq`. Each checker below is a named compare the 
 |===
 
 
-*Pass Criteria*: `CHK-DMA-GATE-OFF`, `CHK-DMA-GATING-DISABLED`, `CHK-DMA-HYST-RACE`, `CHK-DMA-HYST-SWEEP`, `CHK-DMA-WAKEUP-BACKEND`, `CHK-DMA-WAKEUP-FRONTEND` (and 4 more) hold after their compares. Enrolled in: `all`, `balanced_ip`, `clock`.
-
+*Pass Criteria*: `CHK-DMA-GATE-OFF`, `CHK-DMA-GATING-DISABLED`, `CHK-DMA-HYST-RACE`, `CHK-DMA-HYST-SWEEP`, `CHK-DMA-WAKEUP-BACKEND`, `CHK-DMA-WAKEUP-FRONTEND` (and 4 more) hold after their compares. Enrolled in: `all`, `per_ip`, `clock`.
 '''''
 
 [[sec-061-smc_i2c_cg_sanity_test]]
@@ -2464,8 +2420,7 @@ Drive `smc_i2c_cg_sanity_test_seq`. Each checker below is a named compare the DU
 |===
 
 
-*Pass Criteria*: `CHK-I2C-CG-SANITY-GATED` hold after their compares. Enrolled in: `all`, `balanced_ip`, `i2c`, `project_p0`, `project_p0_triplets`, `pyuvm`, `smoke`.
-
+*Pass Criteria*: `CHK-I2C-CG-SANITY-GATED` hold after their compares. Enrolled in: `all`, `per_ip`, `i2c`, `functional`, `functional_depth`, `pyuvm`, `smoke`.
 '''''
 
 [[sec-062-smc_static_cg_sanity_test]]
@@ -2500,8 +2455,7 @@ Drive `smc_static_cg_sanity_test_seq`. Each checker below is a named compare the
 |===
 
 
-*Pass Criteria*: `CHK-DMA-GATE-DISABLED-FREE-RUN`, `CHK-ENABLE-THRESHOLD`, `CHK-MODULE-GATING`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS`, `CHK-ZEROER-GATE-DISABLED-FREE-RUN` hold after their compares. Enrolled in: `all`, `balanced_ip`, `clock`.
-
+*Pass Criteria*: `CHK-DMA-GATE-DISABLED-FREE-RUN`, `CHK-ENABLE-THRESHOLD`, `CHK-MODULE-GATING`, `CHK-NONVAC`, `CHK-TIMEOUT-PATHS`, `CHK-ZEROER-GATE-DISABLED-FREE-RUN` hold after their compares. Enrolled in: `all`, `per_ip`, `clock`.
 '''''
 
 [[sec-063-smc_zeroer_axiclk_cg_test]]
@@ -2541,8 +2495,7 @@ Drive `smc_zeroer_axiclk_cg_test_seq`. Each checker below is a named compare the
 |===
 
 
-*Pass Criteria*: `CHK-NO-TAUTOLOGY`, `CHK-NONVAC`, `CHK-NONVAC-P2`, `CHK-TIMEOUT-PATHS`, `CHK-ZAXI-BUSY-ENABLE`, `CHK-ZAXI-DISABLE-CG` (and 4 more) hold after their compares. Enrolled in: `all`, `balanced_ip`, `clock`.
-
+*Pass Criteria*: `CHK-NO-TAUTOLOGY`, `CHK-NONVAC`, `CHK-NONVAC-P2`, `CHK-TIMEOUT-PATHS`, `CHK-ZAXI-BUSY-ENABLE`, `CHK-ZAXI-DISABLE-CG` (and 4 more) hold after their compares. Enrolled in: `all`, `per_ip`, `clock`.
 '''''
 
 [[sec-064-smc_zeroer_cg_indep_test]]
@@ -2573,8 +2526,7 @@ Drive `smc_zeroer_cg_indep_test_seq`. Each checker below is a named compare the 
 |===
 
 
-*Pass Criteria*: `CHK-NONVAC`, `CHK-ZINDEP-DECOUPLE` hold after their compares. Enrolled in: `all`, `balanced_ip`, `clock`.
-
+*Pass Criteria*: `CHK-NONVAC`, `CHK-ZINDEP-DECOUPLE` hold after their compares. Enrolled in: `all`, `per_ip`, `clock`.
 '''''
 
 [[sec-065-smc_zeroer_regclk_cg_test]]
@@ -2612,8 +2564,7 @@ Drive `smc_zeroer_regclk_cg_test_seq`. Each checker below is a named compare the
 |===
 
 
-*Pass Criteria*: `CHK-NONVAC`, `CHK-NONVAC-P2`, `CHK-TIMEOUT-PATHS`, `CHK-ZEROER-REGCLK-ACCESS-COMPLETE`, `CHK-ZEROER-REGCLK-UNGATE`, `CHK-ZREG-ACTIVITY-ENABLE` (and 3 more) hold after their compares. Enrolled in: `all`, `balanced_ip`, `clock`.
-
+*Pass Criteria*: `CHK-NONVAC`, `CHK-NONVAC-P2`, `CHK-TIMEOUT-PATHS`, `CHK-ZEROER-REGCLK-ACCESS-COMPLETE`, `CHK-ZEROER-REGCLK-UNGATE`, `CHK-ZREG-ACTIVITY-ENABLE` (and 3 more) hold after their compares. Enrolled in: `all`, `per_ip`, `clock`.
 '''''
 
 ==== CPU
@@ -2646,8 +2597,7 @@ Drive `smc_cluster_beu_test_seq`. Each checker below is a named compare the DUT 
 |===
 
 
-*Pass Criteria*: `CHK-BEU-WINDOW-ALIASED` hold after their compares. Enrolled in: `all`, `balanced_ip`.
-
+*Pass Criteria*: `CHK-BEU-WINDOW-ALIASED` hold after their compares. Enrolled in: `all`, `per_ip`.
 '''''
 
 [[sec-067-smc_cpu_ctrl_map_depth_test]]
@@ -2686,8 +2636,7 @@ Drive `smc_cpu_ctrl_map_depth_test_seq`. Each checker below is a named compare t
 |===
 
 
-*Pass Criteria*: `CHK-CPU-BFM-OBSERVABILITY`, `CHK-CPU-CTRL-MAP-DEPTH`, `CHK-CPU-CTRL-MAP-LIVE` hold after their compares. Enrolled in: `all`, `balanced_ip`, `cpu_depth`, `project_p0_triplets`.
-
+*Pass Criteria*: `CHK-CPU-BFM-OBSERVABILITY`, `CHK-CPU-CTRL-MAP-DEPTH`, `CHK-CPU-CTRL-MAP-LIVE` hold after their compares. Enrolled in: `all`, `per_ip`, `cpu_depth`, `functional_depth`.
 '''''
 
 [[sec-068-smc_cpu_ctrl_scratch_window_test]]
@@ -2719,8 +2668,7 @@ Drive `smc_cpu_ctrl_scratch_window_test_seq`. Each checker below is a named comp
 |===
 
 
-*Pass Criteria*: `CHK-CPU-BFM-OBSERVABILITY`, `CHK-CPU-CTRL-DUMMY-ROM`, `CHK-CPU-CTRL-SCRATCH` hold after their compares. Enrolled in: `all`, `balanced_ip`, `cpu_depth`, `project_p0_triplets`.
-
+*Pass Criteria*: `CHK-CPU-BFM-OBSERVABILITY`, `CHK-CPU-CTRL-DUMMY-ROM`, `CHK-CPU-CTRL-SCRATCH` hold after their compares. Enrolled in: `all`, `per_ip`, `cpu_depth`, `functional_depth`.
 '''''
 
 [[sec-069-smc_cpu_ecc_lint_pint_depth_test]]
@@ -2755,8 +2703,7 @@ Drive `smc_cpu_ecc_lint_pint_depth_test_seq`. Each checker below is a named comp
 |===
 
 
-*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-DIAG-AXIL-IDLE`, `CHK-DIAG-CSR`, `CHK-DIAG-CSR-COUNT`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-PROPAGATION`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` hold after their compares. Enrolled in: `all`, `vplan_gaps`, `vplan_triplets`.
-
+*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-DIAG-AXIL-IDLE`, `CHK-DIAG-CSR`, `CHK-DIAG-CSR-COUNT`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-PROPAGATION`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` hold after their compares. Enrolled in: `all`, `coverage_closure`, `depth`.
 '''''
 
 [[sec-070-smc_cpu_firmware_boot_test]]
@@ -2791,8 +2738,7 @@ Drive `smc_cpu_firmware_boot_test_seq`. Each checker below is a named compare th
 |===
 
 
-*Pass Criteria*: `CHK-CLK-SMC-LIVE`, `CHK-EFUSE-SENSE-DONE`, `CHK-NONVAC`, `CHK-RESET-VECTOR-FETCH`, `CHK-ROM-IS-TARGET` hold after their compares. Enrolled in: `all`, `balanced_ip`, `vplan_gaps`.
-
+*Pass Criteria*: `CHK-CLK-SMC-LIVE`, `CHK-EFUSE-SENSE-DONE`, `CHK-NONVAC`, `CHK-RESET-VECTOR-FETCH`, `CHK-ROM-IS-TARGET` hold after their compares. Enrolled in: `all`, `per_ip`, `coverage_closure`.
 '''''
 
 [[sec-071-smc_cpu_sanity_test]]
@@ -2824,8 +2770,7 @@ Drive `smc_cpu_sanity_test_seq`. Each checker below is a named compare the DUT c
 |===
 
 
-*Pass Criteria*: `CHK-CPU-BFM-OBSERVABILITY`, `CHK-CPU-CTRL-MAP-DEPTH`, `CHK-CPU-CTRL-MAP-LIVE` hold after their compares. Enrolled in: `all`, `vplan_gaps`, `vplan_triplets`.
-
+*Pass Criteria*: `CHK-CPU-BFM-OBSERVABILITY`, `CHK-CPU-CTRL-MAP-DEPTH`, `CHK-CPU-CTRL-MAP-LIVE` hold after their compares. Enrolled in: `all`, `coverage_closure`, `depth`.
 '''''
 
 [[sec-072-smc_ecc_codeword_ded_test]]
@@ -2856,8 +2801,7 @@ Drive `smc_ecc_codeword_ded_test_seq`. Each checker below is a named compare the
 |===
 
 
-*Pass Criteria*: `CHK-ECC-CODEWORD-DED`, `CHK-ECC-CODEWORD-SEC` hold after their compares. Enrolled in: `all`, `vplan_gaps`.
-
+*Pass Criteria*: `CHK-ECC-CODEWORD-DED`, `CHK-ECC-CODEWORD-SEC` hold after their compares. Enrolled in: `all`, `coverage_closure`.
 '''''
 
 [[sec-073-smc_ecc_codeword_sec_test]]
@@ -2888,8 +2832,7 @@ Drive `smc_ecc_codeword_sec_test_seq`. Each checker below is a named compare the
 |===
 
 
-*Pass Criteria*: `CHK-ECC-CODEWORD-DED`, `CHK-ECC-CODEWORD-SEC` hold after their compares. Enrolled in: `all`, `vplan_gaps`.
-
+*Pass Criteria*: `CHK-ECC-CODEWORD-DED`, `CHK-ECC-CODEWORD-SEC` hold after their compares. Enrolled in: `all`, `coverage_closure`.
 '''''
 
 [[sec-074-smc_ecc_dfd_dbs_sanity_test]]
@@ -2926,8 +2869,7 @@ Drive `smc_ecc_dfd_dbs_sanity_test_seq`. Each checker below is a named compare t
 |===
 
 
-*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-DIAG-AXIL-IDLE`, `CHK-DIAG-CSR`, `CHK-DIAG-CSR-COUNT`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-PROPAGATION`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` hold after their compares. Enrolled in: `all`, `balanced_ip`, `project_p0_triplets`, `pyuvm`, `smoke`, `vplan_triplets`.
-
+*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-DIAG-AXIL-IDLE`, `CHK-DIAG-CSR`, `CHK-DIAG-CSR-COUNT`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-PROPAGATION`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` hold after their compares. Enrolled in: `all`, `per_ip`, `functional_depth`, `pyuvm`, `smoke`, `depth`.
 '''''
 
 [[sec-075-smc_ecc_fault_inject_test]]
@@ -2937,13 +2879,13 @@ Drive `smc_ecc_dfd_dbs_sanity_test_seq`. Each checker below is a named compare t
 
 *BFM / Model*: ocah_axi_vip (AXI)
 
-*Objective*: SBE inject fires during scratch FW boot; inject clear recovers.
+*Objective*: The scratch bank0 ECC inject hook is reached during FW boot and is gated by its enable pins.
 
 *Test Coverage*:
 
 * U7-1 / P2-7: ECC SBE/DBE inject hooks on scratch bank0.
-* DEFENDS: with inject armed, a real scratch bank0 read advances tb_cpu_ecc_inject_fire_count via DUT cpu_scratch0_inject_fire; clearing inject lets further scratch reads proceed without incrementing (recovery).
-* DOES NOT DEFEND: Rocket ECC syndrome CSR / precise RAS recovery FW policy.
+* DEFENDS: with inject armed, a real scratch bank0 read advances tb_cpu_ecc_inject_fire_count via DUT cpu_scratch0_inject_fire; clearing inject holds that counter while further scratch reads are still arriving. The claim is the contrast between those two halves of the run -- the hold on its own is true for every DUT state, because both inject pins are TB inputs and both are 0.
+* DOES NOT DEFEND: Rocket ECC syndrome CSR / precise RAS recovery FW policy. Nor any DUT SECDED behaviour: the hook counts qualifying reads and corrupts no data -- there is no force on the macro response in this bench.
 
 *Test Procedure*:
 
@@ -2957,11 +2899,11 @@ Drive `smc_ecc_fault_inject_test_seq`. Each checker below is a named compare the
 |Checker |Description
 |`CHK-ECC-INJECT` |Named compare in `smc_ecc_fault_inject_test_seq.py`; the run fails if it mismatches
 |`CHK-ECC-INJECT-NO-DUT-SECDED` |Named compare in `smc_ecc_fault_inject_test_seq.py`; the run fails if it mismatches
+|`CHK-ECC-INJECT-RECOVERY` |Reports both halves of the contrast: the armed advance and the cleared hold, with the scratch-read counts they were taken over
 |===
 
 
-*Pass Criteria*: `CHK-ECC-INJECT`, `CHK-ECC-INJECT-NO-DUT-SECDED` hold after their compares. Enrolled in: `all`, `balanced_ip`, `vplan_gaps`.
-
+*Pass Criteria*: `CHK-ECC-INJECT`, `CHK-ECC-INJECT-NO-DUT-SECDED`, `CHK-ECC-INJECT-RECOVERY` hold after their compares. Enrolled in: `all`, `per_ip`, `coverage_closure`.
 '''''
 
 [[sec-076-smc_mutex_semaphore_test]]
@@ -2998,8 +2940,7 @@ Drive `smc_mutex_semaphore_test_seq`. Each checker below is a named compare the 
 |===
 
 
-*Pass Criteria*: `CHK-MUTEX-BASIC`, `CHK-MUTEX-HELD`, `CHK-MUTEX-NEIGHBOUR-FREE`, `CHK-MUTEX-NEIGHBOUR-HOLD`, `CHK-MUTEX-REL`, `CHK-MUTEX-TAKE` (and 1 more) hold after their compares. Enrolled in: `all`, `balanced_ip`, `cpu_depth`.
-
+*Pass Criteria*: `CHK-MUTEX-BASIC`, `CHK-MUTEX-HELD`, `CHK-MUTEX-NEIGHBOUR-FREE`, `CHK-MUTEX-NEIGHBOUR-HOLD`, `CHK-MUTEX-REL`, `CHK-MUTEX-TAKE` (and 1 more) hold after their compares. Enrolled in: `all`, `per_ip`, `cpu_depth`.
 '''''
 
 [[sec-077-smc_occp_sanity_secure_error_test]]
@@ -3009,12 +2950,15 @@ Drive `smc_mutex_semaphore_test_seq`. Each checker below is a named compare the 
 
 *BFM / Model*: ocah_axi_vip (AXI)
 
-*Objective*: Secure program-fail negative + recovery burn / signature positive.
+*Objective*: Secure program-fail completes and reports done; recovery burn programs bit0; signature positive gate.
 
 *Test Coverage*:
 
-* OTP PROGRAM failure injection (secure programming error).
-* CHIP_CONFIG / EFUSE_MAP signature word mismatch (negative gate).
+* OTP PROGRAM failure injection (secure programming error), via `+smc_efuse_prog_fail_count`.
+* DEFENDS: on the injected-failure burn the eFuse controller still reaches PROGRAM_DONE (bounded poll, expiry fails), and the subsequent recovery burn really does sticky-OR bit0 of word0 through the unmodified data path. The signature positive gate reads CHIP_CONFIG / EFUSE_MAP word0 against their expected values.
+* DOES NOT DEFEND, model-backed: "the failing burn left the OTP word unchanged" is *not DUT-earned*. `hw/ip/efuse/dv/models/efuse_bank_model.sv:120` drives the macro as `.s_apb_pwdata(prog_fail_act ? 32'h0 : apb_req_i.pwdata)`, so on the failing write the DV model substitutes 0 for whatever the controller put on the bus and the word cannot change whatever the controller does. The compare stands as a consistency check on the injection hook only. Same tap as testcase 95, which already carries this disclaimer.
+* GAP, no tracking issue yet: to make the fail path DUT-observable the model should reject the burn at the APB handshake (`pslverr`, macro write suppressed) rather than rewriting the data. That is shared SEP+SMC model behaviour, so it needs its own change and re-run.
+* NOT IMPLEMENTED: no mismatched signature is ever injected -- no write, plusarg, image variant or force on the proof path produces one, and the only `+smc_efuse_hex` image's word 0 *is* the golden. The positive gate is what runs.
 
 *Test Procedure*:
 
@@ -3030,8 +2974,7 @@ Drive `smc_occp_sanity_secure_error_test_seq`. Each checker below is a named com
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `vplan_gaps`, `vplan_triplets`.
-
+*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `coverage_closure`, `depth`.
 '''''
 
 [[sec-078-smc_reference_counter_test]]
@@ -3065,8 +3008,7 @@ Drive `smc_reference_counter_test_seq`. Each checker below is a named compare th
 |===
 
 
-*Pass Criteria*: `CHK-REF-COUNT`, `CHK-REF-COUNT-BASIC` hold after their compares. Enrolled in: `all`, `balanced_ip`.
-
+*Pass Criteria*: `CHK-REF-COUNT`, `CHK-REF-COUNT-BASIC` hold after their compares. Enrolled in: `all`, `per_ip`.
 '''''
 
 [[sec-079-smc_spm_mem_boundary_test]]
@@ -3098,8 +3040,7 @@ Drive `smc_spm_mem_boundary_test_seq`. Each checker below is a named compare the
 |===
 
 
-*Pass Criteria*: `CHK-SPM-MEM`, `CHK-SPM-MEM-BASIC` hold after their compares. Enrolled in: `all`, `balanced_ip`, `cpu_depth`.
-
+*Pass Criteria*: `CHK-SPM-MEM`, `CHK-SPM-MEM-BASIC` hold after their compares. Enrolled in: `all`, `per_ip`, `cpu_depth`.
 '''''
 
 ==== JTAG
@@ -3136,8 +3077,7 @@ Drive `smc_dbs_idle_test_seq`. Each checker below is a named compare the DUT can
 |===
 
 
-*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-DIAG-AXIL-IDLE`, `CHK-DIAG-CSR`, `CHK-DIAG-CSR-COUNT`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-PROPAGATION`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` hold after their compares. Enrolled in: `all`, `project_p0`, `project_p0_triplets`.
-
+*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-DIAG-AXIL-IDLE`, `CHK-DIAG-CSR`, `CHK-DIAG-CSR-COUNT`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-PROPAGATION`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` hold after their compares. Enrolled in: `all`, `functional`, `functional_depth`.
 '''''
 
 [[sec-081-smc_dfd_sanity_test]]
@@ -3172,8 +3112,7 @@ Drive `smc_dfd_sanity_test_seq`. Each checker below is a named compare the DUT c
 |===
 
 
-*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-DIAG-AXIL-IDLE`, `CHK-DIAG-CSR`, `CHK-DIAG-CSR-COUNT`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-PROPAGATION`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` hold after their compares. Enrolled in: `all`, `vplan_gaps`, `vplan_triplets`.
-
+*Pass Criteria*: `CHK-DIAG-AXIL-ACTIVE`, `CHK-DIAG-AXIL-IDLE`, `CHK-DIAG-CSR`, `CHK-DIAG-CSR-COUNT`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-PROPAGATION`, `CHK-DIAG-NDMRESET-CLUSTER-COUNT-RO` hold after their compares. Enrolled in: `all`, `coverage_closure`, `depth`.
 '''''
 
 [[sec-082-smc_dfx_status_abort_test]]
@@ -3207,8 +3146,7 @@ Drive `smc_dfx_status_abort_test_seq`. Each checker below is a named compare the
 |===
 
 
-*Pass Criteria*: `CHK-DFX-ABORT-BASIC`, `CHK-DFX-ABORT-IDLE`, `CHK-DFX-ABORT-MBIST`, `CHK-DFX-ABORT-REPAIR` hold after their compares. Enrolled in: `all`, `balanced_ip`.
-
+*Pass Criteria*: `CHK-DFX-ABORT-BASIC`, `CHK-DFX-ABORT-IDLE`, `CHK-DFX-ABORT-MBIST`, `CHK-DFX-ABORT-REPAIR` hold after their compares. Enrolled in: `all`, `per_ip`.
 '''''
 
 [[sec-083-smc_ijtag_basic_test]]
@@ -3243,8 +3181,7 @@ Drive `smc_ijtag_basic_test_seq`. Each checker below is a named compare the DUT 
 |===
 
 
-*Pass Criteria*: `CHK-CPU-JTAG-DTMCS`, `CHK-CPU-JTAG-IDCODE`, `CHK-CPU-JTAG-SCAN-ACTIVITY` hold after their compares. Enrolled in: `all`, `balanced_ip`, `project_p0`, `project_p0_triplets`, `pyuvm`, `smoke`, `vplan_triplets`.
-
+*Pass Criteria*: `CHK-CPU-JTAG-DTMCS`, `CHK-CPU-JTAG-IDCODE`, `CHK-CPU-JTAG-SCAN-ACTIVITY` hold after their compares. Enrolled in: `all`, `per_ip`, `functional`, `functional_depth`, `pyuvm`, `smoke`, `depth`.
 '''''
 
 [[sec-084-smc_jtag_dmi_smoke_test]]
@@ -3277,8 +3214,7 @@ Drive `smc_jtag_dmi_smoke_test_seq`. Each checker below is a named compare the D
 |===
 
 
-*Pass Criteria*: `CHK-JTAG-DMI-SMOKE` hold after their compares. Enrolled in: `all`, `balanced_ip`, `jtag_depth`, `project_p0_triplets`.
-
+*Pass Criteria*: `CHK-JTAG-DMI-SMOKE` hold after their compares. Enrolled in: `all`, `per_ip`, `jtag_depth`, `functional_depth`.
 '''''
 
 ==== EFUSE
@@ -3316,8 +3252,7 @@ Drive `smc_efuse_boundary_signals_test_seq`. Each checker below is a named compa
 |===
 
 
-*Pass Criteria*: `CHK-EFUSE-BND-BASIC`, `CHK-EFUSE-BND-HOLD`, `CHK-EFUSE-BND-MAP`, `CHK-EFUSE-BND-REL`, `CHK-EFUSE-BND-STAY` hold after their compares. Enrolled in: `all`, `balanced_ip`, `depth_efuse`, `vplan_gaps`, `vplan_triplets`.
-
+*Pass Criteria*: `CHK-EFUSE-BND-BASIC`, `CHK-EFUSE-BND-HOLD`, `CHK-EFUSE-BND-MAP`, `CHK-EFUSE-BND-REL`, `CHK-EFUSE-BND-STAY` hold after their compares. Enrolled in: `all`, `per_ip`, `depth_efuse`, `coverage_closure`, `depth`.
 '''''
 
 [[sec-086-smc_efuse_chip_config_read_test]]
@@ -3348,8 +3283,7 @@ Drive `smc_efuse_chip_config_read_test_seq`. Each checker below is a named compa
 |===
 
 
-*Pass Criteria*: `CHK-EFUSE-BANK-AXIL-ACTIVE`, `CHK-EFUSE-BANK-IDLE` hold after their compares. Enrolled in: `all`, `depth_efuse`, `project_p0_triplets`.
-
+*Pass Criteria*: `CHK-EFUSE-BANK-AXIL-ACTIVE`, `CHK-EFUSE-BANK-IDLE` hold after their compares. Enrolled in: `all`, `depth_efuse`, `functional_depth`.
 '''''
 
 [[sec-087-smc_efuse_jtag_lc_access_matrix_test]]
@@ -3385,8 +3319,7 @@ Drive `smc_efuse_jtag_lc_access_matrix_test_seq`. Each checker below is a named 
 |===
 
 
-*Pass Criteria*: `CHK-EFUSE-JTAG-LC` hold after their compares. Enrolled in: `all`, `balanced_ip`.
-
+*Pass Criteria*: `CHK-EFUSE-JTAG-LC` hold after their compares. Enrolled in: `all`, `per_ip`.
 '''''
 
 [[sec-088-smc_efuse_jtag_lc_negative_test]]
@@ -3420,8 +3353,7 @@ Drive `smc_efuse_jtag_lc_negative_test_seq`. Each checker below is a named compa
 |===
 
 
-*Pass Criteria*: `CHK-CPU-JTAG-DTMCS`, `CHK-CPU-JTAG-IDCODE`, `CHK-CPU-JTAG-SCAN-ACTIVITY` hold after their compares. Enrolled in: `all`, `balanced_ip`, `vplan_gaps`, `vplan_triplets`.
-
+*Pass Criteria*: `CHK-CPU-JTAG-DTMCS`, `CHK-CPU-JTAG-IDCODE`, `CHK-CPU-JTAG-SCAN-ACTIVITY` hold after their compares. Enrolled in: `all`, `per_ip`, `coverage_closure`, `depth`.
 '''''
 
 [[sec-089-smc_efuse_locked_access_interrupt_test]]
@@ -3437,7 +3369,7 @@ Drive `smc_efuse_jtag_lc_negative_test_seq`. Each checker below is a named compa
 
 * Locked eFuse shadow access raises `tb_efuse_locked_access_irq`.
 * DECLARED PRECONDITION -- the read-lock is supplied by the bench, not the DUT.
-* `CHIPLET_ID` is read-locked before this sequence does anything because word 0 of `hw/sys/smc/dv/assets/smc_efuse_default.hex` has `CHIPLET_ID_READ_LOCK` set, and the adopter-supplied simulation stand-in for the OTP macro, `hw/ip/efuse/dv/models/efuse_bank_model.sv`, `$readmemh`s that asset into the bank at time 0 under `+smc_efuse_hex` (named on this testcase's `[[tests]]` entry in `hw/sys/smc/dv/testlists/vplan_triplets.toml`).
+* `CHIPLET_ID` is read-locked before this sequence does anything because word 0 of `hw/sys/smc/dv/assets/smc_efuse_default.hex` has `CHIPLET_ID_READ_LOCK` set, and the adopter-supplied simulation stand-in for the OTP macro, `hw/ip/efuse/dv/models/efuse_bank_model.sv`, `$readmemh`s that asset into the bank at time 0 under `+smc_efuse_hex` (named on this testcase's `[[tests]]` entry in `hw/sys/smc/dv/testlists/depth.toml`).
 * The read-lock leg therefore proves that the DUT ENFORCES a lock it found already set; it does not prove a lock can be established through the fuse-programming path.
 * The write-lock leg does establish its own lock, through the real `LOCKS` CSR write path.
 * Everything asserted below -- lock enforcement, the blocked-read data, the non-disclosure property and the interrupt itself -- is produced by RTL under `hw/ip/efuse/rtl/` and `hw/sys/smc/rtl/`.
@@ -3461,8 +3393,7 @@ Drive `smc_efuse_locked_access_interrupt_test_seq`. Each checker below is a name
 |===
 
 
-*Pass Criteria*: `CHK-EFUSE-LOCK-IRQ-RD`, `CHK-EFUSE-LOCK-IRQ-UNLOCK`, `CHK-EFUSE-LOCK-IRQ-WR`, `CHK-EFUSE-LOCK-PRE`, `CHK-EFUSE-LOCK-SCOREBOARD` hold after their compares. Enrolled in: `all`, `balanced_ip`, `depth_efuse`, `vplan_gaps`, `vplan_triplets`.
-
+*Pass Criteria*: `CHK-EFUSE-LOCK-IRQ-RD`, `CHK-EFUSE-LOCK-IRQ-UNLOCK`, `CHK-EFUSE-LOCK-IRQ-WR`, `CHK-EFUSE-LOCK-PRE`, `CHK-EFUSE-LOCK-SCOREBOARD` hold after their compares. Enrolled in: `all`, `per_ip`, `depth_efuse`, `coverage_closure`, `depth`.
 '''''
 
 [[sec-090-smc_efuse_map_read_test]]
@@ -3493,8 +3424,7 @@ Drive `smc_efuse_map_read_test_seq`. Each checker below is a named compare the D
 |===
 
 
-*Pass Criteria*: `CHK-EFUSE-MAP-READ` hold after their compares. Enrolled in: `all`, `balanced_ip`.
-
+*Pass Criteria*: `CHK-EFUSE-MAP-READ` hold after their compares. Enrolled in: `all`, `per_ip`.
 '''''
 
 [[sec-091-smc_efuse_otp_burn_shadow_test]]
@@ -3533,8 +3463,7 @@ Drive `smc_efuse_otp_burn_shadow_test_seq`. Each checker below is a named compar
 |===
 
 
-*Pass Criteria*: `CHK-EFUSE-OTP-PRELOAD`, `CHK-EFUSE-OTP-PROGRAM-FAIL`, `CHK-EFUSE-OTP-PROGRAM-OK`, `CHK-EFUSE-OTP-SHADOW`, `CHK-EFUSE-OTP-STATUS` hold after their compares. Enrolled in: `all`, `balanced_ip`, `vplan_gaps`.
-
+*Pass Criteria*: `CHK-EFUSE-OTP-PRELOAD`, `CHK-EFUSE-OTP-PROGRAM-FAIL`, `CHK-EFUSE-OTP-PROGRAM-OK`, `CHK-EFUSE-OTP-SHADOW`, `CHK-EFUSE-OTP-STATUS` hold after their compares. Enrolled in: `all`, `per_ip`, `coverage_closure`.
 '''''
 
 [[sec-092-smc_efuse_otp_clock_config_depth_test]]
@@ -3567,8 +3496,7 @@ Drive `smc_efuse_otp_clock_config_depth_test_seq`. Each checker below is a named
 |===
 
 
-*Pass Criteria*: `CHK-EFUSE-BANK-AXIL-ACTIVE`, `CHK-EFUSE-BANK-IDLE`, `CHK-EFUSE-CLOCK-GATE-DEPTH` hold after their compares. Enrolled in: `all`, `balanced_ip`, `depth_efuse`, `project_p0_triplets`, `vplan_triplets`.
-
+*Pass Criteria*: `CHK-EFUSE-BANK-AXIL-ACTIVE`, `CHK-EFUSE-BANK-IDLE`, `CHK-EFUSE-CLOCK-GATE-DEPTH` hold after their compares. Enrolled in: `all`, `per_ip`, `depth_efuse`, `functional_depth`, `depth`.
 '''''
 
 [[sec-093-smc_efuse_otp_clock_test]]
@@ -3600,8 +3528,7 @@ Drive `smc_efuse_otp_clock_test_seq`. Each checker below is a named compare the 
 |===
 
 
-*Pass Criteria*: `CHK-EFUSE-BANK-AXIL-ACTIVE`, `CHK-EFUSE-BANK-IDLE`, `CHK-EFUSE-OTP-CSR` hold after their compares. Enrolled in: `all`, `balanced_ip`, `project_p0`, `project_p0_triplets`, `pyuvm`, `smoke`, `vplan_triplets`.
-
+*Pass Criteria*: `CHK-EFUSE-BANK-AXIL-ACTIVE`, `CHK-EFUSE-BANK-IDLE`, `CHK-EFUSE-OTP-CSR` hold after their compares. Enrolled in: `all`, `per_ip`, `functional`, `functional_depth`, `pyuvm`, `smoke`, `depth`.
 '''''
 
 [[sec-094-smc_efuse_permission_boundary_test]]
@@ -3611,16 +3538,17 @@ Drive `smc_efuse_otp_clock_test_seq`. Each checker below is a named compare the 
 
 *BFM / Model*: ocah_axi_vip (AXI)
 
-*Objective*: Run eFuse-derived chip-config reads until raw OTP permission paths respond.
+*Objective*: PROXY -- run eFuse-derived chip-config reads until raw OTP permission paths respond.
 
 *Test Coverage*:
 
-* SMC OSS eFuse permission/boundary bounded semantics test.
+* DEFENDS: the five eFuse-derived chip-config registers decode and read their generated reset values, and the eFuse-bank AXI-Lite probe is observed going 0 -> 1 -> 0 (positive control then idle leg).
+* DOES NOT DEFEND: eFuse permission or boundary semantics of any kind. This testcase runs the same `smc_efuse_chip_config_read_test_seq` body as testcase 86 -- it programs no lock, drives no lifecycle transition, attempts no denied access, and touches no raw OTP window, because the SMC CSR boundary exposes none of that in the OSS bench.
+* GAP, no tracking issue yet: raw OTP permission-path coverage needs either a responder at the raw OTP window on `smc_wrapper` or an explicit OUT disposition. Until one exists this testcase is a named placeholder, not evidence.
 
 *Test Procedure*:
 
 Drive `smc_efuse_permission_boundary_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
-
 
 *Checkers*:
 
@@ -3632,8 +3560,7 @@ Drive `smc_efuse_permission_boundary_test_seq`. Each checker below is a named co
 |===
 
 
-*Pass Criteria*: `CHK-EFUSE-BANK-AXIL-ACTIVE`, `CHK-EFUSE-BANK-IDLE` hold after their compares. Enrolled in: `all`, `vplan_gaps`, `vplan_triplets`.
-
+*Pass Criteria*: `CHK-EFUSE-BANK-AXIL-ACTIVE`, `CHK-EFUSE-BANK-IDLE` hold after their compares. Enrolled in: `all`, `coverage_closure`, `depth`.
 '''''
 
 [[sec-095-smc_efuse_read_program_timeout_test]]
@@ -3675,8 +3602,7 @@ Drive `smc_efuse_read_program_timeout_test_seq`. Each checker below is a named c
 |===
 
 
-*Pass Criteria*: `CHK-EFUSE-TMO-BASIC`, `CHK-EFUSE-TMO-PROG`, `CHK-EFUSE-TMO-PROG-REC`, `CHK-EFUSE-TMO-PROG-SET`, `CHK-EFUSE-TMO-RD`, `CHK-EFUSE-TMO-RD-REC` hold after their compares. Enrolled in: `all`, `balanced_ip`, `depth_efuse`, `vplan_gaps`, `vplan_triplets`.
-
+*Pass Criteria*: `CHK-EFUSE-TMO-BASIC`, `CHK-EFUSE-TMO-PROG`, `CHK-EFUSE-TMO-PROG-REC`, `CHK-EFUSE-TMO-PROG-SET`, `CHK-EFUSE-TMO-RD`, `CHK-EFUSE-TMO-RD-REC` hold after their compares. Enrolled in: `all`, `per_ip`, `depth_efuse`, `coverage_closure`, `depth`.
 '''''
 
 [[sec-096-smc_efuse_shim_ctrl_test]]
@@ -3779,8 +3705,7 @@ Drive `smc_gpio_filter_access_sep_test_seq`. Each checker below is a named compa
 |===
 
 
-*Pass Criteria*: `CHK-GPIO-FILTER-GPIO1`, `CHK-GPIO-FILTER-PRE`, `CHK-GPIO-FILTER-PRIV`, `CHK-GPIO-FILTER-SCOREBOARD`, `CHK-GPIO-FILTER-UNPRIV`, `CHK-GPIO-FILTER-WR-DENY` hold after their compares. Enrolled in: `all`, `balanced_ip`, `gpio`.
-
+*Pass Criteria*: `CHK-GPIO-FILTER-GPIO1`, `CHK-GPIO-FILTER-PRE`, `CHK-GPIO-FILTER-PRIV`, `CHK-GPIO-FILTER-SCOREBOARD`, `CHK-GPIO-FILTER-UNPRIV`, `CHK-GPIO-FILTER-WR-DENY` hold after their compares. Enrolled in: `all`, `per_ip`, `gpio`.
 '''''
 
 [[sec-099-smc_gpio_intf_full_sweep_test]]
@@ -3848,8 +3773,7 @@ Drive `smc_gpio_irq_active_test_seq`. Each checker below is a named compare the 
 |===
 
 
-*Pass Criteria*: `CHK-GPIO-IRQ-ACTIVE-LOW`, `CHK-GPIO-IRQ-ACTIVE-LOW-ASSERT`, `CHK-GPIO-IRQ-ACTIVE-LOW-CLEAR`, `CHK-GPIO-IRQ-ACTIVE-LOW-IDLE`, `CHK-GPIO0-DATA-CTRL-READBACK`, `CHK-MAILBOX-IRQEN-RESET` hold after their compares. Enrolled in: `all`, `balanced_ip`, `gpio`, `project_p0_triplets`, `pyuvm`, `smoke`, `vplan_triplets`.
-
+*Pass Criteria*: `CHK-GPIO-IRQ-ACTIVE-LOW`, `CHK-GPIO-IRQ-ACTIVE-LOW-ASSERT`, `CHK-GPIO-IRQ-ACTIVE-LOW-CLEAR`, `CHK-GPIO-IRQ-ACTIVE-LOW-IDLE`, `CHK-GPIO0-DATA-CTRL-READBACK`, `CHK-MAILBOX-IRQEN-RESET` hold after their compares. Enrolled in: `all`, `per_ip`, `gpio`, `functional_depth`, `pyuvm`, `smoke`, `depth`.
 '''''
 
 [[sec-101-smc_gpio_irq_type_matrix_test]]
@@ -3882,8 +3806,7 @@ Drive `smc_gpio_irq_type_matrix_test_seq`. Each checker below is a named compare
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `balanced_ip`, `gpio`.
-
+*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `per_ip`, `gpio`.
 '''''
 
 [[sec-102-smc_gpio_multi_sample_test]]
@@ -3915,8 +3838,7 @@ Drive `smc_gpio_multi_sample_test_seq`. Each checker below is a named compare th
 |===
 
 
-*Pass Criteria*: `CHK-GPIO-MULTI-SAMPLE-MATCHES-REF`, `CHK-GPIO-MULTI-SAMPLE-STABLE` hold after their compares. Enrolled in: `all`, `balanced_ip`, `gpio`, `project_p0_triplets`, `pyuvm`, `smoke`.
-
+*Pass Criteria*: `CHK-GPIO-MULTI-SAMPLE-MATCHES-REF`, `CHK-GPIO-MULTI-SAMPLE-STABLE` hold after their compares. Enrolled in: `all`, `per_ip`, `gpio`, `functional_depth`, `pyuvm`, `smoke`.
 '''''
 
 [[sec-103-smc_gpio_observe_test]]
@@ -3956,8 +3878,7 @@ Drive `smc_gpio_observe_test_seq`. Each checker below is a named compare the DUT
 |===
 
 
-*Pass Criteria*: `CHK-GPIO-AGGREGATE-STABLE`, `CHK-GPIO-PAD-BUS-STABLE`, `CHK-PROBE-AXIL-EFUSE-BANK-ALIVE`, `CHK-PROBE-AXIL-EXTERNAL-ALIVE`, `CHK-PROBE-CONTROLS`, `CHK-PROBE-GPIO-IRQ-ALIVE` (and 4 more) hold after their compares. Enrolled in: `all`, `balanced_ip`, `gpio`, `project_p0`, `project_p0_triplets`, `pyuvm`, `smoke`.
-
+*Pass Criteria*: `CHK-GPIO-AGGREGATE-STABLE`, `CHK-GPIO-PAD-BUS-STABLE`, `CHK-PROBE-AXIL-EFUSE-BANK-ALIVE`, `CHK-PROBE-AXIL-EXTERNAL-ALIVE`, `CHK-PROBE-CONTROLS`, `CHK-PROBE-GPIO-IRQ-ALIVE` (and 4 more) hold after their compares. Enrolled in: `all`, `per_ip`, `gpio`, `functional`, `functional_depth`, `pyuvm`, `smoke`.
 '''''
 
 [[sec-104-smc_gpio_output_driveback_test]]
@@ -3989,8 +3910,7 @@ Drive `smc_gpio_output_driveback_test_seq`. Each checker below is a named compar
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `balanced_ip`, `gpio`.
-
+*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `per_ip`, `gpio`.
 '''''
 
 [[sec-105-smc_gpio_p0_int_test]]
@@ -4023,8 +3943,7 @@ Drive `smc_gpio_p0_int_test_seq`. Each checker below is a named compare the DUT 
 |===
 
 
-*Pass Criteria*: `CHK-GPIO-P0-INT-BASIC`, `CHK-GPIO-P0-INT-FALL`, `CHK-GPIO-P0-INT-RISE` hold after their compares. Enrolled in: `all`, `balanced_ip`, `gpio`.
-
+*Pass Criteria*: `CHK-GPIO-P0-INT-BASIC`, `CHK-GPIO-P0-INT-FALL`, `CHK-GPIO-P0-INT-RISE` hold after their compares. Enrolled in: `all`, `per_ip`, `gpio`.
 '''''
 
 [[sec-106-smc_gpio_p0_mux_test]]
@@ -4058,8 +3977,7 @@ Drive `smc_gpio_p0_mux_test_seq`. Each checker below is a named compare the DUT 
 |===
 
 
-*Pass Criteria*: `CHK-GPIO-P0-MUX-LSIO`, `CHK-GPIO-P0-MUX-PATTERN`, `CHK-GPIO-P0-MUX-PRIO`, `CHK-GPIO-P0-MUX-REG` hold after their compares. Enrolled in: `all`, `balanced_ip`, `gpio`.
-
+*Pass Criteria*: `CHK-GPIO-P0-MUX-LSIO`, `CHK-GPIO-P0-MUX-PATTERN`, `CHK-GPIO-P0-MUX-PRIO`, `CHK-GPIO-P0-MUX-REG` hold after their compares. Enrolled in: `all`, `per_ip`, `gpio`.
 '''''
 
 ==== IRQ
@@ -4098,8 +4016,7 @@ Drive `smc_hang_detector_data_timeout_test_seq`. Each checker below is a named c
 |===
 
 
-*Pass Criteria*: `CHK-HANG-DATA-TIMEOUT-ACCEPT`, `CHK-HANG-DATA-TIMEOUT-ARM`, `CHK-HANG-DATA-TIMEOUT-BASIC`, `CHK-HANG-DATA-TIMEOUT-DISABLED`, `CHK-HANG-DATA-TIMEOUT-DROP`, `CHK-HANG-DATA-TIMEOUT-FIRE` (and 1 more) hold after their compares. Enrolled in: `all`, `balanced_ip`, `irq`.
-
+*Pass Criteria*: `CHK-HANG-DATA-TIMEOUT-ACCEPT`, `CHK-HANG-DATA-TIMEOUT-ARM`, `CHK-HANG-DATA-TIMEOUT-BASIC`, `CHK-HANG-DATA-TIMEOUT-DISABLED`, `CHK-HANG-DATA-TIMEOUT-DROP`, `CHK-HANG-DATA-TIMEOUT-FIRE` (and 1 more) hold after their compares. Enrolled in: `all`, `per_ip`, `irq`.
 '''''
 
 [[sec-108-smc_hang_detector_plic_route_test]]
@@ -4173,8 +4090,7 @@ Drive `smc_hang_detector_sanity_test_seq`. Each checker below is a named compare
 |===
 
 
-*Pass Criteria*: `CHK-HANG-BASIC`, `CHK-HANG-OR-ALL`, `CHK-HANG-OR-CLR`, `CHK-HANG-OR-HOLD`, `CHK-HANG-POISON` hold after their compares. Enrolled in: `all`, `balanced_ip`, `irq`.
-
+*Pass Criteria*: `CHK-HANG-BASIC`, `CHK-HANG-OR-ALL`, `CHK-HANG-OR-CLR`, `CHK-HANG-OR-HOLD`, `CHK-HANG-POISON` hold after their compares. Enrolled in: `all`, `per_ip`, `irq`.
 '''''
 
 [[sec-110-smc_hang_detector_sys_timeout_test]]
@@ -4246,8 +4162,7 @@ Drive `smc_hang_detector_timeout_test_seq`. Each checker below is a named compar
 |===
 
 
-*Pass Criteria*: `CHK-HANG-TIMEOUT-AR`, `CHK-HANG-TIMEOUT-ARM`, `CHK-HANG-TIMEOUT-BASIC`, `CHK-HANG-TIMEOUT-DISABLED`, `CHK-HANG-TIMEOUT-DROP`, `CHK-HANG-TIMEOUT-FIRE` hold after their compares. Enrolled in: `all`, `balanced_ip`, `irq`.
-
+*Pass Criteria*: `CHK-HANG-TIMEOUT-AR`, `CHK-HANG-TIMEOUT-ARM`, `CHK-HANG-TIMEOUT-BASIC`, `CHK-HANG-TIMEOUT-DISABLED`, `CHK-HANG-TIMEOUT-DROP`, `CHK-HANG-TIMEOUT-FIRE` hold after their compares. Enrolled in: `all`, `per_ip`, `irq`.
 '''''
 
 [[sec-112-smc_irq_multi_sample_test]]
@@ -4279,8 +4194,7 @@ Drive `smc_irq_multi_sample_test_seq`. Each checker below is a named compare the
 |===
 
 
-*Pass Criteria*: `CHK-IRQ-MULTI-SAMPLE-STABLE` hold after their compares. Enrolled in: `all`, `balanced_ip`, `irq`, `project_p0_triplets`, `pyuvm`, `smoke`.
-
+*Pass Criteria*: `CHK-IRQ-MULTI-SAMPLE-STABLE` hold after their compares. Enrolled in: `all`, `per_ip`, `irq`, `functional_depth`, `pyuvm`, `smoke`.
 '''''
 
 [[sec-113-smc_irq_observe_test]]
@@ -4316,8 +4230,7 @@ Drive `smc_irq_observe_test_seq`. Each checker below is a named compare the DUT 
 |===
 
 
-*Pass Criteria*: `CHK-IRQ-OBSERVE-IDLE-CHECKED` hold after their compares. Enrolled in: `all`, `irq`, `project_p0`, `project_p0_triplets`, `pyuvm`, `smoke`.
-
+*Pass Criteria*: `CHK-IRQ-OBSERVE-IDLE-CHECKED` hold after their compares. Enrolled in: `all`, `irq`, `functional`, `functional_depth`, `pyuvm`, `smoke`.
 '''''
 
 [[sec-114-smc_temp_interrupt_test]]
@@ -4364,16 +4277,17 @@ Drive `smc_temp_interrupt_test_seq`. Each checker below is a named compare the D
 
 *BFM / Model*: ocah_axi_vip (AXI)
 
-*Objective*: Run I2C CSR decode plus SCL/SDA pin override depth checks.
+*Objective*: PROXY -- run I2C CSR decode plus SCL/SDA pin override depth checks.
 
 *Test Coverage*:
 
-* SMC OSS I2C error/FIFO depth pin-level test.
+* DEFENDS: I2C0 host/target CSR decode, and LSIO SCL/SDA release and pull-low behaviour at the pads.
+* DOES NOT DEFEND: I2C error conditions or FIFO depth. This testcase runs the same `smc_i2c_master_target_test_seq` body as testcase 117 -- `FIFO_STATUS` is never read, the only `FIFO_CTRL` accesses are `RXRST | FMTRST` resets, and `CONTROLLER_EVENTS` is only written W1C to clear and read to decorate failure messages, so no event bit is ever asserted.
+* GAP, no tracking issue yet: FIFO-depth and error-injection coverage needs its own body. `smc_i2c_fifo_full_test` covers the full-FIFO case and `smc_i2c_p0_nack_test` the NACK case; neither is this testcase.
 
 *Test Procedure*:
 
 Drive `smc_i2c_error_fifo_depth_test_seq`. Each checker below is a named compare the DUT can fail; a token is emitted only after that compare holds.
-
 
 *Checkers*:
 
@@ -4388,8 +4302,7 @@ Drive `smc_i2c_error_fifo_depth_test_seq`. Each checker below is a named compare
 |===
 
 
-*Pass Criteria*: `CHK-I2C0-HOST-WRITE`, `CHK-I2C0-OVRD-PAD`, `CHK-I2C0-SMBUS-ARA`, `CHK-I2C0-SMBUS-PEC`, `CHK-I2C0-U4-2-SMBUS` hold after their compares. Enrolled in: `all`, `vplan_gaps`, `vplan_triplets`.
-
+*Pass Criteria*: `CHK-I2C0-HOST-WRITE`, `CHK-I2C0-OVRD-PAD`, `CHK-I2C0-SMBUS-ARA`, `CHK-I2C0-SMBUS-PEC`, `CHK-I2C0-U4-2-SMBUS` hold after their compares. Enrolled in: `all`, `coverage_closure`, `depth`.
 '''''
 
 [[sec-116-smc_i2c_fifo_full_test]]
@@ -4424,8 +4337,7 @@ Drive `smc_i2c_fifo_full_test_seq`. Each checker below is a named compare the DU
 |===
 
 
-*Pass Criteria*: `CHK-I2C-FIFO-FULL-ACQ`, `CHK-I2C-FIFO-FULL-BASIC`, `CHK-I2C-FIFO-FULL-FMT`, `CHK-I2C-FIFO-FULL-RX`, `CHK-I2C-FIFO-FULL-TX` hold after their compares. Enrolled in: `all`, `balanced_ip`, `i2c`.
-
+*Pass Criteria*: `CHK-I2C-FIFO-FULL-ACQ`, `CHK-I2C-FIFO-FULL-BASIC`, `CHK-I2C-FIFO-FULL-FMT`, `CHK-I2C-FIFO-FULL-RX`, `CHK-I2C-FIFO-FULL-TX` hold after their compares. Enrolled in: `all`, `per_ip`, `i2c`.
 '''''
 
 [[sec-117-smc_i2c_master_target_test]]
@@ -4460,8 +4372,7 @@ Drive `smc_i2c_master_target_test_seq`. Each checker below is a named compare th
 |===
 
 
-*Pass Criteria*: `CHK-I2C0-HOST-WRITE`, `CHK-I2C0-OVRD-PAD`, `CHK-I2C0-SMBUS-ARA`, `CHK-I2C0-SMBUS-PEC`, `CHK-I2C0-U4-2-SMBUS` hold after their compares. Enrolled in: `all`, `balanced_ip`, `i2c`, `project_p0_triplets`, `pyuvm`, `smoke`, `vplan_triplets`.
-
+*Pass Criteria*: `CHK-I2C0-HOST-WRITE`, `CHK-I2C0-OVRD-PAD`, `CHK-I2C0-SMBUS-ARA`, `CHK-I2C0-SMBUS-PEC`, `CHK-I2C0-U4-2-SMBUS` hold after their compares. Enrolled in: `all`, `per_ip`, `i2c`, `functional_depth`, `pyuvm`, `smoke`, `depth`.
 '''''
 
 [[sec-118-smc_i2c_multi_instance_test]]
@@ -4527,8 +4438,7 @@ Drive `smc_i2c_multi_sample_test_seq`. Each checker below is a named compare the
 |===
 
 
-*Pass Criteria*: `CHK-I2C-MULTI-SAMPLE-STABLE` hold after their compares. Enrolled in: `all`, `i2c`, `project_p0_triplets`, `pyuvm`, `smoke`.
-
+*Pass Criteria*: `CHK-I2C-MULTI-SAMPLE-STABLE` hold after their compares. Enrolled in: `all`, `i2c`, `functional_depth`, `pyuvm`, `smoke`.
 '''''
 
 [[sec-120-smc_i2c_p0_cfifo_test]]
@@ -4624,8 +4534,7 @@ Drive `smc_i2c_p0_fifo_test_seq`. Each checker below is a named compare the DUT 
 |===
 
 
-*Pass Criteria*: `CHK-I2C-P0-FIFO`, `CHK-I2C-P0-FIFO-ACQ`, `CHK-I2C-P0-FIFO-TX` hold after their compares. Enrolled in: `all`, `balanced_ip`, `i2c`.
-
+*Pass Criteria*: `CHK-I2C-P0-FIFO`, `CHK-I2C-P0-FIFO-ACQ`, `CHK-I2C-P0-FIFO-TX` hold after their compares. Enrolled in: `all`, `per_ip`, `i2c`.
 '''''
 
 [[sec-123-smc_i2c_p0_multictrl_test]]
@@ -4657,8 +4566,7 @@ Drive `smc_i2c_p0_multictrl_test_seq`. Each checker below is a named compare the
 |===
 
 
-*Pass Criteria*: `CHK-I2C-P0-MULTICTRL`, `CHK-I2C-P0-MULTICTRL-P` hold after their compares. Enrolled in: `all`, `balanced_ip`, `i2c`.
-
+*Pass Criteria*: `CHK-I2C-P0-MULTICTRL`, `CHK-I2C-P0-MULTICTRL-P` hold after their compares. Enrolled in: `all`, `per_ip`, `i2c`.
 '''''
 
 [[sec-124-smc_i2c_p0_nack_test]]
@@ -4691,8 +4599,7 @@ Drive `smc_i2c_p0_nack_test_seq`. Each checker below is a named compare the DUT 
 |===
 
 
-*Pass Criteria*: `CHK-I2C-P0-NACK-ALLOW`, `CHK-I2C-P0-NACK-TC1`, `CHK-I2C-P0-NACK-TC2` hold after their compares. Enrolled in: `all`, `balanced_ip`, `i2c`.
-
+*Pass Criteria*: `CHK-I2C-P0-NACK-ALLOW`, `CHK-I2C-P0-NACK-TC1`, `CHK-I2C-P0-NACK-TC2` hold after their compares. Enrolled in: `all`, `per_ip`, `i2c`.
 '''''
 
 [[sec-125-smc_i2c_p0_rdwr_test]]
@@ -4755,8 +4662,7 @@ Drive `smc_i2c_p0_stretch_test_seq`. Each checker below is a named compare the D
 |===
 
 
-*Pass Criteria*: `CHK-I2C-P0-HOST-SETTLED`, `CHK-I2C-P0-STRETCH` hold after their compares. Enrolled in: `all`, `balanced_ip`, `i2c`.
-
+*Pass Criteria*: `CHK-I2C-P0-HOST-SETTLED`, `CHK-I2C-P0-STRETCH` hold after their compares. Enrolled in: `all`, `per_ip`, `i2c`.
 '''''
 
 [[sec-127-smc_i2c_p0_timeout_test]]
@@ -4788,8 +4694,7 @@ Drive `smc_i2c_p0_timeout_test_seq`. Each checker below is a named compare the D
 |===
 
 
-*Pass Criteria*: `CHK-I2C-P0-TIMEOUT`, `CHK-I2C-TIMEOUT-CSR-SWEEP` hold after their compares. Enrolled in: `all`, `balanced_ip`, `i2c`.
-
+*Pass Criteria*: `CHK-I2C-P0-TIMEOUT`, `CHK-I2C-TIMEOUT-CSR-SWEEP` hold after their compares. Enrolled in: `all`, `per_ip`, `i2c`.
 '''''
 
 [[sec-128-smc_i2c_p1_rdwr_protocol_test]]
@@ -4823,8 +4728,7 @@ Drive `smc_i2c_p1_rdwr_protocol_test_seq`. Each checker below is a named compare
 |===
 
 
-*Pass Criteria*: `CHK-I2C0-HOST-WRITE`, `CHK-I2C0-OVRD-PAD`, `CHK-I2C0-SMBUS-ARA`, `CHK-I2C0-SMBUS-PEC`, `CHK-I2C0-U4-2-SMBUS` hold after their compares. Enrolled in: `all`, `vplan_gaps`, `vplan_triplets`.
-
+*Pass Criteria*: `CHK-I2C0-HOST-WRITE`, `CHK-I2C0-OVRD-PAD`, `CHK-I2C0-SMBUS-ARA`, `CHK-I2C0-SMBUS-PEC`, `CHK-I2C0-U4-2-SMBUS` hold after their compares. Enrolled in: `all`, `coverage_closure`, `depth`.
 '''''
 
 [[sec-129-smc_i2c_target_smbus_test]]
@@ -4858,8 +4762,7 @@ Drive `smc_i2c_target_smbus_test_seq`. Each checker below is a named compare the
 |===
 
 
-*Pass Criteria*: `CHK-I2C-TGT-SMBUS-ALERT`, `CHK-I2C-TGT-SMBUS-ARA`, `CHK-I2C-TGT-SMBUS-SUS-ASSERT`, `CHK-I2C-TGT-SMBUS-SUS-CLR` hold after their compares. Enrolled in: `all`, `balanced_ip`, `i2c`.
-
+*Pass Criteria*: `CHK-I2C-TGT-SMBUS-ALERT`, `CHK-I2C-TGT-SMBUS-ARA`, `CHK-I2C-TGT-SMBUS-SUS-ASSERT`, `CHK-I2C-TGT-SMBUS-SUS-CLR` hold after their compares. Enrolled in: `all`, `per_ip`, `i2c`.
 '''''
 
 [[sec-130-smc_smbus_alert_ara_test]]
@@ -4928,8 +4831,7 @@ Drive `smc_smbus_alert_suspend_test_seq`. Each checker below is a named compare 
 |===
 
 
-*Pass Criteria*: `CHK-SMBUS-ALERT-SUS-ALERT`, `CHK-SMBUS-ALERT-SUS-ARA`, `CHK-SMBUS-ALERT-SUS-BASIC`, `CHK-SMBUS-ALERT-SUS-CLR`, `CHK-SMBUS-ALERT-SUS-SUSPEND` hold after their compares. Enrolled in: `all`, `balanced_ip`, `i2c`.
-
+*Pass Criteria*: `CHK-SMBUS-ALERT-SUS-ALERT`, `CHK-SMBUS-ALERT-SUS-ARA`, `CHK-SMBUS-ALERT-SUS-BASIC`, `CHK-SMBUS-ALERT-SUS-CLR`, `CHK-SMBUS-ALERT-SUS-SUSPEND` hold after their compares. Enrolled in: `all`, `per_ip`, `i2c`.
 '''''
 
 [[sec-132-smc_smbus_hostnotify_test]]
@@ -4961,8 +4863,7 @@ Drive `smc_smbus_hostnotify_test_seq`. Each checker below is a named compare the
 |===
 
 
-*Pass Criteria*: `CHK-SMBUS-HOSTNOTIFY-FRAME` hold after their compares. Enrolled in: `all`, `balanced_ip`.
-
+*Pass Criteria*: `CHK-SMBUS-HOSTNOTIFY-FRAME` hold after their compares. Enrolled in: `all`, `per_ip`.
 '''''
 
 [[sec-133-smc_smbus_pmbus_test]]
@@ -5030,8 +4931,7 @@ Drive `smc_i3c_to_fabric_test_seq`. Each checker below is a named compare the DU
 |===
 
 
-*Pass Criteria*: `CHK-I3C-CLOCK-GATE-RW`, `CHK-I3C0-HC-CONTROL-BUS-ENABLE`, `CHK-I3C0-HCI-VERSION` hold after their compares. Enrolled in: `all`, `balanced_ip`, `i3c_depth`, `project_p0_triplets`, `vplan_triplets`.
-
+*Pass Criteria*: `CHK-I3C-CLOCK-GATE-RW`, `CHK-I3C0-HC-CONTROL-BUS-ENABLE`, `CHK-I3C0-HCI-VERSION` hold after their compares. Enrolled in: `all`, `per_ip`, `i3c_depth`, `functional_depth`, `depth`.
 '''''
 
 ==== MAILBOX
@@ -5073,8 +4973,7 @@ Drive `smc_mailbox_data_error_test_seq`. Each checker below is a named compare t
 |===
 
 
-*Pass Criteria*: `CHK-MAILBOX-FIFO-DATA`, `CHK-MAILBOX-IRQ-ASSERT`, `CHK-MAILBOX-IRQ-CLEAR`, `CHK-MAILBOX-IRQ-IDLE`, `CHK-MAILBOX-IRQ-SOURCE` hold after their compares. Enrolled in: `all`, `balanced_ip`, `mailbox_depth`, `project_p0_triplets`, `vplan_triplets`.
-
+*Pass Criteria*: `CHK-MAILBOX-FIFO-DATA`, `CHK-MAILBOX-IRQ-ASSERT`, `CHK-MAILBOX-IRQ-CLEAR`, `CHK-MAILBOX-IRQ-IDLE`, `CHK-MAILBOX-IRQ-SOURCE` hold after their compares. Enrolled in: `all`, `per_ip`, `mailbox_depth`, `functional_depth`, `depth`.
 '''''
 
 [[sec-136-smc_mailbox_event_irq_test]]
@@ -5109,8 +5008,7 @@ Drive `smc_mailbox_event_irq_test_seq`. Each checker below is a named compare th
 |===
 
 
-*Pass Criteria*: `CHK-MAILBOX-IRQ-ASSERT`, `CHK-MAILBOX-IRQ-CLEAR`, `CHK-MAILBOX-IRQ-IDLE`, `CHK-MAILBOX-IRQ-SOURCE`, `CHK-MAILBOX-IRQT-CLAMP`, `CHK-MAILBOX-IRQT-IN-RANGE` hold after their compares. Enrolled in: `all`, `balanced_ip`, `vplan_gaps`, `vplan_triplets`.
-
+*Pass Criteria*: `CHK-MAILBOX-IRQ-ASSERT`, `CHK-MAILBOX-IRQ-CLEAR`, `CHK-MAILBOX-IRQ-IDLE`, `CHK-MAILBOX-IRQ-SOURCE`, `CHK-MAILBOX-IRQT-CLAMP`, `CHK-MAILBOX-IRQT-IN-RANGE` hold after their compares. Enrolled in: `all`, `per_ip`, `coverage_closure`, `depth`.
 '''''
 
 [[sec-137-smc_mailbox_field_sweep_test]]
@@ -5177,8 +5075,7 @@ Drive `smc_mailbox_idle_test_seq`. Each checker below is a named compare the DUT
 |===
 
 
-*Pass Criteria*: `CHK-MAILBOX-IRQT-CLAMP`, `CHK-MAILBOX-IRQT-IN-RANGE` hold after their compares. Enrolled in: `all`, `project_p0`, `project_p0_triplets`.
-
+*Pass Criteria*: `CHK-MAILBOX-IRQT-CLAMP`, `CHK-MAILBOX-IRQT-IN-RANGE` hold after their compares. Enrolled in: `all`, `functional`, `functional_depth`.
 '''''
 
 [[sec-139-smc_mailbox_inbound_test]]
@@ -5248,8 +5145,7 @@ Drive `smc_mailbox_irq_test_seq`. Each checker below is a named compare the DUT 
 |===
 
 
-*Pass Criteria*: `CHK-MAILBOX-IRQ-ASSERT`, `CHK-MAILBOX-IRQ-CLEAR`, `CHK-MAILBOX-IRQ-IDLE`, `CHK-MAILBOX-IRQ-SOURCE`, `CHK-MAILBOX-IRQT-CLAMP`, `CHK-MAILBOX-IRQT-IN-RANGE` hold after their compares. Enrolled in: `all`, `balanced_ip`, `project_p0_triplets`, `pyuvm`, `smoke`, `vplan_triplets`.
-
+*Pass Criteria*: `CHK-MAILBOX-IRQ-ASSERT`, `CHK-MAILBOX-IRQ-CLEAR`, `CHK-MAILBOX-IRQ-IDLE`, `CHK-MAILBOX-IRQ-SOURCE`, `CHK-MAILBOX-IRQT-CLAMP`, `CHK-MAILBOX-IRQT-IN-RANGE` hold after their compares. Enrolled in: `all`, `per_ip`, `functional_depth`, `pyuvm`, `smoke`, `depth`.
 '''''
 
 [[sec-141-smc_mailbox_multi_instance_test]]
@@ -5280,8 +5176,7 @@ Drive `smc_mailbox_multi_instance_test_seq`. Each checker below is a named compa
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `balanced_ip`.
-
+*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `per_ip`.
 '''''
 
 ==== SPI
@@ -5314,8 +5209,7 @@ Drive `smc_spi_pad_bfm_test_seq`. Each checker below is a named compare the DUT 
 |===
 
 
-*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `balanced_ip`.
-
+*Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `per_ip`.
 '''''
 
 ==== UART
@@ -5348,8 +5242,7 @@ Drive `smc_uart_baud_word_parity_format_test_seq`. Each checker below is a named
 |===
 
 
-*Pass Criteria*: `CHK-UART-BAUD-BASIC`, `CHK-UART-BAUD-FMT` hold after their compares. Enrolled in: `all`, `balanced_ip`, `uart`.
-
+*Pass Criteria*: `CHK-UART-BAUD-BASIC`, `CHK-UART-BAUD-FMT` hold after their compares. Enrolled in: `all`, `per_ip`, `uart`.
 '''''
 
 [[sec-144-smc_uart_error_conditions_test]]
@@ -5385,8 +5278,7 @@ Drive `smc_uart_error_conditions_test_seq`. Each checker below is a named compar
 |===
 
 
-*Pass Criteria*: `CHK-UART-ERR-BASIC`, `CHK-UART-ERR-BI`, `CHK-UART-ERR-OE`, `CHK-UART-ERR-OE-NEG`, `CHK-UART-ERR-PE`, `CHK-UART-ERR-PE-NEG` hold after their compares. Enrolled in: `all`, `balanced_ip`, `uart`.
-
+*Pass Criteria*: `CHK-UART-ERR-BASIC`, `CHK-UART-ERR-BI`, `CHK-UART-ERR-OE`, `CHK-UART-ERR-OE-NEG`, `CHK-UART-ERR-PE`, `CHK-UART-ERR-PE-NEG` hold after their compares. Enrolled in: `all`, `per_ip`, `uart`.
 '''''
 
 [[sec-145-smc_uart_extremes_misc_test]]
@@ -5396,11 +5288,13 @@ Drive `smc_uart_error_conditions_test_seq`. Each checker below is a named compar
 
 *BFM / Model*: ocah_axi_vip (AXI)
 
-*Objective*: UART0 SCR R/W + idle LSR quiet check.
+*Objective*: UART0 SCR R/W + idle LSR.DR quiet check.
 
 *Test Coverage*:
 
-* UART0 SCR R/W without LCR/MCR/ECR side-effects; idle LSR has no DR/OE/PE/FE/BI.
+* UART0 SCR R/W without LCR/MCR/ECR side-effects; idle LSR has no DR.
+* DEFENDS: only LSR.DR in the idle window, and only because this sequence has a same-run positive control (`_positive_dr_then_idle`) that drives DR to 1 and back to 0, so a stuck-at-0 DR fails.
+* DOES NOT DEFEND: LSR.OE/PE/FE/BI. Nothing in this sequence can drive those bits to 1, so an idle-window check on them would be an unbacked negative that a tied-off bit passes identically. They are claimed by `smc_uart_error_conditions_test`, which raises PE and OE individually and break as FE and BI together, each and back; no testcase in this package raises FE on its own.
 
 *Test Procedure*:
 
@@ -5419,8 +5313,7 @@ Drive `smc_uart_extremes_misc_test_seq`. Each checker below is a named compare t
 |===
 
 
-*Pass Criteria*: `CHK-UART-EXT-BASIC`, `CHK-UART-EXT-DR-POS`, `CHK-UART-EXT-IDLE`, `CHK-UART-EXT-SCR` hold after their compares. Enrolled in: `all`, `balanced_ip`, `uart`.
-
+*Pass Criteria*: `CHK-UART-EXT-BASIC`, `CHK-UART-EXT-DR-POS`, `CHK-UART-EXT-IDLE`, `CHK-UART-EXT-SCR` hold after their compares. Enrolled in: `all`, `per_ip`, `uart`.
 '''''
 
 [[sec-146-smc_uart_irq_sources_priority_test]]
@@ -5455,8 +5348,7 @@ Drive `smc_uart_irq_sources_priority_test_seq`. Each checker below is a named co
 |===
 
 
-*Pass Criteria*: `CHK-UART-IRQ-CLR-MSR`, `CHK-UART-IRQ-CLR-RDR`, `CHK-UART-IRQ-CLR-THRE`, `CHK-UART-IRQ-GATE`, `CHK-UART-IRQ-MAP-TIMEOUT`, `CHK-UART-IRQ-PRI` hold after their compares. Enrolled in: `all`, `balanced_ip`, `uart`.
-
+*Pass Criteria*: `CHK-UART-IRQ-CLR-MSR`, `CHK-UART-IRQ-CLR-RDR`, `CHK-UART-IRQ-CLR-THRE`, `CHK-UART-IRQ-GATE`, `CHK-UART-IRQ-MAP-TIMEOUT`, `CHK-UART-IRQ-PRI` hold after their compares. Enrolled in: `all`, `per_ip`, `uart`.
 '''''
 
 [[sec-147-smc_uart_log_engine_error_boundary_test]]
@@ -5487,8 +5379,7 @@ Drive `smc_uart_log_engine_error_boundary_test_seq`. Each checker below is a nam
 |===
 
 
-*Pass Criteria*: `CHK-UART-LOG-ENGINE-REG-RESTORE`, `CHK-UART-LOG-ENGINE-REG-RW` hold after their compares. Enrolled in: `all`, `vplan_gaps`, `vplan_triplets`.
-
+*Pass Criteria*: `CHK-UART-LOG-ENGINE-REG-RESTORE`, `CHK-UART-LOG-ENGINE-REG-RW` hold after their compares. Enrolled in: `all`, `coverage_closure`, `depth`.
 '''''
 
 [[sec-148-smc_uart_log_engine_reg_rw_test]]
@@ -5519,8 +5410,7 @@ Drive `smc_uart_log_engine_reg_rw_test_seq`. Each checker below is a named compa
 |===
 
 
-*Pass Criteria*: `CHK-UART-LOG-ENGINE-REG-RESTORE`, `CHK-UART-LOG-ENGINE-REG-RW` hold after their compares. Enrolled in: `all`, `balanced_ip`, `depth_uart_log`, `vplan_triplets`.
-
+*Pass Criteria*: `CHK-UART-LOG-ENGINE-REG-RESTORE`, `CHK-UART-LOG-ENGINE-REG-RW` hold after their compares. Enrolled in: `all`, `per_ip`, `depth_uart_log`, `depth`.
 '''''
 
 [[sec-149-smc_uart_loopback_test]]
@@ -5583,8 +5473,7 @@ Drive `smc_uart_sanity_test_seq`. Each checker below is a named compare the DUT 
 |===
 
 
-*Pass Criteria*: `CHK-UART-SANITY`, `CHK-UART-SANITY-BASIC` hold after their compares. Enrolled in: `all`, `balanced_ip`, `uart`.
-
+*Pass Criteria*: `CHK-UART-SANITY`, `CHK-UART-SANITY-BASIC` hold after their compares. Enrolled in: `all`, `per_ip`, `uart`.
 '''''
 
 [[sec-151-smc_uart_spi_log_engine_test]]
@@ -5619,8 +5508,7 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 |===
 
 
-*Pass Criteria*: `CHK-UART-LOG`, `CHK-UART-LOG-COUNT`, `CHK-UART-MSR-CTS-PAD`, `CHK-UART-MSR-DELTA-CLEAR`, `CHK-UART-MSR-DELTA-CLEAR-PAD`, `CHK-UART-MSR-FIRST` hold after their compares. Enrolled in: `all`, `balanced_ip`, `pyuvm`, `smoke`, `vplan_triplets`.
-
+*Pass Criteria*: `CHK-UART-LOG`, `CHK-UART-LOG-COUNT`, `CHK-UART-MSR-CTS-PAD`, `CHK-UART-MSR-DELTA-CLEAR`, `CHK-UART-MSR-DELTA-CLEAR-PAD`, `CHK-UART-MSR-FIRST` hold after their compares. Enrolled in: `all`, `per_ip`, `pyuvm`, `smoke`, `depth`.
 '''''
 
 ==== OCCP
@@ -5834,7 +5722,7 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 |`all` |149 |Sign-off sweep; two enrolled leaves held out against #585 / #1488. Five OCCP / dual leaves build a different DUT.
 |`avsbus_depth` |2 |avsbus depth coverage
 |`axil` |2 |axil coverage
-|`balanced_ip` |99 |One-per-IP breadth run used for routine regression
+|`per_ip` |99 |One-per-IP breadth run used for routine regression
 |`clock` |10 |clock coverage
 |`combined` |5 |combined coverage
 |`cpu_depth` |4 |cpu depth coverage
@@ -5852,26 +5740,26 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 |`mailbox_depth` |1 |mailbox depth coverage
 |`occp_boot` |1 |Production boot ROM reaching its OCCP command loop
 |`occp_dual` |1 |OCCP unsecure boot between two real SMCs
-|`project_p0` |13 |project p0 coverage
-|`project_p0_triplets` |38 |project p0 triplets coverage
+|`functional` |13 |core functional gate
+|`functional_depth` |38 |core functional gate plus its depth companions
 |`pyuvm` |35 |Scenarios with a PyUVM implementation
 |`reset` |14 |reset coverage
 |`smoke` |35 |Fast bring-up gate
 |`uart` |6 |uart coverage
-|`vplan_gaps` |24 |vplan gaps coverage
-|`vplan_triplets` |43 |vplan triplets coverage
+|`coverage_closure` |24 |closes features that previously had no testcase
+|`depth` |43 |cross-feature depth testcases
 |===
 
 [[coverage-matrix]]
 === Coverage Matrix
 
-Block coverage across the live groups (`smoke`, `balanced_ip`, `all`).
+Block coverage across the live groups (`smoke`, `per_ip`, `all`).
 Group names are the ones `testlists/all.toml` resolves. This table is the
 design-side claim; the per-leaf cards below are the detail.
 
 [cols="2,3,3",options="header",]
 |===
-|Block / edge |`smoke` / `balanced_ip` |`all` (sign-off)
+|Block / edge |`smoke` / `per_ip` |`all` (sign-off)
 |Reset / powergood / cool / FLR |`smc_cold_reset_test`, `smc_canonical_smoke_test`, `smc_flr_sanity_test` |same plus the reset cluster
 |CSR / scratch / chip-config |`smc_register_sanity_test`, `smc_default_reg_rd_test` |same plus `smc_register_boundary_depth_test`
 |SEP_IN / local fabric |`smc_i3c_to_fabric_test`, `smc_local_fabric_csr_depth_test` |same plus fabric depth

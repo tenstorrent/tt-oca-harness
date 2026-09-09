@@ -12,8 +12,11 @@
 // Provides, for the SMC testbench only:
 //   * observability counters (ROM / scratch read+write / dcache write)
 //   * the firmware mailbox magic detector
-//   * bank0 ECC fault injection, forced onto the macro response so the CPU
-//     consumes the corrupted data
+//   * bank0 ECC fault-injection HOOK: a counter of scratch bank0 reads taken
+//     while ecc_inject_sbe_i / ecc_inject_dbe_i are asserted. It does NOT
+//     corrupt the macro response -- there is no force anywhere in this bench --
+//     so nothing downstream observes DUT SECDED behaviour. Treat the counter as
+//     evidence that the hook is reached and gated, never as ECC coverage.
 //   * the +smc_rom_hex / +smc_scratch_ram_hex time-zero image backdoors
 //
 // The SMU testbenches do not bind it. They load their SMC ROM through
@@ -79,8 +82,10 @@ module smc_cpu_mem_dv
   logic [31:0] scratch_ram_write_count_q;
   logic        scratch0_inject_fire_q;
 
-  // Bank0 ECC injection itself is a force on smc_ip_integration's response
-  // net and lives in the testbench; this only counts the qualifying reads.
+  // Counts scratch bank0 reads taken while an inject pin is asserted. No data
+  // is corrupted: there is no force on smc_ip_integration's response net here
+  // or in tb_top. A consumer of this counter is observing the hook's gating,
+  // not the CPU's ECC response.
   always_ff @(posedge scratch_ram_req_i[0].clk or negedge rst_ni) begin
     if (!rst_ni) begin
       scratch0_inject_fire_q <= 1'b0;
