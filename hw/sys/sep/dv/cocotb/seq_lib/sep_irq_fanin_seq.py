@@ -29,11 +29,11 @@ from sep_reg_meta import sym
 from seq_lib.sep_irq_aggregator_seq import (
     CSRNG_BASE,
     EDN_BASE,
-    IrqSrc,
     PIC_CSRNG_CMD_REQ_DONE,
     PIC_EDN_CMD_REQ_DONE,
     PIC_HMAC_DONE,
     PIC_KMAC_DONE,
+    IrqSrc,
     agg_from_pic,
 )
 

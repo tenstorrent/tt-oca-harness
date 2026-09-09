@@ -64,6 +64,7 @@ def agg_from_pic(pic_source: int) -> int:
     """Aggregator bit for a documented 1-based PIC source."""
     return pic_source - 1
 
+
 IRQ_DMA_REG_PATH = agg_from_pic(PIC_DMA_REG_PATH)
 IRQ_DMA_HOST_PATH = agg_from_pic(PIC_DMA_HOST_PATH)
 IRQ_PERIPH_OR = agg_from_pic(PIC_PERIPH_OR)
