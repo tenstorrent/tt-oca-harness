@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// smc_register_sanity_test — VPLAN TC_SMC_P0_006 (`--items
-// smc_register_sanity_test`): runs smc_register_sanity_test_seq on the
+// smc_register_sanity_test (`--items smc_register_sanity_test`): runs
+// smc_register_sanity_test_seq on the
 // environment's virtual sequencer once per pass and requires the
 // scoreboard's scratch_csr feature, so a pass whose scratch reads never
 // reached the predictor fails at finalization.

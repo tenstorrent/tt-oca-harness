@@ -1,3 +1,6 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
+
 # eFuse preload configurations
 
 Each `.toml` here declares one OTP image by named register and field. A test
