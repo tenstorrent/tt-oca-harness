@@ -182,14 +182,15 @@ A missing operation is added to the VIP API, never inlined as raw driver or
 virtual-interface manipulation in DUT code. DUT scoreboards consume OCAH
 events or monitor items; nothing reaches into driver internals.
 
-*Reactive responders.* The shared AXI slave agent answers DUT-mastered
-traffic: the testbench wires the DUT-driven signals into the slave
-interface instance, the agent's driver drives the responder-side signals
-back, and error injection is programmed by sequences through
-`ocah_axi_slave_sequence` rather than testbench error ports. Where a plain
-memory model suffices, the behavioral RAM responders
-(`sv/ocah_axi*_ram_responder.sv`) are module collateral wired directly in
-the testbench top.
+*Reactive responders.* The shared AXI slave agent answers every
+DUT-mastered AXI boundary: the testbench wires the DUT-driven signals into
+the slave interface instance, the agent's driver drives the responder-side
+signals back, and memory preloads and error injection are programmed by
+sequences through `ocah_axi_slave_sequence` rather than through testbench
+ports or hierarchical writes. A port the bench flattens to pins is wired
+directly; a port that stays a request/response struct inside the testbench
+top is placed on an `ocah_axi_if` instance through
+`interface/ocah_axi_struct_bridge.sv` and answered the same way.
 
 *Passive checking.* The passive stack (monitor, reference model,
 scoreboard) attaches per bus behind cfg gating; every checker extends the

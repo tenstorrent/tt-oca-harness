@@ -18,7 +18,9 @@ for the candidate requirement-to-test matrix (unsigned; #479), and
 [`docs/SMU_DEFERRED_DISPOSITION.adoc`](docs/SMU_DEFERRED_DISPOSITION.adoc)
 for the v0.5.0 deferred/OUT classification of the 123-entry catalog,
 [`docs/SMU_RELEASE_MATRIX.adoc`](docs/SMU_RELEASE_MATRIX.adoc) for the
-v0.5.0 release regression matrix (#485), and
+v0.5.0 release regression matrix (#485),
+[`docs/SMU_COVERAGE_POLICY.adoc`](docs/SMU_COVERAGE_POLICY.adoc) for the
+candidate coverage-target and waiver-field decision (#484), and
 [`docs/SMU_SEP0_COMPONENT_SIGNOFF.adoc`](docs/SMU_SEP0_COMPONENT_SIGNOFF.adoc)
 for the SEP=0 component signoff record (#481 / #482 / #483 / #490 / #491).
 
@@ -69,7 +71,7 @@ smu_<scenario>_test
 | Interface | VIP / Model |
 |-----------|-------------|
 | Primary JTAG TAP | `ocah_jtag_vip` |
-| External SMN AXI4 | `ocah_axi_vip` (`OcahAxiSlaveAgent` / master) |
+| External SMN AXI4 | `ocah_axi_vip`: `OcahAxiSlaveAgent` on the outbound boundary (struct port bridged by `ocah_axi_struct_bridge`), master on the inbound pins |
 | SMC OTP AXI-Lite (over JTAG2AXI) | `ocah_axi_vip` AXI-Lite |
 | SMC scratch / mailbox | Backdoor + cocotb polling |
 | Cross-trigger / iJTAG | OCAH-local BFM |

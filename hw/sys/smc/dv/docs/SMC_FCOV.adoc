@@ -9,10 +9,24 @@
 This document defines functional coverage intent for the OCAH open-source SMC
 testbench and its PyUVM/Verilator flow.
 
-Verilator does not compile SystemVerilog `covergroup`, `coverpoint`, or `cross`.
-The SMC open-source path therefore uses Python-side coverage/observation
-counters in `SmcScoreboard` for public CI, while SV covergroups, assertion
-coverage, and full code coverage are collected with commercial simulators.
+Verilator does not compile SystemVerilog `covergroup`, `coverpoint`, or
+`cross`, but it does compile a labelled `cover property`. The SMC
+open-source path therefore collects functional coverage on two levels:
+
+* *Native cover-property points* in `hw/sys/smc/dv/cov/sv/`, written with
+  `OCAH_FCOV_COVER` (`hw/common/assert/ocah_fcov_macros.svh`). Under
+  `--coverage-user` these land in the simulator's own coverage database as
+  the `user` metric family, so they reach `cov_merge`, `cov_report`, the
+  coverage-policy engine and `threshold_met`. This is the only functional
+  coverage the tooling can merge or gate on.
+* *Python-side observation counters* in `SmcScoreboard`, which emit
+  `FUNC_COV_VALUE` log lines. These stay useful for the DV-bookkeeping bins
+  that have no RTL signal to observe (`protocol_vip`), but they are log text:
+  no tool consumes them, and they are scraped by the aggregator script below.
+
+SV covergroups mirroring the cover-property points live in the same
+`cov/sv/` modules under ``ifndef VERILATOR`` and are collected only by the
+commercial simulators, together with assertion and full code coverage.
 
 [cols=",",options="header",]
 |===
@@ -28,17 +42,29 @@ coverage, and full code coverage are collected with commercial simulators.
 [cols=",,",options="header",]
 |===
 |Metric |Target |Open-Source Collection Path
-|Functional coverage |Every `FUNC_COV_VALUE` bin named below is hit by the
-enrolled `smoke` / `balanced_ip` suite |Python-side counters in `SmcScoreboard`
+|Functional coverage (gateable) |Every `cov/sv/` cover point either hit by the
+approved release group or carried as a classified hole in the coverage policy
+|`user` metric family in the native database (`--cov`)
+|Functional coverage (observation) |Every `FUNC_COV_VALUE` bin named below is
+hit by the enrolled `smoke` / `per_ip` suite |Python-side counters in `SmcScoreboard`
 |Line/branch/FSM/condition coverage |Collected for signoff in the commercial
 flow |VCS/Xcelium coverage databases (`--cov`)
 |Assertion coverage |Collected for enabled assertions in the commercial flow
 |Xcelium UCIS / IMC
 |===
 
+Targets are deliberately absent: no numeric threshold is committed here.
+Thresholds belong in `cov/config/<tool>/coverage_policy.toml` and only after
+an owner approves a measured baseline, so a run cannot be graded against a
+number nobody signed.
+
 SAMPLE-only bins (`i2c_state`, `irq_state`, `gpio_state`, `axil_master`)
 saturate at unique=1 until an active driver exists; growing them is a
-stimulus problem, not a missing coverpoint.
+stimulus problem, not a missing coverpoint. The `cov/sv/` modules therefore
+do *not* mirror those tuples: a point that can only ever take one value
+inflates the `user` percentage without proving anything. Each observable is
+split into its own point instead, so an undriven source shows up as a named
+hole the coverage policy can carry with evidence.
 
 === Coverage Summary
 
@@ -57,6 +83,74 @@ pad2core_en_any)
 |Protocol-VIP evidence |`protocol_vip` |`SmcProtocolVipItem` kind/test/proxy
 triple; grows with promoted tests
 |===
+
+[[native-cover-points]]
+=== Native cover points (`cov/sv/`)
+
+The modules below are compiled into both flows (registered in
+`smc_sim_cfg.toml` under `[build].sources` and repeated in
+`[frameworks.uvm.build].sources`) and instantiated in `tb/tb_top.sv` inside
+`smc_uvm_top`, in the single-instance body only -- the `SMC_DUAL` port
+surface is narrower and does not carry these observables. Every port is a
+`smc_tb_signal_list.svh` signal, so no hierarchical reference and no
+`smc_public_scope.vlt` change is required.
+
+[cols=",,",options="header",]
+|===
+|Module |Area |Point families
+|`smc_reset_fcov.sv` |`reset_op`, `reset_state` |Per-source reset assertion,
+release edges, re-assertion after release, all-held / partial / all-released
+post-reset state
+|`smc_clk_fcov.sv` |`clk_bucket` |Domain-ratio windows (ref vs smc vs
+periph), stalled-domain windows, per-gater cg_en at both values, gated clock
+running vs held, DMA frontend/backend busy states, gate-vs-busy agreement
+|`smc_periph_fcov.sv` |`i2c_state`, `gpio_state`, `irq_state` |I2C0
+START/STOP, per-side pulldown, contention, clock stretch, SMBALERT#, LSIO
+enable and sense tracking; I3C0 SMC-side activity; GPIO direction scalars and
+single- vs multi-pad enable; one point per interrupt source plus hang-leg
+independence and concurrency
+|`smc_axi_chan_fcov.sv` |Per-AXI-manager channels |Handshake accept/stall per
+channel, `wlast`/`rlast`, single vs multi beat, all four `bresp`/`rresp`
+encodings. Instantiated three times by `smc_fabric_fcov`
+|`smc_fabric_fcov.sv` |`axil_master` |Per-interface AXI-Lite activity and
+concurrency, SEP_IN size/burst/strobe shape, TB-owned response holds, eFuse
+JTAG AXI-Lite responses, SYS_OUT responses and counter advance
+|===
+
+`protocol_vip` has no RTL signal to observe -- it is a DV-bookkeeping ledger
+of promoted tests -- so it deliberately has no `cov/sv/` module and stays on
+the Python path.
+
+Point naming is `c_<area>_<point>`, which makes the coverage-policy
+hierarchy selector `smc_uvm_top.u_smc_<area>_fcov.c_<area>_<point>`; for the
+per-manager AXI points it is
+`smc_uvm_top.u_smc_fabric_fcov.u_<manager>.c_<point>`.
+
+A point must need stimulus beyond power-up and reset release. The quiescent
+half of a pair — a closed gate, an idle bus, a released open-drain line — is
+true from reset with nothing driving it, so covering it proves nothing and
+inflates the `user` percentage exactly the way the saturated Python tuples
+do. Those halves are either dropped (`c_axil_all_masters_idle`, the GPIO
+`_idle` levels, `c_i2c0_disabled`, `c_i2c0_smbalert_released`) or qualified
+by a sticky flag recording that the active half was seen first, which turns
+"closed" into "closes again after opening" and "idle" into "returned to idle
+after working". `c_gpio_boot_stall_pad_*` is qualified by the pad having
+changed at least once, because which of its two values is the power-on
+default depends on the straps.
+
+Two conventions are load-bearing and were both learned from build failures:
+
+* Every cover-property body and disable-iff argument is a single
+  continuous-assign wire (the `dtp_fcov.sv` convention; Verilator's
+  localization pass otherwise ICEs).
+* A `//` comment must not open with the word "verilator" -- the lexer reads
+  it as a pragma and `BADVLTPRAGMA` fails the build. Likewise, a `define`
+  parameter list must stay on one line: Verilator does not register the
+  first parameter after a line continuation, and the unsubstituted parameter
+  name survives into elaboration.
+
+`smc_reset_fcov.sv` gates its points on powergood rather than reset, because
+a reset-assertion point behind `disable iff (in reset)` can never fire.
 
 === Coverage Definitions
 
@@ -129,7 +223,7 @@ promoted protocol-VIP test.
 `protocol_vip`
 |`smc_register_sanity_test` / CSR family |`axil_master`, `protocol_vip`
 |`smc_mailbox_irq_test` |`irq_state`, `protocol_vip`
-|`project_p0` / `balanced_ip` |union of the bins above plus
+|`functional` / `per_ip` |union of the bins above plus
 `protocol_vip` for each promoted area
 |===
 
@@ -138,8 +232,13 @@ promoted protocol-VIP test.
 [cols=",",options="header",]
 |===
 |Flow |Strategy
-|Verilator open-source CI |Python-side `FUNC_COV_VALUE` lines in
-`SmcScoreboard`
+|Verilator open-source CI (graded) |Native database: `line`, `branch`,
+`expression` from `--coverage-line` / `--coverage-expr`, and `user` from the
+`cov/sv/` cover-property points. This is the number `cov_merge` / `cov_report`
+and the coverage policy act on
+|Verilator, observation only |Python-side `FUNC_COV_VALUE` lines in
+`SmcScoreboard`. No tool consumes these — they are log text for the aggregator
+below, not a gateable metric
 |Aggregator |Scan one or more run dirs and report unique events per bin plus
 the union across runs
 |Commercial simulation |`--cov` on Xcelium emits UCIS under
@@ -149,6 +248,34 @@ coverage
 |Closure triage |Grow SAMPLE-only bins with an active driver; keep PLL/PVT
 placeholder windows out of feature PASS
 |===
+
+[[coverage-scope]]
+==== Coverage scope
+
+Both flows scope the denominator at *compile* time, following what SEP
+measured (`hw/sys/sep/dv/cov/config/vcs/README.md`): a report-time filter
+prunes the report pages and still grades the whole database.
+
+[cols=",,",options="header",]
+|===
+|File |Flow |Mechanism
+|`cov/config/verilator/smc_cov_scope.vlt` |public CI (graded)
+|`coverage_off -file`, globs
+|`cov/config/vcs/smc_cov_scope.hier` |commercial signoff
+|`-cm_hier` + `-cm_common_hier`, instance trees
+|===
+
+They express the same intent in two forms the simulators cannot share —
+Verilator has no `-module` form for `coverage_off`, and no `-tree` reaches the
+pulp glue that VCS would have to name — so they must be kept in step by hand.
+`cov/config/vcs/README.md` records what each number is, the measured bucket
+split behind the exclusions, and the checklist for the first VCS run.
+
+The scoped Verilator number is *the SMC DUT minus the CPU cluster, the I3C
+core, the lowRISC prims and TB code*. `vendor/pulp-platform/**` and
+`vendor/tenstorrent/tt-hw-debug/**` stay in the denominator — no file pattern
+reaches them, which `cov/config/vcs/README.md` records. Do not quote the
+number as "SMC coverage".
 
 [[aggregator-script]]
 ==== Aggregator script
@@ -238,5 +365,4 @@ cwd and hit `*F,C58EXS` ("database already exists") on the second run.
 |PLL / PVT placeholder windows |`pll_wrap` / `pvt_wrap` complete OKAY+0;
 handshake only, deferred from feature PASS
 |I3C CCC/IBI |Owned by IP-level DV
-|Coverage-progression history |Status record; kept in `local_records.adoc`
 |===

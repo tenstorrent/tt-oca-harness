@@ -23,6 +23,7 @@ for _path in (_COCOTB_ROOT, _OSS_HW_ROOT / "common" / "dv" / "vip"):
 
 from env.smu_env_cfg import SmuEnvCfg  # noqa: E402
 from env.smu_sep_cpu_trace_monitor import SmuSepCpuTraceMonitor  # noqa: E402
+from ocah_axi_vip import OcahAxiSlaveAgent  # noqa: E402
 from seq_lib.sep_fw_common import load_syms  # noqa: E402
 
 
@@ -142,6 +143,16 @@ class smu_base_test(uvm_test):
     async def bring_up(self) -> None:
         """Apply the production wrapper power-good and cold-reset sequence."""
         dut = cocotb.top
+        # The outbound SMN responder exists before the first clock edge so the
+        # boundary's READY signals are driven from time zero.
+        self.cfg.axi_out_mem = OcahAxiSlaveAgent(
+            self.cfg.axi_out_geometry.bus(dut.u_axi_out_if),
+            dut.clk_smu_i,
+            dut.rst_cold_n_o,
+            reset_active_level=False,
+            size=self.cfg.axi_out_mem_size,
+            name="smu_axi_out",
+        ).sequence
         # Verilator two-state simulation initializes every signal to 0, so a
         # reset input that starts low never produces the falling edge that
         # fires async-reset flops. Flops with nonzero reset values (e.g. the
