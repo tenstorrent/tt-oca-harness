@@ -17,7 +17,7 @@ CDC settle is in #1572).
 [[smu-signoff-490]]
 === JTAG2AXI / OTP / filter depth (#490)
 
-The no-Force deepeners are enrolled in `phase1` / `sep0_all`. There is
+The no-Force deepeners are enrolled in `sep0_all`. There is
 no `testlists/deferred.toml`. README / VPLAN counts are `sep0_all` = 52.
 
 Enrolled names that PASSed on the nightly, with no Force / placeholder:
@@ -77,7 +77,7 @@ Release-group (`sep0_all`) SMC-under-SMU names that PASSed:
 `smu_smc_wdt_sanity_test`, `smu_smc_wdt_timeout_irq_test`,
 `smu_smc_mailbox_sanity_test`.
 
-PR-only, **OUT of `sep0_all`** (stay in `smoke` / `phase1` / `smc`):
+PR-only, **OUT of `sep0_all`** (stay in `smoke` / `smc`):
 
 * `smu_ext_boot_seq_gate_test` — enrollment is #493
 * `smu_smc_mailbox_int_test` — OUT of `sep0_all` (#481); stays in `smc`
