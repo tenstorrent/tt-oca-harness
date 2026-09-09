@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Harness base — the backend-agnostic pexpect ``expect()`` API.
 
 Mirrors the example bootcode harness (``sep_test/harness.py``): ordered, streaming,

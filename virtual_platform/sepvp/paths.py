@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Locate the sep-vp binary, the base config, and the SEP firmware trees.
 
 All paths are anchored relative to this file's location

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Bootstrap the sep-vp harness plugin for all VP pytest suites.
 
 The ``sepvp`` package is deliberately not installed (no editable install); this

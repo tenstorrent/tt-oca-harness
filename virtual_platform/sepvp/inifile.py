@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Generate a per-run overlay .ini for sep-vp.
 
 sep-vp takes a single CCI config file; there are no arbitrary command-line param

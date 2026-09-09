@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 # PROD lifecycle, secure boot ENABLED (sboot_dis = 0).
 # Fields not listed inherit the base efuse_vp.ini defaults.
 # lc_state accepts a symbolic name (TEST_DEV/PROD/RMA_SIP/RMA_CHIPLET/INVALID/PROD_END)

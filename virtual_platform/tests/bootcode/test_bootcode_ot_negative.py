@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Bootcode negative paths over the OpenTitan SPI controller, on sep-vp.
 
 Boots ``boot_rom.elf`` built for the OpenTitan controller with the secure-DMA drain

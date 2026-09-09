@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Reusable expect sequences for bootcode-on-sep-vp tests.
 
 Keyed to the production ``SEP_MSG_*`` codes (always-on, symbolic, decoded straight from the

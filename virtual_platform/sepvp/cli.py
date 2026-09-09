@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Interactive (non-pytest) entry point: ``python -m sepvp.cli``.
 
 Build a :class:`~sepvp.config.SimConfig` from friendly flags, launch sep-vp, stream its

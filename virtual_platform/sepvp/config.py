@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """SimConfig — declarative inputs for one sep-vp run.
 
 Mirrors the example harness's ``SimConfig`` but adapted to sep-vp's control surface:

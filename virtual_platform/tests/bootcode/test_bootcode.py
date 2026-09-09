@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Bootcode (boot_rom.elf) on sep-vp, asserted via the production SEP_STATUS path.
 
 These exercise the harness end-to-end: straps select the boot mode, and the decoded

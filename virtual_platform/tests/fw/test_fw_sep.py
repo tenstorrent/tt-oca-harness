@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """DV firmware compatibility: build a VP-suitable test and assert its output on sep-vp.
 
 Tests come from the shared DV firmware engine (``hw/sys/sep/dv/fw/tests``, default

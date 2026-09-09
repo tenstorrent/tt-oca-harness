@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Translate a fuse-map into sep-vp ``och_sep_ss1.sep_efuse.*`` ini overrides.
 
 sep-vp has no OTP image loader; every fuse is a CCI parameter applied at

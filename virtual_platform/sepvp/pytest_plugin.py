@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Shared pytest plugin for the sep-vp harness suites.
 
 This module is the single home for the harness framework — the CLI options, the

@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """SPI mux register + flash-loader checks on sep-vp.
 
 Drives the in-repo bare-metal test firmware (sw/sep-vp-tests/sep-spi-mux-test) through its own

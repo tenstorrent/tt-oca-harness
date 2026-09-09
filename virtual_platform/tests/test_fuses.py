@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 """Unit tests for sepvp.fuses — YAML and RTL-TOML fuse-map ingestion.
 
 Pure translation logic; no sep-vp build or run required, so these are fast and
