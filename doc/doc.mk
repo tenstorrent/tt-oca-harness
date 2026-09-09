@@ -90,17 +90,17 @@ ocah-doc-clean: ocah-doc-trm-clean ocah-doc-integrator-clean ocah-doc-programmer
 .PHONY: ocah-doc-all-setup
 ocah-doc-all-setup: ocah-doc-trm-setup ocah-doc-integrator-setup ocah-doc-programmer-setup ocah-doc-appnotes-setup ocah-doc-contributing-setup ocah-doc-home-setup
 
-## Build standalone Antora HTML sites for every book.
+## Build combined Antora HTML site - alias of doc-combined-html for consistency
 .PHONY: ocah-doc-all-html
-ocah-doc-all-html: ocah-doc-trm-html ocah-doc-integrator-html ocah-doc-programmer-html ocah-doc-appnotes-html ocah-doc-contributing-html ocah-doc-home-html
+ocah-doc-all-html: ocah-doc-combined-html
 
 ## Build PDFs for every book that has one (home is HTML-only).
 .PHONY: ocah-doc-all-pdf
 ocah-doc-all-pdf: ocah-doc-trm-pdf ocah-doc-integrator-pdf ocah-doc-programmer-pdf ocah-doc-appnotes-pdf ocah-doc-contributing-pdf
 
-# Alias doc-all-serve to doc-combined-html, and then manually serve - consistency
+# Construct combined Antora HTML site, and then manually serve
 .PHONY: ocah-doc-all-serve
-ocah-doc-all-serve: ocah-doc-combined-html
+ocah-doc-all-serve: ocah-doc-all-html
 	@echo "Serving all books at http://localhost:8000 (Ctrl+C to stop)"
 	@cd "$(OCAH_GHPAGES_DIR)" && python3 -m http.server 8000
 
