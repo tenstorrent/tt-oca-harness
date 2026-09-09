@@ -37,19 +37,56 @@ _USER_MEMBERS = ("awuser", "wuser", "buser", "aruser", "ruser")
 _MEMBER_VIEW_OWN = frozenset({"_handle", "_width", "_physical", "_mask"})
 _SCOPE_VIEW_OWN = frozenset({"_scope", "_widths", "_prefix"})
 # Every member an AXI4 / AXI4-Lite scope can carry. cocotb_bus locates signals by
-# scanning dir() of the entity, and dir() of a cocotb handle lists only what VPI
+# scanning dir() of the entity, and dir() of a cocotb handle lists what VPI
 # iteration enumerates, which for an SV interface instance under VCS is none of
-# its members. A by-name lookup resolves them on every simulator, so the view
-# reports the members it can resolve by name rather than trusting iteration.
+# its members. A by-name lookup resolves them on every simulator, so the view's
+# dir() adds each of these it can resolve by name.
 _BUS_MEMBERS = (
-    "awid", "awaddr", "awlen", "awsize", "awburst", "awlock", "awcache", "awprot",
-    "awqos", "awregion", "awuser", "awvalid", "awready",
-    "wdata", "wstrb", "wlast", "wuser", "wvalid", "wready",
-    "bid", "bresp", "buser", "bvalid", "bready",
-    "arid", "araddr", "arlen", "arsize", "arburst", "arlock", "arcache", "arprot",
-    "arqos", "arregion", "aruser", "arvalid", "arready",
-    "rid", "rdata", "rresp", "rlast", "ruser", "rvalid", "rready",
-)  # fmt: skip
+    "awid",
+    "awaddr",
+    "awlen",
+    "awsize",
+    "awburst",
+    "awlock",
+    "awcache",
+    "awprot",
+    "awqos",
+    "awregion",
+    "awuser",
+    "awvalid",
+    "awready",
+    "wdata",
+    "wstrb",
+    "wlast",
+    "wuser",
+    "wvalid",
+    "wready",
+    "bid",
+    "bresp",
+    "buser",
+    "bvalid",
+    "bready",
+    "arid",
+    "araddr",
+    "arlen",
+    "arsize",
+    "arburst",
+    "arlock",
+    "arcache",
+    "arprot",
+    "arqos",
+    "arregion",
+    "aruser",
+    "arvalid",
+    "arready",
+    "rid",
+    "rdata",
+    "rresp",
+    "rlast",
+    "ruser",
+    "rvalid",
+    "rready",
+)
 
 
 @dataclass(frozen=True)
