@@ -41,22 +41,24 @@ fields the packer would have changed --
     genuinely UNSIGNED, and this port reproduces that rather than running a signed
     image with one flag cleared.
 
-**AND THE TWO SURFACES ARE COUPLED, WHICH IS WHY THE PORT IS NOT VACUOUS.** With
-``signature_type = 0`` the manifest can only boot because ``sboot_dis`` is burned:
-``secure_boot_enabled`` short-circuits on the fuse at ``manifest_load.c`` BEFORE
-the PROD rule. If the fuse were ever dropped from the preload, PROD
-would enforce secure boot, the unsigned primary would be refused at
-``BAD_SIG_TYPE=0x00000000`` (``manifest_crypto.c``) and the ROM would fail
-over to the signed backup -- which carries no selector bit and would produce outcome
-O5 under this testcase's name. Both ``BAD_SIG_TYPE=`` and the backup source are
-forbidden, and ``FUSE: SBOOT_DIS: 1`` is required, so that substitution fails loudly
-instead of passing.
+**AND THE TWO SURFACES ARE COUPLED, WHICH IS WHY THE PORT IS NOT VACUOUS.** The
+unsigned manifest can only boot because ``sboot_dis`` is burned, and the fuse is
+only consulted because the manifest asks for nothing: the validator checks the
+signed ``secure_boot_control`` request FIRST and no device input downgrades it
+(``secure_boot.c``, SEP-ROM-SB-040). So both surfaces are required, and in that
+order. If the fuse were dropped from the preload, PROD would enforce secure boot,
+the unsigned primary would be refused and the ROM would fail over to the signed
+backup -- which asks for no demotion and would produce outcome O5 under this
+testcase's name. The backup source is forbidden and ``FUSE: SBOOT_DIS: 1`` is
+required, so that substitution fails loudly instead of passing.
 
-The primary is left with its stale dev0 signature bytes rather than a blank field.
-That is a deliberate, disclosed difference from the reference, whose packer emits an
-empty signature: it is inert here because ``validate_signature`` is never called at
-all on this path, and leaving a syntactically complete signature in place makes the
-image the HARDER case for anything that might later examine the field.
+The primary's signature, public key and key-select fields are zeroed along with
+the enable bit. That is not a nicety: with secure boot off the parser requires the
+slot to carry no crypto material at all, and a slot that kept its signature bytes
+would be refused as a format violation rather than reaching the demotion decision.
+:func:`sep_oca_mutate.clear_secure_boot` does the whole set, which is also what the
+packer emits for a ``secure_boot: 0`` config -- so the port and the reference agree
+on what an unsigned slot looks like.
 
 The BACKUP is re-signed and stays fully valid. Only its ``life_cycle_states`` is
 narrowed, so it remains a genuinely bootable slot -- which is what makes the

@@ -45,8 +45,8 @@ PLATFORM ADAPTATION -- MARKER. The reference expects
 ``WARNING: INVALID_SIGNATURE``. This ROM *defines* ``SEP_MSG_INVALID_SIGNATURE``
 but never EMITS it: there is no ``report_status`` call for it anywhere under
 ``bootrom/prod/src``, so the architected status ring carries only the generic code
-and the console token ``RSA_EXEC_FAIL`` (``rsa_verify.c:164``, reached only when
-the verifier returns non-zero) is the per-reason evidence.
+and the console token ``RSA_PKCS1_FAIL`` (``rsa_verify.c:175``, reached only when
+the recovered padding and digest do not match) is the per-reason evidence.
 
 The signature field sits OUTSIDE the region the manifest hash covers
 (``sep_oca_mutate.OFF_SIGNATURE`` == ``SIGNED_REGION_END``), so this needs neither
@@ -57,7 +57,7 @@ before the verifier ever ran.
 Needs ``+esrc_noise_force``: TWO full RSA-3072 modexps run on OTBN here, which
 parks in UrndRefresh until EDN grants entropy. The ROM brings the real
 ESRC -> CSRNG -> EDN chain up itself, so only the noise source is forced and the
-RSA assertions are untouched -- ``RSA_EXEC_FAIL`` still means the signature
+RSA assertions are untouched -- ``RSA_PKCS1_FAIL`` still means the signature
 genuinely failed and ``RSA_VERIFY_OK`` that the backup's genuinely verified.
 """
 
@@ -93,10 +93,12 @@ _KEY_AUTHORIZED = "PUBK_AUTHORIZED"
 class sep_firmware_primary_invalid_signature_test(sep_primary_fail_backup_boot_base):
     """Primary signature fails RSA -> failover -> backup verifies and boots."""
 
-    # rsa_verify.c:164. Requiring this specific marker rather than any failure is
-    # what distinguishes "the signature was checked and rejected" from
-    # "something else went wrong first".
-    primary_defect_marker = "RSA_EXEC_FAIL"
+    # rsa_verify.c:175 -- the modexp ran and the PKCS#1 padding/digest did not
+    # match. That is the verdict this testcase is about, and it is a different
+    # marker from RSA_EXEC_FAIL (:164), which means the OTBN execution itself
+    # failed: an engine fault, not a signature verdict. RSA_EXEC_FAIL is
+    # forbidden below for exactly that reason.
+    primary_defect_marker = "RSA_PKCS1_FAIL"
     primary_expected_error = MANIFEST_ERR_SIG_FAILED
     # The defect IS the signature value, so the primary must drive the verifier.
     primary_expected_rsa_starts = 1
@@ -112,6 +114,9 @@ class sep_firmware_primary_invalid_signature_test(sep_primary_fail_backup_boot_b
     # MANIFEST_ERR=<code>, and the base already requires this member's exact code,
     # so a different rejection reason cannot satisfy it.
     extra_forbidden = (
+        # An engine fault would end the primary's attempt without the signature
+        # ever being judged, so the run would not be a signature verdict.
+        "RSA_EXEC_FAIL",
         "PUBK_ALGO_UNSUPPORTED",
         "PUBK_ENCODING_UNSUPPORTED",
         "PUBK_FIELD_TOO_SMALL",

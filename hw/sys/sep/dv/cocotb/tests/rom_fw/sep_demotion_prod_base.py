@@ -49,10 +49,9 @@ F11 item 1, which RETRACTS an earlier instruction). The reference's plusarg:
 Both are ported. The eFuse preload ``sep_efuse_lc_prod_sboot_dis.toml`` burns the
 fuse, and :func:`apply_secure_boot_dis` writes both manifest fields:
 
-  * ``secure_boot_control`` bit 0 (``FLAG_ARGS_BIT_SECURE_BOOT``, ``manifest.h``)
-    cleared -- the field ``secure_boot_enabled`` reads at ``manifest_load.c``.
-    It sits OUTSIDE the TBS (``manifest.h``), so clearing it needs no
-    re-hash and no re-sign;
+  * ``secure_boot_control`` bit 0 cleared -- the signed enforcement request the
+    validator's precedence reads first (``secure_boot.c``). It sits INSIDE the
+    signed region, so clearing it re-hashes;
   * ``signature_type`` forced to ``NO_SIGNATURE`` (0), because the packer forces
     exactly that whenever a config sets ``secure_boot: 0``
     (``bootrom/prod/tools/tt-boot-manifest/src/manifest_signing.py:43-45``,
