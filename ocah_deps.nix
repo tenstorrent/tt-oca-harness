@@ -18,6 +18,8 @@ in
     OCAH_NO_INSTALL_NPM_DEPS = "1";
     # Run Synth Natively, rather than (nesting) container
     OCAH_EDA_SKIP_CONTAINERS = "1";
+    # Build KM FW natively, rather than in container
+    FW_DISPATCH_RUNNER = "";
     # VP Env Variables
     SYSTEMC_HOME = "${pkgs.systemc20}";
     CCI_HOME = "${pkgs.systemc-cci}";
