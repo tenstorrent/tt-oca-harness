@@ -108,62 +108,42 @@ __attribute__((noreturn)) static void jump_to_bl1(uint32_t entry_addr) {
 // Public API
 // ---------------------------------------------------------------------------
 
-uint32_t rom_handoff_bl1(void) {
-    oca_image_info_t bl1;
-
-    report_status(STATUS_TYPE_INFO, SEP_MSG_COPY_AND_EXEC_IMAGE);
-
-    // -- Step 1: find BL1 --
-    if (!find_bl1(&bl1)) {
+// Locate BL1 in the staged payload and check it against this device's memory
+// map. Reads only staged state, so it is safe to run per slot during manifest
+// validation and again at hand-off. `report` gates the informational output so a
+// successful boot prints the placement once; rejections always print, because a
+// rejected slot's reason is the diagnostic. `in_iccm` may be NULL.
+static uint32_t bl1_locate(oca_image_info_t *bl1, bool *in_iccm, bool report) {
+    if (!find_bl1(bl1)) {
         simputs("NO_BL1_IMAGE\n");
         report_status(STATUS_TYPE_ERROR, SEP_MSG_SEP_BL1_MISSING);
         return OCA_BOOT_ERR_NO_BL1;
     }
 
-    uint32_t load_addr = (uint32_t)bl1.load_addr;
-    uint32_t img_length = (uint32_t)bl1.length;
-    uint32_t entry_off = (uint32_t)bl1.entry_point;
+    if (report) {
+        report_status(STATUS_TYPE_INFO, SEP_MSG_BL1_FOUND);
+        simputshex32("LOAD=", (uint32_t)bl1->load_addr);
+        simputshex32("LEN=", (uint32_t)bl1->length);
+        simputshex32("ENTRY=", (uint32_t)bl1->entry_point);
+    }
 
-    report_status(STATUS_TYPE_INFO, SEP_MSG_BL1_FOUND);
-    simputshex32("LOAD=", load_addr);
-    simputshex32("LEN=", img_length);
-    simputshex32("ENTRY=", entry_off);
-
-    // The TOC entry's load_addr/entry_point are authenticated but arbitrary:
-    // the library checks them for internal consistency, never against this
-    // device's memory map. Confining the copy to a region BL1 may legally
-    // occupy is the ROM's job.
-    //
-    // BOTH SEP SRAM and ICCM are legal (SEP-ROM-MAN-060). Placement is a
-    // property of the image the manifest describes, not a ROM build option, so
-    // the ROM honours whichever region the TOC entry names and refuses anything
-    // outside both -- load_addr lives in the signed manifest but is still
-    // attacker-chosen among valid images, so "in one of the two" is the check
-    // that matters, not "equal to a constant this build was compiled for".
-    //
-    // The copy goes through the DMA either way: the LSU cannot store to ICCM at
-    // all (it shares VeeR region 0xC with DCCM, so el2_lsu_addrcheck faults any
-    // ICCM address), and the DMA engine reaches both. Bounds come from the
-    // generated register map, so an RDL change moves them here too.
-    // contains_range() rejects a length that would overflow, so no separate
-    // size guard is needed.
-    // ICCM is the secure execution space and is always permitted. SRAM is
-    // permitted only when BL1_SRAM_EXEC_ENABLE is set -- it exists for debug and
-    // special applications, and an adopter can compile it out to lock the ROM
-    // down to ICCM-only execution. Default is enabled (see the Makefile knob).
+    // load_addr and entry_point are authenticated but arbitrary: the library
+    // checks them for internal consistency, never against this device's memory
+    // map. SEP-ROM-MAN-060 permits SEP SRAM and ICCM. ICCM is the secure
+    // execution space and is always permitted; SRAM only when
+    // BL1_SRAM_EXEC_ENABLE is set, so an adopter can lock the ROM down to
+    // ICCM-only execution. contains_range() rejects a length that overflows,
+    // and its bounds come from the generated register map.
     const bool sram_span =
         contains_range(OCH_SEP_TOP_SEP_SRAM_BASE_ADDR, OCH_SEP_TOP_SEP_SRAM_SIZE,
-                       (size_t)bl1.load_addr, (size_t)bl1.length);
-    const bool bl1_in_iccm =
+                       (size_t)bl1->load_addr, (size_t)bl1->length);
+    const bool iccm_span =
         contains_range(OCH_SEP_TOP_SEP_ICCM_BASE_ADDR, OCH_SEP_TOP_SEP_ICCM_SIZE,
-                       (size_t)bl1.load_addr, (size_t)bl1.length);
-    const bool bl1_in_sram = (BL1_SRAM_EXEC_ENABLE != 0) && sram_span;
+                       (size_t)bl1->load_addr, (size_t)bl1->length);
 
-    if (!bl1_in_sram && !bl1_in_iccm) {
-        // Distinguish "nowhere legal" from "would have been legal, but this
-        // build forbids SRAM execution" -- otherwise an adopter who locks the
-        // ROM down and then boots a debug image gets an unattributable range
-        // error and no hint that a build flag caused it.
+    if (!iccm_span && !(BL1_SRAM_EXEC_ENABLE != 0 && sram_span)) {
+        // Separate "in no permitted region" from "in SRAM, which this build
+        // forbids": the second is a build-flag consequence, not a bad image.
         if (sram_span) {
             simputs("BL1_SRAM_EXEC_DISABLED\n");
         }
@@ -171,17 +151,47 @@ uint32_t rom_handoff_bl1(void) {
         report_status(STATUS_TYPE_ERROR, SEP_MSG_BL1_BAD_ADDR);
         return OCA_BOOT_ERR_BL1_BAD_ADDR;
     }
-    simputs(bl1_in_iccm ? "BL1_DST=ICCM\n" : "BL1_DST=SRAM\n");
-    if (bl1.entry_point >= bl1.length) {
+    if (bl1->entry_point >= bl1->length) {
         simputs("BL1_ENTRY_RANGE\n");
         report_status(STATUS_TYPE_ERROR, SEP_MSG_BL1_ENTRY_INVALID);
         return OCA_BOOT_ERR_BL1_BAD_ADDR;
     }
-    if (img_length == 0u) {
+    if ((uint32_t)bl1->length == 0u) {
         simputs("BL1_SIZE\n");
         report_status(STATUS_TYPE_ERROR, SEP_MSG_BL1_SIZE_INVALID);
         return OCA_BOOT_ERR_BL1_TOO_LARGE;
     }
+
+    if (in_iccm != NULL) {
+        *in_iccm = iccm_span;
+    }
+    if (report) {
+        simputs(iccm_span ? "BL1_DST=ICCM\n" : "BL1_DST=SRAM\n");
+    }
+    return 0u;
+}
+
+uint32_t rom_bl1_check(void) {
+    oca_image_info_t bl1;
+    return bl1_locate(&bl1, NULL, false);
+}
+
+uint32_t rom_handoff_bl1(void) {
+    oca_image_info_t bl1;
+    bool bl1_in_iccm = false;
+
+    report_status(STATUS_TYPE_INFO, SEP_MSG_COPY_AND_EXEC_IMAGE);
+
+    // Re-run rather than trust the per-slot result: this function owns the copy
+    // and must not depend on a caller having validated the placement.
+    uint32_t locate_err = bl1_locate(&bl1, &bl1_in_iccm, true);
+    if (locate_err != 0u) {
+        return locate_err;
+    }
+
+    uint32_t load_addr = (uint32_t)bl1.load_addr;
+    uint32_t img_length = (uint32_t)bl1.length;
+    uint32_t entry_off = (uint32_t)bl1.entry_point;
 
     img_length = (img_length + 3u) & ~3u;
 

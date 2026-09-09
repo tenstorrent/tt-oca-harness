@@ -72,6 +72,12 @@ const uint8_t *rom_oca_manifest_hash(void);
 #define OCA_DEMOTE_BL2_ENABLE (1u << 3)
 uint32_t rom_oca_demotion_control(void);
 
+// Check that the staged payload carries a BL1 this device can load: present,
+// correctly typed, placed in a permitted region, with entry_point inside it.
+// Called per slot by rom_manifest_boot(), before the fuse-secret lock, so a
+// slot whose BL1 cannot be loaded fails over to the backup.
+uint32_t rom_bl1_check(void);
+
 // Find BL1 in the staged payload TOC, copy it to its load address and jump.
 // Does not return on success.
 uint32_t rom_handoff_bl1(void);
