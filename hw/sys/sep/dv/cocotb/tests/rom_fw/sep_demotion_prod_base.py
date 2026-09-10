@@ -74,7 +74,7 @@ proves from the DEVICE side that no read touched the backup span.
 
 The primary keeps its stale dev0 signature bytes rather than a blank field. That
 is a deliberate, disclosed difference from the reference, whose packer emits an
-empty signature: it is inert here because ``validate_signature`` is never called
+empty signature: it is inert here because the signature path is never called
 at all on this path, and a syntactically complete signature is the harder case
 for anything that might later examine the field.
 

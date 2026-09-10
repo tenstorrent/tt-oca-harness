@@ -14,9 +14,9 @@ reading the selector and the revocation bitmap and then verifying with them:
   * ``PUBK_SEL=0x00000000`` -- the selector the ROM read out of the backup
     manifest, so the boot is attributable to slot 0
     rather than to some other or absent selection;
-  * ``PUBK_REVOKE=0x00000000`` -- the fuse word ``check_pubkey_revoked`` read, proving the revocation check ran and
+  * ``PUBK_REVOKE=0x00000000`` -- the fuse word the revocation check read, proving the revocation check ran and
     PERMITTED this slot rather than being skipped. Note this marker alone does
-    NOT prove the ROM-key arm was taken: ``check_pubkey_revoked`` is called from
+    NOT prove the ROM-key arm was taken: the revocation check is called from
     the fuse-key arm too. What excludes that arm is
     the ``PUBK_SEL=0x00000000`` value above -- slot 0 is ROM classical key 0 --
     together with ``PUBK_SEL_AMBIGUOUS`` and ``PUBK_OTP_EMPTY`` being forbidden
@@ -39,7 +39,7 @@ THE MATCHED PAIR IS THE STRONGEST EVIDENCE HERE. This testcase and
 the same two calls -- ``mm.break_magic(primary)`` and
 ``select_backup_rom_slot(buf, 0)`` -- so the bytes are identical by construction.
 The ONLY difference between them is one bit of ``CHIPLET_PUBK_REVOKE``. Fuse clear
-boots; bit 0 set is refused with ``KEY_REVOKED idx=0x00000000`` and never reaches
+boots; bit 0 set is refused with the revocation error code and never reaches
 ``RSA_EXEC``. Nothing else about revocation needs arguing.
 
 Needs ``+esrc_noise_force``: the backup is valid, so the full RSA-3072 modexp
@@ -90,7 +90,7 @@ class sep_firmware_backup_rom_key_valid_test(sep_primary_fail_backup_boot_base):
     primary_expected_error = MANIFEST_ERR_BAD_MAGIC
     efuse_preload = _EFUSE_PRELOAD
     extra_required = (_PUBK_SEL_ECHO, _REVOKE_ECHO)
-    # Every rejecting arm of validate_signature. This is a positive test, so none
+    # Every rejecting arm of the signature path. This is a positive test, so none
     # of them may fire: seeing any one would mean the boot completed in spite of a
     # key-selection complaint, or from a slot this testcase did not select.
     extra_forbidden = (
@@ -105,7 +105,7 @@ class sep_firmware_backup_rom_key_valid_test(sep_primary_fail_backup_boot_base):
 
     def corrupt_primary(self, buf: bytearray) -> None:
         # The same failover trigger the revoke family uses: the magic word, which
-        # validate_manifest_header rejects before any hash or crypto work, so the trigger cannot interact with the key
+        # the manifest header check rejects before any hash or crypto work, so the trigger cannot interact with the key
         # selection under test.
         mm.break_magic(buf, "primary")
 

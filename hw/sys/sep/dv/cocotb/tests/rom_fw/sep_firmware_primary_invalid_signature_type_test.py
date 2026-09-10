@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Primary manifest declares an unsupported signature TYPE; the backup boots.
 
-The PRIMARY's ``signature_type`` is set to 0. ``validate_signature`` accepts only
+The PRIMARY's ``signature_type`` is set to 0. The signature path accepts only
 ``MANIFEST_SIG_TYPE_RSA_3072`` (1, ) and refuses anything else
 with ``PUBK_ALGO_UNSUPPORTED``, returning
 ``MANIFEST_ERR_SIG_FAILED``.
@@ -47,11 +47,11 @@ identical arm, and fixing it is what lets this testcase assert the exact
 **HOW THIS IS TOLD APART FROM ``sep_firmware_primary_invalid_signature_test``, AND
 WHY THE ERROR CODE CANNOT DO IT.** Both end at
 ``MANIFEST_ERR_SIG_FAILED``, which six arms of
-``validate_signature`` share, so asserting the code alone would make the two
+the signature path share, so asserting the code alone would make the two
 testcases interchangeable. The console separates them in BOTH directions, and both
 halves are asserted here:
 
-  * the type check is the FIRST arm of ``validate_signature``, ahead even of the ``PUBK_SEL=`` echo at
+  * the type check is the FIRST arm of the signature path, ahead even of the ``PUBK_SEL=`` echo at
 . So this run must show the primary's selector NEVER echoed: with the
     backup booting from ROM slot 0, ``PUBK_SEL=0x00000000`` is pinned to exactly
     **one** occurrence, the backup's. Its sibling pins the same token to **two**,
@@ -124,7 +124,7 @@ class sep_firmware_primary_invalid_signature_type_test(sep_primary_fail_backup_b
     extra_required = (_BACKUP_SEL_ECHO,)
     # RSA_PKCS1_FAIL is the discriminator against the signature-VALUE sibling,
     # which shares this error code. The rest are the later arms of
-    # validate_signature: the primary dies at the first arm and the backup is
+    # the signature path: the primary dies at the first arm and the backup is
     # valid, so none of them may fire on either slot.
     extra_forbidden = (
         "RSA_PKCS1_FAIL",
@@ -137,7 +137,7 @@ class sep_firmware_primary_invalid_signature_type_test(sep_primary_fail_backup_b
 
     def corrupt_primary(self, buf: bytearray) -> None:
         # No manifest_identifier corruption: the primary must reach
-        # validate_signature.
+        # the signature path.
         before = mm.signature_type(buf, "primary")
         assert before == mm.SIG_TYPE_RSA_3072, (
             f"primary signature_type is already {before}, expected "
@@ -164,7 +164,7 @@ class sep_firmware_primary_invalid_signature_type_test(sep_primary_fail_backup_b
         )
 
     def check_efuse(self, image) -> None:
-        # Both are evaluated before validate_signature is entered, so either being non-zero would end the
+        # Both are evaluated before the signature path is entered, so either being non-zero would end the
         # run with a different verdict and make this testcase vacuous.
         bl1_ver = image.field_int("BL1_VERSION")
         assert bl1_ver == 0, (

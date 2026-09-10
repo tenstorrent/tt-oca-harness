@@ -14,7 +14,7 @@ That one swap turns on a whole code path the non-secure test never reaches:
       -> determine_secure_boot            -- manifest bit, sboot_dis, lifecycle
         -> check_root_key_authorized      -- oca_platform.c: ROM digest / OTP hash
         -> check_root_key_revocation      -- CHIPLET_PUBK_REVOKE
-        -> check_security_version         -- anti-rollback
+        -> the anti-rollback check         -- anti-rollback
         -> check_signature -> rsa_verify.c
           -> OTBN rsa_3072_app            -- signature^e mod n (Montgomery)
         -> PKCS#1 v1.5 unpad, digest compare

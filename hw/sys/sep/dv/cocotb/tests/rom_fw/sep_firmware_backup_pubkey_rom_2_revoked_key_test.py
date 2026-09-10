@@ -11,7 +11,7 @@ exactly ``CHIPLET_PUBK_REVOKE`` bit 2.
 WHAT THIS MEMBER PINS. Slot 2 has no compiled-in digest (``key_digests.c``
 populates slot 0 only), so without the revocation bit it would be refused as
 ``PUBK_SLOT_UNPROVISIONED`` -- the arm ``sep_firmware_backup_unpopulated_rom_key_slot_test``
-covers. Here the fuse bit changes the verdict, because ``validate_signature``
+covers. Here the fuse bit changes the verdict, because the signature path
 consults the fuse bitmap BEFORE the digest table
 . ``PUBK_SLOT_UNPROVISIONED`` is therefore the load-bearing forbid: seeing it
 would mean revocation was evaluated late, or not at all, and a part could then be

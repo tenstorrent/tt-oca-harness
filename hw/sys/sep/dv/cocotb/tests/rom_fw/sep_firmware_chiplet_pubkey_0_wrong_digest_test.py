@@ -34,7 +34,7 @@ Batch R3 judged that closing this needed a second committed private KEY. It does
 not. It needs the FUSE to differ from ``public_key_digests[0]``, plus a NEGATIVE
 assertion:
 
-  * **correct ROM:** ``read_fuse_key`` returns the decoy, ``check_pubkey_hash``
+  * **correct ROM:** the fuse-digest read returns the decoy, the key-authorization check
     fails on it, both slots are refused,
     ``MANIFEST_ALL_FAILED``, ``MANIFEST_ERR=`` carrying the unauthorized-key code;
   * **ROM comparing against the compiled-in table:** the modulus matches, the
@@ -64,7 +64,7 @@ overstatement was inherited.** R07 cites  -- which
 records that the fuse-key digest addresses were once derived as
 ``CHIPLET_PUBK_REVOKE + 0x100/0x120`` instead of ``+0x110/0x130`` -- as "exactly
 the shape a digest-source test discriminates". It is not. That base lands
-``0x10`` BELOW ``CHIPLET_PUBK_HASH0``, so ``read_fuse_key`` returns four
+``0x10`` BELOW ``CHIPLET_PUBK_HASH0``, so the fuse-digest read returns four
 unrelated non-zero words followed by HASH0's first four: a digest that matches
 nothing, producing ``PUBK_UNAUTHORIZED`` and the unauthorized-key code -- the outcome this
 testcase REQUIRES. **A revival of that specific historical bug would pass here.**
@@ -85,8 +85,8 @@ shape batches R1 and R2 established, applied to the digest instead of to a
 revocation bit.
 
 Revocation must not be what refuses this image, or the digest comparison is never
-reached: ``check_pubkey_revoked`` runs and
-``check_pubkey_hash`` only. So ``CHIPLET_PUBK_REVOKE`` bits 16 and 17
+reached: the revocation check runs and
+the key-authorization check only. So ``CHIPLET_PUBK_REVOKE`` bits 16 and 17
 are CLEAR, ``PUBK_REVOKE=0x00000001`` is required exactly twice (the fuse word
 the ROM read, once per slot, proving the revocation check ran and PERMITTED the
 key), and ``KEY_REVOKED`` is forbidden outright.
@@ -94,7 +94,7 @@ key), and ``KEY_REVOKED`` is forbidden outright.
 Bit 0 -- ROM development key 0 -- is blown, as in every member of this family.
 It is the ROM-key-arm counterfactual: inert on a correct ROM, but a ROM that
 ignored ``public_key_sel.selection`` and took the ROM-key arm with index 0 would
-print ``KEY_REVOKED idx=0x00000000`` and refuse the image for the wrong reason.
+print the revocation error code and refuse the image for the wrong reason.
 Forbidding ``KEY_REVOKED`` catches that too.
 
 ``RSA_EXEC`` and ``RSA_VERIFY_OK`` are forbidden: the digest bind precedes
@@ -103,7 +103,7 @@ reached the verifier did not fail where this testcase says it failed. No
 ``+esrc_noise_force`` is passed, and none is needed.
 
 ``PUBK_HASH_TIMEOUT`` is forbidden as well, and it is not decoration:
-``check_pubkey_hash`` returns ``MANIFEST_ERR_SIG_FAILED`` on a SHA-256 timeout and ``MANIFEST_ERR_KEY_HASH_MISMATCH`` only on a
+the key-authorization check returns ``MANIFEST_ERR_SIG_FAILED`` on a SHA-256 timeout and ``MANIFEST_ERR_KEY_HASH_MISMATCH`` only on a
 real mismatch, so requiring the unauthorized-key code already excludes the
 timeout path -- but the console token names it directly.
 """
@@ -156,7 +156,7 @@ class sep_firmware_chiplet_pubkey_0_wrong_digest_test(sep_backup_manifest_fail_b
 
     # KEY_REVOKED covers both the ROM-key-arm counterfactual and an accidental
     # chiplet revoke; the RSA markers prove the digest bind stopped the run before
-    # the verifier; the rest are the other rejecting arms of validate_signature.
+    # the verifier; the rest are the other rejecting arms of the signature path.
     extra_forbidden = (
         "PUBK_SLOT_UNPROVISIONED",
         "PUBK_OTP_EMPTY",
@@ -173,7 +173,7 @@ class sep_firmware_chiplet_pubkey_0_wrong_digest_test(sep_backup_manifest_fail_b
     # --- stimulus ----------------------------------------------------------
     def corrupt_primary(self, buf: bytearray) -> None:
         # NOT the base's default BAD_MAGIC trigger: the primary is the first slot
-        # under test and must reach validate_signature. One call points BOTH slots
+        # under test and must reach the signature path. One call points BOTH slots
         # at fused key 0 and re-seals each, so the two are refused for the same
         # reason and the image is byte-identical to the positive member's.
         p_sel, b_sel = select_chiplet_fuse_key(buf, _CHIPLET_KEY)
@@ -233,7 +233,7 @@ class sep_firmware_chiplet_pubkey_0_wrong_digest_test(sep_backup_manifest_fail_b
             f"CHIPLET_PUBK_HASH0 is 0x{h0:064x}; it must be NON-ZERO and NOT the "
             f"dev0 digest 0x{want:064x}. This is the fuse PUBK_SEL_FUSE_KEY_0 "
             f"selects and the whole defect of this run. Zero would make it a "
-            f"PUBK_OTP_EMPTY testcase instead (read_fuse_key's non-zero test at "
+            f"PUBK_OTP_EMPTY testcase instead (the fuse-digest read's non-zero test at "
             f", token at :233), and the real digest would "
             f"make it the positive member"
         )
@@ -274,7 +274,7 @@ class sep_firmware_chiplet_pubkey_0_wrong_digest_test(sep_backup_manifest_fail_b
         assert len(hits) == 2, (
             f"{_HASH_MISMATCH} appeared {len(hits)} times at {hits}, expected exactly "
             f"2 -- one per manifest slot. One occurrence would mean only one slot "
-            f"reached check_pubkey_hash. Console: {console}"
+            f"reached the key-authorization check. Console: {console}"
         )
         assert hits[0] < i_backup < hits[1], (
             f"{_HASH_MISMATCH} occurrences {hits} do not straddle the backup read"

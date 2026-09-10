@@ -11,13 +11,13 @@ mean six places for a future correction to be applied in five of them.
 
 Parameterising the SCENARIO must not parameterise away the EVIDENCE. Every member
 still asserts its own selector (``PUBK_SEL=``), its own fuse word
-(``PUBK_REVOKE=``) and its own revocation index (``KEY_REVOKED idx=``), all three
+(``PUBK_REVOKE=``) and its own revocation index (the revocation error code), all three
 derived from its own ``_REVOKED_SLOT``, so a run of slot N cannot satisfy slot M's
 checks. :meth:`check_efuse` additionally requires the fuse bitmap to be EXACTLY
 this slot's bit, so a wider bitmap -- which could reject the manifest through a
 slot the testcase did not select -- fails loudly instead of passing.
 
-WHY REVOCATION IS THE ONLY POSSIBLE VERDICT, PER SLOT. ``validate_signature``
+WHY REVOCATION IS THE ONLY POSSIBLE VERDICT, PER SLOT. The signature path
 consults the fuse bitmap BEFORE the compiled-in digest
 table  and before ``rsa_3072_verify``. Slot 0 is the only
 populated entry in ``key_digests.c``; slots 1-5 are ``(void *)0``. So:
@@ -169,7 +169,7 @@ class sep_pubkey_rom_revoked_base(sep_backup_manifest_fail_base):
     _REVOKE_ECHO: str = ""
 
     expected_error = MANIFEST_ERR_KEY_REVOKED
-    # Every other arm of validate_signature, so the KEY_REVOKED verdict cannot be
+    # Every other arm of the signature path, so the KEY_REVOKED verdict cannot be
     # confused with one of them, plus proof the modulus never reached the
     # verifier. PUBK_SLOT_UNPROVISIONED is load-bearing for slots 1-5 (they ARE empty, so
     # seeing it would mean the digest table was consulted before the fuse bitmap);

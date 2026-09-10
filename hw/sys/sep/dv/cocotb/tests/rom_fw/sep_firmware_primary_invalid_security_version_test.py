@@ -4,11 +4,11 @@
 
 The ``BL1_VERSION`` fuse sets a minimum security version of 1, the PRIMARY carries
 0 and is refused as a rollback, and the BACKUP carries exactly 1 and boots.
-``check_security_version`` is a single comparison, ``manifest_ver < fuse_ver``, reached from ``manifest_crypto_validate:364``.
+The anti-rollback check is a single comparison, ``manifest_ver < fuse_ver``, reached from ``manifest validation:364``.
 
 THE ORDERING IS ESTABLISHED, NOT ASSUMED, AND IT IS WHY THIS TESTCASE CAN NAME ITS
-REASON. ``check_security_version`` runs, BEFORE
-``validate_signature`` -- so the rollback verdict preempts signature
+REASON. The anti-rollback check runs, BEFORE
+the signature path -- so the rollback verdict preempts signature
 type, key selection, revocation and RSA. That is what makes
 ``MANIFEST_ERR_VERSION_ROLLBACK`` -- ``OCA_FAIL_SECURITY_VERSION``, a DEDICATED code
 rather than another user of the shared ``MANIFEST_ERR_SIG_FAILED``, and it is why

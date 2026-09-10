@@ -38,7 +38,7 @@ from env import sep_spi_slot_evidence as ev
 from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
 
 # An erased slot fails the identifier check in
-# validate_manifest_header, which runs before the hash
+# the manifest header check, which runs before the hash
 # check, so the verdict is deterministically BAD_MAGIC.
 MANIFEST_ERR_BAD_MAGIC = mm.boot_err("OCA_FAIL_MAGIC")
 

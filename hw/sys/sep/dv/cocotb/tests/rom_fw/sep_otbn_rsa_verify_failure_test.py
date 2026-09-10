@@ -16,11 +16,11 @@ things it cannot show, and this testcase exists for both.
 1. **The retry is triggered BY an invalid signature.** The procedure's step 5 is
    "BL0 routes through ``INVALID_SIGNATURE`` -> backup retry". In the sibling the
    retry is triggered by a broken magic word, which is rejected by
-   ``validate_manifest_header`` before any crypto runs, so nothing there says a
+   the manifest header check before any crypto runs, so nothing there says a
    signature failure is a retryable class at all. Here the PRIMARY carries the
    signature defect, so the failover is the signature verdict's own consequence.
 2. **OTBN really ran, and the rejection came from its RESULT.** The sibling
-   requires ``RSA_PKCS1_FAIL``, which ``validate_signature`` prints for ANY non-zero return from
+   requires ``RSA_PKCS1_FAIL``, which the signature path prints for ANY non-zero return from
    ``rsa_3072_verify`` -- including ``RSA_OTBN_INIT_FAIL``,
    ``RSA_OTBN_LOAD_FAIL`` and ``RSA_EXEC_FAIL``, none of which involve the
    signature. A dead OTBN would satisfy it. This testcase requires
@@ -52,10 +52,10 @@ in the manifest loop and RSA would never run.
 
 WHY THE ERROR CODE ALONE WOULD BE A WEAK CHECK. ``MANIFEST_ERR_SIG_FAILED``
 is returned from SEVEN places on the signature path -- six in
-``validate_signature`` and one in the helper it calls. In :
+the signature path and one in the helper it calls. In :
 a bad signature type (:164), a bad ROM key index (:176), an unpopulated ROM slot
 (:193), a bad fuse key selector (:224), an empty fuse key (:234), the RSA verdict
-itself (:246), and a SHA-256 timeout inside ``check_pubkey_hash`` (:128). The
+itself (:246), and a SHA-256 timeout inside the key-authorization check (:128). The
 terminal status word cannot say which one fired, which is why every other route
 is in ``extra_forbidden`` and the marker ordering below is asserted per slot.
 
@@ -124,7 +124,7 @@ _OTHER_SIG_VERDICTS = (
     "PUBK_OTP_EMPTY",
     "PUBK_HASH_TIMEOUT",
     "PUBK_UNAUTHORIZED",
-    "KEY_REVOKED idx=",
+    "the revocation error code",
 )
 
 # Signature byte flipped per slot. Different indices so the two writes are

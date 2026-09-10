@@ -211,7 +211,7 @@ class sep_firmware_primary_rom_key_index_invalid_test(sep_primary_fail_backup_bo
         assert n_revoke == 1, (
             f"{_REVOKE_ECHO} appeared {n_revoke} times, expected exactly 1 (the "
             f"backup's). More than one means the primary reached "
-            f"check_pubkey_revoked, so the index bound at "
+            f"the revocation check, so the index bound at "
             f":174-177 did not preempt it. Console: {console}"
         )
         assert i_bsrc < i_revoke, (

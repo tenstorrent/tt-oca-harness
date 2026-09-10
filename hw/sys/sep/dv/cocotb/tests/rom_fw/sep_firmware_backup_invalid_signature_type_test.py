@@ -3,7 +3,7 @@
 """Backup manifest declares an unsupported signature TYPE -> terminal.
 
 The primary's ``manifest_identifier`` is corrupted to force failover, then the
-backup's ``signature_type`` is set to 0. ``validate_signature`` accepts only
+backup's ``signature_type`` is set to 0. The signature path accepts only
 ``MANIFEST_SIG_TYPE_RSA_3072`` (1, ) and refuses anything else
 with ``PUBK_ALGO_UNSUPPORTED``.
 
@@ -18,7 +18,7 @@ echoed rather than accepting any value at all -- the same reason
 ``sep_firmware_backup_invalid_public_key_selection_test`` fixes its selection.
 
 THE ROM DOES VALIDATE TYPE SEPARATELY FROM VALUE, AND THIS TEST PROVES IT RATHER
-THAN ASSUMING IT. The type check is the FIRST arm of ``validate_signature``,
+THAN ASSUMING IT. The type check is the FIRST arm of the signature path,
 ahead even of the ``PUBK_SEL=`` echo. So ``PUBK_SEL=``
 is forbidden below: the primary died at BAD_MAGIC before any crypto ran, so if the
 selector is echoed at all it can only be the backup's, which would mean the type
@@ -27,7 +27,7 @@ rejected it" into "the ROM rejected it AT the type check".
 
 WHY THIS IS NOT THE SAME TESTCASE AS ``sep_firmware_backup_invalid_signature_test``.
 Both return ``MANIFEST_ERR_SIG_FAILED``, which six
-arms of ``validate_signature`` share, so the error code cannot tell them apart.
+arms of the signature path share, so the error code cannot tell them apart.
 The status ring does not close the gap either: the only ring difference between
 the two is that the ROM-key arm re-reports ``SEP_MSG_VALIDATE_CHECK`` once the selector has been accepted, which is a
 side effect of reaching a LATER arm rather than a statement of the rejection
@@ -82,7 +82,7 @@ class sep_firmware_backup_invalid_signature_type_test(sep_backup_manifest_fail_b
     expected_error = MANIFEST_ERR_SIG_FAILED
     efuse_preload = _EFUSE_PRELOAD
     # PUBK_SEL= is the load-bearing one: it is the very next thing
-    # validate_signature prints, so its absence proves the
+    # the signature path prints, so its absence proves the
     # type check ran FIRST rather than merely eventually. RSA_PKCS1_FAIL is the
     # discriminator against the signature-VALUE sibling, which shares this error
     # code. The rest are the later arms, none of which may be reached.
@@ -124,7 +124,7 @@ class sep_firmware_backup_invalid_signature_type_test(sep_backup_manifest_fail_b
         )
 
     def check_efuse(self, image) -> None:
-        # Both of these are evaluated before validate_signature is even entered, so either being non-zero would end the
+        # Both of these are evaluated before the signature path is even entered, so either being non-zero would end the
         # run with a different verdict and make this testcase vacuous.
         bl1_ver = image.field_int("BL1_VERSION")
         assert bl1_ver == 0, (

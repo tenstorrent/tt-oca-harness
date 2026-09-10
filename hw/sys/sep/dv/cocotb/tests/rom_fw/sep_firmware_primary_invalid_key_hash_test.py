@@ -11,7 +11,7 @@ to ROM key slot 0, so the run must recover and boot from it.
 
 WHY ONE BIT. A wholesale overwrite of the modulus would also be caught by a much
 coarser check on it; a single flip can only be caught by the hash comparison
-itself, so this pins the rejection to ``check_pubkey_hash``.
+itself, so this pins the rejection to the key-authorization check.
 
 WHAT THIS STIMULUS DOES *NOT* DEMONSTRATE, AND WHY IT IS BUILT THIS WAY. The
 reference testcase re-signs the primary with a DIFFERENT valid key
@@ -35,11 +35,11 @@ WHY THE RE-HASH MATTERS, AND WHY NO RE-SIGN. The modulus lives inside the TBS
 (offset 168, ), so without recomputing ``manifest_hash`` the
 slot would be thrown out by ``manifest_check_integrity`` long before the key check and this test would be
 asserting on the wrong rejection. Re-signing is neither possible nor needed:
-``check_pubkey_hash`` runs before ``rsa_3072_verify``, so the stale signature is never examined -- and
+the key-authorization check runs before ``rsa_3072_verify``, so the stale signature is never examined -- and
 ``RSA_EXEC`` must therefore NOT appear between the primary read and the
 backup read, which is asserted below.
 
-CRYPTO FAILURES DO FALL OVER. ``manifest_crypto_validate`` is called inside the
+CRYPTO FAILURES DO FALL OVER. Manifest validation is called inside the
 per-slot attempt, so its error returns to ``rom_manifest_boot``'s retry loop
 (the comment at ``rom_main.c:355-357``). That is
 the behaviour under test: this is the pair to

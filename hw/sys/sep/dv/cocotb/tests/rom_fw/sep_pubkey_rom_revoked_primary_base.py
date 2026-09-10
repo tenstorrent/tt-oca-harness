@@ -281,7 +281,7 @@ class sep_primary_pubkey_rom_revoked_failover_base(
     # Revocation precedes rsa_3072_verify, so
     # the primary must never drive the verifier.
     primary_expected_rsa_starts = 0
-    # Every other rejecting arm of validate_signature, so the KEY_REVOKED verdict
+    # Every other rejecting arm of the signature path, so the KEY_REVOKED verdict
     # cannot be confused with one of them. PUBK_SLOT_UNPROVISIONED is the load-bearing one:
     # slots 1-5 have no compiled-in digest, so seeing it would mean the digest
     # table was consulted before the fuse bitmap. RSA_PKCS1_FAIL must not appear
@@ -298,11 +298,11 @@ class sep_primary_pubkey_rom_revoked_failover_base(
     )
     # The backup's own selector, so "the backup booted" is tied to slot 0 rather
     # than to an unread selection. There is deliberately NO separate backup fuse
-    # echo: ``check_pubkey_revoked`` prints the whole 32-bit fuse WORD
+    # echo: the revocation check prints the whole 32-bit fuse WORD
     # unconditionally and only then tests this
     # slot's bit, so BOTH slot attempts print the same
     # ``PUBK_REVOKE=<bitmap>`` and the per-slot discriminator is
-    # ``KEY_REVOKED idx=``. Measured, not assumed: the slot-1 probe run
+    # the revocation error code. Measured, not assumed: the slot-1 probe run
     # showed the backup echoing ``PUBK_REVOKE=0x00000002``.
     _BACKUP_SEL_ECHO = "PUBK_SEL=0x00000000"
 
@@ -345,7 +345,7 @@ class sep_primary_pubkey_rom_revoked_failover_base(
         # IndexError.
         assert len(revokes) == 2, (
             f"{self._REVOKE_ECHO} appeared {len(revokes)} times at {revokes}, "
-            f"expected exactly 2 -- check_pubkey_revoked echoes the whole fuse word "
+            f"expected exactly 2 -- the revocation check echoes the whole fuse word "
             f"once per slot attempt. Console: {console}"
         )
 
@@ -372,7 +372,7 @@ class sep_primary_pubkey_rom_revoked_failover_base(
                 f"Console: {console}"
             )
         # The two fuse echoes must straddle the backup read. That is the assertion
-        # that says the BACKUP also ran check_pubkey_revoked and was PERMITTED -- it
+        # that says the BACKUP also ran the revocation check and was PERMITTED -- it
         # consulted the same non-zero bitmap and produced no KEY_REVOKED of its own,
         # which is the whole reason this member fails over instead of terminating.
         assert revokes[0] < i_bsrc < revokes[1], (
@@ -416,7 +416,7 @@ class sep_primary_pubkey_rom_revoked_terminal_base(
 
     expected_error = MANIFEST_ERR_KEY_REVOKED
     primary_expected_error = MANIFEST_ERR_KEY_REVOKED
-    # Every other rejecting arm of validate_signature, plus proof the modulus never
+    # Every other rejecting arm of the signature path, plus proof the modulus never
     # reached the verifier. RSA_EXEC and RSA_VERIFY_OK are the load-bearing
     # forbids here: both manifests are otherwise valid, so without them a
     # revocation that did nothing would boot.
@@ -440,7 +440,7 @@ class sep_primary_pubkey_rom_revoked_terminal_base(
     # --- stimulus ----------------------------------------------------------
     def corrupt_primary(self, buf: bytearray) -> None:
         # NOT the base's default BAD_MAGIC trigger: the primary is the first slot
-        # under test here and has to reach validate_signature, exactly as the
+        # under test here and has to reach the signature path, exactly as the
         # reference's PRIMARY_PUBKEY_ROM_0_REVOKED_KEY modifies only
         # primary.manifest.public_key_sel.rom_key_index
         # (sep_firmware_secure_boot_test.py).

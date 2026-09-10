@@ -352,7 +352,7 @@ tests = [
     "sep_firmware_bl1_ver_test",
     # The four-member CHIPLET FUSED key family. They share ONE implementation,
     # rom_fw/sep_chiplet_pubkey_base.py, and differ only in _CHIPLET_KEY and the
-    # base they pick. This is the fused-key arm of validate_signature
+    # base they pick. This is the fused-key arm of the signature path
     # (manifest_crypto.c), distinct code from the ROM-key arm the
     # pubkey_rom_* families cover. Each positive member and its revoke twin run
     # byte-identical flash images, one CHIPLET_PUBK_REVOKE bit apart.

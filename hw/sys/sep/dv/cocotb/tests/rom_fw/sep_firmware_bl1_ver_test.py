@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """BL1 security version EQUALS the BL1_VERSION fuse floor -> accepted, boots.
 
-``check_security_version`` rejects only when ``manifest_ver < fuse_ver``
+the anti-rollback check rejects only when ``manifest_ver < fuse_ver``
 (``bootrom/prod/src/), so equality is the ACCEPT BOUNDARY
 of the rollback check -- the last value that must be allowed through. This testcase
 runs that boundary on the PRIMARY and requires a completed boot.
@@ -49,7 +49,7 @@ DELIBERATELY DIFFERENT CASE, not a correction of a broken reference, and it is
 recorded that way in the row's ``flow_deviation``.
 
 **THE COVERAGE THIS ADDS BEYOND THE BOUNDARY: ALL EIGHT THERMOMETER WORDS, EACH
-DISTINGUISHABLE.** ``get_security_version_from_fuse``
+DISTINGUISHABLE.** the device security-version read
 loops over EIGHT 32-bit words of ``BL1_VERSION`` and sums their popcounts. Every
 existing preload in this tree puts its bits in word 0 --
 ``sep_efuse_lc_prod_secver1.toml`` uses ``0x1`` and
@@ -90,8 +90,8 @@ WHAT ELSE THE RUN MUST SHOW, because "it booted" is not a result:
     occurrence would mean a failover this testcase forbids;
   * ``VERSION_ROLLBACK``  absent -- the rejecting arm did not fire;
   * the rollback check ran BEFORE key selection: ``FUSE_VER`` precedes ``PUBK_SEL=``
-    because ``manifest_crypto_validate`` calls ``check_security_version``
-     before ``validate_signature``. This is the ordering the key
+    because manifest validation calls the anti-rollback check
+     before the signature path. This is the ordering the key
     testcases of batches R1/R2 rely on to keep their verdicts attributable, and this
     is the one testcase whose stimulus IS the version field, so it is asserted here
     rather than assumed. Be honest about its weight: on an ACCEPT path both stages
@@ -229,7 +229,7 @@ class sep_firmware_bl1_ver_test(sep_rom_ot_dma_boot_test):
         sboot_dis = image.field_int("SBOOT_DIS") & 0x1
         assert lc == 0x1, (
             f"LC_STATE raw is 0x{lc:x}, expected 0x1 (PROD): the rollback check is "
-            f"reached through manifest_crypto_validate, which only runs when secure "
+            f"reached through manifest validation, which only runs when secure "
             f"boot is enabled"
         )
         assert sboot_dis == 0, (

@@ -22,7 +22,7 @@ image rather than trusting the slot number.
 WHAT THIS MEMBER PINS. Slot 2 has no compiled-in digest
 (``key_digests.c`` populates slot 0 only), so without the revocation bit it
 would be refused as ``PUBK_SLOT_UNPROVISIONED``. Here the fuse bit changes the verdict,
-because ``validate_signature`` consults the fuse bitmap BEFORE the digest table.
+because the signature path consults the fuse bitmap BEFORE the digest table.
 ``PUBK_SLOT_UNPROVISIONED`` is therefore the load-bearing forbid: seeing it would mean
 revocation was evaluated late, or not at all.
 

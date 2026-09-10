@@ -75,7 +75,7 @@ class sep_firmware_backup_invalid_signature_test(sep_backup_manifest_fail_base):
     def check_efuse(self, image) -> None:
         bl1_ver = image.field_int("BL1_VERSION")
         revoke = image.field_int("CHIPLET_PUBK_REVOKE")
-        # check_security_version and the revocation check
+        # the anti-rollback check and the revocation check
         # (:369 ->) both run BEFORE rsa_3072_verify (:244), so either of these
         # being non-zero would terminate the run earlier with a different error and
         # the signature would never be reached.

@@ -218,7 +218,7 @@ class _chiplet_key_mixin:
         mine = image.field_int(f"CHIPLET_PUBK_HASH{key}")
         theirs = image.field_int(f"CHIPLET_PUBK_HASH{other}")
         # The fuse holds the digest little-endian by 32-bit word, because
-        # read_fuse_key() rebuilds the byte array from
+        # the fuse-digest read() rebuilds the byte array from
         # eight mmio_read32() results, byte 0 first.
         want = int.from_bytes(mm.rom_key_digest(0), "little")
         assert mine == want, (
@@ -263,13 +263,13 @@ class sep_chiplet_pubkey_valid_base(_chiplet_key_mixin, sep_rom_ot_dma_boot_test
         ROM-key arm on the stimulus side: slot 16 is CHIPLET_PUBK_HASH0, outside
         the [0, 8) range the ROM classical arm serves;
       * ``PUBK_REVOKE=0x00000001`` exactly once -- the fuse word
-        ``check_pubkey_revoked`` read, proving the
+        the revocation check read, proving the
         revocation check ran and PERMITTED this key. Note this marker does NOT by
-        itself prove which arm ran: ``check_pubkey_revoked`` is called from the
+        itself prove which arm ran: the revocation check is called from the
         ROM-key arm too. What excludes that arm is ``KEY_REVOKED`` being
         forbidden outright -- ``CHIPLET_PUBK_REVOKE`` bit 0 IS blown in this
         member's preload, so a ROM taking the ROM-key arm with index 0 would have
-        printed ``KEY_REVOKED idx=0x00000000`` and refused the image;
+        printed the revocation error code and refused the image;
       * ``RSA_EXEC`` then ``RSA_VERIFY_OK`` then ``MANIFEST_OK``, in that
         order and after the selector echo: the modulus reached the verifier, which
         happens only once the revocation check and the FUSE digest bind have both
@@ -298,7 +298,7 @@ class sep_chiplet_pubkey_valid_base(_chiplet_key_mixin, sep_rom_ot_dma_boot_test
             "BL1_COPIED",
             "BL1_JUMP=",
         )
-        # Every rejecting arm of validate_signature, both arms' empty-slot checks,
+        # Every rejecting arm of the signature path, both arms' empty-slot checks,
         # the ROM-key-arm counterfactual, and the failover evidence. This is a
         # positive test, so none of them may fire.
         cls.forbidden_markers = sep_rom_ot_dma_boot_test.forbidden_markers + (
@@ -450,7 +450,7 @@ class sep_chiplet_pubkey_revoked_base(_chiplet_key_mixin, sep_backup_manifest_fa
 
     expected_error = MANIFEST_ERR_KEY_REVOKED
     primary_expected_error = MANIFEST_ERR_KEY_REVOKED
-    # Every other rejecting arm of validate_signature, both empty-slot checks, and
+    # Every other rejecting arm of the signature path, both empty-slot checks, and
     # proof the modulus never reached the verifier. RSA_EXEC and RSA_VERIFY_OK
     # are the load-bearing forbids: both manifests are otherwise valid, so without
     # them a revocation that did nothing would boot. ROM_ARM_KEY_REVOKED is the
@@ -477,7 +477,7 @@ class sep_chiplet_pubkey_revoked_base(_chiplet_key_mixin, sep_backup_manifest_fa
     # --- stimulus ----------------------------------------------------------
     def corrupt_primary(self, buf: bytearray) -> None:
         # NOT the base's default BAD_MAGIC trigger. The primary is the first slot
-        # under test here and must reach validate_signature, exactly as the
+        # under test here and must reach the signature path, exactly as the
         # reference sets the selection on both slots rather than breaking one
         # (sep_firmware_pub_key_test.py). One call does both slots.
         self._plant_fused_selector(buf)

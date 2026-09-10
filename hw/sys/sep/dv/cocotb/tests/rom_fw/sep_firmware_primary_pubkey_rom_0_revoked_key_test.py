@@ -38,7 +38,7 @@ PLATFORM ADAPTATION -- MARKER. The reference asserts the architected
 ``report_status`` call for it anywhere under ``bootrom/prod/src`` -- so the
 architected ring carries only the generic terminal code. The dedicated error code
 ``MANIFEST_ERR_KEY_REVOKED`` is unshared, and the
-console token ``KEY_REVOKED idx=0x00000000`` is the per-reason evidence; both are
+console token the revocation error code is the per-reason evidence; both are
 required, once per slot for the token.
 
 No ``+esrc_noise_force``: revocation precedes the signature step, so OTBN is

@@ -21,9 +21,9 @@ required, and none of them is boot completion:
     second slot reaching key selection -- is already caught independently by the
     forbidden backup ``MANIFEST_SRC`` and by the device-side backup-span check
     below. The weight here sits on the ORDERING and on the device record;
-  * ``PUBK_REVOKE=0x00000000`` -- the fuse word ``check_pubkey_revoked`` read, also exactly once, proving the revocation
+  * ``PUBK_REVOKE=0x00000000`` -- the fuse word the revocation check read, also exactly once, proving the revocation
     check ran and PERMITTED this slot rather than being skipped. This marker alone
-    does NOT prove the ROM-key arm was taken: ``check_pubkey_revoked`` is called
+    does NOT prove the ROM-key arm was taken: the revocation check is called
     from the fuse-key arm too. What excludes that arm is
     the ``PUBK_SEL=0x00000000`` value -- slot 0 is ROM classical key 0,
     index=0" -- together with ``PUBK_SEL_AMBIGUOUS`` and ``PUBK_OTP_EMPTY`` being
@@ -45,7 +45,7 @@ the shipped primary already selects slot 0
 (``configs/secure_boot_test.yaml:43-45``). Both therefore run bytes identical to
 the shipped ``bootrom/prod/build/secure_boot.bin``, and the ONLY difference between
 them is one bit of ``CHIPLET_PUBK_REVOKE``. Fuse clear boots; bit 0 set refuses
-BOTH manifests with ``KEY_REVOKED idx=0x00000000`` and never reaches
+BOTH manifests with the revocation error code and never reaches
 ``RSA_EXEC``. Nothing else about revocation needs arguing.
 
 WHAT THIS SHARES WITH ``sep_rom_ot_secure_boot_test``, AND WHAT IT ADDS. The flash
@@ -156,7 +156,7 @@ class sep_firmware_primary_rom_key_valid_test(sep_rom_ot_dma_boot_test):
         _BL1_COPIED,
         _BL1_JUMP,
     )
-    # Every rejecting arm of validate_signature, plus the failover evidence. This is
+    # Every rejecting arm of the signature path, plus the failover evidence. This is
     # a positive test, so none of them may fire: seeing any one would mean the boot
     # completed in spite of a key-selection complaint, or from a slot this testcase
     # did not select.

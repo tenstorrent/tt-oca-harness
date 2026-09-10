@@ -98,7 +98,7 @@ class sep_bl1_image_invalid_base(sep_backup_manifest_fail_base):
     efuse_preload = _EFUSE_LC_PROD
 
     # --- subclass contract ---------------------------------------------------
-    # ``backup_defect_marker`` is inherited: the console marker check_bl1_image /
+    # ``backup_defect_marker`` is inherited: the console marker the BL1 placement check /
     # validate_manifest_payload must print. Here it applies to both slots, so
     # check_defect_attribution() below requires it twice rather than once.
     # Rejections this scenario's own defect must NOT produce, on top of the

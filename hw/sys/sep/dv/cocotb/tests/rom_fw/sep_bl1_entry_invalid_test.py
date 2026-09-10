@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """TP053-E: BL1 ``entry_point`` outside the image, so BL0 must not jump to it.
 
-``check_bl1_image`` rejects ``entry_point >= length``, and
+the BL1 placement check rejects ``entry_point >= length``, and
 ``validate_manifest_payload`` prints ``BL1_ENTRY_RANGE`` and returns
 ``MANIFEST_ERR_BL1_BAD_ADDR``. Both slots carry the
 defect, so the ROM tries the primary, retries the backup and terminates.
@@ -13,7 +13,7 @@ out of range. A ROM that had written ``>`` instead of ``>=`` would accept this a
 jump one byte past the image; a larger entry point would be rejected by both the
 correct and the incorrect comparison, and so could not tell them apart.
 
-WHY THE SIZE ARM CANNOT ALSO FIRE. ``check_bl1_image`` tests SRAM containment
+WHY THE SIZE ARM CANNOT ALSO FIRE. The BL1 placement check tests SRAM containment
 first and only then the entry point, so this test must leave ``load_addr`` and
 ``length`` untouched -- which it does; the mutation writes one field. That is why
 ``BL1_ADDR_RANGE`` is in ``sibling_markers``: seeing it would mean the containment
