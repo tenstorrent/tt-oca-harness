@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 # I3C core wrapper block TB (native cocotb). DUT = i3ccore_wrapper under
-# tb_i3ccore; the SV top and coverage interface stay in dv/tb/, the cocotb
-# env and test modules live in dv/cocotb/.
+# tb_i3ccore.
 # Launch: python3 tools/dv/run_dv.py --dut i3ccore_wrap
 
 schema_version = 1
@@ -27,7 +26,9 @@ top_file = "hw/ip/i3ccore_wrap/dv/tb/tb_i3ccore.sv"
 filelist = "hw/ip/i3ccore_wrap/dv/build/i3ccore_wrap_dut_compile.f"
 bender_filelist = "hw/ip/i3ccore_wrap/dv/build/i3ccore_wrap_bender.f"
 work_dir = "hw/ip/i3ccore_wrap/dv/build"
-# Same target set as hw/ip/i3ccore_wrap/dv/tb/Makefile BENDER_TARGETS.
+# Canonical common set, mirroring hw/sys/smc/dv/smc_wrapper_sim_cfg.toml.
+# register_interface_l1 supplies the prim packages the register-interface RAM
+# needs; without it prim_ram_1p_adv_ext.sv fails to elaborate.
 common_bender_targets = [
   "tech_cells_generic_exclude_deprecated",
   "tech_cells_generic_exclude_tc_sram",
@@ -45,7 +46,6 @@ sources = [
 ]
 
 [cocotb]
-# Uniform flow-first layout: cocotb env/tests live under cocotb/.
 python_root = "hw/ip/i3ccore_wrap/dv/cocotb"
 test_dir = "hw/ip/i3ccore_wrap/dv/cocotb/tests"
 python_paths = [

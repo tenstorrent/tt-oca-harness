@@ -29,16 +29,29 @@ The I3C testbench validates the following capabilities:
 
 - **Controller Mode**: Bus mastering, device addressing, private transfers, CCC command generation
 - **Target Mode**: Static/dynamic address assignment, private read/write responses, IBI transmission
-- **Common Command Codes (CCC)**: GETBCR, GETMWL, GETMRL, SETMWL, SETMRL, RSTACT
-- **Private Transfers**: Read and write operations up to 500 bytes
-- **In-Band Interrupts (IBI)**: Target-initiated interrupts with payload data
-- **Error Handling**: NACK detection, FIFO overflow, invalid addresses
-- **Register Interface**: 100+ registers across controller and target modes
+- **Direct CCC**: GETBCR, GETMWL, GETMRL, SETMWL, SETMRL, RSTACT, SETDASA, SETNEWDA
+- **Broadcast CCC**: ENEC (0x00), DISEC (0x01), RSTDAA (0x06)
+- **Private Transfers**: Immediate (in-descriptor) data through to multi-hundred-byte
+  payloads, including the target-TX queue capacity boundary above 256 bytes
+- **In-Band Interrupts (IBI)**: Target-initiated interrupts across payload sizes,
+  plus the suppressed case when IBI generation is disabled
+- **Bus Timing**: Open-drain and push-pull timing banks and the OD→PP switch
+- **Error Handling**: Address NACK, FIFO overflow/underflow, T-bit parity
+  injection, and short reads under both settings of the descriptor's SRE field
+  (the `sre=0` leg is a known fail — see section 6 and `BRINGUP_STATUS.md`)
+- **Reset and Recovery**: Reset asserted mid-transaction, and RSTACT arming
+  without spurious reset assertion
+- **Register Interface**: 100+ registers, swept against generated reset values
+- **Integration**: AXI-Lite response checking and address-decode isolation
+  between the two I3C instances
 
 ### Technology Stack
 
-- **Simulation**: VCS (Synopsys) with FSDB waveform dumping
+- **Simulation**: Verilator by default; VCS and Xcelium are also configured
+- **Launcher**: `tools/dv/run_dv.py`, driven by `i3ccore_wrap_sim_cfg.toml`
 - **Test Framework**: Cocotb (Python-based testbench)
+- **Randomization**: shared constrained-random layer (`env/constrained_random.py`,
+  `env/i3c_rand.py`), seeded from `+seed` / `SEED` so seeds can be swept
 - **Bus Interface**: AXI4-Lite for register access
 - **I3C Bus**: Open-drain SDA/SCL with dual-instance modeling (controller + target)
 - **Language**: SystemVerilog (RTL/TB), Python (tests)
@@ -49,32 +62,52 @@ The I3C testbench validates the following capabilities:
 
 ### Directory Structure
 
-The testbench is organized in a flat structure at `hw/ip/i3ccore_wrap/dv/tb/`:
+The testbench lives at `hw/ip/i3ccore_wrap/dv/`, with SystemVerilog separated
+from the cocotb Python:
 
 ```
-tb/
-├── tb_i3ccore.sv              # SystemVerilog testbench top-level
-├── i3ccore_filelist.f         # RTL compilation file list (bender-generated)
-├── Makefile                   # Test execution and build orchestration
+dv/
+├── tb/
+│   ├── tb_i3ccore.sv              # SystemVerilog testbench top-level
+│   └── i3c_coverage_if.sv         # Functional-coverage interface
 │
-├── i3c_api.py                 # Core test infrastructure & API classes
+├── cocotb/
+│   ├── env/
+│   │   ├── i3c_api.py             # Core test infrastructure & API classes
+│   │   ├── i3c_test_base.py       # TB wrapper, AXI master, env construction
+│   │   ├── i3c_rand.py            # I3C constrained-random generators
+│   │   └── constrained_random.py  # IP-agnostic randomization primitives
+│   └── tests/
+│       ├── test_i3ccore.py        # Main test: reset, registers, basic checks
+│       ├── i3c_write_read_sanity.py       # 4-byte write/read sanity
+│       ├── i3c_long_write_sanity.py       # 500-byte write test
+│       ├── i3c_long_read_sanity.py        # 500-byte read test
+│       ├── i3c_immediate_write_sanity.py  # Immediate data transfers
+│       ├── i3c_direct_ccc_sanity.py       # Direct CCC command sequences
+│       ├── i3c_ibi_sanity.py              # In-Band Interrupt with payload
+│       ├── i3c_error_sanity.py            # Error handling and FIFO overflow
+│       └── ...                            # see testlists/block.toml
 │
-├── test_i3ccore.py            # Main test: reset, registers, basic checks
-├── test_i3c_setdasa.py        # Reference test: SETDASA + Read/Write
-│
-├── i3c_write_read_sanity.py   # 4-byte write/read sanity
-├── i3c_long_write_sanity.py   # 500-byte write test
-├── i3c_long_read_sanity.py    # 500-byte read test
-├── i3c_immediate_write_sanity.py  # Immediate data transfers
-│
-├── i3c_direct_ccc_sanity.py   # Direct CCC command sequences
-├── i3c_ibi_sanity.py          # In-Band Interrupt (IBI) with payload
-└── i3c_error_sanity.py        # Error handling and FIFO overflow
+├── docs/                          # This guide and bring-up notes
+├── testlists/                     # all.toml + block.toml
+├── build/                         # generated filelists, compiled model,
+│                                  #   per-run logs and waves (gitignored)
+└── i3ccore_wrap_sim_cfg.toml      # Launcher configuration
 ```
+
+The bender filelist and DUT compile list are generated into `build/`
+(`i3ccore_wrap_bender.f`, `i3ccore_wrap_dut_compile.f`) by the `flist` stage.
+An older `tb/i3ccore_filelist.f` may still be present from the pre-launcher
+flow; nothing regenerates or reads it, and it can be deleted.
+
+Test modules reach the shared layers through the `env` package, for example
+`from env.i3c_test_base import make_env, bring_up_and_assign`. The launcher puts
+both `cocotb/` and `cocotb/tests/` on `PYTHONPATH`, so tests import each other
+by bare module name.
 
 ### Key Components
 
-#### tb_i3ccore.sv (228 lines)
+#### tb_i3ccore.sv
 
 **Purpose**: SystemVerilog testbench top-level that instantiates the I3C core wrapper and provides simulation infrastructure.
 
@@ -94,9 +127,15 @@ tb/
   - Instance 1: Target
 
 - **Interrupt Signals**: `irq[NUM_I3C-1:0]`
-- **Waveform Support**: FSDB dumping when `+waves` and `+WAVE_FILE` plusargs are provided
+- **Error Injection Hook**: `sda_corrupt`, XOR-ed into the shared SDA so a test
+  can flip a single bus bit. It needs to be a TB signal with no continuous
+  driver, because `sda_shared` is a continuous assign and a cocotb deposit on it
+  would be overwritten at the next evaluation.
+- **Waveform Support**: none in the TB itself. Dumping is driven entirely by the
+  launcher's `--waves` / `--waves-on-fail`, which the cocotb runner turns into
+  simulator-native dumping.
 
-#### i3c_api.py (1600+ lines)
+#### i3c_api.py
 
 **Purpose**: Core Python API providing reusable classes for all I3C operations.
 
@@ -107,31 +146,52 @@ tb/
 
 This API abstracts the complexity of register programming, command descriptor formatting, and FIFO management, allowing test writers to focus on protocol-level scenarios.
 
+#### i3c_test_base.py
+
+**Purpose**: Removes the boilerplate every test would otherwise repeat.
+
+- `TB`: wraps the DUT handle and starts the clock
+- `make_env(dut)`: builds the AXI-Lite master and waits for reset release,
+  returning `(tb, helper, ctrl, tgt)`
+- `init_controller` / `init_target`: register-level bring-up of each instance
+- `bring_up_and_assign(ctrl, tgt)`: the full sequence up to a target holding an
+  assigned dynamic address, which is where most tests begin
+
+Note that `make_env()` alone runs *no* controller or target configuration. That
+is what makes it usable by `i3c_reg_reset_value_full`, which needs every
+register to still hold its true post-reset value.
+
+#### constrained_random.py / i3c_rand.py
+
+**Purpose**: The randomization layer. `constrained_random.py` is IP-agnostic;
+`i3c_rand.py` adds I3C-specific generators (legal dynamic addresses, transfer
+lengths, CCC selection by weight, event-defining bytes).
+
+The seed resolves from `+seed=<n>`, then `SEED=<n>`, then a fixed default, and
+is logged on every run. Local runs are therefore reproducible while a regression
+can sweep seeds and accumulate coverage.
+
 #### Test Modules
 
-| File | Purpose | Lines | Complexity |
-|------|---------|-------|------------|
-| `test_i3ccore.py` | Register verification, connectivity | 400+ | Low |
-| `test_i3c_setdasa.py` | Reference: SETDASA + read/write | 600+ | Medium |
-| `i3c_write_read_sanity.py` | Basic 4-byte transfers | 100+ | Low |
-| `i3c_long_write_sanity.py` | 500-byte write test | 80+ | Medium |
-| `i3c_long_read_sanity.py` | 500-byte read test | 80+ | Medium |
-| `i3c_immediate_write_sanity.py` | Immediate data in descriptors | 120+ | Medium |
-| `i3c_direct_ccc_sanity.py` | CCC command sequences | 120+ | Medium |
-| `i3c_ibi_sanity.py` | IBI with payload | 200+ | High |
-| `i3c_error_sanity.py` | Error handling | 250+ | High |
+`cocotb/tests/` holds 30 modules. 29 of them are in `testlists/block.toml` and
+run under `--items all`, together contributing 38 cocotb test functions.
+Section 6 documents each one.
 
-#### Makefile (286 lines)
+The exception is `i3c_ibi_diag`, a diagnostic probe for the IBI receive path
+rather than a pass/fail verdict test. It is not selectable through `--items`,
+since the launcher only accepts names that appear in the testlist.
 
-**Purpose**: Test orchestration, compilation, waveform management.
+#### Launcher configuration
 
-**Key Features**:
-- Single test execution: `make MODULE=<name>`
-- Regression suite: `make all_tests` (runs all 9 test modules)
-- Waveform control: `make WAVES=1` enables FSDB dumping
-- Filelist generation: `make filelist` (from bender)
-- Cleanup: `make clean` (artifacts), `make clean_all` (+ waveforms)
-- Viewer launch: `make verdi`
+**Purpose**: `i3ccore_wrap_sim_cfg.toml` describes the build and run to
+`tools/dv/run_dv.py`, which orchestrates compilation, simulation and artifact
+collection. There is no per-TB Makefile.
+
+**Key entries**:
+- `[build]`: top module, filelist paths and the bender target set
+- `[cocotb]`: `python_root` and `test_dir`, which become `PYTHONPATH`
+- `[testlist]`: points at `testlists/all.toml` for the selectable groups
+- `[targets.default.tools.<tool>]`: per-simulator compile flags
 
 ### Hardware Configuration
 
@@ -154,80 +214,103 @@ This API abstracts the complexity of register programming, command descriptor fo
 
 ### Prerequisites
 
-- **Simulator**: VCS with FSDB support (Verdi)
-- **Python**: 3.6+ with cocotb installed
-- **Environment**: Source project environment
+- **Simulator**: Verilator (default), or VCS/Xcelium
+- **Toolchain**: g++ ≥10 for the C++20 cocotb runtime
+- **Python**: the uv `dv` group, which the launcher bootstraps itself
 - **Bender**: Ensure dependencies are checked out (`bender checkout`)
 
 ### Quick Start
 
-Navigate to the testbench directory:
+Everything runs from the repository root through the launcher:
 
 ```bash
-cd hw/ip/i3ccore_wrap/dv/tb
+PY=tools/dv/run_dv.py
 ```
 
-Run a single test:
+List the available tests and groups:
 
 ```bash
-make MODULE=i3c_write_read_sanity
+python3 $PY --dut i3ccore_wrap --list
+```
+
+Run a single test module:
+
+```bash
+python3 $PY --dut i3ccore_wrap --items i3c_write_read_sanity --tool verilator --stage sim
 ```
 
 Run the full regression suite:
 
 ```bash
-make all_tests
+python3 $PY --dut i3ccore_wrap --items all --tool verilator --stage flist --stage sim
 ```
 
 Run a test with waveforms:
 
 ```bash
-make MODULE=i3c_ibi_sanity WAVES=1
-make verdi  # Open waveforms in Verdi
+python3 $PY --dut i3ccore_wrap --items i3c_ibi_sanity --tool verilator --stage sim --waves
 ```
 
-### Makefile Targets
+### Launcher Options
 
 | Command | Description |
 |---------|-------------|
-| `make` | Run default test (test_i3ccore) |
-| `make MODULE=<name>` | Run specific test module |
-| `make test_module_separate MODULE=<name>` | Run each test in module separately |
-| `make WAVES=1` | Enable FSDB waveform dumping |
-| `make TESTCASE=<name>` | Run single test function |
-| `make filelist` | Generate RTL filelist from bender |
-| `make clean` | Remove simulation artifacts |
-| `make clean_all` | Remove artifacts + waveforms |
-| `make verdi` | Open Verdi with FSDB waveforms |
-| `make help` | Show usage information |
+| `--items <name>` | Run a specific test module |
+| `--items smoke` / `--items all` | Run a group from `testlists/all.toml` |
+| `--list` | Show the configured tests and groups |
+| `--waves [format]` | Dump waves for every selected test |
+| `--waves-on-fail [format]` | Rerun only the non-passing tests with waves |
+| `--stage flist` | Regenerate the RTL filelist from bender |
+| `--stage clean` | Remove the run directory and `dv/build` |
+| `--tool <name>` | Select verilator (default), vcs or xcelium |
+| `--dry-run` | Print the commands and artifacts without running them |
+
+Stages accumulate, so `--stage flist --stage sim` rebuilds the filelist and then
+simulates. Omitting `--stage` runs the configured default set.
 
 ### Test Execution Flow
 
-1. **Compilation**: VCS compiles RTL from `i3ccore_filelist.f` (incremental with `-Mupdate`)
-2. **Elaboration**: Cocotb loads Python test module and testbench
-3. **Simulation**: Python test interacts with DUT via cocotb AXI-Lite BFM
-4. **Logging**: Test results printed to console; detailed logs in `/tmp/i3c_test_<module>.log`
-5. **Waveforms**: FSDB files generated in `tb/` directory when `WAVES=1` is set
+1. **Filelist**: bender emits `i3ccore_filelist.f` from the configured targets
+2. **Compilation**: the simulator builds the RTL plus `tb_i3ccore.sv`
+3. **Elaboration**: cocotb loads the selected Python test module
+4. **Simulation**: the test drives the DUT through the cocotb AXI-Lite BFM
+5. **Artifacts**: per-test logs, `results.xml` and any waves land under
+   `dv/build/runs/<timestamp>__<tool>__<items>/<test>/`
 
 ### Log Interpretation
 
-**Pass Example**:
+Each test module's own log ends with a cocotb tally, where `TESTS` counts the
+test functions that ran inside that module:
+
 ```
-test_i3c_write_read_sanity.test_write_read_sanity PASS
+i3c_write_read_sanity.test_write_read_sanity passed
+** TESTS=1 PASS=1 FAIL=0 SKIP=0 **
 ```
 
-**Fail Example**:
+A failure names the module, the test function and the assertion:
+
 ```
-test_i3c_write_read_sanity.test_write_read_sanity FAIL
+i3c_write_read_sanity.test_write_read_sanity failed
 AssertionError: Expected 0xDEADBEEF, got 0xDEADBEE0
 ```
 
-**Regression Summary** (from `make all_tests`):
+**Regression Summary** (from `--items all`): the launcher prints one line per
+module and then a roll-up, where `total` counts modules, not test functions.
+
 ```
-=== Test Summary ===
-PASSED: 9
-FAILED: 0
+regression done index=2/29 status=PASS item=i3c_write_read_sanity seed=1530441552 attempt=0 elapsed=33.6s
+...
+summary    passing=<n> total=29 failing=<m> skipped=0 elapsed=...
 ```
+
+The `all` group holds 29 modules totalling 38 cocotb test functions.
+
+**A plain `--items all` does not come back fully green**, for two known reasons
+that are not regressions: `test_i3ccore` times out under Verilator, and
+`i3c_error_target_abort` fails its `sre=0` test function against an open
+suspected DUT issue. Section 9 has the detail and Test Gaps items 9 and 10 track
+both. Compare a fresh run against the previous run's numbers rather than against
+a fixed expected tally.
 
 ---
 
@@ -243,12 +326,22 @@ The I3C core uses a HCI (Host Controller Interface) register layout defined by t
 
 **Register Regions**:
 
+Every offset in this section is the `_REG_ADDR` value from the generated register
+map, `hw/ip/i3ccore_wrap/regs/gen/py/I3CCSR_reg.py`, which is the same module the
+tests import (as `_csr` in `cocotb/env/i3c_api.py`). Prefer the symbol over the
+literal in new code: the API always writes `self.base + <SYMBOL>_REG_ADDR`, so
+code written that way cannot drift when the register map is regenerated.
+
 | Region | Offset | Description |
 |--------|--------|-------------|
-| **Base Registers** | 0x000 - 0x07F | HCI version, capabilities, section offsets |
-| **PIO Registers** | 0x080 - 0x0FF | Command/response ports, data FIFOs, interrupts |
-| **Extended Caps** | 0x100 - 0x1FF | Timing, standby controller mode, TTI |
-| **DAT Memory** | 0x400 - 0x7FF | Device Address Table (64-bit entries) |
+| **Base Registers** | 0x000 - 0x07F | HCI version, capabilities, section offsets (`I3CBASE_*`, populated to 0x068) |
+| **PIO Registers** | 0x080 - 0x0FF | Command/response ports, data FIFOs, interrupts (`PIOCONTROL_*`, populated to 0x0B0) |
+| **Extended Caps: Secure FW Recovery** | 0x100 - 0x17F | OCP recovery interface (`I3C_EC_SECFWRECOVERYIF_*`) |
+| **Extended Caps: Standby Controller** | 0x180 - 0x1FF | Standby/active controller mode (`I3C_EC_STDBYCTRLMODE_*`, populated to 0x1C0) |
+| **Extended Caps: TTI** | 0x200 - 0x2FF | Target Transaction Interface (`I3C_EC_TTI_*`, populated to 0x290) |
+| **Extended Caps: SoC Management** | 0x300 - 0x397 | Bus timing parameters (`I3C_EC_SOCMGMTIF_*`, populated to 0x390) |
+| **Extended Caps: Controller Config** | 0x398 - 0x3FF | Controller configuration (`I3C_EC_CTRLCFG_*`) |
+| **DAT Memory** | 0x400 - 0x7FF | Device Address Table (64-bit entries, `DAT_MEM_BASE_ADDR`) |
 | **DCT Memory** | 0x800 - 0xBFF | Device Characteristics Table |
 
 **Key Controller Registers**:
@@ -256,33 +349,45 @@ The I3C core uses a HCI (Host Controller Interface) register layout defined by t
 | Address | Name | Purpose |
 |---------|------|---------|
 | 0x004 | `HC_CONTROL` | Bus enable, mode selector |
-| 0x088 | `COMMAND_PORT` | Write command descriptors (64-bit) |
-| 0x08C | `RESPONSE_PORT` | Read response descriptors (32-bit) |
-| 0x090 | `TX_DATA_PORT` | Write transmit data (32-bit) |
-| 0x094 | `RX_DATA_PORT` | Read received data (32-bit) |
-| 0x098 | `IBI_PORT` | Read IBI status/data |
+| 0x080 | `COMMAND_PORT` | Write command descriptors (64-bit, two 32-bit writes) |
+| 0x084 | `RESPONSE_PORT` | Read response descriptors (32-bit) |
+| 0x088 | `TX_DATA_PORT` | Write transmit data (32-bit) |
+| 0x088 | `RX_DATA_PORT` | Read received data (32-bit) — same address, direction selects the FIFO |
+| 0x08C | `IBI_PORT` | Read IBI status/data |
+| 0x090 | `QUEUE_THLD_CTRL` | Queue threshold control (command/response/IBI) |
+| 0x094 | `DATA_BUFFER_THLD_CTRL` | Data buffer threshold control (TX/RX) |
+| 0x098 | `QUEUE_SIZE` | Queue capacities (read-only) |
+| 0x09C | `ALT_QUEUE_SIZE` | Alternate queue capacities (read-only) |
 | 0x0A0 | `PIO_INTR_STATUS` | Interrupt status flags |
 | 0x0A4 | `PIO_INTR_STATUS_ENABLE` | Interrupt status enables |
 | 0x0A8 | `PIO_INTR_SIGNAL_ENABLE` | Interrupt signal enables |
-| 0x09C | `QUEUE_THLD_CTRL` | Queue threshold control |
-| 0x0A0 | `DATA_BUFFER_THLD_CTRL` | Data buffer threshold control |
+| 0x0B0 | `PIO_CONTROL` | PIO queue enable / resume-suspend |
 | 0x184 | `STBY_CR_CONTROL` | Standby controller mode control |
-| 0x22C+ | `T_HIGH_REG`, `T_LOW_REG`, etc. | Timing parameters |
+| 0x300+ | `T_HIGH_REG`, `T_LOW_REG`, etc. | Timing parameters (see section 4.2 step 5) |
 
 #### Target (TTI) Base Address: 0x1000
 
+The testbench instantiates two copies of the core (see section 2). Instance 0 is
+the controller at `CTRL_BASE = 0x0000`; instance 1 is the target at
+`TGT_BASE = 0x1000`. The offsets below are register offsets *within* an instance,
+so a target access goes to `TGT_BASE + offset` — e.g. `TTI_CONTROL` is at 0x1204
+on the AXI bus. `cocotb/env/i3c_test_base.py` defines both bases.
+
 **TTI (Target Transaction Interface) Registers**:
 
-| Address | Name | Purpose |
-|---------|------|---------|
-| 0x1C4 | `TTI_CONTROL` | IBI enable (bit 12), descriptor enables |
-| 0x1CC | `TTI_INTERRUPT_STATUS` | TTI status flags |
-| 0x1D4 | `TTI_INTERRUPT_ENABLE` | TTI interrupt enables |
-| 0x1DC | `TTI_RX_DESC_QUEUE_PORT` | Read RX descriptors |
-| 0x1E0 | `TTI_RX_DATA_PORT` | Read RX data |
-| 0x1E4 | `TTI_TX_DESC_QUEUE_PORT` | Write TX descriptors |
-| 0x1E8 | `TTI_TX_DATA_PORT` | Write TX data |
-| 0x1EC | `TTI_IBI_PORT` | Write IBI descriptors/data |
+| Offset | Name | Purpose |
+|--------|------|---------|
+| 0x204 | `TTI_CONTROL` | IBI enable (bit 12), descriptor enables |
+| 0x220 | `TTI_INTERRUPT_STATUS` | TTI status flags |
+| 0x224 | `TTI_INTERRUPT_ENABLE` | TTI interrupt enables |
+| 0x270 | `TTI_RX_DESC_QUEUE_PORT` | Read RX descriptors |
+| 0x274 | `TTI_RX_DATA_PORT` | Read RX data |
+| 0x278 | `TTI_TX_DESC_QUEUE_PORT` | Write TX descriptors |
+| 0x27C | `TTI_TX_DATA_PORT` | Write TX data |
+| 0x280 | `TTI_IBI_PORT` | Write IBI descriptors/data |
+| 0x284 | `TTI_QUEUE_SIZE` | TTI queue capacities (read-only) |
+| 0x28C | `TTI_QUEUE_THLD_CTRL` | TTI queue thresholds |
+| 0x290 | `TTI_DATA_BUFFER_THLD_CTRL` | TTI data buffer thresholds |
 | 0x188 | `STBY_CR_DEVICE_ADDR` | Static/dynamic address |
 
 ### 4.2 Controller Initialization
@@ -342,7 +447,7 @@ await helper.write(0x0A8, intr_status_enable)
 
 #### Step 4: Enable PIO Queues
 
-Write to `PIO_CONTROL` register (offset 0x0AC):
+Write to `PIO_CONTROL` register (offset 0x0B0):
 
 ```python
 # PIO_CONTROL fields:
@@ -350,7 +455,7 @@ Write to `PIO_CONTROL` register (offset 0x0AC):
 #   bit 1: rs (Resume/Suspend - 1=resume)
 
 pio_control = (1 << 1) | (1 << 0)  # rs=1, enable=1
-await helper.write(0x0AC, pio_control)
+await helper.write(0x0B0, pio_control)
 ```
 
 **Purpose**: Enables PIO queues and asserts the RS (Resume/Suspend) bit for bus ownership.
@@ -359,66 +464,69 @@ await helper.write(0x0AC, pio_control)
 
 **Open-Drain (OD) I3C Timing**:
 
+These are the values `I3CController.configure_timing_od_i3c()` actually programs;
+they mirror the upstream `boot_init` sequence. The OD-specific registers
+(`T_HIGH_OD`, `T_LOW_OD`, `T_HIGH_INIT_OD`) are required to drive SCL at all —
+omitting them leaves the bus stuck.
+
 ```python
-# T_HIGH_REG (offset 0x22C): SCL high period
-await helper.write(0x22C, 10)  # 10 clock cycles
+# Rise/fall are zero in simulation (ideal edges)
+await helper.write(0x32C, 0)      # T_R_REG:           SCL rise time
+await helper.write(0x330, 0)      # T_F_REG:           SCL fall time
 
-# T_LOW_REG (offset 0x230): SCL low period
-await helper.write(0x230, 10)  # 10 clock cycles
+await helper.write(0x334, 2)      # T_SU_DAT_REG:      data setup time
+await helper.write(0x33C, 2)      # T_HD_DAT_REG:      data hold time
 
-# T_R_REG (offset 0x234): SCL rise time
-await helper.write(0x234, 8)  # 8 clock cycles
+await helper.write(0x340, 14)     # T_HIGH_REG:        SCL high period
+await helper.write(0x344, 20)     # T_HIGH_OD_REG:     SCL high, open-drain
+await helper.write(0x348, 70)     # T_HIGH_INIT_OD_REG: SCL high during bus init
+await helper.write(0x350, 14)     # T_LOW_REG:         SCL low period
+await helper.write(0x354, 70)     # T_LOW_OD_REG:      SCL low, open-drain
 
-# T_F_REG (offset 0x238): SCL fall time
-await helper.write(0x238, 2)  # 2 clock cycles
+await helper.write(0x35C, 13)     # T_HD_STA_REG:      START hold time
+await helper.write(0x368, 9)      # T_SU_STA_REG:      START setup time
+await helper.write(0x370, 8)      # T_SU_STO_REG:      STOP setup time
+await helper.write(0x364, 9)      # T_HD_RSTA_REG:     repeated-START hold time
+await helper.write(0x378, 24)     # T_DS_OD_REG:       open-drain data slew
 
-# T_HD_STA_REG (offset 0x23C): START condition hold time
-await helper.write(0x23C, 5)
-
-# T_SU_STA_REG (offset 0x240): START condition setup time
-await helper.write(0x240, 5)
-
-# T_SU_STO_REG (offset 0x244): STOP condition setup time
-await helper.write(0x244, 5)
-
-# T_SU_DAT_REG (offset 0x248): Data setup time
-await helper.write(0x248, 5)
-
-# T_HD_DAT_REG (offset 0x24C): Data hold time
-await helper.write(0x24C, 2)
-
-# T_FREE_REG (offset 0x250): Bus free time
-await helper.write(0x250, 500)
-
-# T_AVAL_REG (offset 0x254): Bus available time (for target IBI)
-await helper.write(0x254, 1000)
-
-# T_IDLE_REG (offset 0x258): Bus idle time
-await helper.write(0x258, 2000)
+await helper.write(0x37C, 13)     # T_FREE_REG:        bus free time
+await helper.write(0x384, 333)    # T_AVAL_REG:        bus available (target IBI)
+await helper.write(0x388, 66600)  # T_IDLE_REG:        bus idle time
 ```
 
 **Purpose**: Configures timing parameters for I3C open-drain mode according to spec requirements.
 
 **Push-Pull (PP) Timing**:
 
-For faster push-pull transfers, write similar values to PP-specific registers (offsets 0x25C+) with shorter times.
+There is no separate PP register bank to program. Push-pull timing derives from
+`T_HIGH_REG`/`T_LOW_REG`, which is why `configure_timing_pp()` exists only to keep
+call sites compatible and returns immediately.
 
 #### Step 6: Set FIFO Thresholds
 
 ```python
-# DATA_BUFFER_THLD_CTRL (offset 0x09C)
-# Formula: actual_threshold = 2^(register_value + 1)
-# tx_buf=1 → 2^2=4 bytes, rx_buf=1 → 2^2=4 bytes
+# DATA_BUFFER_THLD_CTRL (offset 0x094)
+# Data buffer threshold = 2^(register_value + 1) ENTRIES of 4 bytes each.
+# tx_buf=1 → 2^2 = 4 entries = 16 bytes; likewise rx_buf=1.
+# Fields: tx_buf_thld [2:0], rx_buf_thld [10:8],
+#         tx_start_thld [18:16], rx_start_thld [26:24]
 data_buffer_thld = (1 << 8) | (1 << 0)  # tx_buf=1, rx_buf=1
-await helper.write(0x09C, data_buffer_thld)
+await helper.write(0x094, data_buffer_thld)
 
-# QUEUE_THLD_CTRL (offset 0x098)
-# cmd_empty_buf=1, resp_buf=1
-queue_thld = (1 << 8) | (1 << 0)
-await helper.write(0x098, queue_thld)
+# QUEUE_THLD_CTRL (offset 0x090)
+# Queue threshold = register_value + 1 entries (not a power of two).
+# Fields: cmd_empty_buf_thld [7:0], resp_buf_thld [15:8],
+#         ibi_data_segment_size [23:16], ibi_status_thld [31:24]
+queue_thld = (1 << 8) | (1 << 0)  # cmd_empty_buf=1, resp_buf=1
+await helper.write(0x090, queue_thld)
 ```
 
 **Purpose**: Sets thresholds for when TX/RX FIFO interrupts fire.
+
+Note the two registers use *different* scales — the data buffer threshold is
+exponential (`2^(v+1)` entries) while the queue threshold is linear (`v+1`
+entries). Section 6's `i3c_threshold_sweep` write-up depends on the exponential
+form, and `configure_thresholds()` in `i3c_api.py` documents both.
 
 **Complete Initialization Code** (from `i3c_api.py` lines 204-290):
 
@@ -496,10 +604,10 @@ await helper.write(0x1184, stby_cr_control)  # Target base 0x1000 + 0x184
 #### Step 3: Enable TTI Interrupts
 
 ```python
-# TTI_INTERRUPT_ENABLE (offset 0x1D4)
+# TTI_INTERRUPT_ENABLE (offset 0x224)
 # Enable: TX_DATA_THLD, RX_DATA_THLD, TX_DESC_THLD, RX_DESC_THLD, IBI_THLD, IBI_DONE
 tti_intr_enable = (1 << 13) | (1 << 12) | (1 << 3) | (1 << 2) | (1 << 1) | (1 << 0)
-await helper.write(0x11D4, tti_intr_enable)
+await helper.write(0x1224, tti_intr_enable)
 ```
 
 **Purpose**: Enables interrupts for target RX/TX FIFO thresholds and IBI completion.
@@ -584,8 +692,8 @@ cmd_lo = (0x2 << 0) | (0x87 << 7) | (0 << 16) | (1 << 26) | (1 << 30) | (1 << 31
 cmd_hi = 0
 
 # Write to COMMAND_PORT (64-bit write = 2 x 32-bit writes)
-await helper.write(0x088, cmd_lo)
-await helper.write(0x08C, cmd_hi)
+await helper.write(0x080, cmd_lo)
+await helper.write(0x080, cmd_hi)  # same FIFO address, pushed twice
 ```
 
 3. **Poll for Response**:
@@ -602,13 +710,13 @@ while True:
 4. **Read Response Descriptor**:
 
 ```python
-# Read RESPONSE_PORT (offset 0x08C)
-response = await helper.read(0x08C)
+# Read RESPONSE_PORT (offset 0x084)
+response = await helper.read(0x084)
 
 # Extract fields:
-#   bits [27:28] = err_status (0=success)
+#   bits [31:28] = err_status (0=success)
 #   bits [15:0] = data_length
-err_status = (response >> 27) & 0x3
+err_status = (response >> 28) & 0xF
 data_length = response & 0xFFFF
 
 if err_status != 0:
@@ -639,7 +747,7 @@ async def send_setdasa(self, static_addr, dynamic_addr, dat_idx=0):
 
     # Read and verify response
     response = await self.helper.read(PIOCONTROL_RESPONSE_PORT_REG_ADDR)
-    err_status = (response >> 27) & 0x3
+    err_status = (response >> 28) & 0xF
 
     return err_status == 0
 ```
@@ -678,8 +786,8 @@ data_len = len(data_bytes)
 cmd_lo = (0x0 << 0) | (dat_idx << 16) | (0 << 29) | (1 << 26) | (1 << 30) | (1 << 31)
 cmd_hi = data_len << 16
 
-await helper.write(0x088, cmd_lo)
-await helper.write(0x08C, cmd_hi)
+await helper.write(0x080, cmd_lo)
+await helper.write(0x080, cmd_hi)  # same FIFO address, pushed twice
 ```
 
 2. **Poll for Command Queue Ready**:
@@ -696,18 +804,18 @@ await helper.poll_field(0x0A0, PioIntrStatus, 'cmd_queue_ready_stat')
 # data_bytes = [0xDE, 0xAD, 0xBE, 0xEF] → data_word = 0xEFBEADDE
 data_word = (data_bytes[3] << 24) | (data_bytes[2] << 16) | (data_bytes[1] << 8) | data_bytes[0]
 
-# Write to TX_DATA_PORT (offset 0x090)
-await helper.write(0x090, data_word)
+# Write to TX_DATA_PORT (offset 0x088)
+await helper.write(0x088, data_word)
 ```
 
 4. **Target Drains RX Data** (interleaved, when `TTI_RX_DATA_THLD_STAT` fires):
 
 ```python
-# Poll TTI_INTERRUPT_STATUS (offset 0x1CC) for rx_data_thld_stat (bit 1)
-status = await helper.read(0x11CC)
+# Poll TTI_INTERRUPT_STATUS (offset 0x220) for rx_data_thld_stat (bit 1)
+status = await helper.read(0x1220)
 if status & (1 << 1):
-    # Read from TTI_RX_DATA_PORT (offset 0x1E0)
-    rx_word = await helper.read(0x11E0)
+    # Read from TTI_RX_DATA_PORT (offset 0x274)
+    rx_word = await helper.read(0x1274)
     # Unpack: 0xEFBEADDE → [0xDE, 0xAD, 0xBE, 0xEF]
     rx_bytes = [rx_word & 0xFF, (rx_word >> 8) & 0xFF, (rx_word >> 16) & 0xFF, (rx_word >> 24) & 0xFF]
 ```
@@ -722,8 +830,8 @@ await helper.poll_field(0x0A0, PioIntrStatus, 'resp_ready_stat')
 6. **Read Response**:
 
 ```python
-response = await helper.read(0x08C)
-err_status = (response >> 27) & 0x3
+response = await helper.read(0x084)
+err_status = (response >> 28) & 0xF
 data_length = response & 0xFFFF
 
 if err_status != 0:
@@ -734,10 +842,10 @@ if err_status != 0:
 
 ```python
 # Poll for rx_desc_thld_stat (bit 3)
-await helper.poll_field(0x11CC, TtiIntrStatus, 'rx_desc_thld_stat')
+await helper.poll_field(0x1220, TtiIntrStatus, 'rx_desc_thld_stat')
 
-# Read RX descriptor from TTI_RX_DESC_QUEUE_PORT (offset 0x1DC)
-rx_desc = await helper.read(0x11DC)
+# Read RX descriptor from TTI_RX_DESC_QUEUE_PORT (offset 0x270)
+rx_desc = await helper.read(0x1270)
 # Extract byte count, command, etc.
 ```
 
@@ -773,7 +881,7 @@ async def private_write(self, data_bytes, target, dat_idx=0):
                                    PioIntrStatus, 'resp_ready_stat')
 
     response = await self.helper.read(PIOCONTROL_RESPONSE_PORT_REG_ADDR)
-    err_status = (response >> 27) & 0x3
+    err_status = (response >> 28) & 0xF
 
     return err_status == 0, response, target_rx_data
 ```
@@ -811,15 +919,15 @@ read_len = 4
 cmd_lo = (0x0 << 0) | (dat_idx << 16) | (1 << 29) | (1 << 26) | (1 << 30) | (1 << 31)
 cmd_hi = read_len << 16
 
-await helper.write(0x088, cmd_lo)
-await helper.write(0x08C, cmd_hi)
+await helper.write(0x080, cmd_lo)
+await helper.write(0x080, cmd_hi)  # same FIFO address, pushed twice
 ```
 
 2. **Target Waits for TX Descriptor Ready**:
 
 ```python
 # Poll for tx_desc_thld_stat (bit 2)
-await helper.poll_field(0x11CC, TtiIntrStatus, 'tx_desc_thld_stat')
+await helper.poll_field(0x1220, TtiIntrStatus, 'tx_desc_thld_stat')
 ```
 
 3. **Target Writes TX Descriptor**:
@@ -827,7 +935,7 @@ await helper.poll_field(0x11CC, TtiIntrStatus, 'tx_desc_thld_stat')
 ```python
 # TX descriptor format: {data_length[15:0], ...}
 tx_desc = read_len
-await helper.write(0x11E4, tx_desc)  # TTI_TX_DESC_QUEUE_PORT
+await helper.write(0x1278, tx_desc)  # TTI_TX_DESC_QUEUE_PORT
 ```
 
 4. **Target Fills TX FIFO**:
@@ -838,10 +946,10 @@ tx_data = [0x11, 0x22, 0x33, 0x44]
 tx_word = (tx_data[3] << 24) | (tx_data[2] << 16) | (tx_data[1] << 8) | tx_data[0]
 
 # Wait for tx_data_thld_stat (bit 0)
-await helper.poll_field(0x11CC, TtiIntrStatus, 'tx_data_thld_stat')
+await helper.poll_field(0x1220, TtiIntrStatus, 'tx_data_thld_stat')
 
-# Write to TTI_TX_DATA_PORT (offset 0x1E8)
-await helper.write(0x11E8, tx_word)
+# Write to TTI_TX_DATA_PORT (offset 0x27C)
+await helper.write(0x127C, tx_word)
 ```
 
 5. **Controller Drains RX FIFO**:
@@ -850,8 +958,8 @@ await helper.write(0x11E8, tx_word)
 # Wait for rx_thld_stat (bit 2)
 await helper.poll_field(0x0A0, PioIntrStatus, 'rx_thld_stat')
 
-# Read from RX_DATA_PORT (offset 0x094)
-rx_word = await helper.read(0x094)
+# Read from RX_DATA_PORT (offset 0x088)
+rx_word = await helper.read(0x088)
 rx_bytes = [rx_word & 0xFF, (rx_word >> 8) & 0xFF, (rx_word >> 16) & 0xFF, (rx_word >> 24) & 0xFF]
 ```
 
@@ -859,15 +967,15 @@ rx_bytes = [rx_word & 0xFF, (rx_word >> 8) & 0xFF, (rx_word >> 16) & 0xFF, (rx_w
 
 ```python
 # Poll for tx_desc_complete_stat (bit 14)
-await helper.poll_field(0x11CC, TtiIntrStatus, 'tx_desc_complete_stat')
+await helper.poll_field(0x1220, TtiIntrStatus, 'tx_desc_complete_stat')
 ```
 
 7. **Controller Reads Response**:
 
 ```python
 await helper.poll_field(0x0A0, PioIntrStatus, 'resp_ready_stat')
-response = await helper.read(0x08C)
-err_status = (response >> 27) & 0x3
+response = await helper.read(0x084)
+err_status = (response >> 28) & 0xF
 ```
 
 **Complete Private Read Code** (from `i3c_api.py` lines 578-713, simplified):
@@ -901,7 +1009,7 @@ async def private_read(self, target, tx_data, dat_idx=0):
                                    PioIntrStatus, 'resp_ready_stat')
 
     response = await self.helper.read(PIOCONTROL_RESPONSE_PORT_REG_ADDR)
-    err_status = (response >> 27) & 0x3
+    err_status = (response >> 28) & 0xF
 
     return err_status == 0, response, rx_data
 ```
@@ -956,15 +1064,15 @@ async def getbcr(self, dat_idx=0):
     cmd_hi = max_data_len << 16
 
     # Write to COMMAND_PORT
-    await self.helper.write(0x088, cmd_lo)
-    await self.helper.write(0x08C, cmd_hi)
+    await self.helper.write(0x080, cmd_lo)
+    await self.helper.write(0x080, cmd_hi)  # same FIFO address, pushed twice
 
     # Wait for response
     await self.helper.poll_field(0x0A0, PioIntrStatus, 'resp_ready_stat')
 
     # Read response
-    response = await self.helper.read(0x08C)
-    err_status = (response >> 27) & 0x3
+    response = await self.helper.read(0x084)
+    err_status = (response >> 28) & 0xF
     data_length = response & 0xFFFF
 
     if err_status != 0:
@@ -972,7 +1080,7 @@ async def getbcr(self, dat_idx=0):
 
     # Read RX data
     await self.helper.poll_field(0x0A0, PioIntrStatus, 'rx_thld_stat')
-    rx_word = await self.helper.read(0x094)
+    rx_word = await self.helper.read(0x088)
     bcr_value = rx_word & 0xFF
 
     return bcr_value
@@ -1069,13 +1177,13 @@ async def setmwl(self, mwl, dat_idx=0):
     cmd_lo = (0x1 << 0) | (ccc_code << 7) | (1 << 15) | (dat_idx << 16) | (len(data_bytes) << 23) | (1 << 30) | (1 << 31)
     cmd_hi = data_word
 
-    await self.helper.write(0x088, cmd_lo)
-    await self.helper.write(0x08C, cmd_hi)
+    await self.helper.write(0x080, cmd_lo)
+    await self.helper.write(0x080, cmd_hi)  # same FIFO address, pushed twice
 
     # Wait for response
     await self.helper.poll_field(0x0A0, PioIntrStatus, 'resp_ready_stat')
-    response = await self.helper.read(0x08C)
-    err_status = (response >> 27) & 0x3
+    response = await self.helper.read(0x084)
+    err_status = (response >> 28) & 0xF
 
     return err_status == 0
 ```
@@ -1096,13 +1204,13 @@ async def setmrl(self, mrl, ibi_payload_size=0, dat_idx=0):
     cmd_lo = (0x1 << 0) | (ccc_code << 7) | (1 << 15) | (dat_idx << 16) | (len(data_bytes) << 23) | (1 << 30) | (1 << 31)
     cmd_hi = data_word
 
-    await self.helper.write(0x088, cmd_lo)
-    await self.helper.write(0x08C, cmd_hi)
+    await self.helper.write(0x080, cmd_lo)
+    await self.helper.write(0x080, cmd_hi)  # same FIFO address, pushed twice
 
     # Wait for response
     await self.helper.poll_field(0x0A0, PioIntrStatus, 'resp_ready_stat')
-    response = await self.helper.read(0x08C)
-    err_status = (response >> 27) & 0x3
+    response = await self.helper.read(0x084)
+    err_status = (response >> 28) & 0xF
 
     return err_status == 0
 ```
@@ -1124,13 +1232,13 @@ async def rstact(self, defining_byte, dat_idx=0):
     cmd_lo = (0x1 << 0) | (ccc_code << 7) | (1 << 15) | (dat_idx << 16) | (1 << 23) | (1 << 30) | (1 << 31)
     cmd_hi = defining_byte
 
-    await self.helper.write(0x088, cmd_lo)
-    await self.helper.write(0x08C, cmd_hi)
+    await self.helper.write(0x080, cmd_lo)
+    await self.helper.write(0x080, cmd_hi)  # same FIFO address, pushed twice
 
     # Wait for response
     await self.helper.poll_field(0x0A0, PioIntrStatus, 'resp_ready_stat')
-    response = await self.helper.read(0x08C)
-    err_status = (response >> 27) & 0x3
+    response = await self.helper.read(0x084)
+    err_status = (response >> 28) & 0xF
 
     return err_status == 0
 ```
@@ -1178,22 +1286,22 @@ IBI allows a target to initiate an interrupt to the controller without polling.
 
 **Step 1: Enable IBI Mode**
 
-Write to `TTI_CONTROL` register (offset 0x1C4):
+Write to `TTI_CONTROL` register (offset 0x204):
 
 ```python
 # Read current TTI_CONTROL
-tti_control = await helper.read(0x11C4)
+tti_control = await helper.read(0x1204)
 
 # Set bit 12 (ibi_en)
 tti_control |= (1 << 12)
 
 # Write back
-await helper.write(0x11C4, tti_control)
+await helper.write(0x1204, tti_control)
 ```
 
 **Step 2: Write IBI Descriptor and Payload**
 
-IBI descriptor format (written to `TTI_IBI_PORT` at offset 0x1EC):
+IBI descriptor format (written to `TTI_IBI_PORT` at offset 0x280):
 
 ```
 IBI Descriptor Header (32-bit):
@@ -1210,11 +1318,11 @@ Payload Data (32-bit chunks):
 async def write_ibi(self, mdb, payload_bytes):
     """Send IBI from target"""
     # Step 1: Wait for IBI FIFO has space (ibi_thld_stat, bit 12)
-    await self.helper.poll_field(0x11CC, TtiIntrStatus, 'ibi_thld_stat')
+    await self.helper.poll_field(0x1220, TtiIntrStatus, 'ibi_thld_stat')
 
     # Step 2: Write IBI header
     ibi_header = (mdb << 24) | len(payload_bytes)
-    await self.helper.write(0x11EC, ibi_header)  # TTI_IBI_PORT
+    await self.helper.write(0x1280, ibi_header)  # TTI_IBI_PORT
 
     # Step 3: Write payload in 4-byte chunks
     for i in range(0, len(payload_bytes), 4):
@@ -1222,12 +1330,12 @@ async def write_ibi(self, mdb, payload_bytes):
         payload_word = self.helper.pack_bytes(chunk)
 
         # Wait for space
-        await self.helper.poll_field(0x11CC, TtiIntrStatus, 'ibi_thld_stat')
+        await self.helper.poll_field(0x1220, TtiIntrStatus, 'ibi_thld_stat')
 
-        await self.helper.write(0x11EC, payload_word)
+        await self.helper.write(0x1280, payload_word)
 
     # Step 4: Wait for IBI done (bit 13)
-    await self.helper.poll_field(0x11CC, TtiIntrStatus, 'ibi_done_stat')
+    await self.helper.poll_field(0x1220, TtiIntrStatus, 'ibi_done_stat')
 ```
 
 **Complete Target IBI Code** (from `i3c_ibi_sanity.py` lines 199-203):
@@ -1251,10 +1359,10 @@ intr_enable = await helper.read(0x0A4)
 intr_enable |= (1 << X)  # Set IBI threshold bit
 await helper.write(0x0A4, intr_enable)
 
-# Configure IBI threshold in QUEUE_THLD_CTRL (offset 0x098)
-queue_thld = await helper.read(0x098)
+# Configure IBI threshold in QUEUE_THLD_CTRL (offset 0x090)
+queue_thld = await helper.read(0x090)
 queue_thld |= (1 << Y)  # Set IBI threshold
-await helper.write(0x098, queue_thld)
+await helper.write(0x090, queue_thld)
 ```
 
 **Step 2: Poll for IBI Received**
@@ -1266,7 +1374,7 @@ await helper.poll_field(0x0A0, PioIntrStatus, 'ibi_status_thld_stat')
 
 **Step 3: Read IBI Status Descriptor**
 
-IBI status descriptor format (read from `IBI_PORT` at offset 0x098):
+IBI status descriptor format (read from `IBI_PORT` at offset 0x08C):
 
 ```
 IBI Status Descriptor (32-bit):
@@ -1286,7 +1394,7 @@ IBI Status Descriptor (32-bit):
 async def read_ibi(self):
     """Read IBI from controller"""
     # Read IBI status descriptor
-    ibi_status = await self.helper.read(0x098)  # IBI_PORT
+    ibi_status = await self.helper.read(0x08C)  # IBI_PORT
 
     # Extract fields
     error = (ibi_status >> 30) & 0x1
@@ -1299,7 +1407,7 @@ async def read_ibi(self):
     # Read data bytes (first byte is MDB)
     ibi_data = []
     for i in range(0, data_length, 4):
-        data_word = await self.helper.read(0x098)  # IBI_PORT (same address)
+        data_word = await self.helper.read(0x08C)  # IBI_PORT (same address)
         bytes_in_word = self.helper.unpack_bytes(data_word, min(4, data_length - i))
         ibi_data.extend(bytes_in_word)
 
@@ -1699,177 +1807,363 @@ await tgt.wait_ibi_done()
 
 ## 6. Test Coverage
 
-This section describes the test modules, their purpose, and what they validate.
+The regression (`--items all`) runs 29 modules containing 38 cocotb test
+functions. One further module, `i3c_ibi_diag`, sits outside the regression;
+section 2 explains why. This section groups the 29 by what they exercise, and
+names each module's test functions so a log line can be traced back to its
+source.
 
-### Test Organization
+Most modules layer constrained-random stimulus on directed cases rather than
+replacing them: the known corners are always exercised, and randomization from
+`env/i3c_rand.py` widens the value space on top. The seed is logged on every
+run, so a failure is reproducible.
 
-Tests are organized into 5 levels of complexity, from basic register access to advanced error handling.
+### Registers and Integration
 
-### Level 1: Basic Functionality
+#### test_i3ccore
 
-#### test_i3ccore.py (400+ lines)
+**Tests**: `test_basic_compilation`, `test_register_access`,
+`test_register_write_read`, `test_address_range_boundaries`
 
-**Purpose**: Register verification, AXI-Lite connectivity, reset value checks.
+Reset release, AXI-Lite connectivity and register access across the whole map,
+including the first and last DAT/DCT entries and the address-range boundaries.
 
-**Tests**:
+This module reads un-written DAT/DCT SRAM and reset-X registers by design. Real
+SRAM powers up undefined and cocotb raises on reading an X bit, so it needs
+`COCOTB_RESOLVE_X=ZEROS`; the `xresolve` group exists to select exactly this
+module.
 
-1. **test_base_registers**: Verify base register reset values
-   - HCI_VERSION, HC_CAPABILITIES, section offsets
-   - Ensures correct HCI version and capability reporting
+The variable is necessary but not sufficient on Verilator: the module currently
+times out there even with it set (Test Gaps item 10), so treat its register
+sweep as unverified on the default tool.
 
-2. **test_pio_registers**: Verify PIO register reset values and writable bits
-   - COMMAND_PORT, RESPONSE_PORT, TX/RX_DATA_PORT, interrupts
-   - Dual-pattern write-read cycles (0x5A5A5A5A, 0xA5A5A5A5)
+#### i3c_reg_reset_value_full
 
-3. **test_ec_registers**: Extended capability registers
-   - Timing registers, standby controller mode, TTI registers
-   - Boundary testing (first/last addresses)
+**Tests**: `test_reg_reset_value_full`
 
-4. **test_dat_dct_memory**: DAT/DCT memory initialization
-   - First (index 0) and last (index 127) entries
-   - Verifies memory is zeroed on reset
+Reads the real config and status registers after reset and compares each against
+the reset value published by the generated register map. Both halves of every
+row — the offset *and* the expected value — are resolved by symbol from
+`I3CCSR_reg`, never hand-copied, so a stale symbol raises `AttributeError` at
+import and a regenerated map moves offsets and reset values together.
 
-5. **test_queue_sizes**: QUEUE_SIZE register verification
-   - CMD, RESP, IBI, TX, RX queue sizes
-   - Ensures FIFO sizes match spec (8 entries each)
+It deliberately avoids two regions: the FIFO and data ports
+(COMMAND/RESPONSE/TX_DATA/RX_DATA/IBI), because reading those pops the queue or
+returns X when empty and they are not reset-valued registers; and DAT/DCT memory
+at 0x400+, which is external SRAM and X until written. The test depends on
+`make_env()` running no controller or target configuration, so every value read
+is a true post-reset value.
 
-**Lines of Code**: 400+
+#### i3c_axi_protocol
 
-**Registers Tested**: 100+ across 7 register regions
+**Tests**: `test_axi_protocol`
 
-**Coverage**: Basic register access, reset values, writable bit masks
+Three legs: a mapped write/read round-trip where BRESP and RRESP must both be
+OKAY, a mapped HC_CONTROL read checked against its exact reset default, and a
+deliberate `expect_resp` mismatch that is required to fail. The last leg is what
+proves the checker is actually sensitive rather than vacuously passing.
 
-### Level 2: Data Transfers
+It uses QUEUE_THLD_CTRL, a confirmed RW register. Its threshold fields clamp
+values to `<= 7`, so the random pattern is generated with every byte in 0..7 and
+non-zero, which guarantees an exact read-back — the AXI round-trip is the
+scoreboard. The DAT region is not used here: it is external 64-bit SRAM, not a
+plain 32-bit scratch register.
 
-#### i3c_write_read_sanity.py (100+ lines)
+#### i3c_multi_instance_indep
 
-**Purpose**: Basic 4-byte bidirectional transfer validation.
+**Tests**: `test_multi_instance_indep`
 
-**Test Flow**:
-1. Initialize controller and target
-2. Send SETDASA to assign dynamic address
-3. Private write: Controller → Target [0xDE, 0xAD, 0xBE, 0xEF]
-4. Private read: Target → Controller [0x11, 0x22, 0x33, 0x44]
-5. Verify data integrity on both sides
+Confirms the wrapper's AXI-Lite address decode isolates the two instances:
+writing instance 0's register space must not disturb instance 1's, and each
+retains its own value. Isolation is checked by giving the two instances distinct
+values and swapping them.
 
-**Coverage**: Basic data path, SETDASA, private read/write
+### Private Transfers
 
-#### i3c_long_write_sanity.py (80+ lines)
+#### i3c_write_read_sanity
 
-**Purpose**: 500-byte write test to validate FIFO queue handling.
+**Tests**: `test_write_read_sanity`
 
-**Test Flow**:
-1. SETDASA
-2. Generate 500-byte incremental pattern: [0x00, 0x01, ..., 0xFF, 0x00, ...]
-3. Private write in 4-byte chunks (125 command descriptors)
-4. Target drains RX FIFO
-5. Verify all 500 bytes match
+SETDASA followed by a 4-byte private write and a 4-byte private read. The
+smallest end-to-end proof that the bus works.
 
-**Coverage**: Large transfer handling, TX/RX FIFO management, queue overflow prevention
+#### i3c_immediate_write_sanity
 
-#### i3c_long_read_sanity.py (80+ lines)
+**Tests**: `test_immediate_write_sanity`
 
-**Purpose**: 500-byte read test to validate RX FIFO capacity.
+Immediate data transfer, where up to 4 bytes ride directly in the command
+descriptor instead of being written to the TX FIFO.
 
-**Test Flow**:
-1. SETDASA
-2. Controller issues read command for 500 bytes
-3. Target fills TX FIFO with incremental pattern
-4. Controller drains RX FIFO
-5. Verify all 500 bytes match
+#### i3c_long_write_sanity / i3c_long_read_sanity
 
-**Coverage**: Extended reads, FIFO thresholds, descriptor management
+**Tests**: `test_long_write_sanity`, `test_long_read_sanity`
 
-#### i3c_immediate_write_sanity.py (120+ lines)
+500-byte private write and read (125 full dwords, 125 entries), which exercises
+FIFO refill across many descriptor entries.
 
-**Purpose**: Immediate data transfer (data embedded in command descriptor).
+#### i3c_max_length_transfer
 
-**Test Flow**:
-1. SETDASA
-2. Private write using immediate descriptor (≤4 bytes)
-3. Data sent in `cmd_hi` field (no TX FIFO write)
-4. Target receives data
-5. Verify data integrity
+**Tests**: `test_max_length_transfer`
 
-**Coverage**: Immediate transfer optimization, DTT field encoding
+Private write/read at boundary lengths around the FIFO capacity and above it,
+after raising MWL/MRL, validating multi-descriptor and FIFO-refill handling at
+the boundaries. The fixed boundary list always runs, with a few random lengths
+added on top; data is randomized every iteration and the built-in scoreboard
+checks each one.
 
-### Level 3: CCC Commands
+#### i3c_tx_capacity_512
 
-#### i3c_direct_ccc_sanity.py (120+ lines)
+**Tests**: `test_tx_capacity_512`
 
-**Purpose**: Full CCC command sequence validation.
+A transfer can only start once the complete response fits in the 64-word TX
+queue plus the width converter's pending word. The test covers the 256-byte
+control case, the 260-byte boundary, and larger word-aligned and unaligned
+responses. Every response must complete with its full byte-exact payload.
 
-**Test Flow**:
-1. SETDASA to assign dynamic address
-2. GETBCR: Read Bus Characteristics Register (1 byte)
-   - Verify IBI capability bit (bit 5)
-3. GETMWL: Read Max Write Length (2 bytes)
-4. SETMWL(0x10): Set Max Write Length to 16 bytes
-5. GETMWL: Verify MWL changed to 0x10
-6. GETMRL: Read Max Read Length (2-3 bytes)
-7. SETMRL(0x10, 0x10): Set MRL to 16 bytes with IBI payload size 16
-8. GETMRL: Verify MRL and IBI payload size changed
-9. RSTACT(0x01): Direct Reset Action (peripheral reset)
+#### i3c_back_to_back
 
-**Coverage**: All standard CCC commands, read-write-verify patterns, CCC response parsing
+**Tests**: `test_back_to_back`
 
-### Level 4: IBI (In-Band Interrupt)
+A stream of transactions with minimal inter-transaction gap, stressing
+command/response queue turnaround and bus-free timing. Direction, length, data
+and the (often zero) gap are randomized to vary queue-turnaround timing, and the
+sent-equals-received scoreboard checks every one.
 
-#### i3c_ibi_sanity.py (200+ lines)
+#### i3c_random_transfer_stress
 
-**Purpose**: IBI transmission and reception with payload.
+**Tests**: `test_random_transfer_stress`
 
-**Test Scenarios**:
+Directed-random private write/read with random direction, length and data,
+integrity-checked each iteration. Intended to be run across several seeds with
+coverage merged.
 
-**Test 1: IBI with 8-byte Payload**
+### CCC Commands
 
-1. Initialize controller and target
-2. Enable IBI mode on target (`TTI_CONTROL[ibi_en]=1`)
-3. Enable IBI interrupts on controller
-4. SETDASA to assign dynamic address
-5. GETBCR to verify IBI capability
-6. SETMRL with IBI payload size
-7. Target sends IBI (MDB=0xAA, payload=[0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88])
-8. Controller receives IBI via interrupt threshold
-9. Verify IBI ID, MDB, and payload bytes
-10. Target waits for IBI_DONE interrupt
+#### i3c_direct_ccc_sanity
 
-**Test 2: IBI During Broadcast CCC**
+**Tests**: `i3c_direct_ccc_sanity`
 
-1. Setup as above
-2. Controller issues broadcast CCC
-3. Target sends IBI during broadcast
-4. Verify IBI takes priority
-5. Broadcast completes after IBI
+SETDASA followed by a read-write-read chain that proves each SET actually
+changed state: GETBCR → GETMWL → SETMWL(0x10) → GETMWL → GETMRL →
+SETMRL(0x10, 0x10) → GETMRL → RSTACT(0x01).
 
-**Coverage**: IBI enable, descriptor formatting, payload transmission, interrupt handling, priority over broadcasts
+#### i3c_full_ccc_matrix
 
-### Level 5: Error Handling
+**Tests**: `test_full_ccc_matrix`
 
-#### i3c_error_sanity.py (250+ lines)
+The supported CCC set with read-back verification wherever a GET counterpart
+exists: GETBCR, GET/SET MWL, GET/SET MRL, RSTACT. The SET values for MWL, MRL
+and IBI payload size are drawn from the full legal range and verified by the GET
+counterpart each time, so the SET/GET round-trip is the scoreboard and
+randomizing the value is free coverage of the length-limit datapath. RSTACT stays
+directed, since its defining-byte semantics are fixed.
 
-**Purpose**: Error condition validation and recovery.
+#### i3c_broadcast_ccc
 
-**Test Scenarios**:
+**Tests**: `test_broadcast_ccc`
 
-**Test 1: Wrong Target Address (NACK Detection)**
+Broadcast CCCs per MIPI I3C Basic Table 16/17: ENEC (0x00), DISEC (0x01) and
+RSTDAA (0x06). Bring-up still uses SETDASA so the target holds a dynamic address
+before RSTDAA, and the test then asserts DYNAMIC_ADDR_VALID clears.
 
-1. SETDASA to assign real target at DAT index 0 (address 0x10)
-2. Configure DAT entry 1 with non-existent address (0x50)
-3. Send immediate write to DAT index 1
-4. Verify controller receives NACK on 9th SCL edge
-5. Check TRANSFER_ERR_STAT and TRANSFER_ABORT_STAT bits
-6. Verify response error status is non-zero
+The ENEC/DISEC *event defining byte* is randomized instead of fixed at 0x01. The
+defined event bits are ENINT/IBI (bit 0), ENCR (bit 1) and ENHJ (bit 3), so a
+random subset of only those legal bits, with at least one set, exercises the
+defining-byte datapath across the legal event-mask space. DISEC mirrors whatever
+ENEC enabled, keeping the pair symmetric.
 
-**Test 2: Target TX FIFO Overflow**
+#### i3c_setnewda
 
-1. Target TX FIFO size is 8 entries (32 bytes)
-2. Attempt to queue more than 8 TX descriptors
-3. Trigger TX_DESC_COMPLETE interrupt
-4. Verify overflow handling
-5. Check for error status in TTI_INTERRUPT_STATUS
+**Tests**: `test_setnewda`
 
-**Coverage**: Error detection (NACK), FIFO overflow, error status reporting, interrupt-based error handling
+Assigns a dynamic address via SETDASA, re-assigns it with SETNEWDA (CCC 0x88),
+then confirms a private transfer still works on the new address. The new address
+is randomized within the legal, non-reserved 7-bit space and constrained to
+differ from the original, widening what the DAT `dynamic_address` field and the
+target address-match logic see. The private write on the re-assigned address is
+the scoreboard.
+
+#### i3c_random_ccc_stress
+
+**Tests**: `test_random_ccc_stress`
+
+Repeatedly picks a CCC from the supported set in random order to stress the
+command FSM, with SET values from the full legal range and SET/GET round-trips
+self-checking. CCCs are picked by weight, GET-heavy to resemble real read-mostly
+traffic, which biases the command-FSM ordering.
+
+#### i3c_multi_target_dat
+
+**Tests**: `test_multi_target_dat`
+
+Programs multiple Device Address Table entries and addresses the real target via
+index 0 while index 1 points at a non-responding address, mirroring the
+error-sanity NACK path on a second DAT entry. DAT[0] keeps the target's assigned
+dynamic address from bring-up; the absent address is constrained to be legal and
+distinct from it.
+
+### In-Band Interrupts
+
+#### i3c_ibi_sanity
+
+**Tests**: `i3c_ibi_sanity`, `i3c_ibi_during_broadcast`
+
+The full IBI path: configure bus timing (T_AVAL, T_IDLE), SETDASA, GETBCR to
+confirm IBI capability, SETMRL to set the IBI payload size, target sends an IBI
+with payload, controller receives it and the data is verified. The second test
+repeats this while broadcast traffic is in flight.
+
+#### i3c_ibi_payload_variants
+
+**Tests**: `test_ibi_payload_variants`
+
+IBIs across payload sizes, with the controller verifying the received MDB and
+payload each time. The directed boundary sizes (0, 1, and full) are covered
+first, then random MDB and payload length/bytes are added within the configured
+IBI payload size.
+
+#### i3c_ibi_nack_disabled
+
+**Tests**: `test_ibi_nack_disabled`
+
+With target IBI generation disabled, a real IBI attempt must not be serviced:
+the controller's `PIO_INTR_STATUS.ibi_status_thld_stat` has to stay clear. The
+test pairs that negative case with a positive control that enables IBI mode and
+confirms the IBI *is* serviced — without which a permanently dead IBI path would
+look identical to correctly-suppressed generation. Since `TTI_CONTROL.ibi_en`
+resets asserted, the test explicitly clears and verifies the bit first.
+
+### Bus Timing and Thresholds
+
+#### i3c_pp_timing_transfer
+
+**Tests**: `test_pp_timing_transfer`
+
+A private write/read using the push-pull timing bank (`configure_timing_pp`),
+with randomized length and data.
+
+#### i3c_od_pp_mode_switch
+
+**Tests**: `test_od_pp_mode_switch`
+
+Back-to-back transfers that exercise the controller muxing between the
+open-drain bank (broadcast/address phase) and the push-pull bank (payload).
+Every transfer begins OD then switches to PP, so randomized lengths and data
+exercise the mux across a variety of payload sizes.
+
+#### i3c_threshold_sweep
+
+**Tests**: `test_threshold_sweep`
+
+Sweeps TX/RX FIFO threshold register values and runs a 32-byte transfer at each
+setting, confirming the threshold interrupts drive the data path.
+
+The RTL threshold is in FIFO *entries* of 4 bytes each, mapping register value
+`t` to `1 << (t+1)` entries: t=0 → 2 entries (8 B), t=1 → 4 (16 B), t=2 → 8
+(32 B), t=3 → 16 (64 B). The sweep covers t=0..2 only. A 32-byte transfer is
+exactly 8 entries, so those three thresholds are reachable and the RX-data
+threshold interrupt fires as intended, whereas t=3 needs at least 16 entries
+(64 B) before it can fire at all.
+
+### Errors, Reset and Recovery
+
+#### i3c_error_sanity
+
+**Tests**: `i3c_error_wrong_addr`, `i3c_fifo_overflow`,
+`i3c_tx_fifo_underflow`, `i3c_ibi_fifo_overflow`
+
+Error reporting when the controller addresses a non-existent target, plus the
+FIFO boundary conditions. The address case assigns a dynamic address to the real
+target at DAT index 0, sets up DAT index 1 with a wrong address, issues an
+immediate write to it, and requires the transaction to abort with a non-zero
+error status in the response.
+
+#### i3c_error_parity_inject
+
+**Tests**: `test_error_status_baseline`, `test_error_parity_inject`
+
+`test_error_status_baseline` is the negative control: a clean private write must
+report ERR_STATUS exactly 0x0 SUCCESS with no transfer-error interrupt latched,
+proving the error reporting reads clean when nothing is wrong.
+
+`test_error_parity_inject` does real bus-level bit-flip injection. In I3C SDR
+every data byte is followed by a T-bit carrying, for a controller-to-target
+write, that byte's odd parity — so flipping any single data bit makes the
+target's recomputed parity disagree and its TE2 check must fire. The flip needs
+the `sda_corrupt` TB hook because `sda_shared` is a continuous assign and a
+cocotb deposit on it would be overwritten at the next evaluation.
+
+Two independent checkers validate the result: TARGET_ERR_CNT_TE2 (offset 0x244)
+must increment by exactly 1, and the corrupted byte plus every byte after it in
+the same transfer must *not* reach the target RX FIFO, because `parity_err`
+suppresses RX FIFO writes until the target returns idle. Injecting into byte `k`
+must therefore leave exactly `k` bytes received.
+
+On attribution: `te2_err_o = te2_err_ccc | te2_err_priv_wr`, so the counter also
+advances on CCC data-parity errors. No CCC traffic is issued inside the
+injection window, which is what makes the +1 attributable to the private write.
+
+#### i3c_error_target_abort
+
+**Tests**: `test_short_read_permitted`, `test_short_read_error`
+
+The controller requests `requested_len` bytes but the target supplies fewer and
+then ends the data phase with its T-bit. Both values of the command descriptor's
+SRE field are exercised, because SRE is what decides whether that short receive
+is an error:
+
+- `sre=0` — a short read is permitted, so per MIPI I3C HCI v1.2 Table 146 the
+  outcome is ERR_STATUS 0x0 SUCCESS with DATA_LENGTH equal to the *received*
+  length. DATA_LENGTH is how software learns the read was short.
+- `sre=1` — a short read is not permitted, so the same stimulus must yield
+  ERR_STATUS 0x7 I3C_SHORT_READ_ERR.
+
+A response is mandatory in both cases. HCI v1.2 requires a response descriptor
+for any command with WROC set, for any read-type transfer, and whenever the
+transfer phase hit an error; this command sets `wroc=1` and is a read, so either
+clause alone requires one. Only successful *write*-type transfers are exempt
+from the 1:1 command/response mapping.
+
+Both lengths are randomized with `supplied < requested` and both dword-aligned,
+so the short-read datapath sees a range of gaps, and the response status plus
+received length distinguish a short read from an address NACK.
+
+> **Known fail — `test_short_read_permitted` (`sre=0`) does not pass.** The DUT
+> produces no response descriptor at all on the permitted-short-read path:
+> `resp_ready` never asserts and no error status is raised, even though the
+> target completed its side. The `sre=1` leg passes, so short-read *detection*
+> works and only the `sre=0` *reporting* path is affected. This is an open,
+> unresolved **suspected DUT issue** — the expectation above is the spec-correct
+> one and has deliberately not been weakened to match the DUT. See the
+> "Open item" section of `BRINGUP_STATUS.md` for the failure log and the three
+> options under consideration (known-fail sentinel / skip with reason / file
+> against the vendored i3c-core). Running both legs is what isolates the
+> reporting gate from the detection logic, which is why both are kept.
+
+#### i3c_reset_mid_transaction
+
+**Tests**: `test_reset_mid_transaction`
+
+Asserts reset during an active transaction stream and confirms clean recovery: a
+fresh transfer succeeds after re-init and SETDASA. A random number of pre-reset
+transfers run first, then reset is asserted after a *random* cycle delay so it
+lands at a random bus phase — considerably stronger than always resetting at the
+same point.
+
+#### i3c_recovery_reset_iface
+
+**Tests**: `test_rstact_arm_no_spurious_reset`
+
+RSTACT alone only *arms* an action: neither `peripheral_reset` nor
+`escalated_reset` may assert until a Target Reset Pattern appears on the bus.
+Defining byte 0x01 arms peripheral reset and 0x02 arms whole-target (escalated)
+reset. `recovery_payload_available` and `recovery_image_activated` are sampled as
+must-stay-idle outputs, since arming must not disturb the reset or recovery
+outputs.
+
+Scope: RSTACT and Target Reset are I3C protocol (I3C Basic v1.1.1 §5.1.9.3.26,
+Tables 52-53) and are verified here. The OCP Secure Firmware Recovery image flow
+is not in scope.
 
 ---
 
@@ -1893,9 +2187,12 @@ Tests are organized into 5 levels of complexity, from basic register access to a
 
 #### FIFO Thresholds
 
-- **Threshold Formula**: `actual_threshold = 2^(register_value + 1)`
-- **Tested Values**: 0, 1, 2, 3 (2, 4, 8, 16 byte thresholds)
-- **Tests**: `configure_thresholds()` in all test modules
+- **Threshold Formula**: register value `t` maps to `1 << (t+1)` FIFO *entries*,
+  each entry being 4 bytes: t=0 → 2 entries (8 B), t=1 → 4 (16 B), t=2 → 8
+  (32 B), t=3 → 16 (64 B)
+- **Tested Values**: t=0..2, swept by `i3c_threshold_sweep` with a 32-byte
+  transfer (exactly 8 entries, so all three thresholds are reachable). t=3 needs
+  at least 64 bytes before it can fire and is not covered.
 - **Coverage**: TX/RX threshold interrupts, queue management
 
 #### Large Transfers
@@ -1934,7 +2231,7 @@ Tests are organized into 5 levels of complexity, from basic register access to a
 
 #### Response Error Codes
 
-- **Error Status Field**: Bits [27:28] in response descriptor
+- **Error Status Field**: Bits [31:28] in response descriptor
 - **Codes**:
   - 0x0: Success
   - 0x1: CRC error
@@ -1981,9 +2278,10 @@ Tests are organized into 5 levels of complexity, from basic register access to a
 | T_SU_PP | 1 cycle |
 | T_HD_PP | 1 cycle |
 
-**Tests**: `configure_timing_pp()` available but not extensively used
+**Tests**: `i3c_pp_timing_transfer` runs transfers on this bank, and
+`i3c_od_pp_mode_switch` exercises the mux from open-drain into push-pull
 
-**Coverage**: Push-pull mode configuration
+**Coverage**: Push-pull mode configuration and the OD→PP switch
 
 #### Bus Free/Idle Times
 
@@ -1997,21 +2295,33 @@ Tests are organized into 5 levels of complexity, from basic register access to a
 
 | Category | Corner Case | Test Coverage |
 |----------|-------------|---------------|
-| **Addressing** | First/last register addresses | test_i3ccore.py |
-| **Addressing** | First/last DAT entries | test_i3ccore.py |
-| **FIFO** | Threshold values (2, 4, 8, 16 bytes) | All tests |
-| **FIFO** | TX FIFO overflow (>8 entries) | i3c_error_sanity.py |
-| **FIFO** | RX FIFO overflow | i3c_error_sanity.py |
-| **Transfers** | 500-byte write | i3c_long_write_sanity.py |
-| **Transfers** | 500-byte read | i3c_long_read_sanity.py |
-| **Transfers** | Immediate write (≤4 bytes) | i3c_immediate_write_sanity.py |
-| **Transfers** | Interleaved TX/RX | All transfer tests |
-| **Errors** | Wrong target address (NACK) | i3c_error_sanity.py |
-| **Errors** | Non-zero error status | All tests verify |
-| **Timing** | Open-drain parameters | All tests |
-| **Timing** | Push-pull parameters | Available in API |
-| **IBI** | IBI with payload | i3c_ibi_sanity.py |
-| **IBI** | IBI during broadcast | i3c_ibi_sanity.py |
+| **Addressing** | First/last register addresses | test_i3ccore |
+| **Addressing** | First/last DAT entries | test_i3ccore |
+| **Addressing** | Register-space isolation between instances | i3c_multi_instance_indep |
+| **Addressing** | Absent address in a second DAT entry | i3c_multi_target_dat |
+| **Addressing** | Dynamic address re-assignment | i3c_setnewda |
+| **FIFO** | Threshold entries t=0..2 (8/16/32 bytes) | i3c_threshold_sweep |
+| **FIFO** | TX/RX FIFO overflow | i3c_error_sanity |
+| **FIFO** | TX FIFO underflow | i3c_error_sanity |
+| **FIFO** | IBI FIFO overflow | i3c_error_sanity |
+| **Transfers** | 500-byte write / read | i3c_long_write_sanity, i3c_long_read_sanity |
+| **Transfers** | Immediate write (≤4 bytes) | i3c_immediate_write_sanity |
+| **Transfers** | Boundary lengths around FIFO capacity | i3c_max_length_transfer |
+| **Transfers** | Target-TX queue boundary above 256 bytes | i3c_tx_capacity_512 |
+| **Transfers** | Minimal-gap back-to-back stream | i3c_back_to_back |
+| **Errors** | Wrong target address (NACK) | i3c_error_sanity |
+| **Errors** | Clean-path error status baseline | i3c_error_parity_inject |
+| **Errors** | SDA single-bit parity injection (TE2) | i3c_error_parity_inject |
+| **Errors** | Short read under SRE=1 (SRE=0 leg is a known fail) | i3c_error_target_abort |
+| **Timing** | Open-drain parameters | All transfer tests |
+| **Timing** | Push-pull parameters | i3c_pp_timing_transfer |
+| **Timing** | OD→PP mux | i3c_od_pp_mode_switch |
+| **IBI** | IBI with payload | i3c_ibi_sanity |
+| **IBI** | IBI during broadcast | i3c_ibi_sanity |
+| **IBI** | Payload sizes, empty through full | i3c_ibi_payload_variants |
+| **IBI** | Suppressed when disabled, with positive control | i3c_ibi_nack_disabled |
+| **Reset** | Reset at a random bus phase mid-transaction | i3c_reset_mid_transaction |
+| **Reset** | RSTACT arming without spurious reset | i3c_recovery_reset_iface |
 
 ---
 
@@ -2025,7 +2335,7 @@ There are a few different types of Command Descriptors (They are all type defs o
 
 Immediate Command Descriptor: Should be used in Controller writes, when the data to be sent <= 4 bytes (Data is embedded within the command)
 Regular Command Descriptor: Can be used for any write/read
-Command descriptors are written to the COMMAND_PORT (offset 0x088) as two 32-bit writes.
+Command descriptors are written to the COMMAND_PORT (offset 0x080) as two 32-bit writes to that same FIFO address.
 
 **Structure**:
 
@@ -2076,42 +2386,61 @@ cmd_hi = 0x0000_CDAB  (data packed little-endian)
 
 ### Response Descriptor Format (32-bit)
 
-Response descriptors are read from the RESPONSE_PORT (offset 0x08C).
+Response descriptors are read from the RESPONSE_PORT (offset 0x084).
 
-**Structure**:
+**Structure** — `i3c_response_desc_t` in
+`vendor/chipsalliance/i3c-core/upstream/src/i3c_pkg.sv:293` (TCRI 7.1.3 Table 11):
 
 ```
-[31]    = response_port_valid (1=valid)
-[30]    = reserved
-[29:28] = response_port_data_length_valid
-[27:26] = err_status
-  0x0 = Success
-  0x1 = CRC error
-  0x2 = Parity error
-  0x3 = Frame error
-[25:16] = tid (Transaction ID)
+[31:28] = err_status  (4 bits)
+[27:24] = tid         (Transaction ID)
+[23:16] = reserved
 [15:0]  = data_length (bytes read/written)
 ```
 
-**Example**:
+`err_status` values, from `i3c_resp_err_status_e`
+(`i3c_pkg.sv:259`, TCRI 6.4.1 Table 1):
+
+| Value | Name | Meaning |
+|-------|------|---------|
+| 0x0 | `Success` | No error |
+| 0x1 | `Crc` | CRC error (HDR modes only) |
+| 0x2 | `Parity` | Parity error |
+| 0x3 | `Frame` | Frame error |
+| 0x4 | `AddrHeader` | Address header error |
+| 0x5 | `Nack` | Address or DAA was NACK'ed |
+| 0x6 | `Ovl` | Receive overflow or transfer underflow |
+| 0x7 | `I3cShortReadErr` | Target returned fewer bytes than requested and short read was not permitted |
+| 0x8 | `HcAborted` | Terminated by the host controller (internal error or Abort) |
+| 0x9 | `I2cDataNackOrI3cBusAborted` | I2C write data NACK, or I3C bus aborted |
+| 0xA | `NotSupported` | Command not supported by this implementation |
+| 0xB | `AbortedWithCRC` | Aborted in HDR-BT mode; also the RTL's default/fallback status |
+| 0xF | `ErrorF` | Reserved error code |
+
+Extract it with `(response >> 28) & 0xF` — this is what `cocotb/env/i3c_api.py`
+does at every response-checking site.
+
+**Example** (success, 4 bytes read, TID 0):
 
 ```
-response = 0x8000_0004
-  err_status = 0 (success)
+response = 0x0000_0004
+  err_status  = 0x0 (Success)
+  tid         = 0
   data_length = 4 bytes
 ```
 
-**Error Example**:
+**Error Example** (frame error, no data, TID 0):
 
 ```
-response = 0x8C00_0000
-  err_status = 3 (frame error)
+response = 0x3000_0000
+  err_status  = 0x3 (Frame)
+  tid         = 0
   data_length = 0
 ```
 
 ### IBI Status Descriptor Format (32-bit)
 
-IBI status descriptors are read from the IBI_PORT (offset 0x098).
+IBI status descriptors are read from the IBI_PORT (offset 0x08C).
 
 **Structure**:
 
@@ -2185,8 +2514,8 @@ See HCI 7.5.5 and 7.5.6
 **Basic Write/Read Test**:
 
 ```bash
-cd hw/ip/i3ccore_wrap/dv/tb
-make MODULE=i3c_write_read_sanity
+python3 tools/dv/run_dv.py --dut i3ccore_wrap \
+    --items i3c_write_read_sanity --tool verilator --stage sim
 ```
 
 **Expected Output**:
@@ -2199,89 +2528,105 @@ Test PASSED
 **With Waveforms**:
 
 ```bash
-make MODULE=i3c_write_read_sanity WAVES=1
+python3 tools/dv/run_dv.py --dut i3ccore_wrap \
+    --items i3c_write_read_sanity --tool verilator --stage sim --waves
 ```
 
-Waveforms saved to `test.fsdb`.
-
-**View Waveforms**:
-
-```bash
-make verdi
-```
+Waves land beside the test's log under the run directory the launcher prints.
 
 ### Running Full Regression
 
 **All Tests**:
 
 ```bash
-make all_tests
+python3 tools/dv/run_dv.py --dut i3ccore_wrap \
+    --items all --tool verilator --stage flist --stage sim
 ```
 
-**Progress Output**:
+**Progress Output**: one line per module as it finishes, then a roll-up. Each
+module's own cocotb log holds the per-test detail.
 
 ```
-Running test module: test_i3ccore
-  ✓ test_base_registers PASSED
-  ✓ test_pio_registers PASSED
-  ✓ test_ec_registers PASSED
-  ✓ test_dat_dct_memory PASSED
-  ✓ test_queue_sizes PASSED
-
-Running test module: test_i3c_setdasa
-  ✓ test_setdasa PASSED
-
-Running test module: i3c_write_read_sanity
-  ✓ test_write_read_sanity PASSED
-
-Running test module: i3c_long_write_sanity
-  ✓ test_long_write_sanity PASSED
-
-Running test module: i3c_long_read_sanity
-  ✓ test_long_read_sanity PASSED
-
-Running test module: i3c_immediate_write_sanity
-  ✓ test_immediate_write_sanity PASSED
-
-Running test module: i3c_direct_ccc_sanity
-  ✓ test_direct_ccc_sanity PASSED
-
-Running test module: i3c_ibi_sanity
-  ✓ test_ibi_sanity PASSED
-  ✓ test_ibi_during_broadcast PASSED
-
-Running test module: i3c_error_sanity
-  ✓ i3c_error_wrong_addr PASSED
-  ✓ i3c_fifo_overflow PASSED
-
-=== Test Summary ===
-PASSED: 14
-FAILED: 0
+regression start total=29 sim_jobs=1 executor=local seeds=1 retry=0
+regression done index=1/29 status=TIMEOUT item=test_i3ccore seed=1530441552 attempt=0 elapsed=1800.0s
+regression done index=2/29 status=PASS item=i3c_immediate_write_sanity seed=1581046766 attempt=0 elapsed=6.7s
+...
+summary    passing=<n> total=29 failing=<m> skipped=0 elapsed=...
 ```
 
-### Running Specific Test Function
+Two modules are expected not to pass under Verilator today, and neither is a
+regression caused by the launcher migration:
 
-**Test a Single Function**:
+- `test_i3ccore` — **TIMEOUT under Verilator.** It hangs in the base-register
+  sweep and is killed at the 1800 s timeout. Setting `COCOTB_RESOLVE_X=ZEROS`
+  does *not* help: the `xresolve` run
+  `dv/build/runs/20260901_084400__verilator__xresolve/` has that variable set in
+  its recorded `env/sim.env` and still timed out. See Test Gaps item 10.
+- `i3c_error_target_abort` — fails its `sre=0` test function, the open
+  suspected-DUT issue in Test Gaps item 9.
+
+Compare a fresh run against the previous run's tally rather than against a fixed
+expected result.
+
+Artifacts for each module land under
+`dv/build/runs/<timestamp>__<tool>__<items>/<module>/`, with the log in `logs/`
+and `results.xml` in `results/`.
+
+### Running a Specific Test Function
+
+The launcher selects whole modules; cocotb narrows to individual test functions
+through `COCOTB_TEST_FILTER`, which the launcher forwards to the simulation:
 
 ```bash
-make test_module_separate MODULE=test_i3ccore TESTCASE=test_base_registers
+COCOTB_TEST_FILTER=test_register_access python3 tools/dv/run_dv.py \
+    --dut i3ccore_wrap --items test_i3ccore --tool verilator --stage sim
 ```
 
-This runs only `test_base_registers` from `test_i3ccore.py`.
+This runs only `test_register_access` from `test_i3ccore.py`. The value is a
+regex matched against `<module>.<test>`, so a prefix selects a family of tests.
+Section 6 lists the test function names for every module.
+
+Note the filter selects tests *within a single simulation*; the tests still
+share one elaborated model and one reset sequence. The old Makefile's
+`test_module_separate` target, which launched a separate simulation per test
+function, has no launcher equivalent. If you need that isolation — for instance
+to rule out cross-test state leakage, which is what
+`i3c_error_sanity`'s per-test reset problem turned out to be — loop over the
+filter yourself:
+
+```bash
+for t in i3c_error_wrong_addr i3c_fifo_overflow \
+         i3c_tx_fifo_underflow i3c_ibi_fifo_overflow; do
+    COCOTB_TEST_FILTER=$t python3 tools/dv/run_dv.py \
+        --dut i3ccore_wrap --items i3c_error_sanity --tool verilator --stage sim
+done
+```
 
 ### Debugging with Waveforms
 
 **Run Test with Waveforms**:
 
 ```bash
-make MODULE=i3c_ibi_sanity WAVES=1
+python3 tools/dv/run_dv.py --dut i3ccore_wrap \
+    --items i3c_ibi_sanity --tool verilator --stage sim --waves
 ```
 
-**Open in Verdi**:
+To capture only the failures in a longer run, use `--waves-on-fail`, which
+reruns the non-passing tests instead of dumping every one of them.
+
+**Viewing the Dump**: Verilator writes FST, so open it with a viewer that reads
+FST — `gtkwave`, or `surfer`. The launcher records a ready-made command in the
+run's `result.json` under `stages[].metadata.waves.viewer_commands`; the dump
+itself is at `<run_dir>/<module>/waves/<module>.fst`:
 
 ```bash
-make verdi
+gtkwave hw/ip/i3ccore_wrap/dv/build/runs/<run>/<module>/waves/<module>.fst
 ```
+
+The old Makefile's `make verdi` target is gone along with the Makefile, and the
+TB no longer contains the `$fsdbDump*` calls that Verdi needed. Verdi on an FSDB
+would require re-adding those calls behind a define and building with the Verdi
+PLI under VCS.
 
 **Key Signals to Monitor**:
 
@@ -2304,18 +2649,11 @@ make verdi
 **Remove Simulation Artifacts**:
 
 ```bash
-make clean
+python3 tools/dv/run_dv.py --dut i3ccore_wrap --stage clean
 ```
 
-Removes `sim_build/`, `__pycache__/`, `.vcd`, `.fst`, `.wlf` files.
-
-**Remove Waveforms Too**:
-
-```bash
-make clean_all
-```
-
-Also removes `.fsdb` waveform files.
+Removes the run directory and `dv/build/`, which holds the generated filelists,
+the compiled model and every per-run log, `results.xml` and waveform.
 
 ---
 
@@ -2326,11 +2664,29 @@ Also removes `.fsdb` waveform files.
 The testbench provides solid coverage of core I3C functionality:
 
 - **Basic I3C Protocol (SDR Mode)**: Standard data rate transfers validated
-- **Standard CCC Commands**: GETBCR, GETMWL, GETMRL, SETMWL, SETMRL, RSTACT
-- **Private Transfers**: Read and write operations up to 500 bytes
-- **IBI with Payload**: Target-initiated interrupts with up to 8-byte payload
-- **Error Handling**: Wrong address (NACK detection), FIFO overflow
-- **Register Interface**: 100+ registers verified across controller and target modes
+- **Direct CCC Commands**: GETBCR, GETMWL, GETMRL, SETMWL, SETMRL, RSTACT,
+  SETDASA, SETNEWDA, including SET/GET round-trip checking
+- **Broadcast CCC Commands**: ENEC, DISEC and RSTDAA, with a randomized event
+  defining byte
+- **Randomized CCC Ordering**: Weighted random CCC sequences stress the command FSM
+- **Private Transfers**: Immediate (in-descriptor) data through to transfers past
+  the 256-byte target-TX queue boundary, including unaligned lengths
+- **IBI**: Payload sizes from empty to full, plus the suppressed case when target
+  IBI generation is disabled, checked against a positive control
+- **Bus Timing**: Open-drain and push-pull banks and the OD→PP mux; FIFO
+  threshold settings t=0..2
+- **Error Handling**: Address NACK, TX/RX/IBI FIFO overflow and underflow,
+  single-bit SDA parity injection verified through the TE2 counter, and short
+  reads under the `sre=1` (not-permitted) setting of the descriptor SRE field.
+  The `sre=0` (permitted) leg is stimulated but **currently fails** — see Test
+  Gaps item 9
+- **Reset**: Reset asserted at a randomized bus phase mid-transaction, with
+  recovery proven by a subsequent transfer
+- **Target Reset Arming**: RSTACT arms without asserting reset or disturbing the
+  recovery outputs until a Target Reset Pattern appears
+- **Register Interface**: 100+ registers swept against generated reset values
+- **Integration**: AXI-Lite response codes and address-decode isolation between
+  the two instances
 - **Dual-Instance Testing**: Controller and target tested simultaneously
 
 ### Not Currently Tested
@@ -2379,19 +2735,15 @@ The following features are not yet validated and represent opportunities for exp
 - **Impact**: Critical for battery-powered systems
 - **Recommendation**: Add power mode tests for low-power designs
 
-#### Randomized CCC Sequences
+#### Secure Firmware Recovery Image Flow
 
-- **Random CCC Order**: Non-deterministic command sequences
-- **Stress Testing**: Back-to-back CCCs with varying targets
-- **Impact**: Validates state machine robustness
-- **Recommendation**: Add constrained-random CCC tests for thorough validation
-
-#### Recovery Interface
-
-- **Recovery Payload**: Secure firmware recovery image activation
-- **Recovery Signals**: `reset_payload_avail`, `image_activated`
+- **Out of scope for now**: `i3c_recovery_reset_iface` verifies the I3C-protocol
+  half (RSTACT arming and the absence of spurious reset), and samples
+  `recovery_payload_available` / `recovery_image_activated` only as
+  must-stay-idle outputs. The OCP Secure Firmware Recovery image activation flow
+  itself is not exercised.
 - **Impact**: Critical for secure boot and firmware updates
-- **Recommendation**: Add recovery tests if recovery interface is functional
+- **Recommendation**: Add image-activation tests when that flow is required
 
 ### Test Gaps
 
@@ -2399,24 +2751,45 @@ Based on code review, these specific gaps were identified:
 
 1. **Clock Stretching**: I3C targets cannot stretch clocks, so not applicable
 2. **Arbitration Loss**: Single controller tested; no arbitration loss scenarios
-3. **Multi-Instance Conflicts**: No tests for bus conflicts between instances
+3. **Multi-Instance Bus Contention**: `i3c_multi_instance_indep` proves the
+   AXI-Lite register spaces are decoded independently, but the two instances are
+   never driven into simultaneous contention on the shared I3C bus
 4. **Timeout Scenarios**: No explicit timeout/watchdog tests
-5. **Broadcast CCC Commands**: Limited broadcast CCC testing (only SETDASA)
-6. **Secondary Controller**: No tests for standby controller promotion to active
-7. **Target Read Abort**: No tests for target aborting read mid-transfer
-8. **Parity/CRC Errors**: No error injection for parity or CRC failures
+5. **Secondary Controller**: No tests for standby controller promotion to active
+6. **CRC Errors**: SDR T-bit parity injection is covered by
+   `i3c_error_parity_inject`, but HDR-mode CRC error injection is not
+7. **Highest FIFO Threshold**: `i3c_threshold_sweep` covers t=0..2; t=3 needs a
+   transfer of at least 64 bytes before the threshold can fire and is untested
+8. **Functional Coverage Collection**: `tb/i3c_coverage_if.sv` exists but its
+   covergroups are guarded by `I3C_COVERAGE`, which no build currently defines,
+   and the launcher has no `[coverage.<tool>]` section for this DUT — so no
+   functional coverage is collected today
+9. **Permitted Short-Read Reporting (`sre=0`)**: `i3c_error_target_abort`
+   stimulates it, but `test_short_read_permitted` **fails** — the DUT produces no
+   response descriptor on this path. Suspected DUT issue, unresolved and
+   deliberately not worked around; the `sre=1` detection leg passes. See the
+   "Open item" section of `BRINGUP_STATUS.md`
+10. **`test_i3ccore` under Verilator**: the register-interface module times out
+    (1800 s) partway through the base-register sweep, so the register sweep it
+    provides is currently unverified on the default tool. `COCOTB_RESOLVE_X=ZEROS`
+    is not the cause — run
+    `dv/build/runs/20260901_084400__verilator__xresolve/` had it set and still
+    timed out. Root cause not yet classified as test-side or DUT-side
 
 ### Recommendations for Production
 
 For production-grade verification, consider adding:
 
-1. **UVM Testbench**: Constrained-random stimulus with functional coverage
-2. **Formal Verification**: Property checking for protocol compliance
-3. **Coverage Metrics**: Code coverage, functional coverage, assertion coverage
-4. **Stress Tests**: Long-running tests with randomized scenarios
-5. **Performance Tests**: Throughput, latency, bus utilization measurements
-6. **Corner Case Expansion**: More error injection, edge case timing
-7. **Compliance Suite**: MIPI I3C conformance test suite integration
+1. **Coverage Metrics**: Wire up code and functional coverage. The covergroup
+   interface is already written and bound; it needs the `I3C_COVERAGE` define and
+   a `[coverage.<tool>]` section before `--cov` can collect anything.
+2. **Multi-Seed Regression**: The random modules take a seed from `+seed`/`SEED`
+   but a single run uses one seed. Sweeping seeds and merging is what turns them
+   into real coverage.
+3. **Formal Verification**: Property checking for protocol compliance
+4. **Performance Tests**: Throughput, latency, bus utilization measurements
+5. **Corner Case Expansion**: More error injection, edge case timing
+6. **Compliance Suite**: MIPI I3C conformance test suite integration
 
 ---
 
@@ -2426,9 +2799,12 @@ This I3C DV Guide provides a comprehensive reference for understanding and using
 
 - **Software Interface**: Detailed register programming sequences for controller and target initialization, CCC commands, private transfers, and IBI
 - **Python API**: High-level API (`I3CHelper`, `I3CController`, `I3CTarget`) simplifies test writing
-- **Test Coverage**: 9 test modules covering basic functionality, data transfers, CCC commands, IBI, and error handling
-- **Corner Cases**: Validates address boundaries, FIFO thresholds, large transfers, and error conditions
-- **Execution**: Simple Makefile targets for running individual tests or full regression
+- **Test Coverage**: 29 regression modules (38 cocotb tests) spanning registers,
+  private transfers, direct and broadcast CCC, IBI, bus timing, error injection
+  and reset recovery
+- **Corner Cases**: Validates address boundaries, FIFO thresholds, transfers past
+  the target-TX queue boundary, and error conditions
+- **Execution**: A single launcher (`tools/dv/run_dv.py`) runs individual modules or the full regression
 
 The testbench demonstrates **solid coverage of core I3C functionality** suitable for regression testing. For production deployment, consider expanding coverage to include HDR modes, multi-master scenarios, and formal verification.
 
@@ -2436,45 +2812,82 @@ The testbench demonstrates **solid coverage of core I3C functionality** suitable
 
 ## Appendix: Quick Reference
 
-### Makefile Commands
+### Launcher Commands
+
+All commands run from the repository root with `PY=tools/dv/run_dv.py`.
 
 ```bash
-make MODULE=<name>              # Run specific test
-make all_tests                  # Run full regression
-make WAVES=1                    # Enable waveforms
-make verdi                      # Open waveforms
-make clean                      # Remove artifacts
-make clean_all                  # Remove artifacts + waveforms
+python3 $PY --dut i3ccore_wrap --list                     # Show tests and groups
+python3 $PY --dut i3ccore_wrap --items <name> --stage sim  # Run specific module
+python3 $PY --dut i3ccore_wrap --items all --stage sim     # Run full regression
+python3 $PY --dut i3ccore_wrap --items <name> --stage sim --waves          # Waves
+python3 $PY --dut i3ccore_wrap --items all --stage sim --waves-on-fail     # Waves on failures
+python3 $PY --dut i3ccore_wrap --stage flist              # Regenerate filelist
+python3 $PY --dut i3ccore_wrap --stage clean              # Remove artifacts
 ```
+
+Verilator is the default tool; add `--tool vcs` or `--tool xcelium` to switch.
 
 ### Test Modules
 
-| Module | Purpose |
-|--------|---------|
-| test_i3ccore | Register verification |
-| test_i3c_setdasa | SETDASA + basic read/write |
-| i3c_write_read_sanity | 4-byte transfers |
-| i3c_long_write_sanity | 500-byte write |
-| i3c_long_read_sanity | 500-byte read |
-| i3c_immediate_write_sanity | Immediate data transfer |
-| i3c_direct_ccc_sanity | CCC command sequence |
-| i3c_ibi_sanity | IBI with payload |
-| i3c_error_sanity | Error handling |
+The 29 modules in the `all` group, in testlist order. `Tests` is the number of
+cocotb test functions in the module (38 in total).
+
+| Module | Tests | Purpose |
+|--------|-------|---------|
+| test_i3ccore | 4 | Register access across the map; needs `COCOTB_RESOLVE_X=ZEROS`, times out on Verilator (gap 10) |
+| i3c_immediate_write_sanity | 1 | Data embedded in the command descriptor |
+| i3c_write_read_sanity | 1 | 4-byte private write + read |
+| i3c_long_write_sanity | 1 | 500-byte private write |
+| i3c_long_read_sanity | 1 | 500-byte private read |
+| i3c_direct_ccc_sanity | 1 | Direct CCC chain with SET/GET verification |
+| i3c_ibi_sanity | 2 | IBI with payload, and IBI during broadcast |
+| i3c_error_sanity | 4 | Address NACK, FIFO overflow and underflow |
+| i3c_reg_reset_value_full | 1 | Reset values swept against the generated map |
+| i3c_full_ccc_matrix | 1 | Supported CCC set with GET read-back |
+| i3c_setnewda | 1 | SETNEWDA re-assignment (CCC 0x88) |
+| i3c_pp_timing_transfer | 1 | Push-pull timing bank |
+| i3c_od_pp_mode_switch | 1 | Open-drain to push-pull mux |
+| i3c_threshold_sweep | 1 | FIFO threshold settings t=0..2 |
+| i3c_max_length_transfer | 1 | Boundary lengths around FIFO capacity |
+| i3c_back_to_back | 1 | Minimal-gap transaction stream |
+| i3c_broadcast_ccc | 1 | ENEC, DISEC, RSTDAA |
+| i3c_ibi_payload_variants | 1 | IBI payload sizes, empty through full |
+| i3c_ibi_nack_disabled | 1 | IBI suppressed when disabled, with positive control |
+| i3c_error_parity_inject | 2 | Clean-path baseline, and SDA bit-flip caught by TE2 |
+| i3c_error_target_abort | 2 | Short read under SRE=0 (known fail) and SRE=1 |
+| i3c_multi_target_dat | 1 | Multiple DAT entries, one absent address |
+| i3c_multi_instance_indep | 1 | AXI address-decode isolation |
+| i3c_axi_protocol | 1 | AXI-Lite response codes and checker sensitivity |
+| i3c_recovery_reset_iface | 1 | RSTACT arms without spurious reset |
+| i3c_reset_mid_transaction | 1 | Reset at a random bus phase, then recovery |
+| i3c_random_ccc_stress | 1 | Weighted random CCC ordering |
+| i3c_random_transfer_stress | 1 | Random direction, length and data |
+| i3c_tx_capacity_512 | 1 | Target-TX queue capacity boundary |
+
+Not in the regression: `i3c_ibi_diag`, an IBI receive diagnostic.
 
 ### Key Register Addresses
 
 | Address | Register | Purpose |
 |---------|----------|---------|
+Offsets within one core instance; add `TGT_BASE` (0x1000) for target accesses.
+
+| Address | Register | Purpose |
+|---------|----------|---------|
 | 0x004 | HC_CONTROL | Bus enable, mode selector |
-| 0x088 | COMMAND_PORT | Write command descriptors |
-| 0x08C | RESPONSE_PORT | Read response descriptors |
-| 0x090 | TX_DATA_PORT | Write TX data |
-| 0x094 | RX_DATA_PORT | Read RX data |
-| 0x098 | IBI_PORT | Read IBI status/data |
+| 0x080 | COMMAND_PORT | Write command descriptors |
+| 0x084 | RESPONSE_PORT | Read response descriptors |
+| 0x088 | TX_DATA_PORT | Write TX data |
+| 0x088 | RX_DATA_PORT | Read RX data (same address) |
+| 0x08C | IBI_PORT | Read IBI status/data |
+| 0x090 | QUEUE_THLD_CTRL | Queue thresholds |
+| 0x094 | DATA_BUFFER_THLD_CTRL | Data buffer thresholds |
 | 0x0A0 | PIO_INTR_STATUS | Interrupt status flags |
+| 0x0B0 | PIO_CONTROL | PIO queue enable |
 | 0x184 | STBY_CR_CONTROL | Controller mode control |
-| 0x1C4 | TTI_CONTROL | Target IBI enable |
-| 0x1EC | TTI_IBI_PORT | Write IBI descriptors |
+| 0x204 | TTI_CONTROL | Target IBI enable |
+| 0x280 | TTI_IBI_PORT | Write IBI descriptors |
 
 ### CCC Codes
 
@@ -2490,9 +2903,16 @@ make clean_all                  # Remove artifacts + waveforms
 
 ---
 
-**Document Version**: 1.0
-**Last Updated**: 2026-04-22
-**Author**: Anshul Shah
+**Document Version**: 2.0
+**Last Updated**: 2026-09-09
+**Original Author**: Anshul Shah
 **Contact**: DV Team
+
+Version 2.0 revised the guide for the `dv/cocotb/` layout and the `run_dv.py`
+launcher (the per-TB Makefile is gone), rewrote section 6 to cover every
+regression module, and corrected the register offsets and response-descriptor
+field definitions in sections 4 and 8 against
+`hw/ip/i3ccore_wrap/regs/gen/py/I3CCSR_reg.py` and
+`vendor/chipsalliance/i3c-core/upstream/src/i3c_pkg.sv`.
 
 ---

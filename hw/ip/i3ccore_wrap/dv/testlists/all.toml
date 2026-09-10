@@ -1,14 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
 schema_version = 1
 
-# Aggregate testlist for --dut i3ccore_wrap. Leaf tests live in block.toml
-# (one entry per Makefile ALL_TEST_MODULES module).
+# Aggregate testlist for --dut i3ccore_wrap; leaf tests live in block.toml.
 #
-#   python3 tools/dv/run_dv.py --dut i3ccore_wrap --items smoke --tool verilator --stage sim
 #   python3 tools/dv/run_dv.py --dut i3ccore_wrap --items all --tool verilator --stage sim
 #
-# test_i3ccore reads unwritten DAT/DCT SRAM; run it with
-# COCOTB_RESOLVE_X=ZEROS (same as the VCS Makefile default for that MODULE).
+# test_i3ccore surveys the whole address map, including unwritten DAT/DCT SRAM that
+# powers up undefined, so the xresolve group needs COCOTB_RESOLVE_X=ZEROS. That is
+# necessary but not sufficient on Verilator, where it still times out in the
+# base-register sweep.
 
 includes = ["block.toml"]
 

@@ -4,26 +4,19 @@
 `timescale 1ns / 1ps
 
 /*************************************************************************
- * I3C Core Wrapper Testbench - Lightweight testbench for i3ccore_wrapper
+ * Testbench for i3ccore_wrapper.
  *
- * This testbench instantiates the i3ccore_wrapper module and provides:
- * - Clock and reset generation
- * - Flattened AXI-Lite signals for cocotb access
- * - I3C bus signals with open-drain modeling
- * - FSDB waveform dumping support
- *
- * BEHAVIORAL STUB / PEER TOPOLOGY (declared):
+ * BEHAVIORAL STUB / PEER TOPOLOGY:
  *   NUM_I3C=2 instances of the same i3ccore RTL act as controller + target
  *   peers on a shared open-drain bus. This is a same-RTL loopback peer, NOT
  *   an independent third-party I3C target model. Interop / multi-vendor
  *   claims are out of scope for tests that only exercise this harness.
  *************************************************************************/
 
-// DAT/DCT depths (and the rest of the core's build-time configuration) come from
-// the vendored i3c-core header, not from I3CCSR_pkg: PeakRDL emits only
-// I3CCSR_DATA_WIDTH / I3CCSR_MIN_ADDR_WIDTH into that package. The header is
-// guarded (`I3C_CONFIG`), so including it here is safe even though i3c.sv has
-// already pulled it into the compile unit.
+// DAT/DCT depths and the rest of the core's build-time configuration come from the
+// vendored i3c-core header, not I3CCSR_pkg, which PeakRDL populates with only
+// I3CCSR_DATA_WIDTH / I3CCSR_MIN_ADDR_WIDTH. The `I3C_CONFIG` guard makes this
+// include safe after i3c.sv has already pulled it into the compile unit.
 `include "i3c_defines.svh"
 
 module tb_i3ccore;
@@ -45,7 +38,7 @@ module tb_i3ccore;
         forever #5 clk = ~clk;
     end
 
-    // Reset generation - release after 10 clock cycles
+    // Reset generation
     initial begin
         rst_n = 0;
         repeat (10) @(posedge clk);
@@ -53,8 +46,8 @@ module tb_i3ccore;
     end
 
     //--------------------------------------------------------------------------
-    // AXI-Lite interface signals - flattened for cocotb AxiLiteBus.from_prefix
-    // Prefix: axi (for AxiLiteBus.from_prefix(dut, "axi"))
+    // AXI-Lite signals, flattened with the "axi" prefix that cocotb's
+    // AxiLiteBus.from_prefix(dut, "axi") expects.
     //--------------------------------------------------------------------------
 
     // Write Address Channel
@@ -87,7 +80,7 @@ module tb_i3ccore;
     logic        axi_rready;
 
     //--------------------------------------------------------------------------
-    // I3C bus signals - directly connected (no struct unpacking needed)
+    // I3C bus signals
     //--------------------------------------------------------------------------
     logic [NUM_I3C-1:0] scl_i;
     logic [NUM_I3C-1:0] sda_i;
@@ -96,11 +89,6 @@ module tb_i3ccore;
     logic [NUM_I3C-1:0] scl_oe;
     logic [NUM_I3C-1:0] sda_oe;
     logic [NUM_I3C-1:0] sel_od_pp;
-
-    // Combined bus signals for open-drain modeling
-    // The bus value is the AND of all drivers (open-drain with pull-up)
-    logic [NUM_I3C-1:0] scl_bus;
-    logic [NUM_I3C-1:0] sda_bus;
 
     //--------------------------------------------------------------------------
     // Interrupt and recovery signals
@@ -129,20 +117,17 @@ module tb_i3ccore;
     //--------------------------------------------------------------------------
 
     // SCL: open-drain with pull-up (like SDA) — pulled low only when a device's pad
-    // is enabled and driving 0 (scl_o tied 0, OE carries drive). Don't wire scl_oe to scl_i.
+    // is enabled and driving 0 (scl_o tied 0, OE carries drive). scl_oe must not
+    // feed scl_i directly, or a device would see its own drive as the bus level.
     wire scl_shared = ((scl_oe[0] && !scl_o[0]) || (scl_oe[1] && !scl_o[1])) ? 1'b0 : 1'b1;
     assign scl_i[0] = scl_shared;
     assign scl_i[1] = scl_shared;
 
     // SDA: Open-drain, both can drive (target needs to ACK/send data)
-    // Bus is LOW if either device pulls it low, otherwise HIGH (pull-up)
     wire sda_raw = ((sda_oe[0] && !sda_o[0]) || (sda_oe[1] && !sda_o[1])) ? 1'b0 : 1'b1;
 
-    // Bus-level bit-flip injection point for error tests (parity/CRC/frame).
-    // sda_corrupt has NO continuous driver, so cocotb can drive it directly; XOR-ing it
-    // into the shared bus is the only way to corrupt a bit here, because sda_shared
-    // itself is a continuous assign and a cocotb deposit on it would be overwritten at
-    // the next evaluation. A zero value leaves the shared SDA signal unchanged.
+    // Bus-level bit-flip injection for error tests: cocotb drives sda_corrupt, so it
+    // must keep no continuous driver. A zero value leaves the shared SDA unchanged.
     logic sda_corrupt;
     initial sda_corrupt = 1'b0;
 
@@ -246,13 +231,10 @@ module tb_i3ccore;
     );
 
     //--------------------------------------------------------------------------
-    // DAT/DCT/RLT memory.
-    //
-    // DAT and DCT use single-cycle write-forwarding behavioral memories by
-    // default. Read data must be available one cycle after the request because
-    // flow_active captures it on the following cycle.
-    //
-    // Define I3C_SRAM_DAT_MEM to select compatible SRAM implementations.
+    // DAT/DCT/RLT memory. DAT and DCT default to single-cycle write-forwarding behavioral
+    // models: read data must be valid one cycle after the request, because flow_active
+    // captures it on the following cycle. Define I3C_SRAM_DAT_MEM to select compatible
+    // SRAM implementations instead.
     //--------------------------------------------------------------------------
 `ifndef I3C_SRAM_DAT_MEM
     for (genvar gi = 0; gi < NUM_I3C; gi++) begin : gen_i3c_mem
@@ -411,38 +393,10 @@ module tb_i3ccore;
     initial begin
         $display("I3C Core Wrapper Testbench starting...");
 
-        // Wait for reset release
         wait (rst_n);
         repeat (100) @(posedge clk);
 
         $display("I3C Core Wrapper Testbench: basic compilation check finished (not a test verdict)");
     end
-
-    //--------------------------------------------------------------------------
-    // FSDB waveform dumping for VCS (Verdi-compatible).
-    // Guarded by I3C_FSDB, which the Makefile defines only when it has linked
-    // the Verdi PLI (novas.tab/pli.a). VCS errors out on $fsdbDump* at compile
-    // time when the PLI is absent, so this cannot be a run-time-only check.
-    //--------------------------------------------------------------------------
-`ifdef I3C_FSDB
-    initial begin
-        if ($test$plusargs("waves")) begin
-            string wave_file;
-            if (!$value$plusargs("WAVE_FILE=%s", wave_file)) begin
-                wave_file = "test.fsdb";
-            end
-            $display("[I3C TB] FSDB waveform dumping enabled: %s", wave_file);
-            $fsdbDumpfile(wave_file);
-            $fsdbDumpvars(0, tb_i3ccore);
-            $fsdbDumpvars("+all");
-        end
-    end
-`else
-    initial begin
-        if ($test$plusargs("waves")) begin
-            $display("[I3C TB] +waves ignored: built without the Verdi PLI (make WAVES=1 with VERDI_HOME set)");
-        end
-    end
-`endif
 
 endmodule : tb_i3ccore

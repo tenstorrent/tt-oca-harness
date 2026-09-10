@@ -1,8 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 schema_version = 1
 
-# One entry per cocotb MODULE in dv/tb/Makefile ALL_TEST_MODULES.
-# `module` is the Python file basename (cocotb MODULE=).
+# One entry per regression module. `module` is the Python file basename
+# (cocotb MODULE=). dv/cocotb/tests/ also holds i3c_ibi_diag, an IBI receive
+# diagnostic that is intentionally not listed here.
 
 [[tests]]
 name = "test_i3ccore"
