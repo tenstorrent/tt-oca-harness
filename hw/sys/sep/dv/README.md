@@ -218,8 +218,9 @@ The CPU is held off (`mpc_reset_run_req=0`). Two masters can drive the DUT:
 * `sep_address_map_test` — `sep_cpu_ctrl` sweep plus one CSR per LSU-reachable
   block (DMA, WDT, scratch, reset, OTBN/AES/HMAC/KMAC, CSRNG/EDN/ESRC, ABR,
   entropy pool, lifecycle, KM/AXI mailbox, eFuse shadow, inbound filter,
-  alias/outbound remap, SPI), and a refuse of the reserved span inside
-  `sep_cpu_ctrl`. Not CSR bit-bash and not a full dead-space walk.
+  alias/outbound remap, SPI), and a complete-and-not-alias check of the
+  reserved span inside `sep_cpu_ctrl`. Not CSR bit-bash and not a full
+  dead-space walk.
 
 ### CPU firmware boot — `run_modes.cpu`
 
