@@ -121,8 +121,10 @@ sources = [
   # a whole cycle; and it breaks the combinational path across the boundary so
   # the terminator's ready is not in the crossbar's timing cone.
   #
-  # Outbound (ext_out) boundary terminator, shared with the bare smu TB.
-  "hw/sys/smu/dv/tb/smu_axi_out_sim_slave.sv",
+  # Outbound SMN boundary: the shared AXI VIP interface the slave agent binds
+  # to, and the struct bridge that places the crossbar ports on it.
+  "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_if.sv",
+  "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_struct_bridge.sv",
   "vendor/pulp-platform/common_cells/upstream/src/spill_register_flushable.sv",
   "vendor/pulp-platform/common_cells/upstream/src/spill_register.sv",
   "vendor/pulp-platform/axi/upstream/src/axi_cut.sv",
