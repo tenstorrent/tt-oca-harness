@@ -28,14 +28,16 @@ tree does not collect it — see below
 [cols="2,3,3",options="header",]
 |===
 |Path |What it collects |Where it runs
-|Public Verilator |line / expr / user, because
+|Public Verilator |line / expr / user, because wrapper
 `smu_sim_cfg.toml` `[coverage.verilator]` leaves toggle off
-(disk and sim-time cost over the unscoped model) |weekly `--cov` only
-when `DV_LARGE_RUNNER` is set (`regress.yml`). Nightly does not collect.
+(the DUT elaborates real SEP/SMC/DTP; unscoped toggle is the 0.5 GB
+case) |weekly `--cov` only when `DV_LARGE_RUNNER` is set
+(`regress.yml`). Nightly does not collect.
 |Intended public metric |toggle on the SMU interconnect after
-compile-time scope |not collected on this PR. Collection is #1662,
-which turns toggle on over `smu_cov_scope.vlt`. Until that lands, no
-weekly database contains a toggle family this chapter can grade.
+compile-time scope |#1662 turned that on for the bare bench, now
+`--dut smu_block`, over `smu_cov_scope.vlt`. The release group's
+weekly `--cov` still runs `--dut smu` and therefore still writes
+line / expr / user, not toggle.
 |Commercial |toggle / code / assertion databases under the licensed
 flow |not a public CI job; not a substitute for the public weekly
 |===
@@ -75,8 +77,8 @@ ConfigError on the first run.
 Every `[[holes]]` row that #492 writes must carry:
 
 * `tool`, `metric_family` (the family that database actually holds:
-line / expr / user today; `toggle` once #1662 lands), `hierarchy` or
-file selector
+line / expr / user on `--dut smu`; `toggle` on `--dut smu_block` after
+#1662), `hierarchy` or file selector
 * `category` (`out_of_scope` / `excluded` / `waived` / `open`)
 * `disposition`
 * `owner`

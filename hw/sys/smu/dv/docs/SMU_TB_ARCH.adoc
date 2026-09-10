@@ -17,11 +17,13 @@ Two DUTs share this DV root:
 [cols=",,",options="header",]
 |===
 |Launch name |HDL top |What it is for
-|`--dut smu` |`tb/tb_top.sv` (`smu_uvm_top`) |Bare `smu #(.SEP(0))` — the density,
-CSR and fabric surface, and the only surface `sep0_all` signs off
-|`--dut smu_wrapper` |`tb/tb_wrapper_top.sv` (`smu_wrapper_uvm_top`) |
+|`--dut smu_block` |`tb/tb_top.sv` (`smu_uvm_top`) |Bare `smu #(.SEP(0))` with its
+technology interfaces tied off. Carried the SEP=0 catalog until that was migrated
+to `--dut smu`; now holds the two leaves the wrapper cannot express, plus the
+SV-UVM view whose harness is this TB's `UVM` shape
+|`--dut smu` (alias `smu_wrapper`) |`tb/tb_wrapper_top.sv` (`smu_wrapper_uvm_top`) |
 `hw/top/smu_wrapper.sv` with production pins, in a `no_sep` and a `sep_rtl`
-compile profile
+compile profile. The SMU regression: `sep0_all` (53) and `all` (81)
 |===
 
 The two are deliberately separate evidence surfaces. Logs carry `DUT_TAG=BARE`
@@ -34,7 +36,7 @@ evidence.
 hw/sys/smu/dv/
 ├── cocotb/{env,seq_lib,tests}/   # live PyUVM environment, sequences, tests
 ├── cocotb/tests_deferred/        # non-enrolled bodies, catalog only
-├── cocotb_wrapper/{env,seq_lib,tests}/  # --dut smu_wrapper baseline
+├── cocotb_wrapper/{env,seq_lib,tests}/  # --dut smu baseline
 ├── docs/                         # this chapter set
 ├── fw/                           # firmware images built for the dual-FW tests
 ├── tb/                           # tb_top.sv (cocotb + UVM shapes), smu_tb_signal_list.svh,
@@ -42,13 +44,13 @@ hw/sys/smu/dv/
 ├── uvm/{env,seq_lib,tests}/      # SV-UVM env / seq_lib / tests (--framework uvm)
 ├── testlists/                    # per-feature TOML leaves + all.toml groups
 ├── tools/                        # wrapper readiness gates
-├── smu_sim_cfg.toml              # --dut smu: [frameworks.cocotb] + [frameworks.uvm]
-└── smu_wrapper_sim_cfg.toml      # --dut smu_wrapper
+├── smu_block_sim_cfg.toml        # --dut smu_block: [frameworks.cocotb] + [frameworks.uvm]
+└── smu_sim_cfg.toml              # --dut smu
 ....
 
 === Environment Components
 
-`SmuEnv` (`cocotb/env/smu_env.py`) is deliberately thin. It builds the
+`SmuEnv` (`common/smu_dv_env/smu_env.py`) is deliberately thin. It builds the
 scoreboard and reads `SmuEnvCfg` out of the PyUVM `ConfigDB`; the JTAG and AXI
 agents are created on demand by the sequences that need them, against
 `cocotb.top`, rather than being instantiated for every test. The one agent that
@@ -249,9 +251,9 @@ and reports them per test. Results land under
 [source,bash]
 ----
 # SV-UVM view (VCS): build, the bound scenario, the UVM-implemented smoke subset
-python3 tools/dv/run_dv.py --dut smu --framework uvm --build-only --skip-unimplemented
-python3 tools/dv/run_dv.py --dut smu --framework uvm --items smu_dtp_jtag_smoke_test --seed 1
-python3 tools/dv/run_dv.py --dut smu --framework uvm --items smoke --skip-unimplemented
+python3 tools/dv/run_dv.py --dut smu_block --framework uvm --build-only --skip-unimplemented
+python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smu_dtp_jtag_smoke_test --seed 1
+python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smoke --skip-unimplemented
 ----
 
 The wrapper DUT additionally builds firmware images through
@@ -261,16 +263,16 @@ The wrapper DUT additionally builds firmware images through
 [source,bash]
 ----
 python3 hw/sys/smu/dv/tools/smu_wrapper_tb_readiness_test.py --phase source
-python3 tools/dv/run_dv.py --dut smu_wrapper --items smoke \
+python3 tools/dv/run_dv.py --dut smu --items smoke \
   --stage flist --stage c_compile --stage hdl_compile --stage sim
 ----
 
 [[sv-uvm-realization]]
 === SystemVerilog UVM Realization (`--framework uvm`)
 
-The SV-UVM realization runs through the same native runner: `smu_sim_cfg.toml`
+The SV-UVM realization runs through the same native runner: `smu_block_sim_cfg.toml`
 declares it as the `[frameworks.uvm]` overlay (shared DV root, sim config, and
-testlist; `build/uvm/` build tree), and `--dut smu --framework uvm` selects it
+testlist; `build/uvm_block/` build tree), and `--dut smu_block --framework uvm` selects it
 on VCS (the `native` profile's `uvm` framework, `-ntb_opts uvm`). Scenarios
 bind both realizations in their testlist `module` map
 (`module = { cocotb = "<name>", uvm = "<name>" }`); those without a `uvm`

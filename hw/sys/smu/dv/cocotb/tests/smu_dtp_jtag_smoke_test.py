@@ -22,7 +22,7 @@ class smu_dtp_jtag_smoke_test(smu_base_test):
     async def run_scenario(self) -> None:
         self.logger.info(
             "DUT_TAG=BARE smu_dtp_jtag_smoke_test SMU_ALL_005 under "
-            "--dut smu SEP=0 (PTAP.S1/S2/S3 only)"
+            "--dut smu_block SEP=0 (PTAP.S1/S2/S3 only)"
         )
         seq = smu_dtp_jtag_smoke_test_seq(self)
         await seq.run()
