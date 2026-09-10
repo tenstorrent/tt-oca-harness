@@ -80,6 +80,7 @@ in
       svlint
       checkmake
       markdownlint-cli
+      vale
       # Synthesis
       pdk-ciel
       yosys
