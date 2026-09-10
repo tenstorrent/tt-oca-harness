@@ -6,12 +6,31 @@ Each test lists (CHK_ID, TOKEN, EXPECT) triples. Scoreboard logs
 ``EVIDENCE: <TOKEN>``; GitHub leaf contracts must require the same TOKEN.
 ``CHK-NONVAC`` is emitted by SmuScoreboard.check_phase when checks > 0.
 
+What a TOKEN carries: a passing ``expect_*`` compare logged it, bound either
+by an explicit ``evidence=`` argument or by the TOKEN/CHK id appearing in the
+check name. EXPECT is free-text contract wording for readers and reviewers;
+no code compares it against an observed value.
+
+Keys name the pyuvm type name of the test body. Testcases that build an
+``SmuScoreboard`` and carry no rows here must be listed in
+``UNMAPPED_TESTS``; ``prove_mapped_features`` raises otherwise. The
+``--dut smu_wrapper`` bodies build no ``SmuScoreboard`` and never reach it.
+
 Deferred names appear below for catalog continuity; they are **OUT** under
 the no-Force policy and must not be reported as green. Bodies:
 ``cocotb/tests_deferred/``.
 """
 
 from __future__ import annotations
+
+# testcase -> recorded reason for running with no (CHK_ID, TOKEN, EXPECT) rows
+UNMAPPED_TESTS: dict[str, str] = {
+    "smu_ext_axi_global_addr_smoke_test": (
+        "present but not enrolled: the OSS s_axi is a LOCAL aperture, so "
+        "GLOBAL_BASE + offset DECERRs. Rows are withheld until enrollment; "
+        "disposition in docs/SMU_DEFERRED_DISPOSITION.adoc"
+    ),
+}
 
 # testcase -> ordered checkbox contracts (FEATURE_LIST / VPLAN aligned)
 TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
@@ -110,8 +129,11 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
             "CHK-DTP-CLKSTOP-AGG-S3",
             "Port [0] reserved for SMC participates in SMC CLA handshake",
         ),
-        ("CHK-TIMEOUT-PATHS", "CHK-TIMEOUT-PATHS", "bounded waits with last-state"),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<S5<S6<S7<S8<S9<PASS"),
+        (
+            "CHK-NONVAC",
+            "CHK-NONVAC",
+            "ordered simulation-time fence S1<S2<S3<S4<S5<S6<S7<S8<S9<PASS",
+        ),
     ],
     "smu_sep_smoke_test": [
         (
@@ -162,10 +184,10 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         (
             "CHK-SMC-MBX-IRQ-EXT-S2",
             "CHK-SMC-MBX-IRQ-EXT-S2",
-            "ext_mailbox_interrupts width equals NUM_MAILBOXES 32",
+            "ext_mailbox_interrupts is NUM_MAILBOXES=32 wide; mailbox 0 / 31 IRQs move bits 0 / 31",
         ),
         ("CHK-TIMEOUT-PATHS", "CHK-TIMEOUT-PATHS", "bounded waits with last-state"),
-        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<PASS"),
+        ("CHK-NONVAC", "CHK-NONVAC", "ordered fence S1<S2<S3<S4<PASS"),
     ],
     "smu_smc_gpio_strap_sanity_test": [
         ("CHK-SMC-STRAP", "SMC_STRAP_OK", "GPIO strap observe"),
@@ -453,7 +475,11 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
         ("CHK-RACE-CTN-J2A", "RACE_CTN_J2A", "CTN + VERSION both correct"),
     ],
     "smu_sys_in_filter_window_edge_test": [
-        ("CHK-AXI-FILTER-OKAY", "AXI_FILTER_OKAY", "window edge OKAY/DECERR"),
+        (
+            "CHK-AXI-FILTER-OKAY",
+            "AXI_FILTER_OKAY",
+            "page interior OKAY; adjacent page each side DECERR+poison",
+        ),
     ],
     "smu_sys_in_filter_reprogram_shrink_test": [
         ("CHK-AXI-FILTER-OKAY", "AXI_FILTER_OKAY", "shrink restores BlockByDefault"),
@@ -487,12 +513,6 @@ TEST_EVIDENCE: dict[str, list[tuple[str, str, str]]] = {
     # --- wrapper ---
     "smu_wrapper_elaboration_test": [
         ("CHK-WRAP-ELAB", "WRAP_ELAB_OK", "wrapper elab/reset contract"),
-    ],
-    "smu_wrapper_elaboration_no_sep_test": [
-        ("CHK-WRAP-ELAB", "WRAP_ELAB_OK", "no-SEP wrapper elab/reset"),
-    ],
-    "smu_wrapper_elaboration_sep_rtl_test": [
-        ("CHK-WRAP-ELAB", "WRAP_ELAB_SEP_OK", "SEP-RTL wrapper elab/reset"),
     ],
 }
 

@@ -32,7 +32,6 @@
 coverage_off -file "*hw/sys/smu/dv/tb/tb_top.sv"
 coverage_off -file "*hw/sys/smu/dv/tb/tb_wrapper_top.sv"
 coverage_off -file "*hw/sys/smu/dv/tb/smu_tb_if.sv"
-coverage_off -file "*hw/sys/smu/dv/tb/smu_axi_out_sim_slave.sv"
 
 // ---------------------------------------------------------------------------
 // Subsystems that carry their own DV package and their own coverage.

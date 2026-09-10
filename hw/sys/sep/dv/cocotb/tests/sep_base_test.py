@@ -267,6 +267,7 @@ class sep_base_test(uvm_test):
         self._set_if_exists(dut, "lc_sigint_inject_i", 0)
         self._set_if_exists(dut, "token_cmp_fault_inject_i", 0)
         self._set_if_exists(dut, "token_cmp_fault_sel_i", 0)
+        self._set_if_exists(dut, "token_digest_test_en_inject_i", 0)
         self._set_if_exists(dut, "dma_host_intg_inject_i", 0)
         # Idle the master strobes from t=0 (valid=0, ready=1) so a test that
         # does not construct OcahAxiMasterAgent still presents a resolved idle

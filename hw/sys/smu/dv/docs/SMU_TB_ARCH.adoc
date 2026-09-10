@@ -72,7 +72,8 @@ post-reset settle cycles, randomised from the run seed; the outbound SMN
 geometry, memory span, and slave sequence (`axi_out_mem`)
 |`SmuScoreboard` |Every check in the suite goes through it; see
 <<smu-checking-strategy,Checking Strategy>>
-|`smu_evidence_map.py` |Per-testcase `(CHK_ID, TOKEN, EXPECT)` contracts
+|`smu_evidence_map.py` |Per-testcase `(CHK_ID, TOKEN, EXPECT)` token contracts,
+plus the `UNMAPPED_TESTS` declarations for testcases that run without rows
 |`smu_fcov.py` |Scenario-intent coverage bins, hit per test
 |===
 
@@ -108,8 +109,16 @@ them:
   drives stimulus but never compares anything fails.
 . *No invented checkboxes.* `prove_mapped_features()` runs after the scenario
   and requires that every TOKEN mapped to this testcase in
-  `smu_evidence_map.py` was actually logged by an `expect_*` call. Tokens
-  cannot be claimed after seeing a green path.
+  `smu_evidence_map.py` was logged by an `expect_*` call that passed. Tokens
+  cannot be claimed after seeing a green path. A testcase with no mapped rows
+  must be declared in `UNMAPPED_TESTS`; an undeclared one fails here. What this
+  does *not* establish is the EXPECT column: it is free-text contract wording,
+  nothing compares an observed value against it, and the per-row
+  `EVIDENCE TOKEN SEEN` line says only that the token was carried by a passing
+  check. Each row prints its binding -- `evidence-arg` when a caller named the
+  token outright, `check-name-substring` when the token was matched against the
+  check's name -- and the rows in the second class are collected into an
+  `EVIDENCE BINDING WEAK` warning.
 . *Traceable evidence.* Each satisfied check logs `EVIDENCE: <TOKEN>`, and the
   run ends with an `EVIDENCE_SUMMARY` line. `CHK-NONVAC` is emitted by
   `check_phase` itself once the check count is non-zero, so the non-vacuity

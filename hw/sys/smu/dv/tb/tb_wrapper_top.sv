@@ -74,6 +74,11 @@ module smu_wrapper_uvm_top (
   output logic        rst_primary_smc_clk_n_o,
   output logic        init_mem_done_o,
   output logic        sep_fuse_sense_done_o,
+  // State of the SEP efuse shadow-register sim_skip_fuse_sense flag, i.e.
+  // whether the SEP fuse-sense sequence is replaced by the shadow preload in
+  // this run. A checker that reads fuse-sense completion needs this to know
+  // whether the completion is DUT-earned.
+  output logic        sep_fuse_sense_skipped_o,
   output logic        sep_reset_n_o,
   output logic [31:0] smc_scratch_0_o,
   output logic        smc_test_pass_o,
@@ -308,6 +313,11 @@ module smu_wrapper_uvm_top (
   output logic        obs_xbar_rst_n_o,
   output logic        obs_smc_tel_clk_o,
   output logic        obs_sep_wdt_clk_o,
+  // SMC reset-controller power-good synchronizer output, and a sticky record of
+  // it having been observed deasserted. Both come from inside u_dut; powergood_o
+  // below is the input pin echoed back.
+  output logic        obs_powergood_stable_o,
+  output logic        obs_powergood_stable_low_seen_o,
   output logic        obs_jtag_tdo_o,
   output logic        obs_smu_axi_awready_o,
   output logic        obs_xtrig_src_req0_o
@@ -626,6 +636,19 @@ module smu_wrapper_uvm_top (
   assign powergood_o   = powergood_i;
   assign rst_cold_n_o  = rst_cold_stable_ref_clk_n;
   assign rst_primary_smc_clk_n_o = rst_primary_smc_clk_n;
+
+  // powergood_stable is the SMC reset controller's stretched and synchronized
+  // view of powergood_i (smc_reset_ctrl.sv), so it rises only once the DUT's own
+  // synchronizer chain has clocked it through. The sticky low record carries no
+  // reset: it must survive the cold-reset window in which it is set.
+  assign obs_powergood_stable_o = u_dut.u_smu.powergood_stable;
+  logic obs_powergood_stable_low_seen_q = 1'b0;
+  always_ff @(posedge clk_ref_i) begin
+    if (!obs_powergood_stable_o) begin
+      obs_powergood_stable_low_seen_q <= 1'b1;
+    end
+  end
+  assign obs_powergood_stable_low_seen_o = obs_powergood_stable_low_seen_q;
 `ifndef SMU_NO_SEP
   assign sep_reset_n = u_dut.u_smu.gen_sep.u_sep.sep_reset_n;
 `else
@@ -658,6 +681,13 @@ module smu_wrapper_uvm_top (
   assign obs_sep_wdt_clk_o = u_dut.u_smu.gen_sep.u_sep.clk_wdt_i;
   // Live SEP LCC export — must match lc_state_o for lc_state=from_sep.
   assign obs_sep_lc_state_o = u_dut.u_smu.gen_sep.u_sep.lc_state_o;
+  // The SEP efuse shadow registers' own sim_skip_fuse_sense flag: 1 when
+  // +skip_fuse_sense replaces the fuse-sense sequence with the shadow preload,
+  // 0 whenever the sense runs -- including a build without the SIMULATION
+  // define, where the plusarg has no effect at all.
+  assign sep_fuse_sense_skipped_o = u_dut.u_smu.gen_sep.u_sep.sep_crypto
+        .u_sep_efuse_wrapper.u_efuse_interface_controller.u_efuse_shadow_regs
+        .sim_skip_fuse_sense;
 `else
   assign obs_compose_sep_present_o = 1'b0;
   assign obs_compose_xbar_present_o = 1'b0;
@@ -667,6 +697,7 @@ module smu_wrapper_uvm_top (
   assign obs_xbar_rst_n_o = 1'b0;
   assign obs_sep_wdt_clk_o = 1'b0;
   assign obs_sep_lc_state_o = 8'h00;
+  assign sep_fuse_sense_skipped_o = 1'b0;
 `endif
 
   assign smc_scratch_0_o =
