@@ -21,6 +21,9 @@ class SmuEnvCfg(uvm_object):
         self.periph_clk_period_ns = 20
         self.entropy_clk_period_ns = 3
         self.sep_wdt_clk_period_ns = 100
+        self.jtag_period_ns = 40
+        self.idle_tck = 2
+        self.post_reset_settle_cycles = 500
         self.powergood_delay_cycles = 8
         self.reset_hold_cycles = 12
         self.post_reset_cycles = 24
@@ -49,3 +52,9 @@ class SmuEnvCfg(uvm_object):
         self.powergood_delay_cycles = rng.randint(6, 10)
         self.reset_hold_cycles = rng.randint(10, 16)
         self.post_reset_cycles = rng.randint(20, 32)
+        # Same draws as the bare-smu SmuEnvCfg. Sequences shared with that
+        # catalog read these off cfg, so a leaf migrated onto this DUT hits
+        # AttributeError without them rather than any DUT difference.
+        self.jtag_period_ns = rng.choice((32, 40, 48))
+        self.idle_tck = rng.randint(2, 4)
+        self.post_reset_settle_cycles = rng.randint(500, 700)

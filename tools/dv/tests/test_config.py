@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Unit tests for runlib.config run-mode reference validation and the adopter overlay layer.
+"""Unit tests for runlib.config run-mode / overlay validation and runlib.duts resolution.
 
 Run from the repository root:
 
@@ -30,6 +30,7 @@ from runlib.config import (  # noqa: E402
     target_flags,
     validate_run_mode_request,
 )
+from runlib.duts import load_dut_registry  # noqa: E402
 from runlib.models import ConfigError, Dut, TestCatalog, TestEntry  # noqa: E402
 
 
@@ -406,10 +407,6 @@ class RuntimeSelectionDefenses(unittest.TestCase):
         self.assertIn("nope", str(ctx.exception))
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class TargetFlagsTokens(unittest.TestCase):
     """Every flag item is one argv token; an embedded space is a config error, not a no-op."""
 
@@ -422,3 +419,53 @@ class TargetFlagsTokens(unittest.TestCase):
         with self.assertRaises(ConfigError) as ctx:
             target_flags(target, "vcs")
         self.assertIn("-assert svaext", str(ctx.exception))
+
+
+class DutRegistryAliases(unittest.TestCase):
+    """`alias_of` gives one DUT a second selectable name (see runlib.duts)."""
+
+    def _registry(self, body: str) -> dict:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cfg_dir = root / "hw" / "common" / "dv" / "configs"
+            cfg_dir.mkdir(parents=True)
+            (cfg_dir / "duts.toml").write_text(body)
+            return load_dut_registry(root)
+
+    def test_alias_entry_is_accepted(self):
+        reg = self._registry(
+            "schema_version = 1\n"
+            '[duts.widget]\nroot = "hw/sys/widget/dv"\n'
+            '[duts.widget_alt]\nroot = "hw/sys/widget/dv"\nalias_of = "widget"\n'
+        )
+        self.assertEqual(reg["widget_alt"]["alias_of"], "widget")
+        self.assertNotIn("alias_of", reg["widget"])
+
+    def test_self_alias_is_rejected(self):
+        with self.assertRaises(ConfigError) as ctx:
+            self._registry(
+                "schema_version = 1\n"
+                '[duts.widget]\nroot = "hw/sys/widget/dv"\nalias_of = "widget"\n'
+            )
+        self.assertIn("cannot point at itself", str(ctx.exception))
+
+    def test_alias_chain_is_rejected(self):
+        with self.assertRaises(ConfigError) as ctx:
+            self._registry(
+                "schema_version = 1\n"
+                '[duts.a]\nroot = "hw/sys/a/dv"\n'
+                '[duts.b]\nroot = "hw/sys/a/dv"\nalias_of = "a"\n'
+                '[duts.c]\nroot = "hw/sys/a/dv"\nalias_of = "b"\n'
+            )
+        self.assertIn("itself an alias", str(ctx.exception))
+
+    def test_empty_alias_is_rejected(self):
+        with self.assertRaises(ConfigError) as ctx:
+            self._registry(
+                'schema_version = 1\n[duts.widget]\nroot = "hw/sys/widget/dv"\nalias_of = ""\n'
+            )
+        self.assertIn("non-empty string", str(ctx.exception))
+
+
+if __name__ == "__main__":
+    unittest.main()
