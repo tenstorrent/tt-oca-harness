@@ -355,10 +355,10 @@ partition "Reset stub (vector.S)" {
   if (cold_scratch[7] != 0 ?) then (yes)
     if (in SEP SRAM range ?) then (yes)
       :poison scratch, jr handler;
-      #e6f0f8:resume BL1 (warm reset);
+      :resume BL1 (warm reset);<<#e6f0f8>>
       detach
     else (no)
-      #ffe0e0:hang (wfi);
+      :hang (wfi);<<#ffe0e0>>
       detach
     endif
   else (no — cold boot)
@@ -416,8 +416,8 @@ partition "Manifest retry loop [C12–C14]" {
     per-image hashes, TOC checks;
   repeat while (failed and slot remains ?) is (yes: zero SRAM, reinit transport) not (no)
   if (a slot validated ?) then (no)
-    #ffe0e0:[C19] rom_err_fail
-    (bl0_state, scratch, mailbox FAIL, wfi);
+    :[C19] rom_err_fail
+    (bl0_state, scratch, mailbox FAIL, wfi);<<#ffe0e0>>
     detach
   else (yes)
   endif
@@ -436,14 +436,14 @@ partition "Hand-off [C18]" {
   :gate-ledger self-check
   (+ canary, stack top);
   if (self-check passes ?) then (no)
-    #ffe0e0:halt 0xF004;
+    :halt 0xF004;<<#ffe0e0>>
     detach
   else (yes)
     :release: rewrite BL1-region
     rule to executable (under RLB);
     :copy BL1 image to TOC load_addr;
     :mepc; fence.i; fence; mret;
-    #e6f0f8:BL1 executing;
+    :BL1 executing;<<#e6f0f8>>
     stop
   endif
 }
@@ -723,7 +723,7 @@ else (no)
     :jr to BL1 warm handler;
     detach
   else (no — invalid)
-    #ffe0e0:hang (wfi loop);
+    :hang (wfi loop);<<#ffe0e0>>
     detach
   endif
 endif
@@ -1351,8 +1351,8 @@ if (in bounds ?) then (yes)
   :bytes in SEP SRAM;
   stop
 else (no)
-  #ffe0e0:reject read
-  (slot fallback / fatal);
+  :reject read
+  (slot fallback / fatal);<<#ffe0e0>>
   stop
 endif
 @enduml
@@ -1485,8 +1485,8 @@ start
 :trailer (4 x 0xCA at 3168);
 :format version (major <= lib);
 :manifest_length;
-#e6f0f8:manifest_hash over [0,3172)
-**always checked**;
+:manifest_hash over [0,3172)
+**always checked**;<<#e6f0f8>>
 :reserved bits (all zero);
 :secure-boot invariant;
 :crypto field sizes;
@@ -1497,17 +1497,17 @@ vs fuses, per selector_bits);
 lifecycle_*_states, per selector);
 :version range (per selector);
 :demotion_control (structural);
-#fdf6e3:root-key **authorization**
+:root-key **authorization**
 (secure boot; trust anchor,
-BEFORE any public-key op);
-#fdf6e3:root-key revocation
-(secure boot; BEFORE signature);
-#fdf6e3:security version superset
-(secure boot; BEFORE signature);
-#fdf6e3:signature over [0,3172)
-(secure boot; RSA-3072 via OTBN);
-#fdf6e3:security version superset
-**re-check** (fault hardening);
+BEFORE any public-key op);<<#fdf6e3>>
+:root-key revocation
+(secure boot; BEFORE signature);<<#fdf6e3>>
+:security version superset
+(secure boot; BEFORE signature);<<#fdf6e3>>
+:signature over [0,3172)
+(secure boot; RSA-3072 via OTBN);<<#fdf6e3>>
+:security version superset
+**re-check** (fault hardening);<<#fdf6e3>>
 :payload checks
 (payload_hash -> decrypt -> hash chain -> TOC);
 stop
@@ -1747,15 +1747,15 @@ skinparam ActivityBackgroundColor #f0f8e6
 skinparam ActivityDiamondBackgroundColor #fdf6e3
 start
 if (SBOOT_DIS fuse set ?) then (yes)
-  #ffe0e0:secure boot OFF;
+  :secure boot OFF;<<#ffe0e0>>
   detach
 else (no)
   if (LC in {PROD, PROD_END} ?) then (yes)
-    #e6f0f8:secure boot ENFORCED;
+    :secure boot ENFORCED;<<#e6f0f8>>
     detach
   else (no: TEST_DEV / RMA)
     if (signed secure_boot_control[0]\nOR unauth escalation bit ?) then (yes)
-      #e6f0f8:secure boot ON;
+      :secure boot ON;<<#e6f0f8>>
       detach
     else (no)
       :secure boot OFF
@@ -1913,18 +1913,18 @@ else reject;
 :match digest against slots
 (6 ROM digests, 5 OTP hash banks);
 if (matches an authorized slot\n(select bit set) ?) then (no)
-  #ffe0e0:reject;
+  :reject;<<#ffe0e0>>
   detach
 else (yes)
   :effective_revoke =
   manifest revoke | device fuse;
   if (slot revoked ?) then (yes)
-    #ffe0e0:reject (before RSA);
+    :reject (before RSA);<<#ffe0e0>>
     detach
   else (no)
     :security-version superset check;
     if (manifest superseded ?) then (yes)
-      #ffe0e0:reject (before RSA);
+      :reject (before RSA);<<#ffe0e0>>
       detach
     else (no)
       :OTBN: RSA-3072 modexp,
@@ -1933,10 +1933,10 @@ else (yes)
       if (signature valid ?) then (yes)
         :security-version superset
         re-check (fault hardening);
-        #e6f0f8:manifest authenticated;
+        :manifest authenticated;<<#e6f0f8>>
         detach
       else (no)
-        #ffe0e0:reject;
+        :reject;<<#ffe0e0>>
         detach
       endif
     endif
@@ -2222,8 +2222,8 @@ start
 (bounds-checked read);
 if (encrypted ? (control bit 0)) then (yes)
   if (secure boot active ?) then (no)
-    #ffe0e0:reject
-    (encryption requires secure boot);
+    :reject
+    (encryption requires secure boot);<<#ffe0e0>>
     detach
   else (yes)
     :verify payload_hash
@@ -2245,11 +2245,11 @@ h = SHA256 of h + SHA256 of image);
 :TOC structural checks
 (count, bounds, alignment, overlap);
 if (all checks pass ?) then (yes)
-  #e6f0f8:payload accepted;
+  :payload accepted;<<#e6f0f8>>
   detach
 else (no)
-  #ffe0e0:fail slot attempt
-  (retry / backup bank);
+  :fail slot attempt
+  (retry / backup bank);<<#ffe0e0>>
   detach
 endif
 @enduml
@@ -2518,23 +2518,23 @@ while (for each check, fail-fast)
     :seen++;
     if (seen == i+1 ?) then (yes)
     else (no)
-      #ffe0e0:halt 0xF004;
+      :halt 0xF004;<<#ffe0e0>>
       detach
     endif
   else (no)
-    #ffe0e0:halt 0xF004;
+    :halt 0xF004;<<#ffe0e0>>
     detach
   endif
 endwhile (all iterated)
 if (i == seen == n_checks ?) then (no)
-  #ffe0e0:halt 0xF004;
+  :halt 0xF004;<<#ffe0e0>>
   detach
 else (yes)
   :release PMP fence for BL1 region;
   :copy BL1 image to TOC load_addr;
   :mepc <- load_addr + entry_point,
   fence.i, fence, mret;
-  #e6f0f8:BL1 executing;
+  :BL1 executing;<<#e6f0f8>>
   detach
 endif
 @enduml
