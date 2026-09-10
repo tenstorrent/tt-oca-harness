@@ -338,16 +338,16 @@ module smc_cpu_ctrl_wrap #(
           .COUNT_WIDTH(16),
           .IS_ACTIVE_HIGH(0)
         ) u_pulse_core_reset (
-          .i_clk(clk_smc_i),
-          .i_reset_n(rst_primary_ni),
+          .clk_i(clk_smc_i),
+          .rst_ni(rst_primary_ni),
 
-          .i_pulse_start(core_resets_pulse_start[i]),
-          .i_pre_pulse_wait(pre_reset_pulse_wait),
-          .i_post_pulse_wait(post_reset_pulse_wait),
+          .pulse_start_i(core_resets_pulse_start[i]),
+          .pre_pulse_wait_i(pre_reset_pulse_wait),
+          .post_pulse_wait_i(post_reset_pulse_wait),
 
-          .i_pulse_in(int_core_reset_n[i]),
-          .o_pulse_out(core_reset_pulse_out[i]),
-          .o_pulse_done(core_reset_pulse_done[i])
+          .pulse_in_i(int_core_reset_n[i]),
+          .pulse_out_o(core_reset_pulse_out[i]),
+          .pulse_done_o(core_reset_pulse_done[i])
         );
       end else begin : gen_tie_off_core_reset_and_done
         assign core_reset_pulse_out[i] = 1'b0;

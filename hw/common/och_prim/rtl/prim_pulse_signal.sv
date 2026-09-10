@@ -9,16 +9,16 @@ module prim_pulse_signal #(
   parameter int COUNT_WIDTH = 16,
   parameter bit IS_ACTIVE_HIGH = 0  // set whether the pulse is active high
 ) (
-  input  logic                        i_clk,
-  input  logic                        i_reset_n,
+  input  logic                        clk_i,
+  input  logic                        rst_ni,
 
-  input  logic                        i_pulse_start,
-  input  logic      [COUNT_WIDTH-1:0] i_pre_pulse_wait,
-  input  logic      [COUNT_WIDTH-1:0] i_post_pulse_wait,
+  input  logic                        pulse_start_i,
+  input  logic      [COUNT_WIDTH-1:0] pre_pulse_wait_i,
+  input  logic      [COUNT_WIDTH-1:0] post_pulse_wait_i,
 
-  input  logic                        i_pulse_in,
-  output logic                        o_pulse_out,
-  output logic                        o_pulse_done
+  input  logic                        pulse_in_i,
+  output logic                        pulse_out_o,
+  output logic                        pulse_done_o
 
 );
 
@@ -43,8 +43,8 @@ module prim_pulse_signal #(
     .Width(COUNT_WIDTH),
     .ResetValue({COUNT_WIDTH{1'b0}})
   ) pulse_pulse_counter (
-    .clk_i(i_clk),
-    .reset_n_i(i_reset_n),
+    .clk_i(clk_i),
+    .reset_n_i(rst_ni),
     .clear_i(1'b0),
     .set_i(pulse_set),
     .set_cnt_i(pulse_set_cnt),           // Set value for the counter.
@@ -58,12 +58,12 @@ module prim_pulse_signal #(
   );
 
   // when a pulse is requested, lock in the prev value
-  always_ff @(posedge i_clk) begin
-    if (~i_reset_n) begin
+  always_ff @(posedge clk_i) begin
+    if (~rst_ni) begin
       pulse_in_initial_val <= 1'b0;
     end else begin
-      if (i_pulse_start) begin
-        pulse_in_initial_val <= i_pulse_in;
+      if (pulse_start_i) begin
+        pulse_in_initial_val <= pulse_in_i;
       end
     end
   end
@@ -73,11 +73,11 @@ module prim_pulse_signal #(
     case (pulse_state)
       IDLE: begin
         // keep deasserted
-        o_pulse_out = IS_ACTIVE_HIGH;
-        o_pulse_done = 1'b1;
+        pulse_out_o = IS_ACTIVE_HIGH;
+        pulse_done_o = 1'b1;
 
-        if (i_pulse_start) begin
-          pulse_set_cnt = i_pre_pulse_wait;
+        if (pulse_start_i) begin
+          pulse_set_cnt = pre_pulse_wait_i;
           pulse_set = 1'b1;
           pulse_decr_en = 1'b0;
           pulse_commit = 1'b1;
@@ -94,18 +94,18 @@ module prim_pulse_signal #(
 
       PRE_RESET: begin  // wait some cycles before pulsing
         // keep deasserted
-        o_pulse_out = pulse_in_initial_val;
-        o_pulse_done = 1'b0;
+        pulse_out_o = pulse_in_initial_val;
+        pulse_done_o = 1'b0;
 
-        if (i_pulse_start) begin  // new reset has arrived, restart the count
-          pulse_set_cnt = i_pre_pulse_wait;
+        if (pulse_start_i) begin  // new reset has arrived, restart the count
+          pulse_set_cnt = pre_pulse_wait_i;
           pulse_set = 1'b1;
           pulse_decr_en = 1'b1;
           pulse_commit = 1'b1;
           pulse_state_nxt = PRE_RESET;
 
         end else if (~|pulse_count) begin
-          pulse_set_cnt = i_post_pulse_wait;
+          pulse_set_cnt = post_pulse_wait_i;
           pulse_set = 1'b1;
           pulse_decr_en = 1'b0;
           pulse_commit = 1'b1;
@@ -122,18 +122,18 @@ module prim_pulse_signal #(
 
       POST_RESET: begin  // hold pulse for some duration
 
-        if (i_pulse_start) begin  // new reset has arrived, restart the count
-          o_pulse_out = IS_ACTIVE_HIGH;
-          o_pulse_done = 1'b0;
-          pulse_set_cnt = i_post_pulse_wait;
+        if (pulse_start_i) begin  // new reset has arrived, restart the count
+          pulse_out_o = IS_ACTIVE_HIGH;
+          pulse_done_o = 1'b0;
+          pulse_set_cnt = post_pulse_wait_i;
           pulse_set = 1'b1;
           pulse_decr_en = 1'b1;
           pulse_commit = 1'b1;
           pulse_state_nxt = POST_RESET;
 
         end else if (~|pulse_count) begin  // count reached
-          o_pulse_out = ~IS_ACTIVE_HIGH;
-          o_pulse_done = 1'b0;
+          pulse_out_o = ~IS_ACTIVE_HIGH;
+          pulse_done_o = 1'b0;
           pulse_set_cnt = '0;
           pulse_set = 1'b1;
           pulse_decr_en = 1'b0;
@@ -141,8 +141,8 @@ module prim_pulse_signal #(
           pulse_state_nxt = IDLE;
 
         end else begin  // keep counting
-          o_pulse_out = IS_ACTIVE_HIGH;
-          o_pulse_done = 1'b0;
+          pulse_out_o = IS_ACTIVE_HIGH;
+          pulse_done_o = 1'b0;
           pulse_set_cnt = '0;
           pulse_set = 1'b0;
           pulse_decr_en = 1'b1;
@@ -153,8 +153,8 @@ module prim_pulse_signal #(
 
       default: begin
         // keep deasserted
-        o_pulse_out = IS_ACTIVE_HIGH;
-        o_pulse_done = 1'b1;
+        pulse_out_o = IS_ACTIVE_HIGH;
+        pulse_done_o = 1'b1;
         pulse_set_cnt = '0;
         pulse_set = 1'b0;
         pulse_decr_en = 1'b0;
@@ -165,8 +165,8 @@ module prim_pulse_signal #(
   end
 
   // pulse core reset state
-  always_ff @(posedge i_clk) begin
-    if (~i_reset_n) begin
+  always_ff @(posedge clk_i) begin
+    if (~rst_ni) begin
       pulse_state <= IDLE;
     end else begin
       pulse_state <= pulse_state_nxt;
