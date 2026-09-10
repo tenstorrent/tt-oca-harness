@@ -6,6 +6,8 @@
 //
 //-----------------------------------------------------------------------------
 
+`include "prim_assert.sv"
+
 module efuse_program_interface #(
   parameter unsigned EFUSE_WORD_WIDTH = 32,
 
@@ -15,45 +17,46 @@ module efuse_program_interface #(
   parameter type fuse_command_req_t = logic,
   parameter type fuse_command_resp_t = logic
 ) (
-  input  logic                clk_i,
-  input  logic                rst_ni,
-  input  logic                test_en_i,
+  input logic clk_i,
+  input logic rst_ni,
+  input logic test_en_i,
 
-  input  logic                program_enable_i,
-  output logic                is_programing_o,
-  output efuse_addr_t         program_target_addr_o,
+  input  logic        program_enable_i,
+  output logic        is_programing_o,
+  output efuse_addr_t program_target_addr_o,
 
-  input  efuse_addr_t         program_addr_i,
-  input  logic                program_data_in_i,
-  input  logic                program_go_i,
-  input  logic                program_read_back_enable_i,
+  input efuse_addr_t program_addr_i,
+  input logic        program_data_in_i,
+  input logic        program_go_i,
+  input logic        program_read_back_enable_i,
 
-  output logic                program_busy_o,
-  output logic                program_done_o,
-  output logic                program_error_o,
-  output efuse_data_t         program_read_back_data_o,
+  output logic        program_busy_o,
+  output logic        program_done_o,
+  output logic        program_error_o,
+  output efuse_data_t program_read_back_data_o,
 
   // Address validation: oob computed in controller against full-width
   // CSR field (the cast to efuse_addr_t that produces program_addr_i
   // truncates upper bits, so the bounds check must live upstream).
-  input  logic                program_addr_oob_i,
-  output logic                program_addr_error_o,
-  input  logic                program_addr_error_clear_i,
+  input  logic program_addr_oob_i,
+  output logic program_addr_error_o,
+  input  logic program_addr_error_clear_i,
 
-  input  logic                efuse_req_err_i,
-  input  logic                secure_tm_blocked_i,
+  input logic efuse_req_err_i,
+  input logic secure_tm_blocked_i,
 
-  input  logic                program_req_timeout_en_i,
-  input  logic [27:0]         program_req_timeout_cycles_i,
+  input logic        program_req_timeout_en_i,
+  input logic [27:0] program_req_timeout_cycles_i,
 
-  output fuse_command_req_t   fuse_command_req_o,
-  input  fuse_command_resp_t  fuse_command_resp_i,
+  output fuse_command_req_t  fuse_command_req_o,
+  input  fuse_command_resp_t fuse_command_resp_i,
 
   // Debug signals
-  output logic                is_program_timeout_debug_o
+  output logic is_program_timeout_debug_o
 );
 
   localparam fuse_command_req_t FUSE_COMMAND_REQ_DEFAULT = '0;
+  localparam efuse_data_t EFUSE_PROGRAM_ERROR_DATA = efuse_data_t'('hbadcab1e);
 
   // Timeout logic
   logic [27:0] timeout_count_q, timeout_count_d;
@@ -65,9 +68,9 @@ module efuse_program_interface #(
   logic        captured_program_data;
 
   // Program execution state machine
-  typedef enum logic {
-    ST_PROGRAM_IDLE = 1'b0,
-    ST_WAIT_RESP    = 1'b1
+  typedef enum logic [1:0] {
+    ST_PROGRAM_IDLE = 2'b01,
+    ST_WAIT_RESP    = 2'b10
   } efuse_program_state_e;
 
 
@@ -111,18 +114,18 @@ module efuse_program_interface #(
     unique case (program_state_q)
       ST_PROGRAM_IDLE: begin
         if (program_go_i) begin
-          program_done_d = 1'b0;
+          program_done_d  = 1'b0;
           timeout_count_d = 'd0;
           if (!program_enable_i) begin
             program_state_d = ST_PROGRAM_IDLE;
-            program_busy_d = 1'b0;
-            program_done_d = 1'b1;
-            program_err_d = 1'b1;
+            program_busy_d  = 1'b0;
+            program_done_d  = 1'b1;
+            program_err_d   = 1'b1;
           end else if (program_data_in_i == 1'b0) begin
             program_state_d = ST_PROGRAM_IDLE;
-            program_busy_d = 1'b0;
-            program_done_d = 1'b1;
-            program_err_d = 1'b1;
+            program_busy_d  = 1'b0;
+            program_done_d  = 1'b1;
+            program_err_d   = 1'b1;
           end else if (program_addr_oob_i) begin
             program_state_d = ST_PROGRAM_IDLE;
             program_busy_d = 1'b0;
@@ -166,7 +169,7 @@ module efuse_program_interface #(
 
           program_done_d = 1'b0;
           program_busy_d = 1'b1;
-          program_err_d =  1'b0;
+          program_err_d  = 1'b0;
 
           if (program_req_timeout_en_i && timeout_count_d >= program_req_timeout_cycles_i) begin
             program_done_d = 1'b1;
@@ -187,8 +190,8 @@ module efuse_program_interface #(
         program_state_d = ST_PROGRAM_IDLE;
         program_busy_d = 1'b0;
         program_done_d = 1'b1;
-        program_err_d = 1'b0;
-        program_read_back_data_d = efuse_data_t'(0);
+        program_err_d = 1'b1;
+        program_read_back_data_d = EFUSE_PROGRAM_ERROR_DATA;
         fuse_command_req_d = FUSE_COMMAND_REQ_DEFAULT;
       end
 
@@ -238,7 +241,24 @@ module efuse_program_interface #(
   assign program_done_o = program_done_q;
   assign program_error_o = program_err_q;
   assign program_read_back_data_o = program_read_back_data_q_n0_scan;
-  assign fuse_command_req_o = fuse_command_req_q;
   assign is_program_timeout_debug_o = program_timeout_event;
+
+  always_comb begin
+    fuse_command_req_o = FUSE_COMMAND_REQ_DEFAULT;
+    if (program_state_q == ST_WAIT_RESP) begin
+      fuse_command_req_o = fuse_command_req_q;
+    end
+  end
+
+  // verilog_format: off  // Downstream synthesis tooling mis-parses verible's line breaks inside these macro calls.
+  `OCAH_OT_ASSERT(
+      IllegalProgramStateSuppressesRequest_A,
+      ($isunknown(program_state_q) || !(program_state_q inside {ST_PROGRAM_IDLE, ST_WAIT_RESP})) |-> !fuse_command_req_o.valid,
+      clk_i, !rst_ni)
+  `OCAH_OT_ASSERT(
+      IllegalProgramStateFailsClosed_A,
+      ($isunknown(program_state_q) || !(program_state_q inside {ST_PROGRAM_IDLE, ST_WAIT_RESP})) |=> program_state_q == ST_PROGRAM_IDLE && !program_busy_o && program_done_o && program_error_o && !fuse_command_req_o.valid && program_read_back_data_o == EFUSE_PROGRAM_ERROR_DATA,
+      clk_i, !rst_ni)
+  // verilog_format: on
 
 endmodule : efuse_program_interface

@@ -83,6 +83,13 @@ Every `[[holes]]` row that #507 writes must carry:
 it after the owner signs. Weekly `coverage: true` without that knob
 is not a release coverage gate.
 
+A waiver reaches a finished run without a simulator:
+`python3 tools/dv/run_dv.py --dut smc --run-dir <run> --waive` re-grades
+the run's report against this policy and rewrites its coverage grade in
+place. A dispatch of `dashboard.yml` with the weekly's regress run id does
+the same for the published weekly. Both are described on the runner and
+dashboard pages under `tools/dv/doc/`.
+
 [[smc-cov-approval]]
 === Component approval (unsigned)
 
