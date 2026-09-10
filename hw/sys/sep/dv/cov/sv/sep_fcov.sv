@@ -577,6 +577,10 @@ module sep_fcov (
       (((efuse_prog_bit - SpareLockBase) % LockBitsPerSlot) == 0);
   wire [2:0]  prog_lock_idx = (efuse_prog_bit - SpareLockBase) / LockBitsPerSlot;
 
+  // NOT cleared on reset: a programmed OTP lock bit is permanent, and the
+  // owning test re-senses (which pulses reset) between programming spare k's
+  // lock and proving the refusal. Clearing it here made every attempt score as
+  // `unlocked` -- measured 16 unlocked, 0 locked, with 8 of 16 cross cells dead.
   logic [SpareCount-1:0] spare_locked_q;   // write-lock programmed for spare k
   logic [2:0]            prog_spare_q;     // spare targeted by the pending GO
   logic                  prog_pending_q;   // a data program is awaiting its outcome
@@ -585,7 +589,10 @@ module sep_fcov (
   // --- eFuse -------------------------------------------------------------
   // Rising edge, not the held level: the level would score one hit per clock
   // for the rest of the run and make the bin count meaningless.
-  logic fuse_sense_done_q, fuse_sense_seen_q;
+  // fuse_sense_seen_q is likewise history: a re-sense follows a cold reset by
+  // definition, so clearing it on reset made the `re_sense` bin unfillable.
+  logic fuse_sense_done_q;
+  logic fuse_sense_seen_q;
   wire  fuse_sense = !in_reset && !skip_fuse_sense_q &&
       (fuse_sense_done_i === 1'b1) && !fuse_sense_done_q;
   wire  fuse_sense_episode = fuse_sense_seen_q;
@@ -692,6 +699,21 @@ module sep_fcov (
   wire         cold_kept_after_reset = rd_ev && warm_reset_q && cold_valid_q &&
       (ar_addr_q == cold_addr_q) && (rd_data == cold_data_q);
 
+  // History that OUTLIVES reset, so it cannot sit in the reset-bearing
+  // always_ff above. A programmed OTP lock bit is permanent, and a re-sense
+  // follows a cold reset by definition -- clearing either on reset made
+  // `cp_lock.locked` and `cp_episode.re_sense` unfillable (measured: 16
+  // unlocked / 0 locked). `initial` seeds them because there is no reset term.
+  initial begin
+    spare_locked_q    = '0;
+    fuse_sense_seen_q = 1'b0;
+  end
+
+  always @(posedge clk_i) begin
+    if (efuse_prog_go && prog_is_lock) spare_locked_q[prog_lock_idx] <= 1'b1;
+    if (fuse_sense)                    fuse_sense_seen_q <= 1'b1;
+  end
+
   // ------------------------------------------------------------------
   // Sampler state
   // ------------------------------------------------------------------
@@ -725,7 +747,6 @@ module sep_fcov (
       filt_win_entry_q   <= 32'hFFFF_FFFF;
       lc_prev_valid_q   <= 1'b0;
       feat_lo_valid_q   <= 1'b0;
-      spare_locked_q    <= '0;
       prog_pending_q    <= 1'b0;
       wdt_bark_q        <= 1'b0;
       cold_valid_q      <= 1'b0;
@@ -736,7 +757,6 @@ module sep_fcov (
       cpu_reset_n_q     <= 1'b1;
       cpu_reset_hi_q    <= 5'd0;
       fuse_sense_done_q <= 1'b0;
-      fuse_sense_seen_q <= 1'b0;
       esrc_seed_q       <= 1'b0;
       drbg_gen_q        <= 1'b0;
       fw_pass_q         <= 1'b0;
@@ -897,7 +917,6 @@ module sep_fcov (
           ((m_axi_rvalid_i === 1'b1 && m_axi_rready_i === 1'b1 &&
             m_axi_rlast_i === 1'b1) ? 4'd1 : 4'd0);
 
-      if (efuse_prog_go && prog_is_lock) spare_locked_q[prog_lock_idx] <= 1'b1;
       if (efuse_prog_go && prog_is_spare) begin
         prog_spare_q   <= prog_spare_idx;
         prog_locked_q  <= spare_locked_q[prog_spare_idx];
@@ -936,7 +955,6 @@ module sep_fcov (
       cpu_reset_hi_q <= (cpu_reset_n_i === 1'b1) ?
           ((cpu_reset_hi_q == 5'h1F) ? 5'h1F : cpu_reset_hi_q + 5'd1) : 5'd0;
       fuse_sense_done_q <= (fuse_sense_done_i === 1'b1);
-      if (fuse_sense) fuse_sense_seen_q <= 1'b1;
       esrc_seed_q       <= (drbg_seed_valid_i === 1'b1);
       drbg_gen_q        <= (drbg_genbits_vld_i === 1'b1);
       fw_pass_q         <= (fw_done_i === 1'b1) && (fw_pass_i === 1'b1);
@@ -1235,39 +1253,21 @@ module sep_fcov (
   covergroup sep_lc_transition_cg with function sample (logic [3:0] from, logic [3:0] to);
     option.per_instance = 1;
     option.name = "sep_lc_transition_cg";
-    cp_from: coverpoint from {
-      bins test_dev   = {LcTestDev};
-      bins prod       = {LcProd};
-      bins rma_sip_0  = {LcRmaSip0};
-      bins rma_sip_1  = {LcRmaSip1};
-      bins rma_chip_0 = {LcRmaChip0};
-      bins rma_chip_1 = {LcRmaChip1};
-      bins prod_end   = {LcProdEnd};
-    }
-    cp_to: coverpoint to {
-      bins test_dev   = {LcTestDev};
-      bins prod       = {LcProd};
-      bins rma_sip_0  = {LcRmaSip0};
-      bins rma_sip_1  = {LcRmaSip1};
-      bins rma_chip_0 = {LcRmaChip0};
-      bins rma_chip_1 = {LcRmaChip1};
-      bins prod_end   = {LcProdEnd};
-    }
-    // Only the three transitions the suite actually produces are declared.
+    // ONE coverpoint over the packed {from,to} pair rather than a cross of two
+    // 7-bin coverpoints: a cross auto-generates the full 7x7 product and the
+    // named bins do not suppress it, so it reported 46 cells no legal
+    // transition can reach. Three bins here are three cells.
     //
-    // A transition is recovered from two LC_STATE reads in the same leaf, and
-    // sep_lc_shadow_write_seq reads ONCE per cell (after its write), so the
-    // pair comes from consecutive cells within a leaf -- the stitch chain
-    // TEST_DEV -> PROD -> RMA_SIP_1 -> RMA_CHIP_1.
-    //
-    // Excluded on purpose: TEST_DEV->PROD_END and TEST_DEV->RMA_SIP have no
-    // walk (the PROD_END and RMA leaves START sensed in those states), and
-    // PROD->PROD_END is impossible under write-1-to-set at all -- 0x1 | 0x8 is
-    // 0x9, not 0x8.
-    x_transition: cross cp_from, cp_to {
-      bins test_dev_to_prod   = binsof(cp_from.test_dev)  && binsof(cp_to.prod);
-      bins prod_to_rma_sip    = binsof(cp_from.prod)      && binsof(cp_to.rma_sip_1);
-      bins rma_sip_to_chiplet = binsof(cp_from.rma_sip_1) && binsof(cp_to.rma_chip_1);
+    // A pair is two LC_STATE reads in the same leaf. sep_lc_shadow_write_seq
+    // reads ONCE per cell, after its write, so the pair is two consecutive
+    // cells -- the stitch chain TEST_DEV -> PROD -> RMA_SIP_1 -> RMA_CHIP_1.
+    // TEST_DEV->PROD_END and TEST_DEV->RMA_SIP have no walk (those leaves start
+    // sensed in the destination), and PROD->PROD_END is impossible under
+    // write-1-to-set: 0x1 | 0x8 is 0x9.
+    cp_transition: coverpoint {from, to} {
+      bins test_dev_to_prod   = {{LcTestDev,  LcProd}};
+      bins prod_to_rma_sip    = {{LcProd,     LcRmaSip1}};
+      bins rma_sip_to_chiplet = {{LcRmaSip1,  LcRmaChip1}};
     }
   endgroup
 
