@@ -351,12 +351,20 @@ class sep_firmware_bl1_ver_test(sep_rom_ot_dma_boot_test):
             f"verifier: {_PUBK_SEL}@{i_sel} -> {_FUSE_VER_ECHO}@{i_fuse} -> "
             f"{_RSA_START}@{i_rsa}. Console: {console}"
         )
-        # Exactly once each. One slot is attempted and there is no retry, so a
-        # second occurrence would mean the backup also reached the version check.
-        for marker in (_FUSE_VER_ECHO, _MFST_VER_ECHO, _RSA_START, _RSA_VERIFY_OK):
+        # One slot is attempted and there is no retry, so each marker's count is
+        # fixed by how many times the ROM emits it per slot. The device flags are
+        # read TWICE: the library re-runs the version check after the signature
+        # (OCA_RECHECK_SECURITY_VERSION), which is fault-injection hardening, so
+        # a count of one there would mean the recheck did not happen.
+        for marker, want in (
+            (_FUSE_VER_ECHO, 2),
+            (_MFST_VER_ECHO, 1),
+            (_RSA_START, 1),
+            (_RSA_VERIFY_OK, 1),
+        ):
             n = sum(1 for line in console if marker in line)
-            assert n == 1, (
-                f"{marker} appeared {n} times, expected exactly 1 (the primary's). "
+            assert n == want, (
+                f"{marker} appeared {n} times, expected {want} (the primary's). "
                 f"Console: {console}"
             )
         self.logger.info(

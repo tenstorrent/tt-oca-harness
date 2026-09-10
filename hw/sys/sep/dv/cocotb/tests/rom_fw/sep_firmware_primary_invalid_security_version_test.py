@@ -231,11 +231,17 @@ class sep_firmware_primary_invalid_security_version_test(sep_primary_fail_backup
         )
         # The fuse floor must have been read twice -- once per slot -- so the
         # accept and the reject came from the same floor.
+        # Three, and the split is the point: the primary is rejected AT the first
+        # version check so it reads the flags once and stops, while the backup
+        # passes and is checked again after the signature
+        # (OCA_RECHECK_SECURITY_VERSION). A count of two would mean either the
+        # primary got past the comparison or the backup was never rechecked.
         n_fuse = sum(1 for line in console if _FUSE_VER_ECHO in line)
-        assert n_fuse == 2, (
-            f"{_FUSE_VER_ECHO} appeared {n_fuse} times, expected 2 (one per slot): "
-            f"the reject and the accept must be measured against the same floor. "
-            f"Console: {console}"
+        assert n_fuse == 3, (
+            f"{_FUSE_VER_ECHO} appeared {n_fuse} times, expected 3 (once for the "
+            f"rejected primary, twice for the backup that also gets the "
+            f"post-signature recheck). Both slots are measured against the same "
+            f"floor. Console: {console}"
         )
         self.logger.info(
             "CHK-ROLLBACK-FAILOVER: %s + %s@%d -> rollback@%d -> backup@%d "
