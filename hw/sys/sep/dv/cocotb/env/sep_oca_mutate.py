@@ -289,9 +289,18 @@ def signature_size(buf: bytes, slot: str) -> int:
 
 
 def describe(buf: bytes, slot: str) -> str:
-    """One-line summary of a slot, for test log lines. Works for either variant."""
+    """One-line summary of a slot, for test log lines. Works for either variant.
+
+    Reports an unrecognised magic rather than raising on it: a caller logging a
+    slot it has just corrupted on purpose needs the description in exactly that
+    case, and a diagnostic that refuses to describe a malformed image is of no
+    use where it matters most.
+    """
     base = slot_base(slot)
-    v = variant_at(buf, base)
+    magic = bytes(buf[base : base + 4])
+    v = next((x for x in _VARIANTS if magic == x.magic), None)
+    if v is None:
+        return f"{slot}@0x{base:x} magic={magic!r}, not a packed OCA manifest"
     out = f"{slot}@0x{base:x} {v.format_name} body={v.body_size}"
     if v.magic == K.OCAC_MAGIC:
         digest = bytes(buf[base + OFF_MANIFEST_HASH : base + OFF_MANIFEST_HASH + 8])
