@@ -465,6 +465,8 @@ partition "Hand-off [C18]" {
 |— |Reset entry, warm-reset check |Hart gate, trap vector, MRAC, warm-reset detection *before
 any DCCM access* |<<sec:cpu_init>>, <<sec:warm_reset>>
 |— |PMP programming |Execution fences installed before any C code runs |<<sec:pmp>>
+|[V3] |DFT / MEM_REPAIR gate |Memory-repair and MBIST results checked in `vector.S`, before
+the DCCM scrub; bypassable by strap |<<sec:smc_sync>>
 |[C0] |Runtime init + entry checks |DCCM scrub, `.data`/`.bss` init, runtime self-check, SMC
 scratch round-trip sanity |<<sec:cpu_init>>
 |[C1] |ROM identity |Version string + build-time ROM SHA-256 reported |<<sec:boot_measurement>>
@@ -476,8 +478,6 @@ read in the flow |<<sec:fuses>>
 |[C6] |Lifecycle policy |LC_STATE read + validated; invalid state bricks the SMU
 |<<sec:fuses>>
 |[C7] |Chip ID |`CHIP_CONFIG_CHIP_ID` read and reported |<<sec:smc_sync>>
-|[V3] |DFT / MEM_REPAIR gate |Memory-repair completion checked, bypassable by strap
-|<<sec:smc_sync>>
 |— |Peripheral/bus reset |OCAH-specific peripheral reset sequencing |<<sec:cpu_init>>
 |[C8] |Crypto init |SHA-256 self-test against NIST vector |<<sec:cpu_init>>
 |[C9a/b/c] |Memory clear + state init |SEP SRAM clear, ICCM clear, `bl0_state` init
@@ -566,13 +566,16 @@ environment:
    ROM execution: `mie` is cleared and `mstatus.MIE` is cleared at entry, and no ROM stage
    re-enables them.
 6. The PMP execution fences are programmed — see <<sec:pmp>>.
-7. *DCCM scrub.* [[req-SEP-ROM-CPU-160]]*[SEP-ROM-CPU-160]* The ROM shall leave DCCM in a
+7. *MEM_REPAIR / MBIST gate.* The memory-repair and MBIST results are checked here, in
+   assembly, before the DCCM scrub below writes 128 KiB into memories whose repair state is
+   still unknown ([V3], <<sec:smc_sync>>).
+8. *DCCM scrub.* [[req-SEP-ROM-CPU-160]]*[SEP-ROM-CPU-160]* The ROM shall leave DCCM in a
    deterministic state before the C runtime reads it, so that no uninitialized-ECC read and no
    stale value from a previous boot reaches the boot flow. The stub zero-fills DCCM from its
    base up to at most `__stack_top`. The scrub length is a build-time knob
    (`DCCM_SCRUB_BYTES`, default 128 KiB = full DCCM); `0` disables the scrub and is a
    simulation-preload configuration only, not a product one.
-8. *C runtime init.* `.data` is copied from its load image in ROM (`__data_load_start`, LMA
+9. *C runtime init.* `.data` is copied from its load image in ROM (`__data_load_start`, LMA
    assigned by `AT> rom`) to its DCCM run address, and `.bss` is zeroed.
 
 The stub then calls `rom_main()`. If `rom_main()` ever returns, the stub parks in `wfi`.
@@ -646,7 +649,6 @@ clock mux to the PLL. The resulting sysclk frequency parameterizes the SPI clock
 (<<sec:spi>>). The PLL and the mux are SMC-owned; SEP has none of its own.
 |[C6] lifecycle |LC_STATE read + policy (<<sec:fuses>>).
 |[C7] chip ID |`CHIP_CONFIG_CHIP_ID` read and reported.
-|[V3] DFT gate |Memory-repair gate (<<sec:smc_sync>>).
 |Peripheral reset |OCAH-specific peripheral/bus reset sequencing.
 |[C8] crypto self-test |SHA-256 of `"abc"` computed on the HMAC block and compared against
 the NIST reference digest. See requirement below.

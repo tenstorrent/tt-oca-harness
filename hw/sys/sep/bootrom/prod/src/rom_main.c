@@ -16,6 +16,7 @@
 //
 // Boot flow for the SEP BL0 sequence
 //
+//   [V3]    DFT / MEM_REPAIR gate — runs in vector.S, before the DCCM scrub
 //   [C0]    main() entry + runtime init check
 //   [C1]    ROM version + hash print (hash filled at build time)
 //   [C2]    init_straps() → structured boot config
@@ -25,7 +26,6 @@
 //   [C9c]   init_bl0_state()   (must precede every bl0_state writer)
 //   [C6]    lifecycle policy
 //   [C7]    chip ID identification (reads SMC CHIP_CONFIG_CHIP_ID)
-//   [V3]    DFT / MEM_REPAIR gate — in vector.S, before the DCCM scrub
 //    —      peripheral/bus reset
 //   [C8]    crypto/security init
 //   [C9a]   EXT SRAM clear
