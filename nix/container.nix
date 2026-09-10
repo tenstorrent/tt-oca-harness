@@ -48,6 +48,7 @@ rec {
       Env = builtins.attrValues (builtins.mapAttrs (e: v: "${e}=${v}") ocah.ocah_env) ++ [
         "PS1=${PS1}"
         "TMPDIR=/tmp"
+        "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
       ];
       WorkingDir = workDir;
     };

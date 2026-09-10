@@ -55,8 +55,7 @@ in
         OCAH_REG_PEAKRDL = "${uv_loaded.venv}/bin/peakrdl";
         OCAH_REG_SKIP_UV_SYNC = "1";
       }
-    else
-      { }
+    else { }
   );
   # Full list of packages to include in the container image and dev shell.
   ocah_pkgs =
@@ -107,7 +106,7 @@ in
         ]
       else
         [
-
+          python311
         ]
     );
 }
