@@ -250,6 +250,42 @@ makes the scroll area keyboard-operable.
 The PDF backend sees none of the passthrough HTML and uses the column widths
 from the table attribute block directly.
 
+### 7c. Inline SVG figure label sizes and connector rules
+
+Block-diagram SVGs embedded inline must be readable at normal zoom without the
+image viewer.  Target effective sizes after `scaledwidth` scaling at a 1280 px
+desktop viewport (article width approximately 860 px for 90% scale):
+
+| Text class | Minimum SVG font-size | Notes |
+|---|---|---|
+| Block/section title | 14 px | Top-level group labels |
+| Essential sub-block label | 13 px | Named modules and major components |
+| Secondary label / detail | 12 px | Subtitle lines inside blocks |
+| Port / signal name | 11 px monospace | Left/right margin signal names |
+
+PDF uses the same source SVG; at standard A4/Letter page width a 90%-scaled
+1000 px figure is approximately 460 pt wide.  A 14 px SVG label becomes ~6 pt
+at that scale — near the 9 pt floor.  If a figure is too dense to meet both
+floors simultaneously, simplify it and move retained detail into adjacent prose
+or a separately captioned detail figure.
+
+**Alt attribute**: Use the named `alt=` form in the image macro when the alt
+text contains a comma, to avoid the comma being parsed as the width separator:
+
+```adoc
+image::my_figure.svg[alt="Description with commas, here",scaledwidth=90%]
+```
+
+**Connector rules** for block diagrams:
+
+- Use orthogonal routing only (horizontal + vertical segments); no diagonals.
+- Enter and exit each block at a deliberate point on its boundary; do not pass
+  a connector through an unrelated block, label or port marker.
+- Use distinct colours for conceptually distinct signal groups (e.g. JTAG/scan
+  vs CTN vs pad I/O vs control).  Add a short prose legend for each colour.
+- Distinguish direction: solid arrows for primary/request direction; dashed for
+  return/selection paths.
+
 Generated register documentation comes from SystemRDL (`.rdl`) sources. PDF
 includes use `hw/<...>/regs/gen/adoc/`; HTML includes use staged partials from
 `hw/<...>/regs/gen/html/`. Do not copy field descriptions into prose and do not
