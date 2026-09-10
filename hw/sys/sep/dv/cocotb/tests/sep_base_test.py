@@ -1195,7 +1195,7 @@ class sep_base_test(uvm_test):
 
         self.logger.info(
             "EVIDENCE_SUMMARY test=%s observed=%d required=%d missing=%d ids=%s",
-            self.get_name(),
+            self.get_type_name(),
             len(seen),
             len(required),
             len(missing),
@@ -1209,7 +1209,7 @@ class sep_base_test(uvm_test):
             problems.append("never emitted: " + ", ".join(missing))
         if problems:
             raise AssertionError(
-                f"EVIDENCE FAIL {self.get_name()}: "
+                f"EVIDENCE FAIL {self.get_type_name()}: "
                 + "; ".join(problems)
                 + " -- the run exited cleanly without grading what it claims to grade"
             )
