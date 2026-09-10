@@ -4,7 +4,7 @@ import pathlib
 import re
 
 root = pathlib.Path(__file__).resolve().parents[5]
-rom = (root / "hw/sys/sep/doc/rom.adoc").read_text()
+rom = (root / "hw/sys/sep/bootrom/prod/doc/rom.adoc").read_text()
 
 # gather all defined identifiers from ROM + validator sources
 srcs = []

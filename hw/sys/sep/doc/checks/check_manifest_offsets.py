@@ -13,7 +13,7 @@ alias = {
     "encryption_key_derivation_function": "encryption_kdf",
     "boot_manifest_magic": "boot_manifest_magic",
 }
-rom = (root / "hw/sys/sep/doc/rom.adoc").read_text()
+rom = (root / "hw/sys/sep/bootrom/prod/doc/rom.adoc").read_text()
 lines = rom.split("\n")
 print("Inline 'offset NNNN' citations in rom.adoc:\n")
 hits = 0

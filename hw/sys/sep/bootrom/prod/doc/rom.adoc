@@ -2714,7 +2714,7 @@ the legacy tt_sep assignments; `0x200`+ are OCAH-specific). The C header and the
 are generated from it; the table below is likewise generated — do not hand-edit code values
 anywhere, including here.
 
-include::gen/status_values.adoc[]
+include::../../../doc/gen/status_values.adoc[]
 
 ===== Fatal ROM Error Codes
 
