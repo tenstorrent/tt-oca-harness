@@ -53,11 +53,11 @@ itself say which wrong source was used, and the sibling
 ``sep_firmware_chiplet_pubkey_0_test`` (HASH0 real, HASH1 decoy) is what
 separates them.
 
-Those three fuse values are byte-identical to
-``sep_efuse_lc_prod_chiplet_key1.toml``'s, which makes this testcase and
-``sep_firmware_chiplet_pubkey_1_test`` a MATCHED PAIR on the FUSE side: one fuse
-image, two manifests differing only in ``public_key_sel``, opposite verdicts.
-That is the mirror of the matched-pair-on-one-image shape batches R1 and R2 used.
+Those three fuse values are byte-identical to ``sep_efuse_lc_prod_chiplet_key1.toml``'s,
+which makes this testcase and ``sep_firmware_chiplet_pubkey_1_test`` a Matched pair on
+the FUSE side: one fuse image, two manifests differing only in ``public_key_sel``,
+opposite verdicts. That is the mirror of the matched-pair-on-one-image shape batches R1
+and R2 used.
 
 **WHAT IT DOES NOT CATCH, stated because R07 overstates this and the
 overstatement was inherited.** R07 cites  -- which

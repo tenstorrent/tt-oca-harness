@@ -25,22 +25,17 @@ member writes its own ``demotion_required``, ``demotion_values``,
 "parameterise the scenario, never parameterise the evidence" is the rule three
 earlier batches of this run were graded against.
 
-:meth:`_demotion_prod_mixin.__init_subclass__` then cross-checks those four
-written declarations against :func:`outcome_for` applied to the member's own
-three input bits. The two statements come from different places -- the member's
-from the reference row it ports, the function's from the ROM's control flow --
-so requiring them to agree catches a copy-paste between members, which is the
-failure mode a family of near-identical files actually has. Agreement is not
-proof of correctness and is not claimed as such; it is two independent
+:meth:`_demotion_prod_mixin.__init_subclass__` then cross-checks those four written
+declarations against :func:`outcome_for` applied to the member's own three input bits.
+Agreement is not proof of correctness and is not claimed as such; it is two independent
 transcriptions of one table having to match.
 
 ============================================================================
 ``+SECURE_BOOT_DIS`` DRIVES TWO SURFACES, AND THEY ARE COUPLED
 ============================================================================
 
-This is the single most expensive thing the VP half of this run learned, and it
-is inherited here rather than rediscovered (``batch_runs_0904_vp/FINDINGS.md``
-F11 item 1, which RETRACTS an earlier instruction). The reference's plusarg:
+This is the single most expensive thing the VP half of this run learned, and it is
+inherited here rather than rediscovered.
 
   * sets ``secure_boot: 0``, which the packer
     turns into TWO packed-field changes, not one -- see below;
@@ -72,11 +67,7 @@ manifest source and ``LC=PROD_END`` are forbidden, ``FUSE: SBOOT_DIS: 1``
 the base's :meth:`~sep_demotion_decision_base._check_primary_served` additionally
 proves from the DEVICE side that no read touched the backup span.
 
-The primary keeps its stale dev0 signature bytes rather than a blank field. That
-is a deliberate, disclosed difference from the reference, whose packer emits an
-empty signature: it is inert here because the signature path is never called
-at all on this path, and a syntactically complete signature is the harder case
-for anything that might later examine the field.
+The primary keeps its stale dev0 signature bytes rather than a blank field.
 
 The BACKUP is re-signed and stays fully valid; only its ``life_cycle_states`` is
 narrowed. That is what makes the forbidden backup read meaningful rather than
@@ -86,17 +77,14 @@ trivially satisfied by an unusable backup.
 WHAT THE SHARED SKELETON DOES NOT COVER
 ============================================================================
 
-``sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test`` (batch R3's
-O2a member) predates this module and performs the same three ``mm`` calls inline.
-It is deliberately NOT refactored onto :func:`apply_secure_boot_dis`: it is an
-approved, passing row whose docstring is its own evidence record, and rewriting
-it would put that row's provenance at risk to remove three duplicated lines. **The
-duplication is named HERE ONLY -- that member carries no reference back to this
-module, because editing it is exactly what was declined** -- so a future packer
-change must be applied in both places and this paragraph is the only thing that
-says so. Both copies are anchored by the same two assertions
-(``signature_type == NO_SIGNATURE`` and ``secure_boot_control`` bit 0 clear), so a change
-that broke one would fail the other loudly rather than silently.
+``sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test`` (batch R3's O2a
+member) predates this module and performs the same three ``mm`` calls inline. It is
+deliberately NOT refactored onto :func:`apply_secure_boot_dis`: it is an approved,
+passing row whose docstring is its own evidence record, and rewriting it would put that
+row's provenance at risk to remove three duplicated lines. Both copies are anchored by
+the same two assertions (``signature_type == NO_SIGNATURE`` and ``secure_boot_control``
+bit 0 clear), so a change that broke one would fail the other loudly rather than
+silently.
 """
 
 from __future__ import annotations
@@ -110,7 +98,7 @@ from rom_fw.sep_demotion_decision_base import (
 from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
 
 # Console tokens, each verified to occur exactly once in bootrom/prod/src/ so no
-# forbid below is inert (the inert-forbid trap is vp FINDINGS F10 item 5).
+# forbid below is inert.
 _LC_PROD = "LC=PROD"  # lifecycle.c
 _LC_PROD_END = "LC=PROD_END"  # lifecycle.c
 _SBOOT_DIS_FUSE = "FUSE: SBOOT_DIS: 1"  # rom_main.c

@@ -443,7 +443,7 @@ class sep_chiplet_pubkey_revoked_base(_chiplet_key_mixin, sep_backup_manifest_fa
     bootable, so one fuse bit refuses two valid images and the retry loop exhausts
     (``MANIFEST_ALL_FAILED``, ). That is the strict form of
     the revocation property, and it is available here for BOTH members -- unlike the
-    ROM-slot families, where only slot 0 could be strict (``FINDINGS.md`` R01).
+    ROM-slot families, where only slot 0 could be strict.
     """
 
     _REVOKED = True

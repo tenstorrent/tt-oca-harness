@@ -7,17 +7,10 @@ point: a manifest correct in every other respect -- right magic, length, hash, k
 slot, key digest and version -- must still fail authentication. A larger corruption
 would be a weaker test, because something else would also catch it.
 
-THE MECHANISM IS THE REFERENCE'S OWN. The reference makes no manifest modification at all
-for this scenario (``manifest_modifications`` is empty); it packs a clean image and
-then post-processes the packed ``.spi_preload`` with
-``tamper_spi_preload_signature(which="primary", mode="flip")``, which is
-``flip_signature_byte(..., byte_index=0, xor_mask=0x01)``.
 ``mm.flip_signature_byte(buf, "primary", byte_index=0, xor_mask=0x01)`` is the same
 byte, the same mask and the same stage of the flow.
 
-THE EXPECTED OUTCOME IS A COMPLETED BOOT. The reference's ``expected_patterns``
-(``sep_firmware_secure_boot_test.py``) grade the primary rejection
-``WARNING: INVALID_SIGNATURE`` and end in ``COPY_AND_EXEC_IMAGE / EXEC_IMAGE``.
+The expected outcome is A Completed boot.
 
 **THIS IS THE ONE MEMBER OF THIS GROUP WHOSE PRIMARY MUST REACH THE VERIFIER**, so
 it declares ``primary_expected_rsa_starts = 1``. The base then requires the
@@ -41,12 +34,11 @@ console separates them in both directions and both halves are asserted here:
   * ``PUBK_ALGO_UNSUPPORTED`` is forbidden here and expected there, and
     ``RSA_EXEC_FAIL`` is required here and forbidden there.
 
-PLATFORM ADAPTATION -- MARKER. The reference expects
-``WARNING: INVALID_SIGNATURE``. This ROM *defines* ``SEP_MSG_INVALID_SIGNATURE``
-but never EMITS it: there is no ``report_status`` call for it anywhere under
-``bootrom/prod/src``, so the architected status ring carries only the generic code
-and the console token ``RSA_PKCS1_FAIL`` (``rsa_verify.c:175``, reached only when
-the recovered padding and digest do not match) is the per-reason evidence.
+Platform adaptation -- MARKER. This ROM *defines* ``SEP_MSG_INVALID_SIGNATURE`` but
+never EMITS it: there is no ``report_status`` call for it anywhere under
+``bootrom/prod/src``, so the architected status ring carries only the generic code and
+the console token ``RSA_PKCS1_FAIL`` (``rsa_verify.c:175``, reached only when the
+recovered padding and digest do not match) is the per-reason evidence.
 
 The signature field sits OUTSIDE the region the manifest hash covers
 (``sep_oca_mutate.OFF_SIGNATURE`` == ``SIGNED_REGION_END``), so this needs neither

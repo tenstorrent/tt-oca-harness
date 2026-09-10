@@ -7,14 +7,10 @@ backup's ``signature_type`` is set to 0. The signature path accepts only
 ``MANIFEST_SIG_TYPE_RSA_3072`` (1, ) and refuses anything else
 with ``PUBK_ALGO_UNSUPPORTED``.
 
-WHY 0, AND WHY A FIXED VALUE. The reference draws from
-``random.choice([0, random.randint(3, 10)])``,
-so 0 is one of its own values; it is deliberately NOT 2, because 2 is
-``MANIFEST_SIG_TYPE_ECC_P_256`` and the reference avoids the
-one non-RSA type its packer treats specially. The ROM's check is a single ``!=``
-against RSA-3072, so every value in that set exercises the identical arm, and
-fixing it is what lets this testcase assert the exact ``PUBK_ALGO_UNSUPPORTED`` the ROM
-echoed rather than accepting any value at all -- the same reason
+WHY 0, And why A Fixed value. The ROM's check is a single ``!=`` against RSA-3072, so
+every value in that set exercises the identical arm, and fixing it is what lets this
+testcase assert the exact ``PUBK_ALGO_UNSUPPORTED`` the ROM echoed rather than accepting
+any value at all -- the same reason
 ``sep_firmware_backup_invalid_public_key_selection_test`` fixes its selection.
 
 THE ROM DOES VALIDATE TYPE SEPARATELY FROM VALUE, AND THIS TEST PROVES IT RATHER

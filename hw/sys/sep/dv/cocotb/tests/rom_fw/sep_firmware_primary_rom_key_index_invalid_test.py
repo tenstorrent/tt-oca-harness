@@ -11,10 +11,7 @@ written, and deliberately NOT the primary's ``manifest_identifier`` the way its
 backup-side sibling does, because the primary has to REACH the check
 under test. So there is no BAD_MAGIC failover trigger here.
 
-THE EXPECTED OUTCOME IS A COMPLETED BOOT. The reference's ``expected_patterns``
-(``sep_firmware_secure_boot_test.py``) grade the primary rejection
-``WARNING: INVALID_KEY_INDEX`` and end in ``BACKUP_BL1_LOADED /
-COPY_AND_EXEC_IMAGE / EXEC_IMAGE``. Its backup-side sibling is the terminal one,
+The expected outcome is A Completed boot. Its backup-side sibling is the terminal one,
 grading the same rejection ``ERROR:``.
 
 WHY 26 AND NOT 31. Twenty-six is ``OCA_KEY_SLOT_MAX + 1`` exactly -- the
@@ -23,13 +20,12 @@ against a ROM that had written ``>=`` instead of ``>``, so only the boundary pin
 the comparison. Slot 25 is a fuse-held chiplet key and would be accepted, which
 is what makes this the boundary rather than merely a large number.
 
-THIS IS A DIFFERENT ARM FROM
-``sep_firmware_primary_invalid_public_key_selection_test``. That testcase names
-TWO slots and is refused for ambiguity, before any slot number is resolved. This
-one names exactly one slot, which is resolved and echoed, and then refused for
-being reserved. Both return ``MANIFEST_ERR_SIG_FAILED``, so
-``PUBK_SEL_AMBIGUOUS`` is forbidden here and ``PUBK_SLOT_RESERVED`` required --
-the console token is the only discriminator.
+This is A DIFFERENT ARM FROM ``sep_firmware_primary_invalid_public_key_selection_test``.
+That testcase names TWO slots and is refused for ambiguity, before any slot number is
+resolved. This one names exactly one slot, which is resolved and echoed, and then
+refused for being reserved. Both return ``MANIFEST_ERR_SIG_FAILED``, so
+``PUBK_SEL_AMBIGUOUS`` is forbidden here and ``PUBK_SLOT_RESERVED`` required -- the
+console token is the only discriminator.
 
 **THE LOAD-BEARING CHECK IS THE ``PUBK_REVOKE=`` COUNT, AND IT CANNOT BE A PLAIN
 FORBID.** The reserved-range check runs inside ``is_key_authorized``, which the
@@ -44,24 +40,12 @@ without weakening into "the token may appear". ``PUBK_SLOT_UNPROVISIONED`` is
 forbidden for the same reason one step later: a reserved slot must never reach
 the anchor lookup.
 
-PLATFORM ADAPTATION -- MARKER, AND THE GAP IS WIDER THAN THE ERROR TOKEN. The
-reference's pattern list for this scenario has ELEVEN entries and SIX of the codes
-they name have no ``report_status`` call anywhere under ``bootrom/prod/src``:
-``WARNING: INVALID_KEY_INDEX`` (``status_values.h``), ``STATUS: USING_ROM_KEY``, ``STATUS: START_MANIFEST_VALIDATION``,
-``STATUS: START_PAYLOAD_VALIDATION``, ``STATUS: PAYLOAD_VALIDATED``
- and ``STATUS: BACKUP_BL1_LOADED``. So the substitution is not
-confined to the rejection reason: the architected ring carries only the generic
-terminal code plus ``MANIFEST_VALIDATED`` / ``COPY_AND_EXEC_IMAGE`` / ``EXEC_IMAGE``,
-and the debug console supplies everything else. Recorded as
-``batch_runs_0904_rtl/FINDINGS.md`` R04.
+Platform adaptation -- MARKER, AND THE GAP IS WIDER THAN THE ERROR TOKEN. So the
+substitution is not confined to the rejection reason: the architected ring carries only
+the generic terminal code plus ``MANIFEST_VALIDATED`` / ``COPY_AND_EXEC_IMAGE`` /
+``EXEC_IMAGE``, and the debug console supplies everything else.
 
-A SECOND NARROWING, DISCLOSED. The reference regenerates and RE-SIGNS its image
-(``sep_firmware_secure_boot_test.py`` drives ``run_manifest_generator``
-at and ``build_firmware``), so its primary is legal in every respect except the index. Here
-the selector write re-hashes the TBS and leaves the dev0 signature stale, so this
-testcase proves "the bound runs BEFORE the revocation check and before the
-verifier", not the reference's stronger "the bound refuses an otherwise fully valid
-manifest". The mechanism is pinned rather than assumed --
+A Second narrowing, DISCLOSED. The mechanism is pinned rather than assumed --
 ``primary_expected_rsa_starts = 0`` requires the primary never to reach
 ``rsa_3072_verify`` -- but the narrowing is real and slot 0 of the revoke family is
 where this group's strict form lives instead.

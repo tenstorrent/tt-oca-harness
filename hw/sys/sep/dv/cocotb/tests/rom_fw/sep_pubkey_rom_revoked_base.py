@@ -17,10 +17,9 @@ checks. :meth:`check_efuse` additionally requires the fuse bitmap to be EXACTLY
 this slot's bit, so a wider bitmap -- which could reject the manifest through a
 slot the testcase did not select -- fails loudly instead of passing.
 
-WHY REVOCATION IS THE ONLY POSSIBLE VERDICT, PER SLOT. The signature path
-consults the fuse bitmap BEFORE the compiled-in digest
-table  and before ``rsa_3072_verify``. Slot 0 is the only
-populated entry in ``key_digests.c``; slots 1-5 are ``(void *)0``. So:
+WHY REVOCATION IS THE ONLY POSSIBLE VERDICT, Per slot. The signature path consults the
+fuse bitmap BEFORE the compiled-in digest table  and before ``rsa_3072_verify``. Slot 0
+is the only populated entry in ``key_digests.c``; slots 1-5 are ``(void *)0``. So:
 
   * slots 1-5 would otherwise be rejected as ``PUBK_SLOT_UNPROVISIONED``, and forbidding
     that marker is what pins the ORDER -- revocation before the digest table;
@@ -58,12 +57,11 @@ same ``mm.break_magic`` failover trigger)
 and differs only in leaving ``CHIPLET_PUBK_REVOKE`` clear -- fuse clear boots,
 bit 0 set is refused, on the same bytes.
 
-THE FUSE BIT IS THE SLOT NUMBER, and the authority for that is the register map,
-not the ROM's own header: ``CHIPLET_PUBK_REVOKE.select[7:0]`` is the ROM-key
-bitmap (``regs/blocks/sep_efuse_map/sep_efuse_map.rdl:721-729``) and the ROM
-indexes it with the manifest's key index directly.
-The fused-key slots do NOT continue that sequence -- they sit at bits 16 and
-above -- so nothing here may be derived by counting past slot 5.
+The fuse bit is the slot number, and the authority for that is the register map, not the
+ROM's own header: ``CHIPLET_PUBK_REVOKE.select[7:0]`` is the ROM-key bitmap
+(``regs/blocks/sep_efuse_map/sep_efuse_map.rdl:721-729``) and the ROM indexes it with
+the manifest's key index directly. The fused-key slots do NOT continue that sequence --
+they sit at bits 16 and above -- so nothing here may be derived by counting past slot 5.
 
 No ``+esrc_noise_force`` on any member: revocation precedes the signature
 step, so OTBN is never driven.

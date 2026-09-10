@@ -28,19 +28,17 @@ reading the selector and the revocation bitmap and then verifying with them:
   * and the shared base requires the failover ordering and the device-side read
     order, so the boot came from the backup ADDRESS and not from the primary.
 
-The reference asserts less than this. Its ``BACKUP_ROM_KEY_VALID`` expectation
-ends in ``BACKUP_BL1_LOADED / COPY_AND_EXEC_IMAGE / EXEC_IMAGE`` and -- unlike its
-own primary-side twin -- omits ``STATUS: USING_ROM_KEY``, so it never
-requires evidence that the ROM-key path was the one taken. The markers above close
-that gap rather than reproduce it.
+Its ``BACKUP_ROM_KEY_VALID`` expectation ends in ``BACKUP_BL1_LOADED /
+COPY_AND_EXEC_IMAGE / EXEC_IMAGE`` and -- unlike its own primary-side twin -- omits
+``STATUS: USING_ROM_KEY``, so it never requires evidence that the ROM-key path was the
+one taken. The markers above close that gap rather than reproduce it.
 
-THE MATCHED PAIR IS THE STRONGEST EVIDENCE HERE. This testcase and
-``sep_firmware_backup_pubkey_rom_0_revoked_key_test`` build their flash image from
-the same two calls -- ``mm.break_magic(primary)`` and
-``select_backup_rom_slot(buf, 0)`` -- so the bytes are identical by construction.
-The ONLY difference between them is one bit of ``CHIPLET_PUBK_REVOKE``. Fuse clear
-boots; bit 0 set is refused with the revocation error code and never reaches
-``RSA_EXEC``. Nothing else about revocation needs arguing.
+The matched pair is the strongest evidence here. This testcase and
+``sep_firmware_backup_pubkey_rom_0_revoked_key_test`` build their flash image from the
+same two calls -- ``mm.break_magic(primary)`` and ``select_backup_rom_slot(buf, 0)`` --
+so the bytes are identical by construction. The ONLY difference between them is one bit
+of ``CHIPLET_PUBK_REVOKE``. Fuse clear boots; bit 0 set is refused with the revocation
+error code and never reaches ``RSA_EXEC``. Nothing else about revocation needs arguing.
 
 Needs ``+esrc_noise_force``: the backup is valid, so the full RSA-3072 modexp
 runs on OTBN, which parks in UrndRefresh until EDN grants entropy. The shortcut

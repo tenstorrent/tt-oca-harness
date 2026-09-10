@@ -9,15 +9,12 @@ out once in ``rom_fw/sep_demotion_decision_base.py``. **Read that first.**
 EVERY MEMBER OF THIS BASE PRODUCES THE SAME OUTCOME, BY CONSTRUCTION
 ============================================================================
 
-``rom_main.c`` short-circuits on ``lc_state == LC_STATE_PROD_END`` and returns
-from the block having read NONE of the three manifest demotion inputs -- the
-``demotion_control`` is not read at all: the block returns before
-until, and ``demotion_control`` not until, all inside the ``else`` at
-. So the outcome is **O1** for every combination of those three inputs,
-and this base fixes the expected outcome rather than deriving it from a member's
-declarations. **Five tracker rows share this one observable.** They are five
-stimuli on one outcome, not five coverage points, and each member says so in its
-own docstring and in its status row's ``flow_deviation``.
+``rom_main.c`` short-circuits on ``lc_state == LC_STATE_PROD_END`` and returns from the
+block having read NONE of the three manifest demotion inputs -- the ``demotion_control``
+is not read at all: the block returns before until, and ``demotion_control`` not until,
+all inside the ``else`` at . So the outcome is **O1** for every combination of those
+three inputs, and this base fixes the expected outcome rather than deriving it from a
+member's declarations.
 
 What still differs between members, and is therefore still declared per member,
 is the STIMULUS -- and with it what a failure would mean. With ``_SEL = 1`` the
@@ -163,8 +160,7 @@ class sep_demotion_prod_end_base(sep_demotion_decision_base):
         This is not optional and it is not duplication of the console. At PROD_END
         the ROM echoes NONE of the three, so an unplanted input produces exactly
         the log a planted-and-ignored one produces and the testcase would be green
-        and vacuous (``batch_runs_0904_rtl/RUN_JOURNAL.md:181-185``, "Assert your
-        stimulus, not only your outcome").
+        and vacuous.
 
         It is not the only channel, and an earlier draft of this docstring wrongly
         said it was. :meth:`~sep_demotion_decision_base._check_stimulus_served`

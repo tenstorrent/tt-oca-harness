@@ -38,39 +38,35 @@ required, and none of them is boot completion:
     the ROM cannot fake, and it is the only channel that can say "the PRIMARY is
     what booted". A silent failover also reaches ``MANIFEST_OK``.
 
-MATCHED PAIR, AND IT IS BYTE-IDENTICAL BY CONSTRUCTION. This testcase and
-``sep_firmware_primary_pubkey_rom_0_revoked_key_test`` build their flash image from
-the SAME single call, ``select_primary_rom_slot(buf, 0)``, which is a no-op because
-the shipped primary already selects slot 0
-(``configs/secure_boot_test.yaml:43-45``). Both therefore run bytes identical to
-the shipped ``bootrom/prod/build/secure_boot.bin``, and the ONLY difference between
-them is one bit of ``CHIPLET_PUBK_REVOKE``. Fuse clear boots; bit 0 set refuses
-BOTH manifests with the revocation error code and never reaches
+Matched pair, And it is byte-Identical by construction. This testcase and
+``sep_firmware_primary_pubkey_rom_0_revoked_key_test`` build their flash image from the
+SAME single call, ``select_primary_rom_slot(buf, 0)``, which is a no-op because the
+shipped primary already selects slot 0 (``configs/secure_boot_test.yaml:43-45``). Both
+therefore run bytes identical to the shipped ``bootrom/prod/build/secure_boot.bin``, and
+the ONLY difference between them is one bit of ``CHIPLET_PUBK_REVOKE``. Fuse clear
+boots; bit 0 set refuses BOTH manifests with the revocation error code and never reaches
 ``RSA_EXEC``. Nothing else about revocation needs arguing.
 
-WHAT THIS SHARES WITH ``sep_rom_ot_secure_boot_test``, AND WHAT IT ADDS. The flash
-image is the same golden ``secure_boot.bin``, so the overlap is stated rather than
-hidden. Three things differ. That test runs under the default zero OTP, i.e.
-lifecycle TEST_DEV, where secure boot is enforced only because the manifest asks
-(``sep_rom_ot_secure_boot_test.py``); this one runs under a committed PROD
-preload, where enforcement no longer DEPENDS on the manifest flag. It does not
-attribute enforcement to the lifecycle, and must not claim to: the shipped primary
-also sets ``FLAG_ARGS_BIT_SECURE_BOOT`` (visible as ``secure_boot_bit=1`` in the
-stimulus log line), so under PROD both conditions of ``secure_boot_enabled()`` hold at once and no observable separates them.
-Attributing enforcement to the lifecycle alone needs the manifest flag CLEARED,
-which is ``sep_firmware_enforced_secure_boot_flow_test``'s job, not this one's.
-Second, ``sep_rom_ot_secure_boot_test`` asserts that the crypto chain reached
-``RSA_VERIFY_OK`` and nothing at all about key selection; this one adds the selector and
-revocation echoes with exact counts and their ordering against the verifier. Third,
-that test has no device-side assertion; this one requires the backup span to be
-untouched. The narrowing is real and is disclosed: slot 0 is the only
-index that is valid HERE, because the only RSA signing key that ships is
-``rsa_private_key.dev0.pem``
-(``bootrom/prod/tools/tt-boot-manifest/tests/signing_keys/``, which also holds an
-unusable ``ec_private_key.pem``) and only slot 0's
-digest is populated (``key_digests.c``). The reference draws a valid index at
-random from ``[0..5]`` and re-signs with that slot's own private key,
-though it narrows to ``[0]`` itself on a release build.
+WHAT THIS SHARES WITH ``sep_rom_ot_secure_boot_test``, And what it adds. The flash image
+is the same golden ``secure_boot.bin``, so the overlap is stated rather than hidden.
+Three things differ. That test runs under the default zero OTP, i.e. lifecycle TEST_DEV,
+where secure boot is enforced only because the manifest asks
+(``sep_rom_ot_secure_boot_test.py``); this one runs under a committed PROD preload,
+where enforcement no longer DEPENDS on the manifest flag. It does not attribute
+enforcement to the lifecycle, and must not claim to: the shipped primary also sets
+``FLAG_ARGS_BIT_SECURE_BOOT`` (visible as ``secure_boot_bit=1`` in the stimulus log
+line), so under PROD both conditions of ``secure_boot_enabled()`` hold at once and no
+observable separates them. Attributing enforcement to the lifecycle alone needs the
+manifest flag CLEARED, which is ``sep_firmware_enforced_secure_boot_flow_test``'s job,
+not this one's. Second, ``sep_rom_ot_secure_boot_test`` asserts that the crypto chain
+reached ``RSA_VERIFY_OK`` and nothing at all about key selection; this one adds the
+selector and revocation echoes with exact counts and their ordering against the
+verifier. Third, that test has no device-side assertion; this one requires the backup
+span to be untouched. The narrowing is real and is disclosed: slot 0 is the only index
+that is valid HERE, because the only RSA signing key that ships is
+``rsa_private_key.dev0.pem`` (``bootrom/prod/tools/tt-boot-
+manifest/tests/signing_keys/``, which also holds an unusable ``ec_private_key.pem``) and
+only slot 0's digest is populated (``key_digests.c``).
 
 PLATFORM ADAPTATION -- MARKER. The reference asserts the ROM-key path POSITIVELY,
 with ``STATUS: USING_ROM_KEY`` (``sep_firmware_secure_boot_test.py``). This ROM

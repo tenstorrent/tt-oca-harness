@@ -7,9 +7,7 @@ Outcome **O4** of the [C15] decision table in
 other three PROD members is in ``rom_fw/sep_demotion_prod_base.py``.
 
 **THIS IS THE HIGHEST-VALUE ROW OF THE WHOLE DEMOTION GROUP, and both the VP half
-and batch R3 said so before it was written** (``batch_runs_0904_vp/FINDINGS.md``
-F07 "ACTIONABLE FOR BATCH V4 / R4"; the R4 guidance in
-``sep_demotion_decision_base.py``). It is the only one of the seven outcomes
+and batch R3 said so before it was written**. It is the only one of the seven outcomes
 where:
 
   * ``lock_demotion`` goes false (``rom_main.c``) -- on every other path it
@@ -51,12 +49,6 @@ or X state probe fails rather than reading as "not demoted". And the lock probes
 are demonstrably live in the same regression: the O2b sibling drives
 ``lk1`` 0 -> 1 and R3's PROD_END member drives ``lk2`` 0 -> 1 through the same
 wiring. The cross-member argument is stated here rather than left implicit.
-
-The reference expects ``STATUS: DEMOTION_NOT_SELECTED`` + ``DEMOTION_NOT_LOCKED``
-for this row (``sep_demotion_uid_checker.py``). Neither code exists on
-this ROM -- ``grep -n DEMOT bootrom/prod/include/status_values.h`` is empty -- so
-the console tokens plus the register channel are the substitution, as recorded in
-the base's disclosed gaps and in this row's ``flow_deviation``.
 
 No ``+esrc_noise_force``: secure boot is off, so the ROM never drives OTBN.
 """

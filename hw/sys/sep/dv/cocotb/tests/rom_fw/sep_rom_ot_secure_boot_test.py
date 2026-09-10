@@ -20,11 +20,9 @@ That one swap turns on a whole code path the non-secure test never reaches:
         -> PKCS#1 v1.5 unpad, digest compare
       -> payload hash + hash chain + TOC entry hashes -> BL1 jump
 
-The determination gates on the manifest's secure_boot_control bit, `sboot_dis`
-(eFuse) and the lifecycle state: PROD/PROD_END always enforce, TEST_DEV/RMA
-enforce only when the manifest asks. A zero OTP gives TEST_DEV with sboot_dis=0,
-and the signed manifest sets the bit -- so this test needs no special eFuse
-image, unlike the reference flow which ships a PROD preload to force it.
+The determination gates on the manifest's secure_boot_control bit, `sboot_dis` (eFuse)
+and the lifecycle state: PROD/PROD_END always enforce, TEST_DEV/RMA enforce only when
+the manifest asks.
 
 NOTE ON ENTROPY: this run DOES exercise the entropy chain. The ROM brings
 entropy_source -> CSRNG -> EDN up itself before the signature-verification

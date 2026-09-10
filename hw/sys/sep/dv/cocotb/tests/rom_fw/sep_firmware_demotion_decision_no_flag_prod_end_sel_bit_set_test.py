@@ -37,22 +37,12 @@ inputs clear, so the two orderings agree exactly. **BL1_DEMOTION_VALID is the on
 manifest input whose value changes the non-PROD_END outcome on its own, which is
 why setting it is what turns a duplicate stimulus into an ordering test.**
 
-That said, the claim is bounded and is not "this row covers a new ROM path". It
-is: same outcome, same code path, one more defect class excluded. The row is
-reported ``covered-by-O1`` with this file cited, exactly as
-``batch_runs_0904_vp/FINDINGS.md`` F07 requires and as the R4 guidance in
-``sep_demotion_decision_base.py`` sets out.
+That said, the claim is bounded and is not "this row covers a new ROM path". It is: same
+outcome, same code path, one more defect class excluded.
 
-The reference expects only ``STATUS: DEMOTION_NOT_SELECTED`` for the PROD_END row
-and appends no lock expectation (``sep_demotion_uid_checker.py``); it also
-plants the same BL1_DEMOTION_VALID for this scenario
-(``sep_demotion_uid_checker.py``, from ``+SET_SELECTOR_BIT_17`` at
-), so the stimulus is a faithful port even though the ordering
-argument above is this platform's addition. There is no architected demotion
-status code on this ROM, so the console tokens plus the register channel are the
-substitution; the DEMOTE_1/DEMOTE_2 lock requirements are an ADDITION derived from
-``rom_main.c``. Both are disclosed in the row's
-``flow_deviation``.
+There is no architected demotion status code on this ROM, so the console tokens plus the
+register channel are the substitution; the DEMOTE_1/DEMOTE_2 lock requirements are an
+ADDITION derived from ``rom_main.c``.
 
 Needs ``+esrc_noise_force``: PROD_END enforces secure boot
 (``lifecycle.c``), so a full RSA-3072 modexp runs on OTBN.

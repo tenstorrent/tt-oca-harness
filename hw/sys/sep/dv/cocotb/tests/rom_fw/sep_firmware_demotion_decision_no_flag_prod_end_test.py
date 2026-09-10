@@ -39,14 +39,6 @@ What it does still assert, per run and on both channels:
     ``life_cycle_states`` are narrowed to PROD_END only and
     ``oca_boot.c`` refuses the manifest otherwise.
 
-The reference expects only ``STATUS: DEMOTION_NOT_SELECTED`` for the PROD_END row
-and appends no lock expectation at all (``sep_demotion_uid_checker.py``).
-There is no architected demotion status code on this ROM, so the console tokens
-plus the register channel are the substitution -- and the DEMOTE_1/DEMOTE_2 lock
-requirements are an ADDITION derived from this ROM (``rom_main.c``,),
-not a port of anything the reference checks. Disclosed here and in the row's
-``flow_deviation``.
-
 Needs ``+esrc_noise_force``: PROD_END enforces secure boot
 (``lifecycle.c``), so a full RSA-3072 modexp runs on OTBN. The RSA
 assertions are untouched.

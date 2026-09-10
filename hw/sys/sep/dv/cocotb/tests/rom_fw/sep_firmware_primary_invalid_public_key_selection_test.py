@@ -8,30 +8,20 @@ encodings (3, 6, 7) that name no key source,  assigning only
 ``MANIFEST_ERR_SIG_FAILED``; a fixed value makes the run reproducible and lets the
 test assert the exact ``PUBK_SEL=`` the ROM echoed.
 
-THE PRIMARY MUST NOT BE BROKEN ANY OTHER WAY, and that is the whole difference
-between this testcase and its backup-side sibling. The reference modifies ONLY
-``primary.manifest.public_key_sel.selection``
-and deliberately does NOT corrupt the primary's ``manifest_identifier`` the way
-its backup-side scenarios do, because the primary has to REACH the check under
-test. So there is no BAD_MAGIC failover trigger here: the primary is structurally
-perfect and is rejected by key selection alone.
+THE PRIMARY MUST NOT BE BROKEN ANY OTHER WAY, and that is the whole difference between
+this testcase and its backup-side sibling. So there is no BAD_MAGIC failover trigger
+here: the primary is structurally perfect and is rejected by key selection alone.
 
-THE EXPECTED OUTCOME IS A COMPLETED BOOT, NOT A TERMINAL FAILURE. The reference's
-``expected_patterns`` (``sep_firmware_secure_boot_test.py``) end in
-``BACKUP_BL1_LOADED / COPY_AND_EXEC_IMAGE / EXEC_IMAGE`` and grade the primary's
-rejection ``WARNING:`` rather than ``ERROR:``. Copying the backup-side base class
-here would have inverted the requirement.
+The expected outcome is A Completed boot, NOT A Terminal failure. Copying the backup-
+side base class here would have inverted the requirement.
 
-PLATFORM ADAPTATION -- MARKER. The reference expects
-``WARNING: INVALID_KEY_INDEX`` because its ``default:`` arm returns
-``SEP_MSG_INVALID_KEY_INDEX``. This ROM *defines* that code
+Platform adaptation -- MARKER. This ROM *defines* that code
 (``bootrom/prod/include/status_values.h:12``) but never EMITS it: there is no
-``report_status`` call for it anywhere under ``bootrom/prod/src``, so the
-architected status ring carries only the generic terminal code and the debug
-console token is the only per-reason evidence available. Hence the
-unassigned-source arm's ``PUBK_SEL_AMBIGUOUS`` is required here instead.
-``PUBK_SLOT_RESERVED`` -- a bad ROM key INDEX, a different arm -- is forbidden below so
-the two cannot be confused.
+``report_status`` call for it anywhere under ``bootrom/prod/src``, so the architected
+status ring carries only the generic terminal code and the debug console token is the
+only per-reason evidence available. Hence the unassigned-source arm's
+``PUBK_SEL_AMBIGUOUS`` is required here instead. ``PUBK_SLOT_RESERVED`` -- a bad ROM key
+INDEX, a different arm -- is forbidden below so the two cannot be confused.
 
 ``public_key_sel`` is at offset 166, inside the TBS, so the helper re-hashes. No
 re-sign: the selection is rejected before ``rsa_3072_verify``, so the primary's

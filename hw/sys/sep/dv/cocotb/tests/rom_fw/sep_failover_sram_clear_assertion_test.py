@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """TP080 -- the SEP EXT SRAM is cleared between the primary failure and the backup fetch.
 
-WHAT THIS PROVES, AND WHAT IT DOES NOT. Read this before citing a green run.
+What this proves, AND WHAT IT DOES NOT. Read this before citing a green run.
 
 The procedure (``procedure_manifest.md`` Test 24 / TP080) asks for TWO clears in
 the window between "primary-fail status published" and "SPI re-init for backup":
@@ -59,8 +59,7 @@ EXT SRAM **and** SMC SRAM. Only the first exists in this ROM.
     ``ring buffer address: 0x40060000``), so a wholesale SMC SRAM clear would
     destroy the ROM's own reporting channel.
     Second, independent reason the window does not exist there: the only path whose
-    manifest comes from SMC SRAM runs ``num_retries = 0``, so it has no backup retry at all.
-    See FINDINGS F19 and its correction F21. This test asserts nothing about SMC
+    manifest comes from SMC SRAM runs ``num_retries = 0``, so it has no backup retry at all. This test asserts nothing about SMC
     SRAM and must not be booked as covering that half of F038.
 
 DO NOT confuse this clear with ``rom_clear_ext_sram()``. That is a DIFFERENT,
@@ -70,16 +69,16 @@ boot log in this tree prints ``SRAM_CLR_SKIP`` for it. It is compiled out, it ru
 before SPI init, and it is outside TP080's window entirely. The failover clear
 asserted here is a separate call site and is NOT gated on that knob.
 
-WHY THE MEMORY IS POISONED FIRST. Under Verilator the SRAM array powers up all
-zero (``tb_top.sv`` compiles the explicit zero-fill for VCS only because
-Verilator 0-inits). A test that simply asserted "the SRAM reads zero after the
-failure" would therefore pass on a ROM that never cleared anything -- the exact
-vacuity the procedure's step 2 snapshot at "(i) before primary boot" exists to
-prevent. So every one of the 32768 words is first written with a distinct
-non-zero value, and CHK-SRAM-POISON reads all 32768 back before the boot starts:
-if the instrument silently no-ops, this test goes red rather than green. The
-poison strengthens the check; it does not create the pass, and it is not on any
-DUT decision path -- the ROM reads none of it before overwriting or zeroing it.
+Why the memory is poisoned first. Under Verilator the SRAM array powers up all zero
+(``tb_top.sv`` compiles the explicit zero-fill for VCS only because Verilator 0-inits).
+A test that simply asserted "the SRAM reads zero after the failure" would therefore pass
+on a ROM that never cleared anything -- the exact vacuity the procedure's step 2
+snapshot at "(i) before primary boot" exists to prevent. So every one of the 32768 words
+is first written with a distinct non-zero value, and CHK-SRAM-POISON reads all 32768
+back before the boot starts: if the instrument silently no-ops, this test goes red
+rather than green. The poison strengthens the check; it does not create the pass, and it
+is not on any DUT decision path -- the ROM reads none of it before overwriting or
+zeroing it.
 
 Part of the claim does not rest on the poison, and it is worth separating. Word 0
 holds ``0xFFFF_FFFF_FFFF_FFFF`` -- the erased primary slot's own bytes, put there
@@ -90,15 +89,15 @@ clear covered the whole 256 KiB rather than the 148 words the ROM happened to
 write) and the evidence that the clear had not already started when the primary
 landed.
 
-OBSERVATION CHANNEL. ``sep_public_scope.vlt:38`` marks ``prim_ram_1p.mem``
+Observation channel. ``sep_public_scope.vlt:38`` marks ``prim_ram_1p.mem``
 ``public_flat_rw``, and the built model registers the scope and the variable:
-``Vtop__Syms__ctor__1__Slow.cpp`` carries
-``VerilatedScope{..., "sep_uvm_top.u_dut.u_sep_ip_integration.u_sep_sram.gen_ram_inst[0].u_mem", ...}``
-and ``varInsert("mem", ..., VLVT_UINT64, VLVD_NODIR|VLVF_PUB_RW, 1, 1, 0,32767, 63,0)``.
-So the whole array is reachable by VPI from cocotb, and no testbench change is
-needed. The two pre-existing port probes (``sram_word0_probe_o``,
-``sram_payload_probe_o``, ``tb_top.sv``) expose only 7 of the 32768
-words, which cannot support a claim about a 256 KiB clear.
+``Vtop__Syms__ctor__1__Slow.cpp`` carries ``VerilatedScope{...,
+"sep_uvm_top.u_dut.u_sep_ip_integration.u_sep_sram.gen_ram_inst[0].u_mem", ...}`` and
+``varInsert("mem", ..., VLVT_UINT64, VLVD_NODIR|VLVF_PUB_RW, 1, 1, 0,32767, 63,0)``. So
+the whole array is reachable by VPI from cocotb, and no testbench change is needed. The
+two pre-existing port probes (``sram_word0_probe_o``, ``sram_payload_probe_o``,
+``tb_top.sv``) expose only 7 of the 32768 words, which cannot support a claim about a
+256 KiB clear.
 
 STIMULUS. Inherited whole from ``sep_spi_primary_fail_backup_test`` -- the primary
 slot span erased, so the primary is rejected with ``MANIFEST_ERR_BAD_MAGIC`` and
@@ -532,7 +531,7 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
             "SMC clear has nothing to "
             "assert against. Consistently, boot_rom.dis has no store loop over "
             "sep_get_smc_sram_base() (0x40060000) -- which is also where this ROM's "
-            "own status ring lives. See FINDINGS F19 and F21. A green run here does "
+            "own status ring lives. A green run here does "
             "NOT cover the SMC SRAM half of F038."
         )
 

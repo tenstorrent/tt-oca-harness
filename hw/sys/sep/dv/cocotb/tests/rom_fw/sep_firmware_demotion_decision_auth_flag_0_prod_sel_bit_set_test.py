@@ -23,8 +23,7 @@ register channel:
   ==============================  ==========  ==========  ==========  ==========
 
 **``+SECURE_BOOT_DIS`` DRIVES TWO SURFACES AND BOTH ARE PORTED.** This is the
-instruction the VP half arrived at only after retracting an earlier one
-(``batch_runs_0904_vp/FINDINGS.md`` F11 item 1): the reference's plusarg sets
+instruction the VP half arrived at only after retracting an earlier one: the reference's plusarg sets
 ``secure_boot: 0``
 **and** burns the ``sboot_dis`` fuse, constrained to equal the plusarg.
 Reading only the manifest surface produced the VP half's worst error. Both are ported
@@ -52,13 +51,10 @@ backup -- which asks for no demotion and would produce outcome O5 under this
 testcase's name. The backup source is forbidden and ``FUSE: SBOOT_DIS: 1`` is
 required, so that substitution fails loudly instead of passing.
 
-The primary's signature, public key and key-select fields are zeroed along with
-the enable bit. That is not a nicety: with secure boot off the parser requires the
-slot to carry no crypto material at all, and a slot that kept its signature bytes
-would be refused as a format violation rather than reaching the demotion decision.
-:func:`sep_oca_mutate.clear_secure_boot` does the whole set, which is also what the
-packer emits for a ``secure_boot: 0`` config -- so the port and the reference agree
-on what an unsigned slot looks like.
+The primary's signature, public key and key-select fields are zeroed along with the
+enable bit. That is not a nicety: with secure boot off the parser requires the slot to
+carry no crypto material at all, and a slot that kept its signature bytes would be
+refused as a format violation rather than reaching the demotion decision.
 
 The BACKUP is re-signed and stays fully valid. Only its ``life_cycle_states`` is
 narrowed, so it remains a genuinely bootable slot -- which is what makes the

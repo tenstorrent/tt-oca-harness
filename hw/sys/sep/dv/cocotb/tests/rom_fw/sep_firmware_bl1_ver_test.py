@@ -1,144 +1,36 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""BL1 security version EQUALS the BL1_VERSION fuse floor -> accepted, boots.
+"""BL1 security version carrying every device flag -> accepted, the primary boots.
 
-the anti-rollback check rejects only when ``manifest_ver < fuse_ver``
-(``bootrom/prod/src/), so equality is the ACCEPT BOUNDARY
-of the rollback check -- the last value that must be allowed through. This testcase
-runs that boundary on the PRIMARY and requires a completed boot.
+The accept boundary of anti-rollback. ``manifest_security_version`` is a 128-flag
+bitmap, not a counter: a manifest is refused when it omits a flag the device holds,
+``(device & ~manifest) != 0``. Both slots are written with exactly the device's flags
+and re-sealed, so equality is the boundary under test and one flag fewer would reject.
 
-WHY THE ACCEPT CASE, WHEN THE REFERENCE RUNS THE REJECT CASE. Stated plainly, because
-the two are different cases and the choice has to be justified rather than assumed.
-``sep_firmware_base_test.sv`` burns ``bl_ver_value = 256'hFF`` -- popcount 8 --
-into ``efuse_bl1_ver``, while the packer default leaves the manifest at
-``security_version: 5``,
-so ``5 < 8`` and the ROM must reject. It is a self-consistent REJECT test; the earlier
-claim that it contradicts itself was investigated on the VP half and WITHDRAWN
-(``batch_runs_0904_vp/FINDINGS.md`` F11 item 3), and is not repeated here.
+The reject side is covered by ``sep_firmware_backup_invalid_security_version_test``
+and ``sep_firmware_primary_invalid_security_version_test``; this is the accept side.
 
-**BUT THE REFERENCE DOES NOT ENFORCE THAT REJECTION, AND THAT CHANGES WHAT THIS PORT
-IS REPLACING.** Its two checks are ``log.info`` calls, not assertions: they call
-``search_string``, which returns a (possibly empty) match list and never raises, and
-then print ``PASSED`` or an ``ASSERTING_RED_FLAG:`` string accordingly. It ends with
-no ``assert`` anywhere, and the preloader it awaits runs
-with ``cold_scratch_check=False``. So the reference **cannot fail on either
-outcome**. This port is therefore not replacing a strong REJECT check with a weak
-ACCEPT one; it is replacing a REJECT-INTENT test that enforces nothing with an
-ACCEPT test that enforces 14 required markers, 16 forbidden markers, an ordering
-chain, four exactly-once counts and two device-side properties.
+Where anti-rollback sits, and why both halves are asserted here. The check runs after
+the root key is authorized and BEFORE the signature. The key-selection family relies
+on reaching the key decision before this check can reject, and the reject siblings
+rely on a rolled-back manifest never being handed to the verifier, so the ordering is
+pinned here rather than inherited: ``PUBK_SEL=`` then ``FUSE_VER=`` then ``RSA_EXEC``.
 
-The reference's own stated intent, moreover, is the equality case: writes
-the fuse's BL1 version into ``primary.manifest.version`` and
-``backup.manifest.version``, i.e. "make the manifest version equal the fuse version".
-Two latent defects in the reference defeat that intent -- reads field
-``'BL1_Version'`` while the parser names it ``BL1_VER``, so the
-lookup returns ``None`` and the test falls back to 0; and
-``manifest.version`` is not a packer key at all, the field the ROM reads being
-``security_version`` (``bootrom/prod/include/). Both were recorded on
-the VP half as ``batch_runs_0904_vp/FINDINGS.md`` F06 / F10 item 3, whose instruction
-to this batch -- set ``security_version`` directly and assert ``MFST_VER=`` as an
-exact value, do not port ``manifest.version`` -- is what this testcase does.
+The flags are spread across all four words the platform reads -- the low 16 bytes of
+the ``BL1_VERSION`` bank -- each word distinct and non-empty. A read that truncated
+to one word, repeated a word, or mis-indexed would change the verdict rather than
+pass, which a preload concentrating its bits in word 0 could not show.
 
-Implementing the intent rather than the accident is defensible here for a second,
-independent reason: **the REJECT side is already covered TWICE in this testlist**, by
-``sep_firmware_backup_invalid_security_version_test`` (fuse floor 8, both slots below
-it) and by ``sep_firmware_primary_invalid_security_version_test`` (fuse floor 1,
-primary below it and the backup re-signed at the boundary). Neither covers the
-primary-side ACCEPT boundary, and no testcase covered it before this one. This is a
-DELIBERATELY DIFFERENT CASE, not a correction of a broken reference, and it is
-recorded that way in the row's ``flow_deviation``.
+The device flags are read TWICE per slot: the library re-runs the check after the
+signature as fault-injection hardening, so ``FUSE_VER=`` appears twice on the one
+slot attempted and a count of one would mean the recheck did not happen.
 
-**THE COVERAGE THIS ADDS BEYOND THE BOUNDARY: ALL EIGHT THERMOMETER WORDS, EACH
-DISTINGUISHABLE.** the device security-version read
-loops over EIGHT 32-bit words of ``BL1_VERSION`` and sums their popcounts. Every
-existing preload in this tree puts its bits in word 0 --
-``sep_efuse_lc_prod_secver1.toml`` uses ``0x1`` and
-``sep_efuse_lc_prod_secver8.toml`` uses ``0xff`` -- so a ROM that read only the first
-word would decode all of them correctly. Batch R1 recorded that gap deliberately
-(``batch_runs_0904_rtl/RUN_JOURNAL.md``, "Known gaps left open"). This testcase closes
-it: ``sep_efuse_lc_prod_bl1ver36_spread.toml`` gives word ``i`` exactly ``i+1`` set
-bits, so the total is 1+2+...+8 = 36 and **no plausible truncated, repeated or
-mis-indexed decode of those eight words reaches 36**.
+An accept-only test cannot exclude a ROM whose comparison has been deleted while the
+two echoes remain: printing both operands does not show the comparison ran, and
+ordering is sequence rather than comparison. The two reject siblings are what
+establish that the comparison exists.
 
-Stated that way on purpose. A literal "no other multiset sums to 36" would be false --
-8+8+8+8+1+1+1+1 also sums to 36 -- but no decode DEFECT produces that multiset. What
-the spread does catch is every systematic misread: read only word 0 (1), read word 0
-eight times (8), stop at seven words (29), read one word twice and skip another (any
-value but 36), or index with a wrong stride (a different subset sum). The load-bearing
-check is not the total alone but ``sorted(per_word) == list(range(1, 9))`` at
-:meth:`_check_efuse` plus the exact ``FUSE_VER=0x00000024`` echo.
-
-An earlier draft used one bit per word (total 8). A reviewer correctly showed that was
-weaker: eight reads of the SAME word also sum to 8, so it caught a wrong loop bound
-but not a wrong index expression. This is also why the floor is 36 rather
-than the reference's 8 -- eight non-zero words with distinct popcounts need at least
-36 bits, so matching the reference's VALUE and distinguishing the eight words cannot
-both be done. The boundary itself is preserved because the manifest is raised to match.
-
-The accept boundary ALONE cannot catch a truncated decode -- a smaller floor is still
-satisfied by the same manifest, so the run would still boot. What catches it is the
-EXACT console echo: ``FUSE_VER=0x00000024`` is a required marker. Worked examples of
-what a broken decode would print instead: word 0 only -> ``0x00000001``; word 0 read
-eight times -> ``0x00000008``; the first four words -> ``0x0000000a``; the last word
-only -> ``0x00000008``. That marker, not the boot, is where this testcase's
-thermometer coverage lives.
-
-WHAT ELSE THE RUN MUST SHOW, because "it booted" is not a result:
-
-  * ``FUSE_VER=0x00000024`` then ``MFST_VER=0x00000024``, each EXACTLY ONCE and in
-    that order. One slot is attempted, so a second
-    occurrence would mean a failover this testcase forbids;
-  * ``VERSION_ROLLBACK``  absent -- the rejecting arm did not fire;
-  * the rollback check ran BEFORE key selection: ``FUSE_VER`` precedes ``PUBK_SEL=``
-    because manifest validation calls the anti-rollback check
-     before the signature path. This is the ordering the key
-    testcases of batches R1/R2 rely on to keep their verdicts attributable, and this
-    is the one testcase whose stimulus IS the version field, so it is asserted here
-    rather than assumed. Be honest about its weight: on an ACCEPT path both stages
-    run, so this shows SEQUENCE only. The stronger property -- that a rejected
-    version PREEMPTS key selection entirely -- is already proven by
-    ``sep_firmware_primary_invalid_security_version_test``, which requires the
-    primary's ``PUBK_SEL=`` to come after the BACKUP read;
-  * ``RSA_EXEC`` -> ``RSA_VERIFY_OK`` -> ``MANIFEST_OK``, after the
-    version echoes: the manifest really verified, so acceptance is a completed
-    validation and not a skipped one;
-  * the DEVICE side: not one read inside the backup slot's span. A silent failover
-    also reaches ``MANIFEST_OK``.
-
-PLATFORM ADAPTATION -- MARKERS. The reference asserts
-``STATUS: MANIFEST_VALIDATED``, which this ROM DOES emit
-(``SEP_MSG_MANIFEST_VALIDATED``, ), and
-``ERROR: INVALID_SECURITY_VERSION``, whose code ``SEP_MSG_INVALID_SECURITY_VERSION``
-(``bootrom/prod/include/status_values.h:9``) is defined and never emitted -- the
-wider gap is ``batch_runs_0904_rtl/FINDINGS.md`` R04, and it does not bite here
-because this port runs the ACCEPT case and needs no rejection code. The version
-values themselves have no architected code on either ROM, so ``FUSE_VER=`` /
-``MFST_VER=`` are console echoes in both.
-
-WHAT THIS TESTCASE CANNOT PROVE, AND WHERE THAT IS PROVED INSTEAD. An ACCEPT-only
-test cannot exclude a ROM in which the comparison has been
-deleted while the two ``simputshex32`` echoes remain: printing both
-operands does not show the ``<`` executed, and the absence of ``VERSION_ROLLBACK``
-plus continuation to ``RSA_EXEC`` is equally consistent with "compared and
-accepted" and with "never compared". The ordering assertion above does not close that
-either -- order is sequence, not comparison. **The comparison's EXISTENCE is proven by
-the two REJECT siblings named earlier**, which is exactly why keeping them matters and
-why removing either would have been a weakening rather than a tidy-up.
-
-BOTH SLOTS ARE RE-SIGNED. ``security_version`` sits inside the TBS
-(``bootrom/prod/include/, offset 162), so raising it invalidates the
-manifest hash and the
-shipped dev0 signature. ``env/sep_oca_payload.reseal`` re-hashes and re-signs with
-the same dev0 key, and ``verify_signing_key`` proves beforehand that the local signer
-reproduces the packer's shipped signature byte for byte -- so the re-seal is sound by
-construction rather than by assertion. The DUT's own OTBN then verifies the result
-(``RSA_VERIFY_OK`` / ``RSA_VERIFY_OK``), so the signature check stays fully ENABLED; this
-is not a bypass.
-
-Needs ``+esrc_noise_force``: the primary is valid, so a full RSA-3072 modexp runs
-on OTBN, which parks in UrndRefresh until EDN grants entropy. The shortcut grants
-OTBN's EDN handshakes only; the RSA assertions are untouched, so ``RSA_VERIFY_OK`` still
-means the signature really verified.
+Needs ``+esrc_noise_force``: the primary is valid, so a real RSA-3072 modexp runs.
 """
 
 from __future__ import annotations

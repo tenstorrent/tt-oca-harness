@@ -18,18 +18,13 @@ ORed the two -- would write ``demote = 1`` here and this testcase would fail on
 the register channel. **The falsifying claim is ``expect_demote_1 = (0, 1)``
 against a manifest that asked for demotion.**
 
-Two members of the family have that property and neither of the other five does:
-this one and the O4 sibling, which also sets ``demotion_control`` BL1_DEMOTION_ENABLE with the selector clear
-and would catch a ROM that routed into the selector arm on ``demotion_control`` BL1_DEMOTION_ENABLE alone.
-They are not interchangeable, because they catch it through different failures --
-here a WRONG VALUE in a written register, there a register written AT ALL. R3's
-O2a member sets both bits, so its ``demote = 1`` is correct under either reading,
-and the three PROD_END members never reach.
-
-The reference makes the same distinction for the same reason: with the selector
-bit clear its checker expects ``STATUS: DEMOTION_NOT_SELECTED`` regardless of
-``+AUTH_FLAG_0`` (``sep_demotion_uid_checker.py``, which reads
-``UNAUTH_FLAG_0`` and never ``AUTH_FLAG_0``).
+Two members of the family have that property and neither of the other five does: this
+one and the O4 sibling, which also sets ``demotion_control`` BL1_DEMOTION_ENABLE with
+the selector clear and would catch a ROM that routed into the selector arm on
+``demotion_control`` BL1_DEMOTION_ENABLE alone. They are not interchangeable, because
+they catch it through different failures -- here a Wrong value in a written register,
+there a register written At all. R3's O2a member sets both bits, so its ``demote = 1``
+is correct under either reading, and the three PROD_END members never reach.
 
 **Collapse note, stated because the honest claim is narrower than the tracker's
 row count.** ``no_flag_prod`` (tracker row 111, not in this batch) drives

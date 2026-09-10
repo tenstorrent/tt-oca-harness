@@ -117,7 +117,7 @@ about half its volume verifying that the decision feeds the KBKDF salt and the
 three SKS UID keys. This ROM has no BL0-side key-manager driver on the demotion
 path -- ``rom_main.c`` stores ``bl2_demotion_decision`` into ``bl0_state`` for BL1
 to consume and BL0 derives nothing from it -- so that half has nothing to test
-here. Recorded in each row's ``flow_deviation`` as well.
+here.
 
 **There is no architected demotion status code.** ``status_values.h`` defines
 none and the whole [C15] block contains no ``report_status`` call, so the
