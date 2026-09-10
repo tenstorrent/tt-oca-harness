@@ -62,13 +62,13 @@ module smc_cpu_ctrl_wrap #(
   prim_refclk_count_w_cdc #(
     .REF_COUNT_WIDTH(RefCountWidth)
   ) refclk_counter (
-    .i_refclk(clk_ref_i),
-    .i_prstb(rst_primary_ni),
-    .i_cnt_en(1'b1),
-    .i_cnt_update(ref_count_wr_swacc_q),
-    .i_cnt_update_value(ref_count_from_reg),
-    .i_out_clk(clk_smc_i),
-    .o_count(ref_count_sync)
+    .refclk_i(clk_ref_i),
+    .prst_ni(rst_primary_ni),
+    .cnt_en_i(1'b1),
+    .cnt_update_i(ref_count_wr_swacc_q),
+    .cnt_update_value_i(ref_count_from_reg),
+    .out_clk_i(clk_smc_i),
+    .count_o(ref_count_sync)
   );
 
   //////////////////////

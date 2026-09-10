@@ -10,15 +10,15 @@ module prim_refclk_count_w_cdc #(
 
   localparam type ref_count_t = logic [REF_COUNT_WIDTH-1:0]
 ) (
-  input logic i_refclk,
-  input logic i_prstb,
-  input logic i_out_clk,
+  input logic refclk_i,
+  input logic prst_ni,
+  input logic out_clk_i,
 
-  input logic i_cnt_en,
-  input logic i_cnt_update,
-  input ref_count_t i_cnt_update_value,
+  input logic cnt_en_i,
+  input logic cnt_update_i,
+  input ref_count_t cnt_update_value_i,
 
-  output ref_count_t o_count
+  output ref_count_t count_o
 );
 
   // for timing purposes, split bin count into chunks
@@ -42,8 +42,8 @@ module prim_refclk_count_w_cdc #(
   prim_sync3 #(
     .WIDTH(1)
   ) sync_cnt_en_count (
-    .i_clk(i_refclk),
-    .i_d  (i_cnt_en),
+    .i_clk(refclk_i),
+    .i_d  (cnt_en_i),
     .o_q  (ref_cnt_en)
   );
 
@@ -53,8 +53,8 @@ module prim_refclk_count_w_cdc #(
   prim_sync_reset #(
     .WIDTH(16)
   ) prst_wr_clk_domain_sync (
-    .clk(i_out_clk),
-    .rst_n(i_prstb),
+    .clk(out_clk_i),
+    .rst_n(prst_ni),
     .test_mode(1'b0),
     .scan_rst_n(1'b0),
     .sync_rst_n(prstb_synced_write)
@@ -62,8 +62,8 @@ module prim_refclk_count_w_cdc #(
   prim_sync_reset #(
     .WIDTH(16)
   ) prst_rd_clk_domain_sync (
-    .clk(i_refclk),
-    .rst_n(i_prstb),
+    .clk(refclk_i),
+    .rst_n(prst_ni),
     .test_mode(1'b0),
     .scan_rst_n(1'b0),
     .sync_rst_n(prstb_synced_rd)
@@ -86,14 +86,14 @@ module prim_refclk_count_w_cdc #(
     .Depth(CntFifoDepth),
     .OutputZeroIfEmpty(0)
   ) cnt_update_async_fifo (
-    .clk_wr_i(i_out_clk),
+    .clk_wr_i(out_clk_i),
     .rst_wr_ni(prstb_synced_write), // async reset, should be okay to use same reset
-    .wvalid_i(i_cnt_update),
+    .wvalid_i(cnt_update_i),
     .wready_o(cnt_fifo_wready),
-    .wdata_i(i_cnt_update_value),
+    .wdata_i(cnt_update_value_i),
     .wdepth_o(cnt_fifo_wdepth),
 
-    .clk_rd_i(i_refclk),
+    .clk_rd_i(refclk_i),
     .rst_rd_ni(prstb_synced_rd),
     .rvalid_o(cnt_update_value_valid),
     .rready_i(1'b1), // always ready
@@ -102,10 +102,10 @@ module prim_refclk_count_w_cdc #(
   );
 
   // The FIFO is Depth(1), so a counter update arriving before the previous one has
-  // crossed to i_refclk would be dropped with no error indication. No current writer
+  // crossed to refclk_i would be dropped with no error indication. No current writer
   // does that (the only writes are single write-then-poll), but nothing enforces it,
   // so catch it in simulation if it ever happens.
-  `OCAH_OT_ASSERT(CntUpdateAccepted_A, i_cnt_update |-> cnt_fifo_wready, i_out_clk,
+  `OCAH_OT_ASSERT(CntUpdateAccepted_A, cnt_update_i |-> cnt_fifo_wready, out_clk_i,
                   !prstb_synced_write)
 
   // Tie off unused signals to satisfy lint. Keep in separate reductions because they live in diff clk domains
@@ -116,7 +116,7 @@ module prim_refclk_count_w_cdc #(
   assign unused_cnt_fifo_wdepth = ^cnt_fifo_wdepth;
   assign unused_cnt_fifo_rdepth = ^cnt_fifo_rdepth;
 
-  always_ff @(posedge i_refclk or negedge prstb_synced_rd) begin
+  always_ff @(posedge refclk_i or negedge prstb_synced_rd) begin
     if (!prstb_synced_rd) begin
       bin_count <= ref_count_t'(0);
     end else if (ref_cnt_en) begin
@@ -196,7 +196,7 @@ module prim_refclk_count_w_cdc #(
     .z_o(gray_count)
   );
 
-  always_ff @(posedge i_refclk or negedge prstb_synced_rd) begin
+  always_ff @(posedge refclk_i or negedge prstb_synced_rd) begin
     if (!prstb_synced_rd) begin
       gray_count_sync <= ref_count_t'(0);
     end else begin
@@ -207,7 +207,7 @@ module prim_refclk_count_w_cdc #(
   prim_sync3 #(
     .WIDTH(REF_COUNT_WIDTH)
   ) sync_ref_count (
-    .i_clk(i_out_clk),
+    .i_clk(out_clk_i),
     .i_d  (gray_count_sync),
     .o_q  (ref_count_sync_gray)
   );
@@ -216,7 +216,7 @@ module prim_refclk_count_w_cdc #(
     .N(REF_COUNT_WIDTH)
   ) prim_gray2bin (
     .a_i(ref_count_sync_gray),
-    .z_o(o_count)
+    .z_o(count_o)
   );
 
 endmodule
