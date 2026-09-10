@@ -131,9 +131,10 @@ GEN_KEY_WORDS = (8, 12)
 # Number of undefined command IDs to walk per run.
 N_ILLEGAL_IDS = 7
 
-# Negative window for the shredded-engine probe. A healthy encryption completes
-# in far fewer polls than this, so a passing run spends the whole window.
-_SHRED_REFUSE_POLLS = 200
+# Negative window for the shredded-engine probe. A healthy AES-ECB block
+# asserts OUTPUT_VALID in one or two of these 20-cycle polls; the window is
+# spent in full on every passing run, so keep it only a few times that latency.
+_SHRED_REFUSE_POLLS = 50
 
 
 class SepKmCommandSetCfg:

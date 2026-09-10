@@ -149,6 +149,8 @@ firmware = { name = "rom_main", mode = "km_rom_main" }
 seed = 1
 # Randomized stimulus: walk more than one seed in a regression.
 reseed = 3
+# Wall budget covers VCS with coverage: rom_main + entropy + the shredded-engine
+# refuse window. CLI --timeout overrides this value.
 timeout_sec = 7200
 tags = ["km", "mailbox", "kpv", "subsystem", "entropy"]
 run_modes = ["no_cpu"]
