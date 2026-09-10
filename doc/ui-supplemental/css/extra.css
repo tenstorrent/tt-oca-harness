@@ -163,6 +163,7 @@
     --oca-gold-accessible: #937027;
     --oca-orange: #F6931E;
     --oca-text: #484848;
+    --oca-code-inline-bg: #D8E1E7;
     --oca-font-display: "Degular Display", Georgia, "Iowan Old Style", serif;
     --oca-font-body: "Neue Haas Unica Pro", -apple-system, "Segoe UI", sans-serif;
     --oca-font-mono: "Berkeley Mono", ui-monospace, "SFMono-Regular", monospace;
@@ -342,6 +343,12 @@
 .doc code,
 .doc pre {
     font-family: var(--oca-font-mono);
+}
+
+.doc .colist > table code,
+.doc p code,
+.doc thead code {
+    background-color: var(--oca-code-inline-bg);
 }
 
 /* ========================================
