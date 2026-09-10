@@ -21,6 +21,7 @@ from seq_lib.sep_address_map_seq import CPU_CTRL_INTERIOR_HOLES, sep_address_map
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 
 RESP_OKAY = 0
+MASK32 = 0xFFFF_FFFF
 
 
 @pyuvm.test()
@@ -84,54 +85,70 @@ class sep_address_map_test(sep_base_test):
             seq.fabric_walk_checks,
         )
 
-        # The generated sep_cpu_ctrl PeakRDL block ties decoded_err and wr_err
-        # off, so an interior reserved word completes OKAY with zero data. The
-        # xbar still claims the window: a hang is the fail, and a live alias
-        # of SEP_FUSE_SENSE_STATUS or SEP_SW_DEBUG is the other fail.
-        fuse_addr = SEP_CPU_CTRL.addr("SEP_FUSE_SENSE_STATUS")
+        # 0x158-0x177 is a HOLE, not a declared reserved region: sep_cpu_ctrl.rdl
+        # places SEP_FUSE_SENSE_STATUS at 0x150 and SEP_SW_DEBUG at 0x178 and
+        # declares nothing between, so no document states what a read there
+        # returns. memory_map.adoc says an aperture's unpopulated remainder
+        # returns DECERR; whether that sentence reaches inside one unit's own
+        # register file is an open question, recorded in the verification plan
+        # under Known Limitations. So the response is REPORTED here, not graded
+        # -- asserting either answer would settle the question by the back door,
+        # which is the same rule that keeps sep_axi_map_refuse_test reporting
+        # MAP-AUDIT instead of arming expect_error.
+        #
+        # What is graded is what holds under either ruling: the access completes,
+        # and it does not alias a live register.
         sw_addr = SEP_CPU_CTRL.addr("SEP_SW_DEBUG")
-        fuse_before = await self._access(SepAxiOp.READ, fuse_addr)
-        sw_before = await self._access(SepAxiOp.READ, sw_addr)
-        assert not fuse_before.timed_out and fuse_before.resp_code == RESP_OKAY
-        assert not sw_before.timed_out and sw_before.resp_code == RESP_OKAY
+
+        # Positive control for the alias check. SEP_SW_DEBUG is `sw = rw`
+        # (sep_cpu_ctrl.rdl), so a write must move it; without proving that, "the
+        # neighbour did not change after a hole write" also holds when the write
+        # path is dead. SEP_FUSE_SENSE_STATUS is not usable as a control here --
+        # it is `sw = r`, so no AXI write can ever change it.
+        sw_restore = (await self._access(SepAxiOp.READ, sw_addr)).rdata & MASK32
+        probe = sw_restore ^ 0xA5A5_5A5A
+        await self._access(SepAxiOp.WRITE, sw_addr, wdata=probe)
+        sw_live = (await self._access(SepAxiOp.READ, sw_addr)).rdata & MASK32
+        assert sw_live == probe, (
+            f"CHK-CPU-CTRL-HOLE FAIL: control write to SEP_SW_DEBUG 0x{sw_addr:08x} "
+            f"read back 0x{sw_live:08x}, expected 0x{probe:08x} -- the write path is "
+            "dead, so the no-alias check below would hold for the wrong reason"
+        )
 
         hole_ok = 0
+        observed: set[tuple[int, int]] = set()
         for addr in CPU_CTRL_INTERIOR_HOLES:
             hole = await self._access(SepAxiOp.READ, addr)
             assert not hole.timed_out, (
-                f"CHK-CPU-CTRL-HOLE FAIL: read 0x{addr:08x} timed out; the "
-                "reserved span must complete"
+                f"CHK-CPU-CTRL-HOLE FAIL: read 0x{addr:08x} timed out; whatever the "
+                "response ought to be, the access has to retire"
             )
-            assert hole.resp_code == RESP_OKAY, (
-                f"CHK-CPU-CTRL-HOLE FAIL: read 0x{addr:08x} resp={hole.resp_code}, "
-                "generated PeakRDL grants OKAY"
-            )
-            got = hole.rdata & 0xFFFF_FFFF
-            assert got == 0, (
-                f"CHK-CPU-CTRL-HOLE FAIL: read 0x{addr:08x} data=0x{got:08x}; "
-                "a reserved word must not hand back a live value"
-            )
+            observed.add((hole.resp_code, hole.rdata & MASK32))
             hole_ok += 1
 
+        # A hole write must not land on the live neighbour, whose value is now the
+        # probe the control above proved writable.
         named = CPU_CTRL_INTERIOR_HOLES[1]
         wr = await self._access(SepAxiOp.WRITE, named, wdata=0xFFFF_FFFF)
-        assert not wr.timed_out, (
-            f"CHK-CPU-CTRL-HOLE FAIL: write 0x{named:08x} timed out"
+        assert not wr.timed_out, f"CHK-CPU-CTRL-HOLE FAIL: write 0x{named:08x} timed out"
+        sw_after = (await self._access(SepAxiOp.READ, sw_addr)).rdata & MASK32
+        assert sw_after == probe, (
+            f"CHK-CPU-CTRL-HOLE FAIL: write 0x{named:08x} changed SEP_SW_DEBUG "
+            f"0x{probe:08x}->0x{sw_after:08x}; the hole aliases a live register"
         )
-        fuse_after = await self._access(SepAxiOp.READ, fuse_addr)
-        sw_after = await self._access(SepAxiOp.READ, sw_addr)
-        assert (fuse_after.rdata & 0xFFFF_FFFF) == (fuse_before.rdata & 0xFFFF_FFFF), (
-            f"CHK-CPU-CTRL-HOLE FAIL: write 0x{named:08x} changed "
-            f"SEP_FUSE_SENSE_STATUS 0x{fuse_before.rdata:08x}->0x{fuse_after.rdata:08x}"
-        )
-        assert (sw_after.rdata & 0xFFFF_FFFF) == (sw_before.rdata & 0xFFFF_FFFF), (
-            f"CHK-CPU-CTRL-HOLE FAIL: write 0x{named:08x} changed "
-            f"SEP_SW_DEBUG 0x{sw_before.rdata:08x}->0x{sw_after.rdata:08x}"
-        )
+        await self._access(SepAxiOp.WRITE, sw_addr, wdata=sw_restore)
+
         self.logger.info(
-            "CHK-CPU-CTRL-HOLE PASS: %d reserved sep_cpu_ctrl word(s) completed "
-            "OKAY with data 0 (not a hang, not a live alias); write 0x%08x left "
-            "SEP_FUSE_SENSE_STATUS and SEP_SW_DEBUG unchanged",
+            "CHK-CPU-CTRL-HOLE PASS: %d hole word(s) retired and none aliases "
+            "SEP_SW_DEBUG (control write proved it writable)",
             hole_ok,
-            named,
+        )
+        # Reported for the design owner, not graded. See Known Limitations.
+        self.logger.info(
+            "MAP-AUDIT sep_cpu_ctrl hole 0x%08x-0x%08x: observed (resp,data)=%s; "
+            "memory_map.adoc names DECERR for an aperture's unpopulated remainder, "
+            "and the RDL declares this span neither reserved nor a register",
+            CPU_CTRL_INTERIOR_HOLES[0],
+            CPU_CTRL_INTERIOR_HOLES[-1],
+            sorted(observed),
         )

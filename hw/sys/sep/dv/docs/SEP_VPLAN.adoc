@@ -930,9 +930,9 @@ recipes: link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_
 
 *BFM / Model*: ocah_axi_vip
 
-*Objective*: Prove the CPU-LSU decodes `sep_cpu_ctrl` and one safe CSR in every LSU-reachable CSR block (including Adams Bridge and the entropy pool), and that the reserved span inside `sep_cpu_ctrl` completes and is not a live alias.
+*Objective*: Prove the CPU-LSU decodes `sep_cpu_ctrl` and one safe CSR in every LSU-reachable CSR block (including Adams Bridge and the entropy pool), and that the unpopulated hole inside `sep_cpu_ctrl` completes and is not a live alias.
 
-*Test Coverage*: One safe CSR in every LSU-reachable CSR block, plus a `sep_cpu_ctrl` sweep and a refuse of the interior reserved span.
+*Test Coverage*: One safe CSR in every LSU-reachable CSR block, plus a `sep_cpu_ctrl` sweep and the interior hole.
 
 *Test Procedure*:
 
@@ -943,7 +943,7 @@ recipes: link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_
 . Write/readback/restore the SEP base/size CSRs and the pure-RW storage registers (masked).
 . Write the implemented `CLOCK_GATE_CTRL` bits, read them back, then restore reset after the fabric walk.
 . Walk one readable CSR per LSU-reachable block (DMA, WDT, scratch, reset, OTBN, AES, HMAC, KMAC, CSRNG, EDN, ESRC, ABR NAME, entropy-pool STATUS, lifecycle, KM mailbox, eFuse shadow, AXI mailbox, inbound filter CFG, alias remap, outbound remap, SPI) and require OKAY (value-check where reset is known).
-. Read three words in the reserved span after `SEP_FUSE_SENSE_STATUS` and before `SEP_SW_DEBUG` (including `0x10A3_0170`). The generated PeakRDL block grants OKAY with zero data; require a completed access (not a hang) and that a write does not change the neighbouring live registers.
+. Read three words in the hole after `SEP_FUSE_SENSE_STATUS` and before `SEP_SW_DEBUG` (including `0x10A3_0170`). Require a completed access (not a hang) and report the observed response as `MAP-AUDIT`; no document states a required response for this hole, so it is not graded (see <<known-limitations>>). Prove `SEP_SW_DEBUG` writable, then require a hole write to leave it unchanged.
 
 *Checkers*:
 
@@ -961,7 +961,7 @@ recipes: link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_
 |CHK-FABRIC-WALK
 |Every LSU-reachable CSR block in the walk returns OKAY on its chosen register; value-checked entries match the exported or seq-derived expectation.
 |CHK-CPU-CTRL-HOLE
-|Each reserved `sep_cpu_ctrl` word in the span after `SEP_FUSE_SENSE_STATUS` and before `SEP_SW_DEBUG` completes (not a hang) with data 0. A write to `0x10A3_0170` must not change `SEP_FUSE_SENSE_STATUS` or `SEP_SW_DEBUG`. The generated PeakRDL block grants OKAY (`decoded_err` / `wr_err` tied off).
+|Each `sep_cpu_ctrl` word in the hole after `SEP_FUSE_SENSE_STATUS` and before `SEP_SW_DEBUG` retires rather than hanging, and a write to `0x10A3_0170` does not change `SEP_SW_DEBUG` -- whose writability a control write proves first, since `SEP_FUSE_SENSE_STATUS` is `sw = r` and no AXI write can move it. The response itself is reported as `MAP-AUDIT`, not asserted: no document states one for this hole, and asserting either answer would settle an open specification question by the back door (see <<known-limitations>>).
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
@@ -5841,6 +5841,17 @@ vehicle exists rather than being a convenience. All three leaves are red and are
 
 |Routed-but-reserved spans (specification)
 |`sep_axi_map_refuse_test` drives only reserved addresses the crossbar does not route. An address the crossbar routes but `memory_map.adoc` marks `_RSV_` is counted as a skip and reported by `MAP-AUDIT`, not asserted: whether the fabric must refuse a routed reserved span is an open specification question, and `expect_error` would settle it by the back door. A fabric that answers OKAY there therefore passes this vehicle.
+
+|Unpopulated hole inside `sep_cpu_ctrl` (specification)
+|`sep_cpu_ctrl.rdl` places `SEP_FUSE_SENSE_STATUS` at `0x150` (64-bit) and `SEP_SW_DEBUG` at `0x178`, and declares nothing between, so `0x10A3_0158`-`0x10A3_0177` is eight words no one assigned. It is a *hole*, not a declared reserved region: the RDL marks it neither `reserved` nor a register, and no document names a required response for it.
+
+*Spec*: `hw/sys/sep/doc/memory_map.adoc` says that within an aperture "only the unit's register extent responds; the remainder is reserved and returns DECERR", and that such an address "cannot alias onto one" because reads and writes "never reach the unit". The aperture rows are per unit -- this block sits inside `0x10A0_0000`-`0x10A3_FFFF` (SYS) -- so whether that sentence reaches a gap *inside* one unit's own register file, as against the space between units, is the open question.
+
+*RTL*: the generated block cannot produce DECERR for any address. `hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv` computes `is_valid_addr = '1; // No valid address check`, never uses it, and ties `decoded_err`, `cpuif_wr_err` and `readback_err` to `'0`; the readback mux defaults to `'0`. The request does reach the block, which acknowledges it -- so both halves of the spec sentence are unmet as built.
+
+*DV*: `sep_address_map_test` `CHK-CPU-CTRL-HOLE` grades only what holds under either ruling -- the access retires, and it does not alias `SEP_SW_DEBUG` (with a control write first proving that register writable, since `SEP_FUSE_SENSE_STATUS` is `sw = r` and no AXI write can move it). The observed response is reported as `MAP-AUDIT` and is not asserted, for the same reason `sep_axi_map_refuse_test` reports rather than arming `expect_error`: asserting either answer settles the question by the back door. A `SLVERR`/`DECERR` assertion added in the branch that became this revision did exactly that and could not pass against this RTL.
+
+Owner decision needed: if the sentence governs intra-block holes, the fix is a generated address check or explicit `reserved` declarations in the RDL; if it does not, `memory_map.adoc` should say so, since it currently reads as universal.
 
 |Dead-space per-beat refusal on writes (AXI)
 |Read bursts are proven per beat: the bus monitor keeps each beat's `RRESP` in order, so `CHK-DEADSPACE-BEAT` can name the beat that answered. Write bursts cannot be, and no tooling will change it — AXI returns one `BRESP` for a whole write burst, so a write burst that refused only its tail is indistinguishable from one that refused every beat. The write contract stays at burst granularity: the burst is refused and no live register moves.
