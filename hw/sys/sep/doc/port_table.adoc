@@ -27,8 +27,8 @@
 |`mpc_debug_halt_req` |`logic` |Input |1 |Async halt request from MPC. |Debug controller |Tie to '0 if unused
 |`mpc_debug_run_req` |`logic` |Input |1 |Async run request from MPC. |Debug controller |Tie to '0 if unused
 |`mpc_reset_run_req` |`logic` |Input |1 |Run/halt selection after reset. |Debug controller |1'b1
-|`i_cpu_halt_req` |`logic` |Input |1 |Async halt request to CPU. |Debug controller |Tie to '0 if unused
-|`i_cpu_run_req` |`logic` |Input |1 |Async restart request to CPU. |Debug controller |Tie to '0 if unused
+|`cpu_halt_req_i` |`logic` |Input |1 |Async halt request to CPU. |Debug controller |Tie to '0 if unused
+|`cpu_run_req_i` |`logic` |Input |1 |Async restart request to CPU. |Debug controller |Tie to '0 if unused
 
 |`test_en_i` |`logic` |Input |1 |DFT/scan test-enable. Drives clock-gater test ports and AXI cell test inputs. |Test controller |1'b0
 |`scan_rst_ni` |`logic` |Input |1 |Scan reset (active-low). Bypasses reset synchronizers during DFT. |Test controller |1'b1

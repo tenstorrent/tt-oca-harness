@@ -44,8 +44,8 @@ module sep #(
   input  logic mpc_debug_run_req,  // Async run request
   input  logic mpc_reset_run_req,  // Run/halt after reset
 
-  input  logic i_cpu_halt_req,      // Async halt req to CPU
-  input  logic i_cpu_run_req, // Async restart req to CPU
+  input  logic cpu_halt_req_i,      // Async halt req to CPU
+  input  logic cpu_run_req_i, // Async restart req to CPU
 
   // DFT
   // Default tie-offs when unused: test_en_i=1'b0, scan_rst_ni=1'b1
@@ -238,10 +238,10 @@ module sep #(
   logic mpc_debug_halt_ack;
   logic mpc_debug_run_ack;
   logic debug_brkpt_status;
-  logic o_cpu_halt_ack;
-  logic o_cpu_halt_status;
-  logic o_debug_mode_status;
-  logic o_cpu_run_ack;
+  logic cpu_halt_ack_o;
+  logic cpu_halt_status_o;
+  logic debug_mode_status_o;
+  logic cpu_run_ack_o;
   logic [9:0] sep_efuse_debug;
   logic [5:0] sep_efuse_token_match_sip_debug;
   logic [5:0] sep_efuse_token_match_chiplet_debug;
@@ -607,12 +607,12 @@ NUM_EXT_DEMUX_PORTS
     .mpc_debug_run_ack              (mpc_debug_run_ack),  // Run ack
     .debug_brkpt_status             (debug_brkpt_status), // debug breakpoint
 
-    .i_cpu_halt_req                 (i_cpu_halt_req),      // Async halt req to CPU
-    .o_cpu_halt_ack                 (o_cpu_halt_ack),      // core response to halt
-    .o_cpu_halt_status              (o_cpu_halt_status),   // 1'b1 indicates core is halted
-    .o_debug_mode_status            (o_debug_mode_status), // Core to the PMU that core is in debug mode. When core is in debug mode, the PMU should refrain from sendng a halt or run request
-    .i_cpu_run_req                  (i_cpu_run_req),       // Async restart req to CPU
-    .o_cpu_run_ack                  (o_cpu_run_ack),       // Core response to run req
+    .cpu_halt_req_i                 (cpu_halt_req_i),      // Async halt req to CPU
+    .cpu_halt_ack_o                 (cpu_halt_ack_o),      // core response to halt
+    .cpu_halt_status_o              (cpu_halt_status_o),   // 1'b1 indicates core is halted
+    .debug_mode_status_o            (debug_mode_status_o), // Core to the PMU that core is in debug mode. When core is in debug mode, the PMU should refrain from sendng a halt or run request
+    .cpu_run_req_i                  (cpu_run_req_i),       // Async restart req to CPU
+    .cpu_run_ack_o                  (cpu_run_ack_o),       // Core response to run req
 
     .test_en_i                      (test_en_i),
 
@@ -1144,7 +1144,7 @@ NUM_EXT_DEMUX_PORTS
       ({sep_cpu_trace.trace_rv_i_ecause_ip[3:0], sep_cpu_trace.trace_rv_i_tval_ip[11:0]}) == 16)
   `OCAH_OT_ASSERT_STATIC_LINT_ERROR(
       ExtDebugControlLaneWidth_A, $bits
-      ({8'b0, o_cpu_run_ack, o_debug_mode_status, o_cpu_halt_status, o_cpu_halt_ack, 1'b0, debug_brkpt_status, mpc_debug_run_ack, mpc_debug_halt_ack}
+      ({8'b0, cpu_run_ack_o, debug_mode_status_o, cpu_halt_status_o, cpu_halt_ack_o, 1'b0, debug_brkpt_status, mpc_debug_run_ack, mpc_debug_halt_ack}
           ) == 16)
   `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugEfuseLaneWidth_A, $bits({6'b0, sep_efuse_debug}) == 16)
   `OCAH_OT_ASSERT_STATIC_LINT_ERROR(ExtDebugSipTokenLaneWidth_A, $bits
@@ -1212,10 +1212,10 @@ NUM_EXT_DEMUX_PORTS
 
     // [271:256] Debug control signals
     8'b0,  // [271:264] Reserved padding
-    o_cpu_run_ack,  // [263]
-    o_debug_mode_status,  // [262]
-    o_cpu_halt_status,  // [261]
-    o_cpu_halt_ack,  // [260]
+    cpu_run_ack_o,  // [263]
+    debug_mode_status_o,  // [262]
+    cpu_halt_status_o,  // [261]
+    cpu_halt_ack_o,  // [260]
     1'b0,
     debug_brkpt_status,  // [258]
     mpc_debug_run_ack,  // [257]

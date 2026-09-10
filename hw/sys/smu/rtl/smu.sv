@@ -429,8 +429,8 @@ module smu #(
   // cla_ext_action_custom[0] - mpc_debug_halt_req
   // cla_ext_action_custom[1] - mpc_debug_run_req
   // cla_ext_action_custom[2] - mpc_reset_run_req (inverted: action asserted = Debug Mode)
-  // cla_ext_action_custom[3] - i_cpu_halt_req
-  // cla_ext_action_custom[4] - i_cpu_run_req
+  // cla_ext_action_custom[3] - cpu_halt_req_i
+  // cla_ext_action_custom[4] - cpu_run_req_i
   logic [cla_pkg::CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0] cla_ext_action_custom;
 
   // SEP lifecycle and mailbox signals
@@ -862,8 +862,8 @@ module smu #(
       .mpc_debug_run_req             (cla_ext_action_custom[1]),
       .mpc_reset_run_req             (~cla_ext_action_custom[2]), // inverted: default 0 = Normal Mode; CLA action = Debug Mode
 
-      .i_cpu_halt_req                (cla_ext_action_custom[3]),
-      .i_cpu_run_req                 (cla_ext_action_custom[4]),
+      .cpu_halt_req_i                (cla_ext_action_custom[3]),
+      .cpu_run_req_i                 (cla_ext_action_custom[4]),
 
       .test_en_i                     (test_en_i),
       .scan_rst_ni                   (scan_rst_ni),

@@ -25,12 +25,12 @@ module sep_cpu (
   output logic mpc_debug_run_ack,  // Run ack
   output logic debug_brkpt_status, // debug breakpoint
 
-  input  logic i_cpu_halt_req,      // Async halt req to CPU
-  output logic o_cpu_halt_ack,      // core response to halt
-  output logic o_cpu_halt_status,   // 1'b1 indicates core is halted
-  output logic o_debug_mode_status, // Core to the PMU that core is in debug mode. When core is in debug mode, the PMU should refrain from sendng a halt or run request
-  input  logic i_cpu_run_req,       // Async restart req to CPU
-  output logic o_cpu_run_ack,       // Core response to run req
+  input  logic cpu_halt_req_i,      // Async halt req to CPU
+  output logic cpu_halt_ack_o,      // core response to halt
+  output logic cpu_halt_status_o,   // 1'b1 indicates core is halted
+  output logic debug_mode_status_o, // Core to the PMU that core is in debug mode. When core is in debug mode, the PMU should refrain from sendng a halt or run request
+  input  logic cpu_run_req_i,       // Async restart req to CPU
+  output logic cpu_run_ack_o,       // Core response to run req
 
   // Excluding from coverage as usage is determined by the integrator of the VeeR core.
   // Note: VeeR reset bypass (scan_rst_n) not exposed on the el2_veer_wrapper boundary.
@@ -141,10 +141,10 @@ module sep_cpu (
   prim_sync2r #(
     .WIDTH(1)
   ) u_mpc_reset_run_req_sync (
-    .i_clk     (clk_i),
-    .i_d       (mpc_reset_run_req),
-    .i_reset_n (dbg_rstb_i),
-    .o_q       (mpc_reset_run_req_sync)
+    .clk_i     (clk_i),
+    .d_i       (mpc_reset_run_req),
+    .rst_ni (dbg_rstb_i),
+    .q_o       (mpc_reset_run_req_sync)
   );
 
   el2_veer_wrapper #(
@@ -169,12 +169,12 @@ module sep_cpu (
     .mpc_debug_run_ack  (mpc_debug_run_ack),  // Run ack
     .debug_brkpt_status (debug_brkpt_status), // debug breakpoint
 
-    .i_cpu_halt_req      (i_cpu_halt_req),      // Async halt req to CPU
-    .o_cpu_halt_ack      (o_cpu_halt_ack),      // core response to halt
-    .o_cpu_halt_status   (o_cpu_halt_status),   // 1'b1 indicates core is halted
-    .o_debug_mode_status (o_debug_mode_status), // Core to the PMU that core is in debug mode. When core is in debug mode, the PMU should refrain from sendng a halt or run request
-    .i_cpu_run_req       (i_cpu_run_req), // Async restart req to CPU
-    .o_cpu_run_ack       (o_cpu_run_ack), // Core response to run req
+    .i_cpu_halt_req      (cpu_halt_req_i),      // Async halt req to CPU
+    .o_cpu_halt_ack      (cpu_halt_ack_o),      // core response to halt
+    .o_cpu_halt_status   (cpu_halt_status_o),   // 1'b1 indicates core is halted
+    .o_debug_mode_status (debug_mode_status_o), // Core to the PMU that core is in debug mode. When core is in debug mode, the PMU should refrain from sendng a halt or run request
+    .i_cpu_run_req       (cpu_run_req_i), // Async restart req to CPU
+    .o_cpu_run_ack       (cpu_run_ack_o), // Core response to run req
 
     .scan_mode  (test_en_i), // DFT test-enable
     .mbist_mode (1'b0),    // This is unused in the EL2, tie down

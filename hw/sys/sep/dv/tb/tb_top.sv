@@ -431,8 +431,8 @@ module sep_uvm_top
         .mpc_debug_halt_req           (1'b0),
         .mpc_debug_run_req            (1'b0),
         .mpc_reset_run_req            (mpc_reset_run_req),
-        .i_cpu_halt_req               (1'b0),
-        .i_cpu_run_req                (i_cpu_run_req_i),
+        .cpu_halt_req_i               (1'b0),
+        .cpu_run_req_i                (i_cpu_run_req_i),
 
         // DFT: functional mode (see the bare-sep note below on test_en_i).
         .test_en_i                    (1'b0),
@@ -981,7 +981,7 @@ module sep_uvm_top
     // ------------------------------------------------------------------
     // CPU firmware-boot responders + observables.
     // ------------------------------------------------------------------
-    // PC advance: surface the EL2 retired-instruction trace. o_cpu_run_ack is not
+    // PC advance: surface the EL2 retired-instruction trace. cpu_run_ack_o is not
     // a port on bare `sep` (and ext_debug_bus_o is only [383:0]), so tap it by XMR
     // from the CPU wrapper — the same hierarchical-read style used for the LSU
     // response above.
@@ -994,7 +994,7 @@ module sep_uvm_top
     assign cpu_trace_ecause_o    = cpu_trace_w.trace_rv_i_ecause_ip;
     assign cpu_trace_interrupt_o = cpu_trace_w.trace_rv_i_interrupt_ip;
     assign cpu_trace_tval_o      = cpu_trace_w.trace_rv_i_tval_ip;
-    assign o_cpu_run_ack_o   = `SEP_CORE.sep_cpu.o_cpu_run_ack;
+    assign o_cpu_run_ack_o   = `SEP_CORE.sep_cpu.cpu_run_ack_o;
 
     // SEP resets (internal nets): the reset-independence and wdt-reset-path
     // tests read them. Same XMR-probe style as above.

@@ -49,8 +49,8 @@ module sep_wrapper
   input  logic mpc_debug_run_req,
   input  logic mpc_reset_run_req,
 
-  input  logic i_cpu_halt_req,
-  input  logic i_cpu_run_req,
+  input  logic cpu_halt_req_i,
+  input  logic cpu_run_req_i,
 
   input  logic test_en_i,
   input  logic scan_rst_ni,

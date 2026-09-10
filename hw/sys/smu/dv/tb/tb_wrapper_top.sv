@@ -879,11 +879,11 @@ module smu_wrapper_uvm_top (
   assign sep_mpc_debug_run_o =
         u_dut.u_smu.gen_sep.u_sep.mpc_debug_run_req;
   assign sep_cpu_run_req_o =
-        u_dut.u_smu.gen_sep.u_sep.i_cpu_run_req;
+        u_dut.u_smu.gen_sep.u_sep.cpu_run_req_i;
   assign sep_halt_status_o =
-        u_dut.u_smu.gen_sep.u_sep.o_cpu_halt_status;
+        u_dut.u_smu.gen_sep.u_sep.cpu_halt_status_o;
   assign sep_debug_mode_o =
-        u_dut.u_smu.gen_sep.u_sep.o_debug_mode_status;
+        u_dut.u_smu.gen_sep.u_sep.debug_mode_status_o;
   assign sep_cpu_rst_ni_o =
         u_dut.u_smu.gen_sep.u_sep.sep_cpu.rst_ni;
   assign sep_dbg_rstb_o =
