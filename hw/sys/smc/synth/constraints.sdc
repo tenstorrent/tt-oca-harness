@@ -199,7 +199,7 @@ create_generated_clock -add -name AVS_DIV_TOGGLE_FROM_PERIPHERALCLK \
     -source [get_ports "clk_periph_i"] \
     [get_pins "${avs_hier}/u_clk_div/div_clk_stdbuf/i_A"]
 
-# Toggle flop output (feeds div_clk_stdbuf and postdiv_mux i_clk1). See the
+# Toggle flop output (feeds div_clk_stdbuf and postdiv_mux clk1_i). See the
 # `div_clk/Q` caveat in the file header: this pin only exists post-synthesis,
 # once technology mapping has assigned a concrete cell/pin name to the
 # `always_ff`-inferred `div_clk` register in prim_prog_clk_div_posedge.
@@ -219,7 +219,7 @@ create_generated_clock -add -name AVS_DIV_CLK_Q_FROM_PERIPHERALCLK \
 create_generated_clock -add -name AVS_CLKMUX_OUTPUT_FROM_REFCLK_GPIO \
     -master_clock AVS_CLKMUX_OUTPUT_FROM_REFCLK \
     -divide_by 1 \
-    -source [get_pins "${avs_hier}/u_refclk_apbclk_mux/o_clk"] \
+    -source [get_pins "${avs_hier}/u_refclk_apbclk_mux/clk_o"] \
     [get_ports {core2pad_o[49]}]
 
 create_generated_clock -add -name AVS_CLK_FROM_REFCLK_GPIO \
@@ -231,7 +231,7 @@ create_generated_clock -add -name AVS_CLK_FROM_REFCLK_GPIO \
 create_generated_clock -add -name AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK_GPIO \
     -master_clock AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK \
     -divide_by 1 \
-    -source [get_pins "${avs_hier}/u_refclk_apbclk_mux/o_clk"] \
+    -source [get_pins "${avs_hier}/u_refclk_apbclk_mux/clk_o"] \
     [get_ports {core2pad_o[49]}]
 
 create_generated_clock -add -name AVS_CLK_FROM_PERIPHERALCLK_GPIO \
@@ -242,7 +242,7 @@ create_generated_clock -add -name AVS_CLK_FROM_PERIPHERALCLK_GPIO \
 
 # CDC-only modeling: collapse the AVS-clock domain attribution downstream of
 # the programmable divider. Inside `prim_prog_clk_div_posedge`, the bypass
-# path (`postdiv_mux/i_clk0`) lets `AVS_CLKMUX_OUTPUT_*` propagate through to
+# path (`postdiv_mux/clk0_i`) lets `AVS_CLKMUX_OUTPUT_*` propagate through to
 # `clk_o`, while the divided path stamps `AVS_CLK_FROM_*` at `div_clk_stdbuf/o_Y`. The
 # net result is every downstream AVS-domain flop is attributed FOUR clocks
 # (mux-out + divided, each from REFCLK and PERIPHERALCLK roots), which a CDC
@@ -257,7 +257,7 @@ create_generated_clock -add -name AVS_CLK_FROM_PERIPHERALCLK_GPIO \
 # already declared `-logically_exclusive` below (only one source-mode is
 # active at a time).
 set_clock_sense -stop_propagation \
-    [get_pins "${avs_hier}/u_clk_div/postdiv_mux/o_clk"] \
+    [get_pins "${avs_hier}/u_clk_div/postdiv_mux/clk_o"] \
     -clocks {AVS_CLKMUX_OUTPUT_FROM_REFCLK AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK}
 
 # These two can never be active simultaneously (muxed sources)

@@ -437,13 +437,13 @@ module avsbus_controller #(
   prim_ag_clk_mux #(
     .SelectOnReset(1'b1)
   ) u_refclk_apbclk_mux (
-    .i_reset_n_clk0(rst_reg_ni),
-    .i_reset_n_clk1(rst_ref_ni),
-    .i_clk0(apb_clk_gated),
-    .i_clk1(refclk_gated),
-    .i_test_en(test_en_i),
-    .i_sel(prediv_mux_sel),
-    .o_clk(apb_ref_muxed_clk)
+    .rst_clk0_ni(rst_reg_ni),
+    .rst_clk1_ni(rst_ref_ni),
+    .clk0_i(apb_clk_gated),
+    .clk1_i(refclk_gated),
+    .test_en_i(test_en_i),
+    .sel_i(prediv_mux_sel),
+    .clk_o(apb_ref_muxed_clk)
   );
 
   // test mux to bypass APBCLK/REFCLK antiglitch mux in testmode:

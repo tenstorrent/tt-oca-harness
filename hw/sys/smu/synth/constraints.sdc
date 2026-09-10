@@ -254,17 +254,17 @@ create_generated_clock -add -name AVS_CLKMUX_OUTPUT_FROM_REFCLK \
     -master_clock REFCLK \
     -divide_by 1 \
     -source [get_ports "clk_ref_i"] \
-    [get_pins "${avs_hier}/u_refclk_apbclk_mux/o_clk"]
+    [get_pins "${avs_hier}/u_refclk_apbclk_mux/clk_o"]
 
 create_generated_clock -add -name AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK \
     -master_clock PERIPHERALCLK \
     -divide_by 1 \
     -source [get_ports "clk_periph_i"] \
-    [get_pins "${avs_hier}/u_refclk_apbclk_mux/o_clk"]
+    [get_pins "${avs_hier}/u_refclk_apbclk_mux/clk_o"]
 
 # Tell the tool the raw primaries stop at the mux output — the generated clocks take over from there
 set_clock_sense -stop_propagation \
-    [get_pins "${avs_hier}/u_refclk_apbclk_mux/o_clk"] \
+    [get_pins "${avs_hier}/u_refclk_apbclk_mux/clk_o"] \
     -clocks {REFCLK PERIPHERALCLK}
 
 # Now the clock mux output is fed into a clock divider.
@@ -315,7 +315,7 @@ create_generated_clock -add -name AVS_DIV_TOGGLE_FROM_PERIPHERALCLK \
     -source [get_ports "clk_periph_i"] \
     [get_pins "${avs_hier}/u_clk_div/div_clk_stdbuf/i_A"]
 
-# Toggle flop output (feeds div_clk_stdbuf and postdiv_mux i_clk1). See the
+# Toggle flop output (feeds div_clk_stdbuf and postdiv_mux clk1_i). See the
 # `div_clk/Q` caveat in the file header: this pin only exists post-synthesis,
 # once technology mapping has assigned a concrete cell/pin name to the
 # `always_ff`-inferred `div_clk` register in prim_prog_clk_div_posedge.
@@ -335,7 +335,7 @@ create_generated_clock -add -name AVS_DIV_CLK_Q_FROM_PERIPHERALCLK \
 create_generated_clock -add -name AVS_CLKMUX_OUTPUT_FROM_REFCLK_GPIO \
     -master_clock AVS_CLKMUX_OUTPUT_FROM_REFCLK \
     -divide_by 1 \
-    -source [get_pins "${avs_hier}/u_refclk_apbclk_mux/o_clk"] \
+    -source [get_pins "${avs_hier}/u_refclk_apbclk_mux/clk_o"] \
     [get_ports {core2pad_o[49]}]
 
 create_generated_clock -add -name AVS_CLK_FROM_REFCLK_GPIO \
@@ -347,7 +347,7 @@ create_generated_clock -add -name AVS_CLK_FROM_REFCLK_GPIO \
 create_generated_clock -add -name AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK_GPIO \
     -master_clock AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK \
     -divide_by 1 \
-    -source [get_pins "${avs_hier}/u_refclk_apbclk_mux/o_clk"] \
+    -source [get_pins "${avs_hier}/u_refclk_apbclk_mux/clk_o"] \
     [get_ports {core2pad_o[49]}]
 
 create_generated_clock -add -name AVS_CLK_FROM_PERIPHERALCLK_GPIO \
@@ -360,7 +360,7 @@ create_generated_clock -add -name AVS_CLK_FROM_PERIPHERALCLK_GPIO \
 # `AVS_CLK_FROM_PERIPHERALCLK` families, which are `-logically_exclusive` below
 # (only one premux source mode is active at a time).
 set_clock_sense -stop_propagation \
-    [get_pins "${avs_hier}/u_clk_div/postdiv_mux/o_clk"] \
+    [get_pins "${avs_hier}/u_clk_div/postdiv_mux/clk_o"] \
     -clocks {AVS_CLKMUX_OUTPUT_FROM_REFCLK AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK}
 
 # These two can never be active simultaneously (muxed sources)
