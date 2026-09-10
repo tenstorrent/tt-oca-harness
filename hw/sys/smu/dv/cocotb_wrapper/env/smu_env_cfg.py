@@ -46,7 +46,11 @@ class SmuEnvCfg(uvm_object):
         """Choose reproducible clock ratios and reset timing."""
         rng = random.Random(seed)
         self.smu_clk_period_ns = rng.choice((8, 10, 12))
-        self.ref_clk_period_ns = rng.choice((10, 12, 16))
+        # clk_ref_i carries telemetry; a period equal to clk_smu_i leaves the two
+        # domains indistinguishable at the boundary.
+        self.ref_clk_period_ns = rng.choice(
+            tuple(p for p in (10, 12, 16) if p != self.smu_clk_period_ns)
+        )
         self.periph_clk_period_ns = rng.choice((16, 20, 24))
         self.sep_wdt_clk_period_ns = rng.choice((80, 100, 120))
         self.powergood_delay_cycles = rng.randint(6, 10)

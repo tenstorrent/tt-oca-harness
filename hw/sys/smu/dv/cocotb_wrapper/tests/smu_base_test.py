@@ -58,6 +58,16 @@ class smu_base_test(uvm_test):
     #: hide the next one like it.
     min_jtag_smu_ratio: float | None = None
 
+    #: Set by a leaf whose checks compare clk_ref_i against clk_smu_i at the
+    #: boundary. randomize_timing can hand both domains the same period, and an
+    #: equality observation cannot then tell one clock from the other, so such a
+    #: leaf reports "cannot prove separation" on a correct design. The leaf asks
+    #: for distinct periods instead of the check being weakened.
+    #:
+    #: Suite-wide clamping stays out for the same reason it does above: the
+    #: randomization is what surfaces this class of hole.
+    require_distinct_ref_smu: bool = False
+
     @staticmethod
     def random_seed() -> int:
         return int(os.environ.get("RANDOM_SEED", "1"), 0)
@@ -122,6 +132,19 @@ class smu_base_test(uvm_test):
                     self.min_jtag_smu_ratio,
                 )
                 self.cfg.jtag_period_ns = raised
+        if self.require_distinct_ref_smu and self.cfg.ref_clk_period_ns == (
+            self.cfg.smu_clk_period_ns
+        ):
+            for candidate in (10, 12, 16):
+                if candidate != self.cfg.smu_clk_period_ns:
+                    self.logger.warning(
+                        "ref_clk_period_ns %d -> %d so clk_ref_i and clk_smu_i are "
+                        "distinguishable at the boundary",
+                        self.cfg.ref_clk_period_ns,
+                        candidate,
+                    )
+                    self.cfg.ref_clk_period_ns = candidate
+                    break
         ConfigDB().set(None, "*", "cfg", self.cfg)
         # Built ahead of any scoreboard so the ConfigDB entry exists when a
         # concrete test's build_phase looks it up; idles unless +sep_itcm_hex
