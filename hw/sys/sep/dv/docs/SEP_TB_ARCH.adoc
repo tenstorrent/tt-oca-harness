@@ -131,6 +131,7 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 |DUT Interface |`tb_top` Handling
 |CPU-LSU AXI |Flattens to `s_axi_*`. no_cpu `sep_cpu` stub drives `lsu_axi_req` from these ports (`assign`, single driver). Response XMR-read back into the flat bus.
 |SMN-inbound AXI |Flattens the real inbound port to `m_axi_*` for a second master agent. Traverses `u_inbound_filter`.
+|SEP->SMC AXI |`rom_boot` target only: `ocah_axi_struct_bridge` places the wrapper's `sep_ext_to_smc_axi` struct port on `u_smc_axi_if` and the shared `OcahAxiSlaveAgent` answers it. `env/sep_smc_mem.py` holds the geometry and preloads the scratch, status, strap, and manifest+BL1 image words from the testlist plusargs; the SMC address-decode check counts accesses outside the generated map. Other targets tie the port idle.
 |Clocks |cocotb drives `clk_i`, `clk_wdt_i`, `entropy_rosc_sample_clk_i`
 |Resets / straps |`rst_ni`, `ext_boot_seq_done_i`, `mpc_reset_run_req`, `wdt_rst_ni_i`, `dbg_rstb_i`, `test_en_strap_i`, …
 |SPI host pads |Scalar MISO/MOSI/SCK/CS ports for `OcahSpiFlash`

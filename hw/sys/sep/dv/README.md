@@ -170,8 +170,8 @@ What the resulting number is not:
   exist in the cocotb env, so "did we exercise the interesting scenarios" stays
   with [`docs/SEP_VPLAN.adoc`](docs/SEP_VPLAN.adoc).
 * **The DUT minus the CPU, not the whole DUT.** `cov/config/vcs/sep_cov_scope.hier`
-  excludes the testbench top, the outbound mailbox, the backdoor SMC memory, the
-  AXI SVA module and the CPU subtree at compile time, across both code and
+  excludes the testbench top, the outbound mailbox, the AXI SVA module and the
+  CPU subtree at compile time, across both code and
   assertion coverage (`-cm_hier` with `-cm_common_hier`). Measured on a merged
   database: the excluded instances leave the hierarchy entirely and `sep_uvm_top`
   matches `u_dut` in all six columns. So the percentage is the SEP DUT **with the
