@@ -72,12 +72,16 @@ tags = ["efuse", "jtag", "mux", "cpu", "subsystem"]
 run_modes = ["cpu"]
 
 [[tests]]
-# eFuse program x write-lock on a legal spare field (never LC_STATE). RAND-REP:
-# unlocked program + write-lock reject every seed; spare index and bit offsets
-# from the run seed. Real fuse sense. Clear-after-program.
+# eFuse program x write-lock on every legal spare field (never LC_STATE).
+# RAND-REP: unlocked program + write-lock reject on SPARE0..SPARE7 every seed;
+# the seed selects only the bit offsets inside each spare. Real fuse sense.
+# Clear-after-program.
 name = "sep_efuse_program_lock_matrix_test"
 module = "efuse.sep_efuse_program_lock_matrix_test"
 seed = 1
+# No reseed: the walk visits SPARE0..SPARE7 every run, so slot coverage no longer
+# depends on how many seeds CI draws. Only the bit offsets within each spare are
+# seed-selected.
 timeout_sec = 1800
 tags = ["efuse", "lock", "subsystem"]
 run_modes = ["no_cpu"]
@@ -97,8 +101,9 @@ target = "lsu_stub_all_live"
 
 [[tests]]
 # eFuse set-only shadow OR-merge on version / revoke / required-signer
-# fields (never LC_STATE). RANDCFG: every seed walks all five legal
-# set-only fields; word index and bit patterns come from the run seed.
+# and Class-1 DIS fields (never LC_STATE). RANDCFG: every seed walks
+# seven legal set-only fields; word index and bit patterns come from
+# the run seed.
 # Real fuse sense. Program x lock stays a different mechanism.
 name = "sep_efuse_set_only_monotonicity_test"
 module = "efuse.sep_efuse_set_only_monotonicity_test"

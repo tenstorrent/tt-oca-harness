@@ -178,8 +178,7 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
             # Seeded per-pass payload and CDC timing. The stall stays shorter
             # than the scan's idle tail, so the reset lands after the bus
             # transaction completed: a stall long enough for a true mid-flight
-            # abort leaves the recovery write BUSY_OR_FULL indefinitely
-            # (tracked as issue #1330).
+            # abort leaves the recovery write BUSY_OR_FULL indefinitely.
             data = rng.getrandbits(64) & self.data_mask(size)
             stall = rng.randint(16, 24)
             self.log_iteration(
@@ -216,7 +215,7 @@ class dtp_jtag2axi_robustness_test_seq(dtp_jtag2axi_base_test_seq):
             addr = self._target_addr(target, idx + 8)
             # Seeded per-pass payload and stall. The stall stays shorter than
             # the scan's idle tail, so the narrow reset lands after the bus
-            # transaction completed (see the mid-flight abort note above; issue #1330).
+            # transaction completed (see the mid-flight abort note above).
             data = rng.getrandbits(64) & self.data_mask(size)
             stall = rng.randint(8, 16)
             self.log_iteration(

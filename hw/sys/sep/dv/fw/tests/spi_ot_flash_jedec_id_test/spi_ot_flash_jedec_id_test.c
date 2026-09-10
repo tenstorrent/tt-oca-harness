@@ -103,7 +103,6 @@ int main(void) {
 
     int pass = 1;
 
-
     init_spi_controller();
     printf("SPI controller enabled: CLKDIV=%d, CPOL=0, CPHA=0\n\n", SPI_CLKDIV);
 

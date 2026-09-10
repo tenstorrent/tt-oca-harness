@@ -132,7 +132,6 @@ static bool run_header_body_combo(test_context_t *ctx, occp_crc_inject_mode_t he
 int main(void) {
     static test_context_t ctx = {0};
 
-    // peripherals_out_of_reset();
     init_test(0);
 
     simputs("=== OCCP CRC Injection Test ===\n");
@@ -192,7 +191,6 @@ int main(void) {
 
     /* Validate the SMC status buffer before cooldown */
     // unpredictable and no fixed code for CRC error so let's just skip this
-    // read_and_validate_smc_status_buffer(&ctx);
 
     /* Cool-down valid commands to ensure recovery */
     execute_random_commands(&ctx, 5);

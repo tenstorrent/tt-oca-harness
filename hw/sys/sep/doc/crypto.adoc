@@ -13,7 +13,7 @@ distinct buses:
 * AXI4-lite secret key buses
 ** Mastered by Key Manager
 
-Apart from the Adams Bridge post-quantum accelerator, which is vendored
+Apart from the Adams Bridge, a Post-Quantum Cryptography (PQC) accelerator vendored
 from Caliptra, the subsystem’s hardware components are modified versions
 of the OpenTitan components, and the firmware is also based on the
 https://opentitan.org/book/doc/security/cryptolib/cryptolib_api.html[OpenTitan
@@ -46,10 +46,10 @@ the Key Manager or the destination accelerator enters software reset.
 
 Alerts from all crypto components are collected by 11 `prim_alert_receiver`
 instances within `sep_crypto` and aggregated into a single `crypto_alert_o`
-output. Each accelerator has its own software-controllable reset. The SEP Reset
-Controller drains and isolates both its host and Key Manager paths before
-asserting reset; a Key Manager reset similarly drains all of its key paths. The
-entropy source, CSRNG, and EDN share one coordinated reset. See
+output. Each accelerator except Adams Bridge has its own software-controllable
+reset. The SEP Reset Controller drains and isolates both its host and Key Manager
+paths before asserting reset; a Key Manager reset similarly drains all of its
+key paths. The entropy source, CSRNG, and EDN share one coordinated reset. See
 <<sep-reset-controller>> and <<sep-trng-reset>>.
 
 The crypto complex uses whole-instance Class 2 scan boundaries so all
@@ -238,9 +238,9 @@ documentation] for the authoritative core functionality of the IP. The
 register map is reported in <<sep-detailed-register-map>>.
 
 [[adams-bridge-abr]]
-==== Adams Bridge Post-Quantum Accelerator (ABR)
+==== Adams Bridge (ABR)
 
-The module is based on the
+The module is a post-quantum accelerator based on the
 https://github.com/chipsalliance/adams-bridge[Caliptra Adams Bridge] design.
 
 Algorithms:

@@ -15,7 +15,7 @@ class dtp_jtag_clamp_test(dtp_base_test):
         await self.start_looped_seq(
             dtp_jtag_clamp_test_seq,
             "jtag_clamp_seq",
-            specific_env="DTP_JTAG_CLAMP_TEST_LOOPS",
+            specific_knob="DTP_JTAG_CLAMP_TEST_LOOPS",
             default_loops=16,
-            group_env="DTP_BASIC_JTAG_TEST_LOOPS",
+            group_knob="DTP_BASIC_JTAG_TEST_LOOPS",
         )

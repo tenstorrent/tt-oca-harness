@@ -24,7 +24,7 @@ from check_no_vendor_paths import (  # noqa: E402
     _load_config,
 )
 
-SIM_CFG = "smu_wrapper_sim_cfg.toml"
+SIM_CFG = "smu_sim_cfg.toml"
 CATALOG = "testlists/wrapper.toml"
 TARGET_NO_SEP = "compile_smu_chiplet_no_sep"
 TARGET_SEP_RTL = "compile_smu_chiplet_sep_rtl"
@@ -34,10 +34,12 @@ SMOKE_TESTS = {
     "smu_smc_smoke_test": TARGET_NO_SEP,
     "smu_sep_smoke_test": TARGET_SEP_RTL,
 }
-# Green merge-gate smoke (no SEP=1 / no TCM shim).
+# Merge-gate smoke covers both wrapper profiles.
 EXPECTED_SMOKE_GROUP = {
     "smu_wrapper_elaboration_no_sep_test",
+    "smu_wrapper_elaboration_sep_rtl_test",
     "smu_smc_smoke_test",
+    "smu_sep_smoke_test",
 }
 
 REQUIRED_SOURCES = (
@@ -52,9 +54,9 @@ REQUIRED_SOURCES = (
     "cocotb_wrapper/tests/smu_wrapper_elaboration_test.py",
     "cocotb_wrapper/tests/smu_smc_smoke_test.py",
     "cocotb_wrapper/tests/smu_sep_smoke_test.py",
-    "cocotb_wrapper/seq_lib/smu_wrapper_elaboration_seq.py",
-    "cocotb_wrapper/seq_lib/smu_smc_smoke_seq.py",
-    "cocotb_wrapper/seq_lib/smu_sep_smoke_seq.py",
+    "common/seq_lib/smu_wrapper_elaboration_seq.py",
+    "common/seq_lib/smu_smc_smoke_seq.py",
+    "common/seq_lib/smu_sep_smoke_seq.py",
     "cocotb_wrapper/env/smu_env_cfg.py",
     "cocotb_wrapper/env/smu_boot_scoreboard.py",
     CATALOG,
@@ -215,7 +217,7 @@ def check_filelists(result: Readiness, filelists: list[Path]) -> None:
         "axi_sim_mem.sv",
     )
     forbidden_tokens = (
-        # Stale foundry path + retired DV TCM shim must not appear.
+        # Foundry-path and DV TCM shim tokens must not appear.
         # (OSS TCM is hw/sys/sep/rtl/sep_tcm_wrapper.sv; blocker is ram_*.)
         "hw/sep/sep_tcm_wrapper.sv",
         "hw/sys/smu/dv/shims/mem/sep_tcm_wrapper.sv",

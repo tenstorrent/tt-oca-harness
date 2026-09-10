@@ -37,15 +37,15 @@ statistical requirements specified by the BSI agency.
 
 ===== Noise Generation
 
-The entropy source uses 12 independent ring oscillators as its noise source. Each ring oscillator is constructed from manually instantiated generic logic cells (`gnand2`, `gbuff`, `gmux2`) to prevent synthesis optimization from disrupting the asynchronous feedback loop. Each oscillator has two configurable lengths: a `TOTAL_LENGTH` and a `TAPPED_LENGTH`, where a multiplexer selects between the short and long feedback paths. The `entropy_rosc_tune_fsm` toggles between these two lengths on a rising edge of any health test failure, providing a rudimentary frequency detuning mechanism.
+The entropy source uses 12 independent ring oscillators as its noise source. Each ring oscillator is constructed from the shared OCAH primitives (`prim_clock_nand2`, `prim_stdbuf`, `prim_stdmux2`) to preserve the asynchronous feedback-loop structure through technology mapping. Each oscillator has two configurable lengths: a `TOTAL_LENGTH` and a `TAPPED_LENGTH`, where a multiplexer selects between the short and long feedback paths. The `entropy_rosc_tune_fsm` toggles between these two lengths on a rising edge of any health test failure, providing a rudimentary frequency detuning mechanism.
 
-The oscillator output is sampled by a metastable D flip-flop (`gdff`) clocked by a sampling clock. The sampled bit is then synchronized to the system clock domain through a two-stage synchronizer. Each lane can be clocked either by an external sampling clock (`rosc_sample_clk_i`) or by a shared internal ring oscillator (total length 109, tapped length 53). A per-lane ripple divider provides division ratios of 1, 2, 4, 8, 16, and 32, selected through the CSR.
+The oscillator output is sampled by a metastable D flip-flop (`prim_dffrxq`) clocked by a sampling clock. The sampled bit is then synchronized to the system clock domain through a two-stage synchronizer. Each lane can be clocked either by an external sampling clock (`rosc_sample_clk_i`) or by a shared internal ring oscillator (total length 109, tapped length 53). A per-lane ripple divider provides division ratios of 1, 2, 4, 8, 16, and 32, selected through the CSR.
 
 ===== Decorrelation and BIW Mixing
 
 Each sampled noise bit enters a serial decorrelator (`entropy_decorrelator`), which shifts bits through a 29-stage shift register with XOR feedback. A downsample counter derived from the `sample_clk_div` CSR field determines how frequently the top 8 bits of the shift register are latched and emitted as an entropy byte. A per-byte mask allows individual bit lanes to be disabled. The decorrelator can be bypassed through a CSR control bit, in which case raw noise bits pass directly to the output.
 
-The 12 decorrelated byte streams are combined by the Balanced Iterative Whirlpool (BIW) stage, which uses four `gf_muladd` instances performing y = a*b + c in GF(2^8) with the AES field polynomial (0x1B). The 12 input bytes are grouped into three sets of four and reduced to a single 32-bit word. This mixing step improves the statistical independence of the output without introducing significant latency.
+The 12 decorrelated byte streams are combined by the Barak-Impagliazzo-Wigderson (BIW) stage, which uses four `gf_muladd` instances performing y = a*b + c in GF(2^8) with the AES field polynomial (0x1B). The 12 input bytes are grouped into three sets of four and reduced to a single 32-bit word. This mixing step improves the statistical independence of the output without introducing significant latency.
 
 ===== Health Testing
 

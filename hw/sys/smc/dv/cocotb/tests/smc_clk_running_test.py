@@ -40,7 +40,7 @@ class smc_clk_running_test(smc_base_test):
             "CHK-DMA-ACTIVITY-UNGATE",
             "CHK-TIMEOUT-PATHS",
             "CHK-NONVAC",
-            # Legacy P1 token retained for closed P1 grade compatibility.
+            # P1 alias token (see smc_clk_running_test_seq).
             "CHK-ACTIVE-RUNNING",
         )
         missing = [n for n in required if n not in seq.chk_seen]

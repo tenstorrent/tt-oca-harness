@@ -5,8 +5,7 @@
 One `OcahJtagMasterConfig` describes a TAP connection (naming, IR width, timing,
 signal mapping, monitor bounds) and can be passed to `OcahJtagMasterDriver`,
 `OcahJtagMasterMonitor`, and `OcahJtagMasterAgent` instead of repeating keyword
-arguments. Explicit keyword arguments always override config fields, so
-existing call sites keep working unchanged.
+arguments. Explicit keyword arguments always override config fields.
 """
 
 from __future__ import annotations

@@ -101,7 +101,7 @@ class smc_efuse_otp_burn_shadow_test_seq(SmcCsrSeq):
         # in between (fuse sense only READS this array). It is kept because it
         # localises a dropped `+smc_efuse_hex` plusarg to one line instead of
         # letting it surface as a confusing shadow-read mismatch, and it is
-        # deliberately named so no reader credits it as OTP or sense evidence.
+        # named so no reader credits it as OTP or sense evidence.
         otp0 = int(dut.tb_efuse_otp_word0.value)
         assert otp0 == OTP_WORD0_MARKER, (
             f"eFuse bank-model preload plumbing: model storage word 0 is "

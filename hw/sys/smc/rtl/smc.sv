@@ -163,16 +163,9 @@ module smc #(
   // SEP security disable
   input logic sep_security_disable_i,
 
-  // PVT
-  input logic temp_interrupt_i,
-
   // Lifecycle state
   input  logic [2*smc_pkg::LC_STATE_WIDTH-1:0] lc_state_i,
   output logic                                 lc_sigint_err_o,
-
-  // RAS bank settings
-  output logic [3:0] ras_bank_chip_o,
-  output logic [3:0] ras_bank_instance_o,
 
   // NDM reset
   input  logic [smc_config_pkg::CPU_CLUSTER_COUNT - 1:0] ndmreset_request_i,
@@ -240,7 +233,6 @@ module smc #(
   input logic scan_rst_ni,
 
   // Captured straps input
-  input logic [smc_pkg::NUM_BONDED_GPIO-1:0] captured_straps_i,
 
   // indicators for DFT status
   input logic mem_repair_done_i,
@@ -424,7 +416,7 @@ module smc #(
     .mbist_abort_i                          (mbist_abort_i),
 
     // AXI hang detector fault output.
-    // The OR'd fault is routed into smc_peripherals peripheral_interrupts[31] so PLIC can see it.
+    // The OR'd fault is routed into smc_peripherals peripheral_interrupts[30] so PLIC can see it.
     .axi_hang_irq_o                         (axi_hang_irq)
   );
 
@@ -617,13 +609,6 @@ module smc #(
     // Efuse Shadow Regs
     .shadow_regs_o                         (shadow_regs_o),
 
-    // PVT
-    .temp_interrupt_i                      (temp_interrupt_i),
-
-    // SMC Misc Wrap Signals
-    .ras_bank_chip_o                       (ras_bank_chip_o),
-    .ras_bank_instance_o                   (ras_bank_instance_o),
-
     .ndmreset_request_i                    (ndmreset_request_i),
     .ndmreset_process_o                    (ndmreset_process_o),
 
@@ -651,7 +636,6 @@ module smc #(
 
     .jtag_reset_ctrl_i                     (jtag_reset_ctrl_i),
 
-    .captured_straps_i                     (captured_straps_i),
 
     // interrupts
     .sep_mailbox_interrupts_i              (sep_mailbox_interrupts_i),

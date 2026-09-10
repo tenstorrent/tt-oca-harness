@@ -82,7 +82,7 @@ class OcahAxiItem:
         source: str = "",
         metadata: dict[str, Any] | None = None,
     ) -> None:
-        """Python 3.9-compatible keyword-only initializer."""
+        """Keyword-only initializer coercing every field to its plain frozen type."""
         object.__setattr__(self, "protocol", protocol)
         object.__setattr__(self, "direction", direction)
         object.__setattr__(self, "address", int(address))

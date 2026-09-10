@@ -18,7 +18,7 @@ rather than assuming them:
 * the reference readings are defined (0/1) -- an unusable reference cannot be
   the right-hand side of an exact compare.
 
-It emits no ``CHK-`` token on purpose. Neither precondition can fail on any RTL
+It emits no ``CHK-`` token. Neither precondition can fail on any RTL
 under a 2-state simulator, so a token here would claim checked evidence that the
 gates do not provide ([EVIDENCE-TOKEN-CONDITIONAL]); the testcase's evidence
 token is ``CHK-GPIO-AGGREGATE-STABLE``, emitted by the stability sequence after

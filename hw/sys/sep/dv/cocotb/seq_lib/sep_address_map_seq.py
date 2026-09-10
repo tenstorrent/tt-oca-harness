@@ -73,7 +73,6 @@ READ_CHECK = [
     "SMU_GLOBAL_BASE_ADDR",
     "SMU_REGION_SIZE",
     "SMC_FUSE_SENSE_STATUS",
-    "SEP_STRAPS",
     # Field-packed reset (0xC000_0100) — value-checked against the generated header.
     "SEP_NMI_VEC",
     "SEP_NMI_VEC_LOCK",
@@ -113,7 +112,6 @@ WRITE_READBACK = [
     ("TIMEOUT_COUNT_DMA", 0x0BAD_C0DF),
     ("TIMEOUT_COUNT_SYS_IN", 0xCAFE_F00D),
     ("TIMEOUT_ENABLE", 0x0000_00FF),
-    ("RAS_BANK_INFO", 0x0000_00FF),
 ]
 
 # (name, value) — write-only (sw=w) registers: reading them returns non-OKAY, so

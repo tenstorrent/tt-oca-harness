@@ -3,9 +3,13 @@
 """U7-1 / P2-7: ECC SBE/DBE inject hooks on scratch bank0.
 
 DEFENDS: with inject armed, a real scratch bank0 read advances
-tb_cpu_ecc_inject_fire_count via DUT cpu_scratch0_inject_fire; clearing
-inject lets further scratch reads proceed without incrementing (recovery).
-DOES NOT DEFEND: Rocket ECC syndrome CSR / precise RAS recovery FW policy.
+tb_cpu_ecc_inject_fire_count via DUT cpu_scratch0_inject_fire; clearing inject
+holds that counter while further scratch reads are still arriving. The claim is
+the contrast between those two halves -- the hold alone is true for every DUT
+state, because both inject pins are TB inputs and both are 0.
+DOES NOT DEFEND: Rocket ECC syndrome CSR / precise RAS recovery FW policy, nor
+any DUT SECDED behaviour -- the hook counts qualifying reads and corrupts no
+data.
 """
 
 from __future__ import annotations
@@ -24,7 +28,7 @@ from .smc_cpu_vip_utils import (
 )
 from .smc_csr_seq_utils import SmcCsrSeq
 
-RAS_BANK_INFO = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_RAS_BANK_INFO_BASE_ADDR")
+VERSION_LO = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_BASE_ADDR")
 
 _FIRE_BOUND_CYCLES = 50_000
 _SCRATCH_BOUND_CYCLES = 50_000
@@ -151,18 +155,53 @@ class smc_ecc_fault_inject_test_seq(SmcCsrSeq):
         scratch_hold = int(dut.tb_cpu_scratch_read_count.value)
 
         # Recovery: further scratch traffic with inject clear must not score.
+        #
+        # `fire_count` is incremented by
+        # models/smc_cpu_mem_dv.sv:scratch0_inject_fire_q, whose enable term is
+        #   scratch_ram_req_i[0].en && !wmode && (ecc_inject_sbe_i || ecc_inject_dbe_i)
+        # -- both inject pins are TB inputs and both are 0 here, so
+        # `mid_after == mid` alone is true for every DUT state and cannot fail
+        # on any RTL. What carries the claim is the CONTRAST across
+        # the two halves of this run, on the same counter:
+        #   armed   (inject=1) -> the counter advanced. The fail-capable check
+        #                         for this half is _clear_sbe_on_first_fire's
+        #                         own bound: it returns only once
+        #                         fire_count > baseline and raises on expiry, so
+        #                         reaching this line at all is that half's
+        #                         evidence. No assert is restated here -- `sbe >
+        #                         base` would be true by construction and would
+        #                         read as a check that cannot fail.
+        #   cleared (inject=0) -> the counter holds WHILE further scratch reads
+        #                         are still arriving, which
+        #                         _wait_scratch_reads_gt raises on if they stop.
+        # Both halves are needed: the first is what makes the second mean
+        # anything, and the traffic gate is what stops "no reads happened" from
+        # masquerading as recovery. Both counts are carried in the token below
+        # so a reader can see the contrast without the source.
+        #
+        # Scope, stated because the counter name invites over-reading it: this
+        # proves the injection hook is gated by its enable pins and that scratch
+        # traffic survives the clear. It does NOT prove Rocket SECDED behaviour
+        # -- no corrupted data is forced onto any macro response anywhere in
+        # this bench (CHK-ECC-INJECT-NO-DUT-SECDED says the same).
         await self._wait_scratch_reads_gt(scratch_hold, label="RECOVERY")
         await ClockCycles(clk, 8)
         mid_after = int(dut.tb_cpu_ecc_inject_fire_count.value)
+        scratch_after = int(dut.tb_cpu_scratch_read_count.value)
         assert mid_after == mid, (
-            f"inject-clear recovery failed during I$ fill: fire_count {mid} -> {mid_after}"
+            f"inject-clear recovery failed during I$ fill: fire_count {mid} -> "
+            f"{mid_after} with both inject pins 0 (armed half advanced "
+            f"{base} -> {sbe}; scratch_reads {scratch_hold} -> {scratch_after})"
         )
         cocotb.log.info(
-            "RECOVERY ok: fire_count held at %d (first_fire=%d); scratch_reads %d -> %d",
-            mid,
+            "CHK-ECC-INJECT-RECOVERY: armed fire_count %d -> %d, then with "
+            "inject cleared held at %d across scratch_reads %d -> %d "
+            "(hook gating, not DUT SECDED)",
+            base,
             sbe,
+            mid_after,
             scratch_hold,
-            int(dut.tb_cpu_scratch_read_count.value),
+            scratch_after,
         )
 
         # DBE while the first-boot I$ fill is still settling — a later
@@ -185,22 +224,16 @@ class smc_ecc_fault_inject_test_seq(SmcCsrSeq):
         # on its first cycle and could not fail ([TIMEOUT-MUST-FAIL] /
         # [NO-ALWAYS-PASS-CHECKER]).
         await boot_task
-        # There is deliberately no scratch-read wait at this point. The CPU does
-        # not re-fetch from scratch bank0 once the boot fetch has completed, and
-        # that is measured rather than assumed: a correctly baselined wait here
-        # times out with the count static at 33 over 50_000 cycles, and still
-        # times out at a static 33 after an extra `_pulse_scratch_boot()`. A
-        # wait with no stimulus behind it can only be satisfied by a stale
-        # baseline ([NO-ALWAYS-PASS-CHECKER]).
-        #
-        # The recovery property --
-        # further scratch traffic with the inject cleared must not score -- is
-        # already proven earlier in this body by the `RECOVERY` leg, which takes
-        # its baseline (`scratch_hold`) live, a few statements before it waits,
-        # and is followed by `assert mid_after == mid`.
+        # The CPU does not re-fetch from scratch bank0 once the boot fetch has
+        # completed (the scratch-read count stays static over 50_000 cycles,
+        # and after a further `_pulse_scratch_boot()`), so no scratch-read wait
+        # belongs here: a wait with no stimulus behind it can only be satisfied
+        # by a stale baseline ([NO-ALWAYS-PASS-CHECKER]). The recovery property
+        # -- further scratch traffic with the inject cleared must not score --
+        # is proven by the `RECOVERY` leg above (`assert mid_after == mid`).
 
         await self.wait_fuse_sense_done()
-        await self.csr_read("RAS_BANK_INFO", RAS_BANK_INFO)
+        await self.csr_read("VERSION_LO", VERSION_LO)
 
         await ClockCycles(clk, 2)
         cocotb.log.info(

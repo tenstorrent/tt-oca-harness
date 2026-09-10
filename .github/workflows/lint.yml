@@ -103,7 +103,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        block: [aou-rtl, dtp, sep, smc, smu]
+        block: [aou, dtp, sep, smc, smu]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -481,17 +481,17 @@ jobs:
           echo "$GITHUB_WORKSPACE/slang-bin" >> "$GITHUB_PATH"
       - name: Generate smu filelist (covers smc/sep/dtp too)
         run: make -C hw/sys/smu -f flow.mk ocah-lint-slang-flist OCAH_ROOT="$GITHUB_WORKSPACE"
-      - name: Generate aou-rtl filelist
-        run: make -C vendor/tenstorrent/aou-rtl/overlay -f flow.mk ocah-lint-slang-flist OCAH_ROOT="$GITHUB_WORKSPACE"
+      - name: Generate aou filelist
+        run: make -C vendor/tenstorrent/aou/overlay -f flow.mk ocah-lint-slang-flist OCAH_ROOT="$GITHUB_WORKSPACE"
       - name: Lint smu (slang)
         run: slang -f hw/sys/smu/build/lint/smu.f --top smu --timescale=1ns/1ps --lint-only --single-unit --compat vcs --error-limit 0 --diag-json smu_diags.json || true
       - name: Convert smu diagnostics to rdjson
         run: python3 scripts/ci/slang_to_rdjson.py smu_diags.json > smu_diags.rdjson.json
       - uses: ./.github/actions/reviewdog-report
         with: { log-file: smu_diags.rdjson.json, format: rdjson, name: lint-sv-slang/smu }
-      - name: Lint aou-rtl (slang)
-        run: slang -f vendor/tenstorrent/aou-rtl/overlay/build/lint/AOU_TOP.f --top AOU_TOP --timescale=1ns/1ps --lint-only --single-unit --compat vcs --error-limit 0 --diag-json aou_diags.json || true
-      - name: Convert aou-rtl diagnostics to rdjson
+      - name: Lint aou (slang)
+        run: slang -f vendor/tenstorrent/aou/overlay/build/lint/AOU_TOP.f --top AOU_TOP --timescale=1ns/1ps --lint-only --single-unit --compat vcs --error-limit 0 --diag-json aou_diags.json || true
+      - name: Convert aou diagnostics to rdjson
         run: python3 scripts/ci/slang_to_rdjson.py aou_diags.json > aou_diags.rdjson.json
       - uses: ./.github/actions/reviewdog-report
         with: { log-file: aou_diags.rdjson.json, format: rdjson, name: lint-sv-slang/aou }
@@ -507,9 +507,25 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # check-regen-regs.sh --skip-if-unrelated re-derives the PR diff
+          # itself (diff_class.py), the same way the diff-class job above
+          # does. A shallow, single-commit checkout has no merge base to
+          # diff against, so it always falls back to running the full
+          # check; match diff-class's fetch-depth here so the bypass has
+          # real history to work with.
+          fetch-depth: 0
       - name: Install uv
         uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.11"
       - name: Verify regenerated register collateral
-        run: bash scripts/ci/check-regen-regs.sh .
+        run: bash scripts/ci/check-regen-regs.sh --skip-if-unrelated .
+      # Here rather than in its own job so the configs are checked against the
+      # header this job just regenerated: they name OTP registers and fields, so
+      # an RDL rename silently invalidates one. stdlib-only, hence --no-project;
+      # 3.11 for tomllib.
+      - name: eFuse preload configs load against the regenerated map
+        run: |
+          uv run --no-project --python 3.11 \
+            hw/sys/sep/dv/cocotb/env/sep_generate_efuse_preload.py --selftest

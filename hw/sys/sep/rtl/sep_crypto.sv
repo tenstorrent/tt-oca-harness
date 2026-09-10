@@ -67,12 +67,14 @@ module sep_crypto #(
   // Efuse intermediate reset
   output logic           sep_intermediate_reset_no,
   // Efuse signals
-  input  sep_pkg::sep_straps_t              sep_straps_i,
+  input  logic                              secure_tm_req_i,
   input  logic                               ext_boot_seq_done_i,
   output logic                               security_disable_o,       // To SMC
   output logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0]     lc_state_o,     // To SMC
   output sep_efuse_pkg::sep_efuse_map_lc_disable_reg_t feat_ctrl_o,
   output sep_lifecycle_ctrl_pkg::dbg_disable_t         dbg_disable_o,  // To DTP
+  output logic                               sep_fuse_dft_disable_o,   // To DFT insertion
+  output logic                               smc_fuse_dft_disable_o,   // To DFT insertion
   output logic                               lc_sigint_err_o,
   output sep_efuse_pkg::efuse_map_t      shadow_regs_o,
   output logic                               fuse_sense_done_o,
@@ -573,7 +575,7 @@ module sep_crypto #(
     .axil_resp_t    (km_intf_pkg::km_axil_resp_t)
   ) u_abr_key_err_slv (
     .clk_i       (clk_i),
-    .rst_ni      (sep_reset_ni),
+    .rst_ni      (rst_ni),
     .axil_req_i  (abr_key_axil_isolated_req),
     .axil_resp_o (abr_key_axil_isolated_resp)
   );
@@ -676,7 +678,7 @@ module sep_crypto #(
     .test_en_i    (test_en_i),
     .scan_rst_ni  (scan_rst_ni),
 
-    .sep_straps_i                          (sep_straps_i),
+    .secure_tm_req_i                       (secure_tm_req_i),
     .ext_boot_seq_done_i                   (ext_boot_seq_done_i),
 
     .security_disable_o                    (security_disable_o),
@@ -719,11 +721,12 @@ module sep_crypto #(
     .reset_n_i            (rst_ni),
     .test_en_i            (test_en_i),
 
-    .security_disable_i   (security_disable_o), // From efuse wrapper
-    .secure_tm_i          (secure_tm_o),        // From efuse wrapper
-    .shadow_regs_i        (shadow_regs_o),      // From efuse wrapper
+    .security_disable_i   (security_disable_o),
+    .shadow_regs_i        (shadow_regs_o),
     .feat_ctrl_o          (feat_ctrl_o),
     .dbg_disable_o        (dbg_disable_o),
+    .sep_fuse_dft_disable_o (sep_fuse_dft_disable_o),
+    .smc_fuse_dft_disable_o (smc_fuse_dft_disable_o),
     .lcc_demote_state_1_o (lcc_demote_state_1_o),
     .lcc_demote_state_2_o (lcc_demote_state_2_o),
     .lc_sigint_err_o      (lc_sigint_err_o),

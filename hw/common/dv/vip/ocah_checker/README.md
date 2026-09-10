@@ -101,8 +101,7 @@ cannot be converted into an expected checker PASS.
 OCAH monitors log and catch callback exceptions so one subscriber cannot kill
 monitor sampling. Therefore an attached protocol checker must retain findings
 before raising, and the owning test or scoreboard must call its finalization
-method after traffic. `OcahJtagChecker` is the first adapter following this
-pattern.
+method after traffic.
 
 The ownership boundary is:
 

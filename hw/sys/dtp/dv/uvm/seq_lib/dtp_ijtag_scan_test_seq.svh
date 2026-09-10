@@ -119,7 +119,6 @@ class dtp_ijtag_scan_test_seq extends dtp_scan_base_test_seq;
     dft_case_t cases[4];
     int unsigned order[4] = '{0, 1, 2, 3};
     `uvm_info(get_type_name(), "iJTAG DFT secure/non-secure access", UVM_LOW)
-    // Non-secure DFT only, then secure DFT only.
     check_ijtag_pattern(3'b010, '0, "dft.nonsecure_only");
     check_ijtag_pattern(3'b100, '0, "dft.secure_only");
     cases[0] = '{"secure_gated", 3'b100, 1'b1, 1'b0};

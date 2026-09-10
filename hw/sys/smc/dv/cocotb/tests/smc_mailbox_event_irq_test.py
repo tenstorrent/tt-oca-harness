@@ -27,7 +27,11 @@ class smc_mailbox_event_irq_test(smc_base_test):
             # Directed stimulus floor: 19 SEP_IN AXI mailbox event/IRQ-control
             # accesses. Literal here, not read from `seq.accesses`.
             min_csr_accesses=19,
-            csr_accesses=seq.accesses,
+            # The scoreboard's own per-bus tally, stamped by the driver that
+            # completed each access, rather than `seq.accesses`, which the
+            # sequence increments on dispatch regardless of what came back.
+            # The floor then compares a DUT-completed count against a literal.
+            csr_accesses=self.env.scoreboard.axi_accesses_by_bus.get("SEP_IN AXI", 0),
             proxy=False,
             # Names the observable actually checked: check_mailbox_irq_source
             # reads tb_mailbox_irq_any (tb_top.sv:1363,

@@ -31,8 +31,8 @@ INPUT_OUTPUT_FABRIC_MIN_CSR_ACCESSES = 6
 # one JTAG-AXI write and one JTAG-AXI read of the output-fabric window. The
 # OBSERVED count is measured by the scoreboard's per-bus tally inside
 # record_protocol_vip (driver-stamped, one per completed access), never passed in
-# from here -- passing this constant as both the observation and the floor made
-# the scoreboard assert `2 >= 2` ([NO-ALWAYS-PASS-CHECKER]).
+# from here -- a constant used as both observation and floor would make the
+# scoreboard assert `2 >= 2` ([NO-ALWAYS-PASS-CHECKER]).
 MIN_JTAG_AXI_ACCESSES = 2
 
 

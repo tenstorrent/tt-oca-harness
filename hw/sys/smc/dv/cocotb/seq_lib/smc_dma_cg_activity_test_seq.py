@@ -15,10 +15,9 @@ expectation is the truncated value 0, not a `<= 63` bound that no RTL can
 violate.
 
 Sweep gaps {0, 1, 32, 63, 64} plus seed extras are all driven and all exactly
-asserted, but only {32, 63, 64} are BOOKED as covered cells: the 0..7 band is
-carried as UNPROVEN by issue tenstorrent/tt-oca-harness#1235 and must not be
-counted as covered by any
-closure report -- see P2_LOW_BAND_EXCLUSION_REASON.
+asserted, but only {32, 63, 64} are BOOKED as covered cells: the 0..8 band is
+carried as UNPROVEN and must not be counted as covered by any closure
+report -- see P2_LOW_BAND_EXCLUSION_REASON.
 """
 
 from __future__ import annotations
@@ -41,8 +40,7 @@ from .smc_output_fabric_vip_utils import PASS_ALL_CONFIG
 # Every record this sequence emits goes through `cocotb.log`: a module-level
 # `logging.getLogger(__name__)` is not captured by the cocotb/pyuvm runner, so
 # the STEP/CHK/FENCE and P2_COVERAGE_ARTIFACT evidence written through one never
-# reaches the kept log -- every CHK- token this sequence emitted was lost that
-# way ([EVIDENCE-TOKEN-CONDITIONAL]).
+# reaches the kept log ([EVIDENCE-TOKEN-CONDITIONAL]).
 
 
 def _p2_coverage_report_dirs() -> list[Path]:
@@ -159,7 +157,7 @@ IDLE_OBSERVE = 16
 GATE_OFF_TIMEOUT_SMC = 256
 RESUME_TIMEOUT_SMC = 64
 BACKEND_ONLY_TIMEOUT_SMC = 512
-# Card r2 S3: observe every-cycle toggles across a multi-cycle backend-only window.
+# S3: observe every-cycle toggles across a multi-cycle backend-only window.
 S3_MEASURE_WINDOW = 8
 
 # P2 (SMC_CG_P2_001) additions: hysteresis full-range sweep + reassert race.
@@ -178,18 +176,17 @@ P2_REQUIRED_SWEEP_GAPS = (32, 63, 64)
 # construction must fail here instead of quietly renaming the fence term.
 P2_GRADED_CELL_NAMES = ("hyst-gap=32", "hyst-gap=63", "hyst-gap=64")
 
-# The 0..7 hysteresis band is SWEPT and exactly asserted below, but it is
-# deliberately NOT booked as covered by this testcase's coverage artifact.
-# Issue tenstorrent/tt-oca-harness#1235 ("DMA command never completes at legal
-# hysteresis 0 and 1 when dma_cg_en=1") is open against that band, so the
-# within-1-cycle hysteresis-scaling proof holds for 8..63 only. Booking
-# `hyst-gap=0` / `hyst-gap=1` as hit here would claim coverage of a band whose
-# DUT behaviour is under dispute, so the two gaps stay as stimulus and as a
-# fail-capable compare, and the coverage claim waits for #1235 to close.
+# The 0..8 hysteresis band is SWEPT at 0 and 1 and exactly asserted below, but it is NOT
+# booked as covered by this testcase's coverage artifact: the DMA command never
+# completes at legal hysteresis 0 and 1 when dma_cg_en=1, so the within-1-cycle
+# hysteresis-scaling proof holds for 9..63 only. Booking `hyst-gap=0` /
+# `hyst-gap=1` as hit here
+# would claim coverage of a band whose DUT behaviour is under dispute, so the
+# two gaps stay as stimulus and as a fail-capable compare.
 P2_LOW_BAND_SWEEP_GAPS = (0, 1)
 P2_LOW_BAND_EXCLUSION_REASON = (
     "tenstorrent/tt-oca-harness#1235 (DMA command never completes at legal "
-    "hysteresis 0 and 1 when dma_cg_en=1): the 0..7 "
+    "hysteresis 0 and 1 when dma_cg_en=1): the 0..8 "
     "hysteresis band is UNPROVEN and must not be counted as covered by any "
     "closure report. Swept and exactly asserted here, but not booked."
 )
@@ -388,11 +385,11 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
     async def _observe_backend_only_keep_enabled(self, window: int) -> dict:
         """Prove keep-enabled under backend-only after a free-running wake.
 
-        Card r2 S3 / CHK-DMA-WAKEUP-BACKEND:
+        S3 / CHK-DMA-WAKEUP-BACKEND:
           1) prior activity wake leaves the shared DMA clock free-running
           2) establish backend_busy=1 && frontend_busy=0
           3) gated clock toggles every cycle for the entire observed window
-        Not gated-off→resume (superseded r1 / (B) path).
+        Not gated-off→resume.
         """
         dut = self._dut()
         state = {
@@ -805,7 +802,7 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
         assert not missing_required, f"sweep required cells not observed: {missing_required}"
         # Coverage artifact grades the FL required_cells, and books a cell only
         # from a measurement that passed its exact compare -- not from a
-        # restatement of the required list. The 0..7 band is swept above but
+        # restatement of the required list. The 0..8 band is swept above but
         # excluded from the booking per P2_LOW_BAND_EXCLUSION_REASON.
         cells_hit = [f"hyst-gap={g}" for g in P2_REQUIRED_SWEEP_GAPS if g in sweep_results]
         cell_measurements = {
@@ -1021,11 +1018,11 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
         self._mark_fence("frontend-wakeup-observed")
         await self._wait_dma_done(baseline_done)
 
-        # ---- S3: keep-enabled under backend-only (card r2) ----
+        # ---- S3: keep-enabled under backend-only ----
         # After a prior activity wake leaves the shared DMA clock free-running,
         # establish backend_busy=1 && frontend_busy=0 and prove the gated clock
         # toggles every cycle for the entire observed window.
-        # Do NOT re-settle to gated-off or measure gated-off→resume (r1/(B) path).
+        # Do NOT re-settle to gated-off or measure gated-off→resume.
         self._log_step(
             "S3",
             "gating enabled; after activity wake free-running, observe backend-only "
@@ -1035,7 +1032,7 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
         baseline_done = await self.csr_read("DMA_DONE_0_BASELINE2", DMA_CTRL_DONE_0)
         await self._program_dma_descriptors(len(DMA_PAYLOAD_S3))
         # START is the prior activity wake that leaves the shared clock free-running.
-        # Do not wait for gated-off before START — that is the superseded r1 SETUP.
+        # Do not wait for gated-off before START.
         await self._start_dma()
         obs = await self._observe_backend_only_keep_enabled(S3_MEASURE_WINDOW)
         self._emit_chk(
@@ -1065,7 +1062,7 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
         )
         self._mark_fence("gating-disabled-observed")
 
-        # ---- CHK-NONVAC ordered fence (card r2 term names) ----
+        # ---- CHK-NONVAC ordered fence ----
         order = [t for t, _ in self.fence]
         expected = [
             "gate-off-observed",
@@ -1082,5 +1079,5 @@ class smc_dma_cg_activity_test_seq(SmcCsrSeq):
         self._mark_fence("PASS")
         cocotb.log.info("smc_dma_cg_activity_test_seq PASS")
 
-        # ---- P2 (SMC_CG_P2_001) extension: additive, P1 evidence above unchanged ----
+        # ---- P2 (SMC_CG_P2_001) extension ----
         await self._p2_extension()

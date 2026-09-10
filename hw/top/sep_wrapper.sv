@@ -96,10 +96,10 @@ module sep_wrapper
   output sep_io_spi_req_t sep_io_spi_req_o,
   input  sep_io_spi_rsp_t sep_io_spi_rsp_i,
 
-  input  logic spi_irq_i,
-
   output logic [2*sep_pkg::LC_STATE_BIT_WIDTH-1:0] lc_state_o,
   output sep_lifecycle_ctrl_pkg::dbg_disable_t dbg_disable_o,
+  output logic sep_fuse_dft_disable_o,
+  output logic smc_fuse_dft_disable_o,
   output logic lc_sigint_err_o,
   output logic security_disable_o,
 
@@ -108,7 +108,7 @@ module sep_wrapper
   input  logic smc_fuse_sense_done_i,
   output logic sep_fuse_sense_done_o,
 
-  input sep_pkg::sep_straps_t sep_straps_i,
+  input logic secure_tm_req_i,
 
   input  logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0] smc_global_base_addr_i,
   input  logic [sep_pkg::SEP_SYSTEM_PERIPHERALS_56_ADDR_WIDTH-1:0] smc_region_size_i,

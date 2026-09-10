@@ -210,11 +210,11 @@ module jtag_intf_unit
   // These synchronizers are downstream of the Class 1 LC_STATE, SIP_DIS, and
   // SYS_DIS fields and directly control JTAG/test enablement. Both stages
   // must therefore remain outside scan.
-  for (genvar i = 0; i < DBG_DISABLE_WIDTH; i++) begin : gen_feat_ctrl_sync_n0_scan
+  for (genvar i = 0; i < DBG_DISABLE_WIDTH; i++) begin : gen_dbg_disable_sync_n0_scan
     prim_flop_2sync #(
       .Width(1),
       .ResetValue(1'b1)
-    ) u_feat_ctrl_sync_n0_scan (
+    ) u_dbg_disable_sync_n0_scan (
       .clk_i  (ptap_client_tap_ctrl_i.tck),
       .rst_ni (pwr_on_rst_ni),
       .d_i    (dbg_disable_bits[i]),
@@ -368,7 +368,10 @@ module jtag_intf_unit
     );
   end else begin : gen_no_stap_io
     assign stap_io_scan_out = ptap_stap_host_scan_out;
-    assign stap_io_host_tap_ctrl_o = '0;
+    always_comb begin
+      stap_io_host_tap_ctrl_o     = '0;
+      stap_io_host_tap_ctrl_o.tck = ptap_host_tap_ctrl.tck;
+    end
     assign stap_io_host_tdo_oen_o = '0;
     assign stap_io_host_tdo_o = '0;
   end
@@ -400,7 +403,10 @@ module jtag_intf_unit
     );
   end else begin : gen_no_stap_smc_dbg
     assign stap_smc_dbg_scan_out = stap_io_scan_out;
-    assign stap_smc_host_tap_ctrl_o = '0;
+    always_comb begin
+      stap_smc_host_tap_ctrl_o     = '0;
+      stap_smc_host_tap_ctrl_o.tck = ptap_host_tap_ctrl.tck;
+    end
     assign stap_smc_host_tdo_oen_o = '0;
     assign stap_smc_host_tdo_o = '0;
   end
@@ -432,7 +438,10 @@ module jtag_intf_unit
     );
   end else begin : gen_no_stap_sep_dbg
     assign stap_sep_dbg_scan_out = stap_smc_dbg_scan_out;
-    assign stap_sep_host_tap_ctrl_o = '0;
+    always_comb begin
+      stap_sep_host_tap_ctrl_o     = '0;
+      stap_sep_host_tap_ctrl_o.tck = ptap_host_tap_ctrl.tck;
+    end
     assign stap_sep_host_tdo_oen_o = '0;
     assign stap_sep_host_tdo_o = '0;
   end
@@ -468,7 +477,10 @@ module jtag_intf_unit
       );
     end
   end else begin : gen_no_extra_staps
-    assign stap_extra_host_tap_ctrl_o[0] = '0;
+    always_comb begin
+      stap_extra_host_tap_ctrl_o[0]     = '0;
+      stap_extra_host_tap_ctrl_o[0].tck = ptap_host_tap_ctrl.tck;
+    end
     assign stap_extra_host_tdo_oen_o[0] = '0;
     assign stap_extra_host_tdo_o[0] = '0;
   end
@@ -480,7 +492,13 @@ module jtag_intf_unit
   always_comb begin
     stap_host_scan_ctrl_o = ptap_stap_host_scan_ctrl;
     if (stap_host_security_disable) begin
-      stap_host_scan_ctrl_o = '0;
+      stap_host_scan_ctrl_o.select           = 1'b0;
+      stap_host_scan_ctrl_o.capture_en       = 1'b0;
+      stap_host_scan_ctrl_o.shift_en         = 1'b0;
+      stap_host_scan_ctrl_o.update_en        = 1'b0;
+      stap_host_scan_ctrl_o.runbist          = 1'b0;
+      stap_host_scan_ctrl_o.test_logic_reset = 1'b0;
+      stap_host_scan_ctrl_o.run_test_idle    = 1'b0;
     end
   end
 

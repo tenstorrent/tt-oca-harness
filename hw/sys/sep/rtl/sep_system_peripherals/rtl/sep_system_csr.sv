@@ -40,7 +40,6 @@ module sep_system_csr (
   input  logic sep_fuse_sense_done_i,
 
   // SEP Straps inputs
-  input  sep_pkg::sep_straps_t sep_straps_i,
 
   // SEP NMI VEC output
   output logic [31:1] nmi_vec_o,
@@ -107,10 +106,6 @@ module sep_system_csr (
 
   // TIMEOUT_MODE
   logic timeout_mode_rsvd;
-
-  // RAS_BANK_INFO outputs
-  logic [3:0] ras_bank_chip;
-  logic [3:0] ras_bank_instance;
 
   // SEP_SW_DEBUG output
   logic [31:0] sep_sw_debug;
@@ -766,10 +761,6 @@ module sep_system_csr (
   assign smu_global_base_addr_o   = sep_cpu_ctrl_hwif_out.SMU_GLOBAL_BASE_ADDR.addr.value;
   assign smu_region_size_o        = 56'(sep_cpu_ctrl_hwif_out.SMU_REGION_SIZE.size.value);
 
-  // RAS_BANK_INFO
-  assign ras_bank_chip     = sep_cpu_ctrl_hwif_out.RAS_BANK_INFO.bank_chip.value;
-  assign ras_bank_instance = sep_cpu_ctrl_hwif_out.RAS_BANK_INFO.bank_instance.value;
-
   // SEP_SW_DEBUG
   assign sep_sw_debug = sep_cpu_ctrl_hwif_out.SEP_SW_DEBUG.sep_sw_debug.value;
 
@@ -832,9 +823,6 @@ module sep_system_csr (
   // SEP_FUSE_SENSE_STATUS
   assign sep_cpu_ctrl_hwif_in.SEP_FUSE_SENSE_STATUS.sep_fuse_sense_done.next = sep_fuse_sense_done_i;
 
-  // SEP_STRAPS
-  assign sep_cpu_ctrl_hwif_in.SEP_STRAPS.test_en.next           = sep_straps_i.test_straps.test_en;
-  assign sep_cpu_ctrl_hwif_in.SEP_STRAPS.bypass_mem_repair.next = sep_straps_i.boot_straps.bypass_mem_repair;
 
   // SEP_NMI_VEC
   assign nmi_vec_o = sep_cpu_ctrl_hwif_out.SEP_NMI_VEC.nmi_vec.value;

@@ -39,7 +39,13 @@ _AES_BIT = 0
 _URND_BIT = 3
 _BOTH = (1 << _AES_BIT) | (1 << _URND_BIT)
 _DUAL_REQ_CYCLES = 50_000
-_GRANT_WAIT_CYCLES = 200_000
+# Enough consecutive grants to see the arbiter alternate, and the floor below
+# which the sample says nothing. Literals, so the asserts do not move with the
+# collection loop.
+_GRANT_SAMPLE_TARGET = 16
+_GRANT_MIN_SAMPLES = 4
+_GRANT_POLLS = 200_000
+_GRANT_POLL_CYCLES = 20
 
 
 def _req() -> int:
@@ -142,19 +148,19 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
         cocotb.start_soon(_monitor())
         await self.start_seq(SepEsrcEnableEdnSeq("esrc_enable_edn"))
 
-        for _ in range(_GRANT_WAIT_CYCLES):
-            if (
-                _AES_BIT in grants
-                and _URND_BIT in grants
-                and any(a != b for a, b in zip(grants, grants[1:]))
-            ):
+        # Collect grants for a fixed budget and let the asserts below decide.
+        # Breaking out on the same condition the asserts test would make them
+        # restatements of the loop guard, unable to fail at their own sites.
+        for _ in range(_GRANT_POLLS):
+            if len(grants) >= _GRANT_SAMPLE_TARGET:
                 break
-            await ClockCycles(dut.clk_i, 20)
-        else:
-            raise AssertionError(
-                "crypto-EDN grants did not alternate "
-                f"(grants={grants[:16]} dual_grants={dual_grants[:16]})"
-            )
+            await ClockCycles(dut.clk_i, _GRANT_POLL_CYCLES)
+        assert len(grants) >= _GRANT_MIN_SAMPLES, (
+            f"CHK-NO-STARVE FAIL: only {len(grants)} post-adapter grants observed in "
+            f"{_GRANT_POLLS} polls of {_GRANT_POLL_CYCLES} cycles, need "
+            f"{_GRANT_MIN_SAMPLES} to judge sharing "
+            f"(grants={grants[:16]} dual_grants={dual_grants[:16]})"
+        )
 
         assert _AES_BIT in grants and _URND_BIT in grants, (
             f"CHK-NO-STARVE FAIL: a requesting client got no edn_ack (grants={grants})"
@@ -165,25 +171,46 @@ class sep_crypto_edn_round_robin_grant_test(sep_base_test):
             grants.count(_URND_BIT),
         )
 
-        # AES masking reseeds pulse edn_req per beat, so a same-cycle dual-req
-        # sample at ack often sees only AES. Consecutive post-adapter grants
-        # still alternate 0,3,0,3 -- that is the round-robin decision.
-        assert any(a != b for a, b in zip(grants, grants[1:])), (
-            "CHK-GRANT-ALT FAIL: consecutive grants did not go to different "
-            f"clients (grants={grants} dual_grants={dual_grants})"
+        # Round-robin while both clients are in the fight: the grant stream
+        # must strictly alternate until the first same-client pair. A repeat
+        # after both clients have already been served is the legal tail (one
+        # client dropped req). `any(a != b)` would be a tautology once
+        # CHK-NO-STARVE has both values in the list.
+        pairs = list(zip(grants, grants[1:]))
+        alt_pairs = 0
+        for a, b in pairs:
+            if a == b:
+                break
+            alt_pairs += 1
+        min_alt = _GRANT_MIN_SAMPLES - 1
+        assert alt_pairs >= min_alt, (
+            "CHK-GRANT-ALT FAIL: alternating prefix too short "
+            f"(alt_pairs={alt_pairs} need>={min_alt} grants={grants} "
+            f"dual_grants={dual_grants})"
+        )
+        prefix = grants[: alt_pairs + 1]
+        assert _AES_BIT in prefix and _URND_BIT in prefix, (
+            "CHK-GRANT-ALT FAIL: alternating prefix did not grant both "
+            f"clients (prefix={prefix} grants={grants})"
         )
         self.logger.info(
-            "CHK-GRANT-ALT PASS: consecutive grants alternate (grants=%s dual_grants=%s)",
-            grants[:12],
+            "CHK-GRANT-ALT PASS: %d consecutive pairs alternate and both "
+            "clients appear before any same-client repeat (grants=%s "
+            "dual_grants=%s)",
+            alt_pairs,
+            grants[:16],
             dual_grants[:12],
         )
 
         await self.stop_fifo_drain()
         await self.check_entropy_alerts_zero()
+        # The grant sample above establishes how much traffic each client
+        # actually took, so the routing floors are held to that rather than to
+        # the scoreboard's default of one beat.
+        self.drbg_sb.set_min_matches(CHK5_aes=_GRANT_MIN_SAMPLES, CHK5_otbn_urnd=_GRANT_MIN_SAMPLES)
         assert self.drbg_sb.report()
         ra = self.drbg_sb.results["CHK5_aes"]
         ru = self.drbg_sb.results["CHK5_otbn_urnd"]
-        assert ra.mismatches == 0 and ru.mismatches == 0
         self.logger.info(
             "CHK-ROUTING PASS: CHK5_aes match=%d and CHK5_otbn_urnd match=%d "
             "equal the AXIS1 grant-order stream (mismatch=0)",

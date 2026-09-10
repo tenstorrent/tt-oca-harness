@@ -486,83 +486,49 @@ module km_mailbox
   assign km_outbound_overflow_detected = km_fifo_w_handshake && outbound_full;
 
   //-------------------------------------------------------------------------
-  // KM Read Channel State Machine (for FIFO reads)
+  // KM Read Channel (for FIFO reads)
   //-------------------------------------------------------------------------
-  // FIFO read path (state machine)
-  // - Accept AR (one outstanding) when idle
-  // - If empty: respond SLVERR
-  // - Else: pop FIFO and capture data, then respond OKAY
+  // Proper AXI-Lite: accept AR, respond with R on next cycle
 
-  /** @brief KM-side FIFO read channel state machine states. */
-  typedef enum logic [1:0] {
-    KM_RD_IDLE,
-    KM_RD_POP,
-    KM_RD_RESP
-  } km_rd_state_e;
-  km_rd_state_e km_rd_state_q;
-
-  logic        km_fifo_r_valid_q;       // R response valid
-  logic        km_fifo_r_resp_q;        // 0=OKAY, 1=SLVERR
+  logic        km_fifo_r_valid_q;       // R response pending
+  logic        km_fifo_r_resp_q;        // R response: 0=OKAY, 1=SLVERR
   logic [31:0] km_fifo_r_data_q;        // R data captured from FIFO
 
   logic        km_fifo_ar_ready;        // Ready to accept AR for FIFO reads
   logic        km_fifo_ar_handshake;    // AR handshake
-  logic        km_fifo_r_handshake;     // R handshake
   logic        km_fifo_pop_handshake;   // FIFO pop handshake (rvalid && rready)
 
-  assign km_fifo_ar_ready =
-        km_ar_is_read_data && (km_rd_state_q == KM_RD_IDLE) && !km_fifo_r_valid_q;
+  assign km_fifo_ar_ready = km_ar_is_read_data && !km_fifo_r_valid_q;
   assign km_fifo_ar_handshake = km_axil_req_i.ar_valid && km_fifo_ar_ready;
-
-  assign km_fifo_r_handshake = km_fifo_r_valid_q && km_axil_req_i.r_ready;
-
-  // Pop FIFO only in POP state
-  assign inbound_rready = (km_rd_state_q == KM_RD_POP);
-  assign km_fifo_pop_handshake = inbound_rvalid && inbound_rready;
 
   always_ff @(posedge clk_i or negedge cold_rst_ni) begin
     if (!cold_rst_ni) begin
-      km_rd_state_q <= KM_RD_IDLE;
       km_fifo_r_valid_q <= 1'b0;
       km_fifo_r_resp_q <= 1'b0;
       km_fifo_r_data_q <= 32'h0;
     end else if (!warm_rst_ni) begin
-      km_rd_state_q <= KM_RD_IDLE;
       km_fifo_r_valid_q <= 1'b0;
       km_fifo_r_resp_q <= 1'b0;
       km_fifo_r_data_q <= 32'h0;
     end else begin
-      // Accept AR for FIFO read path
+      // AR handshake - capture FIFO data and generate R response
       if (km_fifo_ar_handshake) begin
-        if (inbound_empty) begin
-          km_fifo_r_valid_q <= 1'b1;
-          // Use config-controlled response: OKAY if configured, SLVERR if empty (default)
-          // KM-side CTRL controls inbound underflow response
-          km_fifo_r_resp_q <= !inbound_underflow_resp_okay;
-          km_fifo_r_data_q <= 32'h0;
-          km_rd_state_q <= KM_RD_RESP;
-        end else begin
-          km_rd_state_q <= KM_RD_POP;
-        end
+        km_fifo_r_valid_q <= 1'b1;
+        // Use config-controlled response: OKAY if configured, SLVERR if empty (default)
+        km_fifo_r_resp_q <= inbound_empty && !inbound_underflow_resp_okay;
+        km_fifo_r_data_q <= inbound_empty ? 32'h0 : inbound_rdata[31:0];
       end
 
-      // POP state: perform a FIFO pop and capture the data
-      if (km_rd_state_q == KM_RD_POP) begin
-        if (km_fifo_pop_handshake) begin
-          km_fifo_r_valid_q <= 1'b1;
-          km_fifo_r_resp_q <= 1'b0;
-          km_fifo_r_data_q <= inbound_rdata[31:0];
-          km_rd_state_q <= KM_RD_RESP;
-        end
-      end
-
-      // RESP state: wait for R handshake, then return to IDLE
-      if (km_fifo_r_handshake) begin
+      // R handshake - clear response
+      if (km_fifo_r_valid_q && km_axil_req_i.r_ready) begin
         km_fifo_r_valid_q <= 1'b0;
-        km_rd_state_q <= KM_RD_IDLE;
       end
     end
   end
+
+  // FIFO read (pop) happens on AR handshake when not empty
+  assign inbound_rready = km_fifo_ar_handshake && !inbound_empty;
+  assign km_fifo_pop_handshake = inbound_rvalid && inbound_rready;
 
   // Capture separator bits when receiver pops (INBOUND when KM pops, OUTBOUND when SEP pops).
   // Both stay on cold reset: they reflect FIFO content which is cold-reset-only.
@@ -770,5 +736,9 @@ module km_mailbox
 
   `OCAH_OT_ASSERT_INIT(MAILBOX_DEPTH_GT_0, MAILBOX_DEPTH > 0)
   `OCAH_OT_ASSERT_INIT(MAILBOX_DEPTH_LE_256, MAILBOX_DEPTH <= 256)
+
+  // Accepted KM FIFO AR implies an R beat the next cycle.
+  `OCAH_OT_ASSERT(KmFifoReadCompletesAfterAccept_A, km_fifo_ar_handshake |=> km_fifo_r_valid_q,
+                  clk_i, !cold_rst_ni || !warm_rst_ni)
 
 endmodule : km_mailbox

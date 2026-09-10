@@ -37,7 +37,7 @@ class sep_otbn_compute_rand_test(sep_base_test):
         await otbn.wait_idle("post-wipe", timeout=8_000)
 
         for op, a, b, expect in cfg.cells():
-            err, got = await otbn.run_cell(op, a, b)
+            err, got = await otbn.run_cell(op, a, b, expect)
             assert err == 0, f"CHK-ERRBITS FAIL: OTBN {op} ERR_BITS=0x{err:08x}, expected 0"
             assert got == expect, (
                 f"CHK-DMEM FAIL: OTBN {op} DMEM[8]=0x{got:08x} "

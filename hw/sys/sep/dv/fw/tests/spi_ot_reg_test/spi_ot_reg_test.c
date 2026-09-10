@@ -69,7 +69,6 @@ int main(void) {
     spi_controller__ERROR_STATUS_t err_status;
     spi_controller__ERROR_ENABLE_t err_enable;
 
-
     /* -------------------------------------------------------------------
      * Step 1: Verify reset defaults
      * ------------------------------------------------------------------- */

@@ -57,7 +57,7 @@ class smc_base_test_seq(uvm_sequence):
         if hasattr(dut, "tb_rst_warm_smc_clk_n"):
             await _wait_high(dut.tb_rst_warm_smc_clk_n, "tb_rst_warm_smc_clk_n")
         else:
-            # Legacy fallback when TB probes are absent.
+            # Fallback when the TB probes are absent.
             await ClockCycles(clk, 64)
 
     async def body(self) -> None:

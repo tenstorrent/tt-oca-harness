@@ -150,7 +150,7 @@ EFUSE_BANK_INIT_TIME_RESET = _field_mask(
 
 # Consume-once record of the positive-control observation so the idle leg can
 # state, in the kept log, whether it is backed by one *in this test*.
-# Module-private on purpose: use the public
+# Module-private: use the public
 # ``prove_efuse_bank_axil_activity(..., record=False)`` / :func:
 # ``consume_positive_control`` API below instead of reaching in from another
 # module ([REUSE-AND-LAYERING]).
@@ -171,11 +171,8 @@ def consume_positive_control() -> str | None:
 
 
 def stop_sampler(task) -> None:
-    """Stop a ``count_probe_high_cycles`` task (cocotb 1.x kill / 2.x cancel)."""
-    if hasattr(task, "cancel"):
-        task.cancel()
-    else:  # pragma: no cover - cocotb 1.x fallback
-        task.kill()
+    """Stop a ``count_probe_high_cycles`` task."""
+    task.cancel()
 
 
 async def count_probe_high_cycles(sig, clk, hits: list[int]) -> None:

@@ -39,8 +39,8 @@ I3C_CG_EN_RESET = _field_mask(
 # ``.../src/rdl/docs/README.md`` tables the same reset).
 #
 # Why parsed instead of hand-copied:
-#   * the expected value is no longer "observed on this DUT" -- a wrong constant
-#     in the RTL readback mux (``I3CCSR.sv``) is now caught rather than mirrored
+#   * the expected value is independent of this DUT -- a wrong constant in the
+#     RTL readback mux (``I3CCSR.sv``) is caught rather than mirrored
 #     ([INDEPENDENT-EXPECTED-MODEL]);
 #   * the register identity printed in the log derives from the same symbol that
 #     formed the address -- window base (generated ``smc_addr.h``) plus the
@@ -250,8 +250,8 @@ class smc_i3c_to_fabric_test_seq(smc_base_test_seq):
         )
 
         # --- Enable the real I3C core, observe the pads, restore -------------
-        # that the pad-level idle-zero compares were
-        # unfalsifiable partly because no test ever enabled the core. This leg
+        # Pad-level idle-zero compares are unfalsifiable while the core is
+        # disabled. This leg
         # enables it through the RDL-declared HC_CONTROL.BUS_ENABLE and holds it
         # enabled across the pad observation, so what the helper records is the
         # pad state of a *running* controller rather than of a permanently

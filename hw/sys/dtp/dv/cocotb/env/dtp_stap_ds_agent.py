@@ -5,7 +5,7 @@
 Each DTP STAP host port (I/O, SMC, SEP, extra0) can splice a behavioral IEEE
 1149.1 TAP behind it instead of the default wire loopback: ``tb_top`` routes
 the shared slave device's TDO into the STAP host TDI while the port's
-``jtag_stap_<x>_ds_en`` input is set. The device map is deliberately
+``dtp_scan_if.stap_<x>_ds_en`` is set. The device map is
 distinct per port (IDCODE and ``DS_TDR`` width), so a swapped or misaligned
 splice is caught by the chain readback. The SV-UVM ``dtp_env`` builds the
 same four devices from the same values.
@@ -18,7 +18,6 @@ reference model from ``cfg.stap_ds_device``.
 
 from __future__ import annotations
 
-import cocotb
 from ocah_jtag_vip import (
     OcahJtagChecker,
     OcahJtagSlaveAgent,
@@ -28,6 +27,7 @@ from ocah_jtag_vip import (
 from pyuvm import ConfigDB, uvm_component
 
 from .dtp_scan_ref_model import STAP_ORDER
+from .dtp_tb_if import JTAG_SIGNAL_MAP
 
 STAP_DS_IR_WIDTH = 5
 STAP_DS_IDCODE_OPCODE = 0x01
@@ -44,22 +44,6 @@ STAP_DS_DEVICES: dict[str, tuple[int, int]] = {
 }
 
 
-def stap_ds_signal_map(stap: str) -> dict[str, str]:
-    """Pin binding of one downstream device onto the STAP host port.
-
-    The device's TDI is the STAP host TDO and its TDO feeds the STAP host TDI
-    (``tb_top`` muxes it in under ``jtag_stap_<x>_ds_en``); tck/tms/trst_n are
-    the port's forwarded TAP controls.
-    """
-    return {
-        "tck": f"jtag_stap_{stap}_tck",
-        "tms": f"jtag_stap_{stap}_tms",
-        "trst": f"jtag_stap_{stap}_trst_n",
-        "tdi": f"jtag_stap_{stap}_tdo",
-        "tdo": f"jtag_stap_{stap}_tdi",
-    }
-
-
 def stap_ds_config(stap: str) -> OcahJtagSlaveConfig:
     """Slave configuration for one downstream STAP TAP."""
     idcode, tdr_width = STAP_DS_DEVICES[stap]
@@ -71,7 +55,7 @@ def stap_ds_config(stap: str) -> OcahJtagSlaveConfig:
             "IDCODE": (32, STAP_DS_IDCODE_OPCODE),
             STAP_DS_TDR_NAME: (tdr_width, STAP_DS_TDR_OPCODE, True),
         },
-        signal_map=stap_ds_signal_map(stap),
+        signal_map=JTAG_SIGNAL_MAP,
         # The STAP host port has no downstream tdo_oen input.
         drive_tdo_oen=False,
     )
@@ -82,6 +66,7 @@ class DtpStapDsAgent(uvm_component):
 
     def build_phase(self) -> None:
         self.cfg = ConfigDB().get(self, "", "cfg")
+        self.tb_if = ConfigDB().get(self, "", "tb_if")
         self.agents: dict[str, OcahJtagSlaveAgent] = {}
         for stap in STAP_ORDER:
             # No passive monitor: the composed-chain scans span the whole
@@ -89,7 +74,7 @@ class DtpStapDsAgent(uvm_component):
             # width; the evidence is the device's own state and Update-DR
             # history through the slave sequence.
             agent = OcahJtagSlaveAgent(
-                cocotb.top,
+                self.tb_if.stap_ds[stap],
                 config=stap_ds_config(stap),
                 en_monitor=False,
                 attach_checker=False,

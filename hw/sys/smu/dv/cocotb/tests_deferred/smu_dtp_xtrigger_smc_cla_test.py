@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_dtp_xtrigger_smc_cla_test — DEFERRED (no DUT Force policy).
 
-Was: xtrig glue Force inject on hierarchical SMU nets. No product pin / frontdoor stimulus yet.
+No product pin or frontdoor stimulus exists for xtrig glue injection.
 Not ported (needs_real_stimulus / no_force).
 """
 

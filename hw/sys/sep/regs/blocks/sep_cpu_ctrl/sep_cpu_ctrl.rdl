@@ -235,34 +235,6 @@ addrmap sep_cpu_ctrl {
         } sep_fuse_sense_done[0:0] = 0x0;
     };
 
-    reg SEP_STRAPS {
-        field {
-            sw = r;
-            hw = w;
-            desc="straps for test_en -> Used to be latched by SEP and generate the secure_tm ";
-        } test_en[0:0] = 0x0;
-
-        field {
-            sw = r;
-            hw = w;
-            desc="straps for bypass_mem_repair -> Used to indicate if the memory repair should be bypassed";
-        } bypass_mem_repair[1:1] = 0x0;
-
-    };
-
-    reg RAS_BANK_INFO {
-        field {
-            sw = rw;
-            hw = r;
-            desc = "Chiplet type ID";
-        } bank_chip [3:0] = 0x0;
-
-        field {
-            sw = rw;
-            hw = r;
-            desc = "Chiplet instance ID";
-        } bank_instance [7:4] = 0x0;
-    };
 
     reg SEP_SW_DEBUG {
         regwidth = 64;
@@ -556,9 +528,7 @@ addrmap sep_cpu_ctrl {
     SMC_FUSE_SENSE_STATUS SMC_FUSE_SENSE_STATUS                  @ 0x140;
     SEP_FUSE_SENSE_STATUS SEP_FUSE_SENSE_STATUS                  @ 0x150;
 
-    SEP_STRAPS            SEP_STRAPS                              @ 0x160;
 
-    RAS_BANK_INFO         RAS_BANK_INFO                           @ 0x170;
     SEP_SW_DEBUG          SEP_SW_DEBUG                            @ 0x178;
 
     SEP_NMI_VEC           SEP_NMI_VEC                             @ 0x180;

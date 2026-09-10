@@ -219,16 +219,9 @@ module smu #(
   output logic  skip_mem_repair_o,
   input  logic  ext_boot_seq_done_i,
 
-  // PVT
-  input  logic  temp_interrupt_i,
-
   // Lifecycle State (driven by SEP)
   output logic [2*smc_pkg::LC_STATE_WIDTH-1:0]  lc_state_o,
   output logic                                  lc_sigint_err_o,
-
-  // RAS Bank Settings
-  output logic [3:0]  ras_bank_chip_o,
-  output logic [3:0]  ras_bank_instance_o,
 
   // NDM Reset signals
   input  logic [smc_config_pkg::CPU_CLUSTER_COUNT - 1:0]  ndmreset_request_i,
@@ -274,9 +267,6 @@ module smu #(
   // Test Mode
   input  logic  test_en_i,
   input  logic  scan_rst_ni,
-
-  // Captured Straps
-  input  logic [smc_pkg::NUM_BONDED_GPIO-1:0]  captured_straps_i,
 
   // DFT status indicators
   input  logic mem_repair_done_i,
@@ -329,9 +319,6 @@ module smu #(
   output km_intf_pkg::km_sram_mem_req_t  sep_km_sram_mem_req_o,
   input  km_intf_pkg::km_sram_mem_rsp_t  sep_km_sram_mem_rsp_i,
 
-  // External SPI interrupt
-  input  logic                        spi_irq_i,
-
   output sep_pkg::sep_32_64_6_12_axi_req_t   sep_external_req_o,
   input  sep_pkg::sep_32_64_6_12_axi_resp_t  sep_external_resp_i,
 
@@ -345,13 +332,18 @@ module smu #(
   output logic [1:0]  lcc_demote_state_2_o,
   output logic secure_tm_o,
 
+  // Gates for the DFT-inserted OTP access paths. Unconnected in the functional
+  // design: an adopter's DFT insertion adds the paths and connects these.
+  output logic sep_fuse_dft_disable_o,
+  output logic smc_fuse_dft_disable_o,
+
   output logic  sep_fuse_sense_done_o,
 
   // SEP WDT clock (passthrough from smu_wrapper)
   input  logic  clk_sep_wdt_i,
 
   // SEP straps
-  input  sep_pkg::sep_straps_t  sep_straps_i,
+  input  logic                  secure_tm_req_i,
 
   // I3C DAT/DCT memory interfaces
   input  i3c_pkg::dat_mem_src_t  [smc_config_pkg::NUM_I3C-1:0]  i3c_dat_mem_src_i,
@@ -758,11 +750,8 @@ module smu #(
     .skip_mem_repair_o                   (skip_mem_repair_o),
     .ext_boot_seq_done_i                 (ext_boot_seq_done_i),
     .sep_security_disable_i              (sep_security_disable),
-    .temp_interrupt_i                    (temp_interrupt_i),
     .lc_state_i                          (sep_lc_state),
     .lc_sigint_err_o                     (efuse_lc_sigint_err),
-    .ras_bank_chip_o                     (ras_bank_chip_o),
-    .ras_bank_instance_o                 (ras_bank_instance_o),
     .ndmreset_request_i                  (ndmreset_request_i),
     .ndmreset_process_o                  (ndmreset_process_o),
     .ext_mailbox_interrupts_o            (ext_mailbox_interrupts_o),
@@ -801,7 +790,6 @@ module smu #(
     .ext_debug_bus_i                     (ext_debug_bus),
     .test_en_i                           (test_en_i),
     .scan_rst_ni                         (scan_rst_ni),
-    .captured_straps_i                   (captured_straps_i),
     .mem_repair_done_i                   (mem_repair_done_i),
     .mem_repair_success_i                (mem_repair_success_i),
     .mem_repair_abort_i                  (mem_repair_abort_i),
@@ -959,10 +947,10 @@ module smu #(
       .sep_io_spi_req_o              (sep_io_spi_req),
       .sep_io_spi_rsp_i              (sep_io_spi_rsp),
 
-      .spi_irq_i                     (spi_irq_i),
-
       .lc_state_o                    (sep_lc_state),
       .dbg_disable_o                 (sep_dbg_disable),
+      .sep_fuse_dft_disable_o        (sep_fuse_dft_disable_o),
+      .smc_fuse_dft_disable_o        (smc_fuse_dft_disable_o),
       .lc_sigint_err_o               (sep_lc_sigint_err),
       .security_disable_o            (sep_security_disable),
       .secure_tm_o                   (secure_tm_o),
@@ -972,7 +960,7 @@ module smu #(
       .smc_fuse_sense_done_i         (fuse_sense_done_o),
       .sep_fuse_sense_done_o         (sep_fuse_sense_done_o),
 
-      .sep_straps_i                  (sep_straps_i),
+      .secure_tm_req_i               (secure_tm_req_i),
 
       .sep_external_axi_req_o       (sep_external_req_o),
       .sep_external_axi_resp_i      (sep_external_resp_i),
@@ -1162,6 +1150,11 @@ module smu #(
     // ==================================================================
     assign sep_security_disable = 1'b0;
     assign secure_tm_o = 1'b0;
+
+    // No lifecycle controller in this configuration, so nothing can authorise the
+    // inserted fuse paths; hold them disabled.
+    assign sep_fuse_dft_disable_o = 1'b1;
+    assign smc_fuse_dft_disable_o = 1'b1;
 
     // ==================================================================
     // Lifecycle state -- original standalone behavior

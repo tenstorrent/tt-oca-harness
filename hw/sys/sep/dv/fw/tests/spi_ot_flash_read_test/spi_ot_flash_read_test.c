@@ -106,7 +106,6 @@ int main(void) {
     int pass = 1;
     uint32_t i;
 
-
     init_spi_controller();
     printf("SPI controller enabled: CLKDIV=%d\n", SPI_CLKDIV);
     printf("Flash address: 0x%06x, Read length: %u bytes\n\n", FLASH_READ_ADDR, READ_LEN_BYTES);

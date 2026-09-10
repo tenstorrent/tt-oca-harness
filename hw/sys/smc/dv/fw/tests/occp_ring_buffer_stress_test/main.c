@@ -416,7 +416,6 @@ int main(void) {
     static test_context_t occp_ctx = {0};
     static ring_buffer_stress_ctx_t stress_ctx = {0};
 
-    // peripherals_out_of_reset();
     init_test(0);
 
     simputs("=== OCCP Ring Buffer Stress Test ===\n");
@@ -437,7 +436,6 @@ int main(void) {
     reset_expected_buffer();
 
     run_test_suite(&stress_ctx);
-    // finalize_test_results(&stress_ctx);
 
     if (stress_ctx.overall_result) {
         test_pass(0);

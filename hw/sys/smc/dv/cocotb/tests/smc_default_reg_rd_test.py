@@ -24,7 +24,7 @@ from smc_base_test import smc_base_test
 # that carried an expectation AND passed its `got == exp` compare
 # (`env/smc_scoreboard.py`), so this floors the number of DUT-sensitive compares
 # that actually happened -- which `min_csr_accesses` below does not, because that
-# one counts reads. Literal on purpose: a floor derived from the catalog or from
+# one counts reads. Literal: a floor derived from the catalog or from
 # the sequence's own counter shrinks together with the thing it is guarding.
 EXPECTED_VALUE_COMPARES = 6
 

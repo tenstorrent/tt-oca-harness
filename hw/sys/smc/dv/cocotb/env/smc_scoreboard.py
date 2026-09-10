@@ -398,7 +398,7 @@ class SmcScoreboard(uvm_subscriber):
         # inputs driven by cocotb Clock(...) in smc_base_test._bring_up, so
         # these four asserts can only fail on a TB clock-generator / timing-
         # randomization mistake -- never on wrong DUT RTL. They are kept for
-        # that purpose and are deliberately NOT presented as DUT evidence.
+        # that purpose and are NOT presented as DUT evidence.
         assert item.ref_rising_edges > 0
         assert item.smc_rising_edges > 0
         assert item.periph_rising_edges > 0
@@ -637,21 +637,18 @@ class SmcScoreboard(uvm_subscriber):
         #   external_active     -- smc_probe_positive_control.prove_axil_external_active_probe
         #                          (probe_positive_controls = ("axil_external_active",))
         #
-        # dtp_csr_active is DIFFERENT and is never asserted: tb_top.sv:1151 ties
+        # dtp_csr_active is DIFFERENT and is never asserted: tb_top ties
         # axil_dtp_csr_resp = '0', so there is no responder and an access there
-        # would wedge rather than complete, and the DTP CSR boundary is a
-        # recorded TB-policy deferral (hw/sys/smc/dv/README.md). It is listed in
+        # would wedge rather than complete. It is listed in
         # env.smc_probe_liveness.UNBACKABLE_PROBES: sampled and logged as
         # OBSERVED-ONLY, never checked evidence. Sequence-side idle helpers must
         # restrict themselves to AXIL_CHECKABLE_FIELDS for the same reason.
         #
-        # The rail below is what makes that paragraph true structurally rather
-        # than by nobody having written a setter yet: `expect_<field>` is refused
+        # The rail below enforces that structurally: `expect_<field>` is refused
         # for an unbackable probe BEFORE the compare branch, mirroring the
-        # `credit_probe` refusal on the ledger side
-        # (env/smc_probe_liveness.py). Without it, a future sequence setting
-        # `expect_dtp_csr_active` would silently exact-compare a probe whose
-        # responder tb_top.sv:1151 ties to zero.
+        # `credit_probe` refusal on the ledger side (env/smc_probe_liveness.py),
+        # so a sequence setting `expect_dtp_csr_active` cannot silently
+        # exact-compare a probe whose responder is tied to zero.
         checked = ["resolvable"]
         observed_only = []
         for field in AXIL_SAMPLE_FIELDS:
@@ -867,7 +864,6 @@ class SmcScoreboard(uvm_subscriber):
             f"({item.min_fabric_accesses})"
         )
         if item.timeouts is not None:
-            assert item.timeouts >= 0
             # Every timeout counted by csr_read_bounded() is also an access, so
             # a recorded item must never report more timeouts than accesses.
             assert item.timeouts <= item.csr_accesses, (
@@ -896,7 +892,7 @@ class SmcScoreboard(uvm_subscriber):
             self.idle_legs_checked,
             self.idle_legs_observed_only,
         )
-        # Minimum-activity gate. Deliberately excludes
+        # Minimum-activity gate. Excludes
         # `protocol_vip_auto_stamps_seen` and `reset_raw_observations_seen`:
         # neither can fail, so neither may satisfy the gate on its own
         # ([NO-ZERO-ACTIVITY-PASS]).
