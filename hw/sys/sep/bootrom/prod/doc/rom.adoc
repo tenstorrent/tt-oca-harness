@@ -598,6 +598,8 @@ start
 :status 'entered _start' -> cold_scratch[1];
 :disable interrupts (mie, mstatus.MIE);
 :program PMP fences;
+:MEM_REPAIR / MBIST gate [V3]
+(strap-bypassable);
 :DCCM scrub (DCCM_SCRUB_BYTES);
 :.data ROM->DCCM copy, .bss zero;
 :status 'runtime init OK';
