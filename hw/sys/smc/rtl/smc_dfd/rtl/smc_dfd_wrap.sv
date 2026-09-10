@@ -312,8 +312,8 @@ module smc_dfd_wrap #(
   prim_bin2gray #(
     .N(REF_CNT_W)
   ) u_ref_cnt_bin2gray (
-    .A(ref_cnt),
-    .Z(ref_cnt_gray)
+    .a_i(ref_cnt),
+    .z_o(ref_cnt_gray)
   );
 
   prim_sync3r #(
@@ -328,8 +328,8 @@ module smc_dfd_wrap #(
   prim_gray2bin #(
     .N(REF_CNT_W)
   ) u_ref_cnt_gray2bin (
-    .A(ref_cnt_gray_sync),
-    .Z(ref_cnt_sync)
+    .a_i(ref_cnt_gray_sync),
+    .z_o(ref_cnt_sync)
   );
 
   assign time_tick = (tick_cnt != ref_cnt_sync);

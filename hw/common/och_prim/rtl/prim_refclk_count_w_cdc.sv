@@ -192,8 +192,8 @@ module prim_refclk_count_w_cdc #(
   prim_bin2gray #(
     .N(REF_COUNT_WIDTH)
   ) prim_bin2gray (
-    .A(bin_count),
-    .Z(gray_count)
+    .a_i(bin_count),
+    .z_o(gray_count)
   );
 
   always_ff @(posedge i_refclk or negedge prstb_synced_rd) begin
@@ -215,8 +215,8 @@ module prim_refclk_count_w_cdc #(
   prim_gray2bin #(
     .N(REF_COUNT_WIDTH)
   ) prim_gray2bin (
-    .A(ref_count_sync_gray),
-    .Z(o_count)
+    .a_i(ref_count_sync_gray),
+    .z_o(o_count)
   );
 
 endmodule
