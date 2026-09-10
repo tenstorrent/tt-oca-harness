@@ -10,6 +10,7 @@
 
 module efuse_read_interface #(
   parameter type efuse_addr_t = logic,
+  parameter type efuse_word_counter_t = logic,
   parameter type fuse_command_req_t = logic,
   parameter type fuse_command_resp_t = logic,
   parameter type efuse_data_t = logic
@@ -129,7 +130,7 @@ module efuse_read_interface #(
             fuse_command_req_d.program_data = '0;
             fuse_command_req_d.command = efuse_pkg::FUSE_COMMAND_READ;
             fuse_command_req_d.valid = 1'b1;
-            fuse_command_req_d.access_length_words = 10'd1;
+            fuse_command_req_d.access_length_words = efuse_word_counter_t'(1);
           end
         end
       end
@@ -195,7 +196,7 @@ module efuse_read_interface #(
       read_busy_q <= 1'b0;
       read_back_data_q_n0_scan <= '0;
 
-      timeout_count_q <= 1'b0;
+      timeout_count_q <= 'd0;
     end else begin
       read_state_q <= read_state_d;
       fuse_command_req_q <= fuse_command_req_d;
