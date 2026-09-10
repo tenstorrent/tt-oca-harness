@@ -64,6 +64,10 @@ class smc_multi_reset_csr_persistence_test_seq extends smc_base_test_seq;
   localparam int unsigned CoolResetPollCycles = 5_000;
   // Accesses this body issues per pass: four writes and seven reads.
   localparam int unsigned ExpectedAccesses = 11;
+  // Six of those eleven are scratch reads -- two before the pulse, two after
+  // it, and two around the post-reset write/restore -- and each one is
+  // predicted by the scratch_csr reference model.
+  localparam int unsigned PredictedScratchReadsPerPass = 6;
 
   function new(string name = "smc_multi_reset_csr_persistence_test_seq");
     super.new(name);
@@ -78,8 +82,9 @@ class smc_multi_reset_csr_persistence_test_seq extends smc_base_test_seq;
 
     seed_scenario_rng();
     attach_evidence('{ChkFuseSense, ChkCsrResp, ChkPreReset, ChkCoolAsserted, ChkCoolReleased,
-                    ChkCoolClears, ChkPathRecovered, ChkRwRecovered, ChkNonvac});
+                    ChkCoolClears, ChkPathRecovered, ChkRwRecovered, ChkNonvac, ChkSbMinAct});
 
+    check_min_activity(SmcFeatureScratchCsr, PredictedScratchReadsPerPass);
     pattern_cold = 32'(random_pattern(32)) | 32'h1;
     pattern_warm = 32'(random_pattern(32)) | 32'h2;
     pattern_rw   = 32'(random_pattern(32)) | 32'h4;
@@ -110,8 +115,10 @@ class smc_multi_reset_csr_persistence_test_seq extends smc_base_test_seq;
     wait_fuse_sense_done();
 
     // --- after the reset --------------------------------------------------
-    csr_read_check(ChkCoolClears, cold_addr, 32'h0, "SCRATCH_COLD_1.post_cool");
-    csr_read_check(ChkCoolClears, warm_addr, 32'h0, "SCRATCH_COLD_WARM_1.post_cool");
+    csr_read_check(ChkCoolClears, cold_addr, 32'(SCRATCH_SCRATCH_REG_DEFAULT),
+                   "SCRATCH_COLD_1.post_cool");
+    csr_read_check(ChkCoolClears, warm_addr, 32'(SCRATCH_SCRATCH_REG_DEFAULT),
+                   "SCRATCH_COLD_WARM_1.post_cool");
     // Real content, not just an OKAY: this default is non-zero, so a read
     // path that came back dead or stuck at zero fails here.
     csr_read_check(ChkPathRecovered, version_addr, 32'(CHIP_CONFIG_VERSION_LO_REG_DEFAULT),
@@ -119,8 +126,9 @@ class smc_multi_reset_csr_persistence_test_seq extends smc_base_test_seq;
     // And the write path works again, then restore.
     csr_write(cold_addr, pattern_rw, "SCRATCH_COLD_1.post_cool_write");
     csr_read_check(ChkRwRecovered, cold_addr, pattern_rw, "SCRATCH_COLD_1.post_cool_write");
-    csr_write(cold_addr, 32'h0, "SCRATCH_COLD_1.restore");
-    csr_read_check(ChkRwRecovered, cold_addr, 32'h0, "SCRATCH_COLD_1.restore");
+    csr_write(cold_addr, 32'(SCRATCH_SCRATCH_REG_DEFAULT), "SCRATCH_COLD_1.restore");
+    csr_read_check(ChkRwRecovered, cold_addr, 32'(SCRATCH_SCRATCH_REG_DEFAULT),
+                   "SCRATCH_COLD_1.restore");
 
     check_evidence(ChkNonvac, "sep_in_csr_accesses", 64'(csr_accesses), 64'(ExpectedAccesses));
     finalize_evidence();
@@ -164,7 +172,11 @@ class smc_multi_reset_csr_persistence_test_seq extends smc_base_test_seq;
   endtask
 
   // Bounded poll of one reset observable to a level; expiry errors and
-  // reports 0 rather than hanging the run.
+  // reports 0 rather than hanging the run. The level itself is compared with
+  // !==, so an X or Z matches NEITHER direction and the poll expires instead
+  // of passing. A predicate of the "is it 1?" shape would make X the passing
+  // case on the asserted leg, where the loop exits as soon as that predicate
+  // reads false.
   protected task wait_observable(string which, bit want, output bit reached);
     int unsigned cycles = 0;
     while (reset_observable(
@@ -184,13 +196,13 @@ class smc_multi_reset_csr_persistence_test_seq extends smc_base_test_seq;
     reached = 1'b1;
   endtask
 
-  protected function bit reset_observable(string which);
+  protected function logic reset_observable(string which);
     case (which)
-      "rst_primary_smc_clk_n": return tb_vif.rst_primary_smc_clk_n === 1'b1;
-      "rst_warm_smc_clk_n":    return tb_vif.rst_warm_smc_clk_n === 1'b1;
+      "rst_primary_smc_clk_n": return tb_vif.rst_primary_smc_clk_n;
+      "rst_warm_smc_clk_n":    return tb_vif.rst_warm_smc_clk_n;
       default: begin
         `uvm_fatal(get_type_name(), $sformatf("unknown reset observable %s", which))
-        return 1'b0;
+        return 1'bx;
       end
     endcase
   endfunction

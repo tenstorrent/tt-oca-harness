@@ -384,10 +384,15 @@ localparam int unsigned SmcSemaCount = int'(smc_top_addrmap_pkg::SMC_TOP_SMC_CPU
 // Field masks and the mutex's two legal read values, symbol-sourced.
 localparam bit [31:0] SmcMutexMask = 32'(CPU_CTRL_MUTEX_MUTEX_MASK);
 localparam bit [31:0] SmcSemaMask = 32'(CPU_CTRL_SEMA_SEMA_MASK);
-// The field's reset value IS the "available" encoding; the RDL gives 0 as the
-// only other legal read result ("already acquired").
+// The field's reset value IS the "available" encoding, and it is
+// symbol-sourced. The taken encoding is NOT derivable from a symbol: the RDL
+// states it in prose -- cpu_ctrl.rdl:270-281, "If the mutex is already
+// acquired, the read will return 0" -- so it is written as the literal that
+// sentence gives, cited here, rather than as an expression over
+// SmcMutexMask that would be identically zero whatever the map said and would
+// therefore hide a changed encoding instead of catching it.
 localparam bit [31:0] SmcMutexFree = 32'(CPU_CTRL_MUTEX_REG_DEFAULT) & SmcMutexMask;
-localparam bit [31:0] SmcMutexTaken = SmcMutexFree & ~SmcMutexMask;
+localparam bit [31:0] SmcMutexTaken = 32'h0;  // cpu_ctrl.rdl:270-281, quoted above
 
 function automatic bit [63:0] smc_mutex_addr(int unsigned idx);
   return 64'(smc_top_addrmap_pkg::SMC_TOP_SMC_CPU_CTRL_MUTEX_BASE_ADDR(idx));

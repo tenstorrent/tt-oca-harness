@@ -87,9 +87,10 @@ class smc_base_test extends ocah_test;
     smc_base_test_seq smc_seq;
     if (!$cast(smc_seq, seq))
       `uvm_fatal(get_type_name(), "scenario sequence is not a smc_base_test_seq")
-    smc_seq.tb_vif   = m_env.tb_vif;
-    smc_seq.test_cfg = test_cfg;
-    smc_seq.env_cfg  = env_cfg;
+    smc_seq.tb_vif     = m_env.tb_vif;
+    smc_seq.test_cfg   = test_cfg;
+    smc_seq.env_cfg    = env_cfg;
+    smc_seq.scoreboard = m_env.m_scoreboard;
   endfunction
 
   // Clock/reset bring-up (cocotb _bring_up parity): power-good and cold

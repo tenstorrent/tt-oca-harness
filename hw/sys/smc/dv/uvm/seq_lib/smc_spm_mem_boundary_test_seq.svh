@@ -53,12 +53,15 @@ class smc_spm_mem_boundary_test_seq extends smc_base_test_seq;
   // pass-specific pattern whose low half carries the edge identity so a
   // mismatch names the address that produced it.
   function void spm_edges(ref spm_edge_t edges[$]);
+    bit [63:0] addrs[$] = '{SmcSpmBase, SmcSpmBase + SmcMemBytes,
+                            SmcSpmBase + SmcSpmSize - SmcMemBytes};
+    string     names[$] = '{"SPM_LO", "SPM_LO_NEXT", "SPM_HI"};
     edges.delete();
-    edges.push_back('{"SPM_LO", SmcSpmBase, {32'(random_pattern(32)), 32'hC006_0000}});
-    edges.push_back('{"SPM_LO_NEXT", SmcSpmBase + SmcMemBytes,
-                    {32'(random_pattern(32)), 32'hC006_0008}});
-    edges.push_back('{"SPM_HI", SmcSpmBase + SmcSpmSize - SmcMemBytes,
-                    {32'(random_pattern(32)), 32'hC006_FFF8}});
+    // The low half is the low 32 bits of the edge's OWN address, so a
+    // mismatch names the address that produced it. Derived rather than
+    // written out: a hand-copied label drifts from the window it labels.
+    foreach (addrs[i])
+    edges.push_back('{names[i], addrs[i], {32'(random_pattern(32)), 32'(addrs[i])}});
   endfunction
 
   task body();
@@ -66,11 +69,14 @@ class smc_spm_mem_boundary_test_seq extends smc_base_test_seq;
     bit [63:0] observed;
 
     seed_scenario_rng();
-    attach_evidence('{ChkFuseSense, ChkMemResp, ChkSpmEdge, ChkSpmCoResident, ChkNonvac});
+    attach_evidence('{ChkFuseSense, ChkMemResp, ChkSpmEdge, ChkSpmCoResident, ChkNonvac, ChkSbMinAct
+                    });
     spm_edges(edges);
     if (edges.size() != EdgeCount)
       `uvm_fatal(get_type_name(), "spm_edges() did not build the expected edge set")
     assert_edges_discriminating(edges);
+    // One readback per edge reaches the spm_mem predictor each pass.
+    check_min_activity(SmcFeatureSpmMem, edges.size());
     `uvm_info(get_type_name(),
               $sformatf(
                   {"SMC SV-UVM SPM boundary (smc_spm_mem_boundary_test): window 0x%0h..0x%0h, %0d ",

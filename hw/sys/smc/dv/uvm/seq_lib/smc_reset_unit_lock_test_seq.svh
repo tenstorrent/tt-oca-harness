@@ -54,6 +54,9 @@ class smc_reset_unit_lock_test_seq extends smc_base_test_seq;
   localparam int unsigned MaxLockBit = 30;
   // Accesses this body issues per lock pair and pass: five write+read legs.
   localparam int unsigned AccessesPerPair = 10;
+  // Of those ten, five are reads, and each one is predicted by the lock_csr
+  // reference model.
+  localparam int unsigned ReadsPerPair = 5;
 
   function new(string name = "smc_reset_unit_lock_test_seq");
     super.new(name);
@@ -65,8 +68,10 @@ class smc_reset_unit_lock_test_seq extends smc_base_test_seq;
 
     seed_scenario_rng();
     attach_evidence('{ChkFuseSense, ChkCsrResp, ChkTargetWritable, ChkLockSet, ChkLockSticky,
-                    ChkMasksTarget, ChkFreeBitMoved, ChkNonvac});
+                    ChkMasksTarget, ChkFreeBitMoved, ChkNonvac, ChkSbMinAct});
     smc_lock_pairs(pairs);
+    // Five reads per pair reach the lock_csr predictor each pass.
+    check_min_activity(SmcFeatureLockCsr, pairs.size() * ReadsPerPair);
     if (lock_bit > MaxLockBit)
       `uvm_fatal(get_type_name(), $sformatf(
                  {

@@ -50,11 +50,20 @@ class smc_mutex_semaphore_test_seq extends smc_base_test_seq;
   localparam string ChkSemaAccum = "CHK-SEMA-ACCUM";
   localparam string ChkNonvac = "CHK-NONVAC";
 
-  // Signed increment applied through the SEMA write port, and its two's
-  // complement in the 16-bit field: +N then -N must return the accumulator.
-  localparam bit [31:0] SemaStep = 32'd5;
+  // Signed increment applied through the SEMA write port: +N then -N must
+  // return the accumulator. Drawn per pass from the scenario seed rather than
+  // fixed, so the 16 passes of one simulation exercise different magnitudes
+  // instead of repeating one; bounded well inside the 16-bit field so the
+  // sum cannot wrap, which would make the round trip pass for the wrong
+  // reason. Never zero: +0 then -0 returns the accumulator whatever the DUT
+  // does with a write.
+  localparam bit [31:0] SemaStepMin = 32'd1;
+  localparam bit [31:0] SemaStepMax = 32'd4095;
   // Accesses this body issues per pass: seven reads and five writes.
   localparam int unsigned ExpectedAccesses = 12;
+  // Seven of those twelve are reads -- three of MUTEX[0], one of MUTEX[1],
+  // three of SEMA[0] -- and each one is predicted by the mutex_sema model.
+  localparam int unsigned PredictedReadsPerPass = 7;
 
   function new(string name = "smc_mutex_semaphore_test_seq");
     super.new(name);
@@ -64,18 +73,23 @@ class smc_mutex_semaphore_test_seq extends smc_base_test_seq;
     bit [63:0] mutex0 = smc_mutex_addr(0);
     bit [63:0] mutex1 = smc_mutex_addr(1);
     bit [63:0] sema0 = smc_sema_addr(0);
-    bit [31:0] sema_step_neg = (~SemaStep + 32'd1) & SmcSemaMask;
+    bit [31:0] sema_step;
+    bit [31:0] sema_step_neg;
 
     seed_scenario_rng();
+    sema_step = SemaStepMin +
+        32'(random_pattern(32) % (SemaStepMax - SemaStepMin + 32'd1));
+    sema_step_neg = (~sema_step + 32'd1) & SmcSemaMask;
     attach_evidence('{ChkFuseSense, ChkCsrResp, ChkMutexTake, ChkMutexDeny, ChkMutexIndep,
-                    ChkMutexRelease, ChkSemaAccum, ChkNonvac});
+                    ChkMutexRelease, ChkSemaAccum, ChkNonvac, ChkSbMinAct});
+    check_min_activity(SmcFeatureMutexSema, PredictedReadsPerPass);
     if (SmcMutexCount < 2)
       `uvm_fatal(get_type_name(),
                  "the independence leg needs at least two MUTEX instances in the map")
     `uvm_info(get_type_name(),
               $sformatf({"SMC SV-UVM mutex/semaphore (smc_mutex_semaphore_test): MUTEX free=0x%0h ",
                          "taken=0x%0h mask=0x%08h, SEMA mask=0x%08h step=%0d; scenario_seed=%0d"},
-                          SmcMutexFree, SmcMutexTaken, SmcMutexMask, SmcSemaMask, SemaStep,
+                          SmcMutexFree, SmcMutexTaken, SmcMutexMask, SmcSemaMask, sema_step,
                           scenario_seed), UVM_LOW)
 
     wait_fuse_sense_done();
@@ -100,8 +114,8 @@ class smc_mutex_semaphore_test_seq extends smc_base_test_seq;
     // baseline expectation of zero is also the check that the previous pass
     // restored it.
     read_field_check(ChkSemaAccum, sema0, SmcSemaMask, 32'h0, "SEMA0.baseline");
-    csr_write(sema0, SemaStep, "SEMA0.increment");
-    read_field_check(ChkSemaAccum, sema0, SmcSemaMask, SemaStep & SmcSemaMask, "SEMA0.after_inc");
+    csr_write(sema0, sema_step, "SEMA0.increment");
+    read_field_check(ChkSemaAccum, sema0, SmcSemaMask, sema_step & SmcSemaMask, "SEMA0.after_inc");
     csr_write(sema0, sema_step_neg, "SEMA0.decrement");
     read_field_check(ChkSemaAccum, sema0, SmcSemaMask, 32'h0, "SEMA0.restored");
 

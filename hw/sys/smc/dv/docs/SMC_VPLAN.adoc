@@ -551,16 +551,17 @@ the DUT can fail; a token is emitted only after that compare holds. The SV-UVM v
 |`CHK-DEFAULT-REG-SWEEP` |Named compare in `smc_default_reg_rd_test_seq.py`; the run fails if it mismatches
 |`CHK-DEFAULT-REG-VALUE` |Named compare in `smc_default_reg_rd_test_seq.py`; the run fails if it mismatches
 |`CHK-DEFAULT-REG-VALUE-COMPARE-FLOOR` |Named compare in `smc_default_reg_rd_test.py`; the run fails if it mismatches
-|`CHK-REG-DEFAULT` |SV-UVM: each catalogued register reads back its generated `*_REG_DEFAULT`. Two expectations are non-zero (`CHIP_CONFIG.VERSION_LO` = 0x000100A0, `RESET_UNIT.SS_WARM_RESET_N` = 0xFFFFFFFF), so a read path stuck at zero cannot satisfy the catalogue
-|`CHK-REG-DECODE-ONLY` |SV-UVM: registers whose read value this bench does not establish record their OKAY response and nothing else. `CHIP_CONFIG.LC_STATE` is driven by the harness, `NDM_RESET.NDMRESET_CLUSTER_COUNT` by a design-side count; both read something other than their RDL default, so comparing against it would be an invented claim
+|`CHK-REG-DEFAULT` |SV-UVM: each catalogued register reads back its generated `*_REG_DEFAULT`. Two expectations are non-zero (`CHIP_CONFIG.VERSION_LO` = 0x000100A0, `RESET_UNIT.SS_WARM_RESET_N` = 0xFFFFFFFF), so a read path stuck at zero cannot satisfy the catalogue. One compared entry, `NDM_RESET.NDMRESET_REQUEST`, is `sw=r; hw=w` and its value arrives from the harness tie-off `tb_ndmreset_request = '0` at a DUT primary input -- the specified source for such a field, so the register block's decode and read path are in the loop, but the value is not register storage
+|(decode-only entries) |SV-UVM: registers whose read value this bench does not establish carry no checker of their own -- the OKAY claim on the access is `CHK-CSR-RESP`, and the observed word is logged as an `OBSERVED-ONLY` observation rather than a check. `CHIP_CONFIG.LC_STATE` is driven by the harness, `NDM_RESET.NDMRESET_CLUSTER_COUNT` by a design-side count; both read something other than their RDL default, so comparing against it would be an invented claim
 |`CHK-CSR-RESP` |SV-UVM: every SEP_IN CSR access completes with an OKAY response
 |`CHK-FUSE-SENSE-DONE` |SV-UVM: warm-reset domain release after fuse sense completes
-|`CHK-NONVAC` |SV-UVM: non-vacuity count of real SEP_IN CSR accesses in `smc_default_reg_rd_test_seq.svh`, one read per catalogue entry
+|`CHK-NONVAC` |SV-UVM: reconciles the accesses the body issued against its own loop bounds -- a control-flow invariant that catches a truncated pass, not a DUT-failable compare. `CHK-SB-MIN-ACTIVITY` is the observed-side counterpart
+|`CHK-SB-MIN-ACTIVITY` |SV-UVM: the `default_reg` feature's comparison count, taken from the always-on scoreboard fed by the PASSIVE monitor, is at or above the floor the completed passes imply (one predicted read per catalogue entry carrying a default)
 |`CHK-SB-DEFAULT-REG` |SV-UVM always-on scoreboard, feature `default_reg`: `smc_default_reg_ref_model` predicts every catalogued read from the generated defaults plus the writes it observed. A required feature with zero comparisons fails the run
 |===
 
 
-*Pass Criteria*: `CHK-DEFAULT-REG-SWEEP`, `CHK-DEFAULT-REG-VALUE`, `CHK-DEFAULT-REG-VALUE-COMPARE-FLOOR` hold after their compares. Under `--framework uvm` the SV-UVM checkers above hold instead, and `+SMC_DEFAULT_REG_SCOREBOARD_NEGATIVE` must fail the run. Enrolled in: `all`, `per_ip`, `functional_depth`, `pyuvm`, `smoke`, `depth`.
+*Pass Criteria*: `CHK-DEFAULT-REG-SWEEP`, `CHK-DEFAULT-REG-VALUE`, `CHK-DEFAULT-REG-VALUE-COMPARE-FLOOR` hold after their compares. Under `--framework uvm` the governing checker set is the SV-UVM one in the table above -- the cocotb ids named at the head of this Pass Criteria do not run there -- and it holds instead, and `+SMC_DEFAULT_REG_SCOREBOARD_NEGATIVE` must fail the run. Enrolled in: `all`, `per_ip`, `functional_depth`, `pyuvm`, `smoke`, `depth`.
 '''''
 
 [[sec-006-smc_ext_interrupts_pin_test]]
@@ -2062,14 +2063,15 @@ sequence drives and polls them directly. Each checker below is a named compare t
 |`CHK-CSR-RW-RECOVERED` |SV-UVM: a fresh write and readback lands after the reset, and the restore leaves the register at its reset value
 |`CHK-CSR-RESP` |SV-UVM: every SEP_IN CSR access completes with an OKAY response
 |`CHK-FUSE-SENSE-DONE` |SV-UVM: warm-reset domain release after fuse sense completes, checked before the pulse and again after it
-|`CHK-NONVAC` |SV-UVM: non-vacuity count of real SEP_IN CSR accesses in `smc_multi_reset_csr_persistence_test_seq.svh`, eleven per pass
+|`CHK-NONVAC` |SV-UVM: reconciles the accesses the body issued against its own loop bounds -- a control-flow invariant that catches a truncated pass, not a DUT-failable compare. `CHK-SB-MIN-ACTIVITY` is the observed-side counterpart
+|`CHK-SB-MIN-ACTIVITY` |SV-UVM: the `scratch_csr` feature's comparison count, taken from the always-on scoreboard fed by the PASSIVE monitor, is at or above the floor the completed passes imply (six predicted scratch reads per pass)
 |`CHK-SB-SCRATCH-CSR` |SV-UVM always-on scoreboard, feature `scratch_csr`: `smc_scratch_csr_ref_model` re-baselines on the same cool reset through `smc_csr_reset_epoch`, so a predictor that ignored the cool reset fails here
 |===
 
 
 *Pass Criteria*: `CHK-COOL-RESET-ASSERTED`, `CHK-COOL-RESET-CLEARS-WARM-SCRATCH`, `CHK-COOL-RESET-RELEASED`, `CHK-CSR-BASELINE-RO`, `CHK-CSR-POST-COOL-RECOVERY`, `CHK-CSR-PRE-COOL-READBACK` (and 2 more) hold after their compares.
 
-Under `--framework uvm` the SV-UVM checkers above hold instead, and
+Under `--framework uvm` the governing checker set is the SV-UVM one in the table above -- the cocotb ids named at the head of this Pass Criteria do not run there -- and it holds instead, and
 `+SMC_CSR_SCOREBOARD_NEGATIVE` must fail the run. Each of the 16 scenario passes drives its own
 complete write / pulse / check / restore cycle with a fresh pattern, so back-to-back recovery is
 re-proved rather than assumed. Enrolled in: `all`, `per_ip`, `pyuvm`, `smoke`, `depth`.
@@ -3007,11 +3009,12 @@ the DUT can fail; a token is emitted only after that compare holds.
 |`CHK-SEMA-ACCUMULATE` |Named compare in `smc_mutex_semaphore_test_seq.py`; the run fails if it mismatches
 |`CHK-MUTEX-DENY` |SV-UVM: the second read of a held `MUTEX[0]` returns 0. Only meaningful because the first read expected the available encoding and got it -- a mutex stuck at 0 fails the take leg, one stuck at 1 fails this one
 |`CHK-MUTEX-INDEP` |SV-UVM: `MUTEX[1]` still reports available while `MUTEX[0]` is held, so "acquired" is a property of one lock rather than of the block
-|`CHK-MUTEX-RELEASE` |SV-UVM: after a write of any value, `MUTEX[0]` reports available again
+|`CHK-MUTEX-RELEASE` |SV-UVM: after a write, `MUTEX[0]` reports available again. The RDL permits *any* value to release; both implementations write zero, so the property is proved for that value and the wider claim is not exercised
 |`CHK-SEMA-ACCUM` |SV-UVM: `SEMA[0]` accumulates a signed 16-bit increment; +N then -N returns it to its baseline, and the baseline expectation of zero is also the check that the previous pass restored it
 |`CHK-CSR-RESP` |SV-UVM: every SEP_IN CSR access completes with an OKAY response
 |`CHK-FUSE-SENSE-DONE` |SV-UVM: warm-reset domain release after fuse sense completes
-|`CHK-NONVAC` |SV-UVM: non-vacuity count of real SEP_IN CSR accesses in `smc_mutex_semaphore_test_seq.svh`, eleven per pass
+|`CHK-NONVAC` |SV-UVM: reconciles the accesses the body issued against its own loop bounds -- twelve per pass, seven reads and five writes. A control-flow invariant, not a DUT-failable compare: it catches a truncated pass, and `CHK-SB-MIN-ACTIVITY` is the observed-side counterpart
+|`CHK-SB-MIN-ACTIVITY` |SV-UVM: the `mutex_sema` feature's comparison count, taken from the always-on scoreboard fed by the PASSIVE monitor, is at or above the floor the completed passes imply (seven predicted reads per pass)
 |`CHK-SB-MUTEX-SEMA` |SV-UVM always-on scoreboard, feature `mutex_sema`: `smc_mutex_sema_ref_model` models acquire-on-read and the signed accumulator, computing each expected value BEFORE the state advances, and compares under the RDL field mask
 |===
 
@@ -3134,7 +3137,8 @@ DUT can fail; a token is emitted only after that compare holds.
 |`CHK-SPM-CO-RESIDENT` |SV-UVM: each edge's readback is required NOT to equal any other edge's pattern -- the shape a collapsed decode would produce. Addresses and patterns are asserted pairwise distinct before the legs run, since identical patterns would make aliasing indistinguishable from correctness
 |`CHK-MEM-RESP` |SV-UVM: every SEP_IN full-width access completes with an OKAY response
 |`CHK-FUSE-SENSE-DONE` |SV-UVM: warm-reset domain release after fuse sense completes
-|`CHK-NONVAC` |SV-UVM: non-vacuity count of real SEP_IN memory accesses in `smc_spm_mem_boundary_test_seq.svh`, three writes and three readbacks
+|`CHK-NONVAC` |SV-UVM: reconciles the accesses the body issued against its own loop bounds -- a control-flow invariant that catches a truncated pass, not a DUT-failable compare. `CHK-SB-MIN-ACTIVITY` is the observed-side counterpart
+|`CHK-SB-MIN-ACTIVITY` |SV-UVM: the `spm_mem` feature's comparison count, taken from the always-on scoreboard fed by the PASSIVE monitor, is at or above the floor the completed passes imply (one predicted readback per window edge per pass)
 |`CHK-SB-SPM-MEM` |SV-UVM always-on scoreboard, feature `spm_mem`: `smc_spm_mem_ref_model` shadows the window per 64-bit word address, so an aliased decode disagrees with the model that keeps the edges apart
 |===
 
@@ -3145,7 +3149,7 @@ Accesses are full-width 64-bit single beats (AxSIZE = 3, every byte lane strobed
 CSR-shaped access would leave half of each word untouched and could not discriminate the
 addresses. The SV-UVM view draws a fresh pattern set per pass from the scenario seed, so its 16
 passes exercise different data and each pass also re-proves that the previous pass's words were
-replaced rather than merely re-read. Under `--framework uvm` the SV-UVM checkers above hold
+replaced rather than merely re-read. Under `--framework uvm` the governing checker set is the SV-UVM one in the table above -- the cocotb ids named at the head of this Pass Criteria do not run there -- and it holds
 instead, and `+SMC_SPM_MEM_SCOREBOARD_NEGATIVE` must fail the run. Enrolled in: `all`,
 `per_ip`, `cpu_depth`.
 '''''
@@ -6014,7 +6018,7 @@ The scenario has two implementations that share this claim: the cocotb
 (`--framework uvm`). For each of the two (target, lock) pairs:
 
 [arabic]
-. Require both bits under test to be clear in the lock, since `woset` means a set bit could not have been cleared by this sequence.
+. Require both bits under test to be clear in the lock, since `woset` means a set bit could not have been cleared by this sequence. (cocotb only. The SV-UVM sequence performs no lock pre-read: it locks a fresh bit per pass and expects the accumulated `bits 1..1+loop_index` back, so from pass 1 onward a lock that ignored writes or reset to the wrong value fails on the accumulation instead.)
 . Write bit 0 to the target with nothing locked and read it back, proving the register is writable before any lock exists.
 . Write bit 1 to the lock and require it to set, then write all zeroes and require it to remain set.
 . Write bits 0 and 1 to the target in one access. Require bit 1 to stay clear and bit 0 to follow the write.
@@ -6034,8 +6038,9 @@ The scenario has two implementations that share this claim: the cocotb
 |`CHK-LOCK-FREE-BIT-MOVED` |SV-UVM: the same write carries never-locked bit 0, and that bit is required to change in both directions -- so "unchanged" cannot be explained by the write being dropped
 |`CHK-CSR-RESP` |SV-UVM: every SEP_IN CSR access completes with an OKAY response
 |`CHK-FUSE-SENSE-DONE` |SV-UVM: warm-reset domain release after fuse sense completes
-|`CHK-NONVAC` |SV-UVM: non-vacuity count of real SEP_IN CSR accesses in `smc_reset_unit_lock_test_seq.svh`, ten per lock pair per pass
-|`CHK-SB-LOCK-CSR` |SV-UVM always-on scoreboard, feature `lock_csr`: `smc_lock_csr_ref_model` applies `woset` to the lock and lock-filtered bit-enables to the guarded register, independently of the sequence that drove them
+|`CHK-NONVAC` |SV-UVM: reconciles the accesses the body issued against its own loop bounds -- a control-flow invariant that catches a truncated pass, not a DUT-failable compare. `CHK-SB-MIN-ACTIVITY` is the observed-side counterpart
+|`CHK-SB-MIN-ACTIVITY` |SV-UVM: the `lock_csr` feature's comparison count, taken from the always-on scoreboard fed by the PASSIVE monitor, is at or above the floor the completed passes imply (five predicted reads per lock pair per pass)
+|`CHK-SB-LOCK-CSR` |SV-UVM always-on scoreboard, feature `lock_csr`: `smc_lock_csr_ref_model` applies `woset` to the lock and lock-filtered bit-enables to the guarded register, rebuilt from the traffic the passive monitor saw rather than from the sequence's own bookkeeping. Note the asymmetry in where the two rules come from: `woset` is specification-sourced (`reset_unit.rdl:18-26`, `:87-95`), but the bit-enable filtering is transcribed from the RTL it checks (`smc_subsystem_resets.sv:81`, `:100`), so on that half the model would be wrong in the same direction as a wrong design. It corroborates; the primary proof of masking is the sequence-side `CHK-LOCK-MASKS-TARGET`, whose expectation comes from the bench's own accumulation
 |===
 
 *Pass Criteria*: all six cocotb checkers hold, three per pair. Measured PASS on Verilator 5.050: each lock held 0x2 through an all-zeroes write, and a 0x3 write to its target read back 0x1.
@@ -6052,7 +6057,7 @@ difference is part of the claim:
   write of 0x00000001 to its target read back 0x0001FFFF. A loop knob that would run past the
   lockable bits fails the run rather than aliasing silently.
 
-Under `--framework uvm` the SV-UVM checkers above hold instead, and
+Under `--framework uvm` the governing checker set is the SV-UVM one in the table above -- the cocotb ids named at the head of this Pass Criteria do not run there -- and it holds instead, and
 `+SMC_LOCK_SCOREBOARD_NEGATIVE` must fail the run. Enrolled in: `all`, `reset`.
 
 '''''
