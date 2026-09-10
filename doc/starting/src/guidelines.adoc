@@ -163,6 +163,9 @@ the two, the specification here takes precedence.
 * Use two spaces for indentation, matching the lowRISC style guide.
 * Use all upper case letters to name enums, constants (localparam), and
 parameters instead of UpperCamelCase.
+* TT-owned RTL uses postfix *_i / *_o / *_io; active-low _n sits immediately
+before the direction suffix so resets are rst_ni. Prefixed i_*/o_* and
+unmarked ports are out of style.
 * As stated in the lowRISC guidelines, SystemVerilog Interfaces can be
 limited in terms of tool support, so we _highly discourage_ their use as
 they are not uniformly supported by open source tools. As an
