@@ -24,15 +24,15 @@ The live group is 53. Nightly is one seed;
 weekly is three. A red nightly is not a PR merge gate (`regress.yml`
 says so) but it *does* block the #478 release package.
 
-`smu` smoke members: `smu_smc_smoke_test`, `smu_dtp_jtag_smoke_test`,
-`smu_no_sep_configuration_test`, `smu_ext_boot_seq_gate_test`.
+`smu` `smoke` members: `smu_wrapper_elaboration_no_sep_test`,
+`smu_smc_smoke_test`, `smu_wrapper_elaboration_sep_rtl_test`,
+`smu_sep_smoke_test`. The hosted-runner PR tier is `smoke_sep0`.
 
 [[smu-release-decisions]]
 === Decisions
 
-* Keep `smu_ext_boot_seq_gate_test` PR-only. Do not add it to
-  `sep0_all` / nightly. It stays in `smoke` / `smc`.
-  Re-enrollment is a later #493 choice, not this matrix.
+* `smu_ext_boot_seq_gate_test` is in `sep0_all` and `smoke_sep0`.
+  It is not a member of `smoke`.
 * `--dut smu_block` is **not** a v0.5.0 CI job beyond its own `smoke`. Its
   PASSes stay labelled `DUT_TAG=BARE` and are not `sep0_all` density (#489).
 * Feature credit stays the enrolled `sep0_all` set on `--dut smu`. The SEP=1

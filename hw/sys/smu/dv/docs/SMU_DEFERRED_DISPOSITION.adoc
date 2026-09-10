@@ -21,10 +21,9 @@ Buckets:
 Related enrolled-set work that is *not* a restore from this catalog:
 
 * The enrolled no-Force JTAG2AXI / OTP / filter set is `sep0_all` and is recorded in `SMU_SEP0_COMPONENT_SIGNOFF.adoc` (#490). ATOP reject is OUT (#491).
-* #493 decides whether `smu_ext_boot_seq_gate_test` (in `smoke` / `smc`, not in `sep0_all`) belongs on the nightly.
-* `smu_smc_mailbox_int_test` is enrolled in the `smc` group and is not in this catalog. It stays OUT of `sep0_all` (#481).
+* `smu_ext_boot_seq_gate_test` and `smu_smc_mailbox_int_test` are enrolled in `sep0_all` (`testlists/wrapper.toml`). They are not in this deferred catalog.
 
-Live group counts in `testlists/all.toml`, `README.md`, and `SMU_VPLAN.adoc`
+Live group counts in `testlists/wrapper.toml`, `README.md`, and `SMU_VPLAN.adoc`
 must stay aligned: `all` = 81, `sep0_all` = 53, deferred catalog = 123.
 
 [cols="3,2,2,2,5",options="header"]
