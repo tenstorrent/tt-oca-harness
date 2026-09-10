@@ -488,7 +488,7 @@ START_ADDR_BP = _field_mask(
 # Region granularity is 1 << START_ADDR_BP bytes (alias_remap.rdl: the low
 # START_ADDR_BP address bits are "preserved unchanged").
 _PAGE = 1 << START_ADDR_BP
-# Two pages inside the SYS_OUT fabric window served by the TB axi_sim_mem
+# Two pages inside the SYS_OUT fabric window served by the TB SYS_OUT
 # responder (same window smc_output_filter_remap_security_test uses).
 REMAP_SRC = 0x0200_2000
 REMAP_DST = REMAP_SRC + _PAGE

@@ -63,8 +63,10 @@ stubs = [
   "hw/sys/smc/dv/tb/verilator_stubs/prim_sync3.sv",
 ]
 sources = [
-  # SEP rom_boot posture: pulp axi_sim_mem (under axi_simulation, not axi_rtl).
-  "vendor/pulp-platform/axi/upstream/src/axi_sim_mem.sv",
+  # SYS_OUT boundary: the shared AXI VIP interface the slave agent binds and
+  # the bridge that places the wrapper's struct port on it.
+  "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_if.sv",
+  "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_struct_bridge.sv",
   # Two prims the SMC DUT instantiates but no `smc` Bender target supplies:
   #   prim_fifo_async <- hw/common/och_prim/rtl/prim_refclk_count_w_cdc.sv:79
   #                      (Bender.yml:152, target any(opentitan_smu, sep, smu))
@@ -458,7 +460,8 @@ incdirs = [
   "hw/sys/smc/dv/uvm/tests",
 ]
 # This list REPLACES the cocotb [build].sources list, so the TB collateral both flows compile
-# (the SYS_OUT axi_sim_mem responder and the CPU memory DV binding) is repeated here.
+# (the CPU memory DV binding) is repeated here; the AXI VIP interface and struct bridge
+# arrive through the ocah_axi_vip manifest.
 sources = [
   # DUT-support primitives the Bender `smc` targets reach only through their exported +incdir
   # paths: Verilator searches include directories for unresolved modules, VCS compiles only
@@ -472,8 +475,6 @@ sources = [
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_diff_encode.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_async.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_prince.sv",
-  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_1p.sv",
-  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_1p_adv.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_rst_sync.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_22_16_dec.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_22_16_enc.sv",
@@ -491,7 +492,6 @@ sources = [
   "vendor/tenstorrent/tt-hw-debug/upstream/rtl/trace/trace_mem.sv",
   "vendor/tenstorrent/tt-hw-debug/upstream/rtl/trace/trace_mem_sink.sv",
   # TB collateral shared with the cocotb flow.
-  "vendor/pulp-platform/axi/upstream/src/axi_sim_mem.sv",
   "hw/sys/smc/dv/models/smc_scratch_map_pkg.sv",
   "hw/sys/smc/dv/models/smc_cpu_mem_dv.sv",
   # Flow-shared functional-coverage modules; the same five entries the
