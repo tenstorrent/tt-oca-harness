@@ -250,6 +250,48 @@ makes the scroll area keyboard-operable.
 The PDF backend sees none of the passthrough HTML and uses the column widths
 from the table attribute block directly.
 
+### 7c. Inline SVG figure label sizes and connector rules
+
+Block-diagram SVGs embedded inline must be readable at normal zoom without the
+image viewer.  The governing size criteria are:
+
+| Text category | Minimum effective size |
+|---|---|
+| Main labels (block/section titles) | 14 CSS px at 1280 px viewport / 100% browser zoom |
+| Essential inline labels (named modules, signal names, detail) | 12 CSS px at 1280 px viewport / 100% browser zoom |
+| Essential PDF labels | 9 pt in the published PDF |
+
+**Effective size** is the SVG source font-size multiplied by the actual
+placement scale at the viewport.  The placement scale equals the rendered
+article width divided by the SVG source width.  At 1280 px the article width
+is approximately 686 px; a 1000 px-wide SVG scales to 0.686× and a 860 px-wide
+SVG scales to 0.798×.  To reach the 12 CSS px floor a 1000 px SVG needs source
+font-size ≥ 17.5 px; a 860 px SVG needs ≥ 15 px.  The 9 pt PDF floor requires
+a correspondingly larger source size at the PDF placement scale.
+
+Do not substitute SVG source-font minima for effective-size measurements, and
+do not meet the floors merely by enlarging fonts inside overcrowded boxes.  If
+a figure is too dense to meet both floors simultaneously, simplify it: remove
+low-level detail into adjacent prose or a separately captioned detail figure,
+and use the freed space to enlarge remaining essential labels.
+
+**Alt attribute**: Use the named `alt=` form in the image macro when the alt
+text contains a comma, to avoid the comma being parsed as the width separator:
+
+```adoc
+image::my_figure.svg[alt="Description with commas, here",scaledwidth=90%]
+```
+
+**Connector rules** for block diagrams:
+
+- Use orthogonal routing only (horizontal + vertical segments); no diagonals.
+- Enter and exit each block at a deliberate point on its boundary; do not pass
+  a connector through an unrelated block, label or port marker.
+- Use distinct colours for conceptually distinct signal groups (e.g. JTAG/scan
+  vs CTN vs pad I/O vs control).  Add a short prose legend for each colour.
+- Distinguish direction: solid arrows for primary/request direction; dashed for
+  return/selection paths.
+
 Generated register documentation comes from SystemRDL (`.rdl`) sources. PDF
 includes use `hw/<...>/regs/gen/adoc/`; HTML includes use staged partials from
 `hw/<...>/regs/gen/html/`. Do not copy field descriptions into prose and do not

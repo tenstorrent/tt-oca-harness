@@ -12,7 +12,14 @@ them to each other, to the SMU AXI crossbar, and to the external JTAG and
 cross-trigger pads.
 
 .DTP internal structure
-image::dtp_arch_overview.svg[DTP architecture diagram showing the JTAG Interface Unit and Cross Trigger Network blocks with their connections to external pads and the SMU AXI crossbar,scaledwidth=90.0%]
+image::dtp_arch_overview.svg[alt="DTP architecture diagram showing the JTAG Interface Unit and Cross Trigger Network with connections to external JTAG pads, CTP pads and the SMC AXI-Lite interface",scaledwidth=90%]
+
+The figure uses blue borders and connectors for JTAG/JIU paths (including
+instruction decode and selection signals), red for CTN paths, grey for pad I/O,
+and gold-dashed for the `jtag_clock_stop` control signal from PTAP to the
+clock-stop aggregator.  Solid grey arrows indicate data or request flow (TDI
+scan-in, TDO scan-out, and pad connections); dashed arrows indicate return
+paths, secondary selection, or the gold clock-stop control path.
 
 == JTAG Interface Unit
 
