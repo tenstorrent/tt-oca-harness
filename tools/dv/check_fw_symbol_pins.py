@@ -19,8 +19,8 @@
 #   python3 tools/dv/check_fw_symbol_pins.py --update   # rewrite to match .sym
 #
 # Exit codes:
-#   0   Every pin matches, or no image is built yet (nothing to check).
-#   1   A pin disagrees with the built symbol table.
+#   0   Every pin matches the built symbol table.
+#   1   A pin disagrees, a required .sym is absent, or a cookie is unpinned.
 #   2   Configuration or argument error.
 
 from __future__ import annotations
@@ -46,13 +46,13 @@ class Pin(NamedTuple):
 PINS = [
     Pin(
         "hw/sys/sep/dv/fw/tests/common/sep_debug_bus_symbols.h",
-        "DBG017_WAIT_PC",
+        "DEBUG_BUS_WAIT_PC",
         "hw/sys/sep/dv/fw/build/tests/sep_smu_debug_bus/sep_smu_debug_bus.tcm.sym",
         "debug_bus_wait_for_go",
     ),
     Pin(
         "hw/sys/sep/dv/fw/tests/common/sep_debug_bus_symbols.h",
-        "DBG017_MARKER_PC",
+        "DEBUG_BUS_MARKER_PC",
         "hw/sys/sep/dv/fw/build/tests/sep_smu_debug_bus/sep_smu_debug_bus.tcm.sym",
         "debug_bus_marker",
     ),
@@ -84,7 +84,6 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     checked = 0
-    skipped: set[str] = set()
     failures: list[str] = []
     edits: dict[Path, str] = {}
 
@@ -95,10 +94,10 @@ def main(argv: list[str] | None = None) -> int:
             print(f"error: {pin.header} does not exist", file=sys.stderr)
             return 2
         if not sym_path.is_file():
-            # The image has not been built in this tree. Not a failure: the
-            # gate belongs after a firmware build, and CI does not build every
-            # image on every change.
-            skipped.add(pin.sym)
+            failures.append(
+                f"{pin.sym}:1:1: error: symbol table is absent; {pin.header} "
+                f"still pins {pin.macro}. Build the image, then rerun."
+            )
             continue
 
         table = _symbol_addresses(sym_path)
@@ -151,11 +150,9 @@ def main(argv: list[str] | None = None) -> int:
     for line in failures:
         print(line)
     if failures:
-        print(f"\ncheck_fw_symbol_pins: {len(failures)} stale pin(s)", file=sys.stderr)
+        print(f"\ncheck_fw_symbol_pins: {len(failures)} pin error(s)", file=sys.stderr)
         return 1
 
-    for sym in sorted(skipped):
-        print(f"check_fw_symbol_pins: skipped {sym} (not built)")
     print(f"check_fw_symbol_pins: OK -- {checked} pin(s) verified")
     return 0
 

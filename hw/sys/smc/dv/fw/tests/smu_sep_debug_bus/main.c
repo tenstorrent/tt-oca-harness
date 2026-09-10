@@ -21,8 +21,8 @@
  */
 SMC_STACKLESS_ENTRY(smu_sep_debug_bus_entry)
 
-#define DBG017_MATCH_BOGUS ((uint64_t)DBG017_BOGUS_TRACE16 << 48)
-#define DBG017_MATCH_EXACT ((uint64_t)DBG017_MARKER_TRACE16 << 48)
+#define DEBUG_BUS_MATCH_BOGUS ((uint64_t)DEBUG_BUS_BOGUS_TRACE16 << 48)
+#define DEBUG_BUS_MATCH_EXACT ((uint64_t)DEBUG_BUS_MARKER_TRACE16 << 48)
 
 #define DFX_DBM SMC_TOP_DFX_CTRL_DEBUG_BUS_MUX_BASE_ADDR
 #define DFD_MUX SMC_TOP_SMC_CLA_CDBGMUXSEL_BASE_ADDR
@@ -35,11 +35,11 @@ SMC_STACKLESS_ENTRY(smu_sep_debug_bus_entry)
 #define CLA_DFDCSR SMC_TOP_SMC_CLA_CDFDCSR_BASE_ADDR
 
 /* W2C is rise-edge only. Drop bit32 first so a later write of bit32 pulses. */
-#define DBG017_W2C_PULSE() \
+#define DEBUG_BUS_W2C_PULSE() \
     do { \
         SMC_WR64(CLA_STATUS, 0ULL); \
         SMC_FENCE(); \
-        SMC_WR64(CLA_STATUS, DBG017_CLA_W2C); \
+        SMC_WR64(CLA_STATUS, DEBUG_BUS_CLA_W2C); \
         SMC_FENCE(); \
     } while (0)
 
@@ -58,151 +58,151 @@ int main(void) {
     /* CPU_CTRL scratch is 64-bit; 32-bit sw/lw can read X in the unused
      * half right after the SEP reset pulse. */
     SMC_DELAY_ITERS(1024);
-    SMC_WR64(DBG017_SMC_SCRATCH2, 0ULL);
-    SMC_WR64(DBG017_SMC_SCRATCH3, 0ULL);
-    SMC_WR64(DBG017_SMC_SCRATCH4, 0ULL);
-    SMC_WR64(DBG017_SMC_SCRATCH9, 0ULL);
-    SMC_WR64(DBG017_SMC_SCRATCH10, 0ULL);
-    SMC_WR64(DBG017_SMC_SCRATCH14, 0ULL);
-    SMC_WR64(DBG017_SMC_SCRATCH15, 0ULL);
+    SMC_WR64(DEBUG_BUS_SMC_SCRATCH2, 0ULL);
+    SMC_WR64(DEBUG_BUS_SMC_SCRATCH3, 0ULL);
+    SMC_WR64(DEBUG_BUS_SMC_SCRATCH4, 0ULL);
+    SMC_WR64(DEBUG_BUS_SMC_SCRATCH9, 0ULL);
+    SMC_WR64(DEBUG_BUS_SMC_SCRATCH10, 0ULL);
+    SMC_WR64(DEBUG_BUS_SMC_SCRATCH14, 0ULL);
+    SMC_WR64(DEBUG_BUS_SMC_SCRATCH15, 0ULL);
     SMC_FENCE();
-    st = SMC_RD64(DBG017_SMC_SCRATCH2);
+    st = SMC_RD64(DEBUG_BUS_SMC_SCRATCH2);
     if (st != 0ULL) {
-        SMC_WR32(DBG017_SMC_SCRATCH9, (uint32_t)st);
+        SMC_WR32(DEBUG_BUS_SMC_SCRATCH9, (uint32_t)st);
         goto fail;
     }
-    st = SMC_RD64(DBG017_SMC_SCRATCH3);
+    st = SMC_RD64(DEBUG_BUS_SMC_SCRATCH3);
     if (st != 0ULL) {
-        SMC_WR32(DBG017_SMC_SCRATCH9, (uint32_t)st);
+        SMC_WR32(DEBUG_BUS_SMC_SCRATCH9, (uint32_t)st);
         goto fail;
     }
-    SMC_WR32(DBG017_SMC_SCRATCH4, DBG017_PH_CLEARED);
+    SMC_WR32(DEBUG_BUS_SMC_SCRATCH4, DEBUG_BUS_PH_CLEARED);
     SMC_FENCE();
 
-    SMC_WAIT_EQ(DBG017_SMC_SCRATCH3, DBG017_SEP_WAIT, DBG017_HANDSHAKE_POLL_LIMIT, ok);
+    SMC_WAIT_EQ(DEBUG_BUS_SMC_SCRATCH3, DEBUG_BUS_SEP_WAIT, DEBUG_BUS_HANDSHAKE_POLL_LIMIT, ok);
     if (!ok) goto fail;
 
-    SMC_WR64(CLA_DFDCSR, DBG017_CDFDCSR_ARM);
+    SMC_WR64(CLA_DFDCSR, DEBUG_BUS_CDFDCSR_ARM);
     SMC_FENCE();
-    SMC_WR64(DFX_DBM, (uint64_t)DBG017_DFX_DBM_ID13);
+    SMC_WR64(DFX_DBM, (uint64_t)DEBUG_BUS_DFX_DBM_ID13);
     SMC_FENCE();
-    if (SMC_RD64(DFX_DBM) != (uint64_t)DBG017_DFX_DBM_ID13) goto fail;
-    SMC_WR64(DFX_DBM, (uint64_t)DBG017_DFX_DBM_ID6);
+    if (SMC_RD64(DFX_DBM) != (uint64_t)DEBUG_BUS_DFX_DBM_ID13) goto fail;
+    SMC_WR64(DFX_DBM, (uint64_t)DEBUG_BUS_DFX_DBM_ID6);
     SMC_FENCE();
-    if (SMC_RD64(DFX_DBM) != (uint64_t)DBG017_DFX_DBM_ID6) goto fail;
+    if (SMC_RD64(DFX_DBM) != (uint64_t)DEBUG_BUS_DFX_DBM_ID6) goto fail;
 
-    SMC_WR64(DFD_MUX, DBG017_DFD_DBM_ID1);
+    SMC_WR64(DFD_MUX, DEBUG_BUS_DFD_DBM_ID1);
     SMC_FENCE();
-    if (SMC_RD64(DFD_MUX) != DBG017_DFD_DBM_ID1) goto fail;
-    SMC_WR64(DFD_MUX, DBG017_DFD_DBM_ID2);
+    if (SMC_RD64(DFD_MUX) != DEBUG_BUS_DFD_DBM_ID1) goto fail;
+    SMC_WR64(DFD_MUX, DEBUG_BUS_DFD_DBM_ID2);
     SMC_FENCE();
-    if (SMC_RD64(DFD_MUX) != DBG017_DFD_DBM_ID2) goto fail;
+    if (SMC_RD64(DFD_MUX) != DEBUG_BUS_DFD_DBM_ID2) goto fail;
 
-    SMC_WR64(CLA_MASK0, DBG017_CLA_MASK0);
+    SMC_WR64(CLA_MASK0, DEBUG_BUS_CLA_MASK0);
     SMC_FENCE();
-    if (SMC_RD64(CLA_MASK0) != DBG017_CLA_MASK0) goto fail;
+    if (SMC_RD64(CLA_MASK0) != DEBUG_BUS_CLA_MASK0) goto fail;
 
-    SMC_WR64(CLA_MATCH0, DBG017_MATCH_BOGUS);
+    SMC_WR64(CLA_MATCH0, DEBUG_BUS_MATCH_BOGUS);
     SMC_FENCE();
-    if (SMC_RD64(CLA_MATCH0) != DBG017_MATCH_BOGUS) goto fail;
-    SMC_WR64(CLA_EAP0, DBG017_CLA_EAP0);
-    DBG017_W2C_PULSE();
+    if (SMC_RD64(CLA_MATCH0) != DEBUG_BUS_MATCH_BOGUS) goto fail;
+    SMC_WR64(CLA_EAP0, DEBUG_BUS_CLA_EAP0);
+    DEBUG_BUS_W2C_PULSE();
     if ((SMC_RD64(CLA_STATUS) & 1ULL) != 0ULL) goto fail;
-    SMC_WR64(CLA_CTRL, (uint64_t)DBG017_CLA_CTRL);
+    SMC_WR64(CLA_CTRL, (uint64_t)DEBUG_BUS_CLA_CTRL);
     SMC_FENCE();
-    if (SMC_RD64(CLA_CTRL) != (uint64_t)DBG017_CLA_CTRL) goto fail;
-    DBG017_W2C_PULSE();
+    if (SMC_RD64(CLA_CTRL) != (uint64_t)DEBUG_BUS_CLA_CTRL) goto fail;
+    DEBUG_BUS_W2C_PULSE();
     if ((SMC_RD64(CLA_STATUS) & 1ULL) != 0ULL) goto fail;
-    SMC_WR32(DBG017_SMC_SCRATCH4, DBG017_PH_NEG_ARMED);
+    SMC_WR32(DEBUG_BUS_SMC_SCRATCH4, DEBUG_BUS_PH_NEG_ARMED);
     SMC_FENCE();
 
-    SMC_DELAY_ITERS(DBG017_NEG_HOLD_ITERS);
+    SMC_DELAY_ITERS(DEBUG_BUS_NEG_HOLD_ITERS);
     st = SMC_RD64(CLA_STATUS);
     snap = SMC_RD64(CLA_SNAP);
     if ((st & 1ULL) != 0ULL) {
-        SMC_WR32(DBG017_SMC_SCRATCH9, (uint32_t)((snap >> 48) & 0xFFFFULL));
-        SMC_WR32(DBG017_SMC_SCRATCH11, (uint32_t)st);
+        SMC_WR32(DEBUG_BUS_SMC_SCRATCH9, (uint32_t)((snap >> 48) & 0xFFFFULL));
+        SMC_WR32(DEBUG_BUS_SMC_SCRATCH11, (uint32_t)st);
         goto fail;
     }
-    if (SMC_RD32(DBG017_SMC_SCRATCH2) != 0u) goto fail;
-    SMC_WR32(DBG017_SMC_SCRATCH4, DBG017_PH_NEG_OK);
+    if (SMC_RD32(DEBUG_BUS_SMC_SCRATCH2) != 0u) goto fail;
+    SMC_WR32(DEBUG_BUS_SMC_SCRATCH4, DEBUG_BUS_PH_NEG_OK);
     SMC_FENCE();
 
-    SMC_WR64(CLA_CTRL, (uint64_t)DBG017_CLA_CTRL_CLK);
+    SMC_WR64(CLA_CTRL, (uint64_t)DEBUG_BUS_CLA_CTRL_CLK);
     SMC_FENCE();
-    SMC_WR64(CLA_MATCH0, DBG017_MATCH_EXACT);
+    SMC_WR64(CLA_MATCH0, DEBUG_BUS_MATCH_EXACT);
     SMC_FENCE();
-    if (SMC_RD64(CLA_MATCH0) != DBG017_MATCH_EXACT) goto fail;
-    DBG017_W2C_PULSE();
+    if (SMC_RD64(CLA_MATCH0) != DEBUG_BUS_MATCH_EXACT) goto fail;
+    DEBUG_BUS_W2C_PULSE();
     if ((SMC_RD64(CLA_STATUS) & 1ULL) != 0ULL) goto fail;
-    SMC_WR64(CLA_CTRL, (uint64_t)DBG017_CLA_CTRL);
+    SMC_WR64(CLA_CTRL, (uint64_t)DEBUG_BUS_CLA_CTRL);
     SMC_FENCE();
     /* Let gated CLA clocks run with the exact match before GO. */
     SMC_DELAY_ITERS(256);
-    SMC_WR32(DBG017_SMC_SCRATCH4, DBG017_PH_EXACT_ARMED);
+    SMC_WR32(DEBUG_BUS_SMC_SCRATCH4, DEBUG_BUS_PH_EXACT_ARMED);
     SMC_FENCE();
 
-    SMC_WR32(DBG017_SMC_SCRATCH2, DBG017_GO);
+    SMC_WR32(DEBUG_BUS_SMC_SCRATCH2, DEBUG_BUS_GO);
     SMC_FENCE();
-    if (SMC_RD32(DBG017_SMC_SCRATCH2) != DBG017_GO) goto fail;
-    SMC_WR32(DBG017_SMC_SCRATCH4, DBG017_PH_GO);
+    if (SMC_RD32(DEBUG_BUS_SMC_SCRATCH2) != DEBUG_BUS_GO) goto fail;
+    SMC_WR32(DEBUG_BUS_SMC_SCRATCH4, DEBUG_BUS_PH_GO);
     SMC_FENCE();
 
-    SMC_WAIT_EQ(DBG017_SMC_SCRATCH3, DBG017_GO_SEEN, DBG017_HANDSHAKE_POLL_LIMIT, ok);
+    SMC_WAIT_EQ(DEBUG_BUS_SMC_SCRATCH3, DEBUG_BUS_GO_SEEN, DEBUG_BUS_HANDSHAKE_POLL_LIMIT, ok);
     if (!ok) goto fail;
     /* Marker PC crosses a 3FF CDC + DFX/DFD mux before CLA. Tight 512-poll
      * loops finish before the match flop sees 0x07d8; always-on dump after an
      * extra delay already proved the bus value. Hold, then sample. */
-    SMC_DELAY_ITERS(DBG017_EXACT_HOLD_ITERS);
+    SMC_DELAY_ITERS(DEBUG_BUS_EXACT_HOLD_ITERS);
     st = 0;
     snap = 0;
     for (uint32_t i = 0; i < 16; ++i) {
         st = SMC_RD64(CLA_STATUS);
         snap = SMC_RD64(CLA_SNAP);
         if (((st & 1ULL) != 0ULL) &&
-            (((snap >> 48) & 0xFFFFULL) == (uint64_t)DBG017_MARKER_TRACE16)) {
+            (((snap >> 48) & 0xFFFFULL) == (uint64_t)DEBUG_BUS_MARKER_TRACE16)) {
             break;
         }
         SMC_DELAY_ITERS(256);
     }
-    if ((st & 1ULL) == 0ULL || (((snap >> 48) & 0xFFFFULL) != (uint64_t)DBG017_MARKER_TRACE16)) {
+    if ((st & 1ULL) == 0ULL || (((snap >> 48) & 0xFFFFULL) != (uint64_t)DEBUG_BUS_MARKER_TRACE16)) {
         /* Exact match missed after CDC hold. Dump live CLA + MATCH/MASK; do
          * not re-arm always-on (that is not CHK-BUS-UPDATE). */
         uint64_t match_rb = SMC_RD64(CLA_MATCH0);
         uint64_t mask_rb = SMC_RD64(CLA_MASK0);
-        SMC_WR32(DBG017_SMC_SCRATCH9, (uint32_t)((snap >> 48) & 0xFFFFULL));
-        SMC_WR32(DBG017_SMC_SCRATCH11, (uint32_t)st);
-        SMC_WR32(DBG017_SMC_SCRATCH12, (uint32_t)snap);
-        SMC_WR32(DBG017_SMC_SCRATCH13, (uint32_t)(snap >> 32));
-        SMC_WR32(DBG017_SMC_SCRATCH14, (uint32_t)match_rb);
-        SMC_WR32(DBG017_SMC_SCRATCH15,
+        SMC_WR32(DEBUG_BUS_SMC_SCRATCH9, (uint32_t)((snap >> 48) & 0xFFFFULL));
+        SMC_WR32(DEBUG_BUS_SMC_SCRATCH11, (uint32_t)st);
+        SMC_WR32(DEBUG_BUS_SMC_SCRATCH12, (uint32_t)snap);
+        SMC_WR32(DEBUG_BUS_SMC_SCRATCH13, (uint32_t)(snap >> 32));
+        SMC_WR32(DEBUG_BUS_SMC_SCRATCH14, (uint32_t)match_rb);
+        SMC_WR32(DEBUG_BUS_SMC_SCRATCH15,
                  (uint32_t)(match_rb >> 32) | (((uint32_t)(mask_rb >> 32) & 0xFFFFu) << 16));
         SMC_FENCE();
         goto fail;
     }
     /* Publish CLA results on wrap-visible GPI scratch before W2C. After the
      * marker self-loop, hierarchical CLA/XMR probes stall VCS. */
-    SMC_WR32(DBG017_SMC_SCRATCH9, (uint32_t)((snap >> 48) & 0xFFFFULL));
-    SMC_WR32(DBG017_SMC_SCRATCH11, (uint32_t)st);
-    SMC_WR32(DBG017_SMC_SCRATCH12, (uint32_t)snap);
-    SMC_WR32(DBG017_SMC_SCRATCH13, (uint32_t)(snap >> 32));
+    SMC_WR32(DEBUG_BUS_SMC_SCRATCH9, (uint32_t)((snap >> 48) & 0xFFFFULL));
+    SMC_WR32(DEBUG_BUS_SMC_SCRATCH11, (uint32_t)st);
+    SMC_WR32(DEBUG_BUS_SMC_SCRATCH12, (uint32_t)snap);
+    SMC_WR32(DEBUG_BUS_SMC_SCRATCH13, (uint32_t)(snap >> 32));
     SMC_FENCE();
     if ((st & 1ULL) == 0ULL) goto fail;
-    if (((snap >> 48) & 0xFFFFULL) != (uint64_t)DBG017_MARKER_TRACE16) goto fail;
+    if (((snap >> 48) & 0xFFFFULL) != (uint64_t)DEBUG_BUS_MARKER_TRACE16) goto fail;
 
-    SMC_WR64(CLA_CTRL, (uint64_t)DBG017_CLA_CTRL_CLK);
+    SMC_WR64(CLA_CTRL, (uint64_t)DEBUG_BUS_CLA_CTRL_CLK);
     SMC_FENCE();
-    DBG017_W2C_PULSE();
+    DEBUG_BUS_W2C_PULSE();
     if ((SMC_RD64(CLA_STATUS) & 1ULL) != 0ULL) goto fail;
-    SMC_DELAY_ITERS(DBG017_QUIET_HOLD_ITERS);
+    SMC_DELAY_ITERS(DEBUG_BUS_QUIET_HOLD_ITERS);
     if ((SMC_RD64(CLA_STATUS) & 1ULL) != 0ULL) goto fail;
-    SMC_WR32(DBG017_SMC_SCRATCH4, DBG017_PH_CLEARED_EAP);
-    SMC_WR32(DBG017_SMC_SCRATCH10, DBG017_SMC_PASS);
+    SMC_WR32(DEBUG_BUS_SMC_SCRATCH4, DEBUG_BUS_PH_CLEARED_EAP);
+    SMC_WR32(DEBUG_BUS_SMC_SCRATCH10, DEBUG_BUS_SMC_PASS);
     SMC_FENCE();
     __asm__ volatile("j smu_sep_debug_bus_smc_pass_loop");
 
 fail:
-    SMC_WR32(DBG017_SMC_SCRATCH10, DBG017_SMC_FAIL);
+    SMC_WR32(DEBUG_BUS_SMC_SCRATCH10, DEBUG_BUS_SMC_FAIL);
     SMC_FENCE();
     __asm__ volatile("j smu_sep_debug_bus_smc_fail_loop");
     return 0;

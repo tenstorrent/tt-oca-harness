@@ -100,8 +100,8 @@ int main(void) {
     SMC_FENCE();
     SMC_DELAY_ITERS(CLADBG_HOLD_ITERS);
 
-    /* action[2] RESET-RUN (#3582 inversion). Long hold: net-level map plus
-     * CHK-INVERT-2 first IC_RESET edge (cla[2]=1). */
+    /* action[2] RESET-RUN (mpc_reset_run_req is inverted). Long hold: net-level
+     * map plus CHK-INVERT-2 first IC_RESET edge (cla[2]=1). */
     FIRE_ACTION(CLADBG_CLA_EAP0_ACT2);
     CHECK_PUBLISH(CLADBG_CLA_EAP0_ACT2);
     SMC_WR32(SC0, CLADBG_ACT2_ARMED);

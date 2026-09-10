@@ -4,12 +4,6 @@
 /*
  * sep_smu_wdt_reset_to_smc - FW-armed WDT bark NMI then sticky bite.
  *
- * Split from the sep_smu_wdt smoke image: that one is deliberately write-only
- * so smu_sep_wdt_test stays deterministic, and it classifies on
- * smu_sep_wdt_pass_loop. This flow never returns from the bite spin, so
- * sharing one image left that pass_loop unreachable and the smoke test
- * hanging on a PC it could never hit.
- *
  * Frontdoor-brings SMC, programs SEP_NMI_VEC, arms aon_timer WDOG
  * (bark=0x200, bite=0x400), handles exactly one bark NMI, publishes
  * POST_NMI_ALIVE, then stops petting so the real bite asserts.
@@ -60,12 +54,13 @@ void sep_smu_wdt_reset_to_smc_nmi_handler(void) {
 
 __attribute__((used, noinline)) void smu_sep_wdt_reset_to_smc_post_nmi_alive(void) {
     g_post_nmi_alive += 1u;
-    sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(3), WDT005_POST_NMI_ALIVE);
+    sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(3), WDT_RESET_POST_NMI_ALIVE);
 }
 
 __attribute__((used, noinline, noreturn)) void smu_sep_wdt_reset_to_smc_pass_loop(void) {
     while (1) {
-        __asm__ volatile("wfi");
+        /* No WFI: post-NMI liveness stays distinguishable from halt until bite. */
+        g_post_nmi_alive += 1u;
     }
 }
 
@@ -80,12 +75,12 @@ static int arm_wdt_and_wait_bite(void) {
     uint32_t rb;
 
     sep_smc_open_window();
-    if (sep_smc_bringup_from_sram((uint32_t)WDT005_SMC_ENTRY, WDT005_SMC_IMAGE_FIRST_WORD,
-                                  WDT005_FW_POLL_LIMIT) != 0) {
-        sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(3), WDT005_S0_FAIL);
+    if (sep_smc_bringup_from_sram((uint32_t)WDT_RESET_SMC_ENTRY, WDT_RESET_SMC_IMAGE_FIRST_WORD,
+                                  WDT_RESET_FW_POLL_LIMIT) != 0) {
+        sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(3), WDT_RESET_S0_FAIL);
         return -11;
     }
-    sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(3), WDT005_BRINGUP_OK);
+    sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(3), WDT_RESET_BRINGUP_OK);
 
     if ((g_bark_nmi_count != 0u) || (g_bark_seen != 0u)) {
         return -12;
@@ -106,10 +101,10 @@ static int arm_wdt_and_wait_bite(void) {
     if (wr_rd32(OCH_SEP_TOP_WDT_TIMER_WDOG_COUNT_BASE_ADDR, 0u) != 0) {
         return -2;
     }
-    if (wr_rd32(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, WDT005_BARK_THOLD) != 0) {
+    if (wr_rd32(OCH_SEP_TOP_WDT_TIMER_WDOG_BARK_THOLD_BASE_ADDR, WDT_RESET_BARK_THOLD) != 0) {
         return -3;
     }
-    if (wr_rd32(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, WDT005_BITE_THOLD) != 0) {
+    if (wr_rd32(OCH_SEP_TOP_WDT_TIMER_WDOG_BITE_THOLD_BASE_ADDR, WDT_RESET_BITE_THOLD) != 0) {
         return -4;
     }
     WRITE_REG(OCH_SEP_TOP_WDT_TIMER_INTR_STATE_BASE_ADDR,
@@ -122,7 +117,7 @@ static int arm_wdt_and_wait_bite(void) {
         return -6;
     }
 
-    sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(3), WDT005_NMI_ARMED);
+    sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(3), WDT_RESET_NMI_ARMED);
 
     while (g_bark_nmi_count == 0u) {
         /* Spin (no WFI) so post-NMI liveness is distinguishable from halt. */
@@ -131,16 +126,13 @@ static int arm_wdt_and_wait_bite(void) {
         return -22;
     }
     smu_sep_wdt_reset_to_smc_post_nmi_alive();
-    while (1) {
-        g_post_nmi_alive += 1u;
-    }
+    /* Bite is the success: stay in the named pass loop so the SMU leaf
+     * classifies on this PC. The bite itself never returns. */
+    smu_sep_wdt_reset_to_smc_pass_loop();
 }
 
 int main(void) {
     sep_outbound_filter_init();
     g_wdt_status = arm_wdt_and_wait_bite();
-    if (g_wdt_status == 0) {
-        smu_sep_wdt_reset_to_smc_pass_loop();
-    }
     smu_sep_wdt_reset_to_smc_fail_loop();
 }

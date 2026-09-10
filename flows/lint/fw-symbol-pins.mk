@@ -14,7 +14,7 @@ ocah_fw_symbol_pins_script := $(OCAH_ROOT)/tools/dv/check_fw_symbol_pins.py
 ## emits. sep_debug_bus_symbols.h pins the PCs the CLA matches on; its own
 ## #error guards cannot detect an image rebuilt with those PCs at other
 ## plausible addresses, which leaves the CLA matching the wrong instruction on
-## a test that still passes. Skips any image not built in this tree.
+## a test that still passes. A missing .sym is a failure.
 .PHONY: ocah-lint-fw-symbol-pins
 ocah-lint-fw-symbol-pins:
 	$(UV) --directory "$(OCAH_ROOT)" run --locked python3 $(ocah_fw_symbol_pins_script)

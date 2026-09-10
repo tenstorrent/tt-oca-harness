@@ -36,7 +36,7 @@ static int enable_spi_gpio_override(void) {
     uint32_t g;
     uint32_t a;
     uint32_t v;
-    const uint32_t bit = 1u << SMU007_HW2_OVRD_BIT;
+    const uint32_t bit = 1u << AXI_EXT_HW2_OVRD_BIT;
 
     for (g = 0; g <= 10u; g++) {
         a = (uint32_t)SMC_TOP_GPIO_CTRL_CONTROL_BASE_ADDR(g);
@@ -60,10 +60,10 @@ static int enable_spi_gpio_override(void) {
 int main(void) {
     smu_sep_dv_test_bringup();
     if (enable_spi_gpio_override() != 0) {
-        write_scratch(9, SMU007_SMC_FAIL);
+        write_scratch(9, AXI_EXT_SMC_FAIL);
         test_fail(0);
     }
-    write_scratch(2, SMU007_GPIO_OVRD_OK);
+    write_scratch(2, AXI_EXT_GPIO_OVRD_OK);
     __asm__ volatile("fence iorw, iorw" ::: "memory");
     test_pass(0);
 

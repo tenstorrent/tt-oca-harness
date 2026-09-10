@@ -18,7 +18,7 @@
 #include "sep_smu_debug_bus_protocol.h"
 
 __attribute__((used, noinline)) void debug_bus_wait_for_go(void) {
-    while (READ_REG(DBG017_GO_ALIAS) != DBG017_GO) {
+    while (READ_REG(DEBUG_BUS_GO_ALIAS) != DEBUG_BUS_GO) {
         __asm__ volatile("" ::: "memory");
     }
 }
@@ -39,30 +39,30 @@ static int run_debug_bus(void) {
     uint32_t seen;
 
     sep_smc_open_window();
-    if (sep_smc_bringup_from_sram((uint32_t)DBG017_SMC_ENTRY, DBG017_SMC_IMAGE_FIRST_WORD,
-                                  DBG017_HANDSHAKE_POLL_LIMIT) != 0) {
-        sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(3), DBG017_S0_FAIL);
+    if (sep_smc_bringup_from_sram((uint32_t)DEBUG_BUS_SMC_ENTRY, DEBUG_BUS_SMC_IMAGE_FIRST_WORD,
+                                  DEBUG_BUS_HANDSHAKE_POLL_LIMIT) != 0) {
+        sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(3), DEBUG_BUS_S0_FAIL);
         return -11;
     }
 
     /* Card S3: SMC must clear scratch2/3 first. Wait for PH_CLEARED so a
      * late SMC start cannot wipe SEP_WAIT. */
-    if (sep_smc_scratch_wait(DBG017_PHASE_ALIAS, DBG017_PH_CLEARED, DBG017_HANDSHAKE_POLL_LIMIT) != 0) {
-        sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(3), DBG017_S0_FAIL);
+    if (sep_smc_scratch_wait(DEBUG_BUS_PHASE_ALIAS, DEBUG_BUS_PH_CLEARED, DEBUG_BUS_HANDSHAKE_POLL_LIMIT) != 0) {
+        sep_smc_scratch_write(SEP_SMC_SCRATCH_ALIAS(3), DEBUG_BUS_S0_FAIL);
         return -15;
     }
 
-    sep_smc_scratch_write(DBG017_WAIT_ALIAS, DBG017_SEP_WAIT);
-    seen = READ_REG(DBG017_WAIT_ALIAS);
-    if (seen != DBG017_SEP_WAIT) {
+    sep_smc_scratch_write(DEBUG_BUS_WAIT_ALIAS, DEBUG_BUS_SEP_WAIT);
+    seen = READ_REG(DEBUG_BUS_WAIT_ALIAS);
+    if (seen != DEBUG_BUS_SEP_WAIT) {
         return -12;
     }
 
     debug_bus_wait_for_go();
 
-    sep_smc_scratch_write(DBG017_WAIT_ALIAS, DBG017_GO_SEEN);
-    seen = READ_REG(DBG017_WAIT_ALIAS);
-    if (seen != DBG017_GO_SEEN) {
+    sep_smc_scratch_write(DEBUG_BUS_WAIT_ALIAS, DEBUG_BUS_GO_SEEN);
+    seen = READ_REG(DEBUG_BUS_WAIT_ALIAS);
+    if (seen != DEBUG_BUS_GO_SEEN) {
         return -13;
     }
 
