@@ -10,8 +10,7 @@ JTAG deny is a different path). RAND-REP both flavours every seed.
 
 The shared config in ``env/sep_locked_field_irq.py`` is also the SECURE_TM
 leaf's image. Its four-spare draw and ``SIP_DIS`` / ``SYS_DIS`` = 0 pins
-are part of this leaf's seed-to-image map. A seed recorded against the
-earlier three-spare map does not replay.
+are this leaf's seed-to-image map.
 
 ``+secure_tm_lock`` selects the SECURE_TM leaf instead: the field map marks
 LOCKS/LOCKS_SPARE, LC_STATE, SIP_DIS and SYS_DIS ``SECURE_TM_LOCK``, so a

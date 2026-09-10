@@ -285,7 +285,7 @@ The digest-equals-golden claim stays on `sep_hmac_sha_variant_rand_test`.
 |`cp_sha3` |L224, L256, L384, L512
 |`cp_shake` |L128, L256
 |`cp_cshake` |L128, L256
-|`cp_kmac` |L128, L256. Samples `CFG_SHADOWED.mode` = cSHAKE with `kmac_en` = 1 after a completed process. That is the programmed configuration, not an SP800-185 digest proof. `SepKmacCfg.cfg_word()` already programmed that word for keyed KMAC. `sep_kmac_mode_strength_rand_test` walks five keyed cells (L128 / L256 × key 128 / 192 / 256 / 384 / 512) against `kmac_family_words`, an SP800-185 golden that self-tests at import. `keyed_mac` writing the same word removes a Shake-vs-cSHAKE split between the two paths; it does not add an unproven config. The KM sideload KAT remains an engine cross-check and does not need its own vector.
+|`cp_kmac` |L128, L256. Samples `CFG_SHADOWED.mode` = cSHAKE with `kmac_en` = 1 after a completed process. That is the programmed configuration, not an SP800-185 digest proof. `SepKmacCfg.cfg_word()` and `keyed_mac` both write that word. `sep_kmac_mode_strength_rand_test` walks five keyed cells (L128 / L256 × key 128 / 192 / 256 / 384 / 512) against `kmac_family_words`, an SP800-185 golden that self-tests at import. The KM sideload KAT is an engine cross-check and has no digest golden.
 |`cp_sideload` |Keyed KMAC only: SW key (`KEY_SHARE` CSRs) and KM sideload key (`CFG_SHADOWED.sideload`)
 |`cp_kmac_key_length` |Key 128, 192, 256, 384, 512 from the `KEY_LEN` register. Both drivers write `KEY_LEN` before `CFG_SHADOWED` (`CFG_REGWEN` locks at Start) and the register holds its value across a CFG write, so the sampler does not invalidate it there
 |===

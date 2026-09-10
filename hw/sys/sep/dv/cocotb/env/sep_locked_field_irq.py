@@ -9,9 +9,7 @@ Both leaves share this object. The constructor draws four distinct spares
 (write-lock, read-lock, unlocked contrast, SECURE_TM LOCKS_SPARE control)
 and ``image_fixed()`` stages ``SIP_DIS`` / ``SYS_DIS`` at 0 so the
 SECURE_TM payloads always change a bit. That is the seed-to-image map for
-``sep_locked_field_access_irq_path_test`` as well. A seed recorded against
-the earlier three-spare map, or against a randomized DIS stage, does not
-replay.
+``sep_locked_field_access_irq_path_test`` as well.
 """
 
 from __future__ import annotations
