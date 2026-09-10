@@ -707,6 +707,14 @@ Carried values: the tool version and supported metrics come from the run's
 `[coverage.<tool>].fail_under`, else `0.0`. In the repair case no threshold is
 recorded, so a `--fail-under` the original run used has to be passed again.
 
+An accepted waiver may carry `expires` (`YYYY-MM-DD`). Past that date the
+waiver is lapsed at grade time for its own DUT: the hole keeps its `policy_id`
+and disposition, its `status` becomes `open`, it counts as an open hole and no
+longer shrinks the effective denominator, and `warnings` in
+`coverage-details.json` and `policy-application.json` carry
+`<rule id> expired on <date>; treated as open`. `--validate-configs` reports
+the expiry as a warning and stays `OK`; extending the date restores the waiver.
+
 `[[native_files]]` entries act inside the merge and report commands, which the
 re-grade does not run. When the policy's native files differ from the digests
 the manifest recorded at merge time, `--waive` exits 2; rerun
