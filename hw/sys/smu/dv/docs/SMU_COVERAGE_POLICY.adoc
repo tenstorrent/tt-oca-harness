@@ -89,6 +89,13 @@ line / expr / user on `--dut smu`; `toggle` on `--dut smu_block` after
 set here. #492 sets it after the first weekly `--cov` database exists
 and the owner signs the threshold.
 
+A waiver reaches a finished run without a simulator:
+`python3 tools/dv/run_dv.py --dut smu --run-dir <run> --waive` re-grades
+the run's report against this policy and rewrites its coverage grade in
+place. A dispatch of `dashboard.yml` with the weekly's regress run id does
+the same for the published weekly. Both are described on the runner and
+dashboard pages under `tools/dv/doc/`.
+
 [[smu-cov-approval]]
 === Component approval (unsigned)
 
