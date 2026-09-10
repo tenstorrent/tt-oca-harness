@@ -115,14 +115,16 @@ stubs = [
 ]
 sources = [
   # axi_cut (+ its spill_register deps) registers the ext_out channels at the
-  # boundary, ahead of the synchronous slave in tb_wrapper_top.sv. Two things it
+  # boundary, ahead of the responder in tb_wrapper_top.sv. Two things it
   # buys: the crossbar's ext_out aw_valid does not settle until late in the
   # cycle, and the cut makes every request channel edge-aligned and stable for
   # a whole cycle; and it breaks the combinational path across the boundary so
-  # the terminator's ready is not in the crossbar's timing cone.
+  # the responder's ready is not in the crossbar's timing cone.
   #
-  # Outbound (ext_out) boundary terminator, shared with the bare smu TB.
-  "hw/sys/smu/dv/tb/smu_axi_out_sim_slave.sv",
+  # Outbound (ext_out) boundary: the shared AXI VIP interface the slave agent
+  # binds and the bridge that places the cut's struct port on it.
+  "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_if.sv",
+  "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_struct_bridge.sv",
   "vendor/pulp-platform/common_cells/upstream/src/spill_register_flushable.sv",
   "vendor/pulp-platform/common_cells/upstream/src/spill_register.sv",
   "vendor/pulp-platform/axi/upstream/src/axi_cut.sv",

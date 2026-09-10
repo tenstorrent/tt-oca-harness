@@ -27,6 +27,12 @@ CPU once (`--target default`); the subtree is not instrumented.
 
 The SEP DUT **minus the CPU subtree**. Not "SEP DUT coverage" -- say which.
 
+Phase 1 FCOV is the URG **Group** report on `sep_uvm_top.u_sep_fcov`, not this
+SCORE. That instance is a TB sampler, so its own line/cond weight is testbench,
+not a DUT cone. The scope file does not `-tree` it out: covergroup collection
+is what the instance is for, and its code weight is noise against the DUT
+denominator.
+
 ## Measured, so the next attempt does not repeat these
 
 - **An include-list does not restrict instrumentation.** `+tree sep_uvm_top.u_dut.u_sep`

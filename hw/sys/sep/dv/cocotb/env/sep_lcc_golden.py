@@ -341,6 +341,22 @@ def selftest() -> None:
     assert got["dft_secure"] == 0
     assert got["stap_sep"] == 0
 
+    # SECURE_TM is not a dbg_disable term. The same FEAT_CTRL must produce the
+    # same ladder at both strap polarities, and dft_secure is Case 3, not the
+    # inverse of the strap. TEST_DEV with both DIS vectors clear opens Case 3.
+    feat_tm0 = feat_ctrl_expected(LC_TEST_DEV, 0, 0, secure_tm=0)
+    feat_tm1 = feat_ctrl_expected(LC_TEST_DEV, 0, 0, secure_tm=1)
+    assert feat_tm0 == feat_tm1 == M64
+    assert dbg_disable_expected(feat_tm0) == dbg_disable_expected(feat_tm1)
+    assert dbg_disable_expected(feat_tm0)["dft_secure"] == 0
+    # RMA_CHIPLET is all-ones: Case 3 open, SIB enabled.
+    assert dbg_disable_expected(feat_ctrl_expected(LC_RMA_CHIP_1, 0, 0))["dft_secure"] == 0
+    # PROD, no demote: debug closed, SIB closed at both polarities.
+    prod0 = feat_ctrl_expected(LC_PROD, 0, 0, secure_tm=0)
+    prod1 = feat_ctrl_expected(LC_PROD, 0, 0, secure_tm=1)
+    assert dbg_disable_expected(prod0)["dft_secure"] == 1
+    assert dbg_disable_expected(prod1)["dft_secure"] == 1
+
     # Fuse-path disables: a granular bit is an extra AND, not a substitute.
     closed = sip_chip_sep  # cases open, bits 2/3 closed
     got = fuse_dft_disable_expected(closed)
