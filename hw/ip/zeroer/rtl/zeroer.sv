@@ -249,8 +249,8 @@ module zeroer #(
     nxt_beats_to_transfer = cur_beats_to_transfer;
 
     burst_len = axi_pkg::len_t'(0);
-    last_transfer_size = axi_pkg::len_t'(0);
-    total_transfer_size = axi_pkg::len_t'(0);
+    last_transfer_size = '0;
+    total_transfer_size = '0;
     last_strb = axi_strb_t'(0);
 
     mst_awvalid = 1'b0;
@@ -280,28 +280,32 @@ module zeroer #(
 
         // cannot burst across 4KB boundary, calculate how many bursts can be done before hitting boundary
         // -> using 'hFFF ensures that when addr offset == data_size, it gives the correct length
-        if ((('hFFF - cur_dest_addr[11:0]) >> AXI_DATA_SIZE) > AXI_MAX_BURST_LEN) begin
-          burst_len = AXI_MAX_BURST_LEN;
+        if ((('hFFF - 32'(cur_dest_addr[11:0])) >> AXI_DATA_SIZE) > AXI_MAX_BURST_LEN) begin
+          burst_len = axi_pkg::len_t'(AXI_MAX_BURST_LEN);
         end else begin
-          burst_len = ('hFFF - cur_dest_addr[11:0]) >> AXI_DATA_SIZE;
+          burst_len = axi_pkg::len_t'(('hFFF - 32'(cur_dest_addr[11:0])) >> AXI_DATA_SIZE);
         end
 
         // check if data left to transfer can be done in less than the max burst length
         // if it can, check if size is not perfectly sized and a strobe is needed
         if (cur_size[AXI_DATA_WIDTH-1:AXI_DATA_SIZE] <= {53'd0, burst_len}) begin
-          mst_awlen = ((cur_size - axi_pkg::len_t'(1)) >> AXI_DATA_SIZE);
+          mst_awlen = axi_pkg::len_t'((cur_size - 64'd1) >> AXI_DATA_SIZE);
           // last transfer can be not a full word
           last_transfer_size = (|cur_size[AXI_DATA_SIZE-1:0]) ? {61'd0,cur_size[AXI_DATA_SIZE-1:0]} : {32'd0, AXI_STRB_WIDTH};
         end else begin
           mst_awlen = burst_len;
           // if single beat of data allowed, check for address offsets
-          last_transfer_size = |burst_len ? AXI_STRB_WIDTH : AXI_STRB_WIDTH - cur_dest_addr[AXI_DATA_SIZE-1:0];
+          last_transfer_size = |burst_len ? axi_data_t'(AXI_STRB_WIDTH)
+                                           : axi_data_t'(AXI_STRB_WIDTH)
+                                             - axi_data_t'(cur_dest_addr[AXI_DATA_SIZE-1:0]);
         end
 
         nxt_last_transfer_strb = ~({AXI_STRB_WIDTH{1'b1}} << last_transfer_size);
 
         if (|mst_awlen) begin
-          total_transfer_size_overflow = (mst_awlen << AXI_DATA_SIZE) - cur_dest_addr[AXI_DATA_SIZE-1:0] + last_transfer_size;
+          total_transfer_size_overflow = ($bits(total_transfer_size_overflow)'(mst_awlen) << AXI_DATA_SIZE)
+                                          - $bits(total_transfer_size_overflow)'(cur_dest_addr[AXI_DATA_SIZE-1:0])
+                                          + last_transfer_size;
           total_transfer_size = total_transfer_size_overflow[AXI_DATA_WIDTH-1:0];
           // first wstrb depends on address offset
           nxt_strb = {AXI_STRB_WIDTH{1'b1}} << cur_dest_addr[AXI_DATA_SIZE-1:0];
@@ -310,7 +314,7 @@ module zeroer #(
           total_transfer_size = last_transfer_size;
           // only enough strb bits for data size when it's a single beat
           for (int i = 0; i < AXI_STRB_WIDTH; i++) begin
-            last_strb[i] = last_transfer_size > i;
+            last_strb[i] = last_transfer_size > axi_data_t'(i);
           end
           // shift strb to correct position based on address offset
           nxt_strb = last_strb << cur_dest_addr[AXI_DATA_SIZE-1:0];
@@ -319,7 +323,7 @@ module zeroer #(
         if (mst_axi_resp_i.aw_ready) begin
           nxt_state = ST_ISSUE_DATA;
           nxt_beats_to_transfer = mst_awlen;
-          nxt_dest_addr = mst_awaddr + ((mst_awlen + 1) << AXI_DATA_SIZE);
+          nxt_dest_addr = mst_awaddr + (($bits(nxt_dest_addr)'(mst_awlen) + 1) << AXI_DATA_SIZE);
           // calculate how much data gets transferred
           // sub last transfer size, sub other transfers, add first transfer offset
           nxt_size_overflow = cur_size - total_transfer_size;
@@ -336,7 +340,7 @@ module zeroer #(
             nxt_beats_to_transfer = axi_pkg::len_t'(0);
             nxt_strb = {AXI_STRB_WIDTH{1'b0}};
             // after current chunk of data is transferred, anymore chunks?
-            nxt_state = (cur_size == axi_pkg::len_t'(0)) ? ST_IDLE : ST_ISSUE_ADDR;
+            nxt_state = (cur_size == '0) ? ST_IDLE : ST_ISSUE_ADDR;
           end else begin
             nxt_beats_to_transfer = cur_beats_to_transfer - 1;
             nxt_strb = (cur_beats_to_transfer == axi_pkg::len_t'(1)) ? cur_last_transfer_strb : {AXI_STRB_WIDTH{1'b1}};
@@ -356,9 +360,9 @@ module zeroer #(
     if (~rst_ni) begin
       cur_state <= ST_IDLE;
       cur_dest_addr <= axi_addr_t'(0);
-      cur_size <= axi_pkg::len_t'(0);
+      cur_size <= '0;
       cur_strb <= axi_strb_t'(0);
-      cur_last_transfer_strb <= axi_pkg::len_t'(0);
+      cur_last_transfer_strb <= '0;
       cur_beats_to_transfer <= axi_pkg::len_t'(0);
     end else begin
       cur_state <= nxt_state;
@@ -375,7 +379,9 @@ module zeroer #(
     if (~rst_ni) begin
       outstanding_reqs <= 32'd0;
     end else begin
-      outstanding_reqs <= 32'(outstanding_reqs + (mst_axi_resp_i.aw_ready & mst_axi_req_o.aw_valid) - (mst_axi_req_o.b_ready & mst_axi_resp_i.b_valid));
+      outstanding_reqs <= outstanding_reqs
+                           + 32'(mst_axi_resp_i.aw_ready & mst_axi_req_o.aw_valid)
+                           - 32'(mst_axi_req_o.b_ready & mst_axi_resp_i.b_valid);
     end
   end
 
@@ -401,7 +407,7 @@ module zeroer #(
   assign mst_axi_req_o.aw.addr   = mst_awaddr;
   assign mst_axi_req_o.aw.len    = mst_awlen;
   assign mst_axi_req_o.w_valid   = mst_wvalid;
-  assign mst_axi_req_o.w.data    = axi_pkg::len_t'(0);  // always write 0
+  assign mst_axi_req_o.w.data    = '0;  // always write 0
   assign mst_axi_req_o.w.strb    = mst_wstrb;
   assign mst_axi_req_o.w.last    = mst_wlast;
   assign mst_axi_req_o.b_ready   = mst_bready;
