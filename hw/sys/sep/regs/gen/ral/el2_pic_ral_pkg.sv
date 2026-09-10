@@ -102,12 +102,12 @@
     // addrmap - el2_pic
     class el2_pic extends uvm_reg_block;
         `uvm_object_utils(el2_pic)
-        rand el2_pic__meipl meipl[33];
-        rand el2_pic__meip meip[2];
-        rand el2_pic__meie meie[33];
+        rand el2_pic__meipl meipl[256];
+        rand el2_pic__meip meip[8];
+        rand el2_pic__meie meie[256];
         rand el2_pic__mpiccfg mpiccfg;
-        rand el2_pic__meigwctrl meigwctrl[33];
-        rand el2_pic__meigwclr meigwclr[33];
+        rand el2_pic__meigwctrl meigwctrl[256];
+        rand el2_pic__meigwclr meigwclr[256];
 
         function new(string name = "el2_pic");
             super.new(name);

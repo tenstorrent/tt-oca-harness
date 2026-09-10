@@ -15,7 +15,7 @@
         <ipxact:displayName>OCH SEP Top-Level Address Map</ipxact:displayName>
         <ipxact:description>Complete address map for OCH Security Processor subsystem</ipxact:description>
         <ipxact:baseAddress>'h0</ipxact:baseAddress>
-        <ipxact:range>'hc0085084</ipxact:range>
+        <ipxact:range>'hc0085400</ipxact:range>
         <ipxact:width>256</ipxact:width>
         <ipxact:registerFile>
           <ipxact:name>secure_dma</ipxact:name>
@@ -18711,11 +18711,11 @@ goes low</ipxact:description>
           <ipxact:description>VeeR EL2 Programmable Interrupt Controller (PIC) memory-mapped registers.
 Supports up to PIC_TOTAL_INT external interrupt sources with 15 priority levels.</ipxact:description>
           <ipxact:addressOffset>'hc0080000</ipxact:addressOffset>
-          <ipxact:range>'h5084</ipxact:range>
+          <ipxact:range>'h5400</ipxact:range>
           <ipxact:register>
             <ipxact:name>meipl</ipxact:name>
             <ipxact:description>External Interrupt Priority Level Register. Sets the priority level for an interrupt source.</ipxact:description>
-            <ipxact:dim>33</ipxact:dim>
+            <ipxact:dim>256</ipxact:dim>
             <ipxact:addressOffset>'h0</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
@@ -18736,7 +18736,7 @@ Reverse order: 15=Never interrupt, 14..0=Priority (14 lowest, 0 highest)</ipxact
           <ipxact:register>
             <ipxact:name>meip</ipxact:name>
             <ipxact:description>External Interrupt Pending Register. Reports pending status of up to 32 interrupt sources.</ipxact:description>
-            <ipxact:dim>2</ipxact:dim>
+            <ipxact:dim>8</ipxact:dim>
             <ipxact:addressOffset>'h1000</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
@@ -18758,7 +18758,7 @@ Reverse order: 15=Never interrupt, 14..0=Priority (14 lowest, 0 highest)</ipxact
           <ipxact:register>
             <ipxact:name>meie</ipxact:name>
             <ipxact:description>External Interrupt Enable Register. Controls interrupt enable for a single source.</ipxact:description>
-            <ipxact:dim>33</ipxact:dim>
+            <ipxact:dim>256</ipxact:dim>
             <ipxact:addressOffset>'h2000</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
@@ -18799,7 +18799,7 @@ Reverse order: 15=Never interrupt, 14..0=Priority (14 lowest, 0 highest)</ipxact
           <ipxact:register>
             <ipxact:name>meigwctrl</ipxact:name>
             <ipxact:description>External Interrupt Gateway Configuration Register. Controls interrupt type and polarity.</ipxact:description>
-            <ipxact:dim>33</ipxact:dim>
+            <ipxact:dim>256</ipxact:dim>
             <ipxact:addressOffset>'h4000</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
@@ -18835,7 +18835,7 @@ Reverse order: 15=Never interrupt, 14..0=Priority (14 lowest, 0 highest)</ipxact
             <ipxact:name>meigwclr</ipxact:name>
             <ipxact:description>External Interrupt Gateway Clear Register. Writing any value clears the gateway's
 interrupt pending (IP) bit for edge-triggered interrupts.</ipxact:description>
-            <ipxact:dim>33</ipxact:dim>
+            <ipxact:dim>256</ipxact:dim>
             <ipxact:addressOffset>'h5000</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
