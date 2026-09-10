@@ -1711,10 +1711,20 @@ remap.</p>
 <p>The remaining subsystems are mapped into regions 1 and 2 for the EL2 CPU.</p>
 </div>
 <div class="paragraph">
-<p>Each row below is the address <strong>aperture</strong> reserved for a unit, not the extent that
-decodes. Within an aperture, only the unit&#8217;s register extent responds; the
-remainder is reserved and returns DECERR. Reads and writes there never reach the
-unit, so an address that owns no register cannot alias onto one.</p>
+<p>Each row below is the address aperture reserved for a unit, not the
+extent that decodes.</p>
+</div>
+<div class="paragraph">
+<p>The fabric refuses an address that falls between unit windows, or past
+the extent a unit allocates; such an access never reaches a unit.</p>
+</div>
+<div class="paragraph">
+<p>Inside a unit&#8217;s allocated extent, an offset that owns no register is
+accepted by the unit: reads return zero and writes are discarded, both
+with an OKAY response. Software gets no indication that it addressed
+nothing. Such an offset cannot alias a live register, because register
+decode is an exact address match rather than a range&#8201;&#8212;&#8201;not because the
+access is refused.</p>
 </div>
 <div class="paragraph">
 <p>The crypto region, 0x1090_0000 - 0x1094_FFFF (OTBN through ABR), accepts
