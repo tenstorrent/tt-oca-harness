@@ -5,7 +5,7 @@
 === Interrupts
 
 The SMC can handle interrupt sources across diverse system management
-functions. The architecture centers around the RISC-V Platform-Level
+functions. The architecture centers around the Platform-Level
 Interrupt Controller (PLIC) and Core Local Interruptor (CLINT), with
 interrupt routing and priority handling.
 
@@ -71,7 +71,7 @@ The vector layout is:
 
 [source,systemverilog]
 ----
-cpu_interrupts_o[NUM_EXT_INTERRUPTS-1:0]        = ext_interrupts_i;
+cpu_interrupts_o[NUM_EXT_INTERRUPTS-1:0]        = ext_interrupts_smc_clk; // ext_interrupts_i after 3-stage sync to clk_smc
 cpu_interrupts_o[NUM_EXT_INTERRUPTS+:32]        = peripheral_interrupts_i;
 cpu_interrupts_o[(NUM_EXT_INTERRUPTS+32)+:32]   = mailbox_interrupts;
 cpu_interrupts_o[(NUM_EXT_INTERRUPTS+64)]       = tdr_dbg_ctrl_clocks_stopped_by_cla_o;
@@ -99,8 +99,9 @@ human-readable; implementation signal names are called out in the
 |`[31:0]`
 |External interrupts
 |Integration-defined external interrupt inputs
-|`hw/sys/smc/rtl/smc_base.sv` drives
-`cpu_interrupts_o[NUM_EXT_INTERRUPTS-1:0] = ext_interrupts_i`.
+|`hw/sys/smc/rtl/smc_base.sv` synchronizes `ext_interrupts_i` to `clk_smc`
+(`prim_sync3 u_ext_interrupts_sync3`) and drives
+`cpu_interrupts_o[NUM_EXT_INTERRUPTS-1:0] = ext_interrupts_smc_clk`.
 
 |`256`
 |`32`
@@ -297,34 +298,27 @@ i2c_irqs_smc_clk[2]`.
 
 |`283`
 |`59`
-|Temperature sensor interrupt
-|PVT temperature interrupt
+|Locked field access
+|eFuse locked-field access violation interrupt
 |`smc_peripherals.sv` drives `peripheral_interrupts_o[27] =
-temp_interrupt_i`.
+locked_field_access_interrupt`, sourced from the eFuse controller path.
 
 |`284`
 |`60`
-|Locked field access
-|eFuse locked-field access violation interrupt
+|GPIO interrupt OR, lower half
+|OR-reduction across the lower half of bonded GPIO interrupt sources
 |`smc_peripherals.sv` drives `peripheral_interrupts_o[28] =
-locked_field_access_interrupt`, sourced from the eFuse controller path.
+\|gpio_interrupt[smc_pkg::NUM_BONDED_GPIO/2-1:0]`.
 
 |`285`
 |`61`
-|GPIO interrupt OR, lower half
-|OR-reduction across the lower half of bonded GPIO interrupt sources
+|GPIO interrupt OR, upper half
+|OR-reduction across the upper half of bonded GPIO interrupt sources
 |`smc_peripherals.sv` drives `peripheral_interrupts_o[29] =
-\|gpio_interrupt[smc_pkg::NUM_BONDED_GPIO/2-1:0]`.
+\|gpio_interrupt[smc_pkg::NUM_BONDED_GPIO-1:smc_pkg::NUM_BONDED_GPIO/2]`.
 
 |`286`
 |`62`
-|GPIO interrupt OR, upper half
-|OR-reduction across the upper half of bonded GPIO interrupt sources
-|`smc_peripherals.sv` drives `peripheral_interrupts_o[30] =
-\|gpio_interrupt[smc_pkg::NUM_BONDED_GPIO-1:smc_pkg::NUM_BONDED_GPIO/2]`.
-
-|`287`
-|`63`
 |AXI hang detector OR
 |OR of the three AXI hang detectors (sys_axi, sep_axi, data_accel). Asserts
 while any detector's `irq_o` is high, so software must read
@@ -334,7 +328,14 @@ CPU AXI master is not covered here; it is covered by the watchdog.
 |`smc_base.sv` OR-reduces `hang_irq_sys_axi \| hang_irq_sep_axi \|
 hang_irq_data_accel` onto `axi_hang_irq_o`; `smc.sv` routes that back into
 `u_smc_peripherals`, and `smc_peripherals.sv` drives
-`peripheral_interrupts_o[31] = axi_hang_irq_i`.
+`peripheral_interrupts_o[30] = axi_hang_irq_i`.
+
+|`287`
+|`63`
+|Reserved
+|Unused peripheral interrupt slots; tied to zero
+|`peripheral_interrupts_o` is initialized to `'0`, and bit 31 is never
+overwritten in `smc_peripherals.sv`.
 
 |`[319:288]`
 |`[95:64]`
@@ -401,7 +402,7 @@ tail bits in `smc_base.sv`.
 
 ==== RISC-V PLIC
 
-The SMC uses a standards-compliant RISC-V Platform-Level Interrupt
+The SMC uses a standards-compliant Platform-Level Interrupt
 Controller (PLIC) at 0xC400_0000–0xC43F_FFFF (4MB) to manage 332
 interrupt sources (327 active, 5 reserved) with multi-core delivery in
 the 4-core configuration. The PLIC provides hardware prioritization,
@@ -438,7 +439,7 @@ timer/software interrupts |Core-local timing, inter-core coordination,
 periodic operations |Deterministic timing, low-latency inter-core
 communication
 
-|Watchdog Timer System (WDT) |0xC000_0000 + (N × 0x400), 4 per-core
+|Watchdog Timer (WDT) |0xC000_0000 + (N × 0x400), 4 per-core
 instances with escalation |System reliability monitoring, fault
 detection, automated recovery |Escalating response: warning → reset →
 external intervention

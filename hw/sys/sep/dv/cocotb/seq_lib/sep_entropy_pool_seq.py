@@ -2,16 +2,13 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Entropy-pool aperture driver (sep_entropy_pool_aperture_test).
 
-64-bit AXI-Lite drain of ``sep_entropy_fifo`` at the local-xbar
-``entropy_fifo.main`` window. Offsets from ``hw/sys/sep/rtl/sep_entropy_fifo.sv``:
-status ``0x00``, irq-cause ``0x08``, pop ``0x10``; every other in-window offset
-and every write is SLVERR. Depth=32, LowWatermark=8, StallThresh=4096.
+64-bit AXI-Lite drain of ``sep_entropy_fifo`` at the fabric Entropy Pool
+target (``0x1095_0000``). Live offsets from the pool module: status
+``0x00``, irq-cause ``0x08``, pop ``0x10``; every other in-window offset
+and every write is SLVERR.
 """
 
 from __future__ import annotations
-
-import re
-from pathlib import Path
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
@@ -21,33 +18,16 @@ from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_esrc_bringup_seq import EDN_CTRL, EDN_CTRL_AUTO, ESRC_CTRL
 
-_XBAR = Path(__file__).resolve().parents[3] / "rtl" / "sep_local_axi_xbar.sv"
-_FIFO = Path(__file__).resolve().parents[3] / "rtl" / "sep_entropy_fifo.sv"
-
-
-def _xbar_entropy_fifo_base() -> int:
-    text = _XBAR.read_text(encoding="utf-8")
-    m = re.search(r"entropy_fifo\.main:\s*0x([0-9A-Fa-f]+)", text)
-    if not m:
-        raise RuntimeError(f"entropy_fifo.main base not found in {_XBAR}")
-    return int(m.group(1), 16)
-
-
-def _fifo_param(name: str) -> int:
-    text = _FIFO.read_text(encoding="utf-8")
-    m = re.search(rf"parameter int unsigned {name}\s*=\s*(\d+)", text)
-    if not m:
-        raise RuntimeError(f"{name} not found in {_FIFO}")
-    return int(m.group(1))
-
-
-POOL_BASE = _xbar_entropy_fifo_base()
+# Independent goldens for the occupancy / stall checkers. Defaults match
+# sep_entropy_fifo (FifoDepth, LowWatermark, StallThresh). They are not
+# imported from RTL, so a DUT that changes those defaults fails.
+POOL_BASE = 0x1095_0000
 POOL_STATUS = POOL_BASE + 0x00
 POOL_IRQ_CAUSE = POOL_BASE + 0x08
 POOL_POP = POOL_BASE + 0x10
-FIFO_DEPTH = _fifo_param("FifoDepth")
-LOW_WATERMARK = _fifo_param("LowWatermark")
-STALL_THRESH = _fifo_param("StallThresh")
+FIFO_DEPTH = 32
+LOW_WATERMARK = 8
+STALL_THRESH = 4096
 
 RESP_OKAY = 0
 RESP_SLVERR = 2
@@ -66,7 +46,9 @@ _ALIAS_UNMAPPED = (
     0x1000,  # -> status  0x00 if [11:0] only
     0x8000,  # -> status  0x00 if [14:0] only
 )
-# Unique-dead extra: SLVERR even under a 2-bit [4:3] decode.
+# Unique-dead extras: SLVERR even under a 2-bit [4:3] decode. All three are
+# walked every seed -- 0x18 is the unused [4:3]=11 code and catches a class the
+# other two do not, so a seeded pick of one could miss it.
 _UNIQUE_DEAD = (0x18, 0x40, 0x80)
 
 # Legal disable: MODULE_ENABLE=0, every other CTRL field at its reset (including
@@ -91,13 +73,14 @@ class SepEntropyPoolCfg:
         rng = SepSeededRng(seed)
         self.extra_pops = rng.randrange(1, 5)
         self.alias_offs = _ALIAS_UNMAPPED
-        self.unmapped_off = rng.choice(_UNIQUE_DEAD)
+        self.unmapped_offs = _UNIQUE_DEAD
 
     def summary(self) -> str:
         aliases = ",".join(f"0x{o:x}" for o in self.alias_offs)
         return (
             f"seed={self.seed} extra_pops={self.extra_pops} "
-            f"alias=[{aliases}] extra_dead=0x{self.unmapped_off:x}"
+            f"alias=[{aliases}] "
+            f"extra_dead=[{','.join(f'0x{o:x}' for o in self.unmapped_offs)}]"
         )
 
 
@@ -158,7 +141,7 @@ def _selftest() -> None:
     assert STALL_THRESH == 4096
     cfg = SepEntropyPoolCfg(1)
     assert cfg.alias_offs == _ALIAS_UNMAPPED
-    assert cfg.unmapped_off in _UNIQUE_DEAD
+    assert cfg.unmapped_offs == (0x18, 0x40, 0x80)
     assert 1 <= cfg.extra_pops <= 4
     # The three pinned testlist seeds must all still walk the alias set.
     for pinned in (1, 2, 3):

@@ -2,16 +2,35 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Shared AXI type constants and value-conversion helpers (side-neutral).
 
-Response and protection codes as plain integers, plus the conversions between
-backend payloads and plain Python values. The wrapper layer keeps cocotbext
-transaction objects and enums behind this boundary; tests assert on these
-names without importing backend-specific types. The SV-UVM flow carries the
-same role as ``uvm/ocah_axi_types.svh``.
+Response and protection codes as plain integers, the bus-protocol ``Enum``,
+and the conversions between backend payloads and plain Python values. The
+wrapper layer keeps cocotbext transaction objects and enums behind this
+boundary; tests assert on these names without importing backend-specific
+types. The SV-UVM flow carries the same role as ``uvm/ocah_axi_types.svh``.
 """
 
 from __future__ import annotations
 
+from enum import Enum
 from typing import Any
+
+__all__ = [
+    "PROT_INSTRUCTION",
+    "PROT_NONSECURE",
+    "PROT_PRIVILEGED",
+    "RESP_DECERR",
+    "RESP_EXOKAY",
+    "RESP_OKAY",
+    "RESP_SLVERR",
+    "RESP_TIMEOUT",
+    "OcahAxiProtocol",
+    "axi_resp_ok",
+    "bytes_to_int",
+    "normalize_resp_list",
+    "resp_name",
+    "words_from_bytes",
+    "worst_resp",
+]
 
 RESP_OKAY = 0
 RESP_EXOKAY = 1
@@ -23,6 +42,14 @@ RESP_TIMEOUT = -1
 PROT_PRIVILEGED = 1
 PROT_NONSECURE = 2
 PROT_INSTRUCTION = 4
+
+
+class OcahAxiProtocol(Enum):
+    """Bus protocol of one connection; twin of ``ocah_axi_protocol_e``."""
+
+    AXI4 = "axi4"
+    AXI4_LITE = "axi4_lite"
+
 
 _RESP_NAMES = {
     RESP_OKAY: "OKAY",

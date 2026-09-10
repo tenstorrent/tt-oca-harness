@@ -2,9 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """smu_dtp_xtrigger_smc_cla_test — DEFERRED (no DUT Force policy).
 
-Was: xtrig glue Force inject on hierarchical SMU nets. No product pin / frontdoor stimulus yet.
-See testlists/deferred.toml (needs_real_stimulus / no_force) and
-testlists/deferred.toml.
+No product pin or frontdoor stimulus exists for xtrig glue injection.
+Not ported (needs_real_stimulus / no_force).
 """
 
 from __future__ import annotations
@@ -20,5 +19,5 @@ class smu_dtp_xtrigger_smc_cla_test(smu_base_test):
     async def run_scenario(self) -> None:
         raise AssertionError(
             "smu_dtp_xtrigger_smc_cla_test deferred: xtrig glue Force inject removed. "
-            "See testlists/deferred.toml (needs_real_stimulus)."
+            "Not ported (needs_real_stimulus)."
         )

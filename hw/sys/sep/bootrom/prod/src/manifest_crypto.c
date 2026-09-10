@@ -33,6 +33,18 @@
 // The value stores a 32-byte SHA-256 digest.
 #define FUSE_KEY_LENGTH 32
 
+// CHIPLET_PUBK_REVOKE bit assignments, from the field description in
+// hw/sys/sep/regs/blocks/sep_efuse_map/sep_efuse_map.rdl. ROM slots occupy
+// [7:0] so a slot index doubles as its own bit, but the fused keys do NOT
+// continue that sequence -- they sit at 16 and above. Deriving them as
+// PUBK_SEL_NUM_ROM_KEYS + n gave bits 6 and 7, which are unused ROM-slot bits
+// and therefore always clear, so revoking a fused key had no effect at all.
+#define PUBK_REVOKE_BIT_CHIPLET_HASH0 16
+#define PUBK_REVOKE_BIT_CHIPLET_HASH1 17
+#define PUBK_REVOKE_BIT_SIP_HASH0 20
+#define PUBK_REVOKE_BIT_SYS_HASH 22
+#define PUBK_REVOKE_BIT_SIP_HASH1 24
+
 // Max KDF argument bytes.
 #define MAX_KDF_ARGUMENT_BYTES 16
 
@@ -169,25 +181,43 @@ static uint32_t validate_signature(const manifest_t *m, uint32_t lc_state) {
         err = check_pubkey_revoked(revocation_index);
         if (err) return err;
 
-        // ROM key hash validation (skip if digest not compiled in).
+        // ROM key hash validation. The modulus is taken from the manifest, so
+        // binding it to a compiled-in digest is the only thing that makes the
+        // signature mean anything. An unpopulated slot must therefore be
+        // rejected, not skipped: skipping leaves a manifest free to select that
+        // slot, pass revocation (its fuse bit is 0) and RSA-verify against its
+        // own modulus. Same fail-closed rule as the fuse path below.
         const public_key_info_t *ki = &public_key_digests[index];
-        if (ki->digest != (void *)0) {
-            err = check_pubkey_hash(pub_key, ki->digest);
-            if (err) return err;
+        if (ki->digest == (void *)0) {
+            simputs("ROM_KEY_EMPTY\n");
+            return MANIFEST_ERR_SIG_FAILED;
         }
+        err = check_pubkey_hash(pub_key, ki->digest);
+        if (err) return err;
     } else {
         // Fuse key slot.
         uint32_t fuse_addr;
         uint8_t fuse_key[FUSE_KEY_LENGTH];
 
         switch (m->public_key_sel.selection) {
+        // Address the digest fuses by name. The previous form derived them as
+        // CHIPLET_PUBK_REVOKE + 0x100/0x120, which lands 0x10 below
+        // CHIPLET_PUBK_HASH0/HASH1 and so read the wrong fuse words.
         case PUBK_SEL_FUSE_KEY_0:
-            fuse_addr = OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_BASE_ADDR + 0x100u;
-            revocation_index = PUBK_SEL_NUM_ROM_KEYS;
+            fuse_addr = OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_PUBK_HASH0_BASE_ADDR;
+            revocation_index = PUBK_REVOKE_BIT_CHIPLET_HASH0;
             break;
         case PUBK_SEL_FUSE_KEY_1:
-            fuse_addr = OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_BASE_ADDR + 0x120u;
-            revocation_index = PUBK_SEL_NUM_ROM_KEYS + 1;
+            fuse_addr = OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_PUBK_HASH1_BASE_ADDR;
+            revocation_index = PUBK_REVOKE_BIT_CHIPLET_HASH1;
+            break;
+        case PUBK_SEL_FUSE_SOP_KEY:
+            fuse_addr = OCH_SEP_TOP_SEP_EFUSE_MAP_SIP_PUBK_HASH0_BASE_ADDR;
+            revocation_index = PUBK_REVOKE_BIT_SIP_HASH0;
+            break;
+        case PUBK_SEL_FUSE_SYS_KEY:
+            fuse_addr = OCH_SEP_TOP_SEP_EFUSE_MAP_SYS_PUBK_HASH_BASE_ADDR;
+            revocation_index = PUBK_REVOKE_BIT_SYS_HASH;
             break;
         default:
             simputs("BAD_KEY_SEL\n");
@@ -339,6 +369,14 @@ uint32_t manifest_crypto_validate(const manifest_t *m, uint32_t lc_state) {
     err = validate_signature(m, lc_state);
     if (err) return err;
 
+    // ── (d) Payload hash — verified BEFORE decryption ──
+    // The packer hashes the ALREADY-ENCRYPTED payload (pack_images.py), so
+    // payload_hash covers ciphertext: this is the only order in which the hash
+    // means anything for an encrypted image, and it is authenticate-before-
+    // process -- nothing reaches the decryption engine unverified.
+    err = verify_payload_hash(m);
+    if (err) return err;
+
     // ── (e) Payload decryption (if encrypted) ──
     {
         bool encrypted = (m->usage_constraints.flags &
@@ -348,9 +386,6 @@ uint32_t manifest_crypto_validate(const manifest_t *m, uint32_t lc_state) {
             if (err) return err;
         }
     }
-
-    // (d) Payload hash verification is called separately in rom_main.c
-    // (always checked, even when secure_boot=false).
 
     report_status(STATUS_TYPE_INFO, SEP_MSG_MANIFEST_VALIDATED);
     simputs("CRYPTO_VALIDATE_OK\n");

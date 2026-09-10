@@ -31,8 +31,8 @@
 <h3 id="STATUS">STATUS</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
-<tr><td>31:16</td><td>count_good</td><td>R</td><td>0x0</td><td>Successful words transferred to CPU. Saturates at 0xFFFF.</td></tr>
-<tr><td>15:8</td><td>count_bad</td><td>R</td><td>0x0</td><td>Failed transactions (timeout or error). Saturates at 0xFF.</td></tr>
+<tr><td>31:16</td><td>count_good</td><td>RW</td><td>0x0</td><td>Successful words transferred to CPU. Saturates at 0xFFFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.</td></tr>
+<tr><td>15:8</td><td>count_bad</td><td>RW</td><td>0x0</td><td>Failed transactions (timeout or error). Saturates at 0xFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.</td></tr>
 <tr><td>7:4</td><td>rsvd</td><td>R</td><td>0x0</td><td>Reserved</td></tr>
 <tr><td>3</td><td>stream_err</td><td>RW</td><td>0x0</td><td>Set when there is an error on the DRBG AXI-Stream interface (e.g. TVALID deasserted before TREADY). Write 1 to clear.</td></tr>
 <tr><td>2</td><td>timeout_err</td><td>RW</td><td>0x0</td><td>Set when a DRBG read from the KM CPU times out. Write 1 to clear.</td></tr>

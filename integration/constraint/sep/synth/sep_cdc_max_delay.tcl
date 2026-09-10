@@ -1,0 +1,1 @@
+../../../../hw/sys/sep/synth/sep_cdc_max_delay.tcl

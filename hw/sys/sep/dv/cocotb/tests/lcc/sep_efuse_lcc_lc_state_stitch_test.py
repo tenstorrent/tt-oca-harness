@@ -22,11 +22,14 @@ W1S-monotonic / valid-transition rules (the test-level mirror of the RTL SVA
 state checker); the fixed monotonic chain covers the SVA forward-only and
 terminal-stability properties implicitly.
 
-After the initial TEST_DEV sense (TEST_EN strap = 0, DFT group forced off) the
-test raises the frontdoor ``test_en_strap_i``, re-senses, and proves the latched
-``secure_tm`` opens FEAT_CTRL[47:32]. The strap is then lowered; the rest of the
-walk runs at ``secure_tm=0`` so LC_STATE programming is not blocked by
-``efuse_guard``.
+After the initial TEST_DEV sense (TEST_EN strap = 0) the test raises the
+frontdoor ``test_en_strap_i``, re-senses, and proves the latched
+``secure_tm_o`` follows the strap while ``FEAT_CTRL`` stays on the same
+golden (SECURE_TM does not qualify feature control). The same legs also
+score ``dbg_disable.dft_secure`` against Case 3 of the DTP ladder: the
+strap is not a term, so the bit must not follow ``secure_tm``. The strap
+is then lowered; the rest of the walk runs at ``secure_tm=0`` so LC_STATE
+programming is not blocked by ``efuse_guard``.
 
 ``lc_sigint_err`` has no legal OTP stimulus -- sense regenerates ``{~raw, raw}``.
 The test injects a broken pair at the LCC decoder input (signed-off force) after
@@ -48,20 +51,21 @@ from env.sep_lcc_golden import (
     LC_RMA_CHIP_1,
     LC_RMA_SIP_1,
     LC_TEST_DEV,
-    TEST_MASK,
+    SIP_DBG_BIT,
+    dbg_disable_expected,
+    dbg_disable_unpack,
     is_legal_lc,
     is_valid_lc_transition,
     lc_state_name,
 )
 from sep_base_test import sep_base_test
-from sep_reg_meta import sym
+from sep_reg_meta import EFUSE_INTERFACE_CTRL, sym
 from seq_lib.sep_lcc_stitch_check_seq import sep_lcc_stitch_check_seq
 
 _MAX_SENSE_CYCLES = 20_000
 
-# One Class-1a secret is enough to prove the secure_tm disconnect; the
-# post-sense backdoor compare already covers all four every sense.
-_SECRET_FIELD = "CLASS_KEY"
+# Every Class-1a secret the map disconnects while the strap is high.
+_SECRET_FIELDS = ("CHIPLET_UID", "SIP_UID", "SYS_UID", "CLASS_KEY")
 
 # Monotonic lifecycle chain exercised (matches the reference test's PROD/RMA walk).
 _LC_CHAIN = (LC_TEST_DEV, LC_PROD, LC_RMA_SIP_1, LC_RMA_CHIP_1)
@@ -72,14 +76,12 @@ _SIP_DIS = 0x0F0F_0F0F_0F0F_0F0F
 _SYS_DIS = 0x00FF_00FF_00FF_00FF
 
 # Block bases from the generated map.
-_EFUSE_CTRL_BASE = sym("EFUSE_INTERFACE_CTRL_REG_MAP_BASE_ADDR")
-_EFUSE_MMR_BASE = sym("EFUSE_MMR_REG_MAP_BASE_ADDR")
-_EFUSE_PROGRAM_CTRL = _EFUSE_CTRL_BASE + 0x4
-_RMA_SIP_TOKEN_I = _EFUSE_MMR_BASE + 0x00
-_RMA_CHIPLET_TOKEN_I = _EFUSE_MMR_BASE + 0x20
-_TOKEN_EOP = _EFUSE_MMR_BASE + 0x60
-_RMA_SIP_TOKEN_MATCH = _EFUSE_MMR_BASE + 0x64
-_RMA_CHIPLET_TOKEN_MATCH = _EFUSE_MMR_BASE + 0x68
+_EFUSE_PROGRAM_CTRL = EFUSE_INTERFACE_CTRL.addr("EFUSE_PROGRAM_CTRL")
+_RMA_SIP_TOKEN_I = sym("EFUSE_MMR_RMA_SIP_TOKEN_I_0__REG_ADDR")
+_RMA_CHIPLET_TOKEN_I = sym("EFUSE_MMR_RMA_CHIPLET_TOKEN_I_0__REG_ADDR")
+_TOKEN_EOP = sym("EFUSE_MMR_TOKEN_EOP_REG_ADDR")
+_RMA_SIP_TOKEN_MATCH = sym("EFUSE_MMR_RMA_SIP_TOKEN_MATCH_REG_ADDR")
+_RMA_CHIPLET_TOKEN_MATCH = sym("EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_REG_ADDR")
 _TOKEN_MATCH = 0x15
 
 _RMA_SIP_TOKEN_DIGEST = sym("SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_REG_ADDR")
@@ -116,6 +118,10 @@ class _lcc_otp_program_seq(pyuvm.uvm_sequence):
         # one retry). Read back by the test to prove the retry path was actually
         # exercised rather than passing vacuously.
         self.retry_count = 0
+        # Last PROGRAM_CTRL status word. The blocked-strap path inspects
+        # PROGRAM_DONE+PROGRAM_ERR here instead of inferring a bank write
+        # from fail-injection credit (that credit re-arms on every rst_ni).
+        self.last_status = 0
 
     async def _access(
         self,
@@ -197,6 +203,7 @@ class _lcc_otp_program_seq(pyuvm.uvm_sequence):
             for _ in range(200):
                 await ClockCycles(cocotb.top.clk_i, 1)
                 status = await self._read(_EFUSE_PROGRAM_CTRL, "program_status")
+                self.last_status = status
                 if not (status & (1 << 25)):
                     continue
 
@@ -254,26 +261,45 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
         await self.start_seq(seq)
         self._total_program_retries += seq.retry_count
         if raw == LC_PROD:
-            # Unique proof the strap-up attempt never reached the OTP bank:
-            # fail-injection is consumed only on a real APB program
-            # (efuse_bank_model wr_setup). If the guard held, the credit is
-            # still there and this first real program of bit 96 must retry.
             assert self._secure_tm_prog_blocked, (
                 "test bug: PROD program ran without a strap-up block attempt"
             )
-            assert seq.retry_count >= 1, (
-                "CHK-SECURE-TM-PROG-BLOCK: the strap-up attempt on bit 96 "
-                "consumed OTP fail-injection, so the command reached the "
-                "OTP bank; efuse_guard must empty the request"
-            )
-            self.logger.info(
-                "CHK-SECURE-TM-PROG-BLOCK PASS: OTP bit[%d] failed after "
-                "PROGRAM_ERR while secure_tm=1; first real program still "
-                "retried (guard never reached the OTP bank)",
-                bit_addr,
-            )
         image.set_lc_state(raw)
         await self.resense(max_cycles=_MAX_SENSE_CYCLES)
+
+    def _check_dbg_disable(self, feat_ctrl: int, *, secure_tm: int, tag: str) -> None:
+        """dbg_disable against the DTP ladder for this same FEAT_CTRL.
+
+        ``dft_secure`` is Case 3 (SIP_DBG & CHIPLET_DBG & SEP_DBG), inverted.
+        The TEST_EN strap is not a term: the same FEAT_CTRL must produce the
+        same bit at both polarities. A formula of ``!secure_tm`` fails here
+        whenever Case 3 and the strap disagree.
+        """
+        probe = cocotb.top.dbg_disable_all_o
+        val = probe.value
+        width = getattr(val, "n_bits", None)
+        if width is None:
+            bits = getattr(val, "binstr", None)
+            width = len(bits) if bits is not None else len(probe)
+        got = dbg_disable_unpack(int(val), int(width))
+        want = dbg_disable_expected(feat_ctrl)
+        for name, exp in want.items():
+            assert got[name] == exp, (
+                f"{tag}: dbg_disable.{name}={got[name]} expected {exp} for "
+                f"FEAT_CTRL=0x{feat_ctrl:016x} secure_tm={secure_tm} "
+                f"(sep_dbg={feat_ctrl & 1} chiplet_dbg={(feat_ctrl >> 1) & 1} "
+                f"sip_dbg={(feat_ctrl >> SIP_DBG_BIT) & 1})"
+            )
+        self.logger.info(
+            "CHK-DFT-SECURE PASS: %s dft_secure=%d (Case 3, independent of "
+            "secure_tm=%d; sep_dbg=%d chiplet_dbg=%d sip_dbg=%d)",
+            tag,
+            got["dft_secure"],
+            secure_tm,
+            feat_ctrl & 1,
+            (feat_ctrl >> 1) & 1,
+            (feat_ctrl >> SIP_DBG_BIT) & 1,
+        )
 
     def _sensed_secret(self, image: SepEfuseImage, name: str) -> int:
         """Read one Class-1a secret field out of the sensed shadow array by backdoor."""
@@ -316,16 +342,22 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
         self._last_observed_feat = feat
 
         if raw == LC_TEST_DEV and not sigint_err:
-            dft = (feat & TEST_MASK) >> 32
             if secure_tm:
-                assert dft != 0, "TEST_DEV + secure_tm=1 must leave DFT bits live"
                 self.logger.info(
-                    "CHK-SECURE-TM-ON PASS: secure_tm_o=1, FEAT_CTRL[47:32]=0x%04x",
-                    dft,
+                    "CHK-SECURE-TM-ON PASS: secure_tm_o=1, FEAT_CTRL=0x%016x "
+                    "(same TEST_DEV golden; SECURE_TM does not qualify feat_ctrl)",
+                    feat,
                 )
             else:
-                assert dft == 0, "TEST_DEV + secure_tm=0 must force DFT group to 0"
-                self.logger.info("CHK-SECURE-TM-OFF PASS: secure_tm_o=0, FEAT_CTRL[47:32]=0")
+                self.logger.info(
+                    "CHK-SECURE-TM-OFF PASS: secure_tm_o=0, FEAT_CTRL=0x%016x",
+                    feat,
+                )
+        self._check_dbg_disable(
+            feat,
+            secure_tm=secure_tm,
+            tag=f"{lc_state_name(raw)} tm={secure_tm} sigint={sigint_err}",
+        )
         if sigint_err:
             assert feat == 0, (
                 f"sigint fail-closed expects AXI FEAT_CTRL=0, got 0x{feat:016x} "
@@ -384,21 +416,23 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
                     secure_tm=0,
                     prev_raw=prev_raw,
                 )
-                # CHK-SECRET-BLANK, first half: with the strap low the Class-1a
-                # secret must be present in the sensed shadow. Captured BEFORE the
-                # strap goes up so the blanking below is a transition on one image
-                # rather than an observation that could also be satisfied by a DUT
-                # that never sensed the secret at all.
-                staged = image.field_int(_SECRET_FIELD)
-                assert staged != 0, (
-                    f"test bug: staged {_SECRET_FIELD} is zero, so the blanking check "
-                    f"below would pass on a DUT that ignores secure_tm"
-                )
-                open_secret = self._sensed_secret(image, _SECRET_FIELD)
-                assert open_secret == staged, (
-                    f"{_SECRET_FIELD} at secure_tm=0 sensed 0x{open_secret:x} != "
-                    f"staged 0x{staged:x}"
-                )
+                # CHK-SECRET-BLANK, first half: with the strap low every
+                # Class-1a secret must be present in the sensed shadow.
+                # Captured BEFORE the strap goes up so the blanking below is
+                # a transition on one image rather than an observation that
+                # could also be satisfied by a DUT that never sensed them.
+                open_secrets: dict[str, int] = {}
+                for name in _SECRET_FIELDS:
+                    staged = image.field_int(name)
+                    assert staged != 0, (
+                        f"test bug: staged {name} is zero, so the blanking check "
+                        f"below would pass on a DUT that ignores secure_tm"
+                    )
+                    sensed = self._sensed_secret(image, name)
+                    assert sensed == staged, (
+                        f"{name} at secure_tm=0 sensed 0x{sensed:x} != staged 0x{staged:x}"
+                    )
+                    open_secrets[name] = sensed
 
                 # Latch TEST_EN on the next sense-done. resense pulses rst_ni
                 # (clears the latch flop) then re-samples the strap.
@@ -410,44 +444,46 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
                     secure_tm=1,
                     prev_raw=prev_raw,
                 )
-                # Second half: the same image, same field, strap high -> disconnected.
-                blanked = self._sensed_secret(image, _SECRET_FIELD)
-                assert blanked == 0, (
-                    f"{_SECRET_FIELD} must read 0 while secure_tm=1 "
-                    f"(sep_efuse_pkg SecretShadowRanges), got 0x{blanked:x}"
-                )
-                self.logger.info(
-                    "CHK-SECRET-BLANK PASS: %s sensed 0x%x at secure_tm=0 and 0 at "
-                    "secure_tm=1 (Class-1a secret disconnected)",
-                    _SECRET_FIELD,
-                    open_secret,
-                )
+                # Second half: the same image, every Class-1a field, strap high.
+                for name in _SECRET_FIELDS:
+                    blanked = self._sensed_secret(image, name)
+                    assert blanked == 0, (
+                        f"{name} must read 0 while secure_tm=1 "
+                        f"(sep_efuse_pkg SecretShadowRanges), got 0x{blanked:x}"
+                    )
+                    self.logger.info(
+                        "CHK-SECRET-BLANK PASS: %s sensed 0x%x at secure_tm=0 and 0 at "
+                        "secure_tm=1 (Class-1a secret disconnected)",
+                        name,
+                        open_secrets[name],
+                    )
 
                 # CHK-SECURE-TM-PROG-BLOCK: while the strap is up, efuse_guard
-                # empties the fuse command request (efuse_guard.sv:110) and the
-                # program interface completes with PROGRAM_DONE+ERR because
-                # secure_tm_blocked_i is set (efuse_program_interface.sv ST_WAIT_RESP).
-                # That is a failed completion, not a starved DONE. Prove the
-                # attempt does not succeed here; the unique "never reached the
-                # OTP bank" half is that the same bit still consumes
-                # fail-injection on the first real program after the strap drops.
+                # empties the fuse command request and the program interface
+                # completes with PROGRAM_DONE+ERR because secure_tm_blocked_i
+                # is set. That is a failed completion, not a starved DONE.
+                # The status word is the evidence — not fail-injection credit,
+                # which re-arms on the resense that must follow to drop the
+                # latched strap.
                 blocked = _lcc_otp_program_seq(_LC_STATE_BIT_BASE + 0, max_attempts=2)
                 try:
                     await self.start_seq(blocked)
                 except AssertionError as exc:
-                    msg = str(exc)
-                    if "failed after" not in msg:
+                    status = blocked.last_status
+                    done = (status >> 25) & 1
+                    err = (status >> 26) & 1
+                    if not (done and err):
                         raise AssertionError(
                             "CHK-SECURE-TM-PROG-BLOCK: expected PROGRAM_DONE+ERR "
                             "(secure_tm_blocked completes the program FSM with "
-                            "error); got "
-                            f"{msg!r}"
+                            f"error); status=0x{status:08x} ({exc})"
                         ) from exc
                     self._secure_tm_prog_blocked = True
                     self.logger.info(
-                        "CHK-SECURE-TM-PROG-BLOCK: OTP bit[%d] PROGRAM_ERR "
-                        "while secure_tm=1 (command did not succeed)",
+                        "CHK-SECURE-TM-PROG-BLOCK PASS: OTP bit[%d] "
+                        "PROGRAM_DONE+ERR (status=0x%08x) while secure_tm=1",
                         _LC_STATE_BIT_BASE,
+                        status,
                     )
                 else:
                     raise AssertionError(

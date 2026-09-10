@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[cols="1,1,1,3", options="header"]
+[cols="1,4,1,6", options="header"]
 .Register Map
 |===
 | Address | Name | Access | Description
@@ -28,8 +28,6 @@
 | 0x110 | SMU_REGION_SIZE | RW a| -
 | 0x140 | SMC_FUSE_SENSE_STATUS | R a| -
 | 0x150 | SEP_FUSE_SENSE_STATUS | R a| -
-| 0x160 | SEP_STRAPS | R a| -
-| 0x170 | RAS_BANK_INFO | RW a| -
 | 0x178 | SEP_SW_DEBUG | RW a| -
 | 0x180 | SEP_NMI_VEC | RW a| NMI vector address for VeeR-EL2 CPU. The default value is 0xC000_0100. The NMI
 interrupt is used for the WDT Bark interrupt.
@@ -77,7 +75,7 @@ latches.
 | 0x1000 | SEP_VERSION_ID | R a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CLOCK_GATE_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -85,14 +83,14 @@ latches.
 | 0 | `pka_cg_enable` | RW | 0x0 a| Reserved - PKA clock-gate enable, not yet implemented.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .REFERENCE_COUNTER Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `rc` | RW | 0x0 a| SEP REFERENCE COUNTER, counting after deassert of cold reset
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TIMEOUT_INTERRUPT Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -100,7 +98,7 @@ latches.
 | 0 | `reserved` | R | 0x0 a| Reserved - timeout interrupt status not yet implemented.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .PKA_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -110,7 +108,7 @@ latches.
 | 0 | `pka_dpa_disable` | RW | 0x0 a| Reserved - disable DPA countermeasures in PKA, not yet implemented.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TIMEOUT_COUNT_DMA Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -118,7 +116,7 @@ latches.
 | 0 | `reserved` | RW | 0x0 a| Reserved - timeout count not yet implemented.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TIMEOUT_COUNT_SYS_IN Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -126,7 +124,7 @@ latches.
 | 0 | `reserved` | RW | 0x0 a| Reserved - timeout count not yet implemented.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TIMEOUT_COUNT_MAILBOX_INBOUND Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -134,7 +132,7 @@ latches.
 | 0 | `reserved` | RW | 0x0 a| Reserved - timeout count not yet implemented.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TIMEOUT_COUNT_MAILBOX_OUTBOUND Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -142,7 +140,7 @@ latches.
 | 0 | `reserved` | RW | 0x0 a| Reserved - timeout count not yet implemented.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TIMEOUT_COUNT_ENTROPY_WRITE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -150,7 +148,7 @@ latches.
 | 0 | `reserved` | RW | 0x0 a| Reserved - timeout count not yet implemented.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TIMEOUT_COUNT_ENTROPY_READ Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -158,7 +156,7 @@ latches.
 | 0 | `reserved` | RW | 0x0 a| Reserved - timeout count not yet implemented.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TIMEOUT_COUNT_FILTER_OUT Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -166,7 +164,7 @@ latches.
 | 0 | `reserved` | RW | 0x0 a| Reserved - timeout count not yet implemented.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TIMEOUT_COUNT_ALIAS_REMAP Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -174,7 +172,7 @@ latches.
 | 0 | `reserved` | RW | 0x0 a| Reserved - timeout count not yet implemented.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TIMEOUT_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -182,7 +180,7 @@ latches.
 | 0 | `reserved` | RW | 0x0 a| Reserved - timeout monitors not yet implemented.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TIMEOUT_CLEAR Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -190,7 +188,7 @@ latches.
 | 0 | `reserved` | W | 0x0 a| Reserved - timeout monitors not yet implemented.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TIMEOUT_MODE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -198,7 +196,7 @@ latches.
 | 0 | `reserved` | W | 0x0 a| Reserved - timeout monitors not yet implemented.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SEP_TEST_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -211,7 +209,7 @@ latches.
 | 25:0 | `Reserved` | - | - a| Reserved
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SEP_GLOBAL_BASE_ADDR Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -219,7 +217,7 @@ latches.
 | 55:0 | `addr` | RW | 0x0 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SEP_LOCAL_BASE_ADDR Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -227,7 +225,7 @@ latches.
 | 55:0 | `addr` | RW | 0xD0000000 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SEP_REGION_SIZE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -235,7 +233,7 @@ latches.
 | 31:0 | `size` | RW | 0x1000000 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SMU_GLOBAL_BASE_ADDR Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -243,7 +241,7 @@ latches.
 | 55:0 | `addr` | RW | 0x80000000 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SMU_REGION_SIZE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -251,7 +249,7 @@ latches.
 | 31:0 | `size` | RW | 0x40000000 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SMC_FUSE_SENSE_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -260,7 +258,7 @@ latches.
 When this is 1, it is safe to send requests to the SMC.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SEP_FUSE_SENSE_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -268,25 +266,7 @@ When this is 1, it is safe to send requests to the SMC.
 | 0 | `sep_fuse_sense_done` | R | 0x0 a| This reg is used to indicate the fuse sense status of SEP.
 |===
 
-[cols="1,1,1,1,3", options="header"]
-.SEP_STRAPS Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:2 | `Reserved` | - | - a| Reserved
-| 1 | `bypass_mem_repair` | R | 0x0 a| straps for bypass_mem_repair -> Used to indicate if the memory repair should be bypassed
-| 0 | `test_en` | R | 0x0 a| straps for test_en -> Used to be latched by SEP and generate the secure_tm
-|===
-
-[cols="1,1,1,1,3", options="header"]
-.RAS_BANK_INFO Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:8 | `Reserved` | - | - a| Reserved
-| 7:4 | `bank_instance` | RW | 0x0 a| Chiplet instance ID
-| 3:0 | `bank_chip` | RW | 0x0 a| Chiplet type ID
-|===
-
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SEP_SW_DEBUG Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -294,7 +274,7 @@ When this is 1, it is safe to send requests to the SMC.
 | 31:0 | `sep_sw_debug` | RW | 0x0 a| software writtable debug information. This reg is routed to CLA
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SEP_NMI_VEC Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -306,7 +286,7 @@ see the register description for the required programming order.
 | 0 | `rsvd` | R | 0x0 a| Reserved, bit 0 is always 0 (aligned)
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SEP_NMI_VEC_LOCK Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -315,7 +295,7 @@ see the register description for the required programming order.
 The NMI interrupt is used for the WDT Bark interrupt.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .EXT_TRNG_SRC_SEL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -325,7 +305,7 @@ The NMI interrupt is used for the WDT Bark interrupt.
 0 = internal DRBG output, 1 = external TRNG (default).
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .EXT_TRNG_SRC_SEL_LOCK Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -333,7 +313,7 @@ The NMI interrupt is used for the WDT Bark interrupt.
 | 0 | `lock` | RW | 0x0 a| Lock TRNG source selection. Once set, cannot be cleared by software.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .KM_WIPE_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -341,7 +321,7 @@ The NMI interrupt is used for the WDT Bark interrupt.
 | 0 | `wipe_state` | RW | 0x0 a| Key Manager wipe state. A rising edge zeroes all KPV entries and sets the WIPE_STATE interrupt status.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .DMA_BUS_ERR_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -355,7 +335,7 @@ a TL-UL error response (unmapped or misaligned offset, or a RACL denial).
 The faulting access also received SLVERR synchronously.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .DMA_BUS_ERR_CLEAR Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -363,7 +343,7 @@ The faulting access also received SLVERR synchronously.
 | 0 | `clr` | W | 0x0 a| Write 1 to clear both DMA_BUS_ERR_STATUS bits. Always reads 0.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .PERIPH_BUS_ERR_STATUS Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -377,7 +357,7 @@ The faulting access also received SLVERR synchronously.
 | 0 | `aes` | R | 0x0 a| AES register bridge error.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .PERIPH_BUS_ERR_CLEAR Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -391,7 +371,7 @@ The faulting access also received SLVERR synchronously.
 | 0 | `aes` | W | 0x0 a| Write 1 to clear PERIPH_BUS_ERR_STATUS.aes. Always reads 0.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SEP_VERSION_ID Register
 |===
 | Bits | Field | Access | Reset | Description

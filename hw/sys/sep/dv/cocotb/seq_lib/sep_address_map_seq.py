@@ -13,7 +13,11 @@ Full sweep of every sep_cpu_ctrl register (base 0x10A3_0000) over the CPU LSU bu
   * WRITE_ONLY  — write a benign value to write-only (sw=w) regs (decode + write
                   path); they cannot be read back.
 
-followed by a walk of one readable CSR per LSU-reachable block — Secure DMA,
+The reserved span after the 64-bit ``SEP_FUSE_SENSE_STATUS`` and before
+``SEP_SW_DEBUG`` is not a live register. ``CPU_CTRL_INTERIOR_HOLES`` names
+three words in that span; the test refuses them with a completed error
+response (not a hang). Then a walk of one readable CSR per LSU-reachable
+block — Secure DMA,
 WDT, cold/warm scratch, reset_ctrl, OTBN, AES, HMAC, KMAC, CSRNG, EDN, entropy
 source, Adams Bridge, entropy pool, lifecycle ctrl, KM mailbox, eFuse shadow,
 AXI-lite mailbox, inbound filter, alias-remap, output-remap, and the
@@ -54,6 +58,24 @@ from seq_lib.sep_entropy_pool_seq import POOL_STATUS
 
 BASE = sym("SEP_CPU_CTRL_REG_MAP_BASE_ADDR")
 
+# Interior reserved span in sep_cpu_ctrl. SEP_FUSE_SENSE_STATUS is 64-bit
+# (sep_cpu_ctrl.rdl), so the hole starts at the next 8-byte offset and runs
+# up to SEP_SW_DEBUG. The xbar still claims the window; the slave must
+# complete with SLVERR or DECERR, not hang.
+_FUSE_OFF = SEP_CPU_CTRL.offset("SEP_FUSE_SENSE_STATUS")
+_SW_DEBUG_OFF = SEP_CPU_CTRL.offset("SEP_SW_DEBUG")
+_HOLE_LO = _FUSE_OFF + 8
+_HOLE_NAMED = _HOLE_LO + 0x18
+assert _HOLE_LO < _HOLE_NAMED < _SW_DEBUG_OFF, (
+    "sep_cpu_ctrl reserved-span arithmetic no longer contains 0x170; "
+    "re-derive CPU_CTRL_INTERIOR_HOLES from the generated map"
+)
+CPU_CTRL_INTERIOR_HOLES = (
+    BASE + _HOLE_LO,
+    BASE + _HOLE_NAMED,
+    BASE + _SW_DEBUG_OFF - 4,
+)
+
 # Register names read and value-checked against their generated reset value.
 # Never written.
 READ_CHECK = [
@@ -73,7 +95,6 @@ READ_CHECK = [
     "SMU_GLOBAL_BASE_ADDR",
     "SMU_REGION_SIZE",
     "SMC_FUSE_SENSE_STATUS",
-    "SEP_STRAPS",
     # Field-packed reset (0xC000_0100) — value-checked against the generated header.
     "SEP_NMI_VEC",
     "SEP_NMI_VEC_LOCK",
@@ -113,7 +134,6 @@ WRITE_READBACK = [
     ("TIMEOUT_COUNT_DMA", 0x0BAD_C0DF),
     ("TIMEOUT_COUNT_SYS_IN", 0xCAFE_F00D),
     ("TIMEOUT_ENABLE", 0x0000_00FF),
-    ("RAS_BANK_INFO", 0x0000_00FF),
 ]
 
 # (name, value) — write-only (sw=w) registers: reading them returns non-OKAY, so
@@ -159,10 +179,10 @@ if _INFILT0_CFG_RESET is None:
         "check; update FABRIC_BLOCKS if the block was renamed"
     )
 FABRIC_BLOCKS = [
-    ("SECURE_DMA", 0x1080_0000, None),
-    ("WDT_TIMER", 0x1080_1000, None),
-    ("SEP_SCRATCH_COLD", 0x1080_2000, None),  # SCRATCH[0] (RW)
-    ("SEP_SCRATCH_WARM", 0x1080_2080, None),  # SCRATCH[0] (RW)
+    ("SECURE_DMA", sym("SECURE_DMA_REG_MAP_BASE_ADDR"), None),
+    ("WDT_TIMER", sym("WDT_TIMER_REG_MAP_BASE_ADDR"), None),
+    ("SEP_SCRATCH_COLD", sym("SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR"), None),
+    ("SEP_SCRATCH_WARM", sym("SEP_SCRATCH_WARM_REG_MAP_BASE_ADDR"), None),
     # SW_RESET_N reset: KM[0]=0 held in reset, OTBN/AES/HMAC/KMAC/TRNG[5:1]=1
     # released. The reference suite's ext_axi reg-walk delegates this register
     # (it cannot reach it); the CPU LSU path reads it safely, since a read has no
@@ -173,24 +193,22 @@ FABRIC_BLOCKS = [
         SEP_RESET_CTRL.reset32("SW_RESET_N"),
     ),
     ("OTBN", OTBN.addr("INTR_STATE"), OTBN.reset32("INTR_STATE")),
-    ("AES", 0x1091_0000, None),
+    ("AES", sym("AES_REG_MAP_BASE_ADDR"), None),
     ("HMAC", HMAC.addr("INTR_STATE"), HMAC.reset32("INTR_STATE")),
     ("KMAC", KMAC.addr("INTR_STATE"), KMAC.reset32("INTR_STATE")),
-    # CSRNG/EDN are OpenTitan blocks not exported by the SEP RDL header; their
-    # INTR_STATE-resets-to-0 is an OpenTitan-wide invariant.
-    ("DRBG_CSRNG", 0x1091_5000, 0x0000_0000),  # INTR_STATE
-    ("DRBG_EDN", 0x1091_5800, 0x0000_0000),  # INTR_STATE
-    ("ENTROPY_SRC", 0x1091_6000, None),  # INTR_STATE hw-driven
-    ("ADAMS_BRIDGE", ABR_NAME0, NAME0_EXP),  # MLDSA_NAME[0]
-    ("ENTROPY_POOL", POOL_STATUS, None),  # status only; never pop
-    ("SEP_LIFECYCLE", 0x1091_8000, None),  # FEAT_CTRL (RO, hw-driven)
-    ("KM_MAILBOX", 0x1092_000C, None),  # SEP_STATUS (offset 0 is write-only)
-    ("SEP_EFUSE_SHADOW", sym("SEP_EFUSE_MAP_LC_STATE_REG_ADDR"), None),  # LC_STATE shadow
-    ("AXIL_MAILBOX", 0x10A0_0000, None),
-    ("INBOUND_FILTER", _INFILT0, _INFILT0_CFG_RESET),  # FILTER_CONFIG entry 0
-    ("ALIAS_REMAP", 0x10A1_0000, None),  # region_start
-    ("AP_OUTPUT_REMAP", 0x10A1_0200, None),  # output-remap region
-    ("OT_SPI_HOST", 0x10B0_0000, None),  # INTR_STATUS
+    ("DRBG_CSRNG", sym("CSRNG_INTR_STATE_REG_ADDR"), 0x0000_0000),
+    ("DRBG_EDN", sym("EDN_INTR_STATE_REG_ADDR"), 0x0000_0000),
+    ("ENTROPY_SRC", sym("ENTROPY_SOURCE_REG_MAP_BASE_ADDR"), None),
+    ("ADAMS_BRIDGE", ABR_NAME0, NAME0_EXP),  # MLDSA_NAME[0]; no OSS RDL block
+    ("ENTROPY_POOL", POOL_STATUS, None),  # adapter not in PeakRDL
+    ("SEP_LIFECYCLE", sym("SEP_LIFECYCLE_CTRL_REG_MAP_BASE_ADDR"), None),
+    ("KM_MAILBOX", sym("KM_MAILBOX_SEP_SEP_STATUS_REG_ADDR"), None),
+    ("SEP_EFUSE_SHADOW", sym("SEP_EFUSE_MAP_LC_STATE_REG_ADDR"), None),
+    ("AXIL_MAILBOX", sym("AXIL_MAILBOX_OUTBOUND_MAILBOX_0_REG_MAP_BASE_ADDR"), None),
+    ("INBOUND_FILTER", _INFILT0, _INFILT0_CFG_RESET),
+    ("ALIAS_REMAP", sym("LOCAL_MASTER_ALIAS_REMAP_CTRL_0__REG_MAP_BASE_ADDR"), None),
+    ("AP_OUTPUT_REMAP", sym("AP_OUTPUT_REMAP_CTRL_0__REG_MAP_BASE_ADDR"), None),
+    ("OT_SPI_HOST", sym("SPI_CONTROLLER_INTR_STATUS_REG_ADDR"), None),
 ]
 
 

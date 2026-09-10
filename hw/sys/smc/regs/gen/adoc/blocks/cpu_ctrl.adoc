@@ -43,7 +43,7 @@
 
 ======
 
-[cols="1,1,1,3", options="header"]
+[cols="1,4,1,6", options="header"]
 .Register Map
 |===
 | Address | Name | Access | Description
@@ -70,7 +70,7 @@
 | 0x2A0 - 0x2B8 | DUMMY_ROM_NULL[4] | RW a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .RESET_VECTOR[4] Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -78,7 +78,7 @@
 | 55:0 | `vector` | RW | 0xC0040000 a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .RESET_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -101,7 +101,7 @@ This pulse is ANDed with core_reset_n[0] so a 0 in core_reset_n[0] will override
 | 0 | `core0_reset_n_n0_scan` | RW | 0x1 a| Reset control for the CPU, active low.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CORE_RESET_PULSE_COUNT Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -111,7 +111,7 @@ This pulse is ANDed with core_reset_n[0] so a 0 in core_reset_n[0] will override
 | 15:0 | `pre_reset_count` | RW | 0x8 a| Core reset pulse count pre-reset. The duration of the pulse is the set value + 1.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .RESET_TIMEOUT Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -128,21 +128,21 @@ at the cluster (drain complete and reset asserted).
 for drain) before timeout. 0 = disabled, wait indefinitely.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .REFERENCE_COUNTER Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `rc` | RW | 0x0 a| Reference counter for the CPU
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .WDT_TIMEOUT Register
 |===
 | Bits | Field | Access | Reset | Description
 | 31:0 | `data` | RW | 0x4000 a| Cycle count value that 2nd stage watchdog timer timeout should occur at. Defaults to 16384 cycles
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .WDT_TIMEOUT_RESET Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -153,7 +153,7 @@ for drain) before timeout. 0 = disabled, wait indefinitely.
 | 0 | `reset_cycle_count_0` | RW | 0x0 a| Reset current cycle count value in 2nd stage watchdog timer
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .TEST_CTRL Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -161,7 +161,7 @@ for drain) before timeout. 0 = disabled, wait indefinitely.
 | 31:0 | `data` | R | 0x0 a| Test control register for the CPU
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SCRATCH[16] Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -169,7 +169,7 @@ for drain) before timeout. 0 = disabled, wait indefinitely.
 | 31:0 | `data` | RW | 0x0 a| Scratch register for the CPU
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .WB_PC_CORE0[8] Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -177,7 +177,7 @@ for drain) before timeout. 0 = disabled, wait indefinitely.
 | 57:0 | `pc` | R | 0x0 a| Writeback PC value
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .WB_PC_CORE1[8] Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -185,7 +185,7 @@ for drain) before timeout. 0 = disabled, wait indefinitely.
 | 57:0 | `pc` | R | 0x0 a| Writeback PC value
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .WB_PC_CORE2[8] Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -193,7 +193,7 @@ for drain) before timeout. 0 = disabled, wait indefinitely.
 | 57:0 | `pc` | R | 0x0 a| Writeback PC value
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .WB_PC_CORE3[8] Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -201,7 +201,7 @@ for drain) before timeout. 0 = disabled, wait indefinitely.
 | 57:0 | `pc` | R | 0x0 a| Writeback PC value
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SMC_ATTRIBUTES Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -217,7 +217,7 @@ for drain) before timeout. 0 = disabled, wait indefinitely.
 | 0 | `chiplet_is_primary` | R | - a| Indicates if this chiplet is primary (1) or secondary (0). Driven by strap.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .MUTEX[4] Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -225,7 +225,7 @@ for drain) before timeout. 0 = disabled, wait indefinitely.
 | 0 | `mutex` | RW | 0x1 a| HW mutex. Reads will attempt to acquire mutex, 1 on success. If the mutex is already acquired, the read will return 0. To release the mutex, write any value to the register.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .SEMA[4] Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -234,35 +234,35 @@ for drain) before timeout. 0 = disabled, wait indefinitely.
 The written value is treated as a signed number using 2s compliment.
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .DUMMY_ROM_0 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `dummy_rom_word_0` | RW | 0x145051300000517 a| Word 0 of WFI loop
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .DUMMY_ROM_1 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `dummy_rom_word_1` | RW | 0xFFF0069330551073 a| Word 1 of WFI loop
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .DUMMY_ROM_2 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `dummy_rom_word_2` | RW | 0x105000733046B073 a| Word 2 of WFI loop
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .DUMMY_ROM_3 Register
 |===
 | Bits | Field | Access | Reset | Description
 | 63:0 | `dummy_rom_word_3` | RW | 0xFFDFF06F a| Word 3 of WFI loop
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .DUMMY_ROM_NULL[4] Register
 |===
 | Bits | Field | Access | Reset | Description

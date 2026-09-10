@@ -24,8 +24,6 @@ class smc_zeroer_axiclk_cg_test(smc_base_test):
     async def run_scenario(self) -> None:
         seq = smc_zeroer_axiclk_cg_test_seq("zeroer_axiclk_cg_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
-        # P1 tokens are unchanged (additive extension keeps the closed P1
-        # grade valid); the P2 (SMC_CG_P2_002) tokens are appended.
         required = (
             "CHK-ZAXI-GATE-OFF-IDLE",
             "CHK-ZAXI-BUSY-ENABLE",
@@ -42,6 +40,11 @@ class smc_zeroer_axiclk_cg_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.ZEROER_DMA,
             type(self).__name__,
+            # Conservative stimulus floor: 45 accesses observed in the retained
+            # regression run; the zeroer-DONE poll is a timing-dependent
+            # remainder, so the floor is set below it. Literal here, not read
+            # from `seq.accesses`.
+            min_csr_accesses=35,
             csr_accesses=seq.accesses,
             timeouts=seq.timeouts,
             proxy=False,

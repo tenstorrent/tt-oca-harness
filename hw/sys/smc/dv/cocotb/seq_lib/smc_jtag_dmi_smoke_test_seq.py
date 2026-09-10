@@ -63,9 +63,16 @@ class smc_jtag_dmi_smoke_test_seq(SmcCsrSeq):
         )
         assert self.dmstatus != 0, "dmstatus read as zero after dmactive"
         self.dmi_ok = True
+        # Emitted only after the three exact compares above passed, and carrying
+        # the three measured words rather than the constants they were compared
+        # against, so the retained line is a measurement conditional on the
+        # proof.
         cocotb.log.info(
-            "U7-3 DMI smoke OK: IDCODE=0x%08X DTMCS=0x%08X dmstatus=0x%08X",
+            "CHK-JTAG-DMI-SMOKE: IDCODE=0x%08X DTMCS=0x%08X dmstatus=0x%08X "
+            "(DTMCS.version=0x%X, dmstatus.version=%d)",
             self.idcode,
             self.dtmcs,
             self.dmstatus,
+            self.dtmcs & 0xF,
+            self.dmstatus & 0xF,
         )

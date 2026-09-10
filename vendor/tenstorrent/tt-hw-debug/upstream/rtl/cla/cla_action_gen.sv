@@ -1,20 +1,5 @@
-// *************************************************************************
-// *
-// * Tenstorrent CONFIDENTIAL
-// * __________________
-// *
-// *  Tenstorrent Inc.
-// *  All Rights Reserved.
-// *
-// * NOTICE:  All information contained herein is, and remains the property
-// * of Tenstorrent Inc.  The intellectual and technical concepts contained
-// * herein are proprietary to Tenstorrent Inc, and may be covered by U.S.,
-// * Canadian and Foreign Patents, patents in process, and are protected by
-// * trade secret or copyright law.  Dissemination of this information or
-// * reproduction of this material is strictly forbidden unless prior
-// * written permission is obtained from Tenstorrent Inc.
-// *
-// *************************************************************************
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 module cla_action_gen
 import cla_mmr_pkg::*;
@@ -39,7 +24,6 @@ import cla_pkg::*;
    output  logic start_trace,
    output  logic stop_trace,
    output  logic trace_pulse,
-   output  logic timestamp_capture,
    output  logic [XTRIGGER_WIDTH-1:0] xtrigger_out,
    output  logic [CLA_NUMBER_OF_CUSTOM_ACTIONS-1:0]  custom_action_bus,
    // Internal Action Signals
@@ -190,7 +174,6 @@ end
      start_trace = action_bus[ACTION_START_TRACE];
      stop_trace = action_bus[ACTION_STOP_TRACE];
      trace_pulse = action_bus[ACTION_TRACE_PULSE];
-     timestamp_capture = action_bus[ACTION_TIMESTAMP_CAPTURE];
 
      xtrigger_out[0] = action_bus[ACTION_XTRIGGER0_OUT];
      xtrigger_out[1] = action_bus[ACTION_XTRIGGER1_OUT];

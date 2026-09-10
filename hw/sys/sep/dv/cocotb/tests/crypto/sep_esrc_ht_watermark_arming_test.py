@@ -20,6 +20,7 @@ from seq_lib.sep_esrc_ht_watermark_seq import (
     APT_LO,
     ARM_HIGH,
     ARM_LOW,
+    RDL_MODE_COUNT,
     REPCNT_HI,
     SepHtWatermark,
     SepHtWatermarkCfg,
@@ -53,7 +54,7 @@ class sep_esrc_ht_watermark_arming_test(sep_base_test):
         ht: SepHtWatermark,
         sel: int,
         path: str,
-    ) -> None:
+    ) -> int:
         want = arm_value(sel)
         entry = await self._force_polarity(ht, high=(want == ARM_LOW))
         assert entry != want, (
@@ -72,7 +73,6 @@ class sep_esrc_ht_watermark_arming_test(sep_base_test):
             still,
             path,
         )
-        assert path == "module_enable", path
         await ht.pulse_module_enable()
         tag = "CHK-ARM-MEN"
         got = await ht.read_watermark()
@@ -80,6 +80,7 @@ class sep_esrc_ht_watermark_arming_test(sep_base_test):
             f"{tag} FAIL: {sel_name(sel)}/{path} HT_WATERMARK=0x{got:04x} want 0x{want:04x}"
         )
         self.logger.info("%s PASS: %s %s HT_WATERMARK=0x%04x", tag, sel_name(sel), path, got)
+        return got
 
     async def _check_unsupported(self, ht: SepHtWatermark, sel: int) -> None:
         entry = await self._force_polarity(ht, high=False)
@@ -142,16 +143,26 @@ class sep_esrc_ht_watermark_arming_test(sep_base_test):
         self.logger.info("esrc ht watermark arming: %s", cfg.summary())
 
         await ht.hold_health_tests_off()
-        n = 0
+        # Count only the selectors whose DUT readback matched the documented arm
+        # value, and hold that count against the size of enum WATERMARK_TEST as
+        # the RDL itself defines it. The bound does not move with the generator
+        # that drove the loop, so a walk that skips a mode fails here.
+        proven: list[int] = []
         for sel, path in cfg.cells():
-            await self._arm_leg(ht, sel, path)
-            n += 1
-        assert n == cfg.n_cells(), f"walked {n} arming cells, expected {cfg.n_cells()}"
+            armed = await self._arm_leg(ht, sel, path)
+            if armed == arm_value(sel):
+                proven.append(sel)
+        assert len(proven) == RDL_MODE_COUNT, (
+            f"CHK-RANDCFG FAIL: {len(proven)} selectors armed to their documented "
+            f"value, want {RDL_MODE_COUNT} (proven={sorted(proven)})"
+        )
         await self._check_unsupported(ht, cfg.unsupported)
-        await self._check_low_fall(ht, cfg.fall_sel)
+        for fall_sel in cfg.fall_sels:
+            await self._check_low_fall(ht, fall_sel)
         self.logger.info(
-            "CHK-RANDCFG PASS: walked %d selector x path cells; unsupported=%s fall_sel=%s",
-            n,
+            "CHK-RANDCFG PASS: %d of %d HT_WATERMARK_NUM encodings armed; unsupported=%s fall=%s",
+            len(proven),
+            RDL_MODE_COUNT,
             f"0x{cfg.unsupported:x}",
-            sel_name(cfg.fall_sel),
+            [sel_name(s) for s in cfg.fall_sels],
         )

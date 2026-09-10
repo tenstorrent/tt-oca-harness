@@ -1,25 +1,10 @@
-// *************************************************************************
-// *
-// * Tenstorrent CONFIDENTIAL
-// * __________________
-// *
-// *  Tenstorrent Inc.
-// *  All Rights Reserved.
-// *
-// * NOTICE:  All information contained herein is, and remains the property
-// * of Tenstorrent Inc.  The intellectual and technical concepts contained
-// * herein are proprietary to Tenstorrent Inc, and may be covered by U.S.,
-// * Canadian and Foreign Patents, patents in process, and are protected by
-// * trade secret or copyright law.  Dissemination of this information or
-// * reproduction of this material is strictly forbidden unless prior
-// * written permission is obtained from Tenstorrent Inc.
-// *
-// *************************************************************************
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 // clk_rst_wrapper:
 //
 // Central clock/reset/clamp hub for the DFD functional blocks. It owns every
-// *functional* generic_ipx_clk_rst_ctrl instance (cla, dst, ntr per-instance, the
+// *functional* rv_ipx_clk_rst_ctrl instance (cla, dst, ntr per-instance, the
 // combined tnif trace-network domain, and the dst_sink/ntr_sink/funnel domains)
 // and distributes the gated clock, gated reset, warm-override reset, and gated
 // functional clamp to the feature wrappers, which are pure consumers.
@@ -59,19 +44,19 @@ module clk_rst_wrapper
     input  logic i_test_reset_n,
 
     // CLA controls
-    input  logic                     i_cla_fuse_dis,
+    input  logic [CLA_W-1:0]         i_cla_fuse_dis,
     input  logic [CLA_W-1:0]         i_cla_clk_dis,
     input  logic [CLA_W-1:0]         i_cla_clk_dis_ctrl,
     input  logic [CLA_W-1:0]         i_cla_func_clamp,
 
     // DST controls
-    input  logic                     i_dst_fuse_dis,
+    input  logic [DST_W-1:0]         i_dst_fuse_dis,
     input  logic [DST_W-1:0]         i_dst_clk_dis,
     input  logic [DST_W-1:0]         i_dst_clk_dis_ctrl,
     input  logic [DST_W-1:0]         i_dst_func_clamp,
 
     // NTRACE controls
-    input  logic                     i_ntr_fuse_dis,
+    input  logic [NTR_W-1:0]         i_ntr_fuse_dis,
     input  logic [NTR_W-1:0]         i_ntr_clk_dis,
     input  logic [NTR_W-1:0]         i_ntr_clk_dis_ctrl,
     input  logic [NTR_W-1:0]         i_ntr_func_clamp,
@@ -158,7 +143,7 @@ module clk_rst_wrapper
                 .i_clk_dis_ctrl(i_cla_clk_dis_ctrl[ii]),
                 .i_test_icg_en(i_test_icg_en),
                 .i_reset_n(i_rst_n),
-                .i_fuse_dis(i_cla_fuse_dis),
+                .i_fuse_dis(i_cla_fuse_dis[ii]),
                 .i_test_reset_n(i_test_reset_n),
                 .i_test_reset_en(i_test_reset_en),
                 .i_func_clamp(i_cla_func_clamp[ii]),
@@ -187,7 +172,7 @@ module clk_rst_wrapper
                 .i_clk_dis_ctrl(i_dst_clk_dis_ctrl[ii]),
                 .i_test_icg_en(i_test_icg_en),
                 .i_reset_n(i_rst_n),
-                .i_fuse_dis(i_dst_fuse_dis),
+                .i_fuse_dis(i_dst_fuse_dis[ii]),
                 .i_test_reset_n(i_test_reset_n),
                 .i_test_reset_en(i_test_reset_en),
                 .i_func_clamp(i_dst_func_clamp[ii]),
@@ -215,7 +200,7 @@ module clk_rst_wrapper
                 .i_clk_dis_ctrl(i_ntr_clk_dis_ctrl[ii]),
                 .i_test_icg_en(i_test_icg_en),
                 .i_reset_n(i_rst_n),
-                .i_fuse_dis(i_ntr_fuse_dis),
+                .i_fuse_dis(i_ntr_fuse_dis[ii]),
                 .i_test_reset_n(i_test_reset_n),
                 .i_test_reset_en(i_test_reset_en),
                 .i_func_clamp(i_ntr_func_clamp[ii]),
@@ -236,13 +221,16 @@ module clk_rst_wrapper
     // NTR_W) controls are width-cast up to the connection count. Absent upper
     // instances are filled with 1'b1 so the AND'ed combination simply tracks
     // whichever block is present at that index (the fill mask is the bitwise
-    // complement of the cast all-ones vector). Clock/clamp track both features
-    // (AND); fuse-disable is AND'd across the two features.
+    // complement of the cast all-ones vector). Clock/clamp/fuse-disable all
+    // track both features with a bitwise AND per connection index, so a tnif
+    // lane is only fused off when both the DST and NTRACE instance feeding that
+    // lane are fused off.
     // -------------------------------------------------------------------------
     if ((NUM_DST_INST > 0) || (NUM_NTRACE_INST > 0)) begin : tnif_crc_gen
         logic [TNIF_W-1:0] dst_func_clamp_ext,   ntr_func_clamp_ext;
         logic [TNIF_W-1:0] dst_clk_dis_ext,      ntr_clk_dis_ext;
         logic [TNIF_W-1:0] dst_clk_dis_ctrl_ext, ntr_clk_dis_ctrl_ext;
+        logic [TNIF_W-1:0] dst_fuse_dis_ext,     ntr_fuse_dis_ext;
         logic [TNIF_W-1:0] tnif_func_clk_en;
 
         // func_clamp, clk_dis and clk_dis_ctrl are all AND-combined into the
@@ -263,13 +251,15 @@ module clk_rst_wrapper
         assign ntr_func_clamp_ext   = NUM_NTRACE_INST > 0 ? TNIF_W'(i_ntr_func_clamp)   | ~(TNIF_W'({NTR_W{1'b1}})) : '1;
         assign ntr_clk_dis_ext      = NUM_NTRACE_INST > 0 ? TNIF_W'(i_ntr_clk_dis)      | ~(TNIF_W'({NTR_W{1'b1}})) : '1;
         assign ntr_clk_dis_ctrl_ext = NUM_NTRACE_INST > 0 ? TNIF_W'(i_ntr_clk_dis_ctrl) | ~(TNIF_W'({NTR_W{1'b1}})) : '1;
+        assign dst_fuse_dis_ext     = NUM_DST_INST    > 0 ? TNIF_W'(i_dst_fuse_dis)     | ~(TNIF_W'({DST_W{1'b1}})) : '1;
+        assign ntr_fuse_dis_ext     = NUM_NTRACE_INST > 0 ? TNIF_W'(i_ntr_fuse_dis)     | ~(TNIF_W'({NTR_W{1'b1}})) : '1;
 
         logic [TNIF_W-1:0] tnif_clk_dis, tnif_clk_dis_ctrl, tnif_func_clamp;
-        logic              tnif_fuse_dis;
+        logic [TNIF_W-1:0] tnif_fuse_dis;
         assign tnif_clk_dis      = dst_clk_dis_ext      & ntr_clk_dis_ext;
         assign tnif_clk_dis_ctrl = dst_clk_dis_ctrl_ext & ntr_clk_dis_ctrl_ext;
         assign tnif_func_clamp   = dst_func_clamp_ext   & ntr_func_clamp_ext;
-        assign tnif_fuse_dis     = i_dst_fuse_dis & i_ntr_fuse_dis;
+        assign tnif_fuse_dis     = dst_fuse_dis_ext     & ntr_fuse_dis_ext;
         assign tnif_func_clk_en  = TNIF_W'(dst_func_enable) | TNIF_W'(ntr_func_enable);
 
         for (genvar ii = 0; ii < TNIF_CONNECTIONS; ii++) begin : tnif_crc
@@ -280,7 +270,7 @@ module clk_rst_wrapper
                 .i_clk_dis_ctrl(tnif_clk_dis_ctrl[ii]),
                 .i_test_icg_en(i_test_icg_en),
                 .i_reset_n(i_rst_n),
-                .i_fuse_dis(tnif_fuse_dis),
+                .i_fuse_dis(tnif_fuse_dis[ii]),
                 .i_test_reset_n(i_test_reset_n),
                 .i_test_reset_en(i_test_reset_en),
                 .i_func_clamp(tnif_func_clamp[ii]),

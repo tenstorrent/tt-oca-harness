@@ -14,6 +14,6 @@ class dtp_xtrig_wire_or_test(dtp_base_test):
             dtp_xtrig_base_test_seq,
             "wire_or",
             scenario="wire_or",
-            specific_env="DTP_XTRIG_WIRE_OR_TEST_LOOPS",
-            group_env="DTP_XTRIG_TEST_LOOPS",
+            specific_knob="DTP_XTRIG_WIRE_OR_TEST_LOOPS",
+            group_knob="DTP_XTRIG_TEST_LOOPS",
         )

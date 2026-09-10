@@ -208,7 +208,13 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--target",
-        choices=("preloads", "smu_smc_smoke", "smu_sep_smoke", "all"),
+        choices=(
+            "preloads",
+            "smu_smc_smoke",
+            "smu_sep_smoke",
+            "smu_sep_bidirect",
+            "all",
+        ),
         required=True,
     )
     args = parser.parse_args()
@@ -218,6 +224,11 @@ def main() -> int:
     if args.target in ("smu_sep_smoke", "all"):
         build_smc_rom("smu_sep_arm")
         build_sep_firmware()
+        build_sep_boot_rom()
+    if args.target in ("smu_sep_bidirect", "all"):
+        # SMC half of the SEP<->SMC handshake; the SEP half is the picolibc
+        # image sep_smu_bidirect, built by the SEP fw engine.
+        build_smc_rom("smu_sep_bidirect_arm")
         build_sep_boot_rom()
     return 0
 

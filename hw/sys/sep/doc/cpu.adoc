@@ -178,7 +178,7 @@ Scratch register set 1 has *additional warm reset* behavior. It can be
 reset by a signal from the Watchdog Timer (WDT).
 
 [[direct-memory-access-controller-dma-direct-memory-access-controller-dma]]
-==== Direct Memory Access Controller (DMA)
+==== Direct Memory Access (DMA)
 
 The module is based on the
 https://opentitan.org/book/hw/ip/dma/index.html[OpenTitan DMA
@@ -221,7 +221,7 @@ SPI
 available to DMA for automatic flow control
 
 [[och-modifications]]
-===== OCH Modifications
+===== OCAH Modifications
 
 * 64-bit AXI4-lite slave interface (replaces or translates the 32-bit
 TL-UL bus protocol)

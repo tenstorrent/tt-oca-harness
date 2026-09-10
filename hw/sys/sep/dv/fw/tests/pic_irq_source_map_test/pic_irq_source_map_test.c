@@ -18,7 +18,7 @@
 // Distinct from sep_mailbox_plic_test (ONE source) and from
 // sep_irq_ip_to_aggregator_test (no_cpu, aggregate vector, no ISR).
 //
-// Checks (each failure increments errors; main() returns it and start.S turns
+// Checks (each failure increments errors; main() returns it and fw/startup/crt0.s turns
 // 0 -> PASS magic / non-zero -> FAIL magic on the 0x8000_0000 mailbox):
 //   CHK-NONVAC      : before any trigger, no ISR fires (quiet window).
 //   CHK-DELIVER     : each selected source wakes its CPU ISR (WFI, no poll).
@@ -28,7 +28,8 @@
 //   CHK-PIC-COMPLETE: after the ISR clears the source the line de-asserts.
 //   CHK-ONEHOT      : only the asserted source's ISR fires among the selected
 //                     PIC-enabled sources.
-//   CHK-RANDCFG     : firmware consumed the patched MUST + extras list.
+//   CHK-RANDCFG     : graded host-side -- the cocotb test greps the SCENARIO
+//                     line below for the patched source list and count.
 
 #include <stdint.h>
 
@@ -59,6 +60,11 @@
 // the tied no-interrupt source and has no MEIE word.
 #define UNEXPECTED_CLAIM_MAX 64
 
+/* Incremented by fw/startup/crt0.s _dummy_int_handler on every claim of a
+ * source that has no registered ISR. A quiet-window pass that only looks at
+ * g_count[] / g_unexpected_claims cannot see those claims. */
+extern volatile uint32_t sep_dummy_int_count;
+
 struct pic_src_desc {
     uint32_t pic_src;
     uint32_t kind;
@@ -71,20 +77,33 @@ struct pic_src_desc {
 
 // Legal INTR_TEST / mailbox rows this firmware can deliver. PIC id = agg idx + 1.
 static const struct pic_src_desc k_catalog[] = {
-    {1u,  PIC_KIND_MBOX, 0,          0,          0,          0,    "mailbox"},
-    {9u,  PIC_KIND_INTR_STATUS, 0x10800000u, 0x10800004u, 0x10800008u, 0x1u, "DMA"},
-    {18u, PIC_KIND_INTR, 0x10911000u, 0x10911004u, 0x10911008u, 0x1u, "HMAC"},
-    {21u, PIC_KIND_INTR, 0x10913000u, 0x10913004u, 0x10913008u, 0x1u, "KMAC"},
-    {23u, PIC_KIND_INTR, 0x10913000u, 0x10913004u, 0x10913008u, 0x4u, "KMAC-err"},
-    {24u, PIC_KIND_INTR, 0x10915000u, 0x10915004u, 0x10915008u, 0x1u, "CSRNG"},
-    {28u, PIC_KIND_INTR, 0x10915800u, 0x10915804u, 0x10915808u, 0x1u, "EDN"},
-    {30u, PIC_KIND_INTR, 0x10900000u, 0x10900004u, 0x10900008u, 0x1u, "OTBN"},
+    {1u, PIC_KIND_MBOX, 0, 0, 0, 0, "mailbox"},
+    {9u, PIC_KIND_INTR_STATUS, OCH_SEP_TOP_SECURE_DMA_INTR_STATE_BASE_ADDR,
+     OCH_SEP_TOP_SECURE_DMA_INTR_ENABLE_BASE_ADDR, OCH_SEP_TOP_SECURE_DMA_INTR_TEST_BASE_ADDR,
+     SECURE_DMA__INTR_STATE__DMA_DONE_bm, "DMA"},
+    {18u, PIC_KIND_INTR, OCH_SEP_TOP_HMAC_INTR_STATE_BASE_ADDR,
+     OCH_SEP_TOP_HMAC_INTR_ENABLE_BASE_ADDR, OCH_SEP_TOP_HMAC_INTR_TEST_BASE_ADDR,
+     HMAC__INTR_STATE__HMAC_DONE_bm, "HMAC"},
+    {21u, PIC_KIND_INTR, OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR,
+     OCH_SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, OCH_SEP_TOP_KMAC_INTR_TEST_BASE_ADDR,
+     KMAC__INTR_STATE__KMAC_DONE_bm, "KMAC"},
+    {23u, PIC_KIND_INTR, OCH_SEP_TOP_KMAC_INTR_STATE_BASE_ADDR,
+     OCH_SEP_TOP_KMAC_INTR_ENABLE_BASE_ADDR, OCH_SEP_TOP_KMAC_INTR_TEST_BASE_ADDR,
+     KMAC__INTR_STATE__KMAC_ERR_bm, "KMAC-err"},
+    {24u, PIC_KIND_INTR, OCH_SEP_TOP_CSRNG_INTR_STATE_BASE_ADDR,
+     OCH_SEP_TOP_CSRNG_INTR_ENABLE_BASE_ADDR, OCH_SEP_TOP_CSRNG_INTR_TEST_BASE_ADDR,
+     CSRNG__INTR_STATE__CS_CMD_REQ_DONE_bm, "CSRNG"},
+    {28u, PIC_KIND_INTR, OCH_SEP_TOP_EDN_INTR_STATE_BASE_ADDR,
+     OCH_SEP_TOP_EDN_INTR_ENABLE_BASE_ADDR, OCH_SEP_TOP_EDN_INTR_TEST_BASE_ADDR,
+     EDN__INTR_STATE__EDN_CMD_REQ_DONE_bm, "EDN"},
+    {30u, PIC_KIND_INTR, OCH_SEP_TOP_OTBN_INTR_STATE_BASE_ADDR,
+     OCH_SEP_TOP_OTBN_INTR_ENABLE_BASE_ADDR, OCH_SEP_TOP_OTBN_INTR_TEST_BASE_ADDR,
+     OTBN__INTR_STATE__DONE_bm, "OTBN"},
 };
 
 // [0]=magic [1]=n_src [2..6]=PIC source ids. Default is the MUST trio so an
 // unpatched image still runs the directed walk.
-volatile uint32_t g_pic_params[7] = {
-    PIC_PARAM_MAGIC, 3u, 1u, 30u, 18u, 0u, 0u};
+volatile uint32_t g_pic_params[7] = {PIC_PARAM_MAGIC, 3u, 1u, 30u, 18u, 0u, 0u};
 
 static struct pic_src_desc g_sel[PIC_SRC_MAX];
 static int g_n_src = 0;
@@ -124,9 +143,9 @@ static int is_ip_intr(uint32_t kind) {
 static void clear_ip_intr(const struct pic_src_desc *d) {
     if (d->kind == PIC_KIND_INTR_STATUS) {
         wr32(d->test, 0);
-        wr32(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR,
-             SECURE_DMA__STATUS__DONE_bm | SECURE_DMA__STATUS__ERROR_bm |
-                 SECURE_DMA__STATUS__CHUNK_DONE_bm);
+        wr32(OCH_SEP_TOP_SECURE_DMA_STATUS_BASE_ADDR, SECURE_DMA__STATUS__DONE_bm |
+                                                          SECURE_DMA__STATUS__ERROR_bm |
+                                                          SECURE_DMA__STATUS__CHUNK_DONE_bm);
     } else {
         wr32(d->state, d->bit);
     }
@@ -162,7 +181,7 @@ static void silence_and_bound(uint32_t id) {
         pic_disable_source(id);
     }
     if (g_unexpected_claims > UNEXPECTED_CLAIM_MAX) {
-        __asm__ volatile("csrc mie, %0" :: "r"((uint32_t)(1u << 11)));
+        __asm__ volatile("csrc mie, %0" ::"r"((uint32_t)(1u << 11)));
     }
 }
 
@@ -391,7 +410,10 @@ int main(void) {
         sep_mbx_puthex(g_sel[i].pic_src);
     }
     sep_mbx_putc('\n');
-    sep_mbx_puts("CHK-RANDCFG PASS: firmware consumed the patched PIC source list\n");
+    /* Params resolved. Whether the HOST patch actually landed is graded by
+     * the SCENARIO needle the cocotb test greps -- the compiled default
+     * satisfies resolve_params(), so this line is not that proof. */
+    sep_mbx_puts("STEP params resolved from the DTCM block\n");
 
     arm_sources();
 
@@ -404,13 +426,18 @@ int main(void) {
             spurious = 1;
         }
     }
-    if (spurious || g_unexpected_claims != 0) {
+    if (spurious || g_unexpected_claims != 0 || sep_dummy_int_count != 0) {
         sep_mbx_puts("FAIL: spurious ISR before any source asserted\n");
+        if (sep_dummy_int_count != 0) {
+            sep_mbx_puts("FAIL: dummy handler served unregistered IRQ count=");
+            sep_mbx_puthex(sep_dummy_int_count);
+            sep_mbx_putc('\n');
+        }
         report_unexpected();
         errors++;
     } else {
         sep_mbx_puts("CHK-NONVAC PASS: no spurious ISR before any trigger "
-                     "(quiet window clean)\n");
+                     "(quiet window clean, dummy handler count 0)\n");
     }
 
     for (int i = 0; i < g_n_src; i++) {
@@ -444,6 +471,15 @@ int main(void) {
     if (!storm) {
         sep_mbx_puts("CHK-PIC-COMPLETE PASS: no source re-fired after its ISR cleared "
                      "it (claim completed, no storm)\n");
+    }
+
+    if (sep_dummy_int_count != 0) {
+        sep_mbx_puts("FAIL: dummy handler served unregistered IRQ after walk count=");
+        sep_mbx_puthex(sep_dummy_int_count);
+        sep_mbx_putc('\n');
+        errors++;
+    } else {
+        sep_mbx_puts("CHK-DUMMY PASS: dummy handler count 0 after the walk\n");
     }
 
     if (errors == 0) {

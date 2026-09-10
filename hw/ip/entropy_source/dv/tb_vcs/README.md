@@ -5,7 +5,7 @@ APB-based cocotb testbench for the entropy_source RTL with behavioral ring oscil
 ## Prerequisites
 
 ```bash
-cd $OCH_ROOT   # TT-OCH repository root
+cd $OCH_ROOT   # TT-OCAH repository root
 source bin/setup_env.sh
 ```
 

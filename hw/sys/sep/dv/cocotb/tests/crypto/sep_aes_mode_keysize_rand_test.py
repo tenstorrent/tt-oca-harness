@@ -34,7 +34,8 @@ Checkers:
   CHK-STATUS   per cell: no AES recoverable/fatal alert across enc + round-trip
   CHK1..CHK4   bit-exact entropy golden (strict scoreboard report)
   CHK5_aes     post-adapter AES beats == AXIS1 in order (single live crypto sink)
-  CHK-RAND-REP all 9 discrete cells walked in one invocation (seed logged)
+  CHK-RAND-REP every discrete cell produced its own golden-matching ciphertext,
+               and all ciphertexts are distinct (seed logged)
 """
 
 from __future__ import annotations
@@ -60,13 +61,16 @@ class sep_aes_mode_keysize_rand_test(sep_base_test):
         # routing is in-order (one live sink). AES stays released for the
         # masking reseed.
         await self.bring_up_entropy(strict=True, score_km=False, score_sinks={"aes": "golden"})
+        # The default floor is one scored beat, which is far below what the
+        # per-beat routing claim needs across the whole cell walk.
+        self.drbg_sb.set_min_matches(CHK5_aes=32)
         self.start_fifo_drain()
         assert await self.wait_genbits(), "CSRNG CTR_DRBG never produced genbits"
 
         self.aes = SepAes(self)
         seed = self.random_seed()
         self.rng = SepSeededRng(seed)
-        self.logger.info("AES mode/key-size breadth AES mode x key-size breadth: seed=%d", seed)
+        self.logger.info("AES mode x key-size breadth: seed=%d", seed)
         await self.aes.trigger_prng_reseed()  # seed the masking PRNG from EDN
 
         # Collect each cell's DUT ciphertext, so the matrix claim rests on observed
@@ -80,6 +84,9 @@ class sep_aes_mode_keysize_rand_test(sep_base_test):
 
         walked = len(results)
         expected = len(MODES) * len(KEY_SIZES)
+        # Construction guard, not a DUT contract: this compares the walk against
+        # the cell list that drove it, so only a table or keying mistake in this
+        # file can trip it. The DUT evidence is the per-cell golden compare.
         assert walked == expected, f"walked {walked} cells != {expected}"
         assert len(set(results.values())) == expected, (
             "AES cells produced duplicate ciphertexts, so they did not all run distinct "

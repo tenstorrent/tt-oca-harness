@@ -7,7 +7,7 @@
 
 This section documents the main peripherals integrated within the System
 Management Controller (SMC). These peripherals provide essential I/O and
-communication capabilities for the OCH system, supporting various
+communication capabilities for the OCAH system, supporting various
 protocols and interfaces required for system operation and external
 connectivity.
 
@@ -47,8 +47,8 @@ controller supporting both controller and target modes. |AXI4-Lite |3
 rails and power conditions. |APB4/AXI4-Lite |1
 
 |xref:ip:gpio/doc/index.adoc[GPIO] |General Purpose Input/Output
-with dual-mode operation and comprehensive interrupt system (64 bonded + 4 unbonded).
-|APB4/AXI4-Lite |68
+with dual-mode operation and comprehensive interrupt system (61 bonded + 4 unbonded).
+|APB4/AXI4-Lite |65
 
 |xref:ip:telemetry_receiver/doc/index.adoc[Telemetry Receiver]
 |Hardware component for decoding and processing telemetry data from
@@ -93,8 +93,8 @@ controller supporting both controller and target modes. |AXI4-Lite |3
 rails and power conditions. |APB4/AXI4-Lite |1
 
 |GPIO |General Purpose Input/Output
-with dual-mode operation and comprehensive interrupt system (64 bonded + 4 unbonded).
-|APB4/AXI4-Lite |68
+with dual-mode operation and comprehensive interrupt system (61 bonded + 4 unbonded).
+|APB4/AXI4-Lite |65
 
 |Telemetry Receiver
 |Hardware component for decoding and processing telemetry data from
@@ -143,3 +143,35 @@ include::../../../ip/gpio/doc/index.adoc[]
 
 include::../../../ip/telemetry_receiver/doc/index.adoc[]
 endif::backend-pdf[]
+
+==== Peripheral Parameter Settings
+
+The SMC sets peripheral parameters at instantiation from `smc_config_pkg`,
+`smc_pkg`, and the padring package; these are the authoritative sources.
+Most values match the IP defaults, but the following differ from the default
+documented in the IP's own section.
+
+.SMC Peripheral Parameter Overrides
+[width="100%",cols="16%,38%,18%,28%",options="header",]
+|=======================================================================
+|Peripheral |Parameter |IP default |SMC value
+
+|Mailbox |`smc_pkg::NUM_MAILBOXES` |2 |32
+
+|Mailbox |`smc_pkg::MAILBOX_DEPTH` |8 |2
+
+|I2C |`smc_config_pkg::I2C_TARGET_RX_FIFO_DEPTH` |268 |64
+
+|I3C |`smc_config_pkg::NUM_I3C` |2 |6
+
+|GPIO |`MAX_TRANS` (threaded from the `smc` module parameter) |32 |2
+
+|GPIO |`INPUT_BY_DEFAULT` (per instance, from
+`smc_padring_pkg::DefaultDirectionMap`) |input on all |input on 62 of 65
+GPIOs, output on the remaining 3
+|=======================================================================
+
+The System Timer OCTS takes no parameters. The eFuse overrides only bus
+widths and interface types. The UART 16550, Log Engine, AVSBus Controller,
+and Telemetry Receiver are configured explicitly through `smc_config_pkg`,
+but at values equal to their IP defaults.

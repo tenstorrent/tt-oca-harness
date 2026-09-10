@@ -30,475 +30,479 @@
  *                             look-ahead optimization.
  */
 
-module key_manager import km_intf_pkg::*; import axi_pkg::*; import prim_mubi_pkg::*; #(
-    //=========================================================================
-    // Parameters
-    //=========================================================================
-    parameter int unsigned ROM_SIZE_BYTES   = 16384,  // 16KB ROM
-    parameter int unsigned SRAM_SIZE_BYTES  = 32768,  // 32KB SRAM
-    parameter int unsigned MAILBOX_DEPTH    = 16,     // Words per FIFO direction
-    // LATCHED_MEM_RDATA: Set to 1 if ROM/SRAM latch read data (data stays valid after request deasserts)
-    //                    Set to 0 if memory read data is only valid when rvalid is asserted
-    //                    This allows the CPU to use look-ahead optimization when supported by memory
-    parameter bit          LATCHED_MEM_RDATA = 1'b0,
-    // OTP/eFuse remap base: the absolute address of the eFuse controller as seen
-    // on efuse_req_o.  Transactions from the internal OTP crossbar port have their
-    // upper 20 bits replaced with OTP_EFUSE_REMAP_BASE[31:12] before being driven
-    // onto efuse_req_o; the lower 12 bits (register offset) are preserved.
-    // Set by the integrator to match the system-level address of the eFuse controller.
-    parameter km_addr_t OTP_EFUSE_REMAP_BASE = 32'h1093_0000
+module key_manager
+  import km_intf_pkg::*;
+  import axi_pkg::*;
+  import prim_mubi_pkg::*;
+#(
+  //=========================================================================
+  // Parameters
+  //=========================================================================
+  parameter int unsigned ROM_SIZE_BYTES   = 16384,  // 16KB ROM
+  parameter int unsigned SRAM_SIZE_BYTES  = 32768,  // 32KB SRAM
+  parameter int unsigned MAILBOX_DEPTH    = 16,     // Words per FIFO direction
+  // LATCHED_MEM_RDATA: Set to 1 if ROM/SRAM latch read data (data stays valid after request deasserts)
+  //                    Set to 0 if memory read data is only valid when rvalid is asserted
+  //                    This allows the CPU to use look-ahead optimization when supported by memory
+  parameter bit          LATCHED_MEM_RDATA = 1'b0,
+  // OTP/eFuse remap base: the absolute address of the eFuse controller as seen
+  // on efuse_req_o.  Transactions from the internal OTP crossbar port have their
+  // upper 20 bits replaced with OTP_EFUSE_REMAP_BASE[31:12] before being driven
+  // onto efuse_req_o; the lower 12 bits (register offset) are preserved.
+  // Set by the integrator to match the system-level address of the eFuse controller.
+  parameter km_addr_t OTP_EFUSE_REMAP_BASE = 32'h1093_0000
 ) (
-    //=========================================================================
-    // Clock and Reset
-    //=========================================================================
-    input  logic   clk_i,              // System clock
-    input  logic   cold_rst_ni,        // Cold reset: asynchronous active-low
-    input  logic   warm_rst_ni,        // Warm reset: synchronous active-low
+  //=========================================================================
+  // Clock and Reset
+  //=========================================================================
+  input  logic   clk_i,              // System clock
+  input  logic   cold_rst_ni,        // Cold reset: asynchronous active-low
+  input  logic   warm_rst_ni,        // Warm reset: synchronous active-low
 
-    //=========================================================================
-    // Mailbox AXI4-Lite Slave Interface (SEP Host Access)
-    //=========================================================================
-    // SEP host uses this interface to send/receive messages to/from KM
-    input  km_axil_req_t mbox_sep_req_i,   // SEP request
-    output km_axil_resp_t mbox_sep_resp_o,  // SEP response
+  //=========================================================================
+  // Mailbox AXI4-Lite Slave Interface (SEP Host Access)
+  //=========================================================================
+  // SEP host uses this interface to send/receive messages to/from KM
+  input  km_axil_req_t mbox_sep_req_i,   // SEP request
+  output km_axil_resp_t mbox_sep_resp_o,  // SEP response
 
-    //=========================================================================
-    // Mailbox Interrupts
-    //=========================================================================
-    output logic        mbox_irq_to_sep_o,  // Outbound data available (KM→SEP)
+  //=========================================================================
+  // Mailbox Interrupts
+  //=========================================================================
+  output logic        mbox_irq_to_sep_o,  // Outbound data available (KM→SEP)
 
-    //=========================================================================
-    // Error Condition Outputs
-    //=========================================================================
-    output logic        unrecoverable_err_o,  // Active-high: KM in trap state (no longer executing)
-    output logic        recoverable_err_o,    // Recoverable fault occurred (KMCSR register bit)
+  //=========================================================================
+  // Error Condition Outputs
+  //=========================================================================
+  output logic        unrecoverable_err_o,  // Active-high: KM in trap state (no longer executing)
+  output logic        recoverable_err_o,    // Recoverable fault occurred (KMCSR register bit)
 
-    //=========================================================================
-    // Crypto Engine AXI4-Lite Master Ports (External)
-    //=========================================================================
-    // These ports connect to external crypto accelerators
+  //=========================================================================
+  // Crypto Engine AXI4-Lite Master Ports (External)
+  //=========================================================================
+  // These ports connect to external crypto accelerators
 
-    // OTBN (Big Number Accelerator)
-    output km_axil_req_t  otbn_req_o,
-    input  km_axil_resp_t otbn_resp_i,
+  // OTBN (Big Number Accelerator)
+  output km_axil_req_t  otbn_req_o,
+  input  km_axil_resp_t otbn_resp_i,
 
-    // AES Accelerator
-    output km_axil_req_t  aes_req_o,
-    input  km_axil_resp_t aes_resp_i,
+  // AES Accelerator
+  output km_axil_req_t  aes_req_o,
+  input  km_axil_resp_t aes_resp_i,
 
-    // KMAC Accelerator
-    output km_axil_req_t  kmac_req_o,
-    input  km_axil_resp_t kmac_resp_i,
+  // KMAC Accelerator
+  output km_axil_req_t  kmac_req_o,
+  input  km_axil_resp_t kmac_resp_i,
 
-    // HMAC Accelerator
-    output km_axil_req_t  hmac_req_o,
-    input  km_axil_resp_t hmac_resp_i,
+  // HMAC Accelerator
+  output km_axil_req_t  hmac_req_o,
+  input  km_axil_resp_t hmac_resp_i,
 
-    // Adams Bridge Accelerator
-    output km_axil_req_t  abr_req_o,
-    input  km_axil_resp_t abr_resp_i,
+  // Adams Bridge Accelerator
+  output km_axil_req_t  abr_req_o,
+  input  km_axil_resp_t abr_resp_i,
 
-    // Adams Bridge ML-KEM shared-key valid IRQ (level-sensitive, active-high)
-    input  logic abr_mlkem_sharedkey_irq_i,
+  // Adams Bridge ML-KEM shared-key valid IRQ (level-sensitive, active-high)
+  input  logic abr_mlkem_sharedkey_irq_i,
 
-    // OTP/eFuse AXI-Lite master — driven by xbar port 8 (KM-local 0x0001_1xxx).
-    // addr[31:12] is replaced with OTP_EFUSE_REMAP_BASE[31:12] before the
-    // transaction is driven here; the lower 12 bits (register offset) are preserved.
-    // The integrator must connect this port to the system eFuse controller.
-    output km_axil_req_t  efuse_req_o,
-    input  km_axil_resp_t efuse_resp_i,
+  // OTP/eFuse AXI-Lite master — driven by xbar port 8 (KM-local 0x0001_1xxx).
+  // addr[31:12] is replaced with OTP_EFUSE_REMAP_BASE[31:12] before the
+  // transaction is driven here; the lower 12 bits (register offset) are preserved.
+  // The integrator must connect this port to the system eFuse controller.
+  output km_axil_req_t  efuse_req_o,
+  input  km_axil_resp_t efuse_resp_i,
 
-    //=========================================================================
-    // ROM Memory Interface (Exposed for Hard Macro Connection)
-    //=========================================================================
-    // Constitution XXIII: Hard macros instantiated at integration level
-    output km_rom_mem_req_t  rom_mem_req_o,
-    input  km_rom_mem_rsp_t rom_mem_rsp_i,
+  //=========================================================================
+  // ROM Memory Interface (Exposed for Hard Macro Connection)
+  //=========================================================================
+  // Constitution XXIII: Hard macros instantiated at integration level
+  output km_rom_mem_req_t  rom_mem_req_o,
+  input  km_rom_mem_rsp_t rom_mem_rsp_i,
 
-    //=========================================================================
-    // SRAM Memory Interface (Exposed for Hard Macro Connection)
-    //=========================================================================
-    // Constitution XXIII: Hard macros instantiated at integration level
-    output km_sram_mem_req_t sram_mem_req_o,
-    input  km_sram_mem_rsp_t sram_mem_rsp_i,
+  //=========================================================================
+  // SRAM Memory Interface (Exposed for Hard Macro Connection)
+  //=========================================================================
+  // Constitution XXIII: Hard macros instantiated at integration level
+  output km_sram_mem_req_t sram_mem_req_o,
+  input  km_sram_mem_rsp_t sram_mem_rsp_i,
 
-    //=========================================================================
-    // DRBG AXI-Stream Interface (KM is slave, DRBG is master)
-    //=========================================================================
-    input  km_drbg_axis_req_t drbg_axis_req_i,
-    output km_drbg_axis_resp_t drbg_axis_resp_o,
+  //=========================================================================
+  // DRBG AXI-Stream Interface (KM is slave, DRBG is master)
+  //=========================================================================
+  input  km_drbg_axis_req_t drbg_axis_req_i,
+  output km_drbg_axis_resp_t drbg_axis_resp_o,
 
-    //=========================================================================
-    // SEP OTP Data Interface
-    //=========================================================================
-    input  km_otp_data_t otp_data_i,       // Differentially encoded OTP data
+  //=========================================================================
+  // SEP OTP Data Interface
+  //=========================================================================
+  input  km_otp_data_t otp_data_i,       // Differentially encoded OTP data
 
-    //=========================================================================
-    // Wipe State
-    //=========================================================================
-    // Rising edge sets IRQ_STATUS.WIPE_STATE and zeros entire KPV next cycle
-    input  logic    wipe_state_i,
+  //=========================================================================
+  // Wipe State
+  //=========================================================================
+  // Rising edge sets IRQ_STATUS.WIPE_STATE and zeros entire KPV next cycle
+  input  logic    wipe_state_i,
 
-    //=========================================================================
-    // Test/Debug
-    //=========================================================================
-    input  logic   test_en_i,          // DFT test-enable
-    input  logic   scan_rst_ni         // Scan reset (active-low, bypasses reset synchronizer)
+  //=========================================================================
+  // Test/Debug
+  //=========================================================================
+  input  logic   test_en_i,          // DFT test-enable
+  input  logic   scan_rst_ni         // Scan reset (active-low, bypasses reset synchronizer)
 );
 
-    `include "prim_assert.sv"
+  `include "prim_assert.sv"
 
-    //=========================================================================
-    // Parameter Validation
-    //=========================================================================
-    // Constitution VI: Parameter validation with ASSERT_INIT
+  //=========================================================================
+  // Parameter Validation
+  //=========================================================================
+  // Constitution VI: Parameter validation with ASSERT_INIT
 
-    // Pinned against the address map rather than a literal: the memory sizes and
-    // the decode ranges have to agree, and the map is the one that also feeds the
-    // write-lock and exec region indices.
-    `OCAH_OT_ASSERT_INIT(RomSizeValid_A, ROM_SIZE_BYTES == km_intf_pkg::ROM_SIZE_BYTES)
-    `OCAH_OT_ASSERT_INIT(SramSizeValid_A, SRAM_SIZE_BYTES == km_intf_pkg::SRAM_SIZE_BYTES)
-    `OCAH_OT_ASSERT_INIT(MailboxDepthMin_A, MAILBOX_DEPTH >= 16)
-    `OCAH_OT_ASSERT_INIT(MailboxDepthPow2_A, (MAILBOX_DEPTH & (MAILBOX_DEPTH - 1)) == 0)
+  // Pinned against the address map rather than a literal: the memory sizes and
+  // the decode ranges have to agree, and the map is the one that also feeds the
+  // write-lock and exec region indices.
+  `OCAH_OT_ASSERT_INIT(RomSizeValid_A, ROM_SIZE_BYTES == km_intf_pkg::ROM_SIZE_BYTES)
+  `OCAH_OT_ASSERT_INIT(SramSizeValid_A, SRAM_SIZE_BYTES == km_intf_pkg::SRAM_SIZE_BYTES)
+  `OCAH_OT_ASSERT_INIT(MailboxDepthMin_A, MAILBOX_DEPTH >= 16)
+  `OCAH_OT_ASSERT_INIT(MailboxDepthPow2_A, (MAILBOX_DEPTH & (MAILBOX_DEPTH - 1)) == 0)
 
-    //=========================================================================
-    // Internal Signals
-    //=========================================================================
+  //=========================================================================
+  // Internal Signals
+  //=========================================================================
 
-    // Reset signals
-    logic soft_rst_n;       // Soft reset from KMCSR (active-low, asserted on code match)
-    logic rst_cold_aasd_n;  // Cold reset output from conditioner (AASD, for all-KM reset)
-    logic rst_warm_sync_n;  // Warm reset output from conditioner (synchronous, for CPU + fabric)
+  // Reset signals
+  logic soft_rst_n;       // Soft reset from KMCSR (active-low, asserted on code match)
+  logic rst_cold_aasd_n;  // Cold reset output from conditioner (AASD, for all-KM reset)
+  logic rst_warm_sync_n;  // Warm reset output from conditioner (synchronous, for CPU + fabric)
 
-    // CPU AXI-Lite master interface (for peripherals via crossbar)
-    km_axil_req_t  cpu_axil_req;
-    km_axil_resp_t cpu_axil_resp;
+  // CPU AXI-Lite master interface (for peripherals via crossbar)
+  km_axil_req_t  cpu_axil_req;
+  km_axil_resp_t cpu_axil_resp;
 
-    // CPU IRQ inputs
-    logic cpu_irq;       // KMCSR aggregated (sticky error sources)
-    logic cpu_mbox_irq;  // Mailbox inbound (direct level)
+  // CPU IRQ inputs
+  logic cpu_irq;       // KMCSR aggregated (sticky error sources)
+  logic cpu_mbox_irq;  // Mailbox inbound (direct level)
 
-    // ROM/SRAM parity errors (from CPU wrapper)
-    logic cpu_rom_parity_err;
-    logic cpu_sram_parity_err;
-    logic cpu_rom_write_err;  // ROM write attempt detected
+  // ROM/SRAM parity errors (from CPU wrapper)
+  logic cpu_rom_parity_err;
+  logic cpu_sram_parity_err;
+  logic cpu_rom_write_err;  // ROM write attempt detected
 
-    // Scrambler control (from KMCSR to SRAM interface)
-    logic [31:0] scrambler_key;
-    logic        scrambler_enable;
-    logic        scrambler_lock;
+  // Scrambler control (from KMCSR to SRAM interface)
+  logic [31:0] scrambler_key;
+  logic        scrambler_enable;
+  logic        scrambler_lock;
 
-    // SRAM write-lock (from KMCSR to CPU/SRAM) and violation (from CPU to KMCSR)
-    logic [31:0] sram_lock_bits;
-    logic [31:0] sram_write_lock_violation_region;
+  // SRAM write-lock (from KMCSR to CPU/SRAM) and violation (from CPU to KMCSR)
+  logic [31:0] sram_lock_bits;
+  logic [31:0] sram_write_lock_violation_region;
 
-    // Execute-permission whitelist mode (from KMCSR to CPU) and violation (from CPU to KMCSR)
-    logic        sram_exec_mode;
-    logic        exec_violation;
+  // Execute-permission whitelist mode (from KMCSR to CPU) and violation (from CPU to KMCSR)
+  logic        sram_exec_mode;
+  logic        exec_violation;
 
-    // ROM lockout violation (from CPU to KMCSR)
-    logic        rom_access_violation;
+  // ROM lockout violation (from CPU to KMCSR)
+  logic        rom_access_violation;
 
-    // Crossbar slave port (from CPU)
-    km_axil_req_t  xbar_slv_req;
-    km_axil_resp_t xbar_slv_resp;
+  // Crossbar slave port (from CPU)
+  km_axil_req_t  xbar_slv_req;
+  km_axil_resp_t xbar_slv_resp;
 
-    // Crossbar master ports (to peripherals)
-    km_axil_req_t  kpv_req;
-    km_axil_resp_t kpv_resp;
-    km_axil_req_t  kmcsr_req;
-    km_axil_resp_t kmcsr_resp;
-    km_axil_req_t  mbox_req;
-    km_axil_resp_t mbox_resp;
-    km_axil_req_t  drbg_req;
-    km_axil_resp_t drbg_resp;
-    // OTP/eFuse crossbar master port (index 8); wired to efuse_req_o with remap
-    km_axil_req_t  otp_axil_req;
-    km_axil_resp_t otp_axil_resp;
-
-
-    // KMCSR hardware inputs
-    logic        mbox_irq_to_km;
-    logic        drbg_error;
-
-    // Wipe: rising-edge detect to one-cycle pulse
-    logic        wipe_event_d;
-    logic        wipe_event;
-    logic        wipe_pulse;
-
-    // CPU trap output (unrecoverable: KM no longer executing)
-    logic cpu_trap;
-
-    // KMCSR IRQ aggregation output
-    logic km_irq;
-
-    // KMCSR → CPU: runtime IRQ vector (reset default 0x10 via register reset)
-    logic [31:0] irq_entry_addr;
-
-    //=========================================================================
-    // Reset Conditioning
-    //=========================================================================
-    // Dual reset generation.
-    //   Cold path (rst_cold_aasd_no): AASD, all KM components.
-    //   Warm path (rst_warm_sync_no): synchronous, CPU + internal AXI fabric.
-    //   Warm sources: cold reset deasserted, warm_rst_ni, or soft_rst_n from KMCSR.
-
-    km_reset_conditioner #(
-        .MIN_RESET_CYCLES(10)
-    ) u_reset_conditioner (
-        .clk_i          (clk_i),
-        .cold_rst_ni    (cold_rst_ni),    // Async cold reset (AASD source)
-        .soft_rst_ni    (soft_rst_n),     // Soft reset (from KMCSR; sync to clk_i)
-        .warm_rst_ni    (warm_rst_ni),    // Warm reset (synchronous, active-low)
-        .scan_rst_ni    (scan_rst_ni),
-        .scanmode_i     (prim_mubi_pkg::mubi4_bool_to_mubi(test_en_i)),
-        .rst_cold_aasd_no(rst_cold_aasd_n),
-        .rst_warm_sync_no(rst_warm_sync_n)
-    );
-
-    // Wipe KPV on either external wipe_state_i or CPU trap.
-    // Pulse once on rising edge to avoid repeated full-regfile clears.
-    assign wipe_event = wipe_state_i | cpu_trap;
-    always_ff @(posedge clk_i or negedge rst_cold_aasd_n) begin
-        if (!rst_cold_aasd_n) wipe_event_d <= 1'b0;
-        else                  wipe_event_d <= wipe_event;
-    end
-    assign wipe_pulse = wipe_event & ~wipe_event_d;
-
-    //=========================================================================
-    // CPU Wrapper Instance
-    //=========================================================================
-
-    // AXI bus error outputs from CPU wrapper
-    logic cpu_axi_slverr;
-    logic cpu_axi_decerr;
-
-    picorv32_wrapper #(
-        .axil_req_t (km_axil_req_t),
-        .axil_resp_t(km_axil_resp_t),
-        .LATCHED_MEM_RDATA(LATCHED_MEM_RDATA)
-    ) u_cpu (
-        .clk_i              (clk_i),
-        .rst_ni             (rst_cold_aasd_n),  // AASD cold reset (memory interfaces, parity)
-        .rst_sync_ni        (rst_warm_sync_n),  // Synchronous warm reset (PicoRV32 CPU core)
-        // ROM interface (exposed at top level, with parity checking)
-        // The CPU wrapper internally instantiates km_rom_interface
-        .rom_mem_req_o      (rom_mem_req_o),
-        .rom_mem_rsp_i      (rom_mem_rsp_i),
-        .rom_parity_err_o   (cpu_rom_parity_err),
-        .rom_write_err_o    (cpu_rom_write_err),
-        // SRAM interface (exposed at top level, with scrambling and parity checking)
-        // The CPU wrapper internally instantiates km_sram_interface
-        .sram_mem_req_o     (sram_mem_req_o),
-        .sram_mem_rsp_i     (sram_mem_rsp_i),
-        .sram_parity_err_o  (cpu_sram_parity_err),
-        // Scrambler control (from KMCSR)
-        .scrambler_key_i    (scrambler_key),
-        .scrambler_en_i     (scrambler_enable),
-        // SRAM write-lock (from KMCSR)
-        .sram_lock_bits_i   (sram_lock_bits),
-        .sram_write_lock_violation_region_o (sram_write_lock_violation_region),
-        // Execute-permission whitelist (from/to KMCSR)
-        .sram_exec_mode_i   (sram_exec_mode),
-        .exec_violation_o   (exec_violation),
-        .rom_access_violation_o (rom_access_violation),
-        // AXI interface for peripherals only
-        .axi_mst_req_o      (cpu_axil_req),
-        .axi_mst_resp_i     (cpu_axil_resp),
-        .irq_i              (cpu_irq),
-        .mbox_irq_i         (cpu_mbox_irq),
-        .abr_sharedkey_irq_i (abr_mlkem_sharedkey_irq_i),
-        .irq_entry_addr_i   (irq_entry_addr),
-        .trap_o             (cpu_trap),
-        // AXI bus error outputs
-        .axi_slverr_o       (cpu_axi_slverr),
-        .axi_decerr_o       (cpu_axi_decerr)
-    );
-
-    // Connect CPU AXI master to crossbar slave port
-    assign xbar_slv_req = cpu_axil_req;
-    assign cpu_axil_resp = xbar_slv_resp;
-
-    // Connect CPU IRQs: KMCSR aggregated errors + direct mailbox level
-    assign cpu_irq     = km_irq;
-    assign cpu_mbox_irq = mbox_irq_to_km;
-
-    // Error condition outputs: unrecoverable = CPU trap; recoverable = KMCSR register
-    assign unrecoverable_err_o = cpu_trap;
-
-    // Remap xbar OTP port (index 8) to the integrator-supplied base address.
-    // The crossbar delivers KM-local offsets (0x0001_1xxx); replace addr[31:12]
-    // with OTP_EFUSE_REMAP_BASE[31:12] so the eFuse controller receives the
-    // absolute address it was instantiated at.
-    always_comb begin
-        efuse_req_o         = otp_axil_req;
-        efuse_req_o.aw.addr = {OTP_EFUSE_REMAP_BASE[31:12], otp_axil_req.aw.addr[11:0]};
-        efuse_req_o.ar.addr = {OTP_EFUSE_REMAP_BASE[31:12], otp_axil_req.ar.addr[11:0]};
-    end
-    assign otp_axil_resp = efuse_resp_i;
+  // Crossbar master ports (to peripherals)
+  km_axil_req_t  kpv_req;
+  km_axil_resp_t kpv_resp;
+  km_axil_req_t  kmcsr_req;
+  km_axil_resp_t kmcsr_resp;
+  km_axil_req_t  mbox_req;
+  km_axil_resp_t mbox_resp;
+  km_axil_req_t  drbg_req;
+  km_axil_resp_t drbg_resp;
+  // OTP/eFuse crossbar master port (index 8); wired to efuse_req_o with remap
+  km_axil_req_t  otp_axil_req;
+  km_axil_resp_t otp_axil_resp;
 
 
-    //=========================================================================
-    // AXI-Lite Crossbar Instance
-    //=========================================================================
+  // KMCSR hardware inputs
+  logic        mbox_irq_to_km;
+  logic        drbg_error;
 
-    km_axi_lite_xbar #(
-        .axil_req_t (km_axil_req_t),
-        .axil_resp_t(km_axil_resp_t)
-    ) u_xbar (
-        .clk_i          (clk_i),
-        .rst_ni          (rst_warm_sync_n),  // Warm reset to quiesce internal AXI fabric
-        .test_i          (test_en_i),
-        // Slave port: from CPU
-        .slv_req_i       (xbar_slv_req),
-        .slv_resp_o      (xbar_slv_resp),
-        // Master ports: to peripherals
-        .kpv_req_o       (kpv_req),
-        .kpv_resp_i      (kpv_resp),
-        .kmcsr_req_o     (kmcsr_req),
-        .kmcsr_resp_i    (kmcsr_resp),
-        .drbg_req_o      (drbg_req),
-        .drbg_resp_i     (drbg_resp),
-        .mbox_req_o      (mbox_req),
-        .mbox_resp_i     (mbox_resp),
-        // External crypto engine ports
-        .otbn_req_o      (otbn_req_o),
-        .otbn_resp_i     (otbn_resp_i),
-        .aes_req_o       (aes_req_o),
-        .aes_resp_i      (aes_resp_i),
-        .kmac_req_o      (kmac_req_o),
-        .kmac_resp_i     (kmac_resp_i),
-        .hmac_req_o      (hmac_req_o),
-        .hmac_resp_i     (hmac_resp_i),
-        .abr_req_o       (abr_req_o),
-        .abr_resp_i      (abr_resp_i),
-        // OTP/eFuse pass-through (index 8); addr remap applied before efuse_req_o
-        .otp_req_o       (otp_axil_req),
-        .otp_resp_i      (otp_axil_resp)
-    );
+  // Wipe: rising-edge detect to one-cycle pulse
+  logic        wipe_event_d;
+  logic        wipe_event;
+  logic        wipe_pulse;
 
-    //=========================================================================
-    // DRBG Sampler Instance
-    //=========================================================================
+  // CPU trap output (unrecoverable: KM no longer executing)
+  logic cpu_trap;
 
-    km_drbg_sampler #(
-        .axil_req_t (km_axil_req_t),
-        .axil_resp_t(km_axil_resp_t)
-    ) u_drbg_sampler (
-        .clk_i           (clk_i),
-        .cold_rst_ni     (rst_cold_aasd_n),
-        .warm_rst_ni     (rst_warm_sync_n),
-        .axil_req_i      (drbg_req),
-        .axil_resp_o     (drbg_resp),
-        .drbg_axis_req_i (drbg_axis_req_i),
-        .drbg_axis_resp_o(drbg_axis_resp_o),
-        .drbg_error_o    (drbg_error)
-    );
+  // KMCSR IRQ aggregation output
+  logic km_irq;
 
-    //=========================================================================
-    // KPV Instance (Key and Policy Vault)
-    //=========================================================================
+  // KMCSR → CPU: runtime IRQ vector (reset default 0x10 via register reset)
+  logic [31:0] irq_entry_addr;
 
-    km_kpv #(
-        .axil_req_t  (km_axil_req_t),
-        .axil_resp_t (km_axil_resp_t)
-    ) u_kpv (
-        .clk_i          (clk_i),
-        .cold_rst_ni    (rst_cold_aasd_n),
-        .warm_rst_ni    (rst_warm_sync_n),
-        .km_axil_req_i  (kpv_req),
-        .km_axil_resp_o (kpv_resp),
-        .wipe_pulse_i   (wipe_pulse)
-    );
+  //=========================================================================
+  // Reset Conditioning
+  //=========================================================================
+  // Dual reset generation.
+  //   Cold path (rst_cold_aasd_no): AASD, all KM components.
+  //   Warm path (rst_warm_sync_no): synchronous, CPU + internal AXI fabric.
+  //   Warm sources: cold reset deasserted, warm_rst_ni, or soft_rst_n from KMCSR.
 
-    //=========================================================================
-    // Mailbox Instance
-    //=========================================================================
+  km_reset_conditioner #(
+    .MIN_RESET_CYCLES(10)
+  ) u_reset_conditioner (
+    .clk_i          (clk_i),
+    .cold_rst_ni    (cold_rst_ni),    // Async cold reset (AASD source)
+    .soft_rst_ni    (soft_rst_n),     // Soft reset (from KMCSR; sync to clk_i)
+    .warm_rst_ni    (warm_rst_ni),    // Warm reset (synchronous, active-low)
+    .scan_rst_ni    (scan_rst_ni),
+    .scanmode_i     (prim_mubi_pkg::mubi4_bool_to_mubi(test_en_i)),
+    .rst_cold_aasd_no(rst_cold_aasd_n),
+    .rst_warm_sync_no(rst_warm_sync_n)
+  );
 
-    km_mailbox #(
-        .MAILBOX_DEPTH(MAILBOX_DEPTH),
-        .km_axil_req_t (km_axil_req_t),
-        .km_axil_resp_t(km_axil_resp_t),
-        .sep_axil_req_t (km_axil_req_t),  // SEP uses same types as KM for now
-        .sep_axil_resp_t(km_axil_resp_t)
-    ) u_mailbox (
-        .clk_i              (clk_i),
-        .cold_rst_ni        (rst_cold_aasd_n),
-        .warm_rst_ni        (rst_warm_sync_n),
-        .test_en_i          (test_en_i),
-        // KM CPU AXI4-Lite Slave Interface (from crossbar)
-        .km_axil_req_i      (mbox_req),
-        .km_axil_resp_o     (mbox_resp),
-        // SEP Host AXI4-Lite Slave Interface (from top level)
-        .sep_axil_req_i     (mbox_sep_req_i),
-        .sep_axil_resp_o    (mbox_sep_resp_o),
-        // Interrupt Outputs
-        .mbox_irq_to_km_o   (mbox_irq_to_km),
-        .mbox_irq_to_sep_o  (mbox_irq_to_sep_o)
-    );
+  // Wipe KPV on either external wipe_state_i or CPU trap.
+  // Pulse once on rising edge to avoid repeated full-regfile clears.
+  assign wipe_event = wipe_state_i | cpu_trap;
+  always_ff @(posedge clk_i or negedge rst_cold_aasd_n) begin
+    if (!rst_cold_aasd_n) wipe_event_d <= 1'b0;
+    else wipe_event_d <= wipe_event;
+  end
+  assign wipe_pulse = wipe_event & ~wipe_event_d;
 
-    //=========================================================================
-    // KMCSR Instance
-    //=========================================================================
+  //=========================================================================
+  // CPU Wrapper Instance
+  //=========================================================================
 
-    km_csr #(
-        .axil_req_t (km_axil_req_t),
-        .axil_resp_t(km_axil_resp_t)
-    ) u_kmcsr (
-        .clk_i              (clk_i),
-        .cold_rst_ni        (rst_cold_aasd_n),
-        .warm_rst_ni        (rst_warm_sync_n),
-        // AXI4-Lite Slave Interface (from crossbar)
-        .axil_req_i         (kmcsr_req),
-        .axil_resp_o         (kmcsr_resp),
-        // IRQ Event Inputs
-        .rom_parity_err_i   (cpu_rom_parity_err),
-        .sram_parity_err_i  (cpu_sram_parity_err),
-        .rom_write_err_i    (cpu_rom_write_err),
-        .axi_slverr_i       (cpu_axi_slverr),
-        .axi_decerr_i       (cpu_axi_decerr),
-        .drbg_err_i         (drbg_error),
-        .wipe_state_i       (wipe_pulse),
-        // Scrambler Control Outputs
-        .scrambler_key_o    (scrambler_key),
-        .scrambler_enable_o (scrambler_enable),
-        .scrambler_lock_o   (scrambler_lock),
-        // SRAM write-lock outputs and violation input
-        .sram_lock_bits_o   (sram_lock_bits),
-        .sram_write_lock_violation_region_i(sram_write_lock_violation_region),
-        // Execute-permission whitelist mode output and violation input
-        .sram_exec_mode_o   (sram_exec_mode),
-        .exec_violation_i   (exec_violation),
-        .rom_access_violation_i (rom_access_violation),
-        // Aggregated IRQ Output (to CPU)
-        .km_irq_o           (km_irq),
-        .irq_entry_addr_o   (irq_entry_addr),
-        // Soft Reset Output (active-low: 0 = reset, 1 = normal)
-        .soft_rst_o         (soft_rst_n),
-        // Recoverable error event output
-        .recoverable_err_o  (recoverable_err_o),
-        // Virtual UART Interface (directly probed by testbench)
-        // Outputs are unconnected (testbench probes register values)
-        // Inputs tied off (testbench can force values if needed)
-        .vuart_tx_data_o    (),
-        .vuart_tx_valid_o   (),
-        .vuart_rx_data_i    (8'h00),
-        .vuart_rx_valid_i   (1'b0),
-        // Test Protocol Interface (directly probed by testbench)
-        // Outputs are unconnected (testbench probes register values)
-        // Inputs tied off (testbench writes via interface)
-        .tb_result_o        (),
-        .tb_signature_o     (),
-        .tb_errcode_o       (),
-        .tb_subtest_o       (),
-        .tb_cmd_o           (),
-        .tb_cmd_arg_o       (),
-        .tb_cmd_next_i      (32'h0),
-        .tb_cmd_status_i    (32'h0),
-        .tb_cmd_result_i    (32'h0),
-        // SEP OTP Data Interface
-        .otp_data_i         (otp_data_i)
-    );
+  // AXI bus error outputs from CPU wrapper
+  logic cpu_axi_slverr;
+  logic cpu_axi_decerr;
+
+  picorv32_wrapper #(
+    .axil_req_t (km_axil_req_t),
+    .axil_resp_t(km_axil_resp_t),
+    .LATCHED_MEM_RDATA(LATCHED_MEM_RDATA)
+  ) u_cpu (
+    .clk_i              (clk_i),
+    .rst_ni             (rst_cold_aasd_n),  // AASD cold reset (memory interfaces, parity)
+    .rst_sync_ni        (rst_warm_sync_n),  // Synchronous warm reset (PicoRV32 CPU core)
+    // ROM interface (exposed at top level, with parity checking)
+    // The CPU wrapper internally instantiates km_rom_interface
+    .rom_mem_req_o      (rom_mem_req_o),
+    .rom_mem_rsp_i      (rom_mem_rsp_i),
+    .rom_parity_err_o   (cpu_rom_parity_err),
+    .rom_write_err_o    (cpu_rom_write_err),
+    // SRAM interface (exposed at top level, with scrambling and parity checking)
+    // The CPU wrapper internally instantiates km_sram_interface
+    .sram_mem_req_o     (sram_mem_req_o),
+    .sram_mem_rsp_i     (sram_mem_rsp_i),
+    .sram_parity_err_o  (cpu_sram_parity_err),
+    // Scrambler control (from KMCSR)
+    .scrambler_key_i    (scrambler_key),
+    .scrambler_en_i     (scrambler_enable),
+    // SRAM write-lock (from KMCSR)
+    .sram_lock_bits_i   (sram_lock_bits),
+    .sram_write_lock_violation_region_o (sram_write_lock_violation_region),
+    // Execute-permission whitelist (from/to KMCSR)
+    .sram_exec_mode_i   (sram_exec_mode),
+    .exec_violation_o   (exec_violation),
+    .rom_access_violation_o (rom_access_violation),
+    // AXI interface for peripherals only
+    .axi_mst_req_o      (cpu_axil_req),
+    .axi_mst_resp_i     (cpu_axil_resp),
+    .irq_i              (cpu_irq),
+    .mbox_irq_i         (cpu_mbox_irq),
+    .abr_sharedkey_irq_i (abr_mlkem_sharedkey_irq_i),
+    .irq_entry_addr_i   (irq_entry_addr),
+    .trap_o             (cpu_trap),
+    // AXI bus error outputs
+    .axi_slverr_o       (cpu_axi_slverr),
+    .axi_decerr_o       (cpu_axi_decerr)
+  );
+
+  // Connect CPU AXI master to crossbar slave port
+  assign xbar_slv_req = cpu_axil_req;
+  assign cpu_axil_resp = xbar_slv_resp;
+
+  // Connect CPU IRQs: KMCSR aggregated errors + direct mailbox level
+  assign cpu_irq     = km_irq;
+  assign cpu_mbox_irq = mbox_irq_to_km;
+
+  // Error condition outputs: unrecoverable = CPU trap; recoverable = KMCSR register
+  assign unrecoverable_err_o = cpu_trap;
+
+  // Remap xbar OTP port (index 8) to the integrator-supplied base address.
+  // The crossbar delivers KM-local offsets (0x0001_1xxx); replace addr[31:12]
+  // with OTP_EFUSE_REMAP_BASE[31:12] so the eFuse controller receives the
+  // absolute address it was instantiated at.
+  always_comb begin
+    efuse_req_o         = otp_axil_req;
+    efuse_req_o.aw.addr = {OTP_EFUSE_REMAP_BASE[31:12], otp_axil_req.aw.addr[11:0]};
+    efuse_req_o.ar.addr = {OTP_EFUSE_REMAP_BASE[31:12], otp_axil_req.ar.addr[11:0]};
+  end
+  assign otp_axil_resp = efuse_resp_i;
+
+
+  //=========================================================================
+  // AXI-Lite Crossbar Instance
+  //=========================================================================
+
+  km_axi_lite_xbar #(
+    .axil_req_t (km_axil_req_t),
+    .axil_resp_t(km_axil_resp_t)
+  ) u_xbar (
+    .clk_i          (clk_i),
+    .rst_ni          (rst_warm_sync_n),  // Warm reset to quiesce internal AXI fabric
+    .test_i          (test_en_i),
+    // Slave port: from CPU
+    .slv_req_i       (xbar_slv_req),
+    .slv_resp_o      (xbar_slv_resp),
+    // Master ports: to peripherals
+    .kpv_req_o       (kpv_req),
+    .kpv_resp_i      (kpv_resp),
+    .kmcsr_req_o     (kmcsr_req),
+    .kmcsr_resp_i    (kmcsr_resp),
+    .drbg_req_o      (drbg_req),
+    .drbg_resp_i     (drbg_resp),
+    .mbox_req_o      (mbox_req),
+    .mbox_resp_i     (mbox_resp),
+    // External crypto engine ports
+    .otbn_req_o      (otbn_req_o),
+    .otbn_resp_i     (otbn_resp_i),
+    .aes_req_o       (aes_req_o),
+    .aes_resp_i      (aes_resp_i),
+    .kmac_req_o      (kmac_req_o),
+    .kmac_resp_i     (kmac_resp_i),
+    .hmac_req_o      (hmac_req_o),
+    .hmac_resp_i     (hmac_resp_i),
+    .abr_req_o       (abr_req_o),
+    .abr_resp_i      (abr_resp_i),
+    // OTP/eFuse pass-through (index 8); addr remap applied before efuse_req_o
+    .otp_req_o       (otp_axil_req),
+    .otp_resp_i      (otp_axil_resp)
+  );
+
+  //=========================================================================
+  // DRBG Sampler Instance
+  //=========================================================================
+
+  km_drbg_sampler #(
+    .axil_req_t (km_axil_req_t),
+    .axil_resp_t(km_axil_resp_t)
+  ) u_drbg_sampler (
+    .clk_i           (clk_i),
+    .cold_rst_ni     (rst_cold_aasd_n),
+    .warm_rst_ni     (rst_warm_sync_n),
+    .axil_req_i      (drbg_req),
+    .axil_resp_o     (drbg_resp),
+    .drbg_axis_req_i (drbg_axis_req_i),
+    .drbg_axis_resp_o(drbg_axis_resp_o),
+    .drbg_error_o    (drbg_error)
+  );
+
+  //=========================================================================
+  // KPV Instance (Key and Policy Vault)
+  //=========================================================================
+
+  km_kpv #(
+    .axil_req_t  (km_axil_req_t),
+    .axil_resp_t (km_axil_resp_t)
+  ) u_kpv (
+    .clk_i          (clk_i),
+    .cold_rst_ni    (rst_cold_aasd_n),
+    .warm_rst_ni    (rst_warm_sync_n),
+    .km_axil_req_i  (kpv_req),
+    .km_axil_resp_o (kpv_resp),
+    .wipe_pulse_i   (wipe_pulse)
+  );
+
+  //=========================================================================
+  // Mailbox Instance
+  //=========================================================================
+
+  km_mailbox #(
+    .MAILBOX_DEPTH(MAILBOX_DEPTH),
+    .km_axil_req_t (km_axil_req_t),
+    .km_axil_resp_t(km_axil_resp_t),
+    .sep_axil_req_t (km_axil_req_t),  // SEP uses same types as KM for now
+    .sep_axil_resp_t(km_axil_resp_t)
+  ) u_mailbox (
+    .clk_i              (clk_i),
+    .cold_rst_ni        (rst_cold_aasd_n),
+    .warm_rst_ni        (rst_warm_sync_n),
+    .test_en_i          (test_en_i),
+    // KM CPU AXI4-Lite Slave Interface (from crossbar)
+    .km_axil_req_i      (mbox_req),
+    .km_axil_resp_o     (mbox_resp),
+    // SEP Host AXI4-Lite Slave Interface (from top level)
+    .sep_axil_req_i     (mbox_sep_req_i),
+    .sep_axil_resp_o    (mbox_sep_resp_o),
+    // Interrupt Outputs
+    .mbox_irq_to_km_o   (mbox_irq_to_km),
+    .mbox_irq_to_sep_o  (mbox_irq_to_sep_o)
+  );
+
+  //=========================================================================
+  // KMCSR Instance
+  //=========================================================================
+
+  km_csr #(
+    .axil_req_t (km_axil_req_t),
+    .axil_resp_t(km_axil_resp_t)
+  ) u_kmcsr (
+    .clk_i              (clk_i),
+    .cold_rst_ni        (rst_cold_aasd_n),
+    .warm_rst_ni        (rst_warm_sync_n),
+    // AXI4-Lite Slave Interface (from crossbar)
+    .axil_req_i         (kmcsr_req),
+    .axil_resp_o         (kmcsr_resp),
+    // IRQ Event Inputs
+    .rom_parity_err_i   (cpu_rom_parity_err),
+    .sram_parity_err_i  (cpu_sram_parity_err),
+    .rom_write_err_i    (cpu_rom_write_err),
+    .axi_slverr_i       (cpu_axi_slverr),
+    .axi_decerr_i       (cpu_axi_decerr),
+    .drbg_err_i         (drbg_error),
+    .wipe_state_i       (wipe_pulse),
+    // Scrambler Control Outputs
+    .scrambler_key_o    (scrambler_key),
+    .scrambler_enable_o (scrambler_enable),
+    .scrambler_lock_o   (scrambler_lock),
+    // SRAM write-lock outputs and violation input
+    .sram_lock_bits_o   (sram_lock_bits),
+    .sram_write_lock_violation_region_i(sram_write_lock_violation_region),
+    // Execute-permission whitelist mode output and violation input
+    .sram_exec_mode_o   (sram_exec_mode),
+    .exec_violation_i   (exec_violation),
+    .rom_access_violation_i (rom_access_violation),
+    // Aggregated IRQ Output (to CPU)
+    .km_irq_o           (km_irq),
+    .irq_entry_addr_o   (irq_entry_addr),
+    // Soft Reset Output (active-low: 0 = reset, 1 = normal)
+    .soft_rst_o         (soft_rst_n),
+    // Recoverable error event output
+    .recoverable_err_o  (recoverable_err_o),
+    // Virtual UART Interface (directly probed by testbench)
+    // Outputs are unconnected (testbench probes register values)
+    // Inputs tied off (testbench can force values if needed)
+    .vuart_tx_data_o    (),
+    .vuart_tx_valid_o   (),
+    .vuart_rx_data_i    (8'h00),
+    .vuart_rx_valid_i   (1'b0),
+    // Test Protocol Interface (directly probed by testbench)
+    // Outputs are unconnected (testbench probes register values)
+    // Inputs tied off (testbench writes via interface)
+    .tb_result_o        (),
+    .tb_signature_o     (),
+    .tb_errcode_o       (),
+    .tb_subtest_o       (),
+    .tb_cmd_o           (),
+    .tb_cmd_arg_o       (),
+    .tb_cmd_next_i      (32'h0),
+    .tb_cmd_status_i    (32'h0),
+    .tb_cmd_result_i    (32'h0),
+    // SEP OTP Data Interface
+    .otp_data_i         (otp_data_i)
+  );
 
 endmodule : key_manager
 

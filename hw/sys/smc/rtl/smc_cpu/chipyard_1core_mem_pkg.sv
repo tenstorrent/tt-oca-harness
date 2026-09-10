@@ -12,18 +12,19 @@ package chipyard_1core_mem_pkg;
   // Memory Parameters
   localparam int unsigned NUM_SRAM_BANKS = 4;
   // define the following at minimum widths
-	localparam int unsigned NUM_ICACHE_TAG_BANKS = 1;
-	localparam int unsigned NUM_ICACHE_DATA_BANKS = 1;
-	localparam int unsigned NUM_DCACHE_TAG_BANKS = 1;
-	localparam int unsigned NUM_DCACHE_DATA_BANKS = 1;
+  localparam int unsigned NUM_ICACHE_TAG_BANKS = 1;
+  localparam int unsigned NUM_ICACHE_DATA_BANKS = 1;
+  localparam int unsigned NUM_DCACHE_TAG_BANKS = 1;
+  localparam int unsigned NUM_DCACHE_DATA_BANKS = 1;
 
   // SRAM Size Parameters, 2^SRAM_SIZE bytes
-	localparam bit [5:0] SRAM_SIZE = 16;
+  localparam bit [5:0] SRAM_SIZE = 16;
 
   `include "chipyard_mem_defines.svh"
 
   // define all the structs needed for chipyard cpu memory interfaces
-  `CHIPYARD_MEM_REQ_T(scratch_ram_req_t, SMC_1CORE_SCRATCH_RAM_ADDR_WIDTH, SMC_1CORE_SCRATCH_RAM_DATA_WIDTH, 1)
+  `CHIPYARD_MEM_REQ_T(scratch_ram_req_t, SMC_1CORE_SCRATCH_RAM_ADDR_WIDTH,
+                      SMC_1CORE_SCRATCH_RAM_DATA_WIDTH, 1)
   `CHIPYARD_MEM_RSP_T(scratch_ram_rsp_t, SMC_1CORE_SCRATCH_RAM_DATA_WIDTH)
 
   // define the following at minimum widths

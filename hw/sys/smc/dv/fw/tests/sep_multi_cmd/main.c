@@ -7,7 +7,7 @@
  * Tests multiple sequential command/response exchanges between SMC firmware
  * and the testbench acting as SEP via the AXI interface.
  *
- * Spec basis: OCH Specification §Cryptographic Subsystem — SEP provides
+ * Spec basis: OCAH Specification §Cryptographic Subsystem — SEP provides
  * security services to the rest of the system with repeated service calls.
  *
  * Protocol (NUM_ROUNDS rounds via scratch registers):

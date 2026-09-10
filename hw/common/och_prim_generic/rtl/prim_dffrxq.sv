@@ -6,10 +6,10 @@
 //
 //--------------------------------------------------
 module prim_dffrxq (
-    input i_CK,
-    input i_D,
-    input i_RN,
-    output wire o_Q
+  input i_CK,
+  input i_D,
+  input i_RN,
+  output wire o_Q
 );
 
   logic q_d;

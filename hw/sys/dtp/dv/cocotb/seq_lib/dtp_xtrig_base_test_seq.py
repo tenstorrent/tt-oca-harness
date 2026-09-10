@@ -4,8 +4,6 @@
 
 from __future__ import annotations
 
-import os
-
 from cocotb.triggers import ClockCycles, ReadOnly
 from env.dtp_xtrig_types import (
     XTRIG_CTM_SELECT_MASK,
@@ -34,6 +32,7 @@ from env.dtp_xtrig_types import (
     project_internal_mask,
 )
 from ocah_checker import OcahChecker
+from ocah_lib import OcahKnobs
 
 from .dtp_base_test_seq import dtp_base_test_seq
 
@@ -234,7 +233,7 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         # hook: the reference model is programmed with an INVERTED select so
         # CHK-XTRIG-ROUTE-MODEL must fail, proving the model comparison gates
         # pass/fail end to end (route scenarios only).
-        if os.environ.get("DTP_XTRIG_CHECKER_NEGATIVE", "0") not in ("", "0"):
+        if OcahKnobs.is_set("DTP_XTRIG_CHECKER_NEGATIVE"):
             model_mask = (~input_mask) & XTRIG_CTM_SELECT_MASK
             self.log.warning(
                 "NEGATIVE VALIDATION: CTM model select 0x%x instead of 0x%x",
@@ -299,14 +298,14 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
         observed = 0
         for _ in range(cycles):
             await ReadOnly()
-            observed = int(getattr(self.xtrig.dut, name).value) & mask
+            observed = self.xtrig.sample_signal(name) & mask
             await ClockCycles(self.xtrig.clk, 1)
             if observed == (expected & mask):
                 self.log.info("Observed %s mask=0x%x expected=0x%x %s", name, mask, expected, label)
                 break
         else:
             await ReadOnly()
-            observed = int(getattr(self.xtrig.dut, name).value) & mask
+            observed = self.xtrig.sample_signal(name) & mask
         self.check_evidence(
             self.CHK_SIGNAL, f"{name}.mask", observed, expected & mask, context=label
         )
@@ -367,9 +366,9 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             )
             await self.wait_signal_mask(signal, ctp_outputs, ctp_outputs, label=f"{label}.ctp")
             if mode == XTRIG_CTP_MODE_P2P:
-                self.xtrig.dut.xtrig_ctp_ack_in_din.value = ctp_outputs
+                self.xtrig.set_ctp_ack_in_din(ctp_outputs)
                 await ClockCycles(self.xtrig.clk, 3)
-                self.xtrig.dut.xtrig_ctp_ack_in_din.value = 0
+                self.xtrig.set_ctp_ack_in_din(0)
         if int_outputs:
             await self.wait_signal_mask(
                 "xtrig_ctm_src_req", int_outputs, int_outputs, label=f"{label}.internal"
@@ -697,9 +696,9 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
             )
             if not self.is_ctp_port(output_port):
                 ack_mask = 1 << self.int_idx_from_port(output_port)
-                self.xtrig.dut.xtrig_ctm_src_ack.value = ack_mask
+                self.xtrig.set_ctm_src_ack(ack_mask)
                 await ClockCycles(self.xtrig.clk, 1)
-                self.xtrig.dut.xtrig_ctm_src_ack.value = 0
+                self.xtrig.set_ctm_src_ack(0)
         self.log_summary("dst_port_sweep", outputs=XTRIG_NUM_CTM_PORTS)
 
     # ------------------------------------------------------------------
@@ -854,8 +853,8 @@ class dtp_xtrig_base_test_seq(dtp_base_test_seq):
     # ------------------------------------------------------------------
     # Seeded per-pass port picks: every source/destination CTP and internal CT
     # is interchangeable per spec, so each loop proves the route class on a
-    # different port set. Inputs are kept out of the output masks (as in the
-    # original directed picks) so the isolation check stays meaningful.
+    # different port set. Inputs are kept out of the output masks so the
+    # isolation check stays meaningful.
     async def run_ctm_wire_or_cla_to_ctp(self) -> None:
         rng = self.rng("ctm_wire_or_cla_to_ctp")
         int_in, int_ovl = rng.sample(range(XTRIG_NUM_INT_CT), 2)

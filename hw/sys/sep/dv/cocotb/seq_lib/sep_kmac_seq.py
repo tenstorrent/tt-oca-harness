@@ -27,24 +27,24 @@ from env.sep_axi_agent import SepAxiOp
 # Shared SP800-185 encoders so the DUT PREFIX / KMAC right_encode(L) bytes match
 # the golden by construction.
 from env.sep_kmac_golden import encode_string, right_encode
-from sep_reg_meta import sym
+from sep_reg_meta import KMAC, sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
 KMAC_BASE = sym("KMAC_REG_MAP_BASE_ADDR")
-KMAC_INTR_STATE = KMAC_BASE + 0x000
-KMAC_CFG_SHADOWED = KMAC_BASE + 0x014
-KMAC_CMD = KMAC_BASE + 0x018
-KMAC_STATUS = KMAC_BASE + 0x01C
-KMAC_KEY_SHARE0_0 = KMAC_BASE + 0x030
-KMAC_KEY_SHARE1_0 = KMAC_BASE + 0x070
-KMAC_KEY_LEN = KMAC_BASE + 0x0B0
-KMAC_PREFIX_0 = KMAC_BASE + 0x0B4
-KMAC_ERR_CODE = KMAC_BASE + 0x0E0
-KMAC_STATE_S0 = KMAC_BASE + 0x400
-KMAC_STATE_S1 = KMAC_BASE + 0x500
-KMAC_MSG_FIFO = KMAC_BASE + 0x800
+KMAC_INTR_STATE = KMAC.addr("INTR_STATE")
+KMAC_CFG_SHADOWED = KMAC.addr("CFG_SHADOWED")
+KMAC_CMD = KMAC.addr("CMD")
+KMAC_STATUS = KMAC.addr("STATUS")
+KMAC_KEY_SHARE0_0 = sym("KMAC_KEY_SHARE0_0__REG_ADDR")
+KMAC_KEY_SHARE1_0 = sym("KMAC_KEY_SHARE1_0__REG_ADDR")
+KMAC_KEY_LEN = KMAC.addr("KEY_LEN")
+KMAC_PREFIX_0 = sym("KMAC_PREFIX_0__REG_ADDR")
+KMAC_ERR_CODE = KMAC.addr("ERR_CODE")
+KMAC_STATE_S0 = sym("KMAC_STATE_MEM_BASE_ADDR")
+KMAC_STATE_S1 = sym("KMAC_STATE_MEM_BASE_ADDR") + (sym("KMAC_STATE_MEM_SIZE") // 2)
+KMAC_MSG_FIFO = sym("KMAC_MSG_FIFO_MEM_BASE_ADDR")
 
 KMAC_NUM_PUBLIC_KEY = 16  # KEY_SHARE0_0..15 / KEY_SHARE1_0..15
 KMAC_NUM_PREFIX = 11  # PREFIX_0..10
@@ -66,12 +66,6 @@ KMAC_STATUS_SQUEEZE = 1 << 2
 KMAC_INTR_KMAC_DONE = 1 << 0
 KMAC_INTR_KMAC_ERR = 1 << 2
 
-# CFG_SHADOWED for keyed KMAC-256 cSHAKE, entropy_mode=EDN, entropy_ready=1
-# (FW/reference suite-confirmed): kmac_en[0], kstrength L256 (0x4), mode cSHAKE (0x20),
-# entropy_mode EDN (0x1_0000), entropy_ready (0x100_0000), sideload (0x1000).
-KMAC_CFG_KEYED_SIDELOAD = 0x0101_1025
-KMAC_CFG_KEYED_SWKEY = 0x0101_0025
-
 KMAC_KEY_LEN_256 = 0x0000_0002
 
 # PREFIX for KMAC mode: encode_string("KMAC"), S empty (FW-confirmed).
@@ -83,8 +77,11 @@ KMAC_RIGHT_ENCODE_256 = 0x0002_0001
 
 # CFG_SHADOWED field encodings (kmac_reg_pkg + sha3_pkg mode/strength enums):
 # kmac_en[0], kstrength[3:1], mode[5:4], sideload[12], entropy_mode[17:16],
-# entropy_ready[24]. sha3_mode_e: Sha3=0, Shake=2, CShake=3 (KMAC uses Shake +
-# kmac_en=1). keccak_strength_e / key_len_e select by security bit-width.
+# entropy_ready[24]. sha3_mode_e: Sha3=0, Shake=2, CShake=3. Keyed KMAC is
+# mode=CShake with kmac_en=1: sha3pad absorbs PREFIX only in CShake mode, so
+# Shake+kmac_en prepends the key block but skips the "KMAC" prefix and pads as
+# SHAKE -- not the SP800-185 KMAC construction. keccak_strength_e / key_len_e
+# select by security bit-width.
 KMAC_MODE = {"sha3": 0, "shake": 2, "cshake": 3}
 KMAC_STRENGTH = {128: 0, 224: 1, 256: 2, 384: 3, 512: 4}  # L128/224/256/384/512
 KMAC_KEYLEN = {128: 0, 192: 1, 256: 2, 384: 3, 512: 4}  # Key128..Key512
@@ -92,15 +89,15 @@ KMAC_KEYLEN = {128: 0, 192: 1, 256: 2, 384: 3, 512: 4}  # Key128..Key512
 
 def build_kmac_cfg(*, mode: int, kstrength: int, kmac_en: bool, sideload: bool = False) -> int:
     """CFG_SHADOWED word with EDN entropy (entropy_mode=EDN + entropy_ready), the
-    masking-required config. KMAC-256 keyed SW CFG 0x0101_0025 (same word the KM
-    KMAC sideload KAT uses)."""
+    masking-required config. Keyed KMAC-256 is mode=CShake: SW key 0x0101_0035,
+    sideload 0x0101_1035."""
     return (
         int(bool(kmac_en))
-        | (kstrength << 1)
-        | (mode << 4)
-        | (int(bool(sideload)) << 12)
-        | (0x1 << 16)  # entropy_mode = EDN
-        | (0x1 << 24)  # entropy_ready
+        | (kstrength << KMAC.field_lsb("CFG_SHADOWED", "kstrength"))
+        | (mode << KMAC.field_lsb("CFG_SHADOWED", "mode"))
+        | (int(bool(sideload)) << KMAC.field_lsb("CFG_SHADOWED", "sideload"))
+        | (0x1 << KMAC.field_lsb("CFG_SHADOWED", "entropy_mode"))
+        | KMAC.field_mask("CFG_SHADOWED", "entropy_ready")
     )
 
 
@@ -205,8 +202,13 @@ class SepKmac(SepAxiRegDriver):
             for i, word in enumerate(sw_key):
                 await self._wr(KMAC_KEY_SHARE0_0 + i * 4, word & 0xFFFF_FFFF)
                 await self._wr(KMAC_KEY_SHARE1_0 + i * 4, 0)
-        # CFG_SHADOWED double-write.
-        cfg = KMAC_CFG_KEYED_SIDELOAD if sideload else KMAC_CFG_KEYED_SWKEY
+        # CFG_SHADOWED double-write. Keyed KMAC is mode=cSHAKE + kmac_en=1.
+        cfg = build_kmac_cfg(
+            mode=KMAC_MODE["cshake"],
+            kstrength=KMAC_STRENGTH[256],
+            kmac_en=True,
+            sideload=sideload,
+        )
         await self._wr(KMAC_CFG_SHADOWED, cfg)
         await self._wr(KMAC_CFG_SHADOWED, cfg)
         await self._wait_idle("pre-start")

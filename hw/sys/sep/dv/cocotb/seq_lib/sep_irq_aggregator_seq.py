@@ -11,7 +11,7 @@ sep_internal_interrupts_probe_o mirror (the OSS analog of the reference suite's 
 Also issues one in-window unmapped 32-bit read through the Secure DMA adapter
 and one through each of the HMAC, KMAC and OTBN adapters. Those complete
 SLVERR and latch DMA_BUS_ERR_STATUS / PERIPH_BUS_ERR_STATUS, which drive
-aggregator bits [39] and [41]. A dead-space beat past an adapter window is
+aggregator bits [40] and [42]. A dead-space beat past an adapter window is
 DECERR and never sets err_o, so the probes stay inside each routed extent.
 AES, CSRNG, EDN and WDT windows are packed to the last register; an unmapped
 beat there is past the rule and DECERRs.
@@ -20,9 +20,10 @@ OpenTitan interrupt-register layout (per IP base):
   INTR_STATE  @ +0x00  RW1C  -- set by hardware / INTR_TEST; write-1-to-clear
   INTR_ENABLE @ +0x04  RW    -- gates the IP intr_o = INTR_STATE & INTR_ENABLE
   INTR_TEST   @ +0x08  WO    -- write 1 to a bit to set the matching INTR_STATE bit
-CSRNG/EDN bases (hw/sys/sep/rtl/sep_crypto_pkg.sv) and the per-source aggregator-bit map
-(hw/sys/sep/rtl/sep.sv sep_internal_interrupts assembly). 32-bit AXI beats
-(size=2) via the sep_crypto TL-UL bridge, like the AES/OTBN drivers.
+CSRNG/EDN bases from the generated register map. Aggregator bit =
+documented PIC source ID minus 1 (`hw/sys/sep/doc/interrupts.adoc`; PIC
+IDs are 1-based). 32-bit AXI beats (size=2) via the sep_crypto TL-UL
+bridge, like the AES/OTBN drivers.
 """
 
 from __future__ import annotations
@@ -35,22 +36,38 @@ from sep_reg_meta import HMAC, KMAC, OTBN, SEP_CPU_CTRL, sym
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
-# CSRNG/EDN stay literal: the generated top-level export has no symbol for either
-# aperture (see the note in sep_esrc_bringup_seq.py). Convert once the register flow
-# exports them.
-CSRNG_BASE = 0x1091_5000
-EDN_BASE = 0x1091_5800
+CSRNG_BASE = sym("CSRNG_REG_MAP_BASE_ADDR")
+EDN_BASE = sym("EDN_REG_MAP_BASE_ADDR")
 
-INTR_STATE = 0x00
-INTR_ENABLE = 0x04
-INTR_TEST = 0x08
+INTR_STATE = sym("CSRNG_INTR_STATE_REG_ADDR") - CSRNG_BASE
+INTR_ENABLE = sym("CSRNG_INTR_ENABLE_REG_ADDR") - CSRNG_BASE
+INTR_TEST = sym("CSRNG_INTR_TEST_REG_ADDR") - CSRNG_BASE
 
 RESP_SLVERR = 2
 
-# sep.sv sep_internal_interrupts: [39] DMA register-path, [41] periph OR.
-IRQ_DMA_REG_PATH = 39
-IRQ_DMA_HOST_PATH = 40
-IRQ_PERIPH_OR = 41
+# PIC source IDs from hw/sys/sep/doc/interrupts.adoc (1-based).
+# sep_internal_interrupts[N] feeds PIC source N+1.
+PIC_HMAC_DONE = 18
+PIC_KMAC_DONE = 21
+PIC_CSRNG_CMD_REQ_DONE = 24
+PIC_CSRNG_ENTROPY_REQ = 25
+PIC_CSRNG_HW_INST_EXC = 26
+PIC_CSRNG_FATAL_ERR = 27
+PIC_EDN_CMD_REQ_DONE = 28
+PIC_EDN_FATAL_ERR = 29
+PIC_DMA_REG_PATH = 41
+PIC_DMA_HOST_PATH = 42
+PIC_PERIPH_OR = 43
+
+
+def agg_from_pic(pic_source: int) -> int:
+    """Aggregator bit for a documented 1-based PIC source."""
+    return pic_source - 1
+
+
+IRQ_DMA_REG_PATH = agg_from_pic(PIC_DMA_REG_PATH)
+IRQ_DMA_HOST_PATH = agg_from_pic(PIC_DMA_HOST_PATH)
+IRQ_PERIPH_OR = agg_from_pic(PIC_PERIPH_OR)
 
 DMA_STATUS_ADDR = SEP_CPU_CTRL.addr("DMA_BUS_ERR_STATUS")
 DMA_CLEAR_ADDR = SEP_CPU_CTRL.addr("DMA_BUS_ERR_CLEAR")
@@ -154,14 +171,14 @@ class IrqSrc:
     agg_idx: int
 
 
-# reference sep_irq_ip_to_aggregator_test_seq sources -> sep.sv aggregator bits.
+# CSRNG/EDN sources. agg_idx is PIC source − 1 from interrupts.adoc.
 IRQ_TABLE = (
-    IrqSrc("csrng_cmd_req_done", CSRNG_BASE, 0, 23),
-    IrqSrc("csrng_entropy_req", CSRNG_BASE, 1, 24),
-    IrqSrc("csrng_hw_inst_exc", CSRNG_BASE, 2, 25),
-    IrqSrc("csrng_fatal_err", CSRNG_BASE, 3, 26),
-    IrqSrc("edn_cmd_req_done", EDN_BASE, 0, 27),
-    IrqSrc("edn_fatal_err", EDN_BASE, 1, 28),
+    IrqSrc("csrng_cmd_req_done", CSRNG_BASE, 0, agg_from_pic(PIC_CSRNG_CMD_REQ_DONE)),
+    IrqSrc("csrng_entropy_req", CSRNG_BASE, 1, agg_from_pic(PIC_CSRNG_ENTROPY_REQ)),
+    IrqSrc("csrng_hw_inst_exc", CSRNG_BASE, 2, agg_from_pic(PIC_CSRNG_HW_INST_EXC)),
+    IrqSrc("csrng_fatal_err", CSRNG_BASE, 3, agg_from_pic(PIC_CSRNG_FATAL_ERR)),
+    IrqSrc("edn_cmd_req_done", EDN_BASE, 0, agg_from_pic(PIC_EDN_CMD_REQ_DONE)),
+    IrqSrc("edn_fatal_err", EDN_BASE, 1, agg_from_pic(PIC_EDN_FATAL_ERR)),
 )
 
 

@@ -19,7 +19,7 @@ readable field reads back verbatim).
 
 from __future__ import annotations
 
-from sep_reg_meta import sym
+from sep_reg_meta import SEP_CPU_CTRL, sym
 
 # The generated map itself, for enumerating the eFuse register set rather than
 # naming each entry. Import order matters: sep_reg_meta puts regs/gen/py on
@@ -54,8 +54,7 @@ WORD_MASK = (1 << WORD_BITS) - 1
 # Software-visible shadow-register block base.
 SHADOW_BASE = sym("SEP_EFUSE_MAP_REG_MAP_BASE_ADDR")
 # SEP CPU-ctrl fuse-sense-done status (separate block).
-SEP_CPU_CTRL_BASE = sym("SEP_CPU_CTRL_REG_MAP_BASE_ADDR")
-SEP_FUSE_SENSE_STATUS = SEP_CPU_CTRL_BASE + 0x150
+SEP_FUSE_SENSE_STATUS = SEP_CPU_CTRL.addr("SEP_FUSE_SENSE_STATUS")
 
 # LC_STATE's shadow word (efuse_pkg::SHADOW_IDX_LC_STATE). The OTP word carries the
 # 4-bit raw code in [3:0] and the FSM differential-encodes it.
@@ -91,9 +90,8 @@ LEGAL_LC_RAW: Tuple[int, ...] = (
 #   "data"     — freely randomizable keys/digests/UIDs/ctrl fields.
 # Kinds, keyed by generated register name. Everything not named here is "data":
 # freely randomizable. Only the semantics live here -- offsets and lengths are read
-# out of the generated map below, because a hand-written copy of the map is exactly
-# what went stale when LOCKS_SPARE was inserted at 0x008 and shifted every field
-# after it by one word.
+# out of the generated map below. A hand-written copy of the map drifts when
+# the generated layout changes.
 _LOCK_REGS = ("LOCKS", "LOCKS_SPARE")
 _LC_REGS = ("LC_STATE",)
 
@@ -260,9 +258,27 @@ class SepEfuseImage:
         return self.set_words(name, words)
 
     def load(self, path: str | Path) -> "SepEfuseImage":
-        """Load a preload file, auto-detecting the format: a per-bit reference suite
-        ``*.preload`` (one 0/1 per line) vs a 256-word hex image."""
-        toks = Path(path).read_text(encoding="utf-8").split()
+        """Load a preload, auto-detecting the format: a declarative ``*.toml``
+        fuse configuration, a per-bit reference suite ``*.preload`` (one 0/1 per
+        line), or a 256-word hex image.
+
+        Dispatching here rather than in the callers is what keeps the two
+        execution points honest. This method is the single entry both of them
+        use -- ``dv_sim_prestage.stage()`` to write the array the RTL
+        ``$readmemh`` reads at t=0, and ``sep_base_test.select_efuse_image()`` to
+        build the golden the post-sense shadow compare checks that array
+        against -- so a format taught to one is a format the other already
+        speaks. Teaching only the prestage about TOML would silently give the
+        golden a zero-filled image and turn every field into a mismatch.
+        """
+        path = Path(path)
+        if path.suffix == ".toml":
+            # Lazy so a .hex-only run pays for neither tomllib nor the scan of
+            # the generated header's bitfield structs.
+            from sep_generate_efuse_preload import apply_toml
+
+            return apply_toml(self, path)
+        toks = path.read_text(encoding="utf-8").split()
         if toks and all(t in ("0", "1") for t in toks) and len(toks) > NUM_FUSE_WORDS:
             return self.load_preload_bits(path)
         return self.load_hex(path)

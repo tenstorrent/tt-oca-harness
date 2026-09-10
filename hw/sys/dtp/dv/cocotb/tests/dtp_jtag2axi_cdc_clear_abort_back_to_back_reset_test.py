@@ -26,9 +26,9 @@ class dtp_jtag2axi_cdc_clear_abort_back_to_back_reset_test(dtp_base_test):
         sequences = await self.start_looped_seq(
             dtp_jtag2axi_robustness_test_seq,
             "cdc_clear_abort_back_to_back_reset",
-            specific_env="DTP_JTAG2AXI_CDC_CLEAR_ABORT_BACK_TO_BACK_RESET_TEST_LOOPS",
+            specific_knob="DTP_JTAG2AXI_CDC_CLEAR_ABORT_BACK_TO_BACK_RESET_TEST_LOOPS",
             default_loops=16,
-            group_env="DTP_JTAG2AXI_TEST_LOOPS",
+            group_knob="DTP_JTAG2AXI_TEST_LOOPS",
             scenario="cdc_clear_abort_back_to_back_reset",
         )
         for seq in sequences:

@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """OSS SMC testcase memory model.
 
-This model is intentionally testbench-local. It does not backdoor into DUT
+This model is testbench-local. It does not backdoor into DUT
 hierarchy and does not replace the SMC SRAM/ROM RTL. Tests use it as a
 deterministic golden/reference store for data they drive through public AXI or
 protocol VIP paths.
@@ -17,8 +17,8 @@ from typing import Iterable
 SMC_SPM_MEMORY_BASE = 0xC006_0000
 SMC_SPM_MEMORY_SIZE = 0x0010_0000
 
-# Legacy SMC firmware loaders reset the CPU to 0xC004_0000. Keep a named region
-# for OSS tests that want to model the front-port boot/SPM aperture explicitly.
+# SMC firmware loaders reset the CPU to 0xC004_0000; this named region models
+# the front-port boot/SPM aperture explicitly.
 SMC_FRONT_PORT_SPM_BASE = 0xC004_0000
 SMC_FRONT_PORT_SPM_SIZE = 0x0012_0000
 

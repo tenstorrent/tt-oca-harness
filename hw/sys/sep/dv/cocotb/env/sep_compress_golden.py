@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-# SPDX-FileCopyrightText: (c) 2024-2026 Tenstorrent Inc. All Rights Reserved.
+# SPDX-FileCopyrightText: 2024-2026 Tenstorrent USA, Inc.
 #
 # sep_compress_golden.py
 #

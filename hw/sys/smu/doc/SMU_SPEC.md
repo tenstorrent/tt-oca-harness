@@ -21,7 +21,7 @@ using CSR-programmed SEP/SMC apertures.
 
 This specification describes the public `tt-oca` implementation and its
 cocotb/Verilator environment in `hw/sys/smu/dv/`. Standard
-protocol interfaces use the unified OCAH BFM packages; custom OCH protocols are
+protocol interfaces use the unified OCAH BFM packages; custom OCAH protocols are
 modeled by OCAH-local BFMs when no shared wrapper exists.
 
 | Field | Value |
@@ -32,7 +32,7 @@ modeled by OCAH-local BFMs when no shared wrapper exists.
 | Packages | `smu_pkg` (`hw/smu/rtl/smu_pkg.sv`), `smu_axi_xbar_pkg` |
 | Repository | `tt-oca` |
 | Open-source DV location | `hw/sys/smu/dv/` |
-| Standards | AMBA AXI4/AXI4-Lite; IEEE 1149.1 (JTAG) via DTP; OCH Cross Trigger v1.0 (OCCT) via DTP; OCAC/OCS compliance mapping |
+| Standards | AMBA AXI4/AXI4-Lite; IEEE 1149.1 (JTAG) via DTP; OCAH Cross Trigger v1.0 (OCCT) via DTP; OCAC/OCS compliance mapping |
 
 ## Specifications
 
@@ -76,6 +76,8 @@ the top-level `smu` parameter list.
 | `SMC_OTP_RD/WR_PL_DEPTH`, `SMC_RD/WR_PL_DEPTH` | `3` | JTAG2AXI pipeline depths (SEP OTP RD/WR forced to `2'h3`). |
 | `XTRIG_INT_CT_MODE` | config-dependent | Per internal-CT mode fed to DTP as `{Cfg.XTRIG_INT_CT_MODE, 2'b00}` (bits `[1:0]=0` for SMC pulse-sync). |
 | `SEP_KM_LATCHED_MEM_RDATA` | `1'b1` | SEP KM latched read-data behavior. |
+| `SEP_ABR_SRAM_LATENCY` | `1` | ABR 1R1W registered-read latency, in clocks. |
+| `SEP_ABR_MASKING_EN` | `1'b1` | Adams Bridge 2-share DOM masking. |
 
 `NoSepCfg` is field-identical to `DefaultCfg`; the SEP/no-SEP distinction is
 carried by the separate `SEP` parameter, not by the `Cfg` struct.
@@ -157,7 +159,7 @@ Directions/types from the `smu` core boundary (`smu.sv`).
 | SMC mailbox interrupts | `ext_mailbox_interrupts_o [31:0]` | Output | Observe; scoreboard checks |
 | SEP mailbox interrupts | internal `[7:0]` | Internal | Observe via wrapper (note ISSUE-7) |
 | BSR / STAP / iJTAG scan | `jtag_scan_ctrl_t` + scan in/out | Host | Loopback first, then OCAH-local scan model |
-| Cross-trigger CTM/CTP | Request/ack arrays + GPIO | Mixed | OCAH-local BFM; custom OCH protocol |
+| Cross-trigger CTM/CTP | Request/ack arrays + GPIO | Mixed | OCAH-local BFM; custom OCAH protocol |
 | Clocks | `clk_smu_i`, `clk_ref_i`, `clk_periph_i`, `clk_telemetry_i`, `clk_sep_wdt_i` | Input | Driven by TB |
 | Resets / power | `rst_cold_ni`, `powergood_i`; outputs `rst_cold_stable_ref_clk_no`, `rst_primary_*_clk_no` | Mixed | Driven/observed by TB |
 | Lifecycle / feature control | `feat_ctrl` (`sep_efuse_map_lc_disable_reg_t`), `lc_state_o [7:0]`, `lcc_demote_state_*` | Mixed | Directed values from TB |
@@ -209,8 +211,8 @@ wire-OR/P2P protocols, and DTP↔SMC clock-stop handshake.
 
 ### Feature 7: Lifecycle and Security
 
-SEP drives `feat_ctrl` (debug gating), `security_disable`, and lifecycle state
-into SMC and DTP. Verification covers lifecycle/debug policy matrices, the
+SEP drives `dbg_disable` into DTP and `security_disable` and lifecycle state
+into SMC. Verification covers lifecycle/debug policy matrices, the
 security handoff, and fuse-sense handshake.
 
 ## Operating Modes
@@ -252,13 +254,14 @@ not stability-checked against in-flight transactions.
 | SEP=0 SEP-OTP access | AXI-Lite error slave | DECERR (`0xBADCAB1E`) |
 | Mailbox protocol mismatch | Scoreboard | Test fail |
 | SEP WDT timeout | `sep_wdt_timer_rst_req` | SEP reset request into SMC |
-| Lifecycle-gated debug | `feat_ctrl` gating in DTP | Debug resource blocked (BYPASS fallback / no AXI traffic) |
+| Lifecycle-gated debug | `dbg_disable_i` gating in DTP | Debug resource blocked (BYPASS fallback / no AXI traffic) |
 
 ## Security Considerations
 
-The SEP lifecycle feature-control vector (`sep_feat_ctrl`, type
-`sep_efuse_map_lc_disable_reg_t`) is driven by SEP `feat_ctrl_o` and fed to DTP
-`feat_ctrl_i` to gate debug (STAP selection, iJTAG SIB access, JTAG2AXI bridges).
+The SEP lifecycle controller drives `dbg_disable_o` (`dbg_disable_t`) into DTP
+`dbg_disable_i` to gate debug (STAP selection, iJTAG SIB access, the SMC fabric
+JTAG2AXI bridge). The SMC and SEP OTP JTAG2AXI bridges remain enabled;
+fuse-controller access control is the enforcement point.
 SEP also drives `security_disable` into SMC and the lifecycle state (`lc_state_o`,
 8 bits; `SEP=0` → `8'hf0`). The 256-bit `SEP_SEC_DISABLE_TOKEN` is passed to SEP,
 tied `0` at SMU and replaced with the real digest at synthesis. eFuse gating and

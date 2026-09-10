@@ -106,7 +106,7 @@ module sep_system_peripherals_xbar_wrapper
 
 `ifndef SYNTHESIS  // elaboration-time width checks; excluded from synthesis
     // Input ports
-    initial begin : g_input_type_assertions
+    initial begin : gen_input_type_assertions
         // sep_local_from_remap (3-bit ID input, xbar uses 5-bit - zero-extension is OK)
         assert ($bits(sep_local_from_remap_req_i.aw.addr) == $bits(sep_local_from_remap_req.aw.addr)) else $fatal(1, "SEP_LOCAL_FROM_REMAP AW ADDR width mismatch");
         assert ($bits(sep_local_from_remap_req_i.w.data)  == $bits(sep_local_from_remap_req.w.data))  else $fatal(1, "SEP_LOCAL_FROM_REMAP W DATA width mismatch");
@@ -121,7 +121,7 @@ module sep_system_peripherals_xbar_wrapper
     end
 
     // Output ports (6-bit ID, 56-bit addr, 64-bit data, 12-bit user)
-    initial begin : g_output_type_assertions
+    initial begin : gen_output_type_assertions
         // smn_inbound_from_xbar_axi_req
         assert ($bits(smn_inbound_from_xbar_axi_req_o.aw.id)   == $bits(smn_inbound_from_xbar_axi_req.aw.id))   else $fatal(1, "SMN_INBOUND_FROM_XBAR_AXI_REQ AW ID width mismatch");
         assert ($bits(smn_inbound_from_xbar_axi_req_o.aw.addr) == $bits(smn_inbound_from_xbar_axi_req.aw.addr)) else $fatal(1, "SMN_INBOUND_FROM_XBAR_AXI_REQ AW ADDR width mismatch");
@@ -143,7 +143,7 @@ module sep_system_peripherals_xbar_wrapper
     end
 
     // User-field width assertions (AXI4 ports only; mailbox/system_csr are AXI-Lite)
-    initial begin : g_user_width_assertions
+    initial begin : gen_user_width_assertions
         // Input ports
         assert ($bits(sep_local_from_remap_req_i.aw.user)  == $bits(sep_local_from_remap_req.aw.user))  else $fatal(1, "SEP_LOCAL_FROM_REMAP AW USER width mismatch");
         assert ($bits(sep_local_from_remap_req_i.w.user)   == $bits(sep_local_from_remap_req.w.user))   else $fatal(1, "SEP_LOCAL_FROM_REMAP W USER width mismatch");

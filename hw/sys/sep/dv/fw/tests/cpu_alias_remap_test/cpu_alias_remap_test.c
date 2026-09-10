@@ -25,8 +25,8 @@
 // This must be a CPU-firmware (real IFU/LSU) test: the OSS no_cpu AXI splice is
 // POST-remap, so a no_cpu driver would bypass the remap entirely.
 //
-// Scope delta vs the reference suite: the reference suite scenario also pokes ALIAS_ENTRY0_* (0x10A1_00xx);
-// those program a SEPARATE alias-table remapper (for other masters), NOT the CPU
+// Scope delta vs the reference suite: the reference suite scenario also pokes ALIAS_ENTRY0_*
+// (0x10A1_00xx); those program a SEPARATE alias-table remapper (for other masters), NOT the CPU
 // u_ifu/u_lsu_local_alias_remap instances this test targets, so they
 // are intentionally out of scope here.
 //
@@ -46,14 +46,15 @@
 
 #include <stdint.h>
 
+#include "sep.h"
 #include "sep_outbound_filter.h"
 #include "sep_mailbox.h"
 
-#define SEP_LOCAL_BASE_ADDR_REG 0x10A300C8u
-#define WINDOW_BASE 0xD0000000u            // SEP_LOCAL_BASE_ADDR reset/operating value
+#define SEP_LOCAL_BASE_ADDR_REG OCH_SEP_TOP_SEP_CPU_CTRL_SEP_LOCAL_BASE_ADDR_BASE_ADDR
+#define WINDOW_BASE SEP_CPU_CTRL__SEP_LOCAL_BASE_ADDR_reset
 // Distinct probe value, used only to prove the base CSR is writable at all.
 #define ALT_WINDOW_BASE 0xE0000000u
-#define TARGET_BASE 0x10000000u            // sep_pkg::SEP_LOCAL_ALIAS_REGION_BASE (SEP SRAM)
+#define TARGET_BASE OCH_SEP_TOP_SEP_SRAM_BASE_ADDR
 #define ADJUST (WINDOW_BASE - TARGET_BASE) // 0xC000_0000 = base - target
 #define ADJUST_ALT (ALT_WINDOW_BASE - TARGET_BASE)
 
@@ -118,9 +119,8 @@ int main(void) {
         sep_mbx_putc('\n');
         errors++;
     } else {
-        sep_mbx_puts(
-            "CHK-CSR PASS: SEP_LOCAL_BASE writable (probed 0xe0000000), restored to "
-            "0xd0000000 (fixed 768MiB window -> 0x10000000)\n");
+        sep_mbx_puts("CHK-CSR PASS: SEP_LOCAL_BASE writable (probed 0xe0000000), restored to "
+                     "0xd0000000 (fixed 768MiB window -> 0x10000000)\n");
     }
 
     // CHK-LSU-WR: write THROUGH the alias, read back at the physical target.

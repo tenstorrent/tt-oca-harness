@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
-[cols="1,1,1,3", options="header"]
+[cols="1,4,1,6", options="header"]
 .Register Map
 |===
 | Address | Name | Access | Description
@@ -13,7 +13,7 @@
 | 0x28 | LOCAL_ENABLE | RW a| -
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .CAUSE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -21,7 +21,7 @@
 | 2:0 | `data` | RW | 0x0 a| Cause register. Enumerates different kinds of errors
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .PHYS_ADDR Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -29,7 +29,7 @@
 | 55:0 | `value` | R | - a| Physical address of error event. No reset value
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -44,7 +44,7 @@
 | 0 | `rsvd0` | RW | 0x0 a| Reserved
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .PLIC_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -59,7 +59,7 @@
 | 0 | `rsvd0` | RW | 0x0 a| Reserved
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .ACCRUED_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description
@@ -74,7 +74,7 @@
 | 0 | `rsvd0` | RW | 0x0 a| Reserved
 |===
 
-[cols="1,1,1,1,3", options="header"]
+[cols="1,3,1,1,6", options="header"]
 .LOCAL_ENABLE Register
 |===
 | Bits | Field | Access | Reset | Description

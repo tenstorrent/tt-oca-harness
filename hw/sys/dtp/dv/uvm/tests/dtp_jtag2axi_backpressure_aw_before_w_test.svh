@@ -8,26 +8,26 @@
 // observed bus fields match the stimulus intent.
 
 class dtp_jtag2axi_backpressure_aw_before_w_test extends dtp_jtag2axi_robustness_base_test;
-    `uvm_component_utils(dtp_jtag2axi_backpressure_aw_before_w_test)
+  `uvm_component_utils(dtp_jtag2axi_backpressure_aw_before_w_test)
 
-    function new(string name = "dtp_jtag2axi_backpressure_aw_before_w_test",
-                 uvm_component parent = null);
-        super.new(name, parent);
-    endfunction
+  function new(string name = "dtp_jtag2axi_backpressure_aw_before_w_test",
+               uvm_component parent = null);
+    super.new(name, parent);
+  endfunction
 
-    virtual function string scenario_name();
-        return "backpressure_aw_before_w";
-    endfunction
+  virtual function string scenario_name();
+    return "backpressure_aw_before_w";
+  endfunction
 
-    virtual function string specific_loops_plusarg();
-        return "DTP_JTAG2AXI_BACKPRESSURE_AW_BEFORE_W_TEST_LOOPS";
-    endfunction
+  virtual function string specific_loops_knob();
+    return "DTP_JTAG2AXI_BACKPRESSURE_AW_BEFORE_W_TEST_LOOPS";
+  endfunction
 
-    virtual function void add_required_axi_ids(ocah_axi_config cfg);
-        super.add_required_axi_ids(cfg);
-        cfg.required_ids.push_back("CHK-AXI-WADDR");
-        cfg.required_ids.push_back("CHK-AXI-WDATA");
-        cfg.required_ids.push_back("CHK-AXI-STRB");
-    endfunction
+  virtual function void add_required_axi_ids(ref string ids[$]);
+    super.add_required_axi_ids(ids);
+    ids.push_back("CHK-AXI-WADDR");
+    ids.push_back("CHK-AXI-WDATA");
+    ids.push_back("CHK-AXI-STRB");
+  endfunction
 
 endclass : dtp_jtag2axi_backpressure_aw_before_w_test

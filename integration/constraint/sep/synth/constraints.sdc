@@ -1,0 +1,1 @@
+../../../../hw/sys/sep/synth/constraints.sdc

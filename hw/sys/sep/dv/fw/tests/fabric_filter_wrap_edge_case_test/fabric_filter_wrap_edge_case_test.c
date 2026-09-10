@@ -262,16 +262,16 @@ static int test_wrap_mode_state_transitions(void) {
 
                 // State-specific testing
                 switch (current_wrap_mode) {
-                case 0: // No wrap
+                case 0:                                                      // No wrap
                     test_axi_transaction(trans_base + 0x7FFFC, 4, AXI_READ); // Near end
                     break;
-                case 1: // Address wrap
+                case 1:                                                      // Address wrap
                     test_axi_transaction(trans_base + 0x80000, 4, AXI_READ); // Beyond end
                     break;
-                case 2: // Size wrap
+                case 2:                                                   // Size wrap
                     test_axi_transaction(state_test_addr, 128, AXI_READ); // Large burst
                     break;
-                case 3: // Full wrap
+                case 3:                                                       // Full wrap
                     test_axi_transaction(trans_base + 0x100000, 4, AXI_READ); // Far beyond
                     break;
                 }

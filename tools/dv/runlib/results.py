@@ -159,7 +159,7 @@ def _tests_summary(stages: list[StageResult]) -> dict[str, Any]:
     }
 
 
-def _coverage_summary(
+def coverage_summary(
     stages: list[StageResult], run_dir: Path, root: Path, coverage_requested: bool = False
 ) -> dict[str, Any]:
     cov_stages = [stage for stage in stages if stage.stage in {"cov_merge", "cov_report"}]
@@ -337,6 +337,8 @@ def _rerun_command(flow: Flow, tool: str, job: dict[str, Any], args: Any | None)
     if args is not None:
         if getattr(args, "run_mode", None):
             command.extend(["--run-mode", str(args.run_mode)])
+        if getattr(args, "target", None):
+            command.extend(["--target", str(args.target)])
         if getattr(args, "waves", None):
             command.extend(["--waves", str(args.waves)])
         if getattr(args, "waves_on_fail", None):
@@ -578,7 +580,7 @@ def _coverage_provenance(
     tool: str,
     coverage_requested: bool,
 ) -> dict[str, Any]:
-    payload = _coverage_summary(stages, run_dir, root, coverage_requested)
+    payload = coverage_summary(stages, run_dir, root, coverage_requested)
     backend = payload.get("backend") or COVERAGE_BACKEND_BY_TOOL.get(tool, tool)
     has_valid_report = bool(
         payload.get("status") == "PASS"
@@ -791,7 +793,7 @@ def result_payload(
         "items": items or [],
         "overrides": {"cli": cli_overrides(args)},
         "tests": _tests_summary(stages),
-        "coverage": _coverage_summary(stages, run_dir, root, bool(getattr(args, "cov", False))),
+        "coverage": coverage_summary(stages, run_dir, root, bool(getattr(args, "cov", False))),
         "git": git_metadata if git_metadata is not None else git_info(root),
         "tool_versions": versions,
         "stages": [_stage_dict(stage) for stage in stages],
