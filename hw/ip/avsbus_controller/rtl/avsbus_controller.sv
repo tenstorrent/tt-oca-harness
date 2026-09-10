@@ -1317,23 +1317,23 @@ module avsbus_controller #(
     .DEPTH(COMMAND_FIFO_DEPTH),
     .WIDTH(32)
   ) cmd_async_fifo_inst (
-    .i_scan_rst_n(scan_rst_ni),
-    .i_test_mode (test_en_i),
+    .scan_rst_ni(scan_rst_ni),
+    .test_mode_i(test_en_i),
 
-    .i_reset_n_wr_clk_syncd(reset_n_apb_clk_syncd),
-    .i_wr_clk(clk_reg_i),
-    .i_wr_en(push_avs_cmd_en),
-    .i_wr_data(pwdata),
-    .o_wr_full(R_avs_normal_status_F_cmd_fifo_full),
-    .o_wr_empty(R_avs_normal_status_F_cmd_fifo_empty),
+    .rst_wr_clk_syncd_ni(reset_n_apb_clk_syncd),
+    .wr_clk_i(clk_reg_i),
+    .wr_en_i(push_avs_cmd_en),
+    .wr_data_i(pwdata),
+    .wr_full_o(R_avs_normal_status_F_cmd_fifo_full),
+    .wr_empty_o(R_avs_normal_status_F_cmd_fifo_empty),
 
-    .i_reset_n_rd_clk_syncd(reset_n_avs_clk_syncd),
-    .i_rd_clk(avs_clk),
-    .i_rd_en(pop_avs_cmd_en),
-    .o_rd_data(avs_cmd_from_fifo),
-    .o_rd_empty(avs_cmd_buf_empty),
-    .o_vacant_slots(R_avs_fifos_status_F_cmd_fifo_vacant_slots),
-    .o_full_slots(R_avs_fifos_status_F_cmd_fifo_occupied_slots)
+    .rst_rd_clk_syncd_ni(reset_n_avs_clk_syncd),
+    .rd_clk_i(avs_clk),
+    .rd_en_i(pop_avs_cmd_en),
+    .rd_data_o(avs_cmd_from_fifo),
+    .rd_empty_o(avs_cmd_buf_empty),
+    .vacant_slots_o(R_avs_fifos_status_F_cmd_fifo_vacant_slots),
+    .full_slots_o(R_avs_fifos_status_F_cmd_fifo_occupied_slots)
   );
 
 
@@ -1343,23 +1343,23 @@ module avsbus_controller #(
     .DEPTH(READBACK_FIFO_DEPTH),
     .WIDTH(32)
   ) readasync_back_fifo_inst (
-    .i_scan_rst_n(scan_rst_ni),
-    .i_test_mode (test_en_i),
+    .scan_rst_ni(scan_rst_ni),
+    .test_mode_i(test_en_i),
 
-    .i_reset_n_wr_clk_syncd(reset_n_avs_clk_syncd),
-    .i_wr_clk(avs_clk),
-    .i_wr_en(push_avs_readback_en),
-    .i_wr_data(avs_sdata_capture),
-    .o_wr_full(R_avs_normal_status_F_readback_fifo_full_AVSCLK),
-    .o_wr_empty(),
+    .rst_wr_clk_syncd_ni(reset_n_avs_clk_syncd),
+    .wr_clk_i(avs_clk),
+    .wr_en_i(push_avs_readback_en),
+    .wr_data_i(avs_sdata_capture),
+    .wr_full_o(R_avs_normal_status_F_readback_fifo_full_AVSCLK),
+    .wr_empty_o(),
 
-    .i_reset_n_rd_clk_syncd(reset_n_apb_clk_syncd),
-    .i_rd_clk(clk_reg_i),
-    .i_rd_en(pop_apb_readback_en),
-    .o_rd_data(avs_fifo_data),
-    .o_rd_empty(apb_readback_buf_empty),
-    .o_vacant_slots(R_avs_fifos_status_F_readback_fifo_vacant_slots_AVSCLK),
-    .o_full_slots(R_avs_fifos_status_F_readback_fifo_occupied_slots_AVSCLK)
+    .rst_rd_clk_syncd_ni(reset_n_apb_clk_syncd),
+    .rd_clk_i(clk_reg_i),
+    .rd_en_i(pop_apb_readback_en),
+    .rd_data_o(avs_fifo_data),
+    .rd_empty_o(apb_readback_buf_empty),
+    .vacant_slots_o(R_avs_fifos_status_F_readback_fifo_vacant_slots_AVSCLK),
+    .full_slots_o(R_avs_fifos_status_F_readback_fifo_occupied_slots_AVSCLK)
   );
 
   assign apb_readback_from_fifo = apb_readback_buf_empty ? 32'h0 : avs_fifo_data;
