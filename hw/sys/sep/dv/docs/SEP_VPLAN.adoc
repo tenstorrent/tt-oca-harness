@@ -5765,8 +5765,8 @@ contracts owned by the vault test, and the wipe security contract.
 |===
 |Item |Count
 |Phase 1 tests |32
-|Phase 2 tests |59
-|Cocotb total |91
+|Phase 2 tests |60
+|Cocotb total |92 (`testlists/all.toml` `expected_count`)
 |Phase 3 |1 SV-UVM scenario bound (`sep_axi_smoke_test`)
 |Iconic scorecard rows |58 in-scope: 58 PROVEN (see <<iconic-scorecard>>)
 |Coded and failing |3 (`sep_drbg_axil_adapter_port_arbitration_test`; `sep_drbg_axil_concurrent_csrng_aw_then_ar_test`; `sep_drbg_axil_concurrent_edn_aw_then_ar_test`; parked on RTL, not expected-fail; see <<known-limitations>>)
