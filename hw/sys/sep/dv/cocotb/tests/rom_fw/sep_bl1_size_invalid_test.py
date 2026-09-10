@@ -75,7 +75,13 @@ class sep_bl1_size_invalid_test(sep_bl1_image_invalid_base):
         # The entry must still be a SEP BL1 entry: find_image() locates it by type,
         # so a mutation that damaged the type would raise there rather than here,
         # but stating it makes the "size is the only defect" claim explicit.
-        assert pm.bl1_field(buf, slot, pm.E_TYPE) == pm.IMAGE_TYPE_SEP_BL1
+        # entry_type, not bl1_field: the type is a 16-byte string, and bl1_field
+        # reads u64 fields.
+        got_type = pm.entry_type(buf, pm.find_image(buf, slot))
+        assert got_type == pm.IMAGE_TYPE_SEP_BL1, (
+            f"{slot} BL1 entry type is {got_type!r}, expected "
+            f"{pm.IMAGE_TYPE_SEP_BL1!r}"
+        )
         self.logger.info(
             "CHK-STIMULUS-BL1-SIZE: %s BL1 length %d -> 0, type and load_addr untouched; %s",
             slot,
