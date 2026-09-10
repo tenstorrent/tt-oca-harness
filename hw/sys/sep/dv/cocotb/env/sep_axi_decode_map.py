@@ -279,9 +279,9 @@ def region_of(addr: int, regions=None) -> SpecRegion | None:
 def may_complete(addr: int, regions=None) -> bool:
     """True when the specification allocates something at ``addr``.
 
-    False means the fabric must refuse. ``memory_map.adoc`` mandates DECERR for
-    the remainder inside a unit's aperture and is silent on the flavour for the
-    reserved rows between apertures, so this says only that the access must not
+    False means the fabric must refuse. ``memory_map.adoc`` says the fabric
+    refuses an address between unit windows or past the extent a unit allocates
+    and names no flavour, so this says only that the access must not
     complete. An address described by no detailed row is also False: the gap
     inside a coarse container allocates nothing.
     """

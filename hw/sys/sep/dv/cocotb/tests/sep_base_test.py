@@ -89,6 +89,12 @@ class _EvidenceFilter(logging.Filter):
 
     _CHK = re.compile(r"\b(CHK-[A-Z0-9_-]+)\b\s*(?:\([^)]*\)\s*)?(PASS|OK)\b")
 
+    # Emitted by sep_base_test itself on every bring-up, so it says nothing
+    # about the leaf. Counted in `observed` but excluded from `own`, which is
+    # what a floor grades: 18 of the 92 `all` leaves would otherwise satisfy a
+    # floor of one on this record alone.
+    BASE_IDS = frozenset({"CHK-OTP-JTAG2AXI-UNGATED"})
+
     def __init__(self) -> None:
         super().__init__()
         self.seen: set[str] = set()
@@ -127,13 +133,16 @@ class sep_base_test(uvm_test):
     # class counts what this run actually emitted and fails a silent one.
     #
     #   required_evidence -- IDs this test must emit. Missing any one fails.
-    #   min_evidence      -- fewest distinct IDs to accept. 0 means "at least
-    #                        one", which is the floor applied to every test.
+    #   min_evidence      -- fewest distinct IDs of the test's OWN (records the
+    #                        base class emits do not count). 0 disables it.
     #
-    # Both default to off because a per-test count is a contract of its own: a
-    # wrong number here fails a healthy test, so it is stated by the test that
-    # owns it rather than guessed centrally. The floor needs no declaration --
-    # no SEP leaf legitimately grades nothing.
+    # Both default to off, and the default is deliberate rather than timid. A
+    # floor applied centrally is wrong in both directions here: `rom_fw` leaves
+    # report a passing check as `CHK-UNARMED:` with no PASS token and would be
+    # rejected for a logging convention, while 18 of the 92 `all` leaves grade
+    # through a firmware verdict rather than a CHK line and would need an
+    # exemption each. So every run REPORTS its evidence and a leaf opts in to
+    # having it graded.
     required_evidence: tuple[str, ...] = ()
     min_evidence = 0
 
@@ -1184,28 +1193,35 @@ class sep_base_test(uvm_test):
         )
 
     def _finalize_evidence(self) -> None:
-        """Fail a run that finished without producing the evidence it owes.
+        """Report the evidence this run produced, and grade it if the leaf asked.
 
         Runs only after run_scenario() returns normally. A test that already
         failed raised, and this must not turn that into a different complaint.
+
+        `own` excludes the records sep_base_test emits itself, so a declared
+        floor grades what the leaf proved rather than what bring-up logged.
         """
         seen = sorted(getattr(self, "_evidence", _EvidenceFilter()).seen)
+        own = [c for c in seen if c not in _EvidenceFilter.BASE_IDS]
         required = tuple(self.required_evidence)
         missing = [check_id for check_id in required if check_id not in seen]
-        floor = max(self.min_evidence, 1)
 
         self.logger.info(
-            "EVIDENCE_SUMMARY test=%s observed=%d required=%d missing=%d ids=%s",
+            "EVIDENCE_SUMMARY test=%s observed=%d own=%d required=%d missing=%d ids=%s",
             self.get_type_name(),
             len(seen),
+            len(own),
             len(required),
             len(missing),
             ",".join(seen) or "-",
         )
 
         problems: list[str] = []
-        if len(seen) < floor:
-            problems.append(f"{len(seen)} distinct CHK-* PASS records, expected at least {floor}")
+        if self.min_evidence and len(own) < self.min_evidence:
+            problems.append(
+                f"{len(own)} distinct CHK-* PASS record(s) of its own, "
+                f"expected at least {self.min_evidence}"
+            )
         if missing:
             problems.append("never emitted: " + ", ".join(missing))
         if problems:

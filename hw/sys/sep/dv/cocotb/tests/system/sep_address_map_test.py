@@ -28,6 +28,17 @@ MASK32 = 0xFFFF_FFFF
 class sep_address_map_test(sep_base_test):
     """Register sweep of sep_cpu_ctrl over the CPU LSU bus."""
 
+    # Every graded contract this leaf owns. Dropping any one of them is the
+    # failure mode a clean exit would otherwise hide.
+    required_evidence = (
+        "CHK-REFCNT-READ",
+        "CHK-BASEADDR-RW",
+        "CHK-RW-READBACK",
+        "CHK-FABRIC-WALK",
+        "CHK-CPU-CTRL-HOLE",
+    )
+    min_evidence = 5
+
     async def _access(
         self,
         op: SepAxiOp,

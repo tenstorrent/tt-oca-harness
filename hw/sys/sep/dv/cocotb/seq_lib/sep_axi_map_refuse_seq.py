@@ -4,10 +4,9 @@
 
 Every probe address is classified by ``env/sep_axi_decode_map.py`` from the
 allocation tables in ``hw/sys/sep/doc/memory_map.adoc``. A reserved address
-must not answer OKAY. ``memory_map.adoc`` mandates DECERR for the remainder
-INSIDE a unit's aperture and is silent on the flavour for the reserved rows
-BETWEEN apertures, which is what this walks, so either refusal is accepted here
-and the flavour is only logged. ``sep_fabric_deadspace_decode_test`` owns the
+must not answer OKAY. ``memory_map.adoc`` says the fabric refuses an address
+between unit windows or past the extent a unit allocates, and names no flavour
+for either, so any refusal is accepted here and the flavour is only logged. ``sep_fabric_deadspace_decode_test`` owns the
 in-aperture case.
 
 Scope note. ``sep_fabric_deadspace_decode_test`` probes the dead tail INSIDE a
