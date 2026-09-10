@@ -352,6 +352,48 @@ def boot_err(result_name: str) -> int:
     return _c_define(_OCA_BOOT_H, "OCA_BOOT_ERR_BASE") | oca_result(result_name)
 
 
+_OCA_BOOT_C = _SEP_ROOT / "bootrom" / "prod" / "src" / "oca_boot.c"
+_STATUS_VALUES_H = _SEP_ROOT / "bootrom" / "prod" / "include" / "status_values.h"
+
+
+def rom_status_for_result(boot_error: int) -> int:
+    """The ``SEP_MSG_*`` value the ROM reports for one ``MANIFEST_ERR=`` code.
+
+    The console code and the status ring live in DIFFERENT spaces: the console
+    carries ``OCA_BOOT_ERR_BASE | oca_result_t`` while the ring carries
+    ``STATUS_ENCODE(type, SEP_MSG_*)``. ``status_for_result()`` in oca_boot.c is
+    the only bridge, so it is parsed rather than mirrored -- masking the console
+    code and calling the low half a status is how a test ends up asserting on a
+    value the ROM never reports.
+    """
+    import re
+
+    if not _OCA_BOOT_C.is_file():
+        raise ImportError(f"{_OCA_BOOT_C} not found; it defines status_for_result()")
+    body = _OCA_BOOT_C.read_text()
+    m = re.search(r"status_for_result\s*\([^)]*\)\s*\{(.*?)\n\}", body, re.S)
+    if m is None:
+        raise AssertionError("status_for_result() not found in oca_boot.c")
+
+    want = boot_error & 0xFFFF
+    pending: list[str] = []
+    for line in m.group(1).splitlines():
+        case = re.search(r"case\s+(OCA_FAIL_[A-Z0-9_]+)\s*:", line)
+        if case:
+            pending.append(case.group(1))
+            continue
+        ret = re.search(r"return\s+(SEP_MSG_[A-Z0-9_]+)\s*;", line)
+        if ret:
+            for name in pending:
+                if oca_result(name) == want:
+                    return _c_define(_STATUS_VALUES_H, ret.group(1))
+            pending = []
+    raise AssertionError(
+        f"status_for_result() maps no OCA_FAIL_* with value {want} "
+        f"(from boot error {boot_error:#010x})"
+    )
+
+
 def rom_boot_err(name: str) -> int:
     """One of the ROM's own ``OCA_BOOT_ERR_*`` codes, by name.
 

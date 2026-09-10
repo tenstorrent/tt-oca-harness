@@ -36,6 +36,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from env import sep_oca_mutate as mm
 from rom_fw.sep_backup_manifest_fail_base import sep_backup_manifest_fail_base
 
 _EFUSE_DIR = Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads" / "efuse_configurations"
@@ -238,11 +239,15 @@ class sep_bl1_image_invalid_base(sep_backup_manifest_fail_base):
             f"ROM never printed {_ALL_FAILED}; the retry loop did not exhaust both "
             f"slots. Console: {console}"
         )
-        expected_status = 0x0F01_0000 | (self.expected_error & 0xFFFF)
+        # The ring carries STATUS_ENCODE(type, SEP_MSG_*), which is a different
+        # space from the console's OCA_BOOT_ERR_BASE | oca_result_t. Translated
+        # through the ROM's own status_for_result() rather than by masking the
+        # console code, whose low half is the result number and not a status.
+        status_msg = mm.rom_status_for_result(self.expected_error)
+        expected_status = 0x0F01_0000 | status_msg
         assert expected_status in status_seq, (
             f"cold_scratch[1] never held 0x{expected_status:08x} "
-            f"(STATUS_ENCODE(ERROR, 0x{self.expected_error & 0xFFFF:04x})); "
-            f"observed {status_hex}"
+            f"(STATUS_ENCODE(ERROR, 0x{status_msg:04x})); observed {status_hex}"
         )
         log.info(
             "CHK-REJECT-REASON: %s on both slots, %s, cold_scratch[1]=0x%08x",

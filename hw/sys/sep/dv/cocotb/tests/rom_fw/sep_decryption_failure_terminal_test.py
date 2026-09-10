@@ -52,6 +52,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyuvm
+from env import sep_oca_mutate as mm
 from env import sep_oca_payload as pm
 from rom_fw.sep_backup_manifest_fail_base import sep_backup_manifest_fail_base
 
@@ -224,7 +225,10 @@ class sep_decryption_failure_terminal_test(sep_backup_manifest_fail_base):
             f"{i_ok}: the boot failed BEFORE decryption ran, so this run does not "
             f"show a decryption failure at all"
         )
-        expected_status = 0x0F01_0000 | (self.expected_error & 0xFFFF)
+        # STATUS_ENCODE(type, SEP_MSG_*), translated through the ROM's own
+        # status_for_result(); the console code's low half is the result number,
+        # not a status value.
+        expected_status = 0x0F01_0000 | mm.rom_status_for_result(self.expected_error)
         assert expected_status in status_seq, (
             f"cold_scratch[1] never held 0x{expected_status:08x}; observed {status_hex}"
         )
