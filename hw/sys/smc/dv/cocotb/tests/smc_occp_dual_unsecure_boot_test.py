@@ -174,10 +174,9 @@ def _payload_entry_offset(sym_path: str) -> int:
 async def _peek_target_scratch(dut, offset: int) -> tuple[int, int]:
     """Read one 64-bit word of the target's scratch SRAM, plus its ECC bits.
 
-    Read-only, and informational -- nothing gates on it. It resolves the offset
-    with smc_scratch_map_pkg, the same decode smc_dual_axi_sram_probe_test holds
-    against AXI, so a mismatch here is worth reading rather than expected. See
-    the note at the landing check below.
+    CHK-OCCP-TRANSFER-LANDED asserts the first and last payload words returned
+    here. It resolves the offset with smc_scratch_map_pkg, the same decode
+    smc_dual_axi_sram_probe_test holds against AXI.
 
     Used to separate "the OCCP writes never landed" from "they landed and the
     core still would not execute them" when triaging a failure. An AXI read of
