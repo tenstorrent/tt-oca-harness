@@ -32,7 +32,7 @@ manifest_content_version:
   minor: 0
   patch: 0
 payload_images:
-  - type: "TT_SEP  BLSTAGE1"
+  - type: "OCAHSEP BLSTAGE1"
     path: "../../dv/fw/tests/bl1_pass_test/build/bl1_pass_test.bin"
     # ICCM. bl1_pass_test links .text at ORIGIN(iccm) = 0xC0000000 and puts the
     # LMA of its .rodata/.data straight after, which _start copies down to DCCM --

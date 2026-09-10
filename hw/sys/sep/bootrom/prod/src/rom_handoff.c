@@ -41,7 +41,7 @@
 // vendor string, bytes[7:0] the spec's recommended label (boot-manifest.adoc,
 // "Payload TOC entry"). Matched in full rather than on the label alone so an
 // image another vendor published as BLSTAGE1 cannot be booted here.
-#define SEP_BL1_IMAGE_TYPE "TT_SEP  BLSTAGE1"
+#define SEP_BL1_IMAGE_TYPE "OCAHSEP BLSTAGE1"
 
 // Bytes zeroed past BL1's image so the IFU cannot fetch a word that was never
 // written. The 64-bit fetch granule is the documented part; the rest is margin

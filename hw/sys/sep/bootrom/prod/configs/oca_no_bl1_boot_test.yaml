@@ -35,5 +35,5 @@ payload_images:
   # A perfectly valid manifest carrying no bootable stage. Everything verifies;
   # the handoff has nothing to jump to, which must be a clean refusal rather
   # than booting whatever happens to be first.
-  - type: "TT_SEP  BLMEMMAP"
+  - type: "OCAHSEP BLMEMMAP"
     path: "../../dv/fw/tests/bl1_pass_test/build/bl1_pass_test.bin"

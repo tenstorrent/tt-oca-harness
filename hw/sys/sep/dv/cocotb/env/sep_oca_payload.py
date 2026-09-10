@@ -99,7 +99,7 @@ E_HASH = K.OFF_TOC_ENTRY_HASH
 
 # The BL1 image's 16-byte ASCII type string, as the ROM matches it
 # (rom_handoff.c SEP_BL1_IMAGE_TYPE).
-IMAGE_TYPE_SEP_BL1 = b"TT_SEP  BLSTAGE1"
+IMAGE_TYPE_SEP_BL1 = b"OCAHSEP BLSTAGE1"
 
 # ---------------------------------------------------------------------------
 # Rejection codes

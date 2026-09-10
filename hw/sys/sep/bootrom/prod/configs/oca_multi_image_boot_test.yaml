@@ -35,11 +35,11 @@ payload_images:
   # BL1 deliberately LAST. rom_handoff_bl1() must search the TOC by image type
   # rather than assuming index 0 -- taking the first entry would boot the memory
   # map here, which is not executable.
-  - type: "TT_SEP  BLMEMMAP"
+  - type: "OCAHSEP BLMEMMAP"
     path: "../../dv/fw/tests/bl1_pass_test/build/bl1_pass_test.bin"
-  - type: "TT_SEP  _VENDOR1"
+  - type: "OCAHSEP _VENDOR1"
     path: "../../dv/fw/tests/bl1_pass_test/build/bl1_pass_test.bin"
-  - type: "TT_SEP  BLSTAGE1"
+  - type: "OCAHSEP BLSTAGE1"
     path: "../../dv/fw/tests/bl1_pass_test/build/bl1_pass_test.bin"
     # ICCM. bl1_pass_test links .text at ORIGIN(iccm) = 0xC0000000 and puts the
     # LMA of its .rodata/.data straight after, which _start copies down to DCCM --
