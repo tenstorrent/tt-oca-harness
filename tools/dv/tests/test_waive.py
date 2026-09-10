@@ -42,6 +42,7 @@ COVERAGE_FILES = {
 }
 RUN_FILES = {**closure.GRADED_FILES, "result.json": Path("run/result.json")}
 REGRESSION_REL = Path("stages/regress/regression.json")
+NATIVE_REL = Path("dut/cov/config/verilator/verilator_native.cfg")
 WAIVE_CAPTURE_EN_FALL = """
 [[holes]]
 id = "toggle-capture_en-fall"
@@ -133,6 +134,13 @@ def edit_text(path: Path, old: str, new: str) -> None:
     text = path.read_text(encoding="utf-8")
     assert old in text, old
     path.write_text(text.replace(old, new), encoding="utf-8")
+
+
+def strip_native_files(policy_text: str) -> str:
+    """The policy text without its `[[native_files]]` table."""
+    start = policy_text.index("[[native_files]]")
+    end = policy_text.index("[[holes]]", start)
+    return policy_text[:start] + policy_text[end:]
 
 
 def cov_report_record(result: dict) -> dict:
@@ -426,6 +434,10 @@ class WaiveRegrade(FixtureCase):
                 run_dir / "result.json", '"kind": "coverage_threshold"', '"kind": "tool_error"'
             ),
             "configured policy missing": lambda run_dir: (self.root / closure.POLICY_REL).unlink(),
+            "native policy file edited": lambda run_dir: (self.root / NATIVE_REL).write_text(
+                "changed\n", encoding="utf-8"
+            ),
+            "manifest policy block missing": lambda run_dir: self._drop_manifest_policy(run_dir),
         }
         for label, mutate in cases.items():
             with self.subTest(case=label):
@@ -438,6 +450,11 @@ class WaiveRegrade(FixtureCase):
                 finally:
                     shutil.rmtree(self.root, ignore_errors=True)
                     self.root = root_backup
+
+    def _drop_manifest_policy(self, run_dir: Path) -> None:
+        manifest = read_json(run_dir / "cov" / "coverage.json")
+        del manifest["policy"]
+        write_json_file(run_dir / "cov" / "coverage.json", manifest)
 
     def _drop_record(self, run_dir: Path) -> None:
         result = read_json(run_dir / "result.json")
@@ -455,6 +472,17 @@ class WaiveRegrade(FixtureCase):
         )
         err = self.assert_exit_2_without_writes(run_dir, policy=policy)
         self.assertIn("does not match", err)
+
+    def test_policy_file_without_the_recorded_native_files_exits_2(self):
+        run_dir = stage_finished_run(self.root)
+        configured = self.root / closure.POLICY_REL
+        policy = configured.with_name("no-native.toml")
+        policy.write_text(
+            strip_native_files(configured.read_text(encoding="utf-8")), encoding="utf-8"
+        )
+        err = self.assert_exit_2_without_writes(run_dir, policy=policy)
+        self.assertIn("native policy files differ", err)
+        self.assertIn("--stage cov_report", err)
 
     def test_missing_policy_file_exits_2(self):
         run_dir = stage_finished_run(self.root)

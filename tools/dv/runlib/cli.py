@@ -55,7 +55,7 @@ from .coverage_closure import (
     grade_coverage_run,
     parse_coverage_run,
 )
-from .coverage_policy import load_coverage_policy
+from .coverage_policy import CoveragePolicy, load_coverage_policy, native_policy_manifest
 from .duts import load_duts, resolve_dut
 from .junit import materialize_stage_junit
 from .logparse import validate_parser_extensions, validate_parser_registry
@@ -1604,6 +1604,39 @@ def _waive_report_record(
     return record
 
 
+def _native_file_keys(entries: Any) -> set[tuple[str, str, str, str]]:
+    keys: set[tuple[str, str, str, str]] = set()
+    if isinstance(entries, list):
+        for entry in entries:
+            if isinstance(entry, dict):
+                keys.add(
+                    tuple(str(entry.get(key)) for key in ("tool", "role", "apply_phase", "sha256"))
+                )
+    return keys
+
+
+def _require_native_files_unchanged(
+    manifest: dict[str, Any],
+    policy: CoveragePolicy,
+    run_dir_arg: str,
+) -> None:
+    """Native files act inside the merge and report commands, which a re-grade does not run.
+
+    The manifest records their digests at merge time; the current policy must declare
+    the same set.
+    """
+
+    recorded_policy = manifest.get("policy")
+    recorded = _native_file_keys(
+        recorded_policy.get("native_files") if isinstance(recorded_policy, dict) else None
+    )
+    if recorded != _native_file_keys(native_policy_manifest(policy)):
+        raise ConfigError(
+            f"{policy.path}: native policy files differ from the ones the report was produced "
+            f"with; rerun with --run-dir {run_dir_arg} --stage cov_report"
+        )
+
+
 def _waive_tool_version(summary: dict[str, Any], manifest: dict[str, Any], tool: str) -> str:
     versions = summary.get("tool_versions")
     if isinstance(versions, dict) and isinstance(versions.get(tool), str):
@@ -1674,6 +1707,7 @@ def waive_run(
             raise ConfigError(
                 f"dut `{flow.name}` has no coverage policy for tool `{tool}`; pass --waive FILE"
             )
+    _require_native_files_unchanged(manifest, policy, str(args.run_dir))
     summary = _read_json_object(paths.summary) or {}
     threshold = args.fail_under
     if threshold is None:
