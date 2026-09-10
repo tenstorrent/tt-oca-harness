@@ -2,29 +2,29 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 // SMC CPU Package
-// - Defines CPU parameters in OCAH1CORECluster_DigitalTop
+// - Defines CPU parameters in OCAH4CORECluster_DigitalTop
 
-`ifndef SMC_1CORE_CPU_PACKAGE_DEFINED
-`define SMC_1CORE_CPU_PACKAGE_DEFINED
+`ifndef SMC_4CORE_CPU_PACKAGE_DEFINED
+`define SMC_4CORE_CPU_PACKAGE_DEFINED
 
-package smc_1core_cpu_pkg;
+package smc_4core_cpu_pkg;
 
   ////////////////////////////
   // CPU Control Parameters //
   ////////////////////////////
 
-  localparam int unsigned NUM_CPU_CORES = 1;
+  localparam int unsigned NUM_CPU_CORES = 4;
 
   // Interrupt Parameters
-  localparam bit [8:0] NUM_CPU_INTERRUPTS = 104;
-  localparam bit [8:0] NUM_EXT_INTERRUPTS = 32;
+  localparam bit [8:0] NUM_CPU_INTERRUPTS = 328;
+  localparam bit [8:0] NUM_EXT_INTERRUPTS = 256;
 
-  // In the one core config, the CPU cores are held in reset by default
+  // in the four core config, the CPU cores are out of reset by default
   localparam cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t DEFAULT_RESET_SETTINGS = '{
-      core0_reset_n_n0_scan: 1'b0,
-      core1_reset_n_n0_scan: 1'b0,
-      core2_reset_n_n0_scan: 1'b0,
-      core3_reset_n_n0_scan: 1'b0,
+      core0_reset_n_n0_scan: 1'b1,
+      core1_reset_n_n0_scan: 1'b1,
+      core2_reset_n_n0_scan: 1'b1,
+      core3_reset_n_n0_scan: 1'b1,
       core0_reset_pulse_start_n0_scan: 1'b0,
       core1_reset_pulse_start_n0_scan: 1'b0,
       core2_reset_pulse_start_n0_scan: 1'b0,
@@ -36,4 +36,4 @@ package smc_1core_cpu_pkg;
   };
 
 endpackage
-`endif  // SMC_1CORE_CPU_PACKAGE_DEFINED
+`endif  // SMC_4CORE_CPU_PACKAGE_DEFINED

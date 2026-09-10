@@ -9,10 +9,8 @@ module smc #(
   // The open smc_external map is one opaque region, so this is a literal here and
   // is overridden by an integration that models the block.
   parameter int unsigned EFUSE_SHIM_SIZE = 'h44,
-  parameter smc_pkg::smc_cpu_config_e SMC_CPU_CONFIG = smc_pkg::SMC_4CORE,
 
-  // based on what the CPU config is, change internal defines
-  // - types cannot use ternary operators so this has to be a parameter
+  // Memory-interface types (cannot be localparams)
   parameter  type         rom_req_t             = chipyard_4core_mem_pkg::rom_req_t,
   parameter  type         rom_rsp_t             = chipyard_4core_mem_pkg::rom_rsp_t,
   parameter  type         scratch_ram_req_t     = chipyard_4core_mem_pkg::scratch_ram_req_t,
@@ -26,15 +24,15 @@ module smc #(
   parameter  type         l1_dcache_data_req_t  = chipyard_4core_mem_pkg::l1_dcache_data_req_t,
   parameter  type         l1_dcache_data_rsp_t  = chipyard_4core_mem_pkg::l1_dcache_data_rsp_t,
 
-  localparam int unsigned NUM_CPU_CORES         = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? smc_4core_cpu_pkg::NUM_CPU_CORES              : smc_1core_cpu_pkg::NUM_CPU_CORES,
-  localparam int unsigned NUM_CPU_INTERRUPTS    = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS         : smc_1core_cpu_pkg::NUM_CPU_INTERRUPTS,
-  localparam int unsigned NUM_EXT_INTERRUPTS    = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS         : smc_1core_cpu_pkg::NUM_EXT_INTERRUPTS,
+  localparam int unsigned NUM_CPU_CORES         = smc_4core_cpu_pkg::NUM_CPU_CORES,
+  localparam int unsigned NUM_CPU_INTERRUPTS    = smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS,
+  localparam int unsigned NUM_EXT_INTERRUPTS    = smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS,
 
-  localparam int unsigned NUM_SRAM_BANKS        = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? chipyard_4core_mem_pkg::NUM_SRAM_BANKS        : chipyard_1core_mem_pkg::NUM_SRAM_BANKS,
-  localparam int unsigned NUM_ICACHE_TAG_BANKS  = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS  : chipyard_1core_mem_pkg::NUM_ICACHE_TAG_BANKS,
-  localparam int unsigned NUM_ICACHE_DATA_BANKS = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS : chipyard_1core_mem_pkg::NUM_ICACHE_DATA_BANKS,
-  localparam int unsigned NUM_DCACHE_TAG_BANKS  = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS  : chipyard_1core_mem_pkg::NUM_DCACHE_TAG_BANKS,
-  localparam int unsigned NUM_DCACHE_DATA_BANKS = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS : chipyard_1core_mem_pkg::NUM_DCACHE_DATA_BANKS
+  localparam int unsigned NUM_SRAM_BANKS        = chipyard_4core_mem_pkg::NUM_SRAM_BANKS,
+  localparam int unsigned NUM_ICACHE_TAG_BANKS  = chipyard_4core_mem_pkg::NUM_ICACHE_TAG_BANKS,
+  localparam int unsigned NUM_ICACHE_DATA_BANKS = chipyard_4core_mem_pkg::NUM_ICACHE_DATA_BANKS,
+  localparam int unsigned NUM_DCACHE_TAG_BANKS  = chipyard_4core_mem_pkg::NUM_DCACHE_TAG_BANKS,
+  localparam int unsigned NUM_DCACHE_DATA_BANKS = chipyard_4core_mem_pkg::NUM_DCACHE_DATA_BANKS
 ) (
   // Clocks from PLLs
   input logic clk_smc_i,
@@ -317,8 +315,7 @@ module smc #(
   logic [NUM_CPU_CORES-1:0]                   cpu_wdt_timeout_cluster;
 
   smc_base #(
-    .NO_ADDR_REMAP                      (smc_config_pkg::NO_ADDR_REMAP),           // Enable address remap in the output fabric
-    .SMC_CPU_CONFIG                     (SMC_CPU_CONFIG)
+    .NO_ADDR_REMAP                      (smc_config_pkg::NO_ADDR_REMAP)           // Enable address remap in the output fabric
   ) u_smc_base (
     // Clocks from PLLs
     .clk_smc_i                              (clk_smc_i),
@@ -427,7 +424,6 @@ module smc #(
 
   smc_cpu_wrapper #(
     .NO_ADDR_REMAP                      (smc_config_pkg::NO_ADDR_REMAP),
-    .SMC_CPU_CONFIG                     (SMC_CPU_CONFIG),
     .rom_req_t                          (rom_req_t),
     .rom_rsp_t                          (rom_rsp_t),
     .scratch_ram_req_t                  (scratch_ram_req_t),
