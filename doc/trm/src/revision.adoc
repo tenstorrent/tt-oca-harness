@@ -173,4 +173,7 @@ SW_RESET_N now resets to 0x3E; reserved CTRL[0] reads zero and ignores writes.
 |0.5.29 |2026-09-02 |Alessandro Ottaviano |Aligned the SMC Boot ROM chapter
 with the current four-core hardware ROM interface, 128 KiB linker map, macro
 configuration, and response endianness control.
+|0.5.30 |2026-09-10 |Ben Melton |Recorded that the SEP TRNG aperture is a
+full-window passthrough to an adopter-defined IP, and that intra-aperture
+SLVERR and no-alias decode is an integrator constraint.
 |=======================================================================
