@@ -37,10 +37,10 @@ module prim_sync4r #(
 `endif
 
   prim_flop_4sync_r sync4r[WIDTH-1:0] (
-    .i_CK(i_clk),
-    .i_RN(i_reset_n),
-    .i_D (d_del),
-    .o_Q (o_q)
+    .clk_i(i_clk),
+    .rst_ni(i_reset_n),
+    .d_i (d_del),
+    .q_o (o_q)
   );
 
 endmodule

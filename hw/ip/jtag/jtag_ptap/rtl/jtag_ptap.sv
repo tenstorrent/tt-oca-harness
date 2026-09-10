@@ -1244,18 +1244,18 @@ module jtag_ptap
 
     // First mux: Select between client_tdi_i (zero-length bypass) and tdr_mux
     prim_stdmux2 u_zlb_tdr_mux (
-        .i_I0  (tdr_mux),
-        .i_I1  (client_tdi_i),
-        .i_SEL (inst_decoded_o[ZERO_LENGTH_BYPASS_INSTR] && dr_scan_select_reg),
-        .o_Y   (zlb_tdr_mux)
+        .i0_i  (tdr_mux),
+        .i1_i  (client_tdi_i),
+        .sel_i (inst_decoded_o[ZERO_LENGTH_BYPASS_INSTR] && dr_scan_select_reg),
+        .y_o   (zlb_tdr_mux)
     );
 
     // Second mux: Select between stap_host_scan_in_i (STAP) and zlb_tdr_mux
     prim_stdmux2 u_tdo_mux (
-        .i_I0  (zlb_tdr_mux),
-        .i_I1  (stap_host_scan_in_i),
-        .i_SEL (stap_select),
-        .o_Y   (tdo_mux)
+        .i0_i  (zlb_tdr_mux),
+        .i1_i  (stap_host_scan_in_i),
+        .sel_i (stap_select),
+        .y_o   (tdo_mux)
     );
 
     //--------------------------------------------------------------------------
@@ -1300,10 +1300,10 @@ module jtag_ptap
     // For all other instructions: select retimed TDO
     // Use registered DR scan select to avoid glitches
     prim_stdmux2 u_tdo_bypass_mux (
-        .i_I0  (tdo_retimed),
-        .i_I1  (tdo_mux),
-        .i_SEL (inst_decoded_o[ZERO_LENGTH_BYPASS_INSTR] && dr_scan_select_reg),
-        .o_Y   (client_tdo_o)
+        .i0_i  (tdo_retimed),
+        .i1_i  (tdo_mux),
+        .sel_i (inst_decoded_o[ZERO_LENGTH_BYPASS_INSTR] && dr_scan_select_reg),
+        .y_o   (client_tdo_o)
     );
 
 endmodule : jtag_ptap

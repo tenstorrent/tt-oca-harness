@@ -276,17 +276,17 @@ create_generated_clock -add -name AVS_CLK_FROM_REFCLK \
     -master_clock REFCLK \
     -divide_by 2 \
     -source [get_ports "clk_ref_i"] \
-    [get_pins "${avs_hier}/u_clk_div/div_clk_stdbuf/o_Y"]
+    [get_pins "${avs_hier}/u_clk_div/div_clk_stdbuf/y_o"]
 
 # AVS clock when sourced from PERIPHERALCLK (modes 00/01)
 create_generated_clock -add -name AVS_CLK_FROM_PERIPHERALCLK \
     -master_clock PERIPHERALCLK \
     -divide_by 4 \
     -source [get_ports "clk_periph_i"] \
-    [get_pins "${avs_hier}/u_clk_div/div_clk_stdbuf/o_Y"]
+    [get_pins "${avs_hier}/u_clk_div/div_clk_stdbuf/y_o"]
 
 # Same divided-clock intent on `u_clk_div/clk_o` (`pre_testmux_avs_clk`) so downstream
-# STA does not flag an undeclared setup clock when propagation from div_clk_stdbuf/o_Y
+# STA does not flag an undeclared setup clock when propagation from div_clk_stdbuf/y_o
 # alone does not reach the module output pin (prim_prog_clk_div_posedge).
 create_generated_clock -add -name AVS_CLK_DIV_CLK_O_FROM_REFCLK \
     -master_clock REFCLK \
@@ -300,20 +300,20 @@ create_generated_clock -add -name AVS_CLK_DIV_CLK_O_FROM_PERIPHERALCLK \
     -source [get_ports "clk_periph_i"] \
     [get_pins "${avs_hier}/u_clk_div/clk_o"]
 
-# Internal `div_clk` net (flop -> prim_stdbuf i_A): stamped so downstream STA can
+# Internal `div_clk` net (flop -> prim_stdbuf a_i): stamped so downstream STA can
 # resolve the setup clock looking for a PotentialRoot at `div_clk`, matching the
-# energy already modeled at o_Y.
+# energy already modeled at y_o.
 create_generated_clock -add -name AVS_DIV_TOGGLE_FROM_REFCLK \
     -master_clock REFCLK \
     -divide_by 2 \
     -source [get_ports "clk_ref_i"] \
-    [get_pins "${avs_hier}/u_clk_div/div_clk_stdbuf/i_A"]
+    [get_pins "${avs_hier}/u_clk_div/div_clk_stdbuf/a_i"]
 
 create_generated_clock -add -name AVS_DIV_TOGGLE_FROM_PERIPHERALCLK \
     -master_clock PERIPHERALCLK \
     -divide_by 4 \
     -source [get_ports "clk_periph_i"] \
-    [get_pins "${avs_hier}/u_clk_div/div_clk_stdbuf/i_A"]
+    [get_pins "${avs_hier}/u_clk_div/div_clk_stdbuf/a_i"]
 
 # Toggle flop output (feeds div_clk_stdbuf and postdiv_mux clk1_i). See the
 # `div_clk/Q` caveat in the file header: this pin only exists post-synthesis,
@@ -341,7 +341,7 @@ create_generated_clock -add -name AVS_CLKMUX_OUTPUT_FROM_REFCLK_GPIO \
 create_generated_clock -add -name AVS_CLK_FROM_REFCLK_GPIO \
     -master_clock AVS_CLK_FROM_REFCLK \
     -divide_by 1 \
-    -source [get_pins "${avs_hier}/u_clk_div/div_clk_stdbuf/o_Y"] \
+    -source [get_pins "${avs_hier}/u_clk_div/div_clk_stdbuf/y_o"] \
     [get_ports {core2pad_o[49]}]
 
 create_generated_clock -add -name AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK_GPIO \
@@ -353,7 +353,7 @@ create_generated_clock -add -name AVS_CLKMUX_OUTPUT_FROM_PERIPHERALCLK_GPIO \
 create_generated_clock -add -name AVS_CLK_FROM_PERIPHERALCLK_GPIO \
     -master_clock AVS_CLK_FROM_PERIPHERALCLK \
     -divide_by 1 \
-    -source [get_pins "${avs_hier}/u_clk_div/div_clk_stdbuf/o_Y"] \
+    -source [get_pins "${avs_hier}/u_clk_div/div_clk_stdbuf/y_o"] \
     [get_ports {core2pad_o[49]}]
 
 # Downstream AVS flops should resolve against `AVS_CLK_FROM_REFCLK` /

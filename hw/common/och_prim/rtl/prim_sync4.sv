@@ -36,9 +36,9 @@ module prim_sync4 #(
 `endif
 
   prim_flop_4sync sync4[WIDTH-1:0] (
-    .i_CK(i_clk),
-    .i_D (d_del),
-    .o_Q (o_q)
+    .clk_i(i_clk),
+    .d_i (d_del),
+    .q_o (o_q)
   );
 
 endmodule

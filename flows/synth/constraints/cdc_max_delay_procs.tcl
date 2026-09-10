@@ -297,9 +297,9 @@ proc set_cdc_max_delay_prim_sync_data_autohs { inst src_clk dst_clk { delay {} }
     set inst [cdc_inst $inst]
     set t "prim_sync_data_autohs $inst"
     cdc_emit "$t req" [cdc_sync_delay $dst_clk $delay] to \
-        {} [get_pins "$inst/*sync_req_toggle/i_D" -quiet]
+        {} [get_pins "$inst/*sync_req_toggle/d_i" -quiet]
     cdc_emit "$t ack" [cdc_sync_delay $src_clk $delay] to \
-        {} [get_pins "$inst/*sync_ack_toggle/i_D" -quiet]
+        {} [get_pins "$inst/*sync_ack_toggle/d_i" -quiet]
     # -to the destination clock, not clk2_val_reg/D: before mapping, flop inputs
     # are GTECH `next_state` pins, so any /D pattern resolves empty here.
     cdc_emit "$t data" [cdc_data_delay $dst_clk $delay] from \

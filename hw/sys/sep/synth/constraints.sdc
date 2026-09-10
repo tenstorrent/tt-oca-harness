@@ -105,7 +105,7 @@ create_clock -add -name ck_feedthru -period $clock_periods(ck_feedthru_PERIOD)
 # acts as a clock and is declared from both sources. Divide ratio is immaterial for
 # CDC; only the source-clock relationship matters.
 # shared ring oscillator output buffer pin
-set entropy_shared_ro_pin [get_pins "sep_crypto/u_entropy_source/egen/sclk/shared_ro/u_fbf/o_Y"]
+set entropy_shared_ro_pin [get_pins "sep_crypto/u_entropy_source/egen/sclk/shared_ro/u_fbf/y_o"]
 
 # entropy_source ring-oscillator sample clock
 create_clock -add -name ENTROPY_ROSC_CLK  -period $clock_periods(ENTROPY_ROSC_PERIOD) [get_ports "entropy_rosc_sample_clk_i"]

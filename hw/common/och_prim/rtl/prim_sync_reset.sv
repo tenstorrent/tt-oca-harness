@@ -27,20 +27,20 @@ module prim_sync_reset #(
   );
 
   prim_metastab_hardened_dffr sync_dffr (
-    .i_CK(clk),
-    .i_RN(rst_n),       // Asynch Reset
-    .i_D (1'b1),
-    .o_Q (sync_reg[0])
+    .clk_i(clk),
+    .rst_ni(rst_n),       // Asynch Reset
+    .d_i (1'b1),
+    .q_o (sync_reg[0])
   );
 
   generate
     for (genvar stage = 1; stage < WIDTH; stage = stage + 1) begin : gen_rst_sync_stage
 
       prim_metastab_hardened_dffr sync_dffr (
-        .i_CK(clk),
-        .i_RN(rst_n),              // Asynch Reset
-        .i_D (sync_reg[stage-1]),
-        .o_Q (sync_reg[stage])
+        .clk_i(clk),
+        .rst_ni(rst_n),              // Asynch Reset
+        .d_i (sync_reg[stage-1]),
+        .q_o (sync_reg[stage])
       );
 
     end

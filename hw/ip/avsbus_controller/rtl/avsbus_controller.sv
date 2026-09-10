@@ -428,10 +428,10 @@ module avsbus_controller #(
 
   // AVS bus clock gate:
   prim_clkgater u_avs_bus_clkgate (
-    .i_clk (avs_clk),
-    .i_en  (avs_clk_enable),
-    .i_te (test_en_i),
-    .o_clk(avs_clock_o)
+    .clk_i (avs_clk),
+    .en_i  (avs_clk_enable),
+    .te_i (test_en_i),
+    .clk_o(avs_clock_o)
   );
 
   prim_ag_clk_mux #(
@@ -459,18 +459,18 @@ module avsbus_controller #(
 
   // apb_clk clock gate:
   prim_clkgater u_apbclk_clkgate (
-    .i_clk (clk_reg_i),
-    .i_en  (~R_avs_cfg_1_F_turn_off_all_premux_clocks),
-    .i_te (test_en_i),
-    .o_clk(apb_clk_gated)
+    .clk_i (clk_reg_i),
+    .en_i  (~R_avs_cfg_1_F_turn_off_all_premux_clocks),
+    .te_i (test_en_i),
+    .clk_o(apb_clk_gated)
   );
 
   // refclk clock gate:
   prim_clkgater u_refclk_clkgate (
-    .i_clk (clk_ref_i),
-    .i_en  (~R_avs_cfg_1_F_turn_off_all_premux_clocks_RS_refclk),
-    .i_te (test_en_i),
-    .o_clk(refclk_gated)
+    .clk_i (clk_ref_i),
+    .en_i  (~R_avs_cfg_1_F_turn_off_all_premux_clocks_RS_refclk),
+    .te_i (test_en_i),
+    .clk_o(refclk_gated)
   );
 
   prim_sync3 u_gate_refclk_en_sync (

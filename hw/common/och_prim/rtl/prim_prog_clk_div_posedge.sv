@@ -84,8 +84,8 @@ module prim_prog_clk_div_posedge #(
   end
 
   prim_stdbuf div_clk_stdbuf (
-    .i_A(div_clk),
-    .o_Y(div_clk_buf)
+    .a_i(div_clk),
+    .y_o(div_clk_buf)
   );
 
   //here, unbuffered div_clk continues into glitch-free mux.

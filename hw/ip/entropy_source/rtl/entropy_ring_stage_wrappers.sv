@@ -22,61 +22,61 @@
 //--------------------------------------------------
 
 module entropy_ring_nand2_wrapper (
-  input  i_A1,
-  input  i_A2,
-  output o_Y
+  input  a1_i,
+  input  a2_i,
+  output y_o
 );
   logic y_cell;
 
   prim_clock_nand2 u_cell (
-    .i_A1 (i_A1),
-    .i_A2 (i_A2),
-    .o_Y  (y_cell)
+    .a1_i (a1_i),
+    .a2_i (a2_i),
+    .y_o  (y_cell)
   );
 
 `ifndef SYNTHESIS
-  assign #1 o_Y = y_cell;
+  assign #1 y_o = y_cell;
 `else
-  assign o_Y = y_cell;
+  assign y_o = y_cell;
 `endif
 endmodule
 
 module entropy_ring_buf_wrapper (
-  input  i_A,
-  output o_Y
+  input  a_i,
+  output y_o
 );
   logic y_cell;
 
   prim_stdbuf u_cell (
-    .i_A (i_A),
-    .o_Y (y_cell)
+    .a_i (a_i),
+    .y_o (y_cell)
   );
 
 `ifndef SYNTHESIS
-  assign #1 o_Y = y_cell;
+  assign #1 y_o = y_cell;
 `else
-  assign o_Y = y_cell;
+  assign y_o = y_cell;
 `endif
 endmodule
 
 module entropy_ring_mux2_wrapper (
-  input  i_I0,
-  input  i_I1,
-  input  i_SEL,
-  output o_Y
+  input  i0_i,
+  input  i1_i,
+  input  sel_i,
+  output y_o
 );
   logic y_cell;
 
   prim_stdmux2 u_cell (
-    .i_I0  (i_I0),
-    .i_I1  (i_I1),
-    .i_SEL (i_SEL),
-    .o_Y   (y_cell)
+    .i0_i  (i0_i),
+    .i1_i  (i1_i),
+    .sel_i (sel_i),
+    .y_o   (y_cell)
   );
 
 `ifndef SYNTHESIS
-  assign #1 o_Y = y_cell;
+  assign #1 y_o = y_cell;
 `else
-  assign o_Y = y_cell;
+  assign y_o = y_cell;
 `endif
 endmodule

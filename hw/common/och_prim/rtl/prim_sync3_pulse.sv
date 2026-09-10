@@ -59,10 +59,10 @@ module prim_sync3_pulse_dest (
   wire src_reset_n_reg_dst_clk;
 
   prim_flop_3sync_r sync3 (
-    .i_CK(i_dst_clk),
-    .i_RN (src_reset_n_reg_dst_clk),
-    .i_D (toggle),
-    .o_Q (toggle_synced)
+    .clk_i(i_dst_clk),
+    .rst_ni (src_reset_n_reg_dst_clk),
+    .d_i (toggle),
+    .q_o (toggle_synced)
   );
 
   prim_sync_reset #(
