@@ -185,6 +185,23 @@ target = "lsu_stub_all_live"
 args = ["+secure_tm_lock"]
 
 [[tests]]
+# Both eFuse FSMs fail closed from an illegal state. read_state_q and
+# program_state_q are two bits whose legal encodings are 2'b01 and 2'b10; no
+# frontdoor stimulus can produce 2'b00 or 2'b11, so the recovery the RTL
+# asserts on them is unreachable without injection. Forces one illegal encoding
+# for one cycle, on each FSM, for both illegal values, and grades the recovery
+# on DUT outputs: back to idle, no command to the bank, and for reads
+# error+done set with the 0xbadcab1e sentinel. A live read precedes and follows
+# the injections, so the refusal is not a dead block. Real fuse sense, LC_PROD.
+name = "sep_efuse_illegal_state_fail_closed_test"
+module = "efuse.sep_efuse_illegal_state_fail_closed_test"
+seed = 1
+timeout_sec = 1800
+tags = ["efuse", "fault", "fail-closed", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+
+[[tests]]
 # LC_STATE next state on the shadow write-1-to-set path -- the writer the
 # lifecycle stitch walk does not drive (that one programs an OTP bit and
 # re-senses). The OTP image is a t=0 deposit that survives reset, so each

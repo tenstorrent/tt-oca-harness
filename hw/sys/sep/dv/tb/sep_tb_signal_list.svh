@@ -443,6 +443,25 @@
 `SEP_TB_OUT(logic, token_digest_valid_en_pre_o)
 `SEP_TB_OUT(logic, token_digest_latch_en_o)
 `SEP_TB_OUT(logic, token_digest_valid_en_o)
+
+// eFuse read/program FSM fail-closed observability and fault injection.
+// `efuse_read_interface` and `efuse_program_interface` each hold a two-bit
+// state whose only legal encodings are 2'b01 and 2'b10; 2'b00 and 2'b11 are
+// unreachable by any frontdoor stimulus, so the fail-closed behaviour the
+// design asserts on them has no other way to be provoked. The inject inputs
+// drive one illegal encoding for one cycle; the probes are read-only taps on
+// the state and on the error/data outputs the contract names.
+`SEP_TB_IN(logic [1:0], efuse_read_state_inject_i)
+`SEP_TB_IN(logic, efuse_read_state_inject_en_i)
+`SEP_TB_IN(logic [1:0], efuse_program_state_inject_i)
+`SEP_TB_IN(logic, efuse_program_state_inject_en_i)
+`SEP_TB_OUT(logic [1:0], efuse_read_state_o)
+`SEP_TB_OUT(logic [1:0], efuse_program_state_o)
+`SEP_TB_OUT(logic, efuse_read_error_o)
+`SEP_TB_OUT(logic, efuse_read_done_o)
+`SEP_TB_OUT(logic, efuse_read_busy_o)
+`SEP_TB_OUT(logic [31:0], efuse_read_back_data_o)
+`SEP_TB_OUT(logic, efuse_cmd_req_valid_o)
 // Demotion state outputs expose the differential {~demote, demote} encoding;
 // 2'b10 is clear, 2'b01 is set, and other values are invalid. The lock bits
 // have no DUT output, and the CPU owns their AXI frontdoor during firmware

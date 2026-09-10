@@ -19,8 +19,8 @@
 |Register export |`hw/sys/sep/regs/gen/` (via `env/sep_reg_meta.py`)
 |How to run |`README.md` in this DV tree (`tools/dv/run_dv.py --dut sep`)
 |Phase 1 test cases |32
-|Phase 2 test cases |61
-|Cocotb total |93 (`testlists/all.toml` `expected_count`); see <<counts>>
+|Phase 2 test cases |62
+|Cocotb total |94 (`testlists/all.toml` `expected_count`); see <<counts>>
 |Phase 3 |SV-UVM bench bring-up; 1 bound scenario (`sep_axi_smoke_test`)
 |===
 
@@ -4309,6 +4309,58 @@ which list is normative is an open question for the design owner.
 
 '''''
 
+[[sep_efuse_illegal_state_fail_closed_test]]
+===== `sep_efuse_illegal_state_fail_closed_test`
+
+*Phase*: 2
+
+*Bucket*: eFuse, lifecycle, SEC_DIS, locked-field
+
+*Run mode*: `no_cpu` (`lsu_stub_all_live`), real fuse sense
+
+*Source Module*: `sep_efuse_illegal_state_fail_closed_test`
+
+*BFM / Model*: none; DUT probes and a one-cycle state force
+
+*Objective*: The eFuse read and program state machines fail closed from an illegal encoding: no command reaches the fuse bank while the state is illegal, and on the next edge the machine is back in idle reporting an error rather than resuming. An FSM that resumed from a corrupted state could return fuse data it never legitimately fetched.
+
+*Test Coverage*: Both FSMs, both illegal encodings, request suppression and recovery.
+
+*Test Procedure*:
+
+[arabic]
+. Sense an `LC_PROD` image and wait for fuse sense to complete.
+. Positive control: watch `read_state_q` under the real sense traffic and require it to leave idle. A block that never moves would satisfy every refusal below.
+. For each of `2'b00` and `2'b11`, and for each of the read and program machines: force the state register for one cycle.
+. While the injected encoding is held, require no command to be presented to the fuse bank.
+. Release, and on the next edge require the machine to be back in idle with no command issued. For reads, additionally require `read_error_o` and `read_done_o` set, `read_busy_o` clear, and `read_back_data_o` equal to the `EFUSE_READ_ERROR_DATA` sentinel `0xbadcab1e`.
+. Repeat the live-read control after all injections, so a machine left wedged by the recovery is caught.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-READ-ALIVE
+|The read machine leaves idle under real sense traffic, before and after the injections. This is the control: the refusal checks below all hold on a block that does nothing, so without it they are unfalsifiable.
+|CHK-READ-SUPPRESS
+|No command is presented to the fuse bank while `read_state_q` holds an illegal encoding.
+|CHK-READ-FAILCLOSED
+|One edge after the illegal encoding the read machine is in idle, not busy, reporting done with the error flag set, issuing no command, and returning `0xbadcab1e` rather than any fuse value.
+|CHK-PROGRAM-SUPPRESS
+|No command is presented to the fuse bank while `program_state_q` holds an illegal encoding.
+|CHK-PROGRAM-FAILCLOSED
+|One edge after the illegal encoding the program machine is back in idle with no command issued.
+|===
+
+Both illegal encodings are walked rather than one. `2'b00` and `2'b11` fail the legal-set test for different reasons, and a decoder written as a comparison against a single value would recover from that value only.
+
+*Scope limit*: the illegal encoding is reached by forcing the state register, which no frontdoor stimulus can do -- that unreachability is the property the design relies on, so the behaviour asserted for it cannot otherwise be provoked. The force targets the state register only, for one cycle, and never the error, data, busy or request outputs the checkers read; the recovery those checkers observe is the design's own. Approved as error injection by the DV owner.
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+'''''
+
 [[sep_efuse_digest_latch_fault_test]]
 ===== `sep_efuse_digest_latch_fault_test`
 
@@ -5810,8 +5862,8 @@ contracts owned by the vault test, and the wipe security contract.
 |===
 |Item |Count
 |Phase 1 tests |32
-|Phase 2 tests |61
-|Cocotb total |93 (`testlists/all.toml` `expected_count`)
+|Phase 2 tests |62
+|Cocotb total |94 (`testlists/all.toml` `expected_count`)
 |Phase 3 |1 SV-UVM scenario bound (`sep_axi_smoke_test`)
 |Iconic scorecard rows |58 in-scope: 58 PROVEN (see <<iconic-scorecard>>)
 |Coded and failing |3 (`sep_drbg_axil_adapter_port_arbitration_test`; `sep_drbg_axil_concurrent_csrng_aw_then_ar_test`; `sep_drbg_axil_concurrent_edn_aw_then_ar_test`; parked on RTL, not expected-fail; see <<known-limitations>>)

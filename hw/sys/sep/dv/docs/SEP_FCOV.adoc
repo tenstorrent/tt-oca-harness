@@ -112,6 +112,7 @@ human. Other members may fill a group in passing.
 |`sep_inbound_filter_allow_cg` |`sep_fabric_inbound_filter_rule_matrix_test`
 |`sep_efuse_sense_cg` |`sep_efuse_sense_test`, `sep_efuse_image_test` (any leaf passing `+skip_fuse_sense` cannot fill it)
 |`sep_efuse_program_lock_cg` |`sep_efuse_program_lock_matrix_test`
+|`sep_efuse_fail_closed_cg` |`sep_efuse_illegal_state_fail_closed_test`
 |`sep_lc_state_cg` |`sep_efuse_lcc_lc_state_stitch_test` and the six `sep_lcc_lc_state_w1s_*` leaves
 |`sep_lc_transition_cg` |`sep_lcc_lc_state_w1s_prod_test` and `_prod_demote_test` (PROD to RMA_SIP_1), `_rma_sip_test` (RMA_SIP_1 to RMA_CHIP_1)
 |`sep_dma_completion_route_cg` |`sep_dma_basic_test` (STATUS poll), `sep_dma_hash_test` (interrupt), `sep_spi_ot_dma_rx_test` / `_tx_test` (handshake mode)
@@ -513,6 +514,23 @@ Everything is decoded frontdoor from `EFUSE_PROGRAM_CTRL` -- `EFUSE_ADDR` plus
 `PROGRAM_GO` on the write, `PROGRAM_DONE` / `PROGRAM_STATUS` on the readback --
 and the spare index comes from the generated `SEP_EFUSE_MAP_SPARE*` offsets, not
 a literal.
+
+==== `sep_efuse_fail_closed_cg`
+
+[cols="2,5",options="header"]
+|===
+|Coverpoint |Bins
+|`cp_illegal` |`2'b00`, `2'b11` -- the encodings `efuse_read_interface` and `efuse_program_interface` declare unreachable. The legal `2'b01` / `2'b10` land in no bin, so ordinary traffic scores nothing
+|`cp_fsm` |`read_if`, `program_if` (`program` is a SystemVerilog keyword)
+|`x_fsm_illegal` |Four cells. `sep_efuse_illegal_state_fail_closed_test` walks the product in one seed
+|===
+
+Both illegal encodings are separate cells on purpose: they fail the legal-set
+test for different reasons, so a recovery written as a comparison against one
+value would fill one cell and leave the other dead. The cells record that the
+injection matrix was walked, not that the recovery was correct -- that stays on
+`CHK-READ-FAILCLOSED` and `CHK-PROGRAM-FAILCLOSED`. Because the DUT cannot reach
+these encodings, a hit records testbench injection by construction.
 
 ==== `sep_lc_state_cg`
 
