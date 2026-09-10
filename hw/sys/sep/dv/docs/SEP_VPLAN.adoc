@@ -742,8 +742,8 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_nmi_sanity_test`, `sep_reset_wdt_sanity_test`, `sep_wdt_aon_timer_internals_test`
 
 |Per-IP `SW_RESET_N` isolation
-|GAP
-|`sep_crypto_per_ip_reset_isolation_test` is red, so this feature has no passing vehicle and cannot hold a credit. Isolated read and write must complete SLVERR, and the isolated read must carry the isolate's own error-data payload. The leaf stays red until the vendored isolate modules emit SLVERR on a terminating response; see <<known-limitations>>. The row returns to `PROVEN` when the vehicle is green. Drain-before-reset for the four accelerator domains stays Phase 3. Drain-before-reset for the shared TRNG domain is on the `Coordinated TRNG reset and ordered recovery` row.
+|PROVEN
+|`sep_crypto_per_ip_reset_isolation_test`. Each engine holds a golden-checked result; a neighbour reset leaves it bit-exact. While HMAC is held, the same `DIGEST_0` read and a `CFG` write complete SLVERR, the read carries the isolate's own error-data payload, and AES stays OKAY. Drain-before-reset for the four accelerator domains stays Phase 3. Drain-before-reset for the shared TRNG domain is on the `Coordinated TRNG reset and ordered recovery` row.
 
 |Scratch bank reset domains (warm vs cold)
 |PROVEN
@@ -751,7 +751,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 
 |Coordinated TRNG reset and ordered recovery
 |PROVEN
-|`sep_trng_reset_recovery_test`. One `SW_RESET_N` bit resets ESRC, CSRNG and EDN together, and the reset waits for all three converted AXI-Lite paths to report isolated, so drain-before-reset is covered here rather than deferred. Also covers the pool scrub, SLVERR while isolated, the external source-select register staying outside the domain, and the JTAG hold/release pair. The external TRNG aperture is a permanent DECERR error slave in this build, so its own domain membership is not claimed. The isolate-response flavour follows the vendored isolate modules; see <<known-limitations>>.
+|`sep_trng_reset_recovery_test`. One `SW_RESET_N` bit resets ESRC, CSRNG and EDN together, and the reset waits for all three converted AXI-Lite paths to report isolated, so drain-before-reset is covered here rather than deferred. Also covers the pool scrub, SLVERR while isolated, the external source-select register staying outside the domain, and the JTAG hold/release pair. The external TRNG aperture is a permanent DECERR error slave in this build, so its own domain membership is not claimed.
 
 |Clock-gate CSR
 |PROVEN
@@ -1562,7 +1562,7 @@ starved it to a handful of writes fails.
 
 *Objective*: Walks the device through four lifecycle states — one preloaded, three programmed for real into one-time-programmable memory — and proves each reaches the lifecycle controller and produces the expected feature-control decode.
 
-*Test Coverage*: Four lifecycle states via OTP program and resense; feature-control decode.
+*Test Coverage*: Four lifecycle states via OTP program and resense; feature-control decode; `dft_secure` Case 3 vs the TEST_EN strap.
 
 *Test Procedure*:
 
@@ -1571,7 +1571,7 @@ starved it to a handful of writes fails.
 . Program the production state through the ungated write-one-to-set bit, handling injected physical failures by clearing status and retrying; cold reset and re-sense.
 . Pin the two disable overrides to distinct non-zero vectors so each decoded feature-control word is a different non-trivial value; check the state reached the controller and that feature control matches the golden model.
 . Repeat for the two token-gated return-material-authorisation states.
-. After the initial TEST_DEV check with TEST_EN=0, raise the strap, re-sense, and prove `secure_tm_o` follows the strap while `FEAT_CTRL` stays on the same golden. The strap is then lowered again; the rest of the walk runs at `secure_tm=0`.
+. After the initial TEST_DEV check with TEST_EN=0, raise the strap, re-sense, and prove `secure_tm_o` follows the strap while `FEAT_CTRL` stays on the same golden. Score `dbg_disable.dft_secure` on both legs against Case 3 (not the strap). The strap is then lowered again; the rest of the walk runs at `secure_tm=0`.
 . Inject a broken LC_STATE pair at the LCC decoder input; prove fail-closed FEAT_CTRL=0; release and restore.
 
 *Checkers*:
@@ -1589,8 +1589,10 @@ starved it to a handful of writes fails.
 |The pinned overrides break all-ones symmetry: the four expected feature-control words are mutually distinct, so a decode that ignored its inputs would differ from the golden at three of the four states.
 |CHK-SECURE-TM
 |The TEST_EN strap is driven frontdoor. After the initial TEST_DEV sense with the strap at 0, `secure_tm_o` is 0 and `FEAT_CTRL` matches the TEST_DEV golden. After the strap is raised and the image is re-sensed, `secure_tm_o` is 1 and `FEAT_CTRL` still matches that same golden. SECURE_TM does not qualify feature control.
+|CHK-DFT-SECURE
+|`dbg_disable.dft_secure` matches Case 3 of the DTP ladder (`SIP_DBG & CHIPLET_DBG & SEP_DBG`, inverted) for the same `FEAT_CTRL` each stitch check just verified, at both strap polarities and at every later state of the walk. The TEST_EN strap is not a term: a formula of `!secure_tm` fails when Case 3 and the strap disagree (TEST_DEV with the pinned DIS vectors keeps Case 3 closed at `secure_tm=1`; `RMA_CHIPLET` opens Case 3 at `secure_tm=0`). Dump refusal on the secure chain is a DFT command-class rule, not this SIB.
 |CHK-SECRET-BLANK
-|The Class-1a secret disconnect, proven as a transition on one image rather than as a single observation. With the strap at 0 the staged `CLASS_KEY` is present in the sensed shadow; with it raised the same field reads 0 (`sep_efuse_pkg.sv` `SecretShadowRanges`). The staged value is asserted non-zero first, so a DUT that never sensed the secret at all cannot satisfy the blanked half.
+|The Class-1a secret disconnect, proven as a transition on one image rather than as a single observation. With the strap at 0 each of `CHIPLET_UID`, `SIP_UID`, `SYS_UID` and `CLASS_KEY` is present in the sensed shadow; with it raised the same four fields read 0 (`sep_efuse_pkg.sv` `SecretShadowRanges`). Each staged value is asserted non-zero first, so a DUT that never sensed a field cannot satisfy that field's blanked half.
 |CHK-SECURE-TM-PROG-BLOCK
 |While `secure_tm` is asserted, a program of LC_STATE bit 96 must complete with `PROGRAM_DONE`+`PROGRAM_ERR` (`PROGRAM_CTRL` bits 25 and 26), not succeed and not starve DONE. That is the software-visible refusal. Unique “the command never reached the OTP bank” is not claimed: fail-injection credit re-arms on every `rst_ni`, and the walk must `resense()` to drop the latched strap, so a later retry cannot witness whether the blocked attempt consumed credit.
 |CHK-SIGINT
@@ -2882,11 +2884,6 @@ one word and parks, which is enough for the legality check to execute.
 
 *Scope limit*: scope walks AES, HMAC, KMAC and OTBN. The Key Manager bit stays at
 its reset default (a different mechanism) and is not claimed.
-
-*Parked on an RTL fix* (DV-lead decision): the isolate checkers stay red
-until the vendored isolate modules emit SLVERR on a terminating response.
-The matching test update lands with that RTL change. The leaf is not
-converted to an expected failure.
 
 *Not claimed*: drain-before-reset for these four domains. The `CHK-ISOLATE-*`
 rows cover in-window SLVERR and sibling OKAY only. The shared TRNG domain
@@ -5759,8 +5756,8 @@ contracts owned by the vault test, and the wipe security contract.
 |Phase 2 tests |59
 |Cocotb total |91
 |Phase 3 |1 SV-UVM scenario bound (`sep_axi_smoke_test`)
-|Iconic scorecard rows |58 in-scope: 57 PROVEN, 1 GAP (see <<iconic-scorecard>>)
-|Coded and failing |4 (`sep_crypto_per_ip_reset_isolation_test`; `sep_drbg_axil_adapter_port_arbitration_test`; `sep_drbg_axil_concurrent_csrng_aw_then_ar_test`; `sep_drbg_axil_concurrent_edn_aw_then_ar_test`; parked on RTL, not expected-fail; see <<known-limitations>>)
+|Iconic scorecard rows |58 in-scope: 58 PROVEN (see <<iconic-scorecard>>)
+|Coded and failing |3 (`sep_drbg_axil_adapter_port_arbitration_test`; `sep_drbg_axil_concurrent_csrng_aw_then_ar_test`; `sep_drbg_axil_concurrent_edn_aw_then_ar_test`; parked on RTL, not expected-fail; see <<known-limitations>>)
 |===
 
 === Regression Groups
@@ -5847,9 +5844,6 @@ vehicle exists rather than being a convenience. All three leaves are red and are
 
 |Dead-space refusal flavour (specification)
 |`memory_map.adoc` names DECERR for the reserved remainder inside an aperture. `spi_controller` refuses a dead-space write with SLVERR. The access is refused either way, which is the contract `sep_fabric_deadspace_decode_test` asserts, so the flavour is reported as `DEADSPACE-FLAVOUR` for the design owner and is not failed. Which error responses are permitted is the open question.
-
-|Terminating isolate response is SLVERR (hardware)
-|While a crypto or TRNG domain is held in software reset, a new access of an isolated aperture must complete SLVERR, not OKAY, DECERR, or hang. An isolated crypto read must also carry the isolate's own error-data literal, scraped from `axi_lite_isolate` at import. `sep_crypto_per_ip_reset_isolation_test` stays red until the vendored isolate modules emit SLVERR; it is not converted to an expected failure. `sep_trng_reset_recovery_test` remains the passing coordinated-reset vehicle; its isolate-response flavour follows the same vendor change. Key Manager isolate termination and SMC CPU-MMIO isolate are not claimed.
 
 |OSS hygiene exclusions
 |No licensed/proprietary IP in the build. Bender targets stay `sep` / `sep_el2` / `sep_wrapper` only.
