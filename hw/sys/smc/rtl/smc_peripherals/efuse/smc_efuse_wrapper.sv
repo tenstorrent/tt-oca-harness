@@ -82,13 +82,18 @@ module smc_efuse_wrapper
   logic is_rd_chiplet_id;
   logic is_rd_package_id;
   logic is_prod_or_rma_sip;
+  localparam smc_pkg::smc_axi_lite_32_addr_t CHIPLET_ID_BASE_ADDR =
+      smc_pkg::smc_axi_lite_32_addr_t'(
+          smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_CHIPLET_ID_BASE_ADDR);
+  localparam smc_pkg::smc_axi_lite_32_addr_t PACKAGE_ID_BASE_ADDR =
+      smc_pkg::smc_axi_lite_32_addr_t'(
+          smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_PACKAGE_ID_BASE_ADDR);
+  localparam smc_pkg::smc_axi_lite_32_addr_t ID_LAST_BYTE_OFFSET = 32'h1F;
 
   assign is_rd_chiplet_id = (axil_smc_otp_jtag_req_i.ar.addr inside
-        {[smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_CHIPLET_ID_BASE_ADDR :
-          (smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_CHIPLET_ID_BASE_ADDR + 'h1F)]});
+        {[CHIPLET_ID_BASE_ADDR:(CHIPLET_ID_BASE_ADDR + ID_LAST_BYTE_OFFSET)]});
   assign is_rd_package_id = (axil_smc_otp_jtag_req_i.ar.addr inside
-        {[smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_PACKAGE_ID_BASE_ADDR :
-          (smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_PACKAGE_ID_BASE_ADDR + 'h1F)]});
+        {[PACKAGE_ID_BASE_ADDR:(PACKAGE_ID_BASE_ADDR + ID_LAST_BYTE_OFFSET)]});
 
   logic [smc_pkg::LC_STATE_WIDTH-1:0] lc_state_smc_raw;
   logic                               lc_sigint_err;

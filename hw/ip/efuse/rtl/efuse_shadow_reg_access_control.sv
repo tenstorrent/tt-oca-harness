@@ -134,8 +134,8 @@ module efuse_shadow_reg_access_control #(
     // request to shadow registers
     apb_req_from_ac_o.psel = 1'b0;
     apb_req_from_ac_o.penable = 1'b0;
-    apb_req_from_ac_o.paddr = efuse_addr_t'(0);
-    apb_req_from_ac_o.pprot = 2'b0;
+    apb_req_from_ac_o.paddr = '0;
+    apb_req_from_ac_o.pprot = '0;
     apb_req_from_ac_o.pwrite = 1'b0;
     apb_req_from_ac_o.pstrb = efuse_strb_t'(0);
     apb_req_from_ac_o.pwdata = efuse_data_t'(0);
@@ -164,7 +164,7 @@ module efuse_shadow_reg_access_control #(
 
         apb_req_from_ac_o.psel = apb_req_psel_i;
         apb_req_from_ac_o.penable = apb_req_penable_i;
-        apb_req_from_ac_o.paddr = efuse_addr_t'(apb_req_paddr_i);
+        apb_req_from_ac_o.paddr = $bits(apb_req_from_ac_o.paddr)'(apb_req_paddr_i);
         apb_req_from_ac_o.pprot = apb_req_pprot_i;
         apb_req_from_ac_o.pwrite = apb_req_pwrite_i;
         apb_req_from_ac_o.pstrb = apb_req_pstrb_i;

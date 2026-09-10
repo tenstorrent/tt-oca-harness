@@ -24,6 +24,8 @@ def _log_evidence(logger, token: str) -> None:
 class smu_wrapper_elaboration_test(smu_base_test):
     """Verify the selected production-wrapper profile and reset propagation."""
 
+    require_distinct_ref_smu = True
+
     async def run_scenario(self) -> None:
         await SmuWrapperElaborationSeq(self).run()
 
@@ -35,7 +37,9 @@ class smu_wrapper_elaboration_test(smu_base_test):
             token = "WRAP_ELAB_OK"
             _log_evidence(self.logger, token)
             self.logger.info(
-                "FEATURE PROVEN CHK-WRAP-ELAB -> %s (no-SEP wrapper elab/reset)",
+                "CHK-WRAP-ELAB %s: no-SEP wrapper elaboration and reset legs "
+                "completed; the compares behind it are the CHK-* lines in the "
+                "sequence log",
                 token,
             )
         else:

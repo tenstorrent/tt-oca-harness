@@ -50,18 +50,18 @@ They generate the built material in subfolders under each book.
 
 ```bash
 # Locally installed Packages
-make doc-html-all
-make doc-pdf-all
+make doc-all-html
+make doc-all-pdf
 
 # OR Container workflow
 scripts/docker-run.sh doc-html all    # HTML site → doc/XXXX/_build/html_antora/
-scripts/docker-run.sh doc-pdf  all    # PDF       → doc/XXXX/dist/ocah-trm.pdf
+scripts/docker-run.sh doc-pdf  trm    # PDF       → doc/XXXX/dist/ocah-trm.pdf
 ```
 
 Once the documents are built they can be staged with the command below.
 This builds the whole site in the location shown.
 ```bash
-make doc-stage-all
+make doc-stage-ghpages
 
 # OR
 
@@ -70,7 +70,7 @@ scripts/docker-run.sh doc-stage       # site → doc/_build/html_antora
 
 The build can then be served locally for viewing with the commands below.
 ```bash
-make doc-serve-all
+make doc-all-serve
 
 # OR
 
