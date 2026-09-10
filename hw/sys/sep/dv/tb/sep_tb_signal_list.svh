@@ -75,6 +75,9 @@
 // Which token comparator the inject hits. Default 0.
 //   2'b00 RMA_SIP  2'b01 RMA_CHIPLET  2'b10 SEC_DISABLE
 `SEP_TB_IN(logic [1:0], token_cmp_fault_sel_i)
+// RMA_SIP digest test-enable inject. The production test input is tied
+// low in this testbench, so the latch-freeze path has no frontdoor.
+`SEP_TB_IN(logic, token_digest_test_en_inject_i)
 // DMA host-path command-integrity inject. Default 0. When 1, tb forces a
 // broken codeword onto the host-adapter command-integrity decoder input
 // (signed off -- software cannot emit a bad TL-UL user code). The checker
@@ -430,6 +433,16 @@
 `SEP_TB_OUT(logic, lcc_security_disable_probe_o)
 `SEP_TB_OUT(logic, lcc_sigint_err_probe_o)
 `SEP_TB_OUT(logic, secure_tm_o)
+// RMA_SIP digest-latch scan-freeze observability: the retained-digest sticky
+// latch and its enable/valid chain, tapped so a fault-injection test can
+// watch capture, hold, and DFT-freeze behavior without a force.
+`SEP_TB_OUT(logic [255:0], token_digest_sticky_o)
+`SEP_TB_OUT(logic, token_digest_valid_o)
+`SEP_TB_OUT(logic, token_digest_test_en_o)
+`SEP_TB_OUT(logic, token_digest_latch_en_pre_o)
+`SEP_TB_OUT(logic, token_digest_valid_en_pre_o)
+`SEP_TB_OUT(logic, token_digest_latch_en_o)
+`SEP_TB_OUT(logic, token_digest_valid_en_o)
 // Demotion state outputs expose the differential {~demote, demote} encoding;
 // 2'b10 is clear, 2'b01 is set, and other values are invalid. The lock bits
 // have no DUT output, and the CPU owns their AXI frontdoor during firmware

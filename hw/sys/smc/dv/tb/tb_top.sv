@@ -1258,6 +1258,73 @@ module smc_uvm_top
         u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_zeroer.reg_clk;
     assign tb_zeroer_busy = u_dut.u_smc.u_smc_base.zeroer_busy;
     assign tb_zeroer_bus_active = u_dut.u_smc.u_smc_base.zeroer_bus_active;
+
+    // State-corruption hooks use the established clock-reissued force/release
+    // convention above because no legal transaction can create an unused FSM
+    // encoding or make the bank model return an error. Requests and output
+    // checks stay on the real DUT paths; forcing is limited to the state flops
+    // and read-error inputs, and every force is released by its enable.
+`define SMC_ZEROER u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_zeroer
+    assign tb_zeroer_state = `SMC_ZEROER.cur_state;
+    assign tb_zeroer_intp = `SMC_ZEROER.zeroer_intp_o;
+    assign tb_zeroer_awvalid = `SMC_ZEROER.mst_awvalid;
+    assign tb_zeroer_wvalid = `SMC_ZEROER.mst_wvalid;
+    always @(posedge clk_smc_i) begin
+        if (tb_zeroer_state_inject_en === 1'b1) begin
+            force `SMC_ZEROER.cur_state[2:0] = tb_zeroer_state_inject;
+        end else begin
+            release `SMC_ZEROER.cur_state[2:0];
+        end
+    end
+`undef SMC_ZEROER
+
+`define SMC_EFUSE_IFC \
+    u_dut.u_smc.u_smc_peripherals.u_smc_efuse_wrapper.u_efuse_interface_controller
+`define SMC_EFUSE_PROGRAM `SMC_EFUSE_IFC.u_efuse_program_interface
+`define SMC_EFUSE_READ    `SMC_EFUSE_IFC.u_efuse_read_interface
+    assign tb_efuse_program_state = `SMC_EFUSE_PROGRAM.program_state_q;
+    assign tb_efuse_program_req_valid = `SMC_EFUSE_PROGRAM.fuse_command_req_o.valid;
+    assign tb_efuse_program_busy = `SMC_EFUSE_PROGRAM.program_busy_o;
+    assign tb_efuse_program_done = `SMC_EFUSE_PROGRAM.program_done_o;
+    assign tb_efuse_program_error = `SMC_EFUSE_PROGRAM.program_error_o;
+    assign tb_efuse_program_readback = `SMC_EFUSE_PROGRAM.program_read_back_data_o;
+    assign tb_efuse_read_state = `SMC_EFUSE_READ.read_state_q;
+    assign tb_efuse_read_req_valid = `SMC_EFUSE_READ.fuse_command_req_o.valid;
+    assign tb_efuse_read_busy = `SMC_EFUSE_READ.read_busy_o;
+    assign tb_efuse_read_done = `SMC_EFUSE_READ.read_done_o;
+    assign tb_efuse_read_error = `SMC_EFUSE_READ.read_error_o;
+    assign tb_efuse_readback = `SMC_EFUSE_READ.read_back_data_o;
+    always @(posedge clk_smc_i) begin
+        if (tb_efuse_program_state_inject_en === 1'b1) begin
+            force `SMC_EFUSE_PROGRAM.program_state_q[1:0] = tb_efuse_program_state_inject;
+        end else begin
+            release `SMC_EFUSE_PROGRAM.program_state_q[1:0];
+        end
+        if (tb_efuse_read_state_inject_en === 1'b1) begin
+            force `SMC_EFUSE_READ.read_state_q[1:0] = tb_efuse_read_state_inject;
+        end else begin
+            release `SMC_EFUSE_READ.read_state_q[1:0];
+        end
+        if (tb_efuse_read_error_inject === 2'b01) begin
+            force `SMC_EFUSE_IFC.fuse_command_resp_interface_ctrl_r.status = 1'b1;
+        end else begin
+            release `SMC_EFUSE_IFC.fuse_command_resp_interface_ctrl_r.status;
+        end
+        if (tb_efuse_read_error_inject === 2'b10) begin
+            force `SMC_EFUSE_READ.efuse_req_err_i = 1'b1;
+        end else begin
+            release `SMC_EFUSE_READ.efuse_req_err_i;
+        end
+        if (tb_efuse_read_error_inject === 2'b11) begin
+            force `SMC_EFUSE_READ.secure_tm_blocked_i = 1'b1;
+        end else begin
+            release `SMC_EFUSE_READ.secure_tm_blocked_i;
+        end
+    end
+`undef SMC_EFUSE_READ
+`undef SMC_EFUSE_PROGRAM
+`undef SMC_EFUSE_IFC
+
     assign tb_sync_irq        = sync_irq;
     assign tb_gpio_irq_any    = |gpio_interrupt;
     assign tb_axi_hang_irq      = u_dut.u_smc.u_smc_base.axi_hang_irq_o;
