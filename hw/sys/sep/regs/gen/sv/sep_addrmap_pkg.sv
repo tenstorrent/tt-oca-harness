@@ -810,26 +810,26 @@ localparam longint unsigned OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR = 
 localparam longint unsigned OCH_SEP_TOP_SPI_CONTROLLER_EVENT_ENABLE_BASE_ADDR = 64'h10B00034;
 localparam longint unsigned OCH_SEP_TOP_SEP_EXTERNAL_EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME_BASE_ADDR = 64'h20000000;
 function automatic longint unsigned OCH_SEP_TOP_PIC_MEIPL_BASE_ADDR(input int unsigned meipl_idx);
-    return 64'hC0080004 + (meipl_idx * 64'h4);
+    return 64'hC0080000 + (meipl_idx * 64'h4);
 endfunction
-localparam longint unsigned OCH_SEP_TOP_PIC_MEIPL_NUM = 64'h20;
+localparam longint unsigned OCH_SEP_TOP_PIC_MEIPL_NUM = 64'h21;
 function automatic longint unsigned OCH_SEP_TOP_PIC_MEIP_BASE_ADDR(input int unsigned meip_idx);
     return 64'hC0081000 + (meip_idx * 64'h4);
 endfunction
 localparam longint unsigned OCH_SEP_TOP_PIC_MEIP_NUM = 64'h2;
 function automatic longint unsigned OCH_SEP_TOP_PIC_MEIE_BASE_ADDR(input int unsigned meie_idx);
-    return 64'hC0082004 + (meie_idx * 64'h4);
+    return 64'hC0082000 + (meie_idx * 64'h4);
 endfunction
-localparam longint unsigned OCH_SEP_TOP_PIC_MEIE_NUM = 64'h20;
+localparam longint unsigned OCH_SEP_TOP_PIC_MEIE_NUM = 64'h21;
 localparam longint unsigned OCH_SEP_TOP_PIC_MPICCFG_BASE_ADDR = 64'hC0083000;
 function automatic longint unsigned OCH_SEP_TOP_PIC_MEIGWCTRL_BASE_ADDR(input int unsigned meigwctrl_idx);
-    return 64'hC0084004 + (meigwctrl_idx * 64'h4);
+    return 64'hC0084000 + (meigwctrl_idx * 64'h4);
 endfunction
-localparam longint unsigned OCH_SEP_TOP_PIC_MEIGWCTRL_NUM = 64'h20;
+localparam longint unsigned OCH_SEP_TOP_PIC_MEIGWCTRL_NUM = 64'h21;
 function automatic longint unsigned OCH_SEP_TOP_PIC_MEIGWCLR_BASE_ADDR(input int unsigned meigwclr_idx);
-    return 64'hC0085004 + (meigwclr_idx * 64'h4);
+    return 64'hC0085000 + (meigwclr_idx * 64'h4);
 endfunction
-localparam longint unsigned OCH_SEP_TOP_PIC_MEIGWCLR_NUM = 64'h20;
+localparam longint unsigned OCH_SEP_TOP_PIC_MEIGWCLR_NUM = 64'h21;
 
 
 typedef enum logic [3:0] {

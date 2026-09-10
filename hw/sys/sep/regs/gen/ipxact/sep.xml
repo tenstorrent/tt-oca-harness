@@ -18715,8 +18715,8 @@ Supports up to PIC_TOTAL_INT external interrupt sources with 15 priority levels.
           <ipxact:register>
             <ipxact:name>meipl</ipxact:name>
             <ipxact:description>External Interrupt Priority Level Register. Sets the priority level for an interrupt source.</ipxact:description>
-            <ipxact:dim>32</ipxact:dim>
-            <ipxact:addressOffset>'h4</ipxact:addressOffset>
+            <ipxact:dim>33</ipxact:dim>
+            <ipxact:addressOffset>'h0</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>intpriority</ipxact:name>
@@ -18758,8 +18758,8 @@ Reverse order: 15=Never interrupt, 14..0=Priority (14 lowest, 0 highest)</ipxact
           <ipxact:register>
             <ipxact:name>meie</ipxact:name>
             <ipxact:description>External Interrupt Enable Register. Controls interrupt enable for a single source.</ipxact:description>
-            <ipxact:dim>32</ipxact:dim>
-            <ipxact:addressOffset>'h2004</ipxact:addressOffset>
+            <ipxact:dim>33</ipxact:dim>
+            <ipxact:addressOffset>'h2000</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>inten</ipxact:name>
@@ -18799,8 +18799,8 @@ Reverse order: 15=Never interrupt, 14..0=Priority (14 lowest, 0 highest)</ipxact
           <ipxact:register>
             <ipxact:name>meigwctrl</ipxact:name>
             <ipxact:description>External Interrupt Gateway Configuration Register. Controls interrupt type and polarity.</ipxact:description>
-            <ipxact:dim>32</ipxact:dim>
-            <ipxact:addressOffset>'h4004</ipxact:addressOffset>
+            <ipxact:dim>33</ipxact:dim>
+            <ipxact:addressOffset>'h4000</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>polarity</ipxact:name>
@@ -18835,8 +18835,8 @@ Reverse order: 15=Never interrupt, 14..0=Priority (14 lowest, 0 highest)</ipxact
             <ipxact:name>meigwclr</ipxact:name>
             <ipxact:description>External Interrupt Gateway Clear Register. Writing any value clears the gateway's
 interrupt pending (IP) bit for edge-triggered interrupts.</ipxact:description>
-            <ipxact:dim>32</ipxact:dim>
-            <ipxact:addressOffset>'h5004</ipxact:addressOffset>
+            <ipxact:dim>33</ipxact:dim>
+            <ipxact:addressOffset>'h5000</ipxact:addressOffset>
             <ipxact:size>32</ipxact:size>
             <ipxact:field>
               <ipxact:name>clear</ipxact:name>
