@@ -3705,8 +3705,6 @@ localparam int unsigned SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_REG_OFFSET           
 localparam int unsigned SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_REG_ADDR                                               = 32'h10A30140;
 localparam int unsigned SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_REG_OFFSET                                             = 32'h00000150;
 localparam int unsigned SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_REG_ADDR                                               = 32'h10A30150;
-localparam int unsigned SEP_CPU_CTRL_RAS_BANK_INFO_REG_OFFSET                                                     = 32'h00000170;
-localparam int unsigned SEP_CPU_CTRL_RAS_BANK_INFO_REG_ADDR                                                       = 32'h10A30170;
 localparam int unsigned SEP_CPU_CTRL_SEP_SW_DEBUG_REG_OFFSET                                                      = 32'h00000178;
 localparam int unsigned SEP_CPU_CTRL_SEP_SW_DEBUG_REG_ADDR                                                        = 32'h10A30178;
 localparam int unsigned SEP_CPU_CTRL_SEP_NMI_VEC_REG_OFFSET                                                       = 32'h00000180;
@@ -4398,7 +4396,6 @@ localparam longint unsigned SEP_CPU_CTRL_SMU_GLOBAL_BASE_ADDR_REG_DEFAULT       
 localparam longint unsigned SEP_CPU_CTRL_SMU_REGION_SIZE_REG_DEFAULT                                              = 64'h0000000040000000;
 localparam longint unsigned SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_REG_DEFAULT                                        = 64'h0000000000000000;
 localparam longint unsigned SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_REG_DEFAULT                                        = 64'h0000000000000000;
-localparam longint unsigned SEP_CPU_CTRL_RAS_BANK_INFO_REG_DEFAULT                                                = 32'h00000000;
 localparam longint unsigned SEP_CPU_CTRL_SEP_SW_DEBUG_REG_DEFAULT                                                 = 64'h0000000000000000;
 localparam longint unsigned SEP_CPU_CTRL_SEP_NMI_VEC_REG_DEFAULT                                                  = 64'h00000000C0000100;
 localparam longint unsigned SEP_CPU_CTRL_SEP_NMI_VEC_LOCK_REG_DEFAULT                                             = 64'h0000000000000000;
@@ -6165,29 +6162,20 @@ localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_SEP_DEBUG_SHIFT            
 localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_CHIPLET_DBG_MASK                                             = 64'h2;
 localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_CHIPLET_DBG_SHIFT                                            = 1;
 
-localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_DEBUG_RESERVED_DBG1_MASK                                     = 64'hFFFC;
-localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_DEBUG_RESERVED_DBG1_SHIFT                                    = 2;
+localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_SEP_FUSE_DBG_MASK                                            = 64'h4;
+localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_SEP_FUSE_DBG_SHIFT                                           = 2;
 
-localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_SIP_DEBUG_MASK                                               = 64'h10000;
-localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_SIP_DEBUG_SHIFT                                              = 16;
+localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_SMC_FUSE_DBG_MASK                                            = 64'h8;
+localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_SMC_FUSE_DBG_SHIFT                                           = 3;
 
-localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_DEBUG_RESERVED_DBG2_MASK                                     = 64'hFFFE0000;
-localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_DEBUG_RESERVED_DBG2_SHIFT                                    = 17;
+localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_DEBUG_RESERVED_DBG1_MASK                                     = 64'hFFFFF0;
+localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_DEBUG_RESERVED_DBG1_SHIFT                                    = 4;
 
-localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_SEP_FUSE_TEST_MASK                                           = 64'h100000000;
-localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_SEP_FUSE_TEST_SHIFT                                          = 32;
+localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_SIP_DEBUG_MASK                                               = 64'h1000000;
+localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_SIP_DEBUG_SHIFT                                              = 24;
 
-localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_TEST_RESERVED_LO_MASK                                        = 64'h1E00000000;
-localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_TEST_RESERVED_LO_SHIFT                                       = 33;
-
-localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_SMC_FUSE_TEST_MASK                                           = 64'h2000000000;
-localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_SMC_FUSE_TEST_SHIFT                                          = 37;
-
-localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_FUSE_VENDOR_TEST_MASK                                        = 64'h4000000000;
-localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_FUSE_VENDOR_TEST_SHIFT                                       = 38;
-
-localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_TEST_RESERVED_MASK                                           = 64'hFF8000000000;
-localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_TEST_RESERVED_SHIFT                                          = 39;
+localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_DEBUG_RESERVED_DBG2_MASK                                     = 64'hFFFFFE000000;
+localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_DEBUG_RESERVED_DBG2_SHIFT                                    = 25;
 
 localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_FUNC_RESERVED_MASK                                           = 64'hFFFF000000000000;
 localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_FUNC_RESERVED_SHIFT                                          = 48;
@@ -6599,12 +6587,6 @@ localparam     int unsigned SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_SMC_FUSE_SENSE_DO
 
 localparam longint unsigned SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_SEP_FUSE_SENSE_DONE_MASK                           = 64'h1;
 localparam     int unsigned SEP_CPU_CTRL_SEP_FUSE_SENSE_STATUS_SEP_FUSE_SENSE_DONE_SHIFT                          = 0;
-
-localparam int unsigned SEP_CPU_CTRL_RAS_BANK_INFO_BANK_CHIP_MASK                                                 = 32'hF;
-localparam int unsigned SEP_CPU_CTRL_RAS_BANK_INFO_BANK_CHIP_SHIFT                                                = 0;
-
-localparam int unsigned SEP_CPU_CTRL_RAS_BANK_INFO_BANK_INSTANCE_MASK                                             = 32'hF0;
-localparam int unsigned SEP_CPU_CTRL_RAS_BANK_INFO_BANK_INSTANCE_SHIFT                                            = 4;
 
 localparam longint unsigned SEP_CPU_CTRL_SEP_SW_DEBUG_SEP_SW_DEBUG_MASK                                           = 64'hFFFFFFFF;
 localparam     int unsigned SEP_CPU_CTRL_SEP_SW_DEBUG_SEP_SW_DEBUG_SHIFT                                          = 0;
@@ -9045,14 +9027,11 @@ typedef struct packed {
 
 typedef struct packed {
     logic [15:0]   func_reserved ;
-    logic [8:0]   test_reserved ;
-    logic [0:0]   fuse_vendor_test ;
-    logic [0:0]   smc_fuse_test ;
-    logic [3:0]   test_reserved_lo ;
-    logic [0:0]   sep_fuse_test ;
-    logic [14:0]   debug_reserved_dbg2 ;
+    logic [22:0]   debug_reserved_dbg2 ;
     logic [0:0]   sip_debug ;
-    logic [13:0]   debug_reserved_dbg1 ;
+    logic [19:0]   debug_reserved_dbg1 ;
+    logic [0:0]   smc_fuse_dbg ;
+    logic [0:0]   sep_fuse_dbg ;
     logic [0:0]   chiplet_dbg ;
     logic [0:0]   sep_debug ;
 } sep_efuse_map_lc_disable_reg_t;
@@ -9586,13 +9565,6 @@ typedef struct packed {
 typedef struct packed {
     logic [0:0]   sep_fuse_sense_done ;
 } sep_cpu_ctrl_sep_fuse_sense_status_reg_t;
-
-
-
-typedef struct packed {
-    logic [3:0]   bank_instance ;
-    logic [3:0]   bank_chip ;
-} sep_cpu_ctrl_ras_bank_info_reg_t;
 
 
 

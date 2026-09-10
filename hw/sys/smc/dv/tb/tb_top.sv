@@ -258,6 +258,23 @@ module smc_uvm_top
     output logic [31:0] dut_scratch_read_count /*verilator public_flat_rw*/,
     output logic [57:0] dut_wb_pc0 /*verilator public_flat_rw*/,
     output logic [57:0] bfm_wb_pc0 /*verilator public_flat_rw*/,
+    // Hart 0 retirement record per instance (Rocket CSR trace bundle) and the
+    // core reset that masks it; the writeback registers behind the bundle have
+    // no reset. Consumer: cocotb/env/smc_cpu_trace_monitor.py.
+    output logic        dut_cpu_core_reset_n /*verilator public_flat_rw*/,
+    output logic        dut_cpu_trace_valid /*verilator public_flat_rw*/,
+    output logic [57:0] dut_cpu_trace_pc /*verilator public_flat_rw*/,
+    output logic [31:0] dut_cpu_trace_insn /*verilator public_flat_rw*/,
+    output logic        dut_cpu_trace_exc /*verilator public_flat_rw*/,
+    output logic [63:0] dut_cpu_trace_cause /*verilator public_flat_rw*/,
+    output logic [57:0] dut_cpu_trace_tval /*verilator public_flat_rw*/,
+    output logic        bfm_cpu_core_reset_n /*verilator public_flat_rw*/,
+    output logic        bfm_cpu_trace_valid /*verilator public_flat_rw*/,
+    output logic [57:0] bfm_cpu_trace_pc /*verilator public_flat_rw*/,
+    output logic [31:0] bfm_cpu_trace_insn /*verilator public_flat_rw*/,
+    output logic        bfm_cpu_trace_exc /*verilator public_flat_rw*/,
+    output logic [63:0] bfm_cpu_trace_cause /*verilator public_flat_rw*/,
+    output logic [57:0] bfm_cpu_trace_tval /*verilator public_flat_rw*/,
 
     // ------------------------------------------------------------------
     // Read-only peek into the TARGET's scratch SRAM.
@@ -871,14 +888,20 @@ module smc_uvm_top
     assign jtag_axi_in_req.r_ready   = jtag_axi_rready;
 
     // ------------------------------------------------------------------
-    // SYS_OUT AXI slave — same posture as SEP tb_top rom_boot `u_smc_mem`:
-    // pulp axi_sim_mem on the boundary, optional $readmemh preload, no Force,
-    // no custom DV mem module. ApplDelay/AcqDelay match SEP Verilator floor.
+    // SYS_OUT AXI4 egress: the shared slave agent answers on u_output_axi_if
+    // in both realizations (cocotb binds the instance, SV-UVM takes the vif
+    // from uvm_config_db); the bridge places the wrapper's struct port on it.
+    // Preload and fault programming go through the agent's slave sequence.
+    // The TB-owned R/B hold sits between the struct and the bridge.
+    //
+    // The responder follows the SMC primary reset: a cool reset drops the
+    // outstanding SYS_OUT responses instead of returning them into the reset
+    // CPU cluster, whose AXI4 user-yanker asserts on a response with no
+    // queued request.
     // ------------------------------------------------------------------
-    smc_sys_out_56_64_8_12_axi_req_t  [0:0] output_mem_req;
-    smc_sys_out_56_64_8_12_axi_resp_t [0:0] output_mem_resp;
-    smc_sys_out_56_64_8_12_axi_req_t        output_mem_req_n;
-    smc_sys_out_56_64_8_12_axi_resp_t       output_axi_resp_n;
+    smc_sys_out_56_64_8_12_axi_req_t  output_mem_req_n;
+    smc_sys_out_56_64_8_12_axi_resp_t output_mem_resp;
+    smc_sys_out_56_64_8_12_axi_resp_t output_axi_resp_n;
 
     always_comb begin
         output_mem_req_n         = output_axi_req;
@@ -886,54 +909,25 @@ module smc_uvm_top
         output_mem_req_n.b_ready = output_axi_req.b_ready & ~tb_output_axi_resp_hold;
     end
     always_comb begin
-        output_axi_resp_n         = output_mem_resp[0];
-        output_axi_resp_n.r_valid = output_mem_resp[0].r_valid & ~tb_output_axi_resp_hold;
-        output_axi_resp_n.b_valid = output_mem_resp[0].b_valid & ~tb_output_axi_resp_hold;
+        output_axi_resp_n         = output_mem_resp;
+        output_axi_resp_n.r_valid = output_mem_resp.r_valid & ~tb_output_axi_resp_hold;
+        output_axi_resp_n.b_valid = output_mem_resp.b_valid & ~tb_output_axi_resp_hold;
     end
-    assign output_mem_req[0] = output_mem_req_n;
-    assign output_axi_resp   = output_axi_resp_n;
+    assign output_axi_resp = output_axi_resp_n;
 
-    // SMC smc_clk floor is 4ns (env_cfg); keep ApplDelay < AcqDelay < 4ns.
-    axi_sim_mem #(
-        .AddrWidth         (56),
-        .DataWidth         (64),
-        .IdWidth           (8),
-        .UserWidth         (12),
-        .NumPorts          (1),
-        .axi_req_t         (smc_sys_out_56_64_8_12_axi_req_t),
-        .axi_rsp_t         (smc_sys_out_56_64_8_12_axi_resp_t),
-        .WarnUninitialized (1'b0),
-        .UninitializedData ("zeros"),
-        .ClearErrOnAccess  (1'b1),
-        .ApplDelay         (1ns),
-        .AcqDelay          (2ns)
-    ) u_output_mem (
-        .clk_i     (clk_smc_i),
-        .rst_ni    (rst_cold_n_int),
-        .axi_req_i (output_mem_req),
-        .axi_rsp_o (output_mem_resp)
+    ocah_axi_if u_output_axi_if (
+        .aclk    (clk_smc_i),
+        .aresetn (rst_primary_smc_clk_no)
     );
 
-    string smc_output_hex_path;
-    initial begin
-        #1;
-        if ($value$plusargs("smc_output_hex=%s", smc_output_hex_path)) begin
-            $readmemh(smc_output_hex_path, u_output_mem.mem);
-            $display("[smc_uvm_top] SYS_OUT mem preloaded from %s",
-                     smc_output_hex_path);
-        end
-    end
-
-    // Program TB-owned axi_sim_mem error maps (pulp werr/rerr API — not DUT Force).
-    // Require strict 1'b1 so undriven X at time-0 does not spam the maps.
-    always_ff @(posedge clk_smc_i) begin
-        if (tb_output_err_we === 1'b1) begin
-            for (int unsigned b = 0; b < 8; b++) begin
-                u_output_mem.werr[tb_output_err_addr + b] = tb_output_err_resp;
-                u_output_mem.rerr[tb_output_err_addr + b] = tb_output_err_resp;
-            end
-        end
-    end
+    ocah_axi_struct_bridge #(
+        .axi_req_t  (smc_sys_out_56_64_8_12_axi_req_t),
+        .axi_resp_t (smc_sys_out_56_64_8_12_axi_resp_t)
+    ) u_output_bridge (
+        .axi_req_i  (output_mem_req_n),
+        .axi_resp_o (output_mem_resp),
+        .axi_if     (u_output_axi_if)
+    );
 
     // Observability: SEP KM-style beat counts on lifted SYS_OUT wires.
     logic [55:0] output_aw_addr_q;
@@ -1161,8 +1155,8 @@ module smc_uvm_top
         .wdt_second_timeout_o       (),
         .smc_global_base_o          (),
         .smc_region_size_o          (),
-        .ext_interrupts_i           ({{(smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS-1){1'b0}},
-                                       tb_ext_interrupt_0_i}),
+        .ext_interrupts_i           ({{(smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS-2){1'b0}},
+                                       tb_temp_interrupt_i, tb_ext_interrupt_0_i}),
         .sep_mailbox_interrupts_i   (tb_sep_mailbox_interrupts),
         .sep_wdt_reset_n_i          (tb_sep_wdt_reset_n),
         .fuse_sense_done_o,
@@ -1170,11 +1164,8 @@ module smc_uvm_top
         .skip_mem_repair_o          (tb_skip_mem_repair_o),
         .ext_boot_seq_done_i        (~tb_hold_ext_boot),
         .sep_security_disable_i     (1'b0),
-        .temp_interrupt_i           (tb_temp_interrupt_i),
         .lc_state_i                 (lc_state_drv),
         .lc_sigint_err_o            (),
-        .ras_bank_chip_o            (),
-        .ras_bank_instance_o        (),
         .ndmreset_request_i         (tb_ndmreset_request),
         .ndmreset_process_o         (tb_ndmreset_process),
         .ext_mailbox_interrupts_o   (),
@@ -1273,16 +1264,18 @@ module smc_uvm_top
     assign tb_axi_hang_irq_sys  = u_dut.u_smc.u_smc_base.hang_irq_sys_axi;
     assign tb_axi_hang_irq_sep  = u_dut.u_smc.u_smc_base.hang_irq_sep_axi;
     assign tb_axi_hang_irq_data = u_dut.u_smc.u_smc_base.hang_irq_data_accel;
-    assign tb_axi_hang_irq_periph31 = u_dut.u_smc.peripheral_interrupts[31];
+    assign tb_axi_hang_irq_periph30 = u_dut.u_smc.peripheral_interrupts[30];
     assign tb_axi_hang_irq_plic_src =
-        u_dut.u_smc.cpu_interrupts[smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS + 31];
+        u_dut.u_smc.cpu_interrupts[smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS + 30];
     assign tb_gpio_pad57      = u_dut.u_smc.pad2core_i[BOOT_STALL_PAD];
     assign tb_uart_irq_any    = |uart_interrupt;
+    assign tb_uart_irq_combined = u_dut.u_smc.peripheral_interrupts[21:18];
+    assign tb_i2c_irq = u_dut.u_smc.peripheral_interrupts[25:23];
     assign tb_mailbox_irq_any = |u_dut.u_smc.peripheral_interrupts[7:0];
     assign tb_avsbus_irq      = u_dut.u_smc.peripheral_interrupts[22];
     assign tb_telemetry_irq_any = |u_dut.u_smc.peripheral_interrupts[10:8];
-    assign tb_efuse_locked_access_irq = u_dut.u_smc.peripheral_interrupts[28];
-    assign tb_temp_interrupt_irq = u_dut.u_smc.peripheral_interrupts[27];
+    assign tb_efuse_locked_access_irq = u_dut.u_smc.peripheral_interrupts[27];
+    assign tb_temp_interrupt_irq = u_dut.u_smc.u_smc_base.ext_interrupts_smc_clk[1];
     assign tb_ext_interrupt_0_sync = u_dut.u_smc.u_smc_base.ext_interrupts_smc_clk[0];
     assign tb_ss0_warm_reset_n = ss_reset_ctrl[0].warm_reset_n;
     assign tb_ndmreset_irq = u_dut.u_smc.peripheral_interrupts[11];
@@ -1313,12 +1306,50 @@ module smc_uvm_top
     // Hierarchical CPU debug (pre-isolate-clamp PC + boundary isolate).
     assign tb_cpu_wb_pc0 =
         u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.wb_reg_pc_raw[0];
+    assign tb_cpu_wb_pc1 =
+        u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.wb_reg_pc_raw[1];
+    assign tb_cpu_wb_pc2 =
+        u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.wb_reg_pc_raw[2];
+    assign tb_cpu_wb_pc3 =
+        u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.wb_reg_pc_raw[3];
+    // Core 0's tile domain carries no suffix; 1-3 are _1.._3
+    // (OCAH4CORECluster_DigitalTop.sv:3975-4218).
+    assign tb_cpu_mcause0 = u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu
+        .u_digital_top.tile_prci_domain.element_reset_domain_rockettile.core.csr.reg_mcause;
+    assign tb_cpu_mcause1 = u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu
+        .u_digital_top.tile_prci_domain_1.element_reset_domain_rockettile.core.csr.reg_mcause;
+    assign tb_cpu_mcause2 = u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu
+        .u_digital_top.tile_prci_domain_2.element_reset_domain_rockettile.core.csr.reg_mcause;
+    assign tb_cpu_mcause3 = u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu
+        .u_digital_top.tile_prci_domain_3.element_reset_domain_rockettile.core.csr.reg_mcause;
+    assign tb_cpu_mepc0 = u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu
+        .u_digital_top.tile_prci_domain.element_reset_domain_rockettile.core.csr.reg_mepc;
+    assign tb_cpu_mepc1 = u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu
+        .u_digital_top.tile_prci_domain_1.element_reset_domain_rockettile.core.csr.reg_mepc;
+    assign tb_cpu_mepc2 = u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu
+        .u_digital_top.tile_prci_domain_2.element_reset_domain_rockettile.core.csr.reg_mepc;
+    assign tb_cpu_mepc3 = u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu
+        .u_digital_top.tile_prci_domain_3.element_reset_domain_rockettile.core.csr.reg_mepc;
     assign tb_cpu_cluster_isolate =
         u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.cluster_boundary_isolate;
     assign tb_cpu_debug_dmactive =
         u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.debug_dmactive;
     assign tb_cpu_debug_dmactive_ack =
         u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.debug_dmactiveAck;
+
+    // Hart 0 retirement record (Rocket CSR trace bundle), masked while the
+    // core is in reset.
+    `define SMC_HART0_CSR u_dut.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.u_digital_top.tile_prci_domain.element_reset_domain_rockettile.core.csr
+    assign tb_cpu_core_reset_n = u_dut.u_smc.u_smc_cpu_wrapper.core_reset_n[0];
+    assign tb_cpu_trace_valid  = tb_cpu_core_reset_n ? `SMC_HART0_CSR.io_trace_0_valid : 1'b0;
+    assign tb_cpu_trace_pc     = tb_cpu_core_reset_n ? `SMC_HART0_CSR.io_trace_0_iaddr : '0;
+    assign tb_cpu_trace_insn   = tb_cpu_core_reset_n ? `SMC_HART0_CSR.io_trace_0_insn : '0;
+    assign tb_cpu_trace_exc    = tb_cpu_core_reset_n ? `SMC_HART0_CSR.io_trace_0_exception : 1'b0;
+    assign tb_cpu_trace_cause  = tb_cpu_core_reset_n ? `SMC_HART0_CSR.io_cause : '0;
+    assign tb_cpu_trace_tval   = tb_cpu_core_reset_n ? `SMC_HART0_CSR.io_tval : '0;
+    `undef SMC_HART0_CSR
+    assign tb_cpu_scratch2 =
+        u_dut.u_smc.u_smc_cpu_wrapper.u_smc_cpu_ctrl_wrap.scratch_reg[2];
 
     // TB glue: pulse tb_dfd_fault_inject to latch a deterministic token. This
     // is NOT smc_dfd_wrap / hw/ip/dfd coverage.
@@ -1347,6 +1378,200 @@ module smc_uvm_top
     assign smc_test_fail_o = (smc_scratch_0_o == SMC_TEST_FAIL);
     assign output_axi_write_count_o = tb_output_axi_write_count;
     assign output_axi_read_count_o  = tb_output_axi_read_count;
+
+    // ------------------------------------------------------------------
+    // Functional coverage (SMC_FCOV.adoc): shared by both tb shapes. Each
+    // module carries Verilator-safe cover-property points -- which land in
+    // the `user` metric family under --coverage-user -- plus commercial-only
+    // covergroups internally. Every port below is a smc_tb_signal_list.svh
+    // signal, so no hierarchical reference and no smc_public_scope.vlt
+    // change is needed.
+    //
+    // Single-instance body only: the SMC_DUAL port surface is deliberately
+    // narrower and does not carry these observables.
+    // ------------------------------------------------------------------
+    smc_reset_fcov #(
+        .CpuClusterCount ($bits(tb_ndmreset_request))
+    ) u_smc_reset_fcov (
+        .clk_ref_i                   (clk_ref_i),
+        .clk_smc_i                   (clk_smc_i),
+        .powergood_i                 (powergood_i),
+        .rst_cold_ni                 (rst_cold_ni),
+        .rst_cool_ni                 (rst_cool_ni),
+        .sep_wdt_reset_ni            (tb_sep_wdt_reset_n),
+        .cfg_flr_pf_active_i         (tb_cfg_flr_pf_active),
+        .ndmreset_request_i          (tb_ndmreset_request),
+        .powergood_stable_i          (powergood_stable_o),
+        .rst_cold_stable_ref_clk_ni  (rst_cold_stable_ref_clk_no),
+        .rst_primary_ref_clk_ni      (rst_primary_ref_clk_no),
+        .rst_primary_smc_clk_ni      (rst_primary_smc_clk_no),
+        .rst_wdt_smc_clk_ni          (rst_wdt_smc_clk_no),
+        .rst_warm_smc_clk_ni         (tb_rst_warm_smc_clk_n),
+        .rst_cool_from_flr_ni        (tb_rst_cool_from_flr),
+        .fuse_reset_ni               (tb_fuse_reset_n),
+        .ss0_warm_reset_ni           (tb_ss0_warm_reset_n),
+        .ndmreset_process_i          (tb_ndmreset_process),
+        .ndmreset_irq_i              (tb_ndmreset_irq)
+    );
+
+    smc_clk_fcov u_smc_clk_fcov (
+        .clk_ref_i                (clk_ref_i),
+        .clk_smc_i                (clk_smc_i),
+        .clk_periph_i             (clk_periph_i),
+        .rst_cold_ni              (rst_cold_n_int),
+        .test_en_i                (tb_test_en_i),
+        .i2c_cg_en_i              (tb_i2c_cg_en),
+        .dma_cg_en_i              (tb_dma_cg_en),
+        .dma_gated_clk_i          (tb_dma_gated_clk),
+        .dma_busy_i               (tb_dma_busy),
+        .dma_frontend_busy_i      (tb_dma_frontend_busy),
+        .dma_backend_busy_i       (tb_dma_backend_busy),
+        .dma_gater_busy_i         (tb_dma_gater_busy),
+        .zeroer_cg_en_i           (tb_zeroer_cg_en),
+        .zeroer_gated_axi_clk_i   (tb_zeroer_gated_axi_clk),
+        .zeroer_gated_reg_clk_i   (tb_zeroer_gated_reg_clk),
+        .zeroer_busy_i            (tb_zeroer_busy),
+        .zeroer_bus_active_i      (tb_zeroer_bus_active)
+    );
+
+    smc_periph_fcov #(
+        .GpioWidth (smc_pkg::NUM_GPIO_WRAPS)
+    ) u_smc_periph_fcov (
+        .clk_periph_i                (clk_periph_i),
+        .clk_smc_i                   (clk_smc_i),
+        .rst_cold_ni                 (rst_cold_n_int),
+        .i2c0_scl_i                  (tb_i2c0_scl),
+        .i2c0_sda_i                  (tb_i2c0_sda),
+        .i2c0_scl_dut_low_i          (tb_i2c0_scl_dut_low),
+        .i2c0_sda_dut_low_i          (tb_i2c0_sda_dut_low),
+        .i2c0_scl_ext_low_i          (tb_i2c0_scl_ext_low),
+        .i2c0_sda_ext_low_i          (tb_i2c0_sda_ext_low),
+        .i2c0_scl_sense_i            (tb_i2c0_scl_i),
+        .i2c0_sda_sense_i            (tb_i2c0_sda_i),
+        .i2c0_enable_i               (tb_i2c0_enable),
+        .i2c0_smbalert_i             (tb_i2c0_smbalert),
+        .i3c0_scl_i                  (tb_i3c0_scl),
+        .i3c0_sda_i                  (tb_i3c0_sda),
+        .i3c0_scl_dut_low_i          (tb_i3c0_scl_dut_low),
+        .i3c0_sda_dut_low_i          (tb_i3c0_sda_dut_low),
+        .gpio_core2pad_any_i         (tb_gpio_core2pad_any),
+        .gpio_core2pad_en_any_i      (tb_gpio_core2pad_en_any),
+        .gpio_pad2core_en_any_i      (tb_gpio_pad2core_en_any),
+        .core2pad_i                  (tb_core2pad_o),
+        .core2pad_en_i               (tb_core2pad_en_o),
+        .gpio_pad57_i                (tb_gpio_pad57),
+        .sync_irq_i                  (tb_sync_irq),
+        .gpio_irq_any_i              (tb_gpio_irq_any),
+        .uart_irq_any_i              (tb_uart_irq_any),
+        .mailbox_irq_any_i           (tb_mailbox_irq_any),
+        .avsbus_irq_i                (tb_avsbus_irq),
+        .telemetry_irq_any_i         (tb_telemetry_irq_any),
+        .temp_interrupt_irq_i        (tb_temp_interrupt_irq),
+        .efuse_locked_access_irq_i   (tb_efuse_locked_access_irq),
+        .axi_hang_irq_i              (tb_axi_hang_irq),
+        .axi_hang_irq_sys_i          (tb_axi_hang_irq_sys),
+        .axi_hang_irq_sep_i          (tb_axi_hang_irq_sep),
+        .axi_hang_irq_data_i         (tb_axi_hang_irq_data),
+        .axi_hang_irq_periph31_i     (tb_axi_hang_irq_periph31),
+        .axi_hang_irq_plic_src_i     (tb_axi_hang_irq_plic_src),
+        .ext_interrupt_0_sync_i      (tb_ext_interrupt_0_sync)
+    );
+
+    smc_fabric_fcov u_smc_fabric_fcov (
+        .clk_smc_i                  (clk_smc_i),
+        .rst_cold_ni                (rst_cold_n_int),
+
+        .axil_dtp_csr_active_i      (tb_axil_dtp_csr_active),
+        .axil_external_active_i     (tb_axil_external_active),
+        .axil_efuse_bank_active_i   (tb_axil_efuse_bank_active),
+        .axil_any_master_active_i   (tb_axil_any_master_active),
+
+        .sep_awvalid_i              (s_axi_awvalid),
+        .sep_awready_i              (s_axi_awready),
+        .sep_awlen_i                (s_axi_awlen),
+        .sep_awsize_i               (s_axi_awsize),
+        .sep_awburst_i              (s_axi_awburst),
+        .sep_wvalid_i               (s_axi_wvalid),
+        .sep_wready_i               (s_axi_wready),
+        .sep_wlast_i                (s_axi_wlast),
+        .sep_wstrb_i                (s_axi_wstrb),
+        .sep_bvalid_i               (s_axi_bvalid),
+        .sep_bready_i               (s_axi_bready),
+        .sep_bresp_i                (s_axi_bresp),
+        .sep_arvalid_i              (s_axi_arvalid),
+        .sep_arready_i              (s_axi_arready),
+        .sep_arlen_i                (s_axi_arlen),
+        .sep_arsize_i               (s_axi_arsize),
+        .sep_rvalid_i               (s_axi_rvalid),
+        .sep_rready_i               (s_axi_rready),
+        .sep_rlast_i                (s_axi_rlast),
+        .sep_rresp_i                (s_axi_rresp),
+        .sep_r_hold_i               (tb_sep_axi_r_hold),
+
+        .sys_awvalid_i              (sys_axi_awvalid),
+        .sys_awready_i              (sys_axi_awready),
+        .sys_awlen_i                (sys_axi_awlen),
+        .sys_wvalid_i               (sys_axi_wvalid),
+        .sys_wready_i               (sys_axi_wready),
+        .sys_wlast_i                (sys_axi_wlast),
+        .sys_bvalid_i               (sys_axi_bvalid),
+        .sys_bready_i               (sys_axi_bready),
+        .sys_bresp_i                (sys_axi_bresp),
+        .sys_arvalid_i              (sys_axi_arvalid),
+        .sys_arready_i              (sys_axi_arready),
+        .sys_arlen_i                (sys_axi_arlen),
+        .sys_rvalid_i               (sys_axi_rvalid),
+        .sys_rready_i               (sys_axi_rready),
+        .sys_rlast_i                (sys_axi_rlast),
+        .sys_rresp_i                (sys_axi_rresp),
+        .sys_r_hold_i               (tb_sys_axi_r_hold),
+
+        .jtag_awvalid_i             (jtag_axi_awvalid),
+        .jtag_awready_i             (jtag_axi_awready),
+        .jtag_awlen_i               (jtag_axi_awlen),
+        .jtag_wvalid_i              (jtag_axi_wvalid),
+        .jtag_wready_i              (jtag_axi_wready),
+        .jtag_wlast_i               (jtag_axi_wlast),
+        .jtag_bvalid_i              (jtag_axi_bvalid),
+        .jtag_bready_i              (jtag_axi_bready),
+        .jtag_bresp_i               (jtag_axi_bresp),
+        .jtag_arvalid_i             (jtag_axi_arvalid),
+        .jtag_arready_i             (jtag_axi_arready),
+        .jtag_arlen_i               (jtag_axi_arlen),
+        .jtag_rvalid_i              (jtag_axi_rvalid),
+        .jtag_rready_i              (jtag_axi_rready),
+        .jtag_rlast_i               (jtag_axi_rlast),
+        .jtag_rresp_i               (jtag_axi_rresp),
+
+        .ej_awvalid_i               (ej_axi_awvalid),
+        .ej_awready_i               (ej_axi_awready),
+        .ej_wvalid_i                (ej_axi_wvalid),
+        .ej_wready_i                (ej_axi_wready),
+        .ej_bvalid_i                (ej_axi_bvalid),
+        .ej_bready_i                (ej_axi_bready),
+        .ej_bresp_i                 (ej_axi_bresp),
+        .ej_arvalid_i               (ej_axi_arvalid),
+        .ej_arready_i               (ej_axi_arready),
+        .ej_rvalid_i                (ej_axi_rvalid),
+        .ej_rready_i                (ej_axi_rready),
+        .ej_rresp_i                 (ej_axi_rresp),
+
+        .out_awvalid_i              (tb_output_axi_awvalid),
+        .out_awready_i              (tb_output_axi_awready),
+        .out_wvalid_i               (tb_output_axi_wvalid),
+        .out_wready_i               (tb_output_axi_wready),
+        .out_bvalid_i               (tb_output_axi_bvalid),
+        .out_bready_i               (tb_output_axi_bready),
+        .out_bresp_i                (tb_output_axi_bresp),
+        .out_arvalid_i              (tb_output_axi_arvalid),
+        .out_arready_i              (tb_output_axi_arready),
+        .out_rvalid_i               (tb_output_axi_rvalid),
+        .out_rready_i               (tb_output_axi_rready),
+        .out_rresp_i                (tb_output_axi_rresp),
+        .out_resp_hold_i            (tb_output_axi_resp_hold),
+        .out_write_count_i          (tb_output_axi_write_count),
+        .out_read_count_i           (tb_output_axi_read_count)
+    );
 
 `else  // SMC_DUAL
     // ==================================================================
@@ -1456,55 +1681,38 @@ module smc_uvm_top
     `undef OCAH_DUAL_PACK_AXI
 
     // ------------------------------------------------------------------
-    // SYS_OUT terminators, one per instance (pulp axi_sim_mem -- the same VIP
-    // and the same ApplDelay/AcqDelay floor the single-instance half uses).
+    // SYS_OUT AXI4 egress, one responder per instance: the shared slave agent
+    // answers on u_dut_output_axi_if / u_bfm_output_axi_if (cocotb binds both
+    // instances); each bridge places its wrapper's struct port on the interface.
+    // Each responder follows its instance's primary reset so a cool reset drops
+    // the outstanding SYS_OUT responses (see the single-instance half).
     // ------------------------------------------------------------------
-    smc_sys_out_56_64_8_12_axi_req_t  [0:0] dut_out_mem_req, bfm_out_mem_req;
-    smc_sys_out_56_64_8_12_axi_resp_t [0:0] dut_out_mem_resp, bfm_out_mem_resp;
-
-    assign dut_out_mem_req[0] = dut_out_axi_req;
-    assign dut_out_axi_resp   = dut_out_mem_resp[0];
-    assign bfm_out_mem_req[0] = bfm_out_axi_req;
-    assign bfm_out_axi_resp   = bfm_out_mem_resp[0];
-
-    axi_sim_mem #(
-        .AddrWidth         (56),
-        .DataWidth         (64),
-        .IdWidth           (8),
-        .UserWidth         (12),
-        .NumPorts          (1),
-        .axi_req_t         (smc_sys_out_56_64_8_12_axi_req_t),
-        .axi_rsp_t         (smc_sys_out_56_64_8_12_axi_resp_t),
-        .WarnUninitialized (1'b0),
-        .UninitializedData ("zeros"),
-        .ClearErrOnAccess  (1'b1),
-        .ApplDelay         (1ns),
-        .AcqDelay          (2ns)
-    ) u_dut_output_mem (
-        .clk_i     (clk_smc_i),
-        .rst_ni    (rst_cold_ni),
-        .axi_req_i (dut_out_mem_req),
-        .axi_rsp_o (dut_out_mem_resp)
+    ocah_axi_if u_dut_output_axi_if (
+        .aclk    (clk_smc_i),
+        .aresetn (dut_rst_primary_smc_clk_no)
     );
 
-    axi_sim_mem #(
-        .AddrWidth         (56),
-        .DataWidth         (64),
-        .IdWidth           (8),
-        .UserWidth         (12),
-        .NumPorts          (1),
-        .axi_req_t         (smc_sys_out_56_64_8_12_axi_req_t),
-        .axi_rsp_t         (smc_sys_out_56_64_8_12_axi_resp_t),
-        .WarnUninitialized (1'b0),
-        .UninitializedData ("zeros"),
-        .ClearErrOnAccess  (1'b1),
-        .ApplDelay         (1ns),
-        .AcqDelay          (2ns)
-    ) u_bfm_output_mem (
-        .clk_i     (clk_smc_i),
-        .rst_ni    (rst_cold_ni),
-        .axi_req_i (bfm_out_mem_req),
-        .axi_rsp_o (bfm_out_mem_resp)
+    ocah_axi_struct_bridge #(
+        .axi_req_t  (smc_sys_out_56_64_8_12_axi_req_t),
+        .axi_resp_t (smc_sys_out_56_64_8_12_axi_resp_t)
+    ) u_dut_output_bridge (
+        .axi_req_i  (dut_out_axi_req),
+        .axi_resp_o (dut_out_axi_resp),
+        .axi_if     (u_dut_output_axi_if)
+    );
+
+    ocah_axi_if u_bfm_output_axi_if (
+        .aclk    (clk_smc_i),
+        .aresetn (bfm_rst_primary_smc_clk_no)
+    );
+
+    ocah_axi_struct_bridge #(
+        .axi_req_t  (smc_sys_out_56_64_8_12_axi_req_t),
+        .axi_resp_t (smc_sys_out_56_64_8_12_axi_resp_t)
+    ) u_bfm_output_bridge (
+        .axi_req_i  (bfm_out_axi_req),
+        .axi_resp_o (bfm_out_axi_resp),
+        .axi_if     (u_bfm_output_axi_if)
     );
 
     // ------------------------------------------------------------------
@@ -1775,6 +1983,26 @@ module smc_uvm_top
     assign bfm_wb_pc0 =
         u_bfm.u_smc_wrapper.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.wb_reg_pc_raw[0];
 
+    // Hart 0 retirement record per instance, masked while that core is in reset.
+    `define SMC_DUT_HART0_CSR u_dut.u_smc_wrapper.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.u_digital_top.tile_prci_domain.element_reset_domain_rockettile.core.csr
+    `define SMC_BFM_HART0_CSR u_bfm.u_smc_wrapper.u_smc.u_smc_cpu_wrapper.gen_4core_cpu.u_smc_cpu.u_digital_top.tile_prci_domain.element_reset_domain_rockettile.core.csr
+    assign dut_cpu_core_reset_n = u_dut.u_smc_wrapper.u_smc.u_smc_cpu_wrapper.core_reset_n[0];
+    assign dut_cpu_trace_valid  = dut_cpu_core_reset_n ? `SMC_DUT_HART0_CSR.io_trace_0_valid : 1'b0;
+    assign dut_cpu_trace_pc     = dut_cpu_core_reset_n ? `SMC_DUT_HART0_CSR.io_trace_0_iaddr : '0;
+    assign dut_cpu_trace_insn   = dut_cpu_core_reset_n ? `SMC_DUT_HART0_CSR.io_trace_0_insn : '0;
+    assign dut_cpu_trace_exc    = dut_cpu_core_reset_n ? `SMC_DUT_HART0_CSR.io_trace_0_exception : 1'b0;
+    assign dut_cpu_trace_cause  = dut_cpu_core_reset_n ? `SMC_DUT_HART0_CSR.io_cause : '0;
+    assign dut_cpu_trace_tval   = dut_cpu_core_reset_n ? `SMC_DUT_HART0_CSR.io_tval : '0;
+    assign bfm_cpu_core_reset_n = u_bfm.u_smc_wrapper.u_smc.u_smc_cpu_wrapper.core_reset_n[0];
+    assign bfm_cpu_trace_valid  = bfm_cpu_core_reset_n ? `SMC_BFM_HART0_CSR.io_trace_0_valid : 1'b0;
+    assign bfm_cpu_trace_pc     = bfm_cpu_core_reset_n ? `SMC_BFM_HART0_CSR.io_trace_0_iaddr : '0;
+    assign bfm_cpu_trace_insn   = bfm_cpu_core_reset_n ? `SMC_BFM_HART0_CSR.io_trace_0_insn : '0;
+    assign bfm_cpu_trace_exc    = bfm_cpu_core_reset_n ? `SMC_BFM_HART0_CSR.io_trace_0_exception : 1'b0;
+    assign bfm_cpu_trace_cause  = bfm_cpu_core_reset_n ? `SMC_BFM_HART0_CSR.io_cause : '0;
+    assign bfm_cpu_trace_tval   = bfm_cpu_core_reset_n ? `SMC_BFM_HART0_CSR.io_tval : '0;
+    `undef SMC_DUT_HART0_CSR
+    `undef SMC_BFM_HART0_CSR
+
     // ------------------------------------------------------------------
     // Controller I3C TX-port snoop (see the port comment). Passive: it only
     // watches the AXI-Lite write handshake, and drives nothing into the DUT.
@@ -1835,26 +2063,17 @@ module smc_uvm_top
 
     assign dual_present_o = 1'b1;
 
-    // Scratch SRAM striping, from chipyard_4core_mem_pkg: 32 banks, round-robin
-    // every 64 bytes, 8 bytes per entry. Used by the peek decode below.
-    //
-    // This decode is only known-correct at offset 0. Measured by
-    // smc_dual_axi_sram_probe_test: patterns written and read back over AXI at
-    // 0xC0066400/+8/+0x40 all verify while this formula reports zero for every
-    // one of them. Nothing gates on the peek for that reason.
-    localparam int unsigned SCRATCH_BANK_STRIPE_BYTES = 64;
-    localparam int unsigned SCRATCH_BYTES_PER_ENTRY   = 8;
-    localparam int unsigned SCRATCH_ENTRIES_PER_STRIPE =
-        SCRATCH_BANK_STRIPE_BYTES / SCRATCH_BYTES_PER_ENTRY;
+    // Scratch SRAM bank/entry decode. smc_scratch_map_pkg holds the one copy
+    // of it and cites the cluster RTL it was read out of; see that file before
+    // changing anything here.
     localparam int unsigned SCRATCH_NUM_BANKS = chipyard_4core_mem_pkg::NUM_SRAM_BANKS;
 
     // ------------------------------------------------------------------
     // Target scratch peek (read-only; see the port comment).
     //
-    // Same 64-byte round-robin stripe decode the rest of this block uses, then
-    // a per-bank mux. The bank selector has to be a mux over constant generate
-    // indices, because a hierarchical reference into a generate block needs a
-    // constant index.
+    // Same decode the image loader uses, then a per-bank mux. The bank
+    // selector has to be a mux over constant generate indices, because a
+    // hierarchical reference into a generate block needs a constant index.
     // ------------------------------------------------------------------
     logic [$clog2(SCRATCH_NUM_BANKS)-1:0] peek_bank;
     logic [$clog2(SCRATCH_NUM_BANKS)-1:0] bfm_peek_bank;
@@ -1868,13 +2087,10 @@ module smc_uvm_top
     logic [chipyard_4core_mem_pkg::SMC_4CORE_SCRATCH_RAM_DATA_WIDTH-1:0] peek_word;
 
     always_comb begin
-        peek_bank  = (tb_dut_scratch_peek_offset / SCRATCH_BANK_STRIPE_BYTES)
-                     % SCRATCH_NUM_BANKS;
-        peek_entry = (tb_dut_scratch_peek_offset /
-                        (SCRATCH_BANK_STRIPE_BYTES * SCRATCH_NUM_BANKS))
-                     * SCRATCH_ENTRIES_PER_STRIPE
-                     + (tb_dut_scratch_peek_offset % SCRATCH_BANK_STRIPE_BYTES)
-                       / SCRATCH_BYTES_PER_ENTRY;
+        peek_bank  = smc_scratch_map_pkg::smc_scratch_bank(
+                         32'(tb_dut_scratch_peek_offset));
+        peek_entry = smc_scratch_map_pkg::smc_scratch_entry(
+                         32'(tb_dut_scratch_peek_offset));
     end
 
     // The CPU memory macros live inside smc_ip_integration, so the DV
@@ -1902,13 +2118,10 @@ module smc_uvm_top
     end
 
     always_comb begin
-        bfm_peek_bank  = (tb_bfm_scratch_peek_offset / SCRATCH_BANK_STRIPE_BYTES)
-                         % SCRATCH_NUM_BANKS;
-        bfm_peek_entry = (tb_bfm_scratch_peek_offset /
-                            (SCRATCH_BANK_STRIPE_BYTES * SCRATCH_NUM_BANKS))
-                         * SCRATCH_ENTRIES_PER_STRIPE
-                         + (tb_bfm_scratch_peek_offset % SCRATCH_BANK_STRIPE_BYTES)
-                           / SCRATCH_BYTES_PER_ENTRY;
+        bfm_peek_bank  = smc_scratch_map_pkg::smc_scratch_bank(
+                             32'(tb_bfm_scratch_peek_offset));
+        bfm_peek_entry = smc_scratch_map_pkg::smc_scratch_entry(
+                             32'(tb_bfm_scratch_peek_offset));
     end
 
     for (genvar b = 0; b < SCRATCH_NUM_BANKS; b++) begin : gen_bfm_peek_bank
@@ -1974,7 +2187,8 @@ module smc_uvm_top
     // SV-UVM harness (`--dut smc --framework uvm`): clocks, the shared-VIP
     // interface instances on the SEP_IN AXI4 ingress, quiescent tie-offs
     // for every other cocotb-driven stimulus pin, uvm_config_db
-    // publication, and run_test(). Compiled only when the native uvm flow
+    // publication (u_output_axi_if on the SYS_OUT egress lives above, in
+    // both shapes), and run_test(). Compiled only when the native uvm flow
     // defines UVM; the cocotb flow sees only the ported module above.
     // ------------------------------------------------------------------
     import uvm_pkg::*;
@@ -2252,10 +2466,7 @@ module smc_uvm_top
     assign ej_axi_arvalid = 1'b0;
     assign ej_axi_rready  = 1'b0;
 
-    // SYS_OUT responder controls: no error injection, no response hold.
-    assign tb_output_err_we        = 1'b0;
-    assign tb_output_err_addr      = '0;
-    assign tb_output_err_resp      = '0;
+    // SYS_OUT responder control: no response hold.
     assign tb_output_axi_resp_hold = 1'b0;
 
     // DFT functional mode; open-drain I2C0/I3C0 lines released; CPU JTAG TAP
@@ -2337,6 +2548,7 @@ module smc_uvm_top
         uvm_config_db#(virtual smc_tb_if)::set(null, "*", "tb_vif", u_tb_if);
         uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "sep_in_master_vif", u_sep_in_master_if);
         uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "sep_in_axi_vif", u_sep_in_axi_if);
+        uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "sys_out_vif", u_output_axi_if);
         run_test();
     end
 `endif
@@ -2479,11 +2691,8 @@ module smc_dual_inst
         .skip_mem_repair_o          (),
         .ext_boot_seq_done_i        (1'b1),
         .sep_security_disable_i     (1'b0),
-        .temp_interrupt_i           (1'b0),
         .lc_state_i                 (lc_state_idle),
         .lc_sigint_err_o            (),
-        .ras_bank_chip_o            (),
-        .ras_bank_instance_o        (),
         .ndmreset_request_i         ('0),
         .ndmreset_process_o         (),
         .ext_mailbox_interrupts_o   (),
@@ -2491,7 +2700,6 @@ module smc_dual_inst
         .isolate_req_o              (),
         .ss_reset_complete_i        ('1),
         .ss_config_o                (),
-        .ss_reset_ctrl_o            (),
         .sync_irq_o                 (),
         .disable_sram_auto_init_i   (1'b1),
         .init_mem_done_o            (init_mem_done_o),
@@ -2509,7 +2717,6 @@ module smc_dual_inst
         .ext_debug_bus_i            ('0),
         .test_en_i                  (1'b0),
         .scan_rst_ni                (1'b1),
-        .captured_straps_i          ('0),
         // Without an external BISR/MBIST agent the boot sequencer waits forever
         // if these stay low (same fix as the single-instance half /
         // tb_wrapper_top.sv).

@@ -207,7 +207,16 @@ class sep_warm_cold_reset_scratch_test(sep_base_test):
         assert warm_rec == WARM_PATTERN2, (
             f"CHK-WARM-RECOVER SCRATCH_WARM[0]=0x{warm_rec:08x} != 0x{WARM_PATTERN2:08x}"
         )
-        self.logger.info("CHK-WARM-RECOVER PASS: SCRATCH_WARM[0] re-written 0x%08x", warm_rec)
+        cold_rec = await self.scr.read(SCRATCH_COLD_0)
+        assert cold_rec == COLD_PATTERNS[0], (
+            f"CHK-WARM-RECOVER SCRATCH_COLD[0]=0x{cold_rec:08x} != 0x{COLD_PATTERNS[0]:08x}"
+        )
+        self.logger.info(
+            "CHK-WARM-RECOVER PASS: warm SCRATCH_WARM[0] re-written 0x%08x, cold "
+            "SCRATCH_COLD[0] still 0x%08x across the warm reset",
+            warm_rec,
+            cold_rec,
+        )
 
         # --- CHK-COLD-REINIT: a cold reset clears BOTH banks (stronger than the reference suite) ---
         # State going in: SCRATCH_COLD[0]=COLD_PATTERN, SCRATCH_WARM[0]=WARM_PATTERN2.
@@ -227,6 +236,18 @@ class sep_warm_cold_reset_scratch_test(sep_base_test):
             "CHK-COLD-BANK: both banks must hold their patterns before the cold "
             f"reset, got warm={[hex(v) for v in rearm_warm]} "
             f"cold={[hex(v) for v in rearm_cold]}"
+        )
+        self.logger.info(
+            "CHK-COLD-BANK PASS (pre-reset arming): %d warm + %d cold registers armed, "
+            "warm[0]=0x%08x warm[%d]=0x%08x cold[0]=0x%08x cold[%d]=0x%08x",
+            SCRATCH_N,
+            SCRATCH_N,
+            rearm_warm[0],
+            SCRATCH_N - 1,
+            rearm_warm[SCRATCH_N - 1],
+            rearm_cold[0],
+            SCRATCH_N - 1,
+            rearm_cold[SCRATCH_N - 1],
         )
         await self.scr.write(SCRATCH_WARM_0, WARM_PATTERN2)
 

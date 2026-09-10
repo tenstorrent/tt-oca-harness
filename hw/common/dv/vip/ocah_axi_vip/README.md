@@ -53,6 +53,7 @@ process-global cocotb or `cocotbext-axi` state is touched.
 | Control/status register access over AXI4-Lite | `OcahAxiLiteMasterAgent` |
 | Memory-backed AXI4-Lite responder | `OcahAxiLiteSlaveAgent` |
 | Passive observation without driving the bus | `OcahAxiMonitor` / `OcahAxiLiteMonitor` |
+| Binding an interface scope whose members are wider than the bus | `OcahAxiConfig` (`geometry.bus(scope)`) |
 | Item-level protocol sanity checks | `OcahAxiChecker` |
 | AXI-Stream (e.g. entropy data path) | **Out of scope** for this package — stream sources stay DUT-local |
 
@@ -79,14 +80,16 @@ ocah_axi_vip/
     ocah_axi_item.py                    — transaction item dataclasses (side-neutral)
     ocah_axi_monitor.py                 — OcahAxiMonitor, OcahAxiLiteMonitor (side-neutral)
     ocah_axi_checker.py                 — OcahAxiChecker (item rules + CHK-* evidence)
+    ocah_axi_config.py                  — OcahAxiConfig (bus geometry; binds an interface
+                                          scope at the real widths, side-neutral)
     ocah_axi_ref_model.py               — OcahAxiRefModel (shadow memory + response policy)
     ocah_axi_scoreboard.py              — OcahAxiScoreboard (evidence-emitting comparator)
     ocah_axi_protocol_watcher.py        — cycle-level protocol-rule watchers
     ocah_axi_types.py                   — response/protection codes + value-conversion helpers
   interface/ocah_axi_if.sv       — flat AXI4/AXI4-Lite monitor interface (SV)
+  interface/ocah_axi_struct_bridge.sv — places a pulp request/response struct
+                                   port on an ocah_axi_if for the slave agent
   sva/ocah_axi_sva.sv            — clean-room AXI protocol SVA (OCAH_AXI_* rules)
-  sv/ocah_axil_ram_responder.sv  — behavioral AXI-Lite RAM responder (error-injectable)
-  sv/ocah_axi_ram_responder.sv   — behavioral AXI4 RAM responder (error-injectable)
   uvm/ocah_axi_uvm_pkg.sv        — SV-UVM layer: side-neutral passive stack
                                    (monitor/ref-model/scoreboard/env) + slave
                                    agent (reactive memory-backed responder)
@@ -96,10 +99,12 @@ ocah_axi_vip/
   examples/
     example_register_access.py            — annotated usage snippets
     example_axi_scoreboard_selftest.py    — simulator-free checker/model/scoreboard proof
-  dv/                            — simulated VIP selftests on a passive wire
-                                   harness (master <-> fault slave; response-ID
-                                   observation and corruption proofs), one
-                                   scenario set for both frameworks:
+  dv/                            — simulated VIP selftests on a wire harness
+                                   (master <-> fault slave: response-ID
+                                   observation and corruption proofs; master
+                                   <-> struct bridge <-> slave agent: the
+                                   struct-port boundary), one scenario set for
+                                   both frameworks:
                                    python3 tools/dv/run_dv.py --dut ocah_axi_vip --items smoke
                                    python3 tools/dv/run_dv.py --dut ocah_axi_vip \
                                        --framework uvm --tool vcs --items smoke
@@ -265,6 +270,51 @@ ram.inject_error(0x20, RESP_DECERR, read=True, write=False)
 ```
 
 It has the same backdoor and fault-control helpers as `OcahAxiSlaveAgent`.
+
+---
+
+### OcahAxiConfig — binding at the real bus geometry
+
+`ocah_axi_if` instances carry the interface's default (maximum) member
+widths so the SV-UVM layer sees one `virtual ocah_axi_if` type. The cocotb
+engines size their byte lanes from the signals they are handed, so a 32-bit
+AXI4-Lite port bound straight onto such an instance is driven as a 64-bit
+bus and its sub-word offsets land in the wrong lanes. `OcahAxiConfig` is the
+cocotb twin of the SV `ocah_axi_config`: it carries the real geometry, and
+`bus()` hands the agents a view of the scope in which every geometry-bearing
+member reports the configured width. Reads return the low bits; writes drive
+the low bits and hold the bits above at zero.
+
+```python
+from ocah_axi_vip import (
+    OcahAxiConfig,
+    OcahAxiLiteMasterAgent,
+    OcahAxiLiteSlaveAgent,
+    OcahAxiProtocol,
+)
+
+geometry = OcahAxiConfig(protocol=OcahAxiProtocol.AXI4_LITE, addr_width=32, data_width=32)
+ram = OcahAxiLiteSlaveAgent(
+    geometry.bus(dut.u_otp_axil_if), dut.clk_i, dut.rst_ni, reset_active_level=False
+).sequence
+host = OcahAxiLiteMasterAgent(
+    geometry.bus(dut.u_csr_axil_if), dut.clk_i, dut.rst_ni, reset_active_level=False
+).sequence
+```
+
+| Field / method | Notes |
+|---|---|
+| `protocol` | `OcahAxiProtocol.AXI4` or `AXI4_LITE`; selects `AxiBus` or `AxiLiteBus` |
+| `addr_width`, `data_width` | Address and data widths of the real bus; `strb_width` derives from `data_width` |
+| `id_width`, `user_width` | AXI4 only; `0` leaves the ID and user members at their physical widths |
+| `geometry.bus(scope, *, prefix=None)` | Bus over an interface handle, or over a flattened bundle when `prefix` is given |
+| `geometry.member_widths(prefix=None)` | The configured width of every geometry-bearing signal, keyed by name |
+
+Members already at the configured width pass through unchanged, so the same
+call binds a flat port bundle (`geometry.bus(dut, prefix="cfg_axil")`) or a
+real-geometry interface. The `dv/` harness proves the binding on
+default-geometry instances (`ocah_axi_lite_geometry_test`,
+`ocah_axi_geometry_test`).
 
 ---
 

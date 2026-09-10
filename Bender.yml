@@ -23,7 +23,7 @@ package:
 
 # Path dependencies on the vendored trees (transitive pins in Bender.local).
 dependencies:
-  aou: { path: "vendor/tenstorrent/aou-rtl" }
+  aou: { path: "vendor/tenstorrent/aou" }
   tt_dfd: { path: "vendor/tenstorrent/tt-hw-debug" }
   el2: { path: "vendor/chipsalliance/Cores-VeeR-EL2" }
   idma: { path: "vendor/pulp-platform/idma" }
@@ -146,7 +146,7 @@ vendor_package:
   # axi: pinned rev with in-place edits and extra modules applied via patch.
   - name: axi
     target_dir: "vendor/pulp-platform/axi/upstream"
-    upstream: { git: "https://github.com/tenstorrent/tt-axi.git", rev: "7a452ce59e355ea6dbaec5241217ba3fca057664" }
+    upstream: { git: "https://github.com/tenstorrent/tt-axi.git", rev: "c27b1f2efd04ec464b89cedacc4c0df0452772e9" }
     include_from_upstream:
       - "src"
       - "include"
@@ -302,12 +302,12 @@ vendor_package:
 
   # AXI-over-UCIe (AoU) bridge IP: RTL design + csr SystemRDL.
   - name: aou
-    target_dir: "vendor/tenstorrent/aou-rtl/upstream"
-    upstream: { git: "https://github.com/tenstorrent/aou-rtl.git", rev: "28716da1c1e588636f88410d47846714c63058eb" }
+    target_dir: "vendor/tenstorrent/aou/upstream"
+    upstream: { git: "https://github.com/tenstorrent/tt-oca-harness-aou.git", rev: "28716da1c1e588636f88410d47846714c63058eb" }
     include_from_upstream:
       - "RTL"
       - "csr"
-    patch_dir: "vendor/tenstorrent/aou-rtl/patches"
+    patch_dir: "vendor/tenstorrent/aou/patches"
 
   # I3C controller/target core. The wrapper and memory primitives are left out;
   # this tree supplies its own through i3ccore_wrap.

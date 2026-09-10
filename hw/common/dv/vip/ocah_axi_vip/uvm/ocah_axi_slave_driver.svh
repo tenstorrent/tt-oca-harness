@@ -3,7 +3,7 @@
 //
 // Reactive AXI4/AXI4-Lite memory-backed responder driver (device side).
 //
-// The class analogue of sv/ocah_axi_ram_responder.sv: a sparse zero-default
+// A sparse zero-default
 // byte memory answering FIXED/INCR/WRAP single- and multi-beat bursts with
 // ID echo, per-beat one-shot error matching (via ocah_axi_slave_config),
 // per-channel bounded READY backpressure, and single-outstanding registered

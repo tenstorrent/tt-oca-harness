@@ -28,6 +28,10 @@
 // the repo-controlled cocotb runner wrapper in the SEP DV flow).
 public_flat_rw -module "sep_uvm_top" -var "*"
 
+// The shared AXI VIP interface on the SEP->SMC boundary (rom_boot target):
+// cocotb binds the slave agent to its members.
+public_flat_rw -module "ocah_axi_if" -var "*"
+
 // sep_wrapper DUT: tb_backdoor_mem in sep_uvm_top writes the real
 // memory macro arrays (default-fill patterns + firmware/image loads). Those XMR writes
 // no-op under Verilator unless the target array is public. These three cover all eight
@@ -47,14 +51,7 @@ public_flat_rw -module "ram_16384x39" -var "ram_core"
 // ready/valid combinational cones.
 public_flat_rw -module "sep_scratch_reg" -var "field_storage"
 
-// NOTE (main #3417, ABR CSR block): do NOT add an abr_wrapper_key_reg public line here
-// -- it does NOT help (it only trades one tool-v5.046 codegen bug for another). Also,
-// no comment line here may START with the word "verilator" -- the .vlt lexer treats
+// Do not add abr_wrapper_key_reg to this public list. The PeakRDL block is on
+// the Bender filelist and tests reach it frontdoor. Also, no comment line here
+// may START with the word "verilator" -- the .vlt lexer treats
 // "// verilator ..." as a metacomment directive and errors out.
-//   The generated abr_wrapper_key_reg does not build under the tool (v5.046): sep_crypto
-//   ties its hwif_in struct to '0, and the tool either (a) const-folds that and emits
-//   invalid C++ ("0U.__PVT__KEY[5U]..."), or (b) if the module is public, emits a
-//   mismatched nested-struct aggregate init. Bug (a)'s only fix (public) triggers (b).
-//   RESOLVED for OSS DV by SWAPPING IN A SHIM instead: sep_sim_cfg.toml excludes the
-//   generated block and compiles shims/crypto/abr_wrapper_key_reg_stub.sv (both tools,
-//   for model parity). VCS builds the real block fine; this is the DV-side unblock.

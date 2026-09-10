@@ -51,13 +51,23 @@ hw/sys/smu/dv/
 `SmuEnv` (`cocotb/env/smu_env.py`) is deliberately thin. It builds the
 scoreboard and reads `SmuEnvCfg` out of the PyUVM `ConfigDB`; the JTAG and AXI
 agents are created on demand by the sequences that need them, against
-`cocotb.top`, rather than being instantiated for every test.
+`cocotb.top`, rather than being instantiated for every test. The one agent that
+exists from time zero is the responder of the outbound SMN AXI4 boundary:
+`tb_top.sv` keeps the crossbar's `ext_out` request/response structs and places
+them on the `ocah_axi_if` instance `u_axi_out_if` through
+`ocah_axi_struct_bridge`; `smu_base_test.bring_up` binds the shared
+`OcahAxiSlaveAgent` to that instance before the clocks start and publishes its
+slave sequence as `SmuEnvCfg.axi_out_mem` (backdoor reads and writes of what
+the SMU wrote out, one-shot SLVERR/DECERR injection, bounded READY stalls). The
+wrapper bench (`tb_wrapper_top.sv`) answers the same boundary the same way
+behind its `axi_cut`, on the wrapper `SmuEnvCfg.axi_out_mem`.
 
 [cols=",",options="header",]
 |===
 |Component |Role
 |`SmuEnvCfg` |Clock periods (`ref`, `smu`, `periph`, `jtag`), idle TCK count and
-post-reset settle cycles, randomised from the run seed
+post-reset settle cycles, randomised from the run seed; the outbound SMN
+geometry, memory span, and slave sequence (`axi_out_mem`)
 |`SmuScoreboard` |Every check in the suite goes through it; see
 <<smu-checking-strategy,Checking Strategy>>
 |`smu_evidence_map.py` |Per-testcase `(CHK_ID, TOKEN, EXPECT)` contracts
@@ -126,6 +136,65 @@ own components, reused unchanged; a required feature with zero comparisons
 fails the run. `+SMU_PTAP_IDCODE_NEGATIVE` arms a wrong expected IDCODE in the
 reference model and in the scenario evidence, so the run must FAIL.
 
+[[sep-processor-state-monitor]]
+=== SEP Processor-State Monitoring (wrapper)
+
+The `sep_rtl` wrapper profile boots real SEP firmware, so every wrapper test
+builds `cocotb_wrapper/env/smu_sep_cpu_trace_monitor.py`, a passive
+`uvm_component` that self-idles unless `+sep_itcm_hex` names a SEP image. It is
+the wrapper realization of the SEP bench's `env/sep_cpu_trace_monitor.py` and
+reconstructs the same processor state.
+
+==== Trace source
+
+`tb/tb_wrapper_top.sv` exports the complete VeeR EL2 retirement record
+(`el2_trace_pkt_t`) as ports: `sep_trace_valid_o`, `sep_pc_o`,
+`sep_trace_insn_o`, `sep_trace_exc_o`, `sep_trace_ecause_o`,
+`sep_trace_interrupt_o`, and `sep_trace_tval_o`, all masked to zero while
+`sep_reset_n_o` is low (a four-state simulator leaves the struct at X until the
+SMC arm firmware releases the SEP). The sticky fetch-window detectors
+(`sep_boot_rom_fetch_seen_o`, `sep_iccm_fetch_seen_o`) stay in hardware because
+the boot-ROM trampoline retires before any Python loop samples; the monitor owns
+the retirement tally.
+
+==== What the monitor reconstructs
+
+PC history:: every retirement feeds a count, a distinct-PC set (the SEP boot
+  scoreboard's liveness evidence), and a 512-entry ring of the most recent
+  retirements.
+Shadow call stack:: retired RV32IMC encodings are decoded for linking calls
+  (`jal`/`jalr`/`c.jal`/`c.jalr` through ra/t0), returns (`jalr`/`c.jr` through
+  ra/t0), and `mret`. Exception-flagged retirements push a synthetic trap frame
+  carrying ecause/interrupt/tval; `mret` unwinds it. A SEP reset flushes the
+  stack while history and tallies survive.
+Trap records:: every exception retirement is kept with its cycle, PC, decoded
+  mcause name, and tval.
+Hang watch:: after the first retirement, a 20k-cycle retirement-free gap out of
+  reset logs a one-shot warning with a full dump. Diagnostic only — `wfi` and the
+  firmware's terminal loops are legitimate.
+
+Reconstruction hiccups (pop of an empty stack, depth overflow) are tallied as
+resync notes and logged, never failed; pass/fail judgement stays with the
+sequences and `SmuSepBootScoreboard`.
+
+==== Symbolization
+
+`smu_base_test` feeds the monitor the staged `nm -B -n` listing of the booted
+image: `+sep_sym` names it, otherwise the `+sep_itcm_hex` stem selects
+`<stem>.tcm.sym` (SEP firmware engine) or `<stem>.sym` (`fw/build_firmware.py`).
+`seq_lib/sep_fw_common.py` parses it with weak entry points included, so
+picolibc functions carry their own names in a backtrace. A missing listing
+degrades to numeric PCs and never fails a test.
+
+==== Output
+
+`SmuSepBootScoreboard` takes its retirement count and distinct-PC evidence from
+the monitor. A scenario that raises ends with the monitor's symbolized call
+stack, trap records, and recent-PC tail at error level ahead of the assertion; a
+passing run logs the same summary at info level in `report_phase`.
+`+sep_trace_log` streams every retirement (cycle, PC, encoding, symbol) to
+`sep_trace.log` in the run directory.
+
 === Coverage Strategy
 
 Verilator does not support SystemVerilog covergroups, so scenario-intent
@@ -140,7 +209,9 @@ tests.
 |===
 |Interface / Protocol |Open-source replacement
 |Primary JTAG TAP |`ocah_jtag_vip`
-|External SMN AXI4 |`ocah_axi_vip` (`OcahAxiSlaveAgent` / master)
+|External SMN AXI4 |`ocah_axi_vip`: `OcahAxiSlaveAgent` on the outbound
+boundary (struct port bridged by `ocah_axi_struct_bridge`), master on the
+inbound pins
 |SMC OTP AXI-Lite over JTAG2AXI |`ocah_axi_vip` AXI-Lite wrappers
 |SMC scratch / mailbox |Backdoor read plus cocotb polling
 |Cross-trigger / iJTAG |OCAH-local model, not yet written
@@ -219,8 +290,9 @@ TAP pins, the SMU-local `smu_tb_if`, a `dtp_tb_if` instance wired to the
 embedded DTP (one-hot TAP state, decoded instruction, and the DTP's system and
 power-on reset assertion counters observed on the DTP instance pins), the JTAG
 protocol SVA, quiescent tie-offs at the idle values `smu_base_test.bring_up`
-uses, `uvm_config_db` publication of the three virtual interfaces, and
-`run_test()`.
+uses, `uvm_config_db` publication of the four virtual interfaces (the outbound
+`ocah_axi_if` instance is shared by both shapes and published as
+`axi_out_vif`), and `run_test()`.
 
 .SV-UVM component tree (`uvm/`)
 ....
@@ -232,6 +304,8 @@ smu_dtp_jtag_smoke_test (tests/) extends smu_base_test extends ocah_test
 
 smu_env (env/) extends ocah_env
   ocah_jtag_master_env        active JTAG agent on ocah_jtag_if (jtag_vif)
+  ocah_axi_slave_agent        memory-backed responder of the outbound SMN
+                              boundary on ocah_axi_if (axi_out_vif)
   ocah_jtag_scan_builder      IR/DR scan reconstruction on the event stream
   ocah_jtag_checker           env-owned aggregate evidence (CHK-TAP-*)
   dtp_ir_decode_ref_model     embedded DTP: the DTP bench's reference models
@@ -241,7 +315,7 @@ smu_env (env/) extends ocah_env
   smu_scoreboard              always on; SoC verdict point:
     dtp_scoreboard              the DTP bench's scoreboard, reused as a child
                                 (ir_decode, idcode, bypass pairing)
-  smu_virtual_sequencer       m_jtag_seqr
+  smu_virtual_sequencer       m_jtag_seqr, m_axi_out_slave_seq
 
 smu_seq_lib_pkg (seq_lib/)
   smu_jtag_op_seq             base of the operations (tracked TAP state)

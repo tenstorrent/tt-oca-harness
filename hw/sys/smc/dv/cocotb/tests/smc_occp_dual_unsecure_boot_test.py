@@ -66,10 +66,12 @@ Required plusargs:
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import cocotb
 from cocotb.triggers import ClockCycles
+from env.smc_virt_console import VirtConsole
 from smc_dual_base_test import DualCsr, SmcDualHarness, random_seed
 from smc_occp_dual_defs import (
     CPU_RESET_VECTOR_ROM,
@@ -94,7 +96,6 @@ from smc_occp_dual_defs import (
     post_code_error,
     required_plusarg,
 )
-from smc_virt_console import VirtConsole
 
 # Target ROM boot to its OCCP command loop. Measured at ~250 us of sim time in
 # the single-instance smc_prod_rom_occp_ready_test; this bound is ~10x that.
@@ -173,10 +174,10 @@ def _payload_entry_offset(sym_path: str) -> int:
 async def _peek_target_scratch(dut, offset: int) -> tuple[int, int]:
     """Read one 64-bit word of the target's scratch SRAM, plus its ECC bits.
 
-    Read-only, and INFORMATIONAL ONLY -- it reproduces the striped bank/entry
-    decode that is known wrong at non-zero offsets, so nothing gates on it. See
-    the longer note at the landing check below, and
-    docs/occp_dual_boot_jump_rootcause.md.
+    Read-only, and informational -- nothing gates on it. It resolves the offset
+    with smc_scratch_map_pkg, the same decode smc_dual_axi_sram_probe_test holds
+    against AXI, so a mismatch here is worth reading rather than expected. See
+    the note at the landing check below.
 
     Used to separate "the OCCP writes never landed" from "they landed and the
     core still would not execute them" when triaging a failure. An AXI read of
@@ -509,7 +510,8 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
             f"  controller wb_pc0={int(dut.bfm_wb_pc0.value):#x} "
             f"rom_reads={int(dut.bfm_rom_read_count.value)}\n"
             f"controller firmware trace:\n{bfm_console.tail()}\n"
-            f"target firmware trace:\n{dut_console.tail()}"
+            f"target firmware trace:\n{dut_console.tail()}\n"
+            f"CPU state:\n{harness.cpu_trace_report()}"
         )
 
     passv = 0
@@ -540,7 +542,8 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
                 f"{_tx_snoop(dut)}\n"
                 f"  I3C bus [{format_activity(bus_activity(dut))}]\n"
                 f"controller firmware trace:\n{bfm_console.tail()}\n"
-                f"target firmware trace:\n{dut_console.tail()}"
+                f"target firmware trace:\n{dut_console.tail()}\n"
+                f"CPU state:\n{harness.cpu_trace_report()}"
             )
 
         # Has the image arrived in the target's SRAM yet? Checking the first and
@@ -581,7 +584,8 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
                 f"rom_reads={int(dut.dut_rom_read_count.value)}\n"
                 f"  I3C bus [{format_activity(bus_activity(dut))}]\n"
                 f"controller firmware trace:\n{bfm_console.tail()}\n"
-                f"target firmware trace:\n{dut_console.tail()}"
+                f"target firmware trace:\n{dut_console.tail()}\n"
+                f"CPU state:\n{harness.cpu_trace_report()}"
             )
         if passv == TEST_PASS:
             break
@@ -625,7 +629,8 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
             f"wb_pc0={int(dut.bfm_wb_pc0.value):#x}\n"
             f"  I3C bus [{format_activity(bus_activity(dut))}]\n"
             f"controller firmware trace (last lines):\n{bfm_console.tail()}\n"
-            f"target firmware trace (last lines):\n{dut_console.tail()}"
+            f"target firmware trace (last lines):\n{dut_console.tail()}\n"
+            f"CPU state:\n{harness.cpu_trace_report()}"
         )
 
     # ------------------------------------------------------------------
@@ -702,11 +707,12 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
             target_addr,
         )
     else:
-        cocotb.log.info(
-            "NOTE: target SRAM peek did not match at %#010x. Expected: the "
-            "striped-backdoor decode is unreliable at non-zero offsets (see "
-            "comment above). The pass rests on scratch 0 and the retired PC, "
-            "not on this peek.",
+        cocotb.log.warning(
+            "NOTE: target SRAM peek did not match at %#010x. The pass rests on "
+            "scratch 0 and the retired PC, not on this peek -- but the decode "
+            "behind the peek is held against AXI by "
+            "smc_dual_axi_sram_probe_test, so a disagreement here is not "
+            "expected and is worth reading.",
             target_addr,
         )
 
@@ -720,6 +726,7 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
     # the transferred image. Sample it now rather than relying only on the
     # scratch values.
     final_pc = int(dut.dut_wb_pc0.value)
+    harness.dump_cpu_trace(logging.INFO)
     pc_parked_in_payload = target_addr <= final_pc < target_addr + payload_size
     assert pc_in_payload or pc_parked_in_payload, (
         f"target scratch shows the payload's results, but its retired PC "

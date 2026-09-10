@@ -75,7 +75,33 @@ class smc_occp_sanity_secure_error_test_seq(SmcCsrSeq):
             prog_before,
             prog_after,
         )
-        assert prog_after == prog_before, "secure program-fail must not sticky-OR OTP bits"
+        # MODEL-BACKED, NOT DUT-EARNED. Read this before citing it as evidence.
+        #
+        # With +smc_efuse_prog_fail_count set, hw/ip/efuse/dv/models/
+        # efuse_bank_model.sv:120 drives the bank macro as
+        #     .s_apb_pwdata(prog_fail_act ? 32'h0 : apb_req_i.pwdata)
+        # so on the injected-failure write the DV model substitutes 32'h0 for
+        # whatever the DUT's eFuse controller actually put on the bus. The word
+        # therefore cannot change, and this compare holds no matter what the
+        # controller did: the testbench chooses the value the checker reads.
+        #
+        # It is kept as a consistency check on the injection hook, not as proof
+        # of the controller's fail-path behaviour. What IS DUT-earned in this
+        # scenario: PROGRAM_DONE is reported on the failing attempt (polled
+        # above, expiry raises), and the recovery burn below really does
+        # sticky-OR bit0 through the unmodified pwdata path.
+        #
+        # The real fix belongs in the model: reject the burn at the APB
+        # handshake (pslverr, with the macro write suppressed) instead of
+        # rewriting the data, so a controller that ignored the failure would be
+        # observable. That changes shared SEP+SMC model behaviour, so it is
+        # recorded as a gap in this testcase's VPLAN entry rather than done
+        # here.
+        assert prog_after == prog_before, (
+            "injected program-failure hook inconsistent: word0 moved "
+            f"0x{prog_before:08x} -> 0x{prog_after:08x} even though the DV "
+            "model forces pwdata to 0 on the failing burn"
+        )
 
         # Positive recovery burn (second attempt succeeds).
         await self.csr_write(

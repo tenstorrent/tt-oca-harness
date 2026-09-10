@@ -75,18 +75,19 @@ This project incorporates code from the following third-party sources:
    Vendored under
    vendor/chipsalliance/i3c-core/upstream/third_party/cocotbext-i3c/
 
-10. Freedom Metal
+10. axi-vip
+    Copyright (C) 2020 The Symbiflow Authors
+    Licensed under the ISC License
+    Project: https://github.com/antmicro/axi-vip
+    Vendored under
+    vendor/chipsalliance/i3c-core/upstream/third_party/axi-vip/
+
+11. Freedom Metal
     Copyright (c) 2017-2018 SiFive Inc.
     Distributed under the FreeBSD License terms retained in the source file.
     Sources: hw/sys/smc/dv/fw/include/metal/,
     hw/sys/smc/dv/fw/drivers/, hw/sys/smc/dv/fw/startup/, and
     hw/sys/smc/bootrom/prod/
-
-11. Whetstone benchmark
-    Copyright (C) Texas Instruments Incorporated and
-    Copyright (c) 1998 Painter Engineering, Inc.
-    Distributed under the terms retained in the source file.
-    Source: hw/sys/smc/dv/fw/tests/whetstone/whetstone.c
 
 12. EEMBC CoreMark
     Copyright (c) 2018 Embedded Microprocessor Benchmark Consortium (EEMBC)

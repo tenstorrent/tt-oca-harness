@@ -15,24 +15,51 @@ Three bundles exist in ``tb_top.sv``:
   ``OcahAxiLiteSlaveAgent``, for the lite protocol-control selftests
   (AW/W launch skew, deferred BREADY/RREADY, partial strobes) with every
   handshake observable at the flat nets.
+* ``u_wide_axi_if`` / ``u_wide_axil_if`` — default-geometry ``ocah_axi_if``
+  instances (64-bit address and data, 16-bit ID and user). The geometry
+  selftests bind the 32-bit stacks to them through ``OcahAxiConfig`` and
+  judge the member bits above the configured geometry at the raw handles.
+* ``mt_axi`` / ``u_mt_axi_if`` — the struct-port bundle: ``OcahAxiMasterAgent``
+  drives the flat request nets that tb_top packs into a pulp request struct,
+  ``ocah_axi_struct_bridge`` places that struct on ``u_mt_axi_if``, and
+  ``OcahAxiSlaveAgent`` answers there with ``OcahAxiMonitor`` feeding the VIP
+  scoreboard, the topology a block tb_top uses for a struct boundary.
+
+The seed accessor and the salted scenario RNG live here: these selftests are
+plain cocotb tests without a base test class.
 """
 
 from __future__ import annotations
 
 import logging
+import os
+import random
+from typing import Any
 
 import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, RisingEdge
 from ocah_axi_vip import (
+    OcahAxiConfig,
     OcahAxiLiteMasterAgent,
     OcahAxiLiteSlaveAgent,
     OcahAxiMasterAgent,
+    OcahAxiMonitor,
+    OcahAxiProtocol,
     OcahAxiSlaveAgent,
 )
+from ocah_lib import OcahRng
 
 CLK_PERIOD_NS = 4
 ID_MASK = 0xFF  # tb_top ID signals are 8 bits wide
+_SEED_ENV = "RANDOM_SEED"
+
+# Real bus geometry the geometry selftests bind onto the default-geometry
+# ocah_axi_if instances (whose members are 64/64-bit with 16-bit ID and user).
+WIDE_LITE_GEOMETRY = OcahAxiConfig(protocol=OcahAxiProtocol.AXI4_LITE, addr_width=32, data_width=32)
+WIDE_AXI_GEOMETRY = OcahAxiConfig(
+    protocol=OcahAxiProtocol.AXI4, addr_width=32, data_width=32, id_width=8, user_width=1
+)
 
 log = logging.getLogger("cocotb.tb.ocah_axi_vip_harness")
 
@@ -90,6 +117,75 @@ def build_lite_stack(dut, *, timeout_ns: int = 100_000):
         name="harness_l_axi_master",
     )
     return master, slave
+
+
+def base_seed() -> int:
+    """Runner-provided seed; the harness's one read of the seed variable."""
+    return int(os.environ.get(_SEED_ENV, "1"), 0)
+
+
+def scenario_rng(label: str) -> random.Random:
+    """Seeded stream for one scenario, salted by ``label``."""
+    return random.Random(OcahRng.salted_seed(base_seed(), label))
+
+
+def build_wide_lite_stack(
+    dut: Any, *, timeout_ns: int = 100_000
+) -> tuple[OcahAxiLiteMasterAgent, OcahAxiLiteSlaveAgent]:
+    """Attach the lite master and lite RAM slave to u_wide_axil_if at 32-bit geometry."""
+    scope = dut.u_wide_axil_if
+    slave = OcahAxiLiteSlaveAgent(
+        WIDE_LITE_GEOMETRY.bus(scope),
+        dut.clk,
+        dut.rst_n,
+        reset_active_level=False,
+        size=2**16,
+        name="harness_wide_axil_slave",
+    )
+    master = OcahAxiLiteMasterAgent(
+        WIDE_LITE_GEOMETRY.bus(scope),
+        dut.clk,
+        dut.rst_n,
+        reset_active_level=False,
+        timeout_ns=timeout_ns,
+        name="harness_wide_axil_master",
+    )
+    return master, slave
+
+
+def build_wide_full_stack(
+    dut: Any, *, timeout_ns: int = 100_000
+) -> tuple[OcahAxiMasterAgent, OcahAxiSlaveAgent]:
+    """Attach the AXI4 master and RAM slave to u_wide_axi_if at 32-bit, 8-bit-ID geometry."""
+    scope = dut.u_wide_axi_if
+    slave = OcahAxiSlaveAgent(
+        WIDE_AXI_GEOMETRY.bus(scope),
+        dut.clk,
+        dut.rst_n,
+        reset_active_level=False,
+        size=2**16,
+        name="harness_wide_axi_slave",
+    )
+    master = OcahAxiMasterAgent(
+        WIDE_AXI_GEOMETRY.bus(scope),
+        dut.clk,
+        dut.rst_n,
+        reset_active_level=False,
+        timeout_ns=timeout_ns,
+        name="harness_wide_axi_master",
+    )
+    return master, slave
+
+
+def upper_lanes(handle: Any, width: int) -> int | None:
+    """Value of the bits of ``handle`` above bit ``width``; ``None`` when any of them is X or Z."""
+    bits = str(handle.value)[:-width]
+    if not bits:
+        return 0
+    try:
+        return int(bits, 2)
+    except ValueError:
+        return None
 
 
 def build_wire_slave(dut):
@@ -281,3 +377,33 @@ async def drive_wire_read(
     raise AssertionError(
         f"no R handshake within {timeout_cycles} cycles for read arid=0x{arid:x} addr=0x{addr:08x}"
     )
+
+
+def build_bridge_stack(
+    dut: Any, *, timeout_ns: int = 100_000
+) -> tuple[OcahAxiMasterAgent, OcahAxiSlaveAgent, OcahAxiMonitor]:
+    """Master on the mt_axi struct-side nets; slave agent and monitor on u_mt_axi_if.
+
+    The struct geometry (32-bit address and data, 8-bit ID, 1-bit user) is the
+    one ``WIDE_AXI_GEOMETRY`` binds onto the default-geometry interface.
+    """
+    scope = dut.u_mt_axi_if
+    slave = OcahAxiSlaveAgent(
+        WIDE_AXI_GEOMETRY.bus(scope),
+        dut.clk,
+        dut.rst_n,
+        reset_active_level=False,
+        size=2**16,
+        name="harness_mt_axi_slave",
+    )
+    monitor = OcahAxiMonitor(WIDE_AXI_GEOMETRY.bus(scope), dut.clk, name="harness_mt_axi_monitor")
+    master = OcahAxiMasterAgent.from_prefix(
+        dut,
+        "mt_axi",
+        dut.clk,
+        dut.rst_n,
+        reset_active_level=False,
+        timeout_ns=timeout_ns,
+        name="harness_mt_axi_master",
+    )
+    return master, slave, monitor

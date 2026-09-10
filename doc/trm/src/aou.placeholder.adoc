@@ -10,5 +10,5 @@ AoU is specified outside this document:
 * https://cdn.sanity.io/files/jpb4ed5r/production/25de1707769f21e4a3916103371d1fb419cadac0.pdf[AoU architecture specification]
 * https://github.com/tenstorrent/tt-oca-harness-aou/tree/main/DOC/MAS[AoU microarchitecture specifications]
 
-OCAH instantiates the vendored `aou-rtl` bridge; it does not maintain a
+OCAH instantiates the vendored `aou` bridge; it does not maintain a
 local AoU chapter.

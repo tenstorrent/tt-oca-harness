@@ -9,6 +9,7 @@ work to `run_scenario()`.
 from __future__ import annotations
 
 import hashlib
+import logging
 import os
 import sys
 from datetime import datetime, timezone
@@ -27,9 +28,11 @@ for _path in (_COCOTB_ROOT, _OSS_HW_ROOT / "common" / "dv" / "vip"):
         sys.path.insert(0, _path_str)
 
 from env.smc_env import SmcEnv
-from env.smc_env_cfg import SmcEnvCfg
+from env.smc_env_cfg import SYS_OUT_AXI_GEOMETRY, SYS_OUT_MEM_SIZE, SmcEnvCfg
 from env.smc_probe_liveness import reset_probe_ledger, watch_probe_liveness
 from env.smc_protocol_vip_item import SmcProtocolVipItem, SmcProtocolVipKind
+from env.smc_virt_console import VirtConsole
+from ocah_axi_vip import OcahAxiSlaveAgent
 from seq_lib._one_shot import _OneShot
 
 # Test-class-name -> protocol VIP kind for the auto-record at the end of
@@ -63,8 +66,6 @@ _PROTOCOL_VIP_TESTS = {
     "smc_pll_dvfs_depth_test": SmcProtocolVipKind.CLOCK,
     "smc_static_cg_sanity_test": SmcProtocolVipKind.CLOCK,
     "smc_gpio_irq_active_test": SmcProtocolVipKind.GPIO_IRQ,
-    "smc_gpio_strap_sanity_test": SmcProtocolVipKind.GPIO_IRQ,
-    "smc_external_interrupts_test": SmcProtocolVipKind.GPIO_IRQ,
     "smc_uart_spi_log_engine_test": SmcProtocolVipKind.UART_LOG,
     "smc_uart_log_engine_reg_rw_test": SmcProtocolVipKind.UART_LOG,
     "smc_uart_log_engine_error_boundary_test": SmcProtocolVipKind.UART_LOG,
@@ -117,8 +118,8 @@ _PROTOCOL_VIP_TESTS = {
 # ==================================================== build-model identity ====
 # `[BUILD-MODEL-IDENTITY]`. The SMC sim stage runs with `do_build: False` and
 # reuses a prebuilt model out of the SHARED path hw/sys/smc/dv/build/cocotb/<tool>
-# (<tool>/coverage for a `--cov` run; run_dv.py exports the directory it built
-# into as OCAH_SIM_BUILD_DIR), so the run's own hdl_compile log records only
+# (`<tool>/<target>/coverage` for a `--cov` VCS run; run_dv.py exports that leaf
+# as OCAH_SIM_BUILD_DIR), so the run's own hdl_compile log records only
 # "Nothing to be done for 'default'"
 # and the kept log cannot say what RTL it simulated. The build directory is
 # overwritten in place by the next `--rebuild`, so an identity recovered by hand
@@ -132,11 +133,14 @@ _PROTOCOL_VIP_TESTS = {
 _MODEL_ROOT_REL = Path("hw") / "sys" / "smc" / "dv" / "build" / "cocotb"
 _COMPILE_FLIST_REL = Path("hw") / "sys" / "smc" / "dv" / "build" / "smc_dut_compile.f"
 
-# tool -> (model artifact, resolved-compile-input list) relative to the tool's
-# build directory. The model artifact is the thing the simulator actually ran.
+# tool -> (model artifact, resolved-compile-input list) relative to the leaf
+# elaboration directory `_model_build_dir` returns. The model artifact is the
+# thing the simulator actually ran. VCS writes `simv` in that leaf
+# (`<tool>/<target>` or `<tool>/<target>/coverage`); the `default/` segment
+# belongs in the directory, not in this relative path.
 _MODEL_ARTIFACTS: dict[str, tuple[str, str | None]] = {
     "verilator": ("smc_uvm_top", "Vtop__ver.d"),
-    "vcs": ("default/simv", None),
+    "vcs": ("simv", None),
     "xcelium": ("xrun_snapshot", "xrun_build.log"),
 }
 
@@ -217,16 +221,20 @@ def _mtime_utc(path: Path) -> str:
 
 
 def _model_build_dir(root: Path, tool: str) -> Path:
-    """Return the build directory the simulated model was elaborated into.
+    """Return the leaf directory the simulated model was elaborated into.
 
-    run_dv.py exports it as OCAH_SIM_BUILD_DIR (a coverage run builds under
-    <tool>/coverage); the shared <tool> path is the fallback for a launch that
-    did not come through run_dv.py.
+    run_dv.py exports that leaf as OCAH_SIM_BUILD_DIR, including
+    `<tool>/<target>/coverage` on a `--cov` VCS run. Without it, VCS falls
+    back to the non-coverage default leaf under the shared cocotb build tree;
+    other tools use the tool directory itself.
     """
     exported = os.environ.get("OCAH_SIM_BUILD_DIR")
     if exported:
         return Path(exported)
-    return root / _MODEL_ROOT_REL / tool
+    base = root / _MODEL_ROOT_REL / tool
+    if tool == "vcs":
+        return base / "default"
+    return base
 
 
 def _require(path: Path, what: str) -> Path:
@@ -573,16 +581,27 @@ class smc_base_test(uvm_test):
             dut.tb_octs_sync_load_ext.value = 0
         if hasattr(dut, "tb_octs_cnt_credit_ext"):
             dut.tb_octs_cnt_credit_ext.value = 0
-        # Output-fabric SLVERR inject (U1-2): off by default.
-        if hasattr(dut, "tb_output_err_we"):
-            dut.tb_output_err_we.value = 0
-            dut.tb_output_err_resp.value = 0
-            dut.tb_output_err_addr.value = 0
         # Cool reset starts deasserted (released) so the cool-domain logic
         # does not block the cold-reset bring-up. Tests can drive it low via
         # the reset agent COOL_RST_LO op.
         dut.rst_cool_ni.value = 1
         cocotb.start_soon(watch_probe_liveness(dut))
+        # Firmware virtual console (scratch 2); decoded lines go to the log as
+        # they complete.
+        self.virt_console = VirtConsole(dut.tb_cpu_scratch2, "smc-fw")
+        cocotb.start_soon(self.virt_console.run())
+        # The SYS_OUT responder exists before the first clock edge so the
+        # boundary's READY signals are driven from time zero. It follows the
+        # SMC primary reset: a cool reset drops the outstanding responses
+        # instead of returning them into the reset CPU cluster.
+        self.cfg.sys_out_mem = OcahAxiSlaveAgent(
+            SYS_OUT_AXI_GEOMETRY.bus(dut.u_output_axi_if),
+            dut.clk_smc_i,
+            dut.rst_primary_smc_clk_no,
+            reset_active_level=False,
+            size=SYS_OUT_MEM_SIZE,
+            name="smc_sys_out",
+        ).sequence
         cocotb.start_soon(Clock(dut.clk_ref_i, self.cfg.ref_clk_period_ns, units="ns").start())
         cocotb.start_soon(Clock(dut.clk_smc_i, self.cfg.smc_clk_period_ns, units="ns").start())
         cocotb.start_soon(
@@ -668,8 +687,13 @@ class smc_base_test(uvm_test):
         # ([BUILD-MODEL-IDENTITY]). Raises rather than logging a placeholder.
         log_build_model_identity()
         await self._bring_up()
-        await self.run_probe_positive_controls()
-        await self.run_scenario()
+        try:
+            await self.run_probe_positive_controls()
+            await self.run_scenario()
+        except Exception:  # noqa: BLE001 -- re-raised once the CPU state is in the log
+            self.virt_console.flush()
+            self.env.cpu_trace_mon.dump_diagnostics(logging.ERROR)
+            raise
         test_name = type(self).__name__
         # Prefer the per-test class attribute; fall back to the name map.
         kind = self.protocol_vip_kind or _PROTOCOL_VIP_TESTS.get(test_name)

@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+[[tests]]
+name = "smc_spi_pad_bfm_test"
+module = "smc_spi_pad_bfm_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "depth_uart_log", "u2_spi_pad", "pyuvm"]
+run_modes = ["smoke"]
+
+# smc_sideband_avsbus_octs_bfm_test — not ported (fake_bfm)

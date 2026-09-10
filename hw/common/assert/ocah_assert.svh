@@ -58,20 +58,20 @@
 // Complex assertion macros //
 //////////////////////////////
 
+// Keep macro headers on one physical line for synthesis elaboration.
+// verilog_format: off
 // Assert that signal is an active-high pulse with pulse length of 1 clock cycle
-`define OCAH_ASSERT_PULSE(__name, __sig, __clk = `OCAH_ASSERT_DEFAULT_CLK,
-                          __rst = `OCAH_ASSERT_DEFAULT_RST) \
+`define OCAH_ASSERT_PULSE(__name, __sig, __clk = `OCAH_ASSERT_DEFAULT_CLK, __rst = `OCAH_ASSERT_DEFAULT_RST) \
   `OCAH_ASSERT(__name, $rose(__sig) |=> !(__sig), __clk, __rst)
 
 // Assert that a property is true only when an enable signal is set.
-`define OCAH_ASSERT_IF(__name, __prop, __enable, __clk = `OCAH_ASSERT_DEFAULT_CLK,
-                       __rst = `OCAH_ASSERT_DEFAULT_RST) \
+`define OCAH_ASSERT_IF(__name, __prop, __enable, __clk = `OCAH_ASSERT_DEFAULT_CLK, __rst = `OCAH_ASSERT_DEFAULT_RST) \
   `OCAH_ASSERT(__name, (__enable) |-> (__prop), __clk, __rst)
 
 // Assert that signal has a known value (each bit is either '0' or '1') after reset if enable is set
-`define OCAH_ASSERT_KNOWN_IF(__name, __sig, __enable, __clk = `OCAH_ASSERT_DEFAULT_CLK,
-                             __rst = `OCAH_ASSERT_DEFAULT_RST) \
+`define OCAH_ASSERT_KNOWN_IF(__name, __sig, __enable, __clk = `OCAH_ASSERT_DEFAULT_CLK, __rst = `OCAH_ASSERT_DEFAULT_RST) \
   `OCAH_ASSERT_KNOWN(__name``KnownEnable, __enable, __clk, __rst)                                                     \
   `OCAH_ASSERT_IF(__name, !$isunknown(__sig), __enable, __clk, __rst)
+// verilog_format: on
 
 `endif  // OCAH_ASSERT_SV
