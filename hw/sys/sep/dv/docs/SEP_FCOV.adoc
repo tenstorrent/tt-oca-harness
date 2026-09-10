@@ -13,7 +13,7 @@ flow.
 Verilator does not compile SystemVerilog `covergroup`. Phase 1 bins are VCS
 covergroups in `hw/sys/sep/dv/cov/sv/sep_fcov.sv` (`ifndef VERILATOR`),
 sampled by the single passive `u_sep_fcov` instance in `tb/tb_top.sv`. There
-is no Verilator cover-property layer in this revision.
+is no Verilator cover-property layer.
 
 Feature checkers stay on the VPLAN scorecard. The FCOV number is the URG
 Group report on `sep_uvm_top.u_sep_fcov`, not the DUT line/cond/toggle/FSM
@@ -35,7 +35,7 @@ SCORE.
 |===
 |Metric |Contract |Collection path
 |Phase 1 functional coverage |Every Phase 1 bin below |URG Group report on `sep_uvm_top.u_sep_fcov`, from a `--cov --tool vcs` run
-|Phase 2 functional coverage |Named future-work set at the end of this plan |Not collected this revision
+|Phase 2 functional coverage |Named future-work set at the end of this plan |Not collected
 |Line / expression coverage |Collected; not a functional-coverage contract |`--coverage-line`, `--coverage-expr`
 |Condition / FSM / toggle / assertion |Commercial signoff |VCS / Xcelium
 |===
@@ -48,10 +48,10 @@ DUT would mask them.
 [cols="1,3",options="header"]
 |===
 |Phase |Scope
-|**Phase 1 — this revision** |One basic-mode covergroup per SEP IP. Bins are the
+|**Phase 1** |One basic-mode covergroup per SEP IP. Bins are the
 legal cells a named `all`-group test already walks.
-|**Phase 2 — future work** |Dense enumerations, crosses, window edges, error and
-fault paths, illegal encodings. Named below. Not collected this revision.
+|**Phase 2** |Dense enumerations, crosses, window edges, error and
+fault paths, illegal encodings. Named below. Not collected.
 |===
 
 === Coverage Summary
@@ -113,7 +113,7 @@ human. Other members may fill a group in passing.
 |`sep_efuse_sense_cg` |`sep_efuse_sense_test`, `sep_efuse_image_test` (any leaf passing `+skip_fuse_sense` cannot fill it)
 |`sep_efuse_program_lock_cg` |`sep_efuse_program_lock_matrix_test`
 |`sep_lc_state_cg` |`sep_efuse_lcc_lc_state_stitch_test` and the six `sep_lcc_lc_state_w1s_*` leaves
-|`sep_lc_transition_cg` |the six `sep_lcc_lc_state_w1s_*` leaves, one documented transition each
+|`sep_lc_transition_cg` |`sep_lcc_lc_state_w1s_prod_test` and `_prod_demote_test` (PROD to RMA_SIP_1), `_rma_sip_test` (RMA_SIP_1 to RMA_CHIP_1)
 |`sep_dma_completion_route_cg` |`sep_dma_basic_test` (STATUS poll), `sep_dma_hash_test` (interrupt), `sep_spi_ot_dma_rx_test` / `_tx_test` (handshake mode)
 |`sep_feat_ctrl_cg` |`sep_efuse_lcc_lc_state_stitch_test` (also both `SECURE_TM` polarities), the six W1S leaves, `sep_sec_dis_override_test` (SEC_DIS)
 |`sep_lc_demote_cg` |`sep_lcc_demote_feat_ctrl_matrix_test`
@@ -159,7 +159,7 @@ for `u_sep_fcov`. The DUT SCORE (line/cond/toggle/FSM/branch/assert) is a
 different number, and the sampler's own line weight is part of it -- it is a
 testbench cone, not a DUT cone.
 
-`OCAH_FCOV_COVER` cover-property points are not used in this revision.
+`OCAH_FCOV_COVER` cover-property points are unused.
 
 === Phase 1 coverage definitions
 
@@ -374,9 +374,9 @@ Completion is `STATUS.done` OR the DMA-done interrupt
 both routes: `dma_basic_test` polls `STATUS`, while `dma_hash_test` enables
 `INTR_ENABLE.DMA_DONE`, WFIs, and its handler clears `STATUS.done` before
 software reads it -- so on that path no `STATUS` read with the DONE bit ever
-reaches the bus. Measured: with a `STATUS`-only bin, `cp_hash_done` was
-unfillable while `cp_copy_done` scored 53. The GO'd opcode still labels the
-cell, so an interrupt cannot score the wrong one.
+reaches the bus. A `STATUS`-only bin therefore cannot fill `cp_hash_done`.
+The GO'd opcode still labels the cell, so an interrupt cannot score the
+wrong one.
 
 The destination-matches-source and digest-matches-golden claims stay in the
 DMA firmware. These cells are driven only by the firmware tests
@@ -508,12 +508,11 @@ a literal.
 
 This is the one SEED-DEPENDENT group in Phase 1. A W1S write with a token match
 moves PROD straight to `RMA_SIP_1` / `RMA_CHIP_1`
-(`sep_lcc_golden.lc_state_next`), so the `_0` codes are reachable only from a
-staged eFuse image -- and `sep_base_test.random_efuse_image()` stages
+(`sep_lcc_golden.lc_state_next`), so a `_0` code is read frontdoor only when a
+leaf is staged in it. `sep_base_test.select_efuse_image()` stages
 `rng.choice(LEGAL_LC_RAW)`, one of the seven legal codes per seed, for any leaf
-that does not pin `lc_raw`. Measured: `sep_efuse_image_test` fills 1 of 7 per
-run. `RMA_SIP_0` and `RMA_CHIP_0` therefore close by running more seeds, not by
-adding stimulus; every other Phase 1 cell is filled by a single seed.
+that does not pin `lc_raw`. That group's score therefore moves between runs;
+every other Phase 1 cell is filled by a single seed.
 
 The bin is sampled from an OKAY read of the `LC_STATE` shadow word only when
 the word carries the differential `{~raw, raw}` encoding, so a stuck-at or
@@ -526,20 +525,28 @@ half-sensed word lands in no bin instead of scoring one.
 [cols=",",options="header"]
 |===
 |Coverpoint |Bins
-|`cp_from` / `cp_to` |The seven legal raw encodings
-|`x_transition` |The three transitions the suite produces: TEST_DEV to PROD, PROD to RMA_SIP, RMA_SIP to RMA_CHIPLET
+|`cp_transition` |Two bins over the packed `{from, to}` pair: PROD to RMA_SIP_1, RMA_SIP_1 to RMA_CHIP_1
 |===
 
 `sep_lc_state_cg` records which states were SEEN; this group records which were
 TAKEN. A pair is recovered from two `LC_STATE` reads in the same leaf --
 `sep_lc_shadow_write_seq` reads ONCE per cell, after its write, so the pair is
-two consecutive cells, not a before/after pair around one write. The stitch
-chain TEST_DEV -> PROD -> RMA_SIP_1 -> RMA_CHIP_1 is what produces all three.
+two consecutive cells of one leaf, not a before/after pair around one write.
+The contributors are `sep_lcc_lc_state_w1s_prod_test`, `_prod_demote_test`
+and `_rma_sip_test`.
 
-Only those three are declared. TEST_DEV to PROD_END and TEST_DEV to RMA_SIP
-have no walk (those leaves START sensed in the destination state), and PROD to
-PROD_END is impossible under write-1-to-set at all: `0x1 | 0x8` is `0x9`. The
-transition-legality claim stays on `sep_lcc_golden.lc_state_next`.
+One packed coverpoint over `{from, to}`. A `cross` of two 7-bin coverpoints
+auto-generates the full product; named bins inside the cross do not suppress
+those cells.
+
+Only two bins are declared. A pair needs two `LC_STATE` reads inside ONE leaf,
+and the `+lc_start` leaves are sensed at PROD, RMA_SIP_0, RMA_CHIP_0 or
+PROD_END -- none at TEST_DEV -- so TEST_DEV to PROD has no producer; the
+PROD_END/transient leaf advances `0x8` to `0xA`, which is not a named pair, so
+it produces nothing here. TEST_DEV to PROD_END and TEST_DEV to RMA_SIP have no
+walk either, and PROD to PROD_END is impossible under write-1-to-set at all:
+`0x1 | 0x8` is `0x9`. The transition-legality claim stays on
+`sep_lcc_golden.lc_state_next`.
 
 ==== `sep_dma_completion_route_cg`
 
@@ -550,7 +557,7 @@ transition-legality claim stays on `sep_lcc_golden.lc_state_next`.
 |Coverpoint |Bins
 |`cp_route` |`STATUS.done` poll, DMA-done interrupt
 |`cp_mode` |Normal, hardware handshake
-|`x_route_mode` |4 cells
+|`x_route_mode` |3 cells; interrupt x handshake is an `ignore_bins` because the SPI DMA firmware that uses handshake mode does not complete through the ISR
 |===
 
 The DMA reports completion two ways and the suite walks both: `dma_basic_test`
@@ -570,13 +577,17 @@ lifecycle state and per override.
 |Coverpoint |Bins
 |`cp_state` |The seven legal raw encodings, taken from the SENSED shadow value
 |`cp_debug` |none / partial / full over the five defined debug bits: `DBG_1` `sep_debug`, `chiplet_dbg`, `sep_fuse_dbg`, `smc_fuse_dbg` and `DBG_2` `sip_debug`
-|`x_state_debug` |21 cells -- which debug profile each lifecycle state produced
-|`cp_sec_dis` / `x_sec_dis_debug` |SEC_DIS off/on, crossed with the profile: SEC_DIS forces `FEAT_CTRL` to all-ones
+|`cp_sec_dis` / `x_sec_dis_debug` |SEC_DIS off/on crossed with the profile; `on` can only pair with `full`, so the other two products are `ignore_bins`
 |`cp_secure_tm` |The latched TEST_EN strap, both polarities
 |===
 
 Sampled when the second 32-bit half of `FEAT_CTRL` is read, so the profile is a
 complete 64-bit value.
+
+There is no state x debug cross: the decode fixes one legal profile per
+lifecycle state, plus the SEC_DIS all-ones override, so most of the 21 products
+are illegal and would be permanent holes. Naming the legal set means restating
+`sep_lcc_golden.feat_ctrl_expected`, which belongs to the checker.
 
 `SECURE_TM` is a standalone coverpoint and NOT crossed with the profile: in this
 layout it does not qualify feature control (`env/sep_lcc_golden.py`). The
@@ -668,10 +679,10 @@ two retention bins off an edge the scenario never produced. Requiring a
 settled release and a staged scratch value makes the bin the scenario's warm
 reset.
 
-=== Phase 2 — future work
+=== Phase 2 — named set
 
 The groups below are the named Phase 2 set. They are not instrumented and
-are not part of this revision's collection contract.
+are not part of the Phase 1 collection contract.
 
 ==== Dense legal modes
 

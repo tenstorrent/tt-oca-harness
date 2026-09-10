@@ -579,8 +579,8 @@ module sep_fcov (
 
   // NOT cleared on reset: a programmed OTP lock bit is permanent, and the
   // owning test re-senses (which pulses reset) between programming spare k's
-  // lock and proving the refusal. Clearing it here made every attempt score as
-  // `unlocked` -- measured 16 unlocked, 0 locked, with 8 of 16 cross cells dead.
+  // lock and proving the refusal. A reset-cleared latch would score every
+  // post-resense attempt as unlocked.
   logic [SpareCount-1:0] spare_locked_q;   // write-lock programmed for spare k
   logic [2:0]            prog_spare_q;     // spare targeted by the pending GO
   logic                  prog_pending_q;   // a data program is awaiting its outcome
@@ -590,7 +590,7 @@ module sep_fcov (
   // Rising edge, not the held level: the level would score one hit per clock
   // for the rest of the run and make the bin count meaningless.
   // fuse_sense_seen_q is likewise history: a re-sense follows a cold reset by
-  // definition, so clearing it on reset made the `re_sense` bin unfillable.
+  // definition, so the latch lives outside the reset-bearing always_ff.
   logic fuse_sense_done_q;
   logic fuse_sense_seen_q;
   wire  fuse_sense = !in_reset && !skip_fuse_sense_q &&
@@ -701,9 +701,7 @@ module sep_fcov (
 
   // History that OUTLIVES reset, so it cannot sit in the reset-bearing
   // always_ff above. A programmed OTP lock bit is permanent, and a re-sense
-  // follows a cold reset by definition -- clearing either on reset made
-  // `cp_lock.locked` and `cp_episode.re_sense` unfillable (measured: 16
-  // unlocked / 0 locked). `initial` seeds them because there is no reset term.
+  // follows a cold reset. `initial` seeds them because there is no reset term.
   initial begin
     spare_locked_q    = '0;
     fuse_sense_seen_q = 1'b0;
@@ -817,9 +815,9 @@ module sep_fcov (
         kmac_sideload_q  <= kmac_sideload_w;
         kmac_cfg_valid_q <= 1'b1;
         kmac_process_q   <= 1'b0;
-        // KEY_LEN is NOT invalidated here. Both drivers write KEY_LEN before
+        // KEY_LEN is not invalidated here. Both drivers write KEY_LEN before
         // CFG_SHADOWED (CFG_REGWEN locks at Start), and the register keeps its
-        // value across a CFG write, so clearing the flag here made the cell dead.
+        // value across a CFG write.
       end
       if (kmac_keylen_wr) begin
         kmac_keylen_q       <= wr_data[2:0];
@@ -1178,7 +1176,12 @@ module sep_fcov (
       bins normal    = {1'b0};
       bins handshake = {1'b1};
     }
-    x_route_mode: cross cp_route, cp_mode;
+    // The handshake leaves (SPI DMA firmware) do not complete through the
+    // DMA-done ISR, so that cell has no producer and is ignored rather than
+    // left as a permanent hole.
+    x_route_mode: cross cp_route, cp_mode {
+      ignore_bins irq_handshake = binsof(cp_route.interrupt) && binsof(cp_mode.handshake);
+    }
   endgroup
 
   covergroup sep_spi_flash_cg @(posedge clk_i);
@@ -1255,19 +1258,22 @@ module sep_fcov (
     option.name = "sep_lc_transition_cg";
     // ONE coverpoint over the packed {from,to} pair rather than a cross of two
     // 7-bin coverpoints: a cross auto-generates the full 7x7 product and the
-    // named bins do not suppress it, so it reported 46 cells no legal
-    // transition can reach. Three bins here are three cells.
+    // named bins do not suppress it.
     //
     // A pair is two LC_STATE reads in the same leaf. sep_lc_shadow_write_seq
     // reads ONCE per cell, after its write, so the pair is two consecutive
-    // cells -- the stitch chain TEST_DEV -> PROD -> RMA_SIP_1 -> RMA_CHIP_1.
+    // cells of one leaf; the sep_lcc_lc_state_w1s_* leaves are the sources.
     // TEST_DEV->PROD_END and TEST_DEV->RMA_SIP have no walk (those leaves start
     // sensed in the destination), and PROD->PROD_END is impossible under
     // write-1-to-set: 0x1 | 0x8 is 0x9.
+    // Two bins. A pair needs two LC_STATE reads inside ONE leaf, and the
+    // +lc_start leaves are sensed at PROD, RMA_SIP_0, RMA_CHIP_0 or PROD_END
+    // -- none at TEST_DEV -- so TEST_DEV to PROD has no producer. The
+    // PROD_END/transient leaf advances 0x8 to 0xA, which is not a named pair,
+    // so it produces nothing here either.
     cp_transition: coverpoint {from, to} {
-      bins test_dev_to_prod   = {{LcTestDev,  LcProd}};
-      bins prod_to_rma_sip    = {{LcProd,     LcRmaSip1}};
-      bins rma_sip_to_chiplet = {{LcRmaSip1,  LcRmaChip1}};
+      bins prod_to_rma_sip    = {{LcProd,    LcRmaSip1}};
+      bins rma_sip_to_chiplet = {{LcRmaSip1, LcRmaChip1}};
     }
   endgroup
 
@@ -1290,14 +1296,22 @@ module sep_fcov (
       bins partial = {2'd1};
       bins full    = {2'd2};
     }
-    // The workhorse: which decoded debug profile each lifecycle state produced.
-    x_state_debug: cross cp_state, cp_debug;
+    // No state x debug cross: the decode fixes one legal profile per lifecycle
+    // state (plus the SEC_DIS all-ones override), so most of the 21 products
+    // are illegal and would be permanent holes. Stating which are legal means
+    // restating sep_lcc_golden.feat_ctrl_expected, which is the checker's job,
+    // not coverage's. cp_state and cp_debug carry the axes on their own.
     // SEC_DIS forces FEAT_CTRL to all-ones, so it is crossed with the profile.
     cp_sec_dis: coverpoint sec_dis {
       bins off = {1'b0};
       bins on  = {1'b1};
     }
-    x_sec_dis_debug: cross cp_sec_dis, cp_debug;
+    // SEC_DIS forces FEAT_CTRL to all-ones, so `on` can only ever pair with
+    // `full`; the other two products are illegal.
+    x_sec_dis_debug: cross cp_sec_dis, cp_debug {
+      ignore_bins sec_dis_not_full = binsof(cp_sec_dis.on) &&
+          (binsof(cp_debug.none) || binsof(cp_debug.partial));
+    }
     // SECURE_TM does NOT qualify feature control in this layout
     // (env/sep_lcc_golden.py), so it is recorded on its own rather than
     // crossed: the stitch test drives the strap both ways.

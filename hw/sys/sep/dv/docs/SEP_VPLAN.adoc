@@ -69,9 +69,10 @@ One DUT. Two environments across three phases.
   when the test does not need real OTP sense; hold the CPU off for
   `no_cpu` runs.
 . *Coverage*: iconic feature scorecard (<<iconic-scorecard>>) for the
-  cocotb phases; RTL code coverage is collected under Verilator and
-  closed out in Phase 3. SystemVerilog covergroups are not used on the
-  Verilator acceptance path.
+  cocotb phases. VCS Phase 1 functional-coverage bins live in
+  link:SEP_FCOV.adoc[SEP_FCOV] (`u_sep_fcov`). SystemVerilog covergroups
+  are not compiled on the Verilator acceptance path. RTL code coverage
+  is collected separately and thresholded in Phase 3.
 Randomization contract: the *same* config object programs the DUT and the
 golden. Pin the datapath directed first, then upgrade that test to randomized —
 do not ship a one-point stand-in for a matrix. Skip randomization only when the
@@ -4127,7 +4128,7 @@ generate-and-deassert on both lock flavours of one seed-selected spare; the
 
 *Objective*: Prove the field map's `SECURE_TM_LOCK` term refuses a shadow write while the latched TEST_EN strap is high, and that the identical write lands with the strap low.
 
-*Test Coverage*: The `secure_tm` arm of the shadow-write lock, on every field the map marks `SECURE_TM_LOCK`.
+*Test Coverage*: The `secure_tm` arm of the shadow-write lock, on the five apertures the lifecycle chapter names: `LOCKS`, `LOCKS_SPARE`, `LC_STATE`, `SIP_DIS` and `SYS_DIS`.
 
 *Test Procedure*:
 
@@ -5853,7 +5854,7 @@ vehicle exists rather than being a convenience. All three leaves are red and are
 |No licensed/proprietary IP in the build. Bender targets stay `sep` / `sep_el2` / `sep_wrapper` only.
 
 |Verilator covergroups
-|SystemVerilog covergroups are not available under Verilator. Feature coverage is the iconic scorecard; RTL code coverage is collected separately and thresholded in Phase 3.
+|SystemVerilog covergroups are not available under Verilator. Feature coverage is the iconic scorecard; VCS Phase 1 bins are in link:SEP_FCOV.adoc[SEP_FCOV]. RTL code coverage is collected separately and thresholded in Phase 3.
 
 |ROM-FW ownership
 |Boot-ROM firmware contracts are out of this VPLAN (separate owner / `rom_fw` class).
