@@ -31,6 +31,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          submodules: recursive
+          token: ${{ secrets.SUBMODULE_PAT }}
       - name: Classify the diff
         id: diff-class
         run: |
@@ -115,6 +117,9 @@ jobs:
       - name: Checkout
         if: env.RUN_HARDWARE_CI == 'true'
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.SUBMODULE_PAT }}
 
       # The run id keeps the recorded native run_dir unique per run; the
       # tier segment keeps every tier's tree separate.
