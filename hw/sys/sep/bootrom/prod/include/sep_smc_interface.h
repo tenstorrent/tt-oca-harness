@@ -195,6 +195,22 @@ static inline uint32_t smc_read_dft_status(void) {
     return mmio_read32(sep_get_smc_base() + SMC_DFX_CTRL_STATUS_SMU_OFFSET);
 }
 
+// Fuse-sense completion is bit 0 of the SEP-local SMC_FUSE_SENSE_STATUS register;
+// the SMC senses the eFuse array and SEP observes the completion here.
+#define SMC_FUSE_SENSE_DONE_MASK 0x1u
+
+// Every fuse shadow read in the boot flow is downstream of this wait. A shadow
+// read taken before sensing completes returns zero, and zero is a legal encoding
+// for the fields that gate security: LC_STATE zero decodes as TEST_DEV, where
+// secure boot is optional, so an early lifecycle read fails open. Polled without
+// timeout -- the hang is the accepted failure mode ([SEP-ROM-CPU-080]).
+static inline void smc_wait_fuse_sense(void) {
+    while ((mmio_read32(OCH_SEP_TOP_SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_BASE_ADDR) &
+            SMC_FUSE_SENSE_DONE_MASK) == 0u) {
+        // spin
+    }
+}
+
 static inline uint32_t sep_get_smc_sram_base(void) {
     return sep_get_smc_base() + SMC_SRAM_OFFSET;
 }

@@ -1,16 +1,19 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-// PLL/clock initialization for OROM.
+// Clock source selection for the ROM.
 //
-// PLL initialization flow for the ROM.
-// Accesses PLL registers through SMC window (SMC_LOCAL_BASE_ADDR + offset).
+// SEP owns no PLL. The PLL, its lock-detect status, and the sysclk/peripheral
+// clock mux all live in SMC register space, reached through the SMC window
+// (`sep_get_smc_base() + offset`); this code only selects the SMC-owned PLL as
+// SEP's clock source in place of the 100 MHz reference clock, and only when the
+// `bl0_pll_clk` strap asks for it. With the strap clear the ROM stays on refclk
+// and touches no PLL register.
 //
-// Platform-specific notes:
-// - SMC base is read dynamically from sep_cpu_ctrl (via sep_smc_interface.h)
-// - Fuse sense check uses SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS (sep_cpu_ctrl local reg)
-// - OCAH does not distinguish between chiplet types; uses a single
-//   PLL lock + mux path (to be refined when chiplet ID is available)
+// The mux encoding below is a placeholder: OCAH does not distinguish chiplet
+// types, so there is one lock-plus-mux path for every part. An adopter whose
+// platform needs a different sysclk source, divider, or per-chiplet mux fits it
+// here.
 
 #include "pll_init.h"
 #include "rom_mmio.h"
@@ -18,34 +21,19 @@
 #include "sep_smc_interface.h"
 #include "sep.h"
 
-// Fuse sense done is bit 0 of SMC_FUSE_SENSE_STATUS (SEP-local register).
-#define FUSE_SENSE_DONE_MASK 0x1u
-
-static void wait_for_smc_fuse_sense(void) {
-    // Poll SMC_FUSE_SENSE_STATUS until smc_fuse_sense_done=1.
-    // This is the fuse-sense completion wait used by the boot flow.
-    while ((mmio_read32(OCH_SEP_TOP_SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS_BASE_ADDR) &
-            FUSE_SENSE_DONE_MASK) == 0u) {
-        // spin
-    }
-}
-
 uint16_t pll_init(bool bl0_pll_clk_strap) {
     if (!bl0_pll_clk_strap) {
         simputs("CLK_REFCLK\n");
         return (uint16_t)SMU_REF_CLK_FREQ_MHZ;
     }
 
-    // Wait for fuse sense completion (SMC fuses initialize PLLs).
-    simputs("PLL_WAIT_FUSE\n");
-    wait_for_smc_fuse_sense();
-
     const uint32_t smc_base = sep_get_smc_base();
     simputshex32("SMC_BASE=", smc_base);
 
-    // Read PLL frequency from fuse.
-    // smu_pll_sysclk: 11-bit field indicating configured sysclk PLL frequency in MHz.
-    // If 0 (fuses blank), fall back to REF_CLK.
+    // smu_pll_sysclk is an 11-bit field holding the configured sysclk frequency in
+    // MHz. It lives inside the SEP_SPI_CTRL_FIELD_EN fuse word -- that register is
+    // simply where the RDL places the field, not a separate enable. Sensing
+    // completed in [C4]. Zero means the fuses are blank; fall back to refclk.
     uint32_t spi_ctrl = mmio_read32(OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_BASE_ADDR);
     uint16_t pll_freq_mhz =
         (uint16_t)((spi_ctrl & SEP_EFUSE_MAP__SEP_SPI_CTRL_FIELD_EN__SMU_PLL_SYSCLK_bm) >>

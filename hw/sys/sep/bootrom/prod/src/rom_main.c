@@ -15,12 +15,12 @@
 // the ROM only ever reports FAIL there, since a successful boot ends in BL1.
 //
 // Boot flow for the SEP BL0 sequence
-// (see context/boot_flow/ocah_boot_flow.md for full task mapping):
 //
 //   [C0]    main() entry + runtime init check
+//   [C1]    ROM version + hash print (hash filled at build time)
 //   [C2]    init_straps() → structured boot config
 //   [C3]    status reporting init (strap-controlled)
-//   [C1]    ROM version + hash print (hash filled at build time)
+//   [C4]    fuse-sense readiness (gates every fuse read)
 //   [C5]    PLL/clock init (strap-controlled)
 //   [C9c]   init_bl0_state()   (must precede every bl0_state writer)
 //   [C6]    lifecycle policy
@@ -637,6 +637,13 @@ void rom_main(void) {
     // ── [C3] Status reporting init (strap-controlled) ──
     rom_status_reporting_init(&straps);
 
+    // ── [C4] Fuse-sense readiness ──
+    // Gates every later fuse read, [C5]'s smu_pll_sysclk included.
+    report_status(STATUS_TYPE_DEBUG, SEP_MSG_FUSE_SENSE_WAIT);
+    simputs("FUSE_SENSE_WAIT\n");
+    smc_wait_fuse_sense();
+    simputs("FUSE_SENSE_DONE\n");
+
     // ── [C5] PLL/Clock init (strap-controlled) ──
     report_status(STATUS_TYPE_INFO, SEP_MSG_PLL_CLK_INIT);
     uint16_t smu_freq_mhz = pll_init(straps.bl0_pll_clk);
@@ -694,7 +701,7 @@ void rom_main(void) {
     // ── [ATT] Verify + enroll the ROM self-hash (soft measurement slot 0) ──
     // Recomputes SHA-256 over the hashed ROM region and compares it against the
     // build-time embedded hash before extending soft_pcr[MEAS_SLOT_ROM], so slot 0
-    // attests to what is executing rather than to what the build claimed. Needs
+    // measures what is executing rather than what the build claimed. Needs
     // the crypto self-test ([C8]) and bl0_state init ([C9c]), both above.
     if (measurement_enroll_rom_hash() != 0u) {
         rom_err_fail(ROM_ERR_ROM_HASH_MISMATCH);
