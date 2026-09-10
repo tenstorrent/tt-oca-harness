@@ -6,10 +6,11 @@
 
 This table is the v0.5.0 source of truth for every name that was catalogued
 in the removed `testlists/deferred.toml` ledger; with that file gone, this
-document is the record. Nothing listed here is enrolled in `sep0_all` or the
-wrapper regressions, and a raise stub must not be reported as PASS. The bodies
-themselves live under `cocotb/tests_deferred/`, each carrying its blocker in
-its docstring.
+document is the record. None of these names is in `sep0_all`. Nine of them
+are also enrolled in wrapper `all` on the SEP=1 track
+(`smu_sep_smoke_test` plus eight `sep_real_fw` images); a raise stub must
+not be reported as PASS. The remaining bodies live under
+`cocotb/tests_deferred/`, each carrying its blocker in its docstring.
 
 Buckets:
 

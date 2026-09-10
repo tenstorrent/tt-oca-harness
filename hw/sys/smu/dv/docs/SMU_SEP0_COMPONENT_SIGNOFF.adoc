@@ -31,8 +31,10 @@ Enrolled names that PASSed on the nightly, with no Force / placeholder:
   `smu_dtp_jtag_smc_cpu_register_test`,
   `smu_dtp_jtag2axi_wstrb_partial_sticky_test`,
   `smu_dtp_jtag2axi_back_to_back_error_ok_test`,
-  `smu_dtp_jtag2axi_abort_mid_op_test`,
   `smu_jtag2axi_vs_smn_same_csr_race_test`
+  (`smu_dtp_jtag2axi_abort_mid_op_test` PASSed on that nightly; it is
+  now only in `migrated_dtp_pending` / `--dut smu_block`, not wrapper
+  `sep0_all`)
 * OTP: `smu_dtp_otp_smc_map_rw_test`,
   `smu_dtp_otp_smc_series_error_test`,
   `smu_dtp_otp_smc_complete_rw_test`,
@@ -80,10 +82,10 @@ Release-group (`sep0_all`) SMC-under-SMU names that PASSed:
 `smu_smc_wdt_sanity_test`, `smu_smc_wdt_timeout_irq_test`,
 `smu_smc_mailbox_sanity_test`.
 
-PR-only, **OUT of `sep0_all`** (stay in `smoke` / `smc`):
-
-* `smu_ext_boot_seq_gate_test` — enrollment is #493
-* `smu_smc_mailbox_int_test` — OUT of `sep0_all` (#481); stays in `smc`
+`smu_ext_boot_seq_gate_test` and `smu_smc_mailbox_int_test` are in
+wrapper `sep0_all` (and the former also in `smoke_sep0`). They were
+not in the 52-name nightly cited above, so that run is not their
+evidence.
 
 eFuse / burn under SMU is OUT (SEP=1 / child-TB).
 `smu_smc_gpio_strap_sanity_test` is named in `SMU_FEATURE_LIST.adoc`

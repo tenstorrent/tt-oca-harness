@@ -13,7 +13,7 @@
 |Framework |PyUVM on cocotb
 |Primary simulator |Verilator
 |Reference testbench architecture |`SMU_TB_ARCH.adoc`
-|Live test bodies |84 under `cocotb_wrapper/tests/`, 81 of them enrolled in `all`
+|Live test bodies |79 Python modules under `cocotb_wrapper/tests/`; 84 `[[tests]]` entries in `wrapper.toml`, 81 of them in `all`
 |Enrolled leaf entries |81 in `all`, 53 in `sep0_all`
 |Non-enrolled inventory |28 bodies under `cocotb/tests_deferred/`
 |===
@@ -71,10 +71,12 @@ no enrolled test may reach into the DUT with Force or deposit.
 
 === Enrolled Test Summary
 
-The 81 enrolled tests — the union of `testlists/wrapper.toml` `all` — with the
-testlist leaf each is declared in. Fifty-three of them are in `sep0_all`,
-including `smu_ext_boot_seq_gate_test` and `smu_smc_mailbox_int_test`
-(see <<smu-known-limitations,Known Limitations>>).
+The enrolled `sep0_all` set (53) plus the other names this plan still cards,
+with the source family each came from. Fifty-three of them are in `sep0_all`,
+including `smu_ext_boot_seq_gate_test` and `smu_smc_mailbox_int_test`.
+`smu_dtp_jtag2axi_abort_mid_op_test` is only in `migrated_dtp_pending`.
+The remaining `all` members are SEP=1 / wrapper-native leaves that this
+summary does not list row-by-row (see <<smu-known-limitations,Known Limitations>>).
 
 [cols="2,1,3",options="header",]
 |===
@@ -967,7 +969,7 @@ including `smu_ext_boot_seq_gate_test` and `smu_smc_mailbox_int_test`
 |scoreboard |Every access is compared against its stated expectation
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_smc`, `sep0_all`.
 
 '''''
 
@@ -1252,7 +1254,7 @@ including `smu_ext_boot_seq_gate_test` and `smu_smc_mailbox_int_test`
 |scoreboard |Every access is compared against its stated expectation
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_smc`, `sep0_all`.
 
 '''''
 
@@ -1368,7 +1370,7 @@ including `smu_ext_boot_seq_gate_test` and `smu_smc_mailbox_int_test`
 |assertion |jtag2axi_abort incomplete s1=<value> s2=<value> s3=<value> s4=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `migrated_dtp_pending`.
 
 '''''
 
@@ -1953,7 +1955,7 @@ including `smu_ext_boot_seq_gate_test` and `smu_smc_mailbox_int_test`
 |`CHK-NONVAC` |Evidence token, emitted only after the compares it names have held
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `all_with_sep_exec`, `sep_rtl_only`, `smoke`.
 
 '''''
 
@@ -1990,7 +1992,7 @@ including `smu_ext_boot_seq_gate_test` and `smu_smc_mailbox_int_test`
 |`CHK-NONVAC` |Evidence token, emitted only after the compares it names have held
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `smc`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_smc`, `sep0_all`.
 
 '''''
 
@@ -2231,7 +2233,7 @@ complete plan: `CHK-SEP-BOOT-HEALTH-VERDICT`, `CHK-SEP-DBG-GATED`,
 [cols=",",options="header",]
 |===
 |Population |Count
-|Live test bodies (`cocotb_wrapper/tests/`) |84
+|Live test bodies (`cocotb_wrapper/tests/*.py`) |79
 |Enrolled in `all` |81
 |Enrolled in `sep0_all` (nightly) |53
 |Non-enrolled bodies (`cocotb/tests_deferred/`) |28
@@ -2259,16 +2261,18 @@ complete plan: `CHK-SEP-BOOT-HEALTH-VERDICT`, `CHK-SEP-DBG-GATED`,
   `smu_ext_boot_seq_gate_test` is in `sep0_all` and `smoke_sep0`, not in
   `smoke`.
 
-* *SEP=1 is out of scope here.* Everything in this plan runs with `SEP=0`. The
-  dual-firmware SEP-under-SMU work is gated on the SEP instruction-fetch
-  blocker and is not ported.
+* *`all` includes SEP=1 leaves.* Twenty-eight of the 81 names in `all` compile
+  under the real-SEP profile (`all_with_sep_exec` is that subset). The
+  SEP=0 credit set is `sep0_all`. Dual-firmware SRAM-bring-up leaves stay in
+  `sep_smc_sram_blocked` and are not in `all`.
 * *The wrapper is the surface.* `--dut smu` is the wrapper bench and carries
   `sep0_all` itself; its PASSes are labelled `DUT_TAG=WRAPPER` and are the
   density evidence. The bare block bench is `--dut smu_block`, whose PASSes
   carry `DUT_TAG=BARE` and are not feature credit.
-* *123 catalogued entries are not enrolled*, against 28 bodies under
-  `cocotb/tests_deferred/`. The rest are named for catalog continuity and have
-  no body at all. Per-entry v0.5.0 bucket, owner, and reintroduction trigger
+* *The deferred catalog still has 123 names.* Nine of them are also enrolled
+  in wrapper `all` on the SEP=1 track (`smu_sep_smoke_test` plus eight
+  `sep_real_fw` images) and are not in `sep0_all`. The rest are not in any
+  wrapper regression. Per-entry bucket, owner, and reintroduction trigger
   are in `SMU_DEFERRED_DISPOSITION.adoc`. None of those names is a v0.5.0
   restore.
 * *Cross-trigger and iJTAG have no OCAH-local model yet*, so the coverage those
