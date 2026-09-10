@@ -8,6 +8,11 @@ then accesses the *shadow* aperture. The interrupt is combinational and
 pulse-only: watch the probe during the beat. BRESP stays OKAY (not SLVERR;
 JTAG deny is a different path). RAND-REP both flavours every seed.
 
+The shared config in ``env/sep_locked_field_irq.py`` is also the SECURE_TM
+leaf's image. Its four-spare draw and ``SIP_DIS`` / ``SYS_DIS`` = 0 pins
+are part of this leaf's seed-to-image map. A seed recorded against the
+earlier three-spare map does not replay.
+
 ``+secure_tm_lock`` selects the SECURE_TM leaf instead: the field map marks
 LOCKS/LOCKS_SPARE, LC_STATE, SIP_DIS and SYS_DIS ``SECURE_TM_LOCK``, so a
 shadow write to any of them is refused while the latched strap is high

@@ -101,7 +101,7 @@ human. Other members may fill a group in passing.
 |`sep_cpu_boot_cg` |`sep_hello_world_test`
 |`sep_aes_mode_cg` |`sep_aes_mode_keysize_rand_test`
 |`sep_hmac_mode_cg` |`sep_hmac_sha_variant_rand_test`
-|`sep_kmac_mode_cg` |`sep_kmac_mode_strength_rand_test`; the KM sideload cell needs `sep_km_kmac_sideload_kat_test`, whose completion is a STATE-share read rather than an `INTR_STATE` read
+|`sep_kmac_mode_cg` |`sep_kmac_mode_strength_rand_test` owns the digest-equals-golden walk. The KM sideload cell needs `sep_km_kmac_sideload_kat_test`, whose completion is a STATE-share read rather than an `INTR_STATE` read and whose `cp_kmac` hit is configuration only
 |`sep_otbn_execute_cg` |`sep_otbn_compute_rand_test`
 |`sep_abr_keygen_cg` |`sep_abr_mldsa_keygen_kat_test`
 |`sep_esrc_edn_flow_cg` |`sep_esrc_e2e_smoke_test`; KM sink `sep_drbg_real_sink_multi_km_aes_test`
@@ -131,6 +131,22 @@ Manager splits generate from consume; lifecycle splits the sensed state, the
 transition taken, the `FEAT_CTRL` profile and demotion; eFuse splits sense from
 the program/lock matrix; and the DMA splits the transfer from which completion
 route reported it. Phase 2 names are listed at the end of this document.
+
+=== Evidence
+
+A collection or elaboration claim names the tool and the `run_dv.py` run ID
+and quotes the launcher `result status=` line. Verilator does not compile
+these groups, so a Verilator class regress is not Phase 1 fill evidence.
+Local paths under `build/runs/` are not durable.
+
+Recorded on this revision:
+
+* VCS coverage-model compile: run `20260910_085131__vcs__all`, fingerprint
+  `c3c1e6c72d81`, `target_build.status=PASS`. That run's simulate stage is
+  not evidence: the children died on `ModuleNotFoundError: cocotb_tools`
+  before any leaf started.
+* Verilator `cpu_stub` / `cpu` class regress on this tip: not bound in a
+  retained run directory.
 
 === Collection
 
@@ -269,12 +285,13 @@ The digest-equals-golden claim stays on `sep_hmac_sha_variant_rand_test`.
 |`cp_sha3` |L224, L256, L384, L512
 |`cp_shake` |L128, L256
 |`cp_cshake` |L128, L256
-|`cp_kmac` |L128, L256 (mode cSHAKE with `kmac_en` = 1)
+|`cp_kmac` |L128, L256. Samples `CFG_SHADOWED.mode` = cSHAKE with `kmac_en` = 1 after a completed process. That is the programmed configuration, not an SP800-185 digest proof. The digest-equals-golden claim stays on `sep_kmac_mode_strength_rand_test` (`run_family`). `keyed_mac` (the KM sideload KAT) writes the same CShake+`kmac_en` word and remains an engine cross-check.
 |`cp_sideload` |Keyed KMAC only: SW key (`KEY_SHARE` CSRs) and KM sideload key (`CFG_SHADOWED.sideload`)
 |`cp_kmac_key_length` |Key 128, 192, 256, 384, 512 from the `KEY_LEN` register. Both drivers write `KEY_LEN` before `CFG_SHADOWED` (`CFG_REGWEN` locks at Start) and the register holds its value across a CFG write, so the sampler does not invalidate it there
 |===
 
 The digest-equals-golden claim stays on `sep_kmac_mode_strength_rand_test`.
+`cp_kmac` does not inherit that claim from a `keyed_mac` hit.
 
 ==== `sep_otbn_execute_cg`
 

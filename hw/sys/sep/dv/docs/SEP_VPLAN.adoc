@@ -4056,6 +4056,10 @@ per-IP clock gate.
 
 *Test Coverage*: Locked-field write refuse and the matching interrupt path.
 
+The shared config draws four distinct spares and stages `SIP_DIS` /
+`SYS_DIS` at 0. That is this leaf's seed-to-image map. A seed recorded
+against the earlier three-spare map does not replay.
+
 *Test Procedure*:
 
 [arabic]

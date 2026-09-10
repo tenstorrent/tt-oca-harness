@@ -464,7 +464,7 @@ module sep_fcov (
   wire dma_chunk_done = rd_ev && (ar_addr_q == SECURE_DMA_STATUS_REG_ADDR) &&
       ((rd_data & SECURE_DMA_STATUS_CHUNK_DONE_MASK) != 32'h0) &&
       (dma_copy_q || dma_hash_q);
-  wire dma_regonon_initial = dma_go &&
+  wire dma_rego_non_initial = dma_go &&
       ((wr_data & SECURE_DMA_CONTROL_INITIAL_TRANSFER_MASK) == 32'h0);
   wire dma_status_done = rd_ev && (ar_addr_q == SECURE_DMA_STATUS_REG_ADDR) &&
       ((rd_data & SECURE_DMA_STATUS_DONE_MASK) != 32'h0);
@@ -634,7 +634,7 @@ module sep_fcov (
   // Both masks apply to the LO half: DBG_1 is bits [23:0] and DBG_2 starts at
   // bit 24 (sep_lcc_golden.py SIP_DBG_BIT = 24), so all five defined debug bits
   // are inside the first 32-bit word. The hi half is Function only.
-  function automatic logic [1:0] debug_class(logic [31:0] lo, logic [31:0] hi);
+  function automatic logic [1:0] debug_class(logic [31:0] lo);
     int unsigned n;
     n = popcount32(lo & FeatDbg1Mask) + popcount32(lo & FeatDbg2Mask);
     if (n == 0) return 2'd0;
@@ -642,7 +642,7 @@ module sep_fcov (
     return 2'd1;
   endfunction
 
-  wire [1:0] feat_dbg_class = debug_class(feat_lo_q, rd_data);
+  wire [1:0] feat_dbg_class = debug_class(feat_lo_q);
   // The SENSED state, not a frontdoor read: the W1S leaves verify their start
   // state through the shadow probe, so the probe is the source that sees a
   // state a leaf never reads frontdoor before transitioning.
@@ -1154,7 +1154,7 @@ module sep_fcov (
     cp_chunk: coverpoint dma_chunk_done {
       bins chunk_done = {1'b1};
     }
-    cp_rego: coverpoint dma_regonon_initial {bins rego_not_initial = {1'b1};}
+    cp_rego: coverpoint dma_rego_non_initial {bins rego_not_initial = {1'b1};}
   endgroup
 
   covergroup sep_dma_completion_route_cg with function sample (logic irq_route, logic handshake);
