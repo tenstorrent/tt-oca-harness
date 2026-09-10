@@ -32,8 +32,12 @@ class smc_test_cfg extends ocah_test_cfg;
   // cocotb 50 us AXI timeout at the 5 ns nominal smc clock.
   int unsigned axi_timeout_cycles = 10_000;
 
-  // --- negative-validation switch (must FAIL the run when set) -----------
+  // --- negative-validation switches (must FAIL the run when set) ---------
   bit csr_scoreboard_negative;   // +SMC_CSR_SCOREBOARD_NEGATIVE
+  bit default_reg_scoreboard_negative;  // +SMC_DEFAULT_REG_SCOREBOARD_NEGATIVE
+  bit lock_scoreboard_negative;  // +SMC_LOCK_SCOREBOARD_NEGATIVE
+  bit mutex_scoreboard_negative;  // +SMC_MUTEX_SCOREBOARD_NEGATIVE
+  bit spm_mem_scoreboard_negative;  // +SMC_SPM_MEM_SCOREBOARD_NEGATIVE
 
   function new(string name = "smc_test_cfg");
     super.new(name);
@@ -42,6 +46,12 @@ class smc_test_cfg extends ocah_test_cfg;
   // Fill the knob-derived controls through the one knob accessor.
   function void read_knobs();
     csr_scoreboard_negative = ocah_knobs::is_set("SMC_CSR_SCOREBOARD_NEGATIVE");
+    default_reg_scoreboard_negative =
+            ocah_knobs::is_set("SMC_DEFAULT_REG_SCOREBOARD_NEGATIVE");
+    lock_scoreboard_negative = ocah_knobs::is_set("SMC_LOCK_SCOREBOARD_NEGATIVE");
+    mutex_scoreboard_negative = ocah_knobs::is_set("SMC_MUTEX_SCOREBOARD_NEGATIVE");
+    spm_mem_scoreboard_negative =
+            ocah_knobs::is_set("SMC_SPM_MEM_SCOREBOARD_NEGATIVE");
   endfunction
 
   // Replace the required scoreboard features.

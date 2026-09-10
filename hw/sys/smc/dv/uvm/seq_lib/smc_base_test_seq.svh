@@ -25,6 +25,7 @@ class smc_base_test_seq extends ocah_sequence;
   // Named-evidence IDs recorded by the shared helpers below.
   localparam string ChkFuseSense = "CHK-FUSE-SENSE-DONE";
   localparam string ChkCsrResp = "CHK-CSR-RESP";
+  localparam string ChkMemResp = "CHK-MEM-RESP";
 
   // Plumbed by the test before start(): the SMC-local TB interface and the
   // two configuration levels.
@@ -32,9 +33,11 @@ class smc_base_test_seq extends ocah_sequence;
   smc_test_cfg      test_cfg;
   smc_env_cfg       env_cfg;
 
-  // Per-pass named evidence and the CSR access count it certifies.
+  // Per-pass named evidence and the access counts it certifies, kept apart so
+  // a scenario's non-vacuity claim names the access shape it actually issued.
   ocah_checker m_check;
   int unsigned csr_accesses;
+  int unsigned mem_accesses;
 
   function new(string name = "smc_base_test_seq");
     super.new(name);
@@ -51,6 +54,7 @@ class smc_base_test_seq extends ocah_sequence;
     m_check.name_tag     = "smc_csr";
     m_check.required_ids = required_ids;
     csr_accesses = 0;
+    mem_accesses = 0;
   endfunction
 
   function void finalize_evidence();
@@ -171,6 +175,49 @@ class smc_base_test_seq extends ocah_sequence;
     csr_read(addr, observed, label);
     check_evidence(check_id, label.len() ? label : $sformatf("csr_0x%0h", addr), 64'(observed),
                    64'(expected), $sformatf("addr=0x%0h", addr));
+  endtask
+
+  // ------------------------------------------------------------------
+  // Memory operations: one reusable sequence per operation on the SEP_IN
+  // sequencer, full-width 64-bit single beats (AxSIZE = 3) rather than the
+  // 32-bit CSR shape above. Both record CHK-MEM-RESP and count toward
+  // mem_accesses.
+  // ------------------------------------------------------------------
+
+  task mem_write(bit [63:0] addr, bit [63:0] data, string label = "");
+    smc_axi_mem_write_seq op = smc_axi_mem_write_seq::type_id::create("mem_write");
+    op.addr = addr;
+    op.data = data;
+    op.start(p_sequencer.m_sep_in_seqr);
+    mem_accesses++;
+    check_evidence(ChkMemResp, label.len() ? label : $sformatf("wr_0x%0h", addr),
+                   64'(op.result.worst_resp()), 64'(OCAH_AXI_RESP_OKAY), $sformatf(
+                   "write addr=0x%0h data=0x%016h", addr, data));
+    `uvm_info(get_type_name(),
+              $sformatf("SEP_IN MEM WRITE %-24s addr=0x%014h data=0x%016h resp=%s", label, addr,
+                        data, op.result.worst_resp().name()), UVM_MEDIUM)
+  endtask
+
+  task mem_read(bit [63:0] addr, output bit [63:0] data, input string label = "");
+    smc_axi_mem_read_seq op = smc_axi_mem_read_seq::type_id::create("mem_read");
+    op.addr = addr;
+    op.start(p_sequencer.m_sep_in_seqr);
+    mem_accesses++;
+    data = op.data;
+    check_evidence(ChkMemResp, label.len() ? label : $sformatf("rd_0x%0h", addr),
+                   64'(op.result.worst_resp()), 64'(OCAH_AXI_RESP_OKAY), $sformatf(
+                   "read addr=0x%0h data=0x%016h", addr, data));
+    `uvm_info(get_type_name(),
+              $sformatf("SEP_IN MEM READ  %-24s addr=0x%014h data=0x%016h resp=%s", label, addr,
+                        data, op.result.worst_resp().name()), UVM_MEDIUM)
+  endtask
+
+  // Read one 64-bit word and compare it against an expected value.
+  task mem_read_check(string check_id, bit [63:0] addr, bit [63:0] expected, string label = "");
+    bit [63:0] observed;
+    mem_read(addr, observed, label);
+    check_evidence(check_id, label.len() ? label : $sformatf("mem_0x%0h", addr), observed, expected,
+                   $sformatf("addr=0x%0h", addr));
   endtask
 
 endclass : smc_base_test_seq
