@@ -1,0 +1,191 @@
+// SPDX-License-Identifier: Apache-2.0
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+[[smu-defines]]
+=== Preprocessor defines
+
+This is the set of preprocessor defines that are new at the SMU level: the one
+`hw/sys/smu/rtl/` reads, and the ones Bender applies to the whole compilation
+once the SMU target set is selected. SMU's elaborated graph also reads
+everything the subsystems beneath it read; those are documented on their own
+pages, listed under <<smu-defines-subsystems>>, and are not repeated here.
+
+Nothing here is required. `smu` elaborates with no defines at all — the names
+under <<smu-defines-bender>> arrive from target selection rather than from a
+compile line, and the one define SMU's own RTL reads only takes a check away.
+The defines the open-source flows apply are listed at the end, under
+<<smu-defines-oss-flow>>.
+
+One group of names is *not* a knob and must never be defined from a compile
+line: the target names Bender emits for itself. They are listed under
+<<smu-defines-do-not-set>>.
+
+==== Build-view defines
+
+`hw/sys/smu/rtl/` is four files — `smu.sv`, `smu_axi_xbar.sv`,
+`smu_axi_xbar_pkg.sv` and `smu_pkg.sv` — and one define reaches any of them.
+
+[cols="<,<,<,<",options="header"]
+|===
+|Define |Read by |Defined |Not defined
+
+|`SYNTHESIS`
+|`smu_axi_xbar.sv`, an `ifndef` guard around `sep_smc_no_overlap_a`
+|The production netlist view. The aperture-overlap assertion is dropped, so
+overlapping SEP and SMC global-address windows elaborate without complaint.
+|The simulation view, and the default — no config has to ask for it. The
+assertion is live and fails whenever a programmed SEP aperture overlaps a
+programmed SMC aperture; the trivial case where either region size is zero is
+excluded.
+|===
+
+`SYNTHESIS` reaches 667 sites across the full SMU graph, nearly all of them in
+the SMC and SEP subsystems. The row above is the only place SMU-authored RTL
+tests it.
+
+[[smu-defines-bender]]
+==== Defines Bender applies to the whole compile
+
+`bender script flist-plus` hoists every define it collects to the top of the
+generated filelist, ahead of the source list. A define declared by one package
+therefore applies to the *whole* compilation, not only to that package's files.
+This is the group most easily missed when SMU is handed over: selecting a
+target is the only control over them, and their effect is not confined to the
+subsystem that declared them.
+
+For the open-source wrapper closure:
+
+[source,shell]
+----
+bender script flist-plus \
+  -t smu -t smc -t dtp -t sep -t sep_el2 -t smu_wrapper \
+  -t axi_rtl -t apb_rtl -t common_cells_rtl -t common_cell_sync_shim \
+  -t idma_rtl -t register_interface_l1
+----
+
+"Not defined" below means an SMU build assembled without the declaring target —
+these names cannot be switched off while their target is selected.
+
+[cols="<,<,<,<",options="header"]
+|===
+|Define |Read by |Defined |Not defined
+
+|`SEP_ABR_EN`
+|`hw/sys/sep/rtl/sep_crypto.sv`,
+`hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv`,
+`hw/top/sep_ip_integration.sv`. Declared by the root `Bender.yml` under
+`- target: sep`.
+|Compiles in the Adams Bridge post-quantum block and the SRAM channels that
+back it. Always implies `CALIPTRA`, and `sep_crypto.sv` carries an elaboration
+check that rejects the pair being split.
+|`sep_crypto.sv` terminates the ABR AXI aperture with DECERR and
+`sep_ip_integration.sv` holds the memory response quiescent, so SMU's mandatory
+port stays driven. The two guards are written to be kept symmetric.
+
+|`CALIPTRA`
+|The vendored Caliptra RTL. Declared alongside `SEP_ABR_EN` in the same root
+`Bender.yml` block.
+|Selects the vendored Caliptra configuration that Adams Bridge is built
+against.
+|The vendored ABR sources would not elaborate; this is why the two names are
+declared together rather than independently.
+
+|`TECH_SPECIFIC_EC_RV_ICG`
+|VeeR EL2. Declared by
+`vendor/chipsalliance/Cores-VeeR-EL2/Bender.yml`, so it arrives with the
+`sep_el2` target — that is, on any SEP=1 build.
+|Swaps the VeeR EL2 clock gate for the shim in
+`overlay/prim_shim/user_clock_gate.sv`, rather than replacing the flop file
+that instantiates it.
+|The core's behavioral clock gate is used.
+|===
+
+Those two declarations are the complete set for the open-source closure: the
+root `Bender.yml` and the VeeR EL2 package are the only ones in it that carry a
+`defines:` block. A subsystem that adds one later becomes visible to the whole
+SMU compile without any change here, so this list is worth re-deriving from the
+command above when the target set changes.
+
+[[smu-defines-do-not-set]]
+==== Names that are not knobs
+
+*Bender target names.* `TARGET_SMU`, `TARGET_SMC`, `TARGET_DTP`, `TARGET_SEP`,
+`TARGET_SEP_EL2`, `TARGET_SMU_WRAPPER`, `TARGET_AXI_RTL`, `TARGET_APB_RTL`,
+`TARGET_COMMON_CELLS_RTL`, `TARGET_COMMON_CELL_SYNC_SHIM`, `TARGET_IDMA_RTL`,
+`TARGET_REGISTER_INTERFACE_L1`, and `TARGET_FLIST` for the `flist-plus`
+subcommand. Bender emits one per selected target. No OCAH RTL tests them, but
+vendored code does; defining one by hand tells that code a target is present
+when its sources are not.
+
+The include guards, tool-detection names and generated-code derivations in the
+SMU graph belong to the subsystems that carry them and are listed on their
+pages. SMU adds none of its own.
+
+[[smu-defines-oss-flow]]
+==== What the open-source flows set
+
+For reference, the defines each checked-in flow applies on top of the
+Bender-supplied set. None of this is required to compile `smu`; it is the
+configuration the SMU test suite is written against.
+
+[cols="<,<",options="header"]
+|===
+|Flow |Defines
+
+|DV, every tool
+|`SIMULATION`, `COMMON_CELLS_ASSERTS_OFF`, `RANDOM=0`, `RANDOMIZE_MEM_INIT`,
+`RANDOMIZE_REG_INIT`, `RANDOMIZE_DELAY=0.02` — from
+`hw/common/dv/configs/profiles/native.toml`. The `RANDOM*` names are read by
+the Chipyard-generated cluster inside SMC; no SMU-level file reads them.
+
+|DV, Verilator only
+|adds `VERILATOR` and `ASSERTS_OFF`, per target — from
+`hw/sys/smu/dv/smu_sim_cfg.toml`.
+
+|DV, `compile_smu_chiplet_no_sep` (and `default`)
+|adds `SMU_NO_SEP`. A testbench define, not a DUT one: it selects `NoSepCfg`
+and `SEP=0` in `dv/tb/tb_wrapper_top.sv` and drops the SEP observation taps.
+Note that `default` is the no-SEP target, so a run that selects no target
+compiles SEP out.
+
+|DV, `compile_smu_chiplet_sep_rtl`
+|adds nothing. The SEP=1 profile is the absence of `SMU_NO_SEP`, so nothing in
+the compile command names it; `dv/common/seq_lib/smu_wrapper_elaboration_seq.py`
+cross-checks the built profile against the testlist's `+expected_sep` through
+`sep_enabled_o`.
+
+|DV, `--framework uvm`
+|adds `UVM`. Also a testbench define — it selects the SV-UVM shape of
+`dv/tb/tb_top.sv` and switches the shared assertion headers to
+`uvm_report_error`.
+
+|Lint and synthesis
+|`SYNTHESIS=1` only, from `OCAH_FLOW_COMMON_DEFINES` in `flows/common.mk`.
+`hw/sys/smu/flow.mk` selects the `idma_rtl`, `dtp`, `sep`, `smc` and `sep_el2`
+Bender targets, so the Bender-supplied set above applies here too.
+|===
+
+The SMU testbench plusargs — `+expected_sep`, the `+sep_itcm_hex` /
+`+sep_dtcm_hex` TCM backdoors, `+skip_fuse_sense` and the shadow-register
+preloads — belong to the DV environment, not the DUT, and are documented in
+`hw/sys/smu/dv/README.md` alongside the compile profiles.
+
+`python3 tools/dv/run_dv.py --define NAME[=VALUE]` appends one more for a
+single run, and `--overlay PATH` (also read from `OCAH_DV_OVERLAY`, never
+auto-activated) lets an adopter config append target defines without editing
+the checked-in ones.
+
+[[smu-defines-subsystems]]
+==== Subsystem defines
+
+SMU's elaborated graph reads every define its subsystems read. Those sets are
+documented where they are owned:
+
+* `hw/sys/smc/doc/defines.adoc` — the SMC set, including the Chipyard cluster's
+`RANDOMIZE_*` family and the `och_prim` cell defines.
+* `hw/sys/dtp/doc/defines.adoc` — the DTP set.
+* `hw/sys/sep/doc/defines.adoc` — the SEP set, including `SEP_ABR_EN` and
+`CALIPTRA` in their own context, and the VeeR `RV_*` names that come from the
+checked-in snapshot at
+`vendor/chipsalliance/Cores-VeeR-EL2/overlay/snapshots/sep/common_defines.vh`
+rather than from a compile line.
