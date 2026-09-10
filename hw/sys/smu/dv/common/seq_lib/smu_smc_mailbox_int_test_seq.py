@@ -24,7 +24,8 @@ from __future__ import annotations
 import time
 
 import cocotb
-from cocotb.triggers import RisingEdge
+from cocotb.triggers import ClockCycles, RisingEdge
+from cocotb.utils import get_sim_time
 from ocah_jtag_vip import OcahJtagState
 
 from seq_lib.smu_addr_map import mailbox_u32, smc_addr
@@ -63,13 +64,21 @@ class smu_smc_mailbox_int_test_seq:
         self._step_ts: dict[str, float] = {}
         self._timeout_paths: list[str] = []
         self._lifecycle_ts: dict[str, float] = {}
+        # Fence granularity: one SMU clock period of simulated time. Every
+        # step below spans at least one clk_smu_i edge, so a run whose
+        # simulation time did not advance fails the fence.
+        self.min_sim_advance_ns = float(self.cfg.smu_clk_period_ns)
 
     def _log(self, msg: str) -> None:
         cocotb.log.info(msg)
 
+    def _sim_ns(self) -> float:
+        return float(get_sim_time(units="ns"))
+
     def _mark_step(self, step_id: str, detail: str) -> None:
-        self._step_ts[step_id] = time.monotonic()
-        self._log(f"STEP {step_id}: {detail}")
+        now = self._sim_ns()
+        self._step_ts[step_id] = now
+        self._log(f"STEP {step_id} @{now:.3f}ns: {detail}")
 
     def _sample(self, signal, name: str) -> int:
         val = signal.value
@@ -419,7 +428,8 @@ class smu_smc_mailbox_int_test_seq:
             evidence="CHK-TIMEOUT-PATHS",
         )
 
-        self._step_ts["PASS"] = time.monotonic()
+        await ClockCycles(dut.clk_smu_i, self.SETTLE_CYCLES)
+        self._step_ts["PASS"] = self._sim_ns()
         self._log("SMU_ALL_004 sequence complete (PASS term recorded for NONVAC fence)")
 
         order = ["S1", "S2", "S3", "S4", "PASS"]
@@ -427,21 +437,24 @@ class smu_smc_mailbox_int_test_seq:
         for step_id in order:
             if step_id not in self._step_ts:
                 raise AssertionError(f"CHK-NONVAC missing step term: {step_id}")
-        for a, b in zip(order, order[1:]):
-            if self._step_ts[a] >= self._step_ts[b]:
-                raise AssertionError(f"CHK-NONVAC order fail: {a} not before {b}")
-        deltas_ns = [
-            int((self._step_ts[b] - self._step_ts[a]) * 1e9) for a, b in zip(order, order[1:])
-        ]
-        positive_deltas = sum(1 for d in deltas_ns if d > 0)
-        if positive_deltas != expect_deltas:
+        deltas_ns = [self._step_ts[b] - self._step_ts[a] for a, b in zip(order, order[1:])]
+        min_ns = self.min_sim_advance_ns
+        advancing = sum(1 for d in deltas_ns if d >= min_ns)
+        if advancing != expect_deltas:
             raise AssertionError(
-                f"CHK-NONVAC positive-delta count fail: {positive_deltas} deltas_ns={deltas_ns}"
+                f"CHK-NONVAC sim-time fence fail: {advancing} of {expect_deltas} steps "
+                f"advanced >= {min_ns:.3f}ns of simulation time; "
+                f"deltas_ns={[round(d, 3) for d in deltas_ns]}"
             )
-        self._log("CHK-NONVAC: Ordered fence S1<S2<S3<S4<PASS all hold")
+        self._log(
+            "CHK-NONVAC: Ordered simulation-time fence S1<S2<S3<S4<PASS all hold "
+            f"(min_step={min_ns:.3f}ns "
+            f"total={self._step_ts['PASS'] - self._step_ts['S1']:.3f}ns "
+            f"deltas_ns={[round(d, 3) for d in deltas_ns]})"
+        )
         sb.expect_eq(
-            "CHK-NONVAC positive step-delta count",
-            positive_deltas,
+            "CHK-NONVAC sim-time advancing step count",
+            advancing,
             expect_deltas,
             evidence="CHK-NONVAC",
         )
