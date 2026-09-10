@@ -2,14 +2,14 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 site:
-  title: Open Chiplet Atlas Harness (OCAH) Getting Started Guide
+  title: Open Chiplet Atlas Harness (OCAH) Getting Started and Contributing Guide
   url: /
-  start_page: ocah-contributing::index.adoc
+  start_page: ocah-starting::index.adoc
 content:
   sources:
     - url: .
       branches: HEAD
-      start_path: doc/contributing
+      start_path: doc/starting
       edit_url: false
 runtime:
   log:
@@ -21,4 +21,4 @@ ui:
     snapshot: true
   supplemental_files: ./doc/ui-supplemental
 output:
-  dir: ./doc/contributing/_build/html_antora
+  dir: ./doc/starting/_build/html_antora

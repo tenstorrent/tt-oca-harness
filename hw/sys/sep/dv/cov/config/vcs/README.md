@@ -11,7 +11,6 @@ contents are not fingerprinted.
 ## What it excludes
 
     -tree sep_uvm_top 1                       TB top's own body, children kept
-    -tree sep_uvm_top.u_smc_mem               axi_sim_mem backdoor (rom_boot only)
     -tree sep_uvm_top.u_mbx                   sep_outbound_mbx
     -module ocah_axi_sva                      u_m_axi_sva, u_s_axi_sva, key_manager bind
     -tree sep_uvm_top.u_dut.u_sep.sep_cpu     CPU subtree

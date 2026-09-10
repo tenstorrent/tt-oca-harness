@@ -21,7 +21,10 @@ from .smc_csr_seq_utils import SmcCsrSeq
 # ([EVIDENCE-TOKEN-CONDITIONAL]).
 
 # SF-002: Enable Threshold == Hysteresis Control (same programmable field).
-THRESH_MIN = 8
+# Lowest hysteresis whose DMA completion survives the gater with the SYS_OUT
+# slave agent's one-cycle response latency; 8 and below drop the transfer
+# (smc_clk_multi_window_test_seq.HYST_LOW_EXCLUSION records the band).
+THRESH_MIN = 9
 THRESH_MAX = 63
 HYST_IDLE = 8
 IDLE_OBSERVE = 16
@@ -360,7 +363,7 @@ class smc_static_cg_sanity_test_seq(SmcCsrSeq):
         # The cells are named after the hysteresis value each one measures.
         # CG_HYSTERESIS is a 6-bit field whose true minimum is 0; THRESH_MIN is
         # the lowest point this sequence exercises, not the field's floor, and
-        # the 0..7 band is unproven.
+        # the 0..8 band is unproven.
         d_min = await self._measure_threshold(
             "S3b",
             THRESH_MIN,
@@ -380,7 +383,7 @@ class smc_static_cg_sanity_test_seq(SmcCsrSeq):
             "CHK-ENABLE-THRESHOLD",
             "CHK-ENABLE-THRESHOLD: re-gate delay tracks CG_HYSTERESIS within "
             f"1 cycle at the two swept points: hyst={THRESH_MIN} -> delay="
-            f"{d_min}, hyst={THRESH_MAX} -> delay={d_max}. CG_HYSTERESIS 0..7 "
+            f"{d_min}, hyst={THRESH_MAX} -> delay={d_max}. CG_HYSTERESIS 0..8 "
             f"is NOT swept here",
         )
         # Measured margins, not a restatement of the bound constants: each
