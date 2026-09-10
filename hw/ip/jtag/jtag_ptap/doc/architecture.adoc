@@ -11,7 +11,16 @@ scan ports and control signals, BIST functionality, and 3DIC support with STAP
 scan ports and control signals derived from internal TDRs.
 
 .PTAP module architecture
-image::ptap_module_diagram.svg[alt="PTAP module diagram showing TAP controller, instruction register, instruction decoder and TDR bank",scaledwidth=90%]
+image::ptap_module_diagram.svg[alt="PTAP module diagram showing TAP controller, instruction register, instruction decoder, TDR bank, scan path mux, and STAP select",scaledwidth=90%]
+
+Blue arrows show TAP Controller control signals (Capture/Shift/Update).
+Grey solid arrows show PTAP_TDI scan-data inputs.
+Grey dashed arrows show scan-data paths: TDI fans out to all TDR scan-in inputs; the
+selected IR or TDR scan-out returns through the Scan Path Mux to the retimed PTAP_TDO.
+The TDR Bank registers (`BYPASS`, `IDCODE`, `DEBUG_CONTROL`, and others) are listed in
+the Module Hierarchy table below.
+External scan interfaces — `BSR_SI`/`BSR_SO`, `IJTAG_SI`/`IJTAG_SO`, and the
+lifecycle-gated AXI bridge scan ports — connect through the Scan Path Mux.
 
 === Module Hierarchy
 
