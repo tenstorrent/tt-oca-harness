@@ -334,11 +334,9 @@ package sep_efuse_pkg;
       sep_efuse_map_locks_spare_reg_t
   );
 
-  // TODO: Why is this needed?
   // efuse_lock_view_t presents the efuse_map_t union with the full 96-bit
   // lock field at the LSB end, mirroring where LOCKS/LOCKS_SPARE sit in the
-  // packed struct. locks[81:0] holds the 82 meaningful lock-pair bits (slots 0-40);
-  // locks[95:82] are LOCKS_SPARE[31:18] (unassigned slots 41-47).
+  // packed struct.
   typedef struct packed {
     logic [NumEfuseBits-LockFieldBits-1:0] reserved;
     logic [LockFieldBits-1:0]              locks;
@@ -352,9 +350,6 @@ package sep_efuse_pkg;
 
   // Class 1 storage is selected by field identity; all locations and widths
   // are derived directly from the generated RDL metadata.
-  // LockFieldBits == 96: LOCKS (words 0-1) + LOCKS_SPARE (word 2) are all sensed.
-
-  // TODO: Why is NumFuseWordWidth passed in?
   localparam efuse_pkg::shadow_word_range_map_t Class1ShadowRanges = '{
       efuse_pkg::make_shadow_word_range
       (
@@ -798,7 +793,7 @@ package sep_efuse_pkg;
       },
       '{  // REQUIRED_SIGNERS (idx 21)
           idx: 6'd21,
-          lock: {SECURE_TM_UNLOCK, WRITE_SET_ONLY, READ_UNLOCK},
+          lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
           start_addr:
           efuse_offset
           (
@@ -1006,10 +1001,9 @@ package sep_efuse_pkg;
               och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_BASE_ADDR
           ) - 1
       },
-      // TODO: should this have SECURE_TM_LOCK? Not in hw/sys/sep/doc/lifecycle_controller.adoc list
       '{  // RMA_CHIPLET_TOKEN_DIGEST (idx 6)
           idx: 6'd06,
-          lock: {SECURE_TM_LOCK, WRITE_UNLOCK, READ_UNLOCK},
+          lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
           start_addr:
           efuse_offset
           (
@@ -1021,10 +1015,9 @@ package sep_efuse_pkg;
               och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR
           ) - 1
       },
-      // TODO: should this have SECURE_TM_LOCK? Not in hw/sys/sep/doc/lifecycle_controller.adoc list
       '{  // RMA_SIP_TOKEN_DIGEST (idx 5)
           idx: 6'd05,
-          lock: {SECURE_TM_LOCK, WRITE_UNLOCK, READ_UNLOCK},
+          lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
           start_addr:
           efuse_offset
           (
