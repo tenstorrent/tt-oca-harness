@@ -103,119 +103,119 @@ module sep_fcov (
 );
 
   import och_sep_top_addrmap_pkg::*;
-`include "sep_reg.svh"
+  `include "sep_reg.svh"
 
   // ------------------------------------------------------------------
   // Apertures. Memory windows come from och_sep_top_addrmap_pkg; every CSR address
   // and field mask below is a sep_reg.svh symbol.
   // ------------------------------------------------------------------
-  localparam logic [31:0] SramBase     = 32'(OCH_SEP_TOP_SEP_SRAM_BASE_ADDR);
-  localparam logic [31:0] SramEnd      = SramBase + 32'(OCH_SEP_TOP_SEP_SRAM_SIZE);
-  localparam logic [31:0] BootRomBase  = 32'(OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR);
-  localparam logic [31:0] BootRomEnd   = BootRomBase + 32'(OCH_SEP_TOP_SEP_BOOT_ROM_SIZE);
-  localparam logic [31:0] SpiBase      = SPI_CONTROLLER_REG_MAP_BASE_ADDR;
-  localparam logic [31:0] SpiEnd       = SpiBase + SPI_CONTROLLER_REG_MAP_SIZE;
-  localparam logic [31:0] ColdBase     = SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR;
-  localparam logic [31:0] ColdEnd      = ColdBase + SEP_SCRATCH_COLD_REG_MAP_SIZE;
-  localparam logic [31:0] WarmBase     = SEP_SCRATCH_WARM_REG_MAP_BASE_ADDR;
-  localparam logic [31:0] WarmEnd      = WarmBase + SEP_SCRATCH_WARM_REG_MAP_SIZE;
+  localparam logic [31:0] SramBase = 32'(OCH_SEP_TOP_SEP_SRAM_BASE_ADDR);
+  localparam logic [31:0] SramEnd = SramBase + 32'(OCH_SEP_TOP_SEP_SRAM_SIZE);
+  localparam logic [31:0] BootRomBase = 32'(OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR);
+  localparam logic [31:0] BootRomEnd = BootRomBase + 32'(OCH_SEP_TOP_SEP_BOOT_ROM_SIZE);
+  localparam logic [31:0] SpiBase = SPI_CONTROLLER_REG_MAP_BASE_ADDR;
+  localparam logic [31:0] SpiEnd = SpiBase + SPI_CONTROLLER_REG_MAP_SIZE;
+  localparam logic [31:0] ColdBase = SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR;
+  localparam logic [31:0] ColdEnd = ColdBase + SEP_SCRATCH_COLD_REG_MAP_SIZE;
+  localparam logic [31:0] WarmBase = SEP_SCRATCH_WARM_REG_MAP_BASE_ADDR;
+  localparam logic [31:0] WarmEnd = WarmBase + SEP_SCRATCH_WARM_REG_MAP_SIZE;
 
   // Inbound filter entry bank: 16 RDL array entries at a fixed stride.
-  localparam logic [31:0] FiltBase     = INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR;
+  localparam logic [31:0] FiltBase = INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR;
   localparam logic [31:0] FiltStride   = INBOUND_FILTER_CTRL_1__REG_MAP_BASE_ADDR -
                                          INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR;
-  localparam int unsigned FiltEntries  = sep_pkg::INBOUND_FILTER_NUM_FILTERS;
-  localparam logic [31:0] FiltEnd      = FiltBase + FiltStride * FiltEntries;
-  localparam logic [31:0] FiltCfgOff   = INBOUND_FILTER_CTRL_0__FILTER_CONFIG_REG_OFFSET;
+  localparam int unsigned FiltEntries = sep_pkg::INBOUND_FILTER_NUM_FILTERS;
+  localparam logic [31:0] FiltEnd = FiltBase + FiltStride * FiltEntries;
+  localparam logic [31:0] FiltCfgOff = INBOUND_FILTER_CTRL_0__FILTER_CONFIG_REG_OFFSET;
   localparam logic [31:0] FiltStartOff = INBOUND_FILTER_CTRL_0__START_ADDR_REG_OFFSET;
-  localparam logic [31:0] FiltEndOff   = INBOUND_FILTER_CTRL_0__END_ADDR_REG_OFFSET;
-  localparam logic [31:0] FiltEnMask   = 32'(FILTER_CTRL_FILTER_CONFIG_ENTRY_ENABLED_MASK);
+  localparam logic [31:0] FiltEndOff = INBOUND_FILTER_CTRL_0__END_ADDR_REG_OFFSET;
+  localparam logic [31:0] FiltEnMask = 32'(FILTER_CTRL_FILTER_CONFIG_ENTRY_ENABLED_MASK);
 
   // Adams Bridge exports no generated map symbol; the aperture is the
   // sep_crypto_pkg localparam and the offsets are abr_reg_uvm.sv add_reg
   // addresses -- the same two sources seq_lib/sep_abr_keygen_seq.py reads.
-  localparam logic [31:0] AbrBase      = sep_crypto_pkg::ABR_REG_MAP_BASE_ADDR;
-  localparam logic [31:0] AbrCtrl      = AbrBase + 32'h10;
-  localparam logic [31:0] AbrStatus    = AbrBase + 32'h14;
-  localparam logic [31:0] AbrCmdKeygen = 32'h1;   // MLDSA_CTRL.CTRL = KEYGEN
-  localparam logic [31:0] AbrStValid   = 32'h2;   // MLDSA_STATUS.VALID
+  localparam logic [31:0] AbrBase = sep_crypto_pkg::ABR_REG_MAP_BASE_ADDR;
+  localparam logic [31:0] AbrCtrl = AbrBase + 32'h10;
+  localparam logic [31:0] AbrStatus = AbrBase + 32'h14;
+  localparam logic [31:0] AbrCmdKeygen = 32'h1;  // MLDSA_CTRL.CTRL = KEYGEN
+  localparam logic [31:0] AbrStValid = 32'h2;  // MLDSA_STATUS.VALID
 
   // AES CTRL_SHADOWED / STATUS (OpenTitan aes_reg_pkg via sep_reg.svh).
-  localparam logic [1:0]  AesOpEnc     = 2'b01;
-  localparam logic [1:0]  AesOpDec     = 2'b10;
-  localparam logic [5:0]  AesModeEcb   = 6'b00_0001;
-  localparam logic [5:0]  AesModeCbc   = 6'b00_0010;
-  localparam logic [5:0]  AesModeCtr   = 6'b01_0000;
-  localparam logic [2:0]  AesKey128    = 3'b001;
-  localparam logic [2:0]  AesKey192    = 3'b010;
-  localparam logic [2:0]  AesKey256    = 3'b100;
+  localparam logic [1:0] AesOpEnc = 2'b01;
+  localparam logic [1:0] AesOpDec = 2'b10;
+  localparam logic [5:0] AesModeEcb = 6'b00_0001;
+  localparam logic [5:0] AesModeCbc = 6'b00_0010;
+  localparam logic [5:0] AesModeCtr = 6'b01_0000;
+  localparam logic [2:0] AesKey128 = 3'b001;
+  localparam logic [2:0] AesKey192 = 3'b010;
+  localparam logic [2:0] AesKey256 = 3'b100;
 
   // HMAC CFG one-hot fields (prim_sha2_pkg digest_mode_e / key_length_e).
-  localparam logic [3:0]  HmacSha256   = 4'h1;
-  localparam logic [3:0]  HmacSha384   = 4'h2;
-  localparam logic [3:0]  HmacSha512   = 4'h4;
-  localparam logic [5:0]  HmacKey128   = 6'h01;
-  localparam logic [5:0]  HmacKey256   = 6'h02;
-  localparam logic [5:0]  HmacKey384   = 6'h04;
-  localparam logic [5:0]  HmacKey512   = 6'h08;
-  localparam logic [5:0]  HmacKey1024  = 6'h10;
+  localparam logic [3:0] HmacSha256 = 4'h1;
+  localparam logic [3:0] HmacSha384 = 4'h2;
+  localparam logic [3:0] HmacSha512 = 4'h4;
+  localparam logic [5:0] HmacKey128 = 6'h01;
+  localparam logic [5:0] HmacKey256 = 6'h02;
+  localparam logic [5:0] HmacKey384 = 6'h04;
+  localparam logic [5:0] HmacKey512 = 6'h08;
+  localparam logic [5:0] HmacKey1024 = 6'h10;
 
   // KMAC CFG_SHADOWED mode / strength (sha3_pkg sha3_mode_e, keccak_strength_e)
   // and the KEY_LEN register (kmac_pkg key_len_e).
-  localparam logic [1:0]  KmacSha3     = 2'd0;
-  localparam logic [1:0]  KmacShake    = 2'd2;
-  localparam logic [1:0]  KmacCshake   = 2'd3;
-  localparam logic [2:0]  KmacL128     = 3'd0;
-  localparam logic [2:0]  KmacL224     = 3'd1;
-  localparam logic [2:0]  KmacL256     = 3'd2;
-  localparam logic [2:0]  KmacL384     = 3'd3;
-  localparam logic [2:0]  KmacL512     = 3'd4;
-  localparam logic [2:0]  KmacKey128   = 3'd0;
-  localparam logic [2:0]  KmacKey192   = 3'd1;
-  localparam logic [2:0]  KmacKey256   = 3'd2;
-  localparam logic [2:0]  KmacKey384   = 3'd3;
-  localparam logic [2:0]  KmacKey512   = 3'd4;
+  localparam logic [1:0] KmacSha3 = 2'd0;
+  localparam logic [1:0] KmacShake = 2'd2;
+  localparam logic [1:0] KmacCshake = 2'd3;
+  localparam logic [2:0] KmacL128 = 3'd0;
+  localparam logic [2:0] KmacL224 = 3'd1;
+  localparam logic [2:0] KmacL256 = 3'd2;
+  localparam logic [2:0] KmacL384 = 3'd3;
+  localparam logic [2:0] KmacL512 = 3'd4;
+  localparam logic [2:0] KmacKey128 = 3'd0;
+  localparam logic [2:0] KmacKey192 = 3'd1;
+  localparam logic [2:0] KmacKey256 = 3'd2;
+  localparam logic [2:0] KmacKey384 = 3'd3;
+  localparam logic [2:0] KmacKey512 = 3'd4;
   // kmac_pkg kmac_cmd_e is a sparse encoding; CmdProcess is the absorb trigger.
   localparam logic [31:0] KmacCmdProcess = 32'h2E;
-  localparam logic [31:0] KmacDoneMask   = KMAC_INTR_STATE_KMAC_DONE_MASK;
+  localparam logic [31:0] KmacDoneMask = KMAC_INTR_STATE_KMAC_DONE_MASK;
 
   localparam logic [31:0] HmacCmdProcess = HMAC_CMD_HASH_PROCESS_MASK;
-  localparam logic [31:0] HmacDoneMask   = HMAC_INTR_STATE_HMAC_DONE_MASK;
+  localparam logic [31:0] HmacDoneMask = HMAC_INTR_STATE_HMAC_DONE_MASK;
 
-  localparam logic [7:0]  OtbnExecute  = 8'hD8;  // otbn_pkg cmd_e CmdExecute
-  localparam logic [7:0]  OtbnIdle     = 8'h00;  // otbn_pkg status_e StatusIdle
+  localparam logic [7:0] OtbnExecute = 8'hD8;  // otbn_pkg cmd_e CmdExecute
+  localparam logic [7:0] OtbnIdle = 8'h00;  // otbn_pkg status_e StatusIdle
 
-  localparam logic [3:0]  DmaOpCopy    = 4'h0;   // fw/drivers/sep_dma.h
-  localparam logic [3:0]  DmaOpSha256  = 4'h1;
+  localparam logic [3:0] DmaOpCopy = 4'h0;  // fw/drivers/sep_dma.h
+  localparam logic [3:0] DmaOpSha256 = 4'h1;
 
   // aon_timer INTR_STATE: wkup_timer_expired[0], wdog_timer_bark[1]. The
   // vendored block exports no field symbol into sep_reg.svh; the position is
   // the one seq_lib/sep_wdt_aon_seq.py resolves from the register metadata.
-  localparam logic [31:0] WdtBarkMask  = 32'h2;
+  localparam logic [31:0] WdtBarkMask = 32'h2;
 
   // LC_STATE shadow word: bits[7:0] hold the differential {~raw, raw}
   // (env/sep_efuse_image.py lc_encode). Legal raw codes are
   // efuse_pkg::lc_state_raw_e.
-  localparam logic [3:0]  LcTestDev    = 4'h0;
-  localparam logic [3:0]  LcProd       = 4'h1;
-  localparam logic [3:0]  LcRmaSip0    = 4'h2;
-  localparam logic [3:0]  LcRmaSip1    = 4'h3;
-  localparam logic [3:0]  LcRmaChip0   = 4'h6;
-  localparam logic [3:0]  LcRmaChip1   = 4'h7;
-  localparam logic [3:0]  LcProdEnd    = 4'h8;
+  localparam logic [3:0] LcTestDev = 4'h0;
+  localparam logic [3:0] LcProd = 4'h1;
+  localparam logic [3:0] LcRmaSip0 = 4'h2;
+  localparam logic [3:0] LcRmaSip1 = 4'h3;
+  localparam logic [3:0] LcRmaChip0 = 4'h6;
+  localparam logic [3:0] LcRmaChip1 = 4'h7;
+  localparam logic [3:0] LcProdEnd = 4'h8;
 
   // KM mailbox frame (seq_lib/sep_km_mailbox_seq.py):
   //   header = {crc8[31:24], payload_len[23:16], cmd_id[15:8], seq_num[7:0]}
   //   RESP_CMD payload = [cmd_seq, cmd_id, rc, arg]
-  localparam logic [7:0]  KmCmdGenerate = 8'h22;
-  localparam logic [7:0]  KmCmdTransfer = 8'h24;
-  localparam logic [3:0]  KmDestHmac    = 4'h1;
-  localparam logic [3:0]  KmDestKmac    = 4'h2;
-  localparam logic [3:0]  KmDestAes     = 4'h4;
-  localparam logic [3:0]  KmDestOtbn    = 4'h8;
+  localparam logic [7:0] KmCmdGenerate = 8'h22;
+  localparam logic [7:0] KmCmdTransfer = 8'h24;
+  localparam logic [3:0] KmDestHmac = 4'h1;
+  localparam logic [3:0] KmDestKmac = 4'h2;
+  localparam logic [3:0] KmDestAes = 4'h4;
+  localparam logic [3:0] KmDestOtbn = 4'h8;
 
-  localparam logic [1:0]  AxiOkay      = 2'b00;
-  localparam int unsigned PageShift    = 12;  // traffic_filter.sv compares [.:12]
+  localparam logic [1:0] AxiOkay = 2'b00;
+  localparam int unsigned PageShift = 12;  // traffic_filter.sv compares [.:12]
 
   // ------------------------------------------------------------------
   // AXI transaction model. Reset is treated as "not a known 1" so the
@@ -237,7 +237,7 @@ module sep_fcov (
   wire r_hs  = (lsu_r_valid_i  === 1'b1) && (lsu_r_ready_i  === 1'b1) &&
                (lsu_r_last_i   === 1'b1);
 
-  logic [3:0]  aw_out_q, ar_out_q;
+  logic [3:0] aw_out_q, ar_out_q;
   logic [31:0] aw_addr_q, ar_addr_q;
   logic [63:0] w_data_q;
   logic [7:0]  w_strb_q;
@@ -338,7 +338,7 @@ module sep_fcov (
   logic [2:0] aes_key_q;
   logic [1:0] aes_op_q;
   logic       aes_sideload_q;
-  logic       aes_cfg_valid_q, aes_out_valid_q;
+  logic aes_cfg_valid_q, aes_out_valid_q;
   // One AES cell completes when the configured mode/key size reached
   // OUTPUT_VALID and the ciphertext word was read back.
   wire        aes_cell_done = aes_ct_read && aes_cfg_valid_q && aes_out_valid_q;
@@ -358,7 +358,7 @@ module sep_fcov (
 
   logic [3:0] hmac_digest_q;
   logic [5:0] hmac_keylen_q;
-  logic       hmac_en_q, hmac_cfg_valid_q, hmac_process_q;
+  logic hmac_en_q, hmac_cfg_valid_q, hmac_process_q;
   wire        hmac_cell_done = hmac_done && hmac_cfg_valid_q && hmac_process_q;
 
   // --- KMAC --------------------------------------------------------------
@@ -374,12 +374,21 @@ module sep_fcov (
       (wr_data == KmacCmdProcess);
   wire       kmac_done = rd_ev && (ar_addr_q == KMAC_INTR_STATE_REG_ADDR) &&
       ((rd_data & KmacDoneMask) != 32'h0);
+  // Reading a STATE share back is the completion event BOTH drivers produce.
+  // `keyed_mac` -- the only path the KM sideload KAT takes -- polls STATUS and
+  // reads the shares, and never touches INTR_STATE, so an INTR_STATE-only
+  // anchor could not sample a sideloaded operation at all: measured
+  // `cp_sideload.km_key` 0 hits against `sw_key` 13, because the leaf's single
+  // INTR_STATE read lands at EOT after the last SW-key leg.
+  wire       kmac_digest_rd = rd_ev && in_win(ar_addr_q, KMAC_STATE_MEM_BASE_ADDR,
+      KMAC_STATE_MEM_BASE_ADDR + KMAC_STATE_MEM_SIZE);
 
-  logic       kmac_en_q, kmac_cfg_valid_q, kmac_process_q, kmac_keylen_valid_q;
+  logic kmac_en_q, kmac_cfg_valid_q, kmac_process_q, kmac_keylen_valid_q;
   logic [1:0] kmac_mode_q;
   logic [2:0] kmac_str_q, kmac_keylen_q;
   logic       kmac_sideload_q;
-  wire        kmac_cell_done = kmac_done && kmac_cfg_valid_q && kmac_process_q;
+  wire        kmac_cell_done = (kmac_done || kmac_digest_rd) && kmac_cfg_valid_q &&
+      kmac_process_q;
 
   // --- OTBN --------------------------------------------------------------
   wire otbn_execute = wr_ev && (aw_addr_q == OTBN_CMD_REG_ADDR) &&
@@ -518,7 +527,7 @@ module sep_fcov (
   // Same pairing contract as the LSU side: sep_axi_order_sweep_m_axi_test
   // deliberately runs several inbound transactions at once, and a plain
   // last-write latch would pair one access's response with another's address.
-  logic [3:0]  m_aw_out_q, m_ar_out_q;
+  logic [3:0] m_aw_out_q, m_ar_out_q;
 
   // The PROGRAMMED range, not its 4 KB page. traffic_filter.sv compares
   // addr[.:12] only in the allow_burst arm; the other arm compares
@@ -545,13 +554,13 @@ module sep_fcov (
   // OTP bit index in EFUSE_ADDR plus PROGRAM_GO, and the outcome reads back as
   // PROGRAM_DONE or PROGRAM_STATUS (the refusal).
   localparam logic [31:0] EfuseProgCtrl = EFUSE_INTERFACE_CTRL_EFUSE_PROGRAM_CTRL_REG_ADDR;
-  localparam int unsigned SpareCount    = 8;
+  localparam int unsigned SpareCount = 8;
   // Spare k occupies SPARE_STRIDE bytes of the shadow map, so its OTP bit
   // range starts at (byte offset / 4) * 32 bits.
   localparam int unsigned SpareStrideB  = SEP_EFUSE_MAP_SPARE1_REG_OFFSET -
                                           SEP_EFUSE_MAP_SPARE0_REG_OFFSET;
-  localparam int unsigned SpareBitBase  = (SEP_EFUSE_MAP_SPARE0_REG_OFFSET / 4) * 32;
-  localparam int unsigned SpareBitSpan  = (SpareStrideB / 4) * 32;
+  localparam int unsigned SpareBitBase = (SEP_EFUSE_MAP_SPARE0_REG_OFFSET / 4) * 32;
+  localparam int unsigned SpareBitSpan = (SpareStrideB / 4) * 32;
   // Slot 32+k owns spare k's write lock at bit 2*(32+k) of the LOCKS vector,
   // which is where LOCKS_SPARE starts (periphs.adoc, sep_efuse_pkg).
   localparam int unsigned SpareLockBase = (SEP_EFUSE_MAP_LOCKS_SPARE_REG_OFFSET / 4) * 32;
@@ -604,9 +613,9 @@ module sep_fcov (
   // DBG_2 = sip_debug (bit 24). env/sep_lcc_golden.py is the layout authority.
   // There is no DFT/test group in this layout, and SECURE_TM does not qualify
   // feature control, so neither is crossed with the debug aggregate.
-  localparam logic [31:0] FeatDbg1Mask = 32'h0000_000F;   // bits 3:0
-  localparam logic [31:0] FeatDbg2Mask = 32'h0100_0000;   // bit 24
-  localparam int unsigned FeatDbgBits  = 5;
+  localparam logic [31:0] FeatDbg1Mask = 32'h0000_000F;  // bits 3:0
+  localparam logic [31:0] FeatDbg2Mask = 32'h0100_0000;  // bit 24
+  localparam int unsigned FeatDbgBits = 5;
 
   logic [31:0] feat_lo_q;
   logic        feat_lo_valid_q;
@@ -635,8 +644,8 @@ module sep_fcov (
 
   wire [1:0] feat_dbg_class = debug_class(feat_lo_q, rd_data);
   // The SENSED state, not a frontdoor read: the W1S leaves verify their start
-  // state through the shadow probe and never read LC_STATE frontdoor before
-  // transitioning, so a read-only source cannot see RMA_SIP_0 / RMA_CHIP_0.
+  // state through the shadow probe, so the probe is the source that sees a
+  // state a leaf never reads frontdoor before transitioning.
   wire [3:0] lc_sensed = efuse_lc_raw_i;
 
   wire       demote_1_set = (demote_1_i == 2'b01);
@@ -680,8 +689,8 @@ module sep_fcov (
   wire cold_write = wr_ev && in_win(aw_addr_q, ColdBase, ColdEnd);
 
   logic [31:0] cold_addr_q, cold_data_q, warm_addr_q;
-  logic        cold_valid_q, warm_written_q;
-  logic        cpu_reset_n_q, warm_reset_q;
+  logic cold_valid_q, warm_written_q;
+  logic cpu_reset_n_q, warm_reset_q;
   logic [4:0]  cpu_reset_hi_q;
   // A warm reset is a cpu_reset_n fall AFTER the reset release has settled and
   // AFTER a scratch value was staged -- which is the scenario the contract is
@@ -709,7 +718,7 @@ module sep_fcov (
 
   always @(posedge clk_i) begin
     if (efuse_prog_go && prog_is_lock) spare_locked_q[prog_lock_idx] <= 1'b1;
-    if (fuse_sense)                    fuse_sense_seen_q <= 1'b1;
+    if (fuse_sense) fuse_sense_seen_q <= 1'b1;
   end
 
   // ------------------------------------------------------------------
@@ -840,7 +849,7 @@ module sep_fcov (
       end
 
       if (abr_keygen) abr_keygen_q <= 1'b1;
-      if (abr_done)   abr_keygen_q <= 1'b0;
+      if (abr_done) abr_keygen_q <= 1'b0;
 
       // KM command frame: header, payload_len words, then the payload CRC word
       // when payload_len > 0.
@@ -866,7 +875,7 @@ module sep_fcov (
       if (km_rd_data && km_rsp_arm_q) begin
         km_rsp_idx_q <= km_rsp_idx_q + 9'd1;
         if (km_rsp_idx_q == 9'd2) km_rsp_cmd_q <= rd_data[7:0];
-        if (km_rsp_idx_q == 9'd3) km_rsp_rc_q  <= rd_data[7:0];
+        if (km_rsp_idx_q == 9'd3) km_rsp_rc_q <= rd_data[7:0];
         if (km_rsp_idx_q >= 9'd4) km_rsp_arm_q <= 1'b0;
       end
 
@@ -878,8 +887,8 @@ module sep_fcov (
         dma_hash_q <= 1'b1;
         dma_copy_q <= 1'b0;
       end
-      if (dma_go) dma_hs_q <= (wr_data &
-          SECURE_DMA_CONTROL_HARDWARE_HANDSHAKE_ENABLE_MASK) != 32'h0;
+      if (dma_go)
+        dma_hs_q <= (wr_data & SECURE_DMA_CONTROL_HARDWARE_HANDSHAKE_ENABLE_MASK) != 32'h0;
       if (dma_complete) begin
         dma_copy_q <= 1'b0;
         dma_hash_q <= 1'b0;
@@ -894,15 +903,18 @@ module sep_fcov (
         filt_end_entry_q <= filt_entry_of(aw_addr_q);
       end
       if (filt_cfg_wr) begin
-        if (((wr_data & FiltEnMask) != 32'h0) &&
-            (filt_start_entry_q == filt_entry_of(aw_addr_q)) &&
-            (filt_end_entry_q   == filt_entry_of(aw_addr_q))) begin
+        if (((wr_data & FiltEnMask) != 32'h0) && (filt_start_entry_q == filt_entry_of(
+                aw_addr_q
+            )) && (filt_end_entry_q == filt_entry_of(
+                aw_addr_q
+            ))) begin
           filt_win_valid_q <= 1'b1;
           filt_win_entry_q <= filt_entry_of(aw_addr_q);
           filt_win_lo_q    <= filt_start_q;
           filt_win_hi_q    <= filt_end_q;
-        end else if (((wr_data & FiltEnMask) == 32'h0) &&
-                     (filt_win_entry_q == filt_entry_of(aw_addr_q))) begin
+        end else if (((wr_data & FiltEnMask) == 32'h0) && (filt_win_entry_q == filt_entry_of(
+                aw_addr_q
+            ))) begin
           // disable_all() clears the entry the window came from.
           filt_win_valid_q <= 1'b0;
         end
@@ -935,7 +947,7 @@ module sep_fcov (
       // One-shot: the arm is consumed by the NMI it explains. The
       // reset_wdt_sanity firmware has ONE handler for a WDT bark and a D-bus
       // error NMI, so a sticky arm would let the other source score this bin.
-      if (wdt_bark)     wdt_bark_q <= 1'b1;
+      if (wdt_bark) wdt_bark_q <= 1'b1;
       else if (wdt_nmi) wdt_bark_q <= 1'b0;
 
       if (cold_write && (wr_strb == 4'hF)) begin
@@ -971,32 +983,32 @@ module sep_fcov (
   covergroup sep_axi_decode_cg @(posedge clk_i);
     option.per_instance = 1;
     option.name = "sep_axi_decode_cg";
-    cp_reset_value: coverpoint decode_reset_value { bins reset_value_decode = {1'b1}; }
-    cp_wr_rdback:   coverpoint csr_readback        { bins write_readback    = {1'b1}; }
-    cp_resp_wr:     coverpoint wr_ev                { bins okay_write = {1'b1}; }
-    cp_resp_rd:     coverpoint rd_ev                { bins okay_read  = {1'b1}; }
+    cp_reset_value: coverpoint decode_reset_value {bins reset_value_decode = {1'b1};}
+    cp_wr_rdback: coverpoint csr_readback {bins write_readback = {1'b1};}
+    cp_resp_wr: coverpoint wr_ev {bins okay_write = {1'b1};}
+    cp_resp_rd: coverpoint rd_ev {bins okay_read = {1'b1};}
   endgroup
 
   covergroup sep_sram_access_cg @(posedge clk_i);
     option.per_instance = 1;
     option.name = "sep_sram_access_cg";
-    cp_write: coverpoint sram_write    { bins write           = {1'b1}; }
-    cp_match: coverpoint sram_readback { bins write_then_read = {1'b1}; }
+    cp_write: coverpoint sram_write {bins write = {1'b1};}
+    cp_match: coverpoint sram_readback {bins write_then_read = {1'b1};}
   endgroup
 
   covergroup sep_boot_rom_cg @(posedge clk_i);
     option.per_instance = 1;
     option.name = "sep_boot_rom_cg";
-    cp_ifu: coverpoint rom_ifu { bins ifu_fetch = {1'b1}; }
-    cp_lsu: coverpoint rom_lsu { bins lsu_read  = {1'b1}; }
+    cp_ifu: coverpoint rom_ifu {bins ifu_fetch = {1'b1};}
+    cp_lsu: coverpoint rom_lsu {bins lsu_read = {1'b1};}
   endgroup
 
   covergroup sep_cpu_boot_cg @(posedge clk_i);
     option.per_instance = 1;
     option.name = "sep_cpu_boot_cg";
-    cp_console: coverpoint cpu_console { bins console_byte = {1'b1}; }
-    cp_pass:    coverpoint cpu_pass    { bins fw_pass      = {1'b1}; }
-    cp_pc:      coverpoint cpu_pc      { bins pc_nonzero   = {1'b1}; }
+    cp_console: coverpoint cpu_console {bins console_byte = {1'b1};}
+    cp_pass: coverpoint cpu_pass {bins fw_pass = {1'b1};}
+    cp_pc: coverpoint cpu_pc {bins pc_nonzero = {1'b1};}
   endgroup
 
   covergroup sep_aes_mode_cg with function sample (
@@ -1005,31 +1017,23 @@ module sep_fcov (
     option.per_instance = 1;
     option.name = "sep_aes_mode_cg";
     cp_mode: coverpoint mode {
-      bins ecb = {AesModeEcb};
-      bins cbc = {AesModeCbc};
-      bins ctr = {AesModeCtr};
+      bins ecb = {AesModeEcb}; bins cbc = {AesModeCbc}; bins ctr = {AesModeCtr};
     }
     cp_key: coverpoint key {
-      bins k128 = {AesKey128};
-      bins k192 = {AesKey192};
-      bins k256 = {AesKey256};
+      bins k128 = {AesKey128}; bins k192 = {AesKey192}; bins k256 = {AesKey256};
     }
-    cp_op: coverpoint op {
-      bins enc = {AesOpEnc};
-      bins dec = {AesOpDec};
-    }
+    cp_op: coverpoint op {bins enc = {AesOpEnc}; bins dec = {AesOpDec};}
     // Key source: the KM sideload KATs configure SIDELOAD=1, the standalone
     // breadth test uses the KEY_SHARE CSRs.
     cp_sideload: coverpoint sideload {
-      bins sw_key   = {1'b0};
-      bins km_key   = {1'b1};
+      bins sw_key = {1'b0}; bins km_key = {1'b1};
     }
     // Each cross cell is one configured mode/key size/operation that reached
     // OUTPUT_VALID and returned a data word. The suite walks nine ENC cells
     // plus the ECB/CBC decrypt legs of the round-trip; CTR DECRYPT is Phase 2
     // and is excluded rather than left as a permanently empty cell.
-    x_mode_key_op: cross cp_mode, cp_key, cp_op {
-      ignore_bins ctr_decrypt = binsof(cp_mode.ctr) && binsof(cp_op.dec);
+    x_mode_key_op: cross cp_mode, cp_key, cp_op{
+      ignore_bins ctr_decrypt = binsof (cp_mode.ctr) && binsof (cp_op.dec);
     }
   endgroup
 
@@ -1039,34 +1043,28 @@ module sep_fcov (
     option.per_instance = 1;
     option.name = "sep_hmac_mode_cg";
     cp_digest: coverpoint digest {
-      bins sha2_256 = {HmacSha256};
-      bins sha2_384 = {HmacSha384};
-      bins sha2_512 = {HmacSha512};
+      bins sha2_256 = {HmacSha256}; bins sha2_384 = {HmacSha384}; bins sha2_512 = {HmacSha512};
     }
     cp_key_length: coverpoint key_length iff (keyed) {
-      bins k128  = {HmacKey128};
-      bins k256  = {HmacKey256};
-      bins k384  = {HmacKey384};
-      bins k512  = {HmacKey512};
+      bins k128 = {HmacKey128};
+      bins k256 = {HmacKey256};
+      bins k384 = {HmacKey384};
+      bins k512 = {HmacKey512};
       bins k1024 = {HmacKey1024};
     }
     cp_plain: coverpoint digest iff (!keyed) {
-      bins sha2_256 = {HmacSha256};
-      bins sha2_384 = {HmacSha384};
-      bins sha2_512 = {HmacSha512};
+      bins sha2_256 = {HmacSha256}; bins sha2_384 = {HmacSha384}; bins sha2_512 = {HmacSha512};
     }
     // SHA-256 with a 1024-bit key is illegal (hmac.sv), so the suite walks
     // fourteen of the fifteen keyed cells; the excluded one is named in the
     // plan rather than binned here.
-    x_digest_key: cross cp_digest, cp_key_length {
-      ignore_bins illegal_256_1024 = binsof(cp_digest.sha2_256) &&
-                                     binsof(cp_key_length.k1024);
+    x_digest_key: cross cp_digest, cp_key_length{
+      ignore_bins illegal_256_1024 = binsof (cp_digest.sha2_256) && binsof (cp_key_length.k1024);
     }
   endgroup
 
   covergroup sep_kmac_mode_cg with function sample (
-      logic en, logic [1:0] mode, logic [2:0] strength, logic [2:0] key_length,
-      logic sideload
+      logic en, logic [1:0] mode, logic [2:0] strength, logic [2:0] key_length, logic sideload
   );
     option.per_instance = 1;
     option.name = "sep_kmac_mode_cg";
@@ -1077,23 +1075,19 @@ module sep_fcov (
       bins s512 = {KmacL512};
     }
     cp_shake: coverpoint strength iff (!en && (mode == KmacShake)) {
-      bins s128 = {KmacL128};
-      bins s256 = {KmacL256};
+      bins s128 = {KmacL128}; bins s256 = {KmacL256};
     }
     cp_cshake: coverpoint strength iff (!en && (mode == KmacCshake)) {
-      bins s128 = {KmacL128};
-      bins s256 = {KmacL256};
+      bins s128 = {KmacL128}; bins s256 = {KmacL256};
     }
     // KMAC is mode cSHAKE with kmac_en=1 (kmac programmers_guide).
     cp_kmac: coverpoint strength iff (en && (mode == KmacCshake)) {
-      bins s128 = {KmacL128};
-      bins s256 = {KmacL256};
+      bins s128 = {KmacL128}; bins s256 = {KmacL256};
     }
     // Key source, the same contract as the AES cell: the KM KMAC sideload KAT
     // sets CFG.sideload, the standalone breadth test uses the KEY_SHARE CSRs.
     cp_sideload: coverpoint sideload iff (en) {
-      bins sw_key = {1'b0};
-      bins km_key = {1'b1};
+      bins sw_key = {1'b0}; bins km_key = {1'b1};
     }
     cp_kmac_key_length: coverpoint key_length iff (en) {
       bins k128 = {KmacKey128};
@@ -1107,24 +1101,24 @@ module sep_fcov (
   covergroup sep_otbn_execute_cg @(posedge clk_i);
     option.per_instance = 1;
     option.name = "sep_otbn_execute_cg";
-    cp_cmd:  coverpoint otbn_execute { bins execute = {1'b1}; }
-    cp_done: coverpoint otbn_done    { bins idle_err_bits_zero = {1'b1}; }
+    cp_cmd: coverpoint otbn_execute {bins execute = {1'b1};}
+    cp_done: coverpoint otbn_done {bins idle_err_bits_zero = {1'b1};}
   endgroup
 
   covergroup sep_abr_keygen_cg @(posedge clk_i);
     option.per_instance = 1;
     option.name = "sep_abr_keygen_cg";
-    cp_op:   coverpoint abr_keygen { bins mldsa_keygen = {1'b1}; }
-    cp_done: coverpoint abr_done   { bins status_valid = {1'b1}; }
+    cp_op: coverpoint abr_keygen {bins mldsa_keygen = {1'b1};}
+    cp_done: coverpoint abr_done {bins status_valid = {1'b1};}
   endgroup
 
   covergroup sep_esrc_edn_flow_cg @(posedge clk_i);
     option.per_instance = 1;
     option.name = "sep_esrc_edn_flow_cg";
-    cp_seed:   coverpoint esrc_seed       { bins seed_ready    = {1'b1}; }
-    cp_gen:    coverpoint drbg_gen        { bins genbits_valid = {1'b1}; }
-    cp_crypto: coverpoint edn_crypto_beat { bins crypto_sink   = {1'b1}; }
-    cp_km:     coverpoint edn_km_beat     { bins km_sink       = {1'b1}; }
+    cp_seed: coverpoint esrc_seed {bins seed_ready = {1'b1};}
+    cp_gen: coverpoint drbg_gen {bins genbits_valid = {1'b1};}
+    cp_crypto: coverpoint edn_crypto_beat {bins crypto_sink = {1'b1};}
+    cp_km: coverpoint edn_km_beat {bins km_sink = {1'b1};}
   endgroup
 
   covergroup sep_km_command_sideload_cg with function sample (logic [3:0] dest);
@@ -1134,7 +1128,7 @@ module sep_fcov (
     cp_dest: coverpoint dest {
       bins hmac = {KmDestHmac};
       bins kmac = {KmDestKmac};
-      bins aes  = {KmDestAes};
+      bins aes = {KmDestAes};
       bins otbn = {KmDestOtbn};
     }
   endgroup
@@ -1142,26 +1136,28 @@ module sep_fcov (
   covergroup sep_km_generate_cg @(posedge clk_i);
     option.per_instance = 1;
     option.name = "sep_km_generate_cg";
-    cp_generate: coverpoint km_generate_ok { bins rc0_nonnull_handle = {1'b1}; }
+    cp_generate: coverpoint km_generate_ok {bins rc0_nonnull_handle = {1'b1};}
   endgroup
 
   covergroup sep_dma_copy_hash_cg @(posedge clk_i);
     option.per_instance = 1;
     option.name = "sep_dma_copy_hash_cg";
-    cp_copy:      coverpoint dma_copy_go   { bins copy_go   = {1'b1}; }
-    cp_hash:      coverpoint dma_hash_go   { bins hash_go   = {1'b1}; }
+    cp_copy: coverpoint dma_copy_go {bins copy_go = {1'b1};}
+    cp_hash: coverpoint dma_hash_go {bins hash_go = {1'b1};}
     // Completion is STATUS.done OR the DMA-done interrupt: the two routes the
     // suite's firmware actually takes.
-    cp_copy_done: coverpoint dma_copy_done { bins copy_done = {1'b1}; }
-    cp_hash_done: coverpoint dma_hash_done { bins hash_done = {1'b1}; }
+    cp_copy_done: coverpoint dma_copy_done {
+      bins copy_done = {1'b1};
+    }
+    cp_hash_done: coverpoint dma_hash_done {bins hash_done = {1'b1};}
     // The multi-chunk path, which the single copy/hash bins hide.
-    cp_chunk:     coverpoint dma_chunk_done       { bins chunk_done       = {1'b1}; }
-    cp_rego:      coverpoint dma_regonon_initial  { bins rego_not_initial = {1'b1}; }
+    cp_chunk: coverpoint dma_chunk_done {
+      bins chunk_done = {1'b1};
+    }
+    cp_rego: coverpoint dma_regonon_initial {bins rego_not_initial = {1'b1};}
   endgroup
 
-  covergroup sep_dma_completion_route_cg with function sample (
-      logic irq_route, logic handshake
-  );
+  covergroup sep_dma_completion_route_cg with function sample (logic irq_route, logic handshake);
     option.per_instance = 1;
     option.name = "sep_dma_completion_route_cg";
     // The DMA reports completion two ways and the suite walks both:
@@ -1169,47 +1165,44 @@ module sep_fcov (
     // interrupt whose handler clears STATUS.done before software reads it.
     // Recording only "completed" would hide which route the transfer took.
     cp_route: coverpoint irq_route {
-      bins status_poll = {1'b0};
-      bins interrupt   = {1'b1};
+      bins status_poll = {1'b0}; bins interrupt = {1'b1};
     }
-    cp_mode: coverpoint handshake {
-      bins normal    = {1'b0};
-      bins handshake = {1'b1};
-    }
+    cp_mode: coverpoint handshake {bins normal = {1'b0}; bins handshake = {1'b1};}
     // The handshake leaves (SPI DMA firmware) do not complete through the
     // DMA-done ISR, so that cell has no producer and is ignored rather than
     // left as a permanent hole.
-    x_route_mode: cross cp_route, cp_mode {
-      ignore_bins irq_handshake = binsof(cp_route.interrupt) && binsof(cp_mode.handshake);
+    x_route_mode: cross cp_route, cp_mode{
+      ignore_bins irq_handshake = binsof (cp_route.interrupt) && binsof (cp_mode.handshake);
     }
   endgroup
 
   covergroup sep_spi_flash_cg @(posedge clk_i);
     option.per_instance = 1;
     option.name = "sep_spi_flash_cg";
-    cp_csr:   coverpoint spi_csr       { bins csr_access    = {1'b1}; }
-    cp_frame: coverpoint spi_cs_assert { bins cs_assert     = {1'b1}; }
-    cp_sck:   coverpoint spi_sck_edge  { bins shift_in_frame = {1'b1}; }
-    cp_hs:    coverpoint dma_hs_go     { bins dma_handshake = {1'b1}; }
+    cp_csr: coverpoint spi_csr {bins csr_access = {1'b1};}
+    cp_frame: coverpoint spi_cs_assert {bins cs_assert = {1'b1};}
+    cp_sck: coverpoint spi_sck_edge {bins shift_in_frame = {1'b1};}
+    cp_hs: coverpoint dma_hs_go {bins dma_handshake = {1'b1};}
   endgroup
 
   covergroup sep_inbound_filter_allow_cg @(posedge clk_i);
     option.per_instance = 1;
     option.name = "sep_inbound_filter_allow_cg";
-    cp_allow_wr: coverpoint filt_allow_wr { bins write_okay_in_window = {1'b1}; }
-    cp_allow_rd: coverpoint filt_allow_rd { bins read_okay_in_window  = {1'b1}; }
+    cp_allow_wr: coverpoint filt_allow_wr {bins write_okay_in_window = {1'b1};}
+    cp_allow_rd: coverpoint filt_allow_rd {bins read_okay_in_window = {1'b1};}
   endgroup
 
   covergroup sep_efuse_sense_cg @(posedge clk_i);
     option.per_instance = 1;
     option.name = "sep_efuse_sense_cg";
-    cp_done: coverpoint fuse_sense { bins sense_done = {1'b1}; }
+    cp_done: coverpoint fuse_sense {bins sense_done = {1'b1};}
     // First sense after cold-reset release vs a later re-sense: programming a
-    // fuse and re-sensing is a distinct episode (sep_efuse_otp_program_seq,
-    // sep_lcc_demote_matrix_seq, sep_scratch_reset_seq all re-sense).
+    // fuse and re-sensing is a distinct episode. Producers are
+    // sep_efuse_otp_program_seq and sep_lcc_demote_matrix_seq; the scratch
+    // leaf cannot, because it passes +skip_fuse_sense, which disqualifies the
+    // sense bin above.
     cp_episode: coverpoint fuse_sense_episode iff (fuse_sense) {
-      bins first_sense = {1'b0};
-      bins re_sense    = {1'b1};
+      bins first_sense = {1'b0}; bins re_sense = {1'b1};
     }
   endgroup
 
@@ -1218,13 +1211,8 @@ module sep_fcov (
   );
     option.per_instance = 1;
     option.name = "sep_efuse_program_lock_cg";
-    cp_field: coverpoint spare {
-      bins spare[] = {[0:SpareCount-1]};
-    }
-    cp_lock: coverpoint locked {
-      bins unlocked = {1'b0};
-      bins locked   = {1'b1};
-    }
+    cp_field: coverpoint spare {bins spare[] = {[0 : SpareCount - 1]};}
+    cp_lock: coverpoint locked {bins unlocked = {1'b0}; bins locked = {1'b1};}
     // 16 cells, all walked by one seed: the owning test programs then locks
     // then re-programs each of the eight spares in order.
     x_field_lock: cross cp_field, cp_lock;
@@ -1232,8 +1220,7 @@ module sep_fcov (
     // it would declare 16 cells that only a broken DUT could fill, and the
     // program/reject contract belongs to the test's checker.
     cp_outcome: coverpoint rejected {
-      bins programmed = {1'b0};
-      bins refused    = {1'b1};
+      bins programmed = {1'b0}; bins refused = {1'b1};
     }
   endgroup
 
@@ -1243,13 +1230,13 @@ module sep_fcov (
     // Named legal encodings only (efuse_pkg::lc_state_raw_e). An illegal or
     // half-sensed code lands in no bin.
     cp_lc: coverpoint raw {
-      bins test_dev   = {LcTestDev};
-      bins prod       = {LcProd};
-      bins rma_sip_0  = {LcRmaSip0};
-      bins rma_sip_1  = {LcRmaSip1};
+      bins test_dev = {LcTestDev};
+      bins prod = {LcProd};
+      bins rma_sip_0 = {LcRmaSip0};
+      bins rma_sip_1 = {LcRmaSip1};
       bins rma_chip_0 = {LcRmaChip0};
       bins rma_chip_1 = {LcRmaChip1};
-      bins prod_end   = {LcProdEnd};
+      bins prod_end = {LcProdEnd};
     }
   endgroup
 
@@ -1262,7 +1249,9 @@ module sep_fcov (
     //
     // A pair is two LC_STATE reads in the same leaf. sep_lc_shadow_write_seq
     // reads ONCE per cell, after its write, so the pair is two consecutive
-    // cells of one leaf; the sep_lcc_lc_state_w1s_* leaves are the sources.
+    // cells of one leaf; the sep_lcc_lc_state_w1s_* leaves are the sources. The
+    // stitch test cannot produce a pair: it re-senses between states, and a
+    // re-sense pulses reset, which clears lc_prev_valid_q.
     // TEST_DEV->PROD_END and TEST_DEV->RMA_SIP have no walk (those leaves start
     // sensed in the destination), and PROD->PROD_END is impossible under
     // write-1-to-set: 0x1 | 0x8 is 0x9.
@@ -1271,8 +1260,10 @@ module sep_fcov (
     // -- none at TEST_DEV -- so TEST_DEV to PROD has no producer. The
     // PROD_END/transient leaf advances 0x8 to 0xA, which is not a named pair,
     // so it produces nothing here either.
-    cp_transition: coverpoint {from, to} {
-      bins prod_to_rma_sip    = {{LcProd,    LcRmaSip1}};
+    cp_transition: coverpoint {
+      from, to
+    } {
+      bins prod_to_rma_sip = {{LcProd, LcRmaSip1}};
       bins rma_sip_to_chiplet = {{LcRmaSip1, LcRmaChip1}};
     }
   endgroup
@@ -1283,19 +1274,15 @@ module sep_fcov (
     option.per_instance = 1;
     option.name = "sep_feat_ctrl_cg";
     cp_state: coverpoint lc {
-      bins test_dev   = {LcTestDev};
-      bins prod       = {LcProd};
-      bins rma_sip_0  = {LcRmaSip0};
-      bins rma_sip_1  = {LcRmaSip1};
+      bins test_dev = {LcTestDev};
+      bins prod = {LcProd};
+      bins rma_sip_0 = {LcRmaSip0};
+      bins rma_sip_1 = {LcRmaSip1};
       bins rma_chip_0 = {LcRmaChip0};
       bins rma_chip_1 = {LcRmaChip1};
-      bins prod_end   = {LcProdEnd};
+      bins prod_end = {LcProdEnd};
     }
-    cp_debug: coverpoint dbg {
-      bins none    = {2'd0};
-      bins partial = {2'd1};
-      bins full    = {2'd2};
-    }
+    cp_debug: coverpoint dbg {bins none = {2'd0}; bins partial = {2'd1}; bins full = {2'd2};}
     // No state x debug cross: the decode fixes one legal profile per lifecycle
     // state (plus the SEC_DIS all-ones override), so most of the 21 products
     // are illegal and would be permanent holes. Stating which are legal means
@@ -1303,12 +1290,11 @@ module sep_fcov (
     // not coverage's. cp_state and cp_debug carry the axes on their own.
     // SEC_DIS forces FEAT_CTRL to all-ones, so it is crossed with the profile.
     cp_sec_dis: coverpoint sec_dis {
-      bins off = {1'b0};
-      bins on  = {1'b1};
+      bins off = {1'b0}; bins on = {1'b1};
     }
     // SEC_DIS forces FEAT_CTRL to all-ones, so `on` can only ever pair with
     // `full`; the other two products are illegal.
-    x_sec_dis_debug: cross cp_sec_dis, cp_debug {
+    x_sec_dis_debug: cross cp_sec_dis, cp_debug{
       ignore_bins sec_dis_not_full = binsof(cp_sec_dis.on) &&
           (binsof(cp_debug.none) || binsof(cp_debug.partial));
     }
@@ -1316,14 +1302,11 @@ module sep_fcov (
     // (env/sep_lcc_golden.py), so it is recorded on its own rather than
     // crossed: the stitch test drives the strap both ways.
     cp_secure_tm: coverpoint secure_tm {
-      bins off = {1'b0};
-      bins on  = {1'b1};
+      bins off = {1'b0}; bins on = {1'b1};
     }
   endgroup
 
-  covergroup sep_lc_demote_cg with function sample (
-      logic [3:0] lc, logic d1, logic d2
-  );
+  covergroup sep_lc_demote_cg with function sample (logic [3:0] lc, logic d1, logic d2);
     option.per_instance = 1;
     option.name = "sep_lc_demote_cg";
     // Demotion is volatile PROD debug state, so the state is recorded on its
@@ -1331,12 +1314,12 @@ module sep_fcov (
     // declare 28 cells for a walk that only exercises the PROD rows.
     cp_state: coverpoint lc {
       bins test_dev = {LcTestDev};
-      bins prod     = {LcProd};
+      bins prod = {LcProd};
       bins prod_end = {LcProdEnd};
-      bins rma      = {LcRmaSip0, LcRmaSip1, LcRmaChip0, LcRmaChip1};
+      bins rma = {LcRmaSip0, LcRmaSip1, LcRmaChip0, LcRmaChip1};
     }
-    cp_demote_1: coverpoint d1 { bins clear = {1'b0}; bins set = {1'b1}; }
-    cp_demote_2: coverpoint d2 { bins clear = {1'b0}; bins set = {1'b1}; }
+    cp_demote_1: coverpoint d1 {bins clear = {1'b0}; bins set = {1'b1};}
+    cp_demote_2: coverpoint d2 {bins clear = {1'b0}; bins set = {1'b1};}
     x_demote: cross cp_demote_1, cp_demote_2;
   endgroup
 
@@ -1345,31 +1328,35 @@ module sep_fcov (
     option.name = "sep_mailbox_pic_cg";
     // SEP AXI mailbox sources, sep_internal_interrupts[7:0].
     // Owner: sep_axil_mailbox_iface_rand_test, sep_mailbox_plic_test.
-    cp_raise: coverpoint mbox_raise { bins raise = {1'b1}; }
-    cp_clear: coverpoint mbox_clear { bins clear = {1'b1}; }
+    cp_raise: coverpoint mbox_raise {
+      bins raise = {1'b1};
+    }
+    cp_clear: coverpoint mbox_clear {bins clear = {1'b1};}
     // KM mailbox, sep_internal_interrupts[14]. A different source with a
     // different owner (sep_km_mailbox_protocol_rand_test), so it is its own
     // pair rather than folded into the bins above.
-    cp_km_raise: coverpoint km_mbox_raise { bins km_raise = {1'b1}; }
-    cp_km_clear: coverpoint km_mbox_clear { bins km_clear = {1'b1}; }
+    cp_km_raise: coverpoint km_mbox_raise {
+      bins km_raise = {1'b1};
+    }
+    cp_km_clear: coverpoint km_mbox_clear {bins km_clear = {1'b1};}
   endgroup
 
   covergroup sep_wdt_bark_cg @(posedge clk_i);
     option.per_instance = 1;
     option.name = "sep_wdt_bark_cg";
-    cp_thold: coverpoint wdt_thold_wr { bins bark_thold_write = {1'b1}; }
-    cp_bark:  coverpoint wdt_bark     { bins bark_status      = {1'b1}; }
-    cp_nmi:   coverpoint wdt_nmi      { bins nmi_after_bark   = {1'b1}; }
+    cp_thold: coverpoint wdt_thold_wr {bins bark_thold_write = {1'b1};}
+    cp_bark: coverpoint wdt_bark {bins bark_status = {1'b1};}
+    cp_nmi: coverpoint wdt_nmi {bins nmi_after_bark = {1'b1};}
   endgroup
 
   covergroup sep_scratch_reset_cg @(posedge clk_i);
     option.per_instance = 1;
     option.name = "sep_scratch_reset_cg";
-    cp_warm_wr:  coverpoint warm_write            { bins warm_write = {1'b1}; }
-    cp_cold_wr:  coverpoint cold_write            { bins cold_write = {1'b1}; }
-    cp_warm_rst: coverpoint warm_reset_fall       { bins warm_reset = {1'b1}; }
-    cp_warm_rd:  coverpoint warm_zero_after_reset { bins warm_zero_after_reset = {1'b1}; }
-    cp_cold_rd:  coverpoint cold_kept_after_reset { bins cold_kept_after_reset = {1'b1}; }
+    cp_warm_wr: coverpoint warm_write {bins warm_write = {1'b1};}
+    cp_cold_wr: coverpoint cold_write {bins cold_write = {1'b1};}
+    cp_warm_rst: coverpoint warm_reset_fall {bins warm_reset = {1'b1};}
+    cp_warm_rd: coverpoint warm_zero_after_reset {bins warm_zero_after_reset = {1'b1};}
+    cp_cold_rd: coverpoint cold_kept_after_reset {bins cold_kept_after_reset = {1'b1};}
   endgroup
 
   sep_axi_decode_cg           u_sep_axi_decode_cg           = new();
@@ -1402,19 +1389,19 @@ module sep_fcov (
   // records one completed operation rather than one clock of a held state.
   always_ff @(posedge clk_i) begin
     if (!in_reset) begin
-      if (aes_cell_done)  u_sep_aes_mode_cg.sample(aes_mode_q, aes_key_q, aes_op_q,
-                                                    aes_sideload_q);
+      if (aes_cell_done) u_sep_aes_mode_cg.sample(aes_mode_q, aes_key_q, aes_op_q, aes_sideload_q);
       if (hmac_cell_done) u_sep_hmac_mode_cg.sample(hmac_digest_q, hmac_keylen_q, hmac_en_q);
-      if (kmac_cell_done) u_sep_kmac_mode_cg.sample(kmac_en_q, kmac_mode_q, kmac_str_q,
-          kmac_keylen_valid_q ? kmac_keylen_q : 3'd7, kmac_sideload_q);
+      if (kmac_cell_done)
+        u_sep_kmac_mode_cg.sample(kmac_en_q, kmac_mode_q, kmac_str_q,
+                                  kmac_keylen_valid_q ? kmac_keylen_q : 3'd7, kmac_sideload_q);
       if (km_transfer_dest) u_sep_km_command_sideload_cg.sample(wr_data[3:0]);
-      if (lc_diff_ok)     u_sep_lc_state_cg.sample(lc_raw);
-      if (lc_transition)  u_sep_lc_transition_cg.sample(lc_prev_q, lc_raw);
+      if (lc_diff_ok) u_sep_lc_state_cg.sample(lc_raw);
+      if (lc_transition) u_sep_lc_transition_cg.sample(lc_prev_q, lc_raw);
       // Sampled when the second FEAT_CTRL half completes, against the SENSED
       // lifecycle state and the live override/demote probes.
       if (feat_ctrl_hi_rd) begin
-        u_sep_feat_ctrl_cg.sample(lc_sensed, feat_dbg_class,
-                                  (sec_dis_i === 1'b1), (secure_tm_i === 1'b1));
+        u_sep_feat_ctrl_cg.sample(lc_sensed, feat_dbg_class, (sec_dis_i === 1'b1),
+                                  (secure_tm_i === 1'b1));
         u_sep_lc_demote_cg.sample(lc_sensed, demote_1_set, demote_2_set);
       end
       if (dma_copy_done || dma_hash_done) begin

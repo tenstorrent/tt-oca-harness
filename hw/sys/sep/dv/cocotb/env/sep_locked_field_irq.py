@@ -115,7 +115,14 @@ class SepLockedFieldIrqCfg:
         self.sectm_payload = {
             "LOCKS": (SEP_SYS_ID_WRITE_LOCK_WORD, self.sectm_locks_payload),
             "LOCKS_SPARE": (0, self.sectm_locks_spare_payload),
-            "LC_STATE": (0, _nonzero_pattern(rng, forbidden) & LC_STATE_UPPER_MASK),
+            # Masking a random word to [31:8] can clear every set bit, which
+            # would abort the leaf on the assert below instead of exercising
+            # the lock. Seed one bit inside the allowed region so the payload
+            # is non-zero by construction and the assert stays a check.
+            "LC_STATE": (
+                0,
+                (_nonzero_pattern(rng, forbidden) & LC_STATE_UPPER_MASK) | 0x0000_0100,
+            ),
             "SIP_DIS": (0, _nonzero_pattern(rng, forbidden)),
             "SYS_DIS": (0, _nonzero_pattern(rng, forbidden)),
         }
@@ -128,6 +135,13 @@ class SepLockedFieldIrqCfg:
             self.read_field: self.read_pattern,
             self.unlocked_field: self.unlocked_pattern,
             "LOCKS_SPARE": self.locks_spare,
+            # Staged at zero so the SECURE_TM payloads below always change a
+            # bit. These fields OR-merge, so a randomized stage whose bits
+            # already cover the payload leaves the readback equal to the
+            # pre-write value and fails the positive control for a reason that
+            # has nothing to do with the write path.
+            "SIP_DIS": 0,
+            "SYS_DIS": 0,
         }
 
     def summary(self) -> str:

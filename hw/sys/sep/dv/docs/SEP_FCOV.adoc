@@ -101,7 +101,7 @@ human. Other members may fill a group in passing.
 |`sep_cpu_boot_cg` |`sep_hello_world_test`
 |`sep_aes_mode_cg` |`sep_aes_mode_keysize_rand_test`
 |`sep_hmac_mode_cg` |`sep_hmac_sha_variant_rand_test`
-|`sep_kmac_mode_cg` |`sep_kmac_mode_strength_rand_test`; KMAC-256 also `sep_km_kmac_sideload_kat_test`
+|`sep_kmac_mode_cg` |`sep_kmac_mode_strength_rand_test`; the KM sideload cell needs `sep_km_kmac_sideload_kat_test`, whose completion is a STATE-share read rather than an `INTR_STATE` read
 |`sep_otbn_execute_cg` |`sep_otbn_compute_rand_test`
 |`sep_abr_keygen_cg` |`sep_abr_mldsa_keygen_kat_test`
 |`sep_esrc_edn_flow_cg` |`sep_esrc_e2e_smoke_test`; KM sink `sep_drbg_real_sink_multi_km_aes_test`
@@ -270,7 +270,7 @@ The digest-equals-golden claim stays on `sep_hmac_sha_variant_rand_test`.
 |`cp_shake` |L128, L256
 |`cp_cshake` |L128, L256
 |`cp_kmac` |L128, L256 (mode cSHAKE with `kmac_en` = 1)
-|`cp_sideload` |Keyed KMAC only: SW key (`KEY_SHARE` CSRs) and KM sideload key (`CFG_SHADOWED.sideload`), owned by `sep_km_kmac_sideload_kat_test`
+|`cp_sideload` |Keyed KMAC only: SW key (`KEY_SHARE` CSRs) and KM sideload key (`CFG_SHADOWED.sideload`)
 |`cp_kmac_key_length` |Key 128, 192, 256, 384, 512 from the `KEY_LEN` register. Both drivers write `KEY_LEN` before `CFG_SHADOWED` (`CFG_REGWEN` locks at Start) and the register holds its value across a CFG write, so the sampler does not invalidate it there
 |===
 
@@ -446,9 +446,10 @@ The full rule matrix, the deny path, and the winner walk over all 48 entries
 |===
 
 The episode split follows the FCOV specification's sense-episode coverpoint:
-programming a fuse and re-sensing is a distinct event from the bring-up sense,
-and `sep_efuse_otp_program_seq`, `sep_lcc_demote_matrix_seq` and
-`sep_scratch_reset_seq` all re-sense today.
+programming a fuse and re-sensing is a distinct event from the bring-up sense.
+The producers are `sep_efuse_otp_program_seq` and `sep_lcc_demote_matrix_seq`;
+the scratch leaf re-senses but passes `+skip_fuse_sense`, which disqualifies
+the sense bin, so it cannot fill this one.
 
 Both qualifiers are load-bearing. `+skip_fuse_sense` makes
 `efuse_shadow_regs.sv` force `fuse_sense_done` to 1 one cycle after reset with
@@ -575,7 +576,7 @@ lifecycle state and per override.
 [cols=",",options="header"]
 |===
 |Coverpoint |Bins
-|`cp_state` |The seven legal raw encodings, taken from the SENSED shadow value
+|`cp_state` |The seven legal raw encodings, taken from the SENSED shadow value. `RMA_SIP_0` is seed-dependent for the same reason as `sep_lc_state_cg`
 |`cp_debug` |none / partial / full over the five defined debug bits: `DBG_1` `sep_debug`, `chiplet_dbg`, `sep_fuse_dbg`, `smc_fuse_dbg` and `DBG_2` `sip_debug`
 |`cp_sec_dis` / `x_sec_dis_debug` |SEC_DIS off/on crossed with the profile; `on` can only pair with `full`, so the other two products are `ignore_bins`
 |`cp_secure_tm` |The latched TEST_EN strap, both polarities

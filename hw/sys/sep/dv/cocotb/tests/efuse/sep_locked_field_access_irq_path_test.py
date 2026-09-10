@@ -87,9 +87,7 @@ class sep_locked_field_access_irq_path_test(sep_base_test):
         """One payload write to ``name``; require it to land, or to be refused."""
         word, payload = cfg.sectm_payload[name]
         before = (await drv.access(name, word_idx=word)).rdata
-        wr, irq = await self._access_watching(
-            drv, name, word_idx=word, write=True, wdata=payload
-        )
+        wr, irq = await self._access_watching(drv, name, word_idx=word, write=True, wdata=payload)
         after = (await drv.access(name, word_idx=word)).rdata
         assert wr.resp_code == RESP_OKAY, (
             f"{name}[{word}] write resp={wr.resp_code}, expected OKAY (not SLVERR)"
