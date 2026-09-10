@@ -575,8 +575,6 @@ sources:
       - hw/sys/smc/rtl/smc_config_pkg.sv
       - hw/sys/smc/rtl/smc_cpu/chipyard_4core_mem_pkg.sv
       - hw/sys/smc/rtl/smc_cpu/smc_4core_cpu_pkg.sv
-      - hw/sys/smc/rtl/smc_cpu/chipyard_1core_mem_pkg.sv
-      - hw/sys/smc/rtl/smc_cpu/smc_1core_cpu_pkg.sv
       - hw/sys/smc/rtl/smc_misc/rtl/smc_misc_pkg.sv
       - hw/sys/smc/rtl/smc_peripherals/efuse/smc_efuse_pkg.sv
       - hw/sys/smc/rtl/smc_peripherals/pkg/smc_padring_pkg.sv
