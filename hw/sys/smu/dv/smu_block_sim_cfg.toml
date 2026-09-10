@@ -33,7 +33,7 @@ top_module = "smu_uvm_top"
 top_file = "hw/sys/smu/dv/tb/tb_top.sv"
 sources = [
   # Outbound SMN boundary: the shared AXI VIP interface the slave agent binds
-  # to, and the struct bridge that places the crossbar ports on it.
+  # and the bridge that places the crossbar's struct port on it.
   "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_if.sv",
   "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_struct_bridge.sv",
   # Flow-shared functional-coverage modules (cov/sv/): compiled in BOTH flows --
@@ -261,13 +261,10 @@ incdirs = [
   "hw/sys/smu/dv/uvm/seq_lib",
   "hw/sys/smu/dv/uvm/tests",
 ]
-# This list REPLACES the cocotb [build].sources list, so the TB collateral both flows compile
-# is repeated here.
+# This list REPLACES the cocotb [build].sources list; the AXI VIP interface and
+# struct bridge arrive through the ocah_axi_vip manifest above, so only the
+# coverage modules are repeated here.
 sources = [
-  # Outbound SMN boundary: the shared AXI VIP interface the slave agent binds
-  # to, and the struct bridge that places the crossbar ports on it.
-  "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_if.sv",
-  "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_struct_bridge.sv",
   # The same two functional-coverage modules the [build] sources list carries.
   "hw/sys/smu/dv/cov/sv/smu_boot_fcov.sv",
   "hw/sys/smu/dv/cov/sv/smu_xbar_fcov.sv",
