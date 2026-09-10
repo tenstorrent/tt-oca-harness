@@ -38,28 +38,12 @@ addrmap chip_config {
         } lc_state[7:0] = 0x0f;
     };
 
-    reg RAS_BANK_INFO {
-        field {
-            sw = rw;
-            hw = r;
-            desc = "Chiplet type ID";
-        } bank_chip [3:0] = 0x0;
-
-        field {
-            sw = rw;
-            hw = r;
-            desc = "Chiplet instance ID";
-        } bank_instance [7:4] = 0x0;
-    };
-
 	// --------------------------------------------------
 
 	VERSION_LO                      VERSION_LO          @ 0x00;
 	VERSION_HI                      VERSION_HI          @ 0x04;
 	CHIP_ID                         CHIP_ID             @ 0x08;
 	LC_STATE                        LC_STATE            @ 0x0C;
-
-	RAS_BANK_INFO                   RAS_BANK_INFO       @ 0x10;
 
 };
 

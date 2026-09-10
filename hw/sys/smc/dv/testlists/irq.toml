@@ -54,7 +54,7 @@ timeout_sec = 1800
 tags = ["ci", "irq", "hang", "pyuvm"]
 run_modes = ["smoke"]
 
-# BFM: hang OR reaches the PLIC source pin via peripheral_interrupts[31].
+# BFM: hang OR reaches the PLIC source pin via peripheral_interrupts[30].
 # Unique vs smc_hang_detector_sanity_test, which stops at the smc_base OR.
 [[tests]]
 name = "smc_hang_detector_plic_route_test"

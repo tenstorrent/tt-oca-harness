@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+site:
+  title: Open Chiplet Atlas Harness (OCAH) Getting Started and Contributing Guide
+  url: /
+  start_page: ocah-starting::index.adoc
+content:
+  sources:
+    - url: .
+      branches: HEAD
+      start_path: doc/starting
+      edit_url: false
+runtime:
+  log:
+    # See antora-playbook.yml for why this is raised from the default.
+    failure_level: error
+ui:
+  bundle:
+    url: https://gitlab.com/antora/antora-ui-default/-/jobs/artifacts/HEAD/raw/build/ui-bundle.zip?job=bundle-stable
+    snapshot: true
+  supplemental_files: ./doc/ui-supplemental
+output:
+  dir: ./doc/starting/_build/html_antora

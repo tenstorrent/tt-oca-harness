@@ -104,7 +104,7 @@ verifying the block behind the port.
 |`smc_input_fabric_axi_wr_rd_test` |Run the fabric proxy scenario tracked by the P0 project issue.
 |`smc_input_output_fabric_wr_rd_test` |Run output-fabric write/read through JTAG AXI with responder checks.
 |`smc_local_fabric_csr_depth_test` |Run a representative local-fabric CSR sweep.
-|`smc_output_fabric_slverr_inject_test` |OKAY WR/RD, axi_sim_mem rerr SLVERR read, OKAY readback; SYS_OUT monitor.
+|`smc_output_fabric_slverr_inject_test` |OKAY WR/RD, one-shot SLVERR read from the responder, OKAY readback; SYS_OUT monitor.
 |`smc_output_fabric_wr_rd_responder_test` |Drive JTAG AXI through output fabric; scoreboard checks memory golden.
 |`smc_output_filter_remap_security_test` |Verify output filter allows reads and blocks writes at protocol level.
 |`smc_remap_cla_test` |ALIAS_REMAP address translation, remap-table reset sweep, CLA window.
@@ -232,7 +232,7 @@ verifying the block behind the port.
 |===
 |Testcase |Objective
 |`smc_hang_detector_data_timeout_test` |DATA_ACCEL outstanding stall → timeout irq; unique vs SEP/SYS timeout.
-|`smc_hang_detector_plic_route_test` |peripheral_interrupts[31] carries the hang OR into cpu_interrupts.
+|`smc_hang_detector_plic_route_test` |peripheral_interrupts[30] carries the hang OR into cpu_interrupts.
 |`smc_hang_detector_sanity_test` |irq_test fire/clear on sys/sep/data hang detectors + OR.
 |`smc_hang_detector_sys_timeout_test` |SYS_IN outstanding stall → timeout irq; unique vs SEP timeout.
 |`smc_hang_detector_timeout_test` |SEP outstanding stall → timeout irq; unique vs irq_test sanity.
@@ -1354,11 +1354,11 @@ Drive `smc_local_fabric_csr_depth_test_seq`. Each checker below is a named compa
 
 *BFM / Model*: ocah_axi_vip (AXI), ocah_jtag_vip
 
-*Objective*: OKAY WR/RD, axi_sim_mem rerr SLVERR read, OKAY readback; SYS_OUT monitor.
+*Objective*: OKAY WR/RD, one-shot SLVERR read from the responder, OKAY readback; SYS_OUT monitor.
 
 *Test Coverage*:
 
-* SMC OSS U1-2/U1-3/U6-2: SYS_OUT SLVERR via axi_sim_mem werr/rerr (SEP pulp API).
+* SMC OSS U1-2/U1-3/U6-2: SYS_OUT SLVERR through the slave agent's one-shot fault.
 
 *Test Procedure*:
 
@@ -1491,7 +1491,7 @@ Drive `smc_remap_cla_test_seq`. Each checker below is a named compare the DUT ca
 *Test Coverage*:
 
 * Discriminate the Xcelium SYS_OUT write hang: AW vs W at both ends.
-* After the outbound filter is programmed pass-all, one JTAG AXI write is issued at the TB axi_sim_mem window (0x0200_0000).
+* After the outbound filter is programmed pass-all, one JTAG AXI write is issued at the SYS_OUT responder window (0x0200_0000).
 * A clocked sticky observer records whether AW/W/B ever handshook on the JTAG ingress and on the SYS_OUT boundary.
 * Healthy path: write completes and every channel handshook.
 * The claimed four-state hang is AW-at-SYS_OUT without W-at-SYS_OUT after JTAG W was accepted.
@@ -2393,7 +2393,7 @@ Drive `smc_clk_running_test_seq`. Each checker below is a named compare the DUT 
 
 * DV-CARD: SMC_DMA_CG_ACTIVITY_TEST ANCHOR: smc_dma_cg_activity_test DV-CARD: SMC_CG_P2_001 ANCHOR: smc_dma_cg_activity_test The P2 card extends this same anchor (additive): the P1 steps/checkers above are UNCHANGED (their evidence tokens must keep appearing verbatim for the closed P1 grade); the P2 extension below (_p2_extension) adds the full-range hysteresis sweep {0,1,32,63,64} and the activity-reassert race, called once at the end of body().
 * CG_HYSTERESIS_W==6 (hw/sys/smc/doc/dma.adoc) -- gap=64 exercises the field's own truncation (64 & 0x3F == 0), not a TB special case, and its expectation is the truncated value 0, not a `<= 63` bound that no RTL can violate.
-* Sweep gaps {0, 1, 32, 63, 64} plus seed extras are all driven and all exactly asserted, but only {32, 63, 64} are BOOKED as covered cells: the 0..7 band is carried as UNPROVEN by issue tenstorrent/tt-oca-harness#1235 and must not be counted as covered by any closure report -- see P2_LOW_BAND_EXCLUSION_REASON.
+* Sweep gaps {0, 1, 32, 63, 64} plus seed extras are all driven and all exactly asserted, but only {32, 63, 64} are BOOKED as covered cells: the 0..8 band is carried as UNPROVEN by issue tenstorrent/tt-oca-harness#1235 and must not be counted as covered by any closure report -- see P2_LOW_BAND_EXCLUSION_REASON.
 
 *Test Procedure*:
 
@@ -3512,7 +3512,7 @@ Drive `smc_efuse_otp_burn_shadow_test_seq`. Each checker below is a named compar
 *Test Coverage*:
 
 * **CLOCK_GATE_CONTROL RW depth** (fail-capable, real DUT RTL) -- save, write a pattern, read back under a mask, restore, and re-read against the saved value. Evidence: `CHK-EFUSE-CLOCK-GATE-DEPTH`.
-* **CHIP_CONFIG proxy reads** -- fuse-derived mirror registers. `VERSION_LO` / `VERSION_HI` carry their generated RDL resets; the remaining three are observed only (see below).
+* **CHIP_CONFIG proxy reads** -- fuse-derived mirror registers. `VERSION_LO` / `VERSION_HI` carry their generated RDL resets; the remaining two are observed only (see below).
 
 *Test Procedure*:
 
@@ -4060,13 +4060,13 @@ Drive `smc_hang_detector_data_timeout_test_seq`. Each checker below is a named c
 
 *BFM / Model*: ocah_axi_vip (AXI)
 
-*Objective*: peripheral_interrupts[31] carries the hang OR into cpu_interrupts.
+*Objective*: peripheral_interrupts[30] carries the hang OR into cpu_interrupts.
 
 *Test Coverage*:
 
-* Hang-detector OR reaches the PLIC on peripheral_interrupts[31].
-* Covers the smc_base -> smc_peripherals[31] -> cpu_interrupts route added so FW can service an armed detector.
-* The observation point is the PLIC source pin on `u_smc_cpu_wrapper.interrupts_i` (raw bit NUM_EXT_INTERRUPTS+31 = 287 in the 4-core config, PLIC source ID 288).
+* Hang-detector OR reaches the PLIC on peripheral_interrupts[30].
+* Covers the smc_base -> smc_peripherals[30] -> cpu_interrupts route added so FW can service an armed detector.
+* The observation point is the PLIC source pin on `u_smc_cpu_wrapper.interrupts_i` (raw bit NUM_EXT_INTERRUPTS+30 = 286 in the 4-core config, PLIC source ID 287).
 * PLIC register-level claim/complete needs CPU firmware and is not claimed here.
 
 *Test Procedure*:
@@ -4278,7 +4278,7 @@ Drive `smc_irq_observe_test_seq`. Each checker below is a named compare the DUT 
 
 *Test Coverage*:
 
-* temp_interrupt_i to peripheral_interrupts[27] after CDC.
+* Temp interrupt via ext_interrupts_i[1] to ext_interrupts_smc_clk after CDC. Analog PVT not claimed.
 
 *Test Procedure*:
 

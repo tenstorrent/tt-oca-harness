@@ -64,5 +64,5 @@ coverage_off -file "*vendor/*"
 // stay instrumented at 27942 and 13030 cover-insert sites. No file pattern
 // reaches them; `*pulp-platform/*` and `*tt-hw-debug/*` are inert here, so do
 // not add them back. The scoped denominator is 20306 points rather than the
-// 9227 a complete vendor exclusion would give, and the SYS_OUT axi_sim_mem
-// responder is still scored. ../vcs/README.md carries the measurements.
+// 9227 a complete vendor exclusion would give. ../vcs/README.md carries the
+// measurements.

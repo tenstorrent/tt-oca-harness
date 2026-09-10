@@ -20,7 +20,8 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, with_timeout
 from env.smc_cpu_trace_monitor import SmcCpuTraceState, symbol_file_for_image, watch_cpu_trace
-from ocah_axi_vip import OcahAxiMasterAgent
+from env.smc_env_cfg import SYS_OUT_AXI_GEOMETRY, SYS_OUT_MEM_SIZE
+from ocah_axi_vip import OcahAxiMasterAgent, OcahAxiSlaveAgent, OcahAxiSlaveSequence
 
 # This file lives at hw/sys/smc/dv/cocotb/tests/<this>.py, so the DV root is six
 # levels up from the file and one below the repo root. Anchored on the DV root
@@ -221,6 +222,9 @@ class SmcDualHarness:
         self.cpu_trace = {
             inst: SmcCpuTraceState(f"{inst}-hart0", cocotb.log) for inst in ("dut", "bfm")
         }
+        # One SYS_OUT responder per instance, bound in bring_up before the
+        # clocks start; the slave sequences give backdoor access and faults.
+        self.sys_out_mem: dict[str, OcahAxiSlaveSequence] = {}
 
     def _attach_cpu_symbols(self) -> None:
         """Attach the staged listings of each instance's image, when present.
@@ -297,6 +301,19 @@ class SmcDualHarness:
         # rst_ni, so this is the last point at which the contents can still be
         # chosen for this run.
         regenerate_efuse_image(random_seed())
+
+        # Each responder follows its instance's primary reset so a cool reset
+        # drops the outstanding responses instead of returning them into the
+        # reset CPU cluster.
+        for inst in ("dut", "bfm"):
+            self.sys_out_mem[inst] = OcahAxiSlaveAgent(
+                SYS_OUT_AXI_GEOMETRY.bus(getattr(dut, f"u_{inst}_output_axi_if")),
+                dut.clk_smc_i,
+                getattr(dut, f"{inst}_rst_primary_smc_clk_no"),
+                reset_active_level=False,
+                size=SYS_OUT_MEM_SIZE,
+                name=f"smc_{inst}_sys_out",
+            ).sequence
 
         cocotb.start_soon(Clock(dut.clk_ref_i, REF_CLK_PERIOD_NS, unit="ns").start())
         cocotb.start_soon(Clock(dut.clk_smc_i, SMC_CLK_PERIOD_NS, unit="ns").start())
