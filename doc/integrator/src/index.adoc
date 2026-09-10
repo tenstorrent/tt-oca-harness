@@ -120,7 +120,12 @@ Other generated outputs remain under each owner's
 
 For the architecture-level responsibility split between the integrator, firmware,
 and the internal SEP/SMC maps, see
+ifdef::backend-html5[]
 xref:ocah-docs:ROOT:architecture.adoc#ocah-memory-map[OCAH Memory Map].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+the _OCAH Memory Map_ section of the Technical Reference Manual.
+endif::backend-pdf[]
 
 [[immutable-rom-fw-integration]]
 === Immutable ROM FW Integration
