@@ -22,11 +22,9 @@ register channel:
   this one                        **1**       1           0           **0**
   ==============================  ==========  ==========  ==========  ==========
 
-**``+SECURE_BOOT_DIS`` DRIVES TWO SURFACES AND BOTH ARE PORTED.** This is the
-instruction the VP half arrived at only after retracting an earlier one: the reference's plusarg sets
-``secure_boot: 0``
-**and** burns the ``sboot_dis`` fuse, constrained to equal the plusarg.
-Reading only the manifest surface produced the VP half's worst error. Both are ported
+**``+SECURE_BOOT_DIS`` drives two surfaces and both are planted.** It sets
+``secure_boot: 0`` **and** burns the ``sboot_dis`` fuse, and the manifest surface
+alone is not enough to tell the two apart. Both are planted
 here: the eFuse preload burns SBOOT_DIS, and the manifest is mutated on both of the
 fields the packer would have changed --
 
@@ -36,9 +34,8 @@ fields the packer would have changed --
   * ``signature_type`` set to ``NO_SIGNATURE`` (0), because the packer forces exactly
     that whenever a config sets ``secure_boot: 0``
     (the packer, value from
-    ``pack_images_constants.py``). The reference's primary manifest is therefore
-    genuinely UNSIGNED, and this port reproduces that rather than running a signed
-    image with one flag cleared.
+    ``pack_images_constants.py``). The primary is therefore genuinely unsigned,
+    rather than a signed image with one flag cleared.
 
 **AND THE TWO SURFACES ARE COUPLED, WHICH IS WHY THE PORT IS NOT VACUOUS.** The
 unsigned manifest can only boot because ``sboot_dis`` is burned, and the fuse is
@@ -62,8 +59,7 @@ forbidden backup read and the device-side check meaningful rather than trivially
 satisfied by an unusable backup.
 
 **THE LIFECYCLE DECODE IS ASSERTED, NOT ASSUMED.** Both slots' ``life_cycle_states``
-are narrowed from the shipped 0x7 to 0x2 -- PROD only -- exactly as the reference
-does (``sep_demotion_uid_checker.py``,), and ``selector_bits``
+are narrowed from the shipped 0x7 to 0x2 -- PROD only -- and ``selector_bits``
 bit 16 is already set, so ``oca_boot.c`` refuses the manifest unless the
 ROM decoded raw 0x1 as PROD. ``LC=PROD_END`` is forbidden for the complementary
 reason the PROD_END member does not forbid ``LC=PROD``: the former string CONTAINS
@@ -183,9 +179,9 @@ class sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test(sep_demot
         )
         assert sigtype == mm.SIG_TYPE_NO_SIGNATURE, (
             f"primary signature_type is {sigtype}, expected "
-            f"{mm.SIG_TYPE_NO_SIGNATURE} (NO_SIGNATURE): the reference's packer "
-            f"forces this whenever secure_boot is 0, so a signed primary would be a "
-            f"different image from the one the reference presents"
+            f"{mm.SIG_TYPE_NO_SIGNATURE} (NO_SIGNATURE): the packer forces this "
+            f"whenever secure_boot is 0, so a signed primary would be a different "
+            f"image from the one this testcase means to present"
         )
         assert lcs == _LC_STATES_PROD_ONLY, (
             f"primary life_cycle_states is 0x{lcs:08x}, expected "

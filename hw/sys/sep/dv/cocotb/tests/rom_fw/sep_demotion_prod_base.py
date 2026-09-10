@@ -49,10 +49,8 @@ fuse, and :func:`apply_secure_boot_dis` writes both manifest fields:
     signed region, so clearing it re-hashes;
   * ``signature_type`` forced to ``NO_SIGNATURE`` (0), because the packer forces
     exactly that whenever a config sets ``secure_boot: 0``
-    (the packer,
-    value from ``pack_images_constants.py``). The reference's primary manifest
-    is therefore genuinely UNSIGNED and this port reproduces that rather than
-    running a signed image with one flag cleared.
+    (value from ``pack_images_constants.py``). The primary is therefore
+    genuinely unsigned, rather than a signed image with one flag cleared.
 
 **The coupling is what makes the port non-vacuous.** With ``signature_type = 0``
 the primary can boot only because the fuse is burned: ``secure_boot_enabled``
@@ -343,10 +341,7 @@ class sep_demotion_prod_base(_demotion_prod_mixin, sep_demotion_decision_base):
         BL1_DEMOTION_VALID is set and never echoes VALID itself, so on three
         of the four members at least one input is invisible in the log and a
         stimulus that silently failed to land would produce exactly the log a
-        correct run produces. The lesson is
-        ``batch_runs_0904_rtl/RUN_JOURNAL.md:181-185``, "Assert your stimulus, not
-        only your outcome"; vp ``FINDINGS.md`` F11 item 4 is the HALF-PORT
-        disclosure and is cited for that separately below.
+        correct run produces. The stimulus is asserted, not only the outcome.
         """
         dc = mm.demotion_control(buf, "primary")
         sel = (dc >> mm.DEMOTION_BITS["BL1_DEMOTION_VALID"]) & 1
@@ -375,10 +370,9 @@ class sep_demotion_prod_base(_demotion_prod_mixin, sep_demotion_decision_base):
         )
         assert sigtype == mm.SIG_TYPE_NO_SIGNATURE, (
             f"primary signature_type is {sigtype}, expected "
-            f"{mm.SIG_TYPE_NO_SIGNATURE} (NO_SIGNATURE): the reference's packer "
-            f"forces this whenever secure_boot is 0 (manifest_signing.py:43-45), "
-            f"so a signed primary would be a different image from the one the "
-            f"reference presents"
+            f"{mm.SIG_TYPE_NO_SIGNATURE} (NO_SIGNATURE): the packer forces this "
+            f"whenever secure_boot is 0, so a signed primary would be a different "
+            f"image from the one this testcase means to present"
         )
         assert lcs == LC_STATES_PROD_ONLY, (
             f"primary life_cycle_states is 0x{lcs:08x}, expected "

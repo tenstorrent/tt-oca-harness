@@ -287,7 +287,7 @@ tests = [
     "sep_spi_primary_fail_backup_test",
     # TP080. Subclass of the entry above; adds an SRAM scoreboard to the same
     # failover. Covers the EXT SRAM half of the requirement only -- this ROM never
-    # clears SMC SRAM (FINDINGS F19, as amended by F21), so a green run here is not F038 coverage of
+    # clears SMC SRAM, so a green run here is not F038 coverage of
     # that half. Slower than most of this group, and mostly for an inherited
     # reason: the clear it asserts is 65536 CPU stores, about 1.05M clocks
     # (measured, run 20260829_111100). The entry above pays the same cycle cost
@@ -360,7 +360,7 @@ tests = [
     "sep_firmware_chiplet_pubkey_0_revoke_test",
     "sep_firmware_chiplet_pubkey_1_test",
     "sep_firmware_chiplet_pubkey_1_revoke_test",
-    # Batch R4, FINDINGS.md R07: the digest-SOURCE discriminator the four members
+    # The digest-source discriminator the four members
     # above cannot be. Their fuse digest equals public_key_digests[0], so a ROM
     # comparing against the compiled-in table instead of the fuse is invisible to
     # them. Here the SELECTED fuse (HASH0) holds a decoy while the unselected one

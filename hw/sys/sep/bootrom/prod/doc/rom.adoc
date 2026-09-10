@@ -332,10 +332,9 @@ dispatches from (<<sec:warm_reset>>).
 [[sec:overview]]
 ==== Boot Flow Overview
 
-The boot flow is a strictly ordered sequence of stages. The reference implementation tags each
-stage with a `C`-number (carried over from the legacy tt_sep boot ROM task breakdown); this
-document keeps those tags as stable cross-references between specification, code, and DV
-collateral.
+The boot flow is a strictly ordered sequence of stages. The implementation tags each stage
+with a `C`-number, and this document keeps those tags as stable cross-references between
+specification, code, and DV collateral.
 
 [[fig:sep_boot_flow_toplevel]]
 .SEP ROM detailed boot flow (all stages, cold boot)
@@ -2432,7 +2431,7 @@ and shall then *independently re-read* the LOCKS register and confirm every lock
 ===== Pre-Hand-off Self-Check (Gate Ledger)
 
 The accept-then-hand-off decision is hardened against single-glitch fault injection with a
-lockstep gate ledger (specified here; the reference implementation is not yet on `main`):
+lockstep gate ledger (specified here; not yet implemented):
 
 * Four acceptance gates each record a bit in a `gate_ok` word *and* clear the same bit in a
   complement word `gate_inv` (initialized to all-ones) as they pass:
@@ -2710,7 +2709,7 @@ error can always be recorded: `INFO`-class inserts require 3 free slots and degr
 
 [[req-SEP-ROM-STAT-030]]*[SEP-ROM-STAT-030]* All `SEP_MSG_*` status codes shall be
 single-sourced from `hw/sys/sep/bootrom/prod/include/status_values.h` (values `0x01`–`0x1FF` are aligned with
-the legacy tt_sep assignments; `0x200`+ are OCAH-specific). The C header and the DV decoder
+`0x200`+ are OCAH-specific). The C header and the DV decoder
 are generated from it; the table below is likewise generated — do not hand-edit code values
 anywhere, including here.
 

@@ -28,19 +28,15 @@ is the only populated entry in ``key_digests.c``; slots 1-5 are ``(void *)0``. S
     of the rejection and ``RSA_EXEC`` / ``RSA_VERIFY_OK`` are the load-bearing
     forbids there.
 
-**THE REFERENCE ORDERS THESE TWO CHECKS THE OTHER WAY ROUND, AND THIS FAMILY
-DEPENDS ON THE DIFFERENCE.** Grendel's ROM takes the index bound,
-then the digest-populated check, and only THEN revocation. That order
-is invisible there because all six of its slots are populated -- carries a
-``static_assert`` is marked "COVERAGE: exclude, correct by
-construction". This ROM inverts it: revocation first,
+This family depends on the order of two checks. This ROM consults revocation
+FIRST,
 digest table second. The consequence changes what slots 1-5 actually
 prove, so it is stated rather than left implicit: **had this ROM used the
 reference's order, slots 1-5 would return ``PUBK_SLOT_UNPROVISIONED`` /
 ``MANIFEST_ERR_SIG_FAILED`` instead of ``KEY_REVOKED``.** On this platform,
 therefore:
 
-  * **slot 0** establishes the reference's own property -- revocation refuses an
+  * **slot 0** establishes the strong property -- revocation refuses an
     otherwise fully valid, correctly signed, bootable image;
   * **slots 1-5** establish the weaker property that revocation PREEMPTS the
     empty-digest arm, because this tree ships one signing key and populates one

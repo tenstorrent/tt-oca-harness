@@ -184,7 +184,7 @@ class _chiplet_key_mixin:
         assert p_sel == b_sel == self._PUBK_SEL_VALUE, (
             f"selectors are primary=0x{p_sel:04x} backup=0x{b_sel:04x}, expected both "
             f"0x{self._PUBK_SEL_VALUE:04x}: this family's outcome shape depends on BOTH "
-            f"slots selecting the same fused key, exactly as the reference does"
+            f"slots selecting the same fused key"
         )
         self.logger.info(
             "CHK-STIMULUS-FUSED-KEY: both slots public_key_sel=0x%04x "

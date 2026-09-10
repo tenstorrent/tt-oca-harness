@@ -137,7 +137,7 @@ _SRAM_LEAF = ("u_mem", "mem")
 
 # Scoreboard sampling period, in clocks. The two windows this has to resolve are
 # ~30k cycles (primary DMA -> clear start) and >=1.4k cycles (clear end -> backup
-# fetch), both measured from the reference run 20260826_091216. 100 is well inside
+# fetch), both measured on this testbench. 100 is well inside
 # the smaller of the two and costs two VPI reads per sample.
 _SAMPLE_EVERY = 100
 

@@ -10,8 +10,8 @@
 //
 //   PHASE A  select the internal DRBG, configure ESRC with the ring-oscillator
 //            generators OFF, enable CSRNG, and stage EDN's commands. EDN stays
-//            DISABLED -- the reference suite guards this explicitly
-//            ("configure EDN commands ONLY, do NOT enable EDN yet").
+//            DISABLED: its commands are configured here but it is not enabled
+//            until phase C.
 //   PHASE B  start the generators.
 //            ...wait for the boot health-test window to pass...
 //   PHASE C  enable EDN last. It then auto-issues Instantiate + Generate and

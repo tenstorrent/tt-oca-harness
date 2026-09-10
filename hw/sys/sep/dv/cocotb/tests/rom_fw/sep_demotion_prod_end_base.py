@@ -35,9 +35,9 @@ WHAT THE MEMBERS SHARE
   * Both slots' ``life_cycle_states`` narrowed from the shipped ``0x7`` to
     PROD_END only, and both re-sealed. This base sets the chiplet lifecycle selector bit in the
     shipped image, so ``oca_boot.c`` maps the live LC state into
-    that bitmap and refuses the manifest with ``LC_USAGE_CONSTRAINT_FAIL`` if the
+    that bitmap and refuses the manifest with a lifecycle-constraint error code if the
     bit is clear. The boot therefore cannot complete unless the ROM decoded raw
-    0x8 as PROD_END. This mirrors the reference, which narrows per lifecycle
+    0x8 as PROD_END. The narrowing is per lifecycle
     (``sep_demotion_uid_checker.py``, written to both slots at
 ).
   * The full crypto chain. PROD_END enforces secure boot
@@ -110,7 +110,7 @@ class sep_demotion_prod_end_base(sep_demotion_decision_base):
         "BL1_COPIED",
         "BL1_JUMP=",
     )
-    # LC_USAGE_CONSTRAINT_FAIL is load-bearing: the manifest permits PROD_END
+    # a lifecycle-constraint error code is load-bearing: the manifest permits PROD_END
     # ONLY, so its absence is what says the ROM decoded raw 0x8 correctly. The
     # rest exclude a boot that completed by failover or with a rejected slot.
     # BL1_DEMOTE= and BL2_DEMOTE_DEC= are forbidden automatically by the family

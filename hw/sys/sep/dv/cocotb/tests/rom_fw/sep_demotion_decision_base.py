@@ -112,12 +112,10 @@ where the default ``(2, None)`` suits every outcome that writes DEMOTE_1.
 SCOPE
 ============================================================================
 
-**These testcases cover the DECISION only.** The reference's demotion test spends
-about half its volume verifying that the decision feeds the KBKDF salt and the
-three SKS UID keys. This ROM has no BL0-side key-manager driver on the demotion
-path -- ``rom_main.c`` stores ``bl2_demotion_decision`` into ``bl0_state`` for BL1
-to consume and BL0 derives nothing from it -- so that half has nothing to test
-here.
+**These testcases cover the decision only.** BL0 has no key-manager driver on the
+demotion path: ``rom_main.c`` stores ``bl2_demotion_decision`` into ``bl0_state``
+for BL1 to consume and derives nothing from it, so there is no KBKDF salt or SKS
+UID key to check here.
 
 **There is no architected demotion status code.** ``status_values.h`` defines
 none and the whole [C15] block contains no ``report_status`` call, so the
@@ -125,11 +123,9 @@ reference's ``STATUS: DEMOTION_SELECTED`` / ``_NOT_SELECTED`` / ``_LOCKED`` /
 ``_NOT_LOCKED`` strings have no counterpart. The register probes stand in for
 them.
 
-**The PROD_END members assert more than the reference does.** Its PROD_END row
-expects only ``STATUS: DEMOTION_NOT_SELECTED`` with no lock expectation; the
-members here additionally require DEMOTE_1 and DEMOTE_2 to read locked, which is
-derived from this ROM rather than from the reference and is their strongest
-discriminator.
+**The PROD_END members require both registers to read locked.** DEMOTE_1 and
+DEMOTE_2 locked is the strongest discriminator those members have, and it is
+derived from this ROM's own control flow.
 """
 
 from __future__ import annotations
@@ -384,12 +380,9 @@ class sep_demotion_decision_base(sep_rom_ot_dma_boot_test):
     def _check_boot_chain_order(self, console: list[str]) -> None:
         """The boot chain must run in order, with the demotion block inside it.
 
-        The reference enforces ORDER across its whole pattern list --
-        ``find_pattern_sequence`` searches each entry from the previous match onward
-        -- while the inherited ``required_markers`` loop only asks whether each string
-        appears anywhere (``sep_rom_ot_dma_boot_test.py``). Without this the
-        port would be weaker than the reference on exactly the axis the reference is
-        strict about, so the chain is pinned here: the manifest is accepted, THEN the
+        The inherited ``required_markers`` loop only asks whether each string
+        appears anywhere, so order is pinned here instead: the manifest is
+        accepted, THEN the
         [C15] decision runs, THEN BL1 is copied and jumped to. That last edge matters
         for the demotion group specifically -- ``rom_main.c`` writes the register
         before ``rom_handoff_bl1``, so a run that handed off first and

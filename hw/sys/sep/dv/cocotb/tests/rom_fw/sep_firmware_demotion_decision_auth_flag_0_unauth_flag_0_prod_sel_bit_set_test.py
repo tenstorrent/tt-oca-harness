@@ -23,17 +23,17 @@ DEMOTE_1 to read (demote 1, lock 1) with ``DEMOTE_LOCKED`` on the console and
 sibling cannot make the claim: it leaves the ``demotion_control`` BL2 request clear, so nothing is
 competing with BL1_DEMOTION_VALID.
 
-**AND THE ROM RESOLVES MORE THAN THE REFERENCE CHECKS.** Grendel's checker
+**The ROM resolves more than a flag-only check can see.** A checker
 inspects the BL2 request only when BL1_DEMOTION_VALID is CLEAR
 (``sep_demotion_uid_checker.py``); with it set it looks at
 ``AUTH_FLAG_0`` alone, so O2a and O2b produce an identical
-``expected_patterns`` list there and the reference cannot tell them apart. This
+observable list and could not be told apart. This
 ROM can, because ``rom_main.c`` prints ``BL2_DEMOTE_DEC=`` unconditionally on
 every non-PROD_END arm, carrying the value stored for BL1. Porting
-the reference's pattern list verbatim would have thrown that resolution away, so
+a flag-only pattern list would throw that resolution away, so
 this member additionally requires ``BL2_DEMOTE_DEC=1`` and forbids
 ``BL2_DEMOTE_DEC=0`` -- which is what stops it accepting O2a's console. This is a
-strengthening over the reference, and it is disclosed as such rather than
+stronger assertion, made here rather than
 presented as parity.
 
 The distinction matters beyond bookkeeping: ``bl2_demotion_decision`` is what BL0

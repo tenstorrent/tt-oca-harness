@@ -68,9 +68,8 @@ that is valid HERE, because the only RSA signing key that ships is
 manifest/tests/signing_keys/``, which also holds an unusable ``ec_private_key.pem``) and
 only slot 0's digest is populated (``key_digests.c``).
 
-PLATFORM ADAPTATION -- MARKER. The reference asserts the ROM-key path POSITIVELY,
-with ``STATUS: USING_ROM_KEY`` (``sep_firmware_secure_boot_test.py``). This ROM
-*defines* ``SEP_MSG_USING_ROM_KEY`` (``bootrom/prod/include/status_values.h:97``,
+Markers. This ROM *defines* ``SEP_MSG_USING_ROM_KEY``
+(``bootrom/prod/include/status_values.h:97``,
 0x7f) and never emits it -- no ``report_status`` call for it exists anywhere under
 ``bootrom/prod/src`` -- so there is no UNIQUE architected code for the ROM-key path,
 which is exactly what a positive key-selection testcase needs. The precise
@@ -79,10 +78,9 @@ statement, because "no architected evidence at all" would be too strong:
 count could distinguish the two arms indirectly -- but 0x207 is also reported
 unconditionally and again as DEBUG, so it is a count
 argument rather than a marker, and this testcase does not use it. The console
-echoes above are the substitution. The reference's other checkpoint tokens
-for this scenario are unavailable for the same reason:
-``SEP_MSG_START_MANIFEST_VALIDATION``, ``SEP_MSG_START_PAYLOAD_VALIDATION`` and
-``SEP_MSG_PAYLOAD_VALIDATED`` also have zero emitters here.
+echoes above carry it instead. ``SEP_MSG_START_MANIFEST_VALIDATION``,
+``SEP_MSG_START_PAYLOAD_VALIDATION`` and ``SEP_MSG_PAYLOAD_VALIDATED`` likewise
+have zero emitters here.
 
 Needs ``+esrc_noise_force``: the primary is valid, so the full RSA-3072 modexp
 runs on OTBN, which parks in UrndRefresh until EDN grants entropy. The shortcut

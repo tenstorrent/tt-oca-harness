@@ -271,8 +271,8 @@ class sep_primary_pubkey_rom_revoked_failover_base(
 ):
     """Slots 1-5: the primary selects a revoked slot, the backup boots.
 
-    The backup still selects unrevoked ROM slot 0, so this is the reference's
-    ``WARNING: REVOKED_KEY`` followed by a completed boot, not a terminal run.
+    The backup still selects unrevoked ROM slot 0, so the run completes rather
+    than ending terminally.
     """
 
     _BACKUP_ALSO_REVOKED = False

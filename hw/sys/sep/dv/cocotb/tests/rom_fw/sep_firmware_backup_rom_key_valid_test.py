@@ -67,10 +67,8 @@ _EFUSE_PRELOAD = (
 )
 
 # The only populated entry in key_digests.c, and the slot the shipped image
-# is signed against (configs/secure_boot_test.yaml:112-114). The reference draws a
-# valid index at random from [0..5] and re-signs with that slot's own private key
-# (sep_firmware_secure_boot_test.py); this tree ships one RSA key
-# (tools/tt-boot-manifest/tests/signing_keys/rsa_private_key.dev0.pem), so slot 0
+# is signed against (configs/secure_boot_test.yaml:112-114). This tree ships one
+# RSA key, so slot 0
 # is the only index that is valid here in the sense the testcase needs -- a
 # populated digest the image actually binds to.
 _VALID_SLOT = 0

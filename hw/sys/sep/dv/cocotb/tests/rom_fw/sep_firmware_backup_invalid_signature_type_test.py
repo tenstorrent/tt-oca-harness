@@ -63,8 +63,8 @@ _EFUSE_PRELOAD = (
     / "sep_efuse_lc_prod.toml"
 )
 
-# One of the reference's own values (sep_firmware_secure_boot_test.py), fixed
-# so the echoed value is assertable. See the docstring for why not 2.
+# Fixed rather than drawn at random, so the refusal is attributable to this
+# stimulus. See the docstring for why not 2.
 _BAD_SIG_TYPE = 0
 #  -- simputshex32("PUBK_ALGO_UNSUPPORTED", signature_type).
 _BAD_SIG_TYPE_ECHO = "PUBK_ALGO_UNSUPPORTED"

@@ -32,10 +32,9 @@ authority, and ``lc_state_to_manifest_bit`` mapping PROD_END to
 the PROD_END lifecycle bit (``lifecycle.c``).
 
 **THE LIFECYCLE DECODE IS ASSERTED, NOT ASSUMED.** Both slots' ``life_cycle_states``
-are narrowed from the shipped 0x7 to 0x4 -- PROD_END only -- exactly as the reference
-does (``sep_demotion_uid_checker.py``). ``selector_bits``
+are narrowed from the shipped 0x7 to 0x4 -- PROD_END only. ``selector_bits``
 bit 16 is set in the shipped image, so ``oca_boot.c`` maps the live LC
-state into that bitmap and refuses the manifest with ``LC_USAGE_CONSTRAINT_FAIL`` if
+state into that bitmap and refuses the manifest with a lifecycle-constraint error code if
 the bit is clear. The boot therefore cannot complete unless the ROM decoded raw 0x8
 as PROD_END. Without this narrowing the shipped 0x7 would accept any of three states
 and the run would prove nothing about which one was decoded.
@@ -108,7 +107,7 @@ class sep_firmware_demotion_decision_auth_flag_0_prod_end_test(sep_demotion_deci
         "BL1_COPIED",
         "BL1_JUMP=",
     )
-    # LC_USAGE_CONSTRAINT_FAIL is load-bearing here: the manifest permits PROD_END
+    # a lifecycle-constraint error code is load-bearing here: the manifest permits PROD_END
     # ONLY, so its absence is what says the ROM decoded raw 0x8 correctly. SBOOT_OFF
     # would mean PROD_END did not enforce secure boot. The rest exclude a boot that
     # completed by failover or with a rejected slot.

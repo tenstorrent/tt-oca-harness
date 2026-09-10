@@ -3,9 +3,8 @@
 """The chiplet fuse holds the WRONG digest -> both slots refused, terminally.
 
 **THIS TESTCASE CLOSES THE DIGEST-SOURCE CLASS THAT
-``rom_fw/sep_chiplet_pubkey_base.py`` DISCLOSES AND LEAVES OPEN**, and it does so
-without a second private key. It is
-``batch_runs_0904_rtl/FINDINGS.md`` **R07** implemented.
+``rom_fw/sep_chiplet_pubkey_base.py`` leaves open**, and it does so without a
+second private key.
 
 **IT HAS NO TRACKER ROW AND NO STATUS IS CLAIMED FOR IT.** It is not one of batch
 R4's six assigned items; it is the remedy R07 assigns to R4 or to a follow-up.
