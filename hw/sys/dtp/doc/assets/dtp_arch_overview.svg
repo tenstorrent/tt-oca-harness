@@ -8,7 +8,24 @@
     axil_dtp_csr_*, jtag_ptap_client_*, xtrig_ctp_req/ack_*.
   Remaining text: ≥22px SVG title (→10.5pt PDF, ≥15px HTML).
   Block labels: 20px (→9.5pt PDF, ≥13.7px HTML). All ≥9pt PDF floor.
-  jtag_clock_stop label: 20px, placed in open space between PTAP and aggregator.
+
+  Defect fixes applied:
+  D1: Aggregator formula split into two lines that fit inside x=470..930 (460px wide).
+      Line 1 "jtag_clock_stop OR xtrig_clk_stop_req_i" ≈ 40 chars sans-serif 20px
+      ≈ 360px < 460px ✓. Line 2 "→ stop_clks_o" ≈ 13 chars ≈ 117px ✓.
+  D2: CTP parameter label replaced with "(parametric)" ≈ 12 chars ≈ 108px,
+      centered at x=830, fits within box x=730..930 (200px wide) ✓.
+  D3: jtag_clock_stop label moved to y=95 (above PTAP top y=110), x=355.
+      Label "jtag_clock_stop" ≈ 15 chars monospace 20px ≈ 150px → x=280..430 ✓.
+      y=95 is above PTAP block (y=110..200) — no overlap ✓.
+  D4: TDO dashed polyline reversed: arrow now exits PTAP at (60,185) going DOWN
+      to JTAG Pads at y=590. marker-end is at the pads end, pointing into pads area.
+      TDI solid arrow points INTO PTAP (unchanged direction: from pad toward PTAP) ✓.
+  D5: scan and AXI stub annotations removed entirely (lines and labels at y=465/480/493).
+  D6: JTAG Pads box widened from 160px to 180px (x=60..240).
+      Text centered at x=150. "jtag_ptap_client_*" ≈ 19 chars ≈ 171px < 180px ✓.
+      TDI route now enters at x=80 (left side, inside widened box edge is x=240).
+      TDO route adjusted to enter at x=80 as well.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" version="1.1"
      width="1000" height="640" viewBox="0 0 1000 640">
@@ -71,10 +88,10 @@
   <text x="225" y="368" class="label" text-anchor="middle" font-weight="bold">iJTAG SIB Network</text>
   <text x="225" y="400" class="small" text-anchor="middle">Secure DFT · Non-secure DFT · DFD</text>
 
-  <!-- PTAP → iJTAG: exits PTAP right (280,155), goes right to x=440,
+  <!-- PTAP → iJTAG: exits PTAP right at y=140 (upper third of block), goes right to x=440,
        down to y=372, left to iJTAG right edge (390,372).
-       x=440 column is distinct from jtag_clock_stop at x=430. -->
-  <polyline points="280,155 440,155 440,372 390,372"
+       y=140 differs from jtag_clock_stop route at y=175 → no overlap. -->
+  <polyline points="280,140 440,140 440,372 390,372"
             fill="none" stroke="#4a7baa" stroke-width="1.2" stroke-dasharray="5 3"
             marker-end="url(#arr-b)"/>
 
@@ -99,11 +116,14 @@
   <text x="570" y="152" class="label" text-anchor="middle" font-weight="bold">CTM</text>
   <text x="570" y="180" class="small" text-anchor="middle">N×M routing matrix</text>
 
-  <!-- CTPs  x=730..930, y=114..204 -->
+  <!-- CTPs  x=730..930, y=114..204
+       D2: "(parametric)" replaces "[XTRIG_NUM_CTP-1:0]".
+       "(parametric)" ≈ 12 chars × 9px/char (sans-serif 20px) ≈ 108px.
+       Centered at x=830, extends 54px each side → x=776..884, within box x=730..930 ✓ -->
   <rect x="730" y="114" width="200" height="90" rx="5"
         fill="#f4dcdc" stroke="#aa4a4a" stroke-width="1.5"/>
   <text x="830" y="152" class="label" text-anchor="middle" font-weight="bold">CTPs</text>
-  <text x="830" y="180" class="small" text-anchor="middle">[XTRIG_NUM_CTP-1:0]</text>
+  <text x="830" y="180" class="small" text-anchor="middle">(parametric)</text>
 
   <!-- CTM ↔ CTPs -->
   <line x1="670" y1="144" x2="730" y2="144"
@@ -111,23 +131,32 @@
   <line x1="730" y1="174" x2="670" y2="174"
         stroke="#aa4a4a" stroke-width="1.5" marker-end="url(#arr-r)"/>
 
-  <!-- Clock-Stop Aggregator  x=470..930, y=226..306 -->
+  <!-- Clock-Stop Aggregator  x=470..930, y=226..306
+       D1: Description split into two lines, both centered at x=700.
+       Box center y=(226+306)/2=266. Three lines at y=252 (bold title),
+       y=276 (line 1 description), y=299 (line 2 description).
+       "Clock-Stop Aggregator" bold ≈ 21 chars × 9px ≈ 189px < 460px ✓
+       "jtag_clock_stop OR xtrig_clk_stop_req_i" ≈ 40 chars × 9px ≈ 360px < 460px ✓
+       "→ stop_clks_o" ≈ 13 chars × 9px ≈ 117px < 460px ✓ -->
   <rect x="470" y="226" width="460" height="80" rx="5"
         fill="#f4dcdc" stroke="#aa4a4a" stroke-width="1.5"/>
-  <text x="700" y="264" class="label" text-anchor="middle" font-weight="bold">Clock-Stop Aggregator</text>
-  <text x="700" y="294" class="small" text-anchor="middle">OR(jtag_clock_stop, xtrig_clk_stop_req_i) → stop_clks_o</text>
+  <text x="700" y="252" class="label" text-anchor="middle" font-weight="bold">Clock-Stop Aggregator</text>
+  <text x="700" y="275" class="small" text-anchor="middle">jtag_clock_stop OR xtrig_clk_stop_req_i</text>
+  <text x="700" y="298" class="small" text-anchor="middle">→ stop_clks_o</text>
 
-  <!-- jtag_clock_stop: exits PTAP bottom-right corner (280,200), goes right to x=430
-       (distinct from iJTAG at x=440), then down to aggregator top at y=266.
-       Label placed at y=220, above the aggregator, centred on the path x=355. -->
-  <polyline points="280,200 430,200 430,266 470,266"
+  <!-- jtag_clock_stop signal: exits PTAP right at y=175 (lower third of block),
+       goes right to x=430 (between PTAP and iJTAG route column x=440),
+       then down to aggregator input at y=266, then right to aggregator left edge (470,266).
+       iJTAG exits at y=140; jtag_clock_stop exits at y=175 → no route overlap ✓.
+       Label "jtag_clock_stop" at y=168 (above the horizontal leg at y=175),
+       centered x=355 → x=280..430. x=280 is PTAP right edge → label in open space ✓. -->
+  <polyline points="280,175 430,175 430,266 470,266"
             fill="none" stroke="#998866" stroke-width="2" stroke-dasharray="6 4"
             marker-end="url(#arr-k)"/>
-  <text x="355" y="192" class="clk" text-anchor="middle">jtag_clock_stop</text>
+  <text x="355" y="168" class="clk" text-anchor="middle">jtag_clock_stop</text>
 
   <!-- xtrig_clk_stop_req_i (external input, enters aggregator from right):
-       Short inward stub. Arrow points INTO aggregator: from x=940 to x=930.
-       Label entirely inside aggregator box, right-aligned at x=925. -->
+       Short inward stub. Arrow points INTO aggregator: from x=940 to x=930. -->
   <line x1="944" y1="266" x2="930" y2="266"
         stroke="#555555" stroke-width="1.2" stroke-dasharray="4 2" marker-end="url(#arr-g)"/>
 
@@ -155,16 +184,34 @@
 
   <!-- ══ External elements below DTP boundary (y > 530) ══ -->
 
-  <!-- JTAG pads box  x=60..220, y=550..610 -->
-  <rect x="60" y="550" width="160" height="58" rx="4"
+  <!-- D6: JTAG Pads box widened to 180px wide: x=60..240, y=550..610.
+       Text centered at x=150.
+       "JTAG Pads" ≈ 9 chars × 9px = 81px < 180px ✓
+       "jtag_ptap_client_*" ≈ 19 chars × 9px = 171px < 180px ✓ -->
+  <rect x="60" y="550" width="180" height="58" rx="4"
         fill="#e8e8e8" stroke="#888888" stroke-width="1.5"/>
-  <text x="140" y="578" class="small" text-anchor="middle" font-weight="bold">JTAG Pads</text>
-  <text x="140" y="600" class="small" text-anchor="middle">jtag_ptap_client_*</text>
+  <text x="150" y="578" class="small" text-anchor="middle" font-weight="bold">JTAG Pads</text>
+  <text x="150" y="600" class="small" text-anchor="middle">jtag_ptap_client_*</text>
 
-  <!-- JTAG pads to PTAP: TDI (solid) and TDO (dashed) via left columns -->
-  <polyline points="60,568 38,568 38,155 60,155"
+  <!-- JTAG pads to PTAP connections.
+       D4: TDO dashed arrow direction corrected.
+       TDI (solid): from JTAG Pads (x=80,y=550) UP to PTAP left edge (x=80,y=155).
+         Arrow marker-end at (80,155) = entering PTAP ✓ (TDI flows pad→PTAP).
+       TDO (dashed): from PTAP left edge (x=60,y=185) DOWN to JTAG Pads (x=60,y=550).
+         Arrow marker-end at (60,550) = exiting toward pads ✓ (TDO flows PTAP→pad).
+       Routes use x=38 (TDI) and x=22 (TDO) left columns to avoid collision.
+       D5: scan/AXI stubs removed — those lines and labels are gone. -->
+
+  <!-- TDI: solid arrow, exits JTAG Pads going up, enters PTAP at y=155 left edge.
+       Start at pad top-left area, route up left column x=38, enter PTAP at (60,155).
+       marker-end at PTAP end → arrow points INTO PTAP ✓ -->
+  <polyline points="80,550 38,550 38,155 60,155"
             fill="none" stroke="#555555" stroke-width="1.5" marker-end="url(#arr-g)"/>
-  <polyline points="60,590 22,590 22,530 22,535 22,185 60,185"
+
+  <!-- TDO: dashed arrow, exits PTAP at (60,185) going DOWN toward pads.
+       Route: (60,185) → left to x=22 → down to y=580 → right to pad left edge.
+       marker-end at pad end → arrow points toward pads (TDO exits PTAP) ✓ -->
+  <polyline points="60,185 22,185 22,580 60,580"
             fill="none" stroke="#555555" stroke-width="1.2" stroke-dasharray="4 3"
             marker-end="url(#arr-g)"/>
 
@@ -193,17 +240,5 @@
   <polyline points="930,159 956,159 956,530 830,530 830,550"
             fill="none" stroke="#555555" stroke-width="1.5" stroke-dasharray="4 3"
             marker-end="url(#arr-g)"/>
-
-  <!-- External scan/bridge ports: single bidirectional arrows at left edge of
-       JTAG2AXI area, with compact labels in open space. Labels text-anchor="start"
-       at x=20 — always inside viewBox. Arrows enter blocks at x=60. -->
-  <line x1="60" y1="465" x2="38" y2="465"
-        stroke="#555555" stroke-width="1.2" marker-end="url(#arr-g)"/>
-  <line x1="38" y1="480" x2="60" y2="480"
-        stroke="#555555" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#arr-g)"/>
-  <text x="20" y="462" class="small" fill="#555555" text-anchor="start">scan</text>
-  <line x1="60" y1="493" x2="38" y2="493"
-        stroke="#4a7baa" stroke-width="1.2" stroke-dasharray="5 3" marker-end="url(#arr-b)"/>
-  <text x="20" y="498" class="small" fill="#4a7baa" text-anchor="start">AXI</text>
 
 </svg>

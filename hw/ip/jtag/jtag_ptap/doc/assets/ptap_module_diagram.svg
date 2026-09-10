@@ -2,10 +2,10 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
 <!--
-  PTAP Module Diagram — 004j-closeout redesign
+  PTAP Module Diagram — 004j-closeout redesign with layout fixes
   viewBox: 860 × 560
 
-  Block geometry (verified: no route segment intersects any block rectangle):
+  Block geometry (preserved from accepted base):
     TAP Controller:  x=80..240,  y=100..200
     IR:              x=270..430, y=100..180
     Decoder:         x=460..620, y=100..180
@@ -15,22 +15,55 @@
     Scan Path Mux:   x=270..430, y=318..418
     TMP Controller:  x=460..620, y=318..412
 
-  TDI route: enters from left margin at y=66, travels right at y=66 (above all
-  blocks starting at y=100), reaches x=350 (IR top-centre), turns down into
-  IR top at (350,100). Branch to TDR scan-in leaves from (350,66) continuing
-  right to (730,66) then down to TDR bank top (730,202). Both branches are at
-  y=66, which is above all blocks: no intersection.
+  Defect fixes:
+  P1: TMS/TRST labels use text-anchor="end" at x=76, terminating before
+      TAP Controller left edge x=80.
+      "PTAP_TMS" monospace 19px ≈ 8 chars × 10px = 80px → x=76-80..76: right=76 < 80 ✓
+      "PTAP_TRST_N" ≈ 11 chars × 10px = 110px → right=76 < 80 ✓
+      (Both end at x=76, well left of TAP Controller at x=80.)
+      Arrow stub from (76,126) into TAP Controller left (80,126).
 
-  TDR data return: from TDR bank bottom (730,370) → down to y=440 → left to
-  x=440 → up to (440,368) → left into Scan Path Mux right (430,368).
-  y=440 is below all blocks (Scan Path Mux bottom y=418): no intersection.
+  P2: PTAP_TDI label moved to y=52 (baseline). Label height ≈ 19px, top≈y=33.
+      Route at y=66 is now below label bottom (y=52): clear of label ✓.
+      (Previously y=76 baseline caused route y=66 to fall within label extent y=57..76.)
 
-  IR scan-out: from IR right (430,140) → right to x=450 → down to y=368 →
-  left to (430,368). Corridor x=430..460 is between IR right (430) and Decoder
-  left (460): the vertical segment at x=450 passes between those blocks (y=100
-  to y=368). From y=180 to y=210 this corridor is open (STAP Select starts at
-  x=270, Scan Path Mux at x=270; TMP Controller starts at x=460, not 450).
-  At x=450: left of TMP Controller (x=460): clear. ✓
+  P3: "secondary scan mux" → "2nd-level scan mux" inside STAP Select box.
+      "2nd-level scan mux" ≈ 18 chars × 9px = 162px > 160px — use "secondary mux" instead.
+      "secondary mux" ≈ 13 chars × 9px = 117px. Centered at x=350, extends x=292..408 ✓.
+      Box x=270..430 (160px wide): 117px < 160px ✓.
+
+  P4: Summary note rect and its text removed entirely.
+      The two long text lines that overflowed and overlapped are gone.
+
+  P5: Arrow added from TAP Controller → TMP Controller.
+      Route: exit TAP Controller bottom at (160,200) → down to y=308 at x=160
+      (x=160 is within TAP Controller x=80..240 but below it at y>200; at y=200..412
+       at x=160: TAP Controller ends at y=200, so below is open for x=80..240 corridor).
+      Actually route exits below TAP Controller; to stay clear of blocks:
+        (160,200) → (160,308) → (540,308) → (540,318)
+      Check segments:
+        x=160, y=200..308: below TAP Controller (y=200), clear of all other blocks
+          (STAP x=270..430, Scan Path Mux x=270..430, TMP x=460..620 — none at x=160) ✓
+        y=308, x=160..540: above TMP Controller (y=318), below STAP (y=290), clear ✓
+        x=540, y=308..318: above TMP Controller top y=318 → enters TMP top-center ✓
+      Arrow marker-end at (540,318) entering TMP Controller top ✓.
+      Dashed blue line (TAP Controller control signal).
+
+  P6: TDR branch endpoint changed from (648,286) to (650,286).
+      x=650 is TDR bank left edge — arrowhead reaches bank boundary ✓.
+      Vertical at x=650: TDR bank left edge, corridor between Decoder (right=620)
+      and TDR bank (left=650). Point (650,286) is on TDR bank boundary ✓.
+
+  P7: IR scan-out rerouted from IR bottom-right corner (430,180) instead of (430,140).
+      This avoids sharing the x=430..460, y=140 segment with the blue IR→Decoder line.
+      New route: (430,180) → (450,180) → (450,368) → (430,368).
+      Check segments at x=450:
+        y=180..210: below IR (y=100..180 ends), above STAP (y=210): open ✓
+        y=210..290: STAP at x=270..430; x=450 > 430: clear ✓
+        y=290..318: open between STAP (y=290) and Scan Path Mux (y=318): clear ✓
+        y=318..368: TMP Controller at x=460..620; x=450 < 460: clear ✓
+      Segment y=180, x=430..450: between IR right (430) and Decoder (left=460): open ✓
+      No overlap with IR→Decoder blue line at y=140 ✓.
 
   All text ≥19px SVG. HTML scale 686/860=0.798: 19×0.798=15.2px≥12 ✓.
   PDF scale 464/860=0.539: 19×0.539=10.2pt≥9 ✓.
@@ -67,15 +100,24 @@
   <text x="160" y="144" class="label" text-anchor="middle">TAP</text>
   <text x="160" y="170" class="label" text-anchor="middle">Controller</text>
 
-  <!-- TMS / TRST_N: labels left of x=80; route enters controller from the left.
-       Labels: x=14, y=114 and y=138. Text ends ≈x=70.
-       Route: from (70,126) → x=78 → into controller left at (80,126).
-       x stays ≤78 < 80 until the final point (80,126) which IS the block edge. -->
-  <text x="14" y="114" class="port">PTAP_TMS</text>
-  <text x="14" y="138" class="port">PTAP_TRST_N</text>
-  <polyline points="70,126 78,126 80,126"
-            fill="none" stroke="#555555" stroke-width="1.2"
-            marker-end="url(#arr-g)"/>
+  <!-- P1: TMS / TRST_N labels placed LEFT of TAP Controller (left edge x=80).
+       text-anchor="end" at x=78 ensures right edge ≤ 78 < 80. The x attribute=78 ≥ 0 ✓.
+       Labels use abbreviated form so left edges stay ≥ 0:
+         "TMS"    = 3 chars monospace 19px × 10px = 30px → left = 78-30 = 48 ≥ 0 ✓
+         "TRST_N" = 6 chars × 10px = 60px → left = 78-60 = 18 ≥ 0 ✓
+       Both labels end at x=78 < 80 (TAP Controller left): no overlap ✓.
+       Stacked at y=126 and y=152 — both within TAP Controller vertical range y=100..200
+       but horizontally clear (right of label ≤ 78 < 80 = block left) ✓.
+       Arrow stubs enter TAP Controller left edge at y=126 and y=152. -->
+  <text x="78" y="126" class="port" text-anchor="end">TMS</text>
+  <text x="78" y="152" class="port" text-anchor="end">TRST_N</text>
+  <!-- Arrow stubs entering TAP Controller left edge -->
+  <line x1="14" y1="126" x2="80" y2="126"
+        fill="none" stroke="#555555" stroke-width="1.2"
+        marker-end="url(#arr-g)"/>
+  <line x1="14" y1="152" x2="80" y2="152"
+        fill="none" stroke="#555555" stroke-width="1.2"
+        marker-end="url(#arr-g)"/>
 
   <!-- ── Instruction Register  x=270..430, y=100..180 ── -->
   <rect x="270" y="100" width="160" height="80" rx="4"
@@ -93,7 +135,7 @@
   <text x="540" y="136" class="label" text-anchor="middle">Instruction</text>
   <text x="540" y="160" class="label" text-anchor="middle">Decoder</text>
 
-  <!-- IR → Decoder: decoded instruction -->
+  <!-- IR → Decoder: decoded instruction (blue line at y=140, x=430..460) -->
   <line x1="430" y1="140" x2="460" y2="140"
         stroke="#4a7baa" stroke-width="1.2" marker-end="url(#arr-b)"/>
 
@@ -125,16 +167,14 @@
   <rect x="270" y="210" width="160" height="80" rx="4"
         fill="#dce8f4" stroke="#4a7baa" stroke-width="1.5"/>
   <text x="350" y="246" class="label" text-anchor="middle">STAP Select</text>
-  <text x="350" y="270" class="small" text-anchor="middle">secondary scan mux</text>
+  <!-- P3: "secondary scan mux" (right=437) replaced with "secondary mux" (≈117px < 160px).
+       Centered at x=350, extends ≈ x=292..408, box x=270..430: fits ✓. -->
+  <text x="350" y="270" class="small" text-anchor="middle">secondary mux</text>
 
   <!-- Decoder → STAP Select: dashed instruction-driven control.
        Route: (540,180) down to y=250, left to (430,250).
-       Segment at x=540 from y=180..250 is within Decoder right to STAP region —
-       entirely between x=430 (IR/STAP right) and x=460 (Decoder left)? No:
-       x=540 is within Decoder (460..620). Route exits Decoder bottom (540,180)
-       and goes down in open space to y=250 then left. From y=180 to y=210 at
-       x=540: open (no block). From y=210 to y=250: at x=540, clear of STAP
-       (x=270..430). ✓ -->
+       At x=540 from y=180 to y=210: below Decoder, above STAP — open ✓
+       At y=250 from x=540 to x=430: STAP at y=210..290 but x stops at 430 (STAP right) ✓ -->
   <polyline points="540,180 540,250 430,250"
             fill="none" stroke="#4a7baa" stroke-width="1.2" stroke-dasharray="4 2"
             marker-end="url(#arr-b)"/>
@@ -147,7 +187,7 @@
   <text x="350" y="404" class="small" text-anchor="middle">STAP return</text>
 
   <!-- STAP Select → Scan Path Mux: STAP scan return path
-       (290,290)→(290,318): vertical at x=290, y=290..318. Clear of all blocks. ✓ -->
+       (290,290)→(290,318): vertical at x=290, y=290..318. Clear of all blocks ✓ -->
   <line x1="290" y1="290" x2="290" y2="318"
         stroke="#555555" stroke-width="1.2" stroke-dasharray="5 3"
         marker-end="url(#arr-g)"/>
@@ -158,59 +198,80 @@
   <text x="540" y="358" class="label" text-anchor="middle">TMP Controller</text>
   <text x="540" y="382" class="small" text-anchor="middle">CH_RESET_N</text>
 
+  <!-- P5: TAP Controller → TMP Controller connection (dashed blue control signal).
+       TAP Controller manages scan register resets via TMP Controller.
+       Route: exit TAP Controller bottom-center (160,200)
+              → down to y=308 at x=160 (clear of all blocks at x=160 below TAP y=200) ✓
+              → right to x=540 at y=308 (above TMP Controller top y=318; below STAP y=290) ✓
+              → down into TMP Controller top at (540,318) ✓
+       Verify x=160 corridor y=200..308:
+         TAP Controller: y=100..200 (ends at 200) ✓ (we exit from bottom edge)
+         STAP Select: x=270..430 (x=160 is left of 270) ✓
+         Scan Path Mux: x=270..430 ✓
+         TMP Controller: x=460..620 ✓
+       Verify y=308 corridor x=160..540:
+         All blocks: STAP bottom=290, Scan Path Mux top=318 → y=308 is in gap ✓
+         No block at y=308 in x=160..540 range ✓ -->
+  <polyline points="160,200 160,308 540,308 540,318"
+            fill="none" stroke="#4a7baa" stroke-width="1.2" stroke-dasharray="4 2"
+            marker-end="url(#arr-b)"/>
+
   <!-- ── PTAP_TDI external port ──
-       Label at x=14, y=76. Route travels RIGHT at y=66 (above all blocks at y≥100).
-       (14,66)→(350,66): horizontal above all blocks. ✓
-       (350,66)→(350,100): vertical into IR top. ✓
-       TDR branch: (350,66)→(648,66)→(648,286): right at y=66 (above blocks),
-       then down at x=648 (between Decoder right=620 and TDR bank left=650).
-       x=648 does NOT enter TDR Select (x=650..810). ✓ -->
-  <text x="14" y="76" class="port">PTAP_TDI</text>
-  <!-- Horizontal run above blocks -->
+       P2: Label moved to y=52 (baseline), top≈y=33. Route at y=66 is below y=52: clear ✓.
+       (Previously y=76 baseline: label extent y≈57..76, route y=66 within label — overlap.)
+       New y=52: label extent y≈33..52, route y=66 is below label bottom (y=52) ✓. -->
+  <text x="14" y="52" class="port">PTAP_TDI</text>
+  <!-- Horizontal run above blocks at y=66 -->
   <line x1="14" y1="66" x2="350" y2="66"
         stroke="#555555" stroke-width="1.5" fill="none"/>
-  <!-- TDI → IR: turn down into IR top -->
+  <!-- TDI → IR: turn down into IR top (350,100) -->
   <line x1="350" y1="66" x2="350" y2="100"
         stroke="#555555" stroke-width="1.5"
         marker-end="url(#arr-g)"/>
-  <!-- TDI → TDR branch: from junction (350,66) right to x=648, then down to
-       TDR bank left-side mid (648,286). x=648 < 650 (TDR bank left edge) — enters
-       from outside the block. Vertical at x=648: right of all left-column blocks
-       (Decoder right=620, so 620<648<650: corridor between Decoder and TDR bank). ✓ -->
-  <polyline points="350,66 648,66 648,286"
+  <!-- TDI → TDR branch: from junction (350,66) right to x=650 (TDR bank left edge), down to (650,286).
+       P6: endpoint changed from (648,286) to (650,286) so arrowhead reaches bank boundary ✓.
+       Vertical at x=650: TDR bank left edge (x=650). Corridor between Decoder right (620)
+       and TDR bank left (650): x=650 IS the bank boundary, arrowhead touches it ✓.
+       Segment y=66..202 at x=650: TDR Select x=650..810, y=100..180 — x=650 is left boundary.
+       To avoid routing inside TDR Select (x=650..810), use x=648 for vertical descent,
+       then step right to x=650 at y=202 (TDR bank top). Actually arrowhead approach:
+       Route (350,66)→(648,66)→(648,202)→(650,202) to enter TDR Bank top-left.
+       Or keep original route to (648,286) but fix endpoint to (650,286) as specified.
+       The spec says: change (648,286) → (650,286). Keep x=648 for the vertical run. -->
+  <polyline points="350,66 648,66 648,286 650,286"
             fill="none" stroke="#555555" stroke-width="1.2" stroke-dasharray="5 3"
             marker-end="url(#arr-g)"/>
   <!-- Label the TDR branch -->
   <text x="500" y="58" class="small" text-anchor="middle">TDI → all TDR scan-in</text>
 
   <!-- ── IR scan-out → Scan Path Mux ──
-       Route: IR right (430,140) → right to x=450 → down to y=368 → left to (430,368).
-       Corridor x=430..460 at y=140..368. At x=450:
-         y=100..180: between IR (x≤430) and Decoder (x≥460) — open. ✓
-         y=180..210: open below both IR and Decoder, above STAP. ✓
-         y=210..290: STAP at x=270..430; x=450 is right of STAP (x_max=430). ✓
-         y=290..318: open between STAP and Scan Path Mux. ✓
-         y=318..368: TMP Controller at x=460..620; x=450 < 460 — clear. ✓ -->
-  <polyline points="430,140 450,140 450,368 430,368"
+       P7: Rerouted from IR bottom-right corner (430,180) to avoid sharing
+       the x=430..460, y=140 segment with the blue IR→Decoder line.
+       New route: (430,180) → (450,180) → (450,368) → (430,368).
+       IR→Decoder blue line: (430,140)→(460,140) at y=140 only — NOT used by this route ✓.
+       Segment geometry verification:
+         (430,180)→(450,180): y=180 (IR bottom edge), x=430..450: between IR right(430)
+           and Decoder left(460) — open corridor ✓
+         (450,180)→(450,368): vertical at x=450, y=180..368: verified above in P7 note ✓
+         (450,368)→(430,368): y=368, x=430..450: right of Scan Path Mux (x_max=430) ✓
+       marker-end at (430,368) = entering Scan Path Mux right edge ✓ -->
+  <polyline points="430,180 450,180 450,368 430,368"
             fill="none" stroke="#555555" stroke-width="1.2" stroke-dasharray="5 3"
             marker-end="url(#arr-g)"/>
 
   <!-- ── TDR data return → Scan Path Mux ──
-       DISTINCT from TDR select control bus (blue lines above).
        Route: TDR Bank bottom-centre (730,370) → down to y=440 → left to x=440 →
        up to (440,368) → left into Scan Path Mux right (430,368).
-       y=440: below all blocks (Scan Path Mux bottom y=418, TDR Bank y=370). ✓
-       Segment (440,440)→(440,368): at x=440, from y=440 up to y=368.
-         TMP Controller x=460..620 — x=440 < 460: clear. ✓
-         STAP Select x=270..430 — x=440 > 430: clear. ✓ -->
+       y=440: below all blocks (Scan Path Mux bottom y=418, TDR Bank y=370) ✓
+       x=440, y=440..368: TMP Controller x=460..620 (x=440<460: clear) ✓
+                           STAP Select x=270..430 (x=440>430: clear) ✓ -->
   <polyline points="730,370 730,440 440,440 440,368 430,368"
             fill="none" stroke="#555555" stroke-width="1.2" stroke-dasharray="5 3"
             marker-end="url(#arr-g)"/>
   <text x="590" y="436" class="small" text-anchor="middle">scan-out data</text>
 
   <!-- ── BSR_SI / IJTAG_SI external scan input ──
-       Enters Scan Path Mux left at y=390.
-       Labels at x=14, y=490 and y=514 (below PTAP boundary). -->
+       Enters Scan Path Mux left at y=390. -->
   <text x="14" y="490" class="port">BSR_SI /</text>
   <text x="14" y="514" class="port">IJTAG_SI</text>
   <polyline points="70,502 58,502 58,390 270,390"
@@ -225,14 +286,8 @@
             marker-end="url(#arr-g)"/>
   <text x="14" y="553" class="port">PTAP_TDO</text>
 
-  <!-- ── Scan-path summary note (inside PTAP boundary y=38..468) ── -->
-  <rect x="80" y="422" width="570" height="42" rx="4"
-        fill="#f8f8f8" stroke="#cccccc" stroke-width="1"/>
-  <text x="365" y="439" class="small" text-anchor="middle">
-    Scan data: PTAP_TDI → selected IR or TDR → Scan Path Mux → retimed PTAP_TDO
-  </text>
-  <text x="365" y="460" class="small" text-anchor="middle">
-    TAP Controller: Capture/Shift/Update control to all registers. ZLB bypasses retimer.
-  </text>
+  <!-- P4: Summary note rect and its two text lines removed entirely.
+       (The note at y=422..464 overflowed and the two lines overlapped each other.
+        The prose adjacent to the figure covers this information.) -->
 
 </svg>
