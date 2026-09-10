@@ -293,7 +293,7 @@ outputs = [
 #
 # {fw_target} is the only placeholder the runlib allows, so the DV test names
 # are spelled out rather than interpolated. Same host-toolchain-vs-container
-# split as [c_build.bootrom] above; see there for why it exists and for the
+# split as [c_build.default] above; see there for why it exists and for the
 # no-braces constraint on argv.
 cwd = "."
 argv = [
@@ -316,7 +316,7 @@ outputs = [
 # target, and one rom-mode DV controller image. No payload -- these tests never
 # transfer one, which is what separates them from [c_build.dual_occp].
 #
-# Same host-toolchain-vs-container split as [c_build.bootrom] above; see there
+# Same host-toolchain-vs-container split as [c_build.default] above; see there
 # for why it exists and for the no-braces constraint on argv.
 cwd = "."
 argv = [

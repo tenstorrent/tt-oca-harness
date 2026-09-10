@@ -21,7 +21,7 @@ Do not treat a merged copy as design-owner or DV-lead sign-off.
 |Spec / plan |`SMC_VPLAN.adoc` plus the groups `testlists/all.toml` resolves
 |Coverage intent |`SMC_FCOV.adoc` (Python counters; no Verilator covergroup)
 |Checker |`SmcScoreboard` non-vacuous SAMPLE/AXI/VIP counts + `results.xml`
-|CI |`.github/workflows/sim.yml` PR `smoke`; `.github/workflows/regress.yml` nightly and weekly also `smoke`
+|CI |`.github/workflows/sim.yml` PR `smoke`; `.github/workflows/regress.yml` nightly and weekly `hosted`
 |===
 
 [[smc-scope-confirmation]]
@@ -42,7 +42,8 @@ Executable membership, resolved from the testlists:
 [cols="2,1,3",options="header",]
 |===
 |Group |Count |Role
-|`smoke` |37 |PR gate (`sim.yml`) and SMC nightly and weekly (`regress.yml`). Debug breadth, not the feature denominator, and the only group any CI workflow schedules.
+|`smoke` |3 |PR gate (`sim.yml`): canonical bring-up, cold reset, and a CSR frontdoor read
+|`hosted` |151 |Nightly and weekly (`regress.yml`): `all` minus the five firmware / `SMC_DUAL` leaves
 |`per_ip` |99 |One pass across every IP the bench drives. Successor to the `canonical_top6` / `top10` / `top20` tiers.
 |`all` |156 |The package regression. Eight of the 164 enrolled are out: two held against #585 and #1488, two on measured runtime, and the four `rtl_issue` reproducers whose job is to fail.
 |`functional` |13 |One name per Project 335 bucket #3301–#3314. Mixes SAMPLE bring-up with feature rows.
@@ -54,12 +55,12 @@ distinguished a top-6 from a top-10 except the order the work was done in.
 testcase is actually reachable through.
 
 #1448 landed: `smc_i3c_to_fabric_test` is out of `smoke` and `functional`,
-which is why `functional` is 13. `smoke` is 37 after two later leaves
-(`smc_mailbox_flush_test`, `smc_reset_unit_lock_test`). This candidate
-gives the I3C leaf no feature credit either way.
+which is why `functional` is 13. `smoke` is the three-leaf PR gate
+(`smc_canonical_smoke_test`, `smc_cold_reset_test`,
+`smc_register_sanity_test`). This candidate gives the I3C leaf no feature
+credit either way.
 
-Open question for the DV lead: keep `smoke` as the release CI gate, or move
-the nightly to `per_ip`. This file does not change `regress.yml`.
+Nightly and weekly already schedule `hosted`, not `smoke`.
 
 [[smc-credit-rules]]
 === Credit rules
