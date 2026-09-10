@@ -8,12 +8,12 @@ This section describes the SMC's CPU subsystem, which is based on the
 Rocket RV64GC RISC-V processor core (see:
 https://chipyard.readthedocs.io/en/stable/Generators/Rocket.html[Rocket
 Chip]). The cluster is generated using the Chipyard Rocket-chip
-generator and supports 1 to 4 processor cores, each with private L1
+generator and supports 4 processor cores, each with private L1
 cache and access to a shared local SRAM.
 
 Key features include:
 
-* Up to 4 Rocket CPU cores (RV64GC ISA, 56-bit physical addressing)
+* 4 Rocket CPU cores (RV64GC ISA, 56-bit physical addressing)
 * Core-local L1 instruction and data caches, each configurable in size
 and associativity
 * Shared local SRAM/Scratchpad and Boot ROM
@@ -29,7 +29,7 @@ its cache hierarchy
 [cols=",",options="header",]
 |========================================================
 |Attribute |Description
-|Cores |1–4, Rocket RV64GC
+|Cores |4, Rocket RV64GC
 |ISA |RV64GC (I, M, A, F, D, C extensions)
 |Microarchitecture |In-order, 5-stage pipeline
 |Privilege Levels |M/S/U

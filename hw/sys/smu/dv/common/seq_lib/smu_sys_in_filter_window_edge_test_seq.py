@@ -1,6 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SYS_IN inbound0 page-edge: interior OKAY, outside mapped CSRs DECERR. SEP=0, no Force."""
+"""SYS_IN inbound0 page-edge: interior OKAY, outside mapped CSRs DECERR. SEP=0, no Force.
+
+With ALLOW_BURST set the filter compares page indices and ignores addr[11:0], so one page is
+the finest START/END step it resolves. The START edge is probed by re-programming the window
+one page up and re-reading VERSION_LO, which then sits one page below START; its OKAY leg
+under the first window is the live control that makes the DECERR a filter refusal rather than
+an unmapped-address response.
+"""
 
 from __future__ import annotations
 
@@ -30,13 +37,16 @@ VERSION_LO = SMC_CHIP_CONFIG_VERSION_LO
 VERSION_LO_RESET = SMC_CHIP_CONFIG_VERSION_LO_RESET
 WINDOW_START = VERSION_LO
 WINDOW_END = SMC_CHIP_CONFIG_CHIP_ID
-# Mapped CSRs outside the VERSION_LO page (page_lo-4 is the local-xbar hole).
+# Mapped CSRs outside the VERSION_LO page.
 BELOW_CSR = WDT_CTRL_ADDR
 ABOVE_CSR = smc_indexed_addr("SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR", 0)
+# Second window: the page starting at ABOVE_CSR, one page above the first window.
+ADJ_WINDOW_START = ABOVE_CSR
+ADJ_WINDOW_END = ABOVE_CSR
 
 
 class smu_sys_in_filter_window_edge_test_seq:
-    """SMN OKAY on filter page interior; DECERR on mapped CSRs outside."""
+    """SMN OKAY on filter page interior; DECERR one page either side of the window."""
 
     def __init__(self, test) -> None:
         self.test = test
@@ -45,6 +55,7 @@ class smu_sys_in_filter_window_edge_test_seq:
         self.s1_ok = False
         self.s2_ok = False
         self.s3_ok = False
+        self.s4_ok = False
 
     def _log(self, msg: str) -> None:
         cocotb.log.info(msg)
@@ -62,13 +73,31 @@ class smu_sys_in_filter_window_edge_test_seq:
         sb = self.test.env.scoreboard
         dut = self.dut
         page_lo, page_hi = page_align_window(WINDOW_START, WINDOW_END)
+        adj_lo, adj_hi = page_align_window(ADJ_WINDOW_START, ADJ_WINDOW_END)
+        page_bytes = page_hi - page_lo + 1
         below = BELOW_CSR
         above = ABOVE_CSR
-        if not (below < page_lo or above > page_hi):
+        if below >= page_lo or above <= page_hi:
             raise AssertionError(
                 f"edge CSRs are inside programmed page "
                 f"[0x{page_lo:08x},0x{page_hi:08x}] "
                 f"below=0x{below:08x} above=0x{above:08x}"
+            )
+        if above != page_hi + 1:
+            raise AssertionError(
+                f"above CSR 0x{above:08x} is not page_hi+1 0x{page_hi + 1:08x} "
+                f"for page [0x{page_lo:08x},0x{page_hi:08x}]"
+            )
+        if adj_lo != page_lo + page_bytes or adj_hi != page_hi + page_bytes:
+            raise AssertionError(
+                f"adjacent window [0x{adj_lo:08x},0x{adj_hi:08x}] is not the page "
+                f"immediately above [0x{page_lo:08x},0x{page_hi:08x}]"
+            )
+        if not (page_lo <= VERSION_LO <= page_hi):
+            raise AssertionError(
+                f"VERSION_LO 0x{VERSION_LO:08x} is not inside page "
+                f"[0x{page_lo:08x},0x{page_hi:08x}], so it is not one page below "
+                f"START 0x{adj_lo:08x}"
             )
 
         jtag = make_smu_jtag_tap(dut, self.cfg.jtag_period_ns)
@@ -139,8 +168,7 @@ class smu_sys_in_filter_window_edge_test_seq:
         hi_poison = int(hi_data) & 0xFFFF_FFFF
         if lo_poison != SMC_FILTER_POISON_LO:
             raise AssertionError(
-                f"below-edge poison want 0x{SMC_FILTER_POISON_LO:08x} "
-                f"got 0x{lo_poison:08x} (xbar-hole is not the page edge)"
+                f"below-edge poison want 0x{SMC_FILTER_POISON_LO:08x} got 0x{lo_poison:08x}"
             )
         if hi_poison != SMC_FILTER_POISON_LO:
             raise AssertionError(
@@ -148,8 +176,33 @@ class smu_sys_in_filter_window_edge_test_seq:
             )
         self.s3_ok = True
         self._log(
-            f"CHK-FILTER-EDGE-OUT below=0x{below:08x} data=0x{lo_poison:08x} "
-            f"above=0x{above:08x} data=0x{hi_poison:08x} DECERR+filter-poison"
+            f"CHK-FILTER-EDGE-OUT below=0x{below:08x} (-{(page_lo - below) // page_bytes} pages) "
+            f"data=0x{lo_poison:08x} above=0x{above:08x} (+1 page) "
+            f"data=0x{hi_poison:08x} DECERR+filter-poison"
         )
         sb.expect_eq("CHK-FILTER-EDGE-BELOW", resp_lo, RESP_DECERR)
         sb.expect_eq("CHK-FILTER-EDGE-ABOVE", resp_hi, RESP_DECERR)
+
+        await program_inbound0_window(
+            jtag, ADJ_WINDOW_START, ADJ_WINDOW_END, scoreboard=sb, tag="EDGE_ADJ"
+        )
+        adj_data, resp_adj = await await_smn_resp(
+            master,
+            VERSION_LO,
+            RESP_DECERR,
+            clk=dut.clk_smu_i,
+            label=f"edge one page below START 0x{VERSION_LO:08x}",
+        )
+        adj_poison = int(adj_data) & 0xFFFF_FFFF
+        if adj_poison != SMC_FILTER_POISON_LO:
+            raise AssertionError(
+                f"START-edge poison want 0x{SMC_FILTER_POISON_LO:08x} got 0x{adj_poison:08x} "
+                f"at 0x{VERSION_LO:08x} under window [0x{adj_lo:08x},0x{adj_hi:08x}]"
+            )
+        self.s4_ok = True
+        self._log(
+            f"CHK-FILTER-EDGE-START-ADJ addr=0x{VERSION_LO:08x} OKAY under "
+            f"[0x{page_lo:08x},0x{page_hi:08x}] then DECERR+filter-poison under "
+            f"[0x{adj_lo:08x},0x{adj_hi:08x}]; START resolved to {page_bytes} bytes"
+        )
+        sb.expect_eq("CHK-FILTER-EDGE-START-ADJ", resp_adj, RESP_DECERR)

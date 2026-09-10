@@ -68,7 +68,6 @@ the top-level `smu` parameter list.
 
 | Field | Default | Description |
 |-------|---------|-------------|
-| `SMC_CPU_CONFIG` | `SMC_4CORE` (`32'd2`) | SMC CPU cluster: `SMC_1CORE=1` or `SMC_4CORE=2`. |
 | `NUM_INT_TO_SMC` | `256` | External interrupts aggregated to SMC. |
 | `JTAG_NUM_EXTRA_STAPS` | `1` | Extra STAP ports (min 1 exposed → `JTAG_NUM_EXTRA_STAP_PORTS`). |
 | `JTAG_*_ENABLE` (BSR/EXTEST/INTEST/CLAMP/HIGHZ/RUNBIST/TMP/IC_RESET/SMC_DBG/STAP_IO) | `1` | DTP optional JTAG instruction enables. |

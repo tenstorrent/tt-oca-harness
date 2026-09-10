@@ -82,7 +82,7 @@ summary does not list row-by-row (see <<smu-known-limitations,Known Limitations>
 |===
 |Test |Leaf |Scenario
 |`smu_axi_alias_remap_manager_scope_test` |fabric |SMU Tier A alias-remap (S3 LIVE)
-|`smu_axi_atomic_operation_test` |fabric |ATOP non-support on SEP=0 SMN path
+|`smu_axi_atomic_operation_test` |fabric |non-ATOP SMN read completes (RID==ARID); ATOP not drivable, TB ties aw.atop low
 |`smu_axi_crossbar_error_handling_test` |fabric |SMU_ALL_008 Option-B PWRGOOD-only
 |`smu_axi_external_port_connectivity_test` |fabric |SMU_ALL_002
 |`smu_axi_filter_allow_ns_test` |fabric |SMU Tier A allow_ns (SEP=0 J2A + s_axi)
@@ -124,7 +124,7 @@ summary does not list row-by-row (see <<smu-known-limitations,Known Limitations>
 |`smu_otp_vs_fabric_map_race_test` |dtp |OTP vs fabric MAP last-writer
 |`smu_sep_smoke_test` |deferred |SMU_ALL_007 RST-PRIMARY + CTM.S2/S3 (SEP=0 bare)
 |`smu_smc_dtp_jtag2axi_smoke_test` |dtp |SMC fabric J2A smoke (SEP=0, no Force)
-|`smu_smc_mailbox_int_test` |smc |smc_ext_mailbox_interrupts width DECODE (SMU_ALL_004)
+|`smu_smc_mailbox_int_test` |smc |smc_ext_mailbox_interrupts width plus mailbox 0 / 31 bit mapping (SMU_ALL_004)
 |`smu_smc_mailbox_sanity_test` |smc |outbound-0 STATUS/IRQEN via fabric J2A (SEP=0)
 |`smu_smc_reset_ctrl_test` |smc |primary/cold/periph reset release under SMU SEP=0
 |`smu_smc_security_demote_pm_test` |smc |SEP=0 demote / lc_state observe-only
@@ -133,13 +133,32 @@ summary does not list row-by-row (see <<smu-known-limitations,Known Limitations>
 |`smu_smc_wdt_timeout_irq_test` |smc |CORE0 WDT sticky WDOGIP0
 |`smu_sys_in_filter_program_jtag_test` |fabric |inbound0 program then SMN OKAY
 |`smu_sys_in_filter_reprogram_shrink_test` |fabric |wide, shrink, clear
-|`smu_sys_in_filter_window_edge_test` |fabric |page interior OKAY, ±4B DECERR
+|`smu_sys_in_filter_window_edge_test` |fabric |page interior OKAY; adjacent page each side DECERR+poison
 |`smu_system_timer_octs_test` |smc |SMU Tier C OCTS primary free-run
 |`smu_xtrig_ctm_illegal_phase_test` |dtp |pin-only illegal CTM corners
 |`smu_xtrig_ctm_remap_test` |dtp |product-pin CTM remap
 |===
 
 === Test Procedures
+
+Each entry below is a test body and its sequence. The Checkers table lists the
+evidence tokens the body emits, and those tokens are also the
+`(CHK_ID, TOKEN, EXPECT)` rows in `common/smu_dv_env/smu_evidence_map.py`.
+Those rows are a token contract, not a behavioural one. What the scoreboard
+enforces is exactly this: every TOKEN mapped to a testcase must have been
+logged by an `expect_*` compare that passed, or `prove_mapped_features()`
+fails the test; and a testcase with no rows must be declared in
+`UNMAPPED_TESTS`, or it fails there too.
+
+The EXPECT column is free-text contract wording for readers. Nothing compares
+an observed value against it, so the per-row log line `EVIDENCE TOKEN SEEN`
+reports that a mapped token was carried by a passing check -- not that the
+sentence beside it was verified. Each row also prints how the token bound:
+`evidence-arg` when the caller named it in an `evidence=` argument, or
+`check-name-substring` when the TOKEN or CHK id was matched against the check's
+name. Rows in the second class are the weaker binding and are collected into an
+`EVIDENCE BINDING WEAK` line. To know what a row's sentence is worth, read the
+check.
 
 ==== FABRIC
 
@@ -184,15 +203,15 @@ summary does not list row-by-row (see <<smu-known-limitations,Known Limitations>
 
 *Source Module*: `smu_axi_atomic_operation_test`
 
-*Objective*: Document ATOP tie-off + prove non-ATOP SMN access still completes.
+*Objective*: Prove a non-ATOP SMN read completes with RID==ARID; ATOP is not drivable here.
 
 *Test Coverage*:
 
-* smu_axi_atomic_operation_test - ATOP non-support on SEP=0 SMN path.
-* SMU xbar (SEP=1) instantiates `ATOPs=0`; SEP=0 uses the same SMC inbound filter/err path.
-* TB ties `smu_axi_in_req.aw.atop = 0` (no flat ATOP pin).
-* This test proves the supported non-ATOP traffic class completes with a live RID==ARID path rather than hanging.
-* DECERR / err_slv poison deny semantics and ATOP reject stimulus stay deferred until a legal ATOP driver and a filter-allow / OKAY positive control exist (NEGATIVE-NEEDS-POSITIVE-CONTROL).
+* smu_axi_atomic_operation_test - non-ATOP SMN read path on SEP=0.
+* `tb/tb_top.sv` and `tb/tb_wrapper_top.sv` tie `smu_axi_in_req.aw.atop` to `'0`, the flat `s_axi` port list carries no ATOP pin, and the package has no ATOP driver, so no ATOP transaction reaches the DUT.
+* This test makes no claim about ATOP rejection; a green run here is not ATOP non-support credit.
+* What it proves: a plain 32-bit read on the SEP=0 SMN path completes rather than hanging, and the RID sampled off the live R channel mirrors the ARID issued.
+* DECERR / err_slv poison deny semantics stay deferred until a filter-allow / OKAY positive control exists (NEGATIVE-NEEDS-POSITIVE-CONTROL).
 
 *Test Procedure*:
 
@@ -645,11 +664,13 @@ summary does not list row-by-row (see <<smu-known-limitations,Known Limitations>
 
 *Source Module*: `smu_sys_in_filter_window_edge_test`
 
-*Objective*: SMN OKAY on filter page edges; DECERR one beat outside.
+*Objective*: SMN OKAY on the filter page interior; DECERR one filter page either side.
 
 *Test Coverage*:
 
-* SYS_IN inbound0 page-edge: interior OKAY, outside mapped CSRs DECERR.
+* SYS_IN inbound0: page interior OKAY, and the adjacent page each side DECERR with filter poison.
+* With `ALLOW_BURST` set, `traffic_filter.sv` compares `tx_addr[AddrWidth-1:12]`, so one filter page is the finest bound this configuration resolves.
+* The below-page probe re-reads an address that answered OKAY earlier in the same run, so its DECERR cannot be a dead bus or an unmapped hole.
 
 *Test Procedure*:
 
@@ -669,7 +690,8 @@ summary does not list row-by-row (see <<smu-known-limitations,Known Limitations>
 |`CHK-FILTER-EDGE-OUT` |Evidence token, emitted only after the compares it names have held
 |`CHK-FILTER-EDGE-BELOW` |Evidence token, emitted only after the compares it names have held
 |`CHK-FILTER-EDGE-ABOVE` |Evidence token, emitted only after the compares it names have held
-|assertion |filter_window_edge incomplete s1=<value> s2=<value> s3=<value>
+|`CHK-FILTER-EDGE-START-ADJ` |Evidence token, emitted only after the compares it names have held
+|assertion |filter_window_edge incomplete s1=<value> s2=<value> s3=<value> s4=<value>
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_fabric`, `sep0_all`.
@@ -1070,7 +1092,6 @@ summary does not list row-by-row (see <<smu-known-limitations,Known Limitations>
 |`CHK-DTP-CLKSTOP-AGG-S1` |Evidence token, emitted only after the compares it names have held
 |`CHK-DTP-CLKSTOP-AGG-S2` |Evidence token, emitted only after the compares it names have held
 |`CHK-DTP-CLKSTOP-AGG-S3` |Evidence token, emitted only after the compares it names have held
-|`CHK-TIMEOUT-PATHS` |Evidence token, emitted only after the compares it names have held
 |`CHK-NONVAC` |Evidence token, emitted only after the compares it names have held
 |===
 
@@ -1966,12 +1987,13 @@ summary does not list row-by-row (see <<smu-known-limitations,Known Limitations>
 
 *Source Module*: `smu_smc_mailbox_int_test`
 
-*Objective*: SMU_ALL_004: SMC external mailbox IRQ width DECODE (SEP=0).
+*Objective*: SMU_ALL_004: SMC external mailbox IRQ width and bit mapping (SEP=0).
 
 *Test Coverage*:
 
 * Sequence for smu_smc_mailbox_int_test (SMU_ALL_004).
-* DV-CARD: SMU_ALL_004 ANCHOR: smu_smc_mailbox_int_test Approved OWNS (card r8 / plan r3): SMC-MBX-IRQ-EXT.S2 — Width equals NUM_MAILBOXES (32) at the SMU boundary (passive DECODE on bare tb_top SEP=0; required_cells width=32).
+* DV-CARD: SMU_ALL_004 ANCHOR: smu_smc_mailbox_int_test Approved OWNS (card r8 / plan r3): SMC-MBX-IRQ-EXT.S2 — Width equals NUM_MAILBOXES (32) at the SMU boundary, observed at the DUT port width rather than a testbench declaration.
+* Mailbox 0 and mailbox 31 raise their outbound write-threshold IRQ over the JTAG2AXI frontdoor, and the boundary vector must equal `baseline | 1<<idx` and return to baseline when the enable is cleared.
 * CHANNELS.S2/S3 and EXT.S1 are owned by SMU_ALL_008 — out of scope.
 * No mailbox MMIO; no Force/deposit on smc_ext_mailbox_interrupts.
 

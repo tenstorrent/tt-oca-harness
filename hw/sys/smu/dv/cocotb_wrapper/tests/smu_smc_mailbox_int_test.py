@@ -4,8 +4,9 @@
 
 DV-CARD:          SMU_ALL_004   ANCHOR: smu_smc_mailbox_int_test
 
-Bare ``tb_top`` / ``smu_uvm_top`` SEP=0 — passive DECODE of
-``ext_mailbox_interrupts`` width == NUM_MAILBOXES (32).
+Bare ``tb_top`` / ``smu_uvm_top`` SEP=0 — DECODE of ``ext_mailbox_interrupts``:
+width == NUM_MAILBOXES (32), and mailbox 0 / 31 IRQs raised over J2A move
+bits 0 / 31.
 """
 
 from __future__ import annotations
