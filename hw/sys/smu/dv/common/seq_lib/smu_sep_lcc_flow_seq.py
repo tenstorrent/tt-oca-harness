@@ -22,6 +22,15 @@ The lock stage is what makes the rest non-vacuous. A register that stored
 whatever software wrote would satisfy every demote check; only a refused write
 after lock shows the block implements the policy.
 
+The consumer contract is the profile of the SEP eFuse shadow image the sep_rtl
+run mode supplies -- assets/default_sep_efuse_shadow_reg.preload, whose LC word
+is clear, so raw 0x0 and therefore TEST_DEV. The sequence asserts that image is
+the one in play before applying the contract. Before the posture is sampled
+lc_state reads 0x0f, which is not a state, and dbg_disable is asserted whatever
+the image says; each consumer leg is therefore both a delta off that pre-sense
+baseline and a compare against the state's contracted value -- lc_state 0xf0 at
+the SMC, dbg_disable clear at the DTP.
+
 Note on what is NOT claimed: a demote is not required to move feat_ctrl. In
 TEST_DEV the baseline is already ~(sip_dis | sys_dis), so with a permissive
 eFuse image the bits a demote forces high are high already and the write is a
@@ -53,6 +62,15 @@ FAIL_SYMS = {
 }
 
 SETTLE_CYCLES = 2000
+
+# The eFuse shadow image whose lifecycle profile the consumer legs below are
+# written against, and that profile. lc_state reaches the SMC diff-encoded as
+# {~raw, raw}, so this image's clear LC word arrives as 0xf0; TEST_DEV leaves
+# debug open, so the DTP-facing dbg_disable is clear.
+SHADOW_PRELOAD_ASSET = "default_sep_efuse_shadow_reg.preload"
+LC_STATE_PRE_SENSE = 0x0F
+LC_STATE_EXPECTED = 0xF0
+DBG_DISABLE_EXPECTED = 0x0000
 
 
 class SmuSepLccFlowSeq:
@@ -97,6 +115,14 @@ class SmuSepLccFlowSeq:
             assert (
                 os.path.basename(itcm).split(".")[0] == os.path.basename(sym_path).split(".")[0]
             ), "ITCM image and symbol table are from different firmwares"
+
+        # The consumer contract belongs to one eFuse image, so the run has to be
+        # using it. smu_sep_lcc_state_matrix_test is where other images run.
+        shadow = str(cocotb.plusargs.get("sep_shadow_reg_preload", ""))
+        assert os.path.basename(shadow) == SHADOW_PRELOAD_ASSET, (
+            f"the consumer contract here is the profile of {SHADOW_PRELOAD_ASSET}; "
+            f"this run supplies {shadow or 'no SEP shadow preload'}"
+        )
 
         self.log.info("=" * 70)
         self.log.info("TEST: SEP lifecycle posture, firmware-driven, traced to consumers")
@@ -167,8 +193,30 @@ class SmuSepLccFlowSeq:
                 f"lcc_demote_state_2_o never changed ({before['demote2']:#04b}) -- "
                 "the firmware's DEMOTE_2 write did not reach the SMU boundary"
             )
-        if after["smc_lc_state"] == 0:
-            errors.append("SMC received lc_state 0x00 -- the posture is not reaching the SMC")
+        if before["smc_lc_state"] != LC_STATE_PRE_SENSE:
+            errors.append(
+                f"smc_lc_state_in_o read 0x{before['smc_lc_state']:02x} at reset, not the "
+                f"pre-sense 0x{LC_STATE_PRE_SENSE:02x} -- the SMC leg has no baseline to "
+                "move off, so its post-run value would prove nothing"
+            )
+        if after["smc_lc_state"] != LC_STATE_EXPECTED:
+            errors.append(
+                f"SMC received lc_state 0x{after['smc_lc_state']:02x}, expected "
+                f"0x{LC_STATE_EXPECTED:02x} for this eFuse image -- the decoded posture "
+                "is not reaching the SMC"
+            )
+        if before["dbg_disable"] == DBG_DISABLE_EXPECTED:
+            errors.append(
+                f"lcc_dbg_disable_o was already 0x{DBG_DISABLE_EXPECTED:04x} at reset -- "
+                "the DTP leg has no baseline to move off, so its post-run value would "
+                "prove nothing"
+            )
+        if after["dbg_disable"] != DBG_DISABLE_EXPECTED:
+            errors.append(
+                f"DTP received dbg_disable 0x{after['dbg_disable']:04x}, expected "
+                f"0x{DBG_DISABLE_EXPECTED:04x} for this eFuse image -- the decoded posture "
+                "is not reaching the DTP"
+            )
 
         assert not errors, "SEP LCC flow: " + "; ".join(errors)
 
@@ -179,20 +227,26 @@ class SmuSepLccFlowSeq:
         )
         self.log.info(
             "CHK-SEP-LCC-FANOUT: PASS (demote1 %s->%s, demote2 %s->%s, "
-            "feat_ctrl 0x%016x->0x%016x, dbg_disable 0x%04x->0x%04x, SMC lc_state=0x%02x)",
+            "feat_ctrl 0x%016x->0x%016x reported only; SMC lc_state 0x%02x->0x%02x "
+            "against the contracted 0x%02x, DTP dbg_disable 0x%04x->0x%04x against "
+            "the contracted 0x%04x)",
             format(before["demote1"], "#04b"),
             format(after["demote1"], "#04b"),
             format(before["demote2"], "#04b"),
             format(after["demote2"], "#04b"),
             before["feat_ctrl"],
             after["feat_ctrl"],
+            before["smc_lc_state"],
+            after["smc_lc_state"],
+            LC_STATE_EXPECTED,
             before["dbg_disable"],
             after["dbg_disable"],
-            after["smc_lc_state"],
+            DBG_DISABLE_EXPECTED,
         )
         self.log.info(
             "CHK-SEP-LCC-NONVAC: PASS (every consumer claim is a delta against the "
-            "reset posture, and the write-once lock rules out plain storage)"
+            "pre-sense reset posture and a compare against this eFuse image's "
+            "contracted value, and the write-once lock rules out plain storage)"
         )
         for token in ("SEP_LCC_FW_FLOW_OK", "SEP_LCC_FANOUT_TO_SMC_DTP_OK"):
             self.log.info("EVIDENCE: %s", token)
