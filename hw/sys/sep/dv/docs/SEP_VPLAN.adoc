@@ -19,7 +19,7 @@
 |Register export |`hw/sys/sep/regs/gen/` (via `env/sep_reg_meta.py`)
 |How to run |`README.md` in this DV tree (`tools/dv/run_dv.py --dut sep`)
 |Phase 1 test cases |32
-|Phase 2 test cases |60
+|Phase 2 test cases |61
 |Cocotb total |93 (`testlists/all.toml` `expected_count`); see <<counts>>
 |Phase 3 |SV-UVM bench bring-up; 1 bound scenario (`sep_axi_smoke_test`)
 |===
@@ -4309,6 +4309,50 @@ which list is normative is an open question for the design owner.
 
 '''''
 
+[[sep_efuse_digest_latch_fault_test]]
+===== `sep_efuse_digest_latch_fault_test`
+
+*Phase*: 2
+
+*Bucket*: eFuse, lifecycle, SEC_DIS, locked-field
+
+*Run mode*: `no_cpu` (`lsu_stub_all_live`), real fuse sense
+
+*Source Module*: `sep_efuse_digest_latch_fault_test`
+
+*BFM / Model*: ocah_axi_vip; `SepRmaTokenMatchSeq` drives the frontdoor token compare
+
+*Objective*: The RMA-SIP token digest latch captures a frontdoor hash, holds it while idle, and stops capturing while the DFT test-enable is asserted -- so a scan-visible sticky register cannot be loaded with a real token digest during test.
+
+*Test Coverage*: Digest latch capture, idle hold, and the test-enable freeze on both the digest and its valid bit.
+
+*Test Procedure*:
+
+[arabic]
+. Sense a `LC_PROD` image carrying the seeded RMA_SIP token.
+. Present the correct token over the frontdoor. Watch `digest_latch_en_pre` and `vld_latch_en_pre` -- the pre-gate antecedents -- and require both to activate, then record the sticky digest and its valid bit.
+. Hold for two idle cycles: both post-gate latch enables stay low and neither sticky field moves.
+. Assert the DFT test-enable through the `token_digest_test_en_inject_i` hook and present a *mutated* token, so a capture would land a different digest than the one recorded.
+. Throughout that presentation require the pre-gate antecedents to fire while both post-gate enables stay low and both sticky fields keep their recorded values.
+. Release the test-enable.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-DIGEST-LATCH
+|A frontdoor hash captures into the sticky digest and its valid bit; two idle cycles leave both unchanged; and while the DFT test-enable is asserted the two `prim_and2` gates hold `digest_latch_en` and `vld_latch_en` low, so a second frontdoor operation -- proven to have run by the pre-gate antecedents -- neither latches its own digest nor clears the valid bit.
+|===
+
+The freeze leg is falsifiable in both fields, which is what makes it evidence rather than a quiet pass. Without the valid gate, `start_i` clears the sticky valid bit at the start of the second operation; without the digest gate, the mutated token latches a digest that differs from the recorded one. The pre-gate antecedents are the positive control: they show the operation genuinely ran, so the frozen outputs are not frozen because nothing happened.
+
+*Scope limit*: the test-enable is asserted through a testbench force on `u_sha256_rma_sip_token.test_en_i`, which is DFT stimulus with no frontdoor path and is tied low at the SEP boundary. The force targets the enable only -- never the latch enables or the sticky outputs the checker reads.
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+'''''
+
 [[sep_efuse_token_match_fault_pic_test]]
 ===== `sep_efuse_token_match_fault_pic_test`
 
@@ -5766,8 +5810,8 @@ contracts owned by the vault test, and the wipe security contract.
 |===
 |Item |Count
 |Phase 1 tests |32
-|Phase 2 tests |60
-|Cocotb total |93 (`testlists/all.toml` `expected_count`). One enrolled test, `sep_efuse_digest_latch_fault_test`, has no Test Procedures entry yet, so it is counted here but carries no phase.
+|Phase 2 tests |61
+|Cocotb total |93 (`testlists/all.toml` `expected_count`)
 |Phase 3 |1 SV-UVM scenario bound (`sep_axi_smoke_test`)
 |Iconic scorecard rows |58 in-scope: 58 PROVEN (see <<iconic-scorecard>>)
 |Coded and failing |3 (`sep_drbg_axil_adapter_port_arbitration_test`; `sep_drbg_axil_concurrent_csrng_aw_then_ar_test`; `sep_drbg_axil_concurrent_edn_aw_then_ar_test`; parked on RTL, not expected-fail; see <<known-limitations>>)
