@@ -55,7 +55,7 @@ import sep_reg  # noqa: E402  (path bootstrap must precede the import)
 
 # RDL reserved-field names as emitted by the generator: `rsvd`, `rsvd_<n>`,
 # `reserved`, `reserved_<n>`. Anchored so real fields that merely contain the
-# word (`test_reserved`, `spi_control_field_en_rsvd`) are NOT excluded.
+# word (`test_reserved`) are NOT excluded.
 _RESERVED_FIELD_RE = re.compile(r"^(?:rsvd|reserved)(?:_\d+)?$")
 
 # Registers whose OFFSET is emitted per instance but whose DEFAULT/struct is
@@ -177,8 +177,7 @@ class RegBlock:
         correctly masks to 0, which callers must treat as "nothing to prove"
         rather than as a passing check.
 
-        Matched by exact name, not substring: `test_reserved` and
-        `spi_control_field_en_rsvd` are real, software-visible fields.
+        Matched by exact name, not substring: `test_reserved` is a real, software-visible field.
         """
         struct = self._sym(name, "reg_t", alias_ok=True)
         union = getattr(sep_reg, struct.__name__.replace("_reg_t", "_reg_u"))

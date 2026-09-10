@@ -9,7 +9,7 @@
  * core clock (e.g. clkdiv=9 gave 40 MHz @800 but only 5 MHz @100).
  *
  * The source of truth for the active DV core clock is the directed eFuse
- * preload content in SEP_SPI_CTRL_FIELD_EN.smu_pll_sysclk.
+ * preload content in SYSCLK_FREQ_MHZ.sysclk_freq_mhz.
  *
  * Target = 25 MHz. The divider is coarse at a 100 MHz core (only clkdiv=0 -> 50
  * MHz or clkdiv=1 -> 25 MHz are reachable, nothing between), and 50 MHz proved
@@ -19,7 +19,7 @@
  * clkdiv=1 -> 100/4 = 25 MHz @100. Well within the modeled flash devices'
  * rating (S25FL064L 108 MHz, W25Q128JV 104 MHz).
  *
- * SPI tests should use eFuse/shadow preloads whose smu_pll_sysclk value matches
+ * SPI tests should use eFuse/shadow preloads whose sysclk_freq_mhz value matches
  * the simulated core clock. If unset (0), helpers fall back to the 100 MHz
  * reference clock.
  */
@@ -33,12 +33,12 @@
 
 #define SPI_TARGET_SCLK_MHZ 25u
 
-/* Real core clock (MHz) from the sensed eFuse smu_pll_sysclk field; 0 -> 100
+/* Real core clock (MHz) from the sensed eFuse sysclk_freq_mhz field; 0 -> 100
  * (reference-clock fallback, matching ROM pll_init). */
 static inline uint32_t spi_core_mhz(void) {
-    uint32_t raw = READ_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_BASE_ADDR);
-    uint32_t f = (raw & SEP_EFUSE_MAP__SEP_SPI_CTRL_FIELD_EN__SMU_PLL_SYSCLK_bm) >>
-                 SEP_EFUSE_MAP__SEP_SPI_CTRL_FIELD_EN__SMU_PLL_SYSCLK_bp;
+    uint32_t raw = READ_REG(OCH_SEP_TOP_SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_BASE_ADDR);
+    uint32_t f = (raw & SEP_EFUSE_MAP__SYSCLK_FREQ_MHZ__SYSCLK_FREQ_MHZ_bm) >>
+                 SEP_EFUSE_MAP__SYSCLK_FREQ_MHZ__SYSCLK_FREQ_MHZ_bp;
     return f ? f : 100u;
 }
 
