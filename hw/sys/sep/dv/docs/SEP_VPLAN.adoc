@@ -929,9 +929,9 @@ recipes: link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_
 
 *BFM / Model*: ocah_axi_vip
 
-*Objective*: Prove the CPU-LSU decodes `sep_cpu_ctrl` and one safe CSR in every LSU-reachable CSR block (including Adams Bridge and the entropy pool).
+*Objective*: Prove the CPU-LSU decodes `sep_cpu_ctrl` and one safe CSR in every LSU-reachable CSR block (including Adams Bridge and the entropy pool), and that the reserved span inside `sep_cpu_ctrl` completes with an error response.
 
-*Test Coverage*: One safe CSR in every LSU-reachable CSR block, plus a `sep_cpu_ctrl` sweep.
+*Test Coverage*: One safe CSR in every LSU-reachable CSR block, plus a `sep_cpu_ctrl` sweep and a refuse of the interior reserved span.
 
 *Test Procedure*:
 
@@ -942,6 +942,7 @@ recipes: link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_
 . Write/readback/restore the SEP base/size CSRs and the pure-RW storage registers (masked).
 . Write the implemented `CLOCK_GATE_CTRL` bits, read them back, then restore reset after the fabric walk.
 . Walk one readable CSR per LSU-reachable block (DMA, WDT, scratch, reset, OTBN, AES, HMAC, KMAC, CSRNG, EDN, ESRC, ABR NAME, entropy-pool STATUS, lifecycle, KM mailbox, eFuse shadow, AXI mailbox, inbound filter CFG, alias remap, outbound remap, SPI) and require OKAY (value-check where reset is known).
+. Read three words in the reserved span after `SEP_FUSE_SENSE_STATUS` and before `SEP_SW_DEBUG` (including `0x10A3_0170`) and require a completed SLVERR or DECERR, not a timeout.
 
 *Checkers*:
 
@@ -958,6 +959,8 @@ recipes: link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_
 |The sweep performed a large, non-zero number of value comparisons.
 |CHK-FABRIC-WALK
 |Every LSU-reachable CSR block in the walk returns OKAY on its chosen register; value-checked entries match the exported or seq-derived expectation.
+|CHK-CPU-CTRL-HOLE
+|Each reserved `sep_cpu_ctrl` word in the span after `SEP_FUSE_SENSE_STATUS` and before `SEP_SW_DEBUG` completes with SLVERR or DECERR. A timeout or OKAY fails.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
