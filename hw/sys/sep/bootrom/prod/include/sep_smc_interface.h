@@ -58,7 +58,7 @@ static inline uint32_t sep_get_smc_base(void) {
 // Chip config block (VERSION_LO/HI, CHIP_ID, LC_STATE, RAS_BANK_INFO).
 #define SMC_CHIP_ID_OFFSET 0x2908u
 
-// SMC fuse map — chiplet/package ID for usage constraints (C13.7).
+// SMC fuse map — chiplet/package ID for usage constraints ([S23]).
 // 8 × 32-bit words each. SEP reads via AXI: smc_base + offset.
 //
 // 0x7008 / 0x7028 are SMC_TOP_SMC_EFUSE_MAP_CHIPLET_ID / _PACKAGE_ID

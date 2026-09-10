@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """PROD, BL1_DEMOTION_VALID clear, BL2 demotion requested -> DEMOTE_1 left UNWRITTEN.
 
-Outcome **O4** of the [C15] decision table in
+Outcome **O4** of the [S25] decision table in
 ``rom_fw/sep_demotion_decision_base.py``; the PROD stimulus it shares with the
 other three PROD members is in ``rom_fw/sep_demotion_prod_base.py``.
 

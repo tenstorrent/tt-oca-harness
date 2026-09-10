@@ -73,7 +73,7 @@ SRAM_SCRUB_BYTES ?= 0
 BL1_SRAM_EXEC_ENABLE ?= 1
 # ICCM ECC establishment. The BL1 copy writes BL1's own words with valid ECC, so
 # only words past its end can be fetched having never been written; a pad at
-# hand-off covers those. Set ROM_ICCM_CLEAR_FULL=1 to scrub all of ICCM at [C9b]
+# hand-off covers those. Set ROM_ICCM_CLEAR_FULL=1 to scrub all of ICCM at [S16]
 # instead, which also clears power-up residue at a cost of ~2M cycles.
 ROM_ICCM_CLEAR_ENABLE ?= 1
 ROM_ICCM_CLEAR_FULL ?= 0

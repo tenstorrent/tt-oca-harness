@@ -359,7 +359,7 @@ static uint32_t try_manifest_slot(uint32_t src_addr, bool from_spi, int64_t regi
     // A slot is only usable if its BL1 can actually be loaded, so the check
     // belongs here, inside the retry, rather than at hand-off: a missing or
     // unplaceable BL1 in the primary then fails over to the backup instead of
-    // ending the boot after [C15] has locked the fuse secrets. Needs the
+    // ending the boot after [S25] has locked the fuse secrets. Needs the
     // globals above, which is why it follows them; they are cleared again on
     // rejection so a failed slot leaves nothing staged.
     uint32_t bl1_err = rom_bl1_check();

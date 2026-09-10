@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Shared PROD-lifecycle stimulus for the [C15] demotion-decision family.
+"""Shared PROD-lifecycle stimulus for the [S25] demotion-decision family.
 
 The mechanism, the seven-outcome collapse map and the disclosed gaps are written
 out once in ``rom_fw/sep_demotion_decision_base.py``. **Read that first.** This
@@ -147,7 +147,7 @@ def apply_secure_boot_dis(test, buf: bytearray, slot: str = "primary") -> None:
 
 
 def outcome_for(sel: int, auth: int, bl2: int) -> dict:
-    """The non-PROD_END arm of the [C15] decision table, as executable source.
+    """The non-PROD_END arm of the [S25] decision table, as executable source.
 
     Transcribed from the ROM's own control flow, not from any run:
 
@@ -380,7 +380,7 @@ class sep_demotion_prod_base(_demotion_prod_mixin, sep_demotion_decision_base):
         )
         # The manifest hash must still be valid even though the slot is unsigned:
         # the integrity check runs regardless of secure
-        # boot, so a stale hash would reject the primary before the [C15] block.
+        # boot, so a stale hash would reject the primary before the [S25] block.
         mm.verify_layout(buf, "primary")
         self.logger.info(
             "CHK-STIMULUS-DEMOTION: outcome %s -- primary demotion_control=0x%04x "

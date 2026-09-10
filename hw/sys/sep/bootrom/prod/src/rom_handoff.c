@@ -46,7 +46,7 @@
 // Bytes zeroed past BL1's image so the IFU cannot fetch a word that was never
 // written. The 64-bit fetch granule is the documented part; the rest is margin
 // for sequential prefetch, whose depth is not specified. Unused when
-// ROM_ICCM_CLEAR_FULL scrubs the whole region at [C9b].
+// ROM_ICCM_CLEAR_FULL scrubs the whole region at [S16].
 #define ICCM_ECC_PAD_BYTES 256u
 
 // ---------------------------------------------------------------------------

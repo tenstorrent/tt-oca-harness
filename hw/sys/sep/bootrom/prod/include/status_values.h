@@ -144,7 +144,7 @@
 #define SEP_MSG_BL1_DATA_FOUND 0x21e
 #define SEP_MSG_BL1_DATA_COPY 0x21f
 
-// C13.10 secure boot crypto validation status messages
+// [S24] secure boot crypto validation status messages
 #define SEP_MSG_READ_BL1_SECURITY_VERSION 0x220
 #define SEP_MSG_CRYPTO_VALIDATE_START 0x221
 #define SEP_MSG_SPI_OT_INIT_FAILED 0x222

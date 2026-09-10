@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-// Fuse secrets locking (C15 partial) and verification (C17).
+// Fuse secrets locking ([S25] partial) and verification ([S26]).
 //
 // Locks read access to secret fuse fields via the SEP_EFUSE_MAP_LOCKS register.
 // The LOCKS register is SET_ONLY: writing a 1 to a bit latches it permanently

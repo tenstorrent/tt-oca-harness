@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """PROD, BL1_DEMOTION_VALID set, BOTH demotion flags set -> BL1 wins and locks.
 
-Outcome **O2b** of the [C15] decision table in
+Outcome **O2b** of the [S25] decision table in
 ``rom_fw/sep_demotion_decision_base.py``; the PROD stimulus it shares with the
 other three PROD members is in ``rom_fw/sep_demotion_prod_base.py``.
 

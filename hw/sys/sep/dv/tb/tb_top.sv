@@ -407,7 +407,7 @@ module sep_uvm_top
     // after reset and holds the indication high afterwards. Cold reset re-senses;
     // wdt_rst_ni does not, which is why this tracks rst_n_int and not the warm reset.
     //
-    // The ROM polls this to completion in [C4] before reading any fuse shadow, so a
+    // The ROM polls this to completion in [S08] before reading any fuse shadow, so a
     // top that never asserts it hangs every boot. The same invariant is checked from
     // the firmware side as CHK-SEP-HOLD-RELEASE
     // (dv/fw/tests/common/smc_sep_xbar_protocol.h). +sep_smc_fuse_sense_hold keeps it

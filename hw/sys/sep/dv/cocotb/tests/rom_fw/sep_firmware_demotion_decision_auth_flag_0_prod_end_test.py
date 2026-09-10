@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """PROD_END + BL1 demotion flag set -> the flag is IGNORED, both registers locked.
 
-Outcome **O1** of the [C15] decision table in ``rom_fw/sep_demotion_decision_base.py``,
+Outcome **O1** of the [S25] decision table in ``rom_fw/sep_demotion_decision_base.py``,
 which is where the mechanism, the collapse map and the disclosed gaps are written out
 once. Read that first.
 
@@ -45,7 +45,7 @@ Evidence, on both channels:
     Note ``LC=PROD`` is a strict PREFIX of this string, so it is deliberately NOT in
     the forbidden list; the discrimination in the other direction is the PROD
     member's job and it forbids ``LC=PROD_END``;
-  * ``DEMOTE: PROD_END lock`` (``rom_main.c``) and ``DEMOTE_LOCKED``, each exactly once and after ``MANIFEST_OK``; and **every other [C15]
+  * ``DEMOTE: PROD_END lock`` (``rom_main.c``) and ``DEMOTE_LOCKED``, each exactly once and after ``MANIFEST_OK``; and **every other [S25]
     string forbidden** -- in particular ``BL1_DEMOTE=`` and ``BL2_DEMOTE_DEC=``,
     whose absence is the direct observable that the manifest inputs were never read;
   * DEMOTE_1 = (demote 0, lock 1) and **DEMOTE_2 = (demote 0, lock 1)**. DEMOTE_2 is

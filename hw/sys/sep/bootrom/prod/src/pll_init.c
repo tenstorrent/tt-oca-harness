@@ -33,7 +33,7 @@ uint16_t pll_init(bool bl0_pll_clk_strap) {
     // smu_pll_sysclk is an 11-bit field holding the configured sysclk frequency in
     // MHz. It lives inside the SEP_SPI_CTRL_FIELD_EN fuse word -- that register is
     // simply where the RDL places the field, not a separate enable. Sensing
-    // completed in [C4]. Zero means the fuses are blank; fall back to refclk.
+    // completed in [S08]. Zero means the fuses are blank; fall back to refclk.
     uint32_t spi_ctrl = mmio_read32(OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_BASE_ADDR);
     uint16_t pll_freq_mhz =
         (uint16_t)((spi_ctrl & SEP_EFUSE_MAP__SEP_SPI_CTRL_FIELD_EN__SMU_PLL_SYSCLK_bm) >>

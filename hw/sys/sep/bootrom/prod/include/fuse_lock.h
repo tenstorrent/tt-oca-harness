@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-// Fuse secrets locking API (C15 partial / C17).
+// Fuse secrets locking API ([S25] partial / [S26]).
 //
 // lock_fuse_secrets():          Write read-lock bits for secret fuse fields.
 // check_fuse_secrets_locked():  Verify read-lock bits are set (defensive check).

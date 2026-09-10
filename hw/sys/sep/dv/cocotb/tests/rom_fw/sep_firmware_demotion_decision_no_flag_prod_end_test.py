@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """PROD_END with no demotion request at all -> not demoted, both registers locked.
 
-Outcome **O1** of the [C15] decision table in
+Outcome **O1** of the [S25] decision table in
 ``rom_fw/sep_demotion_decision_base.py``; the PROD_END stimulus it shares with its
 sibling is in ``rom_fw/sep_demotion_prod_end_base.py``.
 
@@ -23,7 +23,7 @@ What it does still assert, per run and on both channels:
   * that a part at PROD_END with a manifest that asks for nothing is **still**
     locked down -- ``DEMOTE: PROD_END lock`` (``rom_main.c``) and
     ``DEMOTE_LOCKED``, each exactly once and after ``MANIFEST_OK``,
-    with **every other [C15] string forbidden**. ``BL1_DEMOTE=`` and
+    with **every other [S25] string forbidden**. ``BL1_DEMOTE=`` and
     ``BL2_DEMOTE_DEC=`` absent is the direct observable that the ``else`` arm at
     never ran;
   * DEMOTE_1 = (demote 0, lock 1) **and DEMOTE_2 = (demote 0, lock 1)** read from

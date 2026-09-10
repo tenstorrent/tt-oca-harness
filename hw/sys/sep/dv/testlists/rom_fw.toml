@@ -1826,7 +1826,7 @@ args = [
 [[tests]]
 # PROD_END + BL1 demotion flag set -> the flag is IGNORED, both registers locked.
 #
-# Outcome O1 of the [C15] decision table written out once in
+# Outcome O1 of the [S25] decision table written out once in
 # rom_fw/sep_demotion_decision_base.py. rom_main.c short-circuits on PROD_END
 # before any of the three manifest demotion inputs is read (:391), so
 # FIVE tracker items share this one observable; this is the one assigned here, and
@@ -1872,7 +1872,7 @@ args = [
 [[tests]]
 # PROD + selector bit 17 + BL1 demotion flag -> DEMOTE_1 demoted and locked.
 #
-# Outcome O2a of the [C15] table in rom_fw/sep_demotion_decision_base.py: the row
+# Outcome O2a of the [S25] table in rom_fw/sep_demotion_decision_base.py: the row
 # where the manifest actually decides. The exact complement of the PROD_END entry on
 # the register channel -- DEMOTE_1 (demote 1, lock 1) and DEMOTE_2 never written
 # (lock 0), against (0, 1) and (0, 1) there.
@@ -1913,7 +1913,7 @@ args = [
 
 
 # =============================================================================
-# Batch R4 -- the remaining six [C15] demotion-decision items.
+# Batch R4 -- the remaining six [S25] demotion-decision items.
 #
 # Outcomes O4, O5, O3a and O2b are new here; the two PROD_END rows are
 # covered-by-O1 and say so in their own docstrings and status rows. The seventh
@@ -1934,7 +1934,7 @@ args = [
 # for which the short-circuit is not even load-bearing, so unlike its sel_bit_set
 # sibling it is not an ordering control either. What it does assert per run is
 # that a PROD_END part with a manifest asking for nothing is still locked down,
-# on the console (DEMOTE: PROD_END lock, DEMOTE_LOCKED, every other [C15] string
+# on the console (DEMOTE: PROD_END lock, DEMOTE_LOCKED, every other [S25] string
 # forbidden) and on the registers (DEMOTE_1 and DEMOTE_2 both locked, the latter
 # producible only by rom_main.c).
 #

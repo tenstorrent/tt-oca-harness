@@ -53,6 +53,15 @@ behavior and *load-bearing* — violating it changes the trust the ROM establish
 the boot from completing. Sequencing detail that follows from an identified requirement,
 diagnostic output, and build-time knobs are described without identifiers.
 
+[[sec:conv_stages]]
+===== Boot Stage Labels
+
+Boot stages are tagged `[SNN]`, numbered in execution order from reset entry to the BL1
+hand-off, one label per stage. The full sequence is in <<sec:overview>>. A stage that
+executes twice at different points in the flow -- the stack canary, written at [S19] and
+re-checked at [S28] -- carries a label for each, because the ordering is what the label
+exists to express.
+
 [[sec:conv_provisional]]
 ===== Provisional Material
 
@@ -241,7 +250,7 @@ boot flow. Addresses are as seen by the SEP CPU.
 |*Region* |*Base* |*Size* |*Boot-flow role*
 |SEP SRAM |`0x10000000` |256 KiB |Destination for the manifest and payload; BL1 may also
 execute from here when `BL1_SRAM_EXEC_ENABLE` permits it (<<sec:manifest>>). Cleared by the ROM
-before use ([C9a]).
+before use ([S15]).
 |Boot ROM |`0x10040000` |64 KiB |BL0 code, `.rodata`, ROM metadata (version + self-hash), and
 the load image (LMA) of `.data`. Execute/read only.
 |Secure DMA |`0x10800000` |4 KiB |DMA engine registers.
@@ -272,7 +281,7 @@ PHY registers).
 `[0x4000_0000, 0xC000_0000)` outbound. See <<tbl:smc_window>>.
 |STDOUT mailbox |`0x80000000` |4 B |DV PASS/FAIL magic words and mailbox character output.
 Only egress window opened at cold boot.
-|ICCM |`0xC0000000` |256 KiB |Cleared by the ROM ([C9b]); the secure BL1 execution
+|ICCM |`0xC0000000` |256 KiB |Cleared by the ROM ([S16]); the secure BL1 execution
 region, always permitted (<<sec:manifest>>).
 |DCCM |`0xC0040000` |128 KiB |BL0 runtime data: `.data`, `.bss`, stack, and the `bl0_state`
 hand-off block at the top (<<sec:handoff>>).
@@ -300,12 +309,12 @@ SEP↔SMC interface contract (`sep_smc_interface.h`).
 |*Resource* |*Offset* |*ROM usage*
 |Reset-unit straps `STRAPS_LO` / `STRAPS_HI` |`0x2090` / `0x2094` |Latched hardware straps
 (<<sec:straps>>).
-|`CHIP_CONFIG_CHIP_ID` |`0x2908` |Chip identification, diagnostic only ([C7]).
+|`CHIP_CONFIG_CHIP_ID` |`0x2908` |Chip identification, diagnostic only ([S12]).
 |`CHIP_CONFIG_LC_STATE` |`0x290C` |SMC-side lifecycle mirror (low 4 bits); informational.
 |SMC CPU_CTRL scratch registers |`0x10100 + 8·index` |Coordination protocol
 (<<tbl:smc_scratch>>).
 |SMC fuse map: chiplet ID / package ID |`0xB008` / `0xB028` |8×32-bit words each; manifest
-usage-constraint identity checks ([C13]).
+usage-constraint identity checks ([S23]).
 |`DFX_CTRL_STATUS_SMU` |`0xF800` |Memory-repair/MBIST completion gate (<<sec:smc_sync>>).
 |SMC SRAM |`0x60000` |1 MiB shared memory: status ring buffer; manifest/payload staging for
 recovery and secondary boot.
@@ -373,31 +382,36 @@ partition "Reset stub (vector.S)" {
   :outbound AXI filter -> mailbox window;
   :Smepmp fences: RLB, then locked rules
   (ROM R-X, staging RW-), then MMWP;
+  :[S03] MEM_REPAIR / MBIST gate
+  (strap bypass);
   :DCCM scrub;
   :.data copy, .bss zero;
 }
-partition "Platform init (rom_main C0–C10c)" {
-  :[C0] runtime-init self-check;
-  :SMC scratch round-trip sanity;
-  :[C1] ROM version + self-hash report;
-  :[C2] read straps;
-  :[C3] status ring init (strap-gated);
-  :[C5] PLL / refclk;
-  :[C6] LC_STATE policy;
+partition "Platform init (rom_main S04–S20)" {
+  :[S04] runtime-init self-check
+  + SMC scratch round-trip sanity;
+  :[S05] ROM version + self-hash report;
+  :[S06] read straps;
+  :[S07] status ring init (strap-gated);
+  :[S08] fuse-sense readiness;
+  :[S09] PLL / refclk;
+  :[S10] bl0_state init;
+  :[S11] LC_STATE policy;
   note right
     invalid LC ->
     reset SMC cores, halt
   end note
-  :[C7] chip ID;
-  :[V3] MEM_REPAIR gate (strap bypass);
-  :peripheral reset;
-  :[C8] SHA-256 self-test;
-  :[C9] SRAM + ICCM clear, bl0_state init;
-  :[C10b] SBOOT_DIS fuse;
-  :[C16] stack canary write;
-  :[C10c] secure DMA init;
+  :[S12] chip ID;
+  :[S13] peripheral reset;
+  :[S14] SHA-256 self-test;
+  :[S15] SEP SRAM clear;
+  :[S16] ICCM clear;
+  :[S17] ROM self-hash -> measurement slot 0;
+  :[S18] SBOOT_DIS fuse;
+  :[S19] stack canary write;
+  :[S20] secure DMA init;
 }
-partition "Boot source [C11]" {
+partition "Boot source [S21]" {
   if (primary && !recovery ?) then (yes)
     :SPI controller init
     (failure -> skip first slot);
@@ -406,7 +420,7 @@ partition "Boot source [C11]" {
     (manifest staged in SMC SRAM);
   endif
 }
-partition "Manifest retry loop [C12–C14]" {
+partition "Manifest retry loop [S23]" {
   repeat
     :select slot (attempt XOR rotate);
     :bounded read: manifest -> SEP SRAM;
@@ -421,23 +435,23 @@ partition "Manifest retry loop [C12–C14]" {
     per-image hashes, TOC checks;
   repeat while (failed and slot remains ?) is (yes: zero SRAM, reinit transport) not (no)
   if (a slot validated ?) then (no)
-    :[C19] rom_err_fail
+    :[S30] rom_err_fail
     (bl0_state, scratch, mailbox FAIL, wfi);<<#ffe0e0>>
     detach
   else (yes)
   endif
 }
-partition "One-shot state [C15–C17]" {
+partition "One-shot state [S25]–[S26]" {
   :demotion decision (no write yet);
   :BL2 pair -> bl0_state;
   :lock fuse secrets (SET-only);
-  :[C17] re-verify locks;
+  :[S26] re-verify locks;
   :DEMOTE_1 <- decision (+lock)
   -- last fuse state BL0 changes;
   :enroll boot-state measurement
   (soft PCR slot 1) -> bl0_state;
 }
-partition "Hand-off [C18]" {
+partition "Hand-off [S29]" {
   :gate-ledger self-check
   (+ canary, stack top);
   if (self-check passes ?) then (no)
@@ -462,44 +476,51 @@ partition "Hand-off [C18]" {
 [frame=ends]
 |===
 |*Stage* |*Name* |*Summary* |*Chapter*
-|— |Reset entry, warm-reset check |Hart gate, trap vector, MRAC, warm-reset detection *before
-any DCCM access* |<<sec:cpu_init>>, <<sec:warm_reset>>
-|— |PMP programming |Execution fences installed before any C code runs |<<sec:pmp>>
-|[V3] |DFT / MEM_REPAIR gate |Memory-repair and MBIST results checked in `vector.S`, before
+|[S01] |Reset entry, warm-reset detection |Hart gate, trap vector, MRAC, warm-reset
+detection *before any DCCM access* |<<sec:cpu_init>>, <<sec:warm_reset>>
+|[S02] |PMP programming |Execution fences installed before any C code runs |<<sec:pmp>>
+|[S03] |DFT / MEM_REPAIR gate |Memory-repair and MBIST results checked in `vector.S`, before
 the DCCM scrub; bypassable by strap |<<sec:smc_sync>>
-|[C0] |Runtime init + entry checks |DCCM scrub, `.data`/`.bss` init, runtime self-check, SMC
+|[S04] |Runtime init + entry checks |DCCM scrub, `.data`/`.bss` init, runtime self-check, SMC
 scratch round-trip sanity |<<sec:cpu_init>>
-|[C1] |ROM identity |Version string + build-time ROM SHA-256 reported |<<sec:boot_measurement>>
-|[C2] |Strap read |`STRAPS_LO/HI` parsed into boot configuration |<<sec:straps>>
-|[C3] |Status reporting init |Status ring buffer in SMC SRAM (strap-gated) |<<sec:status>>
-|[C4] |Fuse-sense readiness |`smc_fuse_sense_done` polled to completion; gates every fuse
+|[S05] |ROM identity |Version string + build-time ROM SHA-256 reported |<<sec:boot_measurement>>
+|[S06] |Strap read |`STRAPS_LO/HI` parsed into boot configuration |<<sec:straps>>
+|[S07] |Status reporting init |Status ring buffer in SMC SRAM (strap-gated) |<<sec:status>>
+|[S08] |Fuse-sense readiness |`smc_fuse_sense_done` polled to completion; gates every fuse
 read in the flow |<<sec:fuses>>
-|[C5] |Clock init |SMC-owned PLL from fuses, or 100 MHz refclk (strap-gated) |<<sec:cpu_init>>
-|[C6] |Lifecycle policy |LC_STATE read + validated; invalid state bricks the SMU
+|[S09] |Clock init |SMC-owned PLL from fuses, or 100 MHz refclk (strap-gated) |<<sec:cpu_init>>
+|[S10] |`bl0_state` init |Hand-off block zeroed; precedes every `bl0_state` writer
+|<<sec:handoff>>
+|[S11] |Lifecycle policy |LC_STATE read + validated; invalid state bricks the SMU
 |<<sec:fuses>>
-|[C7] |Chip ID |`CHIP_CONFIG_CHIP_ID` read and reported |<<sec:smc_sync>>
-|— |Peripheral/bus reset |OCAH-specific peripheral reset sequencing |<<sec:cpu_init>>
-|[C8] |Crypto init |SHA-256 self-test against NIST vector |<<sec:cpu_init>>
-|[C9a/b/c] |Memory clear + state init |SEP SRAM clear, ICCM clear, `bl0_state` init
-|<<sec:cpu_init>>
-|[C10b] |SBOOT_DIS fuse |Secure-boot chicken bit read into `bl0_state` |<<sec:fuses>>
-|[C16] |Stack canary write |Canary placed at `__stack_bottom` |<<sec:handoff>>
-|[C10c] |DMA init |Secure DMA engine enabled |<<sec:cpu_init>>
-|[C11] |Boot mode branch |SPI (primary) vs recovery vs secondary; SPI init when applicable
+|[S12] |Chip ID |`CHIP_CONFIG_CHIP_ID` read and reported |<<sec:smc_sync>>
+|[S13] |Peripheral/bus reset |OCAH-specific peripheral reset sequencing |<<sec:cpu_init>>
+|[S14] |Crypto init |SHA-256 self-test against NIST vector |<<sec:cpu_init>>
+|[S15] |SEP SRAM clear |SRAM zeroed before any external content is loaded |<<sec:cpu_init>>
+|[S16] |ICCM clear |ICCM zeroed for deterministic ECC state |<<sec:cpu_init>>
+|[S17] |Measurement slot 0 |Verified ROM self-hash enrolled — soft PCR + raw record in
+`bl0_state` |<<sec:boot_measurement>>
+|[S18] |SBOOT_DIS fuse |Secure-boot chicken bit read into `bl0_state` |<<sec:fuses>>
+|[S19] |Stack canary write |Canary placed at `__stack_bottom` |<<sec:handoff>>
+|[S20] |DMA init |Secure DMA engine enabled |<<sec:cpu_init>>
+|[S21] |Boot mode branch |SPI (primary) vs recovery vs secondary; SPI init when applicable
 |<<sec:straps>>, <<sec:spi>>
-|[C12–C14] |Manifest load + validate |Retry loop over primary/backup banks; OCA validation;
-payload load and checks |<<sec:manifest>>, <<sec:payload>>, <<sec:retry>>
-|[C13.10] |Crypto validation |Secure-boot signature chain: revocation, RSA-3072,
+|[S22] |SMC scratch coordination |Manifest-ready hand-shake for recovery and secondary modes
+|<<sec:smc_sync>>
+|[S23] |Manifest load + validate |Retry loop over primary/backup banks; OCA validation
+including identity and usage constraints; payload load and checks |<<sec:manifest>>,
+<<sec:payload>>, <<sec:retry>>
+|[S24] |Crypto validation |Secure-boot signature chain: revocation, RSA-3072,
 anti-rollback, decrypt |<<sec:secure_boot>>
-|[C15] |Demotion + fuse locks |Demotion registers written/locked; fuse secrets read-locked
+|[S25] |Demotion + fuse locks |Demotion registers written/locked; fuse secrets read-locked
 |<<sec:demotion>>
-|[C17] |Lock confirmation |Fuse-secret lock state independently re-verified |<<sec:handoff>>
-|[ATT] |Measurement enrollment |Slot 0 (verified ROM self-hash, after [C9c]); slot 1
-(boot-state record, after demotion) — soft PCRs + raw records in `bl0_state`
-|<<sec:boot_measurement>>
-|[C18] |BL1 hand-off |Pre-hand-off self-check, PMP release, jump to BL1 |<<sec:handoff>>
-|[C16] |Stack canary check |Canary re-verified |<<sec:handoff>>
-|[C19] |Error convergence |All failures funnel into `rom_err_fail()` |<<sec:status>>,
+|[S26] |Lock confirmation |Fuse-secret lock state independently re-verified |<<sec:handoff>>
+|[S27] |Measurement slot 1 |Boot-state record enrolled after demotion — soft PCR + raw record
+in `bl0_state` |<<sec:boot_measurement>>
+|[S28] |Stack canary check |Canary re-verified, before the hand-off that does not return
+|<<sec:handoff>>
+|[S29] |BL1 hand-off |Pre-hand-off self-check, PMP release, jump to BL1 |<<sec:handoff>>
+|[S30] |Error convergence |All failures funnel into `rom_err_fail()` |<<sec:status>>,
 <<sec:retry>>
 |===
 
@@ -511,7 +532,7 @@ and shall be preserved by any reordering of the stages:
 1. *Fences before code.* The PMP execution fences are programmed in the reset stub, before
    the first C instruction executes and before any external agent's data is touched.
 2. *Retry only what is idempotent.* The manifest/payload load and validation stages
-   ([C12]–[C14], [C13.10]) live inside the bank retry loop and have no side effects on
+   ([S23] and [S24]) live inside the bank retry loop and have no side effects on
    device state. Failures there move to the backup bank (<<sec:retry>>).
 3. *One-shot effects after the loop converges.* Stages that mutate device state irreversibly —
    demotion register writes, fuse-secret locking, measurement, hand-off — execute exactly
@@ -522,7 +543,7 @@ and shall be preserved by any reordering of the stages:
 
 This chapter covers everything from the release of the SEP core reset to the point where the
 boot flow is ready to select a boot source: the assembly reset stub (`src/vector.S`), and the
-early platform-initialization stages of `rom_main()` ([C0]–[C10c]).
+early platform-initialization stages of `rom_main()` ([S04]–[S20]).
 
 ===== Reset Entry
 
@@ -568,7 +589,7 @@ environment:
 6. The PMP execution fences are programmed — see <<sec:pmp>>.
 7. *MEM_REPAIR / MBIST gate.* The memory-repair and MBIST results are checked here, in
    assembly, before the DCCM scrub below writes 128 KiB into memories whose repair state is
-   still unknown ([V3], <<sec:smc_sync>>).
+   still unknown ([S03], <<sec:smc_sync>>).
 8. *DCCM scrub.* [[req-SEP-ROM-CPU-160]]*[SEP-ROM-CPU-160]* The ROM shall leave DCCM in a
    deterministic state before the C runtime reads it, so that no uninitialized-ECC read and no
    stale value from a previous boot reaches the boot flow. The stub zero-fills DCCM from its
@@ -598,7 +619,7 @@ start
 :status 'entered _start' -> cold_scratch[1];
 :disable interrupts (mie, mstatus.MIE);
 :program PMP fences;
-:MEM_REPAIR / MBIST gate [V3]
+:MEM_REPAIR / MBIST gate [S03]
 (strap-bypassable);
 :DCCM scrub (DCCM_SCRUB_BYTES);
 :.data ROM->DCCM copy, .bss zero;
@@ -628,45 +649,45 @@ protocol (<<sec:warm_reset>>). Consequently every unbounded wait in the ROM (fus
 lock, SMC hand-shake spins) hangs the boot rather than triggering a retry — this is the
 accepted failure mode for BL0, observable through the status channel (<<sec:status>>).
 
-===== Early Platform Initialization ([C0]–[C10c])
+===== Early Platform Initialization ([S04]–[S20])
 
 After the entry checks, `rom_main()` performs the following platform bring-up, in order:
 
 [cols="20%,80%",options="header",grid=rows,frame=ends]
 |===
 |*Stage* |*Behavior*
-|[C0] SMC access sanity |Write/read-back of four patterns through SMC scratch[7] proves the
+|[S04] SMC access sanity |Write/read-back of four patterns through SMC scratch[7] proves the
 outbound path to the SMC responds before the boot flow depends on it. Mismatch is fatal
 (`0xA001`).
-|[C1] ROM identity |ROM version string and build-time SHA-256 are emitted (see
+|[S05] ROM identity |ROM version string and build-time SHA-256 are emitted (see
 <<sec:boot_measurement>>), and the `'COLD'` marker is written to `cold_scratch[0]`.
-|[C2] straps |Latched straps parsed into the boot configuration (<<sec:straps>>).
-|[C3] status init |Status ring buffer initialized unless disabled by strap (<<sec:status>>).
-|[C4] fuse sense |`smc_fuse_sense_done` polled to completion (<<sec:fuses>>). Unconditional,
+|[S06] straps |Latched straps parsed into the boot configuration (<<sec:straps>>).
+|[S07] status init |Status ring buffer initialized unless disabled by strap (<<sec:status>>).
+|[S08] fuse sense |`smc_fuse_sense_done` polled to completion (<<sec:fuses>>). Unconditional,
 and ahead of every fuse consumer in the flow.
-|[C5] clocks |`pll_init()`: if the `bl0_pll_clk` strap is clear, stay on the 100 MHz
+|[S09] clocks |`pll_init()`: if the `bl0_pll_clk` strap is clear, stay on the 100 MHz
 reference clock. If set: read the target sysclk frequency from the `smu_pll_sysclk` fuse
 field (blank fuses fall back to refclk with a warning), poll PLL lock detect, then switch the
 clock mux to the PLL. The resulting sysclk frequency parameterizes the SPI clock divider
 (<<sec:spi>>). The PLL and the mux are SMC-owned; SEP has none of its own.
-|[C6] lifecycle |LC_STATE read + policy (<<sec:fuses>>).
-|[C7] chip ID |`CHIP_CONFIG_CHIP_ID` read and reported.
-|Peripheral reset |OCAH-specific peripheral/bus reset sequencing.
-|[C8] crypto self-test |SHA-256 of `"abc"` computed on the HMAC block and compared against
+|[S10] `bl0_state` |Hand-off block initialized at the top of DCCM (<<sec:handoff>>).
+|[S11] lifecycle |LC_STATE read + policy (<<sec:fuses>>).
+|[S12] chip ID |`CHIP_CONFIG_CHIP_ID` read and reported.
+|[S13] peripheral reset |OCAH-specific peripheral/bus reset sequencing.
+|[S14] crypto self-test |SHA-256 of `"abc"` computed on the HMAC block and compared against
 the NIST reference digest. See requirement below.
-|[C9a] SRAM clear |SEP SRAM (`0x10000000`, 256 KiB) zeroed before any external content is
+|[S15] SRAM clear |SEP SRAM (`0x10000000`, 256 KiB) zeroed before any external content is
 loaded into it.
-|[C9b] ICCM clear |ICCM zeroed (base/size are build-time parameters; deterministic ECC state
+|[S16] ICCM clear |ICCM zeroed (base/size are build-time parameters; deterministic ECC state
 for BL1).
-|[C9c] `bl0_state` |Hand-off block initialized at the top of DCCM (<<sec:handoff>>).
-|[ATT] ROM self-hash |Embedded hash verified by recompute over the ROM region, then
+|[S17] ROM self-hash |Embedded hash verified by recompute over the ROM region, then
 enrolled in soft measurement slot 0 (<<sec:boot_measurement>>). Fatal on mismatch (`0xF005`).
 Placed at the earliest point where both of its prerequisites hold: the SHA-256 engine has
-passed its known-answer self-test ([C8]) and `bl0_state` exists to receive the record
-([C9c]).
-|[C10b] SBOOT_DIS |Secure-boot chicken bit read (<<sec:fuses>>).
-|[C16] canary |Stack canary written (<<sec:handoff>>).
-|[C10c] DMA |Secure DMA engine initialized.
+passed its known-answer self-test ([S14]) and `bl0_state` exists to receive the record
+([S10]).
+|[S18] SBOOT_DIS |Secure-boot chicken bit read (<<sec:fuses>>).
+|[S19] canary |Stack canary written (<<sec:handoff>>).
+|[S20] DMA |Secure DMA engine initialized.
 |===
 
 [[req-SEP-ROM-CPU-090]]*[SEP-ROM-CPU-090]* The ROM shall self-test the SHA-256 engine against
@@ -954,8 +975,8 @@ before fuse sensing has completed. Completion is indicated by
 `SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS` bit 0 (`smc_fuse_sense_done`); the ROM polls it without
 timeout (the accepted BL0 hang failure mode, SEP-ROM-CPU-080).
 
-The poll is a discrete stage ([C4]) that runs unconditionally, ahead of every fuse consumer:
-the `smu_pll_sysclk` read in [C5], the lifecycle state in [C6], `SBOOT_DIS` in [C10b], and the
+The poll is a discrete stage ([S08]) that runs unconditionally, ahead of every fuse consumer:
+the `smu_pll_sysclk` read in [S09], the lifecycle state in [S11], `SBOOT_DIS` in [S18], and the
 key digests, revocation bits, security version and identity fields read during manifest
 validation. The ROM does not rely on sensing having completed before the SEP core reset
 released.
@@ -964,7 +985,7 @@ A shadow read taken before sensing completes returns zero, and zero is a legal e
 the fields that gate security — `LC_STATE` zero decodes as `TEST_DEV`, where secure boot is
 optional — so an early lifecycle read would fail open.
 
-===== Lifecycle State ([C6])
+===== Lifecycle State ([S11])
 
 The 4-bit lifecycle state is read from the low nibble of `SEP_EFUSE_MAP_LC_STATE`
 (`0x1093_0008`).
@@ -999,7 +1020,7 @@ status channel.
 The 64-bit `FEAT_CTRL` register of the lifecycle controller (`0x1091_8000`) is captured into
 `bl0_state.feat_ctrl_lo/hi` at the same stage.
 
-===== Secure-Boot Chicken Bit ([C10b])
+===== Secure-Boot Chicken Bit ([S18])
 
 `SEP_EFUSE_MAP_SBOOT_DIS` (`0x1093_000C`) bit 0 (`disable_secure_boot`) is the secure-boot
 chicken bit. It is read once, recorded in `bl0_state.sboot_dis`, and consumed by the
@@ -1016,7 +1037,7 @@ secure-boot decision (<<sec:secure_boot>>) and the boot measurement
 |===
 |*Field* |*Address* |*Size* |*ROM usage*
 |`LOCKS` |`0x10930000` |32 b |Read-lock control for fuse secrets; SET-only. Written + verified
-at [C15]/[C17] (<<sec:handoff>>).
+at [S25]/[S26] (<<sec:handoff>>).
 |`LC_STATE` |`0x1093000C` |8 b (low 4 used) |Lifecycle state (this chapter).
 |`SBOOT_DIS` |`0x10930010` |1 b |Secure-boot chicken bit.
 |`CLASS_KEY` |`0x10930068` |256 b |Pre-shared secret for payload-decryption KDF
@@ -1117,9 +1138,9 @@ four patterns (`0xA5A55A5A`, `0x12345678`, `0x00000000`, `0xFFFFFFFF`) are writt
 scratch[7] and read back. [[req-SEP-ROM-SMC-020]]*[SEP-ROM-SMC-020]* A read-back mismatch is
 fatal (`0xA001`); the register shall be restored to zero on success.
 
-===== Memory-Repair / DFT Gate ([V3])
+===== Memory-Repair / DFT Gate ([S03])
 
-[[req-SEP-ROM-SMC-030]]*[SEP-ROM-SMC-030]* The ROM shall not proceed past [V3] unless memory
+[[req-SEP-ROM-SMC-030]]*[SEP-ROM-SMC-030]* The ROM shall not proceed past [S03] unless memory
 repair completed successfully: `DFX_CTRL_STATUS_SMU` (SMC window offset `0xF800`) bit 1
 (`mem_repair_success`) set. On failure the ROM shall dump the raw status to scratch[10], emit
 a `MBIST_FAIL` warning, and then fail fatally (`ROM_ERR_DFT_GATE_BLOCKED`, `0xD001`) *unless*
@@ -1134,7 +1155,7 @@ non-debug status code into it (<<sec:status>>). The SMC consumes the ring and fo
 entries to the platform (OCCP). Ring initialization waits for the SMC's
 `SRAM_INIT`/`BUFFER_READY` indications.
 
-===== Chip Identification ([C7])
+===== Chip Identification ([S12])
 
 `CHIP_CONFIG_CHIP_ID` (SMC window offset `0x2908`) is read once and reported on the status
 channel (low 16 bits as an `INFO_EXT` status word). The read is diagnostic: it gives DV and a
@@ -1188,7 +1209,7 @@ the 100 MHz reference clock.
 for this boot (<<sec:retry>>).
 |===
 
-===== Boot-Mode Selection ([C11])
+===== Boot-Mode Selection ([S21])
 
 [[req-SEP-ROM-STRAP-010]]*[SEP-ROM-STRAP-010]* The ROM shall select exactly one boot mode
 from the strap combination, record it in `bl0_state.boot_mode`, and report it on the status
@@ -2014,7 +2035,7 @@ decision.
 |4–15 |reserved |Must be zero.
 |===
 
-===== ROM Behavior ([C15])
+===== ROM Behavior ([S25])
 
 Demotion is a one-shot, post-validation action (ordering invariant 3, <<sec:overview>>): it
 executes exactly once, only after the manifest has fully validated, and is never retried.
@@ -2032,7 +2053,7 @@ executes exactly once, only after the manifest has fully validated, and is never
    are both set. That is the only case in which `DEMOTE_1` may be left untouched and
    unlocked, so that BL2 can apply the demotion it asked for.
 4. [[req-SEP-ROM-DEM-035]]*[SEP-ROM-DEM-035]* The `DEMOTE_1` write shall be ordered after the
-   fuse-secret read-locks of [C15]/[C17]: the demotion register is the last fuse state BL0
+   fuse-secret read-locks of [S25]/[S26]: the demotion register is the last fuse state BL0
    changes, so a fault while writing it cannot leave the secret fuses readable. Consequently
    anything that must *read* a secret shall run before the lock, not between the lock and the
    demotion write.
@@ -2349,7 +2370,7 @@ stored as an 80-byte ASCII string in `.rodata`, outside the hashed region, so th
 circular dependency).
 
 [[req-SEP-ROM-ATT-020]]*[SEP-ROM-ATT-020]* The ROM shall report its version string and
-self-hash at every boot ([C1]): the full value through the debug console, and a
+self-hash at every boot ([S05]): the full value through the debug console, and a
 machine-readable prefix (first 16 bits × 2) as `INFO_EXT` status words following
 `SEP_MSG_ROM_HASH` on the status channel.
 
@@ -2357,7 +2378,7 @@ machine-readable prefix (first 16 bits × 2) as `INFO_EXT` status words followin
 embedded self-hash by recomputing SHA-256 over the hashed ROM region and comparing against
 the embedded value; a mismatch is fatal (`ROM_ERR_ROM_HASH_MISMATCH`, `0xF005`). The
 verified hash is enrolled into slot 0 and recorded raw in `bl0_state.rom_hash`. This runs
-after the crypto self-test ([C8]) and `bl0_state` initialization ([C9c]).
+after the crypto self-test ([S14]) and `bl0_state` initialization ([S10]).
 
 ===== Slot 1: Boot-State Measurement
 
@@ -2402,8 +2423,8 @@ skinparam ActivityBackgroundColor #f0f8e6
 start
 :build time:
 SHA-256(.text region) -> .rodata string;
-:boot: report version + self-hash [C1];
-:[C8]/[C9c] crypto self-test,
+:boot: report version + self-hash [S05];
+:[S14]/[S10] crypto self-test,
 bl0_state init (soft PCRs = 0);
 :verify self-hash: recompute
 SHA-256 over ROM region,
@@ -2437,9 +2458,9 @@ fences come down. Everything in this chapter exists to make that transition happ
 every security decision has demonstrably completed — and to make skipping any single check
 unprofitable for a fault-injection attacker.
 
-===== Stack Integrity ([C16])
+===== Stack Integrity ([S19]/[S28])
 
-[[req-SEP-ROM-HOFF-010]]*[SEP-ROM-HOFF-010]* Early in the boot ([C16], immediately after
+[[req-SEP-ROM-HOFF-010]]*[SEP-ROM-HOFF-010]* Early in the boot ([S19], immediately after
 `bl0_state` initialization) the ROM shall write the stack canary `0xDEAD5741` at
 `__stack_bottom` — the lowest usable stack address, directly above `.bss` — and shall
 re-verify it as part of the pre-hand-off self-check. A corrupted canary means the stack
@@ -2450,13 +2471,13 @@ unwound to where execution effectively started: the current frame shall be at th
 top-of-stack established at cold boot (legacy-ROM precedent: frame address equals the linker
 stack top). A mismatch is fatal.
 
-===== Fuse-Secret Locking ([C15]/[C17])
+===== Fuse-Secret Locking ([S25]/[S26])
 
 [[req-SEP-ROM-HOFF-030]]*[SEP-ROM-HOFF-030]* Before hand-off the ROM shall set the SET-only
 read-locks in `SEP_EFUSE_MAP_LOCKS` for the secret fuse fields — `CLASS_KEY`,
 `RMA_SIP_TOKEN_DIGEST`, `RMA_CHIPLET_TOKEN_DIGEST` — so no post-ROM software can read them,
 and shall then *independently re-read* the LOCKS register and confirm every lock bit is set
-([C17]). Failure to confirm is fatal (`ROM_ERR_FUSE_SECRETS_NOT_LOCKED`, `0xF003`).
+([S26]). Failure to confirm is fatal (`ROM_ERR_FUSE_SECRETS_NOT_LOCKED`, `0xF003`).
 
 ===== Pre-Hand-off Self-Check (Gate Ledger)
 
@@ -2512,7 +2533,7 @@ boot state (<<sec:boot_measurement>>). Legacy once the PCRV exists.
 integrity-checks the block via these.
 |===
 
-===== Release and Jump ([C18])
+===== Release and Jump ([S29])
 
 1. [[req-SEP-ROM-HOFF-060]]*[SEP-ROM-HOFF-060]* Only after the self-check passes shall the
    ROM release the PMP execution fence for the region BL1 was loaded into — a single rewrite of the
@@ -2650,7 +2671,7 @@ GO --> [*]
 @enduml
 ----
 
-===== Failure Convergence ([C19])
+===== Failure Convergence ([S30])
 
 [[req-SEP-ROM-RETRY-050]]*[SEP-ROM-RETRY-050]* Every fatal path in the ROM shall converge in
 a single failure routine (`rom_err_fail`) that (a) records the error code in
@@ -2804,48 +2825,48 @@ denotes a following 16-bit payload word.
 |*Stage* |*Progress codes (scratch and/or ring)* |*Failure codes*
 |vector.S entry |`BOOTROM_START` (DEBUG, scratch-only) |trap → mailbox FAIL
 |PMP programmed |`BOOTROM_PRESTART_DONE` (DEBUG) |—
-|runtime init |`RUNTIME_INIT_OK` (DEBUG, from stub; re-reported in [C0]) |`ROM_ERR_RUNTIME_INIT_FAILED`
-|[C0] main entry |`BOOTROM_START_MAIN` (DEBUG) |—
-|[C0] SMC sanity |— |`0xA001` (mailbox)
-|[C1] ROM identity |`ROM_HASH` → `INFO_EXT` ×2 (hash prefix) |—
-|[C2] straps |`DEVICE_MODE_INPUTS_CHECK` (DEBUG) |—
-|[C3] status init |`STATUS_REPORTING_ENABLED` / `_DISABLED` (DEBUG), `STATUS_REPORTING_READY`
+|runtime init |`RUNTIME_INIT_OK` (DEBUG, from stub; re-reported in [S04]) |`ROM_ERR_RUNTIME_INIT_FAILED`
+|[S04] main entry |`BOOTROM_START_MAIN` (DEBUG) |—
+|[S04] SMC sanity |— |`0xA001` (mailbox)
+|[S05] ROM identity |`ROM_HASH` → `INFO_EXT` ×2 (hash prefix) |—
+|[S06] straps |`DEVICE_MODE_INPUTS_CHECK` (DEBUG) |—
+|[S07] status init |`STATUS_REPORTING_ENABLED` / `_DISABLED` (DEBUG), `STATUS_REPORTING_READY`
 (DEBUG) |`STATUS_REPORTING_INVALID`
-|[C4] fuse sense |`FUSE_SENSE_WAIT` (DEBUG) |— (unbounded poll; hang is the failure mode)
-|[C5] clocks |`PLL_CLK_INIT` → `INFO_EXT` (MHz); `REF_CLK_SELECTED` |`PLL_FUSES_BLANK` (WARN)
-|[C6] lifecycle |`FUSE_LC_STATE` → `INFO_EXT` (state); `LIFECYCLE_VALID`
+|[S08] fuse sense |`FUSE_SENSE_WAIT` (DEBUG) |— (unbounded poll; hang is the failure mode)
+|[S09] clocks |`PLL_CLK_INIT` → `INFO_EXT` (MHz); `REF_CLK_SELECTED` |`PLL_FUSES_BLANK` (WARN)
+|[S11] lifecycle |`FUSE_LC_STATE` → `INFO_EXT` (state); `LIFECYCLE_VALID`
 |`LIFECYCLE_INVALID` (ERROR) + `ROM_ERR_LIFECYCLE_INVALID`
-|[C7] chip ID |`CHIP_ID_CHECK` (DEBUG) → `INFO_EXT` (ID) |—
-|[V3] repair gate |`DFT_GATE_CHECK` (DEBUG) |`MBIST_FAIL` (WARN), then
+|[S12] chip ID |`CHIP_ID_CHECK` (DEBUG) → `INFO_EXT` (ID) |—
+|[S03] repair gate |`DFT_GATE_CHECK` (DEBUG) |`MBIST_FAIL` (WARN), then
 `ROM_ERR_DFT_GATE_BLOCKED` unless bypassed
 |periph reset |`PERIPH_BUS_RESET_CHECK` (DEBUG) |—
-|[C8] crypto self-test |`CRYPTO_INIT_CHECK` (DEBUG) |`ROM_ERR_CRYPTO_SELFTEST_FAILED`
+|[S14] crypto self-test |`CRYPTO_INIT_CHECK` (DEBUG) |`ROM_ERR_CRYPTO_SELFTEST_FAILED`
 |[C9a/b] memory clear |`ICCM_CLEAR_START` / `ICCM_CLEAR_DONE` (+ SRAM-clear codes) |—
-|[C9c] bl0_state |`BL0_STATE_INIT` (DEBUG) |—
-|[C10b] SBOOT_DIS |`FUSE_SBOOT_DIS` → `INFO_EXT` (value) |—
-|[C10c] DMA |`DMA_INIT_CHECK` (DEBUG) |—
-|[C11] boot mode |`BOOT_MODE` (DEBUG); `PRIMARY_CHIPLET` / `SECONDARY_CHIPLET` /
+|[S10] bl0_state |`BL0_STATE_INIT` (DEBUG) |—
+|[S18] SBOOT_DIS |`FUSE_SBOOT_DIS` → `INFO_EXT` (value) |—
+|[S20] DMA |`DMA_INIT_CHECK` (DEBUG) |—
+|[S21] boot mode |`BOOT_MODE` (DEBUG); `PRIMARY_CHIPLET` / `SECONDARY_CHIPLET` /
 `BOOT_RECOVERY`; `ROTATE_UPDATE` → `INFO_EXT`; `SPI_INIT_CHECK` (DEBUG)
 |SPI bring-up failure recorded (`ROM_ERR_SPI_INIT_FAILED` class), slot skipped
 |SMC coordination |`SMC_COORD_CHECK` (DEBUG) |—
-|[C12–C14] manifest |`MANIFEST_LOAD_START` (per attempt); `WAIT_FOR_SMC_MANIFEST_READY`
+|[S23] manifest |`MANIFEST_LOAD_START` (per attempt); `WAIT_FOR_SMC_MANIFEST_READY`
 (recovery/secondary); `CHECK_MANIFEST_HASH`; `CHECK_USAGE_CONSTRAINTS`; `MANIFEST_VALIDATED`
 |`INVALID_MANIFEST_HASH`, `SPI_OT_BOUNDS_ERROR`, `PAYLOAD_OVERLAPS_MANIFEST`,
 `MANIFEST_LOAD_FAILED` (all slots exhausted) + `OCA_FAIL_*` code
-|[C13.10] crypto |`VALIDATE_CHECK`; `READ_BL1_SECURITY_VERSION` |`OCA_FAIL_*`
+|[S24] crypto |`VALIDATE_CHECK`; `READ_BL1_SECURITY_VERSION` |`OCA_FAIL_*`
 (rollback / revoked / key unauthorized / signature / decrypt)
 |payload hashes |— |`OCA_FAIL_PAYLOAD_HASH`
-|[C15] demotion + locks |`FUSE_SECRETS_LOCK`; `FUSE_SECRETS_LOCKED`
+|[S25] demotion + locks |`FUSE_SECRETS_LOCK`; `FUSE_SECRETS_LOCKED`
 |`FUSE_SECRETS_NOT_LOCKED` (ERROR) + `ROM_ERR_FUSE_SECRETS_NOT_LOCKED`
-|[ATT] slot 0 (post-[C9c]) |`RECORD_MEASUREMENT` → `INFO_EXT` (slot 0) |`0xF005`
+|[S17] slot 0 (post-[S10]) |`RECORD_MEASUREMENT` → `INFO_EXT` (slot 0) |`0xF005`
 (self-hash mismatch)
-|[ATT] slot 1 (post-demotion) |`RECORD_MEASUREMENT` → `INFO_EXT` (slot 1) |`0xF006`
+|[S27] slot 1 (post-demotion) |`RECORD_MEASUREMENT` → `INFO_EXT` (slot 1) |`0xF006`
 (enrollment failure)
-|[C18] hand-off |`HANDOFF_CHECK` (DEBUG); `COPY_AND_EXEC_IMAGE`; `BL1_FOUND`; `BL1_COPY`;
+|[S29] hand-off |`HANDOFF_CHECK` (DEBUG); `COPY_AND_EXEC_IMAGE`; `BL1_FOUND`; `BL1_COPY`;
 `EXEC_IMAGE`; `STARTING_BL1` → `INFO_EXT` ×2 (entry address)
 |`ROM_ERR_HANDOFF_SELFCHECK_FAILED`; `OCA_BOOT_ERR_NO_BL1` / `_BL1_TOO_LARGE` /
 `_BL1_BAD_ADDR`
-|[C16] canary |— |`ROM_ERR_STACK_OVERFLOW`
+|[S28] canary |— |`ROM_ERR_STACK_OVERFLOW`
 |PASS (DV builds) |none from the ROM -- BL1 signals it. `rom_handoff_bl1()` does not
 return, so BL0 has no post-handoff path; in DV `bl1_pass_test` writes the `MAGIC0` +
 `PASS` words to the STDOUT mailbox itself once it is running |—
@@ -2919,9 +2940,9 @@ execution region; `entry_point < length`
 <<tbl:demotion_bits>> |— (directive, not check) |Only post-validation, one-shot.
 DEM-010..050
 |ROM self-hash verify |embedded hash string; recompute over `[ROM base, __metadata_end)`
-|digests equal |`0xF005` |After [C8]+[C9c], before slot-0 enrollment. ATT-060
+|digests equal |`0xF005` |After [S14]+[S10], before slot-0 enrollment. ATT-060
 |Fuse-secret locks |`LOCKS` register |set, then independently re-read as set |`0xF003`
-|[C15] set → [C17] verify → re-checked in self-check. HOFF-030
+|[S25] set → [S26] verify → re-checked in self-check. HOFF-030
 |Stack integrity |canary @ `__stack_bottom`; frame addr |canary intact; stack at initial
 top |`0xF001` |In pre-hand-off self-check. HOFF-010/-020
 |Gate ledger |`gate_ok`/`gate_inv`, doubled invariants, counters |full expected set,

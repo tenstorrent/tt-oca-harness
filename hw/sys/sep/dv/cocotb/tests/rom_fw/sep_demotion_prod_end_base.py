@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Shared PROD_END stimulus for the [C15] demotion-decision family.
+"""Shared PROD_END stimulus for the [S25] demotion-decision family.
 
 The mechanism, the seven-outcome collapse map and the disclosed gaps are written
 out once in ``rom_fw/sep_demotion_decision_base.py``. **Read that first.**

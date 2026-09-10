@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """PROD_END + BL1_DEMOTION_VALID set -> the selector is PREEMPTED, both locked.
 
-Outcome **O1** of the [C15] decision table in
+Outcome **O1** of the [S25] decision table in
 ``rom_fw/sep_demotion_decision_base.py``; the PROD_END stimulus it shares with its
 sibling is in ``rom_fw/sep_demotion_prod_end_base.py``.
 

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Shared scenario for the BL0 demotion-decision testcases ([C15]).
+"""Shared scenario for the BL0 demotion-decision testcases ([S25]).
 
 Every member boots to completion and they differ only in the demotion inputs and
 the verdict those inputs must produce, so the register observation, the ordering
@@ -13,7 +13,7 @@ no member.
 THE DECISION
 ============================================================================
 
-``rom_main.c`` ``[C15]`` reads four inputs, three of them bits of one signed
+``rom_main.c`` ``[S25]`` reads four inputs, three of them bits of one signed
 manifest field:
 
   ========================================  ==================
@@ -118,7 +118,7 @@ for BL1 to consume and derives nothing from it, so there is no KBKDF salt or SKS
 UID key to check here.
 
 **There is no architected demotion status code.** ``status_values.h`` defines
-none and the whole [C15] block contains no ``report_status`` call, so the
+none and the whole [S25] block contains no ``report_status`` call, so the
 reference's ``STATUS: DEMOTION_SELECTED`` / ``_NOT_SELECTED`` / ``_LOCKED`` /
 ``_NOT_LOCKED`` strings have no counterpart. The register probes stand in for
 them.
@@ -147,7 +147,7 @@ EFUSE_DIR = Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads" / "efu
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
 
-# Every console string the [C15] block can emit (rom_main.c,
+# Every console string the [S25] block can emit (rom_main.c,
 # :409). A member requires the ones its outcome produces and forbids
 # ALL the others, which is what stops two members of this family from accepting each
 # other's log.
@@ -180,7 +180,7 @@ def _decode_demote(state: int) -> int:
 
 
 class sep_demotion_decision_base(sep_rom_ot_dma_boot_test):
-    """Boot to completion and check the [C15] demotion verdict on both channels."""
+    """Boot to completion and check the [S25] demotion verdict on both channels."""
 
     flash_image = SECURE_FLASH_IMAGE
 
@@ -383,7 +383,7 @@ class sep_demotion_decision_base(sep_rom_ot_dma_boot_test):
         The inherited ``required_markers`` loop only asks whether each string
         appears anywhere, so order is pinned here instead: the manifest is
         accepted, THEN the
-        [C15] decision runs, THEN BL1 is copied and jumped to. That last edge matters
+        [S25] decision runs, THEN BL1 is copied and jumped to. That last edge matters
         for the demotion group specifically -- ``rom_main.c`` writes the register
         before ``rom_handoff_bl1``, so a run that handed off first and
         wrote afterwards would be a real ordering defect and is not currently
@@ -401,13 +401,13 @@ class sep_demotion_decision_base(sep_rom_ot_dma_boot_test):
         i_copied = index_of("BL1_COPIED")
         i_jump = index_of("BL1_JUMP=")
         assert 0 <= i_ok < i_last_demote < i_copied < i_jump, (
-            f"boot chain out of order: MANIFEST_OK@{i_ok} -> last [C15] token"
+            f"boot chain out of order: MANIFEST_OK@{i_ok} -> last [S25] token"
             f"@{i_last_demote} -> BL1_COPIED@{i_copied} -> BL1_JUMP=@{i_jump}. The "
             f"demotion decision must sit between manifest acceptance and the BL1 "
             f"handoff (rom_main.c:349-353, :377-436, :444). Console: {console}"
         )
         self.logger.info(
-            "CHK-BOOT-CHAIN-ORDER: MANIFEST_OK@%d -> [C15]@%d -> BL1_COPIED@%d -> BL1_JUMP=@%d",
+            "CHK-BOOT-CHAIN-ORDER: MANIFEST_OK@%d -> [S25]@%d -> BL1_COPIED@%d -> BL1_JUMP=@%d",
             i_ok,
             i_last_demote,
             i_copied,
@@ -420,21 +420,21 @@ class sep_demotion_decision_base(sep_rom_ot_dma_boot_test):
         for token in self.demotion_required:
             hits = [i for i, line in enumerate(console) if token in line]
             assert len(hits) == 1, (
-                f"[C15] token {token!r} appeared {len(hits)} times at {hits}, "
+                f"[S25] token {token!r} appeared {len(hits)} times at {hits}, "
                 f"expected exactly 1. The demotion block runs once per boot "
                 f"(rom_main.c:379-436), so any other count means it ran twice or not "
                 f"at all. Console: {console}"
             )
         for token in forbidden:
             assert not any(token in line for line in console), (
-                f"[C15] token {token!r} must not appear: it belongs to a different "
+                f"[S25] token {token!r} must not appear: it belongs to a different "
                 f"row of the demotion decision table than the one this testcase "
                 f"drives. Console: {console}"
             )
         for valued in self.demotion_values:
             hits = [i for i, line in enumerate(console) if valued in line]
             assert len(hits) == 1, (
-                f"[C15] {valued!r} appeared {len(hits)} times at {hits}, expected "
+                f"[S25] {valued!r} appeared {len(hits)} times at {hits}, expected "
                 f"exactly 1. The token alone says the branch ran; this says what it "
                 f"decided. Console: {console}"
             )
@@ -446,7 +446,7 @@ class sep_demotion_decision_base(sep_rom_ot_dma_boot_test):
         for token in self.demotion_required:
             i_tok = next(i for i, line in enumerate(console) if token in line)
             assert i_ok < i_tok, (
-                f"[C15] token {token!r} appeared at line {i_tok}, before MANIFEST_OK "
+                f"[S25] token {token!r} appeared at line {i_tok}, before MANIFEST_OK "
                 f"at line {i_ok}: the demotion decision cannot precede the manifest "
                 f"it reads (rom_main.c:349-353 then :380-381). Console: {console}"
             )
@@ -492,7 +492,7 @@ class sep_demotion_decision_base(sep_rom_ot_dma_boot_test):
         assert n_changes >= self.demote_changes_min, (
             f"only {n_changes} DEMOTE sample(s) recorded, expected at least "
             f"{self.demote_changes_min}, so the registers never moved off their reset "
-            f"value. Every outcome of the [C15] block except O4 writes DEMOTE_1, so no "
+            f"value. Every outcome of the [S25] block except O4 writes DEMOTE_1, so no "
             f"transition means BL0 did not reach rom_main.c:432. O4 is the one member "
             f"entitled to a single sample and it declares demote_changes_min = 1"
         )
@@ -500,7 +500,7 @@ class sep_demotion_decision_base(sep_rom_ot_dma_boot_test):
             f"{n_changes} DEMOTE sample(s) recorded, expected at most "
             f"{self.demote_changes_max}. A member that pins the count exactly is "
             f"asserting that the registers moved that many times and no more; an extra "
-            f"transition means something other than the single [C15] write reached the "
+            f"transition means something other than the single [S25] write reached the "
             f"lifecycle controller"
         )
         got_1 = (_decode_demote(st1), lk1)
@@ -532,7 +532,7 @@ class sep_demotion_decision_base(sep_rom_ot_dma_boot_test):
         self.logger.info(
             "CHK-DEMOTE-REGISTERS: DEMOTE_1 demote=%d lock=%d, DEMOTE_2 demote=%d "
             "lock=%d -- read from the lifecycle controller, matching the expected "
-            "[C15] outcome",
+            "[S25] outcome",
             got_1[0],
             got_1[1],
             got_2[0],

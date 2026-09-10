@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """PROD + BL1_DEMOTION_VALID + ENABLE -> DEMOTE_1 demoted and locked.
 
-Outcome **O2a** of the [C15] decision table in
+Outcome **O2a** of the [S25] decision table in
 ``rom_fw/sep_demotion_decision_base.py``, which is where the mechanism, the collapse
 map and the disclosed gaps are written out once. Read that first.
 

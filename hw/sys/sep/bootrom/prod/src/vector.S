@@ -179,7 +179,7 @@ _start:
     li      t0, 0xAAAAAAA8
     csrw    0x7C0, t0
 
-    /* ── V2: Warm reset detection ──────────────────────────────────
+    /* ── [S01]: Warm reset detection ──────────────────────────────────
      *
      * On warm reset (WDT bark → wdt_rst_ni low):
      *   - CPU is reset (sep_cpu_reset_n = sep_reset_n & wdt_rst_ni)

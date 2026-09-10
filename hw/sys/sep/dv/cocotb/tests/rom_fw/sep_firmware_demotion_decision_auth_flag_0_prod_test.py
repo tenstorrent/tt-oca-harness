@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """PROD, BL1_DEMOTION_VALID clear, ENABLE set -> the flag is IGNORED.
 
-Outcome **O5** of the [C15] decision table in
+Outcome **O5** of the [S25] decision table in
 ``rom_fw/sep_demotion_decision_base.py``; the PROD stimulus it shares with the
 other three PROD members is in ``rom_fw/sep_demotion_prod_base.py``. Read the
 first of those for the mechanism and the second for ``+SECURE_BOOT_DIS``.

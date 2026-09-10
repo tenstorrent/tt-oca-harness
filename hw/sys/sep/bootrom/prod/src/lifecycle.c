@@ -103,7 +103,7 @@ void lc_write_demotion_2(bool demote, bool lock) {
 }
 
 // ---------------------------------------------------------------------------
-// Full lifecycle policy (Task C6)
+// Full lifecycle policy ([S11])
 // ---------------------------------------------------------------------------
 
 // Error code for lifecycle validation failure.
