@@ -872,7 +872,9 @@ check precedes any inspection of the argument.
 The three identity fields (`cI`, `SiI`, `SsI`) hold per-owner public values, so
 locking them conceals nothing. They carry locks so that the OTP block stays
 regular and so that firmware has the same means to gate their re-read as it has
-for the secret UID fields.
+for the secret UID fields. This command zeros the KMCSR `OTP_SEP_*_ID_VAL/CPL`
+words. It is independent of the eFuse `LOCKS` bits, which do not starve the
+hardwired KM port.
 
 *Response*
 

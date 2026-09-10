@@ -30,4 +30,5 @@ LC_STATE, SIP_DIS, and SYS_DIS are blocked from any update.
 
 . The secret sources (the UIDs and CLASS_KEY) are disconnected from
 downstream logic. This is what protects the secrets that cannot be
-erased before entering RMA modes.
+erased before entering RMA modes. The public identity fuses remain
+connected.
