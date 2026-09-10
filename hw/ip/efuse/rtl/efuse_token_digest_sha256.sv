@@ -56,7 +56,7 @@ module efuse_token_digest_sha256
   logic                idle;
   sha_fifo32_t         fifo_rdata;
 
-  sha_word64_t [  7:0] sha_digest;
+  sha_word64_t [7:0] sha_digest;
   logic        [255:0] sha_digest_formatted;
   logic                digest_vld_sticky_n0_scan;
   logic        [255:0] sha_digest_sticky_n0_scan;
