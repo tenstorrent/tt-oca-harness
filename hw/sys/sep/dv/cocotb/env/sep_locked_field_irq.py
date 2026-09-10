@@ -49,6 +49,22 @@ def _nonzero_pattern(rng: SepSeededRng, forbidden: set[int]) -> int:
     return 0xA5A5A5A5
 
 
+# Fields the eFuse field map marks SECURE_TM_LOCK, so a shadow write to them is
+# refused while the TEST_EN strap is latched (sep_efuse_pkg EfuseFieldMap; the
+# access-control term is ``secure_tm_i & lock[3]``). LOCKS and LOCKS_SPARE are
+# one field-map entry, so one positive control covers both apertures.
+SECURE_TM_LOCK_FIELDS = ("LOCKS", "LOCKS_SPARE", "LC_STATE", "SIP_DIS", "SYS_DIS")
+
+# LC_STATE bytes [31:8] OR-merge as ordinary shadow bytes and do not disturb the
+# lifecycle nibble, so they are the safe payload for this field.
+LC_STATE_UPPER_MASK = 0xFFFF_FF00
+
+# Lock slot 31 is SEP_SYS_ID; its write-lock is LOCKS bit 62
+# (sep_efuse_pkg.sv, `idx 31: SEP_SYS_ID -- lock slot 31 (LOCKS[62:63])`).
+SEP_SYS_ID_WRITE_LOCK_BIT = 62
+SEP_SYS_ID_WRITE_LOCK_WORD = SEP_SYS_ID_WRITE_LOCK_BIT // 32
+
+
 class SepLockedFieldIrqCfg:
     """Single source of truth for the OTP image pins and the checker fields."""
 
@@ -79,6 +95,29 @@ class SepLockedFieldIrqCfg:
         locks |= 1 << _locks_spare_bit(spare_read_lock_bit(self.read_spare))
         self.locks_spare = locks
 
+        # SECURE_TM leaf. A fourth spare, distinct from the three above, carries
+        # the LOCKS_SPARE positive control: setting its write-lock bit at
+        # secure_tm=0 proves the aperture is writable before the strap goes up.
+        self.sectm_spare = rng.choice(idxs)
+        assert self.sectm_spare not in used
+        self.sectm_locks_spare_payload = 1 << _locks_spare_bit(
+            spare_write_lock_bit(self.sectm_spare)
+        )
+        # LOCKS deny target: slot 31 (SEP_SYS_ID) write-lock. Nothing later in
+        # the leaf reads that field, so a DUT that wrongly accepts the write
+        # fails the check rather than corrupting a later one.
+        self.sectm_locks_payload = 1 << (SEP_SYS_ID_WRITE_LOCK_BIT % 32)
+        # field -> (word index within the field, 32-bit payload).
+        self.sectm_payload = {
+            "LOCKS": (SEP_SYS_ID_WRITE_LOCK_WORD, self.sectm_locks_payload),
+            "LOCKS_SPARE": (0, self.sectm_locks_spare_payload),
+            "LC_STATE": (0, _nonzero_pattern(rng, forbidden) & LC_STATE_UPPER_MASK),
+            "SIP_DIS": (0, _nonzero_pattern(rng, forbidden)),
+            "SYS_DIS": (0, _nonzero_pattern(rng, forbidden)),
+        }
+        assert self.sectm_payload["LC_STATE"][1] != 0, "LC_STATE payload must touch bytes [31:8]"
+        assert set(self.sectm_payload) == set(SECURE_TM_LOCK_FIELDS)
+
     def image_fixed(self) -> dict[str, int]:
         return {
             self.write_field: self.write_pattern,
@@ -90,7 +129,8 @@ class SepLockedFieldIrqCfg:
     def summary(self) -> str:
         return (
             f"seed={self.seed} write={self.write_field} read={self.read_field} "
-            f"unlocked={self.unlocked_field} LOCKS_SPARE=0x{self.locks_spare:04x}"
+            f"unlocked={self.unlocked_field} LOCKS_SPARE=0x{self.locks_spare:04x} "
+            f"sectm_spare=SPARE{self.sectm_spare}"
         )
 
 
@@ -105,6 +145,11 @@ def _selftest() -> None:
     assert cfg.write_pattern not in (0, SENTINEL)
     pins = cfg.image_fixed()
     assert pins["LOCKS_SPARE"] == cfg.locks_spare
+    assert cfg.sectm_spare not in (cfg.write_spare, cfg.read_spare, cfg.unlocked_spare)
+    assert cfg.sectm_locks_spare_payload & cfg.locks_spare == 0
+    assert cfg.sectm_payload["LC_STATE"][1] & ~LC_STATE_UPPER_MASK == 0
+    assert all(v != 0 for _w, v in cfg.sectm_payload.values())
+    assert cfg.sectm_payload["LOCKS"][0] == 1
 
 
 _selftest()
