@@ -78,6 +78,10 @@ fault paths, illegal encodings. Named below. Not collected this revision.
 |Mailbox / PIC |`sep_mailbox_pic_cg`
 |WDT |`sep_wdt_bark_cg`
 |Warm / cold scratch |`sep_scratch_reset_cg`
+|eFuse program / lock |`sep_efuse_program_lock_cg`
+|Lifecycle transition |`sep_lc_transition_cg`
+|Lifecycle demotion |`sep_lc_demote_cg`
+|Secure DMA completion route |`sep_dma_completion_route_cg`
 |===
 
 === Owning tests
@@ -109,7 +113,10 @@ human. Other members may fill a group in passing.
 |`sep_efuse_sense_cg` |`sep_efuse_sense_test`, `sep_efuse_image_test` (any leaf passing `+skip_fuse_sense` cannot fill it)
 |`sep_efuse_program_lock_cg` |`sep_efuse_program_lock_matrix_test`
 |`sep_lc_state_cg` |`sep_efuse_lcc_lc_state_stitch_test` and the six `sep_lcc_lc_state_w1s_*` leaves
-|`sep_feat_ctrl_cg` |`sep_efuse_lcc_lc_state_stitch_test`, `sep_lcc_demote_feat_ctrl_matrix_test`
+|`sep_lc_transition_cg` |the six `sep_lcc_lc_state_w1s_*` leaves, one documented transition each
+|`sep_dma_completion_route_cg` |`sep_dma_basic_test` (STATUS poll), `sep_dma_hash_test` (interrupt), `sep_spi_ot_dma_rx_test` / `_tx_test` (handshake mode)
+|`sep_feat_ctrl_cg` |`sep_efuse_lcc_lc_state_stitch_test` (also both `SECURE_TM` polarities), the six W1S leaves, `sep_sec_dis_override_test` (SEC_DIS)
+|`sep_lc_demote_cg` |`sep_lcc_demote_feat_ctrl_matrix_test`
 |`sep_mailbox_pic_cg` |SEP mailbox `sep_axil_mailbox_iface_rand_test`, `sep_mailbox_plic_test`; KM mailbox `sep_km_mailbox_protocol_rand_test`
 |`sep_wdt_bark_cg` |threshold `sep_wdt_aon_timer_internals_test`; bark and NMI `sep_nmi_sanity_test`, `sep_reset_wdt_sanity_test`
 |`sep_scratch_reset_cg` |`sep_warm_cold_reset_scratch_test`
@@ -117,12 +124,13 @@ human. Other members may fill a group in passing.
 
 Per-test detail is in link:SEP_VPLAN.adoc[SEP_VPLAN].
 
-Twenty-one Phase 1 covergroups, compiled and sampled for VCS only
-(`ifndef VERILATOR`). Two IPs carry two groups each rather than one, because
-their Phase 1 contract has two independent halves that the suite reaches from
-different tests: the Key Manager splits generate from consume, and lifecycle
-splits the sensed state from the `FEAT_CTRL` read. Phase 2 names are listed at
-the end of this document.
+Twenty-five Phase 1 covergroups, compiled and sampled for VCS only
+(`ifndef VERILATOR`). Several IPs carry more than one group, because their
+Phase 1 contract has independent halves that different tests reach: the Key
+Manager splits generate from consume; lifecycle splits the sensed state, the
+transition taken, the `FEAT_CTRL` profile and demotion; eFuse splits sense from
+the program/lock matrix; and the DMA splits the transfer from which completion
+route reported it. Phase 2 names are listed at the end of this document.
 
 === Collection
 
@@ -169,7 +177,7 @@ says which checker keeps it. Do not read a hit as the checker's claim.
 |Coverpoint |Bins
 |`cp_reset_value` |An OKAY read of `SEP_LOCAL_BASE_ADDR` returns its generated reset value
 |`cp_wr_rdback` |A whole-word CSR write, then an OKAY read of that address returning the written word
-|`cp_resp` |An OKAY write response, and an OKAY read response
+|`cp_resp_wr` / `cp_resp_rd` |An OKAY write response; an OKAY read response (separate coverpoints, so a write-only or read-only run cannot fill both)
 |===
 
 ==== `sep_sram_access_cg`
@@ -214,7 +222,7 @@ scoreboard. A covergroup counts hits, not distinct values.
 
 ==== `sep_aes_mode_cg`
 
-*Description*: AES legal mode × key-size encrypt. The suite walks nine cells.
+*Description*: AES legal mode x key-size x operation. The suite walks 15 cells.
 
 [cols=",",options="header"]
 |===
@@ -400,14 +408,20 @@ cannot prove a frame left the host.
 [cols=",",options="header"]
 |===
 |Coverpoint |Bins
-|`cp_allow_wr` |An `m_axi` write OKAY whose address is in the page of the last programmed enabled window
-|`cp_allow_rd` |An `m_axi` read OKAY in that window
+|`cp_allow_wr` |An `m_axi` write OKAY whose address is inside the programmed enabled window
+|`cp_allow_rd` |An `m_axi` read OKAY inside that window
 |===
 
 The window is decoded from the `FILTER_CONFIG` / `START_ADDR` / `END_ADDR`
 writes on the CSR bus, and the compare is page-granular because
-`traffic_filter.sv` compares `addr[.:12]`. An OKAY with no entry enabled, or
-outside every programmed window, does not hit these bins.
+The compare is against the PROGRAMMED range, not its 4 KB page:
+`traffic_filter.sv` compares `addr[.:12]` only in its allow_burst arm, and
+`addr[.:DataBusWidthLog2]` otherwise, so a page compare is a superset of the
+real grant. Comparing the range can only miss a page-widened grant, never
+invent one. Both bins are also gated on exactly one outstanding inbound
+transaction, like the CSR-side bins -- `sep_axi_order_sweep_m_axi_test` runs
+several at once, and a last-write latch would pair one access's response with
+another's address.
 
 The window is committed as ONE entry: START and END are latched with their
 entry index and are accepted only at the enabling `FILTER_CONFIG` write of that
@@ -428,7 +442,13 @@ The full rule matrix, the deny path, and the winner walk over all 48 entries
 |===
 |Coverpoint |Bins
 |`cp_done` |A RISING edge of `sep_fuse_sense_done_o`, on a run that did NOT pass `+skip_fuse_sense`
+|`cp_episode` |First sense after cold-reset release, and a later re-sense
 |===
+
+The episode split follows the FCOV specification's sense-episode coverpoint:
+programming a fuse and re-sensing is a distinct event from the bring-up sense,
+and `sep_efuse_otp_program_seq`, `sep_lcc_demote_matrix_seq` and
+`sep_scratch_reset_seq` all re-sense today.
 
 Both qualifiers are load-bearing. `+skip_fuse_sense` makes
 `efuse_shadow_regs.sv` force `fuse_sense_done` to 1 one cycle after reset with
@@ -499,18 +519,94 @@ The bin is sampled from an OKAY read of the `LC_STATE` shadow word only when
 the word carries the differential `{~raw, raw}` encoding, so a stuck-at or
 half-sensed word lands in no bin instead of scoring one.
 
-==== `sep_feat_ctrl_cg`
+==== `sep_lc_transition_cg`
 
-*Description*: `FEAT_CTRL` is read in a known lifecycle state.
+*Description*: A documented lifecycle transition is taken.
 
 [cols=",",options="header"]
 |===
 |Coverpoint |Bins
-|`cp_feat` |An OKAY `FEAT_CTRL` read after a named `LC_STATE` was sensed in the same run
+|`cp_from` / `cp_to` |The seven legal raw encodings
+|`x_transition` |The three transitions the suite produces: TEST_DEV to PROD, PROD to RMA_SIP, RMA_SIP to RMA_CHIPLET
 |===
 
-The decode-matches-golden claim stays on `sep_lcc_golden`. The six-leaf W1S
-matrix, demote, and token faults are Phase 2.
+`sep_lc_state_cg` records which states were SEEN; this group records which were
+TAKEN. A pair is recovered from two `LC_STATE` reads in the same leaf --
+`sep_lc_shadow_write_seq` reads ONCE per cell, after its write, so the pair is
+two consecutive cells, not a before/after pair around one write. The stitch
+chain TEST_DEV -> PROD -> RMA_SIP_1 -> RMA_CHIP_1 is what produces all three.
+
+Only those three are declared. TEST_DEV to PROD_END and TEST_DEV to RMA_SIP
+have no walk (those leaves START sensed in the destination state), and PROD to
+PROD_END is impossible under write-1-to-set at all: `0x1 | 0x8` is `0x9`. The
+transition-legality claim stays on `sep_lcc_golden.lc_state_next`.
+
+==== `sep_dma_completion_route_cg`
+
+*Description*: Which route reported a DMA completion, and in which transfer mode.
+
+[cols=",",options="header"]
+|===
+|Coverpoint |Bins
+|`cp_route` |`STATUS.done` poll, DMA-done interrupt
+|`cp_mode` |Normal, hardware handshake
+|`x_route_mode` |4 cells
+|===
+
+The DMA reports completion two ways and the suite walks both: `dma_basic_test`
+polls `STATUS`, while `dma_hash_test` takes the `DMA_DONE` interrupt whose
+handler clears `STATUS.done` before software reads it. `sep_dma_copy_hash_cg`
+accepts either route so its cells can fill; this group keeps the distinction
+that would otherwise be hidden. Handshake mode comes from
+`sep_spi_ot_dma_rx_test` / `_tx_test`.
+
+==== `sep_feat_ctrl_cg`
+
+*Description*: The decoded debug profile `FEAT_CTRL` produced, per sensed
+lifecycle state and per override.
+
+[cols=",",options="header"]
+|===
+|Coverpoint |Bins
+|`cp_state` |The seven legal raw encodings, taken from the SENSED shadow value
+|`cp_debug` |none / partial / full over the five defined debug bits: `DBG_1` `sep_debug`, `chiplet_dbg`, `sep_fuse_dbg`, `smc_fuse_dbg` and `DBG_2` `sip_debug`
+|`x_state_debug` |21 cells -- which debug profile each lifecycle state produced
+|`cp_sec_dis` / `x_sec_dis_debug` |SEC_DIS off/on, crossed with the profile: SEC_DIS forces `FEAT_CTRL` to all-ones
+|`cp_secure_tm` |The latched TEST_EN strap, both polarities
+|===
+
+Sampled when the second 32-bit half of `FEAT_CTRL` is read, so the profile is a
+complete 64-bit value.
+
+`SECURE_TM` is a standalone coverpoint and NOT crossed with the profile: in this
+layout it does not qualify feature control (`env/sep_lcc_golden.py`). The
+reference UVM coverage crosses it, which reflects an older `FEAT_CTRL` layout
+with a DFT group at `[47:32]`; the current layout is `DBG_1[23:0]`,
+`DBG_2[47:24]`, `Function[63:48]` with no test group.
+
+The state comes from the sensed shadow probe rather than a frontdoor
+`LC_STATE` read, because the W1S leaves verify their starting state through
+that probe and never read `LC_STATE` frontdoor before transitioning -- a
+read-only source cannot observe `RMA_SIP_0` or `RMA_CHIP_0` at all.
+
+The decode-matches-golden claim stays on `sep_lcc_golden`. Token faults and the
+`sigint` fail-closed matrix are Phase 2.
+
+==== `sep_lc_demote_cg`
+
+*Description*: Volatile PROD debug demotion.
+
+[cols=",",options="header"]
+|===
+|Coverpoint |Bins
+|`cp_state` |TEST_DEV, PROD, PROD_END, and the RMA states as one bin
+|`cp_demote_1` / `cp_demote_2` |clear, set (from the differential `{~demote, demote}` probes)
+|`x_demote` |4 cells
+|===
+
+Only the demote pair is crossed. Crossing all seven states would declare 28
+cells for a walk that exercises the PROD rows only
+(`sep_lcc_demote_feat_ctrl_matrix_test`).
 
 ==== `sep_mailbox_pic_cg`
 

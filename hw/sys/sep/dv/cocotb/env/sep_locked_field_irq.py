@@ -77,6 +77,7 @@ class SepLockedFieldIrqCfg:
         self.read_spare = rng.choice(idxs)
         idxs.remove(self.read_spare)
         self.unlocked_spare = rng.choice(idxs)
+        idxs.remove(self.unlocked_spare)
         used = {self.write_spare, self.read_spare, self.unlocked_spare}
         assert len(used) == 3
         self.write_field = spare_field_name(self.write_spare)
@@ -99,7 +100,11 @@ class SepLockedFieldIrqCfg:
         # the LOCKS_SPARE positive control: setting its write-lock bit at
         # secure_tm=0 proves the aperture is writable before the strap goes up.
         self.sectm_spare = rng.choice(idxs)
-        assert self.sectm_spare not in used
+        # Four distinct spares. Each rng.choice above removes its pick, so a
+        # collision here means a removal was dropped and two roles would share
+        # one field, which would make the contrast leg compare a field against
+        # itself.
+        assert len(used | {self.sectm_spare}) == 4
         self.sectm_locks_spare_payload = 1 << _locks_spare_bit(
             spare_write_lock_bit(self.sectm_spare)
         )

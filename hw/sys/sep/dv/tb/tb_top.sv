@@ -2117,6 +2117,16 @@ module sep_uvm_top
         // sep.sv:535 intr_dma_done. dma_hash_test completes through the ISR,
         // which clears STATUS.done before software reads it.
         .irq_dma_done_i        (sep_internal_interrupts_probe_o[8]),
+        // Sensed LC nibble out of the shadow probe. The W1S leaves verify
+        // their start state through this probe and never read LC_STATE
+        // frontdoor first, so the frontdoor path cannot observe RMA_SIP_0 /
+        // RMA_CHIP_0 at all.
+        .efuse_lc_raw_i        (efuse_shadow_probe_o[
+            32 * efuse_pkg::SHADOW_IDX_LC_STATE +: 4]),
+        .secure_tm_i           (secure_tm_o),
+        .sec_dis_i             (lcc_security_disable_probe_o),
+        .demote_1_i            (lcc_demote_state_1_probe_o),
+        .demote_2_i            (lcc_demote_state_2_probe_o),
         .cpu_reset_n_i         (sep_cpu_reset_n_o),
         .spi_cs_n_i            (spi_cs_n_o),
         .spi_sck_i             (spi_sck_o)

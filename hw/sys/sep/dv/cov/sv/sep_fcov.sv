@@ -92,6 +92,11 @@ module sep_fcov (
   input wire [7:0]  irq_mailbox_i,
   input wire        irq_km_mbox_i,
   input wire        irq_dma_done_i,
+  input wire [3:0]  efuse_lc_raw_i,      // sensed LC nibble of the shadow probe
+  input wire        secure_tm_i,
+  input wire        sec_dis_i,
+  input wire [1:0]  demote_1_i,          // {~demote, demote}: 2'b10 clear, 2'b01 set
+  input wire [1:0]  demote_2_i,
   input wire        cpu_reset_n_i,
   input wire        spi_cs_n_i,
   input wire        spi_sck_i
@@ -321,9 +326,6 @@ module sep_fcov (
   wire [1:0] aes_op_w      = (wr_data & AES_CTRL_SHADOWED_OPERATION_MASK) >>
       AES_CTRL_SHADOWED_OPERATION_SHIFT;
   wire       aes_sideload_w = (wr_data & AES_CTRL_SHADOWED_SIDELOAD_MASK) != 32'h0;
-  wire       aes_ctrl_enc = wr_ev && (aw_addr_q == AES_CTRL_SHADOWED_REG_ADDR) &&
-      (((wr_data & AES_CTRL_SHADOWED_OPERATION_MASK) >>
-         AES_CTRL_SHADOWED_OPERATION_SHIFT) == 32'(AesOpEnc));
   wire [5:0] aes_mode_w = (wr_data & AES_CTRL_SHADOWED_MODE_MASK) >>
       AES_CTRL_SHADOWED_MODE_SHIFT;
   wire [2:0] aes_key_w  = (wr_data & AES_CTRL_SHADOWED_KEY_LEN_MASK) >>
@@ -444,11 +446,12 @@ module sep_fcov (
   wire dma_hash_go = dma_go && (dma_opcode_w == DmaOpSha256);
   wire dma_hs_go   = dma_go &&
       ((wr_data & SECURE_DMA_CONTROL_HARDWARE_HANDSHAKE_ENABLE_MASK) != 32'h0);
-  logic dma_copy_q, dma_hash_q;
+  logic dma_copy_q, dma_hash_q, dma_hs_q;
   // One chunk per GO is the DMA's normal protocol: the engine raises
   // CHUNK_DONE and drops BUSY, and firmware W1Cs it and re-GOes with
-  // INITIAL_TRANSFER=0 until the last chunk reports DONE (fw/drivers/sep_dma.h,
-  // dma_basic_test.c). That loop is why one transfer shows many GO writes.
+  // INITIAL_TRANSFER=0 until the last chunk reports DONE. The loop lives in
+  // fw/tests/dma_basic_test/dma_basic_test.c, not the driver header. That loop
+  // is why one transfer shows many GO writes.
   wire dma_chunk_done = rd_ev && (ar_addr_q == SECURE_DMA_STATUS_REG_ADDR) &&
       ((rd_data & SECURE_DMA_STATUS_CHUNK_DONE_MASK) != 32'h0) &&
       (dma_copy_q || dma_hash_q);
@@ -512,17 +515,23 @@ module sep_fcov (
       (m_axi_rlast_i === 1'b1) && (m_axi_rresp_i == AxiOkay);
 
   logic [31:0] m_aw_addr_q, m_ar_addr_q;
+  // Same pairing contract as the LSU side: sep_axi_order_sweep_m_axi_test
+  // deliberately runs several inbound transactions at once, and a plain
+  // last-write latch would pair one access's response with another's address.
+  logic [3:0]  m_aw_out_q, m_ar_out_q;
 
-  // traffic_filter.sv grants on the 4 KB page of the programmed window, so the
-  // allow bin compares pages. An OKAY outside every programmed window, or with
-  // no entry enabled, does not hit it.
-  function automatic logic in_allow_page(logic [31:0] a);
-    return filt_win_valid_q && ((a >> PageShift) >= (filt_win_lo_q >> PageShift)) &&
-           ((a >> PageShift) <= (filt_win_hi_q >> PageShift));
+  // The PROGRAMMED range, not its 4 KB page. traffic_filter.sv compares
+  // addr[.:12] only in the allow_burst arm; the other arm compares
+  // addr[.:DataBusWidthLog2]. A page compare is therefore a superset of the
+  // real grant, and would score an OKAY that landed inside the page but
+  // outside the window the test programmed. Comparing the range can only
+  // MISS a page-widened grant, never invent one.
+  function automatic logic in_allow_window(logic [31:0] a);
+    return filt_win_valid_q && (a >= filt_win_lo_q) && (a <= filt_win_hi_q);
   endfunction
 
-  wire filt_allow_wr = m_b_ok && in_allow_page(m_aw_addr_q);
-  wire filt_allow_rd = m_r_ok && in_allow_page(m_ar_addr_q);
+  wire filt_allow_wr = m_b_ok && (m_aw_out_q == 4'd1) && in_allow_window(m_aw_addr_q);
+  wire filt_allow_rd = m_r_ok && (m_ar_out_q == 4'd1) && in_allow_window(m_ar_addr_q);
 
   // --- eFuse program x write-lock ----------------------------------------
   // Programming a write-locked field is a LEGAL software action with a
@@ -576,9 +585,55 @@ module sep_fcov (
   // --- eFuse -------------------------------------------------------------
   // Rising edge, not the held level: the level would score one hit per clock
   // for the rest of the run and make the bin count meaningless.
-  logic fuse_sense_done_q;
+  logic fuse_sense_done_q, fuse_sense_seen_q;
   wire  fuse_sense = !in_reset && !skip_fuse_sense_q &&
       (fuse_sense_done_i === 1'b1) && !fuse_sense_done_q;
+  wire  fuse_sense_episode = fuse_sense_seen_q;
+
+  // --- Lifecycle feature control ------------------------------------------
+  // FEAT_CTRL is 64-bit, read as two 32-bit halves. Aggregate the DEFINED
+  // debug bits into none/partial/full the way the reference coverage does:
+  // DBG_1 = sep_debug, chiplet_dbg, sep_fuse_dbg, smc_fuse_dbg (bits 0..3) and
+  // DBG_2 = sip_debug (bit 24). env/sep_lcc_golden.py is the layout authority.
+  // There is no DFT/test group in this layout, and SECURE_TM does not qualify
+  // feature control, so neither is crossed with the debug aggregate.
+  localparam logic [31:0] FeatDbg1Mask = 32'h0000_000F;   // bits 3:0
+  localparam logic [31:0] FeatDbg2Mask = 32'h0100_0000;   // bit 24
+  localparam int unsigned FeatDbgBits  = 5;
+
+  logic [31:0] feat_lo_q;
+  logic        feat_lo_valid_q;
+  wire         feat_ctrl_lo_rd = rd_ev && (ar_addr_q == SEP_LIFECYCLE_CTRL_FEAT_CTRL_REG_ADDR);
+  wire         feat_ctrl_hi_rd = rd_ev &&
+      (ar_addr_q == (SEP_LIFECYCLE_CTRL_FEAT_CTRL_REG_ADDR + 32'd4)) && feat_lo_valid_q;
+
+  function automatic int unsigned popcount32(logic [31:0] v);
+    int unsigned n;
+    n = 0;
+    for (int i = 0; i < 32; i++) if (v[i]) n++;
+    return n;
+  endfunction
+
+  // 0 = none, 1 = partial, 2 = full over the five defined debug bits.
+  // Both masks apply to the LO half: DBG_1 is bits [23:0] and DBG_2 starts at
+  // bit 24 (sep_lcc_golden.py SIP_DBG_BIT = 24), so all five defined debug bits
+  // are inside the first 32-bit word. The hi half is Function only.
+  function automatic logic [1:0] debug_class(logic [31:0] lo, logic [31:0] hi);
+    int unsigned n;
+    n = popcount32(lo & FeatDbg1Mask) + popcount32(lo & FeatDbg2Mask);
+    if (n == 0) return 2'd0;
+    if (n == FeatDbgBits) return 2'd2;
+    return 2'd1;
+  endfunction
+
+  wire [1:0] feat_dbg_class = debug_class(feat_lo_q, rd_data);
+  // The SENSED state, not a frontdoor read: the W1S leaves verify their start
+  // state through the shadow probe and never read LC_STATE frontdoor before
+  // transitioning, so a read-only source cannot see RMA_SIP_0 / RMA_CHIP_0.
+  wire [3:0] lc_sensed = efuse_lc_raw_i;
+
+  wire       demote_1_set = (demote_1_i == 2'b01);
+  wire       demote_2_set = (demote_2_i == 2'b01);
 
   // --- Lifecycle ---------------------------------------------------------
   wire       lc_read = rd_ev && (ar_addr_q == SEP_EFUSE_MAP_LC_STATE_REG_ADDR);
@@ -586,13 +641,18 @@ module sep_fcov (
   // The shadow word carries {~raw, raw}. Requiring the complement means a
   // stuck-at or half-sensed word lands in no bin instead of scoring one.
   wire       lc_diff_ok = lc_read && (rd_data[7:4] == ~lc_raw);
-  logic      lc_named_q;
-  wire       feat_ctrl_read = rd_ev &&
-      (ar_addr_q == SEP_LIFECYCLE_CTRL_FEAT_CTRL_REG_ADDR) && lc_named_q;
+  // Previous DIFFERENT legal LC code, so a transition can be labelled by its
+  // endpoints. sep_lc_shadow_write_seq reads the shadow word ONCE per cell
+  // (after its write), so a transition pair is two consecutive cells of the
+  // same leaf, not a before/after pair around one write. The stitch chain
+  // TEST_DEV -> PROD -> RMA_SIP_1 -> RMA_CHIP_1 is what produces them.
+  logic [3:0] lc_prev_q;
+  logic       lc_prev_valid_q;
+  wire        lc_transition = lc_diff_ok && lc_prev_valid_q && (lc_raw != lc_prev_q);
 
   // --- Mailbox / PIC -----------------------------------------------------
   logic irq_mailbox_q, irq_km_mbox_q;
-  wire  mbox_any    = (irq_mailbox_i !== 8'h00);
+  wire  mbox_any    = !$isunknown(irq_mailbox_i) && (irq_mailbox_i != 8'h00);
   wire  mbox_raise  = !in_reset && mbox_any && !irq_mailbox_q;
   wire  mbox_clear  = !in_reset && !mbox_any && irq_mailbox_q;
   wire  km_mbox_raise = !in_reset && (irq_km_mbox_i === 1'b1) && !irq_km_mbox_q;
@@ -612,7 +672,7 @@ module sep_fcov (
   wire warm_write = wr_ev && in_win(aw_addr_q, WarmBase, WarmEnd);
   wire cold_write = wr_ev && in_win(aw_addr_q, ColdBase, ColdEnd);
 
-  logic [31:0] cold_addr_q, cold_data_q;
+  logic [31:0] cold_addr_q, cold_data_q, warm_addr_q;
   logic        cold_valid_q, warm_written_q;
   logic        cpu_reset_n_q, warm_reset_q;
   logic [4:0]  cpu_reset_hi_q;
@@ -625,8 +685,10 @@ module sep_fcov (
       (warm_written_q || cold_valid_q);
   // Read AFTER the warm reset, not on the falling edge itself: an event ANDed
   // with the edge cannot fire, because no read completes in that cycle.
+  // Address-matched like the cold bin: otherwise a never-written warm word
+  // reading its 0 reset value scores the retention cell.
   wire         warm_zero_after_reset = rd_ev && warm_reset_q && warm_written_q &&
-      in_win(ar_addr_q, WarmBase, WarmEnd) && (rd_data == 32'h0);
+      (ar_addr_q == warm_addr_q) && (rd_data == 32'h0);
   wire         cold_kept_after_reset = rd_ev && warm_reset_q && cold_valid_q &&
       (ar_addr_q == cold_addr_q) && (rd_data == cold_data_q);
 
@@ -653,12 +715,16 @@ module sep_fcov (
       km_rsp_idx_q      <= '0;
       km_rsp_arm_q      <= 1'b0;
       dma_copy_q        <= 1'b0;
+      dma_hs_q          <= 1'b0;
       dma_hash_q        <= 1'b0;
       filt_win_valid_q  <= 1'b0;
+      m_aw_out_q        <= '0;
+      m_ar_out_q        <= '0;
       filt_start_entry_q <= 32'hFFFF_FFFF;
       filt_end_entry_q   <= 32'hFFFF_FFFF;
       filt_win_entry_q   <= 32'hFFFF_FFFF;
-      lc_named_q        <= 1'b0;
+      lc_prev_valid_q   <= 1'b0;
+      feat_lo_valid_q   <= 1'b0;
       spare_locked_q    <= '0;
       prog_pending_q    <= 1'b0;
       wdt_bark_q        <= 1'b0;
@@ -670,6 +736,7 @@ module sep_fcov (
       cpu_reset_n_q     <= 1'b1;
       cpu_reset_hi_q    <= 5'd0;
       fuse_sense_done_q <= 1'b0;
+      fuse_sense_seen_q <= 1'b0;
       esrc_seed_q       <= 1'b0;
       drbg_gen_q        <= 1'b0;
       fw_pass_q         <= 1'b0;
@@ -706,7 +773,12 @@ module sep_fcov (
         aes_out_valid_q <= 1'b0;
       end
       if (aes_out_valid) aes_out_valid_q <= 1'b1;
-      if (aes_cell_done) aes_out_valid_q <= 1'b0;
+      // Retire the configuration with its cell: without this a later
+      // DATA_OUT_0 read re-scores the stale mode/key/op.
+      if (aes_cell_done) begin
+        aes_out_valid_q <= 1'b0;
+        aes_cfg_valid_q <= 1'b0;
+      end
 
       if (hmac_cfg_wr) begin
         hmac_digest_q    <= hmac_digest_w;
@@ -788,6 +860,8 @@ module sep_fcov (
         dma_hash_q <= 1'b1;
         dma_copy_q <= 1'b0;
       end
+      if (dma_go) dma_hs_q <= (wr_data &
+          SECURE_DMA_CONTROL_HARDWARE_HANDSHAKE_ENABLE_MASK) != 32'h0;
       if (dma_complete) begin
         dma_copy_q <= 1'b0;
         dma_hash_q <= 1'b0;
@@ -817,6 +891,11 @@ module sep_fcov (
       end
       if (m_aw_hs) m_aw_addr_q <= m_axi_awaddr_i[31:0];
       if (m_ar_hs) m_ar_addr_q <= m_axi_araddr_i[31:0];
+      m_aw_out_q <= m_aw_out_q + (m_aw_hs ? 4'd1 : 4'd0) -
+          ((m_axi_bvalid_i === 1'b1 && m_axi_bready_i === 1'b1) ? 4'd1 : 4'd0);
+      m_ar_out_q <= m_ar_out_q + (m_ar_hs ? 4'd1 : 4'd0) -
+          ((m_axi_rvalid_i === 1'b1 && m_axi_rready_i === 1'b1 &&
+            m_axi_rlast_i === 1'b1) ? 4'd1 : 4'd0);
 
       if (efuse_prog_go && prog_is_lock) spare_locked_q[prog_lock_idx] <= 1'b1;
       if (efuse_prog_go && prog_is_spare) begin
@@ -826,7 +905,16 @@ module sep_fcov (
       end
       if (prog_pending_q && (efuse_prog_done || efuse_prog_err)) prog_pending_q <= 1'b0;
 
-      if (lc_diff_ok) lc_named_q <= 1'b1;
+      if (feat_ctrl_lo_rd) begin
+        feat_lo_q       <= rd_data;
+        feat_lo_valid_q <= 1'b1;
+      end
+      if (feat_ctrl_hi_rd) feat_lo_valid_q <= 1'b0;
+
+      if (lc_diff_ok) begin
+        lc_prev_q       <= lc_raw;
+        lc_prev_valid_q <= 1'b1;
+      end
       // One-shot: the arm is consumed by the NMI it explains. The
       // reset_wdt_sanity firmware has ONE handler for a WDT bark and a D-bus
       // error NMI, so a sticky arm would let the other source score this bin.
@@ -838,13 +926,17 @@ module sep_fcov (
         cold_data_q  <= wr_data;
         cold_valid_q <= 1'b1;
       end
-      if (warm_write) warm_written_q <= 1'b1;
+      if (warm_write) begin
+        warm_addr_q    <= aw_addr_q;
+        warm_written_q <= 1'b1;
+      end
       if (warm_reset_fall) warm_reset_q <= 1'b1;
 
       cpu_reset_n_q  <= (cpu_reset_n_i === 1'b1);
       cpu_reset_hi_q <= (cpu_reset_n_i === 1'b1) ?
           ((cpu_reset_hi_q == 5'h1F) ? 5'h1F : cpu_reset_hi_q + 5'd1) : 5'd0;
       fuse_sense_done_q <= (fuse_sense_done_i === 1'b1);
+      if (fuse_sense) fuse_sense_seen_q <= 1'b1;
       esrc_seed_q       <= (drbg_seed_valid_i === 1'b1);
       drbg_gen_q        <= (drbg_genbits_vld_i === 1'b1);
       fw_pass_q         <= (fw_done_i === 1'b1) && (fw_pass_i === 1'b1);
@@ -865,7 +957,8 @@ module sep_fcov (
     option.name = "sep_axi_decode_cg";
     cp_reset_value: coverpoint decode_reset_value { bins reset_value_decode = {1'b1}; }
     cp_wr_rdback:   coverpoint csr_readback        { bins write_readback    = {1'b1}; }
-    cp_resp:        coverpoint {wr_ev, rd_ev}      { bins okay = {2'b10, 2'b01}; }
+    cp_resp_wr:     coverpoint wr_ev                { bins okay_write = {1'b1}; }
+    cp_resp_rd:     coverpoint rd_ev                { bins okay_read  = {1'b1}; }
   endgroup
 
   covergroup sep_sram_access_cg @(posedge clk_i);
@@ -1050,6 +1143,26 @@ module sep_fcov (
     cp_rego:      coverpoint dma_regonon_initial  { bins rego_not_initial = {1'b1}; }
   endgroup
 
+  covergroup sep_dma_completion_route_cg with function sample (
+      logic irq_route, logic handshake
+  );
+    option.per_instance = 1;
+    option.name = "sep_dma_completion_route_cg";
+    // The DMA reports completion two ways and the suite walks both:
+    // dma_basic_test polls STATUS.done, dma_hash_test takes the DMA_DONE
+    // interrupt whose handler clears STATUS.done before software reads it.
+    // Recording only "completed" would hide which route the transfer took.
+    cp_route: coverpoint irq_route {
+      bins status_poll = {1'b0};
+      bins interrupt   = {1'b1};
+    }
+    cp_mode: coverpoint handshake {
+      bins normal    = {1'b0};
+      bins handshake = {1'b1};
+    }
+    x_route_mode: cross cp_route, cp_mode;
+  endgroup
+
   covergroup sep_spi_flash_cg @(posedge clk_i);
     option.per_instance = 1;
     option.name = "sep_spi_flash_cg";
@@ -1070,6 +1183,13 @@ module sep_fcov (
     option.per_instance = 1;
     option.name = "sep_efuse_sense_cg";
     cp_done: coverpoint fuse_sense { bins sense_done = {1'b1}; }
+    // First sense after cold-reset release vs a later re-sense: programming a
+    // fuse and re-sensing is a distinct episode (sep_efuse_otp_program_seq,
+    // sep_lcc_demote_matrix_seq, sep_scratch_reset_seq all re-sense).
+    cp_episode: coverpoint fuse_sense_episode iff (fuse_sense) {
+      bins first_sense = {1'b0};
+      bins re_sense    = {1'b1};
+    }
   endgroup
 
   covergroup sep_efuse_program_lock_cg with function sample (
@@ -1112,16 +1232,104 @@ module sep_fcov (
     }
   endgroup
 
-  covergroup sep_feat_ctrl_cg @(posedge clk_i);
+  covergroup sep_lc_transition_cg with function sample (logic [3:0] from, logic [3:0] to);
+    option.per_instance = 1;
+    option.name = "sep_lc_transition_cg";
+    cp_from: coverpoint from {
+      bins test_dev   = {LcTestDev};
+      bins prod       = {LcProd};
+      bins rma_sip_0  = {LcRmaSip0};
+      bins rma_sip_1  = {LcRmaSip1};
+      bins rma_chip_0 = {LcRmaChip0};
+      bins rma_chip_1 = {LcRmaChip1};
+      bins prod_end   = {LcProdEnd};
+    }
+    cp_to: coverpoint to {
+      bins test_dev   = {LcTestDev};
+      bins prod       = {LcProd};
+      bins rma_sip_0  = {LcRmaSip0};
+      bins rma_sip_1  = {LcRmaSip1};
+      bins rma_chip_0 = {LcRmaChip0};
+      bins rma_chip_1 = {LcRmaChip1};
+      bins prod_end   = {LcProdEnd};
+    }
+    // Only the three transitions the suite actually produces are declared.
+    //
+    // A transition is recovered from two LC_STATE reads in the same leaf, and
+    // sep_lc_shadow_write_seq reads ONCE per cell (after its write), so the
+    // pair comes from consecutive cells within a leaf -- the stitch chain
+    // TEST_DEV -> PROD -> RMA_SIP_1 -> RMA_CHIP_1.
+    //
+    // Excluded on purpose: TEST_DEV->PROD_END and TEST_DEV->RMA_SIP have no
+    // walk (the PROD_END and RMA leaves START sensed in those states), and
+    // PROD->PROD_END is impossible under write-1-to-set at all -- 0x1 | 0x8 is
+    // 0x9, not 0x8.
+    x_transition: cross cp_from, cp_to {
+      bins test_dev_to_prod   = binsof(cp_from.test_dev)  && binsof(cp_to.prod);
+      bins prod_to_rma_sip    = binsof(cp_from.prod)      && binsof(cp_to.rma_sip_1);
+      bins rma_sip_to_chiplet = binsof(cp_from.rma_sip_1) && binsof(cp_to.rma_chip_1);
+    }
+  endgroup
+
+  covergroup sep_feat_ctrl_cg with function sample (
+      logic [3:0] lc, logic [1:0] dbg, logic sec_dis, logic secure_tm
+  );
     option.per_instance = 1;
     option.name = "sep_feat_ctrl_cg";
-    cp_feat: coverpoint feat_ctrl_read { bins read_after_named_lc_state = {1'b1}; }
+    cp_state: coverpoint lc {
+      bins test_dev   = {LcTestDev};
+      bins prod       = {LcProd};
+      bins rma_sip_0  = {LcRmaSip0};
+      bins rma_sip_1  = {LcRmaSip1};
+      bins rma_chip_0 = {LcRmaChip0};
+      bins rma_chip_1 = {LcRmaChip1};
+      bins prod_end   = {LcProdEnd};
+    }
+    cp_debug: coverpoint dbg {
+      bins none    = {2'd0};
+      bins partial = {2'd1};
+      bins full    = {2'd2};
+    }
+    // The workhorse: which decoded debug profile each lifecycle state produced.
+    x_state_debug: cross cp_state, cp_debug;
+    // SEC_DIS forces FEAT_CTRL to all-ones, so it is crossed with the profile.
+    cp_sec_dis: coverpoint sec_dis {
+      bins off = {1'b0};
+      bins on  = {1'b1};
+    }
+    x_sec_dis_debug: cross cp_sec_dis, cp_debug;
+    // SECURE_TM does NOT qualify feature control in this layout
+    // (env/sep_lcc_golden.py), so it is recorded on its own rather than
+    // crossed: the stitch test drives the strap both ways.
+    cp_secure_tm: coverpoint secure_tm {
+      bins off = {1'b0};
+      bins on  = {1'b1};
+    }
+  endgroup
+
+  covergroup sep_lc_demote_cg with function sample (
+      logic [3:0] lc, logic d1, logic d2
+  );
+    option.per_instance = 1;
+    option.name = "sep_lc_demote_cg";
+    // Demotion is volatile PROD debug state, so the state is recorded on its
+    // own and only the demote pair is crossed: crossing all seven states would
+    // declare 28 cells for a walk that only exercises the PROD rows.
+    cp_state: coverpoint lc {
+      bins test_dev = {LcTestDev};
+      bins prod     = {LcProd};
+      bins prod_end = {LcProdEnd};
+      bins rma      = {LcRmaSip0, LcRmaSip1, LcRmaChip0, LcRmaChip1};
+    }
+    cp_demote_1: coverpoint d1 { bins clear = {1'b0}; bins set = {1'b1}; }
+    cp_demote_2: coverpoint d2 { bins clear = {1'b0}; bins set = {1'b1}; }
+    x_demote: cross cp_demote_1, cp_demote_2;
   endgroup
 
   covergroup sep_mailbox_pic_cg @(posedge clk_i);
     option.per_instance = 1;
     option.name = "sep_mailbox_pic_cg";
-    // SEP AXI mailbox sources, sep_internal_interrupts[7:0] (sep.sv:534).
+    // SEP AXI mailbox sources, sep_internal_interrupts[7:0].
     // Owner: sep_axil_mailbox_iface_rand_test, sep_mailbox_plic_test.
     cp_raise: coverpoint mbox_raise { bins raise = {1'b1}; }
     cp_clear: coverpoint mbox_clear { bins clear = {1'b1}; }
@@ -1168,7 +1376,10 @@ module sep_fcov (
   sep_efuse_sense_cg          u_sep_efuse_sense_cg          = new();
   sep_efuse_program_lock_cg   u_sep_efuse_program_lock_cg   = new();
   sep_lc_state_cg             u_sep_lc_state_cg             = new();
+  sep_lc_transition_cg        u_sep_lc_transition_cg        = new();
+  sep_dma_completion_route_cg u_sep_dma_completion_route_cg = new();
   sep_feat_ctrl_cg            u_sep_feat_ctrl_cg            = new();
+  sep_lc_demote_cg            u_sep_lc_demote_cg            = new();
   sep_mailbox_pic_cg          u_sep_mailbox_pic_cg          = new();
   sep_wdt_bark_cg             u_sep_wdt_bark_cg             = new();
   sep_scratch_reset_cg        u_sep_scratch_reset_cg        = new();
@@ -1184,6 +1395,17 @@ module sep_fcov (
           kmac_keylen_valid_q ? kmac_keylen_q : 3'd7, kmac_sideload_q);
       if (km_transfer_dest) u_sep_km_command_sideload_cg.sample(wr_data[3:0]);
       if (lc_diff_ok)     u_sep_lc_state_cg.sample(lc_raw);
+      if (lc_transition)  u_sep_lc_transition_cg.sample(lc_prev_q, lc_raw);
+      // Sampled when the second FEAT_CTRL half completes, against the SENSED
+      // lifecycle state and the live override/demote probes.
+      if (feat_ctrl_hi_rd) begin
+        u_sep_feat_ctrl_cg.sample(lc_sensed, feat_dbg_class,
+                                  (sec_dis_i === 1'b1), (secure_tm_i === 1'b1));
+        u_sep_lc_demote_cg.sample(lc_sensed, demote_1_set, demote_2_set);
+      end
+      if (dma_copy_done || dma_hash_done) begin
+        u_sep_dma_completion_route_cg.sample(dma_irq_done, dma_hs_q);
+      end
       // Sampled at the outcome, so the cell records a completed program
       // attempt rather than the request.
       if (prog_pending_q && (efuse_prog_done || efuse_prog_err)) begin
