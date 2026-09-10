@@ -47,7 +47,7 @@ requirements are an ADDITION derived from this ROM (``rom_main.c``,),
 not a port of anything the reference checks. Disclosed here and in the row's
 ``flow_deviation``.
 
-Needs ``+sep_crypto_edn_force``: PROD_END enforces secure boot
+Needs ``+esrc_noise_force``: PROD_END enforces secure boot
 (``lifecycle.c``), so a full RSA-3072 modexp runs on OTBN. The RSA
 assertions are untouched.
 """

@@ -45,7 +45,7 @@ mismatch and never reaches the type check at all. No re-sign is needed or possib
 the now-stale signature is never examined, and ``RSA_EXEC`` being
 forbidden is what checks that ordering instead of assuming it.
 
-No ``+sep_crypto_edn_force``: OTBN is never driven on either slot.
+No ``+esrc_noise_force``: OTBN is never driven on either slot.
 """
 
 from __future__ import annotations

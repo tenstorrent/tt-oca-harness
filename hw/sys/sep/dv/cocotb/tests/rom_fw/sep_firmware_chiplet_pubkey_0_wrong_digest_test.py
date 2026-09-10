@@ -100,7 +100,7 @@ Forbidding ``KEY_REVOKED`` catches that too.
 ``RSA_EXEC`` and ``RSA_VERIFY_OK`` are forbidden: the digest bind precedes
 ``rsa_3072_verify`` ( then), so a run that
 reached the verifier did not fail where this testcase says it failed. No
-``+sep_crypto_edn_force`` is passed, and none is needed.
+``+esrc_noise_force`` is passed, and none is needed.
 
 ``PUBK_HASH_TIMEOUT`` is forbidden as well, and it is not decoration:
 ``check_pubkey_hash`` returns ``MANIFEST_ERR_SIG_FAILED`` on a SHA-256 timeout and ``MANIFEST_ERR_KEY_HASH_MISMATCH`` only on a

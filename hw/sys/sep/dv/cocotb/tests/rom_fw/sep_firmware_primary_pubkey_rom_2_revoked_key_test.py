@@ -37,7 +37,7 @@ revocation PREEMPTS the empty-digest arm. The stale signature is never examined 
 pinned to 1 -- so the verdict stays attributable to revocation. Slot 0 carries the
 family's strict form.
 
-Needs ``+sep_crypto_edn_force``: the backup is valid, so the full RSA-3072 modexp
+Needs ``+esrc_noise_force``: the backup is valid, so the full RSA-3072 modexp
 runs on OTBN, which parks in UrndRefresh until EDN grants entropy. It grants
 OTBN's EDN handshakes only; the RSA assertions are untouched, so ``RSA_VERIFY_OK``
 still means the signature really verified.

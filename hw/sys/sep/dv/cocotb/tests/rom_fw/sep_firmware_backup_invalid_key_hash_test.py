@@ -24,7 +24,7 @@ for the wrong reasons would need a stronger statement.
 straddling the backup read.
 
 Neither slot reaches RSA: the hash bind precedes it, so ``RSA_EXEC`` is forbidden and no
-``+sep_crypto_edn_force`` is needed. If that ordering ever changed, this entry
+``+esrc_noise_force`` is needed. If that ordering ever changed, this entry
 would go red rather than quietly start depending on the OTBN shortcut.
 """
 

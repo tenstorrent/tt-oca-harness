@@ -76,7 +76,7 @@ type is rejected before ``rsa_3072_verify``, so the
 now-stale signature is never examined, and the base's ``primary_expected_rsa_starts
 = 0`` is what checks that ordering instead of assuming it.
 
-Needs ``+sep_crypto_edn_force``: the backup is valid, so the full RSA-3072 modexp
+Needs ``+esrc_noise_force``: the backup is valid, so the full RSA-3072 modexp
 runs on OTBN, which parks in UrndRefresh until EDN grants entropy. The RSA
 assertions are untouched, so ``RSA_VERIFY_OK`` still means the signature verified.
 """

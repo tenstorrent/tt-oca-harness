@@ -205,9 +205,7 @@ args = [
 # Boot ROM warm-reset handler dispatch, accept-and-jump arm.
 #
 # NOTE ON THE NAME: the name now matches the register. The ROM reads COLD scratch
-# 7 (vector.S), which is what sep-boot-flow.puml specifies. It previously
-# read WARM scratch 0, and this note used to explain the name as referring to the
-# feature rather than the index; that explanation is obsolete (FINDINGS F28).
+# 7 (vector.S), which is what sep-boot-flow.puml specifies.
 #
 # Reuses build_ot/ for the same reason as the entry above: the warm branch is the
 # first decision in _start, upstream of everything transport-related.
@@ -470,9 +468,7 @@ args = [
 #    staging area). So there is nothing for an SMC-clear
 #    assertion to check. (Independently, the only path whose manifest comes from SMC
 #    SRAM runs with no retries, so it has no retry window at all.) The test asserts nothing about SMC SRAM and says so in its own log
-#    (CHK-SCOPE). Full evidence: FINDINGS F19 and its correction F21, in
-#    aegissocspec's .dv/artifacts/boot_rom/rtl_batch_runs/FINDINGS.md (that path is
-#    in the SPEC repo, not this one).
+#    (CHK-SCOPE).
 # 2. It is one of the slower members of this group, and almost all of that is
 #    INHERITED rather than added here. The failover clear it asserts is 65536 CPU
 #    stores: measured in run 20260829_111100, MANIFEST_ERR=0x00030002 at 2154352 ns
@@ -753,7 +749,7 @@ args = [
 ]
 
 [[tests]]
-# TP053-E: BL1 entry_point == length, the smallest value check_bl1_image rejects
+# TP053-E: BL1 entry_point == length, the smallest value the BL1 placement check rejects
 #. Same shape as the size arm; only the mutated field and the
 # expected console marker differ.
 name = "sep_bl1_entry_invalid_test"
@@ -807,9 +803,7 @@ args = [
 # corrected (then this test's expectation changes with a cited reason) or the ROM
 # is corrected (then this test goes green on its own).
 #
-# Full evidence, both variants, and the decision needed:
-#   .dv/artifacts/boot_rom/rtl_batch_runs/FINDINGS.md, entry F06
-#   (in the aegissocspec repo, not this one)
+# The specification question is open; see the SEP ROM spec.
 # ################################################################################
 name = "sep_decryption_failure_terminal_test"
 module = "rom_fw.sep_decryption_failure_terminal_test"
@@ -928,9 +922,8 @@ args = [
 
 [[tests]]
 # Warm dispatch, ACCEPTED but the target holds no code. This is the shape the
-# reference suite's own scratch-7 test uses: it seeds an in-range address that is
-# not bootable and requires BOOTROM_START -> WARM_RESET_JUMP -> GENERAL_EXCEPTION
-# (tt_sep/tb/cocotb_tests/sep_scratch_7_test.py, seed 0x70018000 inside its IRAM).
+# in-range but not bootable, so the run must show BOOTROM_START ->
+# WARM_RESET_JUMP -> GENERAL_EXCEPTION.
 #
 # +sep_cold_scratch7=C0000200 is inside [0xC0000000, 0xC0040000) so the range
 # check ACCEPTS it, and deliberately NOT 0xC0000100 -- the address
@@ -1147,7 +1140,7 @@ args = [
 # PUBK_ALGO_UNSUPPORTED and forbids RSA_EXEC / RSA_PKCS1_FAIL.
 #
 # It also forbids PUBK_SEL=, which is the load-bearing assertion: the type check
-# is the first arm of validate_signature, ahead of
+# is the first thing key authorization checks, ahead of
 # the selector echo, so an absent echo is what proves the type check
 # preempted key selection rather than merely preceding the verdict.
 #
@@ -1206,9 +1199,7 @@ args = [
 # A positive test that passed because key selection never ran would prove
 # nothing, so "it booted" is not the criterion. The entry requires the ROM to
 # echo PUBK_SEL=0x00000000 and PUBK_REVOKE=0x00000000 on the BACKUP and then
-# reach RSA_EXEC and RSA_VERIFY_OK, in that order. The reference asserts less
-# than this -- its own pattern list omits the ROM-key marker its primary-side
-# twin requires.
+# reach RSA_EXEC and RSA_VERIFY_OK, in that order.
 #
 # Needs +esrc_noise_force: the backup is valid, so the full RSA-3072 modexp
 # runs on OTBN, which parks in UrndRefresh until EDN grants entropy. It forces the noise
@@ -1265,8 +1256,8 @@ args = [
 # security_version 0 in both slots, so the primary is refused untouched and the
 # backup is raised to 1 and RE-SEALED with the dev0 key that ships in this tree.
 # Re-signing keeps the ROM's signature check enabled and passing on a
-# legitimately signed image -- the same thing the reference's packer does for
-# this scenario -- and env/sep_oca_payload.verify_signing_key proves the local
+# legitimately signed image, and env/sep_oca_payload.verify_signing_key proves
+# the local
 # signer reproduces the shipped signature byte for byte first.
 #
 # Anti-rollback runs after the root key is authorized and BEFORE the signature,
@@ -1350,9 +1341,9 @@ args = [
 #
 # Slot 1 has no compiled-in digest (key_digests.c), so this entry also pins
 # the ORDER -- revocation before the digest table -- by forbidding PUBK_SLOT_UNPROVISIONED.
-# Narrowing vs the reference, disclosed in the module docstring: the reference
-# re-signs its primary with slot 1's own key, which this tree does not ship, so
-# this member proves the weaker "revocation preempts the empty-digest arm".
+# Only one signing key ships in this tree, so this member's primary carries a
+# stale signature and proves the weaker property: revocation preempts the
+# empty-digest arm.
 #
 # Needs +esrc_noise_force: the backup is valid and runs a full RSA-3072
 # modexp on OTBN. It forces the noise source only; the RSA assertions are
@@ -1390,9 +1381,9 @@ args = [
 #
 # Slot 2 has no compiled-in digest (key_digests.c), so this entry also pins
 # the ORDER -- revocation before the digest table -- by forbidding PUBK_SLOT_UNPROVISIONED.
-# Narrowing vs the reference, disclosed in the module docstring: the reference
-# re-signs its primary with slot 2's own key, which this tree does not ship, so
-# this member proves the weaker "revocation preempts the empty-digest arm".
+# Only one signing key ships in this tree, so this member's primary carries a
+# stale signature and proves the weaker property: revocation preempts the
+# empty-digest arm.
 #
 # Needs +esrc_noise_force: the backup is valid and runs a full RSA-3072
 # modexp on OTBN. It forces the noise source only; the RSA assertions are
@@ -1430,9 +1421,9 @@ args = [
 #
 # Slot 3 has no compiled-in digest (key_digests.c), so this entry also pins
 # the ORDER -- revocation before the digest table -- by forbidding PUBK_SLOT_UNPROVISIONED.
-# Narrowing vs the reference, disclosed in the module docstring: the reference
-# re-signs its primary with slot 3's own key, which this tree does not ship, so
-# this member proves the weaker "revocation preempts the empty-digest arm".
+# Only one signing key ships in this tree, so this member's primary carries a
+# stale signature and proves the weaker property: revocation preempts the
+# empty-digest arm.
 #
 # Needs +esrc_noise_force: the backup is valid and runs a full RSA-3072
 # modexp on OTBN. It forces the noise source only; the RSA assertions are
@@ -1470,9 +1461,9 @@ args = [
 #
 # Slot 4 has no compiled-in digest (key_digests.c), so this entry also pins
 # the ORDER -- revocation before the digest table -- by forbidding PUBK_SLOT_UNPROVISIONED.
-# Narrowing vs the reference, disclosed in the module docstring: the reference
-# re-signs its primary with slot 4's own key, which this tree does not ship, so
-# this member proves the weaker "revocation preempts the empty-digest arm".
+# Only one signing key ships in this tree, so this member's primary carries a
+# stale signature and proves the weaker property: revocation preempts the
+# empty-digest arm.
 #
 # Needs +esrc_noise_force: the backup is valid and runs a full RSA-3072
 # modexp on OTBN. It forces the noise source only; the RSA assertions are
@@ -1510,9 +1501,9 @@ args = [
 #
 # Slot 5 has no compiled-in digest (key_digests.c), so this entry also pins
 # the ORDER -- revocation before the digest table -- by forbidding PUBK_SLOT_UNPROVISIONED.
-# Narrowing vs the reference, disclosed in the module docstring: the reference
-# re-signs its primary with slot 5's own key, which this tree does not ship, so
-# this member proves the weaker "revocation preempts the empty-digest arm".
+# Only one signing key ships in this tree, so this member's primary carries a
+# stale signature and proves the weaker property: revocation preempts the
+# empty-digest arm.
 #
 # Needs +esrc_noise_force: the backup is valid and runs a full RSA-3072
 # modexp on OTBN. It forces the noise source only; the RSA assertions are
@@ -1535,8 +1526,7 @@ args = [
 [[tests]]
 # PRIMARY signature fails RSA verification; the backup verifies and boots.
 #
-# One bit of the primary signature's byte 0 is flipped -- the reference's own
-# mechanism and its own byte and mask (tamper_spi_preload_signature ->
+# One bit of the primary signature's byte 0 is flipped (
 # flip_signature_byte(byte_index=0, xor_mask=0x01)). The signature sits outside
 # the hashed TBS, so no re-hash and no re-sign; verify_layout is asserted
 # afterwards to prove the TBS hash is still intact and the slot really reaches
@@ -1572,12 +1562,12 @@ args = [
 [[tests]]
 # PRIMARY declares an unsupported signature TYPE; the backup boots.
 #
-# The primary's signature_type is set to 0, one of the reference's own values
-# (random.choice([0, randint(3,10)])), fixed so the echoed value is assertable.
+# The primary's signature_type is set to 0, fixed rather than drawn so the
+# refusal is attributable to this stimulus.
 # The field is inside the hashed TBS, so the helper re-hashes; no re-sign, because
 # the type is refused before rsa_3072_verify.
 #
-# The type check is the FIRST arm of validate_signature,
+# The algorithm check runs before the slot is resolved,
 # ahead even of the PUBK_SEL= echo, and that is what this entry proves
 # rather than assumes: PUBK_SEL= is pinned to exactly ONE occurrence, the booting
 # backup's. Its signature-VALUE sibling pins the same token to TWO. RSA_PKCS1_FAIL
@@ -1606,9 +1596,9 @@ args = [
 [[tests]]
 # PRIMARY names a ROM key index outside the table; the backup boots.
 #
-# index = 6 == PUBK_SEL_NUM_ROM_KEYS, the smallest value the
-# bound must refuse and the boundary of the reference's own range(6,16). A larger
-# value would also pass against a ROM that wrote > instead of >=.
+# The selector names slot 26 == OCA_KEY_SLOT_MAX + 1, the smallest slot the
+# format reserves. A larger value would pass equally against a ROM that wrote
+# >= instead of >; slot 25 is a valid fuse-held key.
 #
 # The load-bearing check is a COUNT, not a forbid, and the difference matters:
 # the reserved-range check runs inside is_key_authorized, which the validator
@@ -1662,8 +1652,7 @@ args = [
 # but that entry runs under TEST_DEV with no key-selection or device assertions,
 # while this one runs under a committed PROD preload and adds both.
 #
-# Marker substitution: the reference asserts the ROM-key path POSITIVELY with
-# STATUS: USING_ROM_KEY. This ROM defines SEP_MSG_USING_ROM_KEY
+# This ROM defines SEP_MSG_USING_ROM_KEY
 # (status_values.h) and never emits it, so the console echoes above are the
 # substitution.
 #
@@ -1687,34 +1676,21 @@ args = [
 
 
 [[tests]]
-# BL1 security version EQUAL to the BL1_VERSION fuse floor -> accepted, boots.
+# BL1 security version carrying every device flag -> accepted, boots.
 #
-# The ACCEPT boundary of check_security_version, which rejects only when
-# manifest_ver < fuse_ver. Both slots are raised to
-# security_version 36 and re-signed with dev0; the fuse floor is also 36.
+# The accept boundary of anti-rollback, which refuses a manifest that omits a flag
+# the device holds: (device & ~manifest) != 0. security_version is a 128-flag
+# bitmap, not a counter, so equality is the boundary. Both slots are written with
+# exactly the device's flags and re-sealed.
 #
-# A DELIBERATELY DIFFERENT CASE FROM THE REFERENCE, and the docstring says so at
-# length. sep_firmware_base_test.sv burns popcount 8 against a packer default
-# of 5 and expects ERROR: INVALID_SECURITY_VERSION -- a self-consistent REJECT test.
-# Its own stated intent (sep_firmware_bl1_version_test.py, "manifest version
-# := fuse version") is the equality case, defeated by two latent defects recorded as
-# batch_runs_0904_vp/FINDINGS.md F06 / F10 item 3. The REJECT side is already covered
-# twice here, by sep_firmware_backup_invalid_security_version_test and
-# sep_firmware_primary_invalid_security_version_test; the primary-side ACCEPT
-# boundary was covered by nothing.
+# The preload spreads flags across all four words the platform reads -- the low 16
+# bytes of BL1_VERSION -- each distinct and non-empty, so a truncated or
+# mis-indexed read changes the verdict rather than passing. The reject side is
+# covered by sep_firmware_backup_invalid_security_version_test and
+# sep_firmware_primary_invalid_security_version_test.
 #
-# WHAT IT ADDS BEYOND THE BOUNDARY: all eight thermometer words, each
-# distinguishable. Its preload gives word i exactly i+1 set bits, so the total is
-# 1+2+...+8 = 36 and no plausible truncated, repeated or mis-indexed decode of those
-# words reaches it (a literal "no other multiset" would be false -- 8+8+8+8+1+1+1+1
-# also sums to 36 -- but no decode defect produces that multiset) -- where every
-# other preload here concentrates its bits in word 0. The test requires the exact
-# echo FUSE_VER=0x00000024, so any omitted, repeated or mis-indexed word changes the
-# sum and fails. Closes the gap batch R1 recorded. An earlier draft used one bit per
-# word (total 8), which a reviewer showed was weaker: eight reads of the SAME word
-# also sum to 8. The floor differs from the reference's 8 because distinct per-word
-# popcounts need at least 36 bits; the manifest is raised to match, so the accept
-# boundary is preserved.
+# The device flags are read twice per slot: the library re-runs the check after the
+# signature, so FUSE_VER= appears twice on the one slot attempted.
 #
 # Needs +esrc_noise_force: the primary is valid and runs a full RSA-3072 modexp.
 name = "sep_firmware_bl1_ver_test"
@@ -1802,12 +1778,10 @@ args = [
 # fuse bit refuses two provably bootable manifests and the retry loop exhausts
 # (MANIFEST_ALL_FAILED).
 #
-# THE STRICT FORM, for BOTH members. The ROM-slot revoke families of R1/R2 could
-# only reach it at slot 0, because slots 1-5 have no populated digest and keep a
-# stale signature (FINDINGS.md R01). Here the fuse digest is programmed and the
-# image is re-signed, so revocation is the sole possible cause of the rejection.
+# The strict form, for both members: the fuse digest is programmed and the image
+# is re-signed, so revocation is the sole possible cause of the rejection.
 #
-# Bit 16, not the reference's bit 6: sep_efuse_map.rdl:727 assigns [16]/[17] to
+# Bit 16: sep_efuse_map.rdl:727 assigns [16]/[17] to
 # CHIPLET_PUBK_HASH0/1, while sep_firmware_pubkey_test.sv encodes 0x40/0x80,
 # which are unused ROM-slot bits in this map.
 #
@@ -1875,9 +1849,8 @@ args = [
 # for the lock bits. DEMOTE_2 locked is the discriminator no other row can produce:
 # rom_main.c is the ROM's only lc_write_demotion_2 call.
 #
-# HALF-PORT, disclosed: the reference sep_demotion_uid_checker.py also verifies the
-# decision feeding the KBKDF salt and the three SKS UID keys (:62-140,
-#). This ROM derives nothing from it in BL0, so only the DECISION is ported.
+# Scope: the demotion decision only. BL0 derives nothing from the decision, so
+# there is no KBKDF salt or SKS UID key to check here.
 #
 # Needs +esrc_noise_force: PROD_END enforces secure boot, so a real modexp runs.
 name = "sep_firmware_demotion_decision_auth_flag_0_prod_end_test"
@@ -1906,9 +1879,8 @@ args = [
 #
 # +SECURE_BOOT_DIS DRIVES TWO SURFACES AND BOTH ARE PORTED. It sets
 # boot_arguments.secure_boot = 0 (sep_demotion_uid_checker.py) AND burns the
-# sboot_dis fuse (sep_firmware_demotion_decision_test.sv). Reading only
-# the manifest surface produced the VP half's worst error, retracted as
-# batch_runs_0904_vp/FINDINGS.md F11 item 1. Here the preload
+# sboot_dis fuse, and the manifest surface alone is not enough to tell them
+# apart. The preload
 # sep_efuse_lc_prod_sboot_dis.toml burns the fuse and the manifest is mutated on both
 # fields the packer would have changed: flag_args bit 30 cleared, and signature_type
 # forced to NO_SIGNATURE as manifest_signing.py does.
@@ -1924,8 +1896,7 @@ args = [
 # RSA_EXEC is forbidden. If that ordering ever changed this entry would fail
 # rather than silently start needing the shortcut.
 #
-# HALF-PORT, disclosed, exactly as for the PROD_END sibling: the DECISION only, not
-# the KBKDF/SKS/UID half of sep_demotion_uid_checker.py.
+# Scope: the demotion decision only, as for the PROD_END sibling.
 name = "sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test"
 module = "rom_fw.sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test"
 target = "rom_boot"
@@ -1967,9 +1938,8 @@ args = [
 # forbidden) and on the registers (DEMOTE_1 and DEMOTE_2 both locked, the latter
 # producible only by rom_main.c).
 #
-# HALF-PORT, disclosed: the reference sep_demotion_uid_checker.py also verifies
-# the decision feeding the KBKDF salt and the three SKS UID keys (:66-140,
-# :165-283). This ROM derives nothing from it in BL0 (rom_main.c
+# Scope: the demotion decision only. BL0 derives nothing from the decision, so
+# there is no KBKDF salt or SKS UID key to check here (rom_main.c
 # stores it for BL1), so only the DECISION is ported.
 #
 # Needs +esrc_noise_force: PROD_END enforces secure boot (lifecycle.c),
@@ -2002,12 +1972,10 @@ args = [
 # can make that claim: R3's sets flags[0] with the selector CLEAR, and
 # no_flag_prod_end leaves all three inputs clear so both orderings agree.
 #
-# The stimulus is a faithful port -- the reference plants the same selector bit
-# for this scenario (sep_demotion_uid_checker.py) -- while the
-# ordering argument is this platform's addition, because the reference expects
+# The ordering argument matters here because the naive reading expects
 # only STATUS: DEMOTION_NOT_SELECTED here and no lock expectation at all (:374-376).
 #
-# HALF-PORT, disclosed, exactly as for the sibling above.
+# Scope: the demotion decision only, as for the sibling above.
 #
 # Needs +esrc_noise_force: PROD_END enforces secure boot (lifecycle.c).
 name = "sep_firmware_demotion_decision_no_flag_prod_end_sel_bit_set_test"
@@ -2039,9 +2007,8 @@ args = [
 # +SECURE_BOOT_DIS DRIVES TWO SURFACES AND BOTH ARE PORTED -- the sboot_dis eFuse
 # (sep_firmware_demotion_decision_test.sv) and the manifest
 # (sep_demotion_uid_checker.py, which the packer turns into flag_args bit
-# 30 cleared AND signature_type = NO_SIGNATURE, manifest_signing.py).
-# Reading only the manifest surface produced the VP half's worst error, retracted
-# as batch_runs_0904_vp/FINDINGS.md F11 item 1. The two are COUPLED: an unsigned
+# 30 cleared AND signature_type = NO_SIGNATURE). The two are coupled: an
+# unsigned
 # primary boots only because the burned fuse is consulted ahead of the
 # lifecycle view, so dropping the fuse would refuse the primary at
 # PUBK_ALGO_UNSUPPORTED and fail over to the backup, producing O5 under whatever name the
@@ -2055,7 +2022,7 @@ args = [
 # (0, 0, 0) and produces this same O5 outcome; the two differ only in the
 # artefact, which this row asserts before the run.
 #
-# HALF-PORT, disclosed, as for every member of this group.
+# Scope: the demotion decision only, as for every member of this group.
 name = "sep_firmware_demotion_decision_auth_flag_0_prod_test"
 module = "rom_fw.sep_firmware_demotion_decision_auth_flag_0_prod_test"
 target = "rom_boot"
@@ -2073,9 +2040,7 @@ args = [
 [[tests]]
 # PROD, selector bit CLEAR, BL2 demotion requested -> DEMOTE_1 left UNWRITTEN.
 #
-# Outcome O4, THE HIGHEST-VALUE ROW OF THE WHOLE DEMOTION GROUP, and both the VP
-# half and batch R3 said so before it was written (batch_runs_0904_vp/FINDINGS.md
-# F07; the R4 guidance in rom_fw/sep_demotion_decision_base.py). It is the only
+# Outcome O4, the highest-value row of the demotion group. It is the only
 # outcome of the seven where lock_demotion goes false (rom_main.c), the only
 # one printing DEMOTE_NOT_LOCKED (:435), and the only one where lc_write_demotion
 # is never called at all, so DEMOTE_1 is left at its reset value.
@@ -2096,7 +2061,7 @@ args = [
 # COLLAPSE NOTE: unauth_flag_0_prod (tracker row 112, not in this batch) drives
 # (0, 0, 1) and produces this same O4 outcome.
 #
-# HALF-PORT, disclosed, as for every member of this group.
+# Scope: the demotion decision only, as for every member of this group.
 name = "sep_firmware_demotion_decision_auth_flag_0_unauth_flag_0_prod_test"
 module = "rom_fw.sep_firmware_demotion_decision_auth_flag_0_unauth_flag_0_prod_test"
 target = "rom_boot"
@@ -2135,7 +2100,7 @@ args = [
 # batch) drives the same three demotion inputs and differs only on the
 # skip_SHA256 path, which is not a demotion input, so it is covered-by-O3a.
 #
-# HALF-PORT, disclosed, as for every member of this group.
+# Scope: the demotion decision only, as for every member of this group.
 name = "sep_firmware_demotion_decision_no_flag_prod_sel_bit_set_test"
 module = "rom_fw.sep_firmware_demotion_decision_no_flag_prod_sel_bit_set_test"
 target = "rom_boot"
@@ -2162,18 +2127,16 @@ args = [
 # and lock 0, i.e. outcome O4, and would fail here and only here. R3's O2a
 # sibling cannot make that claim: it leaves flag_args[0] clear.
 #
-# THE ROM RESOLVES MORE THAN THE REFERENCE CHECKS, and this row keeps the
-# resolution. Grendel's checker inspects the BL2 flag only when the selector bit
-# is clear (sep_demotion_uid_checker.py); with it set it reads AUTH_FLAG_0
-# alone (:387-397), so O2a and O2b give an identical expected_patterns list there.
+# This row keeps the ROM's full resolution: O2a and O2b differ only in the BL2
+# request, which a checker reading the auth flag alone cannot tell apart.
 # This ROM prints BL2_DEMOTE_DEC= unconditionally on every non-PROD_END arm
 # (rom_main.c), so this entry requires BL2_DEMOTE_DEC=1 and forbids
-# BL2_DEMOTE_DEC=0 -- a STRENGTHENING over the reference, disclosed as such.
+# BL2_DEMOTE_DEC=0, which pins the resolution rather than the flag alone.
 #
 # +SECURE_BOOT_DIS is ported on both surfaces; see the O5 entry above. No
 # +esrc_noise_force: secure boot is off.
 #
-# HALF-PORT, disclosed, as for every member of this group.
+# Scope: the demotion decision only, as for every member of this group.
 name = "sep_firmware_demotion_decision_auth_flag_0_unauth_flag_0_prod_sel_bit_set_test"
 module = "rom_fw.sep_firmware_demotion_decision_auth_flag_0_unauth_flag_0_prod_sel_bit_set_test"
 target = "rom_boot"
@@ -2192,9 +2155,9 @@ args = [
 [[tests]]
 # The CHIPLET digest fuse holds the WRONG value -> both slots refused, terminally.
 #
-# batch_runs_0904_rtl/FINDINGS.md R07 implemented. It closes the DIGEST-SOURCE
-# class that rom_fw/sep_chiplet_pubkey_base.py discloses and leaves open, and it
-# needs no second private key: distinguishing the digest SOURCE needs the FUSE to
+# Closes the digest-source class that rom_fw/sep_chiplet_pubkey_base.py leaves
+# open, and needs no second private key: distinguishing the digest source needs
+# the fuse to
 # differ from public_key_digests[0] plus a NEGATIVE assertion. A ROM that took
 # the fused arm, tested the right revoke bit, read the right fuse address and
 # then compared against the compiled-in table would BOOT here and fail this

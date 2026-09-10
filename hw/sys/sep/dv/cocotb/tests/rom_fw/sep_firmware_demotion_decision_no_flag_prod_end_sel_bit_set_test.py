@@ -54,7 +54,7 @@ substitution; the DEMOTE_1/DEMOTE_2 lock requirements are an ADDITION derived fr
 ``rom_main.c``. Both are disclosed in the row's
 ``flow_deviation``.
 
-Needs ``+sep_crypto_edn_force``: PROD_END enforces secure boot
+Needs ``+esrc_noise_force``: PROD_END enforces secure boot
 (``lifecycle.c``), so a full RSA-3072 modexp runs on OTBN.
 """
 

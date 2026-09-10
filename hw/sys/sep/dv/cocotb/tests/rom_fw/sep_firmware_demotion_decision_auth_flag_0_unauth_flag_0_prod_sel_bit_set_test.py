@@ -41,7 +41,7 @@ hands to BL1 (``rom_main.c``), so "BL1 demotes now" and "BL1 demotes now AND
 BL2 was also asked to" are different states to hand over, and only the second is
 exercised here.
 
-No ``+sep_crypto_edn_force``: secure boot is off, so the ROM never drives OTBN.
+No ``+esrc_noise_force``: secure boot is off, so the ROM never drives OTBN.
 """
 
 from __future__ import annotations

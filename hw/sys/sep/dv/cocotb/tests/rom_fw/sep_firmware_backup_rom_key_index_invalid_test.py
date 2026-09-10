@@ -32,7 +32,7 @@ re-sign: the slot is rejected before the verifier runs, so the stale signature
 is never examined, and ``RSA_EXEC`` is forbidden to check that rather than
 assume it.
 
-No ``+sep_crypto_edn_force``: OTBN is never driven on either slot.
+No ``+esrc_noise_force``: OTBN is never driven on either slot.
 """
 
 from __future__ import annotations

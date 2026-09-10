@@ -46,7 +46,7 @@ the behaviour under test: this is the pair to
 ``sep_firmware_backup_invalid_key_hash_test``, where both slots carry the defect
 and the run is terminal instead.
 
-``+sep_crypto_edn_force`` is required here and only here among the key-hash pair:
+``+esrc_noise_force`` is required here and only here among the key-hash pair:
 the BACKUP is valid, so the full RSA-3072 modexp runs on OTBN, which parks in
 UrndRefresh until EDN grants entropy. The RSA assertions are untouched, so
 ``RSA_VERIFY_OK`` still means the signature really verified.

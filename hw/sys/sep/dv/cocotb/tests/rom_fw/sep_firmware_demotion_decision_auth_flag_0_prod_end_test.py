@@ -58,7 +58,7 @@ Evidence, on both channels:
     exactly the log a set-but-ignored flag produces, so without this assertion the
     testcase would be green and vacuous.
 
-Needs ``+sep_crypto_edn_force``: PROD_END enforces secure boot (``lifecycle.c``),
+Needs ``+esrc_noise_force``: PROD_END enforces secure boot (``lifecycle.c``),
 so a full RSA-3072 modexp runs on OTBN. The RSA assertions are untouched.
 """
 

@@ -38,7 +38,7 @@ re-sign: the selection is rejected before ``rsa_3072_verify``, so the primary's
 now-stale signature is never examined, and the shared base forbids any
 ``RSA_EXEC`` before the backup read to check that rather than assume it.
 
-Needs ``+sep_crypto_edn_force``: the backup is valid, so the full RSA-3072 modexp
+Needs ``+esrc_noise_force``: the backup is valid, so the full RSA-3072 modexp
 runs on OTBN, which parks in UrndRefresh until EDN grants entropy. The RSA
 assertions are untouched, so ``RSA_VERIFY_OK`` still means the signature verified.
 """

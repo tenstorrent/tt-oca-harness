@@ -65,7 +65,7 @@ indexes it with the manifest's key index directly.
 The fused-key slots do NOT continue that sequence -- they sit at bits 16 and
 above -- so nothing here may be derived by counting past slot 5.
 
-No ``+sep_crypto_edn_force`` on any member: revocation precedes the signature
+No ``+esrc_noise_force`` on any member: revocation precedes the signature
 step, so OTBN is never driven.
 """
 

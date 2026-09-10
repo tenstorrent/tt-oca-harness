@@ -42,7 +42,7 @@ The ONLY difference between them is one bit of ``CHIPLET_PUBK_REVOKE``. Fuse cle
 boots; bit 0 set is refused with ``KEY_REVOKED idx=0x00000000`` and never reaches
 ``RSA_EXEC``. Nothing else about revocation needs arguing.
 
-Needs ``+sep_crypto_edn_force``: the backup is valid, so the full RSA-3072 modexp
+Needs ``+esrc_noise_force``: the backup is valid, so the full RSA-3072 modexp
 runs on OTBN, which parks in UrndRefresh until EDN grants entropy. The shortcut
 grants OTBN's EDN handshakes only; the RSA assertions are untouched, so
 ``RSA_VERIFY_OK`` still means the signature really verified.

@@ -58,7 +58,7 @@ this ROM -- ``grep -n DEMOT bootrom/prod/include/status_values.h`` is empty -- s
 the console tokens plus the register channel are the substitution, as recorded in
 the base's disclosed gaps and in this row's ``flow_deviation``.
 
-No ``+sep_crypto_edn_force``: secure boot is off, so the ROM never drives OTBN.
+No ``+esrc_noise_force``: secure boot is off, so the ROM never drives OTBN.
 """
 
 from __future__ import annotations

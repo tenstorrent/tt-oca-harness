@@ -305,7 +305,7 @@ class sep_demotion_prod_base(_demotion_prod_mixin, sep_demotion_decision_base):
     # sboot_dis fuse surface is ever dropped. The RSA markers must not appear at
     # all: secure boot is off, so a run that verified a signature took a different
     # path from the one under test, and none of these members passes
-    # +sep_crypto_edn_force.
+    # +esrc_noise_force.
     forbidden_markers = sep_rom_ot_dma_boot_test.forbidden_markers + (
         _LC_PROD_END,
         _BACKUP_SRC,

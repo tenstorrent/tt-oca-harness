@@ -88,7 +88,7 @@ for this scenario are unavailable for the same reason:
 ``SEP_MSG_START_MANIFEST_VALIDATION``, ``SEP_MSG_START_PAYLOAD_VALIDATION`` and
 ``SEP_MSG_PAYLOAD_VALIDATED`` also have zero emitters here.
 
-Needs ``+sep_crypto_edn_force``: the primary is valid, so the full RSA-3072 modexp
+Needs ``+esrc_noise_force``: the primary is valid, so the full RSA-3072 modexp
 runs on OTBN, which parks in UrndRefresh until EDN grants entropy. The shortcut
 grants OTBN's EDN handshakes only; the RSA assertions are untouched, so
 ``RSA_VERIFY_OK`` still means the signature really verified.

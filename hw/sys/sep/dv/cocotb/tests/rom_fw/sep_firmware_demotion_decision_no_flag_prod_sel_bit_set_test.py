@@ -48,7 +48,7 @@ remaining uncovered outcome of the seven is **O3b**
 clear, BL2 flag SET. It is the case that would fail a ROM which ORed ``demotion_control`` BL1_DEMOTION_ENABLE
 with the ``demotion_control`` BL2 request into DEMOTE_1, and it is in no batch's assignment.
 
-No ``+sep_crypto_edn_force``: secure boot is off, so the ROM never drives OTBN.
+No ``+esrc_noise_force``: secure boot is off, so the ROM never drives OTBN.
 """
 
 from __future__ import annotations

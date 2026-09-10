@@ -73,7 +73,7 @@ ROM decoded raw 0x1 as PROD. ``LC=PROD_END`` is forbidden for the complementary
 reason the PROD_END member does not forbid ``LC=PROD``: the former string CONTAINS
 the latter, so only the longer one can be used as a discriminator.
 
-No ``+sep_crypto_edn_force``: secure boot is off, so the ROM never drives OTBN.
+No ``+esrc_noise_force``: secure boot is off, so the ROM never drives OTBN.
 ``RSA_EXEC`` is forbidden, so if that ever changed this entry would fail
 rather than silently start needing the shortcut.
 """

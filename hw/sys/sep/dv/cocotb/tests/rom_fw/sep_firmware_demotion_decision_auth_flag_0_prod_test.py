@@ -50,7 +50,7 @@ software write-enable from ``~lock``, and the LOCK field is
 write-one-to-set with no hardware clear (``sep_lifecycle_ctrl.rdl:23-36``), so
 neither field can be walked back by BL1 or by anything after it.
 
-No ``+sep_crypto_edn_force``: secure boot is off, so the ROM never drives OTBN.
+No ``+esrc_noise_force``: secure boot is off, so the ROM never drives OTBN.
 ``RSA_EXEC`` is forbidden, so if that ever changed this entry would fail
 rather than silently start needing the shortcut.
 """

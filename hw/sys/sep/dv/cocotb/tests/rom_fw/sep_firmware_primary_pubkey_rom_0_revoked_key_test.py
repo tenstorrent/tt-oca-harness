@@ -41,7 +41,7 @@ architected ring carries only the generic terminal code. The dedicated error cod
 console token ``KEY_REVOKED idx=0x00000000`` is the per-reason evidence; both are
 required, once per slot for the token.
 
-No ``+sep_crypto_edn_force``: revocation precedes the signature step, so OTBN is
+No ``+esrc_noise_force``: revocation precedes the signature step, so OTBN is
 never driven and ``RSA_EXEC`` is forbidden.
 """
 

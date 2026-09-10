@@ -135,7 +135,7 @@ construction rather than by assertion. The DUT's own OTBN then verifies the resu
 (``RSA_VERIFY_OK`` / ``RSA_VERIFY_OK``), so the signature check stays fully ENABLED; this
 is not a bypass.
 
-Needs ``+sep_crypto_edn_force``: the primary is valid, so a full RSA-3072 modexp runs
+Needs ``+esrc_noise_force``: the primary is valid, so a full RSA-3072 modexp runs
 on OTBN, which parks in UrndRefresh until EDN grants entropy. The shortcut grants
 OTBN's EDN handshakes only; the RSA assertions are untouched, so ``RSA_VERIFY_OK`` still
 means the signature really verified.

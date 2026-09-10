@@ -59,11 +59,11 @@ itself (:246), and a SHA-256 timeout inside ``check_pubkey_hash`` (:128). The
 terminal status word cannot say which one fired, which is why every other route
 is in ``extra_forbidden`` and the marker ordering below is asserted per slot.
 
-``+sep_crypto_edn_force`` IS REQUIRED, and this entry is tagged ``dv_shortcut``.
+``+esrc_noise_force`` IS REQUIRED, and this entry is tagged ``dv_shortcut``.
 OTBN parks in ``UrndRefresh`` until EDN grants entropy and the ROM brings up no
 entropy chain, so without it both verifies stall at ``RSA_EXEC`` until the
 timeout. The plusarg grants the crypto blocks' EDN handshakes only
-(``tb_top.sv``, ``+sep_crypto_edn_force``); it touches no RSA input, no
+(``tb_top.sv``, ``+esrc_noise_force``); it touches no RSA input, no
 signature, and no assertion here, so a rejection still means the modexp really
 ran on the real OTBN and its result really disagreed with ``manifest_hash``. The
 entropy_source/CSRNG/EDN chain is NOT exercised by this testcase.

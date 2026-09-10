@@ -50,7 +50,7 @@ is established rather than asserted. The PRIMARY is deliberately NOT re-signed a
 NOT modified: its shipped ``security_version`` is already 0, so it stays fully
 sealed and the rollback is the only thing wrong with it.
 
-Needs ``+sep_crypto_edn_force``: the backup is valid, so the full RSA-3072 modexp
+Needs ``+esrc_noise_force``: the backup is valid, so the full RSA-3072 modexp
 runs on OTBN, which parks in UrndRefresh until EDN grants entropy. The RSA
 assertions are untouched, so ``RSA_VERIFY_OK`` still means the signature verified.
 """

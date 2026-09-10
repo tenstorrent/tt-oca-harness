@@ -45,7 +45,7 @@ WHAT THE MEMBERS SHARE
 ).
   * The full crypto chain. PROD_END enforces secure boot
     (``lifecycle.c``), so a real RSA-3072 modexp runs on OTBN and every
-    member needs ``+sep_crypto_edn_force``. ``SBOOT_OFF`` and
+    member needs ``+esrc_noise_force``. ``SBOOT_OFF`` and
     ``FUSE: SBOOT_DIS: 1`` are forbidden: either would mean the run measured a
     non-secure boot under a PROD_END name.
   * ``LC=PROD`` is deliberately NOT forbidden, because it is a strict PREFIX of
