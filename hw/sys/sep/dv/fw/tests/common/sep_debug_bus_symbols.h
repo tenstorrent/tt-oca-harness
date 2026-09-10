@@ -14,9 +14,9 @@
 #define DEBUG_BUS_WAIT_LOW16 0x01deu
 #define DEBUG_BUS_MARKER_LOW16 0x01f6u
 #define DEBUG_BUS_BOGUS_LOW16 0x81f6u
-/* Kept-log always-on CLA [63:48] at marker was 0x07d8 == (LOW16 << 2).
- * (full_pc >> 2) & 0xFFFF is 0x007d (0xC prefix shifts in) and does not match
- * this RTL's packed trace_rv_i_address_ip[15:0]. */
+/* CLA snapshot[63:48] is (LOW16 << 2): marker 0xc00001f6 packs as 0x07d8.
+ * (full_pc >> 2) & 0xFFFF is 0x007d and does not match this RTL's packed
+ * trace_rv_i_address_ip[15:0]. */
 #define DEBUG_BUS_WAIT_TRACE16 ((DEBUG_BUS_WAIT_LOW16 << 2) & 0xFFFFu)
 #define DEBUG_BUS_MARKER_TRACE16 ((DEBUG_BUS_MARKER_LOW16 << 2) & 0xFFFFu)
 #define DEBUG_BUS_BOGUS_TRACE16 (DEBUG_BUS_MARKER_TRACE16 ^ 0x8000u)

@@ -79,7 +79,6 @@
  *   initial release {1,4}: EAP0=0x341FBFC000 / EAP1=0x144FBFC000.
  *   single action N: EAP0 = 0x10<N>FBFC000, EAP1=0 (N in 0..5; bit N of the custom bus). */
 #define CLADBG_CLA_CTRLSTATUS_EXPECT 0x60
-#define CLADBG_CLA_CDFDCSR_EXPECT (1ULL << 63)
 #define CLADBG_CLA_EAP0_RELEASE 0x341FBFC000ULL
 #define CLADBG_CLA_EAP1_RELEASE 0x144FBFC000ULL
 #define CLADBG_CLA_EAP0_ACT0 0x100FBFC000ULL /* mpc_debug_halt_req */

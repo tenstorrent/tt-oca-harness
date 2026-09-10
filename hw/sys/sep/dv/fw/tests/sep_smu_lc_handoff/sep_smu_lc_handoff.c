@@ -5,8 +5,8 @@
  * sep_smu_lc_handoff - PROD eFuse + DEMOTE_1 consumer setup.
  *
  * Frontdoor-brings the dedicated SMC PVT-arm image, waits for PVT_EN, parks
- * in a bounded blocked window, then writes LCC DEMOTE_1.demote=1 and
- * DEMOTE_2.demote=1 (no lock; W1S). Does not program SMC PVT CSRs: those
+ * in a bounded blocked window, then writes LCC DEMOTE_1.demote=1
+ * (no lock; W1S). Does not program SMC PVT CSRs: those
  * aliases trap on the SEP->SMC port.
  */
 

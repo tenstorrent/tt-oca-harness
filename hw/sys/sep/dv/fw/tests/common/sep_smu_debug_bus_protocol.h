@@ -8,9 +8,9 @@
  * parks at debug_bus_wait_for_go polling scratch2 for GO. Dedicated SMC
  * DFD-arm firmware programs DFX/DFD/CLA (bogus negative then exact marker PC)
  * and writes GO only after that setup.
- * Closure is CLA EapStatus[0] + snapshot[63:48] == (marker_low16 << 2)
- * (kept-log CLA lane was 0x07d8 at marker 0xc00001f6, not byte-PC 0x01f6
- * and not (full_pc>>2)=0x007d).
+ * Closure is CLA EapStatus[0] + snapshot[63:48] == (marker_low16 << 2).
+ * The RTL packs trace_rv_i_address_ip[15:0] that way, so marker 0xc00001f6
+ * is 0x07d8, not byte-PC 0x01f6 and not (full_pc>>2)=0x007d.
  *
  * Marker/wait PCs come from sep_debug_bus_symbols.h, pinned against the
  * built SEP .sym.
@@ -60,7 +60,6 @@
 #define DEBUG_BUS_CLA_CTRL_CLK 0x40u
 #define DEBUG_BUS_CLA_EAP_ALWAYS 0x0000000000010000ULL
 #define DEBUG_BUS_CLA_W2C (1ULL << 32)
-#define DEBUG_BUS_CDFDCSR_ARM (1ULL << 63)
 /* DEBUG_CTRL.force_clk_en=1 so L3/L2 DBM enable_mode can latch. */
 #define DEBUG_BUS_DEBUG_CTRL_FORCE 0x10u
 #define DEBUG_BUS_PH_PROBE 0x01740006u
