@@ -42,7 +42,7 @@ from cocotb.triggers import (
 )
 
 # Intentional OSS exception: this JTAG AXI-Lite helper must run on the public
-from ocah_axi_vip import OcahAxiLiteMasterAgent
+from ocah_axi_vip import OcahAxiLiteMasterAgent, OcahAxiSlaveAgent
 from pyuvm import ConfigDB, uvm_test
 
 # The cocotb runner only puts the test dir on sys.path. Make the cocotb root
@@ -59,6 +59,7 @@ from env.sep_cpu_trace_monitor import SepCpuTraceMonitor
 from env.sep_efuse_image import SepEfuseImage
 from env.sep_env import SepEnv
 from env.sep_env_cfg import SepEnvCfg
+from env.sep_smc_mem import SMC_AXI_GEOMETRY, SMC_MEM_SIZE, preload_smc_mem
 from env.sep_verdict import decode_verdict
 
 # Committed default OTP image loaded when a test passes `+sep_efuse_preload` with
@@ -147,6 +148,7 @@ class sep_base_test(uvm_test):
             self.random_seed(),
         )
         ConfigDB().set(None, "*", "cfg", self.cfg)
+        self.bind_smc_responder(cocotb.top)
         # Processor-state monitor on the EL2 retirement trace. Built for every
         # test (concrete tests build their scoreboards after super().build_phase(),
         # so the ConfigDB entry is in place); it self-idles unless the +cpu_boot
@@ -165,6 +167,28 @@ class sep_base_test(uvm_test):
         cocotb.start_soon(
             Clock(dut.entropy_rosc_sample_clk_i, self.cfg.entropy_clk_period_ns, units="ns").start()
         )
+
+    def bind_smc_responder(self, dut) -> None:
+        """Attach the shared AXI slave agent to the SEP->SMC boundary.
+
+        Only the ``rom_boot`` target instantiates ``u_smc_axi_if``; every other
+        build leaves ``cfg.smc_mem`` at None. Bound in ``build_phase`` so the
+        responder exists before the first clock edge (the boundary's READY
+        signals are driven from time zero) and before any test-owned monitor
+        that samples its memory starts; the preload here means the Boot ROM's
+        first fetch already sees the scratch, status, strap, and image words.
+        """
+        if self.cfg.smc_mem is not None or not hasattr(dut, "u_smc_axi_if"):
+            return
+        self.cfg.smc_mem = OcahAxiSlaveAgent(
+            SMC_AXI_GEOMETRY.bus(dut.u_smc_axi_if),
+            dut.clk_i,
+            dut.rst_ni,
+            reset_active_level=False,
+            size=SMC_MEM_SIZE,
+            name="sep_smc_mem",
+        ).sequence
+        preload_smc_mem(self.cfg.smc_mem, cocotb.plusargs, self.logger)
 
     def drive_idle_defaults(self, dut=None, *, cpu_run: bool = False, rst_vec: int = 0) -> None:
         """Drive stable top-level controls before reset is released."""
@@ -196,6 +220,7 @@ class sep_base_test(uvm_test):
         self._set_if_exists(dut, "lc_sigint_inject_i", 0)
         self._set_if_exists(dut, "token_cmp_fault_inject_i", 0)
         self._set_if_exists(dut, "token_cmp_fault_sel_i", 0)
+        self._set_if_exists(dut, "token_digest_test_en_inject_i", 0)
         self._set_if_exists(dut, "dma_host_intg_inject_i", 0)
         # Idle the master strobes from t=0 (valid=0, ready=1) so a test that
         # does not construct OcahAxiMasterAgent still presents a resolved idle

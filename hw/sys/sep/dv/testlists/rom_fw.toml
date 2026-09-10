@@ -4,8 +4,8 @@ schema_version = 1
 # ROM FIRMWARE boot tests. Separate from cpu.toml because they differ from every
 # other CPU test on BOTH build axes, not just at run time:
 #
-#   * RTL target `rom_boot` -- cpu_all_live plus a behavioral SMC AXI responder
-#     (axi_sim_mem), not the `lsu_stub_all_live` CPU stub and not `default`.
+#   * RTL target `rom_boot` -- cpu_all_live plus the shared AXI slave agent on
+#     the SEP->SMC AXI, not the `lsu_stub_all_live` CPU stub and not `default`.
 #   * Firmware profiles `boot_rom` / `boot_rom_ot` / `boot_rom_ot_pio` -- the
 #     production Boot ROM under hw/sys/sep/bootrom/prod, which drives its own
 #     Makefile, links to ROM_BASE instead of the TCMs, and packs a manifest+BL1
@@ -30,7 +30,7 @@ schema_version = 1
 # NOT a backdoor-TCM payload boot. SPI is stubbed (the OSS `sep` DUT has only the
 # OpenTitan Quad spi_host),
 # so the ROM takes its spec-defined SMC-SRAM manifest path, served by the
-# behavioral SMC responder (SEP_SMC_MEM_MODEL).
+# SMC responder (SEP_SMC_MEM_MODEL: the shared AXI slave agent).
 name = "sep_rom_non_secure_boot_test"
 module = "rom_fw.sep_rom_non_secure_boot_test"
 target = "rom_boot"

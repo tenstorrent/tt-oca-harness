@@ -52,6 +52,13 @@
 `SMC_TB_OUT(logic, tb_zeroer_busy)
 // Zeroer AXI-Lite snoop bus_active — T0 for reg_clk resume / access window.
 `SMC_TB_OUT(logic, tb_zeroer_bus_active)
+// State-corruption fault injection and fail-closed observability.
+`SMC_TB_IN(logic, tb_zeroer_state_inject_en)
+`SMC_TB_IN(logic [2:0], tb_zeroer_state_inject)
+`SMC_TB_OUT(logic [2:0], tb_zeroer_state)
+`SMC_TB_OUT(logic, tb_zeroer_intp)
+`SMC_TB_OUT(logic, tb_zeroer_awvalid)
+`SMC_TB_OUT(logic, tb_zeroer_wvalid)
 `SMC_TB_IN(logic, tb_test_en_i)
 `SMC_TB_IN(logic, tb_i2c0_scl_ext_low)
 `SMC_TB_IN(logic, tb_i2c0_sda_ext_low)
@@ -379,16 +386,12 @@
 `SMC_TB_OUT(logic, tb_axil_efuse_bank_active)
 `SMC_TB_OUT(logic, tb_axil_any_master_active)
 
-// Output-fabric observability (U6-2). SLVERR uses axi_sim_mem werr/rerr
-// (pulp API), not a DUT Force / starve knob.
+// Output-fabric observability (U6-2). SLVERR on this boundary comes from
+// the SYS_OUT slave agent's fault programming, not a DUT Force / starve knob.
 `SMC_TB_OUT(logic [31:0], tb_output_axi_write_count)
 `SMC_TB_OUT(logic [31:0], tb_output_axi_read_count)
 `SMC_TB_OUT(logic [55:0], tb_output_axi_last_addr)
 `SMC_TB_OUT(logic [63:0], tb_output_axi_last_wdata)
-// Program TB-owned axi_sim_mem.werr/rerr (byte addr); not a DUT Force.
-`SMC_TB_IN(logic, tb_output_err_we)
-`SMC_TB_IN(logic [55:0], tb_output_err_addr)
-`SMC_TB_IN(logic [1:0], tb_output_err_resp)
 // U6-2: SYS_OUT AXI slave response handshake for SmcOutputAxiMonitor.
 `SMC_TB_OUT(logic, tb_output_axi_bvalid)
 `SMC_TB_OUT(logic, tb_output_axi_bready)
@@ -406,7 +409,7 @@
 `SMC_TB_OUT(logic, tb_output_axi_wvalid)
 `SMC_TB_OUT(logic, tb_output_axi_wready)
 // TB-owned SYS_OUT R/B hold. After AW/AR accept, hides r_valid/b_valid
-// from the DUT and hides r_ready/b_ready from axi_sim_mem so the beat
+// from the DUT and hides r_ready/b_ready from the responder so the beat
 // stays outstanding. DATA hang detector snoops data_accel (DMA/zeroer
 // master), which stalls when SYS_OUT never completes. Idle 0.
 `SMC_TB_IN(logic, tb_output_axi_resp_hold)
@@ -487,6 +490,23 @@
 `SMC_TB_OUT(logic, tb_rst_warm_smc_clk_n)
 `SMC_TB_OUT(logic [31:0], tb_efuse_otp_word0)
 `SMC_TB_OUT(logic [31:0], tb_efuse_programmed_word0)
+`SMC_TB_IN(logic, tb_efuse_program_state_inject_en)
+`SMC_TB_IN(logic [1:0], tb_efuse_program_state_inject)
+`SMC_TB_OUT(logic [1:0], tb_efuse_program_state)
+`SMC_TB_OUT(logic, tb_efuse_program_req_valid)
+`SMC_TB_OUT(logic, tb_efuse_program_busy)
+`SMC_TB_OUT(logic, tb_efuse_program_done)
+`SMC_TB_OUT(logic, tb_efuse_program_error)
+`SMC_TB_OUT(logic [31:0], tb_efuse_program_readback)
+`SMC_TB_IN(logic, tb_efuse_read_state_inject_en)
+`SMC_TB_IN(logic [1:0], tb_efuse_read_state_inject)
+`SMC_TB_IN(logic [1:0], tb_efuse_read_error_inject)
+`SMC_TB_OUT(logic [1:0], tb_efuse_read_state)
+`SMC_TB_OUT(logic, tb_efuse_read_req_valid)
+`SMC_TB_OUT(logic, tb_efuse_read_busy)
+`SMC_TB_OUT(logic, tb_efuse_read_done)
+`SMC_TB_OUT(logic, tb_efuse_read_error)
+`SMC_TB_OUT(logic [31:0], tb_efuse_readback)
 `SMC_TB_OUT(logic [smc_efuse_pkg::NumEfuseBits-1:0], efuse_shadow_probe_o)
 
 // P2-15: drive product lc_state_i directly (diff {n,p}). No Force /

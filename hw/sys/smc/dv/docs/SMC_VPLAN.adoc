@@ -104,7 +104,7 @@ verifying the block behind the port.
 |`smc_input_fabric_axi_wr_rd_test` |Run the fabric proxy scenario tracked by the P0 project issue.
 |`smc_input_output_fabric_wr_rd_test` |Run output-fabric write/read through JTAG AXI with responder checks.
 |`smc_local_fabric_csr_depth_test` |Run a representative local-fabric CSR sweep.
-|`smc_output_fabric_slverr_inject_test` |OKAY WR/RD, axi_sim_mem rerr SLVERR read, OKAY readback; SYS_OUT monitor.
+|`smc_output_fabric_slverr_inject_test` |OKAY WR/RD, one-shot SLVERR read from the responder, OKAY readback; SYS_OUT monitor.
 |`smc_output_fabric_wr_rd_responder_test` |Drive JTAG AXI through output fabric; scoreboard checks memory golden.
 |`smc_output_filter_remap_security_test` |Verify output filter allows reads and blocks writes at protocol level.
 |`smc_remap_cla_test` |ALIAS_REMAP address translation, remap-table reset sweep, CLA window.
@@ -1354,11 +1354,11 @@ Drive `smc_local_fabric_csr_depth_test_seq`. Each checker below is a named compa
 
 *BFM / Model*: ocah_axi_vip (AXI), ocah_jtag_vip
 
-*Objective*: OKAY WR/RD, axi_sim_mem rerr SLVERR read, OKAY readback; SYS_OUT monitor.
+*Objective*: OKAY WR/RD, one-shot SLVERR read from the responder, OKAY readback; SYS_OUT monitor.
 
 *Test Coverage*:
 
-* SMC OSS U1-2/U1-3/U6-2: SYS_OUT SLVERR via axi_sim_mem werr/rerr (SEP pulp API).
+* SMC OSS U1-2/U1-3/U6-2: SYS_OUT SLVERR through the slave agent's one-shot fault.
 
 *Test Procedure*:
 
@@ -1491,7 +1491,7 @@ Drive `smc_remap_cla_test_seq`. Each checker below is a named compare the DUT ca
 *Test Coverage*:
 
 * Discriminate the Xcelium SYS_OUT write hang: AW vs W at both ends.
-* After the outbound filter is programmed pass-all, one JTAG AXI write is issued at the TB axi_sim_mem window (0x0200_0000).
+* After the outbound filter is programmed pass-all, one JTAG AXI write is issued at the SYS_OUT responder window (0x0200_0000).
 * A clocked sticky observer records whether AW/W/B ever handshook on the JTAG ingress and on the SYS_OUT boundary.
 * Healthy path: write completes and every channel handshook.
 * The claimed four-state hang is AW-at-SYS_OUT without W-at-SYS_OUT after JTAG W was accepted.
@@ -2393,7 +2393,7 @@ Drive `smc_clk_running_test_seq`. Each checker below is a named compare the DUT 
 
 * DV-CARD: SMC_DMA_CG_ACTIVITY_TEST ANCHOR: smc_dma_cg_activity_test DV-CARD: SMC_CG_P2_001 ANCHOR: smc_dma_cg_activity_test The P2 card extends this same anchor (additive): the P1 steps/checkers above are UNCHANGED (their evidence tokens must keep appearing verbatim for the closed P1 grade); the P2 extension below (_p2_extension) adds the full-range hysteresis sweep {0,1,32,63,64} and the activity-reassert race, called once at the end of body().
 * CG_HYSTERESIS_W==6 (hw/sys/smc/doc/dma.adoc) -- gap=64 exercises the field's own truncation (64 & 0x3F == 0), not a TB special case, and its expectation is the truncated value 0, not a `<= 63` bound that no RTL can violate.
-* Sweep gaps {0, 1, 32, 63, 64} plus seed extras are all driven and all exactly asserted, but only {32, 63, 64} are BOOKED as covered cells: the 0..7 band is carried as UNPROVEN by issue tenstorrent/tt-oca-harness#1235 and must not be counted as covered by any closure report -- see P2_LOW_BAND_EXCLUSION_REASON.
+* Sweep gaps {0, 1, 32, 63, 64} plus seed extras are all driven and all exactly asserted, but only {32, 63, 64} are BOOKED as covered cells: the 0..8 band is carried as UNPROVEN by issue tenstorrent/tt-oca-harness#1235 and must not be counted as covered by any closure report -- see P2_LOW_BAND_EXCLUSION_REASON.
 
 *Test Procedure*:
 
@@ -5694,14 +5694,18 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 |`CHK-OCCP-FW-SEED` |Controller RNG seeded from `RANDOM_SEED` and read back
 |`CHK-OCCP-PAYLOAD-STAGED` |The payload reads back from the controller's SRAM exactly as staged
 |`CHK-OCCP-HOST-PROTOCOL` |Controller scratch 5-8 reads back exactly as seeded
-|`CHK-OCCP-TRANSFER-LANDED` |Target SRAM at the drawn destination holds the transferred image
-|`CHK-OCCP-BUS-ACTIVITY` |SCL falls and START conditions counted by the testbench on the channel actually used
+|`CHK-OCCP-TRANSFER-LANDED` |Target SRAM at the drawn destination holds the transferred image -- first and last word, read through the `smc_scratch_map_pkg` backdoor that `smc_dual_axi_sram_probe_test` holds against AXI. Raises on a mismatch
+|`CHK-OCCP-BUS-ACTIVITY` |At least one I3C channel saw both an SCL fall and a START condition during the transfer, counted by the testbench rather than reported by firmware. Requiring the START rules out a clocking artefact moving `scl_falls` without a framed transfer
 |`CHK-OCCP-CONTROLLER-NO-FAIL` |Controller scratch 0 is not `TEST_FAIL`
 |`CHK-OCCP-JUMP-EXECUTED` |Target retired PC lands inside the transferred image
 |`CHK-OCCP-PAYLOAD-EXECUTED` |Target scratch 0 holds `TEST_PASS`, written by the payload
 |===
 
-*Pass Criteria*: `CHK-OCCP-TARGET-READY`, `CHK-OCCP-PRECONDITION`, `CHK-OCCP-FW-SEED`, `CHK-OCCP-PAYLOAD-STAGED`, `CHK-OCCP-HOST-PROTOCOL`, `CHK-OCCP-TRANSFER-LANDED` (and 4 more) hold after their compares. Enrolled in: `dual_all`, `occp_dual`.
+*Pass Criteria*: all ten checkers hold after their compares -- `CHK-OCCP-TARGET-READY`, `CHK-OCCP-PRECONDITION`, `CHK-OCCP-FW-SEED`, `CHK-OCCP-PAYLOAD-STAGED`, `CHK-OCCP-HOST-PROTOCOL`, `CHK-OCCP-TRANSFER-LANDED`, `CHK-OCCP-BUS-ACTIVITY`, `CHK-OCCP-CONTROLLER-NO-FAIL`, `CHK-OCCP-JUMP-EXECUTED`, `CHK-OCCP-PAYLOAD-EXECUTED`. Measured PASS on Verilator 5.050 in 2.83 h of wall clock at seed 1, with all ten emitted. The payload destination is whatever `pick_payload_addresses` draws for that seed; the landing check compares first and last word at that drawn address.
+
+`CHK-OCCP-TRANSFER-LANDED` depends on `smc_scratch_map_pkg` decoding the drawn destination the same way `smc_dual_axi_sram_probe_test` holds against AXI. `pick_payload_addresses` draws from anywhere in the OCCP window, so the peek is almost never reading offset 0, and a decode right only for the first 256 bytes of the window would look in the wrong bank. The six-offset agreement in `smc_dual_axi_sram_probe_test` is what makes the checker able to raise.
+
+Held out of `all` on that measured runtime. Enrolled in: `dual_all`, `occp_dual`, and no group any CI workflow schedules -- every result for this testcase comes from a manual run, which is a scheduling gap for the DV owner rather than a property of the testcase.
 
 '''''
 
@@ -6079,7 +6083,8 @@ For each of the two (target, lock) pairs:
 |`pyuvm` |35 |Scenarios with a PyUVM implementation
 |`reset` |15 |reset coverage
 |`rtl_issue` |4 |Reproducers for filed RTL defects. Expected to fail; held out of `all`
-|`smoke` |37 |Fast bring-up gate
+|`smoke` |3 |PR gate (`sim.yml`)
+|`hosted` |151 |Nightly and weekly (`regress.yml`): `all` minus the five firmware / `SMC_DUAL` leaves
 |`uart` |6 |uart coverage
 |`coverage_closure` |24 |closes features that previously had no testcase
 |`depth` |43 |cross-feature depth testcases

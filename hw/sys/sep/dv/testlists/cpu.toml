@@ -82,14 +82,20 @@ args = ["+skip_fuse_sense"]
 # (id == sep_internal_interrupts idx + 1) + real ISR claim + IP RW1C-clear
 # + one-hot isolation + no re-fire storm. mailbox via a real FIFO push;
 # others via INTR_TEST. cpu run mode; +skip_fuse_sense (no OTP read).
-# timeout_sec is 300 s because a passing seed finishes in ~80 s; an ISR that
-# never returns would otherwise sit until the 3600 s default.
+# timeout_sec matches the other cpu firmware leaves. The ~80 s figure this leaf
+# was budgeted from is a Verilator time; under VCS with the coverage build
+# (-cm line+cond+tgl+fsm+branch+assert) the same firmware runs far slower, and
+# 300 s killed all three seeds mid-run inside the firmware's own bounded
+# STORM_CHECK_ITERS delay loop (pic_irq_source_map_test.c). A tighter budget
+# does not catch a non-returning ISR either: wait_isr() bounds itself at
+# ISR_WAIT_ITERS and the ISR masks mie.meie after UNEXPECTED_CLAIM_MAX claims,
+# so a stuck ISR fails the walk by name rather than hanging to the budget.
 name = "sep_pic_irq_source_map_delivery_test"
 module = "cpu.sep_pic_irq_source_map_delivery_test"
 firmware = "pic_irq_source_map_test"
 seed = 1
 reseed = 3
-timeout_sec = 300
+timeout_sec = 1800
 tags = ["boot", "cpu", "interrupt", "pic", "subsystem"]
 run_modes = ["cpu"]
 args = ["+skip_fuse_sense"]

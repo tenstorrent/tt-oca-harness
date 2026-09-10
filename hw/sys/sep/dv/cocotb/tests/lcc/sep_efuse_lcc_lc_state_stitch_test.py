@@ -25,8 +25,10 @@ terminal-stability properties implicitly.
 After the initial TEST_DEV sense (TEST_EN strap = 0) the test raises the
 frontdoor ``test_en_strap_i``, re-senses, and proves the latched
 ``secure_tm_o`` follows the strap while ``FEAT_CTRL`` stays on the same
-golden (SECURE_TM does not qualify feature control). The strap is then
-lowered; the rest of the walk runs at ``secure_tm=0`` so LC_STATE
+golden (SECURE_TM does not qualify feature control). The same legs also
+score ``dbg_disable.dft_secure`` against Case 3 of the DTP ladder: the
+strap is not a term, so the bit must not follow ``secure_tm``. The strap
+is then lowered; the rest of the walk runs at ``secure_tm=0`` so LC_STATE
 programming is not blocked by ``efuse_guard``.
 
 ``lc_sigint_err`` has no legal OTP stimulus -- sense regenerates ``{~raw, raw}``.
@@ -49,6 +51,9 @@ from env.sep_lcc_golden import (
     LC_RMA_CHIP_1,
     LC_RMA_SIP_1,
     LC_TEST_DEV,
+    SIP_DBG_BIT,
+    dbg_disable_expected,
+    dbg_disable_unpack,
     is_legal_lc,
     is_valid_lc_transition,
     lc_state_name,
@@ -59,9 +64,8 @@ from seq_lib.sep_lcc_stitch_check_seq import sep_lcc_stitch_check_seq
 
 _MAX_SENSE_CYCLES = 20_000
 
-# One Class-1a secret is enough to prove the secure_tm disconnect; the
-# post-sense backdoor compare already covers all four every sense.
-_SECRET_FIELD = "CLASS_KEY"
+# Every Class-1a secret the map disconnects while the strap is high.
+_SECRET_FIELDS = ("CHIPLET_UID", "SIP_UID", "SYS_UID", "CLASS_KEY")
 
 # Monotonic lifecycle chain exercised (matches the reference test's PROD/RMA walk).
 _LC_CHAIN = (LC_TEST_DEV, LC_PROD, LC_RMA_SIP_1, LC_RMA_CHIP_1)
@@ -263,6 +267,40 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
         image.set_lc_state(raw)
         await self.resense(max_cycles=_MAX_SENSE_CYCLES)
 
+    def _check_dbg_disable(self, feat_ctrl: int, *, secure_tm: int, tag: str) -> None:
+        """dbg_disable against the DTP ladder for this same FEAT_CTRL.
+
+        ``dft_secure`` is Case 3 (SIP_DBG & CHIPLET_DBG & SEP_DBG), inverted.
+        The TEST_EN strap is not a term: the same FEAT_CTRL must produce the
+        same bit at both polarities. A formula of ``!secure_tm`` fails here
+        whenever Case 3 and the strap disagree.
+        """
+        probe = cocotb.top.dbg_disable_all_o
+        val = probe.value
+        width = getattr(val, "n_bits", None)
+        if width is None:
+            bits = getattr(val, "binstr", None)
+            width = len(bits) if bits is not None else len(probe)
+        got = dbg_disable_unpack(int(val), int(width))
+        want = dbg_disable_expected(feat_ctrl)
+        for name, exp in want.items():
+            assert got[name] == exp, (
+                f"{tag}: dbg_disable.{name}={got[name]} expected {exp} for "
+                f"FEAT_CTRL=0x{feat_ctrl:016x} secure_tm={secure_tm} "
+                f"(sep_dbg={feat_ctrl & 1} chiplet_dbg={(feat_ctrl >> 1) & 1} "
+                f"sip_dbg={(feat_ctrl >> SIP_DBG_BIT) & 1})"
+            )
+        self.logger.info(
+            "CHK-DFT-SECURE PASS: %s dft_secure=%d (Case 3, independent of "
+            "secure_tm=%d; sep_dbg=%d chiplet_dbg=%d sip_dbg=%d)",
+            tag,
+            got["dft_secure"],
+            secure_tm,
+            feat_ctrl & 1,
+            (feat_ctrl >> 1) & 1,
+            (feat_ctrl >> SIP_DBG_BIT) & 1,
+        )
+
     def _sensed_secret(self, image: SepEfuseImage, name: str) -> int:
         """Read one Class-1a secret field out of the sensed shadow array by backdoor."""
         sensed = int(cocotb.top.efuse_shadow_probe_o.value)
@@ -315,6 +353,11 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
                     "CHK-SECURE-TM-OFF PASS: secure_tm_o=0, FEAT_CTRL=0x%016x",
                     feat,
                 )
+        self._check_dbg_disable(
+            feat,
+            secure_tm=secure_tm,
+            tag=f"{lc_state_name(raw)} tm={secure_tm} sigint={sigint_err}",
+        )
         if sigint_err:
             assert feat == 0, (
                 f"sigint fail-closed expects AXI FEAT_CTRL=0, got 0x{feat:016x} "
@@ -373,21 +416,23 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
                     secure_tm=0,
                     prev_raw=prev_raw,
                 )
-                # CHK-SECRET-BLANK, first half: with the strap low the Class-1a
-                # secret must be present in the sensed shadow. Captured BEFORE the
-                # strap goes up so the blanking below is a transition on one image
-                # rather than an observation that could also be satisfied by a DUT
-                # that never sensed the secret at all.
-                staged = image.field_int(_SECRET_FIELD)
-                assert staged != 0, (
-                    f"test bug: staged {_SECRET_FIELD} is zero, so the blanking check "
-                    f"below would pass on a DUT that ignores secure_tm"
-                )
-                open_secret = self._sensed_secret(image, _SECRET_FIELD)
-                assert open_secret == staged, (
-                    f"{_SECRET_FIELD} at secure_tm=0 sensed 0x{open_secret:x} != "
-                    f"staged 0x{staged:x}"
-                )
+                # CHK-SECRET-BLANK, first half: with the strap low every
+                # Class-1a secret must be present in the sensed shadow.
+                # Captured BEFORE the strap goes up so the blanking below is
+                # a transition on one image rather than an observation that
+                # could also be satisfied by a DUT that never sensed them.
+                open_secrets: dict[str, int] = {}
+                for name in _SECRET_FIELDS:
+                    staged = image.field_int(name)
+                    assert staged != 0, (
+                        f"test bug: staged {name} is zero, so the blanking check "
+                        f"below would pass on a DUT that ignores secure_tm"
+                    )
+                    sensed = self._sensed_secret(image, name)
+                    assert sensed == staged, (
+                        f"{name} at secure_tm=0 sensed 0x{sensed:x} != staged 0x{staged:x}"
+                    )
+                    open_secrets[name] = sensed
 
                 # Latch TEST_EN on the next sense-done. resense pulses rst_ni
                 # (clears the latch flop) then re-samples the strap.
@@ -399,18 +444,19 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
                     secure_tm=1,
                     prev_raw=prev_raw,
                 )
-                # Second half: the same image, same field, strap high -> disconnected.
-                blanked = self._sensed_secret(image, _SECRET_FIELD)
-                assert blanked == 0, (
-                    f"{_SECRET_FIELD} must read 0 while secure_tm=1 "
-                    f"(sep_efuse_pkg SecretShadowRanges), got 0x{blanked:x}"
-                )
-                self.logger.info(
-                    "CHK-SECRET-BLANK PASS: %s sensed 0x%x at secure_tm=0 and 0 at "
-                    "secure_tm=1 (Class-1a secret disconnected)",
-                    _SECRET_FIELD,
-                    open_secret,
-                )
+                # Second half: the same image, every Class-1a field, strap high.
+                for name in _SECRET_FIELDS:
+                    blanked = self._sensed_secret(image, name)
+                    assert blanked == 0, (
+                        f"{name} must read 0 while secure_tm=1 "
+                        f"(sep_efuse_pkg SecretShadowRanges), got 0x{blanked:x}"
+                    )
+                    self.logger.info(
+                        "CHK-SECRET-BLANK PASS: %s sensed 0x%x at secure_tm=0 and 0 at "
+                        "secure_tm=1 (Class-1a secret disconnected)",
+                        name,
+                        open_secrets[name],
+                    )
 
                 # CHK-SECURE-TM-PROG-BLOCK: while the strap is up, efuse_guard
                 # empties the fuse command request and the program interface

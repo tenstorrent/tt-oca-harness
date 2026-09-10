@@ -5,6 +5,9 @@
 // Scope cocotb public access to the TB top only. Global --public-flat-rw
 // explodes gpio hierarchy under Verilator 5.046.
 public_flat_rw -module "smc_uvm_top" -var "*"
+// The shared AXI VIP interface on the SYS_OUT boundary: cocotb binds the slave
+// agent to its members.
+public_flat_rw -module "ocah_axi_if" -var "*"
 // SEP-aligned CPU / output / I3C mem: backdoor $readmemh into prim_* arrays.
 // prim_ram_2p is the I3C RLT memory, instantiated in smc_ip_integration.
 public_flat_rw -module "prim_rom" -var "mem"

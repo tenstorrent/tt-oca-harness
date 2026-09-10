@@ -8,7 +8,7 @@ name = "smc_efuse_otp_clock_test"
 module = "smc_efuse_otp_clock_test"
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "ci", "functional", "pyuvm"]
+tags = ["ci", "functional", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -53,4 +53,5 @@ tests = [
     "smc_efuse_locked_access_interrupt_test",
     "smc_efuse_boundary_signals_test",
     "smc_efuse_read_program_timeout_test",
+    "smc_state_fault_inject_test",
 ]
