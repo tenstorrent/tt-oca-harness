@@ -34,48 +34,48 @@ module smc_reset_sync (
   prim_sync_reset #(
     .WIDTH(4)
   ) u_rst_cold_smc_sync (
-    .clk                    (clk_smc_i),
-    .rst_n                  (rst_cold_stable_ni),
-    .sync_rst_n             (rst_cold_smc_no),
+    .clk_i                    (clk_smc_i),
+    .rst_ni                  (rst_cold_stable_ni),
+    .sync_rst_no             (rst_cold_smc_no),
 
-    .test_mode              (test_en_i),
-    .scan_rst_n             (scan_rst_ni)
+    .test_mode_i              (test_en_i),
+    .scan_rst_ni             (scan_rst_ni)
   );
 
   // Primary reset synchronization to SMC clock
   prim_sync_reset #(
     .WIDTH(4)
   ) u_rst_primary_smc_sync (
-    .clk                    (clk_smc_i),
-    .rst_n                  (rst_primary_ni),
-    .sync_rst_n             (rst_primary_smc_clk_no),
+    .clk_i                    (clk_smc_i),
+    .rst_ni                  (rst_primary_ni),
+    .sync_rst_no             (rst_primary_smc_clk_no),
 
-    .test_mode              (test_en_i),
-    .scan_rst_n             (scan_rst_ni)
+    .test_mode_i              (test_en_i),
+    .scan_rst_ni             (scan_rst_ni)
   );
 
   // Core reset synchronization to SMC clock
   prim_sync_reset #(
     .WIDTH(4)
   ) u_rst_warm_smc_sync (
-    .clk                    (clk_smc_i),
-    .rst_n                  (rst_warm_ni),
-    .sync_rst_n             (rst_warm_smc_clk_no),
+    .clk_i                    (clk_smc_i),
+    .rst_ni                  (rst_warm_ni),
+    .sync_rst_no             (rst_warm_smc_clk_no),
 
-    .test_mode              (test_en_i),
-    .scan_rst_n             (scan_rst_ni)
+    .test_mode_i              (test_en_i),
+    .scan_rst_ni             (scan_rst_ni)
   );
 
   // WDT reset synchronization to SMC clock
   prim_sync_reset #(
     .WIDTH(4)
   ) u_rst_wdt_smc_sync (
-    .clk                    (clk_smc_i),
-    .rst_n                  (rst_wdt_ni),
-    .sync_rst_n             (rst_wdt_smc_clk_no),
+    .clk_i                    (clk_smc_i),
+    .rst_ni                  (rst_wdt_ni),
+    .sync_rst_no             (rst_wdt_smc_clk_no),
 
-    .test_mode              (test_en_i),
-    .scan_rst_n             (scan_rst_ni)
+    .test_mode_i              (test_en_i),
+    .scan_rst_ni             (scan_rst_ni)
   );
 
 
@@ -83,36 +83,36 @@ module smc_reset_sync (
   prim_sync_reset #(
     .WIDTH(4)
   ) u_rst_cold_ref_clk_sync (
-    .clk                    (clk_ref_i),
-    .rst_n                  (rst_cold_stable_ni),
-    .sync_rst_n             (rst_cold_ref_clk_no),
+    .clk_i                    (clk_ref_i),
+    .rst_ni                  (rst_cold_stable_ni),
+    .sync_rst_no             (rst_cold_ref_clk_no),
 
-    .test_mode              (test_en_i),
-    .scan_rst_n             (scan_rst_ni)
+    .test_mode_i              (test_en_i),
+    .scan_rst_ni             (scan_rst_ni)
   );
 
   // Primary reset synchronization to Reference clock
   prim_sync_reset #(
     .WIDTH(4)
   ) u_rst_primary_ref_clk_sync (
-    .clk                    (clk_ref_i),
-    .rst_n                  (rst_primary_ni),
-    .sync_rst_n             (rst_primary_ref_clk_no),
+    .clk_i                    (clk_ref_i),
+    .rst_ni                  (rst_primary_ni),
+    .sync_rst_no             (rst_primary_ref_clk_no),
 
-    .test_mode              (test_en_i),
-    .scan_rst_n             (scan_rst_ni)
+    .test_mode_i              (test_en_i),
+    .scan_rst_ni             (scan_rst_ni)
   );
 
   // Primary reset synchronization to Peripheral clock
   prim_sync_reset #(
     .WIDTH(4)
   ) u_rst_primary_periph_clk_sync (
-    .clk                    (clk_periph_i),
-    .rst_n                  (rst_primary_ni),
-    .sync_rst_n             (rst_primary_periph_clk_no),
+    .clk_i                    (clk_periph_i),
+    .rst_ni                  (rst_primary_ni),
+    .sync_rst_no             (rst_primary_periph_clk_no),
 
-    .test_mode              (test_en_i),
-    .scan_rst_n             (scan_rst_ni)
+    .test_mode_i              (test_en_i),
+    .scan_rst_ni             (scan_rst_ni)
   );
 
 endmodule

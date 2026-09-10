@@ -20,10 +20,10 @@ module OCAH4CORECluster_AsyncResetSynchronizerPrimitiveShiftReg_d3_i0 (
   assign io_rstbypass = io_rst_synced & ~reset;
 
   prim_rstbypass_stdmux2 rstbypass (
-    .i_reset_n(io_rstbypass),
-    .i_test_reset_n(1'b0),
-    .i_test_mode(1'b0),
-    .o_reset_n(io_q)
+    .rst_ni(io_rstbypass),
+    .test_rst_ni(1'b0),
+    .test_mode_i(1'b0),
+    .rst_no(io_q)
   );
 
 endmodule

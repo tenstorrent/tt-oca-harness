@@ -39,11 +39,11 @@ module prim_prog_clk_div_posedge #(
   prim_sync_reset #(
     .WIDTH(RESET_WIDTH)
   ) reset_sync (
-    .clk(clk_i),
-    .rst_n(rst_ni),
-    .test_mode(test_en_i),
-    .scan_rst_n(scan_rst_ni),
-    .sync_rst_n(reset_n_syncd)
+    .clk_i(clk_i),
+    .rst_ni(rst_ni),
+    .test_mode_i(test_en_i),
+    .scan_rst_ni(scan_rst_ni),
+    .sync_rst_no(reset_n_syncd)
   );
 
   always_ff @(posedge clk_i) begin

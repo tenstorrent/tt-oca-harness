@@ -42,9 +42,9 @@ module prim_refclk_count_w_cdc #(
   prim_sync3 #(
     .WIDTH(1)
   ) sync_cnt_en_count (
-    .i_clk(refclk_i),
-    .i_d  (cnt_en_i),
-    .o_q  (ref_cnt_en)
+    .clk_i(refclk_i),
+    .d_i  (cnt_en_i),
+    .q_o  (ref_cnt_en)
   );
 
   logic prstb_synced_write;
@@ -53,20 +53,20 @@ module prim_refclk_count_w_cdc #(
   prim_sync_reset #(
     .WIDTH(16)
   ) prst_wr_clk_domain_sync (
-    .clk(out_clk_i),
-    .rst_n(prst_ni),
-    .test_mode(1'b0),
-    .scan_rst_n(1'b0),
-    .sync_rst_n(prstb_synced_write)
+    .clk_i(out_clk_i),
+    .rst_ni(prst_ni),
+    .test_mode_i(1'b0),
+    .scan_rst_ni(1'b0),
+    .sync_rst_no(prstb_synced_write)
   );
   prim_sync_reset #(
     .WIDTH(16)
   ) prst_rd_clk_domain_sync (
-    .clk(refclk_i),
-    .rst_n(prst_ni),
-    .test_mode(1'b0),
-    .scan_rst_n(1'b0),
-    .sync_rst_n(prstb_synced_rd)
+    .clk_i(refclk_i),
+    .rst_ni(prst_ni),
+    .test_mode_i(1'b0),
+    .scan_rst_ni(1'b0),
+    .sync_rst_no(prstb_synced_rd)
   );
 
   ref_count_t cnt_update_value_sync;
@@ -207,9 +207,9 @@ module prim_refclk_count_w_cdc #(
   prim_sync3 #(
     .WIDTH(REF_COUNT_WIDTH)
   ) sync_ref_count (
-    .i_clk(out_clk_i),
-    .i_d  (gray_count_sync),
-    .o_q  (ref_count_sync_gray)
+    .clk_i(out_clk_i),
+    .d_i  (gray_count_sync),
+    .q_o  (ref_count_sync_gray)
   );
 
   prim_gray2bin #(

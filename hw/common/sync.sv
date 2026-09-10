@@ -49,9 +49,9 @@ module sync #(
         .WIDTH(WIDTH),
         .RANDOM_DELAY_GRAY_CODE(RANDOM_DELAY_GRAY_CODE)
       ) prim_sync2 (
-        .i_clk(clk_i),
-        .i_d(serial_i),
-        .o_q(serial_o)
+        .clk_i(clk_i),
+        .d_i(serial_i),
+        .q_o(serial_o)
       );
     end
 
@@ -62,9 +62,9 @@ module sync #(
         .WIDTH(WIDTH),
         .RANDOM_DELAY_GRAY_CODE(RANDOM_DELAY_GRAY_CODE)
       ) prim_sync2 (
-        .i_clk(clk_i),
-        .i_d(din),
-        .o_q(serial_o)
+        .clk_i(clk_i),
+        .d_i(din),
+        .q_o(serial_o)
       );
     end
 
@@ -73,10 +73,10 @@ module sync #(
       prim_sync2r #(
         .WIDTH(WIDTH)
       ) prim_sync2r (
-        .i_clk(clk_i),
-        .i_d(serial_i),
-        .i_reset_n(rst_ni),
-        .o_q(serial_o)
+        .clk_i(clk_i),
+        .d_i(serial_i),
+        .rst_ni(rst_ni),
+        .q_o(serial_o)
       );
     end
 
@@ -102,9 +102,9 @@ module sync #(
         .WIDTH(WIDTH),
         .RANDOM_DELAY_GRAY_CODE(RANDOM_DELAY_GRAY_CODE)
       ) prim_sync3 (
-        .i_clk(clk_i),
-        .i_d(serial_i),
-        .o_q(serial_o)
+        .clk_i(clk_i),
+        .d_i(serial_i),
+        .q_o(serial_o)
       );
     end
 
@@ -115,9 +115,9 @@ module sync #(
         .WIDTH(WIDTH),
         .RANDOM_DELAY_GRAY_CODE(RANDOM_DELAY_GRAY_CODE)
       ) prim_sync3 (
-        .i_clk(clk_i),
-        .i_d(din),
-        .o_q(serial_o)
+        .clk_i(clk_i),
+        .d_i(din),
+        .q_o(serial_o)
       );
     end
 
@@ -126,10 +126,10 @@ module sync #(
       prim_sync3r #(
         .WIDTH(WIDTH)
       ) prim_sync3r (
-        .i_clk(clk_i),
-        .i_d(serial_i),
-        .i_reset_n(rst_ni),
-        .o_q(serial_o)
+        .clk_i(clk_i),
+        .d_i(serial_i),
+        .rst_ni(rst_ni),
+        .q_o(serial_o)
       );
     end
 
@@ -155,9 +155,9 @@ module sync #(
         .WIDTH(WIDTH),
         .RANDOM_DELAY_GRAY_CODE(RANDOM_DELAY_GRAY_CODE)
       ) prim_sync4 (
-        .i_clk(clk_i),
-        .i_d(serial_i),
-        .o_q(serial_o)
+        .clk_i(clk_i),
+        .d_i(serial_i),
+        .q_o(serial_o)
       );
     end
 
@@ -168,9 +168,9 @@ module sync #(
         .WIDTH(WIDTH),
         .RANDOM_DELAY_GRAY_CODE(RANDOM_DELAY_GRAY_CODE)
       ) prim_sync4 (
-        .i_clk(clk_i),
-        .i_d(din),
-        .o_q(serial_o)
+        .clk_i(clk_i),
+        .d_i(din),
+        .q_o(serial_o)
       );
     end
 
@@ -179,10 +179,10 @@ module sync #(
       prim_sync4r #(
         .WIDTH(WIDTH)
       ) prim_sync4r (
-        .i_clk(clk_i),
-        .i_d(serial_i),
-        .i_reset_n(rst_ni),
-        .o_q(serial_o)
+        .clk_i(clk_i),
+        .d_i(serial_i),
+        .rst_ni(rst_ni),
+        .q_o(serial_o)
       );
     end
 
@@ -205,9 +205,9 @@ module sync #(
         .WIDTH(WIDTH),
         .RANDOM_DELAY_GRAY_CODE(RANDOM_DELAY_GRAY_CODE)
       ) prim_sync2 (
-        .i_clk(clk_i),
-        .i_d(din),
-        .o_q(serial_o)
+        .clk_i(clk_i),
+        .d_i(din),
+        .q_o(serial_o)
       );
     end
 

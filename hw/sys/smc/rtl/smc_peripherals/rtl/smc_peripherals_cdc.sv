@@ -259,9 +259,9 @@ module smc_peripherals_cdc #(
   prim_sync3 #(
     .WIDTH(smc_config_pkg::CPU_CLUSTER_COUNT)
   ) u_ndmreset_request_sync (
-    .i_clk (clk_smc_i),
-    .i_d   (ndmreset_request_i),
-    .o_q   (ndmreset_request_smc_clk_o)
+    .clk_i (clk_smc_i),
+    .d_i   (ndmreset_request_i),
+    .q_o   (ndmreset_request_smc_clk_o)
   );
 
   // AVSBus Controller State Debug: periph clk -> SMC clk (already synced from avs_clk to periph inside avsbus_controller)
@@ -269,12 +269,12 @@ module smc_peripherals_cdc #(
     .WIDTH(17),
     .DEPTH(3)
   ) u_avsbus_cur_state_debug_sync (
-    .i_clk_src    (clk_periph_i),
-    .i_reset_src_n(rst_periph_clk_ni),
-    .i_data       (avsbus_cur_state_debug_i),
-    .i_clk_dst    (clk_smc_i),
-    .i_reset_dst_n(rst_smc_clk_ni),
-    .o_data       (avsbus_cur_state_debug_o)
+    .clk_src_i    (clk_periph_i),
+    .reset_src_ni(rst_periph_clk_ni),
+    .data_i       (avsbus_cur_state_debug_i),
+    .clk_dst_i    (clk_smc_i),
+    .reset_dst_ni(rst_smc_clk_ni),
+    .data_o       (avsbus_cur_state_debug_o)
   );
 
 
@@ -333,192 +333,192 @@ module smc_peripherals_cdc #(
       prim_sync2 #(
         .WIDTH(smc_config_pkg::NUM_I2C)
       ) u_i2c_enable_sync (
-        .i_clk (clk_smc_i),
-        .i_d   (i2c_enable_periph_clk_flopped),
-        .o_q   (i2c_enable_smc_clk_o)
+        .clk_i (clk_smc_i),
+        .d_i   (i2c_enable_periph_clk_flopped),
+        .q_o   (i2c_enable_smc_clk_o)
       );
       // I2C Interrupts
       prim_sync2 #(
         .WIDTH(smc_config_pkg::NUM_I2C)
       ) u_i2c_irq_sync (
-        .i_clk (clk_smc_i),
-        .i_d   (i2c_irqs_periph_clk_flopped),
-        .o_q   (i2c_irqs_smc_clk_o)
+        .clk_i (clk_smc_i),
+        .d_i   (i2c_irqs_periph_clk_flopped),
+        .q_o   (i2c_irqs_smc_clk_o)
       );
 
       // I2C Debug Bus (per-bit sync; visibility-only path)
       prim_sync2 #(
         .WIDTH(smc_config_pkg::NUM_I2C * 4)
       ) u_i2c_debug_sync (
-        .i_clk (clk_smc_i),
-        .i_d   (i2c_debug_periph_clk_flopped),
-        .o_q   (i2c_debug_smc_clk_o)
+        .clk_i (clk_smc_i),
+        .d_i   (i2c_debug_periph_clk_flopped),
+        .q_o   (i2c_debug_smc_clk_o)
       );
 
       // UART Enable
       prim_sync2 #(
         .WIDTH(smc_config_pkg::NUM_UART)
       ) u_uart_enable_sync (
-        .i_clk (clk_smc_i),
-        .i_d   (uart_enable_periph_clk_flopped),
-        .o_q   (uart_enable_smc_clk_o)
+        .clk_i (clk_smc_i),
+        .d_i   (uart_enable_periph_clk_flopped),
+        .q_o   (uart_enable_smc_clk_o)
       );
 
       // UART Combined Interrupts
       prim_sync2 #(
         .WIDTH(smc_config_pkg::NUM_UART)
       ) u_uart_combined_irq_sync (
-        .i_clk (clk_smc_i),
-        .i_d   (uart_irq_combined_periph_clk_flopped),
-        .o_q   (uart_irq_combined_smc_clk_o)
+        .clk_i (clk_smc_i),
+        .d_i   (uart_irq_combined_periph_clk_flopped),
+        .q_o   (uart_irq_combined_smc_clk_o)
       );
 
       // I3C Interrupts
       prim_sync2 #(
         .WIDTH(smc_config_pkg::NUM_I3C)
       ) u_i3c_irq_sync (
-        .i_clk (clk_smc_i),
-        .i_d   (i3c_irqs_periph_clk_flopped),
-        .o_q   (i3c_irqs_smc_clk_o)
+        .clk_i (clk_smc_i),
+        .d_i   (i3c_irqs_periph_clk_flopped),
+        .q_o   (i3c_irqs_smc_clk_o)
       );
 
       // AVSBus Interrupt
       prim_sync2 u_avsbus_irq_sync (
-        .i_clk (clk_smc_i),
-        .i_d   (avsbus_irq_periph_clk_flopped),
-        .o_q   (avsbus_irq_smc_clk_o)
+        .clk_i (clk_smc_i),
+        .d_i   (avsbus_irq_periph_clk_flopped),
+        .q_o   (avsbus_irq_smc_clk_o)
       );
 
       // Clock gate enables (SMC -> Periph, synced to ungated clk_periph_i)
       prim_sync2 u_i2c_cg_en_sync (
-        .i_clk (clk_periph_i),
-        .i_d   (i2c_cg_en_smc_clk_flopped),
-        .o_q   (i2c_cg_en_periph_clk_o)
+        .clk_i (clk_periph_i),
+        .d_i   (i2c_cg_en_smc_clk_flopped),
+        .q_o   (i2c_cg_en_periph_clk_o)
       );
       prim_sync2 u_uart_cg_en_sync (
-        .i_clk (clk_periph_i),
-        .i_d   (uart_cg_en_smc_clk_flopped),
-        .o_q   (uart_cg_en_periph_clk_o)
+        .clk_i (clk_periph_i),
+        .d_i   (uart_cg_en_smc_clk_flopped),
+        .q_o   (uart_cg_en_periph_clk_o)
       );
       prim_sync2 u_avs_cg_en_periph_sync (
-        .i_clk (clk_periph_i),
-        .i_d   (avs_cg_en_smc_clk_flopped),
-        .o_q   (avs_cg_en_periph_clk_o)
+        .clk_i (clk_periph_i),
+        .d_i   (avs_cg_en_smc_clk_flopped),
+        .q_o   (avs_cg_en_periph_clk_o)
       );
       prim_sync2 u_i3c_cg_en_sync (
-        .i_clk (clk_periph_i),
-        .i_d   (i3c_cg_en_smc_clk_flopped),
-        .o_q   (i3c_cg_en_periph_clk_o)
+        .clk_i (clk_periph_i),
+        .d_i   (i3c_cg_en_smc_clk_flopped),
+        .q_o   (i3c_cg_en_periph_clk_o)
       );
 
       // Clock gate enable (SMC -> Ref, synced to ungated clk_ref_i)
       prim_sync2 u_avs_cg_en_ref_sync (
-        .i_clk (clk_ref_i),
-        .i_d   (avs_cg_en_smc_clk_flopped),
-        .o_q   (avs_cg_en_ref_clk_o)
+        .clk_i (clk_ref_i),
+        .d_i   (avs_cg_en_smc_clk_flopped),
+        .q_o   (avs_cg_en_ref_clk_o)
       );
 
       // Clock gate enable (SMC -> Telemetry, synced to ungated clk_telemetry_i)
       prim_sync2 u_tel_cg_en_sync (
-        .i_clk (clk_telemetry_i),
-        .i_d   (tel_cg_en_smc_clk_flopped),
-        .o_q   (tel_cg_en_telemetry_clk_o)
+        .clk_i (clk_telemetry_i),
+        .d_i   (tel_cg_en_smc_clk_flopped),
+        .q_o   (tel_cg_en_telemetry_clk_o)
       );
     end else begin : gen_sync3
       // I2C Enable
       prim_sync3 #(
         .WIDTH(smc_config_pkg::NUM_I2C)
       ) u_i2c_enable_sync (
-        .i_clk (clk_smc_i),
-        .i_d   (i2c_enable_periph_clk_flopped),
-        .o_q   (i2c_enable_smc_clk_o)
+        .clk_i (clk_smc_i),
+        .d_i   (i2c_enable_periph_clk_flopped),
+        .q_o   (i2c_enable_smc_clk_o)
       );
       // I2C Interrupts
       prim_sync3 #(
         .WIDTH(smc_config_pkg::NUM_I2C)
       ) u_i2c_irq_sync (
-        .i_clk (clk_smc_i),
-        .i_d   (i2c_irqs_periph_clk_flopped),
-        .o_q   (i2c_irqs_smc_clk_o)
+        .clk_i (clk_smc_i),
+        .d_i   (i2c_irqs_periph_clk_flopped),
+        .q_o   (i2c_irqs_smc_clk_o)
       );
 
       // I2C Debug Bus (per-bit sync; visibility-only path)
       prim_sync3 #(
         .WIDTH(smc_config_pkg::NUM_I2C * 4)
       ) u_i2c_debug_sync (
-        .i_clk (clk_smc_i),
-        .i_d   (i2c_debug_periph_clk_flopped),
-        .o_q   (i2c_debug_smc_clk_o)
+        .clk_i (clk_smc_i),
+        .d_i   (i2c_debug_periph_clk_flopped),
+        .q_o   (i2c_debug_smc_clk_o)
       );
 
       // UART Enable
       prim_sync3 #(
         .WIDTH(smc_config_pkg::NUM_UART)
       ) u_uart_enable_sync (
-        .i_clk (clk_smc_i),
-        .i_d   (uart_enable_periph_clk_flopped),
-        .o_q   (uart_enable_smc_clk_o)
+        .clk_i (clk_smc_i),
+        .d_i   (uart_enable_periph_clk_flopped),
+        .q_o   (uart_enable_smc_clk_o)
       );
 
       // UART Combined Interrupts
       prim_sync3 #(
         .WIDTH(smc_config_pkg::NUM_UART)
       ) u_uart_combined_irq_sync (
-        .i_clk (clk_smc_i),
-        .i_d   (uart_irq_combined_periph_clk_flopped),
-        .o_q   (uart_irq_combined_smc_clk_o)
+        .clk_i (clk_smc_i),
+        .d_i   (uart_irq_combined_periph_clk_flopped),
+        .q_o   (uart_irq_combined_smc_clk_o)
       );
 
       // I3C Interrupts
       prim_sync3 #(
         .WIDTH(smc_config_pkg::NUM_I3C)
       ) u_i3c_irq_sync (
-        .i_clk (clk_smc_i),
-        .i_d   (i3c_irqs_periph_clk_flopped),
-        .o_q   (i3c_irqs_smc_clk_o)
+        .clk_i (clk_smc_i),
+        .d_i   (i3c_irqs_periph_clk_flopped),
+        .q_o   (i3c_irqs_smc_clk_o)
       );
 
       // AVSBus Interrupt
       prim_sync3 u_avsbus_irq_sync (
-        .i_clk (clk_smc_i),
-        .i_d   (avsbus_irq_periph_clk_flopped),
-        .o_q   (avsbus_irq_smc_clk_o)
+        .clk_i (clk_smc_i),
+        .d_i   (avsbus_irq_periph_clk_flopped),
+        .q_o   (avsbus_irq_smc_clk_o)
       );
 
       // Clock gate enables (SMC -> Periph, synced to ungated clk_periph_i)
       prim_sync3 u_i2c_cg_en_sync (
-        .i_clk (clk_periph_i),
-        .i_d   (i2c_cg_en_smc_clk_flopped),
-        .o_q   (i2c_cg_en_periph_clk_o)
+        .clk_i (clk_periph_i),
+        .d_i   (i2c_cg_en_smc_clk_flopped),
+        .q_o   (i2c_cg_en_periph_clk_o)
       );
       prim_sync3 u_uart_cg_en_sync (
-        .i_clk (clk_periph_i),
-        .i_d   (uart_cg_en_smc_clk_flopped),
-        .o_q   (uart_cg_en_periph_clk_o)
+        .clk_i (clk_periph_i),
+        .d_i   (uart_cg_en_smc_clk_flopped),
+        .q_o   (uart_cg_en_periph_clk_o)
       );
       prim_sync3 u_avs_cg_en_periph_sync (
-        .i_clk (clk_periph_i),
-        .i_d   (avs_cg_en_smc_clk_flopped),
-        .o_q   (avs_cg_en_periph_clk_o)
+        .clk_i (clk_periph_i),
+        .d_i   (avs_cg_en_smc_clk_flopped),
+        .q_o   (avs_cg_en_periph_clk_o)
       );
       prim_sync3 u_i3c_cg_en_sync (
-        .i_clk (clk_periph_i),
-        .i_d   (i3c_cg_en_smc_clk_flopped),
-        .o_q   (i3c_cg_en_periph_clk_o)
+        .clk_i (clk_periph_i),
+        .d_i   (i3c_cg_en_smc_clk_flopped),
+        .q_o   (i3c_cg_en_periph_clk_o)
       );
 
       // Clock gate enable (SMC -> Ref, synced to ungated clk_ref_i)
       prim_sync3 u_avs_cg_en_ref_sync (
-        .i_clk (clk_ref_i),
-        .i_d   (avs_cg_en_smc_clk_flopped),
-        .o_q   (avs_cg_en_ref_clk_o)
+        .clk_i (clk_ref_i),
+        .d_i   (avs_cg_en_smc_clk_flopped),
+        .q_o   (avs_cg_en_ref_clk_o)
       );
 
       // Clock gate enable (SMC -> Telemetry, synced to ungated clk_telemetry_i)
       prim_sync3 u_tel_cg_en_sync (
-        .i_clk (clk_telemetry_i),
-        .i_d   (tel_cg_en_smc_clk_flopped),
-        .o_q   (tel_cg_en_telemetry_clk_o)
+        .clk_i (clk_telemetry_i),
+        .d_i   (tel_cg_en_smc_clk_flopped),
+        .q_o   (tel_cg_en_telemetry_clk_o)
       );
     end
   endgenerate

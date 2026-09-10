@@ -27,11 +27,11 @@ module prim_clk_counter #(
   prim_sync_reset #(
     .WIDTH(4)
   ) sync_reset_n (
-    .clk(clk_i),
-    .rst_n(rst_ni),
-    .test_mode(test_mode_i),
-    .scan_rst_n(scan_rst_ni),
-    .sync_rst_n(reset_n_synced)
+    .clk_i(clk_i),
+    .rst_ni(rst_ni),
+    .test_mode_i(test_mode_i),
+    .scan_rst_ni(scan_rst_ni),
+    .sync_rst_no(reset_n_synced)
   );
 
   reg  cnt_en_d;
@@ -82,11 +82,11 @@ module prim_clk_counter #(
   assign cnt_start_synced = ~cnt_en_synced_d & cnt_en_synced;
 
   prim_sync3_pulse sync_refclk_cnt_done (
-    .i_src_pulse(refclk_cnt_done_i),
-    .i_src_clk(refclk_i),
-    .i_src_reset_n(refclk_rst_ni),
-    .i_dst_clk(clk_i),
-    .o_dst_pulse(cnt_done_synced)
+    .src_pulse_i(refclk_cnt_done_i),
+    .src_clk_i(refclk_i),
+    .src_rst_ni(refclk_rst_ni),
+    .dst_clk_i(clk_i),
+    .dst_pulse_o(cnt_done_synced)
   );
 
   reg [WIDTH-1:0] clk_cnt;

@@ -474,9 +474,9 @@ module avsbus_controller #(
   );
 
   prim_sync3 u_gate_refclk_en_sync (
-    .i_clk(clk_ref_i),
-    .i_d (R_avs_cfg_1_F_turn_off_all_premux_clocks),
-    .o_q (R_avs_cfg_1_F_turn_off_all_premux_clocks_RS_refclk)
+    .clk_i(clk_ref_i),
+    .d_i (R_avs_cfg_1_F_turn_off_all_premux_clocks),
+    .q_o (R_avs_cfg_1_F_turn_off_all_premux_clocks_RS_refclk)
   );
 
   assign avs_clk = pre_testmux_avs_clk;
@@ -491,50 +491,50 @@ module avsbus_controller #(
   prim_sync_reset #(
     .WIDTH(ResetSyncStages)
   ) apb_clk_reset_sync (
-    .clk(clk_reg_i),
-    .rst_n(rst_reg_ni),
-    .test_mode(test_en_i),
-    .scan_rst_n(scan_rst_ni),
-    .sync_rst_n(reset_n_apb_clk_syncd)
+    .clk_i(clk_reg_i),
+    .rst_ni(rst_reg_ni),
+    .test_mode_i(test_en_i),
+    .scan_rst_ni(scan_rst_ni),
+    .sync_rst_no(reset_n_apb_clk_syncd)
   );
 
   prim_sync_reset #(
     .WIDTH(ResetSyncStages)
   ) avs_clk_reset_sync (
-    .clk(avs_clk),
-    .rst_n(rst_reg_ni),
-    .test_mode(test_en_i),
-    .scan_rst_n(scan_rst_ni),
-    .sync_rst_n(reset_n_avs_clk_syncd)
+    .clk_i(avs_clk),
+    .rst_ni(rst_reg_ni),
+    .test_mode_i(test_en_i),
+    .scan_rst_ni(scan_rst_ni),
+    .sync_rst_no(reset_n_avs_clk_syncd)
   );
 
   prim_sync_reset #(
     .WIDTH(ResetSyncStages)
   ) pre_div_clk_reset_sync (
-    .clk(apb_ref_muxed_clk),
-    .rst_n(rst_reg_ni),
-    .test_mode(test_en_i),
-    .scan_rst_n(scan_rst_ni),
-    .sync_rst_n(reset_n_pre_div_clk_syncd)
+    .clk_i(apb_ref_muxed_clk),
+    .rst_ni(rst_reg_ni),
+    .test_mode_i(test_en_i),
+    .scan_rst_ni(scan_rst_ni),
+    .sync_rst_no(reset_n_pre_div_clk_syncd)
   );
 
   // register re-synchronizers:
   prim_sync3 u_idle_clk_reg_resync (
-    .i_clk(avs_clk),
-    .i_d (R_avs_cfg_1_F_stop_avs_clock_on_idle),
-    .o_q (R_avs_cfg_1_F_stop_avs_clock_on_idle_RS_avs_clk)
+    .clk_i(avs_clk),
+    .d_i (R_avs_cfg_1_F_stop_avs_clock_on_idle),
+    .q_o (R_avs_cfg_1_F_stop_avs_clock_on_idle_RS_avs_clk)
   );
 
   prim_sync3 u_slave_resync_pending_resync (
-    .i_clk(avs_clk),
-    .i_d (slave_resync_pending),
-    .o_q (slave_resync_pending_RS_avs_clk)
+    .clk_i(avs_clk),
+    .d_i (slave_resync_pending),
+    .q_o (slave_resync_pending_RS_avs_clk)
   );
 
   prim_sync3 u_readback_fifo_full_resync (
-    .i_clk(clk_reg_i),
-    .i_d (R_avs_normal_status_F_readback_fifo_full_AVSCLK_q),
-    .o_q (R_avs_normal_status_F_readback_fifo_full)
+    .clk_i(clk_reg_i),
+    .d_i (R_avs_normal_status_F_readback_fifo_full_AVSCLK_q),
+    .q_o (R_avs_normal_status_F_readback_fifo_full)
   );
 
   // flop before re-sync'ing:
@@ -547,21 +547,21 @@ module avsbus_controller #(
   end
 
   prim_sync3 u_slave_unresponsive_resync (
-    .i_clk(clk_reg_i),
-    .i_d (R_avs_interrupt_F_slave_unresponsive_int_AVSCLK),
-    .o_q (R_avs_interrupt_F_slave_unresponsive_int)
+    .clk_i(clk_reg_i),
+    .d_i (R_avs_interrupt_F_slave_unresponsive_int_AVSCLK),
+    .q_o (R_avs_interrupt_F_slave_unresponsive_int)
   );
 
   prim_sync3 u_slave_interrupt_resync (
-    .i_clk(clk_reg_i),
-    .i_d (R_avs_interrupt_F_avs_slave_issued_interrupt_AVSCLK),
-    .o_q (R_avs_interrupt_F_avs_slave_issued_interrupt)
+    .clk_i(clk_reg_i),
+    .d_i (R_avs_interrupt_F_avs_slave_issued_interrupt_AVSCLK),
+    .q_o (R_avs_interrupt_F_avs_slave_issued_interrupt)
   );
 
   prim_sync3 u_avs_readback_en_resync (
-    .i_clk(clk_reg_i),
-    .i_d (push_avs_readback_en_q),
-    .o_q (push_avs_readback_en_RS_apb_clk)
+    .clk_i(clk_reg_i),
+    .d_i (push_avs_readback_en_q),
+    .q_o (push_avs_readback_en_RS_apb_clk)
   );
 
   // flop before re-sync'ing:
@@ -574,9 +574,9 @@ module avsbus_controller #(
   end
 
   prim_sync3 u_max_retries_attempted_resync (
-    .i_clk(clk_reg_i),
-    .i_d (avs_max_retries_attempted_q),
-    .o_q (avs_max_retries_attempted_RS_apb_clk)
+    .clk_i(clk_reg_i),
+    .d_i (avs_max_retries_attempted_q),
+    .q_o (avs_max_retries_attempted_RS_apb_clk)
   );
   // flop before re-sync'ing:
   always_ff @(posedge avs_clk) begin
@@ -589,19 +589,19 @@ module avsbus_controller #(
 
   // pulse resyncs from fast domain (APBCLK) to slower domain (AVSCLK):
   prim_sync3_pulse u_clear_avs_slave_int_resync (
-    .i_src_clk(clk_reg_i),
-    .i_src_pulse(R_avs_interrupt_clear_F_clear_avs_slave_issued_interrupt),
-    .i_src_reset_n(reset_n_apb_clk_syncd),
-    .i_dst_clk(avs_clk),
-    .o_dst_pulse(R_avs_interrupt_clear_F_clear_avs_slave_issued_interrupt_RS_avs_clk)
+    .src_clk_i(clk_reg_i),
+    .src_pulse_i(R_avs_interrupt_clear_F_clear_avs_slave_issued_interrupt),
+    .src_rst_ni(reset_n_apb_clk_syncd),
+    .dst_clk_i(avs_clk),
+    .dst_pulse_o(R_avs_interrupt_clear_F_clear_avs_slave_issued_interrupt_RS_avs_clk)
   );
 
   prim_sync3_pulse u_clear_slave_unresponsive_int_resync (
-    .i_src_clk(clk_reg_i),
-    .i_src_pulse(R_avs_interrupt_clear_F_clear_slave_unresponsive_int),
-    .i_src_reset_n(reset_n_apb_clk_syncd),
-    .i_dst_clk(avs_clk),
-    .o_dst_pulse(R_avs_interrupt_clear_F_clear_slave_unresponsive_int_RS_avs_clk)
+    .src_clk_i(clk_reg_i),
+    .src_pulse_i(R_avs_interrupt_clear_F_clear_slave_unresponsive_int),
+    .src_rst_ni(reset_n_apb_clk_syncd),
+    .dst_clk_i(avs_clk),
+    .dst_pulse_o(R_avs_interrupt_clear_F_clear_slave_unresponsive_int_RS_avs_clk)
   );
 
 
@@ -610,12 +610,12 @@ module avsbus_controller #(
     .WIDTH($size(cur_state)),
     .DEPTH(3)
   ) u_cur_state_resync (
-    .i_clk_src(avs_clk),
-    .i_reset_src_n(reset_n_avs_clk_syncd),
-    .i_data(cur_state),
-    .i_clk_dst(clk_reg_i),
-    .i_reset_dst_n(reset_n_apb_clk_syncd),
-    .o_data(cur_state_RS_apb_clk_logic)
+    .clk_src_i(avs_clk),
+    .reset_src_ni(reset_n_avs_clk_syncd),
+    .data_i(cur_state),
+    .clk_dst_i(clk_reg_i),
+    .reset_dst_ni(reset_n_apb_clk_syncd),
+    .data_o(cur_state_RS_apb_clk_logic)
   );
   assign cur_state_RS_apb_clk = state_t'(cur_state_RS_apb_clk_logic);
 
@@ -623,72 +623,72 @@ module avsbus_controller #(
     .WIDTH($size(R_avs_cfg_1_F_clk_divider_value)),
     .DEPTH(3)
   ) u_divider_value_resync (
-    .i_clk_src(clk_reg_i),
-    .i_reset_src_n(reset_n_apb_clk_syncd),
-    .i_data(R_avs_cfg_1_F_clk_divider_value),
-    .i_clk_dst(apb_ref_muxed_clk),
-    .i_reset_dst_n(reset_n_pre_div_clk_syncd),
-    .o_data(R_avs_cfg_1_F_clk_divider_value_resync)
+    .clk_src_i(clk_reg_i),
+    .reset_src_ni(reset_n_apb_clk_syncd),
+    .data_i(R_avs_cfg_1_F_clk_divider_value),
+    .clk_dst_i(apb_ref_muxed_clk),
+    .reset_dst_ni(reset_n_pre_div_clk_syncd),
+    .data_o(R_avs_cfg_1_F_clk_divider_value_resync)
   );
 
   prim_sync_data_autohs #(
     .WIDTH($size(R_avs_cfg_1_F_clk_divider_duty_cycle_numerator)),
     .DEPTH(3)
   ) u_duty_numerator_resync (
-    .i_clk_src(clk_reg_i),
-    .i_reset_src_n(reset_n_apb_clk_syncd),
-    .i_data(R_avs_cfg_1_F_clk_divider_duty_cycle_numerator),
-    .i_clk_dst(apb_ref_muxed_clk),
-    .i_reset_dst_n(reset_n_pre_div_clk_syncd),
-    .o_data(R_avs_cfg_1_F_clk_divider_duty_cycle_numerator_resync)
+    .clk_src_i(clk_reg_i),
+    .reset_src_ni(reset_n_apb_clk_syncd),
+    .data_i(R_avs_cfg_1_F_clk_divider_duty_cycle_numerator),
+    .clk_dst_i(apb_ref_muxed_clk),
+    .reset_dst_ni(reset_n_pre_div_clk_syncd),
+    .data_o(R_avs_cfg_1_F_clk_divider_duty_cycle_numerator_resync)
   );
 
   prim_sync_data_autohs #(
     .WIDTH($size(R_avs_fifos_status_F_readback_fifo_vacant_slots_AVSCLK)),
     .DEPTH(3)
   ) u_readback_vacant_resync (
-    .i_clk_src(avs_clk),
-    .i_reset_src_n(reset_n_avs_clk_syncd),
-    .i_data(R_avs_fifos_status_F_readback_fifo_vacant_slots_AVSCLK),
-    .i_clk_dst(clk_reg_i),
-    .i_reset_dst_n(reset_n_apb_clk_syncd),
-    .o_data(R_avs_fifos_status_F_readback_fifo_vacant_slots)
+    .clk_src_i(avs_clk),
+    .reset_src_ni(reset_n_avs_clk_syncd),
+    .data_i(R_avs_fifos_status_F_readback_fifo_vacant_slots_AVSCLK),
+    .clk_dst_i(clk_reg_i),
+    .reset_dst_ni(reset_n_apb_clk_syncd),
+    .data_o(R_avs_fifos_status_F_readback_fifo_vacant_slots)
   );
 
   prim_sync_data_autohs #(
     .WIDTH($size(R_avs_fifos_status_F_readback_fifo_occupied_slots_AVSCLK)),
     .DEPTH(3)
   ) u_readback_occupied_resync (
-    .i_clk_src(avs_clk),
-    .i_reset_src_n(reset_n_avs_clk_syncd),
-    .i_data(R_avs_fifos_status_F_readback_fifo_occupied_slots_AVSCLK),
-    .i_clk_dst(clk_reg_i),
-    .i_reset_dst_n(reset_n_apb_clk_syncd),
-    .o_data(R_avs_fifos_status_F_readback_fifo_occupied_slots)
+    .clk_src_i(avs_clk),
+    .reset_src_ni(reset_n_avs_clk_syncd),
+    .data_i(R_avs_fifos_status_F_readback_fifo_occupied_slots_AVSCLK),
+    .clk_dst_i(clk_reg_i),
+    .reset_dst_ni(reset_n_apb_clk_syncd),
+    .data_o(R_avs_fifos_status_F_readback_fifo_occupied_slots)
   );
 
   prim_sync_data_autohs #(
     .WIDTH($size(R_avs_normal_status_F_total_retries)),
     .DEPTH(3)
   ) u_total_retries_resync (
-    .i_clk_src(avs_clk),
-    .i_reset_src_n(reset_n_avs_clk_syncd),
-    .i_data(R_avs_normal_status_F_total_retries_AVSCLK),
-    .i_clk_dst(clk_reg_i),
-    .i_reset_dst_n(reset_n_apb_clk_syncd),
-    .o_data(R_avs_normal_status_F_total_retries)
+    .clk_src_i(avs_clk),
+    .reset_src_ni(reset_n_avs_clk_syncd),
+    .data_i(R_avs_normal_status_F_total_retries_AVSCLK),
+    .clk_dst_i(clk_reg_i),
+    .reset_dst_ni(reset_n_apb_clk_syncd),
+    .data_o(R_avs_normal_status_F_total_retries)
   );
 
   prim_sync_data_autohs #(
     .WIDTH($size(R_avs_cfg_0_F_max_retries)),
     .DEPTH(3)
   ) u_max_retries_resync (
-    .i_clk_src(clk_reg_i),
-    .i_reset_src_n(reset_n_apb_clk_syncd),
-    .i_data(R_avs_cfg_0_F_max_retries),
-    .i_clk_dst(avs_clk),
-    .i_reset_dst_n(reset_n_avs_clk_syncd),
-    .o_data(R_avs_cfg_0_F_max_retries_RS_avs_clk)
+    .clk_src_i(clk_reg_i),
+    .reset_src_ni(reset_n_apb_clk_syncd),
+    .data_i(R_avs_cfg_0_F_max_retries),
+    .clk_dst_i(avs_clk),
+    .reset_dst_ni(reset_n_avs_clk_syncd),
+    .data_o(R_avs_cfg_0_F_max_retries_RS_avs_clk)
   );
 
   /***********************************************************************/

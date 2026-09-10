@@ -52,29 +52,29 @@ module prim_clk_counter_fifo_sync #(
   );
 
   prim_sync_reset prim_pll_sync_reset (
-    .clk(clk_i),
-    .rst_n(tile_rst_ni),
-    .test_mode('0),
-    .scan_rst_n('0),
-    .sync_rst_n(tile_reset_n_sync)
+    .clk_i(clk_i),
+    .rst_ni(tile_rst_ni),
+    .test_mode_i('0),
+    .scan_rst_ni('0),
+    .sync_rst_no(tile_reset_n_sync)
   );
 
   wire combined_reset_n = tile_rst_ni & ss_rst_ni;
 
   prim_sync_reset prim_pll_combined_sync_reset (
-    .clk(clk_i),
-    .rst_n(combined_reset_n),
-    .test_mode('0),
-    .scan_rst_n('0),
-    .sync_rst_n(combined_tile_reset_n_sync)
+    .clk_i(clk_i),
+    .rst_ni(combined_reset_n),
+    .test_mode_i('0),
+    .scan_rst_ni('0),
+    .sync_rst_no(combined_tile_reset_n_sync)
   );
 
   prim_sync_reset ss_combined_sync_reset (
-    .clk(ss_clk_i),
-    .rst_n(combined_reset_n),
-    .test_mode('0),
-    .scan_rst_n('0),
-    .sync_rst_n(combined_ss_reset_n_sync)
+    .clk_i(ss_clk_i),
+    .rst_ni(combined_reset_n),
+    .test_mode_i('0),
+    .scan_rst_ni('0),
+    .sync_rst_no(combined_ss_reset_n_sync)
   );
 
   always_ff @(posedge clk_i) begin

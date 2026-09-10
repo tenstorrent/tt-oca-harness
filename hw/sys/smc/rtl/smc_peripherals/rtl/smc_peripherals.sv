@@ -909,9 +909,9 @@ module smc_peripherals #(
 
   logic boot_stall_combined_smc_clk;
   prim_sync3 u_boot_stall_combined_sync (
-    .i_clk (clk_smc_i),
-    .i_d   (boot_stall_combined),
-    .o_q   (boot_stall_combined_smc_clk)
+    .clk_i (clk_smc_i),
+    .d_i   (boot_stall_combined),
+    .q_o   (boot_stall_combined_smc_clk)
   );
 
   // Once boot stall is deasserted, it cannot be reasserted until next primary reset
@@ -1132,9 +1132,9 @@ module smc_peripherals #(
   ////////////////////
 
   prim_sync3 u_rst_ext_wdt_irq_sync (
-    .i_clk (clk_smc_i),
-    .i_d   (~rst_ext_wdt_ni),
-    .o_q   (rst_ext_wdt_smc_clk)
+    .clk_i (clk_smc_i),
+    .d_i   (~rst_ext_wdt_ni),
+    .q_o   (rst_ext_wdt_smc_clk)
   );
 
   always_comb begin

@@ -292,11 +292,11 @@ module smc_dfd_wrap #(
   prim_sync_reset #(
     .WIDTH(3)
   ) u_ref_rst_sync (
-    .clk            (clk_ref_i),
-    .rst_n          (rst_primary_ni),
-    .test_mode      (test_en_i),
-    .scan_rst_n     (scan_rst_ni),
-    .sync_rst_n     (rst_ref_n)
+    .clk_i       (clk_ref_i),
+    .rst_ni      (rst_primary_ni),
+    .test_mode_i (test_en_i),
+    .scan_rst_ni (scan_rst_ni),
+    .sync_rst_no (rst_ref_n)
   );
 
   always_ff @(posedge clk_ref_i) begin
@@ -319,10 +319,10 @@ module smc_dfd_wrap #(
   prim_sync3r #(
     .WIDTH(REF_CNT_W)
   ) u_ref_cnt_sync (
-    .i_clk      (clk_gated_i),
-    .i_reset_n  (rst_primary_ni),
-    .i_d        (ref_cnt_gray_q),
-    .o_q        (ref_cnt_gray_sync)
+    .clk_i      (clk_gated_i),
+    .rst_ni  (rst_primary_ni),
+    .d_i        (ref_cnt_gray_q),
+    .q_o        (ref_cnt_gray_sync)
   );
 
   prim_gray2bin #(

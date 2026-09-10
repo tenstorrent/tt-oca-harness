@@ -150,65 +150,65 @@ module smc_cool_reset_wrap (
   prim_sync3 #(
     .WIDTH(1)
   ) u_isolate_req_pin_sync (
-    .i_clk(clk_smc_i),
-    .i_d  (isolate_req_pin_i),
-    .o_q  (isolate_req_pin_sync_smc)
+    .clk_i(clk_smc_i),
+    .d_i  (isolate_req_pin_i),
+    .q_o  (isolate_req_pin_sync_smc)
   );
 
   prim_sync3 #(
     .WIDTH(1)
   ) u_cfg_flr_pf_active_sync_smc (
-    .i_clk(clk_smc_i),
-    .i_d  (cfg_flr_pf_active_i),
-    .o_q  (cfg_flr_pf_active_sync_smc)
+    .clk_i(clk_smc_i),
+    .d_i  (cfg_flr_pf_active_i),
+    .q_o  (cfg_flr_pf_active_sync_smc)
   );
 
   prim_sync3 #(
     .WIDTH(1)
   ) u_cfg_flr_pf_active_sync_ref (
-    .i_clk(clk_ref_i),
-    .i_d  (cfg_flr_pf_active_i),
-    .o_q  (cfg_flr_pf_active_sync_ref)
+    .clk_i(clk_ref_i),
+    .d_i  (cfg_flr_pf_active_i),
+    .q_o  (cfg_flr_pf_active_sync_ref)
   );
 
   prim_sync3 #(
     .WIDTH(1)
   ) u_rst_cool_ni_sync_smc (
-    .i_clk(clk_smc_i),
-    .i_d  (rst_cool_ni),
-    .o_q  (rst_cool_ni_sync_smc)
+    .clk_i(clk_smc_i),
+    .d_i  (rst_cool_ni),
+    .q_o  (rst_cool_ni_sync_smc)
   );
 
   prim_sync3 #(
     .WIDTH(1)
   ) u_rst_cool_no_sync_smc (
-    .i_clk(clk_smc_i),
-    .i_d  (rst_cool_no),
-    .o_q  (rst_cool_no_sync_smc)
+    .clk_i(clk_smc_i),
+    .d_i  (rst_cool_no),
+    .q_o  (rst_cool_no_sync_smc)
   );
 
   prim_sync_data_autohs #(
     .WIDTH(32),
     .DEPTH(3)
   ) u_flr_set_cnt_sync (
-    .i_clk_src    (clk_smc_i),
-    .i_reset_src_n(rst_cold_smc_ni),
-    .i_data       (flr_set_cnt),
-    .i_clk_dst    (clk_ref_i),
-    .i_reset_dst_n(rst_cold_ref_ni),
-    .o_data       (flr_set_cnt_ref_clk)
+    .clk_src_i    (clk_smc_i),
+    .reset_src_ni(rst_cold_smc_ni),
+    .data_i       (flr_set_cnt),
+    .clk_dst_i    (clk_ref_i),
+    .reset_dst_ni(rst_cold_ref_ni),
+    .data_o       (flr_set_cnt_ref_clk)
   );
 
   prim_sync_data_autohs #(
     .WIDTH(32),
     .DEPTH(3)
   ) u_flr_reset_set_cnt_sync (
-    .i_clk_src    (clk_smc_i),
-    .i_reset_src_n(rst_cold_smc_ni),
-    .i_data       (flr_reset_set_cnt),
-    .i_clk_dst    (clk_ref_i),
-    .i_reset_dst_n(rst_cold_ref_ni),
-    .o_data       (flr_reset_set_cnt_ref_clk)
+    .clk_src_i    (clk_smc_i),
+    .reset_src_ni(rst_cold_smc_ni),
+    .data_i       (flr_reset_set_cnt),
+    .clk_dst_i    (clk_ref_i),
+    .reset_dst_ni(rst_cold_ref_ni),
+    .data_o       (flr_reset_set_cnt_ref_clk)
   );
 
   ///////////////////////

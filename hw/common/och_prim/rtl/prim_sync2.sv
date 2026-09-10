@@ -9,9 +9,9 @@ module prim_sync2 #(
   parameter int unsigned WIDTH = 1,
   parameter bit RANDOM_DELAY_GRAY_CODE = 1'b0
 ) (
-  input  logic             i_clk,
-  input  logic [WIDTH-1:0] i_d,
-  output logic [WIDTH-1:0] o_q
+  input  logic             clk_i,
+  input  logic [WIDTH-1:0] d_i,
+  output logic [WIDTH-1:0] q_o
 );
 
 `ifndef SYNTHESIS
@@ -22,17 +22,17 @@ module prim_sync2 #(
     .RANDOM_DELAY_RESET    (0),
     .RANDOM_DELAY_GRAY_CODE(RANDOM_DELAY_GRAY_CODE)
   ) rand_del (
-    .i_clk(i_clk),  // input                   Clock
-    .i_d(i_d),  // input    [WIDTH-1:0]    Input Data
-    .i_reset_n           (1'b1           ), // input                   Active Low Reset, if synchronizer is not resettable tie to 1
-    .i_mux_sel_ovr       ({WIDTH*2{1'b0}}), // input    [WIDTH*2-1:0]  Mux Select Override Value, NOT USED FOR NOW
+    .clk_i(clk_i),  // input                   Clock
+    .d_i(d_i),  // input    [WIDTH-1:0]    Input Data
+    .rst_ni           (1'b1           ), // input                   Active Low Reset, if synchronizer is not resettable tie to 1
+    .mux_sel_ovr_i       ({WIDTH*2{1'b0}}), // input    [WIDTH*2-1:0]  Mux Select Override Value, NOT USED FOR NOW
 
-    .o_mux_sel(),      // output   [WIDTH*2-1:0]  Output Mux Select, NOT USED FOR NOW
-    .o_d_del  (d_del)  // output   [WIDTH-1:0]    Delayed Data
+    .mux_sel_o(),      // output   [WIDTH*2-1:0]  Output Mux Select, NOT USED FOR NOW
+    .d_del_o  (d_del)  // output   [WIDTH-1:0]    Delayed Data
   );
 `else
   wire [WIDTH-1:0] d_del;
-  assign d_del = i_d;
+  assign d_del = d_i;
 `endif
 
   // Unlike prim_flop_3sync/4sync, prim_flop_2sync is the OpenTitan cell: OT port names and a
@@ -43,10 +43,10 @@ module prim_sync2 #(
     .Width            (WIDTH),
     .EnablePrimCdcRand(1'b0)
   ) sync2 (
-    .clk_i (i_clk),
+    .clk_i (clk_i),
     .rst_ni(1'b1),      // non-resettable variant; use prim_sync2r when a reset is needed
     .d_i   (d_del),
-    .q_o   (o_q)
+    .q_o   (q_o)
   );
 
 endmodule

@@ -194,20 +194,20 @@ module telemetry_receiver_wrap #(
       .WIDTH                  (1),
       .RANDOM_DELAY_GRAY_CODE (1'b0)
     ) afready_sync2r (
-      .i_clk                  (clk_telemetry_i),
-      .i_d                    (afready_i[i]),
-      .i_reset_n              (rst_telemetry_ni),
-      .o_q                    (afready)
+      .clk_i                  (clk_telemetry_i),
+      .d_i                    (afready_i[i]),
+      .rst_ni              (rst_telemetry_ni),
+      .q_o                    (afready)
     );
 
     prim_sync2r #(
       .WIDTH                  (1),
       .RANDOM_DELAY_GRAY_CODE (1'b0)
     ) afvalid_sync2r (
-      .i_clk                  (clk_i),
-      .i_d                    (afvalid),
-      .i_reset_n              (rst_ni),
-      .o_q                    (afvalid_o[i])
+      .clk_i                  (clk_i),
+      .d_i                    (afvalid),
+      .rst_ni              (rst_ni),
+      .q_o                    (afvalid_o[i])
     );
 
 

@@ -65,15 +65,15 @@ module avsbus_async_fifo #(
   end
 
   prim_sync3 wr_ptr_gray_sync_to_rd_clk[PointerWidth-1:0] (
-    .i_clk(rd_clk_i),
-    .i_d  (wr_ptr_gray),
-    .o_q  (wr_ptr_gray_rd_clk)
+    .clk_i(rd_clk_i),
+    .d_i  (wr_ptr_gray),
+    .q_o  (wr_ptr_gray_rd_clk)
   );
 
   prim_sync3 rd_ptr_gray_sync_to_wr_clk[PointerWidth-1:0] (
-    .i_clk(wr_clk_i),
-    .i_d  (rd_ptr_gray),
-    .o_q  (rd_ptr_gray_wr_clk)
+    .clk_i(wr_clk_i),
+    .d_i  (rd_ptr_gray),
+    .q_o  (rd_ptr_gray_wr_clk)
   );
 
   assign rd_empty_o = (wr_ptr_bin_rd_clk == rd_ptr_bin);
