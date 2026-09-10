@@ -606,7 +606,7 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_EXT_INTERRUPTS-1:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">External interrupt inputs. Width is config-dependent: 32 (1-core) or 256 (4-core). Synchronized to <code>clk_smc</code> (3-stage) in <code>smc_base</code>, then drives internal interrupts to the SMC CPU.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External interrupt inputs. Width is 256. Synchronized to <code>clk_smc</code> (3-stage) in <code>smc_base</code>, then drives internal interrupts to the SMC CPU.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">External sources → Interrupt aggregator</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A, tie to '0 if unused</p></td>
 </tr>
@@ -930,7 +930,7 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">CLA halt-clock status under enable; also drives <code>cpu_interrupts_o[NUM_EXT_INTERRUPTS+64]</code> (internal interrupt 0) — 1-core: bit 96, 4-core: bit 320.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">CLA halt-clock status under enable; also drives <code>cpu_interrupts_o[NUM_EXT_INTERRUPTS+64]</code> (internal interrupt 0), bit 320.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DFD → DTP / interrupt</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>

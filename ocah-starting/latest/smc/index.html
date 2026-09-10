@@ -1166,7 +1166,7 @@ but at values equal to their IP defaults.</p>
 Rocket RV64GC RISC-V processor core (see:
 <a href="https://chipyard.readthedocs.io/en/stable/Generators/Rocket.html">Rocket
 Chip</a>). The cluster is generated using the Chipyard Rocket-chip
-generator and supports 1 to 4 processor cores, each with private L1
+generator and supports 4 processor cores, each with private L1
 cache and access to a shared local SRAM.</p>
 </div>
 <div class="paragraph">
@@ -1175,7 +1175,7 @@ cache and access to a shared local SRAM.</p>
 <div class="ulist">
 <ul>
 <li>
-<p>Up to 4 Rocket CPU cores (RV64GC ISA, 56-bit physical addressing)</p>
+<p>4 Rocket CPU cores (RV64GC ISA, 56-bit physical addressing)</p>
 </li>
 <li>
 <p>Core-local L1 instruction and data caches, each configurable in size
@@ -1213,7 +1213,7 @@ its cache hierarchy</p>
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Cores</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">1–4, Rocket RV64GC</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">4, Rocket RV64GC</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">ISA</p></td>
@@ -2249,11 +2249,11 @@ and interfaces (SMC-local view):</p>
 <div class="sect3">
 <h4 id="smc-interrupt-vector-cpu_interrupts_o"><a class="anchor" href="#smc-interrupt-vector-cpu_interrupts_o"></a><a class="link" href="#smc-interrupt-vector-cpu_interrupts_o">1.5.2. SMC interrupt vector (<code>cpu_interrupts_o</code>)</a></h4>
 <div class="paragraph">
-<p>The PLIC exposes 332 global interrupt sources (indices 0–331) in the 4-core
-configuration. Most indices are driven from the SMC <code>cpu_interrupts_o</code> assembly
-documented below; additional globals (for example per-core Chipyard watchdog
-timers at indices 328–331) are bound inside the CPU cluster and do not appear
-on the raw <code>cpu_interrupts_o</code> bus.</p>
+<p>The PLIC exposes 332 global interrupt sources (indices 0–331). Most
+indices are driven from the SMC <code>cpu_interrupts_o</code> assembly documented below;
+additional globals (for example per-core Chipyard watchdog timers at indices
+328–331) are bound inside the CPU cluster and do not appear on the raw
+<code>cpu_interrupts_o</code> bus.</p>
 </div>
 <div class="sect4">
 <h5 id="bus-error-unit-interrupts"><a class="anchor" href="#bus-error-unit-interrupts"></a><a class="link" href="#bus-error-unit-interrupts">Bus Error Unit interrupts</a></h5>
@@ -2266,8 +2266,8 @@ regardless of PLIC configuration or interrupt masking.</p>
 </div>
 <div class="paragraph">
 <p>For the raw <code>cpu_interrupts_o</code> bit map traced back to the SMC RTL,
-including separate 4-core and 1-core layouts and the distinction between
-raw vector bits and PLIC source IDs, see the following section.</p>
+including the distinction between raw vector bits and PLIC source IDs,
+see the following section.</p>
 </div>
 </div>
 </div>
@@ -2313,30 +2313,25 @@ cpu_interrupts_o[(NUM_EXT_INTERRUPTS+64)+3]     = zeroer_intp;</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>For the 4-core configuration, <code>NUM_EXT_INTERRUPTS = 256</code> and
-<code>NUM_CPU_INTERRUPTS = 328</code>. For the 1-core configuration,
-<code>NUM_EXT_INTERRUPTS = 32</code> and <code>NUM_CPU_INTERRUPTS = 104</code>.</p>
+<p><code>NUM_EXT_INTERRUPTS = 256</code> and <code>NUM_CPU_INTERRUPTS = 328</code>.</p>
 </div>
 <div class="sect4">
 <h5 id="exact-indexed-map"><a class="anchor" href="#exact-indexed-map"></a><a class="link" href="#exact-indexed-map">Exact Indexed Map</a></h5>
 <div class="paragraph">
-<p>The table below shows the exact raw <code>cpu_interrupts_o</code> indexing for both
-supported CPU configurations. The <code>Source</code> column is intentionally
-human-readable; implementation signal names are called out in the
-<code>RTL trace</code> column instead.</p>
+<p>The table below shows the exact raw <code>cpu_interrupts_o</code> indexing. The
+<code>Source</code> column is intentionally human-readable; implementation signal
+names are called out in the <code>RTL trace</code> column instead.</p>
 </div>
 <table class="tableblock frame-all grid-all stretch">
 <colgroup>
-<col style="width: 10%;">
-<col style="width: 10%;">
+<col style="width: 12%;">
 <col style="width: 22%;">
-<col style="width: 23%;">
-<col style="width: 35%;">
+<col style="width: 28%;">
+<col style="width: 38%;">
 </colgroup>
 <thead>
 <tr>
-<th class="tableblock halign-left valign-top">4-core bit(s)</th>
-<th class="tableblock halign-left valign-top">1-core bit(s)</th>
+<th class="tableblock halign-left valign-top">Bit(s)</th>
 <th class="tableblock halign-left valign-top">Source</th>
 <th class="tableblock halign-left valign-top">Description</th>
 <th class="tableblock halign-left valign-top">RTL trace</th>
@@ -2345,7 +2340,6 @@ human-readable; implementation signal names are called out in the
 <tbody>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[255:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[31:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">External interrupts</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Integration-defined external interrupt inputs</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>hw/sys/smc/rtl/smc_base.sv</code> synchronizes <code>ext_interrupts_i</code> to <code>clk_smc</code>
@@ -2354,7 +2348,6 @@ human-readable; implementation signal names are called out in the
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>256</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>32</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP mailbox interrupt 0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP-to-SMC mailbox channel 0 interrupt</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[0] =
@@ -2362,7 +2355,6 @@ sep_mailbox_interrupts_i[0]</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>257</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>33</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP mailbox interrupt 1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP-to-SMC mailbox channel 1 interrupt</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[1] =
@@ -2370,7 +2362,6 @@ sep_mailbox_interrupts_i[1]</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>258</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>34</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP mailbox interrupt 2</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP-to-SMC mailbox channel 2 interrupt</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[2] =
@@ -2378,7 +2369,6 @@ sep_mailbox_interrupts_i[2]</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>259</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>35</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP mailbox interrupt 3</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP-to-SMC mailbox channel 3 interrupt</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[3] =
@@ -2386,7 +2376,6 @@ sep_mailbox_interrupts_i[3]</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>260</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>36</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP mailbox interrupt 4</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP-to-SMC mailbox channel 4 interrupt</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[4] =
@@ -2394,7 +2383,6 @@ sep_mailbox_interrupts_i[4]</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>261</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>37</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP mailbox interrupt 5</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP-to-SMC mailbox channel 5 interrupt</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[5] =
@@ -2402,7 +2390,6 @@ sep_mailbox_interrupts_i[5]</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>262</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>38</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP mailbox interrupt 6</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP-to-SMC mailbox channel 6 interrupt</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[6] =
@@ -2410,7 +2397,6 @@ sep_mailbox_interrupts_i[6]</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>263</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>39</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP mailbox interrupt 7</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP-to-SMC mailbox channel 7 interrupt</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[7] =
@@ -2418,7 +2404,6 @@ sep_mailbox_interrupts_i[7]</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>264</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>40</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Telemetry interrupt 0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Telemetry receiver instance 0 interrupt</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[8] =
@@ -2426,7 +2411,6 @@ telemetry_irq[0]</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>265</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>41</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Telemetry interrupt 1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Telemetry receiver instance 1 interrupt</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[9] =
@@ -2434,7 +2418,6 @@ telemetry_irq[1]</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>266</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>42</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Telemetry interrupt 2</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Telemetry receiver instance 2 interrupt</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[10] =
@@ -2442,7 +2425,6 @@ telemetry_irq[2]</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>267</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>43</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">NDM Reset Request</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OR-reduced synchronized NDM reset request interrupt</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[11] =
@@ -2450,7 +2432,6 @@ telemetry_irq[2]</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>268</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>44</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I3C interrupt 0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I3C controller instance 0 interrupt</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[12] =
@@ -2458,7 +2439,6 @@ i3c_irqs_smc_clk[0]</code>; <code>i3c_irqs_periph_clk</code> is currently tied t
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>269</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>45</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I3C interrupt 1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I3C controller instance 1 interrupt</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[13] =
@@ -2466,7 +2446,6 @@ i3c_irqs_smc_clk[1]</code>; <code>i3c_irqs_periph_clk</code> is currently tied t
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>270</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>46</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I3C interrupt 2</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I3C controller instance 2 interrupt</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[14] =
@@ -2474,7 +2453,6 @@ i3c_irqs_smc_clk[2]</code>; <code>i3c_irqs_periph_clk</code> is currently tied t
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>271</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>47</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I3C interrupt 3</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I3C controller instance 3 interrupt</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[15] =
@@ -2482,7 +2460,6 @@ i3c_irqs_smc_clk[3]</code>; <code>i3c_irqs_periph_clk</code> is currently tied t
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>272</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>48</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I3C interrupt 4</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I3C controller instance 4 interrupt</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[16] =
@@ -2490,7 +2467,6 @@ i3c_irqs_smc_clk[4]</code>; <code>i3c_irqs_periph_clk</code> is currently tied t
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>273</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>49</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I3C interrupt 5</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I3C controller instance 5 interrupt</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[17] =
@@ -2498,7 +2474,6 @@ i3c_irqs_smc_clk[5]</code>; <code>i3c_irqs_periph_clk</code> is currently tied t
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>274</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>50</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">UART/Log Engine interrupt 0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Combined UART IRQ, UART error, and log-engine interrupt for instance 0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[18] =
@@ -2507,7 +2482,6 @@ uart_irq_combined_smc_clk[0]</code>; the combined signal is formed in
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>275</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>51</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">UART/Log Engine interrupt 1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Combined UART IRQ, UART error, and log-engine interrupt for instance 1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[19] =
@@ -2516,7 +2490,6 @@ uart_irq_combined_smc_clk[1]</code>; the combined signal is formed in
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>276</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>52</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">UART/Log Engine interrupt 2</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Combined UART IRQ, UART error, and log-engine interrupt for instance 2</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[20] =
@@ -2525,7 +2498,6 @@ uart_irq_combined_smc_clk[2]</code>; the combined signal is formed in
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>277</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>53</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">UART/Log Engine interrupt 3</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Combined UART IRQ, UART error, and log-engine interrupt for instance 3</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[21] =
@@ -2534,7 +2506,6 @@ uart_irq_combined_smc_clk[3]</code>; the combined signal is formed in
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>278</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>54</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">AVSBus interrupt</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Adaptive voltage scaling interrupt</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[22] =
@@ -2542,7 +2513,6 @@ avsbus_irq_flopped</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>279</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>55</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I2C interrupt 0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I2C controller instance 0 interrupt</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[23] =
@@ -2550,7 +2520,6 @@ i2c_irqs_smc_clk[0]</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>280</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>56</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I2C interrupt 1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I2C controller instance 1 interrupt</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[24] =
@@ -2558,7 +2527,6 @@ i2c_irqs_smc_clk[1]</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>281</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>57</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I2C interrupt 2</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">I2C controller instance 2 interrupt</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[25] =
@@ -2566,7 +2534,6 @@ i2c_irqs_smc_clk[2]</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>282</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>58</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SEP watchdog reset</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">External watchdog reset indication from SEP path</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[26] =
@@ -2574,7 +2541,6 @@ i2c_irqs_smc_clk[2]</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>283</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>59</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Locked field access</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">eFuse locked-field access violation interrupt</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[27] =
@@ -2582,7 +2548,6 @@ locked_field_access_interrupt</code>, sourced from the eFuse controller path.</p
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>284</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>60</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO interrupt OR, lower half</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OR-reduction across the lower half of bonded GPIO interrupt sources</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[28] =
@@ -2590,7 +2555,6 @@ locked_field_access_interrupt</code>, sourced from the eFuse controller path.</p
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>285</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>61</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">GPIO interrupt OR, upper half</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OR-reduction across the upper half of bonded GPIO interrupt sources</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_peripherals.sv</code> drives <code>peripheral_interrupts_o[29] =
@@ -2598,7 +2562,6 @@ locked_field_access_interrupt</code>, sourced from the eFuse controller path.</p
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>286</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>62</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">AXI hang detector OR</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">OR of the three AXI hang detectors (sys_axi, sep_axi, data_accel). Asserts
 while any detector&#8217;s <code>irq_o</code> is high, so software must read
@@ -2612,7 +2575,6 @@ hang_irq_data_accel</code> onto <code>axi_hang_irq_o</code>; <code>smc.sv</code>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>287</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>63</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Unused peripheral interrupt slots; tied to zero</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>peripheral_interrupts_o</code> is initialized to <code>'0</code>, and bit 31 is never
@@ -2620,7 +2582,6 @@ overwritten in <code>smc_peripherals.sv</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[319:288]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[95:64]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMC mailbox interrupts <code>[31:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Inbound SMC mailbox interrupt channels 31:0</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_base.sv</code> drives
@@ -2629,7 +2590,6 @@ overwritten in <code>smc_peripherals.sv</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>320</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>96</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CLA Clock Stop</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DFD CLA clock-stop status interrupt</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_base.sv</code> drives this bit from
@@ -2638,7 +2598,6 @@ overwritten in <code>smc_peripherals.sv</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>321</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>97</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CLA Interrupt</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DFD CLA interrupt</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_base.sv</code> drives this bit from <code>cla_interrupt</code>, sourced from
@@ -2647,7 +2606,6 @@ overwritten in <code>smc_peripherals.sv</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>322</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>98</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">DMA transfer complete</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Falling-edge pulse when DMA busy deasserts</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_base.sv</code> drives this bit from <code>dma_intp</code>; <code>idma_wrapper.sv</code> generates
@@ -2655,7 +2613,6 @@ overwritten in <code>smc_peripherals.sv</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>323</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>99</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Zeroer transfer complete</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Falling-edge pulse when Zeroer busy deasserts</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_base.sv</code> drives this bit from <code>zeroer_intp</code>; <code>zeroer.sv</code> generates
@@ -2663,7 +2620,6 @@ overwritten in <code>smc_peripherals.sv</code>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[327:324]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>[103:100]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Reserved</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Unused tail bits; tied to zero</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>cpu_interrupts_o</code> is initialized to <code>'0</code>, and no RTL overwrites these
@@ -2707,8 +2663,8 @@ external interrupt bit is defined by the enclosing SoC integration.</p>
 <div class="paragraph">
 <p>The SMC uses a standards-compliant Platform-Level Interrupt
 Controller (PLIC) at 0xC400_0000–0xC43F_FFFF (4MB) to manage 332
-interrupt sources (327 active, 5 reserved) with multi-core delivery in
-the 4-core configuration. The PLIC provides hardware prioritization,
+interrupt sources (327 active, 5 reserved) with multi-core delivery.
+The PLIC provides hardware prioritization,
 per-core routing, and configurable thresholds for efficient, parallel
 interrupt handling. The SMC-driven contribution to global interrupt
 indices is given in <a href="#cpu-interrupt-vector-map">SMC CPU Interrupt Vector Map</a> above.</p>
