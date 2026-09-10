@@ -8,7 +8,7 @@ from .smc_addr_map import smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 from .smc_efuse_vip_utils import prove_efuse_bank_axil_activity
 
-# VERSION_LO=0x000100A0 / VERSION_HI=0 / CHIP_ID=0 / RAS_BANK_INFO=0 all trace to
+# VERSION_LO=0x000100A0 / VERSION_HI=0 / CHIP_ID=0 / all trace to
 # chip_config.rdl reset constants (identical on Verilator and VCS) -> G3
 # spec-anchored decode + reset-value check. LC_STATE is left decode-only
 # (expected=None): it is simulator-divergent in the OSS bench (Verilator's
@@ -23,7 +23,6 @@ CHIP_CONFIG_EFUSE_READS = [
     ("VERSION_HI", smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_HI_BASE_ADDR"), 0),
     ("CHIP_ID", smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_CHIP_ID_BASE_ADDR"), 0x0),
     ("LC_STATE", smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_LC_STATE_BASE_ADDR"), None),
-    ("RAS_BANK_INFO", smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_RAS_BANK_INFO_BASE_ADDR"), 0x0),
 ]
 
 

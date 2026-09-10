@@ -63,8 +63,10 @@ stubs = [
   "hw/sys/smc/dv/tb/verilator_stubs/prim_sync3.sv",
 ]
 sources = [
-  # SEP rom_boot posture: pulp axi_sim_mem (under axi_simulation, not axi_rtl).
-  "vendor/pulp-platform/axi/upstream/src/axi_sim_mem.sv",
+  # SYS_OUT boundary: the shared AXI VIP interface the slave agent binds and
+  # the bridge that places the wrapper's struct port on it.
+  "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_if.sv",
+  "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_struct_bridge.sv",
   # Two prims the SMC DUT instantiates but no `smc` Bender target supplies:
   #   prim_fifo_async <- hw/common/och_prim/rtl/prim_refclk_count_w_cdc.sv:79
   #                      (Bender.yml:152, target any(opentitan_smu, sep, smu))
@@ -105,7 +107,9 @@ sources = [
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_subreg_arb.sv",
   # DV collateral for the CPU memory macros: counters, FW mailbox, the ECC
   # inject hook and the image backdoors, bound into smc_ip_integration.
-  # Not in the Bender wrapper target -- only this TB binds it.
+  # Not in the Bender wrapper target -- only this TB binds it. The map package
+  # holds the scratch bank/entry decode both it and tb_top.sv use.
+  "hw/sys/smc/dv/models/smc_scratch_map_pkg.sv",
   "hw/sys/smc/dv/models/smc_cpu_mem_dv.sv",
   # Flow-shared functional-coverage modules (cov/sv/): compiled in BOTH flows --
   # this list feeds the cocotb/Verilator filelist, and the
@@ -204,14 +208,25 @@ cocotb_log = "{run_dir}/{item}/logs/{item}.log"
 [c_build.default]
 # Build the selected SMC C test and declare every time-zero preload consumed by
 # the firmware boot test. run_dv stages these basenames into the simulator cwd.
+#
+# The DV test images need a picolibc-enabled RISC-V toolchain. Use an explicit
+# $RISCV_TOOLCHAIN, else scripts/docker-run.sh run-here. No site or PATH probe.
+# Same contract as [c_build.bootrom], [c_build.dual_occp] and
+# [c_build.occp_sanity] below. Without it, every `firmware = "<name>"` test
+# fails at c_compile on any host that does not carry the toolchain.
+#
+# NOTE: argv goes through str.format() and the runlib rejects every placeholder
+# except {fw_target} -- braces of any kind, including shell ${...} expansion,
+# are unavailable here. Use "$VAR" and $(...) instead.
 cwd = "."
 argv = [
   "bash",
   "-lc",
-  "make ocah-dv-fw-tests TARGET=smc TEST={fw_target} && cp hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload hw/sys/smc/dv/fw/build/tests/{fw_target}/",
+  "set -e; RV_TC=\"$RISCV_TOOLCHAIN\"; if [ -n \"$RV_TC\" ]; then make ocah-dv-fw-tests TARGET=smc TEST={fw_target} RISCV_TOOLCHAIN=\"$RV_TC\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; building the SMC DV test image in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here make ocah-dv-fw-tests TARGET=smc TEST={fw_target} RISCV_PREFIX=riscv64-unknown-elf-; else echo \"error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset\" >&2; exit 1; fi; cp hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload hw/sys/smc/dv/fw/build/tests/{fw_target}/",
 ]
 outputs = [
   "hw/sys/smc/dv/fw/build/tests/{fw_target}/{fw_target}.ecc.hex",
+  "hw/sys/smc/dv/fw/build/tests/{fw_target}/{fw_target}.sram.bin",
   "hw/sys/smc/dv/fw/build/tests/{fw_target}/{fw_target}.sram.sym",
   "hw/sys/smc/dv/fw/build/tests/{fw_target}/default_efuse_shadow_reg.preload",
 ]
@@ -445,7 +460,8 @@ incdirs = [
   "hw/sys/smc/dv/uvm/tests",
 ]
 # This list REPLACES the cocotb [build].sources list, so the TB collateral both flows compile
-# (the SYS_OUT axi_sim_mem responder and the CPU memory DV binding) is repeated here.
+# (the CPU memory DV binding) is repeated here; the AXI VIP interface and struct bridge
+# arrive through the ocah_axi_vip manifest.
 sources = [
   # DUT-support primitives the Bender `smc` targets reach only through their exported +incdir
   # paths: Verilator searches include directories for unresolved modules, VCS compiles only
@@ -459,8 +475,6 @@ sources = [
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_diff_encode.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_async.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_prince.sv",
-  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_1p.sv",
-  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_1p_adv.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_rst_sync.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_22_16_dec.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_22_16_enc.sv",
@@ -478,7 +492,7 @@ sources = [
   "vendor/tenstorrent/tt-hw-debug/upstream/rtl/trace/trace_mem.sv",
   "vendor/tenstorrent/tt-hw-debug/upstream/rtl/trace/trace_mem_sink.sv",
   # TB collateral shared with the cocotb flow.
-  "vendor/pulp-platform/axi/upstream/src/axi_sim_mem.sv",
+  "hw/sys/smc/dv/models/smc_scratch_map_pkg.sv",
   "hw/sys/smc/dv/models/smc_cpu_mem_dv.sv",
   # Flow-shared functional-coverage modules; the same five entries the
   # [build] sources list carries for the cocotb/Verilator flow.

@@ -368,7 +368,8 @@ outputs = [
   # The SMC-SRAM staged image, produced by the same `pack-images` rule as the two
   # .bin files above. Declared because sep_boot_recovery_test passes it as
   # +sep_smc_mem_hex, and an undeclared input would let `--stage sim` start and
-  # then die inside $readmemh instead of failing the output check.
+  # then fail inside the SMC responder's image load instead of failing the
+  # output check.
   "hw/sys/sep/bootrom/prod/build/smc_mem.hex",
 ]
 
@@ -514,14 +515,15 @@ flags = [
   "-Wno-UNUSEDPARAM",
 ]
 
-# rom_boot: default (full VeeR CPU) + a behavioral SMC AXI responder for the
-# real-ROM non-secure boot test. SEP_SMC_MEM_MODEL enables an axi_sim_mem on the
-# SEP->SMC AXI (sep_ext_to_smc_axi, tied off in the default TB) so the Boot ROM's
-# SMC scratch/SRAM accesses (scratch round-trip, manifest fetch) get real R/W
-# responses. Scoped to this target so the shared default/no_cpu Verilator models
-# do not compile the sim-only axi_sim_mem.
+# rom_boot: default (full VeeR CPU) + the shared AXI slave agent on the SEP->SMC
+# AXI for the real-ROM boot tests. SEP_SMC_MEM_MODEL places sep_ext_to_smc_axi
+# (tied off in the default TB) on an ocah_axi_if through the VIP struct bridge,
+# and the cocotb base test binds OcahAxiSlaveAgent to it so the Boot ROM's SMC
+# scratch/SRAM accesses (scratch round-trip, manifest fetch) get real R/W
+# responses. The interface and bridge sources are scoped to this target; the
+# default/no_cpu models carry no SEP->SMC responder.
 [targets.rom_boot]
-description = "cpu_all_live + behavioral SMC AXI responder (axi_sim_mem) for the real-ROM non-secure boot test"
+description = "cpu_all_live + shared AXI slave agent on the SEP->SMC AXI for the real-ROM boot tests"
 build_dir = "hw/sys/sep/dv/build/rom_boot/cocotb"
 defines = [
   "SEP_SMN_INBOUND_AXI_LIVE",
@@ -529,7 +531,8 @@ defines = [
   "SEP_SMC_MEM_MODEL",
 ]
 sources = [
-  "vendor/pulp-platform/axi/upstream/src/axi_sim_mem.sv",
+  "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_if.sv",
+  "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_struct_bridge.sv",
 ]
 
 [targets.rom_boot.tools.verilator]

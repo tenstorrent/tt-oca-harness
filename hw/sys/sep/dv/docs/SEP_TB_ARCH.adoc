@@ -131,6 +131,7 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 |DUT Interface |`tb_top` Handling
 |CPU-LSU AXI |Flattens to `s_axi_*`. no_cpu `sep_cpu` stub drives `lsu_axi_req` from these ports (`assign`, single driver). Response XMR-read back into the flat bus.
 |SMN-inbound AXI |Flattens the real inbound port to `m_axi_*` for a second master agent. Traverses `u_inbound_filter`.
+|SEP->SMC AXI |`rom_boot` target only: `ocah_axi_struct_bridge` places the wrapper's `sep_ext_to_smc_axi` struct port on `u_smc_axi_if` and the shared `OcahAxiSlaveAgent` answers it. `env/sep_smc_mem.py` holds the geometry and preloads the scratch, status, strap, and manifest+BL1 image words from the testlist plusargs; the SMC address-decode check counts accesses outside the generated map. Other targets tie the port idle.
 |Clocks |cocotb drives `clk_i`, `clk_wdt_i`, `entropy_rosc_sample_clk_i`
 |Resets / straps |`rst_ni`, `ext_boot_seq_done_i`, `mpc_reset_run_req`, `wdt_rst_ni_i`, `dbg_rstb_i`, `test_en_strap_i`, …
 |SPI host pads |Scalar MISO/MOSI/SCK/CS ports for `OcahSpiFlash`
@@ -650,8 +651,8 @@ the UVM class name equals the scenario name (testlist
 so `--items <name>` selects the same scenario in either realization. The
 first bound scenario is `sep_axi_smoke_test`: fuse-sense release, the
 `SEP_LOCAL_BASE_ADDR` reset-value read, directed and seeded-random
-write/readback of `SEP_SW_DEBUG`, `SEP_NMI_VEC`, `RAS_BANK_INFO`, and
-`PKA_CTRL` through their generated field masks, and a restore to reset
+write/readback of `SEP_SW_DEBUG`, `SEP_NMI_VEC`, and `PKA_CTRL` through
+their generated field masks, and a restore to reset
 values, with the non-vacuity count of real CPU-LSU CSR accesses as
 evidence. Every looped UVM test runs at least 16 scenario passes
 (`ocah_test.MinDefaultLoops`), each seeded `+ntb_random_seed` + pass index,

@@ -36,7 +36,8 @@
 `SEP_TB_IN(logic, mpc_reset_run_req)
 // TEST_EN strap (frontdoor DUT input). Latched into secure_tm on fuse-sense-done
 // (or on cold-reset release when security_disable is set). Default 0 = functional
-// mode; drive 1 before sense to open FEAT_CTRL[47:32].
+// mode; drive 1 before sense to latch secure_tm. SECURE_TM does not qualify
+// feature control.
 `SEP_TB_IN(logic, test_en_strap_i)
 // JTAG SW-reset hold (frontdoor DUT input jtag_sep_reset_ctrl_i). When 1,
 // that engine is held in SW reset regardless of SW_RESET_N, so it never
@@ -278,26 +279,13 @@
 // the AXI ready/valid combinational cones.
 `SEP_TB_OUT(logic [63:0], sram_word0_probe_o)
 `SEP_TB_OUT(logic [383:0], sram_payload_probe_o)
-// SMC scratch[10] (smc_base+0x390D0), the slot the ROM publishes the raw
-// DFX/MEM_REPAIR status into when it blocks the boot -- the documented
-// JTAG-readable evidence that the ROM saw the failure. Sampled rather than
-// continuously assigned: axi_sim_mem backs the SMC with an ASSOCIATIVE array,
-// which cannot appear in a continuous assign. Reads 0 until the ROM writes it.
-`SEP_TB_OUT(logic [31:0], smc_scratch10_probe_o)
-// DFX_CTRL_STATUS_SMU (smc_base+0xB800) as the SMC model actually holds it,
-// i.e. the word the ROM's MEM_REPAIR gate reads over AXI. The FAILURE arm can
-// confirm its own injection from SMC scratch[10], because the gate republishes
-// the raw value there; the PASS arm cannot, because that publication sits on
-// the failure branch and the pass branch writes nothing at all. Without this
-// probe a pass-arm test whose +sep_dft_status silently failed to apply would
-// read the tb default 0x113 -- which has mem_repair_success, mbist_done AND
-// mbist_pass set, so it would still boot and still be green, and the whole
-// discrimination the testcase rests on would be untested.
-`SEP_TB_OUT(logic [31:0], smc_dft_status_probe_o)
 // Count of SEP->SMC accesses that landed outside every register window the
 // generated SMC map declares. Non-zero means the ROM used an offset this
-// design does not implement -- see the SMC address decode check below. Any
-// test may assert this is 0; the flat axi_sim_mem cannot catch it otherwise.
+// design does not implement -- see the SMC address decode check in tb_top.
+// Any test may assert this is 0; the SMC responder is a flat memory that
+// answers every address, so nothing else catches it. The words the ROM
+// publishes into that memory (SMC scratch[10], DFX_CTRL_STATUS_SMU) are read
+// through the responder's backdoor, not through a probe port.
 `SEP_TB_OUT(logic [31:0], smc_addr_violations_o)
 `SEP_TB_OUT(logic [31:0], km_rom_req_count_o)
 `SEP_TB_OUT(logic [31:0], km_sram_req_count_o)
@@ -463,6 +451,12 @@
 // additionally for the SEP S-TAP. Exported whole rather than bit by bit
 // so a field added to the struct widens the vector.
 `SEP_TB_OUT(logic [$bits(sep_lifecycle_ctrl_pkg::dbg_disable_t)-1:0], dbg_disable_all_o)
+// DFT-inserted fuse-path disables. Real DUT outputs (sep_wrapper), not
+// internal probes: no functional consumer and no CSR mirror. Disable
+// polarity: SEP is Case 3 AND sep_fuse_dbg (bit 2), inverted; SMC is
+// Case 2 AND smc_fuse_dbg (bit 3), inverted.
+`SEP_TB_OUT(logic, sep_fuse_dft_disable_o)
+`SEP_TB_OUT(logic, smc_fuse_dft_disable_o)
 // WDT bite reset request: a REAL `sep` output port (sep.sv wdt_timer_rst_req_o,
 // asserted when the WDT count reaches BITE_THOLD). Brought out so the
 // reset/WDT sanity test (`sep_reset_wdt_sanity_test`) can observe the bite ->

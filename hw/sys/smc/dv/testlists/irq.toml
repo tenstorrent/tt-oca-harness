@@ -7,7 +7,7 @@ name = "smc_irq_observe_test"
 module = "smc_irq_observe_test"
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "ci", "irq", "functional", "pyuvm"]
+tags = ["ci", "irq", "functional", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -15,7 +15,7 @@ name = "smc_irq_multi_sample_test"
 module = "smc_irq_multi_sample_test"
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "ci", "irq", "pyuvm"]
+tags = ["ci", "irq", "pyuvm"]
 run_modes = ["smoke"]
 
 # BFM rebuild of FW hang_detector_sanity (irq_test; real stall not claimed).
@@ -54,7 +54,7 @@ timeout_sec = 1800
 tags = ["ci", "irq", "hang", "pyuvm"]
 run_modes = ["smoke"]
 
-# BFM: hang OR reaches the PLIC source pin via peripheral_interrupts[31].
+# BFM: hang OR reaches the PLIC source pin via peripheral_interrupts[30].
 # Unique vs smc_hang_detector_sanity_test, which stops at the smc_base OR.
 [[tests]]
 name = "smc_hang_detector_plic_route_test"
@@ -105,7 +105,7 @@ module = "smc_mailbox_irq_test"
 seed = 1
 timeout_sec = 1800
 tags = [
-    "smoke", "ci", "axil", "canonical",
+    "ci", "axil", "canonical",
     "pyuvm"
 ]
 run_modes = ["smoke"]

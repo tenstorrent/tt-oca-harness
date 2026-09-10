@@ -5,13 +5,13 @@
  * SEP Reset Controller CSR Sanity Test
  *
  * This test verifies the sep_reset_ctrl CSR and the sw-reset isolation
- * sequencing (sep_crypto_axi_isolate) in front of the crypto accelerator
- * wrappers. For each accelerator (OTBN, AES, HMAC, KMAC):
+ * sequencing through the AXI-Lite isolates in sep_crypto_axi_interconnect.
+ * For each accelerator (OTBN, AES, HMAC, KMAC):
  *
  *   a) Probe write/readback proves the port is open and the IP is alive.
  *   b) Assert only that IP's SW_RESET_N bit and HOLD it.
  *   c) Access the IP while held in reset: the isolate must terminate the
- *      write and the read with DECERR (one bus-error NMI each) instead of
+ *      write and the read with SLVERR (one bus-error NMI each) instead of
  *      hanging the fabric.
  *   d) While held in reset, read a different accelerator's register to
  *      prove the other ports are unaffected.
@@ -154,7 +154,7 @@ int main(void) {
 
         /*
          * 2c: access the held-in-reset accelerator. The isolate must
-         * terminate the write and the read with DECERR (one bus-error NMI
+         * terminate the write and the read with SLVERR (one bus-error NMI
          * each) instead of hanging the fabric. D-bus errors are IMPRECISE
          * on VeeR: the NMI lands many cycles after the access, so the two
          * accesses are spaced by prints and the count is checked after
@@ -224,7 +224,7 @@ int main(void) {
     /*
      * Step 3: the shared TRNG reset coordinates all three CSR ports. Seed a
      * writable register on each port, hold reset, prove every new access gets
-     * DECERR, prove an unrelated AES port stays alive, then release and prove
+     * SLVERR, prove an unrelated AES port stays alive, then release and prove
      * all three registers were reset.
      */
     struct {

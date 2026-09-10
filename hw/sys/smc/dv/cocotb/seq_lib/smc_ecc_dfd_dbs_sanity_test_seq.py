@@ -105,8 +105,7 @@ _DEBUG_BUS_MUX_BYTES = 8
 
 # Value-compared diagnostic reads, identical on Verilator and VCS. Every
 # expectation here traces to a cited RDL declaration:
-#   * RAS_BANK_INFO (chip_config.rdl) / NDMRESET_PROCESS (ndm_reset.rdl):
-#     RDL reset 0x0 -> spec-anchored.
+#   * NDMRESET_PROCESS (ndm_reset.rdl): RDL reset 0x0 -> spec-anchored.
 #   * DFX DEBUG_CTRL / DEBUG_BUS_MUX: PeakRDL symbols at 0xC000_B808/B810,
 #     RDL reset 0x0 (0xC001_0208/0210 is not this register).
 #     DEBUG_CTRL is regwidth 32; DEBUG_BUS_MUX is regwidth 64 (see above).
@@ -114,12 +113,6 @@ _DEBUG_BUS_MUX_BYTES = 8
 # RDL/spec-traceable (see _cpu_cluster_count) and it is handled by its own
 # propagation + sw=r legs in body(), which say exactly what they prove.
 DIAGNOSTIC_READS = [
-    (
-        "CHIP_CONFIG_RAS_BANK_INFO",
-        smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_RAS_BANK_INFO_BASE_ADDR"),
-        0x0,
-        4,
-    ),
     (
         "NDMRESET_PROCESS",
         smc_addr("SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_PROCESS_BASE_ADDR"),

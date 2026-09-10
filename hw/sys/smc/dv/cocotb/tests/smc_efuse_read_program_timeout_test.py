@@ -41,6 +41,7 @@ class smc_efuse_read_program_timeout_test(smc_base_test):
             "CHK-EFUSE-TMO-PROG-REC",
             "CHK-EFUSE-TMO-RD",
             "CHK-EFUSE-TMO-RD-REC",
+            "CHK-EFUSE-READ-STATUS-SET-ON-NO-ENABLE",
             "CHK-EFUSE-TMO-BASIC",
         )
         missing = [n for n in required if n not in seq.chk_seen]

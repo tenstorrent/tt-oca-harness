@@ -81,7 +81,7 @@ record. SMU's matching catalog is `hw/sys/smu/dv/cocotb/tests_deferred/`.
 | `smc_clint_csr_test` | the `0xC8xx_xxxx` cluster-local window folds onto `0xC0xx_xxxx` on SEP_IN, so the reads never reach the CLINT |
 
 One enrolled carve-out keeps its measured reason next to the stimulus:
-`HYST_LEGAL_LO` in `smc_clk_multi_window_test_seq.py` (0..7, #1235).
+`HYST_LEGAL_LO` in `smc_clk_multi_window_test_seq.py` (0..8, #1235).
 
 ## Single DUT
 
@@ -100,7 +100,7 @@ so the bare DUT name selects the wrapper-based TB.
 | testlist | `testlists/all.toml` |
 | macros | inside `smc_ip_integration` (pll/pvt/efuse/pads/I3C DAT-DCT-RLT) |
 | CPU mem | inside wrapper via `smc_cpu_mem_integration` |
-| in TB | SYS_OUT=`axi_sim_mem` (pulp VIP); DTP CSR **idle** on `smc_wrapper` (no TB terminator; DTP CSR is a smc_wrapper-only boundary) |
+| in TB | SYS_OUT=`ocah_axi_vip` slave agent behind `ocah_axi_struct_bridge`; DTP CSR **idle** on `smc_wrapper` (no TB terminator; DTP CSR is a smc_wrapper-only boundary) |
 
 ## Verilator stubs policy
 

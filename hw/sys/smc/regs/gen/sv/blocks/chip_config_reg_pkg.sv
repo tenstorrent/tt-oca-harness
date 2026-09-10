@@ -7,8 +7,8 @@
 package chip_config_reg_pkg;
 
     localparam CHIP_CONFIG_REG_DATA_WIDTH = 32;
-    localparam CHIP_CONFIG_REG_MIN_ADDR_WIDTH = 5;
-    localparam CHIP_CONFIG_REG_SIZE = 'h14;
+    localparam CHIP_CONFIG_REG_MIN_ADDR_WIDTH = 4;
+    localparam CHIP_CONFIG_REG_SIZE = 'h10;
 
     typedef struct {
         logic [31:0] next;
@@ -48,21 +48,4 @@ package chip_config_reg_pkg;
         chip_config__CHIP_ID__in_t CHIP_ID;
         chip_config__LC_STATE__in_t LC_STATE;
     } chip_config__in_t;
-
-    typedef struct {
-        logic [3:0] value;
-    } chip_config__RAS_BANK_INFO__bank_chip__out_t;
-
-    typedef struct {
-        logic [3:0] value;
-    } chip_config__RAS_BANK_INFO__bank_instance__out_t;
-
-    typedef struct {
-        chip_config__RAS_BANK_INFO__bank_chip__out_t bank_chip;
-        chip_config__RAS_BANK_INFO__bank_instance__out_t bank_instance;
-    } chip_config__RAS_BANK_INFO__out_t;
-
-    typedef struct {
-        chip_config__RAS_BANK_INFO__out_t RAS_BANK_INFO;
-    } chip_config__out_t;
 endpackage

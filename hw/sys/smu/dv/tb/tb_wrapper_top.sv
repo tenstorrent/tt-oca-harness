@@ -980,21 +980,19 @@ module smu_wrapper_uvm_top (
 `endif
 
   // ------------------------------------------------------------------
-  // External SMN AXI slave — SEP rom_boot / SMC SYS_OUT posture. Firmware
-  // console / PASS magic is a TB observe snoop on the same wires (SEP
-  // sep_outbound_mbx decode), not a second bus terminator.
+  // External SMN AXI4 egress: the shared slave agent answers on u_axi_out_if
+  // (cocotb binds the instance); the bridge places the cut's struct port on
+  // it. Firmware console / PASS magic is a TB observe snoop on the same
+  // wires (SEP sep_outbound_mbx decode), not a second responder.
   // ------------------------------------------------------------------
   localparam logic [31:0] FW_STDOUT_ADDR = 32'h8000_0000;
   localparam logic [31:0] FW_MAGIC0 = 32'hA5A5_5A5A;
   localparam logic [31:0] FW_MAGIC_PASS = 32'hCAFE_BABE;
   localparam logic [31:0] FW_MAGIC_FAIL = 32'hDEAD_BEEF;
 
-  smu_axi_xbar_pkg::axi_out_req_t  [0:0] axi_out_mem_req;
-  smu_axi_xbar_pkg::axi_out_resp_t [0:0] axi_out_mem_resp;
-
-  // Register the boundary channels so the terminator sees edge-aligned
+  // Register the boundary channels so the responder sees edge-aligned
   // request signals: the crossbar's ext_out aw_valid settles late in the
-  // cycle. The cut also keeps the terminator's ready out of the crossbar's
+  // cycle. The cut also keeps the responder's ready out of the crossbar's
   // combinational cone.
   smu_axi_xbar_pkg::axi_out_req_t  axi_out_cut_req;
   smu_axi_xbar_pkg::axi_out_resp_t axi_out_cut_resp;
@@ -1016,18 +1014,18 @@ module smu_wrapper_uvm_top (
     .mst_resp_i (axi_out_cut_resp)
   );
 
-  assign axi_out_mem_req[0] = axi_out_cut_req;
-  assign axi_out_cut_resp   = axi_out_mem_resp[0];
+  ocah_axi_if u_axi_out_if (
+    .aclk    (clk_smu_i),
+    .aresetn (rst_cold_n_o)
+  );
 
-  smu_axi_out_sim_slave #(
+  ocah_axi_struct_bridge #(
     .axi_req_t  (smu_axi_xbar_pkg::axi_out_req_t),
-    .axi_resp_t (smu_axi_xbar_pkg::axi_out_resp_t),
-    .AddrWidth  (56)
-  ) u_axi_out_mem (
-    .clk_i      (clk_smu_i),
-    .rst_ni     (rst_cold_n_o),
-    .axi_req_i  (axi_out_mem_req[0]),
-    .axi_resp_o (axi_out_mem_resp[0])
+    .axi_resp_t (smu_axi_xbar_pkg::axi_out_resp_t)
+  ) u_axi_out_bridge (
+    .axi_req_i  (axi_out_cut_req),
+    .axi_resp_o (axi_out_cut_resp),
+    .axi_if     (u_axi_out_if)
   );
 
   logic [55:0] axi_out_aw_addr_q;
@@ -1127,7 +1125,7 @@ module smu_wrapper_uvm_top (
       end
 
       // Firmware console / PASS magic (SEP sep_outbound_mbx decode) — observe
-      // only; the terminator owns resp.
+      // only; the slave agent owns resp.
       if (axi_out_w_fire && axi_out_to_stdout) begin
         if (smu_axi_out_req.w.strb == 8'h01) begin
           fw_char_o       <= smu_axi_out_req.w.data[7:0];
@@ -1280,11 +1278,8 @@ module smu_wrapper_uvm_top (
     .fuse_reset_n_delayed_o,
     .skip_mem_repair_o (),
     .ext_boot_seq_done_i (1'b1),
-    .temp_interrupt_i (1'b0),
     .lc_state_o (lc_state),
     .lc_sigint_err_o (),
-    .ras_bank_chip_o (),
-    .ras_bank_instance_o (),
     .ndmreset_request_i ('0),
     .ndmreset_process_o (),
     .ext_mailbox_interrupts_o (ext_mailbox_interrupts),
@@ -1313,11 +1308,12 @@ module smu_wrapper_uvm_top (
     .mbist_pass_i (1'b1),
     .mbist_abort_i (1'b0),
 
-    .spi_irq_i (1'b0),
     .sep_cpu_trace_o (sep_cpu_trace),
     .sep_extintsrc_req_i ('0),
     .lcc_demote_state_1_o (),
     .lcc_demote_state_2_o (),
+    .sep_fuse_dft_disable_o (),
+    .smc_fuse_dft_disable_o (),
     .sep_fuse_sense_done_o,
     .clk_sep_wdt_i,
     .secure_tm_req_i (secure_tm_req),

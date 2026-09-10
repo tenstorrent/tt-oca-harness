@@ -112,7 +112,6 @@ WRITE_READBACK = [
     ("TIMEOUT_COUNT_DMA", 0x0BAD_C0DF),
     ("TIMEOUT_COUNT_SYS_IN", 0xCAFE_F00D),
     ("TIMEOUT_ENABLE", 0x0000_00FF),
-    ("RAS_BANK_INFO", 0x0000_00FF),
 ]
 
 # (name, value) — write-only (sw=w) registers: reading them returns non-OKAY, so

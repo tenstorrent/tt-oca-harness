@@ -69,7 +69,7 @@ name = "smc_uart_spi_log_engine_test"
 module = "smc_uart_spi_log_engine_test"
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "ci", "pyuvm"]
+tags = ["ci", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]

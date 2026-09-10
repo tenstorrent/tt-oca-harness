@@ -26,8 +26,10 @@ paths = ["{run_dir}", "hw/sys/smu/dv/build"]
 top_module = "smu_uvm_top"
 top_file = "hw/sys/smu/dv/tb/tb_top.sv"
 sources = [
-  # External SMN AXI boundary terminator.
-  "hw/sys/smu/dv/tb/smu_axi_out_sim_slave.sv",
+  # Outbound SMN boundary: the shared AXI VIP interface the slave agent binds
+  # and the bridge that places the crossbar's struct port on it.
+  "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_if.sv",
+  "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_struct_bridge.sv",
   # Flow-shared functional-coverage modules (cov/sv/): compiled in BOTH flows --
   # this list feeds the cocotb/Verilator filelist, and the
   # [frameworks.uvm.build] sources list (which replaces this one) repeats the
@@ -223,8 +225,8 @@ description = "SMU SV-UVM smoke flow (VCS)"
 # visible), then `top_file` last:
 #   ocah_lib manifest -> ocah_jtag_vip manifest -> ocah_axi_vip manifest
 #   (each: evidence base -> interface -> collateral -> UVM pkg)
-#   -> TB collateral -> the embedded DTP's bench layer (dtp_tb_if, the generated
-#      cross-trigger address map, dtp_env_pkg) -> smu_tb_if -> smu_env_pkg
+#   -> TB collateral -> the embedded DTP's bench layer (the DTP TB interfaces, the
+#      generated cross-trigger address map, dtp_env_pkg) -> smu_tb_if -> smu_env_pkg
 #   -> smu_seq_lib_pkg -> tb_top.sv
 # SMU integrates DTP, so the SMU bench checks the embedded DTP with the DTP bench's own
 # reference models, TAP checker, and scoreboard (dtp_env_pkg); the AXI VIP manifest is
@@ -248,19 +250,21 @@ incdirs = [
   "hw/sys/smu/dv/uvm/seq_lib",
   "hw/sys/smu/dv/uvm/tests",
 ]
-# This list REPLACES the cocotb [build].sources list, so the TB collateral both flows compile
-# (the outbound SMN terminator) is repeated here.
+# This list REPLACES the cocotb [build].sources list; the AXI VIP interface and
+# struct bridge arrive through the ocah_axi_vip manifest above, so only the
+# coverage modules are repeated here.
 sources = [
-  # TB collateral shared with the cocotb flow.
-  "hw/sys/smu/dv/tb/smu_axi_out_sim_slave.sv",
   # The same two functional-coverage modules the [build] sources list carries.
   "hw/sys/smu/dv/cov/sv/smu_boot_fcov.sv",
   "hw/sys/smu/dv/cov/sv/smu_xbar_fcov.sv",
-  # The embedded DTP's bench layer: its TB interface (the reference models and the TAP
-  # checker read the DTP observables through it), the generated cross-trigger port address
-  # map dtp_types reads (the Bender DUT layer carries only the regblock), and the DTP
+  # The embedded DTP's bench layer: its TB interfaces (the reference models and the TAP
+  # checker read the DTP observables through dtp_tb_if; dtp_env declares virtual handles of
+  # the scan and cross-trigger interfaces), the generated cross-trigger port address map
+  # dtp_types reads (the Bender DUT layer carries only the regblock), and the DTP
   # environment package.
   "hw/sys/dtp/dv/tb/dtp_tb_if.sv",
+  "hw/sys/dtp/dv/tb/dtp_scan_if.sv",
+  "hw/sys/dtp/dv/tb/dtp_xtrig_if.sv",
   "hw/ip/cross_trigger/cross_trigger_port/regs/gen/sv/cross_trigger_port_addrmap_pkg.sv",
   "hw/sys/dtp/dv/uvm/env/dtp_env_pkg.sv",
   # The SMU bench.

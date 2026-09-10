@@ -605,8 +605,8 @@ replace those interfaces with AMBA versions.
 
 Every `hw/ip/<ip>/` and `hw/sys/<sys>/` component follows the same directory
 template, detailed in
-xref:ocah-contributing:ROOT:guidelines.adoc#component-directory-organization[the
-Contributing Guide].
+xref:ocah-starting:ROOT:guidelines.adoc#component-directory-organization[the
+Getting Started Guide].
 
 === SystemVerilog Coding Guidelines
 
@@ -676,6 +676,3 @@ JSON.
 
 As described earlier, memory maps and CSRs we will be declared in
 SystemRDL.
-
-
-

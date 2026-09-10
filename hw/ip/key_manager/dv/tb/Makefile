@@ -196,15 +196,35 @@ $(SIM_BUILD): $(TB_FILELIST)
 #===========================================================================
 # Firmware images (built by the shared open DV firmware dispatcher)
 #===========================================================================
-# Firmware is compiled in the toolchain container, the same way the SMC/SEP cgen
-# stages build theirs, so the images do not depend on whichever RISC-V toolchain a
-# simulation host happens to carry. `run-here` keeps host paths 1:1 so the
-# absolute `-C $(OCH_ROOT)` resolves inside the sandbox, and `make` is left bare
-# so it binds to the sandbox's own make. Set FW_DISPATCH_RUNNER empty to compile
-# with the toolchain on PATH instead.
-FW_DISPATCH_RUNNER ?= $(OCH_ROOT)/scripts/docker-run.sh run-here
-FW_DISPATCH := $(if $(strip $(FW_DISPATCH_RUNNER)),$(FW_DISPATCH_RUNNER) make,$(MAKE))
-FW_DISPATCH += -C $(OCH_ROOT) -f ocah.mk ocah-dv-fw-tests OCAH_ROOT=$(OCH_ROOT) TARGET=key_manager
+# Toolchain resolution mirrors the SMC/SEP cgen stages (see
+# hw/sys/sep/dv/sep_sim_cfg.toml's [c_build] blocks): an explicit
+# RISCV_TOOLCHAIN wins outright, since that is the one contract that lets a
+# toolchain off the standard PATH be used (hw/common/dv/fw/compile.mk).
+# Otherwise probe whatever `riscv64-unknown-elf-gcc`/`riscv-none-elf-gcc` is
+# on PATH for picolibc.specs -- compile.mk always builds with
+# --specs=picolibc.specs, and a stock or site RISC-V toolchain rarely ships
+# it. Only fall back to the toolchain container when neither resolves, so a
+# host with a working toolchain never touches Docker/Podman.
+FW_DISPATCH_MK := -C $(OCH_ROOT) -f ocah.mk ocah-dv-fw-tests OCAH_ROOT=$(OCH_ROOT) TARGET=key_manager
+define ocah_km_fw_dispatch
+set -e; \
+RV_TC="$(RISCV_TOOLCHAIN)"; RV_PFX="$(RISCV_PREFIX)"; \
+if [ -n "$$RV_TC" ] && [ -z "$$RV_PFX" ]; then \
+	if [ -x "$$RV_TC/riscv64-unknown-elf-gcc" ]; then RV_PFX=riscv64-unknown-elf-; \
+	elif [ -x "$$RV_TC/riscv-none-elf-gcc" ]; then RV_PFX=riscv-none-elf-; \
+	else RV_PFX=riscv64-unknown-elf-; fi; \
+fi; \
+if [ -z "$$RV_PFX" ]; then RV_PFX=riscv64-unknown-elf-; fi; \
+if [ -n "$$RV_TC" ]; then GCC="$$RV_TC/$$RV_PFX"gcc; else GCC="$$RV_PFX"gcc; fi; \
+if command -v "$$GCC" >/dev/null 2>&1 && "$$GCC" -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then \
+	$(MAKE) $(FW_DISPATCH_MK) RISCV_TOOLCHAIN="$$RV_TC" RISCV_PREFIX="$$RV_PFX" $(1); \
+elif [ -x $(OCH_ROOT)/scripts/docker-run.sh ]; then \
+	echo "[build_fw] no picolibc-enabled RISC-V toolchain found ('$$GCC'); building key_manager firmware in the OCAH toolchain container"; \
+	env -u RISCV_TOOLCHAIN -u RISCV_PREFIX $(OCH_ROOT)/scripts/docker-run.sh run-here $(MAKE) $(FW_DISPATCH_MK) $(1); \
+else \
+	echo "error: no picolibc-enabled RISC-V toolchain and no scripts/docker-run.sh" >&2; exit 1; \
+fi
+endef
 
 # Map cocotb test name to firmware name for the built-in named tests.
 ifeq ($(TEST),test_rom_interface)
@@ -253,13 +273,13 @@ ifndef FW_TEST
 	$(error FW_TEST is not set. Usage: make build_fw FW_TEST=<test_name>)
 endif
 	@echo "Building firmware via open dispatcher: $(FW_TEST)"
-	@$(FW_DISPATCH) TEST=$(FW_TEST)
+	@$(call ocah_km_fw_dispatch,TEST=$(FW_TEST))
 
 # Build all discovered firmware images via the open dispatcher.
 .PHONY: build_all_fw
 build_all_fw:
 	@echo "Building all key_manager firmware via open dispatcher..."
-	@$(FW_DISPATCH)
+	@$(call ocah_km_fw_dispatch,)
 
 .PHONY: run
 run: $(TB_FILELIST) | $(TEST_LOG_DIR)
@@ -377,6 +397,8 @@ help:
 	@echo "Common variables:"
 	@echo "  TEST=<name>        - Cocotb test selector (default: test_rom_interface)"
 	@echo "  FW_TEST=<name>     - Firmware test to build/run with generic runner"
+	@echo "  RISCV_TOOLCHAIN=<dir> - Toolchain dir (riscv64-unknown-elf-* tools); falls"
+	@echo "                     back to PATH, then the toolchain container"
 	@echo "  WAVES=1 FSDB=1     - Waveform dumping (VCD default; FSDB optional)"
 	@echo "  DEBUG=1            - Broader VCS debug access"
 	@echo "  VUART_PRINT=1      - Enable VUART printf output"

@@ -16,6 +16,10 @@
 localparam int unsigned SmcSepInAddrWidth = 56;
 localparam int unsigned SmcSepInDataWidth = 64;
 localparam int unsigned SmcSepInIdWidth = 6;
+// SYS_OUT AXI4 egress geometry (smc_pkg smc_sys_out_56_64_8_12_axi_*).
+localparam int unsigned SmcSysOutAddrWidth = 56;
+localparam int unsigned SmcSysOutDataWidth = 64;
+localparam int unsigned SmcSysOutIdWidth = 8;
 localparam int unsigned SmcSepInBeatBytes = SmcSepInDataWidth / 8;
 
 // Every SMC CSR is a 32-bit register reached with a narrow single-beat
