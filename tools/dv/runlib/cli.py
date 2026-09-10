@@ -18,6 +18,7 @@ import sys
 import textwrap
 import threading
 import time
+import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed, wait
 from datetime import datetime
 from pathlib import Path
@@ -30,6 +31,7 @@ from .config import (
     OverlayFrameworkMismatch,
     as_str_list,
     cocotb_cfg,
+    coverage_cfg,
     default_target_name,
     flow_stages,
     load_executors,
@@ -44,6 +46,16 @@ from .config import (
     validate_native_config_shape,
     validate_run_mode_request,
 )
+from .coverage import CoverageError, artifact_ready, json_text, load_manifest, write_json_text
+from .coverage_closure import (
+    coverage_fail_under,
+    coverage_merged_name,
+    coverage_parser_name,
+    coverage_run_paths,
+    grade_coverage_run,
+    parse_coverage_run,
+)
+from .coverage_policy import load_coverage_policy
 from .duts import load_duts, resolve_dut
 from .junit import materialize_stage_junit
 from .logparse import validate_parser_extensions, validate_parser_registry
@@ -51,6 +63,7 @@ from .models import ConfigError, Flow, StageResult, TestCatalog
 from .paths import configs_root, dut_runs_root, repo_path, repo_rel, repo_root
 from .results import (
     aggregate_status,
+    coverage_summary,
     exit_code_for_status,
     fragment_payload,
     git_info,
@@ -65,6 +78,7 @@ from .stages import (
     item_artifact_dir,
     request_stage_cancellation,
     reset_stage_cancellation,
+    resolve_coverage_policy,
     run_stage,
     seed_for_item,
 )
@@ -82,6 +96,7 @@ REGRESSION_SEED_MAX = 2_147_483_647
 SUPPORTED_PYTHON_MIN = (3, 11)
 SUPPORTED_PYTHON_MAX_EXCLUSIVE = (3, 14)
 _COVERAGE_STAGES = {"cov_merge", "cov_report"}
+_WAIVE_REGRADEABLE_BUCKETS = {"coverage_threshold", "config_error"}
 # --doctor import probe: modules per child interpreter, and the seconds each child
 # has before it is killed. OCAH_DOCTOR_PROBE_TIMEOUT replaces the default budget.
 DOCTOR_PROBE_BATCH_SIZE = 20
@@ -405,6 +420,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         metavar="PCT",
         help="Coverage report threshold override",
     )
+    coverage.add_argument(
+        "--waive",
+        nargs="?",
+        const="",
+        default=None,
+        metavar="FILE",
+        help=(
+            "Re-grade the finished run in --run-dir against the DUT's coverage policy, or "
+            "against FILE (a relative FILE resolves against the repository root); no simulator "
+            "or report tool runs"
+        ),
+    )
 
     backend = parser.add_argument_group("Backend Pass-Through Args")
     backend.add_argument(
@@ -466,42 +493,56 @@ def _flag_was_set(args: argparse.Namespace, name: str) -> bool:
     return value is not None
 
 
+_SIM_ONLY_FLAGS = {
+    "seed": "--seed",
+    "reseed": "--reseed",
+    "retry": "--retry",
+    "max_failures": "--max-failures",
+    "run_mode": "--run-mode",
+    "target": "--target",
+    "waves": "--waves",
+    "waves_on_fail": "--waves-on-fail",
+    "wave_start": "--wave-start",
+    "wave_end": "--wave-end",
+    "wave_window": "--wave-window",
+    "wave_margin": "--wave-margin",
+    "wave_retention": "--wave-retention",
+    "cov": "--cov",
+    "fail_under": "--fail-under",
+    "waive": "--waive",
+    "rebuild": "--rebuild",
+    "define": "--define",
+    "comp_arg": "--comp-arg",
+    "c_arg": "--c-arg",
+    "sim_arg": "--sim-arg",
+    "plusarg": "--plusarg",
+    "regress": "--regress",
+}
+_FORMAL_ONLY_FLAGS = {
+    "proof_depth": "--proof-depth",
+    "formal_arg": "--formal-arg",
+    "app": "--app",
+}
+# Options a --waive re-grade accepts besides --dut, --run-dir, --tool, --framework,
+# --overlay, --verbose and --quiet.
+_WAIVE_COMPANIONS = {"fail_under", "waive"}
+_WAIVE_SELECTION_FLAGS = {
+    "stage": "--stage",
+    "items": "--items",
+    "tag": "--tag",
+    "build_only": "--build-only",
+    "run_only": "--run-only",
+    "dry_run": "--dry-run",
+}
+
+
 def validate_mode_options(args: argparse.Namespace) -> None:
-    sim_only = {
-        "seed": "--seed",
-        "reseed": "--reseed",
-        "retry": "--retry",
-        "max_failures": "--max-failures",
-        "run_mode": "--run-mode",
-        "target": "--target",
-        "waves": "--waves",
-        "waves_on_fail": "--waves-on-fail",
-        "wave_start": "--wave-start",
-        "wave_end": "--wave-end",
-        "wave_window": "--wave-window",
-        "wave_margin": "--wave-margin",
-        "wave_retention": "--wave-retention",
-        "cov": "--cov",
-        "fail_under": "--fail-under",
-        "rebuild": "--rebuild",
-        "define": "--define",
-        "comp_arg": "--comp-arg",
-        "c_arg": "--c-arg",
-        "sim_arg": "--sim-arg",
-        "plusarg": "--plusarg",
-        "regress": "--regress",
-    }
-    formal_only = {
-        "proof_depth": "--proof-depth",
-        "formal_arg": "--formal-arg",
-        "app": "--app",
-    }
     if args.mode == "formal":
-        for attr, flag in sim_only.items():
+        for attr, flag in _SIM_ONLY_FLAGS.items():
             if _flag_was_set(args, attr):
                 raise ConfigError(f"{flag} is simulation-only; selected mode is formal")
     else:
-        for attr, flag in formal_only.items():
+        for attr, flag in _FORMAL_ONLY_FLAGS.items():
             if _flag_was_set(args, attr):
                 raise ConfigError(f"{flag} is formal-only; selected mode is sim")
     if args.sim_jobs < 1:
@@ -1410,6 +1451,18 @@ def _status_from_values(values: list[str]) -> str:
     return "ERROR"
 
 
+def _replay_status(existing: dict[str, Any], stages: list[dict[str, Any]]) -> str:
+    """Run status over `stages`; an unfinished or interrupted run keeps its recorded status."""
+
+    status_values = [str(stage.get("status", "UNKNOWN")) for stage in stages]
+    progress = existing.get("progress")
+    if (isinstance(progress, dict) and progress.get("state") != "final") or existing.get(
+        "interruption"
+    ):
+        status_values.append(str(existing.get("status", "UNKNOWN")))
+    return _status_from_values(status_values)
+
+
 def _merge_coverage_replay_result(
     existing: dict[str, Any],
     current: dict[str, Any],
@@ -1424,13 +1477,7 @@ def _merge_coverage_replay_result(
     ]
     new_stages = [stage for stage in current.get("stages", []) if isinstance(stage, dict)]
     stages = [*old_stages, *new_stages]
-    status_values = [str(stage.get("status", "UNKNOWN")) for stage in stages]
-    progress = existing.get("progress")
-    if (isinstance(progress, dict) and progress.get("state") != "final") or existing.get(
-        "interruption"
-    ):
-        status_values.append(str(existing.get("status", "UNKNOWN")))
-    status = _status_from_values(status_values)
+    status = _replay_status(existing, stages)
     payload.update(
         {
             "status": status,
@@ -1484,6 +1531,296 @@ def _update_regression_coverage(
             if value:
                 artifacts[f"coverage_{key}"] = value
     write_result(path, payload)
+
+
+def validate_waive_options(args: argparse.Namespace) -> None:
+    run_flags = {**_SIM_ONLY_FLAGS, **_FORMAL_ONLY_FLAGS, **_WAIVE_SELECTION_FLAGS}
+    for attr, flag in run_flags.items():
+        if attr not in _WAIVE_COMPANIONS and _flag_was_set(args, attr):
+            raise ConfigError(f"{flag} cannot be combined with --waive")
+    if not args.run_dir:
+        raise ConfigError("--waive requires --run-dir naming the finished run")
+
+
+def _waive_recorded_run(
+    root: Path,
+    args: argparse.Namespace,
+) -> tuple[Path, dict[str, Any], str, str | None]:
+    """Read the finished run's result.json and reconcile it with --dut/--tool/--framework."""
+
+    validate_waive_options(args)
+    run_dir = Path(args.run_dir).expanduser()
+    if not run_dir.is_absolute():
+        run_dir = root / run_dir
+    result_path = run_dir / "result.json"
+    existing = _read_json_object(result_path)
+    if existing is None:
+        raise ConfigError(f"--waive requires an existing result.json: {result_path}")
+    if existing.get("flow") != args.dut:
+        raise ConfigError(f"{result_path}: flow is `{existing.get('flow')}`, expected `{args.dut}`")
+    tool = existing.get("tool")
+    if not isinstance(tool, str) or not tool:
+        raise ConfigError(f"{result_path}: missing original tool")
+    if args.tool and args.tool != tool:
+        raise ConfigError(f"requested tool `{args.tool}` does not match the run's tool `{tool}`")
+    recorded_framework = existing.get("framework")
+    framework = (
+        recorded_framework if isinstance(recorded_framework, str) and recorded_framework else None
+    )
+    if args.framework and framework and args.framework != framework:
+        raise ConfigError(
+            f"requested framework `{args.framework}` does not match the run's framework "
+            f"`{framework}`"
+        )
+    return run_dir, existing, tool, args.framework or framework
+
+
+def _waive_report_record(
+    stages: list[dict[str, Any]],
+    raw_details: Path,
+    result_path: Path,
+    run_dir_arg: str,
+) -> dict[str, Any]:
+    """The cov_report record of a run whose report completed and parsed."""
+
+    hint = (
+        "run has no completed coverage report; "
+        f"rerun with --run-dir {run_dir_arg} --stage cov_report"
+    )
+    records = [stage for stage in stages if stage.get("name") == "cov_report"]
+    if not records:
+        raise ConfigError(f"{result_path}: {hint}")
+    record = records[-1]
+    if record.get("status") != "PASS":
+        kinds = {
+            str(bucket.get("kind"))
+            for bucket in record.get("failure_buckets") or []
+            if isinstance(bucket, dict)
+        }
+        if not kinds <= _WAIVE_REGRADEABLE_BUCKETS:
+            raise ConfigError(f"{result_path}: {hint}")
+    if not raw_details.is_file():
+        raise ConfigError(f"{raw_details}: {hint}")
+    return record
+
+
+def _waive_tool_version(summary: dict[str, Any], manifest: dict[str, Any], tool: str) -> str:
+    versions = summary.get("tool_versions")
+    if isinstance(versions, dict) and isinstance(versions.get(tool), str):
+        return versions[tool]
+    recorded = manifest.get("tool_version")
+    return recorded if isinstance(recorded, str) else "unknown"
+
+
+def _waive_log_path(run_dir: Path, existing: dict[str, Any], record: dict[str, Any]) -> Path | None:
+    """The cov_report stage log under `run_dir`, rebased from the recorded run dir."""
+
+    recorded_log = record.get("log")
+    recorded_run_dir = existing.get("run_dir")
+    if not isinstance(recorded_log, str) or not isinstance(recorded_run_dir, str):
+        return None
+    try:
+        tail = Path(recorded_log).relative_to(recorded_run_dir)
+    except ValueError:
+        return None
+    candidate = run_dir / tail
+    return candidate if candidate.is_file() else None
+
+
+def waive_run(
+    *,
+    root: Path,
+    flow: Flow,
+    tool: str,
+    simulators: dict[str, Any],
+    existing: dict[str, Any],
+    run_dir: Path,
+    args: argparse.Namespace,
+) -> int:
+    """Re-grade the finished run at `run_dir` against a coverage policy.
+
+    Inputs come from the run tree and the policy; the tool version, supported
+    metrics and compatibility threshold are the recorded ones. Nothing is written
+    until the policy has applied; then the five coverage files, the cov_report
+    record, the run status and regression.json follow the new grade.
+    """
+
+    if tool not in flow.tools:
+        raise ConfigError(f"tool `{tool}` is not allowed for flow `{flow.name}`")
+    sim_cfg = merge_simulator_defaults(load_sim_cfg(flow, root), simulators, flow.tools)
+    cov = coverage_cfg(sim_cfg)
+    tool_cov = cov.get(tool, {}) if isinstance(cov.get(tool, {}), dict) else {}
+    if not tool_cov:
+        raise ConfigError(f"no coverage configuration is available for tool `{tool}`")
+    paths = coverage_run_paths(run_dir, coverage_merged_name(tool, tool_cov))
+    result_path = run_dir / "result.json"
+    stages = [stage for stage in existing.get("stages", []) if isinstance(stage, dict)]
+    record = _waive_report_record(stages, paths.raw_details, result_path, str(args.run_dir))
+    manifest = load_manifest(paths.manifest)
+    if manifest.get("dut") != flow.name or manifest.get("tool") != tool:
+        raise CoverageError(f"{paths.manifest}: coverage manifest DUT/tool does not match the run")
+    if not artifact_ready(paths.merged):
+        raise CoverageError(f"merged coverage database is missing or empty: {paths.merged}")
+    if not paths.report_dir.is_dir():
+        raise CoverageError(f"coverage report directory is missing: {paths.report_dir}")
+    if args.waive:
+        policy_path = repo_path(root, args.waive)
+        if not policy_path.is_file():
+            raise ConfigError(f"coverage policy does not exist: {policy_path}")
+        policy = load_coverage_policy(policy_path, expected_dut=flow.name)
+    else:
+        policy = resolve_coverage_policy(flow, root, tool, tool_cov)
+        if policy is None:
+            raise ConfigError(
+                f"dut `{flow.name}` has no coverage policy for tool `{tool}`; pass --waive FILE"
+            )
+    summary = _read_json_object(paths.summary) or {}
+    threshold = args.fail_under
+    if threshold is None:
+        recorded = summary.get("threshold")
+        if isinstance(recorded, (int, float)) and not isinstance(recorded, bool):
+            threshold = float(recorded)
+    if threshold is None:
+        threshold = coverage_fail_under(tool, tool_cov)
+    threshold = threshold if threshold is not None else 0.0
+    declared = manifest.get("supported_metrics")
+    supported_metrics = (
+        [metric for metric in declared if isinstance(metric, str)]
+        if isinstance(declared, list)
+        else []
+    )
+    parsed = parse_coverage_run(
+        parser=coverage_parser_name(tool_cov),
+        dut=flow.name,
+        tool=tool,
+        manifest=manifest,
+        merged=paths.merged,
+        report_dir=paths.report_dir,
+        log_path=_waive_log_path(run_dir, existing, record),
+    )
+    raw_text = json_text(parsed.details.to_dict())
+    grade = grade_coverage_run(
+        parsed=parsed,
+        manifest=manifest,
+        dut=flow.name,
+        root=root,
+        tool=tool,
+        tool_cov=tool_cov,
+        run_dir=run_dir,
+        policy=policy,
+        threshold=threshold,
+        tool_version=_waive_tool_version(summary, manifest, tool),
+        supported_metrics=supported_metrics,
+    )
+    write_json_text(paths.raw_details, raw_text)
+
+    reason = (
+        "process completed successfully" if grade.threshold_met else "coverage threshold not met"
+    )
+    buckets: list[dict[str, Any]] = []
+    if not grade.threshold_met:
+        buckets.append(
+            {
+                "kind": "coverage_threshold",
+                "signature": reason,
+                "count": 1,
+                "examples": [record["log"]] if isinstance(record.get("log"), str) else [],
+            }
+        )
+    artifacts = dict(record.get("artifacts") or {})
+    artifacts.update(
+        {
+            "coverage_report": repo_rel(root, paths.report_dir),
+            "coverage_summary": repo_rel(root, paths.summary),
+            "coverage_details": repo_rel(root, paths.details),
+            "coverage_details_raw": repo_rel(root, paths.raw_details),
+            "coverage_policy_application": repo_rel(root, paths.application),
+        }
+    )
+    graded = {
+        **record,
+        "status": grade.status,
+        "return_code": 0 if grade.threshold_met else 1,
+        "reason": reason,
+        "failure_buckets": buckets,
+        "artifacts": artifacts,
+    }
+    new_stages = [graded if stage is record else stage for stage in stages]
+    cov_results = [
+        StageResult(
+            stage=str(stage.get("name")),
+            item=stage.get("item") if isinstance(stage.get("item"), str) else None,
+            status=str(stage.get("status", "UNKNOWN")),
+            return_code=int(stage.get("return_code") or 0),
+            duration_sec=float(stage.get("duration_sec") or 0.0),
+            started_at=str(stage.get("started_at", "")),
+            ended_at=str(stage.get("ended_at", "")),
+        )
+        for stage in new_stages
+        if stage.get("name") in _COVERAGE_STAGES
+    ]
+    coverage = coverage_summary(cov_results, run_dir, root, True)
+    run_status = _replay_status(existing, new_stages)
+    payload = dict(existing)
+    payload.update(
+        {
+            "status": run_status,
+            "exit_code": exit_code_for_status(run_status),
+            "coverage": coverage,
+            "stages": new_stages,
+        }
+    )
+    write_result(result_path, payload)
+    _update_regression_coverage(run_dir, coverage, run_status)
+
+    console = Console(args.ui, quiet=args.quiet, verbose=args.verbose)
+    console.event(
+        "result",
+        (
+            f"coverage={grade.status} status={run_status} "
+            f"run_dir={repo_rel(root, run_dir)} json={repo_rel(root, result_path)}"
+        ),
+        force=True,
+    )
+    console.close()
+    return 0 if grade.threshold_met else 1
+
+
+def cmd_waive(
+    root: Path,
+    simulators: dict[str, Any],
+    policies: dict[str, Any],
+    executors: dict[str, Any],
+    args: argparse.Namespace,
+) -> int:
+    """`--waive`: exit 0 when the re-graded coverage meets its thresholds, 1 when it does
+    not, 2 when nothing was written."""
+
+    try:
+        run_dir, existing, tool, framework = _waive_recorded_run(root, args)
+        flow = resolve_dut(
+            root,
+            args.dut,
+            mode=args.mode,
+            framework=framework,
+            adopter_overlay=adopter_overlay_path(args),
+        )
+        validate_flow(flow, root, simulators, policies, executors)
+        return waive_run(
+            root=root,
+            flow=flow,
+            tool=tool,
+            simulators=simulators,
+            existing=existing,
+            run_dir=run_dir,
+            args=args,
+        )
+    except (ConfigError, CoverageError) as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
+    except Exception:  # noqa: BLE001
+        traceback.print_exc()
+        return 2
 
 
 def selected_executor(flow: Flow, args: argparse.Namespace) -> str:
@@ -2852,6 +3189,8 @@ def main(argv: list[str] | None = None) -> int:
             )
         if args.dut not in duts:
             raise ConfigError(f"unknown DUT `{args.dut}`")
+        if args.waive is not None:
+            return cmd_waive(root, simulators, policies, executors, args)
         flow = resolve_dut(
             root,
             args.dut,
