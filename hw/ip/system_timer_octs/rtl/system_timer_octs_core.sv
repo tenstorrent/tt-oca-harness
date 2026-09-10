@@ -141,10 +141,10 @@ module system_timer_octs_core
         .DATA_WIDTH(64),
         .NUM_CHUNKS(2)
     ) u_adder_timer_inc (
-        .a    (timer_count_q),
-        .b    (64'h1),
-        .sum  (timer_count_plus_one),
-        .cout ()  // unused
+        .a_i    (timer_count_q),
+        .b_i    (64'h1),
+        .sum_o  (timer_count_plus_one),
+        .cout_o ()  // unused
     );
 
     // Carry-select adder for expected_count + credit_val (SECONDARY mode)
@@ -152,10 +152,10 @@ module system_timer_octs_core
         .DATA_WIDTH(64),
         .NUM_CHUNKS(2)
     ) u_adder_expected_credit (
-        .a    (expected_count_q),
-        .b    ({56'h0, reg_credit_val_i}),
-        .sum  (expected_count_plus_credit),
-        .cout ()  // unused
+        .a_i    (expected_count_q),
+        .b_i    ({56'h0, reg_credit_val_i}),
+        .sum_o  (expected_count_plus_credit),
+        .cout_o ()  // unused
     );
 
     // Carry-select adder for timer_count + step (SECONDARY mode)
@@ -163,10 +163,10 @@ module system_timer_octs_core
         .DATA_WIDTH(64),
         .NUM_CHUNKS(2)
     ) u_adder_timer_step (
-        .a    (timer_count_q),
-        .b    ({56'h0, timer_cnt_step_i}),
-        .sum  (timer_count_plus_step),
-        .cout ()  // unused
+        .a_i    (timer_count_q),
+        .b_i    ({56'h0, timer_cnt_step_i}),
+        .sum_o  (timer_count_plus_step),
+        .cout_o ()  // unused
     );
 
     //////////////////////////////
