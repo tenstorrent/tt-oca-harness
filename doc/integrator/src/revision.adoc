@@ -46,4 +46,7 @@ the `OCAH_DEBUG_LIVE` and `ASSERTS_OVERRIDE_ON` names it derives.
 simulation hooks, CPU cluster initialization macros and i3c-core
 configuration, the shared-cell defines to leave unset, and the
 `+cdc_instrumentation_enabled` plusarg.
+|0.0.13 |2026-09-28 |Ben Melton |Documented the SEP defines: the Adams Bridge
+block-selection defines, the VeeR EL2 snapshot configuration, SEP view checks,
+and the SEP DV testbench names.
 |=======================================================================
