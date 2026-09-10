@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -75,6 +76,33 @@ _DEFAULT_EFUSE_PRELOAD = (
 _STALL_CSR_TIMEOUT_NS = 50_000
 
 
+class _EvidenceFilter(logging.Filter):
+    """Collect the named evidence a test emits, by watching its own log.
+
+    Tests already report each graded contract as ``CHK-<ID> PASS``. Reading the
+    records as they pass keeps that the single source of the ID -- a separate
+    call to register the check could drift from the line the log actually
+    carries, and then the summary would describe a check nobody ran.
+
+    Never filters: every record is returned unchanged.
+    """
+
+    _CHK = re.compile(r"\b(CHK-[A-Z0-9_-]+)\b\s*(?:\([^)]*\)\s*)?(PASS|OK)\b")
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.seen: set[str] = set()
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        try:
+            message = record.getMessage()
+        except Exception:  # a broken format string is the caller's failure, not ours
+            return True
+        for check_id, _status in self._CHK.findall(message):
+            self.seen.add(check_id)
+        return True
+
+
 class sep_base_test(uvm_test):
     """Shared SEP test: env build, clock/reset bring-up, scenario hook."""
 
@@ -92,6 +120,22 @@ class sep_base_test(uvm_test):
     # concludes it passed. Flipping it for firmware that never writes
     # cold_scratch[0] does not fail loudly -- the test never completes.
     verdict_source = "mailbox"
+
+    # Evidence gate. A clean exit is not a pass: a test whose stimulus stopped
+    # reaching the DUT compares nothing, asserts nothing, and returns normally.
+    # Every leaf reports its graded contracts as `CHK-<ID> PASS`, so the base
+    # class counts what this run actually emitted and fails a silent one.
+    #
+    #   required_evidence -- IDs this test must emit. Missing any one fails.
+    #   min_evidence      -- fewest distinct IDs to accept. 0 means "at least
+    #                        one", which is the floor applied to every test.
+    #
+    # Both default to off because a per-test count is a contract of its own: a
+    # wrong number here fails a healthy test, so it is stated by the test that
+    # owns it rather than guessed centrally. The floor needs no declaration --
+    # no SEP leaf legitimately grades nothing.
+    required_evidence: tuple[str, ...] = ()
+    min_evidence = 0
 
     @staticmethod
     def random_seed() -> int:
@@ -139,6 +183,9 @@ class sep_base_test(uvm_test):
             pass
 
     def build_phase(self) -> None:
+        # Installed before anything can log, so no evidence predates the filter.
+        self._evidence = _EvidenceFilter()
+        self.logger.addFilter(self._evidence)
         self.cfg = SepEnvCfg("cfg")
         self._efuse_compare_image: SepEfuseImage | None = None
         self.cfg.randomize_timing(self.random_seed())
@@ -1135,8 +1182,41 @@ class sep_base_test(uvm_test):
             os.environ.get("SEP_DV_RUN_DIR") or os.getcwd(),
         )
 
+    def _finalize_evidence(self) -> None:
+        """Fail a run that finished without producing the evidence it owes.
+
+        Runs only after run_scenario() returns normally. A test that already
+        failed raised, and this must not turn that into a different complaint.
+        """
+        seen = sorted(getattr(self, "_evidence", _EvidenceFilter()).seen)
+        required = tuple(self.required_evidence)
+        missing = [check_id for check_id in required if check_id not in seen]
+        floor = max(self.min_evidence, 1)
+
+        self.logger.info(
+            "EVIDENCE_SUMMARY test=%s observed=%d required=%d missing=%d ids=%s",
+            self.get_name(),
+            len(seen),
+            len(required),
+            len(missing),
+            ",".join(seen) or "-",
+        )
+
+        problems: list[str] = []
+        if len(seen) < floor:
+            problems.append(f"{len(seen)} distinct CHK-* PASS records, expected at least {floor}")
+        if missing:
+            problems.append("never emitted: " + ", ".join(missing))
+        if problems:
+            raise AssertionError(
+                f"EVIDENCE FAIL {self.get_name()}: "
+                + "; ".join(problems)
+                + " -- the run exited cleanly without grading what it claims to grade"
+            )
+
     async def run_phase(self) -> None:
         self.raise_objection()
         self._log_run_identity()
         await self.run_scenario()
+        self._finalize_evidence()
         self.drop_objection()

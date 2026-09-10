@@ -69,12 +69,22 @@ The nightly command for the `all` group (every test this VPLAN grades:
 `cpu_stub` + `cpu`), one fresh seed per leaf:
 
 ```bash
-python3 tools/dv/run_dv.py --dut sep --items all --stage sim --regress
+# No --stage: builds the filelist, the firmware and the model, then regresses.
+#
+# Pass both job counts. --sim-jobs defaults to 1 and --build-jobs inherits it:
+# the bare command takes about ten hours, against seventy minutes measured at
+# --sim-jobs 8. The values below suit a 32-core host -- check `nproc` and stay
+# under it (on four cores, --build-jobs 3).
+#
+# Fan-out is per runtime class: no_cpu wide, firmware and VCS at 8, because the
+# threaded VeeR EL2 model can stall near reset.
+python3 tools/dv/run_dv.py --dut sep --items all --regress \
+  --sim-jobs 8 --build-jobs 24
 ```
 
 `all` includes firmware-boot tests, so a picolibc-enabled RISC-V GCC (or
-`scripts/docker-run.sh`) must be available and `--stage c_compile` must have
-produced the images (see [Prerequisites](#prerequisites)). Hosted GitHub nightly
+`scripts/docker-run.sh`) must be available -- the `c_compile` stage above builds
+the images with it (see [Prerequisites](#prerequisites)). Hosted GitHub nightly
 (`.github/workflows/regress.yml`) runs `--items cpu_stub` instead, because those
 runners have no RISC-V toolchain.
 
@@ -83,11 +93,14 @@ owner and is not a member of `all`:
 
 ```bash
 python3 tools/dv/run_dv.py --dut sep --items cpu_stub --regress \
-  --tool verilator --stage flist --stage hdl_compile --stage sim
+  --tool verilator --stage flist --stage hdl_compile --stage sim \
+  --sim-jobs 24 --build-jobs 24
 python3 tools/dv/run_dv.py --dut sep --items cpu --regress \
-  --tool verilator --stage flist --stage c_compile --stage hdl_compile --stage sim
+  --tool verilator --stage flist --stage c_compile --stage hdl_compile --stage sim \
+  --sim-jobs 8 --build-jobs 24
 python3 tools/dv/run_dv.py --dut sep --items rom_fw --regress \
-  --tool verilator --stage flist --stage c_compile --stage hdl_compile --stage sim
+  --tool verilator --stage flist --stage c_compile --stage hdl_compile --stage sim \
+  --sim-jobs 8 --build-jobs 24
 ```
 
 Add `--stage c_compile` to `cpu_stub` when KM `rom_main` images are stale.
@@ -166,9 +179,14 @@ one elaboration. Edit `cov/config/vcs/sep_cov_scope.hier` then `--rebuild`.
 
 What the resulting number is not:
 
-* **Not functional coverage.** These are code metrics only. No SV covergroups
-  exist in the cocotb env, so "did we exercise the interesting scenarios" stays
-  with [`docs/SEP_VPLAN.adoc`](docs/SEP_VPLAN.adoc).
+* **Not functional coverage.** These are code metrics only. Phase 1 functional
+  coverage is a separate number: the URG **Group** report on
+  `sep_uvm_top.u_sep_fcov` (`cov/sv/sep_fcov.sv`, VCS only -- Verilator does not
+  compile `covergroup`), planned in
+  [`docs/SEP_FCOV.adoc`](docs/SEP_FCOV.adoc). A covergroup bin records that an
+  interface event happened, never that it was correct, so "did the DUT do the
+  right thing" stays with the checkers in
+  [`docs/SEP_VPLAN.adoc`](docs/SEP_VPLAN.adoc).
 * **The DUT minus the CPU, not the whole DUT.** `cov/config/vcs/sep_cov_scope.hier`
   excludes the testbench top, the outbound mailbox, the AXI SVA module and the
   CPU subtree at compile time, across both code and
@@ -312,7 +330,7 @@ analog), `.gitignore` (SEP-local generated products), `sep_public_scope.vlt`
 hw/sys/sep/dv/
 ├── cocotb/              # PyUVM env, sequences, tests; dv_sim_prestage.py
 ├── uvm/                 # SV-UVM realization (`--framework uvm`, VCS)
-├── cov/                 # VCS code-coverage scope (`cov/config/vcs/`); `cov/sv/` is empty this revision
+├── cov/                 # VCS code-coverage scope (`cov/config/vcs/`) and the Phase 1 FCOV sampler (`cov/sv/sep_fcov.sv`, VCS only)
 ├── docs/                # TB architecture, VPLAN, FCOV
 ├── fw/                  # DV firmware (`fw.mk` / `c_compile`)
 ├── tb/                  # sep_uvm_top, mailbox, preload images

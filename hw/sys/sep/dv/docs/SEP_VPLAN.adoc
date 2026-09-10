@@ -133,7 +133,8 @@ appears.
 |Multi-scenario / RAND-REP |One leaf test walks every required discrete cell in one invocation; do not silently ship a one-point stand-in for a matrix
 |Open-source files |PyUVM test under `cocotb/tests/`, stimulus in `cocotb/seq_lib/`, shared helpers on `sep_base_test` / `cocotb/env/`
 |Testlist enrollment |Leaf entry in the owning `testlists/*.toml` and in `testlists/all.toml`
-|Evidence |Every checker needs a positive log line naming the contract
+|Evidence |Every checker needs a positive log line naming the contract, as `CHK-<ID> PASS`
+|Evidence gate |`sep_base_test` counts the distinct `CHK-<ID> PASS` records a run emitted and fails a run that produced none, so a clean exit cannot stand in for a graded contract. A leaf may raise its own floor with `min_evidence = N`, or name the IDs it owes with `required_evidence = ("CHK-A", ...)`; both default to off. Each run logs `EVIDENCE_SUMMARY test=... observed=N required=N missing=N ids=...`
 |===
 
 === Open-Source BFM Policy
