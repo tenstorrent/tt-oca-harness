@@ -6,7 +6,9 @@
 
 This chapter records the v0.5.0 SEP=0 component decisions for #481,
 #482, #483, #490, and #491. Feature credit stays the enrolled
-`sep0_all` set. Wrapper PASSes and `tests_deferred/` names are OUT.
+`sep0_all` set, which runs on `--dut smu` — the wrapper, whose PASSes
+carry `DUT_TAG=WRAPPER`. `--dut smu_block` PASSes (`DUT_TAG=BARE`) and
+`tests_deferred/` names are OUT.
 
 Evidence SHA is `a273033a0` (origin/main). The `verilator-nightly (smu)`
 job of run 34051136716 on that SHA is 51 PASS / 1 FAIL
@@ -18,7 +20,8 @@ CDC settle is in #1572).
 === JTAG2AXI / OTP / filter depth (#490)
 
 The no-Force deepeners are enrolled in `sep0_all`. There is
-no `testlists/deferred.toml`. README / VPLAN counts are `sep0_all` = 52.
+no `testlists/deferred.toml`. `sep0_all` held 52 at the evidence SHA
+above; README and the VPLAN count 53 on the wrapper bench.
 
 Enrolled names that PASSed on the nightly, with no Force / placeholder:
 

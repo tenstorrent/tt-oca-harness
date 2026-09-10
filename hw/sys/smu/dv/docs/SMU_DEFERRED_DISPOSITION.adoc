@@ -25,7 +25,7 @@ Related enrolled-set work that is *not* a restore from this catalog:
 * `smu_smc_mailbox_int_test` is enrolled in the `smc` group and is not in this catalog. It stays OUT of `sep0_all` (#481).
 
 Live group counts in `testlists/all.toml`, `README.md`, and `SMU_VPLAN.adoc`
-must stay aligned: `all` = 56, `sep0_all` = 52, deferred catalog = 123.
+must stay aligned: `all` = 81, `sep0_all` = 53, deferred catalog = 123.
 
 [cols="3,2,2,2,5",options="header"]
 |===

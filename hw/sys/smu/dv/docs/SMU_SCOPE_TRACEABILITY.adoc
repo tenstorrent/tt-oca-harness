@@ -68,7 +68,7 @@ PASSes carry `DUT_TAG=BARE` and are not feature credit. See #489.
   otherwise.
 * Every name in `SMU_DEFERRED_DISPOSITION.adoc` is OUT. Raise stubs are
   not reportable as PASS.
-* Wrapper PASSes (`DUT_TAG=WRAPPER`) are OUT of this matrix.
+* `--dut smu_block` PASSes (`DUT_TAG=BARE`) are OUT of this matrix.
 * SEP=1 instantiate / fetch / retire (F2) and live SMC↔SEP mailbox
   challenge-response (F5) are OUT (#493).
 * The commercial names `main_wrapper` and `main_wrapper_por` are not in
