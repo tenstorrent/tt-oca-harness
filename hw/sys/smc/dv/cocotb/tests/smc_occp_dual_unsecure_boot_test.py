@@ -675,9 +675,7 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
     activity = bus_activity(dut)
     # Both counters, not just SCL. A clocking artefact could move scl_falls
     # without a single framed transfer on the wire; a START delta is the
-    # cheapest evidence that what moved was addressed I3C traffic. Measured on
-    # the channel the seed picked: +155998 falls and +1341 starts, so requiring
-    # both costs nothing and closes the gap between this check and the claim.
+    # cheapest evidence that what moved was addressed I3C traffic.
     moved = [
         (ch, falls - base_falls, starts - base_starts)
         for (ch, falls, starts), (_, base_falls, base_starts) in zip(activity, baseline_activity)
