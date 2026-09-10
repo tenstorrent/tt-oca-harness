@@ -4133,9 +4133,9 @@ generate-and-deassert on both lock flavours of one seed-selected spare; the
 
 [arabic]
 . Sense at `LC_PROD` with the TEST_EN strap low.
-. Write a seeded payload to `LOCKS_SPARE`, `LC_STATE`, `SIP_DIS` and `SYS_DIS` and read each back: the strap-low half, where every write must land.
-. Raise `test_en_strap_i` and re-sense, so the strap is latched into `secure_tm`.
-. Write the same payload to each of those fields and to `LOCKS`, watching the interrupt probe across each beat, and read each back.
+. Write a seeded payload to `LOCKS`, `LOCKS_SPARE`, `LC_STATE`, `SIP_DIS` and `SYS_DIS` and read each back: the strap-low half, where every write must land.
+. Raise `test_en_strap_i` and re-sense, so the strap is latched into `secure_tm`. The re-sense reloads every shadow word from the OTP image, so each field's pre-write value in the half below is the sensed value again, not what the half above wrote.
+. Write the same payload to the same five fields, watching the interrupt probe across each beat, and read each back.
 . Write a `SECURE_TM_UNLOCK` spare with the strap still up.
 
 *Checkers*:
@@ -4157,7 +4157,7 @@ generate-and-deassert on both lock flavours of one seed-selected spare; the
 (`hw/ip/efuse/rtl/efuse_shadow_reg_access_control.sv`), where `lock` is the
 static per-field entry of the compile-time field map in
 `hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv`, not a fuse bit. `LOCKS` and
-`LOCKS_SPARE` are one map entry, so one positive control covers both apertures.
+`LOCKS_SPARE` are one map entry, so a refusal on either is the same lock.
 A refused write is terminated in the access-control block itself, so it never
 reaches the shadow storage and the response carries no error. `LC_STATE` is
 written in bytes [31:8], which OR-merge as ordinary shadow bytes and leave the
@@ -4172,7 +4172,11 @@ sets no new bit fails as a test bug rather than passing as a refusal. The
 accepting writes when the strap went up.
 
 *Not claimed*: the JTAG and TRoot writers of the same registers — this entry
-drives the frontdoor only.
+drives the frontdoor only. Nor is this a walk of every `SECURE_TM_LOCK` entry
+in the compiled field map: the map also marks `RMA_CHIPLET_TOKEN_DIGEST` and
+`RMA_SIP_TOKEN_DIGEST`, each carrying a source note that the lifecycle chapter
+does not list them. The five apertures here are the set the chapter names, and
+which list is normative is an open question for the design owner.
 
 '''''
 
