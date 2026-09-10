@@ -8,8 +8,7 @@
 // internally into an incrementing, software-tamper-proof register bank cleared
 // only on cold reset.  Until that hardware exists, BL0 implements the same
 // enrollment model in software ("soft PCRs") and stores the results in
-// bl0_state; BL1 registers them into the PCRV once it exists, at which point
-// the bl0_state copies become legacy.
+// bl0_state; BL1 registers them into the PCRV once it exists.
 //
 // Extend semantics (aligned with the intended PCRV behavior; provisional until
 // the PCRV interface is ratified):
@@ -22,7 +21,7 @@
 //       comparing against the build-time embedded value.
 //   MEAS_SLOT_BOOT_STATE (future PCR[1]): the boot-state record -- verified
 //       manifest hash plus device state (LC state, secure boot, SBOOT_DIS,
-//       demotion), following the legacy tt_sep measurement_input model.
+//       demotion).
 
 #pragma once
 

@@ -83,6 +83,5 @@ uint32_t rom_bl1_check(void);
 uint32_t rom_handoff_bl1(void);
 
 // Zero SEP EXT SRAM before any manifest is staged into it (src/rom_mem_clear.c).
-// Declared here because this is the header that owns the SRAM staging area now;
-// it previously rode along in manifest.h.
+// Declared here because this header owns the SRAM staging area.
 void rom_clear_ext_sram(void);

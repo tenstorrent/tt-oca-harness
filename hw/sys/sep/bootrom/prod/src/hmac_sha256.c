@@ -249,10 +249,8 @@ int hmac_sha256(const uint8_t *key, uint32_t key_len, const uint8_t *data, uint3
     // key_length is REQUIRED in HMAC mode and is a 6-bit one-hot field, not a
     // byte count (hmac.rdl:138-153). Its reset value is Key_None (0x20), and the
     // IP blocks the start and raises hmac_err when HMAC is triggered with
-    // Key_None -- so leaving it at zero, as this driver previously did, makes
-    // every HMAC operation fail and read back 0xFFFFFFFF digests. Only the
-    // keyed path is affected, which is why sha256() worked and this did not:
-    // nothing exercised hmac_sha256() until the OCA payload KDF.
+    // Key_None, so an unset field fails every HMAC operation and reads back
+    // 0xFFFFFFFF digests. Only the keyed path configures it; sha256() does not.
     uint32_t key_length_field;
     if (key_len <= 16u) {
         key_length_field = HMAC_KEY_LENGTH_128;

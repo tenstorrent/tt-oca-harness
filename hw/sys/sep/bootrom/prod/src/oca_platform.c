@@ -381,9 +381,9 @@ static oca_result_t plat_is_key_authorized(const oca_crypto_blob_t *public_key,
         return OCA_FAIL_ROOT_KEY_UNAUTHORIZED;
     }
 
-    // public_key_select is a 128-bit bitmap, not the old small index. Resolve it
-    // to the one slot it names; more than one set bit is ambiguous about which
-    // anchor applies, so refuse rather than pick.
+    // public_key_select is a 128-bit bitmap. Resolve it to the one slot it
+    // names; more than one set bit is ambiguous about which anchor applies, so
+    // refuse rather than pick.
     int slot = -1;
     for (uint32_t bit = 0; bit < 128u; ++bit) {
         if ((select[bit / 8u] >> (bit % 8u)) & 1u) {
@@ -417,9 +417,9 @@ static oca_result_t plat_is_key_authorized(const oca_crypto_blob_t *public_key,
         // ships fewer (NUM_PUBLIC_KEY_DIGESTS), so the upper ones are simply
         // unprovisioned rather than invalid.
         if ((uint32_t)slot >= NUM_PUBLIC_KEY_DIGESTS || public_key_digests[slot].digest == NULL) {
-            // An unprovisioned ROM slot authorizes nothing. This deliberately
-            // differs from the old ROM, which treated a NULL digest as "skip the
-            // hash check" and so accepted any key naming an empty slot.
+            // An unprovisioned ROM slot authorizes nothing: a NULL digest is
+            // not a licence to skip the hash check, which would accept any key
+            // naming an empty slot.
             simputs("PUBK_SLOT_UNPROVISIONED\n");
             return OCA_FAIL_ROOT_KEY_UNAUTHORIZED;
         }
@@ -431,7 +431,7 @@ static oca_result_t plat_is_key_authorized(const oca_crypto_blob_t *public_key,
         // ROM PQC key. Refused rather than resolved: nothing here verifies a PQC
         // signature, so authorizing one would hand a key to a verifier that
         // cannot check it, and the manifest would fail later with a code that
-        // blamed the signature instead of the unsupported algorithm.
+        // blames the signature rather than the unsupported algorithm.
         simputs("PUBK_SLOT_PQC_UNSUPPORTED\n");
         return OCA_FAIL_ROOT_KEY_UNAUTHORIZED;
     } else {

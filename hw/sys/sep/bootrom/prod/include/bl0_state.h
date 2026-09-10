@@ -35,8 +35,8 @@ enum {
 #define MEAS_NUM_SLOTS 2u
 
 // Raw record enrolled into MEAS_SLOT_BOOT_STATE (packed, little-endian).
-// Kept alongside the soft-PCR values so BL1 can re-register the measurement
-// into the PCRV once that hardware exists; legacy thereafter.
+// Sits alongside the soft-PCR values so BL1 can re-register the measurement
+// into the PCRV once that hardware exists.
 struct __attribute__((packed)) boot_state_record {
     uint8_t manifest_hash[32]; // verified manifest hash of the booted manifest
     uint32_t lc_state;         // raw 4-bit LC state, zero-extended
@@ -83,8 +83,8 @@ struct bl0_state {
     //   soft_pcr = SHA256(soft_pcr || SHA256(record)).
     uint8_t soft_pcr[MEAS_NUM_SLOTS][SHA256_DIGEST_SIZE_BYTES];
 
-    // Raw measurement inputs, kept for BL1 to re-register into the PCRV:
-    // the verified ROM self-hash and the boot-state record.
+    // Raw measurement inputs for BL1 to re-register into the PCRV: the
+    // verified ROM self-hash and the boot-state record.
     uint8_t rom_hash[SHA256_DIGEST_SIZE_BYTES];
     struct boot_state_record meas_boot_record;
 

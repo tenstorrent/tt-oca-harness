@@ -154,12 +154,8 @@ static void clear_sram_region(uint32_t addr, uint32_t size) {
 // Reporting
 // ---------------------------------------------------------------------------
 
-// Map a library verdict onto the ROM's production status stream.
-//
-// Most of these SEP_MSG_* codes were declared but never emitted under the old
-// loader, which collapsed nearly every failure into MANIFEST_LOAD_FAILED. The
-// OCA result codes are finer-grained than the old checks were, so wiring them
-// up is what finally makes the status word say which check refused the image.
+// Map a library verdict onto the ROM's production status stream, so the status
+// word names which check refused the image rather than that one did.
 static uint16_t status_for_result(oca_result_t r) {
     switch (r) {
     case OCA_FAIL_MAGIC:

@@ -775,13 +775,10 @@ void rom_main(void) {
 
     // ── [C12–C14] Manifest load / validate + [C15/C17] fuse lock + [C16] canary
     //    + [C18] handoff ──
-    // Does not return. Every path out of it either jumps to BL1 or converges on
-    // rom_err_fail(), which is why [C16] lives inside the callee rather than
-    // after this call -- it sat here until now and could never execute.
-    //
-    // The ROM has no PASS path of its own either. BL1 signals the testbench: in
-    // DV, bl1_pass_test writes MAGIC0 + PASS to the STDOUT mailbox itself, with
-    // the same magic words the ROM used to write here. So there is deliberately
-    // nothing after this call.
+    // Does not return: every path out of it either jumps to BL1 or converges
+    // on rom_err_fail(). [C16] therefore lives inside the callee, where it is
+    // reachable, and nothing may follow this call. The ROM has no PASS path of
+    // its own -- in DV, bl1_pass_test writes MAGIC0 + PASS to the STDOUT
+    // mailbox itself.
     rom_manifest_validate_handoff(&straps, spi_status, lc_state);
 }
