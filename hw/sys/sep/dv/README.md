@@ -49,6 +49,10 @@ PY=tools/dv/run_dv.py
 
 # What tests exist (testlists/ is the authoritative index).
 python3 $PY --dut sep --items all --list
+
+# Check every golden model against its own vectors. No simulator, no build --
+# run it before trusting a golden a checker compares against.
+python3 hw/sys/sep/dv/cocotb/env/run_golden_selftests.py
 ```
 
 ### CI `smoke` group
