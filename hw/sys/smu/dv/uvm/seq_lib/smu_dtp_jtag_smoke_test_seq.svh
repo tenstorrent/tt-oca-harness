@@ -49,9 +49,10 @@ class smu_dtp_jtag_smoke_test_seq extends smu_base_test_seq;
     attach_evidence('{ChkPtapS1, ChkPtapS2, ChkPtapS3, ChkTimeoutPaths, ChkNonvac});
     expected_idcode = smu_ptap_expected_idcode(test_cfg.ptap_idcode_negative);
     `uvm_info(get_type_name(),
-              $sformatf({"SMU SV-UVM DTP JTAG smoke (SMU_ALL_005): PTAP IDCODE/BYPASS/TRST+POR on ",
-                         "--dut smu SEP=0; scenario_seed=%0d random_count=%0d idcode_expect=0x%08h"
-                          }, scenario_seed, random_count, expected_idcode), UVM_LOW)
+              $sformatf(
+                  {"SMU SV-UVM DTP JTAG smoke (SMU_ALL_005): PTAP IDCODE/BYPASS/TRST+POR on ",
+                   "--dut smu_block SEP=0; scenario_seed=%0d random_count=%0d idcode_expect=0x%08h"
+                    }, scenario_seed, random_count, expected_idcode), UVM_LOW)
     if (test_cfg.ptap_idcode_negative)
       `uvm_info(get_type_name(), $sformatf(
                 "NEGATIVE VALIDATION: arming wrong expected IDCODE 0x%08h instead of 0x%08h",

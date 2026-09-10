@@ -1167,7 +1167,7 @@ python3 tools/dv/run_dv.py --dut dtp --framework uvm --items smoke --skip-unimpl
 python3 tools/dv/run_dv.py --dut dtp --framework uvm --items jtag2axi --skip-unimplemented
 python3 tools/dv/run_dv.py --dut sep --framework uvm --items smoke --skip-unimplemented
 python3 tools/dv/run_dv.py --dut smc --framework uvm --items smoke --skip-unimplemented
-python3 tools/dv/run_dv.py --dut smu --framework uvm --items smoke --skip-unimplemented
+python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smoke --skip-unimplemented
 ----
 
 Each (DUT, framework) pair a DUT implements is one _framework view_: the DUT
