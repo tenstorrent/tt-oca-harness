@@ -18,8 +18,9 @@ schema_version = 1
 # which is gitignored and outside the staging gate, so `--stage sim` on its own
 # would silently simulate whatever image happened to be left there.
 #
-# No `ci` tag and not in `smoke`: the hosted runners have no RISC-V toolchain,
-# and .github/workflows/regress.yml pins the SMC job to `items: smoke`.
+# No `ci` tag and not in `smoke` or `hosted`: the hosted runners have no
+# RISC-V toolchain. The per-PR gate is `smoke`; nightly and weekly schedule
+# `hosted` (`all` minus this pair and the three SMC_DUAL leaves).
 #
 # In the `all` group. Measured on Verilator 5.050: the pass magic 0xACAFACA1
 # appears in CPU_CTRL SCRATCH_0, with 612 scratch reads and 8 scratch writes,

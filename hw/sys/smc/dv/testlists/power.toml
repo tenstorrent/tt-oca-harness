@@ -8,7 +8,7 @@ name = "smc_sideband_protocol_smoke_test"
 module = "smc_sideband_protocol_smoke_test"
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "ci", "pyuvm"]
+tags = ["ci", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]

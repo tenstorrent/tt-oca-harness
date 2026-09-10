@@ -17,6 +17,10 @@ name = "all"
 # Every testcase this DUT defines. Sign-off asks for one group that is
 # the whole enrolled set, so a reviewer can run it without knowing which
 # feature lists exist.
+# Guarded by expected_count, as dtp and sep already are: the loader errors when
+# this list and the count diverge, so a leaf cannot be added to a feature
+# testlist and silently miss the regression.
+expected_count = 56
 tests = [
     "smu_axi_alias_remap_manager_scope_test",
     "smu_axi_atomic_operation_test",
@@ -78,12 +82,22 @@ tests = [
 
 [[groups]]
 name = "smoke"
+# The scheduled CI set for pull requests: sim.yml runs `--items smoke` for
+# every DUT. Sized like dtp (2 leaves) and sep (1) rather than standing in for
+# a regression. The nightly and weekly tiers schedule `sep0_all` instead, so
+# this group is only the gate.
+#
+# smu_ext_boot_seq_gate_test stays, and gains the `smoke` tag it was missing.
+# It looks like the one to drop -- it never carried the tag -- but `sep0_all`
+# does not contain it, so this group is its only scheduled home and dropping
+# it would have taken it out of CI entirely.
 tests = [
     "smu_smc_smoke_test",
     "smu_dtp_jtag_smoke_test",
     "smu_no_sep_configuration_test",
     "smu_ext_boot_seq_gate_test",
 ]
+expected_count = 4
 
 [[groups]]
 name = "smc"
