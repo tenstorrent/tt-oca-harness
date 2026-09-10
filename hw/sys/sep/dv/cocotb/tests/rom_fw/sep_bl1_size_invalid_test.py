@@ -79,8 +79,7 @@ class sep_bl1_size_invalid_test(sep_bl1_image_invalid_base):
         # reads u64 fields.
         got_type = pm.entry_type(buf, pm.find_image(buf, slot))
         assert got_type == pm.IMAGE_TYPE_SEP_BL1, (
-            f"{slot} BL1 entry type is {got_type!r}, expected "
-            f"{pm.IMAGE_TYPE_SEP_BL1!r}"
+            f"{slot} BL1 entry type is {got_type!r}, expected {pm.IMAGE_TYPE_SEP_BL1!r}"
         )
         self.logger.info(
             "CHK-STIMULUS-BL1-SIZE: %s BL1 length %d -> 0, type and load_addr untouched; %s",

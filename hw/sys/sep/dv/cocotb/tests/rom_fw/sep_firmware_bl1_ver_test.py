@@ -364,8 +364,7 @@ class sep_firmware_bl1_ver_test(sep_rom_ot_dma_boot_test):
         ):
             n = sum(1 for line in console if marker in line)
             assert n == want, (
-                f"{marker} appeared {n} times, expected {want} (the primary's). "
-                f"Console: {console}"
+                f"{marker} appeared {n} times, expected {want} (the primary's). Console: {console}"
             )
         self.logger.info(
             "CHK-ROLLBACK-BOUNDARY: primary@%d -> %s@%d -> %s@%d (equal, so accepted) "
