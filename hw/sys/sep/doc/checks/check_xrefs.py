@@ -39,9 +39,33 @@ for f in files:
     anchors |= set(re.findall(r"^\[#([^\],]+)", t, re.M))
 print(f"{len(anchors)} anchors")
 
+
+def strip_delimited(text):
+    """Blank the inside of listing/literal blocks, keeping line numbering.
+
+    `<<...>>` inside a diagram or code block is not a cross-reference: PlantUML
+    uses it for stereotype colours and C uses `>>` to shift. Scanning raw text
+    reports both as unresolved xrefs.
+    """
+    out, fence = [], None
+    for line in text.split("\n"):
+        bare = line.rstrip()
+        if fence is None and bare in ("----", "...."):
+            fence = bare
+            out.append(line)
+            continue
+        if fence is not None:
+            out.append(line if bare == fence else "")
+            if bare == fence:
+                fence = None
+            continue
+        out.append(line)
+    return "\n".join(out)
+
+
 bad = {}
 for f in files:
-    t = f.read_text(errors="replace")
+    t = strip_delimited(f.read_text(errors="replace"))
     for m in re.finditer(r"<<([^<>,]+?)(?:,([^<>]*))?>>", t):
         tgt = m.group(1).strip()
         if tgt.startswith("http") or ".adoc" in tgt:
