@@ -236,6 +236,12 @@ EFUSE_IMAGE_REGISTRY: dict[str, dict] = {
         "lc_raw": 0x1,
         "fixed_from": "locked_field_irq",
     },
+    # SECURE_TM leaf of the same module: same image pins, same seed derivation.
+    "sep_efuse_secure_tm_write_lock_test": {
+        "mode": "random",
+        "lc_raw": 0x1,
+        "fixed_from": "locked_field_irq",
+    },
 }
 
 

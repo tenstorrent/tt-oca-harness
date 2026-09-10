@@ -20,7 +20,7 @@ name = "smc_input_output_fabric_wr_rd_test"
 module = "smc_input_output_fabric_wr_rd_test"
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "ci", "pyuvm"]
+tags = ["ci", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -44,7 +44,7 @@ name = "smc_output_filter_remap_security_test"
 module = "smc_output_filter_remap_security_test"
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "ci", "pyuvm"]
+tags = ["ci", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]

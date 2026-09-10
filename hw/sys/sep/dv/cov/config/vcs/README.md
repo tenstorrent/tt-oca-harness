@@ -11,7 +11,6 @@ contents are not fingerprinted.
 ## What it excludes
 
     -tree sep_uvm_top 1                       TB top's own body, children kept
-    -tree sep_uvm_top.u_smc_mem               axi_sim_mem backdoor (rom_boot only)
     -tree sep_uvm_top.u_mbx                   sep_outbound_mbx
     -module ocah_axi_sva                      u_m_axi_sva, u_s_axi_sva, key_manager bind
     -tree sep_uvm_top.u_dut.u_sep.sep_cpu     CPU subtree
@@ -27,6 +26,12 @@ CPU once (`--target default`); the subtree is not instrumented.
 ## What the number is
 
 The SEP DUT **minus the CPU subtree**. Not "SEP DUT coverage" -- say which.
+
+Phase 1 FCOV is the URG **Group** report on `sep_uvm_top.u_sep_fcov`, not this
+SCORE. That instance is a TB sampler, so its own line/cond weight is testbench,
+not a DUT cone. The scope file does not `-tree` it out: covergroup collection
+is what the instance is for, and its code weight is noise against the DUT
+denominator.
 
 ## Measured, so the next attempt does not repeat these
 

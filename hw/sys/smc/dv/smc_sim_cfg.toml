@@ -63,8 +63,10 @@ stubs = [
   "hw/sys/smc/dv/tb/verilator_stubs/prim_sync3.sv",
 ]
 sources = [
-  # SEP rom_boot posture: pulp axi_sim_mem (under axi_simulation, not axi_rtl).
-  "vendor/pulp-platform/axi/upstream/src/axi_sim_mem.sv",
+  # SYS_OUT boundary: the shared AXI VIP interface the slave agent binds and
+  # the bridge that places the wrapper's struct port on it.
+  "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_if.sv",
+  "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_struct_bridge.sv",
   # Two prims the SMC DUT instantiates but no `smc` Bender target supplies:
   #   prim_fifo_async <- hw/common/och_prim/rtl/prim_refclk_count_w_cdc.sv:79
   #                      (Bender.yml:152, target any(opentitan_smu, sep, smu))
@@ -247,10 +249,15 @@ outputs = [
 # `[target-fw]` lines (201 with it) and its .text shrinks from 25670 to 14164
 # bytes. Leave it on.
 #
-# The ROM's own Makefile is standalone and needs a picolibc-enabled RISC-V
-# toolchain, which most hosts do not carry, so probe for one and fall back to
-# the OCAH toolchain container. Same host-vs-container split as
-# hw/sys/sep/dv/sep_sim_cfg.toml's [c_build.boot_rom].
+# The ROM's Makefile chooses its own toolchain: `all` runs `toolchain-images`,
+# which uses $RISCV_TOOLCHAIN when set and otherwise re-enters itself through
+# scripts/docker-run.sh with an explicit target, then packs the images. So it
+# is invoked plainly here.
+#
+# Do not wrap it in a container from this side. Inside one, the same Makefile
+# takes the same unset-$RISCV_TOOLCHAIN branch, tries to containerise again and
+# fails with "error: podman or docker is required" -- there is no container
+# engine in the toolchain image.
 #
 # NOTE: as in [c_build.default], argv goes through str.format() and the runlib
 # rejects every placeholder except {fw_target} -- braces of any kind, including
@@ -259,7 +266,7 @@ cwd = "."
 argv = [
   "bash",
   "-lc",
-  "set -e; EFUSE=hw/sys/smc/dv/efuse_preload; PY=.venv/bin/python3; if [ ! -x \"$PY\" ]; then PY=python3; fi; \"$PY\" $EFUSE/generate_efuse_preload.py $EFUSE/configurations/default_efuse.toml --output_file hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex; ROM_DIR=hw/sys/smc/bootrom/prod; RV_TC=\"$RISCV_TOOLCHAIN\"; if [ -n \"$RV_TC\" ]; then CC_PROBE=\"$RV_TC/riscv64-unknown-elf-gcc\"; else CC_PROBE=riscv64-unknown-elf-gcc; fi; if \"$CC_PROBE\" -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then make -C \"$ROM_DIR\" I3C_CORE=swap ENABLE_RELEASE_PRINTS=1 RISCV_TOOLCHAIN=\"$RV_TC\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] host toolchain has no picolibc; building the SMC boot ROM in the OCAH toolchain container\"; ./scripts/docker-run.sh run make -C \"$ROM_DIR\" I3C_CORE=swap ENABLE_RELEASE_PRINTS=1; else echo \"error: no picolibc-enabled RISC-V toolchain and no scripts/docker-run.sh\" >&2; exit 1; fi",
+  "set -e; EFUSE=hw/sys/smc/dv/efuse_preload; PY=.venv/bin/python3; if [ ! -x \"$PY\" ]; then PY=python3; fi; \"$PY\" $EFUSE/generate_efuse_preload.py $EFUSE/configurations/default_efuse.toml --output_file hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex; ROM_DIR=hw/sys/smc/bootrom/prod; make -C \"$ROM_DIR\" I3C_CORE=swap ENABLE_RELEASE_PRINTS=1",
 ]
 # prod_rom.bin64 is exactly 16384 64-bit lines, matching the CPU ROM array
 # (prim_rom Width=64 Depth=16384 in OCAH4CORECluster_rom_ext), so it loads via
@@ -286,13 +293,13 @@ outputs = [
 #
 # {fw_target} is the only placeholder the runlib allows, so the DV test names
 # are spelled out rather than interpolated. Same host-toolchain-vs-container
-# split as [c_build.bootrom] above; see there for why it exists and for the
+# split as [c_build.default] above; see there for why it exists and for the
 # no-braces constraint on argv.
 cwd = "."
 argv = [
   "bash",
   "-lc",
-  "set -e; EFUSE=hw/sys/smc/dv/efuse_preload; PY=.venv/bin/python3; if [ ! -x \"$PY\" ]; then PY=python3; fi; \"$PY\" $EFUSE/generate_efuse_preload.py $EFUSE/configurations/default_efuse.toml --output_file hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex; ROM_DIR=hw/sys/smc/bootrom/prod; FW='make ocah-dv-fw-tests TARGET=smc TEST=occp_unsecure_boot_test && make ocah-dv-fw-tests TARGET=smc TEST=hello_world'; RV_TC=\"$RISCV_TOOLCHAIN\"; if [ -n \"$RV_TC\" ]; then CC_PROBE=\"$RV_TC/riscv64-unknown-elf-gcc\"; else CC_PROBE=riscv64-unknown-elf-gcc; fi; if \"$CC_PROBE\" -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then make -C \"$ROM_DIR\" I3C_CORE=swap ENABLE_RELEASE_PRINTS=1 RISCV_TOOLCHAIN=\"$RV_TC\"; eval \"$FW\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] host toolchain has no picolibc; building the dual-OCCP images in the OCAH toolchain container\"; ./scripts/docker-run.sh run bash -lc 'make -C hw/sys/smc/bootrom/prod I3C_CORE=swap ENABLE_RELEASE_PRINTS=1 && make ocah-dv-fw-tests TARGET=smc TEST=occp_unsecure_boot_test && make ocah-dv-fw-tests TARGET=smc TEST=hello_world'; else echo \"error: no picolibc-enabled RISC-V toolchain and no scripts/docker-run.sh\" >&2; exit 1; fi",
+  "set -e; EFUSE=hw/sys/smc/dv/efuse_preload; PY=.venv/bin/python3; if [ ! -x \"$PY\" ]; then PY=python3; fi; \"$PY\" $EFUSE/generate_efuse_preload.py $EFUSE/configurations/default_efuse.toml --output_file hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex; ROM_DIR=hw/sys/smc/bootrom/prod; make -C \"$ROM_DIR\" I3C_CORE=swap ENABLE_RELEASE_PRINTS=1; RV_TC=\"$RISCV_TOOLCHAIN\"; if [ -n \"$RV_TC\" ]; then make ocah-dv-fw-tests TARGET=smc TEST=occp_unsecure_boot_test RISCV_TOOLCHAIN=\"$RV_TC\" && make ocah-dv-fw-tests TARGET=smc TEST=hello_world RISCV_TOOLCHAIN=\"$RV_TC\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; building the dual-OCCP images in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here bash -lc 'make ocah-dv-fw-tests TARGET=smc TEST=occp_unsecure_boot_test RISCV_PREFIX=riscv64-unknown-elf- && make ocah-dv-fw-tests TARGET=smc TEST=hello_world RISCV_PREFIX=riscv64-unknown-elf-'; else echo \"error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset\" >&2; exit 1; fi",
 ]
 outputs = [
   "hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex",
@@ -309,13 +316,13 @@ outputs = [
 # target, and one rom-mode DV controller image. No payload -- these tests never
 # transfer one, which is what separates them from [c_build.dual_occp].
 #
-# Same host-toolchain-vs-container split as [c_build.bootrom] above; see there
+# Same host-toolchain-vs-container split as [c_build.default] above; see there
 # for why it exists and for the no-braces constraint on argv.
 cwd = "."
 argv = [
   "bash",
   "-lc",
-  "set -e; EFUSE=hw/sys/smc/dv/efuse_preload; PY=.venv/bin/python3; if [ ! -x \"$PY\" ]; then PY=python3; fi; \"$PY\" $EFUSE/generate_efuse_preload.py $EFUSE/configurations/default_efuse.toml --output_file hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex; ROM_DIR=hw/sys/smc/bootrom/prod; FW='make ocah-dv-fw-tests TARGET=smc TEST=occp_sanity'; RV_TC=\"$RISCV_TOOLCHAIN\"; if [ -n \"$RV_TC\" ]; then CC_PROBE=\"$RV_TC/riscv64-unknown-elf-gcc\"; else CC_PROBE=riscv64-unknown-elf-gcc; fi; if \"$CC_PROBE\" -specs=picolibc.specs -E - </dev/null >/dev/null 2>&1; then make -C \"$ROM_DIR\" I3C_CORE=swap ENABLE_RELEASE_PRINTS=1 RISCV_TOOLCHAIN=\"$RV_TC\"; eval \"$FW\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] host toolchain has no picolibc; building the OCCP sanity images in the OCAH toolchain container\"; ./scripts/docker-run.sh run bash -lc 'make -C hw/sys/smc/bootrom/prod I3C_CORE=swap ENABLE_RELEASE_PRINTS=1 && make ocah-dv-fw-tests TARGET=smc TEST=occp_sanity'; else echo \"error: no picolibc-enabled RISC-V toolchain and no scripts/docker-run.sh\" >&2; exit 1; fi",
+  "set -e; EFUSE=hw/sys/smc/dv/efuse_preload; PY=.venv/bin/python3; if [ ! -x \"$PY\" ]; then PY=python3; fi; \"$PY\" $EFUSE/generate_efuse_preload.py $EFUSE/configurations/default_efuse.toml --output_file hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex; ROM_DIR=hw/sys/smc/bootrom/prod; make -C \"$ROM_DIR\" I3C_CORE=swap ENABLE_RELEASE_PRINTS=1; RV_TC=\"$RISCV_TOOLCHAIN\"; if [ -n \"$RV_TC\" ]; then make ocah-dv-fw-tests TARGET=smc TEST=occp_sanity RISCV_TOOLCHAIN=\"$RV_TC\"; elif [ -x scripts/docker-run.sh ]; then echo \"[c_compile] RISCV_TOOLCHAIN is unset; building the OCCP sanity image in the OCAH toolchain container\"; env -u RISCV_TOOLCHAIN -u RISCV_PREFIX -u MAKEFLAGS -u MFLAGS ./scripts/docker-run.sh run-here bash -lc 'make ocah-dv-fw-tests TARGET=smc TEST=occp_sanity RISCV_PREFIX=riscv64-unknown-elf-'; else echo \"error: scripts/docker-run.sh is required when RISCV_TOOLCHAIN is unset\" >&2; exit 1; fi",
 ]
 outputs = [
   "hw/sys/smc/dv/build/efuse/smc_efuse_generated.hex",
@@ -458,7 +465,8 @@ incdirs = [
   "hw/sys/smc/dv/uvm/tests",
 ]
 # This list REPLACES the cocotb [build].sources list, so the TB collateral both flows compile
-# (the SYS_OUT axi_sim_mem responder and the CPU memory DV binding) is repeated here.
+# (the CPU memory DV binding) is repeated here; the AXI VIP interface and struct bridge
+# arrive through the ocah_axi_vip manifest.
 sources = [
   # DUT-support primitives the Bender `smc` targets reach only through their exported +incdir
   # paths: Verilator searches include directories for unresolved modules, VCS compiles only
@@ -472,8 +480,6 @@ sources = [
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_diff_encode.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_async.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_prince.sv",
-  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_1p.sv",
-  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_ram_1p_adv.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_rst_sync.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_22_16_dec.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_22_16_enc.sv",
@@ -491,7 +497,6 @@ sources = [
   "vendor/tenstorrent/tt-hw-debug/upstream/rtl/trace/trace_mem.sv",
   "vendor/tenstorrent/tt-hw-debug/upstream/rtl/trace/trace_mem_sink.sv",
   # TB collateral shared with the cocotb flow.
-  "vendor/pulp-platform/axi/upstream/src/axi_sim_mem.sv",
   "hw/sys/smc/dv/models/smc_scratch_map_pkg.sv",
   "hw/sys/smc/dv/models/smc_cpu_mem_dv.sv",
   # Flow-shared functional-coverage modules; the same five entries the

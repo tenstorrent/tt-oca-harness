@@ -9,7 +9,7 @@ module = "smc_ijtag_basic_test"
 seed = 1
 timeout_sec = 1800
 tags = [
-    "smoke", "ci", "functional",
+    "ci", "functional",
     "pyuvm"
 ]
 run_modes = ["smoke"]

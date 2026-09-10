@@ -21,7 +21,7 @@ module = "smc_default_reg_rd_test"
 seed = 1
 timeout_sec = 1800
 tags = [
-    "smoke", "ci", "axil", "canonical",
+    "ci", "axil", "canonical",
     "pyuvm"
 ]
 run_modes = ["smoke"]
