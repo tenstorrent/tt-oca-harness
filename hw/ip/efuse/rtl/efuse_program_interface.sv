@@ -250,15 +250,19 @@ module efuse_program_interface #(
     end
   end
 
+  // verilog_format: off  // Synopsys DC mis-parses verible's line breaks inside these macro calls.
   `OCAH_OT_ASSERT(
       IllegalProgramStateSuppressesRequest_A,
-      ($isunknown(program_state_q)
-      || !(program_state_q inside {ST_PROGRAM_IDLE, ST_WAIT_RESP})) |-> !fuse_command_req_o.valid,
+      ($isunknown(program_state_q) || !(program_state_q inside {ST_PROGRAM_IDLE, ST_WAIT_RESP}))
+      |-> !fuse_command_req_o.valid,
       clk_i, !rst_ni)
   `OCAH_OT_ASSERT(
       IllegalProgramStateFailsClosed_A,
-      ($isunknown(program_state_q)
-      || !(program_state_q inside {ST_PROGRAM_IDLE, ST_WAIT_RESP})) |=> program_state_q == ST_PROGRAM_IDLE && !program_busy_o && program_done_o && program_error_o && !fuse_command_req_o.valid && program_read_back_data_o == EFUSE_PROGRAM_ERROR_DATA,
+      ($isunknown(program_state_q) || !(program_state_q inside {ST_PROGRAM_IDLE, ST_WAIT_RESP}))
+      |=> program_state_q == ST_PROGRAM_IDLE && !program_busy_o && program_done_o
+      && program_error_o && !fuse_command_req_o.valid
+      && program_read_back_data_o == EFUSE_PROGRAM_ERROR_DATA,
       clk_i, !rst_ni)
+  // verilog_format: on
 
 endmodule : efuse_program_interface
