@@ -315,7 +315,7 @@ module smc #(
   logic [NUM_CPU_CORES-1:0]                   cpu_wdt_timeout_cluster;
 
   smc_base #(
-    .NO_ADDR_REMAP                      (smc_config_pkg::NO_ADDR_REMAP)           // Enable address remap in the output fabric
+    .NO_ADDR_REMAP(smc_config_pkg::NO_ADDR_REMAP)  // Enable address remap in the output fabric
   ) u_smc_base (
     // Clocks from PLLs
     .clk_smc_i                              (clk_smc_i),
