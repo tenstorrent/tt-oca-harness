@@ -339,6 +339,22 @@
     min-height: 24px;
 }
 
+.toc .toc-menu li[data-level="4"] a {
+    padding-left: 2.75rem;
+}
+
+@media screen and (min-width: 1024px) {
+    aside.toc.sidebar {
+        flex-basis: 12rem;
+    }
+}
+
+@media screen and (min-width: 1216px) {
+    aside.toc.sidebar {
+        flex-basis: 16rem;
+    }
+}
+
 /* Code/mono elements */
 .doc code,
 .doc pre {

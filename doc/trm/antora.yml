@@ -10,6 +10,7 @@ nav:
 asciidoc:
   attributes:
     source-highlighter: highlight.js
+    page-toclevels: 4
     sectanchors: ''
     sectlinks: ''
     sectnums: ''
