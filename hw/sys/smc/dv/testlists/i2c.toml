@@ -7,7 +7,7 @@ name = "smc_i2c_cg_sanity_test"
 module = "smc_i2c_cg_sanity_test"
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "ci", "i2c", "functional", "pyuvm"]
+tags = ["ci", "i2c", "functional", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -15,7 +15,7 @@ name = "smc_i2c_multi_sample_test"
 module = "smc_i2c_multi_sample_test"
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "ci", "i2c", "pyuvm"]
+tags = ["ci", "i2c", "pyuvm"]
 run_modes = ["smoke"]
 
 # Nightly Tier A: commercial smc_i2c_p0_rdwr BFM rebuild (I2C0↔I2C1).
@@ -151,7 +151,7 @@ module = "smc_i2c_master_target_test"
 seed = 1
 timeout_sec = 1800
 tags = [
-    "smoke", "ci", "pyuvm"
+    "ci", "pyuvm"
 ]
 run_modes = ["smoke"]
 

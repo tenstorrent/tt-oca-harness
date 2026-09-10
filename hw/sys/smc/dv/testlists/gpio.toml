@@ -7,7 +7,7 @@ name = "smc_gpio_observe_test"
 module = "smc_gpio_observe_test"
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "ci", "gpio", "functional", "pyuvm"]
+tags = ["ci", "gpio", "functional", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -15,7 +15,7 @@ name = "smc_gpio_multi_sample_test"
 module = "smc_gpio_multi_sample_test"
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "ci", "gpio", "pyuvm"]
+tags = ["ci", "gpio", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -79,7 +79,7 @@ name = "smc_gpio_irq_active_test"
 module = "smc_gpio_irq_active_test"
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "ci", "pyuvm"]
+tags = ["ci", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]

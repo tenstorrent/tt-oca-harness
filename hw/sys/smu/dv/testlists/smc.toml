@@ -27,7 +27,7 @@ name = "smu_ext_boot_seq_gate_test"
 module = "smu_ext_boot_seq_gate_test"
 seed = 1
 timeout_sec = 1800
-tags = ["smc", "boot_gate", "phase1"]
+tags = ["smoke", "smc", "boot_gate", "phase1"]
 run_modes = ["smc", "smoke"]
 
 [[tests]]
