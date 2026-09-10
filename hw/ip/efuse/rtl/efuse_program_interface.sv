@@ -250,7 +250,7 @@ module efuse_program_interface #(
     end
   end
 
-  // verilog_format: off  // Synopsys DC mis-parses verible's line breaks inside these macro calls.
+  // verilog_format: off  // Downstream synthesis tooling mis-parses verible's line breaks inside these macro calls.
   `OCAH_OT_ASSERT(
       IllegalProgramStateSuppressesRequest_A,
       ($isunknown(program_state_q) || !(program_state_q inside {ST_PROGRAM_IDLE, ST_WAIT_RESP})) |-> !fuse_command_req_o.valid,

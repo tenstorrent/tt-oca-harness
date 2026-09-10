@@ -234,7 +234,7 @@ module efuse_read_interface #(
     end
   end
 
-  // verilog_format: off  // Synopsys DC mis-parses verible's line breaks inside these macro calls.
+  // verilog_format: off  // Downstream synthesis tooling mis-parses verible's line breaks inside these macro calls.
   `OCAH_OT_ASSERT(
       IllegalReadStateSuppressesRequest_A,
       ($isunknown(read_state_q) || !(read_state_q inside {ST_READ_IDLE, ST_WAIT_RESP})) |-> !fuse_command_req_o.valid,
