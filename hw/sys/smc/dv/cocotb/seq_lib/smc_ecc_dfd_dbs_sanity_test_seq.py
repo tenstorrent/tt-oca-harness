@@ -52,10 +52,8 @@ def _cpu_cluster_count() -> int:
 
     NOT proven: that the number itself is the specified cluster count. A
     non-RTL, non-generated, non-VPLAN authority for it does not exist in this
-    repo. The closest §4-authoritative documents bound the CPU *core* count to a
-    range rather than pinning a cluster count -- ``hw/sys/smc/doc/cpu.adoc:11``
-    ("supports 1 to 4 processor cores"), ``:16`` ("Up to 4 Rocket CPU cores")
-    and ``:32`` ("|Cores |1-4") -- and ``ndm_reset.rdl:17-19`` only states the
+    repo. ``hw/sys/smc/doc/cpu.adoc`` pins the CPU *core* count at 4, and
+    ``ndm_reset.rdl:17-19`` only states the
     register "Supports up to 32 CPU Clusters". If the integration tied the wrong
     count, this leg would not catch it; that residual is declared, not hidden.
     """
