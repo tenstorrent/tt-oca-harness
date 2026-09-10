@@ -8,10 +8,10 @@ The Security Processor (SEP) is the Root of Trust (RoT) of the Open Chiplet Atla
 (OCAH) system. The SEP boot ROM (BL0) is the first code executed by the SEP RISC-V core after
 power-on reset. It establishes the security posture of the device, loads and authenticates the
 first stage of mutable software (BL1) described by an Open Chiplet Atlas (OCA) boot manifest,
-records attestation measurements, and hands off execution only after every security check has
+records boot measurements, and hands off execution only after every security check has
 completed. This chapter specifies the complete boot flow -- CPU initialization, memory
 protection fencing, fuse and lifecycle state evaluation, SMC synchronization, boot-source
-selection, manifest and payload validation, secure boot, demotion, attestation, and hand-off --
+selection, manifest and payload validation, secure boot, demotion, boot measurement, and hand-off --
 precisely enough to serve as the basis for verification of the completed boot ROM.
 
 [[sec:scope]]
@@ -44,9 +44,14 @@ Descriptive text without these keywords is informative.
 Verifiable requirements are tagged inline with identifiers of the form
 `[SEP-ROM-<AREA>-<NNN>]`, where `<AREA>` is one of: `CPU`, `PMP`, `FUSE`, `SMC`, `STRAP`,
 `SPI`, `MAN` (manifest), `SB` (secure boot), `DEM` (demotion), `PL` (payload), `ATT`
-(attestation), `HOFF` (hand-off), `RETRY`, `STAT` (status reporting). Identifiers are stable
+(boot measurement), `HOFF` (hand-off), `RETRY`, `STAT` (status reporting). Identifiers are stable
 across revisions of this document; retired requirements are not renumbered. The complete index
 is collected in <<sec:req_index>>.
+
+A statement carries an identifier when it is both *independently verifiable* against observable
+behavior and *load-bearing* — violating it changes the trust the ROM establishes, or prevents
+the boot from completing. Sequencing detail that follows from an identified requirement,
+diagnostic output, and build-time knobs are described without identifiers.
 
 [[sec:conv_provisional]]
 ===== Provisional Material
@@ -295,7 +300,7 @@ SEP↔SMC interface contract (`sep_smc_interface.h`).
 |*Resource* |*Offset* |*ROM usage*
 |Reset-unit straps `STRAPS_LO` / `STRAPS_HI` |`0x2090` / `0x2094` |Latched hardware straps
 (<<sec:straps>>).
-|`CHIP_CONFIG_CHIP_ID` |`0x2908` |Chip identification ([C7]).
+|`CHIP_CONFIG_CHIP_ID` |`0x2908` |Chip identification, diagnostic only ([C7]).
 |`CHIP_CONFIG_LC_STATE` |`0x290C` |SMC-side lifecycle mirror (low 4 bits); informational.
 |SMC CPU_CTRL scratch registers |`0x10100 + 8·index` |Coordination protocol
 (<<tbl:smc_scratch>>).
@@ -462,10 +467,12 @@ any DCCM access* |<<sec:cpu_init>>, <<sec:warm_reset>>
 |— |PMP programming |Execution fences installed before any C code runs |<<sec:pmp>>
 |[C0] |Runtime init + entry checks |DCCM scrub, `.data`/`.bss` init, runtime self-check, SMC
 scratch round-trip sanity |<<sec:cpu_init>>
-|[C1] |ROM identity |Version string + build-time ROM SHA-256 reported |<<sec:attestation>>
+|[C1] |ROM identity |Version string + build-time ROM SHA-256 reported |<<sec:boot_measurement>>
 |[C2] |Strap read |`STRAPS_LO/HI` parsed into boot configuration |<<sec:straps>>
 |[C3] |Status reporting init |Status ring buffer in SMC SRAM (strap-gated) |<<sec:status>>
-|[C5] |Clock init |PLL from fuses or 100 MHz refclk (strap-gated) |<<sec:cpu_init>>
+|[C4] |Fuse-sense readiness |`smc_fuse_sense_done` polled to completion; gates every fuse
+read in the flow |<<sec:fuses>>
+|[C5] |Clock init |SMC-owned PLL from fuses, or 100 MHz refclk (strap-gated) |<<sec:cpu_init>>
 |[C6] |Lifecycle policy |LC_STATE read + validated; invalid state bricks the SMU
 |<<sec:fuses>>
 |[C7] |Chip ID |`CHIP_CONFIG_CHIP_ID` read and reported |<<sec:smc_sync>>
@@ -489,7 +496,7 @@ anti-rollback, decrypt |<<sec:secure_boot>>
 |[C17] |Lock confirmation |Fuse-secret lock state independently re-verified |<<sec:handoff>>
 |[ATT] |Measurement enrollment |Slot 0 (verified ROM self-hash, after [C9c]); slot 1
 (boot-state record, after demotion) — soft PCRs + raw records in `bl0_state`
-|<<sec:attestation>>
+|<<sec:boot_measurement>>
 |[C18] |BL1 hand-off |Pre-hand-off self-check, PMP release, jump to BL1 |<<sec:handoff>>
 |[C16] |Stack canary check |Canary re-verified |<<sec:handoff>>
 |[C19] |Error convergence |All failures funnel into `rom_err_fail()` |<<sec:status>>,
@@ -519,8 +526,12 @@ early platform-initialization stages of `rom_main()` ([C0]–[C10c]).
 
 ===== Reset Entry
 
-The core enters at `_start` in the Boot ROM. The following actions occur strictly in order,
-before any other memory or MMIO access:
+The core enters at `_start` in the Boot ROM. *Hart 0* is the hart whose `mhartid` CSR reads
+zero. The fitted VeeR EL2 core is single-hart, so hart 0 is the only hart that exists; the gate
+in item 1 is a defensive check that keeps the boot flow correct if the core is ever fitted with
+more.
+
+The following actions occur strictly in order, before any other memory or MMIO access:
 
 1. [[req-SEP-ROM-CPU-010]]*[SEP-ROM-CPU-010]* Only hart 0 shall execute the boot flow. Any
    other hart shall set its trap vector and park permanently in a `wfi` loop.
@@ -540,8 +551,11 @@ On the cold-boot path (`cold_scratch[7]` = 0), the stub then establishes the C e
 environment:
 
 1. `cold_scratch[7]` is defensively cleared.
-2. The stack pointer is set to `__stack_top` and the global pointer to `__global_pointer$`
-   (both in DCCM, from the linker script `link/rom.ld`).
+2. [[req-SEP-ROM-CPU-150]]*[SEP-ROM-CPU-150]* The stack and the C globals shall live in DCCM.
+   The stub sets the stack pointer to `__stack_top` and the global pointer to
+   `__global_pointer$`, both placed in DCCM by the linker script `link/rom.ld`. SEP SRAM is
+   where manifest and payload bytes are staged, so a stack or global placed there would be
+   writable by the content the ROM is still deciding whether to trust.
 3. *Outbound AXI filter.* [[req-SEP-ROM-CPU-040]]*[SEP-ROM-CPU-040]* The SEP outbound AXI
    filter shall block all egress by default; the ROM shall open only the windows it needs.
    At cold boot the stub programs filter 0 to the 4-byte STDOUT mailbox window
@@ -552,10 +566,12 @@ environment:
    ROM execution: `mie` is cleared and `mstatus.MIE` is cleared at entry, and no ROM stage
    re-enables them.
 6. The PMP execution fences are programmed — see <<sec:pmp>>.
-7. *DCCM scrub.* DCCM is zero-filled from its base up to at most `__stack_top` for
-   deterministic ECC/initial state. The scrub length is a build-time knob
-   (`DCCM_SCRUB_BYTES`, default 128 KiB = full DCCM; `0` disables the scrub for
-   simulation preload flows).
+7. *DCCM scrub.* [[req-SEP-ROM-CPU-160]]*[SEP-ROM-CPU-160]* The ROM shall leave DCCM in a
+   deterministic state before the C runtime reads it, so that no uninitialized-ECC read and no
+   stale value from a previous boot reaches the boot flow. The stub zero-fills DCCM from its
+   base up to at most `__stack_top`. The scrub length is a build-time knob
+   (`DCCM_SCRUB_BYTES`, default 128 KiB = full DCCM); `0` disables the scrub and is a
+   simulation-preload configuration only, not a product one.
 8. *C runtime init.* `.data` is copied from its load image in ROM (`__data_load_start`, LMA
    assigned by `AT> rom`) to its DCCM run address, and `.bss` is zeroed.
 
@@ -614,18 +630,20 @@ After the entry checks, `rom_main()` performs the following platform bring-up, i
 [cols="20%,80%",options="header",grid=rows,frame=ends]
 |===
 |*Stage* |*Behavior*
-|SMC access sanity |Write/read-back of four patterns through SMC scratch[7] proves the
+|[C0] SMC access sanity |Write/read-back of four patterns through SMC scratch[7] proves the
 outbound path to the SMC responds before the boot flow depends on it. Mismatch is fatal
 (`0xA001`).
 |[C1] ROM identity |ROM version string and build-time SHA-256 are emitted (see
-<<sec:attestation>>), and the `'COLD'` marker is written to `cold_scratch[0]`.
+<<sec:boot_measurement>>), and the `'COLD'` marker is written to `cold_scratch[0]`.
 |[C2] straps |Latched straps parsed into the boot configuration (<<sec:straps>>).
 |[C3] status init |Status ring buffer initialized unless disabled by strap (<<sec:status>>).
+|[C4] fuse sense |`smc_fuse_sense_done` polled to completion (<<sec:fuses>>). Unconditional,
+and ahead of every fuse consumer in the flow.
 |[C5] clocks |`pll_init()`: if the `bl0_pll_clk` strap is clear, stay on the 100 MHz
-reference clock. If set: wait for fuse sensing (<<sec:fuses>>), read the target sysclk
-frequency from the `smu_pll_sysclk` fuse field (blank fuses fall back to refclk with a
-warning), poll PLL lock detect, then switch the clock mux to the PLL. The resulting sysclk
-frequency parameterizes the SPI clock divider (<<sec:spi>>).
+reference clock. If set: read the target sysclk frequency from the `smu_pll_sysclk` fuse
+field (blank fuses fall back to refclk with a warning), poll PLL lock detect, then switch the
+clock mux to the PLL. The resulting sysclk frequency parameterizes the SPI clock divider
+(<<sec:spi>>). The PLL and the mux are SMC-owned; SEP has none of its own.
 |[C6] lifecycle |LC_STATE read + policy (<<sec:fuses>>).
 |[C7] chip ID |`CHIP_CONFIG_CHIP_ID` read and reported.
 |[V3] DFT gate |Memory-repair gate (<<sec:smc_sync>>).
@@ -638,7 +656,10 @@ loaded into it.
 for BL1).
 |[C9c] `bl0_state` |Hand-off block initialized at the top of DCCM (<<sec:handoff>>).
 |[ATT] ROM self-hash |Embedded hash verified by recompute over the ROM region, then
-enrolled in soft measurement slot 0 (<<sec:attestation>>). Fatal on mismatch (`0xF005`).
+enrolled in soft measurement slot 0 (<<sec:boot_measurement>>). Fatal on mismatch (`0xF005`).
+Placed at the earliest point where both of its prerequisites hold: the SHA-256 engine has
+passed its known-answer self-test ([C8]) and `bl0_state` exists to receive the record
+([C9c]).
 |[C10b] SBOOT_DIS |Secure-boot chicken bit read (<<sec:fuses>>).
 |[C16] canary |Stack canary written (<<sec:handoff>>).
 |[C10c] DMA |Secure DMA engine initialized.
@@ -809,7 +830,7 @@ stop
 [[sec:pmp_mechanism]]
 ===== Fence Binding and Release Mechanism (Smepmp)
 
-*Ratified (2026-07-23):* the fences are bound to machine mode and released using the
+The fences are bound to machine mode and released using the
 **Smepmp** extension — locked rules plus `mseccfg` (`MMWP` default-deny, `RLB` rule-locking
 bypass). The fitted core supports this: the SEP VeeR EL2 snapshot
 (`vendor/.../overlay/snapshots/sep/common_defines.vh`) confirms `RV_PMP_ENTRIES 16`,
@@ -929,14 +950,15 @@ before fuse sensing has completed. Completion is indicated by
 `SEP_CPU_CTRL_SMC_FUSE_SENSE_STATUS` bit 0 (`smc_fuse_sense_done`); the ROM polls it without
 timeout (the accepted BL0 hang failure mode, SEP-ROM-CPU-080).
 
-[WARNING]
-====
-*IMPLEMENTATION GAP* — only the PLL path (`pll_init()`) currently polls
-`smc_fuse_sense_done` before reading its fuse field, and only when the `bl0_pll_clk` strap is
-set. The lifecycle, SBOOT_DIS, and key-material reads assume sensing completed before the SEP
-core reset released. Either that ordering guarantee must be established as a hardware
-invariant, or the readiness poll must be hoisted ahead of the first fuse read ([C6]).
-====
+The poll is a discrete stage ([C4]) that runs unconditionally, ahead of every fuse consumer:
+the `smu_pll_sysclk` read in [C5], the lifecycle state in [C6], `SBOOT_DIS` in [C10b], and the
+key digests, revocation bits, security version and identity fields read during manifest
+validation. The ROM does not rely on sensing having completed before the SEP core reset
+released.
+
+A shadow read taken before sensing completes returns zero, and zero is a legal encoding for
+the fields that gate security — `LC_STATE` zero decodes as `TEST_DEV`, where secure boot is
+optional — so an early lifecycle read would fail open.
 
 ===== Lifecycle State ([C6])
 
@@ -977,13 +999,13 @@ The 64-bit `FEAT_CTRL` register of the lifecycle controller (`0x1091_8000`) is c
 
 `SEP_EFUSE_MAP_SBOOT_DIS` (`0x1093_000C`) bit 0 (`disable_secure_boot`) is the secure-boot
 chicken bit. It is read once, recorded in `bl0_state.sboot_dis`, and consumed by the
-secure-boot decision (<<sec:secure_boot>>) and the attestation measurement
-(<<sec:attestation>>).
+secure-boot decision (<<sec:secure_boot>>) and the boot measurement
+(<<sec:boot_measurement>>).
 
-===== Fuse Fields Consumed by the ROM
+===== Fuse Fields Touched by the ROM
 
 [[tbl:fuse_fields]]
-.SEP efuse map fields consumed by BL0
+.SEP efuse map fields touched by BL0
 [width="100%",cols="28%,14%,10%,48%",options="header"]
 [grid=rows]
 [frame=ends]
@@ -1111,9 +1133,13 @@ entries to the platform (OCCP). Ring initialization waits for the SMC's
 ===== Chip Identification ([C7])
 
 `CHIP_CONFIG_CHIP_ID` (SMC window offset `0x2908`) is read once and reported on the status
-channel (low 16 bits as an `INFO_EXT` status word) for DV and debugger visibility. The ROM
-makes no boot decision from the chip ID today; chiplet-type-specific clock/PLL differentiation
-is reserved for future use.
+channel (low 16 bits as an `INFO_EXT` status word). The read is diagnostic: it gives DV and a
+debugger the part's identity, and exercises the SMC `chip_config` path while a failure there is
+still attributable.
+
+No boot decision is taken from it. The identity a manifest binds to comes from the SEP eFuse
+chiplet, SiP and system ID fields (<<sec:manifest>>), which are sensed locally and covered by
+the fuse read-locks — not from this SMC register.
 
 ===== Manifest Staging Hand-shake (Recovery / Secondary)
 
@@ -1683,7 +1709,7 @@ Secure boot — the requirement that the manifest carry a valid signature from a
 root key — is decided from four inputs: the lifecycle state, the `SBOOT_DIS` fuse, the signed
 `secure_boot_control` field, and the unauthenticated escalation flag. The decision is made
 once per manifest attempt, recorded in `bl0_state.secure_boot`, and feeds the validation
-gating, the attestation measurement, and the hand-off self-check.
+gating, the boot measurement, and the hand-off self-check.
 
 1. [[req-SEP-ROM-SB-010]]*[SEP-ROM-SB-010]* In `PROD` and `PROD_END`, secure boot shall be
    enforced. No manifest content shall be able to disable it.
@@ -2012,7 +2038,7 @@ executes exactly once, only after the manifest has fully validated, and is never
    `BL2_DEMOTION_VALID` and `BL2_DEMOTION_ENABLE` — the same predicate that governs the
    unlock in SEP-ROM-DEM-030, so the recorded decision cannot contradict the register state.
 6. [[req-SEP-ROM-DEM-050]]*[SEP-ROM-DEM-050]* The applied demotion state shall be an input
-   to the attestation measurement (<<sec:attestation>>), so a demoted boot is
+   to the boot measurement (<<sec:boot_measurement>>), so a demoted boot is
    distinguishable in the measurement chain.
 
 [WARNING]
@@ -2260,8 +2286,8 @@ which verifies `payload_hash` over the stored bytes, then for encrypted and unen
 payloads alike, recomputes `payload_hash_chain` and every TOC entry's image hash over the
 plaintext.
 
-[[sec:attestation]]
-==== Attestation Measurement
+[[sec:boot_measurement]]
+==== Boot Measurement
 
 To support TPM-style attestation services in later boot stages, BL0 enrolls two software
 measurements and leaves them (with their raw inputs) where BL1 can register them onward.
@@ -2474,7 +2500,7 @@ lockstep gate ledger (specified here; not yet implemented):
 |`feat_ctrl_lo` / `feat_ctrl_hi` |u32 ×2 |Lifecycle controller `FEAT_CTRL` snapshot.
 |`error_code` |u32 |0, or the fatal error recorded by `rom_err_fail()`.
 |`soft_pcr[2][32]` |u8[2][32] |Soft measurement bank: slot 0 = ROM identity, slot 1 =
-boot state (<<sec:attestation>>). Legacy once the PCRV exists.
+boot state (<<sec:boot_measurement>>). Legacy once the PCRV exists.
 |`rom_hash[32]` |u8[32] |Verified ROM self-hash (raw record for slot 0).
 |`meas_boot_record` |40 B |Raw boot-state record for slot 1 (<<tbl:measurement_input>>).
 |`bl2_demotion_decision` |bool |Recorded BL2 demotion pair (<<sec:demotion>>).
@@ -2745,9 +2771,9 @@ itself, SEP-ROM-STRAP-020).
 |`ROM_ERR_HANDOFF_SELFCHECK_FAILED` |`0xF004` |Pre-hand-off self-check failed
 (<<sec:handoff>>).
 |`ROM_ERR_ROM_HASH_MISMATCH` |`0xF005` |ROM self-hash recompute mismatch (or unparseable
-embedded hash) (<<sec:attestation>>).
+embedded hash) (<<sec:boot_measurement>>).
 |`ROM_ERR_MEASUREMENT_FAILED` |`0xF006` |Measurement enrollment failed (hash engine)
-(<<sec:attestation>>).
+(<<sec:boot_measurement>>).
 |`ROM_ERR_BL0_STATE_OVERLAPS_STACK` |`0xF007` |`BL0_STATE_ADDR` sits below `__stack_top`,
 i.e. `__bl0_state_reserve` in `link/rom.ld` and `BL0_STATE_RESERVE_BYTES` in
 `include/bl0_state.h` have drifted apart (<<sec:handoff>>).
@@ -2776,11 +2802,12 @@ denotes a following 16-bit payload word.
 |PMP programmed |`BOOTROM_PRESTART_DONE` (DEBUG) |—
 |runtime init |`RUNTIME_INIT_OK` (DEBUG, from stub; re-reported in [C0]) |`ROM_ERR_RUNTIME_INIT_FAILED`
 |[C0] main entry |`BOOTROM_START_MAIN` (DEBUG) |—
-|SMC sanity |— |`0xA001` (mailbox)
+|[C0] SMC sanity |— |`0xA001` (mailbox)
 |[C1] ROM identity |`ROM_HASH` → `INFO_EXT` ×2 (hash prefix) |—
 |[C2] straps |`DEVICE_MODE_INPUTS_CHECK` (DEBUG) |—
 |[C3] status init |`STATUS_REPORTING_ENABLED` / `_DISABLED` (DEBUG), `STATUS_REPORTING_READY`
 (DEBUG) |`STATUS_REPORTING_INVALID`
+|[C4] fuse sense |`FUSE_SENSE_WAIT` (DEBUG) |— (unbounded poll; hang is the failure mode)
 |[C5] clocks |`PLL_CLK_INIT` → `INFO_EXT` (MHz); `REF_CLK_SELECTED` |`PLL_FUSES_BLANK` (WARN)
 |[C6] lifecycle |`FUSE_LC_STATE` → `INFO_EXT` (state); `LIFECYCLE_VALID`
 |`LIFECYCLE_INVALID` (ERROR) + `ROM_ERR_LIFECYCLE_INVALID`
@@ -2997,13 +3024,13 @@ cannot distinguish "not specified" from "specified as no demotion". Closing that
 two-bit field in the hand-off block, not a policy change. |<<sec:demotion>>
 |Payload gap zeroing |*gap (should)* |Un-hashed inter-image bytes not zeroed after
 validation (legacy ROM did). |<<sec:payload>>
-|Attestation measurement |*unmerged* |Soft measurement enrollment implemented
+|Boot measurement |*unmerged* |Soft measurement enrollment implemented
 2026-07-24 (`src/measurement.c`: verified ROM self-hash → slot 0, boot-state record →
 slot 1, raw inputs in `bl0_state`) and validated in RTL simulation
-(`sep_rom_non_secure_boot_test` PASS). Not yet merged to `main`. |<<sec:attestation>>
+(`sep_rom_non_secure_boot_test` PASS). Not yet merged to `main`. |<<sec:boot_measurement>>
 |Measurement encoding |*superseded by PCRV* |The final record wire format belongs to the
 future Key Manager/PCRV interface; the soft version's extend formula is provisional pending
-that ratification. BL1-side PCRV registration is future work. |<<sec:attestation>>
+that ratification. BL1-side PCRV registration is future work. |<<sec:boot_measurement>>
 |Payload KDF |*provisional* |SP 800-108r1 KBKDF construction implemented and KAT-checked,
 but the construction is explicitly subject to change. |<<sec:payload>>
 |BL1 load address / entry point |*resolved* |Per OCA Boot Manifest Spec v0.8 Table 6, TOC
@@ -3075,6 +3102,10 @@ windows |<<sec:cpu_init>>
 |<<sec:warm_reset>>
 |<<req-SEP-ROM-CPU-140,SEP-ROM-CPU-140>> |Invalid warm handler hangs, never cold-boots
 |<<sec:warm_reset>>
+|<<req-SEP-ROM-CPU-150,SEP-ROM-CPU-150>> |Stack and C globals live in DCCM, not SRAM
+|<<sec:cpu_init>>
+|<<req-SEP-ROM-CPU-160,SEP-ROM-CPU-160>> |DCCM left deterministic before the C runtime reads it
+|<<sec:cpu_init>>
 |<<req-SEP-ROM-PMP-010,SEP-ROM-PMP-010>> |Fetch only from ROM until hand-off release
 |<<sec:pmp>>
 |<<req-SEP-ROM-PMP-020,SEP-ROM-PMP-020>> |Fences must bind machine mode (lock/Smepmp)
@@ -3191,17 +3222,17 @@ VALID ∧ ENABLE |<<sec:demotion>>
 |<<req-SEP-ROM-PL-090,SEP-ROM-PL-090>> |Payload length fields cross-checked
 (REQ-BTMANFST-59/-60/-62) |<<sec:payload>>
 |<<req-SEP-ROM-ATT-010,SEP-ROM-ATT-010>> |ROM self-hash embedded at build
-|<<sec:attestation>>
+|<<sec:boot_measurement>>
 |<<req-SEP-ROM-ATT-020,SEP-ROM-ATT-020>> |Version + self-hash reported every boot
-|<<sec:attestation>>
+|<<sec:boot_measurement>>
 |<<req-SEP-ROM-ATT-030,SEP-ROM-ATT-030>> |Boot-state record enrolled in slot 1, raw record
-kept |<<sec:attestation>>
+kept |<<sec:boot_measurement>>
 |<<req-SEP-ROM-ATT-040,SEP-ROM-ATT-040>> |Soft enrollment in bl0_state; BL1 registers into
-PCRV; legacy after |<<sec:attestation>>
+PCRV; legacy after |<<sec:boot_measurement>>
 |<<req-SEP-ROM-ATT-050,SEP-ROM-ATT-050>> |Separate slots: 0 = ROM identity, 1 = boot state
-|<<sec:attestation>>
+|<<sec:boot_measurement>>
 |<<req-SEP-ROM-ATT-060,SEP-ROM-ATT-060>> |Self-hash verified by recompute before enrollment
-|<<sec:attestation>>
+|<<sec:boot_measurement>>
 |<<req-SEP-ROM-HOFF-010,SEP-ROM-HOFF-010>> |Canary written early, re-verified pre-hand-off
 |<<sec:handoff>>
 |<<req-SEP-ROM-HOFF-020,SEP-ROM-HOFF-020>> |Stack unwound to initial top at hand-off
