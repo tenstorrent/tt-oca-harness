@@ -36,6 +36,7 @@ from pathlib import Path
 import cocotb
 from cocotb.triggers import RisingEdge
 from env import sep_oca_mutate as mm
+from env.sep_esrc_noise import esrc_noise_task
 from env.sep_rom_console import log_scratch_cold, rom_console_task
 from env.sep_verdict import decode_verdict
 from sep_base_test import sep_base_test
@@ -134,6 +135,15 @@ class sep_backup_manifest_fail_base(sep_base_test):
     async def run_scenario(self) -> None:
         dut = cocotb.top
         from ocah_spi_vip import OcahSpiFlash
+
+        # +esrc_noise_force only FORCES the decorrelator inputs from
+        # esrc_noise_ext_i; it generates nothing, and sep_base_test leaves that
+        # port at 0. Without a driver the repetition health test trips and the ROM
+        # refuses to boot on a dead entropy source, so every member of this family
+        # dies at ESRC_HEALTH_FAIL before reaching the verdict it exists to check.
+        # sep_rom_ot_dma_boot_test starts this for the families that descend from
+        # it; this base descends straight from sep_base_test, so it starts its own.
+        cocotb.start_soon(esrc_noise_task(dut, logger=self.logger))
 
         assert self.backup_defect_marker, "subclass must set backup_defect_marker"
         assert self.expected_error, "subclass must set expected_error"
