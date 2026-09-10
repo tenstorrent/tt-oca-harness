@@ -237,14 +237,11 @@ module efuse_read_interface #(
   // verilog_format: off  // Synopsys DC mis-parses verible's line breaks inside these macro calls.
   `OCAH_OT_ASSERT(
       IllegalReadStateSuppressesRequest_A,
-      ($isunknown(read_state_q) || !(read_state_q inside {ST_READ_IDLE, ST_WAIT_RESP}))
-      |-> !fuse_command_req_o.valid,
+      ($isunknown(read_state_q) || !(read_state_q inside {ST_READ_IDLE, ST_WAIT_RESP})) |-> !fuse_command_req_o.valid,
       clk_i, !rst_ni)
   `OCAH_OT_ASSERT(
       ReadFailureSetsError_A,
-      read_state_q == ST_WAIT_RESP
-      && (efuse_req_err_i || fuse_command_resp_i.status || secure_tm_blocked_i)
-      |=> read_done_o && !read_busy_o && read_error_o && read_back_data_o == efuse_data_t'(0),
+      read_state_q == ST_WAIT_RESP && (efuse_req_err_i || fuse_command_resp_i.status || secure_tm_blocked_i) |=> read_done_o && !read_busy_o && read_error_o && read_back_data_o == efuse_data_t'(0),
       clk_i, !rst_ni)
   `OCAH_OT_ASSERT(
       ReadTimeoutSetsError_A,
@@ -252,20 +249,15 @@ module efuse_read_interface #(
       clk_i, !rst_ni)
   `OCAH_OT_ASSERT(
       ReadRequestClearsError_A,
-      read_state_q == ST_READ_IDLE && read_go_i && read_enable_i && !read_addr_oob_i
-      |=> !read_error_o,
+      read_state_q == ST_READ_IDLE && read_go_i && read_enable_i && !read_addr_oob_i |=> !read_error_o,
       clk_i, !rst_ni)
   `OCAH_OT_ASSERT(
       ReadSuccessClearsError_A,
-      read_state_q == ST_WAIT_RESP && !efuse_req_err_i && !fuse_command_resp_i.status
-      && !secure_tm_blocked_i && fuse_command_resp_i.valid
-      |=> read_done_o && !read_busy_o && !read_error_o,
+      read_state_q == ST_WAIT_RESP && !efuse_req_err_i && !fuse_command_resp_i.status && !secure_tm_blocked_i && fuse_command_resp_i.valid |=> read_done_o && !read_busy_o && !read_error_o,
       clk_i, !rst_ni)
   `OCAH_OT_ASSERT(
       IllegalReadStateFailsClosed_A,
-      ($isunknown(read_state_q) || !(read_state_q inside {ST_READ_IDLE, ST_WAIT_RESP}))
-      |=> read_state_q == ST_READ_IDLE && !read_busy_o && read_done_o && read_error_o
-      && !fuse_command_req_o.valid && read_back_data_o == EFUSE_READ_ERROR_DATA,
+      ($isunknown(read_state_q) || !(read_state_q inside {ST_READ_IDLE, ST_WAIT_RESP})) |=> read_state_q == ST_READ_IDLE && !read_busy_o && read_done_o && read_error_o && !fuse_command_req_o.valid && read_back_data_o == EFUSE_READ_ERROR_DATA,
       clk_i, !rst_ni)
   // verilog_format: on
 
