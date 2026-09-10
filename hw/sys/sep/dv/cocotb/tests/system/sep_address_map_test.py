@@ -85,19 +85,17 @@ class sep_address_map_test(sep_base_test):
             seq.fabric_walk_checks,
         )
 
-        # 0x158-0x177 is a HOLE, not a declared reserved region: sep_cpu_ctrl.rdl
-        # places SEP_FUSE_SENSE_STATUS at 0x150 and SEP_SW_DEBUG at 0x178 and
-        # declares nothing between, so no document states what a read there
-        # returns. memory_map.adoc says an aperture's unpopulated remainder
-        # returns DECERR; whether that sentence reaches inside one unit's own
-        # register file is an open question, recorded in the verification plan
-        # under Known Limitations. So the response is REPORTED here, not graded
-        # -- asserting either answer would settle the question by the back door,
-        # which is the same rule that keeps sep_axi_map_refuse_test reporting
-        # MAP-AUDIT instead of arming expect_error.
+        # 0x158-0x177 owns no register: sep_cpu_ctrl.rdl places
+        # SEP_FUSE_SENSE_STATUS at 0x150 and SEP_SW_DEBUG at 0x178 and declares
+        # nothing between. memory_map.adoc states the contract for an offset
+        # inside a unit's allocated extent that owns no register: the unit
+        # accepts it, reads return zero and writes are discarded, both OKAY.
+        # That is the graded expectation here.
         #
-        # What is graded is what holds under either ruling: the access completes,
-        # and it does not alias a live register.
+        # The same passage says such an offset cannot alias a live register
+        # because register decode is an exact address match rather than a range
+        # -- not because the access is refused. So the alias check is the second
+        # half of the contract, not a consolation for not grading the response.
         sw_addr = SEP_CPU_CTRL.addr("SEP_SW_DEBUG")
 
         # Positive control for the alias check. SEP_SW_DEBUG is `sw = rw`
@@ -116,14 +114,21 @@ class sep_address_map_test(sep_base_test):
         )
 
         hole_ok = 0
-        observed: set[tuple[int, int]] = set()
         for addr in CPU_CTRL_INTERIOR_HOLES:
             hole = await self._access(SepAxiOp.READ, addr)
             assert not hole.timed_out, (
                 f"CHK-CPU-CTRL-HOLE FAIL: read 0x{addr:08x} timed out; whatever the "
                 "response ought to be, the access has to retire"
             )
-            observed.add((hole.resp_code, hole.rdata & MASK32))
+            assert hole.resp_code == RESP_OKAY, (
+                f"CHK-CPU-CTRL-HOLE FAIL: read 0x{addr:08x} resp={hole.resp_code}, "
+                "expected OKAY -- memory_map.adoc says a unit accepts an offset "
+                "inside its extent that owns no register"
+            )
+            got = hole.rdata & MASK32
+            assert got == 0, (
+                f"CHK-CPU-CTRL-HOLE FAIL: read 0x{addr:08x} data=0x{got:08x}, expected zero"
+            )
             hole_ok += 1
 
         # A hole write must not land on the live neighbour, whose value is now the
@@ -139,16 +144,7 @@ class sep_address_map_test(sep_base_test):
         await self._access(SepAxiOp.WRITE, sw_addr, wdata=sw_restore)
 
         self.logger.info(
-            "CHK-CPU-CTRL-HOLE PASS: %d hole word(s) retired and none aliases "
-            "SEP_SW_DEBUG (control write proved it writable)",
+            "CHK-CPU-CTRL-HOLE PASS: %d hole word(s) read OKAY with zero and none "
+            "aliases SEP_SW_DEBUG (control write proved it writable)",
             hole_ok,
-        )
-        # Reported for the design owner, not graded. See Known Limitations.
-        self.logger.info(
-            "MAP-AUDIT sep_cpu_ctrl hole 0x%08x-0x%08x: observed (resp,data)=%s; "
-            "memory_map.adoc names DECERR for an aperture's unpopulated remainder, "
-            "and the RDL declares this span neither reserved nor a register",
-            CPU_CTRL_INTERIOR_HOLES[0],
-            CPU_CTRL_INTERIOR_HOLES[-1],
-            sorted(observed),
         )

@@ -384,7 +384,7 @@ appears.
 |`sep_fabric_deadspace_decode_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|Negative control on intra-block dead space. Each block owns an address window and populates only part of it; an access past the allocated size owns no register and must be refused. Window ends come from `hw/sys/sep/doc/memory_map.adoc`, which states the rule: within an aperture only the unit's register extent responds and the remainder returns DECERR. Landing on a live register instead is a hard failure. A later beat of a burst that ends past the window's extent must be refused on the same terms as a single beat.
+|Negative control on intra-block dead space. Each block owns an address window and populates only part of it; an access past the allocated size owns no register and must be refused. Window ends come from `hw/sys/sep/doc/memory_map.adoc`, which states the rule: the fabric refuses an address past the extent a unit allocates, and such an access never reaches a unit. Landing on a live register instead is a hard failure. A later beat of a burst that ends past the window's extent must be refused on the same terms as a single beat.
 |`sep_fabric_local_alias_datapath_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -930,7 +930,7 @@ recipes: link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_
 
 *BFM / Model*: ocah_axi_vip
 
-*Objective*: Prove the CPU-LSU decodes `sep_cpu_ctrl` and one safe CSR in every LSU-reachable CSR block (including Adams Bridge and the entropy pool), and that the unpopulated hole inside `sep_cpu_ctrl` completes and is not a live alias.
+*Objective*: Prove the CPU-LSU decodes `sep_cpu_ctrl` and one safe CSR in every LSU-reachable CSR block (including Adams Bridge and the entropy pool), and that the unpopulated hole inside `sep_cpu_ctrl` reads OKAY with zero and is not a live alias.
 
 *Test Coverage*: One safe CSR in every LSU-reachable CSR block, plus a `sep_cpu_ctrl` sweep and the interior hole.
 
@@ -943,7 +943,7 @@ recipes: link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_
 . Write/readback/restore the SEP base/size CSRs and the pure-RW storage registers (masked).
 . Write the implemented `CLOCK_GATE_CTRL` bits, read them back, then restore reset after the fabric walk.
 . Walk one readable CSR per LSU-reachable block (DMA, WDT, scratch, reset, OTBN, AES, HMAC, KMAC, CSRNG, EDN, ESRC, ABR NAME, entropy-pool STATUS, lifecycle, KM mailbox, eFuse shadow, AXI mailbox, inbound filter CFG, alias remap, outbound remap, SPI) and require OKAY (value-check where reset is known).
-. Read three words in the hole after `SEP_FUSE_SENSE_STATUS` and before `SEP_SW_DEBUG` (including `0x10A3_0170`). Require a completed access (not a hang) and report the observed response as `MAP-AUDIT`; no document states a required response for this hole, so it is not graded (see <<known-limitations>>). Prove `SEP_SW_DEBUG` writable, then require a hole write to leave it unchanged.
+. Read three words in the hole after `SEP_FUSE_SENSE_STATUS` and before `SEP_SW_DEBUG` (including `0x10A3_0170`). Require OKAY with zero data, which `hw/sys/sep/doc/memory_map.adoc` states as the contract for an offset inside a unit's extent that owns no register. Prove `SEP_SW_DEBUG` writable, then require a hole write to leave it unchanged.
 
 *Checkers*:
 
@@ -961,7 +961,7 @@ recipes: link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_
 |CHK-FABRIC-WALK
 |Every LSU-reachable CSR block in the walk returns OKAY on its chosen register; value-checked entries match the exported or seq-derived expectation.
 |CHK-CPU-CTRL-HOLE
-|Each `sep_cpu_ctrl` word in the hole after `SEP_FUSE_SENSE_STATUS` and before `SEP_SW_DEBUG` retires rather than hanging, and a write to `0x10A3_0170` does not change `SEP_SW_DEBUG` -- whose writability a control write proves first, since `SEP_FUSE_SENSE_STATUS` is `sw = r` and no AXI write can move it. The response itself is reported as `MAP-AUDIT`, not asserted: no document states one for this hole, and asserting either answer would settle an open specification question by the back door (see <<known-limitations>>).
+|Each `sep_cpu_ctrl` word in the hole after `SEP_FUSE_SENSE_STATUS` and before `SEP_SW_DEBUG` reads OKAY with zero data, and a write to `0x10A3_0170` does not change `SEP_SW_DEBUG` -- whose writability a control write proves first, since `SEP_FUSE_SENSE_STATUS` is `sw = r` and no AXI write can move it. `hw/sys/sep/doc/memory_map.adoc` states both halves: a unit accepts such an offset with zero/OKAY, and non-aliasing follows from exact-match register decode rather than from refusal.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
@@ -4916,7 +4916,7 @@ watermark together; no vehicle asserts that pair today.
 
 *Randomization*: RANDCFG — the twelve directed wrap offsets on every seed, plus two seed-selected dead offsets per block window.
 
-*Objective*: Negative control on intra-block dead space. Each block owns an address window and populates only part of it; an access past the allocated size owns no register and must be refused. Window ends come from `hw/sys/sep/doc/memory_map.adoc`, which states the rule: within an aperture only the unit's register extent responds and the remainder returns DECERR. Landing on a live register instead is a hard failure. A later beat of a burst that ends past the window's extent must be refused on the same terms as a single beat.
+*Objective*: Negative control on intra-block dead space. Each block owns an address window and populates only part of it; an access past the allocated size owns no register and must be refused. Window ends come from `hw/sys/sep/doc/memory_map.adoc`, which states the rule: the fabric refuses an address past the extent a unit allocates, and such an access never reaches a unit. Landing on a live register instead is a hard failure. A later beat of a burst that ends past the window's extent must be refused on the same terms as a single beat.
 
 *Test Coverage*: Dead-space decode refuses with zero data.
 
@@ -4925,7 +4925,7 @@ watermark together; no vehicle asserts that pair today.
 [arabic]
 . Each block owns an address window and populates only part of it.
 . An access past the allocated size owns no register and must be refused.
-. Window ends come from `hw/sys/sep/doc/memory_map.adoc`, which states the rule: within an aperture only the unit's register extent responds, the remainder returns DECERR, and an access there never reaches the unit.
+. Window ends come from `hw/sys/sep/doc/memory_map.adoc`, which states the rule: the fabric refuses an address past the extent a unit allocates, and such an access never reaches a unit.
 . A refusal that still writes the register is a failure, so every probe reads back the window's live registers as well as the response.
 . A later beat of a burst that ends past the extent is held to the same rule as a single beat.
 
@@ -4939,7 +4939,7 @@ watermark together; no vehicle asserts that pair today.
 |CHK-DEADSPACE-REFUSE
 |Every probed address past the allocated size is refused (not OKAY), including the directed wrap anchors (KM `0x10920ff8`, DMA `0x108008a8`). A single accepted probe fails the checker; there is no tolerated count.
 |CHK-DEADSPACE-NO-ALIAS
-|No allocated register in that window changes across a probe, the directed wrap anchors included, and a read of a dead offset never returns a live register's value. The alias compare is not gated on the response: `memory_map.adoc` says an access to the reserved remainder never reaches the unit, so a refused read that still hands back live data has reached it. A single aliased probe fails the checker.
+|No allocated register in that window changes across a probe, the directed wrap anchors included, and a read of a dead offset never returns a live register's value. The alias compare is not gated on the response: `memory_map.adoc` says an access past a unit's extent never reaches a unit, so a refused read that still hands back live data has reached it. Inside the extent the same passage grounds non-aliasing in exact-match register decode rather than in refusal, so an accepted read that returns a live value is the failure there. A single aliased probe fails the checker.
 |CHK-DEADSPACE-BURST
 |A burst that ends past the window's allocated extent and answers OKAY, where the same address is refused as a single beat, fails. A beat inside the extent is also compared against the value the single-beat path reads. A burst that times out fails the audit rather than passing. A window whose dead space is 4KB-aligned, or that has no live words before it, carries no legal burst into it: it is named as not auditable rather than counted as a pass, and a run where no window was auditable fails.
 |CHK-DEADSPACE-BEAT
@@ -5841,17 +5841,6 @@ vehicle exists rather than being a convenience. All three leaves are red and are
 
 |Routed-but-reserved spans (specification)
 |`sep_axi_map_refuse_test` drives only reserved addresses the crossbar does not route. An address the crossbar routes but `memory_map.adoc` marks `_RSV_` is counted as a skip and reported by `MAP-AUDIT`, not asserted: whether the fabric must refuse a routed reserved span is an open specification question, and `expect_error` would settle it by the back door. A fabric that answers OKAY there therefore passes this vehicle.
-
-|Unpopulated hole inside `sep_cpu_ctrl` (specification)
-|`sep_cpu_ctrl.rdl` places `SEP_FUSE_SENSE_STATUS` at `0x150` (64-bit) and `SEP_SW_DEBUG` at `0x178`, and declares nothing between, so `0x10A3_0158`-`0x10A3_0177` is eight words no one assigned. It is a *hole*, not a declared reserved region: the RDL marks it neither `reserved` nor a register, and no document names a required response for it.
-
-*Spec*: `hw/sys/sep/doc/memory_map.adoc` says that within an aperture "only the unit's register extent responds; the remainder is reserved and returns DECERR", and that such an address "cannot alias onto one" because reads and writes "never reach the unit". The aperture rows are per unit -- this block sits inside `0x10A0_0000`-`0x10A3_FFFF` (SYS) -- so whether that sentence reaches a gap *inside* one unit's own register file, as against the space between units, is the open question.
-
-*RTL*: the generated block cannot produce DECERR for any address. `hw/sys/sep/regs/gen/sv/blocks/sep_cpu_ctrl_reg.sv` computes `is_valid_addr = '1; // No valid address check`, never uses it, and ties `decoded_err`, `cpuif_wr_err` and `readback_err` to `'0`; the readback mux defaults to `'0`. The request does reach the block, which acknowledges it -- so both halves of the spec sentence are unmet as built.
-
-*DV*: `sep_address_map_test` `CHK-CPU-CTRL-HOLE` grades only what holds under either ruling -- the access retires, and it does not alias `SEP_SW_DEBUG` (with a control write first proving that register writable, since `SEP_FUSE_SENSE_STATUS` is `sw = r` and no AXI write can move it). The observed response is reported as `MAP-AUDIT` and is not asserted, for the same reason `sep_axi_map_refuse_test` reports rather than arming `expect_error`: asserting either answer settles the question by the back door. A `SLVERR`/`DECERR` assertion added in the branch that became this revision did exactly that and could not pass against this RTL.
-
-Owner decision needed: if the sentence governs intra-block holes, the fix is a generated address check or explicit `reserved` declarations in the RDL; if it does not, `memory_map.adoc` should say so, since it currently reads as universal.
 
 |Dead-space per-beat refusal on writes (AXI)
 |Read bursts are proven per beat: the bus monitor keeps each beat's `RRESP` in order, so `CHK-DEADSPACE-BEAT` can name the beat that answered. Write bursts cannot be, and no tooling will change it — AXI returns one `BRESP` for a whole write burst, so a write burst that refused only its tail is indistinguishable from one that refused every beat. The write contract stays at burst granularity: the burst is refused and no live register moves.
