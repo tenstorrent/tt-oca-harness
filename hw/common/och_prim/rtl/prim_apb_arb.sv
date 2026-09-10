@@ -13,43 +13,43 @@ module prim_apb_arb #(
   parameter bit [31:0] SLAVE_ADDR_END = 32'h1000,     // excluded address
   localparam int unsigned DATA_STRB_WIDTH = DATA_WIDTH / 8
 ) (
-  input logic i_clk,
-  input logic i_reset_n,
+  input logic clk_i,
+  input logic rst_ni,
 
 `ifdef SIM_APB_ARB
   //APB TEST master interface
-  input  logic                        i_test_psel,
-  input  logic                        i_test_penable,
-  input  logic [ADDR_WIDTH -1:0]      i_test_paddr,
-  input  logic                        i_test_pwrite,
-  input  logic [DATA_WIDTH -1:0]      i_test_pwdata,
-  input  logic [DATA_STRB_WIDTH -1:0] i_test_pstrb,
-  output logic [DATA_WIDTH -1:0]      o_test_prdata,
-  output logic                        o_test_pready,
-  output logic                        o_test_pslverr,
+  input  logic                        test_psel_i,
+  input  logic                        test_penable_i,
+  input  logic [ADDR_WIDTH -1:0]      test_paddr_i,
+  input  logic                        test_pwrite_i,
+  input  logic [DATA_WIDTH -1:0]      test_pwdata_i,
+  input  logic [DATA_STRB_WIDTH -1:0] test_pstrb_i,
+  output logic [DATA_WIDTH -1:0]      test_prdata_o,
+  output logic                        test_pready_o,
+  output logic                        test_pslverr_o,
 `endif
 
   //APB master interfaces
-  input  logic [MASTER_NUM-1:0]                       i_mst_psel,
-  input  logic [MASTER_NUM-1:0]                       i_mst_penable,
-  input  logic [MASTER_NUM-1:0][ADDR_WIDTH -1:0]      i_mst_paddr,
-  input  logic [MASTER_NUM-1:0]                       i_mst_pwrite,
-  input  logic [MASTER_NUM-1:0][DATA_WIDTH -1:0]      i_mst_pwdata,
-  input  logic [MASTER_NUM-1:0][DATA_STRB_WIDTH -1:0] i_mst_pstrb,
-  output logic [MASTER_NUM-1:0][DATA_WIDTH -1:0]      o_mst_prdata,
-  output logic [MASTER_NUM-1:0]                       o_mst_pready,
-  output logic [MASTER_NUM-1:0]                       o_mst_pslverr,
+  input  logic [MASTER_NUM-1:0]                       mst_psel_i,
+  input  logic [MASTER_NUM-1:0]                       mst_penable_i,
+  input  logic [MASTER_NUM-1:0][ADDR_WIDTH -1:0]      mst_paddr_i,
+  input  logic [MASTER_NUM-1:0]                       mst_pwrite_i,
+  input  logic [MASTER_NUM-1:0][DATA_WIDTH -1:0]      mst_pwdata_i,
+  input  logic [MASTER_NUM-1:0][DATA_STRB_WIDTH -1:0] mst_pstrb_i,
+  output logic [MASTER_NUM-1:0][DATA_WIDTH -1:0]      mst_prdata_o,
+  output logic [MASTER_NUM-1:0]                       mst_pready_o,
+  output logic [MASTER_NUM-1:0]                       mst_pslverr_o,
 
   //APB slave interface
-  output logic                        o_slv_psel,
-  output logic                        o_slv_penable,
-  output logic [ADDR_WIDTH -1:0]      o_slv_paddr,
-  output logic                        o_slv_pwrite,
-  output logic [DATA_WIDTH -1:0]      o_slv_pwdata,
-  output logic [DATA_STRB_WIDTH -1:0] o_slv_pstrb,
-  input  logic [DATA_WIDTH -1:0]      i_slv_prdata,
-  input  logic                        i_slv_pready,
-  input  logic                        i_slv_pslverr
+  output logic                        slv_psel_o,
+  output logic                        slv_penable_o,
+  output logic [ADDR_WIDTH -1:0]      slv_paddr_o,
+  output logic                        slv_pwrite_o,
+  output logic [DATA_WIDTH -1:0]      slv_pwdata_o,
+  output logic [DATA_STRB_WIDTH -1:0] slv_pstrb_o,
+  input  logic [DATA_WIDTH -1:0]      slv_prdata_i,
+  input  logic                        slv_pready_i,
+  input  logic                        slv_pslverr_i
 );
 
 `ifdef SIM_APB_ARB
@@ -74,26 +74,26 @@ module prim_apb_arb #(
 
 `ifdef SIM_APB_ARB
   // in case we have TEST port, we connect it as highest index master
-  assign mst_psel    = {i_test_psel,    i_mst_psel   };
-  assign mst_penable = {i_test_penable, i_mst_penable};
-  assign mst_paddr   = {i_test_paddr,   i_mst_paddr  };
-  assign mst_pwrite  = {i_test_pwrite,  i_mst_pwrite };
-  assign mst_pwdata  = {i_test_pwdata,  i_mst_pwdata };
-  assign mst_pstrb   = {i_test_pstrb,   i_mst_pstrb  };
-  assign {o_test_prdata,  o_mst_prdata } = mst_prdata ;
-  assign {o_test_pready,  o_mst_pready } = mst_pready ;
-  assign {o_test_pslverr, o_mst_pslverr} = mst_pslverr;
+  assign mst_psel    = {test_psel_i,    mst_psel_i   };
+  assign mst_penable = {test_penable_i, mst_penable_i};
+  assign mst_paddr   = {test_paddr_i,   mst_paddr_i  };
+  assign mst_pwrite  = {test_pwrite_i,  mst_pwrite_i };
+  assign mst_pwdata  = {test_pwdata_i,  mst_pwdata_i };
+  assign mst_pstrb   = {test_pstrb_i,   mst_pstrb_i  };
+  assign {test_prdata_o,  mst_prdata_o } = mst_prdata ;
+  assign {test_pready_o,  mst_pready_o } = mst_pready ;
+  assign {test_pslverr_o, mst_pslverr_o} = mst_pslverr;
 `else
   // else we have only master ports used
-  assign mst_psel    = i_mst_psel   ;
-  assign mst_penable = i_mst_penable;
-  assign mst_paddr   = i_mst_paddr  ;
-  assign mst_pwrite  = i_mst_pwrite ;
-  assign mst_pwdata  = i_mst_pwdata ;
-  assign mst_pstrb   = i_mst_pstrb  ;
-  assign o_mst_prdata  = mst_prdata ;
-  assign o_mst_pready  = mst_pready ;
-  assign o_mst_pslverr = mst_pslverr;
+  assign mst_psel    = mst_psel_i   ;
+  assign mst_penable = mst_penable_i;
+  assign mst_paddr   = mst_paddr_i  ;
+  assign mst_pwrite  = mst_pwrite_i ;
+  assign mst_pwdata  = mst_pwdata_i ;
+  assign mst_pstrb   = mst_pstrb_i  ;
+  assign mst_prdata_o  = mst_prdata ;
+  assign mst_pready_o  = mst_pready ;
+  assign mst_pslverr_o = mst_pslverr;
 `endif
 
   logic [MASTER_SUM_NUM-1:0] mst_req_r, mst_req_nxt;
@@ -125,8 +125,8 @@ module prim_apb_arb #(
   apb_state_t apb_state_r, apb_state_nxt;
 
   // APB DATAPATH registers don't have reset for common rtl optimization
-  always_ff @(posedge i_clk) begin : mst_stage
-    if (~i_reset_n) begin
+  always_ff @(posedge clk_i) begin : mst_stage
+    if (~rst_ni) begin
       for (int i = 0; i < MASTER_SUM_NUM; i++) begin
         mst_req_r[i]    <= 1'b0;
         mst_pready_r[i] <= 1'b0;
@@ -164,17 +164,17 @@ module prim_apb_arb #(
     .LockIn(1'b1),
     .FairArb(1'b1)
   ) apb_arb (
-    .i_clk        (i_clk),
-    .i_reset_n    (i_reset_n),
-    .i_flush      (1'b0),
-    .i_rr_priority({$clog2(MASTER_SUM_NUM){1'b0}}),
-    .i_request    (mst_req_r),
-    .o_grant      (),
-    .i_data       ({MASTER_SUM_NUM{1'b0}}),
-    .o_request    (mst_sel_request),
-    .i_grant      (update_arb),
-    .o_data       (),
-    .o_index      (mst_sel_index)
+    .clk_i        (clk_i),
+    .rst_ni    (rst_ni),
+    .flush_i      (1'b0),
+    .rr_priority_i({$clog2(MASTER_SUM_NUM){1'b0}}),
+    .request_i    (mst_req_r),
+    .grant_o      (),
+    .data_i       ({MASTER_SUM_NUM{1'b0}}),
+    .request_o    (mst_sel_request),
+    .grant_i      (update_arb),
+    .data_o       (),
+    .index_o      (mst_sel_index)
   );
 
   always_comb begin
@@ -183,8 +183,8 @@ module prim_apb_arb #(
   end
 
   // APB state machine for slave interface
-  always_ff @(posedge i_clk) begin : apb_fsm_ff
-    if (~i_reset_n) begin
+  always_ff @(posedge clk_i) begin : apb_fsm_ff
+    if (~rst_ni) begin
       apb_state_r <= IDLE;
     end else begin
       apb_state_r <= apb_state_nxt;
@@ -234,12 +234,12 @@ module prim_apb_arb #(
       end
 
       ACCESS: begin
-        if (i_slv_pready) begin
+        if (slv_pready_i) begin
           for (int i = 0; i < MASTER_SUM_NUM; i++) begin
             if (mst_sel_arb[i] == 1'b1) begin  // one hot array
-              mst_prdata_nxt[i] = i_slv_prdata;
+              mst_prdata_nxt[i] = slv_prdata_i;
               mst_pready_nxt[i] = 1'b1;
-              mst_pslverr_nxt[i] = i_slv_pslverr;
+              mst_pslverr_nxt[i] = slv_pslverr_i;
               // since there is stage on masters interface, from FSM's point of view,
               // master will deassert its psel/penable with 2 cycle delay since slave pready is asserted
               //    1 cycle for stage on arbiter's master output interface (mst_pready assertion)
@@ -285,12 +285,12 @@ module prim_apb_arb #(
     endcase
   end
 
-  assign o_slv_psel    = slv_psel_r;
-  assign o_slv_penable = slv_penable_r;
-  assign o_slv_paddr   = slv_paddr_r;
-  assign o_slv_pwrite  = slv_pwrite_r;
-  assign o_slv_pwdata  = slv_pwdata_r;
-  assign o_slv_pstrb   = slv_pstrb_r;
+  assign slv_psel_o    = slv_psel_r;
+  assign slv_penable_o = slv_penable_r;
+  assign slv_paddr_o   = slv_paddr_r;
+  assign slv_pwrite_o  = slv_pwrite_r;
+  assign slv_pwdata_o  = slv_pwdata_r;
+  assign slv_pstrb_o   = slv_pstrb_r;
 
   assign mst_prdata  = mst_prdata_r;
   assign mst_pready  = mst_pready_r;
