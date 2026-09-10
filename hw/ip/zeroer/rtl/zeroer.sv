@@ -109,7 +109,7 @@ module zeroer #(
   logic [63:0] dest_addr;
   logic [63:0] size;
   logic        int_en;
-  logic [ 1:0] status_swacc;
+  logic [1:0] status_swacc;
 
   logic [31:0] outstanding_reqs;
 
@@ -247,10 +247,12 @@ module zeroer #(
     nxt_strb = cur_strb;
     nxt_last_transfer_strb = cur_last_transfer_strb;
     nxt_beats_to_transfer = cur_beats_to_transfer;
+    nxt_size_overflow = '0;
 
     burst_len = axi_pkg::len_t'(0);
     last_transfer_size = '0;
     total_transfer_size = '0;
+    total_transfer_size_overflow = '0;
     last_strb = axi_strb_t'(0);
 
     mst_awvalid = 1'b0;
