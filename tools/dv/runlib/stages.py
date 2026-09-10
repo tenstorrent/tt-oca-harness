@@ -2742,7 +2742,7 @@ def _file_sha256(path: str | Path) -> str:
     return digest.hexdigest()
 
 
-def _coverage_policy(
+def resolve_coverage_policy(
     flow: Flow,
     root: Path,
     tool: str,
@@ -2810,7 +2810,7 @@ def coverage_stage(
     supported_metrics = _coverage_supported_metrics(args, tool)
     exclusions = _coverage_auxiliary_files(flow, root, tool_cov, "exclude_files")
     waivers = _coverage_auxiliary_files(flow, root, tool_cov, "waiver_files")
-    policy = _coverage_policy(flow, root, tool, tool_cov)
+    policy = resolve_coverage_policy(flow, root, tool, tool_cov)
     design_db = _coverage_design_db(flow, root, sim_cfg, tool_cov, args)
     ctx = {
         "run_dir": str(run_dir),
