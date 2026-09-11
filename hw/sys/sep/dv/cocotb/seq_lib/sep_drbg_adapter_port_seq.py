@@ -15,13 +15,12 @@ in tb_top) directly, with no fabric in front of it, so every legal ordering is
 presentable to the cycle. What it proves is the MODULE's arbitration contract;
 the SEP integration half stays with the fabric-driven leaves.
 
-Because the vehicle has its own reset, a wedged cell is cleared without
-resetting the DUT, so all three orderings run in one leaf and each verdict is
-independent.
+The vehicle has its own reset, so all three orderings run in one leaf and
+each verdict is independent.
 
-Every ordering here is legal AXI: AW, W and AR are independent channels
-(AMBA IHI 0022 A3.3), and a master may not deassert a VALID before its
-handshake completes (A3.2.1), which is what makes a stall unrecoverable.
+AW, W and AR are independent channels (AMBA IHI 0022 A3.3). Idle ready is a
+function of committed pending state only; a read is accepted when neither
+write half is pending.
 """
 
 from __future__ import annotations
