@@ -807,8 +807,16 @@ def result_payload(
         # result records the exact config layers that produced it.
         payload["overlay"] = overlay
     skipped = list(getattr(args, "_skipped_unimplemented", []) or []) if args is not None else []
-    if skipped:
-        payload["selection"] = {"skipped_unimplemented": skipped}
+    wrong_tool = list(getattr(args, "_skipped_wrong_tool", []) or []) if args is not None else []
+    if skipped or wrong_tool:
+        selection: dict[str, Any] = {}
+        if skipped:
+            selection["skipped_unimplemented"] = skipped
+        if wrong_tool:
+            # Scenarios this tool cannot run (per-test `tools`). Recorded so a result
+            # that graded fewer items than the group lists says why.
+            selection["skipped_wrong_tool"] = wrong_tool
+        payload["selection"] = selection
     if progress is not None:
         payload["progress"] = progress
     if interruption is not None:

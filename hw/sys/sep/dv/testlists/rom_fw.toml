@@ -440,11 +440,12 @@ args = [
 ]
 
 [[tests]]
-# NEEDS THE VERILATOR FLOW, which is this DUT's default -- the runlib has no
-# per-test tool key, so nothing enforces it. The scenario reads the SRAM array
-# through cocotb.top at gen_ram_inst[0].u_mem.mem, which resolves under Verilator
-# via sep_public_scope.vlt and not under VCS, where the walk fails on the
-# generate index and the test errors before simulating.
+# VERILATOR ONLY, enforced by `tools` on the entry below. The scenario reads the
+# SRAM array through cocotb.top at gen_ram_inst[0].u_mem.mem, which resolves under
+# Verilator via sep_public_scope.vlt and not under VCS, where the walk fails on the
+# generate index and the test errors before simulating. A group or tag selection
+# under another tool drops this entry and says so; naming it in --items under one
+# is an error rather than a silent no-op.
 # TP080 -- the EXT SRAM is cleared between the primary rejection and the backup
 # fetch. Subclasses the entry above and inherits its stimulus and every one of its
 # failover checks unchanged; what it adds is an SRAM scoreboard.
@@ -495,6 +496,7 @@ name = "sep_failover_sram_clear_assertion_test"
 module = "rom_fw.sep_failover_sram_clear_assertion_test"
 target = "rom_boot"
 firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+tools = ["verilator"]
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "spi", "failover", "sram", "cpu", "subsystem"]
