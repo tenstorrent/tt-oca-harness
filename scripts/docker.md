@@ -6,7 +6,7 @@ so every host runs the same image as CI.
 
 ## Commands
 
-```
+```bash
 docker-run.sh build
 docker-run.sh ensure
 docker-run.sh verify
@@ -52,7 +52,8 @@ docker-run.sh doc-stage
 The container image is a Nix flake output — see
 [`nix/nix-infrastructure.md`](../nix/nix-infrastructure.md) for the full
 picture of the flake structure, dependency definitions, and how the two image
-variants are built.
+variants are built. If you are new to Nix, [`nix/glossary.md`](../nix/glossary.md)
+explains the key terms.
 
 The relevant flake outputs are:
 
@@ -77,6 +78,16 @@ On hosts **without Nix installed**, all nix operations (`build`, `ensure`,
 `OCAH_NIXOS_IMAGE` (default `docker.io/nixos/nix:latest`). The `nixos-shell`
 command opens an interactive shell in that same image, which is useful for
 debugging the container build without a local Nix install.
+
+### Adding packages to the container
+
+The container has no package manager — `apt`, `yum`, and similar tools are not
+available. To add a package, edit [`ocah_deps.nix`](../ocah_deps.nix) (for
+packages that should also appear in the dev shell) or
+[`nix/container.nix`](../nix/container.nix) (for container-only additions),
+then rebuild with `./scripts/docker-run.sh build`. See
+[`nix/nix-infrastructure.md`](../nix/nix-infrastructure.md) for details on
+the dependency structure.
 
 ## Image identity
 

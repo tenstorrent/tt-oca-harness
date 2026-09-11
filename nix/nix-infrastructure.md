@@ -1,21 +1,43 @@
 # OCAH Nix Infrastructure
 
+If you are new to Nix, see [`nix/glossary.md`](./glossary.md) for an
+explanation of the terms used here (flake, derivation, overlay, dev shell,
+etc.).
+
 ## `flake.nix`
 
-This is the root of the nix infrastructure, defining the inputs and accessible outputs. 
+This is the root of the Nix infrastructure, declaring what this repo depends
+on (inputs) and what it provides (outputs).
+
+`${system}` in output names is a Nix placeholder for the host platform (e.g.
+`x86_64-linux`, `aarch64-darwin`). Nix fills it in automatically.
 
 Currently the flake defines the following outputs:
 
-- `lib` - Several nix functions, defined in `nix/lib.nix`. These are exported to be looped back in for cleaner code.
-- `overlays` - Exports a `default` package overlay, which provides the custom packages declared in `nix/packages/*.nix`. This overlay is constructed in `nix/package-overlay.nix`.
-- `devShells.${system}` - Defines several development shells for different host platforms - these may be accessed by running `nix develop $REPO_ROOT#<shell>
-  - `without_uv_deps` - Bundles all packages used for developing OCAH, minus the packages installed via UV. This should be preferred in most cases, especially when the development involves modifying the UV dependencies.
-  - `with_uv_deps` - This includes the above, as well as bundling in the UV dependencies defined in `uv.lock` - this is mostly for use on NixOS, where venv-installed packages can occasionally fail due to hardcoded system paths.
-  - `default` - an alias for `without_uv_deps` - `nix develop $REPO_ROOT` will activate this shell.
-- `dockerContainers.${system}` - Defines builds of x86_64-linux Docker containers for different build platforms, the containers able to be built are as follows:
-  - `without_uv_deps` - Corresponds roughly to the `without_uv_deps` shell - a container including all package dependencies of OCAH, minus UV packages.
-  - `with_uv_deps` - Corresponds similarly to the `with_uv_deps` shell - contains all dependencies of OCAH, including UV Packages. This may be useful in an airgapped system, as it provides all dependencies in a single image.
-- `formatter.${system}` - Declares a formatter able to be run with `nix fmt`
+- `lib` — Helper Nix functions defined in `nix/lib.nix`. Re-exported as a
+  flake output so other parts of the flake can reference them without circular
+  imports.
+- `overlays` — A `default` package overlay that makes the custom packages in
+  `nix/packages/*.nix` available by name alongside standard nixpkgs packages.
+  Constructed in `nix/package-overlay.nix`.
+- `devShells.${system}` — Development shells activated with
+  `nix develop $REPO_ROOT#<name>`. Three variants:
+  - `without_uv_deps` — All OCAH build and development tools, excluding Python
+    packages managed by `uv`. Preferred in most cases, especially when
+    modifying Python dependencies.
+  - `with_uv_deps` — The above plus `uv`-managed Python packages baked in.
+    Primarily for NixOS hosts, where venv-installed packages can fail due to
+    hardcoded system paths.
+  - `default` — Alias for `without_uv_deps`. `nix develop $REPO_ROOT` (no
+    `#name`) activates this.
+- `dockerContainers.${system}` — OCI container images built by Nix (no
+  Dockerfile). The image is always built for `x86_64-linux` regardless of the
+  host platform. Two variants:
+  - `without_uv_deps` — All dependencies except `uv` packages. The default
+    image used by `docker-run.sh`.
+  - `with_uv_deps` — All dependencies including `uv` packages. Useful for
+    air-gapped systems where the image is the only package source.
+- `formatter.${system}` — Code formatter run with `nix fmt`.
     
 
 ### `.envrc`
@@ -63,22 +85,34 @@ The package dependencies of OCAH are defined in [`ocah_deps.nix`](../ocah_deps.n
 
 This should be straightforward to modify when needed to allow additional packages/environment variables to be set.
 
-### Source Dependencies
+### Custom packages
 
-OCAH depends on pinned versions of several packages, which are defined in `nix/packages/<package>.nix`. These files provide nix derivations (reproducible build scripts) for each package. These shouldn't need modification, other than if the versions are to be updated. See [the included details](./packages/README.md) for more information. Source dependencies are automatically constructed into an overlay, and can then be listed in the above `ocah_pkgs` as `<package>`.
+> **Reminder:** Nix only sees git-tracked files. Run `git add` on any new
+> `.nix` file before attempting to build or evaluate.
+
+Packages not available in `nixpkgs`, or needed at a specific version, are
+defined as Nix derivations in `nix/packages/<package>.nix`. These are
+automatically included in the overlay (see glossary) so they can be added to
+`ocah_pkgs` by name just like any standard package. See
+[`nix/packages/README.md`](./packages/README.md) for details. These files
+rarely need editing — the main reason to touch them is to update a pinned
+version.
 
 ## Containers
 
 The repository is able to build two different containers (`ocah-container` and `ocah-uv-container`). The container builds are defined in [nix/container.nix](./container.nix). This Loads the OCAH Dependencies described [above](#dependencies), and outputs a container configuration and hash. The container hashes are pinned to the x86_64-linux build hash for all build platforms, for consistency.
 
-The containers also include some standard utilities, allowing development to proceed in the container. The containers may be accessed using the `docker-run.sh` script.
-
-The `OCAH_NIX_IMAGE_WITH_UV=true` environment variable may optionally be set to bundle UV dependencies in the build container - defaults to `false`
-
+The containers also include standard utilities for interactive development.
+Use `OCAH_IMAGE_WITH_UV=true` to select the `with_uv_deps` variant (default:
+`false`). The containers are accessed via `scripts/docker-run.sh`; see
+[`scripts/docker.md`](../scripts/docker.md) for usage.
 
 ### Reproducibility
 
-The container configurations are hashed in a similar manner to a traditional `dockerFile`. The container hashes may be printed using the following command:
+Unlike a Dockerfile (hashed only by its text), a Nix container image is
+content-addressed: the hash covers every input — package versions, env vars,
+build steps. Any change to any input produces a new hash. The container hashes
+can be printed with:
 
 ```bash
 # Without UV Deps
@@ -88,18 +122,20 @@ nix eval $REPO_ROOT#containerHashes.without_uv_deps | tr -d '"'
 nix eval $REPO_ROOT#containerHashes.with_uv_deps | tr -d '"'
 ```
 
-If you don't have `nix` installed, this may be run in a NixOS container shell, accessed using the following:
+If you don't have Nix installed, run these commands inside the NixOS shell
+(a container that has Nix available):
 
 ```bash
 $REPO_ROOT/scripts/docker-run.sh nixos-shell
+# then run the nix eval commands above
 ```
 
-When using an external container file, you can check it is up-to-date by running:
+To check whether a container tarball matches the expected hash, inspect its
+embedded tag (`jq` is not in the OCAH container, so use `nix run` to get it
+temporarily):
 
 ```bash
-tar -xOf <nix-container-image> manifest.json | jq -r '.[0].RepoTags[0]'
-# Or, in the container shell, as `jq` isn't already installed
-tar -xOf <nix-container-image> manifest.json | nix run nixpkgs#jq -- -r '.[0].RepoTags[0]'
+tar -xOf <nix-container-image.tar.gz> manifest.json | nix run nixpkgs#jq -- -r '.[0].RepoTags[0]'
 ```
 
 Note that container tags and names may be trivially faked - so this is not a security check. A trusted image may only be obtained by building it yourself.
