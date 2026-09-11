@@ -102,7 +102,7 @@ REQUIRED_ALGS policy vectors, generalized CHIPLET_PUBK_REVOKE to all owners'
 keys, and removed PUBK_PROVISIONED.
 |0.5.16 |2026-07-13 |Alessandro Ottaviano |Document dual LSIO on GPIO[25:26] in
 `ocah_gpio_table.adoc`: PSYSCRITB/VRHOTB when enabled, else UART[3].RTS/CTS when
-UART[3] is enabled (QUAS-4655).
+UART[3] is enabled.
 |0.5.17 |2026-07-13 |Alessandro Ottaviano |Clarify that GPIO[52]/[55]/[57]
 (Thermal Emergency / PLL OBS / PVT RO) claim the pad only when that function is enabled.
 |0.5.18 |2026-07-14 |Haohao Liao |Reframed the SEP secure-boot signing model as
