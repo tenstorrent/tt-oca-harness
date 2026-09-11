@@ -626,6 +626,12 @@
    Overridden here rather than in the generator, since that's separately
    owned tooling output.
    ======================================== */
+.ocah-reg-html {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
 .ocah-reg-html table {
     background: var(--oca-cream) !important;
     font-size: 0.85rem;
