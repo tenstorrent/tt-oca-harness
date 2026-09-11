@@ -871,11 +871,11 @@ to the PIC; `ext_trng_alarm_i` is reserved for RAS.
 
 ==== eFuse and Lifecycle
 
-The SEP accesses its own eFuse bank through the `efuse_bank_ctrl` AXI-Lite
-interface and the `efuse_shim_command` custom interface, mirroring the pattern
-used by the SMC. The SEP must wait for the SMC fuse sense to complete
-(`smc_fuse_sense_done_i`) before initiating its own fuse operations, and it
-signals completion through `sep_smc_fuse_sense_done_o`.
+SEP has a dedicated eFuse interface; the SHIM contract is
+<<smc-efuse-connection>>. This instance is parameterized with
+`HAS_LC_STATE=1` (SMC uses `0`), which enables lifecycle-state
+awareness to meet security requirements. Instantiate a separate
+eFuse SHIM and physical eFuse bank for SEP; do not share the SMC's.
 
 The lifecycle controller exports `lc_state_o` (differentially encoded),
 `lc_sigint_err_o` (signal integrity error), `security_disable_o`,
