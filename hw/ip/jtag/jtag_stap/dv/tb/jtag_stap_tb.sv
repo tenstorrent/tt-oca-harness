@@ -308,17 +308,17 @@ module jtag_stap_tb;
     test_count++;
     $display("Test %0d: STAP host interface with stap_sel enabled", test_count);
 
-    // Step 1: Program 3DCR to set stap_sel bit [1]
+    // Program 3DCR to set stap_sel bit [1]
     $display("INFO: Programming 3DCR to enable stap_sel");
     program_3dcr(.tms_hold_val(1'b0), .stap_sel_val(1'b1), .config_hold_val(1'b0));
 
-    // Step 2: Check host_tap_ctrl_o signals with stap_sel enabled
+    // Check host_tap_ctrl_o signals with stap_sel enabled
     $display("INFO: Verifying host TAP control signals");
     check_signal(host_tap_ctrl.tck, tck, "host_tap_ctrl.tck", "Host TAP");
     check_signal(host_tap_ctrl.trst_n, trst_n, "host_tap_ctrl.trst_n", "Host TAP");
     check_signal(host_tap_ctrl.tms, tms, "host_tap_ctrl.tms", "Host TAP");
 
-    // Step 3 & 4: Drive random data on both paths simultaneously
+    // Drive random data on both paths simultaneously
     client_random_data = $urandom & 16'hFFFF;
     host_random_data = $urandom & 16'hFFFF;
     $display("INFO: Client scan data: 0x%04h, Host TDI data: 0x%04h", client_random_data,
@@ -354,7 +354,7 @@ module jtag_stap_tb;
     end
 
     // Verify host_tdi -> client_scan_out path
-    // The 1-cycle latency is already accounted for by capturing after the clock edge
+    // Capturing after the clock edge absorbs the 1-cycle latency
     $display("INFO: Verifying host TDI to client scan output path");
     for (i = 0; i < 16; i++) begin
       check_signal(captured_scan_out[i], host_random_data[i], $sformatf("scan_out[%0d]", i),

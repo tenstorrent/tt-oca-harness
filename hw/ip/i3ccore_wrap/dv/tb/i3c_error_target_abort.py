@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 """
-I3C Error: Target Read Abort  (Test Plan #37)
+I3C Error: Target Read Abort
 
 The controller requests a read of `requested_len` bytes but the target only
 supplies `supplied_len < requested_len` bytes. The verification point is that
@@ -12,14 +12,12 @@ than hanging waiting for the missing bytes.
 Constrained-random: both `requested_len` and `supplied_len` are randomized
 (shared framework, seed from +seed/SEED/default) under the constraint
 `4 <= supplied_len < requested_len`, both dword-aligned, so the short-read /
-abort datapath sees a range of (requested, supplied) gaps instead of a single
-fixed 8-vs-4 case.
+abort datapath sees a range of (requested, supplied) gaps.
 
-Unlike the previous scaffold, this drives the read command length and the
-target TX byte-count *independently* (the `private_read` helper ties them
-together, which produces a clean read with no mismatch). The controller
-response is polled with a bounded budget; getting a response at all is the
-"does not hang" scoreboard.
+The read command length and the target TX byte-count are driven
+*independently* (the `private_read` helper ties them together, which produces
+a clean read with no mismatch). The controller response is polled with a
+bounded budget; getting a response at all is the "does not hang" scoreboard.
 """
 
 import cocotb
@@ -68,7 +66,7 @@ async def test_error_target_abort(dut):
     await helper.write(ctrl.base + PIOCONTROL_COMMAND_PORT_REG_ADDR, cmd_hi)
 
     # Wait for target TX descriptor queue space, then tell the target to supply
-    # only `supplied_len` bytes (deliberately fewer than requested).
+    # only `supplied_len` bytes (fewer than requested).
     for _ in range(1000):
         tgt_status = await helper.read(tgt.base + I3C_EC_TTI_INTERRUPT_STATUS_REG_ADDR)
         if tgt_status & TTI_TX_DESC_THLD_STAT:

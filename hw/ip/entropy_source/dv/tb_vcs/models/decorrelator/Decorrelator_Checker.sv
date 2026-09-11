@@ -14,9 +14,6 @@
 //   - When ref model asserts valid, both DUT and ref should have new data
 //   - Comparison happens on ref_vld_i pulse
 //   - No separate DUT valid signal needed (DUT updates when divider reaches 0)
-//
-// Author: Decorrelator Verification
-// Date: 2025-11-19
 //------------------------------------------------------------------------------
 
 `timescale 1ns / 1ps
@@ -210,14 +207,11 @@ module Decorrelator_Checker #(
   end
 
   //--------------------------------------------------------------------------
-  // Summary Report at End of Simulation (REMOVED - Python prints summary)
+  // End-of-simulation summary
   //--------------------------------------------------------------------------
-  // The final block has been removed because Python test now handles verification
-  // via decor_checker_verify() which provides cleaner summary and properly fails
-  // the Cocotb test when mismatches are detected.
-  //
-  // Immediate mismatch reporting via $error still active above.
-  // Statistics available via check_count_o and mismatch_count_o output ports.
+  // The Python test summarizes and fails on mismatches via decor_checker_verify(),
+  // reading check_count_o and mismatch_count_o; each mismatch is reported above
+  // with $error as it occurs.
 
   //--------------------------------------------------------------------------
   // SVA Assertions (optional, enable with +define+DECOR_CHECKER_ASSERTIONS)

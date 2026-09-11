@@ -4,7 +4,7 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_km_recov_fault.c
- * @brief T061 - Recoverable fault register verification test
+ * @brief Recoverable fault register verification test
  *
  * Verifies that triggering a recoverable fault correctly sets the
  * KMCSR RECOVERABLE_ERR register and produces a RESP_RECOVERABLE_FAULT
@@ -28,10 +28,6 @@ int rom_boot_wipe_enabled(void) {
 int rom_unrec_wipe_enabled(void) {
     return 0;
 }
-
-/*===========================================================================
- * Common Helpers
- *===========================================================================*/
 
 /*===========================================================================
  * Main

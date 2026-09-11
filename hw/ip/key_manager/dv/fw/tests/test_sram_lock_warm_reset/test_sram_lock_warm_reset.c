@@ -19,8 +19,6 @@
  *
  * Phase detection:
  *   A 32-bit marker below BSS_START records which phase is in progress.
- *   Marker at SRAM_BASE + 0x2800 is below the markers used by test_warm_reset.c
- *   (+0x2C00) and test_soft_reset.c (+0x3000) and avoids collision.
  *
  * Phase 0 (cold boot):
  *   1. Lock the test region (simulating ROM pre-handover lock).
@@ -39,8 +37,8 @@
  *   7. TEST_PASS.
  *
  * Test region selection:
- *   Region 6 covers 0x4C00-0x4DFF — below BSS/data/stack (packed from the top
- *   of SRAM) and not the known hang region (15) or any phase-marker region.
+ *   Region 6 covers 0x9800-0x9BFF — below BSS/data/stack (packed from the top
+ *   of SRAM) and not region 15 (locking it hangs) or any phase-marker region.
  *   No data/bss/stack is expected at this address for simple firmware tests.
  *
  * Run with:
@@ -62,8 +60,8 @@
 #define MARKER_PHASE1 0xBB000001u
 
 /* Test SRAM write-lock region.
- * Region 6 = bytes [0x4C00, 0x4DFF] — low SRAM, below any data/bss/stack.
- * Not region 15 (known hang), not a phase-marker region. */
+ * Region 6 = bytes [0x9800, 0x9BFF] — low SRAM, below any data/bss/stack.
+ * Not region 15 (locking it hangs), not a phase-marker region. */
 #define TEST_REGION 6u
 #define TEST_REGION_MASK (1u << TEST_REGION)
 #define TEST_REGION_BASE (SRAM_BASE + (uint32_t)TEST_REGION * SRAM_LOCK_REGION_BYTES)

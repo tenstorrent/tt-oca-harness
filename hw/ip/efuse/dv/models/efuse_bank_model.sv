@@ -129,11 +129,11 @@ module efuse_bank_model #(
   // Sim-only OTP image preload. The plusarg is a path sampled at time 0;
   // $readmemh waits for rst_ni so the testbench can write that file after the
   // simulator starts (per-run seed). Silicon has fuse contents from power-on;
-  // this is safe only because consumers go through fuse sense, which starts well
-  // after reset release. EFUSE_BANK_REG.dout has no reset, so the image and
-  // later programs survive every reset. $readmemh cannot target the unpacked
-  // struct array, hence the scratch array. Selected by +smc_efuse_hex /
-  // +sep_efuse_hex (default out/sep_efuse.hex).
+  // the preload must land before fuse sense, which starts well after reset
+  // release. EFUSE_BANK_REG.dout has no reset, so the image and later programs
+  // survive every reset. $readmemh cannot target the unpacked struct array,
+  // hence the scratch array. Selected by +smc_efuse_hex / +sep_efuse_hex
+  // (default out/sep_efuse.hex).
   initial begin
     string img;
     logic [31:0] otp_preload_mem [1024];

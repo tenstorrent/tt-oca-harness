@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 """
-I3C AXI-Lite Protocol  (Test Plan #40)
+I3C AXI-Lite Protocol
 
 Exercises AXI-Lite register access: a write/read-back round-trip to a known
 read-write register, plus a second mapped read to confirm the bus completes.

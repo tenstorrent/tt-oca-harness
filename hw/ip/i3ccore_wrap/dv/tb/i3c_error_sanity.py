@@ -294,11 +294,11 @@ async def i3c_error_wrong_addr(dut):
 
 @cocotb.test(timeout_time=10000, timeout_unit="us")
 async def i3c_fifo_overflow(dut):
-    """I3C FIFO overflow test: 500-byte read without draining RX FIFO should cause overflow error.
+    """I3C FIFO overflow test: a long read without draining RX FIFO must report an overflow error.
 
     This test:
     1. Initialize controller and target, perform SETDASA
-    2. Issue a 500-byte private read
+    2. Issue a random 256..600-byte private read
     3. Fill target TX FIFO but DO NOT drain controller RX FIFO
     4. Verify response descriptor reports Ovl (0x6) error status
     """
@@ -343,7 +343,7 @@ async def i3c_fifo_overflow(dut):
     tb.log.info(f"  Response: 0x{resp:08X}, success={ok}")
     assert ok, f"SETDASA failed with response 0x{resp:08X}"
 
-    # Verify target got dynamic addressZ
+    # Verify target got dynamic address
     ok, dyn_addr = await tgt.wait_dynamic_addr()
     tb.log.info(f"  Target dynamic address: 0x{dyn_addr:02X}, valid={ok}")
     assert ok, "Target did not receive dynamic address"
@@ -402,7 +402,7 @@ async def i3c_fifo_overflow(dut):
     tb.log.debug(f"  Wrote TX descriptor 0x{tx_desc:08X} (byte_count={data_len})")
 
     # Main loop - wait for controller response (overflow error) or target TX_DESC_COMPLETE
-    # NOTE: Intentionally NOT draining controller RX FIFO to cause overflow
+    # The controller RX FIFO is left undrained so it overflows
     while True:
         loop_count += 1
         if loop_count % 100 == 0:
@@ -434,9 +434,8 @@ async def i3c_fifo_overflow(dut):
             bytes_written += chunk
             tb.log.debug(f"  Wrote {chunk} bytes to target TX, total={bytes_written}/{data_len}")
 
-        # NOTE: Intentionally NOT draining controller RX FIFO to cause overflow!
-        # The controller RX FIFO is small (8 entries * 4 bytes = 32 bytes)
-        # With 500 bytes and no draining, it will overflow
+        # The controller RX FIFO (8 entries * 4 bytes = 32 bytes) is left undrained
+        # so that the 256..600-byte read overflows it.
 
         await ClockCycles(dut.clk, 10)
 
@@ -480,12 +479,12 @@ async def i3c_fifo_overflow(dut):
 
 @cocotb.test(timeout_time=10000, timeout_unit="us")
 async def i3c_tx_fifo_underflow(dut):
-    """I3C TX FIFO underflow test: Start 200-byte write but only fill 5 TX entries.
+    """I3C TX FIFO underflow test: declare a long write but fill only a few TX entries.
 
     This test:
     1. Initialize controller and target, perform SETDASA
-    2. Issue a 200-byte private write (regular descriptor)
-    3. Fill only 5 entries (20 bytes) to controller TX FIFO
+    2. Issue a random 100..300-byte private write (regular descriptor)
+    3. Fill only 2..8 entries (8..32 bytes) to controller TX FIFO
     4. Stop filling - controller should detect underflow
     5. Verify response descriptor reports Ovl (0x6) error status
     """
@@ -536,7 +535,7 @@ async def i3c_tx_fifo_underflow(dut):
     assert ok, "Target did not receive dynamic address"
     assert dyn_addr == TARGET_DYNAMIC_ADDR
 
-    # Random declared write length vs a deliberately insufficient fill.
+    # Random declared write length vs an insufficient fill.
     # Constraint: bytes_to_fill < data_len (both dword-aligned) so the TX FIFO
     # underflows for every seed; fill stays a small handful of entries.
     bytes_per_entry = 4
@@ -575,7 +574,7 @@ async def i3c_tx_fifo_underflow(dut):
     )
     assert ok, "Timeout waiting for TX threshold interrupt"
 
-    # Fill only 5 entries (20 bytes) - NOT enough for 200-byte write
+    # Fill fewer bytes than the declared write length
     tb.log.info(f"Filling only {bytes_to_fill} bytes to TX FIFO (deliberately insufficient)...")
     for i in range(0, bytes_to_fill, bytes_per_entry):
         word = helper.pack_bytes(tx_data[i : i + bytes_per_entry])
@@ -632,7 +631,8 @@ async def i3c_ibi_fifo_overflow(dut):
     4. Target sends first IBI with payload that fills IBI FIFO completely
     5. DO NOT read from controller IBI FIFO
     6. Queue a regular private write and another IBI on target
-    7. Wait and end test - user checks waveforms for NACK on second IBI, and that private write continues uninterrupted (since IBI FIFO overflow should not affect regular transfers)
+    7. Check that the controller NACKs the second IBI on the 9th SCL edge and that the
+       private write completes (IBI FIFO overflow must not affect regular transfers)
     """
     tb = TB(dut)
 
@@ -759,7 +759,7 @@ async def i3c_ibi_fifo_overflow(dut):
     ok = await tgt.write_ibi(mdb_2, ibi_payload_2)
     assert ok, "Target write_ibi #2 queue failed"
 
-    # Also do a regular 8-byte private write to verify bus continues working
+    # Also issue an immediate write to verify the bus keeps working
     tb.log.info("Issuing 8-byte private write to verify bus operation...")
     write_data = [0xDE, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE, 0xBA, 0xBE]
     cmd_lo, cmd_hi = build_immediate_write_cmd(write_data[:4], dat_idx=0, tid=1)

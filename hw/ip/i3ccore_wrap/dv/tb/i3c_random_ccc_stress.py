@@ -2,11 +2,11 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 """
-I3C Random CCC Stress  (Test Plan #43)
+I3C Random CCC Stress
 
 Directed-random CCC ordering: repeatedly pick a CCC from the supported set in
 random order and issue it, stressing the command FSM. SET values are drawn from
-the full legal range (not a 3-value pool), and SET/GET round-trips self-check.
+the full legal range, and SET/GET round-trips self-check.
 
 The seed is resolved by i3c_rand from +seed=<n> / SEED=<n> / default and
 logged, so regression runs vary the sequence and accumulate coverage. CCCs are

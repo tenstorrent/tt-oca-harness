@@ -180,7 +180,7 @@ class smu_clock_stop_coordination_test_seq:
         baseline_stop = self._sample(dut.dtp_stop_clks_o, "dtp_stop_clks_o")
         baseline_stall_ovrd = self._sample(dut.jtag_boot_stall_ovrd, "jtag_boot_stall_ovrd")
         baseline_stall = self._sample(dut.jtag_boot_stall, "jtag_boot_stall")
-        baseline_fuse = self._sample(dut.fuse_reset_n_delayed_o, "fuse_reset_n_delayed_o")
+        baseline_fuse = self._sample(dut.smc_fuse_reset_n_delayed_o, "smc_fuse_reset_n_delayed_o")
         if baseline_stop != 0:
             raise AssertionError(f"baseline dtp_stop_clks_o={baseline_stop} expect 0")
         self._log(
@@ -226,15 +226,15 @@ class smu_clock_stop_coordination_test_seq:
         )
         # Held fuse_reset across sticky stall (must stay 0).
         await self._wait_eq_hold(
-            dut.fuse_reset_n_delayed_o,
+            dut.smc_fuse_reset_n_delayed_o,
             0,
             clk=dut.clk_smu_i,
             bound=self.BOUND_CYCLES,
             label="s2_fuse_held_stable",
-            name="fuse_reset_n_delayed_o",
+            name="smc_fuse_reset_n_delayed_o",
             hold=16,
         )
-        fuse_held = self._sample(dut.fuse_reset_n_delayed_o, "fuse_reset_n_delayed_o")
+        fuse_held = self._sample(dut.smc_fuse_reset_n_delayed_o, "smc_fuse_reset_n_delayed_o")
         self._mark_lifecycle(
             "CHK-DTP-BOOT-STALL-S1",
             "observed",
@@ -251,7 +251,7 @@ class smu_clock_stop_coordination_test_seq:
             "cleared",
             f"clear/ack cold-reset exit rst_cold_ni={cold_n} while stall holds",
         )
-        fuse_still = self._sample(dut.fuse_reset_n_delayed_o, "fuse_reset_n_delayed_o")
+        fuse_still = self._sample(dut.smc_fuse_reset_n_delayed_o, "smc_fuse_reset_n_delayed_o")
         if fuse_still != 0:
             raise AssertionError(f"BOOT-STALL.S1 checked_cleared fail: fuse_reset={fuse_still}")
         self._mark_lifecycle(
@@ -288,14 +288,14 @@ class smu_clock_stop_coordination_test_seq:
         await jtag.write("DEBUG_CONTROL", 0)
         await ClockCycles(dut.clk_smu_i, self.SETTLE)
         await self._wait_eq(
-            dut.fuse_reset_n_delayed_o,
+            dut.smc_fuse_reset_n_delayed_o,
             1,
             clk=dut.clk_smu_i,
             bound=self.BOUND_CYCLES,
             label="s3_fuse_release",
-            name="fuse_reset_n_delayed_o",
+            name="smc_fuse_reset_n_delayed_o",
         )
-        fuse_rel = self._sample(dut.fuse_reset_n_delayed_o, "fuse_reset_n_delayed_o")
+        fuse_rel = self._sample(dut.smc_fuse_reset_n_delayed_o, "smc_fuse_reset_n_delayed_o")
         self._mark_lifecycle(
             "CHK-DTP-BOOT-STALL-S2",
             "observed",
@@ -310,7 +310,7 @@ class smu_clock_stop_coordination_test_seq:
             "cleared",
             f"clear/ack stall outputs ovrd={ovrd_c} stall={stall_c}",
         )
-        fuse_chk = self._sample(dut.fuse_reset_n_delayed_o, "fuse_reset_n_delayed_o")
+        fuse_chk = self._sample(dut.smc_fuse_reset_n_delayed_o, "smc_fuse_reset_n_delayed_o")
         if fuse_chk != 1:
             raise AssertionError(f"BOOT-STALL.S2 checked_cleared fuse_reset={fuse_chk}")
         self._mark_lifecycle(

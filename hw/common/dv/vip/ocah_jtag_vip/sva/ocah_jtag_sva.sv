@@ -5,9 +5,8 @@
 //
 // Rule provenance: every rule below is implemented from the public IEEE Std
 // 1149.1 clause DESCRIPTIONS. No third-party protocol checker source was
-// consulted or copied; all rule names are OCAH-original. Reviewers: verify
-// additions cite an IEEE Std 1149.1 clause, never another checker
-// implementation.
+// consulted or copied; all rule names are OCAH-original. Additions cite an
+// IEEE Std 1149.1 clause, never another checker implementation.
 //
 // Shape: a module with explicit flat ports so it can be instantiated at TB
 // scope next to flattened DUT nets or bound into a hierarchy. `en_i` is a

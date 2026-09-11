@@ -109,23 +109,25 @@ sources:
       - upstream/hw/ip/prim/rtl/prim_rom_pkg.sv
       - upstream/hw/ip/prim/rtl/prim_ram_2p_pkg.sv
 
-      # CSRNG/entropy/EDN are referenced by OCAH key manager support packages.
-      - ../../../hw/common/ot_pkg/rtl/entropy_src_pkg.sv
+      # CSRNG/entropy/EDN. entropy_src_pkg comes from the vendored IP.
+      - upstream/hw/ip/entropy_src/rtl/entropy_src_pkg.sv
       - upstream/hw/ip/csrng/rtl/csrng_reg_pkg.sv
       - upstream/hw/ip/csrng/rtl/csrng_pkg.sv
       - upstream/hw/ip/edn/rtl/edn_reg_pkg.sv
       - upstream/hw/ip/edn/rtl/edn_pkg.sv
 
-      # OCAH support packages required by OpenTitan RTL/packages.
-      - ../../../hw/common/top_pkg.sv
+      # Per-top packages are OCAH-owned (hw/common/ot_chip_cfg/).
+      - ../../../hw/common/ot_chip_cfg/top_pkg.sv
       - ../../../hw/common/tlul/rtl/tlul_pkg.sv
-      - ../../../hw/common/top_racl_pkg.sv
-      - ../../../hw/common/ot_pkg/rtl/keymgr_reg_pkg.sv
-      - ../../../hw/common/ot_pkg/rtl/keymgr_pkg.sv
-      - ../../../hw/common/ot_pkg/rtl/lc_ctrl_state_pkg.sv
-      - ../../../hw/common/ot_pkg/rtl/lc_ctrl_reg_pkg.sv
-      - ../../../hw/common/ot_pkg/rtl/lc_ctrl_pkg.sv
-      - ../../../hw/common/ot_pkg/rtl/otp_ctrl_pkg.sv
+      - ../../../hw/common/ot_chip_cfg/top_racl_pkg.sv
+
+      # Key Manager and LC packages to satisfy the OT compile ABI.
+      - upstream/hw/ip/keymgr/rtl/keymgr_reg_pkg.sv
+      - upstream/hw/ip/keymgr/rtl/keymgr_pkg.sv
+      - upstream/hw/ip/lc_ctrl/rtl/lc_ctrl_state_pkg.sv
+      - upstream/hw/ip/lc_ctrl/rtl/lc_ctrl_reg_pkg.sv
+      - upstream/hw/ip/lc_ctrl/rtl/lc_ctrl_pkg.sv
+      - upstream/hw/ip/otp_ctrl/rtl/otp_ctrl_pkg.sv
 
       # TT-owned register address maps.
       - overlay/regs/csrng/regs/gen/sv/csrng_addrmap_pkg.sv

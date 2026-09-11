@@ -88,7 +88,7 @@ ifeq ($(COV), 1)
 	SIM_ARGS += -cm_log $(COV_DIR)/coverage.log
 endif
 
-# Waves (minimal; detailed FSDB setup can be added later)
+# Waves
 ifeq ($(WAVES), 1)
 	# Enable FSDB dump similar to other components
 	# Output FSDB to test-specific log directory
@@ -98,9 +98,8 @@ ifeq ($(WAVES), 1)
 	SIM_ARGS += +FSDB_FILE=$(TEST_LOG_DIR)/tb_entropy_top.fsdb
 	COMPILE_ARGS += +define+FSDB_DUMP
 endif
-# Note: When WAVES=0, FSDB_DUMP is NOT defined (no else clause)
-# This prevents FSDB dumping in regression mode
-# Separate build directories (_waves suffix) ensure proper recompilation
+# WAVES=0 leaves FSDB_DUMP undefined; the _waves build directory keeps the two
+# compiles apart.
 
 # Include cocotb's make rules
 include $(shell cocotb-config --makefiles)/Makefile.sim

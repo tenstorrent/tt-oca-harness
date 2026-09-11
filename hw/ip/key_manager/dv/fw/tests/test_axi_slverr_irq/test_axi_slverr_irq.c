@@ -13,8 +13,6 @@
  * space. The regblock is generated with --err-if-bad-addr (peakrdl-regblock
  * >= 1.2.0) so it returns SLVERR for that offset.
  *
- * Requirements: AXI SLVERR detection (T069–T072), firmware test T073
- *
  * Run with:
  *   make run_fw FW_TEST=test_axi_slverr_irq
  */

@@ -10,7 +10,7 @@
 #
 # Register only DUTs whose sim config exists: every registered entry is loaded and validated
 # before any run or diagnostic, so a stale entry blocks all flows. Conventional DUTs
-# (e.g. SMC/SEP) are discovered automatically once their `<name>_sim_cfg.toml` is ported.
+# (e.g. SMC/SEP) are discovered automatically from their `<name>_sim_cfg.toml`.
 # Non-conventional entries — a second sim config in a DV root the convention already
 # claims, or a second selectable name for one DUT — must be registered here.
 #
