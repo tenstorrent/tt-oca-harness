@@ -6,7 +6,7 @@ schema_version = 1
 [verilator]
 kind = "simulation"
 binary = "verilator"
-# The only simulator without SV-UVM support; every commercial simulator runs both frameworks.
+# Verilator has no SV-UVM support, so it runs the cocotb framework only.
 frameworks = ["cocotb"]
 license_env = []
 supports_waves = ["fst", "vcd"]
@@ -91,11 +91,9 @@ extra_fail_patterns = [
   # Capture the WHOLE line, not just the "Error:" prefix. logparse._match_lines
   # keeps match.group(0) and hands exactly that string to _is_ignored, so a
   # prefix-only pattern reduces every VCS error to the bare token "Error:" and
-  # no content-scoped extra_ignore_patterns can ever match it. That silently
-  # dead-lettered every per-env VCS waiver in the repo (the abr_reg waivers in
-  # sep_sim_cfg.toml and smu_sim_cfg.toml both name a file, which the
-  # truncated match never contains). Keep the ".*" so those waivers see the
-  # file/line text they are written against.
+  # no content-scoped extra_ignore_patterns can match it. The per-env VCS
+  # waivers (e.g. the abr_reg waivers in sep_sim_cfg.toml and smu_sim_cfg.toml)
+  # name a file, which only the full line contains.
   "^\\s*Error:.*",
 ]
 

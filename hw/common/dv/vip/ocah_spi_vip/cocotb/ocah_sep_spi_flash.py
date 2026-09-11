@@ -3,7 +3,7 @@
 """
 OcahSepSpiFlash — SEP-specific SPI/xSPI flash BFM.
 
-Maps to the SEP xSPI pad bundle as defined in ``hw/sep/sep_wrapper.sv``:
+Binds the SEP xSPI pad bundle, one cocotb handle per pad:
 
     Controller outputs (DUT drives these):
         spi_cs_n_o          — active-low chip-select
@@ -16,10 +16,10 @@ Maps to the SEP xSPI pad bundle as defined in ``hw/sep/sep_wrapper.sv``:
         spi_rxd_i  [7:0]    — receive data (DQ in to DUT)
         spi_mem_rebar_ipad_i — REBAR input pad
 
-The REBAR (reset bar) signal is used by the Cadence xSPI controller to
-reset the flash device.  This BFM models it as an active-low async reset:
-when rebar goes low the internal memory is NOT wiped (only state machines
-reset), matching typical NOR-flash power-on semantics.
+The REBAR (reset bar) signal is the SEP SPI controller's flash-reset output.
+This BFM models it as an active-low async reset: when rebar goes low the
+internal memory is NOT wiped (only state machines reset), matching typical
+NOR-flash power-on semantics.
 
 DDR support
 -----------
@@ -28,9 +28,8 @@ DDR (Double Data Rate) octal is out of scope: the class accepts
 
 Pin naming in tests
 -------------------
-Use this mapping when connecting to a DUT that follows the sep_wrapper port
-list exactly.  For a padring-wrapped DUT the signal names may differ; pass
-the correct cocotb handles for each pin.
+The pad names above document each pin's role; pass the cocotb handle of
+each pin, whatever the DUT or its padring wrapper names it.
 """
 
 from typing import Any, Optional
@@ -114,12 +113,9 @@ class OcahSepSpiFlash(OcahSpiFlash):
         status_reg2: int = 0x00,
         verbose: bool = False,
     ):
-        # For single mode, extract DQ0 as mosi/miso.
-        # For quad/octal, delegate the full DQ bus to the base class.
+        # The base engine samples bit 0 of its mosi handle and drives bit 0 of
+        # its miso handle, so in single mode the DQ buses pass as mosi/miso.
         if SpiMode(mode) == SpiMode.SINGLE:
-            # Single mode: MOSI=DQ0 of dq_out, MISO=DQ0 of dq_in.
-            # We pass dq_out as mosi and dq_in as miso so the base class
-            # bit-extraction works correctly (it reads bit 0 for MOSI).
             super().__init__(
                 cs_n=cs_n,
                 sclk=sclk,
