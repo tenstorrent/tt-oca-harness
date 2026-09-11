@@ -461,8 +461,10 @@ EOF
 ```
 
 Do not put Workstream / Subsystem / Component or labels on the PR.
-Ingest assigns the opener when Assignees is empty. The curator rewrites a
-PR title only when it is not already this form.
+Ingest assigns the opener when Assignees is empty. It requests a reviewer
+from GitHub suggestions, then a linked-issue assignee, then recent committers
+on the touched paths, then the reviewer pool in `.github/issue-taxonomy.yml`.
+The curator rewrites a PR title only when it is not already this form.
 
 ### Paired pull requests with the `nonfree` companion
 
