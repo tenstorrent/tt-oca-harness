@@ -32,7 +32,7 @@ class dtp_jtag2axi_dbg_disable_matrix_test extends dtp_jtag2axi_robustness_base_
             dtp_dbg_disable_jtag2axi_matrix_test_seq::type_id::create(
         "seq"
     );
-    seq.multi_hot_rows = test_cfg.scan_matrix_multi_hot_rows;
+    seq.multi_hot_rows = test_cfg.jtag2axi_matrix_multi_hot_rows;
     return seq;
   endfunction
 
