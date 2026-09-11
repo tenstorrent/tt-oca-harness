@@ -344,8 +344,7 @@ def _selftest() -> int:
     )
     ok(
         "the reference suite's stray regwidth key is ignored",
-        "[SYSCLK_FREQ_MHZ]\n"
-        "  [SYSCLK_FREQ_MHZ.fields.sysclk_freq_mhz]\n  value = 0x320\n",
+        "[SYSCLK_FREQ_MHZ]\n  [SYSCLK_FREQ_MHZ.fields.sysclk_freq_mhz]\n  value = 0x320\n",
         0x320,
         lambda i: i.field_int("SYSCLK_FREQ_MHZ"),
     )
