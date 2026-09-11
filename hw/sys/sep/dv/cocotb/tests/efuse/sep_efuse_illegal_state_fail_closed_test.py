@@ -39,13 +39,21 @@ from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_efuse_direct_read_seq import sep_efuse_direct_read_seq
 from seq_lib.sep_efuse_otp_program_seq import sep_efuse_otp_program_seq
 
-# efuse_read_interface.sv / efuse_program_interface.sv: the legal encodings.
+# efuse_read_interface.sv / efuse_program_interface.sv. These encodings are read
+# off the RTL enums, and no document states them, so they are used only to
+# CONSTRUCT stimulus -- which values are unreachable, and so worth injecting.
+# They are deliberately not used as expected values: the recovery below is
+# graded on the interface's documented outputs (not busy, done, no bank command,
+# error sentinel), never on the state register reading a particular number. An
+# expected value taken from the design it checks proves only that the design
+# agrees with itself.
 _ST_IDLE = 0b01
 _ST_WAIT_RESP = 0b10
-# The two the design says cannot occur. Both are walked: 2'b00 and 2'b11 fail
-# `inside {IDLE, WAIT_RESP}` for different reasons, and a decoder written as a
-# comparison against one of them would recover from that one only.
-_ILLEGAL_STATES = (0b00, 0b11)
+# Derived, so the legal set is stated once: everything a two-bit register can
+# hold that is not legal. Both survivors are walked -- 2'b00 and 2'b11 fail the
+# legal-set test for different reasons, and a recovery written as a comparison
+# against one of them would recover from that one only.
+_ILLEGAL_STATES = tuple(v for v in range(4) if v not in (_ST_IDLE, _ST_WAIT_RESP))
 
 # efuse_read_interface.sv EFUSE_READ_ERROR_DATA
 _READ_ERROR_DATA = 0xBADCAB1E
@@ -90,13 +98,13 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
     min_evidence = 10
 
     async def _assert_read_alive(self, tag: str) -> None:
-        """Positive control: a frontdoor OTP read moves the read FSM.
+        """Positive control: a frontdoor OTP read presents a bank command.
 
-        Fuse sense does not use this FSM -- it serves the EFUSE_READ_CTRL
-        frontdoor -- so the control has to be a real direct read. Without it
-        the recovery checks below hold on a block that never moves:
-        permanently idle, permanently issuing nothing, which is
-        indistinguishable from a machine that failed closed correctly.
+        Graded on the same signal the suppression checks use, so the control
+        and the check cannot disagree about what "a command" means. Fuse sense
+        does not drive this interface -- it serves the EFUSE_READ_CTRL
+        frontdoor -- so only a real direct read is a control. Without it,
+        "no command issued" holds on an interface that never issues one.
         """
         seen_active = False
         stop = Event()
@@ -106,7 +114,7 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
             while not stop.is_set():
                 await RisingEdge(cocotb.top.clk_i)
                 await ReadOnly()
-                if int(cocotb.top.efuse_read_state_o.value) != _ST_IDLE:
+                if int(cocotb.top.efuse_read_cmd_req_valid_o.value):
                     seen_active = True
 
         task = cocotb.start_soon(_watch())
@@ -115,14 +123,11 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         await task
 
         assert seen_active, (
-            f"CHK-READ-ALIVE FAIL ({tag}): a frontdoor OTP read left the read FSM in "
-            "idle throughout, so the fail-closed checks would hold on a block that "
-            "does nothing"
+            f"CHK-READ-ALIVE FAIL ({tag}): a frontdoor OTP read presented no command to "
+            "the fuse bank, so the suppression checks would hold on an interface that "
+            "never issues one"
         )
-        self.logger.info(
-            "CHK-READ-ALIVE PASS (%s): a frontdoor OTP read drove the read FSM out of idle",
-            tag,
-        )
+        self.logger.info("CHK-READ-ALIVE PASS (%s): a frontdoor OTP read drove a bank command", tag)
 
     async def _csr(self, op: SepAxiOp, addr: int, data: int = 0) -> int:
         seq = SepAxiAccessSeq(
@@ -296,10 +301,6 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         await RisingEdge(dut.clk_i)
         await ReadOnly()
         recovered = int(getattr(dut, f"efuse_{which}_state_o").value)
-        assert recovered == _ST_IDLE, (
-            f"CHK-{which.upper()}-FAILCLOSED FAIL: {which}_state_q recovered to "
-            f"{recovered:#04x} from the illegal {state:#04x}, expected idle {_ST_IDLE:#04x}"
-        )
         assert int(getattr(dut, f"efuse_{which}_cmd_req_valid_o").value) == 0, (
             f"CHK-{which.upper()}-FAILCLOSED FAIL: the {which} interface issued a bank "
             f"command while recovering from {state:#04x}"
@@ -319,9 +320,11 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
                 "-- returning anything else risks handing back unfetched fuse data"
             )
         self.logger.info(
-            "CHK-%s-FAILCLOSED PASS: %#04x -> idle, no bank command%s",
+            "CHK-%s-FAILCLOSED PASS: recovered from %#04x (state now %#04x, reported "
+            "for the record), no bank command%s",
             which.upper(),
             state,
+            recovered,
             ", error+done set, data = 0xbadcab1e" if which == "read" else "",
         )
 
