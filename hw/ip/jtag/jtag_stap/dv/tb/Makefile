@@ -57,6 +57,7 @@ help:
 	@echo "  make clean all    # Clean and run test"
 
 # Targets
+.PHONY: help all clean stap-test run
 all: clean stap-test
 
 clean:

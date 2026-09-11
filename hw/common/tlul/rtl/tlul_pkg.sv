@@ -24,15 +24,15 @@ package tlul_pkg;
     AccessAckData = 3'h 1
   } tl_d_op_e;
 
-  parameter int H2DCmdMaxWidth  = 57;
+  parameter int H2DCmdMaxWidth = 57;
   parameter int H2DCmdIntgWidth = 7;
   parameter int H2DCmdFullWidth = H2DCmdMaxWidth + H2DCmdIntgWidth;
-  parameter int D2HRspMaxWidth  = 57;
+  parameter int D2HRspMaxWidth = 57;
   parameter int D2HRspIntgWidth = 7;
   parameter int D2HRspFullWidth = D2HRspMaxWidth + D2HRspIntgWidth;
-  parameter int DataMaxWidth    = 32;
-  parameter int DataIntgWidth   = 7;
-  parameter int DataFullWidth   = DataMaxWidth + DataIntgWidth;
+  parameter int DataMaxWidth = 32;
+  parameter int DataIntgWidth = 7;
+  parameter int DataFullWidth = DataMaxWidth + DataIntgWidth;
   parameter int RsvdWidth       = top_pkg::TL_AUW - prim_mubi_pkg::MuBi4Width -
                                   H2DCmdIntgWidth - DataIntgWidth;
 
@@ -41,7 +41,7 @@ package tlul_pkg;
   parameter logic [top_pkg::TL_DW-1:0] DataWhenInstrError = '0;
   // Data that is returned upon an a TL-UL error not belonging to an instruction fetch.
   // Note that this data will be returned with the correct bus integrity value.
-  parameter logic [top_pkg::TL_DW-1:0] DataWhenError      = {top_pkg::TL_DW{1'b1}};
+  parameter logic [top_pkg::TL_DW-1:0] DataWhenError = {top_pkg::TL_DW{1'b1}};
 
   typedef struct packed {
     logic [RsvdWidth-1:0]       rsvd;
@@ -51,10 +51,10 @@ package tlul_pkg;
   } tl_a_user_t;
 
   parameter tl_a_user_t TL_A_USER_DEFAULT = '{
-    rsvd: '0,
-    instr_type: prim_mubi_pkg::MuBi4False,
-    cmd_intg:  {H2DCmdIntgWidth{1'b1}},
-    data_intg: {DataIntgWidth{1'b1}}
+      rsvd: '0,
+      instr_type: prim_mubi_pkg::MuBi4False,
+      cmd_intg: {H2DCmdIntgWidth{1'b1}},
+      data_intg: {DataIntgWidth{1'b1}}
   };
 
   typedef struct packed {
@@ -87,11 +87,11 @@ package tlul_pkg;
   localparam logic [top_pkg::TL_DW-1:0] BlankedAData = {top_pkg::TL_DW{1'b1}};
 
   localparam tl_h2d_t TL_H2D_DEFAULT = '{
-    d_ready:  1'b1,
-    a_opcode: tl_a_op_e'('0),
-    a_user:   TL_A_USER_DEFAULT,
-    a_data:   BlankedAData,
-    default:  '0
+      d_ready: 1'b1,
+      a_opcode: tl_a_op_e'('0),
+      a_user: TL_A_USER_DEFAULT,
+      a_data: BlankedAData,
+      default: '0
   };
 
   typedef struct packed {
@@ -100,8 +100,8 @@ package tlul_pkg;
   } tl_d_user_t;
 
   parameter tl_d_user_t TL_D_USER_DEFAULT = '{
-    rsp_intg: {D2HRspIntgWidth{1'b1}},
-    data_intg: {DataIntgWidth{1'b1}}
+      rsp_intg: {D2HRspIntgWidth{1'b1}},
+      data_intg: {DataIntgWidth{1'b1}}
   };
 
   typedef struct packed {
@@ -131,10 +131,10 @@ package tlul_pkg;
   } tl_d2h_rsp_intg_t;
 
   localparam tl_d2h_t TL_D2H_DEFAULT = '{
-    a_ready:  1'b1,
-    d_opcode: tl_d_op_e'('0),
-    d_user:   TL_D_USER_DEFAULT,
-    default:  '0
+      a_ready: 1'b1,
+      d_opcode: tl_d_op_e'('0),
+      d_user: TL_D_USER_DEFAULT,
+      default: '0
   };
 
   // Check user for unsupported values
@@ -144,7 +144,7 @@ package tlul_pkg;
     unused_user = |user;
     malformed_err = prim_mubi_pkg::mubi4_test_invalid(user.instr_type);
     return malformed_err;
-  endfunction // tl_a_user_chk
+  endfunction  // tl_a_user_chk
 
   // extract variables used for command checking
   function automatic tl_h2d_cmd_intg_t extract_h2d_cmd_intg(tl_h2d_t tl);
@@ -156,7 +156,7 @@ package tlul_pkg;
     payload.mask = tl.a_mask;
     payload.instr_type = tl.a_user.instr_type;
     return payload;
-  endfunction // extract_h2d_payload
+  endfunction  // extract_h2d_payload
 
   // extract variables used for response checking
   function automatic tl_d2h_rsp_intg_t extract_d2h_rsp_intg(tl_d2h_t tl);
@@ -168,7 +168,7 @@ package tlul_pkg;
     //payload.source = tl.d_source;
     payload.error  = tl.d_error;
     return payload;
-  endfunction // extract_d2h_rsp_intg
+  endfunction  // extract_d2h_rsp_intg
 
   // calculate ecc for command checking
   function automatic logic [H2DCmdIntgWidth-1:0] get_cmd_intg(tl_h2d_t tl);
@@ -178,7 +178,7 @@ package tlul_pkg;
     cmd = extract_h2d_cmd_intg(tl);
     {cmd_intg, unused_cmd_payload} =
         prim_secded_pkg::prim_secded_inv_64_57_enc(H2DCmdMaxWidth'(cmd));
-   return cmd_intg;
+    return cmd_intg;
   endfunction  // get_cmd_intg
 
   // calculate ecc for data checking
@@ -197,13 +197,13 @@ package tlul_pkg;
     logic [H2DCmdIntgWidth-1:0] cmd_intg;
     cmd_intg = get_cmd_intg(tl);
     return ~cmd_intg;
-  endfunction // get_bad_cmd_intg
+  endfunction  // get_bad_cmd_intg
 
   // return inverted integrity for data payload
   function automatic logic [H2DCmdIntgWidth-1:0] get_bad_data_intg(logic [top_pkg::TL_DW-1:0] data);
     logic [H2DCmdIntgWidth-1:0] data_intg;
     data_intg = get_data_intg(data);
     return ~data_intg;
-  endfunction // get_bad_data_intg
+  endfunction  // get_bad_data_intg
 
 endpackage

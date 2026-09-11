@@ -46,7 +46,8 @@ due date (≤3 days, fed by milestone due date for v0.5.0 issues),
 approved-PR merge nudge (≥3 days), review pending (>1 business day),
 draft open (>5 business days), changes-requested idle (>3 business
 days), and stale-assigned issue (≥21 days). All reminders are gated by
-a hidden marker and minimum re-nudge spacing.
+a hidden marker and minimum re-nudge spacing. The Actions run conclusion
+is the `noop` safe-output; the agent emits one every run.
 
 ```bash
 gh aw compile ocah-project-curator --validate

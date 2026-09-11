@@ -17,7 +17,7 @@ credit-based counting. This approach maintains system-wide
 synchronization under varying operational conditions, network latencies,
 and component performance variations.
 
-The implementation follows Open Chiplet Architecture (OCA)
+The implementation follows Open Chiplet Atlas (OCA)
 specifications, version , using credit-based synchronization for
 continuous maintenance that adapts to varying system loads and
 communication delays.

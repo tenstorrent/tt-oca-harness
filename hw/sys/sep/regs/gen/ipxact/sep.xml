@@ -6024,14 +6024,14 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>OUTPUT_COUNT</ipxact:name>
-              <ipxact:description>Number of 32-bit digest words remaining for output.</ipxact:description>
+              <ipxact:description>Number of 32-bit digest words remaining for output. Reports 8 when a digest becomes available, decrements through 0 as words are accepted, and remains 0 while idle or bypassed.</ipxact:description>
               <ipxact:bitOffset>8</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
                   <ipxact:value>'h0</ipxact:value>
                 </ipxact:reset>
               </ipxact:resets>
-              <ipxact:bitWidth>3</ipxact:bitWidth>
+              <ipxact:bitWidth>4</ipxact:bitWidth>
               <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-only</ipxact:access>
             </ipxact:field>
@@ -9336,12 +9336,12 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>SIP_DIS</ipxact:name>
-            <ipxact:description>An owner's (SiP or System) feature control vector. When set (1'b1), the corresponding feature is disabled. Spec: OCAH v0.5.9 disable-vector layout (lifecycle_controller.adoc §2.2).</ipxact:description>
+            <ipxact:description>An owner's feature control vector. When set (1'b1), the corresponding feature is disabled. Layout: see the Disable Vector Format section of lifecycle_controller.adoc.</ipxact:description>
             <ipxact:addressOffset>'h18</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
               <ipxact:name>sep_debug</ipxact:name>
-              <ipxact:description>SEP_DBG (bit 0): Coarse-grained debug enable for the SEP scope. 1'b1: SEP-scope debug/scan-dump access disabled and external inbound traffic is filtered. 1'b0: enabled.</ipxact:description>
+              <ipxact:description>SEP_DBG (bit 0): Coarse-grained debug enable for the SEP scope. 1'b1: SEP-scope debug/scan-dump access disabled and external inbound traffic is filtered. 1'b0: enabled. A local gate only: reaching SEP internal state from an external debugger additionally requires SIP_DBG and CHIPLET_DBG.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -9355,7 +9355,7 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>chiplet_dbg</ipxact:name>
-              <ipxact:description>CHIPLET_DBG (bit 1): Coarse-grained debug enable for the chiplet scope. 1'b1: chiplet-scope debug/scan-dump access disabled. 1'b0: enabled. Does not gate the crypto/KM secret-bearing chain.</ipxact:description>
+              <ipxact:description>CHIPLET_DBG (bit 1): Coarse-grained debug enable for the chiplet scope. 1'b1: chiplet-scope debug/scan-dump access disabled. 1'b0: enabled. Never acts alone: an external debugger reaches chiplet-internal resources only when SIP_DBG is open as well. Contributes to the reachability of the crypto/KM secure chain but never authorizes a dump from it.</ipxact:description>
               <ipxact:bitOffset>1</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -9368,23 +9368,51 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
               <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
             </ipxact:field>
             <ipxact:field>
-              <ipxact:name>debug_reserved_dbg1</ipxact:name>
-              <ipxact:description>Reserved for adopter-defined DBG_1 debug scan chains (bits 15:2).</ipxact:description>
+              <ipxact:name>sep_fuse_dbg</ipxact:name>
+              <ipxact:description>SEP_FUSE_DBG (bit 2): 1'b1: the DFT-inserted access path into the SEP OTP is disabled. 1'b0: enabled. Also covers the OTP IP-vendor test and calibration interface, which is reachable only over that inserted path. The functional JTAG2AXIL path to the OTP is always available and is not gated by this bit.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
                   <ipxact:value>'h0</ipxact:value>
                 </ipxact:reset>
               </ipxact:resets>
-              <ipxact:bitWidth>14</ipxact:bitWidth>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>smc_fuse_dbg</ipxact:name>
+              <ipxact:description>SMC_FUSE_DBG (bit 3): 1'b1: the DFT-inserted access path into the SMC OTP is disabled. 1'b0: enabled. Produced by SEP-LCC feat_ctrl_o, exported on the SEP boundary, and consumed by SMC to gate its own inserted fuse path.</ipxact:description>
+              <ipxact:bitOffset>3</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>debug_reserved_dbg1</ipxact:name>
+              <ipxact:description>Reserved for adopter-defined local (DBG_1) debug scan chains (bits 23:4).</ipxact:description>
+              <ipxact:bitOffset>4</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>20</ipxact:bitWidth>
               <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
               <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>sip_debug</ipxact:name>
-              <ipxact:description>SIP_DBG (bit 16): Coarse-grained debug enable for the inter-chiplet debug-bypass path (e.g. forwarding external debug to downstream chiplets via outbound JTAG PTAP). 1'b1: disabled. 1'b0: enabled.</ipxact:description>
-              <ipxact:bitOffset>16</ipxact:bitOffset>
+              <ipxact:description>SIP_DBG (bit 24): Coarse-grained debug enable for the SiP scope: the inter-chiplet debug-bypass gate that admits external (PTAP) debug traffic into this chiplet and forwards it onward to the next chiplet via the outbound JTAG PTAP. 1'b1: disabled. 1'b0: enabled.</ipxact:description>
+              <ipxact:bitOffset>24</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
                   <ipxact:value>'h0</ipxact:value>
@@ -9397,84 +9425,14 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>debug_reserved_dbg2</ipxact:name>
-              <ipxact:description>Reserved for adopter-defined DBG_2 debug scan chains (bits 31:17).</ipxact:description>
-              <ipxact:bitOffset>17</ipxact:bitOffset>
+              <ipxact:description>Reserved for adopter-defined inter-chiplet-bypass (DBG_2) debug scan chains (bits 47:25).</ipxact:description>
+              <ipxact:bitOffset>25</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
                   <ipxact:value>'h0</ipxact:value>
                 </ipxact:reset>
               </ipxact:resets>
-              <ipxact:bitWidth>15</ipxact:bitWidth>
-              <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-write</ipxact:access>
-              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
-            </ipxact:field>
-            <ipxact:field>
-              <ipxact:name>sep_fuse_test</ipxact:name>
-              <ipxact:description>SEP_FUSE_TEST (bit 32): 1'b1: SEP fuse controller and fuse-block interface scan is disabled. 1'b0: enabled.</ipxact:description>
-              <ipxact:bitOffset>32</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>1</ipxact:bitWidth>
-              <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-write</ipxact:access>
-              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
-            </ipxact:field>
-            <ipxact:field>
-              <ipxact:name>test_reserved_lo</ipxact:name>
-              <ipxact:description>Reserved for adopter-defined test scan chains (bits 36:33).</ipxact:description>
-              <ipxact:bitOffset>33</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>4</ipxact:bitWidth>
-              <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-write</ipxact:access>
-              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
-            </ipxact:field>
-            <ipxact:field>
-              <ipxact:name>smc_fuse_test</ipxact:name>
-              <ipxact:description>SMC_FUSE_TEST (bit 37): 1'b1: SMC fuse controller and fuse-block interface scan is disabled. 1'b0: enabled. Exported on SEP boundary; consumed by SMC to gate its fuse-test path. TODO(AMBIG-5): No SEP output port for this bit exists and the SMC feat_ctrl_i port is deleted — this bit has no RTL consumer in the current implementation. Arch must define the forwarding path (e.g. a new SEP output) before this bit can enforce its intent.</ipxact:description>
-              <ipxact:bitOffset>37</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>1</ipxact:bitWidth>
-              <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-write</ipxact:access>
-              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
-            </ipxact:field>
-            <ipxact:field>
-              <ipxact:name>fuse_vendor_test</ipxact:name>
-              <ipxact:description>FUSE_VENDOR_TEST (bit 38): 1'b1: OTP IP-vendor test and calibration interface is disabled. 1'b0: enabled. Used during ATE for vendor-specific OTP test and internal-voltage calibration. TODO(AMBIG-5): No RTL consumer exists for this bit in the current implementation. Arch must define the forwarding path before this bit can be enforced.</ipxact:description>
-              <ipxact:bitOffset>38</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>1</ipxact:bitWidth>
-              <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-write</ipxact:access>
-              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
-            </ipxact:field>
-            <ipxact:field>
-              <ipxact:name>test_reserved</ipxact:name>
-              <ipxact:description>Reserved for adopter-defined test scan chains (bits 47:39).</ipxact:description>
-              <ipxact:bitOffset>39</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>9</ipxact:bitWidth>
+              <ipxact:bitWidth>23</ipxact:bitWidth>
               <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
               <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
@@ -9496,12 +9454,12 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
           </ipxact:register>
           <ipxact:register>
             <ipxact:name>SYS_DIS</ipxact:name>
-            <ipxact:description>An owner's (SiP or System) feature control vector. When set (1'b1), the corresponding feature is disabled. Spec: OCAH v0.5.9 disable-vector layout (lifecycle_controller.adoc §2.2).</ipxact:description>
+            <ipxact:description>An owner's feature control vector. When set (1'b1), the corresponding feature is disabled. Layout: see the Disable Vector Format section of lifecycle_controller.adoc.</ipxact:description>
             <ipxact:addressOffset>'h20</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
               <ipxact:name>sep_debug</ipxact:name>
-              <ipxact:description>SEP_DBG (bit 0): Coarse-grained debug enable for the SEP scope. 1'b1: SEP-scope debug/scan-dump access disabled and external inbound traffic is filtered. 1'b0: enabled.</ipxact:description>
+              <ipxact:description>SEP_DBG (bit 0): Coarse-grained debug enable for the SEP scope. 1'b1: SEP-scope debug/scan-dump access disabled and external inbound traffic is filtered. 1'b0: enabled. A local gate only: reaching SEP internal state from an external debugger additionally requires SIP_DBG and CHIPLET_DBG.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -9515,7 +9473,7 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>chiplet_dbg</ipxact:name>
-              <ipxact:description>CHIPLET_DBG (bit 1): Coarse-grained debug enable for the chiplet scope. 1'b1: chiplet-scope debug/scan-dump access disabled. 1'b0: enabled. Does not gate the crypto/KM secret-bearing chain.</ipxact:description>
+              <ipxact:description>CHIPLET_DBG (bit 1): Coarse-grained debug enable for the chiplet scope. 1'b1: chiplet-scope debug/scan-dump access disabled. 1'b0: enabled. Never acts alone: an external debugger reaches chiplet-internal resources only when SIP_DBG is open as well. Contributes to the reachability of the crypto/KM secure chain but never authorizes a dump from it.</ipxact:description>
               <ipxact:bitOffset>1</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -9528,23 +9486,51 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
               <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
             </ipxact:field>
             <ipxact:field>
-              <ipxact:name>debug_reserved_dbg1</ipxact:name>
-              <ipxact:description>Reserved for adopter-defined DBG_1 debug scan chains (bits 15:2).</ipxact:description>
+              <ipxact:name>sep_fuse_dbg</ipxact:name>
+              <ipxact:description>SEP_FUSE_DBG (bit 2): 1'b1: the DFT-inserted access path into the SEP OTP is disabled. 1'b0: enabled. Also covers the OTP IP-vendor test and calibration interface, which is reachable only over that inserted path. The functional JTAG2AXIL path to the OTP is always available and is not gated by this bit.</ipxact:description>
               <ipxact:bitOffset>2</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
                   <ipxact:value>'h0</ipxact:value>
                 </ipxact:reset>
               </ipxact:resets>
-              <ipxact:bitWidth>14</ipxact:bitWidth>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>smc_fuse_dbg</ipxact:name>
+              <ipxact:description>SMC_FUSE_DBG (bit 3): 1'b1: the DFT-inserted access path into the SMC OTP is disabled. 1'b0: enabled. Produced by SEP-LCC feat_ctrl_o, exported on the SEP boundary, and consumed by SMC to gate its own inserted fuse path.</ipxact:description>
+              <ipxact:bitOffset>3</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-write</ipxact:access>
+              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>debug_reserved_dbg1</ipxact:name>
+              <ipxact:description>Reserved for adopter-defined local (DBG_1) debug scan chains (bits 23:4).</ipxact:description>
+              <ipxact:bitOffset>4</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>20</ipxact:bitWidth>
               <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
               <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>sip_debug</ipxact:name>
-              <ipxact:description>SIP_DBG (bit 16): Coarse-grained debug enable for the inter-chiplet debug-bypass path (e.g. forwarding external debug to downstream chiplets via outbound JTAG PTAP). 1'b1: disabled. 1'b0: enabled.</ipxact:description>
-              <ipxact:bitOffset>16</ipxact:bitOffset>
+              <ipxact:description>SIP_DBG (bit 24): Coarse-grained debug enable for the SiP scope: the inter-chiplet debug-bypass gate that admits external (PTAP) debug traffic into this chiplet and forwards it onward to the next chiplet via the outbound JTAG PTAP. 1'b1: disabled. 1'b0: enabled.</ipxact:description>
+              <ipxact:bitOffset>24</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
                   <ipxact:value>'h0</ipxact:value>
@@ -9557,84 +9543,14 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>debug_reserved_dbg2</ipxact:name>
-              <ipxact:description>Reserved for adopter-defined DBG_2 debug scan chains (bits 31:17).</ipxact:description>
-              <ipxact:bitOffset>17</ipxact:bitOffset>
+              <ipxact:description>Reserved for adopter-defined inter-chiplet-bypass (DBG_2) debug scan chains (bits 47:25).</ipxact:description>
+              <ipxact:bitOffset>25</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
                   <ipxact:value>'h0</ipxact:value>
                 </ipxact:reset>
               </ipxact:resets>
-              <ipxact:bitWidth>15</ipxact:bitWidth>
-              <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-write</ipxact:access>
-              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
-            </ipxact:field>
-            <ipxact:field>
-              <ipxact:name>sep_fuse_test</ipxact:name>
-              <ipxact:description>SEP_FUSE_TEST (bit 32): 1'b1: SEP fuse controller and fuse-block interface scan is disabled. 1'b0: enabled.</ipxact:description>
-              <ipxact:bitOffset>32</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>1</ipxact:bitWidth>
-              <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-write</ipxact:access>
-              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
-            </ipxact:field>
-            <ipxact:field>
-              <ipxact:name>test_reserved_lo</ipxact:name>
-              <ipxact:description>Reserved for adopter-defined test scan chains (bits 36:33).</ipxact:description>
-              <ipxact:bitOffset>33</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>4</ipxact:bitWidth>
-              <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-write</ipxact:access>
-              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
-            </ipxact:field>
-            <ipxact:field>
-              <ipxact:name>smc_fuse_test</ipxact:name>
-              <ipxact:description>SMC_FUSE_TEST (bit 37): 1'b1: SMC fuse controller and fuse-block interface scan is disabled. 1'b0: enabled. Exported on SEP boundary; consumed by SMC to gate its fuse-test path. TODO(AMBIG-5): No SEP output port for this bit exists and the SMC feat_ctrl_i port is deleted — this bit has no RTL consumer in the current implementation. Arch must define the forwarding path (e.g. a new SEP output) before this bit can enforce its intent.</ipxact:description>
-              <ipxact:bitOffset>37</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>1</ipxact:bitWidth>
-              <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-write</ipxact:access>
-              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
-            </ipxact:field>
-            <ipxact:field>
-              <ipxact:name>fuse_vendor_test</ipxact:name>
-              <ipxact:description>FUSE_VENDOR_TEST (bit 38): 1'b1: OTP IP-vendor test and calibration interface is disabled. 1'b0: enabled. Used during ATE for vendor-specific OTP test and internal-voltage calibration. TODO(AMBIG-5): No RTL consumer exists for this bit in the current implementation. Arch must define the forwarding path before this bit can be enforced.</ipxact:description>
-              <ipxact:bitOffset>38</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>1</ipxact:bitWidth>
-              <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-write</ipxact:access>
-              <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
-            </ipxact:field>
-            <ipxact:field>
-              <ipxact:name>test_reserved</ipxact:name>
-              <ipxact:description>Reserved for adopter-defined test scan chains (bits 47:39).</ipxact:description>
-              <ipxact:bitOffset>39</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>9</ipxact:bitWidth>
+              <ipxact:bitWidth>23</ipxact:bitWidth>
               <ipxact:volatile>true</ipxact:volatile>
               <ipxact:access>read-write</ipxact:access>
               <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
@@ -10245,7 +10161,7 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
             <ipxact:size>256</ipxact:size>
             <ipxact:field>
               <ipxact:name>key_hash</ipxact:name>
-              <ipxact:description>Chiplet owner ML-DSA (PQC) authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</ipxact:description>
+              <ipxact:description>Chiplet owner ML-DSA PQC authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -10263,7 +10179,7 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
             <ipxact:size>256</ipxact:size>
             <ipxact:field>
               <ipxact:name>key_hash</ipxact:name>
-              <ipxact:description>Chiplet owner ML-DSA (PQC) authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</ipxact:description>
+              <ipxact:description>Chiplet owner ML-DSA PQC authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -10281,7 +10197,7 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
             <ipxact:size>256</ipxact:size>
             <ipxact:field>
               <ipxact:name>key_hash</ipxact:name>
-              <ipxact:description>Hash digest of the SiP owner's ML-DSA (PQC) root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</ipxact:description>
+              <ipxact:description>Hash digest of the SiP owner's ML-DSA PQC root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -10299,7 +10215,7 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
             <ipxact:size>256</ipxact:size>
             <ipxact:field>
               <ipxact:name>key_hash</ipxact:name>
-              <ipxact:description>Hash digest of the system owner's ML-DSA (PQC) root public key for secure boot. PQC counterpart of SYS_PUBK_HASH.</ipxact:description>
+              <ipxact:description>Hash digest of the system owner's ML-DSA PQC root public key for secure boot. PQC counterpart of SYS_PUBK_HASH.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -10335,7 +10251,7 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
             <ipxact:size>256</ipxact:size>
             <ipxact:field>
               <ipxact:name>key_hash</ipxact:name>
-              <ipxact:description>Hash digest of the SiP owner's ML-DSA (PQC) root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</ipxact:description>
+              <ipxact:description>Hash digest of the SiP owner's ML-DSA PQC root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -11197,7 +11113,7 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -11209,7 +11125,7 @@ See the RTL file `edn_main_sm` for the meaning of the values.</ipxact:descriptio
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -11529,7 +11445,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -11541,7 +11457,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -11861,7 +11777,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -11873,7 +11789,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -12193,7 +12109,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -12205,7 +12121,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -12525,7 +12441,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -12537,7 +12453,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -12857,7 +12773,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -12869,7 +12785,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -13189,7 +13105,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -13201,7 +13117,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -13521,7 +13437,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -13533,7 +13449,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -13853,7 +13769,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -13865,7 +13781,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -14185,7 +14101,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -14197,7 +14113,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -14517,7 +14433,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -14529,7 +14445,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -14849,7 +14765,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -14861,7 +14777,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -15181,7 +15097,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -15193,7 +15109,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -15513,7 +15429,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -15525,7 +15441,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -15845,7 +15761,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -15857,7 +15773,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -16177,7 +16093,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>write_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, write fifo level is higher than threshhold set in WIRQT</ipxact:description>
+                <ipxact:description>If set, write fifo level is higher than threshold set in WIRQT</ipxact:description>
                 <ipxact:bitOffset>2</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -16189,7 +16105,7 @@ On write:
               </ipxact:field>
               <ipxact:field>
                 <ipxact:name>read_level_above_thresh</ipxact:name>
-                <ipxact:description>If set, read fifo level is higher than threshhold set in RIRQT</ipxact:description>
+                <ipxact:description>If set, read fifo level is higher than threshold set in RIRQT</ipxact:description>
                 <ipxact:bitOffset>3</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>
@@ -16693,7 +16609,10 @@ Unused for SEP/SMC, where group_id filtering is disabled at build time and this 
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>allow_burst</ipxact:name>
-              <ipxact:description>Filter entry will match if this field is 1 or if this field is 0 and the burst len AxLEN is 0.</ipxact:description>
+              <ipxact:description>Filter entry will match if this field is 1 or if this field is 0 and the burst len AxLEN is 0.
+This field also selects the granule of the address range: 4KB when it is 1,
+2^data_bus_width bytes when it is 0. See start_addr and end_addr for how the range is widened
+to that granule.</ipxact:description>
               <ipxact:bitOffset>24</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -16723,9 +16642,15 @@ Unused for SEP/SMC, where group_id filtering is disabled at build time and this 
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
               <ipxact:name>start_addr</ipxact:name>
-              <ipxact:description>Start of allowable address range. Hardware will adjust this field depending on the value of the allow_burst field.
-When allow_burst is 0, the start_addr will be adjusted to align with data width (2^data_bus_width == 8).
-When allow_burst is 1, the start_addr will be adjusted to align with 4KB boundary.</ipxact:description>
+              <ipxact:description>Start of the allowable address range, rounded down to the base of its granule.
+The granule is 4KB when allow_burst is 1, and 2^data_bus_width bytes when allow_burst is 0.
+Address matching ignores the address bits below the granule, so the accepted range always
+spans whole granules and is never narrower than one: a range shorter than the granule,
+start_addr == end_addr included, still admits the whole granule, and two granules if it
+straddles a granule boundary.
+Hardware writes the rounded start_addr and end_addr back into these fields only when both
+land in the same granule; otherwise readback returns the programmed values even though
+matching is still granule-aligned.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -16743,10 +16668,9 @@ When allow_burst is 1, the start_addr will be adjusted to align with 4KB boundar
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
               <ipxact:name>end_addr</ipxact:name>
-              <ipxact:description>End of allowable address range. Defaults to 7 on reset to match the minimum granularity when burst is disabled.
-Hardware will adjust this field depending on the value of the allow_burst field.
-When allow_burst is 0, the end_addr will be adjusted to align with data width (2^data_bus_width == 8).
-When allow_burst is 1, the end_addr will be adjusted to align with 4KB boundary.</ipxact:description>
+              <ipxact:description>End of the allowable address range, rounded up to the top of its granule.
+The granule and the write-back behaviour are described under start_addr.
+Defaults to 7 on reset to match the 8B granule that applies while bursts are disabled.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -16862,7 +16786,10 @@ Unused for SEP/SMC, where group_id filtering is disabled at build time and this 
             </ipxact:field>
             <ipxact:field>
               <ipxact:name>allow_burst</ipxact:name>
-              <ipxact:description>Filter entry will match if this field is 1 or if this field is 0 and the burst len AxLEN is 0.</ipxact:description>
+              <ipxact:description>Filter entry will match if this field is 1 or if this field is 0 and the burst len AxLEN is 0.
+This field also selects the granule of the address range: 4KB when it is 1,
+2^data_bus_width bytes when it is 0. See start_addr and end_addr for how the range is widened
+to that granule.</ipxact:description>
               <ipxact:bitOffset>24</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -16892,9 +16819,15 @@ Unused for SEP/SMC, where group_id filtering is disabled at build time and this 
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
               <ipxact:name>start_addr</ipxact:name>
-              <ipxact:description>Start of allowable address range. Hardware will adjust this field depending on the value of the allow_burst field.
-When allow_burst is 0, the start_addr will be adjusted to align with data width (2^data_bus_width == 8).
-When allow_burst is 1, the start_addr will be adjusted to align with 4KB boundary.</ipxact:description>
+              <ipxact:description>Start of the allowable address range, rounded down to the base of its granule.
+The granule is 4KB when allow_burst is 1, and 2^data_bus_width bytes when allow_burst is 0.
+Address matching ignores the address bits below the granule, so the accepted range always
+spans whole granules and is never narrower than one: a range shorter than the granule,
+start_addr == end_addr included, still admits the whole granule, and two granules if it
+straddles a granule boundary.
+Hardware writes the rounded start_addr and end_addr back into these fields only when both
+land in the same granule; otherwise readback returns the programmed values even though
+matching is still granule-aligned.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -16912,10 +16845,9 @@ When allow_burst is 1, the start_addr will be adjusted to align with 4KB boundar
             <ipxact:size>64</ipxact:size>
             <ipxact:field>
               <ipxact:name>end_addr</ipxact:name>
-              <ipxact:description>End of allowable address range. Defaults to 7 on reset to match the minimum granularity when burst is disabled.
-Hardware will adjust this field depending on the value of the allow_burst field.
-When allow_burst is 0, the end_addr will be adjusted to align with data width (2^data_bus_width == 8).
-When allow_burst is 1, the end_addr will be adjusted to align with 4KB boundary.</ipxact:description>
+              <ipxact:description>End of the allowable address range, rounded up to the top of its granule.
+The granule and the write-back behaviour are described under start_addr.
+Defaults to 7 on reset to match the 8B granule that applies while bursts are disabled.</ipxact:description>
               <ipxact:bitOffset>0</ipxact:bitOffset>
               <ipxact:resets>
                 <ipxact:reset>
@@ -17429,66 +17361,6 @@ When this is 1, it is safe to send requests to the SMC.</ipxact:description>
             </ipxact:field>
           </ipxact:register>
           <ipxact:register>
-            <ipxact:name>SEP_STRAPS</ipxact:name>
-            <ipxact:addressOffset>'h160</ipxact:addressOffset>
-            <ipxact:size>32</ipxact:size>
-            <ipxact:field>
-              <ipxact:name>test_en</ipxact:name>
-              <ipxact:description>straps for test_en -&gt; Used to be latched by SEP and generate the secure_tm</ipxact:description>
-              <ipxact:bitOffset>0</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>1</ipxact:bitWidth>
-              <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
-            </ipxact:field>
-            <ipxact:field>
-              <ipxact:name>bypass_mem_repair</ipxact:name>
-              <ipxact:description>straps for bypass_mem_repair -&gt; Used to indicate if the memory repair should be bypassed</ipxact:description>
-              <ipxact:bitOffset>1</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>1</ipxact:bitWidth>
-              <ipxact:volatile>true</ipxact:volatile>
-              <ipxact:access>read-only</ipxact:access>
-            </ipxact:field>
-          </ipxact:register>
-          <ipxact:register>
-            <ipxact:name>RAS_BANK_INFO</ipxact:name>
-            <ipxact:addressOffset>'h170</ipxact:addressOffset>
-            <ipxact:size>32</ipxact:size>
-            <ipxact:field>
-              <ipxact:name>bank_chip</ipxact:name>
-              <ipxact:description>Chiplet type ID</ipxact:description>
-              <ipxact:bitOffset>0</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>4</ipxact:bitWidth>
-              <ipxact:access>read-write</ipxact:access>
-            </ipxact:field>
-            <ipxact:field>
-              <ipxact:name>bank_instance</ipxact:name>
-              <ipxact:description>Chiplet instance ID</ipxact:description>
-              <ipxact:bitOffset>4</ipxact:bitOffset>
-              <ipxact:resets>
-                <ipxact:reset>
-                  <ipxact:value>'h0</ipxact:value>
-                </ipxact:reset>
-              </ipxact:resets>
-              <ipxact:bitWidth>4</ipxact:bitWidth>
-              <ipxact:access>read-write</ipxact:access>
-            </ipxact:field>
-          </ipxact:register>
-          <ipxact:register>
             <ipxact:name>SEP_SW_DEBUG</ipxact:name>
             <ipxact:addressOffset>'h178</ipxact:addressOffset>
             <ipxact:size>64</ipxact:size>
@@ -17623,6 +17495,280 @@ The NMI interrupt is used for the WDT Bark interrupt.</ipxact:description>
               </ipxact:resets>
               <ipxact:bitWidth>1</ipxact:bitWidth>
               <ipxact:access>read-write</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>DMA_BUS_ERR_STATUS</ipxact:name>
+            <ipxact:description>Secure DMA bridge fault status. Each bit is latched in hardware and held
+until the corresponding DMA_BUS_ERR_CLEAR write. These bits also drive
+dedicated PIC sources.
+
+Neither bit is cleared by a CPU-only reset (the WDT resets the CPU without
+resetting the DMA), so a bit read as set immediately after boot may describe
+a fault from before that reset rather than a new one.</ipxact:description>
+            <ipxact:addressOffset>'h1a8</ipxact:addressOffset>
+            <ipxact:size>64</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>reg_path_err</ipxact:name>
+              <ipxact:description>Register-path bus error: a CPU access to a Secure DMA register returned
+a TL-UL error response (unmapped or misaligned offset, or a RACL denial).
+The faulting access also received SLVERR synchronously.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>host_path_err</ipxact:name>
+              <ipxact:description>DMA-master-path fault: either the fabric returned a non-OKAY AXI response
+to a DMA transfer, or a TL-UL command-integrity check failed on a command
+issued by the DMA. The latter is a fault-detection event with no other
+reporting path.</ipxact:description>
+              <ipxact:bitOffset>1</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>DMA_BUS_ERR_CLEAR</ipxact:name>
+            <ipxact:description>Clear the DMA_BUS_ERR_STATUS bits. Writing 1 emits a single-cycle clear pulse
+to both latches. A fault arriving in the same cycle as the clear still
+latches, so acknowledging cannot drop a concurrent fault.</ipxact:description>
+            <ipxact:addressOffset>'h1b0</ipxact:addressOffset>
+            <ipxact:size>64</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>clr</ipxact:name>
+              <ipxact:description>Write 1 to clear both DMA_BUS_ERR_STATUS bits. Always reads 0.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>PERIPH_BUS_ERR_STATUS</ipxact:name>
+            <ipxact:description>Peripheral register-bridge fault status, one bit per block. Each bit latches
+when a CPU access to that block's registers returned a TL-UL error response
+(unmapped or misaligned offset, or a RACL denial), and is held until the
+matching PERIPH_BUS_ERR_CLEAR bit is written. The faulting access also
+received SLVERR synchronously.
+
+All bits OR together into a single PIC source, so read this register to
+identify which block faulted.
+
+No bit is cleared by a CPU-only reset (the WDT resets the CPU without
+resetting the peripherals), so a bit read as set immediately after boot may
+describe a fault from before that reset rather than a new one.</ipxact:description>
+            <ipxact:addressOffset>'h1b8</ipxact:addressOffset>
+            <ipxact:size>64</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>aes</ipxact:name>
+              <ipxact:description>AES register bridge error.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>hmac</ipxact:name>
+              <ipxact:description>HMAC register bridge error.</ipxact:description>
+              <ipxact:bitOffset>1</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>kmac</ipxact:name>
+              <ipxact:description>KMAC register bridge error.</ipxact:description>
+              <ipxact:bitOffset>2</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>otbn</ipxact:name>
+              <ipxact:description>OTBN register bridge error.</ipxact:description>
+              <ipxact:bitOffset>3</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>csrng</ipxact:name>
+              <ipxact:description>CSRNG register bridge error (DRBG CSRNG path).</ipxact:description>
+              <ipxact:bitOffset>4</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>edn</ipxact:name>
+              <ipxact:description>EDN register bridge error (DRBG EDN path).</ipxact:description>
+              <ipxact:bitOffset>5</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>wdt</ipxact:name>
+              <ipxact:description>Watchdog timer register bridge error.</ipxact:description>
+              <ipxact:bitOffset>6</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>read-only</ipxact:access>
+            </ipxact:field>
+          </ipxact:register>
+          <ipxact:register>
+            <ipxact:name>PERIPH_BUS_ERR_CLEAR</ipxact:name>
+            <ipxact:description>Clear PERIPH_BUS_ERR_STATUS bits. Writing 1 to a bit emits a single-cycle
+clear pulse to that block's latch; bit order matches
+PERIPH_BUS_ERR_STATUS. Clears are per-block so acknowledging one block
+cannot discard a fault another block raised between the status read and
+this write. A fault arriving in the same cycle as its own clear still
+latches.</ipxact:description>
+            <ipxact:addressOffset>'h1c0</ipxact:addressOffset>
+            <ipxact:size>64</ipxact:size>
+            <ipxact:field>
+              <ipxact:name>aes</ipxact:name>
+              <ipxact:description>Write 1 to clear PERIPH_BUS_ERR_STATUS.aes. Always reads 0.</ipxact:description>
+              <ipxact:bitOffset>0</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>hmac</ipxact:name>
+              <ipxact:description>Write 1 to clear PERIPH_BUS_ERR_STATUS.hmac. Always reads 0.</ipxact:description>
+              <ipxact:bitOffset>1</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>kmac</ipxact:name>
+              <ipxact:description>Write 1 to clear PERIPH_BUS_ERR_STATUS.kmac. Always reads 0.</ipxact:description>
+              <ipxact:bitOffset>2</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>otbn</ipxact:name>
+              <ipxact:description>Write 1 to clear PERIPH_BUS_ERR_STATUS.otbn. Always reads 0.</ipxact:description>
+              <ipxact:bitOffset>3</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>csrng</ipxact:name>
+              <ipxact:description>Write 1 to clear PERIPH_BUS_ERR_STATUS.csrng. Always reads 0.</ipxact:description>
+              <ipxact:bitOffset>4</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>edn</ipxact:name>
+              <ipxact:description>Write 1 to clear PERIPH_BUS_ERR_STATUS.edn. Always reads 0.</ipxact:description>
+              <ipxact:bitOffset>5</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>write-only</ipxact:access>
+            </ipxact:field>
+            <ipxact:field>
+              <ipxact:name>wdt</ipxact:name>
+              <ipxact:description>Write 1 to clear PERIPH_BUS_ERR_STATUS.wdt. Always reads 0.</ipxact:description>
+              <ipxact:bitOffset>6</ipxact:bitOffset>
+              <ipxact:resets>
+                <ipxact:reset>
+                  <ipxact:value>'h0</ipxact:value>
+                </ipxact:reset>
+              </ipxact:resets>
+              <ipxact:bitWidth>1</ipxact:bitWidth>
+              <ipxact:volatile>true</ipxact:volatile>
+              <ipxact:access>write-only</ipxact:access>
             </ipxact:field>
           </ipxact:register>
           <ipxact:register>
@@ -18173,7 +18319,7 @@ pulses.</ipxact:description>
 
 For read or write segments, this field controls the
 number of 1-byte bursts to transmit and or receive in
-this command segment.  The number of cyles required
+this command segment.  The number of cycles required
 to send or received a byte will depend on !!COMMAND.SPEED.
 For dummy segments, (!!COMMAND.DIRECTION == 0), this register
 controls the number of dummy cycles to issue.
@@ -18546,7 +18692,7 @@ goes low</ipxact:description>
               <ipxact:size>32</ipxact:size>
               <ipxact:field>
                 <ipxact:name>init_time</ipxact:name>
-                <ipxact:description>Most OTP have a initalization time before sensing can be done</ipxact:description>
+                <ipxact:description>Most OTP have a initialization time before sensing can be done</ipxact:description>
                 <ipxact:bitOffset>0</ipxact:bitOffset>
                 <ipxact:resets>
                   <ipxact:reset>

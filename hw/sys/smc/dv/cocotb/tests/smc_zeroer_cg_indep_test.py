@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_zeroer_cg_indep_test_seq import smc_zeroer_cg_indep_test_seq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
@@ -31,6 +31,12 @@ class smc_zeroer_cg_indep_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.ZEROER_DMA,
             type(self).__name__,
+            # Conservative stimulus floor: the directed CG/zeroer programming
+            # issued 13 accesses in the retained regression run, of which the
+            # zeroer-DONE poll is a timing-dependent remainder, so the floor is
+            # set below the observed count. Literal here, not read from
+            # `seq.accesses`.
+            min_csr_accesses=10,
             csr_accesses=seq.accesses,
             timeouts=seq.timeouts,
             proxy=False,

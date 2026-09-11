@@ -251,14 +251,16 @@ module sep_cpu_ctrl_reg (
         logic SMU_REGION_SIZE;
         logic SMC_FUSE_SENSE_STATUS;
         logic SEP_FUSE_SENSE_STATUS;
-        logic SEP_STRAPS;
-        logic RAS_BANK_INFO;
         logic SEP_SW_DEBUG;
         logic SEP_NMI_VEC;
         logic SEP_NMI_VEC_LOCK;
         logic EXT_TRNG_SRC_SEL;
         logic EXT_TRNG_SRC_SEL_LOCK;
         logic KM_WIPE_CTRL;
+        logic DMA_BUS_ERR_STATUS;
+        logic DMA_BUS_ERR_CLEAR;
+        logic PERIPH_BUS_ERR_STATUS;
+        logic PERIPH_BUS_ERR_CLEAR;
         logic SEP_VERSION_ID;
     } decoded_reg_strb_t;
     decoded_reg_strb_t decoded_reg_strb;
@@ -297,14 +299,16 @@ module sep_cpu_ctrl_reg (
         decoded_reg_strb.SMU_REGION_SIZE = cpuif_req_masked & (cpuif_addr == 13'h110);
         decoded_reg_strb.SMC_FUSE_SENSE_STATUS = cpuif_req_masked & (cpuif_addr == 13'h140) & !cpuif_req_is_wr;
         decoded_reg_strb.SEP_FUSE_SENSE_STATUS = cpuif_req_masked & (cpuif_addr == 13'h150) & !cpuif_req_is_wr;
-        decoded_reg_strb.SEP_STRAPS = cpuif_req_masked & (cpuif_addr == 13'h160) & !cpuif_req_is_wr;
-        decoded_reg_strb.RAS_BANK_INFO = cpuif_req_masked & (cpuif_addr == 13'h170);
         decoded_reg_strb.SEP_SW_DEBUG = cpuif_req_masked & (cpuif_addr == 13'h178);
         decoded_reg_strb.SEP_NMI_VEC = cpuif_req_masked & (cpuif_addr == 13'h180);
         decoded_reg_strb.SEP_NMI_VEC_LOCK = cpuif_req_masked & (cpuif_addr == 13'h188);
         decoded_reg_strb.EXT_TRNG_SRC_SEL = cpuif_req_masked & (cpuif_addr == 13'h190);
         decoded_reg_strb.EXT_TRNG_SRC_SEL_LOCK = cpuif_req_masked & (cpuif_addr == 13'h198);
         decoded_reg_strb.KM_WIPE_CTRL = cpuif_req_masked & (cpuif_addr == 13'h1a0);
+        decoded_reg_strb.DMA_BUS_ERR_STATUS = cpuif_req_masked & (cpuif_addr == 13'h1a8) & !cpuif_req_is_wr;
+        decoded_reg_strb.DMA_BUS_ERR_CLEAR = cpuif_req_masked & (cpuif_addr == 13'h1b0) & cpuif_req_is_wr;
+        decoded_reg_strb.PERIPH_BUS_ERR_STATUS = cpuif_req_masked & (cpuif_addr == 13'h1b8) & !cpuif_req_is_wr;
+        decoded_reg_strb.PERIPH_BUS_ERR_CLEAR = cpuif_req_masked & (cpuif_addr == 13'h1c0) & cpuif_req_is_wr;
         decoded_reg_strb.SEP_VERSION_ID = cpuif_req_masked & (cpuif_addr == 13'h1000) & !cpuif_req_is_wr;
         decoded_err = '0;
     end
@@ -444,16 +448,6 @@ module sep_cpu_ctrl_reg (
         } SMU_REGION_SIZE;
         struct {
             struct {
-                logic [3:0] next;
-                logic load_next;
-            } bank_chip;
-            struct {
-                logic [3:0] next;
-                logic load_next;
-            } bank_instance;
-        } RAS_BANK_INFO;
-        struct {
-            struct {
                 logic [31:0] next;
                 logic load_next;
             } sep_sw_debug;
@@ -488,6 +482,42 @@ module sep_cpu_ctrl_reg (
                 logic load_next;
             } wipe_state;
         } KM_WIPE_CTRL;
+        struct {
+            struct {
+                logic next;
+                logic load_next;
+            } clr;
+        } DMA_BUS_ERR_CLEAR;
+        struct {
+            struct {
+                logic next;
+                logic load_next;
+            } aes;
+            struct {
+                logic next;
+                logic load_next;
+            } hmac;
+            struct {
+                logic next;
+                logic load_next;
+            } kmac;
+            struct {
+                logic next;
+                logic load_next;
+            } otbn;
+            struct {
+                logic next;
+                logic load_next;
+            } csrng;
+            struct {
+                logic next;
+                logic load_next;
+            } edn;
+            struct {
+                logic next;
+                logic load_next;
+            } wdt;
+        } PERIPH_BUS_ERR_CLEAR;
     } field_combo_t;
     field_combo_t field_combo;
 
@@ -595,14 +625,6 @@ module sep_cpu_ctrl_reg (
         } SMU_REGION_SIZE;
         struct {
             struct {
-                logic [3:0] value;
-            } bank_chip;
-            struct {
-                logic [3:0] value;
-            } bank_instance;
-        } RAS_BANK_INFO;
-        struct {
-            struct {
                 logic [31:0] value;
             } sep_sw_debug;
         } SEP_SW_DEBUG;
@@ -631,6 +653,34 @@ module sep_cpu_ctrl_reg (
                 logic value;
             } wipe_state;
         } KM_WIPE_CTRL;
+        struct {
+            struct {
+                logic value;
+            } clr;
+        } DMA_BUS_ERR_CLEAR;
+        struct {
+            struct {
+                logic value;
+            } aes;
+            struct {
+                logic value;
+            } hmac;
+            struct {
+                logic value;
+            } kmac;
+            struct {
+                logic value;
+            } otbn;
+            struct {
+                logic value;
+            } csrng;
+            struct {
+                logic value;
+            } edn;
+            struct {
+                logic value;
+            } wdt;
+        } PERIPH_BUS_ERR_CLEAR;
     } field_storage_t;
     field_storage_t field_storage;
 
@@ -1124,52 +1174,6 @@ module sep_cpu_ctrl_reg (
         end
     end
     assign hwif_out.SMU_REGION_SIZE.size.value = field_storage.SMU_REGION_SIZE.size.value;
-    // Field: sep_cpu_ctrl.RAS_BANK_INFO.bank_chip
-    always_comb begin
-        automatic logic [3:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.RAS_BANK_INFO.bank_chip.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.RAS_BANK_INFO && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.RAS_BANK_INFO.bank_chip.value & ~decoded_wr_biten[3:0]) | (decoded_wr_data[3:0] & decoded_wr_biten[3:0]);
-            load_next_c = '1;
-        end
-        field_combo.RAS_BANK_INFO.bank_chip.next = next_c;
-        field_combo.RAS_BANK_INFO.bank_chip.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.RAS_BANK_INFO.bank_chip.value <= 4'h0;
-        end else begin
-            if(field_combo.RAS_BANK_INFO.bank_chip.load_next) begin
-                field_storage.RAS_BANK_INFO.bank_chip.value <= field_combo.RAS_BANK_INFO.bank_chip.next;
-            end
-        end
-    end
-    assign hwif_out.RAS_BANK_INFO.bank_chip.value = field_storage.RAS_BANK_INFO.bank_chip.value;
-    // Field: sep_cpu_ctrl.RAS_BANK_INFO.bank_instance
-    always_comb begin
-        automatic logic [3:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.RAS_BANK_INFO.bank_instance.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.RAS_BANK_INFO && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.RAS_BANK_INFO.bank_instance.value & ~decoded_wr_biten[7:4]) | (decoded_wr_data[7:4] & decoded_wr_biten[7:4]);
-            load_next_c = '1;
-        end
-        field_combo.RAS_BANK_INFO.bank_instance.next = next_c;
-        field_combo.RAS_BANK_INFO.bank_instance.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.RAS_BANK_INFO.bank_instance.value <= 4'h0;
-        end else begin
-            if(field_combo.RAS_BANK_INFO.bank_instance.load_next) begin
-                field_storage.RAS_BANK_INFO.bank_instance.value <= field_combo.RAS_BANK_INFO.bank_instance.next;
-            end
-        end
-    end
-    assign hwif_out.RAS_BANK_INFO.bank_instance.value = field_storage.RAS_BANK_INFO.bank_instance.value;
     // Field: sep_cpu_ctrl.SEP_SW_DEBUG.sep_sw_debug
     always_comb begin
         automatic logic [31:0] next_c;
@@ -1309,6 +1313,214 @@ module sep_cpu_ctrl_reg (
         end
     end
     assign hwif_out.KM_WIPE_CTRL.wipe_state.value = field_storage.KM_WIPE_CTRL.wipe_state.value;
+    // Field: sep_cpu_ctrl.DMA_BUS_ERR_CLEAR.clr
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.DMA_BUS_ERR_CLEAR.clr.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.DMA_BUS_ERR_CLEAR && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.DMA_BUS_ERR_CLEAR.clr.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
+            load_next_c = '1;
+        end else begin // singlepulse clears back to 0
+            next_c = '0;
+            load_next_c = '1;
+        end
+        field_combo.DMA_BUS_ERR_CLEAR.clr.next = next_c;
+        field_combo.DMA_BUS_ERR_CLEAR.clr.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.DMA_BUS_ERR_CLEAR.clr.value <= 1'h0;
+        end else begin
+            if(field_combo.DMA_BUS_ERR_CLEAR.clr.load_next) begin
+                field_storage.DMA_BUS_ERR_CLEAR.clr.value <= field_combo.DMA_BUS_ERR_CLEAR.clr.next;
+            end
+        end
+    end
+    assign hwif_out.DMA_BUS_ERR_CLEAR.clr.value = field_storage.DMA_BUS_ERR_CLEAR.clr.value;
+    // Field: sep_cpu_ctrl.PERIPH_BUS_ERR_CLEAR.aes
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.PERIPH_BUS_ERR_CLEAR.aes.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.PERIPH_BUS_ERR_CLEAR && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.PERIPH_BUS_ERR_CLEAR.aes.value & ~decoded_wr_biten[0:0]) | (decoded_wr_data[0:0] & decoded_wr_biten[0:0]);
+            load_next_c = '1;
+        end else begin // singlepulse clears back to 0
+            next_c = '0;
+            load_next_c = '1;
+        end
+        field_combo.PERIPH_BUS_ERR_CLEAR.aes.next = next_c;
+        field_combo.PERIPH_BUS_ERR_CLEAR.aes.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.PERIPH_BUS_ERR_CLEAR.aes.value <= 1'h0;
+        end else begin
+            if(field_combo.PERIPH_BUS_ERR_CLEAR.aes.load_next) begin
+                field_storage.PERIPH_BUS_ERR_CLEAR.aes.value <= field_combo.PERIPH_BUS_ERR_CLEAR.aes.next;
+            end
+        end
+    end
+    assign hwif_out.PERIPH_BUS_ERR_CLEAR.aes.value = field_storage.PERIPH_BUS_ERR_CLEAR.aes.value;
+    // Field: sep_cpu_ctrl.PERIPH_BUS_ERR_CLEAR.hmac
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.PERIPH_BUS_ERR_CLEAR.hmac.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.PERIPH_BUS_ERR_CLEAR && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.PERIPH_BUS_ERR_CLEAR.hmac.value & ~decoded_wr_biten[1:1]) | (decoded_wr_data[1:1] & decoded_wr_biten[1:1]);
+            load_next_c = '1;
+        end else begin // singlepulse clears back to 0
+            next_c = '0;
+            load_next_c = '1;
+        end
+        field_combo.PERIPH_BUS_ERR_CLEAR.hmac.next = next_c;
+        field_combo.PERIPH_BUS_ERR_CLEAR.hmac.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.PERIPH_BUS_ERR_CLEAR.hmac.value <= 1'h0;
+        end else begin
+            if(field_combo.PERIPH_BUS_ERR_CLEAR.hmac.load_next) begin
+                field_storage.PERIPH_BUS_ERR_CLEAR.hmac.value <= field_combo.PERIPH_BUS_ERR_CLEAR.hmac.next;
+            end
+        end
+    end
+    assign hwif_out.PERIPH_BUS_ERR_CLEAR.hmac.value = field_storage.PERIPH_BUS_ERR_CLEAR.hmac.value;
+    // Field: sep_cpu_ctrl.PERIPH_BUS_ERR_CLEAR.kmac
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.PERIPH_BUS_ERR_CLEAR.kmac.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.PERIPH_BUS_ERR_CLEAR && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.PERIPH_BUS_ERR_CLEAR.kmac.value & ~decoded_wr_biten[2:2]) | (decoded_wr_data[2:2] & decoded_wr_biten[2:2]);
+            load_next_c = '1;
+        end else begin // singlepulse clears back to 0
+            next_c = '0;
+            load_next_c = '1;
+        end
+        field_combo.PERIPH_BUS_ERR_CLEAR.kmac.next = next_c;
+        field_combo.PERIPH_BUS_ERR_CLEAR.kmac.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.PERIPH_BUS_ERR_CLEAR.kmac.value <= 1'h0;
+        end else begin
+            if(field_combo.PERIPH_BUS_ERR_CLEAR.kmac.load_next) begin
+                field_storage.PERIPH_BUS_ERR_CLEAR.kmac.value <= field_combo.PERIPH_BUS_ERR_CLEAR.kmac.next;
+            end
+        end
+    end
+    assign hwif_out.PERIPH_BUS_ERR_CLEAR.kmac.value = field_storage.PERIPH_BUS_ERR_CLEAR.kmac.value;
+    // Field: sep_cpu_ctrl.PERIPH_BUS_ERR_CLEAR.otbn
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.PERIPH_BUS_ERR_CLEAR.otbn.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.PERIPH_BUS_ERR_CLEAR && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.PERIPH_BUS_ERR_CLEAR.otbn.value & ~decoded_wr_biten[3:3]) | (decoded_wr_data[3:3] & decoded_wr_biten[3:3]);
+            load_next_c = '1;
+        end else begin // singlepulse clears back to 0
+            next_c = '0;
+            load_next_c = '1;
+        end
+        field_combo.PERIPH_BUS_ERR_CLEAR.otbn.next = next_c;
+        field_combo.PERIPH_BUS_ERR_CLEAR.otbn.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.PERIPH_BUS_ERR_CLEAR.otbn.value <= 1'h0;
+        end else begin
+            if(field_combo.PERIPH_BUS_ERR_CLEAR.otbn.load_next) begin
+                field_storage.PERIPH_BUS_ERR_CLEAR.otbn.value <= field_combo.PERIPH_BUS_ERR_CLEAR.otbn.next;
+            end
+        end
+    end
+    assign hwif_out.PERIPH_BUS_ERR_CLEAR.otbn.value = field_storage.PERIPH_BUS_ERR_CLEAR.otbn.value;
+    // Field: sep_cpu_ctrl.PERIPH_BUS_ERR_CLEAR.csrng
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.PERIPH_BUS_ERR_CLEAR.csrng.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.PERIPH_BUS_ERR_CLEAR && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.PERIPH_BUS_ERR_CLEAR.csrng.value & ~decoded_wr_biten[4:4]) | (decoded_wr_data[4:4] & decoded_wr_biten[4:4]);
+            load_next_c = '1;
+        end else begin // singlepulse clears back to 0
+            next_c = '0;
+            load_next_c = '1;
+        end
+        field_combo.PERIPH_BUS_ERR_CLEAR.csrng.next = next_c;
+        field_combo.PERIPH_BUS_ERR_CLEAR.csrng.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.PERIPH_BUS_ERR_CLEAR.csrng.value <= 1'h0;
+        end else begin
+            if(field_combo.PERIPH_BUS_ERR_CLEAR.csrng.load_next) begin
+                field_storage.PERIPH_BUS_ERR_CLEAR.csrng.value <= field_combo.PERIPH_BUS_ERR_CLEAR.csrng.next;
+            end
+        end
+    end
+    assign hwif_out.PERIPH_BUS_ERR_CLEAR.csrng.value = field_storage.PERIPH_BUS_ERR_CLEAR.csrng.value;
+    // Field: sep_cpu_ctrl.PERIPH_BUS_ERR_CLEAR.edn
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.PERIPH_BUS_ERR_CLEAR.edn.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.PERIPH_BUS_ERR_CLEAR && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.PERIPH_BUS_ERR_CLEAR.edn.value & ~decoded_wr_biten[5:5]) | (decoded_wr_data[5:5] & decoded_wr_biten[5:5]);
+            load_next_c = '1;
+        end else begin // singlepulse clears back to 0
+            next_c = '0;
+            load_next_c = '1;
+        end
+        field_combo.PERIPH_BUS_ERR_CLEAR.edn.next = next_c;
+        field_combo.PERIPH_BUS_ERR_CLEAR.edn.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.PERIPH_BUS_ERR_CLEAR.edn.value <= 1'h0;
+        end else begin
+            if(field_combo.PERIPH_BUS_ERR_CLEAR.edn.load_next) begin
+                field_storage.PERIPH_BUS_ERR_CLEAR.edn.value <= field_combo.PERIPH_BUS_ERR_CLEAR.edn.next;
+            end
+        end
+    end
+    assign hwif_out.PERIPH_BUS_ERR_CLEAR.edn.value = field_storage.PERIPH_BUS_ERR_CLEAR.edn.value;
+    // Field: sep_cpu_ctrl.PERIPH_BUS_ERR_CLEAR.wdt
+    always_comb begin
+        automatic logic [0:0] next_c;
+        automatic logic load_next_c;
+        next_c = field_storage.PERIPH_BUS_ERR_CLEAR.wdt.value;
+        load_next_c = '0;
+        if(decoded_reg_strb.PERIPH_BUS_ERR_CLEAR && decoded_req_is_wr) begin // SW write
+            next_c = (field_storage.PERIPH_BUS_ERR_CLEAR.wdt.value & ~decoded_wr_biten[6:6]) | (decoded_wr_data[6:6] & decoded_wr_biten[6:6]);
+            load_next_c = '1;
+        end else begin // singlepulse clears back to 0
+            next_c = '0;
+            load_next_c = '1;
+        end
+        field_combo.PERIPH_BUS_ERR_CLEAR.wdt.next = next_c;
+        field_combo.PERIPH_BUS_ERR_CLEAR.wdt.load_next = load_next_c;
+    end
+    always_ff @(posedge clk or negedge arst_n) begin
+        if(~arst_n) begin
+            field_storage.PERIPH_BUS_ERR_CLEAR.wdt.value <= 1'h0;
+        end else begin
+            if(field_combo.PERIPH_BUS_ERR_CLEAR.wdt.load_next) begin
+                field_storage.PERIPH_BUS_ERR_CLEAR.wdt.value <= field_combo.PERIPH_BUS_ERR_CLEAR.wdt.next;
+            end
+        end
+    end
+    assign hwif_out.PERIPH_BUS_ERR_CLEAR.wdt.value = field_storage.PERIPH_BUS_ERR_CLEAR.wdt.value;
 
     //--------------------------------------------------------------------------
     // Write response
@@ -1400,14 +1612,6 @@ module sep_cpu_ctrl_reg (
         if(rd_mux_addr == 13'h150) begin
             readback_data_var[0] = hwif_in.SEP_FUSE_SENSE_STATUS.sep_fuse_sense_done.next;
         end
-        if(rd_mux_addr == 13'h160) begin
-            readback_data_var[0] = hwif_in.SEP_STRAPS.test_en.next;
-            readback_data_var[1] = hwif_in.SEP_STRAPS.bypass_mem_repair.next;
-        end
-        if(rd_mux_addr == 13'h170) begin
-            readback_data_var[3:0] = field_storage.RAS_BANK_INFO.bank_chip.value;
-            readback_data_var[7:4] = field_storage.RAS_BANK_INFO.bank_instance.value;
-        end
         if(rd_mux_addr == 13'h178) begin
             readback_data_var[31:0] = field_storage.SEP_SW_DEBUG.sep_sw_debug.value;
         end
@@ -1426,6 +1630,19 @@ module sep_cpu_ctrl_reg (
         end
         if(rd_mux_addr == 13'h1a0) begin
             readback_data_var[0] = field_storage.KM_WIPE_CTRL.wipe_state.value;
+        end
+        if(rd_mux_addr == 13'h1a8) begin
+            readback_data_var[0] = hwif_in.DMA_BUS_ERR_STATUS.reg_path_err.next;
+            readback_data_var[1] = hwif_in.DMA_BUS_ERR_STATUS.host_path_err.next;
+        end
+        if(rd_mux_addr == 13'h1b8) begin
+            readback_data_var[0] = hwif_in.PERIPH_BUS_ERR_STATUS.aes.next;
+            readback_data_var[1] = hwif_in.PERIPH_BUS_ERR_STATUS.hmac.next;
+            readback_data_var[2] = hwif_in.PERIPH_BUS_ERR_STATUS.kmac.next;
+            readback_data_var[3] = hwif_in.PERIPH_BUS_ERR_STATUS.otbn.next;
+            readback_data_var[4] = hwif_in.PERIPH_BUS_ERR_STATUS.csrng.next;
+            readback_data_var[5] = hwif_in.PERIPH_BUS_ERR_STATUS.edn.next;
+            readback_data_var[6] = hwif_in.PERIPH_BUS_ERR_STATUS.wdt.next;
         end
         if(rd_mux_addr == 13'h1000) begin
             readback_data_var[31:0] = 32'hdeadbeef;

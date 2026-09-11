@@ -10,7 +10,8 @@ instances.
 ## `efuse_bank_model.sv`
 
 A 3 KB (1024 x 32-bit word), register-backed, write-one-to-set APB target
-(`efuse_bank_reg.sv`, PeakRDL-generated from `../../regs/efuse_bank.rdl`).
+(`efuse_bank_reg.sv`, hand-maintained in this directory alongside
+`regs/efuse_bank.rdl`, which was used for the one-time generation only).
 Beyond the bank storage itself, it adds three simulation-only conveniences:
 
 - **OTP image preload**: deposits an Intel-hex image into the bank at time 0

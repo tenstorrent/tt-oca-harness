@@ -245,7 +245,6 @@ int occp_get_response_header(test_context_t *ctx, uint64_t i3c_addr,
         int status;
         simputs("OCCP: Reading response header\n");
         do {
-            // simputshex32("bytes: ", sizeof(*resp_hdr));
             status =
                 ctx->drv.i3c_drv->read(ctx->drv.i3c_drv, i3c_addr, resp_hdr_ptr, sizeof(*resp_hdr));
             if ((status != I3C_OK) && (status != I3C_ERR_CMD_FAILED)) return OCCP_INTERFACE_ERR;
@@ -2236,7 +2235,7 @@ bool occp_status_matches_expected(uint32_t status_value, occp_fw_id_t expected_f
     if (actual_fw_id != (uint8_t)expected_fw_id) return false;
 
     /* For SMC BL0 error messages, apply spec-defined matching granularity:
-     * - Some errors use upper nibblesk wih 0x1FF per spe)
+     * - Some errors use upper nibblesk with 0x1FF per spe)
      * - Some use lower nibble (mask wit 0xFF0)
      * - Others have no nibble data (match full 12-bit class within 16-bit)
      */

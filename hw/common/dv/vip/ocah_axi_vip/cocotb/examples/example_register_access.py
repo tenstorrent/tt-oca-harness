@@ -18,8 +18,8 @@ Assumptions / conventions
 --------------------------
 - Clock is driven externally by the test; these snippets call cocotb.start_soon
   for the Clock helper before using the masters.
-- Interface names shown (axil_if, axi_if) match the signal definitions in
-  axi4_lite_intf.sv and axi4_intf.sv respectively.
+- Interface names shown (axil_if, axi_if) stand for the testbench's AXI4-Lite
+  and AXI4 interface instance handles.
 - All data values are plain Python ints; no cocotb BinaryValue objects.
 - DUT register addresses shown below are illustrative; substitute the actual
   address map from your register specification.
@@ -30,20 +30,20 @@ from cocotb.clock import Clock
 from cocotb.triggers import Timer
 
 from ocah_axi_vip import (
+    RESP_DECERR,
+    RESP_OKAY,
+    RESP_SLVERR,
     OcahAxiChecker,
     OcahAxiLiteMasterAgent,
     OcahAxiLiteSlaveAgent,
     OcahAxiMasterAgent,
     OcahAxiMonitor,
-    RESP_OKAY,
-    RESP_DECERR,
-    RESP_SLVERR,
 )
-
 
 # ---------------------------------------------------------------------------
 # Example 1 — AXI4-Lite register access (most common OCAH use case)
 # ---------------------------------------------------------------------------
+
 
 @cocotb.test()
 async def example_axilite_register_access(dut):
@@ -55,7 +55,7 @@ async def example_axilite_register_access(dut):
     # Construct the master agent once (SV interface handle in, test-facing
     # sequence API out).  Tests drive the VIP through the sequence surface.
     master = OcahAxiLiteMasterAgent(
-        dut.axil_if,            # must match interface name in testbench SV
+        dut.axil_if,  # must match interface name in testbench SV
         name="axilite_host",
         timeout_cycles=500,
         data_width=32,
@@ -86,7 +86,7 @@ async def example_axilite_register_access(dut):
     # ---------- statistics ----------
     stats = master.get_statistics()
     assert stats["write_transactions"] == 2
-    assert stats["read_transactions"]  == 2
+    assert stats["read_transactions"] == 2
 
     cocotb.log.info("example_axilite_register_access PASSED")
 
@@ -94,6 +94,7 @@ async def example_axilite_register_access(dut):
 # ---------------------------------------------------------------------------
 # Example 1b — AXI4-Lite non-OKAY response inspection
 # ---------------------------------------------------------------------------
+
 
 @cocotb.test()
 async def example_axilite_error_response(dut):
@@ -117,6 +118,7 @@ async def example_axilite_error_response(dut):
 # ---------------------------------------------------------------------------
 # Example 2 — AXI4 single and burst transactions
 # ---------------------------------------------------------------------------
+
 
 @cocotb.test()
 async def example_axi4_burst_access(dut):
@@ -160,6 +162,7 @@ async def example_axi4_burst_access(dut):
 # Example 3 — Memory-backed responder
 # ---------------------------------------------------------------------------
 
+
 @cocotb.test()
 async def example_memory_backed_responders(dut):
     """Show AXI-Lite RAM responder construction."""
@@ -184,6 +187,7 @@ async def example_memory_backed_responders(dut):
 # ---------------------------------------------------------------------------
 # Example 4 — Passive monitoring with checkers
 # ---------------------------------------------------------------------------
+
 
 @cocotb.test()
 async def example_axi4_monitor_checker(dut):
@@ -223,7 +227,7 @@ async def example_axi4_monitor_checker(dut):
 
     # Verify monitor saw what the master sent.
     assert len(observed_writes) >= 1
-    assert len(observed_reads)  >= 1
+    assert len(observed_reads) >= 1
     assert observed_writes[0].address == 0x0000_1000
     checker.assert_clean()
 

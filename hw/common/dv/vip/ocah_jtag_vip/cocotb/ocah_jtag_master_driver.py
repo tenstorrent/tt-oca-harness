@@ -73,10 +73,7 @@ def _logic_int(signal, default: int = 0) -> int:
 
 
 async def _timer(value: float | int, unit: str) -> None:
-    try:
-        await Timer(value, unit=unit)  # cocotb 2.x
-    except TypeError:
-        await Timer(value, units=unit)  # cocotb 1.9.x compatibility
+    await Timer(value, unit=unit)
 
 
 class _JtagIntfProxy:
@@ -204,6 +201,9 @@ class OcahJtagMasterDriver:
             def __getattr__(self, signal_name: str):
                 return getattr(dut, f"{prefix}_{signal_name}")
 
+        # The `trst_signal in (None, "trst")` branch above already returned,
+        # so reaching here means it's some other non-default name.
+        assert trst_signal is not None
         return cls(
             _PrefixedNamespace(),
             name=name,
@@ -303,19 +303,21 @@ class OcahJtagMasterDriver:
         return await self._cycle(int(tms) & 0x1, 0)
 
     async def tms_step(self, tms: int) -> int:
-        """Alias for `step_tms()` matching the public plan wording."""
+        """Alias for `step_tms()`."""
         return await self.step_tms(tms)
 
     async def goto_state(self, state) -> None:
         """Navigate to a TAP state using a shortest TMS path."""
         target = coerce_jtag_state(state)
         path = jtag_tms_path(self._state, target)
-        self.log.debug("%s: goto_state %s -> %s path=%s", self.name, self._state.name, target.name, path)
+        self.log.debug(
+            "%s: goto_state %s -> %s path=%s", self.name, self._state.name, target.name, path
+        )
         for tms in path:
             await self.step_tms(tms)
 
     async def move_to_state(self, state) -> None:
-        """Backward-compatible alias for `goto_state()`."""
+        """Alias for `goto_state()`."""
         await self.goto_state(state)
 
     async def random_tms_walk(self, cycles: int, rng: Random) -> OcahJtagState:
@@ -335,7 +337,9 @@ class OcahJtagMasterDriver:
         await self.goto_state(target)
         return target
 
-    async def shift_ir(self, value: int, width: int | None = None, *, back_to_rti: bool = False) -> int:
+    async def shift_ir(
+        self, value: int, width: int | None = None, *, back_to_rti: bool = False
+    ) -> int:
         """Shift an integer into IR and return captured TDO bits."""
         width = self._ir_width if width is None else int(width)
         if width <= 0:
@@ -442,7 +446,9 @@ class OcahJtagMasterDriver:
         try:
             return self._devices[int(index)]
         except IndexError as exc:
-            raise OcahJtagMasterDriverError(f"{self.name}: no JTAG device registered at index {index}") from exc
+            raise OcahJtagMasterDriverError(
+                f"{self.name}: no JTAG device registered at index {index}"
+            ) from exc
 
     async def _shift_bits(self, value: int, width: int, *, end_tms: int) -> int:
         captured = 0

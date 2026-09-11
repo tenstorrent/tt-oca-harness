@@ -5,10 +5,9 @@
 from __future__ import annotations
 
 import pyuvm
-
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_gpio_intf_full_sweep_test_seq import smc_gpio_intf_full_sweep_test_seq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
@@ -23,6 +22,9 @@ class smc_gpio_intf_full_sweep_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.GPIO_IRQ,
             type(self).__name__,
+            # Directed stimulus floor: 65 GPIO_INTF DATA_CTRL accesses (one per
+            # pad entry). Literal here, not read from `seq.accesses`.
+            min_csr_accesses=65,
             csr_accesses=seq.accesses,
             proxy=False,
             details="P1 coverage-gap round 3: GPIO_INTF full 68-entry sweep",

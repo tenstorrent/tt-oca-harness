@@ -36,6 +36,39 @@ static uint32_t simple_rand(uint32_t *seed) {
 static void timer_init(void) {
     uint32_t ctrl_val;
 
+    // Writability probe, before the operational value is programmed.
+    //
+    // The operational value below (0x0001020A) is STEP=0x1, PULSE_WIDTH=0x2,
+    // CREDIT_VAL=0xA -- which is exactly this register's generated reset
+    // default (SYSTEM_TIMER_OCTS__CTRL__{STEP,PULSE_WIDTH,CREDIT_VAL}_reset).
+    // Writing it and reading it back therefore proved nothing: a CTRL that
+    // ignores writes entirely reads back the same word. Write a value that
+    // differs in all three fields first, confirm it took, and only then
+    // program the value the rest of the test depends on. The probe happens
+    // before the timer is started, so it changes no behaviour downstream.
+    {
+        const uint32_t probe =
+            (((SYSTEM_TIMER_OCTS__CTRL__STEP_reset ^ 0x2u) << SYSTEM_TIMER_OCTS__CTRL__STEP_bp) &
+             SYSTEM_TIMER_OCTS__CTRL__STEP_bm) |
+            (((SYSTEM_TIMER_OCTS__CTRL__PULSE_WIDTH_reset ^ 0x3u)
+              << SYSTEM_TIMER_OCTS__CTRL__PULSE_WIDTH_bp) &
+             SYSTEM_TIMER_OCTS__CTRL__PULSE_WIDTH_bm) |
+            (((SYSTEM_TIMER_OCTS__CTRL__CREDIT_VAL_reset ^ 0x1Fu)
+              << SYSTEM_TIMER_OCTS__CTRL__CREDIT_VAL_bp) &
+             SYSTEM_TIMER_OCTS__CTRL__CREDIT_VAL_bm);
+        uint32_t got;
+        write_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_CTRL_BASE_ADDR, probe);
+        got = read_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_CTRL_BASE_ADDR);
+        if (got != probe) {
+            simputs("ERROR: CTRL is not writable\n");
+            simputshex32("  probe wrote: ", probe);
+            simputshex32("  read back:   ", got);
+            write_scratch(0, 0xBAD00002u);
+            test_fail(0);
+        }
+        simputshex32("  CTRL writable, probe read back = ", got);
+    }
+
     // Initialize timer control register
     // Default: credit_val=0x0A, pulse_width=0x02, step=0x01
     write_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_CTRL_BASE_ADDR, 0x0001020A);

@@ -20,11 +20,11 @@ a sibling's wrapper rst_ni is untouched, so its held result survives -- the isol
 
 from __future__ import annotations
 
-from sep_reg_meta import SEP_RESET_CTRL, sym
-
 from dataclasses import dataclass
 
 from env.sep_axi_agent import SepAxiOp
+from sep_reg_meta import SEP_RESET_CTRL, sym
+
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 
@@ -33,7 +33,8 @@ SW_RESET_N = sym("SEP_RESET_CTRL_SW_RESET_N_REG_ADDR")
 SW_RESET_N_DEFAULT = SEP_RESET_CTRL.reset32("SW_RESET_N")
 RST_KM, RST_OTBN, RST_AES, RST_HMAC, RST_KMAC, RST_TRNG = 0, 1, 2, 3, 4, 5
 RESP_OKAY = 0
-RESP_DECERR = 3
+RESP_SLVERR = 2
+
 # DIGEST_0 has no generated REG_DEFAULT; OpenTitan HMAC clears it to 0 on rst_ni.
 HMAC_DIGEST_RESET = 0
 
@@ -41,6 +42,7 @@ HMAC_DIGEST_RESET = 0
 @dataclass(frozen=True)
 class CryptoEngine:
     """One crypto engine: display name + its SW_RESET_N bit."""
+
     name: str
     rst_bit: int
 

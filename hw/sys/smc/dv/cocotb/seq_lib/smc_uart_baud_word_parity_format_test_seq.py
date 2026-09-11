@@ -18,7 +18,14 @@ _UART_WO_H = (
     _REPO / "hw" / "ip" / "uart" / "uart_16550" / "regs" / "gen" / "c" / "uart_16550_main_wo.h"
 )
 _UART_CTRL_H = (
-    _REPO / "hw" / "ip" / "uart" / "uart_log_engine_wrap" / "regs" / "gen" / "c"
+    _REPO
+    / "hw"
+    / "ip"
+    / "uart"
+    / "uart_log_engine_wrap"
+    / "regs"
+    / "gen"
+    / "c"
     / "uart_log_engine_ctrl.h"
 )
 
@@ -26,27 +33,13 @@ UART_CTRL = smc_indexed_addr(
     "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LOG_ENGINE_CTRL_CTRL_BASE_ADDR",
     0,
 )
-UART_RBR = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR", 0
-)
-UART_IER = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR", 0
-)
-UART_IIR = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR_BASE_ADDR", 0
-)
-UART_LCR = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LCR_BASE_ADDR", 0
-)
-UART_MCR = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MCR_BASE_ADDR", 0
-)
-UART_LSR = smc_indexed_addr(
-    "SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR", 0
-)
-CLOCK_GATE_CONTROL = smc_addr(
-    "SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR"
-)
+UART_RBR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_RBR_BASE_ADDR", 0)
+UART_IER = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR", 0)
+UART_IIR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IIR_BASE_ADDR", 0)
+UART_LCR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LCR_BASE_ADDR", 0)
+UART_MCR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_MCR_BASE_ADDR", 0)
+UART_LSR = smc_indexed_addr("SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_LSR_BASE_ADDR", 0)
+CLOCK_GATE_CONTROL = smc_addr("SMC_TOP_SMC_BASE_CONFIG_CLOCK_GATE_CONTROL_BASE_ADDR")
 
 UART_EN = _field_mask(_UART_CTRL_H, "UART_LOG_ENGINE_CTRL__CTRL__UART_EN_bm")
 FCR_FIFO_ENABLE = _field_mask(_UART_WO_H, "UART_16550_MAIN_WO__FCR__FIFO_ENABLE_bm")
@@ -54,9 +47,7 @@ IER_ERBFI = _field_mask(_UART_H, "UART_16550_MAIN__IER__ERBFI_bm")
 IER_ETBEI = _field_mask(_UART_H, "UART_16550_MAIN__IER__ETBEI_bm")
 IER_ELSI = _field_mask(_UART_H, "UART_16550_MAIN__IER__ELSI_bm")
 IER_EDSSI = _field_mask(_UART_H, "UART_16550_MAIN__IER__EDSSI_bm")
-IIR_INTERRUPT_PENDING = _field_mask(
-    _UART_H, "UART_16550_MAIN__IIR__INTERRUPT_PENDING_bm"
-)
+IIR_INTERRUPT_PENDING = _field_mask(_UART_H, "UART_16550_MAIN__IIR__INTERRUPT_PENDING_bm")
 IIR_INTERRUPT_ID = _field_mask(_UART_H, "UART_16550_MAIN__IIR__INTERRUPT_ID_bm")
 IIR_INTERRUPT_ID_BP = _field_mask(_UART_H, "UART_16550_MAIN__IIR__INTERRUPT_ID_bp")
 LCR_DLAB = _field_mask(_UART_H, "UART_16550_MAIN__LCR__DLAB_bm")
@@ -108,9 +99,7 @@ def _iir_pending(iir: int) -> bool:
 class smc_uart_baud_word_parity_format_test_seq(SmcCsrSeq):
     """UART0 loopback baud/word/parity format sweep."""
 
-    def __init__(
-        self, name: str = "smc_uart_baud_word_parity_format_test_seq"
-    ) -> None:
+    def __init__(self, name: str = "smc_uart_baud_word_parity_format_test_seq") -> None:
         super().__init__(name)
         self.combos_ok: int = 0
 
@@ -152,10 +141,7 @@ class smc_uart_baud_word_parity_format_test_seq(SmcCsrSeq):
 
         lsr = await self.csr_read(f"{label}_LSR", UART_LSR)
         if lsr & (LSR_PE | LSR_FE | LSR_BI):
-            raise AssertionError(
-                f"{label}: unexpected err LSR=0x{lsr:08x} "
-                f"div={divisor} wls={wls}"
-            )
+            raise AssertionError(f"{label}: unexpected err LSR=0x{lsr:08x} div={divisor} wls={wls}")
         if not (lsr & LSR_DR):
             raise AssertionError(f"{label}: LSR.DR=0 before RBR read")
         rx = await self.csr_read(f"{label}_RBR", UART_RBR)
@@ -166,8 +152,7 @@ class smc_uart_baud_word_parity_format_test_seq(SmcCsrSeq):
                 f"(tx=0x{_TX_BYTE:02x} mask=0x{word_mask:02x})"
             )
         cocotb.log.info(
-            "CHK-UART-BAUD-FMT: div=%d wls=%d stb=%d pen=%d eps=%d "
-            "rx=0x%02x",
+            "CHK-UART-BAUD-FMT: div=%d wls=%d stb=%d pen=%d eps=%d rx=0x%02x",
             divisor,
             wls,
             stb,
@@ -189,9 +174,5 @@ class smc_uart_baud_word_parity_format_test_seq(SmcCsrSeq):
 
         expect = len(_DIVISORS) * len(_FRAME_CFGS)
         if self.combos_ok != expect:
-            raise AssertionError(
-                f"combo count {self.combos_ok} != {expect}"
-            )
-        cocotb.log.info(
-            "CHK-UART-BAUD-BASIC: combos=%d (div×frame)", self.combos_ok
-        )
+            raise AssertionError(f"combo count {self.combos_ok} != {expect}")
+        cocotb.log.info("CHK-UART-BAUD-BASIC: combos=%d (div×frame)", self.combos_ok)

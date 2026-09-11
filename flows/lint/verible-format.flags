@@ -1,0 +1,41 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+--column_limit=100
+--indentation_spaces=2
+--wrap_spaces=4
+--line_terminator=auto
+
+# infer's "align" outcome pads *inside* a packed-dimension's brackets to
+# right-justify mismatched widths in the same column (e.g. "[  1:0]" next to
+# "[ID_WIDTH-1:0]"), which the team doesn't want. preserve keeps whatever
+# column spacing the author already wrote instead of recomputing it, which
+# matches this hand-authored codebase's existing port/signal alignment
+# without introducing that padding.
+#
+# preserve reproduces the original whitespace character-for-character rather
+# than by rendered column, so a file whose author aligned columns with literal
+# tabs (rather than spaces) comes out misaligned once those tabs are
+# substituted; expand such a file's tabs to spaces (at the author's intended
+# tab width) before this pass ever sees it.
+--assignment_statement_alignment=preserve
+--case_items_alignment=preserve
+--class_member_variable_alignment=preserve
+--compact_indexing_and_selections=true
+--distribution_items_alignment=preserve
+--enum_assignment_statement_alignment=preserve
+--formal_parameters_alignment=preserve
+--formal_parameters_indentation=indent
+--module_net_variable_alignment=preserve
+--named_parameter_alignment=preserve
+--named_parameter_indentation=indent
+--named_port_alignment=preserve
+--named_port_indentation=indent
+--port_declarations_alignment=preserve
+--port_declarations_indentation=indent
+--struct_union_members_alignment=preserve
+
+--try_wrap_long_lines=false
+--wrap_end_else_clauses=false
+--failsafe_success=false
+--verify_convergence=true

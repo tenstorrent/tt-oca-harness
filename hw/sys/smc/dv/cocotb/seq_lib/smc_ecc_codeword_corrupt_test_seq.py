@@ -32,8 +32,9 @@ from .smc_cpu_vip_utils import (
 )
 from .smc_csr_seq_utils import SmcCsrSeq
 
-# Bank0 entry 0 is the first 8 bytes of the scratch image (64B stripe across
-# 8 banks), so the reset-vector fetch reads it.
+# Bank0 entry 0 is the first 8 bytes of the scratch image -- offset 0 is where
+# every field of the smc_scratch_map_pkg decode reads zero -- so the
+# reset-vector fetch reads it.
 _POKE_ENTRY = 0
 _SCRATCH_BOUND_CYCLES = 400_000
 _DED_BOUND_CYCLES = 400_000
@@ -75,9 +76,7 @@ class smc_ecc_codeword_corrupt_test_seq(SmcCsrSeq):
                 continue
             cur = int(dut.tb_cpu_scratch_read_count.value)
             if cur > baseline:
-                cocotb.log.info(
-                    "scratch_reads %d -> %d after %d cycles", baseline, cur, i + 1
-                )
+                cocotb.log.info("scratch_reads %d -> %d after %d cycles", baseline, cur, i + 1)
                 return cur
         raise AssertionError(
             f"TIMEOUT: scratch_reads stuck at {baseline} for "

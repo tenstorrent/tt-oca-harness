@@ -75,7 +75,7 @@ to the BYPASS instruction.
 |cla_clock_stop_i |Input |1 |CLA clock stop status for readback
 |boot_stall_o |Output |1 |Boot stall control
 |boot_stall_ovrd_o |Output |1 |Boot stall override enable
-|security_disable_i |Input |1 |Lifecycle security disable
+|dbg_disable_i |Input |`dbg_disable_t` |Active-high per-path debug/test disables (1 = path disabled)
 |stap_ext_* |Bidirectional | |Extended STAP chain interface
 |ijtag_ext_* |Bidirectional | |Extended iJTAG interface
 |smc_axi_* |Output | |SMC AXI master interface

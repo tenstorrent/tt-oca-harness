@@ -6,8 +6,8 @@ from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_i2c_p0_rdwr_test_seq import smc_i2c_p0_rdwr_test_seq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
@@ -19,15 +19,31 @@ class smc_i2c_p0_rdwr_test(smc_base_test):
     async def run_scenario(self) -> None:
         seq = smc_i2c_p0_rdwr_test_seq("i2c_p0_rdwr_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
-        assert seq.transfer_ok, "I2C0→I2C1 P0 transfer did not complete"
+        assert seq.transfer_ok, "I2C0→I2C1 P0 write transfer did not complete"
+        # Both directions, because the claim names both. Without this the read
+        # half could be dropped from the sequence and nothing would notice.
+        assert seq.read_ok, "I2C0←I2C1 P0 read transfer did not complete"
         await self.record_protocol_vip(
             SmcProtocolVipKind.I2C,
             type(self).__name__,
-            csr_accesses=seq.accesses,
+            # Stimulus floor, literal here rather than read from
+            # `seq.accesses`. The write leg alone was observed at 41-42 accesses
+            # (the ACQ drain polls vary with timing). The read leg adds five
+            # unconditional writes -- two FIFO resets, the target TX preload and
+            # the two FDATA entries -- plus at least two host-idle polls and two
+            # RX polls, so at least nine more. 45 therefore sits above the write
+            # leg's observed maximum, which is the point: the floor cannot be met
+            # by the write leg alone, and it stays well under the ~50 a full run
+            # issues so poll variance cannot make it flaky.
+            min_csr_accesses=45,
+            # The scoreboard's own per-bus tally, stamped by the driver that
+            # completed each access, rather than `seq.accesses`, which the
+            # sequence increments on dispatch regardless of what came back.
+            csr_accesses=self.env.scoreboard.axi_accesses_by_bus.get("SEP_IN AXI", 0),
             proxy=False,
             details=(
-                "I2C0 host write to I2C1 target on shared pads; "
+                "I2C0 host write to I2C1 target and read back on shared pads; "
                 f"ACQ_words={[hex(w) for w in seq.acq_words[:5]]} "
-                f"ok={seq.transfer_ok}"
+                f"write_ok={seq.transfer_ok} read_ok={seq.read_ok}"
             ),
         )

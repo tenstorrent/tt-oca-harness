@@ -12,6 +12,14 @@ package log_engine_reg_pkg;
     localparam NUM_LOG_ENTRIES = 'h10;
 
     typedef struct {
+        logic [7:0] next;
+    } log_engine__LOG_REGION_ADDR__RESERVED__in_t;
+
+    typedef struct {
+        log_engine__LOG_REGION_ADDR__RESERVED__in_t RESERVED;
+    } log_engine__LOG_REGION_ADDR__in_t;
+
+    typedef struct {
         logic next;
     } log_engine__INTR_STATUS__LOG_FETCH_ERR__in_t;
 
@@ -33,6 +41,7 @@ package log_engine_reg_pkg;
     } log_engine__LOG_CTRL__in_t;
 
     typedef struct {
+        log_engine__LOG_REGION_ADDR__in_t LOG_REGION_ADDR;
         log_engine__INTR_STATUS__in_t INTR_STATUS;
         log_engine__LOG_CTRL__in_t LOG_CTRL[16];
     } log_engine__in_t;

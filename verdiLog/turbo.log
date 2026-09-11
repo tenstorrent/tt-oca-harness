@@ -1,0 +1,2 @@
+Command Line: /tools_vendor/synopsys/verdi/X-2025.06/platform/LINUXAMD64/bin/Novas -ssf hw/sys/sep/dv/build/runs/20260909_205540__vcs__sep_efuse_token_match_fault_pic_test/sep_efuse_token_match_fault_pic_test/waves/sep_efuse_token_match_fault_pic_test.fsdb
+uname(Linux soc-l-01 4.18.0-553.el8_10.x86_64 #1 SMP Fri May 10 15:19:13 EDT 2024 x86_64)

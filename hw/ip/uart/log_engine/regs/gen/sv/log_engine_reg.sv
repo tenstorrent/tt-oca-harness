@@ -724,6 +724,7 @@ module log_engine_reg (
         end
         if(rd_mux_addr == 7'hc) begin
             readback_data_var[23:0] = field_storage.LOG_REGION_ADDR.LOG_REGION_ADDR_HI.value;
+            readback_data_var[31:24] = hwif_in.LOG_REGION_ADDR.RESERVED.next;
         end
         if(rd_mux_addr == 7'h10) begin
             readback_data_var[31:0] = field_storage.LOG_WRITE_ADDR.LOG_WRITE_ADDR.value;

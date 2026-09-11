@@ -3,7 +3,6 @@
 """DTP BYPASS instruction test."""
 
 import pyuvm
-
 from dtp_base_test import dtp_base_test
 from seq_lib.dtp_jtag_bypass_test_seq import dtp_jtag_bypass_test_seq
 
@@ -16,7 +15,7 @@ class dtp_jtag_bypass_test(dtp_base_test):
         await self.start_looped_seq(
             dtp_jtag_bypass_test_seq,
             "jtag_bypass_seq",
-            specific_env="DTP_JTAG_BYPASS_TEST_LOOPS",
+            specific_knob="DTP_JTAG_BYPASS_TEST_LOOPS",
             default_loops=16,
-            group_env="DTP_BASIC_JTAG_TEST_LOOPS",
+            group_knob="DTP_BASIC_JTAG_TEST_LOOPS",
         )

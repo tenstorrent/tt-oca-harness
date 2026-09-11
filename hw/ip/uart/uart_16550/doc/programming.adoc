@@ -10,14 +10,18 @@ To configure the baud rate:
 
 1.  Set DLAB=1 in LCR register (0x0C)
 2.  Calculate divisor:
-`divisor = clock_frequency / (16 * desired_baud_rate)`
+`divisor = round(clock_frequency / (16 * desired_baud_rate)) - 1`
 3.  Write low byte of divisor to DLL (0x00)
 4.  Write high byte of divisor to DLM (0x04)
 5.  Clear DLAB=0 in LCR register to resume normal operation
 
+The baud rate generator reloads with `divisor` and ticks at zero, so the
+resulting rate is `clock_frequency / (16 * (divisor + 1))`. A divisor of `0`
+disables the transmitter and receiver.
+
 Example for 115200 baud with 50MHz clock:
-`divisor = 50000000 / (16 * 115200) = 27 (0x001B)` - Write 0x1B to DLL -
-Write 0x00 to DLM
+`divisor = round(50000000 / (16 * 115200)) - 1 = 26 (0x001A)` - Write 0x1A to
+DLL - Write 0x00 to DLM
 
 ====== FIFO Configuration
 

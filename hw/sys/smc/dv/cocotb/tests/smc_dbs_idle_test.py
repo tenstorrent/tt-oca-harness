@@ -6,9 +6,9 @@ from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_diagnostic_vip_utils import check_diagnostic_observability
 from seq_lib.smc_ecc_dfd_dbs_sanity_test_seq import smc_ecc_dfd_dbs_sanity_test_seq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
@@ -24,6 +24,9 @@ class smc_dbs_idle_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.DIAGNOSTIC,
             type(self).__name__,
+            # Directed stimulus floor: 6 SEP_IN AXI DBS diagnostic CSR reads.
+            # Literal here, not read from `seq.accesses`.
+            min_csr_accesses=6,
             csr_accesses=seq.accesses,
             proxy=True,
             details="DBS idle diagnostic CSR surface and bounded fault observability checked",

@@ -6,10 +6,10 @@ from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_ecc_codeword_corrupt_test_seq import (
     smc_ecc_codeword_corrupt_test_seq,
 )
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
@@ -27,6 +27,11 @@ class smc_ecc_codeword_ded_test(smc_base_test):
             SmcProtocolVipKind.CPU,
             type(self).__name__,
             csr_accesses=seq.accesses,
+            # No CSR stimulus: the codeword is poked backdoor and the
+            # property is read from tb_cluster_ded_seen, asserted in the
+            # sequence. Booked as an activity stamp so it is not counted
+            # as a protocol VIP check it cannot be.
+            auto_evidence=True,
             proxy=False,
             details="scratch bank0 codeword ^= 2 bits before boot; cluster_ded_o asserts on the reset-vector fetch",
         )

@@ -161,7 +161,7 @@ typedef enum
                            // OCCP message it contains. Reported when OCCP header message length is
                            // longer than I3C transaction length.
   Transport_crc = 0x10002, // 0x10002: Transport CRC error. The transport CRC of the transaction
-                           // failed. Doesnt apply for I3C/I2C as it has no CRC.
+                           // failed. Doesn't apply for I3C/I2C as it has no CRC.
                            // 0x10003 - 0x1FFFF: Reserved for future transport layer errors
 } Occp_ErrMsgID;
 

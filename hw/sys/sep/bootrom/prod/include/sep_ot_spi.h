@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * OCH SEP ROM — OpenTitan SPI Host driver (public API).
+ * OCAH SEP ROM — OpenTitan SPI Host driver (public API).
  *
  * Parallel to sep_spi.h. The OpenTitan controller has no XIP window: flash is
  * reached only through command/FIFO transactions (see src/sep_ot_spi.c). The

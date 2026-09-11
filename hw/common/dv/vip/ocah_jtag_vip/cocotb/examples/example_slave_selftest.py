@@ -109,25 +109,29 @@ def main() -> None:
     host.reset_to_tlr()
     host.cycle(0)  # TLR -> RTI
     observed = host.shift(0, 32, sel_ir=False)
-    checker.expect_equal("CHK-SLAVE-TLR-IDCODE", observed, IDCODE,
-                         context="DR scan after TLR, no IR load")
-    checker.expect_equal("CHK-SLAVE-IDCODE-MARKER", observed & 1, 1,
-                         context=f"raw=0x{observed:08x}")
+    checker.expect_equal(
+        "CHK-SLAVE-TLR-IDCODE", observed, IDCODE, context="DR scan after TLR, no IR load"
+    )
+    checker.expect_equal(
+        "CHK-SLAVE-IDCODE-MARKER", observed & 1, 1, context=f"raw=0x{observed:08x}"
+    )
 
     # BYPASS: exactly one TCK of TDI-to-TDO delay.
     bypass_opcode = (1 << IR_WIDTH) - 1
     pattern = 0xA5A5_5A5A_C3C3_3C3C
     host.shift(bypass_opcode, IR_WIDTH, sel_ir=True)
     observed = host.shift(pattern, 64, sel_ir=False)
-    checker.check_bypass_latency(observed, pattern=pattern, width=64,
-                                 check_id="CHK-SLAVE-BYPASS-LATENCY")
+    checker.check_bypass_latency(
+        observed, pattern=pattern, width=64, check_id="CHK-SLAVE-BYPASS-LATENCY"
+    )
 
     # An unimplemented instruction behaves as BYPASS.
     host.shift(UNUSED_OPCODE, IR_WIDTH, sel_ir=True)
     observed = host.shift(pattern, 64, sel_ir=False)
     expected = OcahJtagTapRefModel.predict_bypass_tdo(pattern, 64)
-    checker.expect_equal("CHK-SLAVE-UNDEF-AS-BYPASS", observed, expected,
-                         context=f"ir=0x{UNUSED_OPCODE:02x}")
+    checker.expect_equal(
+        "CHK-SLAVE-UNDEF-AS-BYPASS", observed, expected, context=f"ir=0x{UNUSED_OPCODE:02x}"
+    )
 
     # Writable register: the host write latches on Update-DR and is recorded.
     host.shift(CTRL_OPCODE, IR_WIDTH, sel_ir=True)
@@ -140,31 +144,35 @@ def main() -> None:
         context=f"updates={len(updates)}",
     )
     observed = host.shift(0, 16, sel_ir=False)
-    checker.expect_equal("CHK-SLAVE-DR-UPDATE", observed, 0xBEEF,
-                         context="readback after Update-DR")
+    checker.expect_equal(
+        "CHK-SLAVE-DR-UPDATE", observed, 0xBEEF, context="readback after Update-DR"
+    )
 
     # Read-only register: captures the backdoor value, never latches.
     engine.set_register("STATUS", 0xA5)
     host.shift(STATUS_OPCODE, IR_WIDTH, sel_ir=True)
     observed = host.shift(0xFF, 8, sel_ir=False)
-    checker.expect_equal("CHK-SLAVE-STATUS-CAPTURE", observed, 0xA5,
-                         context="read-only capture")
+    checker.expect_equal("CHK-SLAVE-STATUS-CAPTURE", observed, 0xA5, context="read-only capture")
     checker.expect_equal(
         "CHK-SLAVE-RO-NO-UPDATE",
         len([u for u in engine.updates if u.reg_name == "STATUS"]),
         0,
         context="read-only register must not latch",
     )
-    checker.expect_equal("CHK-SLAVE-STATUS-CAPTURE",
-                         engine.get_register("STATUS"), 0xA5,
-                         context="stored value survives the host write")
+    checker.expect_equal(
+        "CHK-SLAVE-STATUS-CAPTURE",
+        engine.get_register("STATUS"),
+        0xA5,
+        context="stored value survives the host write",
+    )
 
     # TLR re-selects IDCODE after arbitrary instruction churn.
     host.reset_to_tlr()
     host.cycle(0)
     observed = host.shift(0, 32, sel_ir=False)
-    checker.expect_equal("CHK-SLAVE-TLR-IDCODE", observed, IDCODE,
-                         context="TLR re-selects IDCODE after IR churn")
+    checker.expect_equal(
+        "CHK-SLAVE-TLR-IDCODE", observed, IDCODE, context="TLR re-selects IDCODE after IR churn"
+    )
 
     checker.finalize()
     print("SLAVE SELFTEST PASS")

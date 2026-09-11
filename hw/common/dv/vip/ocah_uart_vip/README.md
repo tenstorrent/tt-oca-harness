@@ -28,13 +28,11 @@ The backend is native to this package — no external UART library:
   8-N-1 line driver.  The console host is the master side: it initiates
   traffic into the DUT's RX pad.
 - `OcahUartLineMonitor` (`ocah_uart_monitor.py`) — passive wire-level 8-N-1
-  byte sampler over one line.  Side-neutral by ruling: a UART line is a
-  symmetric point-to-point wire and the sampler reconstructs whatever
-  traffic appears on it (VIP-driven or DUT-driven), so a master/slave side
-  token would be false labeling.
+  byte sampler over one line.  Side-neutral: a UART line is a symmetric
+  point-to-point wire and the sampler reconstructs whatever traffic appears
+  on it (VIP-driven or DUT-driven).
 
-`OcahUartImportError` is retained for backward compatibility with callers
-that catch it; the native backend never raises it.
+`OcahUartImportError` is exported but never raised by the native backend.
 
 ---
 
@@ -184,7 +182,7 @@ from ocah_uart_vip import OcahUartError, OcahUartImportError
 | Exception | When raised |
 |---|---|
 | `OcahUartError` | Timeout, framing error, or unexpected data |
-| `OcahUartImportError` | never raised by the native backend; retained for backward compatibility |
+| `OcahUartImportError` | never raised by the native backend |
 
 To receive `None` on timeout instead of raising:
 
@@ -227,8 +225,7 @@ This package follows the OCAH hierarchical VIP convention (see
 code lives in `cocotb/`, and the root `__init__.py` is a thin shim
 re-exporting the stable public API — always import
 `from ocah_uart_vip import <Class>`, never from the subfolders.
-`interface/` (shared SV interfaces) and `uvm/`
-(SV-UVM agent + env) are added as they land for this protocol. The SV-UVM
+This package has no `interface/` or `uvm/` realization. The SV-UVM
 template and the commercial-VIP plug-in contract (env-level factory
 override, user-implemented API wrapper, monitor closing, nested vendor
 interface) are documented in `../ocah_jtag_vip/README.md`

@@ -4,11 +4,10 @@
 [[mailbox-unit-architecture]]
 ===== Architecture
 
-The SMC Mailbox IP provides inter-processor and inter-chiplet
-communication through a register-based interface. The design separates
-protocol handling from storage implementation, allowing system
-integrators to choose appropriate FIFO implementations while maintaining
-consistent software interfaces.
+The Mailbox IP provides inter-processor and inter-chiplet communication
+through a register-based interface. A single AXI4-Lite slave port is demuxed
+into one register aperture per mailbox direction, and each mailbox pair owns
+the two FIFOs that carry data between its two apertures.
 
 ====== Configuration Parameters
 
@@ -18,9 +17,13 @@ consistent software interfaces.
 |`NUM_MAILBOXES` |2 (max: 32) |Scales from point-to-point to
 multi-processor coordination
 
-|`MAILBOX_DEPTH` |8 entries |External FIFO depth for buffering
+|`MAILBOX_DEPTH` |8 entries |Depth of each internal message FIFO
 
-|`MAX_TRANS` |32 |Maximum outstanding AXI4-Lite transactions
+|`MAX_TRANS` |32 |Maximum outstanding AXI4-Lite transactions per demux port
+
+|`MAILBOX_BASE_ADDR` |0x0 |Base address the aperture decode is relative to
+
+|`ADDR_WIDTH` / `DATA_WIDTH` |32 / 64 |AXI4-Lite slave port widths
 
 |`MAILBOX_SIZE` |0x800 (2KB) |Register space per mailbox for control and
 status
@@ -31,80 +34,53 @@ status
 The architecture supports up to 64 mailbox instances (32 bidirectional
 pairs):
 
-* *Address Width*: 18 bits (0x20008 bytes total)
+* *Total Space*: 2 × `MAILBOX_SIZE` × `NUM_MAILBOXES`, 
+decoded from a port that is `ADDR_WIDTH` bits wide
 * *Data Width*: 64 bits
-* *Per-Mailbox Space*: 0x800 bytes (2KB)
-* *Decoding*: Efficient address decode logic for up to 32 pairs
+* *Per-Aperture Space*: 0x800 bytes (2KB)
+* *Decoding*: Address bits above `$clog2(MAILBOX_SIZE)` select one of
+`2 × NUM_MAILBOXES` apertures
 
-The 64-bit data width optimizes handling of addresses, data payloads,
-and status information without multi-word transfers. The 2KB allocation
-per mailbox enables threshold configuration, priority handling, and
-diagnostic features.
+The 64-bit data width handles addresses, data payloads and status
+information without multi-word transfers. The 2KB allocation per aperture
+leaves the ten registers sparsely mapped; offsets above the register map are
+unmapped rather than aliased.
 
-====== Hardware Interface
+====== Internal Structure
 
-The SystemRDL-generated register block provides hardware interfaces to
-external FIFO implementations through two signal structures:
-
-====== Hardware Input Interface (mailbox_wrap__in_t)
-
-[width="100%",cols="25%,75%",options="header",]
-|====================================================
-|Signal |Description
-|`rd_ack` |Read acknowledge for handshake protocol
-|`wr_ack` |Write acknowledge for handshake protocol
-|`rd_data[63:0]` |64-bit read data from external FIFO
-|====================================================
-
-The acknowledge signals implement handshake protocol for reliable data
-transfer regardless of external FIFO timing. The 64-bit read data
-interface eliminates width conversion overhead.
-
-====== Hardware Output Interface (mailbox_wrap__out_t)
-
-[width="100%",cols="25%,75%",options="header",]
-|===================================================
-|Signal |Description
-|`req` |Transaction request to external FIFO
-|`addr[6:0]` |Local address within mailbox space
-|`req_is_wr` |Transaction type (1=write, 0=read)
-|`wr_data[63:0]` |64-bit write data to external FIFO
-|`wr_biten[63:0]` |Byte enable for write data
-|===================================================
-
-The 7-bit local address enables multiple registers per mailbox. Byte
-enables provide granular write control for external FIFO optimization.
+The unit is an `axi_lite_demux` in front of `NUM_MAILBOXES` mailbox instances.
+Each mailbox instance has two AXI4-Lite slave ports, one per aperture, and
+holds two message FIFOs of `MAILBOX_DEPTH` entries each. The FIFOs are
+cross-coupled between the two ports: the push side of one port is the pop side
+of the other. The FIFOs are internal to the IP; there is no external FIFO
+interface.
 
 ====== Transaction Processing
 
 AXI4-Lite transactions follow this flow:
 
-1.  *Address Decode*: Register block decodes mailbox instance and
-operation type
-2.  *Hardware Interface*: Generates `req`, `addr`, `req_is_wr` signals
-to external FIFO
-3.  *FIFO Processing*: External logic processes request according to
-timing characteristics
-4.  *Acknowledge*: External FIFO asserts `rd_ack`/`wr_ack` when complete
-5.  *AXI Response*: Register block completes AXI4-Lite protocol
-
-This coordination mechanism maintains consistent AXI4-Lite timing while
-allowing external FIFOs to optimize internal operations for specific
-performance or resource requirements.
+1.  *Aperture Decode*: The demux selects an aperture from the address bits
+above `$clog2(MAILBOX_SIZE)`, relative to `MAILBOX_BASE_ADDR`
+2.  *Register Decode*: The mailbox slave port decodes the offset within the
+aperture into one of the ten registers
+3.  *FIFO Access*: `WRITE_DATA` pushes the port's write FIFO, `READ_DATA` pops
+the port's read FIFO; full and empty conditions set the error flags described
+in the Error Handling table
+4.  *Response*: The B and R responses are emitted through spill registers,
+giving one cycle of latency and keeping the response path free of
+combinational paths from the request
 
 ====== Bidirectional Communication
 
-Each mailbox pair provides separate inbound and outbound register
-spaces:
+Each mailbox pair provides two register apertures, conventionally used as an
+outbound and an inbound direction. The two are not independent storage: they
+share the same pair of FIFOs, so `WRITE_DATA` in one aperture is what
+`READ_DATA` in the other aperture returns. Both apertures hang off the same
+AXI4-Lite slave port, so a local agent can drive either end; the direction
+naming reflects intended use, not an access restriction.
 
-* *Inbound Space*: Optimized for low-latency command processing
-* *Outbound Space*: Optimized for high-throughput status/telemetry
-transfer
-* *Independence*: No mutual interference or resource contention
-
-Separate register spaces enable different optimization strategies per
-direction. Interrupt generation integrates with external FIFO status
-reporting for event notification.
+Separate apertures give each direction its own thresholds, status, error flags
+and interrupt output.
 
 ====== Clock and Reset
 
@@ -148,11 +124,10 @@ The following table reports the interrupt sources.
 
 |Read Threshold |FIFO data available for efficient retrieval scheduling
 
-|Overflow Error |Write to full FIFO (fault detection)
-
-|Underflow Error |Read from empty FIFO (fault detection)
+|Access Error |Write to full FIFO or read from empty FIFO; both set the same
+error interrupt bit (fault detection)
 |=======================================================================
 
-Each interrupt output aggregates these sources. Threshold-based
-interrupts reduce polling overhead. Error interrupts enable fault
-recovery and diagnostic analysis.
+Each interrupt output aggregates these sources and is level-triggered and
+active high. Threshold-based interrupts reduce polling overhead; error
+interrupts enable fault recovery and diagnostic analysis.

@@ -530,8 +530,7 @@
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>OUTPUT_COUNT</ipxact:name>
-            <ipxact:description>Number of 32-bit digest words already output from the 256-bit digest.
-Counts 0 to 8; 8 means the digest has been fully read out.</ipxact:description>
+            <ipxact:description>Number of 32-bit digest words remaining for output. Reports 8 when a digest becomes available, decrements through 0 as words are accepted, and remains 0 while idle or bypassed.</ipxact:description>
             <ipxact:bitOffset>8</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>

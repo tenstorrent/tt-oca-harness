@@ -10,9 +10,9 @@ or SLVERR; the specification does not mandate which), and no live
 register in that block may change. A checker that only inspects the
 response would pass the day the RTL starts answering DECERR while
 still writing the register, so every probe reads back the window's live
-registers as well. ``memory_map.adoc`` states the rule: within an
-aperture only the unit's register extent responds, the remainder
-returns DECERR, and an access there never reaches the unit.
+registers as well. ``memory_map.adoc`` states the rule: the fabric refuses an
+address past the extent a unit allocates, and such an access never
+reaches a unit. It names no response flavour.
 
 Keep the full probe set. Do not XFAIL. Do not drop the addresses that
 already wrap.
@@ -33,9 +33,9 @@ never counted as a pass; a run where no window was auditable fails.
 from __future__ import annotations
 
 import pyuvm
-
 from sep_base_test import sep_base_test
 from seq_lib.sep_fabric_deadspace_seq import (
+    DEADSPACE_ANCHORS,
     RESP_DECERR,
     RESP_OKAY,
     SepDeadspace,
@@ -57,23 +57,25 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
         for win in cfg.windows.values():
             snaps[win.name] = await dead.snapshot(win)
             assert snaps[win.name], (
-                f"{win.name}: watch snapshot is empty; the no-alias "
-                f"checker cannot fail"
+                f"{win.name}: watch snapshot is empty; the no-alias checker cannot fail"
             )
             # Both numbers, because they differ and the smaller one is the real
             # coverage: readable is what the read-alias compare uses, armed is
             # what the write-probe store compare can actually fail on. Printing
             # only the first reads as more coverage than the store compare has.
-            hw_updating = sum(
-                1 for addr in snaps[win.name] if addr in win.hw_updating)
+            hw_updating = sum(1 for addr in snaps[win.name] if addr in win.hw_updating)
             self.logger.info(
                 "CHK-WINDOW-LIVE PASS: %s %d allocated register(s) readable, "
                 "%d armed for the store compare (%d hardware-updating)",
-                win.name, len(snaps[win.name]),
-                len(snaps[win.name]) - hw_updating, hw_updating)
+                win.name,
+                len(snaps[win.name]),
+                len(snaps[win.name]) - hw_updating,
+                hw_updating,
+            )
 
         refused = 0
         burst_fails: list[str] = []
+        beat_fails: list[str] = []
         aliased = 0
         accepted = 0
         fails: list[str] = []
@@ -93,11 +95,15 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
                 refused += 1
                 self.logger.info(
                     "CHK-DEADSPACE-REFUSE PASS: %s %s 0x%08x refused (%s)",
-                    item.window, item.op, item.addr, tag)
+                    item.window,
+                    item.op,
+                    item.addr,
+                    tag,
+                )
 
         # Burst reachability of the refused span, and a HARD FAIL when a beat
-        # lands there. `memory_map.adoc` says the span past a unit's extent
-        # returns DECERR and never reaches the unit; it draws no distinction
+        # lands there. `memory_map.adoc` says an address past a unit's extent
+        # is refused at the fabric and never reaches a unit; it draws no distinction
         # between a single beat and a later beat of a burst. An INCR begun in the
         # last live words carries its later beats past REG_MAP_SIZE because AXI
         # decodes the request address only.
@@ -107,6 +113,9 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
         # the same rule as the wrap anchors above.
         burst_audited: list[str] = []
         burst_skipped: list[str] = []
+        beat_audited: list[str] = []
+        beat_discriminating: list[str] = []
+        beat_skipped: list[str] = []
         for win in cfg.windows.values():
             # A window whose dead space starts on a 4KB boundary cannot be
             # entered by a legal burst, and one with no live words before it
@@ -119,18 +128,29 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
                 burst_skipped.append(f"{win.name}: no live words before it")
                 continue
             burst_audited.append(win.name)
-            start, resps, timed_out, words, singles = \
-                await dead.burst_across_extent(win)
+            start, resps, timed_out, words, singles, beat_resps = await dead.burst_across_extent(
+                win
+            )
             for i, (word, (sresp, sdata)) in enumerate(zip(words, singles)):
                 where = "in-extent" if start + 4 * i < win.dead_lo else "PAST"
                 self.logger.info(
                     "deadspace burst-audit: %s beat%d 0x%08x %-9s burst=0x%08x "
                     "single=0x%08x(resp=%d) beat_resp=%s",
-                    win.name, i, start + 4 * i, where, word, sdata, sresp,
-                    resps[i] if i < len(resps) else "n/a")
+                    win.name,
+                    i,
+                    start + 4 * i,
+                    where,
+                    word,
+                    sdata,
+                    sresp,
+                    resps[i] if i < len(resps) else "n/a",
+                )
             self.logger.info(
                 "deadspace burst-audit: %s beat responses=%s timed_out=%s",
-                win.name, resps, timed_out)
+                win.name,
+                resps,
+                timed_out,
+            )
 
             # A burst that never completed proves nothing either way, so it is
             # a failure of the audit rather than a silent pass.
@@ -140,11 +160,45 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
                     f"no beat response is evidence"
                 )
                 continue
-            # The master reports one response for the burst, not one per beat
-            # (`normalize_resp_list` wraps a scalar), so the aggregate is the
-            # only refusal evidence available here. It still fails a fabric
-            # that answers the whole burst OKAY while refusing the same address
-            # as a single beat.
+            # Per-beat refusal, read off the bus. The master collapses a read
+            # burst to one response, so `resps` cannot say WHICH beats were
+            # refused; the monitor keeps each beat's RRESP in order.
+            #
+            # The rule is one-directional. `memory_map.adoc` requires that an
+            # access past the extent never reaches the unit, so no beat past it
+            # may answer OKAY. It does not require the beats inside the extent
+            # to be served: refusing the whole burst is legal AXI and is the
+            # more conservative answer, so a window that answers every beat
+            # non-OKAY is recorded, not failed. Asserting the other direction
+            # would fail a fabric for being stricter than the specification.
+            if beat_resps:
+                self.logger.info("deadspace beat-audit: %s per-beat RRESP=%s", win.name, beat_resps)
+                for i, r in enumerate(beat_resps):
+                    addr = start + 4 * i
+                    if addr >= win.dead_lo and r == RESP_OKAY:
+                        beat_fails.append(
+                            f"{win.name} beat{i} 0x{addr:08x} is past the "
+                            f"extent but answered OKAY inside the burst "
+                            f"beginning 0x{start:08x}"
+                        )
+                beat_audited.append(win.name)
+                # A window that serves its in-extent beats and refuses only the
+                # tail is the only shape that proves the refusal is per beat
+                # rather than per burst. Without at least one, this checker has
+                # shown that nothing past an extent is served, but not that the
+                # fabric can tell the beats apart.
+                if all(
+                    r == RESP_OKAY for i, r in enumerate(beat_resps) if start + 4 * i < win.dead_lo
+                ):
+                    beat_discriminating.append(win.name)
+            else:
+                beat_skipped.append(
+                    f"{win.name}: the bus monitor captured no {len(words)}-beat "
+                    f"RRESP sequence for the burst at 0x{start:08x}"
+                )
+
+            # The aggregate still fails a fabric that answers the whole burst
+            # OKAY while refusing the same address as a single beat.
             worst = max(resps) if resps else RESP_OKAY
             for i, (sresp, sdata) in enumerate(singles):
                 addr = start + 4 * i
@@ -171,13 +225,18 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
                     )
                     break
 
+        # Config report, not a checker. Every anchor is placed unconditionally
+        # and nothing filters them, so a count against the list that built them
+        # cannot fail; the real failure -- an anchor whose window is absent from
+        # the map -- raises when the config is built.
         self.logger.info(
-            "CHK-RANDCFG PASS: walked %d probes (%d anchors) from seed %d",
+            "deadspace config: %d probes including %d directed anchors, seed %d",
             len(cfg.probes),
-            sum(1 for p in cfg.probes if p.anchor),
-            cfg.seed)
-        # Reported, not asserted: memory_map.adoc names DECERR for the reserved
-        # remainder inside an aperture, and which other error responses are
+            len(DEADSPACE_ANCHORS),
+            cfg.seed,
+        )
+        # Reported, not asserted: memory_map.adoc says such an access is
+        # refused but names no response flavour, and which error responses are
         # permitted is a specification question for the design owner.
         for line in dead.flavour_findings:
             self.logger.info("DEADSPACE-FLAVOUR: %s", line)
@@ -185,7 +244,9 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
             self.logger.info(
                 "DEADSPACE-FLAVOUR: %d refusal(s) used an error response other "
                 "than the DECERR memory_map.adoc names. The access was refused, "
-                "which is the asserted contract.", len(dead.flavour_findings))
+                "which is the asserted contract.",
+                len(dead.flavour_findings),
+            )
 
         # Adjudicate refuse/no-alias first and log their verdicts, then the
         # burst contract, so a burst failure cannot stop the other two
@@ -194,17 +255,21 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
             self.logger.error(
                 "CHK-DEADSPACE-REFUSE FAIL: %d fail line(s) on %d probes "
                 "(%d accepted OKAY, %d aliased a live register)",
-                len(fails), len(cfg.probes), accepted, aliased)
+                len(fails),
+                len(cfg.probes),
+                accepted,
+                aliased,
+            )
             raise AssertionError(
                 f"CHK-DEADSPACE-REFUSE FAIL: {accepted} probe(s) accepted "
                 f"OKAY and {aliased} aliased a live register"
             )
         self.logger.info(
-            "CHK-DEADSPACE-REFUSE PASS: all %d dead offsets were refused",
-            len(cfg.probes))
+            "CHK-DEADSPACE-REFUSE PASS: all %d dead offsets were refused", len(cfg.probes)
+        )
         self.logger.info(
-            "CHK-DEADSPACE-NO-ALIAS PASS: no allocated register moved "
-            "across any probe")
+            "CHK-DEADSPACE-NO-ALIAS PASS: no allocated register moved across any probe"
+        )
 
         for line in burst_fails:
             self.logger.error("CHK-DEADSPACE-BURST FAIL: %s", line)
@@ -217,11 +282,45 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
             )
         assert burst_audited, (
             "CHK-DEADSPACE-BURST FAIL: no window could carry the burst "
-            "contract, so it has no evidence here ("
-            + "; ".join(burst_skipped) + ")"
+            "contract, so it has no evidence here (" + "; ".join(burst_skipped) + ")"
         )
         self.logger.info(
             "CHK-DEADSPACE-BURST PASS: %d of %d window(s) refused a burst "
             "that ends past its allocated extent (%s); %d not auditable (%s)",
-            len(burst_audited), len(cfg.windows), ", ".join(burst_audited),
-            len(burst_skipped), "; ".join(burst_skipped) or "none")
+            len(burst_audited),
+            len(cfg.windows),
+            ", ".join(burst_audited),
+            len(burst_skipped),
+            "; ".join(burst_skipped) or "none",
+        )
+
+        for line in beat_fails:
+            self.logger.error("CHK-DEADSPACE-BEAT FAIL: %s", line)
+        if beat_fails:
+            raise AssertionError(
+                f"CHK-DEADSPACE-BEAT FAIL: {len(beat_fails)} beat(s) answered "
+                f"against the extent rule inside a burst"
+            )
+        assert beat_audited, (
+            "CHK-DEADSPACE-BEAT FAIL: no burst yielded a per-beat response "
+            "vector, so per-beat refusal has no evidence here (" + "; ".join(beat_skipped) + ")"
+        )
+        assert beat_discriminating, (
+            "CHK-DEADSPACE-BEAT FAIL: every audited window refused its whole "
+            "burst, so nothing past an extent was served but the fabric was "
+            "never shown to tell one beat from another"
+        )
+        self.logger.info(
+            "CHK-DEADSPACE-BEAT PASS: %d window(s) served no beat past the "
+            "extent (%s), of which %d served their in-extent beats and refused "
+            "only the tail (%s) -- refusal is per beat, not per burst; the rest "
+            "refused the whole burst, which is legal and stricter. %d without a "
+            "vector (%s). Read bursts only: one BRESP covers a write burst, so "
+            "per-beat write refusal is not observable at the protocol level.",
+            len(beat_audited),
+            ", ".join(beat_audited),
+            len(beat_discriminating),
+            ", ".join(beat_discriminating) or "none",
+            len(beat_skipped),
+            "; ".join(beat_skipped) or "none",
+        )

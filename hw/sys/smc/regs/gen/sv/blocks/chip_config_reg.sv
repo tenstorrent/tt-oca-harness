@@ -10,7 +10,7 @@ module chip_config_reg (
 
         output logic s_axil_awready,
         input wire s_axil_awvalid,
-        input wire [4:0] s_axil_awaddr,
+        input wire [3:0] s_axil_awaddr,
         input wire [2:0] s_axil_awprot,
         output logic s_axil_wready,
         input wire s_axil_wvalid,
@@ -21,15 +21,14 @@ module chip_config_reg (
         output logic [1:0] s_axil_bresp,
         output logic s_axil_arready,
         input wire s_axil_arvalid,
-        input wire [4:0] s_axil_araddr,
+        input wire [3:0] s_axil_araddr,
         input wire [2:0] s_axil_arprot,
         input wire s_axil_rready,
         output logic s_axil_rvalid,
         output logic [31:0] s_axil_rdata,
         output logic [1:0] s_axil_rresp,
 
-        input chip_config_reg_pkg::chip_config__in_t hwif_in,
-        output chip_config_reg_pkg::chip_config__out_t hwif_out
+        input chip_config_reg_pkg::chip_config__in_t hwif_in
     );
 
     //--------------------------------------------------------------------------
@@ -37,7 +36,7 @@ module chip_config_reg (
     //--------------------------------------------------------------------------
     logic cpuif_req;
     logic cpuif_req_is_wr;
-    logic [4:0] cpuif_addr;
+    logic [3:0] cpuif_addr;
     logic [31:0] cpuif_wr_data;
     logic [31:0] cpuif_wr_biten;
     logic cpuif_req_stall_wr;
@@ -54,10 +53,10 @@ module chip_config_reg (
     logic [1:0] axil_n_in_flight;
     logic axil_prev_was_rd;
     logic axil_arvalid;
-    logic [4:0] axil_araddr;
+    logic [3:0] axil_araddr;
     logic axil_ar_accept;
     logic axil_awvalid;
-    logic [4:0] axil_awaddr;
+    logic [3:0] axil_awaddr;
     logic axil_wvalid;
     logic [31:0] axil_wdata;
     logic [3:0] axil_wstrb;
@@ -135,17 +134,17 @@ module chip_config_reg (
             if(axil_arvalid && !axil_prev_was_rd) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '0;
-                cpuif_addr = {axil_araddr[4:2], 2'b0};
+                cpuif_addr = {axil_araddr[3:2], 2'b0};
                 if(!cpuif_req_stall_rd) axil_ar_accept = '1;
             end else if(axil_awvalid && axil_wvalid) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '1;
-                cpuif_addr = {axil_awaddr[4:2], 2'b0};
+                cpuif_addr = {axil_awaddr[3:2], 2'b0};
                 if(!cpuif_req_stall_wr) axil_aw_accept = '1;
             end else if(axil_arvalid) begin
                 cpuif_req = '1;
                 cpuif_req_is_wr = '0;
-                cpuif_addr = {axil_araddr[4:2], 2'b0};
+                cpuif_addr = {axil_araddr[3:2], 2'b0};
                 if(!cpuif_req_stall_rd) axil_ar_accept = '1;
             end
         end
@@ -232,11 +231,10 @@ module chip_config_reg (
         logic VERSION_HI;
         logic CHIP_ID;
         logic LC_STATE;
-        logic RAS_BANK_INFO;
     } decoded_reg_strb_t;
     decoded_reg_strb_t decoded_reg_strb;
     logic decoded_err;
-    logic [4:0] decoded_addr;
+    logic [3:0] decoded_addr;
     logic decoded_req;
     logic decoded_req_is_wr;
     logic [31:0] decoded_wr_data;
@@ -247,11 +245,10 @@ module chip_config_reg (
         automatic logic is_valid_rw;
         is_valid_addr = '1; // No valid address check
         is_valid_rw = '1; // No valid RW check
-        decoded_reg_strb.VERSION_LO = cpuif_req_masked & (cpuif_addr == 5'h0) & !cpuif_req_is_wr;
-        decoded_reg_strb.VERSION_HI = cpuif_req_masked & (cpuif_addr == 5'h4) & !cpuif_req_is_wr;
-        decoded_reg_strb.CHIP_ID = cpuif_req_masked & (cpuif_addr == 5'h8) & !cpuif_req_is_wr;
-        decoded_reg_strb.LC_STATE = cpuif_req_masked & (cpuif_addr == 5'hc) & !cpuif_req_is_wr;
-        decoded_reg_strb.RAS_BANK_INFO = cpuif_req_masked & (cpuif_addr == 5'h10);
+        decoded_reg_strb.VERSION_LO = cpuif_req_masked & (cpuif_addr == 4'h0) & !cpuif_req_is_wr;
+        decoded_reg_strb.VERSION_HI = cpuif_req_masked & (cpuif_addr == 4'h4) & !cpuif_req_is_wr;
+        decoded_reg_strb.CHIP_ID = cpuif_req_masked & (cpuif_addr == 4'h8) & !cpuif_req_is_wr;
+        decoded_reg_strb.LC_STATE = cpuif_req_masked & (cpuif_addr == 4'hc) & !cpuif_req_is_wr;
         decoded_err = '0;
     end
 
@@ -265,78 +262,11 @@ module chip_config_reg (
     //--------------------------------------------------------------------------
     // Field logic
     //--------------------------------------------------------------------------
-    typedef struct {
-        struct {
-            struct {
-                logic [3:0] next;
-                logic load_next;
-            } bank_chip;
-            struct {
-                logic [3:0] next;
-                logic load_next;
-            } bank_instance;
-        } RAS_BANK_INFO;
-    } field_combo_t;
-    field_combo_t field_combo;
+    
 
-    typedef struct {
-        struct {
-            struct {
-                logic [3:0] value;
-            } bank_chip;
-            struct {
-                logic [3:0] value;
-            } bank_instance;
-        } RAS_BANK_INFO;
-    } field_storage_t;
-    field_storage_t field_storage;
+    
 
-    // Field: chip_config.RAS_BANK_INFO.bank_chip
-    always_comb begin
-        automatic logic [3:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.RAS_BANK_INFO.bank_chip.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.RAS_BANK_INFO && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.RAS_BANK_INFO.bank_chip.value & ~decoded_wr_biten[3:0]) | (decoded_wr_data[3:0] & decoded_wr_biten[3:0]);
-            load_next_c = '1;
-        end
-        field_combo.RAS_BANK_INFO.bank_chip.next = next_c;
-        field_combo.RAS_BANK_INFO.bank_chip.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.RAS_BANK_INFO.bank_chip.value <= 4'h0;
-        end else begin
-            if(field_combo.RAS_BANK_INFO.bank_chip.load_next) begin
-                field_storage.RAS_BANK_INFO.bank_chip.value <= field_combo.RAS_BANK_INFO.bank_chip.next;
-            end
-        end
-    end
-    assign hwif_out.RAS_BANK_INFO.bank_chip.value = field_storage.RAS_BANK_INFO.bank_chip.value;
-    // Field: chip_config.RAS_BANK_INFO.bank_instance
-    always_comb begin
-        automatic logic [3:0] next_c;
-        automatic logic load_next_c;
-        next_c = field_storage.RAS_BANK_INFO.bank_instance.value;
-        load_next_c = '0;
-        if(decoded_reg_strb.RAS_BANK_INFO && decoded_req_is_wr) begin // SW write
-            next_c = (field_storage.RAS_BANK_INFO.bank_instance.value & ~decoded_wr_biten[7:4]) | (decoded_wr_data[7:4] & decoded_wr_biten[7:4]);
-            load_next_c = '1;
-        end
-        field_combo.RAS_BANK_INFO.bank_instance.next = next_c;
-        field_combo.RAS_BANK_INFO.bank_instance.load_next = load_next_c;
-    end
-    always_ff @(posedge clk or negedge arst_n) begin
-        if(~arst_n) begin
-            field_storage.RAS_BANK_INFO.bank_instance.value <= 4'h0;
-        end else begin
-            if(field_combo.RAS_BANK_INFO.bank_instance.load_next) begin
-                field_storage.RAS_BANK_INFO.bank_instance.value <= field_combo.RAS_BANK_INFO.bank_instance.next;
-            end
-        end
-    end
-    assign hwif_out.RAS_BANK_INFO.bank_instance.value = field_storage.RAS_BANK_INFO.bank_instance.value;
+    
 
     //--------------------------------------------------------------------------
     // Write response
@@ -349,7 +279,7 @@ module chip_config_reg (
     // Readback
     //--------------------------------------------------------------------------
 
-    logic [4:0] rd_mux_addr;
+    logic [3:0] rd_mux_addr;
     assign rd_mux_addr = decoded_addr;
 
     logic readback_err;
@@ -358,21 +288,17 @@ module chip_config_reg (
     always_comb begin
         automatic logic [31:0] readback_data_var;
         readback_data_var = '0;
-        if(rd_mux_addr == 5'h0) begin
+        if(rd_mux_addr == 4'h0) begin
             readback_data_var[31:0] = hwif_in.VERSION_LO.version_lo.next;
         end
-        if(rd_mux_addr == 5'h4) begin
+        if(rd_mux_addr == 4'h4) begin
             readback_data_var[31:0] = hwif_in.VERSION_HI.version_hi.next;
         end
-        if(rd_mux_addr == 5'h8) begin
+        if(rd_mux_addr == 4'h8) begin
             readback_data_var[31:0] = hwif_in.CHIP_ID.chip_id.next;
         end
-        if(rd_mux_addr == 5'hc) begin
+        if(rd_mux_addr == 4'hc) begin
             readback_data_var[7:0] = hwif_in.LC_STATE.lc_state.next;
-        end
-        if(rd_mux_addr == 5'h10) begin
-            readback_data_var[3:0] = field_storage.RAS_BANK_INFO.bank_chip.value;
-            readback_data_var[7:4] = field_storage.RAS_BANK_INFO.bank_instance.value;
         end
         readback_data = readback_data_var;
         readback_done = decoded_req & ~decoded_req_is_wr;

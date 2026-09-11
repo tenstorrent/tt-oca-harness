@@ -39,7 +39,6 @@ dma_err_e smc_dma_issue_cmd(dma_cmd_t *cmd) {
                        cmd->length);
     write_dma_ctrl_reg((SMC_TOP_DMA_CTRL_NUM_REPETITIONS_LO_BASE_ADDR - SMC_TOP_DMA_CTRL_BASE_ADDR),
                        cmd->num_blocks);
-    //   smc_dma_wait_idle();
     cmd->id =
         read_dma_ctrl_reg((SMC_TOP_DMA_CTRL_NEXT_ID_0_BASE_ADDR - SMC_TOP_DMA_CTRL_BASE_ADDR));
     if (cmd->id != 0) {

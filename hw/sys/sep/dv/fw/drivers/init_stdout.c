@@ -8,12 +8,12 @@
 #include "tb.h"
 
 static int sep_putc(char c, FILE *file);
-static int sep_getc(FILE *file);
+static int sep_getc(FILE *file) __attribute__((noreturn));
 
 static FILE __stdio = FDEV_SETUP_STREAM(sep_putc, sep_getc, NULL, _FDEV_SETUP_WRITE);
 FILE *const stdout = &__stdio;
 __strong_reference(stdout, stderr);
-__strong_reference(stdout, stdin); // Shouldnt work but here for completeness
+__strong_reference(stdout, stdin); // Shouldn't work but here for completeness
 
 static int sep_putc(char c, FILE *file) {
 
@@ -27,5 +27,5 @@ static int sep_putc(char c, FILE *file) {
 static int sep_getc(FILE *file) {
 
     printf("ERROR: Tried to read from stdin, this is not supported\n");
-    // exit(1);
+    exit(1);
 }

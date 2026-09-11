@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Unit tests for runlib.config run-mode reference validation and the adopter overlay layer.
+"""Unit tests for runlib.config run-mode / overlay validation and runlib.duts resolution.
 
 Run from the repository root:
 
@@ -15,7 +15,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from runlib.cli import expand_items, target_plan  # noqa: E402
+from runlib.cli import (  # noqa: E402
+    expand_items,
+    target_plan,
+    validate_target_plan,
+)
 from runlib.config import (  # noqa: E402
     OverlayFrameworkMismatch,
     _merge_framework_config,
@@ -23,9 +27,11 @@ from runlib.config import (  # noqa: E402
     load_dut,
     load_test_catalog,
     selected_run_mode,
+    target_flags,
     validate_run_mode_request,
 )
-from runlib.models import ConfigError, Dut, TestCatalog  # noqa: E402
+from runlib.duts import load_dut_registry  # noqa: E402
+from runlib.models import ConfigError, Dut, TestCatalog, TestEntry  # noqa: E402
 
 
 def make_dut(raw: dict, path: Path = Path("test_sim_cfg.toml")) -> Dut:
@@ -182,7 +188,9 @@ class AdopterOverlayLayer(unittest.TestCase):
             '[build]\nincdirs = ["vendor/inc", "dut/inc"]\nsources = ["vendor/pkg.sv"]\n'
             '[sim]\nargs = ["+uvm_set_type_override=ocah_axi_master_env,vendor_axi_env"]\n',
         )
-        self.assertEqual(data["build"]["incdirs"], ["dut/inc", "vendor/inc"])  # dedup keeps DUT order
+        self.assertEqual(
+            data["build"]["incdirs"], ["dut/inc", "vendor/inc"]
+        )  # dedup keeps DUT order
         self.assertEqual(data["build"]["sources"], ["dut/tb.sv", "vendor/pkg.sv"])
         self.assertEqual(
             data["sim"]["args"],
@@ -192,7 +200,9 @@ class AdopterOverlayLayer(unittest.TestCase):
     def test_target_defines_and_tool_flags_dedup_append(self):
         data = {
             "framework": "uvm",
-            "target_defaults": {"default": {"defines": ["UVM"], "tools": {"vcs": {"flags": ["-x"]}}}},
+            "target_defaults": {
+                "default": {"defines": ["UVM"], "tools": {"vcs": {"flags": ["-x"]}}}
+            },
         }
         self.apply(
             data,
@@ -257,9 +267,7 @@ class AdopterOverlayLoadDut(unittest.TestCase):
             'schema_version = 1\nname = "unit"\nkind = "dv"\n'
             'default_tool = "verilator"\ntools = ["verilator"]\n' + extra_cfg
         )
-        return load_dut(
-            cfg, root, root=root, name="unit", root_rel=".", adopter_overlay=overlay
-        )
+        return load_dut(cfg, root, root=root, name="unit", root_rel=".", adopter_overlay=overlay)
 
     def test_config_set_reserved_key_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -327,7 +335,7 @@ class GroupMemberValidation(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             (root / "leaf.toml").write_text(
-                'schema_version = 1\n'
+                "schema_version = 1\n"
                 '[[tests]]\nname = "t_leaf"\nrun_modes = ["smoke"]\n'
                 '[[groups]]\nname = "g_leaf"\ntests = ["t_gone"]\n'
             )
@@ -365,6 +373,98 @@ class RuntimeSelectionDefenses(unittest.TestCase):
         with self.assertRaises(ConfigError) as ctx:
             target_plan(catalog, {}, ["missing_test"])
         self.assertIn("missing_test", str(ctx.exception))
+
+    def test_target_override_wins_over_test_target(self):
+        catalog = TestCatalog(
+            None,
+            {
+                "t_stub": TestEntry(name="t_stub", module="m", target="lsu_stub_all_live"),
+                "t_cpu": TestEntry(name="t_cpu", module="m"),
+            },
+            {},
+        )
+        sim_cfg = {
+            "defaults": {"target": "default"},
+            "targets": {
+                "default": {"build_dir": "build/default"},
+                "lsu_stub_all_live": {"build_dir": "build/stub"},
+            },
+        }
+        by_item, ordered = target_plan(catalog, sim_cfg, ["t_stub", "t_cpu"], override="default")
+        self.assertEqual(by_item, {"t_stub": "default", "t_cpu": "default"})
+        self.assertEqual(ordered, ["default"])
+
+    def test_unknown_target_override_is_rejected(self):
+        catalog = TestCatalog(
+            None,
+            {"t1": TestEntry(name="t1", module="m", target="default")},
+            {},
+        )
+        sim_cfg = {"targets": {"default": {"build_dir": "build/default"}}}
+        _by_item, ordered = target_plan(catalog, sim_cfg, ["t1"], override="nope")
+        with self.assertRaises(ConfigError) as ctx:
+            validate_target_plan(sim_cfg, ordered)
+        self.assertIn("nope", str(ctx.exception))
+
+
+class TargetFlagsTokens(unittest.TestCase):
+    """Every flag item is one argv token; an embedded space is a config error, not a no-op."""
+
+    def test_shared_then_tool_flags(self):
+        target = {"flags": ["+define+X"], "tools": {"vcs": {"flags": ["-assert", "svaext"]}}}
+        self.assertEqual(target_flags(target, "vcs"), ["+define+X", "-assert", "svaext"])
+
+    def test_whitespace_in_a_flag_is_rejected(self):
+        target = {"tools": {"vcs": {"flags": ["-assert svaext"]}}}
+        with self.assertRaises(ConfigError) as ctx:
+            target_flags(target, "vcs")
+        self.assertIn("-assert svaext", str(ctx.exception))
+
+
+class DutRegistryAliases(unittest.TestCase):
+    """`alias_of` gives one DUT a second selectable name (see runlib.duts)."""
+
+    def _registry(self, body: str) -> dict:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cfg_dir = root / "hw" / "common" / "dv" / "configs"
+            cfg_dir.mkdir(parents=True)
+            (cfg_dir / "duts.toml").write_text(body)
+            return load_dut_registry(root)
+
+    def test_alias_entry_is_accepted(self):
+        reg = self._registry(
+            "schema_version = 1\n"
+            '[duts.widget]\nroot = "hw/sys/widget/dv"\n'
+            '[duts.widget_alt]\nroot = "hw/sys/widget/dv"\nalias_of = "widget"\n'
+        )
+        self.assertEqual(reg["widget_alt"]["alias_of"], "widget")
+        self.assertNotIn("alias_of", reg["widget"])
+
+    def test_self_alias_is_rejected(self):
+        with self.assertRaises(ConfigError) as ctx:
+            self._registry(
+                "schema_version = 1\n"
+                '[duts.widget]\nroot = "hw/sys/widget/dv"\nalias_of = "widget"\n'
+            )
+        self.assertIn("cannot point at itself", str(ctx.exception))
+
+    def test_alias_chain_is_rejected(self):
+        with self.assertRaises(ConfigError) as ctx:
+            self._registry(
+                "schema_version = 1\n"
+                '[duts.a]\nroot = "hw/sys/a/dv"\n'
+                '[duts.b]\nroot = "hw/sys/a/dv"\nalias_of = "a"\n'
+                '[duts.c]\nroot = "hw/sys/a/dv"\nalias_of = "b"\n'
+            )
+        self.assertIn("itself an alias", str(ctx.exception))
+
+    def test_empty_alias_is_rejected(self):
+        with self.assertRaises(ConfigError) as ctx:
+            self._registry(
+                'schema_version = 1\n[duts.widget]\nroot = "hw/sys/widget/dv"\nalias_of = ""\n'
+            )
+        self.assertIn("non-empty string", str(ctx.exception))
 
 
 if __name__ == "__main__":

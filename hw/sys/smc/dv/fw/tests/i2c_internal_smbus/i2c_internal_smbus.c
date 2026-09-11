@@ -553,21 +553,14 @@ int main(void) {
     // Execute ARA read: Controller reads from Alert Response Address (0x0C)
     write_scratch(1, 0x0000005B); // Start ARA read transaction
     // Commented out simputs to avoid blocking
-    // simputs("  [PROGRESS] Starting ARA read transaction...\n");
-    // simputs("  Executing ARA read transaction...\n");
-    // simputs("  Controller sending START + ARA address (0x0C << 1 | 1 = 0x19)...\n");
 
     // Check Controller idle before ARA read
     write_scratch(1, 0x0000005C); // Before waiting for Controller idle
     // Commented out simputs to avoid blocking
-    // simputs("  [PROGRESS] Waiting for Controller to be idle...\n");
     int idle_ret = i2c_controller_wait_idle(CONTROLLER_IDX, I2C_TIMEOUT_DEFAULT);
     write_scratch(1, 0x0000005D); // After waiting for Controller idle
     if (idle_ret != I2C_OK) {
         // Commented out simputs to avoid blocking
-        // simputs("  ERROR: Controller not idle before ARA read (error: ");
-        // simputshex32("", idle_ret);
-        // simputs(")\n");
         write_scratch(0, 0xBAD00052);
         test_fail(0);
     }

@@ -27,14 +27,14 @@
 // generated map, not a literal -- same class of defect as the CHIPLET_UID offset
 // above, one level up: a block that moves would leave this pointing at whatever
 // now occupies 0x10930400.
-#define SEP_EFUSE_IFC_STATUS (OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_BASE_ADDR + 0x0u)
-#define SEP_EFUSE_SENSE_DONE (1u << 0)
+#define SEP_EFUSE_IFC_STATUS OCH_SEP_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR
+#define SEP_EFUSE_SENSE_DONE EFUSE_INTERFACE_CTRL__EFUSE_INTERFACE_CTRL_STATUS__EFUSE_SENSE_DONE_bm
 
 // eFuse MMR block, RMA_SIP_TOKEN_I[0..1] (sw=rw): used here as KM-owned scratch
 // MMRs. The KM writes an owner-tagged incrementing counter; the EL2 reads back.
-#define SEP_EFUSE_MMR0 (OCH_SEP_TOP_EFUSE_MMR_BASE_ADDR + 0x0u) // RMA_SIP_TOKEN_I[0]
-#define SEP_EFUSE_MMR1 (OCH_SEP_TOP_EFUSE_MMR_BASE_ADDR + 0x4u) // RMA_SIP_TOKEN_I[1]
-#define SEP_EFUSE_MMR2 (OCH_SEP_TOP_EFUSE_MMR_BASE_ADDR + 0x8u) // RMA_SIP_TOKEN_I[2]
+#define SEP_EFUSE_MMR0 OCH_SEP_TOP_EFUSE_MMR_RMA_SIP_TOKEN_I_BASE_ADDR(0)
+#define SEP_EFUSE_MMR1 OCH_SEP_TOP_EFUSE_MMR_RMA_SIP_TOKEN_I_BASE_ADDR(1)
+#define SEP_EFUSE_MMR2 OCH_SEP_TOP_EFUSE_MMR_RMA_SIP_TOKEN_I_BASE_ADDR(2)
 
 static inline uint32_t sep_efuse_rd(uint32_t addr) {
     return *(volatile uint32_t *)addr;

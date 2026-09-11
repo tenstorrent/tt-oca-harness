@@ -49,35 +49,45 @@ do not use the native DV profile. They pass `-D SYNTHESIS=1` from
 |`SIMULATION`
 |Native profile (every DTP DV tool)
 |Marks a simulation compile. Vendored OpenTitan prims in the DTP graph gate
-simulation-only paths on this name.
-|Those prim paths compile in.
-|Those prim paths are omitted.
+simulation-only paths on this name, and the two-state protocol checker macros
+(`hw/common/assert/ocah_sva_macros.svh`) expand to live assertions only under
+it.
+|Those prim paths compile in; the protocol checkers carry their two-state
+rules.
+|Those prim paths are omitted; the two-state checker macros expand to nothing
+(the lint and synthesis view).
 
 |`UVM`
 |Native profile SV-UVM overlay (`[frameworks.uvm]` in `native.toml`; every
 `--framework uvm` DUT)
 |The first-party SV-UVM framework gate (the same bare-name wording rule as
-`SIMULATION`): it selects the SV-UVM shape of the shared testbench top
+`SIMULATION`): it adds the SV-UVM harness block to the shared testbench top
 `dtp_uvm_top` in `hw/sys/dtp/dv/tb/tb_top.sv`, and the shared assertion
 headers report through `uvm_report_error` instead of `$error`.
-|The module has no pin-level port list. An in-module harness owns the clock,
-`ocah_jtag_if` / `dtp_tb_if` instances, quiescent tie-offs, and `run_test()`.
-Required for `--framework uvm` (VCS). The testbench architecture document
-(`hw/sys/dtp/dv/docs/DTP_TB_ARCH.adoc`) describes that shape.
-|The module exposes the cocotb pin-level port list. Required for the default
-cocotb/PyUVM flow (cocotb is the default framework, so no define means the
-cocotb shape). Defining it on a cocotb compile removes those ports and the
-Python tests cannot bind.
+|The harness block compiles: the clock generator on `dtp_tb_if.clk`, the test
+classes, the `uvm_config_db` publication of every interface instance, and
+`run_test()`. Required for `--framework uvm` (VCS).
+The testbench architecture document (`hw/sys/dtp/dv/docs/DTP_TB_ARCH.adoc`)
+describes the core the block extends.
+|Only the framework-neutral core compiles (interface instances, DUT,
+adapters, counters, coverage, protocol SVA); cocotb drives the interface
+members through hierarchical handles. Required for the default cocotb/PyUVM flow (cocotb is
+the default framework, so no define means the core alone). Defining it on a
+cocotb compile adds a second clock generator and `run_test()` against the
+Python test.
 
 |`VERILATOR`
-|DTP Verilator overlay
-|Tells assertion headers that the compiler is Verilator, which does not
-support concurrent SVA.
+|DTP Verilator overlay (Verilator also predefines it)
+|Tells the assertion headers that the compiler is Verilator, a two-state
+simulator.
 |`hw/common/assert/ocah_assert.svh` and the OpenTitan `prim_assert.sv` that
 `dtp_pkg` includes leave `OCAH_INC_ASSERT` / `OCAH_OT_INC_ASSERT` undefined, so
-concurrent assertion macros expand to nothing.
-|On Verilator, concurrent SVA in those headers is parsed and the compile fails
-or the tool rejects the constructs. On VCS/Xcelium this define is not set, so
+the four-state assertion macros (`OCAH_ASSERT`, `OCAH_COVER`, `OCAH_OT_ASSERT`)
+expand to nothing. The two-state checker macros in
+`hw/common/assert/ocah_sva_macros.svh` do not test this define; Verilator
+evaluates them under the target's `--assert` flag (below).
+|On Verilator, the four-state macro bodies compile in; their `$isunknown` rules
+pass vacuously on a two-state model. On VCS/Xcelium this define is not set, so
 those headers keep SVA enabled unless another gate (`SYNTHESIS`) applies.
 
 |`ASSERTS_OFF`
@@ -116,6 +126,14 @@ are live; on Verilator `VERILATOR` still compiles them out. Defining
 test configuration.
 |===
 
+The DTP Verilator overlay also passes the tool flags `--assert --no-assert-case`
+(`[targets.default.tools.verilator].flags`). They are simulator options, not
+preprocessor defines: `--assert` makes Verilator evaluate the concurrent and
+immediate assertions it compiles, which is the two-state protocol SVA set, and
+`--no-assert-case` leaves the `unique`/`priority` case checks of the DUT and
+vendored RTL out of that set. A failing assertion prints an `%Error` line and
+stops the simulation.
+
 The profile overlay's explicit define is the only source of `UVM`: the simulator's
 `-ntb_opts` option selects which UVM library is compiled but does not set
 this preprocessor name. The runner defaults that library to `uvm-1.2`; a DUT
@@ -128,38 +146,6 @@ An adopter overlay (`run_dv.py --overlay`, see the runner manual's "Adopter
 overlay layer") may dedup-append further defines into the target tables —
 the intended use is commercial-VIP gate defines such as
 `OCAH_JTAG_VENDOR_IF`/`OCAH_AXI_VENDOR_IF`, which no checked-in config sets.
-
-==== Inherited native-profile defines DTP sources do not consume
-
-The native profile also passes the following names on every DTP DV compile.
-No DTP RTL, DTP testbench, or DTP-compile-unit vendored source branches on
-them. They are part of the shared native-profile set applied to every DUT.
-
-[cols="<,<",options="header"]
-|===
-|Define |Notes
-
-|`DISABLE_ASSERT`
-|No DTP compile-unit source tests this name. Verilator assertion gating is
-`VERILATOR`, `ASSERTS_OFF`, and `COMMON_CELLS_ASSERTS_OFF` above.
-
-|`NO_LIBCELL`
-|No DTP compile-unit source tests this name.
-
-|`INITIALIZE_MEMORY`
-|No DTP compile-unit source tests this name.
-
-|`RANDOM=0`
-|FIRRTL/Chisel simulation random seed. Unused by DTP (no Chisel-generated
-CPU in this compile).
-
-|`RANDOMIZE_MEM_INIT`, `RANDOMIZE_REG_INIT`, `RANDOMIZE_GARBAGE_ASSIGN`,
-`RANDOMIZE_INVALID_ASSIGN`
-|FIRRTL/Chisel register and memory initialization. Unused by DTP.
-
-|`RANDOMIZE_DELAY=0.02`
-|FIRRTL/Chisel simulation delay. Unused by DTP.
-|===
 
 ==== Bender targets
 

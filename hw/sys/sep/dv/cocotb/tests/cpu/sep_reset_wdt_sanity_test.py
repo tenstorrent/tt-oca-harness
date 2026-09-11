@@ -33,16 +33,16 @@ from pathlib import Path
 import cocotb
 import pyuvm
 from cocotb.triggers import RisingEdge
-
-from sep_base_test import sep_base_test
 from env.sep_boot_scoreboard import SepBootScoreboard
+from sep_base_test import sep_base_test
+from sep_reg_meta import sym
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
 _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "reset_wdt_sanity_test")
 _ITCM_HEX = os.path.join(_FW_DIR, "reset_wdt_sanity_test.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "reset_wdt_sanity_test.dtcm.hex")
 
-_ICCM_BASE = 0xC000_0000
+_ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
 _MAX_RUN_CYCLES = 2_000_000
 _NO_BOOT_CYCLES = 80_000
 _PROGRESS_EVERY = 5_000
@@ -65,7 +65,9 @@ class sep_reset_wdt_sanity_test(sep_base_test):
     async def run_scenario(self) -> None:
         self.sb.expected_line = _BANNER
         await self.boot_firmware(
-            self.sb, _ITCM_HEX, _DTCM_HEX,
+            self.sb,
+            _ITCM_HEX,
+            _DTCM_HEX,
             rst_vec=_ICCM_BASE >> 1,
             max_run_cycles=_MAX_RUN_CYCLES,
             no_boot_cycles=_NO_BOOT_CYCLES,

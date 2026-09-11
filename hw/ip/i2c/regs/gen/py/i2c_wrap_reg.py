@@ -1007,7 +1007,7 @@ class I2C_TXDATA_reg_u(Union):
 I2C_HOST_TIMEOUT_CTRL_REG_DEFAULT = 0x00000000
 class I2C_HOST_TIMEOUT_CTRL_reg_t(Structure):
     _fields_ = [
-        ('val', c_uint32, 31),
+        ('val', c_uint32, 20),
     ]
 
 I2C_HOST_TIMEOUT_CTRL_REG_DEFAULT = 0x00000000

@@ -372,42 +372,6 @@
         endfunction : build
     endclass : sep_cpu_ctrl__SEP_FUSE_SENSE_STATUS
 
-    // reg - sep_cpu_ctrl.SEP_STRAPS
-    class sep_cpu_ctrl__SEP_STRAPS extends uvm_reg;
-        `uvm_object_utils(sep_cpu_ctrl__SEP_STRAPS)
-        rand uvm_reg_field test_en;
-        rand uvm_reg_field bypass_mem_repair;
-
-        function new(string name = "sep_cpu_ctrl__SEP_STRAPS");
-            super.new(name, 32, UVM_NO_COVERAGE);
-        endfunction : new
-
-        virtual function void build();
-            this.test_en = uvm_reg_field::type_id::create("test_en");
-            this.test_en.configure(this, 1, 0, "RO", 1, 'h0, 1, 1, 0);
-            this.bypass_mem_repair = uvm_reg_field::type_id::create("bypass_mem_repair");
-            this.bypass_mem_repair.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
-        endfunction : build
-    endclass : sep_cpu_ctrl__SEP_STRAPS
-
-    // reg - sep_cpu_ctrl.RAS_BANK_INFO
-    class sep_cpu_ctrl__RAS_BANK_INFO extends uvm_reg;
-        `uvm_object_utils(sep_cpu_ctrl__RAS_BANK_INFO)
-        rand uvm_reg_field bank_chip;
-        rand uvm_reg_field bank_instance;
-
-        function new(string name = "sep_cpu_ctrl__RAS_BANK_INFO");
-            super.new(name, 32, UVM_NO_COVERAGE);
-        endfunction : new
-
-        virtual function void build();
-            this.bank_chip = uvm_reg_field::type_id::create("bank_chip");
-            this.bank_chip.configure(this, 4, 0, "RW", 0, 'h0, 1, 1, 0);
-            this.bank_instance = uvm_reg_field::type_id::create("bank_instance");
-            this.bank_instance.configure(this, 4, 4, "RW", 0, 'h0, 1, 1, 0);
-        endfunction : build
-    endclass : sep_cpu_ctrl__RAS_BANK_INFO
-
     // reg - sep_cpu_ctrl.SEP_SW_DEBUG
     class sep_cpu_ctrl__SEP_SW_DEBUG extends uvm_reg;
         `uvm_object_utils(sep_cpu_ctrl__SEP_SW_DEBUG)
@@ -501,6 +465,105 @@
         endfunction : build
     endclass : sep_cpu_ctrl__KM_WIPE_CTRL
 
+    // reg - sep_cpu_ctrl.DMA_BUS_ERR_STATUS
+    class sep_cpu_ctrl__DMA_BUS_ERR_STATUS extends uvm_reg;
+        `uvm_object_utils(sep_cpu_ctrl__DMA_BUS_ERR_STATUS)
+        rand uvm_reg_field reg_path_err;
+        rand uvm_reg_field host_path_err;
+
+        function new(string name = "sep_cpu_ctrl__DMA_BUS_ERR_STATUS");
+            super.new(name, 64, UVM_NO_COVERAGE);
+        endfunction : new
+
+        virtual function void build();
+            this.reg_path_err = uvm_reg_field::type_id::create("reg_path_err");
+            this.reg_path_err.configure(this, 1, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.host_path_err = uvm_reg_field::type_id::create("host_path_err");
+            this.host_path_err.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
+        endfunction : build
+    endclass : sep_cpu_ctrl__DMA_BUS_ERR_STATUS
+
+    // reg - sep_cpu_ctrl.DMA_BUS_ERR_CLEAR
+    class sep_cpu_ctrl__DMA_BUS_ERR_CLEAR extends uvm_reg;
+        `uvm_object_utils(sep_cpu_ctrl__DMA_BUS_ERR_CLEAR)
+        rand uvm_reg_field clr;
+
+        function new(string name = "sep_cpu_ctrl__DMA_BUS_ERR_CLEAR");
+            super.new(name, 64, UVM_NO_COVERAGE);
+        endfunction : new
+
+        virtual function void build();
+            this.clr = uvm_reg_field::type_id::create("clr");
+            this.clr.configure(this, 1, 0, "WO", 1, 'h0, 1, 1, 0);
+        endfunction : build
+    endclass : sep_cpu_ctrl__DMA_BUS_ERR_CLEAR
+
+    // reg - sep_cpu_ctrl.PERIPH_BUS_ERR_STATUS
+    class sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS extends uvm_reg;
+        `uvm_object_utils(sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS)
+        rand uvm_reg_field aes;
+        rand uvm_reg_field hmac;
+        rand uvm_reg_field kmac;
+        rand uvm_reg_field otbn;
+        rand uvm_reg_field csrng;
+        rand uvm_reg_field edn;
+        rand uvm_reg_field wdt;
+
+        function new(string name = "sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS");
+            super.new(name, 64, UVM_NO_COVERAGE);
+        endfunction : new
+
+        virtual function void build();
+            this.aes = uvm_reg_field::type_id::create("aes");
+            this.aes.configure(this, 1, 0, "RO", 1, 'h0, 1, 1, 0);
+            this.hmac = uvm_reg_field::type_id::create("hmac");
+            this.hmac.configure(this, 1, 1, "RO", 1, 'h0, 1, 1, 0);
+            this.kmac = uvm_reg_field::type_id::create("kmac");
+            this.kmac.configure(this, 1, 2, "RO", 1, 'h0, 1, 1, 0);
+            this.otbn = uvm_reg_field::type_id::create("otbn");
+            this.otbn.configure(this, 1, 3, "RO", 1, 'h0, 1, 1, 0);
+            this.csrng = uvm_reg_field::type_id::create("csrng");
+            this.csrng.configure(this, 1, 4, "RO", 1, 'h0, 1, 1, 0);
+            this.edn = uvm_reg_field::type_id::create("edn");
+            this.edn.configure(this, 1, 5, "RO", 1, 'h0, 1, 1, 0);
+            this.wdt = uvm_reg_field::type_id::create("wdt");
+            this.wdt.configure(this, 1, 6, "RO", 1, 'h0, 1, 1, 0);
+        endfunction : build
+    endclass : sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS
+
+    // reg - sep_cpu_ctrl.PERIPH_BUS_ERR_CLEAR
+    class sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR extends uvm_reg;
+        `uvm_object_utils(sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR)
+        rand uvm_reg_field aes;
+        rand uvm_reg_field hmac;
+        rand uvm_reg_field kmac;
+        rand uvm_reg_field otbn;
+        rand uvm_reg_field csrng;
+        rand uvm_reg_field edn;
+        rand uvm_reg_field wdt;
+
+        function new(string name = "sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR");
+            super.new(name, 64, UVM_NO_COVERAGE);
+        endfunction : new
+
+        virtual function void build();
+            this.aes = uvm_reg_field::type_id::create("aes");
+            this.aes.configure(this, 1, 0, "WO", 1, 'h0, 1, 1, 0);
+            this.hmac = uvm_reg_field::type_id::create("hmac");
+            this.hmac.configure(this, 1, 1, "WO", 1, 'h0, 1, 1, 0);
+            this.kmac = uvm_reg_field::type_id::create("kmac");
+            this.kmac.configure(this, 1, 2, "WO", 1, 'h0, 1, 1, 0);
+            this.otbn = uvm_reg_field::type_id::create("otbn");
+            this.otbn.configure(this, 1, 3, "WO", 1, 'h0, 1, 1, 0);
+            this.csrng = uvm_reg_field::type_id::create("csrng");
+            this.csrng.configure(this, 1, 4, "WO", 1, 'h0, 1, 1, 0);
+            this.edn = uvm_reg_field::type_id::create("edn");
+            this.edn.configure(this, 1, 5, "WO", 1, 'h0, 1, 1, 0);
+            this.wdt = uvm_reg_field::type_id::create("wdt");
+            this.wdt.configure(this, 1, 6, "WO", 1, 'h0, 1, 1, 0);
+        endfunction : build
+    endclass : sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR
+
     // reg - sep_cpu_ctrl.SEP_VERSION_ID
     class sep_cpu_ctrl__SEP_VERSION_ID extends uvm_reg;
         `uvm_object_utils(sep_cpu_ctrl__SEP_VERSION_ID)
@@ -542,14 +605,16 @@
         rand sep_cpu_ctrl__SMU_REGION_SIZE SMU_REGION_SIZE;
         rand sep_cpu_ctrl__SMC_FUSE_SENSE_STATUS SMC_FUSE_SENSE_STATUS;
         rand sep_cpu_ctrl__SEP_FUSE_SENSE_STATUS SEP_FUSE_SENSE_STATUS;
-        rand sep_cpu_ctrl__SEP_STRAPS SEP_STRAPS;
-        rand sep_cpu_ctrl__RAS_BANK_INFO RAS_BANK_INFO;
         rand sep_cpu_ctrl__SEP_SW_DEBUG SEP_SW_DEBUG;
         rand sep_cpu_ctrl__SEP_NMI_VEC SEP_NMI_VEC;
         rand sep_cpu_ctrl__SEP_NMI_VEC_LOCK SEP_NMI_VEC_LOCK;
         rand sep_cpu_ctrl__EXT_TRNG_SRC_SEL EXT_TRNG_SRC_SEL;
         rand sep_cpu_ctrl__EXT_TRNG_SRC_SEL_LOCK EXT_TRNG_SRC_SEL_LOCK;
         rand sep_cpu_ctrl__KM_WIPE_CTRL KM_WIPE_CTRL;
+        rand sep_cpu_ctrl__DMA_BUS_ERR_STATUS DMA_BUS_ERR_STATUS;
+        rand sep_cpu_ctrl__DMA_BUS_ERR_CLEAR DMA_BUS_ERR_CLEAR;
+        rand sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS PERIPH_BUS_ERR_STATUS;
+        rand sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR PERIPH_BUS_ERR_CLEAR;
         rand sep_cpu_ctrl__SEP_VERSION_ID SEP_VERSION_ID;
 
         function new(string name = "sep_cpu_ctrl");
@@ -673,16 +738,6 @@
 
             this.SEP_FUSE_SENSE_STATUS.build();
             this.default_map.add_reg(this.SEP_FUSE_SENSE_STATUS, 'h150);
-            this.SEP_STRAPS = sep_cpu_ctrl__SEP_STRAPS::type_id::create("SEP_STRAPS");
-            this.SEP_STRAPS.configure(this);
-
-            this.SEP_STRAPS.build();
-            this.default_map.add_reg(this.SEP_STRAPS, 'h160);
-            this.RAS_BANK_INFO = sep_cpu_ctrl__RAS_BANK_INFO::type_id::create("RAS_BANK_INFO");
-            this.RAS_BANK_INFO.configure(this);
-
-            this.RAS_BANK_INFO.build();
-            this.default_map.add_reg(this.RAS_BANK_INFO, 'h170);
             this.SEP_SW_DEBUG = sep_cpu_ctrl__SEP_SW_DEBUG::type_id::create("SEP_SW_DEBUG");
             this.SEP_SW_DEBUG.configure(this);
 
@@ -713,6 +768,26 @@
 
             this.KM_WIPE_CTRL.build();
             this.default_map.add_reg(this.KM_WIPE_CTRL, 'h1a0);
+            this.DMA_BUS_ERR_STATUS = sep_cpu_ctrl__DMA_BUS_ERR_STATUS::type_id::create("DMA_BUS_ERR_STATUS");
+            this.DMA_BUS_ERR_STATUS.configure(this);
+
+            this.DMA_BUS_ERR_STATUS.build();
+            this.default_map.add_reg(this.DMA_BUS_ERR_STATUS, 'h1a8);
+            this.DMA_BUS_ERR_CLEAR = sep_cpu_ctrl__DMA_BUS_ERR_CLEAR::type_id::create("DMA_BUS_ERR_CLEAR");
+            this.DMA_BUS_ERR_CLEAR.configure(this);
+
+            this.DMA_BUS_ERR_CLEAR.build();
+            this.default_map.add_reg(this.DMA_BUS_ERR_CLEAR, 'h1b0);
+            this.PERIPH_BUS_ERR_STATUS = sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS::type_id::create("PERIPH_BUS_ERR_STATUS");
+            this.PERIPH_BUS_ERR_STATUS.configure(this);
+
+            this.PERIPH_BUS_ERR_STATUS.build();
+            this.default_map.add_reg(this.PERIPH_BUS_ERR_STATUS, 'h1b8);
+            this.PERIPH_BUS_ERR_CLEAR = sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR::type_id::create("PERIPH_BUS_ERR_CLEAR");
+            this.PERIPH_BUS_ERR_CLEAR.configure(this);
+
+            this.PERIPH_BUS_ERR_CLEAR.build();
+            this.default_map.add_reg(this.PERIPH_BUS_ERR_CLEAR, 'h1c0);
             this.SEP_VERSION_ID = sep_cpu_ctrl__SEP_VERSION_ID::type_id::create("SEP_VERSION_ID");
             this.SEP_VERSION_ID.configure(this);
 

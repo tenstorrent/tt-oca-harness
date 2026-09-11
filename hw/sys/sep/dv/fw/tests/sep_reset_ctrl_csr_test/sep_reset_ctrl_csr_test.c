@@ -5,13 +5,13 @@
  * SEP Reset Controller CSR Sanity Test
  *
  * This test verifies the sep_reset_ctrl CSR and the sw-reset isolation
- * sequencing (sep_crypto_axi_isolate) in front of the crypto accelerator
- * wrappers. For each accelerator (OTBN, AES, HMAC, KMAC):
+ * sequencing through the AXI-Lite isolates in sep_crypto_axi_interconnect.
+ * For each accelerator (OTBN, AES, HMAC, KMAC):
  *
  *   a) Probe write/readback proves the port is open and the IP is alive.
  *   b) Assert only that IP's SW_RESET_N bit and HOLD it.
  *   c) Access the IP while held in reset: the isolate must terminate the
- *      write and the read with DECERR (one bus-error NMI each) instead of
+ *      write and the read with SLVERR (one bus-error NMI each) instead of
  *      hanging the fabric.
  *   d) While held in reset, read a different accelerator's register to
  *      prove the other ports are unaffected.
@@ -154,7 +154,7 @@ int main(void) {
 
         /*
          * 2c: access the held-in-reset accelerator. The isolate must
-         * terminate the write and the read with DECERR (one bus-error NMI
+         * terminate the write and the read with SLVERR (one bus-error NMI
          * each) instead of hanging the fabric. D-bus errors are IMPRECISE
          * on VeeR: the NMI lands many cycles after the access, so the two
          * accesses are spaced by prints and the count is checked after
@@ -224,7 +224,7 @@ int main(void) {
     /*
      * Step 3: the shared TRNG reset coordinates all three CSR ports. Seed a
      * writable register on each port, hold reset, prove every new access gets
-     * DECERR, prove an unrelated AES port stays alive, then release and prove
+     * SLVERR, prove an unrelated AES port stays alive, then release and prove
      * all three registers were reset.
      */
     struct {
@@ -251,10 +251,8 @@ int main(void) {
     WRITE_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR, trng_asserted);
     (void)READ_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
 
-    uint32_t aes_live =
-        READ_REG(OCH_SEP_TOP_AES_CTRL_AUX_REGWEN_BASE_ADDR);
-    if (aes_live != AES__CTRL_AUX_REGWEN__CTRL_AUX_REGWEN_reset ||
-        nmi_count() != expected_nmi) {
+    uint32_t aes_live = READ_REG(OCH_SEP_TOP_AES_CTRL_AUX_REGWEN_BASE_ADDR);
+    if (aes_live != AES__CTRL_AUX_REGWEN__CTRL_AUX_REGWEN_reset || nmi_count() != expected_nmi) {
         printf("ERROR: AES sibling was affected by TRNG-only reset\n");
         test_fail(1);
     }
@@ -282,8 +280,8 @@ int main(void) {
     for (size_t i = 0; i < sizeof(trng_ports) / sizeof(trng_ports[0]); i++) {
         uint32_t rd = READ_REG(trng_ports[i].probe_addr);
         if (rd != 0u || nmi_count() != expected_nmi) {
-            printf("ERROR: TRNG %s did not reopen at reset default (0x%08x)\n",
-                   trng_ports[i].name, rd);
+            printf("ERROR: TRNG %s did not reopen at reset default (0x%08x)\n", trng_ports[i].name,
+                   rd);
             test_fail(1);
         }
     }
