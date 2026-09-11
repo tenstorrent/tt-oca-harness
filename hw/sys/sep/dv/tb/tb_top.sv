@@ -1262,7 +1262,19 @@ module sep_uvm_top
     assign efuse_program_done_o = `EFUSE_PG.program_done_o;
     assign efuse_program_busy_o = `EFUSE_PG.program_busy_o;
     assign efuse_program_read_back_data_o = `EFUSE_PG.program_read_back_data_o;
-    // The state registers are enum-typed and the injected encodings are, by
+    // SIGNED OFF 2026-09-11 by yenhenglai, SEP TB owner.
+    // ------------------------------------------------------------------
+    // Only legal encodings of these two FSMs are 2'b01 and 2'b10, and the
+    // sense and frontdoor paths can never present another, so the fail-closed
+    // recovery the RTL specifies for 2'b00 and 2'b11 has no frontdoor
+    // stimulus. Scope: the two state registers named below, for one cycle at
+    // a time, and no other signal -- never the error, data, busy or request
+    // outputs the checkers read, so the recovery they observe is the design's
+    // own. Owner: sep_efuse_illegal_state_fail_closed_test. Review at the next
+    // change to the state encoding in efuse_read_interface.sv or
+    // efuse_program_interface.sv.
+    //
+    // The registers are enum-typed and the injected encodings are, by
     // construction, not members of those enums -- that is the property under
     // test. The conversion is therefore deliberate and scoped to these two
     // forces rather than waived file-wide.

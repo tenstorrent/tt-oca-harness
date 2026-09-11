@@ -4320,7 +4320,7 @@ which list is normative is an open question for the design owner.
 
 *BFM / Model*: none; DUT probes and a one-cycle state force
 
-*Objective*: The eFuse read and program interfaces fail closed. Two contracts: from an illegal state encoding an accepted command is withdrawn rather than carried to the fuse bank (shown on the read interface; see the recorded gap for the program interface), and the machine retires reporting an error rather than resuming; and `read_error_o` is set by a failed or timed-out read and cleared only by the next legal request. An interface that resumed from a corrupted state, or that carried a stale error into the next read, could return or mislabel fuse data it never legitimately fetched.
+*Objective*: The eFuse read and program interfaces fail closed. Two contracts: from an illegal state encoding an accepted command is withdrawn rather than carried to the fuse bank (shown on the read interface; see the recorded gap for the program interface), and the machine retires reporting an error rather than resuming; and `read_error_o` is set by a failed or timed-out read and cleared by the next legal request. The word is `cleared by`, not `cleared only by`: the leaf shows the flag is still set once the timeout budget and the enable have been dropped, so the clear is attributable to the request, but it does not enumerate everything that cannot clear it. An interface that resumed from a corrupted state, or that carried a stale error into the next read, could return or mislabel fuse data it never legitimately fetched.
 
 *Test Coverage*: Both FSMs, both illegal encodings: retirement on both, and request suppression on the read interface only. Plus the read error lifecycle across success, timeout, re-request and guard refusal.
 
@@ -4358,7 +4358,7 @@ which list is normative is an open question for the design owner.
 |CHK-READ-ERR-TIMEOUT
 |A read that outlives its configured timeout budget retires with done set, busy clear and the error set, rather than hanging or reporting success.
 |CHK-READ-ERR-CLEAR-REQUEST
-|A fresh legal request clears the error left by the timed-out read. The preceding check is this one's control: without an error actually set, "the error is clear" holds for the wrong reason.
+|A fresh legal request clears the error left by the timed-out read. Two controls make the attribution real: the preceding check establishes an error was actually set, and the flag is re-read after the timeout budget and the enable are dropped and required to be STILL set, because either of those writes could otherwise be the thing that cleared it.
 |CHK-READ-ERR-BLOCKED
 |A read refused by the guard while `secure_tm` is latched retires with the error set and returns zero, never fuse content.
 |===

@@ -55,9 +55,16 @@ _ST_WAIT_RESP = 0b10
 # against one of them would recover from that one only.
 _ILLEGAL_STATES = tuple(v for v in range(4) if v not in (_ST_IDLE, _ST_WAIT_RESP))
 
-# The error sentinel both interfaces return. hw/ip/efuse/doc/architecture.adoc
-# states it for blocked accesses; EFUSE_ERROR_DATA and
-# EFUSE_PROGRAM_ERROR_DATA are the same value.
+# The error sentinel both interfaces return, read off the RTL localparams
+# EFUSE_READ_ERROR_DATA / EFUSE_PROGRAM_ERROR_DATA. No document states it for
+# THIS path: the `0xbadcab1e` in hw/ip/efuse/doc/architecture.adoc belongs to
+# the JTAG demux error slave, which is a different mechanism that happens to
+# use the same constant. So the exact-value compare shows the design agreeing
+# with itself, and is kept only as a regression lock on the constant. The half
+# of the claim that carries the security weight does not depend on it: whatever
+# the sentinel is, a machine recovering from a corrupted state must not hand
+# back a fuse word, and `_CONTROL_WORD` is sensed with a known non-sentinel
+# value, so a leaked fuse value would not equal this.
 _ERROR_DATA = 0xBADCAB1E
 
 _MAX_SENSE_CYCLES = 20_000
@@ -225,6 +232,16 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         #    trivially, so the assert above is also this leg's control.
         await self._csr(SepAxiOp.WRITE, _READ_TIMEOUT, 0)
         await self._csr(SepAxiOp.WRITE, _READ_CTRL, 0)
+        # Re-read the flag AFTER the cleanup writes and BEFORE the request. Both
+        # of those writes could clear it, and sampling only after the request
+        # would credit the request for a clear either of them may have done.
+        _, _, err_before_req, _ = await self._read_probe()
+        assert err_before_req == 1, (
+            "CHK-READ-ERR-CLEAR-REQUEST FAIL: read_error_o was already clear before "
+            f"the fresh request was issued (error={err_before_req}) -- dropping the "
+            "timeout budget or the enable cleared it, so a clear observed after the "
+            "request cannot be attributed to the request"
+        )
         await self._csr(SepAxiOp.WRITE, _READ_CTRL, _GO | _ENABLE)
         await RisingEdge(cocotb.top.clk_i)
         _, _, err_after_req, _ = await self._read_probe()
@@ -483,11 +500,12 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
             "the operation never legitimately fetched"
         )
         self.logger.info(
-            "CHK-%s-FAILCLOSED PASS: recovered from %#04x mid-operation (state now "
-            "%#04x, reported not asserted), no bank command, error and done set, not "
-            "busy, data = 0xbadcab1e",
+            "CHK-%s-FAILCLOSED PASS: recovered from %#04x %s (state now %#04x, "
+            "reported not asserted), no bank command, error and done set, not busy, "
+            "data = 0xbadcab1e",
             which.upper(),
             state,
+            "mid-operation" if in_flight else "injected while idle",
             recovered,
         )
         await self._quiesce(which)
