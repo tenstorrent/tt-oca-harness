@@ -78,9 +78,7 @@ bender_targets = [
 incdirs = [
   "hw/sys/sep/dv/shims/prim",
   "hw/sys/smu/dv/tb",
-  # ocah_fcov_macros.svh, so an assertion or coverage include resolves
-  # here too; the cov/sv functional-coverage modules themselves are
-  # instantiated in tb/tb_top.sv and compile on smu_block, not here.
+  # ocah_fcov_macros.svh, included by the cov/sv functional-coverage modules.
   "hw/common/assert",
 ]
 # Vendor simulation collateral that an overlay of the sep bender graph can pull
@@ -140,6 +138,21 @@ sources = [
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32.sv",
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32_axi.sv",
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32_wb.sv",
+  # Functional-coverage modules (cov/sv/), instantiated in tb/tb_wrapper_top.sv
+  # on this bench's signal names; smu_block_sim_cfg.toml carries the same set
+  # minus smu_clk_fcov, whose clock mirrors only this bench exposes. Their
+  # cover properties are the `user` points --coverage-user records.
+  "hw/sys/smu/dv/cov/sv/smu_boot_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_xbar_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_rst_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_clk_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_lc_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_dtp_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_ext_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_clkstop_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_dbg_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_nosep_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_alias_fcov.sv",
 ]
 
 [build.verilator]
@@ -152,7 +165,15 @@ ccache = true
 # toggle. Toggle is absent: this DUT elaborates the real SEP/SMC/DTP wrappers,
 # and unscoped toggle is the 0.5 GB-per-leaf case. Scoped toggle lives on
 # `--dut smu_block`.
-build_args = ["--coverage-line", "--coverage-expr", "--coverage-user"]
+build_args = [
+  "--coverage-line",
+  "--coverage-expr",
+  "--coverage-user",
+  "{repo_root}/hw/sys/smu/dv/cov/config/verilator/smu_wrapper_cov_scope.vlt",
+]
+# Two DUTs share this dv tree, so the policy is named per DUT rather than
+# discovered at cov/config/verilator/coverage_policy.toml.
+policy_file = "hw/sys/smu/dv/cov/config/verilator/smu_wrapper_coverage_policy.toml"
 
 [build.options]
 build_jobs = 8
@@ -371,6 +392,27 @@ description = "Real-SEP wrapper with the SEP shadow preload left to the test"
 timeout_sec = 3600
 args = [
   "+skip_fuse_sense",
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+]
+
+# Fuse-sense run modes. Every other run mode above passes +skip_fuse_sense,
+# under which efuse_shadow_regs.sv drives fuse_sense_done from the plusarg
+# rather than from the sense sequence and loads the shadow array from the
+# preload file. A test that observes fuse-sense completion has to run without
+# it, so the eFuse bank models supply the sensed data. The shadow preload
+# plusargs are read only under +skip_fuse_sense, so the SMC one is inert here
+# and the SEP one is left off entirely.
+[run_modes.no_sep_fuse_sense]
+description = "SEP=0 wrapper with real SMC fuse sense (no +skip_fuse_sense)"
+timeout_sec = 1800
+args = [
+  "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
+]
+
+[run_modes.sep_rtl_fuse_sense]
+description = "Real-SEP wrapper with real SMC and SEP fuse sense"
+timeout_sec = 3600
+args = [
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 

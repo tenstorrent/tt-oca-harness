@@ -42,6 +42,13 @@ sources = [
   # entries. Instantiated in tb/tb_top.sv.
   "hw/sys/smu/dv/cov/sv/smu_boot_fcov.sv",
   "hw/sys/smu/dv/cov/sv/smu_xbar_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_rst_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_lc_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_dtp_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_ext_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_clkstop_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_dbg_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_nosep_fcov.sv",
 ]
 filelist = "hw/sys/smu/dv/build/smu_block_dut_compile.f"
 bender_filelist = "hw/sys/smu/dv/build/smu_block_bender.f"
@@ -260,9 +267,16 @@ incdirs = [
 # struct bridge arrive through the ocah_axi_vip manifest above, so only the
 # coverage modules are repeated here.
 sources = [
-  # The same two functional-coverage modules the [build] sources list carries.
+  # The same functional-coverage modules the [build] sources list carries.
   "hw/sys/smu/dv/cov/sv/smu_boot_fcov.sv",
   "hw/sys/smu/dv/cov/sv/smu_xbar_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_rst_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_lc_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_dtp_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_ext_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_clkstop_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_dbg_fcov.sv",
+  "hw/sys/smu/dv/cov/sv/smu_nosep_fcov.sv",
   # The embedded DTP's bench layer: its three TB interface partitions (the reference
   # models and the TAP checker read the DTP observables through them; dtp_env binds
   # all three), the generated cross-trigger port address map dtp_types reads (the
