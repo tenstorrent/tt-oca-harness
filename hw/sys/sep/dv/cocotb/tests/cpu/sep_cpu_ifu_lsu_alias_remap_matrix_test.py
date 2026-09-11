@@ -8,9 +8,9 @@ CPU-side alias window base (SEP_LOCAL_BASE=0xD000_0000, its reset value) and
 proves both the LSU and the IFU local-alias-remap (hw/sys/sep/rtl/sep_cpu.sv
 u_lsu/u_ifu/u_dbg axi_window_remap): an access to 0xD000_xxxx is remapped to
 physical 0x1000_xxxx (SEP SRAM), while accesses outside the window pass through.
-The window is a fixed 768 MiB (sep_pkg::SEP_LOCAL_ALIAS_REGION_SIZE)
-positioned by the base CSR only, with target sep_pkg::SEP_LOCAL_ALIAS_REGION_BASE
-= 0x1000_0000; REGION_SIZE does not size this window. The IFU proof actually
+The window is a fixed 768 MiB (`hw/sys/sep/doc/memory_map.adoc` SEP Local
+Alias row) positioned by the base CSR only, with target `0x1000_0000`;
+REGION_SIZE does not size this window. The IFU proof actually
 fetches+executes an instruction through the alias (stronger than the reference suite's synthetic
 IFU-port write).
 

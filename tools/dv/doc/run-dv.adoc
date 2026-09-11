@@ -631,8 +631,15 @@ configuration still match. This is especially important for the VCS design
 coverage database.
 
 The compatibility threshold uses `--fail-under`, then
-`[coverage.<tool>].fail_under`, then `0.0`. Detailed coverage-policy thresholds
-are enforced in addition to that scalar threshold.
+`[coverage.<tool>].fail_under`, then `0.0`. It compares the tool's own overall
+percentage (`overall_percent` in `summary.json`): Verilator's count of hit
+points over all points, or the urg / imc dashboard total. Accepted waivers do
+not move that figure, so a DUT gated by `--fail-under` alone sees no effect
+from its policy. Waiver-aware gating is a `pass:[[[thresholds]]]` rule in
+`coverage_policy.toml`; its default `population = "effective"` grades hit
+points over the points that remain after accepted waivers and exclusions, per
+metric family, and `population = "raw"` grades the unwaived figure. Policy
+thresholds are enforced in addition to the compatibility threshold.
 
 [[runner-waive]]
 ==== Waive coverage bins after a regression
@@ -644,10 +651,10 @@ A hole reviewed after a regression is closed in the DUT's
   point with its `native_locator`, `hierarchy`, `source`, and `line`;
   `holes_summary` in `cov/report/summary.json` counts them by metric,
   category, and status.
-. Add or edit a `[[holes]]` entry. A waiver is an entry with
+. Add or edit a `pass:[[[holes]]]` entry. A waiver is an entry with
   `disposition = "waive"` (or `"exclude_scope"`), `status = "accepted"`,
   `confidence` of `medium` or `high`, a `rationale`, `owner`, `reviewer`, and
-  `date`, plus one or more `[[holes.native]]` selectors. `expected_matches`
+  `date`, plus one or more `pass:[[[holes.native]]]` selectors. `expected_matches`
   is an exact count. An accepted waiver that matches a covered point, a
   low-confidence waiver, and a `dut` that differs from the run's are rejected.
 . Re-grade the finished run against the policy:
@@ -706,6 +713,8 @@ Carried values: the tool version and supported metrics come from the run's
 `--fail-under` when given, else the recorded `threshold`, else
 `[coverage.<tool>].fail_under`, else `0.0`. In the repair case no threshold is
 recorded, so a `--fail-under` the original run used has to be passed again.
+The compatibility threshold grades the tool's raw overall figure, so a waiver
+changes the verdict only through a `pass:[[[thresholds]]]` rule.
 
 An accepted waiver may carry `expires` (`YYYY-MM-DD`). Past that date the
 waiver is lapsed at grade time for its own DUT: the hole keeps its `policy_id`
@@ -715,7 +724,7 @@ longer shrinks the effective denominator, and `warnings` in
 `<rule id> expired on <date>; treated as open`. `--validate-configs` reports
 the expiry as a warning and stays `OK`; extending the date restores the waiver.
 
-`[[native_files]]` entries act inside the merge and report commands, which the
+`pass:[[[native_files]]]` entries act inside the merge and report commands, which the
 re-grade does not run. When the policy's native files differ from the digests
 the manifest recorded at merge time, `--waive` exits 2; rerun
 `--stage cov_report` instead.
@@ -998,7 +1007,8 @@ executes `sim` or `regress`.
 |Enable coverage instrumentation and, on an implicit run, merge/report stages.
 
 |`--fail-under PCT`
-|Override the report threshold. Valid range: 0 through 100.
+|Override the compatibility threshold on the tool's raw overall percentage;
+accepted waivers do not move it. Valid range: 0 through 100.
 
 |`--waive [FILE]`
 |Re-grade the finished run in `--run-dir` against the DUT's coverage policy,
@@ -1357,7 +1367,7 @@ utility (`verilator_coverage`, URG, or IMC) is available.
 === A run's coverage grade failed on the policy
 
 The `cov_report` record is `ERROR` with a `config_error` bucket and
-`cov/report/summary.json` is absent: a `[[holes]]` entry matched a different
+`cov/report/summary.json` is absent: a `pass:[[[holes]]]` entry matched a different
 number of points than `expected_matches`, or an accepted waiver matched a
 covered point. Correct the entry and run `--run-dir <dir> --waive`; the report
 tool does not need to rerun. See <<runner-waive>>.

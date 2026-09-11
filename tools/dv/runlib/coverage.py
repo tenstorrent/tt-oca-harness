@@ -660,7 +660,6 @@ def new_manifest(
     merged: Path,
     root: Path,
     exclude_files: list[str],
-    waiver_files: list[str],
 ) -> dict[str, Any]:
     first = discovery.inputs[0] if discovery.inputs else None
     return {
@@ -675,7 +674,8 @@ def new_manifest(
         "build_fingerprint": first.build_fingerprint if first else None,
         **discovery_payload(discovery),
         "exclusions": exclude_files,
-        "waivers": waiver_files,
+        # The coverage.json key set is fixed; no config key feeds "waivers".
+        "waivers": [],
         "artifacts": {
             "merged": repo_rel(root, merged),
             "report": None,

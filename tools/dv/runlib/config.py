@@ -297,7 +297,6 @@ COVERAGE_TOOL_KEYS = {
     "report_cmd",
     "sim_args",
     "test_args",
-    "waiver_files",
 }
 COVERAGE_LIST_KEYS = {
     "build_args",
@@ -307,7 +306,6 @@ COVERAGE_LIST_KEYS = {
     "report_cmd",
     "sim_args",
     "test_args",
-    "waiver_files",
 }
 COVERAGE_PARSERS = {"verilator", "urg", "imc"}
 

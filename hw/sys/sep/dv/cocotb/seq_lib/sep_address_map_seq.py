@@ -15,9 +15,11 @@ Full sweep of every sep_cpu_ctrl register (base 0x10A3_0000) over the CPU LSU bu
 
 The reserved span after the 64-bit ``SEP_FUSE_SENSE_STATUS`` and before
 ``SEP_SW_DEBUG`` is not a live register. ``CPU_CTRL_INTERIOR_HOLES`` names
-three words in that span; the test refuses them with a completed error
-response (not a hang). Then a walk of one readable CSR per LSU-reachable
-block — Secure DMA,
+three words in that span. ``memory_map.adoc`` states the contract for an
+offset inside a unit's allocated extent that owns no register: the unit accepts
+it, reads return zero and writes are discarded, both OKAY. The test grades that,
+and that the offset does not alias a live register. Then a walk
+of one readable CSR per LSU-reachable block — Secure DMA,
 WDT, cold/warm scratch, reset_ctrl, OTBN, AES, HMAC, KMAC, CSRNG, EDN, entropy
 source, Adams Bridge, entropy pool, lifecycle ctrl, KM mailbox, eFuse shadow,
 AXI-lite mailbox, inbound filter, alias-remap, output-remap, and the
@@ -60,8 +62,9 @@ BASE = sym("SEP_CPU_CTRL_REG_MAP_BASE_ADDR")
 
 # Interior reserved span in sep_cpu_ctrl. SEP_FUSE_SENSE_STATUS is 64-bit
 # (sep_cpu_ctrl.rdl), so the hole starts at the next 8-byte offset and runs
-# up to SEP_SW_DEBUG. The xbar still claims the window; the slave must
-# complete with SLVERR or DECERR, not hang.
+# up to SEP_SW_DEBUG. The xbar still claims the window, and `memory_map.adoc`
+# says a unit accepts an offset inside its extent that owns no register: reads
+# return zero and writes are discarded, both OKAY.
 _FUSE_OFF = SEP_CPU_CTRL.offset("SEP_FUSE_SENSE_STATUS")
 _SW_DEBUG_OFF = SEP_CPU_CTRL.offset("SEP_SW_DEBUG")
 _HOLE_LO = _FUSE_OFF + 8
@@ -159,8 +162,7 @@ WRITE_ONLY = [
 # address is exported and could be derived the way the OTBN/HMAC/KMAC rows
 # already do. AGENTS.md prefers source-derived, so these literals are a
 # to-be-converted holdover, not a justified exception.
-# ABR NAME0 is regex-scraped from the ABR RTL params by its owning seq, so that
-# row proves decode and plumbing rather than a specified value.
+# ABR NAME0 comes from the owning seq (ASCII of ML-DSA-87).
 _INFILT0 = sym("INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR")
 _INFILT0_CFG_RESET = next(
     (

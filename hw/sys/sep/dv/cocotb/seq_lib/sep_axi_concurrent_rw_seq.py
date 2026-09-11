@@ -5,19 +5,16 @@
 `sep_axi_order_sweep_seq` covers the two write channels against each other:
 same-cycle, AW-first, W-first. AXI has a third independent channel, and a
 master with a store and a load outstanding presents AR while AW and W are
-still in flight. An adapter that arbitrates the write side against `ar_valid`
-AND the read side against `aw_valid`/`w_valid` can hold every ready low at
-once, and AXI forbids a master deasserting a VALID before its handshake
-(AMBA IHI 0022 A3.2.1), so neither side can back off.
+still in flight. The adapter accepts each write half independently until that
+half is pending, and accepts a read only when neither write half is pending.
 
 `drbg_axil64_lane_adapter` is reached by every SEP-level CSRNG and EDN
 register access (`drbg.sv` u_csrng_axil_adapter / u_edn_axil_adapter, fed from
-`sep_crypto.sv` csrng_axil / edn_axil), so this is ordinary CSR traffic, not a
-corner the fabric cannot present.
+`sep_crypto.sv` csrng_axil / edn_axil), so this is ordinary CSR traffic.
 
-Three orderings appear in the issue. Only one of them is presentable through
-the SEP fabric, and the module keeps all three definitions so the reason is
-recorded rather than lost:
+Three orderings. Only one of them is presentable through the SEP fabric, and
+the module keeps all three definitions so the reason is recorded rather than
+lost:
 
 * **aw-then-ar.** AW arrives, THEN AR while W is still outstanding.
   Presentable, and the one the leaves drive.
@@ -39,23 +36,19 @@ TB-instantiated instance of the same adapter directly. So nothing here is
 uncovered -- the split is fabric-reachable versus port-only, not covered
 versus skipped.
 
-Calibration also shows the deadlock needs no timing manipulation at all: plain
+Calibration also shows the overlap needs no timing manipulation: plain
 untimed traffic arrives aw=6, ar=6, w=7, so AW and AR already land in the same
 cycle whenever a store and a load are in flight together.
 
-ONE ordering per lane per simulation. A stalled adapter cannot be recovered
-inside a leaf -- neither side may deassert VALID, so the port stays held and
-the master stays stuck on it until reset -- and a second cell after a wedge
-measures the wedge, not itself. Driving one scenario per leaf is what makes
-each verdict independent.
+ONE ordering per lane per simulation so a wedge cannot contaminate a later
+cell. Driving one scenario per leaf is what makes each verdict independent.
 
-For the same reason a cell cannot be retried: on broken RTL the first overlap
-is terminal. So the delays are not guessed, they are CALIBRATED. The walk
-first issues a lone write and a lone read, which cannot deadlock, and measures
-when AW, W and AR actually arrive at the adapter port through the crossbar and
-axi_to_axi_lite. The target ordering is then placed using those measured
-latencies, and fired once. A calibration that cannot reach the ordering is
-reported as unreachable rather than fired blind.
+Delays are not guessed, they are CALIBRATED. The walk first issues a lone
+write and a lone read and measures when AW, W and AR actually arrive at the
+adapter port through the crossbar and axi_to_axi_lite. The target ordering is
+then placed using those measured latencies, and fired once. A calibration
+that cannot reach the ordering is reported as unreachable rather than fired
+blind.
 
 Channel delays come from a seeded source, so `--stage sim --seed N` replays a
 failing alignment exactly.
@@ -376,12 +369,11 @@ class SepAxiConcurrentRw:
     async def calibrate(self, cfg: SepAxiConcurrentRwCfg) -> dict[str, int] | None:
         """Measure when AW, W and AR reach the adapter port, in issue cycles.
 
-        A lone write and a lone read: neither can deadlock, because only one
-        side is ever outstanding. Both are driven at default timing, so what
-        comes back is the crossbar + axi_to_axi_lite latency this build has,
-        which is what the placement has to work around. Returns None when a
-        channel never arrived, so a missing measurement cannot be silently
-        read as zero.
+        A lone write and a lone read, with only one side outstanding. Both
+        are driven at default timing, so what comes back is the crossbar +
+        axi_to_axi_lite latency this build has, which is what the placement
+        has to work around. Returns None when a channel never arrived, so a
+        missing measurement cannot be silently read as zero.
         """
         obs = AdapterPortObserver(cfg.lane)
 
@@ -508,8 +500,8 @@ class SepAxiConcurrentRw:
     async def run_cell(self, cfg: SepAxiConcurrentRwCfg) -> str | None:
         """Drive the one calibrated cell. None when it passed.
 
-        Single shot: on broken RTL the first overlap wedges the port for the
-        rest of the simulation, so there is no retry and no second cell.
+        Single shot: one overlap per leaf so a wedge cannot contaminate a
+        later cell.
         """
         drv = self._driver()
         tag = f"[{cfg.order} {cfg.lane}]"

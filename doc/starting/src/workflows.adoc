@@ -92,6 +92,9 @@ vendor_package:
 `exclude_from_upstream:` paths, and re-applies all patches from `patch_dir` in
 lexicographic order.
 
+CI runs `bender vendor diff --err_on_diff` on every hardware-CI push so a stale
+`upstream/` tree or a patch that no longer applies fails the gate.
+
 == Register generation
 
 Register collateral is generated from per-block SystemRDL under `hw/{ip,sys}/<name>/regs/`.
@@ -616,10 +619,11 @@ contributor enables the hook.
 
 `.github/workflows/lint.yml` runs `lint-sv-slang`, `lint-sv-verilator`,
 `lint-python`, `lint-python-mypy`, `format-c`, `lint-tcl`, `lint-spelling`,
-`lint-yaml`, `lint-toml`, `lint-markdown`, `lint-make`, `lint-shell`, and
-`regen-regs` on pull requests and pushes to `main` (`lint-sv-verible` is
-temporarily disabled). Setup jobs share `bender`, Verilator, and reviewdog
-artifacts; jobs report through `.github/actions/reviewdog-report`.
+`lint-yaml`, `lint-toml`, `lint-markdown`, `lint-make`, `lint-shell`,
+`regen-regs`, and `vendor-diff` on pull requests and pushes to `main`
+(`lint-sv-verible` is temporarily disabled). Setup jobs share `bender`,
+Verilator, and reviewdog artifacts; jobs report through
+`.github/actions/reviewdog-report`.
 
 Documentation-only diffs (every changed path is under `doc/`, an Antora playbook,
 or a `.md` / `.adoc` / image) skip lint, Verilator smoke, and the nonfree GitLab
@@ -686,6 +690,10 @@ Scheduled and manually dispatched pipelines always run in full.
 | `regen-regs`
 | — (job fails on a dirty tree)
 | `make regen-regs regen-regs-adoc regen-regs-html`
+
+| `vendor-diff`
+| — (job fails when committed `upstream/` drifts)
+| `bender vendor diff --err_on_diff`
 |===
 
 The `regen-regs` gate regenerates every register block's collateral from the RDLs
@@ -698,6 +706,15 @@ result:
 ```
 make regen-regs regen-regs-adoc regen-regs-html
 git status --porcelain   # expect no output
+```
+
+The `vendor-diff` gate re-clones every `vendor_package` remote, applies
+`patches/`, and fails if the committed `upstream/` tree does not match. To
+fix a failure, refresh the tree and commit:
+
+```
+bender vendor init
+git status --porcelain   # expect only intended vendor/ changes
 ```
 
 ==== References

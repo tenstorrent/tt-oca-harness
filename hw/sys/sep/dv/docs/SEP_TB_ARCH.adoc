@@ -138,7 +138,7 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 |Entropy noise |`esrc_noise_ext_i` forces the decorrelator input (deterministic)
 |FW console |`sep_outbound_mbx` watches outbound mailbox stores (PASS/FAIL magic)
 |CPU trace |Exports EL2 `el2_trace_pkt_t` fields for `SepCpuTraceMonitor`
-|Observation probes |eFuse shadow, scratch, KM/OTBN counters, entropy CHK probes, IRQ aggregate, AXI-Lite split handshakes, DRBG lane-adapter channel packs (`drbg_csrng_axil_chan_o` / `drbg_edn_axil_chan_o`), KM internal AXI-Lite SVA bind — observation-only unless listed as a signed-off inject
+|Observation probes |eFuse shadow, scratch, KM/OTBN counters, entropy CHK probes, IRQ aggregate, AXI-Lite split handshakes, DRBG lane-adapter channel packs (`drbg_csrng_axil_chan_o` / `drbg_edn_axil_chan_o`), KM internal AXI-Lite SVA bind, eFuse read/program interface retirement outputs and bank-request valids, eFuse SHIM `efuse_debug_bus_o` — observation-only unless listed as a signed-off inject
 |===
 
 Signed-off exceptions (do not extend without owner approval):
@@ -147,12 +147,19 @@ Signed-off exceptions (do not extend without owner approval):
 * *ESRC noise force* — `esrc_noise_ext_i` into the decorrelator.
 * *LC differential / token-comparator fault inject* — fail-closed paths with no
   legal OTP frontdoor.
+* *eFuse read/program FSM state inject* — `efuse_read_state_inject_i` /
+  `efuse_program_state_inject_i` with their enables force `read_state_q` /
+  `program_state_q` for one cycle at a time. The only legal encodings are
+  2'b01 and 2'b10, so the fail-closed recovery specified for 2'b00 and 2'b11
+  has no frontdoor. Scope is those two registers and nothing else — never the
+  error, data, busy or request outputs the checkers read. Owner:
+  `sep_efuse_illegal_state_fail_closed_test`; signed off 2026-09-11.
 * *`tb_backdoor_mem` image init* — power-up / hex load into public macro arrays
   (not runtime pass-faking).
 * *Observation-only XMR probe ports* — continuous assigns out of the DUT for
   scoreboards that have no CSR mirror (entropy CHK chain, IRQ aggregate,
   `drbg_csrng_axil_chan_o` / `drbg_edn_axil_chan_o` at each DUT lane
-  adapter's AXI-Lite-64 port — the three-ready interlock has no CSR
+  adapter's AXI-Lite-64 port — concurrent AW/W/AR observation has no CSR
   mirror; signed off 2026-09-07). The TB-owned `u_tbadp_vehicle` instance
   is idle and held in reset unless a port-arbitration leaf releases it;
   it is not a DUT XMR.

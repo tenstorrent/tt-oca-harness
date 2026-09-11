@@ -7,8 +7,8 @@
 :sectlinks:
 :sectnums:
 :source-highlighter: highlight.js
-:revnumber: 0.0.5
-:revdate: 2026-09-02
+:revnumber: 0.0.7
+:revdate: 2026-09-11
 :title-page-background-image: image:../assets/TT_Cover_Image.png[fit=cover]
 ifdef::backend-pdf[]
 :imagesdir: ../assets
@@ -161,7 +161,7 @@ default was replaced.
 [[smc-rom-fw-integration]]
 ==== SMC ROM FW integration
 
-Connect `rom_intf_req_o` and `rom_intf_rsp_i` to the adopter's ROM
+Connect `smc_rom_intf_req_o` and `smc_rom_intf_rsp_i` to the adopter's ROM
 implementation. In the current four-core configuration, the request provides
 the ROM clock, enable, and 14-bit 64-bit-word address, and the response returns
 one 64-bit word. This is a direct memory interface, not AXI-Lite. The 128 KiB
@@ -399,6 +399,13 @@ full register layout, refer to the SMC Memory Map documentation
 [[smc-efuse-connection]]
 ===== eFuse Interface
 
+[NOTE]
+====
+This guide uses *eFuse* and *OTP* interchangeably for the same one-time
+programmable bank and the SHIM that fronts it. Port names mix both
+(`efuse_*`, `*_otp_*`); they refer to the same interface.
+====
+
 The eFuse interface consists of two parts:
 
 * `efuse_bank_ctrl` -- a 32-bit AXI-Lite interface used to access the SHIM
@@ -455,7 +462,7 @@ strobe per `WORD_WIDTH` access.
 
 The `shadow_regs_o` output provides read-only access to the sensed fuse
 values. During bring-up the SMC automatically senses the fuse contents and
-propagates them through the shadow registers; the `fuse_sense_done_o` signal
+propagates them through the shadow registers; the `smc_fuse_sense_done_o` signal
 indicates completion of this sensing operation.
 
 ==== Memory Subsystem Integration
@@ -467,14 +474,14 @@ contract.
 [[smc-sram-cache-integration]]
 ===== SRAM and Cache Array Integration
 
-Scratch RAM interfaces (`scratch_ram_intf_req_o` and `scratch_ram_intf_rsp_i`)
+Scratch RAM interfaces (`smc_scratch_ram_intf_req_o` and `smc_scratch_ram_intf_rsp_i`)
 connect to 32 independent RAM banks totaling the scratchpad memory space. Cache
-memory interfaces for L1 instruction and data caches (`l1_icache_*` and
-`l1_dcache_*`) connect to tag and data RAM banks as specified in the port table.
+memory interfaces for L1 instruction and data caches (`smc_l1_icache_*` and
+`smc_l1_dcache_*`) connect to tag and data RAM banks as specified in the port table.
 
-The `disable_sram_auto_init_i` input controls automatic memory initialization
+The `smc_disable_sram_auto_init_i` input controls automatic memory initialization
 behavior. When deasserted, the SMC automatically zeroes all SRAM contents during
-bring-up. The `init_mem_done_o` output indicates completion of this
+bring-up. The `smc_init_mem_done_o` output indicates completion of this
 initialization sequence. The `SRAM_AUTO_ZERO_DISABLE` strap
 (`STRAPS_LO[26]`) can
 disable this automatic zeroing behavior if your integration requires preserved
@@ -495,7 +502,7 @@ faster recovery.
 
 **Control Signals:**
 
-* `fuse_sense_done_o`: eFuse controller output indicating fuse sensing
+* `smc_fuse_sense_done_o`: eFuse controller output indicating fuse sensing
 completion.
   External DFT logic monitors this signal to trigger repair operations.
 
@@ -545,7 +552,7 @@ during development or with known-good components.
 
 **Integration Requirements:**
 
-Provide an external memory repair controller that monitors `fuse_sense_done_o`
+Provide an external memory repair controller that monitors `smc_fuse_sense_done_o`
 to initiate repair, respects `skip_mem_repair_o` for bypass control, reads
 repair data from eFuse shadow registers, applies repair configuration to SRAM
 arrays, asserts `ext_boot_seq_done_i` and updates DFT Control Status registers
@@ -582,12 +589,16 @@ interrupt aggregate -- it is the software-controlled `SYNC_REG.sync` global
 synchronisation bit in the reset unit, unrelated to PLIC interrupt delivery.
 Do not connect an external interrupt controller to `sync_irq_o`.
 
-External interrupt sources visible to the adopter are `ext_interrupts_i` (SMC
+External interrupt sources visible to the adopter are `smc_ext_interrupts_i` (SMC
 external interrupt input vector, width `NUM_INT_TO_SMC`),
-`ext_mailbox_interrupts_o` (outbound mailbox notifications, width
+`smc_ext_mailbox_interrupts_o` (outbound mailbox notifications, width
 `NUM_MAILBOXES`), `gpio_interrupt_o` (GPIO edge/level events, width
 `NUM_GPIO_WRAPS`), and `uart_interrupt_o` (UART TX/RX events, width `NUM_UART`).
-For the full PLIC source map see the SMC Technical Reference Manual.
+Drive `smc_ext_interrupts_i` as an active-high level or as a pulse that stays
+high long enough to be sampled on `clk_smc`. The pin is three-flop
+synchronized; a short asynchronous pulse can be lost. There is no
+edge-triggered mode. For the full PLIC source map see the SMC Technical
+Reference Manual.
 
 ==== Telemetry and Debug Integration
 
@@ -614,14 +625,14 @@ power supplies and clocks. Once all supplies reach nominal voltages, deassert `r
 to initiate the SMC boot sequence. The SMC immediately begins fuse sensing to read configuration
 values and security credentials.
 
-Monitor the `fuse_sense_done_o` signal to detect completion of fuse sensing. Configuration
+Monitor the `smc_fuse_sense_done_o` signal to detect completion of fuse sensing. Configuration
 straps sampled during this phase determine boot modes and operational settings. After fuse
 sensing completes, the SMC releases internal subsystem resets based on the programmed reset
 sequencing configuration.
 
 The CPU cluster begins executing the ROM FW after reset release. The ROM FW
 performs additional initialization including peripheral configuration, memory
-testing (unless disabled), and system health checks. The `init_mem_done_o`
+testing (unless disabled), and system health checks. The `smc_init_mem_done_o`
 signal indicates completion of memory initialization if automatic SRAM zeroing
 is enabled.
 
@@ -730,6 +741,7 @@ dtp #(
 * DTP remains active during clock stop for debug access
 * External CTP signals require pad ring integration with ESD protection
 
+[[stap-scan-chain-topology]]
 ==== STAP Scan Chain Topology
 
 The DTP secondary scan path chains multiple STAPs on a single PTAP-managed scan
@@ -864,31 +876,77 @@ The SEP includes an internal entropy source that requires a ring-oscillator
 sample clock connected to `entropy_rosc_sample_clk_i`. This clock must be
 asynchronous to `clk_i` and typically runs between 100 and 400 MHz.
 
+[[sep-ext-trng]]
+===== External TRNG
+
 For adopters providing an external TRNG, the `ext_trng_axil` AXI-Lite interface
 connects to the external TRNG's control registers, while the `ext_trng_axis`
 AXI-Stream interfaces carry entropy data. The `ext_trng_irq_i` input is routed
 to the PIC; `ext_trng_alarm_i` is reserved for RAS.
 
+SEP decodes the 4 kB TRNG aperture (`0x1091_7000` - `0x1091_7FFF`) as a single
+window and forwards every access on `ext_trng_axil`. It does not decode offsets
+inside that window: the endpoint is an adopter-defined IP.
+
+The adopter must perform the intra-aperture decode. An address that owns no
+register must return SLVERR and must not alias onto a live register. When no
+external TRNG is connected, terminate `ext_trng_axil` with a DECERR slave.
+
 ==== eFuse and Lifecycle
 
-The SEP accesses its own eFuse bank through the `efuse_bank_ctrl` AXI-Lite
-interface and the `efuse_shim_command` custom interface, mirroring the pattern
-used by the SMC. The SEP must wait for the SMC fuse sense to complete
-(`smc_fuse_sense_done_i`) before initiating its own fuse operations, and it
-signals completion through `sep_fuse_sense_done_o`.
+SEP has its own eFuse bank. Instantiate a separate SHIM and physical
+eFuse bank; do not share the SMC's. The SHIM contract is
+<<smc-efuse-connection>>. On `sep.sv` connect `efuse_bank_ctrl_*` and
+`efuse_shim_command_*`. Through the SMU those ports appear as
+`sep_efuse_bank_ctrl_*` and `sep_efuse_shim_command_*`.
 
-The lifecycle controller exports `lc_state_o` (differentially encoded),
-`lc_sigint_err_o` (signal integrity error), `security_disable_o`,
-`secure_tm_o`, and `dbg_disable_o` (the typed debug-disable struct that the
-SMU routes to the DTP). The feature-control vector (`feat_ctrl`) is separately
-produced by the lifecycle controller and consumed internally within sep.sv; it
-is not an external port. `lcc_demote_state_1_o` and `lcc_demote_state_2_o` are
-exported at the SMU boundary; at present the SMU does not connect them to the
-SMC instance.
+SEP senses this bank after its own reset. Watch `sep_fuse_sense_done_o`.
+On `sep.sv`, drive `smc_fuse_sense_done_i` from the SMC so firmware can
+see when the SMC fabric is out of reset; the SMU wires that input
+internally.
 
-An OTP debug AXI-Lite port (`axil_sep_otp_jtag`) connects to the DTP for JTAG
-access to SEP fuses. When SEP is disabled (`SEP=0` at the SMU level), the SMU
-instantiates an AXI-Lite error slave on this path.
+Lifecycle and test-mode ports on `sep.sv`, and what to do with them.
+Behaviour is in the Technical Reference Manual, not here.
+
+* `secure_tm_req_i` signals a request to enter secure test mode.
+SEP latches it into `secure_tm_o` when fuse sensing completes, or at
+cold-reset release if SEC_DIS is already asserted. Secure test mode
+forces a no-secret, no-fuse-program configuration; it is not an
+authorization bit. See
+xref:ocah-docs:ROOT:architecture.adoc#test-mode-entry[Test Mode Entry]
+and
+xref:ocah-docs:ROOT:architecture.adoc#secure-tm-vs-scandump[`secure_tm` and the Secure Scan Chain]
+in the TRM. `secure_tm_o` is also an SMU output.
+
+* `security_disable_o` is the SEC_DIS token-match result (emergency
+A0 unlock). On `sep.sv`, route it to SMC `sep_security_disable_i`; the
+SMU does that internally. See
+xref:ocah-docs:ROOT:architecture.adoc#security-disable-sec_dis[Security Disable]
+in the TRM.
+
+* `lc_state_o` is the differentially encoded LC_STATE shadow.
+`lc_sigint_err_o` is the decode integrity error (fail-closed). Both
+are SMU outputs. See
+xref:ocah-docs:ROOT:architecture.adoc#life-cycle-controller-lcc-life-cycle-controller-lcc[Life Cycle Controller]
+in the TRM.
+
+* `dbg_disable_o` is the typed per-path debug/test disable vector
+(active-high: 1 = path disabled). On `sep.sv`, route it to DTP
+`dbg_disable_i`; the SMU does that internally.
+
+* `lcc_demote_state_1_o` / `lcc_demote_state_2_o` are differentially
+encoded in-field debug demotion. They leave the SMU for adopter
+lifecycle logic and are not connected to the SMC. See
+xref:ocah-docs:ROOT:architecture.adoc#demote-1-2-in-field-debug-demotion[in-field debug demotion]
+in the TRM.
+
+* `sep_fuse_dft_disable_o` / `smc_fuse_dft_disable_o` gate DFT-inserted
+OTP access. Leave them open if no such path is inserted. They are SMU
+outputs.
+
+OTP debug AXI-Lite (`axil_sep_otp_jtag`) is connected to the DTP inside
+the SMU; when `SEP=0` the SMU instantiates an AXI-Lite error slave on
+that path.
 
 ==== SPI Host Interface
 
@@ -905,7 +963,7 @@ non-volatile public keys before transferring control. Feature controls derived
 from secure boot authentication and lifecycle state govern what operations are
 permitted after boot.
 
-The `secure_tm_req_i` input is a secure test mode request. The `jtag_id` input
+The `jtag_id` input
 must be tied to an appropriate constant in the top-level integration. A
 `rst_vec_i` port exists on `tb_top.sv` for DV reset vector injection; it is not
 present on `sep.sv` itself and requires no integration tie-off.
@@ -1704,9 +1762,9 @@ the SEP-to-SMC dedicated AXI connection.
 |===
 |Port |Direction |Width |SMU Connection
 
-|`cluster_ded_o` |output |1 |SMU external port
-|`wdt_first_timeout_o` |output |1 |SMU external port
-|`wdt_second_timeout_o` |output |1 |SMU external port
+|`smc_cluster_ded_o` |output |1 |SMU external port
+|`smc_wdt_first_timeout_o` |output |1 |SMU external port
+|`smc_wdt_second_timeout_o` |output |1 |SMU external port
 |===
 
 ===== Region Size
@@ -1724,7 +1782,7 @@ the SEP-to-SMC dedicated AXI connection.
 |===
 |Port |Direction |Width |SMU Connection
 
-|`ext_interrupts_i` |input |[NUM_EXT_INTERRUPTS-1:0] |SMU external port
+|`smc_ext_interrupts_i` |input |[NUM_EXT_INTERRUPTS-1:0] |SMU external port
 |`sep_mailbox_interrupts_i` |input |[7:0] |Internal: from SEP `smc_mailbox_interrupt_o` when `SEP=1`, else tied to `'0`
 |`sep_wdt_reset_n_i` |input |1 |Internal: `~sep_wdt_timer_rst_req` when `SEP=1`, else tied to `1'b1`
 |===
@@ -1735,8 +1793,8 @@ the SEP-to-SMC dedicated AXI connection.
 |===
 |Port |Direction |Width |SMU Connection
 
-|`fuse_sense_done_o` |output |1 |SMU external port
-|`fuse_reset_n_delayed_o` |output |1 |SMU external port
+|`smc_fuse_sense_done_o` |output |1 |SMU external port
+|`smc_fuse_reset_n_delayed_o` |output |1 |SMU external port
 |===
 
 ===== DFT Signals
@@ -1765,7 +1823,7 @@ the SEP-to-SMC dedicated AXI connection.
 |===
 |Port |Direction |Width |SMU Connection
 
-|`ext_mailbox_interrupts_o` |output |[NUM_MAILBOXES-1:0] |SMU external port
+|`smc_ext_mailbox_interrupts_o` |output |[NUM_MAILBOXES-1:0] |SMU external port
 |===
 
 ===== Reset Unit Signals
@@ -1788,18 +1846,18 @@ the SEP-to-SMC dedicated AXI connection.
 |===
 |Port |Direction |Width |SMU Connection
 
-|`rom_intf_req_o` |output |`rom_req_t` |SMU external port
-|`rom_intf_rsp_i` |input |`rom_rsp_t` |SMU external port
-|`scratch_ram_intf_req_o` |output |`scratch_ram_req_t[31:0]` |SMU external port
-|`scratch_ram_intf_rsp_i` |input |`scratch_ram_rsp_t[31:0]` |SMU external port
-|`l1_icache_tag_intf_req_o` |output |`l1_icache_tag_req_t[3:0]` |SMU external port
-|`l1_icache_tag_intf_rsp_i` |input |`l1_icache_tag_rsp_t[3:0]` |SMU external port
-|`l1_icache_data_intf_req_o` |output |`l1_icache_data_req_t[7:0]` |SMU external port
-|`l1_icache_data_intf_rsp_i` |input |`l1_icache_data_rsp_t[7:0]` |SMU external port
-|`l1_dcache_tag_intf_req_o` |output |`l1_dcache_tag_req_t[3:0]` |SMU external port
-|`l1_dcache_tag_intf_rsp_i` |input |`l1_dcache_tag_rsp_t[3:0]` |SMU external port
-|`l1_dcache_data_intf_req_o` |output |`l1_dcache_data_req_t[3:0]` |SMU external port
-|`l1_dcache_data_intf_rsp_i` |input |`l1_dcache_data_rsp_t[3:0]` |SMU external port
+|`smc_rom_intf_req_o` |output |`rom_req_t` |SMU external port
+|`smc_rom_intf_rsp_i` |input |`rom_rsp_t` |SMU external port
+|`smc_scratch_ram_intf_req_o` |output |`scratch_ram_req_t[31:0]` |SMU external port
+|`smc_scratch_ram_intf_rsp_i` |input |`scratch_ram_rsp_t[31:0]` |SMU external port
+|`smc_l1_icache_tag_intf_req_o` |output |`l1_icache_tag_req_t[3:0]` |SMU external port
+|`smc_l1_icache_tag_intf_rsp_i` |input |`l1_icache_tag_rsp_t[3:0]` |SMU external port
+|`smc_l1_icache_data_intf_req_o` |output |`l1_icache_data_req_t[7:0]` |SMU external port
+|`smc_l1_icache_data_intf_rsp_i` |input |`l1_icache_data_rsp_t[7:0]` |SMU external port
+|`smc_l1_dcache_tag_intf_req_o` |output |`l1_dcache_tag_req_t[3:0]` |SMU external port
+|`smc_l1_dcache_tag_intf_rsp_i` |input |`l1_dcache_tag_rsp_t[3:0]` |SMU external port
+|`smc_l1_dcache_data_intf_req_o` |output |`l1_dcache_data_req_t[3:0]` |SMU external port
+|`smc_l1_dcache_data_intf_rsp_i` |input |`l1_dcache_data_rsp_t[3:0]` |SMU external port
 |===
 
 ===== Memory Init
@@ -1808,8 +1866,8 @@ the SEP-to-SMC dedicated AXI connection.
 |===
 |Port |Direction |Width |SMU Connection
 
-|`disable_sram_auto_init_i` |input |1 |SMU external port
-|`init_mem_done_o` |output |1 |SMU external port
+|`smc_disable_sram_auto_init_i` |input |1 |SMU external port
+|`smc_init_mem_done_o` |output |1 |SMU external port
 |===
 
 ===== System Timer OCTS Interface

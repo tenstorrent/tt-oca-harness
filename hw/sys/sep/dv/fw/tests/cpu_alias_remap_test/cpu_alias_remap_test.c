@@ -8,11 +8,10 @@
 // to (addr - (SEP_LOCAL_BASE - SEP_LOCAL_ALIAS_REGION_BASE)), and an access outside
 // the window passes through unchanged.
 //
-// The alias window is a FIXED 768 MiB:
-// SEP_LOCAL_BASE_ADDR resets to 0xD000_0000, the size is the fixed localparam
-// sep_pkg::SEP_LOCAL_ALIAS_REGION_SIZE = 0x3000_0000 (REGION_SIZE does not size
-// this window), and target_base is sep_pkg::SEP_LOCAL_ALIAS_REGION_BASE =
-// 0x1000_0000. So the
+// The alias window is a FIXED 768 MiB (hw/sys/sep/doc/memory_map.adoc):
+// SEP_LOCAL_BASE_ADDR resets to 0xD000_0000, the span is 0x3000_0000
+// (REGION_SIZE does not size this window), and the target is 0x1000_0000.
+// So the
 // alias 0xD000_0000 maps to physical 0x1000_0000 (SEP SRAM). The firmware uses
 // 0xD000_xxxx (NOT the 0xC000_03xx the reference suite VIP drives on the raw pre-remap port):
 // a real CPU access to 0xC000_03xx would hit ICCM (TCM, internal) and never reach
@@ -20,7 +19,7 @@
 //
 // Scope delta vs the reference suite: SEP_REGION_SIZE (0x10A3_00D0) sizes the inbound/SMU window
 // only, NOT this CPU alias window, so it is intentionally not programmed here; the
-// CPU window size is the fixed SEP_LOCAL_ALIAS_REGION_SIZE localparam.
+// CPU window size is the fixed 768 MiB alias span in memory_map.adoc.
 //
 // This must be a CPU-firmware (real IFU/LSU) test: the OSS no_cpu AXI splice is
 // POST-remap, so a no_cpu driver would bypass the remap entirely.
@@ -94,7 +93,7 @@ int main(void) {
 
     // CHK-CSR: program the alias window base and read it back. The base
     // resets to 0xD000_0000 and the window size is the fixed
-    // sep_pkg::SEP_LOCAL_ALIAS_REGION_SIZE localparam (0x3000_0000), so only the base
+    // 768 MiB alias span in memory_map.adoc (0x3000_0000), so only the base
     // CSR is programmable; REGION_SIZE (0x10A3_00D0) does not size this window and
     // is not touched here.
     // Write a value that is NOT the reset value first. Writing only WINDOW_BASE
