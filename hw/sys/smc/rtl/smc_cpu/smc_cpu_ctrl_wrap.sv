@@ -5,8 +5,7 @@
 
 module smc_cpu_ctrl_wrap #(
   parameter bit NO_ADDR_REMAP = 1'b1,
-  parameter smc_pkg::smc_cpu_config_e SMC_CPU_CONFIG = smc_pkg::SMC_1CORE,
-  parameter int unsigned NumCPUCores                 = 1,
+  parameter int unsigned NumCPUCores                 = 4,
 
   localparam int unsigned MaxCPUCores                = 4
 ) (
@@ -38,9 +37,8 @@ module smc_cpu_ctrl_wrap #(
   input  logic                                    drained_i
 );
 
-  localparam cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t DEFAULT_RESET_SETTINGS = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ?
-                                                                            smc_4core_cpu_pkg::DEFAULT_RESET_SETTINGS :
-                                                                            smc_1core_cpu_pkg::DEFAULT_RESET_SETTINGS ;
+  localparam cpu_ctrl_reg_pkg::cpu_ctrl__RESET_CTRL__external__fields__out_t DEFAULT_RESET_SETTINGS =
+      smc_4core_cpu_pkg::DEFAULT_RESET_SETTINGS;
 
   ///////////////////////
   // Reference Counter //
@@ -269,12 +267,12 @@ module smc_cpu_ctrl_wrap #(
   assign hwif_in.SMC_ATTRIBUTES.mailbox_depth.next = 4'(smc_pkg::MAILBOX_DEPTH);
   // SMC_ATTRIBUTES.num_cores is defined as 3 bits in the register header, so we need to cast to 3 bits for LHS = RHS
   assign hwif_in.SMC_ATTRIBUTES.num_cores.next     = 3'(NumCPUCores);
-  // If there is only one core, disable output remap
+  // Report whether output remap is disabled
   assign hwif_in.SMC_ATTRIBUTES.no_output_remap.next = NO_ADDR_REMAP;
   // SMC_ATTRIBUTES.sram_size is defined as 6 bits in the register header, so we need to cast to 6 bits
-  assign hwif_in.SMC_ATTRIBUTES.sram_size.next = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? chipyard_4core_mem_pkg::SRAM_SIZE : chipyard_1core_mem_pkg::SRAM_SIZE;
-  assign hwif_in.SMC_ATTRIBUTES.num_ext_interrupts.next = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS : smc_1core_cpu_pkg::NUM_EXT_INTERRUPTS;
-  assign hwif_in.SMC_ATTRIBUTES.num_cpu_interrupts.next = (SMC_CPU_CONFIG == smc_pkg::SMC_4CORE) ? smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS : smc_1core_cpu_pkg::NUM_CPU_INTERRUPTS;
+  assign hwif_in.SMC_ATTRIBUTES.sram_size.next = chipyard_4core_mem_pkg::SRAM_SIZE;
+  assign hwif_in.SMC_ATTRIBUTES.num_ext_interrupts.next = smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS;
+  assign hwif_in.SMC_ATTRIBUTES.num_cpu_interrupts.next = smc_4core_cpu_pkg::NUM_CPU_INTERRUPTS;
   assign hwif_in.SMC_ATTRIBUTES.chiplet_is_primary.next = chiplet_is_primary_i;
 
   assign hwif_in.TEST_CTRL.data.next = test_ctrl;

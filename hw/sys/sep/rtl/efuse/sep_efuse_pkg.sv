@@ -570,7 +570,7 @@ package sep_efuse_pkg;
           (
               och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_SPARE7_BASE_ADDR
           ),
-          end_addr: och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_SIZE - 1
+          end_addr: 32'(och_sep_top_addrmap_pkg::OCH_SEP_TOP_SEP_EFUSE_MAP_SIZE) - 32'd1
       },
       // idx 38: spare6 — lock slot 38 (LOCKS_SPARE[12:13])
       '{

@@ -115,14 +115,16 @@ stubs = [
 ]
 sources = [
   # axi_cut (+ its spill_register deps) registers the ext_out channels at the
-  # boundary, ahead of the synchronous slave in tb_wrapper_top.sv. Two things it
+  # boundary, ahead of the responder in tb_wrapper_top.sv. Two things it
   # buys: the crossbar's ext_out aw_valid does not settle until late in the
   # cycle, and the cut makes every request channel edge-aligned and stable for
   # a whole cycle; and it breaks the combinational path across the boundary so
-  # the terminator's ready is not in the crossbar's timing cone.
+  # the responder's ready is not in the crossbar's timing cone.
   #
-  # Outbound (ext_out) boundary terminator, shared with the bare smu TB.
-  "hw/sys/smu/dv/tb/smu_axi_out_sim_slave.sv",
+  # Outbound (ext_out) boundary: the shared AXI VIP interface the slave agent
+  # binds and the bridge that places the cut's struct port on it.
+  "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_if.sv",
+  "hw/common/dv/vip/ocah_axi_vip/interface/ocah_axi_struct_bridge.sv",
   "vendor/pulp-platform/common_cells/upstream/src/spill_register_flushable.sv",
   "vendor/pulp-platform/common_cells/upstream/src/spill_register.sv",
   "vendor/pulp-platform/axi/upstream/src/axi_cut.sv",
@@ -236,7 +238,7 @@ cwd = "."
 argv = [
   "bash",
   "-c",
-  "python3 hw/sys/smu/dv/fw/build_firmware.py --target smu_sep_smoke && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_boot_health && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_sanity && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_modules && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_efuse && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_wdt && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_dma && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_bidirect && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_remap && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=rom_no_tcm_preload_mem_init && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_spi && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smc_xbar && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smc_notify && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=hello_world && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_lcc_flow && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_entropy_bringup && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_aes && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_otbn && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_ext_axi && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=smc TEST=smu_sep_ext_axi && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=smc TEST=smc_sep_xbar && python3 hw/sys/smu/dv/fw/build_firmware.py --target smu_sep_bidirect && python3 hw/sys/smu/dv/fw/build_firmware.py --target smu_sep_ext_axi",
+  "python3 hw/sys/smu/dv/fw/build_firmware.py --target smu_sep_smoke && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_boot_health && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_sanity && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_modules && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_efuse && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_wdt && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_dma && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_bidirect && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_remap && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=rom_no_tcm_preload_mem_init && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_spi && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smc_xbar && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smc_notify && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=hello_world && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_lcc_flow && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_entropy_bringup && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_aes && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_otbn && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_ext_axi && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=smc TEST=smu_sep_ext_axi && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=smc TEST=smc_sep_xbar && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_debug_bus && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_wdt_reset_to_smc && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=sep_smu_lc_handoff && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=sep TEST=smu_cla_sep_cpu_debug && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=smc TEST=smu_sep_debug_bus && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=smc TEST=smu_sep_lc_handoff && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=smc TEST=smu_cla_sep_cpu_debug && ./scripts/docker-run.sh run make ocah-dv-fw-tests TARGET=smc TEST=smu_sep_boot && python3 hw/sys/smu/dv/fw/build_firmware.py --target smu_sep_bidirect && python3 hw/sys/smu/dv/fw/build_firmware.py --target smu_sep_ext_axi",
 ]
 outputs = [
   "hw/sys/sep/dv/fw/build/tests/sep_smu_boot_health/sep_smu_boot_health.itcm.hex",
@@ -295,6 +297,26 @@ outputs = [
   "hw/sys/sep/dv/fw/build/tests/sep_smu_ext_axi/sep_smu_ext_axi.tcm.sym",
   "hw/sys/smc/dv/fw/build/tests/smu_sep_ext_axi/smu_sep_ext_axi.ecc.hex",
   "hw/sys/smc/dv/fw/build/tests/smu_sep_ext_axi/smu_sep_ext_axi.sram.sym",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_debug_bus/sep_smu_debug_bus.itcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_debug_bus/sep_smu_debug_bus.dtcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_debug_bus/sep_smu_debug_bus.tcm.sym",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_wdt_reset_to_smc/sep_smu_wdt_reset_to_smc.itcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_wdt_reset_to_smc/sep_smu_wdt_reset_to_smc.dtcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_wdt_reset_to_smc/sep_smu_wdt_reset_to_smc.tcm.sym",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_lc_handoff/sep_smu_lc_handoff.itcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_lc_handoff/sep_smu_lc_handoff.dtcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/sep_smu_lc_handoff/sep_smu_lc_handoff.tcm.sym",
+  "hw/sys/sep/dv/fw/build/tests/smu_cla_sep_cpu_debug/smu_cla_sep_cpu_debug.itcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/smu_cla_sep_cpu_debug/smu_cla_sep_cpu_debug.dtcm.hex",
+  "hw/sys/sep/dv/fw/build/tests/smu_cla_sep_cpu_debug/smu_cla_sep_cpu_debug.tcm.sym",
+  "hw/sys/smc/dv/fw/build/tests/smu_sep_debug_bus/smu_sep_debug_bus.ecc.hex",
+  "hw/sys/smc/dv/fw/build/tests/smu_sep_debug_bus/smu_sep_debug_bus.sram.sym",
+  "hw/sys/smc/dv/fw/build/tests/smu_sep_lc_handoff/smu_sep_lc_handoff.ecc.hex",
+  "hw/sys/smc/dv/fw/build/tests/smu_sep_lc_handoff/smu_sep_lc_handoff.sram.sym",
+  "hw/sys/smc/dv/fw/build/tests/smu_cla_sep_cpu_debug/smu_cla_sep_cpu_debug.ecc.hex",
+  "hw/sys/smc/dv/fw/build/tests/smu_cla_sep_cpu_debug/smu_cla_sep_cpu_debug.sram.sym",
+  "hw/sys/smc/dv/fw/build/tests/smu_sep_boot/smu_sep_boot.ecc.hex",
+  "hw/sys/smc/dv/fw/build/tests/smu_sep_boot/smu_sep_boot.sram.sym",
   "hw/sys/smu/dv/build/firmware/smu_sep_ext_axi_arm/smu_sep_ext_axi_arm.rom.hex",
   "hw/sys/smu/dv/build/firmware/smu_sep_bidirect_arm/smu_sep_bidirect_arm.rom.hex",
   "hw/sys/smu/dv/build/firmware/smu_sep_arm/smu_sep_arm.rom.hex",

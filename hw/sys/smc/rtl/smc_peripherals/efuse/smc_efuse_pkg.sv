@@ -149,6 +149,7 @@ package smc_efuse_pkg;
   localparam logic [1:0] WRITE_LOCK = 2'b11;
   localparam logic READ_UNLOCK = 1'b0;
   localparam logic READ_LOCK = 1'b1;
+  localparam logic SECURE_TM_UNLOCK = 1'b0;
 
   // Physical OTP bits covered by LOCKS
   localparam int unsigned LockFieldBits = $bits(smc_efuse_map_locks_reg_t);  // 64
@@ -176,23 +177,24 @@ package smc_efuse_pkg;
   };
 
   // Lock field Description
+  // lock[3] secure_tm: 0 -> secure_tm unlock; 1 -> secure_tm lock
   // lock[2:1] write: 00 -> unlock;11 -> lock ;10 -> set only;
   // lock[0]  read: 0 -> readable; 1 -> read locked
 
   localparam efuse_pkg::rule_t [NUM_EFUSE_FIELDS-1:0] EfuseFieldMap = '{
       '{  // RESERVED[49:64] (idx 14)
           idx: 6'd14,
-          lock: {WRITE_UNLOCK, READ_UNLOCK},
+          lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
           start_addr:
           efuse_offset
           (
               smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_RESERVED_BASE_ADDR(49)
           ),
-          end_addr: smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SIZE - 1
+          end_addr: 32'(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_SIZE) - 32'd1
       },
       '{  // RESERVED[33:48] (idx 13)
           idx: 6'd13,
-          lock: {WRITE_UNLOCK, READ_UNLOCK},
+          lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
           start_addr:
           efuse_offset
           (
@@ -206,7 +208,7 @@ package smc_efuse_pkg;
       },
       '{  // RESERVED[17:32] (idx 12)
           idx: 6'd12,
-          lock: {WRITE_UNLOCK, READ_UNLOCK},
+          lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
           start_addr:
           efuse_offset
           (
@@ -220,7 +222,7 @@ package smc_efuse_pkg;
       },
       '{  // RESERVED[1:16] (idx 11)
           idx: 6'd11,
-          lock: {WRITE_UNLOCK, READ_UNLOCK},
+          lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
           start_addr:
           efuse_offset
           (
@@ -234,7 +236,7 @@ package smc_efuse_pkg;
       },
       '{  // RESERVED[0] — ROM_CTRL / SRAM auto-init controls (idx 10)
           idx: 6'd10,
-          lock: {WRITE_UNLOCK, READ_UNLOCK},
+          lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
           start_addr:
           efuse_offset
           (
@@ -248,7 +250,7 @@ package smc_efuse_pkg;
       },
       '{  // PLL_AND_SENSOR (idx 9)
           idx: 6'd9,
-          lock: {WRITE_UNLOCK, READ_UNLOCK},
+          lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
           start_addr:
           efuse_offset
           (
@@ -262,7 +264,7 @@ package smc_efuse_pkg;
       },
       '{  // I3C_DISABLE (idx 8)
           idx: 6'd8,
-          lock: {WRITE_UNLOCK, READ_UNLOCK},
+          lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
           start_addr:
           efuse_offset
           (
@@ -276,7 +278,7 @@ package smc_efuse_pkg;
       },
       '{  // I2C_CLOCK_GATING (idx 7)
           idx: 6'd7,
-          lock: {WRITE_UNLOCK, READ_UNLOCK},
+          lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
           start_addr:
           efuse_offset
           (
@@ -290,7 +292,7 @@ package smc_efuse_pkg;
       },
       '{  // I2C_I3C_ID (idx 6)
           idx: 6'd6,
-          lock: {WRITE_UNLOCK, READ_UNLOCK},
+          lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
           start_addr:
           efuse_offset
           (
@@ -304,7 +306,7 @@ package smc_efuse_pkg;
       },
       '{  // SOP_TOPOLOGY (idx 5)
           idx: 6'd5,
-          lock: {WRITE_UNLOCK, READ_UNLOCK},
+          lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
           start_addr:
           efuse_offset
           (
@@ -318,7 +320,7 @@ package smc_efuse_pkg;
       },
       '{  // FABRIC (idx 4)
           idx: 6'd4,
-          lock: {WRITE_UNLOCK, READ_UNLOCK},
+          lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
           start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_FABRIC_BASE_ADDR),
           end_addr:
           efuse_offset
@@ -328,19 +330,19 @@ package smc_efuse_pkg;
       },
       '{  // CLUSTER (idx 3)
           idx: 6'd3,
-          lock: {WRITE_UNLOCK, READ_UNLOCK},
+          lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
           start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_CLUSTER_BASE_ADDR),
           end_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_FABRIC_BASE_ADDR) - 1
       },
       '{  // BIRA (idx 2)
           idx: 6'd2,
-          lock: {WRITE_UNLOCK, READ_UNLOCK},
+          lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
           start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_BIRA_BASE_ADDR),
           end_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_CLUSTER_BASE_ADDR) - 1
       },
       '{  // PACKAGE_ID (idx 1)
           idx: 6'd1,
-          lock: {WRITE_UNLOCK, READ_UNLOCK},
+          lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
           start_addr:
           efuse_offset
           (
@@ -350,7 +352,7 @@ package smc_efuse_pkg;
       },
       '{  // CHIPLET_ID (idx 0)
           idx: 6'd0,
-          lock: {WRITE_UNLOCK, READ_UNLOCK},
+          lock: {SECURE_TM_UNLOCK, WRITE_UNLOCK, READ_UNLOCK},
           start_addr:
           efuse_offset
           (
@@ -366,7 +368,7 @@ package smc_efuse_pkg;
           // bits to this entry. Covers the 64-bit LOCKS register.
           idx:
           LOCKS_META_IDX,
-          lock: {WRITE_SET_ONLY, READ_UNLOCK},
+          lock: {SECURE_TM_UNLOCK, WRITE_SET_ONLY, READ_UNLOCK},
           start_addr: efuse_offset(smc_top_addrmap_pkg::SMC_TOP_SMC_EFUSE_MAP_LOCKS_BASE_ADDR),
           end_addr:
           efuse_offset
