@@ -38,8 +38,8 @@ JTAG_SIGNAL_MAP: dict[str, str] = {"trst": "trst_n"}
 
 _DBG_DISABLE_PREFIX = "dbg_disable_"
 
-# Flat observable names of the former port list that map onto a member of a
-# different name (or of the primary-TAP interface).
+# Flat observable names that map onto a member of a different name (or of the
+# primary-TAP interface).
 _ALIASES: dict[str, tuple[str, str]] = {
     "clk_i": ("ctrl", "clk"),
     "rst_n_i": ("ctrl", "sys_rst_n"),
