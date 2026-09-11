@@ -757,7 +757,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 
 |Coordinated TRNG reset and ordered recovery
 |PROVEN
-|`sep_trng_reset_recovery_test`. One `SW_RESET_N` bit resets ESRC, CSRNG and EDN together, and the reset waits for all three converted AXI-Lite paths to report isolated, so drain-before-reset is covered here rather than deferred. Also covers the pool scrub, SLVERR while isolated, the external source-select register staying outside the domain, and the JTAG hold/release pair. The external TRNG aperture is a permanent DECERR error slave in this build, so its own domain membership is not claimed.
+|`sep_trng_reset_recovery_test`. One `SW_RESET_N` bit resets ESRC, CSRNG and EDN together, and the reset waits for all three converted AXI-Lite paths to report isolated, so drain-before-reset is covered here rather than deferred. Also covers the pool scrub, SLVERR while isolated, the external source-select register staying outside the domain, and the JTAG hold/release pair. Intra-window decode of the adopter TRNG passthrough is not graded.
 
 |Clock-gate CSR
 |PROVEN
@@ -2444,7 +2444,7 @@ entry requires exactly two.
 |CHK-PROD-BLOCK
 |The external read is refused with a specific decode error, not a timeout.
 |CHK-DEMOTE-INDEP
-|`DEMOTE_2` alone opens DBG_2 `[47:24]` and leaves DBG_1 `[23:0]` closed, so the two demote registers act per-group rather than sharing a priority. `sep_debug` is bit 0, inside DBG_1, so it must still read 0 — and the external port must still be blocked, which is a second, independent consequence of the same property. `DEMOTE_2` is driven first deliberately: the demote field is write-once-set and cannot be cleared, so this is the only order in which this DUT can show one group opening without the other. Before this row existed, `DEMOTE_2` was never written by any test here — it appeared only in the golden, so the specification's DEMOTE_2 column rested on the golden's import-time KAT comparing the model against itself.
+|`DEMOTE_2` alone opens DBG_2 `[47:24]` and leaves DBG_1 `[23:0]` closed, so the two demote registers act per-group rather than sharing a priority. `sep_debug` is bit 0, inside DBG_1, so it must still read 0 — and the external port must still be blocked, which is a second, independent consequence of the same property. `DEMOTE_2` is driven first deliberately: the demote field is write-once-set and cannot be cleared, so this is the only order in which this DUT can show one group opening without the other. This row is the only writer of `DEMOTE_2` in the package, so without it the specification's DEMOTE_2 column would rest on the golden's import-time KAT comparing the model against itself.
 |CHK-DEMOTE
 |The demote register accepts a write and reads back.
 |CHK-DBG-FEAT
@@ -2928,15 +2928,15 @@ source path stays outside the domain, and recovery admits only fresh entropy.
 [arabic]
 . Bring the internal chain up and fill the fabric entropy pool through
   ESRC → CSRNG → EDN, recording the pool level and that `FIPS_LOCK` is set.
-. Write a source-select value that is not the RDL reset, confirm the write
-  took, and sample the external TRNG CSR response. That non-reset value is the
-  pre-reset baseline the later check must still see.
+. Write a source-select value that is not the RDL reset and confirm the write
+  took. That non-reset value is the pre-reset baseline the later check must
+  still see.
 . Hold every entropy consumer (KM, OTBN, AES, KMAC), then request the TRNG reset
   while concurrent reads are in flight on all three internal CSR ports.
 . Through the reset, observe the isolate probe, the fate of the in-flight
   accesses, and the pool's packer depth.
-. With the domain in reset, read the three internal ports, the external CSR and
-  the source-select register; then exercise the JTAG reset pair to hold and
+. With the domain in reset, read the three internal ports and the
+  source-select register; then exercise the JTAG reset pair to hold and
   release the same coordinated reset.
 . Reinitialize ESRC, CSRNG and EDN with consumers still held, require a fresh
   seed and fresh pool progress, and only then restore the consumer resets.
@@ -2957,7 +2957,7 @@ source path stays outside the domain, and recovery admits only fresh entropy.
 |CHK-TRNG-SLVERR
 |All three internal CSR ports answer SLVERR while isolated.
 |CHK-TRNG-EXTERNAL
-|After the packer is parked the test writes a source-select value that is not the RDL reset of `sel[2:0]` (`0x7` in `sep_cpu_ctrl.rdl`), confirms the write took, then asserts the same value after the internal reset. A match on the reset value would be vacuous. The external TRNG aperture itself is terminated by a permanent DECERR error slave in this build (`hw/top/sep_ip_integration.sv`, `u_ext_trng_axil_err_slv`) and its passthrough leg carries no isolate unit (`hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv`), so the before/after DECERR pair is a build invariant kept as the liveness baseline for that read, not as reset-domain evidence. Domain membership for the aperture needs a real responder behind it and is not claimed.
+|After the packer is parked the test writes a source-select value that is not the RDL reset of `sel[2:0]` (`0x7` in `sep_cpu_ctrl.rdl`), confirms the write took, then asserts the same value after the internal reset. A match on the reset value would be vacuous. The `0x1091_7000` passthrough is an adopter aperture; intra-window decode is not graded.
 |CHK-TRNG-JTAG
 |The JTAG override holds the coordinated reset asserted and releases it again, the same pair used for the other domains.
 |CHK-TRNG-CONSUMERS-HELD
@@ -5899,8 +5899,8 @@ contracts owned by the vault test, and the wipe security contract.
 |Phase 2 tests |62
 |Cocotb total |94 (`testlists/all.toml` `expected_count`)
 |Phase 3 |1 SV-UVM scenario bound (`sep_axi_smoke_test`)
-|Iconic scorecard rows |58 in-scope: 58 PROVEN (see <<iconic-scorecard>>)
-|Coded and failing |none
+|Iconic scorecard rows |59 in-scope: 58 PROVEN, 1 PARTIAL (see <<iconic-scorecard>>)
+|Coded and failing |1 (`sep_efuse_set_only_monotonicity_test`; `CHK-WRITABLE-CONTRAST` on `REQUIRED_SIGNERS` write-0, red pending an RTL-versus-specification ruling, not expected-fail)
 |===
 
 === Regression Groups

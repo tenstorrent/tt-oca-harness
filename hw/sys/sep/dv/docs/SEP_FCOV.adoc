@@ -125,7 +125,7 @@ human. Other members may fill a group in passing.
 
 Per-test detail is in link:SEP_VPLAN.adoc[SEP_VPLAN].
 
-Twenty-five Phase 1 covergroups, compiled and sampled for VCS only
+Twenty-six Phase 1 covergroups, compiled and sampled for VCS only
 (`ifndef VERILATOR`). Several IPs carry more than one group, because their
 Phase 1 contract has independent halves that different tests reach: the Key
 Manager splits generate from consume; lifecycle splits the sensed state, the
