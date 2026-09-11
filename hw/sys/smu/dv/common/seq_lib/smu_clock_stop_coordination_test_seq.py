@@ -4,11 +4,11 @@
 
 DV-CARD:          SMU_ALL_006   ANCHOR: smu_clock_stop_coordination_test
 
-Allocated (narrowed Option B; SEP=0 bare tb_top):
+Allocated (SEP=0 bare tb_top):
   DTP-BOOT-STALL.S1 / S2
   DTP-IC-RESET.S1 / S3
   DTP-CLKSTOP-AGG.S1 / S2 / S3
-No Force/deposit. No DTP-FEAT-GATE.* / INT-FEAT-CTRL-DTP-GATE (re-homed to 008).
+No Force/deposit. DTP-FEAT-GATE.* and INT-FEAT-CTRL-DTP-GATE are out of scope for this card.
 """
 
 from __future__ import annotations

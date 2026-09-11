@@ -172,13 +172,12 @@ async def revector_smc_cores(test, jtag, entry: int, *, settle_cycles: int = 64)
             f"reset vector core{core}",
         )
 
-    # No readback of RESET_VECTOR_0 here, deliberately. The SMC ROM image parks
-    # its cores in `wfi`, and with the cluster quiesced a read over this port
-    # never returns -- the AR launches and the bridge stays BUSY for good, while
-    # posted writes still get their B. A readback would therefore hang every run
-    # rather than catch a vector that failed to stick. What the vector did is
-    # observable instead: after the pulse the cores fetch from `entry`, which the
-    # caller sees as scratch reads climbing and the image reaching its protocol.
+    # A RESET_VECTOR_0 readback over this port hangs every run: the SMC ROM image
+    # parks its cores in `wfi`, and with the cluster quiesced a read never returns
+    # -- the AR launches and the bridge stays BUSY for good, while posted writes
+    # still get their B. The vector's effect is observable instead: after the
+    # pulse the cores fetch from `entry`, which the caller sees as scratch reads
+    # climbing and the image reaching its protocol.
     await _write64(jtag, RESET_CTRL, RESET_CTRL_HOLD_CORES, "hold cores")
     # Past timeout_value on the SMC's own clock, so the force-apply can take the
     # level hold; the SMU clock this sequence otherwise runs on is not it.

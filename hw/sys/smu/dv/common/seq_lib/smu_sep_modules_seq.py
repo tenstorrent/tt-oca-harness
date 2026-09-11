@@ -61,9 +61,9 @@ class SmuSepModulesSeq:
         # stage first waits out the ESRC boot health-test window (2048 samples at
         # div64, ~131k core cycles) before its masking PRNG can reseed, so the
         # budget has to clear that with margin. A stage that polls forever is
-        # still caught here by the PC profile rather than waited out: the AES
-        # stage's own timeout is 1e6 poll iterations, roughly 22M cycles, which
-        # costs ~20 minutes to reach and still ends in a failure.
+        # caught here by the PC profile rather than waited out: the AES stage's
+        # own timeout is 1e6 poll iterations, roughly 22M cycles, and ends in a
+        # failure either way.
         max_cycles = int(os.environ.get("SMU_SEP_MODULES_MAX_CYCLES", "600000"), 0)
         heartbeat = max(1, max_cycles // 20)
 

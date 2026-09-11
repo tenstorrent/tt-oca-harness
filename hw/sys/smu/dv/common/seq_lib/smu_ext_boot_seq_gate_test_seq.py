@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Sequence for smu_ext_boot_seq_gate_test (SMU_006 rev 2).
+"""Sequence for smu_ext_boot_seq_gate_test (SMU_006).
 
 Observes smc_fuse_reset_n_delayed_o — the RTL consumer gated by ext_boot_seq_done_i
 (port_table: gates reset release). rst_primary_smc_clk_no is NOT gated by this pin
@@ -18,7 +18,7 @@ from seq_lib.smu_tb_pins import smc_primary_reset
 
 
 class smu_ext_boot_seq_gate_test_seq:
-    """SMU_006 rev2: ext_boot_seq_done_i gates fuse_reset release."""
+    """SMU_006: ext_boot_seq_done_i gates fuse_reset release."""
 
     GATED_SAMPLES = 64
     RELEASE_BOUND = 2000
@@ -116,8 +116,8 @@ class smu_ext_boot_seq_gate_test_seq:
         )
         chk_primary = (
             "CHK-PRIMARY-NOT-GATED: rst_primary_smc_clk_no releases to 1'b1 while "
-            f"ext_boot_seq_done_i=0, distinguishing this card's gated signal from "
-            f"the prior rev 1 card's (incorrect) target (primary={primary})"
+            "ext_boot_seq_done_i=0; only fuse_reset_n_delayed_o is boot-gated "
+            f"(primary={primary})"
         )
         self._log(chk_primary)
         # Soft wait + live compare (expires with primary!=1 → FAIL).
