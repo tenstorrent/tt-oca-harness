@@ -455,8 +455,7 @@ async def test_3_1_2_threshold_register_configuration(dut):
 
 @cocotb.test()
 async def test_3_1_3_register_monitoring_and_counters(dut):
-    """Test 3.1.3: Verify HEALTH_TEST_STATUS and counter register access
-    (Consolidated from test_3_1_3 and test_3_1_4)"""
+    """Test 3.1.3: Verify HEALTH_TEST_STATUS and counter register access"""
 
     dut._log.info("\n[TEST 3.1.3] Register Monitoring and Counters")
 
@@ -811,7 +810,7 @@ async def test_3_1_3_register_monitoring_and_counters(dut):
         )
 
     # ============================================================================
-    # Test 4d: Maximum threshold testing (merged from test_3_4_2)
+    # Test 4d: Maximum threshold testing
     # ============================================================================
     dut._log.info("\n[4d] Testing maximum threshold behavior...")
 
@@ -861,7 +860,6 @@ async def test_3_1_3_register_monitoring_and_counters(dut):
     dut._log.info("  [PASS] Maximum threshold testing completed")
 
     # Final check: Fail test if any errors were detected (after logging all issues)
-    # Re-enabled APT verification after RTL fix (commit 12399bae)
     assert len(apt_errors) == 0, (
         f"Test failed with {len(apt_errors)} APT error(s) - see log for details"
     )
@@ -1596,7 +1594,7 @@ async def test_3_3_3_markov_test_failure(dut):
     dut._log.info("[PASS] irq_o assertion detected (interrupt fired)")
 
     # Continue with ISR flow
-    if True:  # Always execute ISR flow now
+    if True:
         # Phase 5: ISR - Read INTR_STATUS to identify interrupt source
         dut._log.info("\n--- Phase 5: ISR - Read INTR_STATUS (identify interrupt source) ---")
         intr_status = await read_intr_status(apb)
@@ -1699,7 +1697,7 @@ async def test_3_3_3_markov_test_failure(dut):
                     f"  Chunk {chunk}/{num_chunks}: max={max_alternations}, min={min_alternations}"
                 )
 
-        # Step 8.5d: Final counter check
+        # Step 10d: Final counter check
         dut._log.info("\n[8.5d] Final Markov counter check after extended run...")
         counters_final = await read_markov_counters(apb)
         max_alternations_final = counters_final["max_alternation_count"]
@@ -1716,13 +1714,13 @@ async def test_3_3_3_markov_test_failure(dut):
                 f"max={max_alternations_final}, min={min_alternations_final}"
             )
 
-        # Step 8.5e: Restore decorrelator to standard div-64
+        # Step 10e: Restore decorrelator to standard div-64
         dut._log.info("\n[8.5e] Restoring decorrelator to standard div-64...")
         await reg_wr(apb, "DECORRELATOR_CTRL", 0x0003F000)  # div-64, no bypass
         dut._log.info("  [PASS] Phase 10: Extended Markov counter growth verified")
 
         # =============================================================================
-        # Phase 11: Second Failure Injection (~600,000ns mark) - Verify Health Test Still Active
+        # Phase 11: Second Failure Injection - Verify Health Test Still Active
         # =============================================================================
         dut._log.info(
             "\n--- Phase 11: Second Failure Injection (Verify Markov health test still active) ---"
@@ -3757,8 +3755,6 @@ async def test_3_7_4_autotune_markov_test(dut):
     # Enable only Markov test, disable Repetition and APT
     ctrl_val = 0x00000004  # ENABLE[2]=1
     await reg_wr(apb, "HEALTH_TEST_CTRL", ctrl_val)
-    # await reg_wr(apb, 'MARKOV_TEST_PROB_THRESHOLDS', 0x00320032)
-    # dut._log.info("Markov test configured: thresholds=50 (aggressive)")
 
     # Phase 2: Enable AUTOTUNE
     dut._log.info("\n--- Phase 2: Enable AUTOTUNE_ENABLE ---")

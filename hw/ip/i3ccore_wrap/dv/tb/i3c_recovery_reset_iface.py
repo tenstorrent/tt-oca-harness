@@ -2,11 +2,11 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 """
-I3C Recovery / Reset Interface  (Test Plan #41)
+I3C Recovery / Reset Interface
 
 Observes the recovery interface outputs and drives a RSTACT peripheral reset,
-acknowledging it via peripheral_reset_done. Compile-only: full recovery image
-flow refined during sim-verify (see GAP Q-007).
+acknowledging it via peripheral_reset_done. The full recovery-image flow is not
+exercised.
 """
 
 import cocotb

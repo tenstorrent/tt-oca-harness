@@ -4,7 +4,7 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_km_cmd_errors.c
- * @brief T038 - Message validation error paths test
+ * @brief Message validation error paths test
  *
  * Tests all six message validation error paths in strict priority order:
  *   1. Bad header CRC       → ROM_KM_RC_HEADER_CRC
@@ -158,7 +158,7 @@ int main(void) {
         cmd.seq_num = expected_cmd_seq;
         cmd.id = ROM_KM_CMD_HW_VER;
         cmd.payload_len = 0;
-        cmd.header_crc8 = 0xAA; /* deliberately wrong */
+        cmd.header_crc8 = 0xAA; /* invalid CRC */
 
         send_header_only(cmd);
         process_and_drain();
@@ -185,7 +185,7 @@ int main(void) {
     TEST_SUBTEST_START("Out-of-sequence");
     {
         rom_km_msg_header_t cmd;
-        cmd.seq_num = expected_cmd_seq + 5; /* deliberately wrong */
+        cmd.seq_num = expected_cmd_seq + 5; /* out-of-sequence */
         cmd.id = ROM_KM_CMD_ROM_VER;
         cmd.payload_len = 0;
         cmd.header_crc8 = rom_crc8_rohc((const uint8_t *)&cmd, 3);
@@ -269,7 +269,7 @@ int main(void) {
      * Test 5: Bad payload CRC → ROM_KM_RC_PAYLOAD_CRC
      *
      * Correct header, correct seq, valid cmd, correct payload_len,
-     * but CRC-32C word is deliberately corrupted.  Seq check passes.
+     * but the CRC-32C word is corrupted.  Seq check passes.
      *=====================================================================*/
     TEST_SUBTEST_START("Bad payload CRC");
     {
@@ -280,7 +280,7 @@ int main(void) {
         cmd.header_crc8 = rom_crc8_rohc((const uint8_t *)&cmd, 3);
 
         uint32_t payload_word = 0xCAFEBABE;
-        uint32_t bad_crc = 0x12345678; /* deliberate mismatch */
+        uint32_t bad_crc = 0x12345678; /* mismatching CRC */
         send_frame_with_payload(cmd, &payload_word, 1, bad_crc);
         process_and_drain();
 
