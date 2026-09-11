@@ -1,9 +1,20 @@
-/* Image zoom cursor hint */
-.doc img {
-  cursor: zoom-in;
-  transition: transform 0.2s ease;
+/* medium-zoom adds its class only when the interaction is available. */
+.doc img.medium-zoom-image:hover {
+  opacity: 0.95;
 }
 
-.doc img:hover {
-  opacity: 0.95;
+/* Medium-zoom overlay styling */
+.medium-zoom-overlay {
+  z-index: 999;
+}
+
+.medium-zoom-image--opened {
+  z-index: 1000;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .medium-zoom-overlay,
+  .medium-zoom-image {
+    transition-duration: 0.01ms !important;
+  }
 }
