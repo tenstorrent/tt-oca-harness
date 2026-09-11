@@ -1,0 +1,88 @@
+[
+  {
+    "name": "setup-all",
+    "argv": [
+      "make",
+      "-f",
+      "ocah.mk",
+      "ocah-doc-trm-setup",
+      "ocah-doc-integrator-setup",
+      "ocah-doc-programmer-setup",
+      "ocah-doc-appnotes-setup",
+      "ocah-doc-contributing-setup",
+      "ocah-doc-home-setup"
+    ],
+    "cwd": "<review-checkout>",
+    "exit": 0,
+    "env": {
+      "OCAH_DOC_REGEN_REGS": "0",
+      "OCAH_DOC_RELEASE": "1",
+      "GEM_HOME": "<ruby-gems>",
+      "TMPDIR": "<review-records>/evidence/scratch"
+    }
+  },
+  {
+    "name": "trm-html",
+    "argv": [
+      "node",
+      "<antora-cli>",
+      "generate",
+      "--clean",
+      "--attribute",
+      "release",
+      "--attribute",
+      "basedir=<review-checkout>/doc/trm",
+      "--log-failure-level",
+      "error",
+      "antora-trm-playbook.yml"
+    ],
+    "cwd": "<review-checkout>",
+    "exit": 0,
+    "env": {
+      "OCAH_DOC_REGEN_REGS": "0",
+      "OCAH_DOC_RELEASE": "1",
+      "GEM_HOME": "<ruby-gems>",
+      "TMPDIR": "<review-records>/evidence/scratch"
+    }
+  },
+  {
+    "name": "combined-html",
+    "argv": [
+      "node",
+      "<antora-cli>",
+      "generate",
+      "--clean",
+      "--attribute",
+      "release",
+      "--log-failure-level",
+      "error",
+      "antora-playbook.yml"
+    ],
+    "cwd": "<review-checkout>",
+    "exit": 0,
+    "env": {
+      "OCAH_DOC_REGEN_REGS": "0",
+      "OCAH_DOC_RELEASE": "1",
+      "GEM_HOME": "<ruby-gems>",
+      "TMPDIR": "<review-records>/evidence/scratch"
+    }
+  },
+  {
+    "name": "trm-pdf",
+    "argv": [
+      "make",
+      "-f",
+      "ocah.mk",
+      "ocah-doc-trm-pdf",
+      "OCAH_ASCIIDOCTOR_PDF=<ruby-gems>/bin/asciidoctor-pdf"
+    ],
+    "cwd": "<review-checkout>",
+    "exit": 0,
+    "env": {
+      "OCAH_DOC_REGEN_REGS": "0",
+      "OCAH_DOC_RELEASE": "1",
+      "GEM_HOME": "<ruby-gems>",
+      "TMPDIR": "<review-records>/evidence/scratch"
+    }
+  }
+]

@@ -1,0 +1,277 @@
+{
+  "head": "4200cc97a48933163fd56f4ae290474471a7d972",
+  "acceptedBase": "a0c6b15d11d379fbc640e05a621dbe0fa0e519bb",
+  "cumulativePaths": [
+    "doc/trm/AUTHORING.md",
+    "hw/ip/jtag/jtag_ptap/doc/architecture.adoc",
+    "hw/ip/jtag/jtag_ptap/doc/assets/ptap_module_diagram.svg",
+    "hw/sys/dtp/doc/assets/dtp_arch_overview.svg",
+    "hw/sys/dtp/doc/overview.adoc"
+  ],
+  "incrementalPaths": [
+    "hw/ip/jtag/jtag_ptap/doc/architecture.adoc",
+    "hw/ip/jtag/jtag_ptap/doc/assets/ptap_module_diagram.svg",
+    "hw/sys/dtp/doc/assets/dtp_arch_overview.svg",
+    "hw/sys/dtp/doc/overview.adoc"
+  ],
+  "diffCheckExit": 0,
+  "trackedPdfRestored": true,
+  "authorStatus": "?? doc/integrator/assets/SEP_LC_Block.png\n",
+  "pdfSha256": "633d4d7265056dba3906155178474a09966ed14bb8ce9fc9ba86e41a2e8d25fa",
+  "pageOverflow": [],
+  "combinedAssets": [
+    {
+      "path": "doc/_build/html_antora/ocah-home/latest/_images/dtp_arch_overview.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-home/latest/sep/_images/dtp_arch_overview.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-home/latest/ip/_images/dtp_arch_overview.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-home/latest/smc/_images/dtp_arch_overview.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-home/latest/dtp/_images/dtp_arch_overview.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-appnotes/latest/_images/dtp_arch_overview.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-appnotes/latest/sep/_images/dtp_arch_overview.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-appnotes/latest/ip/_images/dtp_arch_overview.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-appnotes/latest/smc/_images/dtp_arch_overview.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-appnotes/latest/dtp/_images/dtp_arch_overview.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-programmer-guide/latest/_images/dtp_arch_overview.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-programmer-guide/latest/sep/_images/dtp_arch_overview.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-programmer-guide/latest/ip/_images/dtp_arch_overview.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-programmer-guide/latest/smc/_images/dtp_arch_overview.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-programmer-guide/latest/dtp/_images/dtp_arch_overview.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-docs/latest/_images/dtp_arch_overview.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-docs/latest/sep/_images/dtp_arch_overview.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-docs/latest/ip/_images/dtp_arch_overview.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-docs/latest/smu/_images/dtp_arch_overview.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-docs/latest/smc/_images/dtp_arch_overview.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-docs/latest/dtp/_images/dtp_arch_overview.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-contributing/latest/_images/dtp_arch_overview.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-contributing/latest/sep/_images/dtp_arch_overview.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-contributing/latest/ip/_images/dtp_arch_overview.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-contributing/latest/smc/_images/dtp_arch_overview.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-contributing/latest/dtp/_images/dtp_arch_overview.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-integrator-guide/latest/_images/dtp_arch_overview.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-integrator-guide/latest/sep/_images/dtp_arch_overview.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-integrator-guide/latest/ip/_images/dtp_arch_overview.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-integrator-guide/latest/smc/_images/dtp_arch_overview.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-integrator-guide/latest/dtp/_images/dtp_arch_overview.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-home/latest/_images/ptap_module_diagram.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-home/latest/sep/_images/ptap_module_diagram.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-home/latest/ip/_images/ptap_module_diagram.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-home/latest/smc/_images/ptap_module_diagram.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-home/latest/dtp/_images/ptap_module_diagram.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-appnotes/latest/_images/ptap_module_diagram.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-appnotes/latest/sep/_images/ptap_module_diagram.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-appnotes/latest/ip/_images/ptap_module_diagram.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-appnotes/latest/smc/_images/ptap_module_diagram.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-appnotes/latest/dtp/_images/ptap_module_diagram.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-programmer-guide/latest/_images/ptap_module_diagram.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-programmer-guide/latest/sep/_images/ptap_module_diagram.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-programmer-guide/latest/ip/_images/ptap_module_diagram.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-programmer-guide/latest/smc/_images/ptap_module_diagram.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-programmer-guide/latest/dtp/_images/ptap_module_diagram.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-docs/latest/_images/ptap_module_diagram.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-docs/latest/sep/_images/ptap_module_diagram.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-docs/latest/ip/_images/ptap_module_diagram.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-docs/latest/smu/_images/ptap_module_diagram.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-docs/latest/smc/_images/ptap_module_diagram.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-docs/latest/dtp/_images/ptap_module_diagram.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-contributing/latest/_images/ptap_module_diagram.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-contributing/latest/sep/_images/ptap_module_diagram.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-contributing/latest/ip/_images/ptap_module_diagram.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-contributing/latest/smc/_images/ptap_module_diagram.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-contributing/latest/dtp/_images/ptap_module_diagram.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-integrator-guide/latest/_images/ptap_module_diagram.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-integrator-guide/latest/sep/_images/ptap_module_diagram.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-integrator-guide/latest/ip/_images/ptap_module_diagram.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-integrator-guide/latest/smc/_images/ptap_module_diagram.svg",
+      "matches": true
+    },
+    {
+      "path": "doc/_build/html_antora/ocah-integrator-guide/latest/dtp/_images/ptap_module_diagram.svg",
+      "matches": true
+    }
+  ],
+  "moduleHierarchySourceUnchanged": true,
+  "excludedPagesPresent": [],
+  "coordinationUnchangedBeforeReviewUpdate": true,
+  "integratorPageOverflow": [],
+  "authorGeometryExit": 0
+}

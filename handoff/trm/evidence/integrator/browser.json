@@ -1,0 +1,1025 @@
+{
+  "pages": [
+    {
+      "name": "dtp",
+      "width": 1440,
+      "natural": [
+        1000,
+        640
+      ],
+      "rendered": [
+        791.984375,
+        506.875
+      ],
+      "scale": 0.791984375,
+      "alt": "DTP architecture diagram showing the JTAG Interface Unit and Cross Trigger Network with connections to external JTAG pads, CTP pads and the SMC AXI-Lite interface",
+      "attributes": [
+        [
+          "src",
+          "_images/dtp_arch_overview.svg"
+        ],
+        [
+          "alt",
+          "DTP architecture diagram showing the JTAG Interface Unit and Cross Trigger Network with connections to external JTAG pads, CTP pads and the SMC AXI-Lite interface"
+        ]
+      ],
+      "pageWidth": 1440,
+      "innerWidth": 1440,
+      "caption": "Figure 1. DTP internal structure"
+    },
+    {
+      "name": "dtp",
+      "width": 1280,
+      "natural": [
+        1000,
+        640
+      ],
+      "rendered": [
+        685.984375,
+        439.03125
+      ],
+      "scale": 0.685984375,
+      "alt": "DTP architecture diagram showing the JTAG Interface Unit and Cross Trigger Network with connections to external JTAG pads, CTP pads and the SMC AXI-Lite interface",
+      "attributes": [
+        [
+          "src",
+          "_images/dtp_arch_overview.svg"
+        ],
+        [
+          "alt",
+          "DTP architecture diagram showing the JTAG Interface Unit and Cross Trigger Network with connections to external JTAG pads, CTP pads and the SMC AXI-Lite interface"
+        ]
+      ],
+      "pageWidth": 1280,
+      "innerWidth": 1280,
+      "caption": "Figure 1. DTP internal structure"
+    },
+    {
+      "name": "dtp",
+      "width": 1024,
+      "natural": [
+        1000,
+        640
+      ],
+      "rendered": [
+        483.984375,
+        309.75
+      ],
+      "scale": 0.483984375,
+      "alt": "DTP architecture diagram showing the JTAG Interface Unit and Cross Trigger Network with connections to external JTAG pads, CTP pads and the SMC AXI-Lite interface",
+      "attributes": [
+        [
+          "src",
+          "_images/dtp_arch_overview.svg"
+        ],
+        [
+          "alt",
+          "DTP architecture diagram showing the JTAG Interface Unit and Cross Trigger Network with connections to external JTAG pads, CTP pads and the SMC AXI-Lite interface"
+        ]
+      ],
+      "pageWidth": 1024,
+      "innerWidth": 1024,
+      "caption": "Figure 1. DTP internal structure"
+    },
+    {
+      "name": "dtp",
+      "width": 768,
+      "natural": [
+        1000,
+        640
+      ],
+      "rendered": [
+        645.984375,
+        413.4375
+      ],
+      "scale": 0.645984375,
+      "alt": "DTP architecture diagram showing the JTAG Interface Unit and Cross Trigger Network with connections to external JTAG pads, CTP pads and the SMC AXI-Lite interface",
+      "attributes": [
+        [
+          "src",
+          "_images/dtp_arch_overview.svg"
+        ],
+        [
+          "alt",
+          "DTP architecture diagram showing the JTAG Interface Unit and Cross Trigger Network with connections to external JTAG pads, CTP pads and the SMC AXI-Lite interface"
+        ]
+      ],
+      "pageWidth": 768,
+      "innerWidth": 768,
+      "caption": "Figure 1. DTP internal structure"
+    },
+    {
+      "name": "dtp",
+      "width": 390,
+      "natural": [
+        1000,
+        640
+      ],
+      "rendered": [
+        355.96875,
+        227.828125
+      ],
+      "scale": 0.35596875,
+      "alt": "DTP architecture diagram showing the JTAG Interface Unit and Cross Trigger Network with connections to external JTAG pads, CTP pads and the SMC AXI-Lite interface",
+      "attributes": [
+        [
+          "src",
+          "_images/dtp_arch_overview.svg"
+        ],
+        [
+          "alt",
+          "DTP architecture diagram showing the JTAG Interface Unit and Cross Trigger Network with connections to external JTAG pads, CTP pads and the SMC AXI-Lite interface"
+        ]
+      ],
+      "pageWidth": 390,
+      "innerWidth": 390,
+      "caption": "Figure 1. DTP internal structure"
+    },
+    {
+      "name": "ptap",
+      "width": 1440,
+      "natural": [
+        860,
+        580
+      ],
+      "rendered": [
+        791.96875,
+        534.125
+      ],
+      "scale": 0.9208938953488373,
+      "alt": "PTAP module diagram showing TAP controller, instruction register, instruction decoder, TDR bank, scan path mux, and STAP select",
+      "attributes": [
+        [
+          "src",
+          "../../_images/ptap_module_diagram.svg"
+        ],
+        [
+          "alt",
+          "PTAP module diagram showing TAP controller, instruction register, instruction decoder, TDR bank, scan path mux, and STAP select"
+        ]
+      ],
+      "pageWidth": 1440,
+      "innerWidth": 1440,
+      "caption": "Figure 1. PTAP module architecture"
+    },
+    {
+      "name": "ptap",
+      "width": 1280,
+      "natural": [
+        860,
+        580
+      ],
+      "rendered": [
+        685.984375,
+        462.640625
+      ],
+      "scale": 0.79765625,
+      "alt": "PTAP module diagram showing TAP controller, instruction register, instruction decoder, TDR bank, scan path mux, and STAP select",
+      "attributes": [
+        [
+          "src",
+          "../../_images/ptap_module_diagram.svg"
+        ],
+        [
+          "alt",
+          "PTAP module diagram showing TAP controller, instruction register, instruction decoder, TDR bank, scan path mux, and STAP select"
+        ]
+      ],
+      "pageWidth": 1280,
+      "innerWidth": 1280,
+      "caption": "Figure 1. PTAP module architecture"
+    },
+    {
+      "name": "ptap",
+      "width": 1024,
+      "natural": [
+        860,
+        580
+      ],
+      "rendered": [
+        483.96875,
+        326.40625
+      ],
+      "scale": 0.5627543604651163,
+      "alt": "PTAP module diagram showing TAP controller, instruction register, instruction decoder, TDR bank, scan path mux, and STAP select",
+      "attributes": [
+        [
+          "src",
+          "../../_images/ptap_module_diagram.svg"
+        ],
+        [
+          "alt",
+          "PTAP module diagram showing TAP controller, instruction register, instruction decoder, TDR bank, scan path mux, and STAP select"
+        ]
+      ],
+      "pageWidth": 1024,
+      "innerWidth": 1024,
+      "caption": "Figure 1. PTAP module architecture"
+    },
+    {
+      "name": "ptap",
+      "width": 768,
+      "natural": [
+        860,
+        580
+      ],
+      "rendered": [
+        645.984375,
+        435.671875
+      ],
+      "scale": 0.7511446220930232,
+      "alt": "PTAP module diagram showing TAP controller, instruction register, instruction decoder, TDR bank, scan path mux, and STAP select",
+      "attributes": [
+        [
+          "src",
+          "../../_images/ptap_module_diagram.svg"
+        ],
+        [
+          "alt",
+          "PTAP module diagram showing TAP controller, instruction register, instruction decoder, TDR bank, scan path mux, and STAP select"
+        ]
+      ],
+      "pageWidth": 768,
+      "innerWidth": 768,
+      "caption": "Figure 1. PTAP module architecture"
+    },
+    {
+      "name": "ptap",
+      "width": 390,
+      "natural": [
+        860,
+        580
+      ],
+      "rendered": [
+        355.96875,
+        240.078125
+      ],
+      "scale": 0.4139171511627907,
+      "alt": "PTAP module diagram showing TAP controller, instruction register, instruction decoder, TDR bank, scan path mux, and STAP select",
+      "attributes": [
+        [
+          "src",
+          "../../_images/ptap_module_diagram.svg"
+        ],
+        [
+          "alt",
+          "PTAP module diagram showing TAP controller, instruction register, instruction decoder, TDR bank, scan path mux, and STAP select"
+        ]
+      ],
+      "pageWidth": 390,
+      "innerWidth": 390,
+      "caption": "Figure 1. PTAP module architecture"
+    }
+  ],
+  "svg": [
+    {
+      "name": "dtp",
+      "viewBox": [
+        0,
+        0,
+        1000,
+        640
+      ],
+      "texts": [
+        {
+          "text": "Debug and Test Ports (DTP)",
+          "cls": "title",
+          "font": 21,
+          "x": 361.3515625,
+          "y": 7,
+          "w": 277.296875,
+          "h": 23,
+          "right": 638.6484375,
+          "bottom": 30
+        },
+        {
+          "text": "JTAG Interface Unit (JIU)",
+          "cls": "blabel",
+          "font": 21,
+          "x": 101.5078125,
+          "y": 77,
+          "w": 246.984375,
+          "h": 23,
+          "right": 348.4921875,
+          "bottom": 100
+        },
+        {
+          "text": "PTAP",
+          "cls": "label",
+          "font": 21,
+          "x": 142.7734375,
+          "y": 131,
+          "w": 54.453125,
+          "h": 23,
+          "right": 197.2265625,
+          "bottom": 154
+        },
+        {
+          "text": "Primary TAP",
+          "cls": "small",
+          "font": 20,
+          "x": 114.25,
+          "y": 158,
+          "w": 111.5,
+          "h": 22,
+          "right": 225.75,
+          "bottom": 180
+        },
+        {
+          "text": "STAP Chain",
+          "cls": "label",
+          "font": 21,
+          "x": 110.875,
+          "y": 239,
+          "w": 118.25,
+          "h": 23,
+          "right": 229.125,
+          "bottom": 262
+        },
+        {
+          "text": "(secondary scan)",
+          "cls": "small",
+          "font": 20,
+          "x": 93.296875,
+          "y": 266,
+          "w": 153.40625,
+          "h": 22,
+          "right": 246.703125,
+          "bottom": 288
+        },
+        {
+          "text": "iJTAG SIB Network",
+          "cls": "label",
+          "font": 21,
+          "x": 130.09375,
+          "y": 349,
+          "w": 190.130859375,
+          "h": 23,
+          "right": 320.224609375,
+          "bottom": 372
+        },
+        {
+          "text": "IEEE 1687 network",
+          "cls": "small",
+          "font": 20,
+          "x": 139.390625,
+          "y": 374,
+          "w": 172.2109375,
+          "h": 22,
+          "right": 311.6015625,
+          "bottom": 396
+        },
+        {
+          "text": "JTAG2AXI Bridges",
+          "cls": "label",
+          "font": 21,
+          "x": 132.421875,
+          "y": 451,
+          "w": 185.15625,
+          "h": 23,
+          "right": 317.578125,
+          "bottom": 474
+        },
+        {
+          "text": "(parametric)",
+          "cls": "small",
+          "font": 20,
+          "x": 171.1015625,
+          "y": 478,
+          "w": 107.796875,
+          "h": 22,
+          "right": 278.8984375,
+          "bottom": 500
+        },
+        {
+          "text": "Cross Trigger Network (CTN)",
+          "cls": "blabel",
+          "font": 21,
+          "x": 570.890625,
+          "y": 77,
+          "w": 288.21875,
+          "h": 23,
+          "right": 859.109375,
+          "bottom": 100
+        },
+        {
+          "text": "CTM",
+          "cls": "label",
+          "font": 21,
+          "x": 547.25,
+          "y": 133,
+          "w": 45.5,
+          "h": 23,
+          "right": 592.75,
+          "bottom": 156
+        },
+        {
+          "text": "N×M routing matrix",
+          "cls": "small",
+          "font": 20,
+          "x": 485.25,
+          "y": 160,
+          "w": 169.5,
+          "h": 22,
+          "right": 654.75,
+          "bottom": 182
+        },
+        {
+          "text": "CTPs",
+          "cls": "label",
+          "font": 21,
+          "x": 803.15625,
+          "y": 133,
+          "w": 53.6875,
+          "h": 23,
+          "right": 856.84375,
+          "bottom": 156
+        },
+        {
+          "text": "(parametric)",
+          "cls": "small",
+          "font": 20,
+          "x": 776.1015625,
+          "y": 160,
+          "w": 107.796875,
+          "h": 22,
+          "right": 883.8984375,
+          "bottom": 182
+        },
+        {
+          "text": "Clock-Stop Aggregator",
+          "cls": "label",
+          "font": 21,
+          "x": 585.46875,
+          "y": 229,
+          "w": 229.0625,
+          "h": 23,
+          "right": 814.53125,
+          "bottom": 252
+        },
+        {
+          "text": "jtag_clock_stop OR",
+          "cls": "small",
+          "font": 20,
+          "x": 612.2890625,
+          "y": 252,
+          "w": 174.421875,
+          "h": 23,
+          "right": 786.7109375,
+          "bottom": 275
+        },
+        {
+          "text": "xtrig_clk_stop_req_i",
+          "cls": "small",
+          "font": 20,
+          "x": 611.0625,
+          "y": 274,
+          "w": 177.875,
+          "h": 23,
+          "right": 788.9375,
+          "bottom": 297
+        },
+        {
+          "text": "-> stop_clks_o",
+          "cls": "small",
+          "font": 20,
+          "x": 635.2421875,
+          "y": 292,
+          "w": 129.515625,
+          "h": 23,
+          "right": 764.7578125,
+          "bottom": 315
+        },
+        {
+          "text": "AXI-Lite CSR",
+          "cls": "label",
+          "font": 21,
+          "x": 635.2421875,
+          "y": 341,
+          "w": 129.515625,
+          "h": 23,
+          "right": 764.7578125,
+          "bottom": 364
+        },
+        {
+          "text": "CTM routes · CTP · clock-stop",
+          "cls": "small",
+          "font": 20,
+          "x": 565.15625,
+          "y": 368,
+          "w": 269.6875,
+          "h": 22,
+          "right": 834.84375,
+          "bottom": 390
+        },
+        {
+          "text": "Internal CT",
+          "cls": "label",
+          "font": 21,
+          "x": 515.15625,
+          "y": 439,
+          "w": 109.84814453125,
+          "h": 23,
+          "right": 625.00439453125,
+          "bottom": 462
+        },
+        {
+          "text": "xtrig_ctm_src/dst",
+          "cls": "small",
+          "font": 20,
+          "x": 494.421875,
+          "y": 466,
+          "w": 151.5859375,
+          "h": 23,
+          "right": 646.0078125,
+          "bottom": 489
+        },
+        {
+          "text": "JTAG Pads",
+          "cls": "small",
+          "font": 20,
+          "x": 97.390625,
+          "y": 560,
+          "w": 105.21875,
+          "h": 22,
+          "right": 202.609375,
+          "bottom": 582
+        },
+        {
+          "text": "jtag_ptap_client_*",
+          "cls": "small",
+          "font": 20,
+          "x": 69.4921875,
+          "y": 582,
+          "w": 160.23046875,
+          "h": 23,
+          "right": 229.72265625,
+          "bottom": 605
+        },
+        {
+          "text": "SMC (via SMU)",
+          "cls": "small",
+          "font": 20,
+          "x": 378.5546875,
+          "y": 560,
+          "w": 138.890625,
+          "h": 22,
+          "right": 517.4453125,
+          "bottom": 582
+        },
+        {
+          "text": "axil_dtp_csr_*",
+          "cls": "small",
+          "font": 20,
+          "x": 385.1875,
+          "y": 582,
+          "w": 125.841796875,
+          "h": 23,
+          "right": 511.029296875,
+          "bottom": 605
+        },
+        {
+          "text": "CTP Pads",
+          "cls": "small",
+          "font": 20,
+          "x": 783.5,
+          "y": 560,
+          "w": 93,
+          "h": 22,
+          "right": 876.5,
+          "bottom": 582
+        },
+        {
+          "text": "xtrig_ctp_*",
+          "cls": "small",
+          "font": 20,
+          "x": 782.75,
+          "y": 582,
+          "w": 94.708984375,
+          "h": 23,
+          "right": 877.458984375,
+          "bottom": 605
+        }
+      ],
+      "clipped": [],
+      "overlaps": [
+        [
+          "jtag_clock_stop OR",
+          "xtrig_clk_stop_req_i"
+        ],
+        [
+          "xtrig_clk_stop_req_i",
+          "-> stop_clks_o"
+        ]
+      ],
+      "diagonalLines": [],
+      "effectiveFonts": [
+        {
+          "source": 21,
+          "effective": 14.405671875
+        },
+        {
+          "source": 20,
+          "effective": 13.7196875
+        }
+      ]
+    },
+    {
+      "name": "ptap",
+      "viewBox": [
+        0,
+        0,
+        860,
+        580
+      ],
+      "texts": [
+        {
+          "text": "PTAP — Primary TAP Architecture",
+          "cls": "title",
+          "font": 21,
+          "x": 260.1953125,
+          "y": 5,
+          "w": 339.609375,
+          "h": 23,
+          "right": 599.8046875,
+          "bottom": 28
+        },
+        {
+          "text": "PTAP",
+          "cls": "label",
+          "font": 19,
+          "x": 795.734375,
+          "y": 43,
+          "w": 49.58984375,
+          "h": 21,
+          "right": 845.32421875,
+          "bottom": 64
+        },
+        {
+          "text": "TAP",
+          "cls": "label",
+          "font": 19,
+          "x": 142.2265625,
+          "y": 127,
+          "w": 35.546875,
+          "h": 21,
+          "right": 177.7734375,
+          "bottom": 148
+        },
+        {
+          "text": "Controller",
+          "cls": "label",
+          "font": 19,
+          "x": 118.8125,
+          "y": 153,
+          "w": 83.037109375,
+          "h": 21,
+          "right": 201.849609375,
+          "bottom": 174
+        },
+        {
+          "text": "TMS",
+          "cls": "port",
+          "font": 19,
+          "x": 43.671875,
+          "y": 100,
+          "w": 34.328125,
+          "h": 22,
+          "right": 78,
+          "bottom": 122
+        },
+        {
+          "text": "TRST_N",
+          "cls": "port",
+          "font": 19,
+          "x": 9.359375,
+          "y": 136,
+          "w": 68.640625,
+          "h": 23,
+          "right": 78,
+          "bottom": 159
+        },
+        {
+          "text": "Instruction",
+          "cls": "label",
+          "font": 19,
+          "x": 306.171875,
+          "y": 119,
+          "w": 87.65625,
+          "h": 21,
+          "right": 393.828125,
+          "bottom": 140
+        },
+        {
+          "text": "Register (IR)",
+          "cls": "label",
+          "font": 19,
+          "x": 296.15625,
+          "y": 143,
+          "w": 107.6875,
+          "h": 21,
+          "right": 403.84375,
+          "bottom": 164
+        },
+        {
+          "text": "Instruction",
+          "cls": "label",
+          "font": 19,
+          "x": 496.171875,
+          "y": 119,
+          "w": 87.65625,
+          "h": 21,
+          "right": 583.828125,
+          "bottom": 140
+        },
+        {
+          "text": "Decoder",
+          "cls": "label",
+          "font": 19,
+          "x": 504.0859375,
+          "y": 143,
+          "w": 72.48876953125,
+          "h": 21,
+          "right": 576.57470703125,
+          "bottom": 164
+        },
+        {
+          "text": "TDR Select",
+          "cls": "label",
+          "font": 19,
+          "x": 681.4296875,
+          "y": 116,
+          "w": 97.85498046875,
+          "h": 21,
+          "right": 779.28466796875,
+          "bottom": 137
+        },
+        {
+          "text": "INST_SELECT",
+          "cls": "small",
+          "font": 19,
+          "x": 666.1171875,
+          "y": 138,
+          "w": 128.15234375,
+          "h": 22,
+          "right": 794.26953125,
+          "bottom": 160
+        },
+        {
+          "text": "TDR Bank",
+          "cls": "label",
+          "font": 19,
+          "x": 684.6015625,
+          "y": 208,
+          "w": 91.22119140625,
+          "h": 21,
+          "right": 775.82275390625,
+          "bottom": 229
+        },
+        {
+          "text": "BYPASS",
+          "cls": "reg",
+          "font": 17,
+          "x": 696.609375,
+          "y": 237,
+          "w": 66.78125,
+          "h": 19,
+          "right": 763.390625,
+          "bottom": 256
+        },
+        {
+          "text": "IDCODE",
+          "cls": "reg",
+          "font": 17,
+          "x": 696.9375,
+          "y": 261,
+          "w": 66.125,
+          "h": 19,
+          "right": 763.0625,
+          "bottom": 280
+        },
+        {
+          "text": "DBG_CTRL",
+          "cls": "reg",
+          "font": 17,
+          "x": 684.65625,
+          "y": 285,
+          "w": 90.6875,
+          "h": 19,
+          "right": 775.34375,
+          "bottom": 304
+        },
+        {
+          "text": "IC_RESET",
+          "cls": "reg",
+          "font": 17,
+          "x": 688.4296875,
+          "y": 309,
+          "w": 83.140625,
+          "h": 19,
+          "right": 771.5703125,
+          "bottom": 328
+        },
+        {
+          "text": "TMP_STATUS",
+          "cls": "reg",
+          "font": 17,
+          "x": 675.0546875,
+          "y": 333,
+          "w": 109.890625,
+          "h": 19,
+          "right": 784.9453125,
+          "bottom": 352
+        },
+        {
+          "text": "JTAG_CAPS",
+          "cls": "reg",
+          "font": 17,
+          "x": 681.03125,
+          "y": 357,
+          "w": 97.9375,
+          "h": 19,
+          "right": 778.96875,
+          "bottom": 376
+        },
+        {
+          "text": "ZLB/iJTAG",
+          "cls": "reg",
+          "font": 17,
+          "x": 689.0625,
+          "y": 381,
+          "w": 81.875,
+          "h": 19,
+          "right": 770.9375,
+          "bottom": 400
+        },
+        {
+          "text": "STAP Select",
+          "cls": "label",
+          "font": 19,
+          "x": 297.015625,
+          "y": 229,
+          "w": 106.677734375,
+          "h": 21,
+          "right": 403.693359375,
+          "bottom": 250
+        },
+        {
+          "text": "secondary mux",
+          "cls": "small",
+          "font": 19,
+          "x": 285.578125,
+          "y": 253,
+          "w": 129.33447265625,
+          "h": 21,
+          "right": 414.91259765625,
+          "bottom": 274
+        },
+        {
+          "text": "Scan Path Mux",
+          "cls": "label",
+          "font": 19,
+          "x": 285.578125,
+          "y": 339,
+          "w": 129.34375,
+          "h": 21,
+          "right": 414.921875,
+          "bottom": 360
+        },
+        {
+          "text": "tdr_mux / ZLB",
+          "cls": "small",
+          "font": 19,
+          "x": 290.3359375,
+          "y": 363,
+          "w": 119.328125,
+          "h": 22,
+          "right": 409.6640625,
+          "bottom": 385
+        },
+        {
+          "text": "STAP return",
+          "cls": "small",
+          "font": 19,
+          "x": 298.6015625,
+          "y": 385,
+          "w": 102.796875,
+          "h": 21,
+          "right": 401.3984375,
+          "bottom": 406
+        },
+        {
+          "text": "TMP Controller",
+          "cls": "label",
+          "font": 19,
+          "x": 476.296875,
+          "y": 341,
+          "w": 128.07861328125,
+          "h": 21,
+          "right": 604.37548828125,
+          "bottom": 362
+        },
+        {
+          "text": "CH_RESET_N",
+          "cls": "small",
+          "font": 19,
+          "x": 477.171875,
+          "y": 365,
+          "w": 125.65625,
+          "h": 22,
+          "right": 602.828125,
+          "bottom": 387
+        },
+        {
+          "text": "PTAP_TDI",
+          "cls": "port",
+          "font": 19,
+          "x": 14,
+          "y": 34,
+          "w": 91.515625,
+          "h": 23,
+          "right": 105.515625,
+          "bottom": 57
+        },
+        {
+          "text": "TDI -> TDR scan-in",
+          "cls": "small",
+          "font": 19,
+          "x": 418.0859375,
+          "y": 41,
+          "w": 163.828125,
+          "h": 21,
+          "right": 581.9140625,
+          "bottom": 62
+        },
+        {
+          "text": "scan-out data",
+          "cls": "small",
+          "font": 19,
+          "x": 527.4296875,
+          "y": 427,
+          "w": 115.56494140625,
+          "h": 21,
+          "right": 642.99462890625,
+          "bottom": 448
+        },
+        {
+          "text": "BSR_SI /",
+          "cls": "port",
+          "font": 19,
+          "x": 14,
+          "y": 354,
+          "w": 91.515625,
+          "h": 23,
+          "right": 105.515625,
+          "bottom": 377
+        },
+        {
+          "text": "IJTAG_SI",
+          "cls": "port",
+          "font": 19,
+          "x": 14,
+          "y": 371,
+          "w": 91.515625,
+          "h": 23,
+          "right": 105.515625,
+          "bottom": 394
+        },
+        {
+          "text": "PTAP_TDO",
+          "cls": "port",
+          "font": 19,
+          "x": 14,
+          "y": 410,
+          "w": 91.515625,
+          "h": 23,
+          "right": 105.515625,
+          "bottom": 433
+        }
+      ],
+      "clipped": [],
+      "overlaps": [
+        [
+          "BSR_SI /",
+          "IJTAG_SI"
+        ]
+      ],
+      "diagonalLines": [],
+      "effectiveFonts": [
+        {
+          "source": 21,
+          "effective": 16.75078125
+        },
+        {
+          "source": 19,
+          "effective": 15.155468749999999
+        },
+        {
+          "source": 17,
+          "effective": 13.560156249999999
+        }
+      ]
+    }
+  ],
+  "browser": "143.0.7499.4"
+}

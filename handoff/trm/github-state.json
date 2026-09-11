@@ -1,0 +1,116 @@
+{
+  "checkedOn": "2026-09-11",
+  "publicationStatus": "Prepared locally; branch and PR arrangement pending user agreement",
+  "pr1642": {
+    "base": "docs/trm-conventions",
+    "base_sha": "327e02099101fe83ad29b253bce82c1a3a74d6f6",
+    "draft": true,
+    "head": "docs/trm-smu-framework",
+    "head_sha": "a9a0004e9ca465b7c4bf65e8adb52ee3f74e451c",
+    "html_url": "https://github.com/tenstorrent/tt-oca-harness/pull/1642",
+    "mergeable": true,
+    "mergeable_state": "unstable",
+    "number": 1642,
+    "state": "open",
+    "title": "doc: Add SMU publishing framework and subsystem hierarchy"
+  },
+  "pr1643": {
+    "base": "docs/trm-smu-framework",
+    "base_sha": "a9a0004e9ca465b7c4bf65e8adb52ee3f74e451c",
+    "draft": true,
+    "head": "docs/trm-dtp-pilot-v2",
+    "head_sha": "829b09cf54dde1969dc309733f97f8fb32cefbdd",
+    "html_url": "https://github.com/tenstorrent/tt-oca-harness/pull/1643",
+    "mergeable": true,
+    "mergeable_state": "unstable",
+    "number": 1643,
+    "state": "open",
+    "title": "doc: Restructure and polish the DTP pilot chapter"
+  },
+  "pr1644": {
+    "base": "main",
+    "base_sha": "94eae6729096f1b7d46a499b4bdd509ba860922d",
+    "draft": true,
+    "head": "docs/integrator-guide-usability",
+    "head_sha": "5925c078d89315963d2162203956ab5ca0b355a9",
+    "html_url": "https://github.com/tenstorrent/tt-oca-harness/pull/1644",
+    "mergeable": false,
+    "mergeable_state": "dirty",
+    "number": 1644,
+    "state": "open",
+    "title": "doc/integrator: Split guide into navigable chapters and reference appendices"
+  },
+  "trmRefs": [
+    {
+      "ref": "refs/heads/docs/trm-conventions",
+      "sha": "327e02099101fe83ad29b253bce82c1a3a74d6f6"
+    },
+    {
+      "ref": "refs/heads/docs/trm-dtp-pilot-v2",
+      "sha": "829b09cf54dde1969dc309733f97f8fb32cefbdd"
+    },
+    {
+      "ref": "refs/heads/docs/trm-smu-framework",
+      "sha": "a9a0004e9ca465b7c4bf65e8adb52ee3f74e451c"
+    }
+  ],
+  "openPrs": [
+    {
+      "base": "main",
+      "draft": true,
+      "head": "docs/integrator-guide-usability",
+      "head_sha": "5925c078d89315963d2162203956ab5ca0b355a9",
+      "html_url": "https://github.com/tenstorrent/tt-oca-harness/pull/1644",
+      "number": 1644,
+      "title": "doc/integrator: Split guide into navigable chapters and reference appendices"
+    },
+    {
+      "base": "docs/trm-smu-framework",
+      "draft": true,
+      "head": "docs/trm-dtp-pilot-v2",
+      "head_sha": "829b09cf54dde1969dc309733f97f8fb32cefbdd",
+      "html_url": "https://github.com/tenstorrent/tt-oca-harness/pull/1643",
+      "number": 1643,
+      "title": "doc: Restructure and polish the DTP pilot chapter"
+    },
+    {
+      "base": "docs/trm-conventions",
+      "draft": true,
+      "head": "docs/trm-smu-framework",
+      "head_sha": "a9a0004e9ca465b7c4bf65e8adb52ee3f74e451c",
+      "html_url": "https://github.com/tenstorrent/tt-oca-harness/pull/1642",
+      "number": 1642,
+      "title": "doc: Add SMU publishing framework and subsystem hierarchy"
+    },
+    {
+      "base": "main",
+      "draft": true,
+      "head": "docs/trm-conventions",
+      "head_sha": "327e02099101fe83ad29b253bce82c1a3a74d6f6",
+      "html_url": "https://github.com/tenstorrent/tt-oca-harness/pull/1641",
+      "number": 1641,
+      "title": "doc: Define authoring conventions and SMU structure"
+    },
+    {
+      "base": "main",
+      "draft": false,
+      "head": "docs/integrator-guide-checklist",
+      "head_sha": "c9d3feb544a91e46d7de8fb207f5d1a0b300c622",
+      "html_url": "https://github.com/tenstorrent/tt-oca-harness/pull/1459",
+      "number": 1459,
+      "title": "doc: add SoC integration checklist to integrator guide"
+    }
+  ],
+  "pr1641": {
+    "number": 1641,
+    "state": "open",
+    "draft": true,
+    "head": "docs/trm-conventions",
+    "head_sha": "327e02099101fe83ad29b253bce82c1a3a74d6f6",
+    "base": "main",
+    "base_sha": "94eae6729096f1b7d46a499b4bdd509ba860922d",
+    "mergeable": false,
+    "mergeable_state": "dirty",
+    "html_url": "https://github.com/tenstorrent/tt-oca-harness/pull/1641"
+  }
+}

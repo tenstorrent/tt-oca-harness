@@ -1,0 +1,21 @@
+DTP fonts: {"title":21,"blabel":21,"label":21,"small":20,"clk":20}
+PTAP fonts: {"title":21,"label":19,"small":19,"port":19,"reg":17}
+DTP viewBox=1000 HTML_scale=0.686 PDF_scale=0.464
+PTAP viewBox=860 HTML_scale=0.798 PDF_scale=0.540
+
+PASS: DTP .title 21px html=14.4px pdf=9.7pt
+PASS: DTP .blabel 21px html=14.4px pdf=9.7pt
+PASS: DTP .label 21px html=14.4px pdf=9.7pt
+PASS: DTP .small 20px html=13.7px pdf=9.3pt
+PASS: DTP .clk 20px html=13.7px pdf=9.3pt
+PASS: PTAP .title 21px html=16.8px pdf=11.3pt
+PASS: PTAP .label 19px html=15.2px pdf=10.3pt
+PASS: PTAP .small 19px html=15.2px pdf=10.3pt
+PASS: PTAP .port 19px html=15.2px pdf=10.3pt
+PASS: PTAP .reg 17px html=13.6px pdf=9.2pt
+PASS: DTP text-anchor=start/default max x=0 <= 800 (margin floor)
+PASS: PTAP text-anchor=start/default max x=14 <= 660 (margin floor)
+PASS: PTAP no route interior crosses any block
+PASS: DTP no route interior crosses any block
+
+Source checks: 14 passed, 0 failed
