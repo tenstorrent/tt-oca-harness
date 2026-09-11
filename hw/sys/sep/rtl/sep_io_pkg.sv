@@ -40,9 +40,6 @@ package sep_io_pkg;
     // Interrupt
     logic       irq;
 
-    // Busy
-    logic       busy;
-
     // DMA trigger
     logic        lsio_trigger;
   } sep_io_spi_req_t;
@@ -51,5 +48,56 @@ package sep_io_pkg;
     // Data input from pad (4 lanes, Quad SPI)
     logic [3:0] sd;
   } sep_io_spi_rsp_t;
+
+  //=========================================================================
+  // OpenTitan SPI host to smc_padring pad interface
+  //
+  // The padring takes an 8 lane interface with active-low OE/IE. The
+  // OpenTitan host is Quad with one chip select and drives neither DQS nor
+  // mem_rebar, so the upper nibble and the strobe controls are constants.
+  //
+  // Both builds map the same struct onto the same padring ports: the SMU
+  // build in smu.sv, and the SEP standalone build in sep_wrapper, where
+  // smu.sv is not in the hierarchy. Keeping one copy here stops the two
+  // from drifting apart.
+  //=========================================================================
+
+  typedef struct packed {
+    logic       enable;
+    logic       clk;
+    logic [7:0] txd;
+    logic       cs_n;
+    logic       cs_oe_n;
+    logic       cs_ie_n;
+    logic       clk_oe_n;
+    logic       clk_ie_n;
+    logic       dqs_oe_n;
+    logic       dqs_ie_n;
+    logic [7:0] dq_oe_n;
+    logic [7:0] dq_ie_n;
+    logic       mem_rebar_oepad;
+    logic       mem_rebar_opad;
+    logic       mem_rebar_iepad;
+  } sep_io_spi_pads_t;
+
+  function automatic sep_io_spi_pads_t ot_spi_pad_map(input sep_io_spi_req_t req);
+    ot_spi_pad_map = '{
+        enable          : 1'b1,
+        clk             : req.sck,
+        txd             : {4'b0, req.sd},
+        cs_n            : req.cs_n,
+        cs_oe_n         : ~req.cs_oe,
+        cs_ie_n         : req.cs_oe,
+        clk_oe_n        : ~req.sck_oe,
+        clk_ie_n        : req.sck_oe,
+        dqs_oe_n        : 1'b1,
+        dqs_ie_n        : 1'b1,
+        dq_oe_n         : {4'hF, ~req.sd_oe},
+        dq_ie_n         : {4'hF, req.sd_oe},
+        mem_rebar_oepad : 1'b0,
+        mem_rebar_opad  : 1'b0,
+        mem_rebar_iepad : 1'b0
+    };
+  endfunction
 
 endpackage
