@@ -68,7 +68,6 @@ the top-level `smu` parameter list.
 
 | Field | Default | Description |
 |-------|---------|-------------|
-| `SMC_CPU_CONFIG` | `SMC_4CORE` (`32'd2`) | SMC CPU cluster: `SMC_1CORE=1` or `SMC_4CORE=2`. |
 | `NUM_INT_TO_SMC` | `256` | External interrupts aggregated to SMC. |
 | `JTAG_NUM_EXTRA_STAPS` | `1` | Extra STAP ports (min 1 exposed → `JTAG_NUM_EXTRA_STAP_PORTS`). |
 | `JTAG_*_ENABLE` (BSR/EXTEST/INTEST/CLAMP/HIGHZ/RUNBIST/TMP/IC_RESET/SMC_DBG/STAP_IO) | `1` | DTP optional JTAG instruction enables. |
@@ -211,8 +210,8 @@ wire-OR/P2P protocols, and DTP↔SMC clock-stop handshake.
 
 ### Feature 7: Lifecycle and Security
 
-SEP drives `feat_ctrl` (debug gating), `security_disable`, and lifecycle state
-into SMC and DTP. Verification covers lifecycle/debug policy matrices, the
+SEP drives `dbg_disable` into DTP and `security_disable` and lifecycle state
+into SMC. Verification covers lifecycle/debug policy matrices, the
 security handoff, and fuse-sense handshake.
 
 ## Operating Modes
@@ -254,13 +253,14 @@ not stability-checked against in-flight transactions.
 | SEP=0 SEP-OTP access | AXI-Lite error slave | DECERR (`0xBADCAB1E`) |
 | Mailbox protocol mismatch | Scoreboard | Test fail |
 | SEP WDT timeout | `sep_wdt_timer_rst_req` | SEP reset request into SMC |
-| Lifecycle-gated debug | `feat_ctrl` gating in DTP | Debug resource blocked (BYPASS fallback / no AXI traffic) |
+| Lifecycle-gated debug | `dbg_disable_i` gating in DTP | Debug resource blocked (BYPASS fallback / no AXI traffic) |
 
 ## Security Considerations
 
-The SEP lifecycle feature-control vector (`sep_feat_ctrl`, type
-`sep_efuse_map_lc_disable_reg_t`) is driven by SEP `feat_ctrl_o` and fed to DTP
-`feat_ctrl_i` to gate debug (STAP selection, iJTAG SIB access, JTAG2AXI bridges).
+The SEP lifecycle controller drives `dbg_disable_o` (`dbg_disable_t`) into DTP
+`dbg_disable_i` to gate debug (STAP selection, iJTAG SIB access, the SMC fabric
+JTAG2AXI bridge). The SMC and SEP OTP JTAG2AXI bridges remain enabled;
+fuse-controller access control is the enforcement point.
 SEP also drives `security_disable` into SMC and the lifecycle state (`lc_state_o`,
 8 bits; `SEP=0` → `8'hf0`). The 256-bit `SEP_SEC_DISABLE_TOKEN` is passed to SEP,
 tied `0` at SMU and replaced with the real digest at synthesis. eFuse gating and

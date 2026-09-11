@@ -108,13 +108,24 @@ These directories are generated symlink indexes; run
 Their canonical targets remain under `hw/sys/<sys>/regs/`,
 `hw/ip/<ip>/regs/`, `hw/common/axi/`, and `vendor/...` -- the `regs/` element
 of every component's directory layout, described in
-xref:ocah-contributing:ROOT:guidelines.adoc#component-directory-organization[the
-Contributing Guide]. Other generated outputs remain under each owner's
+ifdef::backend-html5[]
+xref:ocah-starting:ROOT:guidelines.adoc#component-directory-organization[the
+Getting Started Guide].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+the __Getting Started Guide__.
+endif::backend-pdf[]
+Other generated outputs remain under each owner's
 `regs/gen/{c,sv,svh,py,ral,adoc,html,ipxact}/` directory.
 
 For the architecture-level responsibility split between the integrator, firmware,
 and the internal SEP/SMC maps, see
+ifdef::backend-html5[]
 xref:ocah-docs:ROOT:architecture.adoc#ocah-memory-map[OCAH Memory Map].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+the _OCAH Memory Map_ section of the Technical Reference Manual.
+endif::backend-pdf[]
 
 [[immutable-rom-fw-integration]]
 === Immutable ROM FW Integration
@@ -555,7 +566,7 @@ The SMC aggregates interrupts from multiple sources into `cpu_interrupts_o`, whi
 the PLIC of the embedded RISC-V CPU cluster. The interrupt vector is assembled in
 `hw/sys/smc/rtl/smc_base.sv` and
 `hw/sys/smc/rtl/smc_peripherals/rtl/smc_peripherals.sv`. The authoritative
-bit-level map (1-core and 4-core columns, RTL trace, and PLIC source ID note) is
+bit-level map (RTL trace and PLIC source ID note) is
 maintained in a single place:
 
 ifdef::backend-html5[]
@@ -734,19 +745,20 @@ secondary scan chain and drives the internal host outputs low. The SEP debug
 STAP connects to the SEP JTAG debug port when `SEP=1`; when `SEP=0`, the SMU
 ties `sep_stap_tdo_to_dtp = 1'b0` to bypass the SEP STAP return path.
 
-Each STAP host interface is gated by lifecycle feature controls, synchronized to
-TCK inside the DTP. `feat_ctrl_i` is enable-polarity (1 = feature enabled), so a
-STAP host interface is enabled only when all of its required enables are asserted
-and is disabled when any one of them is deasserted.
+Each STAP host interface is gated by a field of `dbg_disable_i`, synchronized to
+TCK inside the DTP. Each field is active-high (1 = path disabled).
 
-[cols="<25%,<35%,<40%",options="header"]
+[cols="<25%,<75%",options="header"]
 |===
-|STAP |Enabled When |Host Gating Disable Condition
-|SMC debug STAP |`feat_ctrl_i.soc_debug \&\& feat_ctrl_i.ap_debug` |`!feat_ctrl_i.soc_debug \|\| !feat_ctrl_i.ap_debug`
-|SEP debug STAP |`feat_ctrl_i.sep_debug \&\& feat_ctrl_i.soc_debug \&\& feat_ctrl_i.ap_debug` |`!feat_ctrl_i.sep_debug \|\| !feat_ctrl_i.soc_debug \|\| !feat_ctrl_i.ap_debug`
+|STAP |Disable Field
+|I/O STAP |`dbg_disable_i.stap_io`
+|SMC debug STAP |`dbg_disable_i.stap_smc`
+|SEP debug STAP |`dbg_disable_i.stap_sep`
+|Extra STAPs |`dbg_disable_i.stap_extra`
+|External STAP return path |`dbg_disable_i.stap_host`
 |===
 
-The full set of lifecycle-gated debug paths, including the iJTAG chains and the
+The full set of debug-disable-gated paths, including the iJTAG chains and the
 JTAG2AXI bridges, is tabulated in the DTP JTAG integration section of the TRM.
 
 ==== DTP Port Interface
@@ -884,13 +896,6 @@ The SEP provides a SPI host controller through the `sep_io_spi` interface,
 supporting single and quad modes. The controller's own interrupt leaves the
 module as the `irq` field of `sep_io_spi_req_o`, so no separate interrupt
 output is needed.
-
-The `spi_irq_i` input is a separate SPI interrupt request routed to the SEP
-PIC. Adopters that replace or supplement the internal SPI host with an external
-SPI controller connect that controller's interrupt here; adopters that use only
-the internal controller may loop back the `irq` field of `sep_io_spi_req_o` or,
-if a mux over multiple SPI sources is needed, drive the selected interrupt from
-their own integration logic. Tie the input low when unused.
 
 ==== Bring-Up Considerations
 
@@ -1744,15 +1749,6 @@ the SEP-to-SMC dedicated AXI connection.
 |`ext_boot_seq_done_i` |input |1 |SMU external port
 |===
 
-===== PVT
-
-[cols="<30%,<10%,<15%,<45%",options="header"]
-|===
-|Port |Direction |Width |SMU Connection
-
-|`temp_interrupt_i` |input |1 |SMU external port
-|===
-
 ===== Lifecycle State
 
 [cols="<30%,<10%,<20%,<40%",options="header"]
@@ -1761,16 +1757,6 @@ the SEP-to-SMC dedicated AXI connection.
 
 |`lc_state_o` |output |[2*LC_STATE_WIDTH-1:0] |SEP lifecycle state when `SEP=1`, else `8'hf0`; ported through SMU
 |`lc_sigint_err_o` |output |1 |SEP lifecycle integrity error when `SEP=1`, else SMC `efuse_lc_sigint_err`
-|===
-
-===== RAS Bank Settings
-
-[cols="<30%,<10%,<15%,<45%",options="header"]
-|===
-|Port |Direction |Width |SMU Connection
-
-|`ras_bank_chip_o` |output |[3:0] |SMU external port
-|`ras_bank_instance_o` |output |[3:0] |SMU external port
 |===
 
 ===== Mailbox Interrupts
@@ -2267,8 +2253,8 @@ enough.
 Because the protocol guarantees *ordering*, not *arrival*. The read side will not
 look at an entry until the write pointer has crossed, which takes `SYNC_STAGES`
 destination cycles, where `SYNC_STAGES` is the depth of the pointer
-synchronizer. Nothing in the protocol ensures the data physically arrived within 
-that window; that is a timing property, and only a `max_delay` states it. Miss it 
+synchronizer. Nothing in the protocol ensures the data physically arrived within
+that window; that is a timing property, and only a `max_delay` states it. Miss it
 and the consumer samples the entry's previous contents. There is no violation
 report and no metastability event, just wrong data.
 

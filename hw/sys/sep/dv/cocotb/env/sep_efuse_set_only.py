@@ -37,8 +37,9 @@ from sep_seeded_rng import SepSeededRng
 # apply the mask to the seed-selected word, unless the entry pins one.
 #
 # The DIS vectors are pinned to word 1 with a mask over the function group
-# only. Word 0 carries DBG_1 and DBG_2 -- sep_debug at bit 0, chiplet_dbg at
-# bit 1, sip_debug at bit 16 -- and setting any of those ORs those bits into
+# only. Word 0 carries DBG_1 and the low half of DBG_2 -- sep_debug at bit 0,
+# chiplet_dbg at bit 1, sep_fuse_dbg at bit 2, smc_fuse_dbg at bit 3,
+# sip_debug at bit 24 -- and setting any of those ORs those bits into
 # FEAT_CTRL. This test drives the CPU-LSU master, which has no inbound
 # filter; the pin still keeps the walk from changing FEAT_CTRL mid-run.
 # The function group is reserved or tied off for a no_cpu run, so it is
@@ -190,7 +191,8 @@ def _selftest() -> None:
         )
 
     # The DIS vectors must stay clear of every bit that lands in FEAT_CTRL:
-    # sep_debug (0), chiplet_dbg (1) and sip_debug (16) all live in word 0.
+    # sep_debug (0), chiplet_dbg (1), the fuse-dbg bits (2, 3) and sip_debug
+    # (24) all live in word 0.
     for f in cfg.fields:
         if f.name in ("SIP_DIS", "SYS_DIS"):
             assert f.word_idx == 1, f"{f.name} must stay off the debug-group word"

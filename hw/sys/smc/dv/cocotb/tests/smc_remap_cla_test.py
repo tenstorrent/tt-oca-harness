@@ -16,17 +16,17 @@ from smc_base_test import smc_base_test
 # independent constant. It is NOT read back from the sequence's own
 # counter: a floor that shrinks with the sequence cannot catch a sequence that
 # silently stops short. Composition: 32 remap-table reset reads + 9 CLA aperture
-# accesses + 18 remap-programming/filter accesses + 57 CLA full-aperture reset
-# reads.
+# accesses + 18 remap-programming/filter accesses + 82 CLA full-aperture reset
+# reads (32 + 9 + 18 + 82 = 141).
 #
-# The 57 is the software-owned subset of the 103 registers in
-# hw/ip/dfd/regs/smc_cla.rdl -- the 46 registers with a `hw = w`/`hw = rw` field
-# are hardware-driven and cannot be held to an RDL reset (measured: `Timestamp`
+# The 82 is the software-owned subset of the 137 registers in the generated
+# CLA map -- the remaining registers are hardware-driven and cannot be held
+# to an RDL reset (measured: `Timestamp`
 # @0x200 reads 0x2ad against a generated reset of 0x0, being a free-running
-# counter). The sequence additionally asserts `len(CLA_RESET_SWEEP) >= 55`, so a
+# counter). The sequence additionally asserts `len(CLA_RESET_SWEEP) >= 82`, so a
 # generated map that lost rows fails there rather than quietly lowering this
 # floor.
-REMAP_CLA_MIN_CSR_ACCESSES = 116
+REMAP_CLA_MIN_CSR_ACCESSES = 141
 
 
 @pyuvm.test()

@@ -729,7 +729,9 @@ Each point receives an identifier derived from the ordered collected-result
 list, run directories, coverage comparison keys, and Git revisions.
 Re-generating an identical ordered input list replaces that point. Reordering
 inputs or passing overlapping patterns can create a different point or
-duplicate DUT records.
+duplicate DUT records. A coverage-policy change changes a DUT's
+`comparison_key`, so its points before and after the change are separate
+series.
 
 History storage has no retention limit. The HTML renders the last 20 stored
 points without sorting them chronologically, so archive or prune the JSON
@@ -1166,7 +1168,9 @@ externally and consumes the published data.
   publish nothing; manually dispatched weeklies are published by dispatching
   `dashboard.yml` with the regress run id), downloads the artifact, and runs
   `collect` followed by a data-only `dashboard` aggregate (no `--html-out`)
-  with the trend history file.
+  with the trend history file. On a `workflow_dispatch` the job first
+  re-grades the downloaded run tree against the checkout's coverage policy
+  (`run_dv.py --waive`, see <<dashboard-waive>>).
 . The data is published two ways with identical content.
 
 Consumption interfaces:
@@ -1203,6 +1207,51 @@ Operational rules:
   `OCAH_MAIL_USERNAME`/`OCAH_MAIL_PASSWORD`/`OCAH_MAIL_TO` secrets are
   provisioned; the step self-disables while they are absent, and GitHub's
   native scheduled-workflow failure notification covers the interim.
+* A `workflow_dispatch` accepts `dry_run=true`: the job collects and
+  aggregates but skips the data-branch push, the bundle upload, and the
+  digest email, and the Actions list labels it `dashboard dry run`. Use it to
+  verify a workflow change or to preview a re-grade against a published
+  weekly.
+* Every dispatch adds a trend point: the point identity includes the
+  dashboard checkout revision, so a re-dispatched weekly does not replace its
+  earlier point.
+
+[[dashboard-waive]]
+=== Waive coverage bins on a published weekly
+
+A waiver merged after a weekly ran reaches that weekly's published numbers
+through a re-dispatch:
+
+. Review the holes in the published data (`coverage.holes_summary`, or the
+  staged `coverage-details.json`) and add the `[[holes]]` entry to the DUT's
+  `coverage_policy.toml`; the waiver section of xref:run-dv.adoc[DV and FV
+  Runner] gives the fields and the guardrails.
+. Merge the policy change to `main`.
+. Dispatch the publication for the weekly's regress run id, as a dry run
+  first when the outcome is uncertain:
++
+[source,bash]
+----
+gh workflow run dashboard.yml -f run_id=<regress run id> -f dry_run=true
+gh workflow run dashboard.yml -f run_id=<regress run id>
+----
++
+The job downloads the weekly artifact, runs
+`OCAH_DV_SKIP_UV=1 python3 tools/dv/run_dv.py --dut <dut> --run-dir weekly-run --waive`
+with the checkout's policy, and collects the re-graded tree. Exit 0 and 1
+are applied grades (1 surfaces as the collected `coverage.status` and as a
+step summary line); exit 2 leaves the tree as recorded, appends
+`coverage policy not applied` to the step summary, and publishes the recorded
+grade. Publication continues in every case. The scheduled `workflow_run`
+path does not run the step.
+
+The re-grade uses the policy of the commit the workflow ran from, not the
+regression commit's. A changed policy changes `comparison_key`, so the
+re-graded point starts a new comparable series in `history.json`; compare
+trend points only when their `comparison_key` values match. A weekly whose
+report command crashed is refused (exit 2) and publishes as recorded; a
+weekly whose grade failed on the policy publishes its repaired grade once the
+policy is corrected.
 
 == Troubleshooting
 

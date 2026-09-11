@@ -72,7 +72,7 @@ endef
 -include $(OCAH_DOC_DIR)/integrator/doc.mk
 -include $(OCAH_DOC_DIR)/programmer/doc.mk
 -include $(OCAH_DOC_DIR)/appnotes/doc.mk
--include $(OCAH_DOC_DIR)/contributing/doc.mk
+-include $(OCAH_DOC_DIR)/starting/doc.mk
 -include $(OCAH_DOC_DIR)/home/doc.mk
 
 # GitHub Pages publish.
@@ -84,23 +84,23 @@ ocah-doc-setup: ocah-doc-trm-setup
 ocah-doc-html: ocah-doc-trm-html
 ocah-doc-pdf: ocah-doc-trm-pdf
 ocah-doc-serve: ocah-doc-trm-serve
-ocah-doc-clean: ocah-doc-trm-clean ocah-doc-integrator-clean ocah-doc-programmer-clean ocah-doc-appnotes-clean ocah-doc-contributing-clean ocah-doc-home-clean
+ocah-doc-clean: ocah-doc-trm-clean ocah-doc-integrator-clean ocah-doc-programmer-clean ocah-doc-appnotes-clean ocah-doc-starting-clean ocah-doc-home-clean
 
 ## Stage all books (registers + symlinks) without running Antora/asciidoctor-pdf.
 .PHONY: ocah-doc-all-setup
-ocah-doc-all-setup: ocah-doc-trm-setup ocah-doc-integrator-setup ocah-doc-programmer-setup ocah-doc-appnotes-setup ocah-doc-contributing-setup ocah-doc-home-setup
+ocah-doc-all-setup: ocah-doc-trm-setup ocah-doc-integrator-setup ocah-doc-programmer-setup ocah-doc-appnotes-setup ocah-doc-starting-setup ocah-doc-home-setup
 
-## Build standalone Antora HTML sites for every book.
+## Build combined Antora HTML site - alias of doc-combined-html for consistency
 .PHONY: ocah-doc-all-html
-ocah-doc-all-html: ocah-doc-trm-html ocah-doc-integrator-html ocah-doc-programmer-html ocah-doc-appnotes-html ocah-doc-contributing-html ocah-doc-home-html
+ocah-doc-all-html: ocah-doc-combined-html
 
 ## Build PDFs for every book that has one (home is HTML-only).
 .PHONY: ocah-doc-all-pdf
-ocah-doc-all-pdf: ocah-doc-trm-pdf ocah-doc-integrator-pdf ocah-doc-programmer-pdf ocah-doc-appnotes-pdf ocah-doc-contributing-pdf
+ocah-doc-all-pdf: ocah-doc-trm-pdf ocah-doc-integrator-pdf ocah-doc-programmer-pdf ocah-doc-appnotes-pdf ocah-doc-starting-pdf
 
-# Alias doc-all-serve to doc-combined-html, and then manually serve - consistency
+# Construct combined Antora HTML site, and then manually serve
 .PHONY: ocah-doc-all-serve
-ocah-doc-all-serve: ocah-doc-combined-html
+ocah-doc-all-serve: ocah-doc-all-html
 	@echo "Serving all books at http://localhost:8000 (Ctrl+C to stop)"
 	@cd "$(OCAH_GHPAGES_DIR)" && python3 -m http.server 8000
 

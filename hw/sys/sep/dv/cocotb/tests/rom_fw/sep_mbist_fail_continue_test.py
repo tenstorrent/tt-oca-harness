@@ -67,6 +67,7 @@ import cocotb
 import pyuvm
 from cocotb.triggers import RisingEdge
 from env.sep_efuse_image import LC_TEST_DEV, SepEfuseImage
+from env.sep_smc_mem import SMC_DFT_STATUS_ADDR, SMC_SCRATCH10_ADDR
 from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
 
 # Must match +sep_dft_status in the testlist. Identical to the failure arm's
@@ -147,6 +148,8 @@ class sep_mbist_fail_continue_test(sep_rom_ot_dma_boot_test):
         A single final read could not see it.
         """
         dut = cocotb.top
+        smc_mem = self.cfg.smc_mem
+        assert smc_mem is not None, "SMC responder not bound (rom_boot target only)"
         last_status = None
         last_s10 = None
         last_dft = None
@@ -157,11 +160,11 @@ class sep_mbist_fail_continue_test(sep_rom_ot_dma_boot_test):
                 if status != last_status:
                     last_status = status
                     self._status_seq.append(status)
-                s10 = self.rd(dut.smc_scratch10_probe_o) & 0xFFFF_FFFF
+                s10 = smc_mem.read32(SMC_SCRATCH10_ADDR)
                 if s10 != last_s10:
                     last_s10 = s10
                     self._s10_seq.append(s10)
-                dft = self.rd(dut.smc_dft_status_probe_o) & 0xFFFF_FFFF
+                dft = smc_mem.read32(SMC_DFT_STATUS_ADDR)
                 if dft != last_dft:
                     last_dft = dft
                     self._dft_seq.append(dft)

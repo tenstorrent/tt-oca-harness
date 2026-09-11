@@ -28,6 +28,10 @@
 // the repo-controlled cocotb runner wrapper in the SEP DV flow).
 public_flat_rw -module "sep_uvm_top" -var "*"
 
+// The shared AXI VIP interface on the SEP->SMC boundary (rom_boot target):
+// cocotb binds the slave agent to its members.
+public_flat_rw -module "ocah_axi_if" -var "*"
+
 // sep_wrapper DUT: tb_backdoor_mem in sep_uvm_top writes the real
 // memory macro arrays (default-fill patterns + firmware/image loads). Those XMR writes
 // no-op under Verilator unless the target array is public. These three cover all eight

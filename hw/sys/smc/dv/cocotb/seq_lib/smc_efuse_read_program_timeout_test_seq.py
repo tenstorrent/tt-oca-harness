@@ -129,6 +129,22 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         await self.csr_write(f"{label}_IDLE", READ_CTRL, 0)
         return st, data
 
+    async def _read_no_enable(self, label: str) -> tuple[int, int]:
+        """`read_go` with `read_enable` LOW -- the one cause the RDL sanctions.
+
+        `efuse_interface_ctrl.rdl` documents READ_STATUS as "Logic error, assert
+        read_go when read is not enabled", and `efuse_read_interface.sv:109-113`
+        is the arm that implements it, resolved in `ST_READ_IDLE` before any
+        command reaches the bank model. Identical to `_read` except the command
+        word omits READ_EN, so the difference between the two is exactly the
+        quantity under test.
+        """
+        await self.csr_write(f"{label}_GO", READ_CTRL, _BIT | READ_GO)
+        st = await self._wait_mask(READ_CTRL, READ_DONE, f"{label}_DONE")
+        data = await self.csr_read(f"{label}_DATA", READ_DATA)
+        await self.csr_write(f"{label}_IDLE", READ_CTRL, 0)
+        return st, data
+
     async def body(self) -> None:
         dut = cocotb.top
         await self.wait_fuse_sense_done()
@@ -157,11 +173,12 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         stat_hold = await self.csr_read("STATUS_HOLD", STATUS)
         assert st_hold & PROG_ERR, f"timeout PROGRAM_STATUS not sticky: CTRL=0x{st_hold:x}"
         # PROGRAM_STATUS is live HW from the last op; writing 0 does not clear
-        # it. EFUSE_INTERFACE_CTRL_STATUS is asserted per field from the
-        # generated header ([EXACT-EXPECTATION]): fuse sense has completed, and
-        # a request aborted by the *timeout* counter is neither an eFuse request
-        # error nor an address error, so all three error bits must read 0 and
-        # SENSE_DONE must read 1.
+        # it. EFUSE_INTERFACE_CTRL_STATUS is now asserted per field from the
+        # generated header rather than printed next to no expectation
+        # ([EXACT-EXPECTATION]): fuse sense has completed, and a request that
+        # was aborted by the *timeout* counter is not an eFuse request error nor
+        # an address error, so all three error bits must read 0 and SENSE_DONE
+        # must read 1.
         assert (stat_hold & SENSE_DONE) == SENSE_DONE, (
             f"STATUS.EFUSE_SENSE_DONE not set after fuse sense: STATUS=0x{stat_hold:x}"
         )
@@ -213,16 +230,19 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         await self.csr_write("READ_TMO_SHORT", READ_TMO, TMO_EN_R)
         got = await self.csr_read("READ_TMO_RB", READ_TMO, expected=TMO_EN_R)
         st, data = await self._read("READ_TMO")
+        assert st & READ_ERR, f"short read timeout expected READ_STATUS=1 got CTRL=0x{st:x}"
         assert data == 0, f"timed-out read data=0x{data:x} want 0"
         self.read_tmo_ok = True
         self.read_tmo_data = data
 
         # SAME-CONFIGURATION POSITIVE CONTROL for the `data == 0` above
-        # ([NEGATIVE-NEEDS-POSITIVE-CONTROL]): the enable bit stays 1 and only
-        # the cycle count changes to the RDL default (0x%x), so the difference
-        # between this read and the one above is exactly the quantity under
-        # test. A dead or unmapped READ_DATA register would satisfy `data == 0`
-        # alone.
+        # ([NEGATIVE-NEEDS-POSITIVE-CONTROL]). A recovery leg that re-read with
+        # READ_REQ_TIMOUT_ENABLE back at 0 would show no read with the timeout
+        # ENABLED returning data, and a dead or unmapped READ_DATA register
+        # would satisfy `data == 0` just as well. Here the
+        # enable bit stays 1 and only the cycle count changes to the RDL default
+        # (0x%x), so the difference between this read and the one above is
+        # exactly the quantity under test.
         tmo_enabled_long = TMO_EN_R | TMO_CYC_RST_R
         await self.csr_write("READ_TMO_EN_LONG", READ_TMO, tmo_enabled_long)
         await self.csr_read("READ_TMO_EN_LONG_RB", READ_TMO, expected=tmo_enabled_long)
@@ -284,6 +304,70 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
             data,
         )
         self.chk_seen.add("CHK-EFUSE-TMO-RD-REC")
+
+        # READ_STATUS positive control. Every other READ_STATUS assertion in
+        # this file is `== 0` (:234 and :275 above); on their own they cannot
+        # distinguish a working status bit from a dead one, so a failure of the
+        # bit to SET would go unreported ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
+        #
+        # Armed by the recovery read immediately above: `:275` has just proven
+        # READ_STATUS == 0 on a *successful* read, which matters because
+        # `efuse_read_interface.sv:95` defaults `read_err_d = read_err_q` -- the
+        # field holds, so without that arming a stale 1 would satisfy this leg.
+        #
+        # The alternative cause is excluded rather than assumed:
+        # `efuse_interface_controller.sv:612` gates `read_enable` with
+        # `&& ~efuse_req_err`, so a sticky req-err reaches the very same
+        # `!read_enable_i` branch and would set READ_STATUS for the wrong
+        # reason. STATUS is therefore read and REQ_ERROR required clear first.
+        stat_pre = await self.csr_read("RD_NOEN_STATUS_PRE", STATUS)
+        assert (stat_pre & REQ_ERR) == 0, (
+            f"STATUS.EFUSE_REQ_ERROR already set (STATUS=0x{stat_pre:x}) before "
+            f"the no-enable read: efuse_interface_controller.sv:612 would route "
+            f"that down the same !read_enable branch, so a READ_STATUS=1 below "
+            f"could not be attributed to read_enable=0"
+        )
+        st_noen, data_noen = await self._read_no_enable("READ_NOEN")
+        assert (st_noen & READ_ERR) == READ_ERR, (
+            f"read_go asserted with read_enable=0 did not set READ_STATUS "
+            f"(READ_CTRL=0x{st_noen:x}, mask=0x{READ_ERR:x}); "
+            f"efuse_interface_ctrl.rdl documents this as the field's cause and "
+            f"efuse_read_interface.sv:109-113 implements it"
+        )
+        # READ_DATA is deliberately NOT asserted here. Measured: the no-enable
+        # arm (`efuse_read_interface.sv:109-113`) leaves `read_back_data_d` at
+        # its `:98` hold, so the register keeps the previous successful read's
+        # word -- 0xa5a55a5b in this run, the value CHK-EFUSE-TMO-RD-REC just
+        # read. Its two sibling refusal arms both scrub it instead:
+        # `:114-123` (OOB) clears it with the comment "clear the data register
+        # so a stale value from a prior in-range read cannot leak via an OOB
+        # read" citing issue #2750, and `:137-142` (macro error / secure_tm /
+        # req-err) clears it too. That inconsistency is a separate finding and
+        # is tracked by its own reproducer; folding it in here would make this
+        # positive control fail for a reason that is not the property it exists
+        # to establish. The value is logged as an observation.
+        cocotb.log.info(
+            "CHK-EFUSE-READ-STATUS-SET-ON-NO-ENABLE: the SAME command word as "
+            "the recovery read minus READ_ENABLE(0x%x) gives READ_CTRL=0x%x "
+            "with READ_STATUS(0x%x)=1 and READ_DATA=0x%x, against READ_CTRL="
+            "0x%x READ_STATUS=0 on the enabled read at the same cycle count. "
+            "STATUS=0x%x with REQ_ERROR(0x%x)=0 excludes the sticky-req-err "
+            "path to the same branch. DUT property: READ_STATUS discriminates "
+            "the two, so the `READ_STATUS == 0` assertions above are "
+            "falsifiable. OBSERVED, NOT ASSERTED: READ_DATA holds the previous "
+            "read's word rather than being scrubbed as the OOB and reject arms "
+            "scrub theirs -- see the comment above",
+            READ_EN,
+            st_noen,
+            READ_ERR,
+            data_noen,
+            st,
+            stat_pre,
+            REQ_ERR,
+        )
+        self.chk_seen.add("CHK-EFUSE-READ-STATUS-SET-ON-NO-ENABLE")
+        await self._clear_req_err()
+
         # Summary token, carrying the measured words. Boolean leg flags would
         # be literal `True` at this line -- each leg above raises on failure, so
         # reaching here is all they could report, and a kept-log line whose

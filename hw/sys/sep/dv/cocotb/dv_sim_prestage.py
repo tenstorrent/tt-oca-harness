@@ -183,6 +183,11 @@ EFUSE_IMAGE_REGISTRY: dict[str, dict] = {
         "lc_raw": 0x1,
         "fixed_from": "rma_token",
     },
+    "sep_efuse_digest_latch_fault_test": {
+        "mode": "random",
+        "lc_raw": 0x1,
+        "fixed_from": "rma_token",
+    },
     # Set-only shadow OR-merge. Sensed ones come from SepEfuseSetOnlyCfg(seed);
     # see _set_only_fixed() so the t=0 hex matches the test golden.
     "sep_efuse_set_only_monotonicity_test": {
@@ -232,6 +237,12 @@ EFUSE_IMAGE_REGISTRY: dict[str, dict] = {
     # Locked-field shadow IRQ. SPARE lock bits and patterns come from
     # SepLockedFieldIrqCfg(seed); see _locked_field_irq_fixed().
     "sep_locked_field_access_irq_path_test": {
+        "mode": "random",
+        "lc_raw": 0x1,
+        "fixed_from": "locked_field_irq",
+    },
+    # SECURE_TM leaf of the same module: same image pins, same seed derivation.
+    "sep_efuse_secure_tm_write_lock_test": {
         "mode": "random",
         "lc_raw": 0x1,
         "fixed_from": "locked_field_irq",

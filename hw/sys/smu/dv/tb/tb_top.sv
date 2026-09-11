@@ -5,7 +5,7 @@
 // and the SystemVerilog UVM flow. ONE module, two shapes:
 //   * default (cocotb, `--dut smu`): the pin-level ANSI port list cocotb
 //     drives and samples;
-//   * `UVM` (SV-UVM, `--dut smu --framework uvm`): the port list is replaced
+//   * `UVM` (SV-UVM, `--dut smu_block --framework uvm`): the port list is replaced
 //     by internal TB signals and the harness block at the end of the module
 //     adds the clocks, the shared JTAG VIP interface, the SMU-local and
 //     embedded-DTP TB interfaces, quiescent tie-offs, uvm_config_db
@@ -16,7 +16,8 @@
 //
 // Instantiates bare `smu` with SEP=0, flattens JTAG + external SMN AXI for
 // the VIPs. Macro/I3C/DTP CSR boundaries are idle (no TB placeholder
-// terminators); smu_axi_out_sim_slave terminates outbound SMN.
+// terminators); outbound SMN stays a struct port, placed on u_axi_out_if by
+// ocah_axi_struct_bridge for the shared AXI slave agent.
 //
 // Real checkers consume:
 //   - rst_cold_stable_ref_clk_no / rst_primary_* after reset release
@@ -127,16 +128,21 @@ module smu_uvm_top
   assign s_axi_rvalid             = smu_axi_in_resp.r_valid;
   assign smu_axi_in_req.r_ready   = s_axi_rready;
 
-  // External SMN AXI slave.
-  smu_axi_out_sim_slave #(
+  // External SMN AXI4 egress: the shared slave agent answers on u_axi_out_if
+  // in both realizations (cocotb binds the instance, SV-UVM takes the vif
+  // from uvm_config_db); the bridge places the crossbar's struct port on it.
+  ocah_axi_if u_axi_out_if (
+    .aclk    (clk_smu_i),
+    .aresetn (rst_cold_ni)
+  );
+
+  ocah_axi_struct_bridge #(
     .axi_req_t  (smu_axi_xbar_pkg::axi_out_req_t),
-    .axi_resp_t (smu_axi_xbar_pkg::axi_out_resp_t),
-    .AddrWidth  (56)
-  ) u_axi_out_mem (
-    .clk_i      (clk_smu_i),
-    .rst_ni     (rst_cold_ni),
+    .axi_resp_t (smu_axi_xbar_pkg::axi_out_resp_t)
+  ) u_axi_out_bridge (
     .axi_req_i  (smu_axi_out_req),
-    .axi_resp_o (smu_axi_out_resp)
+    .axi_resp_o (smu_axi_out_resp),
+    .axi_if     (u_axi_out_if)
   );
 
   always_ff @(posedge clk_smu_i or negedge rst_cold_ni) begin
@@ -446,11 +452,8 @@ module smu_uvm_top
     .fuse_reset_n_delayed_o,
     .skip_mem_repair_o           (),
     .ext_boot_seq_done_i         (ext_boot_seq_done_i),
-    .temp_interrupt_i            (1'b0),
     .lc_state_o                  (lc_state_o),
     .lc_sigint_err_o             (lc_sigint_err_o),
-    .ras_bank_chip_o             (),
-    .ras_bank_instance_o         (),
     .ndmreset_request_i          ('0),
     .ndmreset_process_o          (),
     .ext_mailbox_interrupts_o    (mbx_irqs),
@@ -505,13 +508,14 @@ module smu_uvm_top
     .sep_km_rom_mem_rsp_i        ('0),
     .sep_km_sram_mem_req_o       (),
     .sep_km_sram_mem_rsp_i       ('0),
-    .spi_irq_i                   (1'b0),
     .sep_external_req_o     (),
     .sep_external_resp_i    ('0),
     .sep_cpu_trace_o             (),
     .sep_extintsrc_req_i         ('0),
     .lcc_demote_state_1_o        (lcc_demote_state_1_o),
     .lcc_demote_state_2_o        (lcc_demote_state_2_o),
+    .sep_fuse_dft_disable_o      (),
+    .smc_fuse_dft_disable_o      (),
     .sep_fuse_sense_done_o       (),
     .clk_sep_wdt_i               (clk_smu_i),
     .secure_tm_req_i             (secure_tm_req),
@@ -555,15 +559,71 @@ module smu_uvm_top
         ({{(smc_pkg::NUM_GPIO_WRAPS-1){1'b0}}, gpio_boot_stall_drive_i}
          << 57);
 
+  // ------------------------------------------------------------------
+  // Functional coverage (cov/sv/): shared by both tb shapes. The modules
+  // carry cover-property points, which land in the `user` metric family
+  // under --coverage-user, plus commercial-only covergroups internally.
+  // Every port below is a smu_tb_signal_list.svh signal, so no
+  // hierarchical reference and no public-scope change is needed.
+  // ------------------------------------------------------------------
+  smu_boot_fcov u_smu_boot_fcov (
+    .clk_ref_i                   (clk_ref_i),
+    .clk_smu_i                   (clk_smu_i),
+    .powergood_i                 (powergood_i),
+    .rst_cold_ni                 (rst_cold_ni),
+    .ext_boot_seq_done_i         (ext_boot_seq_done_i),
+    .rst_cold_stable_ref_clk_ni  (rst_cold_stable_ref_clk_no),
+    .rst_primary_ref_clk_ni      (rst_primary_ref_clk_no),
+    .rst_primary_smc_clk_ni      (rst_primary_smc_clk_no),
+    .rst_primary_periph_clk_ni   (rst_primary_periph_clk_no),
+    .init_mem_done_i             (init_mem_done_o),
+    .fuse_sense_done_i           (fuse_sense_done_o),
+    .fuse_reset_n_delayed_i      (fuse_reset_n_delayed_o),
+    .jtag_boot_stall_ovrd_i      (jtag_boot_stall_ovrd),
+    .jtag_boot_stall_i           (jtag_boot_stall),
+    .gpio_boot_stall_drive_i     (gpio_boot_stall_drive_i),
+    .lc_state_i                  (lc_state_o),
+    .lc_sigint_err_i             (lc_sigint_err_o),
+    .lcc_demote_state_1_i        (lcc_demote_state_1_o),
+    .lcc_demote_state_2_i        (lcc_demote_state_2_o)
+  );
+
+  smu_xbar_fcov u_smu_xbar_fcov (
+    .clk_smu_i                (clk_smu_i),
+    .rst_cold_ni              (rst_cold_ni),
+    .sep_global_base_i        (sep_global_base_o),
+    .sep_region_size_i        (sep_region_size_o),
+    .smc_global_base_i        (smc_global_base_o),
+    .smc_region_size_i        (smc_region_size_o),
+    .s_axi_awvalid_i          (s_axi_awvalid),
+    .s_axi_awready_i          (s_axi_awready),
+    .s_axi_wvalid_i           (s_axi_wvalid),
+    .s_axi_wready_i           (s_axi_wready),
+    .s_axi_wlast_i            (s_axi_wlast),
+    .s_axi_bvalid_i           (s_axi_bvalid),
+    .s_axi_bready_i           (s_axi_bready),
+    .s_axi_bresp_i            (s_axi_bresp),
+    .s_axi_arvalid_i          (s_axi_arvalid),
+    .s_axi_arready_i          (s_axi_arready),
+    .s_axi_rvalid_i           (s_axi_rvalid),
+    .s_axi_rready_i           (s_axi_rready),
+    .s_axi_rlast_i            (s_axi_rlast),
+    .s_axi_rresp_i            (s_axi_rresp),
+    .axi_in_awvalid_count_i   (smu_axi_in_awvalid_count),
+    .axi_out_awvalid_count_i  (smu_axi_out_awvalid_count),
+    .axil_external_active_i   (tb_axil_external_active)
+  );
+
 `ifdef UVM
   // ------------------------------------------------------------------
-  // SV-UVM harness (`--dut smu --framework uvm`): clocks, the shared JTAG
+  // SV-UVM harness (`--dut smu_block --framework uvm`): clocks, the shared JTAG
   // VIP interface on the primary TAP pins, the SMU-local TB interface, the
   // embedded DTP's TB interface (so the DTP bench's reference models and
   // checkers attach unchanged), the JTAG protocol SVA, quiescent tie-offs
-  // for every other cocotb-driven stimulus pin, uvm_config_db publication,
-  // and run_test(). Compiled only when the native uvm flow defines UVM; the
-  // cocotb flow sees only the ported module above.
+  // for every other cocotb-driven stimulus pin, uvm_config_db publication
+  // of the four virtual interfaces (u_axi_out_if lives above, in both
+  // shapes), and run_test(). Compiled only when the native uvm flow
+  // defines UVM; the cocotb flow sees only the ported module above.
   // ------------------------------------------------------------------
   import uvm_pkg::*;
 
@@ -700,6 +760,7 @@ module smu_uvm_top
     uvm_config_db#(virtual smu_tb_if)::set(null, "*", "tb_vif", u_tb_if);
     uvm_config_db#(virtual dtp_tb_if)::set(null, "*", "dtp_tb_vif", u_dtp_tb_if);
     uvm_config_db#(virtual ocah_jtag_if)::set(null, "*", "jtag_vif", u_jtag_if);
+    uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "axi_out_vif", u_axi_out_if);
     run_test();
   end
 `endif

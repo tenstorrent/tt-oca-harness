@@ -53,17 +53,14 @@
 |`wdt_first_timeout_o` |`logic` |Output |1 |First watchdog timeout signal. |CPU cluster WDT → Reset Unit |N/A
 |`wdt_second_timeout_o` |`logic` |Output |1 |Second watchdog timeout signal. |Reset Unit → External systems |N/A
 |`smc_region_size_o` |`logic` |Output |`[31:0]` |SMC address region size output. |SMC Internal Registers → External systems |N/A
-|`ext_interrupts_i` |`logic` |Input |`[NUM_EXT_INTERRUPTS-1:0]` |External interrupt inputs. Width is config-dependent: 32 (1-core) or 256 (4-core). Maps directly to `cpu_interrupts_o[NUM_EXT_INTERRUPTS-1:0]`. |External sources → Interrupt aggregator |N/A, tie to '0 if unused
-|`sep_mailbox_interrupts_i` |`logic` |Input |`[7:0]` |SEP → SMC mailbox interrupt inputs (8 channels). Routed through `peripheral_interrupts[7:0]` → `cpu_interrupts_o[NUM_EXT_INTERRUPTS+7 : NUM_EXT_INTERRUPTS]` (1-core: bits 39–32, 4-core: bits 263–256). |SEP → Interrupt aggregator |N/A, tie to '0 if unused
-|`sep_wdt_reset_n_i` |`logic` |Input |1 |SEP watchdog reset (active low). Active-low polarity is inverted before routing to `peripheral_interrupts[26]` → `cpu_interrupts_o[NUM_EXT_INTERRUPTS+26]` (1-core: bit 58, 4-core: bit 282). |SEP → Interrupt aggregator |N/A
+|`ext_interrupts_i` |`logic` |Input |`[NUM_EXT_INTERRUPTS-1:0]` |External interrupt inputs. Width is 256. Synchronized to `clk_smc` (3-stage) in `smc_base`, then drives internal interrupts to the SMC CPU. |External sources → Interrupt aggregator |N/A, tie to '0 if unused
+|`sep_mailbox_interrupts_i` |`logic` |Input |`[7:0]` |SEP → SMC mailbox interrupt inputs (8 channels). Routed to internal interrupts to the SMC CPU. |SEP → Interrupt aggregator |N/A, tie to '0 if unused
+|`sep_wdt_reset_n_i` |`logic` |Input |1 |SEP watchdog reset (active low). Active-low polarity is inverted before routing to internal interrupts to the SMC CPU. |SEP → Interrupt aggregator |N/A
 |`fuse_sense_done_o` |`logic` |Output |1 |Fuse sense completion output. |eFuse controller → Memory repair logic |N/A
 |`fuse_reset_n_delayed_o` |`logic` |Output |1 |Delayed fuse reset output (after 16 pipeline stages). |eFuse controller → External systems |N/A
 |`skip_mem_repair_o` |`logic` |Output |1 |Skip memory repair output. |Reset Unit → Memory repair logic |N/A
 |`ext_boot_seq_done_i` |`logic` |Input |1 |External boot sequence completion input (memory repair and shadow register override done); gates reset release. |External boot/repair controller → eFuse controller |N/A
-|`temp_interrupt_i` |`logic` |Input |1 |PVT temperature sensor interrupt. Routes to `peripheral_interrupts[27]` → `cpu_interrupts_o[NUM_EXT_INTERRUPTS+27]` (1-core: bit 59, 4-core: bit 283). |PVT wrap → Interrupt aggregator |N/A, tie to '0 if unused
 |`lc_state_i` |`logic` |Input |`[2*LC_STATE_WIDTH-1:0]` (8 bits) |Lifecycle state input, differentially encoded. |Lifecycle controller → SMC Internal Registers |From SEP; tie to 8'hf0 if unused (encoded TEST_DEV)
-|`ras_bank_chip_o` |`logic` |Output |`[3:0]` |RAS bank chip selection output. |SMC Internal Registers → RAS system |N/A
-|`ras_bank_instance_o` |`logic` |Output |`[3:0]` |RAS bank instance selection output. |SMC Internal Registers → RAS system |N/A
 |`ext_mailbox_interrupts_o` |`logic` |Output |`[NUM_MAILBOXES-1:0]` |External mailbox interrupt outputs (32 interrupts, mapped to IDs 156-187). |Mailbox controller → External targets |N/A
 |`cfg_flr_pf_active_i` |`logic` |Input |1 |Function Level Reset (FLR) PF active signal. |PCIe/System → Reset Unit |N/A, tie to '0 if unused
 |`isolate_req_o` |`logic` |Output |`[31:0]` |Isolation request output for 32 subsystems. |Reset Unit → 32 subsystems |N/A
@@ -92,7 +89,7 @@
 |`jtag_reset_ctrl_i` |`smc_pkg::jtag_smc_reset_ctrl_t` |Input |- |Typed reset-override control struct carrying all SMC reset override enables and active-low values. Driven by DTP via JTAG IC_RESET. Tie all enables to 0 when not used. |DTP → SMC reset unit |All enables 0
 |`cla_gpio_enable_o` |`logic` |Output |1 |CLA GPIO enable output. |DFD controller → CLA |N/A
 |`tdr_dbg_ctrl_clock_stop_en_i` |`logic` |Input |1 |DEBUG_CONTROL CLA clock-stop enable. |DTP → DFD |1'b0
-|`tdr_dbg_ctrl_clocks_stopped_by_cla_o` |`logic` |Output |1 |CLA halt-clock status under enable; also drives `cpu_interrupts_o[NUM_EXT_INTERRUPTS+64]` (internal interrupt 0) — 1-core: bit 96, 4-core: bit 320. |DFD → DTP / interrupt |N/A
+|`tdr_dbg_ctrl_clocks_stopped_by_cla_o` |`logic` |Output |1 |CLA halt-clock status under enable; also drives `cpu_interrupts_o[NUM_EXT_INTERRUPTS+64]` (internal interrupt 0), bit 320. |DFD → DTP / interrupt |N/A
 |`xtrigger_ss_i` |`smc_pkg::xtrigger_t` |Input |- |Cross-trigger subsystem input. SMU drives from `dtp_xtrig_ctm_src_req[1:0]`. Internal SMU connection; not an SMU external port. |SMU internal: DTP `xtrig_ctm_src_req_o[1:0]` → SMC |N/A
 |`xtrigger_ss_o` |`smc_pkg::xtrigger_t` |Output |- |Cross-trigger subsystem output. SMU routes to `dtp_xtrig_ctm_dst_req[1:0]`. Internal SMU connection; not an SMU external port. |SMU internal: SMC → DTP `xtrig_ctm_dst_req_i[1:0]` |N/A
 |`trace_mem_req_o` |`dfd_trace_mem_pkg::SinkMemPktIn_s` |Output |`[TRC_RAM_INSTANCES-1:0]` |Trace memory interface requests. |DFD controller → Trace memory |N/A, leave floating if unused

@@ -52,10 +52,8 @@ def _cpu_cluster_count() -> int:
 
     NOT proven: that the number itself is the specified cluster count. A
     non-RTL, non-generated, non-VPLAN authority for it does not exist in this
-    repo. The closest §4-authoritative documents bound the CPU *core* count to a
-    range rather than pinning a cluster count -- ``hw/sys/smc/doc/cpu.adoc:11``
-    ("supports 1 to 4 processor cores"), ``:16`` ("Up to 4 Rocket CPU cores")
-    and ``:32`` ("|Cores |1-4") -- and ``ndm_reset.rdl:17-19`` only states the
+    repo. ``hw/sys/smc/doc/cpu.adoc`` pins the CPU *core* count at 4, and
+    ``ndm_reset.rdl:17-19`` only states the
     register "Supports up to 32 CPU Clusters". If the integration tied the wrong
     count, this leg would not catch it; that residual is declared, not hidden.
     """
@@ -105,8 +103,7 @@ _DEBUG_BUS_MUX_BYTES = 8
 
 # Value-compared diagnostic reads, identical on Verilator and VCS. Every
 # expectation here traces to a cited RDL declaration:
-#   * RAS_BANK_INFO (chip_config.rdl) / NDMRESET_PROCESS (ndm_reset.rdl):
-#     RDL reset 0x0 -> spec-anchored.
+#   * NDMRESET_PROCESS (ndm_reset.rdl): RDL reset 0x0 -> spec-anchored.
 #   * DFX DEBUG_CTRL / DEBUG_BUS_MUX: PeakRDL symbols at 0xC000_B808/B810,
 #     RDL reset 0x0 (0xC001_0208/0210 is not this register).
 #     DEBUG_CTRL is regwidth 32; DEBUG_BUS_MUX is regwidth 64 (see above).
@@ -114,12 +111,6 @@ _DEBUG_BUS_MUX_BYTES = 8
 # RDL/spec-traceable (see _cpu_cluster_count) and it is handled by its own
 # propagation + sw=r legs in body(), which say exactly what they prove.
 DIAGNOSTIC_READS = [
-    (
-        "CHIP_CONFIG_RAS_BANK_INFO",
-        smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_RAS_BANK_INFO_BASE_ADDR"),
-        0x0,
-        4,
-    ),
     (
         "NDMRESET_PROCESS",
         smc_addr("SMC_TOP_SMC_MISC_WRAP_NDM_RESET_NDMRESET_PROCESS_BASE_ADDR"),

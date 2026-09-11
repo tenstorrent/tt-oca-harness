@@ -67,14 +67,20 @@ from .coverage import (
     discover_coverage_inputs,
     load_manifest,
     new_manifest,
-    parse_coverage_report,
     render_tokens,
     write_json,
 )
-from .coverage_parsers import parse_coverage_details
+from .coverage_closure import (
+    coverage_backend,
+    coverage_fail_under,
+    coverage_merged_name,
+    coverage_parser_name,
+    coverage_run_paths,
+    grade_coverage_run,
+    parse_coverage_run,
+)
 from .coverage_policy import (
     CoveragePolicy,
-    apply_coverage_policy,
     load_coverage_policy,
     native_policy_args,
     native_policy_manifest,
@@ -2657,15 +2663,6 @@ def xcelium_sim(
 # only compatible databases, and normalize vendor reports under `<run_dir>/cov/`.
 
 
-def _float_cfg(value: Any, key: str) -> float | None:
-    if value is None or value == "":
-        return None
-    try:
-        return float(value)
-    except (TypeError, ValueError) as exc:
-        raise ConfigError(f"`{key}` must be a number") from exc
-
-
 def _coverage_tool_version(tool: str, root: Path) -> str:
     if tool == "verilator":
         return verilator_version(root)
@@ -2745,7 +2742,7 @@ def _file_sha256(path: str | Path) -> str:
     return digest.hexdigest()
 
 
-def _coverage_policy(
+def resolve_coverage_policy(
     flow: Flow,
     root: Path,
     tool: str,
@@ -2785,26 +2782,6 @@ def _legacy_coverage_policy_args(
     )
 
 
-def _closure_scalar_metrics(details: Any) -> dict[str, float]:
-    aliases = {
-        "condition": "cond",
-        "fsm_state": "fsm",
-        "fsm_transition": "fsm",
-        "assertion": "assert",
-    }
-    metrics: dict[str, float] = {}
-    for record in details.metrics:
-        value = record.effective_percent
-        if value is None:
-            continue
-        key = aliases.get(record.metric_family, record.metric_family)
-        if key == "fsm" and key in metrics:
-            metrics[key] = min(metrics[key], value)
-        else:
-            metrics[key] = value
-    return metrics
-
-
 def coverage_stage(
     flow: Flow,
     root: Path,
@@ -2823,23 +2800,17 @@ def coverage_stage(
     if not tool_cov:
         raise ConfigError(f"no coverage configuration is available for tool `{tool}`")
 
-    cov_dir = run_dir / "cov"
-    merged_name = tool_cov.get("merged_name")
-    if not isinstance(merged_name, str) or not merged_name:
-        raise ConfigError(f"coverage.{tool}.merged_name must be a non-empty string")
-    merged = cov_dir / merged_name
-    report_dir = cov_dir / "report"
-    manifest_path = cov_dir / "coverage.json"
-    summary_path = report_dir / "summary.json"
-    raw_details_path = report_dir / "coverage-details.raw.json"
-    details_path = report_dir / "coverage-details.json"
-    application_path = report_dir / "policy-application.json"
-    parser = str(tool_cov.get("parser", ""))
-    backend = str(tool_cov.get("backend") or parser or tool)
+    paths = coverage_run_paths(run_dir, coverage_merged_name(tool, tool_cov))
+    cov_dir = paths.cov_dir
+    merged = paths.merged
+    report_dir = paths.report_dir
+    manifest_path = paths.manifest
+    parser = coverage_parser_name(tool_cov)
+    backend = coverage_backend(tool, tool_cov)
     supported_metrics = _coverage_supported_metrics(args, tool)
     exclusions = _coverage_auxiliary_files(flow, root, tool_cov, "exclude_files")
     waivers = _coverage_auxiliary_files(flow, root, tool_cov, "waiver_files")
-    policy = _coverage_policy(flow, root, tool, tool_cov)
+    policy = resolve_coverage_policy(flow, root, tool, tool_cov)
     design_db = _coverage_design_db(flow, root, sim_cfg, tool_cov, args)
     ctx = {
         "run_dir": str(run_dir),
@@ -2971,11 +2942,6 @@ def coverage_stage(
     manifest = load_manifest(manifest_path)
     if manifest.get("dut") != flow.name or manifest.get("tool") != tool:
         raise CoverageError("coverage manifest DUT/tool does not match the requested report stage")
-    merged_value = (manifest.get("artifacts") or {}).get("merged")
-    if not isinstance(merged_value, str):
-        raise CoverageError("coverage manifest does not record a merged database")
-    merged = repo_path(root, merged_value)
-    ctx["merged"] = str(merged)
     if not artifact_ready(merged):
         raise CoverageError(f"merged coverage database is missing or empty: {merged}")
     report_dir.mkdir(parents=True, exist_ok=True)
@@ -3008,96 +2974,36 @@ def coverage_stage(
 
     threshold = args.fail_under
     if threshold is None:
-        threshold = _float_cfg(tool_cov.get("fail_under"), f"coverage.{tool}.fail_under")
+        threshold = coverage_fail_under(tool, tool_cov)
     threshold = threshold if threshold is not None else 0.0
-    scalar_metrics, total_percent = parse_coverage_report(
-        parser=parser,
-        report_dir=report_dir,
-        merged=merged,
-        log_path=log_path,
-    )
-    details = parse_coverage_details(
+    parsed = parse_coverage_run(
         parser=parser,
         dut=flow.name,
         tool=tool,
-        target=manifest.get("target"),
-        build_fingerprint=manifest.get("build_fingerprint"),
-        report_dir=report_dir,
+        manifest=manifest,
         merged=merged,
+        report_dir=report_dir,
         log_path=log_path,
     )
-    write_json(raw_details_path, details.to_dict())
-    details = apply_coverage_policy(details, policy)
-    if details.policy_application.get("policy"):
-        details.policy_application["policy"] = repo_rel(root, details.policy_application["policy"])
-    for entry in details.policy_application.get("native_files", []):
-        if isinstance(entry, dict) and entry.get("path"):
-            entry["path"] = repo_rel(root, entry["path"])
-    effective_details = details.to_dict()
-    write_json(details_path, effective_details)
-    write_json(application_path, details.policy_application)
-    metrics = dict(scalar_metrics)
-    metrics.update(_closure_scalar_metrics(details))
-    compatibility_threshold_met = total_percent >= threshold
-    policy_threshold_met = all(bool(outcome.get("met")) for outcome in details.thresholds)
-    threshold_met = compatibility_threshold_met and policy_threshold_met
-    status = "PASS" if threshold_met else "FAIL"
-    holes_summary = effective_details.get("holes_summary", {})
-    summary_payload = {
-        "schema_version": 2,
-        "dut": flow.name,
-        "tool": tool,
-        "backend": backend,
-        "tool_versions": {tool: _coverage_tool_version(tool, root)},
-        "supported_metrics": supported_metrics,
-        "metrics": metrics,
-        "overall_percent": total_percent,
-        "threshold": threshold,
-        "threshold_met": threshold_met,
-        "compatibility_threshold_met": compatibility_threshold_met,
-        "policy_thresholds": details.thresholds,
-        "status": status,
-        "details_available": details.details_available,
-        "comparison_key": details.comparison_key,
-        "scope_fingerprint": details.scope_fingerprint,
-        "policy_fingerprint": details.policy_fingerprint,
-        "holes_summary": holes_summary,
-        "inputs": [
-            entry.get("path") for entry in manifest.get("inputs", []) if isinstance(entry, dict)
-        ],
-        "artifacts": {
-            "merged": repo_rel(root, merged),
-            "report": repo_rel(root, report_dir),
-            "json": repo_rel(root, summary_path),
-            "manifest": repo_rel(root, manifest_path),
-            "coverage_details_raw": repo_rel(root, raw_details_path),
-            "coverage_details": repo_rel(root, details_path),
-            "policy_application": repo_rel(root, application_path),
-        },
-    }
-    write_json(summary_path, summary_payload)
-    manifest["status"] = status
-    manifest["metrics"] = metrics
-    manifest["overall_percent"] = total_percent
-    manifest["threshold"] = threshold
-    manifest["threshold_met"] = threshold_met
-    manifest["policy_thresholds"] = details.thresholds
-    manifest["comparison_key"] = details.comparison_key
-    manifest["scope_fingerprint"] = details.scope_fingerprint
-    manifest["policy_fingerprint"] = details.policy_fingerprint
-    manifest["holes_summary"] = holes_summary
-    manifest["report_return_code"] = 0
-    manifest["artifacts"]["report"] = repo_rel(root, report_dir)
-    manifest["artifacts"]["summary"] = repo_rel(root, summary_path)
-    manifest["artifacts"]["coverage_details_raw"] = repo_rel(root, raw_details_path)
-    manifest["artifacts"]["coverage_details"] = repo_rel(root, details_path)
-    manifest["artifacts"]["policy_application"] = repo_rel(root, application_path)
-    write_json(manifest_path, manifest)
-    if not threshold_met:
+    write_json(paths.raw_details, parsed.details.to_dict())
+    grade = grade_coverage_run(
+        parsed=parsed,
+        manifest=manifest,
+        dut=flow.name,
+        root=root,
+        tool=tool,
+        tool_cov=tool_cov,
+        run_dir=run_dir,
+        policy=policy,
+        threshold=threshold,
+        tool_version=_coverage_tool_version(tool, root),
+        supported_metrics=supported_metrics,
+    )
+    if not grade.threshold_met:
         with log_path.open("a", encoding="utf-8") as log:
-            if not compatibility_threshold_met:
-                log.write(f"# COVERAGE THRESHOLD: {total_percent} < {threshold}\n")
-            for outcome in details.thresholds:
+            if not grade.compatibility_threshold_met:
+                log.write(f"# COVERAGE THRESHOLD: {grade.total_percent} < {grade.threshold}\n")
+            for outcome in grade.thresholds:
                 if not outcome.get("met"):
                     log.write(
                         "# COVERAGE THRESHOLD: "

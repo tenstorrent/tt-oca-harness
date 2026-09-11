@@ -32,8 +32,9 @@ from .smc_cpu_vip_utils import (
 )
 from .smc_csr_seq_utils import SmcCsrSeq
 
-# Bank0 entry 0 is the first 8 bytes of the scratch image (64B stripe across
-# 8 banks), so the reset-vector fetch reads it.
+# Bank0 entry 0 is the first 8 bytes of the scratch image -- offset 0 is where
+# every field of the smc_scratch_map_pkg decode reads zero -- so the
+# reset-vector fetch reads it.
 _POKE_ENTRY = 0
 _SCRATCH_BOUND_CYCLES = 400_000
 _DED_BOUND_CYCLES = 400_000

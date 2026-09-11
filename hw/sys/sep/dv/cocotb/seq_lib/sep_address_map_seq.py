@@ -13,7 +13,11 @@ Full sweep of every sep_cpu_ctrl register (base 0x10A3_0000) over the CPU LSU bu
   * WRITE_ONLY  — write a benign value to write-only (sw=w) regs (decode + write
                   path); they cannot be read back.
 
-followed by a walk of one readable CSR per LSU-reachable block — Secure DMA,
+The reserved span after the 64-bit ``SEP_FUSE_SENSE_STATUS`` and before
+``SEP_SW_DEBUG`` is not a live register. ``CPU_CTRL_INTERIOR_HOLES`` names
+three words in that span; the test refuses them with a completed error
+response (not a hang). Then a walk of one readable CSR per LSU-reachable
+block — Secure DMA,
 WDT, cold/warm scratch, reset_ctrl, OTBN, AES, HMAC, KMAC, CSRNG, EDN, entropy
 source, Adams Bridge, entropy pool, lifecycle ctrl, KM mailbox, eFuse shadow,
 AXI-lite mailbox, inbound filter, alias-remap, output-remap, and the
@@ -53,6 +57,24 @@ from seq_lib.sep_abr_keygen_seq import ABR_NAME0, NAME0_EXP
 from seq_lib.sep_entropy_pool_seq import POOL_STATUS
 
 BASE = sym("SEP_CPU_CTRL_REG_MAP_BASE_ADDR")
+
+# Interior reserved span in sep_cpu_ctrl. SEP_FUSE_SENSE_STATUS is 64-bit
+# (sep_cpu_ctrl.rdl), so the hole starts at the next 8-byte offset and runs
+# up to SEP_SW_DEBUG. The xbar still claims the window; the slave must
+# complete with SLVERR or DECERR, not hang.
+_FUSE_OFF = SEP_CPU_CTRL.offset("SEP_FUSE_SENSE_STATUS")
+_SW_DEBUG_OFF = SEP_CPU_CTRL.offset("SEP_SW_DEBUG")
+_HOLE_LO = _FUSE_OFF + 8
+_HOLE_NAMED = _HOLE_LO + 0x18
+assert _HOLE_LO < _HOLE_NAMED < _SW_DEBUG_OFF, (
+    "sep_cpu_ctrl reserved-span arithmetic no longer contains 0x170; "
+    "re-derive CPU_CTRL_INTERIOR_HOLES from the generated map"
+)
+CPU_CTRL_INTERIOR_HOLES = (
+    BASE + _HOLE_LO,
+    BASE + _HOLE_NAMED,
+    BASE + _SW_DEBUG_OFF - 4,
+)
 
 # Register names read and value-checked against their generated reset value.
 # Never written.
@@ -112,7 +134,6 @@ WRITE_READBACK = [
     ("TIMEOUT_COUNT_DMA", 0x0BAD_C0DF),
     ("TIMEOUT_COUNT_SYS_IN", 0xCAFE_F00D),
     ("TIMEOUT_ENABLE", 0x0000_00FF),
-    ("RAS_BANK_INFO", 0x0000_00FF),
 ]
 
 # (name, value) — write-only (sw=w) registers: reading them returns non-OKAY, so

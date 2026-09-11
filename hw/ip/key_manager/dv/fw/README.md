@@ -208,9 +208,13 @@ make build_all_fw
 riscv64-unknown-elf-size build/tests/test_rom_crc/test_rom_crc.vrom.elf
 ```
 
-Firmware is compiled inside the toolchain container so the images do not depend
-on whichever RISC-V toolchain the simulation host carries. Set
-`FW_LOCAL_TOOLCHAIN=1` to compile with the toolchain on `PATH` instead.
+Toolchain resolution follows the same `RISCV_TOOLCHAIN` contract as the
+SMC/SEP cgen stages (see `hw/common/dv/fw/compile.mk`): point `RISCV_TOOLCHAIN`
+at a directory of `riscv64-unknown-elf-*` tools to use one that need not be on
+`PATH`; leave it unset to use whatever is on `PATH`. Either way, the resolved
+compiler must have `picolibc.specs` (compile.mk always builds with
+`--specs=picolibc.specs`) — when it does not, the dispatcher falls back to the
+toolchain container automatically.
 
 ## Code size optimization
 

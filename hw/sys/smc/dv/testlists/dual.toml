@@ -10,9 +10,9 @@ schema_version = 1
 # that key build the single-instance model.
 #
 # Group names share all.toml's namespace, so the groups here are prefixed:
-# `dual_smoke` and `dual_all`. The SMC catalog has no `all` group (the smc entry
-# in .github/workflows/sim.yml relies on that). `occp_dual` is unprefixed:
-# nothing else in the catalog uses that name.
+# `dual_smoke` and `dual_all`. Three of these leaves sit in `all`; the
+# hosted-runner set `hosted` holds them out because they elaborate SMC_DUAL.
+# `occp_dual` is unprefixed: nothing else in the catalog uses that name.
 
 [[tests]]
 name = "smc_dual_elaboration_test"
@@ -31,7 +31,6 @@ run_modes = ["dual"]
 firmware = { name = "prod_rom", mode = "bootrom" }
 args = [
     "+rom_bin64=prod_rom.bin64",
-    "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -51,7 +50,6 @@ run_modes = ["dual"]
 firmware = { name = "prod_rom", mode = "bootrom" }
 args = [
     "+rom_bin64=prod_rom.bin64",
-    "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -84,7 +82,6 @@ args = [
     "+bfm_rom_hex=occp_unsecure_boot_test.rom.hex",
     "+occp_payload_bin=hello_world.sram.bin",
     "+occp_payload_sym=hello_world.sram.sym",
-    "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[tests]]
@@ -108,7 +105,6 @@ firmware = { name = "occp_sanity", mode = "occp_sanity" }
 args = [
     "+rom_bin64=prod_rom.bin64",
     "+bfm_rom_hex=occp_sanity.rom.hex",
-    "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
 [[groups]]
