@@ -279,6 +279,11 @@
     color: var(--oca-green);
 }
 
+.doc h4,
+.doc h5 {
+    font-size: 1.1em;
+}
+
 /* Body copy */
 .doc {
     font-family: var(--oca-font-body);
