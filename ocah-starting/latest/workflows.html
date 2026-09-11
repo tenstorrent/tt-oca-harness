@@ -360,6 +360,10 @@ Patch files live in the sibling <code>patches/</code> directory so they survive 
 <code>exclude_from_upstream:</code> paths, and re-applies all patches from <code>patch_dir</code> in
 lexicographic order.</p>
 </div>
+<div class="paragraph">
+<p>CI runs <code>bender vendor diff --err_on_diff</code> on every hardware-CI push so a stale
+<code>upstream/</code> tree or a patch that no longer applies fails the gate.</p>
+</div>
 </div>
 </div>
 </div>
@@ -1090,10 +1094,11 @@ contributor enables the hook.</p>
 <div class="paragraph">
 <p><code>.github/workflows/lint.yml</code> runs <code>lint-sv-slang</code>, <code>lint-sv-verilator</code>,
 <code>lint-python</code>, <code>lint-python-mypy</code>, <code>format-c</code>, <code>lint-tcl</code>, <code>lint-spelling</code>,
-<code>lint-yaml</code>, <code>lint-toml</code>, <code>lint-markdown</code>, <code>lint-make</code>, <code>lint-shell</code>, and
-<code>regen-regs</code> on pull requests and pushes to <code>main</code> (<code>lint-sv-verible</code> is
-temporarily disabled). Setup jobs share <code>bender</code>, Verilator, and reviewdog
-artifacts; jobs report through <code>.github/actions/reviewdog-report</code>.</p>
+<code>lint-yaml</code>, <code>lint-toml</code>, <code>lint-markdown</code>, <code>lint-make</code>, <code>lint-shell</code>,
+<code>regen-regs</code>, and <code>vendor-diff</code> on pull requests and pushes to <code>main</code>
+(<code>lint-sv-verible</code> is temporarily disabled). Setup jobs share <code>bender</code>,
+Verilator, and reviewdog artifacts; jobs report through
+<code>.github/actions/reviewdog-report</code>.</p>
 </div>
 <div class="paragraph">
 <p>Documentation-only diffs (every changed path is under <code>doc/</code>, an Antora playbook,
@@ -1186,6 +1191,11 @@ Scheduled and manually dispatched pipelines always run in full.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">— (job fails on a dirty tree)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>make regen-regs regen-regs-adoc regen-regs-html</code></p></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>vendor-diff</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">— (job fails when committed <code>upstream/</code> drifts)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>bender vendor diff --err_on_diff</code></p></td>
+</tr>
 </tbody>
 </table>
 <div class="paragraph">
@@ -1200,6 +1210,17 @@ result:</p>
 <div class="content">
 <pre class="highlightjs highlight"><code class="language-none hljs">make regen-regs regen-regs-adoc regen-regs-html
 git status --porcelain   # expect no output</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The <code>vendor-diff</code> gate re-clones every <code>vendor_package</code> remote, applies
+<code>patches/</code>, and fails if the committed <code>upstream/</code> tree does not match. To
+fix a failure, refresh the tree and commit:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-none hljs">bender vendor init
+git status --porcelain   # expect only intended vendor/ changes</code></pre>
 </div>
 </div>
 <div class="sect3">
