@@ -68,6 +68,10 @@ MANIFEST_ERR_KEY_UNAUTHORIZED = mm.boot_err("OCA_FAIL_ROOT_KEY_UNAUTHORIZED")
 # refused structurally, before key selection runs, so this arm prints no PUBK_*
 # marker at all.
 MANIFEST_ERR_SIG_TYPE_INVALID = mm.boot_err("OCA_FAIL_CRYPTO_FIELD_SIZE")
+# Secure boot is in force and the manifest names no signature class to verify
+# with. Reached through any input the precedence consults, most often a device
+# whose lifecycle enforces secure boot handed a validly unsigned manifest.
+MANIFEST_ERR_SIG_CLASS_CONTROL = mm.boot_err("OCA_FAIL_SIGNATURE_CLASS_CONTROL")
 MANIFEST_ERR_KEY_HASH_MISMATCH = mm.boot_err("OCA_FAIL_ROOT_KEY_UNAUTHORIZED")
 
 # Slot identity is asserted on MANIFEST_SRC=, never on the MANIFEST_PRIMARY /
