@@ -55,7 +55,7 @@ module tb_repetition_test ();
   localparam logic [7:0] TEST_THRESHOLD_LOW = 8'd10;  // Low threshold for quick testing
   localparam logic [7:0] TEST_THRESHOLD_MED = 8'd15;  // Medium threshold
   localparam logic [7:0] TEST_THRESHOLD_HIGH = 8'd20;  // High threshold
-  localparam logic [7:0] TEST_THRESHOLD_SAT = 8'd15;   // Threshold for the saturation test
+  localparam logic [7:0] TEST_THRESHOLD_SAT = 8'd15;  // Threshold for the saturation test
 
   // Instantiate the DUT
   entropy_repetition_test u_repetition_test (
