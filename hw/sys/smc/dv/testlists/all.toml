@@ -77,9 +77,9 @@ name = "all"
 #                                 return non-OKAY. See the docstring and
 #                                 SMC_VPLAN Known Limitations
 #
-# Two enrolled tests are also held out of this group: each fails on an RTL
-# defect rather than a test defect. They keep their own [[tests]] entries and
-# run on demand.
+# Three enrolled tests are also held out of this group: each fails on an RTL
+# defect or a spec/RTL conflict rather than a test defect. They keep their own
+# [[tests]] entries and run on demand.
 #
 #   smc_remap_cla_test          -- its CLA reset sweep passes, but the deny leg
 #                                  never completes: the SEP_IN read at
@@ -87,6 +87,13 @@ name = "all"
 #   smc_deadspace_decode_test   -- the DUT aliases deadspace onto live
 #                                  registers (wrap_to_live=7 read_alias=6).
 #                                  Also listed in depth.toml.
+#   smc_ref_clock_timer_rate_test
+#                               -- clk_rst.adoc places the OCTS system timer in
+#                                  the reference clock domain; smc_peripherals.sv
+#                                  clocks system_timer_octs from clk_smc_i, so
+#                                  TIMER_COUNT advances at the SMC clock rate
+#                                  (992 counts over 428 clk_ref_i / 1026
+#                                  clk_smc_i edges). Runs from cpu.toml.
 #
 # The `rtl_issue` group is also out, and being red is its whole purpose -- it is
 # the runnable evidence for filed RTL defects. rtl_issue.toml is included above
@@ -95,10 +102,13 @@ name = "all"
 # Guarded by expected_count, as dtp, sep and rtl_issue already are: the loader
 # errors when this list and the count diverge, so a leaf cannot be added to a
 # feature testlist and silently miss the regression.
-expected_count = 156
+expected_count = 170
 tests = [
     "smc_5agent_observability_test",
     "smc_6agent_observability_test",
+    "smc_address_map_region_decode_test",
+    "smc_address_window_top_decode_test",
+    "smc_alias_remap_spare_block_decode_test",
     "smc_avsbus_clock_config_proxy_test",
     "smc_avsbus_sanity_test",
     "smc_avsbus_status_depth_test",
@@ -111,7 +121,9 @@ tests = [
     "smc_cg_zeroer_activity_bringup_test",
     "smc_clk_multi_window_test",
     "smc_clk_running_test",
+    "smc_clock_domain_connectivity_test",
     "smc_cluster_beu_test",
+    "smc_cold_boot_chain_order_test",
     "smc_cold_reset_repeated_test",
     "smc_cold_reset_test",
     "smc_combined_observability_test",
@@ -129,8 +141,10 @@ tests = [
     "smc_dfd_sanity_test",
     "smc_dfx_status_abort_test",
     "smc_dma_cg_activity_test",
+    "smc_dma_reserved_stream_banks_test",
     "smc_dma_sanity_test",
     "smc_dual_axi_sram_probe_test",
+    "smc_dual_base_addressing_test",
     "smc_dual_elaboration_test",
     "smc_ecc_codeword_ded_test",
     "smc_ecc_codeword_sec_test",
@@ -149,6 +163,7 @@ tests = [
     "smc_efuse_read_program_timeout_test",
     "smc_efuse_shim_ctrl_test",
     "smc_ext_interrupts_pin_test",
+    "smc_external_window_pad_ctrl_decode_test",
     "smc_filter_field_sweep_test",
     "smc_filter_multi_entry_test",
     "smc_flr_sanity_test",
@@ -165,6 +180,7 @@ tests = [
     "smc_gpio_output_driveback_test",
     "smc_gpio_p0_int_test",
     "smc_gpio_p0_mux_test",
+    "smc_gpio_pad_input_readback_test",
     "smc_hang_detector_data_timeout_test",
     "smc_hang_detector_plic_route_test",
     "smc_hang_detector_sanity_test",
@@ -217,11 +233,15 @@ tests = [
     "smc_output_fabric_slverr_inject_test",
     "smc_output_fabric_wr_rd_responder_test",
     "smc_output_filter_remap_security_test",
+    "smc_peripheral_instance_decode_test",
     "smc_powergood_glitch_test",
+    "smc_primary_reset_scope_test",
     "smc_reference_counter_test",
+    "smc_region_size_plic_clint_beu_decode_test",
     "smc_register_boundary_depth_test",
     "smc_register_sanity_test",
     "smc_reset_recovery_matrix_test",
+    "smc_reset_sync_edge_test",
     "smc_reset_unit_lock_test",
     "smc_reset_unit_sanity_test",
     "smc_sideband_protocol_smoke_test",
@@ -233,6 +253,7 @@ tests = [
     "smc_spm_mem_boundary_test",
     "smc_ss_reset_complete_test",
     "smc_static_cg_sanity_test",
+    "smc_sys_axi_in_port_test",
     "smc_sys_out_aw_w_split_test",
     "smc_telemetry_receiver_csr_test",
     "smc_temp_interrupt_test",
@@ -261,10 +282,13 @@ name = "hosted"
 # elaboration. Nightly and weekly schedule this group; the per-PR gate stays
 # on the 3-leaf `smoke`. Guarded by expected_count so a leaf cannot join
 # `all` and silently miss the hosted set.
-expected_count = 151
+expected_count = 165
 tests = [
     "smc_5agent_observability_test",
     "smc_6agent_observability_test",
+    "smc_address_map_region_decode_test",
+    "smc_address_window_top_decode_test",
+    "smc_alias_remap_spare_block_decode_test",
     "smc_avsbus_clock_config_proxy_test",
     "smc_avsbus_sanity_test",
     "smc_avsbus_status_depth_test",
@@ -277,7 +301,9 @@ tests = [
     "smc_cg_zeroer_activity_bringup_test",
     "smc_clk_multi_window_test",
     "smc_clk_running_test",
+    "smc_clock_domain_connectivity_test",
     "smc_cluster_beu_test",
+    "smc_cold_boot_chain_order_test",
     "smc_cold_reset_repeated_test",
     "smc_cold_reset_test",
     "smc_combined_observability_test",
@@ -295,7 +321,9 @@ tests = [
     "smc_dfd_sanity_test",
     "smc_dfx_status_abort_test",
     "smc_dma_cg_activity_test",
+    "smc_dma_reserved_stream_banks_test",
     "smc_dma_sanity_test",
+    "smc_dual_base_addressing_test",
     "smc_ecc_codeword_ded_test",
     "smc_ecc_codeword_sec_test",
     "smc_ecc_dfd_dbs_sanity_test",
@@ -313,6 +341,7 @@ tests = [
     "smc_efuse_read_program_timeout_test",
     "smc_efuse_shim_ctrl_test",
     "smc_ext_interrupts_pin_test",
+    "smc_external_window_pad_ctrl_decode_test",
     "smc_filter_field_sweep_test",
     "smc_filter_multi_entry_test",
     "smc_flr_sanity_test",
@@ -327,6 +356,7 @@ tests = [
     "smc_gpio_output_driveback_test",
     "smc_gpio_p0_int_test",
     "smc_gpio_p0_mux_test",
+    "smc_gpio_pad_input_readback_test",
     "smc_hang_detector_data_timeout_test",
     "smc_hang_detector_plic_route_test",
     "smc_hang_detector_sanity_test",
@@ -378,11 +408,15 @@ tests = [
     "smc_output_fabric_slverr_inject_test",
     "smc_output_fabric_wr_rd_responder_test",
     "smc_output_filter_remap_security_test",
+    "smc_peripheral_instance_decode_test",
     "smc_powergood_glitch_test",
+    "smc_primary_reset_scope_test",
     "smc_reference_counter_test",
+    "smc_region_size_plic_clint_beu_decode_test",
     "smc_register_boundary_depth_test",
     "smc_register_sanity_test",
     "smc_reset_recovery_matrix_test",
+    "smc_reset_sync_edge_test",
     "smc_reset_unit_lock_test",
     "smc_reset_unit_sanity_test",
     "smc_sideband_protocol_smoke_test",
@@ -394,6 +428,7 @@ tests = [
     "smc_spm_mem_boundary_test",
     "smc_ss_reset_complete_test",
     "smc_static_cg_sanity_test",
+    "smc_sys_axi_in_port_test",
     "smc_sys_out_aw_w_split_test",
     "smc_telemetry_receiver_csr_test",
     "smc_temp_interrupt_test",

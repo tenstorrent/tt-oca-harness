@@ -1649,6 +1649,194 @@ args = [
   "+smc_efuse_hex=smc_efuse_default.hex",
 ]
 
+# P0 composition and bring-up leaves written against this DUT. They need no
+# firmware beyond the elaboration preloads, so the no-SEP ones also sit in
+# sep0_all. +xtrig_int_ct_mode states the XTRIG_INT_CT_MODE override the
+# wrapper testbench elaborates the DUT with; the Cfg decode compares the
+# elaborated value against it.
+[[tests]]
+name = "smu_boundary_port_composition_test"
+module = "smu_boundary_port_composition_test"
+target = "compile_smu_chiplet_sep_rtl"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["composition", "sep", "real_rtl", "p0"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+]
+
+[[tests]]
+name = "smu_composition_parameter_sep_rtl_test"
+module = "smu_composition_parameter_test"
+target = "compile_smu_chiplet_sep_rtl"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["composition", "sep", "real_rtl", "p0"]
+run_modes = ["sep_rtl"]
+args = [
+  "+expected_sep=1",
+  "+xtrig_int_ct_mode=0x80",
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+]
+
+[[tests]]
+name = "smu_composition_parameter_no_sep_test"
+module = "smu_composition_parameter_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["composition", "no_sep", "p0"]
+run_modes = ["no_sep"]
+args = [
+  "+expected_sep=0",
+  "+xtrig_int_ct_mode=0x80",
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_xbar_connectivity_matrix_test"
+module = "smu_xbar_connectivity_matrix_test"
+target = "compile_smu_chiplet_sep_rtl"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["fabric", "sep", "real_rtl", "p0"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+]
+
+[[tests]]
+name = "smu_clock_domain_composition_test"
+module = "smu_clock_domain_composition_test"
+target = "compile_smu_chiplet_sep_rtl"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["clock", "reset", "sep", "real_rtl", "p0"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+]
+
+[[tests]]
+name = "smu_xtrig_mode_composition_test"
+module = "smu_xtrig_mode_composition_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["dtp", "xtrig", "no_sep", "p0"]
+run_modes = ["no_sep"]
+args = [
+  "+xtrig_int_ct_mode=0x80",
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_reset_release_sync_test"
+module = "smu_reset_release_sync_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["reset", "no_sep", "p0"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_cold_reset_async_assert_test"
+module = "smu_cold_reset_async_assert_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["reset", "no_sep", "p0"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_sram_auto_init_done_test"
+module = "smu_sram_auto_init_done_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["smc", "boot", "no_sep", "p0"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+# Fuse-sense leaves. These are the only entries on the *_fuse_sense run modes,
+# which leave +skip_fuse_sense unset so the eFuse bank models answer the sense
+# instead of the shadow-register preload supplying it. The eFuse images the
+# banks are loaded with are the ones the sense reads.
+[[tests]]
+name = "smu_smc_fuse_sense_sequence_test"
+module = "smu_smc_fuse_sense_sequence_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["efuse", "boot", "no_sep", "p0"]
+run_modes = ["no_sep_fuse_sense"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_sep_fuse_sense_done_test"
+module = "smu_sep_fuse_sense_done_test"
+target = "compile_smu_chiplet_sep_rtl"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 3600
+tags = ["efuse", "boot", "sep", "real_rtl", "p0"]
+run_modes = ["sep_rtl_fuse_sense"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=sep_boot_rom_default.hex",
+  "+sep_itcm_hex=sep_itcm_default.hex",
+  "+sep_dtcm_hex=sep_dtcm_default.hex",
+]
+
 # The DTP leaves as one group.
 [[groups]]
 name = "migrated_dtp"
@@ -1706,6 +1894,21 @@ name = "migrated_dtp_pending"
 tests = [
   "smu_dtp_jtag2axi_abort_mid_op_test",  # the real OTP model answers before the BUSY poll can capture it
 ]
+
+# Runnable, not passing: the claim it checks is not met by the RTL as built.
+#
+# smu_cold_reset_async_assert_test holds every wrapper clock static and asserts
+# rst_cold_ni, expecting the cold-stable and primary-reset outputs to fall
+# without a clock edge (port_table.adoc: "Asynchronous assertion"). The SMC
+# reset controller instead samples rst_cold_ni through a clk_ref_i deglitch
+# shift register, so with the clocks stopped no output moves. The test stays
+# here so the discrepancy is visible until the spec or the RTL settles it.
+[[groups]]
+name = "p0_pending"
+tests = [
+  "smu_cold_reset_async_assert_test",
+]
+expected_count = 1
 
 # PR-gate tier: .github/workflows/sim.yml runs this on every hardware diff.
 #
@@ -1784,7 +1987,13 @@ tests = [
   "smu_system_timer_octs_test",
   "smu_xtrig_ctm_illegal_phase_test",
   "smu_xtrig_ctm_remap_test",
+  "smu_composition_parameter_no_sep_test",
+  "smu_xtrig_mode_composition_test",
+  "smu_reset_release_sync_test",
+  "smu_sram_auto_init_done_test",
+  "smu_smc_fuse_sense_sequence_test",
 ]
+expected_count = 58
 
 # Default `--items all`: every test in this file that can pass, so this group
 # is the whole SMU regression.
@@ -1878,7 +2087,18 @@ tests = [
   "smu_system_timer_octs_test",
   "smu_xtrig_ctm_illegal_phase_test",
   "smu_xtrig_ctm_remap_test",
+  "smu_boundary_port_composition_test",
+  "smu_composition_parameter_sep_rtl_test",
+  "smu_xbar_connectivity_matrix_test",
+  "smu_clock_domain_composition_test",
+  "smu_composition_parameter_no_sep_test",
+  "smu_xtrig_mode_composition_test",
+  "smu_reset_release_sync_test",
+  "smu_sram_auto_init_done_test",
+  "smu_smc_fuse_sense_sequence_test",
+  "smu_sep_fuse_sense_done_test",
 ]
+expected_count = 91
 
 # Real SEP DV firmware as one group, so the firmware-driven leaves can be run
 # on their own. Every leaf here is also in `all`.
@@ -2006,4 +2226,15 @@ tests = [
   "smu_dtp_sep_smc_chain_prod_test",
   "smu_dtp_sep_smc_chain_prod_end_test",
   "smu_sep_entropy_test",
+  "smu_boundary_port_composition_test",
+  "smu_composition_parameter_sep_rtl_test",
+  "smu_xbar_connectivity_matrix_test",
+  "smu_clock_domain_composition_test",
+  "smu_composition_parameter_no_sep_test",
+  "smu_xtrig_mode_composition_test",
+  "smu_reset_release_sync_test",
+  "smu_sram_auto_init_done_test",
+  "smu_smc_fuse_sense_sequence_test",
+  "smu_sep_fuse_sense_done_test",
 ]
+expected_count = 38

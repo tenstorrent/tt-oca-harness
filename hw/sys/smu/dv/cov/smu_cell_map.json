@@ -1,0 +1,1540 @@
+{
+ "c_fuse_sense_done": {
+  "cell": "smc_fuse_sense_done_asserted",
+  "scenario": "SMU-FUSE-SENSE.S1",
+  "module": "smu_boot_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ]
+ },
+ "c_init_mem_done": {
+  "cell": "init_mem_done_asserted",
+  "scenario": "SMU-MEMINIT.S1",
+  "module": "smu_boot_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ]
+ },
+ "c_no_route_ext_in_to_ext_out": {
+  "cell": "no_route_ext_in_to_ext_out",
+  "scenario": "SMU-XBAR-CONN.S7",
+  "module": "smu_xbar_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ],
+  "tbd": "deferred: no enrolled stimulus in this phase"
+ },
+ "c_cold_reset_async_assert_without_clock": {
+  "cell": "cold_reset_async_assert_without_clock",
+  "scenario": "SMU-RST-COLD.S1",
+  "module": "smu_rst_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ],
+  "tbd": "deferred: no enrolled stimulus in this phase"
+ },
+ "c_cold_reset_sync_deassert": {
+  "cell": "cold_reset_sync_deassert",
+  "scenario": "SMU-RST-COLD.S2",
+  "module": "smu_rst_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ]
+ },
+ "c_cold_stable_ref_clk_active_low": {
+  "cell": "cold_stable_ref_clk_active_low",
+  "scenario": "SMU-RST-COLD.S3",
+  "module": "smu_rst_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ]
+ },
+ "c_cold_stable_ref_clk_synchronized": {
+  "cell": "cold_stable_ref_clk_synchronized",
+  "scenario": "SMU-RST-COLD.S3",
+  "module": "smu_rst_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ]
+ },
+ "c_primary_smc_reset_synchronized_to_clk_smu": {
+  "cell": "primary_smc_reset_synchronized_to_clk_smu",
+  "scenario": "SMU-RST-PRIMARY.S1",
+  "module": "smu_rst_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ]
+ },
+ "c_primary_ref_reset_synchronized_to_clk_ref": {
+  "cell": "primary_ref_reset_synchronized_to_clk_ref",
+  "scenario": "SMU-RST-PRIMARY.S2",
+  "module": "smu_rst_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ]
+ },
+ "c_smc_released": {
+  "cell": "smc_released",
+  "scenario": "SMU-RST-PRIMARY.S3",
+  "module": "smu_rst_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ]
+ },
+ "c_dtp_released": {
+  "cell": "dtp_released",
+  "scenario": "SMU-RST-PRIMARY.S3",
+  "module": "smu_rst_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_wrapper_top"
+  ]
+ },
+ "c_sep_released": {
+  "cell": "sep_released",
+  "scenario": "SMU-RST-PRIMARY.S3",
+  "module": "smu_rst_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_wrapper_top"
+  ]
+ },
+ "c_xbar_released": {
+  "cell": "xbar_released",
+  "scenario": "SMU-RST-PRIMARY.S3",
+  "module": "smu_rst_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_wrapper_top"
+  ]
+ },
+ "c_dtp_responsive_after_powergood_stable": {
+  "cell": "dtp_responsive_after_powergood_stable",
+  "scenario": "SMU-PWRGOOD.S2",
+  "module": "smu_rst_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ]
+ },
+ "c_reset_release_after_boot_seq_done": {
+  "cell": "reset_release_after_boot_seq_done",
+  "scenario": "SMU-BOOTSEQ-GATE.S2",
+  "module": "smu_rst_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ]
+ },
+ "c_sep_fuse_sense_done_asserted": {
+  "cell": "sep_fuse_sense_done_asserted",
+  "scenario": "SMU-FUSE-SENSE.S2",
+  "module": "smu_rst_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_wrapper_top"
+  ],
+  "tbd": "deferred: no enrolled stimulus in this phase"
+ },
+ "c_fuse_reset_n_delayed_released_after_sense": {
+  "cell": "fuse_reset_n_delayed_released_after_sense",
+  "scenario": "SMU-FUSE-SENSE.S3",
+  "module": "smu_rst_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ]
+ },
+ "c_skip_mem_repair_present": {
+  "cell": "skip_mem_repair_present",
+  "scenario": "SMU-FUSE-SENSE.S4",
+  "module": "smu_rst_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ]
+ },
+ "c_auto_init_runs": {
+  "cell": "auto_init_runs",
+  "scenario": "SMU-MEMINIT.S1",
+  "module": "smu_rst_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ]
+ },
+ "c_periph_domain_active": {
+  "cell": "periph_domain_active",
+  "scenario": "SMU-CLK-DOMAINS.S4",
+  "module": "smu_rst_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ]
+ },
+ "c_primary_domain_hosts_all_four_blocks": {
+  "cell": "primary_domain_hosts_all_four_blocks",
+  "scenario": "SMU-CLK-DOMAINS.S1",
+  "module": "smu_clk_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_wrapper_top"
+  ]
+ },
+ "c_telemetry_domain_independent": {
+  "cell": "telemetry_domain_independent",
+  "scenario": "SMU-CLK-DOMAINS.S2",
+  "module": "smu_clk_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_wrapper_top"
+  ]
+ },
+ "c_sep_wdt_domain_active": {
+  "cell": "sep_wdt_domain_active",
+  "scenario": "SMU-CLK-DOMAINS.S3",
+  "module": "smu_clk_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_wrapper_top"
+  ]
+ },
+ "c_nosep_sep_outputs_tied_off": {
+  "cell": "nosep_sep_outputs_tied_off",
+  "scenario": "SMU-NOSEP.S2",
+  "module": "smu_lc_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ]
+ },
+ "c_nosepcfg_fields_equal_defaultcfg": {
+  "cell": "nosepcfg_fields_equal_defaultcfg",
+  "scenario": "SMU-NOSEP.S4",
+  "module": "smu_lc_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ]
+ },
+ "c_lc_state_width_8": {
+  "cell": "lc_state_width_8",
+  "scenario": "SMU-LC-STATE.S1",
+  "module": "smu_lc_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ]
+ },
+ "c_lc_state_sep0_is_f0": {
+  "cell": "lc_state_sep0_is_f0",
+  "scenario": "SMU-LC-STATE.S3",
+  "module": "smu_lc_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ]
+ },
+ "c_demote_1_width_2": {
+  "cell": "demote_1_width_2",
+  "scenario": "SMU-LC-DEMOTE.S1",
+  "module": "smu_lc_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ]
+ },
+ "c_demote_2_width_2": {
+  "cell": "demote_2_width_2",
+  "scenario": "SMU-LC-DEMOTE.S1",
+  "module": "smu_lc_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ]
+ },
+ "c_ovrd_field_present": {
+  "cell": "ovrd_field_present",
+  "scenario": "SMU-ICRESET.S5",
+  "module": "smu_dtp_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ]
+ },
+ "c_val_field_active_low": {
+  "cell": "val_field_active_low",
+  "scenario": "SMU-ICRESET.S5",
+  "module": "smu_dtp_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ]
+ },
+ "c_ctp_req_out_width_16": {
+  "cell": "ctp_req_out_width_16",
+  "scenario": "SMU-XTRIG-CTP.S1",
+  "module": "smu_dtp_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ]
+ },
+ "c_ctp_req_in_width_16": {
+  "cell": "ctp_req_in_width_16",
+  "scenario": "SMU-XTRIG-CTP.S1",
+  "module": "smu_dtp_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ]
+ },
+ "c_ctp_ack_in_width_16": {
+  "cell": "ctp_ack_in_width_16",
+  "scenario": "SMU-XTRIG-CTP.S1",
+  "module": "smu_dtp_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ]
+ },
+ "c_ctp_ack_out_width_16": {
+  "cell": "ctp_ack_out_width_16",
+  "scenario": "SMU-XTRIG-CTP.S1",
+  "module": "smu_dtp_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ]
+ },
+ "c_ctp_unused_input_tied_zero_inert": {
+  "cell": "ctp_unused_input_tied_zero_inert",
+  "scenario": "SMU-XTRIG-CTP.S6",
+  "module": "smu_dtp_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ]
+ },
+ "c_inbound_id_width_8": {
+  "cell": "inbound_id_width_8",
+  "scenario": "SMU-EXT-SMN.S4",
+  "module": "smu_ext_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ],
+  "tbd": "deferred: no enrolled stimulus in this phase"
+ },
+ "c_outbound_id_width_10": {
+  "cell": "outbound_id_width_10",
+  "scenario": "SMU-EXT-SMN.S4",
+  "module": "smu_ext_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ],
+  "tbd": "deferred: no enrolled stimulus in this phase"
+ },
+ "c_mailbox_irq_out_width_32": {
+  "cell": "mailbox_irq_out_width_32",
+  "scenario": "SMU-MBOX-IRQ-OUT.S1",
+  "module": "smu_ext_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ]
+ },
+ "c_ss_reset_ctrl_array_32": {
+  "cell": "ss_reset_ctrl_array_32",
+  "scenario": "SMU-SSRESET.S2",
+  "module": "smu_ext_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ]
+ },
+ "c_ss_config_present": {
+  "cell": "ss_config_present",
+  "scenario": "SMU-SSRESET.S4",
+  "module": "smu_ext_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ]
+ },
+ "c_smc_shadow_regs_present": {
+  "cell": "smc_shadow_regs_present",
+  "scenario": "SMU-EFUSE-SHIM-SMC.S3",
+  "module": "smu_ext_fcov.sv",
+  "milestone": "P0",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ]
+ },
+ "UNMAPPED:SMU-XBAR-APERTURE.S5:smc_region_size_o_matches_programmed_size": {
+  "cell": "smc_region_size_o_matches_programmed_size",
+  "scenario": "SMU-XBAR-APERTURE.S5",
+  "milestone": "P0",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-IRQ-PASSTHRU.S4:all_gpio_wrap_bits_present": {
+  "cell": "all_gpio_wrap_bits_present",
+  "scenario": "SMU-IRQ-PASSTHRU.S4",
+  "milestone": "P0",
+  "reason": "blocked:SF-050"
+ },
+ "UNMAPPED:SMU-XTRIG-CTM.S3:ctm_ports_1_0_reserved_for_smc": {
+  "cell": "ctm_ports_1_0_reserved_for_smc",
+  "scenario": "SMU-XTRIG-CTM.S3",
+  "milestone": "P0",
+  "reason": "blocked:SF-015"
+ },
+ "UNMAPPED:SMU-XTRIG-CTM.S4:ctm_ack_unused_in_pulse_sync": {
+  "cell": "ctm_ack_unused_in_pulse_sync",
+  "scenario": "SMU-XTRIG-CTM.S4",
+  "milestone": "P0",
+  "reason": "blocked:SF-017"
+ },
+ "UNMAPPED:SMU-CLKSTOP-REQ.S2:clk_stop_port_0_reserved_for_smc": {
+  "cell": "clk_stop_port_0_reserved_for_smc",
+  "scenario": "SMU-CLKSTOP-REQ.S2",
+  "milestone": "P0",
+  "reason": "blocked:SF-016"
+ },
+ "UNMAPPED:SMU-LC-SIGINT.S1:lc_sigint_err_inert_in_normal_operation": {
+  "cell": "lc_sigint_err_inert_in_normal_operation",
+  "scenario": "SMU-LC-SIGINT.S1",
+  "milestone": "P0",
+  "reason": "blocked:SF-022"
+ },
+ "UNMAPPED:SMU-LC-SIGINT.S2:lc_sigint_err_driven_when_sep0": {
+  "cell": "lc_sigint_err_driven_when_sep0",
+  "scenario": "SMU-LC-SIGINT.S2",
+  "milestone": "P0",
+  "reason": "blocked:SF-022"
+ },
+ "UNMAPPED:SMU-PWRGOOD.S1:dtp_held_in_por_while_powergood_low": {
+  "cell": "dtp_held_in_por_while_powergood_low",
+  "scenario": "SMU-PWRGOOD.S1",
+  "milestone": "P0",
+  "reason": "blocked:SF-029"
+ },
+ "UNMAPPED:SMU-BOOTSEQ-GATE.S1:reset_release_held_while_boot_seq_low": {
+  "cell": "reset_release_held_while_boot_seq_low",
+  "scenario": "SMU-BOOTSEQ-GATE.S1",
+  "milestone": "P0",
+  "reason": "blocked:SF-028"
+ },
+ "UNMAPPED:INT-BOOTGATE-RESET:primary_reset_held_until_boot_seq_done": {
+  "cell": "primary_reset_held_until_boot_seq_done",
+  "scenario": "INT-BOOTGATE-RESET",
+  "milestone": "P0",
+  "reason": "blocked:SF-028"
+ },
+ "UNMAPPED:INT-BOOTGATE-RESET:ordered_boot_seq_done_then_reset_release": {
+  "cell": "ordered_boot_seq_done_then_reset_release",
+  "scenario": "INT-BOOTGATE-RESET",
+  "milestone": "P0",
+  "reason": "blocked:SF-028"
+ },
+ "UNMAPPED:SMU-XBAR-CONN.S5:no_route_sep_out_to_sep_in": {
+  "cell": "no_route_sep_out_to_sep_in",
+  "scenario": "SMU-XBAR-CONN.S5",
+  "milestone": "P0",
+  "reason": "unreachable_at_level: crossbar sep_out and sep_in ports are smu-internal (gen_sep.u_smu_axi_xbar)"
+ },
+ "UNMAPPED:SMU-XBAR-CONN.S6:no_route_smc_out_to_smc_in": {
+  "cell": "no_route_smc_out_to_smc_in",
+  "scenario": "SMU-XBAR-CONN.S6",
+  "milestone": "P0",
+  "reason": "unreachable_at_level: crossbar smc_out and smc_in ports are smu-internal (gen_sep.u_smu_axi_xbar)"
+ },
+ "UNMAPPED:SMU-XTRIG-MODE.S1:ct_mode_bits_1_0_zero": {
+  "cell": "ct_mode_bits_1_0_zero",
+  "scenario": "SMU-XTRIG-MODE.S1",
+  "milestone": "P0",
+  "reason": "unreachable_at_level: the cross-trigger mode vector smu drives into u_dtp is an smu-internal wire"
+ },
+ "UNMAPPED:SMU-XTRIG-MODE.S2:ct_mode_upper_bits_passthrough": {
+  "cell": "ct_mode_upper_bits_passthrough",
+  "scenario": "SMU-XTRIG-MODE.S2",
+  "milestone": "P0",
+  "reason": "unreachable_at_level: the cross-trigger mode vector smu drives into u_dtp is an smu-internal wire"
+ },
+ "UNMAPPED:SMU-LC-SECDIS.S1:security_disable_connected_sep_to_smc": {
+  "cell": "security_disable_connected_sep_to_smc",
+  "scenario": "SMU-LC-SECDIS.S1",
+  "milestone": "P0",
+  "reason": "unreachable_at_level: the sep-to-smc security_disable wire is smu-internal"
+ },
+ "UNMAPPED:SMU-SEC-TOKEN.S1:token_parameter_connected_to_sep": {
+  "cell": "token_parameter_connected_to_sep",
+  "scenario": "SMU-SEC-TOKEN.S1",
+  "milestone": "P0",
+  "reason": "unreachable_at_level: SEP_SEC_DISABLE_TOKEN passthrough smu-to-sep is a parameter of an smu-internal instance"
+ },
+ "UNMAPPED:SMU-SEC-TOKEN.S2:token_default_all_zero": {
+  "cell": "token_default_all_zero",
+  "scenario": "SMU-SEC-TOKEN.S2",
+  "milestone": "P0",
+  "reason": "unreachable_at_level: u_dut.SEP_SEC_DISABLE_TOKEN is a DUT parameter, reachable only hierarchically"
+ },
+ "UNMAPPED:SMU-OTPAXI-SEP.S3:sep_otp_depths_forced_to_3": {
+  "cell": "sep_otp_depths_forced_to_3",
+  "scenario": "SMU-OTPAXI-SEP.S3",
+  "milestone": "P0",
+  "reason": "unreachable_at_level: SEP OTP JTAG2AXI pipeline depths are parameters of an smu-internal instance"
+ },
+ "UNMAPPED:SMU-INT-AGG.S1:ext_interrupts_width_256": {
+  "cell": "ext_interrupts_width_256",
+  "scenario": "SMU-INT-AGG.S1",
+  "milestone": "P0",
+  "reason": "tbd: needs_probe: ext_interrupts_i is tied to zero in both benches, so no activity can qualify a width point"
+ },
+ "c_alias_base_address_remapped": {
+  "cell": "alias_base_address_remapped",
+  "scenario": "SMU-ALIAS-REMAP.S1",
+  "module": "smu_alias_fcov.sv",
+  "milestone": "P1",
+  "tb": [
+   "tb_wrapper_top"
+  ],
+  "tbd": "deferred: no enrolled stimulus in this phase"
+ },
+ "c_alias_top_address_remapped": {
+  "cell": "alias_top_address_remapped",
+  "scenario": "SMU-ALIAS-REMAP.S2",
+  "module": "smu_alias_fcov.sv",
+  "milestone": "P1",
+  "tb": [
+   "tb_wrapper_top"
+  ],
+  "tbd": "deferred: no enrolled stimulus in this phase"
+ },
+ "c_alias_path_bypasses_xbar": {
+  "cell": "alias_path_bypasses_xbar",
+  "scenario": "SMU-ALIAS-REMAP.S5",
+  "module": "smu_alias_fcov.sv",
+  "milestone": "P1",
+  "tb": [
+   "tb_wrapper_top"
+  ],
+  "tbd": "deferred: no enrolled stimulus in this phase"
+ },
+ "c_no_xbar_target_activity_during_alias": {
+  "cell": "no_xbar_target_activity_during_alias",
+  "scenario": "SMU-ALIAS-REMAP.S5",
+  "module": "smu_alias_fcov.sv",
+  "milestone": "P1",
+  "tb": [
+   "tb_wrapper_top"
+  ],
+  "tbd": "deferred: no enrolled stimulus in this phase"
+ },
+ "c_alias_hit_observed_at_smc_and_absent_at_xbar": {
+  "cell": "alias_hit_observed_at_smc_and_absent_at_xbar",
+  "scenario": "INT-ALIAS-XBAR",
+  "module": "smu_alias_fcov.sv",
+  "milestone": "P1",
+  "tb": [
+   "tb_wrapper_top"
+  ],
+  "tbd": "deferred: no enrolled stimulus in this phase"
+ },
+ "c_sep_access_outside_window_observed_at_xbar": {
+  "cell": "sep_access_outside_window_observed_at_xbar",
+  "scenario": "INT-ALIAS-XBAR",
+  "module": "smu_alias_fcov.sv",
+  "milestone": "P1",
+  "tb": [
+   "tb_wrapper_top"
+  ],
+  "tbd": "deferred: no enrolled stimulus in this phase"
+ },
+ "c_clk_stop_req_delivered": {
+  "cell": "clk_stop_req_delivered",
+  "scenario": "SMU-CLKSTOP-REQ.S1",
+  "module": "smu_clkstop_fcov.sv",
+  "milestone": "P1",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ]
+ },
+ "c_stop_clks_from_debug_control": {
+  "cell": "stop_clks_from_debug_control",
+  "scenario": "SMU-CLKSTOP-OUT.S1",
+  "module": "smu_clkstop_fcov.sv",
+  "milestone": "P1",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ]
+ },
+ "c_stop_clks_released": {
+  "cell": "stop_clks_released",
+  "scenario": "SMU-CLKSTOP-OUT.S3",
+  "module": "smu_clkstop_fcov.sv",
+  "milestone": "P1",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ]
+ },
+ "c_smc_efuse_bank_ctrl_request_observed": {
+  "cell": "smc_efuse_bank_ctrl_request_observed",
+  "scenario": "SMU-EFUSE-SHIM-SMC.S1",
+  "module": "smu_ext_fcov.sv",
+  "milestone": "P1",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ],
+  "tbd": "deferred: no enrolled stimulus in this phase"
+ },
+ "c_smc_efuse_bank_ctrl_response_returned": {
+  "cell": "smc_efuse_bank_ctrl_response_returned",
+  "scenario": "SMU-EFUSE-SHIM-SMC.S1",
+  "module": "smu_ext_fcov.sv",
+  "milestone": "P1",
+  "tb": [
+   "tb_wrapper_top"
+  ],
+  "tbd": "deferred: no enrolled stimulus in this phase"
+ },
+ "c_sep_efuse_bank_ctrl_request_observed": {
+  "cell": "sep_efuse_bank_ctrl_request_observed",
+  "scenario": "SMU-EFUSE-SHIM-SEP.S1",
+  "module": "smu_ext_fcov.sv",
+  "milestone": "P1",
+  "tb": [
+   "tb_wrapper_top"
+  ],
+  "tbd": "deferred: no enrolled stimulus reaches this point in this phase"
+ },
+ "c_sep_efuse_bank_ctrl_response_returned": {
+  "cell": "sep_efuse_bank_ctrl_response_returned",
+  "scenario": "SMU-EFUSE-SHIM-SEP.S1",
+  "module": "smu_ext_fcov.sv",
+  "milestone": "P1",
+  "tb": [
+   "tb_wrapper_top"
+  ],
+  "tbd": "deferred: no enrolled stimulus reaches this point in this phase"
+ },
+ "c_jtag2axi_write_reaches_smc_csr": {
+  "cell": "jtag2axi_write_reaches_smc_csr",
+  "scenario": "SMU-JTAG2AXI-SMC.S1",
+  "module": "smu_dbg_fcov.sv",
+  "milestone": "P1",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ]
+ },
+ "c_jtag2axi_read_returns_csr_value": {
+  "cell": "jtag2axi_read_returns_csr_value",
+  "scenario": "SMU-JTAG2AXI-SMC.S2",
+  "module": "smu_dbg_fcov.sv",
+  "milestone": "P1",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ]
+ },
+ "c_smc_otp_read_response_returned": {
+  "cell": "smc_otp_read_response_returned",
+  "scenario": "SMU-OTPAXI-SMC.S1",
+  "module": "smu_dbg_fcov.sv",
+  "milestone": "P1",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ]
+ },
+ "c_smc_otp_write_response_returned": {
+  "cell": "smc_otp_write_response_returned",
+  "scenario": "SMU-OTPAXI-SMC.S2",
+  "module": "smu_dbg_fcov.sv",
+  "milestone": "P1",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ]
+ },
+ "c_sep_otp_read_response_returned": {
+  "cell": "sep_otp_read_response_returned",
+  "scenario": "SMU-OTPAXI-SEP.S1",
+  "module": "smu_dbg_fcov.sv",
+  "milestone": "P1",
+  "tb": [
+   "tb_wrapper_top"
+  ],
+  "tbd": "deferred: no enrolled stimulus in this phase"
+ },
+ "c_sep_otp_write_response_returned": {
+  "cell": "sep_otp_write_response_returned",
+  "scenario": "SMU-OTPAXI-SEP.S2",
+  "module": "smu_dbg_fcov.sv",
+  "milestone": "P1",
+  "tb": [
+   "tb_wrapper_top"
+  ],
+  "tbd": "deferred: no enrolled stimulus in this phase"
+ },
+ "c_dbg_disable_blocks_smc_fabric_bridge": {
+  "cell": "dbg_disable_blocks_smc_fabric_bridge",
+  "scenario": "SMU-LC-DBGDIS.S3",
+  "module": "smu_dbg_fcov.sv",
+  "milestone": "P1",
+  "tb": [
+   "tb_wrapper_top"
+  ]
+ },
+ "c_no_axi_traffic_observed": {
+  "cell": "no_axi_traffic_observed",
+  "scenario": "SMU-LC-DBGDIS.S3",
+  "module": "smu_dbg_fcov.sv",
+  "milestone": "P1",
+  "tb": [
+   "tb_wrapper_top"
+  ]
+ },
+ "c_smc_otp_bridge_enabled_under_dbg_disable": {
+  "cell": "smc_otp_bridge_enabled_under_dbg_disable",
+  "scenario": "SMU-LC-DBGDIS.S4",
+  "module": "smu_dbg_fcov.sv",
+  "milestone": "P1",
+  "tb": [
+   "tb_wrapper_top"
+  ],
+  "tbd": "deferred: no enrolled stimulus in this phase"
+ },
+ "c_sep_otp_bridge_enabled_under_dbg_disable": {
+  "cell": "sep_otp_bridge_enabled_under_dbg_disable",
+  "scenario": "SMU-LC-DBGDIS.S5",
+  "module": "smu_dbg_fcov.sv",
+  "milestone": "P1",
+  "tb": [
+   "tb_wrapper_top"
+  ],
+  "tbd": "deferred: no enrolled stimulus in this phase"
+ },
+ "c_fabric_bridge_blocked_and_otp_bridges_enabled": {
+  "cell": "fabric_bridge_blocked_and_otp_bridges_enabled",
+  "scenario": "INT-LC-DBG-BRIDGE",
+  "module": "smu_dbg_fcov.sv",
+  "milestone": "P1",
+  "tb": [
+   "tb_wrapper_top"
+  ],
+  "tbd": "deferred: no enrolled stimulus in this phase"
+ },
+ "c_smc_otp_access_succeeds_while_fabric_blocked": {
+  "cell": "smc_otp_access_succeeds_while_fabric_blocked",
+  "scenario": "INT-LC-DBG-BRIDGE",
+  "module": "smu_dbg_fcov.sv",
+  "milestone": "P1",
+  "tb": [
+   "tb_wrapper_top"
+  ],
+  "tbd": "deferred: no enrolled stimulus in this phase"
+ },
+ "c_sep_otp_access_succeeds_while_fabric_blocked": {
+  "cell": "sep_otp_access_succeeds_while_fabric_blocked",
+  "scenario": "INT-LC-DBG-BRIDGE",
+  "module": "smu_dbg_fcov.sv",
+  "milestone": "P1",
+  "tb": [
+   "tb_wrapper_top"
+  ],
+  "tbd": "deferred: no enrolled stimulus in this phase"
+ },
+ "c_nosep_smc_to_ext_read": {
+  "cell": "nosep_smc_to_ext_read",
+  "scenario": "SMU-NOSEP.S1",
+  "module": "smu_nosep_fcov.sv",
+  "milestone": "P1",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ]
+ },
+ "c_nosep_smc_to_ext_write": {
+  "cell": "nosep_smc_to_ext_write",
+  "scenario": "SMU-NOSEP.S1",
+  "module": "smu_nosep_fcov.sv",
+  "milestone": "P1",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ],
+  "tbd": "deferred: no enrolled stimulus in this phase"
+ },
+ "c_nosep_ext_to_smc_read": {
+  "cell": "nosep_ext_to_smc_read",
+  "scenario": "SMU-NOSEP.S1",
+  "module": "smu_nosep_fcov.sv",
+  "milestone": "P1",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ],
+  "tbd": "deferred: no enrolled stimulus in this phase"
+ },
+ "c_nosep_ext_to_smc_write": {
+  "cell": "nosep_ext_to_smc_write",
+  "scenario": "SMU-NOSEP.S1",
+  "module": "smu_nosep_fcov.sv",
+  "milestone": "P1",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ],
+  "tbd": "deferred: no enrolled stimulus in this phase"
+ },
+ "c_sep0_otp_read_decerr": {
+  "cell": "sep0_otp_read_decerr",
+  "scenario": "SMU-SEPOTP-ERRSLV.S1",
+  "module": "smu_nosep_fcov.sv",
+  "milestone": "P1",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ],
+  "tbd": "deferred: no enrolled stimulus in this phase"
+ },
+ "c_sep0_otp_read_data_badcab1e": {
+  "cell": "sep0_otp_read_data_badcab1e",
+  "scenario": "SMU-SEPOTP-ERRSLV.S1",
+  "module": "smu_nosep_fcov.sv",
+  "milestone": "P1",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ],
+  "tbd": "deferred: no enrolled stimulus in this phase"
+ },
+ "c_nosep_direct_path_active_and_otp_errslv_present": {
+  "cell": "nosep_direct_path_active_and_otp_errslv_present",
+  "scenario": "INT-SEP0-COMPOSITION",
+  "module": "smu_nosep_fcov.sv",
+  "milestone": "P1",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ],
+  "tbd": "deferred: no enrolled stimulus in this phase"
+ },
+ "c_smc_to_ext_traffic_ok_while_sep_otp_decerrs": {
+  "cell": "smc_to_ext_traffic_ok_while_sep_otp_decerrs",
+  "scenario": "INT-SEP0-COMPOSITION",
+  "module": "smu_nosep_fcov.sv",
+  "milestone": "P1",
+  "tb": [
+   "tb_top",
+   "tb_wrapper_top"
+  ],
+  "tbd": "deferred: no enrolled stimulus in this phase"
+ },
+ "UNMAPPED:SMU-SEP-MBOX-IRQ.S1:sep_mailbox_irq_asserted": {
+  "cell": "sep_mailbox_irq_asserted",
+  "scenario": "SMU-SEP-MBOX-IRQ.S1",
+  "milestone": "P1",
+  "reason": "unreachable_at_level: the SEP mailbox interrupt line into SMC is an smu-internal wire; the SMU boundary carries only the aggregated ext_mailbox_interrupts vector"
+ },
+ "UNMAPPED:SMU-SEP-MBOX-IRQ.S2:sep_mailbox_irq_cleared_after_service": {
+  "cell": "sep_mailbox_irq_cleared_after_service",
+  "scenario": "SMU-SEP-MBOX-IRQ.S2",
+  "milestone": "P1",
+  "reason": "unreachable_at_level: the SEP mailbox interrupt line into SMC is an smu-internal wire; the SMU boundary carries only the aggregated ext_mailbox_interrupts vector"
+ },
+ "UNMAPPED:INT-CLKSTOP-CHAIN:external_request_to_stop_clks_output": {
+  "cell": "external_request_to_stop_clks_output",
+  "scenario": "INT-CLKSTOP-CHAIN",
+  "milestone": "P1",
+  "reason": "blocked:SF-019"
+ },
+ "UNMAPPED:INT-CLKSTOP-CHAIN:cla_request_to_stop_clks_output": {
+  "cell": "cla_request_to_stop_clks_output",
+  "scenario": "INT-CLKSTOP-CHAIN",
+  "milestone": "P1",
+  "reason": "blocked:SF-019"
+ },
+ "UNMAPPED:INT-XTRIG-MODE-CTM:pulse_sync_mode_port_ignores_ack": {
+  "cell": "pulse_sync_mode_port_ignores_ack",
+  "scenario": "INT-XTRIG-MODE-CTM",
+  "milestone": "P1",
+  "reason": "blocked:SF-017"
+ },
+ "UNMAPPED:INT-XTRIG-MODE-CTM:configured_mode_port_behaviour_matches_mode_bits": {
+  "cell": "configured_mode_port_behaviour_matches_mode_bits",
+  "scenario": "INT-XTRIG-MODE-CTM",
+  "milestone": "P1",
+  "reason": "blocked:SF-017"
+ },
+ "UNMAPPED:SMU-BOOTSTALL.S1:smc_boot_held_under_stall": {
+  "cell": "smc_boot_held_under_stall",
+  "scenario": "SMU-BOOTSTALL.S1",
+  "milestone": "P1",
+  "reason": "blocked:SF-037"
+ },
+ "UNMAPPED:SMU-BOOTSTALL.S2:smc_boot_proceeds_after_release": {
+  "cell": "smc_boot_proceeds_after_release",
+  "scenario": "SMU-BOOTSTALL.S2",
+  "milestone": "P1",
+  "reason": "blocked:SF-037"
+ },
+ "UNMAPPED:SMU-CLKSTOP-OUT.S2:stop_clks_from_cla_request": {
+  "cell": "stop_clks_from_cla_request",
+  "scenario": "SMU-CLKSTOP-OUT.S2",
+  "milestone": "P1",
+  "reason": "blocked:SF-019"
+ },
+ "UNMAPPED:SMU-EFUSE-SHIM-SEP.S2:sep_efuse_command_request_observed": {
+  "cell": "sep_efuse_command_request_observed",
+  "scenario": "SMU-EFUSE-SHIM-SEP.S2",
+  "milestone": "P1",
+  "reason": "blocked:SF-048"
+ },
+ "UNMAPPED:SMU-EFUSE-SHIM-SEP.S2:sep_efuse_command_response_returned": {
+  "cell": "sep_efuse_command_response_returned",
+  "scenario": "SMU-EFUSE-SHIM-SEP.S2",
+  "milestone": "P1",
+  "reason": "blocked:SF-048"
+ },
+ "UNMAPPED:SMU-EFUSE-SHIM-SMC.S2:smc_efuse_command_request_observed": {
+  "cell": "smc_efuse_command_request_observed",
+  "scenario": "SMU-EFUSE-SHIM-SMC.S2",
+  "milestone": "P1",
+  "reason": "blocked:SF-048"
+ },
+ "UNMAPPED:SMU-EFUSE-SHIM-SMC.S2:smc_efuse_command_response_returned": {
+  "cell": "smc_efuse_command_response_returned",
+  "scenario": "SMU-EFUSE-SHIM-SMC.S2",
+  "milestone": "P1",
+  "reason": "blocked:SF-048"
+ },
+ "UNMAPPED:SMU-EXT-SMN.S1:addr_bit_0_toggled": {
+  "cell": "addr_bit_0_toggled",
+  "scenario": "SMU-EXT-SMN.S1",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-EXT-SMN.S1:addr_bit_55_toggled": {
+  "cell": "addr_bit_55_toggled",
+  "scenario": "SMU-EXT-SMN.S1",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-EXT-SMN.S1:addr_all_ones_low_56": {
+  "cell": "addr_all_ones_low_56",
+  "scenario": "SMU-EXT-SMN.S1",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-EXT-SMN.S2:data_all_zero": {
+  "cell": "data_all_zero",
+  "scenario": "SMU-EXT-SMN.S2",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-EXT-SMN.S2:data_all_ones": {
+  "cell": "data_all_ones",
+  "scenario": "SMU-EXT-SMN.S2",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-EXT-SMN.S2:data_random_pattern": {
+  "cell": "data_random_pattern",
+  "scenario": "SMU-EXT-SMN.S2",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-EXT-SMN.S2:wstrb_partial": {
+  "cell": "wstrb_partial",
+  "scenario": "SMU-EXT-SMN.S2",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-EXT-SMN.S3:user_all_zero": {
+  "cell": "user_all_zero",
+  "scenario": "SMU-EXT-SMN.S3",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-EXT-SMN.S3:user_all_ones": {
+  "cell": "user_all_ones",
+  "scenario": "SMU-EXT-SMN.S3",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-EXT-SMN.S3:user_random": {
+  "cell": "user_random",
+  "scenario": "SMU-EXT-SMN.S3",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-ICRESET.S1:override_entered_when_enabled": {
+  "cell": "override_entered_when_enabled",
+  "scenario": "SMU-ICRESET.S1",
+  "milestone": "P1",
+  "reason": "blocked:SF-036"
+ },
+ "UNMAPPED:SMU-ICRESET.S2:override_cleared_by_trst": {
+  "cell": "override_cleared_by_trst",
+  "scenario": "SMU-ICRESET.S2",
+  "milestone": "P1",
+  "reason": "blocked:SF-036"
+ },
+ "UNMAPPED:SMU-ICRESET.S2:override_cleared_by_por": {
+  "cell": "override_cleared_by_por",
+  "scenario": "SMU-ICRESET.S2",
+  "milestone": "P1",
+  "reason": "blocked:SF-036"
+ },
+ "UNMAPPED:SMU-ICRESET.S3:override_cleared_by_clearing_ovrd": {
+  "cell": "override_cleared_by_clearing_ovrd",
+  "scenario": "SMU-ICRESET.S3",
+  "milestone": "P1",
+  "reason": "blocked:SF-036"
+ },
+ "UNMAPPED:SMU-IDW-IN.S1:ext_in_id_roundtrip_read": {
+  "cell": "ext_in_id_roundtrip_read",
+  "scenario": "SMU-IDW-IN.S1",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-IDW-IN.S1:ext_in_id_roundtrip_write": {
+  "cell": "ext_in_id_roundtrip_write",
+  "scenario": "SMU-IDW-IN.S1",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-IDW-SEP.S1:sep_iw_conv_read_roundtrip": {
+  "cell": "sep_iw_conv_read_roundtrip",
+  "scenario": "SMU-IDW-SEP.S1",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-IDW-SEP.S1:sep_iw_conv_write_roundtrip": {
+  "cell": "sep_iw_conv_write_roundtrip",
+  "scenario": "SMU-IDW-SEP.S1",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-IDW-SMC.S1:smc_iw_conv_read_roundtrip": {
+  "cell": "smc_iw_conv_read_roundtrip",
+  "scenario": "SMU-IDW-SMC.S1",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-IDW-SMC.S1:smc_iw_conv_write_roundtrip": {
+  "cell": "smc_iw_conv_write_roundtrip",
+  "scenario": "SMU-IDW-SMC.S1",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-INT-AGG.S2:single_ext_interrupt_asserted": {
+  "cell": "single_ext_interrupt_asserted",
+  "scenario": "SMU-INT-AGG.S2",
+  "milestone": "P1",
+  "reason": "blocked:SF-012"
+ },
+ "UNMAPPED:SMU-INT-AGG.S2:interrupt_seen_at_smc": {
+  "cell": "interrupt_seen_at_smc",
+  "scenario": "SMU-INT-AGG.S2",
+  "milestone": "P1",
+  "reason": "blocked:SF-012"
+ },
+ "UNMAPPED:SMU-INT-AGG.S3:ext_interrupt_deasserted": {
+  "cell": "ext_interrupt_deasserted",
+  "scenario": "SMU-INT-AGG.S3",
+  "milestone": "P1",
+  "reason": "blocked:SF-012"
+ },
+ "UNMAPPED:SMU-INT-AGG.S3:interrupt_cleared_at_smc": {
+  "cell": "interrupt_cleared_at_smc",
+  "scenario": "SMU-INT-AGG.S3",
+  "milestone": "P1",
+  "reason": "blocked:SF-012"
+ },
+ "UNMAPPED:SMU-IRQ-PASSTHRU.S1:gpio_irq_bonded_wrap": {
+  "cell": "gpio_irq_bonded_wrap",
+  "scenario": "SMU-IRQ-PASSTHRU.S1",
+  "milestone": "P1",
+  "reason": "blocked:SF-051"
+ },
+ "UNMAPPED:SMU-IRQ-PASSTHRU.S1:gpio_irq_unbonded_wrap": {
+  "cell": "gpio_irq_unbonded_wrap",
+  "scenario": "SMU-IRQ-PASSTHRU.S1",
+  "milestone": "P1",
+  "reason": "blocked:SF-051"
+ },
+ "UNMAPPED:SMU-IRQ-PASSTHRU.S2:uart_irq_bit_asserted": {
+  "cell": "uart_irq_bit_asserted",
+  "scenario": "SMU-IRQ-PASSTHRU.S2",
+  "milestone": "P1",
+  "reason": "blocked:SF-051"
+ },
+ "UNMAPPED:SMU-IRQ-PASSTHRU.S2:uart_irq_in_periph_domain": {
+  "cell": "uart_irq_in_periph_domain",
+  "scenario": "SMU-IRQ-PASSTHRU.S2",
+  "milestone": "P1",
+  "reason": "blocked:SF-051"
+ },
+ "UNMAPPED:SMU-IRQ-PASSTHRU.S3:sync_irq_follows_sync_reg": {
+  "cell": "sync_irq_follows_sync_reg",
+  "scenario": "SMU-IRQ-PASSTHRU.S3",
+  "milestone": "P1",
+  "reason": "blocked:SF-051"
+ },
+ "UNMAPPED:SMU-IRQ-PASSTHRU.S3:sync_irq_not_set_by_any_interrupt": {
+  "cell": "sync_irq_not_set_by_any_interrupt",
+  "scenario": "SMU-IRQ-PASSTHRU.S3",
+  "milestone": "P1",
+  "reason": "blocked:SF-051"
+ },
+ "UNMAPPED:SMU-LC-DBGDIS.S1:dbg_disable_blocks_stap_selection": {
+  "cell": "dbg_disable_blocks_stap_selection",
+  "scenario": "SMU-LC-DBGDIS.S1",
+  "milestone": "P1",
+  "reason": "blocked:SF-024"
+ },
+ "UNMAPPED:SMU-LC-DBGDIS.S2:dbg_disable_blocks_ijtag_sib": {
+  "cell": "dbg_disable_blocks_ijtag_sib",
+  "scenario": "SMU-LC-DBGDIS.S2",
+  "milestone": "P1",
+  "reason": "blocked:SF-024"
+ },
+ "UNMAPPED:SMU-LC-DBGDIS.S6:blocked_resource_bypass_fallback": {
+  "cell": "blocked_resource_bypass_fallback",
+  "scenario": "SMU-LC-DBGDIS.S6",
+  "milestone": "P1",
+  "reason": "blocked:SF-024"
+ },
+ "UNMAPPED:SMU-LC-DEMOTE.S2:demote_outputs_follow_sep": {
+  "cell": "demote_outputs_follow_sep",
+  "scenario": "SMU-LC-DEMOTE.S2",
+  "milestone": "P1",
+  "reason": "blocked:SF-023"
+ },
+ "UNMAPPED:SMU-LC-SECDIS.S2:security_disable_follows_lifecycle": {
+  "cell": "security_disable_follows_lifecycle",
+  "scenario": "SMU-LC-SECDIS.S2",
+  "milestone": "P1",
+  "reason": "blocked:SF-025"
+ },
+ "UNMAPPED:SMU-LC-STATE.S2:lc_state_follows_sep": {
+  "cell": "lc_state_follows_sep",
+  "scenario": "SMU-LC-STATE.S2",
+  "milestone": "P1",
+  "reason": "blocked:SF-021"
+ },
+ "UNMAPPED:SMU-MBOX-IRQ-OUT.S2:mailbox_irq_bit_asserted": {
+  "cell": "mailbox_irq_bit_asserted",
+  "scenario": "SMU-MBOX-IRQ-OUT.S2",
+  "milestone": "P1",
+  "reason": "blocked:SF-013"
+ },
+ "UNMAPPED:SMU-MBOX-IRQ-OUT.S3:mailbox_irq_bit_cleared": {
+  "cell": "mailbox_irq_bit_cleared",
+  "scenario": "SMU-MBOX-IRQ-OUT.S3",
+  "milestone": "P1",
+  "reason": "blocked:SF-013"
+ },
+ "UNMAPPED:SMU-MBOX-XCHG.S1:token_written_by_smc": {
+  "cell": "token_written_by_smc",
+  "scenario": "SMU-MBOX-XCHG.S1",
+  "milestone": "P1",
+  "reason": "blocked:SF-011"
+ },
+ "UNMAPPED:SMU-MBOX-XCHG.S1:token_observed_by_sep": {
+  "cell": "token_observed_by_sep",
+  "scenario": "SMU-MBOX-XCHG.S1",
+  "milestone": "P1",
+  "reason": "blocked:SF-011"
+ },
+ "UNMAPPED:SMU-MBOX-XCHG.S2:complement_written_by_sep": {
+  "cell": "complement_written_by_sep",
+  "scenario": "SMU-MBOX-XCHG.S2",
+  "milestone": "P1",
+  "reason": "blocked:SF-011"
+ },
+ "UNMAPPED:SMU-MBOX-XCHG.S2:response_popped_by_smc": {
+  "cell": "response_popped_by_smc",
+  "scenario": "SMU-MBOX-XCHG.S2",
+  "milestone": "P1",
+  "reason": "blocked:SF-011"
+ },
+ "UNMAPPED:SMU-MBOX-XCHG.S3:popped_value_is_complement": {
+  "cell": "popped_value_is_complement",
+  "scenario": "SMU-MBOX-XCHG.S3",
+  "milestone": "P1",
+  "reason": "blocked:SF-011"
+ },
+ "UNMAPPED:SMU-NDMRESET.S1:ndmreset_request_reflected": {
+  "cell": "ndmreset_request_reflected",
+  "scenario": "SMU-NDMRESET.S1",
+  "milestone": "P1",
+  "reason": "blocked:SF-033"
+ },
+ "UNMAPPED:SMU-SEP-AXI-EXT.S1:sep_external_request_observed": {
+  "cell": "sep_external_request_observed",
+  "scenario": "SMU-SEP-AXI-EXT.S1",
+  "milestone": "P1",
+  "reason": "blocked:SF-044"
+ },
+ "UNMAPPED:SMU-SEP-AXI-EXT.S1:sep_external_response_returned": {
+  "cell": "sep_external_response_returned",
+  "scenario": "SMU-SEP-AXI-EXT.S1",
+  "milestone": "P1",
+  "reason": "blocked:SF-044"
+ },
+ "UNMAPPED:SMU-SEPOTP-ERRSLV.S2:sep0_otp_write_error_response": {
+  "cell": "sep0_otp_write_error_response",
+  "scenario": "SMU-SEPOTP-ERRSLV.S2",
+  "milestone": "P1",
+  "reason": "blocked:SF-041"
+ },
+ "UNMAPPED:SMU-SEPWDT-RST.S1:sep_wdt_timeout_raises_reset_request": {
+  "cell": "sep_wdt_timeout_raises_reset_request",
+  "scenario": "SMU-SEPWDT-RST.S1",
+  "milestone": "P1",
+  "reason": "blocked:SF-031"
+ },
+ "UNMAPPED:SMU-SEPWDT-RST.S2:wdt_request_crosses_domain": {
+  "cell": "wdt_request_crosses_domain",
+  "scenario": "SMU-SEPWDT-RST.S2",
+  "milestone": "P1",
+  "reason": "blocked:SF-031"
+ },
+ "UNMAPPED:SMU-SMC-AXIL-EXT.S1:smc_external_request_observed": {
+  "cell": "smc_external_request_observed",
+  "scenario": "SMU-SMC-AXIL-EXT.S1",
+  "milestone": "P1",
+  "reason": "blocked:SF-044"
+ },
+ "UNMAPPED:SMU-SMC-AXIL-EXT.S1:smc_external_response_returned": {
+  "cell": "smc_external_response_returned",
+  "scenario": "SMU-SMC-AXIL-EXT.S1",
+  "milestone": "P1",
+  "reason": "blocked:SF-044"
+ },
+ "UNMAPPED:SMU-SSRESET.S1:isolate_req_bit_asserted": {
+  "cell": "isolate_req_bit_asserted",
+  "scenario": "SMU-SSRESET.S1",
+  "milestone": "P1",
+  "reason": "blocked:SF-034"
+ },
+ "UNMAPPED:SMU-SSRESET.S3:incomplete_holds_sequence": {
+  "cell": "incomplete_holds_sequence",
+  "scenario": "SMU-SSRESET.S3",
+  "milestone": "P1",
+  "reason": "blocked:SF-034"
+ },
+ "UNMAPPED:SMU-SSRESET.S3:complete_advances_sequence": {
+  "cell": "complete_advances_sequence",
+  "scenario": "SMU-SSRESET.S3",
+  "milestone": "P1",
+  "reason": "blocked:SF-034"
+ },
+ "UNMAPPED:SMU-SSRESET.S5:flr_pf_active_consumed": {
+  "cell": "flr_pf_active_consumed",
+  "scenario": "SMU-SSRESET.S5",
+  "milestone": "P1",
+  "reason": "blocked:SF-034"
+ },
+ "UNMAPPED:SMU-WDT-TIMEOUT.S1:first_timeout_asserted": {
+  "cell": "first_timeout_asserted",
+  "scenario": "SMU-WDT-TIMEOUT.S1",
+  "milestone": "P1",
+  "reason": "blocked:SF-032"
+ },
+ "UNMAPPED:SMU-WDT-TIMEOUT.S2:second_timeout_asserted": {
+  "cell": "second_timeout_asserted",
+  "scenario": "SMU-WDT-TIMEOUT.S2",
+  "milestone": "P1",
+  "reason": "blocked:SF-032"
+ },
+ "UNMAPPED:SMU-XBAR-APERTURE.S1:smc_aperture_hit_low_edge": {
+  "cell": "smc_aperture_hit_low_edge",
+  "scenario": "SMU-XBAR-APERTURE.S1",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-XBAR-APERTURE.S1:smc_aperture_hit_high_edge": {
+  "cell": "smc_aperture_hit_high_edge",
+  "scenario": "SMU-XBAR-APERTURE.S1",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-XBAR-APERTURE.S1:smc_aperture_hit_interior": {
+  "cell": "smc_aperture_hit_interior",
+  "scenario": "SMU-XBAR-APERTURE.S1",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-XBAR-APERTURE.S2:sep_aperture_hit_low_edge": {
+  "cell": "sep_aperture_hit_low_edge",
+  "scenario": "SMU-XBAR-APERTURE.S2",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-XBAR-APERTURE.S2:sep_aperture_hit_high_edge": {
+  "cell": "sep_aperture_hit_high_edge",
+  "scenario": "SMU-XBAR-APERTURE.S2",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-XBAR-APERTURE.S2:sep_aperture_hit_interior": {
+  "cell": "sep_aperture_hit_interior",
+  "scenario": "SMU-XBAR-APERTURE.S2",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-XBAR-APERTURE.S4:global_base_remap_applied": {
+  "cell": "global_base_remap_applied",
+  "scenario": "SMU-XBAR-APERTURE.S4",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-XBAR-APERTURE.S4:global_base_remap_zero": {
+  "cell": "global_base_remap_zero",
+  "scenario": "SMU-XBAR-APERTURE.S4",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-XBAR-ATOP.S1:atop_rejected_on_sep_out": {
+  "cell": "atop_rejected_on_sep_out",
+  "scenario": "SMU-XBAR-ATOP.S1",
+  "milestone": "P1",
+  "reason": "blocked:SF-002"
+ },
+ "UNMAPPED:SMU-XBAR-ATOP.S1:target_memory_unmodified_after_atop": {
+  "cell": "target_memory_unmodified_after_atop",
+  "scenario": "SMU-XBAR-ATOP.S1",
+  "milestone": "P1",
+  "reason": "blocked:SF-002"
+ },
+ "UNMAPPED:SMU-XBAR-ATOP.S2:atop_rejected_on_smc_out": {
+  "cell": "atop_rejected_on_smc_out",
+  "scenario": "SMU-XBAR-ATOP.S2",
+  "milestone": "P1",
+  "reason": "blocked:SF-002"
+ },
+ "UNMAPPED:SMU-XBAR-ATOP.S2:target_memory_unmodified_after_atop": {
+  "cell": "target_memory_unmodified_after_atop",
+  "scenario": "SMU-XBAR-ATOP.S2",
+  "milestone": "P1",
+  "reason": "blocked:SF-002"
+ },
+ "UNMAPPED:SMU-XBAR-ATOP.S3:atop_rejected_on_ext_in": {
+  "cell": "atop_rejected_on_ext_in",
+  "scenario": "SMU-XBAR-ATOP.S3",
+  "milestone": "P1",
+  "reason": "blocked:SF-002"
+ },
+ "UNMAPPED:SMU-XBAR-ATOP.S3:target_memory_unmodified_after_atop": {
+  "cell": "target_memory_unmodified_after_atop",
+  "scenario": "SMU-XBAR-ATOP.S3",
+  "milestone": "P1",
+  "reason": "blocked:SF-002"
+ },
+ "UNMAPPED:SMU-XBAR-CONN.S1:route_sep_out_to_smc_in_read": {
+  "cell": "route_sep_out_to_smc_in_read",
+  "scenario": "SMU-XBAR-CONN.S1",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-XBAR-CONN.S1:route_sep_out_to_smc_in_write": {
+  "cell": "route_sep_out_to_smc_in_write",
+  "scenario": "SMU-XBAR-CONN.S1",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-XBAR-CONN.S2:route_smc_out_to_sep_in_read": {
+  "cell": "route_smc_out_to_sep_in_read",
+  "scenario": "SMU-XBAR-CONN.S2",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-XBAR-CONN.S2:route_smc_out_to_sep_in_write": {
+  "cell": "route_smc_out_to_sep_in_write",
+  "scenario": "SMU-XBAR-CONN.S2",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-XBAR-CONN.S3:route_ext_in_to_sep_in_read": {
+  "cell": "route_ext_in_to_sep_in_read",
+  "scenario": "SMU-XBAR-CONN.S3",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-XBAR-CONN.S3:route_ext_in_to_sep_in_write": {
+  "cell": "route_ext_in_to_sep_in_write",
+  "scenario": "SMU-XBAR-CONN.S3",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-XBAR-CONN.S4:route_ext_in_to_smc_in_read": {
+  "cell": "route_ext_in_to_smc_in_read",
+  "scenario": "SMU-XBAR-CONN.S4",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-XBAR-CONN.S4:route_ext_in_to_smc_in_write": {
+  "cell": "route_ext_in_to_smc_in_write",
+  "scenario": "SMU-XBAR-CONN.S4",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-XBAR-DECERR.S1:ext_in_unmatched_read_decerr": {
+  "cell": "ext_in_unmatched_read_decerr",
+  "scenario": "SMU-XBAR-DECERR.S1",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-XBAR-DECERR.S2:ext_in_unmatched_write_decerr": {
+  "cell": "ext_in_unmatched_write_decerr",
+  "scenario": "SMU-XBAR-DECERR.S2",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-XBAR-DEFAULT.S1:unmatched_sep_out_to_ext_out_read": {
+  "cell": "unmatched_sep_out_to_ext_out_read",
+  "scenario": "SMU-XBAR-DEFAULT.S1",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-XBAR-DEFAULT.S1:unmatched_sep_out_to_ext_out_write": {
+  "cell": "unmatched_sep_out_to_ext_out_write",
+  "scenario": "SMU-XBAR-DEFAULT.S1",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-XBAR-DEFAULT.S2:unmatched_smc_out_to_ext_out_read": {
+  "cell": "unmatched_smc_out_to_ext_out_read",
+  "scenario": "SMU-XBAR-DEFAULT.S2",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-XBAR-DEFAULT.S2:unmatched_smc_out_to_ext_out_write": {
+  "cell": "unmatched_smc_out_to_ext_out_write",
+  "scenario": "SMU-XBAR-DEFAULT.S2",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-XBAR-DEFAULT.S3:default_path_response_returned": {
+  "cell": "default_path_response_returned",
+  "scenario": "SMU-XBAR-DEFAULT.S3",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-XBAR-DEFAULT.S3:default_path_response_id_preserved": {
+  "cell": "default_path_response_id_preserved",
+  "scenario": "SMU-XBAR-DEFAULT.S3",
+  "milestone": "P1",
+  "reason": "blocked:SF-001"
+ },
+ "UNMAPPED:SMU-XTRIG-CTM.S1:ctm_src_req_asserted": {
+  "cell": "ctm_src_req_asserted",
+  "scenario": "SMU-XTRIG-CTM.S1",
+  "milestone": "P1",
+  "reason": "blocked:SF-017"
+ },
+ "UNMAPPED:SMU-XTRIG-CTM.S2:ctm_dst_req_delivered": {
+  "cell": "ctm_dst_req_delivered",
+  "scenario": "SMU-XTRIG-CTM.S2",
+  "milestone": "P1",
+  "reason": "blocked:SF-017"
+ },
+ "UNMAPPED:SMU-XTRIG-CTP.S2:ctp_req_out_data_driven": {
+  "cell": "ctp_req_out_data_driven",
+  "scenario": "SMU-XTRIG-CTP.S2",
+  "milestone": "P1",
+  "reason": "blocked:SF-018"
+ },
+ "UNMAPPED:SMU-XTRIG-CTP.S2:ctp_req_out_enable_asserted": {
+  "cell": "ctp_req_out_enable_asserted",
+  "scenario": "SMU-XTRIG-CTP.S2",
+  "milestone": "P1",
+  "reason": "blocked:SF-018"
+ },
+ "UNMAPPED:SMU-XTRIG-CTP.S3:ctp_req_in_data_received": {
+  "cell": "ctp_req_in_data_received",
+  "scenario": "SMU-XTRIG-CTP.S3",
+  "milestone": "P1",
+  "reason": "blocked:SF-018"
+ },
+ "UNMAPPED:SMU-XTRIG-CTP.S3:ctp_req_in_enable_set": {
+  "cell": "ctp_req_in_enable_set",
+  "scenario": "SMU-XTRIG-CTP.S3",
+  "milestone": "P1",
+  "reason": "blocked:SF-018"
+ },
+ "UNMAPPED:SMU-XTRIG-CTP.S4:ctp_ack_out_data_driven": {
+  "cell": "ctp_ack_out_data_driven",
+  "scenario": "SMU-XTRIG-CTP.S4",
+  "milestone": "P1",
+  "reason": "blocked:SF-018"
+ },
+ "UNMAPPED:SMU-XTRIG-CTP.S4:ctp_ack_out_enable_asserted": {
+  "cell": "ctp_ack_out_enable_asserted",
+  "scenario": "SMU-XTRIG-CTP.S4",
+  "milestone": "P1",
+  "reason": "blocked:SF-018"
+ },
+ "UNMAPPED:SMU-XTRIG-MODE.S3:pulse_sync_ct_ignores_ack": {
+  "cell": "pulse_sync_ct_ignores_ack",
+  "scenario": "SMU-XTRIG-MODE.S3",
+  "milestone": "P1",
+  "reason": "blocked:SF-017"
+ }
+}

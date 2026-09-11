@@ -121,6 +121,19 @@ sources = [
   # smc_axi_chan_fcov leads: smc_fabric_fcov instantiates it three times.
   "hw/sys/smc/dv/cov/sv/smc_axi_chan_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_fabric_fcov.sv",
+  # Spec-derived P0 coverage (cov/smc_cell_map.json maps points to cells).
+  "hw/sys/smc/dv/cov/sv/smc_map_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_rst_seq_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_clk_domain_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_cpu_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_gpio_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_efuse_fcov.sv",
+  # Spec-derived P1 coverage (cov/smc_cell_map.json, milestone "P1").
+  "hw/sys/smc/dv/cov/sv/smc_int_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_dma_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_zeroer_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_iso_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_filt_fcov.sv",
 ]
 
 [build.verilator]
@@ -491,14 +504,27 @@ sources = [
   # TB collateral shared with the cocotb flow.
   "hw/sys/smc/dv/models/smc_scratch_map_pkg.sv",
   "hw/sys/smc/dv/models/smc_cpu_mem_dv.sv",
-  # Flow-shared functional-coverage modules; the same five entries the
-  # [build] sources list carries for the cocotb/Verilator flow.
+  # Flow-shared functional-coverage modules; the same entries the [build]
+  # sources list carries for the cocotb/Verilator flow.
   "hw/sys/smc/dv/cov/sv/smc_reset_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_clk_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_periph_fcov.sv",
   # smc_axi_chan_fcov leads: smc_fabric_fcov instantiates it three times.
   "hw/sys/smc/dv/cov/sv/smc_axi_chan_fcov.sv",
   "hw/sys/smc/dv/cov/sv/smc_fabric_fcov.sv",
+  # Spec-derived P0 coverage (cov/smc_cell_map.json maps points to cells).
+  "hw/sys/smc/dv/cov/sv/smc_map_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_rst_seq_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_clk_domain_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_cpu_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_gpio_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_efuse_fcov.sv",
+  # Spec-derived P1 coverage (cov/smc_cell_map.json, milestone "P1").
+  "hw/sys/smc/dv/cov/sv/smc_int_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_dma_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_zeroer_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_iso_fcov.sv",
+  "hw/sys/smc/dv/cov/sv/smc_filt_fcov.sv",
   "hw/sys/smc/dv/tb/smc_tb_if.sv",
   "hw/sys/smc/dv/uvm/env/smc_env_pkg.sv",
   "hw/sys/smc/dv/uvm/seq_lib/smc_seq_lib_pkg.sv",
