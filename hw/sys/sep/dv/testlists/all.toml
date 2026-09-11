@@ -21,8 +21,8 @@ schema_version = 1
 # --tool verilator --stage flist --stage c_compile --stage hdl_compile --stage sim
 #
 # Add `--stage c_compile` when CPU firmware is stale, or run it alone for a
-# firmware-only rebuild. Verilator is the acceptance backend; VCS/Xcelium are
-# development accelerators only.
+# firmware-only rebuild. Verilator is the acceptance backend; other simulators
+# are development accelerators only.
 #
 # no_cpu tests use target="lsu_stub_all_live" for the CPU-stubbed model. CPU
 # firmware tests intentionally omit target and use the full-CPU default model.
@@ -271,14 +271,13 @@ tests = [
     "sep_firmware_backup_unpopulated_rom_key_slot_test",
     "sep_spi_detect_success_test",
     "sep_spi_primary_fail_backup_test",
-    # TP080. Subclass of the entry above; adds an SRAM scoreboard to the same
-    # failover. Covers the EXT SRAM half of the requirement only -- this ROM never
-    # clears SMC SRAM (FINDINGS F19, as amended by F21), so a green run here is not F038 coverage of
-    # that half. Slower than most of this group, and mostly for an inherited
-    # reason: the clear it asserts is 65536 CPU stores, about 1.05M clocks
-    # (measured, run 20260829_111100). The entry above pays the same cycle cost
-    # already. Compare in CYCLES: sys_clk_period is randomised per run, so
-    # simulated-time and wall-second figures are not comparable between runs.
+    # Subclass of the entry above; adds an SRAM scoreboard to the same failover.
+    # Covers the EXT SRAM half only -- this ROM never clears SMC SRAM, so a green
+    # run says nothing about that half. Slower than most of this group, and mostly
+    # for an inherited reason: the clear it asserts is 65536 CPU stores, about
+    # 1.05M clocks, a cost the entry above already pays. Compare in CYCLES:
+    # sys_clk_period is randomised per run, so simulated-time and wall-second
+    # figures are not comparable between runs.
     "sep_failover_sram_clear_assertion_test",
     "sep_spi_not_detected_terminal_test",
     "sep_firmware_encrypted_boot_test",
@@ -308,8 +307,8 @@ tests = [
     # failure, and both run a modexp on the recovering slot.
     "sep_firmware_primary_invalid_public_key_selection_test",
     "sep_firmware_primary_invalid_security_version_test",
-    # Batch R2 -- the primary-side counterparts of the group above. The six-member
-    # PRIMARY revoke family shares ONE implementation,
+    # The primary-side counterparts of the group above. The six-member PRIMARY
+    # revoke family shares ONE implementation,
     # rom_fw/sep_pubkey_rom_revoked_primary_base.py, but deliberately NOT one
     # outcome: slot 0 is TERMINAL, because the shipped backup selects ROM slot 0
     # as well and one fuse bit therefore refuses both manifests, while slots 1-5
@@ -333,7 +332,7 @@ tests = [
     # and the matched partner of the revoke-0 member above -- the same flash bytes,
     # one bit of CHIPLET_PUBK_REVOKE apart.
     "sep_firmware_primary_rom_key_valid_test",
-    # Batch R3 -- BL1 version, chiplet fused keys, demotion.
+    # BL1 version, chiplet fused keys, demotion.
     # ACCEPT boundary of the rollback check, on a fuse floor spread across all eight
     # thermometer words so a truncated decode fails on FUSE_VER=0x00000008.
     "sep_firmware_bl1_ver_test",
@@ -347,8 +346,7 @@ tests = [
     "sep_firmware_chiplet_pubkey_0_revoke_test",
     "sep_firmware_chiplet_pubkey_1_test",
     "sep_firmware_chiplet_pubkey_1_revoke_test",
-    # Batch R4, FINDINGS.md R07: the digest-SOURCE discriminator the four members
-    # above cannot be. Their fuse digest equals public_key_digests[0], so a ROM
+    # The digest-SOURCE discriminator the four members above cannot be. Their fuse digest equals public_key_digests[0], so a ROM
     # comparing against the compiled-in table instead of the fuse is invisible to
     # them. Here the SELECTED fuse (HASH0) holds a decoy while the unselected one
     # (HASH1) holds the real digest, so BOTH a compiled-in-table comparison and a
@@ -357,16 +355,16 @@ tests = [
     # byte-identical to sep_efuse_lc_prod_chiplet_key1.toml's -- making this and
     # sep_firmware_chiplet_pubkey_1_test a matched pair on the FUSE side.
     "sep_firmware_chiplet_pubkey_0_wrong_digest_test",
-    # The [C15] demotion decision. Eight tracker rows, but only SIX of the seven
-    # outcomes the block can produce -- see rom_fw/sep_demotion_decision_base.py
-    # for the collapse map. The three PROD_END rows are one observable (O1),
-    # because rom_main.c returns before any manifest input is read; the
-    # remaining five are O2a, O2b, O3a, O4 and O5. The seventh outcome, O3b
-    # (unauth_flag_0_prod_sel_bit_set, tracker row 116), has no testcase and is
-    # this group's one gap. Every member checks the DEMOTE_1/DEMOTE_2 registers
-    # and not only the console, through the tb_top probes batch R3 wired, because
-    # every [C15] console string is printed from a local computed one line
-    # earlier. The shared stimulus lives in rom_fw/sep_demotion_prod_base.py
+    # The demotion decision. Eight members cover six of the seven outcomes the
+    # block can produce -- see rom_fw/sep_demotion_decision_base.py for the
+    # collapse map. The three PROD_END members are one observable (O1), because
+    # rom_main.c returns before any manifest input is read; the remaining five are
+    # O2a, O2b, O3a, O4 and O5. The seventh, O3b
+    # (unauth_flag_0_prod_sel_bit_set), has no testcase and is this group's one
+    # gap. Every member checks the DEMOTE_1/DEMOTE_2 registers and not only the
+    # console, through the tb_top probes, because every demotion console string is
+    # printed from a local computed one line earlier. The shared stimulus lives in
+    # rom_fw/sep_demotion_prod_base.py
     # (PROD, secure boot disabled on both surfaces) and
     # rom_fw/sep_demotion_prod_end_base.py.
     "sep_firmware_demotion_decision_auth_flag_0_prod_end_test",
@@ -377,12 +375,31 @@ tests = [
     "sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test",
     "sep_firmware_demotion_decision_no_flag_prod_sel_bit_set_test",
     "sep_firmware_demotion_decision_auth_flag_0_unauth_flag_0_prod_sel_bit_set_test",
+    # O3b, the last of the seven outcomes to be covered.
+    "sep_firmware_demotion_decision_unauth_flag_0_prod_sel_bit_set_test",
+    # O3a again, but the only member whose decision follows a full crypto chain:
+    # this reference entry carries no +SECURE_BOOT_DIS.
+    "sep_firmware_demotion_decision_unauth_flag_30_prod_sel_bit_set_test",
+    # Covered-by-O1. The first is the only PROD_END member carrying a live BL2
+    # demotion request; the second's distinguishing bit is read by nothing in this
+    # ROM.
+    "sep_firmware_demotion_decision_unauth_flag_0_prod_end_test",
+    "sep_firmware_demotion_decision_unauth_flag_30_prod_end_test",
+    # Covered-by-O4: the announced collapse sibling of
+    # ..._auth_flag_0_unauth_flag_0_prod_test, kept because it is the MINIMAL O4 --
+    # the BL1 flag is clear, so the pair brackets the ignored input from both sides --
+    # and because it gives O4 its first MEAS_DEMOTE assertion.
+    "sep_firmware_demotion_decision_unauth_flag_0_prod_test",
+    # O5 again, but with secure boot ENFORCED: this reference entry carries no
+    # +SECURE_BOOT_DIS, so it is NOT the artefact-only duplicate of
+    # ..._auth_flag_0_prod_test that that entry's collapse note predicts.
+    "sep_firmware_demotion_decision_no_flag_prod_test",
     "sep_bl1_size_invalid_test",
     "sep_bl1_entry_invalid_test",
-    # KNOWN-FAIL SENTINEL, kept red on purpose. Expected to fail until the
-    # TP049 procedure-vs-ROM dispute is ruled on; see the long comment on its
-    # [[tests]] entry in rom_fw.toml. A run whose ONLY failure is this test is
-    # the expected result. Do not remove this line to get a green run.
+    # KNOWN-FAIL SENTINEL, kept red on purpose: the ROM's behaviour and the test
+    # procedure disagree; see the long comment on its [[tests]] entry in
+    # rom_fw.toml. A run whose ONLY failure is this test is the expected result.
+    # Do not remove this line to get a green run.
     "sep_decryption_failure_terminal_test",
     "sep_mbist_fail_continue_test",
     "sep_warm_reset_invalid_hang_test",
@@ -393,4 +410,41 @@ tests = [
     # one per manifest slot. Adding this made a full `rom_fw` run about 40
     # minutes longer; see its [[tests]] entry in rom_fw.toml. Not a hang.
     "sep_otbn_rsa_verify_failure_test",
+    # Manifest basic validity. The backup-side four use a
+    # structural-failure base because these defects are rejected before
+    # manifest_crypto_validate and therefore print neither CRYPTO_FAIL= nor
+    # MANIFEST_OK.
+    "sep_firmware_primary_manifest_identifier_test",
+    "sep_firmware_backup_manifest_identifier_test",
+    "sep_firmware_manifest_primary_invalid_chiplet_id_test",
+    "sep_firmware_manifest_backup_invalid_chiplet_id_test",
+    "sep_firmware_manifest_primary_invalid_package_id_test",
+    "sep_firmware_manifest_backup_invalid_package_id_test",
+    "sep_firmware_manifest_primary_lc_state_failure_test",
+    "sep_firmware_manifest_backup_lc_state_failure_test",
+    "sep_firmware_validate_backup_manifest_test",
+    "sep_firmware_bad_manifest_hash_test",
+    # Manifest / BL1 / SRAM association. The four ext-SRAM members are absent
+    # because this ROM reads no manifest use_ext_sram field.
+    #
+    # SLOW ON PURPOSE: sep_firmware_manifest_primary_missing_sepbl1_test runs two
+    # RSA-3072 modexps because the BL1-presence check follows signature validation.
+    "sep_firmware_manifest_primary_missing_sepbl1_test",
+    "sep_firmware_manifest_backup_missing_sepbl1_test",
+    "sep_firmware_manifest_primary_reordered_sepbl1_test",
+    "sep_firmware_manifest_primary_use_ext_sram_enabled_test",
+    "sep_firmware_manifest_primary_use_ext_sram_disabled_test",
+    "sep_firmware_manifest_backup_use_ext_sram_enabled_test",
+    "sep_firmware_manifest_backup_use_ext_sram_disabled_test",
+    "sep_boot_measurement_golden_test",
+    "sep_rsa_verify_redundant_compare_test",
+    "sep_lifecycle_invalid_smc_reset_test",
+    "sep_firmware_manifest_backup_reordered_sepbl1_test",
+    "sep_firmware_backup_manifest_major_version_invalid_test",
+    "sep_firmware_backup_manifest_major_version_valid_minor_0_length_correct_test",
+    # The minor-0 arm refused, the minor != 0 arm
+    # refused at its upper bound, and the minor != 0 arm accepted.
+    "sep_firmware_backup_manifest_major_version_valid_minor_0_length_incorrect_test",
+    "sep_firmware_backup_manifest_major_version_valid_minor_nonzero_length_large_test",
+    "sep_firmware_backup_manifest_major_version_valid_minor_nonzero_length_small_correct_test",
 ]

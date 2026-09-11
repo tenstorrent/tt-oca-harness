@@ -5,7 +5,7 @@
 Mutating the packed bytes here rather than in a build step keeps these testcases
 Python-only: no new firmware profile and no HDL rebuild.
 
-LAYOUT AND THE TBS BOUNDARY. From ``bootrom/prod/include/manifest.h:198-234``, a
+LAYOUT AND THE TBS BOUNDARY. From ``bootrom/prod/include/manifest.h``, a
 manifest is 1184 bytes::
 
     [0   .. 743]   TBS (to-be-signed)
@@ -20,7 +20,7 @@ against the shipped image rather than trusting it:
     the hash covers only the TBS, and the signature only the hash.
   * A field INSIDE the TBS invalidates ``manifest_hash``, so :func:`rehash` must
     follow. Re-signing is not needed and deliberately not done: the ROM checks the
-    header and the hash (``manifest_load.c`` then), then
+    header and the hash (``manifest_load.c``), then
     security_version (``manifest_crypto.c``), then inside
     ``validate_signature``  the signature_type, public_key_sel and
     revocation, and only then ``rsa_3072_verify`` (``manifest_crypto.c``). So
@@ -31,10 +31,10 @@ against the shipped image rather than trusting it:
 SLOT ERASURE (:func:`erase_slot`) is a different stimulus: "nothing is at this
 flash address", not "a manifest with one bad field". This ROM has no SPI device
 probe -- ``ot_spi_init`` only writes CSRs and polls ``STATUS.READY``
-(``src/sep_ot_spi.c:166-179``) -- so its only presence test is the manifest magic
-(``src/manifest_load.c:135-138``). An erased slot is therefore indistinguishable
+(``src/sep_ot_spi.c``) -- so its only presence test is the manifest magic
+(``src/manifest_load.c``). An erased slot is therefore indistinguishable
 from an absent device: the BFM's backing store and its out-of-range reads are both
-0xFF (``hw/common/dv/vip/ocah_spi_vip/cocotb/ocah_spi_flash.py:186,494-495``), and
+0xFF (``hw/common/dv/vip/ocah_spi_vip/cocotb/ocah_spi_flash.py``), and
 a pulled-high MISO samples the same. Erasing rather than corrupting is what lets a
 testcase assert the device returned all-0xFF, i.e. that the address was blank.
 """
@@ -44,7 +44,7 @@ from __future__ import annotations
 import hashlib
 import struct
 
-# bootrom/prod/include/manifest.h:27-28
+# bootrom/prod/include/manifest.h
 PRIMARY_MANIFEST_OFFSET = 0x1000
 BACKUP_MANIFEST_OFFSET = 0x41000
 
@@ -59,12 +59,17 @@ TBS_LEN = 744
 # offset would be an unverified number that reads as authoritative. Anyone adding
 # one (e.g. the encryption fields) must extend verify_layout() to check it.
 OFF_IDENTIFIER = 0        # uint32  "TBL1"
+OFF_VERSION_MAJOR = 4     # uint16
+OFF_VERSION_MINOR = 6     # uint16
+OFF_MANIFEST_LENGTH = 8   # uint32
 # usage_constraints sits at manifest offset 16 and is 80 bytes (manifest.h).
 # Its members, from manifest.h: selector_bits(u64) chiplet_id[8](32 B)
 # package_id[8](32 B) life_cycle_states(u32) flags(u32). All INSIDE the TBS, so
 # every mutator below re-hashes, and a mutation that must still BOOT additionally
 # needs env/sep_payload_mutate.reseal().
 OFF_SELECTOR_BITS = 16      # uint64
+OFF_CHIPLET_ID = 24         # uint32[8]
+OFF_PACKAGE_ID = 56         # uint32[8]
 OFF_LIFE_CYCLE_STATES = 88  # uint32
 OFF_USAGE_FLAGS = 92        # uint32
 OFF_SECURITY_VERSION = 162  # uint16
@@ -85,7 +90,7 @@ PUBLIC_KEY_LEN = 384  # manifest.h, RSA_3072_KEY_SZ_BYTES
 SIG_TYPE_RSA_3072 = 1
 SIG_TYPE_ECC_P_256 = 2
 # The packer's ManifestSignatureType.NO_SIGNATURE
-# (bootrom/prod/tools/tt-boot-manifest/src/pack_images_constants.py:4), which is
+# (bootrom/prod/tools/tt-boot-manifest/src/pack_images_constants.py), which is
 # what it writes whenever a config sets boot_arguments.secure_boot = 0
 # (manifest_signing.py). So an "unsigned manifest" is signature_type 0, not an
 # absent field.
@@ -106,8 +111,14 @@ PUBK_SEL_NUM_ROM_KEYS = 6
 
 MANIFEST_MAGIC = b"TBL1"
 
+# manifest.h. validate_manifest_header() demands this major version exactly, and
+# with minor 0 it demands manifest_length == sizeof(manifest_t); with minor != 0 it
+# accepts MANIFEST_SIZE..MANIFEST_MAX_SIZE.
+MANIFEST_MAJOR_VERSION = 1
+MANIFEST_MAX_SIZE = 2048
+
 # SHA-256 of the dev0 RSA-3072 modulus, copied verbatim from ROM key slot 0
-# (bootrom/prod/src/key_digests.c:19-21). It is what check_pubkey_hash() compares
+# (bootrom/prod/src/key_digests.c). It is what check_pubkey_hash() compares
 # a ROM-slot-0 manifest's modulus against, so it doubles as the cross-check that
 # OFF_PUBLIC_KEY really points at the modulus -- see verify_public_key().
 ROM_KEY0_DIGEST = bytes.fromhex(
@@ -122,7 +133,18 @@ ERASED_BYTE = 0xFF
 
 # manifest.h
 FLAG_ARGS_BIT_BL2_DEMOTION = 0
+# Selects the payload staging destination: set stages in SEP EXT SRAM, clear waits
+# for SMC SRAM and stages there. Clear is NOT a no-op -- it is the SMC path -- so
+# every manifest that wants SEP SRAM has to set it explicitly.
+FLAG_ARGS_BIT_USE_EXT_SRAM = 29
 FLAG_ARGS_BIT_SECURE_BOOT = 30
+FLAG_ARGS_BIT_SKIP_SHA256 = 31
+
+# manifest.h. selector_bits[0..7] each enable the chiplet_id word of the same
+# index, and [8..15] the package_id word; DEVICE_ID_NUM_WORDS is 8.
+DEVICE_ID_NUM_WORDS = 8
+SELECTOR_BIT_CHIPLET_ID_BASE = 0
+SELECTOR_BIT_PACKAGE_ID_BASE = 8
 
 # manifest.h. SELECTOR_BIT_LIFE_CYCLE_STATES is DEVICE_ID_NUM_WORDS * 2 = 16
 # (manifest.h), and the BL1 demotion selector is the next bit up.
@@ -142,12 +164,18 @@ LC_STATES_BIT_PROD_END = 2
 # What the SHIPPED secure_boot.bin carries in usage_constraints, so the offsets
 # above can be anchored against real bytes rather than trusted. See
 # verify_usage_constraints_layout().
-#   selector_bits    0x10000  -- bit 16 only  (configs/secure_boot_test.yaml:50)
-#   life_cycle_states    0x7  -- TEST_DEV|PROD|PROD_END        (:54)
-#   flags                  0  -- BL1_demotion clear            (:55)
+#   selector_bits    0x10000  -- bit 16 only, from configs/secure_boot_test.yaml
+#   life_cycle_states    0x7  -- TEST_DEV|PROD|PROD_END
+#   flags                  0  -- BL1_demotion clear
 SHIPPED_SELECTOR_BITS = 1 << SELECTOR_BIT_LIFE_CYCLE_STATES
 SHIPPED_LIFE_CYCLE_STATES = 0x7
 SHIPPED_USAGE_FLAGS = 0
+# Every chiplet_id and package_id word the shipped image carries
+# (configs/secure_boot_test.yaml). Both selectors are 0 there, so the ROM never
+# reads these words and the value is inert until a selector bit is set. It is
+# also the conventional "invalid" device ID, so a selector bit alone is the whole
+# stimulus.
+SHIPPED_DEVICE_ID_WORD = 0xA5A5_A5A5
 
 
 def slot_base(slot: str) -> int:
@@ -195,9 +223,9 @@ def erase_slot(buf: bytearray, slot: str) -> tuple[int, int]:
     The "address not detected" stimulus; see the module docstring for why erasure
     rather than field corruption. Returns the erased ``(start, end)``.
 
-    The layout is verified BEFORE erasing, which is the point: it proves a valid
-    manifest really was at this address, so the test is removing a working slot
-    rather than quietly erasing empty space and asserting on a no-op.
+    The layout is verified BEFORE erasing, which proves a valid manifest really
+    was at this address: the test removes a working slot rather than quietly
+    erasing empty space and asserting on a no-op.
     """
     verify_layout(buf, slot)
     start, end = slot_span(buf, slot)
@@ -275,9 +303,9 @@ def verify_usage_constraints_layout(buf: bytes, slot: str) -> None:
     would still take some path, so the testcase would pass for a reason nobody chose.
 
     The packer config supplies the missing half. ``secure_boot_test.yaml`` sets
-    ``selectors.life_cycle_states: 1`` with every other selector 0 (primary,
-    backup), ``life_cycle_states: 0x7`` (,) and
-    ``BL1_demotion: 0`` (,). Reading all three back and finding exactly
+    ``selectors.life_cycle_states: 1`` with every other selector 0 on both
+    slots, ``life_cycle_states: 0x7`` and ``BL1_demotion: 0``. Reading all three
+    back and finding exactly
     those values is a three-way agreement that would not survive a field moving: a
     shifted window would have to land on 0x10000, 0x7 and 0 simultaneously.
 
@@ -295,12 +323,122 @@ def verify_usage_constraints_layout(buf: bytes, slot: str) -> None:
             f"{slot} usage_constraints decoded as selector_bits=0x{sel:016x}, "
             f"life_cycle_states=0x{lcs:08x}, flags=0x{flags:08x}; expected "
             f"0x{SHIPPED_SELECTOR_BITS:016x} / 0x{SHIPPED_LIFE_CYCLE_STATES:08x} / "
-            f"0x{SHIPPED_USAGE_FLAGS:08x} from configs/secure_boot_test.yaml:47-55 "
-            f"(primary) and :116-124 (backup). Either the packer config changed or "
+            f"0x{SHIPPED_USAGE_FLAGS:08x} from configs/secure_boot_test.yaml "
+            f"(both slots). Either the packer config changed or "
             f"OFF_SELECTOR_BITS / OFF_LIFE_CYCLE_STATES / OFF_USAGE_FLAGS no longer "
             f"address the fields they name, in which case every mutator below writes "
             f"into the wrong bytes"
         )
+
+
+def device_id_words(buf: bytes, slot: str, kind: str) -> list[int]:
+    """The eight ``usage_constraints.chiplet_id`` or ``package_id`` words."""
+    off = {"chiplet_id": OFF_CHIPLET_ID, "package_id": OFF_PACKAGE_ID}[kind]
+    base = slot_base(slot) + off
+    return list(struct.unpack_from(f"<{DEVICE_ID_NUM_WORDS}I", buf, base))
+
+
+def verify_device_id_layout(buf: bytes, slot: str) -> None:
+    """Anchor ``OFF_CHIPLET_ID`` and ``OFF_PACKAGE_ID`` against the shipped bytes.
+
+    Kept separate from :func:`verify_usage_constraints_layout` so that adding this
+    anchor cannot change what any existing caller of that function accepts.
+
+    The two arrays are the stimulus for the chiplet_id and package_id testcases,
+    and those testcases plant nothing in them -- they only set the selector bit
+    that makes the ROM read them. So the value has to be established rather than
+    assumed: if these offsets addressed the wrong bytes, or the packer config
+    stopped writing 0xa5a5a5a5, the selector bit would enable a comparison against
+    something else and the testcase would pass for a reason nobody chose. Sixteen
+    words all reading exactly ``SHIPPED_DEVICE_ID_WORD`` is an agreement a shifted
+    window would not survive.
+    """
+    verify_layout(buf, slot)
+    for kind in ("chiplet_id", "package_id"):
+        words = device_id_words(buf, slot, kind)
+        if any(w != SHIPPED_DEVICE_ID_WORD for w in words):
+            raise AssertionError(
+                f"{slot} usage_constraints.{kind} decoded as "
+                f"{[f'0x{w:08x}' for w in words]}; expected eight words of "
+                f"0x{SHIPPED_DEVICE_ID_WORD:08x} from configs/secure_boot_test.yaml. "
+                f"Either the packer config changed or OFF_CHIPLET_ID / "
+                f"OFF_PACKAGE_ID no longer address the fields they name"
+            )
+
+
+def manifest_version(buf: bytes, slot: str) -> tuple[int, int]:
+    """``(manifest_version_major, manifest_version_minor)``."""
+    base = slot_base(slot)
+    return (struct.unpack_from("<H", buf, base + OFF_VERSION_MAJOR)[0],
+            struct.unpack_from("<H", buf, base + OFF_VERSION_MINOR)[0])
+
+
+def manifest_length(buf: bytes, slot: str) -> int:
+    """``manifest_length`` (u32) this slot's manifest declares."""
+    base = slot_base(slot)
+    return struct.unpack_from("<I", buf, base + OFF_MANIFEST_LENGTH)[0]
+
+
+def set_manifest_length(buf: bytearray, slot: str, value: int) -> None:
+    """Set ``manifest_length`` (in-TBS; re-hashed).
+
+    ``validate_manifest_header`` demands an exact ``sizeof(manifest_t)`` while
+    ``manifest_version_minor`` is 0, so any other value is BAD_LENGTH -- rejected
+    before the hash check and before any crypto work.
+    """
+    verify_layout(buf, slot)
+    if not 0 <= value <= 0xFFFF_FFFF:
+        raise ValueError("manifest_length is 32 bits")
+    if value == manifest_length(buf, slot):
+        raise ValueError(
+            f"manifest_length is already {value}; that is not a mutation"
+        )
+    base = slot_base(slot)
+    struct.pack_into("<I", buf, base + OFF_MANIFEST_LENGTH, value)
+    rehash(buf, slot)
+
+
+def set_manifest_version(buf: bytearray, slot: str, *, major: int | None = None,
+                         minor: int | None = None) -> None:
+    """Set ``manifest_version_major`` / ``_minor`` (in-TBS; re-hashed)."""
+    verify_layout(buf, slot)
+    cur_major, cur_minor = manifest_version(buf, slot)
+    new_major = cur_major if major is None else major
+    new_minor = cur_minor if minor is None else minor
+    if (new_major, new_minor) == (cur_major, cur_minor):
+        raise ValueError(
+            f"manifest version is already {cur_major}.{cur_minor}; that is not a "
+            f"mutation"
+        )
+    base = slot_base(slot)
+    struct.pack_into("<H", buf, base + OFF_VERSION_MAJOR, new_major & 0xFFFF)
+    struct.pack_into("<H", buf, base + OFF_VERSION_MINOR, new_minor & 0xFFFF)
+    rehash(buf, slot)
+
+
+def manifest_hash(buf: bytes, slot: str) -> bytes:
+    """The ``manifest_hash`` field this slot's manifest carries."""
+    base = slot_base(slot)
+    return bytes(buf[base + OFF_MANIFEST_HASH:base + OFF_MANIFEST_HASH + 32])
+
+
+def corrupt_manifest_hash(buf: bytearray, slot: str, *, byte_index: int = 0,
+                          xor_mask: int = 0xFF) -> None:
+    """Break ``manifest_hash`` so ``manifest_check_integrity`` refuses the slot.
+
+    Deliberately NOT followed by :func:`rehash` -- the whole point is a stored
+    digest that disagrees with SHA-256 over the TBS. The field sits outside the
+    TBS, so the TBS itself is untouched and the digest the ROM computes is the
+    shipped one; only the stored copy moves. That makes the mismatch the sole
+    defect, rather than one consequence of a mutated payload.
+    """
+    verify_layout(buf, slot)
+    if not 0 <= byte_index < 32:
+        raise ValueError("manifest_hash is 32 bytes")
+    if xor_mask & 0xFF == 0:
+        raise ValueError("xor_mask 0 would not change anything")
+    base = slot_base(slot)
+    buf[base + OFF_MANIFEST_HASH + byte_index] ^= xor_mask & 0xFF
 
 
 def set_selector_bit(buf: bytearray, slot: str, bit: int, value: bool) -> None:
@@ -430,7 +568,7 @@ def set_signature_type(buf: bytearray, slot: str, value: int) -> None:
     if value == SIG_TYPE_RSA_3072:
         raise ValueError(
             f"signature_type {value} is the supported type "
-            f"(MANIFEST_SIG_TYPE_RSA_3072, manifest.h:116); that is not a mutation"
+            f"(MANIFEST_SIG_TYPE_RSA_3072); that is not a mutation"
         )
     base = slot_base(slot)
     buf[base + OFF_SIGNATURE_TYPE] = value

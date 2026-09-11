@@ -6,15 +6,15 @@
 // Manifest format uses manifest_t (1184 bytes), TOC header
 // + toc_entry[]).  See manifest.h for structure definitions.
 //
-// Flow for BL0 tasks C12-C14:
+// Manifest load flow:
 //   1. Determine manifest source (SPI flash vs SMC SRAM)
 //   2. Try primary slot; on failure, try backup (SPI only)
 //   3. For each attempt: load header -> validate -> integrity check ->
 //      load payload (contains TOC + images) -> validate payload
 //   4. On success, update BL0 state with manifest address
 //
-// Manifest hash verification (C13.6) uses the HMAC SHA-256 hardware driver.
-// Secure boot (C13.5) follows the ROM policy: PROD/PROD_END always enforce.
+// Manifest hash verification uses the HMAC SHA-256 hardware driver.
+// Secure boot follows the ROM policy: PROD/PROD_END always enforce.
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -40,6 +40,14 @@
 // SEP EXT SRAM: staging area for manifest and payload.
 #define SRAM_BASE ((uint32_t)OCH_SEP_TOP_SEP_SRAM_BASE_ADDR) // 0x10000000
 #define SRAM_SIZE ((uint32_t)OCH_SEP_TOP_SEP_SRAM_SIZE)      // 0x00040000 (256 KiB)
+
+// Terminal failure for an unusable SMC staging window. Not a slot error: the
+// window comes from the SMC, so the backup manifest would read the same
+// scratch registers and fail identically, and reporting MANIFEST_ALL_FAILED
+// would blame the images for an environment fault.
+#define ROM_ERR_SMC_STAGING 0x0000A003u
+
+__attribute__((noreturn)) extern void rom_err_fail_ext(uint32_t error_code);
 
 // AES-CBC block size. Used only as the upper bound on how far an encrypted
 // payload's manifest length may exceed the plaintext length its TOC reports:
@@ -82,7 +90,33 @@ static bool is_known_image_type(uint64_t type) {
     return false;
 }
 
-// ── C13.6 (integrity): Verify manifest hash (SHA-256 of TBS region) ──
+// Whether the SHA-256 verification checks run at all.
+//
+// The escape hatch exists for a non-functional HMAC IP, which would otherwise
+// block every boot. Two gates keep it out of a fielded part: secure boot wins
+// outright, and outside TEST_DEV the manifest bit is ignored. flag_args sits
+// outside the signed TBS region, so the bit is unauthenticated and the gates are
+// what make it safe.
+//
+// This governs verification only. It must never gate the payload decryption KDF:
+// skipping a check is a decision, skipping a derivation just produces the wrong
+// key. So an encrypted payload cannot boot with a dead HMAC IP either way.
+static bool sha256_checks_enabled(const manifest_t *m, bool secure_boot, uint32_t lc_state) {
+    if (secure_boot) {
+        return true;
+    }
+    if (lc_state != LC_STATE_TEST_DEV) {
+        return true;
+    }
+    if (m->boot_arguments.flag_args & (1u << FLAG_ARGS_BIT_SKIP_SHA256)) {
+        report_status(STATUS_TYPE_INFO, SEP_MSG_MANIFEST_SHA256_CHECKS_DISABLED);
+        simputs("SHA256_CHECKS_DISABLED\n");
+        return false;
+    }
+    return true;
+}
+
+// ── Verify the manifest hash (SHA-256 of the TBS region) ──
 // TBS = all fields from offset 0 up to (but not including) the signature
 // field.  This is always checked regardless of secure boot state.
 static uint32_t manifest_check_integrity(const manifest_t *m) {
@@ -248,25 +282,7 @@ static uint32_t load_manifest_extra(manifest_t *m, uint32_t src_addr, bool from_
 }
 
 // Load payload data (TOC + image data) from source to SEP SRAM.
-static uint32_t load_payload(const manifest_t *m, uint32_t src_addr) {
-    uint32_t p_len = (uint32_t)m->payload_length;
-    if (p_len == 0u) {
-        return MANIFEST_OK;
-    }
-    // manifest_payload_address() uses the already-adjusted payload_offset
-    // to compute the SRAM destination.
-    uint32_t dest = (uint32_t)(uintptr_t)manifest_payload_address(m);
-    // Source in flash/SMC SRAM: original source + payload_offset.
-    // At this point boot_arguments.payload_offset has been adjusted to
-    // point from the SRAM manifest location, but we need the original
-    // flash offset.  We compute it from the known SRAM base.
-    int32_t p_off_original = (int32_t)(dest - src_addr);
-    uint32_t src = src_addr + (uint32_t)p_off_original;
-    uint32_t err = sep_dma_copy(dest, src, p_len);
-    return err ? MANIFEST_ERR_DMA_FAILED : MANIFEST_OK;
-}
-
-// ── C13.5: Secure boot decision framework ──
+// ── Secure boot decision ──
 // Secure-boot decision:
 //   - sboot_dis fuse → always disable (chicken bit)
 //   - PROD/PROD_END → always enforce, regardless of manifest flag
@@ -287,8 +303,8 @@ static bool secure_boot_enabled(const manifest_t *m, uint32_t lc_state, bool sbo
     return true;
 }
 
-// ── C13.11: Validate payload structure (TOC header + entries) ──
-static uint32_t validate_manifest_payload(const manifest_t *m) {
+// ── Validate payload structure (TOC header + entries) ──
+static uint32_t validate_manifest_payload(const manifest_t *m, bool sha_checks) {
     const struct toc_header *toc = (const struct toc_header *)manifest_payload_address(m);
 
     // Validate TOC header magic.
@@ -415,14 +431,16 @@ static uint32_t validate_manifest_payload(const manifest_t *m) {
         // that length reaches. The per-entry digest binds each image body on its
         // own. Image offsets are relative to the TOC, which is the start of the
         // payload, so the same base is used here as for the bounds check.
-        uint8_t img_digest[32];
-        if (sha256((const uint8_t *)toc + off, len, img_digest) != 0) {
-            simputs("IMAGE_HASH_TIMEOUT\n");
-            return MANIFEST_ERR_IMAGE_HASH_MISMATCH;
-        }
-        if (!const_time_eq(img_digest, e->hash, 32)) {
-            simputshex32("IMAGE_HASH_MISMATCH idx=", i);
-            return MANIFEST_ERR_IMAGE_HASH_MISMATCH;
+        if (sha_checks) {
+            uint8_t img_digest[32];
+            if (sha256((const uint8_t *)toc + off, len, img_digest) != 0) {
+                simputs("IMAGE_HASH_TIMEOUT\n");
+                return MANIFEST_ERR_IMAGE_HASH_MISMATCH;
+            }
+            if (!const_time_eq(img_digest, e->hash, 32)) {
+                simputshex32("IMAGE_HASH_MISMATCH idx=", i);
+                return MANIFEST_ERR_IMAGE_HASH_MISMATCH;
+            }
         }
 
         // BL1 must be present and loadable, and that is decided HERE rather than
@@ -455,8 +473,13 @@ static uint32_t validate_manifest_payload(const manifest_t *m) {
 }
 
 // Attempt one manifest slot: load -> validate -> integrity -> payload.
+//
+// staged_addr/staged_size report where the payload was staged, so a failed
+// attempt can be wiped before the next slot is tried. The destination
+// is no longer always inside the SEP SRAM region the caller clears wholesale.
 static uint32_t try_manifest_slot(manifest_t *dest, uint32_t src_addr, bool from_spi,
-                                 uint32_t lc_state, bool sboot_dis) {
+                                 uint32_t lc_state, bool sboot_dis,
+                                 uint32_t *staged_addr, uint32_t *staged_size) {
     uint32_t err;
 
 #if BOOT_SPI_CONTROLLER_OT
@@ -469,39 +492,35 @@ static uint32_t try_manifest_slot(manifest_t *dest, uint32_t src_addr, bool from
     }
 #endif
 
-    // C13.4: Load the manifest header (1184 bytes).
+    // Load the manifest header (1184 bytes).
     err = load_manifest_header(dest, src_addr, from_spi);
     if (err) return err;
 
-    // C13.6 (structure): Validate manifest fields.
+    // Validate manifest fields.
     err = validate_manifest_header(dest);
     if (err) return err;
 
-    // Adjust payload_offset: after DMA to SRAM, the manifest sits at
-    // a different address than in flash. payload_offset remains relative
-    // to the copied manifest in SRAM so manifest_payload_address() points
-    // at the staged payload correctly.
-    // Original: payload_offset = distance from manifest in flash to payload in flash.
-    // After DMA: manifest is at dest, but payload_offset still points to flash.
-    // Adjustment: payload_offset += (src_addr - (uint32_t)dest)
-    // so manifest_payload_address(dest) = dest + adjusted_offset
-    //   = dest + original_offset + src_addr - dest = src_addr + original_offset
-    // Then after payload DMA, it will point correctly.
-    // Actually: We need payload_address to be in SRAM (where payload will be DMA'd).
-    // We want: dest + payload_offset = SRAM location of payload
-    // Original payload_offset says: flash_addr + payload_offset = flash payload location
-    // So keep payload_offset as-is; it's relative to manifest start.
-    // manifest_payload_address(dest) = dest + payload_offset = SRAM payload addr.
-    // This is correct IF we DMA payload from (src_addr + payload_offset) to (dest +
-    // payload_offset). No adjustment needed when payload_offset is stored relative to manifest
-    // start.
+    // payload_offset is a cursor, not a constant. As authored it is the distance
+    // from the manifest to the payload in flash; both bases are still available
+    // here, so the source read below uses src_addr + offset while the staging
+    // destination is chosen independently. After staging, the offset is rebased
+    // onto the staged address so every later manifest_payload_address() caller
+    // -- validate_manifest_payload(), rom_handoff_bl1() -- resolves to the copy
+    // rather than to flash. The field sits outside the signed TBS region, so
+    // rewriting it invalidates no completed integrity check.
 
-    // C13.6 (integrity): Verify manifest hash.
-    err = manifest_check_integrity(dest);
-    if (err) return err;
-
-    // C13.5: Determine secure boot state.
+    // Determine secure boot state. Computed here rather than after the
+    // integrity check because the hash gate below needs it; the verdict takes
+    // lc_state and sboot_dis by value, so it does not depend on call ordering.
     const bool sb = secure_boot_enabled(dest, lc_state, sboot_dis);
+    const bool sha_ok = sha256_checks_enabled(dest, sb, lc_state);
+
+    // Verify the manifest hash.
+    if (sha_ok) {
+        err = manifest_check_integrity(dest);
+        if (err) return err;
+    }
+
     get_bl0_state()->secure_boot = sb;
 
     // An encrypted payload without secure boot is rejected outright. The
@@ -515,7 +534,7 @@ static uint32_t try_manifest_slot(manifest_t *dest, uint32_t src_addr, bool from
         return MANIFEST_ERR_LC_USAGE_CONSTRAINT;
     }
 
-    // C13.7: Validate usage constraints.
+    // Validate usage constraints.
     // Checks selector_bits to decide which constraints to enforce.
     {
         uint64_t sel = dest->usage_constraints.selector_bits;
@@ -536,7 +555,7 @@ static uint32_t try_manifest_slot(manifest_t *dest, uint32_t src_addr, bool from
             }
         }
 
-        // C13.7a: Life cycle state check.
+        // Life cycle state check.
         if (sel & (1ull << SELECTOR_BIT_LIFE_CYCLE_STATES)) {
             report_status(STATUS_TYPE_INFO, SEP_MSG_CHECK_USAGE_CONSTRAINTS);
             int bit = lc_state_to_manifest_bit(lc_state);
@@ -549,8 +568,7 @@ static uint32_t try_manifest_slot(manifest_t *dest, uint32_t src_addr, bool from
             }
         }
 
-        // C13.7b: chiplet_id check (selector_bits[0..7]).
-        // Reference logic for chiplet_id checking.
+        // chiplet_id check (selector_bits[0..7]).
         {
             uint32_t smc_base = sep_get_smc_base();
             uint8_t sel_lo = (uint8_t)(sel & 0xFFu); // bits [0..7]
@@ -567,8 +585,7 @@ static uint32_t try_manifest_slot(manifest_t *dest, uint32_t src_addr, bool from
             }
         }
 
-        // C13.7c: package_id check (selector_bits[8..15]).
-        // Reference logic for package_id checking.
+        // package_id check (selector_bits[8..15]).
         {
             uint32_t smc_base = sep_get_smc_base();
             uint8_t sel_hi = (uint8_t)((sel >> 8) & 0xFFu); // bits [8..15]
@@ -644,21 +661,113 @@ static uint32_t try_manifest_slot(manifest_t *dest, uint32_t src_addr, bool from
         }
     }
 
-    // C13.9: Load payload (TOC header + entries + image data).
+    // Load payload (TOC header + entries + image data).
     {
         uint32_t p_len = (uint32_t)dest->payload_length;
         int32_t p_off = (int32_t)dest->boot_arguments.payload_offset;
         if (p_len > 0u && p_off > 0) {
+            // Choose the staging destination.
+            //
+            // Only the SPI path chooses. On the non-SPI path the payload already
+            // lives in SMC SRAM, so honouring use_ext_sram=0 there would stage
+            // SMC SRAM into itself.
             uint32_t payload_dest = (uint32_t)dest + (uint32_t)p_off;
+            uint32_t payload_max = SRAM_BASE + SRAM_SIZE - payload_dest;
+
+            if (from_spi &&
+                !(dest->boot_arguments.flag_args & (1u << FLAG_ARGS_BIT_USE_EXT_SRAM))) {
+                // Unbounded: the specification states that this recovery-path
+                // wait loops forever.
+                //
+                // Known exposure, deliberately not handled here: bit 29 sits
+                // outside the signed TBS region, so flipping it in a fielded
+                // image reaches this loop and an SMC that never initialises
+                // hangs the boot. Bounding the loop would diverge from the
+                // specification, so it needs a spec decision rather than a local
+                // one.
+                report_status(STATUS_TYPE_INFO, SEP_MSG_EXT_SRAM_INIT_WAIT);
+                // Also on the console: the status ring is not scraped by DV, so
+                // without this the fact that the ROM waited at all is
+                // unobservable in simulation.
+                simputs("EXT_SRAM_INIT_WAIT\n");
+                for (;;) {
+                    uint32_t st = smc_scratch_read(SMC_SCRATCH_STATUS_TO_SEP_IDX);
+                    if (st & SMC_SEP_STATUS_SRAM_INIT) {
+                        break;
+                    }
+                }
+
+                uint32_t win_off = smc_scratch_read(SMC_SCRATCH_SEP_SAFE_SRAM_START_IDX);
+                uint32_t win_len = smc_scratch_read(SMC_SCRATCH_SEP_SAFE_SRAM_SIZE_IDX);
+                report_status(STATUS_TYPE_INFO, SEP_MSG_SMC_PAYLOAD_OFFSET);
+                report_status(STATUS_TYPE_INFO, SEP_MSG_SMC_PAYLOAD_MAX_SIZE);
+                simputshex32("SMC_WIN_OFF=", win_off);
+                simputshex32("SMC_WIN_LEN=", win_len);
+
+                // The window is SMC-supplied and therefore untrusted. Both
+                // refusals are terminal, not slot errors -- see ROM_ERR_SMC_STAGING.
+                if (!contains_range(0u, SMC_SRAM_SIZE_BYTES, win_off, win_len)) {
+                    simputs("SMC_WIN_OOB\n");
+                    report_status(STATUS_TYPE_ERROR, SEP_MSG_PAYLOAD_INVALID_LOCATION_SRAM);
+                    rom_err_fail_ext(ROM_ERR_SMC_STAGING);
+                }
+                if (win_off & 0x7u) {
+                    simputs("SMC_WIN_MISALIGNED\n");
+                    report_status(STATUS_TYPE_ERROR, SEP_MSG_INVALID_PAYLOAD_ALIGNMENT_SRAM);
+                    rom_err_fail_ext(ROM_ERR_SMC_STAGING);
+                }
+
+                payload_dest = sep_get_smc_sram_base() + win_off;
+                payload_max = win_len;
+                report_status(STATUS_TYPE_INFO, SEP_MSG_USING_SMC_SRAM);
+                simputs("USING_SMC_SRAM\n");
+            } else {
+                report_status(STATUS_TYPE_INFO, SEP_MSG_USING_SEP_SRAM);
+                simputs("USING_SEP_SRAM\n");
+            }
+
+            // The destination has a capacity; nothing checked it before. The DMA
+            // range check would catch an overrun, but as a backstop rather than
+            // as a decision the ROM made.
+            if (p_len > payload_max) {
+                simputshex32("PAYLOAD_NO_ROOM=", payload_max);
+                report_status(STATUS_TYPE_ERROR, SEP_MSG_INVALID_PAYLOAD_LENGTH);
+                return MANIFEST_ERR_PAYLOAD_NO_ROOM;
+            }
+
             uint32_t payload_src = src_addr + (uint32_t)p_off;
+
+#if BOOT_SPI_CONTROLLER_OT
+            // The bounds gate above ran before the destination was chosen, so it
+            // validated the EXT SRAM address rather than the one about to be
+            // written. Re-run it on the real destination: the driver's own gate
+            // would refuse an undeclared region anyway, but this keeps the
+            // hardened caller-side check covering what actually happens.
+            if (from_spi && !boot_flash_bounds_ok(payload_src, p_len, payload_dest, p_len)) {
+                simputs("PAYLOAD_DST_OT_OOB\n");
+                report_status(STATUS_TYPE_ERROR, SEP_MSG_SPI_OT_BOUNDS_ERROR);
+                return MANIFEST_ERR_PAYLOAD_BAD_LOC;
+            }
+#endif
+
             err = manifest_src_read(payload_dest, payload_src, p_len, from_spi);
             if (err) return MANIFEST_ERR_DMA_FAILED;
+
+            simputshex32("PAYLOAD_DST=", payload_dest);
+
+            // Rebase the cursor onto the staged copy so every later
+            // manifest_payload_address() resolves there.
+            dest->boot_arguments.payload_offset =
+                (int64_t)(int32_t)(payload_dest - (uint32_t)dest);
+
+            if (staged_addr) *staged_addr = payload_dest;
+            if (staged_size) *staged_size = p_len;
         }
     }
 
-    // C13.10: Crypto chain, then C13.11 the payload structure.
+    // Crypto chain, then the payload structure.
     //
-    // ORDER IS LOAD-BEARING: security version -> signature -> payload hash (over
+    // THE ORDER IS REQUIRED: security version -> signature -> payload hash (over
     // ciphertext) -> decrypt -> TOC.
     //   * The TOC is read LAST because an encrypted payload's TOC is itself
     //     ciphertext; reading it earlier rejects every encrypted image as
@@ -675,15 +784,17 @@ static uint32_t try_manifest_slot(manifest_t *dest, uint32_t src_addr, bool from
         simputs("SBOOT_OFF\n");
         // Payload hash is checked even with secure boot off: it still detects
         // payload corruption, it just is not authenticated by a signature.
-        err = verify_payload_hash(dest);
-        if (err) {
-            simputshex32("PLD_HASH_FAIL=", err);
-            return err;
+        if (sha_ok) {
+            err = verify_payload_hash(dest);
+            if (err) {
+                simputshex32("PLD_HASH_FAIL=", err);
+                return err;
+            }
         }
     }
 
-    // C13.11: Validate payload structure (TOC header + entries).
-    err = validate_manifest_payload(dest);
+    // Validate payload structure (TOC header + entries).
+    err = validate_manifest_payload(dest, sha_ok);
     if (err) return err;
 
     return MANIFEST_OK;
@@ -729,6 +840,11 @@ uint32_t rom_manifest_boot(const struct boot_straps *straps, uint32_t spi_status
 
     uint32_t last_err = 0;
 
+    // Declared outside the loop so a failed attempt's staging area can be wiped
+    // before the next slot is tried, wherever it landed.
+    uint32_t staged_addr = 0u;
+    uint32_t staged_size = 0u;
+
     for (uint32_t retry = 0; retry <= num_retries; ++retry) {
         // Select slot: rotate_update swaps primary/backup order. Only the SPI
         // path has two slots -- the SMC path fills offsets[0] alone and runs a
@@ -765,14 +881,25 @@ uint32_t rom_manifest_boot(const struct boot_straps *straps, uint32_t spi_status
         simputshex32("MANIFEST_SRC=", manifest_src);
 
         // Attempt load + validate.
+        staged_addr = 0u;
+        staged_size = 0u;
         uint32_t err = try_manifest_slot(p_manifest, manifest_src, from_spi,
-                                        lc_state, sboot_dis);
+                                        lc_state, sboot_dis,
+                                        &staged_addr, &staged_size);
         if (err != 0u) {
             simputshex32("MANIFEST_ERR=", err);
             last_err = err;
 
             // Clean up SRAM before retrying.
             if (from_spi && retry < num_retries) {
+                // A payload staged outside SEP SRAM is not reached by the region
+                // clear below, so wipe it where it actually landed. Otherwise the
+                // failed attempt's payload survives into the backup attempt.
+                if (staged_size != 0u &&
+                    !contains_range(SRAM_BASE, SRAM_SIZE, staged_addr, staged_size)) {
+                    simputshex32("STAGED_WIPE=", staged_addr);
+                    (void)sep_dma_zero(staged_addr, staged_size);
+                }
                 clear_sram_region(SRAM_BASE, SRAM_SIZE);
                 uint32_t rerr = boot_flash_reinit();
                 if (rerr) {

@@ -22,19 +22,14 @@
 #include "sep.h"
 #include "sep_smc_interface.h"
 
-// SMC CPU CTRL reset control register offset (holds SMC cores in reset).
-// Writing 1 to core*_reset_n_n0_scan bits asserts reset on each SMC core.
-#define SMC_CPU_CTRL_RESET_CTRL_OFFSET 0x0020u
-
 // ---------------------------------------------------------------------------
 // LC state read helper.
 // ---------------------------------------------------------------------------
 
 uint32_t lc_read_state(void) {
     uint32_t reg = mmio_read32(OCH_SEP_TOP_SEP_EFUSE_MAP_LC_STATE_BASE_ADDR);
-    // reference suite efuse field is 8-bit (diff encoded by RTL).
-    // Extract low 4 bits = raw LC state.
-    // The low nibble carries the decoded lifecycle state.
+    // The efuse field is 8-bit, differentially encoded by RTL; the low nibble
+    // carries the decoded lifecycle state.
     return ((reg & SEP_EFUSE_MAP__LC_STATE__LC_STATE_bm) >> SEP_EFUSE_MAP__LC_STATE__LC_STATE_bp) &
            0xFu;
 }
@@ -128,7 +123,7 @@ void lc_write_demotion_2(bool demote, bool lock) {
 }
 
 // ---------------------------------------------------------------------------
-// Full lifecycle policy (Task C6)
+// Full lifecycle policy
 // ---------------------------------------------------------------------------
 
 // Error code for lifecycle validation failure.
@@ -158,9 +153,10 @@ uint32_t rom_lifecycle_policy(void) {
         // SMC continue running in an unknown state.
         uint32_t smc_base = sep_get_smc_base();
         uint32_t rst = mmio_read32(smc_base + SMC_CPU_CTRL_RESET_CTRL_OFFSET);
-        rst |= 0xFu; // core0~core3 reset_n bits → hold all cores in reset
+        // reset_n is active low, so clearing the four core bits asserts reset.
+        rst &= ~(uint32_t)SMC_CPU_CTRL_RESET_CTRL_CORE_MASK;
         mmio_write32(smc_base + SMC_CPU_CTRL_RESET_CTRL_OFFSET, rst);
-        simputs("SMC_RESET_ON_INVALID_LC\n");
+        simputshex32("SMC_RESET_ON_INVALID_LC=", rst);
 
         rom_err_fail_ext(ROM_ERR_LIFECYCLE_INVALID);
     }

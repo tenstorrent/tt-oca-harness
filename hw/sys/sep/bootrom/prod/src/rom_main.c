@@ -14,39 +14,45 @@
 // The terminal verdict is a single word in cold_scratch[0] (errors.h VERDICT_OUT);
 // the ROM only ever reports FAIL there, since a successful boot ends in BL1.
 //
-// Boot flow for the SEP BL0 sequence
-// (see context/boot_flow/ocah_boot_flow.md for full task mapping):
+// Boot flow for the SEP BL0 sequence:
 //
-//   [C0]    main() entry + runtime init check
-//   [C2]    init_straps() → structured boot config
-//   [C3]    status reporting init (strap-controlled)
-//   [C1]    ROM version + hash print (hash filled at build time)
-//   [C5]    PLL/clock init (strap-controlled)
-//   [C9c]   init_bl0_state()   (must precede every bl0_state writer)
-//   [C6]    lifecycle policy
-//   [C7]    chip ID identification (reads SMC CHIP_CONFIG_CHIP_ID)
-//   [V3]    DFT / MEM_REPAIR gate — in vector.S, before the DCCM scrub
-//    —      peripheral/bus reset
-//   [C8]    crypto/security init
-//   [C9a]   EXT SRAM clear
-//   [C9b]   ICCM clear
-//   [C10b]  read sboot_dis fuse
-//   [C16]   stack canary write
-//   [C10c]  DMA init
-//   [C11]   boot mode branch (SPI / recovery / secondary)
-//    —      SMC scratch coordination
-//   [C12–C14] manifest load / validate (retry loop)
-//   [C13.10]  crypto validation (version/revocation/RSA-3072/decrypt/payload hash)
-//   [C15]   demotion decisions + lock fuse secrets + boot measurement
-//   [C17]   confirm fuse secrets locked
-//   [C18]   BL1 handoff (copy → jump)
-//   [C16]   stack canary check
-//   [C19]   unified error convergence (rom_err_fail)
+//   main() entry + runtime init check
+//   init_straps() → structured boot config
+//   status reporting init (strap-controlled)
+//   ROM version + hash print (hash filled at build time)
+//   PLL/clock init (strap-controlled)
+//   init_bl0_state()   (must precede every bl0_state writer)
+//   lifecycle policy
+//   chip ID identification (reads SMC CHIP_CONFIG_CHIP_ID)
+//   DFT / MEM_REPAIR gate — in vector.S, before the DCCM scrub
+//   peripheral/bus reset
+//   crypto/security init
+//   EXT SRAM clear
+//   ICCM clear
+//   read sboot_dis fuse
+//   stack canary write
+//   DMA init
+//   boot mode branch (SPI / recovery / secondary)
+//   SMC scratch coordination
+//   manifest load / validate (retry loop)
+//   crypto validation (version/revocation/RSA-3072/decrypt/payload hash)
+//   demotion decisions + lock fuse secrets + boot measurement
+//   confirm fuse secrets locked
+//   BL1 handoff (copy → jump)
+//   stack canary check
+//   unified error convergence (rom_err_fail)
 //
-// TODO(C15): UID key derivation into the key vault. A key must be derived from
-// each of CHIPLET_UID / SIP_UID / SYS_UID and pushed to the key manager before
-// lock_fuse_secrets() closes the only window in which those fuses are readable.
-// Blocked on the KM_MAILBOX_SEP command format.
+// BL0 derives no UID key. The key vault is the Key Manager's KPV
+// (hw/ip/key_manager, 64 slots of 512 bits with per-slot lock_write/lock_use/
+// erase/seal enforced in RTL), and KPV has ONE write port, owned by the KM CPU
+// (km_kpv.sv: "one write port (KM CPU) and one read port (KM only)"). This
+// design implements no SEP-facing low-privilege port, so BL0's only route would
+// be the KM mailbox.
+//
+// The ordering constraint that route would carry is worth stating here: any
+// consumer of CHIPLET_UID / SIP_UID / SYS_UID has to run before
+// lock_fuse_secrets(), which closes the only window in which those fuses are
+// readable.
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -94,7 +100,7 @@ __attribute__((noreturn)) void trap_handler_c(uint32_t mcause, uint32_t mepc, ui
 static volatile uint32_t g_data_init = 0x12345678u;
 static volatile uint32_t g_bss_zero;
 
-// Warm reset is handled in vector.S (V2):
+// Warm reset is handled in vector.S:
 // - vector.S reads cold_scratch[7] early,
 //   before touching DCCM (sp/scrub/.data/.bss), to preserve BL1 state.
 // - A valid ICCM address transfers directly to the warm handler and remains
@@ -110,14 +116,11 @@ static volatile uint32_t g_bss_zero;
 #define ROM_SPI_SYSCLK_MHZ 25u
 #endif
 
-// SPI init failure is no longer fatal.
-// Kept as documentation of the previous approach.
-// #define ROM_FAIL_ON_SPI_INIT_ERROR 0
-
 // SEP scratch register addresses (from sep.h).
 #include "sep.h"
 
-// Placeholder addresses until DFT status window is finalized.
+// The DFT status window is not addressed from C; the boot gate reads it in
+// vector.S.
 #ifndef ROM_DFT_STATUS_ADDR
 #define ROM_DFT_STATUS_ADDR 0u
 #endif
@@ -141,7 +144,7 @@ static volatile uint32_t g_bss_zero;
 #define ROM_ICCM_CLEAR_ENABLE 0
 #endif
 
-// Stack canary for C16 stack health check.
+// Stack canary for the stack health check.
 // Written at __stack_bottom (lowest address of stack) after bl0_state init.
 // Verified before PASS to detect stack overflow during boot.
 #define STACK_CANARY_VALUE 0xDEAD5741u // 'STA\xDE' (stack guard)
@@ -150,9 +153,9 @@ extern uint8_t __stack_top[];          // defined in linker script
 
 enum {
     ROM_ERR_RUNTIME_INIT_FAILED = 0x0000B001u,
-    // Retained for the error-code space only; the MEM_REPAIR gate moved to
-    // vector.S and reports STATUS_ENCODE(ERROR, SEP_MSG_MBIST_FAIL) directly,
-    // since rom_err_fail() needs a C stack that does not exist that early.
+    // Reserved, unused here: the MEM_REPAIR gate runs in vector.S, which has no
+    // C stack for rom_err_fail() and so reports
+    // STATUS_ENCODE(ERROR, SEP_MSG_MBIST_FAIL) directly.
     ROM_ERR_DFT_GATE_BLOCKED = 0x0000D001u,
     ROM_ERR_SMC_COORD_NOT_READY = 0x0000C001u,
     ROM_ERR_SPI_INIT_FAILED = 0x0000E001u,
@@ -163,7 +166,7 @@ enum {
     ROM_ERR_BL0_STATE_OVERLAPS_STACK = 0x0000F005u,
 };
 
-// ── [C19] Unified error convergence ──
+// ── Unified error convergence ──
 // All ROM error paths converge here.  Records the error in:
 // - BL0 state (error_code field, for BL1/debugger)
 // - cold_scratch[1] (the code, for debugger/DV visibility)
@@ -202,29 +205,6 @@ static inline void rom_check_runtime_init_or_fail(void) {
     if (g_data_init != 0x12345678u || g_bss_zero != 0u) {
         rom_err_fail(ROM_ERR_RUNTIME_INIT_FAILED);
     }
-}
-
-// Quick sanity check: write a pattern to SMC scratch[7] (unused), read back,
-// and verify the SVT slave memory round-trips correctly.
-static void rom_smc_mem_sanity_check(void) {
-    static const uint32_t patterns[] = {0xA5A55A5Au, 0x12345678u, 0x00000000u, 0xFFFFFFFFu};
-    const int n = (int)(sizeof(patterns) / sizeof(patterns[0]));
-
-    simputs("SMC_MEM_CHK\n");
-    simputshex32("SMC_BASE=", sep_get_smc_base());
-    for (int i = 0; i < n; i++) {
-        smc_scratch_write(7, patterns[i]);
-        uint32_t rb = smc_scratch_read(7);
-        if (rb != patterns[i]) {
-            simputshex32("SMC_MEM_EXP=", patterns[i]);
-            simputshex32("SMC_MEM_GOT=", rb);
-            simputs("SMC_MEM_FAIL\n");
-            rom_err_fail(0x0000A001u);
-        }
-    }
-    // Clean up
-    smc_scratch_write(7, 0u);
-    simputs("SMC_MEM_OK\n");
 }
 
 static void rom_smc_coordination_probe(void) {
@@ -268,7 +248,7 @@ static void rom_iccm_clear(void) {
     // and the store never reaches the bus. sep_dma_zero() also handles the
     // address remap an ICCM destination needs.
     //
-    // sep_dma_init() runs here rather than relying on [C10c], which comes later.
+    // sep_dma_init() runs here rather than relying on the later DMA init.
     // Programming the enabled-memory-range registers twice is harmless.
     //
     // ROM_ICCM_CLEAR_ENABLE is 0 for simulation and MUST be 1 for release; the
@@ -296,8 +276,8 @@ static void rom_peripheral_reset(void) {
 
 static void rom_crypto_init(void) {
     report_status(STATUS_TYPE_DEBUG, SEP_MSG_CRYPTO_INIT_CHECK);
-    // SHA-256 self-test: compute SHA-256("abc") and compare against NIST vector.
-    // Same vector validated by fw/sep/tests/hmac_test/hmac_test.c.
+    // SHA-256 self-test: compute SHA-256("abc") and compare against the
+    // FIPS 180-4 example vector.
     {
         static const uint8_t test_msg[] = {'a', 'b', 'c'};
         static const uint8_t expected[32] = {
@@ -365,7 +345,7 @@ static uint32_t rom_spi_init(const struct boot_straps *straps, uint16_t sysclk_m
 // spi_status: result of spi_init(); non-zero skips the primary manifest retry.
 static void rom_manifest_validate_handoff(const struct boot_straps *straps, uint32_t spi_status,
                                          uint32_t lc_state, bool sboot_dis) {
-    // ── [C12–C14] manifest load ──
+    // ── Manifest load ──
     report_status(STATUS_TYPE_INFO, SEP_MSG_MANIFEST_LOAD_START);
     uint32_t mfst_err = rom_manifest_boot(straps, spi_status, lc_state, sboot_dis);
     if (mfst_err != 0u) {
@@ -373,11 +353,11 @@ static void rom_manifest_validate_handoff(const struct boot_straps *straps, uint
         rom_err_fail(mfst_err);
     }
 
-    // [C13.10] crypto validation and [C13.11] payload structure run inside
-    // rom_manifest_boot()'s per-slot attempt (manifest_load.c), so a crypto
-    // failure falls over to the other slot. Anything reaching here has passed.
+    // Crypto validation and payload structure run inside rom_manifest_boot()'s
+    // per-slot attempt (manifest_load.c), so a crypto failure falls over to the
+    // other slot. Anything reaching here has passed.
 
-    // ── [C15] Demotion decisions ──
+    // ── Demotion decisions ──
     // Demotion decision flow:
     //   DEMOTE_1: BL1 demotion register
     //   DEMOTE_2: BL2 demotion register (written by BL1, not BL0)
@@ -388,20 +368,19 @@ static void rom_manifest_validate_handoff(const struct boot_straps *straps, uint
     //   BL2 deferred: store the decision in bl0_state for BL1/KDF. DEMOTE_1 is
     //     still written and locked in the non-demoted state UNLESS BL2 actually
     //     requested demotion -- that request is the only case in which the
-    //     register is left unlocked. Skipping the write whenever the BL1
-    //     selector bit was clear left DEMOTE_1 unwritten and unlocked for later
-    //     software to set at will.
+    //     register is left unlocked. Leaving DEMOTE_1 unwritten would leave it
+    //     unlocked for later software to set at will.
     //   DEMOTE_2 is never written by BL0 (except PROD_END lock).
     //
     // The register write itself is deferred until after the fuse secrets are
-    // locked; only the decision is taken here. See the [C15] block below.
+    // locked; only the decision is taken here.
     bool demotion_reg = false;
     bool lock_demotion = true;
     // Two more values the boot measurement needs, kept at this scope so they
     // outlive the decision block below. demotion_decision is NOT demotion_reg:
     // it is whichever flag actually made the decision -- the BL1 one when the
-    // selector bit is set, the BL2 one otherwise -- and it is what the reference
-    // mixes into both the measurement and the UID key derivation.
+    // selector bit is set, the BL2 one otherwise -- and it is what the boot
+    // measurement records.
     bool demotion_decision = false;
     bool bl2_demote_m = false;
     {
@@ -446,11 +425,11 @@ static void rom_manifest_validate_handoff(const struct boot_straps *straps, uint
         }
     }
 
-    // ── [C15] Lock fuse secrets ──
+    // ── Lock fuse secrets ──
     report_status(STATUS_TYPE_INFO, SEP_MSG_FUSE_SECRETS_LOCK);
     lock_fuse_secrets();
 
-    // ── [C17] Confirm fuse secrets locked ──
+    // ── Confirm fuse secrets locked ──
     // Failure to confirm the lock state is fatal.
     if (!check_fuse_secrets_locked()) {
         report_status(STATUS_TYPE_ERROR, SEP_MSG_FUSE_SECRETS_NOT_LOCKED);
@@ -461,9 +440,8 @@ static void rom_manifest_validate_handoff(const struct boot_straps *straps, uint
     // ── Demotion register write (deferred from the decision above) ──
     // Ordered after the secret lock deliberately: the demotion register is the
     // last fuse state BL0 changes, so any fault while writing it cannot leave
-    // the secret fuses readable. Anything that needs to READ a secret -- the UID
-    // key derivation, and the boot measurement when it lands -- must therefore
-    // run before the lock, not here.
+    // the secret fuses readable. Anything that needs to READ a secret must
+    // therefore run before the lock, not here.
     if (lock_demotion) {
         lc_write_demotion(demotion_reg, true);
         simputs("DEMOTE_LOCKED\n");
@@ -471,7 +449,7 @@ static void rom_manifest_validate_handoff(const struct boot_straps *straps, uint
         simputs("DEMOTE_NOT_LOCKED\n");
     }
 
-    // ── [C15] Boot measurement ──
+    // ── Boot measurement ──
     // Records the boot state so a later stage can tell a trusted boot from a
     // downgraded one. Placed here, after the demotion register write, because
     // that is the last input to settle -- and because none of the inputs is a
@@ -489,7 +467,7 @@ static void rom_manifest_validate_handoff(const struct boot_straps *straps, uint
         }
     }
 
-    // ── [C18] BL1 handoff ──
+    // ── BL1 handoff ──
     {
         report_status(STATUS_TYPE_DEBUG, SEP_MSG_HANDOFF_CHECK);
         // Manifest is at the start of SEP EXT SRAM (loaded by rom_manifest_boot).
@@ -501,9 +479,6 @@ static void rom_manifest_validate_handoff(const struct boot_straps *straps, uint
     }
 }
 
-// Report the ROM hash prefix via the status ring.
-// Emits SEP_MSG_ROM_HASH followed by the first 4 hex chars (2 × uint16_t)
-// of the hash for machine-readable consumption by DV/debugger.
 static uint8_t char_to_int(char c) {
     if (c >= '0' && c <= '9')
         return (uint8_t)(c - '0');
@@ -513,6 +488,9 @@ static uint8_t char_to_int(char c) {
         return 0;
 }
 
+// Report the ROM hash prefix via the status ring: SEP_MSG_ROM_HASH followed by
+// the first 4 hex chars of the hash as two 16-bit words, so DV and a debugger
+// can read it without parsing the console text.
 static void report_rom_hash(void) {
     const uint8_t *p = (const uint8_t *)g_rom_sha256_str;
 
@@ -521,7 +499,6 @@ static void report_rom_hash(void) {
     // Skip "sha256:" prefix (7 chars).
     p += 7;
 
-    // Report first 4 hex chars as two 16-bit status words.
     for (int i = 0; i < 2; i++, p += 4) {
         uint16_t val = 0;
         val = (uint16_t)(char_to_int((char)p[0]) << 12);
@@ -550,18 +527,15 @@ static void rom_status_reporting_init(const struct boot_straps *straps) {
 
 void rom_main(void) {
 
-    // ── [C0] main() entry ──
+    // ── main() entry ──
     STATUS_OUT(STATUS_ENCODE(STATUS_TYPE_DEBUG, SEP_MSG_BOOTROM_START_MAIN));
 
-    // ── [C0] runtime init check (g_data_init / g_bss_zero) ──
+    // ── Runtime init check (g_data_init / g_bss_zero) ──
     rom_check_runtime_init_or_fail();
     report_status(STATUS_TYPE_DEBUG, SEP_MSG_RUNTIME_INIT_OK);
 
-    // ── SVT slave memory sanity check (write-read-back via SMC scratch[7]) ──
-    rom_smc_mem_sanity_check();
-
     simputs("ROM\n");
-    // ── [C1] ROM version + hash print (hash filled by build-time insert-rom-sha256.py) ──
+    // ── ROM version + hash print (hash filled by build-time insert-rom-sha256.py) ──
     simputs(g_rom_version);
     simputs(g_rom_sha256_str);
     simputs("\n");
@@ -579,21 +553,21 @@ void rom_main(void) {
     // Memory init checkpoint (DCCM scrub + .data/.bss init done in vector.S).
     simputs("MEM_INIT_OK\n");
 
-    // ── [C2] init_straps → structured boot config ──
+    // ── init_straps → structured boot config ──
     report_status(STATUS_TYPE_DEBUG, SEP_MSG_DEVICE_MODE_INPUTS_CHECK);
     struct boot_straps straps;
     init_straps(&straps);
 
-    // ── [C3] Status reporting init (strap-controlled) ──
+    // ── Status reporting init (strap-controlled) ──
     rom_status_reporting_init(&straps);
 
-    // ── [C5] PLL/Clock init (strap-controlled) ──
+    // ── PLL/Clock init (strap-controlled) ──
     report_status(STATUS_TYPE_INFO, SEP_MSG_PLL_CLK_INIT);
     uint16_t smu_freq_mhz = pll_init(straps.bl0_pll_clk);
     report_status(STATUS_TYPE_INFO_EXT, smu_freq_mhz);
     simputshex32("SYS_CLK_MHZ=", (uint32_t)smu_freq_mhz);
 
-    // ── [C9c] BL0 state init ──
+    // ── BL0 state init ──
     // MUST precede every bl0_state writer: init_bl0_state() zeroes the whole
     // struct, so any field recorded before it is destroyed. The vector.S DCCM
     // scrub covers the bl0_state reserve as well, which makes the zeroing
@@ -602,13 +576,12 @@ void rom_main(void) {
     report_status(STATUS_TYPE_DEBUG, SEP_MSG_BL0_STATE_INIT);
     init_bl0_state();
 
-    // The DCCM reserve exists as TWO numbers -- __bl0_state_reserve in
-    // link/rom.ld and BL0_STATE_RESERVE_BYTES in bl0_state.h -- and nothing at
-    // build time compares them. The header's _Static_assert checks the struct
-    // against the header's own copy, so a pair like "header 192, linker 128,
-    // sizeof 160" passes it and still overlaps the stack. This is the check that
-    // does not: __stack_top comes from the LINKER's number, so if the struct
-    // starts below it the two numbers have drifted apart.
+    // The DCCM reserve is stated twice -- __bl0_state_reserve in link/rom.ld and
+    // BL0_STATE_RESERVE_BYTES in bl0_state.h -- and no build step compares them.
+    // The header's _Static_assert only checks the struct against the header's own
+    // copy, so a smaller linker reserve still overlaps the stack. __stack_top
+    // comes from the linker, so a struct starting below it proves the two have
+    // drifted apart.
     if ((uintptr_t)BL0_STATE_ADDR < (uintptr_t)__stack_top) {
         simputshex32("BL0S_ADDR=", (uint32_t)BL0_STATE_ADDR);
         simputshex32("STACK_TOP=", (uint32_t)(uintptr_t)__stack_top);
@@ -616,12 +589,12 @@ void rom_main(void) {
     }
     simputs("BL0_STATE_OK\n");
 
-    // ── [C6] Lifecycle policy ──
+    // ── Lifecycle policy ──
     // rom_lifecycle_policy() reads efuse, validates, and records in bl0_state.
     // Returns the decoded LC state (does not return on invalid).
     uint32_t lc_state = rom_lifecycle_policy();
 
-    // ── [C7] Chip ID identification ──
+    // ── Chip ID identification ──
     // Read CHIP_CONFIG_CHIP_ID from the SMC chip_config
     // block and report for DV/debugger visibility.
     {
@@ -631,27 +604,27 @@ void rom_main(void) {
         simputshex32("CHIP_ID=", chip_id);
     }
 
-    // [V3] DFT / MBIST / MEM_REPAIR boot-gating now runs in vector.S, before the
+    // DFT / MBIST / MEM_REPAIR boot-gating runs in vector.S, before the
     // DCCM scrub and before this C runtime existed. It has to: a repair failure
     // must not reach the lifecycle decision, and that decision is stored in DCCM.
 
     // ── Peripheral/Bus reset sequencing ──
     rom_peripheral_reset();
 
-    // ── [C8] Crypto/security init ──
+    // ── Crypto/security init ──
     rom_crypto_init();
 
-    // ── [C9a] EXT SRAM clear ──
+    // ── EXT SRAM clear ──
     simputs(">>C9a_SRAM_CLR\n");
     rom_mem_clear();
     simputs("<<C9a_SRAM_CLR\n");
 
-    // ── [C9b] ICCM clear ──
+    // ── ICCM clear ──
     simputs(">>C9b_ICCM_CLR\n");
     rom_iccm_clear();
     simputs("<<C9b_ICCM_CLR\n");
 
-    // ── [C10b] Read sboot_dis fuse ──
+    // ── Read sboot_dis fuse ──
     // Read the SBOOT_DIS efuse shadow register.
     // Chicken bit to disable secure boot (bit 0 of SEP_EFUSE_MAP_SBOOT_DIS).
     // Kept in a function-level local, not only in bl0_state: the secure-boot
@@ -667,15 +640,15 @@ void rom_main(void) {
         report_status(STATUS_TYPE_INFO_EXT, sboot_dis);
     }
 
-    // ── [C16] Stack canary write ──
+    // ── Stack canary write ──
     // Place canary at __stack_bottom (lowest stack address, just above .bss).
     // Checked before PASS to detect stack overflow during boot.
     *(volatile uint32_t *)__stack_bottom = STACK_CANARY_VALUE;
 
-    // ── [C10c] DMA init ──
+    // ── DMA init ──
     rom_dma_init();
 
-    // ── [C11] Boot mode branch (SPI / recovery / secondary) ──
+    // ── Boot mode branch (SPI / recovery / secondary) ──
     // spi_status tracks SPI init result (0 = OK); used by the manifest retry loop
     // to skip the primary manifest on SPI failure.
     uint32_t spi_status = 0;
@@ -692,7 +665,7 @@ void rom_main(void) {
             report_status(STATUS_TYPE_INFO, SEP_MSG_ROTATE_UPDATE);
             report_status(STATUS_TYPE_INFO_EXT, straps.rotate_update);
 
-            // SPI init (now uses strap-derived rotate and PLL-derived sysclk).
+            // SPI init, with the strap-derived rotate and the PLL-derived sysclk.
             simputs(">>SPI_INIT\n");
             spi_status = rom_spi_init(&straps, smu_freq_mhz);
             simputs("<<SPI_INIT\n");
@@ -713,7 +686,7 @@ void rom_main(void) {
     // SMC scratch coordination (manifest/status buffer handoff).
     rom_smc_coordination_probe();
 
-    // ── [C16] Stack canary check ──
+    // ── Stack canary check ──
     // Verify the canary placed at __stack_bottom is still intact. If corrupted,
     // the stack overflowed into .bss — fatal error.
     //
@@ -725,7 +698,7 @@ void rom_main(void) {
         rom_err_fail(ROM_ERR_STACK_OVERFLOW);
     }
 
-    // ── [C12–C14] Manifest load / validate + [C15/C17] fuse lock + [C18] handoff ──
+    // ── Manifest load / validate + fuse lock + handoff ──
     rom_manifest_validate_handoff(&straps, spi_status, lc_state, sboot_dis);
 
     // ── Done ──
@@ -734,7 +707,6 @@ void rom_main(void) {
     // reports it.
     report_status(STATUS_TYPE_DEBUG, SEP_MSG_ROM_MAIN_BEFORE_PASS);
 
-    // If DV doesn't stop CPU immediately on fw_done, park here.
     for (;;) {
         __asm__ volatile("wfi");
     }

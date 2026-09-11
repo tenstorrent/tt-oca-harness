@@ -32,7 +32,7 @@ primary:
       secure_boot: 1
       BL2_demotion: 0
       payload_offset: 0x1000
-      use_ext_sram: 0
+      use_ext_sram: 1
     signature_type: 1  # RSA-3072
     signing_authority: "local"
     signing_key_name: "test_dev_rom_key_0"
@@ -101,7 +101,7 @@ backup:
       secure_boot: 1
       BL2_demotion: 0
       payload_offset: 0x1000
-      use_ext_sram: 0
+      use_ext_sram: 1
     signature_type: 1
     signing_authority: "local"
     signing_key_name: "test_dev_rom_key_0"

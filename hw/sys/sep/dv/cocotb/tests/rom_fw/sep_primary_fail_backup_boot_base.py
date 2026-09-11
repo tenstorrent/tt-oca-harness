@@ -10,26 +10,24 @@ and the verdict it must produce.
 WHY THE RECOVERY IS THE RESULT, NOT A SIDE EFFECT. ``manifest_crypto_validate`` is
 called from inside the per-slot attempt, so a cryptographic rejection returns into
 ``rom_manifest_boot``'s retry loop rather than ending the boot
-(``manifest_load.c``). Grendel treats these primary-side rejections as
-warnings and expects a completed boot from the backup, so a port that ended
-terminally would be testing a different requirement.
+(``manifest_load.c``). A primary-side rejection is a warning, not a terminal
+failure: the required outcome is a completed boot from the backup, so a member
+that ended terminally would be testing a different requirement.
 
-A PRECONDITION THE ``SIG_VALID`` COUNT ENCODES, AND WHICH IS NOT PARAMETERISED.
-:meth:`check_transport` requires ``SIG_VALID`` exactly once, which silently assumes
-that every member's PRIMARY is refused at or before ``validate_signature``. That
-holds for all members today -- their defects are the manifest magic, the signature
-type, the signature value, the key selection, the key index, key revocation and the
-security version, all of which return before ``manifest_crypto.c``. It would NOT
-hold for a member whose primary defect sits DOWNSTREAM of the signature: a payload
-hash mismatch (``manifest_crypto.c``), a decryption failure  or a TOC
-error (``manifest_load.c``). Such a primary legitimately prints ``SIG_VALID``,
-the count becomes 2, and this base would fail it for the wrong reason. Anyone adding
-that shape must parameterise this the way ``primary_expected_rsa_starts`` is
-parameterised -- ``primary_expected_sig_valids: int = 0`` and
-``assert n_sig == 1 + primary_expected_sig_valids`` -- rather than relax the count.
-Recorded here rather than done now because changing it is an executable edit to a
-base with nine dependants and would invalidate their current evidence for no present
-gain.
+WHERE THE PRIMARY'S REJECTION SITS RELATIVE TO ``validate_signature`` IS DECLARED
+THE SAME WAY. ``primary_expected_sig_valids`` is the ``SIG_VALID`` counterpart of
+``primary_expected_rsa_starts``. It defaults to 0, which is what every member whose
+primary is refused at or before ``validate_signature`` wants -- the manifest magic,
+the manifest version, the manifest length, the manifest hash, the usage
+constraints, the signature type, the signature value, the key selection, the key
+index, key revocation and the security version all return before or inside
+``manifest_crypto.c``'s signature arm. A member whose primary defect sits
+DOWNSTREAM of the signature legitimately prints ``SIG_VALID`` of its own: a payload
+hash mismatch (``manifest_crypto.c``), a decryption failure, or a TOC/payload error
+(``manifest_load.c``, ``validate_manifest_payload``). Such a member declares 1, and
+:meth:`check_transport` then asserts the primary's own ``SIG_VALID`` sits inside the
+primary attempt as well as pinning the total -- the count alone would be satisfied
+by two backup-side occurrences.
 
 THE BACKUP MUST BE PROVABLY VALID, and this base asserts that rather than assuming
 it. After the subclass has planted its primary defect, two checks run over the
@@ -122,6 +120,11 @@ class sep_primary_fail_backup_boot_base(sep_rom_ot_dma_boot_test):
     # itself. See the module docstring: this is a declaration of which arm rejects
     # the primary, and check_transport asserts it rather than tolerating either.
     primary_expected_rsa_starts: int = 0
+    # How many times the PRIMARY slot gets as far as a verified signature. 0 for
+    # every defect refused at or before validate_signature -- the default, so no
+    # existing member's behaviour changes -- and 1 for a member whose defect is
+    # checked downstream of it (payload hash, decryption, TOC/payload structure).
+    primary_expected_sig_valids: int = 0
     # Committed OTP preload this scenario needs.
     efuse_preload: Path | None = None
     # Extra markers that must not appear, on top of the shared list.
@@ -213,9 +216,9 @@ class sep_primary_fail_backup_boot_base(sep_rom_ot_dma_boot_test):
 
     # --- checks ------------------------------------------------------------
     def check_transport(self, console: list[str], flash) -> None:
-        def index_of(marker: str) -> int:
+        def index_of(marker: str, after: int = -1) -> int:
             for i, line in enumerate(console):
-                if marker in line:
+                if i > after and marker in line:
                     return i
             return -1
 
@@ -293,27 +296,50 @@ class sep_primary_fail_backup_boot_base(sep_rom_ot_dma_boot_test):
                 f"Console: {console}"
             )
 
-        # Exactly one slot's signature verified. SIG_VALID is printed only after
-        # rsa_3072_verify returns 0 (manifest_crypto.c), so a second
-        # occurrence would mean two slots were accepted in one run.
+        # CHK-SIG-ARM: how many slots got as far as a verified signature. SIG_VALID
+        # is printed only after rsa_3072_verify returns 0 (manifest_crypto.c), so
+        # the backup's is always one of them and any other belongs to a primary
+        # whose defect is checked downstream of validate_signature. Both the total
+        # and, when the member declares one, the position are pinned: two
+        # occurrences that both followed the backup read would mean two slots were
+        # accepted in one run, not a primary that reached the payload checks.
         n_sig = sum(1 for line in console if _SIG_VALID in line)
-        assert n_sig == 1, (
-            f"{_SIG_VALID} appeared {n_sig} times, expected exactly 1 (the "
-            f"backup's). Console: {console}"
+        expected_sig = 1 + self.primary_expected_sig_valids
+        assert n_sig == expected_sig, (
+            f"{_SIG_VALID} appeared {n_sig} times, expected exactly {expected_sig} "
+            f"(the backup's, plus {self.primary_expected_sig_valids} declared for "
+            f"the primary). Console: {console}"
         )
+        if self.primary_expected_sig_valids:
+            assert i_psrc < i_sig < i_perr, (
+                f"{_SIG_VALID}@{i_sig} does not sit between the primary read"
+                f"@{i_psrc} and the primary error@{i_perr}: the primary's signature "
+                f"was not verified, so its rejection is not downstream of "
+                f"validate_signature as this member declares. Console: {console}"
+            )
 
         # CHK-RECOVERED: the boot came from the backup, and its signature really
         # verified. SIG_VALID is only printed after rsa_3072_verify returns 0
         # (manifest_crypto.c), so this is the crypto chain passing, not a
-        # skipped one.
-        assert i_bsrc < i_sig < i_ok, (
+        # skipped one. The BACKUP's occurrence is the one that matters, which is the
+        # first after the backup read -- identical to i_sig for every member that
+        # declares primary_expected_sig_valids = 0.
+        i_sig_backup = index_of(_SIG_VALID, after=i_bsrc)
+        assert i_bsrc < i_sig_backup < i_ok, (
             f"the accepted manifest is not the backup's: {_BACKUP_SRC}@{i_bsrc} -> "
-            f"{_SIG_VALID}@{i_sig} -> {_MANIFEST_OK}@{i_ok}. Console: {console}"
+            f"{_SIG_VALID}@{i_sig_backup} -> {_MANIFEST_OK}@{i_ok}. Console: {console}"
         )
+        # The logged chain is the BACKUP's recovery, so both indices after the
+        # backup read must be the backup's. i_rsa is the FIRST RSA_VERIFY_START,
+        # which belongs to the primary whenever primary_expected_rsa_starts is 1 --
+        # printing it here produced a chain that ran backwards. Identical output
+        # for every member that declares 0, since their first occurrence IS the
+        # backup's.
+        i_rsa_backup = index_of(_RSA_START, after=i_bsrc)
         self.logger.info(
             "CHK-PRIMARY-FAILOVER: primary@%d -> %s@%d -> backup@%d -> "
             "RSA_VERIFY_START@%d -> SIG_VALID@%d -> MANIFEST_OK@%d",
-            i_psrc, slot_err, i_perr, i_bsrc, i_rsa, i_sig, i_ok,
+            i_psrc, slot_err, i_perr, i_bsrc, i_rsa_backup, i_sig_backup, i_ok,
         )
 
         # --- device evidence -------------------------------------------------

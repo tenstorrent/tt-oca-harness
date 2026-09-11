@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""TP049: a payload that cannot be decrypted correctly must end the boot.
+"""A payload that cannot be decrypted correctly must end the boot.
 
 Procedure variant (b): "corrupt the encrypted payload so the decrypted plaintext
 does not match the TOC magic". One ciphertext bit of the PRIMARY slot is flipped
@@ -11,10 +11,10 @@ so that the only thing wrong with the image is the ciphertext itself
 THE FALSE-PASS THIS TESTCASE IS BUILT TO AVOID. AES-CBC decryption is a
 permutation: it never reports an error for the wrong input, and the ROM's own
 ``aes128cbc_decrypt`` only fails on a bad length or a hardware alert
-(``aes_driver.c:175-176,193-234``). So a corrupted ciphertext -- and equally a
+(``aes_driver.c``). So a corrupted ciphertext -- and equally a
 wrong class key -- decrypts "successfully" to garbage, and the boot then dies at
 the TOC identifier check with ``MANIFEST_ERR_BAD_TOC_ID``
-(``manifest_load.c:295-297``). That is the same terminal code an image whose TOC
+(``manifest_load.c``). That is the same terminal code an image whose TOC
 was simply never encrypted would produce, and the same code a run that stopped
 BEFORE decryption would reach. Keying a verdict on the final error alone would
 therefore pass while decryption never ran.
@@ -26,27 +26,45 @@ drove the AES engine and then failed downstream can satisfy that sequence.
 
 WHY THE PAYLOAD HASH HAD TO BE RECOMPUTED, AND WHY THAT IS NOT A WEAKENING.
 ``payload_hash`` covers the CIPHERTEXT and is verified before decryption
-(``manifest_crypto.c:372-378``). Left stale, the ROM would stop at
+(``manifest_crypto.c``). Left stale, the ROM would stop at
 ``PLD_HASH_MISMATCH`` and never call ``decrypt_payload`` -- the run would look
 like a clean negative result while testing the payload hash rather than
 decryption. Re-sealing keeps every ROM check enabled and passing up to the point
 under test, which is what makes the decryption failure attributable.
 
-VARIANT (a) IS NOT COVERED HERE. The procedure's other source is "inject AES
-engine status fail via the AES model". There is no AES model on RTL -- the AES is
-real RTL -- so the engine's ``ALERT_FATAL_FAULT`` / ``ALERT_RECOV_CTRL_UPDATE_ERR``
-status (``aes_driver.c:57``) could only be produced by forcing a status bit, which
-is a forbidden sim-only shortcut. A pass here therefore covers the post-decrypt
-detection arm of F027 and NOT the engine-status arm.
+VARIANT (b) IS BACKUP-ELIGIBLE, AND THE TWO ARMS DIVERGE HERE. A plaintext that
+is not a TOC is a warning on the primary and the backup is then tried; only an
+engine failure is terminal on the spot. Two independent sources say so:
 
-THE NO-BACKUP-RETRY EXPECTATION. Procedure step 5 requires that a decryption
-failure is terminal and NOT backup-eligible, and its Expected Results say "no
-backup address read". Only the PRIMARY slot is corrupted here, exactly as the
-procedure's steps read, and ``CHK-NO-BACKUP-RETRY`` asserts that requirement at
-full strength. Note that ``rom_manifest_boot`` (``manifest_load.c:770-788``)
-treats EVERY slot error as retryable, with no per-error class -- so if that check
-fails, it has found a real disagreement between the procedure and the ROM, and it
-must be reported rather than relaxed.
+  * ``sep-boot-flow.puml`` splits them. An invalid TOC identifier on the primary
+    is ``<<Warning>> : WARNING: TOC_ID_INVALID`` followed by the backup-retry
+    connector, and only the backup's failure is ``<<Error>>``. Terminal status is
+    reserved for ``DECRYPTION_KEY_FAILED`` and ``DECRYPTION_FAILED``.
+  * The same split appears in one loop: a ``validate_payload`` failure (the
+    source of ``TOC_ID_INVALID``) takes ``continue``, while a ``decrypt_payload``
+    failure takes ``goto err_fail``, for the reason that "All
+    errors reported from decrypt_payload are fatal errors, as they are likely
+    due to hardware failures".
+
+So this testcase asserts the retry and its ordering, and the boot must still END:
+terminal once BOTH slots have failed, which the CHK-TERMINAL block covers.
+
+VARIANT (a) IS NOT COVERED HERE, and is terminal in the ROM. The procedure's
+other source is "inject AES engine status fail via the AES model". There is no
+AES model on RTL -- the AES is real RTL -- so the engine's ``ALERT_FATAL_FAULT`` /
+``ALERT_RECOV_CTRL_UPDATE_ERR`` status (``aes_driver.c``) could only be
+produced by forcing a status bit, which is a forbidden sim-only shortcut. The ROM
+side of variant (a) has been brought in line with upstream --
+``manifest_crypto.c`` now halts on a ``decrypt_payload`` failure instead of
+returning to the slot loop -- but that path has no stimulus on this platform, so
+a pass here covers the post-decrypt detection arm of the requirement and NOT the
+engine-status arm. Upstream's own tests do not cover it either; its three
+decrypt-failure sites carry ``// COVERAGE: exclude, hardware error``.
+
+BOTH SLOTS CARRY THE DEFECT. The primary establishes the warning-and-retry arm;
+the backup is what makes the boot terminal. Corrupting only the primary would
+leave a healthy backup, and the ROM would boot it -- a legitimate outcome that
+cannot demonstrate the "boot must end" requirement this testcase exists for.
 """
 
 from __future__ import annotations
@@ -92,7 +110,7 @@ class sep_decryption_failure_terminal_test(sep_backup_manifest_fail_base):
     flash_image = _ENCRYPTED_IMAGE
     efuse_preload = _EFUSE_PRELOAD
     backup_defect_marker = _DECRYPT_OK
-    # manifest.h:300 -- the sub-code variant (b) converges on, reached only after
+    # manifest.h -- the sub-code variant (b) converges on, reached only after
     # the plaintext has been produced and found not to be a TOC.
     expected_error = pm.MANIFEST_ERR_BAD_TOC_ID
 
@@ -111,16 +129,24 @@ class sep_decryption_failure_terminal_test(sep_backup_manifest_fail_base):
         )
 
     def corrupt_backup(self, buf: bytearray) -> None:
-        """Deliberately a no-op: the procedure corrupts the PRIMARY only.
+        """Corrupt the backup's ciphertext too, so the boot has nowhere left to go.
 
-        Step 5 requires that a decryption failure is terminal and not
-        backup-eligible, so leaving the backup healthy is what makes
-        CHK-NO-BACKUP-RETRY a real question rather than a foregone conclusion.
+        Variant (b) is backup-eligible, so a healthy backup boots: the primary is
+        rejected with ``MANIFEST_ERR_BAD_TOC_ID`` and the backup then reaches
+        ``MANIFEST_OK``. Both slots must fail for the boot to be terminal: each
+        slot takes ``continue`` and the loop exits into ``err_fail`` with
+        ``error_code`` set.
         """
-        pm.verify_sealed(buf, "backup", check_toc=False)
+        base = pm.payload_base(buf, "backup")
+        before = bytes(buf[base:base + 16])
+        at, new = pm.corrupt_ciphertext(buf, "backup")
+        after = bytes(buf[base:base + 16])
+        assert before != after, "the backup ciphertext flip did not change the image"
         self.logger.info(
-            "CHK-STIMULUS-BACKUP: backup slot left valid and sealed; the procedure "
-            "requires the boot to end without ever reading it"
+            "CHK-STIMULUS-BACKUP: backup payload flash byte 0x%x -> 0x%02x; "
+            "CBC block 0 %s -> %s; manifest re-hashed and re-signed with dev0, so "
+            "the only defect in either slot is the ciphertext itself",
+            at, new, before.hex(), after.hex(),
         )
 
     # --- checks --------------------------------------------------------------
@@ -211,18 +237,22 @@ class sep_decryption_failure_terminal_test(sep_backup_manifest_fail_base):
         log.info("CHK-DECRYPT-FAILED: %s at line %d, after %s; cold_scratch[1]=0x%08x",
                  err_marker, i_err, _DECRYPT_OK, expected_status)
 
-        # CHK-NO-BACKUP-RETRY: procedure step 5 and its "no backup address read"
-        # expected result. Left at full strength deliberately -- see the module
-        # docstring. rom_manifest_boot() has no per-error retry class, so a failure
-        # here is a real procedure-versus-ROM disagreement, not a test defect.
+        # CHK-BACKUP-RETRIED: the retry must happen AFTER the primary's rejection
+        # rather than instead of it. Ordering is what matters -- a backup
+        # read that preceded the rejection would mean the primary was never
+        # properly refused. Terminality is covered separately, below.
         i_backup = index_of(_BACKUP_SRC)
-        assert i_backup < 0, (
-            f"ROM read the backup slot ({_BACKUP_SRC}) at line {i_backup} after the "
-            f"primary's decryption failure. TP049 step 5 requires that a decryption "
-            f"failure is terminal and NOT backup-eligible, and its expected results "
-            f"say no backup address is read. Console: {console}"
+        assert i_backup > i_err, (
+            f"expected the backup slot ({_BACKUP_SRC}) to be read AFTER the "
+            f"primary's rejection ({err_marker} at line {i_err}), got backup at "
+            f"line {i_backup}. An invalid TOC identifier is a Warning followed by "
+            f"the backup-retry connector (sep-boot-flow.puml:538), and upstream "
+            f"boot.c does `continue` for the same failure. A missing retry "
+            f"would mean the ROM stopped short of the backup it is required to try. "
+            f"Console: {console}"
         )
-        log.info("CHK-NO-BACKUP-RETRY: %s never read", _BACKUP_SRC)
+        log.info("CHK-BACKUP-RETRIED: %s read at line %d, after %s at line %d",
+                 _BACKUP_SRC, i_backup, err_marker, i_err)
 
         # CHK-TERMINAL: it stopped, and it stopped as a failure.
         assert any(_ALL_FAILED in line for line in console), (

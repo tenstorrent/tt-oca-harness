@@ -24,6 +24,7 @@
 #include "boot_straps.h"
 #include "manifest.h" /* SEP_SPI_BASE, PRIMARY/BACKUP_MANIFEST_OFFSET */
 #include "sep.h"      /* OCH_SEP_TOP_SEP_SRAM_BASE_ADDR / OCH_SEP_TOP_SEP_SRAM_SIZE   */
+#include "sep_smc_interface.h" /* sep_get_smc_sram_base, SMC_SRAM_SIZE_BYTES */
 #include "harden.h"   /* fault-injection value launder (harden_u32)  */
 
 #if BOOT_SPI_CONTROLLER_OT
@@ -110,16 +111,22 @@ static inline bool boot_flash_bounds_ok(uint32_t flash_off, uint32_t len, uint32
                                         uint32_t dst_len) {
 #if BOOT_SPI_CONTROLLER_OT
     /* Static bound: the read must stay within a known primary/backup boot-slot
-     * window, and the destination within SEP SRAM. A slot's flash span cannot
-     * exceed the max staged size (header + payload <= SEP SRAM). */
+     * window, and the destination within one of the two regions the driver can
+     * stage into -- SEP SRAM, or SMC SRAM for a manifest asking use_ext_sram=0.
+     * A slot's flash span cannot exceed the max staged size (header + payload <=
+     * SEP SRAM). The region list here must stay in step with
+     * ot_spi_dst_regions[] in sep_ot_spi.c, which is what programs the DMA. */
     const uint32_t slot_span = (uint32_t)OCH_SEP_TOP_SEP_SRAM_SIZE;
     const uint32_t sram_base = (uint32_t)OCH_SEP_TOP_SEP_SRAM_BASE_ADDR;
     const uint32_t sram_size = (uint32_t)OCH_SEP_TOP_SEP_SRAM_SIZE;
+    const uint32_t smc_sram = sep_get_smc_sram_base();
+    const uint32_t smc_size = (uint32_t)SMC_SRAM_SIZE_BYTES;
 
     bool flash_ok_1 =
         boot_flash_range_within(flash_off, len, (uint32_t)PRIMARY_MANIFEST_OFFSET, slot_span) ||
         boot_flash_range_within(flash_off, len, (uint32_t)BACKUP_MANIFEST_OFFSET, slot_span);
-    bool dst_ok_1 = boot_flash_range_within(dst, dst_len, sram_base, sram_size);
+    bool dst_ok_1 = boot_flash_range_within(dst, dst_len, sram_base, sram_size) ||
+                    boot_flash_range_within(dst, dst_len, smc_sram, smc_size);
     bool ok_first = flash_ok_1 && dst_ok_1;
 
     /* Independent re-evaluation over optimizer-opaque copies of the operands, so
@@ -132,7 +139,8 @@ static inline bool boot_flash_bounds_ok(uint32_t flash_off, uint32_t len, uint32
     bool flash_ok_2 =
         boot_flash_range_within(off2, len2, (uint32_t)PRIMARY_MANIFEST_OFFSET, slot_span) ||
         boot_flash_range_within(off2, len2, (uint32_t)BACKUP_MANIFEST_OFFSET, slot_span);
-    bool dst_ok_2 = boot_flash_range_within(dst2, dlen2, sram_base, sram_size);
+    bool dst_ok_2 = boot_flash_range_within(dst2, dlen2, sram_base, sram_size) ||
+                    boot_flash_range_within(dst2, dlen2, smc_sram, smc_size);
     bool ok_second = flash_ok_2 && dst_ok_2;
 
     if (ok_first != ok_second) {

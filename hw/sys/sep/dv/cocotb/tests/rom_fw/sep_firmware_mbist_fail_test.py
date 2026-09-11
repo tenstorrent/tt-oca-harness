@@ -56,8 +56,8 @@ arranged at run time by holding a pin. Bit 2 is still inside ``reserved[31:2]`` 
 ``sep_efuse_map.rdl``, so its use there is undeclared (A32).
 
 That is a claim about the FUSE, not about the gate. Two STRAPS now skip their arm
-outright -- ``BYPASS_SRAM_REPAIR`` (``STRAPS_LO[13]``, pin 13) and
-``MBIST_BYPASS`` (``STRAPS_HI[22]``, pin 54) -- so anyone able to hold a pin can
+outright -- ``BYPASS_SRAM_REPAIR`` (``STRAPS_LO[13]``) and
+``MBIST_BYPASS`` (``STRAPS_HI[22]``) -- so anyone able to hold a pin can
 still stop the corresponding check from being evaluated at all. That is the
 straps' documented purpose in OCAH-MAS, and neither arm has a testcase. An earlier
 version of this note read the fuse's pin-immunity as a property of the whole gate;
@@ -97,7 +97,9 @@ _MEM_REPAIR_SUCCESS_BIT = 1
 
 # The gate is pre-C, so the console is silent on this path. Any of these appearing
 # would mean the ROM reached the C runtime, i.e. the gate did NOT stop it early.
-_PRE_C_MARKERS = ("SMC_MEM_CHK", "LC=", "DFT_STATUS=", "CHIP_ID=")
+# COLD is the ROM's first C-side console line, so its absence is what shows the
+# gate stopped the boot before the C runtime existed.
+_PRE_C_MARKERS = ("COLD", "LC=", "DFT_STATUS=", "CHIP_ID=")
 # Must NOT appear either: anything downstream of the gate.
 _DOWNSTREAM_MARKERS = ("MANIFEST_OK", "BL1_COPIED", "PRE_JUMP")
 
@@ -253,11 +255,8 @@ class sep_firmware_mbist_fail_test(sep_base_test):
                 if self.rd(dut.cpu_trace_valid_o):
                     # No shift: cpu_trace_addr_o is driven straight from
                     # trace_rv_i_address_ip (tb_top.sv), so it is already a
-                    # byte address. The `<< 1` this used to carry printed PCs
-                    # that map to no instruction -- 0x20080498 instead of
-                    # 0x1004024c. The span check still held (8 <= 64, in fact
-                    # stricter), so it was misleading output rather than a
-                    # false pass, but the addresses in the log were fiction.
+                    # byte address. Shifting it would print PCs that map to no
+                    # instruction.
                     post_pcs.add(self.rd(dut.cpu_trace_addr_o))
                 if ((self.rd(dut.scratch_cold_probe_o) >> 32) & 0xFFFF_FFFF) != \
                         _STATUS_DFT_GATE_BLOCKED:
@@ -273,7 +272,7 @@ class sep_firmware_mbist_fail_test(sep_base_test):
         self.logger.info("ROM console: %s", console)
 
         # Guard the guard: the ROM must have executed at all, or every absence
-        # check below is vacuously true. The console cannot serve as that evidence
+        # check below passes trivially. The console cannot serve as that evidence
         # -- on this path it is legitimately empty -- so instruction retirement is
         # the only liveness evidence available.
         assert retired, "core retired no instructions; the ROM never ran"

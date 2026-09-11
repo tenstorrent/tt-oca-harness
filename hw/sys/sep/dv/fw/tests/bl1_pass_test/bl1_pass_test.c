@@ -117,10 +117,9 @@ static void bl1_puthex32(uint32_t val) {
 // DCCM is readable from here because BL1 runs on the same CPU and the LSU
 // decodes the DCCM window directly; the inherited SP is the standing proof.
 //
-// A failed verify is fatal here. The reference BL1 only prints and continues,
-// but continuing means dereferencing sep_sram_manifest_addr out of a struct we
-// just proved is not a bl0_state — a wild pointer, which is the exact failure
-// this check exists to stop.
+// A failed verify is fatal here: continuing would dereference
+// sep_sram_manifest_addr out of a struct just proved not to be a bl0_state — a
+// wild pointer, which is the exact failure this check exists to stop.
 // ---------------------------------------------------------------------------
 #define SEP_SRAM_LO ((uint32_t)OCH_SEP_TOP_SEP_SRAM_BASE_ADDR)
 #define SEP_SRAM_HI ((uint32_t)(OCH_SEP_TOP_SEP_SRAM_BASE_ADDR + OCH_SEP_TOP_SEP_SRAM_SIZE))
@@ -163,6 +162,27 @@ static int bl1_verify_bl0_state(void) {
         bl1_puts("FAIL:BL0S_MFST\n");
         return 1;
     }
+
+    // The boot measurement, printed here rather than by the ROM. BL0 emits only
+    // the digest's first word and its four inputs, so this is the only place the
+    // full 32 bytes reach the log -- and reading them from bl0_state proves the
+    // digest survived the handoff, which a ROM-side dump would not. DV compares
+    // these bytes against a Python golden built from the inputs BL0 reported.
+    //
+    // Big-endian per byte, matching how sha256() fills the digest, so the log
+    // text can be compared to hashlib's hexdigest() without reordering.
+    bl1_puts("BL0S_MEAS=");
+    for (uint32_t i = 0; i < SHA256_DIGEST_SIZE_BYTES; ++i) {
+        uint8_t b = s->measurement[i];
+        char pair[3];
+        uint8_t hi = (uint8_t)(b >> 4);
+        uint8_t lo = (uint8_t)(b & 0xFu);
+        pair[0] = (char)(hi < 10u ? '0' + hi : 'A' + hi - 10u);
+        pair[1] = (char)(lo < 10u ? '0' + lo : 'A' + lo - 10u);
+        pair[2] = '\0';
+        bl1_puts(pair);
+    }
+    bl1_puts("\n");
 
     return 0;
 }
@@ -269,18 +289,15 @@ static inline void bl1_outbound_filter_init(void) {
 // ---------------------------------------------------------------------------
 // Final verdict — cold_scratch[0] (the only completion channel)
 //
-// Mirrors the ROM's errors.h VERDICT_OUT / TEST_*_CODE, and the reference's
-// sep_common.h, so one probe reads any of the three. Duplicated here
-// rather than included because the ROM's errors.h pulls in sep.h,
-// rom_virt_console.h and status_ring.h -- far too much for a flat SRAM payload.
-// Keep the constants in step with that header.
+// Mirrors the ROM's errors.h VERDICT_OUT / TEST_*_CODE so one probe reads
+// both. Duplicated here rather than included because the ROM's errors.h pulls in
+// sep.h, rom_virt_console.h and status_ring.h -- far too much for a flat SRAM
+// payload. Keep the constants in step with that header.
 //
-// This BL1 no longer writes the DV outbound mailbox at 0x80000000. That address
-// is outside SEP, behind an outbound filter that blocks by default, so it only
-// works after bl1_outbound_filter_init() -- which made the order of these two
-// statements load-bearing for no benefit. cold_scratch is a SEP register and
-// works from the first instruction. See
-// dv/docs/rom_verdict_scratch0_migration.md.
+// cold_scratch is a SEP register and works from the first instruction. The DV
+// outbound mailbox at 0x80000000 is outside SEP, behind an outbound filter that
+// blocks by default, so reporting there would work only after
+// bl1_outbound_filter_init().
 // ---------------------------------------------------------------------------
 #define VERDICT_ADDR OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(0)
 #define TEST_PASS_CODE 0xACAFACA1u
@@ -326,11 +343,9 @@ __attribute__((section(".text.init"))) void _start(void) {
 
     bl1_puts("BL1\n");
 
-    // Handoff contract check, first thing and before the outbound filter is
-    // touched. It used to sit after bl1_outbound_filter_init() because its FAIL
-    // report went to the mailbox, which is outside SEP and blocked until the
-    // filter opens; reporting on cold_scratch[0] removes that constraint, so the
-    // check can go where it belongs -- before anything acts on the contract.
+    // Handoff contract check, before the outbound filter is touched: nothing
+    // should act on the contract before it is checked, and the FAIL report goes
+    // to cold_scratch[0], which needs no filter open.
     bl1_puts("BL0S_CHK\n");
     if (bl1_verify_bl0_state()) {
         bl1_puts("BL0S_VERIFY_FAIL\n");

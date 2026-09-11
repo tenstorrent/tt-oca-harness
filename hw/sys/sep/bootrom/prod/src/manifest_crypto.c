@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-// Manifest crypto validation for OROM (C13.10).
+// Manifest crypto validation for OROM.
 //
 // Orchestrates all cryptographic checks on a loaded manifest:
 //   (a) BL1 version rollback check (thermometer-encoded fuse vs manifest)
@@ -9,9 +9,6 @@
 //   (c) RSA-3072 signature verification (OTBN + PKCS#1 v1.5)
 //   (d) Payload hash verification (SHA-256 of payload data)
 //   (e) Payload decryption (AES-128-CBC with KBKDF-HMAC-SHA256)
-//
-// Reference flow for manifest crypto validation,
-// key/fuse helpers, and payload processing.
 
 #include "manifest_crypto.h"
 #include "manifest.h"
@@ -29,16 +26,20 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+// Terminal-halt code for a decryption failure, in the same 0xA00x space as the
+// other unrecoverable ROM errors.
+#define ROM_ERR_DECRYPT_FAILED 0x0000A004u
+__attribute__((noreturn)) extern void rom_err_fail_ext(uint32_t error_code);
+
 // Fuse key length for reading raw public key hashes from fuses.
 // The value stores a 32-byte SHA-256 digest.
 #define FUSE_KEY_LENGTH 32
 
 // CHIPLET_PUBK_REVOKE bit assignments, from the field description in
 // hw/sys/sep/regs/blocks/sep_efuse_map/sep_efuse_map.rdl. ROM slots occupy
-// [7:0] so a slot index doubles as its own bit, but the fused keys do NOT
-// continue that sequence -- they sit at 16 and above. Deriving them as
-// PUBK_SEL_NUM_ROM_KEYS + n gave bits 6 and 7, which are unused ROM-slot bits
-// and therefore always clear, so revoking a fused key had no effect at all.
+// [7:0] so a slot index doubles as its own bit; the fused keys do NOT continue
+// that sequence and sit at 16 and above, so they cannot be derived from a slot
+// index.
 #define PUBK_REVOKE_BIT_CHIPLET_HASH0 16
 #define PUBK_REVOKE_BIT_CHIPLET_HASH1 17
 #define PUBK_REVOKE_BIT_SIP_HASH0     20
@@ -69,7 +70,6 @@ static bool const_time_eq(const uint8_t *a, const uint8_t *b, uint32_t len) {
 
 // Read security version from fuse (thermometer encoding: count 1-bits).
 // BL1_VERSION is 8 × 32-bit words = 256 bits; version = popcount.
-// Reference logic for security version decoding.
 static uint32_t get_security_version_from_fuse(uint32_t reg_addr) {
     uint32_t version = 0;
     for (uint32_t i = 0; i < 8u; ++i) {
@@ -84,7 +84,6 @@ static uint32_t get_security_version_from_fuse(uint32_t reg_addr) {
 }
 
 // Check that the manifest's security_version is >= the fuse version.
-// Reference logic for security version comparison.
 static uint32_t check_security_version(uint16_t manifest_ver, uint32_t fuse_addr) {
     uint32_t fuse_ver = get_security_version_from_fuse(fuse_addr);
     report_status(STATUS_TYPE_INFO, SEP_MSG_READ_BL1_SECURITY_VERSION);
@@ -103,7 +102,6 @@ static uint32_t check_security_version(uint16_t manifest_ver, uint32_t fuse_addr
 // ---------------------------------------------------------------------------
 
 // Check if a key has been revoked via the CHIPLET_PUBK_REVOKE fuse.
-// Reference logic for key revocation checks.
 static uint32_t check_pubkey_revoked(int revocation_index) {
     uint32_t revoke = mmio_read32(OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_PUBK_REVOKE_BASE_ADDR);
     simputshex32("PUBK_REVOKE=", revoke);
@@ -120,7 +118,6 @@ static uint32_t check_pubkey_revoked(int revocation_index) {
 // ---------------------------------------------------------------------------
 
 // Verify public key hash: SHA-256 of manifest modulus vs expected digest.
-// Reference logic for public key hash checks.
 static uint32_t check_pubkey_hash(const uint8_t *pub_key, const uint8_t *expected_digest) {
     uint8_t digest[32];
     if (sha256(pub_key, RSA_3072_KEY_SZ_BYTES, digest) != 0) {
@@ -151,7 +148,6 @@ static bool read_fuse_key(uint32_t fuse_addr, uint8_t *key) {
 }
 
 // Full signature validation: key selection → revocation → hash → RSA verify.
-// Reference flow for full signature validation.
 static uint32_t validate_signature(const manifest_t *m, uint32_t lc_state) {
     uint32_t err;
     const uint8_t *signature = m->signature.rsa_signature;
@@ -200,9 +196,8 @@ static uint32_t validate_signature(const manifest_t *m, uint32_t lc_state) {
         uint8_t fuse_key[FUSE_KEY_LENGTH];
 
         switch (m->public_key_sel.selection) {
-        // Address the digest fuses by name. The previous form derived them as
-        // CHIPLET_PUBK_REVOKE + 0x100/0x120, which lands 0x10 below
-        // CHIPLET_PUBK_HASH0/HASH1 and so read the wrong fuse words.
+        // Address the digest fuses by name: an offset derived from another
+        // register's base lands on the wrong fuse words.
         case PUBK_SEL_FUSE_KEY_0:
             fuse_addr = OCH_SEP_TOP_SEP_EFUSE_MAP_CHIPLET_PUBK_HASH0_BASE_ADDR;
             revocation_index = PUBK_REVOKE_BIT_CHIPLET_HASH0;
@@ -283,7 +278,6 @@ uint32_t verify_payload_hash(const manifest_t *m) {
 // ---------------------------------------------------------------------------
 
 // Read encryption class_key from fuse (32 bytes = 8 × 32-bit words).
-// OCH_SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR = 0x10930064
 static void get_enc_key(uint8_t *key) {
     for (uint32_t i = 0; i < FUSE_KEY_LENGTH / 4u; ++i) {
         uint32_t val = mmio_read32(OCH_SEP_TOP_SEP_EFUSE_MAP_CLASS_KEY_BASE_ADDR + i * 4u);
@@ -378,12 +372,22 @@ uint32_t manifest_crypto_validate(const manifest_t *m, uint32_t lc_state) {
     if (err) return err;
 
     // ── (e) Payload decryption (if encrypted) ──
+    //
+    // A decryption failure is TERMINAL and does not fall over to the backup
+    // slot: the KDF, the AES init and the AES pass all failed for a reason that
+    // is a hardware fault, not a property of this image, so the backup would hit
+    // the same fault. Every other error above returns to the slot loop and lets
+    // the backup be tried.
     {
         bool encrypted = (m->usage_constraints.flags &
                           (1u << USAGE_CONSTRAINTS_FLAGS_BIT_ENCRYPTED_PAYLOAD)) != 0;
         if (encrypted) {
             err = decrypt_payload(m);
-            if (err) return err;
+            if (err) {
+                simputshex32("DECRYPT_TERMINAL=", err);
+                report_status(STATUS_TYPE_ERROR, SEP_MSG_DECRYPTION_FAILED);
+                rom_err_fail_ext(ROM_ERR_DECRYPT_FAILED);
+            }
         }
     }
 

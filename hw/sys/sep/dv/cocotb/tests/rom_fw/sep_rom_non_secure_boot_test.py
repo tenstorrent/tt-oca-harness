@@ -37,7 +37,7 @@ _MAX_RUN_CYCLES = 4_000_000
 
 # Markers that must appear on the ROM's scratch virtual console.
 #
-#   SMC_MEM_CHK        boot-ROM stage: the SMC memory check ran
+#   COLD               boot-ROM stage: the C runtime is up and this is a cold boot
 #   MANIFEST_HASH_OK   the ROM reports it validated the manifest hash
 #   PLD_HASH_OK        the ROM reports it validated the payload hash
 #   BL1, FUSE_CHK      emitted by the copied payload AFTER handoff
@@ -48,7 +48,7 @@ _MAX_RUN_CYCLES = 4_000_000
 # they show the ROM *reports* the check, not that a corrupted manifest would be
 # rejected. Nothing here corrupts one, so the negative direction is untested.
 _REQUIRED_ROM_MARKERS = (
-    "SMC_MEM_CHK",
+    "COLD",
     "MANIFEST_HASH_OK",
     "PLD_HASH_OK",
     "BL1",

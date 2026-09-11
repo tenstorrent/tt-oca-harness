@@ -27,7 +27,7 @@ primary:
       secure_boot: 0
       BL2_demotion: 0
       payload_offset: 0x1000
-      use_ext_sram: 0
+      use_ext_sram: 1
     signature_type: 0  # No signature
     signing_authority: "local"
     signing_key_name: "none"
@@ -96,7 +96,7 @@ backup:
       secure_boot: 0
       BL2_demotion: 0
       payload_offset: 0x1000
-      use_ext_sram: 0
+      use_ext_sram: 1
     signature_type: 0
     signing_authority: "local"
     signing_key_name: "none"

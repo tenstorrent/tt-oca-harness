@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""TP008: MEM_REPAIR reports failure but the bypass fuse is blown, so BL0 continues.
+"""MEM_REPAIR reports failure but the bypass fuse is blown, so BL0 continues.
 
 The fuse arm of the gate in ``bootrom/prod/src/vector.S``, and the one neither
 ``sep_firmware_mbist_fail_test`` nor ``sep_firmware_mbist_pass_test`` covers --
@@ -33,7 +33,7 @@ WHAT Q07 ASKED FOR, AND WHAT THIS SETTLES. The tracker note reads "Encoding
 pending Q07". The bypass is not the ``MBIST_NO_HANG`` fuse the procedure names --
 no such fuse exists anywhere in the tree -- it is ``STATUS_RPT`` bit 2, which
 ``vector.S`` calls ``STATUS_RPT_SKIP_MEM_CHECK``. Bit 2 is still inside
-``reserved[31:2]`` in ``sep_efuse_map.rdl:794-806``, so the ROM's use of it is
+``reserved[31:2]`` in ``sep_efuse_map.rdl``, so the ROM's use of it is
 undeclared in the register model; that is a documentation gap, not a blocker for
 this arm, because the bit is readable and the ROM demonstrably branches on it.
 
@@ -56,9 +56,8 @@ That policy is common to both arms, so the result carries over. But this is NOT
 coverage of "MBIST failed and the boot continued" -- no testcase drives that
 combination, which would need ``+sep_dft_status=00000012`` plus the fuse.
 
-An earlier version of this docstring claimed the ROM "reads none of" the MBIST
-bits. That was true of the ROM as it stood and is now false: the gate reads
-``mbist_done`` and ``mbist_pass`` (A46, FINDINGS F15).
+The gate reads ``mbist_done`` and ``mbist_pass`` as well as
+``mem_repair_success``.
 """
 
 from __future__ import annotations
@@ -74,7 +73,7 @@ from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
 # injection: this testcase differs from sep_firmware_mbist_fail_test in the FUSE,
 # not in the stimulus, which is what isolates the bypass as the cause.
 _DFT_STATUS_FAIL = 0xFFFF_FFFD
-# bootrom/prod/include/sep_smc_interface.h:64-65.
+# bootrom/prod/include/sep_smc_interface.h.
 _MEM_REPAIR_DONE_BIT = 0
 _MEM_REPAIR_SUCCESS_BIT = 1
 # dfx_ctrl_status.rdl. The ROM's second arm DOES read this bit (A46/F15); it is
@@ -94,9 +93,10 @@ _STATUS_PRESTART_DONE = 0x8001_0056
 
 # C-runtime console markers. The gate stops the ROM before C on the blocked arm,
 # so requiring these is how "it continued" is established.
-#   SMC_MEM_CHK  rom_main.c:190
-#   CHIP_ID=     rom_main.c:562
-_POST_GATE_MARKERS = ("SMC_MEM_CHK", "CHIP_ID=")
+#   COLD         the ROM's first C-side console line: the C runtime is up and
+#                vector.S resolved this as a cold boot (rom_main.c)
+#   CHIP_ID=     rom_main.c
+_POST_GATE_MARKERS = ("COLD", "CHIP_ID=")
 # The procedure's "boot reaches at least START_MANIFEST_VALIDATION". This ROM
 # names that checkpoint MANIFEST_SRC= / MANIFEST_OK, both already required by the
 # base class, so the gate-specific addition is the C-runtime pair above.

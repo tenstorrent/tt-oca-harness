@@ -11,7 +11,7 @@
 // ``SEP_CORE.sep_cpu.lsu_axi_req` / `lsu_axi_resp`, sep_32_64_3_12
 // (addr32/data64/id3/user12). The stub build (`SEP_CPU_STUB`) is the sole
 // driver of that bus and drives lsu_axi_req from the tb's assembled request
-// (`assign`, no `force`; see shims/cpu/sep_cpu_stub.sv). On the full-CPU VCS
+// (`assign`, no `force`; see shims/cpu/sep_cpu_stub.sv). On the full-CPU
 // build a no_cpu test force-splices the same post-remap `lsu_axi_req` and
 // holds `lsu_axi_resp_raw` idle. The tb reads lsu_axi_resp back by name.
 // Driving the demux slave-side LSU bus reaches the SEP-local fabric through the
@@ -29,7 +29,7 @@
 // Two run modes, selected by the `+cpu_boot` plusarg:
 //   * no-CPU (default): the core is held off (mpc_reset_run_req=0) and cocotb
 //     drives the SEP fabric over s_axi. The stub build presents that request
-//     on the LSU master (`assign`). The full-CPU VCS build force-splices the
+//     on the LSU master (`assign`). The full-CPU build force-splices the
 //     same post-remap net. Verilator no_cpu stays on the stub.
 //   * CPU firmware boot (+cpu_boot): runs on the full-CPU build, the core owns all of
 //     its master buses, fetches firmware out of the wrapper's real TCM macros, and
@@ -78,8 +78,8 @@ module sep_uvm_top
     input  wire logic jtag_kmac_rst_hold_i,
     input  wire logic jtag_trng_rst_hold_i,
     // LC differential-integrity error inject. Default 0. When 1, tb forces a broken
-    // pair onto the LCC decoder input (signed off -- no legal OTP image can present
-    // one). See the force block below.
+    // pair onto the LCC decoder input; no legal OTP image can present one. See
+    // the force block below.
     input  wire logic lc_sigint_inject_i,
     // Token-comparator redundancy fault inject. Default 0. Encoding:
     //   3'b000 off
@@ -87,15 +87,15 @@ module sep_uvm_top
     //   3'b010 disagree: instance 0 drives a legal mismatch pair while 1/2 match
     //   3'b011 common-mode mismatch: all three legal mismatch (invert of a match)
     //   3'b100 common-mode match: all three legal match (invert of a mismatch)
-    // Signed off -- no legal token/OTP image can break the three identical
-    // compare cones. See the force block below.
+    // No legal token/OTP image can break the three identical compare cones. See
+    // the force block below.
     input  wire logic [2:0] token_cmp_fault_inject_i,
     // Which token comparator the inject hits. Default 0.
     //   2'b00 RMA_SIP  2'b01 RMA_CHIPLET  2'b10 SEC_DISABLE
     input  wire logic [1:0] token_cmp_fault_sel_i,
     // DMA host-path command-integrity inject. Default 0. When 1, tb forces a
     // broken codeword onto the host-adapter command-integrity decoder input
-    // (signed off -- software cannot emit a bad TL-UL user code). The checker
+    // (software cannot emit a bad TL-UL user code). The checker
     // still gates on a_valid, so a DMA-issued command is required. See the
     // force block below.
     input  wire logic dma_host_intg_inject_i,
@@ -399,8 +399,8 @@ module sep_uvm_top
     output logic [383:0]      ext_debug_bus_o,
     // System-CSR AXI4-Lite AR/AW handshakes after axi_to_axi_lite
     // (sep_system_peripherals_xbar u_system_csr_a2l_1). Observation-only.
-    // SIGNED OFF 2026-08-25 by yenhenglai: fabric.adoc "convert burst to
-    // single" is this bridge. The external master still sees AxLEN=1;
+    // The bridge converts a burst to single beats. The external master still
+    // sees AxLEN=1;
     // Lite has no AxLEN, so the split is not a frontdoor CSR. Addr is the
     // local 32 bits (scratch is in the 32-bit map). Outside the tb s_axi /
     // m_axi ready/valid cones.
@@ -492,6 +492,27 @@ module sep_uvm_top
             (jtag_trng_rst_hold_i === 1'b1);
     end
 
+    // smc_fuse_sense_done_i is a real DUT input the SMC drives when its fuse sense
+    // completes. There is no SMC here, so it stays idle-0 and
+    // `+sep_smc_fuse_sense_done` models the SMC having finished. Not a force, and
+    // not a bypass of anything: it changes only how long the ROM waits.
+    //
+    // It matters to exactly one path. A manifest whose usage_constraints enable a
+    // chiplet_id or package_id word makes the ROM wait for this bit before reading
+    // the SMC fuse map (bootrom/prod/src/manifest_load.c). The wait is bounded and
+    // falls through on expiry, so with the pin idle the ROM performs its full
+    // 1,000,000-iteration poll and then makes the same comparison it would have
+    // made immediately -- about 15M clocks of identical outcome. Default stays 0 so
+    // no existing test changes behaviour.
+    logic smc_fuse_sense_done_drive;
+    initial begin
+        smc_fuse_sense_done_drive = 1'b0;
+        if ($test$plusargs("sep_smc_fuse_sense_done")) begin
+            smc_fuse_sense_done_drive = 1'b1;
+            $display("[tb] smc_fuse_sense_done_i driven high (+sep_smc_fuse_sense_done)");
+        end
+    end
+
     // Outbound mailbox responder buses and CPU trace -- the DUT struct nets the
     // wrapper flow needs.
     sep_pkg::sep_system_peripherals_outbound_axi_req_t  smn_outbound_req_w;
@@ -542,13 +563,13 @@ module sep_uvm_top
     // blocks -- so the one OCAH contract in the set is re-armed by name below.
 `ifndef VERILATOR
     initial begin
-        // Remove these three once the counters are wired and the alert
-        // convention is settled for this block. Re-arm by an assertion's own
-        // hierarchical name, never by re-enabling a parent instance.
+        // These three stay off while the counters are unwired. Re-arm by an
+        // assertion's own hierarchical name, never by re-enabling a parent
+        // instance.
         $assertoff(0, `SEP_ESRC);
         $assertoff(0, `SEP_CORE.sep_crypto.u_axis_edn_crypto_s3c_scan);
         $assertoff(0, `SEP_CORE.sep_crypto.u_axis_edn_pool_s3c_scan);
-        // entropy_source.sv:1348 FipsWindowFloor_A -- fips_lock |-> window >= 1024.
+        // FipsWindowFloor_A in entropy_source: fips_lock |-> window >= 1024.
         // The only OCAH assertion under those subtrees, and reachable stimulus:
         // sep_drbg_esrc_fips_lock_test writes FIPS_LOCK.LOCK, so a locked
         // out-of-spec window must fail rather than be swept up by the line above.
@@ -592,7 +613,7 @@ module sep_uvm_top
 
     end
 
-    // otbn_rnd.sv:233 UrndNoReseedOnReset_A cannot pass on this instance. It arms
+    // UrndNoReseedOnReset_A in otbn_rnd cannot pass on this instance. It arms
     // only while OTBN is in reset -- disable iff (rst_ni !== '0) -- and its guard
     // reads CURRENT rst_ni while the property body reads SAMPLED rst_ni. SEP
     // asserts OTBN's reset ON a clk_i edge, because otbn_gated_rst_n is a flop
@@ -602,15 +623,14 @@ module sep_uvm_top
     // software reset whatever the DUT does.
     //
     // This holds the property off for the WHOLE RUN, not just that edge, so no
-    // in-reset cycle is checked in any test. Little is lost because of the flop at
-    // otbn_rnd.sv:205-213: seed_en_q is asynchronously cleared by the same rst_ni
+    // in-reset cycle is checked in any test. Little is lost because of the flop
+    // in otbn_rnd: seed_en_q is asynchronously cleared by the same rst_ni
     // the property checks it against, and that flop is what stops a reseed request
     // -- held high through reset by design -- from starting one. A reseed cannot
     // begin mid-reset unless that flop's reset is broken, and its declaration is
     // what guarantees it is not.
     //
-    // The repair is upstream: the guard should sample as the body does. It belongs
-    // to a vendor bump, not to this tree.
+    // The fix belongs upstream: the guard should sample as the body does.
     initial begin
         $assertoff(0, `SEP_CORE.sep_crypto.sep_crypto_otbn_wrapper_s3c_scan
             .u_otbn.u_otbn_core.u_otbn_rnd.UrndNoReseedOnReset_A);
@@ -726,7 +746,7 @@ module sep_uvm_top
     // DIRECT packed-array connection, one mux leg per DRBG EDN endpoint
     // ([0]=Key Manager, [1]=crypto adapter, [2]=entropy pool). Width 2 truncates
     // that bind; sep_crypto.sv's g_drbg_endpoint_mux_width_check catches it under
-    // simulators that evaluate elaboration-time $error (VCS). Verilator skips
+    // simulators that evaluate elaboration-time $error. Verilator skips
     // that check, so the width must stay correct here.
     //
     // The third leg is NOT free. sep_entropy_fifo drives edn_req from the first
@@ -845,7 +865,7 @@ module sep_uvm_top
         .smc_mailbox_interrupt_o      (),
 
         // eFuse status
-        .smc_fuse_sense_done_i        (1'b0),
+        .smc_fuse_sense_done_i        (smc_fuse_sense_done_drive),
         .sep_fuse_sense_done_o        (sep_fuse_sense_done_o),
 
         .secure_tm_req_i              (test_en_strap_i),
@@ -905,17 +925,18 @@ module sep_uvm_top
         // axi_sim_mem drives each AXI handshake as "apply outputs at #ApplDelay
         // after posedge, sample the master's valid/ready at #AcqDelay". The pulp
         // defaults are 0ps/0ps, which collapse both to `#0` and make the model
-        // rely on VCS event-region (`#0` inactive-region) ordering to sample the
+        // rely on event-region (`#0` inactive-region) ordering to sample the
         // master AFTER its NBA update. Verilator's --timing scheduler resolves
         // `#0` differently, so the model samples valid/ready in the wrong delta
-        // and the SMC AXI handshake never completes -> the ROM's SMC scratch
-        // round-trip read stalls forever (no SMC_MEM_OK). The pulp driver family
+        // and the SMC AXI handshake never completes -> every ROM SMC scratch
+        // access stalls forever (post code, virtual console, the status-to-SEP
+        // handshake, the staging window in scratch[13]/[14]). The pulp driver family
         // asserts ApplDelay>0 && AcqDelay>ApplDelay for exactly this reason.
         // Required: 0 < ApplDelay < AcqDelay < min(sys_clk_period). These are
         // elaboration-time params but sys_clk_period_ns is chosen at runtime by
         // sep_env_cfg.randomize_timing() = rng.randint(4,20)ns, so they must fit
         // the 4ns floor (NOT the seed=1 8ns period). Use 1ns/3ns: valid for the
-        // whole [4,20]ns range on both VCS and Verilator; still samples well after
+        // whole [4,20]ns range under both scheduling models; still samples well after
         // the master's NBA-driven valid.
         .ApplDelay         (1ns),
         .AcqDelay          (3ns)
@@ -932,10 +953,9 @@ module sep_uvm_top
     // WHY THIS EXISTS. u_smc_mem is a FLAT axi_sim_mem: it answers at whatever
     // address the ROM presents, so a wrong SEP<->SMC offset is invisible -- the
     // testbench simply seeds the wrong address too and every test stays green.
-    // That is exactly how four offsets in sep_smc_interface.h drifted out of
-    // agreement with this design's generated map (smc_addr.h) without a single
-    // test failing: SCRATCH_BASE, DFX_CTRL_STATUS_SMU and both FUSE_MAP entries
-    // all pointed into unmapped holes.
+    // An offset in sep_smc_interface.h can therefore drift out of agreement with
+    // this design's generated map (smc_addr.h) and point into an unmapped hole
+    // without a single test failing.
     //
     // This checker restores the one property the flat model threw away: an
     // access outside a register window that actually exists is an ERROR. The
@@ -946,6 +966,12 @@ module sep_uvm_top
     // rather than widening an existing window.
     localparam logic [55:0] SmcStrapsLoAddr = 56'h4040_5800;
     localparam logic [55:0] SmcStrapsHiAddr = SmcStrapsLoAddr + 4;
+
+    // SMC CPU_CTRL scratch registers: index * 8 from smc_base+0x39080
+    // (sep_smc_interface.h). 13 holds the SEP-safe SRAM offset, 14 its size.
+    localparam logic [55:0] SmcScratchBaseAddr = 56'h4003_9080;
+    localparam logic [55:0] SmcScratch13Addr = SmcScratchBaseAddr + (13 * 8);
+    localparam logic [55:0] SmcScratch14Addr = SmcScratchBaseAddr + (14 * 8);
     localparam int unsigned SmcNumWindows = 7;
     // {base, size} pairs, SEP-side addresses.
     localparam logic [55:0] SmcWinBase [SmcNumWindows] = '{
@@ -1011,6 +1037,8 @@ module sep_uvm_top
     logic [31:0] dft_status_ovr;
     logic [31:0] straps_hi_ovr;
     logic [31:0] straps_lo_ovr;
+    logic [31:0] smc_scratch13_ovr;
+    logic [31:0] smc_scratch14_ovr;
     initial begin
         #1;
         // scratch[9] status: SRAM_INIT|MANIFEST_READY|BUFFER_READY|SRAM_PROTECTED
@@ -1027,7 +1055,7 @@ module sep_uvm_top
         // not decoration: without mbist_done the gate polls for it, times out
         // after MBIST_DONE_WAIT_ITERS and halts. Every rom_fw test that does not
         // pass +sep_dft_status inherits this word, so it must represent a part
-        // that boots. It was 0x03 while the gate only read mem_repair_success.
+        // that boots.
         u_smc_mem.mem[56'h4000_B800] = 8'h13;
         u_smc_mem.mem[56'h4000_B801] = 8'h01;
         // STRAPS_LO and STRAPS_HI in the SMC external supplementary window,
@@ -1042,8 +1070,8 @@ module sep_uvm_top
         //
         // Zeroing the HIGH half matters only on a 4-state simulator. Verilator is
         // 2-state, so an unwritten key reads 0 there and the tests pass either
-        // way; sep_sim_cfg.toml also lists vcs and xcelium, where without this the
-        // MBIST arm would branch on X for every test that does not pass
+        // way; sep_sim_cfg.toml also lists 4-state simulators, where without this
+        // the MBIST arm would branch on X for every test that does not pass
         // +sep_straps_hi. Do not remove it because the Verilator runs are green.
         u_smc_mem.mem[SmcStrapsLoAddr + 0] = 8'h00;
         u_smc_mem.mem[SmcStrapsLoAddr + 1] = 8'h00;
@@ -1059,10 +1087,9 @@ module sep_uvm_top
         end
         // ---- Explicit per-test injections. -------------------------------
         // All three sit BELOW the $readmemh above, so an explicit request always
-        // wins over whatever a +sep_smc_mem_hex image happens to cover. Keeping
-        // them together is not cosmetic: the strap seed used to run ABOVE the
-        // $readmemh, so an SMC image that covered the straps window could
-        // silently clear an explicit stimulus.
+        // wins over whatever a +sep_smc_mem_hex image happens to cover. Order
+        // matters: above the $readmemh, an SMC image covering the straps window
+        // would silently clear an explicit stimulus.
         //
         // +sep_boot_from_spi sets STRAPS_LO[25] (primary_chiplet) at
         // smc_base+0x405800. Bit 25 is byte 3 of the word, bit 1. It is a strap
@@ -1081,18 +1108,15 @@ module sep_uvm_top
         // +sep_straps_hi below. sep_smc_interface.h: [13] bypass_sram_repair,
         // [19] boot_recovery, [21] status_rpt_disable, [25] primary_chiplet.
         //
-        // Needed because the ROM's boot gate reads bit 13: OCAH-MAS makes
-        // BYPASS_SRAM_REPAIR (GPIO pin 13) mean repair never ran, and the gate
-        // skips its repair check entirely in that case rather than reading a 0
-        // status as a failure. Nothing could drive bit 13 before this: the only
-        // STRAPS_LO stimulus was +sep_boot_from_spi, which writes byte 3 alone,
-        // so bit 13 (byte 1) was permanently 0 and that branch was unreachable.
+        // Needed because the ROM's boot gate reads bit 13: BYPASS_SRAM_REPAIR
+        // means repair never ran, and the gate skips its repair check entirely in
+        // that case rather than reading a 0 status as a failure. +sep_boot_from_spi
+        // writes byte 3 alone, so it cannot reach bit 13 (byte 1).
         //
         // Ordering with +sep_boot_from_spi is deliberate and both may be used
-        // together. This runs AFTER it and ORs rather than assigns, and the
-        // convenience flag above was changed to OR as well, so neither clobbers
-        // the other whichever bits each sets. Both sit after the $readmemh for
-        // the reason given above.
+        // together. Both OR rather than assign, so neither clobbers the other
+        // whichever bits each sets, and both sit after the $readmemh for the
+        // reason given above.
         if ($value$plusargs("sep_straps_lo=%h", straps_lo_ovr)) begin
             u_smc_mem.mem[SmcStrapsLoAddr + 0] =
                 u_smc_mem.mem[SmcStrapsLoAddr + 0] | straps_lo_ovr[7:0];
@@ -1135,6 +1159,31 @@ module sep_uvm_top
             u_smc_mem.mem[SmcStrapsHiAddr + 3] = straps_hi_ovr[31:24];
             $display("[tb] STRAPS_HI set to 0x%08x (+sep_straps_hi): mbist_bypass=%0d rotate=%0d",
                      straps_hi_ovr, straps_hi_ovr[22], straps_hi_ovr[26]);
+        end
+        // SMC scratch[13]/[14]: the SEP-safe window inside SMC SRAM, which the
+        // ROM reads when a manifest asks for use_ext_sram=0 and then stages the
+        // payload at smc_sram_base + scratch[13] (manifest_load.c). The ROM
+        // refuses a 0/0 window as out of range, so the branch needs both values.
+        //
+        // Offset is relative to SMC SRAM base, not absolute, matching what the
+        // ROM adds to sep_get_smc_sram_base(). Default unwritten: an associative
+        // array yields X for a key never written, so a test that wants the SMC
+        // staging path must pass both.
+        if ($value$plusargs("sep_smc_scratch13=%h", smc_scratch13_ovr)) begin
+            u_smc_mem.mem[SmcScratch13Addr + 0] = smc_scratch13_ovr[7:0];
+            u_smc_mem.mem[SmcScratch13Addr + 1] = smc_scratch13_ovr[15:8];
+            u_smc_mem.mem[SmcScratch13Addr + 2] = smc_scratch13_ovr[23:16];
+            u_smc_mem.mem[SmcScratch13Addr + 3] = smc_scratch13_ovr[31:24];
+            $display("[tb] SMC scratch[13] SEP-safe SRAM offset = 0x%08x (+sep_smc_scratch13)",
+                     smc_scratch13_ovr);
+        end
+        if ($value$plusargs("sep_smc_scratch14=%h", smc_scratch14_ovr)) begin
+            u_smc_mem.mem[SmcScratch14Addr + 0] = smc_scratch14_ovr[7:0];
+            u_smc_mem.mem[SmcScratch14Addr + 1] = smc_scratch14_ovr[15:8];
+            u_smc_mem.mem[SmcScratch14Addr + 2] = smc_scratch14_ovr[23:16];
+            u_smc_mem.mem[SmcScratch14Addr + 3] = smc_scratch14_ovr[31:24];
+            $display("[tb] SMC scratch[14] SEP-safe SRAM size = 0x%08x (+sep_smc_scratch14)",
+                     smc_scratch14_ovr);
         end
     end
 
@@ -1181,7 +1230,7 @@ module sep_uvm_top
     // tb_backdoor_mem: default-fill + image load for the real memory macros.
     //
     // The wrapper's macros have no runtime init (MemInitFile("")) and power up X
-    // on VCS / 0 on Verilator -- both wrong for KM (parity) and OTBN (SECDED),
+    // on a 4-state simulator / 0 on Verilator -- both wrong for KM (parity) and OTBN (SECDED),
     // whose valid power-up word is non-zero. Fill patterns include ECC/parity.
     // Array paths are hw/top/sep_ip_integration.sv and sep_tcm_wrapper
     // (TCM per-depth generate arms: gen_ram).
@@ -1210,8 +1259,8 @@ module sep_uvm_top
 `define BD_ICCM(b) `SEP_IPI.u_sep_tcm_wrapper.gen_iccm.gen_bank[b].gen_iccm_ram.ram.ram_core
 `define BD_DCCM(b) `SEP_IPI.u_sep_tcm_wrapper.gen_dccm.gen_bank[b].gen_dccm_ram.ram.ram_core
 
-    // Non-zero valid power-up patterns (both tools: Verilator 0-init and VCS X are
-    // both invalid here -> spurious KM SRAM_PARITY / OTBN SECDED faults otherwise).
+    // Non-zero valid power-up patterns (Verilator's 0-init and a 4-state simulator's
+    // X are both invalid here -> spurious KM SRAM_PARITY / OTBN SECDED faults otherwise).
     initial begin : backdoor_default_fill_nonzero
         for (int i = 0; i < 4096; i++)
             `SEP_IPI.u_km_rom.mem[i] = {bd_km_word_parity(32'h0000_0013), 32'h0000_0013};
@@ -1224,9 +1273,10 @@ module sep_uvm_top
     end
 
 `ifndef VERILATOR
-    // Zero-default macros power up X on VCS; zero them. Verilator 0-inits these, so
-    // the sweep is compiled only for VCS (a constant-bound Verilator `initial`
-    // sweep over ~100k rows unrolls into an uncompilable C++ function).
+    // Zero-default macros power up X on a 4-state simulator; zero them. Verilator
+    // 0-inits these, so the sweep is compiled only for the non-Verilator build (a
+    // constant-bound Verilator `initial` sweep over ~100k rows unrolls into an
+    // uncompilable C++ function).
     initial begin : backdoor_default_fill_zero
         for (int i = 0; i < 32768; i++)
             `SEP_IPI.u_sep_sram.gen_ram_inst[0].u_mem.mem[i] = 64'h0;
@@ -1407,7 +1457,7 @@ module sep_uvm_top
     //  * Stub build: the stub is the sole driver of the LSU master and drives
     //    lsu_axi_req from `lsu_req_drive` (upward reference; no force).
     //  * CPU firmware-boot (+cpu_boot): the real VeeR owns LSU/IFU/DBG.
-    //  * no_cpu on the full-CPU VCS build: VeeR is held off
+    //  * no_cpu on the full-CPU build outside Verilator: VeeR is held off
     //    (mpc_reset_run_req=0), so the VIP owns the post-remap LSU request.
     //    Same node the stub drives, so VIP addresses do not pass through
     //    u_lsu_local_alias_remap. The raw response is held idle so the halted
@@ -1633,7 +1683,6 @@ module sep_uvm_top
 
     // ------------------------------------------------------------------
     // LC differential-integrity error inject.
-    // SIGNED OFF 2026-08-20 by yenhenglai, SEP TB owner.
     // ------------------------------------------------------------------
     // No legal OTP image can present a broken {~raw, raw} LC_STATE pair: the
     // sense FSM regenerates the pair from the raw nibble. The specification's
@@ -1657,7 +1706,6 @@ module sep_uvm_top
 
     // ------------------------------------------------------------------
     // Token-comparator redundancy fault inject.
-    // SIGNED OFF 2026-08-24 by yenhenglai, SEP TB owner.
     // ------------------------------------------------------------------
     // The three digest comparators see the same inputs. A legal token write
     // can only produce a unanimous legal pair (match or mismatch). Collapse
@@ -1736,7 +1784,6 @@ module sep_uvm_top
 
     // ------------------------------------------------------------------
     // DMA host-path command-integrity inject.
-    // SIGNED OFF 2026-09-01 by yenhenglai, SEP TB owner.
     // ------------------------------------------------------------------
     // host_path_err is the OR of a fabric non-OKAY on a DMA transfer and a
     // TL-UL command-integrity fail on a DMA-issued command. A legal
@@ -1745,7 +1792,7 @@ module sep_uvm_top
     // dma_host_intg_inject_i=1, force the host-adapter checker input
     // (tlul_cmd_intg_chk.u_chk.data_i) to 0 so the real decoder computes
     // err_o. err_o stays gated on a_valid. STATUS / PIC [40] / CLEAR stay
-    // frontdoor or the signed-off aggregate probe. Re-issue every clock
+    // frontdoor or the aggregate probe. Re-issue every clock
     // (Verilator snapshots a force RHS). Release when the port drops.
     // Default 0; outside the AXI ready/valid cones.
 `define DMA_HOST_CMD_INTG_DI \
@@ -1776,7 +1823,7 @@ module sep_uvm_top
     // Read back lane 0's ACTUAL dcor.noise_i: when the force is active this tracks
     // the driven bit; without the force it is the RTL's (static/X) noise bit. The
     // smoke asserts this matches esrc_noise_o[0] -> proves the force took (not
-    // vacuous).
+    // trivially satisfied).
     assign esrc_noise_active_o =
         `SEP_ESRC.u_generator_complex.gen_ecmplx[0].u_generator.u_decorrelator.noise_i;
 
@@ -1824,7 +1871,7 @@ module sep_uvm_top
 
 // Target the driver-side net inside sep_crypto rather than the wrapper's input
 // port -- a `force` on a module instance input is rejected (ASSIGNIN).
-// Client indices from sep_crypto.sv: 0 = AES, 1 = KMAC, 2 = OTBN RND,
+// Client indices in sep_crypto: 0 = AES, 1 = KMAC, 2 = OTBN RND,
 // 3 = OTBN URND. KMAC is not forced -- the ROM's SHA-256 goes through HMAC.
 `define OTBN_RND_RSP  `SEP_CORE.sep_crypto.crypto_edn_rsp[2]
 `define OTBN_URND_RSP `SEP_CORE.sep_crypto.crypto_edn_rsp[3]
@@ -2015,7 +2062,8 @@ module sep_uvm_top
     //
     // Assertion bodies are guarded by OCAH_INC_ASSERT (hw/common/assert),
     // which Verilator does not define, so both instances elaborate to empty
-    // modules there and cost nothing. The rules are live under VCS.
+    // modules there and cost nothing. The rules are live wherever
+    // OCAH_INC_ASSERT is defined.
     //
     // m_axi ties en_i high: it is TB-driven in both run modes. s_axi is gated
     // by the run mode, for the reason stated at its instance. A test that needs
@@ -2119,9 +2167,9 @@ module sep_uvm_top
     );
 
     // ------------------------------------------------------------------
-    // Key Manager internal AXI-Lite, CPU side. SIGNED OFF 2026-08-30 by
-    // yenhenglai. Every access KM firmware makes to KPV, KMCSR, the DRBG
-    // sampler and the mailbox crosses this one port: the KM crossbar has a
+    // Key Manager internal AXI-Lite, CPU side. Every access KM firmware makes
+    // to KPV, KMCSR, the DRBG sampler and the mailbox crosses this one port:
+    // the KM crossbar has a
     // single slave port wired to the internal picorv32, so no testbench
     // master can reach it.
     //

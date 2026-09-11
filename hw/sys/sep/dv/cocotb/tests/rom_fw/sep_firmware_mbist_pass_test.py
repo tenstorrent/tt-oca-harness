@@ -30,13 +30,11 @@ LOCATION and its pass/fail ENCODING, confirmed from RTL.
     a window declared in ``smc_addr.h``, so the class of defect is detectable
     from here on -- but this test still does not target the address itself.
 
-THE GATE THIS ARM EXERCISES, AND THAT IT CHANGED. It used to read
-``mem_repair_success`` alone, and this test used to inject 0x02. That was a
-memory-repair gate wearing an MBIST name, and the pass/fail pair proved it: the
-pass arm booted with ``mbist_pass`` CLEAR. F002 ("Verify BL0 checks SMU MBIST
-results") was therefore not implemented, while its testcases were green --
-faithful to the ROM, and blind to the spec. Corrected under A46; see
-``dv/docs/rom_boot_flow_vs_reference.md`` finding N.
+THE GATE THIS ARM EXERCISES. The gate reads ``mbist_done`` and ``mbist_pass``
+as well as ``mem_repair_success``. A gate on ``mem_repair_success`` alone would
+be a memory-repair gate wearing an MBIST name: the pass arm would boot with
+``mbist_pass`` CLEAR, so the requirement ("Verify BL0 checks SMU MBIST results")
+would be unimplemented while its testcases stayed green.
 
 The gate is now two arms (``bootrom/prod/src/vector.S``)::
 
@@ -124,7 +122,7 @@ from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
 # fail_test cannot do that job: its 0xFFFFFFFD fails the repair arm first and
 # never reaches the MBIST check.
 _DFT_STATUS_PASS = 0x0000_0112
-# bootrom/prod/include/sep_smc_interface.h:64-65 and dfx_ctrl_status.rdl.
+# bootrom/prod/include/sep_smc_interface.h and dfx_ctrl_status.rdl.
 _MEM_REPAIR_DONE_BIT = 0
 _MEM_REPAIR_SUCCESS_BIT = 1
 _MBIST_DONE_BIT = 4
@@ -149,9 +147,10 @@ _STATUS_PRESTART_DONE = 0x8001_0056
 # C-runtime console markers. The failure arm forbids these because the gate stops
 # the ROM before C exists; the pass arm must therefore require them, or "the gate
 # let it through" would rest on the boot result alone.
-#   SMC_MEM_CHK  rom_main.c:190
-#   CHIP_ID=     rom_main.c:562
-_POST_GATE_MARKERS = ("SMC_MEM_CHK", "CHIP_ID=")
+#   COLD         the ROM's first C-side console line: the C runtime is up and
+#                vector.S resolved this as a cold boot (rom_main.c)
+#   CHIP_ID=     rom_main.c
+_POST_GATE_MARKERS = ("COLD", "CHIP_ID=")
 
 
 @pyuvm.test()
