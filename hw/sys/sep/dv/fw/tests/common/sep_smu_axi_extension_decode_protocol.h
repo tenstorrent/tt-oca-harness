@@ -3,9 +3,9 @@
 /*
  * smu_sep_axi_extension_decode_test  -- shared protocol.
  *
- * Card text still names SPI_MUX_CTRL @ 0x2000_0000. This RTL maps that page
- * to the eFuse shim; generated SPI_MUX_CTRL is 0x20001000 (sep_addr.h /
- * sep_addrmap_pkg.sv). Firmware and the monitor use the generated base.
+ * The page at 0x2000_0000 is the eFuse shim; SPI_MUX_CTRL is the generated
+ * 0x20001000 (sep_addr.h / sep_addrmap_pkg.sv). Firmware and the monitor use
+ * the generated base.
  * XIP physical word is generated XIP base + 0x4000 (0x30004000).
  *
  * PASS token on SEP cold scratch6 is written only after the XIP load
@@ -25,7 +25,7 @@
 
 #define AXI_EXT_AXI_BOUND_CYC 256
 #define AXI_EXT_MMIO_BOUND_CYC 4096
-#define AXI_EXT_CDNS_BOUND_CYC 2000000
+#define AXI_EXT_XIP_BOUND_CYC 2000000
 #define AXI_EXT_PASS_BOUND_CYC 2000000
 
 #define AXI_EXT_SPI_SEL 1
@@ -38,7 +38,7 @@
 #define AXI_EXT_BRINGUP_OK 0x00720000
 #define AXI_EXT_MUX_DONE 0x00720001
 #define AXI_EXT_GPIO_OVRD_OK 0x00720010
-#define AXI_EXT_CDNS_OK 0x00720002
+#define AXI_EXT_XIP_OK 0x00720002
 #define AXI_EXT_SMC_FAIL 0x007CFFEE
 
 #define AXI_EXT_PASS 0x007A0001

@@ -224,10 +224,8 @@ static int test_axi_signal_comprehensive_toggle(void) {
             uint32_t test_addr = test_base + 0x1000;
             uint32_t access_size = 1 << axi_size;
 
-            // Read transaction with specific AXI attributes
             test_axi_transaction(test_addr, access_size, AXI_READ);
 
-            // Write transaction with specific AXI attributes
             test_axi_transaction(test_addr + access_size, access_size, AXI_WRITE);
 
             // Burst transactions
@@ -245,7 +243,6 @@ int main(void) {
     printf("Alias Remap Datapath Test\n");
     printf("Strategy: Local-master alias hit/miss/boundary cases; full AXI datapath coverage\n\n");
 
-    // Initialize fabric system
     if (init_sep_fabric() != 0) {
         test_fail("fabric_alias_remap_datapath_p3_test");
         return TEST_FAIL;

@@ -495,9 +495,8 @@ class SepCtrDrbgGolden:
     # cannot predict on its own. So model one block at a time and take the
     # boundary from the RTL's own gen_last, exactly as the upstream SV
     # scoreboard does (ctr_drbg_generate_one + gen_last -> ctr_drbg_generate_done).
-    # Assuming a fixed glen instead desynchronises the whole chain the moment a
-    # second Generate runs on one seed -- the normal case once every EDN
-    # endpoint is live.
+    # A fixed glen desynchronises the chain as soon as a second Generate runs on
+    # one seed.
     def generate_one(self) -> int:
         """One 128b Generate output block. No trailing Update -- see generate_done()."""
         self._v_increment()
@@ -508,7 +507,6 @@ class SepCtrDrbgGolden:
         self._update(additional_input & _SEED_MASK)
         self.reseed_counter += 1
 
-    # Reference-model API kept for golden parity; not invoked by the OSS checkers.
     def uninstantiate(self) -> None:
         self.key = 0
         self.v = 0

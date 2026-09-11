@@ -87,11 +87,10 @@ class DeadWindow:
     # CLEARED in the DUT, so the "restore" destroys the live status it claims to
     # put back.
     #
-    # LIMITATION: populated for entropy_src only. Its leaf Python header opts into
-    # generated field-access metadata. The other nine windows still need that
-    # metadata enabled and wired here; until then, W1C registers such as
-    # spi_controller ERROR_STATUS and km_mailbox status_reg / irq_status_reg are
-    # written back by restore(). restore() runs only after a probe already failed,
+    # Populated for entropy_src only, the one leaf whose Python header carries
+    # generated field-access metadata. For the other nine windows restore() writes
+    # back W1C registers such as spi_controller ERROR_STATUS and km_mailbox
+    # status_reg / irq_status_reg. restore() runs only after a probe has failed,
     # so the corruption is confined to a run that is already reporting failure.
     write_destructive: frozenset[int] = frozenset()
 
@@ -370,8 +369,8 @@ class SepDeadspace:
         # The later beats land in dead space, so a correct fabric answers this
         # burst with an error. Credit those beats and hand back whatever the
         # fabric did not use: without the credit the monitor reports a correct
-        # refusal as a protocol error, and this walk cannot pass even once the
-        # block starts refusing.
+        # refusal as a protocol error, and this walk could not pass against a
+        # block that refuses correctly.
         mon.arm_expected_decerr(beats)
         seq = SepAxiAccessSeq(
             f"dead_burst_0x{start:08x}",

@@ -383,10 +383,8 @@ class SepKmMailbox:
         counters so the failure names which stage did not retire, rather than
         silently polling an empty mailbox for milliseconds of sim time.
 
-        The 8000-poll budget is 400k core cycles (~460 us), roughly 1.5x the
-        ~300 us the KM ROM needs to reach RESP_KM_READY in the reference subsystem tb.
-        Generous for a healthy boot, but bounded enough that a KM which never
-        boots fails in minutes instead of running the test to its 7200 s cap.
+        The 8000-poll budget is 400k core cycles: generous for a healthy boot, but
+        bounded so a KM that never boots fails here rather than at the run timeout.
         """
         try:
             words = await self.recv_frame(timeout=timeout, poll_cycles=poll_cycles)

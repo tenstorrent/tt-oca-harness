@@ -36,8 +36,8 @@ link:SEP_VPLAN.adoc[SEP_VPLAN.adoc].
   protocol access.
 . Wrap those BFMs in PyUVM agents so tests remain sequence-based and reusable.
 . Keep DUT-local goldens, scoreboards, and register metadata in `cocotb/env/`.
-. Prefer frontdoor stimulus and observation. Signed-off probe / init exceptions
-  are listed under <<sep-hdl-top>>; do not widen them without owner sign-off.
+. Prefer frontdoor stimulus and observation. The probe / init exceptions are
+  listed under <<sep-hdl-top>> and form a closed set.
 
 [cols=",,,",options="header"]
 |===
@@ -48,7 +48,7 @@ link:SEP_VPLAN.adoc[SEP_VPLAN.adoc].
 |JTAG (eFuse mux path) |`ocah_axi_vip` AXI-Lite / `ocah_jtag_vip` where used |Unified OCAH BFM |eFuse JTAG–AXI-Lite coexistence tests
 |Entropy raw noise |`esrc_noise_ext_i` + Python goldens |DUT-local |Deterministic noise shared with the decorrelator golden
 |eFuse / OTP |Generic OSS eFuse bank model |Shared OSS model |No foundry OTP macros; staged via `+sep_efuse_hex`
-|Memories |Wrapper `prim_ram_1p` / `prim_rom` / EL2 TCM |RTL macros + signed-off init |`tb_backdoor_mem` loads images at t=0
+|Memories |Wrapper `prim_ram_1p` / `prim_rom` / EL2 TCM |RTL macros + backdoor init |`tb_backdoor_mem` loads images at t=0
 |===
 
 === DUT-Local Model Ownership
@@ -60,13 +60,13 @@ lifecycle / fuse policy, and scoreboarding.
 [cols=",,,",options="header"]
 |===
 |Model / Helper |Current Scope |Why It Stays DUT-Local |Promotion Trigger
-|`SepAxiAgent` / `SepAxiItem` |LSU + SMN-inbound masters |Prefix binding, timeout / expect_error policy, AxUSER for inbound src_id |Already thin over `ocah_axi_vip`; keep SEP policy here
+|`SepAxiAgent` / `SepAxiItem` |LSU + SMN-inbound masters |Prefix binding, timeout / expect_error policy, AxUSER for inbound src_id |Thin over `ocah_axi_vip`; carries SEP policy
 |`sep_reg_meta` |PeakRDL-exported addresses / resets / masks |SEP register export layout |Share only with a second consumer of the same export contract
 |`sep_*_golden.py` |AES / HMAC / KMAC / OTBN / entropy / LCC / DRBG |SEP datapath + config objects |Promote a stage only after an independent consumer needs the same KAT
 |`SepDrbgScoreboard` |Entropy CHK1–CHK5 chain |SEP ESRC→DRBG→EDN probe set and sink policy |Stay local while probes are tb_top-specific
 |`SepEfuseImage` |OTP image + shadow expectation |SEP fuse map and secret-blanking |Shared model already exists; image semantics stay SEP
 |`SepBootScoreboard` / `SepCpuTraceMonitor` |FW console, PC-advance, call stack |EL2 retirement ports and outbound mailbox |Promote only with a second EL2 consumer
-|`SepSeededRng` |Seed→stimulus stream |DV reproducibility contract (not a CSPRNG) |Already reusable; keep under SEP until a shared DV home exists
+|`SepSeededRng` |Seed→stimulus stream |DV reproducibility contract (not a CSPRNG) |Reusable as is; no shared DV home for seeded RNG exists
 |`sep_cpu` stub |no_cpu LSU master splice |First-class run mode, not a workaround |Never promote as a product CPU
 |===
 
@@ -138,10 +138,10 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 |Entropy noise |`esrc_noise_ext_i` forces the decorrelator input (deterministic)
 |FW console |`sep_outbound_mbx` watches outbound mailbox stores (PASS/FAIL magic)
 |CPU trace |Exports EL2 `el2_trace_pkt_t` fields for `SepCpuTraceMonitor`
-|Observation probes |eFuse shadow, scratch, KM/OTBN counters, entropy CHK probes, IRQ aggregate, AXI-Lite split handshakes, DRBG lane-adapter channel packs (`drbg_csrng_axil_chan_o` / `drbg_edn_axil_chan_o`), KM internal AXI-Lite SVA bind — observation-only unless listed as a signed-off inject
+|Observation probes |eFuse shadow, scratch, KM/OTBN counters, entropy CHK probes, IRQ aggregate, AXI-Lite split handshakes, DRBG lane-adapter channel packs (`drbg_csrng_axil_chan_o` / `drbg_edn_axil_chan_o`), KM internal AXI-Lite SVA bind — observation-only unless listed as an inject exception
 |===
 
-Signed-off exceptions (do not extend without owner approval):
+Exceptions (a closed set):
 
 * *CPU-LSU splice* — primary no_cpu stimulus (stub assign, not a `force`).
 * *ESRC noise force* — `esrc_noise_ext_i` into the decorrelator.
@@ -153,7 +153,7 @@ Signed-off exceptions (do not extend without owner approval):
   scoreboards that have no CSR mirror (entropy CHK chain, IRQ aggregate,
   `drbg_csrng_axil_chan_o` / `drbg_edn_axil_chan_o` at each DUT lane
   adapter's AXI-Lite-64 port — concurrent AW/W/AR observation has no CSR
-  mirror; signed off 2026-09-07). The TB-owned `u_tbadp_vehicle` instance
+  mirror). The TB-owned `u_tbadp_vehicle` instance
   is idle and held in reset unless a port-arbitration leaf releases it;
   it is not a DUT XMR.
 * *Key Manager internal AXI-Lite SVA bind* — observation-only `bind` of
@@ -196,9 +196,8 @@ the protocol SVA cannot see it.
 Pure-Python stage goldens under `cocotb/env/` (`sep_decor_golden`,
 `sep_compress_golden`, `sep_ctr_drbg_golden`, AES/HMAC/KMAC, LCC, …). The DRBG
 scoreboard consumes the same config object the sequence programs into the DUT
-and compares against signed-off datapath probes (CHK1–CHK5). Details of noise
-staging and SR seeding are in the VPLAN entropy procedures and
-`AGENTS.md`.
+and compares against the datapath probes (CHK1–CHK5). Details of noise
+staging and SR seeding are in the VPLAN entropy procedures.
 
 ==== Boot path: `SepBootScoreboard` + `SepCpuTraceMonitor`
 
@@ -314,11 +313,11 @@ so tests can attach the Apache-2.0 `OcahSpiFlash` Python BFM.
 There is no SPI pad mux in this build — the pads are driven straight off the
 wrapper's struct port, so flash tests need no mux step.
 
-==== Kept TB shims
+==== TB shims
 
 `shims/` holds the `sep_cpu` stub (no_cpu build) and the entropy
 ring-oscillator. `tb/sep_outbound_mbx.sv` (the fw
-console / PASS monitor) is also kept — it services a real wrapper output port,
+console / PASS monitor) services a real wrapper output port,
 not a memory model.
 
 === Sequence Library
@@ -462,13 +461,12 @@ else is watching there for a checker miss.
 Verilator does not support SystemVerilog covergroups on the acceptance path
 (guard SV covergroups with `` `ifndef VERILATOR ``). Cocotb phases collect
 named checker evidence and the iconic-feature scorecard in
-link:SEP_VPLAN.adoc[SEP_VPLAN]. RTL code-coverage close-out is Phase 3 work.
-Code coverage is instrumented but unthresholded, and is a different number from
-feature coverage. `[coverage.verilator]` in `sep_sim_cfg.toml` instruments line,
-expression and user coverage (toggle stays off) and the nightly `cpu_stub`
-regression collects it. `cov/config/vcs/coverage_policy.toml` is VCS report
-scope only — no thresholds and no run gate on a percentage. The Verilator,
-Xcelium, and Questa config slots are empty. Do not mix the two numbers.
+link:SEP_VPLAN.adoc[SEP_VPLAN]. RTL code coverage is a different number from
+feature coverage and carries no threshold. `[coverage.verilator]` in
+`sep_sim_cfg.toml` instruments line, expression and user coverage (toggle off)
+and the scheduled `cpu_stub` regression collects it.
+`cov/config/vcs/coverage_policy.toml` is VCS report scope only — no thresholds
+and no run gate on a percentage. Do not mix the two numbers.
 
 
 === Canonical RTL and Shim Selection
@@ -649,7 +647,7 @@ the UVM class name equals the scenario name (testlist
 `name = "sep_axi_smoke_test"`,
 `module = { cocotb = "system.sep_axi_smoke_test", uvm = "sep_axi_smoke_test" }`),
 so `--items <name>` selects the same scenario in either realization. The
-first bound scenario is `sep_axi_smoke_test`: fuse-sense release, the
+bound scenario is `sep_axi_smoke_test`: fuse-sense release, the
 `SEP_LOCAL_BASE_ADDR` reset-value read, directed and seeded-random
 write/readback of `SEP_SW_DEBUG`, `SEP_NMI_VEC`, and `PKA_CTRL` through
 their generated field masks, and a restore to reset

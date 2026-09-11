@@ -25,10 +25,6 @@
  * Requires enrolled +spi_device_sel=4 (Winbond W25Q512JV). JEDEC must match
  * EF/40/20 before the erased-page 0xFF golden is trusted — a floating-MISO
  * all-0xFF path fails the presence check.
- *
- * Execution:
- * make test-sep TEST_NAME=sep_spi_ot_flash_read_test STACK=sim
- *
  */
 
 #include <stdint.h>

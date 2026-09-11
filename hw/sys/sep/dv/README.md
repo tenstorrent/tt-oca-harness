@@ -172,11 +172,10 @@ What the resulting number is not:
 * **The DUT minus the CPU, not the whole DUT.** `cov/config/vcs/sep_cov_scope.hier`
   excludes the testbench top, the outbound mailbox, the AXI SVA module and the
   CPU subtree at compile time, across both code and
-  assertion coverage (`-cm_hier` with `-cm_common_hier`). Measured on a merged
-  database: the excluded instances leave the hierarchy entirely and `sep_uvm_top`
-  matches `u_dut` in all six columns. So the percentage is the SEP DUT **with the
+  assertion coverage (`-cm_hier` with `-cm_common_hier`), so the excluded
+  instances never enter the database. The percentage is the SEP DUT **with the
   CPU subtree removed** -- quote it that way, never as bare "SEP DUT coverage".
-  `cov/config/vcs/README.md` records the scope and the measurements behind it.
+  `cov/config/vcs/README.md` records the scope.
 * **Not a read on assertions.** Assertion coverage counts elaborated assertions
   only, and SEP gates those through the `prim_assert` shim. Confirm assertions
   are live before reading that column.
@@ -229,8 +228,8 @@ from the wrapper's real TCM macros, backdoor-loaded by `tb_backdoor_mem` in
 `fw/build/tests/<name>/{.itcm,.dtcm}.hex` images through `fw/fw.mk`.
 
 * `sep_hello_world_test` — loads the OSS `fw/tests/hello_world` image into
-  ICCM/DCCM and passes `rst_vec=0xC0000000` to `tb_top.sv`, which programs
-  the EL2 reset-vector TDR through JTAG before reset releases and sets
+  ICCM/DCCM and passes `rst_vec=0xC0000000` to `tb_top.sv`, which drives the
+  wrapper's direct reset-vector input before reset releases and sets
   `mpc_reset_run_req=1`. The test boots VeeR EL2 and checks PC advance
   (`sep_cpu_trace`) plus the firmware banner and PASS magic on the outbound
   mailbox (`tb/sep_outbound_mbx.sv`).
@@ -257,7 +256,7 @@ it. A testlist entry binds both implementations of one scenario
 selects the same VPLAN scenario in either framework; the UVM class name is
 the `uvm` entry (`+UVM_TESTNAME`). Selecting a scenario with no `uvm` entry
 errors; `--skip-unimplemented` runs a group's UVM-implemented subset instead.
-Today only `sep_axi_smoke_test` carries a `uvm` binding. VCS only: Verilator
+`sep_axi_smoke_test` is the scenario with a `uvm` binding. VCS only: Verilator
 has no SV-UVM support. The bench architecture is in `docs/SEP_TB_ARCH.adoc`
 ("SystemVerilog UVM Realization"); the framework conventions it follows are in
 `hw/common/dv/docs/uvm-framework.adoc`.
@@ -311,7 +310,7 @@ analog), `.gitignore` (SEP-local generated products), `sep_public_scope.vlt`
 hw/sys/sep/dv/
 ├── cocotb/              # PyUVM env, sequences, tests; dv_sim_prestage.py
 ├── uvm/                 # SV-UVM realization (`--framework uvm`, VCS)
-├── cov/                 # VCS code-coverage scope (`cov/config/vcs/`); `cov/sv/` is empty this revision
+├── cov/                 # VCS code-coverage scope (`cov/config/vcs/`), Phase 1 covergroups (`cov/sv/`)
 ├── docs/                # TB architecture, VPLAN, FCOV
 ├── fw/                  # DV firmware (`fw.mk` / `c_compile`)
 ├── tb/                  # sep_uvm_top, mailbox, preload images

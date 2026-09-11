@@ -29,8 +29,8 @@ import sep_reg  # noqa: E402
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-# Stimulus randomness is deliberately the seeded, NON-cryptographic SepSeededRng, and
-# must stay that way. This generator is run TWICE per simulation from two different
+# Stimulus randomness is the seeded, NON-cryptographic SepSeededRng. This generator
+# is run TWICE per simulation from two different
 # processes -- once by dv_sim_prestage.py to stage the t=0 OTP image the RTL $readmemh
 # reads, and once inside the cocotb test to build the golden that the post-sense
 # backdoor compare checks that image against. The two runs agree only because
@@ -99,7 +99,7 @@ _LC_REGS = ("LC_STATE",)
 # from the shadow-register hardware output while secure_tm is asserted, so no real
 # secret reaches a scannable consumer. Named, not derived: which fields are secret is
 # a security decision in the package, not a property of the map's shape, so a new
-# field must be classified deliberately rather than inherited by position.
+# field must be classified explicitly rather than inherited by position.
 _SECRET_REGS = ("CHIPLET_UID", "SIP_UID", "SYS_UID", "CLASS_KEY")
 
 # Lock-field geometry, from sep_efuse_pkg. LOCKS (64-bit, OTP words 0-1) plus
@@ -118,13 +118,12 @@ _PROB_BITS = 32
 
 # Spec-stated anchors, asserted against the generated map below.
 #
-# Deriving the field table from the map is what stopped a hand-written copy going stale,
-# but it introduced a subtler failure: DV takes each field's length from the gap to the
-# next base, and efuse_guard derives its end address the same way, both reading the same
-# generated map. A wrong RDL therefore moves the expectation and the DUT together and
-# nothing disagrees. Pinning the handful of offsets and widths the specification states
-# outright gives the derivation an independent anchor -- the same reason
-# sep_reg_meta._selftest() exists in this environment.
+# The field table is derived from the generated map: DV takes each field's length from
+# the gap to the next base, and efuse_guard derives its end address the same way, both
+# reading the same map. A wrong RDL therefore moves the expectation and the DUT
+# together and nothing disagrees. Pinning the handful of offsets and widths the
+# specification states outright gives the derivation an independent anchor -- the
+# same reason sep_reg_meta._selftest() exists.
 _SPEC_ANCHORS = {
     # name:          (byte offset, width in bits)
     "LOCKS": (0x000, 64),
@@ -221,11 +220,10 @@ class SepEfuseField:
 class SepEfuseImage:
     """A 256-word SEP fuse image plus the golden expected-shadow model.
 
-    Golden assumptions (must match the tb wiring): the DUT runs with
-    ``secure_tm`` tied 0 and LOCKS unlocked, so every field reads back verbatim
-    except LC_STATE (differential-encoded). If a read-lock or secure_tm test is
-    added, ``expected_shadow`` must model the gated readback (read-lock ->
-    0xbadcab1e, secure_tm -> token digests zeroed) for those cases.
+    Golden assumptions (must match the tb wiring): LOCKS unlocked, so every field
+    reads back verbatim except LC_STATE (differential-encoded) and, with
+    ``secure_tm`` asserted, the Class-1a secrets (``shadow_word`` blanks them).
+    Read-lock gating (read-lock -> 0xbadcab1e) is not modelled.
     """
 
     fields: Tuple[SepEfuseField, ...] = tuple(
@@ -262,13 +260,11 @@ class SepEfuseImage:
         fuse configuration, a per-bit reference suite ``*.preload`` (one 0/1 per
         line), or a 256-word hex image.
 
-        Dispatching here rather than in the callers is what keeps the two
-        execution points honest. This method is the single entry both of them
-        use -- ``dv_sim_prestage.stage()`` to write the array the RTL
-        ``$readmemh`` reads at t=0, and ``sep_base_test.select_efuse_image()`` to
-        build the golden the post-sense shadow compare checks that array
-        against -- so a format taught to one is a format the other already
-        speaks. Teaching only the prestage about TOML would silently give the
+        This method is the single entry both execution points use --
+        ``dv_sim_prestage.stage()`` to write the array the RTL ``$readmemh`` reads
+        at t=0, and ``sep_base_test.select_efuse_image()`` to build the golden the
+        post-sense shadow compare checks that array against -- so every format is
+        available to both. A format known to only one of them would give the
         golden a zero-filled image and turn every field into a mismatch.
         """
         path = Path(path)
@@ -321,7 +317,7 @@ class SepEfuseImage:
         ``{~raw, raw}`` into the shadow itself, so a staged image carrying a bare nibble
         still senses as a valid
         pair. That is also why no staged image can present a BROKEN pair to the DUT.
-        The stitch test injects that fault at the LCC decoder input (signed-off force).
+        The stitch test injects that fault by forcing the LCC decoder input.
         """
         if raw not in LEGAL_LC_RAW:
             raise ValueError(f"illegal LC raw code 0x{raw:x}")
@@ -367,16 +363,15 @@ class SepEfuseImage:
         # fields. Build it once, then slice each register by its bit offset
         # from the LOCKS base: LOCKS <- [63:0], LOCKS_SPARE <- [95:64]
         # (slots 32-39 in [79:64]; [95:80] are unassigned and stay 0).
-        # Drawing per kind=="locks" field would write a fresh 80-bit vector
-        # into each, so LOCKS_SPARE received bits [31:0] of a second draw
-        # instead of [95:64] of the first.
+        # Drawing per kind=="locks" field would write a fresh vector into each,
+        # so LOCKS_SPARE would receive bits [31:0] of a second draw instead of
+        # [95:64] of the first.
         #
         # The vector holds TWO bits per protected field -- a write lock and a
         # read lock -- so 40 slots cover 80 bits. Index 6'h3F is the no-lock
-        # sentinel. Lock ENFORCEMENT (read-lock -> 0xbadcab1e, write-lock
-        # rejecting a program) is still not checked by the shadow checkers, so
-        # expected_shadow() assumes fields stay readable. Extend both
-        # together, and add a plan row, before relying on this.
+        # sentinel. The shadow checkers do not check lock ENFORCEMENT (read-lock ->
+        # 0xbadcab1e, write-lock rejecting a program); expected_shadow() assumes
+        # fields stay readable.
         lock_bits = 0
         if lock_prob > 0.0:
             # Bernoulli draw as an integer comparison rather than a float one:
@@ -439,9 +434,9 @@ class SepEfuseImage:
         staged value would report 32 mismatches on a TEST_EN run. Everything else
         reads back verbatim (LOCKS unlocked).
 
-        The blanking is conditional ON PURPOSE. Zeroing these words unconditionally
-        would stop the compare proving they sensed correctly at all, which is the
-        whole point of the post-sense check.
+        The blanking is conditional on ``secure_tm``: zeroing these words
+        unconditionally would leave the compare unable to prove they sensed
+        correctly.
         """
         if secure_tm and word_idx in self.secret_words():
             return 0
@@ -468,8 +463,8 @@ def _selftest_lock_pack() -> None:
 
     lock_prob=1.0 forces every assigned slot. 40 slots x 2 bits = 80 ones;
     LOCKS is [63:0], LOCKS_SPARE is [95:64] with [95:80] unassigned and 0.
-    A per-field redraw writes [31:0] of a second vector into LOCKS_SPARE
-    (0xffffffff) and is the packing bug this pins.
+    A per-field redraw would write [31:0] of a second vector into LOCKS_SPARE
+    (0xffffffff); this pins the single-vector packing.
     """
     ones = SepEfuseImage().randomize(7, lock_prob=1.0)
     locks = ones.field_int("LOCKS")

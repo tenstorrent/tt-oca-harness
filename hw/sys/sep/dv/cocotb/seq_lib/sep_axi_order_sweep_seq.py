@@ -121,12 +121,10 @@ M_AXI_ALLOW_WINDOWS: tuple[tuple[str, int, int], ...] = (
 # here rather than let a shrinking walk report a clean pass.
 M_AXI_CELL_FLOOR = 222
 
-# The same floor for s_axi. Comparing the cells run against the cells this same
-# config built only says the run matched itself: a map or exclusion change that
-# shrank the walk to a handful of cells would still satisfy it. Set to the count
-# the walk presents, like M_AXI_CELL_FLOOR: slack here is registers that can go
-# missing without failing anything, and three orderings per register means even
-# a small slack hides several of them.
+# The same floor for s_axi, set to the count the walk presents, like
+# M_AXI_CELL_FLOOR: slack here is registers that can go missing without failing
+# anything, and three orderings per register means even a small slack hides
+# several of them.
 S_AXI_CELL_FLOOR = 318
 
 # The three legal write orderings, as (aw_delay, w_delay) offsets. The seed
@@ -188,7 +186,7 @@ def sweep_candidates(bus: str = "s_axi") -> tuple[list[RegInfo], dict[str, int]]
     * ``write_reason() is None`` -- the no-side-effect blocks whose full write
       bash is safe (scratch, CPU control, the inbound filter windows).
     * ``touch_reason() is None`` restricted to ``TOUCH_BLOCKS`` -- plain RW
-      storage inside the other major IPs. Restricted deliberately: a block
+      storage inside the other major IPs. Restricted to that list: a block
       outside that list may be held in reset or need an init sequence, and a
       readback mismatch there would report bring-up state as an ordering bug.
 

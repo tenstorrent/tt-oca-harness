@@ -13,8 +13,8 @@ Proves the SEP System-block dual scratch banks honor their reset domains:
     only (u_sep_scratch_reg_cold). A warm reset does NOT clear it; only a cold
     reset (rst_ni) does.
 
-Stronger than the reference ref: it adds the COLD-reset re-init half (reference suite only
-warm-resets) and cross-checks the cold bank both FRONTDOOR (the CPU-LSU AXI
+Beyond the reference suite (which only warm-resets), it adds the COLD-reset re-init
+half and cross-checks the cold bank both FRONTDOOR (the CPU-LSU AXI
 readback) and BACKDOOR (the ``scratch_cold_probe_o`` XMR tap), proving they agree.
 
 Checks (each asserts an exact value, so a stuck/X register fails):
@@ -37,7 +37,7 @@ Checks (each asserts an exact value, so a stuck/X register fails):
                    register, not only at index 0.
   CHK-WARM-RECOVER: SCRATCH_WARM[0] is writable again post-warm-reset.
   CHK-COLD-REINIT: after a cold reset (rst_ni resense), BOTH banks == reset
-                   default (stronger than the reference suite). Probe cross-check on the cold bank.
+                   default. Probe cross-check on the cold bank.
   CHK-COLD-BANK  : the cold reset clears both banks -- 8 registers each, 16 in
                    total.
 
@@ -218,7 +218,7 @@ class sep_warm_cold_reset_scratch_test(sep_base_test):
             cold_rec,
         )
 
-        # --- CHK-COLD-REINIT: a cold reset clears BOTH banks (stronger than the reference suite) ---
+        # --- CHK-COLD-REINIT: a cold reset clears BOTH banks ---
         # State going in: SCRATCH_COLD[0]=COLD_PATTERN, SCRATCH_WARM[0]=WARM_PATTERN2.
         # resense() pulses rst_ni low->high and re-gates fuse-sense; the clocks keep
         # running and the cocotb-driven idle defaults persist across the pulse. Both

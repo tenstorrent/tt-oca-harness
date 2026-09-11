@@ -57,15 +57,14 @@ plan holds as a separate entry. Proving those means deliberately reading an
 empty FIFO and overrunning a full one, which corrupts whatever frame is in
 flight; it does not compose with a leaf whose subject is the command stream.
 
-Accepted scope deltas (declared, not silent):
-  * The card's DRBG-fault-during-command checker is NOT built here. The fault
+Scope deltas:
+  * The plan's DRBG-fault-during-command checker is not built here. The fault
     status it names is KMCSR IRQ_STATUS bit 6, which sits on the KM-internal
     bus and answers DECERR from the SEP fabric, and the reference suite
     provokes the fault with testbench knobs that have no open equivalent. At
     SEP level a DRBG fault is unrecoverable: the KM emits an unsolicited
     RESP_UNRECOVERABLE_FAULT and halts, so it also cannot be a return-code
-    check. Building it would need a backdoor, which house rules reserve for
-    explicit sign-off.
+    check. Building it would need a backdoor.
   * CHK-SHRED does not observe the shredded key material. The engine KEY_SHARE
     CSRs are write-only and read as zero, so the overwritten value has no
     frontdoor. The shred is proven by its return code plus the engine
@@ -131,12 +130,8 @@ GEN_KEY_WORDS = (8, 12)
 # Number of undefined command IDs to walk per run.
 N_ILLEGAL_IDS = 7
 
-# Negative window for the shredded-engine probe. The consume path in this
-# leaf (CHK-XFER) waits on the same OUTPUT_VALID bit via _poll_status_bit
-# (20-cycle polls). That helper logs only every 500 polls, and a passing
-# CHK-XFER never prints the heartbeat, so a healthy block finishes in
-# fewer than 500 polls. 50 is 10x below that bound. The window is spent
-# in full on every passing run.
+# Negative window for the shredded-engine probe, in the 20-cycle polls of
+# _poll_status_bit. The window is spent in full on every passing run.
 _SHRED_REFUSE_POLLS = 50
 
 
@@ -415,7 +410,7 @@ class sep_km_command_set_rand_test(sep_base_test):
         await self._check_alive("post-bad-payload-crc")
 
         # --- CHK-GONE: a shredded engine will not run -------------------------
-        # Deliberately last. The engine is left with no valid key, so it parks
+        # Last: the engine is left with no valid key, so it parks
         # waiting for one; nothing after this point may need it. This is the
         # direct observation of the shred: the engine key registers are
         # write-only, so refusal to start is the only frontdoor evidence that

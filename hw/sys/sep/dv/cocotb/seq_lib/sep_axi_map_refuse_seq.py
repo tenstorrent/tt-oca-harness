@@ -12,8 +12,8 @@ in-aperture case.
 
 Scope note. ``sep_fabric_deadspace_decode_test`` probes the dead tail INSIDE a
 block window -- the span between a block's allocated register size and its
-window end. This sequence probes the gaps BETWEEN windows, which no test
-covered: the reserved rows of the memory map itself. The two do not overlap,
+window end. This sequence probes the gaps BETWEEN windows, which no other
+test covers: the reserved rows of the memory map itself. The two do not overlap,
 and neither subsumes the other.
 
 Addresses that would disturb the run are excluded by name with a reason, the

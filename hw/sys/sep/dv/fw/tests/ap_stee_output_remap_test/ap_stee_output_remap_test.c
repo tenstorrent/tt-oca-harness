@@ -113,7 +113,7 @@ static int test_config_ap_output_remap(void) {
         uint64_t readback =
             READ_REG64(OCH_SEP_TOP_AP_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(i));
 
-        // TODO: READ_REG64() doesn't seem to work properly right now, only returns lower 32 bits
+        // TODO: READ_REG64() returns only the lower 32 bits
     }
 
     printf("  AP output remap configured successfully\n");
@@ -141,7 +141,7 @@ static int test_config_stee_output_remap(void) {
         uint64_t readback =
             READ_REG64(OCH_SEP_TOP_STEE_OUTPUT_REMAP_CTRL_REGION_REGION_ATTRS_BASE_ADDR(i));
 
-        // TODO: READ_REG64() doesn't seem to work properly right now, only returns lower 32 bits
+        // TODO: READ_REG64() returns only the lower 32 bits
     }
 
     printf("  STEE output remap configured successfully\n");

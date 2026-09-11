@@ -3,8 +3,8 @@
 """Register metadata accessor over the generated SystemRDL Python header.
 
 Tests and sequences must NOT keep their own copies of register offsets, reset
-values, or field masks. House rule: prefer source-derived expected values over
-hardcoded literals). ``hw/sys/sep/regs/gen/py/sep_reg.py`` is the authoritative
+values, or field masks: expected values are source-derived, never hardcoded
+literals. ``hw/sys/sep/regs/gen/py/sep_reg.py`` is the authoritative
 machine-readable export of ``hw/sys/sep/regs/**/*.rdl``, so this module wraps it
 and hands out three things per register:
 
@@ -16,10 +16,10 @@ and hands out three things per register:
 
 The mask matters because a write/readback check must compare against
 ``pattern & mask``: RDL placeholder registers (``TIMEOUT_COUNT``,
-``TIMEOUT_ENABLE``, ``CLOCK_GATE_CTRL``, …) carry a single bit today, so a
+``TIMEOUT_ENABLE``, ``CLOCK_GATE_CTRL``, …) carry a single implemented bit, so a
 32-bit pattern reads back as just that bit.
 
-Two masks, deliberately distinct:
+Two masks:
   ``mask()``     — software-usable fields only; RDL ``reserved`` fields excluded.
   ``mask_all()`` — every field bit, reserved included: the STORAGE mask.
 They differ wherever a placeholder field is declared ``sw=rw`` yet named
@@ -591,10 +591,10 @@ def iter_register_walk() -> RegisterWalk:
 
     * ``no_default``    -- no ``_REG_DEFAULT`` or field struct, even after
       ``_TYPE_ALIAS``, so there is no source-derived reset to check.
-    * ``unknown_block`` -- the stem matches no known block prefix. Zero today;
-      a new top-level RDL that is not in ``block_names()`` would land here.
-    * ``duplicate``     -- the ``(block, register)`` pair was already walked.
-      Zero today; a generator that emits an instance twice would land here.
+    * ``unknown_block`` -- the stem matches no known block prefix: a top-level
+      RDL that is not in ``block_names()`` lands here.
+    * ``duplicate``     -- the ``(block, register)`` pair was already walked: a
+      generator that emits an instance twice lands here.
 
     Reporting one figure would let a change of cause pass unnoticed, so the
     three are kept apart and ``nometa`` sums them.
@@ -780,8 +780,8 @@ def _selftest() -> int:
 
     # Every TIMEOUT_COUNT_* instance must resolve its own offset but share the
     # type's shape via _TYPE_ALIAS. Both masks are pinned, and the pair is what
-    # makes this a tripwire for the reserved-field exclusion itself rather than a
-    # re-baselined constant: the lone field is declared `sw=rw; hw=r` yet named
+    # makes this a tripwire for the reserved-field exclusion itself: the lone field
+    # is declared `sw=rw; hw=r` but named
     # `reserved` (sep_cpu_ctrl.rdl:76-80), so it is real STORAGE (mask_all 0x1)
     # that is NOT software-usable (mask 0x0). If the generator ever renames the
     # field, or the exclusion regex stops matching it, these disagree and fail.
@@ -853,8 +853,8 @@ def _selftest() -> int:
     walk = iter_register_walk()
     regs = list(walk.regs)
     # Only registers with OFFSET+ADDR+DEFAULT (and a field struct) are
-    # sweepable. Array instances without a per-index DEFAULT are skipped
-    # on purpose rather than guessed; the walk must count those drops.
+    # sweepable. Array instances without a per-index DEFAULT are skipped rather
+    # than guessed; the walk must count those drops.
     if walk.export != walk.inventory + walk.nometa:
         failures.append(
             f"iter_register_walk identity failed: export={walk.export} "

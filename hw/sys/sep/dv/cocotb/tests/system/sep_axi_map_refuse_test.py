@@ -72,8 +72,8 @@ class sep_axi_map_refuse_test(sep_base_test):
         )
 
         # Every probe is an address no decode rule covers: a span the crossbar
-        # routes is excluded when the set is built, and counted in cfg.skipped
-        # under the open specification question it raises.
+        # routes but the map does not describe is excluded when the set is
+        # built and counted in cfg.skipped.
         fails: list[str] = []
         for item in cfg.probes:
             tag = "anchor" if item.anchor else "rand"

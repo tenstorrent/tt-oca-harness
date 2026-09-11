@@ -13,7 +13,7 @@ copies ``usage_constraints.flags`` bit 0 -- which is clear -- into
 ``lock_demotion`` keeps its initialiser, so writes DEMOTE_1
 **not demoted but LOCKED**.
 
-**It is the exact complement of R3's O2a member on the value channel and its
+**It is the exact complement of the O2a member on the value channel and its
 partner on the lock channel**, which is what makes the pair a real test of the
 copy rather than of the branch:
 
@@ -37,16 +37,15 @@ combination that separates "locked, not demoted" from "never written" -- and
 "never written" is what the O4 sibling produces. Those two rows differ on the
 register channel in exactly the ``lock`` bit.
 
-**Collapse note.** ``unauth_flag_30_prod_sel_bit_set`` (tracker row 119, not in
-this batch) drives the same three demotion inputs, so on the demotion path it is
+**Collapse note.** ``unauth_flag_30_prod_sel_bit_set`` (no testcase) drives the
+same three demotion inputs, so on the demotion path it is
 covered-by-O3a. It is not the same stimulus overall: it adds ``+UNAUTH_FLAG_30``
 (``skip_SHA256``) and, per ``bootcode_regression.yaml``, carries no
 ``+SECURE_BOOT_DIS``, so a port of that row would run a signed primary under
-enforced secure boot. Neither difference is a demotion input. The
-remaining uncovered outcome of the seven is **O3b**
-(``unauth_flag_0_prod_sel_bit_set``, tracker row 116): selector set, BL1 flag
-clear, BL2 flag SET. It is the case that would fail a ROM which ORed ``flags[0]``
-with ``flag_args[0]`` into DEMOTE_1, and it is in no batch's assignment.
+enforced secure boot. Neither difference is a demotion input. Outcome
+**O3b** (``unauth_flag_0_prod_sel_bit_set``: selector set, BL1 flag clear, BL2
+flag SET) has no testcase; it is the case that would fail a ROM which ORed
+``flags[0]`` with ``flag_args[0]`` into DEMOTE_1.
 
 No ``+sep_crypto_edn_force``: secure boot is off, so the ROM never drives OTBN.
 """

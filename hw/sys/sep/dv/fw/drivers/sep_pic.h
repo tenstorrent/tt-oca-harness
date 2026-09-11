@@ -7,7 +7,7 @@
 //
 // VeeR EL2 is built with fast_interrupt_redirect: on an external interrupt the
 // hardware reads the handler address from the meivt-based vector table and
-// jumps straight to it. start.S sets meivt and pre-fills the 256-entry table
+// jumps straight to it. crt0.s sets meivt and pre-fills the 256-entry table
 // (in DCCM) with a dummy handler; pic_register_handler() overrides one entry.
 // Handlers must be declared __attribute__((interrupt("machine"))).
 

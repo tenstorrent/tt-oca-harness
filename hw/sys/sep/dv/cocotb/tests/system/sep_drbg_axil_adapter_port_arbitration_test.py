@@ -15,7 +15,7 @@ drives a TB-owned second instance of the same module at its port, so all
 three orderings are presentable to the cycle, and the vehicle's own reset
 keeps cells independent.
 
-Division of labour, deliberately: this leaf grades the MODULE's arbitration,
+Division of labour: this leaf grades the MODULE's arbitration,
 the fabric-driven leaves grade the SEP integration. Neither substitutes for
 the other, and this one does not claim the integration.
 

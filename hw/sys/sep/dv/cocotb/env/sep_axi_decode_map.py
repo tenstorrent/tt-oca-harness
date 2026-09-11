@@ -80,7 +80,7 @@ def _hexint(text: str) -> int:
 
 # The document holds three tables under this header: a coarse region summary,
 # the CPU TCM detail, and the SEP-local detail. They are hierarchical, so the
-# coarse rows deliberately span the fine ones. All are parsed and the most
+# coarse rows span the fine ones. All are parsed and the most
 # specific row wins, which is how a reader resolves them too.
 _SPEC_HEADER = "|Base Address |End Address |Size |Unit |Description"
 
@@ -220,7 +220,7 @@ def _addrmap_symbols() -> dict[str, int]:
 def _resolve_bound(expr: str, syms: dict[str, int]) -> int:
     """One AddrMap bound: a hex literal, or a sum of address-map symbols.
 
-    Only `+` appears in the table today. Anything else raises rather than
+    Only `+` is supported. Anything else raises rather than
     resolving to a plausible wrong number -- a bound this cross-check cannot
     read must stop the parse, not silently drop the rule.
     """

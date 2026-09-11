@@ -16,12 +16,11 @@ so the golden keeps the TX occupancy internally and predicts the visible bits.
 Thresholds compare with STRICT > (RTL). The config object is the single source of
 truth for DUT programming + golden.
 
-Accepted deltas: data round-trip readback and the read threshold
-(RIRQT/read_level_above) both need the RX FIFO filled from the peer side, which
-this aperture cannot do. The model is scoped to outbound TX occupancy and
-predicts read_level_above as constant False; the read half of the threshold pair
-has no vehicle. A peer-path closure needs the external smn_inbound master
-(inbound_mailbox_0 @ 0x10A0_0800, MAILBOX_SIZE=0x800) and its own checker.
+Scope: data round-trip readback and the read threshold (RIRQT/read_level_above)
+both need the RX FIFO filled from the peer side, which this aperture cannot do, so
+the model covers outbound TX occupancy only and predicts read_level_above as
+constant False. The peer path is reachable only through the external smn_inbound
+master (inbound_mailbox_0 @ 0x10A0_0800, MAILBOX_SIZE=0x800).
 """
 
 from __future__ import annotations

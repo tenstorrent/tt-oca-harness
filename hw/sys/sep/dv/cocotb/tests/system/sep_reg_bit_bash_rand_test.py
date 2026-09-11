@@ -4,9 +4,9 @@
 
 no_cpu / +skip_fuse_sense. RANDCFG: block order and complement-vs-ones
 order come from the run seed. The reset walk is the inventory after
-reasoned skips, not the raw OFFSET export. Full-mask write-lands is 19
-registers (8 scratch-cold + 8 scratch-warm + 3 CPU_CTRL); 32 inbound
-START/END use the wrap model.
+reasoned skips, not the raw OFFSET export. Full-mask write-lands covers the
+scratch-cold, scratch-warm and CPU_CTRL registers; the inbound START/END
+registers use the wrap model.
 
 Write-lands is the anti-vacuity control: a complement write must move
 exactly the software-usable mask bits. Inbound-filter START/END use the
@@ -23,7 +23,7 @@ outbound filter / GO. The seed picks the values and the block order, not the
 register set, so the touch count is the same at every seed.
 
 CSRNG, EDN and ENTROPY_SOURCE reach the write side through this gate; those
-rows are the first write coverage of the entropy complex CSRs.
+rows are the write coverage of the entropy complex CSRs.
 HMAC, KMAC and OTBN contribute INTR_ENABLE only -- the generated interrupt
 shim, so those rows are block decode/storage evidence, not evidence about
 the engine.

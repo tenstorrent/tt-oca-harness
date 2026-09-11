@@ -12,8 +12,8 @@ WHAT THIS MEMBER PINS. Slot 2 has no compiled-in digest (``key_digests.c``
 populates slot 0 only), so without the revocation bit it would be refused as
 ``ROM_KEY_EMPTY`` -- the arm ``sep_firmware_backup_unpopulated_rom_key_slot_test``
 covers. Here the fuse bit changes the verdict, because ``validate_signature``
-consults the fuse bitmap (``manifest_crypto.c``) BEFORE the digest table
-. ``ROM_KEY_EMPTY`` is therefore the load-bearing forbid: seeing it
+consults the fuse bitmap (``manifest_crypto.c``) BEFORE the digest table.
+``ROM_KEY_EMPTY`` is therefore the load-bearing forbid: seeing it
 would mean revocation was evaluated late, or not at all, and a part could then be
 persuaded to reason about a revoked key.
 """
