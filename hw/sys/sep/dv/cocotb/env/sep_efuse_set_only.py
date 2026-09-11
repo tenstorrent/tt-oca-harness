@@ -241,7 +241,7 @@ def _selftest() -> None:
     assert [n for n, *_ in LOCK_FIELDS] == ["LOCKS", "LOCKS", "LOCKS_SPARE"]
     # Both specification disable vectors must be walked.
     assert {"SIP_DIS", "SYS_DIS"} <= {n for n, _, _ in SET_ONLY_FIELDS}
-    assert len(WRITABLE_FIELDS) == 33
+    assert len(WRITABLE_FIELDS) == 34
     assert "REQUIRED_SIGNERS" in {n for n, _ in WRITABLE_FIELDS}
     assert spec_walked_rows() == {f.spec_name for f in spec_fields()} - {"LC_STATE"}
 
