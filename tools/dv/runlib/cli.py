@@ -1253,8 +1253,10 @@ def list_flows(flows: dict[str, Flow], simulators: dict[str, Any]) -> None:
             )
         )
 
+    widths: list[int] = [22, 4, 14, 46]
+
     print(
-        f"{BOLD}{'NAME':<12} {'KIND':<4} {'FRAMEWORKS':<14} {'TOOLS':<46} {'DESCRIPTION'}{NORMAL}"
+        f"{BOLD}{'NAME':<{widths[0]}} {'KIND':<{widths[1]}} {'FRAMEWORKS':<{widths[2]}} {'TOOLS':<{widths[3]}} {'DESCRIPTION'}{NORMAL}"
     )
     freesims = {name: not bool(attrs["license_env"]) for name, attrs in simulators.items()}
     freeframeworks: dict[str, bool] = {}
@@ -1295,7 +1297,7 @@ def list_flows(flows: dict[str, Flow], simulators: dict[str, Any]) -> None:
             tools = "/".join(toolsArr)
 
             print(
-                f"{(flow.name if not spill else ''):<12} {flow.kind if not spill else ' ' + chr(8627):<4} {align(label, 14)} {align(tools, 46)} {flow.description if not spill else ''}"
+                f"{(flow.name if not spill else ''):<{widths[0]}} {flow.kind if not spill else ' ' + chr(8627):<{widths[1]}} {align(label, widths[2])} {align(tools, widths[3])} {flow.description if not spill else ''}"
             )
             spill = True
 

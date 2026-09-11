@@ -173,4 +173,14 @@ SW_RESET_N now resets to 0x3E; reserved CTRL[0] reads zero and ignores writes.
 |0.5.29 |2026-09-02 |Alessandro Ottaviano |Aligned the SMC Boot ROM chapter
 with the current four-core hardware ROM interface, 128 KiB linker map, macro
 configuration, and response endianness control.
+|0.5.30 |2026-09-07 |Haohao Liao |Corrected the SEP Lifecycle Controller
+multi-chiplet debug model: primary-chiplet SiP-owner feature control gates DFT
+traffic before downstream forwarding, and reserved DBG_2 bits gate
+adopter-defined forwarding paths on LCC-bearing chiplets.
+|0.5.31 |2026-09-10 |Ben Melton |Recorded that the SEP TRNG aperture is a
+full-window passthrough to an adopter-defined IP, and that intra-aperture
+SLVERR and no-alias decode is an integrator constraint.
+|0.5.32 |2026-09-10 |Ben Melton |Key Manager: public identity OTP fields
+(SEP_CHIPLET_ID / SEP_SIP_ID / SEP_SYS_ID) are delivered from the sensed eFuse
+shadow, dual-rail encoded like the secrets, and not blanked in secure test mode.
 |=======================================================================
