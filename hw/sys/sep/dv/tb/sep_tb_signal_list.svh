@@ -414,6 +414,7 @@
 `SEP_TB_OUT(logic [sep_pkg::NUM_INTERNAL_IRQS-1:0], sep_internal_interrupts_probe_o)
 // The production SEP debug-bus output, exposed read-only for lane-packing checks.
 `SEP_TB_OUT(logic [383:0], ext_debug_bus_o)
+`SEP_TB_OUT(logic [15:0], efuse_debug_bus_o)
 // System-CSR AXI4-Lite AR/AW handshakes after axi_to_axi_lite
 // (sep_system_peripherals_xbar u_system_csr_a2l_1). Observation-only.
 // SIGNED OFF 2026-08-25 by yenhenglai: fabric.adoc "convert burst to

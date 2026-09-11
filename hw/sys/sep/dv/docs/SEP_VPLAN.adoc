@@ -956,10 +956,8 @@ recipes: link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_
 |Every pure read/write register returns exactly what was written, masked to its implemented bits, and is restored afterwards.
 |CHK-BASEADDR-RW
 |The base and size registers accept a write, read back, and restore cleanly.
-|CHK-NONVAC
-|The sweep performed a large, non-zero number of value comparisons.
 |CHK-FABRIC-WALK
-|Every LSU-reachable CSR block in the walk returns OKAY on its chosen register; value-checked entries match the exported or seq-derived expectation.
+|Every LSU-reachable CSR block in the walk returns OKAY on its chosen register; value-checked entries match the exported or seq-derived expectation. The logged count must be non-zero.
 |CHK-CPU-CTRL-HOLE
 |Each `sep_cpu_ctrl` word in the hole after `SEP_FUSE_SENSE_STATUS` and before `SEP_SW_DEBUG` reads OKAY with zero data, and a write to `0x10A3_0170` does not change `SEP_SW_DEBUG` -- whose writability a control write proves first, since `SEP_FUSE_SENSE_STATUS` is `sw = r` and no AXI write can move it. `hw/sys/sep/doc/memory_map.adoc` states both halves: a unit accepts such an offset with zero/OKAY, and non-aliasing follows from exact-match register decode rather than from refusal.
 |===
@@ -4322,7 +4320,7 @@ which list is normative is an open question for the design owner.
 
 *BFM / Model*: none; DUT probes and a one-cycle state force
 
-*Objective*: The eFuse read and program interfaces fail closed. Two contracts: from an illegal state encoding no command reaches the fuse bank and the machine returns to idle reporting an error rather than resuming; and `read_error_o` is set by a failed or timed-out read and cleared only by the next legal request. An interface that resumed from a corrupted state, or that carried a stale error into the next read, could return or mislabel fuse data it never legitimately fetched.
+*Objective*: The eFuse read and program interfaces fail closed. Two contracts: from an illegal state encoding no command reaches the fuse bank and the machine retires reporting an error rather than resuming; and `read_error_o` is set by a failed or timed-out read and cleared only by the next legal request. An interface that resumed from a corrupted state, or that carried a stale error into the next read, could return or mislabel fuse data it never legitimately fetched.
 
 *Test Coverage*: Both FSMs, both illegal encodings, request suppression and recovery; and the read error lifecycle across success, timeout, re-request and guard refusal.
 
@@ -4331,9 +4329,10 @@ which list is normative is an open question for the design owner.
 [arabic]
 . Sense an `LC_PROD` image and wait for fuse sense to complete.
 . Positive controls: a frontdoor OTP read and a frontdoor OTP program must each present a command to the fuse bank, on the same signals the suppression checks grade. Fuse sense does not drive either interface, so it is not a control for them.
-. For each of `2'b00` and `2'b11`, and for each of the read and program machines: force the state register for one cycle.
+. Measure the in-flight window on each interface: start a real operation and count the cycles its bank request stays asserted. An injection is only evidence if a machine left alone would have kept the request high across the same edge.
+. For each of `2'b00` and `2'b11`, and for each of the read and program machines: force the state register for one cycle. The read injection lands while a real read is in flight with its bank request asserted, so the request must drop because of the injection. The program injection lands in an idle window; see the observation below for why it cannot yet be strengthened the same way.
 . While the injected encoding is held, require no command to be presented to the fuse bank.
-. Release, and on the next edge require the machine to be back in idle with no command issued. For reads, additionally require `read_error_o` and `read_done_o` set, `read_busy_o` clear, and `read_back_data_o` equal to the `EFUSE_READ_ERROR_DATA` sentinel `0xbadcab1e`.
+. Release, and on the next edge require no command issued, `error_o` and `done_o` set, `busy_o` clear, and the read-back data equal to the `0xbadcab1e` sentinel, on both interfaces. The state register value is logged, not asserted.
 . Repeat the live-read control after all injections, so a machine left wedged by the recovery is caught.
 . Read error lifecycle, on the same interface. A completed read reports done with no error. A read given a four-cycle timeout budget -- too short for the SHIM to answer inside -- retires with the error set. A fresh legal request then clears it. Finally, with the `TEST_EN` strap latched and the image re-sensed, a read refused by the guard retires with the error set and zero data.
 
@@ -4345,13 +4344,17 @@ which list is normative is an open question for the design owner.
 |CHK-READ-ALIVE
 |A frontdoor OTP read drives the read machine out of idle, before and after the injections. Fuse sense does not use this machine, so only a real `EFUSE_READ_CTRL` read is a control.
 |CHK-PROGRAM-ALIVE
-|A frontdoor OTP program presents a command on the program interface, before and after the injections. Each run programs a fresh `SPARE7` bit, because OTP is write-once and reusing one would issue no command and fail for the wrong reason. Both controls are load-bearing: every suppression check below holds on an interface that never issues a command.
+|A frontdoor OTP program presents a command on the program interface, before and after the injections. Every `SPARE7` bit used as program stimulus is already set in the golden image. The interface issues its bank command either way -- that is the only thing these legs grade -- and the array cannot change, so an aborted operation cannot leave the OTP image disagreeing with the golden the end-of-test resense compares against. Both controls are load-bearing: every suppression check below holds on an interface that never issues a command.
+|CHK-READ-HELD
+|Control for the suppression check below. A real read holds its bank request asserted for the whole bank latency, measured on unforced outputs and required to be more than one cycle. Without it, "no command" could hold because the request had fallen on its own across the injection edge, which is true on any RTL.
+|CHK-PROGRAM-HELD
+|The same control on the program interface.
 |CHK-READ-SUPPRESS
-|The read interface presents no command to the fuse bank while `read_state_q` holds an illegal encoding. Graded on that interface's own request: the two interfaces drive separate requests, and checking one against the other would hold on any RTL.
+|The read interface presents no command to the fuse bank while `read_state_q` holds an illegal encoding. The encoding is injected while a real read is IN FLIGHT with its request asserted, so the request drops as a consequence of the injection: a design that carried an accepted command through a corrupted state fails here. Graded on that interface's own request, because the two interfaces drive separate requests.
 |CHK-READ-FAILCLOSED
 |One edge after the illegal encoding the read interface issues no bank command, reports done and not busy with the error set, and returns `0xbadcab1e` rather than any fuse value. The state register's value is logged, not asserted, for the reason given below.
 |CHK-PROGRAM-SUPPRESS
-|The program interface presents no command to the fuse bank while `program_state_q` holds an illegal encoding, graded on its own request rather than the read interface's.
+|The program interface presents no command to the fuse bank while `program_state_q` holds an illegal encoding, graded on its own request rather than the read interface's. This encoding is injected in an IDLE window, so unlike the read leg it does not observe a withdrawal; the observation below records why, and what would make it as strong as the read leg.
 |CHK-PROGRAM-FAILCLOSED
 |One edge after the illegal encoding the program interface issues no bank command, reports done and not busy with the error set, and returns the `0xbadcab1e` sentinel rather than fuse content -- the same retirement the read leg grades. The state register's value is logged, not asserted: no document states its encodings, so an expected value taken from the enum would only show the design agreeing with itself.
 |CHK-READ-ERR-CLEAR-SUCCESS
@@ -4371,7 +4374,22 @@ never retired look like one that did.
 
 Both illegal encodings are walked rather than one. `2'b00` and `2'b11` fail the legal-set test for different reasons, and a decoder written as a comparison against a single value would recover from that value only.
 
-*Scope limit*: the illegal encoding is reached by forcing the state register, which no frontdoor stimulus can do -- that unreachability is the property the design relies on, so the behaviour asserted for it cannot otherwise be provoked. The force targets the state register only, for one cycle, and never the error, data, busy or request outputs the checkers read; the recovery those checkers observe is the design's own. Approved as error injection by Yenheng Lai (DV owner) on 2026-09-11, against revision `5254cf055`, for the two eFuse FSM state registers named above and for no other signal. Review at the next change to `efuse_read_interface.sv` or `efuse_program_interface.sv` state encoding.
+*Observation, not a checker*: an interface that withdraws a command the SHIM has
+already accepted leaves the SHIM's write FSM parked in its APB wait state. It was
+observed there for more than 20000 cycles, and it stays until the next fuse
+resense; meanwhile the program interface reports `program_done_o` and
+`program_error_o`, so a caller is told the operation retired while the shared
+bank channel is still occupied. A resense issued across that window reads one
+shadow word wrongly, and a later clean resense corrects it -- nothing is
+programmed. The same withdrawal is on the software-reachable program timeout
+path (`EFUSE_PROGRAM_REQ_TIMEOUT`), not only on the injected-fault path. This is
+why CHK-PROGRAM-SUPPRESS is injected in an idle window: strengthening it the way
+CHK-READ-SUPPRESS is strengthened would leave every later leg resensing across
+the parked transaction, and suppressing that symptom in the leaf would hide the
+finding. The read interface does not show the behaviour. Raised with the eFuse
+owner; this entry is the DV record, not a fix.
+
+*Scope limit*: the illegal encoding is reached by forcing the state register, which no frontdoor stimulus can do -- that unreachability is the property the design relies on, so the behaviour asserted for it cannot otherwise be provoked. The force targets the state register only, for one cycle, and never the error, data, busy or request outputs the checkers read; the recovery those checkers observe is the design's own.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 

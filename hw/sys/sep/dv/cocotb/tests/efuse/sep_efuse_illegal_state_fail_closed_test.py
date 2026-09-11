@@ -30,7 +30,7 @@ from __future__ import annotations
 
 import cocotb
 import pyuvm
-from cocotb.triggers import Event, NextTimeStep, ReadOnly, RisingEdge
+from cocotb.triggers import ClockCycles, Event, NextTimeStep, ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiOp
 from env.sep_lcc_golden import LC_PROD
 from sep_base_test import sep_base_test
@@ -80,6 +80,36 @@ _TIMEOUT_EN = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_READ_REQ_TIMEOUT", "read_re
 # rather than the read completing first.
 _TIMEOUT_CYCLES = 4
 
+# The program interface is driven register-directly, not through
+# sep_efuse_otp_program_seq: the injection aborts the operation in flight, and
+# that sequence raises on the resulting PROGRAM_ERR rather than returning.
+_PROGRAM_CTRL = EFUSE_INTERFACE_CTRL.addr("EFUSE_PROGRAM_CTRL")
+_PG_GO = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_program_go")
+_PG_ENABLE = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "program_enable")
+_PG_DATA = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_PROGRAM_CTRL", "efuse_data")
+_IFACE_STATUS = EFUSE_INTERFACE_CTRL.addr("EFUSE_INTERFACE_CTRL_STATUS")
+_REQ_ERROR_CLEAR = EFUSE_INTERFACE_CTRL.field_mask(
+    "EFUSE_INTERFACE_CTRL_STATUS", "efuse_req_error_clear"
+)
+
+# SPARE7 bits used as program stimulus. Every one of them is ALREADY set in the
+# golden image, which is what makes them safe to use: the interface issues its
+# bank command either way -- that is the only thing these legs grade -- but the
+# array cannot change, so an operation aborted halfway cannot leave the OTP
+# image disagreeing with the golden the end-of-test resense compares against.
+# The bank takes ~29 cycles to retire a command. After an aborted operation,
+# wait for the interface to go idle and then leave margin, so the next kick is
+# not swallowed by a channel that is still busy.
+_SETTLE_LIMIT = 400
+_SETTLE_CYCLES = 64
+
+_PROGRAM_HELD_BIT = 4
+_PROGRAM_INJECT_BITS = (6, 11)
+assert len(_PROGRAM_INJECT_BITS) == len(_ILLEGAL_STATES), (
+    "one SPARE7 bit per program injection, so a run that adds an illegal encoding "
+    "cannot silently reuse a bit and leave two injections sharing one address"
+)
+
 
 @pyuvm.test()
 class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
@@ -92,12 +122,14 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         "CHK-READ-ERR-TIMEOUT",
         "CHK-READ-ERR-CLEAR-REQUEST",
         "CHK-READ-ERR-BLOCKED",
+        "CHK-READ-HELD",
+        "CHK-PROGRAM-HELD",
         "CHK-READ-SUPPRESS",
         "CHK-READ-FAILCLOSED",
         "CHK-PROGRAM-SUPPRESS",
         "CHK-PROGRAM-FAILCLOSED",
     )
-    min_evidence = 10
+    min_evidence = 12
 
     async def _assert_read_alive(self, tag: str) -> None:
         """Positive control: a frontdoor OTP read presents a bank command.
@@ -268,16 +300,133 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
             bit_offset,
         )
 
-    async def _inject(self, which: str, state: int) -> None:
+    async def _kick(self, which: str, bit_addr: int) -> None:
+        """Start one frontdoor operation and return without retiring it."""
+        if which == "read":
+            await self._csr(SepAxiOp.WRITE, _READ_CTRL, (bit_addr & 0xFFFF) | _GO | _ENABLE)
+        else:
+            await self._csr(
+                SepAxiOp.WRITE,
+                _PROGRAM_CTRL,
+                (bit_addr & 0xFFFF) | _PG_GO | _PG_ENABLE | _PG_DATA,
+            )
+
+    async def _quiesce(self, which: str) -> None:
+        """Drop the enable and clear the sticky request error.
+
+        An aborted operation leaves its enable asserted, which starves the
+        shared command channel, and may leave efuse_req_error latched. Neither
+        is graded here, but either would make the next leg fail for a reason
+        that has nothing to do with the state machine.
+        """
+        await self._csr(SepAxiOp.WRITE, _READ_CTRL if which == "read" else _PROGRAM_CTRL, 0)
+        await self._csr(SepAxiOp.WRITE, _IFACE_STATUS, _REQ_ERROR_CLEAR)
+
+        # Wait for the interface to retire and then leave margin.
+        #
+        # NOTE: the shared channel is NOT idle at this point. An interface that
+        # withdraws a command the shim has already accepted leaves the shim's
+        # write FSM parked in its APB wait state, and it stays there until the
+        # next fuse resense -- see the observation recorded in the plan entry.
+        # This leaf waits on the interface outputs it grades, and the legs that
+        # follow each resense before they need the channel.
+        dut = cocotb.top
+        for _ in range(_SETTLE_LIMIT):
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            if not int(getattr(dut, f"efuse_{which}_busy_o").value) and not int(
+                getattr(dut, f"efuse_{which}_cmd_req_valid_o").value
+            ):
+                break
+        await ClockCycles(dut.clk_i, _SETTLE_CYCLES)
+
+    async def _kick_and_catch(self, which: str, bit_addr: int, limit: int = 400) -> bool:
+        """Start an operation and return on the cycle its bank request is up.
+
+        The watcher runs CONCURRENTLY with the register write. Kicking first and
+        watching afterwards misses the window: the write retires through the AXI
+        sequencer, and by the time it returns the whole 29-cycle bank operation
+        can already be over, leaving nothing in flight to inject into.
+        """
+        dut = cocotb.top
+        kick = cocotb.start_soon(self._kick(which, bit_addr))
+        try:
+            for _ in range(limit):
+                await RisingEdge(dut.clk_i)
+                await ReadOnly()
+                if int(getattr(dut, f"efuse_{which}_cmd_req_valid_o").value):
+                    return True
+            return False
+        finally:
+            await kick
+
+    async def _assert_request_held(self, which: str, bit_addr: int) -> int:
+        """Control: measure how many cycles the bank request stays asserted.
+
+        The suppression check injects while that request is high and requires it
+        to drop. That is only evidence if a machine left alone would have KEPT
+        it high across the same edge -- otherwise the request falls on its own,
+        for reasons the injection had nothing to do with, and "no command" holds
+        on any RTL. So measure the hold first, on unforced outputs, and require
+        it to outlast the one cycle the injection costs.
+        """
+        held = await self._kick_and_catch(which, bit_addr)
+        assert held, (
+            f"CHK-{which.upper()}-HELD FAIL: the {which} interface never presented a "
+            "command to the fuse bank, so there is no in-flight window to inject into"
+        )
+        cycles = 1
+        dut = cocotb.top
+        while cycles < 400:
+            await RisingEdge(dut.clk_i)
+            await ReadOnly()
+            if not int(getattr(dut, f"efuse_{which}_cmd_req_valid_o").value):
+                break
+            cycles += 1
+        await self._quiesce(which)
+        assert cycles >= 2, (
+            f"CHK-{which.upper()}-HELD FAIL: the bank request was asserted for only "
+            f"{cycles} cycle -- it would fall on its own across the injection edge, so "
+            "the suppression check below could not tell a suppressing design from one "
+            "that does nothing"
+        )
+        self.logger.info(
+            "CHK-%s-HELD PASS: the %s interface holds its bank request for %d cycles, "
+            "so an injection lands inside a window where a legal machine keeps it high",
+            which.upper(),
+            which,
+            cycles,
+        )
+        return cycles
+
+    async def _inject(
+        self, which: str, state: int, bit_addr: int, *, in_flight: bool = True
+    ) -> None:
+        """Force an illegal encoding while a real command is in flight.
+
+        Injecting into an idle block would grade a request that is already low,
+        which holds whether or not the design suppresses anything. Here the
+        interface is mid-operation with its request asserted, so the drop to
+        zero is a consequence of the injection and a design that carried the
+        command through a corrupted state fails.
+        """
         dut = cocotb.top
         en = getattr(dut, f"efuse_{which}_state_inject_en_i")
         val = getattr(dut, f"efuse_{which}_state_inject_i")
+
+        if in_flight:
+            held = await self._kick_and_catch(which, bit_addr)
+            assert held, (
+                f"test bug: the {which} interface presented no command, so the injection "
+                "would land in an idle window and grade nothing"
+            )
+
         await NextTimeStep()
         val.value = state
         en.value = 1
         await RisingEdge(dut.clk_i)
 
-        # While the state is illegal, nothing may be presented to the bank.
+        # While the state is illegal, the in-flight command must be withdrawn.
         await ReadOnly()
         observed = int(getattr(dut, f"efuse_{which}_state_o").value)
         assert observed == state, (
@@ -291,10 +440,11 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
             f"encoding {state:#04x}"
         )
         self.logger.info(
-            "CHK-%s-SUPPRESS PASS: no bank command while %s_state_q = %#04x",
+            "CHK-%s-SUPPRESS PASS: no bank command while %s_state_q = %#04x (%s)",
             which.upper(),
             which,
             state,
+            "an accepted command was withdrawn" if in_flight else "injected while idle",
         )
 
         # Release, then grade the recovery on the following edge.
@@ -330,13 +480,14 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
             "the operation never legitimately fetched"
         )
         self.logger.info(
-            "CHK-%s-FAILCLOSED PASS: recovered from %#04x (state now %#04x, reported "
-            "not asserted), no bank command%s",
+            "CHK-%s-FAILCLOSED PASS: recovered from %#04x mid-operation (state now "
+            "%#04x, reported not asserted), no bank command, error and done set, not "
+            "busy, data = 0xbadcab1e",
             which.upper(),
             state,
             recovered,
-            ", error and done set, not busy, data = 0xbadcab1e",
         )
+        await self._quiesce(which)
 
     async def run_scenario(self) -> None:
         img = self.select_efuse_image(lc_raw=LC_PROD)
@@ -347,9 +498,19 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         await self._assert_read_alive("before")
         await self._assert_program_alive(0)
 
-        for state in _ILLEGAL_STATES:
-            await self._inject("read", state)
-            await self._inject("program", state)
+        # Establish the in-flight window before grading a withdrawal inside it.
+        await self._assert_request_held("read", _CONTROL_WORD * 32)
+        await self._assert_request_held("program", _CONTROL_PROGRAM_WORD * 32 + _PROGRAM_HELD_BIT)
+
+        for state, pg_bit in zip(_ILLEGAL_STATES, _PROGRAM_INJECT_BITS):
+            await self._inject("read", state, _CONTROL_WORD * 32)
+            # Idle window, not in flight. Aborting an ACCEPTED program wedges the
+            # shim (see the plan entry's observation), and every later leg that
+            # resenses would then read a corrupted shadow word. Strengthening
+            # this leg the way the read leg is strengthened waits on that fix.
+            await self._inject(
+                "program", state, _CONTROL_PROGRAM_WORD * 32 + pg_bit, in_flight=False
+            )
 
         # The block still works afterwards: recovery returned it to service
         # rather than wedging it.

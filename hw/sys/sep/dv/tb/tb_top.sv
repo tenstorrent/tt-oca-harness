@@ -497,7 +497,7 @@ module sep_uvm_top
         .secure_tm_o                  (secure_tm_o),
         .km_unrecoverable_err_o       (),
         .km_recoverable_err_o         (),
-        .efuse_debug_bus_o            (),
+        .efuse_debug_bus_o            (efuse_debug_bus_o),
 
         // Mailbox interrupts
         .smc_mailbox_interrupt_o      (),
@@ -1238,8 +1238,8 @@ module sep_uvm_top
     // ------------------------------------------------------------------
     // eFuse read/program FSM fail-closed observability and fault injection.
     //
-    // SIGNED OFF: forcing an illegal FSM encoding is the only way to provoke
-    // the fail-closed behaviour `efuse_read_interface` and
+    // Forcing an illegal FSM encoding is the only way to provoke the
+    // fail-closed behaviour `efuse_read_interface` and
     // `efuse_program_interface` assert on it. Both states are two bits whose
     // legal encodings are 2'b01 and 2'b10, and no frontdoor stimulus can
     // produce 2'b00 or 2'b11 -- the design is what guarantees that. The force
