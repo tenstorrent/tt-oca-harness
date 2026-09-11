@@ -44,7 +44,7 @@ class smu_dft_dtp_boot_stall_test(smu_base_test):
         sb.expect_eq("boot_stall idle", int(dut.jtag_boot_stall.value), 0)
         sb.expect_eq(
             "fuse_reset after bring-up",
-            int(dut.smc_smc_fuse_reset_n_delayed_o.value),
+            int(dut.smc_fuse_reset_n_delayed_o.value),
             1,
         )
 
@@ -105,7 +105,7 @@ class smu_dft_dtp_boot_stall_test(smu_base_test):
         )
         sb.expect_eq(
             "fuse_reset gated while stall sticky",
-            int(dut.smc_smc_fuse_reset_n_delayed_o.value),
+            int(dut.smc_fuse_reset_n_delayed_o.value),
             0,
             evidence="STALL_COLD_STICKY",
         )
@@ -116,14 +116,14 @@ class smu_dft_dtp_boot_stall_test(smu_base_test):
         sb.expect_eq("stall cleared ovrd", int(dut.jtag_boot_stall_ovrd.value), 0)
         sb.expect_eq("stall cleared val", int(dut.jtag_boot_stall.value), 0)
         await wait_signal_high(
-            dut.smc_smc_fuse_reset_n_delayed_o,
+            dut.smc_fuse_reset_n_delayed_o,
             dut.clk_smu_i,
             timeout_cycles=2000,
-            name="smc_smc_fuse_reset_n_delayed_o after stall clear",
+            name="smc_fuse_reset_n_delayed_o after stall clear",
         )
         sb.expect_eq(
             "fuse_reset released after stall clear",
-            int(dut.smc_smc_fuse_reset_n_delayed_o.value),
+            int(dut.smc_fuse_reset_n_delayed_o.value),
             1,
         )
 
@@ -135,7 +135,7 @@ class smu_dft_dtp_boot_stall_test(smu_base_test):
         await ClockCycles(dut.clk_smu_i, 64)
         sb.expect_eq(
             "fuse_reset stays high on sticky re-assert",
-            int(dut.smc_smc_fuse_reset_n_delayed_o.value),
+            int(dut.smc_fuse_reset_n_delayed_o.value),
             1,
             evidence="STALL_REASSERT_STICKY",
         )

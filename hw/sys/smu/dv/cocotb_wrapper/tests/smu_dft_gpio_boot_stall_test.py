@@ -42,14 +42,14 @@ class smu_dft_gpio_boot_stall_test(smu_base_test):
         # interface off, so there it is already high. This stays falsifiable --
         # a fuse_reset that never rises fails on the expect_eq below.
         await wait_signal_high(
-            dut.fuse_reset_n_delayed_o,
+            dut.smc_fuse_reset_n_delayed_o,
             dut.clk_smu_i,
             timeout_cycles=2000,
             name="fuse_reset after bring-up",
         )
         sb.expect_eq(
             "fuse_reset high after bring-up",
-            int(dut.smc_smc_fuse_reset_n_delayed_o.value),
+            int(dut.smc_fuse_reset_n_delayed_o.value),
             1,
         )
 
@@ -74,21 +74,21 @@ class smu_dft_gpio_boot_stall_test(smu_base_test):
 
         sb.expect_eq(
             "fuse_reset gated by GPIO boot-stall",
-            int(dut.smc_smc_fuse_reset_n_delayed_o.value),
+            int(dut.smc_fuse_reset_n_delayed_o.value),
             0,
             evidence="STALL_COLD_STICKY",
         )
 
         stall.value = 0
         await wait_signal_high(
-            dut.smc_smc_fuse_reset_n_delayed_o,
+            dut.smc_fuse_reset_n_delayed_o,
             dut.clk_smu_i,
             timeout_cycles=2000,
             name="fuse_reset after GPIO clear",
         )
         sb.expect_eq(
             "fuse_reset released after GPIO clear",
-            int(dut.smc_smc_fuse_reset_n_delayed_o.value),
+            int(dut.smc_fuse_reset_n_delayed_o.value),
             1,
         )
 
@@ -97,7 +97,7 @@ class smu_dft_gpio_boot_stall_test(smu_base_test):
         await ClockCycles(dut.clk_smu_i, 64)
         sb.expect_eq(
             "fuse_reset stays high on sticky re-assert",
-            int(dut.smc_smc_fuse_reset_n_delayed_o.value),
+            int(dut.smc_fuse_reset_n_delayed_o.value),
             1,
             evidence="STALL_REASSERT_STICKY",
         )

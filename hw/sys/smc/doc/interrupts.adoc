@@ -58,7 +58,7 @@ see the following section.
 This section documents the raw `cpu_interrupts_o` vector assembled in
 `hw/sys/smc/rtl/smc_base.sv`. The vector is built from four sources:
 
-* `smc_smc_ext_interrupts_i`
+* `smc_ext_interrupts_i`
 * `peripheral_interrupts_i[31:0]`
 * `mailbox_interrupts[31:0]`
 * four internal interrupt signals
@@ -95,8 +95,9 @@ names are called out in the `RTL trace` column instead.
 |`[255:0]`
 |External interrupts
 |Integration-defined external interrupt inputs
-|`hw/sys/smc/rtl/smc_base.sv` synchronizes `smc_smc_ext_interrupts_i` to `clk_smc`
-(`prim_sync3 u_ext_interrupts_sync3`) and drives
+|`hw/sys/smc/rtl/smc_base.sv` synchronizes `ext_interrupts_i` to `clk_smc`
+(`prim_sync3 u_ext_interrupts_sync3`; wired from `smc.sv`
+`smc_ext_interrupts_i`) and drives
 `cpu_interrupts_o[NUM_EXT_INTERRUPTS-1:0] = ext_interrupts_smc_clk`.
 
 |`256`

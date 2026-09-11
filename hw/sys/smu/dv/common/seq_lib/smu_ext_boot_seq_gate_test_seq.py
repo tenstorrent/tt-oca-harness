@@ -93,13 +93,13 @@ class smu_ext_boot_seq_gate_test_seq:
         gated_samples = 0
         for _ in range(self.GATED_SAMPLES):
             await RisingEdge(dut.clk_smu_i)
-            fuse = self._sample(dut.smc_smc_fuse_reset_n_delayed_o, "smc_smc_fuse_reset_n_delayed_o")
+            fuse = self._sample(dut.smc_fuse_reset_n_delayed_o, "smc_fuse_reset_n_delayed_o")
             gate = self._sample(dut.ext_boot_seq_done_i, "ext_boot_seq_done_i")
             if gate != 0:
                 raise AssertionError(f"ext_boot_seq_done_i not 0 during S2: {gate}")
             if fuse != 0:
                 raise AssertionError(
-                    f"smc_smc_fuse_reset_n_delayed_o released while gated at sample {gated_samples}"
+                    f"smc_fuse_reset_n_delayed_o released while gated at sample {gated_samples}"
                 )
             gated_samples += 1
 
@@ -134,7 +134,7 @@ class smu_ext_boot_seq_gate_test_seq:
         )
         dut.ext_boot_seq_done_i.value = 1
         released = await self._wait_eq(
-            dut.smc_smc_fuse_reset_n_delayed_o,
+            dut.smc_fuse_reset_n_delayed_o,
             1,
             clk=dut.clk_smu_i,
             bound=self.RELEASE_BOUND,
