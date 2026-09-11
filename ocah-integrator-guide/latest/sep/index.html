@@ -10542,7 +10542,7 @@ OTP sense FSM at power-on)</p>
 <li>
 <p>Generate the per-LC-state debug/test/function feature control vector
 (<code>feat_ctrl_o</code>) and send it to its downstream destinations (TAP, DAP,
-DFT, peripherals, downstream chiplets, Key Manager).</p>
+DFT, peripherals, Key Manager).</p>
 </li>
 <li>
 <p>Maintain volatile in-field debug demotion state via the DEMOTE_1, DEMOTE_2,
@@ -10846,9 +10846,10 @@ external (PTAP) debug traffic into that chiplet and passes it onward toward
 downstream chiplets. Debugging a chiplet&#8217;s assets requires SIP_DBG to be
 enabled on each LCC-bearing chiplet along the debug path, including the target
 chiplet itself when it has its own LCC. A chiplet without a local SEP/LCC has
-no disable vectors of its own; its debug gates are instead driven by the
-feature-control bits forwarded from the primary chiplet&#8217;s LCC, so it is
-governed by the SiP-owner domain (see <a href="#non-primary-chiplets">Non-Primary Chiplets</a>).</p>
+no disable vectors of its own. Instead, the primary chiplet&#8217;s SiP-owner
+feature control gates the DFT traffic before it is forwarded downstream, so
+the chiplet is governed by the SiP-owner domain (see
+<a href="#non-primary-chiplets">Non-Primary Chiplets</a>).</p>
 </li>
 <li>
 <p><strong>Chiplet-owner domains gate each chiplet&#8217;s local assets.</strong> A chiplet&#8217;s own
@@ -10871,9 +10872,10 @@ intermediate secondary without a SEP, chiplet 3 secondary):</p>
 <p>Debugging chiplet 1&#8217;s local assets requires SIP_DBG(1) and CHIPLET_DBG(1).</p>
 </li>
 <li>
-<p>Debugging chiplet 2 requires only SIP_DBG(1): with no local SEP/LCC,
-chiplet 2 has no disable vectors of its own; its gates are driven by the
-enables forwarded from the primary chiplet&#8217;s LCC (see <a href="#non-primary-chiplets">Non-Primary Chiplets</a>).</p>
+<p>Debugging chiplet 2 requires only SIP_DBG(1): chiplet 2 has no local
+SEP/LCC and therefore contributes no local gate. SIP_DBG(1) gates the DFT
+traffic before the primary chiplet forwards it downstream (see
+<a href="#non-primary-chiplets">Non-Primary Chiplets</a>).</p>
 </li>
 <li>
 <p>Debugging chiplet 3&#8217;s local assets requires SIP_DBG(1), SIP_DBG(3), and
@@ -11136,7 +11138,10 @@ SIP_DIS.DBG_1 / DBG_2 and SYS_DIS.DBG_1 / DBG_2.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">25-47</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">debug (DBG_2)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><em>Reserved</em></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Available for adopter-defined inter-chiplet-bypass (DBG_2) debug scan chains. See <a href="#adopter-extension">Adopter Extension</a>.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Available for adopter-defined
+inter-chiplet debug / DFT forwarding paths. Each allocated bit is consumed
+on the LCC-bearing chiplet to gate the corresponding traffic before it is
+forwarded downstream. See <a href="#adopter-extension">Adopter Extension</a>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">48-63</p></td>
@@ -11900,9 +11905,9 @@ layered model deliberately does not map a path to the like-named bit.</p>
 <p>Primary chiplets always include a local SEP and LCC; the asset
 partitioning described in <a href="#asset-and-scan-chain-protection">Asset and Scan-Chain Protection</a> applies
 directly. <strong>Non-primary</strong> chiplets may not include a local SEP, in which
-case lifecycle and debug enablement is governed by the <strong>SiP-owner
-domain</strong>, forwarded from the primary chiplet&#8217;s LCC (see
-<a href="#multiple-security-domains">Multiple Security Domains</a>).</p>
+case debug access is governed by the <strong>SiP-owner domain</strong>. The primary
+chiplet&#8217;s SiP-owner feature control gates the DFT traffic before forwarding
+it to the non-primary chiplet (see <a href="#multiple-security-domains">Multiple Security Domains</a>).</p>
 </div>
 <div class="paragraph">
 <p>For non-primary chiplets, the adopter is responsible for:</p>
@@ -11917,23 +11922,22 @@ domain</strong>, forwarded from the primary chiplet&#8217;s LCC (see
 class scheme in <a href="#asset-classes">Asset Classes</a> (1a/1b, 2, 3).</p>
 </li>
 <li>
-<p>Wiring the non-primary chiplet&#8217;s scan / DFT enables to the
-appropriate feature control bits forwarded from the primary chiplet
-(typically driven by the primary chiplet&#8217;s <code>SIP_DBG</code> bit and other
-downstream-debug signals in <code>feat_ctrl_o</code>).</p>
+<p>Routing the non-primary chiplet&#8217;s scan / DFT traffic through the
+appropriate DTP path on the primary chiplet, where SiP-owner feature
+control gates forwarding.</p>
 </li>
 <li>
 <p>Applying the same scan-protection treatment to any non-primary chiplet
 logic that handles secrets: Class 1 excluded from scan chains, Class 2
-scandump-gated by the forwarded feature control bits.</p>
+never scan-dumpable.</p>
 </li>
 </ul>
 </div>
 <div class="paragraph">
-<p>The cross-chiplet propagation of feature control bits (via the
-<code>SIP_DBG</code> mechanism documented in <a href="#feature-control-vector-definition">Disable Vector Format (SIP_DIS / SYS_DIS)</a>)
-is the contract by which the primary chiplet&#8217;s LCC reaches the
-non-primary chiplet.</p>
+<p>The <code>SIP_DBG</code> mechanism documented in
+<a href="#feature-control-vector-definition">Disable Vector Format (SIP_DIS / SYS_DIS)</a> gates the DTP path on the primary
+chiplet. The primary LCC therefore governs debug access to a non-primary
+chiplet by controlling whether DFT traffic is forwarded to it.</p>
 </div>
 </div>
 <div class="sect4">
@@ -11957,7 +11961,13 @@ matching positions in SIP_DIS / SYS_DIS):</p>
 </ul>
 </div>
 <div class="paragraph">
-<p>Each new scan chain is gated by exactly one reserved bit. The
+<p>OCAH assigns no standard function to these reserved bits. An adopter may
+allocate a DBG_2 bit to an additional inter-chiplet DFT forwarding path; the
+bit is consumed on the LCC-bearing chiplet to gate the corresponding traffic
+before it is forwarded downstream.</p>
+</div>
+<div class="paragraph">
+<p>Each new scan chain or forwarding path is gated by exactly one reserved bit. The
 corresponding bit position in SIP_DIS or SYS_DIS (chosen by which
 predecessor owner sets the default policy&#8201;&#8212;&#8201;see
 <a href="#dis-vector-ownership">DIS Vector Ownership: Predecessor-Programs-Disables</a>) determines the default OTP-programmed
