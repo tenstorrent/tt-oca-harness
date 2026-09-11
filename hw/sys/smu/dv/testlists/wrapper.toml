@@ -456,6 +456,94 @@ args = [
   "+smc_sym=smc_sep_xbar.sram.sym",
 ]
 
+# Dual-firmware leaves that share sep_smc_bringup_from_sram with the xbar
+# image. Same SRAM-private blockage: the SEP cannot see the SMC cookie through
+# sys-inbound. Enrolled so a scheduled run can fail; not in `all` or
+# `sep_real_fw`.
+[[tests]]
+name = "smu_sep_debug_bus_test"
+module = "smu_sep_debug_bus_test"
+target = "compile_smu_chiplet_sep_rtl"
+firmware = { name = "sep_smu_debug_bus", mode = "sep_dv_fw" }
+seed = 1
+timeout_sec = 1800
+tags = ["firmware", "sep", "smc", "real_rtl", "real_fw", "interop"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex=smu_sep_arm.rom.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=smu_sep_boot_rom.hex",
+  "+sep_itcm_hex=sep_smu_debug_bus.itcm.hex",
+  "+sep_dtcm_hex=sep_smu_debug_bus.dtcm.hex",
+  "+sep_sym=sep_smu_debug_bus.tcm.sym",
+  "+smc_scratch_ram_hex=smu_sep_debug_bus.ecc.hex",
+  "+smc_sym=smu_sep_debug_bus.sram.sym",
+]
+
+[[tests]]
+name = "smu_sep_wdt_reset_to_smc_test"
+module = "smu_sep_wdt_reset_to_smc_test"
+target = "compile_smu_chiplet_sep_rtl"
+firmware = { name = "sep_smu_wdt_reset_to_smc", mode = "sep_dv_fw" }
+seed = 1
+timeout_sec = 1800
+tags = ["firmware", "sep", "smc", "real_rtl", "real_fw", "interop"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex=smu_sep_arm.rom.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=smu_sep_boot_rom.hex",
+  "+sep_itcm_hex=sep_smu_wdt_reset_to_smc.itcm.hex",
+  "+sep_dtcm_hex=sep_smu_wdt_reset_to_smc.dtcm.hex",
+  "+sep_sym=sep_smu_wdt_reset_to_smc.tcm.sym",
+  "+smc_scratch_ram_hex=smu_sep_boot.ecc.hex",
+  "+smc_sym=smu_sep_boot.sram.sym",
+]
+
+[[tests]]
+name = "smu_sep_lc_handoff_test"
+module = "smu_sep_lc_handoff_test"
+target = "compile_smu_chiplet_sep_rtl"
+firmware = { name = "sep_smu_lc_handoff", mode = "sep_dv_fw" }
+seed = 1
+timeout_sec = 1800
+tags = ["firmware", "sep", "smc", "real_rtl", "real_fw", "interop"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex=smu_sep_arm.rom.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=smu_sep_boot_rom.hex",
+  "+sep_itcm_hex=sep_smu_lc_handoff.itcm.hex",
+  "+sep_dtcm_hex=sep_smu_lc_handoff.dtcm.hex",
+  "+sep_sym=sep_smu_lc_handoff.tcm.sym",
+  "+smc_scratch_ram_hex=smu_sep_lc_handoff.ecc.hex",
+  "+smc_sym=smu_sep_lc_handoff.sram.sym",
+]
+
+[[tests]]
+name = "smu_cla_sep_cpu_debug_test"
+module = "smu_cla_sep_cpu_debug_test"
+target = "compile_smu_chiplet_sep_rtl"
+firmware = { name = "smu_cla_sep_cpu_debug", mode = "sep_dv_fw" }
+seed = 1
+timeout_sec = 1800
+tags = ["firmware", "sep", "smc", "real_rtl", "real_fw", "interop"]
+run_modes = ["sep_rtl"]
+args = [
+  "+rom_hex=smu_sep_arm.rom.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+  "+sep_efuse_hex=sep_efuse_default.hex",
+  "+sep_boot_rom_hex=smu_sep_boot_rom.hex",
+  "+sep_itcm_hex=smu_cla_sep_cpu_debug.itcm.hex",
+  "+sep_dtcm_hex=smu_cla_sep_cpu_debug.dtcm.hex",
+  "+sep_sym=smu_cla_sep_cpu_debug.tcm.sym",
+  "+smc_scratch_ram_hex=smu_cla_sep_cpu_debug.ecc.hex",
+  "+smc_sym=smu_cla_sep_cpu_debug.sram.sym",
+]
+
 # SEP outbound egress path, walked segment by segment: SEP issues an outbound
 # AW, the crossbar completes a write at the SMU boundary, then the mailbox
 # decodes PASS. smu_sep_sanity_test also ends in that magic, but only after
@@ -1830,6 +1918,21 @@ name = "sep_smc_sram_blocked"
 tests = [
   "smu_sep_smc_xbar_test",
   "smu_sep_ext_axi_test",
+  "smu_sep_debug_bus_test",
+  "smu_sep_wdt_reset_to_smc_test",
+  "smu_sep_lc_handoff_test",
+  "smu_cla_sep_cpu_debug_test",
+]
+
+# The four dual-firmware leaves. Same SRAM blockage as sep_smc_sram_blocked;
+# listed separately so `--items sep_smc_dual` runs just these four.
+[[groups]]
+name = "sep_smc_dual"
+tests = [
+  "smu_sep_debug_bus_test",
+  "smu_sep_wdt_reset_to_smc_test",
+  "smu_sep_lc_handoff_test",
+  "smu_cla_sep_cpu_debug_test",
 ]
 
 # TB-side probe anchors: the SEP only has to be alive (hello_world), and the

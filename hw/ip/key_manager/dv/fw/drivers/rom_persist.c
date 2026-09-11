@@ -42,7 +42,7 @@ void rom_persist_set_sram_fw_size(uint32_t size) {
  * @brief Write-lock SRAM region 31 (warm-persist region).
  *
  * Triple write for glitch resistance (matches rom_kmcsr_sram_lock_set
- * convention). Not yet called; reserved for the SRAM-firmware handoff path.
+ * convention). Called from the SRAM-firmware handover path.
  */
 void rom_persist_lock(void) {
     rom_kmcsr_sram_lock_set(ROM_KM_PERSIST_LOCK_MASK);

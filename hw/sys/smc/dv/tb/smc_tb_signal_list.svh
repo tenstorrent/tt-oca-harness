@@ -171,11 +171,11 @@
 `SMC_TB_OUT(logic, tb_telemetry_irq_any)
 // eFuse locked-shadow access (smc_peripherals peripheral_interrupts[27]).
 `SMC_TB_OUT(logic, tb_efuse_locked_access_irq)
-// PVT temperature interrupt. Enters through ext_interrupts_i bus (TB uses bit 1).
+// PVT temperature interrupt. Enters through smc_ext_interrupts_i bus (TB uses bit 1).
 // Synced observe is smc_base.ext_interrupts_smc_clk[1]. Idle 0.
 `SMC_TB_IN(logic, tb_temp_interrupt_i)
 `SMC_TB_OUT(logic, tb_temp_interrupt_irq)
-// One bit of product ext_interrupts_i (wrapper width 256). Idle 0.
+// One bit of product smc_ext_interrupts_i (wrapper width 256). Idle 0.
 // Synced observe is smc_base.ext_interrupts_smc_clk[0], not GPIO.
 `SMC_TB_IN(logic, tb_ext_interrupt_0_i)
 `SMC_TB_OUT(logic, tb_ext_interrupt_0_sync)
@@ -543,8 +543,8 @@
 `SMC_TB_OUT(logic, powergood_o)
 `SMC_TB_OUT(logic, rst_cold_n_o)
 `SMC_TB_OUT(logic, smc_reset_n_o)
-`SMC_TB_OUT(logic, fuse_sense_done_o)
-`SMC_TB_OUT(logic, init_mem_done_o)
+`SMC_TB_OUT(logic, smc_fuse_sense_done_o)
+`SMC_TB_OUT(logic, smc_init_mem_done_o)
 `SMC_TB_OUT(logic [31:0], smc_scratch_0_o)
 `SMC_TB_OUT(logic, smc_test_pass_o)
 `SMC_TB_OUT(logic, smc_test_fail_o)

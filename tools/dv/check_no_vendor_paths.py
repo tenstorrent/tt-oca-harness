@@ -37,14 +37,6 @@ import sys
 from pathlib import Path
 from typing import NamedTuple
 
-# ---------------------------------------------------------------------------
-# Python 3.11+ stdlib TOML support; fall back to graceful error otherwise.
-# ---------------------------------------------------------------------------
-try:
-    import tomllib  # type: ignore[import]
-except ImportError:
-    tomllib = None  # type: ignore[assignment]
-
 try:
     import yaml  # type: ignore[import]
 
@@ -94,9 +86,7 @@ def _load_config(
         with config_path.open() as fh:
             raw = yaml.safe_load(fh) or {}
     else:
-        # Fallback: very small inline YAML parser for the simple list-of-dicts
-        # structure used here.  This only handles the specific shape of the
-        # config file to avoid a hard yaml dependency.
+        # Fallback parser: handles only the list-of-dicts shape of check_no_vendor_paths.yaml.
         raw = _minimal_yaml_load(config_path)
 
     forbidden: list[ForbiddenPrefix] = []
@@ -130,7 +120,7 @@ def _load_config(
 
 def _minimal_yaml_load(path: Path) -> dict:
     """Extremely minimal YAML loader for the specific config shape."""
-    # This is intentionally limited; install PyYAML for full support.
+    # Handles only the shape of check_no_vendor_paths.yaml; PyYAML is used when importable.
     lines = path.read_text().splitlines()
     result: dict = {
         "forbidden_prefixes": [],

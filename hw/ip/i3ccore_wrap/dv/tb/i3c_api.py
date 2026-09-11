@@ -1177,17 +1177,8 @@ class I3CTarget:
         await self.h.write(self.base + I3C_EC_TTI_INTERRUPT_ENABLE_REG_ADDR, tti_intr_en)
 
     async def configure_timing_od_i3c(self):
-        """Configure open-drain timing for I3C target (same as controller)."""
-        # await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_HIGH_REG_REG_ADDR, 10)
-        # await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_LOW_REG_REG_ADDR, 10)
-        # await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_R_REG_REG_ADDR, 8)
-        # await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_F_REG_REG_ADDR, 2)
-        # await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_HD_STA_REG_REG_ADDR, 5)
-        # await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_SU_STA_REG_REG_ADDR, 5)
-        # await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_SU_STO_REG_REG_ADDR, 5)
-        # await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_SU_DAT_REG_REG_ADDR, 5)
+        """Configure the target's T_HD_DAT, T_AVAL and T_IDLE open-drain timing."""
         await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_HD_DAT_REG_REG_ADDR, 2)
-        # await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_FREE_REG_REG_ADDR, 500)
         # T_AVAL: Bus available time (target waits this before sending IBI)
         await self.h.write(self.base + I3C_EC_SOCMGMTIF_T_AVAL_REG_REG_ADDR, 1000)
         # T_IDLE: Bus idle time

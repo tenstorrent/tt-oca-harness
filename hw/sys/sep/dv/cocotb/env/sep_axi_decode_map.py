@@ -2,52 +2,25 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP address-map classification for AXI response expectations.
 
-Answers one question for an arbitrary address: may a transaction there
-legally complete, or must the fabric refuse it?
-
-The expected answer comes from the SPECIFICATION table in
-``hw/sys/sep/doc/memory_map.adoc``, never from the RTL decoder. A checker
-that asked the decoder what the decoder should do would pass on any
-decoder. Rows whose Unit column is ``_RSV_`` are reserved: nothing is
-allocated there, so an access must not return OKAY.
-
-The RTL decode table in ``hw/sys/sep/rtl/sep_local_axi_xbar.sv``
-is parsed too, but only as a cross-check. ``audit_rtl_vs_spec()`` reports
-every span the crossbar routes that the specification calls reserved.
-Those are real findings -- an address the fabric accepts and the map does
-not describe -- and they are returned for the caller to log, not silently
-folded into the expectation.
+``may_complete(addr)`` is true only when ``_MAP_ROWS`` (plus derived holes)
+allocates that address. A reserved row, and a gap inside a coarse window
+with no detailed row, must not return OKAY. The refusal flavour is unnamed.
 """
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
-from pathlib import Path
-
-_DV_ROOT = Path(__file__).resolve().parents[2]
-_SPEC = _DV_ROOT.parent / "doc" / "memory_map.adoc"
-_XBAR = _DV_ROOT.parent / "rtl" / "sep_local_axi_xbar.sv"
-_ADDRMAP_PKG = _DV_ROOT.parent / "regs" / "gen" / "sv" / "sep_addrmap_pkg.sv"
 
 # A row at least this wide is a container the detailed rows carve up, not an
 # allocation in its own right.
 _COARSE_SPAN = 0x0100_0000
 
-# Reserved marker in the memory-map Unit column.
 _RSV = "_RSV_"
 
 
 @dataclass(frozen=True)
 class SpecRegion:
-    """One row of a memory-map table.
-
-    ``end_addr`` is INCLUSIVE. The coarse region table writes an exclusive end
-    (0x0000_0000-0x1000_0000 for a 256 MB region) while the detailed tables
-    write an inclusive one (0x1000_0000-0x1000_FFFF for 64 kB).
-    ``spec_regions`` normalises the coarse rows on the way in, so everything
-    downstream sees one convention: an inclusive ``end_addr``.
-    """
+    """One DV-owned memory-map row. ``end_addr`` is inclusive."""
 
     base: int
     end_addr: int
@@ -62,110 +35,98 @@ class SpecRegion:
         return self.base <= addr <= self.end_addr
 
 
-@dataclass(frozen=True)
-class RtlRange:
-    """One AddrMap rule. ``end_addr`` is exclusive, as written in the RTL."""
-
-    idx: int
-    start_addr: int
-    end_addr: int
-
-    def contains(self, addr: int) -> bool:
-        return self.start_addr <= addr < self.end_addr
-
-
-def _hexint(text: str) -> int:
-    return int(text.replace("_", ""), 16)
-
-
-# The document holds three tables under this header: a coarse region summary,
-# the CPU TCM detail, and the SEP-local detail. They are hierarchical, so the
-# coarse rows deliberately span the fine ones. All are parsed and the most
-# specific row wins, which is how a reader resolves them too.
-_SPEC_HEADER = "|Base Address |End Address |Size |Unit |Description"
-
-# A row is reserved when the Unit column says so, or when Unit is blank and the
-# description does. Both spellings appear in the document.
-_RSV_DESC = ("reserved",)
-
-
-def _is_reserved(unit: str, desc: str) -> bool:
-    """True when the row allocates nothing.
-
-    Three spellings appear in the document: Unit ``_RSV_``; a blank Unit with
-    a Description that starts "Reserved"; and a named Unit whose Description
-    says it is reserved (the 512 MB "SEP External Region ... Reserved for
-    adopter extension IP"). All three forms classify as reserved, or the
-    region is probed as allocated and never counted as a skip.
-    """
-    if unit == _RSV:
-        return True
-    return desc.strip().lower().startswith(_RSV_DESC)
+# From hw/sys/sep/doc/memory_map.adoc. Inclusive ends. Reserved rows use _RSV_.
+# (base, end_inclusive, unit, desc)
+_MAP_ROWS = (
+    # Coarse CPU view.
+    (0x0000_0000, 0x0FFF_FFFF, "External", "External to chiplet, but not in SMU (SMC, DTP, etc)."),
+    (0x1000_0000, 0x1FFF_FFFF, "SEP Local", "SEP Local resources (DMA, Crypto, etc)"),
+    (0x2000_0000, 0x3FFF_FFFF, _RSV, "Reserved for adopter extension IP"),
+    (0x4000_0000, 0x7FFF_FFFF, "SMC", "SMC Resources"),
+    (0x8000_0000, 0xBFFF_FFFF, "SMU", "SMU Resources (DTP, etc)"),
+    (0xC000_0000, 0xCFFF_FFFF, "SEP CPU Resources", "EL2 Veer Resources (DCCM, ICCM, PIC)"),
+    (0xD000_0000, 0xFFFF_FFFF, "SEP Local Alias", "Corresponds to 0x1000_0000 - 0x4000_0000"),
+    # CPU TCM detail.
+    (0xC000_0000, 0xC003_FFFF, "ICCM", "Tightly Coupled Instruction SRAM"),
+    (0xC004_0000, 0xC005_FFFF, "DCCM", "Tightly Coupled Data SRAM"),
+    (0xC006_0000, 0xC007_FFFF, _RSV, "Reserved"),
+    (0xC008_0000, 0xC008_7FFF, "PIC", "Interrupt controller for El2 CPU"),
+    (0xC008_8000, 0xCFFF_FFFF, _RSV, "Reserved"),
+    # SEP-local detail.
+    (0x1000_0000, 0x1000_FFFF, "SRAM", "Scratch SRAM"),
+    (0x1001_0000, 0x1003_FFFF, _RSV, "Reserved Scratch SRAM expansion"),
+    (0x1004_0000, 0x1004_FFFF, "ROM", "BL0 immutable instruction memory"),
+    (0x1005_0000, 0x107F_FFFF, _RSV, "reserved"),
+    (0x1080_0000, 0x1080_0FFF, "DMA", "DMA CSR"),
+    (0x1080_1000, 0x1080_1FFF, "WDT", "Watchdog Timer"),
+    (0x1080_2000, 0x1080_2FFF, "SRB", "Dual Scratch Register Banks"),
+    (
+        0x1080_3000,
+        0x1080_3007,
+        "RST_CTRL",
+        "SEP Reset Controller (software reset for KM, the crypto accelerators and the TRNG)",
+    ),
+    (0x1080_3008, 0x108F_FFFF, _RSV, "reserved"),
+    (0x1090_0000, 0x1090_FFFF, "OTBN", "Public Key processor memory and CSR"),
+    (0x1091_0000, 0x1091_0FFF, "AES", "Block Cipher"),
+    (0x1091_1000, 0x1091_2FFF, "HMAC-SHA2", "Hash / MAC"),
+    (0x1091_3000, 0x1091_3FFF, "KMAC-SHA3", "Hash / MAC"),
+    (0x1091_4000, 0x1091_4FFF, _RSV, "Reserved"),
+    (0x1091_5000, 0x1091_5FFF, "DRBG", "Deterministic Random Bit Generator"),
+    (0x1091_6000, 0x1091_6FFF, "ESRC", "Entropy Source"),
+    (0x1091_7000, 0x1091_7FFF, "TRNG", "External TRNG CSR passthrough"),
+    (0x1091_8000, 0x1091_FFFF, "LC", "Life Cycle Controller"),
+    (0x1092_0000, 0x1092_0FFF, "KM", "Key Manager"),
+    (0x1092_1000, 0x1092_FFFF, _RSV, "Reserved"),
+    (0x1093_0000, 0x1093_7FFF, "OTP", "Fuse Control and Shadow Memory"),
+    (0x1093_8000, 0x1093_FFFF, _RSV, "Reserved"),
+    (
+        0x1094_0000,
+        0x1094_FFFF,
+        "ABR",
+        "Adams Bridge post-quantum accelerator (ML-DSA-87 / ML-KEM-1024) CSR aperture",
+    ),
+    (
+        0x1095_0000,
+        0x1095_FFFF,
+        "EPOOL",
+        "Entropy Pool FIFO (read-only drain; writes return SLVERR). Filled by native EDN.",
+    ),
+    (0x1096_0000, 0x109F_FFFF, _RSV, "Reserved"),
+    (0x10A0_0000, 0x10A3_FFFF, "SYS", "System Bus I/F"),
+    (0x10A4_0000, 0x10AF_FFFF, _RSV, "Reserved"),
+    (0x10B0_0000, 0x10BF_FFFF, "IO", "External IO Peripherals Bridge: UART, GPIO etc."),
+    (
+        0x1100_0000,
+        0x117F_FFFF,
+        "AP Remap Region",
+        "Write to this region to be routed to the AP remapper",
+    ),
+    (
+        0x1180_0000,
+        0x11FF_FFFF,
+        "STEE Remap Region",
+        "Write to this region to be routed to the STEE remapper",
+    ),
+    (0x1200_0000, 0x1FFF_FFFF, _RSV, "Reserved"),
+    (0x2000_0000, 0x3FFF_FFFF, _RSV, "Reserved for adopter extension IP"),
+)
 
 
 def spec_regions() -> tuple[SpecRegion, ...]:
-    """Every allocation row, finest first. Raises if the tables vanish."""
-    # utf-8 explicitly: these sources carry box-drawing characters, and the
-    # simulator runs cocotb under an ASCII default locale.
-    lines = _SPEC.read_text(encoding="utf-8").splitlines()
-    rows: list[SpecRegion] = []
-    line_re = re.compile(r"^\|(0x[0-9A-Fa-f_]+)\s*\|(0x[0-9A-Fa-f_]+)\s*\|([^|]*)\|([^|]*)\|(.*)$")
-    in_table = False
-    for raw in lines:
-        stripped = raw.strip()
-        if stripped == _SPEC_HEADER:
-            in_table = True
-            continue
-        if in_table and stripped.startswith("|===="):
-            in_table = False
-            continue
-        if not in_table:
-            continue
-        m = line_re.match(stripped)
-        if not m:
-            continue
-        base, end, _size, unit, desc = m.groups()
-        unit, desc = unit.strip(), desc.strip()
-        lo, hi = _hexint(base), _hexint(end)
-        # Normalise the coarse table's exclusive end. A row whose base and end
-        # are both 4 kB aligned is exclusive; a detailed row ends on an
-        # all-ones boundary, which is inclusive and never 4 kB aligned.
-        if hi > lo and (hi & 0xFFF) == 0 and (lo & 0xFFF) == 0:
-            hi -= 1
-        rows.append(
-            SpecRegion(
-                lo,
-                hi,
-                _RSV if _is_reserved(unit, desc) else unit,
-                desc,
-            )
-        )
-    if not rows:
-        raise RuntimeError(
-            f"no allocation rows parsed from {_SPEC} under the header "
-            f"{_SPEC_HEADER!r}. Every response expectation is built from those "
-            "tables, so refusing to guess which format replaced them."
-        )
+    """Every allocation row, finest first."""
+    rows = [SpecRegion(*row) for row in _MAP_ROWS]
     for r in rows:
         if r.end_addr < r.base:
             raise RuntimeError(
                 f"memory-map row runs backwards: 0x{r.base:08x}-0x{r.end_addr:08x} ({r.unit})"
             )
     rows.extend(_hole_regions(rows))
-    # Finest first so region_of() resolves the hierarchy the way a reader does.
     return tuple(sorted(rows, key=lambda r: (r.end_addr - r.base, r.base)))
 
 
 def _hole_regions(rows: list[SpecRegion]) -> list[SpecRegion]:
-    """Reserved rows for the spans no detailed row describes.
-
-    A coarse row names a region and the detailed rows carve it up. Where the
-    detailed rows leave a gap, nothing is allocated there -- but the gap is
-    inside the coarse row, so ``region_of`` would otherwise resolve it to the
-    coarse parent and report it allocated. An address described by no detailed
-    row allocates nothing and must read as reserved, the same as an explicit
-    ``_RSV_`` row.
-    """
+    """A gap inside a coarse window with no detailed row is reserved."""
     coarse = [r for r in rows if (r.end_addr - r.base) >= _COARSE_SPAN]
     holes: list[SpecRegion] = []
     for parent in coarse:
@@ -206,68 +167,6 @@ def _hole_regions(rows: list[SpecRegion]) -> list[SpecRegion]:
     return holes
 
 
-def _addrmap_symbols() -> dict[str, int]:
-    """The generated address-map localparams, by bare name.
-
-    The crossbar states some rules as `PKG::SYM` arithmetic rather than a hex
-    literal, so the rule text alone does not carry the bound.
-    """
-    text = _ADDRMAP_PKG.read_text(encoding="utf-8")
-    sym_re = re.compile(r"localparam\s+longint\s+unsigned\s+(\w+)\s*=\s*64'h([0-9A-Fa-f_]+)\s*;")
-    return {n: _hexint(v) for n, v in sym_re.findall(text)}
-
-
-def _resolve_bound(expr: str, syms: dict[str, int]) -> int:
-    """One AddrMap bound: a hex literal, or a sum of address-map symbols.
-
-    Only `+` appears in the table today. Anything else raises rather than
-    resolving to a plausible wrong number -- a bound this cross-check cannot
-    read must stop the parse, not silently drop the rule.
-    """
-    expr = re.sub(r"\b\d+'\s*", "", expr)  # width casts
-    expr = expr.replace("och_sep_top_addrmap_pkg::", "")
-    expr = expr.replace("(", " ").replace(")", " ").strip()
-    total = 0
-    for term in expr.split("+"):
-        term = term.strip()
-        if not term:
-            continue
-        if re.fullmatch(r"h?[0-9A-Fa-f_]+", term) and not term.isalpha():
-            try:
-                total += _hexint(term.lstrip("h"))
-                continue
-            except ValueError:
-                pass
-        if term not in syms:
-            raise RuntimeError(
-                f"AddrMap bound `{term}` is neither a hex literal nor a symbol "
-                f"in {_ADDRMAP_PKG.name}"
-            )
-        total += syms[term]
-    return total
-
-
-def rtl_ranges() -> tuple[RtlRange, ...]:
-    """Parse the crossbar AddrMap. Cross-check input only, never an expectation."""
-    text = _XBAR.read_text(encoding="utf-8")
-    syms = _addrmap_symbols()
-    # Bounds are matched loosely and resolved after: a rule stated in package
-    # symbols (see dma_csr / sep_wdt) must not fall out of the sweep just
-    # because it carries no hex literal.
-    rule_re = re.compile(
-        r"'\{\s*idx:\s*(\d+),\s*start_addr:\s*(.+?),"
-        r"\s*end_addr:\s*(.+?)\}",
-        re.DOTALL,
-    )
-    out = [
-        RtlRange(int(i), _resolve_bound(s, syms), _resolve_bound(e, syms))
-        for i, s, e in rule_re.findall(text)
-    ]
-    if not out:
-        raise RuntimeError(f"no AddrMap rules parsed from {_XBAR}; the table format changed")
-    return tuple(out)
-
-
 def region_of(addr: int, regions=None) -> SpecRegion | None:
     """The spec row covering ``addr``, or None when no row describes it."""
     for r in regions if regions is not None else spec_regions():
@@ -277,64 +176,37 @@ def region_of(addr: int, regions=None) -> SpecRegion | None:
 
 
 def may_complete(addr: int, regions=None) -> bool:
-    """True when the specification allocates something at ``addr``.
-
-    False means the fabric must refuse. ``memory_map.adoc`` mandates DECERR for
-    the remainder inside a unit's aperture and is silent on the flavour for the
-    reserved rows between apertures, so this says only that the access must not
-    complete. An address described by no detailed row is also False: the gap
-    inside a coarse container allocates nothing.
-    """
+    """True when the map allocates ``addr``. False: the fabric must refuse."""
     r = region_of(addr, regions)
     return r is not None and not r.reserved
 
 
-def audit_rtl_vs_spec() -> tuple[str, ...]:
-    """Spans the crossbar routes that the specification calls reserved.
-
-    Returned for the caller to log as findings. Not used to build any
-    expectation: folding them in would let the RTL define its own contract.
-    """
-    regions = spec_regions()
-    findings: list[str] = []
-    for rng in rtl_ranges():
-        for reg in regions:
-            if not reg.reserved:
-                continue
-            lo = max(rng.start_addr, reg.base)
-            hi = min(rng.end_addr - 1, reg.end_addr)
-            if lo <= hi:
-                findings.append(
-                    f"xbar idx {rng.idx} routes 0x{lo:08x}-0x{hi:08x}, which "
-                    f"memory_map.adoc lists as reserved ({reg.desc or _RSV})"
-                )
-    return tuple(findings)
-
-
 def _selftest() -> None:
-    """Pin the parse against values a human can check in the two sources."""
+    assert len(_MAP_ROWS) == 44, f"DV-owned map has {len(_MAP_ROWS)} rows, want 44"
     regions = spec_regions()
-    assert len(regions) >= 25, f"only {len(regions)} memory-map rows parsed"
+    assert len(regions) >= 25, f"only {len(regions)} memory-map rows after holes"
 
-    # Allocated: DMA CSR base, and the last byte of the WDT window.
     assert may_complete(0x1080_0000, regions), "DMA CSR base read as unallocated"
     assert may_complete(0x1080_1FFF, regions), "WDT window top read as unallocated"
-    # Reserved: the gap above the reset controller, and above the KM window.
     assert not may_complete(0x1080_3008, regions), "reset-ctrl gap read as allocated"
     assert not may_complete(0x1092_1000, regions), "KM reserved gap read as allocated"
+    assert not may_complete(0x10FF_0000, regions), "SEP-local hole read as allocated"
 
     dma = region_of(0x1080_0000, regions)
     assert dma is not None and dma.unit == "DMA", f"0x10800000 -> {dma}"
     assert dma.base == 0x1080_0000 and dma.end_addr == 0x1080_0FFF, f"{dma}"
 
-    # The RTL table must still be parseable; ranges are exclusive-end there.
-    rtl = rtl_ranges()
-    assert len(rtl) >= 14, f"only {len(rtl)} AddrMap rules parsed"
-    # The dma_csr rule spans the secure_dma register extent, NOT the 4 kB spec
-    # aperture: secure_dma_reg_top decodes 9 bits, so a wider window aliases.
-    assert any(r.start_addr == 0x1080_0000 and r.end_addr == 0x1080_0150 for r in rtl), (
-        "dma_csr AddrMap rule not found"
-    )
+    from sep_spec_tables import window
+
+    alias = window("SEP Local Alias")
+    hit = region_of(alias.base, regions)
+    assert hit is not None and hit.unit == "SEP Local Alias"
+    assert hit.base == alias.base and hit.end_addr == alias.end - 1
+    for name in ("ABR", "EPOOL", "AP Remap Region", "STEE Remap Region"):
+        w = window(name)
+        hit = region_of(w.base, regions)
+        assert hit is not None and hit.unit == name, f"{name} -> {hit}"
+        assert hit.base == w.base and hit.end_addr == w.end, f"{name} {hit} vs {w}"
 
 
 _selftest()

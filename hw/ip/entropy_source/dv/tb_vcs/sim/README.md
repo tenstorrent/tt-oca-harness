@@ -6,7 +6,7 @@
 
 **Required:** Python 3.7 - 3.12
 
-The test environment uses cocotb which currently supports Python 3.7 through 3.12. Python 3.13+ is **not yet supported**.
+The test environment uses cocotb, which supports Python 3.7 through 3.12.
 
 If you encounter pip installation errors when running `./run.sh`, check your Python version:
 
@@ -47,18 +47,16 @@ python3.12 -m venv ./venv
 
 ## Available Tests
 
-Total: 48 tests across 5 test suites
-
-| Test Module | Tests | Description |
-|-------------|-------|-------------|
-| `test_reg_walk` | 1 | Register access verification |
-| `test_decorrelator_modes` | 16 | Decorrelator modes and configurations |
-| `test_entropy_fifo` | 16 | FIFO functionality and boundary conditions |
-| `test_health_tests` | 13 | Health monitors (Repetition, APT, Markov) |
-| `test_debug_monitor` | 3 | Debug monitor CSR interface |
-| `test_apb_random` | 1 | Random APB transactions |
-| `test_entropy_sanity` | 1 | End-to-end sanity check |
-| `test_misc` | 1 | Downsample rate configuration |
+| Test Module | Description |
+|-------------|-------------|
+| `test_reg_walk` | Register access verification |
+| `test_decorrelator_modes` | Decorrelator modes and configurations |
+| `test_entropy_fifo` | FIFO functionality and boundary conditions |
+| `test_health_tests` | Health monitors (Repetition, APT, Markov) |
+| `test_debug_monitor` | Debug monitor CSR interface |
+| `test_apb_random` | Random APB transactions |
+| `test_entropy_sanity` | End-to-end sanity check |
+| `test_misc` | Downsample rate configuration |
 
 ## Running Simulations
 
@@ -83,7 +81,7 @@ Total: 48 tests across 5 test suites
 ### Examples
 
 ```bash
-# Run all decorrelator tests (16 subtests)
+# Run all decorrelator tests
 ./run.sh -t test_decorrelator_modes
 
 # Run specific subtest with waves

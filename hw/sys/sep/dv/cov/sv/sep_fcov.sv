@@ -93,6 +93,8 @@ module sep_fcov (
   input wire        irq_km_mbox_i,
   input wire        irq_dma_done_i,
   input wire [3:0]  efuse_lc_raw_i,      // sensed LC nibble of the shadow probe
+  input wire [1:0]  efuse_read_state_i,     // efuse_read_interface FSM
+  input wire [1:0]  efuse_program_state_i,  // efuse_program_interface FSM
   input wire        secure_tm_i,
   input wire        sec_dis_i,
   input wire [1:0]  demote_1_i,          // {~demote, demote}: 2'b10 clear, 2'b01 set
@@ -605,6 +607,18 @@ module sep_fcov (
   wire  fuse_sense = !in_reset && !skip_fuse_sense_q &&
       (fuse_sense_done_i === 1'b1) && !fuse_sense_done_q;
   wire  fuse_sense_episode = fuse_sense_seen_q;
+
+  // --- eFuse FSM fail-closed ---------------------------------------------
+  // Both machines encode idle as 2'b01 and wait-for-response as 2'b10, so
+  // 2'b00 and 2'b11 are unreachable by design. sep_efuse_illegal_state_fail
+  // _closed_test injects them; ordinary traffic scores nothing here because
+  // the legal encodings land in no bin.
+  localparam logic [1:0] EfuseStIdle = 2'b01;
+  localparam logic [1:0] EfuseStWait = 2'b10;
+  wire efuse_rd_illegal = !in_reset &&
+      !(efuse_read_state_i inside {EfuseStIdle, EfuseStWait});
+  wire efuse_pg_illegal = !in_reset &&
+      !(efuse_program_state_i inside {EfuseStIdle, EfuseStWait});
 
   // --- Lifecycle feature control ------------------------------------------
   // FEAT_CTRL is 64-bit, read as two 32-bit halves. Aggregate the DEFINED
@@ -1224,6 +1238,23 @@ module sep_fcov (
     }
   endgroup
 
+  covergroup sep_efuse_fail_closed_cg with function sample (logic [1:0] state, logic is_program);
+    option.per_instance = 1;
+    option.name = "sep_efuse_fail_closed_cg";
+    // The two illegal encodings are separate cells on purpose: they fail the
+    // legal-set test for different reasons, so a recovery written as a compare
+    // against one value would fill one cell and leave the other dead.
+    cp_illegal: coverpoint state {
+      bins zero = {2'b00}; bins ones = {2'b11};
+    }
+    // `program` is a SystemVerilog keyword, so the bin is named for the block.
+    cp_fsm: coverpoint is_program {
+      bins read_if = {1'b0}; bins program_if = {1'b1};
+    }
+    // Four cells, all filled by one seed: the owning leaf walks the product.
+    x_fsm_illegal: cross cp_fsm, cp_illegal;
+  endgroup
+
   covergroup sep_lc_state_cg with function sample (logic [3:0] raw);
     option.per_instance = 1;
     option.name = "sep_lc_state_cg";
@@ -1376,6 +1407,7 @@ module sep_fcov (
   sep_inbound_filter_allow_cg u_sep_inbound_filter_allow_cg = new();
   sep_efuse_sense_cg          u_sep_efuse_sense_cg          = new();
   sep_efuse_program_lock_cg   u_sep_efuse_program_lock_cg   = new();
+  sep_efuse_fail_closed_cg    u_sep_efuse_fail_closed_cg    = new();
   sep_lc_state_cg             u_sep_lc_state_cg             = new();
   sep_lc_transition_cg        u_sep_lc_transition_cg        = new();
   sep_dma_completion_route_cg u_sep_dma_completion_route_cg = new();
@@ -1395,6 +1427,8 @@ module sep_fcov (
         u_sep_kmac_mode_cg.sample(kmac_en_q, kmac_mode_q, kmac_str_q,
                                   kmac_keylen_valid_q ? kmac_keylen_q : 3'd7, kmac_sideload_q);
       if (km_transfer_dest) u_sep_km_command_sideload_cg.sample(wr_data[3:0]);
+      if (efuse_rd_illegal) u_sep_efuse_fail_closed_cg.sample(efuse_read_state_i, 1'b0);
+      if (efuse_pg_illegal) u_sep_efuse_fail_closed_cg.sample(efuse_program_state_i, 1'b1);
       if (lc_diff_ok) u_sep_lc_state_cg.sample(lc_raw);
       if (lc_transition) u_sep_lc_transition_cg.sample(lc_prev_q, lc_raw);
       // Sampled when the second FEAT_CTRL half completes, against the SENSED
