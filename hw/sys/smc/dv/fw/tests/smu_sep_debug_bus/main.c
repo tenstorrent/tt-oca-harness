@@ -161,9 +161,9 @@ int main(void) {
 
     SMC_WAIT_EQ(DEBUG_BUS_SMC_SCRATCH3, DEBUG_BUS_GO_SEEN, DEBUG_BUS_HANDSHAKE_POLL_LIMIT, ok);
     if (!ok) goto fail;
-    /* Marker PC crosses a 3FF CDC + DFX/DFD mux before CLA. Tight 512-poll
-     * loops finish before the match flop sees 0x07d8; always-on dump after an
-     * extra delay already proved the bus value. Hold, then sample. */
+    /* Marker PC crosses a 3FF CDC + DFX/DFD mux before CLA. A 512-poll
+     * loop finishes before the match flop sees the marker; hold, then
+     * sample. */
     SMC_DELAY_ITERS(DEBUG_BUS_EXACT_HOLD_ITERS);
     st = 0;
     snap = 0;

@@ -35,8 +35,7 @@ class SmuClaSepCpuDebugSeq(SepTerminalLoopSeq):
         entry = next((a for a, n in syms if n == SMC_ENTRY_SYM), None)
         assert entry is not None, f"{SMC_ENTRY_SYM} not in the SMC image symbol table {sym_path}"
         assert entry == CLADBG_SMC_ENTRY, (
-            f"SMC image entry 0x{entry:08x} != CLADBG_SMC_ENTRY "
-            f"0x{CLADBG_SMC_ENTRY:08x}"
+            f"SMC image entry 0x{entry:08x} != CLADBG_SMC_ENTRY 0x{CLADBG_SMC_ENTRY:08x}"
         )
         preload = str(cocotb.plusargs.get("smc_scratch_ram_hex", ""))
         if preload and os.path.exists(preload):
