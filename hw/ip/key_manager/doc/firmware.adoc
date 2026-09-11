@@ -13,8 +13,8 @@ that drives the KM mailbox.
 The KM firmware is responsible for bringing the subsystem to a secure
 operational state, servicing SEP mailbox commands, managing key material
 in the KPV, sideloading keys into approved crypto engines, and handling
-recoverable and unrecoverable fault conditions. In this revision, the ROM
-firmware includes the following major functional areas:
+recoverable and unrecoverable fault conditions. The ROM firmware includes
+the following major functional areas:
 
 * Boot and secure initialization
 * Mailbox command/response protocol
@@ -33,8 +33,8 @@ firmware includes the following major functional areas:
 The firmware supports the SEP-facing command set for version and status
 queries, random key generation, key loading, key transfer, key
 revocation, engine shredding, recoverable-fault acknowledgement, and
-mutable firmware handover. In this ROM revision, `CMD_SRAM_VER` returns
-failure unless mutable (SRAM-loaded) firmware is present and executing;
+mutable firmware handover. `CMD_SRAM_VER` returns failure unless mutable
+(SRAM-loaded) firmware is present and executing;
 because the ROM hands control to the mutable firmware before returning,
 `CMD_SRAM_VER` is only meaningful when sent to running mutable firmware.
 
@@ -236,12 +236,6 @@ Which device state each derivation binds is deliberate and differs by flow:
 | The eight KDF opcodes | Full live `LC_STATE` and `DEMOTION`, sampled immediately before each derivation.
 |===
 
-The consequence for the SEP: a key from the KDF opcodes is bound to the lifecycle
-state at the moment it was created, so after a demotion the same request yields a
-different key. Anything that must prove *what state* a device is in should use a
-lifecycle-bound key from those opcodes; identity keys prove only *who* the device
-is.
-
 `DEMOTION` is *not* a fuse value. It is a live signal from the system Life Cycle
 Controller, driven by the SEP host CPU, and it can change at any point in a power
 cycle — including after the KM has already derived its roots. (The KMCSR exposes
@@ -299,7 +293,7 @@ What the reset destroys is everything derived under the old state:
   reset fires only when one of the two has changed; the three `ID_ROOT` values
   bind neither and reproduce unchanged.
 
-One exception to the ordinary warm-reset rules are specific to this trigger:
+One exception to the ordinary warm-reset rules is specific to this trigger:
 
 * *`sram_fw_size` is cleared.* Unlike an ordinary warm reset, a device-state
   reset discards the record of any loaded mutable firmware image, so
@@ -2384,7 +2378,7 @@ key moves between sweep sets when it changes hands.
 
 That interaction is deliberate and is the point of the command. Sweeping by the
 current owner is what lets a host *preserve a key while destroying its owner*.
-This allows eassigning a key that must outlive the owner, clearing the owner, and 
+This allows reassigning a key that must outlive the owner, clearing the owner, and
 then retained keys survive while the owner's roots are gone and nothing further can
 be minted for it. Reading the two commands together, ownership is the unit of
 revocation and reassignment is the escape hatch. A key is only as revocable as
@@ -2787,7 +2781,7 @@ which command it happened to be issuing.
 Each distinct failure condition has its own status wherever the distinction is
 useful to the caller. Conditions are collapsed onto one status only where
 separating them would be actively harmful or would tell the caller nothing it
-could act on. There are exactly two such collapses in this revision, and both
+could act on. Exactly two conditions are collapsed this way, and both collapses
 are deliberate:
 
 * `KM_ERR_INVALID_HANDLE` covers forged, stale, revoked and CRC-failed handles
@@ -4345,7 +4339,7 @@ KM firmware maintains the *key registry* and *root registry*: one *key descripto
 live key, and the mapping between those descriptors and the 64 discrete KPV slots holding
 their material.
 
-The registres are the *only* record of a key or root's existence. The KPV has no field
+The registries are the *only* record of a key or root's existence. The KPV has no field
 describing how many slots a key spans or how many words of its final slot are
 meaningful (<<km-firmware-kpv-driver>>), so a key's length is recorded once here
 at generation time and the slot span is derived from it. That keeps the recorded
