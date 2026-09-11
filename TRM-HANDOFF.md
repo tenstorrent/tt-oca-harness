@@ -8,10 +8,11 @@ It is self-contained for task scope and sequencing; supporting briefs, evidence
 and build instructions are in [handoff/trm](handoff/trm/README.md).
 The original conversation and the original machine are not required.
 
-**Publication state:** local candidate, awaiting agreement on the GitHub branch
-and PR base. Proposed branch: `docs/trm-colleague-handoff`, proposed draft PR base:
-`docs/trm-dtp-pilot-v2` (#1643). Do not assume that branch exists remotely until
-the sender confirms publication. No new PR number has been assigned.
+**Agreed delivery:** branch `docs/trm-colleague-handoff` in
+`tenstorrent/tt-oca-harness`, with a draft PR targeting `docs/trm-dtp-pilot-v2`
+(#1643). The owner authorized this arrangement on 11 September 2026. Existing
+PRs #1641–#1643 retain their recorded source revisions. This transfer does not
+mark 004j accepted or authorize a merge.
 
 ## First action
 
@@ -19,10 +20,10 @@ Read this file, the repository `AGENTS.md`, [current findings](handoff/trm/CURRE
 and [working agreement](handoff/trm/WORKING-AGREEMENT.md). Inspect the checkout's
 branch, HEAD and working status before changing anything. The transferred branch
 contains all work through implementation commit
-`4200cc97a48933163fd56f4ae290474471a7d972`, plus a separate handoff-only commit.
+`4200cc97a48933163fd56f4ae290474471a7d972`, plus handoff-only commits.
 The source commit is **not accepted**. Do not restart from `main` or an older PR.
 
-After publication, a fresh clone can start with:
+A fresh clone can start with:
 
 ```bash
 git clone --branch docs/trm-colleague-handoff https://github.com/tenstorrent/tt-oca-harness.git
@@ -32,7 +33,6 @@ git log -2 --oneline
 git merge-base --is-ancestor 4200cc97a48933163fd56f4ae290474471a7d972 HEAD
 ```
 
-If the owner selects another branch name, use the final published name instead.
 Nominate one coordinating/review agent and one implementation owner. This handoff
 does not by itself authorize launching additional agents. The coordinator owns
 plans, briefs and independent acceptance; implementation results do not constitute
@@ -174,14 +174,17 @@ Verified on 11 September 2026:
 | [#1641](https://github.com/tenstorrent/tt-oca-harness/pull/1641) | `docs/trm-conventions` | `main` | Open draft; merge conflict |
 | [#1642](https://github.com/tenstorrent/tt-oca-harness/pull/1642) | `docs/trm-smu-framework` | `docs/trm-conventions` | Open draft |
 | [#1643](https://github.com/tenstorrent/tt-oca-harness/pull/1643) | `docs/trm-dtp-pilot-v2` | `docs/trm-smu-framework` | Open draft |
-| Proposed transfer PR | `docs/trm-colleague-handoff` | `docs/trm-dtp-pilot-v2` | Not created |
+| Transfer draft PR | `docs/trm-colleague-handoff` | `docs/trm-dtp-pilot-v2` | Authorized for colleague continuation |
 
-The proposed transfer is stacked on #1643, not directly on main. No existing PR
+The transfer is stacked on #1643. No existing PR
 tip has been advanced or rewritten for this handoff. There are 13 appearance
-commits after #1643, plus a separate handoff-only commit. Exact revisions
+commits after #1643, plus handoff-only commits. Exact revisions
 and remote readback are in [provenance](handoff/trm/github-state.json).
 
-Main was `94eae6729096f1b7d46a499b4bdd509ba860922d` at verification. Integrator Guide
+The subsequent conflict assessment used main
+`13cafe6a1ea37ff126d2c88adeabd555984cb9cb`: current TRM has 16 conflicted files
+and 25 conflict blocks, including technical interface changes. See
+[main/IG integration assessment](handoff/trm/MAIN-INTEGRATION.md). Integrator Guide
 draft [#1644](https://github.com/tenstorrent/tt-oca-harness/pull/1644), branch
 `docs/integrator-guide-usability`, head `5925c078d89315963d2162203956ab5ca0b355a9`,
 targets main and also reports a merge conflict. Open IG checklist

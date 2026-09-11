@@ -1,0 +1,152 @@
+[
+  {
+    "path": "doc/integrator/src/index.adoc",
+    "hunk": 1,
+    "mainLines": 2,
+    "branchLines": 1
+  },
+  {
+    "path": "doc/integrator/src/index.adoc",
+    "hunk": 2,
+    "mainLines": 1,
+    "branchLines": 1
+  },
+  {
+    "path": "doc/integrator/src/index.adoc",
+    "hunk": 3,
+    "mainLines": 4,
+    "branchLines": 5
+  },
+  {
+    "path": "doc/ui-supplemental/css/extra.css",
+    "hunk": 1,
+    "mainLines": 19,
+    "branchLines": 101
+  },
+  {
+    "path": "doc/ui-supplemental/css/image-zoom.css",
+    "hunk": 1,
+    "mainLines": 3,
+    "branchLines": 130
+  },
+  {
+    "path": "flows/lint/verilator.mk",
+    "hunk": 1,
+    "mainLines": 2,
+    "branchLines": 0
+  },
+  {
+    "path": "flows/lint/verilator.mk",
+    "hunk": 2,
+    "mainLines": 6,
+    "branchLines": 1
+  },
+  {
+    "path": "flows/lint/verilator.mk",
+    "hunk": 3,
+    "mainLines": 10,
+    "branchLines": 2
+  },
+  {
+    "path": "flows/lint/verilator.mk",
+    "hunk": 4,
+    "mainLines": 8,
+    "branchLines": 6
+  },
+  {
+    "path": "hw/ip/cross_trigger/cross_trigger_network/doc/index.adoc",
+    "hunk": 1,
+    "mainLines": 6,
+    "branchLines": 1
+  },
+  {
+    "path": "hw/ip/jtag/jtag_intf_unit/doc/architecture.adoc",
+    "hunk": 1,
+    "mainLines": 1,
+    "branchLines": 1
+  },
+  {
+    "path": "hw/ip/jtag/jtag_intf_unit/doc/index.adoc",
+    "hunk": 1,
+    "mainLines": 18,
+    "branchLines": 1
+  },
+  {
+    "path": "hw/ip/jtag/jtag_ptap/doc/architecture.adoc",
+    "hunk": 1,
+    "mainLines": 1,
+    "branchLines": 1
+  },
+  {
+    "path": "hw/ip/jtag/jtag_stap/doc/architecture.adoc",
+    "hunk": 1,
+    "mainLines": 3,
+    "branchLines": 8
+  },
+  {
+    "path": "hw/ip/jtag/jtag_stap/doc/architecture.adoc",
+    "hunk": 2,
+    "mainLines": 1,
+    "branchLines": 1
+  },
+  {
+    "path": "hw/ip/jtag/jtag_stap/doc/index.adoc",
+    "hunk": 1,
+    "mainLines": 4,
+    "branchLines": 1
+  },
+  {
+    "path": "hw/sys/dtp/doc/jtag.adoc",
+    "hunk": 1,
+    "mainLines": 38,
+    "branchLines": 30
+  },
+  {
+    "path": "hw/sys/dtp/doc/overview.adoc",
+    "hunk": 1,
+    "mainLines": 6,
+    "branchLines": 8
+  },
+  {
+    "path": "hw/sys/dtp/doc/overview.adoc",
+    "hunk": 2,
+    "mainLines": 23,
+    "branchLines": 22
+  },
+  {
+    "path": "hw/sys/dtp/doc/port_table.adoc",
+    "hunk": 1,
+    "mainLines": 4,
+    "branchLines": 4
+  },
+  {
+    "path": "hw/sys/dtp/doc/port_table.adoc",
+    "hunk": 2,
+    "mainLines": 19,
+    "branchLines": 19
+  },
+  {
+    "path": "hw/sys/dtp/doc/port_table.adoc",
+    "hunk": 3,
+    "mainLines": 1,
+    "branchLines": 1
+  },
+  {
+    "path": "hw/sys/sep/doc/port_table.adoc",
+    "hunk": 1,
+    "mainLines": 2,
+    "branchLines": 0
+  },
+  {
+    "path": "hw/sys/smc/doc/port_table.adoc",
+    "hunk": 1,
+    "mainLines": 5,
+    "branchLines": 5
+  },
+  {
+    "path": "ocah.mk",
+    "hunk": 1,
+    "mainLines": 0,
+    "branchLines": 1
+  }
+]

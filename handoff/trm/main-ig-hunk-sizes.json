@@ -1,0 +1,26 @@
+[
+  {
+    "path": "doc/integrator/src/index.adoc",
+    "hunk": 1,
+    "mainLines": 546,
+    "branchLines": 8
+  },
+  {
+    "path": "doc/integrator/src/index.adoc",
+    "hunk": 2,
+    "mainLines": 2019,
+    "branchLines": 0
+  },
+  {
+    "path": "doc/integrator/src/revision.adoc",
+    "hunk": 1,
+    "mainLines": 3,
+    "branchLines": 3
+  },
+  {
+    "path": "doc/ui-supplemental/css/extra.css",
+    "hunk": 1,
+    "mainLines": 5,
+    "branchLines": 42
+  }
+]

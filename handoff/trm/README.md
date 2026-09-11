@@ -8,6 +8,7 @@ transfer records, not published TRM content. The incoming coordinator may mainta
 them in this transferred workspace. Repository-level agent instructions are unchanged.
 
 - [Current independent review](CURRENT-REVIEW.md)
+- [Main/IG conflict assessment](MAIN-INTEGRATION.md)
 - [Working agreement](WORKING-AGREEMENT.md)
 - [Validation contract and portable commands](VALIDATION.md)
 - [Queued 004k](briefs/004k.md), [queued 004l](briefs/004l.md)
@@ -15,7 +16,7 @@ them in this transferred workspace. Repository-level agent instructions are unch
 - [GitHub state at transfer preparation](github-state.json)
 
 The source implementation revision is `4200cc97a48933163fd56f4ae290474471a7d972`.
-The handoff-only commit does not change that implementation. Original machine-local
+The handoff-only commits do not change that implementation. Original machine-local
 paths in diagnostic records are normalized to placeholders; do not execute them
 as portable scripts. Use VALIDATION.md to rebuild in the recipient's environment.
 

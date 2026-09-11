@@ -1,6 +1,6 @@
 {
   "checkedOn": "2026-09-11",
-  "publicationStatus": "Prepared locally; branch and PR arrangement pending user agreement",
+  "publicationStatus": "Owner authorized docs/trm-colleague-handoff and a draft PR against docs/trm-dtp-pilot-v2 on 2026-09-11; original remote observations below are a preparation snapshot.",
   "pr1642": {
     "base": "docs/trm-conventions",
     "base_sha": "327e02099101fe83ad29b253bce82c1a3a74d6f6",
@@ -112,5 +112,13 @@
     "mergeable": false,
     "mergeable_state": "dirty",
     "html_url": "https://github.com/tenstorrent/tt-oca-harness/pull/1641"
+  },
+  "mainConflictAssessment": {
+    "main": "13cafe6a1ea37ff126d2c88adeabd555984cb9cb",
+    "trmFiles": 16,
+    "trmTextBlocks": 25,
+    "integratorFiles": 4,
+    "integratorTextBlocks": 4,
+    "integratorBinaryPdfConflict": true
   }
 }
