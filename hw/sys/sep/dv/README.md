@@ -141,6 +141,30 @@ exit alone is not enough.** A test passing is the entry condition for reading
 its checkers, never a substitute for them, and a checker row exists only if a run
 can prove it. A log tag is not the proof.
 
+### The evidence gate
+
+A test that exits cleanly without checking anything is not a pass, and
+`sep_base_test` is the mechanism that makes such a run fail. Every check logs
+`CHK-<ID> PASS`; the base class counts the distinct IDs a leaf emitted and
+prints one line per test:
+
+```
+EVIDENCE_SUMMARY test=<name> observed=N own=N required=N missing=N ids=...
+```
+
+`own` excludes the records `sep_base_test` emits during bring-up, so a leaf
+cannot satisfy the gate on infrastructure alone. A leaf whose `own` count is
+zero **fails** — unless it is named in `_EvidenceFilter.NO_OWN_EVIDENCE`, which
+lists the leaves that grade through another channel (firmware console verdict,
+a sequence-level compare, a base-class golden compare) together with the reason
+for each. That list may only shrink; retire an entry by making the check that
+already runs log a `CHK-` ID where it happens.
+
+Leaves may also declare more: `min_evidence = N` sets a floor on `own`, and
+`required_evidence = ("CHK-A", ...)` names IDs that must appear.
+
+The gate proves a check ran. It does not prove the check was right.
+
 The contracts themselves:
 
 * [`docs/index.adoc`](docs/index.adoc) — SEP DV documentation book (entry point)

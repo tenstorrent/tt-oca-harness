@@ -95,6 +95,45 @@ class _EvidenceFilter(logging.Filter):
     # floor of one on this record alone.
     BASE_IDS = frozenset({"CHK-OTP-JTAG2AXI-UNGATED"})
 
+    # Leaves that emit no CHK-* record of their own, with the reason each one
+    # does not. Every entry is a LOGGING gap, not a verification gap: these are
+    # thin shells whose checks live further down the proof path -- in the
+    # sequence they start, or in a base-class golden compare -- and none of them
+    # is a clean exit that checks nothing. Naming them is what lets the floor
+    # below be unconditional for every other leaf.
+    #
+    # This list may only shrink. To remove an entry, make the check that already
+    # runs log `CHK-<ID> PASS` where it actually happens (in the sequence, not
+    # here -- a record emitted by sep_base_test lands in BASE_IDS and is
+    # excluded from `own`).
+    NO_OWN_EVIDENCE = {
+        # Verdict comes from the firmware console PASS/FAIL magic, not from a
+        # leaf-side check. Real grading, wrong channel for this counter.
+        "sep_boot_rom_lsu_read_test": "firmware console verdict",
+        "sep_cpu_ifu_lsu_alias_remap_matrix_test": "firmware console verdict",
+        "sep_dma_cpu_contention_test": "firmware console verdict",
+        "sep_dma_hash_test": "firmware console verdict",
+        "sep_hello_world_test": "firmware console verdict",
+        "sep_hmac_kmac_cpu_crypto_smoke_test": "firmware console verdict",
+        "sep_mailbox_plic_test": "firmware console verdict",
+        "sep_nmi_sanity_test": "firmware console verdict",
+        "sep_spi_ot_dma_rx_test": "firmware console verdict",
+        # Asserts in the leaf itself, but the log line carries no CHK- ID.
+        # These are the cheapest entries to retire: label the existing assert.
+        "sep_clock_uvm_wdt_rst_input_reset_path_test": "in-leaf asserts, unlabelled",
+        "sep_efuse_km_axil_cpu_mux_coexist_test": "in-leaf asserts, unlabelled",
+        "sep_km_mem_smoke_test": "in-leaf asserts, unlabelled",
+        "sep_otbn_mem_smoke_test": "in-leaf asserts, unlabelled",
+        "sep_rom_sanity_test": "in-leaf asserts, unlabelled",
+        "sep_spi_flash_jedec_smoke_test": "in-leaf asserts, unlabelled",
+        # Checks live in the sequence the leaf starts.
+        "sep_axi_smoke_test": "sequence-level compares plus AXI scoreboard check_phase",
+        "sep_sram_smoke_test": "sequence-level compares",
+        # Backdoor leaf: the golden compare is
+        # sep_base_test._check_efuse_shadow_after_sense.
+        "sep_efuse_sense_test": "base-class eFuse shadow golden compare",
+    }
+
     def __init__(self) -> None:
         super().__init__()
         self.seen: set[str] = set()
@@ -1217,6 +1256,12 @@ class sep_base_test(uvm_test):
         )
 
         problems: list[str] = []
+        if not own and self.get_type_name() not in _EvidenceFilter.NO_OWN_EVIDENCE:
+            problems.append(
+                "no CHK-* PASS record of its own -- a run that grades nothing cannot "
+                "be a pass. If this leaf's checks live in its sequence, log them "
+                "there; if it genuinely checks nothing, that is the finding"
+            )
         if self.min_evidence and len(own) < self.min_evidence:
             problems.append(
                 f"{len(own)} distinct CHK-* PASS record(s) of its own, "
