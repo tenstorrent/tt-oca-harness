@@ -8,13 +8,11 @@
   jtag_clock_stop signal name removed from SVG; described in adjacent overview.adoc.
   AXI-CSR description shortened to "CTM routes · CTP · clock-stop" (~30 chars × 13.0px ≈ 390px ≤ 460px ✓).
   CTP Pads label shortened to "xtrig_ctp_*" (~11 chars × 13.65px ≈ 150px ≤ 160px box ✓).
-  Aggregator formula split over two lines:
-    "jtag_clock_stop OR" ≈ 18 chars × 13.65px ≈ 246px ✓
-    "xtrig_clk_stop_req_i → stop_clks_o" ≈ 35 chars × 13.65px ≈ 478px — trim to
-    "xtrig_clk_stop_req_i → stop_clks_o" but let SVG clip; both lines ≤ 460px box width
-    (measured: "xtrig_clk_stop_req_i"=20chars≈273px + " → stop_clks_o"=14chars≈191px
-    combined=487px > 460px — split to separate output line and keep signal on one line).
-  jtag_clock_stop route: (280,175)→(460,175)→(460,266)→(470,266), NO label.
+  Aggregator: title y=248, content y=270/292/310. Box y=226..316 (height=90).
+    Bottom line bbox_top≈290, bottom≈313 < box_bottom=316 ✓.
+    Content lines use "-> stop_clks_o" (ASCII hyphen-arrow, no Unicode U+2192 which renders as ¬ in PDF).
+  jtag_clock_stop route: (280,175)→(460,175)→(460,266)→(470,266), NO label. Uses x=460.
+  CTM→InternalCT route: (470,204)→(452,204)→(452,460)→(470,460). Uses x=452 to avoid x=460 overlap.
   PTAP→iJTAG route: (280,140)→(440,140)→(440,372)→(390,372).
 -->
 <svg xmlns="http://www.w3.org/2000/svg" version="1.1"
@@ -116,24 +114,21 @@
         stroke="#aa4a4a" stroke-width="1.5" marker-end="url(#arr-r)"/>
 
   <!-- Clock-Stop Aggregator  x=470..930, y=226..316
-       Four lines: title y=248, content y=270/292/314. Box height=90px.
-       "jtag_clock_stop OR" ≈ 18 chars × 13.0px ≈ 234px < 460px ✓
-       "xtrig_clk_stop_req_i" ≈ 20 chars × 13.0px ≈ 260px < 460px ✓
-       "→ stop_clks_o" ≈ 13 chars × 13.0px ≈ 169px < 460px ✓
-       All lines safely within 460px box. -->
+       Four lines: title y=248, content y=270/292/310. Box height=90px.
+       Chromium: title top=227, bottom=252; line2 top=250, bottom=273; line3 top=272, bottom=295.
+       Line4 at y=310: bbox_top≈290, bottom≈313 < box_bottom=316 ✓ (moved up 4px from y=314).
+       "-> stop_clks_o" uses ASCII "->" not U+2192 (which renders as ¬ in PDF). -->
   <rect x="470" y="226" width="460" height="90" rx="5"
         fill="#f4dcdc" stroke="#aa4a4a" stroke-width="1.5"/>
   <text x="700" y="248" class="label" text-anchor="middle" font-weight="bold">Clock-Stop Aggregator</text>
   <text x="700" y="270" class="small" text-anchor="middle">jtag_clock_stop OR</text>
   <text x="700" y="292" class="small" text-anchor="middle">xtrig_clk_stop_req_i</text>
-  <text x="700" y="314" class="small" text-anchor="middle">→ stop_clks_o</text>
+  <text x="700" y="310" class="small" text-anchor="middle">-> stop_clks_o</text>
 
   <!-- jtag_clock_stop route (gold dashed): exits PTAP right at y=175, via x=460 corridor,
        enters Aggregator left at (470,266). NO label — signal name in overview.adoc prose.
-       Route: (280,175)→(460,175)→(460,266)→(470,266).
-       x=460 corridor: between JIU right (410) and CTN left (450) is x=410..450; x=460 is
-       inside CTN boundary (x=450..980) but outside all CTN blocks (CTM starts x=470, etc.).
-       The 10px gap at x=460..470 is used as a routing corridor within CTN interior. -->
+       Route: (280,175)→(460,175)→(460,266)→(470,266). Uses x=460.
+       CTM→InternalCT route uses x=452 (distinct, 8px separation) — no overlap. -->
   <polyline points="280,175 460,175 460,266 470,266"
             fill="none" stroke="#998866" stroke-width="2" stroke-dasharray="6 4"
             marker-end="url(#arr-k)"/>
@@ -161,8 +156,9 @@
   <text x="570" y="458" class="label" text-anchor="middle" font-weight="bold">Internal CT</text>
   <text x="570" y="484" class="small" text-anchor="middle">xtrig_ctm_src/dst</text>
 
-  <!-- CTM → Internal CT route at x=460 corridor -->
-  <polyline points="470,204 460,204 460,460 470,460"
+  <!-- CTM → Internal CT route at x=452 corridor.
+       x=452 avoids x=460 used by jtag_clock_stop route (8px separation, distinct routes). -->
+  <polyline points="470,204 452,204 452,460 470,460"
             fill="none" stroke="#aa4a4a" stroke-width="1.2" stroke-dasharray="5 3"
             marker-end="url(#arr-r)"/>
 

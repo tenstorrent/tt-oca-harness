@@ -13,14 +13,17 @@ scan ports and control signals derived from internal TDRs.
 .PTAP module architecture
 image::ptap_module_diagram.svg[alt="PTAP module diagram showing TAP controller, instruction register, instruction decoder, TDR bank, scan path mux, and STAP select",scaledwidth=90%]
 
-Blue arrows show TAP Controller control signals (Capture/Shift/Update).
-Grey solid arrows show PTAP_TDI scan-data inputs.
-Grey dashed arrows show scan-data paths: TDI fans out to all TDR scan-in inputs; the
-selected IR or TDR scan-out returns through the Scan Path Mux to the retimed PTAP_TDO.
-The TDR Bank registers (`BYPASS`, `IDCODE`, `DEBUG_CONTROL`, and others) are listed in
+Blue arrows show TAP Controller control signals (Capture/Shift/Update) and
+decoded instruction/selection signals from the Instruction Decoder.
+Grey arrows show scan-data paths: solid grey carries PTAP_TDI scan-in (fanning
+out directly to IR, all TDR scan-in inputs, `BSR_SI`, and `IJTAG_SI`); dashed
+grey carries scan-out returns — the selected IR or TDR scan-out is chosen by the
+Scan Path Mux and forwarded to PTAP_TDO (retimed on falling TCK edge; zero-length
+bypass uses the ZLB path, which bypasses the retimer).
+The TDR Bank registers (`BYPASS`, `IDCODE`, `DBG_CTRL`, and others) are listed in
 the Module Hierarchy table below.
-External scan interfaces — `BSR_SI`/`BSR_SO`, `IJTAG_SI`/`IJTAG_SO`, and the
-lifecycle-gated AXI bridge scan ports — connect through the Scan Path Mux.
+`BSR_SI`/`IJTAG_SI` scan-in arrives directly from PTAP_TDI fan-out;
+`BSR_SO`/`IJTAG_SO` scan-out returns are selected by the Scan Path Mux.
 
 === Module Hierarchy
 

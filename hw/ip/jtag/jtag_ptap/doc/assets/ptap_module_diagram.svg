@@ -35,9 +35,11 @@
       At 17px, widest label "TMP_STATUS" ≈ 103px, centred x=730 → left=678.5 > 648 ✓.
       Endpoint (648,402)→(650,402) enters TDR Bank left edge ✓.
   J5: BSR/IJTAG route horizontal-only entering Scan Path Mux left at y=390.
-      Labels "BSR_SI /" at y=452, "IJTAG_SI" at y=476. Route y=390 < 452 ✓.
-  J6: TDO route: (270,408)→(14,408) horizontal, exits left. Label "PTAP_TDO" at y=510.
-      Route y=408 < label y=510 ✓.
+      Labels "BSR_SI /" at y=372, "IJTAG_SI" at y=389 — immediately above route y=390.
+      Both labels within ≤2px of route, unambiguously associated.
+  J6: TDO route: (270,408)→(14,408) horizontal, exits left. Label "PTAP_TDO" at y=428,
+      immediately below route y=408. Clear separation from BSR/IJTAG group above.
+  J7: "TDI -> TDR scan-in" uses ASCII "->" (not U+2192) to avoid PDF ¬ substitution.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" version="1.1"
      width="860" height="580" viewBox="0 0 860 580">
@@ -200,8 +202,8 @@
   <polyline points="632,66 632,402 650,402"
             fill="none" stroke="#555555" stroke-width="1.2" stroke-dasharray="5 3"
             marker-end="url(#arr-g)"/>
-  <!-- Label for TDI→TDR branch -->
-  <text x="500" y="58" class="small" text-anchor="middle">TDI → TDR scan-in</text>
+  <!-- Label for TDI->TDR branch. ASCII "->" avoids PDF U+2192 -> "¬" substitution. -->
+  <text x="500" y="58" class="small" text-anchor="middle">TDI -> TDR scan-in</text>
 
   <!-- ── IR scan-out → Scan Path Mux (P7 preserved) ──
        Route: (430,180)→(450,180)→(450,368)→(430,368).
@@ -217,21 +219,25 @@
             marker-end="url(#arr-g)"/>
   <text x="585" y="444" class="small" text-anchor="middle">scan-out data</text>
 
-  <!-- J5: BSR_SI / IJTAG_SI — horizontal-only route entering Scan Path Mux left at y=390.
-       Route: (14,390)→(270,390). Route y=390 < label y=452 ✓.
-       Labels at y=452 and y=476 (below mux bottom y=418 area, well below route). -->
+  <!-- BSR_SI / IJTAG_SI — horizontal route entering Scan Path Mux left at y=390.
+       Route: (14,390)→(270,390). Labels placed immediately above the route endpoint
+       at x=14, stacked at y=372 and y=389 (line-spacing 17px at 19px font).
+       BSR_SI bbox bottom≈372+5≈377 < route y=390; IJTAG_SI baseline=389, top≈370, bottom≈392.
+       Both labels within ≤2px of route y=390, unambiguously associated with this route. -->
+  <text x="14" y="372" class="port" text-anchor="start">BSR_SI /</text>
+  <text x="14" y="389" class="port" text-anchor="start">IJTAG_SI</text>
   <line x1="14" y1="390" x2="270" y2="390"
         fill="none" stroke="#555555" stroke-width="1.2"
         marker-end="url(#arr-g)"/>
-  <text x="14" y="452" class="port" text-anchor="start">BSR_SI /</text>
-  <text x="14" y="476" class="port" text-anchor="start">IJTAG_SI</text>
 
-  <!-- J6: PTAP_TDO — horizontal route exiting Scan Path Mux left at y=408, going left.
-       Route: (270,408)→(14,408). Arrow at left end (14,408).
-       Label "PTAP_TDO" at y=510 (below outer boundary; route y=408 < label y=510 ✓). -->
+  <!-- PTAP_TDO — horizontal route exiting Scan Path Mux left at y=408, going left.
+       Route: (270,408)→(14,408). Arrow at left (14,408).
+       Label placed immediately below the route at y=428, clearly below and distinct from
+       the BSR/IJTAG group above (≥36px gap between IJTAG route y=390 and TDO route y=408,
+       then TDO label at y=428). -->
   <line x1="270" y1="408" x2="14" y2="408"
         fill="none" stroke="#555555" stroke-width="1.5"
         marker-end="url(#arr-g)"/>
-  <text x="14" y="510" class="port" text-anchor="start">PTAP_TDO</text>
+  <text x="14" y="428" class="port" text-anchor="start">PTAP_TDO</text>
 
 </svg>
