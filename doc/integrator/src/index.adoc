@@ -566,7 +566,7 @@ The SMC aggregates interrupts from multiple sources into `cpu_interrupts_o`, whi
 the PLIC of the embedded RISC-V CPU cluster. The interrupt vector is assembled in
 `hw/sys/smc/rtl/smc_base.sv` and
 `hw/sys/smc/rtl/smc_peripherals/rtl/smc_peripherals.sv`. The authoritative
-bit-level map (1-core and 4-core columns, RTL trace, and PLIC source ID note) is
+bit-level map (RTL trace and PLIC source ID note) is
 maintained in a single place:
 
 ifdef::backend-html5[]
@@ -864,10 +864,21 @@ The SEP includes an internal entropy source that requires a ring-oscillator
 sample clock connected to `entropy_rosc_sample_clk_i`. This clock must be
 asynchronous to `clk_i` and typically runs between 100 and 400 MHz.
 
+[[sep-ext-trng]]
+===== External TRNG
+
 For adopters providing an external TRNG, the `ext_trng_axil` AXI-Lite interface
 connects to the external TRNG's control registers, while the `ext_trng_axis`
 AXI-Stream interfaces carry entropy data. The `ext_trng_irq_i` input is routed
 to the PIC; `ext_trng_alarm_i` is reserved for RAS.
+
+SEP decodes the 4 kB TRNG aperture (`0x1091_7000` - `0x1091_7FFF`) as a single
+window and forwards every access on `ext_trng_axil`. It does not decode offsets
+inside that window: the endpoint is an adopter-defined IP.
+
+The adopter must perform the intra-aperture decode. An address that owns no
+register must return SLVERR and must not alias onto a live register. When no
+external TRNG is connected, terminate `ext_trng_axil` with a DECERR slave.
 
 ==== eFuse and Lifecycle
 
