@@ -4,9 +4,11 @@
 
 Write-policy and ``SECURE_TM`` membership come from ``_FIELD_ROWS``
 (``hw/sys/sep/doc/periphs.adoc`` fuse-field table). Offsets and widths
-come from the generated RDL header. The set-only and writable walks
-together cover every row except ``LC_STATE``. ``REQUIRED_SIGNERS`` is
-writable and is not on the ``SECURE_TM_LOCK`` list.
+come from the generated RDL header. The set-only, lock, and writable
+walks together cover every row except ``LC_STATE``. ``LOCK`` is walked
+only when both RDL windows (``LOCKS`` and ``LOCKS_SPARE``) are written.
+``REQUIRED_SIGNERS`` is writable and is not on the ``SECURE_TM_LOCK``
+list.
 """
 
 from __future__ import annotations
@@ -14,12 +16,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 # Walk pins that are not write-policy. DIS word 0 carries sep_debug,
-# chiplet_dbg, the fuse-dbg bits and sip_debug. LOCK assigned slots lock a
-# field this sweep still writes; unassigned LOCKS_SPARE bits do not.
+# chiplet_dbg, the fuse-dbg bits and sip_debug. Assigned LOCK slots lock a
+# field this sweep still writes, so those bits stay 0 until the lock walk.
 # LC_STATE used bits are the lifecycle nibble; the LC W1S leaves own them.
 _DIS_FUNCTION_GROUP = (0xFFFF_0000, 1)
-_LOCK_UNASSIGNED = (0xFFFF_0000, 0)
-_SWEEP_EXCLUDE = frozenset({"LC_STATE"})
+_LOCK_ASSIGNED = 0x0000_FFFF
+_LOCK_UNASSIGNED = 0xFFFF_0000
+_SWEEP_EXCLUDE = frozenset({"LC_STATE", "LOCK"})
 
 
 @dataclass(frozen=True)
@@ -109,20 +112,41 @@ def spec_secret_regs() -> tuple[str, ...]:
 
 
 def spec_set_only_walk() -> tuple[tuple[str, int, int | None], ...]:
-    """Every ``periphs.adoc`` set-only row, as the RDL register the sweep writes."""
+    """Set-only rows other than ``LOCK`` and ``LC_STATE``.
+
+    ``LOCK`` is ``spec_lock_walk``: both RDL windows, after the other rows.
+    """
     out: list[tuple[str, int, int | None]] = []
     for field in spec_fields():
         if not field.set_only or field.spec_name in _SWEEP_EXCLUDE:
             continue
-        if field.spec_name == "LOCK":
-            mask, pin = _LOCK_UNASSIGNED
-            out.append(("LOCKS_SPARE", mask, pin))
-        elif field.reg_name in ("SIP_DIS", "SYS_DIS"):
+        if field.reg_name in ("SIP_DIS", "SYS_DIS"):
             mask, pin = _DIS_FUNCTION_GROUP
             out.append((field.reg_name, mask, pin))
         else:
             out.append((field.reg_name, field.word_used_mask, None))
     return tuple(out)
+
+
+def spec_lock_walk() -> tuple[tuple[str, int, int, int, int], ...]:
+    """``LOCK`` as both RDL windows.
+
+    Each cell is ``(rdl_name, used_mask, word_idx, sensed_mask, set_mask)``.
+    Assigned slots stay 0 at sense. ``LOCKS_SPARE`` stages ones only in the
+    unassigned half; the assigned half is set from zero after the other
+    rows finish.
+    """
+    return (
+        ("LOCKS", 0xFFFF_FFFF, 0, 0, 0xFFFF_FFFF),
+        ("LOCKS", 0xFFFF_FFFF, 1, 0, 0xFFFF_FFFF),
+        (
+            "LOCKS_SPARE",
+            0xFFFF_FFFF,
+            0,
+            _LOCK_UNASSIGNED,
+            _LOCK_ASSIGNED,
+        ),
+    )
 
 
 def spec_writable_shadow_walk() -> tuple[tuple[str, int], ...]:
@@ -135,11 +159,17 @@ def spec_writable_shadow_walk() -> tuple[tuple[str, int], ...]:
 
 
 def spec_walked_rows() -> frozenset[str]:
-    """Specification field names reached by the set-only or writable walk."""
+    """Specification field names reached by the set-only, lock, or writable walk.
+
+    ``LOCK`` is counted only when both ``LOCKS`` and ``LOCKS_SPARE`` are in
+    the lock walk. A spare-only substitute does not count.
+    """
     rdl_to_spec = {f.reg_name: f.spec_name for f in spec_fields()}
-    rdl_to_spec["LOCKS_SPARE"] = "LOCK"
     names = {rdl_to_spec[n] for n, _, _ in spec_set_only_walk()}
     names.update(rdl_to_spec[n] for n, _ in spec_writable_shadow_walk())
+    lock_rdl = {n for n, *_ in spec_lock_walk()}
+    if {"LOCKS", "LOCKS_SPARE"} <= lock_rdl:
+        names.add("LOCK")
     return frozenset(names)
 
 
@@ -154,7 +184,6 @@ def _selftest() -> None:
     assert spec_secret_regs() == SECRET_REGS
     walk = spec_set_only_walk()
     assert [n for n, _, _ in walk] == [
-        "LOCKS_SPARE",
         "SIP_DIS",
         "SYS_DIS",
         "CHIPLET_PUBK_REVOKE",
@@ -162,6 +191,11 @@ def _selftest() -> None:
         "BL2_VERSION",
         "REQUIRED_ALGS",
     ]
+    lock = spec_lock_walk()
+    assert [n for n, *_ in lock] == ["LOCKS", "LOCKS", "LOCKS_SPARE"]
+    assert {n for n, *_ in lock} == {"LOCKS", "LOCKS_SPARE"}
+    assert lock[0][2] == 0 and lock[1][2] == 1
+    assert lock[2][3] == _LOCK_UNASSIGNED and lock[2][4] == _LOCK_ASSIGNED
     writable = spec_writable_shadow_walk()
     assert len(writable) == 33
     assert dict(writable)["REQUIRED_SIGNERS"] == 0x3

@@ -3,18 +3,17 @@
 """eFuse read and program FSMs fail closed from an illegal state.
 
 ``efuse_read_interface`` and ``efuse_program_interface`` each hold a two-bit
-state whose only legal encodings are ``2'b01`` (idle) and ``2'b10`` (waiting for
-the bank response). ``2'b00`` and ``2'b11`` are unreachable by design, so the
-recovery the RTL specifies for them cannot be provoked by any frontdoor
-stimulus. This leaf injects one, for one cycle, and grades the recovery.
+state. ``hw/ip/efuse/doc/architecture.adoc`` names a two-state sequence
+(idle, then waiting for a bank response). No document names the encodings.
+This leaf treats ``2'b01`` as idle and ``2'b10`` as wait, and injects the
+other two values for one cycle. Those two codes have no frontdoor.
 
-The contract, from the design's own assertions:
+The recovery this leaf grades is DV-owned:
 
-* while the state is illegal, no command reaches the bank
-  (``IllegalReadStateSuppressesRequest_A`` / ``IllegalProgramState…``);
-* on the next edge the FSM is back in idle, not busy, reporting done with the
-  error flag set, still issuing no command, and not handing back the sensed
-  fuse word (``IllegalReadStateFailsClosed_A`` / ``IllegalProgramState…``).
+* while the injected encoding is held, no command reaches the bank;
+* on the next edge the interface is idle, not busy, reports done with the
+  error flag set, still issues no command, and does not hand back the
+  sensed fuse word.
 
 Failing closed is the point: an FSM that resumed a read from a corrupted state
 could return fuse data it never legitimately fetched.

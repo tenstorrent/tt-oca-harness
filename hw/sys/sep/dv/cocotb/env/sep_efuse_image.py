@@ -55,15 +55,17 @@ SHADOW_BASE = sym("SEP_EFUSE_MAP_REG_MAP_BASE_ADDR")
 # SEP CPU-ctrl fuse-sense-done status (separate block).
 SEP_FUSE_SENSE_STATUS = SEP_CPU_CTRL.addr("SEP_FUSE_SENSE_STATUS")
 
-# LC_STATE's shadow word (efuse_pkg::SHADOW_IDX_LC_STATE). The OTP word carries the
-# 4-bit raw code in [3:0] and the FSM differential-encodes it.
+# LC_STATE's shadow word. The OTP word carries the 4-bit raw code in [3:0]
+# and the FSM differential-encodes it.
 #
 # Derived, never written down. Read the index out of the generated map so a
 # hardcoded word offset cannot silently point at a neighbour field (a wrong but
 # self-consistent differential pair still looks healthy to a shadow checker).
 LC_WORD_IDX = sym("SEP_EFUSE_MAP_LC_STATE_REG_OFFSET") // 4
 LC_RAW_WIDTH = 4
-# efuse_pkg::lc_state_raw_e — only these 7 codes are legal.
+# Legal raw LC_STATE codes from hw/sys/sep/doc/lifecycle_controller.adoc
+# (encoding table and the per-LC-state feature-control profile).
+# Only these seven are legal.
 LC_TEST_DEV = 0x0
 LC_PROD = 0x1
 LC_RMA_SIP_0 = 0x2

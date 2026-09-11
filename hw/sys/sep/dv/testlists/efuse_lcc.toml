@@ -102,8 +102,8 @@ target = "lsu_stub_all_live"
 [[tests]]
 # eFuse shadow write-policy sweep: every periphs.adoc fuse-field row
 # except LC_STATE. RANDCFG: set-only rows OR-merge; SW-writable rows
-# overwrite. LOCK is the unassigned LOCKS_SPARE bits. Word index and
-# bit patterns come from the run seed.
+# overwrite. LOCK is both RDL windows after the other rows. Word index
+# and bit patterns come from the run seed.
 # Real fuse sense. Program x lock stays a different mechanism.
 name = "sep_efuse_set_only_monotonicity_test"
 module = "efuse.sep_efuse_set_only_monotonicity_test"

@@ -5,9 +5,11 @@
 RANDCFG. Every seed walks every ``periphs.adoc`` fuse-field row except
 ``LC_STATE``. Set-only rows OR-merge; SW-writable rows overwrite.
 ``SIP_DIS`` and ``SYS_DIS`` stay on their function-group word. ``LOCK``
-is the unassigned ``LOCKS_SPARE`` bits. The lifecycle nibble stays with
-the LC W1S leaves. Word index and bit patterns come from the run seed.
-Program x lock is a different mechanism.
+is both RDL windows (``LOCKS`` word 0, ``LOCKS`` word 1, ``LOCKS_SPARE``)
+after the other rows, from a zero sense on assigned slots. The
+lifecycle nibble stays with the LC W1S leaves. Word index and bit
+patterns come from the run seed. Program x lock is a different
+mechanism.
 
 Real fuse sense. ``SepEfuseSetOnlyCfg`` is the single source of truth
 for the image pins and the checker goldens.
@@ -37,13 +39,16 @@ class sep_efuse_set_only_monotonicity_test(sep_base_test):
         )
         self.logger.info("CHK-SENSE PASS: %s[%d] sensed 0x%08x", name, word, got)
 
-        await shadow.write_word(name, word, field.drive_word(0))
-        got = await shadow.read_word(name, word)
-        assert got == field.sensed, (
-            f"CHK-CLEAR-REJECT FAIL: {name}[{word}] write-0 cleared "
-            f"0x{field.sensed:08x} -> 0x{got:08x}"
-        )
-        self.logger.info("CHK-CLEAR-REJECT PASS: %s[%d] write-0 left 0x%08x", name, word, got)
+        if field.sensed:
+            await shadow.write_word(name, word, field.drive_word(0))
+            got = await shadow.read_word(name, word)
+            assert got == field.sensed, (
+                f"CHK-CLEAR-REJECT FAIL: {name}[{word}] write-0 cleared "
+                f"0x{field.sensed:08x} -> 0x{got:08x}"
+            )
+            self.logger.info(
+                "CHK-CLEAR-REJECT PASS: %s[%d] write-0 left 0x%08x", name, word, got
+            )
 
         await shadow.write_word(name, word, field.drive_word(field.set_bits))
         got = await shadow.read_word(name, word)
@@ -90,7 +95,15 @@ class sep_efuse_set_only_monotonicity_test(sep_base_test):
             pattern,
         )
 
+    async def _collect(self, coro) -> None:
+        try:
+            await coro
+        except AssertionError as exc:
+            self.logger.error("%s", exc)
+            self._failures.append(str(exc))
+
     async def run_scenario(self) -> None:
+        self._failures: list[str] = []
         cfg = SepEfuseSetOnlyCfg(self.random_seed())
         self.logger.info("efuse set-only monotonicity: %s", cfg.summary())
 
@@ -98,19 +111,33 @@ class sep_efuse_set_only_monotonicity_test(sep_base_test):
         img = self.select_efuse_image(lc_raw=LC_TEST_DEV, fixed=cfg.image_fixed())
         self.write_efuse_image(img)
         await self.bring_up_and_wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
-        await self.start_seq(
-            sep_efuse_shadow_check_seq(
-                img, fields=[f.name for f in cfg.fields] + [w.name for w in cfg.writable]
+        walked = list(
+            dict.fromkeys(
+                [f.name for f in cfg.fields]
+                + [f.name for f in cfg.lock_fields]
+                + [w.name for w in cfg.writable]
             )
         )
+        await self.start_seq(sep_efuse_shadow_check_seq(img, fields=walked))
 
         shadow = SepEfuseShadow(self)
         for field in cfg.fields:
-            await self._check_field(shadow, field)
+            await self._collect(self._check_field(shadow, field))
         for field in cfg.writable:
-            await self._check_writable_contrast(shadow, field)
+            await self._collect(self._check_writable_contrast(shadow, field))
+        # Assigned lock bits write-lock the row they name, so both LOCK
+        # windows run after every other shadow write in this invocation.
+        for field in cfg.lock_fields:
+            await self._collect(self._check_field(shadow, field))
+        if self._failures:
+            raise AssertionError(
+                f"{len(self._failures)} eFuse write-policy check(s) failed: "
+                + "; ".join(self._failures)
+            )
         self.logger.info(
-            "CHK-RANDCFG PASS: walked %d set-only fields and %d writable fields",
+            "CHK-RANDCFG PASS: walked %d set-only fields, %d lock cells "
+            "(LOCKS word 0, LOCKS word 1, LOCKS_SPARE) and %d writable fields",
             len(cfg.fields),
+            len(cfg.lock_fields),
             len(cfg.writable),
         )
