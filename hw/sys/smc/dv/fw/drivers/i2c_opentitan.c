@@ -533,18 +533,12 @@ int i2c_controller_write(uint32_t idx, uint8_t target_addr, const uint8_t *data,
                       fdata.w);
     }
 
-    // CRITICAL: Wait for FMT FIFO to be completely processed (OPTIMIZED: Reduce polling by 1000x)
-    // In repeated START scenario, we need to ensure the entire transaction (all data bytes)
-    // has been sent before returning, otherwise the next transaction may be sent too early.
-    // We wait for FMT FIFO to become empty (fmtempty=1), indicating all entries have been
-    // processed.
+    // Wait for FMT FIFO to empty so the next START is not issued while
+    // this transaction's entries are still being shifted out.
     if (!send_stop) {
-        // For repeated START: Wait for FMT FIFO to become empty (OPTIMIZED)
-        // This ensures the entire transaction (START + address + all data bytes) has been sent
-        // before we return, allowing the next transaction to be sent correctly.
+        // Repeated START: FMT FIFO empty means START + address + data have gone.
         uint32_t wait_count = 0;
-        const uint32_t MAX_WAIT =
-            10000; // Optimized: Increased from 100 to 10000 (100x) to allow I2C completion
+        const uint32_t MAX_WAIT = 10000;
         i2c__STATUS_t status;
 
         while (wait_count < MAX_WAIT) {
@@ -1565,8 +1559,7 @@ int i2c_target_receive_transaction(uint32_t idx, uint8_t *buffer, uint32_t buffe
         if (status.f.ACQEMPTY && in_txn != 0) {
             // Brief wait for next FIFO entry
             count = 0;
-            uint32_t inter_byte_timeout =
-                10000; // OPTIMIZED: Reduced from 10000 to 100 (100x reduction)
+            uint32_t inter_byte_timeout = 10000;
             while (count < inter_byte_timeout) {
                 status.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
                                                 SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)));
