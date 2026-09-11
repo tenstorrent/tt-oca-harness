@@ -122,7 +122,7 @@
 |`smc_wdt_second_timeout_o` |`logic` |Output |1 |Second watchdog timeout signal. |External systems |N/A
 |`smc_region_size_o` |`logic` |Output |`[31:0]` |SMC address region size output. |External systems |N/A
 
-|`smc_ext_interrupts_i` |`logic` |Input |`[Cfg.NUM_INT_TO_SMC-1:0]` |External interrupt inputs to SMC. |External interrupt sources |Tie to '0 if unused
+|`smc_ext_interrupts_i` |`logic` |Input |`[Cfg.NUM_INT_TO_SMC-1:0]` |External interrupt inputs to SMC. Active-high level or a pulse long enough to be sampled on `clk_smc`. |External interrupt sources |Tie to '0 if unused
 |`smc_fuse_sense_done_o` |`logic` |Output |1 |SMC fuse sense completion output. |Memory repair logic |N/A
 |`smc_fuse_reset_n_delayed_o` |`logic` |Output |1 |Delayed fuse reset output. |External systems |N/A
 |`skip_mem_repair_o` |`logic` |Output |1 |Skip memory repair output. |Memory repair logic |N/A
