@@ -74,10 +74,10 @@ class sep_firmware_backup_invalid_key_hash_test(sep_backup_manifest_fail_base):
     def corrupt_primary(self, buf: bytearray) -> None:
         # Different byte from the backup's, so the two mutations cannot be one
         # write landing twice, and each slot's digest is independently wrong.
-        mm.corrupt_public_key(buf, "primary", byte_index=0)
+        mm.corrupt_public_key(buf, "primary", offset=0)
 
     def corrupt_backup(self, buf: bytearray) -> None:
-        mm.corrupt_public_key(buf, "backup", byte_index=383)
+        mm.corrupt_public_key(buf, "backup", offset=383)
 
     def check_efuse(self, image) -> None:
         # Both run before the key bind and would terminate the run first, making

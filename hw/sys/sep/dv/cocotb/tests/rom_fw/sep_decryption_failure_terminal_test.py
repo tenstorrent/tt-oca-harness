@@ -111,7 +111,8 @@ class sep_decryption_failure_terminal_test(sep_backup_manifest_fail_base):
     def corrupt_primary(self, buf: bytearray) -> None:
         base = pm.payload_base(buf, "primary")
         before = bytes(buf[base : base + 16])
-        at, new = pm.corrupt_ciphertext(buf, "primary")
+        at = pm.corrupt_ciphertext(buf, "primary")
+        new = buf[at]
         after = bytes(buf[base : base + 16])
         assert before != after, "the ciphertext flip did not change the image"
         self.logger.info(

@@ -83,6 +83,12 @@ class sep_firmware_primary_invalid_public_key_selection_test(sep_primary_fail_ba
     )
 
     def corrupt_primary(self, buf: bytearray) -> None:
+        # Anchor the modulus while the selection still resolves: verify_public_key
+        # picks its digest via get_public_key_sel, which the ambiguity below makes
+        # unresolvable by design. Proving the key is the one its selection claimed
+        # before the mutation is what keeps the rejection attributable to the
+        # bitmap rather than to a bad key.
+        signed_slot = mm.verify_public_key(buf, "primary")
         # No manifest_identifier corruption: the primary must reach key selection.
         mm.set_public_key_slots(buf, "primary", _AMBIGUOUS_SLOTS)
         # get_public_key_sel refuses to resolve a bitmap naming more than one
@@ -100,13 +106,14 @@ class sep_firmware_primary_invalid_public_key_selection_test(sep_primary_fail_ba
         # thrown out before key selection and this testcase would be asserting on
         # the wrong rejection.
         mm.verify_layout(buf, "primary")
-        # Everything else about the primary is untouched, including the modulus.
-        mm.verify_public_key(buf, "primary")
+        # set_public_key_slots rewrites the selection field and re-hashes; the
+        # modulus is outside both, so the key anchored above is still in place.
         self.logger.info(
             "CHK-STIMULUS-PUBKSEL: primary public_key_sel names slots %s, both "
-            "individually valid, re-hashed, magic intact so the slot still "
-            "reaches key authorization",
+            "individually valid, modulus still the ROM key %d it was signed with, "
+            "re-hashed, magic intact so the slot still reaches key authorization",
             _AMBIGUOUS_SLOTS,
+            signed_slot,
         )
 
     def check_efuse(self, image) -> None:
