@@ -741,11 +741,16 @@ module sep_crypto #(
   // Assemble km_otp_data_t from efuse shadow registers and lifecycle ctrl.
   // LC state and demotion state arrive already differentially encoded from
   // their respective sources (shadow register and LCC output).
-  // The four 256-bit secret fields (chiplet_uid, class_key, sip_uid, sys_uid)
-  // and the three 256-bit public identity fields (sep_chiplet_id, sep_sip_id,
-  // sep_sys_id) are dual-rail encoded here at the source (Sep->KM boundary)
+  // Seven 256-bit fields are dual-rail encoded here at the Sep->KM boundary
   // using prim_diff_encode_multi so that any fault on the wire is detectable.
   // Encoded format: data_o = {~value[255:0], value[255:0]} (512 bits total).
+  //
+  // The four secrets (chiplet_uid, sip_uid, sys_uid, class_key) sit in
+  // sep_efuse_pkg::SecretShadowRanges. Under secure_tm the eFuse shadow
+  // hardware output zeros those words, so the encoder dual-rail-encodes
+  // zero. The three public identity fields (sep_chiplet_id, sep_sip_id,
+  // sep_sys_id) are outside SecretShadowRanges and remain on the shadow
+  // output in secure test mode.
 
   km_intf_pkg::km_otp_data_t km_otp_data;
 
@@ -797,14 +802,13 @@ module sep_crypto #(
     .data_o (km_otp_data.sys_uid)
   );
 
-  // The SEP_*_ID fuses are not in the efuse map yet, so encode a zero value.
   prim_diff_encode_multi #(
     .Width      (256),
     .OutputFlop (1'b0)
   ) u_sep_chiplet_id_enc (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),
-    .data_i (256'b0),
+    .data_i (shadow_regs_o.fields.sep_chiplet_id.id),
     .data_o (km_otp_data.sep_chiplet_id)
   );
 
@@ -814,7 +818,7 @@ module sep_crypto #(
   ) u_sep_sip_id_enc (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),
-    .data_i (256'b0),
+    .data_i (shadow_regs_o.fields.sep_sip_id.id),
     .data_o (km_otp_data.sep_sip_id)
   );
 
@@ -824,7 +828,7 @@ module sep_crypto #(
   ) u_sep_sys_id_enc (
     .clk_i  (clk_i),
     .rst_ni (rst_ni),
-    .data_i (256'b0),
+    .data_i (shadow_regs_o.fields.sep_sys_id.id),
     .data_o (km_otp_data.sep_sys_id)
   );
 
