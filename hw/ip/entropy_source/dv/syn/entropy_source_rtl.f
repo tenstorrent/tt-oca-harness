@@ -83,16 +83,15 @@
 //
 //   2. Ripple Dividers (entropy_ripple_divider.sv):
 //      - Contains asynchronous ripple chains (toggle flip-flop cascade)
-//      - Intentional combinational feedback loops (D→QB for toggle)
+//      - Combinational feedback loops (D→QB for toggle)
 //      - Must not be optimized by synthesis tool
 //      - Use set_dont_touch on ripple divider instances
 //      - Use set_false_path for ripple chain and feedback paths
 //      - Total: 13 instances (1 debug + 12 generators)
-//      - See entropy_source.sdc lines 106-145 for constraints
-//      - See README_RIPPLE_DIVIDER_CONSTRAINTS.md for detailed explanation
+//      - See the RIPPLE DIVIDER CONSTRAINTS section of entropy_source.sdc
 //
 //   3. Metastability:
-//      - Sampler flip-flops deliberately operate in metastable region
+//      - Sampler flip-flops operate in the metastable region (the entropy mechanism)
 //      - See entropy_sampler_clocks.sv for dual-rank synchronizers
 //
 //   4. Security-Critical Paths:
@@ -106,5 +105,4 @@
 //   - False paths defined for ring oscillator crossings
 //   - False paths defined for ripple divider chains and feedback
 //   - Multi-cycle paths for health test statistics
-//   - Use SYNTHESIS_CHECKLIST.md for complete pre-synthesis checklist
 //------------------------------------------------------------------------------            

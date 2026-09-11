@@ -9,8 +9,8 @@
 //   t_axi_* — wire-level bundle: the test drives the request channels
 //             directly against OcahAxiSlaveAgent so armed response-ID
 //             corruption is observable without a backend master in the
-//             loop (the cocotbext master fails by design on a response
-//             ID it never issued).
+//             loop (the cocotbext master rejects a response ID it
+//             never issued).
 //   l_axi_* — AXI4-Lite bundle: OcahAxiLiteMasterAgent against
 //             OcahAxiLiteSlaveAgent, for the lite protocol-control
 //             selftests (AW/W launch skew, deferred BREADY/RREADY,

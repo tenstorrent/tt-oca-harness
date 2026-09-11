@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 SHELL := /usr/bin/env
-.SHELLFLAGS := bash -ec
+.SHELLFLAGS := bash -c
 #
 # SEP Boot ROM.
 #

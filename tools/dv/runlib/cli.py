@@ -2290,7 +2290,7 @@ def validate_target_plan(sim_cfg: dict[str, Any], targets: list[str]) -> None:
 
 def stage_needs_item(stage: str) -> bool:
     # Compile/elaboration may select test-specific targets and source sets. Keep
-    # the selected item even when simulation is intentionally omitted.
+    # the selected item for stages that run no simulation.
     return stage in {
         "hdl_compile",
         "elaborate",
@@ -2341,8 +2341,7 @@ def write_regression_summary(
 
 
 def default_run_dir(dut_dv_root: Path, stamp: str, tool: str, label: str) -> Path:
-    # Per-DUT run tree: <dut-dv-root>/build/runs/<stamp>__<tool>__<label>. The DUT dv root already
-    # identifies the DUT, so runs/ adds no redundant <dut> layer (and no repo-root build/).
+    # Per-DUT run tree: <dut-dv-root>/build/runs/<stamp>__<tool>__<label>.
     return dut_runs_root(dut_dv_root) / f"{stamp}__{tool}__{label}"
 
 

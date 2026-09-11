@@ -85,7 +85,7 @@ int rom_hmac_sha256(uint8_t *output, const uint8_t *key, uint32_t key_len, const
      * o_key_pad = key (zero-padded) ^ 0x5c
      * output    = hash(o_key_pad || output)
      *
-     * On failure the step zeroes output itself, so no handling is needed.
+     * On failure the step zeroes output itself.
      */
     return rom_hmac_sha256_step(output, (uint8_t)0x5cu, key, key_len, output,
                                 (uint32_t)ROM_SHA256_DIGEST_SIZE);

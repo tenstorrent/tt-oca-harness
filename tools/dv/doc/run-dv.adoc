@@ -13,18 +13,11 @@ logs and schema-version-1 result files.
 _Native_ means the flow is owned by this runner end to end — stage plan,
 tool invocation, and results — in contrast to wrapped or external flows.
 
-[NOTE]
-====
-This page describes the implementation in the current source tree. The
-architecture notes used to design the runner also contain roadmap material;
-unsupported roadmap features are identified in <<runner-current-limitations>>.
-====
-
 == Architecture
 
 image::dv-runner-architecture.drawio.svg[Current DV/FV runner control flow,scaledwidth=95.0%]
 
-The entry point is intentionally thin. It prepares the Python environment and
+The entry point prepares the Python environment and
 then delegates command parsing and orchestration to `tools/dv/runlib/cli.py`.
 The runner modules divide responsibility as follows:
 
@@ -267,7 +260,7 @@ python3 tools/dv/run_dv.py --dut <dut> --mode formal --items <task>
 `--tool TOOL` overrides the DUT's `default_tool`, but the selected tool must be
 present in the flow's `tools` allowlist and in `simulators.toml`.
 
-The shared cocotb profile currently allows these simulation backends:
+The shared cocotb profile allows these simulation backends:
 
 [cols="<2,<2,<2,<3",options="header"]
 |===
@@ -283,13 +276,13 @@ formal backends. A DUT still needs a formal configuration before either can be
 selected.
 
 The shared `native` profile's `uvm` framework (SystemVerilog UVM) is a
-maintainer flow that currently allows VCS only; it carries
+maintainer flow whose tool allowlist is VCS only; it carries
 `license = "required-commercial"`, so `--list` marks it `(licensed)` and the
 launcher says so when the simulator is absent. The UVM library comes from the
 simulator via `-ntb_opts uvm`, tests are selected with
 `+UVM_TESTNAME=<testlist module>`, and PASS/FAIL uses the `uvm-log` parse
-policy (summary `UVM_ERROR`/`UVM_FATAL` counts). Xcelium support is planned
-behind a real-run sign-off gate; Questa is unsupported. The first user is the
+policy (summary `UVM_ERROR`/`UVM_FATAL` counts). Xcelium and Questa are not
+in the allowlist. The reference consumer is the
 DTP SV-UVM smoke flow, `--dut dtp --framework uvm`. The framework's adopter
 guide — conventions plus the bring-up walkthrough for adding a UVM view to a
 cocotb-only DUT — is the SystemVerilog UVM Framework section of
@@ -365,7 +358,7 @@ run-mode arguments or timeout.
 
 == Configuration and precedence
 
-Configuration ownership is intentionally split:
+Configuration ownership is split:
 
 [cols="<3,<4",options="header"]
 |===
@@ -416,7 +409,7 @@ Some domains have more specific rules:
   `args`, test `args`, then CLI `--sim-arg` and `--plusarg`.
 * Regression multiplicity: a test's `reseed` value overrides `--reseed` for
   that test.
-* A positive `[build.options].build_jobs` value currently overrides CLI-derived
+* A positive `[build.options].build_jobs` value overrides CLI-derived
   build concurrency; otherwise `--build-jobs`, then `--sim-jobs`, supplies it.
 
 CLI overrides are curated rather than arbitrary TOML replacement. Stable
@@ -463,8 +456,8 @@ vendor package can own its manifest the way the shipped VIPs do.
 |`[target_defaults.<t>]` / `[targets.<t>]` `defines` / `flags`,
 `[...tools.<tool>].flags`
 |dedup-append (tables created when absent)
-|Gate defines (e.g. `OCAH_AXI_VENDOR_IF`) and extra tool flags (e.g.
-`-ntb_opts svt`).
+|Gate defines (e.g. `OCAH_AXI_VENDOR_IF`) and the extra tool flags the vendor
+package needs.
 
 |`[sim].args`
 |append after the merged `[sim].args`
@@ -485,7 +478,7 @@ A typical commercial-VIP overlay:
 
 [source,toml]
 ----
-description = "SVT AXI integration for ocah_axi_vip consumers"
+description = "Vendor AXI VIP integration for ocah_axi_vip consumers"
 frameworks = ["uvm"]
 
 [build]
@@ -496,7 +489,7 @@ source_lists = ["hw/common/dv/vip/axi/uvm/sources.toml"]
 defines = ["OCAH_AXI_VENDOR_IF"]
 
 [sim]
-args = ["+uvm_set_type_override=ocah_axi_master_env,svt_ocah_axi_env"]
+args = ["+uvm_set_type_override=ocah_axi_master_env,vendor_ocah_axi_env"]
 ----
 
 (paths resolve repo-relative inside the checkout the overlay extends, or
@@ -578,10 +571,9 @@ delete cached models and all prior runs. Inspect the `REMOVE` plan with
 === Coverage stages
 
 `--cov` requires the flow to declare coverage stages: on a flow whose stage
-graph has no `cov_merge`/`cov_report` (for example the `uvm` framework, whose
-instrumentation wiring is a documented follow-up), the runner rejects `--cov`
-before any stage executes instead of failing after a full compile and
-simulation with a missing coverage artifact.
+graph has no `cov_merge`/`cov_report` (for example the `uvm` framework), the
+runner rejects `--cov` before any stage executes instead of failing after a
+full compile and simulation with a missing coverage artifact.
 
 On the implicit path, `--cov` instruments simulation and appends `cov_merge`
 and `cov_report` when the flow provides them:
@@ -624,7 +616,7 @@ original tool or history.
 Coverage merge/report accepts at most one known target and one known build
 fingerprint. A multi-target run cannot be merged as one coverage database;
 pass `--target NAME` to compile every selected test on one elaboration.
-All-unknown legacy input provenance is accepted as a compatibility fallback.
+Inputs that all lack target and build-fingerprint provenance merge as one set.
 Coverage-only replay resolves the current/default target rather than restoring
 an original non-default target; use replay only when target and build-affecting
 configuration still match. This is especially important for the VCS design
@@ -834,7 +826,7 @@ Tcl script (`scripts/waves.<test>.tcl`).
 
 [NOTE]
 ====
-Exact ranged dumping is currently enforced only for Xcelium SHM and VCS
+Exact ranged dumping is enforced only for Xcelium SHM and VCS
 FSDB/VPD (via the generated dump scripts). Other backend/format combinations
 record the requested range and set `range_supported` to false.
 ====
@@ -924,7 +916,7 @@ cocotb's Python runner, so `--rebuild` behaves the same on each).
 |`--timeout SEC`
 |Bound supported subprocess stages and override the configured simulation-leaf
 timeout. Bender filelist generation and in-process cocotb build stages are
-currently unbounded.
+unbounded.
 |===
 
 Action dispatch precedence is `--validate-configs`, `--doctor`, `--list`, then
@@ -1180,8 +1172,8 @@ change can never alter the pull-request gate:
 |`smoke`
 |`sim.yml`: `pull_request`, `push` to `main`, `workflow_dispatch`
 |`--items smoke --sim-jobs 2` for `dtp`, `sep`, `smu`, and `smc`, 60-minute
-budget per job. Target: under 30 minutes of wall clock per pull request. The
-job names `verilator-smoke (<dut>)` are the stable check contexts.
+budget per job. The job names `verilator-smoke (<dut>)` are the stable check
+contexts.
 
 |`nightly`
 |`regress.yml`: `schedule` Sunday to Friday at 18:00 UTC, or
@@ -1190,15 +1182,14 @@ job names `verilator-smoke (<dut>)` are the stable check contexts.
 DTP `all`, SEP `cpu_stub`, SMU `sep0_all`; SMC `smoke` and the three
 `cross_trigger` benches' `all` groups run with `--reseed 3`. No coverage; the
 budgets are sized for the standard runner. Nightly is not a merge gate; a red
-nightly run is a triage signal, and the SEP testlist documents the reveals its
-class regression is expected to carry.
+nightly run is a triage signal.
 
 |`weekly`
 |`regress.yml`: `schedule` Saturday at 18:00 UTC, or `workflow_dispatch`
 with `tier=weekly`
 |The coverage regression the dashboard publishes. DTP `all` collects
 reference-only Verilator coverage; SEP `cpu_stub` and SMU `sep0_all` add
-`--cov` once the repository variable `DV_LARGE_RUNNER` names a larger
+`--cov` when the repository variable `DV_LARGE_RUNNER` names a larger
 runner, because their coverage-instrumented model builds exceed the standard
 runner's memory, and DTP reseeds three times on that runner. SMC `smoke` and
 the three `cross_trigger` benches' `all` groups run at three seeds with
@@ -1249,16 +1240,15 @@ tiers only)
 pull request and push to `main`; the nightly and weekly tiers run each DUT's
 regression group (`all` / `cpu_stub` / `sep0_all` / `smoke`). Main protection
 requires the stable `verilator-smoke (dtp)` and `verilator-smoke (sep)`
-pull-request contexts in addition to the GitLab mirror context. A failed,
+pull-request contexts. A failed,
 cancelled, or missing DTP or SEP smoke result blocks merge. SMU and SMC smoke
 run in the same matrix but are not required contexts; the `cross_trigger`
 benches are enrolled in the regression tiers only.
 
-|Configured, not CI-qualified
+|Configured, not CI-run
 |`dtp --framework uvm` + VCS; `sep --framework uvm` + VCS; `smc --framework uvm` + VCS; `smu --framework uvm` + VCS; `smu_wrapper` cocotb flow
-|Valid configs exercised by maintainers with licensed tools or carrying
-historical local results only. Not run by hosted CI; do not add to the
-workflow matrix without a qualifying run at head.
+|Valid configs that hosted CI does not run; the UVM views need licensed
+tools. A pair joins the workflow matrix only with a qualifying run at head.
 
 |Unsupported in hosted CI
 |VCS/Xcelium anywhere; formal mode; `smu_wrapper` real-SEP group
@@ -1271,7 +1261,7 @@ group. Non-local executor dispatch is not implemented.
 === Framework-aware CI matrices
 
 Hosted invocations omit `--framework`, so every DUT runs its default
-framework (cocotb today) — adding a second framework to a DUT changes
+framework (cocotb) — adding a second framework to a DUT changes
 nothing for existing jobs. The canonical invocation for a licensed SV-UVM
 job maps a group to its UVM-implemented subset:
 
@@ -1373,30 +1363,28 @@ covered point. Correct the entry and run `--run-dir <dir> --waive`; the report
 tool does not need to rerun. See <<runner-waive>>.
 
 [[runner-current-limitations]]
-== Current limitations and roadmap boundary
+== Limitations
 
-The following behaviors are not part of the implemented runner contract:
+The following behaviors are not part of the runner contract:
 
 * Only the `local` executor dispatches work. Queue, core, memory, and wall-time
-  flags are metadata; non-local scheduling remains roadmap work.
+  flags are metadata; there is no LSF/SLURM or other non-local dispatch.
 * Formal CLI and stage plumbing exist, but this checkout contains no
-  `*_formal_cfg.toml`; a DUT cannot run formal mode until one is added.
-* `run.json`, background execution, and job lifecycle/status commands described
-  in older architecture notes are not emitted or implemented.
+  `*_formal_cfg.toml`; a DUT cannot run formal mode without one.
+* The runner writes no `run.json` and has no background execution or job
+  lifecycle/status commands.
 * `--dry-run` avoids backend execution and result writes, but bootstrap may
   still provision the locked `uv` environment and update the generated
   namespace bridge.
 * Configured test/run-mode timeouts apply to simulation leaves. CLI
   `--timeout` reaches many subprocess stages, but Bender filelist generation
-  and in-process Verilator/Xcelium cocotb build stages are currently unbounded.
+  and in-process Verilator/Xcelium cocotb build stages are unbounded.
 * An explicit `--run-dir` is reused as supplied, is not made unique, and does
   not update `latest`. Choose an empty directory unless performing the
   documented coverage replay.
-* `--max-failures 0` satisfies the current stop condition immediately and
-  therefore skips every scheduler leaf. The aggregate currently reports
-  `PASS` and exits `0` despite running no tests; use a positive threshold.
+* `--max-failures 0` satisfies the stop condition immediately and therefore
+  skips every scheduler leaf. The aggregate reports `PASS` and exits `0`
+  despite running no tests; use a positive threshold.
 * Exact waveform range enforcement is limited to Xcelium SHM and VCS FSDB/VPD.
-
-Do not infer support for LSF/SLURM, site-local TOML overrides, background jobs,
-or automatically discovered formal flows from architecture documents until
-those features are present in code and configuration.
+* There are no site-local TOML overrides and no automatically discovered
+  formal flows.

@@ -54,12 +54,10 @@ ocah_uart_vip/
 ## Protocol
 
 - **Format**: Standard 8N1 — 8 data bits, no parity, 1 stop bit.
-- **Baud rate**: Configurable; default 115200.  Accepted range is any positive
-  integer, but only standard rates (9600, 19200, 38400, 57600, 115200, 921600)
-  are tested.  High-speed rates (≥ 1 Mbaud) are forwarded to the underlying
-  library; DUT clock constraints are the caller's responsibility.
-- **High-speed modes**: Not validated.  1 Mbaud and above work if the DUT and
-  simulation time resolution support them.
+- **Baud rate**: Configurable; default 115200.  Any positive integer is
+  accepted; the bit period is `round(1e9 / baud)` ns, so rates at or above
+  1 Mbaud depend on the DUT clock and the simulation time resolution, which
+  are the caller's responsibility.
 
 ---
 
@@ -211,7 +209,7 @@ non-standard baud rate; do not add randomness in the wrapper layer.
 
 ## Examples
 
-See `examples/example_loopback.py` for four annotated examples:
+See `cocotb/examples/example_loopback.py` for four annotated examples:
 
 1. Basic loopback (send string, read back).
 2. Pattern matching with `expect()`.
@@ -221,7 +219,7 @@ See `examples/example_loopback.py` for four annotated examples:
 ## Hierarchical VIP Layout
 
 This package follows the OCAH hierarchical VIP convention (see
-`hw/common/dv/README.md` and the 1_vip layout guide): all cocotb (Python)
+`hw/common/dv/README.md`): all cocotb (Python)
 code lives in `cocotb/`, and the root `__init__.py` is a thin shim
 re-exporting the stable public API — always import
 `from ocah_uart_vip import <Class>`, never from the subfolders.

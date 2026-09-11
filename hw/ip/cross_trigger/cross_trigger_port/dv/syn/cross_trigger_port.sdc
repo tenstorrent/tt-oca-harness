@@ -1,8 +1,7 @@
 # Cross Trigger Port Synthesis Timing Constraints
 # SDC (Synopsys Design Constraints) file
 
-# Clock definition
-# Replace with actual clock name and period
+# Clock definition: clk_i at 100 MHz nominal
 create_clock -name clk_i -period 10.0 [get_ports clk_i]
 
 # Clock uncertainty
@@ -69,10 +68,6 @@ set_output_delay -clock clk_i -min 0.5 [get_ports pslverr_o]
 
 # Reset timing
 set_false_path -from [get_ports rst_ni] -to [all_registers]
-
-# Multi-cycle paths (if any)
-# Example: Pulse stretcher counter may have relaxed timing
-# set_multicycle_path -setup 2 -from [get_cells u_pulse_stretcher/counter_q*] -to [get_cells u_pulse_stretcher/stretched_pulse_o]
 
 # Maximum transition time
 set_max_transition 1.0 [current_design]

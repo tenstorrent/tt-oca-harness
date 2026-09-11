@@ -3,8 +3,8 @@
 """AXI4-Lite master sequence API: the VIP's test-facing stimulus surface.
 
 `OcahAxiLiteMasterSequence` wraps one `OcahAxiLiteMasterDriver` and provides
-the blocking, checked transaction API tests consume. Compatibility calls return
-plain values: ``write()`` returns a response code and ``read()`` returns data;
+the blocking, checked transaction API tests consume. ``write()`` returns a
+response code and ``read()`` returns data as plain values;
 ``write_result()``/``read_result()`` expose response codes, data, and timeout
 state through plain dataclasses.
 ``write_skewed_result()`` and ``read_hold_result()`` are the SV-UVM parity

@@ -16,8 +16,8 @@ identity, so both names share one build cache and one build manifest. Aliases
 are one hop deep, and the ``sim_cfg``/``formal_cfg`` default path follows the
 canonical name.
 
-The convention rules deliberately mirror ``tools/dv/sync_python_namespace.py`` so the import-name
-bridge and the runner agree on what counts as a DUT root.
+The convention rules mirror ``tools/dv/sync_python_namespace.py`` so the import-name bridge
+and the runner agree on what counts as a DUT root.
 """
 
 from __future__ import annotations
@@ -64,8 +64,8 @@ def load_dut_registry(root: Path) -> dict[str, dict]:
         out[name] = entry
     for name, entry in out.items():
         alias = entry.get("alias_of")
-        # One hop only. A chain would make the resolved identity depend on
-        # traversal order, and nothing needs it.
+        # One hop only: a chain would make the resolved identity depend on
+        # traversal order.
         if alias is not None and out.get(alias, {}).get("alias_of") is not None:
             raise ConfigError(
                 f"{path}: [duts.{name}] `alias_of` = `{alias}`, which is itself an alias; "

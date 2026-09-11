@@ -125,9 +125,6 @@ async def test_cl_integration_minimal(dut):
     # This sequence forces the RO feedback loops to initialize to a known state
     # (disabled = 0), breaking any X propagation. When re-enabled, the ROs start
     # from a clean state and can oscillate normally.
-    #
-    # Note: This replaces the previous approach of using force/release on feedback
-    # signals, which is more invasive and harder to maintain.
 
     # Step 1: Disable all ring oscillators
     await reg_wr(apb, "RING_OSC_ENABLE", 0x00000000)
