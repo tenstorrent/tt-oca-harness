@@ -2,9 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """aw-then-ar AR-over-write on the CSRNG control lane (drbg.sv u_csrng_axil_adapter).
 
-no_cpu / +skip_fuse_sense. One (lane x ordering) per leaf: a wedged adapter
-cannot be recovered inside a simulation, so a second scenario after it would
-measure the wedge. See sep_drbg_axil_concurrent_base for the checks.
+no_cpu / +skip_fuse_sense. One (lane x ordering) per leaf so a wedge cannot
+contaminate a later cell. See sep_drbg_axil_concurrent_base for the checks.
 
 AW handshakes first, then AR arrives while W is still outstanding: the
     partially-committed aw_pending_q=1 / w_pending_q=0 state.

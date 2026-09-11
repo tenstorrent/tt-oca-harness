@@ -8,9 +8,14 @@ This table is the v0.5.0 source of truth for every name that was catalogued
 in the removed `testlists/deferred.toml` ledger; with that file gone, this
 document is the record. None of these names is in `sep0_all`. Nine of them
 are also enrolled in wrapper `all` on the SEP=1 track
-(`smu_sep_smoke_test` plus eight `sep_real_fw` images); a raise stub must
-not be reported as PASS. The remaining bodies live under
-`cocotb/tests_deferred/`, each carrying its blocker in its docstring.
+(`smu_sep_smoke_test` plus eight `sep_real_fw` images). Four more
+(`smu_sep_debug_bus_test`, `smu_sep_wdt_reset_to_smc_test`,
+`smu_sep_lc_handoff_test`, `smu_cla_sep_cpu_debug_test`) are in
+`sep_smc_dual` / `sep_smc_sram_blocked` so a scheduled run can fail; they
+are not in `all`, and a PASS is not reportable while SMC scratch RAM is
+invisible to an external master. A raise stub must not be reported as
+PASS. The remaining bodies live under `cocotb/tests_deferred/`, each
+carrying its blocker in its docstring.
 
 Buckets:
 
