@@ -24,6 +24,8 @@ ifdef::backend-html5[]
     </table>
   </div>
 
+  <p class="dashboard-more" id="dashboard-block-history"></p>
+
   <div id="dashboard-block-tests" hidden>
     <h3>Tests</h3>
     <table class="dashboard-detail-table">

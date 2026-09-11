@@ -22,6 +22,7 @@
   var SUMMARY_URL = './data/summary.json';
   var TESTS_URL = './data/tests.json';
   var HISTORY_URL = './data/history.json';
+  var TEST_HISTORY_URL = './data/test-history.json';
 
   // Bands shared by pass rate and every coverage column.
   var PASS_AT = 95;
@@ -31,6 +32,15 @@
   var COVERAGE_COLUMNS = ['line', 'branch', 'expression', 'user'];
 
   var GRID_LINE = '#e6e6e6';
+
+  // Per-test outcomes, in legend order.
+  var HISTORY_STATES = ['passed', 'flaky', 'failed', 'did not run'];
+  var HISTORY_COLOURS = {
+    passed: '#3A863D',
+    flaky: '#f6c343',
+    failed: '#C55050',
+    'did not run': '#e6e6e6',
+  };
 
   // Match to dut_status[] flows
   var CHIP_ROWS = ['chip_ocah'];
@@ -333,6 +343,16 @@
     nameEl.textContent = flow;
     document.title = flow + ' — Block Verification Detail';
 
+    var historyEl = document.getElementById('dashboard-block-history');
+    if (historyEl) {
+      var historyUrl = new URL('dashboard-test-history.html', window.location.href);
+      historyUrl.searchParams.set('flow', flow);
+      var historyLink = document.createElement('a');
+      historyLink.href = historyUrl.href;
+      historyLink.textContent = 'Per-test history for ' + flow + ' \u2192';
+      historyEl.appendChild(historyLink);
+    }
+
     fetchJson(SUMMARY_URL)
       .then(function (summary) {
         if (!renderSummary(summary)) {
@@ -561,8 +581,203 @@
       });
   }
 
+  /**
+   * Classify one aggregated cell.
+   * @param {?{pass: number, total: number}} cell Seeds passed out of seeds
+   *     run, or null when the test did not run.
+   * @return {string} One of the status names used by the heatmap legend.
+   */
+  function historyState(cell) {
+    if (!cell) return 'did not run';
+    if (cell.pass === cell.total) return 'passed';
+    return cell.pass === 0 ? 'failed' : 'flaky';
+  }
+
+  /**
+   * Render the per-test history for one block as a heatmap.
+   * @param {!HTMLElement} statusEl Element carrying the range, or the reason
+   *     the grid is empty.
+   * @param {!HTMLElement} nameEl Heading showing which block is displayed.
+   * @param {!HTMLElement} wrapEl Wrapper revealed once the grid is drawn.
+   * @param {!HTMLElement} chartEl Element the heatmap is drawn into.
+   */
+  function renderTestHistory(statusEl, nameEl, wrapEl, chartEl) {
+    var fail = failWith(statusEl);
+    var flow = new URLSearchParams(window.location.search).get('flow') || '';
+
+    // The back link points at the selected block, or at the dashboard when the
+    // page was reached without one.
+    var backEl = document.getElementById('dashboard-history-back');
+    if (backEl) {
+      var backLink = document.createElement('a');
+      if (flow) {
+        var backUrl = new URL('dashboard-block.html', window.location.href);
+        backUrl.searchParams.set('flow', flow);
+        backLink.href = backUrl.href;
+        backLink.textContent = '← Back to ' + flow;
+      } else {
+        backLink.href = 'dashboard.html';
+        backLink.textContent = '← Back to the verification dashboard';
+      }
+      backEl.appendChild(backLink);
+    }
+
+    if (!flow) {
+      fail('no block selected; reach this page from the verification dashboard');
+      return;
+    }
+    nameEl.textContent = flow;
+    document.title = flow + ' — Test History';
+
+    fetchJson(TEST_HISTORY_URL)
+      .then(function (history) {
+        var runs = history.runs || [];
+        var flows = history.flows || {};
+        // The name is matched against the flows in test-history.json, so a
+        // built-in like "toString" resolves to no runs.
+        var tests = Object.prototype.hasOwnProperty.call(flows, flow) ? flows[flow] : null;
+        if (!tests) {
+          fail('the published archives contain no runs for "' + flow + '"');
+          return;
+        }
+
+        var names = Object.keys(tests).sort();
+        if (!runs.length || !names.length) {
+          fail('the published archives contain no test results');
+          return;
+        }
+
+        // One record per cell, carrying the seed counts for the tooltip.
+        var cells = [];
+        names.forEach(function (name, y) {
+          (tests[name] || []).forEach(function (counts, x) {
+            var state = historyState(counts);
+            cells.push({
+              value: [x, y, 1],
+              counts: counts,
+              state: state,
+              itemStyle: { color: HISTORY_COLOURS[state] },
+            });
+          });
+        });
+
+        wrapEl.hidden = false;
+        chartEl.style.height = Math.max(400, names.length * 11 + 140) + 'px';
+
+        var chart = echarts.init(chartEl, null, { renderer: 'svg' });
+        chart.setOption({
+          aria: { enabled: true },
+          animation: false,
+          // ECharts writes its text and axis styling inline, which a
+          // stylesheet cannot override, so both are taken from the theme here.
+          textStyle: {
+            fontFamily: themeValue('--oca-font-body', 'sans-serif'),
+            color: themeValue('--oca-text', '#484848'),
+          },
+          grid: { left: 270, right: 24, top: 56, bottom: 64 },
+          tooltip: {
+            backgroundColor: themeValue('--oca-cream-light', '#f8f4eb'),
+            borderColor: themeValue('--oca-green', '#103525'),
+            textStyle: {
+              color: themeValue('--oca-text', '#484848'),
+              fontFamily: themeValue('--oca-font-body', 'sans-serif'),
+            },
+            formatter: function (params) {
+              var cell = cells[params.dataIndex];
+              return (
+                names[cell.value[1]] +
+                '<br>' +
+                runs[cell.value[0]] +
+                ': ' +
+                cell.state +
+                (cell.counts ? ' (' + cell.counts.pass + '/' + cell.counts.total + ')' : '')
+              );
+            },
+          },
+          // The legend is driven by scatter series carrying no data; a heatmap
+          // series has one name and so cannot label four outcomes.
+          legend: {
+            top: 8,
+            data: HISTORY_STATES,
+            textStyle: { color: themeValue('--oca-text', '#484848'), fontSize: 11 },
+          },
+          xAxis: {
+            type: 'category',
+            data: runs.map(function (run) {
+              return run.slice(5);
+            }),
+            axisLabel: {
+              rotate: 90,
+              fontSize: 10,
+              color: themeValue('--oca-text', '#484848'),
+            },
+            axisLine: { lineStyle: { color: GRID_LINE } },
+            axisTick: { show: false },
+            splitArea: { show: false },
+          },
+          yAxis: {
+            type: 'category',
+            data: names,
+            // Without interval, ECharts drops every other name to avoid
+            // collisions, leaving half the rows unlabelled.
+            axisLabel: { fontSize: 9, color: themeValue('--oca-text', '#484848'), interval: 0 },
+            axisLine: { lineStyle: { color: GRID_LINE } },
+            axisTick: { show: false },
+            splitArea: { show: false },
+          },
+          series: [
+            {
+              type: 'heatmap',
+              data: cells,
+              itemStyle: { borderWidth: 0.5, borderColor: '#ffffff' },
+            },
+          ].concat(
+            HISTORY_STATES.map(function (state) {
+              return {
+                name: state,
+                type: 'scatter',
+                data: [],
+                itemStyle: { color: HISTORY_COLOURS[state] },
+              };
+            })
+          ),
+        });
+
+        if (window.ResizeObserver) {
+          new ResizeObserver(function () {
+            chart.resize();
+          }).observe(chartEl);
+        }
+
+        statusEl.className = 'dashboard-status';
+        statusEl.textContent =
+          names.length +
+          ' tests across ' +
+          runs.length +
+          ' runs, ' +
+          runs[0] +
+          ' to ' +
+          runs[runs.length - 1] +
+          '.';
+      })
+      .catch(function (error) {
+        fail(error.message);
+      });
+  }
+
   var statusEl = document.getElementById('dashboard-status');
   if (!statusEl) return;
+
+  var historyChartEl = document.getElementById('dashboard-history-chart');
+  if (historyChartEl) {
+    renderTestHistory(
+      statusEl,
+      document.getElementById('dashboard-history-name'),
+      document.getElementById('dashboard-test-history'),
+      historyChartEl
+    );
+    return;
+  }
 
   var trendsEl = document.getElementById('dashboard-trends');
   var windowEl = document.getElementById('dashboard-window-select');

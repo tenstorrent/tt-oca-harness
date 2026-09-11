@@ -5,7 +5,7 @@
 = Verification Trends
 :doctype: book
 
-Published nightly results over time, from the trend history on the
+Published regression results over time, from the trend history on the
 `dv-dashboard-data` branch. The window defaults to the most recent runs; use
 the control below to widen it.
 
