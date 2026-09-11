@@ -10,7 +10,7 @@ the test assert the exact ``PUBK_SEL=`` the ROM echoed.
 PLATFORM ADAPTATION.
 
 *Marker.* This ROM has no ``INVALID_KEY_INDEX`` status. The unassigned-selection
-arm prints ``PUBK_SEL_AMBIGUOUS`` and returns ``MANIFEST_ERR_SIG_FAILED``; a bad ROM key
+arm prints ``PUBK_SEL_AMBIGUOUS`` and returns ``MANIFEST_ERR_KEY_UNAUTHORIZED``; a bad ROM key
 *index* is a different arm printing ``PUBK_SLOT_RESERVED``. This test follows the stimulus
 (a bad source, not a bad index) and requires ``PUBK_SEL_AMBIGUOUS``.
 
@@ -26,7 +26,7 @@ from pathlib import Path
 import pyuvm
 from env import sep_oca_mutate as mm
 from rom_fw.sep_backup_manifest_fail_base import (
-    MANIFEST_ERR_SIG_FAILED,
+    MANIFEST_ERR_KEY_UNAUTHORIZED,
     sep_backup_manifest_fail_base,
 )
 
@@ -49,7 +49,7 @@ class sep_firmware_backup_invalid_public_key_selection_test(sep_backup_manifest_
     """Primary BAD_MAGIC -> failover -> backup names key source 3 -> terminal."""
 
     backup_defect_marker = "PUBK_SEL_AMBIGUOUS"
-    expected_error = MANIFEST_ERR_SIG_FAILED
+    expected_error = MANIFEST_ERR_KEY_UNAUTHORIZED
     efuse_preload = _EFUSE_PRELOAD
     # The selection must be rejected before any key is loaded or verified.
     extra_forbidden = (

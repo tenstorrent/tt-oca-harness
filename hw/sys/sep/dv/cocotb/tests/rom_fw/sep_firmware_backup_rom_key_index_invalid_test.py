@@ -16,7 +16,7 @@ THIS IS A DIFFERENT ARM FROM ``sep_firmware_backup_invalid_public_key_selection_
 That testcase names TWO slots and is refused for ambiguity, before any slot
 number is resolved. This one names exactly one slot, which is resolved and
 echoed, and then refused for being reserved. Both return
-``MANIFEST_ERR_SIG_FAILED``, so ``PUBK_SEL_AMBIGUOUS`` is forbidden here and
+``MANIFEST_ERR_KEY_UNAUTHORIZED``, so ``PUBK_SEL_AMBIGUOUS`` is forbidden here and
 ``PUBK_SLOT_RESERVED`` is required -- the console token is the only discriminator.
 
 THE LOAD-BEARING FORBID IS ``PUBK_REVOKE=``. The reserved-range check runs inside
@@ -42,7 +42,7 @@ from pathlib import Path
 import pyuvm
 from env import sep_oca_mutate as mm
 from rom_fw.sep_backup_manifest_fail_base import (
-    MANIFEST_ERR_SIG_FAILED,
+    MANIFEST_ERR_KEY_UNAUTHORIZED,
     sep_backup_manifest_fail_base,
 )
 
@@ -65,7 +65,7 @@ class sep_firmware_backup_rom_key_index_invalid_test(sep_backup_manifest_fail_ba
     """Primary BAD_MAGIC -> failover -> backup names ROM key index 6 -> terminal."""
 
     backup_defect_marker = "PUBK_SLOT_RESERVED"
-    expected_error = MANIFEST_ERR_SIG_FAILED
+    expected_error = MANIFEST_ERR_KEY_UNAUTHORIZED
     efuse_preload = _EFUSE_PRELOAD
     # PUBK_REVOKE= and PUBK_SLOT_UNPROVISIONED are the load-bearing pair: they are the next
     # two things an accepted index would have caused, and an out-of-range index

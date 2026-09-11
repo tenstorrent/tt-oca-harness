@@ -92,6 +92,16 @@ from rom_fw.sep_rom_ot_dma_boot_test import SECURE_FLASH_IMAGE, sep_rom_ot_dma_b
 MANIFEST_ERR_BAD_MAGIC = mm.boot_err("OCA_FAIL_MAGIC")
 MANIFEST_ERR_SIG_FAILED = mm.boot_err("OCA_FAIL_SIGNATURE")
 MANIFEST_ERR_VERSION_ROLLBACK = mm.boot_err("OCA_FAIL_SECURITY_VERSION")
+# Every refusal from plat_is_key_authorized() carries this one code -- slot
+# reserved, selector ambiguous or empty, slot unprovisioned, algorithm or encoding
+# unsupported, digest mismatch. The code means "this key is not authorized"; the
+# console marker beside it is what says which arm refused, so a member pins the
+# code here and the reason through its defect marker.
+MANIFEST_ERR_KEY_UNAUTHORIZED = mm.boot_err("OCA_FAIL_ROOT_KEY_UNAUTHORIZED")
+# A signature/public-key size or algorithm field that disagrees with itself is
+# refused structurally, before key selection runs, so this arm prints no PUBK_*
+# marker at all.
+MANIFEST_ERR_SIG_TYPE_INVALID = mm.boot_err("OCA_FAIL_CRYPTO_FIELD_SIZE")
 
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"

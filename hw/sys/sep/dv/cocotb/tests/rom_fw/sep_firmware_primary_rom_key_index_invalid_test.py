@@ -4,7 +4,8 @@
 
 The PRIMARY's ``public_key_select`` names slot 26. The format reserves
 ``[31:26]``, so the platform refuses it with ``PUBK_SLOT_RESERVED`` before looking
-for an anchor, returning ``MANIFEST_ERR_SIG_FAILED``.
+for an anchor, returning ``MANIFEST_ERR_KEY_UNAUTHORIZED`` -- the one code every
+arm of ``plat_is_key_authorized()`` returns.
 
 THE PRIMARY MUST NOT BE BROKEN ANY OTHER WAY. Only ``public_key_select`` is
 written, and deliberately NOT the primary's ``manifest_identifier`` the way its
@@ -23,7 +24,7 @@ is what makes this the boundary rather than merely a large number.
 This is A DIFFERENT ARM FROM ``sep_firmware_primary_invalid_public_key_selection_test``.
 That testcase names TWO slots and is refused for ambiguity, before any slot number is
 resolved. This one names exactly one slot, which is resolved and echoed, and then
-refused for being reserved. Both return ``MANIFEST_ERR_SIG_FAILED``, so
+refused for being reserved. Both return ``MANIFEST_ERR_KEY_UNAUTHORIZED``, so
 ``PUBK_SEL_AMBIGUOUS`` is forbidden here and ``PUBK_SLOT_RESERVED`` required -- the
 console token is the only discriminator.
 
@@ -67,7 +68,7 @@ from pathlib import Path
 import pyuvm
 from env import sep_oca_mutate as mm
 from rom_fw.sep_primary_fail_backup_boot_base import (
-    MANIFEST_ERR_SIG_FAILED,
+    MANIFEST_ERR_KEY_UNAUTHORIZED,
     sep_primary_fail_backup_boot_base,
 )
 
@@ -96,7 +97,7 @@ class sep_firmware_primary_rom_key_index_invalid_test(sep_primary_fail_backup_bo
     """Primary names ROM key index 6 -> rejected at the bound -> backup boots."""
 
     primary_defect_marker = "PUBK_SLOT_RESERVED"
-    primary_expected_error = MANIFEST_ERR_SIG_FAILED
+    primary_expected_error = MANIFEST_ERR_KEY_UNAUTHORIZED
     # The index bound precedes rsa_3072_verify, so the primary never drives it.
     primary_expected_rsa_starts = 0
     efuse_preload = _EFUSE_PRELOAD

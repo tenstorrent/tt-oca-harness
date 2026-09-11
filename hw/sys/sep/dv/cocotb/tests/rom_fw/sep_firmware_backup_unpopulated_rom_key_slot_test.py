@@ -32,7 +32,7 @@ from pathlib import Path
 import pyuvm
 from env import sep_oca_mutate as mm
 from rom_fw.sep_backup_manifest_fail_base import (
-    MANIFEST_ERR_SIG_FAILED,
+    MANIFEST_ERR_KEY_UNAUTHORIZED,
     sep_backup_manifest_fail_base,
 )
 
@@ -56,7 +56,7 @@ class sep_firmware_backup_unpopulated_rom_key_slot_test(sep_backup_manifest_fail
     """Primary fails over -> backup selects empty ROM key slot 1 -> terminal."""
 
     backup_defect_marker = "PUBK_SLOT_UNPROVISIONED"
-    expected_error = MANIFEST_ERR_SIG_FAILED
+    expected_error = MANIFEST_ERR_KEY_UNAUTHORIZED
     efuse_preload = _EFUSE_PRELOAD
     # Every arm that would make the verdict mean something other than "the slot
     # had no digest", plus proof the modulus never reached the verifier.

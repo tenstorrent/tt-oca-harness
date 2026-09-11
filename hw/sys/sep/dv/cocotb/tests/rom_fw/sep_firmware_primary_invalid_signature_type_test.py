@@ -2,10 +2,11 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Primary manifest declares an unsupported signature TYPE; the backup boots.
 
-The PRIMARY's ``signature_type`` is set to 0. The signature path accepts only
-``MANIFEST_SIG_TYPE_RSA_3072`` (1, ) and refuses anything else
-with ``PUBK_ALGO_UNSUPPORTED``, returning
-``MANIFEST_ERR_SIG_FAILED``.
+The PRIMARY's ``signature_type`` is set to 0. Only
+``MANIFEST_SIG_TYPE_RSA_3072`` (1) agrees with the declared crypto field sizes, so
+``oca_check_crypto_field_sizes()`` refuses the slot structurally -- before
+``plat_is_key_authorized()`` runs -- returning ``MANIFEST_ERR_SIG_TYPE_INVALID``
+with no ``PUBK_*`` token printed for the primary at all.
 
 THE PRIMARY MUST NOT BE BROKEN ANY OTHER WAY. So there is no BAD_MAGIC failover trigger
 here.
@@ -25,12 +26,11 @@ every value in that set exercises the identical arm, and fixing it is what lets 
 testcase assert the exact ``PUBK_ALGO_UNSUPPORTED`` the ROM echoed rather than accepting
 any value at all.
 
-**HOW THIS IS TOLD APART FROM ``sep_firmware_primary_invalid_signature_test``, AND
-WHY THE ERROR CODE CANNOT DO IT.** Both end at
-``MANIFEST_ERR_SIG_FAILED``, which six arms of
-the signature path share, so asserting the code alone would make the two
-testcases interchangeable. The console separates them in BOTH directions, and both
-halves are asserted here:
+**HOW THIS IS TOLD APART FROM ``sep_firmware_primary_invalid_signature_test``.**
+The error code now does most of the work: this member ends at
+``MANIFEST_ERR_SIG_TYPE_INVALID`` from the structural check, its sibling at
+``MANIFEST_ERR_SIG_FAILED`` from the verifier. The console separates them in BOTH
+directions on top of that, and both halves are asserted here:
 
   * the type check is the FIRST arm of the signature path, ahead even of the ``PUBK_SEL=`` echo at
 . So this run must show the primary's selector NEVER echoed: with the
@@ -68,7 +68,7 @@ from pathlib import Path
 import pyuvm
 from env import sep_oca_mutate as mm
 from rom_fw.sep_primary_fail_backup_boot_base import (
-    MANIFEST_ERR_SIG_FAILED,
+    MANIFEST_ERR_SIG_TYPE_INVALID,
     sep_primary_fail_backup_boot_base,
 )
 
@@ -83,8 +83,10 @@ _EFUSE_PRELOAD = (
 # Fixed rather than drawn at random, so the refusal is attributable to this
 # stimulus. See the docstring for why not 2.
 _BAD_SIG_TYPE = 0
-#  -- simputshex32("PUBK_ALGO_UNSUPPORTED", signature_type).
-_BAD_SIG_TYPE_ECHO = "PUBK_ALGO_UNSUPPORTED"
+# The refusal is structural -- oca_check_crypto_field_sizes() rejects a type that
+# disagrees with the field sizes before plat_is_key_authorized() is called -- so
+# there is no PUBK_* token to key on and the error code IS the defect marker.
+_BAD_SIG_TYPE_ECHO = f"MANIFEST_ERR=0x{MANIFEST_ERR_SIG_TYPE_INVALID:08x}"
 # The backup keeps the shipped selector: ROM key slot 0
 # (configs/secure_boot_test.yaml:112-114).
 _BACKUP_SEL_ECHO = "PUBK_SEL=0x00000000"
@@ -95,7 +97,7 @@ class sep_firmware_primary_invalid_signature_type_test(sep_primary_fail_backup_b
     """Primary declares sig type 0 -> rejected at the first arm -> backup boots."""
 
     primary_defect_marker = _BAD_SIG_TYPE_ECHO
-    primary_expected_error = MANIFEST_ERR_SIG_FAILED
+    primary_expected_error = MANIFEST_ERR_SIG_TYPE_INVALID
     # The type check precedes rsa_3072_verify, so the primary never drives it.
     primary_expected_rsa_starts = 0
     efuse_preload = _EFUSE_PRELOAD
@@ -107,6 +109,12 @@ class sep_firmware_primary_invalid_signature_type_test(sep_primary_fail_backup_b
     # the signature path: the primary dies at the first arm and the backup is
     # valid, so none of them may fire on either slot.
     extra_forbidden = (
+        # plat_is_key_authorized() is unreachable on the primary, its algorithm arm
+        # included: the structural check refuses before the callback runs. The
+        # primary's PUBK_SEL= would say otherwise, but the backup legitimately
+        # prints one, so PUBK_SEL= cannot be forbidden outright here -- the
+        # primary's absence is pinned by _BACKUP_SEL_ECHO being the only one.
+        "PUBK_ALGO_UNSUPPORTED",
         "RSA_PKCS1_FAIL",
         "PUBK_SLOT_RESERVED",
         "PUBK_SEL_AMBIGUOUS",

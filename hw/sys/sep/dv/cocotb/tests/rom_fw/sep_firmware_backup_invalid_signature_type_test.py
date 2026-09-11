@@ -22,16 +22,17 @@ check did not preempt key selection. That single forbid is what turns "the ROM
 rejected it" into "the ROM rejected it AT the type check".
 
 WHY THIS IS NOT THE SAME TESTCASE AS ``sep_firmware_backup_invalid_signature_test``.
-Both return ``MANIFEST_ERR_SIG_FAILED``, which six
-arms of the signature path share, so the error code cannot tell them apart.
-The status ring does not close the gap either: the only ring difference between
-the two is that the ROM-key arm re-reports ``SEP_MSG_VALIDATE_CHECK`` once the selector has been accepted, which is a
-side effect of reaching a LATER arm rather than a statement of the rejection
-reason -- and neither testcase asserts it. The console token is what actually
-discriminates. This testcase therefore requires ``PUBK_ALGO_UNSUPPORTED0x00000000`` and
-forbids ``RSA_EXEC`` and ``RSA_PKCS1_FAIL``; its sibling requires
-``RSA_PKCS1_FAIL``, which this run must never produce. Asserting the shared code
-alone would make the two interchangeable.
+The two end at DIFFERENT codes, and that is the first discriminator. A
+``signature_type`` that disagrees with the declared crypto field sizes is refused
+structurally by ``oca_check_crypto_field_sizes()`` as
+``MANIFEST_ERR_SIG_TYPE_INVALID``; a bad signature VALUE survives the structural
+checks, reaches the verifier, and returns ``MANIFEST_ERR_SIG_FAILED``.
+
+The console carries the ordering evidence the code cannot. The structural refusal
+lands before ``plat_is_key_authorized()`` is called at all, so this run shows NO
+``PUBK_*`` token for the backup -- not even the algorithm arm, which is why
+``PUBK_ALGO_UNSUPPORTED`` is forbidden below rather than required -- and never
+reaches ``RSA_EXEC`` or ``RSA_PKCS1_FAIL``, which its sibling requires.
 
 ``signature_type`` is one byte at manifest offset 165, INSIDE the TBS, so the
 helper re-hashes. It cannot be a signature-region patch: the field is covered by
@@ -51,7 +52,7 @@ from pathlib import Path
 import pyuvm
 from env import sep_oca_mutate as mm
 from rom_fw.sep_backup_manifest_fail_base import (
-    MANIFEST_ERR_SIG_FAILED,
+    MANIFEST_ERR_SIG_TYPE_INVALID,
     sep_backup_manifest_fail_base,
 )
 
@@ -66,8 +67,12 @@ _EFUSE_PRELOAD = (
 # Fixed rather than drawn at random, so the refusal is attributable to this
 # stimulus. See the docstring for why not 2.
 _BAD_SIG_TYPE = 0
-#  -- simputshex32("PUBK_ALGO_UNSUPPORTED", signature_type).
-_BAD_SIG_TYPE_ECHO = "PUBK_ALGO_UNSUPPORTED"
+# The refusal is structural -- oca_check_crypto_field_sizes() rejects a type that
+# disagrees with the field sizes before plat_is_key_authorized() is called -- so
+# there is no PUBK_* token to key on and the error code IS the defect marker.
+# sep_firmware_primary_invalid_security_version_test does the same for its own
+# dedicated code.
+_BAD_SIG_TYPE_ECHO = f"MANIFEST_ERR=0x{MANIFEST_ERR_SIG_TYPE_INVALID:08x}"
 
 
 @pyuvm.test()
@@ -75,7 +80,7 @@ class sep_firmware_backup_invalid_signature_type_test(sep_backup_manifest_fail_b
     """Primary BAD_MAGIC -> failover -> backup declares sig type 0 -> terminal."""
 
     backup_defect_marker = _BAD_SIG_TYPE_ECHO
-    expected_error = MANIFEST_ERR_SIG_FAILED
+    expected_error = MANIFEST_ERR_SIG_TYPE_INVALID
     efuse_preload = _EFUSE_PRELOAD
     # PUBK_SEL= is the load-bearing one: it is the very next thing
     # the signature path prints, so its absence proves the
@@ -84,6 +89,10 @@ class sep_firmware_backup_invalid_signature_type_test(sep_backup_manifest_fail_b
     # code. The rest are the later arms, none of which may be reached.
     extra_forbidden = (
         "PUBK_SEL=",
+        # The whole of plat_is_key_authorized() is unreachable here, its own
+        # algorithm arm included: the structural check refuses first. Forbidding
+        # the arm this testcase used to require is what pins that.
+        "PUBK_ALGO_UNSUPPORTED",
         "RSA_EXEC",
         "RSA_PKCS1_FAIL",
         "RSA_VERIFY_OK",

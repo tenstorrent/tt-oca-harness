@@ -56,6 +56,18 @@ MANIFEST_ERR_BAD_MAGIC = mm.boot_err("OCA_FAIL_MAGIC")
 MANIFEST_ERR_SIG_FAILED = mm.boot_err("OCA_FAIL_SIGNATURE")
 MANIFEST_ERR_VERSION_ROLLBACK = mm.boot_err("OCA_FAIL_SECURITY_VERSION")
 MANIFEST_ERR_KEY_REVOKED = mm.boot_err("OCA_FAIL_ROOT_KEY_REVOKED")
+# Every refusal from plat_is_key_authorized() carries this one code -- slot
+# reserved, selector ambiguous or empty, slot unprovisioned, algorithm or encoding
+# unsupported, digest mismatch. The code means "this key is not authorized"; the
+# console marker beside it is what says which arm refused, so a member pins the
+# code here and the reason through its defect marker.
+# MANIFEST_ERR_KEY_HASH_MISMATCH below is the same value under the narrower name
+# the digest-mismatch members use.
+MANIFEST_ERR_KEY_UNAUTHORIZED = mm.boot_err("OCA_FAIL_ROOT_KEY_UNAUTHORIZED")
+# A signature/public-key size or algorithm field that disagrees with itself is
+# refused structurally, before key selection runs, so this arm prints no PUBK_*
+# marker at all.
+MANIFEST_ERR_SIG_TYPE_INVALID = mm.boot_err("OCA_FAIL_CRYPTO_FIELD_SIZE")
 MANIFEST_ERR_KEY_HASH_MISMATCH = mm.boot_err("OCA_FAIL_ROOT_KEY_UNAUTHORIZED")
 
 # Slot identity is asserted on MANIFEST_SRC=, never on the MANIFEST_PRIMARY /
