@@ -113,7 +113,7 @@ is deliberately not a second description of the same flow, because two
 would drift.
 
 * SEP initialization -- read configuration straps, determine boot options
-* Configure CPU CSRs (PMP) and peripherals (SPI host, OTP, DMA, HMAC-SHA256)
+* Configure CPU CSRs, PMP among them, and peripherals (SPI host, OTP, DMA, HMAC-SHA256)
 * Load a boot manifest, from SPI flash or SMC SRAM, into SEP memory
 * Validate it. Under secure boot this means authorizing the root key
 against a trust anchor the device holds -- a ROM-embedded digest or an

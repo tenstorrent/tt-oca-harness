@@ -167,7 +167,7 @@ sequencing, timing profiles, DMA vs PIO -- as implemented in
 transfer contract.
 |`tt-oca-manifest` repository |OCA manifest specification documentation, producer tooling and the freestanding C validation library (`validators/oca/lib/oca_validator.h`) the ROM integrates.
 Implements a *subset* of the OCA specification (see <<sec:impl_matrix>> for known gaps).
-|RISC-V Privileged Architecture (PMP) |Semantics of `pmpaddr*`/`pmpcfg*` NAPOT entries used
+|RISC-V Privileged Architecture, PMP chapter |Semantics of `pmpaddr*`/`pmpcfg*` NAPOT entries used
 in <<sec:pmp>>.
 |NIST FIPS 180-4 / FIPS 197 / SP 800-108r1 / RFC 8017 (PKCS#1 v1.5) |SHA-256, AES, KBKDF,
 and RSA signature primitives referenced by the crypto chapters.
@@ -2848,7 +2848,7 @@ itself, SEP-ROM-STRAP-020).
 (<<sec:handoff>>).
 |`ROM_ERR_HANDOFF_SELFCHECK_FAILED` |`0xF004` |Pre-hand-off self-check failed
 (<<sec:handoff>>).
-|`ROM_ERR_ROM_HASH_MISMATCH` |`0xF005` |ROM self-hash recompute mismatch (or unparseable
+|`ROM_ERR_ROM_HASH_MISMATCH` |`0xF005` |ROM self-hash recompute mismatch (or unparsable
 embedded hash) (<<sec:boot_measurement>>).
 |`ROM_ERR_MEASUREMENT_FAILED` |`0xF006` |Measurement enrollment failed (hash engine)
 (<<sec:boot_measurement>>).
