@@ -4,14 +4,9 @@
 /*
  * Boot flash transport shim.
  *
- * The manifest loader reads the manifest and payload from flash without caring
- * which SPI controller is fitted. This header selects the controller at build
- * time (BOOT_SPI_CONTROLLER_OT) and presents one small interface in flash-offset
- * terms:
- *   - Cadence xSPI (default): flash is memory-mapped (XIP); a read is a DMA copy
- *     from SEP_SPI_BASE + offset.
- *   - OpenTitan SPI host: no memory-mapped window; a read is a command/FIFO
- *     transfer that streams into SRAM.
+ * Presents the manifest loader one interface in flash-offset terms over the
+ * OpenTitan SPI host. Flash is not memory-mapped, so a read is a command/FIFO
+ * transfer that streams into SRAM rather than an address-space access.
  *
  * Freestanding ROM: no libc, no heap.
  */
@@ -22,28 +17,16 @@
 #include <stdint.h>
 
 #include "boot_straps.h"
-#include "manifest.h" /* SEP_SPI_BASE, PRIMARY/BACKUP_MANIFEST_OFFSET */
+#include "manifest.h" /* PRIMARY/BACKUP_MANIFEST_OFFSET */
 #include "sep.h"      /* OCH_SEP_TOP_SEP_SRAM_BASE_ADDR / OCH_SEP_TOP_SEP_SRAM_SIZE   */
 #include "sep_smc_interface.h" /* sep_get_smc_sram_base, SMC_SRAM_SIZE_BYTES */
 #include "harden.h"   /* fault-injection value launder (harden_u32)  */
-
-#if BOOT_SPI_CONTROLLER_OT
 #include "sep_ot_spi.h"
-/* RX-FIFO drain method for the OpenTitan controller: 0 = secure DMA (default),
- * 1 = CPU programmed I/O. Selected at build time. */
+
+/* RX-FIFO drain method: 0 = secure DMA (default), 1 = CPU programmed I/O.
+ * Selected at build time. */
 #ifndef BOOT_OT_SPI_USE_PIO
 #define BOOT_OT_SPI_USE_PIO 0
-#endif
-#else
-#include "sep_spi.h"
-#include "sep_dma.h"
-/* Cadence xSPI XIP window (memory-mapped flash), matching sep_dma.c. */
-#ifndef SEP_SPI_BASE
-#define SEP_SPI_BASE ((uint32_t)OCH_SEP_TOP_SEP_EXTERNAL_XIP_REGION_BASE_ADDR)
-#endif
-#ifndef SEP_SPI_MAX_SIZE
-#define SEP_SPI_MAX_SIZE ((uint32_t)OCH_SEP_TOP_SEP_EXTERNAL_XIP_REGION_SIZE)
-#endif
 #endif
 
 /* True iff [addr, addr+len) lies within [base, base+size), with overflow guards.
@@ -61,45 +44,31 @@ static inline bool boot_flash_range_within(uint32_t addr, uint32_t len, uint32_t
     return (addr >= base) && (end <= limit);
 }
 
-/* Bring up the selected controller. Returns 0 on success, or a status code on
+/* Bring up the SPI controller. Returns 0 on success, or a status code on
  * failure (non-fatal to the caller, which may fall back to the backup slot). */
 static inline uint32_t boot_flash_init(const struct boot_straps *straps, uint16_t sysclk_mhz) {
-#if BOOT_SPI_CONTROLLER_OT
     (void)straps; /* slot rotation is applied by the loader, not the driver */
     ot_spi_set_sysclk(sysclk_mhz);
     return ot_spi_init();
-#else
-    spi_set_sysclk(sysclk_mhz);
-    spi_set_rotate(straps->rotate_update);
-    return spi_init();
-#endif
 }
 
 /* Read `len` bytes at flash byte-offset `flash_off` into SRAM `dst`.
  * Returns 0 on success or a transport status code. */
 static inline uint32_t boot_flash_read(uint32_t dst, uint32_t flash_off, uint32_t len) {
-#if BOOT_SPI_CONTROLLER_OT
-    /* The OpenTitan controller can drain the RX FIFO either with the secure DMA
-     * (BOOT_OT_SPI_USE_PIO=0, default) or by CPU programmed I/O. Both read the
-     * same bytes; the choice trades DMA offload against a simpler CPU-driven copy. */
+    /* The RX FIFO drains either with the secure DMA (BOOT_OT_SPI_USE_PIO=0,
+     * default) or by CPU programmed I/O. Both read the same bytes; the choice
+     * trades DMA offload against a simpler CPU-driven copy. */
 #if BOOT_OT_SPI_USE_PIO
     return ot_spi_flash_read(flash_off, dst, len);
 #else
     return ot_spi_flash_read_dma(flash_off, dst, len);
 #endif
-#else
-    return sep_dma_copy(dst, (uint32_t)SEP_SPI_BASE + flash_off, len);
-#endif
 }
 
-/* Re-bring-up the selected controller between manifest-slot attempts. Returns 0
+/* Re-bring-up the SPI controller between manifest-slot attempts. Returns 0
  * on success or a status code. */
 static inline uint32_t boot_flash_reinit(void) {
-#if BOOT_SPI_CONTROLLER_OT
     return ot_spi_reinit();
-#else
-    return spi_reinit();
-#endif
 }
 
 /* Validate a read before it is issued. Returns true iff it is in bounds. This is
@@ -109,7 +78,6 @@ static inline uint32_t boot_flash_reinit(void) {
  * hardening). */
 static inline bool boot_flash_bounds_ok(uint32_t flash_off, uint32_t len, uint32_t dst,
                                         uint32_t dst_len) {
-#if BOOT_SPI_CONTROLLER_OT
     /* Static bound: the read must stay within a known primary/backup boot-slot
      * window, and the destination within one of the two regions the driver can
      * stage into -- SEP SRAM, or SMC SRAM for a manifest asking use_ext_sram=0.
@@ -147,14 +115,6 @@ static inline bool boot_flash_bounds_ok(uint32_t flash_off, uint32_t len, uint32
         return false;
     }
     return ok_first;
-#else
-    /* Cadence: flash is memory-mapped; the read source must lie within the XIP
-     * region. (Destination is checked by sep_dma_copy.) */
-    (void)dst;
-    (void)dst_len;
-    uint32_t src = (uint32_t)SEP_SPI_BASE + flash_off;
-    return boot_flash_range_within(src, len, (uint32_t)SEP_SPI_BASE, (uint32_t)SEP_SPI_MAX_SIZE);
-#endif
 }
 
 #endif /* BOOT_FLASH_H */

@@ -49,11 +49,6 @@
 #define SEP_DRAM_SIZE 0x00020000u // 128 KiB
 #endif
 
-// SPI flash direct-access window base.
-#ifndef SEP_SPI_BASE
-#define SEP_SPI_BASE 0x30000000u
-#endif
-
 // ── Manifest constants ──
 
 /** Currently supported manifest major version. */

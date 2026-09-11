@@ -69,20 +69,20 @@ primary:
       entry_point: 0xC0000000  # equals sep_iram_base, so the packed offset is 0
       file_path: "$OCH_ROOT/fw/tests/bl1_pass_test/build/bl1_pass_test.bin"
   spi:
-    description: "SPI TLV for OCAH SEP (keep_default_init)"
+    description: "SPI TLV. The packer requires this section; keep_default_init tells the loader to ignore the tuning fields."
     flags:
       keep_default_init: 1
     spi_freq: 25
     spi_dll_margin_rom: 0x00
     spi_dll_margin_tlv: 0x00
-    discovery_ctrl: 0x00000480
-    dq_timing: 0x00000101
-    dqs_timing: 0x00000404
-    gate_lpbk: 0x00280030
-    dll_slave: 0x00003311
-    dll_master: 0x00140058
-    misc: 0x00000001
-    rb_valid_time: 0x00002710
+    discovery_ctrl: 0x00000000
+    dq_timing: 0x00000000
+    dqs_timing: 0x00000000
+    gate_lpbk: 0x00000000
+    dll_slave: 0x00000000
+    dll_master: 0x00000000
+    misc: 0x00000000
+    rb_valid_time: 0x00000000
 
 backup:
   manifest:
@@ -138,17 +138,17 @@ backup:
       entry_point: 0xC0000000  # equals sep_iram_base, so the packed offset is 0
       file_path: "$OCH_ROOT/fw/tests/bl1_pass_test/build/bl1_pass_test.bin"
   spi:
-    description: "SPI TLV for OCAH SEP backup (keep_default_init)"
+    description: "SPI TLV (backup slot). The packer requires this section; keep_default_init tells the loader to ignore the tuning fields."
     flags:
       keep_default_init: 1
     spi_freq: 25
     spi_dll_margin_rom: 0x00
     spi_dll_margin_tlv: 0x00
-    discovery_ctrl: 0x00000480
-    dq_timing: 0x00000101
-    dqs_timing: 0x00000404
-    gate_lpbk: 0x00280030
-    dll_slave: 0x00003311
-    dll_master: 0x00140058
-    misc: 0x00000001
-    rb_valid_time: 0x00002710
+    discovery_ctrl: 0x00000000
+    dq_timing: 0x00000000
+    dqs_timing: 0x00000000
+    gate_lpbk: 0x00000000
+    dll_slave: 0x00000000
+    dll_master: 0x00000000
+    misc: 0x00000000
+    rb_valid_time: 0x00000000

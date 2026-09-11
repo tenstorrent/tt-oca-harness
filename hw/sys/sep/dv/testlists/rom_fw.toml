@@ -6,7 +6,7 @@ schema_version = 1
 #
 #   * RTL target `rom_boot` -- cpu_all_live plus a behavioral SMC AXI responder
 #     (axi_sim_mem), not the `lsu_stub_all_live` CPU stub and not `default`.
-#   * Firmware profiles `boot_rom` / `boot_rom_ot` / `boot_rom_ot_pio` -- the
+#   * Firmware profiles `boot_rom_ot` / `boot_rom_ot_pio` -- the
 #     production Boot ROM under hw/sys/sep/bootrom/prod, which drives its own
 #     Makefile, links to ROM_BASE instead of the TCMs, and packs a manifest+BL1
 #     image. The shared TCM firmware engine (`c_build.default`) does not build it.
@@ -27,17 +27,17 @@ schema_version = 1
 # production Boot ROM (hw/sys/sep/bootrom/prod) from ROM_BASE and runs the full non-secure
 # manifest flow -- read manifest from SMC SRAM, validate its SHA256, DMA-copy BL1
 # into SEP SRAM, jump, and observe BL1 PASS magic on the outbound mailbox. It is
-# NOT a backdoor-TCM payload boot. SPI is stubbed (the OSS `sep` DUT has only the
-# OpenTitan Quad spi_host),
-# so the ROM takes its spec-defined SMC-SRAM manifest path, served by the
-# behavioral SMC responder (SEP_SMC_MEM_MODEL).
+# NOT a backdoor-TCM payload boot. No +sep_boot_from_spi, so boot_from_spi() is
+# false and the ROM never brings up the SPI host: it takes its spec-defined
+# SMC-SRAM manifest path, served by the behavioral SMC responder
+# (SEP_SMC_MEM_MODEL).
 name = "sep_rom_non_secure_boot_test"
 module = "rom_fw.sep_rom_non_secure_boot_test"
 target = "rom_boot"
-# Selects [c_build.boot_rom], which builds the Boot ROM + manifest/BL1 images in
-# the c_compile stage. This ROM does not come from the shared firmware engine, so
-# the entry names a build mode rather than an engine test target.
-firmware = { name = "boot_rom", mode = "boot_rom" }
+# Selects [c_build.boot_rom_ot], which builds the Boot ROM + manifest/BL1 images
+# in the c_compile stage. This ROM does not come from the shared firmware engine,
+# so the entry names a build mode rather than an engine test target.
+firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
 seed = 1
 timeout_sec = 3600
 tags = ["boot", "rom", "cpu", "subsystem"]
@@ -50,24 +50,25 @@ run_modes = ["cpu"]
 # (differential-encoded) LC_STATE in the eFuse shadow, which only exists if the
 # real fuse-sense FSM runs. A zero OTP senses to LC_STATE_TEST_DEV (raw 0x0, valid).
 # The images are gitignored and built by the c_compile stage (see the `firmware`
-# key above and [c_build.boot_rom] in sep_sim_cfg.toml), so a plain run_dv.py
+# key above and [c_build.boot_rom_ot] in sep_sim_cfg.toml), so a plain run_dv.py
 # invocation is self-contained. The one prerequisite it cannot do for you is the
 # manifest packer submodule, because a build step must not mutate git state:
 # git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-boot-manifest
 # Paths stay absolute via {repo_root} rather than pointing at the staged copies,
 # so a --stage sim rerun reads the same images the c_compile stage produced.
+# smc_mem.hex comes from build/ while the ROM comes from build_ot/: the packed
+# image is drain-method-agnostic, so pack-images builds it once into build/.
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/smc_mem.hex",
 ]
 
 [[tests]]
 # ROM boot over the REAL OpenTitan SPI host with the SECURE_DMA drain -- the SPI
 # half of the coverage the SMC-SRAM test above leaves open. Same production Boot
-# ROM and same bl1_pass_test payload, but the ROM is built with BOOT_SPI_CONTROLLER_OT=1
-# (build_ot/) so it links the OpenTitan driver instead of the weak sep_spi.c stub,
-# and the manifest + payload are fetched over the spi_host from the OcahSpiFlash
-# cocotb BFM.
+# ROM and same bl1_pass_test payload, but here the manifest + payload are fetched
+# over the spi_host from the OcahSpiFlash cocotb BFM rather than staged in SMC
+# SRAM.
 #
 # "dma" names the RX-FIFO drain, which boot_flash.h picks at build time: this
 # builds BOOT_OT_SPI_USE_PIO=0 (SECURE_DMA handshake). The CPU-PIO drain (=1,

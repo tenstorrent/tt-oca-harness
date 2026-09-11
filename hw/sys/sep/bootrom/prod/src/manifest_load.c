@@ -25,7 +25,6 @@
 #include "hmac_sha256.h"
 #include "lifecycle.h"
 #include "sep_dma.h"
-#include "sep_spi.h"
 #include "boot_flash.h"
 #include "errors.h"
 #include "rom_smc.h"
@@ -54,11 +53,6 @@ __attribute__((noreturn)) extern void rom_err_fail_ext(uint32_t error_code);
 // the packer PKCS#7-pads before encrypting, and PKCS#7 appends between 1 and a
 // full block.
 #define AES_CBC_BLOCK_BYTES 16u
-
-// SPI XIP region size (for payload location check).
-#ifndef SEP_SPI_MAX_SIZE
-#define SEP_SPI_MAX_SIZE ((uint32_t)OCH_SEP_TOP_SEP_EXTERNAL_XIP_REGION_SIZE)
-#endif
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -142,18 +136,13 @@ static uint32_t manifest_check_integrity(const manifest_t *m) {
     return MANIFEST_OK;
 }
 
-// Read manifest data into SRAM. For the OpenTitan controller the flash is not
-// memory-mapped, so `src` is a flash byte-offset read through the SPI host;
-// otherwise `src` is an absolute address (Cadence XIP window or SMC SRAM) copied
-// by the secure DMA. Returns 0 on success.
+// Read manifest data into SRAM. Flash is not memory-mapped, so on the SPI path
+// `src` is a flash byte-offset read through the SPI host; otherwise it is an
+// absolute SMC SRAM address copied by the secure DMA. Returns 0 on success.
 static uint32_t manifest_src_read(uint32_t dst, uint32_t src, uint32_t len, bool from_spi) {
-#if BOOT_SPI_CONTROLLER_OT
     if (from_spi) {
         return boot_flash_read(dst, src, len);
     }
-#else
-    (void)from_spi;
-#endif
     return sep_dma_copy(dst, src, len);
 }
 
@@ -482,15 +471,13 @@ static uint32_t try_manifest_slot(manifest_t *dest, uint32_t src_addr, bool from
                                  uint32_t *staged_addr, uint32_t *staged_size) {
     uint32_t err;
 
-#if BOOT_SPI_CONTROLLER_OT
-    // OpenTitan controller: validate the header read is in bounds before issuing
-    // it (redundant, default-reject bounds gate). Applies to the SPI path only.
+    // Validate the header read is in bounds before issuing it (redundant,
+    // default-reject bounds gate). Applies to the SPI path only.
     if (from_spi && !boot_flash_bounds_ok(src_addr, (uint32_t)sizeof(manifest_t), (uint32_t)dest,
                                           (uint32_t)sizeof(manifest_t))) {
         report_status(STATUS_TYPE_ERROR, SEP_MSG_SPI_OT_BOUNDS_ERROR);
         return MANIFEST_ERR_PAYLOAD_BAD_LOC;
     }
-#endif
 
     // Load the manifest header (1184 bytes).
     err = load_manifest_header(dest, src_addr, from_spi);
@@ -608,8 +595,8 @@ static uint32_t try_manifest_slot(manifest_t *dest, uint32_t src_addr, bool from
     if (err) return err;
 
     // Payload source location check.
-    // Verify the payload source address falls within a valid memory region
-    // (SPI XIP or SMC SRAM) to prevent DMA from accessing unexpected addresses.
+    // Verify the payload source falls within a valid region (a flash boot slot
+    // or SMC SRAM) to prevent a read from an unexpected address.
     {
         uint32_t p_len = (uint32_t)dest->payload_length;
         uint32_t p_off = (uint32_t)dest->boot_arguments.payload_offset;
@@ -622,18 +609,11 @@ static uint32_t try_manifest_slot(manifest_t *dest, uint32_t src_addr, bool from
             return MANIFEST_ERR_PAYLOAD_BAD_LOC;
         }
 
-        // Determine source type and check the payload stays within that region.
-        // OSS FIX: classify by the authoritative `from_spi` flag (the same flag
-        // that selected src_addr in the caller), NOT by re-deriving the type from
-        // the address value. The original `src_addr >= SEP_SPI_BASE` misclassifies
-        // any SMC-SRAM manifest (sep_get_smc_sram_base()=0x4006_0000, which is
-        // ABOVE the XIP window [0x3000_0000, 0x4000_0000)) as SPI and then rejects
-        // it as OOB -- so the non-SPI/secondary (SMC-SRAM) boot path could never
-        // pass. Using from_spi keeps the bounds check consistent with the source
-        // selection by construction.
+        // Classify by the `from_spi` flag that selected src_addr in the caller,
+        // not by the address value: on the SPI path src_addr is a flash
+        // byte-offset, so no value test can tell it from an absolute address.
         if (from_spi) {
-#if BOOT_SPI_CONTROLLER_OT
-            // OpenTitan: static slot-region + SRAM-destination bounds (hardened,
+            // Static slot-region + SRAM-destination bounds (hardened,
             // default-reject). payload_src is a flash byte-offset here.
             uint32_t payload_dest = (uint32_t)dest + p_off;
             if (!boot_flash_bounds_ok(payload_src, p_len, payload_dest, p_len)) {
@@ -641,15 +621,6 @@ static uint32_t try_manifest_slot(manifest_t *dest, uint32_t src_addr, bool from
                 report_status(STATUS_TYPE_ERROR, SEP_MSG_SPI_OT_BOUNDS_ERROR);
                 return MANIFEST_ERR_PAYLOAD_BAD_LOC;
             }
-#else
-            // SPI flash path: payload must be within XIP region.
-            uint32_t spi_end = SEP_SPI_BASE + SEP_SPI_MAX_SIZE;
-            if (payload_src < SEP_SPI_BASE || payload_end > spi_end) {
-                simputs("PAYLOAD_LOC_SPI_OOB\n");
-                report_status(STATUS_TYPE_ERROR, SEP_MSG_PAYLOAD_INVALID_LOCATION_FLASH);
-                return MANIFEST_ERR_PAYLOAD_BAD_LOC;
-            }
-#endif
         } else {
             // SMC SRAM path (recovery / secondary).
             uint32_t smc_sram = sep_get_smc_sram_base();
@@ -737,7 +708,6 @@ static uint32_t try_manifest_slot(manifest_t *dest, uint32_t src_addr, bool from
 
             uint32_t payload_src = src_addr + (uint32_t)p_off;
 
-#if BOOT_SPI_CONTROLLER_OT
             // The bounds gate above ran before the destination was chosen, so it
             // validated the EXT SRAM address rather than the one about to be
             // written. Re-run it on the real destination: the driver's own gate
@@ -748,7 +718,6 @@ static uint32_t try_manifest_slot(manifest_t *dest, uint32_t src_addr, bool from
                 report_status(STATUS_TYPE_ERROR, SEP_MSG_SPI_OT_BOUNDS_ERROR);
                 return MANIFEST_ERR_PAYLOAD_BAD_LOC;
             }
-#endif
 
             err = manifest_src_read(payload_dest, payload_src, p_len, from_spi);
             if (err) return MANIFEST_ERR_DMA_FAILED;
@@ -862,16 +831,12 @@ uint32_t rom_manifest_boot(const struct boot_straps *straps, uint32_t spi_status
             continue;
         }
 
-        // Source of the manifest. The OpenTitan controller has no memory-mapped
-        // flash, so pass the raw flash byte-offset; the Cadence XIP path and the
-        // SMC SRAM path pass an absolute address.
+        // Source of the manifest. Flash is not memory-mapped, so the SPI path
+        // passes the raw flash byte-offset; the SMC SRAM path passes an
+        // absolute address.
         uint32_t manifest_src;
         if (from_spi) {
-#if BOOT_SPI_CONTROLLER_OT
             manifest_src = offset;
-#else
-            manifest_src = SEP_SPI_BASE + offset;
-#endif
         } else {
             manifest_src = sep_get_smc_sram_base() + offset;
         }

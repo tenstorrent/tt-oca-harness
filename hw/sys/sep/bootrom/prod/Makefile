@@ -5,9 +5,8 @@ SHELL := /bin/bash
 #
 # SEP Boot ROM.
 #
-# SPI is stubbed (src/sep_spi.c): the `sep` DUT has no Cadence xSPI, so the ROM
-# skips the SPI manifest and boots from the SMC-SRAM manifest path.  The
-# manifest+BL1 image it boots is built from source here -- bl1_pass_test is
+# Flash is reached over the OpenTitan SPI host (src/sep_ot_spi.c).  The
+# manifest+BL1 image the ROM boots is built from source here -- bl1_pass_test is
 # compiled and packed by tt-boot-manifest from configs/non_secure_boot_test.yaml,
 # then rebased to the SMC-SRAM base.
 #
@@ -55,14 +54,10 @@ PMP_ENABLE ?= 1
 PMP_LOCK   ?= 0
 BUILD_TYPE ?= test
 
-# SPI flash transport selection. 0 = Cadence xSPI (default, memory-mapped XIP),
-# 1 = OpenTitan SPI host (command/FIFO transfers). The unused driver is dropped
-# by --gc-sections at link time.
-BOOT_SPI_CONTROLLER_OT ?= 0
-# OpenTitan RX-FIFO drain method (used only when BOOT_SPI_CONTROLLER_OT=1):
-# 0 = secure DMA (default), 1 = CPU programmed I/O.
+# OpenTitan RX-FIFO drain method: 0 = secure DMA (default), 1 = CPU programmed
+# I/O. The unused drain path is dropped by --gc-sections at link time.
 BOOT_OT_SPI_USE_PIO ?= 0
-# OpenTitan timing/device profile index (used only when BOOT_SPI_CONTROLLER_OT=1).
+# OpenTitan timing/device profile index.
 BOOT_OT_SPI_PROFILE ?= 0
 
 BUILD_DIR := build
@@ -93,7 +88,7 @@ BIN_TO_SPI    := $(TOOLS_DIR)/bin_to_spi_preload.py
 
 OBJS := $(BUILD_DIR)/vector.o $(BUILD_DIR)/rom_main.o $(BUILD_DIR)/rom_metadata.o \
 	$(BUILD_DIR)/boot_straps.o $(BUILD_DIR)/pll_init.o \
-	$(BUILD_DIR)/sep_spi.o $(BUILD_DIR)/sep_ot_spi.o $(BUILD_DIR)/sep_dma.o \
+	$(BUILD_DIR)/sep_ot_spi.o $(BUILD_DIR)/sep_dma.o \
 	$(BUILD_DIR)/manifest_load.o $(BUILD_DIR)/rom_handoff.o \
 	$(BUILD_DIR)/rom_mem_clear.o $(BUILD_DIR)/status_ring.o \
 	$(BUILD_DIR)/hmac_sha256.o $(BUILD_DIR)/fuse_lock.o \
@@ -107,10 +102,9 @@ OBJS := $(BUILD_DIR)/vector.o $(BUILD_DIR)/rom_main.o $(BUILD_DIR)/rom_metadata.
 OTBN_APP_DIR := $(DV_ROOT)/fw/build/otbn/rsa_3072_app
 OTBN_APP_C   := $(OTBN_APP_DIR)/rsa_3072_app_otbn.c
 
-# Optional extra sources injected by a nonfree overlay build (absolute .c paths).
-# Their strong symbols override the weak stubs in src/ at link time (e.g. a
-# companion-supplied SPI controller driver overriding the weak src/sep_spi.c
-# stub). Same pattern as the SMC prod ROM's NONFREE_DRIVER_SOURCES.
+# Optional extra sources injected by an overlay build (absolute .c paths).
+# Their strong symbols override the weak stubs in src/ at link time, such as
+# ot_spi_select_pad_mux() for a wrapper whose SPI pads are shared.
 NONFREE_BOOTCODE_SOURCES ?=
 NONFREE_BOOTCODE_OBJS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(notdir $(NONFREE_BOOTCODE_SOURCES)))
 OBJS += $(NONFREE_BOOTCODE_OBJS)
@@ -126,7 +120,6 @@ CFLAGS   := -Os -ffreestanding -fno-builtin -fdata-sections -ffunction-sections 
 	-DDCCM_SCRUB_BYTES=$(DCCM_SCRUB_BYTES) -DSRAM_SCRUB_BYTES=$(SRAM_SCRUB_BYTES) \
 	-DPMP_ENABLE=$(PMP_ENABLE) -DPMP_LOCK=$(PMP_LOCK) -DTEST_BUILD=1 -DSEP_BL0 -DDEBUG \
 	-DROM_ICCM_CLEAR_ENABLE=$(ROM_ICCM_CLEAR_ENABLE) \
-	-DBOOT_SPI_CONTROLLER_OT=$(BOOT_SPI_CONTROLLER_OT) \
 	-DBOOT_OT_SPI_USE_PIO=$(BOOT_OT_SPI_USE_PIO) \
 	-DBOOT_OT_SPI_PROFILE=$(BOOT_OT_SPI_PROFILE) \
 	$(CC_ABI)
@@ -144,15 +137,14 @@ DTCM_ELF_SECTIONS := --only-section=.data --only-section=.data.* --only-section=
 
 .PHONY: all clean bl1_test ensure-pack-deps toolchain-images pack-images \
         ot-toolchain-images ot-pio-toolchain-images
-all: toolchain-images pack-images
+all: ot-toolchain-images pack-images
 
-# OT SPI-host ROM variants, each into its own BUILD_DIR so they coexist. The
-# packed flash image is transport-agnostic, so `pack-images` builds it once.
+# ROM variants, each into its own BUILD_DIR so they coexist. The packed flash
+# image is drain-method-agnostic, so `pack-images` builds it once.
 ot-toolchain-images:
-	$(MAKE) BUILD_DIR=build_ot BOOT_SPI_CONTROLLER_OT=1 toolchain-images
+	$(MAKE) BUILD_DIR=build_ot toolchain-images
 ot-pio-toolchain-images:
-	$(MAKE) BUILD_DIR=build_ot_pio BOOT_SPI_CONTROLLER_OT=1 BOOT_OT_SPI_USE_PIO=1 \
-		toolchain-images
+	$(MAKE) BUILD_DIR=build_ot_pio BOOT_OT_SPI_USE_PIO=1 toolchain-images
 
 # Split by tool dependency so callers can run each half in the right environment:
 # toolchain-images needs the RISC-V/picolibc toolchain (i.e. the ocah-toolchain
@@ -168,7 +160,7 @@ $(BUILD_DIR):
 # --- Rebuild on build-flag changes ---
 # Objects are keyed on source mtime but their content depends on the -D flags, so
 # without this stamp a variant rebuild silently hands back the previous image.
-BUILD_FLAGS := CTRL_OT=$(BOOT_SPI_CONTROLLER_OT) USE_PIO=$(BOOT_OT_SPI_USE_PIO) \
+BUILD_FLAGS := USE_PIO=$(BOOT_OT_SPI_USE_PIO) \
 	PROFILE=$(BOOT_OT_SPI_PROFILE) BUILD_TYPE=$(BUILD_TYPE) \
 	PMP_ENABLE=$(PMP_ENABLE) PMP_LOCK=$(PMP_LOCK) \
 	DCCM_SCRUB=$(DCCM_SCRUB_BYTES) SRAM_SCRUB=$(SRAM_SCRUB_BYTES) \

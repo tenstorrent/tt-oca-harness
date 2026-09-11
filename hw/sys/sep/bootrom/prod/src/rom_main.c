@@ -69,7 +69,6 @@
 #include "hmac_sha256.h"
 #include "lifecycle.h"
 #include "sep_dma.h"
-#include "sep_spi.h"
 #include "boot_flash.h"
 
 extern const char g_rom_version[];
@@ -328,13 +327,6 @@ static uint32_t rom_spi_init(const struct boot_straps *straps, uint16_t sysclk_m
         return err;
     }
 
-#if !BOOT_SPI_CONTROLLER_OT
-    // The Cadence path caches a PHY-tuning TLV whose primary slot may fail to
-    // load; the OpenTitan controller has no TLV, so this only applies there.
-    if (spi_primary_tlv_failed()) {
-        simputs("SPI_PRIMARY_TLV_FAILED\n");
-    }
-#endif
     simputs("SPI_INIT_OK\n");
     return 0;
 }

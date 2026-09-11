@@ -84,20 +84,15 @@ from env.sep_efuse_image import SepEfuseImage, LC_TEST_DEV
 from env.sep_rom_console import rom_console_task, log_scratch_cold
 
 _SEP_ROOT = str(Path(__file__).resolve().parents[4])
-# The dispatch is the first thing after MRAC setup, long before any transport is
-# selected, so the SPI build variant is irrelevant; reuse the OT one rather than
-# adding a firmware profile.
 _FW_DIR = os.path.join(_SEP_ROOT, "bootrom", "prod", "build_ot")
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 
-# WARM_HANDLER_RANGE_BASE / _END in vector.S, named by symbol rather than line.
-# Independently confirmed in build/boot_rom.sym, which resolves
-# WARM_HANDLER_RANGE_BASE to 0xC0000000 (SEP ICCM base) and
-# WARM_HANDLER_RANGE_END to 0xC0040000 (ICCM base + size). The ROM was
-# re-pointed from the SRAM range to ICCM to match sep-boot-flow.puml:45; see
-# FINDINGS F28. The boundary-value idea is unchanged, only the boundary moved.
-_RANGE_BASE = 0xC000_0000
-_RANGE_END = 0xC004_0000
+# Must track WARM_HANDLER_RANGE_BASE / _END in vector.S, which accept a
+# warm-reset handler only inside SEP ICCM. If these drift from the ROM's range,
+# the boundary cases below probe the wrong edge and pass without testing it.
+# boot_rom.sym resolves both symbols if the values need re-checking.
+_RANGE_BASE = 0xC000_0000  # SEP ICCM base
+_RANGE_END = 0xC004_0000  # ICCM base + size
 # The seeded handler: the smallest address the upper bound rejects. Must match
 # +sep_cold_scratch7 in the testlist.
 _INVALID_HANDLER = _RANGE_END

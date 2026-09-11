@@ -18,9 +18,8 @@ unverified rather than covered. This test is the DMA half of the pair.
 
 What differs from the SMC-SRAM sibling:
 
-  * The ROM is built with ``BOOT_SPI_CONTROLLER_OT=1`` (``build_ot/``), so
-    ``boot_flash.h`` links the OpenTitan driver (``ot_spi_flash_read_dma``) rather
-    than the weak ``sep_spi.c`` stub that returns "SPI unavailable".
+  * ``boot_flash.h`` drains the RX FIFO with the secure DMA
+    (``ot_spi_flash_read_dma``), selected by ``BOOT_OT_SPI_USE_PIO=0``.
   * ``+sep_boot_from_spi`` makes the testbench seed ``STRAPS_LO[25]``
     (primary_chiplet) in the SMC responder, so ``boot_from_spi()`` is true and the
     ROM takes its SPI branch. Without it the ROM falls back to SMC-SRAM and this
