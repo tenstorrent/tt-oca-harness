@@ -9,11 +9,6 @@ package smc_pkg;
 
   // Include register header file
 
-  typedef enum int unsigned {
-    SMC_1CORE = 1,
-    SMC_4CORE = 2
-  } smc_cpu_config_e;
-
   // Peripheral parameters
   localparam int unsigned NUM_BONDED_GPIO = 61;
   localparam int unsigned NUM_UNBONDED_GPIO = 4;
