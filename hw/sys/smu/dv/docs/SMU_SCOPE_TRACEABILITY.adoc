@@ -9,8 +9,8 @@ This chapter is the *candidate* requirement-to-test-to-coverage matrix for
 subset and the per-leaf `TEST_EVIDENCE` tokens (#487).
 `SMU_DEFERRED_DISPOSITION.adoc` classifies the 123-entry catalog (#488).
 Live group membership for `--dut smu` is `testlists/wrapper.toml`.
-This file is the reconciliation of those two chapters with SPEC
-Features 1–7.
+This file is the reconciliation of those two chapters with Features
+1–7.
 
 Do not treat a merged copy as design-owner or DV-lead sign-off.
 
@@ -19,7 +19,7 @@ Do not treat a merged copy as design-owner or DV-lead sign-off.
 |Field |Value
 |Status |CANDIDATE — awaiting SMU design owner + DV lead approval
 |DUT |`--dut smu` → `hw/top/smu_wrapper.sv` under `smu_wrapper_uvm_top`, on its `SEP=0` compile profile (alias `smu_wrapper`)
-|Spec / plan |`hw/sys/smu/doc/SMU_SPEC.md` Features 1–7; `SMU_FEATURE_LIST.adoc`
+|Spec / plan |`SMU_FEATURE_LIST.adoc` Features 1–7
 |Coverage intent |`smu_fcov.py` scenario bins + `TEST_EVIDENCE` tokens. Verilator toggle / FCOV is scoped to `--dut smu_block` (`SMU_COVERAGE_POLICY.adoc`)
 |Checker |`SmuScoreboard` named `evidence=` / `expect_*` tokens + `results.xml`
 |CI tonight |`.github/workflows/sim.yml` PR `smoke_sep0`; `.github/workflows/regress.yml` nightly and weekly `sep0_all`
@@ -81,7 +81,7 @@ PASSes carry `DUT_TAG=BARE` and are not feature credit. See #489.
 [[smu-traceability-matrix]]
 === Candidate matrix (SPEC Features 1–7)
 
-Requirement IDs are `SMU_SPEC.md` Features 1–7. The per-leaf token map
+Requirement IDs are Features 1–7. The per-leaf token map
 is `SMU_FEATURE_LIST.adoc`; this table is the credit decision.
 
 [cols="1,2,2,2,3,1",options="header",]
