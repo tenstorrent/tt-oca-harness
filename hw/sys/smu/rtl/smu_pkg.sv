@@ -15,8 +15,6 @@ package smu_pkg;
   localparam logic [AXI_ADDR_WIDTH-1:0] SEP_SMC_REGION_ALIAS_BASE = 56'h0000_0000; // Alias to start of SMC address space
 
   typedef struct packed {
-    // Number of external interrupts routed to the SMC CPU
-    // Must be <= smc_4core_cpu_pkg::NUM_EXT_INTERRUPTS
     int unsigned NUM_INT_TO_SMC;
 
     // JTAG feature enables

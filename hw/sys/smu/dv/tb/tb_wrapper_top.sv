@@ -69,10 +69,10 @@ module smu_wrapper_uvm_top (
   output logic        sep_enabled_o,
   output logic        rst_cold_n_o,
   output logic        powergood_o,
-  output logic        fuse_sense_done_o,
-  output logic        fuse_reset_n_delayed_o,
+  output logic        smc_fuse_sense_done_o,
+  output logic        smc_fuse_reset_n_delayed_o,
   output logic        rst_primary_smc_clk_n_o,
-  output logic        init_mem_done_o,
+  output logic        smc_init_mem_done_o,
   output logic        sep_fuse_sense_done_o,
   // State of the SEP efuse shadow-register sim_skip_fuse_sense flag, i.e.
   // whether the SEP fuse-sense sequence is replaced by the shadow preload in
@@ -1434,25 +1434,25 @@ module smu_wrapper_uvm_top (
     .telemetry_afvalid_o (),
     .telemetry_afready_i ('0),
 
-    .cluster_ded_o (),
-    .wdt_first_timeout_o (),
-    .wdt_second_timeout_o (),
+    .smc_cluster_ded_o (),
+    .smc_wdt_first_timeout_o (),
+    .smc_wdt_second_timeout_o (),
 
     .smc_global_base_o (smc_global_base_o),
     .smc_region_size_o (smc_region_size_o),
     .sep_global_base_o (sep_global_base_o),
     .sep_region_size_o (sep_region_size_o),
 
-    .ext_interrupts_i ('0),
-    .fuse_sense_done_o,
-    .fuse_reset_n_delayed_o,
+    .smc_ext_interrupts_i ('0),
+    .smc_fuse_sense_done_o,
+    .smc_fuse_reset_n_delayed_o,
     .skip_mem_repair_o (),
     .ext_boot_seq_done_i (ext_boot_seq_done_i),
     .lc_state_o (lc_state),
     .lc_sigint_err_o (lc_sigint_err_o),
-    .ndmreset_request_i ('0),
-    .ndmreset_process_o (),
-    .ext_mailbox_interrupts_o (ext_mailbox_interrupts),
+    .smc_ndmreset_request_i ('0),
+    .smc_ndmreset_process_o (),
+    .smc_ext_mailbox_interrupts_o (ext_mailbox_interrupts),
 
     .cfg_flr_pf_active_i (1'b0),
     .isolate_req_o (),
@@ -1461,8 +1461,8 @@ module smu_wrapper_uvm_top (
     .ss_reset_ctrl_o (),
     .sync_irq_o (),
 
-    .disable_sram_auto_init_i (smc_disable_sram_auto_init),
-    .init_mem_done_o,
+    .smc_disable_sram_auto_init_i (smc_disable_sram_auto_init),
+    .smc_init_mem_done_o,
     .chiplet_is_primary_i (1'b1),
     .timer_count_o (tb_timer_count),
 
@@ -1479,7 +1479,7 @@ module smu_wrapper_uvm_top (
     .mbist_abort_i (1'b0),
 
     .sep_cpu_trace_o (sep_cpu_trace),
-    .sep_extintsrc_req_i ('0),
+    .sep_ext_interrupts_i ('0),
     .lcc_demote_state_1_o (),
     .lcc_demote_state_2_o (),
     .sep_fuse_dft_disable_o (),

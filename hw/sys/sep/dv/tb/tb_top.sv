@@ -460,7 +460,7 @@ module sep_uvm_top
         // Interrupts (idle)
         .timer_int                    (1'b0),
         .soft_int                     (1'b0),
-        .extintsrc_req                ('0),
+        .sep_ext_interrupts_i         ('0),
 
         // SMN external AXI (outbound captured by the mailbox responder; inbound
         // driven by the flat m_axi_* master when live).
