@@ -5,10 +5,7 @@
 Takes three IRQ observer samples separated by a fixed gap and, at the end,
 consumes the collected items: the count must match the stimulus actually
 issued, every sample must be resolvable, and the three aggregate readings must
-be identical across the gaps (idle stability). Before this the list was
-collected and never read, so it looked like a multi-sample evidence collector
-while the only fail path was the shared scoreboard's per-item idle checks
-([NO-DUMMY-DEAD-CODE]).
+be identical across the gaps (idle stability) ([NO-DUMMY-DEAD-CODE]).
 """
 
 from __future__ import annotations

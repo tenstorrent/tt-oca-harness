@@ -2,10 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """The reset unit's two woset locks: write-one-to-set, and they mask their target.
 
-Covers `SS_COLD_RESET_LOCK` and `SS_CONFIG_LOCK`, neither of which any enrolled
-testcase read. Written natively rather than ported from
-`fw/tests/cold_reset_lock_sanity`, because SEP_IN AXI already reaches the reset
-unit and a firmware image would add a dependency for nothing. One sequence
+Covers `SS_COLD_RESET_LOCK` and `SS_CONFIG_LOCK` over SEP_IN AXI, which reaches
+the reset unit without a firmware image. One sequence
 covers both because the two registers have the same declaration and the same
 gate in `smc_subsystem_resets.sv`, so a second testcase would differ only in
 two addresses.

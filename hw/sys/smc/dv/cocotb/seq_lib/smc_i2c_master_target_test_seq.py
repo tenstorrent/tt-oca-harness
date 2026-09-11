@@ -3,7 +3,7 @@
 """Sequence for smc_i2c_master_target_test / smc_i2c_p1_rdwr_protocol_test.
 
 U4-2: DUT OpenTitan I2C0 host writes a byte into a cocotb EEPROM slave on
-``tb_i2c0_*`` pads (not VIP↔VIP). Also keeps the OVRD pin-level gate.
+``tb_i2c0_*`` pads (not VIP↔VIP). Also proves the OVRD register -> pad gate.
 
 U4-2 SMBus (software framing on OT I2C; no HW PEC engine):
   * DUT host write-with-PEC to EEPROM
@@ -44,9 +44,8 @@ from .smc_addr_map import (
 
 # Generated PeakRDL C headers for the OpenTitan-derived I2C core and for the SMC
 # I2C wrapper's control block. Field masks and bit positions below are imported
-# by symbol from these, exactly as the register addresses already are, so a
-# regenerated map moves this sequence with it instead of leaving hand-copied bit
-# encodings behind ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
+# by symbol from these, like the register addresses, so a regenerated map moves
+# this sequence with it ([ADDRESS-FROM-AUTHORITATIVE-MAP]).
 _I2C_H = _REPO / "hw" / "ip" / "i2c" / "regs" / "gen" / "c" / "i2c.h"
 _I2C_CTRL_H = _REPO / "hw" / "ip" / "i2c" / "regs" / "gen" / "c" / "i2c_ctrl.h"
 
@@ -246,7 +245,7 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
 
     async def _program_i2c0_timing(self) -> None:
         """Load OpenTitan host timing (FW standard-mode defaults)."""
-        # Conservative defaults from fw/smc/common/i2c_opentitan.c
+        # Conservative TIMING defaults.
         await self.csr_write("I2C0_TIMING0", I2C0_TIMING0, _pack_timing0(0x1A, 0x32))
         await self.csr_write("I2C0_TIMING1", I2C0_TIMING1, _pack_timing1(2, 2))
         await self.csr_write("I2C0_TIMING2", I2C0_TIMING2, _pack_timing2(5, 4))
@@ -270,7 +269,7 @@ class smc_i2c_master_target_test_seq(SmcCsrSeq):
                 f"{label}: DUT I2C0 host never left hostidle after FMT push "
                 f"(STATUS=0x{status:08x} CONTROLLER_EVENTS=0x{cevents:08x})"
             )
-        # VCS completes a 3-byte host write in ~40 us; allow 2 ms of sim time.
+        # Completion bound: 200 polls x 10 us of sim time, well above a 3-byte host transfer.
         for _ in range(200):
             status = await self.csr_read(f"{label}_STATUS", I2C0_STATUS)
             if status & I2C_STATUS_HOSTIDLE:

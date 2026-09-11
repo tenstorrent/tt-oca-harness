@@ -10,7 +10,7 @@
 
 // Test focus:
 // - Verify SCR scratch register read/write correctness without affecting other registers.
-// - Provide a firmware-side skeleton for RX noise filtering tests (to be extended later).
+// - Confirm no RX data or error flag appears during an idle window.
 
 // FCR bit definitions (write-only, sharing the address with IIR)
 #define UART_FCR_FIFO_ENABLE (1u << 0)
@@ -187,22 +187,17 @@ static int uart_test_scr(uint32_t uart_base) {
     return 0;
 }
 
-// RX noise filtering test skeleton:
-//  - Currently only observes LSR/data status during idle, and uses SCR/scratch to hint phases to
-//  the testbench.
-//  - Actual glitch injection is implemented on the cocotb side and this check can be tightened once
-//  that is in place.
+// RX idle check: publish a phase marker in SCR for the testbench, then poll LSR over an idle
+// window and fail on any data-ready or error flag.
 static int uart_test_rx_noise_filter(uint32_t uart_base) {
     uart_16550_main__LSR_t lsr;
     uart_16550_main__SCR_t scr;
 
     simputs("UART_EXT: Entering RX noise filter idle phase...\n");
 
-    // Use SCR to write a magic value so the cocotb side (if implemented) can detect entry into the
-    // noise test.
+    // SCR phase marker for the testbench: 0xA1 marks entry into the idle-noise check.
     scr.w = 0u;
-    scr.f.SCR = 0xA1u; // Note: this is just an example magic code; the actual value can be agreed
-                       // upon with the TB.
+    scr.f.SCR = 0xA1u;
     write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_SCR_BASE_ADDR(0) -
                            SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
               scr.w);
@@ -236,8 +231,6 @@ int main(void) {
         test_fail(0);
     }
 
-    // Noise-filtering test currently performs only a basic idle check; full glitch injection can be
-    // added on the cocotb side later.
     if (uart_test_rx_noise_filter(uart_base) != 0) {
         test_fail(0);
     }

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC OSS P1 coverage-gap round 2: filter 16 inbound + 16 outbound CONFIG sweep."""
+"""Filter 16 inbound + 16 outbound CONFIG sweep."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_filter_multi_entry_test(smc_base_test):
-    """P1 coverage-gap round 2: filter 16 inbound + 16 outbound CONFIG sweep."""
+    """Filter 16 inbound + 16 outbound CONFIG sweep."""
 
     auto_protocol_vip = False
 
@@ -33,7 +33,7 @@ class smc_filter_multi_entry_test(smc_base_test):
             csr_accesses=seq.value_checks_measured,
             proxy=False,
             details=(
-                "P1 coverage-gap round 2: 16 inbound + 16 outbound "
+                "16 inbound + 16 outbound "
                 "FILTER_CONFIG slots, each proved by a "
                 "(direction,index)-unique signature read back at its own "
                 "offset while all 32 signatures are co-resident (phased "

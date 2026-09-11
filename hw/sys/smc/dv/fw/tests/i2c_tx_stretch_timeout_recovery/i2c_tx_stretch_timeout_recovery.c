@@ -6,8 +6,8 @@
  * @brief I2C target TX stretch timeout recovery test
  *
  * I2C_1 acts as controller and I2C_0 acts as target. The controller first
- * issues a READ while target firmware intentionally leaves the target TX FIFO
- * empty, causing automatic TX clock stretch until the controller times out.
+ * issues a READ while the target TX FIFO is empty, causing automatic TX clock
+ * stretch until the controller times out.
  * Firmware then disables the target to release the stretch, disables the
  * controller to exercise the automatic STOP recovery path, reinitializes both
  * sides, and verifies that a following 16-byte WRITE is received correctly.

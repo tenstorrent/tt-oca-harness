@@ -25,10 +25,8 @@ class smc_i2c_fifo_full_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.I2C,
             type(self).__name__,
-            # Conservative stimulus floor: 281 accesses observed in the retained
-            # regression run; the FMT/TX/RX FIFO status polls are a
-            # timing-dependent remainder, so the floor is set below the observed
-            # count. Literal here, not read from `seq.accesses`.
+            # Stimulus floor, literal here rather than read from `seq.accesses`: it sits below the
+            # run-to-run minimum because the FMT/TX/RX FIFO status polls are timing-dependent.
             min_csr_accesses=200,
             csr_accesses=seq.accesses,
             proxy=False,

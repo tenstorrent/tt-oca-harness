@@ -12,12 +12,9 @@
 //                              LOG_WRITE_ADDR, INTR_ENABLE, LOG_CTRL[0..15]
 //   - RO sanity reads on UART LSR/MSR/IIR (constants per RDL)
 //
-// Test ends via test_pass(0). Mismatches use info_msg_* + test_fail(0)
-// (fail-fast). Avoids raise_error_* + end_test pattern which proved
-// unreliable under -Os -flto + static inline.
-// Coverage maps to UART_LOG_ENGINE_TEST_PLAN smc_uart_log_engine_reg_rw_test
-// and UART_LOG_ENGINE_COVERAGE_POINT UART_REG_COV_01 / LE_REG_COV_01 /
-// LE_REG_COV_02.
+// Mismatches log via info_msg_* then call test_fail(0) (noreturn);
+// raise_error_* + end_test is not reliable under -Os -flto with static inline
+// helpers.
 
 #include <stdint.h>
 
@@ -236,15 +233,14 @@ int main(void) {
     // INTR_ENABLE — only bits {4,0} are defined.
     rw_walk_one(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, MASK_11_BIT_INTR, 0x100205);
 
-    // LOG_CTRL[0..15] — only verify address decodes (read=0 at reset).
-    // We deliberately do NOT walk patterns here: writing a nonzero value
-    // raises an arbiter request, and writing the next pattern drops it
-    // before the arbiter can grant — that violates
-    // `prim_arbiter_tree.ReqStaysHighUntilGranted0_M` (SVA). The arbiter's
-    // `req_chk_i` is not gated by CTRL.EN in the current wrapper, so even
-    // with engine disabled the check fires. The actual RW path for
-    // LOG_CTRL[i] is exercised legally (with full request-grant handshake)
-    // by smc_uart_log_engine_single_entry_test / _region_size_test.
+    // LOG_CTRL[0..15] — only verify address decodes (read=0 at reset). No
+    // pattern walk: writing a nonzero value raises an arbiter request, and
+    // writing the next pattern drops it before the arbiter can grant, which
+    // violates `prim_arbiter_tree.ReqStaysHighUntilGranted0_M` (SVA); the
+    // arbiter's `req_chk_i` is not gated by CTRL.EN, so the check fires even
+    // with the engine disabled. The LOG_CTRL[i] RW path is exercised with a
+    // full request-grant handshake by smc_uart_log_engine_single_entry_test
+    // and smc_uart_log_engine_region_size_test.
     for (uint32_t i = 0; i < 16; i++) {
         uint32_t v = read_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF + (i * 4)) & MASK_16_BIT;
         if (v != 0u) {

@@ -1,10 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""GPIO interrupt_enable output-mask reproducer for issue #1602.
+"""GPIO interrupt_enable as an output mask.
 
-EXPECTED TO FAIL against current RTL. Enrolled in the `rtl_issue` group only --
-no `ci` tag, not in `smoke`. Its purpose is to hold the evidence for #1602 in a
-runnable form; when the RTL is fixed it should move into the `gpio` group.
+Clearing interrupt_enable must de-assert interrupt_o. The RTL uses
+interrupt_enable as the clock enable of the interrupt flop rather than as an
+output mask, so interrupt_o holds after the enable is cleared and this testcase
+fails against it; it is enrolled in the `rtl_issue` group.
 """
 
 from __future__ import annotations
@@ -18,7 +19,7 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_gpio_irq_mask_deassert_test(smc_base_test):
-    """#1602: clearing interrupt_enable must de-assert interrupt_o."""
+    """Clearing interrupt_enable must de-assert interrupt_o."""
 
     auto_protocol_vip = False
 

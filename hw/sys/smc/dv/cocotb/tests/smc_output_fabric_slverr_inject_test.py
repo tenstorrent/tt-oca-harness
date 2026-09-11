@@ -31,7 +31,7 @@ class smc_output_fabric_slverr_inject_test(smc_base_test):
     async def run_scenario(self) -> None:
         dut = cocotb.top
         assert hasattr(dut, "tb_output_axi_bresp"), (
-            "tb_output_axi_bresp missing; rebuild after U6-2 SYS_OUT lift"
+            "tb_output_axi_bresp missing from the smc_uvm_top port surface"
         )
         output_fabric_model(self)
 
@@ -130,7 +130,7 @@ class smc_output_fabric_slverr_inject_test(smc_base_test):
             # read from `cfg_seq.accesses`.
             min_csr_accesses=6,
             # The four JTAG-AXI accesses are reported in their own field rather
-            # than folded into csr_accesses, which labelled fabric traffic as
+            # than folded into csr_accesses, which would label fabric traffic as
             # CSR traffic.
             fabric_accesses=4,
             min_fabric_accesses=4,

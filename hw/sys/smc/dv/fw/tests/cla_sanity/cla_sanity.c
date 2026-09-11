@@ -2,9 +2,8 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * SMC_CLA_001 — SPEC-blocked placeholder (SF-001/SF-002 waived).
- * Record the SF ledger only; do not emit feature CHK-* lines or a
- * cannot-fail "nonvacuous" checker while SF-001 remains waived.
+ * SMC_CLA_001 — SF-001/SF-002 spec-finding ledger entries only: this image
+ * drives no CLA register and emits no feature CHK-* token.
  */
 
 #include <stdint.h>

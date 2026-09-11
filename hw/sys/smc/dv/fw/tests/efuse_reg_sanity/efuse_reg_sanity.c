@@ -27,15 +27,15 @@ int main(void) {
         test_fail(hartid);
     }
 
-    // do a negative test to make sure addresses that should be able to be written to are valid
+    // Negative check: writes to the read-only STATUS fields must not read back
     efuse_interface_ctrl__EFUSE_INTERFACE_CTRL_STATUS_t efuse_ctrl_status = {.w = 0x0};
     efuse_ctrl_status.f.efuse_sense_done = 0x0;
     efuse_ctrl_status.f.efuse_req_error = 0x1;
 
     write_reg(SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR,
-              efuse_ctrl_status.w); // magic number targeting read only fields //replace
+              efuse_ctrl_status.w); // targets read-only fields
     read_data =
-        read_reg(SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR); // replace
+        read_reg(SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR);
     write_scratch(1, read_data);
     if (read_data == efuse_ctrl_status.w) {
         test_fail(hartid);
