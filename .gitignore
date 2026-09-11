@@ -52,11 +52,10 @@ doc/*/dist/*
 !doc/*/dist/ocah-*.pdf
 doc/*/assets/*
 doc/*/src/assets
-!doc/trm/assets/
 !doc/trm/assets/.gitignore
-!doc/trm/assets/*.png
-!doc/integrator/assets/
-!doc/integrator/assets/*.png
+doc/trm/assets/*
+doc/integrator/assets/*
+!doc/integrator/assets/.gitignore
 doc/*/modules/ROOT/pages/
 doc/*/modules/ROOT/partials/hw/
 doc/*/modules/ROOT/assets/

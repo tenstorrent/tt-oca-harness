@@ -28,7 +28,7 @@ from __future__ import annotations
 
 from sep_reg_meta import SEP_LIFECYCLE_CTRL, sym
 
-# -- lifecycle-state raw encodings (efuse_pkg::lc_state_raw_e) -----------------
+# -- lifecycle-state raw encodings (lifecycle_controller.adoc) -----------------
 LC_TEST_DEV = 0x0
 LC_PROD = 0x1
 LC_RMA_SIP_0 = 0x2
@@ -61,7 +61,7 @@ LCC_FEAT_CTRL = SEP_LIFECYCLE_CTRL.addr("FEAT_CTRL")
 LCC_DEMOTE_1 = SEP_LIFECYCLE_CTRL.addr("DEMOTE_1")
 LCC_DEMOTE_2 = SEP_LIFECYCLE_CTRL.addr("DEMOTE_2")
 
-# -- feat_ctrl bit layout (sep_efuse_pkg, Disable Vector Format) --------------
+# -- feat_ctrl bit layout (lifecycle_controller.adoc Disable Vector Format) --
 # Feature control is per GROUP, and demotion acts on one debug group at a time --
 # which is why DBG_1 and DBG_2 need separate masks rather than one Debug mask.
 #   [23:0]  DBG_1    bit 0 sep_debug, bit 1 chiplet_dbg, bit 2 sep_fuse_dbg,
@@ -381,9 +381,10 @@ def selftest() -> None:
 # ---------------------------------------------------------------------------
 # dbg_disable
 # ---------------------------------------------------------------------------
-# Field order of sep_lifecycle_ctrl_pkg::dbg_disable_t. A packed struct puts the
-# first-declared field in the most significant bit, so index 0 here is the MSB
-# of the flattened vector the testbench exports.
+# Packed dbg_disable names, MSB first, as the testbench exports the flattened
+# vector. The lifecycle chapter states the three DTP cases, not this field
+# order. dft_secure and stap_sep are both Case 3, so a swapped pair cannot
+# fail a checker today.
 DBG_DISABLE_FIELDS = (
     "stap_io",
     "stap_smc",
@@ -399,10 +400,10 @@ DBG_DISABLE_FIELDS = (
 )
 DBG_DISABLE_WIDTH = len(DBG_DISABLE_FIELDS)
 
-# Every packed dbg_disable bit is claimed. The DTP path table and the RTL
-# agree on the three nested cases: Case 1 SIP_DBG, Case 2 plus CHIPLET_DBG,
-# Case 3 plus SEP_DBG. The DFT-inserted fuse-path disables are separate
-# DUT ports; ``fuse_dft_disable_expected`` owns those.
+# Every packed dbg_disable bit is claimed. The lifecycle chapter's DTP path
+# table states the three nested cases: Case 1 SIP_DBG, Case 2 plus
+# CHIPLET_DBG, Case 3 plus SEP_DBG. The DFT-inserted fuse-path disables are
+# separate DUT ports; ``fuse_dft_disable_expected`` owns those.
 DBG_DISABLE_UNCLAIMED: tuple[str, ...] = ()
 
 

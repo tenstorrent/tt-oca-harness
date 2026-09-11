@@ -155,7 +155,7 @@ Directions/types from the `smu` core boundary (`smu.sv`).
 | External SMN AXI out | `smu_axi_out_req_o`/`resp_i` (`axi_out`, 10-bit ID) | Manager | Use `ocah_axi_vip` `OcahAxiSlaveAgent` |
 | SMC/SEP OTP debug (over JTAG2AXI) | AXI4-Lite 32/32 | Manager | Use `ocah_axi_vip` AXI-Lite wrappers |
 | SMC AXI-Lite shims (PLL/PVT/GPIO/eFuse/extension) | `smc_axil_32_32` | Mixed | Use `ocah_axi_vip` AXI-Lite when exercised |
-| SMC mailbox interrupts | `ext_mailbox_interrupts_o [31:0]` | Output | Observe; scoreboard checks |
+| SMC mailbox interrupts | `smc_ext_mailbox_interrupts_o [31:0]` | Output | Observe; scoreboard checks |
 | SEP mailbox interrupts | internal `[7:0]` | Internal | Observe via wrapper (note ISSUE-7) |
 | BSR / STAP / iJTAG scan | `jtag_scan_ctrl_t` + scan in/out | Host | Loopback first, then OCAH-local scan model |
 | Cross-trigger CTM/CTP | Request/ack arrays + GPIO | Mixed | OCAH-local BFM; custom OCAH protocol |
