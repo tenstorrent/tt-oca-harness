@@ -367,7 +367,7 @@ default was replaced.</p>
 <div class="sect3">
 <h4 id="smc-rom-fw-integration"><a class="anchor" href="#smc-rom-fw-integration"></a><a class="link" href="#smc-rom-fw-integration">2.2.2. SMC ROM FW integration</a></h4>
 <div class="paragraph">
-<p>Connect <code>rom_intf_req_o</code> and <code>rom_intf_rsp_i</code> to the adopter&#8217;s ROM
+<p>Connect <code>smc_rom_intf_req_o</code> and <code>smc_rom_intf_rsp_i</code> to the adopter&#8217;s ROM
 implementation. In the current four-core configuration, the request provides
 the ROM clock, enable, and 14-bit 64-bit-word address, and the response returns
 one 64-bit word. This is a direct memory interface, not AXI-Lite. The 128 KiB
@@ -701,6 +701,22 @@ full register layout, refer to the SMC Memory Map documentation
 </div>
 <div class="sect4">
 <h5 id="smc-efuse-connection"><a class="anchor" href="#smc-efuse-connection"></a><a class="link" href="#smc-efuse-connection">eFuse Interface</a></h5>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>This guide uses <strong>eFuse</strong> and <strong>OTP</strong> interchangeably for the same one-time
+programmable bank and the SHIM that fronts it. Port names mix both
+(<code>efuse_*</code>, <code><strong><em>otp</em></strong></code>); they refer to the same interface.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
 <div class="paragraph">
 <p>The eFuse interface consists of two parts:</p>
 </div>
@@ -778,7 +794,7 @@ strobe per <code>WORD_WIDTH</code> access.</p>
 <div class="paragraph">
 <p>The <code>shadow_regs_o</code> output provides read-only access to the sensed fuse
 values. During bring-up the SMC automatically senses the fuse contents and
-propagates them through the shadow registers; the <code>fuse_sense_done_o</code> signal
+propagates them through the shadow registers; the <code>smc_fuse_sense_done_o</code> signal
 indicates completion of this sensing operation.</p>
 </div>
 </div>
@@ -793,15 +809,15 @@ contract.</p>
 <div class="sect4">
 <h5 id="smc-sram-cache-integration"><a class="anchor" href="#smc-sram-cache-integration"></a><a class="link" href="#smc-sram-cache-integration">SRAM and Cache Array Integration</a></h5>
 <div class="paragraph">
-<p>Scratch RAM interfaces (<code>scratch_ram_intf_req_o</code> and <code>scratch_ram_intf_rsp_i</code>)
+<p>Scratch RAM interfaces (<code>smc_scratch_ram_intf_req_o</code> and <code>smc_scratch_ram_intf_rsp_i</code>)
 connect to 32 independent RAM banks totaling the scratchpad memory space. Cache
-memory interfaces for L1 instruction and data caches (<code>l1_icache_*</code> and
-<code>l1_dcache_*</code>) connect to tag and data RAM banks as specified in the port table.</p>
+memory interfaces for L1 instruction and data caches (<code>smc_l1_icache_*</code> and
+<code>smc_l1_dcache_*</code>) connect to tag and data RAM banks as specified in the port table.</p>
 </div>
 <div class="paragraph">
-<p>The <code>disable_sram_auto_init_i</code> input controls automatic memory initialization
+<p>The <code>smc_disable_sram_auto_init_i</code> input controls automatic memory initialization
 behavior. When deasserted, the SMC automatically zeroes all SRAM contents during
-bring-up. The <code>init_mem_done_o</code> output indicates completion of this
+bring-up. The <code>smc_init_mem_done_o</code> output indicates completion of this
 initialization sequence. The <code>SRAM_AUTO_ZERO_DISABLE</code> strap
 (<code>STRAPS_LO[26]</code>) can
 disable this automatic zeroing behavior if your integration requires preserved
@@ -830,7 +846,7 @@ faster recovery.</p>
 <div class="ulist">
 <ul>
 <li>
-<p><code>fuse_sense_done_o</code>: eFuse controller output indicating fuse sensing
+<p><code>smc_fuse_sense_done_o</code>: eFuse controller output indicating fuse sensing
 completion.
   External DFT logic monitors this signal to trigger repair operations.</p>
 </li>
@@ -902,7 +918,7 @@ during development or with known-good components.</p>
 <p><strong>Integration Requirements:</strong></p>
 </div>
 <div class="paragraph">
-<p>Provide an external memory repair controller that monitors <code>fuse_sense_done_o</code>
+<p>Provide an external memory repair controller that monitors <code>smc_fuse_sense_done_o</code>
 to initiate repair, respects <code>skip_mem_repair_o</code> for bypass control, reads
 repair data from eFuse shadow registers, applies repair configuration to SRAM
 arrays, asserts <code>ext_boot_seq_done_i</code> and updates DFT Control Status registers
@@ -940,9 +956,9 @@ synchronisation bit in the reset unit, unrelated to PLIC interrupt delivery.
 Do not connect an external interrupt controller to <code>sync_irq_o</code>.</p>
 </div>
 <div class="paragraph">
-<p>External interrupt sources visible to the adopter are <code>ext_interrupts_i</code> (SMC
+<p>External interrupt sources visible to the adopter are <code>smc_ext_interrupts_i</code> (SMC
 external interrupt input vector, width <code>NUM_INT_TO_SMC</code>),
-<code>ext_mailbox_interrupts_o</code> (outbound mailbox notifications, width
+<code>smc_ext_mailbox_interrupts_o</code> (outbound mailbox notifications, width
 <code>NUM_MAILBOXES</code>), <code>gpio_interrupt_o</code> (GPIO edge/level events, width
 <code>NUM_GPIO_WRAPS</code>), and <code>uart_interrupt_o</code> (UART TX/RX events, width <code>NUM_UART</code>).
 For the full PLIC source map see the SMC Technical Reference Manual.</p>
@@ -979,7 +995,7 @@ to initiate the SMC boot sequence. The SMC immediately begins fuse sensing to re
 values and security credentials.</p>
 </div>
 <div class="paragraph">
-<p>Monitor the <code>fuse_sense_done_o</code> signal to detect completion of fuse sensing. Configuration
+<p>Monitor the <code>smc_fuse_sense_done_o</code> signal to detect completion of fuse sensing. Configuration
 straps sampled during this phase determine boot modes and operational settings. After fuse
 sensing completes, the SMC releases internal subsystem resets based on the programmed reset
 sequencing configuration.</p>
@@ -987,7 +1003,7 @@ sequencing configuration.</p>
 <div class="paragraph">
 <p>The CPU cluster begins executing the ROM FW after reset release. The ROM FW
 performs additional initialization including peripheral configuration, memory
-testing (unless disabled), and system health checks. The <code>init_mem_done_o</code>
+testing (unless disabled), and system health checks. The <code>smc_init_mem_done_o</code>
 signal indicates completion of memory initialization if automatic SRAM zeroing
 is enabled.</p>
 </div>
@@ -1416,7 +1432,7 @@ signal descriptions and timing requirements.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cluster_ded_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_cluster_ded_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
@@ -1425,7 +1441,7 @@ signal descriptions and timing requirements.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>wdt_first_timeout_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_wdt_first_timeout_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
@@ -1434,7 +1450,7 @@ signal descriptions and timing requirements.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>wdt_second_timeout_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_wdt_second_timeout_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
@@ -1452,7 +1468,7 @@ signal descriptions and timing requirements.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ext_interrupts_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_ext_interrupts_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_EXT_INTERRUPTS-1:0]</code></p></td>
@@ -1479,7 +1495,7 @@ signal descriptions and timing requirements.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>fuse_sense_done_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_fuse_sense_done_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
@@ -1488,7 +1504,7 @@ signal descriptions and timing requirements.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>fuse_reset_n_delayed_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_fuse_reset_n_delayed_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
@@ -1524,7 +1540,7 @@ signal descriptions and timing requirements.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">From SEP; tie to 8&#8217;hf0 if unused (encoded TEST_DEV)</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ext_mailbox_interrupts_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_ext_mailbox_interrupts_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_MAILBOXES-1:0]</code></p></td>
@@ -1605,7 +1621,7 @@ signal descriptions and timing requirements.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A, leave floating if unused</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rom_intf_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_rom_intf_req_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>rom_req_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
@@ -1614,7 +1630,7 @@ signal descriptions and timing requirements.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rom_intf_rsp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_rom_intf_rsp_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>rom_rsp_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
@@ -1623,7 +1639,7 @@ signal descriptions and timing requirements.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>scratch_ram_intf_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_scratch_ram_intf_req_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>scratch_ram_req_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_SRAM_BANKS2-1:0]</code></p></td>
@@ -1632,7 +1648,7 @@ signal descriptions and timing requirements.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>scratch_ram_intf_rsp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_scratch_ram_intf_rsp_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>scratch_ram_rsp_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_SRAM_BANKS2-1:0]</code></p></td>
@@ -1641,7 +1657,7 @@ signal descriptions and timing requirements.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_icache_tag_intf_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_icache_tag_intf_req_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_icache_tag_req_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_ICACHE_TAG_BANKS-1:0]</code></p></td>
@@ -1650,7 +1666,7 @@ signal descriptions and timing requirements.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_icache_tag_intf_rsp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_icache_tag_intf_rsp_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_icache_tag_rsp_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_ICACHE_TAG_BANKS-1:0]</code></p></td>
@@ -1659,7 +1675,7 @@ signal descriptions and timing requirements.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_icache_data_intf_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_icache_data_intf_req_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_icache_data_req_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_ICACHE_DATA_BANKS-1:0]</code></p></td>
@@ -1668,7 +1684,7 @@ signal descriptions and timing requirements.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_icache_data_intf_rsp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_icache_data_intf_rsp_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_icache_data_rsp_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_ICACHE_DATA_BANKS-1:0]</code></p></td>
@@ -1677,7 +1693,7 @@ signal descriptions and timing requirements.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_dcache_tag_intf_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_dcache_tag_intf_req_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_dcache_tag_req_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_DCACHE_TAG_BANKS-1:0]</code></p></td>
@@ -1686,7 +1702,7 @@ signal descriptions and timing requirements.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_dcache_tag_intf_rsp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_dcache_tag_intf_rsp_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_dcache_tag_rsp_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_DCACHE_TAG_BANKS-1:0]</code></p></td>
@@ -1695,7 +1711,7 @@ signal descriptions and timing requirements.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_dcache_data_intf_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_dcache_data_intf_req_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_dcache_data_req_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_DCACHE_DATA_BANKS-1:0]</code></p></td>
@@ -1704,7 +1720,7 @@ signal descriptions and timing requirements.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_dcache_data_intf_rsp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_dcache_data_intf_rsp_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_dcache_data_rsp_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_DCACHE_DATA_BANKS-1:0]</code></p></td>
@@ -1713,7 +1729,7 @@ signal descriptions and timing requirements.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>disable_sram_auto_init_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_disable_sram_auto_init_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
@@ -1722,7 +1738,7 @@ signal descriptions and timing requirements.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1&#8217;b0</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>init_mem_done_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_init_mem_done_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
@@ -3610,26 +3626,72 @@ external TRNG is connected, terminate <code>ext_trng_axil</code> with a DECERR s
 <div class="sect3">
 <h4 id="efuse-and-lifecycle"><a class="anchor" href="#efuse-and-lifecycle"></a><a class="link" href="#efuse-and-lifecycle">2.5.6. eFuse and Lifecycle</a></h4>
 <div class="paragraph">
-<p>The SEP accesses its own eFuse bank through the <code>efuse_bank_ctrl</code> AXI-Lite
-interface and the <code>efuse_shim_command</code> custom interface, mirroring the pattern
-used by the SMC. The SEP must wait for the SMC fuse sense to complete
-(<code>smc_fuse_sense_done_i</code>) before initiating its own fuse operations, and it
-signals completion through <code>sep_fuse_sense_done_o</code>.</p>
+<p>SEP has its own eFuse bank. Instantiate a separate SHIM and physical
+eFuse bank; do not share the SMC&#8217;s. The SHIM contract is
+<a href="#smc-efuse-connection">eFuse Interface</a>. On <code>sep.sv</code> connect <code>efuse_bank_ctrl_*</code> and
+<code>efuse_shim_command_*</code>. Through the SMU those ports appear as
+<code>sep_efuse_bank_ctrl_*</code> and <code>sep_efuse_shim_command_*</code>.</p>
 </div>
 <div class="paragraph">
-<p>The lifecycle controller exports <code>lc_state_o</code> (differentially encoded),
-<code>lc_sigint_err_o</code> (signal integrity error), <code>security_disable_o</code>,
-<code>secure_tm_o</code>, and <code>dbg_disable_o</code> (the typed debug-disable struct that the
-SMU routes to the DTP). The feature-control vector (<code>feat_ctrl</code>) is separately
-produced by the lifecycle controller and consumed internally within sep.sv; it
-is not an external port. <code>lcc_demote_state_1_o</code> and <code>lcc_demote_state_2_o</code> are
-exported at the SMU boundary; at present the SMU does not connect them to the
-SMC instance.</p>
+<p>SEP senses this bank after its own reset. Watch <code>sep_fuse_sense_done_o</code>.
+On <code>sep.sv</code>, drive <code>smc_fuse_sense_done_i</code> from the SMC so firmware can
+see when the SMC fabric is out of reset; the SMU wires that input
+internally.</p>
 </div>
 <div class="paragraph">
-<p>An OTP debug AXI-Lite port (<code>axil_sep_otp_jtag</code>) connects to the DTP for JTAG
-access to SEP fuses. When SEP is disabled (<code>SEP=0</code> at the SMU level), the SMU
-instantiates an AXI-Lite error slave on this path.</p>
+<p>Lifecycle and test-mode ports on <code>sep.sv</code>, and what to do with them.
+Behaviour is in the Technical Reference Manual, not here.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>secure_tm_req_i</code> signals a request to enter secure test mode.
+SEP latches it into <code>secure_tm_o</code> when fuse sensing completes, or at
+cold-reset release if SEC_DIS is already asserted. Secure test mode
+forces a no-secret, no-fuse-program configuration; it is not an
+authorization bit. See
+<a href="../../ocah-docs/latest/architecture.html#test-mode-entry" class="xref page">Test Mode Entry</a>
+and
+<a href="../../ocah-docs/latest/architecture.html#secure-tm-vs-scandump" class="xref page"><code>secure_tm</code> and the Secure Scan Chain</a>
+in the TRM. <code>secure_tm_o</code> is also an SMU output.</p>
+</li>
+<li>
+<p><code>security_disable_o</code> is the SEC_DIS token-match result (emergency
+A0 unlock). On <code>sep.sv</code>, route it to SMC <code>sep_security_disable_i</code>; the
+SMU does that internally. See
+<a href="../../ocah-docs/latest/architecture.html#security-disable-sec_dis" class="xref page">Security Disable</a>
+in the TRM.</p>
+</li>
+<li>
+<p><code>lc_state_o</code> is the differentially encoded LC_STATE shadow.
+<code>lc_sigint_err_o</code> is the decode integrity error (fail-closed). Both
+are SMU outputs. See
+<a href="../../ocah-docs/latest/architecture.html#life-cycle-controller-lcc-life-cycle-controller-lcc" class="xref page">Life Cycle Controller</a>
+in the TRM.</p>
+</li>
+<li>
+<p><code>dbg_disable_o</code> is the typed per-path debug/test disable vector
+(active-high: 1 = path disabled). On <code>sep.sv</code>, route it to DTP
+<code>dbg_disable_i</code>; the SMU does that internally.</p>
+</li>
+<li>
+<p><code>lcc_demote_state_1_o</code> / <code>lcc_demote_state_2_o</code> are differentially
+encoded in-field debug demotion. They leave the SMU for adopter
+lifecycle logic and are not connected to the SMC. See
+<a href="../../ocah-docs/latest/architecture.html#demote-1-2-in-field-debug-demotion" class="xref page">in-field debug demotion</a>
+in the TRM.</p>
+</li>
+<li>
+<p><code>sep_fuse_dft_disable_o</code> / <code>smc_fuse_dft_disable_o</code> gate DFT-inserted
+OTP access. Leave them open if no such path is inserted. They are SMU
+outputs.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>OTP debug AXI-Lite (<code>axil_sep_otp_jtag</code>) is connected to the DTP inside
+the SMU; when <code>SEP=0</code> the SMU instantiates an AXI-Lite error slave on
+that path.</p>
 </div>
 </div>
 <div class="sect3">
@@ -3651,7 +3713,7 @@ from secure boot authentication and lifecycle state govern what operations are
 permitted after boot.</p>
 </div>
 <div class="paragraph">
-<p>The <code>secure_tm_req_i</code> input is a secure test mode request. The <code>jtag_id</code> input
+<p>The <code>jtag_id</code> input
 must be tied to an appropriate constant in the top-level integration. A
 <code>rst_vec_i</code> port exists on <code>tb_top.sv</code> for DV reset vector injection; it is not
 present on <code>sep.sv</code> itself and requires no integration tie-off.</p>
@@ -6755,19 +6817,19 @@ the SEP-to-SMC dedicated AXI connection.</p>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cluster_ded_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_cluster_ded_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>wdt_first_timeout_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_wdt_first_timeout_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>wdt_second_timeout_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_wdt_second_timeout_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
@@ -6821,7 +6883,7 @@ the SEP-to-SMC dedicated AXI connection.</p>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ext_interrupts_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_ext_interrupts_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[NUM_EXT_INTERRUPTS-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
@@ -6860,13 +6922,13 @@ the SEP-to-SMC dedicated AXI connection.</p>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>fuse_sense_done_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_fuse_sense_done_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>fuse_reset_n_delayed_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_fuse_reset_n_delayed_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
@@ -6959,7 +7021,7 @@ the SEP-to-SMC dedicated AXI connection.</p>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ext_mailbox_interrupts_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_ext_mailbox_interrupts_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">[NUM_MAILBOXES-1:0]</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
@@ -7043,73 +7105,73 @@ the SEP-to-SMC dedicated AXI connection.</p>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rom_intf_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_rom_intf_req_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>rom_req_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rom_intf_rsp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_rom_intf_rsp_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>rom_rsp_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>scratch_ram_intf_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_scratch_ram_intf_req_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>scratch_ram_req_t[31:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>scratch_ram_intf_rsp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_scratch_ram_intf_rsp_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>scratch_ram_rsp_t[31:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_icache_tag_intf_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_icache_tag_intf_req_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_icache_tag_req_t[3:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_icache_tag_intf_rsp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_icache_tag_intf_rsp_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_icache_tag_rsp_t[3:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_icache_data_intf_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_icache_data_intf_req_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_icache_data_req_t[7:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_icache_data_intf_rsp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_icache_data_intf_rsp_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_icache_data_rsp_t[7:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_dcache_tag_intf_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_dcache_tag_intf_req_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_dcache_tag_req_t[3:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_dcache_tag_intf_rsp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_dcache_tag_intf_rsp_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_dcache_tag_rsp_t[3:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_dcache_data_intf_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_dcache_data_intf_req_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_dcache_data_req_t[3:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_dcache_data_intf_rsp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_dcache_data_intf_rsp_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_dcache_data_rsp_t[3:0]</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
@@ -7136,13 +7198,13 @@ the SEP-to-SMC dedicated AXI connection.</p>
 </thead>
 <tbody>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>disable_sram_auto_init_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_disable_sram_auto_init_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>init_mem_done_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_init_mem_done_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">SMU external port</p></td>
@@ -8397,7 +8459,7 @@ with <code>sep_</code> are only active when the module parameter <code>SEP=1</co
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>cluster_ded_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_cluster_ded_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
@@ -8406,7 +8468,7 @@ with <code>sep_</code> are only active when the module parameter <code>SEP=1</co
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>wdt_first_timeout_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_wdt_first_timeout_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
@@ -8415,7 +8477,7 @@ with <code>sep_</code> are only active when the module parameter <code>SEP=1</co
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>wdt_second_timeout_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_wdt_second_timeout_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
@@ -8433,7 +8495,7 @@ with <code>sep_</code> are only active when the module parameter <code>SEP=1</co
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ext_interrupts_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_ext_interrupts_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[Cfg.NUM_INT_TO_SMC-1:0]</code></p></td>
@@ -8442,7 +8504,7 @@ with <code>sep_</code> are only active when the module parameter <code>SEP=1</co
 <td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>fuse_sense_done_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_fuse_sense_done_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
@@ -8451,7 +8513,7 @@ with <code>sep_</code> are only active when the module parameter <code>SEP=1</co
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>fuse_reset_n_delayed_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_fuse_reset_n_delayed_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
@@ -8496,7 +8558,7 @@ with <code>sep_</code> are only active when the module parameter <code>SEP=1</co
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ndmreset_request_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_ndmreset_request_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[CPU_CLUSTER_COUNT-1:0]</code></p></td>
@@ -8505,7 +8567,7 @@ with <code>sep_</code> are only active when the module parameter <code>SEP=1</co
 <td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ndmreset_process_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_ndmreset_process_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[CPU_CLUSTER_COUNT-1:0]</code></p></td>
@@ -8514,7 +8576,7 @@ with <code>sep_</code> are only active when the module parameter <code>SEP=1</co
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>ext_mailbox_interrupts_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_ext_mailbox_interrupts_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_MAILBOXES-1:0]</code></p></td>
@@ -8595,7 +8657,7 @@ with <code>sep_</code> are only active when the module parameter <code>SEP=1</co
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A, leave floating if unused</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rom_intf_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_rom_intf_req_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>rom_req_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
@@ -8604,7 +8666,7 @@ with <code>sep_</code> are only active when the module parameter <code>SEP=1</co
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>rom_intf_rsp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_rom_intf_rsp_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>rom_rsp_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">-</p></td>
@@ -8613,7 +8675,7 @@ with <code>sep_</code> are only active when the module parameter <code>SEP=1</co
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>scratch_ram_intf_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_scratch_ram_intf_req_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>scratch_ram_req_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[31:0]</code></p></td>
@@ -8622,7 +8684,7 @@ with <code>sep_</code> are only active when the module parameter <code>SEP=1</co
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>scratch_ram_intf_rsp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_scratch_ram_intf_rsp_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>scratch_ram_rsp_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[31:0]</code></p></td>
@@ -8631,7 +8693,7 @@ with <code>sep_</code> are only active when the module parameter <code>SEP=1</co
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_icache_tag_intf_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_icache_tag_intf_req_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_icache_tag_req_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[3:0]</code></p></td>
@@ -8640,7 +8702,7 @@ with <code>sep_</code> are only active when the module parameter <code>SEP=1</co
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_icache_tag_intf_rsp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_icache_tag_intf_rsp_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_icache_tag_rsp_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[3:0]</code></p></td>
@@ -8649,7 +8711,7 @@ with <code>sep_</code> are only active when the module parameter <code>SEP=1</co
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_icache_data_intf_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_icache_data_intf_req_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_icache_data_req_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[7:0]</code></p></td>
@@ -8658,7 +8720,7 @@ with <code>sep_</code> are only active when the module parameter <code>SEP=1</co
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_icache_data_intf_rsp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_icache_data_intf_rsp_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_icache_data_rsp_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[7:0]</code></p></td>
@@ -8667,7 +8729,7 @@ with <code>sep_</code> are only active when the module parameter <code>SEP=1</co
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_dcache_tag_intf_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_dcache_tag_intf_req_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_dcache_tag_req_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[3:0]</code></p></td>
@@ -8676,7 +8738,7 @@ with <code>sep_</code> are only active when the module parameter <code>SEP=1</co
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_dcache_tag_intf_rsp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_dcache_tag_intf_rsp_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_dcache_tag_rsp_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[3:0]</code></p></td>
@@ -8685,7 +8747,7 @@ with <code>sep_</code> are only active when the module parameter <code>SEP=1</co
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_dcache_data_intf_req_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_dcache_data_intf_req_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_dcache_data_req_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[3:0]</code></p></td>
@@ -8694,7 +8756,7 @@ with <code>sep_</code> are only active when the module parameter <code>SEP=1</co
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_dcache_data_intf_rsp_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_l1_dcache_data_intf_rsp_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>l1_dcache_data_rsp_t</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[3:0]</code></p></td>
@@ -8703,7 +8765,7 @@ with <code>sep_</code> are only active when the module parameter <code>SEP=1</co
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>disable_sram_auto_init_i</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_disable_sram_auto_init_i</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
@@ -8712,7 +8774,7 @@ with <code>sep_</code> are only active when the module parameter <code>SEP=1</co
 <td class="tableblock halign-left valign-top"><p class="tableblock">1&#8217;b0</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>init_mem_done_o</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>smc_init_mem_done_o</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Output</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>

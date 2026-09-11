@@ -325,9 +325,9 @@ and debug flows.</p>
 <div class="paragraph">
 <p>SRAM initialization is handled automatically by hardware on reset,
 ensuring memory consistency and error-free operation at startup; this
-feature can be disabled using disable_sram_auto_init_i to support
+feature can be disabled using smc_disable_sram_auto_init_i to support
 specialized or custom boot procedures. The completion of SRAM
-initialization is reported through the init_mem_done_o status signal,
+initialization is reported through the smc_init_mem_done_o status signal,
 allowing software to reliably detect when memory is ready for use.</p>
 </div>
 </div>
@@ -351,7 +351,7 @@ ensuring SRAM arrays are functional before the CPU cluster begins execution.</p>
 <div class="ulist">
 <ul>
 <li>
-<p><code>fuse_sense_done_o</code>: eFuse controller output indicating sensing completion.
+<p><code>smc_fuse_sense_done_o</code>: eFuse controller output indicating sensing completion.
 External DFT logic monitors this signal to trigger repair operations.</p>
 </li>
 <li>
@@ -379,7 +379,7 @@ completion before proceeding with boot operations.</p>
 </div>
 <div class="paragraph">
 <p>Memory repair integrates into the boot sequence as follows: after power-on reset
-deasserts and eFuse sensing begins, <code>fuse_sense_done_o</code> assertion triggers
+deasserts and eFuse sensing begins, <code>smc_fuse_sense_done_o</code> assertion triggers
 repair operations. Repair data is read from eFuse shadow registers and applied
 to SRAM, with completion reported through DFT Control Status registers. MBIST
 operations begin after repair completes (or is bypassed), and the CPU cluster

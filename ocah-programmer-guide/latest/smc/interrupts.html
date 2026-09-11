@@ -286,7 +286,7 @@ see the following section.</p>
 <div class="ulist">
 <ul>
 <li>
-<p><code>ext_interrupts_i</code></p>
+<p><code>smc_ext_interrupts_i</code></p>
 </li>
 <li>
 <p><code>peripheral_interrupts_i[31:0]</code></p>
@@ -309,7 +309,7 @@ PLIC source ID is <code>cpu_interrupts_o</code> bit index + 1.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-systemverilog hljs" data-lang="systemverilog">cpu_interrupts_o[NUM_EXT_INTERRUPTS-1:0]        = ext_interrupts_smc_clk; // ext_interrupts_i after 3-stage sync to clk_smc
+<pre class="highlightjs highlight"><code class="language-systemverilog hljs" data-lang="systemverilog">cpu_interrupts_o[NUM_EXT_INTERRUPTS-1:0]        = ext_interrupts_smc_clk; // smc_ext_interrupts_i after 3-stage sync to clk_smc
 cpu_interrupts_o[NUM_EXT_INTERRUPTS+:32]        = peripheral_interrupts_i;
 cpu_interrupts_o[(NUM_EXT_INTERRUPTS+32)+:32]   = mailbox_interrupts;
 cpu_interrupts_o[(NUM_EXT_INTERRUPTS+64)]       = tdr_dbg_ctrl_clocks_stopped_by_cla_o;
@@ -349,7 +349,8 @@ names are called out in the <code>RTL trace</code> column instead.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">External interrupts</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Integration-defined external interrupt inputs</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>hw/sys/smc/rtl/smc_base.sv</code> synchronizes <code>ext_interrupts_i</code> to <code>clk_smc</code>
-(<code>prim_sync3 u_ext_interrupts_sync3</code>) and drives
+(<code>prim_sync3 u_ext_interrupts_sync3</code>; wired from <code>smc.sv</code>
+<code>smc_ext_interrupts_i</code>) and drives
 <code>cpu_interrupts_o[NUM_EXT_INTERRUPTS-1:0] = ext_interrupts_smc_clk</code>.</p></td>
 </tr>
 <tr>

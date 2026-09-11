@@ -1266,9 +1266,9 @@ and debug flows.</p>
 <div class="paragraph">
 <p>SRAM initialization is handled automatically by hardware on reset,
 ensuring memory consistency and error-free operation at startup; this
-feature can be disabled using disable_sram_auto_init_i to support
+feature can be disabled using smc_disable_sram_auto_init_i to support
 specialized or custom boot procedures. The completion of SRAM
-initialization is reported through the init_mem_done_o status signal,
+initialization is reported through the smc_init_mem_done_o status signal,
 allowing software to reliably detect when memory is ready for use.</p>
 </div>
 </div>
@@ -1292,7 +1292,7 @@ ensuring SRAM arrays are functional before the CPU cluster begins execution.</p>
 <div class="ulist">
 <ul>
 <li>
-<p><code>fuse_sense_done_o</code>: eFuse controller output indicating sensing completion.
+<p><code>smc_fuse_sense_done_o</code>: eFuse controller output indicating sensing completion.
 External DFT logic monitors this signal to trigger repair operations.</p>
 </li>
 <li>
@@ -1320,7 +1320,7 @@ completion before proceeding with boot operations.</p>
 </div>
 <div class="paragraph">
 <p>Memory repair integrates into the boot sequence as follows: after power-on reset
-deasserts and eFuse sensing begins, <code>fuse_sense_done_o</code> assertion triggers
+deasserts and eFuse sensing begins, <code>smc_fuse_sense_done_o</code> assertion triggers
 repair operations. Repair data is read from eFuse shadow registers and applied
 to SRAM, with completion reported through DFT Control Status registers. MBIST
 operations begin after repair completes (or is bypassed), and the CPU cluster
@@ -2241,7 +2241,7 @@ see the following section.</p>
 <div class="ulist">
 <ul>
 <li>
-<p><code>ext_interrupts_i</code></p>
+<p><code>smc_ext_interrupts_i</code></p>
 </li>
 <li>
 <p><code>peripheral_interrupts_i[31:0]</code></p>
@@ -2264,7 +2264,7 @@ PLIC source ID is <code>cpu_interrupts_o</code> bit index + 1.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="highlightjs highlight"><code class="language-systemverilog hljs" data-lang="systemverilog">cpu_interrupts_o[NUM_EXT_INTERRUPTS-1:0]        = ext_interrupts_smc_clk; // ext_interrupts_i after 3-stage sync to clk_smc
+<pre class="highlightjs highlight"><code class="language-systemverilog hljs" data-lang="systemverilog">cpu_interrupts_o[NUM_EXT_INTERRUPTS-1:0]        = ext_interrupts_smc_clk; // smc_ext_interrupts_i after 3-stage sync to clk_smc
 cpu_interrupts_o[NUM_EXT_INTERRUPTS+:32]        = peripheral_interrupts_i;
 cpu_interrupts_o[(NUM_EXT_INTERRUPTS+32)+:32]   = mailbox_interrupts;
 cpu_interrupts_o[(NUM_EXT_INTERRUPTS+64)]       = tdr_dbg_ctrl_clocks_stopped_by_cla_o;
@@ -2304,7 +2304,8 @@ names are called out in the <code>RTL trace</code> column instead.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock">External interrupts</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Integration-defined external interrupt inputs</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>hw/sys/smc/rtl/smc_base.sv</code> synchronizes <code>ext_interrupts_i</code> to <code>clk_smc</code>
-(<code>prim_sync3 u_ext_interrupts_sync3</code>) and drives
+(<code>prim_sync3 u_ext_interrupts_sync3</code>; wired from <code>smc.sv</code>
+<code>smc_ext_interrupts_i</code>) and drives
 <code>cpu_interrupts_o[NUM_EXT_INTERRUPTS-1:0] = ext_interrupts_smc_clk</code>.</p></td>
 </tr>
 <tr>
@@ -3035,7 +3036,7 @@ efficient and responsive multi-core management.</p>
 <div class="paragraph">
 <p>In the current four-core implementation, the CPU reaches the ROM over its
 internal TileLink memory path. <code>smc_cpu_wrapper</code> converts that path to the
-macro-facing <code>rom_intf_req_o</code> and <code>rom_intf_rsp_i</code> interface. Requests carry a
+macro-facing <code>smc_rom_intf_req_o</code> and <code>smc_rom_intf_rsp_i</code> interface. Requests carry a
 clock, enable, and 14-bit 64-bit-word address; the write controls are tied to
 read mode. Responses return one 64-bit word. The ROM macro boundary is not an
 AXI-Lite interface and is separate from the CPU MMIO AXI and SMC peripheral

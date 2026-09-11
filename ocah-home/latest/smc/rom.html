@@ -190,7 +190,7 @@
 <div class="paragraph">
 <p>In the current four-core implementation, the CPU reaches the ROM over its
 internal TileLink memory path. <code>smc_cpu_wrapper</code> converts that path to the
-macro-facing <code>rom_intf_req_o</code> and <code>rom_intf_rsp_i</code> interface. Requests carry a
+macro-facing <code>smc_rom_intf_req_o</code> and <code>smc_rom_intf_rsp_i</code> interface. Requests carry a
 clock, enable, and 14-bit 64-bit-word address; the write controls are tied to
 read mode. Responses return one 64-bit word. The ROM macro boundary is not an
 AXI-Lite interface and is separate from the CPU MMIO AXI and SMC peripheral
