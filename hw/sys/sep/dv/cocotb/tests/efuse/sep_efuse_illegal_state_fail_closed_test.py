@@ -34,9 +34,10 @@ from cocotb.triggers import Event, NextTimeStep, ReadOnly, RisingEdge
 from env.sep_axi_agent import SepAxiOp
 from env.sep_lcc_golden import LC_PROD
 from sep_base_test import sep_base_test
-from sep_reg_meta import EFUSE_INTERFACE_CTRL
+from sep_reg_meta import EFUSE_INTERFACE_CTRL, sym
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_efuse_direct_read_seq import sep_efuse_direct_read_seq
+from seq_lib.sep_efuse_otp_program_seq import sep_efuse_otp_program_seq
 
 # efuse_read_interface.sv / efuse_program_interface.sv: the legal encodings.
 _ST_IDLE = 0b01
@@ -53,6 +54,10 @@ _MAX_SENSE_CYCLES = 20_000
 
 # Any always-readable OTP word; the control grades FSM motion, not the value.
 _CONTROL_WORD = 0
+
+# A SPARE word: programming one bit of it disturbs no graded field, and OTP is
+# write-once so the control must pick a fresh bit each time it runs.
+_CONTROL_PROGRAM_WORD = sym("SEP_EFUSE_MAP_SPARE7_REG_OFFSET") // 4
 
 _READ_CTRL = EFUSE_INTERFACE_CTRL.addr("EFUSE_READ_CTRL")
 _READ_TIMEOUT = EFUSE_INTERFACE_CTRL.addr("EFUSE_READ_REQ_TIMEOUT")
@@ -72,6 +77,7 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
 
     required_evidence = (
         "CHK-READ-ALIVE",
+        "CHK-PROGRAM-ALIVE",
         "CHK-READ-ERR-CLEAR-SUCCESS",
         "CHK-READ-ERR-TIMEOUT",
         "CHK-READ-ERR-CLEAR-REQUEST",
@@ -81,7 +87,7 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         "CHK-PROGRAM-SUPPRESS",
         "CHK-PROGRAM-FAILCLOSED",
     )
-    min_evidence = 9
+    min_evidence = 10
 
     async def _assert_read_alive(self, tag: str) -> None:
         """Positive control: a frontdoor OTP read moves the read FSM.
@@ -221,6 +227,40 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
             "retires with error set and zero data"
         )
 
+    async def _assert_program_alive(self, bit_offset: int) -> None:
+        """Positive control for the program machine.
+
+        CHK-PROGRAM-SUPPRESS and the request half of CHK-PROGRAM-FAILCLOSED both
+        assert that this interface presents no command. A machine that never
+        issues one -- because nothing ever asks it to -- satisfies them on any
+        RTL, so a real program must be shown to move it first.
+        """
+        seen_active = False
+        stop = Event()
+
+        async def _watch() -> None:
+            nonlocal seen_active
+            while not stop.is_set():
+                await RisingEdge(cocotb.top.clk_i)
+                await ReadOnly()
+                if int(cocotb.top.efuse_program_cmd_req_valid_o.value):
+                    seen_active = True
+
+        task = cocotb.start_soon(_watch())
+        await self.start_seq(sep_efuse_otp_program_seq(_CONTROL_PROGRAM_WORD * 32 + bit_offset))
+        stop.set()
+        await task
+
+        assert seen_active, (
+            "CHK-PROGRAM-ALIVE FAIL: a frontdoor OTP program presented no command to "
+            "the fuse bank, so the suppression checks below would hold on an "
+            "interface that never issues one"
+        )
+        self.logger.info(
+            "CHK-PROGRAM-ALIVE PASS: a frontdoor OTP program drove a bank command (SPARE7 bit %d)",
+            bit_offset,
+        )
+
     async def _inject(self, which: str, state: int) -> None:
         dut = cocotb.top
         en = getattr(dut, f"efuse_{which}_state_inject_en_i")
@@ -237,9 +277,11 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
             f"test bug: {which} state reads {observed:#04x}, expected the injected "
             f"{state:#04x} -- the force did not reach the register"
         )
-        assert int(dut.efuse_cmd_req_valid_o.value) == 0, (
-            f"CHK-{which.upper()}-SUPPRESS FAIL: a command was presented to the fuse "
-            f"bank while {which}_state_q held the illegal encoding {state:#04x}"
+        req = int(getattr(dut, f"efuse_{which}_cmd_req_valid_o").value)
+        assert req == 0, (
+            f"CHK-{which.upper()}-SUPPRESS FAIL: the {which} interface presented a "
+            f"command to the fuse bank while {which}_state_q held the illegal "
+            f"encoding {state:#04x}"
         )
         self.logger.info(
             "CHK-%s-SUPPRESS PASS: no bank command while %s_state_q = %#04x",
@@ -258,9 +300,9 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
             f"CHK-{which.upper()}-FAILCLOSED FAIL: {which}_state_q recovered to "
             f"{recovered:#04x} from the illegal {state:#04x}, expected idle {_ST_IDLE:#04x}"
         )
-        assert int(dut.efuse_cmd_req_valid_o.value) == 0, (
-            f"CHK-{which.upper()}-FAILCLOSED FAIL: a bank command was issued while "
-            f"recovering from {state:#04x}"
+        assert int(getattr(dut, f"efuse_{which}_cmd_req_valid_o").value) == 0, (
+            f"CHK-{which.upper()}-FAILCLOSED FAIL: the {which} interface issued a bank "
+            f"command while recovering from {state:#04x}"
         )
         if which == "read":
             err = int(dut.efuse_read_error_o.value)
@@ -290,6 +332,7 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
 
         # Control first: prove the read path is live before grading a refusal.
         await self._assert_read_alive("before")
+        await self._assert_program_alive(0)
 
         for state in _ILLEGAL_STATES:
             await self._inject("read", state)
@@ -298,6 +341,9 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         # The block still works afterwards: recovery returned it to service
         # rather than wedging it.
         await self._assert_read_alive("after")
+        # A fresh bit: OTP is write-once, so re-programming bit 0 would not
+        # issue a command and the control would fail for the wrong reason.
+        await self._assert_program_alive(1)
 
         # Error lifecycle on the same interface: set by a failure, cleared by
         # the next legal request.

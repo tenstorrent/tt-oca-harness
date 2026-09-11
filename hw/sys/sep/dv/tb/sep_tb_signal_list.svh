@@ -461,7 +461,10 @@
 `SEP_TB_OUT(logic, efuse_read_done_o)
 `SEP_TB_OUT(logic, efuse_read_busy_o)
 `SEP_TB_OUT(logic [31:0], efuse_read_back_data_o)
-`SEP_TB_OUT(logic, efuse_cmd_req_valid_o)
+// One per interface: each drives its own command request, and checking the
+// program machine against the read machine's request would hold on any RTL.
+`SEP_TB_OUT(logic, efuse_read_cmd_req_valid_o)
+`SEP_TB_OUT(logic, efuse_program_cmd_req_valid_o)
 // Demotion state outputs expose the differential {~demote, demote} encoding;
 // 2'b10 is clear, 2'b01 is set, and other values are invalid. The lock bits
 // have no DUT output, and the CPU owns their AXI frontdoor during firmware

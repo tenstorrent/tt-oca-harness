@@ -4343,13 +4343,15 @@ which list is normative is an open question for the design owner.
 |===
 |Checker |Contract
 |CHK-READ-ALIVE
-|The read machine leaves idle under real sense traffic, before and after the injections. This is the control: the refusal checks below all hold on a block that does nothing, so without it they are unfalsifiable.
+|A frontdoor OTP read drives the read machine out of idle, before and after the injections. Fuse sense does not use this machine, so only a real `EFUSE_READ_CTRL` read is a control.
+|CHK-PROGRAM-ALIVE
+|A frontdoor OTP program presents a command on the program interface, before and after the injections. Each run programs a fresh `SPARE7` bit, because OTP is write-once and reusing one would issue no command and fail for the wrong reason. Both controls are load-bearing: every suppression check below holds on an interface that never issues a command.
 |CHK-READ-SUPPRESS
-|No command is presented to the fuse bank while `read_state_q` holds an illegal encoding.
+|The read interface presents no command to the fuse bank while `read_state_q` holds an illegal encoding. Graded on that interface's own request: the two interfaces drive separate requests, and checking one against the other would hold on any RTL.
 |CHK-READ-FAILCLOSED
 |One edge after the illegal encoding the read machine is in idle, not busy, reporting done with the error flag set, issuing no command, and returning `0xbadcab1e` rather than any fuse value.
 |CHK-PROGRAM-SUPPRESS
-|No command is presented to the fuse bank while `program_state_q` holds an illegal encoding.
+|The program interface presents no command to the fuse bank while `program_state_q` holds an illegal encoding, graded on its own request rather than the read interface's.
 |CHK-PROGRAM-FAILCLOSED
 |One edge after the illegal encoding the program machine is back in idle with no command issued.
 |CHK-READ-ERR-CLEAR-SUCCESS
