@@ -4374,20 +4374,17 @@ never retired look like one that did.
 
 Both illegal encodings are walked rather than one. `2'b00` and `2'b11` fail the legal-set test for different reasons, and a decoder written as a comparison against a single value would recover from that value only.
 
-*Observation, not a checker*: an interface that withdraws a command the SHIM has
-already accepted leaves the SHIM's write FSM parked in its APB wait state. It was
-observed there for more than 20000 cycles, and it stays until the next fuse
-resense; meanwhile the program interface reports `program_done_o` and
-`program_error_o`, so a caller is told the operation retired while the shared
-bank channel is still occupied. A resense issued across that window reads one
-shadow word wrongly, and a later clean resense corrects it -- nothing is
-programmed. The same withdrawal is on the software-reachable program timeout
-path (`EFUSE_PROGRAM_REQ_TIMEOUT`), not only on the injected-fault path. This is
-why CHK-PROGRAM-SUPPRESS is injected in an idle window: strengthening it the way
-CHK-READ-SUPPRESS is strengthened would leave every later leg resensing across
-the parked transaction, and suppressing that symptom in the leaf would hide the
-finding. The read interface does not show the behaviour. Raised with the eFuse
-owner; this entry is the DV record, not a fix.
+*Observation, not a checker*: aborting a program that the SHIM has already
+accepted parks the SHIM write FSM in its APB wait state until the next fuse
+resense, while the program interface reports done with the error set. The cause
+is in `efuse_interface_shim` alone: its read path copies the bank address into a
+register at acceptance and drives APB from that copy, and its write path instead
+tracks the live request for the whole transfer. That is why aborting a read is
+harmless and aborting a program is not. Both interfaces behave the same, so
+there is nothing here for the controller. `efuse_interface_shim` is an example
+shim, so the behaviour is not pursued; it is recorded because it is the reason
+CHK-PROGRAM-SUPPRESS injects in an idle window instead of observing a withdrawal
+the way CHK-READ-SUPPRESS does.
 
 *Scope limit*: the illegal encoding is reached by forcing the state register, which no frontdoor stimulus can do -- that unreachability is the property the design relies on, so the behaviour asserted for it cannot otherwise be provoked. The force targets the state register only, for one cycle, and never the error, data, busy or request outputs the checkers read; the recovery those checkers observe is the design's own.
 

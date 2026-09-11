@@ -504,10 +504,10 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
 
         for state, pg_bit in zip(_ILLEGAL_STATES, _PROGRAM_INJECT_BITS):
             await self._inject("read", state, _CONTROL_WORD * 32)
-            # Idle window, not in flight. Aborting an ACCEPTED program wedges the
-            # shim (see the plan entry's observation), and every later leg that
-            # resenses would then read a corrupted shadow word. Strengthening
-            # this leg the way the read leg is strengthened waits on that fix.
+            # Idle window, not in flight. Aborting an ACCEPTED program parks the
+            # example shim's write FSM (see the plan entry's observation), and
+            # every later leg that resenses would then read a corrupted shadow
+            # word. The read leg is the one that observes a withdrawal.
             await self._inject(
                 "program", state, _CONTROL_PROGRAM_WORD * 32 + pg_bit, in_flight=False
             )
