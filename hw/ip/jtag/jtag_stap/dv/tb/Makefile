@@ -16,12 +16,7 @@
 
 VERILATOR = verilator
 
-# Module loading commands for build consistency
-VERILATOR_MODULE = module load verilator/5.036;
-GCC_MODULE = module load gcc/13.2.1;
-
-# Combined module loading for different build phases
-LOAD_MODULES = $(VERILATOR_MODULE) $(GCC_MODULE)
+# Requires verilator (5.036 or newer) and g++ 13 or newer on PATH.
 
 # Set OCH_ROOT to point to the parent of the git repository root (relative path)
 # The jtag_stap test file expects paths relative to tb directory
@@ -40,8 +35,6 @@ VERILATOR_MAKE_FLAGS = OPT_FAST="-Os"
 help:
 	@echo "JTAG STAP IP Testbench Makefile"
 	@echo "==============================="
-	@echo ""
-	@echo "Note: Required modules (verilator/5.036, gcc/13.2.1) are loaded automatically."
 	@echo ""
 	@echo "Available targets:"
 	@echo "  help        - Show this help message (default)"
@@ -70,16 +63,16 @@ clean:
 ############ Model Builds ###############################
 
 stap-test-build: ../config/jtag_stap_test.f jtag_stap_tb.sv test_jtag_stap_tb.cpp
-	bash -c '$(LOAD_MODULES) $(VERILATOR) --cc --exe \
+	$(VERILATOR) --cc --exe \
 		--timing \
 		--timescale 1ns/1ps \
 		-f ../config/jtag_stap_test.f --top-module jtag_stap_tb \
 		--trace \
 		-Wall -Wno-fatal \
 		-Wno-PINMISSING -Wno-UNUSEDSIGNAL -Wno-UNUSEDPARAM -Wno-WIDTHEXPAND -Wno-WIDTHTRUNC -Wno-BLKSEQ \
-		test_jtag_stap_tb.cpp'
+		test_jtag_stap_tb.cpp
 	cp jtag_test_utils.h obj_dir/
-	bash -c '$(GCC_MODULE) $(MAKE) -j -C obj_dir/ -f Vjtag_stap_tb.mk'
+	$(MAKE) -j -C obj_dir/ -f Vjtag_stap_tb.mk
 	touch stap-test-build
 
 ############ TEST Simulation ###############################

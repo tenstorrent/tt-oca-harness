@@ -4,7 +4,7 @@
 """
 I3C Long Read Sanity Test
 
-Performs SETDASA + 200-byte private read (50 full dwords = 50 entries).
+Performs SETDASA + a READ_LENGTH-byte private read (whole dwords, one FIFO entry each).
 Uses i3c_api.py for all I3C operations.
 """
 
@@ -22,7 +22,7 @@ TARGET_STATIC_ADDR = 0x10
 TARGET_DYNAMIC_ADDR = 0x10
 
 # Test parameters
-READ_LENGTH = 500  # 50 full dwords (50 entries total)
+READ_LENGTH = 500  # whole dwords, one FIFO entry each
 
 
 class TB:
@@ -51,7 +51,7 @@ class TB:
 
 @cocotb.test(timeout_time=5000, timeout_unit="us")
 async def test_long_read_sanity(dut):
-    """I3C long read test: SETDASA + 200-byte read."""
+    """I3C long read test: SETDASA + READ_LENGTH-byte read."""
     tb = TB(dut)
 
     tb.log.info("=" * 60)
@@ -96,7 +96,7 @@ async def test_long_read_sanity(dut):
     assert ok, "Target did not receive dynamic address"
     assert dyn_addr == TARGET_DYNAMIC_ADDR
 
-    # Generate 200 bytes of test data (incrementing pattern) for target to transmit
+    # Incrementing test pattern for the target to transmit
     tx_data = [(i & 0xFF) for i in range(READ_LENGTH)]
     tb.log.info(
         f"Private read: {READ_LENGTH} bytes (pattern: 0x00-0x{(READ_LENGTH - 1) & 0xFF:02X})"
@@ -104,7 +104,7 @@ async def test_long_read_sanity(dut):
     tb.log.info(f"  First 8 bytes: {[f'0x{b:02X}' for b in tx_data[:8]]}")
     tb.log.info(f"  Last 8 bytes:  {[f'0x{b:02X}' for b in tx_data[-8:]]}")
 
-    # Private read (200 bytes) - interleaved, target provides tx_data, controller receives rx_data
+    # Private read - interleaved, target provides tx_data, controller receives rx_data
     ok, resp, rx_data = await ctrl.private_read(tgt, tx_data)
     tb.log.info(f"  Response: 0x{resp:08X}, success={ok}")
     tb.log.info(f"  Controller received {len(rx_data)} bytes")

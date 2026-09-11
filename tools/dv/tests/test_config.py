@@ -207,11 +207,11 @@ class AdopterOverlayLayer(unittest.TestCase):
         self.apply(
             data,
             '[target_defaults.default]\ndefines = ["OCAH_JTAG_VENDOR_IF", "UVM"]\n'
-            '[target_defaults.default.tools.vcs]\nflags = ["-ntb_opts", "svt"]\n',
+            '[target_defaults.default.tools.vcs]\nflags = ["-assert", "svaext"]\n',
         )
         target = data["target_defaults"]["default"]
         self.assertEqual(target["defines"], ["UVM", "OCAH_JTAG_VENDOR_IF"])
-        self.assertEqual(target["tools"]["vcs"]["flags"], ["-x", "-ntb_opts", "svt"])
+        self.assertEqual(target["tools"]["vcs"]["flags"], ["-x", "-assert", "svaext"])
 
     def test_missing_target_table_is_created(self):
         data = {"framework": "uvm"}
@@ -361,7 +361,7 @@ class GroupMemberValidation(unittest.TestCase):
 
 class RuntimeSelectionDefenses(unittest.TestCase):
     # Directly constructed catalogs bypass load_test_catalog; selection must
-    # still fail with ConfigError, never a raw KeyError (the #431 reproduce).
+    # still fail with ConfigError, never a raw KeyError.
     def test_expand_items_rejects_phantom_group_member(self):
         catalog = TestCatalog(None, {}, {"smoke": ["missing_test"]})
         with self.assertRaises(ConfigError) as ctx:

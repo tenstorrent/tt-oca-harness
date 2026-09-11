@@ -17,10 +17,6 @@
  *
  * Phase detection:
  *   A 32-bit marker below BSS_START records which phase is in progress.
- *   Marker at SRAM_BASE + 0x2400 is distinct from other multi-phase tests:
- *     test_warm_reset.c           (+0x2C00)
- *     test_irq_entry_reset_restore (+0x2E00)
- *     test_soft_reset.c           (+0x3000)
  *
  * Phase 0 (cold boot, marker == 0):
  *   1. Call rom_persist_cold_init() — simulates cold-boot-only initialization.

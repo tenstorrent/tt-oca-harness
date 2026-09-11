@@ -274,7 +274,7 @@ def discover_coverage_inputs(
     tool: str,
     fallback_glob: str,
 ) -> CoverageDiscovery:
-    """Select final non-debug leaf artifacts, with a legacy glob fallback."""
+    """Select final non-debug leaf artifacts, falling back to a glob when no leaf records exist."""
 
     candidates: list[CoverageInput] = []
     rejected: list[dict[str, Any]] = []
@@ -329,7 +329,7 @@ def discover_coverage_inputs(
         selected = list(by_leaf.values())
         selection_source = "result_json"
     else:
-        # Compatibility for run directories produced before leaf artifacts were recorded.
+        # Run directories without leaf result.json records: fall back to the glob.
         seen: set[Path] = set()
         for path in sorted(run_dir.glob(fallback_glob)):
             try:

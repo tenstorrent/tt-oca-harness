@@ -1,15 +1,10 @@
-// Copyright lowRISC contributors (OpenTitan project).
-// Licensed under the Apache License, Version 2.0, see LICENSE for details.
 // SPDX-License-Identifier: Apache-2.0
-//
-// ------------------- W A R N I N G: A U T O - G E N E R A T E D   C O D E !! -------------------//
-// PLEASE DO NOT HAND-EDIT THIS FILE. IT HAS BEEN AUTO-GENERATED WITH THE FOLLOWING COMMAND:
-//
-// util/topgen.py -t hw/top_darjeeling/data/top_darjeeling.hjson \
-//                -o hw/top_darjeeling/ \
-//                --rnd_cnst_seed \
-//                1017106219537032642877583828875051302543807092889754935647094601236425074047
+// SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
+// Per-top register-access-control types. Vendored OpenTitan IP imports
+// `top_racl_pkg`. OCAH has no generated OT chip top, so this file supplies
+// the types those IPs elaborate against. Product access control is not this
+// package. `bender vendor init` does not refresh it.
 
 package top_racl_pkg;
   // Number of RACL policies used
@@ -109,9 +104,9 @@ package top_racl_pkg;
   /**
    * RACL Roles
    */
-  parameter racl_role_t RACL_ROLE_ROT = 4'h0;
+  parameter racl_role_t RACL_ROLE_ROT   = 4'h0;
   parameter racl_role_t RACL_ROLE_ROLE1 = 4'h1;
-  parameter racl_role_t RACL_ROLE_SOC = 4'h2;
+  parameter racl_role_t RACL_ROLE_SOC   = 4'h2;
 
   /**
    * RACL Policy Selectors for group Null

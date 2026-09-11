@@ -40,7 +40,7 @@
 rom_wipe_shred_sram:
     /*
      * ---- Stage 1: scrub writable CPU registers ----
-     * Small immediates intentionally chosen so assembler can emit c.li.
+     * Small immediates so the assembler can emit c.li.
      */
     li   x1,  23
     li   x2,  -31

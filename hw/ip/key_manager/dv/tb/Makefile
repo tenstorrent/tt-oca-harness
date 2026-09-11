@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 #
-# Key Manager standalone cocotb/VCS testbench (open tree).
+# Key Manager standalone cocotb/VCS testbench.
 #
 # Design RTL is gathered from Bender (see bender-targets.mk); the testbench top
-# tb_key_manager.sv is added below. Firmware images are built by the shared open
+# tb_key_manager.sv is added below. Firmware images are built by the shared
 # DV firmware dispatcher (`make -f ocah.mk ocah-dv-fw-tests TARGET=key_manager`)
 # which emits per-test ROM/VROM hex under hw/ip/key_manager/dv/fw/build/tests/.
 
@@ -16,7 +16,8 @@ else ifndef OCH_ROOT
   $(error Not in a git repository and OCH_ROOT is not set)
 endif
 export OCH_ROOT
-SHELL := /bin/bash
+SHELL := /usr/bin/env
+.SHELLFLAGS := bash -c
 
 KM_ROOT := $(OCH_ROOT)/hw/ip/key_manager
 FW_BUILD_TESTS := $(KM_ROOT)/dv/fw/build/tests
@@ -193,7 +194,7 @@ $(TB_FILELIST): $(RTL_FILELIST) $(TB_SV_FILE) | $(TEST_LOG_DIR)
 $(SIM_BUILD): $(TB_FILELIST)
 
 #===========================================================================
-# Firmware images (built by the shared open DV firmware dispatcher)
+# Firmware images (built by the shared DV firmware dispatcher)
 #===========================================================================
 # Toolchain resolution mirrors the SMC/SEP cgen stages (see
 # hw/sys/sep/dv/sep_sim_cfg.toml's [c_build] blocks): an explicit
@@ -265,7 +266,7 @@ else ifeq ($(VUART_PRINT),1)
   SIM_ARGS += +VUART_PRINT=1
 endif
 
-# Build one firmware image via the open dispatcher.
+# Build one firmware image via the shared dispatcher.
 .PHONY: build_fw
 build_fw:
 ifndef FW_TEST
@@ -274,7 +275,7 @@ endif
 	@echo "Building firmware via open dispatcher: $(FW_TEST)"
 	@$(call ocah_km_fw_dispatch,TEST=$(FW_TEST))
 
-# Build all discovered firmware images via the open dispatcher.
+# Build all discovered firmware images via the shared dispatcher.
 .PHONY: build_all_fw
 build_all_fw:
 	@echo "Building all key_manager firmware via open dispatcher..."
@@ -314,7 +315,7 @@ compile_first: $(SIM_BUILD)/simv
 #===========================================================================
 # Regression: build all firmware, compile once, run every test in parallel
 #===========================================================================
-# Discover firmware tests from the open DV firmware tree (per-test directories).
+# Discover firmware tests from the DV firmware tree (per-test directories).
 FW_TESTS := $(notdir $(wildcard $(KM_ROOT)/dv/fw/tests/test_*))
 
 # Concurrent simulations. Each job is one simv process of a small design, so the
@@ -335,7 +336,7 @@ REGRESSION_JOBS := $(addprefix regression-run-,$(FW_TESTS))
 
 # One test. Failures are recorded rather than raised so that a single bad test
 # does not stop the other jobs; the summary below turns the status files into the
-# regression's exit code. Deliberately not .PHONY: make does not apply pattern
+# regression's exit code. Not .PHONY: make does not apply pattern
 # rules to phony targets, and nothing creates a file by this name anyway, so the
 # recipe runs on every invocation.
 regression-run-%:

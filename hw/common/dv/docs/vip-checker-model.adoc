@@ -10,8 +10,9 @@ triage-ready evidence without weakening the native runner's PASS authority.
 [IMPORTANT]
 ====
 This is the normative, DUT-neutral contract. Concrete register maps, opcodes,
-hierarchy, scenario suites, test names, and captured qualification results
-belong in each adopter's DV documentation and retained CI artifacts.
+hierarchy, scenario suites, and test names belong in each adopter's DV tree;
+captured qualification results belong in the adopter's tracker and retained CI
+artifacts.
 ====
 
 [[shared-checker-evidence]]
@@ -337,9 +338,9 @@ negative TDO shape. Returns `True` if no new protocol finding was retained.
 |Clears both protocol findings and common evidence.
 |===
 
-`OcahJtagCheckerError` is the immutable record stored in `errors`; despite its
-historical name, it is not an exception class. Protocol finalization raises
-`AssertionError`, while evidence finalization raises `OcahCheckerError`.
+`OcahJtagCheckerError` is the immutable record stored in `errors`, not an
+exception class. Protocol finalization raises `AssertionError`, while evidence
+finalization raises `OcahCheckerError`.
 
 [[shared-checker-adoption-recipe]]
 === DUT Test Adoption Recipe
@@ -905,13 +906,13 @@ path. Qualification requires all of the following:
 * log summary reports `TESTS=1 PASS=1 FAIL=0 SKIP=0`;
 * required `CHK-*` lines and `CHECKER_SUMMARY` are present.
 
-Do not commit generated `build/runs/` artifacts. Retain the CI artifact or cite
-its URL and candidate commit in the qualification record.
+Do not commit generated `build/runs/` artifacts; retain the CI artifact and
+cite it from the qualification record.
 
 [[shared-checker-qualification-record]]
 === Qualification Record
 
-Every adopter keeps a compact, reproducible record:
+Every adopter keeps a compact, reproducible record in its tracker:
 
 [cols="<3,<7",options="header"]
 |===

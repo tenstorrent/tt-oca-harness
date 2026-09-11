@@ -15,7 +15,7 @@
  * Skip only the regions that would corrupt or hang the running firmware:
  * - Any region that overlaps linker-placed .data or .bss.
  * - The region containing the active C stack frame.
- * - Region 15 (0xBC00-0xBFFF), which still causes a hang when tested.
+ * - Region 15 (0xBC00-0xBFFF): locking it hangs the running firmware.
  *
  * Run with:
  *   make run_fw FW_TEST=test_sram_write_lock
