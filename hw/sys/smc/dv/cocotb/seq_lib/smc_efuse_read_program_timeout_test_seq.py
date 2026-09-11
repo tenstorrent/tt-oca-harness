@@ -230,6 +230,7 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         await self.csr_write("READ_TMO_SHORT", READ_TMO, TMO_EN_R)
         got = await self.csr_read("READ_TMO_RB", READ_TMO, expected=TMO_EN_R)
         st, data = await self._read("READ_TMO")
+        assert st & READ_ERR, f"short read timeout expected READ_STATUS=1 got CTRL=0x{st:x}"
         assert data == 0, f"timed-out read data=0x{data:x} want 0"
         self.read_tmo_ok = True
         self.read_tmo_data = data

@@ -5,7 +5,7 @@
 // and the SystemVerilog UVM flow. ONE module, two shapes:
 //   * default (cocotb, `--dut smu`): the pin-level ANSI port list cocotb
 //     drives and samples;
-//   * `UVM` (SV-UVM, `--dut smu --framework uvm`): the port list is replaced
+//   * `UVM` (SV-UVM, `--dut smu_block --framework uvm`): the port list is replaced
 //     by internal TB signals and the harness block at the end of the module
 //     adds the clocks, the shared JTAG VIP interface, the SMU-local and
 //     embedded-DTP TB interfaces, quiescent tie-offs, uvm_config_db
@@ -616,7 +616,7 @@ module smu_uvm_top
 
 `ifdef UVM
   // ------------------------------------------------------------------
-  // SV-UVM harness (`--dut smu --framework uvm`): clocks, the shared JTAG
+  // SV-UVM harness (`--dut smu_block --framework uvm`): clocks, the shared JTAG
   // VIP interface on the primary TAP pins, the SMU-local TB interface, the
   // embedded DTP's TB interface (so the DTP bench's reference models and
   // checkers attach unchanged), the JTAG protocol SVA, quiescent tie-offs

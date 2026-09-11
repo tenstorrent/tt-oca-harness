@@ -10,7 +10,10 @@
 # what enters the database and therefore what the number means; the entry below
 # is the report-time half, which only keeps the pages aligned with that scope.
 # `--run-dir <dir> --stage cov_report` re-renders the pages from the same merged
-# database, but it cannot widen or narrow the score.
+# database, but it cannot widen or narrow the score. `--run-dir <dir> --waive`
+# re-grades the rendered report against this file's [[holes]] and
+# [[thresholds]] without running urg; it exits 2 when this [[native_files]]
+# entry's digest differs from the one the report recorded.
 
 schema_version = 1
 dut = "sep"

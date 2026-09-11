@@ -33,11 +33,10 @@ them to instrument. Toggle instruments nets, which is what an integration
 level owns: whether the interconnect it wires up was actually exercised. Each
 subsystem grades its own internals in its own DV package.
 
-## Why this is not the 0.5 GB toggle run the config used to warn about
+## Why scope is what makes toggle affordable here
 
-`[coverage.verilator]` previously recorded that toggle on this DUT produces a
-~0.5 GB database per leaf. That figure was toggle over the whole elaborated
-model, SMC cluster and vendored fabric included. `smu_cov_scope.vlt` drops all
+Toggle over the whole elaborated model -- SMC cluster and vendored fabric
+included -- produces a ~0.5 GB database per leaf. `smu_cov_scope.vlt` drops all
 of it at compile time:
 
 | | Sites | Model dir | Build |
@@ -61,7 +60,7 @@ Not "SMU coverage". Of the 19728 toggle sites:
 
 Every one of those 18591 vendored sites sits under `.u_smc` or `.u_dtp` —
 none is under SMU's own crossbar — so the intent is unambiguous and only the
-mechanism falls short. `cov/config/verilator/smu_coverage_policy.toml` records
+mechanism falls short. `cov/config/verilator/smu_block_coverage_policy.toml` records
 the two hierarchy selectors that close it and why they cannot be written
 before a run exists.
 
@@ -112,8 +111,8 @@ rather than "no stall was ever applied".
 
 ## Status
 
-- The scoped toggle+user model builds; `--validate-configs` passes for both
-  `smu` and `smu_wrapper`.
+- The scoped toggle+user model builds on `--dut smu_block`;
+  `--validate-configs` passes for both `smu` and `smu_block`.
 - **No SMU coverage database exists yet.** The weekly job records
   `coverage: enabled=false, status=SKIP` — its `coverage:` flag is gated on
   `DV_LARGE_RUNNER` — and a local `--cov` run aborts on
@@ -128,8 +127,8 @@ rather than "no stall was ever applied".
 
 ## `policy_file` rather than the canonical path
 
-`smu` and `smu_wrapper` are two DUTs sharing one `hw/sys/smu/dv` tree, so the
+`smu` and `smu_block` are two DUTs sharing one `hw/sys/smu/dv` tree, so the
 canonical `cov/config/<tool>/coverage_policy.toml` discovery resolves
 identically for both and whichever DUT the file does not name fails
 `--validate-configs`. `[coverage.verilator].policy_file` names a DUT-qualified
-file instead, which leaves room for the wrapper to add its own.
+file instead, which leaves room for the wrapper `--dut smu` to add its own.

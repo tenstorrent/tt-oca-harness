@@ -105,8 +105,13 @@ jobs:
             runner: ${{ vars.DV_LARGE_RUNNER || 'ubuntu-latest' }}
             timeout: 240
           - dut: smu
-            # SMU has no `all` group; `sep0_all` is the enrolled SEP=0 release
-            # set (no c_compile / RISC-V toolchain stage on hosted runners).
+            # `sep0_all` is the enrolled SEP=0 release set: every leaf compiles
+            # under the no-SEP profile with `elaboration` firmware, so there is
+            # no c_compile / RISC-V toolchain stage on hosted runners. `smu` is
+            # now the wrapper DUT; the bare block bench is `smu_block` and holds
+            # two leaves only (hw/sys/smu/dv/testlists/all.toml). `smu`'s own
+            # `all` is not usable here -- it carries the SEP=1 firmware set,
+            # which needs the toolchain container.
             items: sep0_all
             reseed: 1
             coverage: false

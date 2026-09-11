@@ -3,15 +3,15 @@
 
 schema_version = 1
 
-# Production-wrapper baseline catalog, run via `run_dv.py --dut smu_wrapper`.
-# Independent of the bare-smu all.toml catalog. Compile profiles are the
-# [targets.*] tables in smu_wrapper_sim_cfg.toml selected per test.
+# The SMU regression, run via `run_dv.py --dut smu`. Compile profiles
+# are the [targets.*] tables in smu_sim_cfg.toml selected per test.
 # Result-reporting policy: only enrolled groups report PASS.
 # Config classes here: `no_sep` run mode = no-SEP; `sep_rtl` = real SEP RTL.
 #
-# SIGNOFF NOTE: wrapper `all` / `smoke` is the production-wrapper merge-gate
-# only. It is NOT a substitute for bare `--dut smu --items sep0_all`.
-# Shared name `smu_smc_smoke_test` must be tagged WRAPPER vs BARE in logs.
+# SIGNOFF NOTE: `all` here is the whole SMU regression. smu_wrapper is the same
+# smu with the open-source IP integration attached, so there is one catalog.
+# testlists/all.toml holds the two --dut smu_block leaves, for the reasons
+# recorded there.
 #
 # Commercial mirror (oca_smu chiplet testlist YAML naming):
 #   SMU_Dev_with_SEP_Regression          = probe/connectivity (no CPU exec)
@@ -95,7 +95,7 @@ args = [
 
 # Real SEP DV firmware (hw/sys/sep/dv/fw/tests/sep_smu_boot_health), the same
 # image the internal SMU suite boots. Needs the OCAH toolchain container -- see
-# [c_build.sep_boot_health] in smu_wrapper_sim_cfg.toml -- so it is enrolled in
+# [c_build.sep_boot_health] in smu_sim_cfg.toml -- so it is enrolled in
 # `sep_real_fw` rather than the default merge gate until CI carries the image.
 [[tests]]
 name = "smu_sep_boot_health_test"
@@ -876,19 +876,1070 @@ tests = [
   "smu_wrapper_elaboration_sep_rtl_test",
 ]
 
-# Default `--items all` for smu_wrapper.
+# Migration pilot: the first bare-`--dut smu_block` leaf brought onto this DUT. It
+# needs no firmware -- the TB is the AXI master -- and no new pins: the AXI
+# slave is ext_in_* here against s_axi_* there, and the SMC reset observable is
+# rst_primary_smc_clk_n_o against rst_primary_smc_clk_no. Held out of `all`
+# until the bare copy is retired, so the same claim is not counted twice.
+[[tests]]
+name = "smu_axi_id_width_conversion_test"
+module = "smu_axi_id_width_conversion_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["fabric", "no_sep", "migration_pilot"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+# Migrated from the bare `--dut smu_block` fabric group. Same modules and the same
+# sequences -- seq_lib is shared and resolves its pins by role -- so these
+# are the same claims made against the production wrapper. Held in their own
+# group until the bare twins retire, so nothing is counted twice.
+[[tests]]
+name = "smu_axi_alias_remap_manager_scope_test"
+module = "smu_axi_alias_remap_manager_scope_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "fabric", "migrated", "no_sep", "tier_a_pilot"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_axi_atomic_operation_test"
+module = "smu_axi_atomic_operation_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["fabric", "migrated", "no_sep"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_axi_crossbar_error_handling_test"
+module = "smu_axi_crossbar_error_handling_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["fabric", "migrated", "no_sep"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_axi_external_port_connectivity_test"
+module = "smu_axi_external_port_connectivity_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["fabric", "migrated", "no_sep"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_axi_filter_allow_ns_test"
+module = "smu_axi_filter_allow_ns_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "fabric", "migrated", "no_sep", "tier_a_pilot"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_axi_filter_in_instance_matrix_test"
+module = "smu_axi_filter_in_instance_matrix_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "fabric", "migrated", "no_sep", "tier_a_pilot"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_axi_filter_out_instance_matrix_test"
+module = "smu_axi_filter_out_instance_matrix_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "fabric", "migrated", "no_sep", "tier_a_pilot"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_axi_prot_encoding_decode_test"
+module = "smu_axi_prot_encoding_decode_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "fabric", "migrated", "no_sep", "tier_a_pilot"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_axi_xbar_structure_test"
+module = "smu_axi_xbar_structure_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "fabric", "migrated", "no_sep", "tier_c"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_fabric_reg_bar_wr_test"
+module = "smu_fabric_reg_bar_wr_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "fabric", "migrated", "no_sep", "tier_a_pilot"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_sys_in_filter_program_jtag_test"
+module = "smu_sys_in_filter_program_jtag_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "fabric", "migrated", "no_sep", "tier_a_pilot"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_sys_in_filter_reprogram_shrink_test"
+module = "smu_sys_in_filter_reprogram_shrink_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "fabric", "migrated", "no_sep", "tier_a_pilot"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_sys_in_filter_window_edge_test"
+module = "smu_sys_in_filter_window_edge_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "fabric", "migrated", "no_sep", "tier_a_pilot"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+# Migrated bare-smu fabric leaves, all proven on this DUT: same module, same
+# sequence, same claim as the bare twin. They stay in their own group until
+# the bare catalog retires, so no claim is counted on two DUTs.
+[[groups]]
+name = "migrated_fabric"
+tests = [
+  # The migration pilot, which had a one-test group of its own until the rest
+  # of the fabric leaves followed it across.
+  "smu_axi_id_width_conversion_test",
+  "smu_axi_alias_remap_manager_scope_test",
+  "smu_axi_atomic_operation_test",
+  "smu_axi_crossbar_error_handling_test",
+  "smu_axi_external_port_connectivity_test",
+  "smu_axi_filter_allow_ns_test",
+  "smu_axi_filter_in_instance_matrix_test",
+  "smu_axi_filter_out_instance_matrix_test",
+  "smu_axi_prot_encoding_decode_test",
+  "smu_axi_xbar_structure_test",
+  "smu_fabric_reg_bar_wr_test",
+  "smu_sys_in_filter_program_jtag_test",
+  "smu_sys_in_filter_reprogram_shrink_test",
+  "smu_sys_in_filter_window_edge_test",
+]
+
+# Migrated bare-smu SMC leaves. Enrolled together so a failure names the
+# batch; folded in once each is proven here.
+[[tests]]
+name = "smu_dtp_bsr_extest_loopback_test"
+module = "smu_dtp_bsr_extest_loopback_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["bsr", "dtp", "migrated", "no_sep", "phase4"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_ext_boot_seq_gate_test"
+module = "smu_ext_boot_seq_gate_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["boot_gate", "migrated", "no_sep", "smc"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_i3c_mem_port_connectivity_test"
+module = "smu_i3c_mem_port_connectivity_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "fabric", "migrated", "no_sep", "smc", "tier_c"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_ic_reset_ss_domain_matrix_test"
+module = "smu_ic_reset_ss_domain_matrix_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["dtp", "ic_reset", "migrated", "no_sep", "phase4"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_no_sep_configuration_test"
+module = "smu_no_sep_configuration_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["migrated", "no_sep", "smc", "smoke"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_smc_mailbox_int_test"
+module = "smu_smc_mailbox_int_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["mailbox", "migrated", "no_sep", "smc", "smu_all_004"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_smc_mailbox_sanity_test"
+module = "smu_smc_mailbox_sanity_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "mailbox", "migrated", "no_sep", "smc", "tier_c"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_smc_reset_ctrl_test"
+module = "smu_smc_reset_ctrl_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["migrated", "no_sep", "reset", "smc"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_smc_security_demote_pm_test"
+module = "smu_smc_security_demote_pm_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["migrated", "no_sep", "security", "smc"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_smc_wdt_sanity_test"
+module = "smu_smc_wdt_sanity_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "migrated", "no_sep", "smc", "tier_c", "wdt"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_smc_wdt_timeout_irq_test"
+module = "smu_smc_wdt_timeout_irq_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "migrated", "no_sep", "smc", "tier_c", "wdt"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_system_timer_octs_test"
+module = "smu_system_timer_octs_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "migrated", "no_sep", "octs", "smc", "tier_c"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[groups]]
+name = "migrated_smc"
+tests = [
+  "smu_dtp_bsr_extest_loopback_test",
+  "smu_ext_boot_seq_gate_test",
+  "smu_i3c_mem_port_connectivity_test",
+  "smu_ic_reset_ss_domain_matrix_test",
+  "smu_no_sep_configuration_test",
+  "smu_smc_mailbox_int_test",
+  "smu_smc_mailbox_sanity_test",
+  "smu_smc_reset_ctrl_test",
+  "smu_smc_security_demote_pm_test",
+  "smu_smc_wdt_sanity_test",
+  "smu_smc_wdt_timeout_irq_test",
+  "smu_system_timer_octs_test",
+]
+
+# Migrated bare-smu DTP leaves.
+[[tests]]
+name = "smu_boot_stall_jtag_cold_reset_matrix_test"
+module = "smu_boot_stall_jtag_cold_reset_matrix_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["boot_stall", "dtp", "migrated", "no_sep"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_boot_stall_vs_ic_reset_priority_test"
+module = "smu_boot_stall_vs_ic_reset_priority_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["boot_stall", "dtp", "migrated", "no_sep"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_clock_stop_coordination_test"
+module = "smu_clock_stop_coordination_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["clock_stop", "dtp", "migrated", "no_sep"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_dft_dtp_boot_stall_test"
+module = "smu_dft_dtp_boot_stall_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["boot_stall", "dtp", "migrated", "no_sep"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_dft_gpio_boot_stall_test"
+module = "smu_dft_gpio_boot_stall_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["boot_stall", "dtp", "migrated", "no_sep"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_dtp_bsr_ijtag_scan_test"
+module = "smu_dtp_bsr_ijtag_scan_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["bsr", "depth", "dtp", "migrated", "no_sep", "tier_c"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_dtp_io_stap_smoke_test"
+module = "smu_dtp_io_stap_smoke_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "dtp", "migrated", "no_sep", "stap", "tier_c"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_dtp_jtag2axi_abort_mid_op_test"
+module = "smu_dtp_jtag2axi_abort_mid_op_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "dtp", "jtag2axi", "migrated", "no_sep", "tier_c"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_dtp_jtag2axi_back_to_back_error_ok_test"
+module = "smu_dtp_jtag2axi_back_to_back_error_ok_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "dtp", "jtag2axi", "migrated", "no_sep", "tier_c"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_dtp_jtag2axi_smc_error_path_test"
+module = "smu_dtp_jtag2axi_smc_error_path_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "dtp", "jtag2axi", "migrated", "no_sep", "tier_c"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_dtp_jtag2axi_smc_rw_matrix_test"
+module = "smu_dtp_jtag2axi_smc_rw_matrix_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "dtp", "jtag2axi", "migrated", "no_sep", "tier_c"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_dtp_jtag2axi_wstrb_partial_sticky_test"
+module = "smu_dtp_jtag2axi_wstrb_partial_sticky_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "dtp", "jtag2axi", "migrated", "no_sep", "tier_c"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_dtp_jtag_smc_cpu_register_test"
+module = "smu_dtp_jtag_smc_cpu_register_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "dtp", "jtag2axi", "migrated", "no_sep", "tier_c"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_dtp_jtag_smoke_test"
+module = "smu_dtp_jtag_smoke_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["dtp", "migrated", "no_sep", "smoke"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_dtp_otp_smc_complete_rw_test"
+module = "smu_dtp_otp_smc_complete_rw_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "dtp", "jtag2axi", "migrated", "no_sep", "otp", "tier_c"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_dtp_otp_smc_map_rw_test"
+module = "smu_dtp_otp_smc_map_rw_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "dtp", "migrated", "no_sep", "otp", "tier_c"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_dtp_otp_smc_series_error_test"
+module = "smu_dtp_otp_smc_series_error_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "dtp", "migrated", "no_sep", "otp", "tier_c"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_dtp_ptap_otp_instr_scan_test"
+module = "smu_dtp_ptap_otp_instr_scan_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "dtp", "jtag", "migrated", "no_sep", "otp", "tier_c"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_dtp_smc_stap_smoke_test"
+module = "smu_dtp_smc_stap_smoke_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "dtp", "migrated", "no_sep", "stap", "tier_c"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_ic_reset_dual_domain_illegal_test"
+module = "smu_ic_reset_dual_domain_illegal_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["dtp", "ic_reset", "migrated", "no_sep"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_ic_reset_smc_multi_domain_test"
+module = "smu_ic_reset_smc_multi_domain_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["dtp", "migrated", "no_sep", "reset"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_jtag2axi_vs_smn_same_csr_race_test"
+module = "smu_jtag2axi_vs_smn_same_csr_race_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "dtp", "jtag2axi", "migrated", "no_sep", "tier_c"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_jtag_chain_enhanced_test"
+module = "smu_jtag_chain_enhanced_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "dtp", "jtag", "migrated", "no_sep", "tier_c"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_jtag_reset_override_test"
+module = "smu_jtag_reset_override_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["dtp", "migrated", "no_sep", "reset"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_otp_vs_fabric_map_race_test"
+module = "smu_otp_vs_fabric_map_race_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "dtp", "jtag2axi", "migrated", "no_sep", "otp", "tier_c"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_smc_dtp_jtag2axi_smoke_test"
+module = "smu_smc_dtp_jtag2axi_smoke_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["depth", "dtp", "jtag2axi", "migrated", "no_sep", "tier_c"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_xtrig_ctm_illegal_phase_test"
+module = "smu_xtrig_ctm_illegal_phase_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["dtp", "migrated", "no_sep", "xtrig"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+[[tests]]
+name = "smu_xtrig_ctm_remap_test"
+module = "smu_xtrig_ctm_remap_test"
+target = "compile_smu_chiplet_no_sep"
+firmware = { name = "elaboration", mode = "elaboration" }
+seed = 1
+timeout_sec = 1800
+tags = ["dtp", "migrated", "no_sep", "xtrig"]
+run_modes = ["no_sep"]
+args = [
+  "+rom_hex=smc_rom_default.hex",
+  "+smc_efuse_hex=smc_efuse_default.hex",
+]
+
+# Migrated bare-smu DTP leaves proven on this DUT.
+[[groups]]
+name = "migrated_dtp"
+tests = [
+  "smu_boot_stall_jtag_cold_reset_matrix_test",
+  "smu_boot_stall_vs_ic_reset_priority_test",
+  "smu_clock_stop_coordination_test",
+  "smu_dft_dtp_boot_stall_test",
+  "smu_dft_gpio_boot_stall_test",
+  "smu_dtp_bsr_ijtag_scan_test",
+  "smu_dtp_io_stap_smoke_test",
+  "smu_dtp_jtag2axi_back_to_back_error_ok_test",
+  # Two leaves end in an SMC fabric SERIES INCR write, which open RTL issue
+  # #1599 breaks whenever the drawn jtag_period_ns / smu_clk_period_ns is under
+  # 4 -- returning zeros, or parking SERIES_CTRL in BUSY. Both now pin the
+  # ratio to >= 4 via smu_base_test.min_jtag_smu_ratio; drop those overrides
+  # when the issue closes.
+  #
+  # Measured, not assumed. smu_dtp_jtag2axi_smc_error_path_test reproduces
+  # identically on --dut smu_block and --dut smu at seed 1915910843 (ratio
+  # 32/12 = 2.67), so it is not a DUT difference. For
+  # smu_smc_dtp_jtag2axi_smoke_test the ratio law itself was checked: seeds 5,
+  # 7, 9 (ratios 2.67, 3.20, 3.20) all fail and seeds 1, 2, 3 (5.00, 6.00,
+  # 6.00) all pass. Unpinned, 3 of the 9 (smu, jtag) draws are under 4, so this
+  # group would have been red on 5 nights in 9.
+  "smu_dtp_jtag2axi_smc_error_path_test",
+  "smu_dtp_jtag2axi_smc_rw_matrix_test",
+  "smu_dtp_jtag2axi_wstrb_partial_sticky_test",
+  "smu_dtp_jtag_smc_cpu_register_test",
+  "smu_dtp_jtag_smoke_test",
+  "smu_dtp_otp_smc_complete_rw_test",
+  "smu_dtp_otp_smc_map_rw_test",
+  "smu_dtp_otp_smc_series_error_test",
+  "smu_dtp_ptap_otp_instr_scan_test",
+  "smu_dtp_smc_stap_smoke_test",
+  "smu_ic_reset_dual_domain_illegal_test",
+  "smu_ic_reset_smc_multi_domain_test",
+  "smu_jtag2axi_vs_smn_same_csr_race_test",
+  "smu_jtag_chain_enhanced_test",
+  "smu_jtag_reset_override_test",
+  "smu_otp_vs_fabric_map_race_test",
+  "smu_smc_dtp_jtag2axi_smoke_test",
+  "smu_xtrig_ctm_illegal_phase_test",
+  "smu_xtrig_ctm_remap_test",
+]
+
+# Enrolled to stay visible, not passing here.
+#
+# smu_dtp_jtag2axi_abort_mid_op_test aborts an OTP op mid-flight, so it first
+# has to see SINGLE_OP report BUSY. The block bench leaves the OTP interface
+# unterminated and the op hangs BUSY, which makes that observable there. Here
+# the real SMC eFuse model from smc_ip_integration answers, and status is
+# already SUCCESS when the first poll shifts out.
+#
+# The window is not a tuning problem: one SINGLE_OP DR shift is 39 bits of TCK
+# (~1.5us at the randomized JTAG periods) against an OTP that responds in tens
+# of clk_smu, so the op finishes before any JTAG capture completes. A
+# deep-pipeline SERIES read does not substitute -- SERIES_CTRL's status field
+# reports the control transaction, not the data pipeline, and reads SUCCESS on
+# both DUTs. Reaching this scenario needs a way to hold the OTP response off
+# (a stallable eFuse model hook), which is a testbench feature.
+[[groups]]
+name = "migrated_dtp_pending"
+tests = [
+  "smu_dtp_jtag2axi_abort_mid_op_test",  # the real OTP model answers before the BUSY poll can capture it
+]
+
+# PR-gate tier: .github/workflows/sim.yml runs this on every hardware diff.
+#
+# Deliberately not the `smoke` group, which reaches the SEP=1 elaboration and
+# both firmware smokes -- .github/actions/dv-run installs Verilator and nothing
+# else, so anything needing the RISC-V toolchain cannot run on a hosted runner.
+# These four are the no-SEP profile with `elaboration` firmware.
+#
+# It is the old bare `--dut smu_block` PR gate, carried across: that group was
+# smu_smc_smoke_test / smu_dtp_jtag_smoke_test / smu_no_sep_configuration_test
+# / smu_ext_boot_seq_gate_test. The first needs SMC ROM firmware, so the
+# no-SEP elaboration test takes its place here and the SMC firmware smoke
+# stays in `smoke` for runs that have the toolchain.
+[[groups]]
+name = "smoke_sep0"
+tests = [
+  "smu_wrapper_elaboration_no_sep_test",
+  "smu_dtp_jtag_smoke_test",
+  "smu_no_sep_configuration_test",
+  "smu_ext_boot_seq_gate_test",
+]
+
+# The SEP=0 release set, and the CI regression group. Every leaf here compiles
+# under compile_smu_chiplet_no_sep with `elaboration` firmware, so the group
+# needs no RISC-V toolchain and no c_compile stage -- which is what let the
+# bare DUT's group of this name run on a hosted runner, and is why the name
+# moved here rather than being replaced when that catalog was retired.
+# .github/workflows/regress.yml selects it as `--dut smu --items
+# sep0_all`; keep that property when adding to it.
+[[groups]]
+name = "sep0_all"
+tests = [
+  "smu_axi_alias_remap_manager_scope_test",
+  "smu_axi_atomic_operation_test",
+  "smu_axi_crossbar_error_handling_test",
+  "smu_axi_external_port_connectivity_test",
+  "smu_axi_filter_allow_ns_test",
+  "smu_axi_filter_in_instance_matrix_test",
+  "smu_axi_filter_out_instance_matrix_test",
+  "smu_axi_id_width_conversion_test",
+  "smu_axi_prot_encoding_decode_test",
+  "smu_axi_xbar_structure_test",
+  "smu_boot_stall_jtag_cold_reset_matrix_test",
+  "smu_boot_stall_vs_ic_reset_priority_test",
+  "smu_clock_stop_coordination_test",
+  "smu_dft_dtp_boot_stall_test",
+  "smu_dft_gpio_boot_stall_test",
+  "smu_dtp_bsr_extest_loopback_test",
+  "smu_dtp_bsr_ijtag_scan_test",
+  "smu_dtp_io_stap_smoke_test",
+  "smu_dtp_jtag2axi_back_to_back_error_ok_test",
+  "smu_dtp_jtag2axi_smc_error_path_test",
+  "smu_dtp_jtag2axi_smc_rw_matrix_test",
+  "smu_dtp_jtag2axi_wstrb_partial_sticky_test",
+  "smu_dtp_jtag_smc_cpu_register_test",
+  "smu_dtp_jtag_smoke_test",
+  "smu_dtp_otp_smc_complete_rw_test",
+  "smu_dtp_otp_smc_map_rw_test",
+  "smu_dtp_otp_smc_series_error_test",
+  "smu_dtp_ptap_otp_instr_scan_test",
+  "smu_dtp_smc_stap_smoke_test",
+  "smu_ext_boot_seq_gate_test",
+  "smu_fabric_reg_bar_wr_test",
+  "smu_i3c_mem_port_connectivity_test",
+  "smu_ic_reset_dual_domain_illegal_test",
+  "smu_ic_reset_smc_multi_domain_test",
+  "smu_ic_reset_ss_domain_matrix_test",
+  "smu_jtag2axi_vs_smn_same_csr_race_test",
+  "smu_jtag_chain_enhanced_test",
+  "smu_jtag_reset_override_test",
+  "smu_no_sep_configuration_test",
+  "smu_otp_vs_fabric_map_race_test",
+  "smu_smc_dtp_jtag2axi_smoke_test",
+  "smu_smc_mailbox_int_test",
+  "smu_smc_mailbox_sanity_test",
+  "smu_smc_reset_ctrl_test",
+  "smu_smc_security_demote_pm_test",
+  "smu_smc_wdt_sanity_test",
+  "smu_smc_wdt_timeout_irq_test",
+  "smu_sys_in_filter_program_jtag_test",
+  "smu_sys_in_filter_reprogram_shrink_test",
+  "smu_sys_in_filter_window_edge_test",
+  "smu_system_timer_octs_test",
+  "smu_xtrig_ctm_illegal_phase_test",
+  "smu_xtrig_ctm_remap_test",
+]
+
+# Default `--items all` for smu_wrapper: every test in this file that can pass.
+#
+# This is the only DUT now. The bare `--dut smu_block` leaves were retired once their
+# twins here were proven, so this group is the whole SMU regression rather than
+# the wrapper-native half of it -- the 52 migrated leaves and the pilot are
+# enrolled below alongside the tests written against this DUT.
+#
+# Omitted, with reasons in their own groups: the two sep_smc_sram_blocked
+# leaves, which cannot pass by construction, and migrated_dtp_pending's
+# smu_dtp_jtag2axi_abort_mid_op_test, which needs an OTP interface that hangs
+# and so stayed on the bare DUT. Anything else added to this file belongs here
+# too, so that `--items all` keeps meaning "all of it".
 [[groups]]
 name = "all"
 tests = [
   "smu_wrapper_elaboration_no_sep_test",
-  "smu_smc_smoke_test",
   "smu_wrapper_elaboration_sep_rtl_test",
+  "smu_smc_smoke_test",
   "smu_sep_smoke_test",
+  "smu_sep_boot_health_test",
+  "smu_sep_sanity_test",
+  "smu_sep_modules_test",
+  "smu_sep_aes_test",
+  "smu_sep_otbn_test",
+  "smu_sep_efuse_test",
+  "smu_sep_wdt_test",
+  "smu_sep_dma_test",
+  "smu_sep_bidirect_test",
+  "smu_sep_remap_test",
+  "smu_sep_rom_tcm_load_test",
+  "smu_sep_spi_test",
+  "smu_sep_smc_notify_test",
+  "smu_wrapper_jtag_ptap_test",
+  "smu_sep_lcc_flow_test",
+  "smu_sep_lcc_state_test_dev_test",
+  "smu_sep_lcc_state_prod_test",
+  "smu_sep_lcc_state_prod_end_test",
+  "smu_sep_lcc_state_rma_chiplet_test",
+  "smu_sep_dbg_gating_test_dev_test",
+  "smu_sep_dbg_gating_prod_end_test",
+  "smu_dtp_sep_smc_chain_prod_test",
+  "smu_dtp_sep_smc_chain_prod_end_test",
+  "smu_sep_entropy_test",
+  "smu_axi_alias_remap_manager_scope_test",
+  "smu_axi_atomic_operation_test",
+  "smu_axi_crossbar_error_handling_test",
+  "smu_axi_external_port_connectivity_test",
+  "smu_axi_filter_allow_ns_test",
+  "smu_axi_filter_in_instance_matrix_test",
+  "smu_axi_filter_out_instance_matrix_test",
+  "smu_axi_id_width_conversion_test",
+  "smu_axi_prot_encoding_decode_test",
+  "smu_axi_xbar_structure_test",
+  "smu_boot_stall_jtag_cold_reset_matrix_test",
+  "smu_boot_stall_vs_ic_reset_priority_test",
+  "smu_clock_stop_coordination_test",
+  "smu_dft_dtp_boot_stall_test",
+  "smu_dft_gpio_boot_stall_test",
+  "smu_dtp_bsr_extest_loopback_test",
+  "smu_dtp_bsr_ijtag_scan_test",
+  "smu_dtp_io_stap_smoke_test",
+  "smu_dtp_jtag2axi_back_to_back_error_ok_test",
+  "smu_dtp_jtag2axi_smc_error_path_test",
+  "smu_dtp_jtag2axi_smc_rw_matrix_test",
+  "smu_dtp_jtag2axi_wstrb_partial_sticky_test",
+  "smu_dtp_jtag_smc_cpu_register_test",
+  "smu_dtp_jtag_smoke_test",
+  "smu_dtp_otp_smc_complete_rw_test",
+  "smu_dtp_otp_smc_map_rw_test",
+  "smu_dtp_otp_smc_series_error_test",
+  "smu_dtp_ptap_otp_instr_scan_test",
+  "smu_dtp_smc_stap_smoke_test",
+  "smu_ext_boot_seq_gate_test",
+  "smu_fabric_reg_bar_wr_test",
+  "smu_i3c_mem_port_connectivity_test",
+  "smu_ic_reset_dual_domain_illegal_test",
+  "smu_ic_reset_smc_multi_domain_test",
+  "smu_ic_reset_ss_domain_matrix_test",
+  "smu_jtag2axi_vs_smn_same_csr_race_test",
+  "smu_jtag_chain_enhanced_test",
+  "smu_jtag_reset_override_test",
+  "smu_no_sep_configuration_test",
+  "smu_otp_vs_fabric_map_race_test",
+  "smu_smc_dtp_jtag2axi_smoke_test",
+  "smu_smc_mailbox_int_test",
+  "smu_smc_mailbox_sanity_test",
+  "smu_smc_reset_ctrl_test",
+  "smu_smc_security_demote_pm_test",
+  "smu_smc_wdt_sanity_test",
+  "smu_smc_wdt_timeout_irq_test",
+  "smu_sys_in_filter_program_jtag_test",
+  "smu_sys_in_filter_reprogram_shrink_test",
+  "smu_sys_in_filter_window_edge_test",
+  "smu_system_timer_octs_test",
+  "smu_xtrig_ctm_illegal_phase_test",
+  "smu_xtrig_ctm_remap_test",
 ]
 
-# Real SEP DV firmware. Separate from the merge gate: the images are produced by
-# the SEP fw engine inside the toolchain container, not by this DV root's
-# freestanding builder.
+# Real SEP DV firmware, kept as a group so the firmware-driven leaves can be run
+# on their own. These are in `all`: their images build from this DV root's own
+# c_compile stage -- 14/14, ~150 s each -- so the earlier note that they needed
+# the toolchain container's SEP fw engine does not hold.
 [[groups]]
 name = "sep_real_fw"
 tests = [
@@ -919,7 +1970,9 @@ tests = [
 
 # SEP-driven SMC bring-up needs the SMC image visible in SMC SRAM to an external
 # master; in this integration that RAM is CPU-private (see smu_sep_smc_xbar_test).
-# Kept runnable for the investigation; never reports PASS.
+# Kept runnable for the investigation; never reports PASS. Re-confirmed
+# 2026-09-06: both FAIL on their own timeout, which is why they are the only two
+# leaves `all` leaves out.
 [[groups]]
 name = "sep_smc_sram_blocked"
 tests = [
@@ -980,12 +2033,37 @@ tests = [
   "smu_sep_smoke_test",
 ]
 
-# Retained alias: `all` already carries the SEP exec leaf (tools/dv/doc names it).
+# Retained alias for the name tools/dv/doc uses. It has always carried the same
+# membership as `all`, so it tracks `all` here too -- keep the two in step.
 [[groups]]
 name = "all_with_sep_exec"
 tests = [
   "smu_wrapper_elaboration_no_sep_test",
-  "smu_smc_smoke_test",
   "smu_wrapper_elaboration_sep_rtl_test",
+  "smu_smc_smoke_test",
   "smu_sep_smoke_test",
+  "smu_sep_boot_health_test",
+  "smu_sep_sanity_test",
+  "smu_sep_modules_test",
+  "smu_sep_aes_test",
+  "smu_sep_otbn_test",
+  "smu_sep_efuse_test",
+  "smu_sep_wdt_test",
+  "smu_sep_dma_test",
+  "smu_sep_bidirect_test",
+  "smu_sep_remap_test",
+  "smu_sep_rom_tcm_load_test",
+  "smu_sep_spi_test",
+  "smu_sep_smc_notify_test",
+  "smu_wrapper_jtag_ptap_test",
+  "smu_sep_lcc_flow_test",
+  "smu_sep_lcc_state_test_dev_test",
+  "smu_sep_lcc_state_prod_test",
+  "smu_sep_lcc_state_prod_end_test",
+  "smu_sep_lcc_state_rma_chiplet_test",
+  "smu_sep_dbg_gating_test_dev_test",
+  "smu_sep_dbg_gating_prod_end_test",
+  "smu_dtp_sep_smc_chain_prod_test",
+  "smu_dtp_sep_smc_chain_prod_end_test",
+  "smu_sep_entropy_test",
 ]

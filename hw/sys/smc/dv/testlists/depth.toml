@@ -116,6 +116,15 @@ timeout_sec = 1800
 tags = ["ci", "vplan_gap", "depth_efuse", "pyuvm"]
 run_modes = ["smoke"]
 
+# State-flop fault injection: eFuse fail-closed recovery and absorbing Zeroer error.
+[[tests]]
+name = "smc_state_fault_inject_test"
+module = "smc_state_fault_inject_test"
+seed = 1
+timeout_sec = 1800
+tags = ["ci", "vplan_gap", "depth_efuse", "zeroer_dma_depth", "tier_c", "pyuvm"]
+run_modes = ["smoke"]
+
 # smc_pll_dvfs_depth_test — not ported (rtl_placeholder).
 # smc_static_cg_sanity_test is enrolled in clock.toml / all.
 
@@ -288,6 +297,7 @@ tests = [
     "smc_efuse_locked_access_interrupt_test",
     "smc_efuse_boundary_signals_test",
     "smc_efuse_read_program_timeout_test",
+    "smc_state_fault_inject_test",
     "smc_uart_log_engine_error_boundary_test",
     "smc_octs_sanity_test",
     "smc_zeroer_sanity_test",
@@ -333,6 +343,7 @@ tests = [
     "smc_efuse_locked_access_interrupt_test",
     "smc_efuse_boundary_signals_test",
     "smc_efuse_read_program_timeout_test",
+    "smc_state_fault_inject_test",
     "smc_gpio_irq_active_test",
     "smc_uart_spi_log_engine_test",
     "smc_uart_log_engine_reg_rw_test",

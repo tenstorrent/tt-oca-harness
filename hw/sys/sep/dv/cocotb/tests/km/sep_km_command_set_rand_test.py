@@ -131,9 +131,13 @@ GEN_KEY_WORDS = (8, 12)
 # Number of undefined command IDs to walk per run.
 N_ILLEGAL_IDS = 7
 
-# Negative window for the shredded-engine probe. A healthy encryption completes
-# in far fewer polls than this, so a passing run spends the whole window.
-_SHRED_REFUSE_POLLS = 200
+# Negative window for the shredded-engine probe. The consume path in this
+# leaf (CHK-XFER) waits on the same OUTPUT_VALID bit via _poll_status_bit
+# (20-cycle polls). That helper logs only every 500 polls, and a passing
+# CHK-XFER never prints the heartbeat, so a healthy block finishes in
+# fewer than 500 polls. 50 is 10x below that bound. The window is spent
+# in full on every passing run.
+_SHRED_REFUSE_POLLS = 50
 
 
 class SepKmCommandSetCfg:

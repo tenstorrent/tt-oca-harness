@@ -566,7 +566,7 @@ The SMC aggregates interrupts from multiple sources into `cpu_interrupts_o`, whi
 the PLIC of the embedded RISC-V CPU cluster. The interrupt vector is assembled in
 `hw/sys/smc/rtl/smc_base.sv` and
 `hw/sys/smc/rtl/smc_peripherals/rtl/smc_peripherals.sv`. The authoritative
-bit-level map (1-core and 4-core columns, RTL trace, and PLIC source ID note) is
+bit-level map (RTL trace and PLIC source ID note) is
 maintained in a single place:
 
 ifdef::backend-html5[]

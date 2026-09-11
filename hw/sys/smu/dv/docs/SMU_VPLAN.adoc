@@ -9,12 +9,12 @@
 [cols=",",options="header",]
 |===
 |Field |Value
-|Design Under Test |`smu #(.SEP(0))` through `hw/sys/smu/dv/tb/tb_top.sv`
+|Design Under Test |`hw/top/smu_wrapper.sv` through `hw/sys/smu/dv/tb/tb_wrapper_top.sv`
 |Framework |PyUVM on cocotb
 |Primary simulator |Verilator
 |Reference testbench architecture |`SMU_TB_ARCH.adoc`
-|Live test bodies |59 under `cocotb/tests/`, 56 of them enrolled
-|Enrolled leaf entries |54 in `sep0_p4_all`, 52 in `sep0_all`
+|Live test bodies |79 Python modules under `cocotb_wrapper/tests/`; 84 `[[tests]]` entries in `wrapper.toml`, 81 of them in `all`
+|Enrolled leaf entries |81 in `all`, 53 in `sep0_all`
 |Non-enrolled inventory |28 bodies under `cocotb/tests_deferred/`
 |===
 
@@ -71,17 +71,18 @@ no enrolled test may reach into the DUT with Force or deposit.
 
 === Enrolled Test Summary
 
-The 56 enrolled tests — the union of the enrolled groups — with the testlist
-leaf each is declared in. Fifty-four of them are in `sep0_p4_all`;
-`smu_ext_boot_seq_gate_test` is enrolled only through `smoke` and `smc`,
-and `smu_smc_mailbox_int_test` only through `smc`
-(see <<smu-known-limitations,Known Limitations>>).
+The enrolled `sep0_all` set (53) plus the other names this plan still cards,
+with the source family each came from. Fifty-three of them are in `sep0_all`,
+including `smu_ext_boot_seq_gate_test` and `smu_smc_mailbox_int_test`.
+`smu_dtp_jtag2axi_abort_mid_op_test` is only in `migrated_dtp_pending`.
+The remaining `all` members are SEP=1 / wrapper-native leaves that this
+summary does not list row-by-row (see <<smu-known-limitations,Known Limitations>>).
 
 [cols="2,1,3",options="header",]
 |===
 |Test |Leaf |Scenario
 |`smu_axi_alias_remap_manager_scope_test` |fabric |SMU Tier A alias-remap (S3 LIVE)
-|`smu_axi_atomic_operation_test` |fabric |ATOP non-support on SEP=0 SMN path
+|`smu_axi_atomic_operation_test` |fabric |non-ATOP SMN read completes (RID==ARID); ATOP not drivable, TB ties aw.atop low
 |`smu_axi_crossbar_error_handling_test` |fabric |SMU_ALL_008 Option-B PWRGOOD-only
 |`smu_axi_external_port_connectivity_test` |fabric |SMU_ALL_002
 |`smu_axi_filter_allow_ns_test` |fabric |SMU Tier A allow_ns (SEP=0 J2A + s_axi)
@@ -123,7 +124,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |`smu_otp_vs_fabric_map_race_test` |dtp |OTP vs fabric MAP last-writer
 |`smu_sep_smoke_test` |deferred |SMU_ALL_007 RST-PRIMARY + CTM.S2/S3 (SEP=0 bare)
 |`smu_smc_dtp_jtag2axi_smoke_test` |dtp |SMC fabric J2A smoke (SEP=0, no Force)
-|`smu_smc_mailbox_int_test` |smc |ext_mailbox_interrupts width DECODE (SMU_ALL_004)
+|`smu_smc_mailbox_int_test` |smc |ext_mailbox_interrupts width plus mailbox 0 / 31 bit mapping (SMU_ALL_004)
 |`smu_smc_mailbox_sanity_test` |smc |outbound-0 STATUS/IRQEN via fabric J2A (SEP=0)
 |`smu_smc_reset_ctrl_test` |smc |primary/cold/periph reset release under SMU SEP=0
 |`smu_smc_security_demote_pm_test` |smc |SEP=0 demote / lc_state observe-only
@@ -132,13 +133,32 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |`smu_smc_wdt_timeout_irq_test` |smc |CORE0 WDT sticky WDOGIP0
 |`smu_sys_in_filter_program_jtag_test` |fabric |inbound0 program then SMN OKAY
 |`smu_sys_in_filter_reprogram_shrink_test` |fabric |wide, shrink, clear
-|`smu_sys_in_filter_window_edge_test` |fabric |page interior OKAY, ±4B DECERR
+|`smu_sys_in_filter_window_edge_test` |fabric |page interior OKAY; adjacent page each side DECERR+poison
 |`smu_system_timer_octs_test` |smc |SMU Tier C OCTS primary free-run
 |`smu_xtrig_ctm_illegal_phase_test` |dtp |pin-only illegal CTM corners
 |`smu_xtrig_ctm_remap_test` |dtp |product-pin CTM remap
 |===
 
 === Test Procedures
+
+Each entry below is a test body and its sequence. The Checkers table lists the
+evidence tokens the body emits, and those tokens are also the
+`(CHK_ID, TOKEN, EXPECT)` rows in `common/smu_dv_env/smu_evidence_map.py`.
+Those rows are a token contract, not a behavioural one. What the scoreboard
+enforces is exactly this: every TOKEN mapped to a testcase must have been
+logged by an `expect_*` compare that passed, or `prove_mapped_features()`
+fails the test; and a testcase with no rows must be declared in
+`UNMAPPED_TESTS`, or it fails there too.
+
+The EXPECT column is free-text contract wording for readers. Nothing compares
+an observed value against it, so the per-row log line `EVIDENCE TOKEN SEEN`
+reports that a mapped token was carried by a passing check -- not that the
+sentence beside it was verified. Each row also prints how the token bound:
+`evidence-arg` when the caller named it in an `evidence=` argument, or
+`check-name-substring` when the TOKEN or CHK id was matched against the check's
+name. Rows in the second class are the weaker binding and are collected into an
+`EVIDENCE BINDING WEAK` line. To know what a row's sentence is worth, read the
+check.
 
 ==== FABRIC
 
@@ -174,7 +194,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |`CHK-ALIAS-REMAP-SCOPE-S3` |Evidence token, emitted only after the compares it names have held
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_fabric`, `sep0_all`.
 
 '''''
 
@@ -183,15 +203,15 @@ and `smu_smc_mailbox_int_test` only through `smc`
 
 *Source Module*: `smu_axi_atomic_operation_test`
 
-*Objective*: Document ATOP tie-off + prove non-ATOP SMN access still completes.
+*Objective*: Prove a non-ATOP SMN read completes with RID==ARID; ATOP is not drivable here.
 
 *Test Coverage*:
 
-* smu_axi_atomic_operation_test - ATOP non-support on SEP=0 SMN path.
-* SMU xbar (SEP=1) instantiates `ATOPs=0`; SEP=0 uses the same SMC inbound filter/err path.
-* TB ties `smu_axi_in_req.aw.atop = 0` (no flat ATOP pin).
-* This test proves the supported non-ATOP traffic class completes with a live RID==ARID path rather than hanging.
-* DECERR / err_slv poison deny semantics and ATOP reject stimulus stay deferred until a legal ATOP driver and a filter-allow / OKAY positive control exist (NEGATIVE-NEEDS-POSITIVE-CONTROL).
+* smu_axi_atomic_operation_test - non-ATOP SMN read path on SEP=0.
+* `tb/tb_top.sv` and `tb/tb_wrapper_top.sv` tie `smu_axi_in_req.aw.atop` to `'0`, the flat `s_axi` port list carries no ATOP pin, and the package has no ATOP driver, so no ATOP transaction reaches the DUT.
+* This test makes no claim about ATOP rejection; a green run here is not ATOP non-support credit.
+* What it proves: a plain 32-bit read on the SEP=0 SMN path completes rather than hanging, and the RID sampled off the live R channel mirrors the ARID issued.
+* DECERR / err_slv poison deny semantics stay deferred until a filter-allow / OKAY positive control exists (NEGATIVE-NEEDS-POSITIVE-CONTROL).
 
 *Test Procedure*:
 
@@ -208,7 +228,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |scoreboard |Every access is compared against its stated expectation
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_fabric`, `sep0_all`.
 
 '''''
 
@@ -242,7 +262,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |`CHK-NONVAC` |Evidence token, emitted only after the compares it names have held
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_fabric`, `sep0_all`.
 
 '''''
 
@@ -278,7 +298,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |`CHK-NONVAC` |Evidence token, emitted only after the compares it names have held
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_fabric`, `sep0_all`.
 
 '''''
 
@@ -314,7 +334,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |allow_ns incomplete s1s=<value> s1n=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_fabric`, `sep0_all`.
 
 '''''
 
@@ -352,7 +372,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |in-matrix incomplete s1=<value> s2=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_fabric`, `sep0_all`.
 
 '''''
 
@@ -385,7 +405,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |out-matrix incomplete s1=<value> s2d=<value> s3d=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_fabric`, `sep0_all`.
 
 '''''
 
@@ -419,7 +439,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |scoreboard |Every access is compared against its stated expectation
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_fabric`, `sep0_all`.
 
 '''''
 
@@ -455,7 +475,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |S9 AxPROT matrix incomplete
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_fabric`, `sep0_all`.
 
 '''''
 
@@ -492,7 +512,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |xbar structure incomplete pos=<value> absent=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_fabric`, `sep0_all`.
 
 '''''
 
@@ -526,7 +546,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |local_fabric incomplete s1=<value> observed=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_fabric`, `sep0_all`.
 
 '''''
 
@@ -562,7 +582,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |otp_vs_fabric race incomplete s1=<value> s2=<value> s3=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
 
 '''''
 
@@ -597,7 +617,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |filter_program incomplete s1=<value> s2=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_fabric`, `sep0_all`.
 
 '''''
 
@@ -635,7 +655,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |filter_shrink incomplete s1=<value> s2=<value> s3=<value> s4=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_fabric`, `sep0_all`.
 
 '''''
 
@@ -644,11 +664,13 @@ and `smu_smc_mailbox_int_test` only through `smc`
 
 *Source Module*: `smu_sys_in_filter_window_edge_test`
 
-*Objective*: SMN OKAY on filter page edges; DECERR one beat outside.
+*Objective*: SMN OKAY on the filter page interior; DECERR one filter page either side.
 
 *Test Coverage*:
 
-* SYS_IN inbound0 page-edge: interior OKAY, outside mapped CSRs DECERR.
+* SYS_IN inbound0: page interior OKAY, and the adjacent page each side DECERR with filter poison.
+* With `ALLOW_BURST` set, `traffic_filter.sv` compares `tx_addr[AddrWidth-1:12]`, so one filter page is the finest bound this configuration resolves.
+* The below-page probe re-reads an address that answered OKAY earlier in the same run, so its DECERR cannot be a dead bus or an unmapped hole.
 
 *Test Procedure*:
 
@@ -668,10 +690,11 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |`CHK-FILTER-EDGE-OUT` |Evidence token, emitted only after the compares it names have held
 |`CHK-FILTER-EDGE-BELOW` |Evidence token, emitted only after the compares it names have held
 |`CHK-FILTER-EDGE-ABOVE` |Evidence token, emitted only after the compares it names have held
-|assertion |filter_window_edge incomplete s1=<value> s2=<value> s3=<value>
+|`CHK-FILTER-EDGE-START-ADJ` |Evidence token, emitted only after the compares it names have held
+|assertion |filter_window_edge incomplete s1=<value> s2=<value> s3=<value> s4=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `fabric`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_fabric`, `sep0_all`.
 
 '''''
 
@@ -704,7 +727,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |scoreboard |Every access is compared against its stated expectation
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
 
 '''''
 
@@ -739,7 +762,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |scoreboard |Every access is compared against its stated expectation
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
 
 '''''
 
@@ -771,7 +794,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |scoreboard |Every access is compared against its stated expectation
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
 
 '''''
 
@@ -804,7 +827,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |scoreboard |Every access is compared against its stated expectation
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
 
 '''''
 
@@ -836,7 +859,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |scoreboard |Every access is compared against its stated expectation
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
 
 '''''
 
@@ -871,7 +894,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |`CHK-NONVAC` |Evidence token, emitted only after the compares it names have held
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `smc`, `smoke`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `smoke_sep0`, `migrated_smc`.
 
 '''''
 
@@ -903,7 +926,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |scoreboard |Every access is compared against its stated expectation
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
 
 '''''
 
@@ -936,7 +959,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |scoreboard |Every access is compared against its stated expectation
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
 
 '''''
 
@@ -968,7 +991,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |scoreboard |Every access is compared against its stated expectation
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_smc`, `sep0_all`.
 
 '''''
 
@@ -1001,7 +1024,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |scoreboard |Every access is compared against its stated expectation
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
 
 '''''
 
@@ -1031,7 +1054,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |scoreboard |Every access is compared against its stated expectation
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `sep0_p4_all`, `smc`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `migrated_smc`.
 
 '''''
 
@@ -1069,11 +1092,10 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |`CHK-DTP-CLKSTOP-AGG-S1` |Evidence token, emitted only after the compares it names have held
 |`CHK-DTP-CLKSTOP-AGG-S2` |Evidence token, emitted only after the compares it names have held
 |`CHK-DTP-CLKSTOP-AGG-S3` |Evidence token, emitted only after the compares it names have held
-|`CHK-TIMEOUT-PATHS` |Evidence token, emitted only after the compares it names have held
 |`CHK-NONVAC` |Evidence token, emitted only after the compares it names have held
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
 
 '''''
 
@@ -1107,7 +1129,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |i3c_mem incomplete s1=<value> observed=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `sep0_p4_all`, `smc`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `migrated_smc`.
 
 '''''
 
@@ -1143,7 +1165,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |jtag2axi_vs_smn race incomplete s1=<value> s2=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
 
 '''''
 
@@ -1185,7 +1207,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |tb_timer_count pin observe missing or not advancing
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `sep0_p4_all`, `smc`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `migrated_smc`.
 
 '''''
 
@@ -1216,7 +1238,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |scoreboard |Every access is compared against its stated expectation
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
 
 '''''
 
@@ -1253,7 +1275,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |scoreboard |Every access is compared against its stated expectation
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_smc`, `sep0_all`.
 
 '''''
 
@@ -1295,7 +1317,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |bsr_ijtag incomplete s1=<value> s2=<value> s3=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
 
 '''''
 
@@ -1333,7 +1355,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |io_stap incomplete s1=<value> s2=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
 
 '''''
 
@@ -1369,7 +1391,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |jtag2axi_abort incomplete s1=<value> s2=<value> s3=<value> s4=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `migrated_dtp_pending`.
 
 '''''
 
@@ -1405,7 +1427,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |jtag2axi_b2b incomplete s1=<value> s2=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
 
 '''''
 
@@ -1441,7 +1463,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |jtag2axi_smc_error incomplete s1=<value> s2=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
 
 '''''
 
@@ -1478,7 +1500,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |jtag2axi_rw_matrix incomplete s1=<value> s2=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
 
 '''''
 
@@ -1513,7 +1535,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |jtag2axi_wstrb_partial incomplete s1=<value> s2=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
 
 '''''
 
@@ -1553,7 +1575,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |jtag_smc_cpu_register incomplete s1=<value> s2=<value> s3=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
 
 '''''
 
@@ -1588,7 +1610,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |`CHK-NONVAC` |Evidence token, emitted only after the compares it names have held
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`, `smoke`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`, `smoke_sep0`.
 
 '''''
 
@@ -1622,7 +1644,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |otp_smc_complete incomplete s1=<value> s2=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
 
 '''''
 
@@ -1664,7 +1686,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |otp_smc_map incomplete s1=<value> s2=<value> s3=<value> s4=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
 
 '''''
 
@@ -1707,7 +1729,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |otp_smc_series_error incomplete s1=<value> s2=<value> s3=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
 
 '''''
 
@@ -1749,7 +1771,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |ptap_otp_instr_scan incomplete s1=<value> s2=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
 
 '''''
 
@@ -1796,7 +1818,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |smc_stap incomplete s1=<value> s2=<value> s3=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
 
 '''''
 
@@ -1838,7 +1860,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |jtag_chain_enhanced incomplete s1=<value> s2=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
 
 '''''
 
@@ -1879,7 +1901,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |jtag2axi_smoke incomplete s1=<value> s2=<value> s3=<value> s4=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
 
 '''''
 
@@ -1915,7 +1937,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |`CHK-NONVAC` |Evidence token, emitted only after the compares it names have held
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `sep0_p4_all`, `smc`, `smoke`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `smoke_sep0`, `migrated_smc`.
 
 '''''
 
@@ -1931,7 +1953,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 * Sequence for smu_sep_smoke_test (SMU_ALL_007).
 * DV-CARD: SMU_ALL_007 ANCHOR: smu_sep_smoke_test Allocated (narrowed Option B; SEP=0 bare tb_top): SMC-RST-PRIMARY-EXPORT.S1 / S2 DTP-XTRIG-CTM.S2 / S3 No Force/deposit.
 * No SEP-sysif/LC/SEC_DIS/mem/fuse/WDT/alias/CTM.S1/CTP/DTP-CSR.
-* This written plan is the bare `--dut smu` / `SEP=0` scenario. The
+* This written plan is the bare `--dut smu_block` / `SEP=0` scenario. The
   `wrapper.toml` copy of the same name has no per-testcase plan here.
 
 *Test Procedure*:
@@ -1954,7 +1976,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |`CHK-NONVAC` |Evidence token, emitted only after the compares it names have held
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `dtp`, `sep0_all`, `sep0_p4_all`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `all_with_sep_exec`, `sep_rtl_only`, `smoke`.
 
 '''''
 
@@ -1965,14 +1987,15 @@ and `smu_smc_mailbox_int_test` only through `smc`
 
 *Source Module*: `smu_smc_mailbox_int_test`
 
-*Objective*: SMU_ALL_004: SMC external mailbox IRQ width DECODE (SEP=0).
+*Objective*: SMU_ALL_004: SMC external mailbox IRQ width and bit mapping (SEP=0).
 
 *Test Coverage*:
 
 * Sequence for smu_smc_mailbox_int_test (SMU_ALL_004).
-* DV-CARD: SMU_ALL_004 ANCHOR: smu_smc_mailbox_int_test Approved OWNS (card r8 / plan r3): SMC-MBX-IRQ-EXT.S2 — Width equals NUM_MAILBOXES (32) at the SMU boundary (passive DECODE on bare tb_top SEP=0; required_cells width=32).
+* DV-CARD: SMU_ALL_004 ANCHOR: smu_smc_mailbox_int_test Approved OWNS (card r8 / plan r3): SMC-MBX-IRQ-EXT.S2 — Width equals NUM_MAILBOXES (32) at the SMU boundary, observed at the DUT port width rather than a testbench declaration.
+* Mailbox 0 and mailbox 31 raise their outbound write-threshold IRQ over the JTAG2AXI frontdoor, and the boundary vector must equal `baseline | 1<<idx` and return to baseline when the enable is cleared.
 * CHANNELS.S2/S3 and EXT.S1 are owned by SMU_ALL_008 — out of scope.
-* No mailbox MMIO; no Force/deposit on ext_mailbox_interrupts.
+* No Force/deposit on ext_mailbox_interrupts.
 
 *Test Procedure*:
 
@@ -1991,7 +2014,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |`CHK-NONVAC` |Evidence token, emitted only after the compares it names have held
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `smc`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_smc`, `sep0_all`.
 
 '''''
 
@@ -2027,7 +2050,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |mailbox_sanity incomplete s1=<value> s2=<value> s3=<value> s4=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `sep0_p4_all`, `smc`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `migrated_smc`.
 
 '''''
 
@@ -2058,7 +2081,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |scoreboard |Every access is compared against its stated expectation
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `sep0_p4_all`, `smc`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `migrated_smc`.
 
 '''''
 
@@ -2074,7 +2097,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 * Sequence for smu_smc_smoke_test (SMU_ALL_003).
 * DV-CARD: SMU_ALL_003 ANCHOR: smu_smc_smoke_test Approved OWNS (card r6 / plan r3): SMC-FAB-DUAL-NET.S2 — local peripherals/config registers use AXI4-Lite LP SMC-FAB-DUAL-NET.S3 — both networks carry 64-bit data without truncation Bare tb_top SEP=0: hierarchical CONNECTIVITY observe only (no Force/deposit).
 * Independent expects from pinned hw/sys/smc/doc/fabric.adoc §Network Characteristics / §AXI Common Signal Widths / §AXI ID Widths / §Traffic Subordinates (AXI4-Lite Low-Performance rows) @ffc8cdcc…
-* This written plan is the bare `--dut smu` / `SEP=0` scenario. The
+* This written plan is the bare `--dut smu_block` / `SEP=0` scenario. The
   `wrapper.toml` copy of the same name has no per-testcase plan here.
 
 *Test Procedure*:
@@ -2095,7 +2118,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |`CHK-NONVAC` |Evidence token, emitted only after the compares it names have held
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `sep0_p4_all`, `smc`, `smoke`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `smoke`.
 
 '''''
 
@@ -2131,7 +2154,7 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |wdt_sanity incomplete s1=<value> s2=<value> s3=<value> s4=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `sep0_p4_all`, `smc`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `migrated_smc`.
 
 '''''
 
@@ -2166,24 +2189,24 @@ and `smu_smc_mailbox_int_test` only through `smc`
 |assertion |wdt_timeout incomplete s1=<value> s2=<value> s3=<value>
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `sep0_p4_all`, `smc`.
+*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `migrated_smc`.
 
 '''''
 
 ==== SMU_WRAPPER
 
-`--dut smu_wrapper` is a separate surface from the 56 bare `SEP=0` entries
-above. `testlists/wrapper.toml` enrols the 30 names below. None of them has
-a written per-testcase plan in this document: this section does not invent
-an objective, a sequence name, or a checker row for any wrapper scenario.
+`--dut smu` is the wrapper bench, and `testlists/wrapper.toml` enrols the
+whole SMU regression on it -- the SEP=0 entries planned above plus the SEP=1
+names below. The SEP=1 names have no written per-testcase plan in this
+document: this section does not invent an objective, a sequence name, or a
+checker row for any of them.
 
-Two names also appear as bare `--dut smu` entries: `smu_sep_smoke_test`
-(<<sec-050-smu_sep_smoke_test>>) and `smu_smc_smoke_test`
-(<<sec-054-smu_smc_smoke_test>>). Those written plans describe the SEP=0
-bare `tb_top` scenarios. The wrapper copies share the name only; see
-`wrapper.toml` (shared names must be tagged WRAPPER vs BARE in logs).
+`smu_sep_smoke_test` (<<sec-050-smu_sep_smoke_test>>) and
+`smu_smc_smoke_test` (<<sec-054-smu_smc_smoke_test>>) have written plans above
+describing the SEP=0 `tb_top` scenarios of those names. The copies enrolled
+here share the name only; see `wrapper.toml`.
 
-The wrapper sequences live under `cocotb_wrapper/seq_lib/` (for example
+The sequences live under `common/seq_lib/`, shared by both DUTs (for example
 `smu_sep_aes_seq` / `SmuSepAesSeq`, not a fabricated `*_test_seq`).
 Several of those sequences already raise named tokens. Examples, not a
 complete plan: `CHK-SEP-BOOT-HEALTH-VERDICT`, `CHK-SEP-DBG-GATED`,
@@ -2232,9 +2255,9 @@ complete plan: `CHK-SEP-BOOT-HEALTH-VERDICT`, `CHK-SEP-DBG-GATED`,
 [cols=",",options="header",]
 |===
 |Population |Count
-|Live test bodies (`cocotb/tests/`) |59
-|Enrolled in `sep0_p4_all` |54
-|Enrolled in `sep0_all` (nightly) |52
+|Live test bodies (`cocotb_wrapper/tests/*.py`) |79
+|Enrolled in `all` |81
+|Enrolled in `sep0_all` (nightly) |53
 |Non-enrolled bodies (`cocotb/tests_deferred/`) |28
 |===
 
@@ -2243,31 +2266,35 @@ complete plan: `CHK-SEP-BOOT-HEALTH-VERDICT`, `CHK-SEP-DBG-GATED`,
 [cols=",,",options="header",]
 |===
 |Group |Tests |Notes
-|`all` |56 |Unique enrolled bodies
-|`smoke` |4 |PR gate
-|`smc` |11 |SMC-facing density
-|`dtp` |29 |DTP-facing
-|`fabric` |14 |Fabric routing and decode
-|`sep0_all` |52 |Nightly / weekly; 51 PASS / 1 FAIL
-|`sep0_p4_all` |54 |`sep0_all` plus two P4 names
+|`all` |81 |Unique enrolled bodies in `testlists/wrapper.toml`
+|`smoke` |4 |PR gate (`sim.yml` uses `smoke_sep0`)
+|`smoke_sep0` |4 |Hosted-runner PR tier
+|`build_smoke` |2 |Elaboration only
+|`sep0_all` |53 |Nightly / weekly enrollment. No scored run on this unified group is checked in; the retained artifact is the pre-unification 51 PASS / 1 FAIL on 52 (`SMU_RELEASE_MATRIX.adoc`)
+|`migrated_fabric` |14 |Fabric leaves brought onto the wrapper
+|`migrated_smc` |12 |SMC-facing leaves brought onto the wrapper
+|`migrated_dtp` |27 |DTP-facing leaves brought onto the wrapper
 |===
 
 === Known Limitations
 
-* *`smoke` is not a subset of `sep0_all`.* `smu_ext_boot_seq_gate_test` is in
-  `smoke` and `smc` but in neither `sep0_all` nor
-  `sep0_p4_all`, so the nightly does not run a test every pull request does.
-  #485 keeps it PR-only. Re-enrollment is a later #493 choice.
+* *`smoke` is not a subset of `sep0_all`.* `smoke` is the two elaboration
+  leaves plus `smu_smc_smoke_test` and `smu_sep_smoke_test`.
+  `smu_ext_boot_seq_gate_test` is in `sep0_all` and `smoke_sep0`, not in
+  `smoke`.
 
-* *SEP=1 is out of scope here.* Everything in this plan runs with `SEP=0`. The
-  dual-firmware SEP-under-SMU work is gated on the SEP instruction-fetch
-  blocker and is not ported.
-* *The wrapper is a separate surface.* `--dut smu_wrapper` proves production-pin
-  boot and elaboration. Its PASSes are labelled `DUT_TAG=WRAPPER` and are not
-  counted as `sep0_all` density evidence.
-* *123 catalogued entries are not enrolled*, against 28 bodies under
-  `cocotb/tests_deferred/`. The rest are named for catalog continuity and have
-  no body at all. Per-entry v0.5.0 bucket, owner, and reintroduction trigger
+* *`all` includes SEP=1 leaves.* Twenty-eight of the 81 names in `all` compile
+  under the real-SEP profile (`all_with_sep_exec` is that subset). The
+  SEP=0 credit set is `sep0_all`. Dual-firmware SRAM-bring-up leaves stay in
+  `sep_smc_sram_blocked` and are not in `all`.
+* *The wrapper is the surface.* `--dut smu` is the wrapper bench and carries
+  `sep0_all` itself; its PASSes are labelled `DUT_TAG=WRAPPER` and are the
+  density evidence. The bare block bench is `--dut smu_block`, whose PASSes
+  carry `DUT_TAG=BARE` and are not feature credit.
+* *The deferred catalog still has 123 names.* Nine of them are also enrolled
+  in wrapper `all` on the SEP=1 track (`smu_sep_smoke_test` plus eight
+  `sep_real_fw` images) and are not in `sep0_all`. The rest are not in any
+  wrapper regression. Per-entry bucket, owner, and reintroduction trigger
   are in `SMU_DEFERRED_DISPOSITION.adoc`. None of those names is a v0.5.0
   restore.
 * *Cross-trigger and iJTAG have no OCAH-local model yet*, so the coverage those

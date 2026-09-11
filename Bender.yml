@@ -575,8 +575,6 @@ sources:
       - hw/sys/smc/rtl/smc_config_pkg.sv
       - hw/sys/smc/rtl/smc_cpu/chipyard_4core_mem_pkg.sv
       - hw/sys/smc/rtl/smc_cpu/smc_4core_cpu_pkg.sv
-      - hw/sys/smc/rtl/smc_cpu/chipyard_1core_mem_pkg.sv
-      - hw/sys/smc/rtl/smc_cpu/smc_1core_cpu_pkg.sv
       - hw/sys/smc/rtl/smc_misc/rtl/smc_misc_pkg.sv
       - hw/sys/smc/rtl/smc_peripherals/efuse/smc_efuse_pkg.sv
       - hw/sys/smc/rtl/smc_peripherals/pkg/smc_padring_pkg.sv
@@ -1498,6 +1496,7 @@ sources:
       - hw/sys/smc/rtl/smc_cpu/mem_swaps/4core/OCAH4CORECluster_mems.sv
       - hw/sys/smc/rtl/smc_cpu/mem_swaps/4core/tilelink_to_rom_mem.sv
       - hw/sys/smc/rtl/smc_cpu/smc_4core_cpu.sv
+      - hw/sys/smc/rtl/smc_cpu/smc_cpu_ctrl_wrap.sv
       - hw/sys/smc/rtl/smc_cpu/smc_cpu_wrapper.sv
       - hw/sys/smc/rtl/smc_cpu/sync_swaps/4core/OCAH4CORECluster_AsyncResetSynchronizerPrimitiveShiftReg_d3_i0.sv
       - hw/sys/smc/rtl/smc_cpu/sync_swaps/4core/OCAH4CORECluster_InferredResetSynchronizerPrimitiveShiftReg_d3_i0.sv
@@ -1511,7 +1510,6 @@ sources:
       - hw/sys/smc/rtl/smc_fabric/smc_output_fabric/rtl/smc_output_fabric.sv
       - hw/sys/smc/rtl/smc_internal_regs.sv
       - hw/sys/smc/rtl/smc_misc/rtl/smc_base_config_wrap.sv
-      - hw/sys/smc/rtl/smc_misc/rtl/smc_cpu_ctrl_wrap.sv
       - hw/sys/smc/rtl/smc_misc/rtl/smc_dfx_ctrl_status_wrap.sv
       - hw/sys/smc/rtl/smc_misc/rtl/smc_misc_wrap.sv
       - hw/sys/smc/rtl/smc_misc/rtl/smc_version_id_wrap.sv

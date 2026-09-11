@@ -1160,6 +1160,7 @@ module sep_uvm_top
 `define CMP_SIP  `TOKEN_PROC.u_triple_redundant_comparator_rma_sip_token
 `define CMP_CHIP `TOKEN_PROC.u_triple_redundant_comparator_rma_chiplet_token
 `define CMP_SEC  `TOKEN_PROC.u_triple_redundant_comparator_sec_disable_token
+`define DIGEST_SIP `TOKEN_PROC.u_sha256_rma_sip_token
     logic [2:0] token_cmp_force_p, token_cmp_force_n;
     logic       token_cmp_do_force;
     always_comb begin
@@ -1215,6 +1216,26 @@ module sep_uvm_top
             release `CMP_SEC.match_n;
         end
     end
+    // The production DFT input is tied low at this TB boundary. Use the same
+    // clock-reissued force/release convention as the signed-off comparator
+    // hook to reach the digest latch's scan-freeze gate. Token commands and
+    // digest capture remain frontdoor; only this otherwise unreachable input
+    // is forced.
+    assign token_digest_sticky_o = `DIGEST_SIP.sha_digest_sticky_n0_scan;
+    assign token_digest_valid_o = `DIGEST_SIP.digest_vld_sticky_n0_scan;
+    assign token_digest_test_en_o = `DIGEST_SIP.test_en_i;
+    assign token_digest_latch_en_pre_o = `DIGEST_SIP.digest_latch_en_pre;
+    assign token_digest_valid_en_pre_o = `DIGEST_SIP.vld_latch_en_pre;
+    assign token_digest_latch_en_o = `DIGEST_SIP.digest_latch_en;
+    assign token_digest_valid_en_o = `DIGEST_SIP.vld_latch_en;
+    always @(posedge clk_i) begin
+        if (token_digest_test_en_inject_i === 1'b1) begin
+            force `DIGEST_SIP.test_en_i = 1'b1;
+        end else begin
+            release `DIGEST_SIP.test_en_i;
+        end
+    end
+`undef DIGEST_SIP
 `undef CMP_SIP
 `undef CMP_CHIP
 `undef CMP_SEC
@@ -2018,6 +2039,7 @@ module sep_uvm_top
     assign lc_sigint_inject_i       = 1'b0;
     assign token_cmp_fault_inject_i = '0;
     assign token_cmp_fault_sel_i    = '0;
+    assign token_digest_test_en_inject_i = 1'b0;
     assign dma_host_intg_inject_i   = 1'b0;
     assign rst_vec_i                = '0;
     assign i_cpu_run_req_i          = 1'b0;
@@ -2034,6 +2056,103 @@ module sep_uvm_top
         uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "lsu_axi_vif", u_lsu_axi_if);
         run_test();
     end
+`endif
+
+    // ------------------------------------------------------------------
+    // Functional-coverage sampler (docs/SEP_FCOV.adoc).
+    //
+    // Passive: it drives nothing and has no output. VCS only -- Verilator does
+    // not compile `covergroup`, and cov/sv/sep_fcov.sv is `ifndef VERILATOR`,
+    // so there is no module to bind on the Verilator targets.
+    //
+    // NEW DUT OBSERVATION, and it needs a sign-off rather than a claim that it
+    // is free. The response side (`lsu_axi_resp`) is already mirrored to the
+    // flat s_axi_* outputs above, but the REQUEST side (`lsu_axi_req` AW/W/AR
+    // and B/R ready) is read here for the first time: it is not one of the
+    // named probe ports in sep_tb_signal_list.svh.
+    //
+    // Why it is the request bus and not the flat s_axi_* inputs: those inputs
+    // carry TB stimulus only. Under +cpu_boot the EL2 owns this bus and the
+    // input ports sit idle, so a port-side sampler scores nothing on any
+    // firmware test -- no DMA, SPI-DMA, boot-ROM LSU, mailbox or NMI cell could
+    // ever fill. It is the same node the no-CPU builds already force-splice
+    // (see the CPU-LSU AXI splice above), read-only, with no force and no new
+    // hierarchy depth.
+    // ------------------------------------------------------------------
+`ifndef VERILATOR
+    sep_fcov u_sep_fcov (
+        .clk_i                 (clk_i),
+        .rst_ni                (rst_n_int),
+
+        .lsu_aw_addr_i         (`SEP_CORE.sep_cpu.lsu_axi_req.aw.addr),
+        .lsu_aw_valid_i        (`SEP_CORE.sep_cpu.lsu_axi_req.aw_valid),
+        .lsu_aw_ready_i        (`SEP_CORE.sep_cpu.lsu_axi_resp.aw_ready),
+        .lsu_w_data_i          (`SEP_CORE.sep_cpu.lsu_axi_req.w.data),
+        .lsu_w_strb_i          (`SEP_CORE.sep_cpu.lsu_axi_req.w.strb),
+        .lsu_w_valid_i         (`SEP_CORE.sep_cpu.lsu_axi_req.w_valid),
+        .lsu_w_ready_i         (`SEP_CORE.sep_cpu.lsu_axi_resp.w_ready),
+        .lsu_b_resp_i          (`SEP_CORE.sep_cpu.lsu_axi_resp.b.resp),
+        .lsu_b_valid_i         (`SEP_CORE.sep_cpu.lsu_axi_resp.b_valid),
+        .lsu_b_ready_i         (`SEP_CORE.sep_cpu.lsu_axi_req.b_ready),
+        .lsu_ar_addr_i         (`SEP_CORE.sep_cpu.lsu_axi_req.ar.addr),
+        .lsu_ar_valid_i        (`SEP_CORE.sep_cpu.lsu_axi_req.ar_valid),
+        .lsu_ar_ready_i        (`SEP_CORE.sep_cpu.lsu_axi_resp.ar_ready),
+        .lsu_r_data_i          (`SEP_CORE.sep_cpu.lsu_axi_resp.r.data),
+        .lsu_r_resp_i          (`SEP_CORE.sep_cpu.lsu_axi_resp.r.resp),
+        .lsu_r_last_i          (`SEP_CORE.sep_cpu.lsu_axi_resp.r.last),
+        .lsu_r_valid_i         (`SEP_CORE.sep_cpu.lsu_axi_resp.r_valid),
+        .lsu_r_ready_i         (`SEP_CORE.sep_cpu.lsu_axi_req.r_ready),
+
+        .m_axi_awaddr_i        (m_axi_awaddr),
+        .m_axi_awvalid_i       (m_axi_awvalid),
+        .m_axi_awready_i       (m_axi_awready),
+        .m_axi_bresp_i         (m_axi_bresp),
+        .m_axi_bvalid_i        (m_axi_bvalid),
+        .m_axi_bready_i        (m_axi_bready),
+        .m_axi_araddr_i        (m_axi_araddr),
+        .m_axi_arvalid_i       (m_axi_arvalid),
+        .m_axi_arready_i       (m_axi_arready),
+        .m_axi_rresp_i         (m_axi_rresp),
+        .m_axi_rlast_i         (m_axi_rlast),
+        .m_axi_rvalid_i        (m_axi_rvalid),
+        .m_axi_rready_i        (m_axi_rready),
+
+        .cpu_trace_valid_i     (cpu_trace_valid_o),
+        .cpu_trace_addr_i      (cpu_trace_addr_o),
+        .cpu_trace_interrupt_i (cpu_trace_interrupt_o),
+        .cpu_trace_exc_i       (dbg_cpu_trace_exc_o),
+        .fw_done_i             (fw_done_o),
+        .fw_pass_i             (fw_pass_o),
+        .fw_char_valid_i       (fw_char_valid_o),
+        .fuse_sense_done_i     (sep_fuse_sense_done_o),
+        .drbg_seed_valid_i     (drbg_seed_valid_o),
+        .drbg_genbits_vld_i    (drbg_genbits_vld_o),
+        .axis1_tvalid_i        (axis1_tvalid_o),
+        .axis1_tready_i        (axis1_tready_o),
+        .km_entropy_tvalid_i   (km_entropy_tvalid_o),
+        .km_entropy_tready_i   (km_entropy_tready_o),
+        // sep.sv:534 assembles the SEP AXI mailbox onto
+        // sep_internal_interrupts[7:0] and km_mbox_irq onto [14]. They are
+        // different sources with different owning tests, so both are wired.
+        .irq_mailbox_i         (sep_internal_interrupts_probe_o[7:0]),
+        .irq_km_mbox_i         (sep_internal_interrupts_probe_o[14]),
+        // sep.sv:535 intr_dma_done. dma_hash_test completes through the ISR,
+        // which clears STATUS.done before software reads it.
+        .irq_dma_done_i        (sep_internal_interrupts_probe_o[8]),
+        // Sensed LC nibble out of the shadow probe. The W1S leaves verify
+        // their start state through this probe and never read LC_STATE
+        // frontdoor first, so the frontdoor path cannot observe RMA_SIP_0 /
+        // RMA_CHIP_0 at all.
+        .efuse_lc_raw_i        (efuse_shadow_probe_o[
+            32 * efuse_pkg::SHADOW_IDX_LC_STATE +: 4]),
+        .secure_tm_i           (secure_tm_o),
+        .sec_dis_i             (lcc_security_disable_probe_o),
+        .demote_1_i            (lcc_demote_state_1_probe_o),
+        .demote_2_i            (lcc_demote_state_2_probe_o),
+        .cpu_reset_n_i         (sep_cpu_reset_n_o),
+        .spi_cs_n_i            (spi_cs_n_o),
+        .spi_sck_i             (spi_sck_o)
+    );
 `endif
 
 `undef SEP_ESRC
