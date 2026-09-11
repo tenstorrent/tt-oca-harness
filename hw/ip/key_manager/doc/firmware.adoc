@@ -729,19 +729,24 @@ and a return argument containing the KM status information.
 | `4` | `lock_siu` | `OTP_SIP_UID_VAL/CPL` reads are locked.
 | `5` | `lock_su` | `OTP_SYS_UID_VAL/CPL` reads are locked.
 | `6` | `lock_ck` | `OTP_CLASS_KEY_VAL/CPL` reads are locked.
-| `[31:7]` | `reserved` | All other fields reserved.
+| `7` | `lock_ci` | `OTP_SEP_CHIPLET_ID_VAL/CPL` reads are locked.
+| `8` | `lock_sii` | `OTP_SEP_SIP_ID_VAL/CPL` reads are locked.
+| `9` | `lock_ssi` | `OTP_SEP_SYS_ID_VAL/CPL` reads are locked.
+| `[31:10]` | `reserved` | All other fields reserved.
 |===
 
 [[km-stat-lock-bits]]
 *The lock bits*
 
-Bits `[6:1]` report the *effective* OTP read-lock for each field — the OR of the
-warm-domain `OTP_READ_LOCK` and the cold-domain `OTP_READ_LOCK_COLD`
-(<<km-cmd-otp-read-lock-cold>>). Effective rather than cold-only, because what a
-host needs to know here is whether a field is readable *now*, not which register
-made it unreadable. `CMD_OTP_READ_LOCK_COLD` reports the cold register alone in
-its own response, so a caller that needs to tell the two domains apart can still
-do so.
+Bits `[9:1]` report the *effective* OTP read-lock for each of the nine lockable
+fields — the OR of the warm-domain `OTP_READ_LOCK` and the cold-domain
+`OTP_READ_LOCK_COLD` (<<km-cmd-otp-read-lock-cold>>). They appear in the same
+order as the `LOCK_BITS` mask that command takes, shifted up by one to clear
+`recov_fault`, so a host can compare the two responses field by field without a
+mapping table. Effective rather than cold-only, because what a host needs to know
+here is whether a field is readable *now*, not which register made it unreadable.
+`CMD_OTP_READ_LOCK_COLD` reports the cold register alone in its own response, so
+a caller that needs to tell the two domains apart can still do so.
 
 The pair that matters most is `lock_lc` and `lock_d`. Either one set means key
 services are disabled *now*: every command that creates or mints key material
@@ -765,7 +770,7 @@ back with its cold-domain locks intact, so a `lock_lc` or `lock_d` that survives
 a restart *and* is confirmed in the cold register is a device deliberately
 retired earlier in this power cycle, not a transient condition.
 
-Only recoverable faults are report via status; when the KM encounters an 
+Only recoverable faults are reported via status; when the KM encounters an
 unrecoverable fault, we cannot rely on it to answer this command. An unrecoverable 
 fault asserts `unrecoverable_err_o`, which interrupts the SEP directly, wipes all 
 KM state, and halts the core permanently (<<km-seq-error-recovery>>). Nothing
@@ -1994,7 +1999,7 @@ a device with no warning and no undo.
 If `PAYLOAD_LEN` is not 3, the command returns `RESP_CMD` _invalid_len_ with the
 received length.
 
-If any reserved bit `[31:6]` of the mask is set, the command returns `RESP_CMD`
+If any reserved bit `[31:9]` of the mask is set, the command returns `RESP_CMD`
 _invalid_arg_ with `return_arg` = the raw `lock_bits` word received.
 
 NOTE: This is a deliberate deviation from the word-index convention the other
@@ -2029,8 +2034,8 @@ The KM's consumers of a locked field fail closed rather than reading zeroes:
 [cols="32*^",options="header"]
 |===
 | [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
-26+^| `RESERVED`
-^| `CK` | `SU` | `SiU` | `cU` | `D` | `LC`
+23+^| `RESERVED`
+^| `SsI` | `SiI` | `cI` | `CK` | `SU` | `SiU` | `cU` | `D` | `LC`
 |===
 
 [[km-otp-lock-disables-keys]]
@@ -2067,14 +2072,6 @@ Everything that only reads, revokes or shreds — `CMD_KEY_INFO`, `CMD_KEY_LIST`
 `CMD_KEY_REVOKE`, `CMD_ENGINE_SHRED`, the `CMD_CLEAR_*` family — also keeps
 working. A locked-down KM can still be inspected and still be made *more*
 restrictive, which is the direction a host locking fuses is trying to travel.
-
-.RESP_CMD _Success_ Return Argument
-[cols="32*^",options="header"]
-|===
-| [31] | [30] | [29] | [28] | [27] | [26] | [25] | [24] | [23] | [22] | [21] | [20] | [19] | [18] | [17] | [16] | [15] | [14] | [13] | [12] | [11] | [10] | [9] | [8] | [7] | [6] | [5] | [4] | [3] | [2] | [1] | [0]
-23+^| `RESERVED`
-^| `SsI` | `SiI` | `cI` | `CK` | `SU` | `SiU` | `cU` | `D` | `LC`
-|===
 
 [[km-cmd-key-info]]
 ====== 0x30 - CMD_KEY_INFO
