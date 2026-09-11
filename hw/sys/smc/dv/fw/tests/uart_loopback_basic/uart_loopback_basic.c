@@ -65,7 +65,7 @@ static void uart_init_loopback_basic(uint32_t uart_base, uint32_t divisor) {
     write_reg(uart_base + (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_IER_BASE_ADDR(0) -
                            SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_UART_BASE_ADDR(0)),
               (divisor >> 8) & 0xFFu);
-#
+
     // Configure 8N1 (DLAB=0).
     lcr.f.DLAB = 0x0u;
     lcr.f.WLS = 0x3u; // 8 bits
@@ -109,7 +109,6 @@ int main(void) {
     const uint32_t uart_base = get_uart_reg_base(uart_idx);
     const uint32_t divisor = 1u;
 
-    // peripherals_out_of_reset();
     uart_enable_single(uart_idx);
     uart_init_loopback_basic(uart_base, divisor);
 

@@ -1,17 +1,16 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 /*
- * SEP_SMU_015  sep_mbox_irq  --  shared protocol contract (single source of truth).
+ * sep_mbox_irq  --  shared protocol contract (single source of truth).
  *
- * Included by BOTH firmwares (SEP producer sep_smc_mbox_irq.c + SMC consumer main.c) and parsed
- * by the cocotb checker so the DUT stimulus and the DV expectations can never drift (AGENTS.md
- * one-source rule). Keep every value a plain integer/hex #define so the Python parser can read
- * it -- no expressions the parser cannot evaluate.
+ * Included by BOTH firmwares (SEP producer sep_smc_mbox_irq.c + SMC consumer main.c).
+ * sep_mbox_golden.py derives the same mailbox offsets and masks from PeakRDL; it
+ * does not parse this header.
  *
- * Anchor scope (SMU_SEP_VPLAN_DETAIL.txt SEP_SMU_015): the eight SEP mailbox channels' source
+ * Anchor scope: the eight SEP mailbox channels' source
  * interrupts PACK one-hot onto SMC cpu_interrupts[263:256] (4-core NUM_EXT_INTERRUPTS=256), and
  * each channel's source IRQ is cleared with the full W1C/readback/no-refire contract. cmd/response
- * belongs to SEP_SMU_002; the SEP->SMC alias datapath belongs to SEP_SMU_003.
+ * belongs to sep_interop; the SEP->SMC alias datapath belongs to smc_sep_xbar.
  *
  * Topology -- the SEP CPU is the PRODUCER, the SMC CPU is the CONSUMER, across the eight
  * axi_lite_mailbox channels (sep.h AXIL_MAILBOX_*). For channel ch=0..7:
@@ -41,29 +40,44 @@
 /* Mailbox port bases + per-channel stride + per-port register offsets.
  *
  * The SEP fw includes sep.h BEFORE this header, so it sources these DIRECTLY from the
- * generated AXIL_MAILBOX_* macros (no hardcoded literals). The SMC fw CANNOT include
+ * generated OCH_SEP_TOP_AXIL_MAILBOX_* macros (no hardcoded literals). The SMC fw CANNOT include
  * sep.h -- that generated SEP header defines EFUSE_INTERFACE_CTRL/etc. reg types that
  * COLLIDE with the SMC's own smc_top_regs.h ("conflicting types"), so the SMC toolchain uses the
- * literal mirror below. This is not a silent duplication: the cocotb checker parses
- * sep.h INDEPENDENTLY (see the leaf test), so any drift between these SMC literals and
- * the generated addresses makes the SMC's transactions land at an address the checker does not
- * expect -> the test FAILS. outbound[ch]=OUTBOUND_0+stride*ch, inbound[ch]=INBOUND_0+stride*ch;
+ * literal mirror below. This is not a silent duplication: sep_mbox_golden.py
+ * derives the same offsets and masks from PeakRDL, so an SMC literal that
+ * drifts from RDL lands at an address the golden does not expect and the
+ * test fails. outbound[ch]=OUTBOUND_0+stride*ch, inbound[ch]=INBOUND_0+stride*ch;
  * stride = OUTBOUND_1-OUTBOUND_0 (= 2*MAILBOX_SIZE = 0x1000). */
-#ifdef AXIL_MAILBOX_OUTBOUND_MAILBOX_0_REG_MAP_BASE_ADDR /* SEP fw: generated source of truth */
-#define SMU015_MBOX_OUTBOUND_BASE AXIL_MAILBOX_OUTBOUND_MAILBOX_0_REG_MAP_BASE_ADDR
-#define SMU015_MBOX_INBOUND_BASE AXIL_MAILBOX_INBOUND_MAILBOX_0_REG_MAP_BASE_ADDR
+#ifdef OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR /* SEP fw: generated source of truth \
+                                                              */
+#define SMU015_MBOX_OUTBOUND_BASE OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR
+#define SMU015_MBOX_INBOUND_BASE OCH_SEP_TOP_AXIL_MAILBOX_INBOUND_MAILBOX_0_BASE_ADDR
 #define SMU015_MBOX_CH_STRIDE \
-    (AXIL_MAILBOX_OUTBOUND_MAILBOX_1_REG_MAP_BASE_ADDR - \
-     AXIL_MAILBOX_OUTBOUND_MAILBOX_0_REG_MAP_BASE_ADDR)
-#define MBOX_WRITE_DATA_OFFSET AXIL_MAILBOX_OUTBOUND_MAILBOX_0_WRITE_DATA_REG_OFFSET
-#define MBOX_READ_DATA_OFFSET AXIL_MAILBOX_OUTBOUND_MAILBOX_0_READ_DATA_REG_OFFSET
-#define MBOX_STATUS_OFFSET AXIL_MAILBOX_OUTBOUND_MAILBOX_0_STATUS_REG_OFFSET
-#define MBOX_RIRQT_OFFSET AXIL_MAILBOX_OUTBOUND_MAILBOX_0_RIRQT_REG_OFFSET
-#define MBOX_IRQS_OFFSET AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQS_REG_OFFSET
-#define MBOX_IRQEN_OFFSET AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQEN_REG_OFFSET
-#define MBOX_IRQP_OFFSET AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQP_REG_OFFSET
-#define SMU015_MBOX_REG_BLOCK_SIZE AXIL_MAILBOX_OUTBOUND_MAILBOX_0_REG_MAP_SIZE
-#else /* SMC fw: literal mirror (drift-checked) */
+    (OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_1_BASE_ADDR - \
+     OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR)
+#define MBOX_WRITE_DATA_OFFSET \
+    (OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_WRITE_DATA_BASE_ADDR - \
+     OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR)
+#define MBOX_READ_DATA_OFFSET \
+    (OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_READ_DATA_BASE_ADDR - \
+     OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR)
+#define MBOX_STATUS_OFFSET \
+    (OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_STATUS_BASE_ADDR - \
+     OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR)
+#define MBOX_RIRQT_OFFSET \
+    (OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_RIRQT_BASE_ADDR - \
+     OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR)
+#define MBOX_IRQS_OFFSET \
+    (OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQS_BASE_ADDR - \
+     OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR)
+#define MBOX_IRQEN_OFFSET \
+    (OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQEN_BASE_ADDR - \
+     OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR)
+#define MBOX_IRQP_OFFSET \
+    (OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_IRQP_BASE_ADDR - \
+     OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_BASE_ADDR)
+#define SMU015_MBOX_REG_BLOCK_SIZE OCH_SEP_TOP_AXIL_MAILBOX_OUTBOUND_MAILBOX_0_SIZE
+#else /* SMC fw: literal mirror */
 #define SMU015_MBOX_OUTBOUND_BASE 0x10A00000
 #define SMU015_MBOX_INBOUND_BASE 0x10A00800
 #define SMU015_MBOX_CH_STRIDE 0x1000
@@ -76,14 +90,22 @@
 #define MBOX_IRQP_OFFSET 0x40
 #define SMU015_MBOX_REG_BLOCK_SIZE 0x50
 #endif
-/* Mailbox-slave status/IRQ bit positions (axi_lite_mailbox layout; stable protocol constants). */
-#define MBOX_STATUS_EMPTY_MASK 0x1 /* STATUS.empty                                 */
-#define MBOX_IRQ_READ_MASK 0x2     /* IRQS/IRQEN/IRQP read-data-available bit      */
-/* W1C the read bit (bit1). Unlike SEP_SMU_002, the SMC never PUSHES on the inbound port here
+#ifdef AXIL_MAILBOX__STATUS__EMPTY_bm
+#define MBOX_STATUS_EMPTY_MASK AXIL_MAILBOX__STATUS__EMPTY_bm
+#define MBOX_IRQ_READ_MASK AXIL_MAILBOX__IRQS__RTIRQ_bm
+#else
+#define MBOX_STATUS_EMPTY_MASK 0x1
+#define MBOX_IRQ_READ_MASK 0x2
+#endif
+/* W1C the read bit (bit1). Unlike sep_interop, the SMC never PUSHES on the inbound port here
  * (it only pops), so this port's TX FIFO stays empty and the sticky write-threshold status
  * (bit0) never self-sets -- clearing just the read bit (0x2) drives IRQS/IRQP fully to 0, and
- * the readback proves it. (The card specifies the W1C value as 0x2.) */
+ * the readback proves it. The W1C value is 0x2. */
+#ifdef AXIL_MAILBOX__IRQS__RTIRQ_bm
+#define SMU015_W1C_VALUE AXIL_MAILBOX__IRQS__RTIRQ_bm
+#else
 #define SMU015_W1C_VALUE 0x2
+#endif
 
 /* Progress channel (scratch3) encoding. SMC writes ARMED after arming all 8 inbound IRQs, then
  * (ARMED | (ch+1)) after fully servicing channel ch (pop/verify/W1C/readback-0/no-refire). The
@@ -98,7 +120,7 @@
 #define SMU015_SEP_PASS 0x015A0001 /* SEP cold scratch6 : SEP saw SMC_PASS, completed    */
 #define SMU015_SEP_FAIL 0x015AFFEE /* SEP cold scratch6 : SEP-side failure               */
 
-/* Boot rendezvous markers (mirror SEP_SMU_002/004). */
+/* Boot rendezvous markers (mirror sep_interop / smu_smc_stall_sep). */
 #define SMU015_SMC_UP 0x5C1A11E0u /* SMC -> scratch2  : SMC past its own scratch init     */
 #define SMU015_READY 0x51EAD001   /* SEP -> scratch12 : SEP aperture/filters up          */
 
@@ -128,8 +150,8 @@
 
 /* SEP COLD scratch6 (SEP-only; the SEP fw has the generated macro). Cold-reset domain: resets to 0,
  * so a ==SMU015_SEP_PASS read is a positive write-landed proof. */
-#ifdef SEP_SCRATCH_COLD_SCRATCH_0__REG_ADDR
-#define SMU015_SEP_COLD_SCRATCH6 (SEP_SCRATCH_COLD_SCRATCH_0__REG_ADDR + 6 * 8)
+#ifdef OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR
+#define SMU015_SEP_COLD_SCRATCH6 OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(6)
 #else
 #define SMU015_SEP_COLD_SCRATCH6 0x10802030
 #endif
@@ -141,8 +163,8 @@
 /* SEP inbound filter window over the WHOLE mailbox channel region so the SMC's pops/W1C/readbacks
  * at every inbound port reach the mailbox. DERIVED from the generated mailbox macros: START =
  * outbound base; END = last inbound channel (INBOUND_0 + 7*stride) + its register-block top
- * (REG_MAP_SIZE-1) = 0x10A0784F. allow_burst=0 -> the byte-granular END stores EXACTLY (003
- * lesson). */
+ * (REG_MAP_SIZE-1) = 0x10A0784F. allow_burst=0 -> the byte-granular END stores EXACTLY, as
+ * smc_sep_xbar shows. */
 #define SMU015_MBOX_FILTER_START ((unsigned long long)SMU015_MBOX_OUTBOUND_BASE)
 #define SMU015_MBOX_FILTER_END \
     ((unsigned long long)(SMU015_MBOX_INBOUND_BASE + 7 * SMU015_MBOX_CH_STRIDE + \
@@ -153,7 +175,8 @@
 #define SMU015_MBOX_FILTER_CFG_WORD_NS 0x00030113       /* + allow_ns (passive golden)          */
 
 /* Firmware poll bound (loop iterations) shared by both sides -- bounded so a missing peer times
- * out to a fail marker instead of hanging the simulation (mirrors SEP_SMU_002/004). */
+ * out to a fail marker instead of hanging the simulation (mirrors sep_interop /
+ * smu_smc_stall_sep). */
 #define SMU015_POLL_LIMIT 4000000
 
 /* Post-clear no-refire hold: the SMC waits this many iterations after the W1C/readback-0 of a
@@ -162,13 +185,15 @@
 #define SMU015_NOREFIRE_HOLD_ITERS 4000
 
 /*
- * SEP-driven SMC bring-up (mirrors SEP_SMU_002/004) -- the TB backdoor-preloads the SMC image
+ * SEP-driven SMC bring-up (mirrors sep_interop / smu_smc_stall_sep) -- the TB backdoor-preloads
+ * the SMC image
  * into SRAM, then the SEP re-vectors the four SMC cores to the SMC entry symbol and pulses their
  * reset. The SMC firmware is the STACKLESS consumer whose naked entry symbol is
  * `sep_mbox_irq_entry` (fw/smc/tests/sep_mbox_irq/src/main.c, SMC_STACKLESS_ENTRY).
  *
  * BOTH values below are image-dependent: reconcile them against the freshly BUILT image exactly
- * as SEP_SMU_002/004 do (entry -> address of sep_mbox_irq_entry in out/test.dis .sym; cookie ->
+ * as sep_interop / smu_smc_stall_sep do (entry -> address of sep_mbox_irq_entry in out/test.dis
+ * .sym; cookie ->
  * first data word at the SRAM base in out/test.preload.hex). Re-verify after any fw/linker change.
  */
 #define SMU015_SMC_ENTRY 0x00000000C00601B2    /* RECONCILE vs built image */

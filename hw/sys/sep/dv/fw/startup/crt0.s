@@ -317,12 +317,24 @@ _dummy_int_handler:
     srli    t0, t0, 2
     andi    t0, t0, 0xFF            # t0 = claimid (0-255)
 
-    # Disable this interrupt source at PIC to prevent infinite re-entry
-    # meie[id] is at OCH_SEP_TOP_PIC_MEIE_BASE_ADDR(0) + (id * 4)
+    # Disable this interrupt source at PIC to prevent infinite re-entry.
+    # Source 0 is the tied no-interrupt source and has no MEIE word.
+    # OCH_SEP_TOP_PIC_MEIE_BASE_ADDR(0) is already source 1, so source N
+    # is at +(N-1)*4 — the same formula pic_disable_source uses.
+    # Witness for firmware quiet-window checks: an unregistered source that
+    # reaches this handler must fail the test that looks at the count.
+    la      t1, sep_dummy_int_count
+    lw      t2, 0(t1)
+    addi    t2, t2, 1
+    sw      t2, 0(t1)
+
+    beqz    t0, .L_dummy_int_done
+    addi    t2, t0, -1              # t2 = claimid - 1
+    slli    t2, t2, 2               # t2 = (claimid - 1) * 4
     li      t1, OCH_SEP_TOP_PIC_MEIE_BASE_ADDR(0)
-    slli    t2, t0, 2               # t2 = claimid * 4
-    add     t1, t1, t2              # t1 = &meie[claimid]
+    add     t1, t1, t2              # t1 = MEIE for this claim
     sw      zero, 0(t1)             # Disable interrupt source
+.L_dummy_int_done:
 
     # Restore registers
     lw      t0, 0(sp)
@@ -334,7 +346,7 @@ _dummy_int_handler:
     mret
 
 #==============================================================================
-# Exit Symbol (for compatibility)
+# Exit Symbol
 #==============================================================================
 .global _exit
 _exit:
@@ -442,3 +454,12 @@ tohost: .word STDOUT
 .global _nmi_handler_ptr
 _nmi_handler_ptr:
     .word _default_nmi_handler
+
+# Spurious-service count. _dummy_int_handler increments this on every claim.
+# Zeroed with BSS. Firmware that grades a quiet window reads it; other tests
+# ignore it.
+.section .bss
+.align 4
+.global sep_dummy_int_count
+sep_dummy_int_count:
+    .word 0

@@ -46,6 +46,8 @@ Public APIs:
 * use explicit `timeout_ns`/`allow_timeout` semantics;
 * provide statistics/reset methods when counters are meaningful;
 * use `from_prefix()` for conventional flattened interfaces where practical.
+* bind an interface scope through the VIP's geometry configuration when the
+  interface members are wider than the bus (`OcahAxiConfig.bus()` in the AXI VIP).
 
 [source,python]
 ----
@@ -135,8 +137,39 @@ Protocol checkers should begin with deterministic, high-value invariants:
 * protocol-specific single-beat rules;
 * timeout/uncompleted transaction handling.
 
-Use `ocah_checker` for named evidence and finalization. Keep protocol legality
-in the protocol package and scenario-specific expected values in the DUT.
+Use the shared evidence layer for named evidence and finalization in both
+languages: the cocotb `ocah_checker` package, and in SystemVerilog UVM the
+`ocah_checker_uvm_pkg::ocah_checker` base class that every protocol checker
+extends — a protocol checker carries only its own checks and identity,
+never a copy of the recording, severity-routing, or finalization mechanics.
+Keep protocol legality in the protocol package and scenario-specific
+expected values in the DUT.
+
+[[shared-vip-development-uvm-layer]]
+=== SystemVerilog UVM Layer
+
+A protocol's UVM layer ships four things, and its manifest is part of the
+public surface:
+
+* the shared SystemVerilog interface (`interface/ocah_<protocol>_if.sv`),
+  carrying the guarded vendor-interface nest;
+* module collateral compiled alongside the package — SVA protocol checkers
+  (`sva/`), behavioral responders and other bind-style helpers (`sv/`),
+  coverage collateral (`cov/`);
+* one UVM package (`uvm/ocah_<protocol>_uvm_pkg.sv`) whose `include` order
+  is load-bearing and documented in its header, importing
+  `ocah_checker_uvm_pkg` for the evidence base;
+* the ordered compile manifest (`uvm/sources.toml`): the shared checker
+  package first, then interface and module collateral, the UVM package
+  last, plus the incdirs they need.
+
+DUT sim configs consume the layer only through the manifest
+(`[frameworks.uvm.build].source_lists`); VIP paths are never hand-copied
+into DUT configs, Bender targets, or Verilator filelists. Manifests
+dedup-merge when a DUT consumes several VIPs, so shared entries (such as
+the checker package) compile exactly once. Naming mirrors cocotb: the same
+protocol operations exist in both frameworks' sequence/BFM APIs, and the
+UVM classes follow the `ocah_<protocol>_<role>` pattern of the catalog.
 
 [[shared-vip-development-dependencies]]
 === Backend and License Policy

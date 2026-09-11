@@ -15,12 +15,9 @@ from .smc_csr_seq_utils import SmcCsrSeq
 
 # Instance base = PeakRDL I2C INTR_STATE / I2C_CTRL_REGS; all fields reset 0x0.
 I2C_INSTANCE_READS = [
-    ("I2C_1_BASE", smc_indexed_addr(
-        "SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR", 1), 0x0),
-    ("I2C_2_BASE", smc_indexed_addr(
-        "SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR", 2), 0x0),
-    ("I2C_CTRL", smc_indexed_addr(
-        "SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", 0), 0x0),
+    ("I2C_1_BASE", smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR", 1), 0x0),
+    ("I2C_2_BASE", smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR", 2), 0x0),
+    ("I2C_CTRL", smc_indexed_addr("SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_REGS_I2C_CTRL_BASE_ADDR", 0), 0x0),
 ]
 
 

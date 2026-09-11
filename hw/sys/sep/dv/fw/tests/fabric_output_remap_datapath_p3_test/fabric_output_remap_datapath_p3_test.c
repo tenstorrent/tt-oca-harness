@@ -4,9 +4,7 @@
 /*
  * fabric_output_remap_datapath_p3_test
  *
- * Goal: output_remap 64.35% -> 90%+, output_remap_reg 86.06% -> 90%+ [near target]
  * Strategy: AP/STEE remap traffic covers every region index; full datapath matrix
- * Priority: first pass (medium difficulty)
  *
  * Focus on full datapath testing across all 16 output-remap regions
  */
@@ -90,7 +88,7 @@ static int test_offset_preserve_bit_range_coverage(void) {
         0x00100000, 0x00200000, 0x00400000, 0x00800000, // 1MB-8MB offsets
         0x01000000, 0x02000000, 0x04000000, 0x08000000, // 16MB-128MB offsets
         0x10000000, 0x20000000, 0x40000000, 0x80000000, // 256MB+ offsets
-        0x12345000, 0x56789000, 0xABCDE000, 0xFEDCB000 // complex patterns
+        0x12345000, 0x56789000, 0xABCDE000, 0xFEDCB000  // complex patterns
     };
 
     for (int pattern_idx = 0; pattern_idx < 20; pattern_idx++) {
@@ -245,8 +243,8 @@ static int test_region_boundary_crossing(void) {
             }
 
             // Access near boundaries
-            test_axi_transaction(region_end - 3, 4, AXI_READ); // cross-boundary read
-            test_axi_transaction(region_end - 7, 8, AXI_WRITE); // cross-boundary write
+            test_axi_transaction(region_end - 3, 4, AXI_READ);    // cross-boundary read
+            test_axi_transaction(region_end - 7, 8, AXI_WRITE);   // cross-boundary write
             test_axi_transaction(next_region_start, 4, AXI_READ); // start of next region
             test_axi_transaction(next_region_start + 4, 4, AXI_WRITE);
 
@@ -261,7 +259,6 @@ static int test_region_boundary_crossing(void) {
 
 int main(void) {
     printf("Output Remap Datapath Test\n");
-    printf("Goals: output_remap 64.35%% -> 90%%+, output_remap_reg 86.06%% -> 90%%+\n");
     printf("Strategy: AP/STEE remap traffic covers every region index; full datapath matrix\n\n");
 
     // Initialize fabric system
@@ -297,8 +294,6 @@ int main(void) {
     }
 
     printf("\n=== OUTPUT REMAP DATAPATH TEST PASSED ===\n");
-    printf(
-        "Expected improvement: output_remap 64.35%% -> 90%%+, output_remap_reg 86.06%% -> 90%%+\n");
 
     test_pass("fabric_output_remap_datapath_p3_test");
     return TEST_PASS;

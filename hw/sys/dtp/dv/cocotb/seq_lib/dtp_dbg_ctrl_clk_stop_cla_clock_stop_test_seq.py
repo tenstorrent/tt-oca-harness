@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+from env.dtp_tap_device import DTP_NUM_CLK_STOP_REQ
+
 from .dtp_debug_tdr_base_test_seq import dtp_debug_tdr_base_test_seq
 
 
@@ -28,9 +30,14 @@ class dtp_dbg_ctrl_clk_stop_cla_clock_stop_test_seq(dtp_debug_tdr_base_test_seq)
         await self.expect_signal("cla_clock_stop_en", 1)
         await self.wait_for_signal_value("stop_clks", 0, context="no CLA request")
 
-        self.log_step(3, "Drive one CLA clock-stop request and expect stop_clks")
-        await self.set_clk_stop_requests(0x1)
-        await self.wait_for_signal_value("stop_clks", 1, context="xtrig_clk_stop_req=0x001")
+        self.log_step(3, "Drive CLA clock-stop requests and expect stop_clks")
+        # Seeded per-pass nonzero request mask: any asserted CLA request must
+        # stop the clocks, so repeated loops cover different aggregation inputs.
+        request_mask = self.rng("cla_clk_stop_mask").randint(1, (1 << DTP_NUM_CLK_STOP_REQ) - 1)
+        await self.set_clk_stop_requests(request_mask)
+        await self.wait_for_signal_value(
+            "stop_clks", 1, context=f"xtrig_clk_stop_req=0x{request_mask:03x}"
+        )
 
         self.log_step(4, "Read DEBUG_CONTROL and expect CLA_CLOCK_STOP status")
         readback = await self.read_debug_control(shift_value=control_value)

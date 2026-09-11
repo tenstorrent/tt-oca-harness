@@ -28,11 +28,12 @@
 
 #include <stdint.h>
 
+#include "sep.h"
 #include "sep_outbound_filter.h"
 #include "sep_mailbox.h"
 
-// Boot-ROM base (SEP_BOOT_ROM_MEM_BASE_ADDR); ROM function entry byte offsets.
-#define ROM_BASE 0x10040000u
+// Boot-ROM base; ROM function entry byte offsets.
+#define ROM_BASE OCH_SEP_TOP_SEP_BOOT_ROM_BASE_ADDR
 #define ROM_FUNC0 (ROM_BASE + 0x00)
 #define ROM_FUNC1 (ROM_BASE + 0x08)
 #define ROM_FUNC2 (ROM_BASE + 0x14)

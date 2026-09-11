@@ -9,11 +9,12 @@
 #include "sep_mbox_irq_protocol.h"
 
 /*
- * SEP_SMU_015  sep_smc_mbox_irq  --  SEP (PRODUCER) firmware.
+ * sep_smc_mbox_irq  --  SEP (PRODUCER) firmware.
  *
  * The real SEP CPU boots from reset, programs its SMU aperture + inbound filters (so the SMC can
  * reach every mailbox inbound port) + outbound egress window, then brings the SMC up over the
- * (unfiltered) SEP->SMC port exactly like SEP_SMU_002/004. It then walks all eight mailbox
+ * (unfiltered) SEP->SMC port exactly like sep_interop / smu_smc_stall_sep. It then walks all
+ * eight mailbox
  * channels ONE AT A TIME: for ch=0..7 it pushes token (0x15000000|ch) into the SEP-local OUTBOUND
  * port, which asserts that channel's source interrupt (packed onto SMC cpu_interrupts[256+ch]),
  * and waits for the SMC to signal "channel ch fully consumed + cleared + held quiet" via the
@@ -39,11 +40,17 @@ __attribute__((noinline, used)) void smu_sep_mailbox_irq_sep_fail_loop(void) {
 
 /* SEP inbound filters over the whole mailbox channel region (must cover every inbound port so the
  * SMC's pops/W1C/readbacks reach the mailbox). filter0 secure, filter1 non-secure. */
-#define SEP_INBOUND_FILTER0_BASE OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0) /* 0x10A21000 */
-#define SEP_INBOUND_FILTER_STRIDE 0x20u
-#define SEP_FILTER_CONFIG_OFFSET 0x00u
-#define SEP_FILTER_START_OFFSET 0x08u
-#define SEP_FILTER_END_OFFSET 0x10u
+#define SEP_INBOUND_FILTER0_BASE OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0)
+#define SEP_INBOUND_FILTER_STRIDE OCH_SEP_TOP_INBOUND_FILTER_CTRL_STRIDE
+#define SEP_FILTER_CONFIG_OFFSET \
+    (OCH_SEP_TOP_INBOUND_FILTER_CTRL_FILTER_CONFIG_BASE_ADDR(0) - \
+     OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0))
+#define SEP_FILTER_START_OFFSET \
+    (OCH_SEP_TOP_INBOUND_FILTER_CTRL_START_ADDR_BASE_ADDR(0) - \
+     OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0))
+#define SEP_FILTER_END_OFFSET \
+    (OCH_SEP_TOP_INBOUND_FILTER_CTRL_END_ADDR_BASE_ADDR(0) - \
+     OCH_SEP_TOP_INBOUND_FILTER_CTRL_BASE_ADDR(0))
 
 /* SEP-local OUTBOUND mailbox WRITE_DATA for channel ch. */
 static inline uint32_t sep_mbox_wdata(uint32_t ch) {
@@ -54,7 +61,7 @@ static inline uint32_t sep_mbox_wdata(uint32_t ch) {
 /*
  * Write a 64-bit filter field as two 32-bit stores. The SEP CPU is RV32; a WRITE_REG64 to a CSR
  * whose upper half lands off-map faults, so program every 64-bit filter field with explicit
- * 32-bit CSR writes (mirrors SEP_SMU_002).
+ * 32-bit CSR writes (mirrors sep_interop).
  */
 static inline void wr_filter_field32(uint32_t addr, uint64_t val) {
     WRITE_REG(addr + 0x0u, (uint32_t)(val & 0xFFFFFFFFu));
@@ -90,7 +97,8 @@ static int run_mbox_irq_sequence(void) {
     program_sep_setup();
 
     /* b. Open the SEP outbound egress filter over the SEP->SMC region, then frontdoor-boot the
-     *    SMC exactly like SEP_SMU_002/004: wait the EXACT SRAM cookie, then re-vector + release
+     *    SMC exactly like sep_interop / smu_smc_stall_sep: wait the EXACT SRAM cookie, then
+     *    re-vector + release
      *    the four SMC cores. On preload timeout, publish a fail marker and stop. */
     sep_smc_open_window();
     if (sep_smc_bringup_from_sram((uint32_t)SMU015_SMC_ENTRY, SMU015_SMC_IMAGE_FIRST_WORD,

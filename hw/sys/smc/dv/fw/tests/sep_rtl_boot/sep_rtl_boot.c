@@ -17,7 +17,7 @@
  * configure its outbound filter, and reach the external AXI fabric — all
  * while the SMC CPU is running normally.
  *
- * Spec basis: OCH §Crypto Key Manager — both SMC and SEP must operate
+ * Spec basis: OCAH §Crypto Key Manager — both SMC and SEP must operate
  * concurrently on their respective clocks.  Ensuring neither blocks the
  * other at boot validates the shared crossbar and reset-sequencing logic.
  */

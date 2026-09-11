@@ -14,7 +14,6 @@ ignore:
     - .pytest_cache/
     - .git/
     - .venv/
-    - venv/
     - node_modules/
     - .bender/
     - .bender-kg/

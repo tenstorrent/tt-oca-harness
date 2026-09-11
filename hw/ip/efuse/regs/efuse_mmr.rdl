@@ -57,6 +57,27 @@ addrmap efuse_mmr {
         } token_match_status [5:0] = 0x0;
     };
 
+    reg TOKEN_MATCH_FAULT {
+        desc = "Token comparator redundancy fault status. The token match logic is triple redundant and is not a majority vote: all three comparators must agree and each must drive a legal differential pair. A bit sets when the comparators for that token disagree, which may indicate a fault injection or FIB attack. The corresponding token_match_status then reads the error code 6'b111111 and an interrupt is raised to the SEP CPU. Bits are sticky until reset.";
+        field {
+            sw = r;
+            hw = w;
+            desc = "A redundancy fault was detected in the RMA_SIP_TOKEN comparators.";
+        } rma_sip_token_fault [0:0] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "A redundancy fault was detected in the RMA_CHIPLET_TOKEN comparators.";
+        } rma_chiplet_token_fault [8:8] = 0x0;
+
+        field {
+            sw = r;
+            hw = w;
+            desc = "A redundancy fault was detected in the SEC_DISABLE_TOKEN comparators.";
+        } secure_disable_token_fault [16:16] = 0x0;
+    };
+
     ////////////////////////////////////////////////////////////////////////////
     // Address Map
     ////////////////////////////////////////////////////////////////////////////
@@ -68,6 +89,7 @@ addrmap efuse_mmr {
     TOKEN_MATCH                  RMA_SIP_TOKEN_MATCH       @0x64;
     TOKEN_MATCH                  RMA_CHIPLET_TOKEN_MATCH   @0x68;
     TOKEN_MATCH                  SEC_DISABLE_TOKEN_MATCH   @0x6C;
+    TOKEN_MATCH_FAULT            TOKEN_MATCH_FAULT         @0x70;
 };
 
 `endif

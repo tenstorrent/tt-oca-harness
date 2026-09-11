@@ -12,15 +12,17 @@ from __future__ import annotations
 
 import cocotb
 
-from .smc_addr_map import smc_addr, smc_bootrom_addr
+from .smc_addr_map import smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
+from .smc_efuse_vip_utils import EFUSE_BANK_INIT_TIME_RESET, EFUSE_SHIM_CTRL_WINDOW
 
 EFUSE_INTERFACE_CTRL = smc_addr(
     "SMC_TOP_EFUSE_INTERFACE_CTRL_EFUSE_INTERFACE_CTRL_STATUS_BASE_ADDR"
 )
-EFUSE_SHIM_CTRL = smc_bootrom_addr(
-    "SMC_TOP_SMC_EXTERNAL_MANDATORY_EFUSE_SHIM_CTRL_BASE_ADDR"
-)
+# Same window smc_efuse_vip_utils.prove_efuse_bank_axil_activity() and
+# smc_probe_positive_control read strictly, so it is imported rather than
+# re-derived: one symbol, one authority.
+EFUSE_SHIM_CTRL = EFUSE_SHIM_CTRL_WINDOW
 
 
 class smc_efuse_shim_ctrl_test_seq(SmcCsrSeq):
@@ -29,14 +31,22 @@ class smc_efuse_shim_ctrl_test_seq(SmcCsrSeq):
         # OKAY response. Gate the test on it via csr_read (scoreboard asserts
         # item.resp_ok), so a broken decode / SLVERR / bus hang here fails the test.
         await self.csr_read("EFUSE_INTERFACE_CTRL", EFUSE_INTERFACE_CTRL)
-        # EFUSE_SHIM_CTRL is the Samsung vendor shim, which has no AXI responder
-        # in the DUT-only OSS bench (bounded read times out by design). Probe it
-        # for decode coverage on the full chip, but it does NOT gate the OSS pass.
-        await self.csr_read_bounded("EFUSE_SHIM_CTRL", EFUSE_SHIM_CTRL)
-        if self.timeouts:
-            cocotb.log.info(
-                "EFUSE_SHIM_CTRL (Samsung vendor shim) not present in DUT-only "
-                "OSS bench (%d/1 shim window bounded-timed-out); decode deferred "
-                "to full-chip. INTERFACE_CTRL OKAY gate above is the real check.",
-                self.timeouts,
-            )
+        # EFUSE_SHIM_CTRL answers on this bench: the eFuse-bank model backs the
+        # window, and both smc_efuse_vip_utils.prove_efuse_bank_axil_activity()
+        # and smc_probe_positive_control read this same address with a strict
+        # csr_read and this same expected value while asserting the AXI-Lite
+        # activity probe goes high. So gate on it too, with the generated reset
+        # value as the expectation -- a bounded read here would pass on a
+        # timeout, on an error response, and on any data, which is no check at
+        # all.
+        await self.csr_read(
+            "EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME",
+            EFUSE_SHIM_CTRL,
+            expected=EFUSE_BANK_INIT_TIME_RESET,
+        )
+        cocotb.log.info(
+            "CHK-EFUSE-SHIM-CTRL: EFUSE_INTERFACE_CTRL and EFUSE_SHIM_CTRL "
+            "EFUSE_BANK_INIT_TIME both answered OKAY, the latter compared "
+            "against its generated reset 0x%08x",
+            EFUSE_BANK_INIT_TIME_RESET,
+        )

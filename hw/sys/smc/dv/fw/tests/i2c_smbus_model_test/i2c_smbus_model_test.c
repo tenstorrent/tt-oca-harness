@@ -233,15 +233,6 @@ static bool smbus_irq_alert_stat(uint32_t idx) {
     // Also check if SMBus status indicates alert (as backup verification)
     bool smbus_alert_active = smbus_get_alert_status(idx);
 
-    // Debug output for new model troubleshooting - Only enabled on error
-    // if (intr1 != intr2) {
-    // 	simputs("  [DEBUG] Interrupt state inconsistent: read1=");
-    // 	simputs(intr1 ? "1" : "0");
-    // 	simputs(", read2=");
-    // 	simputs(intr2 ? "1" : "0");
-    // 	simputs("\n");
-    // }
-
     // Return true if either interrupt read shows alert OR if SMBus status shows alert
     // This provides redundancy for new model's potential interrupt logic issues
     return intr1 || intr2 || smbus_alert_active;
@@ -329,9 +320,6 @@ int main(void) {
     simputs("\n");
     simputs("[MAIN] Firmware main() started\n");
     // Note: peripherals_out_of_reset() is no longer available
-    // simputs("[MAIN] Calling peripherals_out_of_reset()...\n");
-    // peripherals_out_of_reset();
-    // simputs("[MAIN] peripherals_out_of_reset() completed\n");
     simputs("[MAIN] Test initialization complete\n");
 
     //=========================================================================
@@ -510,7 +498,6 @@ int main(void) {
         write_scratch(0, 0xBAD00040);
         test_fail(0);
     }
-    // simputs("[DEBUG] Alert status detected successfully\n");
     simputs("  [CHECKER 1 PASSED] DUT detected SMBALERT# signal (hardware)\n");
     simputs("  [CHECKER 2 PASSED] SMBUS_STATUS register updated (hardware)\n");
     simputs("  [ALERT] Host detected alert status successfully\n");
@@ -524,7 +511,6 @@ int main(void) {
     // Reason: SMBUS_STATUS.SMBALERT register may respond faster than INTR_STATE.SMBALERT
     // due to hardware synchronization delays. SMBUS_STATUS is the direct status register
     // and should be more reliable than the interrupt-based flag.
-    // simputs("[DEBUG] Waiting for alert interrupt...\n");
     if (!wait_until(smbus_get_alert_status, CONTROLLER_IDX, true, 50000)) {
         simputs("  ERROR: SMBus ALERT status not confirmed on Host\n");
         simputs("  [CHECKER 3 FAILED] Alert interrupt was not triggered (hardware)\n");
@@ -547,7 +533,6 @@ int main(void) {
         write_scratch(0, 0xBAD00041);
         test_fail(0);
     }
-    // simputs("[DEBUG] Alert interrupt detected\n");
     simputs("  [CHECKER 3 PASSED] Alert interrupt triggered (hardware)\n");
     simputs("  [CHECKER 4 PASSED] Firmware detected alert status\n");
     simputs("  [CHECKER 5 PASSED] Firmware detected alert interrupt\n");
@@ -642,7 +627,6 @@ int main(void) {
 
     write_scratch(0, 0x00000041);
     write_scratch(1, 0x00000041);
-    // simputs("[DEBUG] Step 4 completed\n");
 
     //=========================================================================
     // Step 5: Test SMBus Suspend (Host -> Device)
@@ -651,7 +635,6 @@ int main(void) {
     //=========================================================================
     write_scratch(0, 0x00000050);
     write_scratch(1, 0x00000050);
-    // simputs("[DEBUG] Step 5: Test SMBus Suspend (Host -> Device)\n");
     simputs("\nStep 5: Test SMBus Suspend (Host -> Device)\n");
     simputs("  NOTE: I2C_0 Controller asserts SMBSUS#\n");
     simputs("  External SV model (pmbus_slave_i2c0) will detect suspend\n");
@@ -675,19 +658,16 @@ int main(void) {
 
     write_scratch(0, 0x00000051);
     write_scratch(1, 0x00000051);
-    // simputs("[DEBUG] Step 5 completed\n");
 
     //=========================================================================
     // Test Complete - Signal to testbench
     //=========================================================================
     write_scratch(0, 0x00000090);
     write_scratch(1, 0x00000090);
-    // simputs("[DEBUG] All tests completed, signaling testbench...\n");
 
     // Signal setup complete to testbench
     write_scratch(0, 0xEBEDEBE4);
     write_scratch(1, 0xEBEDEBE4);
-    // simputs("[DEBUG] Test completion signal sent (scratch[1]=0xEBEDEBE4)\n");
     simputs("\n");
     simputs("################################################\n");
     simputs("##           ALL TESTS PASSED                ##\n");

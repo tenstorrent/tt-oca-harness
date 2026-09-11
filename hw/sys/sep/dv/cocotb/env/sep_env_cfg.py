@@ -4,10 +4,11 @@
 
 from __future__ import annotations
 
-import random
-
 from cocotb.triggers import Event
+from ocah_axi_vip import OcahAxiSlaveSequence
 from pyuvm import uvm_object
+
+from env.sep_seeded_rng import SepSeededRng
 
 
 class SepEnvCfg(uvm_object):
@@ -24,8 +25,12 @@ class SepEnvCfg(uvm_object):
         # Set by the test once clocks run and reset releases, so the AXI driver
         # starts its cocotbext-axi master at the right time.
         self.reset_done = Event("sep_reset_done")
+        # Slave sequence of the SMC responder sep_base_test.start_clocks binds
+        # to u_smc_axi_if in rom_boot builds: backdoor memory access and
+        # one-shot faults. None on targets without that interface.
+        self.smc_mem: OcahAxiSlaveSequence | None = None
 
-    def randomize_timing(self, seed: int | None = None) -> None:
+    def randomize_timing(self, seed: int) -> None:
         """Randomize the system-clock period for timing variety (run_dv --seed)."""
-        rng = random.Random(seed)
-        self.sys_clk_period_ns = rng.randint(4, 20)
+        rng = SepSeededRng(seed)
+        self.sys_clk_period_ns = rng.randrange(4, 21)

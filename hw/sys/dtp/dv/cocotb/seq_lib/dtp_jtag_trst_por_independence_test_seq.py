@@ -14,6 +14,12 @@ class dtp_jtag_trst_por_independence_test_seq(dtp_jtag_base_test_seq):
     """Run POR-only TAP reset checks while TRST_N stays deasserted."""
 
     async def body(self) -> None:
+        await self.attach_family_checker(
+            {"CHK-TAP-RESET-TLR", "CHK-IDCODE-RECOVERY"},
+            # The IDCODE recovery read goes through a driver-level TDR op the
+            # sequence cannot count, so the pin-level scan monitor stays off.
+            use_monitor=False,
+        )
         rng = self.rng("trst_por_independence")
         state = rng.choice(
             [
@@ -33,9 +39,12 @@ class dtp_jtag_trst_por_independence_test_seq(dtp_jtag_base_test_seq):
         item = await self.pulse_por(cycles=rng.randint(2, 8))
         self.record_tap_state(item.result, DtpTapState.TEST_LOGIC_RESET)
 
-        await self.reset_tap()
+        await self.reset_to_tlr()
         idcode = await self.read_idcode()
-        assert idcode.result == DTP_DEFAULT_IDCODE, (
-            f"IDCODE recovery after POR failed: expected 0x{DTP_DEFAULT_IDCODE:08x}, "
-            f"got 0x{idcode.result:08x}"
+        self.family_check(
+            "CHK-IDCODE-RECOVERY",
+            "IDCODE recovery after POR",
+            idcode.result,
+            DTP_DEFAULT_IDCODE,
         )
+        await self.finalize_family_checker()

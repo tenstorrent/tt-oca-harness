@@ -228,7 +228,7 @@ static int send_random_invalid_for_unlatch(test_context_t *ctx) {
         ctx->inject_undersize_header_err = false;
         ctx->exp_response_code = OCCP_ERROR_NONE;
         break;
-    case 10: // invalid comman
+    case 10: // invalid command
         simputs("Injecting Invalid command\n");
         int injection_mode = get_random_int() % 3;
         switch (injection_mode) {
@@ -258,7 +258,6 @@ static int send_random_invalid_for_unlatch(test_context_t *ctx) {
         simputs("Injecting Unsupported status ID\n");
         ctx->unsupported_status_id_inject_enable = true;
         ctx->exp_response_code = OCCP_UNSUPPORTED_STATUS;
-        // execute_random_commands(ctx, 1);
         uint32_t status = 0;
         rc = occp_send_get_occp_boot_status_command(ctx, ctx->slave_addr, &status);
         ctx->unsupported_status_id_inject_enable = false;

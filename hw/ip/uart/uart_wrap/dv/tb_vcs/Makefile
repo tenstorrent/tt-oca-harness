@@ -24,12 +24,10 @@ DUT      = tb_uart_wrap
 TOPLEVEL = $(DUT)
 MODULE   = test_uart_wrap
 
-COMPILE_ARGS += +define+USE_PROTECTED_FILE
-COMPILE_ARGS += +define+MVLS_VOLTAGE_MODEL
 COMPILE_ARGS += -lca +rad -kdb +nospecify
 COMPILE_ARGS += -debug_access+r+w+cbk -debug_access+thread+class+cbkd+dmpt+dmpf+idents_db
-COMPILE_ARGS += -l vcs.log +define+NO_LIBCELL +define+DISABLE_ASSERT +define+SIM+USE_VERILOG_MEM_ARRAY
-COMPILE_ARGS += +define+VCS -assert svaext +define+LOADMEM +define+SOTP_SET_PWR_ON=50 +define+SOTP_PRG_CNT_CHECK=0
+COMPILE_ARGS += -l vcs.log
+COMPILE_ARGS += +define+VCS -assert svaext
 COMPILE_ARGS += +lint=TFIPC-L +lint=PCWM
 COMPILE_ARGS += -f $(OCH_ROOT)/hw/periph/uart_wrap/tb_vcs/uart_wrap.f
 COMPILE_ARGS += +incdir+$(OCH_ROOT)/hw/periph/uart_wrap/data/registers/svh

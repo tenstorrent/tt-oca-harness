@@ -4,9 +4,7 @@
 /*
  * fabric_output_remap_advanced_p3_test
  *
- * Goal: Advanced output_remap scenarios; full performance optimization
  * Strategy: Advanced output-remap scenarios; complex configuration combinations
- * Priority: second pass (advanced complexity)
  *
  * Focus on advanced output-remap scenarios and complex config combinations
  */
@@ -114,10 +112,11 @@ static int test_dynamic_region_reconfiguration(void) {
 
             // Reconfigure while traffic is active
             if (setup_output_remap_region_extended(region, new_src, new_dest,
-                                                   1,                            // enable
+                                                   1,                // enable
                                                    (region + 1) % 2, // switch channel
-                                                   0xFFF00000,                   // 1MB granularity
-                                                   CACHE_ATTR_NORMAL_NC) != 0) { // switch cache attributes
+                                                   0xFFF00000,       // 1MB granularity
+                                                   CACHE_ATTR_NORMAL_NC) !=
+                0) { // switch cache attributes
                 continue;
             }
 
@@ -485,7 +484,6 @@ static int test_system_integration_stress(void) {
 
 int main(void) {
     printf("Output Remap Advanced Test\n");
-    printf("Goals: Advanced output_remap scenarios; full performance optimization\n");
     printf("Strategy: Advanced output-remap scenarios; complex configuration combinations\n\n");
 
     // Initialize fabric system
@@ -531,7 +529,6 @@ int main(void) {
     }
 
     printf("\n=== OUTPUT REMAP ADVANCED TEST PASSED ===\n");
-    printf("Expected improvement: output_remap advanced scenarios and performance optimization\n");
 
     test_pass("fabric_output_remap_advanced_p3_test");
     return TEST_PASS;

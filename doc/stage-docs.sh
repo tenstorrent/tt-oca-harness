@@ -71,6 +71,29 @@ stage_gen_html() {
   cp -R "$src/." "$dst/"
 }
 
+# draw.io-exported SVGs append a trailing <switch> fallback block ("Text is
+# not SVG - cannot display" + FAQ link) for renderers without SVG
+# Extensibility support. Browsers report support correctly and never show
+# it; asciidoctor-pdf's SVG renderer (prawn-svg) doesn't recognize the
+# feature and renders the fallback text visibly in PDF output.
+#
+# Run as a postprocess step over every staged assets location (below), not
+# as a preprocess step on the aggregation source, so it also catches SVGs
+# checked in directly to a product's own assets/ that never pass through
+# the hw/*/doc aggregation loop at all.
+
+strip_drawio_switch_fallback() {
+  local dir="$1"
+  [ -d "$dir" ] || return 0
+  find "$dir" -name '*.svg' -type f -print0 | while IFS= read -r -d '' svg; do
+    local tmp
+    tmp="$(mktemp)"
+    tr '\n' ' ' <"$svg" |
+      sed 's#<switch><g requiredFeatures="[^"]*\#Extensibility"[^/]*/> *<a[^>]*xlink:href="https://www\.drawio\.com/doc/faq/svg-export-text-problems"[^>]*> *<text[^>]*>.*</text></a></switch>##' \
+        >"$tmp" 2>/dev/null && mv -f "$tmp" "$svg" || rm -f "$tmp"
+  done
+}
+
 # --- module skeleton ---
 for m in $MODULES; do
   mkdir -p "$MOD/$m/pages" "$MOD/$m/partials" "$MOD/$m/assets/images"
@@ -164,5 +187,13 @@ stage_module_assets() {
 
 stage_module_assets "$COMMON_ASSETS"
 stage_module_assets "$ASSETS"
+
+# Postprocess every location that ends up holding a copy of these images --
+# after all copying above is done.
+strip_drawio_switch_fallback "$ASSETS"
+strip_drawio_switch_fallback "$COMMON_ASSETS"
+for m in $MODULES; do
+  strip_drawio_switch_fallback "$MOD/$m/assets/images"
+done
 
 echo "Staged Antora modules under $MOD"

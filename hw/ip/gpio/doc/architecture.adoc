@@ -4,7 +4,7 @@
 [[gpio-architecture]]
 ===== Architecture
 
-At the heart of the OCH system’s digital I/O lies the GPIO peripheral, a
+At the heart of the OCAH system’s digital I/O lies the GPIO peripheral, a
 controller designed for both versatility and robust security. Its
 dual-mode operation allows it to seamlessly switch between
 register-driven control and direct hardware guidance via the LSIO
@@ -84,11 +84,16 @@ The logic for this selection is straightforward but decisive:
 [source,sourceCode,]
 ----
 if (lsio_interface_select_i && !lsio_disable) {
-    // LSIO mode: hardware takes over
+    // LSIO mode: the hardware request takes the pad, regardless of
+    // interface_enable. lsio_disable is software's only way to refuse it.
     pad_control_source = LSIO;
-} else if (interface_enable) {
+} else if (interface_enable || use_reg_*) {
     // Register mode: software control
     pad_control_source = REGISTERS;
+} else if (lsio_select && !lsio_disable) {
+    // Software-forced LSIO. Ranked below the register interface, unlike the
+    // hardware select line above.
+    pad_control_source = LSIO;
 } else {
     // Defaults: pad is idle and safe
     pad_control_source = DEFAULTS;

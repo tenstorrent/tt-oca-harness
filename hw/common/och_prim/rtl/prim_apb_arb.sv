@@ -6,59 +6,59 @@
 //
 //--------------------------------------------------
 module prim_apb_arb #(
-    parameter int unsigned ADDR_WIDTH = 32,
-    parameter int unsigned DATA_WIDTH = 32,
-    parameter int unsigned MASTER_NUM = 8,
-    parameter bit [31:0] SLAVE_ADDR_START = 32'h0000,  // included address
-    parameter bit [31:0] SLAVE_ADDR_END = 32'h1000,     // excluded address
-    localparam int unsigned DATA_STRB_WIDTH = DATA_WIDTH / 8
+  parameter int unsigned ADDR_WIDTH = 32,
+  parameter int unsigned DATA_WIDTH = 32,
+  parameter int unsigned MASTER_NUM = 8,
+  parameter bit [31:0] SLAVE_ADDR_START = 32'h0000,  // included address
+  parameter bit [31:0] SLAVE_ADDR_END = 32'h1000,     // excluded address
+  localparam int unsigned DATA_STRB_WIDTH = DATA_WIDTH / 8
 ) (
-    input logic i_clk,
-    input logic i_reset_n,
+  input logic i_clk,
+  input logic i_reset_n,
 
 `ifdef SIM_APB_ARB
-    //APB TEST master interface
-    input  logic                        i_test_psel,
-    input  logic                        i_test_penable,
-    input  logic [ADDR_WIDTH -1:0]      i_test_paddr,
-    input  logic                        i_test_pwrite,
-    input  logic [DATA_WIDTH -1:0]      i_test_pwdata,
-    input  logic [DATA_STRB_WIDTH -1:0] i_test_pstrb,
-    output logic [DATA_WIDTH -1:0]      o_test_prdata,
-    output logic                        o_test_pready,
-    output logic                        o_test_pslverr,
+  //APB TEST master interface
+  input  logic                        i_test_psel,
+  input  logic                        i_test_penable,
+  input  logic [ADDR_WIDTH -1:0]      i_test_paddr,
+  input  logic                        i_test_pwrite,
+  input  logic [DATA_WIDTH -1:0]      i_test_pwdata,
+  input  logic [DATA_STRB_WIDTH -1:0] i_test_pstrb,
+  output logic [DATA_WIDTH -1:0]      o_test_prdata,
+  output logic                        o_test_pready,
+  output logic                        o_test_pslverr,
 `endif
 
-    //APB master interfaces
-    input  logic [MASTER_NUM-1:0]                       i_mst_psel,
-    input  logic [MASTER_NUM-1:0]                       i_mst_penable,
-    input  logic [MASTER_NUM-1:0][ADDR_WIDTH -1:0]      i_mst_paddr,
-    input  logic [MASTER_NUM-1:0]                       i_mst_pwrite,
-    input  logic [MASTER_NUM-1:0][DATA_WIDTH -1:0]      i_mst_pwdata,
-    input  logic [MASTER_NUM-1:0][DATA_STRB_WIDTH -1:0] i_mst_pstrb,
-    output logic [MASTER_NUM-1:0][DATA_WIDTH -1:0]      o_mst_prdata,
-    output logic [MASTER_NUM-1:0]                       o_mst_pready,
-    output logic [MASTER_NUM-1:0]                       o_mst_pslverr,
+  //APB master interfaces
+  input  logic [MASTER_NUM-1:0]                       i_mst_psel,
+  input  logic [MASTER_NUM-1:0]                       i_mst_penable,
+  input  logic [MASTER_NUM-1:0][ADDR_WIDTH -1:0]      i_mst_paddr,
+  input  logic [MASTER_NUM-1:0]                       i_mst_pwrite,
+  input  logic [MASTER_NUM-1:0][DATA_WIDTH -1:0]      i_mst_pwdata,
+  input  logic [MASTER_NUM-1:0][DATA_STRB_WIDTH -1:0] i_mst_pstrb,
+  output logic [MASTER_NUM-1:0][DATA_WIDTH -1:0]      o_mst_prdata,
+  output logic [MASTER_NUM-1:0]                       o_mst_pready,
+  output logic [MASTER_NUM-1:0]                       o_mst_pslverr,
 
-    //APB slave interface
-    output logic                        o_slv_psel,
-    output logic                        o_slv_penable,
-    output logic [ADDR_WIDTH -1:0]      o_slv_paddr,
-    output logic                        o_slv_pwrite,
-    output logic [DATA_WIDTH -1:0]      o_slv_pwdata,
-    output logic [DATA_STRB_WIDTH -1:0] o_slv_pstrb,
-    input  logic [DATA_WIDTH -1:0]      i_slv_prdata,
-    input  logic                        i_slv_pready,
-    input  logic                        i_slv_pslverr
+  //APB slave interface
+  output logic                        o_slv_psel,
+  output logic                        o_slv_penable,
+  output logic [ADDR_WIDTH -1:0]      o_slv_paddr,
+  output logic                        o_slv_pwrite,
+  output logic [DATA_WIDTH -1:0]      o_slv_pwdata,
+  output logic [DATA_STRB_WIDTH -1:0] o_slv_pstrb,
+  input  logic [DATA_WIDTH -1:0]      i_slv_prdata,
+  input  logic                        i_slv_pready,
+  input  logic                        i_slv_pslverr
 );
 
 `ifdef SIM_APB_ARB
-  localparam MASTER_SUM_NUM = MASTER_NUM + 1;
+  localparam int unsigned MASTER_SUM_NUM = MASTER_NUM + 1;
 `else
-  localparam MASTER_SUM_NUM = MASTER_NUM;
+  localparam int unsigned MASTER_SUM_NUM = MASTER_NUM;
 `endif
 
-  localparam PTR_WIDTH = $clog2(MASTER_SUM_NUM);
+  localparam int unsigned PTR_WIDTH = $clog2(MASTER_SUM_NUM);
 
   logic [MASTER_SUM_NUM-1:0]                       mst_sel_arb;
 
@@ -179,8 +179,7 @@ module prim_apb_arb #(
 
   always_comb begin
     mst_sel_arb = 'd0;
-    if (mst_sel_request)
-      mst_sel_arb[mst_sel_index] = 1'b1;
+    if (mst_sel_request) mst_sel_arb[mst_sel_index] = 1'b1;
   end
 
   // APB state machine for slave interface
@@ -215,7 +214,7 @@ module prim_apb_arb #(
     mask_ptr_nxt    = mask_ptr_r;
     update_arb      = 1'b0;
 
-    case (apb_state_r)
+    unique case (apb_state_r)
       IDLE: begin
         for (int i = 0; i < MASTER_SUM_NUM; i++) begin
           if (mst_sel_arb[i] == 1'b1) begin  // one hot array

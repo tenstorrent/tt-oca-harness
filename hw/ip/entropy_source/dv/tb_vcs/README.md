@@ -5,7 +5,7 @@ APB-based cocotb testbench for the entropy_source RTL with behavioral ring oscil
 ## Prerequisites
 
 ```bash
-cd $OCH_ROOT   # TT-OCH repository root
+cd $OCH_ROOT   # TT-OCAH repository root
 source bin/setup_env.sh
 ```
 
@@ -95,6 +95,7 @@ test_3_3_1_repetition_test_failure PASS     -     -     -     V     1.01s
 ```
 
 **Checker Status:**
+
 - `V` = Checker ALIVE (verification ran successfully)
 - `X` = Checker DEAD (enabled but didn't run - **needs investigation**)
 - `-` = Checker disabled for this test
@@ -112,12 +113,14 @@ Four independent checkers verify correctness:
 | **IRQ** | Interrupt assertion/deassertion | `[IRQ CHECK]` |
 
 **Current Coverage (53 tests):**
+
 - DECOR: 18/18 tests alive
 - COMP: 15/15 tests alive
 - FIFO: 20/20 tests alive (3 manual verification)
 - IRQ: 12/12 tests alive
 
 **Usage in tests:**
+
 ```python
 from test.test_base import (
     decorrelator_checker_verify, compressor_checker_verify,
@@ -232,12 +235,12 @@ async def test_my_feature(dut):
     apb, mon = await init(dut, config=cfg)
 
     # Configure DUT
-    await reg_wr(apb, 'CTRL', 0x00000001)
-    await ClockCycles(dut.apb.pclk, 10)
+    ctrl = await reg_rd(apb, 'CTRL')
+    await reg_wr(apb, 'CTRL', ctrl & ~(1 << 1))
 
     # Verify behavior
-    status = await reg_rd(apb, 'STATUS')
-    assert status == expected_value, f"Status mismatch: {status:#x}"
+    ctrl = await reg_rd(apb, 'CTRL')
+    assert not (ctrl & (1 << 1)), f"MODULE_ENABLE did not clear: {ctrl:#x}"
 
     # Verify checkers
     decorrelator_checker_verify(dut, mon, expected_match=True)
@@ -300,16 +303,19 @@ cd ../regs && ./reg_update.sh
 ## Test Suites
 
 ### Suite 0: Sanity & Basic Tests (2 tests)
+
 - test_entropy_sanity: End-to-end sanity check
 - test_reg_walk: Register default value and access verification
 
 ### Suite 1: Decorrelator Modes (16 tests)
+
 - Pure modes: Full decorrelation, full bypass, fast/slow sampling
 - Mixed modes: Partial bypass configurations, dynamic reconfiguration
 - Compressor bypass: Raw decorrelator output (3 words per sample)
 - Byte mask: Decorrelator output masking
 
 ### Suite 2: Entropy FIFO (16 tests)
+
 - Basic: Reset, push/pop, fill/drain, simultaneous operations
 - Pointer management: Wraparound testing
 - Boundary conditions: Overflow/underflow detection with IRQ
@@ -319,6 +325,7 @@ cd ../regs && ./reg_update.sh
 - Security: Parity generation, error detection, pointer fault detection
 
 ### Suite 3: Health Tests (13 tests)
+
 - CSR interface: Enable/disable, threshold configuration, counter monitoring
 - Pipeline integration: Health tests with full decorrelation
 - Failure detection: Repetition/APT/Markov test failures with IRQ and recovery
@@ -328,11 +335,13 @@ cd ../regs && ./reg_update.sh
 - Detune feature: Manual detune, autotune for each health test
 
 ### Suite 4: Debug Monitor (5 tests)
+
 - CSR interface: DEBUG_CTRL register access
 - Signal selection: Index boundary values
 - Frequency selection: Divider boundary values
 
 ### Suite 5: Miscellaneous (1 test)
+
 - Downsample rate configuration
 - Startup delay
 

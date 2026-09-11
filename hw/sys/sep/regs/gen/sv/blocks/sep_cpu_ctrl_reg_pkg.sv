@@ -77,16 +77,54 @@ package sep_cpu_ctrl_reg_pkg;
 
     typedef struct {
         logic next;
-    } sep_cpu_ctrl__SEP_STRAPS__test_en__in_t;
+    } sep_cpu_ctrl__DMA_BUS_ERR_STATUS__reg_path_err__in_t;
 
     typedef struct {
         logic next;
-    } sep_cpu_ctrl__SEP_STRAPS__bypass_mem_repair__in_t;
+    } sep_cpu_ctrl__DMA_BUS_ERR_STATUS__host_path_err__in_t;
 
     typedef struct {
-        sep_cpu_ctrl__SEP_STRAPS__test_en__in_t test_en;
-        sep_cpu_ctrl__SEP_STRAPS__bypass_mem_repair__in_t bypass_mem_repair;
-    } sep_cpu_ctrl__SEP_STRAPS__in_t;
+        sep_cpu_ctrl__DMA_BUS_ERR_STATUS__reg_path_err__in_t reg_path_err;
+        sep_cpu_ctrl__DMA_BUS_ERR_STATUS__host_path_err__in_t host_path_err;
+    } sep_cpu_ctrl__DMA_BUS_ERR_STATUS__in_t;
+
+    typedef struct {
+        logic next;
+    } sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS__aes__in_t;
+
+    typedef struct {
+        logic next;
+    } sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS__hmac__in_t;
+
+    typedef struct {
+        logic next;
+    } sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS__kmac__in_t;
+
+    typedef struct {
+        logic next;
+    } sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS__otbn__in_t;
+
+    typedef struct {
+        logic next;
+    } sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS__csrng__in_t;
+
+    typedef struct {
+        logic next;
+    } sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS__edn__in_t;
+
+    typedef struct {
+        logic next;
+    } sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS__wdt__in_t;
+
+    typedef struct {
+        sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS__aes__in_t aes;
+        sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS__hmac__in_t hmac;
+        sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS__kmac__in_t kmac;
+        sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS__otbn__in_t otbn;
+        sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS__csrng__in_t csrng;
+        sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS__edn__in_t edn;
+        sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS__wdt__in_t wdt;
+    } sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS__in_t;
 
     typedef struct {
         sep_cpu_ctrl__REFERENCE_COUNTER__in_t REFERENCE_COUNTER;
@@ -94,7 +132,8 @@ package sep_cpu_ctrl_reg_pkg;
         sep_cpu_ctrl__SEP_TEST_CTRL__in_t SEP_TEST_CTRL;
         sep_cpu_ctrl__SMC_FUSE_SENSE_STATUS__in_t SMC_FUSE_SENSE_STATUS;
         sep_cpu_ctrl__SEP_FUSE_SENSE_STATUS__in_t SEP_FUSE_SENSE_STATUS;
-        sep_cpu_ctrl__SEP_STRAPS__in_t SEP_STRAPS;
+        sep_cpu_ctrl__DMA_BUS_ERR_STATUS__in_t DMA_BUS_ERR_STATUS;
+        sep_cpu_ctrl__PERIPH_BUS_ERR_STATUS__in_t PERIPH_BUS_ERR_STATUS;
     } sep_cpu_ctrl__in_t;
 
     typedef struct {
@@ -205,19 +244,6 @@ package sep_cpu_ctrl_reg_pkg;
     } sep_cpu_ctrl__SMU_REGION_SIZE__out_t;
 
     typedef struct {
-        logic [3:0] value;
-    } sep_cpu_ctrl__RAS_BANK_INFO__bank_chip__out_t;
-
-    typedef struct {
-        logic [3:0] value;
-    } sep_cpu_ctrl__RAS_BANK_INFO__bank_instance__out_t;
-
-    typedef struct {
-        sep_cpu_ctrl__RAS_BANK_INFO__bank_chip__out_t bank_chip;
-        sep_cpu_ctrl__RAS_BANK_INFO__bank_instance__out_t bank_instance;
-    } sep_cpu_ctrl__RAS_BANK_INFO__out_t;
-
-    typedef struct {
         logic [31:0] value;
     } sep_cpu_ctrl__SEP_SW_DEBUG__sep_sw_debug__out_t;
 
@@ -271,6 +297,52 @@ package sep_cpu_ctrl_reg_pkg;
     } sep_cpu_ctrl__KM_WIPE_CTRL__out_t;
 
     typedef struct {
+        logic value;
+    } sep_cpu_ctrl__DMA_BUS_ERR_CLEAR__clr__out_t;
+
+    typedef struct {
+        sep_cpu_ctrl__DMA_BUS_ERR_CLEAR__clr__out_t clr;
+    } sep_cpu_ctrl__DMA_BUS_ERR_CLEAR__out_t;
+
+    typedef struct {
+        logic value;
+    } sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR__aes__out_t;
+
+    typedef struct {
+        logic value;
+    } sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR__hmac__out_t;
+
+    typedef struct {
+        logic value;
+    } sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR__kmac__out_t;
+
+    typedef struct {
+        logic value;
+    } sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR__otbn__out_t;
+
+    typedef struct {
+        logic value;
+    } sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR__csrng__out_t;
+
+    typedef struct {
+        logic value;
+    } sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR__edn__out_t;
+
+    typedef struct {
+        logic value;
+    } sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR__wdt__out_t;
+
+    typedef struct {
+        sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR__aes__out_t aes;
+        sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR__hmac__out_t hmac;
+        sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR__kmac__out_t kmac;
+        sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR__otbn__out_t otbn;
+        sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR__csrng__out_t csrng;
+        sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR__edn__out_t edn;
+        sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR__wdt__out_t wdt;
+    } sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR__out_t;
+
+    typedef struct {
         sep_cpu_ctrl__CLOCK_GATE_CTRL__out_t CLOCK_GATE_CTRL;
         sep_cpu_ctrl__REFERENCE_COUNTER__out_t REFERENCE_COUNTER;
         sep_cpu_ctrl__PKA_CTRL__out_t PKA_CTRL;
@@ -290,12 +362,13 @@ package sep_cpu_ctrl_reg_pkg;
         sep_cpu_ctrl__SEP_REGION_SIZE__out_t SEP_REGION_SIZE;
         sep_cpu_ctrl__SMU_GLOBAL_BASE_ADDR__out_t SMU_GLOBAL_BASE_ADDR;
         sep_cpu_ctrl__SMU_REGION_SIZE__out_t SMU_REGION_SIZE;
-        sep_cpu_ctrl__RAS_BANK_INFO__out_t RAS_BANK_INFO;
         sep_cpu_ctrl__SEP_SW_DEBUG__out_t SEP_SW_DEBUG;
         sep_cpu_ctrl__SEP_NMI_VEC_nmi_vec_a3690e40__out_t SEP_NMI_VEC;
         sep_cpu_ctrl__SEP_NMI_VEC_LOCK__out_t SEP_NMI_VEC_LOCK;
         sep_cpu_ctrl__EXT_TRNG_SRC_SEL_sel_c607e53d__out_t EXT_TRNG_SRC_SEL;
         sep_cpu_ctrl__EXT_TRNG_SRC_SEL_LOCK__out_t EXT_TRNG_SRC_SEL_LOCK;
         sep_cpu_ctrl__KM_WIPE_CTRL__out_t KM_WIPE_CTRL;
+        sep_cpu_ctrl__DMA_BUS_ERR_CLEAR__out_t DMA_BUS_ERR_CLEAR;
+        sep_cpu_ctrl__PERIPH_BUS_ERR_CLEAR__out_t PERIPH_BUS_ERR_CLEAR;
     } sep_cpu_ctrl__out_t;
 endpackage

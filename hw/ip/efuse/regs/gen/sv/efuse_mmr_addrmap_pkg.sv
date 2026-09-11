@@ -6,7 +6,7 @@
 package efuse_mmr_addrmap_pkg;
 
 localparam longint unsigned EFUSE_MMR_BASE_ADDR = 64'h0;
-localparam longint unsigned EFUSE_MMR_SIZE = 64'h70;
+localparam longint unsigned EFUSE_MMR_SIZE = 64'h74;
 
 function automatic longint unsigned EFUSE_MMR_RMA_SIP_TOKEN_I_BASE_ADDR(input int unsigned RMA_SIP_TOKEN_I_idx);
     return 64'h0 + (RMA_SIP_TOKEN_I_idx * 64'h4);
@@ -24,6 +24,7 @@ localparam longint unsigned EFUSE_MMR_TOKEN_EOP_BASE_ADDR = 64'h60;
 localparam longint unsigned EFUSE_MMR_RMA_SIP_TOKEN_MATCH_BASE_ADDR = 64'h64;
 localparam longint unsigned EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_BASE_ADDR = 64'h68;
 localparam longint unsigned EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_BASE_ADDR = 64'h6C;
+localparam longint unsigned EFUSE_MMR_TOKEN_MATCH_FAULT_BASE_ADDR = 64'h70;
 
 
-endpackage;
+endpackage

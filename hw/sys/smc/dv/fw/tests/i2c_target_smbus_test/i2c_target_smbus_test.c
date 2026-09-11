@@ -153,7 +153,6 @@ int main(void) {
 
     // Note: peripherals_out_of_reset() is no longer needed as peripherals
     // are automatically taken out of reset by hardware
-    // peripherals_out_of_reset();
 
     simputs("\n");
     simputs("################################################\n");

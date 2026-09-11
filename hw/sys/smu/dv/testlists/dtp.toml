@@ -3,151 +3,31 @@
 
 schema_version = 1
 
-# SMU Phase-1 (SEP=0) — DTP / JTAG stream.
+# The residual `--dut smu_block` leaves. The rest of this stream was migrated onto
+# --dut smu and retired; testlists/all.toml records why these two
+# stayed.
 # Executable contract: enrolled groups in this file / testlists/all.toml
 
 [[tests]]
+name = "smu_dtp_jtag2axi_abort_mid_op_test"
+module = "smu_dtp_jtag2axi_abort_mid_op_test"
+seed = 1
+timeout_sec = 1800
+tags = ["dtp", "jtag2axi", "tier_c", "depth"]
+run_modes = ["dtp"]
+
+# One VPLAN scenario, two implementations: cocotb module vs SV-UVM class
+# (+UVM_TESTNAME). This binding map is why the leaf stays on this DUT: the
+# SV-UVM realization's harness is the `UVM` shape of tb/tb_top.sv, which is
+# this DUT, and this is the only scenario bound to it (uvm/tests/ carries
+# smu_dtp_jtag_smoke_test.svh and its base). Retiring the entry took
+# `--dut smu_block --framework uvm --items smu_dtp_jtag_smoke_test` with it. The
+# cocotb side of the same scenario also runs on smu_wrapper, where it is
+# enrolled in migrated_dtp; that copy is the one the regression scores.
+[[tests]]
 name = "smu_dtp_jtag_smoke_test"
-module = "smu_dtp_jtag_smoke_test"
+module = { cocotb = "smu_dtp_jtag_smoke_test", uvm = "smu_dtp_jtag_smoke_test" }
 seed = 1
 timeout_sec = 1800
 tags = ["dtp", "smoke", "phase1"]
 run_modes = ["dtp", "smoke"]
-
-[[tests]]
-name = "smu_dft_dtp_boot_stall_test"
-module = "smu_dft_dtp_boot_stall_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "boot_stall", "phase1"]
-run_modes = ["dtp"]
-
-[[tests]]
-name = "smu_dft_gpio_boot_stall_test"
-module = "smu_dft_gpio_boot_stall_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "boot_stall", "phase1"]
-run_modes = ["dtp"]
-
-# smu_dtp_dtm_local_axi_test → testlists/deferred.toml
-
-# smu_lifecycle_debug_policy_test → testlists/deferred.toml
-
-[[tests]]
-name = "smu_clock_stop_coordination_test"
-module = "smu_clock_stop_coordination_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "clock_stop", "phase1"]
-run_modes = ["dtp"]
-
-# Product-pin CTM remap (no Force). Full four-phase stays deferred.
-[[tests]]
-name = "smu_xtrig_ctm_remap_test"
-module = "smu_xtrig_ctm_remap_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "xtrig", "phase1"]
-run_modes = ["dtp"]
-
-# SMU_ALL_007: RST-PRIMARY.S1/S2 + CTM.S2/S3 on bare tb_top SEP=0.
-# Distinct from wrapper.toml smu_sep_smoke_test (SEP=1 / #3582 blocked).
-[[tests]]
-name = "smu_sep_smoke_test"
-module = "smu_sep_smoke_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "reset", "xtrig", "phase1", "smu_all_007"]
-run_modes = ["dtp"]
-
-[[tests]]
-name = "smu_jtag_reset_override_test"
-module = "smu_jtag_reset_override_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "reset", "phase1"]
-run_modes = ["dtp"]
-
-# smu_smc_dtp_jtag2axi_security_test → testlists/deferred.toml
-
-# smu_dtp_otp_smc_complete_rw_test → testlists/deferred.toml
-
-[[tests]]
-name = "smu_boot_stall_jtag_cold_reset_matrix_test"
-module = "smu_boot_stall_jtag_cold_reset_matrix_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "boot_stall", "phase2"]
-run_modes = ["dtp"]
-
-# P2-I5a: IC_RESET SMC multi-domain mutual exclusion
-[[tests]]
-name = "smu_ic_reset_smc_multi_domain_test"
-module = "smu_ic_reset_smc_multi_domain_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "reset", "phase2"]
-run_modes = ["dtp"]
-
-# smu_dtp_xtrigger_smc_cla_test → testlists/deferred.toml (needs_real_stimulus)
-
-# smu_fabric_smc_dtp_cross_domain_test → testlists/deferred.toml
-
-# smu_feat_ctrl_partial_bit_corner_test → testlists/deferred.toml
-
-[[tests]]
-name = "smu_ic_reset_dual_domain_illegal_test"
-module = "smu_ic_reset_dual_domain_illegal_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "ic_reset", "phase3"]
-run_modes = ["dtp"]
-
-# P3-H5b: boot-stall sticky vs IC_RESET priority
-[[tests]]
-name = "smu_boot_stall_vs_ic_reset_priority_test"
-module = "smu_boot_stall_vs_ic_reset_priority_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "boot_stall", "phase3"]
-run_modes = ["dtp"]
-
-# Pin-only illegal CTM corners (no Force ack-before-req).
-[[tests]]
-name = "smu_xtrig_ctm_illegal_phase_test"
-module = "smu_xtrig_ctm_illegal_phase_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "xtrig", "phase3"]
-run_modes = ["dtp"]
-
-# smu_cla_and_xtrig_concurrent_test → testlists/deferred.toml (needs_real_stimulus)
-
-# smu_clock_stop_jtag_vs_cla_fb_race_test → testlists/deferred.toml (needs_real_stimulus)
-
-# smu_dtp_jtag2axi_abort_mid_op_test → testlists/deferred.toml
-
-# smu_feat_ctrl_flip_mid_jtag2axi_test → testlists/deferred.toml
-
-# smu_jtag2axi_vs_smn_same_csr_race_test → testlists/deferred.toml
-
-# smu_otp_vs_fabric_map_race_test → testlists/deferred.toml
-
-[[tests]]
-name = "smu_ic_reset_ss_domain_matrix_test"
-module = "smu_ic_reset_ss_domain_matrix_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "ic_reset", "phase4"]
-run_modes = ["dtp"]
-
-# P4: EXTEST BSR scan loopback
-[[tests]]
-name = "smu_dtp_bsr_extest_loopback_test"
-module = "smu_dtp_bsr_extest_loopback_test"
-seed = 1
-timeout_sec = 1800
-tags = ["dtp", "bsr", "phase4"]
-run_modes = ["dtp"]
-

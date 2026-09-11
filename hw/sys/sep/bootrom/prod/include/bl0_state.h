@@ -1,13 +1,8 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
-// BL0 → BL1 shared state structure for OROM.
-//
-// Shared state used by ROM and BL1.
-// Placed at end of DCCM so BL1 can locate it via magic number.
-//
-// Phase 1: structure definition + init; crypto/measurement fields are
-// placeholders until crypto subsystem is integrated.
+// BL0 → BL1 shared state.  Placed at the top of DCCM, bracketed by magic words
+// so BL1 can validate what it finds there.
 
 #pragma once
 
@@ -25,7 +20,7 @@
 #define OROM_DCCM_BASE 0xC0040000u
 #define OROM_DCCM_SIZE 0x00020000u // 128 KiB
 
-// Boot mode identifiers (C13.8: BL0 state expansion).
+// Boot mode identifiers.
 enum {
     BOOT_MODE_UNKNOWN = 0u,
     BOOT_MODE_SPI = 1u,       // primary chiplet, normal (SPI flash)
@@ -50,7 +45,7 @@ struct bl0_state {
     // Whether secure boot is enabled (from manifest flags + LC + fuse).
     bool secure_boot;
 
-    // sboot_dis fuse value (C10b): chicken bit to disable secure boot.
+    // sboot_dis fuse value: chicken bit that disables secure boot.
     bool sboot_dis;
 
     // Lifecycle state (decoded 4-bit value from efuse).
@@ -63,12 +58,15 @@ struct bl0_state {
     // Last error code (0 = no error).  Set by rom_err_fail() on failure.
     uint32_t error_code;
 
-    // ROM measurement (SHA256 of measurement inputs).
-    // Populated by crypto subsystem after manifest validation.
+    // SHA-256 over the boot state; see measurement.h for the input layout.
     uint8_t measurement[SHA256_DIGEST_SIZE_BYTES];
 
     // Whether BL2 manifest requested CPU demotion.
     bool bl2_demotion_decision;
+
+    // SEP SRAM address of BL1's image, which BL1 reads its own .rodata/.data
+    // from because it cannot read the ICCM copy it executes.
+    uint32_t bl1_image_src_addr;
 
     // These are at the end so BL1 can find the magic and use size to
     // locate the start of the struct.
@@ -79,6 +77,20 @@ struct bl0_state {
 // BL0 state is placed at end of DCCM for BL1 discovery.
 #define BL0_STATE_SIZE sizeof(struct bl0_state)
 #define BL0_STATE_ADDR (OROM_DCCM_BASE + OROM_DCCM_SIZE - BL0_STATE_SIZE)
+
+// Bytes the linker keeps clear below the top of DCCM. MUST equal
+// __bl0_state_reserve in link/rom.ld; rom_main.c checks the pair at boot.
+#define BL0_STATE_RESERVE_BYTES 128u
+
+// A struct larger than the reserve overlaps the stack.
+_Static_assert(sizeof(struct bl0_state) <= BL0_STATE_RESERVE_BYTES,
+               "struct bl0_state does not fit in the DCCM reserve; raise "
+               "__bl0_state_reserve in link/rom.ld and the constant above");
+
+// BL1 reads this struct at a compile-time address, so BL0 and BL1 must be built
+// from this header.
+_Static_assert(BL0_STATE_ADDR + sizeof(struct bl0_state) == OROM_DCCM_BASE + OROM_DCCM_SIZE,
+               "bl0_state must end exactly at the top of DCCM");
 
 static inline struct bl0_state *get_bl0_state(void) {
     return (struct bl0_state *)(uintptr_t)BL0_STATE_ADDR;

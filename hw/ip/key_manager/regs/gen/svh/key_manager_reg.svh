@@ -198,7 +198,7 @@ localparam int unsigned OTP_EFUSE_CTRL_EFUSE_PROGRAM_REQ_TIMEOUT_REG_ADDR       
 
 
 localparam int unsigned OTP_EFUSE_MMR_REG_MAP_BASE_ADDR                                                           = 32'h00011500;
-localparam int unsigned OTP_EFUSE_MMR_REG_MAP_SIZE                                                                = 32'h00000070;
+localparam int unsigned OTP_EFUSE_MMR_REG_MAP_SIZE                                                                = 32'h00000074;
 
 
 localparam int unsigned OTP_EFUSE_MMR_RMA_SIP_TOKEN_I_0__REG_OFFSET                                               = 32'h00000000;
@@ -257,6 +257,8 @@ localparam int unsigned OTP_EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_REG_OFFSET        
 localparam int unsigned OTP_EFUSE_MMR_RMA_CHIPLET_TOKEN_MATCH_REG_ADDR                                            = 32'h00011568;
 localparam int unsigned OTP_EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_OFFSET                                          = 32'h0000006C;
 localparam int unsigned OTP_EFUSE_MMR_SEC_DISABLE_TOKEN_MATCH_REG_ADDR                                            = 32'h0001156C;
+localparam int unsigned OTP_EFUSE_MMR_TOKEN_MATCH_FAULT_REG_OFFSET                                                = 32'h00000070;
+localparam int unsigned OTP_EFUSE_MMR_TOKEN_MATCH_FAULT_REG_ADDR                                                  = 32'h00011570;
 
 
 //==============================================================================
@@ -3796,6 +3798,7 @@ localparam longint unsigned EFUSE_MMR_RMA_TOKEN_I_REG_DEFAULT                   
 localparam longint unsigned EFUSE_MMR_SEC_DISABLE_TOKEN_I_REG_DEFAULT                                             = 32'h00000000;
 localparam longint unsigned EFUSE_MMR_TOKEN_EOP_REG_DEFAULT                                                       = 32'h00000000;
 localparam longint unsigned EFUSE_MMR_TOKEN_MATCH_REG_DEFAULT                                                     = 32'h00000000;
+localparam longint unsigned EFUSE_MMR_TOKEN_MATCH_FAULT_REG_DEFAULT                                               = 32'h00000000;
 localparam longint unsigned KEY_ENTRY_RF_KEY_WORD_REG_REG_DEFAULT                                                 = 32'h00000000;
 localparam longint unsigned KM_KPV_CTRL_REG_REG_DEFAULT                                                           = 32'h00000000;
 localparam longint unsigned KM_KPV_KPV_SCRAMBLER_KEY_REG_REG_DEFAULT                                              = 32'h00000000;
@@ -4224,29 +4227,20 @@ localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_SEP_DEBUG_SHIFT            
 localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_CHIPLET_DBG_MASK                                             = 64'h2;
 localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_CHIPLET_DBG_SHIFT                                            = 1;
 
-localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_DEBUG_RESERVED_DBG1_MASK                                     = 64'hFFFC;
-localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_DEBUG_RESERVED_DBG1_SHIFT                                    = 2;
+localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_SEP_FUSE_DBG_MASK                                            = 64'h4;
+localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_SEP_FUSE_DBG_SHIFT                                           = 2;
 
-localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_SIP_DEBUG_MASK                                               = 64'h10000;
-localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_SIP_DEBUG_SHIFT                                              = 16;
+localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_SMC_FUSE_DBG_MASK                                            = 64'h8;
+localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_SMC_FUSE_DBG_SHIFT                                           = 3;
 
-localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_DEBUG_RESERVED_DBG2_MASK                                     = 64'hFFFE0000;
-localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_DEBUG_RESERVED_DBG2_SHIFT                                    = 17;
+localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_DEBUG_RESERVED_DBG1_MASK                                     = 64'hFFFFF0;
+localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_DEBUG_RESERVED_DBG1_SHIFT                                    = 4;
 
-localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_SEP_FUSE_TEST_MASK                                           = 64'h100000000;
-localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_SEP_FUSE_TEST_SHIFT                                          = 32;
+localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_SIP_DEBUG_MASK                                               = 64'h1000000;
+localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_SIP_DEBUG_SHIFT                                              = 24;
 
-localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_TEST_RESERVED_LO_MASK                                        = 64'h1E00000000;
-localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_TEST_RESERVED_LO_SHIFT                                       = 33;
-
-localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_SMC_FUSE_TEST_MASK                                           = 64'h2000000000;
-localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_SMC_FUSE_TEST_SHIFT                                          = 37;
-
-localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_FUSE_VENDOR_TEST_MASK                                        = 64'h4000000000;
-localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_FUSE_VENDOR_TEST_SHIFT                                       = 38;
-
-localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_TEST_RESERVED_MASK                                           = 64'hFF8000000000;
-localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_TEST_RESERVED_SHIFT                                          = 39;
+localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_DEBUG_RESERVED_DBG2_MASK                                     = 64'hFFFFFE000000;
+localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_DEBUG_RESERVED_DBG2_SHIFT                                    = 25;
 
 localparam longint unsigned SEP_EFUSE_MAP_LC_DISABLE_FUNC_RESERVED_MASK                                           = 64'hFFFF000000000000;
 localparam     int unsigned SEP_EFUSE_MAP_LC_DISABLE_FUNC_RESERVED_SHIFT                                          = 48;
@@ -4466,6 +4460,15 @@ localparam int unsigned EFUSE_MMR_TOKEN_EOP_SECURE_DISABLE_TOKEN_GO_SHIFT       
 
 localparam int unsigned EFUSE_MMR_TOKEN_MATCH_TOKEN_MATCH_STATUS_MASK                                             = 32'h3F;
 localparam int unsigned EFUSE_MMR_TOKEN_MATCH_TOKEN_MATCH_STATUS_SHIFT                                            = 0;
+
+localparam int unsigned EFUSE_MMR_TOKEN_MATCH_FAULT_RMA_SIP_TOKEN_FAULT_MASK                                      = 32'h1;
+localparam int unsigned EFUSE_MMR_TOKEN_MATCH_FAULT_RMA_SIP_TOKEN_FAULT_SHIFT                                     = 0;
+
+localparam int unsigned EFUSE_MMR_TOKEN_MATCH_FAULT_RMA_CHIPLET_TOKEN_FAULT_MASK                                  = 32'h100;
+localparam int unsigned EFUSE_MMR_TOKEN_MATCH_FAULT_RMA_CHIPLET_TOKEN_FAULT_SHIFT                                 = 8;
+
+localparam int unsigned EFUSE_MMR_TOKEN_MATCH_FAULT_SECURE_DISABLE_TOKEN_FAULT_MASK                               = 32'h10000;
+localparam int unsigned EFUSE_MMR_TOKEN_MATCH_FAULT_SECURE_DISABLE_TOKEN_FAULT_SHIFT                              = 16;
 
 localparam int unsigned KEY_ENTRY_RF_KEY_WORD_REG_DATA_MASK                                                       = 32'hFFFFFFFF;
 localparam int unsigned KEY_ENTRY_RF_KEY_WORD_REG_DATA_SHIFT                                                      = 0;
@@ -5166,14 +5169,11 @@ typedef struct packed {
 
 typedef struct packed {
     logic [15:0]   func_reserved ;
-    logic [8:0]   test_reserved ;
-    logic [0:0]   fuse_vendor_test ;
-    logic [0:0]   smc_fuse_test ;
-    logic [3:0]   test_reserved_lo ;
-    logic [0:0]   sep_fuse_test ;
-    logic [14:0]   debug_reserved_dbg2 ;
+    logic [22:0]   debug_reserved_dbg2 ;
     logic [0:0]   sip_debug ;
-    logic [13:0]   debug_reserved_dbg1 ;
+    logic [19:0]   debug_reserved_dbg1 ;
+    logic [0:0]   smc_fuse_dbg ;
+    logic [0:0]   sep_fuse_dbg ;
     logic [0:0]   chiplet_dbg ;
     logic [0:0]   sep_debug ;
 } sep_efuse_map_lc_disable_reg_t;
@@ -5461,6 +5461,16 @@ typedef struct packed {
 typedef struct packed {
     logic [5:0]   token_match_status ;
 } efuse_mmr_token_match_reg_t;
+
+
+
+typedef struct packed {
+    logic [0:0]   secure_disable_token_fault ;
+    logic [6:0]   rsvd_1 ;
+    logic [0:0]   rma_chiplet_token_fault ;
+    logic [6:0]   rsvd_0 ;
+    logic [0:0]   rma_sip_token_fault ;
+} efuse_mmr_token_match_fault_reg_t;
 
 
 

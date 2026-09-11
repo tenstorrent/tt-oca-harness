@@ -1690,12 +1690,12 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>SIP_DIS</ipxact:name>
-          <ipxact:description>An owner's (SiP or System) feature control vector. When set (1'b1), the corresponding feature is disabled. Spec: OCAH v0.5.9 disable-vector layout (lifecycle_controller.adoc §2.2).</ipxact:description>
+          <ipxact:description>An owner's feature control vector. When set (1'b1), the corresponding feature is disabled. Layout: see the Disable Vector Format section of lifecycle_controller.adoc.</ipxact:description>
           <ipxact:addressOffset>'h18</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>sep_debug</ipxact:name>
-            <ipxact:description>SEP_DBG (bit 0): Coarse-grained debug enable for the SEP scope. 1'b1: SEP-scope debug/scan-dump access disabled and external inbound traffic is filtered. 1'b0: enabled.</ipxact:description>
+            <ipxact:description>SEP_DBG (bit 0): Coarse-grained debug enable for the SEP scope. 1'b1: SEP-scope debug/scan-dump access disabled and external inbound traffic is filtered. 1'b0: enabled. A local gate only: reaching SEP internal state from an external debugger additionally requires SIP_DBG and CHIPLET_DBG.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1709,7 +1709,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>chiplet_dbg</ipxact:name>
-            <ipxact:description>CHIPLET_DBG (bit 1): Coarse-grained debug enable for the chiplet scope. 1'b1: chiplet-scope debug/scan-dump access disabled. 1'b0: enabled. Does not gate the crypto/KM secret-bearing chain.</ipxact:description>
+            <ipxact:description>CHIPLET_DBG (bit 1): Coarse-grained debug enable for the chiplet scope. 1'b1: chiplet-scope debug/scan-dump access disabled. 1'b0: enabled. Never acts alone: an external debugger reaches chiplet-internal resources only when SIP_DBG is open as well. Contributes to the reachability of the crypto/KM secure chain but never authorizes a dump from it.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1722,23 +1722,51 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>debug_reserved_dbg1</ipxact:name>
-            <ipxact:description>Reserved for adopter-defined DBG_1 debug scan chains (bits 15:2).</ipxact:description>
+            <ipxact:name>sep_fuse_dbg</ipxact:name>
+            <ipxact:description>SEP_FUSE_DBG (bit 2): 1'b1: the DFT-inserted access path into the SEP OTP is disabled. 1'b0: enabled. Also covers the OTP IP-vendor test and calibration interface, which is reachable only over that inserted path. The functional JTAG2AXIL path to the OTP is always available and is not gated by this bit.</ipxact:description>
             <ipxact:bitOffset>2</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
                 <ipxact:value>'h0</ipxact:value>
               </ipxact:reset>
             </ipxact:resets>
-            <ipxact:bitWidth>14</ipxact:bitWidth>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>smc_fuse_dbg</ipxact:name>
+            <ipxact:description>SMC_FUSE_DBG (bit 3): 1'b1: the DFT-inserted access path into the SMC OTP is disabled. 1'b0: enabled. Produced by SEP-LCC feat_ctrl_o, exported on the SEP boundary, and consumed by SMC to gate its own inserted fuse path.</ipxact:description>
+            <ipxact:bitOffset>3</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>debug_reserved_dbg1</ipxact:name>
+            <ipxact:description>Reserved for adopter-defined local (DBG_1) debug scan chains (bits 23:4).</ipxact:description>
+            <ipxact:bitOffset>4</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>20</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>sip_debug</ipxact:name>
-            <ipxact:description>SIP_DBG (bit 16): Coarse-grained debug enable for the inter-chiplet debug-bypass path (e.g. forwarding external debug to downstream chiplets via outbound JTAG PTAP). 1'b1: disabled. 1'b0: enabled.</ipxact:description>
-            <ipxact:bitOffset>16</ipxact:bitOffset>
+            <ipxact:description>SIP_DBG (bit 24): Coarse-grained debug enable for the SiP scope: the inter-chiplet debug-bypass gate that admits external (PTAP) debug traffic into this chiplet and forwards it onward to the next chiplet via the outbound JTAG PTAP. 1'b1: disabled. 1'b0: enabled.</ipxact:description>
+            <ipxact:bitOffset>24</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
                 <ipxact:value>'h0</ipxact:value>
@@ -1751,84 +1779,14 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>debug_reserved_dbg2</ipxact:name>
-            <ipxact:description>Reserved for adopter-defined DBG_2 debug scan chains (bits 31:17).</ipxact:description>
-            <ipxact:bitOffset>17</ipxact:bitOffset>
+            <ipxact:description>Reserved for adopter-defined inter-chiplet-bypass (DBG_2) debug scan chains (bits 47:25).</ipxact:description>
+            <ipxact:bitOffset>25</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
                 <ipxact:value>'h0</ipxact:value>
               </ipxact:reset>
             </ipxact:resets>
-            <ipxact:bitWidth>15</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-write</ipxact:access>
-            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>sep_fuse_test</ipxact:name>
-            <ipxact:description>SEP_FUSE_TEST (bit 32): 1'b1: SEP fuse controller and fuse-block interface scan is disabled. 1'b0: enabled.</ipxact:description>
-            <ipxact:bitOffset>32</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-write</ipxact:access>
-            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>test_reserved_lo</ipxact:name>
-            <ipxact:description>Reserved for adopter-defined test scan chains (bits 36:33).</ipxact:description>
-            <ipxact:bitOffset>33</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>4</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-write</ipxact:access>
-            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>smc_fuse_test</ipxact:name>
-            <ipxact:description>SMC_FUSE_TEST (bit 37): 1'b1: SMC fuse controller and fuse-block interface scan is disabled. 1'b0: enabled. Exported on SEP boundary; consumed by SMC to gate its fuse-test path. TODO(AMBIG-5): No SEP output port for this bit exists and the SMC feat_ctrl_i port is deleted — this bit has no RTL consumer in the current implementation. Arch must define the forwarding path (e.g. a new SEP output) before this bit can enforce its intent.</ipxact:description>
-            <ipxact:bitOffset>37</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-write</ipxact:access>
-            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>fuse_vendor_test</ipxact:name>
-            <ipxact:description>FUSE_VENDOR_TEST (bit 38): 1'b1: OTP IP-vendor test and calibration interface is disabled. 1'b0: enabled. Used during ATE for vendor-specific OTP test and internal-voltage calibration. TODO(AMBIG-5): No RTL consumer exists for this bit in the current implementation. Arch must define the forwarding path before this bit can be enforced.</ipxact:description>
-            <ipxact:bitOffset>38</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-write</ipxact:access>
-            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>test_reserved</ipxact:name>
-            <ipxact:description>Reserved for adopter-defined test scan chains (bits 47:39).</ipxact:description>
-            <ipxact:bitOffset>39</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>9</ipxact:bitWidth>
+            <ipxact:bitWidth>23</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
@@ -1850,12 +1808,12 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
         </ipxact:register>
         <ipxact:register>
           <ipxact:name>SYS_DIS</ipxact:name>
-          <ipxact:description>An owner's (SiP or System) feature control vector. When set (1'b1), the corresponding feature is disabled. Spec: OCAH v0.5.9 disable-vector layout (lifecycle_controller.adoc §2.2).</ipxact:description>
+          <ipxact:description>An owner's feature control vector. When set (1'b1), the corresponding feature is disabled. Layout: see the Disable Vector Format section of lifecycle_controller.adoc.</ipxact:description>
           <ipxact:addressOffset>'h20</ipxact:addressOffset>
           <ipxact:size>64</ipxact:size>
           <ipxact:field>
             <ipxact:name>sep_debug</ipxact:name>
-            <ipxact:description>SEP_DBG (bit 0): Coarse-grained debug enable for the SEP scope. 1'b1: SEP-scope debug/scan-dump access disabled and external inbound traffic is filtered. 1'b0: enabled.</ipxact:description>
+            <ipxact:description>SEP_DBG (bit 0): Coarse-grained debug enable for the SEP scope. 1'b1: SEP-scope debug/scan-dump access disabled and external inbound traffic is filtered. 1'b0: enabled. A local gate only: reaching SEP internal state from an external debugger additionally requires SIP_DBG and CHIPLET_DBG.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1869,7 +1827,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>chiplet_dbg</ipxact:name>
-            <ipxact:description>CHIPLET_DBG (bit 1): Coarse-grained debug enable for the chiplet scope. 1'b1: chiplet-scope debug/scan-dump access disabled. 1'b0: enabled. Does not gate the crypto/KM secret-bearing chain.</ipxact:description>
+            <ipxact:description>CHIPLET_DBG (bit 1): Coarse-grained debug enable for the chiplet scope. 1'b1: chiplet-scope debug/scan-dump access disabled. 1'b0: enabled. Never acts alone: an external debugger reaches chiplet-internal resources only when SIP_DBG is open as well. Contributes to the reachability of the crypto/KM secure chain but never authorizes a dump from it.</ipxact:description>
             <ipxact:bitOffset>1</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -1882,23 +1840,51 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
-            <ipxact:name>debug_reserved_dbg1</ipxact:name>
-            <ipxact:description>Reserved for adopter-defined DBG_1 debug scan chains (bits 15:2).</ipxact:description>
+            <ipxact:name>sep_fuse_dbg</ipxact:name>
+            <ipxact:description>SEP_FUSE_DBG (bit 2): 1'b1: the DFT-inserted access path into the SEP OTP is disabled. 1'b0: enabled. Also covers the OTP IP-vendor test and calibration interface, which is reachable only over that inserted path. The functional JTAG2AXIL path to the OTP is always available and is not gated by this bit.</ipxact:description>
             <ipxact:bitOffset>2</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
                 <ipxact:value>'h0</ipxact:value>
               </ipxact:reset>
             </ipxact:resets>
-            <ipxact:bitWidth>14</ipxact:bitWidth>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>smc_fuse_dbg</ipxact:name>
+            <ipxact:description>SMC_FUSE_DBG (bit 3): 1'b1: the DFT-inserted access path into the SMC OTP is disabled. 1'b0: enabled. Produced by SEP-LCC feat_ctrl_o, exported on the SEP boundary, and consumed by SMC to gate its own inserted fuse path.</ipxact:description>
+            <ipxact:bitOffset>3</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-write</ipxact:access>
+            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>debug_reserved_dbg1</ipxact:name>
+            <ipxact:description>Reserved for adopter-defined local (DBG_1) debug scan chains (bits 23:4).</ipxact:description>
+            <ipxact:bitOffset>4</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>20</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>sip_debug</ipxact:name>
-            <ipxact:description>SIP_DBG (bit 16): Coarse-grained debug enable for the inter-chiplet debug-bypass path (e.g. forwarding external debug to downstream chiplets via outbound JTAG PTAP). 1'b1: disabled. 1'b0: enabled.</ipxact:description>
-            <ipxact:bitOffset>16</ipxact:bitOffset>
+            <ipxact:description>SIP_DBG (bit 24): Coarse-grained debug enable for the SiP scope: the inter-chiplet debug-bypass gate that admits external (PTAP) debug traffic into this chiplet and forwards it onward to the next chiplet via the outbound JTAG PTAP. 1'b1: disabled. 1'b0: enabled.</ipxact:description>
+            <ipxact:bitOffset>24</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
                 <ipxact:value>'h0</ipxact:value>
@@ -1911,84 +1897,14 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>debug_reserved_dbg2</ipxact:name>
-            <ipxact:description>Reserved for adopter-defined DBG_2 debug scan chains (bits 31:17).</ipxact:description>
-            <ipxact:bitOffset>17</ipxact:bitOffset>
+            <ipxact:description>Reserved for adopter-defined inter-chiplet-bypass (DBG_2) debug scan chains (bits 47:25).</ipxact:description>
+            <ipxact:bitOffset>25</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
                 <ipxact:value>'h0</ipxact:value>
               </ipxact:reset>
             </ipxact:resets>
-            <ipxact:bitWidth>15</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-write</ipxact:access>
-            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>sep_fuse_test</ipxact:name>
-            <ipxact:description>SEP_FUSE_TEST (bit 32): 1'b1: SEP fuse controller and fuse-block interface scan is disabled. 1'b0: enabled.</ipxact:description>
-            <ipxact:bitOffset>32</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-write</ipxact:access>
-            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>test_reserved_lo</ipxact:name>
-            <ipxact:description>Reserved for adopter-defined test scan chains (bits 36:33).</ipxact:description>
-            <ipxact:bitOffset>33</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>4</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-write</ipxact:access>
-            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>smc_fuse_test</ipxact:name>
-            <ipxact:description>SMC_FUSE_TEST (bit 37): 1'b1: SMC fuse controller and fuse-block interface scan is disabled. 1'b0: enabled. Exported on SEP boundary; consumed by SMC to gate its fuse-test path. TODO(AMBIG-5): No SEP output port for this bit exists and the SMC feat_ctrl_i port is deleted — this bit has no RTL consumer in the current implementation. Arch must define the forwarding path (e.g. a new SEP output) before this bit can enforce its intent.</ipxact:description>
-            <ipxact:bitOffset>37</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-write</ipxact:access>
-            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>fuse_vendor_test</ipxact:name>
-            <ipxact:description>FUSE_VENDOR_TEST (bit 38): 1'b1: OTP IP-vendor test and calibration interface is disabled. 1'b0: enabled. Used during ATE for vendor-specific OTP test and internal-voltage calibration. TODO(AMBIG-5): No RTL consumer exists for this bit in the current implementation. Arch must define the forwarding path before this bit can be enforced.</ipxact:description>
-            <ipxact:bitOffset>38</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>1</ipxact:bitWidth>
-            <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-write</ipxact:access>
-            <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
-          </ipxact:field>
-          <ipxact:field>
-            <ipxact:name>test_reserved</ipxact:name>
-            <ipxact:description>Reserved for adopter-defined test scan chains (bits 47:39).</ipxact:description>
-            <ipxact:bitOffset>39</ipxact:bitOffset>
-            <ipxact:resets>
-              <ipxact:reset>
-                <ipxact:value>'h0</ipxact:value>
-              </ipxact:reset>
-            </ipxact:resets>
-            <ipxact:bitWidth>9</ipxact:bitWidth>
+            <ipxact:bitWidth>23</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-write</ipxact:access>
             <ipxact:modifiedWriteValue>oneToSet</ipxact:modifiedWriteValue>
@@ -2599,7 +2515,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
           <ipxact:size>256</ipxact:size>
           <ipxact:field>
             <ipxact:name>key_hash</ipxact:name>
-            <ipxact:description>Chiplet owner ML-DSA (PQC) authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</ipxact:description>
+            <ipxact:description>Chiplet owner ML-DSA PQC authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2617,7 +2533,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
           <ipxact:size>256</ipxact:size>
           <ipxact:field>
             <ipxact:name>key_hash</ipxact:name>
-            <ipxact:description>Chiplet owner ML-DSA (PQC) authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</ipxact:description>
+            <ipxact:description>Chiplet owner ML-DSA PQC authentication key hash digest, fused. PQC counterpart of the corresponding CHIPLET_PUBK_HASH.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2635,7 +2551,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
           <ipxact:size>256</ipxact:size>
           <ipxact:field>
             <ipxact:name>key_hash</ipxact:name>
-            <ipxact:description>Hash digest of the SiP owner's ML-DSA (PQC) root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</ipxact:description>
+            <ipxact:description>Hash digest of the SiP owner's ML-DSA PQC root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2653,7 +2569,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
           <ipxact:size>256</ipxact:size>
           <ipxact:field>
             <ipxact:name>key_hash</ipxact:name>
-            <ipxact:description>Hash digest of the system owner's ML-DSA (PQC) root public key for secure boot. PQC counterpart of SYS_PUBK_HASH.</ipxact:description>
+            <ipxact:description>Hash digest of the system owner's ML-DSA PQC root public key for secure boot. PQC counterpart of SYS_PUBK_HASH.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -2689,7 +2605,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
           <ipxact:size>256</ipxact:size>
           <ipxact:field>
             <ipxact:name>key_hash</ipxact:name>
-            <ipxact:description>Hash digest of the SiP owner's ML-DSA (PQC) root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</ipxact:description>
+            <ipxact:description>Hash digest of the SiP owner's ML-DSA PQC root public key for secure boot. PQC counterpart of SIP_PUBK_HASH.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -3287,7 +3203,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
       <ipxact:addressBlock>
         <ipxact:name>otp_efuse_mmr</ipxact:name>
         <ipxact:baseAddress>'h11500</ipxact:baseAddress>
-        <ipxact:range>'h70</ipxact:range>
+        <ipxact:range>'h74</ipxact:range>
         <ipxact:width>32</ipxact:width>
         <ipxact:register>
           <ipxact:name>RMA_SIP_TOKEN_I</ipxact:name>
@@ -3429,6 +3345,51 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
               </ipxact:reset>
             </ipxact:resets>
             <ipxact:bitWidth>6</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+        </ipxact:register>
+        <ipxact:register>
+          <ipxact:name>TOKEN_MATCH_FAULT</ipxact:name>
+          <ipxact:description>Token comparator redundancy fault status. The token match logic is triple redundant and is not a majority vote: all three comparators must agree and each must drive a legal differential pair. A bit sets when the comparators for that token disagree, which may indicate a fault injection or FIB attack. The corresponding token_match_status then reads the error code 6'b111111 and an interrupt is raised to the SEP CPU. Bits are sticky until reset.</ipxact:description>
+          <ipxact:addressOffset>'h70</ipxact:addressOffset>
+          <ipxact:size>32</ipxact:size>
+          <ipxact:field>
+            <ipxact:name>rma_sip_token_fault</ipxact:name>
+            <ipxact:description>A redundancy fault was detected in the RMA_SIP_TOKEN comparators.</ipxact:description>
+            <ipxact:bitOffset>0</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>rma_chiplet_token_fault</ipxact:name>
+            <ipxact:description>A redundancy fault was detected in the RMA_CHIPLET_TOKEN comparators.</ipxact:description>
+            <ipxact:bitOffset>8</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
+            <ipxact:volatile>true</ipxact:volatile>
+            <ipxact:access>read-only</ipxact:access>
+          </ipxact:field>
+          <ipxact:field>
+            <ipxact:name>secure_disable_token_fault</ipxact:name>
+            <ipxact:description>A redundancy fault was detected in the SEC_DISABLE_TOKEN comparators.</ipxact:description>
+            <ipxact:bitOffset>16</ipxact:bitOffset>
+            <ipxact:resets>
+              <ipxact:reset>
+                <ipxact:value>'h0</ipxact:value>
+              </ipxact:reset>
+            </ipxact:resets>
+            <ipxact:bitWidth>1</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
             <ipxact:access>read-only</ipxact:access>
           </ipxact:field>
@@ -7358,7 +7319,7 @@ slot's material can be destroyed but its slot never reused.</ipxact:description>
           <ipxact:field>
             <ipxact:name>count_bad</ipxact:name>
             <ipxact:displayName>COUNT_BAD</ipxact:displayName>
-            <ipxact:description>Failed transactions (timeout or error). Saturates at 0xFF.</ipxact:description>
+            <ipxact:description>Failed transactions (timeout or error). Saturates at 0xFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.</ipxact:description>
             <ipxact:bitOffset>8</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -7367,12 +7328,12 @@ slot's material can be destroyed but its slot never reused.</ipxact:description>
             </ipxact:resets>
             <ipxact:bitWidth>8</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
           <ipxact:field>
             <ipxact:name>count_good</ipxact:name>
             <ipxact:displayName>COUNT_GOOD</ipxact:displayName>
-            <ipxact:description>Successful words transferred to CPU. Saturates at 0xFFFF.</ipxact:description>
+            <ipxact:description>Successful words transferred to CPU. Saturates at 0xFFFF. Writing any non-zero value clears the field to 0; writing 0 has no effect.</ipxact:description>
             <ipxact:bitOffset>16</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
@@ -7381,7 +7342,7 @@ slot's material can be destroyed but its slot never reused.</ipxact:description>
             </ipxact:resets>
             <ipxact:bitWidth>16</ipxact:bitWidth>
             <ipxact:volatile>true</ipxact:volatile>
-            <ipxact:access>read-only</ipxact:access>
+            <ipxact:access>read-write</ipxact:access>
           </ipxact:field>
         </ipxact:register>
         <ipxact:register>

@@ -90,7 +90,6 @@ int reset_ctrl_sequence(int hartid) {
     // Write to the scratch registers.  These can be used to check
     // against the top-level signals in the testbench
     write_scratch(7, exp_reset_unit_ss_config.w);
-    // write_scratch(8, exp_reset_unit_ndm_reset.w);
     write_scratch(9, exp_reset_unit_ss_cold_reset_n.w);
     write_scratch(10, exp_reset_unit_ss_warm_reset_n.w);
     write_scratch(11, exp_reset_unit_ss_config_hold.w);
@@ -98,12 +97,10 @@ int reset_ctrl_sequence(int hartid) {
     write_scratch(13, exp_reset_unit_ss_critical_hold.w);
     write_scratch(14, exp_reset_unit_ss_debug_hold.w);
     write_scratch(15, exp_reset_unit_ss_force_to_ref_clk.w);
-    // write_scratch( 6, exp_reset_unit_d2d_force_stall.w);
 
     // Drive the signals at the top-level
     write_reg(SMC_TOP_SMC_RESET_UNIT_SS_CONFIG_BASE_ADDR, reset_unit_ss_config.w);
     write_reg(SMC_TOP_SMC_RESET_UNIT_SS_CONFIG_LOCK_BASE_ADDR, reset_unit_ss_config_lock.w);
-    // write_reg(SMC_RESET_UNIT_NDM_RESET_REG_ADDR, reset_unit_ndm_reset.w);
     write_reg(SMC_TOP_SMC_RESET_UNIT_SS_COLD_RESET_N_BASE_ADDR, reset_unit_ss_cold_reset_n.w);
     write_reg(SMC_TOP_SMC_RESET_UNIT_SS_WARM_RESET_N_BASE_ADDR, reset_unit_ss_warm_reset_n.w);
     write_reg(SMC_TOP_SMC_RESET_UNIT_SS_CONFIG_HOLD_BASE_ADDR, reset_unit_ss_config_hold.w);
@@ -113,7 +110,6 @@ int reset_ctrl_sequence(int hartid) {
     write_reg(SMC_TOP_SMC_RESET_UNIT_SS_FORCE_TO_REF_CLK_BASE_ADDR,
               reset_unit_ss_force_to_ref_clk.w);
     write_reg(SMC_TOP_SMC_RESET_UNIT_SS_COLD_RESET_LOCK_BASE_ADDR, reset_unit_ss_cold_reset_lock.w);
-    // write_reg(SMC_RESET_UNIT_D2D_FORCE_STALL_REG_ADDR, reset_unit_d2d_force_stall.w);
 
     reset_unit__SS_CONFIG_t read_back_reset_unit_ss_config = {.w = 0};
     reset_unit__SS_CONFIG_LOCK_t read_back_reset_unit_ss_config_lock = {.w = 0};
@@ -143,13 +139,6 @@ int reset_ctrl_sequence(int hartid) {
         raise_error_hex32_s(hartid, "Expected: ", exp_reset_unit_ss_config_lock.w);
         raise_error_hex32_s(hartid, "Actual: ", read_back_reset_unit_ss_config_lock.w);
     }
-
-    // read_back_reset_unit_ndm_reset.w = read_reg(RESET_UNIT_NDM_RESET_REG_ADDR) & 0xF;
-    // if (read_back_reset_unit_ndm_reset.w != (exp_reset_unit_ndm_reset.w & 0xF)) {
-    //   raise_error_s(hartid, "Mismatch in RESET_UNIT_NDM_RESET_REG_ADDR");
-    //   raise_error_hex32_s(hartid, "Expected: ", (exp_reset_unit_ndm_reset.w & 0xF));
-    //   raise_error_hex32_s(hartid, "Actual: ", read_back_reset_unit_ndm_reset.w);
-    // }
 
     read_back_reset_unit_ss_cold_reset_n.w =
         read_reg(SMC_TOP_SMC_RESET_UNIT_SS_COLD_RESET_N_BASE_ADDR);
@@ -212,13 +201,6 @@ int reset_ctrl_sequence(int hartid) {
         raise_error_hex32_s(hartid, "Expected: ", exp_reset_unit_ss_cold_reset_lock.w);
         raise_error_hex32_s(hartid, "Actual: ", read_back_reset_unit_ss_cold_reset_lock.w);
     }
-
-    // read_back_reset_unit_d2d_force_stall.w = read_reg(RESET_UNIT_D2D_FORCE_STALL_REG_ADDR);
-    // if (read_back_reset_unit_d2d_force_stall.w != exp_reset_unit_d2d_force_stall.w) {
-    //   raise_error_s(hartid, "Mismatch in RESET_UNIT_D2D_FORCE_STALL_REG_ADDR");
-    //   raise_error_hex32_s(hartid, "Expected: ", exp_reset_unit_d2d_force_stall.w);
-    //   raise_error_hex32_s(hartid, "Actual: ", read_back_reset_unit_d2d_force_stall.w);
-    // }
 
     info_msg_s(hartid, "reset_ctrl_sequence Ending");
 

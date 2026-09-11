@@ -17,14 +17,14 @@ import re
 import sys
 
 SEVERITY_MAP = {
-    "error":   "ERROR",
-    "fatal":   "ERROR",
+    "error": "ERROR",
+    "fatal": "ERROR",
     "warning": "WARNING",
-    "note":    "INFO",
-    "info":    "INFO",
+    "note": "INFO",
+    "info": "INFO",
 }
 
-LOCATION_RE = re.compile(r'^(.+):(\d+):(\d+)$')
+LOCATION_RE = re.compile(r"^(.+):(\d+):(\d+)$")
 
 
 def parse_location(location_str):
@@ -36,7 +36,7 @@ def parse_location(location_str):
         "path": m.group(1),
         "range": {
             "start": {
-                "line":   int(m.group(2)),
+                "line": int(m.group(2)),
                 "column": int(m.group(3)),
             }
         },
@@ -47,7 +47,7 @@ def convert(slang_diagnostics):
     diagnostics = []
     for d in slang_diagnostics:
         entry = {
-            "message":  d.get("message", ""),
+            "message": d.get("message", ""),
             "location": parse_location(d.get("location", "")),
             "severity": SEVERITY_MAP.get(d.get("severity", "").lower(), "WARNING"),
         }
@@ -57,13 +57,13 @@ def convert(slang_diagnostics):
             # URLs are currently not rendered properly by github checks.
             # Consider re-adding once this works
             # if entry["severity"] == "WARNING":
-                # entry["code"]["url"] = "https://sv-lang.com/warning-ref.html#" + option_name
+            # entry["code"]["url"] = "https://sv-lang.com/warning-ref.html#" + option_name
         diagnostics.append(entry)
 
     return {
         "source": {
             "name": "slang",
-            "url":  "https://sv-lang.com",
+            "url": "https://sv-lang.com",
         },
         "diagnostics": diagnostics,
     }

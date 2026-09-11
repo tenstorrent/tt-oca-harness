@@ -5,13 +5,13 @@
  * SEP Reset Controller CSR Sanity Test
  *
  * This test verifies the sep_reset_ctrl CSR and the sw-reset isolation
- * sequencing (sep_crypto_axi_isolate) in front of the crypto accelerator
- * wrappers. For each accelerator (OTBN, AES, HMAC, KMAC):
+ * sequencing through the AXI-Lite isolates in sep_crypto_axi_interconnect.
+ * For each accelerator (OTBN, AES, HMAC, KMAC):
  *
  *   a) Probe write/readback proves the port is open and the IP is alive.
  *   b) Assert only that IP's SW_RESET_N bit and HOLD it.
  *   c) Access the IP while held in reset: the isolate must terminate the
- *      write and the read with DECERR (one bus-error NMI each) instead of
+ *      write and the read with SLVERR (one bus-error NMI each) instead of
  *      hanging the fabric.
  *   d) While held in reset, read a different accelerator's register to
  *      prove the other ports are unaffected.
@@ -20,13 +20,14 @@
  *      proving the reset wire reached the IP.
  *
  * SW_RESET_N bit layout:
+ *   bit 5 = trng_sw_rst_n  (default 1, released)
  *   bit 4 = kmac_sw_rst_n  (default 1, released)
  *   bit 3 = hmac_sw_rst_n  (default 1, released)
  *   bit 2 = aes_sw_rst_n   (default 1, released)
  *   bit 1 = otbn_sw_rst_n  (default 1, released)
  *   bit 0 = km_sw_rst_n    (default 0, held in reset)
  *
- * Default value: 0x1E = 0b11110
+ * Default value: 0x3E = 0b111110
  *
  * KM is skipped because it cannot be brought out of reset in this test case.
  *
@@ -40,6 +41,9 @@
 #include "test_completion.h"
 #include "sep_outbound_filter.h"
 #include "nmi.h"
+
+#define SW_RESET_N_DEFAULT 0x3eu
+#define SW_RESET_N_TRNG_BIT (1u << 5)
 
 void reset_ctrl_nmi_handler(void) {
     uint32_t prev = READ_REG(OCH_SEP_TOP_SEP_SCRATCH_COLD_SCRATCH_BASE_ADDR(6));
@@ -78,8 +82,8 @@ int main(void) {
     uint32_t sw_reset_n = READ_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
     printf("SW_RESET_N value: 0x%08x\n", sw_reset_n);
 
-    if (sw_reset_n != 0x1eu) {
-        printf("ERROR: SW_RESET_N default is not 0x%08x\n", 0x1eu);
+    if (sw_reset_n != SW_RESET_N_DEFAULT) {
+        printf("ERROR: SW_RESET_N default is not 0x%08x\n", SW_RESET_N_DEFAULT);
         test_fail(1);
     }
 
@@ -119,7 +123,7 @@ int main(void) {
     for (size_t i = 0; i < sizeof(accels) / sizeof(accels[0]); i++) {
         const char *name = accels[i].name;
         uint32_t bit_mask = accels[i].bit_mask;
-        uint32_t asserted = 0x1eu & ~bit_mask;
+        uint32_t asserted = SW_RESET_N_DEFAULT & ~bit_mask;
 
         /*
          * 2a: probe write/readback - port open, IP alive
@@ -150,7 +154,7 @@ int main(void) {
 
         /*
          * 2c: access the held-in-reset accelerator. The isolate must
-         * terminate the write and the read with DECERR (one bus-error NMI
+         * terminate the write and the read with SLVERR (one bus-error NMI
          * each) instead of hanging the fabric. D-bus errors are IMPRECISE
          * on VeeR: the NMI lands many cycles after the access, so the two
          * accesses are spaced by prints and the count is checked after
@@ -200,7 +204,7 @@ int main(void) {
          * its default (reset reached the IP) without an NMI (port reopened).
          */
         printf("Step 2.%u.e: %s - releasing reset...\n", (unsigned)i, name);
-        WRITE_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR, 0x1eu);
+        WRITE_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR, SW_RESET_N_DEFAULT);
         (void)READ_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
 
         uint32_t rd_after = READ_REG(accels[i].probe_addr);
@@ -218,35 +222,101 @@ int main(void) {
     }
 
     /*
-     * Step 3: Sanity-check SW_RESET_N ended at its default
+     * Step 3: the shared TRNG reset coordinates all three CSR ports. Seed a
+     * writable register on each port, hold reset, prove every new access gets
+     * SLVERR, prove an unrelated AES port stays alive, then release and prove
+     * all three registers were reset.
+     */
+    struct {
+        const char *name;
+        uint32_t probe_addr;
+        uint32_t write_val;
+    } trng_ports[] = {
+        {"esrc", OCH_SEP_TOP_ENTROPY_SOURCE_DEBUG_CTRL_BASE_ADDR, 0x00000001u},
+        {"csrng", OCH_SEP_TOP_CSRNG_INTR_ENABLE_BASE_ADDR, 0x00000001u},
+        {"edn", OCH_SEP_TOP_EDN_INTR_ENABLE_BASE_ADDR, 0x00000001u},
+    };
+
+    for (size_t i = 0; i < sizeof(trng_ports) / sizeof(trng_ports[0]); i++) {
+        WRITE_REG(trng_ports[i].probe_addr, trng_ports[i].write_val);
+        uint32_t rd = READ_REG(trng_ports[i].probe_addr);
+        if (rd != trng_ports[i].write_val) {
+            printf("ERROR: TRNG %s pre-reset probe got 0x%08x, expected 0x%08x\n",
+                   trng_ports[i].name, rd, trng_ports[i].write_val);
+            test_fail(1);
+        }
+    }
+
+    uint32_t trng_asserted = SW_RESET_N_DEFAULT & ~SW_RESET_N_TRNG_BIT;
+    WRITE_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR, trng_asserted);
+    (void)READ_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
+
+    uint32_t aes_live = READ_REG(OCH_SEP_TOP_AES_CTRL_AUX_REGWEN_BASE_ADDR);
+    if (aes_live != AES__CTRL_AUX_REGWEN__CTRL_AUX_REGWEN_reset || nmi_count() != expected_nmi) {
+        printf("ERROR: AES sibling was affected by TRNG-only reset\n");
+        test_fail(1);
+    }
+
+    for (size_t i = 0; i < sizeof(trng_ports) / sizeof(trng_ports[0]); i++) {
+        WRITE_REG(trng_ports[i].probe_addr, trng_ports[i].write_val);
+        printf("TRNG %s isolated WRITE returned\n", trng_ports[i].name);
+        expected_nmi++;
+        if (nmi_count() != expected_nmi) {
+            printf("ERROR: TRNG %s isolated write did not raise NMI\n", trng_ports[i].name);
+            test_fail(1);
+        }
+
+        (void)READ_REG(trng_ports[i].probe_addr);
+        printf("TRNG %s isolated READ returned\n", trng_ports[i].name);
+        expected_nmi++;
+        if (nmi_count() != expected_nmi) {
+            printf("ERROR: TRNG %s isolated read did not raise NMI\n", trng_ports[i].name);
+            test_fail(1);
+        }
+    }
+
+    WRITE_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR, SW_RESET_N_DEFAULT);
+    (void)READ_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
+    for (size_t i = 0; i < sizeof(trng_ports) / sizeof(trng_ports[0]); i++) {
+        uint32_t rd = READ_REG(trng_ports[i].probe_addr);
+        if (rd != 0u || nmi_count() != expected_nmi) {
+            printf("ERROR: TRNG %s did not reopen at reset default (0x%08x)\n", trng_ports[i].name,
+                   rd);
+            test_fail(1);
+        }
+    }
+    printf("TRNG three-port isolate/reset/release OK\n");
+
+    /*
+     * Step 4: Sanity-check SW_RESET_N ended at its default
      */
     uint32_t sw_reset_n_restored = READ_REG(OCH_SEP_TOP_SEP_RESET_CTRL_SW_RESET_N_BASE_ADDR);
     printf("Final SW_RESET_N value: 0x%08x\n", sw_reset_n_restored);
-    if (sw_reset_n_restored != 0x1eu) {
-        printf("ERROR: SW_RESET_N is not at default 0x%08x after test\n", 0x1eu);
+    if (sw_reset_n_restored != SW_RESET_N_DEFAULT) {
+        printf("ERROR: SW_RESET_N is not at default 0x%08x after test\n", SW_RESET_N_DEFAULT);
         test_fail(1);
     }
 
     /*
-     * Step 4: Probe just past the sep_reset_ctrl window (0x10803008+).
+     * Step 5: Probe just past the sep_reset_ctrl window (0x10803008+).
      * The xbar window is 0x8 bytes, so this access should be caught by
      * the xbar's decode-error path.
      */
     const uint32_t bad_addr = OCH_SEP_TOP_SEP_RESET_CTRL_BASE_ADDR + 0x8;
 
-    printf("Step 4: probing unmapped gap at 0x%08x...\n", bad_addr);
-    printf("Step 4: WRITE 0xDEADBEEF -> 0x%08x\n", bad_addr);
+    printf("Step 5: probing unmapped gap at 0x%08x...\n", bad_addr);
+    printf("Step 5: WRITE 0xDEADBEEF -> 0x%08x\n", bad_addr);
     WRITE_REG(bad_addr, 0xDEADBEEF);
-    printf("Step 4: WRITE returned\n");
+    printf("Step 5: WRITE returned\n");
 
-    printf("Step 4: READ <- 0x%08x\n", bad_addr);
+    printf("Step 5: READ <- 0x%08x\n", bad_addr);
     uint32_t bad_rd = READ_REG(bad_addr + 0x8);
-    printf("Step 4: READ returned 0x%08x\n", bad_rd);
+    printf("Step 5: READ returned 0x%08x\n", bad_rd);
 
     expected_nmi += 2;
     uint32_t final_count = nmi_count();
-    printf("Step 4: NMI count %u (expected %u: 2 per isolated accelerator + 2 from bad write and "
-           "read)\n",
+    printf("Step 5: NMI count %u (expected %u: 2 per isolated accelerator/TRNG port + 2 from "
+           "bad write and read)\n",
            final_count, expected_nmi);
     if (final_count != expected_nmi) {
         printf("ERROR: expected %u NMIs total, got %u\n", expected_nmi, final_count);

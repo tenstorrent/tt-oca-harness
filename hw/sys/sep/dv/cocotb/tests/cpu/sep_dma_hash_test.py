@@ -22,23 +22,22 @@ import os
 from pathlib import Path
 
 import pyuvm
-
-from sep_base_test import sep_base_test
 from env.sep_boot_scoreboard import SepBootScoreboard
+from sep_base_test import sep_base_test
+from sep_reg_meta import sym
 
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
 _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "dma_hash_test")
 _ITCM_HEX = os.path.join(_FW_DIR, "dma_hash_test.itcm.hex")
 _DTCM_HEX = os.path.join(_FW_DIR, "dma_hash_test.dtcm.hex")
 
-_ICCM_BASE = 0xC000_0000
+_ICCM_BASE = sym("SEP_ICCM_MEM_BASE_ADDR")
 # DMA copy + inline SHA-256 + a software SHA-256 over 256 bytes; the run loop
 # early-exits on fw_done, so this is just an upper bound.
 _MAX_RUN_CYCLES = 3_000_000
 _NO_BOOT_CYCLES = 80_000
 _PROGRESS_EVERY = 5_000
-# Must match the banner dma_hash_test.c actually prints; the firmware was
-# retitled without updating this string.
+# Must match the banner dma_hash_test.c actually prints.
 _BANNER = "Secure DMA SHA-256 Hash Test"
 
 
@@ -57,7 +56,9 @@ class sep_dma_hash_test(sep_base_test):
         # build_phase, which resets it to the hello_world default).
         self.sb.expected_line = _BANNER
         await self.boot_firmware(
-            self.sb, _ITCM_HEX, _DTCM_HEX,
+            self.sb,
+            _ITCM_HEX,
+            _DTCM_HEX,
             rst_vec=_ICCM_BASE >> 1,
             max_run_cycles=_MAX_RUN_CYCLES,
             no_boot_cycles=_NO_BOOT_CYCLES,

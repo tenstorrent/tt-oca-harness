@@ -22,8 +22,6 @@ static void run_test_suite(test_context_t *ctx) {
     int retval;
 
     // Execute 10 random OCCP commands before jump
-    // simputs("=== Random OCCP Commands Test (10 commands) ===\n");
-    // execute_random_commands(ctx, 10);
 
     simputs("=== Jump Command Test ===\n");
 

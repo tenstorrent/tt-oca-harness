@@ -21,14 +21,8 @@
 #include "sha256.h"
 #include "sep_pic.h"
 
-// Interrupt source IDs (from hw/sys/sep/rtl/sep.sv). PIC source = internal index + 1
-// (VeeR EL2 PIC source 0 is the tied no-interrupt source). After the 8-slot
-// mailbox reallocation, the DMA interrupts moved up by 8:
-//   intr_dma_done       -> sep_internal_interrupts[8]  -> PIC source 9
-//   intr_dma_chunk_done -> sep_internal_interrupts[10] -> PIC source 11
-//   intr_dma_error      -> sep_internal_interrupts[11] -> PIC source 12
+// PIC source = sep_internal_interrupts index + 1 (done [8]->9, error [11]->12).
 #define EXT_INT_DMA_DONE 9
-#define EXT_INT_DMA_CHUNK_DONE 11
 #define EXT_INT_DMA_ERROR 12
 
 // Flag set by interrupt handler
@@ -44,23 +38,11 @@ void __attribute__((interrupt("machine"))) dma_isr(void) {
 }
 
 // CFG_REGWEN values (multi-bit bool)
-#define MUBI4_TRUE 0x6  // Unlocked
-#define MUBI4_FALSE 0x9 // Locked
+#define MUBI4_TRUE 0x6 // Unlocked
 
-// ASID values (from RDL enum asid_e)
-#define ASID_OT_ADDR 0x7  // OpenTitan 32-bit internal bus
-#define ASID_SYS_ADDR 0x9 // SoC system address bus
-#define ASID_SOC_ADDR 0xa // SoC control register bus
-
-// Opcode values (from RDL enum opcode_e)
-#define OPCODE_COPY 0x0
+// ASID / opcode / width used by this SHA-256 copy.
+#define ASID_OT_ADDR 0x7
 #define OPCODE_SHA256 0x1
-#define OPCODE_SHA384 0x2
-#define OPCODE_SHA512 0x3
-
-// Transfer width values (from RDL enum transfer_width_e)
-#define TRANSFER_WIDTH_ONE_BYTE 0x0
-#define TRANSFER_WIDTH_TWO_BYTE 0x1
 #define TRANSFER_WIDTH_FOUR_BYTE 0x2
 
 // Test data size in bytes - must be a multiple of 4
@@ -180,7 +162,8 @@ int main(void) {
            READ_REG(OCH_SEP_TOP_SECURE_DMA_ADDR_SPACE_ID_BASE_ADDR));
 
     // Set the transfer width to 4 bytes
-    secure_dma__TRANSFER_WIDTH_t transfer_width = {.f = {.TRANSACTION_WIDTH = TRANSFER_WIDTH_FOUR_BYTE}};
+    secure_dma__TRANSFER_WIDTH_t transfer_width = {
+        .f = {.TRANSACTION_WIDTH = TRANSFER_WIDTH_FOUR_BYTE}};
     WRITE_REG(OCH_SEP_TOP_SECURE_DMA_TRANSFER_WIDTH_BASE_ADDR, transfer_width.w);
 
     // Set the chunk data size (single chunk = total size)
@@ -337,9 +320,7 @@ int main(void) {
         }
     }
 
-    // Gate the pass token on the compare it claims to report. Printed
-    // unconditionally it appeared in failing runs too, so a log containing it
-    // was not evidence that the copy matched.
+    // Gate the pass token on the compare it claims to report.
     if (copy_mismatches == 0) {
         printf("  PASS: SRAM and DCCM data matches!\n");
     }

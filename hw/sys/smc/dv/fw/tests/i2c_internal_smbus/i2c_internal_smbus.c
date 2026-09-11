@@ -234,21 +234,6 @@ static void debug_controller_status(uint32_t idx, const char *label) {
     write_scratch(1, 0x00000076); // After reading SMBUS_STATUS
 
     // Commented out simputs to avoid blocking - use scratchpad markers instead
-    // simputs("  [DEBUG Controller] ");
-    // simputs(label);
-    // simputs(" FMT:");
-    // simputshex32("", fmt_status.f.FMTLVL);
-    // simputs(" RX:");
-    // simputshex32("", fmt_status.f.RXLVL);
-    // simputs(" Status:0x");
-    // simputshex32("", status_val);
-    // simputs(status.f.HOSTIDLE ? " IDLE" : " BUSY");
-    // simputs(" SMBus:0x");
-    // simputshex32("", smbus_status_val);
-    // if (smbus_status.f.SMBALERT) {
-    // 	simputs(" ALERT#_LOW");
-    // }
-    // simputs("\n");
 
     write_scratch(1, 0x00000077); // Before exit debug_controller_status
 }
@@ -286,21 +271,6 @@ static void debug_target_status(uint32_t idx, const char *label) {
     write_scratch(1, 0x0000006C); // After reading SMBUS_CTRL
 
     // Commented out simputs to avoid blocking - use scratchpad markers instead
-    // simputs("  [DEBUG Target] ");
-    // simputs(label);
-    // simputs(" TX:");
-    // simputshex32("", tx_status.f.TXLVL);
-    // simputs(" ACQ:");
-    // simputshex32("", tx_status.f.ACQLVL);
-    // simputs(" Status:0x");
-    // simputshex32("", status_val);
-    // simputs(status.f.TARGETIDLE ? " IDLE" : " BUSY");
-    // simputs(" SMBUS_CTRL:0x");
-    // simputshex32("", smbus_ctrl_val);
-    // if (smbus_ctrl.f.SMBALERT) {
-    // 	simputs(" ALERT");
-    // }
-    // simputs("\n");
 
     write_scratch(1, 0x0000006D); // Before exit debug_target_status
 }
@@ -563,70 +533,37 @@ int main(void) {
     // by sending its own 7-bit address (shifted left by 1 bit)
     // Note: Target address1 is configured as 0x0C (ARA) to respond to ARA reads
     write_scratch(1, 0x00000056); // Start preparing TX FIFO
-    // Commented out simputs to avoid blocking
-    // simputs("  [PROGRESS] Preparing Target TX FIFO...\n");
-    // simputs("  Preparing Target TX FIFO with address for ARA response...\n");
-    // simputs("  Target configured with address0=0x");
-    // simputshex32("", TARGET_ADDR);
-    // simputs(", address1=0x");
-    // simputshex32("", SMBUS_ADDR_ARA);
-    // simputs(" (ARA)\n");
 
     uint8_t target_addr_byte = (TARGET_ADDR << 1); // 7-bit address << 1 for I2C format
     write_scratch(1, 0x00000057);                  // Before calling i2c_target_transmit
-    // Commented out simputs to avoid blocking
-    // simputs("  [PROGRESS] Calling i2c_target_transmit...\n");
     uint32_t written = i2c_target_transmit(TARGET_IDX, &target_addr_byte, 1);
     write_scratch(1, 0x00000058); // After i2c_target_transmit
-    // Commented out simputs to avoid blocking
-    // simputs("  [PROGRESS] i2c_target_transmit returned: ");
-    // simputshex32("", written);
-    // simputs("\n");
 
     if (written != 1) {
-        // Commented out simputs to avoid blocking
-        // simputs("  ERROR: Failed to prepare Target TX FIFO for ARA response\n");
         write_scratch(0, 0xBAD00051);
         test_fail(0);
     }
-    // Commented out simputs to avoid blocking
-    // simputs("  Target TX FIFO prepared with address: 0x");
-    // simputshex32("", target_addr_byte);
-    // simputs("\n");
 
     // Debug: After preparing TX FIFO (simplified)
     write_scratch(1, 0x00000059); // Before debug after TX FIFO
-    // Commented out simputs to avoid blocking
-    // simputs("  [PROGRESS] Debug after TX FIFO prep...\n");
     debug_target_status(TARGET_IDX, "After TX FIFO");
     debug_controller_status(CONTROLLER_IDX, "Before ARA cmd");
-    // Commented out simputs to avoid blocking
-    // simputs("  [PROGRESS] Debug done\n");
     write_scratch(1, 0x0000005A); // Debug done marker
 
     // Execute ARA read: Controller reads from Alert Response Address (0x0C)
     write_scratch(1, 0x0000005B); // Start ARA read transaction
     // Commented out simputs to avoid blocking
-    // simputs("  [PROGRESS] Starting ARA read transaction...\n");
-    // simputs("  Executing ARA read transaction...\n");
-    // simputs("  Controller sending START + ARA address (0x0C << 1 | 1 = 0x19)...\n");
 
     // Check Controller idle before ARA read
     write_scratch(1, 0x0000005C); // Before waiting for Controller idle
     // Commented out simputs to avoid blocking
-    // simputs("  [PROGRESS] Waiting for Controller to be idle...\n");
     int idle_ret = i2c_controller_wait_idle(CONTROLLER_IDX, I2C_TIMEOUT_DEFAULT);
     write_scratch(1, 0x0000005D); // After waiting for Controller idle
     if (idle_ret != I2C_OK) {
         // Commented out simputs to avoid blocking
-        // simputs("  ERROR: Controller not idle before ARA read (error: ");
-        // simputshex32("", idle_ret);
-        // simputs(")\n");
         write_scratch(0, 0xBAD00052);
         test_fail(0);
     }
-    // Commented out simputs to avoid blocking
-    // simputs("  [PROGRESS] Controller is idle, proceeding with ARA read...\n");
     write_scratch(1, 0x0000005E); // Controller idle confirmed
 
     uint8_t alert_addr = 0;
@@ -641,8 +578,6 @@ int main(void) {
         .w = read_reg(tgt_base_before + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
                                          SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
-    // Commented out simputs to avoid blocking
-    // simputs("  [PROGRESS] Calling smbus_alert_response...\n");
     ret = smbus_alert_response(CONTROLLER_IDX, &alert_addr);
     write_scratch(1, 0x00000060); // After smbus_alert_response returned
 

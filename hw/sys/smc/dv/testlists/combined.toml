@@ -6,7 +6,7 @@ name = "smc_combined_observability_test"
 module = "smc_combined_observability_test"
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "ci", "combined", "pyuvm"]
+tags = ["ci", "combined", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -14,7 +14,7 @@ name = "smc_irq_during_powergood_glitch_test"
 module = "smc_irq_during_powergood_glitch_test"
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "ci", "combined", "pyuvm"]
+tags = ["ci", "combined", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -22,7 +22,7 @@ name = "smc_5agent_observability_test"
 module = "smc_5agent_observability_test"
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "ci", "combined", "pyuvm"]
+tags = ["ci", "combined", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -30,7 +30,7 @@ name = "smc_6agent_observability_test"
 module = "smc_6agent_observability_test"
 seed = 1
 timeout_sec = 1800
-tags = ["smoke", "ci", "pyuvm"]
+tags = ["ci", "pyuvm"]
 run_modes = ["smoke"]
 
 [[tests]]
@@ -40,7 +40,7 @@ seed = 1
 timeout_sec = 1800
 tags = [
     "smoke", "ci", "combined", "canonical",
-    "canonical_top6", "canonical_top10", "canonical_top20", "pyuvm"
+    "pyuvm"
 ]
 run_modes = ["smoke"]
 

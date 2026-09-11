@@ -76,9 +76,9 @@ core TAP contracts:
 BFM-internal navigation (for example a scan that returns to Run-Test/Idle),
 call `sync_state()` so predictions restart from the true controller state.
 
-Monitors deliberately log and catch callback exceptions. An attached checker
-therefore retains its protocol error before raising, and the owning test or
-scoreboard must call `finalize()` after traffic. For worked integrations, see
+Monitors log and catch callback exceptions, so an attached checker retains its
+protocol error before raising, and the owning test or scoreboard must call
+`finalize()` after traffic. For worked integrations, see
 the DTP `dtp_jtag_idcode_test`, `dtp_jtag_bypass_test`,
 `dtp_jtag_tlr_reset_test`, and `dtp_jtag_trst_test` sequences (via
 `dtp_jtag_base_test_seq.attach_tap_checker`).
@@ -143,7 +143,7 @@ ocah_jtag_vip/
 | `ocah_jtag_slave_config` | Slave device configuration: IDCODE, IR width, register map (`add_reg`), `drive_tdo_oen` |
 | `ocah_jtag_slave_driver` | Reactive TAP device responder: capture/shift/update per IEEE 1149.1, Update-DR latches recorded in `updates` |
 | `ocah_jtag_slave_monitor` | Slave-side passive observer (same `ocah_jtag_event` stream as the master monitor) |
-| `ocah_jtag_slave_sequence` | Slave test-facing API: `set_register`/`get_register`, `check_last_update`, `check_update_count` |
+| `ocah_jtag_slave_sequence` | Slave test-facing API: `set_register`/`get_register`, `check_last_update`, `check_update_count`, `check_register` (a value still held, independent of the update history), `check_state` (the device's TAP controller state) |
 | `ocah_jtag_slave_agent` | Slave bundle (reactive: no sequencer — the external host supplies all stimulus) |
 
 `sva/ocah_jtag_sva.sv` is the pin-level protocol assertion module (X-hygiene,
@@ -152,7 +152,9 @@ state-encoding/transition legality, TRST/TMS-walk reset behavior, and the
 TDO-enable shift-only window, each citing its IEEE Std 1149.1 clause). It is
 instantiated at TB scope next to flattened nets or bound into a hierarchy,
 with a runtime `en_i` suppress knob; the DTP integration wires it to the
-primary TAP with `dtp_tb_if.jtag_sva_en`.
+primary TAP with `dtp_tb_if.jtag_sva_en`. The TDO-timing and TAP-state rules
+run on every simulator (Verilator under `--assert`); the X-hygiene rules run
+on four-state simulators only.
 
 The package also ships an encoding-agnostic IEEE 1149.1 TAP model
 (`ocah_jtag_tap_state_e`, `ocah_jtag_next_state()`, and the shortest-path
@@ -189,8 +191,11 @@ through the `_slave_sequence` API. The protocol engine
 (`OcahJtagSlaveEngine`) holds no simulator handles and is validated
 standalone against the master-side reference model by
 `cocotb/examples/example_slave_selftest.py` (runnable with plain Python).
-No DUT integration consumes the slave side yet; DUT host-port testbenches
-(STAP/BSR loopback replacements) are the intended first consumers.
+The DTP testbench consumes it: its STAP-selection scenarios splice
+one slave device behind each `jtag_stap_*_host` port (cocotb
+`hw/sys/dtp/dv/cocotb/env/dtp_stap_ds_agent.py`, SV-UVM `dtp_env`) and judge
+selection, gating, and recovery through `check_last_update`,
+`check_update_count`, `check_register`, and `check_state`.
 
 ## Template Contract (per-protocol VIPs and commercial plug-ins)
 
@@ -208,8 +213,16 @@ unit, matching the delivery granularity of commercial VIPs (e.g. Synopsys
 Everything above that surface (DUT sequences, tests, checkers, testlists)
 depends only on the item and event types, never on driver/monitor internals.
 
-**Using a commercial VIP is a user-implemented integration** — the template
-does not hide that work, it gives it exactly one home per protocol:
+**Using a commercial VIP is a companion-implemented integration.** The open
+tree carries only the hooks — the opaque `vendor_cfg` extension, the
+`cfg.en_monitor` knob, the guarded vendor-interface nest, and the
+factory-overridable env — and every implementation built on them lives in
+the proprietary `nonfree/` companion repository (see the top-level
+AGENTS.md), never here. The dependency is strictly one-way: the companion
+subclasses these types and overlays this flow, while the open tree never
+references companion paths and builds, runs, and passes without it. The
+template does not hide the integration work; it gives it exactly one home
+per protocol:
 
 1. **Inherit the env (and agent if needed).** Subclass `ocah_<proto>_env`;
    build the vendor system env (e.g. `svt_axi_system_env` +
@@ -229,19 +242,21 @@ does not hide that work, it gives it exactly one home per protocol:
    checkers, scoreboards) must be re-pointed to vendor analysis streams or
    fed by an adapter subscriber — part of the integration.
 4. **Nest the vendor interface inside `ocah_<proto>_if`.** The vendor VIP
-   brings its own SV interface; instantiate it INSIDE the OCAH interface
-   (guarded `ifdef OCAH_<PROTO>_VENDOR_IF` hook), wired from the OCAH
-   interface's boundary signals, and publish the nested instance with one
-   `uvm_config_db::set`. DUT tb_tops never touch vendor collateral.
-5. **Flow.** Vendor compile/setup args ride the existing per-DUT
-   `[build.vcs]` `analyze_args`/`compile_args`/`elab_args` and `sources`
-   keys (e.g. `-ntb_opts svt`, DesignWare incdirs); license-env gating is
+   brings its own SV interface; the OCAH interface carries a guarded hook
+   (`` `ifdef OCAH_<PROTO>_VENDOR_IF `` around
+   `` `include "ocah_<proto>_vendor_if.svh" ``) that instantiates it INSIDE
+   the OCAH interface. The integration supplies that `.svh` on an overlay
+   incdir — the OSS tree ships no copy — wiring the vendor interface from
+   the OCAH interface's boundary signals and publishing the nested instance
+   with one `uvm_config_db::set`. DUT tb_tops never touch vendor collateral.
+5. **Flow.** Everything above rides one adopter overlay config
+   (`run_dv.py --overlay <path>`, see the runner manual's "Adopter overlay
+   layer"): the vendor package's sources/incdirs (`[build]`), the
+   `OCAH_<PROTO>_VENDOR_IF` gate define and vendor tool flags (e.g.
+   `-ntb_opts svt`) in the target tables, and the factory override
+   (`+uvm_set_type_override=ocah_<proto>_master_env,<vendor>_env`) in
+   `[sim].args` — no checked-in config changes; license-env gating is
    already part of the commercial profile contract.
-
-No commercial-VIP integration exists in-tree, so this contract is
-architecture-verified (env-level override point, monitor-disable knob,
-vendor-cfg hook, and interface-nesting hook all exist) but not
-integration-tested against a real VC VIP installation.
 
 ## Quick Start
 
@@ -295,9 +310,8 @@ tap = OcahJtagMasterDriver(
 | `await goto_state(state)` | Navigate using shortest TMS path |
 | `get_statistics()` | Return plain counters and tracked state |
 
-`reset_tap()` intentionally leaves the tracked TAP state in
-`TEST_LOGIC_RESET`. This matches DTP sanity sequences, which then step `TMS=0`
-to observe `RUN_TEST_IDLE`.
+`reset_tap()` leaves the tracked TAP state in `TEST_LOGIC_RESET`; step
+`TMS=0` afterwards to reach `RUN_TEST_IDLE`.
 
 ## Device Maps
 
@@ -337,7 +351,7 @@ checker.assert_clean()
 ```
 
 Callbacks receive `OcahJtagScanItem` objects. The item also supports
-`to_record()` for older dict-shaped callback code.
+`to_record()` for dict-shaped callback code.
 
 ## Validation
 

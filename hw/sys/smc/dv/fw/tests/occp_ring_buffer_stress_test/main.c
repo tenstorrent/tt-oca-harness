@@ -283,13 +283,6 @@ static bool generate_status_entries(test_context_t *ctx, uint32_t desired_entrie
             }
             // Disabled in the reference too: relatching was expected to append a
             // warning entry, which the model no longer predicts.
-            //   uint16_t unlatch_value =
-            //       occp_error_with_data(OCCP_SPEC_ERROR_CMD_FAILED,
-            //                            OCCP_ERROR_INTERFACE_ERROR_CODE);
-            //   if (!append_expected_entry(unlatch_value, OCCP_STATUS_MSG_WARNING)) {
-            //       return false;
-            //   }
-            //   entries_generated++;
             consecutive_failures = 0;
         }
     }
@@ -423,7 +416,6 @@ int main(void) {
     static test_context_t occp_ctx = {0};
     static ring_buffer_stress_ctx_t stress_ctx = {0};
 
-    // peripherals_out_of_reset();
     init_test(0);
 
     simputs("=== OCCP Ring Buffer Stress Test ===\n");
@@ -444,7 +436,6 @@ int main(void) {
     reset_expected_buffer();
 
     run_test_suite(&stress_ctx);
-    // finalize_test_results(&stress_ctx);
 
     if (stress_ctx.overall_result) {
         test_pass(0);

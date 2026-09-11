@@ -50,13 +50,13 @@ addrmap axil_mailbox {
         field {
             sw = r;
             hw = r;
-            desc = "If set, write fifo level is higher than threshhold set in WIRQT";
+            desc = "If set, write fifo level is higher than threshold set in WIRQT";
         } write_level_above_thresh [2:2] = 0x0;
 
         field {
             sw = r;
             hw = r;
-            desc = "If set, read fifo level is higher than threshhold set in RIRQT";
+            desc = "If set, read fifo level is higher than threshold set in RIRQT";
         } read_level_above_thresh [3:3] = 0x0;
     };
 

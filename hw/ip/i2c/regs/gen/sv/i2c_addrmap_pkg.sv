@@ -43,4 +43,4 @@ localparam longint unsigned I2C_TARGET_EVENTS_BASE_ADDR = 64'h7C;
 localparam longint unsigned I2C_SMBUS_STATUS_BASE_ADDR = 64'h80;
 
 
-endpackage;
+endpackage

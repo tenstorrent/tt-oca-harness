@@ -6,29 +6,29 @@
 //
 //--------------------------------------------------
 module prim_sync2 #(
-    parameter int unsigned WIDTH = 1,
-    parameter bit RANDOM_DELAY_GRAY_CODE = 1'b0
+  parameter int unsigned WIDTH = 1,
+  parameter bit RANDOM_DELAY_GRAY_CODE = 1'b0
 ) (
-    input  logic             i_clk,
-    input  logic [WIDTH-1:0] i_d,
-    output logic [WIDTH-1:0] o_q
+  input  logic             i_clk,
+  input  logic [WIDTH-1:0] i_d,
+  output logic [WIDTH-1:0] o_q
 );
 
 `ifndef SYNTHESIS
   wire [WIDTH-1:0] d_del;
 
   prim_sync_randomized_delay #(
-      .WIDTH                 (WIDTH),
-      .RANDOM_DELAY_RESET    (0),
-      .RANDOM_DELAY_GRAY_CODE(RANDOM_DELAY_GRAY_CODE)
+    .WIDTH                 (WIDTH),
+    .RANDOM_DELAY_RESET    (0),
+    .RANDOM_DELAY_GRAY_CODE(RANDOM_DELAY_GRAY_CODE)
   ) rand_del (
-      .i_clk(i_clk),  // input                   Clock
-      .i_d(i_d),  // input    [WIDTH-1:0  ]  Input Data
-      .i_reset_n           (1'b1           ), // input                   Active Low Reset, if synchronizer is not resetable tie to 1
-      .i_mux_sel_ovr       ({WIDTH*2{1'b0}}), // input    [WIDTH*2-1:0]  Mux Select Override Value, NOT USED FOR NOW
+    .i_clk(i_clk),  // input                   Clock
+    .i_d(i_d),  // input    [WIDTH-1:0]    Input Data
+    .i_reset_n           (1'b1           ), // input                   Active Low Reset, if synchronizer is not resettable tie to 1
+    .i_mux_sel_ovr       ({WIDTH*2{1'b0}}), // input    [WIDTH*2-1:0]  Mux Select Override Value, NOT USED FOR NOW
 
-      .o_mux_sel(),      // output   [WIDTH*2-1:0]  Output Mux Select, NOT USED FOR NOW
-      .o_d_del  (d_del)  // output   [WIDTH-1:0  ]  Delayed Data
+    .o_mux_sel(),      // output   [WIDTH*2-1:0]  Output Mux Select, NOT USED FOR NOW
+    .o_d_del  (d_del)  // output   [WIDTH-1:0]    Delayed Data
   );
 `else
   wire [WIDTH-1:0] d_del;
@@ -40,13 +40,13 @@ module prim_sync2 #(
   // EnablePrimCdcRand must stay 0 -- prim_sync_randomized_delay above already models the CDC
   // delay, and OT's internal prim_cdc_rand_delay would stack a second random delay on the path.
   prim_flop_2sync #(
-      .Width            (WIDTH),
-      .EnablePrimCdcRand(1'b0)
+    .Width            (WIDTH),
+    .EnablePrimCdcRand(1'b0)
   ) sync2 (
-      .clk_i (i_clk),
-      .rst_ni(1'b1),      // non-resettable variant; use prim_sync2r when a reset is needed
-      .d_i   (d_del),
-      .q_o   (o_q)
+    .clk_i (i_clk),
+    .rst_ni(1'b1),      // non-resettable variant; use prim_sync2r when a reset is needed
+    .d_i   (d_del),
+    .q_o   (o_q)
   );
 
 endmodule

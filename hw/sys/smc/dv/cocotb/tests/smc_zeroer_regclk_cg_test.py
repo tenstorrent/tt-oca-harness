@@ -2,20 +2,16 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """
 DV-CARD: SMC_ZEROER_REGCLK_CG_TEST ANCHOR: smc_zeroer_regclk_cg_test
-DV-CARD-REVISION: 1 RECORD-SHA256: 47e3381f135bfb76907ef06f89d4eb70bb30c6c7bb0232bb56dee36072ecbd1b
-DV-CARD-SOURCE: hw/sys/smc/dv/tb/SMC_CLOCK_GATING_VPLAN_DETAIL.md @ artifact_revision 1 ENV: cocotb
 
 DV-CARD: SMC_CG_P2_003 ANCHOR: smc_zeroer_regclk_cg_test
-DV-CARD-REVISION: 1 RECORD-SHA256: 93666c6c76e78b0f181dba725025d1652ff5407526e20c4421403218b24e290e
-DV-CARD-SOURCE: hw/sys/smc/dv/tb/SMC_CLOCK_GATING_P2_VPLAN_DETAIL.md @ artifact_revision 1 ENV: cocotb
 """
 
 from __future__ import annotations
 
 import pyuvm
 from env.smc_protocol_vip_item import SmcProtocolVipKind
-from smc_base_test import smc_base_test
 from seq_lib.smc_zeroer_regclk_cg_test_seq import smc_zeroer_regclk_cg_test_seq
+from smc_base_test import smc_base_test
 
 
 @pyuvm.test()
@@ -28,8 +24,6 @@ class smc_zeroer_regclk_cg_test(smc_base_test):
     async def run_scenario(self) -> None:
         seq = smc_zeroer_regclk_cg_test_seq("zeroer_regclk_cg_seq")
         await self.start_seq(seq, self.env.sys_axi_agent.sequencer)
-        # P1 tokens are unchanged (additive extension keeps the closed P1
-        # grade valid); the P2 (SMC_CG_P2_003) tokens are appended.
         required = (
             "CHK-ZREG-GATE-OFF-IDLE",
             "CHK-ZREG-ACTIVITY-ENABLE",
@@ -46,6 +40,11 @@ class smc_zeroer_regclk_cg_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.ZEROER_DMA,
             type(self).__name__,
+            # Conservative stimulus floor: 23 accesses observed in the retained
+            # regression run; the zeroer-DONE poll is a timing-dependent
+            # remainder, so the floor is set below it. Literal here, not read
+            # from `seq.accesses`.
+            min_csr_accesses=18,
             csr_accesses=seq.accesses,
             timeouts=seq.timeouts,
             proxy=False,
