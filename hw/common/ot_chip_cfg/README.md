@@ -16,5 +16,3 @@ and `top_racl_pkg` because vendor RTL writes those identifiers.
 |------|------------------|
 | `top_pkg.sv` | TL-UL widths (address, data, user, source, sink) |
 | `top_racl_pkg.sv` | Register-access-control types on OT IP ports |
-
-Product access control is not `top_racl_pkg`.
