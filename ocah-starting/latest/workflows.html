@@ -227,9 +227,6 @@
 <p>More details on Yosys/Synthesis once finalised - Port local PDK usage from <code>lowrisc/container-testing</code></p>
 </li>
 <li>
-<p>Register Generation User Guide Page?</p>
-</li>
-<li>
 <p>DV FW sections reference source files frequently, how necessary is this?</p>
 </li>
 <li>
@@ -377,9 +374,6 @@ HJSON-backed OpenTitan blocks are first exported to RDL via
 <code>make regen-regs</code> to regenerate; committed generated output always corresponds to the
 RDL sources. The flow lives in <code>hw/common/regs/</code> (discovery, classification, and rules).</p>
 </div>
-<div class="paragraph">
-<p>TODO - README implied the desire for a dedicated page on this?</p>
-</div>
 </div>
 </div>
 <div class="sect1">
@@ -471,6 +465,122 @@ the shared <code>compile.mk</code> engine):</p>
 <pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash"># Prefix with `scripts/docker-run.sh run` to use the container toolchain
 make -C hw/sys/smc/bootrom/prod</code></pre>
 </div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="sep-boot-rom"><a class="anchor" href="#sep-boot-rom"></a><a class="link" href="#sep-boot-rom">3.3. SEP boot ROM</a></h3>
+<div class="paragraph">
+<p><code>hw/sys/sep/bootrom/prod/</code> is a self-contained production boot ROM for the SEP subsystem (VeeR EL2), with its own includes, drivers, and link script.
+It implements the full secure-boot flow — manifest loading, RSA-3072 signature verification on OTBN, optional AES payload decryption, PMP setup, and lifecycle enforcement — and uses weak stubs so the open tree links cleanly; nonfree drivers override them at link time via <code>NONFREE_BOOTCODE_SOURCES</code> (same pattern as the SMC prod ROM).</p>
+</div>
+<div class="paragraph">
+<p>The ROM supports two SPI transports selected at build time by <code>BOOT_SPI_CONTROLLER_OT</code>; the unused driver is dropped by <code>--gc-sections</code> at link time.
+The open-source driver uses the OpenTitan SPI host (<code>BOOT_SPI_CONTROLLER_OT=1</code>).
+A proprietary memory-mapped SPI controller is also supported, plugged via the SEP extension port (<code>BOOT_SPI_CONTROLLER_OT=0</code>), but is optional from the OCAH open tree&#8217;s perspective.</p>
+</div>
+<div class="paragraph">
+<p>The DV <code>sep</code> testbench has no SPI flash, so the ROM stubs SPI (<code>src/sep_spi.c</code>) and boots instead from the SMC-SRAM manifest path; <code>make pack-images</code> builds and packs the matching manifest+BL1 image (<code>build/smc_mem.hex</code>).</p>
+</div>
+<div class="paragraph">
+<p>The build is split into two halves so each can run in the correct environment:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>toolchain-images</code> — RISC-V/picolibc compilation; use the container toolchain when <code>RISCV_TOOLCHAIN</code> is unset.</p>
+</li>
+<li>
+<p><code>pack-images</code> — pure Python manifest packing via the <code>tt-boot-manifest</code> submodule (requires <code>uv</code>); runs on the host without the container.</p>
+</li>
+</ul>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash"># OpenTitan SPI-host build (outputs to build_ot/):
+# Prefix with `scripts/docker-run.sh run` to use the container toolchain
+make -C hw/sys/sep/bootrom/prod ot-toolchain-images
+
+# Signed (secure boot) SPI flash image — requires the tt-boot-manifest submodule:
+# git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-boot-manifest
+make -C hw/sys/sep/bootrom/prod secure_boot_spi
+
+# Encrypted+signed SPI flash image (AES key derived from the CLASS_KEY fuse):
+make -C hw/sys/sep/bootrom/prod encrypted_boot_spi</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Outputs land under <code>hw/sys/sep/bootrom/prod/build_ot/</code> (signed/encrypted images land in <code>build/</code>):</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>boot_rom.vmem</code> — 64-bit VMEM for the Boot ROM responder.</p>
+</li>
+<li>
+<p><code>boot_rom.itcm.hex</code> — ROM <code>.text</code> as ICCM-relative byte hex.</p>
+</li>
+<li>
+<p><code>boot_rom.dtcm.hex</code> — <code>.data</code>/<code>.bss</code> initial image as DCCM-relative byte hex.</p>
+</li>
+<li>
+<p><code>smc_mem.hex</code> — packed manifest+BL1 image rebased to the SMC-SRAM base, for the DV testbench.</p>
+</li>
+<li>
+<p><code>secure_boot.spi_preload</code> / <code>encrypted_boot.spi_preload</code> — SPI flash preload images (built by the corresponding targets above).</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="km-boot-rom"><a class="anchor" href="#km-boot-rom"></a><a class="link" href="#km-boot-rom">3.4. KM boot ROM</a></h3>
+<div class="paragraph">
+<p>The Key Manager (KM) subsystem (PicoRV32) has no dedicated <code>bootrom/</code> directory.
+Its ROM firmware lives in the DV firmware tree at <code>hw/ip/key_manager/dv/fw/</code> and is built by the same shared engine (<code>compile.mk</code>) used for DV tests.</p>
+</div>
+<div class="paragraph">
+<p>Two link modes are discovered from <code>hw/ip/key_manager/dv/fw/link/modes/</code>:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>vrom</code> (default for test images) — the ROM carries only the interrupt-vector sections (<code>.text.reset</code>, <code>.text.irq_vec</code>, <code>.text.irq_handler</code>); the rest of the code runs from a side-loaded Virtual ROM (VROM).</p>
+</li>
+<li>
+<p><code>rom</code> — the entire image runs from ROM with no VROM.
+The production entry point (<code>production/rom_main</code>) and all <code>sep_images/</code> entries always use this mode.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>The production entry point is <code>production/rom_main/rom_main.c</code>.
+It runs forever serving the KM mailbox and is not enumerated by the test regression (only <code>tests/test_*</code> directories are).
+The SEP UVM testbench loads all KM ROM images via <code>+KM_ROM_HEX_FILE</code>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-bash hljs" data-lang="bash"># Build the production ROM entry (uses the standard DV firmware dispatcher):
+# Prefix with `scripts/docker-run.sh run` to use the container toolchain
+make dv-fw-tests TARGET=key_manager TEST=rom_main</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Outputs land under <code>hw/ip/key_manager/dv/fw/build/tests/rom_main/</code>:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>rom_main.rom.elf</code> — linked ELF.</p>
+</li>
+<li>
+<p><code>rom_main.rom.hex</code> — address-zero-based Verilog hex for the ROM responder.</p>
+</li>
+<li>
+<p><code>rom_main.rom.parhex</code> — parity-annotated hex (used by the KM RTL&#8217;s ROM model).</p>
+</li>
+<li>
+<p><code>rom_main.rom.sym</code> / <code>rom_main.sym</code> — symbol tables (the bare <code>rom_main.sym</code> lets the SEP UVM resolve firmware symbols from the <code>rom</code>-mode image).</p>
+</li>
+</ul>
 </div>
 </div>
 </div>
