@@ -28,6 +28,7 @@ MOD="${OCAH_DOC_PRODUCT_MODULES:-$PRODUCT/modules}"
 ASSETS="${OCAH_DOC_PRODUCT_ASSETS:-$PRODUCT/assets}"
 COMMON_ASSETS="$DOC/trm/assets"
 AOU_DOC="$ROOT/vendor/tenstorrent/aou/upstream/DOC/MAS"
+AOU_INTEGRATION_GUIDE="$ROOT/vendor/tenstorrent/aou/upstream/DOC/integration_guide"
 
 SUBSYSTEMS="smc sep dtp"
 PORT_TABLE_SYS="smc sep dtp smu"
@@ -146,7 +147,7 @@ trm)
   done
   ;;
 integrator)
-  cp -f "$AOU_DOC/integration.adoc" "$MOD/aou/partials/"
+  cp -f "$AOU_INTEGRATION_GUIDE/integrator.adoc" "$MOD/aou/partials/"
   ;;
 programmer)
   cp -f "$AOU_DOC/software-operation.adoc" "$MOD/aou/partials/"
@@ -217,6 +218,7 @@ stage_module_assets "$ASSETS"
 # module, so the images must also land in ROOT (every product includes the
 # AOU partial from a ROOT page).
 stage_module_assets "$AOU_DOC/assets" "aou ROOT"
+stage_module_assets "$AOU_INTEGRATION_GUIDE/assets" "aou ROOT"
 
 # Postprocess every location that ends up holding a copy of these images --
 # after all copying above is done.

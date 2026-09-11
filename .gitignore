@@ -66,10 +66,6 @@ doc/*/modules/aou/
 doc/*/modules/ip/
 
 
-# asciidoctor-diagram's local render cache for the AOU MAS's [plantuml]
-# blocks -- regenerated on every PDF build, never hand-authored.
-vendor/tenstorrent/aou/upstream/DOC/MAS/assets/diag-*
-
 # Local Antora install for doc builds
 .antora-tools/
 

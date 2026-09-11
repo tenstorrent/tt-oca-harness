@@ -353,24 +353,7 @@ The typical access sequence is: read the head entry, then pop it, and repeat unt
 [caption=""]
 .Figure 23. R/B Response Error Debug FIFO Access Sequence
 [[figure-23]]
-[plantuml]
-....
-@startuml
-participant "Remote Die" as RD
-participant "Local AOU" as LA
-participant "Local SW" as SW
-
-note over LA: AXI error on manager interface
-note over LA: FIFO push (ID, ADDR, RESP)
-SW -> LA: Set ERROR_INFO_ACCESS_EN = 1
-SW -> LA: Configure DEBUG_UPPER/LOWER_ADDR
-RD -> LA: AR to DEBUG_ADDR
-LA --> RD: R (FIFO head: ID + ADDR + RESP)
-RD -> LA: AW + W to DEBUG_ADDR (dummy write)
-LA --> RD: B (OKAY, head entry popped)
-note over RD: Repeat AR then AW+W for remaining entries
-@enduml
-....
+image::error-debug-fifo-access.svg[Figure 23. R/B Response Error Debug FIFO Access Sequence]
 
 [[aou-725-write-early-response-error]]
 ==== 7.2.5. Write Early Response Error
