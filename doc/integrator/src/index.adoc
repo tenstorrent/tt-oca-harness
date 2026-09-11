@@ -7,8 +7,8 @@
 :sectlinks:
 :sectnums:
 :source-highlighter: highlight.js
-:revnumber: 0.0.5
-:revdate: 2026-09-02
+:revnumber: 0.0.7
+:revdate: 2026-09-11
 :title-page-background-image: image:../assets/TT_Cover_Image.png[fit=cover]
 ifdef::backend-pdf[]
 :imagesdir: ../assets
@@ -594,7 +594,11 @@ external interrupt input vector, width `NUM_INT_TO_SMC`),
 `smc_ext_mailbox_interrupts_o` (outbound mailbox notifications, width
 `NUM_MAILBOXES`), `gpio_interrupt_o` (GPIO edge/level events, width
 `NUM_GPIO_WRAPS`), and `uart_interrupt_o` (UART TX/RX events, width `NUM_UART`).
-For the full PLIC source map see the SMC Technical Reference Manual.
+Drive `smc_ext_interrupts_i` as an active-high level or as a pulse that stays
+high long enough to be sampled on `clk_smc`. The pin is three-flop
+synchronized; a short asynchronous pulse can be lost. There is no
+edge-triggered mode. For the full PLIC source map see the SMC Technical
+Reference Manual.
 
 ==== Telemetry and Debug Integration
 

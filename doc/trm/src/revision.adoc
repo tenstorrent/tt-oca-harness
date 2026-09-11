@@ -183,4 +183,6 @@ SLVERR and no-alias decode is an integrator constraint.
 |0.5.32 |2026-09-10 |Ben Melton |Key Manager: public identity OTP fields
 (SEP_CHIPLET_ID / SEP_SIP_ID / SEP_SYS_ID) are delivered from the sensed eFuse
 shadow, dual-rail encoded like the secrets, and not blanked in secure test mode.
+|0.5.33 |2026-09-11 |Alessandro Ottaviano |Recorded that the SMC PLIC accepts
+active-high level sources or pulses long enough to be sampled on `clk_smc`.
 |=======================================================================
