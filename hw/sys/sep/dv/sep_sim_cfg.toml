@@ -393,14 +393,23 @@ outputs = [
   # nm listing for the CPU trace monitor's ROM-PC symbolization.
   "hw/sys/sep/bootrom/prod/build_ot/boot_rom.sym",
   # OCA boot-manifest images -- the format the ROM parses. Listed so --stage sim
-  # fails loudly on a stale image instead of simulating one. These are the four
-  # `oca-images` outputs the ROM tests actually load: the other thirteen the target packs
-  # belong to the virtual platform's suite and have no consumer under hw/sys/sep/dv, so
+  # fails loudly on a stale image instead of simulating one. These are the
+  # `oca-images` outputs the ROM tests actually load: the rest of what the target packs
+  # belongs to the virtual platform's suite and has no consumer under hw/sys/sep/dv, so
   # declaring them here would gate this stage on artifacts no test in it reads.
   "hw/sys/sep/bootrom/prod/build/oca_non_secure_boot.bin",
   "hw/sys/sep/bootrom/prod/build/oca_secure_boot.bin",
   "hw/sys/sep/bootrom/prod/build/oca_encrypted_boot.bin",
   "hw/sys/sep/bootrom/prod/build/oca_otp_key_boot.bin",
+  # Per-slot signed images. The ROM-key revoke families graft one slot out of these
+  # (sep_oca_mutate.rom_key_image / graft_slot) so the slot under test is signed by
+  # the key its selector names; a stale one would leave the graft anchored on a key
+  # key_digests.c no longer holds.
+  "hw/sys/sep/bootrom/prod/build/oca_rom_key1_boot.bin",
+  "hw/sys/sep/bootrom/prod/build/oca_rom_key2_boot.bin",
+  "hw/sys/sep/bootrom/prod/build/oca_rom_key3_boot.bin",
+  "hw/sys/sep/bootrom/prod/build/oca_rom_key4_boot.bin",
+  "hw/sys/sep/bootrom/prod/build/oca_rom_key5_boot.bin",
   "hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
 ]
 

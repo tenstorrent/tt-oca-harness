@@ -207,6 +207,53 @@ def slot_span(image: bytes | int, slot: str) -> tuple[int, int]:
     return start, end
 
 
+def rom_key_image(index: int) -> Path:
+    """Packed flash image whose BOTH slots are signed by ROM key slot ``index``.
+
+    Slot 0 is the shipped secure-boot image; slots 1-5 are the per-slot images
+    2166927ea added so an off-by-one in slot resolution cannot match a digest by
+    accident. Pair with :func:`graft_slot` to build a mixed image: one slot anchored
+    on a chosen key, the other left as it shipped.
+    """
+    if not 0 <= index < PUBK_SEL_NUM_ROM_KEYS:
+        raise ValueError(f"ROM key slot {index} is outside 0..{PUBK_SEL_NUM_ROM_KEYS - 1}")
+    build = _SEP_ROOT / "bootrom" / "prod" / "build"
+    name = "oca_secure_boot.bin" if index == 0 else f"oca_rom_key{index}_boot.bin"
+    p = build / name
+    if not p.is_file():
+        raise AssertionError(
+            f"{p} not found; run `make oca-images` in bootrom/prod. It is declared in "
+            f"[c_build.boot_rom_ot].outputs, so --stage sim should have failed first"
+        )
+    return p
+
+
+def graft_slot(dst: bytearray, src: bytes, slot: str) -> tuple[int, int]:
+    """Replace one slot of ``dst`` with the same slot of ``src``. Returns the span.
+
+    A whole slot moves, manifest and payload together, so what lands is a slot that
+    was signed as a unit by whichever key packed ``src`` -- it verifies rather than
+    going stale, which a field-level rewrite of the same selector cannot do. That is
+    the difference between proving the ROM refuses an authorized key it was told to
+    revoke and proving only that it refuses a key whose signature no longer checks.
+
+    Both images must devote the same byte range to the slot, which the packer's
+    shared combined layout guarantees; a payload offset is stored manifest-relative
+    (see :func:`sep_oca_payload.payload_base`), so the grafted slot stays internally
+    consistent at its new home.
+    """
+    d_start, d_end = slot_span(dst, slot)
+    s_start, s_end = slot_span(src, slot)
+    if (d_start, d_end) != (s_start, s_end):
+        raise AssertionError(
+            f"{slot} slot occupies 0x{d_start:x}..0x{d_end:x} in the destination but "
+            f"0x{s_start:x}..0x{s_end:x} in the source; the two images no longer share "
+            f"the packer's combined layout, so grafting would corrupt both slots"
+        )
+    dst[d_start:d_end] = src[s_start:s_end]
+    return d_start, d_end
+
+
 def manifest_hash_field(buf: bytes, base: int) -> bytes:
     """The manifest_hash field the packer would write for this body.
 
@@ -889,22 +936,15 @@ def can_anchor_public_key(buf: bytes, slot: str) -> bool:
     )
 
 
-def verify_public_key(buf: bytes, slot: str, *, key_slot: int | None = None) -> int:
+def verify_public_key(buf: bytes, slot: str) -> int:
     """Assert the slot's modulus is the key its selection claims. Returns the slot.
 
     Anchors OFF_PUBLIC_KEY against real bytes: if the offset were wrong the digest
     would not match, so this doubles as the layout check for the key field. When
     the key cannot be anchored from the tree (see can_anchor_public_key) the slot
     is returned unchecked.
-
-    ``key_slot`` anchors against that ROM slot instead of the one the selection
-    names, for a stimulus that rewrites the selector without touching the key: the
-    modulus is still the one the image shipped with, so the shipped slot's digest
-    is what it has to match, not the digest of whatever the new selector points
-    at.
     """
-    if key_slot is None:
-        key_slot = get_public_key_sel(buf, slot)
+    key_slot = get_public_key_sel(buf, slot)
     if not can_anchor_public_key(buf, slot):
         return key_slot
     want = rom_key_digest(key_slot)

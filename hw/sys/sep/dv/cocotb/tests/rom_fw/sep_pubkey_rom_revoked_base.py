@@ -82,68 +82,44 @@ PUBK_SEL_ROM_KEY = 0
 
 
 def select_backup_rom_slot(buf: bytearray, slot_index: int) -> tuple[int, bool]:
-    """Point the backup's ``public_key_sel`` at ROM key slot ``slot_index``.
+    """Anchor the BACKUP slot on ROM key slot ``slot_index``, signature intact.
 
-    Shared with ``sep_firmware_backup_rom_key_valid_test`` so that the positive
-    case and the revoke-0 case apply the SAME stimulus to the SAME bytes by
-    construction rather than through two copies that could drift apart. Both
-    callers pair it with the standard ``mm.break_magic(buf, "primary")``
-    failover trigger, so with ``slot_index == 0`` the two produce byte-identical
-    flash images and differ only in ``CHIPLET_PUBK_REVOKE``. Returns
-    ``(encoded_selector, tbs_changed)``.
+    Shared with ``sep_firmware_backup_rom_key_valid_test`` so that the positive case
+    and the revoke-0 case apply the SAME stimulus to the SAME bytes by construction
+    rather than through two copies that could drift apart. Both callers pair it with
+    the standard ``mm.break_magic(buf, "primary")`` failover trigger, so with
+    ``slot_index == 0`` the two produce byte-identical flash images and differ only in
+    ``CHIPLET_PUBK_REVOKE``. Returns ``(encoded_selector, grafted)``.
 
-    ``tbs_changed`` is what the caller asserts the consequences of, and it is
-    measured rather than assumed. The shipped backup already selects ROM slot 0
-    (``configs/secure_boot_test.yaml:112-114``), so for slot 0 the write is a
-    no-op: the TBS is untouched, the manifest stays fully sealed and its dev0
-    signature stays valid. For slots 1-5 the write changes the TBS, so
-    ``manifest_hash`` is recomputed and the signature goes stale -- which is
-    harmless only because revocation is reached first, and the family forbids
-    ``RSA_EXEC`` to prove that rather than assume it.
+    Slot 0 needs nothing: the shipped backup already selects it. Slots 1-5 graft in
+    the backup slot of the per-slot image signed by that key
+    (``mm.rom_key_image``), which moves manifest and payload as a unit and leaves the
+    slot signed by the key its selector now names.
+
+    That makes every member the strict case. Rewriting the selector field in place --
+    what this did before the per-slot images existed -- left the signature stale for
+    slots 1-5, so those members could only show that revocation preempts a stale
+    signature. The mirror of ``select_primary_rom_slot``; see it for the rest.
     """
-    base = mm.slot_base("backup")
-    tbs_before = bytes(buf[base : base + mm.SIGNED_REGION_END])
-    mm.set_public_key_sel(buf, "backup", selection=PUBK_SEL_ROM_KEY, index=slot_index)
-    tbs_after = bytes(buf[base : base + mm.SIGNED_REGION_END])
-    tbs_changed = tbs_before != tbs_after
+    grafted = slot_index != 0
+    if grafted:
+        mm.graft_slot(buf, mm.rom_key_image(slot_index).read_bytes(), "backup")
 
     got = mm.get_public_key_sel(buf, "backup")
     expected = slot_index & 0xF
     assert got == expected, (
-        f"backup public_key_sel encoded as 0x{got:04x}, expected 0x{expected:04x} "
-        f"(selection=PUBK_SEL_ROM_KEY, index={slot_index})"
+        f"backup public_key_sel is 0x{got:04x}, expected 0x{expected:04x}: the "
+        f"{'grafted' if grafted else 'shipped'} backup slot does not select ROM key "
+        f"{slot_index}, so this testcase would revoke a slot it never named"
     )
-    # The modulus is never touched by this stimulus, so the backup must still
-    # carry the key the ROM has in slot 0. Anchored against slot 0 explicitly for
-    # the same reason the signature below is: the selector just written names
-    # slot N, and resolving it would compare the shipped modulus against slot N's
-    # digest. verify_public_key() also proves OFF_PUBLIC_KEY still addresses the
-    # modulus, so a packer change turns into a loud failure here rather than a
-    # negative test passing for the wrong reason.
-    mm.verify_public_key(buf, "backup", key_slot=0)
-    if not tbs_changed:
-        # Nothing in the signed region moved, so the slot must still be completely
-        # sealed: payload hash, TOC digests, manifest hash and a dev0 signature
-        # that verifies. This is the assertion that makes slot 0 the strict case
-        # -- the manifest is provably valid and only the fuse refuses it.
-        pm.verify_sealed(buf, "backup")
-    else:
-        # The selector write invalidated the signature. Assert that too: if the
-        # signature somehow still verified, the write did not land in the TBS and
-        # the selector under test is not the one the ROM will read.
-        # The key that signed the shipped image, not the one the mutated
-        # selector now names: verifying under a different key would fail for
-        # that reason instead of because the signed region changed.
-        n, e_pub, _d = pm.load_rsa_private_key(pm.rom_signing_key(0))
-        sig = bytes(buf[base + mm.OFF_SIGNATURE : base + mm.OFF_SIGNATURE + pm.RSA_KEY_BYTES])
-        assert not pm.verify_pkcs1v15_sha256(tbs_after, sig, n, e_pub), (
-            "backup signature still verifies after the selector was changed; the "
-            "write did not land inside the TBS, so the ROM would read the original "
-            "selector and this testcase would prove nothing about slot "
-            f"{slot_index}"
-        )
-        mm.verify_layout(buf, "backup")
-    return got, tbs_changed
+    # Selector and modulus agree after the graft, so resolving the selector is the
+    # right check and needs no override -- and it is what separates an authorized
+    # manifest the fuse refuses from one the ROM would have refused anyway.
+    mm.verify_public_key(buf, "backup")
+    # Fully sealed, every slot: payload hash, TOC digests, manifest_hash over the TBS
+    # and a signature that verifies under the key the slot carries.
+    pm.verify_sealed(buf, "backup")
+    return got, grafted
 
 
 class sep_pubkey_rom_revoked_base(sep_backup_manifest_fail_base):
@@ -207,33 +183,29 @@ class sep_pubkey_rom_revoked_base(sep_backup_manifest_fail_base):
 
     # --- stimulus ----------------------------------------------------------
     def corrupt_backup(self, buf: bytearray) -> None:
-        got, tbs_changed = select_backup_rom_slot(buf, self._REVOKED_SLOT)
+        got, grafted = select_backup_rom_slot(buf, self._REVOKED_SLOT)
         # Pin WHICH branch this member must take, so the family cannot silently
-        # degrade. The shipped backup selects ROM slot 0, so slot 0 must be the
-        # no-op write (leaving a fully sealed manifest, the strict case) and every
-        # other slot must be a real TBS change. If the packer's backup
-        # `rom_key_index` ever moved off 0, member 0 would otherwise slide onto the
-        # weaker stale-signature branch and lose its "strictest member" status with
-        # nothing failing -- which is exactly the silent-weakening class this
-        # family's shared implementation could introduce.
-        expect_changed = self._REVOKED_SLOT != 0
-        assert tbs_changed == expect_changed, (
-            f"slot {self._REVOKED_SLOT}: TBS changed={tbs_changed}, expected "
-            f"{expect_changed}. The shipped backup manifest no longer selects ROM "
-            f"slot 0 (configs/secure_boot_test.yaml:112-114), so this member is no "
-            f"longer testing what its docstring claims"
+        # degrade. The shipped backup selects ROM slot 0, so slot 0 must need no graft
+        # and every other slot must need one. If the packer's backup selector ever
+        # moved off 0, member 0 would otherwise start grafting over a slot that was
+        # already anchored elsewhere, with nothing failing.
+        expect_grafted = self._REVOKED_SLOT != 0
+        assert grafted == expect_grafted, (
+            f"slot {self._REVOKED_SLOT}: backup grafted={grafted}, expected "
+            f"{expect_grafted}. The shipped backup manifest no longer selects ROM "
+            f"slot 0 (configs/oca_secure_boot_test.yaml), so this member is no longer "
+            f"testing what its docstring claims"
         )
         self.logger.info(
             "CHK-STIMULUS-REVOKED-SLOT: backup public_key_sel=0x%04x (ROM key slot "
-            "%d, revoked by CHIPLET_PUBK_REVOKE bit %d); TBS changed=%s, backup "
-            "manifest %s",
+            "%d, revoked by CHIPLET_PUBK_REVOKE bit %d); backup manifest %s, and fully "
+            "sealed either way -- authorized, valid, and refused only by the fuse",
             got,
             self._REVOKED_SLOT,
             self._REVOKED_SLOT,
-            tbs_changed,
-            "re-hashed, signature now stale"
-            if tbs_changed
-            else "untouched and still fully sealed with a valid dev0 signature",
+            f"grafted from {mm.rom_key_image(self._REVOKED_SLOT).name}"
+            if grafted
+            else "the shipped slot, untouched",
         )
 
     def check_efuse(self, image) -> None:
