@@ -15,18 +15,21 @@ which bit 5 does not revoke, so the ROM falls over and boots from it. Slot 0 is 
 exception and is built on the terminal base instead; the shared base measures which of
 the two applies from the image rather than trusting the slot number.
 
-What this member pins. Slot 5 has no compiled-in digest (``key_digests.c`` populates
-slot 0 only), so without the revocation bit it would be refused as
-``PUBK_SLOT_UNPROVISIONED``. Here the fuse bit changes the verdict, because the
-signature path consults the fuse bitmap BEFORE the digest table.
-``PUBK_SLOT_UNPROVISIONED`` is therefore the load-bearing forbid: seeing it would mean
-revocation was evaluated late, or not at all.
+What this member pins. The primary slot is grafted from ``oca_rom_key5_boot.bin``,
+so the manifest the ROM reads is one slot 5 genuinely authorizes: its modulus hashes
+to the digest ``key_digests.c`` holds for slot 5, and its signature verifies under
+that key. The fuse bit is the only thing standing between it and a boot, which is what
+makes the verdict attributable by construction rather than by argument.
 
-Only ``rsa_private_key.dev0.pem`` ships here, so the selector write leaves the dev0
-signature stale and this member proves the weaker property that revocation PREEMPTS the
-empty-digest arm. The stale signature is never examined -- ``RSA_EXEC`` must not appear
-before the backup read and the total count is pinned to 1 -- so the verdict stays
-attributable to revocation. Slot 0 carries the family's strict form.
+``PUBK_UNAUTHORIZED`` is therefore a load-bearing forbid: seeing it would mean the
+graft did not land and the refusal was about the key rather than about revocation. The
+ROM authorizes before it consults the revocation bitmap -- a passing boot logs
+``PUBK_SEL``, ``PUBK_AUTHORIZED``, ``PUBK_REVOKE`` in that order -- so an unauthorized
+slot never reaches the check under test. ``PUBK_SLOT_UNPROVISIONED`` is forbidden
+alongside it to catch the digest table shrinking back under this member.
+
+``RSA_EXEC`` must not appear before the backup read, and the total count is pinned to
+1, so the ROM is shown to refuse the slot before spending a modexp on it.
 
 Needs ``+esrc_noise_force``: the backup is valid, so the full RSA-3072 modexp
 runs on OTBN, which parks in UrndRefresh until EDN grants entropy. It grants

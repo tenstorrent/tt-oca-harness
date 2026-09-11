@@ -62,11 +62,12 @@ not this one's. Second, ``sep_rom_ot_secure_boot_test`` asserts that the crypto 
 reached ``RSA_VERIFY_OK`` and nothing at all about key selection; this one adds the
 selector and revocation echoes with exact counts and their ordering against the
 verifier. Third, that test has no device-side assertion; this one requires the backup
-span to be untouched. The narrowing is real and is disclosed: slot 0 is the only index
-that is valid HERE, because the only RSA signing key that ships is
-``rsa_private_key.dev0.pem`` (``bootrom/prod/tools/tt-boot-
-manifest/tests/signing_keys/``, which also holds an unusable ``ec_private_key.pem``) and
-only slot 0's digest is populated (``key_digests.c``).
+span to be untouched. The narrowing is real and is disclosed: slot 0 is the index this
+member covers because it is the one the shipped image is signed against, so it needs no
+graft. Slots 1-5 have their own keys
+(``bootrom/prod/tests/signing_keys/rsa_private_key.rom_key{1..5}.pem``) and their own
+digests, and the revoke family covers them by grafting; a positive counterpart for each
+would add a second image per slot and prove the same property six times.
 
 Markers. This ROM *defines* ``SEP_MSG_USING_ROM_KEY``
 (``bootrom/prod/include/status_values.h:97``,
@@ -109,8 +110,8 @@ _EFUSE_PRELOAD = (
     / "sep_efuse_lc_prod.toml"
 )
 
-# The only populated entry in key_digests.c, and the slot the shipped image
-# is signed against (configs/secure_boot_test.yaml:43-45).
+# The slot the shipped image is signed against, so the positive case needs no graft
+# (configs/oca_secure_boot_test.yaml). All six slots carry a digest.
 _VALID_SLOT = 0
 _PUBK_SEL_ECHO = f"PUBK_SEL=0x{_VALID_SLOT:08x}"
 _REVOKE_ECHO = "PUBK_REVOKE=0x00000000"

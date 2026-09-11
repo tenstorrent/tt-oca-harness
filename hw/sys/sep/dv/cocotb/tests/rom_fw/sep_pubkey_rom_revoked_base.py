@@ -17,37 +17,31 @@ checks. :meth:`check_efuse` additionally requires the fuse bitmap to be EXACTLY
 this slot's bit, so a wider bitmap -- which could reject the manifest through a
 slot the testcase did not select -- fails loudly instead of passing.
 
-WHY REVOCATION IS THE ONLY POSSIBLE VERDICT, Per slot. The signature path consults the
-fuse bitmap BEFORE the compiled-in digest table  and before ``rsa_3072_verify``. Slot 0
-is the only populated entry in ``key_digests.c``; slots 1-5 are ``(void *)0``. So:
+WHY REVOCATION IS THE ONLY POSSIBLE VERDICT, per slot. The signature path resolves the
+selector, AUTHORIZES the key against the compiled-in digest table, consults the fuse
+bitmap, and only then runs ``rsa_3072_verify``: a passing boot logs ``PUBK_SEL``,
+``PUBK_AUTHORIZED``, ``PUBK_REVOKE``, ``RSA_EXEC`` in that order. ``key_digests.c``
+populates all six slots, each with a different key.
 
-  * slots 1-5 would otherwise be rejected as ``PUBK_SLOT_UNPROVISIONED``, and forbidding
-    that marker is what pins the ORDER -- revocation before the digest table;
-  * slot 0 would otherwise boot, because the shipped image genuinely binds to it
-    (``configs/secure_boot_test.yaml:112-114``), so revocation is the sole cause
-    of the rejection and ``RSA_EXEC`` / ``RSA_VERIFY_OK`` are the load-bearing
-    forbids there.
+Every member is therefore built to pass authorization: the backup slot is grafted from
+the image signed by the key it names, so its modulus matches that slot's digest. Each
+member would otherwise boot, which is what leaves revocation as the sole cause of the
+rejection, with ``RSA_EXEC`` / ``RSA_VERIFY_OK`` pinning that the refusal lands before
+the verifier and ``PUBK_UNAUTHORIZED`` pinning that the graft landed at all. On this
+platform, therefore:
 
-This family depends on the order of two checks. This ROM consults revocation
-FIRST,
-digest table second. The consequence changes what slots 1-5 actually
-prove, so it is stated rather than left implicit: **had this ROM used the
-reference's order, slots 1-5 would return ``PUBK_SLOT_UNPROVISIONED`` /
-``MANIFEST_ERR_SIG_FAILED`` instead of ``KEY_REVOKED``.** On this platform,
-therefore:
+  * **every slot** establishes the strong property -- revocation refuses an
+    otherwise fully valid, correctly signed, bootable image. Six signing keys ship
+    and ``key_digests.c`` populates all six slots, so each member grafts in the
+    backup slot of the image signed by the key it names (see
+    :func:`select_backup_rom_slot`) rather than rewriting a selector and leaving
+    the signature stale.
 
-  * **slot 0** establishes the strong property -- revocation refuses an
-    otherwise fully valid, correctly signed, bootable image;
-  * **slots 1-5** establish the weaker property that revocation PREEMPTS the
-    empty-digest arm, because this tree ships one signing key and populates one
-    digest (see :func:`select_backup_rom_slot`).
+Revocation-first is the fail-closed order and is not a defect.
 
-Revocation-first is the fail-closed order and is not a defect, but the divergence
-is why slot 0 carries this family's real weight.
-
-Slot 0 is therefore the STRICTEST member of this family, not a case to avoid: it
-is the only one whose backup manifest is valid in every other respect. It is also
-the matched partner of ``sep_firmware_backup_rom_key_valid_test``, which applies
+Slot 0 is not a case to avoid, and since the graft it is no longer the only member
+whose backup manifest is valid in every other respect -- all six are. It is the
+matched partner of ``sep_firmware_backup_rom_key_valid_test``, which applies
 the IDENTICAL flash stimulus (:func:`select_backup_rom_slot` with slot 0, after the
 same ``mm.break_magic`` failover trigger)
 and differs only in leaving ``CHIPLET_PUBK_REVOKE`` clear -- fuse clear boots,

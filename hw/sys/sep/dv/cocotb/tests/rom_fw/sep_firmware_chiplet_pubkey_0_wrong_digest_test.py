@@ -16,12 +16,12 @@ appears in no status CSV row.
 THE GAP, AND WHY IT DOES NOT NEED A SECOND SIGNING KEY
 ============================================================================
 
-Only one usable RSA-3072 private key ships here
-(``bootrom/prod/tools/tt-boot-manifest/tests/signing_keys/rsa_private_key.dev0.pem``;
-the ``ec_private_key.pem`` beside it is unusable because this ROM implements
-RSA-3072 only). So every chiplet member's fuse digest must EQUAL the ROM's
-compiled-in ``public_key_digests[0]`` (``key_digests.c``) or the image
-could not verify at all. The consequence, stated in that base's docstring: a ROM
+Every chiplet member boots the image signed by ROM key 0
+(``bootrom/prod/tests/signing_keys/rsa_private_key.rom_key0.pem``), so its fuse digest
+must EQUAL the ROM's compiled-in ``public_key_digests[0]`` (``key_digests.c``) or the
+image could not verify at all. Five more RSA keys ship, so a member signed by a
+dedicated fused key is buildable now; none is, and the consequence below is why that
+costs this family something. The consequence, stated in that base's docstring: a ROM
 that took the fused arm, tested the right revocation bit, read the right fuse
 address and then compared the modulus against ``public_key_digests[0]`` instead
 of the fuse it had just read would boot in

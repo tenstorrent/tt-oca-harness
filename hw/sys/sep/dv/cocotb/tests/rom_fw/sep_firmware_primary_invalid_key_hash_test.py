@@ -24,12 +24,13 @@ deleting the bind would move the rejection to ``rsa_3072_verify`` rather than le
 the boot through. What it does show is that the bind FIRES, on the smallest
 possible difference, before the modulus reaches the verifier.
 
-The reason for the substitution is that the tree ships exactly one RSA signing key
-(``tools/tt-boot-manifest/tests/signing_keys/rsa_private_key.dev0.pem``), so the
-re-signed form would need a second key and a build step, which these Python-only
-mutations deliberately avoid (``sep_oca_mutate`` module docstring). If a
-second RSA key is ever added, a re-signed variant is worth having alongside this
-one; it is a different claim, not a better version of this one.
+The reason for the substitution is that this mutation stays inside Python: it flips a
+modulus byte and re-hashes, where the re-signed form would sign with a key the manifest
+does not name. Six keys now ship
+(``bootrom/prod/tests/signing_keys/rsa_private_key.rom_key{0..5}.pem``), so a re-signed
+variant is buildable -- the revoke family already grafts whole slots out of the
+per-slot images. It is worth having alongside this one; it is a different claim, not a
+better version of this one.
 
 WHY THE RE-HASH MATTERS, AND WHY NO RE-SIGN. The modulus lives inside the TBS
 (offset 168, ), so without recomputing ``manifest_hash`` the

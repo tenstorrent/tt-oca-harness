@@ -31,20 +31,24 @@ through -- a ``PUBK_REVOKE=0x00000000`` from the backup would be wrong.
 a wider bitmap -- which could reject a manifest through a slot the testcase did not
 select -- fails loudly.
 
-Revocation is consulted BEFORE the compiled-in digest table and before the verifier,
-and slot 0 is the only populated entry in ``key_digests.c``. So:
+The ROM authorizes a key BEFORE it consults the revocation bitmap, and both run before
+the verifier: a passing boot logs ``PUBK_SEL``, ``PUBK_AUTHORIZED``, ``PUBK_REVOKE``,
+then ``RSA_EXEC``. Every member is therefore built so that authorization SUCCEEDS --
+the slot under test is grafted from the image signed by the key it names, so its
+modulus matches the digest ``key_digests.c`` holds for that slot. Consequently:
 
-  * slots 1-5 would otherwise be refused as ``PUBK_SLOT_UNPROVISIONED``, and
-    forbidding that marker is what pins the order -- revocation before the table;
-  * slot 0 would otherwise boot, because the shipped image genuinely binds to it, so
-    revocation is the sole cause of the rejection and ``RSA_EXEC`` / ``RSA_VERIFY_OK``
-    are the load-bearing forbids there.
+  * every member would otherwise boot, because the manifest it reads is genuinely
+    valid and genuinely authorized, so revocation is the sole cause of the rejection;
+  * ``PUBK_UNAUTHORIZED`` is the load-bearing forbid -- it would mean the graft did not
+    land and the slot was refused for its key rather than for the fuse -- and
+    ``RSA_EXEC`` / ``RSA_VERIFY_OK`` pin that the refusal precedes the verifier.
 
-Slot 0 therefore carries this family's weight. Only one RSA signing key ships in this
-tree, so a slot-N selector leaves the dev0 signature stale; that is harmless only
-because revocation is reached first, and the family forbids ``RSA_EXEC`` on the
-primary to establish that rather than assume it. Slots 1-5 prove the weaker property
-that revocation preempts the empty-digest arm.
+Every member carries the same weight. Six signing keys ship and ``key_digests.c``
+populates all six slots, so each member grafts in the primary slot of the image signed
+by the key it names (:func:`select_primary_rom_slot`): the manifest the ROM reads is
+authorized and fully sealed, and only the fuse bit refuses it. The family forbids
+``RSA_EXEC`` on the primary to establish that the refusal lands before the verifier
+rather than assume it.
 
 The fuse bit is the slot number, and the authority is the register map rather than the
 ROM's own header: ``CHIPLET_PUBK_REVOKE.select[7:0]`` is the ROM-key bitmap
@@ -267,11 +271,12 @@ class sep_primary_pubkey_rom_revoked_failover_base(
     # the primary must never drive the verifier.
     primary_expected_rsa_starts = 0
     # Every other rejecting arm of the signature path, so the KEY_REVOKED verdict
-    # cannot be confused with one of them. PUBK_SLOT_UNPROVISIONED is the load-bearing one:
-    # slots 1-5 have no compiled-in digest, so seeing it would mean the digest
-    # table was consulted before the fuse bitmap. RSA_PKCS1_FAIL must not appear
-    # either -- the backup is valid, so the only verifier run in this scenario
-    # succeeds.
+    # cannot be confused with one of them. PUBK_UNAUTHORIZED is the load-bearing one:
+    # the ROM authorizes before it consults the revocation bitmap, so seeing it would
+    # mean the graft did not land and the slot was refused for its key rather than for
+    # the fuse. PUBK_SLOT_UNPROVISIONED sits beside it to catch the digest table
+    # shrinking back under this family. RSA_PKCS1_FAIL must not appear either -- the
+    # backup is valid, so the only verifier run in this scenario succeeds.
     extra_forbidden = (
         "PUBK_SLOT_UNPROVISIONED",
         "PUBK_UNAUTHORIZED",
