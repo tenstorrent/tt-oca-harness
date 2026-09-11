@@ -694,11 +694,12 @@ def request_pr_reviewer(number: int, taxonomy_path: Path | None = None) -> None:
         "query($owner:String!,$name:String!,$number:Int!){"
         "repository(owner:$owner,name:$name){"
         "pullRequest(number:$number){"
-        "isDraft author{login} body baseRefName"
-        "reviewRequests(first:10){nodes{requestedReviewer{...on User{login}}}}"
-        "reviews(first:10){nodes{author{login}}}"
-        "suggestedReviewers{isAuthor reviewer{login}}"
-        "closingIssuesReferences(first:10){nodes{assignees(first:10){nodes{login}}}}}}}"
+        "isDraft author{login} body baseRefName "
+        "reviewRequests(first:10){nodes{requestedReviewer{...on User{login}}}} "
+        "reviews(first:10){nodes{author{login}}} "
+        "suggestedReviewers{isAuthor reviewer{login}} "
+        "closingIssuesReferences(first:10){nodes{assignees(first:10){nodes{login}}}}"
+        "}}}"
     )
     pr_data = gh_json(
         [
@@ -924,9 +925,18 @@ Future
     assert pool == ["aottavianoTT", "nbetikTT", "nboettcher-tenstorrent"]
     assert reviewer_pool(taxonomy) == pool
     assert closing_issue_numbers("Fixes #339 and closes #12. Resolve #339 again.") == [339, 12]
-    assert pick_reviewer("alice", ["alice", "bob"], ["carol"], ["dave"], pool) == ("bob", "suggested")
-    assert pick_reviewer("alice", [], ["alice", "carol"], ["dave"], pool) == ("carol", "linked_issue")
-    assert pick_reviewer("alice", [], ["alice"], ["alice", "dave"], pool) == ("dave", "path_history")
+    assert pick_reviewer("alice", ["alice", "bob"], ["carol"], ["dave"], pool) == (
+        "bob",
+        "suggested",
+    )
+    assert pick_reviewer("alice", [], ["alice", "carol"], ["dave"], pool) == (
+        "carol",
+        "linked_issue",
+    )
+    assert pick_reviewer("alice", [], ["alice"], ["alice", "dave"], pool) == (
+        "dave",
+        "path_history",
+    )
     assert pick_reviewer("alice", [], [], [], ["alice", "erin"]) == ("erin", "reviewer_pool")
     assert pick_reviewer("alice", ["alice"], ["alice"], ["alice"], ["alice"]) == (None, None)
     assert pick_reviewer(
