@@ -13,8 +13,13 @@ carry `DUT_TAG=WRAPPER`. `--dut smu_block` PASSes (`DUT_TAG=BARE`) and
 Evidence SHA is `a273033a0` (origin/main). The `verilator-nightly (smu)`
 job of run 34051136716 on that SHA is 51 PASS / 1 FAIL
 (https://github.com/tenstorrent/tt-oca-harness/actions/runs/34051136716/job/101534871053).
-The single FAIL is `smu_xtrig_ctm_remap_test` (#482 residual; the
-CDC settle is in #1572).
+The single FAIL was `smu_xtrig_ctm_remap_test` (#482 residual). The
+CDC settle merged in #1572 (`e2ee1aa2a`); the first `sep0_all` nightly on
+a head carrying it, run 34388156707 on `620822035`, is 52 PASS / 0 FAIL
+with that leaf PASS
+(https://github.com/tenstorrent/tt-oca-harness/actions/runs/34388156707),
+and #482 closed on it. The per-component lists below were taken at
+`a273033a0` and are unchanged by that run.
 
 [[smu-signoff-490]]
 === JTAG2AXI / OTP / filter depth (#490)
