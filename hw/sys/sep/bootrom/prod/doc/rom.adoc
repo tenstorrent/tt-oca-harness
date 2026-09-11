@@ -1089,8 +1089,9 @@ digests; select bits 20 / 24 (<<tbl:key_slots>>).
 |`SEP_SPI_CTRL_FIELD_EN` |`0x10930174` |32 b |`smu_pll_sysclk` (11-bit MHz target) for PLL
 init; SPI field-enable controls.
 |`STATUS_RPT` |`0x1093016C` |32 b |Status-reporting policy modifiers.
-|`CHIPLET_UID` |`0x109300CC` |256 b |Device unique ID (BL1-era key derivation; read-locked
-with the other secrets before hand-off).
+|`CHIPLET_UID` |`0x109300CC` |256 b |Device unique ID. The ROM never reads it; it only
+read-locks it with the other secrets before hand-off. Deriving keys from it is Key Manager
+work, independent of the ROM.
 |===
 
 [NOTE]

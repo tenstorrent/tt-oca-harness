@@ -46,11 +46,6 @@
 //   [S28]  stack canary check -- before [S29], which does not return
 //   [S29]  BL1 handoff (copy → jump); BL1 signals PASS, not BL0
 //   [S30]  unified error convergence (rom_err_fail)
-//
-// TODO(S25): UID key derivation into the key vault. A key must be derived from
-// each of CHIPLET_UID / SIP_UID / SYS_UID and pushed to the key manager before
-// lock_fuse_secrets() closes the only window in which those fuses are readable.
-// Blocked on the KM_MAILBOX_SEP command format.
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -519,8 +514,7 @@ __attribute__((noreturn)) static void rom_manifest_validate_handoff(
     // Ordered after the secret lock deliberately: the demotion register is the
     // last fuse state BL0 changes, so a fault while writing it cannot leave the
     // secret fuses readable. The corollary is that anything needing to READ a
-    // secret -- the UID key derivation, and the boot measurement when it lands --
-    // must run before the lock, not here.
+    // secret fuse must run before the lock, not here.
     if (lock_demotion) {
         lc_write_demotion(demotion_reg, true);
         simputs("DEMOTE_LOCKED\n");
