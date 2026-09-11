@@ -139,6 +139,9 @@ media from its SPI flash; a secondary chiplet receives its manifest and payload 
 (delivered over I3C into SMC SRAM).
 |Bank / slot |One of the two manifest+payload regions in boot flash (primary at `0x1000`,
 backup at `0x41000`).
+|Hart |RISC-V hardware thread. The fitted VeeR EL2 core is single-hart, so hart 0 — the
+hart whose `mhartid` CSR reads zero — is the only hart that exists. The boot flow runs
+there, and [S01] parks any other hart a future fit might add.
 |NAPOT |Naturally-aligned power-of-two — the RISC-V PMP region encoding used by the ROM.
 |Warm reset |A watchdog-initiated reset that resets the SEP CPU but preserves ICCM/DCCM/SRAM
 contents and the warm scratch registers.
@@ -346,48 +349,44 @@ dispatches from (<<sec:warm_reset>>).
 [[sec:overview]]
 ==== Boot Flow Overview
 
-The boot flow is a strictly ordered sequence of stages. The implementation tags each stage
-with a `C`-number, and this document keeps those tags as stable cross-references between
-specification, code, and DV collateral.
+The boot flow is a strictly ordered sequence of stages, tagged `[S01]` through `[S30]` in
+execution order (<<sec:conv_stages>>). The implementation carries the same tags, so a stage
+is one cross-reference between specification, code, and DV collateral.
 
-[[fig:sep_boot_flow_toplevel]]
-.SEP ROM detailed boot flow (all stages, cold boot)
-[plantuml,sep-rom-detailed-boot-flow,svg]
+The flow is drawn in three parts, split where the ROM's own structure splits: everything
+before a boot source is chosen, the retryable manifest work, and the one-shot state changes
+that follow a validated manifest.
+
+[[fig:sep_boot_flow_reset]]
+.Boot flow, 1 of 3: reset entry and platform initialization ([S01]-[S20])
+[plantuml,sep-rom-boot-flow-1-init,svg]
 ----
 @startuml
-' SEP ROM detailed boot flow — all stages, cold boot.
+' Boot flow part 1: reset entry through platform init, cold boot.
 skinparam ActivityBackgroundColor #f0f8e6
 skinparam ActivityDiamondBackgroundColor #fdf6e3
 skinparam PartitionBorderColor #888888
 skinparam defaultFontSize 12
 
 start
-partition "Reset stub (vector.S)" {
-  :hart 0 gate (others park in wfi);
-  :mtvec -> trap_vector;
-  :MRAC CSR 0x7C0;
-  if (cold_scratch[7] != 0 ?) then (yes)
-    if (in SEP SRAM range ?) then (yes)
-      :poison scratch, jr handler;
-      :resume BL1 (warm reset);<<#e6f0f8>>
-      detach
-    else (no)
-      :hang (wfi);<<#ffe0e0>>
-      detach
-    endif
+partition "Reset stub, vector.S ([S01]-[S03])" {
+  :[S01] hart 0 gate, mtvec, MRAC,
+  warm-reset check;
+  if (warm reset ?) then (yes)
+    :resume BL1, or hang if the handler is
+    out of range;<<#e6f0f8>>
+    detach
   else (no — cold boot)
-    :clear cold_scratch[7];
   endif
-  :sp/gp setup;
-  :outbound AXI filter -> mailbox window;
-  :Smepmp fences: RLB, then locked rules
-  (ROM R-X, staging RW-), then MMWP;
-  :[S03] MEM_REPAIR / MBIST gate
-  (strap bypass);
-  :DCCM scrub;
-  :.data copy, .bss zero;
+  :[S02] Smepmp fences, then [S03] the
+  MEM_REPAIR gate, then the DCCM scrub
+  and C runtime init;
+  note right
+    drawn stage-by-stage in
+    the reset-stub figure
+  end note
 }
-partition "Platform init (rom_main S04–S20)" {
+partition "Platform init, rom_main ([S04]-[S20])" {
   :[S04] runtime-init self-check
   + SMC scratch round-trip sanity;
   :[S05] ROM version + self-hash report;
@@ -401,33 +400,48 @@ partition "Platform init (rom_main S04–S20)" {
     invalid LC ->
     reset SMC cores, halt
   end note
-  :[S12] chip ID;
-  :[S13] peripheral reset;
+  :[S12] chip ID, [S13] peripheral reset;
   :[S14] SHA-256 self-test;
-  :[S15] SEP SRAM clear;
-  :[S16] ICCM clear;
+  :[S15] SEP SRAM clear, [S16] ICCM clear;
   :[S17] ROM self-hash -> measurement slot 0;
   :[S18] SBOOT_DIS fuse;
-  :[S19] stack canary write;
-  :[S20] secure DMA init;
+  :[S19] stack canary write, [S20] secure DMA init;
 }
-partition "Boot source [S21]" {
+:continues in part 2: boot source;<<#e6f0f8>>
+stop
+@enduml
+----
+
+[[fig:sep_boot_flow_manifest]]
+.Boot flow, 2 of 3: boot source and the manifest retry loop ([S21]-[S24])
+[plantuml,sep-rom-boot-flow-2-manifest,svg]
+----
+@startuml
+' Boot flow part 2: boot source through manifest and payload validation.
+skinparam ActivityBackgroundColor #f0f8e6
+skinparam ActivityDiamondBackgroundColor #fdf6e3
+skinparam PartitionBorderColor #888888
+skinparam defaultFontSize 12
+
+start
+:from part 1, platform init complete;<<#e6f0f8>>
+partition "Boot source ([S21]-[S22])" {
   if (primary && !recovery ?) then (yes)
     :SPI controller init
     (failure -> skip first slot);
   else (no)
-    :wait SMC MANIFEST_READY
+    :[S22] wait SMC MANIFEST_READY
     (manifest staged in SMC SRAM);
   endif
 }
-partition "Manifest retry loop [S23]" {
+partition "Manifest retry loop ([S23]-[S24])" {
   repeat
     :select slot (attempt XOR rotate);
     :bounded read: manifest -> SEP SRAM;
     :structural checks + manifest_hash
     (always) + usage constraints;
     if (secure boot active ?) then (yes)
-      :revocation -> RSA-3072 (OTBN)
+      :[S24] revocation -> RSA-3072 (OTBN)
       -> anti-rollback;
     endif
     :stage payload, ciphertext hash,
@@ -441,18 +455,37 @@ partition "Manifest retry loop [S23]" {
   else (yes)
   endif
 }
-partition "One-shot state [S25]–[S26]" {
+:continues in part 3: one-shot state;<<#e6f0f8>>
+stop
+@enduml
+----
+
+[[fig:sep_boot_flow_handoff]]
+.Boot flow, 3 of 3: one-shot state and the BL1 hand-off ([S25]-[S30])
+[plantuml,sep-rom-boot-flow-3-handoff,svg]
+----
+@startuml
+' Boot flow part 3: irreversible state changes and the hand-off. Nothing here is
+' retried -- every stage runs once, after a manifest+payload pair has validated.
+skinparam ActivityBackgroundColor #f0f8e6
+skinparam ActivityDiamondBackgroundColor #fdf6e3
+skinparam PartitionBorderColor #888888
+skinparam defaultFontSize 12
+
+start
+:from part 2, a slot validated;<<#e6f0f8>>
+partition "One-shot state ([S25]-[S27])" {
   :demotion decision (no write yet);
   :BL2 pair -> bl0_state;
   :lock fuse secrets (SET-only);
   :[S26] re-verify locks;
   :DEMOTE_1 <- decision (+lock)
   -- last fuse state BL0 changes;
-  :enroll boot-state measurement
+  :[S27] enroll boot-state measurement
   (soft PCR slot 1) -> bl0_state;
 }
-partition "Hand-off [S29]" {
-  :gate-ledger self-check
+partition "Hand-off ([S28]-[S29])" {
+  :[S28] gate-ledger self-check
   (+ canary, stack top);
   if (self-check passes ?) then (no)
     :halt 0xF004;<<#ffe0e0>>
@@ -764,7 +797,7 @@ if (value == 0 ?) then (yes — cold boot)
   .data/.bss, rom_main);
   detach
 else (no)
-  if (SRAM_BASE <= value < ROM_BASE ?) then (yes — valid)
+  if (in ICCM or SEP SRAM ?) then (yes — valid)
     :poison cold_scratch[7] (write 0);
     :jr to BL1 warm handler;
     detach
