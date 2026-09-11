@@ -180,4 +180,7 @@ adopter-defined forwarding paths on LCC-bearing chiplets.
 |0.5.31 |2026-09-10 |Ben Melton |Recorded that the SEP TRNG aperture is a
 full-window passthrough to an adopter-defined IP, and that intra-aperture
 SLVERR and no-alias decode is an integrator constraint.
+|0.5.32 |2026-09-10 |Ben Melton |Key Manager: public identity OTP fields
+(SEP_CHIPLET_ID / SEP_SIP_ID / SEP_SYS_ID) are delivered from the sensed eFuse
+shadow, dual-rail encoded like the secrets, and not blanked in secure test mode.
 |=======================================================================
