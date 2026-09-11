@@ -2229,7 +2229,7 @@ This address map is from the perspective of the KM CPU (PicoRV32).</ipxact:descr
           <ipxact:size>32</ipxact:size>
           <ipxact:field>
             <ipxact:name>sysclk_freq_mhz</ipxact:name>
-            <ipxact:description>Configured sysclk PLL frequency in MHz; ignored if 0. Consumed by boot ROM clock math, not by any SPI block.</ipxact:description>
+            <ipxact:description>Configured sysclk PLL frequency in MHz; ignored if 0. Consumed by boot ROM clock math.</ipxact:description>
             <ipxact:bitOffset>0</ipxact:bitOffset>
             <ipxact:resets>
               <ipxact:reset>
