@@ -1069,8 +1069,8 @@ secure-boot decision (<<sec:secure_boot>>) and the boot measurement
 [frame=ends]
 |===
 |*Field* |*Address* |*Size* |*ROM usage*
-|`LOCKS` |`0x10930000` |32 b |Read-lock control for fuse secrets; SET-only. Written + verified
-at [S25]/[S26] (<<sec:handoff>>).
+|`LOCKS` |`0x10930000` |32 b |Read-lock control for the six protected fields; SET-only, and
+cleared by reset. Written + verified at [S25]/[S26] (<<sec:handoff>>).
 |`LC_STATE` |`0x1093000C` |8 b (low 4 used) |Lifecycle state (this chapter).
 |`SBOOT_DIS` |`0x10930010` |1 b |Secure-boot chicken bit.
 |`CLASS_KEY` |`0x10930068` |256 b |Pre-shared secret for payload-decryption KDF
@@ -1089,9 +1089,13 @@ digests; select bits 20 / 24 (<<tbl:key_slots>>).
 |`SEP_SPI_CTRL_FIELD_EN` |`0x10930174` |32 b |`smu_pll_sysclk` (11-bit MHz target) for PLL
 init; SPI field-enable controls.
 |`STATUS_RPT` |`0x1093016C` |32 b |Status-reporting policy modifiers.
-|`CHIPLET_UID` |`0x109300CC` |256 b |Device unique ID. The ROM never reads it; it only
-read-locks it with the other secrets before hand-off. Deriving keys from it is Key Manager
-work, independent of the ROM.
+|`CHIPLET_UID` |`0x109300CC` |256 b |*Secret.* Per-device seed for Key Manager key
+derivation, chiplet scope. The ROM never reads it; it read-locks it before hand-off
+([SEP-ROM-HOFF-030]).
+|`SIP_UID` |`0x1093010C` |256 b |*Secret.* Per-device key-derivation seed, SiP scope.
+Read-locked, never read ([SEP-ROM-HOFF-030]).
+|`SYS_UID` |`0x1093014C` |256 b |*Secret.* Per-device key-derivation seed, system scope.
+Read-locked, never read ([SEP-ROM-HOFF-030]).
 |===
 
 [NOTE]
@@ -1197,8 +1201,10 @@ debugger the part's identity, and exercises the SMC `chip_config` path while a f
 still attributable.
 
 No boot decision is taken from it. The identity a manifest binds to comes from the SEP eFuse
-chiplet, SiP and system ID fields (<<sec:manifest>>), which are sensed locally and covered by
-the fuse read-locks — not from this SMC register.
+chiplet, SiP and system ID fields (<<sec:manifest>>), which are sensed locally — not from this
+SMC register. Those ID fields are the non-secret per-part identifiers and are not read-locked;
+the read-locks cover the secrets, including the separate UID seeds
+(<<req-SEP-ROM-HOFF-030,SEP-ROM-HOFF-030>>).
 
 ===== Manifest Staging Hand-shake (Recovery / Secondary)
 
@@ -2508,10 +2514,23 @@ stack top). A mismatch is fatal.
 ===== Fuse-Secret Locking ([S25]/[S26])
 
 [[req-SEP-ROM-HOFF-030]]*[SEP-ROM-HOFF-030]* Before hand-off the ROM shall set the SET-only
-read-locks in `SEP_EFUSE_MAP_LOCKS` for the secret fuse fields — `CLASS_KEY`,
-`RMA_SIP_TOKEN_DIGEST`, `RMA_CHIPLET_TOKEN_DIGEST` — so no post-ROM software can read them,
-and shall then *independently re-read* the LOCKS register and confirm every lock bit is set
-([S26]). Failure to confirm is fatal (`ROM_ERR_FUSE_SECRETS_NOT_LOCKED`, `0xF003`).
+read-locks in `SEP_EFUSE_MAP_LOCKS` for all six protected fuse fields — `CLASS_KEY`,
+`RMA_SIP_TOKEN_DIGEST`, `RMA_CHIPLET_TOKEN_DIGEST`, `CHIPLET_UID`, `SIP_UID` and `SYS_UID` —
+so no post-ROM software can read them, and shall then *independently re-read* the LOCKS
+register and confirm every lock bit is set ([S26]). Failure to confirm is fatal
+(`ROM_ERR_FUSE_SECRETS_NOT_LOCKED`, `0xF003`).
+
+All six are secrets, the UIDs no less than the keys and tokens. Each UID is the per-device
+secret seed the Key Manager derives keys from, so a UID that leaks compromises every key
+derived from it. A UID is *not* an identifier — the non-secret per-part identifiers are the
+ID fuses (`CHIPLET_ID`, `SIP_ID`, `SYSTEM_ID`), which a manifest binds to
+(<<sec:manifest>>) and which are not read-locked. All six locked fields declare the same
+`sw=rw, onwrite=woset, hw=r` properties in `sep_efuse_map.rdl`, so one SET-only write latches
+them together.
+
+The lock is *soft*: it is a bit in the LOCKS shadow register, not a burned fuse, so it clears
+on reset and is re-established by the ROM on every boot. It constrains post-ROM software
+within the boot that set it — it is not a permanent device state.
 
 ===== Pre-Hand-off Self-Check (Gate Ledger)
 
