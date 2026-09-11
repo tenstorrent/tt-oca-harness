@@ -136,15 +136,13 @@ DTCM_ELF_SECTIONS := --only-section=.data --only-section=.data.* --only-section=
 	--only-section=.bss --only-section=.bss.* --only-section=.sbss --only-section=.sbss.*
 
 .PHONY: all clean bl1_test ensure-pack-deps toolchain-images pack-images \
-        ot-toolchain-images ot-pio-toolchain-images
-all: ot-toolchain-images pack-images
+        pio-toolchain-images
+all: toolchain-images pack-images
 
-# ROM variants, each into its own BUILD_DIR so they coexist. The packed flash
-# image is drain-method-agnostic, so `pack-images` builds it once.
-ot-toolchain-images:
-	$(MAKE) BUILD_DIR=build_ot toolchain-images
-ot-pio-toolchain-images:
-	$(MAKE) BUILD_DIR=build_ot_pio BOOT_OT_SPI_USE_PIO=1 toolchain-images
+# The CPU-PIO drain builds into its own BUILD_DIR so both ROMs coexist. The
+# packed flash image is drain-method-agnostic, so `pack-images` builds it once.
+pio-toolchain-images:
+	$(MAKE) BUILD_DIR=build_pio BOOT_OT_SPI_USE_PIO=1 toolchain-images
 
 # Split by tool dependency so callers can run each half in the right environment:
 # toolchain-images needs the RISC-V/picolibc toolchain (i.e. the ocah-toolchain
@@ -318,8 +316,8 @@ $(ENCRYPTED_SPI_HEX): bl1_test ensure-pack-deps | $(BUILD_DIR)
 		$(PACK_RUN) --config "$(ENCRYPTED_PACK_CONFIG)" --out "$(ENCRYPTED_BOOT_BIN)" -v
 	python3 "$(BIN_TO_SPI)" "$(ENCRYPTED_BOOT_BIN)" "$@"
 
-# Removes every variant, not just $(BUILD_DIR): a `make clean` that left build_ot/
-# behind would let a stale OT image survive into the next run and boot silently.
+# Removes every variant, not just $(BUILD_DIR): a `make clean` that left one
+# behind would let a stale image survive into the next run and boot silently.
 clean:
-	rm -rf "$(BUILD_DIR)" build build_ot build_ot_pio
+	rm -rf "$(BUILD_DIR)" build build_pio
 	$(MAKE) -C "$(BL1_TEST_DIR)" clean 2>/dev/null || true

@@ -74,7 +74,7 @@ _SEP_ROOT = str(Path(__file__).resolve().parents[4])
 # Same ROM build as the OT boot tests, so this test adds no new firmware profile.
 # The warm branch is upstream of every transport decision, so which SPI variant
 # the ROM was built with cannot matter here.
-_FW_DIR = os.path.join(_SEP_ROOT, "bootrom", "prod", "build_ot")
+_FW_DIR = os.path.join(_SEP_ROOT, "bootrom", "prod", "build")
 
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 

@@ -56,8 +56,7 @@ extend-exclude = [
   "nonfree",
   "vendor",
   "**/build",
-  "**/build_ot",
-  "**/build_ot_pio",
+  "**/build_pio",
   "**/regs/gen/py",
   "hw/sys/sep/bootrom/prod/tools/tt-boot-manifest",
 ]

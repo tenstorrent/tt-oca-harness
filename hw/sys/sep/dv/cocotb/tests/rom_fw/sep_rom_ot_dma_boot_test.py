@@ -10,10 +10,10 @@ the ROM through the behavioral SMC-SRAM responder.
 ``dma`` in the name is load-bearing, not decoration. The OpenTitan controller can
 drain its RX FIFO two ways, chosen at build time in ``boot_flash.h``: the
 SECURE_DMA hardware handshake (``BOOT_OT_SPI_USE_PIO=0``, what this test builds)
-or CPU programmed I/O (``=1``, ``build_ot_pio/``). They are different datapaths
+or CPU programmed I/O (``=1``, ``build_pio/``). They are different datapaths
 reading the same bytes, so a passing DMA boot says nothing about the PIO one.
 The PIO variant has no test here yet -- the Makefile can build it
-(``ot-pio-toolchain-images``) but nothing exercises it, so treat that path as
+(``pio-toolchain-images``) but nothing exercises it, so treat that path as
 unverified rather than covered. This test is the DMA half of the pair.
 
 What differs from the SMC-SRAM sibling:

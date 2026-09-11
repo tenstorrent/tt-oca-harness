@@ -84,7 +84,7 @@ from env.sep_efuse_image import SepEfuseImage, LC_TEST_DEV
 from env.sep_rom_console import rom_console_task, log_scratch_cold
 
 _SEP_ROOT = str(Path(__file__).resolve().parents[4])
-_FW_DIR = os.path.join(_SEP_ROOT, "bootrom", "prod", "build_ot")
+_FW_DIR = os.path.join(_SEP_ROOT, "bootrom", "prod", "build")
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 
 # Must track WARM_HANDLER_RANGE_BASE / _END in vector.S, which accept a
@@ -236,7 +236,7 @@ class sep_warm_reset_invalid_hang_test(sep_base_test):
                     # No `<< 1` here. cpu_trace_addr_o is already a byte PC
                     # (tb_top.sv drives it from trace_rv_i_address_ip), which the
                     # disassembly settles: the spin is the `wfi; j` pair under the
-                    # `warm_reset_hang` label in build_ot/boot_rom.dis -- currently
+                    # `warm_reset_hang` label in build/boot_rom.dis -- currently
                     # 0x1004006c and 0x10040070 -- and an earlier version of this
                     # loop shifted those into addresses matching no instruction in
                     # the ROM. The span check below survived either way (doubling

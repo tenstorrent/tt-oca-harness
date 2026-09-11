@@ -48,7 +48,7 @@ from env.sep_rom_console import rom_console_task, log_scratch_cold
 from env.sep_verdict import decode_verdict, TEST_PASS_CODE
 
 _SEP_ROOT = str(Path(__file__).resolve().parents[4])
-_FW_DIR = os.path.join(_SEP_ROOT, "bootrom", "prod", "build_ot")
+_FW_DIR = os.path.join(_SEP_ROOT, "bootrom", "prod", "build")
 _FLASH_IMAGE = os.path.join(_SEP_ROOT, "bootrom", "prod", "build", "non_secure_boot.bin")
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 

@@ -23,7 +23,7 @@ ocah_toml_root := $(if $(TOML_PATH),$(OCAH_ROOT)/$(TOML_PATH),$(OCAH_ROOT))
 # TOML parser correctly rejects it (see tools/tidy/README.md upstream).
 ocah_toml_files = $(shell find $(ocah_toml_root) -name '*.toml' \
 	-not -path '*/vendor/*' -not -path '*/nonfree/*' \
-	-not -path '*/build/*' -not -path '*/build_ot/*' -not -path '*/build_ot_pio/*' \
+	-not -path '*/build/*' -not -path '*/build_pio/*' \
 	-not -path '*/.venv/*' -not -path '*/hw/ip/scrambler/dv/lint/scrambler.toml' 2>/dev/null)
 
 ocah_toml_check_files = @[ -n "$(strip $(ocah_toml_files))" ] || { echo "error: no .toml files under $(if $(TOML_PATH),$(TOML_PATH),repo root)" >&2; exit 1; }

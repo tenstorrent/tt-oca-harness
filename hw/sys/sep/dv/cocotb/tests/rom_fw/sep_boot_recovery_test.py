@@ -25,11 +25,11 @@ forbidding ``BOOT_SECONDARY`` a testcase whose recovery strap silently did
 nothing would still boot and still pass. That marker, not the successful boot, is
 what makes this a recovery test.
 
-WHY THE OT ROM AND A LOADED FLASH. The ``build_ot`` ROM can drive the SPI host,
-and ``OcahSpiFlash`` is attached and preloaded with a bootable image. So "no SPI
-flash reads attempted" -- the procedure's third expected result -- is a real
-claim about a capable ROM declining to use a working, populated device, measured
-at the device. Running the SPI-stub ROM instead would make it vacuous.
+WHY A LOADED FLASH. The ROM can drive the SPI host, and ``OcahSpiFlash`` is
+attached and preloaded with a bootable image. So "no SPI flash reads attempted"
+-- the procedure's third expected result -- is a real claim about a capable ROM
+declining to use a working, populated device, measured at the device. A ROM that
+could not read the flash at all would make it vacuous.
 """
 
 from __future__ import annotations

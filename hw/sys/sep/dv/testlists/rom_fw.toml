@@ -6,7 +6,7 @@ schema_version = 1
 #
 #   * RTL target `rom_boot` -- cpu_all_live plus a behavioral SMC AXI responder
 #     (axi_sim_mem), not the `lsu_stub_all_live` CPU stub and not `default`.
-#   * Firmware profiles `boot_rom_ot` / `boot_rom_ot_pio` -- the
+#   * Firmware profiles `boot_rom` / `boot_rom_pio` -- the
 #     production Boot ROM under hw/sys/sep/bootrom/prod, which drives its own
 #     Makefile, links to ROM_BASE instead of the TCMs, and packs a manifest+BL1
 #     image. The shared TCM firmware engine (`c_build.default`) does not build it.
@@ -34,10 +34,10 @@ schema_version = 1
 name = "sep_rom_non_secure_boot_test"
 module = "rom_fw.sep_rom_non_secure_boot_test"
 target = "rom_boot"
-# Selects [c_build.boot_rom_ot], which builds the Boot ROM + manifest/BL1 images
+# Selects [c_build.boot_rom], which builds the Boot ROM + manifest/BL1 images
 # in the c_compile stage. This ROM does not come from the shared firmware engine,
 # so the entry names a build mode rather than an engine test target.
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 3600
 tags = ["boot", "rom", "cpu", "subsystem"]
@@ -50,16 +50,17 @@ run_modes = ["cpu"]
 # (differential-encoded) LC_STATE in the eFuse shadow, which only exists if the
 # real fuse-sense FSM runs. A zero OTP senses to LC_STATE_TEST_DEV (raw 0x0, valid).
 # The images are gitignored and built by the c_compile stage (see the `firmware`
-# key above and [c_build.boot_rom_ot] in sep_sim_cfg.toml), so a plain run_dv.py
+# key above and [c_build.boot_rom] in sep_sim_cfg.toml), so a plain run_dv.py
 # invocation is self-contained. The one prerequisite it cannot do for you is the
 # manifest packer submodule, because a build step must not mutate git state:
 # git submodule update --init hw/sys/sep/bootrom/prod/tools/tt-boot-manifest
 # Paths stay absolute via {repo_root} rather than pointing at the staged copies,
 # so a --stage sim rerun reads the same images the c_compile stage produced.
-# smc_mem.hex comes from build/ while the ROM comes from build_ot/: the packed
-# image is drain-method-agnostic, so pack-images builds it once into build/.
+# smc_mem.hex and the ROM both come from build/: the packed image is
+# drain-method-agnostic, so pack-images builds it once and every ROM variant
+# reads that copy.
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/smc_mem.hex",
 ]
 
@@ -72,7 +73,7 @@ args = [
 #
 # "dma" names the RX-FIFO drain, which boot_flash.h picks at build time: this
 # builds BOOT_OT_SPI_USE_PIO=0 (SECURE_DMA handshake). The CPU-PIO drain (=1,
-# build_ot_pio/) is a genuinely different datapath with its own entry below,
+# build_pio/) is a genuinely different datapath with its own entry below,
 # sep_rom_ot_pio_boot_test, so passing this one proves nothing about that one.
 #
 # +sep_boot_from_spi seeds STRAPS_LO[25] (primary_chiplet) in the SMC responder so
@@ -88,24 +89,24 @@ args = [
 name = "sep_rom_ot_dma_boot_test"
 module = "rom_fw.sep_rom_ot_dma_boot_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "spi", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
 ]
 
 [[tests]]
 # The drain-method sibling of sep_rom_ot_dma_boot_test: same OpenTitan spi_host,
 # same flash image, same PASS criteria -- but the ROM is built with
-# BOOT_OT_SPI_USE_PIO=1 (build_ot_pio/) so boot_flash.h calls ot_spi_flash_read()
+# BOOT_OT_SPI_USE_PIO=1 (build_pio/) so boot_flash.h calls ot_spi_flash_read()
 # and the CPU polls the RX FIFO itself instead of arming the SECURE_DMA.
 #
 # It is a separate entry because it is a separate binary exercising separate
-# hardware: build_ot_pio/boot_rom.elf does not even link ot_spi_flash_read_dma
+# hardware: build_pio/boot_rom.elf does not even link ot_spi_flash_read_dma
 # (the linker drops it), so a green DMA test says nothing about this path.
 #
 # Same timeout as the DMA sibling. That is a starting budget, not a measurement:
@@ -114,19 +115,19 @@ args = [
 name = "sep_rom_ot_pio_boot_test"
 module = "rom_fw.sep_rom_ot_pio_boot_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot_pio", mode = "boot_rom_ot_pio" }
+firmware = { name = "boot_rom_pio", mode = "boot_rom_pio" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "spi", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot_pio/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_pio/boot_rom.vmem",
   "+sep_boot_from_spi",
 ]
 
 [[tests]]
 # Signed sibling of sep_rom_ot_dma_boot_test specifically -- it shares that test's
-# build_ot/ ROM and SECURE_DMA drain, NOT the PIO entry that happens to sit above
+# ROM and SECURE_DMA drain, NOT the PIO entry that happens to sit above
 # it here. Same ROM, same OpenTitan SPI transport, but
 # the flash carries the RSA-3072 PKCS#1 v1.5 signed image (make secure_boot_spi,
 # dev0 key from the tt-boot-manifest submodule, digest pinned in key_digests.c
@@ -144,13 +145,13 @@ args = [
 name = "sep_rom_ot_secure_boot_test"
 module = "rom_fw.sep_rom_ot_secure_boot_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "crypto", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   # DV SHORTCUT, tagged dv_shortcut above. OTBN parks in UrndRefresh until EDN
   # grants entropy, and the boot flow does not enable the entropy chain (the
@@ -165,7 +166,7 @@ args = [
 [[tests]]
 # MEM_REPAIR (MBIST) boot gate, failure arm.
 #
-# Reuses build_ot/ rather than adding a fourth firmware profile: the DFT gate runs
+# Reuses the boot_rom profile rather than adding another: the DFT gate runs
 # pre-C in vector.S, before the DCCM scrub and long before any manifest transport
 # is selected, so which SPI variant the ROM was built with cannot affect this arm,
 # and sharing the profile means sharing the already-built ROM and Verilator model
@@ -191,13 +192,13 @@ args = [
 name = "sep_firmware_mbist_fail_test"
 module = "rom_fw.sep_firmware_mbist_fail_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 3600
 tags = ["boot", "rom", "mbist", "error", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_dft_status=FFFFFFFD",
 ]
 
@@ -207,7 +208,7 @@ args = [
 # NOTE ON THE NAME: the name now matches the register. The ROM reads COLD scratch
 # 7 (vector.S), which is what the boot flow specifies.
 #
-# Reuses build_ot/ for the same reason as the entry above: the warm branch is the
+# Reuses the boot_rom profile for the same reason as the entry above: the warm branch is the
 # first decision in _start, upstream of everything transport-related.
 #
 # Two plusargs carry the whole stimulus and both are required:
@@ -234,13 +235,13 @@ args = [
 name = "sep_scratch_7_test"
 module = "rom_fw.sep_scratch_7_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 3600
 tags = ["boot", "rom", "warm_reset", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_cold_scratch7=C0000100",
   "+sep_iccm_word=C0000100:0000006f",
 ]
@@ -248,7 +249,7 @@ args = [
 [[tests]]
 # Device-controlled non-secure boot (SBOOT_DIS overrides PROD).
 #
-# Reuses the signed image and the boot_rom_ot profile, so no new firmware build.
+# Reuses the signed image and the boot_rom profile, so no new firmware build.
 # The mutation-free member of this group: the stimulus is entirely in the OTP
 # image, which is what makes it the one to validate the pattern with first.
 #
@@ -265,13 +266,13 @@ args = [
 name = "sep_firmware_device_cntl_non_secure_boot_flow_test"
 module = "rom_fw.sep_firmware_device_cntl_non_secure_boot_flow_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "spi", "secure", "lifecycle", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_sboot_dis.toml",
 ]
@@ -286,13 +287,13 @@ args = [
 name = "sep_firmware_enforced_secure_boot_flow_test"
 module = "rom_fw.sep_firmware_enforced_secure_boot_flow_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "crypto", "lifecycle", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
   "+sep_crypto_edn_force",
@@ -305,13 +306,13 @@ args = [
 name = "sep_firmware_cntl_secure_boot_flow_test"
 module = "rom_fw.sep_firmware_cntl_secure_boot_flow_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "crypto", "lifecycle", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
   "+sep_crypto_edn_force",
@@ -324,13 +325,13 @@ args = [
 name = "sep_firmware_backup_invalid_signature_test"
 module = "rom_fw.sep_firmware_backup_invalid_signature_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "crypto", "error", "failover", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
   "+sep_crypto_edn_force",
@@ -344,13 +345,13 @@ args = [
 name = "sep_firmware_backup_invalid_security_version_test"
 module = "rom_fw.sep_firmware_backup_invalid_security_version_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "spi", "secure", "error", "failover", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_secver8.toml",
 ]
@@ -362,13 +363,13 @@ args = [
 name = "sep_firmware_backup_invalid_public_key_selection_test"
 module = "rom_fw.sep_firmware_backup_invalid_public_key_selection_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "spi", "secure", "error", "failover", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
 ]
@@ -383,13 +384,13 @@ args = [
 name = "sep_firmware_backup_unpopulated_rom_key_slot_test"
 module = "rom_fw.sep_firmware_backup_unpopulated_rom_key_slot_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "spi", "secure", "error", "failover", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
 ]
@@ -403,13 +404,13 @@ args = [
 name = "sep_spi_detect_success_test"
 module = "rom_fw.sep_spi_detect_success_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "spi", "detect", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
 ]
 
@@ -420,13 +421,13 @@ args = [
 name = "sep_spi_primary_fail_backup_test"
 module = "rom_fw.sep_spi_primary_fail_backup_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "spi", "detect", "failover", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
 ]
 
@@ -484,13 +485,13 @@ args = [
 name = "sep_failover_sram_clear_assertion_test"
 module = "rom_fw.sep_failover_sram_clear_assertion_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "spi", "failover", "sram", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
 ]
 
@@ -501,13 +502,13 @@ args = [
 name = "sep_spi_not_detected_terminal_test"
 module = "rom_fw.sep_spi_not_detected_terminal_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "spi", "detect", "error", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
 ]
 
@@ -519,13 +520,13 @@ args = [
 name = "sep_firmware_encrypted_boot_test"
 module = "rom_fw.sep_firmware_encrypted_boot_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "crypto", "encrypted", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_class_key.toml",
   "+sep_crypto_edn_force",
@@ -545,20 +546,20 @@ args = [
 # bit 1 and it stops on repair; clear bit 4 and it reaches the same handler by
 # TIMEOUT instead, proving something else while still looking green.
 #
-# Reuses build_ot/ and the repair arm's axes for the same reason that one does:
+# Reuses the boot_rom profile and the repair arm's axes for the same reason that one does:
 # the gate is upstream of every transport decision, so the SPI variant cannot
 # affect it. No +sep_boot_from_spi -- the ROM halts long before a transport is
 # chosen, and passing it would imply this test says something about SPI.
 name = "sep_firmware_mbist_only_fail_test"
 module = "rom_fw.sep_firmware_mbist_only_fail_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 3600
 tags = ["boot", "rom", "mbist", "error", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_dft_status=00000012",
 ]
 
@@ -587,13 +588,13 @@ args = [
 name = "sep_firmware_mbist_pass_test"
 module = "rom_fw.sep_firmware_mbist_pass_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "mbist", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_dft_status=00000112",
 ]
@@ -612,24 +613,24 @@ args = [
 #   +sep_smc_mem_hex     stages the manifest+BL1 image at the SMC-SRAM base, which
 #                        is where the recovery path fetches from.
 #
-# smc_mem.hex comes from build/ while the ROM comes from build_ot/: the packed
-# image is transport-agnostic (same reason sep_rom_ot_dma_boot_test reads
-# build/non_secure_boot.bin), and [c_build.boot_rom_ot] runs `pack-images`, which
+# smc_mem.hex and the ROM both come from build/: the packed image is
+# transport-agnostic (same reason sep_rom_ot_dma_boot_test reads
+# build/non_secure_boot.bin), and [c_build.boot_rom] runs `pack-images`, which
 # is the rule that produces it.
 #
-# build_ot rather than the SPI-stub ROM on purpose: the OT ROM CAN drive the flash
-# and the flash BFM is attached and preloaded, so "no SPI reads" is a real
-# observation about a capable ROM declining a working device.
+# The ROM CAN drive the flash and the flash BFM is attached and preloaded, so
+# "no SPI reads" is a real observation about a capable ROM declining a working
+# device rather than one that could not have read it anyway.
 name = "sep_boot_recovery_test"
 module = "rom_fw.sep_boot_recovery_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "recovery", "strap", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_straps_lo=00080000",
   "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/smc_mem.hex",
@@ -651,13 +652,13 @@ args = [
 name = "sep_rotate_update_set_test"
 module = "rom_fw.sep_rotate_update_set_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "spi", "strap", "rotate", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_straps_hi=04000000",
 ]
@@ -675,13 +676,13 @@ args = [
 name = "sep_firmware_primary_invalid_key_hash_test"
 module = "rom_fw.sep_firmware_primary_invalid_key_hash_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "crypto", "error", "failover", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
   "+sep_crypto_edn_force",
@@ -699,13 +700,13 @@ args = [
 name = "sep_firmware_backup_invalid_key_hash_test"
 module = "rom_fw.sep_firmware_backup_invalid_key_hash_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "spi", "secure", "error", "failover", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
 ]
@@ -725,13 +726,13 @@ args = [
 name = "sep_firmware_backup_pubkey_rom_5_revoked_key_test"
 module = "rom_fw.sep_firmware_backup_pubkey_rom_5_revoked_key_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "spi", "secure", "error", "failover", "revocation", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_pubk_revoke5.toml",
 ]
@@ -745,13 +746,13 @@ args = [
 name = "sep_bl1_size_invalid_test"
 module = "rom_fw.sep_bl1_size_invalid_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "bl1", "error", "failover", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
   "+sep_crypto_edn_force",
@@ -764,13 +765,13 @@ args = [
 name = "sep_bl1_entry_invalid_test"
 module = "rom_fw.sep_bl1_entry_invalid_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "bl1", "error", "failover", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
   "+sep_crypto_edn_force",
@@ -816,13 +817,13 @@ args = [
 name = "sep_decryption_failure_terminal_test"
 module = "rom_fw.sep_decryption_failure_terminal_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "crypto", "encrypted", "error", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_class_key.toml",
   "+sep_crypto_edn_force",
@@ -843,13 +844,13 @@ args = [
 name = "sep_mbist_fail_continue_test"
 module = "rom_fw.sep_mbist_fail_continue_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "mbist", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_dft_status=FFFFFFFD",
 ]
@@ -872,13 +873,13 @@ args = [
 name = "sep_warm_reset_invalid_hang_test"
 module = "rom_fw.sep_warm_reset_invalid_hang_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 3600
 tags = ["boot", "rom", "warm_reset", "error", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_cold_scratch7=C0040000",
 ]
 
@@ -897,13 +898,13 @@ args = [
 name = "sep_warm_reset_below_range_hang_test"
 module = "rom_fw.sep_warm_reset_below_range_hang_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 3600
 tags = ["boot", "rom", "warm_reset", "error", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_cold_scratch7=BFFFFFFC",
 ]
 
@@ -919,13 +920,13 @@ args = [
 name = "sep_warm_reset_unarmed_cold_boot_test"
 module = "rom_fw.sep_warm_reset_unarmed_cold_boot_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 3600
 tags = ["boot", "rom", "warm_reset", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
 ]
 
 [[tests]]
@@ -942,13 +943,13 @@ args = [
 name = "sep_warm_reset_bad_target_exception_test"
 module = "rom_fw.sep_warm_reset_bad_target_exception_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 3600
 tags = ["boot", "rom", "warm_reset", "error", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_cold_scratch7=C0000200",
 ]
 
@@ -982,13 +983,13 @@ args = [
 name = "sep_otbn_rsa_verify_failure_test"
 module = "rom_fw.sep_otbn_rsa_verify_failure_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "crypto", "otbn", "rsa", "error", "failover", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
   "+sep_crypto_edn_force",
@@ -1014,13 +1015,13 @@ args = [
 name = "sep_firmware_backup_pubkey_rom_0_revoked_key_test"
 module = "rom_fw.sep_firmware_backup_pubkey_rom_0_revoked_key_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "spi", "secure", "error", "failover", "revocation", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_pubk_revoke0.toml",
 ]
@@ -1042,13 +1043,13 @@ args = [
 name = "sep_firmware_backup_pubkey_rom_1_revoked_key_test"
 module = "rom_fw.sep_firmware_backup_pubkey_rom_1_revoked_key_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "spi", "secure", "error", "failover", "revocation", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_pubk_revoke1.toml",
 ]
@@ -1070,13 +1071,13 @@ args = [
 name = "sep_firmware_backup_pubkey_rom_2_revoked_key_test"
 module = "rom_fw.sep_firmware_backup_pubkey_rom_2_revoked_key_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "spi", "secure", "error", "failover", "revocation", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_pubk_revoke2.toml",
 ]
@@ -1098,13 +1099,13 @@ args = [
 name = "sep_firmware_backup_pubkey_rom_3_revoked_key_test"
 module = "rom_fw.sep_firmware_backup_pubkey_rom_3_revoked_key_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "spi", "secure", "error", "failover", "revocation", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_pubk_revoke3.toml",
 ]
@@ -1126,13 +1127,13 @@ args = [
 name = "sep_firmware_backup_pubkey_rom_4_revoked_key_test"
 module = "rom_fw.sep_firmware_backup_pubkey_rom_4_revoked_key_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "spi", "secure", "error", "failover", "revocation", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_pubk_revoke4.toml",
 ]
@@ -1155,13 +1156,13 @@ args = [
 name = "sep_firmware_backup_invalid_signature_type_test"
 module = "rom_fw.sep_firmware_backup_invalid_signature_type_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "spi", "secure", "error", "failover", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
 ]
@@ -1185,13 +1186,13 @@ args = [
 name = "sep_firmware_backup_rom_key_index_invalid_test"
 module = "rom_fw.sep_firmware_backup_rom_key_index_invalid_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "spi", "secure", "error", "failover", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
 ]
@@ -1215,13 +1216,13 @@ args = [
 name = "sep_firmware_backup_rom_key_valid_test"
 module = "rom_fw.sep_firmware_backup_rom_key_valid_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "crypto", "failover", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
   "+sep_crypto_edn_force",
@@ -1243,13 +1244,13 @@ args = [
 name = "sep_firmware_primary_invalid_public_key_selection_test"
 module = "rom_fw.sep_firmware_primary_invalid_public_key_selection_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "crypto", "error", "failover", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
   "+sep_crypto_edn_force",
@@ -1275,13 +1276,13 @@ args = [
 name = "sep_firmware_primary_invalid_security_version_test"
 module = "rom_fw.sep_firmware_primary_invalid_security_version_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "crypto", "error", "failover", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_secver1.toml",
   "+sep_crypto_edn_force",
@@ -1318,13 +1319,13 @@ args = [
 name = "sep_firmware_primary_pubkey_rom_0_revoked_key_test"
 module = "rom_fw.sep_firmware_primary_pubkey_rom_0_revoked_key_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "spi", "secure", "error", "revocation", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_pubk_revoke0.toml",
 ]
@@ -1357,13 +1358,13 @@ args = [
 name = "sep_firmware_primary_pubkey_rom_1_revoked_key_test"
 module = "rom_fw.sep_firmware_primary_pubkey_rom_1_revoked_key_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "crypto", "error", "failover", "revocation", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_pubk_revoke1.toml",
   "+sep_crypto_edn_force",
@@ -1397,13 +1398,13 @@ args = [
 name = "sep_firmware_primary_pubkey_rom_2_revoked_key_test"
 module = "rom_fw.sep_firmware_primary_pubkey_rom_2_revoked_key_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "crypto", "error", "failover", "revocation", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_pubk_revoke2.toml",
   "+sep_crypto_edn_force",
@@ -1437,13 +1438,13 @@ args = [
 name = "sep_firmware_primary_pubkey_rom_3_revoked_key_test"
 module = "rom_fw.sep_firmware_primary_pubkey_rom_3_revoked_key_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "crypto", "error", "failover", "revocation", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_pubk_revoke3.toml",
   "+sep_crypto_edn_force",
@@ -1477,13 +1478,13 @@ args = [
 name = "sep_firmware_primary_pubkey_rom_4_revoked_key_test"
 module = "rom_fw.sep_firmware_primary_pubkey_rom_4_revoked_key_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "crypto", "error", "failover", "revocation", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_pubk_revoke4.toml",
   "+sep_crypto_edn_force",
@@ -1517,13 +1518,13 @@ args = [
 name = "sep_firmware_primary_pubkey_rom_5_revoked_key_test"
 module = "rom_fw.sep_firmware_primary_pubkey_rom_5_revoked_key_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "crypto", "error", "failover", "revocation", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_pubk_revoke5.toml",
   "+sep_crypto_edn_force",
@@ -1553,13 +1554,13 @@ args = [
 name = "sep_firmware_primary_invalid_signature_test"
 module = "rom_fw.sep_firmware_primary_invalid_signature_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "crypto", "otbn", "rsa", "error", "failover", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
   "+sep_crypto_edn_force",
@@ -1587,13 +1588,13 @@ args = [
 name = "sep_firmware_primary_invalid_signature_type_test"
 module = "rom_fw.sep_firmware_primary_invalid_signature_type_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "crypto", "error", "failover", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
   "+sep_crypto_edn_force",
@@ -1622,13 +1623,13 @@ args = [
 name = "sep_firmware_primary_rom_key_index_invalid_test"
 module = "rom_fw.sep_firmware_primary_rom_key_index_invalid_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "crypto", "error", "failover", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
   "+sep_crypto_edn_force",
@@ -1666,13 +1667,13 @@ args = [
 name = "sep_firmware_primary_rom_key_valid_test"
 module = "rom_fw.sep_firmware_primary_rom_key_valid_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "crypto", "otbn", "rsa", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
   "+sep_crypto_edn_force",
@@ -1708,13 +1709,13 @@ args = [
 name = "sep_firmware_bl1_ver_test"
 module = "rom_fw.sep_firmware_bl1_ver_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "crypto", "otbn", "rsa", "rollback", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_bl1ver36_spread.toml",
   "+sep_crypto_edn_force",
@@ -1748,13 +1749,13 @@ args = [
 name = "sep_firmware_chiplet_pubkey_0_test"
 module = "rom_fw.sep_firmware_chiplet_pubkey_0_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "crypto", "otbn", "rsa", "chiplet_key", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_chiplet_key0.toml",
   "+sep_crypto_edn_force",
@@ -1769,13 +1770,13 @@ args = [
 name = "sep_firmware_chiplet_pubkey_1_test"
 module = "rom_fw.sep_firmware_chiplet_pubkey_1_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "crypto", "otbn", "rsa", "chiplet_key", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_chiplet_key1.toml",
   "+sep_crypto_edn_force",
@@ -1805,13 +1806,13 @@ args = [
 name = "sep_firmware_chiplet_pubkey_0_revoke_test"
 module = "rom_fw.sep_firmware_chiplet_pubkey_0_revoke_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "spi", "secure", "error", "revocation", "chiplet_key", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_chiplet_key0_revoke.toml",
 ]
@@ -1825,13 +1826,13 @@ args = [
 name = "sep_firmware_chiplet_pubkey_1_revoke_test"
 module = "rom_fw.sep_firmware_chiplet_pubkey_1_revoke_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "spi", "secure", "error", "revocation", "chiplet_key", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_chiplet_key1_revoke.toml",
 ]
@@ -1870,13 +1871,13 @@ args = [
 name = "sep_firmware_demotion_decision_auth_flag_0_prod_end_test"
 module = "rom_fw.sep_firmware_demotion_decision_auth_flag_0_prod_end_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "lifecycle", "demotion", "crypto", "otbn", "rsa", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_end.toml",
   "+sep_crypto_edn_force",
@@ -1916,13 +1917,13 @@ args = [
 name = "sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test"
 module = "rom_fw.sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "spi", "secure", "lifecycle", "demotion", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_sboot_dis.toml",
 ]
@@ -1963,13 +1964,13 @@ args = [
 name = "sep_firmware_demotion_decision_no_flag_prod_end_test"
 module = "rom_fw.sep_firmware_demotion_decision_no_flag_prod_end_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "lifecycle", "demotion", "crypto", "otbn", "rsa", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_end.toml",
   "+sep_crypto_edn_force",
@@ -1997,13 +1998,13 @@ args = [
 name = "sep_firmware_demotion_decision_no_flag_prod_end_sel_bit_set_test"
 module = "rom_fw.sep_firmware_demotion_decision_no_flag_prod_end_sel_bit_set_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "lifecycle", "demotion", "crypto", "otbn", "rsa", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_end.toml",
   "+sep_crypto_edn_force",
@@ -2043,13 +2044,13 @@ args = [
 name = "sep_firmware_demotion_decision_auth_flag_0_prod_test"
 module = "rom_fw.sep_firmware_demotion_decision_auth_flag_0_prod_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "spi", "secure", "lifecycle", "demotion", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_sboot_dis.toml",
 ]
@@ -2083,13 +2084,13 @@ args = [
 name = "sep_firmware_demotion_decision_auth_flag_0_unauth_flag_0_prod_test"
 module = "rom_fw.sep_firmware_demotion_decision_auth_flag_0_unauth_flag_0_prod_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "spi", "secure", "lifecycle", "demotion", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_sboot_dis.toml",
 ]
@@ -2122,13 +2123,13 @@ args = [
 name = "sep_firmware_demotion_decision_no_flag_prod_sel_bit_set_test"
 module = "rom_fw.sep_firmware_demotion_decision_no_flag_prod_sel_bit_set_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "spi", "secure", "lifecycle", "demotion", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_sboot_dis.toml",
 ]
@@ -2158,13 +2159,13 @@ args = [
 name = "sep_firmware_demotion_decision_auth_flag_0_unauth_flag_0_prod_sel_bit_set_test"
 module = "rom_fw.sep_firmware_demotion_decision_auth_flag_0_unauth_flag_0_prod_sel_bit_set_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "spi", "secure", "lifecycle", "demotion", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_sboot_dis.toml",
 ]
@@ -2207,13 +2208,13 @@ args = [
 name = "sep_firmware_chiplet_pubkey_0_wrong_digest_test"
 module = "rom_fw.sep_firmware_chiplet_pubkey_0_wrong_digest_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "lifecycle", "efuse", "chiplet", "chiplet_key", "pubkey", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_chiplet_key0_wrong_digest.toml",
 ]
@@ -2234,13 +2235,13 @@ args = [
 name = "sep_firmware_primary_manifest_identifier_test"
 module = "rom_fw.sep_firmware_primary_manifest_identifier_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "manifest", "error", "cpu", "subsystem", "failover", "crypto", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
   "+sep_crypto_edn_force",
@@ -2262,13 +2263,13 @@ args = [
 name = "sep_firmware_backup_manifest_identifier_test"
 module = "rom_fw.sep_firmware_backup_manifest_identifier_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "spi", "secure", "manifest", "error", "cpu", "subsystem", "failover"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
 ]
@@ -2291,13 +2292,13 @@ args = [
 name = "sep_firmware_manifest_primary_invalid_chiplet_id_test"
 module = "rom_fw.sep_firmware_manifest_primary_invalid_chiplet_id_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "manifest", "error", "cpu", "subsystem", "failover", "crypto", "efuse", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
   "+sep_crypto_edn_force",
@@ -2326,13 +2327,13 @@ args = [
 name = "sep_firmware_manifest_backup_invalid_chiplet_id_test"
 module = "rom_fw.sep_firmware_manifest_backup_invalid_chiplet_id_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "spi", "secure", "manifest", "error", "cpu", "subsystem", "failover", "efuse", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
   # Models the SMC reporting its fuse sense complete. A manifest that enables a
@@ -2358,13 +2359,13 @@ args = [
 name = "sep_firmware_manifest_primary_invalid_package_id_test"
 module = "rom_fw.sep_firmware_manifest_primary_invalid_package_id_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "manifest", "error", "cpu", "subsystem", "failover", "crypto", "efuse", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
   "+sep_crypto_edn_force",
@@ -2387,13 +2388,13 @@ args = [
 name = "sep_firmware_manifest_backup_invalid_package_id_test"
 module = "rom_fw.sep_firmware_manifest_backup_invalid_package_id_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "spi", "secure", "manifest", "error", "cpu", "subsystem", "failover", "efuse", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
   # Models the SMC reporting its fuse sense complete. A manifest that enables a
@@ -2426,13 +2427,13 @@ args = [
 name = "sep_firmware_manifest_primary_lc_state_failure_test"
 module = "rom_fw.sep_firmware_manifest_primary_lc_state_failure_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "manifest", "error", "cpu", "subsystem", "failover", "crypto", "lifecycle", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
   "+sep_crypto_edn_force",
@@ -2450,13 +2451,13 @@ args = [
 name = "sep_firmware_manifest_backup_lc_state_failure_test"
 module = "rom_fw.sep_firmware_manifest_backup_lc_state_failure_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "spi", "secure", "manifest", "error", "cpu", "subsystem", "failover", "lifecycle"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
 ]
@@ -2490,13 +2491,13 @@ args = [
 name = "sep_firmware_validate_backup_manifest_test"
 module = "rom_fw.sep_firmware_validate_backup_manifest_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "manifest", "error", "cpu", "subsystem", "failover", "crypto", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
   "+sep_crypto_edn_force",
@@ -2518,13 +2519,13 @@ args = [
 name = "sep_firmware_bad_manifest_hash_test"
 module = "rom_fw.sep_firmware_bad_manifest_hash_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "manifest", "error", "cpu", "subsystem", "failover", "crypto", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
   "+sep_crypto_edn_force",
@@ -2551,13 +2552,13 @@ args = [
 name = "sep_firmware_backup_manifest_major_version_invalid_test"
 module = "rom_fw.sep_firmware_backup_manifest_major_version_invalid_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "spi", "secure", "manifest", "version", "error", "cpu", "subsystem", "failover"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
 ]
@@ -2578,13 +2579,13 @@ args = [
 name = "sep_firmware_backup_manifest_major_version_valid_minor_0_length_correct_test"
 module = "rom_fw.sep_firmware_backup_manifest_major_version_valid_minor_0_length_correct_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "manifest", "version", "cpu", "subsystem", "failover", "crypto", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
   "+sep_crypto_edn_force",
@@ -2608,13 +2609,13 @@ args = [
 name = "sep_firmware_manifest_primary_missing_sepbl1_test"
 module = "rom_fw.sep_firmware_manifest_primary_missing_sepbl1_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "bl1", "error", "cpu", "subsystem", "failover", "crypto", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
   "+sep_crypto_edn_force",
@@ -2641,13 +2642,13 @@ args = [
 name = "sep_firmware_manifest_backup_missing_sepbl1_test"
 module = "rom_fw.sep_firmware_manifest_backup_missing_sepbl1_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "bl1", "error", "cpu", "subsystem", "failover", "crypto", "efuse", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
   "+sep_crypto_edn_force",
@@ -2674,13 +2675,13 @@ args = [
 name = "sep_firmware_manifest_primary_reordered_sepbl1_test"
 module = "rom_fw.sep_firmware_manifest_primary_reordered_sepbl1_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "bl1", "cpu", "subsystem", "crypto", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
   "+sep_crypto_edn_force",
@@ -2708,13 +2709,13 @@ args = [
 name = "sep_firmware_manifest_backup_reordered_sepbl1_test"
 module = "rom_fw.sep_firmware_manifest_backup_reordered_sepbl1_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "toc", "bl1", "cpu", "subsystem", "failover", "crypto", "efuse", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
   "+sep_crypto_edn_force",
@@ -2736,13 +2737,13 @@ args = [
 name = "sep_firmware_backup_manifest_major_version_valid_minor_0_length_incorrect_test"
 module = "rom_fw.sep_firmware_backup_manifest_major_version_valid_minor_0_length_incorrect_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "spi", "secure", "manifest", "version", "error", "cpu", "subsystem", "failover"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
 ]
@@ -2757,13 +2758,13 @@ args = [
 name = "sep_firmware_backup_manifest_major_version_valid_minor_nonzero_length_large_test"
 module = "rom_fw.sep_firmware_backup_manifest_major_version_valid_minor_nonzero_length_large_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "spi", "secure", "manifest", "version", "error", "cpu", "subsystem", "failover"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
 ]
@@ -2779,13 +2780,13 @@ args = [
 name = "sep_firmware_backup_manifest_major_version_valid_minor_nonzero_length_small_correct_test"
 module = "rom_fw.sep_firmware_backup_manifest_major_version_valid_minor_nonzero_length_small_correct_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "manifest", "version", "cpu", "subsystem", "failover", "crypto", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
   "+sep_crypto_edn_force",
@@ -2802,13 +2803,13 @@ args = [
 name = "sep_firmware_demotion_decision_unauth_flag_0_prod_end_test"
 module = "rom_fw.sep_firmware_demotion_decision_unauth_flag_0_prod_end_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "lifecycle", "demotion", "crypto", "otbn", "rsa", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_end.toml",
   "+sep_crypto_edn_force",
@@ -2826,13 +2827,13 @@ args = [
 name = "sep_firmware_demotion_decision_unauth_flag_30_prod_end_test"
 module = "rom_fw.sep_firmware_demotion_decision_unauth_flag_30_prod_end_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "lifecycle", "demotion", "crypto", "otbn", "rsa", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_end.toml",
   "+sep_crypto_edn_force",
@@ -2851,13 +2852,13 @@ args = [
 name = "sep_firmware_demotion_decision_unauth_flag_0_prod_sel_bit_set_test"
 module = "rom_fw.sep_firmware_demotion_decision_unauth_flag_0_prod_sel_bit_set_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "spi", "secure", "lifecycle", "demotion", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_sboot_dis.toml",
 ]
@@ -2876,13 +2877,13 @@ args = [
 name = "sep_firmware_demotion_decision_unauth_flag_30_prod_sel_bit_set_test"
 module = "rom_fw.sep_firmware_demotion_decision_unauth_flag_30_prod_sel_bit_set_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "lifecycle", "demotion", "crypto", "otbn", "rsa", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
   "+sep_crypto_edn_force",
@@ -2924,13 +2925,13 @@ args = [
 name = "sep_firmware_demotion_decision_unauth_flag_0_prod_test"
 module = "rom_fw.sep_firmware_demotion_decision_unauth_flag_0_prod_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 7200
 tags = ["boot", "rom", "spi", "secure", "lifecycle", "demotion", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod_sboot_dis.toml",
 ]
@@ -2965,13 +2966,13 @@ args = [
 name = "sep_firmware_demotion_decision_no_flag_prod_test"
 module = "rom_fw.sep_firmware_demotion_decision_no_flag_prod_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "lifecycle", "demotion", "crypto", "otbn", "rsa", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
   "+sep_crypto_edn_force",
@@ -2988,13 +2989,13 @@ args = [
 name = "sep_firmware_manifest_primary_use_ext_sram_enabled_test"
 module = "rom_fw.sep_firmware_manifest_primary_use_ext_sram_enabled_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "ext_sram", "cpu", "subsystem", "crypto", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
   "+sep_crypto_edn_force",
@@ -3011,13 +3012,13 @@ args = [
 name = "sep_firmware_manifest_primary_use_ext_sram_disabled_test"
 module = "rom_fw.sep_firmware_manifest_primary_use_ext_sram_disabled_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "ext_sram", "cpu", "subsystem", "crypto", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
   "+sep_crypto_edn_force",
@@ -3032,13 +3033,13 @@ args = [
 name = "sep_firmware_manifest_backup_use_ext_sram_enabled_test"
 module = "rom_fw.sep_firmware_manifest_backup_use_ext_sram_enabled_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "ext_sram", "cpu", "subsystem", "crypto", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
   "+sep_crypto_edn_force",
@@ -3052,13 +3053,13 @@ args = [
 name = "sep_firmware_manifest_backup_use_ext_sram_disabled_test"
 module = "rom_fw.sep_firmware_manifest_backup_use_ext_sram_disabled_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "manifest", "payload", "ext_sram", "cpu", "subsystem", "crypto", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
   "+sep_crypto_edn_force",
@@ -3080,13 +3081,13 @@ args = [
 name = "sep_boot_measurement_golden_test"
 module = "rom_fw.sep_boot_measurement_golden_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "measurement", "handoff", "cpu", "subsystem", "crypto", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_prod.toml",
   "+sep_crypto_edn_force",
@@ -3106,13 +3107,13 @@ args = [
 name = "sep_rsa_verify_redundant_compare_test"
 module = "rom_fw.sep_rsa_verify_redundant_compare_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "spi", "secure", "crypto", "hardening", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_crypto_edn_force",
 ]
@@ -3137,12 +3138,12 @@ args = [
 name = "sep_lifecycle_invalid_smc_reset_test"
 module = "rom_fw.sep_lifecycle_invalid_smc_reset_test"
 target = "rom_boot"
-firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
+firmware = { name = "boot_rom", mode = "boot_rom" }
 seed = 1
 timeout_sec = 14400
 tags = ["boot", "rom", "lifecycle", "error", "security", "smc", "cpu", "subsystem"]
 run_modes = ["cpu"]
 args = [
-  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
+  "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build/boot_rom.vmem",
   "+sep_efuse_preload={repo_root}/hw/sys/sep/dv/tb/efuse_preloads/efuse_configurations/sep_efuse_lc_invalid.toml",
 ]

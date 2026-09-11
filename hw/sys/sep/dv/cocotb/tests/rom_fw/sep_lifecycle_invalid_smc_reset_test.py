@@ -62,8 +62,8 @@ from env.sep_rom_console import log_scratch_cold, rom_console_task
 
 _SEP_ROOT = str(Path(__file__).resolve().parents[4])
 # The LC check runs before any transport is selected, so the SPI build variant is
-# irrelevant; reuse the OT one rather than adding a firmware profile.
-_FW_DIR = os.path.join(_SEP_ROOT, "bootrom", "prod", "build_ot")
+# irrelevant; reuse the default ROM rather than adding a firmware profile.
+_FW_DIR = os.path.join(_SEP_ROOT, "bootrom", "prod", "build")
 _ROM_BASE = sym("SEP_BOOT_ROM_MEM_BASE_ADDR")
 
 _EFUSE_PRELOAD = (

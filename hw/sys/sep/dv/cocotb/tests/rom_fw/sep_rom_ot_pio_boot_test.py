@@ -16,12 +16,12 @@ Why this test exists as its own entry rather than a variant of the DMA one: the
 two read the same bytes but reach them through different hardware. The DMA path
 arms the secure DMA and waits on an RX-watermark trigger; the PIO path has the
 CPU poll the FIFO status and copy words itself. A regression in either is
-invisible to the other, and ``build_ot_pio/boot_rom.elf`` does not even contain
+invisible to the other, and ``build_pio/boot_rom.elf`` does not even contain
 ``ot_spi_flash_read_dma`` -- the linker drops it -- so the DMA test genuinely
 cannot cover this code.
 
 Everything else is inherited. Which ROM binary runs is decided by the
-``+sep_boot_rom_hex`` the testlist passes for this entry (``build_ot_pio/``); the
+``+sep_boot_rom_hex`` the testlist passes for this entry (``build_pio/``); the
 scenario, the flash BFM wiring and the BOOT_SPI / WAIT_SMC_MANIFEST path
 assertions all come from the parent as class data. This subclass therefore
 carries no body of its own -- it gives the testlist a second name to point that
