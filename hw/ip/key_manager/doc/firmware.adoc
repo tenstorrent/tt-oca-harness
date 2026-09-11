@@ -185,7 +185,8 @@ failed to derive, or that has been revoked, reports `KM_ERR_ROOT_CLEARED` when a
 command would have used it.
 
 Revoking a root is the same hardware operation as revoking a key: the KM asserts
-`ERASE_KEY` on the root's slot, which wipes the material. `CMD_CLEAR_ID_ROOT`, 
+the slot's `ERASE` trigger, and an LFSR fills its key words through the KPV
+scrambler. `CMD_CLEAR_ID_ROOT`,
 `CMD_CLEAR_OWNER_KEYS` and `CMD_CLEAR_HW_KEYS` all clear roots this way. Because 
 root slots are sealed from derivation onwards, clearing one retires its slot rather
 than freeing it (<<km-kpv-slot-map>>), so a revoked root cannot be replaced by a
@@ -2270,14 +2271,17 @@ holding CLASS_KEY derives the same key. That is what makes class-wide image
 encryption work. Its confidentiality therefore rests entirely on host ROM or bootloader 
 gating the CLASS_KEY fuse off after first-stage decrypt, not on device-state binding.
 
-Two properties follow and are normative:
+Three requirements follow, and all three are normative:
 
-. This command MUST be ROM mode only. Running this commnad from mutable firmware creates an
-  unlimited chosen-context oracle on a class-wide pre-shared secret.
-. The fuse value read MUST check whether CLASS_KEY is still readable based on KM managed lock bit. 
-  This command MUST return _failure_ once it is gated off. A gated fuse that reads as
-  zeroes would otherwise derive a fully public key and report _success_.
-. CLASS_KEY fuse access must be read locked when exiting ROM mode. 
+. This command MUST be ROM mode only. Running it from mutable firmware would
+  create an unlimited chosen-context oracle on a class-wide pre-shared secret.
+. The handler MUST read the effective `CK` read-lock before it reads the fuse,
+  and MUST return _failure_ with `KM_ERR_LOCKED` when that lock is set
+  (<<km-stat-lock-bits>>). A gated fuse reads as zeroes, so a handler that
+  skipped the check would derive a fully public key and report _success_.
+. The KM MUST set the `CK` cold-domain read-lock as part of leaving ROM mode
+  (<<km-handover-domain-split>>), so the gate is already closed before any
+  mutable firmware runs.
 
 *Payload*
 
