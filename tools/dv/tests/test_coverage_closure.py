@@ -36,7 +36,7 @@ DUT = "fixture"
 TOOL_VERSION = "Verilator 5.050 2026-07-01 rev vUNKNOWN-built20260701"
 SUPPORTED_METRICS = ["line", "toggle", "branch"]
 POLICY_REL = Path("dut/cov/config/verilator/coverage_policy.toml")
-# Golden file name -> path under the staged root; the report stage writes all six.
+# Golden file name -> path under the staged root; the report stage writes each of these.
 GRADED_FILES = {
     "coverage-details.raw.json": Path("run/cov/report/coverage-details.raw.json"),
     "coverage-details.json": Path("run/cov/report/coverage-details.json"),

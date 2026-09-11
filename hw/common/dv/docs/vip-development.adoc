@@ -31,7 +31,8 @@ Default to DUT-local ownership. Promote only after the criteria in
 . Document limitations and backend policy.
 . Integrate one real DUT consumer.
 . Run positive, negative, timeout, and non-vacuity validation.
-. Record the qualifying commit, tool versions, seed, result, and artifact.
+. Record the qualifying commit, tool versions, seed, result, and artifact in
+  the tracker.
 
 [[shared-vip-development-api]]
 === Public API Rules
@@ -200,9 +201,9 @@ Every promoted package README includes:
 * method/result/error/timeout reference;
 * deterministic default and randomization policy;
 * example path;
-* known limitations and deferred capabilities;
-* named gating DUT test and qualification status;
-* migration guidance from raw backend usage.
+* known limitations and out-of-scope capabilities;
+* named gating DUT test;
+* the OCAH API to use in place of direct backend calls.
 
 Complex packages should add `MANUAL.md`. Shared architecture and cross-package
 rules belong in this guide rather than being duplicated inconsistently.

@@ -24,11 +24,11 @@ the SEP xSPI path) need a single, versioned flash device model so that:
 
 ## Supported personalities
 
-| Mode    | Description                                           | Status      |
+| Mode    | Description                                           | Data phase  |
 |---------|-------------------------------------------------------|-------------|
-| single  | Standard 1-bit SPI (MOSI/MISO), Mode 0 (CPOL=0/CPHA=0) | Full        |
-| quad    | 4-bit data bus (QSPI); command/address still 1-bit   | Single-bit data timing (see note below) |
-| octal   | 8-bit data bus (OSPI/xSPI); SDR only                 | Single-bit data timing (see note below) |
+| single  | Standard 1-bit SPI (MOSI/MISO), Mode 0 (CPOL=0/CPHA=0) | 1-bit on MOSI/MISO |
+| quad    | 4-bit data bus (QSPI); command/address 1-bit         | 1-bit on DQ0 (see note below) |
+| octal   | 8-bit data bus (OSPI/xSPI); SDR only                 | 1-bit on DQ0 (see note below) |
 
 **Quad/Octal note:** Command and address bytes are always received in 1-bit
 mode, and the data phase uses the same 1-bit engine on DQ0, so the quad and
@@ -64,13 +64,13 @@ silicon-specific commands.
 
 ```
 ocah_spi_vip/
-  __init__.py                    — exports all public symbols
+  __init__.py                           — re-exports the cocotb public API
   cocotb/ocah_spi_flash.py              — OcahSpiFlash (generic SPI/QSPI/OSPI)
   cocotb/ocah_sep_spi_flash.py          — OcahSepSpiFlash (SEP xSPI pin set)
   cocotb/ocah_spi_monitor.py            — OcahSpiMonitor (passive bus observer)
-  examples/
-    example_jedec_id.py          — annotated JEDEC-ID read snippet
-  README.md                      — this file
+  cocotb/examples/
+    example_jedec_id.py                 — annotated JEDEC-ID read snippet
+  README.md                             — this file
 ```
 
 ---
@@ -147,9 +147,9 @@ Inherits all `OcahSpiFlash` methods, plus:
 | OE-aware DQ drive           | When `dq_oe_n` provided, BFM skips driving DQ0 during controller-output phases |
 | `rebar_i` driven high       | `init_signals()` drives `rebar_i` = 1 (flash not in reset) |
 
-**SEP port mapping** (from `hw/sep/sep_wrapper.sv`):
+**Pad roles** (the pad each parameter binds):
 
-| This BFM parameter | SEP wrapper port          | Direction (from DUT) |
+| This BFM parameter | Pad                       | Direction (from DUT) |
 |--------------------|---------------------------|----------------------|
 | `cs_n`             | `spi_cs_n_o`              | DUT → flash          |
 | `sclk`             | `spi_clk_o`               | DUT → flash          |
@@ -256,7 +256,7 @@ works for both flash types.
 ## Hierarchical VIP Layout
 
 This package follows the OCAH hierarchical VIP convention (see
-`hw/common/dv/README.md` and the 1_vip layout guide): all cocotb (Python)
+`hw/common/dv/README.md`): all cocotb (Python)
 code lives in `cocotb/`, and the root `__init__.py` is a thin shim
 re-exporting the stable public API — always import
 `from ocah_spi_vip import <Class>`, never from the subfolders.

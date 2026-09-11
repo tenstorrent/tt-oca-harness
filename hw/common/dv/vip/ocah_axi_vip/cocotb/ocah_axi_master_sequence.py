@@ -3,7 +3,7 @@
 """AXI4 master sequence API: the VIP's test-facing stimulus surface.
 
 `OcahAxiMasterSequence` wraps one `OcahAxiMasterDriver` and provides the
-blocking, checked transaction API tests consume: compatibility helpers
+blocking, checked transaction API tests consume: plain-value helpers
 (``write``/``read``), result helpers (``*_result``), burst variants, timeout
 handling, and typed non-OKAY raising. Tests and DUT sequence layers drive the
 VIP through this class (or the agent's ``sequence``), never through the raw
@@ -51,7 +51,7 @@ async def _wait_event(event, timeout_ns: int | None):
 class OcahAxiMasterSequence:
     """Checked AXI4 transaction operations over one master driver.
 
-    Compatibility methods return plain Python values and ``*_result`` methods
+    ``write``/``read`` return plain Python values and ``*_result`` methods
     return plain result dataclasses; ``init_read``/``init_write`` pass through
     to the driver for explicit event-style timeout flows.
     """
