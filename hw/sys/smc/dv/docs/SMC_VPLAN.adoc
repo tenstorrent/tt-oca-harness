@@ -207,6 +207,7 @@ verifying the block behind the port.
 |`smc_efuse_permission_boundary_test` |PROXY -- run eFuse-derived chip-config reads until raw OTP permission paths respond.
 |`smc_efuse_read_program_timeout_test` |timeout_enable\|0 aborts; default timeout recovers OTP bit0.
 |`smc_efuse_shim_ctrl_test` |P1 coverage-gap depth: EFUSE_INTERFACE + SHIM_CTRL probe.
+|`smc_state_fault_inject_test` |Every unused state encoding in the eFuse interface controller and in the Zeroer fails closed, and the block recovers.
 |===
 
 ==== GPIO
@@ -3671,10 +3672,72 @@ Drive `smc_efuse_shim_ctrl_test_seq`. Each checker below is a named compare the 
 
 '''''
 
+[[sec-097-smc_state_fault_inject_test]]
+===== 97 `smc_state_fault_inject_test`
+
+*Source Module*: `smc_state_fault_inject_test`
+
+*BFM / Model*: ocah_axi_vip (AXI) for the CSR path; state corruption driven on the
+testbench's `tb_efuse_*_state_inject` and `tb_zeroer_state_inject` hooks
+
+*Objective*: Every unused state encoding in the eFuse interface controller and in the Zeroer fails closed, and the block recovers.
+
+*Test Coverage*:
+
+* Directed fault injection into two state machines: the eFuse interface
+  controller's program and read FSMs, and the Zeroer FSM.
+* eFuse: both unused 2-bit encodings (`0b00` and `0b11`) are injected, on the
+  program path and the read path independently.
+* The same-cycle claim is the point of the `0b11` case -- the corruption is armed
+  concurrently with a legal `GO` write, and the injector asserts the request line
+  is suppressed in that same cycle rather than one cycle later.
+* Recovery is scored, not just entry: after injection the FSM must return to
+  `IDLE` with request low, busy low, done high and error high, and the program
+  read-back must read the `0xBADCAB1E` illegal-state sentinel.
+* Non-vacuity is a real baseline: a legal program runs first and the sequence
+  asserts its read-back does *not* already equal the sentinel, so the
+  post-injection compare could have failed.
+* Read-error sourcing: a new legal request must clear a prior read error, and an
+  injected read error must set the status and zero the read-back.
+* Zeroer: all four illegal encodings (`0b011`, `0b101`, `0b110`, `0b111`) must
+  enter the absorbing `ERROR` state, hold it for at least two further cycles with
+  busy high, `intp` low and both AXI valids low, and only a cold reset escapes it.
+* Every wait is bounded (10 000 cycles) and reports the last observed value on
+  expiry, so a signal that never moves fails rather than hanging.
+
+*Test Procedure*:
+
+[arabic]
+. Wait for fuse-sense-done.
+. Run a legal program command, confirm completion, and record a read-back that is
+  not the illegal-state sentinel.
+. Inject eFuse program state `0b00` with no request outstanding; confirm the state
+  is held, the request stays low, recovery reaches `IDLE` with done and error set,
+  and the read-back is the sentinel.
+. Arm the `0b11` injection concurrently with a legal program `GO`, confirm the
+  request is suppressed in the same cycle, then confirm the same recovery.
+. Repeat both encodings on the read path; inject a read error and confirm the
+  status sets and the read-back zeroes, then clear it through `REQ_ERROR_CLEAR`.
+. Inject each of the four illegal Zeroer encodings, confirm the absorbing `ERROR`
+  state holds, then assert cold reset and confirm the escape to `IDLE`.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-STATE-FAULT` |eFuse `00`/`11` fail closed on both the program and the read path; a new legal request clears a prior read error and an injected read error sets the status; Zeroer `011`/`101`/`110`/`111` each enter the absorbing error state and only a cold reset escapes it
+|===
+
+
+*Pass Criteria*: `CHK-STATE-FAULT` holds after its compares, and every bounded wait in the sequence completed rather than expiring. Enrolled in: `per_ip`, `coverage_closure`, `depth`, `depth_efuse`.
+
+'''''
+
 ==== GPIO
 
-[[sec-097-smc_gpio_ctrl_full_sweep_test]]
-===== 97 `smc_gpio_ctrl_full_sweep_test`
+[[sec-098-smc_gpio_ctrl_full_sweep_test]]
+===== 98 `smc_gpio_ctrl_full_sweep_test`
 
 *Source Module*: `smc_gpio_ctrl_full_sweep_test`
 
@@ -3706,8 +3769,8 @@ Drive `smc_gpio_ctrl_full_sweep_test_seq`. Each checker below is a named compare
 
 '''''
 
-[[sec-098-smc_gpio_filter_access_sep_test]]
-===== 98 `smc_gpio_filter_access_sep_test`
+[[sec-099-smc_gpio_filter_access_sep_test]]
+===== 99 `smc_gpio_filter_access_sep_test`
 
 *Source Module*: `smc_gpio_filter_access_sep_test`
 
@@ -3742,8 +3805,8 @@ Drive `smc_gpio_filter_access_sep_test_seq`. Each checker below is a named compa
 *Pass Criteria*: `CHK-GPIO-FILTER-GPIO1`, `CHK-GPIO-FILTER-PRE`, `CHK-GPIO-FILTER-PRIV`, `CHK-GPIO-FILTER-SCOREBOARD`, `CHK-GPIO-FILTER-UNPRIV`, `CHK-GPIO-FILTER-WR-DENY` hold after their compares. Enrolled in: `all`, `per_ip`, `gpio`.
 '''''
 
-[[sec-099-smc_gpio_intf_full_sweep_test]]
-===== 99 `smc_gpio_intf_full_sweep_test`
+[[sec-100-smc_gpio_intf_full_sweep_test]]
+===== 100 `smc_gpio_intf_full_sweep_test`
 
 *Source Module*: `smc_gpio_intf_full_sweep_test`
 
@@ -3775,8 +3838,8 @@ Drive `smc_gpio_intf_full_sweep_test_seq`. Each checker below is a named compare
 
 '''''
 
-[[sec-100-smc_gpio_irq_active_test]]
-===== 100 `smc_gpio_irq_active_test`
+[[sec-101-smc_gpio_irq_active_test]]
+===== 101 `smc_gpio_irq_active_test`
 
 *Source Module*: `smc_gpio_irq_active_test`
 
@@ -3810,8 +3873,8 @@ Drive `smc_gpio_irq_active_test_seq`. Each checker below is a named compare the 
 *Pass Criteria*: `CHK-GPIO-IRQ-ACTIVE-LOW`, `CHK-GPIO-IRQ-ACTIVE-LOW-ASSERT`, `CHK-GPIO-IRQ-ACTIVE-LOW-CLEAR`, `CHK-GPIO-IRQ-ACTIVE-LOW-IDLE`, `CHK-GPIO0-DATA-CTRL-READBACK`, `CHK-MAILBOX-IRQEN-RESET` hold after their compares. Enrolled in: `all`, `per_ip`, `gpio`, `functional_depth`, `pyuvm`, `smoke`, `depth`.
 '''''
 
-[[sec-101-smc_gpio_irq_type_matrix_test]]
-===== 101 `smc_gpio_irq_type_matrix_test`
+[[sec-102-smc_gpio_irq_type_matrix_test]]
+===== 102 `smc_gpio_irq_type_matrix_test`
 
 *Source Module*: `smc_gpio_irq_type_matrix_test`
 
@@ -3843,8 +3906,8 @@ Drive `smc_gpio_irq_type_matrix_test_seq`. Each checker below is a named compare
 *Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `per_ip`, `gpio`.
 '''''
 
-[[sec-102-smc_gpio_multi_sample_test]]
-===== 102 `smc_gpio_multi_sample_test`
+[[sec-103-smc_gpio_multi_sample_test]]
+===== 103 `smc_gpio_multi_sample_test`
 
 *Source Module*: `smc_gpio_multi_sample_test`
 
@@ -3875,8 +3938,8 @@ Drive `smc_gpio_multi_sample_test_seq`. Each checker below is a named compare th
 *Pass Criteria*: `CHK-GPIO-MULTI-SAMPLE-MATCHES-REF`, `CHK-GPIO-MULTI-SAMPLE-STABLE` hold after their compares. Enrolled in: `all`, `per_ip`, `gpio`, `functional_depth`, `pyuvm`, `smoke`.
 '''''
 
-[[sec-103-smc_gpio_observe_test]]
-===== 103 `smc_gpio_observe_test`
+[[sec-104-smc_gpio_observe_test]]
+===== 104 `smc_gpio_observe_test`
 
 *Source Module*: `smc_gpio_observe_test`
 
@@ -3915,8 +3978,8 @@ Drive `smc_gpio_observe_test_seq`. Each checker below is a named compare the DUT
 *Pass Criteria*: `CHK-GPIO-AGGREGATE-STABLE`, `CHK-GPIO-PAD-BUS-STABLE`, `CHK-PROBE-AXIL-EFUSE-BANK-ALIVE`, `CHK-PROBE-AXIL-EXTERNAL-ALIVE`, `CHK-PROBE-CONTROLS`, `CHK-PROBE-GPIO-IRQ-ALIVE` (and 4 more) hold after their compares. Enrolled in: `all`, `per_ip`, `gpio`, `functional`, `functional_depth`, `pyuvm`, `smoke`.
 '''''
 
-[[sec-104-smc_gpio_output_driveback_test]]
-===== 104 `smc_gpio_output_driveback_test`
+[[sec-105-smc_gpio_output_driveback_test]]
+===== 105 `smc_gpio_output_driveback_test`
 
 *Source Module*: `smc_gpio_output_driveback_test`
 
@@ -3947,8 +4010,8 @@ Drive `smc_gpio_output_driveback_test_seq`. Each checker below is a named compar
 *Pass Criteria*: every sequence assert holds; no named `CHK-*` token is emitted. Enrolled in: `all`, `per_ip`, `gpio`.
 '''''
 
-[[sec-105-smc_gpio_p0_int_test]]
-===== 105 `smc_gpio_p0_int_test`
+[[sec-106-smc_gpio_p0_int_test]]
+===== 106 `smc_gpio_p0_int_test`
 
 *Source Module*: `smc_gpio_p0_int_test`
 
@@ -3980,8 +4043,8 @@ Drive `smc_gpio_p0_int_test_seq`. Each checker below is a named compare the DUT 
 *Pass Criteria*: `CHK-GPIO-P0-INT-BASIC`, `CHK-GPIO-P0-INT-FALL`, `CHK-GPIO-P0-INT-RISE` hold after their compares. Enrolled in: `all`, `per_ip`, `gpio`.
 '''''
 
-[[sec-106-smc_gpio_p0_mux_test]]
-===== 106 `smc_gpio_p0_mux_test`
+[[sec-107-smc_gpio_p0_mux_test]]
+===== 107 `smc_gpio_p0_mux_test`
 
 *Source Module*: `smc_gpio_p0_mux_test`
 
@@ -4016,8 +4079,8 @@ Drive `smc_gpio_p0_mux_test_seq`. Each checker below is a named compare the DUT 
 
 ==== IRQ
 
-[[sec-107-smc_hang_detector_data_timeout_test]]
-===== 107 `smc_hang_detector_data_timeout_test`
+[[sec-108-smc_hang_detector_data_timeout_test]]
+===== 108 `smc_hang_detector_data_timeout_test`
 
 *Source Module*: `smc_hang_detector_data_timeout_test`
 
@@ -4053,8 +4116,8 @@ Drive `smc_hang_detector_data_timeout_test_seq`. Each checker below is a named c
 *Pass Criteria*: `CHK-HANG-DATA-TIMEOUT-ACCEPT`, `CHK-HANG-DATA-TIMEOUT-ARM`, `CHK-HANG-DATA-TIMEOUT-BASIC`, `CHK-HANG-DATA-TIMEOUT-DISABLED`, `CHK-HANG-DATA-TIMEOUT-DROP`, `CHK-HANG-DATA-TIMEOUT-FIRE` (and 1 more) hold after their compares. Enrolled in: `all`, `per_ip`, `irq`.
 '''''
 
-[[sec-108-smc_hang_detector_plic_route_test]]
-===== 108 `smc_hang_detector_plic_route_test`
+[[sec-109-smc_hang_detector_plic_route_test]]
+===== 109 `smc_hang_detector_plic_route_test`
 
 *Source Module*: `smc_hang_detector_plic_route_test`
 
@@ -4092,8 +4155,8 @@ Drive `smc_hang_detector_plic_route_test_seq`. Each checker below is a named com
 
 '''''
 
-[[sec-109-smc_hang_detector_sanity_test]]
-===== 109 `smc_hang_detector_sanity_test`
+[[sec-110-smc_hang_detector_sanity_test]]
+===== 110 `smc_hang_detector_sanity_test`
 
 *Source Module*: `smc_hang_detector_sanity_test`
 
@@ -4127,8 +4190,8 @@ Drive `smc_hang_detector_sanity_test_seq`. Each checker below is a named compare
 *Pass Criteria*: `CHK-HANG-BASIC`, `CHK-HANG-OR-ALL`, `CHK-HANG-OR-CLR`, `CHK-HANG-OR-HOLD`, `CHK-HANG-POISON` hold after their compares. Enrolled in: `all`, `per_ip`, `irq`.
 '''''
 
-[[sec-110-smc_hang_detector_sys_timeout_test]]
-===== 110 `smc_hang_detector_sys_timeout_test`
+[[sec-111-smc_hang_detector_sys_timeout_test]]
+===== 111 `smc_hang_detector_sys_timeout_test`
 
 *Source Module*: `smc_hang_detector_sys_timeout_test`
 
@@ -4164,8 +4227,8 @@ Drive `smc_hang_detector_sys_timeout_test_seq`. Each checker below is a named co
 
 '''''
 
-[[sec-111-smc_hang_detector_timeout_test]]
-===== 111 `smc_hang_detector_timeout_test`
+[[sec-112-smc_hang_detector_timeout_test]]
+===== 112 `smc_hang_detector_timeout_test`
 
 *Source Module*: `smc_hang_detector_timeout_test`
 
@@ -4199,8 +4262,8 @@ Drive `smc_hang_detector_timeout_test_seq`. Each checker below is a named compar
 *Pass Criteria*: `CHK-HANG-TIMEOUT-AR`, `CHK-HANG-TIMEOUT-ARM`, `CHK-HANG-TIMEOUT-BASIC`, `CHK-HANG-TIMEOUT-DISABLED`, `CHK-HANG-TIMEOUT-DROP`, `CHK-HANG-TIMEOUT-FIRE` hold after their compares. Enrolled in: `all`, `per_ip`, `irq`.
 '''''
 
-[[sec-112-smc_irq_multi_sample_test]]
-===== 112 `smc_irq_multi_sample_test`
+[[sec-113-smc_irq_multi_sample_test]]
+===== 113 `smc_irq_multi_sample_test`
 
 *Source Module*: `smc_irq_multi_sample_test`
 
@@ -4231,8 +4294,8 @@ Drive `smc_irq_multi_sample_test_seq`. Each checker below is a named compare the
 *Pass Criteria*: `CHK-IRQ-MULTI-SAMPLE-STABLE` hold after their compares. Enrolled in: `all`, `per_ip`, `irq`, `functional_depth`, `pyuvm`, `smoke`.
 '''''
 
-[[sec-113-smc_irq_observe_test]]
-===== 113 `smc_irq_observe_test`
+[[sec-114-smc_irq_observe_test]]
+===== 114 `smc_irq_observe_test`
 
 *Source Module*: `smc_irq_observe_test`
 
@@ -4267,8 +4330,8 @@ Drive `smc_irq_observe_test_seq`. Each checker below is a named compare the DUT 
 *Pass Criteria*: `CHK-IRQ-OBSERVE-IDLE-CHECKED` hold after their compares. Enrolled in: `all`, `irq`, `functional`, `functional_depth`, `pyuvm`, `smoke`.
 '''''
 
-[[sec-114-smc_temp_interrupt_test]]
-===== 114 `smc_temp_interrupt_test`
+[[sec-115-smc_temp_interrupt_test]]
+===== 115 `smc_temp_interrupt_test`
 
 *Source Module*: `smc_temp_interrupt_test`
 
@@ -4304,8 +4367,8 @@ Drive `smc_temp_interrupt_test_seq`. Each checker below is a named compare the D
 
 ==== I2C
 
-[[sec-115-smc_i2c_error_fifo_depth_test]]
-===== 115 `smc_i2c_error_fifo_depth_test`
+[[sec-116-smc_i2c_error_fifo_depth_test]]
+===== 116 `smc_i2c_error_fifo_depth_test`
 
 *Source Module*: `smc_i2c_error_fifo_depth_test`
 
@@ -4339,8 +4402,8 @@ Drive `smc_i2c_error_fifo_depth_test_seq`. Each checker below is a named compare
 *Pass Criteria*: `CHK-I2C0-HOST-WRITE`, `CHK-I2C0-OVRD-PAD`, `CHK-I2C0-SMBUS-ARA`, `CHK-I2C0-SMBUS-PEC`, `CHK-I2C0-U4-2-SMBUS` hold after their compares. Enrolled in: `all`, `coverage_closure`, `depth`.
 '''''
 
-[[sec-116-smc_i2c_fifo_full_test]]
-===== 116 `smc_i2c_fifo_full_test`
+[[sec-117-smc_i2c_fifo_full_test]]
+===== 117 `smc_i2c_fifo_full_test`
 
 *Source Module*: `smc_i2c_fifo_full_test`
 
@@ -4374,8 +4437,8 @@ Drive `smc_i2c_fifo_full_test_seq`. Each checker below is a named compare the DU
 *Pass Criteria*: `CHK-I2C-FIFO-FULL-ACQ`, `CHK-I2C-FIFO-FULL-BASIC`, `CHK-I2C-FIFO-FULL-FMT`, `CHK-I2C-FIFO-FULL-RX`, `CHK-I2C-FIFO-FULL-TX` hold after their compares. Enrolled in: `all`, `per_ip`, `i2c`.
 '''''
 
-[[sec-117-smc_i2c_master_target_test]]
-===== 117 `smc_i2c_master_target_test`
+[[sec-118-smc_i2c_master_target_test]]
+===== 118 `smc_i2c_master_target_test`
 
 *Source Module*: `smc_i2c_master_target_test`
 
@@ -4409,8 +4472,8 @@ Drive `smc_i2c_master_target_test_seq`. Each checker below is a named compare th
 *Pass Criteria*: `CHK-I2C0-HOST-WRITE`, `CHK-I2C0-OVRD-PAD`, `CHK-I2C0-SMBUS-ARA`, `CHK-I2C0-SMBUS-PEC`, `CHK-I2C0-U4-2-SMBUS` hold after their compares. Enrolled in: `all`, `per_ip`, `i2c`, `functional_depth`, `pyuvm`, `smoke`, `depth`.
 '''''
 
-[[sec-118-smc_i2c_multi_instance_test]]
-===== 118 `smc_i2c_multi_instance_test`
+[[sec-119-smc_i2c_multi_instance_test]]
+===== 119 `smc_i2c_multi_instance_test`
 
 *Source Module*: `smc_i2c_multi_instance_test`
 
@@ -4443,8 +4506,8 @@ Drive `smc_i2c_multi_instance_test_seq`. Each checker below is a named compare t
 
 '''''
 
-[[sec-119-smc_i2c_multi_sample_test]]
-===== 119 `smc_i2c_multi_sample_test`
+[[sec-120-smc_i2c_multi_sample_test]]
+===== 120 `smc_i2c_multi_sample_test`
 
 *Source Module*: `smc_i2c_multi_sample_test`
 
@@ -4475,8 +4538,8 @@ Drive `smc_i2c_multi_sample_test_seq`. Each checker below is a named compare the
 *Pass Criteria*: `CHK-I2C-MULTI-SAMPLE-STABLE` hold after their compares. Enrolled in: `all`, `i2c`, `functional_depth`, `pyuvm`, `smoke`.
 '''''
 
-[[sec-120-smc_i2c_p0_cfifo_test]]
-===== 120 `smc_i2c_p0_cfifo_test`
+[[sec-121-smc_i2c_p0_cfifo_test]]
+===== 121 `smc_i2c_p0_cfifo_test`
 
 *Source Module*: `smc_i2c_p0_cfifo_test`
 
@@ -4507,8 +4570,8 @@ Drive `smc_i2c_p0_cfifo_test_seq`. Each checker below is a named compare the DUT
 
 '''''
 
-[[sec-121-smc_i2c_p0_conti_test]]
-===== 121 `smc_i2c_p0_conti_test`
+[[sec-122-smc_i2c_p0_conti_test]]
+===== 122 `smc_i2c_p0_conti_test`
 
 *Source Module*: `smc_i2c_p0_conti_test`
 
@@ -4539,8 +4602,8 @@ Drive `smc_i2c_p0_conti_test_seq`. Each checker below is a named compare the DUT
 
 '''''
 
-[[sec-122-smc_i2c_p0_fifo_test]]
-===== 122 `smc_i2c_p0_fifo_test`
+[[sec-123-smc_i2c_p0_fifo_test]]
+===== 123 `smc_i2c_p0_fifo_test`
 
 *Source Module*: `smc_i2c_p0_fifo_test`
 
@@ -4571,8 +4634,8 @@ Drive `smc_i2c_p0_fifo_test_seq`. Each checker below is a named compare the DUT 
 *Pass Criteria*: `CHK-I2C-P0-FIFO`, `CHK-I2C-P0-FIFO-ACQ`, `CHK-I2C-P0-FIFO-TX` hold after their compares. Enrolled in: `all`, `per_ip`, `i2c`.
 '''''
 
-[[sec-123-smc_i2c_p0_multictrl_test]]
-===== 123 `smc_i2c_p0_multictrl_test`
+[[sec-124-smc_i2c_p0_multictrl_test]]
+===== 124 `smc_i2c_p0_multictrl_test`
 
 *Source Module*: `smc_i2c_p0_multictrl_test`
 
@@ -4603,8 +4666,8 @@ Drive `smc_i2c_p0_multictrl_test_seq`. Each checker below is a named compare the
 *Pass Criteria*: `CHK-I2C-P0-MULTICTRL`, `CHK-I2C-P0-MULTICTRL-P` hold after their compares. Enrolled in: `all`, `per_ip`, `i2c`.
 '''''
 
-[[sec-124-smc_i2c_p0_nack_test]]
-===== 124 `smc_i2c_p0_nack_test`
+[[sec-125-smc_i2c_p0_nack_test]]
+===== 125 `smc_i2c_p0_nack_test`
 
 *Source Module*: `smc_i2c_p0_nack_test`
 
@@ -4636,8 +4699,8 @@ Drive `smc_i2c_p0_nack_test_seq`. Each checker below is a named compare the DUT 
 *Pass Criteria*: `CHK-I2C-P0-NACK-ALLOW`, `CHK-I2C-P0-NACK-TC1`, `CHK-I2C-P0-NACK-TC2` hold after their compares. Enrolled in: `all`, `per_ip`, `i2c`.
 '''''
 
-[[sec-125-smc_i2c_p0_rdwr_test]]
-===== 125 `smc_i2c_p0_rdwr_test`
+[[sec-126-smc_i2c_p0_rdwr_test]]
+===== 126 `smc_i2c_p0_rdwr_test`
 
 *Source Module*: `smc_i2c_p0_rdwr_test`
 
@@ -4667,8 +4730,8 @@ Drive `smc_i2c_p0_rdwr_test_seq`. Each checker below is a named compare the DUT 
 
 '''''
 
-[[sec-126-smc_i2c_p0_stretch_test]]
-===== 126 `smc_i2c_p0_stretch_test`
+[[sec-127-smc_i2c_p0_stretch_test]]
+===== 127 `smc_i2c_p0_stretch_test`
 
 *Source Module*: `smc_i2c_p0_stretch_test`
 
@@ -4699,8 +4762,8 @@ Drive `smc_i2c_p0_stretch_test_seq`. Each checker below is a named compare the D
 *Pass Criteria*: `CHK-I2C-P0-HOST-SETTLED`, `CHK-I2C-P0-STRETCH` hold after their compares. Enrolled in: `all`, `per_ip`, `i2c`.
 '''''
 
-[[sec-127-smc_i2c_p0_timeout_test]]
-===== 127 `smc_i2c_p0_timeout_test`
+[[sec-128-smc_i2c_p0_timeout_test]]
+===== 128 `smc_i2c_p0_timeout_test`
 
 *Source Module*: `smc_i2c_p0_timeout_test`
 
@@ -4731,8 +4794,8 @@ Drive `smc_i2c_p0_timeout_test_seq`. Each checker below is a named compare the D
 *Pass Criteria*: `CHK-I2C-P0-TIMEOUT`, `CHK-I2C-TIMEOUT-CSR-SWEEP` hold after their compares. Enrolled in: `all`, `per_ip`, `i2c`.
 '''''
 
-[[sec-128-smc_i2c_p1_rdwr_protocol_test]]
-===== 128 `smc_i2c_p1_rdwr_protocol_test`
+[[sec-129-smc_i2c_p1_rdwr_protocol_test]]
+===== 129 `smc_i2c_p1_rdwr_protocol_test`
 
 *Source Module*: `smc_i2c_p1_rdwr_protocol_test`
 
@@ -4765,8 +4828,8 @@ Drive `smc_i2c_p1_rdwr_protocol_test_seq`. Each checker below is a named compare
 *Pass Criteria*: `CHK-I2C0-HOST-WRITE`, `CHK-I2C0-OVRD-PAD`, `CHK-I2C0-SMBUS-ARA`, `CHK-I2C0-SMBUS-PEC`, `CHK-I2C0-U4-2-SMBUS` hold after their compares. Enrolled in: `all`, `coverage_closure`, `depth`.
 '''''
 
-[[sec-129-smc_i2c_target_smbus_test]]
-===== 129 `smc_i2c_target_smbus_test`
+[[sec-130-smc_i2c_target_smbus_test]]
+===== 130 `smc_i2c_target_smbus_test`
 
 *Source Module*: `smc_i2c_target_smbus_test`
 
@@ -4799,8 +4862,8 @@ Drive `smc_i2c_target_smbus_test_seq`. Each checker below is a named compare the
 *Pass Criteria*: `CHK-I2C-TGT-SMBUS-ALERT`, `CHK-I2C-TGT-SMBUS-ARA`, `CHK-I2C-TGT-SMBUS-SUS-ASSERT`, `CHK-I2C-TGT-SMBUS-SUS-CLR` hold after their compares. Enrolled in: `all`, `per_ip`, `i2c`.
 '''''
 
-[[sec-130-smc_smbus_alert_ara_test]]
-===== 130 `smc_smbus_alert_ara_test`
+[[sec-131-smc_smbus_alert_ara_test]]
+===== 131 `smc_smbus_alert_ara_test`
 
 *Source Module*: `smc_smbus_alert_ara_test`
 
@@ -4833,8 +4896,8 @@ Drive `smc_smbus_alert_ara_test_seq`. Each checker below is a named compare the 
 
 '''''
 
-[[sec-131-smc_smbus_alert_suspend_test]]
-===== 131 `smc_smbus_alert_suspend_test`
+[[sec-132-smc_smbus_alert_suspend_test]]
+===== 132 `smc_smbus_alert_suspend_test`
 
 *Source Module*: `smc_smbus_alert_suspend_test`
 
@@ -4868,8 +4931,8 @@ Drive `smc_smbus_alert_suspend_test_seq`. Each checker below is a named compare 
 *Pass Criteria*: `CHK-SMBUS-ALERT-SUS-ALERT`, `CHK-SMBUS-ALERT-SUS-ARA`, `CHK-SMBUS-ALERT-SUS-BASIC`, `CHK-SMBUS-ALERT-SUS-CLR`, `CHK-SMBUS-ALERT-SUS-SUSPEND` hold after their compares. Enrolled in: `all`, `per_ip`, `i2c`.
 '''''
 
-[[sec-132-smc_smbus_hostnotify_test]]
-===== 132 `smc_smbus_hostnotify_test`
+[[sec-133-smc_smbus_hostnotify_test]]
+===== 133 `smc_smbus_hostnotify_test`
 
 *Source Module*: `smc_smbus_hostnotify_test`
 
@@ -4900,8 +4963,8 @@ Drive `smc_smbus_hostnotify_test_seq`. Each checker below is a named compare the
 *Pass Criteria*: `CHK-SMBUS-HOSTNOTIFY-FRAME` hold after their compares. Enrolled in: `all`, `per_ip`.
 '''''
 
-[[sec-133-smc_smbus_pmbus_test]]
-===== 133 `smc_smbus_pmbus_test`
+[[sec-134-smc_smbus_pmbus_test]]
+===== 134 `smc_smbus_pmbus_test`
 
 *Source Module*: `smc_smbus_pmbus_test`
 
@@ -4935,8 +4998,8 @@ Drive `smc_smbus_pmbus_test_seq`. Each checker below is a named compare the DUT 
 
 ==== I3C
 
-[[sec-134-smc_i3c_to_fabric_test]]
-===== 134 `smc_i3c_to_fabric_test`
+[[sec-135-smc_i3c_to_fabric_test]]
+===== 135 `smc_i3c_to_fabric_test`
 
 *Source Module*: `smc_i3c_to_fabric_test`
 
@@ -4970,8 +5033,8 @@ Drive `smc_i3c_to_fabric_test_seq`. Each checker below is a named compare the DU
 
 ==== MAILBOX
 
-[[sec-135-smc_mailbox_data_error_test]]
-===== 135 `smc_mailbox_data_error_test`
+[[sec-136-smc_mailbox_data_error_test]]
+===== 136 `smc_mailbox_data_error_test`
 
 *Source Module*: `smc_mailbox_data_error_test`
 
@@ -5010,8 +5073,8 @@ Drive `smc_mailbox_data_error_test_seq`. Each checker below is a named compare t
 *Pass Criteria*: `CHK-MAILBOX-FIFO-DATA`, `CHK-MAILBOX-IRQ-ASSERT`, `CHK-MAILBOX-IRQ-CLEAR`, `CHK-MAILBOX-IRQ-IDLE`, `CHK-MAILBOX-IRQ-SOURCE` hold after their compares. Enrolled in: `all`, `per_ip`, `mailbox_depth`, `functional_depth`, `depth`.
 '''''
 
-[[sec-136-smc_mailbox_event_irq_test]]
-===== 136 `smc_mailbox_event_irq_test`
+[[sec-137-smc_mailbox_event_irq_test]]
+===== 137 `smc_mailbox_event_irq_test`
 
 *Source Module*: `smc_mailbox_event_irq_test`
 
@@ -5045,8 +5108,8 @@ Drive `smc_mailbox_event_irq_test_seq`. Each checker below is a named compare th
 *Pass Criteria*: `CHK-MAILBOX-IRQ-ASSERT`, `CHK-MAILBOX-IRQ-CLEAR`, `CHK-MAILBOX-IRQ-IDLE`, `CHK-MAILBOX-IRQ-SOURCE`, `CHK-MAILBOX-IRQT-CLAMP`, `CHK-MAILBOX-IRQT-IN-RANGE` hold after their compares. Enrolled in: `all`, `per_ip`, `coverage_closure`, `depth`.
 '''''
 
-[[sec-137-smc_mailbox_field_sweep_test]]
-===== 137 `smc_mailbox_field_sweep_test`
+[[sec-138-smc_mailbox_field_sweep_test]]
+===== 138 `smc_mailbox_field_sweep_test`
 
 *Source Module*: `smc_mailbox_field_sweep_test`
 
@@ -5080,8 +5143,8 @@ Drive `smc_mailbox_event_irq_test_seq`. Each checker below is a named compare th
 
 '''''
 
-[[sec-138-smc_mailbox_idle_test]]
-===== 138 `smc_mailbox_idle_test`
+[[sec-139-smc_mailbox_idle_test]]
+===== 139 `smc_mailbox_idle_test`
 
 *Source Module*: `smc_mailbox_idle_test`
 
@@ -5111,8 +5174,8 @@ Drive `smc_mailbox_idle_test_seq`. Each checker below is a named compare the DUT
 *Pass Criteria*: `CHK-MAILBOX-IRQT-CLAMP`, `CHK-MAILBOX-IRQT-IN-RANGE` hold after their compares. Enrolled in: `all`, `functional`, `functional_depth`.
 '''''
 
-[[sec-139-smc_mailbox_inbound_test]]
-===== 139 `smc_mailbox_inbound_test`
+[[sec-140-smc_mailbox_inbound_test]]
+===== 140 `smc_mailbox_inbound_test`
 
 *Source Module*: `smc_mailbox_inbound_test`
 
@@ -5144,8 +5207,8 @@ Drive `smc_mailbox_inbound_test_seq`. Each checker below is a named compare the 
 
 '''''
 
-[[sec-140-smc_mailbox_irq_test]]
-===== 140 `smc_mailbox_irq_test`
+[[sec-141-smc_mailbox_irq_test]]
+===== 141 `smc_mailbox_irq_test`
 
 *Source Module*: `smc_mailbox_irq_test`
 
@@ -5181,8 +5244,8 @@ Drive `smc_mailbox_irq_test_seq`. Each checker below is a named compare the DUT 
 *Pass Criteria*: `CHK-MAILBOX-IRQ-ASSERT`, `CHK-MAILBOX-IRQ-CLEAR`, `CHK-MAILBOX-IRQ-IDLE`, `CHK-MAILBOX-IRQ-SOURCE`, `CHK-MAILBOX-IRQT-CLAMP`, `CHK-MAILBOX-IRQT-IN-RANGE` hold after their compares. Enrolled in: `all`, `per_ip`, `functional_depth`, `pyuvm`, `smoke`, `depth`.
 '''''
 
-[[sec-141-smc_mailbox_multi_instance_test]]
-===== 141 `smc_mailbox_multi_instance_test`
+[[sec-142-smc_mailbox_multi_instance_test]]
+===== 142 `smc_mailbox_multi_instance_test`
 
 *Source Module*: `smc_mailbox_multi_instance_test`
 
@@ -5214,8 +5277,8 @@ Drive `smc_mailbox_multi_instance_test_seq`. Each checker below is a named compa
 
 ==== SPI
 
-[[sec-142-smc_spi_pad_bfm_test]]
-===== 142 `smc_spi_pad_bfm_test`
+[[sec-143-smc_spi_pad_bfm_test]]
+===== 143 `smc_spi_pad_bfm_test`
 
 *Source Module*: `smc_spi_pad_bfm_test`
 
@@ -5247,8 +5310,8 @@ Drive `smc_spi_pad_bfm_test_seq`. Each checker below is a named compare the DUT 
 
 ==== UART
 
-[[sec-143-smc_uart_baud_word_parity_format_test]]
-===== 143 `smc_uart_baud_word_parity_format_test`
+[[sec-144-smc_uart_baud_word_parity_format_test]]
+===== 144 `smc_uart_baud_word_parity_format_test`
 
 *Source Module*: `smc_uart_baud_word_parity_format_test`
 
@@ -5278,8 +5341,8 @@ Drive `smc_uart_baud_word_parity_format_test_seq`. Each checker below is a named
 *Pass Criteria*: `CHK-UART-BAUD-BASIC`, `CHK-UART-BAUD-FMT` hold after their compares. Enrolled in: `all`, `per_ip`, `uart`.
 '''''
 
-[[sec-144-smc_uart_error_conditions_test]]
-===== 144 `smc_uart_error_conditions_test`
+[[sec-145-smc_uart_error_conditions_test]]
+===== 145 `smc_uart_error_conditions_test`
 
 *Source Module*: `smc_uart_error_conditions_test`
 
@@ -5314,8 +5377,8 @@ Drive `smc_uart_error_conditions_test_seq`. Each checker below is a named compar
 *Pass Criteria*: `CHK-UART-ERR-BASIC`, `CHK-UART-ERR-BI`, `CHK-UART-ERR-OE`, `CHK-UART-ERR-OE-NEG`, `CHK-UART-ERR-PE`, `CHK-UART-ERR-PE-NEG` hold after their compares. Enrolled in: `all`, `per_ip`, `uart`.
 '''''
 
-[[sec-145-smc_uart_extremes_misc_test]]
-===== 145 `smc_uart_extremes_misc_test`
+[[sec-146-smc_uart_extremes_misc_test]]
+===== 146 `smc_uart_extremes_misc_test`
 
 *Source Module*: `smc_uart_extremes_misc_test`
 
@@ -5349,8 +5412,8 @@ Drive `smc_uart_extremes_misc_test_seq`. Each checker below is a named compare t
 *Pass Criteria*: `CHK-UART-EXT-BASIC`, `CHK-UART-EXT-DR-POS`, `CHK-UART-EXT-IDLE`, `CHK-UART-EXT-SCR` hold after their compares. Enrolled in: `all`, `per_ip`, `uart`.
 '''''
 
-[[sec-146-smc_uart_irq_sources_priority_test]]
-===== 146 `smc_uart_irq_sources_priority_test`
+[[sec-147-smc_uart_irq_sources_priority_test]]
+===== 147 `smc_uart_irq_sources_priority_test`
 
 *Source Module*: `smc_uart_irq_sources_priority_test`
 
@@ -5384,8 +5447,8 @@ Drive `smc_uart_irq_sources_priority_test_seq`. Each checker below is a named co
 *Pass Criteria*: `CHK-UART-IRQ-CLR-MSR`, `CHK-UART-IRQ-CLR-RDR`, `CHK-UART-IRQ-CLR-THRE`, `CHK-UART-IRQ-GATE`, `CHK-UART-IRQ-MAP-TIMEOUT`, `CHK-UART-IRQ-PRI` hold after their compares. Enrolled in: `all`, `per_ip`, `uart`.
 '''''
 
-[[sec-147-smc_uart_log_engine_error_boundary_test]]
-===== 147 `smc_uart_log_engine_error_boundary_test`
+[[sec-148-smc_uart_log_engine_error_boundary_test]]
+===== 148 `smc_uart_log_engine_error_boundary_test`
 
 *Source Module*: `smc_uart_log_engine_error_boundary_test`
 
@@ -5415,8 +5478,8 @@ Drive `smc_uart_log_engine_error_boundary_test_seq`. Each checker below is a nam
 *Pass Criteria*: `CHK-UART-LOG-ENGINE-REG-RESTORE`, `CHK-UART-LOG-ENGINE-REG-RW` hold after their compares. Enrolled in: `all`, `coverage_closure`, `depth`.
 '''''
 
-[[sec-148-smc_uart_log_engine_reg_rw_test]]
-===== 148 `smc_uart_log_engine_reg_rw_test`
+[[sec-149-smc_uart_log_engine_reg_rw_test]]
+===== 149 `smc_uart_log_engine_reg_rw_test`
 
 *Source Module*: `smc_uart_log_engine_reg_rw_test`
 
@@ -5446,8 +5509,8 @@ Drive `smc_uart_log_engine_reg_rw_test_seq`. Each checker below is a named compa
 *Pass Criteria*: `CHK-UART-LOG-ENGINE-REG-RESTORE`, `CHK-UART-LOG-ENGINE-REG-RW` hold after their compares. Enrolled in: `all`, `per_ip`, `depth_uart_log`, `depth`.
 '''''
 
-[[sec-149-smc_uart_loopback_test]]
-===== 149 `smc_uart_loopback_test`
+[[sec-150-smc_uart_loopback_test]]
+===== 150 `smc_uart_loopback_test`
 
 *Source Module*: `smc_uart_loopback_test`
 
@@ -5477,8 +5540,8 @@ Drive `smc_uart_loopback_test_seq`. Each checker below is a named compare the DU
 
 '''''
 
-[[sec-150-smc_uart_sanity_test]]
-===== 150 `smc_uart_sanity_test`
+[[sec-151-smc_uart_sanity_test]]
+===== 151 `smc_uart_sanity_test`
 
 *Source Module*: `smc_uart_sanity_test`
 
@@ -5509,8 +5572,8 @@ Drive `smc_uart_sanity_test_seq`. Each checker below is a named compare the DUT 
 *Pass Criteria*: `CHK-UART-SANITY`, `CHK-UART-SANITY-BASIC` hold after their compares. Enrolled in: `all`, `per_ip`, `uart`.
 '''''
 
-[[sec-151-smc_uart_spi_log_engine_test]]
-===== 151 `smc_uart_spi_log_engine_test`
+[[sec-152-smc_uart_spi_log_engine_test]]
+===== 152 `smc_uart_spi_log_engine_test`
 
 *Source Module*: `smc_uart_spi_log_engine_test`
 
@@ -5546,8 +5609,8 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 
 ==== OCCP
 
-[[sec-152-smc_dual_elaboration_test]]
-===== 152 `smc_dual_elaboration_test`
+[[sec-153-smc_dual_elaboration_test]]
+===== 153 `smc_dual_elaboration_test`
 
 *Source Module*: `smc_dual_elaboration_test`
 
@@ -5589,8 +5652,8 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 
 '''''
 
-[[sec-153-smc_dual_axi_sram_probe_test]]
-===== 153 `smc_dual_axi_sram_probe_test`
+[[sec-154-smc_dual_axi_sram_probe_test]]
+===== 154 `smc_dual_axi_sram_probe_test`
 
 *Source Module*: `smc_dual_axi_sram_probe_test`
 
@@ -5626,8 +5689,8 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 
 '''''
 
-[[sec-154-smc_occp_sanity_test]]
-===== 154 `smc_occp_sanity_test`
+[[sec-155-smc_occp_sanity_test]]
+===== 155 `smc_occp_sanity_test`
 
 *Source Module*: `smc_occp_sanity_test`
 
@@ -5660,8 +5723,8 @@ Drive `smc_uart_spi_log_engine_test_seq`. Each checker below is a named compare 
 
 '''''
 
-[[sec-155-smc_occp_dual_unsecure_boot_test]]
-===== 155 `smc_occp_dual_unsecure_boot_test`
+[[sec-156-smc_occp_dual_unsecure_boot_test]]
+===== 156 `smc_occp_dual_unsecure_boot_test`
 
 *Source Module*: `smc_occp_dual_unsecure_boot_test`
 
@@ -5709,8 +5772,8 @@ Held out of `all` on that measured runtime. Enrolled in: `dual_all`, `occp_dual`
 
 '''''
 
-[[sec-156-smc_prod_rom_occp_ready_test]]
-===== 156 `smc_prod_rom_occp_ready_test`
+[[sec-157-smc_prod_rom_occp_ready_test]]
+===== 157 `smc_prod_rom_occp_ready_test`
 
 *Source Module*: `smc_prod_rom_occp_ready_test`
 
@@ -5743,8 +5806,8 @@ Held out of `all` on that measured runtime. Enrolled in: `dual_all`, `occp_dual`
 
 '''''
 
-[[sec-157-smc_gpio_irq_mask_deassert_test]]
-===== 157 `smc_gpio_irq_mask_deassert_test`
+[[sec-158-smc_gpio_irq_mask_deassert_test]]
+===== 158 `smc_gpio_irq_mask_deassert_test`
 
 *Source Module*: `smc_gpio_irq_mask_deassert_test`
 
@@ -5777,8 +5840,8 @@ Held out of `all` on that measured runtime. Enrolled in: `dual_all`, `occp_dual`
 
 '''''
 
-[[sec-158-smc_efuse_read_timeout_status_test]]
-===== 158 `smc_efuse_read_timeout_status_test`
+[[sec-159-smc_efuse_read_timeout_status_test]]
+===== 159 `smc_efuse_read_timeout_status_test`
 
 *Source Module*: `smc_efuse_read_timeout_status_test`
 
@@ -5811,8 +5874,8 @@ Held out of `all` on that measured runtime. Enrolled in: `dual_all`, `occp_dual`
 
 '''''
 
-[[sec-159-smc_log_engine_intr_mask_test]]
-===== 159 `smc_log_engine_intr_mask_test`
+[[sec-160-smc_log_engine_intr_mask_test]]
+===== 160 `smc_log_engine_intr_mask_test`
 
 *Source Module*: `smc_log_engine_intr_mask_test`
 
@@ -5848,8 +5911,8 @@ Held out of `all` on that measured runtime. Enrolled in: `dual_all`, `occp_dual`
 
 '''''
 
-[[sec-160-smc_i2c_intr_mask_test]]
-===== 160 `smc_i2c_intr_mask_test`
+[[sec-161-smc_i2c_intr_mask_test]]
+===== 161 `smc_i2c_intr_mask_test`
 
 *Source Module*: `smc_i2c_intr_mask_test`
 
@@ -5885,8 +5948,8 @@ Held out of `all` on that measured runtime. Enrolled in: `dual_all`, `occp_dual`
 
 '''''
 
-[[sec-161-smc_fw_hello_world_test]]
-===== 161 `smc_fw_hello_world_test`
+[[sec-162-smc_fw_hello_world_test]]
+===== 162 `smc_fw_hello_world_test`
 
 *Source Module*: `smc_fw_hello_world_test`
 
@@ -5921,8 +5984,8 @@ Held out of `all` on that measured runtime. Enrolled in: `dual_all`, `occp_dual`
 '''''
 
 
-[[sec-162-smc_reset_unit_lock_test]]
-===== 162 `smc_reset_unit_lock_test`
+[[sec-163-smc_reset_unit_lock_test]]
+===== 163 `smc_reset_unit_lock_test`
 
 *Source Module*: `smc_reset_unit_lock_test`
 
@@ -5963,8 +6026,8 @@ For each of the two (target, lock) pairs:
 '''''
 
 
-[[sec-163-smc_fw_plic_claim_test]]
-===== 163 `smc_fw_plic_claim_test`
+[[sec-164-smc_fw_plic_claim_test]]
+===== 164 `smc_fw_plic_claim_test`
 
 *Source Module*: `smc_fw_plic_claim_test`
 
@@ -6002,8 +6065,8 @@ For each of the two (target, lock) pairs:
 
 '''''
 
-[[sec-164-smc_mailbox_flush_test]]
-===== 164 `smc_mailbox_flush_test`
+[[sec-165-smc_mailbox_flush_test]]
+===== 165 `smc_mailbox_flush_test`
 
 *Source Module*: `smc_mailbox_flush_test`
 

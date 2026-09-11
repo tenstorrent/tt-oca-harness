@@ -38,8 +38,20 @@ __attribute__((noinline, used)) void smu_cla_sep_cpu_debug_fail_loop(void) {
 }
 
 static int run_cla_debug_consumer(void) {
-    /* Force-free frontdoor boot of the SMC over the SEP->SMC port (common helper). */
+    uint32_t saw_go_idle;
+    /* Force-free frontdoor boot of the SMC over the SEP->SMC port (common helper).
+     * After a mid-test SEP IC_RESET (CHK-INVERT-2) the outbound filter is lost and
+     * must be re-opened, but pulsing SMC reset would rewind the producer firmware. */
     sep_smc_open_window();
+    {
+        /* Bring up only from a pristine scratch. An unrecognized or
+         * unresolved post-reset s0 is treated as already running: pulsing
+         * SMC reset would rewind the producer. */
+        uint32_t s0 = READ_REG(CLADBG_STATUS_ALIAS_ADDR);
+        if (s0 != CLADBG_STATUS_PRISTINE) {
+            goto busy_poll;
+        }
+    }
     if (sep_smc_bringup_from_sram((uint32_t)CLADBG_SMC_ENTRY, CLADBG_SMC_IMAGE_FIRST_WORD,
                                   CLADBG_FW_POLL_LIMIT) != 0) {
         sep_smc_scratch_write(CLADBG_RSP_ALIAS_ADDR, CLADBG_S0_FAIL);
@@ -57,7 +69,8 @@ static int run_cla_debug_consumer(void) {
      * LSU active and the core retiring) until GO_IDLE. The SMC drives action[0] DEBUG-halt
      * (freezes this loop), action[1] DEBUG-run (resumes it), and action[3] PMU-halt (busy)
      * across this window; the cocotb observes the effects. */
-    uint32_t saw_go_idle = 0;
+busy_poll:
+    saw_go_idle = 0;
     for (uint32_t i = 0; i < CLADBG_FW_POLL_LIMIT; ++i) {
         if (READ_REG(CLADBG_CMD_ALIAS_ADDR) == CLADBG_GO_IDLE) {
             saw_go_idle = 1;
