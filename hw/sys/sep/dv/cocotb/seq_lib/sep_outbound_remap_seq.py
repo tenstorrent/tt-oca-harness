@@ -53,8 +53,7 @@ if _REGION_SPAN.bit_count() != 1:
 IDX_START = _REGION_SPAN.bit_length() - 1
 if N_REGIONS != fabric_output_remap_regions():
     raise RuntimeError(
-        f"RDL has {N_REGIONS} AP remap regions; fabric.adoc states "
-        f"{fabric_output_remap_regions()}"
+        f"RDL has {N_REGIONS} AP remap regions; fabric.adoc states {fabric_output_remap_regions()}"
     )
 # `outbound_filter_ctrl[32]`; the count comes from the export so a seed can
 # select any entry the bank actually has.

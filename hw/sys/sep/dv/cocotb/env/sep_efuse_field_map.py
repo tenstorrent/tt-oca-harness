@@ -94,9 +94,7 @@ SECURE_TM_BLOCKED = ("LOCKS", "LOCKS_SPARE", "LC_STATE", "SIP_DIS", "SYS_DIS")
 
 
 def spec_fields() -> tuple[SpecField, ...]:
-    return tuple(
-        SpecField(*row) for row in _FIELD_ROWS
-    )
+    return tuple(SpecField(*row) for row in _FIELD_ROWS)
 
 
 def spec_secure_tm_blocked() -> tuple[str, ...]:
@@ -152,9 +150,7 @@ def spec_lock_walk() -> tuple[tuple[str, int, int, int, int], ...]:
 def spec_writable_shadow_walk() -> tuple[tuple[str, int], ...]:
     """Every ``periphs.adoc`` SW-writable ``true`` row (not set-only)."""
     return tuple(
-        (field.reg_name, field.word_used_mask)
-        for field in spec_fields()
-        if not field.set_only
+        (field.reg_name, field.word_used_mask) for field in spec_fields() if not field.set_only
     )
 
 

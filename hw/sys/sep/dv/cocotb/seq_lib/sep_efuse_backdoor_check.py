@@ -72,8 +72,7 @@ def check_efuse_shadow_backdoor(
                     errors.append(f"{name}[{k}] word{widx}: sensed X/Z under secure_tm")
                 elif staged == 0:
                     errors.append(
-                        f"{name}[{k}] word{widx}: staged 0, so a disconnect "
-                        "check cannot fail"
+                        f"{name}[{k}] word{widx}: staged 0, so a disconnect check cannot fail"
                     )
                 elif got == staged:
                     errors.append(

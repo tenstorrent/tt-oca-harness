@@ -565,18 +565,13 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
 
         feats = [self._feat_by_state[r] for r in _LC_CHAIN]
         assert len(set(feats)) == len(_LC_CHAIN), (
-            "CHK-NONVAC FAIL: pinned overrides did not produce distinct "
-            f"FEAT_CTRL words: {feats}"
+            f"CHK-NONVAC FAIL: pinned overrides did not produce distinct FEAT_CTRL words: {feats}"
         )
         self.logger.info(
             "CHK-NONVAC PASS: four FEAT_CTRL words are mutually distinct (%s)",
-            ", ".join(
-                f"{lc_state_name(r)}=0x{self._feat_by_state[r]:016x}" for r in _LC_CHAIN
-            ),
+            ", ".join(f"{lc_state_name(r)}=0x{self._feat_by_state[r]:016x}" for r in _LC_CHAIN),
         )
-        self.logger.info(
-            "CHK-SECURE-TM PASS: TEST_DEV FEAT_CTRL identical at secure_tm=0 and 1"
-        )
+        self.logger.info("CHK-SECURE-TM PASS: TEST_DEV FEAT_CTRL identical at secure_tm=0 and 1")
         self.logger.info(
             "LCC stitch: walked %d states (%s); FEAT_CTRL matched golden at each; "
             "secure_tm off/on and lc_sigint inject proven; "

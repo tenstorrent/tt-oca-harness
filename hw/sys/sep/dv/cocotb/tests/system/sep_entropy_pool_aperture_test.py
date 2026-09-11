@@ -99,8 +99,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
                 return st
             await ClockCycles(cocotb.top.clk_i, 20)
         raise AssertionError(
-            f"status pool_low never became {expect} in {iters} status polls "
-            f"(last level={level})"
+            f"status pool_low never became {expect} in {iters} status polls (last level={level})"
         )
 
     async def _check_low_edge(self, st: int) -> int:
@@ -238,8 +237,7 @@ class sep_entropy_pool_aperture_test(sep_base_test):
             f"0x{st_stall:x}"
         )
         self.logger.info(
-            "CHK-IRQ-CAUSE-STALL PASS: 0x08=0x2 (fill_stall, pool_low clear), "
-            "not status 0x%x",
+            "CHK-IRQ-CAUSE-STALL PASS: 0x08=0x2 (fill_stall, pool_low clear), not status 0x%x",
             st_stall,
         )
 
@@ -314,7 +312,5 @@ class sep_entropy_pool_aperture_test(sep_base_test):
         assert self.drbg_sb.report(), (
             "sep_drbg_scoreboard report failed (CHK5_pool beat floor or CHK1..CHK4)"
         )
-        self.logger.info(
-            "CHK5_pool PASS: observe-mode pool adapter beats reached the floor"
-        )
+        self.logger.info("CHK5_pool PASS: observe-mode pool adapter beats reached the floor")
         self.logger.info("entropy-pool aperture ALL CHECKS PASS")

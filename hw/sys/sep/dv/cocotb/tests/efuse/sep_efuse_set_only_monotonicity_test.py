@@ -46,9 +46,7 @@ class sep_efuse_set_only_monotonicity_test(sep_base_test):
                 f"CHK-CLEAR-REJECT FAIL: {name}[{word}] write-0 cleared "
                 f"0x{field.sensed:08x} -> 0x{got:08x}"
             )
-            self.logger.info(
-                "CHK-CLEAR-REJECT PASS: %s[%d] write-0 left 0x%08x", name, word, got
-            )
+            self.logger.info("CHK-CLEAR-REJECT PASS: %s[%d] write-0 left 0x%08x", name, word, got)
 
         await shadow.write_word(name, word, field.drive_word(field.set_bits))
         got = await shadow.read_word(name, word)
@@ -85,9 +83,7 @@ class sep_efuse_set_only_monotonicity_test(sep_base_test):
         )
         await shadow.write_word(name, word, 0)
         got = await shadow.read_word(name, word)
-        assert got == 0, (
-            f"CHK-WRITABLE-CONTRAST FAIL: {name}[{word}] write-0 left 0x{got:08x}"
-        )
+        assert got == 0, f"CHK-WRITABLE-CONTRAST FAIL: {name}[{word}] write-0 left 0x{got:08x}"
         self.logger.info(
             "CHK-WRITABLE-CONTRAST PASS: %s[%d] overwrite 0x%08x then 0",
             name,

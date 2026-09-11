@@ -34,6 +34,8 @@ _ABR_NAMED = re.compile(
     r"^    (\w+)\s+(\w+)(?:\s*@(0x[0-9A-Fa-f]+))?;",
     re.M,
 )
+
+
 @dataclass(frozen=True)
 class MapWindow:
     """One aperture. Inclusive ``end`` except SEP Local Alias (exclusive)."""
