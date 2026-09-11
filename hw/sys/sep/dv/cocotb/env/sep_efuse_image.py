@@ -5,10 +5,8 @@
 Builds the 256-word (8192-bit) SEP fuse array as a ``$readmemh`` image the
 generic efuse bank model (``hw/ip/efuse/dv/models/efuse_bank_model.sv``)
 loads at t=0 via ``+sep_efuse_hex`` (staged pre-sim by dv_sim_prestage.py). The
-field schema, offsets and widths mirror ``sep_efuse_pkg::EfuseFieldMap``
-(``hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv``, generated from
-``hw/sys/sep/regs/blocks/sep_efuse_map/sep_efuse_map.rdl``); the constraints
-mirror the reference UVM ``sep_efuse_item`` golden model.
+Write-policy and used-bit membership come from ``env/sep_efuse_field_map``.
+Offsets and widths come from the generated RDL header.
 
 The same object is the golden reference for the shadow-readout checker:
 ``expected_shadow(field)`` returns the value software should read back from the
@@ -20,6 +18,7 @@ readable field reads back verbatim).
 from __future__ import annotations
 
 from sep_reg_meta import SEP_CPU_CTRL, sym
+import sep_efuse_field_map
 
 # The generated map itself, for enumerating the eFuse register set rather than
 # naming each entry. Import order matters: sep_reg_meta puts regs/gen/py on
@@ -46,9 +45,9 @@ from typing import Dict, List, Optional, Tuple
 # ``python_paths``) and in the prestage hook, which inserts it explicitly.
 from sep_seeded_rng import SepSeededRng  # noqa: E402
 
-# Array geometry (sep_efuse_pkg: NumEfuseBits=8192, NumFuseWordWidth=32).
-NUM_FUSE_WORDS = 256
+# Array geometry from periphs.adoc ("exactly 8192 bits" / 256 x 32-bit words).
 WORD_BITS = 32
+NUM_FUSE_WORDS = sep_efuse_field_map.spec_num_fuse_bits() // WORD_BITS
 WORD_MASK = (1 << WORD_BITS) - 1
 
 # Software-visible shadow-register block base.
@@ -95,14 +94,11 @@ LEGAL_LC_RAW: Tuple[int, ...] = (
 _LOCK_REGS = ("LOCKS", "LOCKS_SPARE")
 _LC_REGS = ("LC_STATE",)
 
-# Class-1a device secrets. sep_efuse_pkg.sv:563 SecretShadowRanges disconnects these
-# from the shadow-register hardware output while secure_tm is asserted, so no real
-# secret reaches a scannable consumer. Named, not derived: which fields are secret is
-# a security decision in the package, not a property of the map's shape, so a new
-# field must be classified deliberately rather than inherited by position.
-_SECRET_REGS = ("CHIPLET_UID", "SIP_UID", "SYS_UID", "CLASS_KEY")
+# KM-secret fields named in periphs.adoc (Key Manager subset).
+_SECRET_REGS = sep_efuse_field_map.spec_secret_regs()
 
-# Lock-field geometry, from sep_efuse_pkg. LOCKS (64-bit, OTP words 0-1) plus
+# Lock-field geometry, from the periphs.adoc LOCK field (96 bits, two bits per
+# protected slot). LOCKS (64-bit, OTP words 0-1) plus
 # LOCKS_SPARE (32-bit, word 2) form one 96-bit field holding two bits per protected
 # field -- a write lock and a read lock -- across 40 slots (idx 0-39). locks[79:0] are
 # the meaningful pair bits; [95:80] are unassigned slots 40-47. Index 6'h3F is the
@@ -188,8 +184,8 @@ def _derive_fields() -> Tuple[Tuple[str, int, int, str], ...]:
     lock_bits = sum(by_name[n][2] for n in _LOCK_REGS) * WORD_BITS
     if lock_bits != LOCK_FIELD_BITS:
         raise RuntimeError(
-            f"LOCKS + LOCKS_SPARE span {lock_bits} bits, but sep_efuse_pkg states "
-            f"LockFieldBits = {LOCK_FIELD_BITS}"
+            f"LOCKS + LOCKS_SPARE span {lock_bits} bits, but the specification "
+            f"LOCK field is {LOCK_FIELD_BITS} bits"
         )
     return tuple(out)
 
@@ -223,9 +219,9 @@ class SepEfuseImage:
 
     Golden assumptions (must match the tb wiring): the DUT runs with
     ``secure_tm`` tied 0 and LOCKS unlocked, so every field reads back verbatim
-    except LC_STATE (differential-encoded). If a read-lock or secure_tm test is
-    added, ``expected_shadow`` must model the gated readback (read-lock ->
-    0xbadcab1e, secure_tm -> token digests zeroed) for those cases.
+    except LC_STATE (differential-encoded). KM-secret disconnect under
+    ``secure_tm`` is graded by the stitch leaf against the staged value, not
+    by forcing those words to a constant here.
     """
 
     fields: Tuple[SepEfuseField, ...] = tuple(
@@ -423,7 +419,7 @@ class SepEfuseImage:
     # -- golden model ------------------------------------------------------
 
     def secret_words(self) -> frozenset:
-        """Word indices the DUT blanks while secure_tm is asserted."""
+        """Word indices of the four KM-secret fields (periphs.adoc)."""
         idx: set[int] = set()
         for name in _SECRET_REGS:
             fld = self.field(name)
@@ -433,18 +429,12 @@ class SepEfuseImage:
     def shadow_word(self, word_idx: int, *, secure_tm: int = 0) -> int:
         """Expected software-readback value for shadow word ``word_idx``.
 
-        LC_STATE is transformed by the sense FSM. With ``secure_tm`` asserted the
-        Class-1a secrets read back as zero -- the DUT disconnects them from the shadow
-        output (sep_efuse_pkg.sv SecretShadowRanges), so a golden that returned the
-        staged value would report 32 mismatches on a TEST_EN run. Everything else
-        reads back verbatim (LOCKS unlocked).
-
-        The blanking is conditional ON PURPOSE. Zeroing these words unconditionally
-        would stop the compare proving they sensed correctly at all, which is the
-        whole point of the post-sense check.
+        LC_STATE is transformed by the sense FSM. Everything else reads back
+        verbatim (LOCKS unlocked). ``secure_tm`` does not change this golden:
+        KM-secret disconnect is a not-equal check against the staged value,
+        not an expected constant.
         """
-        if secure_tm and word_idx in self.secret_words():
-            return 0
+        _ = secure_tm
         if word_idx == LC_WORD_IDX:
             upper = self.words[LC_WORD_IDX] & 0xFFFF_FF00
             return upper | lc_encode(self.lc_raw())

@@ -100,10 +100,10 @@ run_modes = ["no_cpu"]
 target = "lsu_stub_all_live"
 
 [[tests]]
-# eFuse set-only shadow OR-merge on version / revoke / required-signer
-# and Class-1 DIS fields (never LC_STATE). RANDCFG: every seed walks
-# seven legal set-only fields; word index and bit patterns come from
-# the run seed.
+# eFuse shadow write-policy sweep: every periphs.adoc fuse-field row
+# except LC_STATE. RANDCFG: set-only rows OR-merge; SW-writable rows
+# overwrite. LOCK is the unassigned LOCKS_SPARE bits. Word index and
+# bit patterns come from the run seed.
 # Real fuse sense. Program x lock stays a different mechanism.
 name = "sep_efuse_set_only_monotonicity_test"
 module = "efuse.sep_efuse_set_only_monotonicity_test"
@@ -190,8 +190,9 @@ args = ["+secure_tm_lock"]
 # frontdoor stimulus can produce 2'b00 or 2'b11, so the recovery the RTL
 # asserts on them is unreachable without injection. Forces one illegal encoding
 # for one cycle, on each FSM, for both illegal values, and grades the recovery
-# on DUT outputs: back to idle, no command to the bank, and for reads
-# error+done set with the 0xbadcab1e sentinel. A live read precedes and follows
+# on DUT outputs: back to idle, no command to the bank, error+done set,
+# and the read-back data is not the sensed control word. A live read precedes
+# and follows
 # the injections, so the refusal is not a dead block. Real fuse sense, LC_PROD.
 name = "sep_efuse_illegal_state_fail_closed_test"
 module = "efuse.sep_efuse_illegal_state_fail_closed_test"

@@ -13,8 +13,8 @@ The contract, from the design's own assertions:
 * while the state is illegal, no command reaches the bank
   (``IllegalReadStateSuppressesRequest_A`` / ``IllegalProgramState…``);
 * on the next edge the FSM is back in idle, not busy, reporting done with the
-  error flag set, still issuing no command, and returning the error sentinel
-  (``IllegalReadStateFailsClosed_A`` / ``IllegalProgramState…``).
+  error flag set, still issuing no command, and not handing back the sensed
+  fuse word (``IllegalReadStateFailsClosed_A`` / ``IllegalProgramState…``).
 
 Failing closed is the point: an FSM that resumed a read from a corrupted state
 could return fuse data it never legitimately fetched.
@@ -39,38 +39,22 @@ from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_efuse_direct_read_seq import sep_efuse_direct_read_seq
 from seq_lib.sep_efuse_otp_program_seq import sep_efuse_otp_program_seq
 
-# efuse_read_interface.sv / efuse_program_interface.sv. These encodings are read
-# off the RTL enums, and no document states them, so they are used only to
-# CONSTRUCT stimulus -- which values are unreachable, and so worth injecting.
-# They are deliberately not used as expected values: the recovery below is
-# graded on the interface's documented outputs (not busy, done, no bank command,
-# error sentinel), never on the state register reading a particular number. An
-# expected value taken from the design it checks proves only that the design
-# agrees with itself.
+# hw/ip/efuse/doc/architecture.adoc names a two-state sequence (idle, waiting).
+# The injection uses the two 2-bit values that are not a one-hot encoding of
+# those states. They construct stimulus only -- the recovery is graded on the
+# documented outputs (not busy, done, no bank command, not the sensed fuse
+# word), never on the state register reading a particular number.
 _ST_IDLE = 0b01
 _ST_WAIT_RESP = 0b10
-# Derived, so the legal set is stated once: everything a two-bit register can
-# hold that is not legal. Both survivors are walked -- 2'b00 and 2'b11 fail the
-# legal-set test for different reasons, and a recovery written as a comparison
-# against one of them would recover from that one only.
 _ILLEGAL_STATES = tuple(v for v in range(4) if v not in (_ST_IDLE, _ST_WAIT_RESP))
 
-# The error sentinel both interfaces return, read off the RTL localparams
-# EFUSE_READ_ERROR_DATA / EFUSE_PROGRAM_ERROR_DATA. No document states it for
-# THIS path: the `0xbadcab1e` in hw/ip/efuse/doc/architecture.adoc belongs to
-# the JTAG demux error slave, which is a different mechanism that happens to
-# use the same constant. So the exact-value compare shows the design agreeing
-# with itself, and is kept only as a regression lock on the constant. The half
-# of the claim that carries the security weight does not depend on it: whatever
-# the sentinel is, a machine recovering from a corrupted state must not hand
-# back a fuse word, and `_CONTROL_WORD` is sensed with a known non-sentinel
-# value, so a leaked fuse value would not equal this.
-_ERROR_DATA = 0xBADCAB1E
-
+# The control read is a data spare, not LOCKS: an unlocked LOCKS word is 0,
+# so a recovery that returns 0 would match the staged value. Recovery must
+# not hand that sensed spare back. The JTAG AXI-Lite error-slave constant
+# is not this contract.
 _MAX_SENSE_CYCLES = 20_000
 
-# Any always-readable OTP word; the control grades FSM motion, not the value.
-_CONTROL_WORD = 0
+_CONTROL_FIELD = "SPARE0"
 
 # A SPARE word: programming one bit of it disturbs no graded field, and OTP is
 # write-once so the control must pick a fresh bit each time it runs.
@@ -149,7 +133,7 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
                     seen_active = True
 
         task = cocotb.start_soon(_watch())
-        await self.start_seq(sep_efuse_direct_read_seq(_CONTROL_WORD))
+        await self.start_seq(sep_efuse_direct_read_seq(self._control_word))
         stop.set()
         await task
 
@@ -194,7 +178,7 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
     async def _read_error_lifecycle(self) -> None:
         """read_error_o is set by a failure and cleared by the next request."""
         # 1. A successful read leaves the error flag clear (ReadSuccessClearsError).
-        await self.start_seq(sep_efuse_direct_read_seq(_CONTROL_WORD))
+        await self.start_seq(sep_efuse_direct_read_seq(self._control_word))
         done, busy, err, _ = await self._read_probe()
         assert (done, busy, err) == (1, 0, 0), (
             f"CHK-READ-ERR-CLEAR-SUCCESS FAIL: a successful read reported done={done} "
@@ -471,8 +455,8 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
             f"command while recovering from {state:#04x}"
         )
         # Both interfaces retire the same way, so both are graded the same way:
-        # the machine reports done and not busy with the error set, and hands
-        # back the sentinel rather than any fuse content.
+        # the machine reports done and not busy with the error set, and does
+        # not hand back the sensed control-word value.
         data_probe = (
             dut.efuse_read_back_data_o if which == "read" else dut.efuse_program_read_back_data_o
         )
@@ -486,20 +470,23 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
             "expected 1/1/0 -- a machine that recovers silently leaves the caller "
             "believing its operation is still in flight"
         )
-        assert data == _ERROR_DATA, (
+        sensed = self._sensed_control_word
+        assert data != sensed, (
             f"CHK-{which.upper()}-FAILCLOSED FAIL: {which} read-back data = "
-            f"{data:#010x} recovering from {state:#04x}, expected the sentinel "
-            f"{_ERROR_DATA:#010x} -- anything else risks handing back fuse content "
-            "the operation never legitimately fetched"
+            f"{data:#010x} recovering from {state:#04x}, which is the sensed "
+            f"control word -- a leaked fuse value the operation never "
+            "legitimately fetched"
         )
         self.logger.info(
             "CHK-%s-FAILCLOSED PASS: recovered from %#04x %s (state now %#04x, "
             "reported not asserted), no bank command, error and done set, not busy, "
-            "data = 0xbadcab1e",
+            "data 0x%08x is not the sensed control word 0x%08x",
             which.upper(),
             state,
             "mid-operation" if in_flight else "injected while idle",
             recovered,
+            data,
+            sensed,
         )
         await self._quiesce(which)
 
@@ -529,6 +516,15 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
     async def run_scenario(self) -> None:
         img = self.select_efuse_image(lc_raw=LC_PROD)
         pg_bits = self._pick_pg_bits(img)
+        self._control_word = img.field(_CONTROL_FIELD).word
+        if (img.words[self._control_word] & 0xFFFF_FFFF) == 0:
+            img.words[self._control_word] = 0xA5A5_5A5A
+        self._sensed_control_word = img.shadow_word(self._control_word)
+        assert self._sensed_control_word != 0, (
+            f"test bug: {_CONTROL_FIELD} word {self._control_word} is staged "
+            "as 0, so a recovery that returns zero would not be "
+            "distinguishable from a leaked fuse word"
+        )
         self.write_efuse_image(img)
         await self.bring_up_and_wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
 
@@ -537,10 +533,10 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         await self._assert_program_alive(pg_bits[0])
 
         # Establish the in-flight window before grading a withdrawal inside it.
-        await self._assert_request_held("read", _CONTROL_WORD * 32)
+        await self._assert_request_held("read", self._control_word * 32)
 
         for state, pg_bit in zip(_ILLEGAL_STATES, pg_bits[2:]):
-            await self._inject("read", state, _CONTROL_WORD * 32)
+            await self._inject("read", state, self._control_word * 32)
             # Idle window, not in flight. Aborting an ACCEPTED program parks the
             # example shim's write FSM (see the plan entry's observation), and
             # every later leg that resenses would then read a corrupted shadow

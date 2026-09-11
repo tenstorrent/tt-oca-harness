@@ -13,7 +13,7 @@ verify the TX path").
 
 STATUS has no exact-depth field (only empty/full/write_level_above/read_level_above),
 so the golden keeps the TX occupancy internally and predicts the visible bits.
-Thresholds compare with STRICT > (RTL). The config object is the single source of
+Thresholds compare with STRICT >. The config object is the single source of
 truth for DUT programming + golden.
 
 Accepted deltas: data round-trip readback and the read threshold
@@ -28,7 +28,12 @@ from __future__ import annotations
 
 from sep_reg_meta import AXIL_MAILBOX_OUTBOUND_0, SEP_CPU_CTRL, sym
 
-from env.sep_seeded_rng import SepSeededRng
+from sep_seeded_rng import SepSeededRng
+from sep_spec_tables import (
+    mailbox_depth,
+    mailbox_empty_sentinel,
+    mailbox_write_data_rd_sentinel,
+)
 
 # --- outbound_mailbox_0 register map (single source of truth) -------------------
 OUTBOUND_BASE = sym(
@@ -64,12 +69,10 @@ ERR_WRITE = AXIL_MAILBOX_OUTBOUND_0.field_mask("ERROR_FLAGS", "write_error")
 CLOCK_GATE_CTRL = SEP_CPU_CTRL.addr("CLOCK_GATE_CTRL")
 CLOCK_GATE_IMPL_MASK = SEP_CPU_CTRL.mask32("CLOCK_GATE_CTRL")
 
-MAILBOX_DEPTH = 8  # sep_pkg::MAILBOX_DEPTH
-# Read-from-empty returns this sentinel + SLVERR (axi_lite_mailbox.sv:377).
-READ_EMPTY_SENTINEL = 0xFEED_DEAD
-# The write-only WRITE_DATA register reads back this constant + OKAY
-# (axi_lite_mailbox.sv:370): the push side is not readable.
-WRITE_DATA_RD_SENTINEL = 0xFEED_C0DE
+MAILBOX_DEPTH = mailbox_depth()
+# Read-from-empty / write-only readback, from the mailbox interface.adoc.
+READ_EMPTY_SENTINEL = mailbox_empty_sentinel()
+WRITE_DATA_RD_SENTINEL = mailbox_write_data_rd_sentinel()
 RESP_OKAY = 0
 RESP_SLVERR = 2
 
@@ -109,8 +112,9 @@ class SepMboxGolden:
     """Golden depth model for the TX FIFO (outbound WRITE_DATA push side).
 
     Predicts the outbound-aperture STATUS bits + the write-threshold IRQ from the TX
-    occupancy. The RX side (READ_DATA) stays empty on bare-sep. Thresholds use strict
-    > (RTL). SepMboxCfg draws wirqt in [1, depth-1], so every threshold the config
+    occupancy. The RX side (READ_DATA) stays empty on bare-sep. Thresholds use
+    strict greater-than (``architecture.adoc``: fill level exceeds the configured
+    threshold). SepMboxCfg draws wirqt in [1, depth-1], so every threshold the config
     can program is below depth and needs no clamp.
     """
 

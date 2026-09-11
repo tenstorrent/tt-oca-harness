@@ -162,8 +162,7 @@ WRITE_ONLY = [
 # address is exported and could be derived the way the OTBN/HMAC/KMAC rows
 # already do. AGENTS.md prefers source-derived, so these literals are a
 # to-be-converted holdover, not a justified exception.
-# ABR NAME0 is regex-scraped from the ABR RTL params by its owning seq, so that
-# row proves decode and plumbing rather than a specified value.
+# ABR NAME0 comes from the owning seq (ASCII of ML-DSA-87).
 _INFILT0 = sym("INBOUND_FILTER_CTRL_0__REG_MAP_BASE_ADDR")
 _INFILT0_CFG_RESET = next(
     (
