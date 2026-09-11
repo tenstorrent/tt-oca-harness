@@ -7,9 +7,9 @@ function**. Cross-checked against the synthesizable
 RTL ``vendor/lowRISC/opentitan/upstream/hw/ip/csrng/rtl/csrng_ctr_drbg.sv`` (no-df, AES-256, CtrLen < BlkLen).
 
 Self-contained: includes a minimal pure-Python AES (128/192/256 ECB encrypt) so
-this has no dependency on pycryptodome/cryptography. Because the reference is
-derived from the spec/RTL -- not from observed DUT output -- a genbits mismatch
-is a real failure, not a tautology.
+this has no dependency on pycryptodome/cryptography. Because the model is derived
+from the specification and the RTL -- not from observed DUT output -- a genbits
+mismatch is a real failure, not a tautology.
 
 Determined parameters:
   * AES key size : 256 bits

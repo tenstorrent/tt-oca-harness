@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""KM -> OTBN sideload consume-proof KAT (reference suite, sep_km_otbn_sideload_kat_test).
+"""KM -> OTBN sideload consume-proof KAT.
 
 Real DRBG entropy boots the real KM firmware (rom_main). The host (CPU-LSU
 frontdoor AXI) provisions a KNOWN 384-bit key into a KPV handle via CMD_KEY_LOAD,
@@ -10,12 +10,10 @@ writes the 384-bit result to DMEM. The host asserts DMEM == the exact known key.
 
 This is a fully FRONTDOOR consume-proof with NO backdoor: because the host loaded
 the key value itself, the expected value is known without reading the wrapper
-shares (which are write-only / on the KM-private bus anyway). It is STRONGER than
-the reference suite, which generates a random key and reconstructs it by a read-only
-backdoor of the wrapper shares. Here the 12 distinct key words make an exact compare
-catch any truncation, word-swap, or share-defeat bug.
+shares (which are write-only / on the KM-private bus anyway). The 12 distinct key
+words make an exact compare catch any truncation, word-swap, or share-defeat bug.
 
-VPLAN-parity checkers (mapped to the reference suite's checker list):
+Checkers:
   CHK0       boot KM on real DRBG -> RESP_KM_READY
   CHK-A      CMD_KEY_LOAD known key (frontdoor; wrapper shares are write-only)
   CHK-B      CMD_KEY_TRANSFER rc=0 to OTBN
@@ -40,8 +38,8 @@ receive the key; CHK-D (exact distinct key) further proves OTBN consumed the cor
 sideloaded key, not stale/zero/another engine's. There is no RW1C done-status bit on
 this consume path (OTBN completion is the STATUS->IDLE state + ERR_BITS==0).
 
-Boot recipe (must match the reference subsystem tb to clear the SRAM scrambler cold-boot
-without a parity fault): rom_main built with PROD_BOOT_WIPE=0 / PROD_UNREC_WIPE=0,
+Boot recipe, required to clear the SRAM scrambler cold-boot without a parity
+fault: rom_main built with PROD_BOOT_WIPE=0 / PROD_UNREC_WIPE=0,
 and the KM SRAM macro is backdoor-filled to zero+valid-parity by tb_backdoor_mem
 (tb/tb_top.sv). Real fuse-sense (no +skip_fuse_sense): the KM
 firmware reads OTP/lifecycle at boot, so a valid PROD-lifecycle image is staged.
@@ -133,8 +131,8 @@ class sep_km_otbn_sideload_kat_test(sep_base_test):
         # If OTBN stays parked the KM's wrapper write never completes and the KM
         # hangs with no mailbox response. OTBN is held parked through KM boot/load
         # so KM owns the entropy stream, then released here to receive the key and
-        # run the key-dump (mirrors the reference suite's "release the target engine when ready to
-        # receive the key + run the consume op"). Wait for OTBN's post-reset secure
+        # run the key-dump: the target engine is released only when it is ready to
+        # receive the key and run the consume op. Wait for OTBN's post-reset secure
         # wipe to finish (STATUS IDLE) BEFORE transferring, else the wipe can clobber
         # the just-sideloaded key.
         await self.swrst.release("otbn")
@@ -144,7 +142,7 @@ class sep_km_otbn_sideload_kat_test(sep_base_test):
         # Read back SW_RESET_N and prove the other sideload engines (AES/KMAC/HMAC)
         # are HELD in reset -- they physically cannot receive the key -- while OTBN
         # is released. Combined with the OTBN-only transfer dest mask and CHK-D
-        # (OTBN got the exact key), this is the OSS analog of the reference suite's bus-target check.
+        # (OTBN got the exact key), this pins the key to the intended target.
         rst = await self.swrst.read_back()
         parked = (
             (1 << SW_RESET_N_BIT["aes"])

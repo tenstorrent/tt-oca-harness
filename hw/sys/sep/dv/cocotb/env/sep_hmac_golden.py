@@ -9,8 +9,8 @@ The construction is validated at import against RFC 4231 Test
 Case 1, so a transcription error fails loudly rather than silently agreeing with
 a broken DUT.
 
-Register byte/word/endian convention (the structural RTL contract the reference suite
-sep_km_hmac_sideload_kat_test_seq pins as key_word_rev=1, key_be=1, msg_be=0):
+Register byte/word/endian convention, the structural RTL contract
+(key_word_rev=1, key_be=1, msg_be=0):
   * KEY: the hmac_wrapper packs KEY_SHARE[i] into key[i*32+:32], but hmac_core
     consumes secret_key_i[1023:768] for a 256-bit key, so the effective key WORD
     order is REVERSED ([7..0]); each 32-bit word is big-endian (key_be).
@@ -65,7 +65,7 @@ def hmac_sha256_words(
 # The standalone SW-key breadth test (HMAC SHA-variant breadth) covers all three SHA-2 variants in
 # both keyed-HMAC and plain-SHA modes. Map the CFG.digest_size selection (by SHA
 # output bit-width) to the stdlib hash constructor and the count of valid 32-bit
-# DIGEST_* words the engine exposes (hmac.sv:265-277): SHA-256 -> 8, SHA-384 ->
+# DIGEST_* words the engine exposes (hmac.sv): SHA-256 -> 8, SHA-384 ->
 # 12, SHA-512 -> 16.
 _SHA2 = {
     256: (hashlib.sha256, 8),
@@ -107,7 +107,7 @@ def hmac_or_sha_words(
     word is big-endian, matching the engine read-back; ``digest_swap=1`` byte-
     swaps within each word. ``key_words`` is required when ``hmac_en`` and ignored
     for plain SHA. The key/msg byte conventions stay parameters because the
-    directed bring-up pins them from the DUT for the SW-key path (§9).
+    directed bring-up pins them from the DUT for the SW-key path.
     """
     msg = _words_to_bytes(msg_words, word_rev=False, big_endian=msg_be)
     if hmac_en:

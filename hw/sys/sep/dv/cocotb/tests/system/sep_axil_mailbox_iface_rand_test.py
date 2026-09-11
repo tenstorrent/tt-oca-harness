@@ -4,9 +4,9 @@
 
 no_cpu host-AXI test of the SEP axil_mailbox MECHANICS over the CPU-LSU master,
 on the outbound_mailbox_0 aperture (0x10A0_0000) -- the SEP/CPU side of the
-two-port cross-FIFO, reachable with NO inbound filter. This is the TX-path test,
-matching the reference suite's "CPU not running -> RX FIFO always empty; verify the TX path"
-intent. Distinct from the outbound->PIC->CPU delivery path
+two-port cross-FIFO, reachable with NO inbound filter. This is the TX-path test:
+with no CPU running the RX FIFO is always empty. Distinct from the
+outbound->PIC->CPU delivery path
 (sep_mailbox_plic_test).
 
 A SepMboxCfg config object (seeded WIRQT + payloads) is the single source of truth
@@ -239,8 +239,8 @@ class sep_axil_mailbox_iface_rand_test(sep_base_test):
         """CHK-SUBWORD-PUSH: a 4-byte WRITE_DATA beat is a whole push.
 
         Write-side contract on this 64-bit aperture: every register owns an
-        8-byte decode range (`axi_lite_mailbox.sv:269-272`) and non-strobed
-        bytes are zeroed (`:302`), so a 4-byte beat at +0x00 and a 4-byte beat
+        8-byte decode range (`axi_lite_mailbox.sv`) and non-strobed bytes are
+        zeroed, so a 4-byte beat at +0x00 and a 4-byte beat
         at +0x04 each push their own entry. +0x04 is the same register, not a
         high half. This does not grade the spec's two-word read of an incoming
         64-bit message -- RX stays empty here.

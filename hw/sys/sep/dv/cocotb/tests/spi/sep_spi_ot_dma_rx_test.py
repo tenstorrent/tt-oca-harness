@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP OpenTitan-SPI RX -> Secure-DMA -> SRAM firmware-boot test (PyUVM).
 
-OSS port of the reference suite ``sep_spi_ot_dma_rx_test``. Boots the VeeR EL2 core and runs
+Boots the VeeR EL2 core and runs
 the spi_ot_dma_rx firmware: it configures the OpenTitan SPI host, arms the Secure
 DMA in hardware-handshake mode (SRC = SPI RXDATA fixed/WRAP, DST = SRAM
 incrementing), then issues a SPI flash READ. The SPI RX FIFO crossing its
@@ -10,8 +10,8 @@ watermark raises ``lsio_trigger``, which drains a chunk to SRAM via the DMA
 hardware handshake -- an SPI + DMA + fabric + memory datapath that is internal to
 bare ``sep`` (SPI-FIFO -> DMA).
 
-PARITY-PLUS over reference suite: the reference test clocks idle MISO (no flash model) and only
-checks "DMA done + no SPI error". Here the OSS flash BFM is preloaded with a known
+A test that clocked idle MISO with no flash model could only check "DMA done + no
+SPI error". Here the flash BFM is preloaded with a known
 constant (0xA5) and the firmware value-checks every DMA-written SRAM word ==
 0xA5A5A5A5, so the SPI->DMA->SRAM data path is proven, not just completion. The
 firmware is self-checking (returns its error count; start.S emits PASS/FAIL magic

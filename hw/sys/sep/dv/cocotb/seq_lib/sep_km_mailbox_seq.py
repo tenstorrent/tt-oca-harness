@@ -3,9 +3,9 @@
 """Host-side Key Manager (KM) mailbox command driver.
 
 Reproduces the SEP<->KM mailbox wire protocol that the real KM ROM firmware
-(`hw/ip/key_manager/dv/fw`, `rom_main`) implements, so an OSS cocotb test
-can drive the KM the same way the reference suite `sep_subsystem_km_consume_base_seq` does:
-send CMD_KEY_GENERATE / CMD_KEY_TRANSFER framed messages and parse the responses.
+(`hw/ip/key_manager/dv/fw`, `rom_main`) implements, so a cocotb test can drive the
+KM directly: send CMD_KEY_GENERATE / CMD_KEY_TRANSFER framed messages and parse
+the responses.
 
 Frame format (32-bit words, little-endian on the wire):
   header = {crc8[31:24], payload_len[23:16], cmd_id[15:8], seq_num[7:0]}
@@ -100,9 +100,8 @@ class SepKmMailbox:
     """Drives the KM mailbox over the SEP AXI agent.
 
     The test owns one instance (``self.km = SepKmMailbox(self)``) and calls the
-    high-level command methods. ``seq_num`` is tracked here exactly like the reference suite
-    base sequence (incremented per command, must match the firmware's expected
-    sequence counter).
+    high-level command methods. ``seq_num`` is tracked here: incremented per
+    command, and it must match the firmware's expected sequence counter.
     """
 
     def __init__(self, test, *, base: int = KM_MBOX_BASE, logger=None) -> None:
@@ -311,7 +310,7 @@ class SepKmMailbox:
         silently polling an empty mailbox for milliseconds of sim time.
 
         The 8000-poll budget is 400k core cycles (~460 us), roughly 1.5x the
-        ~300 us the KM ROM needs to reach RESP_KM_READY in the reference subsystem tb.
+        ~300 us the KM ROM needs to reach RESP_KM_READY.
         Generous for a healthy boot, but bounded enough that a KM which never
         boots fails in minutes instead of running the test to its 7200 s cap.
         """

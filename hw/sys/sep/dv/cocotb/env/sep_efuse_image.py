@@ -7,8 +7,7 @@ generic efuse bank model (``hw/ip/efuse/dv/models/efuse_bank_model.sv``)
 loads at t=0 via ``+sep_efuse_hex`` (staged pre-sim by dv_sim_prestage.py). The
 field schema, offsets and widths mirror ``sep_efuse_pkg::EfuseFieldMap``
 (``hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv``, generated from
-``hw/sys/sep/regs/blocks/sep_efuse_map/sep_efuse_map.rdl``); the constraints
-mirror the reference UVM ``sep_efuse_item`` golden model.
+``hw/sys/sep/regs/blocks/sep_efuse_map/sep_efuse_map.rdl``).
 
 The same object is the golden reference for the shadow-readout checker:
 ``expected_shadow(field)`` returns the value software should read back from the
@@ -96,7 +95,7 @@ LEGAL_LC_RAW: Tuple[int, ...] = (
 _LOCK_REGS = ("LOCKS", "LOCKS_SPARE")
 _LC_REGS = ("LC_STATE",)
 
-# Class-1a device secrets. sep_efuse_pkg.sv:563 SecretShadowRanges disconnects these
+# Class-1a device secrets. sep_efuse_pkg.sv SecretShadowRanges disconnects these
 # from the shadow-register hardware output while secure_tm is asserted, so no real
 # secret reaches a scannable consumer. Named, not derived: which fields are secret is
 # a security decision in the package, not a property of the map's shape, so a new
@@ -260,8 +259,8 @@ class SepEfuseImage:
 
     def load(self, path: str | Path) -> "SepEfuseImage":
         """Load a preload, auto-detecting the format: a declarative ``*.toml``
-        fuse configuration, a per-bit reference suite ``*.preload`` (one 0/1 per
-        line), or a 256-word hex image.
+        fuse configuration, a per-bit ``*.preload`` (one 0/1 per line), or a
+        256-word hex image.
 
         Dispatching here rather than in the callers is what keeps the two
         execution points honest. This method is the single entry both of them
@@ -321,7 +320,7 @@ class SepEfuseImage:
         ``{~raw, raw}`` into the shadow itself, so a staged image carrying a bare nibble
         still senses as a valid
         pair. That is also why no staged image can present a BROKEN pair to the DUT.
-        The stitch test injects that fault at the LCC decoder input (signed-off force).
+        The stitch test injects that fault at the LCC decoder input, by force.
         """
         if raw not in LEGAL_LC_RAW:
             raise ValueError(f"illegal LC raw code 0x{raw:x}")
@@ -374,9 +373,9 @@ class SepEfuseImage:
         # The vector holds TWO bits per protected field -- a write lock and a
         # read lock -- so 40 slots cover 80 bits. Index 6'h3F is the no-lock
         # sentinel. Lock ENFORCEMENT (read-lock -> 0xbadcab1e, write-lock
-        # rejecting a program) is still not checked by the shadow checkers, so
-        # expected_shadow() assumes fields stay readable. Extend both
-        # together, and add a plan row, before relying on this.
+        # rejecting a program) is not checked by the shadow checkers, so
+        # expected_shadow() assumes fields stay readable. Extend both together
+        # before relying on this.
         lock_bits = 0
         if lock_prob > 0.0:
             # Bernoulli draw as an integer comparison rather than a float one:

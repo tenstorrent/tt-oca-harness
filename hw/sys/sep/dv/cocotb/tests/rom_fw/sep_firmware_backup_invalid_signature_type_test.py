@@ -7,11 +7,10 @@ backup's ``signature_type`` is set to 0. ``validate_signature`` accepts only
 ``MANIFEST_SIG_TYPE_RSA_3072`` (1, ``manifest.h``) and refuses anything else
 with ``BAD_SIG_TYPE=`` (``manifest_crypto.c``).
 
-WHY 0, AND WHY A FIXED VALUE. The reference draws from
-``random.choice([0, random.randint(3, 10)])``,
-so 0 is one of its own values; it is deliberately NOT 2, because 2 is
-``MANIFEST_SIG_TYPE_ECC_P_256`` (``manifest.h``) and the reference avoids the
-one non-RSA type its packer treats specially. The ROM's check is a single ``!=``
+WHY 0, AND WHY A FIXED VALUE. A fixed value makes the echoed field assertable. It
+is deliberately NOT 2, because 2 is ``MANIFEST_SIG_TYPE_ECC_P_256``
+(``manifest.h``), a declared type the packer treats specially. The ROM's check is a
+single ``!=``
 against RSA-3072, so every value in that set exercises the identical arm, and
 fixing it is what lets this testcase assert the exact ``BAD_SIG_TYPE=`` the ROM
 echoed rather than accepting any value at all -- the same reason
@@ -66,8 +65,7 @@ _EFUSE_PRELOAD = (
     / "efuse_configurations" / "sep_efuse_lc_prod.toml"
 )
 
-# One of the reference's own values (sep_firmware_secure_boot_test.py), fixed
-# so the echoed value is assertable. See the docstring for why not 2.
+# Fixed so the echoed value is assertable. See the docstring for why not 2.
 _BAD_SIG_TYPE = 0
 # manifest_crypto.c -- simputshex32("BAD_SIG_TYPE=", signature_type).
 _BAD_SIG_TYPE_ECHO = f"BAD_SIG_TYPE=0x{_BAD_SIG_TYPE:08x}"

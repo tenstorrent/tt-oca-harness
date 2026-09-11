@@ -3,9 +3,8 @@
 """OpenTitan HMAC run-control driver (direct AXI on the SEP CPU-LSU bus).
 
 Configures the HMAC engine for keyed HMAC-SHA256, pushes a message through the
-MSG FIFO, waits for done, and reads the digest -- mirroring the reference suite
-sep_km_hmac_sideload_kat_test_seq op helpers (RAL there; direct AXI here, like
-SepAes/SepOtbn). 32-bit beats (size=2) via the wrapper's 64->32 dw-converter.
+MSG FIFO, waits for done, and reads the digest. Direct AXI, like SepAes/SepOtbn.
+32-bit beats (size=2) via the wrapper's 64->32 dw-converter.
 
 HMAC register map (base 0x1091_1000; vendor/lowRISC/opentitan/upstream/hw/ip/hmac/rtl/hmac_reg_pkg.sv):
   INTR_STATE @ 0x000 (RW1C: bit0 hmac_done, bit2 hmac_err)
@@ -59,9 +58,9 @@ HMAC_INTR_ERR = 1 << 2
 # key_swap[4] digest_size[8:5] key_length[14:9]).
 HMAC_DIGEST_SIZE = {256: 0x1, 384: 0x2, 512: 0x4}  # SHA2_256/384/512
 HMAC_KEY_LENGTH = {128: 0x1, 256: 0x2, 384: 0x4, 512: 0x8, 1024: 0x10}
-# Valid 32-bit DIGEST_* words exposed per SHA-2 variant (hmac.sv:265-277).
+# Valid 32-bit DIGEST_* words exposed per SHA-2 variant (hmac.sv).
 HMAC_DIGEST_WORDS = {256: 8, 384: 12, 512: 16}
-# Illegal keyed combo: SHA-256 supports keys up to 512-bit only (hmac.sv:819).
+# Illegal keyed combo: SHA-256 supports keys up to 512-bit only (hmac.sv).
 HMAC_ILLEGAL_KEYED = {(256, 1024)}
 
 
@@ -168,7 +167,7 @@ class SepHmac(SepAxiRegDriver):
         """Run one keyed HMAC over msg_words; return the 8 DIGEST words (word0=MSB).
 
         start -> push message words to MSG_FIFO -> process -> wait done -> read
-        DIGEST -> W1C the done event and assert it cleared (RW1C contract, §7).
+        DIGEST -> W1C the done event and assert it cleared (RW1C contract).
         """
         await self._wr(HMAC_CMD, HMAC_CMD_HASH_START)
         for word in msg_words:
@@ -200,7 +199,7 @@ class SepHmac(SepAxiRegDriver):
         """Run one SHA-256 over msg_words; return the 8 DIGEST words (word0=MSB).
 
         start -> push message words -> process -> wait done -> read DIGEST -> W1C
-        the done event and assert it cleared (RW1C, §7). DIGEST then HOLDS."""
+        the done event and assert it cleared (RW1C). DIGEST then HOLDS."""
         await self._wr(HMAC_CMD, HMAC_CMD_HASH_START)
         for word in msg_words:
             await self._wait_fifo_space()
@@ -230,7 +229,7 @@ class SepHmac(SepAxiRegDriver):
 
         Returns the DIGEST words for the SHA-2 variant (8/12/16). start -> push
         message -> process -> wait done -> read DIGEST -> W1C the done event and
-        assert it cleared (RW1C, §7)."""
+        assert it cleared (RW1C)."""
         await self._wr(HMAC_CMD, HMAC_CMD_HASH_START)
         for word in msg_words:
             await self._wait_fifo_space()

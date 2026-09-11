@@ -35,7 +35,7 @@ class sep_firmware_backup_invalid_signature_test(sep_backup_manifest_fail_base):
     """Primary BAD_MAGIC -> failover -> backup signature fails RSA -> terminal."""
 
     # manifest_crypto.c, reached only when rsa_3072_verify() returns non-zero
-    # (:244). Requiring this specific marker rather than any failure is what
+    # Requiring this specific marker rather than any failure is what
     # distinguishes "the signature was checked and rejected" from "something else
     # went wrong first".
     backup_defect_marker = "RSA_VERIFY_FAIL"
@@ -72,7 +72,7 @@ class sep_firmware_backup_invalid_signature_test(sep_backup_manifest_fail_base):
         bl1_ver = image.field_int("BL1_VERSION")
         revoke = image.field_int("CHIPLET_PUBK_REVOKE")
         # check_security_version (manifest_crypto.c) and the revocation check
-        # (:369 ->) both run BEFORE rsa_3072_verify (:244), so either of these
+        # both run BEFORE rsa_3072_verify, so either of these
         # being non-zero would terminate the run earlier with a different error and
         # the signature would never be reached.
         assert bl1_ver == 0, (

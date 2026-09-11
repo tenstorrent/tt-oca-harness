@@ -11,8 +11,8 @@ INTR_STATE.wkup_expired CSR bit (full RW1C clear) -- no ISR/NMI needed.
 reference refs: clock sep_clock_uvm_aon_timer_operation_test (: counter advance
 + bark), fw wdt_cfg_lock_test (WDOG_REGWEN lock), wdt_wkup_timer_test (:
 AON wakeup timer), wdt_pet_reset_test. Mapping:
-COVERED_STRONGER -- frontdoor CSR + full RW1C clear (the reference suite reads WDOG_COUNT via
-uvm_hdl_read). Distinct from the bark->NMI vec/lock path and the bark/pet/disable/
+WDOG_COUNT is read frontdoor over CSR, with a full RW1C clear. Distinct from the
+bark->NMI vec/lock path and the bark/pet/disable/
 re-bark + bite->wdt_timer_rst_req_o path: this test proves the OTHER aon_timer
 internals (WKUP timer, REGWEN config-lock, plain counter/pet), NOT bark/bite/NMI.
 
@@ -76,7 +76,7 @@ class sep_wdt_aon_timer_internals_test(sep_base_test):
     async def _poll_bit_set(
         self, addr: int, bit: int, *, timeout_cycles: int, step: int
     ) -> tuple[bool, int]:
-        """Poll addr until (val>>bit)&1 == 1 or timeout; FAIL-checked by the caller."""
+        """Poll addr until (val>>bit)&1 == 1 or timeout; the caller grades it."""
         waited = 0
         val = 0
         while waited < timeout_cycles:

@@ -107,7 +107,7 @@ class sep_warm_reset_bad_target_exception_test(sep_warm_dispatch_base):
         self.logger.info("CHK-ACCEPT: cold_scratch[1] = 0x%08x", STATUS_WARM_JUMP)
 
         # CHK-EXCEPTION: the jump landed on a non-instruction and the early trap
-        # handler reported it. Same status word the reference requires.
+        # handler reported it.
         assert STATUS_GENERAL_EXCEPTION in status_seq, (
             f"cold_scratch[1] never held 0x{STATUS_GENERAL_EXCEPTION:08x} "
             f"(STATUS_ENCODE(ERROR, SEP_MSG_GENERAL_EXCEPTION)); observed "

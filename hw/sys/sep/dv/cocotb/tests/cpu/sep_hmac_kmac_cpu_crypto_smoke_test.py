@@ -2,8 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP HMAC + KMAC CPU crypto smoke test (PyUVM).
 
-OSS port combining the reference suite ``hmac_test`` and ``kmac_test`` (crypto
-engine datapath). Boots the VeeR EL2 core and runs the hmac_kmac firmware, which
+Crypto engine datapath smoke over the real CPU->fabric path.
+Boots the VeeR EL2 core and runs the hmac_kmac firmware, which
 exercises the two OpenTitan crypto engines over the real CPU->fabric path on bare
 ``sep``:
 

@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP eFuse -> Lifecycle-Controller lc_state stitch test (OSS).
 
-OSS port of the reference UVM ``sep_efuse_lcc_lc_state_stitch_test``. Walks the
+Walks the
 lifecycle state up the monotonic OTP W1S chain TEST_DEV -> PROD -> RMA_SIP_1 ->
 RMA_CHIP_1 and, at each step, proves the eFuse-sensed lc_state is stitched into
 the lifecycle controller and decoded into the right feature-control vector:
@@ -29,7 +29,7 @@ walk runs at ``secure_tm=0`` so LC_STATE programming is not blocked by
 ``efuse_guard``.
 
 ``lc_sigint_err`` has no legal OTP stimulus -- sense regenerates ``{~raw, raw}``.
-The test injects a broken pair at the LCC decoder input (signed-off force) after
+The test injects a broken pair at the LCC decoder input, by force, after
 the walk. Observation is the DUT ``lc_sigint_err_o`` probe plus an AXI
 ``FEAT_CTRL`` readback of 0 (fail-closed), then release and both restore.
 """
@@ -63,7 +63,7 @@ _MAX_SENSE_CYCLES = 20_000
 # post-sense backdoor compare already covers all four every sense.
 _SECRET_FIELD = "CLASS_KEY"
 
-# Monotonic lifecycle chain exercised (matches the reference test's PROD/RMA walk).
+# Monotonic lifecycle chain exercised.
 _LC_CHAIN = (LC_TEST_DEV, LC_PROD, LC_RMA_SIP_1, LC_RMA_CHIP_1)
 
 # Distinct, non-zero disable vectors so each decoded FEAT_CTRL is a different,
@@ -422,7 +422,7 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
                 )
 
                 # CHK-SECURE-TM-PROG-BLOCK: while the strap is up, efuse_guard
-                # empties the fuse command request (efuse_guard.sv:110) and the
+                # empties the fuse command request (efuse_guard.sv) and the
                 # program interface completes with PROGRAM_DONE+ERR because
                 # secure_tm_blocked_i is set (efuse_program_interface.sv ST_WAIT_RESP).
                 # That is a failed completion, not a starved DONE. Prove the

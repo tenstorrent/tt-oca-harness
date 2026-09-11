@@ -2,8 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP eFuse JTAG-AXIL + EL2-CPU mux arbitration test (PyUVM).
 
-OSS port of the reference suite ``sep_efuse_jtag_axil_el2_cpu_mux_test``. Boots
-the VeeR EL2 core running the efuse_jtag_el2_mux firmware (a continuous eFuse-MMR
+Boots the VeeR EL2 core running the efuse_jtag_el2_mux firmware (a continuous eFuse-MMR
 read loop) and, CONCURRENTLY, drives the DUT's real SEP-OTP JTAG AXI-Lite port
 (``axil_sep_otp_jtag``, brought out as ``j_axi_*`` in tb_top) via
 ``ocah_axi_vip.OcahAxiLiteMasterSequence``. Both masters arbitrate at the eFuse
@@ -14,8 +13,7 @@ The OTP image is real-sensed at LC_STATE=PROD, which makes the JTAG path
 LC-restricted (sep_efuse_wrapper): a JTAG access to the MMR token region is
 allowed, but a JTAG access to the shadow map / interface CSRs is routed to an
 error slave returning ``0xbadcab1e``. So the single PROD image exercises BOTH the
-allowed-MMR coexistence AND the LC-gated deny -- with no backdoor lc_state force
-(the reference suite ``force_jtag_lc_state``).
+allowed-MMR coexistence AND the LC-gated deny -- with no backdoor lc_state force.
 
 Checkers (each logged):
   * CHK-SENSE / firmware self-checks: real fuse-sense completed, the CPU eFuse-MMR
@@ -41,9 +39,8 @@ Checkers (each logged):
     scratch_cold_probe_o) advances across the JTAG burst -- the CPU was not stalled
     by the JTAG master.
 
-OSS deltas (documented): real PROD-sense replaces the reference suite's backdoor
-``force_jtag_lc_state``; a fixed CPU loop window replaces the reference suite's backdoor
-``uvm_hdl_deposit`` UVM_DONE release. A live CPU loop window replaces that deposit.
+The lifecycle state comes from a real PROD sense rather than a backdoor force, and
+the contended window is a fixed live CPU loop rather than a deposit-driven release.
 """
 
 from __future__ import annotations

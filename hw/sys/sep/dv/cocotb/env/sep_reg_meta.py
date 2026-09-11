@@ -23,7 +23,7 @@ Two masks, deliberately distinct:
   ``mask()``     — software-usable fields only; RDL ``reserved`` fields excluded.
   ``mask_all()`` — every field bit, reserved included: the STORAGE mask.
 They differ wherever a placeholder field is declared ``sw=rw`` yet named
-``reserved`` (``TIMEOUT_COUNT``/``TIMEOUT_ENABLE``, sep_cpu_ctrl.rdl:76-80): real
+``reserved`` (``TIMEOUT_COUNT``/``TIMEOUT_ENABLE``, sep_cpu_ctrl.rdl): real
 read/write storage that software must not treat as an implemented field. Use
 ``mask()`` to ask "what may software use", ``mask_all()`` to ask "did the write
 reach storage" — a write/readback check wants the latter.
@@ -220,7 +220,7 @@ class RegBlock:
         when the question is "did the write reach storage", not "what may software
         use". TIMEOUT_COUNT is the case that forces the distinction: its lone
         field is declared `sw=rw; hw=r` yet named `reserved`
-        (sep_cpu_ctrl.rdl:76-80), so it is real read/write storage that mask()
+        (sep_cpu_ctrl.rdl), so it is real read/write storage that mask()
         must not count as implemented but a storage proof still can.
         """
         struct = self._sym(name, "reg_t", alias_ok=True)
@@ -783,7 +783,7 @@ def _selftest() -> int:
     # type's shape via _TYPE_ALIAS. Both masks are pinned, and the pair is what
     # makes this a tripwire for the reserved-field exclusion itself rather than a
     # re-baselined constant: the lone field is declared `sw=rw; hw=r` yet named
-    # `reserved` (sep_cpu_ctrl.rdl:76-80), so it is real STORAGE (mask_all 0x1)
+    # `reserved` (sep_cpu_ctrl.rdl), so it is real STORAGE (mask_all 0x1)
     # that is NOT software-usable (mask 0x0). If the generator ever renames the
     # field, or the exclusion regex stops matching it, these disagree and fail.
     for name in _TYPE_ALIAS:

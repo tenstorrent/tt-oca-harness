@@ -1,24 +1,18 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Shared scenario for the BL0 demotion-decision testcases ([C15]).
+"""Shared scenario for the BL0 demotion-decision testcases.
 
-Every member boots to completion and they differ only in the demotion inputs and
-in the verdict those inputs must produce, so the register observation, the
-ordering chain and the disclosure live here once.
-
-**EIGHT members inherit this file, covering SIX of the seven outcomes below.**
-Batch R3 wrote it with two (O1 and O2a) and batch R4 added six; the sentences
-below that still speak of "the two members here" are R3's original text, kept
-because they document what its own rows asserted, and are superseded by the R4
-paragraph further down. The two intermediate bases are
-``rom_fw/sep_demotion_prod_base.py`` (PROD, secure boot disabled on both surfaces)
-and ``rom_fw/sep_demotion_prod_end_base.py``.
+Eight members inherit this file and cover six of the seven outcomes below. They
+differ only in the demotion inputs and in the verdict those inputs must produce,
+so the register observation, the ordering chain and the disclosures live here
+once. Two intermediate bases group them: ``sep_demotion_prod_base.py`` (PROD,
+secure boot disabled on both surfaces) and ``sep_demotion_prod_end_base.py``.
 
 ============================================================================
-THE MECHANISM, ESTABLISHED ONCE FOR THE WHOLE DEMOTION GROUP
+THE MECHANISM
 ============================================================================
 
-The decision is ``rom_main.c`` and it reads exactly FOUR inputs:
+The decision lives in ``rom_main.c`` and reads exactly FOUR inputs:
 
   ==========================================  ==============
   input                                       source
@@ -29,33 +23,29 @@ The decision is ``rom_main.c`` and it reads exactly FOUR inputs:
   ``boot_arguments.flag_args`` bit 0          manifest
   ==========================================  ==============
 
-Bit positions: ``SELECTOR_BIT_BL1_DEMOTION`` is 17 because
-``SELECTOR_BIT_LIFE_CYCLE_STATES`` is ``DEVICE_ID_NUM_WORDS * 2`` = 16
-(``manifest.h``); ``USAGE_CONSTRAINTS_FLAGS_BIT_BL1_DEMOTION`` is 0
-(``manifest.h``); ``FLAG_ARGS_BIT_BL2_DEMOTION`` is 0 (``manifest.h``).
+Bit positions, all from ``manifest.h``: ``SELECTOR_BIT_BL1_DEMOTION`` is 17
+because ``SELECTOR_BIT_LIFE_CYCLE_STATES`` is ``DEVICE_ID_NUM_WORDS * 2`` = 16;
+``USAGE_CONSTRAINTS_FLAGS_BIT_BL1_DEMOTION`` is 0; ``FLAG_ARGS_BIT_BL2_DEMOTION``
+is 0.
 
-**THE COLLAPSE, AND IT IS THE MOST IMPORTANT THING IN THIS FILE.** ``rom_main.c``
-short-circuits on ``lc_state == LC_STATE_PROD_END`` and returns from the block having
-read NONE of the three manifest inputs -- the selector bit is not consulted until
-, ``usage_constraints.flags`` not until, and ``flag_args`` not until
-, all inside the ``else``. So **at PROD_END every combination of
-the three manifest inputs produces the identical outcome.** The tracker holds five
-PROD_END demotion items; they are FIVE STIMULI ON ONE OBSERVABLE, not five coverage
-points. This member covers that outcome once, under the name the tracker gives it,
-and says so.
+**THE COLLAPSE.** ``rom_main.c`` short-circuits on
+``lc_state == LC_STATE_PROD_END`` and returns from the block having read NONE of
+the three manifest inputs -- all three are consulted only inside the ``else``.
+So at PROD_END every combination of the three manifest inputs produces the
+identical outcome: several PROD_END stimuli are ONE observable, not several
+coverage points.
 
 The seven distinct observables of the whole block, derived from the source and
-confirmed here on RTL. ``sel`` = ``selector_bits[17]``, ``auth`` =
+confirmed on RTL. ``sel`` = ``selector_bits[17]``, ``auth`` =
 ``usage_constraints.flags[0]``, ``bl2`` = ``flag_args[0]``.
 
-**THE REGISTER COLUMNS ARE ``(demote, lock)`` TUPLES, IN THE SAME FORM AS
-``expect_demote_1`` / ``expect_demote_2`` BELOW.** They are deliberately NOT the
-32-bit word ``lc_write_demotion()`` composes, and NOT the 2-bit probe rail value: all
-three notations are in play in this file and an earlier draft tabulated the register
-WORD (``0x2`` / ``0x3``), which collides with the rail encoding -- ``0b11`` is the
-broken-rail condition :func:`_decode_demote` raises on, and ``0b10`` happens to equal
-the word for "no demote, locked". A reviewer caught that before batch R4 could port a
-row from it. ``(0, 0)`` means the register was never written.
+**THE REGISTER COLUMNS ARE ``(demote, lock)`` TUPLES, in the same form as
+``expect_demote_1`` / ``expect_demote_2`` below.** Three notations are in play in
+this file and they collide: the 32-bit word ``lc_write_demotion()`` composes, the
+2-bit probe rail value, and this tuple. ``0b11`` as a rail is the broken-rail
+condition :func:`_decode_demote` raises on, while ``0b10`` happens to equal the
+register word for "no demote, locked". ``(0, 0)`` means the register was never
+written.
 
   ==  ===============================  ==========================================  ==========  ==========
   #   condition                        console                                     DEMOTE_1    DEMOTE_2
@@ -77,155 +67,88 @@ row from it. ``(0, 0)`` means the register was never written.
                                        + ``BL2_DEMOTE_DEC=0`` ``DEMOTE_LOCKED``
   ==  ===============================  ==========================================  ==========  ==========
 
-For the record, the three notations and how to convert: the ROM composes the register
-WORD as ``{lock[1], demote[0]}`` (``bootrom/prod/src/lifecycle.c:116-128``, masks at
-``regs/gen/c/blocks/sep_lifecycle_ctrl.h``), so O2a's word is ``0x3``; the DUT output
-rail pair is ``{~demote, demote}``, so O2a's ``lcc_demote_state_1_probe_o`` is
-``0b01``; and this table and the assertions use ``(demote, lock)``.
+Converting between the three notations: the ROM composes the register WORD as
+``{lock[1], demote[0]}`` (``lifecycle.c``, masks in ``sep_lifecycle_ctrl.h``), so
+O2a's word is ``0x3``; the DUT output rail pair is ``{~demote, demote}``, so
+O2a's ``lcc_demote_state_1_probe_o`` is ``0b01``; this table and the assertions
+use ``(demote, lock)``.
 
-**A CAVEAT ON O4 THAT BATCH R4 NEEDS.** O4 is the only outcome with ``lock == 0``, and
-``sep_lifecycle_ctrl.sv`` derives the register's software write-enable as
-``~lock``. So on O4 the register stays WRITEABLE by later software. An end-of-run read
-is still sound for these two members, whose runs stop at the BL1 handoff, but a future
-O4 testcase that let BL1 execute would be reading a value BL1 could have changed. Use
-the transition record, not just the final value, for that one.
+**WHY AN END-OF-RUN READ IS SOUND EVEN THOUGH BL1 RUNS.**
+``bl1_pass_test.c`` is a real payload that runs to completion, so every member
+reads its registers after BL1 has executed. ``sep_lifecycle_ctrl.sv`` derives the
+DEMOTE field's software write-enable as ``~lock`` and the LOCK field is
+write-one-to-set with no hardware clear, so on every LOCKED outcome neither field
+can be walked back. O4 is the exception: it is the only outcome with ``lock == 0``,
+which leaves the register writeable by later software, so that member pins the
+transition COUNT exactly rather than trusting the final value.
 
-**[R4 CORRECTION to the sentence above, left in place rather than rewritten because it
-is batch R3's own record.] The premise is false: the runs do NOT stop at the BL1
-handoff.** ``dv/fw/tests/bl1_pass_test/bl1_pass_test.c`` is a real payload that runs to
-completion -- it prints ``BL1``, ``OBF``, ``GO!`` and writes the mailbox PASS the harness
-gates on -- so every member of this family reads its registers AFTER BL1 has executed.
-The conclusion survives for a different reason: on every LOCKED outcome the DEMOTE
-field's software write-enable is ``~lock`` (``sep_lifecycle_ctrl.sv``,) and
-the LOCK field is write-one-to-set with no hardware clear
-(``sep_lifecycle_ctrl.rdl:23-36``), so neither field can be walked back, and
-``grep -rn "DEMOTE\|LIFECYCLE" dv/fw/tests/bl1_pass_test/`` returns nothing. For O4 the
-argument is not needed at all: that member follows the advice above and pins the
-transition count EXACTLY, across the whole simulation including BL1.
+**O4 MUST OVERRIDE THE TRANSITION-COUNT BOUND.** On O4 DEMOTE_1 is never written
+and DEMOTE_2 is untouched, so the registers stay at their reset value and there is
+exactly ONE sample. The default bound
+(:attr:`~sep_demotion_decision_base.demote_changes_min` /
+:attr:`~sep_demotion_decision_base.demote_changes_max` = ``(2, None)``) therefore
+fails on O4, and that failure is correct behaviour rather than a defect: the O4
+member declares ``(1, 1)``, which pins the count exactly and is stricter than the
+default, not a relaxation of it. Do not read that failure as a DUT problem and do
+not relax the default.
 
-The two members here cover **O1** and **O2a**. The VP half derived the same map
-independently from its own ROM (``batch_runs_0904_vp/FINDINGS.md`` F07, re-derived
-and confirmed line by line by its coordinator audit); this file re-establishes it
-against the RTL tree's own ``rom_main.c`` rather than inheriting the line numbers.
+O3b is the one outcome of the seven with no member on this platform.
 
-**WHAT BATCH R4 SHOULD DO WITH THIS.** Six demotion items remain. Of the outcomes
-above, **O4 is the highest-value one and should be assigned first**: it is the only
-path where ``lock_demotion`` goes false (``rom_main.c``), the only one producing
-``DEMOTE_NOT_LOCKED``, and the ONLY one where DEMOTE_1 is left entirely
-unwritten -- which, on this platform, is directly observable as
-``lcc_demote_lock_1_probe_o == 0`` and is a claim the console cannot make, because
-``DEMOTE_NOT_LOCKED`` is printed from a local, not read back from the register.
-Then O5, O3a, O3b, O2b. Any further PROD_END item is covered-by-O1 and should be
-reported as such with this file cited, not as an independent coverage point.
-
-**O4 MUST OVERRIDE THE TRANSITION-COUNT ASSERT, AND THIS IS A TRAP.** Two reviewer
-corrections were applied independently to this file and they interact: one added
-``assert len(self._demote_changes) >= 2`` in :meth:`_check_demote_registers`, the
-other recorded the O4 caveat above. On O4 DEMOTE_1 is never written and DEMOTE_2 is
-untouched, so the registers stay at their reset value and there is exactly ONE sample
--- the assert fires with "the registers never moved off their reset value", which for
-O4 is the CORRECT behaviour, not a defect. Its own message already names the
-exception ("Every outcome except O4 writes DEMOTE_1"), so the fix is to override the
-bound in the O4 member, not to relax it here for everyone. **Do not read that failure
-as a DUT problem and do not weaken the assert.** Neither reviewer nor author spotted
-this interaction; the R3 orchestrator review did.
-
-**WHAT BATCH R4 ACTUALLY DID, so the guidance above reads as history rather than as
-an open instruction.** R4 added the remaining six tracker items and with them
-outcomes **O4, O5, O3a and O2b**. O3b
-(``..._unauth_flag_0_prod_sel_bit_set_test``, tracker row 116) is the one outcome of
-the seven still uncovered on this platform; it is in no batch's assignment. The trap
-above was taken as written: the bound is now parameterised as
-:attr:`~sep_demotion_decision_base.demote_changes_min` /
-:attr:`~sep_demotion_decision_base.demote_changes_max`, whose default ``(2, None)``
-is exactly the predicate it replaced, and the O4 member declares ``(1, 1)`` -- which
-pins the count EXACTLY and is therefore stricter than the default rather than a
-relaxation of it. The four PROD members share ``rom_fw/sep_demotion_prod_base.py``
-and the two PROD_END members share ``rom_fw/sep_demotion_prod_end_base.py``; both
-of those subclass this file, which keeps the register observation, the ordering
-chain and the disclosures in one place for all eight members.
-
-**R4's TWO PROD_END ITEMS ARE COVERED-BY-O1 AND SAY SO.** They are
-``no_flag_prod_end`` (all three manifest inputs clear) and
-``no_flag_prod_end_sel_bit_set`` (selector bit 17 set). Both produce the O1 outcome
-that R3's ``auth_flag_0_prod_end`` member already covers, so neither adds a ROM path.
-They are not equally weak, and the difference is in what a FAILURE would mean rather
-than in the outcome: with ``sel = 1`` at PROD_END the O1 outcome is reachable only if
-``rom_main.c`` preempts the selector-bit arm, so
-``no_flag_prod_end_sel_bit_set`` is a negative control on the short-circuit ORDER
-that neither ``auth_flag_0_prod_end`` (sel 0) nor ``no_flag_prod_end`` (all inputs
-clear) can provide. ``no_flag_prod_end`` adds no falsifying power at all and its own
-docstring states that plainly.
+**THE TWO PROD_END MEMBERS ARE COVERED-BY-O1 AND SAY SO.** ``no_flag_prod_end``
+(all three manifest inputs clear) and ``no_flag_prod_end_sel_bit_set``
+(selector bit 17 set) both produce O1, so neither adds a ROM path. They are not
+equally weak, and the difference is in what a FAILURE would mean: with ``sel = 1``
+at PROD_END the O1 outcome is reachable only if ``rom_main.c`` preempts the
+selector-bit arm, so ``no_flag_prod_end_sel_bit_set`` is a negative control on the
+short-circuit ORDER that no member with ``sel = 0`` can provide.
+``no_flag_prod_end`` adds no falsifying power at all.
 
 ============================================================================
-THE EVIDENCE CHANNEL, AND WHY IT HAD TO BE ADDED
+THE EVIDENCE CHANNEL
 ============================================================================
 
 **The console alone cannot check this feature.** Every demotion string is printed
-from a LOCAL computed one line earlier -- ``BL1_DEMOTE=`` from ``demotion_reg``
-(``rom_main.c``), ``DEMOTE_LOCKED`` / ``DEMOTE_NOT_LOCKED`` from
-``lock_demotion``  -- so a ROM that decided correctly, printed
-correctly and then wrote the wrong value to the wrong register would pass a
-console-only test unchallenged. That is the same failure mode the SEP-to-SMC address
-defect had (``RUN_JOURNAL.md``, Batch 0a): an instrument that shares the DUT's
-assumption cannot falsify it.
+from a LOCAL computed one line earlier -- ``BL1_DEMOTE=`` from ``demotion_reg``,
+``DEMOTE_LOCKED`` / ``DEMOTE_NOT_LOCKED`` from ``lock_demotion`` -- so a ROM that
+decided correctly, printed correctly and then wrote the wrong value to the wrong
+register would pass a console-only test unchallenged. An instrument that shares
+the DUT's assumption cannot falsify it.
 
-The VP half's F05 mitigation was "assert the DEMOTE_1 / DEMOTE_2 register writes; on
-RTL the same evidence is available directly **from the bus/registers**". **That was
-not true of this testbench**, and the qualifier does not rescue it: an external AXI
-read-back is not a free substitute either, because ``rtl/sep.sv:956`` passes
+An external AXI read-back is not a free substitute either: ``sep.sv`` passes
 ``.inbound_filter_skip_i (feat_ctrl.sep_debug)`` and ``sep_debug`` is 0 under
-PROD_END, so such an access must clear the inbound filter.
-``lcc_demote_state_1_o`` and ``lcc_demote_state_2_o`` are real
-``sep_wrapper`` outputs (``rtl/sep_lifecycle_ctrl.sv:21-22`` up through
-``rtl/sep_crypto.sv:817-830`` and ``rtl/sep.sv``) but ``dv/tb/tb_top.sv`` tied both
-off, and the LOCK bit is on no port at all. This batch wired them:
-``lcc_demote_state_{1,2}_probe_o`` are the DUT outputs brought out unchanged, and
+PROD_END, so such an access must first clear the inbound filter.
+``lcc_demote_state_1_o`` and ``lcc_demote_state_2_o`` are real ``sep_wrapper``
+outputs but ``tb_top.sv`` tied both off, and the LOCK bit is on no port at all.
+``lcc_demote_state_{1,2}_probe_o`` are those DUT outputs brought out unchanged and
 ``lcc_demote_lock_{1,2}_probe_o`` are read-only XMRs of ``demote_reg_{1,2}.lock``
-(``rtl/sep_lifecycle_ctrl.sv:185``,) -- the same probe class as
-``sep_internal_interrupts_probe_o``, no force and no deposit.
+-- the same probe class as ``sep_internal_interrupts_probe_o``, no force and no
+deposit.
 
 ``state`` is differentially encoded ``{~demote, demote}``
-(``hw/common/och_prim/rtl/prim_diff_encode_multi.sv:41-49``), so bit 0 IS the demote
-bit and ``2'b00`` / ``2'b11`` are broken rails rather than verdicts. Both register
-fields are write-one-to-set and are never cleared by hardware
-(``regs/blocks/sep_lifecycle_ctrl/sep_lifecycle_ctrl.rdl:23-36``), which is what
-makes an end-of-run read sound: the value observed IS what BL0 wrote, and "never
-written" is observable as ``lock == 0`` rather than being indistinguishable from
-"written with zeros".
+(``prim_diff_encode_multi.sv``), so bit 0 IS the demote bit and ``2'b00`` /
+``2'b11`` are broken rails rather than verdicts. Both register fields are
+write-one-to-set and are never cleared by hardware
+(``sep_lifecycle_ctrl.rdl``), which is what makes the end-of-run read sound: the
+value observed IS what BL0 wrote, and "never written" is observable as
+``lock == 0`` rather than being indistinguishable from "written with zeros".
 
 ============================================================================
-DISCLOSED GAPS
+LIMITATIONS
 ============================================================================
 
-**BOTH MEMBERS ASSERT MORE THAN THE REFERENCE DOES, DELIBERATELY.** The reference's
-PROD_END row expects only ``STATUS: DEMOTION_NOT_SELECTED``
-(``sep_demotion_uid_checker.py``) and appends NO lock expectation at all; its
-PROD row expects ``DEMOTION_SELECTED`` + ``DEMOTION_LOCKED``. The
-PROD_END member here additionally requires DEMOTE_1 and DEMOTE_2 to read locked. That
-expectation is derived from THIS ROM (``rom_main.c``), not from the
-reference, and it is the single strongest discriminator in the pair -- but it is an
-addition, not a port, and is recorded as such here and in the row's
-``flow_deviation``.
+**The locked-register expectation is derived from this ROM.** The PROD_END member
+requires DEMOTE_1 and DEMOTE_2 to read locked; that comes from reading
+``rom_main.c``, and it is the single strongest discriminator in the pair.
 
-**These are HALF-PORTS and both members say so.** The reference's demotion/UID test
-spends about half its volume verifying that the demotion decision then feeds the
-KBKDF salt and the three SKS UID keys -- the KBKDF model (the salt is
-built from ``lc_state``, the demotion decision and ``sboot_dis``), the
-SKS bus monitor, and the UID comparison. This ROM has
-no BL0-side key-manager driver on the demotion path -- ``rom_main.c`` stores
+**These testcases cover the DECISION only.** ``rom_main.c`` stores
 ``bl2_demotion_decision`` into ``bl0_state`` for BL1 to consume and BL0 derives
-nothing from it -- so that half cannot be ported here at all. **These testcases cover
-the DECISION only.** Recorded in each row's ``flow_deviation`` as well as here.
+nothing from it, so there is no BL0-side key-manager activity on the demotion
+path: the KBKDF salt, the SKS bus traffic and the three UID keys are outside what
+these members can observe.
 
-**There is no architected demotion status code on this ROM.** ``grep -n DEMOT
-bootrom/prod/include/status_values.h`` is empty, and the whole [C15] block contains
-no ``report_status`` call, so the reference's ``STATUS: DEMOTION_SELECTED`` /
-``_NOT_SELECTED`` / ``_LOCKED`` / ``_NOT_LOCKED``
-(``sep_demotion_uid_checker.py``) cannot be ported on either platform. That
-is worse than the merely-unemitted codes of ``FINDINGS.md`` R04: here the codes do
-not exist. The register probes above are the substitution, and they are STRONGER than
-the strings the reference scrapes.
+**This ROM has no architected demotion status code.** ``status_values.h`` defines
+none and the demotion block contains no ``report_status`` call, so there is no
+status word to grade. The register probes above are the evidence channel instead.
 """
 
 from __future__ import annotations
@@ -305,9 +228,9 @@ class sep_demotion_decision_base(sep_rom_ot_dma_boot_test):
     demotion_required: tuple[str, ...] = ()
     # Fully VALUED console strings this outcome must produce exactly once, e.g.
     # "BL1_DEMOTE=1". Separate from demotion_required because the ROM prints these
-    # with simputsdec24 (rom_virt_console.h) and the decoder renders the payload
-    # as plain decimal (env/sep_rom_console.py:82-84), so the token and its value
-    # are two different claims: that the branch ran, and what it decided.
+    # with simputsdec24 (rom_virt_console.h) and the console decoder renders the
+    # payload as plain decimal, so the token and its value are two different
+    # claims: that the branch ran, and what it decided.
     demotion_values: tuple[str, ...] = ()
     # Bounds on how many DEMOTE probe samples the monitor must record, inclusive.
     # The default pair (2, None) is exactly the predicate
@@ -333,13 +256,8 @@ class sep_demotion_decision_base(sep_rom_ot_dma_boot_test):
         Not optional, and not duplication of the console. Two of the four demotion
         inputs are fields the ROM does not echo by value on every path -- at
         PROD_END it echoes none of them -- so a stimulus that silently failed to
-        land would produce exactly the log a correct run produces. The VP half hit
-        this: an entry whose whole content was "the flag is set and the ROM ignores
-        it" had nothing re-confirming per run that the flag was set
-        (``batch_runs_0904_rtl/RUN_JOURNAL.md:181-185``, "Assert your stimulus, not
-        only your outcome"). NOTE: earlier drafts of this docstring cited vp
-        ``FINDINGS.md`` F11 item 4 for this argument. That entry is the HALF-PORT
-        disclosure; the stimulus-assertion lesson is the journal line above.
+        land would produce exactly the log a correct run produces. Assert the
+        stimulus, not only the outcome.
         """
         raise NotImplementedError
 
@@ -424,15 +342,14 @@ class sep_demotion_decision_base(sep_rom_ot_dma_boot_test):
         Two levels of exception handling, and they are not the same thing. The
         OUTER one returns when the clock itself is torn down at end of simulation,
         which is the same idiom ``sep_firmware_mbist_pass_test._gate_monitor`` uses
-        (,); without it an uncaught exception in a
+        ; without it an uncaught exception in a
         ``start_soon`` coroutine would surface as a failure of a testcase that had
         already done its job. That guard is load-bearing and does fire.
 
-        **THE INNER ONE IS INERT UNDER VERILATOR, AND AN EARLIER VERSION OF THIS
-        DOCSTRING CLAIMED OTHERWISE.** It was written to skip a sample that cannot
-        be resolved, but :meth:`sep_base_test.rd` already swallows the exception and
-        returns 0 (``tests/sep_base_test.py:70-76``), so ``_sample_demote`` never
-        raises and this ``except`` cannot be reached. Under Verilator that is
+        **THE INNER ONE IS INERT UNDER VERILATOR.** It guards against a sample
+        that cannot be resolved, but :meth:`sep_base_test.rd` already swallows the
+        exception and returns 0, so ``_sample_demote`` never raises and this
+        ``except`` cannot be reached. Under Verilator that is
         harmless: the model is 2-state, the differential encoder drives ``2'b10``
         from cycle 0, and every run to date records its first sample as the reset
         state. On a 4-state simulator it would NOT be harmless -- an X probe would
@@ -476,13 +393,11 @@ class sep_demotion_decision_base(sep_rom_ot_dma_boot_test):
     def _check_boot_chain_order(self, console: list[str]) -> None:
         """The boot chain must run in order, with the demotion block inside it.
 
-        The reference enforces ORDER across its whole pattern list --
-        ``find_pattern_sequence`` searches each entry from the previous match onward
-        -- while the inherited ``required_markers`` loop only asks whether each string
-        appears anywhere (``sep_rom_ot_dma_boot_test.py``). Without this the
-        port would be weaker than the reference on exactly the axis the reference is
-        strict about, so the chain is pinned here: the manifest is accepted, THEN the
-        [C15] decision runs, THEN BL1 is copied and jumped to. That last edge matters
+        The inherited ``required_markers`` loop only asks whether each string
+        appears anywhere, which cannot catch a run that emitted the right strings in
+        the wrong order. The chain is therefore pinned here: the manifest is
+        accepted, THEN the demotion decision runs, THEN BL1 is copied and jumped
+        to. That last edge matters
         for the demotion group specifically -- ``rom_main.c`` writes the register
         before ``rom_handoff_bl1``, so a run that handed off first and
         wrote afterwards would be a real ordering defect and is not currently
@@ -566,8 +481,8 @@ class sep_demotion_decision_base(sep_rom_ot_dma_boot_test):
         # WROTE it, and it was at its reset value before". Asserting it is what makes
         # the probe path itself load-bearing: a probe that resolved to a constant
         # would produce a final value that happened to match and no transitions at
-        # all. Both fields reset to 0 (sep_lifecycle_ctrl.rdl:23-36), so the first
-        # recorded sample must be the reset state and at least one change must follow.
+        # all. Both fields reset to 0, so the first recorded sample must be the
+        # reset state and at least one change must follow.
         assert self._demote_changes, (
             "no DEMOTE probe transition was recorded at all. Either the probes are "
             "not wired (lcc_demote_state_{1,2}_probe_o / lcc_demote_lock_{1,2}_probe_o "
@@ -732,11 +647,11 @@ def narrow_life_cycle_states(test, buf: bytearray, allowed: int, *,
                              reseal_slots: tuple[str, ...]) -> None:
     """Narrow BOTH slots' ``life_cycle_states`` to a single state, and say why.
 
-    The shipped image permits TEST_DEV | PROD | PROD_END (0x7,
-    ``configs/secure_boot_test.yaml:54``), so it boots under any of the
-    three and the run's acceptance says nothing about which state the ROM decoded.
-    The reference narrows it per lifecycle -- 0x2 for PROD and 0x4 for PROD_END,
-    written to both slots -- and this port does the same. It is
+    The shipped image permits TEST_DEV | PROD | PROD_END (0x7, from
+    ``configs/secure_boot_test.yaml``), so it boots under any of the three and the
+    run's acceptance says nothing about which state the ROM decoded. Narrowing it
+    to one state -- 0x2 for PROD, 0x4 for PROD_END, written to both slots -- makes
+    the run say which. It is
     also a STRENGTHENING: ``selector_bits`` bit 16 is already set in the shipped
     image, so the ROM maps the live LC state to a bit and refuses the manifest with
     ``LC_USAGE_CONSTRAINT_FAIL`` if it is clear (``manifest_load.c``). The

@@ -32,17 +32,15 @@ WHAT THE MEMBERS SHARE
 ============================================================================
 
   * ``sep_efuse_lc_prod_end.toml``, raw LC state 0x8. Its differential encoding
-    ``0x78`` and the authority for it (``sep_efuse_map.rdl:565-566`` for the
-    encoding rule, ``hw/ip/efuse/rtl/efuse_pkg.sv:51-59`` for ``LC_PROD_END``)
+    ``0x78`` and the authority for it (``sep_efuse_map.rdl`` for the encoding
+    rule, ``efuse_pkg.sv`` for ``LC_PROD_END``)
     are recorded in the preload itself.
   * Both slots' ``life_cycle_states`` narrowed from the shipped ``0x7`` to
     PROD_END only, and both re-sealed. ``selector_bits`` bit 16 is set in the
     shipped image, so ``manifest_load.c`` maps the live LC state into
     that bitmap and refuses the manifest with ``LC_USAGE_CONSTRAINT_FAIL`` if the
     bit is clear. The boot therefore cannot complete unless the ROM decoded raw
-    0x8 as PROD_END. This mirrors the reference, which narrows per lifecycle
-    (``sep_demotion_uid_checker.py``, written to both slots at
-).
+    0x8 as PROD_END.
   * The full crypto chain. PROD_END enforces secure boot
     (``lifecycle.c``), so a real RSA-3072 modexp runs on OTBN and every
     member needs ``+sep_crypto_edn_force``. ``SBOOT_OFF`` and
@@ -147,8 +145,7 @@ class sep_demotion_prod_end_base(sep_demotion_decision_base):
         This is not optional and it is not duplication of the console. At PROD_END
         the ROM echoes NONE of the three, so an unplanted input produces exactly
         the log a planted-and-ignored one produces and the testcase would be green
-        and vacuous (``batch_runs_0904_rtl/RUN_JOURNAL.md:181-185``, "Assert your
-        stimulus, not only your outcome").
+        and vacuous: assert the stimulus, not only the outcome.
 
         It is not the only channel, and an earlier draft of this docstring wrongly
         said it was. :meth:`~sep_demotion_decision_base._check_stimulus_served`

@@ -11,7 +11,7 @@ observable is live under a real reset source. ``dbg_rstb_i`` isolation is not
 claimed: in ``lsu_stub_all_live`` the pin has no netlist path to either
 observable, so a pulse-and-check assert cannot fail.
 
-``dbg_rstb_i`` is a real ``sep`` primary input (sep.sv:21) brought out as a
+``dbg_rstb_i`` is a real ``sep`` primary input (sep.sv) brought out as a
 controllable top-level port; ``sep_base_test`` default-drives it released (1).
 
 Checks (each asserts an exact value; ``self.rd`` resolves X->0, so the ==1

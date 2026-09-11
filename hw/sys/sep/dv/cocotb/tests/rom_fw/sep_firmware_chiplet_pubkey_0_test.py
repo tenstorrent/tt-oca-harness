@@ -14,7 +14,7 @@ bit clear boots from the primary; bit set refuses BOTH manifests with
 ``KEY_REVOKED idx=0x00000010`` and never reaches ``RSA_VERIFY_START``.
 
 Everything else -- why the fused-key arm is distinct code, why the revoke bit is 16
-and not the reference's 6, why ROM development key 0 is revoked here, why the
+and not 6/7, why ROM development key 0 is revoked here, why the
 other chiplet digest fuse holds a decoy, and which architected status codes are
 substituted -- is in the shared base
 ``rom_fw/sep_chiplet_pubkey_base.py``. Read it before changing anything here.

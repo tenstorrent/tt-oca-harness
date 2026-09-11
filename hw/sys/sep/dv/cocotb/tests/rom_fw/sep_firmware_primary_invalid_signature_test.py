@@ -7,17 +7,15 @@ point: a manifest correct in every other respect -- right magic, length, hash, k
 slot, key digest and version -- must still fail authentication. A larger corruption
 would be a weaker test, because something else would also catch it.
 
-THE MECHANISM IS THE REFERENCE'S OWN. Grendel makes no manifest modification at all
-for this scenario (``manifest_modifications`` is empty); it packs a clean image and
-then post-processes the packed ``.spi_preload`` with
+THE MECHANISM. No manifest field is modified: a clean image is packed and the
+packed flash image is then post-processed with
 ``tamper_spi_preload_signature(which="primary", mode="flip")``, which is
 ``flip_signature_byte(..., byte_index=0, xor_mask=0x01)``.
 ``mm.flip_signature_byte(buf, "primary", byte_index=0, xor_mask=0x01)`` is the same
 byte, the same mask and the same stage of the flow.
 
-THE EXPECTED OUTCOME IS A COMPLETED BOOT. The reference's ``expected_patterns``
-(``sep_firmware_secure_boot_test.py``) grade the primary rejection
-``WARNING: INVALID_SIGNATURE`` and end in ``COPY_AND_EXEC_IMAGE / EXEC_IMAGE``.
+THE EXPECTED OUTCOME IS A COMPLETED BOOT: the primary is rejected on the signature
+and the untouched backup serves the boot.
 
 **THIS IS THE ONE MEMBER OF THIS GROUP WHOSE PRIMARY MUST REACH THE VERIFIER**, so
 it declares ``primary_expected_rsa_starts = 1``. The base then requires the
@@ -42,9 +40,8 @@ halves are asserted here:
   * ``BAD_SIG_TYPE=`` is forbidden here and required there, and ``RSA_VERIFY_FAIL``
     is required here and forbidden there.
 
-PLATFORM ADAPTATION -- MARKER. The reference expects
-``WARNING: INVALID_SIGNATURE``. This ROM *defines* ``SEP_MSG_INVALID_SIGNATURE``
-(``bootrom/prod/include/status_values.h:15``) but never EMITS it: there is no
+MARKER. This ROM *defines* ``SEP_MSG_INVALID_SIGNATURE`` (``status_values.h``) but
+never EMITS it: there is no
 ``report_status`` call for it anywhere under ``bootrom/prod/src``, so the
 architected status ring carries only the generic code and the console token
 ``RSA_VERIFY_FAIL`` (``manifest_crypto.c``, reached only when
@@ -80,7 +77,7 @@ _EFUSE_PRELOAD = (
 )
 
 # Both slots keep the shipped selector, ROM key slot 0
-# (configs/secure_boot_test.yaml:43-45 primary backup), so the echo value
+# (configs/secure_boot_test.yaml, primary and backup), so the echo value
 # is the same for both and only the COUNT distinguishes this testcase.
 _SEL_ECHO = "PUBK_SEL=0x00000000"
 
@@ -131,7 +128,7 @@ class sep_firmware_primary_invalid_signature_test(sep_primary_fail_backup_boot_b
         bl1_ver = image.field_int("BL1_VERSION")
         revoke = image.field_int("CHIPLET_PUBK_REVOKE")
         # check_security_version (manifest_crypto.c) and the revocation check
-        # (:369 ->) both run BEFORE rsa_3072_verify (:244), so either being
+        # both run BEFORE rsa_3072_verify, so either being
         # non-zero would terminate the primary earlier with a different error and
         # the signature would never be reached.
         assert bl1_ver == 0, (

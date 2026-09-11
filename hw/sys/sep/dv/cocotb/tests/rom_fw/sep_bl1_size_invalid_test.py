@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""TP053-S: BL1 image size out of range, so BL0 must reject before the copy.
+"""BL1 image size out of range, so BL0 must reject before the copy.
 
 The SEP BL1 entry's ``length`` is set to zero in BOTH manifest slots. The ROM
 rejects each slot at ``manifest_load.c`` -- ``IMAGE_LEN_ZERO idx=0`` then
@@ -8,9 +8,9 @@ rejects each slot at ``manifest_load.c`` -- ``IMAGE_LEN_ZERO idx=0`` then
 fails the same way, and the boot terminates without BL1 ever being copied into
 SRAM or entered.
 
-WHICH OF THE PROCEDURE'S THREE SIZE CLASSES THIS COVERS, AND WHICH IT DOES NOT.
-TP053-S names three: zero, larger than IRAM, and larger than the spec's maximum
-BL1 size. **Only the zero class is exercised here**, and the omission is a
+WHICH OF THE THREE SIZE CLASSES THIS COVERS, AND WHICH IT DOES NOT. The three are
+zero, larger than IRAM, and larger than the specification's maximum BL1 size.
+**Only the zero class is exercised here**, and the omission is a
 property of the ROM's check order rather than a choice of convenience:
 
   * *larger than IRAM* would have to reach ``check_bl1_image``'s containment arm

@@ -9,11 +9,10 @@ does not reach:
 
     {SHA-256, SHA-384, SHA-512} x {keyed HMAC, plain SHA} x legal key-length.
 
-reference parity: this is a GAP (basic) rep -- the reference SEP tb has no SHA-384/512 HMAC
-or key-length coverage (OCAH HMAC tests cover SHA-256 only). So the
-independent stdlib golden (env/sep_hmac_golden.py, HMAC-SHA256/384/512 RFC 4231 +
-plain SHA FIPS-180 self-tested) IS the reference and this rep is STRONGER than the
-directed reference suite set it merges. DISTINCT from
+Covers a gap: the other HMAC tests exercise SHA-256 only, with no SHA-384/512 or
+key-length coverage. The independent stdlib golden (env/sep_hmac_golden.py,
+HMAC-SHA256/384/512 RFC 4231 + plain SHA FIPS-180, self-tested at import) is the
+reference here. DISTINCT from
 `sep_km_hmac_sideload_kat_test` (SHA-256 via SIDELOAD) and the CPU
 crypto smoke (SHA-256): HMAC SHA-variant breadth is standalone SW-key across variants.
 

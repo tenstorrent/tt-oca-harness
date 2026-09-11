@@ -3,7 +3,7 @@
 """Device-controlled non-secure boot: the SBOOT_DIS fuse overrides PROD (PyUVM).
 
 FEATURE UNDER TEST. ``secure_boot_enabled()`` is a three-input decision
-(``manifest_load.c:223-240``)::
+(``manifest_load.c``)::
 
     sboot_dis fuse          -> always DISABLE   (device control / chicken bit)
     PROD or PROD_END        -> always ENFORCE   (regardless of the manifest flag)
@@ -35,9 +35,9 @@ import pyuvm
 
 from rom_fw.sep_rom_ot_dma_boot_test import SECURE_FLASH_IMAGE, sep_rom_ot_dma_boot_test
 
-# Emitted only when the ROM decides secure boot is OFF (rom_main.c:348).
+# Emitted only when the ROM decides secure boot is OFF (rom_main.c).
 _SBOOT_OFF = "SBOOT_OFF"
-# rom_main.c:588-598 prints the fuse it read, in decimal. This is the evidence
+# rom_main.c prints the fuse it read, in decimal. This is the evidence
 # that the fuse the testcase relies on was actually sensed as 1 -- without it a
 # preload that failed to stage would look identical to a working chicken bit.
 _SBOOT_DIS_SET = "FUSE: SBOOT_DIS: 1"

@@ -23,18 +23,13 @@ DEMOTE_1 to read (demote 1, lock 1) with ``DEMOTE_LOCKED`` on the console and
 sibling cannot make the claim: it leaves ``flag_args[0]`` clear, so nothing is
 competing with the selector bit.
 
-**AND THE ROM RESOLVES MORE THAN THE REFERENCE CHECKS.** Grendel's checker
-inspects the BL2 flag only when the selector bit is CLEAR
-(``sep_demotion_uid_checker.py``); with it set it looks at
-``AUTH_FLAG_0`` alone, so O2a and O2b produce an identical
-``expected_patterns`` list there and the reference cannot tell them apart. This
-ROM can, because ``rom_main.c`` prints ``BL2_DEMOTE_DEC=`` unconditionally on
-every non-PROD_END arm, carrying the value stored for BL1. Porting
-the reference's pattern list verbatim would have thrown that resolution away, so
-this member additionally requires ``BL2_DEMOTE_DEC=1`` and forbids
-``BL2_DEMOTE_DEC=0`` -- which is what stops it accepting O2a's console. This is a
-strengthening over the reference, and it is disclosed as such rather than
-presented as parity.
+**O2a AND O2b ARE DISTINGUISHED BY THE BL2 VALUE, NOT ONLY BY THE SELECTOR.** A
+check that inspected the BL2 flag only when the selector bit is CLEAR would give
+O2a and O2b an identical expected console and could not tell them apart. This ROM
+can, because ``rom_main.c`` prints ``BL2_DEMOTE_DEC=`` unconditionally on every
+non-PROD_END arm, carrying the value stored for BL1. This member therefore requires
+``BL2_DEMOTE_DEC=1`` and forbids ``BL2_DEMOTE_DEC=0``, which is what stops it
+accepting O2a's console.
 
 The distinction matters beyond bookkeeping: ``bl2_demotion_decision`` is what BL0
 hands to BL1 (``rom_main.c``), so "BL1 demotes now" and "BL1 demotes now AND

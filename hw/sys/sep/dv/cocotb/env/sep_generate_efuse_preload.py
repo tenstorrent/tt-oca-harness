@@ -11,9 +11,9 @@ Placement is NOT described here. Register offsets and widths come from
 ``SepEfuseImage``'s field table (derived from the generated register header, in
 turn generated from ``sep_efuse_map.rdl``), and bit ranges within a register come
 from that header's ctypes bitfield structs. Nothing here restates the fuse map,
-which is the point: the reference implementation this replaces carried a
-hand-maintained ``efuse_schema.toml`` copy of the map and placed registers by
-TOML iteration order, so reordering a config file silently moved every field
+which is the point: a hand-maintained ``efuse_schema.toml`` copy of the map that
+placed registers by TOML iteration order would let a reordered config silently move
+every field
 after the edit.
 
 ``apply_toml()`` is called TWICE per simulation, from two processes:
@@ -98,15 +98,15 @@ WORD_BITS = 32
 # the config still loads and the author's intent is quietly dropped.
 #   value    -- whole register, little-endian
 #   fields   -- named bitfields
-#   regwidth -- the reference suite restates the width the RDL already fixes;
-#               accepted for compatibility and never allowed to affect placement
+#   regwidth -- restates the width the RDL already fixes; accepted for
+#               compatibility and never allowed to affect placement
 _ALLOWED_KEYS = frozenset(("value", "fields", "regwidth"))
 
-# Lock support was deliberately not implemented. The reference config format
-# carries per-register read_locked/write_locked, but no config here sets one and
-# no test checks lock enforcement, so the lock-vector assembly would be untested
+# Lock support is deliberately not implemented. The config format carries
+# per-register read_locked/write_locked, but no config here sets one and no test
+# checks lock enforcement, so the lock-vector assembly would be untested
 # code on the path that decides what the DUT senses. Reject the keys loudly so a
-# config copied from the reference cannot appear to set a lock that never lands.
+# config carrying those keys cannot appear to set a lock that never lands.
 _LOCK_KEYS = frozenset(("read_locked", "write_locked"))
 
 

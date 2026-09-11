@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""KM -> KMAC sideload consume-proof KAT (reference suite, sep_km_kmac_sideload_kat_test).
+"""KM -> KMAC sideload consume-proof KAT.
 
 Real DRBG entropy boots the real KM firmware (rom_main). The host (CPU-LSU
 frontdoor AXI) provisions a KNOWN 256-bit key into a KPV handle via CMD_KEY_LOAD,
@@ -20,7 +20,7 @@ sideload output to that specific key via the SW path, and the dummy-key negative
 reference proves the key actually drives the output. Consume-proof is
 sideload-vs-SW plus decoy difference, not a KMAC golden.
 
-VPLAN-parity checkers:
+Checkers:
   CHK0      boot KM on real DRBG -> RESP_KM_READY
   CHK-A     CMD_KEY_LOAD known key (frontdoor; wrapper shares are write-only)
   CHK-NEG   negative ref: keyed MAC with a DUMMY SW key -> c_dummy (a real op)
@@ -33,19 +33,19 @@ VPLAN-parity checkers:
             exactly the KM-delivered known key)
   CHK-ENT   KMAC consumed real DRBG/EDN masking entropy during the keyed ops --
             proven by the CHK5_kmac sink (>=1 post-adapter crypto-EDN beat to KMAC),
-            the OSS frontdoor analog of the reference suite's backdoor kmac EDN ack-count delta
+            measured frontdoor rather than by counting EDN acks internally
   CHK-ERR   KMAC ERR_CODE == 0
   CHK1..CHK4 strict DRBG golden + CHK5_km observed (KM boot/load consumer)
 
-Accepted scope deltas vs the reference suite (documented; no silent skips):
-  * Like the reference suite, no bit-exact KMAC golden -- the consume-proof is the cross-check.
-    The OSS port strengthens it with a KNOWN distinct-word key (vs the reference suite's
-    backdoor-reconstructed KM-generated key), so no backdoor and no key/mask
-    non-degeneracy guards are needed (the known key is non-degenerate by
-    construction; the wrapper-internal SHARE0 mask non-degeneracy is out of
-    frontdoor scope, covered by the OTBN sideload KAT, as for the AES / HMAC KATs).
-  * key-bus isolation uses SW_RESET_N read-back (no OSS frontdoor analog of the reference suite's
-    key-bus AW monitor); CHK-MAC additionally proves KMAC got the correct key.
+SCOPE LIMITS, stated rather than skipped silently:
+  * no bit-exact KMAC golden is attached here -- the consume-proof is the
+    cross-check. The KNOWN distinct-word key is non-degenerate by construction, so
+    no key non-degeneracy guard is needed; the wrapper-internal SHARE0 mask
+    non-degeneracy is out of frontdoor scope and is covered by the OTBN sideload
+    KAT, as for the AES and HMAC KATs.
+  * key-bus isolation uses SW_RESET_N read-back rather than monitoring each
+    engine's key-bus writes, which has no frontdoor analog; CHK-MAC additionally
+    proves KMAC got the correct key.
 
 Boot recipe matches the OTBN/AES/HMAC KATs (real fuse-sense, valid PROD OTP image).
 KMAC IS an EDN consumer (masking entropy), so it is parked through KM boot/load for
@@ -116,8 +116,8 @@ class sep_km_kmac_sideload_kat_test(sep_base_test):
 
         # Strict entropy bring-up: CHK1..CHK4 bit-exact golden; CHK5_km observed
         # (KM boot/load consumer). score_sinks kmac="observe": prove KMAC pulls real
-        # post-adapter crypto-EDN masking beats during its keyed ops -- the frontdoor
-        # analog of the reference suite's backdoor kmac EDN ack-count (CHK-ENT). The drain keeps the
+        # post-adapter crypto-EDN masking beats during its keyed ops, measured
+        # frontdoor (CHK-ENT). The drain keeps the
         # ESRC FIFO from overflowing during the long entropy phase.
         await self.bring_up_entropy(
             strict=True, score_km="observe", score_sinks={"kmac": "observe"}

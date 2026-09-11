@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""TP053-E: BL1 ``entry_point`` outside the image, so BL0 must not jump to it.
+"""BL1 ``entry_point`` outside the image, so BL0 must not jump to it.
 
-``check_bl1_image`` rejects ``entry_point >= length`` (``manifest.h:286``), and
+``check_bl1_image`` rejects ``entry_point >= length`` (``manifest.h``), and
 ``validate_manifest_payload`` prints ``BL1_ENTRY_RANGE`` and returns
-``MANIFEST_ERR_BL1_BAD_ADDR`` (``manifest_load.c:434-439``). Both slots carry the
+``MANIFEST_ERR_BL1_BAD_ADDR`` (``manifest_load.c``). Both slots carry the
 defect, so the ROM tries the primary, retries the backup and terminates.
 
 THE STIMULUS IS THE BOUNDARY VALUE. ``entry_point`` is set to exactly ``length``

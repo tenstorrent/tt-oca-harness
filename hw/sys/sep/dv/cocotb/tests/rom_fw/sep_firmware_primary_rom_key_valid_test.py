@@ -32,7 +32,7 @@ required, and none of them is boot completion:
     forbidden;
   * ``RSA_VERIFY_START`` then ``SIG_VALID`` then ``CRYPTO_VALIDATE_OK``, in that
     order and after the selector echo -- the modulus reached the verifier and the
-    signature really verified (``manifest_crypto.c``,), which only
+    signature really verified (``manifest_crypto.c``), which only
     happens once the index bound, the revocation check and the digest bind have all
     passed;
   * the DEVICE side: not one read inside the backup slot's span. The console says
@@ -44,7 +44,7 @@ MATCHED PAIR, AND IT IS BYTE-IDENTICAL BY CONSTRUCTION. This testcase and
 ``sep_firmware_primary_pubkey_rom_0_revoked_key_test`` build their flash image from
 the SAME single call, ``select_primary_rom_slot(buf, 0)``, which is a no-op because
 the shipped primary already selects slot 0
-(``configs/secure_boot_test.yaml:43-45``). Both therefore run bytes identical to
+(``configs/secure_boot_test.yaml``). Both therefore run bytes identical to
 the shipped ``bootrom/prod/build/secure_boot.bin``, and the ONLY difference between
 them is one bit of ``CHIPLET_PUBK_REVOKE``. Fuse clear boots; bit 0 set refuses
 BOTH manifests with ``KEY_REVOKED idx=0x00000000`` and never reaches
@@ -71,13 +71,11 @@ index that is valid HERE, because the only RSA signing key that ships is
 ``rsa_private_key.dev0.pem``
 (``bootrom/prod/tools/tt-boot-manifest/tests/signing_keys/``, which also holds an
 unusable ``ec_private_key.pem``) and only slot 0's
-digest is populated (``key_digests.c``). The reference draws a valid index at
-random from ``[0..5]`` and re-signs with that slot's own private key,
-though it narrows to ``[0]`` itself on a release build.
+digest is populated (``key_digests.c``), so slot 0 is the only valid index this
+tree can exercise.
 
-PLATFORM ADAPTATION -- MARKER. The reference asserts the ROM-key path POSITIVELY,
-with ``STATUS: USING_ROM_KEY`` (``sep_firmware_secure_boot_test.py``). This ROM
-*defines* ``SEP_MSG_USING_ROM_KEY`` (``bootrom/prod/include/status_values.h:97``,
+MARKER. There is no positive status code for the ROM-key path. This ROM
+*defines* ``SEP_MSG_USING_ROM_KEY`` (``status_values.h``,
 0x7f) and never emits it -- no ``report_status`` call for it exists anywhere under
 ``bootrom/prod/src`` -- so there is no UNIQUE architected code for the ROM-key path,
 which is exactly what a positive key-selection testcase needs. The precise
@@ -87,8 +85,8 @@ statement, because "no architected evidence at all" would be too strong:
 count could distinguish the two arms indirectly -- but 0x207 is also reported
 unconditionally and again as DEBUG, so it is a count
 argument rather than a marker, and this testcase does not use it. The console
-echoes above are the substitution. The reference's other checkpoint tokens
-for this scenario are unavailable for the same reason:
+echoes above are the evidence instead. Three further checkpoint codes are
+unavailable for the same reason:
 ``SEP_MSG_START_MANIFEST_VALIDATION``, ``SEP_MSG_START_PAYLOAD_VALIDATION`` and
 ``SEP_MSG_PAYLOAD_VALIDATED`` also have zero emitters here.
 
@@ -118,7 +116,7 @@ _EFUSE_PRELOAD = (
 )
 
 # The only populated entry in key_digests.c, and the slot the shipped image
-# is signed against (configs/secure_boot_test.yaml:43-45).
+# is signed against (configs/secure_boot_test.yaml).
 _VALID_SLOT = 0
 _PUBK_SEL_ECHO = f"PUBK_SEL=0x{_VALID_SLOT:08x}"
 _REVOKE_ECHO = "PUBK_REVOKE=0x00000000"

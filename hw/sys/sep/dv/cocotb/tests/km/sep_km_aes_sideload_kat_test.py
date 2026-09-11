@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""KM -> AES sideload consume-proof KAT (reference suite, sep_km_aes_sideload_kat_test).
+"""KM -> AES sideload consume-proof KAT.
 
 Real DRBG entropy boots the real KM firmware (rom_main). The host (CPU-LSU
 frontdoor AXI) provisions a KNOWN 256-bit key into a KPV handle via CMD_KEY_LOAD,
@@ -11,30 +11,29 @@ ECB-256 encryptions and proves the AES engine CONSUMED exactly that key:
   ct_swref = AES-ECB(known key via SW KEY_SHARE, PT)
   ct_dummy = AES-ECB(unrelated dummy SW key, PT)   (negative reference)
 
-AES has write-only KEY CSRs and is not programmable, so (unlike the OTBN KAT)
-the delivered key cannot be dumped back; the consume-proof IS the encryption
-cross-check, exactly as the reference AES leaf does it. This OSS port is STRONGER than
-reference suite on two axes:
-  * frontdoor known key: CMD_KEY_LOAD replaces the reference suite's CMD_KEY_GENERATE + read-only
-    backdoor share reconstruction, so the delivered key value is known a priori.
-  * independent AES-256-ECB golden (env/sep_aes_golden.py, self-tested vs FIPS-197
-    C.3): ct_side / ct_swref are value-checked against AES(known_key, PT), turning
-    the reference suite's key-VALUE-agnostic cross-check (which needed backdoor share non-
-    degeneracy guards) into a value-specific KAT. A truncated / word-swapped /
-    share-defeated sideload changes the ciphertext and fails the golden compare.
+AES has write-only KEY CSRs and is not programmable, so (unlike the OTBN KAT) the
+delivered key cannot be dumped back; the consume-proof IS the encryption
+cross-check. Two things make that proof value-specific rather than merely
+self-consistent:
 
-VPLAN-parity checkers (mapped to the reference AES-leaf checker list):
+  * **frontdoor known key**: CMD_KEY_LOAD installs a key whose value is known a
+    priori, so no backdoor share reconstruction is needed to say what was
+    delivered.
+  * **independent AES-256-ECB golden** (env/sep_aes_golden.py, self-tested against
+    FIPS-197 C.3): ct_side / ct_swref are value-checked against AES(known_key, PT).
+    A truncated, word-swapped or share-defeated sideload changes the ciphertext and
+    fails the compare.
+
+Checkers:
   CHK0     boot KM on real DRBG -> RESP_KM_READY
-  CHK-A    CMD_KEY_LOAD known key (replaces reference CMD_KEY_GENERATE+backdoor)
+  CHK-A    CMD_KEY_LOAD known key
   CHK-NEG  ct_dummy == AES(dummy, PT): negative reference is a real encryption
   CHK-B    CMD_KEY_TRANSFER rc=0 to AES
   CHK-ISO  key-bus isolation: only AES released; OTBN/KMAC/HMAC parked in SW reset
-           so they physically cannot receive the key (OSS analog of the reference suite's per-
-           engine key-bus AW monitor; same mechanism as the OTBN KAT)
+           so they physically cannot receive the key
   CHK-PUB  AES public KEY_SHARE0/1 frontdoor reads stay zero after sideload:
            the KM-delivered key is not exposed through software-readable CSRs
   CHK-F    ct_side == AES(known_key, PT) golden: sideload delivered the exact key
-           (replaces the reference suite's backdoor SHARE0^SHARE1 non-degeneracy proof)
   CHK-RT   DEC(ct_side) with the SIDELOAD key == original PT: the sideloaded key
            drives a full ECB-256 ENC/DEC round-trip, not just encryption
   CHK-H    ct_swref == AES(known_key, PT) golden: SW-key path is correct
@@ -43,30 +42,24 @@ VPLAN-parity checkers (mapped to the reference AES-leaf checker list):
            the released AES masking PRNG reseeds from the crypto EDN leg, so a
            second real EDN consumer (besides KM) is witnessed off one DRBG.
 
-Accepted scope deltas vs the reference suite (documented, no silent skips):
-  * the reference suite's backdoor SHARE0^SHARE1 reconstruction + non-degeneracy
-    guards are dropped: with a KNOWN, distinct-word key loaded via CMD_KEY_LOAD
-    there is no KM keygen and no constant-word keygen defect to guard against, and
-    CHK-F (golden value compare) proves the exact key flowed -- stronger than
-    "the reconstructed key is not a single repeated word". No backdoor is used.
-    The ONE sub-property the reference suite checks that a frontdoor port cannot
-    see is the raw SHARE0 *mask* non-degeneracy inside the AES wrapper (its
-    !mask_all_same guard): the combined
-    key is correct (CHK-F) yet the 2-share masking could in principle be degenerate.
-    That is an AES-wrapper-internal masking property, not the KM->AES sideload-consume
-    contract this leaf owns, and it is proven frontdoor by the sibling OTBN KAT
-    (sep_km_otbn_sideload_kat_test CHK-F dumps S0/S1) -- so it is out of frontdoor
-    scope here by design, not a silent gap.
-  * key-bus isolation is proven by SW_RESET_N read-back (only AES out of the four
-    sideload targets is released) rather than the reference suite bus-AW monitor, which has no
-    OSS frontdoor analog; CHK-F additionally proves AES got the correct key.
+SCOPE LIMITS, stated rather than skipped silently:
+
+  * **The raw SHARE0 mask non-degeneracy inside the AES wrapper is not visible
+    frontdoor.** CHK-F proves the combined key is correct, yet the 2-share masking
+    could in principle be degenerate. That is an AES-wrapper-internal masking
+    property rather than part of the KM->AES sideload-consume contract this leaf
+    owns, and the sibling ``sep_km_otbn_sideload_kat_test`` proves it frontdoor by
+    dumping S0/S1.
+  * **Key-bus isolation is proven by SW_RESET_N read-back** -- only AES of the four
+    sideload targets is released -- rather than by monitoring each engine's key-bus
+    writes, which has no frontdoor analog. CHK-F additionally proves AES got the
+    correct key.
 
 Boot recipe matches the OTBN KAT (real fuse-sense, valid PROD OTP image; KM SRAM
 responder powers up zero+valid-parity; rom_main built PROD_BOOT_WIPE=0).
 
-Entropy ordering mirrors reference suite bringup_real_entropy_and_boot_km + the AES leaf's
-release_consumers_pre_noise(): AES is left RELEASED through entropy bring-up (its
-masking-PRNG reseed is served as EDN starts), while OTBN/KMAC are parked so the KM
+Entropy ordering: AES is left RELEASED through entropy bring-up so its
+masking-PRNG reseed is served as EDN starts, while OTBN/KMAC are parked so the KM
 owns the boot/seed stream; HMAC is parked too for key-bus isolation.
 """
 
@@ -167,7 +160,7 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
 
         # CHK-ISO: key-bus isolation, positive evidence. Only AES (of the four KM
         # sideload targets) is released; OTBN/KMAC/HMAC are held in SW reset and
-        # cannot receive the key. OSS analog of the reference suite's per-engine key-bus AW count.
+        # cannot receive the key.
         rst = await self.swrst.read_back()
         parked = (
             (1 << SW_RESET_N_BIT["otbn"])
@@ -210,8 +203,8 @@ class sep_km_aes_sideload_kat_test(sep_base_test):
         )
 
         # CHK-F: encrypt with the SIDELOAD key and value-check against the golden.
-        # This proves AES consumed the exact KM-delivered key (stronger than the reference suite's
-        # backdoor non-degeneracy guard).
+        # This proves AES consumed the exact KM-delivered key by value, not merely
+        # that some key arrived.
         golden = aes256_ecb_encrypt_words(list(KAT_KEY), list(AES_ECB_PT))
         await self.aes.configure_ecb_enc_256(sideload=True)
         await self.aes.trigger_prng_reseed()

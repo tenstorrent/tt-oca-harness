@@ -11,12 +11,11 @@ outcome shape. Its OTP image is the whole of the rest of the stimulus:
 
 THIS IS THE ONLY TERMINAL MEMBER OF THE FAMILY, and the reason is structural. The
 shipped image gives BOTH slots ``rom_key_index: 0``
-(``configs/secure_boot_test.yaml:43-45`` primary, backup), so bit 0
+(``configs/secure_boot_test.yaml``, primary and backup), so bit 0
 refuses the primary AND the backup, the retry loop exhausts, and the run ends in
-``MANIFEST_ALL_FAILED`` (``manifest_load.c``). Slots 1-5 fail over and boot.
-The reference expects exactly this split -- ``PRIMARY_PUBKEY_ROM_0_REVOKED_KEY``
-ends at ``ERROR: REVOKED_KEY``
-with no ``COPY_AND_EXEC_IMAGE``, while ``PRIMARY_PUBKEY_ROM_1_REVOKED_KEY`` ends in
+``MANIFEST_ALL_FAILED`` (``manifest_load.c``). Slots 1-5 fail over and boot, so
+this member is terminal and its siblings are not: it must end at the revocation
+with no ``COPY_AND_EXEC_IMAGE``, while the slot-1 member ends in
 ``COPY_AND_EXEC_IMAGE / EXEC_IMAGE`` (, in a list running).
 
 IT IS ALSO THE STRICTEST MEMBER, not the awkward one. Slot 0 is the only populated
@@ -32,9 +31,8 @@ stimulus -- ``select_primary_rom_slot(buf, 0)`` and nothing else -- and differs
 only in leaving ``CHIPLET_PUBK_REVOKE`` clear. Same bytes, same signature, one fuse
 bit, opposite verdicts.
 
-PLATFORM ADAPTATION -- MARKER. The reference asserts the architected
-``ERROR: REVOKED_KEY``. This ROM *defines* ``SEP_MSG_REVOKED_KEY``
-(``bootrom/prod/include/status_values.h:13``) but never emits it -- there is no
+MARKER. This ROM *defines* ``SEP_MSG_REVOKED_KEY`` (``status_values.h``) but never
+emits it -- there is no
 ``report_status`` call for it anywhere under ``bootrom/prod/src`` -- so the
 architected ring carries only the generic terminal code. The dedicated error code
 ``MANIFEST_ERR_KEY_REVOKED`` (0x00030015, ``manifest.h``) is unshared, and the

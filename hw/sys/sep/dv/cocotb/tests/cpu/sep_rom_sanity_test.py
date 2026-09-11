@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP boot-ROM IFU sanity test (PyUVM).
 
-OSS port of the reference suite ``sep_rom_sanity_test`` (edge: CPU IFU -> boot-ROM). Boots
+Edge: CPU IFU -> boot-ROM. Boots
 the VeeR EL2 core from ICCM and runs the rom_sanity firmware, which calls seven
 hand-assembled functions resident in the boot-ROM (0x1004_0000) via function
 pointers, forcing the IFU to fetch and execute their bodies from ROM. Each call's

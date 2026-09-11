@@ -3,8 +3,8 @@
 """Self-contained AES-256-ECB encryption golden for the KM->AES sideload KAT.
 
 Pure-Python, with no third-party crypto dependency so the environment stays
-self-contained. A
-reference implementation of AES-256 block encryption, used to value-check the
+self-contained. An independent model of AES-256 block encryption, used to
+value-check the
 ciphertext the OpenTitan AES core produces. Derived independently from FIPS-197
 (the algorithm), NOT fitted to observed DUT output — fitting a golden to what the
 DUT already produces is the value-agnostic trap: the module self-tests against the FIPS-197 Appendix C.3 AES-256 known

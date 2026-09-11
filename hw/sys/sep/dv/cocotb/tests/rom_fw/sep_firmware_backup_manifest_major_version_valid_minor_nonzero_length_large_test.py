@@ -209,8 +209,8 @@ class sep_firmware_backup_manifest_major_version_valid_minor_nonzero_length_larg
 
         # CHK-STIMULUS-SERVED: the DUT-side STIMULUS half, and the only run-time
         # channel that separates this row from ..._minor_0_length_incorrect_test --
-        # both arms return MANIFEST_ERR_BAD_LENGTH and neither prints a token
-        #. It proves what the DUT was GIVEN.
+        # both arms return MANIFEST_ERR_BAD_LENGTH and neither prints a token that
+        # tells them apart. It proves what the DUT was GIVEN.
         fd.assert_served_field(
             self.logger, self._flash, "backup", _VERSION_LENGTH_OFF,
             struct.pack("<HHI", mm.MANIFEST_MAJOR_VERSION, _BACKUP_MINOR,

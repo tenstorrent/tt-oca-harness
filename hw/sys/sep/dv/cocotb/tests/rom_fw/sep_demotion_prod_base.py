@@ -27,8 +27,8 @@ earlier batches of this run were graded against.
 
 :meth:`_demotion_prod_mixin.__init_subclass__` then cross-checks those four
 written declarations against :func:`outcome_for` applied to the member's own
-three input bits. The two statements come from different places -- the member's
-from the reference row it ports, the function's from the ROM's control flow --
+three input bits. The two statements are derived independently -- the member's
+from its own declared inputs, the function's from the ROM's control flow --
 so requiring them to agree catches a copy-paste between members, which is the
 failure mode a family of near-identical files actually has. Agreement is not
 proof of correctness and is not claimed as such; it is two independent
@@ -39,8 +39,7 @@ transcriptions of one table having to match.
 ============================================================================
 
 This is the single most expensive thing the VP half of this run learned, and it
-is inherited here rather than rediscovered (``batch_runs_0904_vp/FINDINGS.md``
-F11 item 1, which RETRACTS an earlier instruction). The reference's plusarg:
+is established once here. Clearing secure boot on the primary:
 
   * sets ``primary.manifest.boot_arguments.secure_boot = 0``, which the packer
     turns into TWO packed-field changes, not one -- see below;
@@ -55,10 +54,9 @@ fuse, and :func:`apply_secure_boot_dis` writes both manifest fields:
     re-hash and no re-sign;
   * ``signature_type`` forced to ``NO_SIGNATURE`` (0), because the packer forces
     exactly that whenever a config sets ``secure_boot: 0``
-    (``bootrom/prod/tools/tt-boot-manifest/src/manifest_signing.py:43-45``,
-    value from ``pack_images_constants.py``). The reference's primary manifest
-    is therefore genuinely UNSIGNED and this port reproduces that rather than
-    running a signed image with one flag cleared.
+    (``manifest_signing.py``, value from ``pack_images_constants.py``). The
+    primary manifest is therefore genuinely UNSIGNED rather than a signed image
+    with one flag cleared.
 
 **The coupling is what makes the port non-vacuous.** With ``signature_type = 0``
 the primary can boot only because the fuse is burned: ``secure_boot_enabled``
@@ -73,11 +71,10 @@ manifest source and ``LC=PROD_END`` are forbidden, ``FUSE: SBOOT_DIS: 1``
 the base's :meth:`~sep_demotion_decision_base._check_primary_served` additionally
 proves from the DEVICE side that no read touched the backup span.
 
-The primary keeps its stale dev0 signature bytes rather than a blank field. That
-is a deliberate, disclosed difference from the reference, whose packer emits an
-empty signature: it is inert here because ``validate_signature`` is never called
-at all on this path, and a syntactically complete signature is the harder case
-for anything that might later examine the field.
+The primary keeps its stale dev0 signature bytes rather than a blank field. That is
+inert because ``validate_signature`` is never called at all on this path, and a
+syntactically complete signature is the harder case for anything that might later
+examine the field.
 
 The BACKUP is re-signed and stays fully valid; only its ``life_cycle_states`` is
 narrowed. That is what makes the forbidden backup read meaningful rather than
@@ -345,10 +342,7 @@ class sep_demotion_prod_base(_demotion_prod_mixin, sep_demotion_decision_base):
         selector bit is set and never echoes the selector bit itself, so on three
         of the four members at least one input is invisible in the log and a
         stimulus that silently failed to land would produce exactly the log a
-        correct run produces. The lesson is
-        ``batch_runs_0904_rtl/RUN_JOURNAL.md:181-185``, "Assert your stimulus, not
-        only your outcome"; vp ``FINDINGS.md`` F11 item 4 is the HALF-PORT
-        disclosure and is cited for that separately below.
+        correct run produces. Assert the stimulus, not only the outcome.
         """
         sel_bits = mm.selector_bits(buf, "primary")
         sel = (sel_bits >> mm.SELECTOR_BIT_BL1_DEMOTION) & 1

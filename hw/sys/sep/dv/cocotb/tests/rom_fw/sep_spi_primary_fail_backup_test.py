@@ -14,8 +14,8 @@ and the ROM resolves it as ``src_addr + payload_offset``
 0x42000.
 
 This ROM has no SPI detect/retry status -- ``SEP_MSG_SPI_TRY_BACKUP``
-(``include/status_values.h:44``) is referenced nowhere in the repo -- and no device
-probe (``src/sep_ot_spi.c:166-179``). So "no-detect" is per-address blankness, and
+(``include/status_values.h``) is referenced nowhere in the repo -- and no device
+probe in ``src/sep_ot_spi.c``. So "no-detect" is per-address blankness, and
 the failover is asserted as the ordered pair ``MANIFEST_ERR=0x00030002`` then
 ``MANIFEST_SRC=0x00041000``, which pins both the reason and the destination.
 

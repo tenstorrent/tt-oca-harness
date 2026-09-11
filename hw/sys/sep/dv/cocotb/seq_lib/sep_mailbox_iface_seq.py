@@ -4,11 +4,11 @@
 
 Drives the SEP outbound_mailbox_0 aperture (0x10A0_0000) over the CPU-LSU master --
 the SEP/CPU side of the two-port cross-FIFO, reachable with NO inbound filter. This
-is the TX-path test (as in the reference suite): WRITE_DATA pushes the TX FIFO; READ_DATA
+is the TX-path test: WRITE_DATA pushes the TX FIFO; READ_DATA
 pops the RX FIFO, which is empty on bare-sep (no peer port wired) -> read returns
 the 0xFEEDDEAD sentinel + SLVERR. Over the CPU-LSU master WRITE_DATA is accessed as
 a single native 64-bit beat = one FIFO entry. Each register in this block owns a
-whole AxiDataWidth/8 = 8-byte decode range (axi_lite_mailbox.sv:269-272), so the
+whole AxiDataWidth/8 = 8-byte decode range (axi_lite_mailbox.sv), so the
 push side is addressed only at +0x00. 32-bit CSRs use 4-byte beats.
 
 Register constants + the golden depth model live in env/sep_mbox_golden.py.

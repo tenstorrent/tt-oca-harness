@@ -18,33 +18,26 @@ the run must show ``VERSION_ROLLBACK`` exactly once, on the primary, with the tw
 values the ROM actually compared, and must never reach ``PUBK_SEL=`` on the
 primary.
 
-THE EXPECTED OUTCOME IS A COMPLETED BOOT. The reference
-grades the primary's rejection ``WARNING:`` and expects ``COPY_AND_EXEC_IMAGE`` /
-``EXEC_IMAGE``, so a terminal port would test a different requirement. This port
-additionally requires the backup ADDRESS to be the one that served the boot,
-which the reference's own pattern list for this scenario omits.
+THE EXPECTED OUTCOME IS A COMPLETED BOOT: the primary is rejected on the rollback
+check and the backup serves the boot. This testcase additionally requires the
+backup ADDRESS to be the one that served it, so a boot from the wrong slot cannot
+pass.
 
-PLATFORM ADAPTATION -- THE VERSION SCALE. The reference burns a fuse whose
-popcount is 91
-and draws the primary from 0..10 and the backup from 91..100
-(``sep_firmware_secure_boot_test.py``). Its base config carries
-``security_version: 5`` (``configs/default_test.yaml:55``); the config in THIS tree
-carries 0 (``bootrom/prod/configs/secure_boot_test.yaml:65,130``), so the primary
-cannot be lowered below the shipped value and the asymmetry has to be built by
-raising the backup instead. The comparison is a single ``<`` and is identical at
-any scale, so a floor of 1 with 0 below it and 1 at it is the same test at the
-smallest scale -- and putting the backup exactly AT the floor also covers the
-``manifest_ver == fuse_ver`` accept boundary, which the reference's random 91..100
-hits one run in ten.
+THE VERSION SCALE. The shipped config carries ``security_version: 0``
+(``bootrom/prod/configs/secure_boot_test.yaml``), so the primary cannot be lowered
+below it and the asymmetry is built by raising the backup instead. The comparison
+is a single ``<`` and is identical at any scale, so a fuse floor of 1 with the
+primary at 0 and the backup at 1 is the same test at the smallest scale -- and
+putting the backup exactly AT the floor also covers the
+``manifest_ver == fuse_ver`` accept boundary in every run rather than occasionally.
 
-PLATFORM ADAPTATION -- THE BACKUP IS RE-SIGNED. ``security_version`` is at offset
+THE BACKUP IS RE-SIGNED. ``security_version`` is at offset
 162, inside the TBS, so raising it invalidates ``manifest_hash`` and the signature.
 The backup has to BOOT, so a stale signature is not survivable the way it is for
 the negative testcases: it is re-sealed with the dev0 key that ships in this tree
 (``env/sep_payload_mutate.reseal``), whose modulus digest is the ROM's own key slot
-0 (``bootrom/prod/src/key_digests.c:18-21``). That keeps the ROM's signature check
-ENABLED and passing on a legitimately signed image, which is what the reference's
-packer does for the same scenario -- it is not a bypass. ``verify_signing_key``
+0 (``key_digests.c``). That keeps the ROM's signature check ENABLED and passing on
+a legitimately signed image; it is not a bypass. ``verify_signing_key``
 proves the local signer reproduces the shipped signature byte for byte before any
 mutation, and the shared base re-runs ``verify_sealed`` afterwards, so the re-seal
 is established rather than asserted. The PRIMARY is deliberately NOT re-signed and

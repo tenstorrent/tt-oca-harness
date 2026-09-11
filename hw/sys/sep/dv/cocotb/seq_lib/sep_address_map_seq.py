@@ -128,7 +128,7 @@ WRITE_ONLY = [
 # expected=None => accessibility only (OKAY; value hw-driven/state-dependent).
 # Memory-backed ranges (SRAM/ROM/TCM, OTBN/KMAC mem, KM mem) and OTP-triggering
 # eFuse interface regs (0x1093_04xx+) are NOT probed — they would hang.
-# Excluded for OSS hygiene: proprietary IPs in nonfree.
+# Excluded: proprietary IP register blocks are not part of this DUT.
 # Pool pop (0x1095_0010) is destructive — only STATUS is walked.
 #
 # Blocks whose address AND reset value are exported take both from the header;
@@ -163,9 +163,9 @@ FABRIC_BLOCKS = [
     ("SEP_SCRATCH_COLD", sym("SEP_SCRATCH_COLD_REG_MAP_BASE_ADDR"), None),
     ("SEP_SCRATCH_WARM", sym("SEP_SCRATCH_WARM_REG_MAP_BASE_ADDR"), None),
     # SW_RESET_N reset: KM[0]=0 held in reset, OTBN/AES/HMAC/KMAC/TRNG[5:1]=1
-    # released. The reference suite's ext_axi reg-walk delegates this register
-    # (it cannot reach it); the CPU LSU path reads it safely, since a read has no
-    # side effect and only a write clears reset.
+    # released. An external AXI reg-walk cannot reach this register; the CPU LSU
+    # path reads it safely, since a read has no side effect and only a write clears
+    # reset.
     (
         "SEP_RESET_CTRL",
         SEP_RESET_CTRL.addr("SW_RESET_N"),
@@ -274,7 +274,7 @@ class sep_address_map_seq(uvm_sequence):
             mask = SEP_CPU_CTRL.mask32(name)
             # Compare against the STORAGE mask, not the implemented-field mask.
             # Every register here is plain SW-write storage read straight back
-            # (sep_cpu_ctrl_reg.sv:937-950 is the worked example: a `decoded_strb
+            # (sep_cpu_ctrl_reg.sv is the worked example: a `decoded_strb
             # && decoded_req_is_wr` load into field_storage, with no hw driver on
             # the field), so the readback is fully predictable even where the only
             # field is a `sw=rw` placeholder that RDL names `reserved`. Using

@@ -11,10 +11,9 @@ outcome shape. Its OTP image is the whole of the rest of the stimulus:
 
 THE OUTCOME IS A COMPLETED BOOT, NOT A TERMINAL FAILURE. Only the PRIMARY selects
 slot 1; the backup keeps the shipped ROM slot 0
-(``configs/secure_boot_test.yaml:112-114``), which bit 1 does not revoke, so the
-ROM falls over and boots from it. The reference expects the same -- its
-``PRIMARY_PUBKEY_ROM_1_REVOKED_KEY`` patterns
-grade the primary rejection ``WARNING: REVOKED_KEY`` and end in
+(``configs/secure_boot_test.yaml``), which bit 1 does not revoke, so the
+ROM falls over and boots from it. The run must
+grade the primary rejection and end in
 ``COPY_AND_EXEC_IMAGE / EXEC_IMAGE``. Slot 0 is the exception and is built on the
 terminal base instead; the shared base measures which of the two applies from the
 image rather than trusting the slot number.
@@ -27,9 +26,8 @@ because ``validate_signature`` consults the fuse bitmap
 ``ROM_KEY_EMPTY`` is therefore the load-bearing forbid: seeing it would mean
 revocation was evaluated late, or not at all.
 
-NARROWING vs THE REFERENCE, DISCLOSED. The reference re-signs its primary with
-slot 1's own private key
-(``sep_firmware_secure_boot_test.py``), so its primary is a fully valid
+A NARROWING. A stronger stimulus would re-sign the primary with slot 1's own
+private key, so that the primary is a fully valid
 manifest bound to slot 1 and its test proves "revocation refuses a provably good
 image". Only ``rsa_private_key.dev0.pem`` ships here, so the selector write leaves
 the dev0 signature stale and this member proves the weaker property that

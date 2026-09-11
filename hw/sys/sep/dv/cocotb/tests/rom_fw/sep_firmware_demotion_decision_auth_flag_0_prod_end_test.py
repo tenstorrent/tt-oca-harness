@@ -27,13 +27,12 @@ FIRST PROD_END BOOT IN THIS TESTLIST. Before this testcase every rom_fw eFuse pr
 selected TEST_DEV (raw 0x0) or PROD (raw 0x1); nothing exercised raw 0x8. That makes
 three ROM paths newly covered, not one: the demotion short-circuit above,
 ``lc_state_enforces_secure_boot`` returning true for PROD_END
-(``bootrom/prod/src/lifecycle.c:69-73``) so the crypto chain runs on the lifecycle's
+(``lifecycle.c``) so the crypto chain runs on the lifecycle's
 authority, and ``lc_state_to_manifest_bit`` mapping PROD_END to
 ``LC_STATES_BIT_PROD_END`` (``lifecycle.c``).
 
 **THE LIFECYCLE DECODE IS ASSERTED, NOT ASSUMED.** Both slots' ``life_cycle_states``
-are narrowed from the shipped 0x7 to 0x4 -- PROD_END only -- exactly as the reference
-does (``sep_demotion_uid_checker.py``). ``selector_bits``
+are narrowed from the shipped 0x7 to 0x4 -- PROD_END only. ``selector_bits``
 bit 16 is set in the shipped image, so ``manifest_load.c`` maps the live LC
 state into that bitmap and refuses the manifest with ``LC_USAGE_CONSTRAINT_FAIL`` if
 the bit is clear. The boot therefore cannot complete unless the ROM decoded raw 0x8
@@ -96,7 +95,7 @@ class sep_firmware_demotion_decision_auth_flag_0_prod_end_test(
 
     # rom_main.c lc_write_demotion_2(false, true)
     # lc_write_demotion(false, true) -- demotion_reg is still its initialiser
-    # (:377) because the else-branch that could set it never runs.
+    # because the else-branch that could set it never runs.
     expect_demote_1 = (0, 1)
     expect_demote_2 = (0, 1)
 

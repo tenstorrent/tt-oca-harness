@@ -7,17 +7,17 @@ addresses but neither holds a boot slot. See the "slot erasure" section of
 ``env/sep_manifest_mutate.py`` for why erasure rather than field corruption.
 
 ``SepBootScoreboard`` is deliberately NOT used: it asserts ``fw_done and fw_pass``
-(``env/sep_boot_scoreboard.py:79-84``), while the correct outcome here is
+(``env/sep_boot_scoreboard.py``), while the correct outcome here is
 ``fw_done`` with ``fw_pass == 0``. Disabling a checker to accommodate an expected
 failure would invalidate the pass, so the poll loop below samples the boot
 observables directly and asserts the terminal outcome positively.
 
 This ROM has no SPI-detect status to emit -- ``SEP_MSG_SPI_NOT_DETECTED_DEFAULT``
-(``include/status_values.h:77``) is referenced nowhere in the repo -- and no
-SPI-detect step (``src/sep_ot_spi.c:166-179``). What it emits on this edge, after
+(``include/status_values.h``) is referenced nowhere in the repo -- and no
+SPI-detect step in ``src/sep_ot_spi.c``. What it emits on this edge, after
 both slots fail, is ``report_status(STATUS_TYPE_ERROR,
 SEP_MSG_MANIFEST_LOAD_FAILED)`` and ``MANIFEST_ALL_FAILED``
-(``src/manifest_load.c:601-603``), then ``rom_err_fail()`` -> the FAIL verdict in
+(``src/manifest_load.c``), then ``rom_err_fail()`` -> the FAIL verdict in
 cold_scratch[0] -> ``for(;;) wfi`` (``src/rom_main.c``, ``include/errors.h``). Both
 status words are required below: the loop verdict ``0x0f010213`` and the final
 encoded error ``0x0f010002``.

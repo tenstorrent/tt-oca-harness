@@ -1,17 +1,15 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Shared scenario for the BL1-image-validity testcases (TP053-S, TP053-E).
+"""Shared scenario for the BL1-image-validity testcases.
 
 Both testcases plant a defect in the SEP BL1 entry of the payload TOC -- one in
 its size, one in its entry point -- in BOTH manifest slots, and require the ROM to
 reject each slot before any BL1 copy or jump and then terminate. Only the
 mutation and the console marker differ, so everything else lives here.
 
-WHY BOTH SLOTS. The procedures say so: TP053-S step 1 plants the defect in the
-primary and step 4 requires "backup also has invalid BL1 size -> terminal";
-TP053-E is worded the same way. A defect in the primary alone would fail over to a
-healthy backup and boot, which proves the failover works but says nothing about
-the terminal outcome the procedure asks for.
+WHY BOTH SLOTS. A defect in the primary alone would fail over to a healthy backup
+and boot, which proves the failover works but says nothing about the terminal
+outcome. Planting it in both slots is what makes the run terminal.
 
 WHY THIS SUBCLASSES ``sep_backup_manifest_fail_base`` BUT REPLACES ITS VERDICT.
 The run machinery -- flash BFM, console capture, the PROD/secure-boot eFuse
@@ -20,7 +18,7 @@ inherited unchanged. The CHECKS are not: that base is written for defects the
 CRYPTO chain rejects, so it requires a ``CRYPTO_FAIL=`` line and forbids
 ``CRYPTO_VALIDATE_OK``. These defects are the opposite. They sit in the payload,
 which ``try_manifest_slot`` validates AFTER the crypto chain has PASSED
-(``manifest_load.c:665-680`` then ``:683``), so a correct run here must show
+(``manifest_load.c``), so a correct run here must show
 ``CRYPTO_VALIDATE_OK`` -- twice, once per slot -- and then fail. Overriding
 :meth:`_check` rather than adding hooks to the shared base keeps six passing
 testcases untouched.
@@ -43,20 +41,20 @@ _EFUSE_DIR = (Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads"
               / "efuse_configurations")
 _EFUSE_LC_PROD = _EFUSE_DIR / "sep_efuse_lc_prod.toml"
 
-# manifest_load.c:764-765 -- the ROM labels the slot and then prints its offset.
+# manifest_load.c -- the ROM labels the slot and then prints its offset.
 _PRIMARY_SRC = "MANIFEST_SRC=0x00001000"
 _BACKUP_SRC = "MANIFEST_SRC=0x00041000"
 
-# manifest_crypto.c:391 -- printed once per slot whose crypto chain passed.
+# manifest_crypto.c -- printed once per slot whose crypto chain passed.
 _CRYPTO_OK = "CRYPTO_VALIDATE_OK"
-# manifest_load.c:808 -- both slots were tried and both failed.
+# manifest_load.c -- both slots were tried and both failed.
 _ALL_FAILED = "MANIFEST_ALL_FAILED"
 _SBOOT_OFF = "SBOOT_OFF"
 
 # rom_handoff.c -- anything from here on means BL1 was copied or entered. The
 # procedures' "BL0 does NOT attempt to copy BL1 into IRAM" / "does NOT jump to the
 # invalid entry address" is exactly the absence of these.
-# "LOAD=" and "LEN=" are deliberately NOT used: manifest_load.c:798 prints
+# "LOAD=" and "LEN=" are deliberately NOT used: manifest_load.c prints
 # "PAYLOAD=", which contains "LOAD=" as a substring, so a marker check would
 # false-positive on an ordinary payload report.
 _BL1_PROGRESS = ("BL1_TYPE=", "COPY_SRC=", "COPY_DST=", "COPY_LEN=", "BL1_COPIED",

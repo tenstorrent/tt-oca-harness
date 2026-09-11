@@ -9,8 +9,8 @@ Direct-AXI R/W of the SEP System-block dual scratch banks over the CPU-LSU bus
     ``rst_ni`` only (sep_system_csr.sv u_sep_scratch_reg_cold ``.arst_n(rst_ni)``).
   * SCRATCH_WARM (base 0x1080_2080) -- WARM domain: reset by
     ``rst_ni && rst_warm_ni`` (u_sep_scratch_reg_warm), where
-    ``rst_warm_ni = sep_cpu_reset_n = sep_reset_n & wdt_rst_ni`` (sep.sv:816,
-    sep_reset_ctrl.sv:59).
+    ``rst_warm_ni = sep_cpu_reset_n = sep_reset_n & wdt_rst_ni`` (sep.sv,
+    sep_reset_ctrl.sv).
 
 Each bank is 8 x 64-bit registers (sep_scratch.rdl), 0x8 stride, only the lower
 32 bits used, reset default 0x0. The driver carries the per-index addresses and
@@ -38,7 +38,7 @@ SCRATCH_N = 8
 SCRATCH_COLD_ADDRS = tuple(sym(f"SEP_SCRATCH_COLD_SCRATCH_{i}__REG_ADDR") for i in range(SCRATCH_N))
 SCRATCH_WARM_ADDRS = tuple(sym(f"SEP_SCRATCH_WARM_SCRATCH_{i}__REG_ADDR") for i in range(SCRATCH_N))
 
-# Test patterns (mirror the reference sep_clock_uvm_warm_reset_vs_cold_reset_test_seq).
+# Test patterns.
 COLD_PATTERN = 0xCAFE_BABE
 WARM_PATTERN = 0xDEAD_BEEF
 WARM_PATTERN2 = 0xA5A5_5A5A  # post-warm-reset recovery write

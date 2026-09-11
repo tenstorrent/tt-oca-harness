@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP reset-controller + WDT sanity test (PyUVM).
 
-OSS port combining the reference suite ``sep_reset_ctrl_csr_test`` and ``wdt_sanity_test``.
+Reset-controller CSR and watchdog sanity.
 Boots the VeeR EL2 core and runs the reset_wdt_sanity firmware, which:
   * verifies SW_RESET_N default 0x3E and that pulsing each crypto/TRNG reset bit
     clears the corresponding probe CSRs;

@@ -10,23 +10,21 @@ encodings (3, 6, 7) that name no key source, ``manifest.h`` assigning only
 test assert the exact ``PUBK_SEL=`` the ROM echoed.
 
 THE PRIMARY MUST NOT BE BROKEN ANY OTHER WAY, and that is the whole difference
-between this testcase and its backup-side sibling. The reference modifies ONLY
-``primary.manifest.public_key_sel.selection``
-and deliberately does NOT corrupt the primary's ``manifest_identifier`` the way
+between this testcase and its backup-side sibling. Only
+``primary.manifest.public_key_sel.selection`` is modified; the primary's
+``manifest_identifier`` is deliberately left intact, unlike
 its backup-side scenarios do, because the primary has to REACH the check under
 test. So there is no BAD_MAGIC failover trigger here: the primary is structurally
 perfect and is rejected by key selection alone.
 
-THE EXPECTED OUTCOME IS A COMPLETED BOOT, NOT A TERMINAL FAILURE. The reference's
-``expected_patterns`` (``sep_firmware_secure_boot_test.py``) end in
-``BACKUP_BL1_LOADED / COPY_AND_EXEC_IMAGE / EXEC_IMAGE`` and grade the primary's
+THE EXPECTED OUTCOME IS A COMPLETED BOOT, NOT A TERMINAL FAILURE. The run must
+end in ``BACKUP_BL1_LOADED / COPY_AND_EXEC_IMAGE / EXEC_IMAGE`` and grade the
+primary's
 rejection ``WARNING:`` rather than ``ERROR:``. Copying the backup-side base class
 here would have inverted the requirement.
 
-PLATFORM ADAPTATION -- MARKER. The reference expects
-``WARNING: INVALID_KEY_INDEX`` because its ``default:`` arm returns
-``SEP_MSG_INVALID_KEY_INDEX``. This ROM *defines* that code
-(``bootrom/prod/include/status_values.h:12``) but never EMITS it: there is no
+MARKER. The ``default:`` arm returns ``SEP_MSG_INVALID_KEY_INDEX``. This ROM
+*defines* that code (``status_values.h``) but never EMITS it: there is no
 ``report_status`` call for it anywhere under ``bootrom/prod/src``, so the
 architected status ring carries only the generic terminal code and the debug
 console token is the only per-reason evidence available. Hence the
@@ -61,14 +59,13 @@ _EFUSE_PRELOAD = (
     / "efuse_configurations" / "sep_efuse_lc_prod.toml"
 )
 
-# manifest.h assigns 0, 1, 2, 4, 5. 3, 6 and 7 name nothing; the reference
-# draws from exactly that set (sep_firmware_secure_boot_test.py).
+# manifest.h assigns 0, 1, 2, 4, 5. 3, 6 and 7 name nothing.
 _BAD_SELECTION = 3
 # public_key_sel is {index:4, selection:3} -- index 0, selection 3 -> 0x0030.
 _BAD_PUBK_SEL_VALUE = (_BAD_SELECTION & 0x7) << 4
 _PRIMARY_SEL_ECHO = f"PUBK_SEL=0x{_BAD_PUBK_SEL_VALUE:08x}"
 # The backup keeps the shipped selector: ROM key slot 0
-# (configs/secure_boot_test.yaml:112-114).
+# (configs/secure_boot_test.yaml).
 _BACKUP_SEL_ECHO = "PUBK_SEL=0x00000000"
 
 

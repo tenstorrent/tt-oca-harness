@@ -23,10 +23,8 @@ register channel:
   ==============================  ==========  ==========  ==========  ==========
 
 **``+SECURE_BOOT_DIS`` DRIVES TWO SURFACES AND BOTH ARE PORTED.** This is the
-instruction the VP half arrived at only after retracting an earlier one
-(``batch_runs_0904_vp/FINDINGS.md`` F11 item 1): the reference's plusarg sets
-``primary.manifest.boot_arguments.secure_boot = 0``
-**and** burns the ``sboot_dis`` fuse, constrained to equal the plusarg.
+two surfaces, not one: ``primary.manifest.boot_arguments.secure_boot = 0``
+**and** the ``sboot_dis`` fuse, constrained to agree with it.
 Reading only the manifest surface produced the VP half's worst error. Both are ported
 here: the eFuse preload burns SBOOT_DIS, and the manifest is mutated on both of the
 fields the packer would have changed --
@@ -35,11 +33,9 @@ fields the packer would have changed --
     ``secure_boot_enabled`` reads at ``manifest_load.c``, and it sits OUTSIDE the
     TBS (``manifest.h``), so clearing it needs no re-hash;
   * ``signature_type`` set to ``NO_SIGNATURE`` (0), because the packer forces exactly
-    that whenever a config sets ``secure_boot: 0``
-    (``bootrom/prod/tools/tt-boot-manifest/src/manifest_signing.py:43-45``, value from
-    ``pack_images_constants.py``). The reference's primary manifest is therefore
-    genuinely UNSIGNED, and this port reproduces that rather than running a signed
-    image with one flag cleared.
+    that whenever a config sets ``secure_boot: 0`` (``manifest_signing.py``, value
+    from ``pack_images_constants.py``). The primary manifest is therefore genuinely
+    UNSIGNED rather than a signed image with one flag cleared.
 
 **AND THE TWO SURFACES ARE COUPLED, WHICH IS WHY THE PORT IS NOT VACUOUS.** With
 ``signature_type = 0`` the manifest can only boot because ``sboot_dis`` is burned:
@@ -53,8 +49,7 @@ forbidden, and ``FUSE: SBOOT_DIS: 1`` is required, so that substitution fails lo
 instead of passing.
 
 The primary is left with its stale dev0 signature bytes rather than a blank field.
-That is a deliberate, disclosed difference from the reference, whose packer emits an
-empty signature: it is inert here because ``validate_signature`` is never called at
+That is inert because ``validate_signature`` is never called at
 all on this path, and leaving a syntactically complete signature in place makes the
 image the HARDER case for anything that might later examine the field.
 
@@ -64,8 +59,7 @@ forbidden backup read and the device-side check meaningful rather than trivially
 satisfied by an unusable backup.
 
 **THE LIFECYCLE DECODE IS ASSERTED, NOT ASSUMED.** Both slots' ``life_cycle_states``
-are narrowed from the shipped 0x7 to 0x2 -- PROD only -- exactly as the reference
-does (``sep_demotion_uid_checker.py``,), and ``selector_bits``
+are narrowed from the shipped 0x7 to 0x2 -- PROD only -- and ``selector_bits``
 bit 16 is already set, so ``manifest_load.c`` refuses the manifest unless the
 ROM decoded raw 0x1 as PROD. ``LC=PROD_END`` is forbidden for the complementary
 reason the PROD_END member does not forbid ``LC=PROD``: the former string CONTAINS
@@ -141,15 +135,14 @@ class sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test(
         # +SET_SELECTOR_BIT_17 -> usage_constraints.selectors.BL1_demotion
         # (sep_demotion_uid_checker.py).
         mm.set_selector_bit(buf, "primary", mm.SELECTOR_BIT_BL1_DEMOTION, True)
-        # +AUTH_FLAG_0 -> usage_constraints.BL1_demotion (:438-440).
+        # +AUTH_FLAG_0 -> usage_constraints.BL1_demotion.
         mm.set_usage_flags_bit(buf, "primary",
                                mm.USAGE_CONSTRAINTS_FLAGS_BIT_BL1_DEMOTION, True)
         # +SECURE_BOOT_DIS, manifest surface 1: the flag secure_boot_enabled reads
         # (manifest_load.c). Outside the TBS, so no re-hash.
         mm.set_flag_args_bit(buf, "primary", mm.FLAG_ARGS_BIT_SECURE_BOOT, False)
         # +SECURE_BOOT_DIS, manifest surface 2: the packer would have forced
-        # NO_SIGNATURE (manifest_signing.py), so the reference's primary is
-        # unsigned and this one is too.
+        # NO_SIGNATURE (manifest_signing.py), so the primary is unsigned here too.
         mm.set_signature_type(buf, "primary", mm.SIG_TYPE_NO_SIGNATURE)
         # Last in-TBS write. The BACKUP is re-sealed so it stays a fully valid
         # alternative; the PRIMARY is deliberately NOT re-sealed -- it is unsigned by

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""KM -> HMAC sideload consume-proof KAT (reference suite, sep_km_hmac_sideload_kat_test).
+"""KM -> HMAC sideload consume-proof KAT.
 
 Real DRBG entropy boots the real KM firmware (rom_main). The host (CPU-LSU
 frontdoor AXI) provisions a KNOWN 256-bit key into a KPV handle via CMD_KEY_LOAD,
@@ -13,16 +13,13 @@ that equality, since both goldens are pure functions of file-scope constants.
 
 HMAC has NO CFG sideload bit and KEY_VALID is set on the KM's private key bus
 (the host cannot clear it), so the AES-style sideload-vs-SW-key cross-check is
-impossible -- the consume-proof IS the digest-vs-golden compare (this is how reference suite
-does it too). This OSS port is a FRONTDOOR known-key variant, STRONGER than the reference suite:
-the reference suite generates a random key, reconstructs it by a read-only backdoor of the
-wrapper shares, then SEARCHES 8 byte/word representations for the one that
-reproduces the engine digest; here the key is known a priori and the digest is
-checked directly against the golden under the RTL-pinned convention
-(key_word_rev=1, key_be=1, msg_be=0 -- the structural contract reference suite confirmed),
-so a truncated/word-swapped/wrong-key sideload changes the digest and fails.
+impossible -- the consume-proof IS the digest-vs-golden compare. Because the host
+loaded the key value itself, the key is known a priori and the digest is checked
+directly against the golden under the RTL-pinned convention (key_word_rev=1,
+key_be=1, msg_be=0), so a truncated, word-swapped or wrong-key sideload changes the
+digest and fails.
 
-VPLAN-parity checkers:
+Checkers:
   CHK0      boot KM on real DRBG -> RESP_KM_READY
   CHK-A     CMD_KEY_LOAD known key (frontdoor; wrapper shares are write-only)
   CHK-ISO   key-bus isolation by SW_RESET_N read-back: only HMAC of the four
@@ -35,13 +32,12 @@ VPLAN-parity checkers:
   CHK1..CHK4 strict DRBG golden + CHK5_km observed (the KM boot/load consumer);
             HMAC is not an EDN consumer, so no crypto EDN sink is scored.
 
-Accepted scope deltas vs the reference suite (documented; no silent skips):
-  * known-key golden value-compare under the RTL-pinned convention (proves the
-    exact key flowed). The HMAC-wrapper-internal SHARE0 *mask* non-degeneracy is
-    out of frontdoor scope (covered frontdoor by the OTBN KAT's CHK-F, as for the
-    AES sideload KAT).
-  * key-bus isolation uses SW_RESET_N read-back (no OSS frontdoor analog of the reference suite's
-    key-bus AW monitor); CHK-MAC additionally proves HMAC got the correct key.
+SCOPE LIMITS, stated rather than skipped silently:
+  * the HMAC-wrapper-internal SHARE0 *mask* non-degeneracy is not visible
+    frontdoor; the OTBN KAT's CHK-F covers it, as for the AES sideload KAT.
+  * key-bus isolation uses SW_RESET_N read-back rather than monitoring each
+    engine's key-bus writes, which has no frontdoor analog; CHK-MAC additionally
+    proves HMAC got the correct key.
 
 Boot recipe matches the OTBN/AES KATs (real fuse-sense, valid PROD OTP image;
 rom_main built PROD_BOOT_WIPE=0). HMAC is not an EDN consumer, so (unlike AES) it

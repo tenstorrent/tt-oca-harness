@@ -2,7 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP dual-CPU eFuse AXI-lite mux coexistence test (PyUVM).
 
-OSS port of the reference-suite ``sep_efuse_km_axil_cpu_mux_coexist_test``.
 Two REAL CPUs contend at the SEP eFuse AXI-lite mux ``u_km_efuse_axi_lite_mux``:
 
   * the VeeR EL2 host boots ``km_efuse_coexist`` firmware: it senses CHIPLET_UID,
@@ -12,23 +11,21 @@ Two REAL CPUs contend at the SEP eFuse AXI-lite mux ``u_km_efuse_axi_lite_mux``:
   * the KM PicoRV32 boots ``km_rom_coexist`` (the ``+km_rom_hex`` image) and
     free-runs eFuse MMR writes through the same mux.
 
-This test reproduces BOTH reference suite verdicts:
+Two independent verdicts are required:
   1. the EL2 firmware self-check (``fw_pass`` via the PASS/FAIL magic + banner,
      gated by ``SepBootScoreboard``); and
   2. an independent passive observer that backdoor-reads the SEP scratch-cold
-     registers (the EL2 publishes its measured summary there), mirroring the reference suite
-     ``uvm_hdl_read`` observer. The scratch words are surfaced as the tb_top probe
+     registers (the EL2 publishes its measured summary there). The scratch words
+     are surfaced as the tb_top probe
      ``scratch_cold_probe_o`` (cocotb runs no AXI master while the EL2 owns the
      LSU bus). Plus the base test's automatic post-sense shadow compare proves the
      sensed CHIPLET_UID actually equals the staged image (0xDEADBEEF).
 
-OSS delta vs the reference suite (documented): the reference suite observer deposits an UVM_DONE marker to
-release a waiting host loop; cocotb cannot deposit an internal register without a
-force port, so the OSS host loop is a FIXED contended window and the observer is
-read-only. Mutual non-starvation is proven by the host completing all
-CONTENDED_LOOPS (final COUNT) AND the KM making progress (CHANGES > 0) in the same
-window -- equivalent-or-stronger evidence than a single sampled before/after
-window plus a release handshake.
+The observer is READ-ONLY and the contended window is FIXED, because cocotb
+cannot deposit an internal register without a force port. Mutual non-starvation is
+therefore proven by the host completing all CONTENDED_LOOPS (final COUNT) AND the
+KM making progress (CHANGES > 0) in the same window, rather than by releasing the
+host loop with a marker once the KM has been observed.
 """
 
 from __future__ import annotations
@@ -125,8 +122,8 @@ class sep_efuse_km_axil_cpu_mux_coexist_test(sep_base_test):
         )
 
         # Independent passive observer: read the EL2-published summary out of the
-        # scratch-cold probe and assert the reference suite coexistence verdict directly
-        # (not relying only on the firmware's PASS magic).
+        # scratch-cold probe and assert the coexistence verdict directly, rather
+        # than relying only on the firmware's PASS magic.
         probe = self.rd(cocotb.top.scratch_cold_probe_o)
         ready = self._scratch(probe, _SCRATCH_READY)
         count = self._scratch(probe, _SCRATCH_COUNT)

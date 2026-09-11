@@ -7,21 +7,18 @@ The PRIMARY's ``public_key_sel`` keeps ``selection = PUBK_SEL_ROM_KEY`` and sets
 (6, ``manifest.h``) with ``BAD_KEY_IDX`` at ``manifest_crypto.c``,
 returning ``MANIFEST_ERR_SIG_FAILED``.
 
-THE PRIMARY MUST NOT BE BROKEN ANY OTHER WAY. The reference modifies ONLY
-``primary.manifest.public_key_sel.rom_key_index``
-and deliberately does NOT corrupt the primary's ``manifest_identifier`` the way its
-backup-side sibling does, because the primary has to REACH the check
+THE PRIMARY MUST NOT BE BROKEN ANY OTHER WAY. Only
+``primary.manifest.public_key_sel.rom_key_index`` is modified; the primary's
+``manifest_identifier`` is deliberately left intact, because the primary has to
+REACH the check
 under test. So there is no BAD_MAGIC failover trigger here.
 
-THE EXPECTED OUTCOME IS A COMPLETED BOOT. The reference's ``expected_patterns``
-(``sep_firmware_secure_boot_test.py``) grade the primary rejection
-``WARNING: INVALID_KEY_INDEX`` and end in ``BACKUP_BL1_LOADED /
-COPY_AND_EXEC_IMAGE / EXEC_IMAGE``. Its backup-side sibling is the terminal one,
+THE EXPECTED OUTCOME IS A COMPLETED BOOT: the primary is rejected on the index
+bound and the backup serves the boot. The backup-side sibling is the terminal one,
 grading the same rejection ``ERROR:``.
 
 WHY 6 AND NOT 15. Six is ``PUBK_SEL_NUM_ROM_KEYS`` exactly -- the smallest index
-the bound must refuse, and the boundary of the reference's own draw
-``range(6, 16)`` (``sep_firmware_secure_boot_test.py``). A larger value would
+the bound must refuse. A larger value would
 pass just as well against a ROM that had written ``>`` instead of ``>=``, so only
 the boundary pins the comparison. The field is four bits wide
 (``{index:4, selection:3}``, ``manifest.h``), so 6 is representable and no
@@ -49,9 +46,9 @@ without weakening into "the token may appear". ``ROM_KEY_EMPTY`` is forbidden fo
 the same reason one step later: an out-of-range index must never reach
 ``public_key_digests[index]``, which would read past the six-entry table.
 
-PLATFORM ADAPTATION -- MARKER, AND THE GAP IS WIDER THAN THE ERROR TOKEN. The
-reference's pattern list for this scenario has ELEVEN entries and SIX of the codes
-they name have no ``report_status`` call anywhere under ``bootrom/prod/src``:
+MARKERS, AND THE GAP IS WIDER THAN THE ERROR TOKEN. Six of the status codes that
+would name this scenario's steps have no ``report_status`` call anywhere under
+``bootrom/prod/src``:
 ``WARNING: INVALID_KEY_INDEX`` (``status_values.h``), ``STATUS: USING_ROM_KEY``
 , ``STATUS: START_MANIFEST_VALIDATION`` (, asserted twice),
 ``STATUS: START_PAYLOAD_VALIDATION``, ``STATUS: PAYLOAD_VALIDATED``
@@ -61,13 +58,12 @@ terminal code plus ``MANIFEST_VALIDATED`` / ``COPY_AND_EXEC_IMAGE`` / ``EXEC_IMA
 and the debug console supplies everything else. Recorded as
 ``batch_runs_0904_rtl/FINDINGS.md`` R04.
 
-A SECOND NARROWING, DISCLOSED. The reference regenerates and RE-SIGNS its image
-(``sep_firmware_secure_boot_test.py`` drives ``run_manifest_generator``
-at and ``build_firmware``), so its primary is legal in every respect except the index. Here
-the selector write re-hashes the TBS and leaves the dev0 signature stale, so this
+A SECOND NARROWING. A stronger stimulus would re-sign the image so the primary is
+legal in every respect except the index. Here the selector write re-hashes the TBS
+and leaves the dev0 signature stale, so this
 testcase proves "the bound runs BEFORE the revocation check and before the
-verifier", not the reference's stronger "the bound refuses an otherwise fully valid
-manifest". The mechanism is pinned rather than assumed --
+verifier", not the stronger "the bound refuses an otherwise fully valid manifest".
+The mechanism is pinned rather than assumed --
 ``primary_expected_rsa_starts = 0`` requires the primary never to reach
 ``rsa_3072_verify`` -- but the narrowing is real and slot 0 of the revoke family is
 where this group's strict form lives instead.
@@ -106,7 +102,7 @@ _BAD_INDEX = mm.PUBK_SEL_NUM_ROM_KEYS
 _BAD_PUBK_SEL_VALUE = _BAD_INDEX & 0xF
 _PRIMARY_SEL_ECHO = f"PUBK_SEL=0x{_BAD_PUBK_SEL_VALUE:08x}"
 # The backup keeps the shipped selector: ROM key slot 0
-# (configs/secure_boot_test.yaml:112-114).
+# (configs/secure_boot_test.yaml).
 _BACKUP_SEL_ECHO = "PUBK_SEL=0x00000000"
 _REVOKE_ECHO = "PUBK_REVOKE="
 

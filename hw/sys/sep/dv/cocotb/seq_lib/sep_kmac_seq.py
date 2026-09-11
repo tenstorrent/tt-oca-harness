@@ -4,12 +4,11 @@
 
 Runs one keyed KMAC-256 (cSHAKE, PREFIX="KMAC") over a message, with the key
 either from the KM sideload port (CFG.sideload=1) or the public KEY_SHARE CSRs
-(SW-key path, sideload=0) -- mirroring the reference sep_km_kmac_sideload_kat_test_seq
-op helper (RAL there; direct AXI here, like SepAes/SepHmac). Masking is enabled
+(SW-key path, sideload=0). Direct AXI, like SepAes/SepHmac. Masking is enabled
 (EnMasking), so the digest is read as STATE share0 ^ share1. 32-bit beats (size=2).
 
 KMAC register map (base 0x1091_3000; vendor/lowRISC/opentitan/upstream/hw/ip/kmac/rtl/kmac_reg_pkg.sv; bit/cmd
-encodings reused from fw/sep/tests/kmac_test + the reference seq):
+encodings reused from fw/sep/tests/kmac_test):
   CFG_SHADOWED @ 0x014 (shadowed: written twice)   CMD @ 0x018   STATUS @ 0x01C
   KEY_SHARE0_0 @ 0x030 .. KEY_SHARE0_15 @ 0x06C    KEY_SHARE1_0 @ 0x070
   KEY_LEN @ 0x0B0   PREFIX_0 @ 0x0B4   ERR_CODE @ 0x0E0

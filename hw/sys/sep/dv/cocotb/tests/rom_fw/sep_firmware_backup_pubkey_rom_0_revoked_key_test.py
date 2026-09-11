@@ -10,7 +10,7 @@ exactly ``CHIPLET_PUBK_REVOKE`` bit 0.
 
 WHY SLOT 0 IS THE STRICTEST MEMBER. Slot 0 is the only populated entry in
 ``key_digests.c`` and it is the slot the shipped image is signed against
-(``configs/secure_boot_test.yaml:112-114``), so the backup manifest here is valid
+(``configs/secure_boot_test.yaml``), so the backup manifest here is valid
 in every respect -- correct magic, correct TBS hash, a modulus that matches the
 ROM's compiled-in digest, and a dev0 signature that still verifies. The stimulus
 does not corrupt it at all: it re-writes the selector to the value it already

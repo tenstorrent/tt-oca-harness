@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""TP006: an out-of-range warm-reset handler address must hang, not be jumped to.
+"""An out-of-range warm-reset handler address must hang, not be jumped to.
 
 The reject arm of the warm dispatch in ``bootrom/prod/src/vector.S``, and the
 partner of ``sep_scratch_7_test``, which covers the accept arm::
@@ -14,13 +14,11 @@ partner of ``sep_scratch_7_test``, which covers the accept arm::
     sw   0x0f010069, (SEP_COLD_SCRATCH_1)
     wfi, then spin
 
-The accept arm leaves the slot INTACT -- it used to poison it to 0, which the
-spec and the reference both do not do (FINDINGS F29). Line numbers are omitted
-deliberately: they went stale once already.
+The accept arm leaves the slot INTACT: the specification does not ask for it to be
+poisoned.
 
-HOW THIS ROM DIFFERS FROM THE PROCEDURE, WHICH CHANGES THE STIMULUS. Three of
-TP006's statements do not hold against the OSS ROM, and building the test on them
-would have produced a run that proves nothing:
+THREE THINGS THAT CHANGE THE STIMULUS. Each would have produced a run that proves
+nothing if taken at face value:
 
   * *"Drive SEP COLD scratch 7"*. The ROM now does exactly this. It previously
     read ``WARM_SCRATCH_0`` and range-checked against SEP SRAM, which is what
@@ -39,7 +37,7 @@ would have produced a run that proves nothing:
     0xdeadbeef ... via test_fail()"*. There is no string: the dispatch runs before
     the C runtime, so ``simputs()`` does not exist, and the whole record is the
     status WORD 0x0f010069 = STATUS_ENCODE(ERROR, SEP_MSG_WARM_RESET_HANG=0x69)
-    (``status_values.h:83``). ``cold_scratch[0]`` is not written at all, and there
+    (``status_values.h``). ``cold_scratch[0]`` is not written at all, and there
     is no ``test_fail()`` anywhere in this ROM -- ``0xDEADBEEF`` appears only as
     the mailbox ``ROM_FW_FAIL`` constant and on the early trap path.
 
@@ -52,8 +50,8 @@ path: the ROM's only evidence that a warm reset occurred is a non-zero in-range
 value in the slot, so depositing one is exactly how the ROM is told a warm reset
 happened. (The earlier version of this note argued a real warm reset was
 IMPOSSIBLE because the warm bank is cleared by the very event it should survive.
-That was true of the warm bank and was why BLK-003 was filed -- but the ROM now
-uses the COLD bank, which does retain, so the obstacle is gone. Driving a real
+That was true of the warm bank, but the ROM now uses the COLD bank, which does
+retain, so the obstacle is gone. Driving a real
 watchdog reset is now merely unnecessary here, and would be a stronger test if
 anyone wants it.)
 

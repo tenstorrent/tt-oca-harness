@@ -3,9 +3,9 @@
 """Recovery boot: PRIMARY_CHIPLET=1 + BOOT_RECOVERY=1 takes the SMC-SRAM path.
 
 FEATURE. ``boot_from_spi()`` is ``primary_chiplet && !boot_recovery``
-(``boot_straps.h:46``), so asserting recovery on a part that would otherwise boot
-from flash diverts it to the SMC-SRAM manifest. ``rom_main.c:616-641`` is a
-three-way branch and this testcase pins the middle arm::
+(``boot_straps.h``), so asserting recovery on a part that would otherwise boot
+from flash diverts it to the SMC-SRAM manifest. ``rom_main.c`` has a three-way
+branch and this testcase pins the middle arm::
 
     if (boot_from_spi(&straps))                                -> BOOT_SPI
     else if (straps.primary_chiplet && straps.boot_recovery)   -> BOOT_RECOVERY
@@ -19,7 +19,7 @@ evidence that the ROM saw the intended combination.
 
 WHY BOTH ARMS IT IS NOT MUST BE FORBIDDEN. ``BOOT_RECOVERY`` and
 ``BOOT_SECONDARY`` converge immediately: both set a boot_mode and then fall into
-the same ``WAIT_SMC_MANIFEST`` loop (``manifest_load.c:717-728``). A recovery run
+the same ``WAIT_SMC_MANIFEST`` loop (``manifest_load.c``). A recovery run
 and a secondary run therefore produce nearly identical consoles, and without
 forbidding ``BOOT_SECONDARY`` a testcase whose recovery strap silently did
 nothing would still boot and still pass. That marker, not the successful boot, is
@@ -44,18 +44,16 @@ _STRAPS_LO_RECOVERY = 0x0208_0000
 _BOOT_RECOVERY_BIT_LO = 19
 
 _STRAPS_LO_ECHO = f"STRAPS_LO=0x{_STRAPS_LO_RECOVERY:08x}"
-_STRAP_PRIMARY_ECHO = "STRAP primary=1"     # boot_straps.c:32
-_STRAP_RECOVERY_ECHO = " recovery=1"        # boot_straps.c:33
-_RECOVERY_MARKER = "BOOT_RECOVERY"          # rom_main.c:635
-_WAIT_SMC = "WAIT_SMC_MANIFEST"             # manifest_load.c:720
-# smc_sram_base (0x4006_0000, sep_smc_interface.h:57,162-164) + the manifest
-# offset the responder publishes in SMC scratch[8] (0x1000). manifest_load.c:765.
+_STRAP_PRIMARY_ECHO = "STRAP primary=1"     # boot_straps.c
+_STRAP_RECOVERY_ECHO = " recovery=1"        # boot_straps.c
+_RECOVERY_MARKER = "BOOT_RECOVERY"          # rom_main.c
+_WAIT_SMC = "WAIT_SMC_MANIFEST"             # manifest_load.c
+# smc_sram_base (0x4006_0000, sep_smc_interface.h) + the manifest offset the
+# responder publishes in SMC scratch[8] (0x1000).
 #
-# NOTE ON WHAT THE PROCEDURE SAYS: TP004 step 3 describes the offset as published
-# in "SMC scratch 13/14". This ROM does not read those -- SMC_SCRATCH_SEP_SAFE_
-# SRAM_START/SIZE (sep_smc_interface.h:103-104) are declared and never used --
-# and takes the offset from SMC_SCRATCH_MANIFEST_ADDR_IDX = 8
-# (manifest_load.c:725). The implementation follows the ROM.
+# The ROM takes that offset from SMC_SCRATCH_MANIFEST_ADDR_IDX = 8, not from the
+# SMC_SCRATCH_SEP_SAFE_SRAM_START/SIZE words, which sep_smc_interface.h declares
+# and nothing reads.
 _SMC_MANIFEST_SRC = "MANIFEST_SRC=0x40061000"
 _MANIFEST_OK = "MANIFEST_OK"
 # Printed by BL1 after the handoff and by nothing in the ROM, so it is the

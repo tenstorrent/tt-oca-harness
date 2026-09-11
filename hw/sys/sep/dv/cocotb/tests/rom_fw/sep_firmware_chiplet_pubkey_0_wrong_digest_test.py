@@ -141,7 +141,7 @@ _CHIPLET_KEY = 0
 # produce.
 _PUBK_SEL_VALUE = (mm.PUBK_SEL_FUSE_KEY_0 & 0x7) << 4
 _PUBK_SEL_ECHO = f"PUBK_SEL=0x{_PUBK_SEL_VALUE:08x}"        # manifest_crypto.c
-# Only ROM dev key 0. Bits 16/17 (CHIPLET_PUBK_HASH0/1, sep_efuse_map.rdl:727) are
+# Only ROM dev key 0. Bits 16/17 (CHIPLET_PUBK_HASH0/1, sep_efuse_map.rdl) are
 # deliberately clear -- see the docstring.
 _REVOKE_BITMAP = 1 << 0
 _REVOKE_ECHO = f"PUBK_REVOKE=0x{_REVOKE_BITMAP:08x}"        # manifest_crypto.c

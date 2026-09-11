@@ -10,7 +10,7 @@ whose only substantive lines are ``_REVOKED_SLOT = N`` and the base class it pic
 
 **THE OUTCOME SHAPE OF THIS FAMILY IS NOT UNIFORM, AND THAT IS WHY THERE ARE TWO
 BASES RATHER THAN ONE.** The shipped image gives BOTH slots ``rom_key_index: 0``
-(``configs/secure_boot_test.yaml:43-45`` primary, backup), so one
+(``configs/secure_boot_test.yaml``, primary and backup), so one
 revoke bit refuses one manifest or two depending on the slot:
 
   * **slot 0 is TERMINAL** -- the bit refuses the primary AND the backup, the retry
@@ -21,11 +21,8 @@ revoke bit refuses one manifest or two depending on the slot:
 
 A single base parameterised only by the slot number would make one of the two
 groups assert the other's outcome, and it would pass its own assertions either
-way. The reference agrees with the split: ``PRIMARY_PUBKEY_ROM_0_REVOKED_KEY``
-ends at ``ERROR: REVOKED_KEY``
-while every ``N >= 1`` member ends in ``COPY_AND_EXEC_IMAGE / EXEC_IMAGE``
-(for N=1). This is confirmed here from the RTL tree's own packer config
-and from :func:`select_primary_rom_slot`'s measurement.
+way. The split is confirmed from the packer config and from
+:func:`select_primary_rom_slot`'s measurement.
 
 WHICH BRANCH A MEMBER TAKES IS MEASURED FROM THE IMAGE, NOT WRITTEN DOWN.
 :meth:`_assert_outcome_shape` reads the BACKUP's selector out of the mutated
@@ -66,69 +63,54 @@ populated entry in ``key_digests.c``; slots 1-5 are ``(void *)0``. So:
     so revocation is the sole cause of the rejection and ``RSA_VERIFY_START`` /
     ``SIG_VALID`` are the load-bearing forbids there.
 
-**THE REFERENCE ORDERS THOSE TWO CHECKS THE OTHER WAY ROUND, AND SLOTS 1-5 DEPEND
-ON THE DIFFERENCE.** Grendel's ROM takes the index bound,
-then the digest-populated check (, returning
-``SEP_MSG_INVALID_KEY_CONTENTS`` and annotated "COVERAGE: exclude, correct by
-construction"), and only THEN revocation. That order is invisible there
-because all six of its digest slots are populated. This ROM inverts it. Had this
-ROM used the reference's order, slots 1-5 would return ``ROM_KEY_EMPTY`` /
-``MANIFEST_ERR_SIG_FAILED`` instead of ``KEY_REVOKED``. Consequently slot 0
-establishes the reference's own property -- revocation refuses a fully valid,
-correctly signed, bootable image -- and slots 1-5 establish the weaker property
-that revocation PREEMPTS the empty-digest arm. The same holds for the backup-side
-family. Revocation-first is the fail-closed order and is not a defect.
+**REVOCATION-FIRST IS WHAT MAKES SLOTS 1-5 WEAKER THAN SLOT 0.** Because this ROM
+consults the fuse bitmap before the digest-populated check, slots 1-5 report
+``KEY_REVOKED`` rather than the ``ROM_KEY_EMPTY`` / ``MANIFEST_ERR_SIG_FAILED``
+they would report under the opposite order. So slot 0 establishes the strong
+property -- revocation refuses a fully valid, correctly signed, bootable image --
+while slots 1-5 establish only that revocation PREEMPTS the empty-digest arm. The
+same holds for the backup-side family. Revocation-first is the fail-closed order
+and is not a defect.
 
-A FURTHER NARROWING, SPECIFIC TO THE PRIMARY SIDE. The reference re-signs the
-primary with slot N's own private key for every ``N >= 1`` member
-(``sep_firmware_secure_boot_test.py`` uses ``VALID_KEY_FILE_MAP[1]``), so its
-primary is a fully valid manifest bound to slot N. The only RSA signing key that
-ships in this tree is ``rsa_private_key.dev0.pem``
-(``bootrom/prod/tools/tt-boot-manifest/tests/signing_keys/``, which also holds
-``ec_private_key.pem`` -- unusable here because the ROM implements RSA-3072
-only), so a slot-N
-selector here leaves the dev0 signature stale. That is harmless only because
-revocation is reached first, and the family forbids ``RSA_VERIFY_START`` on the
-primary to prove that rather than assume it -- but it is a real narrowing and it
-is why slot 0, whose write is a no-op on an untouched sealed manifest, carries
-this family's weight.
+A FURTHER NARROWING, SPECIFIC TO THE PRIMARY SIDE. Only one RSA signing key ships
+in this tree, ``rsa_private_key.dev0.pem``
+(``bootrom/prod/tools/tt-boot-manifest/tests/signing_keys/``, alongside an
+``ec_private_key.pem`` the ROM cannot use because it implements RSA-3072 only), so a
+slot-N selector leaves the dev0 signature stale rather than re-binding the primary
+to slot N. That is harmless only because revocation is reached first, and the
+family forbids ``RSA_VERIFY_START`` on the primary to prove that rather than assume
+it -- but it is a real narrowing, and it is why slot 0, whose write is a no-op on
+an untouched sealed manifest, carries this family's weight.
 
 THE FUSE BIT IS THE SLOT NUMBER, and the authority for that is the register map,
 not the ROM's own header: ``CHIPLET_PUBK_REVOKE.select[7:0]`` is the ROM-key
-bitmap (``regs/blocks/sep_efuse_map/sep_efuse_map.rdl:721-729``) and the ROM
+bitmap (``sep_efuse_map.rdl``) and the ROM
 indexes it with the manifest's key index directly (``manifest_crypto.c``).
 The fused-key slots do NOT continue that sequence -- they sit at bits 16 and above
 -- so nothing here may be derived by counting past slot 5.
 
-PLATFORM ADAPTATION -- MARKERS, FOR ALL SIX MEMBERS. Two of the architected status
-codes the reference asserts for this family are defined here and never emitted, so
-neither can be ported literally:
+MARKERS, FOR ALL SIX MEMBERS. Two status codes that would name this family's
+outcome are defined in ``status_values.h`` and never emitted, so neither can carry
+the verdict:
 
-  * ``SEP_MSG_REVOKED_KEY`` (``bootrom/prod/include/status_values.h:13``, 0x0c),
-    which the reference reports as ``WARNING: REVOKED_KEY`` on the failing slot and
-    ``ERROR: REVOKED_KEY`` when the boot ends there. Substituted by the console
-    token ``KEY_REVOKED idx=`` (``manifest_crypto.c``) PLUS the dedicated and
-    unshared error code ``MANIFEST_ERR_KEY_REVOKED`` (0x00030015,
-    ``manifest.h``) on ``MANIFEST_ERR=`` / ``CRYPTO_FAIL=``, and for the
-    terminal member also ``cold_scratch[1] == 0x0f010015``.
-  * ``SEP_MSG_USING_ROM_KEY`` (, 0x7f), which the reference emits on the
-    ROM-key arm (``tt_sep .../manifest.c:184``) and asserts as
-    ``STATUS: USING_ROM_KEY``. This ROM reports the generic
-    ``SEP_MSG_VALIDATE_CHECK`` there instead (``manifest_crypto.c``).
-    Substituted by ``PUBK_SEL=0x0000000N``, which is strictly more informative
-    because it carries the index.
+  * ``SEP_MSG_REVOKED_KEY`` (0x0c). The evidence instead is the console token
+    ``KEY_REVOKED idx=`` (``manifest_crypto.c``) PLUS the dedicated and unshared
+    error code ``MANIFEST_ERR_KEY_REVOKED`` (0x00030015, ``manifest.h``) on
+    ``MANIFEST_ERR=`` / ``CRYPTO_FAIL=``, and for the terminal member also
+    ``cold_scratch[1] == 0x0f010015``.
+  * ``SEP_MSG_USING_ROM_KEY`` (0x7f). The ROM-key arm reports the generic
+    ``SEP_MSG_VALIDATE_CHECK`` instead (``manifest_crypto.c``), so the evidence is
+    ``PUBK_SEL=0x0000000N``, which is strictly more informative because it carries
+    the index.
 
 There is no ``report_status`` call for either code anywhere under
-``bootrom/prod/src``. The wider version of this gap is
-``batch_runs_0904_rtl/FINDINGS.md`` R04.
+``bootrom/prod/src``.
 
-ONE DELIBERATE STRENGTHENING OVER THE REFERENCE, so it is not mistaken for drift.
-The reference runs this family at ``LC_STATE`` raw 0x0,
-where secure boot is enforced only because the manifest asks. Every member here
-runs a committed PROD preload, and both bases assert ``lc_raw() == 0x1`` and
-``SBOOT_DIS == 0``, so the crypto chain cannot be opted out of by a manifest flag.
-That makes the revocation verdict reachable on the production path rather than on a
-manifest-selected one.
+THE LIFECYCLE IS PINNED TO PROD, WHICH IS STRICTER THAN LETTING THE MANIFEST ASK.
+Every member runs a committed PROD preload, and both bases assert
+``lc_raw() == 0x1`` and ``SBOOT_DIS == 0``, so the crypto chain cannot be opted out
+of by a manifest flag. That makes the revocation verdict reachable on the
+production path rather than on a manifest-selected one.
 
 ``+sep_crypto_edn_force`` is needed by slots 1-5 only: their BACKUP is valid and
 runs a real RSA-3072 modexp on OTBN. Slot 0 must NOT have it -- no slot reaches the
@@ -175,7 +157,7 @@ def select_primary_rom_slot(buf: bytearray, slot_index: int) -> tuple[int, bool]
 
     ``tbs_changed`` is what the caller asserts the consequences of, and it is
     measured rather than assumed. The shipped primary already selects ROM slot 0
-    (``configs/secure_boot_test.yaml:43-45``), so for slot 0 the TBS is untouched,
+    (``configs/secure_boot_test.yaml``), so for slot 0 the TBS is untouched,
     the manifest stays fully sealed and its dev0 signature stays valid. For slots
     1-5 the write changes the TBS, ``manifest_hash`` is recomputed and the
     signature goes stale -- harmless only because revocation is reached first.
@@ -337,8 +319,8 @@ class sep_primary_pubkey_rom_revoked_failover_base(
         _primary_revoked_slot_mixin, sep_primary_fail_backup_boot_base):
     """Slots 1-5: the primary selects a revoked slot, the backup boots.
 
-    The backup still selects unrevoked ROM slot 0, so this is the reference's
-    ``WARNING: REVOKED_KEY`` followed by a completed boot, not a terminal run.
+    The backup still selects unrevoked ROM slot 0, so the primary's rejection is
+    followed by a completed boot rather than a terminal run.
     """
 
     _BACKUP_ALSO_REVOKED = False

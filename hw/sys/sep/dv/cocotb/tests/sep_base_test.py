@@ -109,9 +109,8 @@ class sep_base_test(uvm_test):
         256-bit scratch probe resolved as a whole would read as a zeroed
         counter, which is indistinguishable from a counter that stopped.
 
-        Two cocotb versions are in use here -- the Verilator flow runs 2.x,
-        which offers LogicArray.resolve(), and the VCS flow runs 1.x, which
-        does not and exposes the bit string instead. Both paths are kept so a
+        Two cocotb versions are in use here: 2.x offers LogicArray.resolve(),
+        1.x does not and exposes the bit string instead. Both paths are kept so a
         wide read does not silently collapse on either.
 
         Callers that must distinguish "unknown" from "zero" cannot use this.
@@ -719,9 +718,9 @@ class sep_base_test(uvm_test):
         """Run a sequence on the primary CPU-LSU AXI sequencer (s_axi)."""
         await seq.start(self.env.axi_agent.sequencer)
 
-    # No spi_mux helper on the Python side. The SPI pad mux sits in a nonfree
-    # wrapper, so a pure-open SEP has no mux: pads come straight off the
-    # wrapper's struct port. Firmware that programs that mux lives with the
+    # No spi_mux helper on the Python side. This SEP has no SPI pad mux: pads come
+    # straight off the wrapper's struct port. Firmware that programs such a mux
+    # lives with the
     # wrapper, not in this tree.
 
     async def start_ext_seq(self, seq) -> None:
@@ -968,7 +967,7 @@ class sep_base_test(uvm_test):
         Shared by every entropy-consumer test: starts the golden-vs-probe
         scoreboard (which drives the deterministic ESRC noise so the ring
         oscillators are alive under Verilator), proves the noise force took, then
-        runs the reference suite bring-up order (configure ESRC generators-off, enable CSRNG,
+        runs the bring-up order (configure ESRC generators-off, enable CSRNG,
         stage EDN, enable generators, wait for a seed, enable EDN). The caller does
         the consumer-specific steps afterwards (fork the FIFO drain, wait_genbits,
         release/boot its consumer). ``cfg`` defaults to ``SepEntropyCfg()``.

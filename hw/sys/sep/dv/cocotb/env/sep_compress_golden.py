@@ -434,7 +434,7 @@ def _selftest():
     assert cond.total_blocks == 1
     assert cond.pending_count == 0
 
-    # Independent expected: big-endian serialize the 16 words (cond.c:185-192),
+    # Independent expected: big-endian serialize the 16 words (cond.c),
     # then SHA-256. This is bytes 0x00..0x3F.
     expected_stream = bytes(range(0x00, 0x40))
     # Build the same stream via the documented word->byte framing.
@@ -453,7 +453,7 @@ def _selftest():
     # The conditioner digest must match both.
     assert cond.get_digest_bytes() == lib, "conditioner digest != expected"
 
-    # Word framing of the output (cond.c:131-136 / get_digest:217-222).
+    # Word framing of the output (cond.c get_digest).
     exp_words = [int.from_bytes(lib[i * 4 : i * 4 + 4], "big") for i in range(8)]
     assert cond.get_digest_words() == exp_words, "digest word framing wrong"
 

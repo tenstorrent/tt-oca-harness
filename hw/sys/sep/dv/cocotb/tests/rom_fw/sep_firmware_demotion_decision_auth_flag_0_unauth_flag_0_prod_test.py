@@ -52,9 +52,9 @@ are demonstrably live in the same regression: the O2b sibling drives
 ``lk1`` 0 -> 1 and R3's PROD_END member drives ``lk2`` 0 -> 1 through the same
 wiring. The cross-member argument is stated here rather than left implicit.
 
-The reference expects ``STATUS: DEMOTION_NOT_SELECTED`` + ``DEMOTION_NOT_LOCKED``
-for this row (``sep_demotion_uid_checker.py``). Neither code exists on
-this ROM -- ``grep -n DEMOT bootrom/prod/include/status_values.h`` is empty -- so
+Neither ``DEMOTION_NOT_SELECTED`` nor ``DEMOTION_NOT_LOCKED`` exists as a status
+code on this ROM -- ``grep -n DEMOT bootrom/prod/include/status_values.h`` is
+empty -- so
 the console tokens plus the register channel are the substitution, as recorded in
 the base's disclosed gaps and in this row's ``flow_deviation``.
 

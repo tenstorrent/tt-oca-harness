@@ -5,10 +5,10 @@
 The primary's ``manifest_identifier`` is corrupted to force failover, then the
 backup's ``public_key_sel.selection`` is set to 3 -- one of the three encodings
 (3, 6, 7) that name no key source. All three fall through the same ``default:`` arm
-(``manifest_crypto.c:143-221``); a fixed value makes the run reproducible and lets
+(``manifest_crypto.c``); a fixed value makes the run reproducible and lets
 the test assert the exact ``PUBK_SEL=`` the ROM echoed.
 
-PLATFORM ADAPTATION.
+MARKERS.
 
 *Marker.* This ROM has no ``INVALID_KEY_INDEX`` status. The unassigned-selection
 arm prints ``BAD_KEY_SEL`` and returns ``MANIFEST_ERR_SIG_FAILED``; a bad ROM key
@@ -36,7 +36,7 @@ _EFUSE_PRELOAD = (
     Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads" / "efuse_configurations" / "sep_efuse_lc_prod.toml"
 )
 
-# manifest.h:109-114 assigns 0,1,2,4,5. 3, 6 and 7 name nothing.
+# manifest.h assigns 0,1,2,4,5. 3, 6 and 7 name nothing.
 _BAD_SELECTION = 3
 _BAD_PUBK_SEL_VALUE = (_BAD_SELECTION & 0x7) << 4  # index 0, selection 3 -> 0x0030
 

@@ -6,25 +6,24 @@ reference ref: sep_irq_ip_to_aggregator_test (+ _seq, extends sep_irq_connectivi
 test_seq). no_cpu: with the CPU held off, the host injects each CSRNG/EDN
 interrupt via its real INTR_TEST register and proves it propagates to the mapped
 bit of the sep_internal_interrupts aggregate vector that feeds the VeeR PIC --
-exercising the IP `intr_o` -> aggregator wiring (sep.sv:524-546), not merely that
+exercising the IP `intr_o` -> aggregator wiring (sep.sv), not merely that
 the IP raised its own status bit.
 
 The aggregate vector has no frontdoor CSR mirror and the PIC is on the CPU bus
 (unreachable with the CPU held off), so the test observes it through the tb_top
-`sep_internal_interrupts_probe_o` (observation-only XMR mirror, signed off; the
-OSS analog of the reference suite's sep_irq_probe_if wire-tap of sep_interrupts[idx]). The IP-
-local INTR_STATE RW1C contract is checked frontdoor over AXI.
+`sep_internal_interrupts_probe_o`, an observation-only XMR mirror. The IP-local
+INTR_STATE RW1C contract is checked frontdoor over AXI.
 
 Per source (CSRNG cmd_req_done/entropy_req/hw_inst_exc/fatal_err -> bits 23..26;
-EDN cmd_req_done/fatal_err -> bits 27..28), the full reference suite 3-phase check:
+EDN cmd_req_done/fatal_err -> bits 27..28), a 3-phase check:
   CHK-BASE  clear INTR_TEST + W1C INTR_STATE -> aggregate bit reads 0
             (non-vacuity: a stuck-high aggregate bit fails here).
   CHK-SET   INTR_ENABLE + INTR_TEST -> aggregate bit reads 1 AND INTR_STATE bit 1
             (proves INTR_TEST -> intr_o -> sep_internal_interrupts[idx]); a stuck-
             low / mis-wired aggregate bit fails here.
   CHK-ISO   while this source is asserted, the OTHER 5 mapped bits stay 0
-            (one-hot aggregation -- catches an OR-network smear; stronger than
-            reference suite, which checks one source at a time).
+            (one-hot aggregation -- catches an OR-network smear, which checking
+            one source at a time cannot).
   CHK-CLR   W1C INTR_STATE -> aggregate bit returns 0 AND INTR_STATE bit 0
             (RW1C deassert path).
 

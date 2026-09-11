@@ -27,9 +27,9 @@ here a WRONG VALUE in a written register, there a register written AT ALL. R3's
 O2a member sets both bits, so its ``demote = 1`` is correct under either reading,
 and the three PROD_END members never reach.
 
-The reference makes the same distinction for the same reason: with the selector
-bit clear its checker expects ``STATUS: DEMOTION_NOT_SELECTED`` regardless of
-``+AUTH_FLAG_0`` (``sep_demotion_uid_checker.py``, which reads
+The distinction holds at the specification level for the same reason: with the
+selector bit clear the outcome does not depend on ``+AUTH_FLAG_0``, because the ROM
+reads
 ``UNAUTH_FLAG_0`` and never ``AUTH_FLAG_0``).
 
 **Collapse note, stated because the honest claim is narrower than the tracker's
@@ -48,7 +48,7 @@ Both members' registers are read at the END of simulation, after BL1 has run to
 completion. That is sound here for a reason worth stating: DEMOTE_1 is written
 locked, ``sep_lifecycle_ctrl.sv`` derive the DEMOTE field's
 software write-enable from ``~lock``, and the LOCK field is
-write-one-to-set with no hardware clear (``sep_lifecycle_ctrl.rdl:23-36``), so
+write-one-to-set with no hardware clear (``sep_lifecycle_ctrl.rdl``), so
 neither field can be walked back by BL1 or by anything after it.
 
 No ``+sep_crypto_edn_force``: secure boot is off, so the ROM never drives OTBN.
@@ -80,6 +80,6 @@ class sep_firmware_demotion_decision_auth_flag_0_prod_test(sep_demotion_prod_bas
     # rom_main.c lc_write_demotion(demotion_reg=false, lock=true). demotion_reg
     # is still its initialiser because never runs. DEMOTE_2 is written
     # only, i.e. only at PROD_END, so lock 0 here means never written --
-    # sound because the field is write-one-to-set (sep_lifecycle_ctrl.rdl:31-36).
+    # sound because the field is write-one-to-set (sep_lifecycle_ctrl.rdl).
     expect_demote_1 = (0, 1)
     expect_demote_2 = (0, 0)

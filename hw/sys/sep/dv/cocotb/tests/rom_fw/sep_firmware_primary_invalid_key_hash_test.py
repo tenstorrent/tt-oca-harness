@@ -6,16 +6,15 @@ STIMULUS. One bit of the primary manifest's RSA-3072 modulus is flipped
 (``sep_manifest_mutate.corrupt_public_key``) and the TBS is re-hashed, so the
 slot is structurally perfect and fails at exactly one place: the comparison of
 SHA-256(modulus) against the digest the ROM has compiled in for the selected slot
-(``manifest_crypto.c:124-136,190-196``). The backup is untouched and still binds
+(``manifest_crypto.c``). The backup is untouched and still binds
 to ROM key slot 0, so the run must recover and boot from it.
 
 WHY ONE BIT. A wholesale overwrite of the modulus would also be caught by a much
 coarser check on it; a single flip can only be caught by the hash comparison
 itself, so this pins the rejection to ``check_pubkey_hash``.
 
-WHAT THIS STIMULUS DOES *NOT* DEMONSTRATE, AND WHY IT IS BUILT THIS WAY. The
-reference testcase re-signs the primary with a DIFFERENT valid key
-(``bootcode_regression.yaml::sep_firmware_primary_invalid_key_hash_test``), so its
+WHAT THIS STIMULUS DOES *NOT* DEMONSTRATE, AND WHY IT IS BUILT THIS WAY. A
+stronger stimulus would re-sign the primary with a DIFFERENT valid key, so the
 manifest carries a foreign modulus whose signature is self-consistent with it.
 That version shows the digest bind is the last line of defence: without the bind
 the image would RSA-verify and boot on a key the part never trusted. This version
@@ -32,18 +31,18 @@ second RSA key is ever added, a re-signed variant is worth having alongside this
 one; it is a different claim, not a better version of this one.
 
 WHY THE RE-HASH MATTERS, AND WHY NO RE-SIGN. The modulus lives inside the TBS
-(offset 168, ``manifest.h:222``), so without recomputing ``manifest_hash`` the
+(offset 168, ``manifest.h``), so without recomputing ``manifest_hash`` the
 slot would be thrown out by ``manifest_check_integrity``
-(``manifest_load.c:500``) long before the key check and this test would be
+(``manifest_load.c``) long before the key check and this test would be
 asserting on the wrong rejection. Re-signing is neither possible nor needed:
 ``check_pubkey_hash`` runs before ``rsa_3072_verify``
-(``manifest_crypto.c:195,244``), so the stale signature is never examined -- and
+(``manifest_crypto.c``), so the stale signature is never examined -- and
 ``RSA_VERIFY_START`` must therefore NOT appear between the primary read and the
 backup read, which is asserted below.
 
 CRYPTO FAILURES DO FALL OVER. ``manifest_crypto_validate`` is called inside the
 per-slot attempt, so its error returns to ``rom_manifest_boot``'s retry loop
-(``manifest_load.c:659-673`` and the comment at ``rom_main.c:355-357``). That is
+(``manifest_load.c``, and the comment in ``rom_main.c``). That is
 the behaviour under test: this is the pair to
 ``sep_firmware_backup_invalid_key_hash_test``, where both slots carry the defect
 and the run is terminal instead.
@@ -70,14 +69,14 @@ _EFUSE_PRELOAD = (
     / "efuse_configurations" / "sep_efuse_lc_prod.toml"
 )
 
-# manifest.h:294-320
+# manifest.h
 MANIFEST_ERR_KEY_HASH_MISMATCH = 0x0003_0016
 
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
-_HASH_MISMATCH = "PUBK_HASH_MISMATCH"                                  # manifest_crypto.c:132
-_CRYPTO_FAIL = f"CRYPTO_FAIL=0x{MANIFEST_ERR_KEY_HASH_MISMATCH:08x}"   # manifest_load.c:671
-_SLOT_ERR = f"MANIFEST_ERR=0x{MANIFEST_ERR_KEY_HASH_MISMATCH:08x}"     # manifest_load.c:771
+_HASH_MISMATCH = "PUBK_HASH_MISMATCH"                                  # manifest_crypto.c
+_CRYPTO_FAIL = f"CRYPTO_FAIL=0x{MANIFEST_ERR_KEY_HASH_MISMATCH:08x}"   # manifest_load.c
+_SLOT_ERR = f"MANIFEST_ERR=0x{MANIFEST_ERR_KEY_HASH_MISMATCH:08x}"     # manifest_load.c
 _RSA_START = "RSA_VERIFY_START"
 _SIG_VALID = "SIG_VALID"
 _CRYPTO_OK = "CRYPTO_VALIDATE_OK"

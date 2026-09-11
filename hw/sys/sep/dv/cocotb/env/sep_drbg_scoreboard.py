@@ -4,31 +4,29 @@
 # sep_drbg_scoreboard.py
 #
 # Cocotb scoreboard for the SEP entropy datapath CHK1..CHK5 golden-vs-probe
-# comparison, ported from the reference UVM sep_drbg_scoreboard methodology.
+# comparison.
 #
 # CHAINED (default): the scoreboard DRIVES deterministic per-lane noise into the
 # DUT via esrc_noise_ext_i AND feeds the identical sequence into a golden chain
 # (sep_entropy_golden). Because one noise source feeds both, the decorrelator
 # golden aligns by construction -- no LFSR-phase reverse-engineering.
 # Each CHKn expected value is the golden's output of CHKn-1; the only DUT input to
-# the chain is the noise. The reference enable-sync is replicated: the golden decor's
-# per-lane enable mirrors esrc_ro_enable_o each cycle, so the model only shifts on
-# the cycles the DUT does.
+# the chain is the noise. The golden decor's per-lane enable mirrors
+# esrc_ro_enable_o each cycle, so the model only shifts on the cycles the DUT does.
 #
 # Comparison is ordered-FIFO at each DUT valid event (a stage is correct iff its
 # Nth DUT item equals the golden's Nth item), with a small warmup skip for the
 # decorrelator SR-fill / enable-edge transient (reference warmup_samples).
 #
 # strict=False (calibration): mismatches logged, test not failed, first-N pairs
-# dumped for offline alignment. strict=True (sign-off): report() raises (house-rule
-# section 7).
+# dumped for offline alignment. strict=True: report() raises on a mismatch.
 
 from __future__ import annotations
 
 from collections import Counter, deque
 
 # Largest number of 128b blocks one CSRNG Generate command can request: the glen
-# field is GenBitsCtrWidth bits (csrng_pkg.sv:26, GenBitsCtrWidth = 12).
+# field is GenBitsCtrWidth bits (csrng_pkg.sv, GenBitsCtrWidth = 12).
 _CSRNG_MAX_GLEN = (1 << 12) - 1
 
 import cocotb
@@ -170,9 +168,8 @@ class SepDrbgScoreboard:
         # the live entropy_stream_data_o wire-tap monitor.
         self.chk2_backdoor = chk2_backdoor
         # Minimum-evidence floor per enabled stream: a strict run FAILS if a
-        # checkpoint scored fewer than this many matches (reference suite fails enabled
-        # checkpoints with zero comparisons -- a stream that never fired is a
-        # silent hole, not a pass). Override via set_min_matches() for a longer
+        # checkpoint scored fewer than this many matches: a stream that never fired
+        # is a silent hole, not a pass. Override via set_min_matches() for a longer
         # coverage test that demands deeper streams.
         self._min_matches = {
             "CHK1_decor": 8,
@@ -1027,8 +1024,8 @@ class SepDrbgScoreboard:
         self.log.info("==== sep_drbg_scoreboard CHK1..CHK5 report ====")
         any_fail = False
 
-        # CHK5 genbits-chain membership (stronger than the reference suite's AXIS1-as-its-own-golden):
-        # every word delivered to KM (membership mode) and every crypto-leg AXIS1 word
+        # CHK5 genbits-chain membership: every word delivered to KM (membership
+        # mode) and every crypto-leg AXIS1 word
         # must be a genuine CHK4 genbits-golden word, drawn from the SAME verified
         # multiset -- proving the one DRBG stream partitions into the two sinks. The pool
         # is built from DUT genbits, but CHK4 (strict) fails on any genbits!=golden, so a
@@ -1270,9 +1267,9 @@ class SepDrbgScoreboard:
                 )
         # Generate segmentation. gen_last IS a per-Generate-command terminator:
         # csrng_cmd_stage sets cmd_gen_cnt_last when the genbits down-counter
-        # reaches its final beat (csrng_cmd_stage.sv:380, :448), ships it as
+        # reaches its final beat (csrng_cmd_stage.sv), ships it as
         # acmd_bus[16] ("glast"), and csrng_core latches it into gen_last_q at
-        # acmd_sop (csrng_core.sv:748-751) to drive ctr_drbg_gen.req_glast_i. So each
+        # acmd_sop (csrng_core.sv) to drive ctr_drbg_gen.req_glast_i. So each
         # Generate command ends with exactly one glast beat, and that is where its
         # single trailing Update lands.
         self.log.info(

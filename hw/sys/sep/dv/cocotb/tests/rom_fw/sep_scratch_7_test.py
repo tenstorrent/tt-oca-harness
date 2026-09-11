@@ -24,7 +24,7 @@ arm is covered" as covering the whole reject arm.
 
 COLD SCRATCH 7, AND ICCM, AND THAT IS A CORRECTION. The ROM reads
 ``cold_scratch[7]`` and range-checks against SEP ICCM
-[0xC0000000, 0xC0040000), matching ``sep-boot-flow.puml:42-56``.
+[0xC0000000, 0xC0040000), which is what the boot-flow specification requires.
 
 It used to read WARM scratch 0 and check against SEP SRAM, and this test used to
 seed warm scratch 0 to match. Both were wrong against the spec, and the pair was
@@ -33,10 +33,8 @@ detect that the ROM did the wrong thing. The spec picks the COLD bank for a
 reason it states outright: that register "maintains value across warm/watchdog
 resets", which is the entire point of a handler address that has to survive the
 reset it is dispatching from. The warm bank does not retain -- its
-``arst_n = sep_reset_n & wdt_rst_ni`` -- which had been filed as an RTL blocker
-(BLK-003) when it was really firmware parking a value in a bank that never
-promised to keep it. See ``FINDINGS.md`` F28 and
-``dv/docs/rom_boot_flow_vs_reference.md``.
+``arst_n = sep_reset_n & wdt_rst_ni`` -- which looks like an RTL defect but is
+really firmware parking a value in a bank that never promised to keep it.
 
 WHY THE JUMP TARGET IS A REAL INSTRUCTION. Seeding an in-range address that holds
 garbage and keying off the resulting exception does not work here: this ROM's
@@ -295,8 +293,7 @@ class _WarmDispatchObserver:
 
         # CHK-RETAINED: the slot is left ALONE, which is the opposite of what
         # this check used to require and is what the spec asks for.
-        # sep-boot-flow.puml:46-48 branches to the address and writes nothing;
-        # the reference does the same (tt_sep vector.S:140-141). Persistence is
+        # The specification branches to the address and writes nothing. Persistence is
         # the point of a watchdog handler slot: BL1 parks its re-entry address
         # here before arming the watchdog, so the SECOND watchdog reset has to
         # reach the handler too. The ROM used to poison it to 0, which silently
@@ -315,7 +312,7 @@ class _WarmDispatchObserver:
         #
         # DELIBERATELY NOT KEYED ON BOOTROM_START, and that is the point. This
         # check used to assert BOOTROM_START was absent, because this ROM writes
-        # it inside cold_boot. But sep-boot-flow.puml:40 puts BOOTROM_START BEFORE
+        # it inside cold_boot. But the specification puts BOOTROM_START BEFORE
         # the scratch-7 decision, so a spec-correct ROM emits it on the warm path
         # too. Keying on its absence made this check a regression lock holding the
         # ROM at a known divergence (FINDINGS F30): fixing the ROM would have

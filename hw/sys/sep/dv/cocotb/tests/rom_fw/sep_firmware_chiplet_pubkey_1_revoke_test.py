@@ -20,7 +20,7 @@ MATCHED PAIR with ``sep_firmware_chiplet_pubkey_1_test``: same image bytes, one 
 bit apart.
 
 Everything else -- why the fused-key arm is distinct code, why the revoke bit is 17
-and not the reference's 7, why ROM development key 0 is revoked here too, and
+and not 6/7, why ROM development key 0 is revoked here too, and
 which architected status codes are substituted -- is in the shared base
 ``rom_fw/sep_chiplet_pubkey_base.py``. Read it before changing anything here.
 """

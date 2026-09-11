@@ -11,9 +11,8 @@ the observation-only mirror) and proves the OR-packing assembled EXACTLY those b
 unresolved bit in that region. This is the same packing/aliasing bug class that
 caught the mailbox 8->1 truncation, re-run for the crypto/KM region.
 
-reference ref: sep_irq_extended_connectivity_test.
-Mapping: COVERED_STRONGER -- the reference suite asserts connectivity one source at a time; this
-test asserts a cross-IP set SIMULTANEOUSLY and proves no aggregator smear. Distinct
+Asserting connectivity one source at a time cannot catch an aggregator smear. This
+test asserts a cross-IP set SIMULTANEOUSLY and proves there is none. Distinct
 from the single-source-at-a-time aggregator check (sep_irq_ip_to_aggregator_test)
 and from the CPU PIC/ISR delivery path. CPU-ISR delivery of the simultaneous set and
 the full 32-source cross-product are deferred (GAP).

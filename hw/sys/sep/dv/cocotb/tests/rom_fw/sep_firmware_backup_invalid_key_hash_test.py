@@ -10,8 +10,8 @@ slots, so there is nothing left to fall over to and the ROM must stop with
 THIS IS THE ONE MEMBER OF THE FAMILY WHOSE PRIMARY DEFECT IS NOT BAD_MAGIC. The
 shared base corrupts the primary's magic word purely to force a failover, which
 keeps the trigger independent of the defect under test. That is impossible to
-keep here -- the scenario IS "both slots have the same fault class" (procedure
-manifest TP041-B) -- so ``corrupt_primary`` is overridden and
+keep here -- the scenario IS "both slots have the same fault class" -- so
+``corrupt_primary`` is overridden and
 ``primary_expected_error`` follows it.
 
 THAT COSTS THE DEFAULT ATTRIBUTION, WHICH IS WHY IT IS REPLACED.
@@ -23,8 +23,8 @@ for the wrong reasons would need a stronger statement.
 :meth:`check_defect_attribution` therefore requires exactly two occurrences,
 straddling the backup read.
 
-Neither slot reaches RSA: the hash bind precedes it (``manifest_crypto.c:195``
-then ``:244``), so ``RSA_VERIFY_START`` is forbidden and no
+Neither slot reaches RSA: the hash bind precedes it (``manifest_crypto.c``), so
+``RSA_VERIFY_START`` is forbidden and no
 ``+sep_crypto_edn_force`` is needed. If that ordering ever changed, this entry
 would go red rather than quietly start depending on the OTBN shortcut.
 """
@@ -45,7 +45,7 @@ _EFUSE_PRELOAD = (
     Path(__file__).resolve().parents[3] / "tb" / "efuse_preloads" / "efuse_configurations" / "sep_efuse_lc_prod.toml"
 )
 
-_HASH_MISMATCH = "PUBK_HASH_MISMATCH"  # manifest_crypto.c:132
+_HASH_MISMATCH = "PUBK_HASH_MISMATCH"  # manifest_crypto.c
 
 
 @pyuvm.test()

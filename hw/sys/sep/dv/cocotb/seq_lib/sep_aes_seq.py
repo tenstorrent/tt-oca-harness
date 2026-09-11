@@ -3,9 +3,8 @@
 """OpenTitan AES run-control driver (direct AXI on the SEP CPU-LSU bus).
 
 Configures the AES core for ECB-256 encryption, writes the key shares / data,
-triggers the masking-PRNG reseed, and runs one block, mirroring the AES op
-helpers in the reference sep_km_aes_sideload_kat_test_seq (RAL there; direct AXI
-here, like SepOtbn). All accesses are 32-bit beats (size=2): the AES register
+triggers the masking-PRNG reseed, and runs one block. Direct AXI, like SepOtbn.
+All accesses are 32-bit beats (size=2): the AES register
 block is 32-bit behind the wrapper's 64->32 dw-converter.
 
 AES register map (base 0x1091_0000; vendor/lowRISC/opentitan/upstream/hw/ip/aes/rtl/aes_reg_pkg.sv offsets):

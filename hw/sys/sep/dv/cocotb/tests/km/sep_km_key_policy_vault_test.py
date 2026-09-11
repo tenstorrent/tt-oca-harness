@@ -8,7 +8,7 @@ seal stays on the parked command-set vehicle. The host posts a seed-
 selected slot and SRAM region through the mailbox; the ROM walks slot
 0, that slot, and slot 63, rejects a store past ``KM_KPV_SIZE``, then
 locks the selected SRAM region and W1C-clears the violation / IRQ.
-Result flags in KM SRAM word0 (the signed-off ``km_sram_word0_o`` probe).
+Result flags in KM SRAM word0, read through the ``km_sram_word0_o`` probe.
 """
 
 from __future__ import annotations

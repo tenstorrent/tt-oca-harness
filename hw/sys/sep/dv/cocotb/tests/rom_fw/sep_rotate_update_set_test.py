@@ -4,7 +4,7 @@
 
 FEATURE. ``STRAPS_HI[26]`` tells the ROM to try the
 slots in the opposite order. ``rom_manifest_boot`` keeps the offset table fixed
-and rotates the INDEX instead (``manifest_load.c:737-740``)::
+and rotates the INDEX instead (``manifest_load.c``)::
 
     uint32_t slot = retry;
     if (straps->rotate_update && from_spi) slot ^= 1u;
@@ -49,12 +49,12 @@ _ROTATE_UPDATE_BIT = 26
 
 _SPI_PATH_MARKER = "BOOT_SPI"
 _STRAPS_HI_ECHO = f"STRAPS_HI=0x{_STRAPS_HI_ROTATE:08x}"
-_ROTATE_ECHO = "SPI_ROTATE=1"          # rom_main.c:321
-_STRAP_ROTATE_ECHO = " rotate=1"       # boot_straps.c:34
+_ROTATE_ECHO = "SPI_ROTATE=1"          # rom_main.c
+_STRAP_ROTATE_ECHO = " rotate=1"       # boot_straps.c
 _PRIMARY_SRC = f"MANIFEST_SRC=0x{mm.PRIMARY_MANIFEST_OFFSET:08x}"
 _BACKUP_SRC = f"MANIFEST_SRC=0x{mm.BACKUP_MANIFEST_OFFSET:08x}"
 _MANIFEST_OK = "MANIFEST_OK"
-# manifest_load.c:764 prints this only for retry == 1, so its absence is what
+# manifest_load.c prints this only for retry == 1, so its absence is what
 # says the rotated slot was the FIRST attempt and not a fallback.
 _SECOND_ATTEMPT = "MANIFEST_BACKUP"
 _ANY_SLOT_ERROR = "MANIFEST_ERR="

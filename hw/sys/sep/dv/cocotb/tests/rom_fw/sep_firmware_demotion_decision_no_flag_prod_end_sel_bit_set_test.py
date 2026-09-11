@@ -43,9 +43,8 @@ reported ``covered-by-O1`` with this file cited, exactly as
 ``batch_runs_0904_vp/FINDINGS.md`` F07 requires and as the R4 guidance in
 ``sep_demotion_decision_base.py`` sets out.
 
-The reference expects only ``STATUS: DEMOTION_NOT_SELECTED`` for the PROD_END row
-and appends no lock expectation (``sep_demotion_uid_checker.py``); it also
-plants the same selector bit for this scenario
+There is no architected demotion status code on this ROM, and the selector bit is
+planted for this scenario
 (``sep_demotion_uid_checker.py``, from ``+SET_SELECTOR_BIT_17`` at
 ), so the stimulus is a faithful port even though the ordering
 argument above is this platform's addition. There is no architected demotion

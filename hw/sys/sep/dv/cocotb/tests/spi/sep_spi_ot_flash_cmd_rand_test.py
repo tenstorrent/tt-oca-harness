@@ -2,10 +2,9 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP OpenTitan-SPI flash command-breadth test (PyUVM, cpu-firmware, randomized).
 
-SPI-subsystem Phase-2 rep SPI flash command breadth (lead of the dedicated OpenTitan-SPI sweep). A
-cpu-firmware port of the reference spi_ot_flash_write_read_test +
-spi_ot_flash_sector_erase_test, upgraded to a randomized representative
-([RAND-REP], stronger than the directed reference suite source). Boots the VeeR EL2 core
+Randomised SPI flash command breadth over the OpenTitan SPI host: write/read and
+sector erase in one representative rather than as directed cases. Boots the VeeR
+EL2 core
 and runs the spi_ot_flash_cmd firmware, which drives the OT SPI host (@
 0x10B0_0000) against the OcahSpiFlash BFM:
 

@@ -7,40 +7,32 @@ The PRIMARY's ``signature_type`` is set to 0. ``validate_signature`` accepts onl
 with ``BAD_SIG_TYPE=`` (``manifest_crypto.c``), returning
 ``MANIFEST_ERR_SIG_FAILED``.
 
-THE PRIMARY MUST NOT BE BROKEN ANY OTHER WAY. The reference modifies only the
-primary's ``signature_type`` and deliberately does NOT corrupt the primary's
-``manifest_identifier`` the way its backup-side scenarios do,
-because the primary has to REACH the check under test. So there is no BAD_MAGIC
+THE PRIMARY MUST NOT BE BROKEN ANY OTHER WAY. Only the primary's
+``signature_type`` is modified; its ``manifest_identifier`` is deliberately left
+intact, because the primary has to REACH the check under test. So there is no
+BAD_MAGIC
 failover trigger here.
 
-WHAT THE REFERENCE'S PRIMARY ACTUALLY CARRIES IN THE SIGNATURE FIELD, because it is
-not what its own scenario dict suggests and it makes this port the STRONGER of the
-two. The dict also sets ``signing_authority`` and ``signing_key_file``,
-but those have no effect on the signature bytes here: with secure boot on and
+THE SIGNATURE FIELD KEEPS ITS SHIPPED BYTES, WHICH IS THE HARDER CASE. Setting a
+signing authority or key file has no effect on the signature bytes here: with
+secure boot on and
 ``signature_type`` outside {1, 2}, ``SigningKey.__init__`` takes the ``else`` arm
 and sets ``no_signature`` from ``check()``, which returns True unconditionally once
-checking is disabled -- and the reference's cocotb harness ALWAYS disables it by
-appending ``meta.disable_checks=true``. ``generate_verified_signature`` then returns
-an EMPTY bytearray, and ``min_signature_size`` stayed 0 so the size check accepts it.
-Note also that 0 is literally ``ManifestSignatureType.NO_SIGNATURE``.
-So the reference rejects a manifest whose signature field is blank. THIS port keeps
-the shipped, syntactically complete, merely stale dev0 signature, which is the
-harder case: the ROM must refuse on the declared TYPE alone with a plausible
-signature sitting right there. Both are refused at ``manifest_crypto.c``
+checking is disabled. Note also that 0 is literally
+``ManifestSignatureType.NO_SIGNATURE``, so a packer asked for type 0 can emit a
+BLANK signature field. This testcase instead keeps the shipped, syntactically
+complete, merely stale dev0 signature, which is the harder case: the ROM must
+refuse on the declared TYPE alone with a plausible signature sitting right there.
+Either is refused at ``manifest_crypto.c``
 before the signature is read at all, so the outcome is the same and the stimulus
-here is strictly less forgiving. Stated because the earlier wording of this
-paragraph claimed the reference re-signed with dev0, which is not what its packer
-does.
+here is strictly less forgiving.
 
-THE EXPECTED OUTCOME IS A COMPLETED BOOT. The reference's ``expected_patterns``
-(``sep_firmware_secure_boot_test.py``) grade the primary rejection
-``WARNING: INVALID_SIGNATURE_TYPE`` and end in
-``COPY_AND_EXEC_IMAGE / EXEC_IMAGE``.
+THE EXPECTED OUTCOME IS A COMPLETED BOOT: the primary is rejected and the untouched
+backup serves the boot.
 
-WHY 0, AND WHY A FIXED VALUE. The reference draws from
-``random.choice([0, random.randint(3, 10)])``, so 0 is one of its own
-values; it is deliberately NOT 2, because 2 is ``MANIFEST_SIG_TYPE_ECC_P_256``
-(``manifest.h``), the one non-RSA type its packer treats specially. The ROM's
+WHY 0, AND WHY A FIXED VALUE. A fixed value makes the echoed field assertable. It
+is deliberately NOT 2, because 2 is ``MANIFEST_SIG_TYPE_ECC_P_256``
+(``manifest.h``), a declared type the packer treats specially. The ROM's
 check is a single ``!=`` against RSA-3072, so every value in that set exercises the
 identical arm, and fixing it is what lets this testcase assert the exact
 ``BAD_SIG_TYPE=`` the ROM echoed rather than accepting any value at all.
@@ -62,9 +54,8 @@ halves are asserted here:
   * ``RSA_VERIFY_FAIL`` is forbidden here and required there, and
     ``BAD_SIG_TYPE=0x00000000`` is required here and forbidden there.
 
-PLATFORM ADAPTATION -- MARKER. The reference expects
-``WARNING: INVALID_SIGNATURE_TYPE``. This ROM *defines* that code
-(``bootrom/prod/include/status_values.h:11``) but never EMITS it: there is no
+MARKER. ``SEP_MSG_INVALID_SIGNATURE_TYPE`` is *defined* in ``status_values.h`` but
+never EMITTED: there is no
 ``report_status`` call for it anywhere under ``bootrom/prod/src``, so the
 architected status ring carries only the generic terminal code and the debug
 console token is the only per-reason evidence available.
@@ -100,13 +91,12 @@ _EFUSE_PRELOAD = (
     / "efuse_configurations" / "sep_efuse_lc_prod.toml"
 )
 
-# One of the reference's own values (sep_firmware_secure_boot_test.py), fixed so
-# the echoed value is assertable. See the docstring for why not 2.
+# Fixed so the echoed value is assertable. See the docstring for why not 2.
 _BAD_SIG_TYPE = 0
 # manifest_crypto.c -- simputshex32("BAD_SIG_TYPE=", signature_type).
 _BAD_SIG_TYPE_ECHO = f"BAD_SIG_TYPE=0x{_BAD_SIG_TYPE:08x}"
 # The backup keeps the shipped selector: ROM key slot 0
-# (configs/secure_boot_test.yaml:112-114).
+# (configs/secure_boot_test.yaml).
 _BACKUP_SEL_ECHO = "PUBK_SEL=0x00000000"
 
 

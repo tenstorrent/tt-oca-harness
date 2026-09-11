@@ -49,9 +49,8 @@ Isolation proof (both directions, then the remaining isolated bits):
                     TRNG-only reset, so resetting the entropy complex does not
                     reach the accelerator domains.
 
-Reference: sep_clock_uvm_sw_reset_per_ip_test --
-COVERED_STRONGER: the reference suite proves only the SW_RESET_N register -> sep_sw_rst_no output
-bit mapping (via an HDL backdoor); this test proves the reset actually lands in the
+Proving only the SW_RESET_N register -> sep_sw_rst_no output bit mapping would
+need an HDL backdoor and would stop there. This test proves the reset lands in the
 IP and is domain-isolated at the level of a live crypto-datapath RESULT, frontdoor.
 no_cpu / +skip_fuse_sense (entropy + crypto are independent of OTP lifecycle) /
 +esrc_noise_force (deterministic ESRC ring-osc noise so the entropy stack is alive

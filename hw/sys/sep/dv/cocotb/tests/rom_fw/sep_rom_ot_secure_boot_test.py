@@ -20,8 +20,7 @@ That one swap turns on a whole code path the non-secure test never reaches:
 `secure_boot_enabled()` gates on `sboot_dis` (eFuse), the manifest flag, and the
 lifecycle state: PROD/PROD_END always enforce, TEST_DEV/RMA enforce only when the
 manifest asks. A zero OTP gives TEST_DEV with sboot_dis=0, and the signed manifest
-sets the flag -- so this test needs no special eFuse image, unlike the reference
-flow which ships a PROD preload to force it.
+sets the flag, so this test needs no special eFuse image.
 
 NOTE ON ENTROPY: this run does NOT exercise the entropy chain. OTBN cannot execute
 until URND is reseeded, and the boot flow does not bring up

@@ -4,10 +4,9 @@
 """ROM/BL1 terminal verdict, read from SEP cold_scratch[0].
 
 The firmware reports its final outcome by writing one word to cold_scratch[0]:
-``TEST_PASS_CODE`` or ``TEST_FAIL_CODE``.  Those constants and that register are
-the reference firmware's convention (``sep_common.h``), which this ROM
-adopted -- see ``bootrom/prod/include/errors.h`` (``VERDICT_OUT``,
-``rom_test_fail``), ``bootrom/prod/src/vector.S:663-665``, and
+``TEST_PASS_CODE`` or ``TEST_FAIL_CODE``. The register and the two constants are
+defined in ``bootrom/prod/include/errors.h`` (``VERDICT_OUT``, ``rom_test_fail``)
+and written by ``bootrom/prod/src/vector.S`` and
 ``dv/fw/tests/bl1_pass_test/bl1_pass_test.c``.
 
 Why this channel and not the outbound mailbox the ROM used to write:

@@ -8,8 +8,7 @@ side over the CPU-LSU master (NO inbound filter): the OUTBOUND aperture
 (outbound_mailbox_0 @ 0x10A0_0000). WRITE_DATA(+0x00) pushes the TX FIFO (SEP->peer);
 READ_DATA(+0x08) pops the RX FIFO (peer->SEP), which stays EMPTY here because the
 peer (SMC) side is not driven -> read returns the 0xFEEDDEAD sentinel + SLVERR. So
-this is the TX-path test, exactly like the reference suite ("CPU not running -> RX always empty;
-verify the TX path").
+this is the TX-path test: with no CPU running the RX side is always empty.
 
 STATUS has no exact-depth field (only empty/full/write_level_above/read_level_above),
 so the golden keeps the TX occupancy internally and predicts the visible bits.
@@ -65,10 +64,10 @@ CLOCK_GATE_CTRL = SEP_CPU_CTRL.addr("CLOCK_GATE_CTRL")
 CLOCK_GATE_IMPL_MASK = SEP_CPU_CTRL.mask32("CLOCK_GATE_CTRL")
 
 MAILBOX_DEPTH = 8  # sep_pkg::MAILBOX_DEPTH
-# Read-from-empty returns this sentinel + SLVERR (axi_lite_mailbox.sv:377).
+# Read-from-empty returns this sentinel + SLVERR (axi_lite_mailbox.sv).
 READ_EMPTY_SENTINEL = 0xFEED_DEAD
 # The write-only WRITE_DATA register reads back this constant + OKAY
-# (axi_lite_mailbox.sv:370): the push side is not readable.
+# (axi_lite_mailbox.sv): the push side is not readable.
 WRITE_DATA_RD_SENTINEL = 0xFEED_C0DE
 RESP_OKAY = 0
 RESP_SLVERR = 2

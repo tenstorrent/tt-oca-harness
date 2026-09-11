@@ -30,9 +30,8 @@ reading the selector and the revocation bitmap and then verifying with them:
   * and the shared base requires the failover ordering and the device-side read
     order, so the boot came from the backup ADDRESS and not from the primary.
 
-The reference asserts less than this. Its ``BACKUP_ROM_KEY_VALID`` expectation
-ends in ``BACKUP_BL1_LOADED / COPY_AND_EXEC_IMAGE / EXEC_IMAGE`` and -- unlike its
-own primary-side twin -- omits ``STATUS: USING_ROM_KEY``, so it never
+Merely ending in ``BACKUP_BL1_LOADED / COPY_AND_EXEC_IMAGE / EXEC_IMAGE`` would
+assert less than this, because such a run never
 requires evidence that the ROM-key path was the one taken. The markers above close
 that gap rather than reproduce it.
 
@@ -69,9 +68,8 @@ _EFUSE_PRELOAD = (
 )
 
 # The only populated entry in key_digests.c, and the slot the shipped image
-# is signed against (configs/secure_boot_test.yaml:112-114). The reference draws a
-# valid index at random from [0..5] and re-signs with that slot's own private key
-# (sep_firmware_secure_boot_test.py); this tree ships one RSA key
+# is signed against (configs/secure_boot_test.yaml). Exercising another valid index
+# would need that slot's own private key; this tree ships one RSA key
 # (tools/tt-boot-manifest/tests/signing_keys/rsa_private_key.dev0.pem), so slot 0
 # is the only index that is valid here in the sense the testcase needs -- a
 # populated digest the image actually binds to.

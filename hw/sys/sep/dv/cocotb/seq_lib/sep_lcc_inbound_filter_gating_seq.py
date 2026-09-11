@@ -2,8 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """LCC sep_debug -> inbound-filter gating sequences for the SEP OSS flow.
 
-Stimulus for the inbound-filter-gating test (reference suite ``sep_lcc_uvm_inbound_filter
-_gating_test``). The contract:
+Stimulus for the inbound-filter-gating test. The contract:
 
   feat_ctrl.sep_debug (FEAT_CTRL[0]) drives the SEP inbound filter's
   ``filter_skip_i`` (``sep.sv``: ``inbound_filter_skip_i = feat_ctrl_o.sep_debug``).
@@ -16,7 +15,7 @@ Two buses are exercised:
     DEMOTE_1 to flip PROD -> PROD_DBG_1. FEAT_CTRL reads carry an ``expected``
     golden value so the scoreboard exact-value-checks the lc_state -> feat_ctrl
     decode (and FEAT_CTRL[0] is the frontdoor mirror of the internal
-    ``filter_skip_i`` -- the OSS replacement for the reference suite's backdoor ``uvm_hdl_read``).
+    ``filter_skip_i``, read frontdoor rather than by backdoor).
   * EXTERNAL (SMN-inbound, ``m_axi``): the filtered path. ``SepExtAxiProbeSeq``
     issues a single read and exposes resp_ok / resp_code / timed_out. Timeout is
     fatal by default; the inbound filter proves a blocked access by routing it to

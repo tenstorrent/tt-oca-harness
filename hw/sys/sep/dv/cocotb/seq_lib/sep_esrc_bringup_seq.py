@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """ESRC -> DRBG -> CSRNG -> EDN entropy bring-up sequences + reusable helpers.
 
-Replicates the reference suite real-entropy bring-up order (sep_drbg_uvm_base_test_seq.sv):
+Real-entropy bring-up order.
 PHASE-A applies the shared TRNG reset, configures ESRC with the generators off,
 enables CSRNG, and stages the EDN commands but does NOT enable EDN; the caller then
 enables the generators and waits for a seed; PHASE-B enables EDN last. CSRNG/EDN
@@ -178,7 +178,7 @@ class SepEntropyCfg:
     # Golden seed-accumulation skip: how many post-whitener words the DUT swallows
     # before the CSRNG seed packer starts. ZERO for this DRBG -- drbg.sv wires the
     # packer straight to the stream (`.csrng_word_valid_i (entropy_stream_vld_i)`,
-    # drbg.sv:150) with no distribution FIFO in between, so nothing is absorbed and
+    # drbg.sv) with no distribution FIFO in between, so nothing is absorbed and
     # the golden must not skip. The old default of 12 modelled a distribution FIFO
     # that this repository's drbg.sv does not instantiate, which shifted the golden
     # by 12 words and mismatched CHK3_seed (and hence CHK4/CHK5) while CHK1/CHK2
@@ -331,7 +331,7 @@ class SepEsrcFifoDrainSeq(uvm_sequence):
     """Drain the entropy FIFO via the AXI frontdoor (FIFO_RDATA), collecting every
     word into ``self.words`` in pop (= push) order for the CHK2 compare.
 
-    This is the reference suite-faithful CHK2 observation point: FIFO_RDATA is the ONLY thing
+    This is the CHK2 observation point: FIFO_RDATA is the ONLY thing
     that pops the FIFO, and the DRBG seed taps the pre-FIFO whitener output, so the
     frontdoor read is non-invasive to the CHK3..CHK5 chain AND reflects any FIFO
     churn the backdoor wire-tap would miss. Reads exactly FIFO_STATUS.LEVEL words so

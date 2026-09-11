@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP NMI sanity test (PyUVM).
 
-OSS port of the reference suite ``sep_nmi_sanity_test``. Boots the VeeR EL2 core and runs
+Boots the VeeR EL2 core and runs
 the nmi_sanity firmware, which verifies the NMI mechanism on bare ``sep``:
 the NMI trampoline alignment, SEP_NMI_VEC reset default / writeback / sticky
 lock, and that a WDT bark actually fires the NMI and reaches the registered

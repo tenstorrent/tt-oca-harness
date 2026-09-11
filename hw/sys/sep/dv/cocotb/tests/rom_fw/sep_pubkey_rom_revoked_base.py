@@ -25,13 +25,12 @@ populated entry in ``key_digests.c``; slots 1-5 are ``(void *)0``. So:
   * slots 1-5 would otherwise be rejected as ``ROM_KEY_EMPTY``, and forbidding
     that marker is what pins the ORDER -- revocation before the digest table;
   * slot 0 would otherwise boot, because the shipped image genuinely binds to it
-    (``configs/secure_boot_test.yaml:112-114``), so revocation is the sole cause
+    (``configs/secure_boot_test.yaml``), so revocation is the sole cause
     of the rejection and ``RSA_VERIFY_START`` / ``SIG_VALID`` are the load-bearing
     forbids there.
 
-**THE REFERENCE ORDERS THESE TWO CHECKS THE OTHER WAY ROUND, AND THIS FAMILY
-DEPENDS ON THE DIFFERENCE.** Grendel's ROM takes the index bound,
-then the digest-populated check (, returning
+**REVOCATION-FIRST IS WHAT SPLITS THIS FAMILY.** A ROM that took the index bound,
+then the digest-populated check (returning
 ``SEP_MSG_INVALID_KEY_CONTENTS``), and only THEN revocation. That order
 is invisible there because all six of its slots are populated -- carries a
 ``static_assert`` is marked "COVERAGE: exclude, correct by
@@ -42,8 +41,8 @@ reference's order, slots 1-5 would return ``ROM_KEY_EMPTY`` /
 ``MANIFEST_ERR_SIG_FAILED`` instead of ``KEY_REVOKED``.** On this platform,
 therefore:
 
-  * **slot 0** establishes the reference's own property -- revocation refuses an
-    otherwise fully valid, correctly signed, bootable image;
+  * **slot 0** establishes the strong property -- revocation refuses an otherwise
+    fully valid, correctly signed, bootable image;
   * **slots 1-5** establish the weaker property that revocation PREEMPTS the
     empty-digest arm, because this tree ships one signing key and populates one
     digest (see :func:`select_backup_rom_slot`).
@@ -61,7 +60,7 @@ bit 0 set is refused, on the same bytes.
 
 THE FUSE BIT IS THE SLOT NUMBER, and the authority for that is the register map,
 not the ROM's own header: ``CHIPLET_PUBK_REVOKE.select[7:0]`` is the ROM-key
-bitmap (``regs/blocks/sep_efuse_map/sep_efuse_map.rdl:721-729``) and the ROM
+bitmap (``sep_efuse_map.rdl``) and the ROM
 indexes it with the manifest's key index directly (``manifest_crypto.c``).
 The fused-key slots do NOT continue that sequence -- they sit at bits 16 and
 above -- so nothing here may be derived by counting past slot 5.
@@ -103,7 +102,7 @@ def select_backup_rom_slot(buf: bytearray, slot_index: int) -> tuple[int, bool]:
 
     ``tbs_changed`` is what the caller asserts the consequences of, and it is
     measured rather than assumed. The shipped backup already selects ROM slot 0
-    (``configs/secure_boot_test.yaml:112-114``), so for slot 0 the write is a
+    (``configs/secure_boot_test.yaml``), so for slot 0 the write is a
     no-op: the TBS is untouched, the manifest stays fully sealed and its dev0
     signature stays valid. For slots 1-5 the write changes the TBS, so
     ``manifest_hash`` is recomputed and the signature goes stale -- which is

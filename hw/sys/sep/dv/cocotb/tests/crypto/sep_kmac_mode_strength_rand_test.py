@@ -10,11 +10,11 @@ cross-check only) does not reach:
     SHA3-224/256/384/512, SHAKE-128/256, cSHAKE-128/256,
     KMAC-128/256 across all five key lengths  (13 cells).
 
-reference parity: MERGED_INTO the reference suite kmac mode/strength directed set. The reference SEP
-KMAC coverage is a keyed KMAC cross-check (no standalone SHA3/SHAKE/cSHAKE digest
-golden), so the independent pure-Python Keccak golden (env/sep_kmac_golden.py:
-SHA3/SHAKE cross-checked vs hashlib, cSHAKE/KMAC vs NIST SP800-185) is the
-reference and this rep is stronger than the reference suite. DISTINCT from
+Randomised KMAC mode / strength breadth against an exact golden. The other KMAC
+coverage is a keyed cross-check with no standalone SHA3/SHAKE/cSHAKE digest
+golden, so the pure-Python Keccak model (env/sep_kmac_golden.py: SHA3/SHAKE
+cross-checked against hashlib, cSHAKE/KMAC against NIST SP800-185) is the
+reference here. DISTINCT from
 `sep_km_kmac_sideload_kat_test` (KMAC-256 via sideload, cross-check) -- KMAC
 mode/strength breadth is standalone SW-key with an exact golden.
 
