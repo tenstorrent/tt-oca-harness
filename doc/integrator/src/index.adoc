@@ -399,6 +399,13 @@ full register layout, refer to the SMC Memory Map documentation
 [[smc-efuse-connection]]
 ===== eFuse Interface
 
+[NOTE]
+====
+This guide uses *eFuse* and *OTP* interchangeably for the same one-time
+programmable bank and the SHIM that fronts it. Port names mix both
+(`efuse_*`, `*_otp_*`); they refer to the same interface.
+====
+
 The eFuse interface consists of two parts:
 
 * `efuse_bank_ctrl` -- a 32-bit AXI-Lite interface used to access the SHIM
@@ -730,6 +737,7 @@ dtp #(
 * DTP remains active during clock stop for debug access
 * External CTP signals require pad ring integration with ESD protection
 
+[[stap-scan-chain-topology]]
 ==== STAP Scan Chain Topology
 
 The DTP secondary scan path chains multiple STAPs on a single PTAP-managed scan
@@ -882,24 +890,59 @@ external TRNG is connected, terminate `ext_trng_axil` with a DECERR slave.
 
 ==== eFuse and Lifecycle
 
-SEP has a dedicated eFuse interface; the SHIM contract is
-<<smc-efuse-connection>>. This instance is parameterized with
-`HAS_LC_STATE=1` (SMC uses `0`), which enables lifecycle-state
-awareness to meet security requirements. Instantiate a separate
-eFuse SHIM and physical eFuse bank for SEP; do not share the SMC's.
+SEP has its own eFuse bank. Instantiate a separate SHIM and physical
+eFuse bank; do not share the SMC's. The SHIM contract is
+<<smc-efuse-connection>>. On `sep.sv` connect `efuse_bank_ctrl_*` and
+`efuse_shim_command_*`. Through the SMU those ports appear as
+`sep_efuse_bank_ctrl_*` and `sep_efuse_shim_command_*`.
 
-The lifecycle controller exports `lc_state_o` (differentially encoded),
-`lc_sigint_err_o` (signal integrity error), `security_disable_o`,
-`secure_tm_o`, and `dbg_disable_o` (the typed debug-disable struct that the
-SMU routes to the DTP). The feature-control vector (`feat_ctrl`) is separately
-produced by the lifecycle controller and consumed internally within sep.sv; it
-is not an external port. `lcc_demote_state_1_o` and `lcc_demote_state_2_o` are
-exported at the SMU boundary; at present the SMU does not connect them to the
-SMC instance.
+SEP senses this bank after its own reset. Watch `sep_fuse_sense_done_o`.
+On `sep.sv`, drive `smc_fuse_sense_done_i` from the SMC so firmware can
+see when the SMC fabric is out of reset; the SMU wires that input
+internally.
 
-An OTP debug AXI-Lite port (`axil_sep_otp_jtag`) connects to the DTP for JTAG
-access to SEP fuses. When SEP is disabled (`SEP=0` at the SMU level), the SMU
-instantiates an AXI-Lite error slave on this path.
+Lifecycle and test-mode ports on `sep.sv`, and what to do with them.
+Behaviour is in the Technical Reference Manual, not here.
+
+* `secure_tm_req_i` signals a request to enter secure test mode.
+SEP latches it into `secure_tm_o` when fuse sensing completes, or at
+cold-reset release if SEC_DIS is already asserted. Secure test mode
+forces a no-secret, no-fuse-program configuration; it is not an
+authorization bit. See
+xref:ocah-docs:ROOT:architecture.adoc#test-mode-entry[Test Mode Entry]
+and
+xref:ocah-docs:ROOT:architecture.adoc#secure-tm-vs-scandump[`secure_tm` and the Secure Scan Chain]
+in the TRM. `secure_tm_o` is also an SMU output.
+
+* `security_disable_o` is the SEC_DIS token-match result (emergency
+A0 unlock). On `sep.sv`, route it to SMC `sep_security_disable_i`; the
+SMU does that internally. See
+xref:ocah-docs:ROOT:architecture.adoc#security-disable-sec_dis[Security Disable]
+in the TRM.
+
+* `lc_state_o` is the differentially encoded LC_STATE shadow.
+`lc_sigint_err_o` is the decode integrity error (fail-closed). Both
+are SMU outputs. See
+xref:ocah-docs:ROOT:architecture.adoc#life-cycle-controller-lcc-life-cycle-controller-lcc[Life Cycle Controller]
+in the TRM.
+
+* `dbg_disable_o` is the typed per-path debug/test disable vector
+(active-high: 1 = path disabled). On `sep.sv`, route it to DTP
+`dbg_disable_i`; the SMU does that internally.
+
+* `lcc_demote_state_1_o` / `lcc_demote_state_2_o` are differentially
+encoded in-field debug demotion. They leave the SMU for adopter
+lifecycle logic and are not connected to the SMC. See
+xref:ocah-docs:ROOT:architecture.adoc#demote-1-2-in-field-debug-demotion[in-field debug demotion]
+in the TRM.
+
+* `sep_fuse_dft_disable_o` / `smc_fuse_dft_disable_o` gate DFT-inserted
+OTP access. Leave them open if no such path is inserted. They are SMU
+outputs.
+
+OTP debug AXI-Lite (`axil_sep_otp_jtag`) is connected to the DTP inside
+the SMU; when `SEP=0` the SMU instantiates an AXI-Lite error slave on
+that path.
 
 ==== SPI Host Interface
 
@@ -916,7 +959,7 @@ non-volatile public keys before transferring control. Feature controls derived
 from secure boot authentication and lifecycle state govern what operations are
 permitted after boot.
 
-The `secure_tm_req_i` input is a secure test mode request. The `jtag_id` input
+The `jtag_id` input
 must be tied to an appropriate constant in the top-level integration. A
 `rst_vec_i` port exists on `tb_top.sv` for DV reset vector injection; it is not
 present on `sep.sv` itself and requires no integration tie-off.
