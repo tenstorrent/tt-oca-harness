@@ -27,27 +27,17 @@ EXT SRAM **and** SMC SRAM. Only the first exists in this ROM.
     "cleared before SPI re-init" is settled by the linked image; simulation settles
     "cleared, and cleared entirely", which is what this test measures.
 
-  * **SMC SRAM -- NOT covered. The stimulus exists; the ROM branch that would
-    need the clear does not.** The spec does not ask for this clear
+  * **SMC SRAM -- NOT covered, because the OCA manifest cannot express the
+    condition the clear is gated on.** The spec does not ask for this clear
     unconditionally. ``sep-boot-flow.puml`` reads "Clear SMC SRAM available for
     payload loading **if SMC SRAM used**", and what decides "used" is the USE_EXT
     bit two partitions later (``puml:384-392``: payload into EXT SRAM if the bit is
     set, into SMC SRAM otherwise).
-    Be precise about which side is missing, because the two have different owners.
-    The manifest side is fully implemented: the host-side packer emits the bit
-    (``bootrom/prod/tools/tt-boot-manifest/src/pack_images.py:82-83,91``,
-    ``.../src/pack_images_constants.py:91``), and every image this DV tree boots is
-    built with it CLEAR -- ``bootrom/prod/configs/non_secure_boot_test.yaml:32,101``,
-    ``secure_boot_test.yaml`` and ``encrypted_boot_test.yaml`` all set
-    ``use_ext_sram: 0``. The ROM side is not: ``FLAG_ARGS_BIT_USE_EXT_SRAM``
-    (``bootrom/prod/include/) is referenced nowhere under
-    ``bootrom/prod/src/`` or ``bootrom/prod/include/`` apart from that ``#define``,
-    and the payload load unconditionally targets
-    ``dest + payload_offset`` with ``dest == SRAM_BASE``.
-    THIS RUN OBSERVES THE DEVIATION rather than inferring it. The backup manifest
-    it boots logs ``flag_args=0x00000000`` (CHK-STIMULUS-SPI), i.e. USE_EXT clear,
-    so ``puml:386-392`` says its payload belongs in SMC SRAM -- and the same run
-    logs ``COPY_SRC=0x10002000`` -- the payload staged in EXT SRAM. (``LOAD`` and
+    The OCA manifest declares no such bit. There is nothing for a producer to set
+    and nothing for the ROM to branch on, so the payload load unconditionally
+    targets ``dest + payload_offset`` with ``dest == SRAM_BASE``.
+    THIS RUN OBSERVES THAT rather than inferring it: it logs
+    ``COPY_SRC=0x10002000``, i.e. the payload staged in EXT SRAM. (``LOAD`` and
     ``COPY_DST`` are 0xC0000000, BL1's ICCM destination, not the staging area.)
     So ``puml:152``'s condition can be requested but never becomes true
     in the ROM, and a testcase for the SMC clear has nothing to assert against.
@@ -520,13 +510,9 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
             "CHK-SCOPE: TP080 asks for EXT SRAM *and* SMC SRAM to be cleared in this "
             "window. Only the EXT SRAM half is asserted above. sep-boot-flow.puml:152 "
             "conditions the SMC SRAM clear on 'if SMC SRAM used', which puml:384-392 "
-            "decides from the manifest USE_EXT bit. The stimulus side of that exists: "
-            "the packer emits the bit (pack_images.py:91) and every image booted here "
-            "is built with it CLEAR (bootrom/prod/configs/*_test.yaml use_ext_sram: 0), "
-            "which this run observes as flag_args=0x00000000 on the manifest it booted. "
-            "What is missing is the ROM's consuming branch: FLAG_ARGS_BIT_USE_EXT_SRAM "
-            " is referenced nowhere under bootrom/prod/src, and "
-            " staged this payload in EXT SRAM regardless "
+            "decides from a manifest USE_EXT bit. The OCA manifest declares no such "
+            "bit, so there is nothing for a producer to set and nothing for the ROM to "
+            "branch on: this payload was staged in EXT SRAM unconditionally "
             "(COPY_SRC=0x10002000; LOAD=0xC0000000 is BL1's ICCM destination). So the "
             "SMC clear has nothing to "
             "assert against. Consistently, boot_rom.dis has no store loop over "
