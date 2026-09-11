@@ -4,9 +4,16 @@
 ifndef ocah_synth_pdk_mk
 ocah_synth_pdk_mk := 1
 
+PDKS = sky130 ihp-sg13g2 gf180mcuD
+
 # Default PDK, forwarded into yosys as PDK=$(TECH) (see
 # flows/synth/yosys/tech/ and scripts/init_tech.tcl).
 TECH ?= ihp-sg13g2
+
+# Warn if unsupported PDK
+ifeq ($(filter $(TECH),$(PDKS)),)
+$(error Unknown PDK '$(TECH)' — supported PDKs are: $(PDKS))
+endif
 
 # PDK installation location and install check
 PDK_ROOT ?= $(OCAH_ROOT)/local/pdks
@@ -36,7 +43,7 @@ ocah-synth-pdk: ${PDK_ROOT}/${TECH}
 ${PDK_ROOT}:
 	mkdir -p $(PDK_ROOT)
 
-$(foreach pdk,sky130) ${PDK_ROOT}/sky130 ${PDK_ROOT}/ihp-sg13g2 ${PDK_ROOT}/gf180mcuD: ${PDK_ROOT}
+$(foreach pdk,$(PDKS),${PDK_ROOT}/$(pdk)) : ${PDK_ROOT}
 	ciel ls --pdk=$(subst ${PDK_ROOT}/,,$@) --pdk-root=$(PDK_ROOT) | grep $($(subst ${PDK_ROOT}/,,$@)_HASH) || ciel build --clear-build-artifacts --pdk=$(subst ${PDK_ROOT}/,,$@) --pdk-root=$(PDK_ROOT) $($(subst ${PDK_ROOT}/,,$@)_HASH)
 	ln -srf $(PDK_ROOT)/ciel/$(subst ${PDK_ROOT}/,,$@) $(PDK_ROOT)/$(subst ${PDK_ROOT}/,,$@)
 
