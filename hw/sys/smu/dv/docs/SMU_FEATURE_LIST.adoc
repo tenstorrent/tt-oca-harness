@@ -25,7 +25,7 @@ and SEP=1 work are OUT.
 [[smu-feature-subset]]
 === SEP=0 subset
 
-`SMU_SPEC.md` Features 1–7, scoped to `--dut smu` on its `SEP=0` compile profile.
+Features 1–7, scoped to `--dut smu` on its `SEP=0` compile profile.
 
 [cols="1,2,2,3,3",options="header",]
 |===

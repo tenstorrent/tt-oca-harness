@@ -14,7 +14,7 @@ membership for `--dut smu` is `testlists/wrapper.toml`.
 |===
 |Field |Value
 |DUT |`--dut smu` → `hw/top/smu_wrapper.sv` under `smu_wrapper_uvm_top`, on its `SEP=0` compile profile (alias `smu_wrapper`)
-|Spec / plan |`hw/sys/smu/doc/SMU_SPEC.md` Features 1–7; `SMU_FEATURE_LIST.adoc`
+|Spec / plan |`SMU_FEATURE_LIST.adoc` Features 1–7
 |Coverage intent |`smu_fcov.py` scenario bins + `TEST_EVIDENCE` tokens. Verilator toggle / FCOV is scoped to `--dut smu_block` (`SMU_COVERAGE_POLICY.adoc`)
 |Checker |`SmuScoreboard` named `evidence=` / `expect_*` tokens + `results.xml`
 |CI |`.github/workflows/sim.yml` (PR gate) runs `smoke_sep0`; `.github/workflows/regress.yml` runs `sep0_all`
@@ -56,7 +56,7 @@ bench is `--dut smu_block` (`testlists/all.toml`), whose PASSes carry
 [[smu-traceability-matrix]]
 === Matrix (SPEC Features 1–7)
 
-Requirement IDs are `SMU_SPEC.md` Features 1–7. The per-leaf token map
+Requirement IDs are Features 1–7. The per-leaf token map
 is `SMU_FEATURE_LIST.adoc`; this table is the credit decision.
 
 [cols="1,2,2,2,3,1",options="header",]
