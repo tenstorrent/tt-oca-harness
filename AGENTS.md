@@ -336,6 +336,11 @@ Three kinds of comment are not worth their space.
 - **Justification.** Arguing that a change is correct addresses a reviewer who is gone once the
   pull request merges.
 
+Present tense does not save a breadcrumb. A comment that lists side effects the new
+control flow no longer has is still a breadcrumb. A plan that asks for that comment
+does not override this section. After adding a comment, re-read it against these bans
+and delete it if it fails.
+
 Where a test can carry the constraint instead, prefer the test: it fails when the constraint is
 broken, and a comment does not.
 
