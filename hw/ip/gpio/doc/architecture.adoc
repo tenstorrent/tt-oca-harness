@@ -4,7 +4,7 @@
 [[gpio-architecture]]
 ===== Architecture
 
-At the heart of the OCH system’s digital I/O lies the GPIO peripheral, a
+At the heart of the OCAH system’s digital I/O lies the GPIO peripheral, a
 controller designed for both versatility and robust security. Its
 dual-mode operation allows it to seamlessly switch between
 register-driven control and direct hardware guidance via the LSIO

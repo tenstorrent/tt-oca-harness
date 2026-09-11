@@ -18,9 +18,8 @@ Two proof properties, both fail-capable:
   expectations ride on the reset items, so the scoreboard -- not this sequence
   -- owns the verdict, and a DUT that ignores ``powergood_i`` fails instead of
   producing an OBSERVED-ONLY snapshot.
-* recovery: a ``WAIT_STATE`` handshake on the released levels replaces the
-  former fixed settle, so recovery latency is bounded and expiry raises with
-  the last observed state ([NO-BLIND-DELAY-SYNC] / [TIMEOUT-MUST-FAIL]).
+* recovery: a ``WAIT_STATE`` handshake on the released levels, so recovery
+  latency is bounded and expiry raises with the last observed state ([NO-BLIND-DELAY-SYNC] / [TIMEOUT-MUST-FAIL]).
 """
 
 from __future__ import annotations
@@ -37,8 +36,7 @@ class smc_powergood_glitch_test_seq(SmcResetSeqBase):
     # long powergood_i stays low (it is restored only after the window closes).
     # As wide as smc_reset_ctrl's 32-sample de-glitch window: the gated state is
     # proven at EVERY sample of the glitch, so a DUT that lets the functional
-    # reset path release at any instant while power-good is unstable fails --
-    # which the single mid-glitch snapshot this replaces could not see
+    # reset path release at any instant while power-good is unstable fails
     # ([EXACT-EXPECTATION]).
     MID_GLITCH_HOLD_REF_CYCLES = 32
 

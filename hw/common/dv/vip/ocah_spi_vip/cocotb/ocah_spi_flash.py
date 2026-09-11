@@ -4,10 +4,7 @@
 OcahSpiFlash — OCAH-stable NOR-flash device BFM for SPI / QSPI / OSPI.
 
 This module provides a self-contained, cocotb-native flash device behavioural
-model.  It does NOT depend on any external cocotb extension package.  When
-``cocotbext-spi`` (schang412, MIT) is later added to the project Python
-environment the implementation can delegate to it while keeping this public
-API unchanged — see the "Migration plan" section of README.md.
+model.  It does NOT depend on any external cocotb extension package.
 
 Supported commands
 ------------------
@@ -31,7 +28,7 @@ Mode mapping
 ------------
   "single" — CS_N, SCK, MOSI (DQ0 out), MISO (DQ1 in)
   "quad"   — CS_N, SCK, DQ[3:0] bidirectional
-  "octal"  — CS_N, SCK, DQ[7:0] bidirectional  (stub; see OCTAL_TODO below)
+  "octal"  — CS_N, SCK, DQ[7:0] bidirectional  (single-bit data timing; see below)
 
 The model is deterministic by default.  All memory is initialised to 0xFF
 (erased state).
@@ -594,22 +591,12 @@ class OcahSpiFlash:
             await RisingEdge(self._cs_n)
 
     # ------------------------------------------------------------------
-    # Quad / Octal helpers (OCTAL_TODO)
+    # Quad / Octal modes
     # ------------------------------------------------------------------
-    # NOTE: Full quad-SPI (4-bit simultaneous I/O for data phase) requires
-    # knowing which DQ bits carry data, and whether the DQ bus is driven by
-    # the BFM or the controller on a given phase.  A production implementation
-    # should model the bidirectional turnaround precisely.
-    #
-    # Current behaviour for mode="quad" and mode="octal":
-    #   - Command byte is received on DQ0 (bit 0 of dq_out), 1-bit at a time.
-    #   - Address bytes are received on DQ0, 1-bit at a time.
-    #   - Data phase uses DQ0 (send) / DQ0 (receive) in single-bit mode.
-    #
-    # OCTAL_TODO: Replace _recv_byte_single / _send_byte_single with quad-/
-    # octal-wide implementations once the DDR turnaround timing is confirmed
-    # against the SEP xSPI PHY interface.  Until then, quad/octal instantiate
-    # correctly and run the protocol engine but use single-bit I/O only.
+    # mode="quad" and mode="octal" bind the DQ bus but run the single-bit
+    # engine: the command byte, the address bytes, and the data phase all use
+    # DQ0 (bit 0 of dq_out / dq_in), one bit per SCK. Multi-bit data lanes
+    # and the bidirectional bus turnaround are not modeled.
 
     # ------------------------------------------------------------------
     # Internal bookkeeping

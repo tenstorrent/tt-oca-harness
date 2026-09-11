@@ -6,7 +6,7 @@ This sequence compresses the reset-depth variants into one coverage-oriented
 scenario: baseline sample, powergood glitch, cold-reset reassert, cool-reset
 pulse, and final recovery sample.
 
-Every leg of the matrix is now fail-capable at both ends:
+Every leg of the matrix is fail-capable at both ends:
 
 * the assert half rides an exact expectation on the reset item, so a DUT that
   never asserts the driven reset fails there instead of leaving an
@@ -52,9 +52,7 @@ class smc_reset_recovery_matrix_test_seq(SmcResetSeqBase):
     # clk_ref_i edges, and therefore also the stimulus low time of each leg
     # (the pin/level is restored only after the window closes). As wide as
     # smc_reset_ctrl's 32-sample de-glitch window: a DUT that releases the
-    # driven reset at *any* sample inside the hold fails, which the single
-    # instantaneous `_raw_after` snapshot this replaces could not see
-    # ([EXACT-EXPECTATION]).
+    # driven reset at *any* sample inside the hold fails ([EXACT-EXPECTATION]).
     MID_ASSERT_HOLD_REF_CYCLES = 32
     # Held mid-assert legs, each contributing a full checked window to the
     # scoreboard's reset_raw_checks_seen floor below.

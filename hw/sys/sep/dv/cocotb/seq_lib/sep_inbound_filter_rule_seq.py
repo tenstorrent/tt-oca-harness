@@ -38,11 +38,13 @@ from __future__ import annotations
 
 from env.sep_axi_agent import SepAxiOp
 from env.sep_seeded_rng import SepSeededRng
-from sep_reg_meta import INBOUND_FILTER_CTRL_0, indexed_block_count, sym
+from sep_reg_meta import INBOUND_FILTER_CTRL_0, SEP_CPU_CTRL, indexed_block_count, sym
 
 from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_axi_reg_driver import SepAxiRegDriver
 from seq_lib.sep_fabric_csr_bank_seq import (
+    ALIAS_BASE,
+    AP_BASE,
     F_ALLOW_BURST,
     F_ALLOW_NS,
     F_ENTRY_ENABLED,
@@ -52,6 +54,8 @@ from seq_lib.sep_fabric_csr_bank_seq import (
     FILTER_CONFIG,
     FILTER_STRIDE,
     INFILT_BASE,
+    OUTFILT_BASE,
+    STEE_BASE,
 )
 from seq_lib.sep_scratch_reset_seq import SCRATCH_COLD_0, SCRATCH_WARM_0
 
@@ -322,6 +326,38 @@ class SepInboundFilterMatrixCfg:
                 f"page; the page-widen would fire"
             )
         return addr, val, end
+
+    def ownership_targets(self, inbound_cfg_addr: int) -> list[tuple[str, int]]:
+        """CSRs that must stay outside every programmed allow window.
+
+        Inbound CFG is the original ownership probe. The rest sit in the same
+        reachable system-CSR window. Window 0 is
+        ``SEP_SW_DEBUG``; ``SEP_GLOBAL_BASE_ADDR`` and ``SEP_REGION_SIZE`` share
+        that 4 KB page, so they prove START/END (not the page) under
+        ``allow_burst=0``.
+        """
+        win0 = self.windows[0][0]
+        global_base = SEP_CPU_CTRL.addr("SEP_GLOBAL_BASE_ADDR")
+        region_size = SEP_CPU_CTRL.addr("SEP_REGION_SIZE")
+        if (global_base >> PAGE_SHIFT) != (win0 >> PAGE_SHIFT):
+            raise RuntimeError(
+                f"SEP_GLOBAL_BASE_ADDR 0x{global_base:08x} is not on the "
+                f"window-0 page 0x{win0:08x}; same-page ownership coverage lost"
+            )
+        if (region_size >> PAGE_SHIFT) != (win0 >> PAGE_SHIFT):
+            raise RuntimeError(
+                f"SEP_REGION_SIZE 0x{region_size:08x} is not on the "
+                f"window-0 page 0x{win0:08x}; same-page ownership coverage lost"
+            )
+        return [
+            ("inbound-cfg", inbound_cfg_addr),
+            ("outbound-cfg", OUTFILT_BASE),
+            ("alias-remap", ALIAS_BASE),
+            ("ap-remap", AP_BASE),
+            ("stee-remap", STEE_BASE),
+            ("sep-global-base", global_base),
+            ("sep-region-size", region_size),
+        ]
 
     def summary(self) -> str:
         wins = " ".join(f"w{i}=0x{a:08x}/0x{v:08x}" for i, (a, v) in enumerate(self.windows))

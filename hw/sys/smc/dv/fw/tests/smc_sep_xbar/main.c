@@ -75,7 +75,6 @@ int main(void) {
     /* S4: CLA run release + arm token (satisfies the SV real-CLA liveness monitor); read back.
      * Ordered AFTER SMC_READY so the cla_ext_action_custom[1]/[4] release edge follows SMC_READY.
      */
-    SMC_WR64(SMC_CLA_CDFDCSR_REG_ADDR, XBAR_CLA_CDFDCSR_EXPECT);
     SMC_WR64(SMC_CLA_CDBGCLACTRLSTATUS_REG_ADDR, XBAR_CLA_CTRLSTATUS_EXPECT);
     SMC_WR64(SMC_CLA_CDBGNODE0EAP0_REG_ADDR, XBAR_CLA_EAP0_RELEASE);
     SMC_WR64(SMC_CLA_CDBGNODE0EAP1_REG_ADDR, XBAR_CLA_EAP1_RELEASE);

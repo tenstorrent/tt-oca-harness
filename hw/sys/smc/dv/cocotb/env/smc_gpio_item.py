@@ -28,7 +28,7 @@ GPIO_VECTOR_FIELDS = ("core2pad_vec", "core2pad_en_vec")
 # only changes when something programs a pad's output enable, so an exact
 # cross-sample equality on it is a real property.
 #
-# `core2pad_vec` is deliberately NOT here. It is the pad *value* bus, and it
+# `core2pad_vec` is NOT here. It is the pad *value* bus, and it
 # carries free-running DUT outputs -- tb_top.sv:818-821 takes the AVSBus clock
 # from `core2pad_o[49]` and the OCTS strobes from `[55]`/`[56]` -- so it changes
 # with no GPIO stimulus at all (measured: 0x...6001550000000 -> 0x...4001550000000

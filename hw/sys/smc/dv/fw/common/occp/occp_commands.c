@@ -245,7 +245,6 @@ int occp_get_response_header(test_context_t *ctx, uint64_t i3c_addr,
         int status;
         simputs("OCCP: Reading response header\n");
         do {
-            // simputshex32("bytes: ", sizeof(*resp_hdr));
             status =
                 ctx->drv.i3c_drv->read(ctx->drv.i3c_drv, i3c_addr, resp_hdr_ptr, sizeof(*resp_hdr));
             if ((status != I3C_OK) && (status != I3C_ERR_CMD_FAILED)) return OCCP_INTERFACE_ERR;

@@ -200,8 +200,7 @@ static int flash_fast_read(uint32_t addr, uint32_t *out, uint32_t nwords) {
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_TXDATA_BASE_ADDR, 0); // dummy byte
     spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd_word(SPI_CMD_DIR_TX, 5, 1));
     if (spi_wait_ready(TIMEOUT)) return -1;
-    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR,
-           cmd_word(SPI_CMD_DIR_RX, nwords * 4, 0));
+    spi_wr(OCH_SEP_TOP_SPI_CONTROLLER_CMD_BASE_ADDR, cmd_word(SPI_CMD_DIR_RX, nwords * 4, 0));
     if (spi_wait_idle(TIMEOUT)) return -1;
     for (uint32_t i = 0; i < nwords; i++) {
         out[i] = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
@@ -556,8 +555,7 @@ int main(void) {
                               SPI_CONTROLLER__STATUS__RXQD_bm) != 0) {
         (void)spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_RXDATA_BASE_ADDR);
     }
-    if (spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR) &
-        SPI_CONTROLLER__STATUS__RXQD_bm) {
+    if (spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_STATUS_BASE_ADDR) & SPI_CONTROLLER__STATUS__RXQD_bm) {
         sep_mbx_puts("FAIL: CHK-ERR-UNDERFLOW RX FIFO would not drain; the empty-read "
                      "injection cannot be set up\n");
         return errors + 1;

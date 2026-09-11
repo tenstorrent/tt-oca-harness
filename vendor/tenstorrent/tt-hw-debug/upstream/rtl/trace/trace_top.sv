@@ -1,3 +1,21 @@
+/*************************************************************************
+ *
+ * Tenstorrent CONFIDENTIAL
+ *__________________
+ *
+ *  Tenstorrent Inc.
+ *  All Rights Reserved.
+ *
+ * NOTICE:  All information contained herein is, and remains
+ * the property of Tenstorrent Inc.  The intellectual
+ * and technical concepts contained
+ * herein are proprietary to Tenstorrent Inc.
+ * and may be covered by U.S., Canadian and Foreign Patents,
+ * patents in process, and are protected by trade secret or copyright law.
+ * Dissemination of this information or reproduction of this material
+ * is strictly forbidden unless prior written permission is obtained
+ * from Tenstorrent Inc.
+ */
 // Trace: Holds trace_network and trace_funnel. Instantiated by trace_top,
 // which retains clock gating, reset derivation, functional clamps and trace_mem.
 
@@ -6,6 +24,7 @@ import tn_pkg::*;
 import ntr_sink_mmr_pkg::*;
 import dst_sink_mmr_pkg::*;
 import funnel_mmr_pkg::*;
+
 #(
 	parameter NUM_CORES = 8,
 	parameter NUM_CORES_WIDTH = (NUM_CORES == 1) ? 1 : $clog2(NUM_CORES),

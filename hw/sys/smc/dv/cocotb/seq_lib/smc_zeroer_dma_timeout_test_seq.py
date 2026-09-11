@@ -48,9 +48,6 @@ ZEROER_CTRL_STATUS_START = reg_field_pack("ZEROER_CTRL_CTRL_STATUS_reg_t", int_e
 #   INT_EN[0]  = 1  -- ``hw/ip/zeroer/regs/zeroer_ctrl.rdl``: ``sw = rw; hw = r``.
 #                     Software owns the field and hardware never writes it, so it
 #                     holds the 1 that S3 wrote to arm the completion interrupt.
-#                     Until round 3 this write was fire-and-forget: nothing ever
-#                     read CTRL_STATUS back, so "the interrupt is armed" was an
-#                     unverified claim.
 #   STATUS[32] = 0  -- the field carries BUSY (see the polarity note below) and
 #                     by the time this read is issued the operation is
 #                     independently proven finished -- the responder counted the
@@ -60,8 +57,8 @@ ZEROER_CTRL_STATUS_START = reg_field_pack("ZEROER_CTRL_CTRL_STATUS_reg_t", int_e
 #   all other bits  = 0 -- the RDL declares no field there (``rsvd_0[31:1]`` and
 #                     nothing above bit 32), so reserved-zero.
 #
-# STATUS POLARITY -- documentation is wrong, RTL is the only correct source
-# today, and this expectation does NOT rest on the documentation:
+# STATUS POLARITY -- the RDL description and the RTL disagree, and this
+# expectation does NOT rest on the documentation:
 #   * ``hw/ip/zeroer/regs/zeroer_ctrl.rdl:51`` describes STATUS as "Returns
 #     status of whether zeroer has completed".
 #   * ``hw/sys/smc/doc/zeroer.adoc`` does NOT contradict that: its "Detailed
@@ -81,13 +78,8 @@ ZEROER_CTRL_STATUS_START = reg_field_pack("ZEROER_CTRL_CTRL_STATUS_reg_t", int_e
 # (0 before the trigger, 1 inside the trigger-to-idle window, 0 again after
 # completion), which is what makes the S4 zero the closing half of a proven
 # transition rather than an idle value a dead bit would also return.
-# ACTION FOR THE SPEC OWNER: correct the ``zeroer_ctrl.rdl`` STATUS description
-# to say "busy" and regenerate ``zeroer_ctrl.adoc``, so the field table the SMC
-# spec includes states the polarity the RTL implements. Filed as
-# tenstorrent/tt-oca-harness#1234 (OPEN, "[RDL/OCAH] CTRL_STATUS.STATUS is
-# documented as completed but implements busy"). The emitted
-# CHK-ZEROER-CTRL-STATUS token must cite ``zeroer.sv`` + the S5 observation for
-# the polarity, never the adoc, which contradicts it.
+# The emitted CHK-ZEROER-CTRL-STATUS token must cite ``zeroer.sv`` + the S5
+# observation for the polarity, never the adoc, which contradicts it.
 ZEROER_CTRL_STATUS_DONE = reg_field_pack("ZEROER_CTRL_CTRL_STATUS_reg_t", int_en=1, status=0)
 
 OUTPUT_FABRIC_NEIGHBOUR_ADDR = OUTPUT_FABRIC_ADDR + 8
@@ -102,7 +94,7 @@ ZEROER_WAIT_CYCLES = 200
 # The payload operation clears 8 bytes = one 64-bit AXI beat, which retires in
 # far less time than one AXI-Lite CSR read takes to return, so polling
 # CTRL_STATUS around it can never catch STATUS asserted. S5 therefore runs a
-# SECOND, deliberately long zeroing purely as the positive control for the
+# SECOND, long zeroing purely as the positive control for the
 # STATUS bit: BUSY_PROBE_SIZE bytes / 8 bytes per beat = BUSY_PROBE_BEATS beats,
 # which holds `cur_state != ST_IDLE` (and `|outstanding_reqs`) across many CSR
 # reads. It runs after every payload assertion, targets the same already-zeroed
@@ -430,11 +422,11 @@ class smc_zeroer_dma_timeout_test_seq(output_fabric_pass_all_cfg_seq):
             f"(baseline={start_writes}); "
             f"COV cells={cells_hit}; functional-coverage-report={report_path}"
         )
-        await self._prove_status_busy_lifecycle(ctrl_status)
+        await self._prove_status_busy_lifecycle()
 
         cocotb.log.info("SMC_006 scenario PASS")
 
-    async def _prove_status_busy_lifecycle(self, cleared_before: int) -> None:
+    async def _prove_status_busy_lifecycle(self) -> None:
         """Observe CTRL_STATUS.STATUS 0 -> 1 -> 0 on a long zeroing.
 
         Without this, every STATUS compare in the testcase is against 0, and a
@@ -445,6 +437,9 @@ class smc_zeroer_dma_timeout_test_seq(output_fabric_pass_all_cfg_seq):
         observation that separates those, so it is observed here rather than
         argued for in a comment.
         """
+        # Sampled here rather than inherited from the caller's earlier read, so
+        # the cleared leg is observed at the point the lifecycle claims it.
+        cleared_before = await self.csr_read("ZEROER_STATUS_CLEARED", ZEROER_CTRL_STATUS)
         assert not (cleared_before & STATUS_BM), (
             f"CTRL_STATUS pre-trigger read {cleared_before:#018x} already has "
             f"STATUS set (mask {STATUS_BM:#018x}); the lifecycle cannot start "

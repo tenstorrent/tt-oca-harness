@@ -46,6 +46,8 @@ Public APIs:
 * use explicit `timeout_ns`/`allow_timeout` semantics;
 * provide statistics/reset methods when counters are meaningful;
 * use `from_prefix()` for conventional flattened interfaces where practical.
+* bind an interface scope through the VIP's geometry configuration when the
+  interface members are wider than the bus (`OcahAxiConfig.bus()` in the AXI VIP).
 
 [source,python]
 ----

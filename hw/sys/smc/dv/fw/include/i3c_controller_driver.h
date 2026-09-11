@@ -205,8 +205,8 @@ struct I3C_Driver {
 /*
  * Obtain a driver instance for the given controller.
  *
- * Weak default (i3c_controller_driver_stub.c) returns NULL.
- * An open I3C master driver may override this symbol in the future.
+ * Defined by i3c_controller_driver.c when I3C_USE_HCI_CORE is set; a build that
+ * leaves it undefined must supply this symbol from a platform driver.
  */
 I3C_Driver *I3C_GetDriverInstance(uint8_t controller_id);
 

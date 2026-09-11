@@ -3451,8 +3451,8 @@ async def test_3_7_2_autotune_repetition_test(dut):
     )
     dut._log.info("")
     dut._log.info("RTL Signals Probed (autotune FSM and detune):")
-    dut._log.info("  - dut.dut.egen.g_ecmplx[lane].gen_inst.auto_tune_state")
-    dut._log.info("  - dut.dut.egen.g_ecmplx[lane].gen_inst.detune")
+    dut._log.info("  - dut.dut.egen.gen_ecmplx[lane].gen_inst.auto_tune_state")
+    dut._log.info("  - dut.dut.egen.gen_ecmplx[lane].gen_inst.detune")
     dut._log.info("=" * 80)
 
 
@@ -3709,8 +3709,8 @@ async def test_3_7_3_autotune_apt_test(dut):
     dut._log.info("  - APT bit is bit [3]")
     dut._log.info("")
     dut._log.info("RTL Signals Probed (autotune FSM and detune):")
-    dut._log.info("  - dut.dut.egen.g_ecmplx[lane].gen_inst.auto_tune_state")
-    dut._log.info("  - dut.dut.egen.g_ecmplx[lane].gen_inst.detune")
+    dut._log.info("  - dut.dut.egen.gen_ecmplx[lane].gen_inst.auto_tune_state")
+    dut._log.info("  - dut.dut.egen.gen_ecmplx[lane].gen_inst.detune")
     dut._log.info("=" * 80)
 
 
@@ -3982,6 +3982,6 @@ async def test_3_7_4_autotune_markov_test(dut):
     dut._log.info("  - Markov bits: markov_hi[4], markov_lo[5]; bits [7:6] are reserved")
     dut._log.info("")
     dut._log.info("RTL Signals Probed (autotune FSM and detune):")
-    dut._log.info("  - dut.dut.egen.g_ecmplx[lane].gen_inst.auto_tune_state")
-    dut._log.info("  - dut.dut.egen.g_ecmplx[lane].gen_inst.detune")
+    dut._log.info("  - dut.dut.egen.gen_ecmplx[lane].gen_inst.auto_tune_state")
+    dut._log.info("  - dut.dut.egen.gen_ecmplx[lane].gen_inst.detune")
     dut._log.info("=" * 80)

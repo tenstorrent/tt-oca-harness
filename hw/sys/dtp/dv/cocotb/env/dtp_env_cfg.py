@@ -10,6 +10,8 @@ from typing import Any
 from cocotb.triggers import Event
 from pyuvm import uvm_object
 
+__all__ = ["DtpEnvCfg"]
+
 
 class DtpEnvCfg(uvm_object):
     """Shared environment configuration / handshakes for the DTP UVM TB."""
@@ -46,20 +48,23 @@ class DtpEnvCfg(uvm_object):
         self.xtrig_bfm = None
         self.xtrig_num_ctp = 16
         self.xtrig_num_int_ct = 10
-        # Downstream STAP TAPs (issue #1056): the STAP names whose host port
+        # Downstream STAP TAPs: the STAP names whose host port
         # gets a reactive ocah_jtag_vip slave device spliced behind it (empty
         # = every port keeps its wire loopback), plus the per-port slave
         # sequence and device map published by DtpStapDsAgent.
         self.stap_ds_attach: set[str] = set()
+        # DtpTbIf handle published by the base test; agents and sequences bind
+        # to the HDL top through it.
+        self.tb_if: Any = None
         self.stap_ds_seq: dict[str, Any] = {}
         self.stap_ds_device: dict[str, Any] = {}
 
     def randomize_timing(self, seed: int | None = None) -> None:
         """Randomize the JTAG TCK and system-clock periods for timing variety.
 
-        Mirrors the legacy sanity test, which randomized the JTAG TCK period
-        (100-1000 ns) and the core clock period (10-100 ns) to exercise the
-        TCK-vs-core-clock ratio. Uses a dedicated RNG seeded from the runner's
+        Draws the JTAG TCK period (100-1000 ns) and the core clock period
+        (10-100 ns) to exercise the TCK-vs-core-clock ratio. Uses a dedicated
+        RNG seeded from the runner's
         ``RANDOM_SEED`` so ``run_dv.py --seed`` reproduces the chosen periods
         without disturbing global ``random`` state used elsewhere.
         """

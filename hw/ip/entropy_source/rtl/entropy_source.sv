@@ -179,6 +179,7 @@ module entropy_source
     logic markov_hi_alert_cntr_err, markov_lo_alert_cntr_err;
     logic es_cntr_err;
     logic generator_complex_cntr_err;
+    logic health_test_cntr_err;
 
     // FIPS configuration lock: asserted once FIPS_LOCK.LOCK is written,
     // cleared only by reset. Drives swwel on every certified-config field.
@@ -379,7 +380,8 @@ module entropy_source
         .count_10_o                   (count_10),
         .apt_fail_hi_o                (apt_hi_fail_pulse),
         .apt_fail_lo_o                (apt_lo_fail_pulse),
-        .status_o                     (health_status)
+        .status_o                     (health_status),
+        .count_err_o                  (health_test_cntr_err)
     );
 
     entropy_sha256_whitener u_sha256_whitener (
@@ -949,7 +951,8 @@ module entropy_source
                          markov_lo_fails_cntr_err  || any_fails_cntr_err    ||
                          repcnt_alert_cntr_err     || apt_hi_alert_cntr_err ||
                          apt_lo_alert_cntr_err     || markov_hi_alert_cntr_err ||
-                         markov_lo_alert_cntr_err  || generator_complex_cntr_err;
+                         markov_lo_alert_cntr_err  || generator_complex_cntr_err ||
+                         health_test_cntr_err;
 
     // per-window sticky health-test-fail latch.
     //

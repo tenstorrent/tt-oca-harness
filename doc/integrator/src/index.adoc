@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: CC-BY-4.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 = Open Chiplet Atlas Harness (OCAH): Integrator Guide
@@ -85,20 +85,47 @@ plumbing are in <<smu-firmware-programming-order>> under <<smu-composition>>.
 ==== Register collateral
 
 The machine-readable address map ships in the repository tree; integrators
-consume it from the release checkout or tarball rather than a separate package:
+consume it from the release checkout or tarball rather than a separate package.
+The source of truth is distributed by ownership: each subsystem or IP keeps its
+canonical register sources and generated outputs beside its implementation.
+The `integration/` directory centralizes symlinks to that distributed
+collateral so an integrator does not have to discover every owner-local path.
 
-* System tops: `hw/sys/<sys>/regs/<sys>.rdl` (e.g. `hw/sys/sep/regs/sep.rdl`,
-  `hw/sys/smc/regs/smc.rdl`).
-* IP blocks: `hw/ip/<ip>/regs/<ip>.rdl`.
-* Vendored blocks: `vendor/.../overlay/regs/<ip>/regs/<ip>.rdl` or
-  `vendor/.../overlay/rdl/<ip>.rdl`.
-* Generated outputs per block: `<block>/regs/gen/{c,sv,svh,py,ral,adoc,html,ipxact}/`
-  — C headers, SystemVerilog packages, Python models, UVM RAL, documentation, and
-  IEEE 1685-2014 IP-XACT component descriptions.
+`integration/rdl/<subsystem>/` is a flat, self-contained list of the SystemRDL
+files required by that subsystem. Filenames remain unchanged, and shared
+dependencies appear in every subsystem that needs them. Non-RDL support files
+needed by relative includes remain at the `integration/rdl/` root -- for
+example, `integration/rdl/i3c_defines.svh` sits there because both
+`integration/rdl/smc/registers.rdl` and `integration/rdl/smu/registers.rdl`
+reach it through the I3C core's own parent-relative include
+(`../i3c_defines.svh`), and that relative path only resolves if the header is
+one directory above every subsystem folder that needs it. The matching
+generated IEEE 1685-2014 component descriptions use the same flat subsystem
+organization under `integration/ipxact/<subsystem>/`.
+
+These directories are generated symlink indexes; run
+`python3 scripts/collect_integration.py` after adding or moving collateral.
+Their canonical targets remain under `hw/sys/<sys>/regs/`,
+`hw/ip/<ip>/regs/`, `hw/common/axi/`, and `vendor/...` -- the `regs/` element
+of every component's directory layout, described in
+ifdef::backend-html5[]
+xref:ocah-starting:ROOT:guidelines.adoc#component-directory-organization[the
+Getting Started Guide].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+the __Getting Started Guide__.
+endif::backend-pdf[]
+Other generated outputs remain under each owner's
+`regs/gen/{c,sv,svh,py,ral,adoc,html,ipxact}/` directory.
 
 For the architecture-level responsibility split between the integrator, firmware,
 and the internal SEP/SMC maps, see
+ifdef::backend-html5[]
 xref:ocah-docs:ROOT:architecture.adoc#ocah-memory-map[OCAH Memory Map].
+endif::backend-html5[]
+ifdef::backend-pdf[]
+the _OCAH Memory Map_ section of the Technical Reference Manual.
+endif::backend-pdf[]
 
 [[immutable-rom-fw-integration]]
 === Immutable ROM FW Integration
@@ -539,7 +566,7 @@ The SMC aggregates interrupts from multiple sources into `cpu_interrupts_o`, whi
 the PLIC of the embedded RISC-V CPU cluster. The interrupt vector is assembled in
 `hw/sys/smc/rtl/smc_base.sv` and
 `hw/sys/smc/rtl/smc_peripherals/rtl/smc_peripherals.sv`. The authoritative
-bit-level map (1-core and 4-core columns, RTL trace, and PLIC source ID note) is
+bit-level map (RTL trace and PLIC source ID note) is
 maintained in a single place:
 
 ifdef::backend-html5[]
@@ -598,7 +625,7 @@ testing (unless disabled), and system health checks. The `init_mem_done_o`
 signal indicates completion of memory initialization if automatic SRAM zeroing
 is enabled.
 
-For Function Level Reset (FLR) support, assert `cfg_flr_pf_active_i` to trigger
+To support Function Level Reset (FLR), assert `cfg_flr_pf_active_i` to trigger
 a warm reset sequence. The SMC asserts `isolate_req_o` bits for the affected
 subsystem indices. The adopter's power controller drives `ss_reset_complete_i`
 high once the subsystem reset is complete; the SMC synchronizes this into the
@@ -718,19 +745,20 @@ secondary scan chain and drives the internal host outputs low. The SEP debug
 STAP connects to the SEP JTAG debug port when `SEP=1`; when `SEP=0`, the SMU
 ties `sep_stap_tdo_to_dtp = 1'b0` to bypass the SEP STAP return path.
 
-Each STAP host interface is gated by lifecycle feature controls, synchronized to
-TCK inside the DTP. `feat_ctrl_i` is enable-polarity (1 = feature enabled), so a
-STAP host interface is enabled only when all of its required enables are asserted
-and is disabled when any one of them is deasserted.
+Each STAP host interface is gated by a field of `dbg_disable_i`, synchronized to
+TCK inside the DTP. Each field is active-high (1 = path disabled).
 
-[cols="<25%,<35%,<40%",options="header"]
+[cols="<25%,<75%",options="header"]
 |===
-|STAP |Enabled When |Host Gating Disable Condition
-|SMC debug STAP |`feat_ctrl_i.soc_debug \&\& feat_ctrl_i.ap_debug` |`!feat_ctrl_i.soc_debug \|\| !feat_ctrl_i.ap_debug`
-|SEP debug STAP |`feat_ctrl_i.sep_debug \&\& feat_ctrl_i.soc_debug \&\& feat_ctrl_i.ap_debug` |`!feat_ctrl_i.sep_debug \|\| !feat_ctrl_i.soc_debug \|\| !feat_ctrl_i.ap_debug`
+|STAP |Disable Field
+|I/O STAP |`dbg_disable_i.stap_io`
+|SMC debug STAP |`dbg_disable_i.stap_smc`
+|SEP debug STAP |`dbg_disable_i.stap_sep`
+|Extra STAPs |`dbg_disable_i.stap_extra`
+|External STAP return path |`dbg_disable_i.stap_host`
 |===
 
-The full set of lifecycle-gated debug paths, including the iJTAG chains and the
+The full set of debug-disable-gated paths, including the iJTAG chains and the
 JTAG2AXI bridges, is tabulated in the DTP JTAG integration section of the TRM.
 
 ==== DTP Port Interface
@@ -819,6 +847,17 @@ public key accelerator instruction and data memories respectively.
 `km_rom_mem` and `km_sram_mem` connect to the Key Manager's dedicated ROM and
 SRAM macros.
 
+`abr_mem` connects the Adams Bridge working SRAM. On an idle cycle (`re` low),
+ABR expects the channel's read data to return 0 the following cycle.
+`SEP_ABR_SRAM_LATENCY` must equal the macros' native registered-read latency
+(default 1). Word-write channels are full-word `we` / `re` / address / data.
+`sig_z` and `pk` carry one-bit-per-byte `wstrobe`; map those to the macros'
+byte-write enables. `SEP_ABR_MASKING_EN` (default 1) selects 2-share DOM:
+thirteen 1R1W macros versus nine, plus a second NTT. This changes ABR internal
+behavior (sequencing, SCA, memory topology), not merely throughput. Give the
+same value to SEP and to the SRAM instances. When it is 0, do not instantiate
+the four masked coefficient banks; their response fields read as 0.
+
 ==== Cryptographic Subsystem Connections
 
 The SEP includes an internal entropy source that requires a ring-oscillator
@@ -858,13 +897,6 @@ supporting single and quad modes. The controller's own interrupt leaves the
 module as the `irq` field of `sep_io_spi_req_o`, so no separate interrupt
 output is needed.
 
-The `spi_irq_i` input is a separate SPI interrupt request routed to the SEP
-PIC. Adopters that replace or supplement the internal SPI host with an external
-SPI controller connect that controller's interrupt here; adopters that use only
-the internal controller may loop back the `irq` field of `sep_io_spi_req_o` or,
-if a mux over multiple SPI sources is needed, drive the selected interrupt from
-their own integration logic. Tie the input low when unused.
-
 ==== Bring-Up Considerations
 
 The SEP boot sequence begins after the SMC completes fuse sensing and releases
@@ -873,11 +905,10 @@ non-volatile public keys before transferring control. Feature controls derived
 from secure boot authentication and lifecycle state govern what operations are
 permitted after boot.
 
-The `sep_straps_i` input provides configuration straps for SEP-specific
-settings. The `jtag_id` input must be tied to an appropriate constant in the
-top-level integration. A `rst_vec_i` port exists on `tb_top.sv` for DV reset
-vector injection; it is not present on `sep.sv` itself and requires no
-integration tie-off.
+The `secure_tm_req_i` input is a secure test mode request. The `jtag_id` input
+must be tied to an appropriate constant in the top-level integration. A
+`rst_vec_i` port exists on `tb_top.sv` for DV reset vector injection; it is not
+present on `sep.sv` itself and requires no integration tie-off.
 
 ==== SEP Port Interface
 
@@ -1062,12 +1093,14 @@ parameter with its default value.
 |`JTAG_IDCODE_MFR_ID` |`11'h000` |Manufacturer ID
 |`JTAG_IDCODE_PART_NUM` |`16'h0000` |Part number
 |`JTAG_IDCODE_SI_REV` |`4'h0` |Silicon revision
-|`JTAG_OCH_VER` |`8'h00` |OCH IP version
+|`JTAG_OCH_VER` |`8'h00` |OCAH IP version
 |`XTRIG_INT_CT_MODE` |`8'h00` |Internal CT protocol mode bits (0=pulse sync, 1=req/ack)
 |`SMC_OTP_RD_PL_DEPTH` |`2'h3` |SMC OTP read pipeline depth
 |`SMC_OTP_WR_PL_DEPTH` |`2'h3` |SMC OTP write pipeline depth
 |`SMC_RD_PL_DEPTH` |`2'h3` |SMC fabric read pipeline depth
 |`SMC_WR_PL_DEPTH` |`2'h3` |SMC fabric write pipeline depth
+|`SEP_ABR_SRAM_LATENCY` |`1` |ABR 1R1W registered-read latency, in clocks
+|`SEP_ABR_MASKING_EN` |`1` |Adams Bridge 2-share DOM masking
 |===
 
 SEP-related DTP configuration is not exposed as an SMU config-struct field.
@@ -1190,7 +1223,7 @@ Type parameters are set internally based on SMC package types.
 |`JTAG_IDCODE_MFR_ID` |`11'h000` |Yes |Manufacturer ID
 |`JTAG_IDCODE_PART_NUM` |`16'h0000` |Yes |Part number
 |`JTAG_IDCODE_SI_REV` |`4'h0` |Yes |Silicon revision
-|`JTAG_OCH_VER` |`8'h00` |Yes |OCH IP version
+|`JTAG_OCH_VER` |`8'h00` |Yes |OCAH IP version
 |===
 
 ===== Cross Trigger Parameters
@@ -1716,15 +1749,6 @@ the SEP-to-SMC dedicated AXI connection.
 |`ext_boot_seq_done_i` |input |1 |SMU external port
 |===
 
-===== PVT
-
-[cols="<30%,<10%,<15%,<45%",options="header"]
-|===
-|Port |Direction |Width |SMU Connection
-
-|`temp_interrupt_i` |input |1 |SMU external port
-|===
-
 ===== Lifecycle State
 
 [cols="<30%,<10%,<20%,<40%",options="header"]
@@ -1733,16 +1757,6 @@ the SEP-to-SMC dedicated AXI connection.
 
 |`lc_state_o` |output |[2*LC_STATE_WIDTH-1:0] |SEP lifecycle state when `SEP=1`, else `8'hf0`; ported through SMU
 |`lc_sigint_err_o` |output |1 |SEP lifecycle integrity error when `SEP=1`, else SMC `efuse_lc_sigint_err`
-|===
-
-===== RAS Bank Settings
-
-[cols="<30%,<10%,<15%,<45%",options="header"]
-|===
-|Port |Direction |Width |SMU Connection
-
-|`ras_bank_chip_o` |output |[3:0] |SMU external port
-|`ras_bank_instance_o` |output |[3:0] |SMU external port
 |===
 
 ===== Mailbox Interrupts
@@ -1865,18 +1879,6 @@ the SEP-to-SMC dedicated AXI connection.
 |`test_en_i` |input |1 |SMU external port
 |`scan_rst_ni` |input |1 |SMU external port
 |===
-
-===== Captured Straps
-
-[cols="<30%,<10%,<15%,<45%",options="header"]
-|===
-|Port |Direction |Width |SMU Connection
-
-|`captured_straps_i` |input |[63:0] |SMU external port
-|===
-
-Please refer to the `reset_unit` STRAPS_LO and STRAPS_HI register descriptions for the decoded
-value of the straps.
 
 [[smc-dtp-interconnection]]
 ==== SMC-DTP Internal Interconnection
@@ -2012,10 +2014,9 @@ The define also zeroes the RMA and security-disable token and digest bits in
 X, and routes OpenTitan assertion failures in the SEP `prim_assert` shim to
 `$error` on non-UVM runs.
 
-Three models it enables make simulation deliberately non-deterministic:
-`gdffsync` in the entropy source injects metastability on the second
-synchronizer flop, `prim_flop_2sync` and its Caliptra and Adams Bridge
-equivalents insert `prim_cdc_rand_delay` ahead of the synchronizer, and
+Two model families it enables make simulation deliberately non-deterministic:
+`prim_flop_2sync` and its Caliptra and Adams Bridge equivalents insert
+`prim_cdc_rand_delay` ahead of the synchronizer, and
 `prim_lfsr` and `prim_double_lfsr` randomize their default seed on simulators
 other than Verilator (`+prim_lfsr_use_default_seed=1` pins it). Two runs of one
 test are therefore not identical unless the simulator seed is fixed; record the
@@ -2177,8 +2178,9 @@ required for the assembled SoC. This section explains what those constraints do,
 are produced, and what an adopter has to change when integrating OCAH into their
 own flow and cell library.
 
-The collateral ships with the harness. Each block carries its own constraints in
-`hw/sys/<block>/synth/`:
+The collateral ships with the harness. `integration/constraint/<block>/synth/`
+groups it by system while preserving the original filenames and relative path
+depth:
 
 * `constraints.sdc` -- the block's full timing intent, including the clock
 definitions and the asynchronous clock groups. It sources the two files below.
@@ -2186,8 +2188,12 @@ definitions and the asynchronous clock groups. It sources the two files below.
 overrides.
 * `<block>_cdc_max_delay_generated.tcl` -- the per-instance calls.
 
-The two pieces shared by every block live in `flows/synth/constraints/`:
-`async_clock_groups.tcl` and `cdc_max_delay_procs.tcl`.
+The shared `async_clock_groups.tcl` and `cdc_max_delay_procs.tcl` helpers are
+under `integration/constraint/shared/`. These are symlink indexes: the
+canonical per-system files remain under `hw/sys/<block>/synth/`, and the
+canonical shared helpers remain under `flows/synth/constraints/`. Regenerate
+the index with `python3 scripts/collect_integration.py` after changing the
+collateral inventory.
 
 === Why crossings are bounded rather than timed
 
@@ -2247,8 +2253,8 @@ enough.
 Because the protocol guarantees *ordering*, not *arrival*. The read side will not
 look at an entry until the write pointer has crossed, which takes `SYNC_STAGES`
 destination cycles, where `SYNC_STAGES` is the depth of the pointer
-synchronizer. Nothing in the protocol ensures the data physically arrived within 
-that window; that is a timing property, and only a `max_delay` states it. Miss it 
+synchronizer. Nothing in the protocol ensures the data physically arrived within
+that window; that is a timing property, and only a `max_delay` states it. Miss it
 and the consumer samples the entry's previous contents. There is no violation
 report and no metastability event, just wrong data.
 

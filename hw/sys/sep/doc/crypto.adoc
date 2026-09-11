@@ -13,7 +13,7 @@ distinct buses:
 * AXI4-lite secret key buses
 ** Mastered by Key Manager
 
-Apart from the Adams Bridge post-quantum accelerator, which is vendored
+Apart from the Adams Bridge, a Post-Quantum Cryptography (PQC) accelerator vendored
 from Caliptra, the subsystem’s hardware components are modified versions
 of the OpenTitan components, and the firmware is also based on the
 https://opentitan.org/book/doc/security/cryptolib/cryptolib_api.html[OpenTitan
@@ -46,10 +46,10 @@ the Key Manager or the destination accelerator enters software reset.
 
 Alerts from all crypto components are collected by 11 `prim_alert_receiver`
 instances within `sep_crypto` and aggregated into a single `crypto_alert_o`
-output. Each accelerator has its own software-controllable reset. The SEP Reset
-Controller drains and isolates both its host and Key Manager paths before
-asserting reset; a Key Manager reset similarly drains all of its key paths. The
-entropy source, CSRNG, and EDN share one coordinated reset. See
+output. Each accelerator except Adams Bridge has its own software-controllable
+reset. The SEP Reset Controller drains and isolates both its host and Key Manager
+paths before asserting reset; a Key Manager reset similarly drains all of its
+key paths. The entropy source, CSRNG, and EDN share one coordinated reset. See
 <<sep-reset-controller>> and <<sep-trng-reset>>.
 
 The crypto complex uses whole-instance Class 2 scan boundaries so all
@@ -77,7 +77,7 @@ The HMAC component is based on the
 https://opentitan.org/book/hw/ip/hmac/index.html[OpenTitan HMAC] design.
 
 [[och-modifications-4]]
-===== OCH Modifications
+===== OCAH Modifications
 
 * AXI4-lite key bus slave interface replaces side loading interface
 * AXI4-lite control/status bus slave interface
@@ -132,7 +132,7 @@ at a later time. The microcode is loaded into SRAM based instruction
 memory allowing firmware updates to be made in the field.
 
 [[och-modifications-1]]
-===== OCH Modifications
+===== OCAH Modifications
 
 * AXI4-lite key bus slave interface replaces side loading interface
 * AXI4-lite control/status bus slave interface
@@ -183,7 +183,7 @@ _round_ value depends on the key size used.
 * 256 bit key: 14 rounds
 
 [[och-modifications-2]]
-===== OCH Modifications
+===== OCAH Modifications
 
 * AXI4-lite key bus slave interface replaces side loading interface
 * AXI4-lite control/status bus slave interface
@@ -214,7 +214,7 @@ The module is based on the
 https://opentitan.org/book/hw/ip/kmac/index.html[OpenTitan KMAC] design.
 
 [[och-modifications-3]]
-===== OCH Modifications
+===== OCAH Modifications
 
 * AXI4-lite key bus slave interface replaces side loading interface
 * AXI4-lite control/status bus slave interface
@@ -238,9 +238,9 @@ documentation] for the authoritative core functionality of the IP. The
 register map is reported in <<sep-detailed-register-map>>.
 
 [[adams-bridge-abr]]
-==== Adams Bridge Post-Quantum Accelerator (ABR)
+==== Adams Bridge (ABR)
 
-The module is based on the
+The module is a post-quantum accelerator based on the
 https://github.com/chipsalliance/adams-bridge[Caliptra Adams Bridge] design.
 
 Algorithms:
@@ -254,7 +254,7 @@ provisioned with an ML-DSA root public key alongside its classical key, and
 <<life-cycle-controller-lcc-life-cycle-controller-lcc>>).
 
 [[och-modifications-5]]
-===== OCH Modifications
+===== OCAH Modifications
 
 * AXI4-lite key bus slave interface replaces the Caliptra Key Vault
 * AXI4 control/status bus slave interface, bridged to the core's native AHB-lite
@@ -276,10 +276,13 @@ block is not compiled. This leaves the vendored core unmodified while giving ABR
 the same kind of key path as every other accelerator, one mastered by the Key
 Manager.
 
-The 13-channel working SRAM is brought out of the wrapper as packed
-`abr_mem_req_t` / `abr_mem_rsp_t` structs and instantiated in
-`sep_ip_integration`, following the OTBN convention of keeping technology macros
-at the integration level.
+The working SRAM is brought out of the wrapper as packed
+`abr_mem_req_t` / `abr_mem_rsp_t` structs. Word-write channels are `we` / `re` /
+address / data; `sig_z` and `pk` also carry one-bit-per-byte `wstrobe`.
+`SEP_ABR_SRAM_LATENCY` is the macros' native registered-read latency (default 1).
+`SEP_ABR_MASKING_EN` (default 1) selects Adams Bridge 2-share DOM: thirteen 1R1W
+macros versus nine, plus a second NTT. That choice changes ABR internal behavior
+(sequencing, SCA, memory topology), not merely throughput.
 
 ABR has no alert channel -- it is the only crypto accelerator that reports faults
 solely by interrupt, contributing PIC sources 35 (error) and 36 (notification)

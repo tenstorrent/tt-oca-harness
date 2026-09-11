@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Sequence for smc_flr_sanity_test (Batch D).
 
-Scope, stated deliberately: this test verifies the *downstream* half of an FLR
+Scope: this test verifies the *downstream* half of an FLR
 recovery only -- the cool reset itself and the CSR path across it -- and drives
 it from the ``rst_cool_ni`` pin. It does NOT exercise the PCIe FLR request path.
 
@@ -10,8 +10,7 @@ The FLR trigger path (``cfg_flr_pf_active_i`` -> isolate-req CSR -> FLR delay /
 hold counters -> ``rst_cool_no``) is a real, available TB stimulus
 (``tb_top.sv:143`` ``tb_cfg_flr_pf_active``, wired at ``tb_top.sv:1244``) and is
 covered by the enrolled sibling ``smc_cool_reset_from_pcie_test``
-(``seq_lib/smc_cool_reset_from_pcie_test_seq.py``); the earlier claim here that
-the OSS TB exposes no FLR source is stale and has been removed. To keep the
+(``seq_lib/smc_cool_reset_from_pcie_test_seq.py``). To keep the
 attribution exact, this sequence asserts ``tb_cfg_flr_pf_active`` is inactive
 while it drives its own pin-cool pulse, so the observed cool reset can only have
 come from ``rst_cool_ni``.
@@ -26,10 +25,9 @@ post-release checks ([NO-ALWAYS-PASS-CHECKER]):
 * mid-assert: a bounded ``WAIT_STATE`` on ``rst_primary_ref/smc == 0`` while the
   cold-stable path stays released (``clk_rst.adoc``: cool reset is a
   primary-level reset). It also fixes the stimulus itself -- ``smc_reset_ctrl``
-  de-glitches ``rst_cool_ni`` over 32 ``clk_ref_i`` samples, so the former fixed
-  20-cycle hold was below the de-glitch window and was silently rejected: no
-  reset was ever taken. Holding the pin low until the reset is *observed* cannot
-  be too short.
+  de-glitches ``rst_cool_ni`` over 32 ``clk_ref_i`` samples, so a fixed hold
+  shorter than the de-glitch window is silently rejected and no reset is taken.
+  Holding the pin low until the reset is *observed* cannot be too short.
 * post-release: ``SCRATCH_COLD_WARM_0`` is read *before* being rewritten and
   must equal its mapped reset value, not the pattern written before the pulse --
   cool reaches the warm reset domain this register lives in. The following
@@ -209,7 +207,7 @@ class smc_flr_sanity_test_seq(SmcResetSeqBase, SmcCsrSeq):
             assert s.rst_wdt_smc_clk_n == 1, f"wdt reset asserted at {s.get_name()}"
         self._assert_flr_pin_idle("post cool recovery")
         # Loop integrity + scoreboard cross-check. This sweep issues no bounded
-        # read, so `assert_all_reachable` deliberately does NOT assert
+        # read, so `assert_all_reachable` does NOT assert
         # `timeouts == 0` here (it could not fail on this path -- a no-response
         # raises in the AXI driver instead); what it does assert is that the
         # scoreboard actually checked at least as many SYS AXI items as this

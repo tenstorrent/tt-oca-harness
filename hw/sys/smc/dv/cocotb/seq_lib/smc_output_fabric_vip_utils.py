@@ -37,7 +37,7 @@ OUTBOUND0_FILTER_CONFIG = SMC_OUTBOUND_FILTER_CTRL_0__FILTER_CONFIG_REG_ADDR
 OUTBOUND0_START = SMC_OUTBOUND_FILTER_CTRL_0__START_ADDR_REG_ADDR
 OUTBOUND0_END = SMC_OUTBOUND_FILTER_CTRL_0__END_ADDR_REG_ADDR
 
-# SYS_OUT fabric window (TB axi_sim_mem base; not an SMC CSR address).
+# SYS_OUT fabric window (served by the TB SYS_OUT responder; not an SMC CSR address).
 OUTPUT_FABRIC_ADDR = 0x0200_0000
 OUTPUT_FABRIC_ALT_ADDR = 0x0200_0008
 OUTPUT_FABRIC_DATA = 0x1122_3344_5566_7788
@@ -113,7 +113,7 @@ PASS_ALL_CONFIG = reg_field_pack(
     data_bus_width=_FILTER_DATA_BUS_WIDTH_8B,
     allow_burst=1,
 )
-# Reads only: write_allowed / allow_burst cleared (0x0000_3011 today).
+# Reads only: write_allowed / allow_burst cleared (0x0000_3011).
 READ_ONLY_CONFIG = reg_field_pack(
     _FILTER_CONFIG_STRUCT,
     read_allowed=1,
@@ -342,8 +342,7 @@ async def check_output_responder_delta(
     counter already past it fails immediately. Every caller passes the exact
     number of fabric writes its scenario issues, so a write the scenario did not
     expect -- e.g. one that leaked through a read-only output filter and left the
-    counter at ``start + 2`` -- is now a failure instead of something ``>=
-    start + 1`` still accepted ([EXACT-EXPECTATION]). Pass ``exact_writes=False``
+    counter at ``start + 2`` -- is a failure ([EXACT-EXPECTATION]). Pass ``exact_writes=False``
     only for
     a scenario where extra write beats are genuinely expected, and say why at the
     call site.

@@ -57,13 +57,7 @@ class OcahUartError(RuntimeError):
 
 
 class OcahUartImportError(ImportError):
-    """Retained for backward compatibility.
-
-    Earlier package versions delegated to an external UART library and raised
-    this at construction time when it was missing.  The backend is now native
-    to this package, so the console never raises it; existing callers that
-    catch it keep working unchanged.
-    """
+    """Exported but never raised: the native backend has no import that can fail."""
 
 
 # ---------------------------------------------------------------------------

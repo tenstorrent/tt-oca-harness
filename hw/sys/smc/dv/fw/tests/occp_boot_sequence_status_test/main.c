@@ -686,7 +686,6 @@ int main(void) {
     static test_context_t occp_ctx = {0};
     static boot_status_test_context_t test_ctx = {0};
 
-    // peripherals_out_of_reset();
     init_test(0);
 
     simputs("=== OCCP Boot Sequence Status Codes Test ===\n");

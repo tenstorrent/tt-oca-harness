@@ -58,11 +58,11 @@ class smc_zeroer_dma_timeout_test(smc_base_test):
             # Not measured on this path, so `n/a` rather than a clean-looking 0.
             # `SmcCsrSeq.timeouts` is bumped only by `csr_read_bounded` /
             # `csr_short_timeout` (seq_lib/smc_csr_seq_utils.py); this sequence
-            # calls neither, so `seq.timeouts` was structurally 0 and printing it
-            # advertised a statistic never taken ([NO-DUMMY-DEAD-CODE])
-            # . The sequence's own bounded wait
-            # (`_wait_for_zeroer_write`) raises on expiry, so
-            # [TIMEOUT-MUST-FAIL] is carried there, not by this field.
+            # calls neither, so `seq.timeouts` is structurally 0 and printing it
+            # would advertise a statistic never taken ([NO-DUMMY-DEAD-CODE]).
+            # The sequence's own bounded wait (`_wait_for_zeroer_write`) raises
+            # on expiry, so [TIMEOUT-MUST-FAIL] is carried there, not by this
+            # field.
             timeouts=None,
             # The framework measures JTAG-AXI beats unconditionally and prints
             # them; without a floor the scoreboard's fabric assert is `6 >= 0`,

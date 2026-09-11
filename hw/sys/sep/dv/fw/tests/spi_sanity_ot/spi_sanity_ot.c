@@ -2,7 +2,7 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * SPI Sanity Test for OCH SEP - OpenTitan SPI Host
+ * SPI Sanity Test for OCAH SEP - OpenTitan SPI Host
  *
  * CSR smoke: check POR defaults and simple write/readback on INTR_ENABLE,
  * INTR_TEST, CTRL, CFG, CSID, and EVENT_ENABLE.
@@ -24,7 +24,7 @@ int main(void) {
     sep_outbound_filter_init();
 
     printf("\n========================================\n");
-    printf("OCH SEP OpenTitan SPI Host Sanity Test\n");
+    printf("OCAH SEP OpenTitan SPI Host Sanity Test\n");
     printf("========================================\n");
     printf("\nCSR smoke: SPI controller POR/R/W\n\n");
 

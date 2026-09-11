@@ -9,6 +9,7 @@ work to `run_scenario()`.
 from __future__ import annotations
 
 import hashlib
+import logging
 import os
 import sys
 from datetime import datetime, timezone
@@ -27,16 +28,17 @@ for _path in (_COCOTB_ROOT, _OSS_HW_ROOT / "common" / "dv" / "vip"):
         sys.path.insert(0, _path_str)
 
 from env.smc_env import SmcEnv
-from env.smc_env_cfg import SmcEnvCfg
+from env.smc_env_cfg import SYS_OUT_AXI_GEOMETRY, SYS_OUT_MEM_SIZE, SmcEnvCfg
 from env.smc_probe_liveness import reset_probe_ledger, watch_probe_liveness
 from env.smc_protocol_vip_item import SmcProtocolVipItem, SmcProtocolVipKind
+from env.smc_virt_console import VirtConsole
+from ocah_axi_vip import OcahAxiSlaveAgent
 from seq_lib._one_shot import _OneShot
 
-# LEGACY registry: test-class-name -> protocol VIP kind for the auto-record at
-# the end of run_phase. Prefer setting the ``protocol_vip_kind`` class attribute
-# on the test itself (see smc_base_test.run_phase) for NEW tests -- that keeps the
-# kind next to the test and avoids editing this central map (a typo here silently
-# skips the auto-record). This dict is kept for the existing tests already listed.
+# Test-class-name -> protocol VIP kind for the auto-record at the end of
+# run_phase. A test may instead set the ``protocol_vip_kind`` class attribute
+# (see smc_base_test.run_phase), which keeps the kind next to the test; a typo
+# in this map silently skips the auto-record.
 _PROTOCOL_VIP_TESTS = {
     "smc_i2c_master_target_test": SmcProtocolVipKind.I2C,
     "smc_i2c_p1_rdwr_protocol_test": SmcProtocolVipKind.I2C,
@@ -64,8 +66,6 @@ _PROTOCOL_VIP_TESTS = {
     "smc_pll_dvfs_depth_test": SmcProtocolVipKind.CLOCK,
     "smc_static_cg_sanity_test": SmcProtocolVipKind.CLOCK,
     "smc_gpio_irq_active_test": SmcProtocolVipKind.GPIO_IRQ,
-    "smc_gpio_strap_sanity_test": SmcProtocolVipKind.GPIO_IRQ,
-    "smc_external_interrupts_test": SmcProtocolVipKind.GPIO_IRQ,
     "smc_uart_spi_log_engine_test": SmcProtocolVipKind.UART_LOG,
     "smc_uart_log_engine_reg_rw_test": SmcProtocolVipKind.UART_LOG,
     "smc_uart_log_engine_error_boundary_test": SmcProtocolVipKind.UART_LOG,
@@ -94,7 +94,6 @@ _PROTOCOL_VIP_TESTS = {
     "smc_dfd_dbs_fault_inject_test": SmcProtocolVipKind.DIAGNOSTIC,
     "smc_cpu_ctrl_map_depth_test": SmcProtocolVipKind.CPU,
     "smc_cpu_ctrl_scratch_window_test": SmcProtocolVipKind.CPU,
-    # P1 coverage-gap depth slate (13 new tests, 2026-07-02)
     "smc_mailbox_inbound_test": SmcProtocolVipKind.MAILBOX,
     "smc_i2c_multi_instance_test": SmcProtocolVipKind.I2C,
     "smc_efuse_map_read_test": SmcProtocolVipKind.EFUSE,
@@ -104,29 +103,26 @@ _PROTOCOL_VIP_TESTS = {
     "smc_telemetry_receiver_csr_test": SmcProtocolVipKind.SIDEBAND,
     "smc_pvt_analog_sensor_test": SmcProtocolVipKind.CLOCK,
     "smc_remap_cla_test": SmcProtocolVipKind.OUTPUT_FABRIC,
-    # P1 coverage-gap round 2 (2026-07-02)
     "smc_mailbox_multi_instance_test": SmcProtocolVipKind.MAILBOX,
     "smc_filter_multi_entry_test": SmcProtocolVipKind.OUTPUT_FABRIC,
-    # P1 coverage-gap round 3 (2026-07-02)
     "smc_gpio_intf_full_sweep_test": SmcProtocolVipKind.GPIO_IRQ,
     "smc_mailbox_field_sweep_test": SmcProtocolVipKind.MAILBOX,
     "smc_filter_field_sweep_test": SmcProtocolVipKind.OUTPUT_FABRIC,
     "smc_pll_awm_freq_sweep_test": SmcProtocolVipKind.CLOCK,
-    # P1 coverage-gap round 4 (2026-07-02) — previously-unreached CSR blocks
     "smc_xvisor_remap_test": SmcProtocolVipKind.OUTPUT_FABRIC,
     "smc_cluster_beu_test": SmcProtocolVipKind.CPU,
-    # P1 coverage-gap round 5 (2026-07-02) — remaining leftover CSR blocks
     "smc_pvt_droop_test": SmcProtocolVipKind.CLOCK,
 }
 
 
 # ==================================================== build-model identity ====
 # `[BUILD-MODEL-IDENTITY]`. The SMC sim stage runs with `do_build: False` and
-# reuses a prebuilt model out of the SHARED path hw/sys/smc/dv/build/cocotb/<tool>,
-# so the run's own hdl_compile log records only "Nothing to be done for 'default'"
-# and the kept log cannot say what RTL it simulated. That blind spot is what let
-# eight DUT submodules stay black-boxed unnoticed; and because the build directory
-# is overwritten in place by the next `--rebuild`, an identity recovered by hand
+# reuses a prebuilt model out of the SHARED path hw/sys/smc/dv/build/cocotb/<tool>
+# (`<tool>/<target>/coverage` for a `--cov` VCS run; run_dv.py exports that leaf
+# as OCAH_SIM_BUILD_DIR), so the run's own hdl_compile log records only
+# "Nothing to be done for 'default'"
+# and the kept log cannot say what RTL it simulated. The build directory is
+# overwritten in place by the next `--rebuild`, so an identity recovered by hand
 # afterwards is unverifiable.
 #
 # So the identity is recorded from the cocotb side, into the kept log, at
@@ -137,11 +133,14 @@ _PROTOCOL_VIP_TESTS = {
 _MODEL_ROOT_REL = Path("hw") / "sys" / "smc" / "dv" / "build" / "cocotb"
 _COMPILE_FLIST_REL = Path("hw") / "sys" / "smc" / "dv" / "build" / "smc_dut_compile.f"
 
-# tool -> (model artifact, resolved-compile-input list) relative to the tool's
-# build directory. The model artifact is the thing the simulator actually ran.
+# tool -> (model artifact, resolved-compile-input list) relative to the leaf
+# elaboration directory `_model_build_dir` returns. The model artifact is the
+# thing the simulator actually ran. VCS writes `simv` in that leaf
+# (`<tool>/<target>` or `<tool>/<target>/coverage`); the `default/` segment
+# belongs in the directory, not in this relative path.
 _MODEL_ARTIFACTS: dict[str, tuple[str, str | None]] = {
     "verilator": ("smc_uvm_top", "Vtop__ver.d"),
-    "vcs": ("default/simv", None),
+    "vcs": ("simv", None),
     "xcelium": ("xrun_snapshot", "xrun_build.log"),
 }
 
@@ -221,6 +220,23 @@ def _mtime_utc(path: Path) -> str:
     )
 
 
+def _model_build_dir(root: Path, tool: str) -> Path:
+    """Return the leaf directory the simulated model was elaborated into.
+
+    run_dv.py exports that leaf as OCAH_SIM_BUILD_DIR, including
+    `<tool>/<target>/coverage` on a `--cov` VCS run. Without it, VCS falls
+    back to the non-coverage default leaf under the shared cocotb build tree;
+    other tools use the tool directory itself.
+    """
+    exported = os.environ.get("OCAH_SIM_BUILD_DIR")
+    if exported:
+        return Path(exported)
+    base = root / _MODEL_ROOT_REL / tool
+    if tool == "vcs":
+        return base / "default"
+    return base
+
+
 def _require(path: Path, what: str) -> Path:
     assert path.exists(), (
         f"[BUILD-MODEL-IDENTITY] {what} not found at {path}: this run cannot "
@@ -235,14 +251,14 @@ def log_build_model_identity() -> str:
     """Log (once per process) the identity of the model this run simulated.
 
     Returns the emitted line. Raises with a diagnostic if the identity cannot be
-    determined; there is deliberately no placeholder branch.
+    determined; there is no placeholder branch.
     """
     if _MODEL_IDENTITY_DONE:
         return _MODEL_IDENTITY_DONE[0]
     root = _repo_root()
     tool = _sim_tool()
     model_rel, deps_rel = _MODEL_ARTIFACTS[tool]
-    build_dir = _require(root / _MODEL_ROOT_REL / tool, f"{tool} build directory")
+    build_dir = _require(_model_build_dir(root, tool), f"{tool} build directory")
     model = _require(build_dir / model_rel, f"{tool} elaborated model artifact")
     model_sha, model_size = _digest(model)
     flist = _require(root / _COMPILE_FLIST_REL, "resolved compile filelist")
@@ -279,7 +295,7 @@ class smc_base_test(uvm_test):
 
     A concrete test may set the class attribute ``protocol_vip_kind`` (a
     ``SmcProtocolVipKind``) to auto-stamp a protocol VIP activity record after
-    ``run_scenario``; this is preferred over adding the test to the legacy
+    ``run_scenario``; this is preferred over adding the test to the
     ``_PROTOCOL_VIP_TESTS`` map below. Set ``auto_protocol_vip = False`` to skip.
 
     The auto stamp is an *activity record*, never protocol evidence: it carries
@@ -300,7 +316,7 @@ class smc_base_test(uvm_test):
     ``seq_lib.smc_probe_positive_control.PROBE_CONTROLS``.
     """
 
-    # Optional per-test override; None => fall back to the legacy name map.
+    # Optional per-test override; None => fall back to the name map.
     protocol_vip_kind = None
 
     # Probe positive controls to run before run_scenario (see class docstring).
@@ -362,7 +378,7 @@ class smc_base_test(uvm_test):
         can single-handedly satisfy ``check_phase``'s minimum-activity gate --
         i.e. a record that cannot fail presented as a check
         (``[NO-ALWAYS-PASS-CHECKER]`` / ``[NO-ZERO-ACTIVITY-PASS]``). Omitting
-        it now raises here, and the scoreboard refuses the item independently.
+        it raises here, and the scoreboard refuses the item independently.
 
         The floor must be an independent constant written out at the call site,
         **not** read back from the sequence's own counter: a floor that shrinks
@@ -383,7 +399,7 @@ class smc_base_test(uvm_test):
 
         ``fabric_accesses`` is consequently an *optional exact expectation*, not
         the observation: when given, the measured count must equal it exactly, so
-        a legacy ``fabric_accesses=4`` at a call site becomes a real
+        a literal ``fabric_accesses=4`` at a call site becomes a real
         expectation-vs-measurement compare instead of a tautology.
 
         ``timeouts`` defaults to **None** = "not measured on this path" and
@@ -488,6 +504,21 @@ class smc_base_test(uvm_test):
         # DFT test_en defaults deasserted (functional mode).
         if hasattr(dut, "tb_test_en_i"):
             dut.tb_test_en_i.value = 0
+        for name in (
+            "tb_zeroer_state_inject_en",
+            "tb_efuse_program_state_inject_en",
+            "tb_efuse_read_state_inject_en",
+        ):
+            if hasattr(dut, name):
+                getattr(dut, name).value = 0
+        for name in (
+            "tb_zeroer_state_inject",
+            "tb_efuse_program_state_inject",
+            "tb_efuse_read_state_inject",
+            "tb_efuse_read_error_inject",
+        ):
+            if hasattr(dut, name):
+                getattr(dut, name).value = 0
         if hasattr(dut, "tb_cpu_jtag_tck"):
             dut.tb_cpu_jtag_tck.value = 0
             dut.tb_cpu_jtag_tms.value = 1
@@ -565,16 +596,27 @@ class smc_base_test(uvm_test):
             dut.tb_octs_sync_load_ext.value = 0
         if hasattr(dut, "tb_octs_cnt_credit_ext"):
             dut.tb_octs_cnt_credit_ext.value = 0
-        # Output-fabric SLVERR inject (U1-2): off by default.
-        if hasattr(dut, "tb_output_err_we"):
-            dut.tb_output_err_we.value = 0
-            dut.tb_output_err_resp.value = 0
-            dut.tb_output_err_addr.value = 0
         # Cool reset starts deasserted (released) so the cool-domain logic
         # does not block the cold-reset bring-up. Tests can drive it low via
         # the reset agent COOL_RST_LO op.
         dut.rst_cool_ni.value = 1
         cocotb.start_soon(watch_probe_liveness(dut))
+        # Firmware virtual console (scratch 2); decoded lines go to the log as
+        # they complete.
+        self.virt_console = VirtConsole(dut.tb_cpu_scratch2, "smc-fw")
+        cocotb.start_soon(self.virt_console.run())
+        # The SYS_OUT responder exists before the first clock edge so the
+        # boundary's READY signals are driven from time zero. It follows the
+        # SMC primary reset: a cool reset drops the outstanding responses
+        # instead of returning them into the reset CPU cluster.
+        self.cfg.sys_out_mem = OcahAxiSlaveAgent(
+            SYS_OUT_AXI_GEOMETRY.bus(dut.u_output_axi_if),
+            dut.clk_smc_i,
+            dut.rst_primary_smc_clk_no,
+            reset_active_level=False,
+            size=SYS_OUT_MEM_SIZE,
+            name="smc_sys_out",
+        ).sequence
         cocotb.start_soon(Clock(dut.clk_ref_i, self.cfg.ref_clk_period_ns, units="ns").start())
         cocotb.start_soon(Clock(dut.clk_smc_i, self.cfg.smc_clk_period_ns, units="ns").start())
         cocotb.start_soon(
@@ -589,10 +631,10 @@ class smc_base_test(uvm_test):
         dut.rst_cold_ni.value = 1
         # Completion gate = the observed reset chain releasing, not a delay.
         released_at = await self._await_cold_reset_release()
-        # Historical post-release quiet margin, preserved exactly so no
-        # downstream test's timing shifts: the handshake above is the gate, this
-        # is only the remainder of the same window. Tests needing the warm/fuse
-        # domain wait on it explicitly via smc_base_test_seq.wait_fuse_sense_done.
+        # Post-release quiet margin: the handshake above is the gate, this is
+        # the remainder of the same window, and downstream tests' timing depends
+        # on its length. Tests needing the warm/fuse domain wait on it explicitly
+        # via smc_base_test_seq.wait_fuse_sense_done.
         remaining = self.cfg.post_reset_settle_cycles - released_at
         if remaining > 0:
             await ClockCycles(dut.clk_ref_i, remaining)
@@ -660,10 +702,15 @@ class smc_base_test(uvm_test):
         # ([BUILD-MODEL-IDENTITY]). Raises rather than logging a placeholder.
         log_build_model_identity()
         await self._bring_up()
-        await self.run_probe_positive_controls()
-        await self.run_scenario()
+        try:
+            await self.run_probe_positive_controls()
+            await self.run_scenario()
+        except Exception:  # noqa: BLE001 -- re-raised once the CPU state is in the log
+            self.virt_console.flush()
+            self.env.cpu_trace_mon.dump_diagnostics(logging.ERROR)
+            raise
         test_name = type(self).__name__
-        # Prefer the per-test class attribute; fall back to the legacy name map.
+        # Prefer the per-test class attribute; fall back to the name map.
         kind = self.protocol_vip_kind or _PROTOCOL_VIP_TESTS.get(test_name)
         if getattr(self, "auto_protocol_vip", True) and kind is not None:
             # Auto stamp, NOT evidence of protocol behaviour. It carries only

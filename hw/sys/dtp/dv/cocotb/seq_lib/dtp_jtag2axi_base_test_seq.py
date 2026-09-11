@@ -4,9 +4,6 @@
 
 from __future__ import annotations
 
-import os
-
-import cocotb
 from cocotb.triggers import ClockCycles, ReadOnly
 from env.dtp_jtag_item import DtpJtagItem, DtpJtagOp
 from env.dtp_types import (
@@ -22,6 +19,7 @@ from env.dtp_types import (
     unpack_series_data,
     unpack_single_op,
 )
+from ocah_lib import OcahKnobs
 
 from .dtp_base_test_seq import dtp_base_test_seq
 
@@ -269,10 +267,10 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
         # non-OKAY is classified as EXPECTED. One credit covers
         # the single op; direction narrows when only one side is armed.
         # DTP_AXI_SCOREBOARD_NEGATIVE=1 is the documented negative-validation
-        # hook: it deliberately arms the WRONG response so the run must FAIL,
+        # hook: it arms the WRONG response so the run must FAIL,
         # proving the checker rejects a bad expectation end to end.
         armed_resp = int(resp)
-        if os.environ.get("DTP_AXI_SCOREBOARD_NEGATIVE", "0") not in ("", "0"):
+        if OcahKnobs.is_set("DTP_AXI_SCOREBOARD_NEGATIVE"):
             armed_resp = 2 if armed_resp == 3 else 3
             self.log.warning(
                 "NEGATIVE VALIDATION: arming resp=%d instead of injected resp=%d",
@@ -791,28 +789,28 @@ class dtp_jtag2axi_base_test_seq(dtp_base_test_seq):
 
     # --- AXI activity helpers -------------------------------------------------
     async def axi_activity_counts(self) -> dict[str, int]:
-        """Sample SMC AXI request activity counters exposed by tb_top."""
+        """Sample the SMC AXI request activity counters on dtp_tb_if."""
         await ReadOnly()
-        dut = cocotb.top
+        tb = self.cfg.tb_if
         counts = {
-            "aw": int(dut.smc_axi_awvalid_count.value),
-            "w": int(dut.smc_axi_wvalid_count.value),
-            "ar": int(dut.smc_axi_arvalid_count.value),
+            "aw": tb.sample("smc_axi_awvalid_count"),
+            "w": tb.sample("smc_axi_wvalid_count"),
+            "ar": tb.sample("smc_axi_arvalid_count"),
         }
-        await ClockCycles(dut.clk_i, 1)
+        await ClockCycles(tb.clk, 1)
         return counts
 
     async def target_activity_counts(self, target: str) -> dict[str, int]:
         """Sample request activity counters for one JTAG2AXI target."""
         cfg = self.target_cfg(target)
         await ReadOnly()
-        dut = cocotb.top
+        tb = self.cfg.tb_if
         counts = {
-            "aw": int(getattr(dut, f"{cfg.activity_prefix}_awvalid_count").value),
-            "w": int(getattr(dut, f"{cfg.activity_prefix}_wvalid_count").value),
-            "ar": int(getattr(dut, f"{cfg.activity_prefix}_arvalid_count").value),
+            "aw": tb.sample(f"{cfg.activity_prefix}_awvalid_count"),
+            "w": tb.sample(f"{cfg.activity_prefix}_wvalid_count"),
+            "ar": tb.sample(f"{cfg.activity_prefix}_arvalid_count"),
         }
-        await ClockCycles(dut.clk_i, 1)
+        await ClockCycles(tb.clk, 1)
         return counts
 
     async def expect_no_smc_axi_activity(self, cycles: int, *, context: str) -> None:

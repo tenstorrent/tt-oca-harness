@@ -1057,7 +1057,6 @@ int i2c_controller_read(uint32_t idx, uint8_t target_addr, uint8_t *data, uint32
         if (drained_count > 0) {
             i2c_trace_scratch(1, 0x000000A4); // Debug: ACQ FIFO drained successfully
             // Optionally log drained count to scratch[0] for debugging
-            // write_scratch(0, 0xACF00000 | (drained_count & 0xFF));
         }
 
         // CRITICAL FIX: Clear TARGET_EVENTS after read operation

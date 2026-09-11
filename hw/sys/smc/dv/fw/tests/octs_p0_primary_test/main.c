@@ -48,15 +48,14 @@ static void timer_init(void) {
     // before the timer is started, so it changes no behaviour downstream.
     {
         const uint32_t probe =
-            (((SYSTEM_TIMER_OCTS__CTRL__STEP_reset ^ 0x2u)
-              << SYSTEM_TIMER_OCTS__CTRL__STEP_bp)
-             & SYSTEM_TIMER_OCTS__CTRL__STEP_bm)
-          | (((SYSTEM_TIMER_OCTS__CTRL__PULSE_WIDTH_reset ^ 0x3u)
-              << SYSTEM_TIMER_OCTS__CTRL__PULSE_WIDTH_bp)
-             & SYSTEM_TIMER_OCTS__CTRL__PULSE_WIDTH_bm)
-          | (((SYSTEM_TIMER_OCTS__CTRL__CREDIT_VAL_reset ^ 0x1Fu)
-              << SYSTEM_TIMER_OCTS__CTRL__CREDIT_VAL_bp)
-             & SYSTEM_TIMER_OCTS__CTRL__CREDIT_VAL_bm);
+            (((SYSTEM_TIMER_OCTS__CTRL__STEP_reset ^ 0x2u) << SYSTEM_TIMER_OCTS__CTRL__STEP_bp) &
+             SYSTEM_TIMER_OCTS__CTRL__STEP_bm) |
+            (((SYSTEM_TIMER_OCTS__CTRL__PULSE_WIDTH_reset ^ 0x3u)
+              << SYSTEM_TIMER_OCTS__CTRL__PULSE_WIDTH_bp) &
+             SYSTEM_TIMER_OCTS__CTRL__PULSE_WIDTH_bm) |
+            (((SYSTEM_TIMER_OCTS__CTRL__CREDIT_VAL_reset ^ 0x1Fu)
+              << SYSTEM_TIMER_OCTS__CTRL__CREDIT_VAL_bp) &
+             SYSTEM_TIMER_OCTS__CTRL__CREDIT_VAL_bm);
         uint32_t got;
         write_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_CTRL_BASE_ADDR, probe);
         got = read_reg(SMC_TOP_SMC_SYSTEM_TIMER_OCTS_CTRL_BASE_ADDR);

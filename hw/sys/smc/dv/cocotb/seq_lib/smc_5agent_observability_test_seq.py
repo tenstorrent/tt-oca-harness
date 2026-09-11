@@ -222,8 +222,7 @@ class smc_5agent_observability_test_seq(smc_base_test_seq):
         # so they are declared in `env.smc_probe_liveness.UNBACKABLE_PROBES` and
         # `SmcScoreboard._check_gpio` REFUSES a stated `expect_` on them. And
         # `assert g.resolvable` alone is not a check either: every retained run
-        # is Verilator (2-state), where `value.is_resolvable` cannot be False, so
-        # the old single-sample token had no FAIL-ON path at all.
+        # is Verilator (2-state), where `value.is_resolvable` cannot be False.
         #
         # `tb_core2pad_o` / `tb_core2pad_en_o` DO move under real frontdoor GPIO
         # CSR programming, which is what makes an expectation on them backable.

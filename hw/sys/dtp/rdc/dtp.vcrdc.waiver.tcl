@@ -155,7 +155,7 @@ waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_jtag_stap_scan_data} \
     -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { bmelton } -timestamp { 15-05-2026 12:00:00 }
 
 waive_violation -add {ocah_dtp_RDC_CORRUPT_OBSERVED_jtag_intf_unit_scan_data} \
-    -comment {jtag_intf_unit: Three intra-TCK-domain paths where a JTAG control flop (feat_ctrl_sync output, shift_dr_flop, or dfd_sib update_flop -- all reset by JTAG resets) drives a downstream scan_data register (no reset). All source and destination flops share JTAG_TCK. Scan_data registers in JTAG scan chains intentionally have no async reset per IEEE 1149.1; they are initialized by JTAG scan protocol. No cross-domain boundary is involved.} \
+    -comment {jtag_intf_unit: Three intra-TCK-domain paths where a JTAG control flop (dbg_disable_sync output, shift_dr_flop, or dfd_sib update_flop -- all reset by JTAG resets) drives a downstream scan_data register (no reset). All source and destination flops share JTAG_TCK. Scan_data registers in JTAG scan chains intentionally have no async reset per IEEE 1149.1; they are initialized by JTAG scan protocol. No cross-domain boundary is involved.} \
     -filter {(Tag == "RDC_CORRUPT_OBSERVED") AND (Module == "jtag_intf_unit") AND (DestObject =~ "*scan_data*")} \
     -app { rdc } -tag { RDC_CORRUPT_OBSERVED } -user { bmelton } -timestamp { 15-05-2026 12:00:00 }
 

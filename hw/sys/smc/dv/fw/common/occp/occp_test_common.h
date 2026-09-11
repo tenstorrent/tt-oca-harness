@@ -299,7 +299,6 @@ static inline uint8_t calculate_crc8(uint8_t *data, size_t length) {
     for (int i = 0; i < length; i++) {
         // calculate in little endian order
         uint8_t data_byte = data[i];
-        // simputshex16("Calculating CRC8 for byte: ", data_byte);
         for (int j = 0; j < 8; j++) {
             uint8_t data_bit = (data_byte & 0x80u) ? 1u : 0u;
             uint8_t crc_msb = (crc & 0x80u) ? 1u : 0u;
@@ -413,7 +412,6 @@ static inline occp_req_header_t occp_encode_header_word(occp_command_t command,
     header.reserved = 0;
     header.header_word = header_word;
 
-    // simputs("calculating header crc for packet header\n");
     header.header_crc = calculate_crc8(
         ((uint8_t *)&header) + 1,
         sizeof(header) -

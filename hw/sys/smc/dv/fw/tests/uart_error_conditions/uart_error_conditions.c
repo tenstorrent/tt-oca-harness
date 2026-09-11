@@ -607,7 +607,6 @@ int main(void) {
     const uint32_t uart_overrun_idx = 0u; // UART0 used for loopback overrun test
     const uint32_t uart_break_idx = 0u;   // UART0 also used for break tests
 
-    // peripherals_out_of_reset();
 
     simputs("\n");
     simputs("========================================\n");

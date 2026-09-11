@@ -9,7 +9,7 @@
 [[overview]]
 == Overview
 
-The SMC production ROM establishes a usable SMC execution environment and then services Open Chiplet Communication Protocol (OCCP) requests over target-mode I2C and I3C interfaces.
+The SMC production ROM establishes a usable SMC execution environment and then services Open Chiplet Configuration Protocol (OCCP) requests over target-mode I2C and I3C interfaces.
 It performs early SRAM handling and memory-health checks before using a stack, initializes status and coordination state, applies the ROM's lifecycle-based access policy, and exposes commands for status, memory transfer, and boot handoff.
 
 The ROM follows one common flow regardless of the `PRIMARY_CHIPLET` strap.

@@ -16,11 +16,10 @@ from dataclasses import dataclass
 from enum import Enum
 
 # ``_field_mask`` is the generic "read one plain ``#define`` out of a generated
-# PeakRDL C header" accessor; ``smc_addr_map`` already exposes it per block
-# (``cpu_ctrl_u32``, ``reset_unit_u32``, ...) but has no ``misc_wrap`` wrapper
-# yet. Reusing the module-private helper keeps ONE #define parser in the package
-# instead of a second copy here ([REUSE-AND-LAYERING]); a public
-# ``misc_wrap_u32()`` in ``smc_addr_map`` would be the tidier home.
+# PeakRDL C header" accessor; ``smc_addr_map`` exposes it per block
+# (``cpu_ctrl_u32``, ``reset_unit_u32``, ...) but has no ``misc_wrap`` wrapper,
+# so the module-private helper is reused rather than a second #define parser
+# ([REUSE-AND-LAYERING]).
 from .smc_addr_map import _REPO, _field_mask, smc_addr, smc_indexed_addr
 
 # Authoritative addressing: every catalog address below is evaluated from a
@@ -126,17 +125,8 @@ CSR_FIELD_CATALOG = {
         SmcCsrAccessKind.RO_STATIC,
         _CHIP_ID_RESET,
     ),
-    # RAS_BANK_INFO is a multi-field register (BANK_CHIP / BANK_INSTANCE each
-    # carry their own generated ``*_reset``), so there is no single whole-word
-    # default symbol to compare against; left decode-only on purpose.
-    "CHIP_CONFIG_RAS_BANK_INFO": SmcCsrField(
-        "CHIP_CONFIG_RAS_BANK_INFO",
-        smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_RAS_BANK_INFO_BASE_ADDR"),
-        SmcCsrAccessKind.RO_STATIC,
-        None,
-    ),
     # 0xC000_2A00 is NDM_RESET.NDMRESET_REQUEST, not a "status" register: the
-    # entry now carries the name of the symbol that addresses it so a logged
+    # entry carries the name of the symbol that addresses it so a logged
     # register identity cannot drift from the address actually accessed.
     "NDM_RESET_NDMRESET_REQUEST": SmcCsrField(
         "NDM_RESET_NDMRESET_REQUEST",

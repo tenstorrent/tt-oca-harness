@@ -3,7 +3,7 @@
 """# deferred: rtl_placeholder
 SMC OSS PLL/PVT clock CSR precheck — DEFERRED (rtl_placeholder).
 
-Shelved until real adopter PLL/PVT IP replaces integration OKAY wraps.
+Needs real adopter PLL/PVT IP in place of the integration OKAY wraps.
 Not ported.
 """
 

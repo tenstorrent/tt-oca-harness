@@ -76,9 +76,9 @@ core TAP contracts:
 BFM-internal navigation (for example a scan that returns to Run-Test/Idle),
 call `sync_state()` so predictions restart from the true controller state.
 
-Monitors deliberately log and catch callback exceptions. An attached checker
-therefore retains its protocol error before raising, and the owning test or
-scoreboard must call `finalize()` after traffic. For worked integrations, see
+Monitors log and catch callback exceptions, so an attached checker retains its
+protocol error before raising, and the owning test or scoreboard must call
+`finalize()` after traffic. For worked integrations, see
 the DTP `dtp_jtag_idcode_test`, `dtp_jtag_bypass_test`,
 `dtp_jtag_tlr_reset_test`, and `dtp_jtag_trst_test` sequences (via
 `dtp_jtag_base_test_seq.attach_tap_checker`).
@@ -152,7 +152,9 @@ state-encoding/transition legality, TRST/TMS-walk reset behavior, and the
 TDO-enable shift-only window, each citing its IEEE Std 1149.1 clause). It is
 instantiated at TB scope next to flattened nets or bound into a hierarchy,
 with a runtime `en_i` suppress knob; the DTP integration wires it to the
-primary TAP with `dtp_tb_if.jtag_sva_en`.
+primary TAP with `dtp_tb_if.jtag_sva_en`. The TDO-timing and TAP-state rules
+run on every simulator (Verilator under `--assert`); the X-hygiene rules run
+on four-state simulators only.
 
 The package also ships an encoding-agnostic IEEE 1149.1 TAP model
 (`ocah_jtag_tap_state_e`, `ocah_jtag_next_state()`, and the shortest-path
@@ -189,7 +191,7 @@ through the `_slave_sequence` API. The protocol engine
 (`OcahJtagSlaveEngine`) holds no simulator handles and is validated
 standalone against the master-side reference model by
 `cocotb/examples/example_slave_selftest.py` (runnable with plain Python).
-The DTP testbench is the first consumer: its STAP-selection scenarios splice
+The DTP testbench consumes it: its STAP-selection scenarios splice
 one slave device behind each `jtag_stap_*_host` port (cocotb
 `hw/sys/dtp/dv/cocotb/env/dtp_stap_ds_agent.py`, SV-UVM `dtp_env`) and judge
 selection, gating, and recovery through `check_last_update`,
@@ -256,14 +258,6 @@ per protocol:
    `[sim].args` — no checked-in config changes; license-env gating is
    already part of the commercial profile contract.
 
-No commercial-VIP integration exists in-tree — that is the placement
-policy above, not a gap. The contract itself is integration-proven: the
-companion carries a reference integration that ran a commercial AXI VIP
-behind exactly these hooks — the env-level factory override, the vendor-cfg
-hook, and the interface-nesting hook on the initiator side, plus a factory
-override of the reactive slave agent on the responder side — and reproduced
-an unmodified open-tree DUT scenario's CHK evidence identically.
-
 ## Quick Start
 
 ```python
@@ -316,9 +310,8 @@ tap = OcahJtagMasterDriver(
 | `await goto_state(state)` | Navigate using shortest TMS path |
 | `get_statistics()` | Return plain counters and tracked state |
 
-`reset_tap()` intentionally leaves the tracked TAP state in
-`TEST_LOGIC_RESET`. This matches DTP sanity sequences, which then step `TMS=0`
-to observe `RUN_TEST_IDLE`.
+`reset_tap()` leaves the tracked TAP state in `TEST_LOGIC_RESET`; step
+`TMS=0` afterwards to reach `RUN_TEST_IDLE`.
 
 ## Device Maps
 
@@ -358,7 +351,7 @@ checker.assert_clean()
 ```
 
 Callbacks receive `OcahJtagScanItem` objects. The item also supports
-`to_record()` for older dict-shaped callback code.
+`to_record()` for dict-shaped callback code.
 
 ## Validation
 

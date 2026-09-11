@@ -193,7 +193,7 @@ static void fail_at(const char *msg) {
  * checks it is counting.
  *
  * Keep EXPECTED_CHK_COUNT in step with the chk_ok() call sites below. */
-#define EXPECTED_CHK_COUNT 15u
+#define EXPECTED_CHK_COUNT 16u
 static uint32_t chk_count;
 
 static void chk_ok(const char *line) {
@@ -429,6 +429,29 @@ int main(void) {
                "INTR_STATUS.LOG_FETCH_ERR observed 0x1 (expected 0x1)");
     }
 
+    /* Positive ENABLE-gating arm on the REAL source.
+     *
+     * Scenario 0b established the gating intent with an INTR_TEST pulse, which
+     * proves the capture path is live but says nothing about log_fetch_err
+     * itself.  The engine is still enabled here and scenario A's cause is still
+     * asserted, so a W1C that restores INTR_ENABLE=1 must see the bit come
+     * straight back.  A dead source cannot produce that observation, which is
+     * what stops the ENABLE=0 arm below from passing on absence of stimulus. */
+    {
+        clear_intr_or_fail(WRAP0_LE_BASE, BIT_FETCH_ERR, BIT_FETCH_ERR,
+                           "FAIL: could not clear before the stuck-source re-latch arm");
+        uint32_t t = RELATCH_POLLS;
+        while (t > 0u && (read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & BIT_FETCH_ERR) == 0u) {
+            t--;
+        }
+        if (t == 0u) {
+            fail_at("FAIL: ENABLE=1 but the stuck log_fetch_err never re-latched "
+                    "(source dead -> the masked-clear below proves nothing)");
+        }
+        chk_ok("CHK-STUCK-SOURCE-RELATCHES: ENABLE=1 with scenario A's cause still "
+               "asserted -> INTR_STATUS.LOG_FETCH_ERR observed 0x1 (expected 0x1)");
+    }
+
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
     clear_intr_or_fail(WRAP0_LE_BASE, BIT_FETCH_ERR, 0u,
                        "FAIL: W1C did not clear LOG_FETCH_ERR after masking ENABLE");
@@ -530,6 +553,14 @@ int main(void) {
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
     write_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF, GOOD_XFER_LEN);
 
+    // There is deliberately no bounded poll for BIT_WRITE_ERR here. By the
+    // analysis above it can never succeed -- the fetch DECERRs first, so the
+    // write master is never engaged -- so such a poll could only ever expire
+    // into a warning. A wait that can neither fail nor pass is not a check.
+    //
+    // What this scenario does still exercise, and the only thing it claims:
+    // the fetch-error path with WRITE_ERR unmasked, i.e. the INTR_ENABLE
+    // WRITE datapath and the log_write FSM IDLE/REQ arms. Assert that much.
     {
         uint32_t t = RELATCH_POLLS;
         while (t > 0u && (read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & BIT_FETCH_ERR) == 0u) {

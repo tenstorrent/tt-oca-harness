@@ -104,7 +104,7 @@ class smc_reset_unit_sanity_test_seq(SmcCsrSeq):
     async def _ss_sweep(self, dut) -> None:
         """Write/readback/restore the software-owned RESET_UNIT SS_* registers.
 
-        Run AFTER the SEP WDT pulse on purpose: the pulse clears the COLD_WARM
+        Run AFTER the SEP WDT pulse: the pulse clears the COLD_WARM
         domain, so values written before it would not survive to be read back.
         """
         for reg in _SS_SWEEP_REGS:
@@ -198,16 +198,9 @@ class smc_reset_unit_sanity_test_seq(SmcCsrSeq):
             got_w,
         )
         await self._ss_sweep(dut)
-        # There is deliberately no summary token here. Every value available at
-        # this line is a constant: `COLD_PAT` / `WARM_PAT` are module literals,
-        # `got_c` comes from a `csr_read(expected=COLD_PAT)` that raises on
-        # mismatch, and `got_w` comes from `_await_warm_cleared`, which returns
-        # only on `== 0`. A summary line built from them would be constants
-        # whichever way it is phrased ([NO-ALWAYS-PASS-CHECKER]), and the two
-        # per-leg tokens above already print the same words.
-        #
-        # The fail-capability of this scenario lives in
-        # `csr_read(expected=...)` (scoreboard-enforced), in
-        # `_await_warm_cleared`'s expiry, and in `_ss_sweep`'s CSR-to-pin check
-        # on `tb_isolate_req_o`, which is the only leg here whose value the DUT
-        # is free to get wrong.
+        # No summary token: every value at this line is a module literal or a
+        # value a raising compare already pinned, so a summary would print
+        # constants ([NO-ALWAYS-PASS-CHECKER]); the two per-leg tokens above
+        # carry the evidence, and the fail-capable legs are
+        # `csr_read(expected=...)`, `_await_warm_cleared`'s expiry, and
+        # `_ss_sweep`'s CSR-to-pin check on `tb_isolate_req_o`.

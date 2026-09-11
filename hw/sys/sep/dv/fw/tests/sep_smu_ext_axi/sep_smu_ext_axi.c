@@ -7,7 +7,7 @@
 #include "och_sep_common.h"
 #include "sep.h"
 #include "sep_outbound_filter.h" /* common: sep_outbound_filter_init() (proven 0x80000000 egress) */
-#include "sep_smc_bringup.h" /* common: sep_smc_open_window / _bringup_from_sram */
+#include "sep_smc_bringup.h"     /* common: sep_smc_open_window / _bringup_from_sram */
 #include "smu_sep_ext_axi_protocol.h"
 
 /*

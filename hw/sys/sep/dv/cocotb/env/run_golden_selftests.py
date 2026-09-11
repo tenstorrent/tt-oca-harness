@@ -33,6 +33,7 @@ _GOLDENS = (
     "sep_noise_golden.py",
     "sep_entropy_golden.py",
     "sep_lcc_golden.py",
+    "sep_crc_golden.py",
 )
 
 

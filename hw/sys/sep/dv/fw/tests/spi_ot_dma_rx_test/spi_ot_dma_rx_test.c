@@ -166,14 +166,28 @@ int main(void) {
     }
 
     // --- SPI controller must be clean ----------------------------------------
-    if (spi_wait_idle(SPI_POLL_TIMEOUT) != 0) {
+    int spi_idle = (spi_wait_idle(SPI_POLL_TIMEOUT) == 0);
+    if (!spi_idle) {
         sep_mbx_puts("FAIL: SPI host stuck active\n");
         errors++;
     }
-    if (spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR) != 0) {
+    uint32_t spi_err_status = spi_rd(OCH_SEP_TOP_SPI_CONTROLLER_ERROR_STATUS_BASE_ADDR);
+    if (spi_err_status != 0) {
         sep_mbx_puts("FAIL: SPI error status set\n");
         errors++;
     }
+
+    // CHK-NOERR evidence: the four values the legs above already read, so the
+    // checker is auditable from the log rather than only from a silent pass.
+    sep_mbx_puts("CHK-NOERR: dma_status=");
+    sep_mbx_puthex(status_after_clear);
+    sep_mbx_puts(" dma_err_code=");
+    sep_mbx_puthex(sep_dma_rd(OCH_SEP_TOP_SECURE_DMA_ERROR_CODE_BASE_ADDR));
+    sep_mbx_puts(" spi_idle=");
+    sep_mbx_putc(spi_idle ? '1' : '0');
+    sep_mbx_puts(" spi_err_status=");
+    sep_mbx_puthex(spi_err_status);
+    sep_mbx_putc('\n');
 
     // --- Value-check the received data ---------------------------------------
     // The OSS OcahSpiFlash BFM preloads RX_PATTERN across the read window, so

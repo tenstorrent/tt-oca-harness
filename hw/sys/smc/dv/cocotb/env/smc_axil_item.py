@@ -12,13 +12,11 @@ AXIL_PORT_FIELDS = ("dtp_csr_active", "external_active", "efuse_bank_active")
 AXIL_SAMPLE_FIELDS = AXIL_PORT_FIELDS + ("any_master_active",)
 
 # Fields whose idle `== 0` may be asserted, because a positive control for the
-# probe can exist in this TB. `dtp_csr_active` is excluded permanently:
-# `tb_top.sv:1151` ties `axil_dtp_csr_resp = '0'`, so there is no responder and
-# an AXI-Lite access into the DTP CSR window would wedge instead of completing;
-# the DTP CSR boundary is a recorded TB-policy deferral
-# (`hw/sys/smc/dv/README.md`). Any
-# sequence-side idle helper must iterate this tuple, not AXIL_SAMPLE_FIELDS, and
-# report `dtp_csr_active` as OBSERVED-ONLY / not closure evidence
+# probe can exist in this TB. `dtp_csr_active` is excluded: tb_top ties
+# `axil_dtp_csr_resp = '0'`, so there is no responder and an AXI-Lite access
+# into the DTP CSR window would wedge instead of completing. Any sequence-side
+# idle helper must iterate this tuple, not AXIL_SAMPLE_FIELDS, and report
+# `dtp_csr_active` as OBSERVED-ONLY / not closure evidence
 # ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
 AXIL_UNBACKABLE_FIELDS = ("dtp_csr_active",)
 AXIL_CHECKABLE_FIELDS = tuple(f for f in AXIL_SAMPLE_FIELDS if f not in AXIL_UNBACKABLE_FIELDS)

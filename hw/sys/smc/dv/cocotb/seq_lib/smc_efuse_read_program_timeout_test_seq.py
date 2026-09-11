@@ -230,15 +230,16 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         await self.csr_write("READ_TMO_SHORT", READ_TMO, TMO_EN_R)
         got = await self.csr_read("READ_TMO_RB", READ_TMO, expected=TMO_EN_R)
         st, data = await self._read("READ_TMO")
+        assert st & READ_ERR, f"short read timeout expected READ_STATUS=1 got CTRL=0x{st:x}"
         assert data == 0, f"timed-out read data=0x{data:x} want 0"
         self.read_tmo_ok = True
         self.read_tmo_data = data
 
         # SAME-CONFIGURATION POSITIVE CONTROL for the `data == 0` above
-        # ([NEGATIVE-NEEDS-POSITIVE-CONTROL]). The old recovery leg re-read with
-        # READ_REQ_TIMOUT_ENABLE back at 0, so no read with the timeout ENABLED
-        # was ever shown returning data, and a dead or unmapped READ_DATA
-        # register would have satisfied `data == 0` just as well. Here the
+        # ([NEGATIVE-NEEDS-POSITIVE-CONTROL]). A recovery leg that re-read with
+        # READ_REQ_TIMOUT_ENABLE back at 0 would show no read with the timeout
+        # ENABLED returning data, and a dead or unmapped READ_DATA register
+        # would satisfy `data == 0` just as well. Here the
         # enable bit stays 1 and only the cycle count changes to the RDL default
         # (0x%x), so the difference between this read and the one above is
         # exactly the quantity under test.
@@ -304,11 +305,10 @@ class smc_efuse_read_program_timeout_test_seq(SmcCsrSeq):
         )
         self.chk_seen.add("CHK-EFUSE-TMO-RD-REC")
 
-        # READ_STATUS positive control. Until this leg existed, every
-        # READ_STATUS assertion in this file was `== 0` (:234 and :275 above),
-        # so nothing here could distinguish a working status bit from a dead
-        # one, and no failure of the bit to SET could ever be reported
-        # ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
+        # READ_STATUS positive control. Every other READ_STATUS assertion in
+        # this file is `== 0` (:234 and :275 above); on their own they cannot
+        # distinguish a working status bit from a dead one, so a failure of the
+        # bit to SET would go unreported ([NEGATIVE-NEEDS-POSITIVE-CONTROL]).
         #
         # Armed by the recovery read immediately above: `:275` has just proven
         # READ_STATUS == 0 on a *successful* read, which matters because

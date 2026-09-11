@@ -258,7 +258,6 @@ static int send_random_invalid_for_unlatch(test_context_t *ctx) {
         simputs("Injecting Unsupported status ID\n");
         ctx->unsupported_status_id_inject_enable = true;
         ctx->exp_response_code = OCCP_UNSUPPORTED_STATUS;
-        // execute_random_commands(ctx, 1);
         uint32_t status = 0;
         rc = occp_send_get_occp_boot_status_command(ctx, ctx->slave_addr, &status);
         ctx->unsupported_status_id_inject_enable = false;

@@ -4,10 +4,10 @@
 
 # Sources are vendored from upstream pulp-platform/iDMA into upstream/ via the `vendor_package`
 # entry in the root Bender.yml (bender vendor init), pinned at the v0.6.5-src release. The TT-local
-# delta to upstream src/ (Xcelium-compat `FF` macro expansion, axis read fix, prim-cell swap,
-# NotPassthrough dataflow, ...) is applied as the numbered, atomic patches in patches/, split by
-# subsystem (0001 backend, 0002 frontend, 0003 typedef, 0004 midend) — see the package README. Do
-# NOT hand-edit the upstream/ files; edit/regenerate the patches instead.
+# delta to upstream src/ is applied as five numbered patches in sorted filename order: 0001 backend,
+# 0002 frontend, 0003 typedef, 0004 midend, and 0005 generated-width sizing. Patch 0005 updates
+# templates modified by 0001 and 0002, so it must follow both. See the package README. Do not
+# hand-edit the upstream/ files; edit/regenerate the patches instead.
 #
 # overlay/target/rtl/ holds the TT-generated RTL OCA compiles (idma_generated.sv is the rw_axi
 # backend bundle; include/idma/tracer.svh). The -src release ships no generated RTL (its target/rtl

@@ -82,13 +82,14 @@ int secondary_main(void) {
 
     if (hartid == 0) {
         return main();
-    } else {
-        /* A single wfi then falling off the end of a non-void function: wfi
-         * wakes on any pending interrupt, so the secondary hart resumed,
-         * returned an indeterminate value and executed whatever followed.
-         * Park it the way every other test in this tree parks its secondaries. */
-        while (true) {
-            __asm__("wfi");
-        }
     }
+
+    /* Harts 1-3 park here for the whole run. The loop is required, not
+     * decorative: a `wfi` may return spuriously, so a single one would let the
+     * hart fall out of this function. */
+    while (true) {
+        __asm__("wfi");
+    }
+
+    return 0;
 }

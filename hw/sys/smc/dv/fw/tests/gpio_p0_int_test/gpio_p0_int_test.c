@@ -135,7 +135,6 @@ void test_gpio_interrupt_types(uint32_t gpio_num) {
 int main(void) {
 
     // Initialize peripherals
-    // peripherals_out_of_reset();  // Function is not available
 
     // Test all GPIOs (0-64), skipping GPIO 61 (cool_reset_in)
     for (uint32_t gpio_num = 0; gpio_num < TOTAL_GPIOS; gpio_num++) {

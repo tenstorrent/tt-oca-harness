@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+// SPDX-License-Identifier: CC-BY-4.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 = Internal Revision History
@@ -173,4 +173,8 @@ SW_RESET_N now resets to 0x3E; reserved CTRL[0] reads zero and ignores writes.
 |0.5.29 |2026-09-02 |Alessandro Ottaviano |Aligned the SMC Boot ROM chapter
 with the current four-core hardware ROM interface, 128 KiB linker map, macro
 configuration, and response endianness control.
+|0.5.30 |2026-09-07 |Haohao Liao |Corrected the SEP Lifecycle Controller
+multi-chiplet debug model: primary-chiplet SiP-owner feature control gates DFT
+traffic before downstream forwarding, and reserved DBG_2 bits gate
+adopter-defined forwarding paths on LCC-bearing chiplets.
 |=======================================================================
