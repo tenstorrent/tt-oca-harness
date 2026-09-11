@@ -99,22 +99,15 @@ _REQ_ERROR_CLEAR = EFUSE_INTERFACE_CTRL.field_mask(
     "EFUSE_INTERFACE_CTRL_STATUS", "efuse_req_error_clear"
 )
 
-# SPARE7 bits used as program stimulus. Every one of them is ALREADY set in the
-# golden image, which is what makes them safe to use: the interface issues its
-# bank command either way -- that is the only thing these legs grade -- but the
-# array cannot change, so an operation aborted halfway cannot leave the OTP
-# image disagreeing with the golden the end-of-test resense compares against.
-# The bank takes ~29 cycles to retire a command. After an aborted operation,
+# The bank takes ~30 cycles to retire a command. After an aborted operation,
 # wait for the interface to go idle and then leave margin, so the next kick is
 # not swallowed by a channel that is still busy.
 _SETTLE_LIMIT = 400
 _SETTLE_CYCLES = 64
 
-_PROGRAM_INJECT_BITS = (6, 11)
-assert len(_PROGRAM_INJECT_BITS) == len(_ILLEGAL_STATES), (
-    "one SPARE7 bit per program injection, so a run that adds an illegal encoding "
-    "cannot silently reuse a bit and leave two injections sharing one address"
-)
+# How many SPARE7 bits the program legs consume: two live controls and one per
+# illegal encoding. The bits themselves are NOT hardcoded -- see _pick_pg_bits.
+_PROGRAM_BITS_NEEDED = 2 + len(_ILLEGAL_STATES)
 
 
 @pyuvm.test()
@@ -510,19 +503,43 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         )
         await self._quiesce(which)
 
+    def _pick_pg_bits(self, img) -> list[int]:
+        """SPARE7 bit indices to use as program stimulus, taken from the image.
+
+        Every bit returned is ALREADY SET in the golden, so the array cannot
+        change: the interface issues its bank command either way -- which is
+        the only thing these legs grade -- and an operation aborted halfway
+        cannot leave the OTP image disagreeing with the golden that the
+        end-of-test resense compares against.
+
+        The image is randomized per seed, so these cannot be constants. Picking
+        them from one seed's image is what made this leaf fail under another:
+        a bit that happened to be set locally was clear in the regression's
+        image, and programming it moved the array.
+        """
+        spare7 = img.field_int("SPARE7") & 0xFFFFFFFF
+        bits = [b for b in range(32) if (spare7 >> b) & 1]
+        assert len(bits) >= _PROGRAM_BITS_NEEDED, (
+            f"test bug: SPARE7 word 0 of this seed's image is {spare7:#010x}, which has "
+            f"only {len(bits)} bit(s) set, and the program legs need "
+            f"{_PROGRAM_BITS_NEEDED} already-set bits to avoid changing the array"
+        )
+        return bits[:_PROGRAM_BITS_NEEDED]
+
     async def run_scenario(self) -> None:
         img = self.select_efuse_image(lc_raw=LC_PROD)
+        pg_bits = self._pick_pg_bits(img)
         self.write_efuse_image(img)
         await self.bring_up_and_wait_fuse_sense(max_cycles=_MAX_SENSE_CYCLES)
 
         # Control first: prove the read path is live before grading a refusal.
         await self._assert_read_alive("before")
-        await self._assert_program_alive(0)
+        await self._assert_program_alive(pg_bits[0])
 
         # Establish the in-flight window before grading a withdrawal inside it.
         await self._assert_request_held("read", _CONTROL_WORD * 32)
 
-        for state, pg_bit in zip(_ILLEGAL_STATES, _PROGRAM_INJECT_BITS):
+        for state, pg_bit in zip(_ILLEGAL_STATES, pg_bits[2:]):
             await self._inject("read", state, _CONTROL_WORD * 32)
             # Idle window, not in flight. Aborting an ACCEPTED program parks the
             # example shim's write FSM (see the plan entry's observation), and
@@ -537,7 +554,7 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         await self._assert_read_alive("after")
         # A fresh bit: OTP is write-once, so re-programming bit 0 would not
         # issue a command and the control would fail for the wrong reason.
-        await self._assert_program_alive(1)
+        await self._assert_program_alive(pg_bits[1])
 
         # Error lifecycle on the same interface: set by a failure, cleared by
         # the next legal request.
