@@ -38,9 +38,8 @@ class smu_dft_gpio_boot_stall_test(smu_base_test):
         # Bounded wait, not an instant sample: smu_wrapper runs the real SMC
         # eFuse model from smc_ip_integration, whose sense sequence releases
         # fuse_reset_n_delayed_o a handful of clk_smu cycles after the primary
-        # resets the base test blocks on (measured: 9). The bare DUT ties that
-        # interface off, so there it is already high. This stays falsifiable --
-        # a fuse_reset that never rises fails on the expect_eq below.
+        # resets the base test blocks on. The bare DUT ties that interface off,
+        # so there it is already high.
         await wait_signal_high(
             dut.fuse_reset_n_delayed_o,
             dut.clk_smu_i,

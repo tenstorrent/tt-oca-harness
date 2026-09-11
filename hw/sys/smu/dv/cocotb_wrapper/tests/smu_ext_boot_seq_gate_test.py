@@ -18,7 +18,7 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_ext_boot_seq_gate_test(smu_base_test):
-    """SMU_006 rev2: ext_boot_seq_done_i gates fuse_reset_n_delayed_o release."""
+    """SMU_006: ext_boot_seq_done_i gates fuse_reset_n_delayed_o release."""
 
     use_shared_env = True
 

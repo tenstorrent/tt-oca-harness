@@ -16,7 +16,7 @@ schema_version = 1
 # smc_wrapper / sep_wrapper. The CPU memory macros come with
 # smc_ip_integration; the TB keeps the cocotb observe surface.
 #
-# Independent of the residual SEP=0 block-bench catalog in
+# Independent of the SEP=0 block bench in
 # smu_block_sim_cfg.toml; both configs share this DV root and the build/runs
 # evidence directory.
 name = "smu"
@@ -63,9 +63,8 @@ common_bender_targets = [
 ]
 # smu pulls smc+dtp; sep+sep_el2 supply the real SEP subsystem and EL2 CPU;
 # smu_wrapper adds hw/top/{smu_wrapper,smc_ip_integration,sep_ip_integration}.
-# `simulation` is deliberately NOT set: the
-# sep×simulation slice references absolute /tech and /vendor_ip model paths
-# that only exist on internal hosts.
+# `simulation` is not a target here: the sep×simulation slice references
+# simulation models by absolute paths outside the repository.
 bender_targets = [
   "smu",
   "smc",
@@ -79,17 +78,17 @@ bender_targets = [
 incdirs = [
   "hw/sys/sep/dv/shims/prim",
   "hw/sys/smu/dv/tb",
-  # ocah_fcov_macros.svh. Kept so an assertion or coverage include resolves
+  # ocah_fcov_macros.svh, so an assertion or coverage include resolves
   # here too; the cov/sv functional-coverage modules themselves are
   # instantiated in tb/tb_top.sv and compile on smu_block, not here.
   "hw/common/assert",
 ]
-# Licensed/vendor sim collateral pulled by the sep×simulation bender slice is
-# not part of the OSS wrapper hierarchy — mirror the smu/sep OSS excludes.
-# Stale foundry path keep-listed (file absent in OSS tree). SEP=1 needs no TCM
-# shim: the ram_<DEPTH>x39 ICCM/DCCM macros that hw/sys/sep/rtl/sep_tcm_wrapper.sv
-# instantiates are already supplied by the upstream VeeR mem_lib.sv on the
-# sep_el2 Bender closure, and tb_wrapper_top.sv backdoors their ram_core arrays.
+# Vendor simulation collateral that an overlay of the sep bender graph can pull
+# in and that the smu_wrapper hierarchy never instantiates: a licensed SPI
+# controller wrapper and its DLL PHY, the pad and ESD libraries,
+# padring_dv_wrapper and the SPI flash models. Excluded so Verilator is not
+# made to parse their switch-level primitives; same denylist as
+# smu_block_sim_cfg.toml.
 exclude_files = [
   "sep_cdns_spi_wrap.sv",
   "cdn_ip6184_19e8_dll_phy",
@@ -102,10 +101,9 @@ exclude_files = [
   "tt_spi_devices.sv",
   "tt_bidir_delay.sv",
   "meta/models/spi",
-  "hw/sep/sep_tcm_wrapper.sv",
-  # Mirror OSS SMC: Bender.lock may still resolve Package(i3c-core) to stale
-  # deps/i3c-core while smc also lists vendor/chipsalliance/i3c-core (TimingWidth
-  # / rlt_mem_*). Drop the stale deps tree so i3c_pkg matches upstream.
+  # Bender.lock resolves Package(i3c-core) to deps/i3c-core while smc also lists
+  # vendor/chipsalliance/i3c-core; both define i3c_pkg (TimingWidth / rlt_mem_*),
+  # so only the vendor copy is compiled, as in hw/sys/smc/dv.
   "deps/i3c-core",
 ]
 stubs = [
@@ -153,11 +151,11 @@ public_scope = "hw/sys/smu/dv/tb/smu_wrapper_public_scope.vlt"
 ccache = true
 
 [coverage.verilator]
-# Line / branch (--coverage-line), expression, and SVL user coverage. Toggle is
-# deliberately absent: this DUT elaborates the real SEP/SMC/DTP wrappers, and
-# unscoped toggle is the 0.5 GB-per-leaf case. Scoped toggle from #1662 lives
-# on `--dut smu_block`. This replaces the simulator default `--coverage`, which
-# would enable every form including toggle.
+# Line / branch (--coverage-line), expression, and SVL user coverage, replacing
+# the simulator default `--coverage`, which would enable every form including
+# toggle. Toggle is absent: this DUT elaborates the real SEP/SMC/DTP wrappers,
+# and unscoped toggle is the 0.5 GB-per-leaf case. Scoped toggle lives on
+# `--dut smu_block`.
 build_args = ["--coverage-line", "--coverage-expr", "--coverage-user"]
 
 [build.options]
@@ -170,11 +168,9 @@ python_root = "hw/sys/smu/dv/cocotb_wrapper"
 test_dir = "hw/sys/smu/dv/cocotb_wrapper/tests"
 python_paths = [
   "hw/common/dv/vip",
-  # Shared PyUVM env and seq_lib, one package each for both DUTs. seq_lib had
-  # to merge rather than be shared by path: its modules import each other as
-  # `from seq_lib.x`, so they only resolve inside a package of that name, and
-  # `seq_lib` can only ever be one package. The two trees had 49 and 28 modules
-  # and no name in common, so they are one package -- see
+  # Shared PyUVM env and seq_lib, one package each for both DUTs. seq_lib
+  # modules import each other as `from seq_lib.x`, so they only resolve inside
+  # a package of that name, and `seq_lib` can only ever be one package -- see
   # smu_block_sim_cfg.toml, which puts the same directory on its path.
   "hw/sys/smu/dv/common",
 ]
@@ -328,7 +324,7 @@ description = "Production-wrapper baseline for no-SEP and real-SEP targets"
 timeout_sec = 1800
 args = [
   "+skip_fuse_sense",
-  # Required with +skip_fuse_sense after efuse_shadow_regs preload gate (mirror smc_wrapper).
+  # Needed with +skip_fuse_sense: the SMC shadow registers load from this file.
   "+smc_shadow_reg_preload={repo_root}/hw/sys/smc/dv/assets/default_efuse_shadow_reg.preload",
 ]
 
