@@ -961,7 +961,11 @@ external interrupt input vector, width <code>NUM_INT_TO_SMC</code>),
 <code>smc_ext_mailbox_interrupts_o</code> (outbound mailbox notifications, width
 <code>NUM_MAILBOXES</code>), <code>gpio_interrupt_o</code> (GPIO edge/level events, width
 <code>NUM_GPIO_WRAPS</code>), and <code>uart_interrupt_o</code> (UART TX/RX events, width <code>NUM_UART</code>).
-For the full PLIC source map see the SMC Technical Reference Manual.</p>
+Drive <code>smc_ext_interrupts_i</code> as an active-high level or as a pulse that stays
+high long enough to be sampled on <code>clk_smc</code>. The pin is three-flop
+synchronized; a short asynchronous pulse can be lost. There is no
+edge-triggered mode. For the full PLIC source map see the SMC Technical
+Reference Manual.</p>
 </div>
 </div>
 <div class="sect3">
@@ -1472,7 +1476,7 @@ signal descriptions and timing requirements.</p>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_EXT_INTERRUPTS-1:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">External interrupt inputs. Width is 256. Synchronized to <code>clk_smc</code> (3-stage) in <code>smc_base</code>, then drives internal interrupts to the SMC CPU.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External interrupt inputs. Width is 256. Active-high level or a pulse long enough to be sampled on <code>clk_smc</code>. Synchronized to <code>clk_smc</code> (3-stage) in <code>smc_base</code>; a short asynchronous pulse can be lost.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">External sources → Interrupt aggregator</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A, tie to '0 if unused</p></td>
 </tr>
@@ -8499,7 +8503,7 @@ with <code>sep_</code> are only active when the module parameter <code>SEP=1</co
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[Cfg.NUM_INT_TO_SMC-1:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">External interrupt inputs to SMC.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External interrupt inputs to SMC. Active-high level or a pulse long enough to be sampled on <code>clk_smc</code>.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">External interrupt sources</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Tie to '0 if unused</p></td>
 </tr>

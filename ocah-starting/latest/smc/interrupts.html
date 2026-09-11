@@ -698,6 +698,15 @@ interrupt handling. The SMC-driven contribution to global interrupt
 indices is given in <a href="#cpu-interrupt-vector-map">SMC CPU Interrupt Vector Map</a> above.</p>
 </div>
 <div class="paragraph">
+<p>The PLIC gateways are active-high and level-sensitive. There is no
+per-source edge or pulse configuration. A source may be a held level, or
+a pulse that remains high long enough to be sampled on <code>clk_smc</code>.
+External inputs on <code>ext_interrupts_i</code> pass through a three-flop
+synchronizer (<code>prim_sync3</code>). A pulse that is not high at a <code>clk_smc</code>
+sampling edge of the first flop does not reach the PLIC; stretch a short
+or asynchronous pulse, or convert it to a held level, before the pin.</p>
+</div>
+<div class="paragraph">
 <p>Software must initialize PLIC priority and enable registers to known values
 (typically priority 0 and disabled) before enabling external interrupts; these
 registers have no hardware reset, and undefined values can block setting

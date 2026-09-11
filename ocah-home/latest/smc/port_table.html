@@ -621,7 +621,7 @@
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>logic</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Input</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[NUM_EXT_INTERRUPTS-1:0]</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">External interrupt inputs. Width is 256. Synchronized to <code>clk_smc</code> (3-stage) in <code>smc_base</code>, then drives internal interrupts to the SMC CPU.</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">External interrupt inputs. Width is 256. Active-high level or a pulse long enough to be sampled on <code>clk_smc</code>. Synchronized to <code>clk_smc</code> (3-stage) in <code>smc_base</code>; a short asynchronous pulse can be lost.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">External sources → Interrupt aggregator</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">N/A, tie to '0 if unused</p></td>
 </tr>
