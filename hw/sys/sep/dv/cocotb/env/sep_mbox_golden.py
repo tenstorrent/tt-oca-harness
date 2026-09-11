@@ -27,7 +27,6 @@ has no vehicle. A peer-path closure needs the external smn_inbound master
 from __future__ import annotations
 
 from sep_reg_meta import AXIL_MAILBOX_OUTBOUND_0, SEP_CPU_CTRL, sym
-
 from sep_seeded_rng import SepSeededRng
 from sep_spec_tables import (
     mailbox_depth,
