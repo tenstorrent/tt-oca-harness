@@ -262,9 +262,16 @@ class sep_primary_fail_backup_boot_base(sep_rom_ot_dma_boot_test):
         # primary read and the primary error, and occurs exactly once. A second
         # occurrence would mean the backup carried the same defect, which is the
         # terminal scenario rather than this one.
+        #
+        # The upper bound is inclusive because a member whose defect IS its error
+        # code -- one with a dedicated MANIFEST_ERR rather than a shared one, which
+        # declares that code as its defect marker -- puts the two on the same console
+        # line. A distinct token cannot share a line with the error, so allowing
+        # equality only admits that degenerate case and still pins the ordering
+        # against the read and, through slot_err above, against the backup read.
         if self.primary_defect_marker:
             i_defect = index_of(self.primary_defect_marker)
-            assert i_psrc < i_defect < i_perr, (
+            assert i_psrc < i_defect <= i_perr, (
                 f"{self.primary_defect_marker}@{i_defect} does not sit between the "
                 f"primary read@{i_psrc} and the primary error@{i_perr}: it is not "
                 f"the primary's verdict. Console: {console}"

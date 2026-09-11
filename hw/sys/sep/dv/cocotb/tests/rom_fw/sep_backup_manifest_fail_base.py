@@ -412,10 +412,18 @@ class sep_backup_manifest_fail_base(sep_base_test):
             f"ROM never printed {crypto_fail}; the terminal error code is not the "
             f"one this defect should produce. Console: {console}"
         )
-        expected_status = 0x0F01_0000 | (self.expected_error & 0xFFFF)
+        # The console code and the status word live in different spaces: the console
+        # carries OCA_BOOT_ERR_BASE | oca_result_t, the ring carries
+        # STATUS_ENCODE(type, SEP_MSG_*). status_for_result() in oca_boot.c is the only
+        # bridge, so the expectation goes through it rather than masking the console
+        # code -- for most codes the two differ, and asserting the masked half is
+        # asserting on a word the ROM never writes.
+        sep_msg = mm.rom_status_for_result(self.expected_error)
+        expected_status = 0x0F01_0000 | sep_msg
         assert expected_status in status_seq, (
             f"cold_scratch[1] never held 0x{expected_status:08x} "
-            f"(STATUS_ENCODE(ERROR, 0x{self.expected_error & 0xFFFF:04x})); "
+            f"(STATUS_ENCODE(ERROR, SEP_MSG 0x{sep_msg:04x}), which is what "
+            f"status_for_result() maps MANIFEST_ERR=0x{self.expected_error:08x} to); "
             f"observed {status_hex}"
         )
         assert fw_done, (
