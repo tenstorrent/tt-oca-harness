@@ -1270,12 +1270,20 @@ The 64-bit handle of the key to invalidate, least-significant word first.
 If the payload length is not 2 words, this command has a `RESP_CMD` response
 with a return code of _invalid_len_.
 
-If the handle does not resolve to a live key — forged, stale, already revoked,
-or failing its integrity seal — this command has a `RESP_CMD` response with a
-return code of _failure_ and a single return argument carrying
-`KM_ERR_INVALID_HANDLE`. The KM does not distinguish these cases: a
-finer-grained status would confirm to a caller that a handle it does not hold
-nevertheless names a live key.
+If the handle does not resolve to a live key — forged, stale or already
+revoked — this command has a `RESP_CMD` response with a return code of
+_failure_ and a single return argument carrying `KM_ERR_INVALID_HANDLE`. The KM
+does not distinguish these cases: a finer-grained status would confirm to a
+caller that a handle it does not hold nevertheless names a live key.
+
+A descriptor that resolves but fails its integrity seal is the one exception,
+and is revoked rather than refused. Destruction is what the caller asked for,
+and a corrupt descriptor must never become unreclaimable: refusing would strand
+its material in the KPV with no way to release the slots. The slots are erased
+and the descriptor retired exactly as for an intact key, and the recoverable
+fault is raised afterwards. What cannot happen is re-parentage, so the key's
+children are left as orphans for `CMD_CLEAR_ORPHANED_KEYS` to reclaim
+(<<km-crc-failure-response>>).
 
 If the request is granted, this command has a `RESP_CMD` response with a return
 code of _success_ and the revoked handle echoed in two return-argument words.
@@ -1293,8 +1301,8 @@ handle immediately — the revoked handle stops resolving at once rather than at
 the next allocation, so it cannot be replayed against a key that later reuses
 the same descriptor.
 
-Revoking a key in the middle of a derivation chain does not orphan what hangs
-below it. Any live children are re-parented onto the revoked key's own parent
+Revoking an intact key in the middle of a derivation chain does not orphan what
+hangs below it. Any live children are re-parented onto the revoked key's own parent
 (<<km-reparentage>>), so the chain closes over the gap instead of breaking at it,
 and a later `CMD_CLEAR_KEY_TREE` on an ancestor still reaches them. This affects
 lineage only: no descendant's material, handle or metadata changes, and none of
@@ -4703,7 +4711,7 @@ afterwards.* Destruction is what the caller asked for, and a corrupt key must
 never become unreclaimable. Refusing here would strand material in the KPV
 with no way to release its slots. Revoke Key therefore erases the slots and
 retires the descriptor exactly as it would for an intact key. What it cannot do
-is *re-parent* and child keys. The target's `parent` field is inside the region 
+is re-parent any child keys. The target's `parent` field is inside the region
 that just failed its check, so it cannot be trusted to name a grandparent, and 
 writing it into the children and re-sealing them would launder an unverified 
 value into something that looks authentic (<<km-reparentage>>).
@@ -4828,6 +4836,15 @@ including the CRC failure, so a corrupted descriptor is indistinguishable from
 one that never existed. All other functions taking a handle resolve it through
 this one, so no caller can reach descriptor fields that have not just been
 verified.
+
+Revoke Key is the one exception, and it stops short of step 3 rather than
+failing on it. Steps 1 and 2 still bind — a handle whose index, liveness or
+issue counter is wrong names nothing to destroy — but a CRC mismatch must not
+block destruction, so Revoke Key proceeds on the resolved index and erases
+(<<km-crc-failure-response>>). It is therefore the only function permitted to
+act on a descriptor whose CRC has not just verified, and it reads nothing out of
+the unverified region: the `parent` field is exactly what it must not trust,
+which is why the key's children are orphaned instead of re-parented.
 
 *Get Key Slot*
 
