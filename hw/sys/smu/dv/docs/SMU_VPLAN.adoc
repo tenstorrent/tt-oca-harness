@@ -13,7 +13,7 @@
 |Framework |PyUVM on cocotb
 |Primary simulator |Verilator
 |Reference testbench architecture |`SMU_TB_ARCH.adoc`
-|Live test bodies |79 Python modules under `cocotb_wrapper/tests/`; 84 `[[tests]]` entries in `wrapper.toml`, 81 of them in `all`
+|Live test bodies |83 Python modules under `cocotb_wrapper/tests/`; 88 `[[tests]]` entries in `wrapper.toml`, 81 of them in `all`
 |Enrolled leaf entries |81 in `all`, 53 in `sep0_all`
 |Non-enrolled inventory |28 bodies under `cocotb/tests_deferred/`
 |Per-testcase plan entries |84 -- every `[[tests]]` name in `wrapper.toml`, each describing the `cocotb_wrapper/tests/` body that name enrols. No entry describes an unenrolled DUT configuration.
@@ -3417,7 +3417,7 @@ Two things are worth reading before the entries:
 [cols=",",options="header",]
 |===
 |Population |Count
-|Live test bodies (`cocotb_wrapper/tests/*.py`) |79
+|Live test bodies (`cocotb_wrapper/tests/*.py`) |83
 |Enrolled in `all` |81
 |Enrolled in `sep0_all` (nightly) |53
 |Non-enrolled bodies (`cocotb/tests_deferred/`) |28
@@ -3437,6 +3437,8 @@ Two things are worth reading before the entries:
 |`migrated_fabric` |14 |Fabric leaves brought onto the wrapper
 |`migrated_smc` |12 |SMC-facing leaves brought onto the wrapper
 |`migrated_dtp` |27 |DTP-facing leaves brought onto the wrapper
+|`sep_smc_sram_blocked` |6 |SRAM-private cookie poll, including the four dual-firmware leaves
+|`sep_smc_dual` |4 |The four dual-firmware leaves alone. Not in `all`
 |===
 
 [[smu-coverage-model]]
