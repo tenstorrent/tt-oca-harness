@@ -4,11 +4,26 @@
   cmake,
   systemc20,
   rapidjson,
+  runCommand,
+  yq-go,
   ...
 }:
-stdenv.mkDerivation rec {
+let
+# Once VP is merged, source CCI Version from CI Yaml
+vp_mk = ../../virtual_platform/tt-oca-harness-model/.github/workflows/ci-rhel8.yml;
+configJson = runCommand "config.json" {} ''
+  ${yq-go}/bin/yq -o=json '${vp_mk}' > $out
+'';
+
+config = builtins.fromJSON (builtins.readFile configJson);
+
+vp_version = config.env.CCI_VERSION;
+
+version = if builtins.pathExists vp_mk then vp_version else "1.0.2";
+
+in stdenv.mkDerivation rec {
   pname = "systemc-cci";
-  version = "1.0.1";
+  inherit version;
 
   src = fetchFromGitHub {
     owner = "accellera-official";

@@ -1,4 +1,3 @@
-# The version of whisper packaged here is not final yet - awaiting https://github.com/tenstorrent/tt-oca-harness/pull/#1586 merge
 {
   stdenv,
   fetchFromGitHub,
@@ -8,16 +7,32 @@
   openssl,
   rapidjson,
   zlib,
+  runCommand,
+  yq-go,
   ...
 }:
-stdenv.mkDerivation {
+let 
+  # Once VP is merged, source Whisper Version from CI Yaml
+  vp_mk = ../../virtual_platform/tt-oca-harness-model/.github/workflows/ci-rhel8.yml;
+  configJson = runCommand "config.json" {} ''
+    ${yq-go}/bin/yq -o=json '${vp_mk}' > $out
+  '';
+
+  config = builtins.fromJSON (builtins.readFile configJson);
+
+  vp_version = config.env.WHISPER_REV;
+  
+  version = if builtins.pathExists vp_mk then vp_version else "a53d0f3e";
+
+in stdenv.mkDerivation {
   pname = "whisper";
-  version = "master";
+  inherit version;
 
   src = fetchFromGitHub {
     owner = "tenstorrent";
     repo = "whisper";
-    rev = "e11c49e0d3011300909bce7ef588ab8e6302b71b";
+    rev = version;
+    # Should only need to update the hash here after updating submodule CI
     sha256 = "sha256-SGAUDprd0aRM7kt1T8oV/oKLvUkVdAYVZUEj6DJ8BQo=";
   };
 
