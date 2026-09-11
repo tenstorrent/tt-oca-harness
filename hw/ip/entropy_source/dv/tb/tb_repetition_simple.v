@@ -2,7 +2,7 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 //------------------------------------------------------------------------------
-// Testbench: Simple Repetition Test to Find the Bug
+// Testbench: Simple Repetition Threshold Test
 //
 // Description:
 // Sends simple all-zero and all-one patterns to test threshold behavior.

@@ -154,8 +154,7 @@ def rand_threshold(rng):
 
 def len_for_threshold(thr, base_len, bytes_per_entry=4):
     """Grow *base_len* so a threshold of ``1<<(thr+1)`` entries can actually fire
-    (the RX-data threshold interrupt never asserts otherwise). Encodes the
-    threshold-reachability constraint as code, not as a blind sweep."""
+    (the RX-data threshold interrupt never asserts otherwise)."""
     need = (1 << (thr + 1)) * bytes_per_entry
     return max(base_len, need)
 

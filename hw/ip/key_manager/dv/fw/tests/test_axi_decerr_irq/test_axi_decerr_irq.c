@@ -12,8 +12,6 @@
  * DECERR by reading from an address in the reserved/unmapped region
  * (0x0001_D000 and above per key_manager.rdl).
  *
- * Requirements: AXI DECERR detection (T069–T072), firmware test T074
- *
  * Run with:
  *   make run_fw FW_TEST=test_axi_decerr_irq
  */

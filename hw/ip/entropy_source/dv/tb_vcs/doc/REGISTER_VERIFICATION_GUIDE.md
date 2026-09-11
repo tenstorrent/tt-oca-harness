@@ -2,7 +2,6 @@
 
 **Purpose**: Comprehensive register verification methodology for system integration
 **Component**: Entropy Source (entropy_source)
-**Last Updated**: 2026-01-06
 
 ---
 
@@ -570,56 +569,44 @@ Step 6: Verify counters reset to 0
 
 ### 6.1 Phase 1: Basic Register Sanity
 
-| Test | Registers | Status |
-|------|-----------|--------|
-| ☐ | Read COMPONENT_ID, verify fixed value 0x01010001 | |
-| ☐ | Apply hardware reset, verify CTRL returns to 0x10000002 | |
-| ☐ | Verify FIFO_STATUS shows empty FIFO (LEVEL=0) | |
-| ☐ | Verify FIFO_CTRL default enabled (0x00000001) | |
+- Read COMPONENT_ID, verify fixed value 0x01010001
+- Apply hardware reset, verify CTRL returns to 0x10000002
+- Verify FIFO_STATUS shows empty FIFO (LEVEL=0)
+- Verify FIFO_CTRL default enabled (0x00000001)
 
 ### 6.2 Phase 2: Complete Default Value Check
 
-| Test | Registers | Status |
-|------|-----------|--------|
-| ☐ | Verify all 30 immediate-check registers | |
-| ☐ | Disable health tests, reset, verify 11 status registers | |
-| ☐ | Document any mismatches with expected defaults | |
+- Verify all 30 immediate-check registers
+- Disable health tests, reset, verify 11 status registers
+- Document any mismatches with expected defaults
 
 ### 6.3 Phase 3: RW Pattern Testing
 
-| Test | Registers | Status |
-|------|-----------|--------|
-| ☐ | Test 13 RW registers with 4 patterns each (52 tests) | |
-| ☐ | Verify write mask applied correctly in all cases | |
-| ☐ | Restore defaults after each register tested | |
+- Test 13 RW registers with 4 patterns each (52 tests)
+- Verify write mask applied correctly in all cases
+- Restore defaults after each register tested
 
 ### 6.4 Phase 4: Write Mask Validation
 
-| Test | Registers | Status |
-|------|-----------|--------|
-| ☐ | Test CTRL write mask (0x13FF0112) | |
-| ☐ | Test DEBUG_CTRL write mask (0x000007FF) | |
-| ☐ | Test INTR_ENABLE write mask (0x11111111) | |
-| ☐ | Test APT_PROPORTION_1BIT and APT_PROPORTION_LO write masks (0x0000FFFF) | |
-| ☐ | Test all other RW register write masks | |
+- Test CTRL write mask (0x13FF0112)
+- Test DEBUG_CTRL write mask (0x000007FF)
+- Test INTR_ENABLE write mask (0x11111111)
+- Test APT_PROPORTION_1BIT and APT_PROPORTION_LO write masks (0x0000FFFF)
+- Test all other RW register write masks
 
 ### 6.5 Phase 5: Special Register Tests
 
-| Test | Description | Status |
-|------|-------------|--------|
-| ☐ | INTR_STATUS W1C: Test all 8 interrupt bits | |
-| ☐ | INTR_TEST WO: Verify read returns 0, side effects work | |
-| ☐ | FIFO_RDATA: Verify read-pop side effect (10 reads) | |
-| ☐ | Health status: Verify dynamic updates when tests enabled | |
+- INTR_STATUS W1C: Test all 8 interrupt bits
+- INTR_TEST WO: Verify read returns 0, side effects work
+- FIFO_RDATA: Verify read-pop side effect (10 reads)
+- Health status: Verify dynamic updates when tests enabled
 
 ### 6.6 Phase 6: Integration Tests
 
-| Test | Description | Status |
-|------|-------------|--------|
-| ☐ | Register persistence: Write all RW, wait 1000 cycles, verify unchanged | |
-| ☐ | Concurrent access: Back-to-back writes/reads, no corruption | |
-| ☐ | Full interrupt flow: Enable → Inject → Service → Clear | |
-| ☐ | FIFO boundary: Fill to 64, drain to 0, check underflow | |
+- Register persistence: Write all RW, wait 1000 cycles, verify unchanged
+- Concurrent access: Back-to-back writes/reads, no corruption
+- Full interrupt flow: Enable → Inject → Service → Clear
+- FIFO boundary: Fill to 64, drain to 0, check underflow
 
 ---
 
@@ -638,10 +625,10 @@ Step 6: Verify counters reset to 0
 
 After completing all tests:
 
-✓ **Default checks**: 41 PASS (42 registers minus 1 WO)
-✓ **RW pattern tests**: 52 PASS (13 registers × 4 patterns)
-✓ **Write mask tests**: 15 PASS (all RW registers)
-✓ **Special tests**: 4 PASS (W1C, WO, FIFO, dynamic status)
+- **Default checks**: 41 (42 registers minus 1 WO)
+- **RW pattern tests**: 52 (13 registers × 4 patterns)
+- **Write mask tests**: 15 (all RW registers)
+- **Special tests**: 4 (W1C, WO, FIFO, dynamic status)
 
 **Total Tests**: ~112 test cases
 

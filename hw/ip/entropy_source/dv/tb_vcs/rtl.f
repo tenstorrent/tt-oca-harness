@@ -5,7 +5,7 @@
 // Use $OCH_ROOT environment variable for portability
 
 // ============================================================================
-// REAL RTL MODE - Full entropy source implementation
+// Entropy source RTL
 // ============================================================================
 
 // Register package and RTL (must come first)
@@ -41,9 +41,3 @@ $OCH_ROOT/hw/ip/entropy_source/rtl/entropy_debug_monitor.sv
 
 // Top-level module (last)
 $OCH_ROOT/hw/ip/entropy_source/rtl/entropy_source.sv
-
-// ============================================================================
-// BLACK BOX MODE (disabled - for reference only)
-// Simple APB slave with 4KB memory for initial APB protocol testing
-// ============================================================================
-// $OCH_ROOT/hw/ip/entropy_source/dv/tb_vcs/entropy_top_bb.sv

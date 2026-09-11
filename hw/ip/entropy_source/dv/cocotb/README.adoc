@@ -15,23 +15,9 @@ source bin/setup_env.sh
 popd
 ```
 
-// TODO // Second, make sure you have built the Entropy Source Component and testbench as described in the
-// TODO // main `README.adoc` file of the Entropy Source Component:
-// TODO//
-// TODO // ```bash
-// TODO // pushd ..
-// TODO // make -f ocah.mk ocah-regen-regs
-// TODO // popd
-// TODO // ```
-
 Next, run
 
 ```
 make clean
-// TODO -- Not needed for now // make filelist
 make WAVES=1
 ```
-
-// TODO // The `STRESS=1` option will run the tests with stress mode enabled, which includes additional checks
-// TODO // and longer test durations. If you just want to run the sanity tests, simply omit the `STRESS`
-// TODO // variable.
