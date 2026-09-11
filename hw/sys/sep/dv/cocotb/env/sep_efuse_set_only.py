@@ -269,8 +269,9 @@ def _selftest() -> None:
     assert all(f.sensed == 0 for f in locks)
     spare = next(f for f in cfg.lock_fields if f.name == "LOCKS_SPARE")
     assert spare.word_idx == 0
-    assert spare.sensed and spare.sensed == (spare.sensed & 0xFFFF_0000)
-    assert spare.set_bits and spare.set_bits == (spare.set_bits & 0x0000_FFFF)
+    _spare_sensed, _spare_set = LOCK_FIELDS[-1][3], LOCK_FIELDS[-1][4]
+    assert spare.sensed and spare.sensed == (spare.sensed & _spare_sensed)
+    assert spare.set_bits and spare.set_bits == (spare.set_bits & _spare_set)
     pins = cfg.image_fixed()
     assert pins["LOCKS"] == 0
     assert pins["LOCKS_SPARE"] == spare.field_int
