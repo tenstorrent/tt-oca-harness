@@ -152,7 +152,7 @@ Signed-off exceptions (do not extend without owner approval):
 * *Observation-only XMR probe ports* — continuous assigns out of the DUT for
   scoreboards that have no CSR mirror (entropy CHK chain, IRQ aggregate,
   `drbg_csrng_axil_chan_o` / `drbg_edn_axil_chan_o` at each DUT lane
-  adapter's AXI-Lite-64 port — the three-ready interlock has no CSR
+  adapter's AXI-Lite-64 port — concurrent AW/W/AR observation has no CSR
   mirror; signed off 2026-09-07). The TB-owned `u_tbadp_vehicle` instance
   is idle and held in reset unless a port-arbitration leaf releases it;
   it is not a DUT XMR.
