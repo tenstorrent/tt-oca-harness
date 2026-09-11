@@ -103,6 +103,15 @@ class dtp_jtag2axi_smc_axi_wr_test_seq extends dtp_jtag2axi_base_test_seq;
                                     cases[idx].wstrb, $sformatf("single_write#%0d", idx + 1));
       operation_count++;
     end
+    begin
+      bit          series_reset;
+      bit [63:0]   addr_after;
+      int unsigned pl_depth, size_rd;
+      // SINGLE_OP status polls shift a NOP image. SERIES_CTRL Capture-DR
+      // must still report the last completion, not sticky BUSY_OR_FULL.
+      read_series_ctrl(t, 3, series_reset, addr_after, pl_depth, size_rd, status);
+      check_status("single_write.series_ctrl", status, DTP_J2A_SUCCESS);
+    end
   endtask
 
   // -- single_write_data_verify: write then read back ---------------------
