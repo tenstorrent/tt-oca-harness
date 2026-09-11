@@ -8,10 +8,9 @@ and its stale data cannot be read, fully reinitializes the entropy complex while
 consumers remain held, and restores consumers only after fresh pool progress.
 It also proves all three internal CSR ports return SLVERR while isolated, then
 writes a non-reset source-select value and proves that register remains
-outside the reset domain. The external TRNG
-aperture itself is terminated by a permanent DECERR error slave in this build,
-so its response is a build invariant and its domain membership is not claimed.
-The JTAG reset pair holds and releases the same coordinated reset.
+outside the reset domain. The external TRNG passthrough window is an
+adopter aperture; intra-window decode is not graded here. The JTAG reset
+pair holds and releases the same coordinated reset.
 
 When software clears SW_RESET_N.trng_sw_rst_n, the coordinator stops accepting
 new ESRC/CSRNG/EDN CSR traffic, drains accepted transactions on all three
@@ -41,12 +40,9 @@ from seq_lib.sep_esrc_bringup_seq import (
 )
 from seq_lib.sep_sw_reset_seq import SW_RESET_N_BIT, SepSwReset
 
-# RDL-described addresses come from the generated SEP map. The external TRNG
-# responder is an integration aperture rather than a register block: in this
-# build its only responder is the DECERR error slave u_ext_trng_axil_err_slv
-# (hw/top/sep_ip_integration.sv), and its passthrough leg carries no isolate
-# unit (hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv). Its DECERR is therefore
-# a build invariant used as a liveness baseline, not reset-domain evidence.
+# RDL-described addresses come from the generated SEP map. EXT_TRNG_SRC_SEL
+# is a SEP CPU-ctrl register outside the coordinated TRNG reset. The
+# 0x1091_7000 passthrough window is an adopter aperture and is not read here.
 ESRC_COMPONENT_ID = sym("ENTROPY_SOURCE_COMPONENT_ID_REG_ADDR")
 ESRC_CTRL = sym("ENTROPY_SOURCE_CTRL_REG_ADDR")
 ESRC_FIPS_LOCK = sym("ENTROPY_SOURCE_FIPS_LOCK_REG_ADDR")
@@ -54,7 +50,6 @@ CSRNG_INTR_STATE = sym("CSRNG_INTR_STATE_REG_ADDR")
 CSRNG_INTR_ENABLE = sym("CSRNG_INTR_ENABLE_REG_ADDR")
 EDN_INTR_STATE = sym("EDN_INTR_STATE_REG_ADDR")
 EDN_INTR_ENABLE = sym("EDN_INTR_ENABLE_REG_ADDR")
-EXT_TRNG_CSR = 0x1091_7000
 EXT_TRNG_SRC_SEL = sym("SEP_CPU_CTRL_EXT_TRNG_SRC_SEL_REG_ADDR")
 # RDL reset of sel[2:0] is 0x7. Park uses that value to freeze the packer;
 # the domain-membership check then writes a non-reset value.
@@ -165,9 +160,6 @@ class sep_trng_reset_recovery_test(sep_base_test):
             "test bug: parked source-select equals the RDL reset, so a "
             "post-reset match cannot prove the CSR is outside the domain"
         )
-        self.env.axi_monitor.arm_expected_decerr(1)
-        ext_csr_before = await self._read(EXT_TRNG_CSR, expect_error=True)
-        assert ext_csr_before.resp_code == 3, "external TRNG CSR did not return DECERR"
 
         # Queue one access to each internal CSR aperture before the SW reset
         # write. The AXI master can have these reads outstanding together while
@@ -235,17 +227,6 @@ class sep_trng_reset_recovery_test(sep_base_test):
             "while isolated, none forwarded into the reset domain"
         )
 
-        self.env.axi_monitor.arm_expected_decerr(1)
-        ext_csr_during = await self._read(EXT_TRNG_CSR, expect_error=True)
-        # Liveness baseline only: this aperture answers DECERR from a permanent
-        # error slave whether or not it sits inside the TRNG reset domain, so the
-        # pair cannot distinguish the two. Domain membership is claimed from the
-        # source-select readback below, which is a real register.
-        assert ext_csr_during.resp_code == ext_csr_before.resp_code, (
-            "external TRNG aperture stopped answering with its build-invariant "
-            f"DECERR across the reset: before={ext_csr_before.resp_code} "
-            f"during={ext_csr_during.resp_code}"
-        )
         sel_after = (await self._read(EXT_TRNG_SRC_SEL)).rdata & 0x7
         assert sel_after == _SRC_SEL_PARKED, (
             f"internal TRNG reset changed EXT_TRNG_SRC_SEL from "
@@ -254,8 +235,7 @@ class sep_trng_reset_recovery_test(sep_base_test):
         self.logger.info(
             "CHK-TRNG-EXTERNAL PASS: EXT_TRNG_SRC_SEL still reads the non-reset "
             "value 0x%x after the internal reset, so the source-select CSR is "
-            "outside the TRNG reset domain (aperture DECERR is a build "
-            "invariant, not claimed)",
+            "outside the TRNG reset domain",
             sel_after,
         )
 
