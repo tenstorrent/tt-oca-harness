@@ -4322,9 +4322,9 @@ which list is normative is an open question for the design owner.
 
 *BFM / Model*: none; DUT probes and a one-cycle state force
 
-*Objective*: The eFuse read and program state machines fail closed from an illegal encoding: no command reaches the fuse bank while the state is illegal, and on the next edge the machine is back in idle reporting an error rather than resuming. An FSM that resumed from a corrupted state could return fuse data it never legitimately fetched.
+*Objective*: The eFuse read and program interfaces fail closed. Two contracts: from an illegal state encoding no command reaches the fuse bank and the machine returns to idle reporting an error rather than resuming; and `read_error_o` is set by a failed or timed-out read and cleared only by the next legal request. An interface that resumed from a corrupted state, or that carried a stale error into the next read, could return or mislabel fuse data it never legitimately fetched.
 
-*Test Coverage*: Both FSMs, both illegal encodings, request suppression and recovery.
+*Test Coverage*: Both FSMs, both illegal encodings, request suppression and recovery; and the read error lifecycle across success, timeout, re-request and guard refusal.
 
 *Test Procedure*:
 
@@ -4335,6 +4335,7 @@ which list is normative is an open question for the design owner.
 . While the injected encoding is held, require no command to be presented to the fuse bank.
 . Release, and on the next edge require the machine to be back in idle with no command issued. For reads, additionally require `read_error_o` and `read_done_o` set, `read_busy_o` clear, and `read_back_data_o` equal to the `EFUSE_READ_ERROR_DATA` sentinel `0xbadcab1e`.
 . Repeat the live-read control after all injections, so a machine left wedged by the recovery is caught.
+. Read error lifecycle, on the same interface. A completed read reports done with no error. A read given a four-cycle timeout budget -- too short for the SHIM to answer inside -- retires with the error set. A fresh legal request then clears it. Finally, with the `TEST_EN` strap latched and the image re-sensed, a read refused by the guard retires with the error set and zero data.
 
 *Checkers*:
 
@@ -4351,7 +4352,20 @@ which list is normative is an open question for the design owner.
 |No command is presented to the fuse bank while `program_state_q` holds an illegal encoding.
 |CHK-PROGRAM-FAILCLOSED
 |One edge after the illegal encoding the program machine is back in idle with no command issued.
+|CHK-READ-ERR-CLEAR-SUCCESS
+|A read that completes normally reports done, not busy, and no error.
+|CHK-READ-ERR-TIMEOUT
+|A read that outlives its configured timeout budget retires with done set, busy clear and the error set, rather than hanging or reporting success.
+|CHK-READ-ERR-CLEAR-REQUEST
+|A fresh legal request clears the error left by the timed-out read. The preceding check is this one's control: without an error actually set, "the error is clear" holds for the wrong reason.
+|CHK-READ-ERR-BLOCKED
+|A read refused by the guard while `secure_tm` is latched retires with the error set and returns zero, never fuse content.
 |===
+
+The waits in the error legs observe `read_done_o` on the interface rather than
+polling the `EFUSE_READ_CTRL` status field. The legs grade interface outputs, so
+the wait has to watch the same signals; a status poll would let a read that
+never retired look like one that did.
 
 Both illegal encodings are walked rather than one. `2'b00` and `2'b11` fail the legal-set test for different reasons, and a decoder written as a comparison against a single value would recover from that value only.
 

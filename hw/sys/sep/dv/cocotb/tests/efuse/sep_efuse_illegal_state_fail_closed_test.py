@@ -31,8 +31,11 @@ from __future__ import annotations
 import cocotb
 import pyuvm
 from cocotb.triggers import Event, NextTimeStep, ReadOnly, RisingEdge
+from env.sep_axi_agent import SepAxiOp
 from env.sep_lcc_golden import LC_PROD
 from sep_base_test import sep_base_test
+from sep_reg_meta import EFUSE_INTERFACE_CTRL
+from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
 from seq_lib.sep_efuse_direct_read_seq import sep_efuse_direct_read_seq
 
 # efuse_read_interface.sv / efuse_program_interface.sv: the legal encodings.
@@ -51,6 +54,17 @@ _MAX_SENSE_CYCLES = 20_000
 # Any always-readable OTP word; the control grades FSM motion, not the value.
 _CONTROL_WORD = 0
 
+_READ_CTRL = EFUSE_INTERFACE_CTRL.addr("EFUSE_READ_CTRL")
+_READ_TIMEOUT = EFUSE_INTERFACE_CTRL.addr("EFUSE_READ_REQ_TIMEOUT")
+_GO = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_READ_CTRL", "efuse_read_go")
+_ENABLE = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_READ_CTRL", "read_enable")
+# `read_req_timout_enable` -- the field name carries a typo in
+# efuse_interface_ctrl.rdl; the generated symbol reproduces it.
+_TIMEOUT_EN = EFUSE_INTERFACE_CTRL.field_mask("EFUSE_READ_REQ_TIMEOUT", "read_req_timout_enable")
+# Short enough that the SHIM cannot answer inside it, so the timeout fires
+# rather than the read completing first.
+_TIMEOUT_CYCLES = 4
+
 
 @pyuvm.test()
 class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
@@ -58,12 +72,16 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
 
     required_evidence = (
         "CHK-READ-ALIVE",
+        "CHK-READ-ERR-CLEAR-SUCCESS",
+        "CHK-READ-ERR-TIMEOUT",
+        "CHK-READ-ERR-CLEAR-REQUEST",
+        "CHK-READ-ERR-BLOCKED",
         "CHK-READ-SUPPRESS",
         "CHK-READ-FAILCLOSED",
         "CHK-PROGRAM-SUPPRESS",
         "CHK-PROGRAM-FAILCLOSED",
     )
-    min_evidence = 5
+    min_evidence = 9
 
     async def _assert_read_alive(self, tag: str) -> None:
         """Positive control: a frontdoor OTP read moves the read FSM.
@@ -98,6 +116,109 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         self.logger.info(
             "CHK-READ-ALIVE PASS (%s): a frontdoor OTP read drove the read FSM out of idle",
             tag,
+        )
+
+    async def _csr(self, op: SepAxiOp, addr: int, data: int = 0) -> int:
+        seq = SepAxiAccessSeq(
+            f"efuse_{op.value}_0x{addr:08x}", op=op, addr=addr, wdata=data, size=2
+        )
+        await self.start_seq(seq)
+        return seq.rdata & 0xFFFF_FFFF
+
+    async def _read_probe(self) -> tuple[int, int, int, int]:
+        await ReadOnly()
+        dut = cocotb.top
+        return (
+            int(dut.efuse_read_done_o.value),
+            int(dut.efuse_read_busy_o.value),
+            int(dut.efuse_read_error_o.value),
+            int(dut.efuse_read_back_data_o.value),
+        )
+
+    async def _await_read_done(self, limit: int = 400) -> tuple[int, int, int, int]:
+        """Wait on the DUT's own done, not on a CSR poll.
+
+        The error legs below are graded on the interface outputs, so the wait
+        has to observe the same signals; polling the CSR would let a read that
+        never retires look like one that did.
+        """
+        for _ in range(limit):
+            await RisingEdge(cocotb.top.clk_i)
+            probe = await self._read_probe()
+            if probe[0]:
+                return probe
+        raise AssertionError(f"the read interface never asserted read_done within {limit} cycles")
+
+    async def _read_error_lifecycle(self) -> None:
+        """read_error_o is set by a failure and cleared by the next request."""
+        # 1. A successful read leaves the error flag clear (ReadSuccessClearsError).
+        await self.start_seq(sep_efuse_direct_read_seq(_CONTROL_WORD))
+        done, busy, err, _ = await self._read_probe()
+        assert (done, busy, err) == (1, 0, 0), (
+            f"CHK-READ-ERR-CLEAR-SUCCESS FAIL: a successful read reported done={done} "
+            f"busy={busy} error={err}, expected 1/0/0"
+        )
+        self.logger.info(
+            "CHK-READ-ERR-CLEAR-SUCCESS PASS: a completed read reports done, not busy, no error"
+        )
+
+        # 2. A read that outlives its timeout budget sets the error
+        #    (ReadTimeoutSetsError). The budget is short enough that the SHIM
+        #    cannot answer inside it, so the timeout decides the outcome.
+        await self._csr(SepAxiOp.WRITE, _READ_TIMEOUT, _TIMEOUT_CYCLES | _TIMEOUT_EN)
+        await self._csr(SepAxiOp.WRITE, _READ_CTRL, _GO | _ENABLE)
+        done, busy, err, _ = await self._await_read_done()
+        assert (done, busy, err) == (1, 0, 1), (
+            f"CHK-READ-ERR-TIMEOUT FAIL: a timed-out read reported done={done} "
+            f"busy={busy} error={err}, expected 1/0/1 -- a read that never got a "
+            "response must retire as an error, not hang or report success"
+        )
+        self.logger.info(
+            "CHK-READ-ERR-TIMEOUT PASS: a read outliving %d cycles retires with error set",
+            _TIMEOUT_CYCLES,
+        )
+
+        # 3. Issuing a fresh legal request clears it (ReadRequestClearsError).
+        #    The error from leg 2 is the precondition: without it this holds
+        #    trivially, so the assert above is also this leg's control.
+        await self._csr(SepAxiOp.WRITE, _READ_TIMEOUT, 0)
+        await self._csr(SepAxiOp.WRITE, _READ_CTRL, 0)
+        await self._csr(SepAxiOp.WRITE, _READ_CTRL, _GO | _ENABLE)
+        await RisingEdge(cocotb.top.clk_i)
+        _, _, err_after_req, _ = await self._read_probe()
+        assert err_after_req == 0, (
+            "CHK-READ-ERR-CLEAR-REQUEST FAIL: read_error_o stayed set after a fresh "
+            "legal request; a stale error would mislabel the next read"
+        )
+        await self._await_read_done()
+        await self._csr(SepAxiOp.WRITE, _READ_CTRL, 0)
+        self.logger.info(
+            "CHK-READ-ERR-CLEAR-REQUEST PASS: a new legal request cleared the error "
+            "left by the timeout"
+        )
+
+    async def _read_blocked_by_secure_tm(self) -> None:
+        """A read refused by the guard retires as an error with zero data."""
+        cocotb.top.test_en_strap_i.value = 1
+        await self.resense(max_cycles=_MAX_SENSE_CYCLES)
+        assert int(cocotb.top.secure_tm_o.value) & 1 == 1, (
+            "test bug: TEST_EN raised and resensed but secure_tm_o is still 0, so the "
+            "guard is not blocking and the refusal below would not be under test"
+        )
+        await self._csr(SepAxiOp.WRITE, _READ_CTRL, _GO | _ENABLE)
+        done, busy, err, data = await self._await_read_done()
+        assert (done, busy, err) == (1, 0, 1), (
+            f"CHK-READ-ERR-BLOCKED FAIL: a guard-blocked read reported done={done} "
+            f"busy={busy} error={err}, expected 1/0/1"
+        )
+        assert data == 0, (
+            f"CHK-READ-ERR-BLOCKED FAIL: a blocked read returned {data:#010x}, expected "
+            "zero -- a refused read must not hand back fuse content"
+        )
+        await self._csr(SepAxiOp.WRITE, _READ_CTRL, 0)
+        self.logger.info(
+            "CHK-READ-ERR-BLOCKED PASS: a read refused while secure_tm is latched "
+            "retires with error set and zero data"
         )
 
     async def _inject(self, which: str, state: int) -> None:
@@ -177,6 +298,14 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
         # The block still works afterwards: recovery returned it to service
         # rather than wedging it.
         await self._assert_read_alive("after")
+
+        # Error lifecycle on the same interface: set by a failure, cleared by
+        # the next legal request.
+        await self._read_error_lifecycle()
+
+        # Last, because it latches secure_tm and a resense does not undo that
+        # for the legs above.
+        await self._read_blocked_by_secure_tm()
         self.logger.info(
             "illegal-state fail-closed ALL CHECKS PASS: both FSMs, both illegal "
             "encodings, read path live before and after"
