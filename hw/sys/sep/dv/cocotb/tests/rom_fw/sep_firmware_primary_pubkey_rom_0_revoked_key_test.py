@@ -18,7 +18,7 @@ Slots 1-5 fail over and boot.
 IT IS ALSO THE STRICTEST MEMBER, not the awkward one. Slot 0 is the only populated
 digest (``key_digests.c``) and the slot the image is signed against, so the
 selector write is a NO-OP: the flash image this testcase runs is byte-identical to
-the shipped ``bootrom/prod/build/secure_boot.bin``, and the base proves both slots
+the shipped ``bootrom/prod/build/oca_secure_boot.bin``, and the base proves both slots
 still pass ``verify_sealed`` and ``verify_public_key`` before the run starts. Two
 provably valid, correctly signed, independently bootable manifests are refused by
 ONE fuse bit, and revocation is the only possible cause.

@@ -34,7 +34,7 @@ documentation extension. It is a mechanical rendering of the Apache-2.0
 SystemRDL source it is generated from, so it carries the same Apache-2.0
 header as the `.sv`, `.c`, and `.py` collateral generated from that same
 source; see
-https://github.com/tenstorrent/tt-oca-harness/blob/main/doc/contributing/src/guidelines.adoc[the
+xref:ocah-starting:ROOT:guidelines.adoc[the
 development guidelines] for the full rationale.
 ====
 

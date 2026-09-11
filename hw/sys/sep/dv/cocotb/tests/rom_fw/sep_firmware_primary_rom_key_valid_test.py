@@ -42,7 +42,7 @@ Matched pair, And it is byte-Identical by construction. This testcase and
 ``sep_firmware_primary_pubkey_rom_0_revoked_key_test`` build their flash image from the
 SAME single call, ``select_primary_rom_slot(buf, 0)``, which is a no-op because the
 shipped primary already selects slot 0 (``configs/secure_boot_test.yaml:43-45``). Both
-therefore run bytes identical to the shipped ``bootrom/prod/build/secure_boot.bin``, and
+therefore run bytes identical to the shipped ``bootrom/prod/build/oca_secure_boot.bin``, and
 the ONLY difference between them is one bit of ``CHIPLET_PUBK_REVOKE``. Fuse clear
 boots; bit 0 set refuses BOTH manifests with the revocation error code and never reaches
 ``RSA_EXEC``. Nothing else about revocation needs arguing.
@@ -55,7 +55,7 @@ where secure boot is enforced only because the manifest asks
 where enforcement no longer DEPENDS on the manifest flag. It does not attribute
 enforcement to the lifecycle, and must not claim to: the shipped primary also sets
 ``FLAG_ARGS_BIT_SECURE_BOOT`` (visible as ``secure_boot_bit=1`` in the stimulus log
-line), so under PROD both conditions of ``secure_boot_enabled()`` hold at once and no
+line), so under PROD the lifecycle and the manifest both ask for secure boot at once and no
 observable separates them. Attributing enforcement to the lifecycle alone needs the
 manifest flag CLEARED, which is ``sep_firmware_enforced_secure_boot_flow_test``'s job,
 not this one's. Second, ``sep_rom_ot_secure_boot_test`` asserts that the crypto chain

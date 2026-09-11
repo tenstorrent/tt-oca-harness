@@ -78,6 +78,7 @@ import pyuvm
 from cocotb.triggers import RisingEdge
 from env.sep_efuse_image import LC_TEST_DEV, SepEfuseImage
 from env.sep_rom_console import log_scratch_cold, rom_console_task
+from env.sep_smc_mem import SMC_SCRATCH10_ADDR
 from sep_base_test import sep_base_test
 from sep_reg_meta import sym
 
@@ -206,6 +207,8 @@ class sep_firmware_mbist_fail_test(sep_base_test):
             run_pulse_cycles=40,
         )
 
+        smc_mem = self.cfg.smc_mem
+        assert smc_mem is not None, "SMC responder not bound (rom_boot target only)"
         status_seq: list[int] = []
         scratch10_seq: list[int] = []
         last_status = None
@@ -219,7 +222,7 @@ class sep_firmware_mbist_fail_test(sep_base_test):
             if status != last_status:
                 last_status = status
                 status_seq.append(status)
-            s10 = self.rd(dut.smc_scratch10_probe_o) & 0xFFFF_FFFF
+            s10 = smc_mem.read32(SMC_SCRATCH10_ADDR)
             if s10 != last_s10:
                 last_s10 = s10
                 scratch10_seq.append(s10)

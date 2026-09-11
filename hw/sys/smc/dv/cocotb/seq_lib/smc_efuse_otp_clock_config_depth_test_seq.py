@@ -42,7 +42,7 @@ _CHIP_CONFIG = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_BASE_ADDR")
 VERSION_LO_RESET = _field_mask(_CHIP_CONFIG_H, "CHIP_CONFIG__VERSION_LO__VERSION_LO_reset")
 VERSION_HI_RESET = _field_mask(_CHIP_CONFIG_H, "CHIP_CONFIG__VERSION_HI__VERSION_HI_reset")
 
-# CHIP_ID / LC_STATE / RAS_BANK_INFO are fuse-derived mirrors whose expected
+# CHIP_ID / LC_STATE are fuse-derived mirrors whose expected
 # content is not published in any artifact this bench can read, so they carry no
 # expectation and are OBSERVED ONLY -- they prove decode/reachability, nothing
 # about their content. The testcase's `details=` is narrowed accordingly rather
@@ -52,11 +52,6 @@ EFUSE_PROXY_READS = [
     ("CHIP_CONFIG_VERSION_HI", _CHIP_CONFIG + 0x4, VERSION_HI_RESET),
     ("CHIP_CONFIG_CHIP_ID_OBSERVED_ONLY", _CHIP_CONFIG + 0x8, None),
     ("CHIP_CONFIG_LC_STATE_OBSERVED_ONLY", _CHIP_CONFIG + 0xC, None),
-    (
-        "CHIP_CONFIG_RAS_BANK_INFO_OBSERVED_ONLY",
-        smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_RAS_BANK_INFO_BASE_ADDR"),
-        None,
-    ),
 ]
 
 

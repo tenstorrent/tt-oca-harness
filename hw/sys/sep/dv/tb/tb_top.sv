@@ -125,8 +125,8 @@ module sep_uvm_top
     sep_pkg::sep_system_peripherals_internal_axi_req_t  smn_inbound_req_drive;
     sep_pkg::sep_system_peripherals_internal_axi_resp_t smn_inbound_resp_w;
     sep_pkg::sep_system_peripherals_internal_axi_resp_t ext_to_smc_resp_idle   = '0;
-    // SEP->SMC external AXI. Tied idle by default; with SEP_SMC_MEM_MODEL a
-    // behavioral axi_sim_mem responds (real R/W to SMC scratch + SRAM) so the
+    // SEP->SMC external AXI. Tied idle by default; with SEP_SMC_MEM_MODEL the
+    // shared AXI slave agent responds (real R/W to SMC scratch + SRAM) so the
     // Boot ROM can run its SMC scratch round-trip + non-SPI manifest fetch.
     sep_pkg::sep_system_peripherals_internal_axi_req_t  ext_to_smc_req_w;
     sep_pkg::sep_system_peripherals_internal_axi_resp_t ext_to_smc_resp_w;
@@ -519,15 +519,16 @@ module sep_uvm_top
 
         // SPI: quad-lane struct boundary, bridged below to the
         // single-lane pad ports (sck/cs_n from req; MOSI = sd[0] out;
-        // MISO returns on rsp.sd[1]). The SPI block IRQ loops back into the
-        // wrapper's interrupt aggregator input.
+        // MISO returns on rsp.sd[1]).
         .sep_io_spi_req_o             (sep_io_spi_req_w),
         .sep_io_spi_rsp_i             ('{sd: {2'b00, spi_miso_i, 1'b0}}),
-        .spi_irq_i                    (sep_io_spi_req_w.irq),
 
-        // New wrapper status/debug outputs: observability only, left open.
+        // Wrapper status/debug outputs. Unconnected ports have no consumer
+        // in this TB; the rest are real DUT outputs brought to tb ports.
         .lc_state_o                   (),
         .dbg_disable_o                (dbg_disable_w),
+        .sep_fuse_dft_disable_o       (sep_fuse_dft_disable_o),
+        .smc_fuse_dft_disable_o       (smc_fuse_dft_disable_o),
         .lc_sigint_err_o              (lcc_sigint_err_probe_o),
         .security_disable_o           (lcc_security_disable_probe_o),
         .secure_tm_o                  (secure_tm_o),
@@ -547,8 +548,8 @@ module sep_uvm_top
         // SMC address configuration tied to 0 (identity remap).
 `ifdef SEP_SMC_MEM_MODEL
         // Route the SMC region (scratch 0x4003_9080+, straps 0x4040_5800, SMC SRAM
-        // 0x4006_0000+ manifest) out the sep_ext_to_smc AXI to the behavioral
-        // axi_sim_mem. The ROM boots secondary (non-SPI) and DMAs the manifest+BL1
+        // 0x4006_0000+ manifest) out the sep_ext_to_smc AXI to the TB's SMC
+        // responder. The ROM boots secondary (non-SPI) and DMAs the manifest+BL1
         // from SMC SRAM.
         .smc_global_base_addr_i       (56'h4000_0000),
         .smc_region_size_i            (56'h0100_0000),
@@ -574,70 +575,42 @@ module sep_uvm_top
     // ------------------------------------------------------------------
     // SEP->SMC external AXI responder (real-ROM boot only).
     // The Boot ROM accesses the SMC scratch registers (0x4003_9080+) and SMC
-    // SRAM (0x4006_0000, manifest+BL1) over sep_ext_to_smc_axi. A behavioral
-    // axi_sim_mem gives those a real memory (R/W), so the ROM's scratch
-    // round-trip passes and its non-SPI manifest fetch works. The backing
-    // memory is preloaded via +sep_smc_mem_hex=<file> ($readmemh into u_smc_mem.mem).
+    // SRAM (0x4006_0000, manifest+BL1) over sep_ext_to_smc_axi. The shared AXI
+    // slave agent answers on u_smc_axi_if; the bridge places the wrapper's
+    // struct port on it. The agent's memory gives those addresses real R/W, so
+    // the ROM's scratch round-trip passes and its non-SPI manifest fetch
+    // works. Preload (scratch, status, straps, the +sep_smc_mem_hex image) and
+    // fault programming go through the agent's slave sequence
+    // (cocotb/env/sep_smc_mem.py).
     // ------------------------------------------------------------------
 `ifdef SEP_SMC_MEM_MODEL
-    sep_pkg::sep_system_peripherals_internal_axi_req_t  [0:0] smc_mem_req_arr;
-    sep_pkg::sep_system_peripherals_internal_axi_resp_t [0:0] smc_mem_rsp_arr;
-    assign smc_mem_req_arr[0] = ext_to_smc_req_w;
-    assign ext_to_smc_resp_w  = smc_mem_rsp_arr[0];
+    ocah_axi_if u_smc_axi_if (
+        .aclk    (clk_i),
+        .aresetn (rst_n_int)
+    );
 
-    axi_sim_mem #(
-        .AddrWidth         (56),
-        .DataWidth         (64),
-        .IdWidth           (6),
-        .UserWidth         (12),
-        .NumPorts          (1),
-        .axi_req_t         (sep_pkg::sep_system_peripherals_internal_axi_req_t),
-        .axi_rsp_t         (sep_pkg::sep_system_peripherals_internal_axi_resp_t),
-        .WarnUninitialized (1'b0),
-        .UninitializedData ("zeros"),
-        .ClearErrOnAccess  (1'b1),
-        // axi_sim_mem drives each AXI handshake as "apply outputs at #ApplDelay
-        // after posedge, sample the master's valid/ready at #AcqDelay". The pulp
-        // defaults are 0ps/0ps, which collapse both to `#0` and make the model
-        // rely on VCS event-region (`#0` inactive-region) ordering to sample the
-        // master AFTER its NBA update. Verilator's --timing scheduler resolves
-        // `#0` differently, so the model samples valid/ready in the wrong delta
-        // and the SMC AXI handshake never completes -> the ROM's SMC scratch
-        // round-trip read stalls forever (no SMC_MEM_OK). The pulp driver family
-        // asserts ApplDelay>0 && AcqDelay>ApplDelay for exactly this reason.
-        // Required: 0 < ApplDelay < AcqDelay < min(sys_clk_period). These are
-        // elaboration-time params but sys_clk_period_ns is chosen at runtime by
-        // sep_env_cfg.randomize_timing() = rng.randint(4,20)ns, so they must fit
-        // the 4ns floor (NOT the seed=1 8ns period). Use 1ns/3ns: valid for the
-        // whole [4,20]ns range on both VCS and Verilator; still samples well after
-        // the master's NBA-driven valid.
-        .ApplDelay         (1ns),
-        .AcqDelay          (3ns)
-    ) u_smc_mem (
-        .clk_i     (clk_i),
-        .rst_ni    (rst_n_int),
-        .axi_req_i (smc_mem_req_arr),
-        .axi_rsp_o (smc_mem_rsp_arr)
+    ocah_axi_struct_bridge #(
+        .axi_req_t  (sep_pkg::sep_system_peripherals_internal_axi_req_t),
+        .axi_resp_t (sep_pkg::sep_system_peripherals_internal_axi_resp_t)
+    ) u_smc_bridge (
+        .axi_req_i  (ext_to_smc_req_w),
+        .axi_resp_o (ext_to_smc_resp_w),
+        .axi_if     (u_smc_axi_if)
     );
 
     // ------------------------------------------------------------------
     // SMC address decode check.
     //
-    // WHY THIS EXISTS. u_smc_mem is a FLAT axi_sim_mem: it answers at whatever
-    // address the ROM presents, so a wrong SEP<->SMC offset is invisible -- the
-    // testbench simply seeds the wrong address too and every test stays green.
-    // That is exactly how four offsets in sep_smc_interface.h drifted out of
-    // agreement with this design's generated map (smc_addr.h) without a single
-    // test failing: SCRATCH_BASE, DFX_CTRL_STATUS_SMU and both FUSE_MAP entries
-    // all pointed into unmapped holes.
-    //
-    // This checker restores the one property the flat model threw away: an
-    // access outside a register window that actually exists is an ERROR. The
-    // windows below are transcribed from smc_addr.h (SMC-local 0xC000_XXXX seen
-    // as 0x4000_XXXX from SEP, the identity mapping this tb configures via
-    // smc_global_base_addr_i). Keep them in step with that header; if the ROM
-    // legitimately needs a new block, add its authoritative base/size here
-    // rather than widening an existing window.
+    // The SMC responder is a flat memory: it answers at whatever address the
+    // ROM presents, so a wrong SEP<->SMC offset is invisible to the boot flow
+    // -- the testbench seeds the wrong address too and every test stays
+    // green. This checker supplies the one property a flat memory lacks: an
+    // access outside a register window that exists is an ERROR. The windows
+    // below are transcribed from smc_addr.h (SMC-local 0xC000_XXXX seen as
+    // 0x4000_XXXX from SEP, the identity mapping this tb configures via
+    // smc_global_base_addr_i). Keep them in step with that header; when the
+    // ROM needs a new block, add its authoritative base/size here rather than
+    // widening an existing window.
     localparam logic [55:0] SmcStrapsLoAddr = 56'h4040_5800;
     localparam logic [55:0] SmcStrapsHiAddr = SmcStrapsLoAddr + 4;
     localparam int unsigned SmcNumWindows = 7;
@@ -697,173 +670,8 @@ module sep_uvm_top
         end
     end
 
-    // Preload the SMC memory so the Boot ROM's non-SPI manifest path proceeds:
-    //   scratch[9] (0x4003_90C8) = SMC_SEP_STATUS_MANIFEST_READY (bit1) so the
-    //   ROM's manifest-ready poll breaks; scratch[8] (0x4003_90C0) = manifest
-    //   offset 0. The manifest+BL1 image is loaded from +sep_smc_mem_hex if given.
-    string smc_mem_image;
-    logic [31:0] dft_status_ovr;
-    logic [31:0] straps_hi_ovr;
-    logic [31:0] straps_lo_ovr;
-    initial begin
-        #1;
-        // scratch[9] status: SRAM_INIT|MANIFEST_READY|BUFFER_READY|SRAM_PROTECTED
-        u_smc_mem.mem[56'h4003_90C8] = 8'h0F;
-        // scratch[8] manifest offset = 0x1000 (TBL1 manifest at that offset in the
-        // packed SMC image -> manifest_addr = 0x4006_0000 + 0x1000). No primary
-        // strap -> boot_from_spi()=false -> non-SPI (SMC-SRAM) manifest path.
-        u_smc_mem.mem[56'h4003_90C0] = 8'h00;
-        u_smc_mem.mem[56'h4003_90C1] = 8'h10;
-        // DFX_CTRL_STATUS_SMU (smc_base+0xB800) = 0x00000113, the healthy part:
-        //   bit 0  mem_repair_done     bit 1 mem_repair_success
-        //   bit 4  mbist_done          bit 8 mbist_pass
-        // The ROM's boot gate checks BOTH arms (vector.S), so the MBIST bits are
-        // not decoration: without mbist_done the gate polls for it, times out
-        // after MBIST_DONE_WAIT_ITERS and halts. Every rom_fw test that does not
-        // pass +sep_dft_status inherits this word, so it must represent a part
-        // that boots. It was 0x03 while the gate only read mem_repair_success.
-        u_smc_mem.mem[56'h4000_B800] = 8'h13;
-        u_smc_mem.mem[56'h4000_B801] = 8'h01;
-        // STRAPS_LO and STRAPS_HI in the SMC external supplementary window,
-        // explicitly zero.
-        // REQUIRED, not tidiness: u_smc_mem.mem is an associative array, so
-        // reading a key that was never written yields X. Both halves are now read
-        // by the ROM's pre-C boot gate -- STRAPS_LO[13] BYPASS_SRAM_REPAIR and
-        // STRAPS_HI[22] MBIST_BYPASS (vector.S) -- and an X there makes the gate
-        // branch on an undefined bit. STRAPS_LO additionally needs it because
-        // +sep_boot_from_spi and +sep_straps_lo read-modify-write these bytes so
-        // that they can be combined, and the OR would propagate the X.
-        //
-        // Zeroing the HIGH half matters only on a 4-state simulator. Verilator is
-        // 2-state, so an unwritten key reads 0 there and the tests pass either
-        // way; sep_sim_cfg.toml also lists vcs and xcelium, where without this the
-        // MBIST arm would branch on X for every test that does not pass
-        // +sep_straps_hi. Do not remove it because the Verilator runs are green.
-        u_smc_mem.mem[SmcStrapsLoAddr + 0] = 8'h00;
-        u_smc_mem.mem[SmcStrapsLoAddr + 1] = 8'h00;
-        u_smc_mem.mem[SmcStrapsLoAddr + 2] = 8'h00;
-        u_smc_mem.mem[SmcStrapsLoAddr + 3] = 8'h00;
-        u_smc_mem.mem[SmcStrapsHiAddr + 0] = 8'h00;
-        u_smc_mem.mem[SmcStrapsHiAddr + 1] = 8'h00;
-        u_smc_mem.mem[SmcStrapsHiAddr + 2] = 8'h00;
-        u_smc_mem.mem[SmcStrapsHiAddr + 3] = 8'h00;
-        if ($value$plusargs("sep_smc_mem_hex=%s", smc_mem_image)) begin
-            $readmemh(smc_mem_image, u_smc_mem.mem);
-            $display("[tb] SMC mem preloaded from %s", smc_mem_image);
-        end
-        // ---- Explicit per-test injections. -------------------------------
-        // All three sit BELOW the $readmemh above, so an explicit request always
-        // wins over whatever a +sep_smc_mem_hex image happens to cover. Keeping
-        // them together is not cosmetic: they run after the $readmemh so an SMC image that covers
-        // the straps window cannot silently clear an explicit stimulus.
-        //
-        // +sep_boot_from_spi sets STRAPS_LO[25] (primary_chiplet) at
-        // smc_base+0x405800. Bit 25 is byte 3 of the word, bit 1. It is a strap
-        // value, NOT a boot-path selector: boot_from_spi() is
-        // `primary_chiplet && !boot_recovery` (boot_straps.h), so with
-        // +sep_straps_lo also asserting boot_recovery the ROM takes its RECOVERY
-        // branch instead -- which is exactly what sep_boot_recovery_test needs.
-        // Default off: without it the ROM keeps taking the SMC-SRAM secondary
-        // branch, so sep_rom_non_secure_boot_test is unaffected.
-        if ($test$plusargs("sep_boot_from_spi")) begin
-            u_smc_mem.mem[SmcStrapsLoAddr + 3] =
-                u_smc_mem.mem[SmcStrapsLoAddr + 3] | 8'h02;
-            $display("[tb] STRAPS_LO[25] primary_chiplet=1");
-        end
-        // STRAPS_LO (smc_base+0x405800) whole-word override, the twin of
-        // +sep_straps_hi below. sep_smc_interface.h: [13] bypass_sram_repair,
-        // [19] boot_recovery, [21] status_rpt_disable, [25] primary_chiplet.
-        //
-        // Needed because the ROM's boot gate reads bit 13: OCAH-MAS makes
-        // BYPASS_SRAM_REPAIR (GPIO pin 13) mean repair never ran, and the gate
-        // skips its repair check entirely in that case rather than reading a 0
-        // status as a failure. Nothing could drive bit 13 before this: the only
-        // STRAPS_LO stimulus was +sep_boot_from_spi, which writes byte 3 alone,
-        // so bit 13 (byte 1) was permanently 0 and that branch was unreachable.
-        //
-        // Ordering with +sep_boot_from_spi is deliberate and both may be used
-        // together. This runs AFTER it and ORs rather than assigns, and the
-        // convenience flag above was changed to OR as well, so neither clobbers
-        // the other whichever bits each sets. Both sit after the $readmemh for
-        // the reason given above.
-        if ($value$plusargs("sep_straps_lo=%h", straps_lo_ovr)) begin
-            u_smc_mem.mem[SmcStrapsLoAddr + 0] =
-                u_smc_mem.mem[SmcStrapsLoAddr + 0] | straps_lo_ovr[7:0];
-            u_smc_mem.mem[SmcStrapsLoAddr + 1] =
-                u_smc_mem.mem[SmcStrapsLoAddr + 1] | straps_lo_ovr[15:8];
-            u_smc_mem.mem[SmcStrapsLoAddr + 2] =
-                u_smc_mem.mem[SmcStrapsLoAddr + 2] | straps_lo_ovr[23:16];
-            u_smc_mem.mem[SmcStrapsLoAddr + 3] =
-                u_smc_mem.mem[SmcStrapsLoAddr + 3] | straps_lo_ovr[31:24];
-            $display("[tb] STRAPS_LO or'd with 0x%08x (+sep_straps_lo): bypass_sram_repair=%0d recovery=%0d",
-                     straps_lo_ovr, straps_lo_ovr[13], straps_lo_ovr[19]);
-        end
-        // MEM_REPAIR / MBIST gate injection.
-        //
-        // Writes the whole 32-bit word rather than just clearing bit 1, because
-        // the point of the failure case is to prove the ROM gates on
-        // mem_repair_success specifically: a test that injects 0x0 cannot tell
-        // "checks bit 1" from "checks any bit" from "checks a non-zero word". The
-        // useful stimulus is every bit set EXCEPT bit 1 (0xFFFFFFFD).
-        // Little-endian byte order: byte 0 holds bits [7:0].
-        if ($value$plusargs("sep_dft_status=%h", dft_status_ovr)) begin
-            u_smc_mem.mem[56'h4000_B800] = dft_status_ovr[7:0];
-            u_smc_mem.mem[56'h4000_B801] = dft_status_ovr[15:8];
-            u_smc_mem.mem[56'h4000_B802] = dft_status_ovr[23:16];
-            u_smc_mem.mem[56'h4000_B803] = dft_status_ovr[31:24];
-            $display("[tb] DFX_CTRL_STATUS_SMU overridden to 0x%08x (+sep_dft_status)",
-                     dft_status_ovr);
-        end
-        // STRAPS_HI (smc_base+0x405804) = bits [63:32] of the 64-bit strap word.
-        // sep_smc_interface.h: [22] mbist_bypass, [26] rotate_update.
-        //
-        // Whole-word, like +sep_dft_status: a per-bit flag would need one plusarg
-        // per strap and could not express a combination, and the ROM reads the
-        // word once (boot_straps.c) so partial writes would be the odd case
-        // rather than the normal one. Little-endian: byte 0 holds bits [7:0].
-        if ($value$plusargs("sep_straps_hi=%h", straps_hi_ovr)) begin
-            u_smc_mem.mem[SmcStrapsHiAddr + 0] = straps_hi_ovr[7:0];
-            u_smc_mem.mem[SmcStrapsHiAddr + 1] = straps_hi_ovr[15:8];
-            u_smc_mem.mem[SmcStrapsHiAddr + 2] = straps_hi_ovr[23:16];
-            u_smc_mem.mem[SmcStrapsHiAddr + 3] = straps_hi_ovr[31:24];
-            $display("[tb] STRAPS_HI set to 0x%08x (+sep_straps_hi): mbist_bypass=%0d rotate=%0d",
-                     straps_hi_ovr, straps_hi_ovr[22], straps_hi_ovr[26]);
-        end
-    end
-
-    // SMC scratch[10] mirror for the MEM_REPAIR-gate test. exists() guards keep an
-    // unwritten slot reading 0 instead of relying on assoc-array default-read
-    // behaviour, so "ROM never published it" and "ROM published 0" stay distinct
-    // only because the injected status is non-zero -- which is why the test
-    // injects 0xFFFFFFFD and not 0.
-    logic [31:0] smc_scratch10_q;
-    always @(posedge clk_i) begin
-        smc_scratch10_q <= {
-            u_smc_mem.mem.exists(56'h4003_90D3) ? u_smc_mem.mem[56'h4003_90D3] : 8'h00,
-            u_smc_mem.mem.exists(56'h4003_90D2) ? u_smc_mem.mem[56'h4003_90D2] : 8'h00,
-            u_smc_mem.mem.exists(56'h4003_90D1) ? u_smc_mem.mem[56'h4003_90D1] : 8'h00,
-            u_smc_mem.mem.exists(56'h4003_90D0) ? u_smc_mem.mem[56'h4003_90D0] : 8'h00
-        };
-    end
-    assign smc_scratch10_probe_o = smc_scratch10_q;
-
-    // DFX_CTRL_STATUS_SMU mirror, same sampling pattern and same reason as the
-    // scratch[10] mirror above (associative array, so no continuous assign).
-    logic [31:0] smc_dft_status_q;
-    always @(posedge clk_i) begin
-        smc_dft_status_q <= {
-            u_smc_mem.mem.exists(56'h4000_B803) ? u_smc_mem.mem[56'h4000_B803] : 8'h00,
-            u_smc_mem.mem.exists(56'h4000_B802) ? u_smc_mem.mem[56'h4000_B802] : 8'h00,
-            u_smc_mem.mem.exists(56'h4000_B801) ? u_smc_mem.mem[56'h4000_B801] : 8'h00,
-            u_smc_mem.mem.exists(56'h4000_B800) ? u_smc_mem.mem[56'h4000_B800] : 8'h00
-        };
-    end
-    assign smc_dft_status_probe_o = smc_dft_status_q;
-
 `else
     assign ext_to_smc_resp_w = ext_to_smc_resp_idle;
-    assign smc_scratch10_probe_o = '0;
-    assign smc_dft_status_probe_o = '0;
     // No SMC model, so no SEP->SMC traffic to decode. 0 rather than X: a test
     // asserting "no address violations" must not pass on an undriven port, and
     // must not fail on a build that never had an SMC to address.
@@ -1389,6 +1197,7 @@ module sep_uvm_top
 `define CMP_SIP  `TOKEN_PROC.u_triple_redundant_comparator_rma_sip_token
 `define CMP_CHIP `TOKEN_PROC.u_triple_redundant_comparator_rma_chiplet_token
 `define CMP_SEC  `TOKEN_PROC.u_triple_redundant_comparator_sec_disable_token
+`define DIGEST_SIP `TOKEN_PROC.u_sha256_rma_sip_token
     logic [2:0] token_cmp_force_p, token_cmp_force_n;
     logic       token_cmp_do_force;
     always_comb begin
@@ -1444,6 +1253,26 @@ module sep_uvm_top
             release `CMP_SEC.match_n;
         end
     end
+    // The production DFT input is tied low at this TB boundary. Use the same
+    // clock-reissued force/release convention as the signed-off comparator
+    // hook to reach the digest latch's scan-freeze gate. Token commands and
+    // digest capture remain frontdoor; only this otherwise unreachable input
+    // is forced.
+    assign token_digest_sticky_o = `DIGEST_SIP.sha_digest_sticky_n0_scan;
+    assign token_digest_valid_o = `DIGEST_SIP.digest_vld_sticky_n0_scan;
+    assign token_digest_test_en_o = `DIGEST_SIP.test_en_i;
+    assign token_digest_latch_en_pre_o = `DIGEST_SIP.digest_latch_en_pre;
+    assign token_digest_valid_en_pre_o = `DIGEST_SIP.vld_latch_en_pre;
+    assign token_digest_latch_en_o = `DIGEST_SIP.digest_latch_en;
+    assign token_digest_valid_en_o = `DIGEST_SIP.vld_latch_en;
+    always @(posedge clk_i) begin
+        if (token_digest_test_en_inject_i === 1'b1) begin
+            force `DIGEST_SIP.test_en_i = 1'b1;
+        end else begin
+            release `DIGEST_SIP.test_en_i;
+        end
+    end
+`undef DIGEST_SIP
 `undef CMP_SIP
 `undef CMP_CHIP
 `undef CMP_SEC
@@ -2249,6 +2078,7 @@ module sep_uvm_top
     assign lc_sigint_inject_i       = 1'b0;
     assign token_cmp_fault_inject_i = '0;
     assign token_cmp_fault_sel_i    = '0;
+    assign token_digest_test_en_inject_i = 1'b0;
     assign dma_host_intg_inject_i   = 1'b0;
     assign rst_vec_i                = '0;
     assign i_cpu_run_req_i          = 1'b0;
@@ -2265,6 +2095,103 @@ module sep_uvm_top
         uvm_config_db#(virtual ocah_axi_if)::set(null, "*", "lsu_axi_vif", u_lsu_axi_if);
         run_test();
     end
+`endif
+
+    // ------------------------------------------------------------------
+    // Functional-coverage sampler (docs/SEP_FCOV.adoc).
+    //
+    // Passive: it drives nothing and has no output. VCS only -- Verilator does
+    // not compile `covergroup`, and cov/sv/sep_fcov.sv is `ifndef VERILATOR`,
+    // so there is no module to bind on the Verilator targets.
+    //
+    // NEW DUT OBSERVATION, and it needs a sign-off rather than a claim that it
+    // is free. The response side (`lsu_axi_resp`) is already mirrored to the
+    // flat s_axi_* outputs above, but the REQUEST side (`lsu_axi_req` AW/W/AR
+    // and B/R ready) is read here for the first time: it is not one of the
+    // named probe ports in sep_tb_signal_list.svh.
+    //
+    // Why it is the request bus and not the flat s_axi_* inputs: those inputs
+    // carry TB stimulus only. Under +cpu_boot the EL2 owns this bus and the
+    // input ports sit idle, so a port-side sampler scores nothing on any
+    // firmware test -- no DMA, SPI-DMA, boot-ROM LSU, mailbox or NMI cell could
+    // ever fill. It is the same node the no-CPU builds already force-splice
+    // (see the CPU-LSU AXI splice above), read-only, with no force and no new
+    // hierarchy depth.
+    // ------------------------------------------------------------------
+`ifndef VERILATOR
+    sep_fcov u_sep_fcov (
+        .clk_i                 (clk_i),
+        .rst_ni                (rst_n_int),
+
+        .lsu_aw_addr_i         (`SEP_CORE.sep_cpu.lsu_axi_req.aw.addr),
+        .lsu_aw_valid_i        (`SEP_CORE.sep_cpu.lsu_axi_req.aw_valid),
+        .lsu_aw_ready_i        (`SEP_CORE.sep_cpu.lsu_axi_resp.aw_ready),
+        .lsu_w_data_i          (`SEP_CORE.sep_cpu.lsu_axi_req.w.data),
+        .lsu_w_strb_i          (`SEP_CORE.sep_cpu.lsu_axi_req.w.strb),
+        .lsu_w_valid_i         (`SEP_CORE.sep_cpu.lsu_axi_req.w_valid),
+        .lsu_w_ready_i         (`SEP_CORE.sep_cpu.lsu_axi_resp.w_ready),
+        .lsu_b_resp_i          (`SEP_CORE.sep_cpu.lsu_axi_resp.b.resp),
+        .lsu_b_valid_i         (`SEP_CORE.sep_cpu.lsu_axi_resp.b_valid),
+        .lsu_b_ready_i         (`SEP_CORE.sep_cpu.lsu_axi_req.b_ready),
+        .lsu_ar_addr_i         (`SEP_CORE.sep_cpu.lsu_axi_req.ar.addr),
+        .lsu_ar_valid_i        (`SEP_CORE.sep_cpu.lsu_axi_req.ar_valid),
+        .lsu_ar_ready_i        (`SEP_CORE.sep_cpu.lsu_axi_resp.ar_ready),
+        .lsu_r_data_i          (`SEP_CORE.sep_cpu.lsu_axi_resp.r.data),
+        .lsu_r_resp_i          (`SEP_CORE.sep_cpu.lsu_axi_resp.r.resp),
+        .lsu_r_last_i          (`SEP_CORE.sep_cpu.lsu_axi_resp.r.last),
+        .lsu_r_valid_i         (`SEP_CORE.sep_cpu.lsu_axi_resp.r_valid),
+        .lsu_r_ready_i         (`SEP_CORE.sep_cpu.lsu_axi_req.r_ready),
+
+        .m_axi_awaddr_i        (m_axi_awaddr),
+        .m_axi_awvalid_i       (m_axi_awvalid),
+        .m_axi_awready_i       (m_axi_awready),
+        .m_axi_bresp_i         (m_axi_bresp),
+        .m_axi_bvalid_i        (m_axi_bvalid),
+        .m_axi_bready_i        (m_axi_bready),
+        .m_axi_araddr_i        (m_axi_araddr),
+        .m_axi_arvalid_i       (m_axi_arvalid),
+        .m_axi_arready_i       (m_axi_arready),
+        .m_axi_rresp_i         (m_axi_rresp),
+        .m_axi_rlast_i         (m_axi_rlast),
+        .m_axi_rvalid_i        (m_axi_rvalid),
+        .m_axi_rready_i        (m_axi_rready),
+
+        .cpu_trace_valid_i     (cpu_trace_valid_o),
+        .cpu_trace_addr_i      (cpu_trace_addr_o),
+        .cpu_trace_interrupt_i (cpu_trace_interrupt_o),
+        .cpu_trace_exc_i       (dbg_cpu_trace_exc_o),
+        .fw_done_i             (fw_done_o),
+        .fw_pass_i             (fw_pass_o),
+        .fw_char_valid_i       (fw_char_valid_o),
+        .fuse_sense_done_i     (sep_fuse_sense_done_o),
+        .drbg_seed_valid_i     (drbg_seed_valid_o),
+        .drbg_genbits_vld_i    (drbg_genbits_vld_o),
+        .axis1_tvalid_i        (axis1_tvalid_o),
+        .axis1_tready_i        (axis1_tready_o),
+        .km_entropy_tvalid_i   (km_entropy_tvalid_o),
+        .km_entropy_tready_i   (km_entropy_tready_o),
+        // sep.sv:534 assembles the SEP AXI mailbox onto
+        // sep_internal_interrupts[7:0] and km_mbox_irq onto [14]. They are
+        // different sources with different owning tests, so both are wired.
+        .irq_mailbox_i         (sep_internal_interrupts_probe_o[7:0]),
+        .irq_km_mbox_i         (sep_internal_interrupts_probe_o[14]),
+        // sep.sv:535 intr_dma_done. dma_hash_test completes through the ISR,
+        // which clears STATUS.done before software reads it.
+        .irq_dma_done_i        (sep_internal_interrupts_probe_o[8]),
+        // Sensed LC nibble out of the shadow probe. The W1S leaves verify
+        // their start state through this probe and never read LC_STATE
+        // frontdoor first, so the frontdoor path cannot observe RMA_SIP_0 /
+        // RMA_CHIP_0 at all.
+        .efuse_lc_raw_i        (efuse_shadow_probe_o[
+            32 * efuse_pkg::SHADOW_IDX_LC_STATE +: 4]),
+        .secure_tm_i           (secure_tm_o),
+        .sec_dis_i             (lcc_security_disable_probe_o),
+        .demote_1_i            (lcc_demote_state_1_probe_o),
+        .demote_2_i            (lcc_demote_state_2_probe_o),
+        .cpu_reset_n_i         (sep_cpu_reset_n_o),
+        .spi_cs_n_i            (spi_cs_n_o),
+        .spi_sck_i             (spi_sck_o)
+    );
 `endif
 
 `undef SEP_ESRC

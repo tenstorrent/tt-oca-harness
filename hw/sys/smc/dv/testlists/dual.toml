@@ -10,9 +10,9 @@ schema_version = 1
 # that key build the single-instance model.
 #
 # Group names share all.toml's namespace, so the groups here are prefixed:
-# `dual_smoke` and `dual_all`. The SMC catalog has no `all` group (the smc entry
-# in .github/workflows/sim.yml relies on that). `occp_dual` is unprefixed:
-# nothing else in the catalog uses that name.
+# `dual_smoke` and `dual_all`. Three of these leaves sit in `all`; the
+# hosted-runner set `hosted` holds them out because they elaborate SMC_DUAL.
+# `occp_dual` is unprefixed: nothing else in the catalog uses that name.
 
 [[tests]]
 name = "smc_dual_elaboration_test"

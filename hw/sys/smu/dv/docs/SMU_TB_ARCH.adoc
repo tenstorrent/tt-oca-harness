@@ -17,11 +17,13 @@ Two DUTs share this DV root:
 [cols=",,",options="header",]
 |===
 |Launch name |HDL top |What it is for
-|`--dut smu` |`tb/tb_top.sv` (`smu_uvm_top`) |Bare `smu #(.SEP(0))` — the density,
-CSR and fabric surface, and the only surface `sep0_all` signs off
-|`--dut smu_wrapper` |`tb/tb_wrapper_top.sv` (`smu_wrapper_uvm_top`) |
+|`--dut smu_block` |`tb/tb_top.sv` (`smu_uvm_top`) |Bare `smu #(.SEP(0))` with its
+technology interfaces tied off. Carried the SEP=0 catalog until that was migrated
+to `--dut smu`; now holds the two leaves the wrapper cannot express, plus the
+SV-UVM view whose harness is this TB's `UVM` shape
+|`--dut smu` (alias `smu_wrapper`) |`tb/tb_wrapper_top.sv` (`smu_wrapper_uvm_top`) |
 `hw/top/smu_wrapper.sv` with production pins, in a `no_sep` and a `sep_rtl`
-compile profile
+compile profile. The SMU regression: `sep0_all` (53) and `all` (81)
 |===
 
 The two are deliberately separate evidence surfaces. Logs carry `DUT_TAG=BARE`
@@ -34,7 +36,7 @@ evidence.
 hw/sys/smu/dv/
 ├── cocotb/{env,seq_lib,tests}/   # live PyUVM environment, sequences, tests
 ├── cocotb/tests_deferred/        # non-enrolled bodies, catalog only
-├── cocotb_wrapper/{env,seq_lib,tests}/  # --dut smu_wrapper baseline
+├── cocotb_wrapper/{env,seq_lib,tests}/  # --dut smu baseline
 ├── docs/                         # this chapter set
 ├── fw/                           # firmware images built for the dual-FW tests
 ├── tb/                           # tb_top.sv (cocotb + UVM shapes), smu_tb_signal_list.svh,
@@ -42,25 +44,36 @@ hw/sys/smu/dv/
 ├── uvm/{env,seq_lib,tests}/      # SV-UVM env / seq_lib / tests (--framework uvm)
 ├── testlists/                    # per-feature TOML leaves + all.toml groups
 ├── tools/                        # wrapper readiness gates
-├── smu_sim_cfg.toml              # --dut smu: [frameworks.cocotb] + [frameworks.uvm]
-└── smu_wrapper_sim_cfg.toml      # --dut smu_wrapper
+├── smu_block_sim_cfg.toml        # --dut smu_block: [frameworks.cocotb] + [frameworks.uvm]
+└── smu_sim_cfg.toml              # --dut smu
 ....
 
 === Environment Components
 
-`SmuEnv` (`cocotb/env/smu_env.py`) is deliberately thin. It builds the
+`SmuEnv` (`common/smu_dv_env/smu_env.py`) is deliberately thin. It builds the
 scoreboard and reads `SmuEnvCfg` out of the PyUVM `ConfigDB`; the JTAG and AXI
 agents are created on demand by the sequences that need them, against
-`cocotb.top`, rather than being instantiated for every test.
+`cocotb.top`, rather than being instantiated for every test. The one agent that
+exists from time zero is the responder of the outbound SMN AXI4 boundary:
+`tb_top.sv` keeps the crossbar's `ext_out` request/response structs and places
+them on the `ocah_axi_if` instance `u_axi_out_if` through
+`ocah_axi_struct_bridge`; `smu_base_test.bring_up` binds the shared
+`OcahAxiSlaveAgent` to that instance before the clocks start and publishes its
+slave sequence as `SmuEnvCfg.axi_out_mem` (backdoor reads and writes of what
+the SMU wrote out, one-shot SLVERR/DECERR injection, bounded READY stalls). The
+wrapper bench (`tb_wrapper_top.sv`) answers the same boundary the same way
+behind its `axi_cut`, on the wrapper `SmuEnvCfg.axi_out_mem`.
 
 [cols=",",options="header",]
 |===
 |Component |Role
 |`SmuEnvCfg` |Clock periods (`ref`, `smu`, `periph`, `jtag`), idle TCK count and
-post-reset settle cycles, randomised from the run seed
+post-reset settle cycles, randomised from the run seed; the outbound SMN
+geometry, memory span, and slave sequence (`axi_out_mem`)
 |`SmuScoreboard` |Every check in the suite goes through it; see
 <<smu-checking-strategy,Checking Strategy>>
-|`smu_evidence_map.py` |Per-testcase `(CHK_ID, TOKEN, EXPECT)` contracts
+|`smu_evidence_map.py` |Per-testcase `(CHK_ID, TOKEN, EXPECT)` token contracts,
+plus the `UNMAPPED_TESTS` declarations for testcases that run without rows
 |`smu_fcov.py` |Scenario-intent coverage bins, hit per test
 |===
 
@@ -96,8 +109,16 @@ them:
   drives stimulus but never compares anything fails.
 . *No invented checkboxes.* `prove_mapped_features()` runs after the scenario
   and requires that every TOKEN mapped to this testcase in
-  `smu_evidence_map.py` was actually logged by an `expect_*` call. Tokens
-  cannot be claimed after seeing a green path.
+  `smu_evidence_map.py` was logged by an `expect_*` call that passed. Tokens
+  cannot be claimed after seeing a green path. A testcase with no mapped rows
+  must be declared in `UNMAPPED_TESTS`; an undeclared one fails here. What this
+  does *not* establish is the EXPECT column: it is free-text contract wording,
+  nothing compares an observed value against it, and the per-row
+  `EVIDENCE TOKEN SEEN` line says only that the token was carried by a passing
+  check. Each row prints its binding -- `evidence-arg` when a caller named the
+  token outright, `check-name-substring` when the token was matched against the
+  check's name -- and the rows in the second class are collected into an
+  `EVIDENCE BINDING WEAK` warning.
 . *Traceable evidence.* Each satisfied check logs `EVIDENCE: <TOKEN>`, and the
   run ends with an `EVIDENCE_SUMMARY` line. `CHK-NONVAC` is emitted by
   `check_phase` itself once the check count is non-zero, so the non-vacuity
@@ -199,7 +220,9 @@ tests.
 |===
 |Interface / Protocol |Open-source replacement
 |Primary JTAG TAP |`ocah_jtag_vip`
-|External SMN AXI4 |`ocah_axi_vip` (`OcahAxiSlaveAgent` / master)
+|External SMN AXI4 |`ocah_axi_vip`: `OcahAxiSlaveAgent` on the outbound
+boundary (struct port bridged by `ocah_axi_struct_bridge`), master on the
+inbound pins
 |SMC OTP AXI-Lite over JTAG2AXI |`ocah_axi_vip` AXI-Lite wrappers
 |SMC scratch / mailbox |Backdoor read plus cocotb polling
 |Cross-trigger / iJTAG |OCAH-local model, not yet written
@@ -237,9 +260,9 @@ and reports them per test. Results land under
 [source,bash]
 ----
 # SV-UVM view (VCS): build, the bound scenario, the UVM-implemented smoke subset
-python3 tools/dv/run_dv.py --dut smu --framework uvm --build-only --skip-unimplemented
-python3 tools/dv/run_dv.py --dut smu --framework uvm --items smu_dtp_jtag_smoke_test --seed 1
-python3 tools/dv/run_dv.py --dut smu --framework uvm --items smoke --skip-unimplemented
+python3 tools/dv/run_dv.py --dut smu_block --framework uvm --build-only --skip-unimplemented
+python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smu_dtp_jtag_smoke_test --seed 1
+python3 tools/dv/run_dv.py --dut smu_block --framework uvm --items smoke --skip-unimplemented
 ----
 
 The wrapper DUT additionally builds firmware images through
@@ -249,16 +272,16 @@ The wrapper DUT additionally builds firmware images through
 [source,bash]
 ----
 python3 hw/sys/smu/dv/tools/smu_wrapper_tb_readiness_test.py --phase source
-python3 tools/dv/run_dv.py --dut smu_wrapper --items smoke \
+python3 tools/dv/run_dv.py --dut smu --items smoke \
   --stage flist --stage c_compile --stage hdl_compile --stage sim
 ----
 
 [[sv-uvm-realization]]
 === SystemVerilog UVM Realization (`--framework uvm`)
 
-The SV-UVM realization runs through the same native runner: `smu_sim_cfg.toml`
+The SV-UVM realization runs through the same native runner: `smu_block_sim_cfg.toml`
 declares it as the `[frameworks.uvm]` overlay (shared DV root, sim config, and
-testlist; `build/uvm/` build tree), and `--dut smu --framework uvm` selects it
+testlist; `build/uvm_block/` build tree), and `--dut smu_block --framework uvm` selects it
 on VCS (the `native` profile's `uvm` framework, `-ntb_opts uvm`). Scenarios
 bind both realizations in their testlist `module` map
 (`module = { cocotb = "<name>", uvm = "<name>" }`); those without a `uvm`
@@ -278,8 +301,9 @@ TAP pins, the SMU-local `smu_tb_if`, a `dtp_tb_if` instance wired to the
 embedded DTP (one-hot TAP state, decoded instruction, and the DTP's system and
 power-on reset assertion counters observed on the DTP instance pins), the JTAG
 protocol SVA, quiescent tie-offs at the idle values `smu_base_test.bring_up`
-uses, `uvm_config_db` publication of the three virtual interfaces, and
-`run_test()`.
+uses, `uvm_config_db` publication of the four virtual interfaces (the outbound
+`ocah_axi_if` instance is shared by both shapes and published as
+`axi_out_vif`), and `run_test()`.
 
 .SV-UVM component tree (`uvm/`)
 ....
@@ -291,6 +315,8 @@ smu_dtp_jtag_smoke_test (tests/) extends smu_base_test extends ocah_test
 
 smu_env (env/) extends ocah_env
   ocah_jtag_master_env        active JTAG agent on ocah_jtag_if (jtag_vif)
+  ocah_axi_slave_agent        memory-backed responder of the outbound SMN
+                              boundary on ocah_axi_if (axi_out_vif)
   ocah_jtag_scan_builder      IR/DR scan reconstruction on the event stream
   ocah_jtag_checker           env-owned aggregate evidence (CHK-TAP-*)
   dtp_ir_decode_ref_model     embedded DTP: the DTP bench's reference models
@@ -300,7 +326,7 @@ smu_env (env/) extends ocah_env
   smu_scoreboard              always on; SoC verdict point:
     dtp_scoreboard              the DTP bench's scoreboard, reused as a child
                                 (ir_decode, idcode, bypass pairing)
-  smu_virtual_sequencer       m_jtag_seqr
+  smu_virtual_sequencer       m_jtag_seqr, m_axi_out_slave_seq
 
 smu_seq_lib_pkg (seq_lib/)
   smu_jtag_op_seq             base of the operations (tracked TAP state)

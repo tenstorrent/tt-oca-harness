@@ -617,14 +617,21 @@ def parse_coverage_report(
     }, round(overall, 4)
 
 
-def write_json(path: Path, payload: dict[str, Any]) -> None:
+def json_text(payload: dict[str, Any]) -> str:
+    """The exact bytes `write_json` puts on disk for `payload`."""
+
+    return json.dumps(payload, indent=2, sort_keys=True) + "\n"
+
+
+def write_json_text(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_text(
-        json.dumps(payload, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
+    temporary.write_text(text, encoding="utf-8")
     temporary.replace(path)
+
+
+def write_json(path: Path, payload: dict[str, Any]) -> None:
+    write_json_text(path, json_text(payload))
 
 
 def load_manifest(path: Path) -> dict[str, Any]:

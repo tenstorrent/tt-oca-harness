@@ -4,8 +4,8 @@ schema_version = 1
 # ROM FIRMWARE boot tests. Separate from cpu.toml because they differ from every
 # other CPU test on BOTH build axes, not just at run time:
 #
-#   * RTL target `rom_boot` -- cpu_all_live plus a behavioral SMC AXI responder
-#     (axi_sim_mem), not the `lsu_stub_all_live` CPU stub and not `default`.
+#   * RTL target `rom_boot` -- cpu_all_live plus the shared AXI slave agent on
+#     the SEP->SMC AXI, not the `lsu_stub_all_live` CPU stub and not `default`.
 #   * Firmware profiles `boot_rom` / `boot_rom_ot` / `boot_rom_ot_pio` -- the
 #     production Boot ROM under hw/sys/sep/bootrom/prod, which drives its own
 #     Makefile, links to ROM_BASE instead of the TCMs, and packs a manifest+BL1
@@ -30,7 +30,7 @@ schema_version = 1
 # NOT a backdoor-TCM payload boot. SPI is stubbed (the OSS `sep` DUT has only the
 # OpenTitan Quad spi_host),
 # so the ROM takes its spec-defined SMC-SRAM manifest path, served by the
-# behavioral SMC responder (SEP_SMC_MEM_MODEL).
+# SMC responder (SEP_SMC_MEM_MODEL: the shared AXI slave agent).
 name = "sep_rom_non_secure_boot_test"
 module = "rom_fw.sep_rom_non_secure_boot_test"
 target = "rom_boot"
@@ -602,10 +602,10 @@ args = [
 #   +sep_smc_mem_hex     stages the manifest+BL1 image at the SMC-SRAM base, which
 #                        is where the recovery path fetches from.
 #
-# smc_mem.hex comes from build/ while the ROM comes from build_ot/: the packed
+# oca_smc_mem.hex comes from build/ while the ROM comes from build_ot/: the packed
 # image is transport-agnostic (same reason sep_rom_ot_dma_boot_test reads
-# build/non_secure_boot.bin), and [c_build.boot_rom_ot] runs `pack-images`, which
-# is the rule that produces it.
+# build/oca_non_secure_boot.bin), and [c_build.boot_rom_ot] runs `oca-images`,
+# which is the rule that produces it.
 #
 # build_ot rather than the SPI-stub ROM on purpose: the OT ROM CAN drive the flash
 # and the flash BFM is attached and preloaded, so "no SPI reads" is a real
@@ -622,7 +622,7 @@ args = [
   "+sep_boot_rom_hex={repo_root}/hw/sys/sep/bootrom/prod/build_ot/boot_rom.vmem",
   "+sep_boot_from_spi",
   "+sep_straps_lo=00080000",
-  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/smc_mem.hex",
+  "+sep_smc_mem_hex={repo_root}/hw/sys/sep/bootrom/prod/build/oca_smc_mem.hex",
 ]
 
 [[tests]]
@@ -1302,7 +1302,7 @@ args = [
 # It is also the STRICTEST member. Slot 0 is the one populated digest
 # (key_digests.c) and the slot the image is signed against, so the selector
 # write is a no-op: the flash image is byte-identical to the shipped
-# bootrom/prod/build/secure_boot.bin and the test proves BOTH slots still pass
+# bootrom/prod/build/oca_secure_boot.bin and the test proves BOTH slots still pass
 # verify_sealed and verify_public_key. Two provably bootable manifests refused by
 # one fuse bit. Matched pair with sep_firmware_primary_rom_key_valid_test, which
 # runs the identical image with the fuse clear and boots from the primary.
@@ -1635,7 +1635,7 @@ args = [
 # The positive member of the primary-side ROM-key family, and the matched partner
 # of sep_firmware_primary_pubkey_rom_0_revoked_key_test: both apply the same
 # single call select_primary_rom_slot(buf, 0), which is a no-op on the shipped
-# image, so both run bytes identical to bootrom/prod/build/secure_boot.bin and
+# image, so both run bytes identical to bootrom/prod/build/oca_secure_boot.bin and
 # differ only in one bit of CHIPLET_PUBK_REVOKE. Fuse clear boots; bit 0 set
 # refuses both manifests.
 #

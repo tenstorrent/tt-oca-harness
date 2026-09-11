@@ -34,9 +34,15 @@ for coverage. Driven by `tools/dv/run_dv.py`.
 * *Single DUT*: `--dut smc` → `smc_sim_cfg.toml`, top
 `smc_uvm_top` (`tb/tb_top.sv`) instantiating `hw/top/smc_wrapper.sv`.
 PLL/PVT/eFuse/pads/CPU mem and the I3C DAT/DCT/RLT memories live inside
-the wrapper. The TB still provides the SYS_OUT AXI responder
-(`axi_sim_mem`). The DTP CSR boundary is idle: `axil_dtp_csr_resp` is
-tied off, with no TB `err_slv` (SMU already wires that port to DTP).
+the wrapper. The TB provides the SYS_OUT AXI responder: the shared
+`ocah_axi_vip` slave agent on the `ocah_axi_if` instance `u_output_axi_if`,
+which `ocah_axi_struct_bridge` feeds from the wrapper's struct port
+(`SmcEnvCfg.sys_out_mem` is its slave sequence for backdoor access and
+one-shot faults; the dual bench binds one agent per instance). The responder
+follows the SMC primary reset, so a cool reset drops the outstanding SYS_OUT
+responses instead of returning them into the reset CPU cluster. The DTP CSR
+boundary is idle: `axil_dtp_csr_resp` is tied off, with no TB `err_slv` (SMU
+already wires that port to DTP).
 
 `hw/common/dv/configs/duts.toml` does not register an `smc` alias of
 `smc_wrapper`. The runner discovers `--dut smc` from this DV root.
@@ -175,7 +181,7 @@ Promotion history, by area — each group moved from CSR-only proxy to
 |CSR catalog |`smc_default_reg_rd_test`, `smc_register_boundary_depth_test`, `smc_register_sanity_test` |`smc_csr_field_catalog.py` classifies restore-safe RW scratch, RO static chip-config/eFuse-derived, and RO status fields; tests validate fields against the catalog before read/write/restore
 |=================================================================================================================================================================================================================================================================================================================================================================================================
 
-After all promotions, `vplan_triplets` held at 48/48 PASS on both simulators,
+After all promotions, `depth` held at 48/48 PASS on both simulators,
 confirming the promoted tests did not regress the broader planned suite.
 
 [[loopback-proofs]]
@@ -259,21 +265,27 @@ SmcEnv
 hw/sys/smc/dv/
 ├── cocotb/                 # PyUVM env / seq_lib / tests
 ├── uvm/                    # SV-UVM env / seq_lib / tests (--framework uvm)
-├── models/{mem,regs}/      # TB responders + pll/pvt PeakRDL wraps
+├── models/                 # TB responders + models/regs/ pll/pvt PeakRDL wraps
 ├── tb/                     # tb_top.sv (both shapes), smc_tb_signal_list.svh,
 │                           # smc_tb_if.sv, verilator_stubs/
 ├── testlists/              # per-feature TOML leaves + all.toml
 ├── assets/                 # ROM/eFuse/shadow preload images
 ├── smc_sim_cfg.toml  # sole launch config (tb_top → smc_wrapper), both frameworks
-└── docs/                   # index.adoc, TB_ARCH, VPLAN, FCOV, SCOPE, DEFERRED, local_records
+└── docs/                   # index.adoc, TB_ARCH, VPLAN, FCOV, SCOPE, DEFERRED
 ....
+
+NOTE: `dv/README.md` carries the authoritative directory layout. The sketch
+above is the subset this chapter refers to; when the two disagree the README
+is right.
 
 [[hdl-top]]
 === HDL Top
 
 `tb/tb_top.sv` instantiates `hw/top/smc_wrapper.sv` as `smc_uvm_top`. PLL, PVT,
 eFuse, pads, CPU memory, and the I3C DAT/DCT/RLT table memories live inside
-the wrapper. The TB still provides the SYS_OUT AXI responder (`axi_sim_mem`).
+the wrapper. The TB provides the SYS_OUT AXI responder (the shared
+`ocah_axi_vip` slave agent behind `ocah_axi_struct_bridge`; in the SV-UVM
+realization `smc_env.m_sys_out_slave_agent` on `sys_out_vif`).
 The DTP CSR port is a `smc_wrapper` boundary: the TB ties
 `axil_dtp_csr_resp` to zero and does not instantiate an `err_slv`. Tests that
 need a DTP CSR subordinate stay unenrolled (`needs_dtp_csr_sub`).
@@ -667,9 +679,9 @@ Compile order is explicit and load-bearing: the library and VIP layers come
 from their manifests (`ocah_lib/uvm/sources.toml`,
 `ocah_axi_vip/uvm/sources.toml`, listed in
 `[frameworks.uvm.build].source_lists` and expanded ahead of the DUT's own
-sources), then the TB collateral both flows compile (the SYS_OUT
-`axi_sim_mem` responder and `smc_cpu_mem_dv`), `smc_tb_if`, the generated SMC
-address map, `smc_env_pkg`, `smc_seq_lib_pkg`, and `tb_top.sv` last.
+sources), then the TB collateral both flows compile (`smc_cpu_mem_dv`),
+`smc_tb_if`, the generated SMC address map, `smc_env_pkg`, `smc_seq_lib_pkg`,
+and `tb_top.sv` last.
 
 The scoreboard is always on and compares only. Each feature has its own
 reference model on the shared `ocah_ref_model` base: `smc_scratch_csr_ref_model`
@@ -760,7 +772,7 @@ loaded host.
 |===========================================================================================================================================================
 |Purpose |Flag
 |Single test |`--items smc_cold_reset_test`
-|Feature subset |`--items` / `--tag` `reset` / `axil` / `clock` / `i2c` / `irq` / `gpio` / `combined` / `depth_reg` / `mailbox_depth` / `depth_efuse` / `cpu_depth` / `jtag_depth` / `depth_fabric` / `avsbus_depth` / `project_p0` / `smoke`
+|Feature subset |`--items` / `--tag` `reset` / `axil` / `clock` / `i2c` / `irq` / `gpio` / `combined` / `depth_reg` / `mailbox_depth` / `depth_efuse` / `cpu_depth` / `jtag_depth` / `depth_fabric` / `avsbus_depth` / `functional` / `smoke`
 |Multi-seed |`--seed N` (exported as `RANDOM_SEED` → `randomize_timing(seed)`)
 |Force clean rebuild |`--rebuild`
 |List tests / DUTs |`--list` (combine with `--dut smc` for SMC details)
@@ -794,14 +806,16 @@ hw/sys/smc/dv/testlists/
 ├── uart.toml           # UART and log engine
 ├── dual.toml           # dual-SMC elaboration and cross-instance probes
 ├── occp_boot.toml      # prod-ROM OCCP readiness
-└── vplan_triplets.toml # 16 functional modules x 3 tests
+└── depth.toml # 16 functional modules x 3 tests
 ....
 
 `--tag smoke` and `--tag pyuvm` resolve through `all.toml` groups. Treat this as
 the broad debug regression, not the coverage-minimal canonical set.
 
-`--tag project_p0` matches the 14 SMC P0 testcase names tracked by GitHub
-Project 335 / issue `tenstorrent/tt-oca-hw#2891`. Four names are compatibility
+`--tag functional` matches 15 testcases; the `functional` *group* holds 13. The
+two are separate selectors and the counts are not interchangeable: `--tag`
+matches every entry carrying the tag, `--items functional` resolves the group
+membership in `all.toml`. Four names in the set are compatibility
 wrappers over stronger local sequences: `smc_mailbox_idle_test`,
 `smc_input_fabric_axi_wr_rd_test`, `smc_avsbus_sanity_test`, and
 `smc_dbs_idle_test`.
@@ -828,7 +842,7 @@ coverage density. New migrated tests should normally land in a depth tag first:
 |`depth_uart_log` |UART/SPI/log-engine register and error-boundary coverage |`smc_uart_log_engine_reg_rw_test`
 |=======================================================================================================================================================
 
-Do not add depth tests to `balanced_ip` just because they pass. That group
+Do not add depth tests to `per_ip` just because they pass. That group
 groups stay coverage-minimal; a depth test enters canonical only if it replaces
 an older representative with strictly better coverage.
 
@@ -843,11 +857,11 @@ test needs.
 |===
 |Group |Goal |Note
 |`smoke` |fast CI gate with real stimulus |Bring-up scenarios that must hold before anything else is worth running
-|`balanced_ip` |one scenario per IP, full breadth |The routine regression; a failure here names the IP directly
+|`per_ip` |one scenario per IP, full breadth |The routine regression; a failure here names the IP directly
 |`all` |every enrolled testcase |The full package, run before sign-off
 |===
 
-Do not add a test to `smoke` or `balanced_ip` until it has active stimulus and at
+Do not add a test to `smoke` or `per_ip` until it has active stimulus and at
 least one Verilator PASS. Keep weak SAMPLE-only variants under the feature
 groups for debug.
 
@@ -860,8 +874,8 @@ edits to sequences, scoreboards, or testlists should use `--stage sim`:
 [source,bash]
 ----
 python3 tools/dv/run_dv.py --dut smc --tag smoke        --tool verilator --stage sim
-python3 tools/dv/run_dv.py --dut smc --tag balanced_ip  --tool verilator --stage sim
-python3 tools/dv/run_dv.py --dut smc --tag project_p0      --tool verilator --stage sim
+python3 tools/dv/run_dv.py --dut smc --tag per_ip  --tool verilator --stage sim
+python3 tools/dv/run_dv.py --dut smc --tag functional      --tool verilator --stage sim
 python3 tools/dv/run_dv.py --dut smc --tag mailbox_depth   --tool verilator --stage sim
 ----
 
@@ -955,15 +969,15 @@ python3 tools/dv/run_dv.py --dut smc --tag smoke --tool verilator
 
 # Canonical tiers (sim-only after the one-time model build)
 python3 tools/dv/run_dv.py --dut smc --tag smoke        --tool verilator --stage sim
-python3 tools/dv/run_dv.py --dut smc --tag balanced_ip  --tool verilator --stage sim
+python3 tools/dv/run_dv.py --dut smc --tag per_ip  --tool verilator --stage sim
 
 # GitHub Project 335 / #2891 P0 names (14 tests) and category triplets
-python3 tools/dv/run_dv.py --dut smc --tag project_p0 --tool verilator --stage sim
-python3 tools/dv/run_dv.py --dut smc --items project_p0_triplets --tool verilator --stage sim
+python3 tools/dv/run_dv.py --dut smc --tag functional --tool verilator --stage sim
+python3 tools/dv/run_dv.py --dut smc --items functional_depth --tool verilator --stage sim
 
 # VPLAN migration triplets (16 functional modules x 3 tests) and gap slate
-python3 tools/dv/run_dv.py --dut smc --items vplan_triplets --tool verilator --stage sim
-python3 tools/dv/run_dv.py --dut smc --items vplan_gaps --tool verilator --stage sim
+python3 tools/dv/run_dv.py --dut smc --items depth --tool verilator --stage sim
+python3 tools/dv/run_dv.py --dut smc --items coverage_closure --tool verilator --stage sim
 
 # Static checks before running any sim
 python3 -m py_compile \

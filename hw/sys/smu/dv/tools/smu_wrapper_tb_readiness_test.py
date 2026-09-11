@@ -24,7 +24,7 @@ from check_no_vendor_paths import (  # noqa: E402
     _load_config,
 )
 
-SIM_CFG = "smu_wrapper_sim_cfg.toml"
+SIM_CFG = "smu_sim_cfg.toml"
 CATALOG = "testlists/wrapper.toml"
 TARGET_NO_SEP = "compile_smu_chiplet_no_sep"
 TARGET_SEP_RTL = "compile_smu_chiplet_sep_rtl"
@@ -54,9 +54,9 @@ REQUIRED_SOURCES = (
     "cocotb_wrapper/tests/smu_wrapper_elaboration_test.py",
     "cocotb_wrapper/tests/smu_smc_smoke_test.py",
     "cocotb_wrapper/tests/smu_sep_smoke_test.py",
-    "cocotb_wrapper/seq_lib/smu_wrapper_elaboration_seq.py",
-    "cocotb_wrapper/seq_lib/smu_smc_smoke_seq.py",
-    "cocotb_wrapper/seq_lib/smu_sep_smoke_seq.py",
+    "common/seq_lib/smu_wrapper_elaboration_seq.py",
+    "common/seq_lib/smu_smc_smoke_seq.py",
+    "common/seq_lib/smu_sep_smoke_seq.py",
     "cocotb_wrapper/env/smu_env_cfg.py",
     "cocotb_wrapper/env/smu_boot_scoreboard.py",
     CATALOG,

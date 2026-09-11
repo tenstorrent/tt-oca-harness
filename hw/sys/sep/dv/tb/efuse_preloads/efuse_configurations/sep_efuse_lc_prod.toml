@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 # PROD lifecycle, everything else at zero.
 #
 # The baseline secure-boot preload: PROD is what makes SEP ROM enforce signature

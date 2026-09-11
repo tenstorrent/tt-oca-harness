@@ -20,10 +20,6 @@ module smc_misc_wrap #(
   // Lifecycle state
   input  logic [LC_STATE_WIDTH-1:0] lc_state_i,
 
-  // RAS bank settings
-  output logic [3:0] ras_bank_chip_o,
-  output logic [3:0] ras_bank_instance_o,
-
   // NDM Reset signals (connected to SMU)
   input  logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0] ndmreset_request_i,
   output logic [smc_config_pkg::CPU_CLUSTER_COUNT-1:0] ndmreset_process_o
@@ -169,8 +165,7 @@ module smc_misc_wrap #(
   // Chip Config Registers //
   ///////////////////////////
 
-  chip_config_reg_pkg::chip_config__in_t      hwif_in;
-  chip_config_reg_pkg::chip_config__out_t     hwif_out;
+  chip_config_reg_pkg::chip_config__in_t hwif_in;
 
   chip_config_reg smc_chip_config_reg (
     .clk(clk_i),
@@ -197,17 +192,13 @@ module smc_misc_wrap #(
     .s_axil_rdata   (from_demux_reg_axi_lite_resp[smc_misc_pkg::CHIP_CONFIG].r.data),
     .s_axil_rresp   (from_demux_reg_axi_lite_resp[smc_misc_pkg::CHIP_CONFIG].r.resp),
 
-    .hwif_in(hwif_in),
-    .hwif_out(hwif_out)
+    .hwif_in(hwif_in)
   );
 
   assign hwif_in.VERSION_LO.version_lo.next = version_id[31:0];
   assign hwif_in.VERSION_HI.version_hi.next = version_id[63:32];
   assign hwif_in.CHIP_ID.chip_id.next = CHIP_ID;
   assign hwif_in.LC_STATE.lc_state.next = lc_state_i;
-
-  assign ras_bank_chip_o = hwif_out.RAS_BANK_INFO.bank_chip.value;
-  assign ras_bank_instance_o = hwif_out.RAS_BANK_INFO.bank_instance.value;
 
   ///////////////////////
   // NDM Reset Control //

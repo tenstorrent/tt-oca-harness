@@ -9,6 +9,13 @@ directory convention (``hw/<name>/dv``, ``hw/{sys,ip,comp,periph}/<name>/dv``, o
 ``hw/common/prim/<name>/dv`` under the active DV root). Either way the resolved DUT DV root must contain
 a ``<name>_sim_cfg.toml``, which is loaded (and merged with its ``profile``) into a :class:`Dut`.
 
+A registry entry may instead carry ``alias_of = "<canonical>"``, which makes the
+name a second way to select an existing DUT rather than a DUT of its own: the
+canonical config is loaded and the resolved :class:`Dut` carries the canonical
+identity, so both names share one build cache and one build manifest. Aliases
+are one hop deep, and the ``sim_cfg``/``formal_cfg`` default path follows the
+canonical name.
+
 The convention rules deliberately mirror ``tools/dv/sync_python_namespace.py`` so the import-name
 bridge and the runner agree on what counts as a DUT root.
 """
@@ -26,7 +33,7 @@ from .paths import dv_root as active_dv_root
 _DIRECT_HW_EXCLUDES = {"common", "dv", "ip", "comp", "periph", "sys"}
 # Grouping dirs whose children may carry a dv/ root.
 _NESTED_HW_GROUPS = ("sys", "ip", "comp", "periph")
-_REGISTRY_KEYS = {"root", "sim_cfg", "formal_cfg"}
+_REGISTRY_KEYS = {"root", "sim_cfg", "formal_cfg", "alias_of"}
 
 
 def registry_path(root: Path) -> Path:
@@ -49,7 +56,21 @@ def load_dut_registry(root: Path) -> dict[str, dict]:
         unknown = sorted(set(entry) - _REGISTRY_KEYS)
         if unknown:
             raise ConfigError(f"{path}: [duts.{name}] unsupported key(s): {', '.join(unknown)}")
+        alias = entry.get("alias_of")
+        if alias is not None and (not isinstance(alias, str) or not alias):
+            raise ConfigError(f"{path}: [duts.{name}] `alias_of` must be a non-empty string")
+        if alias == name:
+            raise ConfigError(f"{path}: [duts.{name}] `alias_of` cannot point at itself")
         out[name] = entry
+    for name, entry in out.items():
+        alias = entry.get("alias_of")
+        # One hop only. A chain would make the resolved identity depend on
+        # traversal order, and nothing needs it.
+        if alias is not None and out.get(alias, {}).get("alias_of") is not None:
+            raise ConfigError(
+                f"{path}: [duts.{name}] `alias_of` = `{alias}`, which is itself an alias; "
+                "point both at the canonical DUT instead"
+            )
     return out
 
 
@@ -116,10 +137,15 @@ def resolve_dut(
     layer is inactive.
     """
     registry = load_dut_registry(root)
+    # An `alias_of` entry is a second selectable name for one DUT, not a second
+    # DUT: it resolves to the canonical config and identity, so the two names
+    # share one build cache and one build manifest instead of compiling the
+    # same model twice under different names.
+    canonical = str(registry.get(name, {}).get("alias_of") or name)
     if name in registry:
         entry = registry[name]
         dv_root = dv_path(root, entry["root"])
-        cfg = _cfg_for(dv_root, name, mode, entry, root)
+        cfg = _cfg_for(dv_root, canonical, mode, entry, root)
     else:
         discovered = discover_dut_roots(root)
         if name not in discovered:
@@ -133,7 +159,7 @@ def resolve_dut(
         cfg,
         configs_root(root),
         root=root,
-        name=name,
+        name=canonical,
         root_rel=str(repo_rel(root, dv_root)),
         framework=framework,
         adopter_overlay=adopter_overlay,

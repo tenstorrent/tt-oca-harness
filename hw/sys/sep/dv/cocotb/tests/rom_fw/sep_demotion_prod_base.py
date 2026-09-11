@@ -53,10 +53,10 @@ fuse, and :func:`apply_secure_boot_dis` writes both manifest fields:
     genuinely unsigned, rather than a signed image with one flag cleared.
 
 **The coupling is what makes the port non-vacuous.** With ``signature_type = 0``
-the primary can boot only because the fuse is burned: ``secure_boot_enabled``
-reaches ``sboot_dis`` only when the manifest asks for nothing (``secure_boot.c``) BEFORE the PROD rule at
-. Drop the fuse and PROD enforces secure boot, the unsigned primary is
-refused as a format violation, and the ROM
+the primary can boot only because the fuse is burned: with the manifest asking for
+nothing, ``plat_is_secure_boot_disabled()`` (``oca_platform.c``) is what answers, and
+it overrides the PROD lifecycle. Drop the fuse and PROD enforces secure boot, the
+unsigned primary is refused as a format violation, and the ROM
 fails over to the signed backup -- which carries no demotion stimulus and would
 produce outcome **O5** under whichever name the testcase happened to have. That
 substitution is made loud rather than silent: ``PUBK_ALGO_UNSUPPORTED``, the backup

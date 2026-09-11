@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
 # PROD lifecycle with the secure-boot chicken bit blown.
 #
 # Proves the ROM honours SBOOT_DIS even in PROD, which is the only reason this
@@ -9,9 +12,10 @@
 # reference's +SECURE_BOOT_DIS drives -- the other two are manifest fields, and
 # reading only those produced the VP half's worst error
 # (batch_runs_0904_vp/FINDINGS.md F11 item 1). Those members present an UNSIGNED
-# primary, so this fuse is what lets it boot at all: secure_boot_enabled()
-# short-circuits on sboot_dis at manifest_load.c, before the PROD rule at
-#. Remove it and every one of them fails loudly at BAD_SIG_TYPE=
+# primary, so this fuse is what lets it boot at all: the SBOOT_DIS shadow reaches
+# the validator through plat_is_secure_boot_disabled() (oca_platform.c) and
+# disables the crypto chain the PROD lifecycle would otherwise enforce. Remove it
+# and every one of them fails loudly at BAD_SIG_TYPE=
 # rather than passing on the backup. See rom_fw/sep_demotion_prod_base.py.
 
 [LC_STATE]

@@ -6,9 +6,9 @@ A signed image authenticating and booting under PROD: full RSA-3072 chain, then
 handoff to BL1.
 
 WHAT THIS DOES NOT ESTABLISH -- read before extending. It does not exercise a
-distinct "enforce arm". In ``secure_boot_enabled()`` the lifecycle is consulted only inside
-``if (!mfst_flag && ...)``; with the manifest's secure_boot flag SET that branch is
-never taken and the function returns true on every lifecycle. The instruction path
+distinct "enforce arm". The manifest's own secure-boot control is sufficient by itself:
+with it SET the validator enforces the crypto chain on every lifecycle, so
+``plat_is_secure_boot_active()`` (``oca_platform.c``) never decides. The instruction path
 is therefore the same one ``sep_rom_ot_secure_boot_test`` takes under TEST_DEV, so
 no lifecycle-precedence claim may be made from a pass. The sibling
 ``sep_firmware_cntl_secure_boot_flow_test`` clears the flag and isolates that.
@@ -22,7 +22,7 @@ it the OTP could silently be TEST_DEV again.
 The image already permits PROD: ``life_cycle_states = 0x7`` with the selector bit
 set, and ``security_version = 0`` against a zero BL1_VERSION fuse, so no
 usage-constraint or rollback rejection is expected. Read from
-``build/secure_boot.bin``, not assumed.
+``build/oca_secure_boot.bin``, not assumed.
 """
 
 from __future__ import annotations

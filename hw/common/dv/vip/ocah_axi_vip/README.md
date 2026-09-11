@@ -87,9 +87,9 @@ ocah_axi_vip/
     ocah_axi_protocol_watcher.py        — cycle-level protocol-rule watchers
     ocah_axi_types.py                   — response/protection codes + value-conversion helpers
   interface/ocah_axi_if.sv       — flat AXI4/AXI4-Lite monitor interface (SV)
+  interface/ocah_axi_struct_bridge.sv — places a pulp request/response struct
+                                   port on an ocah_axi_if for the slave agent
   sva/ocah_axi_sva.sv            — clean-room AXI protocol SVA (OCAH_AXI_* rules)
-  sv/ocah_axil_ram_responder.sv  — behavioral AXI-Lite RAM responder (error-injectable)
-  sv/ocah_axi_ram_responder.sv   — behavioral AXI4 RAM responder (error-injectable)
   uvm/ocah_axi_uvm_pkg.sv        — SV-UVM layer: side-neutral passive stack
                                    (monitor/ref-model/scoreboard/env) + slave
                                    agent (reactive memory-backed responder)
@@ -99,10 +99,12 @@ ocah_axi_vip/
   examples/
     example_register_access.py            — annotated usage snippets
     example_axi_scoreboard_selftest.py    — simulator-free checker/model/scoreboard proof
-  dv/                            — simulated VIP selftests on a passive wire
-                                   harness (master <-> fault slave; response-ID
-                                   observation and corruption proofs), one
-                                   scenario set for both frameworks:
+  dv/                            — simulated VIP selftests on a wire harness
+                                   (master <-> fault slave: response-ID
+                                   observation and corruption proofs; master
+                                   <-> struct bridge <-> slave agent: the
+                                   struct-port boundary), one scenario set for
+                                   both frameworks:
                                    python3 tools/dv/run_dv.py --dut ocah_axi_vip --items smoke
                                    python3 tools/dv/run_dv.py --dut ocah_axi_vip \
                                        --framework uvm --tool vcs --items smoke
