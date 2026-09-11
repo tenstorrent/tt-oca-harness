@@ -529,3 +529,20 @@ jobs:
         run: |
           uv run --no-project --python 3.11 \
             hw/sys/sep/dv/cocotb/env/sep_generate_efuse_preload.py --selftest
+
+  # Re-clones every vendor_package remote, applies patches/, and fails if
+  # the committed upstream/ tree does not match. Catches a patch that no
+  # longer applies and a hand-edit that never became a patch. tt-hw-debug
+  # is not in vendor_package (its GitLab remote is not reachable here).
+  vendor-diff:
+    needs: [diff-class]
+    if: needs.diff-class.outputs.run_hardware_ci == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install bender
+        uses: pulp-platform/pulp-actions/bender-install@v2.5.1
+      - name: Verify vendored IP patches apply
+        run: bender vendor diff --git-throttle 8 --err_on_diff "Vendored upstream/ does not match the pinned remotes plus patches/. Run 'bender vendor init' and commit, or fix the patches."
