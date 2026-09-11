@@ -2767,11 +2767,10 @@ def _legacy_coverage_policy_args(
     tool: str,
     phase: str,
     exclusions: list[str],
-    waivers: list[str],
 ) -> list[str]:
-    if not exclusions and not waivers:
+    if not exclusions:
         return []
-    if tool == "vcs" and phase == "report" and not waivers:
+    if tool == "vcs" and phase == "report":
         argv: list[str] = []
         for path in exclusions:
             argv.extend(["-elfile", path])
@@ -2809,7 +2808,6 @@ def coverage_stage(
     backend = coverage_backend(tool, tool_cov)
     supported_metrics = _coverage_supported_metrics(args, tool)
     exclusions = _coverage_auxiliary_files(flow, root, tool_cov, "exclude_files")
-    waivers = _coverage_auxiliary_files(flow, root, tool_cov, "waiver_files")
     policy = resolve_coverage_policy(flow, root, tool, tool_cov)
     design_db = _coverage_design_db(flow, root, sim_cfg, tool_cov, args)
     ctx = {
@@ -2834,7 +2832,6 @@ def coverage_stage(
                 tool=tool,
                 phase=phase,
                 exclusions=exclusions,
-                waivers=waivers,
             ),
         ]
         return run_subprocess(
@@ -2879,7 +2876,6 @@ def coverage_stage(
             merged=merged,
             root=root,
             exclude_files=[repo_rel(root, value) or value for value in exclusions],
-            waiver_files=[repo_rel(root, value) or value for value in waivers],
         )
         manifest["backend"] = backend
         manifest["tool_version"] = _coverage_tool_version(tool, root)
@@ -2897,9 +2893,7 @@ def coverage_stage(
             "legacy_exclusions": [
                 {"path": repo_rel(root, path), "sha256": _file_sha256(path)} for path in exclusions
             ],
-            "legacy_waivers": [
-                {"path": repo_rel(root, path), "sha256": _file_sha256(path)} for path in waivers
-            ],
+            "legacy_waivers": [],
         }
         if design_db is not None:
             manifest["artifacts"]["design_db"] = repo_rel(root, design_db)
@@ -2912,7 +2906,6 @@ def coverage_stage(
                 tool=tool,
                 phase="merge",
                 exclusions=exclusions,
-                waivers=waivers,
             ),
         ]
         rc = run_subprocess(
@@ -2951,7 +2944,6 @@ def coverage_stage(
             tool=tool,
             phase="report",
             exclusions=exclusions,
-            waivers=waivers,
         ),
     ]
     rc = run_subprocess(
