@@ -1469,11 +1469,15 @@ def _cocotb_build_info(
         raise ConfigError(f"{flow.path}: [build].top_module is required")
 
     build_dir = required_path(run_target, "build_dir", "targets", str(flow.path))
-    base_build = repo_path(root, build_dir) / tool
+    # The coverage build is a sibling of the plain one, not a child of it.
+    # Verilator's verilated.mk puts `..` on the make VPATH, so a coverage build
+    # nested under the plain build dir resolves the cocotb main's `verilator.o`
+    # to the plain build's copy, which was compiled without -DVM_COVERAGE. That
+    # main never calls VerilatedCov::write, so the simulation finishes normally
+    # and writes no coverage.dat.
+    base_build = repo_path(root, build_dir) / (f"{tool}-coverage" if args.cov else tool)
     if tool == "vcs":
         base_build /= _safe_build_component(target_name)
-    if args.cov:
-        base_build /= "coverage"
     build_args = _cocotb_build_args(
         tool, flow, root, build, run_target, compile_target, options, filelist, args
     )
