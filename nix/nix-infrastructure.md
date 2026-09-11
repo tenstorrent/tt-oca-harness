@@ -71,12 +71,10 @@ OCAH depends on pinned versions of several packages, which are defined in `nix/p
 
 The repository is able to build two different containers (`ocah-container` and `ocah-uv-container`). The container builds are defined in [nix/container.nix](./container.nix). This Loads the OCAH Dependencies described [above](#dependencies), and outputs a container configuration and hash. The container hashes are pinned to the x86_64-linux build hash for all build platforms, for consistency.
 
-The containers also include some standard utilities, allowing development to proceed in the container. To use these containers, rather than the separate previous containers, set the following:
+The containers also include some standard utilities, allowing development to proceed in the container. The containers may be accessed using the `docker-run.sh` script.
 
-- `OCAH_USE_NIX_IMAGE=true` - Use the Nix-Build container
-- `OCAH_NIX_IMAGE_WITH_UV=true` - Optional - bundle UV dependencies in the build container - defaults to `false`
+The `OCAH_NIX_IMAGE_WITH_UV=true` environment variable may optionally be set to bundle UV dependencies in the build container - defaults to `false`
 
-The standard contaner script `docker-run.sh` has been patched to handle everything given these environment variables are set.
 
 ### Reproducibility
 

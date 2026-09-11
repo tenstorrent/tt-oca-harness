@@ -58,6 +58,7 @@ in
     else { }
   );
   # Full list of packages to include in the container image and dev shell.
+  # Package names may be checked at https://search.nixos.org/
   ocah_pkgs =
     with pkgs;
     [

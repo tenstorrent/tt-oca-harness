@@ -552,6 +552,7 @@ run-here)
   run_here "$@"
   ;;
 shell) run -it env HISTFILE=/tmp/bash_history bash ;;
+shell-here) run_here -it env HISTFILE=/tmp/bash_history bash ;;
 doc-html)
   shift
   [[ "${1:-trm}" == "all" ]] && doc_html_all || doc_html "${1:-trm}"
