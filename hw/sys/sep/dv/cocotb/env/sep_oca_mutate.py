@@ -889,15 +889,22 @@ def can_anchor_public_key(buf: bytes, slot: str) -> bool:
     )
 
 
-def verify_public_key(buf: bytes, slot: str) -> int:
+def verify_public_key(buf: bytes, slot: str, *, key_slot: int | None = None) -> int:
     """Assert the slot's modulus is the key its selection claims. Returns the slot.
 
     Anchors OFF_PUBLIC_KEY against real bytes: if the offset were wrong the digest
     would not match, so this doubles as the layout check for the key field. When
     the key cannot be anchored from the tree (see can_anchor_public_key) the slot
     is returned unchecked.
+
+    ``key_slot`` anchors against that ROM slot instead of the one the selection
+    names, for a stimulus that rewrites the selector without touching the key: the
+    modulus is still the one the image shipped with, so the shipped slot's digest
+    is what it has to match, not the digest of whatever the new selector points
+    at.
     """
-    key_slot = get_public_key_sel(buf, slot)
+    if key_slot is None:
+        key_slot = get_public_key_sel(buf, slot)
     if not can_anchor_public_key(buf, slot):
         return key_slot
     want = rom_key_digest(key_slot)

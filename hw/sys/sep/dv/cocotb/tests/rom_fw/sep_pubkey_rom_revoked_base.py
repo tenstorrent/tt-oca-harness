@@ -114,10 +114,13 @@ def select_backup_rom_slot(buf: bytearray, slot_index: int) -> tuple[int, bool]:
         f"(selection=PUBK_SEL_ROM_KEY, index={slot_index})"
     )
     # The modulus is never touched by this stimulus, so the backup must still
-    # carry the dev0 key the ROM has in slot 0. verify_public_key() also proves
-    # OFF_PUBLIC_KEY still addresses the modulus, so a packer change turns into a
-    # loud failure here rather than a negative test passing for the wrong reason.
-    mm.verify_public_key(buf, "backup")
+    # carry the key the ROM has in slot 0. Anchored against slot 0 explicitly for
+    # the same reason the signature below is: the selector just written names
+    # slot N, and resolving it would compare the shipped modulus against slot N's
+    # digest. verify_public_key() also proves OFF_PUBLIC_KEY still addresses the
+    # modulus, so a packer change turns into a loud failure here rather than a
+    # negative test passing for the wrong reason.
+    mm.verify_public_key(buf, "backup", key_slot=0)
     if not tbs_changed:
         # Nothing in the signed region moved, so the slot must still be completely
         # sealed: payload hash, TOC digests, manifest hash and a dev0 signature
