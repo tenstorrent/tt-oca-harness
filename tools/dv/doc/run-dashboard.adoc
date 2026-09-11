@@ -239,7 +239,8 @@ read these fields:
 assertion, and functional coverage.
 
 |`coverage.threshold`, `coverage.threshold_met`
-|Required compatibility threshold and whether the score met it.
+|Required compatibility threshold and whether the score met it. The score is
+the tool's raw overall figure; accepted waivers act on `policy_thresholds`.
 
 |`coverage.policy_thresholds`
 |Per-metric and per-population policy gates.
@@ -1223,7 +1224,7 @@ A waiver merged after a weekly ran reaches that weekly's published numbers
 through a re-dispatch:
 
 . Review the holes in the published data (`coverage.holes_summary`, or the
-  staged `coverage-details.json`) and add the `[[holes]]` entry to the DUT's
+  staged `coverage-details.json`) and add the `pass:[[[holes]]]` entry to the DUT's
   `coverage_policy.toml`; the waiver section of xref:run-dv.adoc[DV and FV
   Runner] gives the fields and the guardrails.
 . Merge the policy change to `main`.
