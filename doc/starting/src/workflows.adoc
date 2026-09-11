@@ -8,7 +8,7 @@
 ====
 This section is currently under development.
 
-- More details on Yosys/Synthesis once finalised - Port local PDK usage from `lowrisc/container-testing`
+- More details on Yosys/Synthesis once finalised
 - Register Generation User Guide Page?
 - DV FW sections reference source files frequently, how necessary is this?
 - Linters are still WIP - code is not clean yet
@@ -121,7 +121,7 @@ The RISC-V toolchain is provided by the project container or selected via
 C test images are built via the standard dispatcher:
 
 ```bash
-# Prefix with `scripts/docker-run.sh run` to use the container toolchain
+# Prefix with `scripts/docker-run.sh run` to use the container RISC-V toolchain
 make dv-fw-tests TARGET=smc
 make dv-fw-tests TARGET=smc TEST=version_id   # one test
 ```
@@ -158,7 +158,7 @@ Build the dummy ROM with its standalone Makefile:
 
 ```bash
 # From the repo root (OCAH_ROOT resolved automatically):
-# Prefix with `scripts/docker-run.sh run` to use the container toolchain
+# Prefix with `scripts/docker-run.sh run` to use the container RISC-V toolchain
 make -C hw/sys/smc/bootrom/dummy
 ```
 
@@ -170,7 +170,7 @@ Build the production ROM from the same container (self-contained Makefile, not
 the shared `compile.mk` engine):
 
 ```bash
-# Prefix with `scripts/docker-run.sh run` to use the container toolchain
+# Prefix with `scripts/docker-run.sh run` to use the container RISC-V toolchain
 make -C hw/sys/smc/bootrom/prod
 ```
 
@@ -309,10 +309,22 @@ The `--waves-on-fail` flag may be used instead of `--waves`, to only generate wa
 OCAH is designed around open-source workflows. For this reason, we have chosen to
 provide a synthesis flow using Yosys.
 
-To synthesise OCAH, use the following command:
+`make ocah-synth-all` requires `yosys` on `PATH`. If it is not installed, Make
+prints a hint to use the container instead:
 
 ```bash
+# Native (yosys must be on PATH)
 make ocah-synth-all
+
+# Via the container
+./scripts/docker-run.sh run-here make ocah-synth-all
+```
+
+The PDK (`ihp-sg13g2` by default) is downloaded automatically by `ciel` on first
+run. To pre-download all supported PDKs:
+
+```bash
+make ocah-synth-pdks
 ```
 
 This may be constrained with `BLOCK` to synthesise a single block only, and the PDK
