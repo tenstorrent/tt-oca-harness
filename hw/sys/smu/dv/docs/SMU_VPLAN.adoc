@@ -16,7 +16,7 @@
 |Live test bodies |79 Python modules under `cocotb_wrapper/tests/`; 84 `[[tests]]` entries in `wrapper.toml`, 81 of them in `all`
 |Enrolled leaf entries |81 in `all`, 53 in `sep0_all`
 |Non-enrolled inventory |28 bodies under `cocotb/tests_deferred/`
-|Per-testcase plan entries |84 -- every `[[tests]]` name in `wrapper.toml`
+|Per-testcase plan entries |84 -- every `[[tests]]` name in `wrapper.toml`, each describing the `cocotb_wrapper/tests/` body that name enrols. No entry describes an unenrolled DUT configuration.
 |===
 
 This plan describes what the SMU open-source suite verifies and against which
@@ -2051,41 +2051,46 @@ check.
 [[sec-050-smu_sep_smoke_test]]
 ===== 50 `smu_sep_smoke_test`
 
-*Source Module*: `smu_sep_smoke_test`
+*Source Module*: `smu_sep_smoke_test` (`cocotb_wrapper/tests/`)
 
-*BFM / Model*: TB pin drive only (no external VIP); `sep_smoke` firmware mode (the SEP=0 `tb_top` scenario -- see the note under Test Coverage)
+*BFM / Model*: TB pin drive only (no external VIP); `sep_smoke` firmware mode -- the SMC runs the `smu_sep_smoke` arm image from ROM and the real SEP RTL boots under it; verdict through `SmuSepBootScoreboard` on the SEP trace probes
 
-*Objective*: SMU_ALL_007: SMC primary-reset export + DTP CTM pulse-sync / [1:0].
+*Objective*: The real SEP RTL comes out of reset under the SMU wrapper, fetches from boot ROM, executes from ICCM and stores to DCCM, after the SMC arm firmware releases it.
 
 *Test Coverage*:
 
-* Sequence for smu_sep_smoke_test (SMU_ALL_007).
-* DV-CARD: SMU_ALL_007 ANCHOR: smu_sep_smoke_test Allocated (narrowed Option B; SEP=0 bare tb_top): SMC-RST-PRIMARY-EXPORT.S1 / S2 DTP-XTRIG-CTM.S2 / S3 No Force/deposit.
-* No SEP-sysif/LC/SEC_DIS/mem/fuse/WDT/alias/CTM.S1/CTP/DTP-CSR.
-* This written plan is the bare `--dut smu_block` / `SEP=0` scenario. The
-  `wrapper.toml` copy of the same name has no per-testcase plan here.
+* This is the only body of this name in the tree. The SEP=0 bare `--dut smu_block` scenario that an earlier revision of this entry described (DV-CARD SMU_ALL_007, `CHK-SMC-RST-PRIMARY-EXPORT-*` / `CHK-DTP-XTRIG-CTM-*`) has no test body any more: `cocotb/tests/` no longer carries a `smu_sep_smoke_test.py`, and `common/seq_lib/smu_sep_smoke_test_seq.py` is imported by nothing. Those tokens are therefore not claimed here.
+* Profile pre-conditions are fail-capable: during cold reset `sep_reset_n_o` must read 0 and `sep_fuse_sense_done_o` must read 0 (the real-SEP profile asserts SEP reset and starts with fuse-done inactive); a `no_sep` build fails both.
+* Boot readiness is the conjunction the scoreboard's `boot_ready()` requires: SEP reset observed both asserted and released; fuse-done observed low then high *unless* `sep_fuse_sense_skipped_o` is 1, in which case the sense is replaced by the shadow-register preload and the fuse terms are logged as informational rather than counted; SMC arm firmware signalled `TEST_PASS`; boot-ROM fetch seen; ICCM execution seen; at least 256 retired instructions over at least 16 distinct PCs; and at least one DCCM write.
+* The fuse-sense carve-out reads the DUT node that *selects* the substitute (`sim_skip_fuse_sense` inside the SEP eFuse shadow registers), not a plusarg scan, so a build without `SIMULATION` keeps the fuse terms required.
+* After the SMC arm is seen, 100 000 cycles with `sep_reset_n_o` high and zero retired instructions is a failure with the run-gate state logged, so a released SEP that never fetches is diagnosed rather than timed out.
+* Firmware console bytes (`fw_char_o`) are collected and printed; they are not a pass condition.
 
 *Test Procedure*:
 
 [arabic]
-. Drive `smu_sep_smoke_test_seq` over the wrapper's product interfaces.
-. Compare every access against its stated expectation in the scoreboard.
-. Emit the evidence tokens listed under Checkers.
+. In `smu_base_test`, sample `sep_reset_n_o` and `sep_fuse_sense_done_o` during cold reset and assert both are 0 for this profile.
+. Release reset and, every `clk_smu_i` edge, feed the scoreboard the SEP reset and fuse-done levels, `smc_test_pass_o`, the boot-ROM / ICCM fetch-seen flags, the DCCM write count and any console byte; count retired instructions and distinct PCs from the SEP trace monitor.
+. Return as soon as `boot_ready()` holds; fail if 100 000 post-arm cycles pass with no retire, or if the overall cycle budget (`SMU_SEP_BOOT_MAX_CYCLES`, default 3 000 000) expires.
+. In `check_phase`, re-assert every readiness term individually so the log names which one was missing.
 
 *Checkers*:
 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-SMC-RST-PRIMARY-EXPORT-S1` |Evidence token, emitted only after the compares it names have held
-|`CHK-SMC-RST-PRIMARY-EXPORT-S2` |Evidence token, emitted only after the compares it names have held
-|`CHK-DTP-XTRIG-CTM-S2` |Evidence token, emitted only after the compares it names have held
-|`CHK-DTP-XTRIG-CTM-S3` |Evidence token, emitted only after the compares it names have held
-|`CHK-TIMEOUT-PATHS` |Evidence token, emitted only after the compares it names have held
-|`CHK-NONVAC` |Evidence token, emitted only after the compares it names have held
+|`sep_profile_precondition` |`sep_reset_n_o == 0` and `sep_fuse_sense_done_o == 0` during cold reset
+|`sep_reset_low_high` |SEP reset observed asserted and then released
+|`sep_fuse_sense` |fuse-done observed low then high, or `sep_fuse_sense_skipped_o == 1` with the terms demoted to informational
+|`smc_arm_pass` |SMC arm firmware wrote `TEST_PASS` (`smc_test_pass_o`)
+|`sep_boot_rom_iccm` |boot-ROM fetch seen and ICCM execution seen
+|`sep_retire_floor` |>= 256 retired instructions over >= 16 distinct PCs
+|`sep_dccm_write` |`sep_dccm_write_count_o` advanced above 0
+|`post_arm_idle` |released SEP retired something within 100 000 cycles of the SMC arm
+|`CHK-NONVAC` |emitted by the scoreboard only after every term above held
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `all_with_sep_exec`, `sep_rtl_only`, `smoke`.
+*Pass Criteria*: every readiness term holds and the scoreboard reports zero errors. Evidence tokens: `SEP_BOOT_ROM_OK`, `SEP_ICCM_OK`, `SEP_DCCM_WRITE_OK`. Enrolled in: `all`, `all_with_sep_exec`, `sep_rtl_only`, `smoke`.
 
 '''''
 
@@ -2203,39 +2208,43 @@ check.
 [[sec-054-smu_smc_smoke_test]]
 ===== 54 `smu_smc_smoke_test`
 
-*Source Module*: `smu_smc_smoke_test`
+*Source Module*: `smu_smc_smoke_test` (`cocotb_wrapper/tests/`)
 
-*BFM / Model*: TB pin drive only (no external VIP); `smc_smoke` firmware mode
+*BFM / Model*: TB pin drive only (no external VIP); `smc_smoke` firmware mode -- the SMC runs the `smu_smc_smoke` image from ROM under the `no_sep` wrapper build; verdict through `SmuSmcBootScoreboard`
 
-*Objective*: SMU_ALL_003: SMC dual-network AXI4-Lite LP + 64-bit width.
+*Objective*: SMC firmware boots from ROM and reaches its architectural PASS under the production SMU wrapper with SEP disabled, with instruction-memory and scratch activity observed.
 
 *Test Coverage*:
 
-* Sequence for smu_smc_smoke_test (SMU_ALL_003).
-* DV-CARD: SMU_ALL_003 ANCHOR: smu_smc_smoke_test Approved OWNS (card r6 / plan r3): SMC-FAB-DUAL-NET.S2 — local peripherals/config registers use AXI4-Lite LP SMC-FAB-DUAL-NET.S3 — both networks carry 64-bit data without truncation Bare tb_top SEP=0: hierarchical CONNECTIVITY observe only (no Force/deposit).
-* Independent expects from pinned hw/sys/smc/doc/fabric.adoc §Network Characteristics / §AXI Common Signal Widths / §AXI ID Widths / §Traffic Subordinates (AXI4-Lite Low-Performance rows) @ffc8cdcc…
-* This written plan is the bare `--dut smu_block` / `SEP=0` scenario. The
-  `wrapper.toml` copy of the same name has no per-testcase plan here.
+* This is the only body of this name in the tree. The SEP=0 bare `--dut smu_block` scenario that an earlier revision of this entry described (DV-CARD SMU_ALL_003, `CHK-SMC-FAB-DUAL-NET-S2/S3`) has no test body any more: `cocotb/tests/` no longer carries a `smu_smc_smoke_test.py`, and `common/seq_lib/smu_smc_smoke_test_seq.py` is imported by nothing. Those tokens are therefore not claimed here.
+* Profile pre-conditions are fail-capable: during cold reset `sep_reset_n_o` must read 1 and after release `sep_fuse_sense_done_o` must read 0 (the `no_sep` profile ties SEP reset high and fuse-done low); a `sep_rtl` build fails the first.
+* Firmware boot is one reset-to-completion transaction; reset timing is randomised by `smu_base_test`, and every piece of evidence is a DUT counter or an architectural pass/fail signal, not a TB-side inference.
+* Both firmware outcomes are wired: `smc_test_fail_o` asserting fails the run at that cycle; `smc_test_pass_o` ends it.
+* Activity floors make a silent PASS impossible: the scoreboard requires `smc_rom_read_count_o > 0` and `smc_scratch_write_count_o > 0` at check time, and the final sample is taken two edges after PASS because the TB write counter updates one edge after the combinational pass flag.
 
 *Test Procedure*:
 
 [arabic]
-. Drive `smu_smc_smoke_test_seq` over the wrapper's product interfaces.
-. Compare every access against its stated expectation in the scoreboard.
-. Emit the evidence tokens listed under Checkers.
+. In `smu_base_test`, assert `sep_reset_n_o == 1` during cold reset and `sep_fuse_sense_done_o == 0` after release.
+. Log the bring-up state (`fuse_sense_done_o`, `fuse_reset_n_delayed_o`, `rst_primary_smc_clk_n_o`, `init_mem_done_o`, `rst_cold_n_o`, `powergood_o`).
+. Every `clk_smu_i` edge, sample `smc_test_pass_o`, `smc_test_fail_o`, `smc_rom_read_count_o` and `smc_scratch_write_count_o` into the scoreboard; raise on FAIL.
+. On PASS, wait two edges, re-sample the counters, and return; fail on the cycle budget (`SMU_SMC_BOOT_MAX_CYCLES`, default 2 000 000).
+. In `check_phase`, require PASS seen, FAIL not seen, and both activity counters above 0.
 
 *Checkers*:
 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-SMC-FAB-DUAL-NET-S2` |Evidence token, emitted only after the compares it names have held
-|`CHK-SMC-FAB-DUAL-NET-S3` |Evidence token, emitted only after the compares it names have held
-|`CHK-TIMEOUT-PATHS` |Evidence token, emitted only after the compares it names have held
-|`CHK-NONVAC` |Evidence token, emitted only after the compares it names have held
+|`no_sep_profile_precondition` |`sep_reset_n_o == 1` during cold reset and `sep_fuse_sense_done_o == 0` after release
+|`smc_test_fail` |`smc_test_fail_o` never asserted (a FAIL ends the run at that cycle)
+|`smc_test_pass` |`smc_test_pass_o` asserted before the cycle budget expired
+|`smc_rom_read_floor` |`smc_rom_read_count_o > 0`
+|`smc_scratch_write_floor` |`smc_scratch_write_count_o > 0`
+|`CHK-NONVAC` |emitted by the scoreboard only after every term above held
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `smoke`.
+*Pass Criteria*: PASS observed, FAIL never observed, both activity counters above 0, scoreboard reports zero errors. Evidence tokens: `SMC_ROM_READ_OK`, `SMC_SCRATCH_WRITE_OK`, `SMC_TEST_PASS_OK`. Enrolled in: `all`, `all_with_sep_exec`, `smoke`.
 
 '''''
 
@@ -2338,8 +2347,8 @@ Two things are worth reading before the entries:
   `CHK-SEP_AES-VERDICT` are deliberate.
 * *`smu_sep_smoke_test` and `smu_smc_smoke_test` are not listed again here.*
   <<sec-050-smu_sep_smoke_test>> and <<sec-054-smu_smc_smoke_test>> describe the
-  SEP=0 `tb_top` scenarios of those names. The copies enrolled on the wrapper
-  share the name only; see `wrapper.toml`.
+  `cocotb_wrapper/tests/` bodies those names enrol, which are the only bodies of
+  those names in the tree.
 
 [[sec-057-smu_wrapper_elaboration_no_sep_test]]
 ===== 57 `smu_wrapper_elaboration_no_sep_test`
