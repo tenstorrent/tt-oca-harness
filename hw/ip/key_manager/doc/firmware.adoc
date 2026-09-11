@@ -225,6 +225,7 @@ but the only recovery is a reset, which re-derives every root from fuse material
 
 Which device state each derivation binds is deliberate and differs by flow:
 
+[[km-device-state-binding]]
 .Device-State Binding
 [cols="<36%,<64%",options="header"]
 |===
@@ -2759,8 +2760,8 @@ The status value occupies bits `[7:0]` of the return-argument word; bits
 | `0x07` | `KM_ERR_INVALID_HANDLE` | Handle does not resolve — forged, stale, already revoked, or failing its descriptor CRC. The four are deliberately indistinguishable (<<km-handles>>). | `KEY_REVOKE`, `KEY_TRANSFER`, `KEY_INFO`, `ASSIGN_KEY_OWNER`, `CLEAR_KEY_TREE`, `KEY_GENERATE`
 | `0x08` | `KM_ERR_NOT_KDF_KEY` | `DERIVE_*` parent is not a live SYMMETRIC key carrying `SYM_KDF`. | `KEY_GENERATE`
 | `0x09` | `KM_ERR_ROOT_CLEARED` | The required root was never derived, has been cleared, or failed its CRC. The three are deliberately indistinguishable (<<km-root-registry>>). | `KEY_GENERATE`, `INVOKE_ID_KEY`
-| `0x0A` | `KM_ERR_REGISTRY_FULL` | No free descriptor, or not enough free KPV slots. See the note below. | *see note*
-| `0x0B` | `KM_ERR_CRYPTO` | The DRBG could not supply required entropy. Fail-closed: nothing is created and nothing is retained. | `KEY_GENERATE`, `GEN_ML_KEM_MVAL`
+| `0x0A` | `KM_ERR_REGISTRY_FULL` | No free descriptor, or not enough free KPV slots. The two causes share one status because the remedy is the same: revoke something and retry. | `KEY_GENERATE`, `KEY_LOAD`, `ABR_SK_INGEST`
+| `0x0B` | `KM_ERR_CRYPTO` | The DRBG could not supply required entropy, or the PRNG could not supply engine overwrite data. Fail-closed: nothing is created and nothing is retained. | `KEY_GENERATE`, `GEN_ML_KEM_MVAL`, `ENGINE_SHRED`
 | `0x0C` | `KM_ERR_INVALID_CAPS` | `CAPS` is zero, sets a reserved bit, or names a capability outside the legal set for the class and type family. | `KEY_GENERATE`, `KEY_LOAD`, `ABR_SK_INGEST`
 | `0x0D` | `KM_ERR_INVALID_OPCODE` | `KDF_OPCODE` is outside the defined eight (<<km-kdf-opcodes>>). | `KEY_GENERATE`
 | `0x0E` | `KM_ERR_INVALID_DEST` | A requested `DEST_ENGINE` destination is not permitted by the key's capabilities. | `KEY_TRANSFER`
@@ -4254,7 +4255,7 @@ output-length fields are big-endian.
 | `8-9` | `purpose` | Public purpose metadata.
 | `10-11` | `out_bits` | Requested derived-key size in bits, recorded in the input.
 | `12-15` | `caps` | Capabilities requested for the derived key.
-| `16-19` | `device_state` | Life-cycle and demotion state sampled by the KM: live samples for a host KDF operation
+| `16-19` | `device_state` | Life-cycle and demotion state forged by the KM: the live `LC_STATE` and `DEMOTION` read immediately before the derivation for a host KDF operation, and the ROM-boot sample for an `HW_ROOT` or `SW_ROOT` derivation. All zero for the flows that bind no device state — `ID_ROOT` and the CLASS_KEY bootloader-decrypt key (<<km-device-state-binding>>).
 | `20-31` | `rsvd` | Reserved; all bytes are zero.
 | `32-63` | `label` | Fixed operation label providing domain separation.
 | `64-127` | `context` | Caller- or ROM-provided derivation context.
