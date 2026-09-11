@@ -55,8 +55,10 @@ _ST_WAIT_RESP = 0b10
 # against one of them would recover from that one only.
 _ILLEGAL_STATES = tuple(v for v in range(4) if v not in (_ST_IDLE, _ST_WAIT_RESP))
 
-# efuse_read_interface.sv EFUSE_READ_ERROR_DATA
-_READ_ERROR_DATA = 0xBADCAB1E
+# The error sentinel both interfaces return. hw/ip/efuse/doc/architecture.adoc
+# states it for blocked accesses; EFUSE_ERROR_DATA and
+# EFUSE_PROGRAM_ERROR_DATA are the same value.
+_ERROR_DATA = 0xBADCAB1E
 
 _MAX_SENSE_CYCLES = 20_000
 
@@ -305,27 +307,35 @@ class sep_efuse_illegal_state_fail_closed_test(sep_base_test):
             f"CHK-{which.upper()}-FAILCLOSED FAIL: the {which} interface issued a bank "
             f"command while recovering from {state:#04x}"
         )
-        if which == "read":
-            err = int(dut.efuse_read_error_o.value)
-            done = int(dut.efuse_read_done_o.value)
-            busy = int(dut.efuse_read_busy_o.value)
-            data = int(dut.efuse_read_back_data_o.value)
-            assert (err, done, busy) == (1, 1, 0), (
-                f"CHK-READ-FAILCLOSED FAIL: recovering from {state:#04x} reported "
-                f"error={err} done={done} busy={busy}, expected 1/1/0"
-            )
-            assert data == _READ_ERROR_DATA, (
-                f"CHK-READ-FAILCLOSED FAIL: read_back_data = {data:#010x} recovering "
-                f"from {state:#04x}, expected the error sentinel {_READ_ERROR_DATA:#010x} "
-                "-- returning anything else risks handing back unfetched fuse data"
-            )
+        # Both interfaces retire the same way, so both are graded the same way:
+        # the machine reports done and not busy with the error set, and hands
+        # back the sentinel rather than any fuse content.
+        data_probe = (
+            dut.efuse_read_back_data_o if which == "read" else dut.efuse_program_read_back_data_o
+        )
+        err = int(getattr(dut, f"efuse_{which}_error_o").value)
+        done = int(getattr(dut, f"efuse_{which}_done_o").value)
+        busy = int(getattr(dut, f"efuse_{which}_busy_o").value)
+        data = int(data_probe.value)
+        assert (err, done, busy) == (1, 1, 0), (
+            f"CHK-{which.upper()}-FAILCLOSED FAIL: recovering from {state:#04x} the "
+            f"{which} interface reported error={err} done={done} busy={busy}, "
+            "expected 1/1/0 -- a machine that recovers silently leaves the caller "
+            "believing its operation is still in flight"
+        )
+        assert data == _ERROR_DATA, (
+            f"CHK-{which.upper()}-FAILCLOSED FAIL: {which} read-back data = "
+            f"{data:#010x} recovering from {state:#04x}, expected the sentinel "
+            f"{_ERROR_DATA:#010x} -- anything else risks handing back fuse content "
+            "the operation never legitimately fetched"
+        )
         self.logger.info(
             "CHK-%s-FAILCLOSED PASS: recovered from %#04x (state now %#04x, reported "
-            "for the record), no bank command%s",
+            "not asserted), no bank command%s",
             which.upper(),
             state,
             recovered,
-            ", error+done set, data = 0xbadcab1e" if which == "read" else "",
+            ", error and done set, not busy, data = 0xbadcab1e",
         )
 
     async def run_scenario(self) -> None:

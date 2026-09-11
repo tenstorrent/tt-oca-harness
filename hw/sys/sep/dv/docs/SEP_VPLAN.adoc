@@ -4330,7 +4330,7 @@ which list is normative is an open question for the design owner.
 
 [arabic]
 . Sense an `LC_PROD` image and wait for fuse sense to complete.
-. Positive control: watch `read_state_q` under the real sense traffic and require it to leave idle. A block that never moves would satisfy every refusal below.
+. Positive controls: a frontdoor OTP read and a frontdoor OTP program must each present a command to the fuse bank, on the same signals the suppression checks grade. Fuse sense does not drive either interface, so it is not a control for them.
 . For each of `2'b00` and `2'b11`, and for each of the read and program machines: force the state register for one cycle.
 . While the injected encoding is held, require no command to be presented to the fuse bank.
 . Release, and on the next edge require the machine to be back in idle with no command issued. For reads, additionally require `read_error_o` and `read_done_o` set, `read_busy_o` clear, and `read_back_data_o` equal to the `EFUSE_READ_ERROR_DATA` sentinel `0xbadcab1e`.
@@ -4349,11 +4349,11 @@ which list is normative is an open question for the design owner.
 |CHK-READ-SUPPRESS
 |The read interface presents no command to the fuse bank while `read_state_q` holds an illegal encoding. Graded on that interface's own request: the two interfaces drive separate requests, and checking one against the other would hold on any RTL.
 |CHK-READ-FAILCLOSED
-|One edge after the illegal encoding the read machine is in idle, not busy, reporting done with the error flag set, issuing no command, and returning `0xbadcab1e` rather than any fuse value.
+|One edge after the illegal encoding the read interface issues no bank command, reports done and not busy with the error set, and returns `0xbadcab1e` rather than any fuse value. The state register's value is logged, not asserted, for the reason given below.
 |CHK-PROGRAM-SUPPRESS
 |The program interface presents no command to the fuse bank while `program_state_q` holds an illegal encoding, graded on its own request rather than the read interface's.
 |CHK-PROGRAM-FAILCLOSED
-|One edge after the illegal encoding the program machine is back in idle with no command issued.
+|One edge after the illegal encoding the program interface issues no bank command, reports done and not busy with the error set, and returns the `0xbadcab1e` sentinel rather than fuse content -- the same retirement the read leg grades. The state register's value is logged, not asserted: no document states its encodings, so an expected value taken from the enum would only show the design agreeing with itself.
 |CHK-READ-ERR-CLEAR-SUCCESS
 |A read that completes normally reports done, not busy, and no error.
 |CHK-READ-ERR-TIMEOUT
@@ -4371,7 +4371,7 @@ never retired look like one that did.
 
 Both illegal encodings are walked rather than one. `2'b00` and `2'b11` fail the legal-set test for different reasons, and a decoder written as a comparison against a single value would recover from that value only.
 
-*Scope limit*: the illegal encoding is reached by forcing the state register, which no frontdoor stimulus can do -- that unreachability is the property the design relies on, so the behaviour asserted for it cannot otherwise be provoked. The force targets the state register only, for one cycle, and never the error, data, busy or request outputs the checkers read; the recovery those checkers observe is the design's own. Approved as error injection by the DV owner.
+*Scope limit*: the illegal encoding is reached by forcing the state register, which no frontdoor stimulus can do -- that unreachability is the property the design relies on, so the behaviour asserted for it cannot otherwise be provoked. The force targets the state register only, for one cycle, and never the error, data, busy or request outputs the checkers read; the recovery those checkers observe is the design's own. Approved as error injection by Yenheng Lai (DV owner) on 2026-09-11, against revision `5254cf055`, for the two eFuse FSM state registers named above and for no other signal. Review at the next change to `efuse_read_interface.sv` or `efuse_program_interface.sv` state encoding.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 

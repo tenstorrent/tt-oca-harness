@@ -1238,9 +1238,7 @@ module sep_fcov (
     }
   endgroup
 
-  covergroup sep_efuse_fail_closed_cg with function sample (
-      logic [1:0] state, logic is_program
-  );
+  covergroup sep_efuse_fail_closed_cg with function sample (logic [1:0] state, logic is_program);
     option.per_instance = 1;
     option.name = "sep_efuse_fail_closed_cg";
     // The two illegal encodings are separate cells on purpose: they fail the
@@ -1250,7 +1248,9 @@ module sep_fcov (
       bins zero = {2'b00}; bins ones = {2'b11};
     }
     // `program` is a SystemVerilog keyword, so the bin is named for the block.
-    cp_fsm: coverpoint is_program {bins read_if = {1'b0}; bins program_if = {1'b1};}
+    cp_fsm: coverpoint is_program {
+      bins read_if = {1'b0}; bins program_if = {1'b1};
+    }
     // Four cells, all filled by one seed: the owning leaf walks the product.
     x_fsm_illegal: cross cp_fsm, cp_illegal;
   endgroup

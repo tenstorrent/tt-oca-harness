@@ -465,6 +465,12 @@
 // program machine against the read machine's request would hold on any RTL.
 `SEP_TB_OUT(logic, efuse_read_cmd_req_valid_o)
 `SEP_TB_OUT(logic, efuse_program_cmd_req_valid_o)
+// The program interface's retirement outputs, so its fail-closed leg grades the
+// same contract the read leg does rather than only the absence of a command.
+`SEP_TB_OUT(logic, efuse_program_error_o)
+`SEP_TB_OUT(logic, efuse_program_done_o)
+`SEP_TB_OUT(logic, efuse_program_busy_o)
+`SEP_TB_OUT(logic [31:0], efuse_program_read_back_data_o)
 // Demotion state outputs expose the differential {~demote, demote} encoding;
 // 2'b10 is clear, 2'b01 is set, and other values are invalid. The lock bits
 // have no DUT output, and the CPU owns their AXI frontdoor during firmware

@@ -1258,6 +1258,10 @@ module sep_uvm_top
     assign efuse_read_back_data_o = `EFUSE_RD.read_back_data_o;
     assign efuse_read_cmd_req_valid_o = `EFUSE_RD.fuse_command_req_o.valid;
     assign efuse_program_cmd_req_valid_o = `EFUSE_PG.fuse_command_req_o.valid;
+    assign efuse_program_error_o = `EFUSE_PG.program_error_o;
+    assign efuse_program_done_o = `EFUSE_PG.program_done_o;
+    assign efuse_program_busy_o = `EFUSE_PG.program_busy_o;
+    assign efuse_program_read_back_data_o = `EFUSE_PG.program_read_back_data_o;
     // The state registers are enum-typed and the injected encodings are, by
     // construction, not members of those enums -- that is the property under
     // test. The conversion is therefore deliberate and scoped to these two
