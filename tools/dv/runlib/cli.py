@@ -55,7 +55,13 @@ from .coverage_closure import (
     grade_coverage_run,
     parse_coverage_run,
 )
-from .coverage_policy import CoveragePolicy, load_coverage_policy, native_policy_manifest
+from .coverage_policy import (
+    CoveragePolicy,
+    expired_holes,
+    lapsed_warning,
+    load_coverage_policy,
+    native_policy_manifest,
+)
 from .duts import load_duts, resolve_dut
 from .junit import materialize_stage_junit
 from .logparse import validate_parser_extensions, validate_parser_registry
@@ -665,13 +671,53 @@ def validate_duplicate_purpose_keys(
         raise ConfigError(f"{flow.path}: deprecated duplicate-purpose config: {joined}")
 
 
+def coverage_policy_paths(flow: Flow, root: Path, sim_cfg: dict[str, Any]) -> list[Path]:
+    """The coverage policy file of every tool the flow declares, where one exists."""
+
+    coverage = sim_cfg.get("coverage", {})
+    if not isinstance(coverage, dict):
+        return []
+    paths: list[Path] = []
+    for tool in flow.tools:
+        tool_coverage = coverage.get(tool, {})
+        if not isinstance(tool_coverage, dict):
+            continue
+        configured = tool_coverage.get("policy_file")
+        if isinstance(configured, str) and configured:
+            candidate = Path(configured).expanduser()
+            if not candidate.is_absolute():
+                repo_candidate = root / candidate
+                candidate = (
+                    repo_candidate if repo_candidate.is_file() else flow.path.parent / candidate
+                )
+        else:
+            candidate = flow.path.parent / "cov" / "config" / tool / "coverage_policy.toml"
+        if candidate.is_file():
+            paths.append(candidate)
+    return paths
+
+
+def coverage_policy_warnings(flow: Flow, root: Path, sim_cfg: dict[str, Any]) -> list[str]:
+    """Load every configured policy, raising on a schema error, and list its lapsed waivers."""
+
+    warnings: list[str] = []
+    for path in coverage_policy_paths(flow, root, sim_cfg):
+        policy = load_coverage_policy(path, expected_dut=flow.name)
+        warnings.extend(
+            f"{repo_rel(root, path)}: {lapsed_warning(rule)}" for rule in expired_holes(policy)
+        )
+    return warnings
+
+
 def validate_flow(
     flow: Flow,
     root: Path,
     simulators: dict[str, Any],
     policies: dict[str, Any],
     executors: dict[str, Any] | None = None,
-) -> None:
+) -> list[str]:
+    """Validate one flow; return the warnings that do not fail it (lapsed waivers)."""
+
     if not (root / flow.root).exists():
         raise ConfigError(f"{flow.path}: root path does not exist: {flow.root}")
     for tool in flow.tools:
@@ -693,26 +739,7 @@ def validate_flow(
             raise ConfigError(f"{flow.path}: native stage `{stage_name}` missing string `kind`")
     sim_cfg = load_sim_cfg(flow, root)
     validate_native_config_shape(flow, root)
-    from .coverage_policy import load_coverage_policy
-
-    coverage = sim_cfg.get("coverage", {})
-    if isinstance(coverage, dict):
-        for tool in flow.tools:
-            tool_coverage = coverage.get(tool, {})
-            if not isinstance(tool_coverage, dict):
-                continue
-            configured = tool_coverage.get("policy_file")
-            if isinstance(configured, str) and configured:
-                candidate = Path(configured).expanduser()
-                if not candidate.is_absolute():
-                    repo_candidate = root / candidate
-                    candidate = (
-                        repo_candidate if repo_candidate.is_file() else flow.path.parent / candidate
-                    )
-            else:
-                candidate = flow.path.parent / "cov" / "config" / tool / "coverage_policy.toml"
-            if candidate.is_file():
-                load_coverage_policy(candidate, expected_dut=flow.name)
+    policy_warnings = coverage_policy_warnings(flow, root, sim_cfg)
     if executors is not None:
         scheduler = flow.raw.get("scheduler", {})
         if not isinstance(scheduler, dict):
@@ -726,6 +753,7 @@ def validate_flow(
     merge_simulator_defaults(sim_cfg, simulators, flow.tools)
     load_test_catalog(flow, root)
     validate_parser_extensions(flow, simulators, policies)
+    return policy_warnings
 
 
 def validate_all(
@@ -807,8 +835,10 @@ def cmd_validate_configs(root: Path, overlay: Path | None = None) -> int:
                         suffix = " [overlay skipped: frameworks guard]"
                 else:
                     view = flow if fw is None else resolve_dut(root, name, framework=fw)
-                validate_flow(view, root, simulators, policies, executors)
+                warnings = validate_flow(view, root, simulators, policies, executors)
                 print(f"  {label:<16} OK{suffix}")
+                for line in warnings:
+                    print(f"  {'':<16} warning: {line}")
             except ConfigError as exc:
                 failures += 1
                 print(f"  {label:<16} FAIL: {exc}")

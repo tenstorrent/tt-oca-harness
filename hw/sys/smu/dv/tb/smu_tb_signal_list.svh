@@ -73,7 +73,8 @@
 `SMU_TB_OUT(logic [1:0], lcc_demote_state_2_o)
 // GPIO boot-stall pad bit[57] drive (OR'd into pad2core; Verilator-safe)
 `SMU_TB_IN(logic, gpio_boot_stall_drive_i)
-`SMU_TB_OUT(logic [31:0], ext_mailbox_interrupts)
+// Width tracks the DUT port (smu.sv ext_mailbox_interrupts_o) and mbx_irqs.
+`SMU_TB_OUT(logic [smc_pkg::NUM_MAILBOXES-1:0], ext_mailbox_interrupts)
 `SMU_TB_OUT(logic [31:0], jtag_ptap_state)
 `SMU_TB_OUT(logic [31:0], jtag_ptap_inst_decoded)
 

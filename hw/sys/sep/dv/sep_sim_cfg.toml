@@ -76,6 +76,8 @@ sources = [
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32_axi.sv",
   "vendor/tenstorrent/tt-picorv32/upstream/picorv32_wb.sv",
   "hw/sys/sep/dv/tb/sep_outbound_mbx.sv",
+  # FCOV covergroup sampler (VCS only; the module is `ifndef VERILATOR`).
+  "hw/sys/sep/dv/cov/sv/sep_fcov.sv",
   # Clean-room AXI4 protocol checker, instantiated on the m_axi and s_axi
   # buses at the foot of tb_top. The Verilator targets pass no --assert, so
   # Verilator drops its two-state rules; the X-hygiene rules are gated by
@@ -113,7 +115,13 @@ common_bender_targets = [
 # prim_ram_1p/prim_ram_1p_adv/prim_rom memory models the IP integration needs.
 bender_targets = ["sep", "sep_el2", "sep_wrapper"]
 # hw/common/assert carries ocah_assert.svh, included by the AXI protocol SVA.
-incdirs = ["hw/sys/sep/dv/tb", "hw/common/assert"]
+# hw/sys/sep/regs/gen/svh carries the generated register header sep_fcov
+# includes for CSR addresses, reset values, and field masks.
+incdirs = [
+  "hw/sys/sep/dv/tb",
+  "hw/common/assert",
+  "hw/sys/sep/regs/gen/svh",
+]
 
 [build.options]
 # SEP is a large cold build (VeeR EL2 + OTBN + full crypto). Parallelize the
@@ -168,6 +176,13 @@ extra_args = ["-fno-dfg"]
 # The per-leaf dump is the inherited `[vcs.coverage_defaults].sim_args`
 # (`-cm` + `-cm_dir {cov_dir}/simv.vdb`). Do not restate it here: an identical
 # list is a deprecated duplicate and the runner refuses the config.
+#
+# The cocotb VCS runner renders compile-time `{build_cov_dir}` at the
+# unfingerprinted coverage dir (`…/coverage/cov_build.vdb`). The default
+# design_artifact (`{build_cov_dir}`) is next to `simv` under the fingerprint,
+# so the post-compile check looks in a directory the compile does not write.
+# Point the check at the database the compile actually writes.
+design_artifact = "{build_dir}/../cov_build.vdb"
 compile_args = [
   "-cm",
   "line+cond+tgl+fsm+branch+assert",
@@ -596,6 +611,7 @@ incdirs = [
 ]
 sources = [
   "hw/sys/sep/dv/tb/sep_outbound_mbx.sv",
+  "hw/sys/sep/dv/cov/sv/sep_fcov.sv",
   "hw/sys/sep/dv/tb/sep_tb_if.sv",
   "hw/sys/sep/dv/uvm/env/sep_env_pkg.sv",
   "hw/sys/sep/dv/uvm/seq_lib/sep_seq_lib_pkg.sv",

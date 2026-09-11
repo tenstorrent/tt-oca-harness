@@ -396,7 +396,8 @@ targets, modes, and DUT-specific overrides.
 arguments, and optional firmware metadata.
 
 |`<dut-dv-root>/cov/config/<tool>/coverage_policy.toml`
-|Optional detailed coverage thresholds, exclusions, and hole dispositions.
+|Optional detailed coverage thresholds, exclusions, and hole dispositions;
+`--waive` re-applies it to a finished run.
 |===
 
 The broad merge order reported by `--dry-run` is:
@@ -632,6 +633,101 @@ coverage database.
 The compatibility threshold uses `--fail-under`, then
 `[coverage.<tool>].fail_under`, then `0.0`. Detailed coverage-policy thresholds
 are enforced in addition to that scalar threshold.
+
+[[runner-waive]]
+==== Waive coverage bins after a regression
+
+A hole reviewed after a regression is closed in the DUT's
+`coverage_policy.toml`, not by re-running the simulation. The loop is:
+
+. Read the holes: `cov/report/coverage-details.json` lists every uncovered
+  point with its `native_locator`, `hierarchy`, `source`, and `line`;
+  `holes_summary` in `cov/report/summary.json` counts them by metric,
+  category, and status.
+. Add or edit a `[[holes]]` entry. A waiver is an entry with
+  `disposition = "waive"` (or `"exclude_scope"`), `status = "accepted"`,
+  `confidence` of `medium` or `high`, a `rationale`, `owner`, `reviewer`, and
+  `date`, plus one or more `[[holes.native]]` selectors. `expected_matches`
+  is an exact count. An accepted waiver that matches a covered point, a
+  low-confidence waiver, and a `dut` that differs from the run's are rejected.
+. Re-grade the finished run against the policy:
++
+[source,bash]
+----
+python3 tools/dv/run_dv.py --dut dtp --run-dir hw/sys/dtp/dv/build/runs/latest --waive
+python3 tools/dv/run_dv.py --dut dtp --run-dir hw/sys/dtp/dv/build/runs/latest --waive waivers/dtp.toml
+----
++
+Bare `--waive` applies the policy the DUT configures (`policy_file`, else
+`cov/config/<tool>/coverage_policy.toml`); a DUT without one needs `FILE`.
+`--waive FILE` applies that file instead, and it must name the run's `dut`. A
+relative `FILE` resolves against the repository root, like `--run-dir`.
+. Collect the run again for the dashboard, or re-dispatch the publication
+  workflow for a weekly (see the dashboard page).
+
+No simulator or report tool runs: the run tree is the only input, so the
+command works on a copied or downloaded run tree and on a host without the
+tool. `--dut` must equal the run's `flow`; `--tool` and `--framework` are
+recovered from `result.json` and must match when given. The only other
+options accepted are `--overlay`, `--fail-under`, `--verbose`, and `--quiet`.
+
+The re-grade rewrites values only: `cov/report/coverage-details.json`,
+`policy-application.json`, `summary.json`, and `cov/coverage.json`; the
+`cov_report` record's `status`, `return_code`, `reason`, `failure_buckets`,
+and coverage artifact paths in `result.json`; the run `status` and
+`exit_code`; and `stages/regress/regression.json`. `generated_at`, `run_dir`,
+the recorded tool versions and supported metrics, and every other stage record
+keep their recorded values, and the `cov_report` stage log is read, never
+written. Artifact paths point at the tree's current location.
+
+Exit codes:
+
+[cols="<1,<6",options="header"]
+|===
+|Exit |Meaning
+
+|0 |Policy applied; the compatibility and policy thresholds are met.
+|1 |Policy applied; a threshold is not met. The files carry the red reading.
+|2 |Nothing written: a configuration or policy error, a missing input, or a run
+that cannot be re-graded.
+|===
+
+A run can be re-graded when its report completed and parsed: the `cov_report`
+record is `PASS` or carries only `coverage_threshold` / `config_error` failure
+buckets, and `cov/report/coverage-details.raw.json` exists. Any other record
+(`tool_error`, `timeout`, a missing record or raw file) is refused with a
+pointer to `--run-dir <dir> --stage cov_report`, which reruns the report tool.
+A run whose grade failed on the policy itself (`ERROR` with a `config_error`
+bucket and no `summary.json`) is the repair case: correct the policy and run
+`--waive`; it writes `summary.json` and grades the record.
+
+Carried values: the tool version and supported metrics come from the run's
+`summary.json` and `cov/coverage.json`. The compatibility threshold is
+`--fail-under` when given, else the recorded `threshold`, else
+`[coverage.<tool>].fail_under`, else `0.0`. In the repair case no threshold is
+recorded, so a `--fail-under` the original run used has to be passed again.
+
+An accepted waiver may carry `expires` (`YYYY-MM-DD`). Past that date the
+waiver is lapsed at grade time for its own DUT: the hole keeps its `policy_id`
+and disposition, its `status` becomes `open`, it counts as an open hole and no
+longer shrinks the effective denominator, and `warnings` in
+`coverage-details.json` and `policy-application.json` carry
+`<rule id> expired on <date>; treated as open`. `--validate-configs` reports
+the expiry as a warning and stays `OK`; extending the date restores the waiver.
+
+`[[native_files]]` entries act inside the merge and report commands, which the
+re-grade does not run. When the policy's native files differ from the digests
+the manifest recorded at merge time, `--waive` exits 2; rerun
+`--stage cov_report` instead.
+
+For VCS (`urg`) and Xcelium (`imc`) the percentages are the vendor report's. A
+waiver changes a hole's classification and the `unclassified_points` verdict
+of a threshold, not the percentage; only the Verilator parser recomputes
+effective percentages from waivers. The merged database (`merged.dat`,
+`merged.vdb`, or `merged_cov`) must be present in the run tree.
+
+A changed policy changes `comparison_key`, so trend points graded before and
+after the change are not comparable and the dashboard starts a new series.
 
 == Regression and reproducibility
 
@@ -903,6 +999,11 @@ executes `sim` or `regress`.
 
 |`--fail-under PCT`
 |Override the report threshold. Valid range: 0 through 100.
+
+|`--waive [FILE]`
+|Re-grade the finished run in `--run-dir` against the DUT's coverage policy,
+or against `FILE`; no simulator or report tool runs. Exits 0, 1, or 2 by the
+coverage grade alone. See <<runner-waive>>.
 |===
 
 === Pass-through and formal options
@@ -1038,6 +1139,9 @@ threshold failed.
 A handled SIGINT or SIGTERM checkpoint records the `ERROR` status code (`2`)
 in JSON, while the runner process exits with the conventional
 `128 + signal number` value (`130` or `143`).
+
+`--waive` exits by its coverage grade alone (`0`, `1`, or `2`; see
+<<runner-waive>>), independent of the run status it records.
 
 Run-level aggregation uses:
 
@@ -1249,6 +1353,14 @@ exist. Run the missing preparation stages first, or use the implicit path.
 With explicit `--stage sim --cov`, run `cov_merge` and `cov_report` explicitly
 against the same run directory. Verify that the selected tool's coverage
 utility (`verilator_coverage`, URG, or IMC) is available.
+
+=== A run's coverage grade failed on the policy
+
+The `cov_report` record is `ERROR` with a `config_error` bucket and
+`cov/report/summary.json` is absent: a `[[holes]]` entry matched a different
+number of points than `expected_matches`, or an accepted waiver matched a
+covered point. Correct the entry and run `--run-dir <dir> --waive`; the report
+tool does not need to rerun. See <<runner-waive>>.
 
 [[runner-current-limitations]]
 == Current limitations and roadmap boundary
