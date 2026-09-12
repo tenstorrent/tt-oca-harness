@@ -56,7 +56,7 @@ process-global cocotb or `cocotbext-axi` state is touched.
 | Control/status register access over AXI4-Lite | `OcahAxiLiteMasterAgent` |
 | Memory-backed AXI4-Lite responder | `OcahAxiLiteSlaveAgent` |
 | Passive observation without driving the bus | `OcahAxiMonitor` / `OcahAxiLiteMonitor` |
-| Binding an interface scope whose members are wider than the bus | `OcahAxiConfig` (`geometry.bus(scope)`) |
+| Binding an interface scope whose members are wider than the bus | `OcahAxiConfig` (`geometry.bus(scope)` returns an `OcahAxiBus`) |
 | Item-level protocol sanity checks | `OcahAxiChecker` |
 | AXI-Stream (e.g. entropy data path) | **Out of scope** for this package — stream sources stay DUT-local |
 
@@ -153,7 +153,7 @@ from ocah_axi_vip import OcahAxiMasterAgent
 master = OcahAxiMasterAgent(
     dut.axi_if,              # cocotb handle for the AXI4 interface instance
     name="axi4_host",        # used in log messages
-    timeout_cycles=1000,     # clock cycles before TimeoutError
+    timeout_ns=500_000,      # bound of every blocking operation (ns)
     addr_width=32,           # address bus width (informational)
     data_width=32,           # data bus width; derives full_strb
     raise_on_error=True,     # raise OcahAxiMasterError on non-OKAY response
@@ -179,7 +179,8 @@ master = OcahAxiMasterAgent(
 
 | Key | Type | Default | Description |
 |---|---|---|---|
-| `timeout_cycles` | int | 1000 | Per-channel handshake timeout |
+| `timeout_ns` | int | 500000 | Bound of every blocking operation in ns; `None` at construction selects `DEFAULT_TIMEOUT_NS` or `+OCAH_AXI_TIMEOUT_NS` |
+| `timeout_cycles` | int | 1000 | Deprecated on the AXI4 master (reported by `get_statistics()` only; one warning per instance when set) |
 | `default_id` | int | 0 | Default AWID/ARID |
 | `b_ready_before_valid` | bool | True | Assert BREADY before BVALID |
 | `r_ready_before_valid` | bool | True | Assert RREADY before RVALID |
@@ -310,7 +311,7 @@ host = OcahAxiLiteMasterAgent(
 | `protocol` | `OcahAxiProtocol.AXI4` or `AXI4_LITE`; selects `AxiBus` or `AxiLiteBus` |
 | `addr_width`, `data_width` | Address and data widths of the real bus; `strb_width` derives from `data_width` |
 | `id_width`, `user_width` | AXI4 only; `0` leaves the ID and user members at their physical widths |
-| `geometry.bus(scope, *, prefix=None)` | Bus over an interface handle, or over a flattened bundle when `prefix` is given |
+| `geometry.bus(scope, *, prefix=None)` | `OcahAxiBus` over an interface handle, or over a flattened bundle when `prefix` is given; pass it unchanged to this package's agents, monitors, and watchers |
 | `geometry.member_widths(prefix=None)` | The configured width of every geometry-bearing signal, keyed by name |
 
 Members already at the configured width pass through unchanged, so the same
@@ -362,15 +363,12 @@ optional and default to deterministic / non-verbose behaviour.
 
 | Plusarg | Type | Default | Description |
 |---|---|---|---|
-| `+OCAH_AXI_TIMEOUT` | int | 1000 | Default `timeout_cycles` for all master instances constructed without an explicit value |
-| `+OCAH_AXI_VERBOSE` | 0 or 1 | 0 | Set logging level to DEBUG for all ocah_axi_vip loggers |
+| `+OCAH_AXI_TIMEOUT_NS` | int | 500000 | Default `timeout_ns` of every master sequence constructed without an explicit value (`DEFAULT_TIMEOUT_NS` when absent) |
 
-Read them in your test with:
+A per-instance bound overrides the run default:
 
 ```python
-import os
-timeout = int(os.environ.get("COCOTB_PLUSARG_OCAH_AXI_TIMEOUT", "1000"))
-master = OcahAxiLiteMasterAgent(dut.axil_if, timeout_cycles=timeout).sequence
+master = OcahAxiLiteMasterAgent(dut.axil_if, timeout_ns=20_000).sequence
 ```
 
 Simulator plusarg forwarding varies by runner; see the cocotb documentation
@@ -410,9 +408,14 @@ if not result.ok:
     cocotb.log.warning(f"read returned resp=0x{result.resp:X}")
 ```
 
-Use `allow_timeout=True` with `timeout_ns=<n>` when a negative test
-accepts a non-completing access. In that case the result has `timed_out=True`,
-`ok=False`, and `resp=-1`.
+Every blocking operation is bounded. The bound is the call's `timeout_ns`,
+else the instance's `timeout_ns`, else the package default `DEFAULT_TIMEOUT_NS`
+(500 000 ns) or the `+OCAH_AXI_TIMEOUT_NS` plusarg. On expiry the operation
+raises `AssertionError` unless `allow_timeout=True`, in which case the result
+has `timed_out=True`, `ok=False`, and `resp=RESP_TIMEOUT` (-1). The AXI4-Lite
+`write_skewed_result()` / `read_hold_result()` operations bound each phase
+with `timeout_cycles` instead. `dv/` proves both on the wire harness
+(`ocah_axi_timeout_test`).
 
 ---
 

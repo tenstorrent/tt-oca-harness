@@ -88,8 +88,8 @@ widths wherever the SV-UVM layer needs one `virtual ocah_axi_if` type; the
 real bus geometry lives in the configuration on both sides. In SV the
 `ocah_axi_config` widths mask what the monitor samples. In cocotb the
 engines size byte lanes from the signals they are handed, so `OcahAxiConfig`
-carries the same widths and `bus()` returns a cocotbext bus over a view of
-the scope: every geometry-bearing member (`awaddr`, `araddr`, `wdata`,
+carries the same widths and `bus()` returns an `OcahAxiBus`, the package's
+bus handle, over a view of the scope: every geometry-bearing member (`awaddr`, `araddr`, `wdata`,
 `rdata`, `wstrb`, and for AXI4 the ID and user sidebands when their width is
 non-zero) reports the configured width, reads return its low bits, and
 writes drive the low bits with the bits above held at zero. A member already
@@ -256,9 +256,11 @@ result = await master.read_result(0xFFFF_0000, check_response=False)
 assert result.resp == RESP_DECERR
 ```
 
-Use `timeout_ns=<n>` and `allow_timeout=True` only when a scenario explicitly
-accepts a non-completing access. The returned result has `timed_out=True`,
-`ok=False`, and `resp=-1`.
+Every blocking operation is bounded by `timeout_ns`: the call's value, else
+the instance's, else the package default (`DEFAULT_TIMEOUT_NS`, 500 µs, or the
+`+OCAH_AXI_TIMEOUT_NS` plusarg). Use `timeout_ns=<n>` and `allow_timeout=True`
+only when a scenario explicitly accepts a non-completing access. The returned
+result has `timed_out=True`, `ok=False`, and `resp=-1`.
 
 ## Fault-Capable Responders
 

@@ -252,7 +252,10 @@ checker.expect_not_timed_out(
 
 `allow_timeout=True` makes a timeout observable; it does not make the operation
 successful. An expected timeout requires explicit VPLAN intent, a declared
-bound, and `expect_timeout()` evidence.
+bound, and `expect_timeout()` evidence. Every blocking master operation is
+bounded even without a `timeout_ns` argument: the instance bound applies, else
+the package default (`DEFAULT_TIMEOUT_NS`, 500 µs, or the
+`+OCAH_AXI_TIMEOUT_NS` plusarg).
 
 [[shared-vip-deployment-validation]]
 === Deployment Validation
