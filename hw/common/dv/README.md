@@ -260,3 +260,17 @@ packages instead of directly importing backend packages. Notes:
 - `ocah_axi_vip.OcahAxiMonitor` and `OcahAxiLiteMonitor` are OCAH-owned
   passive samplers that emit plain item dataclasses. The released
   master/responder BFMs remain cocotbext-backed.
+
+### Backend escapes
+
+These are the only places where an engine object crosses a package root. Each
+row states what the escape is for and the boundary a consumer must respect;
+an escape leaves with the engine it belongs to, under the deprecation rule in
+the shared DV guide.
+
+| Escape | Purpose | Boundary |
+|--------|---------|----------|
+| `OcahAxiReadResult.raw`, `OcahAxiWriteResult.raw` | The engine's transaction object, for backend debugging | Debug only. No test, sequence, or scoreboard reads it. Present while the AXI engine is `cocotbext-axi`. |
+| `OcahAxiConfig.bus(scope, prefix=...)` | Binds an interface scope or flat bundle at the configured geometry and returns the engine's bus object | Consumers pass the returned object unchanged into this package's agents, monitors, and watchers and never import the backend package. Present while the AXI engine is `cocotbext-axi`. |
+| `OcahJtagDevice.to_backend()` | Converts a plain device map into the engine's device type | Used inside the package by `create_backend_driver()`. Present while the JTAG bus binds through `cocotbext-jtag`. |
+| `OcahJtagMasterDriver.backend_bus()`, `create_backend_driver()` | The engine's bus and driver objects, for backend debugging | Debug only. No test drives the TAP through them. Present while the JTAG bus binds through `cocotbext-jtag`. |

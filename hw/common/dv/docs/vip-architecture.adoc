@@ -249,3 +249,13 @@ Backend upgrades may change implementation internals but must preserve:
 
 Breaking changes require an explicit migration plan, adopter updates, and
 requalification of named consumer regressions.
+
+[[shared-vip-deprecation]]
+=== Deprecation
+
+A public name changes in two steps. The replacement ships first, and the old
+name stays as an alias that names the replacement and logs one deprecation
+warning per instance. The alias is removed only after every in-tree consumer
+has migrated and one tagged release has shipped with the alias in place.
+Removing an alias is a breaking change under the versioning rule above. Each
+package README lists the aliases the package carries.

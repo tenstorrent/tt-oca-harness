@@ -45,10 +45,16 @@ Public APIs:
 * expose deterministic defaults;
 * distinguish strict positive helpers from result-inspection helpers;
 * use explicit `timeout_ns`/`allow_timeout` semantics;
+* bound every blocking operation of an active initiator by a finite default
+  that the package README states with its unit; a responder waits on its
+  initiator and carries no bound;
 * provide statistics/reset methods when counters are meaningful;
-* use `from_prefix()` for conventional flattened interfaces where practical.
+* use `from_prefix()` for conventional flattened interfaces where practical;
 * bind an interface scope through the VIP's geometry configuration when the
-  interface members are wider than the bus (`OcahAxiConfig.bus()` in the AXI VIP).
+  interface members are wider than the bus (`OcahAxiConfig.bus()` in the AXI VIP);
+* keep backend objects behind the package root: every escape a package
+  carries is listed with its purpose and boundary in the Backend Import Policy
+  of `hw/common/dv/README.md`.
 
 [source,python]
 ----
