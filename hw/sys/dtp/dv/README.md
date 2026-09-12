@@ -372,21 +372,13 @@ An overlay is three adopter-owned files, kept outside this repository
    same work library before `dtp_uvm_compile.f`, then both tops elaborated
    (`dtp_uvm_top` plus the wiring top).
 
-Synopsys VIP (svt) integration notes for the AMBA AXI suite: every analysis
-step, including the UVM library pre-analysis, must carry the same
-`+define+UVM_PACKER_MAX_BYTES` value the suite expects, or the suite exits
-fatally at time zero; the suite package's compile unit must see
-`uvm_macros.svh` before the suite package (include the macros header, not
-`uvm_pkg.sv`, which resolves to a simulator wrapper) so the suite's
-methodology detection engages; `DESIGNWARE_HOME` points at the VIP
-installation root, with the suite's include and source directories on the
-include path. A healthy overlaid run shows the vendor license checkout and
-the vendor monitor's transaction tracking alongside the unchanged `CHK-*`
-evidence and the `UVM TEST PASSED` banner.
+A vendor library brings its own compile-unit requirements (packer-size
+defines applied to every analysis step, macro-header ordering, an
+installation-root variable); those live in the overlay's build recipe.
 
 ## Scope
 
-The DTP public testbench covers the 19-test Smoke and Basic JTAG group:
+The DTP public testbench covers the Smoke and Basic JTAG groups:
 TAP FSM, IDCODE, BYPASS variants, undefined-instruction fallback, RUNBIST,
 BSR-oriented instructions, TMP CLAMP_HOLD/RELEASE, TRST/POR/TLR reset behavior,
 and AC EXTEST train/pulse smoke checks. JTAG2AXI, iJTAG/3DCR, and cross-trigger

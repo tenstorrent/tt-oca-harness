@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """DTP open-source TAP FSM smoke test.
 
-Exercises IEEE 1149.1 primary TAP state transitions via the unified OCAH JTAG BFM.
+Exercises IEEE 1149.1 primary TAP state transitions via the shared ocah_jtag_vip BFM.
 """
 
 import pyuvm

@@ -273,7 +273,7 @@ static int test_nack_at_data(uint32_t controller_idx, uint8_t target_addr) {
                       SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
               fdata.w);
 
-    // Bounded poll for CONTROLLER_EVENTS.nack — busy alone is not proof
+    // Bounded poll for CONTROLLER_EVENTS.nack
     uint32_t timeout = I2C_TIMEOUT_DEFAULT;
     uint32_t count = 0;
     while (count < timeout) {
@@ -304,10 +304,6 @@ static int test_nack_at_data(uint32_t controller_idx, uint8_t target_addr) {
 
 int main(void) {
     int ret;
-
-    //-------------//
-    // RESET & PLL //
-    //-------------//
 
     simputs("\n");
     simputs("################################################\n");
@@ -373,9 +369,8 @@ int main(void) {
     simputs("  Controller initialized successfully\n");
 
     //=========================================================================
-    // Positive control (FIND-004): ACK allow-path via internal I2C_1 target
-    // before any VIP NACK injection. Uses addr 0x20 so it never collides
-    // with VIP_SLAVE_ADDR (0x10).
+    // Positive control: ACK allow-path via the internal I2C_1 target before any
+    // VIP NACK injection. Address 0x20 does not collide with VIP_SLAVE_ADDR (0x10).
     //=========================================================================
     write_scratch(1, 0x00000035);
     ret = test_ack_positive_control(CONTROLLER_IDX, TARGET_IDX, INTERNAL_TARGET_ADDR,
@@ -394,7 +389,7 @@ int main(void) {
     //=========================================================================
     // Read test case selection from scratch register 3
     // Bit 0 = run Test Case 1, Bit 1 = run Test Case 2
-    // Default to both if scratch 3 is 0 (for backward compatibility)
+    // Default to both if scratch 3 is 0
     // Note: scratch[2] is used by virtual console, so we use scratch[3] instead
     //=========================================================================
     uint32_t test_case_mask = read_scratch(3);
@@ -402,7 +397,7 @@ int main(void) {
     bool run_test1 = (test_case_mask & 0x1) != 0;
     bool run_test2 = (test_case_mask & 0x2) != 0;
 
-    // If no test cases selected, default to both (backward compatibility)
+    // If no test cases selected, default to both
     if (test_case_mask == 0) {
         run_test1 = true;
         run_test2 = true;

@@ -278,10 +278,6 @@ static int test_nack_at_data(uint32_t controller_idx, uint8_t target_addr) {
 int main(void) {
     int ret;
 
-    //-------------//
-    // RESET & PLL //
-    //-------------//
-
     simputs("\n");
     simputs("################################################\n");
     simputs("##           I2C NACK Test                   ##\n");
@@ -350,14 +346,14 @@ int main(void) {
     //=========================================================================
     // Read test case selection from scratch register 3
     // Bit 0 = run Test Case 1, Bit 1 = run Test Case 2
-    // Default to both if scratch 3 is 0 (for backward compatibility)
+    // Default to both if scratch 3 is 0
     // Note: scratch[2] is used by virtual console, so we use scratch[3] instead
     //=========================================================================
     uint32_t test_case_mask = read_scratch(3);
     bool run_test1 = (test_case_mask & 0x1) != 0;
     bool run_test2 = (test_case_mask & 0x2) != 0;
 
-    // If no test cases selected, default to both (backward compatibility)
+    // If no test cases selected, default to both
     if (test_case_mask == 0) {
         run_test1 = true;
         run_test2 = true;

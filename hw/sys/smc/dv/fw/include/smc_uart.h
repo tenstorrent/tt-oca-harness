@@ -58,7 +58,6 @@ static inline void write_uart_engine_reg(int uart_id, uint32_t offset, uint32_t 
     *p_addr = value;
 }
 
-// TODO: Check because UART and UART engine registers are the same
 static inline uint32_t read_uart_engine_reg(int uart_id, uint32_t offset) {
     uint32_t BASE_ADDRESS_UART;
     if (uart_id == 0) {

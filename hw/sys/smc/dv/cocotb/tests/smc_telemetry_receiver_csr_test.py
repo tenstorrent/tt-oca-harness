@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC OSS P1 coverage-gap: TELEMETRY_RECEIVER 0/1/2 CSR precheck."""
+"""SMC OSS TELEMETRY_RECEIVER 0/1/2 CSR precheck."""
 
 from __future__ import annotations
 

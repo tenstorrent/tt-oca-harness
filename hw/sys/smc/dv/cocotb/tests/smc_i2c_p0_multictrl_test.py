@@ -23,10 +23,8 @@ class smc_i2c_p0_multictrl_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.I2C,
             type(self).__name__,
-            # Conservative stimulus floor: 155-158 accesses observed across the
-            # retained regression runs (per-controller status polls vary with
-            # timing), so the floor is set below the minimum observed. Literal
-            # here, not read from `seq.accesses`.
+            # Stimulus floor, literal here rather than read from `seq.accesses`: it sits below the
+            # run-to-run minimum because the per-controller status polls are timing-dependent.
             min_csr_accesses=125,
             csr_accesses=seq.accesses,
             proxy=False,

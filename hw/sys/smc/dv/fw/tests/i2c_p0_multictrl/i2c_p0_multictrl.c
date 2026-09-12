@@ -10,7 +10,7 @@
  * cocotbext I2cMemory VIP also cannot complete a DUT-controller transfer
  * (open-drain idle); see i2c_p2_concurrent.
  *
- * Proven path: time-multiplex three phases, each with exactly one controller
+ * Sequence: time-multiplex three phases, each with exactly one controller
  * + one DUT target on the bus, write+ACQ verify, then disconnect.
  *
  *   Phase 0: I2C_0 ctrl -> I2C_1 tgt @ 0x30  payload AA BB CC DD
@@ -92,7 +92,7 @@ static int i2c_shared_write_verify(uint32_t ctrl_idx, uint32_t tgt_idx, uint8_t 
         return ret;
     }
 
-    /* Enable ACQ START/STOP capture (field, not 1<<7 shift — see rdwr fix). */
+    /* Enable ACQ START/STOP capture on the target. */
     uint32_t tbase = i2c_get_base(tgt_idx);
     i2c__CTRL_t tctrl = {.w = read_reg(tbase + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) -
                                                 SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};

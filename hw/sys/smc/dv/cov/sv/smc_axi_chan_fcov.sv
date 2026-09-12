@@ -109,7 +109,7 @@ module smc_axi_chan_fcov (
   // the address channel, and response codes, sampled on the response
   // channel.
   //
-  // There is deliberately no length-against-response cross. AXI lets the
+  // No length-against-response cross: AXI lets the
   // address channel advance while earlier transactions are still
   // outstanding, so awlen at B accept is not the length of the burst being
   // responded to; crossing the two would correlate unrelated values.

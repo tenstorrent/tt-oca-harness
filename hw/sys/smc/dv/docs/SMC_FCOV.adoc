@@ -53,7 +53,7 @@ flow |VCS/Xcelium coverage databases (`--cov`)
 |Xcelium UCIS / IMC
 |===
 
-Targets are deliberately absent: no numeric threshold is committed here.
+No numeric threshold is committed here.
 Thresholds belong in `cov/config/<tool>/coverage_policy.toml` and only after
 an owner approves a measured baseline, so a run cannot be graded against a
 number nobody signed.
@@ -118,7 +118,7 @@ JTAG AXI-Lite responses, SYS_OUT responses and counter advance
 |===
 
 `protocol_vip` has no RTL signal to observe -- it is a DV-bookkeeping ledger
-of promoted tests -- so it deliberately has no `cov/sv/` module and stays on
+of promoted tests -- so it has no `cov/sv/` module and stays on
 the Python path.
 
 Point naming is `c_<area>_<point>`, which makes the coverage-policy
@@ -138,7 +138,7 @@ after working". `c_gpio_boot_stall_pad_*` is qualified by the pad having
 changed at least once, because which of its two values is the power-on
 default depends on the straps.
 
-Two conventions are load-bearing and were both learned from build failures:
+Two conventions are load-bearing:
 
 * Every cover-property body and disable-iff argument is a single
   continuous-assign wire (the `dtp_fcov.sv` convention; Verilator's
@@ -268,8 +268,8 @@ prunes the report pages and still grades the whole database.
 They express the same intent in two forms the simulators cannot share —
 Verilator has no `-module` form for `coverage_off`, and no `-tree` reaches the
 pulp glue that VCS would have to name — so they must be kept in step by hand.
-`cov/config/vcs/README.md` records what each number is, the measured bucket
-split behind the exclusions, and the checklist for the first VCS run.
+`cov/config/vcs/README.md` records what each scoped number is, how to
+measure a scope change, and the VCS bring-up checklist.
 
 The scoped Verilator number is *the SMC DUT minus the CPU cluster, the I3C
 core, the lowRISC prims and TB code*. `vendor/pulp-platform/**` and
@@ -351,9 +351,9 @@ The `cov_merge` / `cov_report` stages call Cadence IMC. Where IMC is not
 installed, both stages report ERROR while the per-test `.ucd` files remain on
 disk for offline merge.
 
-The runner passes `-covworkdir <abs path>` and `-covoverwrite` to `xrun -R`.
-Without those, the sim stage wrote to a `./cov_work` relative to the cocotb test
-cwd and hit `*F,C58EXS` ("database already exists") on the second run.
+The runner passes `-covworkdir <abs path>` and `-covoverwrite` to `xrun -R`;
+without them xrun writes `./cov_work` relative to the cocotb test cwd and a
+second run fails with `*F,C58EXS` ("database already exists").
 
 === Exclusions and Limitations
 
@@ -361,8 +361,8 @@ cwd and hit `*F,C58EXS` ("database already exists") on the second run.
 |===
 |Item |Reason
 |SV covergroups in Verilator |Unsupported by the tool
-|SAMPLE-only bins at unique=1 |No active driver yet; not a missing coverpoint
+|SAMPLE-only bins at unique=1 |No active driver; not a missing coverpoint
 |PLL / PVT placeholder windows |`pll_wrap` / `pvt_wrap` complete OKAY+0;
-handshake only, deferred from feature PASS
+handshake only; not feature PASS
 |I3C CCC/IBI |Owned by IP-level DV
 |===

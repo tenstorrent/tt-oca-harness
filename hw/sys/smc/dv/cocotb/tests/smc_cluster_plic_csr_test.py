@@ -1,40 +1,27 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """# deferred: no_sep_in_write_path
-Cluster PLIC CSR and pending-path test -- NOT ENROLLED.
+Cluster PLIC CSR and pending-path test.
 
-Written to fill the one coverage hole the porting necessity analysis found: no
-enrolled test reads a single cluster PLIC register. It cannot be enrolled,
-because the aperture is not writable from SEP_IN AXI. Measured on Verilator
-5.050:
+The PLIC aperture is not writable from SEP_IN AXI: `PRIORITY[1]` at 0xC4000004
+accepts a write with OKAY and stores nothing (it reads 0x0 after writing 0x5),
+and `CORE0_MEIP_THRESHOLD` at 0xC4200000, the +2 MB context page, returns
+non-OKAY on write. The CPU reaches the PLIC over its own bus and the external
+port does not, so the PLIC's function is covered from firmware:
+`smc_fw_plic_claim_test` programs it and claims `ext_interrupts_i[0]` through
+it.
 
-  * `PRIORITY[1]` at 0xC4000004 accepts a write with OKAY and stores nothing --
-    it reads 0x0 after writing 0x5.
-  * `CORE0_MEIP_THRESHOLD` at 0xC4200000, the +2 MB context page, returns
-    non-OKAY on write.
-
-So the PLIC is cluster-local in the way that matters: the CPU reaches it over
-its own bus, and the external port does not. Which is why the PLIC's function
-is covered from the CPU instead: `smc_fw_plic_claim_test` programs it from
-firmware, claims `ext_interrupts_i[0]` through it, and is enrolled.
-
-What this testcase holds and that one does not is the register-level
-properties -- context independence across the eight threshold pages, source 0
+This testcase holds the register-level properties that firmware image does not
+read back -- context independence across the eight threshold pages, source 0
 and PENDING read-only, PENDING tracking a real interrupt in both directions --
-because the firmware image programs the PLIC without reading back what it
-programmed.
+and `CHK-PLIC-APERTURE-LIVE` is a fail-capable guard on the SEP_IN write path
+itself.
 
-The testcase is kept rather than deleted for the same reason
-`smc_clint_csr_test` is kept: `CHK-PLIC-APERTURE-LIVE` is a fail-capable guard
-on exactly that access path and starts passing the day the path exists. Same
-posture, same group treatment -- no `ci` tag, in no group, runnable by name.
-
-**The positive control earned its place here.** Without
-`CHK-PLIC-APERTURE-LIVE` running first, two of the other legs would have
-reported success for the wrong reason: `PRIORITY[0]` reading 0 after a write
+`CHK-PLIC-APERTURE-LIVE` runs first as the positive control. Without it two of
+the other legs pass for the wrong reason: `PRIORITY[0]` reading 0 after a write
 looks like the spec's reserved source, and `PENDING` unchanged after a write
-looks like a correct read-only register. Both read that way because nothing in
-the aperture is writable at all.
+looks like a correct read-only register, when both read that way because
+nothing in the aperture is writable.
 """
 
 from __future__ import annotations

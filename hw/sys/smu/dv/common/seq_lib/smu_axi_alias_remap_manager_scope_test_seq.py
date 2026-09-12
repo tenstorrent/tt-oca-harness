@@ -7,7 +7,8 @@ SEP=0 honest scope (no sep_in / no Force):
       SPM consumer readback (jtag manager path through smc_alias_remap_wrap).
   S1  not covered: DMA data_accel observe needs DMA bring-up.
   S2  not covered: Log Engine observe needs log_engine stimulus.
-  S4/S5 not covered: commercial SF-245 / SF-252.
+  S4  not covered: smc_alias_remap_wrap has no cpu_ext manager port.
+  S5  not covered: alias-then-filter ordering is not provable under SEP=0.
 
 The remapped target is proven by SPM consumer readback (same address math)
 rather than by a hierarchical AW watch on axi_to_input_mux_req.*.
@@ -56,12 +57,12 @@ DEFERRED_S2_TEXT = (
 )
 DEFERRED_S4_TEXT = (
     "SMCF-ALIAS-REMAP-SCOPE.S4 (cpu_ext.alias_remapped) deferred "
-    "NOT-REACHABLE-AT-THIS-LEVEL (SF-245). smc_alias_remap_wrap has no "
+    "NOT-REACHABLE-AT-THIS-LEVEL. smc_alias_remap_wrap has no "
     "cpu_ext manager port under SEP=0."
 )
 DEFERRED_S5_TEXT = (
     "INT-SMCF-ALIAS-THEN-FILTER deferred NOT-REACHABLE-AT-THIS-LEVEL "
-    "(SF-252). Alias-then-filter ordering at outbound filter not provable "
+    "Alias-then-filter ordering at outbound filter not provable "
     "under SEP=0."
 )
 
@@ -74,7 +75,7 @@ def _region_attrs(offset_delta: int, *, valid: bool) -> int:
 
 
 class smu_axi_alias_remap_manager_scope_test_seq:
-    """Alias-remap S3 LIVE (J2A); S1/S2/S4/S5 deferred notes."""
+    """Alias-remap S3 over J2A on a live SPM consumer; S1/S2/S4/S5 logged as not reachable."""
 
     def __init__(self, test) -> None:
         self.test = test

@@ -32,9 +32,9 @@ class smc_cpu_firmware_boot_test(smc_base_test):
         try:
             for _ in range(500_000):
                 await RisingEdge(dut.clk_smc_i)
-                # Verilator is 2-state, so this guard cannot take its `continue`
-                # branch in the retained evidence. It is a precondition for the
-                # 4-state simulators, not a check.
+                # Verilator is 2-state, so this guard never takes its `continue`
+                # branch there. It is a precondition for the 4-state simulators,
+                # not a check.
                 if not dut.tb_fuse_sense_done.value.is_resolvable:
                     continue
                 v = int(dut.tb_fuse_sense_done.value)

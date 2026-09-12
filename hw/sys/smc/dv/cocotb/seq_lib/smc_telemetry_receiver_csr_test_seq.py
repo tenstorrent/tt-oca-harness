@@ -2,12 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """U4-6: TELEMETRY CSR + INTR_TEST IRQ + ATB message into receiver 0.
 
-ATB FRAMING PROVENANCE. The IP lives at ``hw/ip/telemetry_receiver/``; there is
-no ``hw/comp/`` tree in this repository, so nothing here may cite one
-([INDEPENDENT-EXPECTED-MODEL]).
+ATB FRAMING PROVENANCE. The IP lives at ``hw/ip/telemetry_receiver/``; every
+citation below is to that tree ([INDEPENDENT-EXPECTED-MODEL]).
 
-The framing constants come from the DUT RTL, and this is stated rather than
-implied:
+The framing constants come from the DUT RTL:
 
 * 8-bit beats and the assembly into packets -- ``doc/interface.adoc:59,69``
   ("8-bit data beats", "Data Width: 8 bits per beat") and
@@ -37,7 +35,7 @@ from cocotb.triggers import ClockCycles, RisingEdge
 from .smc_addr_map import TELEMETRY_CG_EN, smc_addr, smc_indexed_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
-# Reset sweep across ALL THREE receivers, not just receiver 0's CTRL.
+# Reset sweep across all three receivers.
 #
 # On the ATB stimulus side only receiver 0 is driven -- `tb_top.sv:518` says
 # "receiver 0 driven; 1/2 quiet". Quiet is NOT tied off: `smc_peripherals.sv:774`
@@ -146,11 +144,9 @@ async def _await_irq_level(dut, want: int, label: str) -> int:
 async def _atb_write_beat(dut, value: int, *, beat: int = -1) -> None:
     """Drive one ATB beat and REQUIRE the handshake to complete.
 
-    Expiry is a failure. A bounded wait that deasserts `atvalid` and returns
-    regardless after 64 cycles without `atready` lets a dropped beat produce a
-    PARTIAL frame, which can still clear STATUS.EMPTY and still match PROBE_ID,
-    so the testcase would score a truncated message as a good one
-    ([TIMEOUT-MUST-FAIL]).
+    Expiry is a failure: a dropped beat produces a PARTIAL frame, which can
+    still clear STATUS.EMPTY and still match PROBE_ID, so a truncated message
+    would score as a good one ([TIMEOUT-MUST-FAIL]).
     """
     dut.tb_telemetry0_atdata.value = value & 0xFF
     dut.tb_telemetry0_atid.value = 0
@@ -307,8 +303,8 @@ class smc_telemetry_receiver_csr_test_seq(SmcCsrSeq):
         await ClockCycles(dut.clk_smc_i, 4)
 
         await self.csr_write("CLOCK_GATE_CONTROL_RESTORE", _CLOCK_GATE_CONTROL, cg)
-        # Every field below is a value this run read back or counted, not a
-        # module constant restated ([EVIDENCE-TOKEN-CONDITIONAL]).
+        # Every field below is a value this run read back or counted
+        # ([EVIDENCE-TOKEN-CONDITIONAL]).
         cocotb.log.info(
             "CHK-TELEMETRY-RECEIVER-CSR: receiver 0 framed probe_id read back "
             "0x%02X from TELEMETRY_PROBE_ID and STATUS read 0x%08x (EMPTY "

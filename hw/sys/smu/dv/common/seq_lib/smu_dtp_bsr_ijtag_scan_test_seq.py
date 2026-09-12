@@ -61,14 +61,12 @@ class smu_dtp_bsr_ijtag_scan_test_seq:
     async def _count_select(self, acc: dict[str, int]) -> None:
         """Count TCK rises, and the BSR-selected subset, on TCK itself.
 
-        Counts on the TCK edge itself rather than sampling jtag_tck on
-        clk_ref_i: at the randomized clock ratios that sampling
-        aliases: SmuEnvCfg.randomize_timing draws jtag_period_ns from
-        (32, 40, 48) and ref_clk_period_ns from (8, 10, 12, 16), and 7 of those
-        12 pairs leave under two ref samples inside a TCK high phase, so whole
-        pulses go uncounted. Seed 1671455428 draws ref=16 / jtag=40 -- 1.25
-        samples -- and lost one of the twelve. Waiting on the TCK edge is exact
-        and independent of both periods.
+        Sampling jtag_tck on clk_ref_i aliases at the randomized clock ratios:
+        SmuEnvCfg.randomize_timing draws jtag_period_ns from (32, 40, 48) and
+        ref_clk_period_ns from (8, 10, 12, 16), and several of those pairs leave
+        fewer than two ref samples inside a TCK high phase, so whole pulses go
+        uncounted. Waiting on the TCK edge is exact and independent of both
+        periods.
 
         `.select` is driven off the TAP state machine, so it is sampled in the
         read-only region after the edge: the value that qualifies this TCK is

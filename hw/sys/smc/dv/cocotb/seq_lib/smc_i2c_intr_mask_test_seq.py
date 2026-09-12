@@ -1,11 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""I2C `INTR_ENABLE` placement -- the third IP in issue #1635.
+"""I2C `INTR_ENABLE` placement: the enable gates the set path, not the output.
 
-**This sequence is expected to FAIL against current RTL.** It exists to convert
-an unverified transition into tracked evidence, not to pass.
+**Fails while `INTR_ENABLE` gates the INTR_STATE set path instead of masking
+`irq_o`** (see below).
 
-`hw/ip/i2c/rtl/i2c_core.sv` has the shape #1635 describes::
+`hw/ip/i2c/rtl/i2c_core.sv` has this shape::
 
     :1000  assign reg_in_o.INTR_STATE.CMD_COMPLETE.next =
              (event_cmd_complete || cmd_complete_intr_test) &&
@@ -32,7 +32,7 @@ path under test.
 
 Observation is `tb_i2c_irq[0]`, instance 0's bit of
 `peripheral_interrupts[25:23]` (`smc_peripherals.sv:1161`). That bit carries
-only this I2C instance, so unlike the UART case there is no sibling source to
+only this I2C instance, so there is no sibling source to
 exclude -- but it is still required to read 0 before the run starts, so a
 stuck-high line from a previous phase cannot be read as this stimulus.
 """
@@ -202,7 +202,7 @@ class smc_i2c_intr_mask_test_seq(SmcCsrSeq):
                 f"after INTR_ENABLE 0x{CMD_COMPLETE_ENABLE:x} -> 0x0 with no "
                 f"other stimulus (INTR_STATE still 0x{still:x}). i2c_core.sv:981 "
                 f"drives irq_o from INTR_STATE.intr with no enable term, while "
-                f"prim_intr_hw.sv:99 masks the output. Issue #1635"
+                f"prim_intr_hw.sv:99 masks the output"
             )
         self.chk_seen.add("CHK-I2C-INTR-MASK-DEASSERT")
 
@@ -235,7 +235,7 @@ class smc_i2c_intr_mask_test_seq(SmcCsrSeq):
                 f"i2c_core.sv:1000 ANDs the event with the enable before the "
                 f"flop, so the pulse is gone and no later enable or INTR_STATE "
                 f"poll can recover it. prim_intr_hw.sv:66 latches "
-                f"unconditionally for exactly this reason. Issue #1635, and the "
+                f"unconditionally for exactly this reason. This is the "
                 f"more serious half: an interrupt is silently dropped rather "
                 f"than spuriously held"
             )

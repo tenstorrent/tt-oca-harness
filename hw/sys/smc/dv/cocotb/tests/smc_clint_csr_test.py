@@ -2,19 +2,14 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SMC OSS cluster CLINT MTIME/MSIP CSR test.
 
-Not enrolled: the reads do not reach the CLINT. The whole `0xC800_0000`
-cluster-local window folds onto `0xC000_0000` on the SEP_IN path. Two
-discriminators from different blocks, measured in the same run:
-
-    0xC8000020 -> 0x00001000   CORE0 WDT CMP reset      (WDT,    0xC0000020)
-    0xC8004034 -> 0x000001ff   AVS_INTERRUPT_MASK reset (AVSBUS, 0xC0004034)
-
-and MTIME, a free-running counter, reads 0x0 twice 512 `clk_smc_i` apart.
-
-This is the bit-27 fold seen on the BEU sub-window `0xC801_xxxx`; the scope is
-the whole `0xC8xx_xxxx` region. The testcase is kept
-because its MTIME-monotonic leg is the cheapest regression guard for that
-decode -- it starts passing when the fold is repaired.
+The whole `0xC800_0000` cluster-local window folds onto `0xC000_0000` on the
+SEP_IN path (address bit 27 is dropped, the same fold `smc_cluster_beu_test`
+locks for the BEU sub-window), so these reads do not reach the CLINT:
+`0xC8000020` returns the CORE0 WDT CMP reset value (WDT, `0xC0000020`),
+`0xC8004034` returns the AVS_INTERRUPT_MASK reset value (AVSBUS, `0xC0004034`),
+and MTIME, a free-running counter, reads 0x0 on two reads 512 `clk_smc_i`
+apart. The MTIME-monotonic leg is the regression guard for that decode and
+fails while the fold is present.
 """
 
 from __future__ import annotations
@@ -49,7 +44,7 @@ class smc_clint_csr_test(smc_base_test):
             details=(
                 "Cluster CLINT over SEP_IN: MTIME strictly increased between "
                 "two reads (also the reachability proof -- a bit-27 fold onto "
-                "the CORE0 WDT window, the shape #1237 documents for the BEU, "
+                "the CORE0 WDT window, the shape smc_cluster_beu_test locks for the BEU, "
                 "could not increment), and MSIP held an alternating per-hart "
                 "pattern read back with all four resident"
             ),

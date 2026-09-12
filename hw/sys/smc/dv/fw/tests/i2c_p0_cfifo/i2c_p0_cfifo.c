@@ -9,8 +9,7 @@
  * 1. Configure FMT FIFO threshold to M bytes
  * 2. With FMT empty (level 0 < M), verify fmt_threshold interrupt is asserted
  *
- * RX FIFO threshold / VIP traffic is intentionally out of scope for this
- * testcase (covered by smc_i2c_p0_fifo_test).
+ * RX FIFO threshold and VIP traffic are covered by smc_i2c_p0_fifo_test.
  */
 
 #include <stdint.h>

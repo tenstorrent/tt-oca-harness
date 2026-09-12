@@ -24,7 +24,7 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_efuse_permission_boundary_test(smc_base_test):
-    """Run eFuse-derived chip-config reads until raw OTP permission paths respond."""
+    """Run eFuse-derived chip-config reads as the proxy for raw OTP permission paths."""
 
     auto_protocol_vip = False
 

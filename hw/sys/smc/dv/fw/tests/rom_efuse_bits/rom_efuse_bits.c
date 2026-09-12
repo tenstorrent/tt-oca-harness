@@ -8,8 +8,8 @@
 
 int main(void) {
 
-    // Values from rom_efuse_hex.py - check that the preloaded values, scrambled by efuse values,
-    // can be addressed
+    // Expected first/last words of ROM banks 1..3 (preloaded contents scrambled by the efuse
+    // values); confirms each bank decodes and the endian flip.
     const uint64_t bank_size = 0x8000;
     const uint64_t start_range_data[4] = {0x1, 0xD19DBAEFCAFED00D, 0xB112AB61F99BCCDD,
                                           0xF0E1D2C3B4A59687};
