@@ -39,25 +39,27 @@ transaction BFMs or portable checker work.
 |Promoted
 |`cocotbext-axi`
 |AXI4/AXI4-Lite masters, responders/RAMs, results, items, monitors, and checker.
-DTP, SEP, and SMC are consumers.
+DTP, SEP, SMC, and SMU are consumers.
 
 |`ocah_jtag_vip`
 |Promoted for IEEE 1149.1
 |`cocotbext-jtag` plus OCAH raw TAP helpers
 |Active TAP, device/register maps, items, monitor, checker, state/path helpers,
 shared SV interface, and UVM agent. iJTAG and DUT TDR maps remain local.
+DTP, SMC, and SMU are consumers.
 
 |`ocah_spi_vip`
 |Promoted for single SPI
 |OCAH-native cocotb model
 |NOR flash responder and passive monitor. Quad/octal personalities use
-single-bit data timing; DDR and vendor timing are out of scope.
+single-bit data timing; DDR and vendor timing are out of scope. SEP and SMC
+are consumers.
 
 |`ocah_uart_vip`
 |Experimental
 |OCAH-native cocotb model
 |Console wrapper, native 8-N-1 line driver/sampler, and passive monitor. No
-external UART library.
+external UART library. SMC is the consumer.
 
 |`ocah_checker`
 |Shared infrastructure
@@ -119,7 +121,9 @@ sequence items and scoreboards.
 
 No shared APB package ships. No DUT exposes an APB surface to a testbench;
 a shared APB VIP is introduced only when a DUT regression gates real APB
-traffic.
+traffic. The APB master under `hw/ip/entropy_source/dv/tb_vcs/apb_vip/`
+belongs to that IP's standalone VCS bench, outside the native runner, and is not
+a shared package.
 
 [[shared-vip-jtag]]
 === JTAG
@@ -150,7 +154,8 @@ Package: `hw/common/dv/vip/ocah_spi_vip/`
 `OcahSpiFlash` is a deterministic NOR-flash responder with JEDEC ID, READ, FAST
 READ, status, WREN/WDIS, page program, and sector erase support.
 `OcahSpiMonitor` passively records command/address/data activity.
-`OcahSepSpiFlash` is the SEP-specific subclass mapped to the SEP xSPI pad bundle.
+`OcahSepSpiFlash` is the subclass mapped to the SEP xSPI pad bundle; the SMC SPI
+pad test binds the same class to its lifted pads.
 
 The personality is single-SPI Mode 0. True QSPI/OSPI lane turnaround, DDR,
 vendor-accurate BUSY timing, and vendor-specific commands are out of scope.
@@ -188,6 +193,14 @@ it.
 No shared entropy package ships. SEP-local models drive `esrc_noise_ext_i` and
 check the ESRC-to-DRBG-to-EDN chain; a shared entropy VIP is introduced only
 when a second subsystem needs one and gates it with a real regression.
+
+[[shared-vip-octs]]
+=== OCTS Sync
+
+No shared OCTS package ships. The SMC-local
+`hw/sys/smc/dv/cocotb/seq_lib/smc_octs_sync_bfm.py` drives and observes the
+PRIMARY/SECONDARY sync-load and credit pads; a shared package is introduced only
+when a second subsystem drives OCTS pads.
 
 [[shared-vip-checker]]
 === Common Checker Evidence
