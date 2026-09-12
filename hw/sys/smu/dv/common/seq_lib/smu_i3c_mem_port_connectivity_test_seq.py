@@ -5,8 +5,8 @@
 SEP=0 honest scope (no sep_in / no Force):
   S1  J2A read at each peripheral destination; status must not be DECERR.
 
-Commercial used sep_in_master; OSS uses JTAG2AXI frontdoor to the same
-PeakRDL destinations (delivery-only; no field semantics).
+Delivery goes over the JTAG2AXI frontdoor to the PeakRDL destinations
+(delivery-only; no field semantics).
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ from seq_lib.smu_jtag_helpers import (
     make_smu_jtag_tap,
 )
 
-# Commercial FAB_SMC_031 dest cells; addresses from PeakRDL smc_addr.h.
+# FAB_SMC_031 dest cells; addresses from PeakRDL smc_addr.h.
 PERIPH_DESTS = (
     (
         "UART",

@@ -4,9 +4,9 @@
 
 DV-CARD:          SMU_ALL_006   ANCHOR: smu_clock_stop_coordination_test
 
-Card OWNS (narrowed Option B):
+Card OWNS:
   DTP-BOOT-STALL.S1/S2, DTP-IC-RESET.S1/S3, DTP-CLKSTOP-AGG.S1/S2/S3
-DTP-FEAT-GATE.* and INT-FEAT-CTRL-DTP-GATE are out of scope (re-homed to 008).
+DTP-FEAT-GATE.* and INT-FEAT-CTRL-DTP-GATE are owned by SMU_ALL_008.
 """
 
 from __future__ import annotations

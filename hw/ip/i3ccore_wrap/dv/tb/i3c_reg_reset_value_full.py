@@ -2,12 +2,12 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 """
-I3C Register Reset-Value Sweep  (Test Plan #24)
+I3C Register Reset-Value Sweep
 
 Reads the reset/configured values of real config & status registers and
 confirms they are readable with defined (non-X) values after reset.
 
-Deliberately avoids:
+Excludes:
   - FIFO/data ports (COMMAND/RESPONSE/TX_DATA/RX_DATA/IBI) — reading these
     pops the queue / returns X when empty; they are not reset-valued registers.
   - DAT/DCT memory (0x400+) — external SRAM, X until written.

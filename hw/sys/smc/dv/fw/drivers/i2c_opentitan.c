@@ -719,18 +719,12 @@ int i2c_controller_write(uint32_t idx, uint8_t target_addr, const uint8_t *data,
         }
     }
 
-    // CRITICAL: Wait for FMT FIFO to be completely processed (OPTIMIZED: Reduce polling by 1000x)
-    // In repeated START scenario, we need to ensure the entire transaction (all data bytes)
-    // has been sent before returning, otherwise the next transaction may be sent too early.
-    // We wait for FMT FIFO to become empty (fmtempty=1), indicating all entries have been
-    // processed.
+    // Wait for FMT FIFO to empty so the next START is not issued while
+    // this transaction's entries are still being shifted out.
     if (!send_stop) {
-        // For repeated START: Wait for FMT FIFO to become empty (OPTIMIZED)
-        // This ensures the entire transaction (START + address + all data bytes) has been sent
-        // before we return, allowing the next transaction to be sent correctly.
+        // Repeated START: FMT FIFO empty means START + address + data have gone.
         uint32_t wait_count = 0;
-        const uint32_t MAX_WAIT =
-            10000; // Optimized: Increased from 100 to 10000 (100x) to allow I2C completion
+        const uint32_t MAX_WAIT = 10000;
         i2c__STATUS_t status;
 
         while (wait_count < MAX_WAIT) {
@@ -1273,9 +1267,9 @@ int i2c_controller_write_with_header_nonblock(uint32_t idx, uint8_t target_addr,
 
     uint32_t base = i2c_get_base(idx);
 
-// msho fix: Do NOT wait for controller idle - allow background execution
-//           This is the key difference from i2c_controller_write_with_header()
-//           This prevents deadlock when Controller FSM is busy and Target ACQ FIFO is full
+// Does not wait for the controller to go idle: the caller runs this alongside
+// target-side reads, and blocking here deadlocks once the controller FSM is
+// busy while the target ACQ FIFO is full.
 
 // Helper macro: Wait for FIFO to be NOT FULL before writing (assertion compliant)
 // FMTFULL is the inverse of fmt_fifo_wready, so FMTFULL=0 means ready
@@ -1722,13 +1716,9 @@ int i2c_target_receive_transaction_framed(uint32_t idx, uint8_t *buffer, uint32_
     int in_txn = 0;
     int saw_stop = 0; /* the only clean way out of the drain loop */
 
-    // msho fix: Hybrid strategy - Optimize for actual scenario while maintaining OpenTitan standard
-    //           Step 1: Quick check if FIFO already has data (non-blocking)
-    //                   If FIFO has data, start reading immediately to prevent overflow
-    //           Step 2: If FIFO is empty, use standard OpenTitan wait (blocking)
-    //           This combines the benefits of both approaches:
-    //           - Prevents ACQ FIFO overflow when Controller has already sent data
-    //           - Maintains OpenTitan standard compliance for normal cases
+    // Two-stage receive: first a short non-blocking check so data the
+    // controller has already pushed is drained before the ACQ FIFO overflows,
+    // then the standard OpenTitan blocking wait if the FIFO is still empty.
 
     // Step 1: Quick check if FIFO already has data (non-blocking, short wait)
     i2c__STATUS_t status = {.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
@@ -1739,8 +1729,7 @@ int i2c_target_receive_transaction_framed(uint32_t idx, uint8_t *buffer, uint32_
         // This handles the case where Controller just finished sending
         // and data is still being written to ACQ FIFO
         uint32_t short_wait_count = 0;
-        const uint32_t SHORT_WAIT_CYCLES =
-            1000; // OPTIMIZED: Reduced from 1000 to 10 (100x reduction)
+        const uint32_t SHORT_WAIT_CYCLES = 1000;
 
         while (short_wait_count < SHORT_WAIT_CYCLES) {
             status.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
@@ -1786,16 +1775,9 @@ int i2c_target_receive_transaction_framed(uint32_t idx, uint8_t *buffer, uint32_
         if (status.f.ACQEMPTY && in_txn != 0) {
             // Brief wait for next FIFO entry
             count = 0;
-            /* Derived from the caller's bound rather than fixed.
-             *
-             * This was a hardcoded 10000 that ignored timeout_cycles entirely,
-             * so a caller that had sized its own bound against an enclosing
-             * harness budget had that sizing silently overridden here: a stall
-             * on this path could burn milliseconds and let the harness time out
-             * first, which reports the wrong condition -- the harness says the
-             * test hung, when the firmware knew exactly which byte never came.
-             * The comment claiming a "100x reduction" also did not match the
-             * value it sat on. */
+            /* Bounded by the caller's timeout_cycles so a stall on this path
+             * cannot outlive the budget the caller sized against its harness;
+             * 10000 stays the ceiling when the caller passes none. */
             uint32_t inter_byte_timeout =
                 (timeout_cycles > 0u && timeout_cycles < 10000u) ? timeout_cycles : 10000u;
             while (count < inter_byte_timeout) {

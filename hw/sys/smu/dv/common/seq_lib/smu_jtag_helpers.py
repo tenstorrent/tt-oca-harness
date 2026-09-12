@@ -253,19 +253,15 @@ SMC_DBG_SERIES_DATA_LEN = 64
 SMC_OTP_SINGLE_OP_LEN = 72
 # OTP SERIES_CTRL: OP2|SIZE2|PL_DEPTH2|ADDR32|RESET1 = 39
 SMC_OTP_SERIES_CTRL_LEN = 39
-# OTP SERIES_DATA_NO_INCR payload for AxSIZE=4B (commercial / default OTP size).
+# OTP SERIES_DATA_NO_INCR payload for AxSIZE=4B (default OTP size).
 SMC_OTP_SERIES_DATA_NO_INCR_LEN = 32
 SMC_OTP_AXSIZE_4B = 2
 # APB ERR_DECODE poison (efuse_interface_controller ERR_DECODE prdata).
 SMC_OTP_ERR_DECODE_DATA = 0xBADC_AB1E
 # axi_err_slv / prim_axi_lite_err_slv default RESP_DATA[31:0].
 SMC_AXI_ERR_SLV_POISON = 0xBADC_AB1E
-# Relative probe used by P1 CAPS/BUSY (routes to SHIM when MAP base is abs).
+# Relative OTP probe (routes to the SHIM when the MAP base is absolute).
 SMC_OTP_DEFAULT_PROBE_ADDR = 0x80
-# Absolute SMC eFuse map window (smc_reg.svh / INTERFACE_SEL decode).
-SMC_EFUSE_MAP_BASE = 0xC000_B000
-# BIRA word @ +0x80 — WRITE_UNLOCK in smc_efuse_pkg::EfuseFieldMap.
-SMC_EFUSE_MAP_BIRA_WORD = SMC_EFUSE_MAP_BASE + 0x80
 
 # hw/ip/jtag/jtag_ptap/doc/architecture.adoc Debug Control TDR table:
 # bit 0 boot_stall, bit 1 boot_stall_ovrd (no PeakRDL #define).

@@ -188,7 +188,7 @@ BUILD_KEYS = {
 SOURCE_LIST_KEYS = {"description", "incdirs", "sources"}
 
 # Keys an adopter overlay file (--overlay / OCAH_DV_OVERLAY) may carry (see
-# apply_adopter_overlay). The layer is append-only by design: every allowed key ADDS to the
+# apply_adopter_overlay). The layer is append-only: every allowed key ADDS to the
 # merged DUT view (build inputs, target defines/flags, run args) and none can replace or
 # remove what the checked-in configs declare — so a run with an overlay differs from the
 # baseline only by the overlay's own additions.
@@ -296,7 +296,6 @@ COVERAGE_TOOL_KEYS = {
     "report_cmd",
     "sim_args",
     "test_args",
-    "waiver_files",
 }
 COVERAGE_LIST_KEYS = {
     "build_args",
@@ -306,7 +305,6 @@ COVERAGE_LIST_KEYS = {
     "report_cmd",
     "sim_args",
     "test_args",
-    "waiver_files",
 }
 COVERAGE_PARSERS = {"verilator", "urg", "imc"}
 
@@ -438,7 +436,7 @@ def _assign_toml_value(
 def _load_toml_subset(path: Path) -> dict[str, Any]:
     """Small TOML reader for the repo's DV configs when Python lacks tomllib/tomli.
 
-    It intentionally covers only the constructs used by these configs: tables, arrays of tables,
+    It covers only the constructs used by these configs: tables, arrays of tables,
     strings, booleans, integers, floats, and arrays.
     """
     data: dict[str, Any] = {}
@@ -907,7 +905,7 @@ def _merge_framework_config(
     # layers, matching the `target_defaults` -> `targets` append in selected_target(): a
     # framework overlay contributes its gate define (e.g. the profile's `UVM`) on top of the
     # shared simulation set instead of replacing the list. Tool `flags` keep the plain
-    # overlay-wins semantics — an overlay may deliberately zero a tool's flag list (the uvm
+    # overlay-wins semantics — an overlay may zero a tool's flag list (the uvm
     # overlay relies on the vcs stage preamble for its flags).
     for section_name in ("target_defaults", "targets"):
         section = merged.get(section_name)
@@ -1187,9 +1185,9 @@ def load_dut(
                     f"{path}: profile `{profile}` declares no [frameworks.<name>] sections, so "
                     "this DUT cannot declare frameworks"
                 )
-            # Legacy single-framework profile: `[sim].args` appends across profile->DUT
-            # inheritance (every other inherited array replaces). Capture both lists before
-            # deep_merge clobbers the DUT's, then re-join.
+            # Single-framework profile (no [frameworks.<name>] sections): `[sim].args` appends
+            # across profile->DUT inheritance (every other inherited array replaces). Capture both
+            # lists before deep_merge clobbers the DUT's, then re-join.
             dut_sim_args = as_str_list(config_section(data, "sim").get("args"), "sim.args")
             profile_sim_args = as_str_list(
                 config_section(profile_cfg, "sim").get("args"), "sim.args"
@@ -1324,7 +1322,7 @@ def load_executors(root: Path) -> dict[str, Any]:
 
 
 def load_sim_cfg(flow: Dut, root: Path) -> dict[str, Any]:
-    # The flow and sim_cfg are now one merged file; the loaded DUT already holds it.
+    # The sim_cfg tables live in the DUT config file, so the loaded DUT already holds them.
     return flow.raw
 
 
@@ -1386,8 +1384,7 @@ def resolved_target_name(sim_cfg: dict[str, Any], test: TestEntry | None) -> str
 def selected_target(sim_cfg: dict[str, Any], name: str | None = None) -> dict[str, Any]:
     """The active `[targets.<name>]` table (defines + per-tool flags + build_dir).
 
-    OD-19 merged the former `[compile_targets]`/`[run_targets]` split into one `[targets]` table
-    keyed by `[defaults].target`.
+    One `[targets]` table serves compile and run; `[defaults].target` selects the entry.
     """
     name = name or default_target_name(sim_cfg)
     target_defaults = (
@@ -1458,8 +1455,8 @@ def targeted_sim_cfg(
     """Return a cloned config resolved for one target.
 
     Stage implementations consume source-selection fields from `[build]`, while target policy lives
-    under `[targets.<name>]`. Keep the existing stage API by copying target-owned source selectors
-    into the cloned `[build]` table and overriding `[defaults].target`.
+    under `[targets.<name>]`; the clone copies target-owned source selectors into `[build]` and
+    sets `[defaults].target`.
     """
     cfg = copy.deepcopy(sim_cfg)
     cfg.setdefault("defaults", {})["target"] = target_name
@@ -1480,8 +1477,8 @@ def targeted_sim_cfg(
 
     # These source lists are additive: DUT-wide sources from `[build]` plus target-owned shims/stubs.
     # `exclude_files` is likewise additive: DUT-wide drops from `[build]` plus target-owned drops
-    # (e.g. the lsu_stub target excludes the real hw/sep/sep_cpu.sv so its appended stub is the
-    # only definition, with all DUT packages already declared ahead of it).
+    # (e.g. a CPU-stub target excludes the real hw/sys/sep/rtl/sep_cpu.sv so its appended stub
+    # is the only definition, with all DUT packages already declared ahead of it).
     for key in ("stubs", "sources", "exclude_files"):
         if key in target:
             build[key] = _merge_unique_strings(
@@ -1505,10 +1502,9 @@ def targeted_sim_cfg(
         if not isinstance(build_dir, str) or not build_dir:
             raise ConfigError(f"`targets.{target_name}.build_dir` must be a non-empty string")
         # Per-target subdir so targets that share one build_dir do not clobber each other's
-        # generated filelist (last-writer-wins): without the target_name key, every target derived
-        # the SAME filelists/{bender,files}.f and a later target's flist overwrote an earlier one,
-        # so a multi-target regression compiled the wrong source set (e.g. lsu_stub built with the
-        # real sep_cpu instead of the stub). Keying on target_name gives each its own filelist.
+        # generated filelist: a shared filelists/{bender,files}.f is last-writer-wins, so a
+        # multi-target regression would compile a later target's source set (e.g. the real
+        # sep_cpu in place of a CPU-stub target's stub).
         filelist_root = Path(build_dir) / "filelists" / target_name
         work_dir = target.get("work_dir", build_dir)
         if not isinstance(work_dir, str) or not work_dir:
@@ -1555,8 +1551,8 @@ def target_flags(target: dict[str, Any], tool: str) -> list[str]:
     return flags
 
 
-# The compile/run target split is gone; both accessors now resolve the one merged target table so
-# the existing stage code (which still distinguishes compile vs run locally) keeps working.
+# One target table serves both compile and run; these accessors let stage code that distinguishes
+# compile from run resolve the same target.
 def selected_compile_target(sim_cfg: dict[str, Any]) -> dict[str, Any]:
     return selected_target(sim_cfg)
 
@@ -1584,7 +1580,7 @@ def selected_run_mode(sim_cfg: dict[str, Any], test: TestEntry | None, args: Any
         requested = test.run_modes[0]
         where = f"test `{test.name}` run_modes"
     if not requested:
-        # The implicit fallback is optional by design: a DUT whose tests all carry run_modes
+        # The implicit fallback is optional: a DUT whose tests all carry run_modes
         # never consults it, and a DUT without a `smoke` mode must still resolve (to no mode).
         requested = defaults_cfg(sim_cfg).get("run_mode", "smoke")
         mode = run_modes_cfg(sim_cfg).get(str(requested), {})
@@ -1756,8 +1752,7 @@ def load_test_catalog(flow: Flow, root: Path) -> TestCatalog:
         raw_path = Path(str(testlist["path"])).expanduser()
         path = raw_path if raw_path.is_absolute() else root / raw_path
         if not path.is_file() and not raw_path.is_absolute():
-            # The clean contract says testlist paths are DUT-local. The sandbox configs still use
-            # repo-relative paths, so accept both while preferring the existing repo-relative form.
+            # A relative testlist path may be repo-relative or DUT-local; repo-relative wins.
             path = flow.path.parent / raw_path
         tests, groups, group_sources = _merge_testlist_data(
             load_toml(path), path, path.parent, root, [path]

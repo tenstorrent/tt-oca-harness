@@ -25,7 +25,7 @@ This package is the base bus BFM that the protocol-specific VIPs build on.
 ## Backend
 
 The released AXI master and responder BFMs are backed by `cocotbext-axi`
-(`cocotbext-axi>=0.1.24,<0.2` in `pyproject.toml`):
+(pinned in `hw/common/dv/pyproject.toml`):
 
 | Wrapper | Backend |
 |---|---|
@@ -86,6 +86,9 @@ ocah_axi_vip/
     ocah_axi_scoreboard.py              — OcahAxiScoreboard (evidence-emitting comparator)
     ocah_axi_protocol_watcher.py        — cycle-level protocol-rule watchers
     ocah_axi_types.py                   — response/protection codes + value-conversion helpers
+    examples/
+      example_register_access.py        — annotated usage snippets
+      example_axi_scoreboard_selftest.py — simulator-free checker/model/scoreboard proof
   interface/ocah_axi_if.sv       — flat AXI4/AXI4-Lite monitor interface (SV)
   interface/ocah_axi_struct_bridge.sv — places a pulp request/response struct
                                    port on an ocah_axi_if for the slave agent
@@ -96,9 +99,6 @@ ocah_axi_vip/
                                    + master agent/env (active initiator driven
                                    through ocah_axi_master_sequence)
   cov/ocah_axi_cov.sv            — commercial-simulator functional coverage
-  examples/
-    example_register_access.py            — annotated usage snippets
-    example_axi_scoreboard_selftest.py    — simulator-free checker/model/scoreboard proof
   dv/                            — simulated VIP selftests on a wire harness
                                    (master <-> fault slave: response-ID
                                    observation and corruption proofs; master
@@ -206,8 +206,8 @@ master = OcahAxiLiteMasterAgent(
 |---|---|---|
 | `master.init_signals()` | `None` | Re-drive payload signals to 0 idle (already done at construction) |
 | `await master.wait_for_reset()` | `None` | |
-| `await master.write(addr, data, *, strb, prot)` | `int` (resp) | Compatibility helper |
-| `await master.read(addr, *, prot)` | `int` (data) | Compatibility helper |
+| `await master.write(addr, data, *, strb, prot)` | `int` (resp) | Returns only the response code |
+| `await master.read(addr, *, prot)` | `int` (data) | Returns only the data |
 | `await master.write_result(addr, data, ...)` | `OcahAxiWriteResult` | Use for non-OKAY inspection; contiguous partial `strb` supported |
 | `await master.read_result(addr, ...)` | `OcahAxiReadResult` | Use for read response inspection |
 | `await master.write_skewed_result(addr, data, *, aw_valid_delay, w_valid_delay, b_ready_delay, ...)` | `OcahAxiWriteResult` | Single-beat write with independent AW/W launch skew and deferred BREADY (SV-UVM parity op) |
@@ -432,14 +432,14 @@ replay of failures.
 ## Detailed Manual
 
 See `MANUAL.md` in this folder for complete construction rules, result-object
-semantics, DTP fault responder usage, SEP no-touch compatibility notes, and
-migration guidance.
+semantics, the fault-capable responders, the reference model and scoreboard,
+and the SV-UVM layer.
 
 ---
 
 ## Examples
 
-See `examples/example_register_access.py` for annotated snippets covering the
+See `cocotb/examples/example_register_access.py` for annotated snippets covering the
 AXI4 / AXI4-Lite master types and the passive monitor.
 
 ---
@@ -454,7 +454,7 @@ than bypassed.
 ## Hierarchical VIP Layout
 
 This package follows the OCAH hierarchical VIP convention (see
-`hw/common/dv/README.md` and the 1_vip layout guide): all cocotb (Python)
+`hw/common/dv/README.md`): all cocotb (Python)
 code lives in `cocotb/`, and the root `__init__.py` is a thin shim
 re-exporting the stable public API — always import
 `from ocah_axi_vip import <Class>`, never from the subfolders.

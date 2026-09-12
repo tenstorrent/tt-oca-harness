@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -75,6 +76,78 @@ _DEFAULT_EFUSE_PRELOAD = (
 _STALL_CSR_TIMEOUT_NS = 50_000
 
 
+class _EvidenceFilter(logging.Filter):
+    """Collect the named evidence a test emits, by watching its own log.
+
+    Tests already report each graded contract as ``CHK-<ID> PASS``. Reading the
+    records as they pass keeps that the single source of the ID -- a separate
+    call to register the check could drift from the line the log actually
+    carries, and then the summary would describe a check nobody ran.
+
+    Never filters: every record is returned unchanged.
+    """
+
+    _CHK = re.compile(r"\b(CHK-[A-Z0-9_-]+)\b\s*(?:\([^)]*\)\s*)?(PASS|OK)\b")
+
+    # Emitted by sep_base_test itself on every bring-up, so it says nothing
+    # about the leaf. Counted in `observed` but excluded from `own`, which is
+    # what a floor grades: 18 of the 92 `all` leaves would otherwise satisfy a
+    # floor of one on this record alone.
+    BASE_IDS = frozenset({"CHK-OTP-JTAG2AXI-UNGATED"})
+
+    # Leaves that emit no CHK-* record of their own, with the reason each one
+    # does not. Every entry is a LOGGING gap, not a verification gap: these are
+    # thin shells whose checks live further down the proof path -- in the
+    # sequence they start, or in a base-class golden compare -- and none of them
+    # is a clean exit that checks nothing. Naming them is what lets the floor
+    # below be unconditional for every other leaf.
+    #
+    # This list may only shrink. To remove an entry, make the check that already
+    # runs log `CHK-<ID> PASS` where it actually happens (in the sequence, not
+    # here -- a record emitted by sep_base_test lands in BASE_IDS and is
+    # excluded from `own`).
+    NO_OWN_EVIDENCE = {
+        # Verdict comes from the firmware console PASS/FAIL magic, not from a
+        # leaf-side check. Real grading, wrong channel for this counter.
+        "sep_boot_rom_lsu_read_test": "firmware console verdict",
+        "sep_cpu_ifu_lsu_alias_remap_matrix_test": "firmware console verdict",
+        "sep_dma_cpu_contention_test": "firmware console verdict",
+        "sep_dma_hash_test": "firmware console verdict",
+        "sep_hello_world_test": "firmware console verdict",
+        "sep_hmac_kmac_cpu_crypto_smoke_test": "firmware console verdict",
+        "sep_mailbox_plic_test": "firmware console verdict",
+        "sep_nmi_sanity_test": "firmware console verdict",
+        "sep_spi_ot_dma_rx_test": "firmware console verdict",
+        # Asserts in the leaf itself, but the log line carries no CHK- ID.
+        # These are the cheapest entries to retire: label the existing assert.
+        "sep_clock_uvm_wdt_rst_input_reset_path_test": "in-leaf asserts, unlabelled",
+        "sep_efuse_km_axil_cpu_mux_coexist_test": "in-leaf asserts, unlabelled",
+        "sep_km_mem_smoke_test": "in-leaf asserts, unlabelled",
+        "sep_otbn_mem_smoke_test": "in-leaf asserts, unlabelled",
+        "sep_rom_sanity_test": "in-leaf asserts, unlabelled",
+        "sep_spi_flash_jedec_smoke_test": "in-leaf asserts, unlabelled",
+        # Checks live in the sequence the leaf starts.
+        "sep_axi_smoke_test": "sequence-level compares plus AXI scoreboard check_phase",
+        "sep_sram_smoke_test": "sequence-level compares",
+        # Backdoor leaf: the golden compare is
+        # sep_base_test._check_efuse_shadow_after_sense.
+        "sep_efuse_sense_test": "base-class eFuse shadow golden compare",
+    }
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.seen: set[str] = set()
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        try:
+            message = record.getMessage()
+        except Exception:  # a broken format string is the caller's failure, not ours
+            return True
+        for check_id, _status in self._CHK.findall(message):
+            self.seen.add(check_id)
+        return True
+
+
 class sep_base_test(uvm_test):
     """Shared SEP test: env build, clock/reset bring-up, scenario hook."""
 
@@ -92,6 +165,25 @@ class sep_base_test(uvm_test):
     # concludes it passed. Flipping it for firmware that never writes
     # cold_scratch[0] does not fail loudly -- the test never completes.
     verdict_source = "mailbox"
+
+    # Evidence gate. A clean exit is not a pass: a test whose stimulus stopped
+    # reaching the DUT compares nothing, asserts nothing, and returns normally.
+    # Every leaf reports its graded contracts as `CHK-<ID> PASS`, so the base
+    # class counts what this run actually emitted and fails a silent one.
+    #
+    #   required_evidence -- IDs this test must emit. Missing any one fails.
+    #   min_evidence      -- fewest distinct IDs of the test's OWN (records the
+    #                        base class emits do not count). 0 disables it.
+    #
+    # Both default to off, and the default is deliberate rather than timid. A
+    # floor applied centrally is wrong in both directions here: `rom_fw` leaves
+    # report a passing check as `CHK-UNARMED:` with no PASS token and would be
+    # rejected for a logging convention, while 18 of the 92 `all` leaves grade
+    # through a firmware verdict rather than a CHK line and would need an
+    # exemption each. So every run REPORTS its evidence and a leaf opts in to
+    # having it graded.
+    required_evidence: tuple[str, ...] = ()
+    min_evidence = 0
 
     @staticmethod
     def random_seed() -> int:
@@ -139,6 +231,9 @@ class sep_base_test(uvm_test):
             pass
 
     def build_phase(self) -> None:
+        # Installed before anything can log, so no evidence predates the filter.
+        self._evidence = _EvidenceFilter()
+        self.logger.addFilter(self._evidence)
         self.cfg = SepEnvCfg("cfg")
         self._efuse_compare_image: SepEfuseImage | None = None
         self.cfg.randomize_timing(self.random_seed())
@@ -1136,8 +1231,54 @@ class sep_base_test(uvm_test):
             os.environ.get("SEP_DV_RUN_DIR") or os.getcwd(),
         )
 
+    def _finalize_evidence(self) -> None:
+        """Report the evidence this run produced, and grade it if the leaf asked.
+
+        Runs only after run_scenario() returns normally. A test that already
+        failed raised, and this must not turn that into a different complaint.
+
+        `own` excludes the records sep_base_test emits itself, so a declared
+        floor grades what the leaf proved rather than what bring-up logged.
+        """
+        seen = sorted(getattr(self, "_evidence", _EvidenceFilter()).seen)
+        own = [c for c in seen if c not in _EvidenceFilter.BASE_IDS]
+        required = tuple(self.required_evidence)
+        missing = [check_id for check_id in required if check_id not in seen]
+
+        self.logger.info(
+            "EVIDENCE_SUMMARY test=%s observed=%d own=%d required=%d missing=%d ids=%s",
+            self.get_type_name(),
+            len(seen),
+            len(own),
+            len(required),
+            len(missing),
+            ",".join(seen) or "-",
+        )
+
+        problems: list[str] = []
+        if not own and self.get_type_name() not in _EvidenceFilter.NO_OWN_EVIDENCE:
+            problems.append(
+                "no CHK-* PASS record of its own -- a run that grades nothing cannot "
+                "be a pass. If this leaf's checks live in its sequence, log them "
+                "there; if it genuinely checks nothing, that is the finding"
+            )
+        if self.min_evidence and len(own) < self.min_evidence:
+            problems.append(
+                f"{len(own)} distinct CHK-* PASS record(s) of its own, "
+                f"expected at least {self.min_evidence}"
+            )
+        if missing:
+            problems.append("never emitted: " + ", ".join(missing))
+        if problems:
+            raise AssertionError(
+                f"EVIDENCE FAIL {self.get_type_name()}: "
+                + "; ".join(problems)
+                + " -- the run exited cleanly without grading what it claims to grade"
+            )
+
     async def run_phase(self) -> None:
         self.raise_objection()
         self._log_run_identity()
         await self.run_scenario()
+        self._finalize_evidence()
         self.drop_objection()

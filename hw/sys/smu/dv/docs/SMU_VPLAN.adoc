@@ -13,9 +13,7 @@
 |Framework |PyUVM on cocotb
 |Primary simulator |Verilator
 |Reference testbench architecture |`SMU_TB_ARCH.adoc`
-|Live test bodies |79 Python modules under `cocotb_wrapper/tests/`; 84 `[[tests]]` entries in `wrapper.toml`, 81 of them in `all`
-|Enrolled leaf entries |81 in `all`, 53 in `sep0_all`
-|Non-enrolled inventory |28 bodies under `cocotb/tests_deferred/`
+|Executable contract |the enrolled groups in `testlists/wrapper.toml`
 |===
 
 This plan describes what the SMU open-source suite verifies and against which
@@ -71,12 +69,12 @@ no enrolled test may reach into the DUT with Force or deposit.
 
 === Enrolled Test Summary
 
-The enrolled `sep0_all` set (53) plus the other names this plan still cards,
-with the source family each came from. Fifty-three of them are in `sep0_all`,
-including `smu_ext_boot_seq_gate_test` and `smu_smc_mailbox_int_test`.
-`smu_dtp_jtag2axi_abort_mid_op_test` is only in `migrated_dtp_pending`.
-The remaining `all` members are SEP=1 / wrapper-native leaves that this
-summary does not list row-by-row (see <<smu-known-limitations,Known Limitations>>).
+The SEP=0 names this plan cards, with the leaf family of each. Every row
+is in `sep0_all` except `smu_dtp_jtag2axi_abort_mid_op_test` (only in
+`migrated_dtp_pending`) and the two `smoke` names `smu_smc_smoke_test`
+and `smu_sep_smoke_test`. The SEP=1 / wrapper-native members of `all`
+are listed under `SMU_WRAPPER` below (see
+<<smu-known-limitations,Known Limitations>>).
 
 [cols="2,1,3",options="header",]
 |===
@@ -122,13 +120,13 @@ summary does not list row-by-row (see <<smu-known-limitations,Known Limitations>
 |`smu_jtag_reset_override_test` |dtp |IC_RESET TDR override of EXT/SMC slices
 |`smu_no_sep_configuration_test` |smc |SMU P0 SEP=0 composition (SMU_005)
 |`smu_otp_vs_fabric_map_race_test` |dtp |OTP vs fabric MAP last-writer
-|`smu_sep_smoke_test` |deferred |SMU_ALL_007 RST-PRIMARY + CTM.S2/S3 (SEP=0 bare)
+|`smu_sep_smoke_test` |sep |wrapper SEP RTL boot: ROM fetch, ICCM, 256 retires / 16 PCs, DCCM write
 |`smu_smc_dtp_jtag2axi_smoke_test` |dtp |SMC fabric J2A smoke (SEP=0, no Force)
-|`smu_smc_mailbox_int_test` |smc |ext_mailbox_interrupts width plus mailbox 0 / 31 bit mapping (SMU_ALL_004)
+|`smu_smc_mailbox_int_test` |smc |smc_ext_mailbox_interrupts width plus mailbox 0 / 31 bit mapping (SMU_ALL_004)
 |`smu_smc_mailbox_sanity_test` |smc |outbound-0 STATUS/IRQEN via fabric J2A (SEP=0)
 |`smu_smc_reset_ctrl_test` |smc |primary/cold/periph reset release under SMU SEP=0
 |`smu_smc_security_demote_pm_test` |smc |SEP=0 demote / lc_state observe-only
-|`smu_smc_smoke_test` |smc |SMU_ALL_003
+|`smu_smc_smoke_test` |smc |wrapper SMC ROM boot to PASS; ROM-read and scratch-write floors (no_sep)
 |`smu_smc_wdt_sanity_test` |smc |CORE0 WDT unlock + CMP via J2A
 |`smu_smc_wdt_timeout_irq_test` |smc |CORE0 WDT sticky WDOGIP0
 |`smu_sys_in_filter_program_jtag_test` |fabric |inbound0 program then SMN OKAY
@@ -139,6 +137,7 @@ summary does not list row-by-row (see <<smu-known-limitations,Known Limitations>
 |`smu_xtrig_ctm_remap_test` |dtp |product-pin CTM remap
 |===
 
+[[smu-test-procedures]]
 === Test Procedures
 
 Each entry below is a test body and its sequence. The Checkers table lists the
@@ -167,7 +166,9 @@ check.
 
 *Source Module*: `smu_axi_alias_remap_manager_scope_test`
 
-*Objective*: FAB_SMC_018 S3 J2A+SPM; S1/S2/S4/S5 deferred; no Force.
+*BFM / Model*: `ocah_jtag_vip`
+
+*Objective*: FAB_SMC_018 S3 J2A+SPM; S1/S2/S4/S5 not covered; no Force.
 
 *Test Coverage*:
 
@@ -203,6 +204,8 @@ check.
 
 *Source Module*: `smu_axi_atomic_operation_test`
 
+*BFM / Model*: `ocah_axi_vip`
+
 *Objective*: Prove a non-ATOP SMN read completes with RID==ARID; ATOP is not drivable here.
 
 *Test Coverage*:
@@ -225,7 +228,7 @@ check.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|scoreboard |Every access is compared against its stated expectation
+|`CHK-AXI-NON-ATOP` |Evidence token `AXI_NON_ATOP_OK`: non-ATOP SMN path completes
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_fabric`, `sep0_all`.
@@ -237,7 +240,9 @@ check.
 
 *Source Module*: `smu_axi_crossbar_error_handling_test`
 
-*Objective*: SMU_ALL_008: PWRGOOD leave-TLR only (FAB/DECODE removed).
+*BFM / Model*: `ocah_jtag_vip`
+
+*Objective*: SMU_ALL_008: PWRGOOD leave-TLR only; FAB-IN / DECODE are out of scope.
 
 *Test Coverage*:
 
@@ -270,6 +275,8 @@ check.
 ===== 4 `smu_axi_external_port_connectivity_test`
 
 *Source Module*: `smu_axi_external_port_connectivity_test`
+
+*BFM / Model*: `ocah_axi_vip`
 
 *Objective*: SMU_ALL_002: SEP=0 inbound SMN→SMC + direct IW converters.
 
@@ -307,6 +314,8 @@ check.
 
 *Source Module*: `smu_axi_filter_allow_ns_test`
 
+*BFM / Model*: `ocah_axi_vip`, `ocah_jtag_vip`
+
 *Objective*: Inbound allow_ns S1/S2/S3; no Force / no sep_in.
 
 *Test Coverage*:
@@ -342,6 +351,8 @@ check.
 ===== 6 `smu_axi_filter_in_instance_matrix_test`
 
 *Source Module*: `smu_axi_filter_in_instance_matrix_test`
+
+*BFM / Model*: `ocah_axi_vip`, `ocah_jtag_vip`
 
 *Objective*: Inbound filter S1–S5; SEP=0 J2A + s_axi; no Force.
 
@@ -381,7 +392,9 @@ check.
 
 *Source Module*: `smu_axi_filter_out_instance_matrix_test`
 
-*Objective*: Outbound filter S1 DECODE; S2/S3 deferred (needs ext_out); no Force.
+*BFM / Model*: `ocah_jtag_vip`
+
+*Objective*: Outbound filter S1 DECODE; S2/S3 need an ext_out peer; no Force.
 
 *Test Coverage*:
 
@@ -414,6 +427,8 @@ check.
 
 *Source Module*: `smu_axi_id_width_conversion_test`
 
+*BFM / Model*: `ocah_axi_vip`
+
 *Objective*: Prove SMN->iw_converter completes with matching RID (ID path live).
 
 *Test Coverage*:
@@ -436,7 +451,7 @@ check.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|scoreboard |Every access is compared against its stated expectation
+|`CHK-AXI-ID-WIDTH` |Evidence token `AXI_ID_WIDTH_OK`: ID width conversion completes
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_fabric`, `sep0_all`.
@@ -448,7 +463,9 @@ check.
 
 *Source Module*: `smu_axi_prot_encoding_decode_test`
 
-*Objective*: Inbound allow_ns=0 eight-way AxPROT; S1–S8 deferred.
+*BFM / Model*: `ocah_axi_vip`, `ocah_jtag_vip`
+
+*Objective*: Inbound allow_ns=0 eight-way AxPROT (S9); S1–S8 need sep_in_master.
 
 *Test Coverage*:
 
@@ -483,6 +500,8 @@ check.
 ===== 10 `smu_axi_xbar_structure_test`
 
 *Source Module*: `smu_axi_xbar_structure_test`
+
+*BFM / Model*: TB pin drive only (no external VIP); `elaboration` firmware mode
 
 *Objective*: gen_no_sep IW converters present; smu_axi_xbar not elaborated.
 
@@ -521,6 +540,8 @@ check.
 
 *Source Module*: `smu_fabric_reg_bar_wr_test`
 
+*BFM / Model*: `ocah_jtag_vip`
+
 *Objective*: FAB_SMC_032 delivery-only via J2A; no Force / no sep_in.
 
 *Test Coverage*:
@@ -554,6 +575,8 @@ check.
 ===== 12 `smu_otp_vs_fabric_map_race_test`
 
 *Source Module*: `smu_otp_vs_fabric_map_race_test`
+
+*BFM / Model*: `ocah_jtag_vip`
 
 *Objective*: OTP vs fabric MAP race: coherent winner, no silent tear.
 
@@ -591,6 +614,8 @@ check.
 
 *Source Module*: `smu_sys_in_filter_program_jtag_test`
 
+*BFM / Model*: `ocah_axi_vip`, `ocah_jtag_vip`
+
 *Objective*: J2A programs inbound0; SMN VERSION_LO OKAY; WDT still DECERR.
 
 *Test Coverage*:
@@ -625,6 +650,8 @@ check.
 ===== 14 `smu_sys_in_filter_reprogram_shrink_test`
 
 *Source Module*: `smu_sys_in_filter_reprogram_shrink_test`
+
+*BFM / Model*: `ocah_axi_vip`, `ocah_jtag_vip`
 
 *Objective*: Wide -> shrink -> clear restores selective / BlockByDefault deny.
 
@@ -663,6 +690,8 @@ check.
 ===== 15 `smu_sys_in_filter_window_edge_test`
 
 *Source Module*: `smu_sys_in_filter_window_edge_test`
+
+*BFM / Model*: `ocah_axi_vip`, `ocah_jtag_vip`
 
 *Objective*: SMN OKAY on the filter page interior; DECERR one filter page either side.
 
@@ -703,6 +732,8 @@ check.
 
 *Source Module*: `smu_xtrig_ctm_remap_test`
 
+*BFM / Model*: TB pin drive only (no external VIP); `elaboration` firmware mode
+
 *Objective*: CTM external remap via product pins only.
 
 *Test Coverage*:
@@ -724,7 +755,7 @@ check.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|scoreboard |Every access is compared against its stated expectation
+|`CHK-XT-CTM-REMAP` |Evidence token `XT_CTM_REMAP`: product-pin CTM remap
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
@@ -737,6 +768,8 @@ check.
 ===== 17 `smu_boot_stall_jtag_cold_reset_matrix_test`
 
 *Source Module*: `smu_boot_stall_jtag_cold_reset_matrix_test`
+
+*BFM / Model*: `ocah_axi_vip`, `ocah_jtag_vip`
 
 *Objective*: Boot-stall cold-reset sticky + TRST clear matrix.
 
@@ -759,7 +792,9 @@ check.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|scoreboard |Every access is compared against its stated expectation
+|`CHK-STALL-STICKY` |Evidence token `STALL_COLD_STICKY`: stall survives cold
+|`CHK-STALL-TRST` |Evidence token `STALL_TRST_CLEAR`: TRST clears stall
+|`CHK-STALL-REASSERT` |Evidence token `STALL_REASSERT_STICKY`: re-assert sticky
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
@@ -770,6 +805,8 @@ check.
 ===== 18 `smu_boot_stall_vs_ic_reset_priority_test`
 
 *Source Module*: `smu_boot_stall_vs_ic_reset_priority_test`
+
+*BFM / Model*: `ocah_axi_vip`, `ocah_jtag_vip`
 
 *Objective*: Stall sticky isolation vs IC_RESET; TRST clears both.
 
@@ -791,7 +828,7 @@ check.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|scoreboard |Every access is compared against its stated expectation
+|`CHK-STALL-VS-IC` |Evidence token `STALL_VS_IC_RESET`: IC_RESET does not clear stall
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
@@ -803,13 +840,15 @@ check.
 
 *Source Module*: `smu_dft_dtp_boot_stall_test`
 
+*BFM / Model*: `ocah_axi_vip`, `ocah_jtag_vip`
+
 *Objective*: DTP boot-stall override gates SMC fuse_reset with sticky release.
 
 *Test Coverage*:
 
 * DEBUG_CONTROL write updates jtag_boot_stall_ovrd / jtag_boot_stall
 * TDR readback matches written fields
-* With stall asserted across cold reset (TRST held deasserted), fuse_reset_n_delayed_o stays low until stall cleared
+* With stall asserted across cold reset (TRST held deasserted), smc_fuse_reset_n_delayed_o stays low until stall cleared
 * Sticky: re-asserting stall after release does not re-gate fuse_reset
 
 *Test Procedure*:
@@ -824,7 +863,8 @@ check.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|scoreboard |Every access is compared against its stated expectation
+|`CHK-STALL-STICKY` |Evidence token `STALL_COLD_STICKY`: stall survives cold
+|`CHK-STALL-REASSERT` |Evidence token `STALL_REASSERT_STICKY`: re-assert does not re-gate
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
@@ -836,11 +876,13 @@ check.
 
 *Source Module*: `smu_dft_gpio_boot_stall_test`
 
-*Objective*: GPIO boot-stall sticky gating of fuse_reset_n_delayed_o.
+*BFM / Model*: `ocah_axi_vip`
+
+*Objective*: GPIO boot-stall sticky gating of smc_fuse_reset_n_delayed_o.
 
 *Test Coverage*:
 
-* Drive pad bit[57]=1 across cold reset -> fuse_reset_n_delayed_o stays 0
+* Drive pad bit[57]=1 across cold reset -> smc_fuse_reset_n_delayed_o stays 0
 * Clear pad -> fuse_reset rises
 * Re-assert pad after release does not re-gate (sticky)
 
@@ -856,7 +898,8 @@ check.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|scoreboard |Every access is compared against its stated expectation
+|`CHK-STALL-STICKY` |Evidence token `STALL_COLD_STICKY`: GPIO stall sticky across cold
+|`CHK-STALL-REASSERT` |Evidence token `STALL_REASSERT_STICKY`: re-assert does not re-gate
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
@@ -868,12 +911,14 @@ check.
 
 *Source Module*: `smu_ext_boot_seq_gate_test`
 
-*Objective*: SMU_006 rev2: ext_boot_seq_done_i gates fuse_reset_n_delayed_o release.
+*BFM / Model*: TB pin drive only (no external VIP); `elaboration` firmware mode
+
+*Objective*: SMU_006: ext_boot_seq_done_i gates smc_fuse_reset_n_delayed_o release.
 
 *Test Coverage*:
 
-* Sequence for smu_ext_boot_seq_gate_test (SMU_006 rev 2).
-* Observes fuse_reset_n_delayed_o — the RTL consumer gated by ext_boot_seq_done_i (port_table: gates reset release).
+* Sequence for smu_ext_boot_seq_gate_test (SMU_006).
+* Observes smc_fuse_reset_n_delayed_o — the RTL consumer gated by ext_boot_seq_done_i (port_table: gates reset release).
 * rst_primary_smc_clk_no is NOT gated by this pin (negative control CHK-PRIMARY-NOT-GATED).
 
 *Test Procedure*:
@@ -903,6 +948,8 @@ check.
 
 *Source Module*: `smu_ic_reset_dual_domain_illegal_test`
 
+*BFM / Model*: `ocah_jtag_vip`
+
 *Objective*: Dual SMC IC_RESET ports in one DR: both assert, others idle, release clean.
 
 *Test Coverage*:
@@ -923,7 +970,7 @@ check.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|scoreboard |Every access is compared against its stated expectation
+|`CHK-IC-DUAL` |Evidence token `IC_RESET_DUAL_PACK`: dual packed ovrd; no bleed
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
@@ -934,6 +981,8 @@ check.
 ===== 23 `smu_ic_reset_smc_multi_domain_test`
 
 *Source Module*: `smu_ic_reset_smc_multi_domain_test`
+
+*BFM / Model*: `ocah_jtag_vip`
 
 *Objective*: IC_RESET one-domain-at-a-time with mutual exclusion.
 
@@ -956,7 +1005,7 @@ check.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|scoreboard |Every access is compared against its stated expectation
+|`CHK-IC-DOMAIN` |Evidence token `IC_RESET_DOMAIN_EXCL`: one domain ovrd exclusive
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
@@ -967,6 +1016,8 @@ check.
 ===== 24 `smu_ic_reset_ss_domain_matrix_test`
 
 *Source Module*: `smu_ic_reset_ss_domain_matrix_test`
+
+*BFM / Model*: `ocah_jtag_vip`
 
 *Objective*: IC_RESET SS cold0/warm0 with mutual exclusion.
 
@@ -988,7 +1039,7 @@ check.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|scoreboard |Every access is compared against its stated expectation
+|`CHK-IC-SS` |Evidence token `IC_RESET_SS_COLD_OVRD`: SS cold/warm ovrd exclusive
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_smc`, `sep0_all`.
@@ -999,6 +1050,8 @@ check.
 ===== 25 `smu_jtag_reset_override_test`
 
 *Source Module*: `smu_jtag_reset_override_test`
+
+*BFM / Model*: `ocah_jtag_vip`
 
 *Objective*: IC_RESET override/release on EXT and SMC cold-reset slices.
 
@@ -1021,7 +1074,8 @@ check.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|scoreboard |Every access is compared against its stated expectation
+|`CHK-IC-DEFAULT` |Evidence token `IC_RESET_DEFAULT`: IC_RESET default all-ones
+|`CHK-IC-DOMAIN` |Evidence token `IC_RESET_DOMAIN_EXCL`: single domain override exclusive
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
@@ -1032,6 +1086,8 @@ check.
 ===== 26 `smu_smc_reset_ctrl_test`
 
 *Source Module*: `smu_smc_reset_ctrl_test`
+
+*BFM / Model*: TB pin drive only (no external VIP); `elaboration` firmware mode
 
 *Objective*: Assert cold/primary/periph resets released and stay high after settle.
 
@@ -1051,7 +1107,8 @@ check.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|scoreboard |Every access is compared against its stated expectation
+|`CHK-RST-PRIMARY` |Evidence token `RST_PRIMARY_SMC_1`: SMC primary reset released
+|`CHK-RST-COLD-STABLE` |Evidence token `RST_COLD_STABLE_1`: cold stable released
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `migrated_smc`.
@@ -1064,6 +1121,8 @@ check.
 ===== 27 `smu_clock_stop_coordination_test`
 
 *Source Module*: `smu_clock_stop_coordination_test`
+
+*BFM / Model*: `ocah_jtag_vip`
 
 *Objective*: SMU_ALL_006: DTP boot-stall / IC-RESET / clock-stop aggregation.
 
@@ -1104,6 +1163,8 @@ check.
 
 *Source Module*: `smu_i3c_mem_port_connectivity_test`
 
+*BFM / Model*: `ocah_jtag_vip`
+
 *Objective*: FAB_SMC_031 delivery-only via J2A; no Force / no sep_in.
 
 *Test Coverage*:
@@ -1137,6 +1198,8 @@ check.
 ===== 29 `smu_jtag2axi_vs_smn_same_csr_race_test`
 
 *Source Module*: `smu_jtag2axi_vs_smn_same_csr_race_test`
+
+*BFM / Model*: `ocah_axi_vip`, `ocah_jtag_vip`
 
 *Objective*: Race J2A vs SMN on SCRATCH; coherent winner, no tear.
 
@@ -1173,6 +1236,8 @@ check.
 ===== 30 `smu_system_timer_octs_test`
 
 *Source Module*: `smu_system_timer_octs_test`
+
+*BFM / Model*: `ocah_jtag_vip`
 
 *Objective*: SYS-TIMER-OCTS via J2A + tb_timer_count; no Force / no sep_in.
 
@@ -1216,6 +1281,8 @@ check.
 
 *Source Module*: `smu_xtrig_ctm_illegal_phase_test`
 
+*BFM / Model*: TB pin drive only (no external VIP); `elaboration` firmware mode
+
 *Objective*: Illegal CTM: abort + double-req on product pins; SMC[1:0] clean.
 
 *Test Coverage*:
@@ -1235,7 +1302,7 @@ check.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|scoreboard |Every access is compared against its stated expectation
+|`CHK-XT-ILLEGAL` |Evidence token `XT_ILLEGAL_PHASE`: DTP[9:2] follows abort/double-req pin patterns
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_dtp`, `sep0_all`.
@@ -1248,6 +1315,8 @@ check.
 ===== 32 `smu_dtp_bsr_extest_loopback_test`
 
 *Source Module*: `smu_dtp_bsr_extest_loopback_test`
+
+*BFM / Model*: `ocah_jtag_vip`
 
 *Objective*: EXTEST DR loopback + instruction decode.
 
@@ -1272,7 +1341,7 @@ check.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|scoreboard |Every access is compared against its stated expectation
+|`CHK-BSR-EXTEST` |Evidence token `BSR_EXTEST_TDO_MATCH`: TB BSR scan loopback TDO (declared stub; pad BSR out of scope)
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `migrated_smc`, `sep0_all`.
@@ -1283,6 +1352,8 @@ check.
 ===== 33 `smu_dtp_bsr_ijtag_scan_test`
 
 *Source Module*: `smu_dtp_bsr_ijtag_scan_test`
+
+*BFM / Model*: `ocah_jtag_vip`
 
 *Objective*: EXTEST/SAMPLE_PRELOAD BSR select; no Force / no sep_in.
 
@@ -1326,6 +1397,8 @@ check.
 
 *Source Module*: `smu_dtp_io_stap_smoke_test`
 
+*BFM / Model*: `ocah_jtag_vip`
+
 *Objective*: IO STAP TCK fanout during PTAP scans; no Force / no sep_in.
 
 *Test Coverage*:
@@ -1364,6 +1437,8 @@ check.
 
 *Source Module*: `smu_dtp_jtag2axi_abort_mid_op_test`
 
+*BFM / Model*: `ocah_jtag_vip`
+
 *Objective*: IR+TRST abort of hung OTP SINGLE_OP; fabric VERSION_LO recovers.
 
 *Test Coverage*:
@@ -1399,6 +1474,8 @@ check.
 ===== 36 `smu_dtp_jtag2axi_back_to_back_error_ok_test`
 
 *Source Module*: `smu_dtp_jtag2axi_back_to_back_error_ok_test`
+
+*BFM / Model*: `ocah_jtag_vip`
 
 *Objective*: Unmapped DECERR then immediate VERSION_LO SUCCESS; gate tied open.
 
@@ -1436,6 +1513,8 @@ check.
 
 *Source Module*: `smu_dtp_jtag2axi_smc_error_path_test`
 
+*BFM / Model*: `ocah_jtag_vip`
+
 *Objective*: SMC fabric J2A unmapped DECERR + VERSION_LO recovery; gate tied open.
 
 *Test Coverage*:
@@ -1471,6 +1550,8 @@ check.
 ===== 38 `smu_dtp_jtag2axi_smc_rw_matrix_test`
 
 *Source Module*: `smu_dtp_jtag2axi_smc_rw_matrix_test`
+
+*BFM / Model*: `ocah_jtag_vip`
 
 *Objective*: SMC fabric J2A WSTRB widths + partial 0x55/0xAA on SPM; gate tied open.
 
@@ -1509,6 +1590,8 @@ check.
 
 *Source Module*: `smu_dtp_jtag2axi_wstrb_partial_sticky_test`
 
+*BFM / Model*: `ocah_jtag_vip`
+
 *Objective*: Partial WSTRB merge on SPM A; neighbor B intact; gate tied open.
 
 *Test Coverage*:
@@ -1543,6 +1626,8 @@ check.
 ===== 40 `smu_dtp_jtag_smc_cpu_register_test`
 
 *Source Module*: `smu_dtp_jtag_smc_cpu_register_test`
+
+*BFM / Model*: `ocah_jtag_vip`
 
 *Objective*: CPU_CTRL SCRATCH_15 two-pattern R/W; gate tied open on SEP=0.
 
@@ -1584,6 +1669,8 @@ check.
 
 *Source Module*: `smu_dtp_jtag_smoke_test`
 
+*BFM / Model*: `ocah_jtag_vip`
+
 *Objective*: SMU_ALL_005: PTAP IDCODE + BYPASS + TRST/POR → Test-Logic-Reset.
 
 *Test Coverage*:
@@ -1619,6 +1706,8 @@ check.
 
 *Source Module*: `smu_dtp_otp_smc_complete_rw_test`
 
+*BFM / Model*: `ocah_jtag_vip`
+
 *Objective*: OTP+fabric+shadow MAP RESERVED walk; gated-deny is not claimed.
 
 *Test Coverage*:
@@ -1652,6 +1741,8 @@ check.
 ===== 43 `smu_dtp_otp_smc_map_rw_test`
 
 *Source Module*: `smu_dtp_otp_smc_map_rw_test`
+
+*BFM / Model*: `ocah_jtag_vip`
 
 *Objective*: OTP J2A MAP BIRA allow-path; gate tied open on SEP=0.
 
@@ -1694,6 +1785,8 @@ check.
 ===== 44 `smu_dtp_otp_smc_series_error_test`
 
 *Source Module*: `smu_dtp_otp_smc_series_error_test`
+
+*BFM / Model*: `ocah_jtag_vip`
 
 *Objective*: OTP J2A series NO_INCR + MAP-CTRL hole SLVERR; gate tied open on SEP=0.
 
@@ -1738,6 +1831,8 @@ check.
 
 *Source Module*: `smu_dtp_ptap_otp_instr_scan_test`
 
+*BFM / Model*: `ocah_jtag_vip`
+
 *Objective*: OTP CAPS + SMC TDR echo + SEP SINGLE_OP BYPASS; no MAP R/W.
 
 *Test Coverage*:
@@ -1779,6 +1874,8 @@ check.
 ===== 46 `smu_dtp_smc_stap_smoke_test`
 
 *Source Module*: `smu_dtp_smc_stap_smoke_test`
+
+*BFM / Model*: `ocah_jtag_vip`
 
 *Objective*: SMC STAP TRST + TAP_3DCR via tdo_oen; no Force / no sep_in.
 
@@ -1827,6 +1924,8 @@ check.
 
 *Source Module*: `smu_jtag_chain_enhanced_test`
 
+*BFM / Model*: `ocah_jtag_vip`
+
 *Objective*: PTAP IDCODE + BYPASS after VIP TCK period reprogram; no Force.
 
 *Test Coverage*:
@@ -1868,6 +1967,8 @@ check.
 ===== 48 `smu_smc_dtp_jtag2axi_smoke_test`
 
 *Source Module*: `smu_smc_dtp_jtag2axi_smoke_test`
+
+*BFM / Model*: `ocah_jtag_vip`
 
 *Objective*: SMC fabric J2A SCRATCH_15 + SPM + series INCR; gate tied open on SEP=0.
 
@@ -1912,11 +2013,13 @@ check.
 
 *Source Module*: `smu_no_sep_configuration_test`
 
-*Objective*: SMU_005 rev3: SEP=0 lc_state 0xf0 ONLY (direct SMC path deferred).
+*BFM / Model*: TB pin drive only (no external VIP); `elaboration` firmware mode
+
+*Objective*: SMU_005: SEP=0 lc_state 0xf0 only; the direct SMN->SMC path is not covered.
 
 *Test Coverage*:
 
-* Sequence for smu_no_sep_configuration_test (SMU_005 rev 3).
+* Sequence for smu_no_sep_configuration_test (SMU_005).
 * Proves SEP=0 lc_state_o==8'hf0 only.
 * Direct SMN→SMC path deferred: SYS_IN BlockByDefault + gated JTAG2AXI prevent a frontdoor SMC hit under SEP=0.
 
@@ -1944,39 +2047,45 @@ check.
 [[sec-050-smu_sep_smoke_test]]
 ===== 50 `smu_sep_smoke_test`
 
-*Source Module*: `smu_sep_smoke_test`
+*Source Module*: `smu_sep_smoke_test` (`cocotb_wrapper/tests/`)
 
-*Objective*: SMU_ALL_007: SMC primary-reset export + DTP CTM pulse-sync / [1:0].
+*BFM / Model*: TB pin drive only (no external VIP); `sep_smoke` firmware mode -- the SMC runs the `smu_sep_smoke` arm image from ROM and the real SEP RTL boots under it; verdict through `SmuSepBootScoreboard` on the SEP trace probes
+
+*Objective*: The real SEP RTL comes out of reset under the SMU wrapper, fetches from boot ROM, executes from ICCM and stores to DCCM, after the SMC arm firmware releases it.
 
 *Test Coverage*:
 
-* Sequence for smu_sep_smoke_test (SMU_ALL_007).
-* DV-CARD: SMU_ALL_007 ANCHOR: smu_sep_smoke_test Allocated (narrowed Option B; SEP=0 bare tb_top): SMC-RST-PRIMARY-EXPORT.S1 / S2 DTP-XTRIG-CTM.S2 / S3 No Force/deposit.
-* No SEP-sysif/LC/SEC_DIS/mem/fuse/WDT/alias/CTM.S1/CTP/DTP-CSR.
-* This written plan is the bare `--dut smu_block` / `SEP=0` scenario. The
-  `wrapper.toml` copy of the same name has no per-testcase plan here.
+* Profile pre-conditions are fail-capable: during cold reset `sep_reset_n_o` must read 0 and `sep_fuse_sense_done_o` must read 0 (the real-SEP profile asserts SEP reset and starts with fuse-done inactive); a `no_sep` build fails both.
+* Boot readiness is the conjunction the scoreboard's `boot_ready()` requires: SEP reset observed both asserted and released; fuse-done observed low then high *unless* `sep_fuse_sense_skipped_o` is 1, in which case the sense is replaced by the shadow-register preload and the fuse terms are logged as informational rather than counted; SMC arm firmware signalled `TEST_PASS`; boot-ROM fetch seen; ICCM execution seen; at least 256 retired instructions over at least 16 distinct PCs; and at least one DCCM write.
+* The fuse-sense carve-out reads the DUT node that *selects* the substitute (`sim_skip_fuse_sense` inside the SEP eFuse shadow registers), not a plusarg scan, so a build without `SIMULATION` keeps the fuse terms required.
+* After the SMC arm is seen, 100 000 cycles with `sep_reset_n_o` high and zero retired instructions is a failure with the run-gate state logged, so a released SEP that never fetches is diagnosed rather than timed out.
+* Firmware console bytes (`fw_char_o`) are collected and printed; they are not a pass condition.
 
 *Test Procedure*:
 
 [arabic]
-. Drive `smu_sep_smoke_test_seq` over the wrapper's product interfaces.
-. Compare every access against its stated expectation in the scoreboard.
-. Emit the evidence tokens listed under Checkers.
+. In `smu_base_test`, sample `sep_reset_n_o` and `sep_fuse_sense_done_o` during cold reset and assert both are 0 for this profile.
+. Release reset and, every `clk_smu_i` edge, feed the scoreboard the SEP reset and fuse-done levels, `smc_test_pass_o`, the boot-ROM / ICCM fetch-seen flags, the DCCM write count and any console byte; count retired instructions and distinct PCs from the SEP trace monitor.
+. Return as soon as `boot_ready()` holds; fail if 100 000 post-arm cycles pass with no retire, or if the overall cycle budget (`SMU_SEP_BOOT_MAX_CYCLES`, default 3 000 000) expires.
+. In `check_phase`, re-assert every readiness term individually so the log names which one was missing.
 
 *Checkers*:
 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-SMC-RST-PRIMARY-EXPORT-S1` |Evidence token, emitted only after the compares it names have held
-|`CHK-SMC-RST-PRIMARY-EXPORT-S2` |Evidence token, emitted only after the compares it names have held
-|`CHK-DTP-XTRIG-CTM-S2` |Evidence token, emitted only after the compares it names have held
-|`CHK-DTP-XTRIG-CTM-S3` |Evidence token, emitted only after the compares it names have held
-|`CHK-TIMEOUT-PATHS` |Evidence token, emitted only after the compares it names have held
-|`CHK-NONVAC` |Evidence token, emitted only after the compares it names have held
+|`sep_profile_precondition` |`sep_reset_n_o == 0` and `sep_fuse_sense_done_o == 0` during cold reset
+|`sep_reset_low_high` |SEP reset observed asserted and then released
+|`sep_fuse_sense` |fuse-done observed low then high, or `sep_fuse_sense_skipped_o == 1` with the terms demoted to informational
+|`smc_arm_pass` |SMC arm firmware wrote `TEST_PASS` (`smc_test_pass_o`)
+|`sep_boot_rom_iccm` |boot-ROM fetch seen and ICCM execution seen
+|`sep_retire_floor` |>= 256 retired instructions over >= 16 distinct PCs
+|`sep_dccm_write` |`sep_dccm_write_count_o` advanced above 0
+|`post_arm_idle` |released SEP retired something within 100 000 cycles of the SMC arm
+|`CHK-NONVAC` |emitted by the scoreboard only after every term above held
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `all_with_sep_exec`, `sep_rtl_only`, `smoke`.
+*Pass Criteria*: every readiness term holds and the scoreboard reports zero errors. Evidence tokens: `SEP_BOOT_ROM_OK`, `SEP_ICCM_OK`, `SEP_DCCM_WRITE_OK`. Enrolled in: `all`, `all_with_sep_exec`, `sep_rtl_only`, `smoke`.
 
 '''''
 
@@ -1987,6 +2096,8 @@ check.
 
 *Source Module*: `smu_smc_mailbox_int_test`
 
+*BFM / Model*: `ocah_jtag_vip`
+
 *Objective*: SMU_ALL_004: SMC external mailbox IRQ width and bit mapping (SEP=0).
 
 *Test Coverage*:
@@ -1995,7 +2106,7 @@ check.
 * DV-CARD: SMU_ALL_004 ANCHOR: smu_smc_mailbox_int_test Approved OWNS (card r8 / plan r3): SMC-MBX-IRQ-EXT.S2 — Width equals NUM_MAILBOXES (32) at the SMU boundary, observed at the DUT port width rather than a testbench declaration.
 * Mailbox 0 and mailbox 31 raise their outbound write-threshold IRQ over the JTAG2AXI frontdoor, and the boundary vector must equal `baseline | 1<<idx` and return to baseline when the enable is cleared.
 * CHANNELS.S2/S3 and EXT.S1 are owned by SMU_ALL_008 — out of scope.
-* No Force/deposit on ext_mailbox_interrupts.
+* No mailbox MMIO; no Force/deposit on smc_ext_mailbox_interrupts.
 
 *Test Procedure*:
 
@@ -2022,6 +2133,8 @@ check.
 ===== 52 `smu_smc_mailbox_sanity_test`
 
 *Source Module*: `smu_smc_mailbox_sanity_test`
+
+*BFM / Model*: `ocah_jtag_vip`
 
 *Objective*: Mailbox outbound-0 CSR decode + IRQEN R/W; no FW doorbell.
 
@@ -2059,6 +2172,8 @@ check.
 
 *Source Module*: `smu_smc_security_demote_pm_test`
 
+*BFM / Model*: TB pin drive only (no external VIP); `elaboration` firmware mode
+
 *Objective*: SEP=0 demote outputs + default lc_state observe.
 
 *Test Coverage*:
@@ -2078,7 +2193,7 @@ check.
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|scoreboard |Every access is compared against its stated expectation
+|`CHK-DEMOTE-TIEOFF` |Evidence token `DEMOTE_TIEOFF_OBS`: SEP=0 demote hardwire observe
 |===
 
 *Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `sep0_all`, `migrated_smc`.
@@ -2088,37 +2203,42 @@ check.
 [[sec-054-smu_smc_smoke_test]]
 ===== 54 `smu_smc_smoke_test`
 
-*Source Module*: `smu_smc_smoke_test`
+*Source Module*: `smu_smc_smoke_test` (`cocotb_wrapper/tests/`)
 
-*Objective*: SMU_ALL_003: SMC dual-network AXI4-Lite LP + 64-bit width.
+*BFM / Model*: TB pin drive only (no external VIP); `smc_smoke` firmware mode -- the SMC runs the `smu_smc_smoke` image from ROM under the `no_sep` wrapper build; verdict through `SmuSmcBootScoreboard`
+
+*Objective*: SMC firmware boots from ROM and reaches its architectural PASS under the production SMU wrapper with SEP disabled, with instruction-memory and scratch activity observed.
 
 *Test Coverage*:
 
-* Sequence for smu_smc_smoke_test (SMU_ALL_003).
-* DV-CARD: SMU_ALL_003 ANCHOR: smu_smc_smoke_test Approved OWNS (card r6 / plan r3): SMC-FAB-DUAL-NET.S2 — local peripherals/config registers use AXI4-Lite LP SMC-FAB-DUAL-NET.S3 — both networks carry 64-bit data without truncation Bare tb_top SEP=0: hierarchical CONNECTIVITY observe only (no Force/deposit).
-* Independent expects from pinned hw/sys/smc/doc/fabric.adoc §Network Characteristics / §AXI Common Signal Widths / §AXI ID Widths / §Traffic Subordinates (AXI4-Lite Low-Performance rows) @ffc8cdcc…
-* This written plan is the bare `--dut smu_block` / `SEP=0` scenario. The
-  `wrapper.toml` copy of the same name has no per-testcase plan here.
+* Profile pre-conditions are fail-capable: during cold reset `sep_reset_n_o` must read 1 and after release `sep_fuse_sense_done_o` must read 0 (the `no_sep` profile ties SEP reset high and fuse-done low); a `sep_rtl` build fails the first.
+* Firmware boot is one reset-to-completion transaction; reset timing is randomised by `smu_base_test`, and every piece of evidence is a DUT counter or an architectural pass/fail signal, not a TB-side inference.
+* Both firmware outcomes are wired: `smc_test_fail_o` asserting fails the run at that cycle; `smc_test_pass_o` ends it.
+* Activity floors make a silent PASS impossible: the scoreboard requires `smc_rom_read_count_o > 0` and `smc_scratch_write_count_o > 0` at check time, and the final sample is taken two edges after PASS because the TB write counter updates one edge after the combinational pass flag.
 
 *Test Procedure*:
 
 [arabic]
-. Drive `smu_smc_smoke_test_seq` over the wrapper's product interfaces.
-. Compare every access against its stated expectation in the scoreboard.
-. Emit the evidence tokens listed under Checkers.
+. In `smu_base_test`, assert `sep_reset_n_o == 1` during cold reset and `sep_fuse_sense_done_o == 0` after release.
+. Log the bring-up state (`smc_fuse_sense_done_o`, `smc_fuse_reset_n_delayed_o`, `rst_primary_smc_clk_n_o`, `smc_init_mem_done_o`, `rst_cold_n_o`, `powergood_o`).
+. Every `clk_smu_i` edge, sample `smc_test_pass_o`, `smc_test_fail_o`, `smc_rom_read_count_o` and `smc_scratch_write_count_o` into the scoreboard; raise on FAIL.
+. On PASS, wait two edges, re-sample the counters, and return; fail on the cycle budget (`SMU_SMC_BOOT_MAX_CYCLES`, default 2 000 000).
+. In `check_phase`, require PASS seen, FAIL not seen, and both activity counters above 0.
 
 *Checkers*:
 
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-SMC-FAB-DUAL-NET-S2` |Evidence token, emitted only after the compares it names have held
-|`CHK-SMC-FAB-DUAL-NET-S3` |Evidence token, emitted only after the compares it names have held
-|`CHK-TIMEOUT-PATHS` |Evidence token, emitted only after the compares it names have held
-|`CHK-NONVAC` |Evidence token, emitted only after the compares it names have held
+|`no_sep_profile_precondition` |`sep_reset_n_o == 1` during cold reset and `sep_fuse_sense_done_o == 0` after release
+|`smc_test_fail` |`smc_test_fail_o` never asserted (a FAIL ends the run at that cycle)
+|`smc_test_pass` |`smc_test_pass_o` asserted before the cycle budget expired
+|`smc_rom_read_floor` |`smc_rom_read_count_o > 0`
+|`smc_scratch_write_floor` |`smc_scratch_write_count_o > 0`
+|`CHK-NONVAC` |emitted by the scoreboard only after every term above held
 |===
 
-*Pass Criteria*: every checker above holds and the scoreboard reports zero errors. Enrolled in: `all`, `smoke`.
+*Pass Criteria*: PASS observed, FAIL never observed, both activity counters above 0, scoreboard reports zero errors. Evidence tokens: `SMC_ROM_READ_OK`, `SMC_SCRATCH_WRITE_OK`, `SMC_TEST_PASS_OK`. Enrolled in: `all`, `all_with_sep_exec`, `smoke`.
 
 '''''
 
@@ -2126,6 +2246,8 @@ check.
 ===== 55 `smu_smc_wdt_sanity_test`
 
 *Source Module*: `smu_smc_wdt_sanity_test`
+
+*BFM / Model*: `ocah_jtag_vip`
 
 *Objective*: CORE0 WDT magic unlock and CMP program evidence.
 
@@ -2163,6 +2285,8 @@ check.
 
 *Source Module*: `smu_smc_wdt_timeout_irq_test`
 
+*BFM / Model*: `ocah_jtag_vip`
+
 *Objective*: CORE0 WDT first timeout sets sticky WDOGIP0.
 
 *Test Coverage*:
@@ -2195,87 +2319,1152 @@ check.
 
 ==== SMU_WRAPPER
 
-`--dut smu` is the wrapper bench, and `testlists/wrapper.toml` enrols the
-whole SMU regression on it -- the SEP=0 entries planned above plus the SEP=1
-names below. The SEP=1 names have no written per-testcase plan in this
-document: this section does not invent an objective, a sequence name, or a
-checker row for any of them.
+`--dut smu` is the wrapper bench, and `testlists/wrapper.toml` enrols the whole
+SMU regression on it -- the SEP=0 entries planned above plus the SEP=1 and
+wrapper-native names below.
 
-`smu_sep_smoke_test` (<<sec-050-smu_sep_smoke_test>>) and
-`smu_smc_smoke_test` (<<sec-054-smu_smc_smoke_test>>) have written plans above
-describing the SEP=0 `tb_top` scenarios of those names. The copies enrolled
-here share the name only; see `wrapper.toml`.
+Every entry in this section was derived from the test body and its sequence
+under `common/seq_lib/`, not from the testlist name. Where a sequence's own
+docstring records what a leaf does *not* prove, that wording is carried into
+Test Coverage rather than dropped.
 
-The sequences live under `common/seq_lib/`, shared by both DUTs (for example
-`smu_sep_aes_seq` / `SmuSepAesSeq`, not a fabricated `*_test_seq`).
-Several of those sequences already raise named tokens. Examples, not a
-complete plan: `CHK-SEP-BOOT-HEALTH-VERDICT`, `CHK-SEP-DBG-GATED`,
-`CHK-SEP-DBG-OPEN`, `CHK-SEP-LCC-STATE-DECODE`, `CHK-SEP-LCC-FW-STAGES`,
-`CHK-DTP-SEP-SMC-CHAIN-BLOCKED`, `CHK-SEP-ENTROPY-FLOWS`, `CHK-NONVAC`.
+Two things are worth reading before the entries:
 
-[cols="2,2",options="header",]
+* *The verdict is usually the firmware's.* Most of these boot a real SEP DV
+  image that parks in a named terminal loop, and the run is classified by which
+  loop PC the SEP settles on. `common/seq_lib/sep_terminal_loop_seq.py` resolves
+  those loop addresses from the staged `.sym`, refuses a run whose ITCM image
+  and symbol table come from different firmwares, and reports a fail loop the
+  linker garbage-collected as a path *not covered* rather than as passed. Its
+  tokens are `+++CHK-<NAME>-FRONTDOOR+++` and `+++CHK-<NAME>-VERDICT+++`, where
+  `<NAME>` is the sequence's own `NAME` upper-cased, so the underscores in e.g.
+  `CHK-SEP_AES-VERDICT` are deliberate.
+* *`smu_sep_smoke_test` and `smu_smc_smoke_test` are not listed again here.*
+  <<sec-050-smu_sep_smoke_test>> and <<sec-054-smu_smc_smoke_test>> describe the
+  `cocotb_wrapper/tests/` bodies those names enrol, which are the only bodies of
+  those names in the tree.
+
+[[sec-057-smu_wrapper_elaboration_no_sep_test]]
+===== 57 `smu_wrapper_elaboration_no_sep_test`
+
+*Source Module*: `smu_wrapper_elaboration_test`
+
+*BFM / Model*: TB pin drive only (no external VIP); `elaboration` firmware mode, so no CPU image is staged
+
+*Objective*: Wrapper elaborates under the `no_sep` build profile and its reset legs propagate.
+
+*Test Coverage*:
+
+* `SmuWrapperElaborationSeq` takes the `+expected_sep=0` branch (`_run_legacy_no_sep`), which is a different check set from the SEP=1 branch of the same module.
+* `sep_enabled_o` (the compile-time `SMU_NO_SEP` define) is compared against `+expected_sep` from the testlist -- two independent inputs, so a testlist entry pointing this leaf at the wrong build fails.
+* `obs_powergood_stable_o` is the DUT synchronizer output with a sticky `low_seen`, not an echo of the TB's own `powergood_i`.
+* Cold reset is asserted and released over several randomised hold lengths and the propagation is observed each time.
+* No SEP is instantiated in this profile, so nothing here carries SEP, lifecycle or crypto credit.
+
+*Test Procedure*:
+
+[arabic]
+. Sample `sep_enabled_o` and compare it against `+expected_sep=0`.
+. Wait for `obs_powergood_stable_o` to rise, having first observed it low.
+. Wait for `rst_cold_n_o` to release and stamp step S2 in simulation time.
+. Assert and release cold reset over the randomised hold iterations and observe the propagation each time.
+. Run the non-vacuity fence over the S1/S2/S3/PASS step stamps, then emit `WRAP_ELAB_OK` from the test body.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
 |===
-|Test |`wrapper.toml` groups
-|`smu_wrapper_elaboration_no_sep_test` |`all`, `all_with_sep_exec`, `build_smoke`, `smoke`
-|`smu_wrapper_elaboration_sep_rtl_test` |`all`, `all_with_sep_exec`, `build_smoke`, `sep_rtl_only`, `smoke`
-|`smu_smc_smoke_test` |`all`, `all_with_sep_exec`, `smoke`
-|`smu_sep_smoke_test` |`all`, `all_with_sep_exec`, `sep_rtl_only`, `smoke`
-|`smu_sep_boot_health_test` |`sep_real_fw`
-|`smu_sep_sanity_test` |`sep_real_fw`
-|`smu_sep_modules_test` |`sep_real_fw`
-|`smu_sep_aes_test` |`sep_real_fw`
-|`smu_sep_otbn_test` |`sep_real_fw`
-|`smu_sep_ext_axi_test` |`sep_smc_sram_blocked`
-|`smu_sep_efuse_test` |`sep_real_fw`
-|`smu_sep_wdt_test` |`sep_real_fw`
-|`smu_sep_dma_test` |`sep_real_fw`
-|`smu_sep_bidirect_test` |`sep_real_fw`
-|`smu_sep_remap_test` |`sep_real_fw`
-|`smu_sep_rom_tcm_load_test` |`sep_real_fw`
-|`smu_sep_spi_test` |`sep_real_fw`
-|`smu_sep_smc_xbar_test` |`sep_smc_sram_blocked`
-|`smu_sep_smc_notify_test` |`sep_real_fw`
-|`smu_wrapper_jtag_ptap_test` |`sep_probe`
-|`smu_sep_lcc_flow_test` |`sep_real_fw`
-|`smu_sep_lcc_state_test_dev_test` |`sep_lifecycle`
-|`smu_sep_lcc_state_prod_test` |`sep_lifecycle`
-|`smu_sep_lcc_state_prod_end_test` |`sep_lifecycle`
-|`smu_sep_lcc_state_rma_chiplet_test` |`sep_lifecycle`
-|`smu_sep_dbg_gating_test_dev_test` |`sep_lifecycle`
-|`smu_sep_dbg_gating_prod_end_test` |`sep_lifecycle`
-|`smu_dtp_sep_smc_chain_prod_test` |`sep_chain`
-|`smu_dtp_sep_smc_chain_prod_end_test` |`sep_chain`
-|`smu_sep_entropy_test` |`sep_entropy`
+|Checker |Description
+|`CHK-WRAPPER-SEP-BUILD-PROFILE` |`sep_enabled_o` equals the `+expected_sep` the testlist declares
+|`CHK-WRAPPER-POWERGOOD` |`obs_powergood_stable_o` was observed low and then released within the bounded wait
+|`CHK-WRAPPER-RST-COLD-RELEASE` |`rst_cold_n_o` released after bring-up
+|`CHK-WRAPPER-RST-PROPAGATION` |cold reset assert/release propagated on every randomised iteration
+|`CHK-NONVAC` |S1 < S2 < S3 < PASS ordering holds in *simulation* time, each transition advances at least one clock period, and the fail-capable DUT comparison count is above the floor
+|`CHK-WRAP-ELAB` |`WRAP_ELAB_OK`, emitted by the test body after the sequence's own compares logged above
 |===
+
+*Pass Criteria*: every checker above holds and the run reports zero errors. Enrolled in: `smoke`, `build_smoke`, `smoke_sep0`, `all`, `all_with_sep_exec`.
 
 '''''
+[[sec-058-smu_wrapper_elaboration_sep_rtl_test]]
+===== 58 `smu_wrapper_elaboration_sep_rtl_test`
 
-=== Counts
+*Source Module*: `smu_wrapper_elaboration_test`
+
+*BFM / Model*: TB pin drive only (no external VIP); `elaboration` firmware mode, so no CPU image is staged
+
+*Objective*: SMU_ALL_001: the SEP=1 wrapper composes SMC+SEP+DTP+xbar on one clock/reset domain and exports the SEP lifecycle state.
+
+*Test Coverage*:
+
+* `+expected_sep=1` selects `_run_smu_all_001`, the DV-CARD SMU_ALL_001 path; this is the only leaf that runs it.
+* Hierarchical clock identity is sampled at the SMC, SEP, DTP and xbar levels and each must equal the top-level `clk_smu` level on the same edge.
+* The three clock domains (`clk_smu`, telemetry/reference, SEP watchdog) must have distinct periods, and their level transitions counted over a fixed 240 ns window must differ accordingly -- a coincidence is ruled out by the period check, not assumed.
+* `lc_state_o` at the SMU boundary is compared against the SEP-sourced lifecycle value, so the export is a compare and not a tie-off read.
+* S3 is scoped: `port_group=smu_axi,lifecycle` is proven; `jtag,xtrig` is logged explicitly as `NOT-PROVEN` because this step drives neither.
+
+*Test Procedure*:
+
+[arabic]
+. Assert `sep_enabled_o == 1` -- this leaf refuses to run against a `no_sep` build.
+. Sample the SMC/SEP/DTP/xbar hierarchical clock levels against the top-level clock on the same edges.
+. Observe the primary SMC reset through a cold assert and a cold deassert.
+. Count level transitions on three DUT clock nodes over 240 ns and compare them against the configured periods, which must themselves be distinct.
+. Read the SEP lifecycle value and compare `lc_state_o` against it.
+. Check the timeout-path inventory carries a finite bound and a last-state diagnostic, then run the non-vacuity fence.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SMU-COMPOSE-BLOCKS-S1` |`sep=1`, blocks `smc+sep+dtp+xbar` present, hierarchical clock identity holds at every sampled level
+|`CHK-SMU-COMPOSE-BLOCKS-S2` |`clk_smu` domain with `rst_primary_smc_clk_no`: last sampled clock levels and the primary reset agree
+|`CHK-SMU-COMPOSE-BLOCKS-S3` |`port_group=smu_axi,lifecycle` proven; `port_group=jtag,xtrig` is logged `NOT-PROVEN` in the same step
+|`CHK-SMU-PORT-CLK-RST-S1` |cold assert and cold deassert both observed on `rst_primary_smc`
+|`CHK-SMU-PORT-CLK-RST-S3` |telemetry and SEP-watchdog clocks are separate from `clk_smu_i`: distinct periods and distinct 240 ns transition counts
+|`CHK-SMU-SEP-PARAM-S1` |`sep=1`, xbar present, and `lc_state_o` matches the SEP-sourced lifecycle value
+|`CHK-TIMEOUT-PATHS` |the S8 timeout inventory carries a finite bound and a last-state diagnostic on every path
+|`CHK-NONVAC` |step ordering, simulation-time advance and the DUT comparison floor all hold
+|===
+
+*Pass Criteria*: every checker above holds and the run reports zero errors. Enrolled in: `smoke`, `build_smoke`, `all`, `sep_rtl_only`, `all_with_sep_exec`.
+
+'''''
+[[sec-059-smu_wrapper_jtag_ptap_test]]
+===== 59 `smu_wrapper_jtag_ptap_test`
+
+*Source Module*: `smu_wrapper_jtag_ptap_test`
+
+*BFM / Model*: `ocah_jtag_vip` (`OcahJtagMasterDriver` on the primary TAP); the SEP runs the `hello_world` DV image
+
+*Objective*: The primary TAP answers on the production wrapper while the SEP is executing, and TAP access does not disturb it.
+
+*Test Coverage*:
+
+* S1 IDCODE matches the RTL default and TDO is resolved, so the TAP answers rather than reading back as an unresolved 0.
+* S2 BYPASS is a one-bit register: over an 8-bit scan TDO returns the pattern shifted up one bit. IDCODE alone can be satisfied by a stuck chain; the one-bit delay cannot.
+* S3 both results hold at a second TCK period, so neither is tied to one clock ratio against `clk_smu`.
+* S4 the SEP retire count still advances across the TAP accesses -- the part specific to this profile.
+* S5 the IC_RESET override bits are clear, which every other wrapper leaf rests on: an asserted override holds SMC cold/fuse reset and the SEP never fetches.
+
+*Test Procedure*:
+
+[arabic]
+. Build the primary TAP through `wrapper_jtag` and read IDCODE, checking the value and that TDO is resolved.
+. Shift an 8-bit pattern through BYPASS and compare TDO against the pattern delayed by exactly one bit.
+. Repeat both at a second TCK period.
+. Sample the SEP retire count before and after the TAP accesses and require it to have advanced.
+. Read back the IC_RESET override TDR and require the SMC and SEP override bits to be clear.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-WRAPPER-PTAP-IDCODE` |IDCODE read at the sampled TCK period matches the RTL default and TDO is resolved
+|`CHK-WRAPPER-PTAP-BYPASS` |one-bit register at each TCK period; a stuck chain cannot produce the TDI delay
+|`CHK-WRAPPER-PTAP-SEP-LIVE` |the SEP retire count advanced across the TAP accesses
+|`CHK-WRAPPER-IC-RESET-CLEAR` |SMC override bits and the SEP override read back clear, so the base test's TAP reset walk really does clear the TDR
+|===
+
+*Pass Criteria*: every checker above holds and the run reports zero errors. Enrolled in: `all`, `sep_probe`, `all_with_sep_exec`.
+
+'''''
+[[sec-060-smu_sep_boot_health_test]]
+===== 60 `smu_sep_boot_health_test`
+
+*Source Module*: `smu_sep_boot_health_test`
+
+*BFM / Model*: the SEP DV image `hw/sys/sep/dv/fw/tests/sep_smu_boot_health` (on-chip verdict), classified through the SEP trace probes
+
+*Objective*: The SEP boots the real DV boot-health image and parks in its own pass loop, with the boot order observed.
+
+*Test Coverage*:
+
+* Runs the same image the internal SMU suite boots, not a minimal freestanding smoke.
+* The verdict is the firmware's: it parks in one of two named terminal loops and the run is classified by which loop PC the SEP settles on.
+* Loop addresses come from the staged `.sym`, so the contract survives a firmware relink.
+* `boot_rom < iccm < pass_loop` first-seen ordering is asserted, so a pass loop reached without a real boot fails.
+* SEP-local cold scratch7 (`0x1080_2038`) marker observation is out of scope here.
+
+*Test Procedure*:
+
+[arabic]
+. Load the staged symbol table and resolve the pass and fail loop addresses; a pass loop outside the ICCM window is a failure.
+. Run the SEP and sample `sep_trace_valid_o` / `sep_pc_o` each `clk_smu` edge, recording first boot-ROM fetch, first ICCM execution and first pass-loop PC.
+. Stop at the first terminal loop entered and classify the run by that PC.
+. Assert the boot-ROM, ICCM and ordering conditions, then emit the evidence tokens.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SEP-BOOT-HEALTH-FRONTDOOR` |first retired PC is the boot-ROM reset vector, and both boot-ROM and ICCM execution were seen
+|`CHK-SEP-BOOT-HEALTH-VERDICT` |the pass loop was reached and no fail loop was entered
+|`CHK-NONVAC` |`boot_rom < iccm < pass_loop` first-seen ordering holds
+|===
+
+*Pass Criteria*: every checker above holds and the run reports zero errors. Evidence tokens: `SEP_REAL_FW_BOOT_OK`, `SEP_REAL_FW_PASS_LOOP_OK`. Enrolled in: `all`, `sep_real_fw`, `all_with_sep_exec`.
+
+'''''
+[[sec-061-smu_sep_rom_tcm_load_test]]
+===== 61 `smu_sep_rom_tcm_load_test`
+
+*Source Module*: `smu_sep_rom_tcm_load_test`
+
+*BFM / Model*: the SEP DV image `hw/sys/sep/dv/fw/tests/rom_no_tcm_preload_mem_init` running from boot ROM with `+sep_no_tcm_preload`; verdict through the SEP trace probes and the STDOUT mailbox
+
+*Objective*: The SEP loads its own ICCM from boot ROM and executes it, with no testbench TCM preload.
+
+*Test Coverage*:
+
+* Every other real-firmware anchor here has its ICCM/DCCM placed by the testbench backdoor; that backdoor hides the CPU loading its own TCM. This leaf is the one that closes the gap.
+* `+sep_no_tcm_preload` leaves the TCM holding zeroes when the CPU starts, so ICCM execution is only reachable if the firmware's own DMA put code there.
+* The image writes and reads back DCCM from ROM-fetched code, stages a routine into SEP SRAM as raw instruction words, opens the secure-DMA range, disables local-alias remap, DMAs SRAM to ICCM, and jumps to the copy.
+* The ICCM PC is checked separately from the mailbox verdict: reaching the DMA target is what distinguishes a real load from a firmware that reported PASS some other way.
+
+*Test Procedure*:
+
+[arabic]
+. Run with `+sep_no_tcm_preload` so no ICCM/DCCM image is backdoored.
+. Observe boot-ROM execution, then the DMA-done marker, then a retired PC inside the ICCM window.
+. Read the STDOUT mailbox for `TEST_MAGIC_PASS`.
+. Assert all three in order before emitting the evidence tokens.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SEP-ROM-TCM-LOAD` |ROM execution, then `dma_done`, then ICCM execution at the DMA target, then `TEST_MAGIC_PASS`; the TCM was zero at reset
+|`CHK-SEP-ROM-TCM-NONVAC` |no TB TCM preload was applied, so ICCM execution is only possible because the firmware's own DMA put code there
+|===
+
+*Pass Criteria*: every checker above holds and the run reports zero errors. Evidence tokens: `SEP_ROM_TCM_LOAD_OK`, `SEP_SELF_LOADED_ICCM_OK`. Enrolled in: `all`, `sep_real_fw`, `all_with_sep_exec`.
+
+'''''
+[[sec-062-smu_sep_sanity_test]]
+===== 62 `smu_sep_sanity_test`
+
+*Source Module*: `smu_sep_sanity_test`
+
+*BFM / Model*: the SEP DV image `hw/sys/sep/dv/fw/tests/sep_smu_sanity` (HMAC + KMAC KAT, on-chip verdict); STDOUT mailbox handshake at `0x8000_0000`
+
+*Objective*: The SEP runs SHA-256 (HMAC) and SHA3-256 (KMAC) known-answer vectors on-chip and reports PASS through the mailbox.
+
+*Test Coverage*:
+
+* The firmware programs its own SEP outbound filter, runs both KATs, then reports `TEST_MAGIC0 -> TEST_MAGIC_PASS` per `hw/sys/sep/dv/fw/include/tb.h`.
+* The verdict is the firmware's, not the testbench's: a PASS means the SEP compared both digests against the NIST vectors on-chip. The TB only observes.
+* Five `STAGE_BEACON` words (`0xB1B0B0B_<id>`) give stage-level progress -- main entered, filter programmed, HMAC entered, HMAC done / KMAC entered, KMAC done -- and all five are required.
+* Beacon 0 follows `sep_outbound_filter_init()`: a store ahead of it faults against the `BlockByDefault=1` outbound filter and kills the image, so the beacon's absence is a real failure, not a missing print.
+
+*Test Procedure*:
+
+[arabic]
+. Boot the image and watch the SEP trace for ICCM execution.
+. Collect the five stage beacons in order as the firmware publishes them.
+. Read the STDOUT mailbox and require `TEST_MAGIC_PASS`.
+. Assert the `iccm exec < beacon 1..4 < PASS magic` ordering before emitting the tokens.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SEP-SANITY-STAGES` |all five stage beacons were reached in the SEP: the filter, HMAC and KMAC stages were each entered and left
+|`CHK-SEP-SANITY-KAT` |the firmware wrote `TEST_MAGIC_PASS` -- both known-answer vectors matched on-chip
+|`CHK-NONVAC` |`iccm exec < beacon 1..4 < PASS magic` ordering holds
+|===
+
+*Pass Criteria*: every checker above holds and the run reports zero errors. Evidence tokens: `SEP_REAL_FW_SANITY_OK`, `SEP_HMAC_KMAC_KAT_OK`. Enrolled in: `all`, `sep_real_fw`, `all_with_sep_exec`.
+
+'''''
+[[sec-063-smu_sep_modules_test]]
+===== 63 `smu_sep_modules_test`
+
+*Source Module*: `smu_sep_modules_test`
+
+*BFM / Model*: the SEP DV image `hw/sys/sep/dv/fw/tests/sep_smu_modules` (on-chip verdict); OCAH-local ESRC noise driver under `+esrc_noise_force`
+
+*Objective*: The SEP module matrix -- AES, HMAC and KMAC in this build -- clears on-chip, with the failing module named.
+
+*Test Coverage*:
+
+* The image walks the SEP module touch-points its stage mask enables and parks in a per-stage terminal loop, so a failure names the module rather than reporting "firmware did not pass".
+* The stage mask is compile-time and the linker garbage-collects loops for disabled stages, so the watch set is derived from the symbol table: a stage that is not built has no loop symbol, and a stage that is built must have one.
+* `+esrc_noise_force` supplies raw noise the ring oscillators cannot generate under Verilator.
+* This is a matrix over module reachability, not a cryptographic depth test; the dedicated AES vector is `smu_sep_aes_test`.
+
+*Test Procedure*:
+
+[arabic]
+. Start the ESRC noise driver.
+. Resolve the per-stage pass and fail loop symbols from the staged `.sym`, treating an absent symbol as a stage not covered rather than a stage passed.
+. Run the SEP and classify by the terminal loop PC reached.
+. Assert the boot-ROM / ICCM / ordering conditions and emit the tokens.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SEP-MODULES-FRONTDOOR` |first retired PC is the boot-ROM reset vector, boot-ROM and ICCM execution both seen
+|`CHK-SEP-MODULES-MATRIX` |every enabled stage cleared on-chip; the pass loop was reached and no per-stage fail loop was entered
+|`CHK-NONVAC` |`boot_rom < iccm < pass_loop` ordering holds
+|===
+
+*Pass Criteria*: every checker above holds and the run reports zero errors. Evidence tokens: `SEP_REAL_FW_MODULES_OK`, `SEP_MODULE_MATRIX_OK`. Enrolled in: `all`, `sep_real_fw`, `all_with_sep_exec`.
+
+'''''
+[[sec-064-smu_sep_aes_test]]
+===== 64 `smu_sep_aes_test`
+
+*Source Module*: `smu_sep_aes_test`
+
+*BFM / Model*: the SEP DV image `hw/sys/sep/dv/fw/tests/sep_smu_aes` (on-chip KAT verdict); OCAH-local ESRC noise driver under `+esrc_noise_force`
+
+*Objective*: One AES-128 ECB known-answer vector is encrypted and compared on-chip, with the alert status checked before the image parks.
+
+*Test Coverage*:
+
+* A second, independent vector alongside the AES stage of `smu_sep_modules_test`, on a dedicated image whose only subject is AES.
+* AES masking reseeds its PRNG from crypto-EDN, so the image brings the entropy stack up first and parks in a *distinct* fail loop if that does not complete -- the prerequisite and the cipher stay separately attributable.
+* The sequence refuses to run without `+esrc_noise_force`: without driven noise the image stalls at the ESRC boot gate and never reaches the cipher, which would otherwise look like an AES failure.
+* The cycle budget clears the ESRC boot health-test window (2048 samples at div64) with margin; the KAT itself is a few thousand cycles.
+
+*Test Procedure*:
+
+[arabic]
+. Assert `+esrc_noise_force` was passed, then start the ESRC noise driver.
+. Resolve `smu_sep_aes_pass_loop`, `smu_sep_aes_fail_loop` and `smu_sep_aes_fail_entropy_loop` from the staged `.sym`.
+. Run the SEP and classify by the terminal loop PC reached.
+. Assert the front-door and ordering conditions and emit the tokens.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`+CHK-SEP_AES-FRONTDOOR+` |first retired PC is the boot-ROM reset vector, boot-ROM and ICCM execution both seen
+|`+CHK-SEP_AES-VERDICT+` |the pass loop was reached and neither the AES nor the entropy fail loop was entered
+|`CHK-NONVAC` |`boot_rom < iccm < pass_loop` ordering holds
+|===
+
+*Pass Criteria*: every checker above holds and the run reports zero errors. Evidence tokens: `SEP_REAL_FW_AES_OK`, `SEP_AES_ECB128_KAT_OK`. Enrolled in: `all`, `sep_real_fw`, `all_with_sep_exec`.
+
+'''''
+[[sec-065-smu_sep_otbn_test]]
+===== 65 `smu_sep_otbn_test`
+
+*Source Module*: `smu_sep_otbn_test`
+
+*BFM / Model*: the SEP DV image `hw/sys/sep/dv/fw/tests/sep_smu_otbn`, classified through the SEP trace probes
+
+*Objective*: The five OTBN CSRs are reachable through the SEP outbound fabric -- a reachability claim, not an OTBN functional one.
+
+*Test Coverage*:
+
+* The image writes INTR_ENABLE, INTR_STATE, ERR_BITS, INSN_CNT and LOAD_CHECKSUM and parks.
+* *What this proves*: reaching the pass loop means those five writes completed without a store access fault. The SEP outbound fabric is `BlockByDefault=1`, so a write that missed every filter window would be isolated and answered with an error, the EL2 would trap, and the image would spin in its trap handler instead of parking.
+* *What it does not prove*: the firmware's own pass/fail branch is vacuous -- it keys off `g_otbn_status`, a file-scope `volatile int` that nothing ever assigns, so the fail branch is unreachable object code. A PASS here carries no OTBN functional content. There is no IMEM/DMEM load and no EXECUTE.
+* The fail-loop symbol is watched anyway: it costs nothing and stops being dead the day the firmware sets that variable.
+* This image needs no entropy -- it touches neither AES masking nor the Key Manager.
+
+*Test Procedure*:
+
+[arabic]
+. Resolve the pass and fail loop symbols from the staged `.sym`.
+. Run the SEP and classify by the terminal loop PC reached.
+. Assert the front-door and ordering conditions and emit the token.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`+CHK-SEP_OTBN-FRONTDOOR+` |first retired PC is the boot-ROM reset vector, boot-ROM and ICCM execution both seen
+|`+CHK-SEP_OTBN-VERDICT+` |the pass loop was reached -- i.e. the five CSR writes did not fault -- and no fail loop was entered
+|`CHK-NONVAC` |`boot_rom < iccm < pass_loop` ordering holds
+|===
+
+*Pass Criteria*: every checker above holds and the run reports zero errors. Evidence tokens: `SEP_REAL_FW_OTBN_CSR_REACHABLE`. Enrolled in: `all`, `sep_real_fw`, `all_with_sep_exec`.
+
+'''''
+[[sec-066-smu_sep_entropy_test]]
+===== 66 `smu_sep_entropy_test`
+
+*Source Module*: `smu_sep_entropy_test`
+
+*BFM / Model*: the SEP DV image `hw/sys/sep/dv/fw/tests/sep_smu_entropy_bringup`; OCAH-local ESRC noise driver under `+esrc_noise_force`
+
+*Objective*: The SEP firmware brings up ESRC -> CSRNG -> EDN and entropy is proven to flow, not merely to have been programmed.
+
+*Test Coverage*:
+
+* The image programs the stack through the driver the SEP DV tree already ships, in the order that driver documents.
+* Programming the stack is *not* the claim: a firmware that wrote the registers into a dead block would reach its pass loop just the same.
+* The claim is checked at four points down the chain -- `esrc_noise_active` (lane-0's `dcor.noise_i` tracks the driven bit, so the force took), `drbg_seed_valid` (ESRC produced a seed the health tests accepted), `drbg_es_ack` (CSRNG consumed it) and `drbg_genbits_vld` (the CTR_DRBG produced genbits).
+* Bit-exact prediction of the genbits is not attempted; that needs the golden chain in `hw/sys/sep/dv` and belongs there.
+* This is the anchor the AES and OTBN entropy consumers were waiting on.
+
+*Test Procedure*:
+
+[arabic]
+. Start the ESRC noise driver and confirm lane-0's `dcor.noise_i` tracks the driven bit.
+. Run the firmware bring-up and observe the PHASE-A / generators / PHASE-B programming order.
+. Observe `drbg_seed_valid`, then `drbg_es_ack`, then `drbg_genbits_vld`.
+. Require the firmware to reach its pass loop, then emit the tokens.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SEP-ENTROPY-FW-BRINGUP` |the firmware programmed ESRC/CSRNG/EDN in the documented PHASE-A / generators / PHASE-B order and reached its pass loop
+|`CHK-SEP-ENTROPY-FLOWS` |forced noise reached `dcor.noise_i`, ESRC produced an accepted seed, CSRNG consumed it and the CTR_DRBG produced genbits -- the chain runs, not just its registers
+|===
+
+*Pass Criteria*: every checker above holds and the run reports zero errors. Evidence tokens: `SEP_ENTROPY_FW_BRINGUP_OK`, `SEP_ENTROPY_CHAIN_FLOWS_OK`. Enrolled in: `all`, `sep_entropy`, `all_with_sep_exec`.
+
+'''''
+[[sec-067-smu_sep_efuse_test]]
+===== 67 `smu_sep_efuse_test`
+
+*Source Module*: `smu_sep_efuse_test`
+
+*BFM / Model*: the SEP DV image `hw/sys/sep/dv/fw/tests/sep_smu_efuse` (on-chip verdict), classified by the terminal-loop PC the SEP settles on; loop addresses come from the staged `.sym`, so the contract survives a relink
+
+*Objective*: The SEP-side eFuse control and external-shim CSR read/write path clears on-chip.
+
+*Test Coverage*:
+
+* The firmware exercises the SEP eFuse control and external-shim CSR path and parks in its own pass or fail loop.
+* The verdict is the firmware's; the testbench only watches which loop the SEP settles on.
+* This is the SEP-side eFuse CSR path. It carries no claim about SMC eFuse, OTP burn or lifecycle decode -- those are `smu_sep_lcc_*`.
+
+*Test Procedure*:
+
+[arabic]
+. Require the staged ITCM image and the `.sym` to name the same firmware -- sibling images share a crt0 layout, so loop addresses collide and a mismatched pair would give a confident, wrong PASS.
+. Resolve the pass loop and the fail loops (`efuse`) from the symbol table; a fail symbol the linker dropped is reported as a path not covered, not as passed.
+. Run the SEP, sampling `sep_trace_valid_o` / `sep_pc_o` each `clk_smu` edge, and stop at the first terminal loop entered.
+. Assert the boot-ROM, ICCM and `boot_rom < iccm < pass_loop` ordering conditions, then emit the evidence tokens.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`+CHK-SEP_SEP_EFUSE-FRONTDOOR+` |first retired PC is the boot-ROM reset vector, and both boot-ROM and ICCM execution were seen
+|`+CHK-SEP_SEP_EFUSE-VERDICT+` |the pass loop was reached and no fail loop was entered
+|`CHK-NONVAC` |`boot_rom < iccm < pass_loop` ordering holds
+|===
+
+*Pass Criteria*: every checker above holds and the run reports zero errors. Evidence tokens: `SEP_REAL_FW_EFUSE_OK`, `SEP_EFUSE_CSR_PATH_OK`. Enrolled in: `all`, `sep_real_fw`, `all_with_sep_exec`.
+
+'''''
+[[sec-068-smu_sep_wdt_test]]
+===== 68 `smu_sep_wdt_test`
+
+*Source Module*: `smu_sep_wdt_test`
+
+*BFM / Model*: the SEP DV image `hw/sys/sep/dv/fw/tests/sep_smu_wdt` (on-chip verdict), classified by the terminal-loop PC the SEP settles on; loop addresses come from the staged `.sym`, so the contract survives a relink
+
+*Objective*: The SEP watchdog control and threshold register path clears on-chip.
+
+*Test Coverage*:
+
+* The firmware exercises the SEP watchdog timer control and threshold register path and parks in its own pass or fail loop.
+* The verdict is the firmware's; the testbench only watches which loop the SEP settles on.
+* This is the SEP watchdog register path. The SMC watchdog under the SMU is `smu_smc_wdt_sanity_test` / `smu_smc_wdt_timeout_irq_test`, and no timeout-to-reset effect is claimed here.
+
+*Test Procedure*:
+
+[arabic]
+. Require the staged ITCM image and the `.sym` to name the same firmware -- sibling images share a crt0 layout, so loop addresses collide and a mismatched pair would give a confident, wrong PASS.
+. Resolve the pass loop and the fail loops (`wdt`) from the symbol table; a fail symbol the linker dropped is reported as a path not covered, not as passed.
+. Run the SEP, sampling `sep_trace_valid_o` / `sep_pc_o` each `clk_smu` edge, and stop at the first terminal loop entered.
+. Assert the boot-ROM, ICCM and `boot_rom < iccm < pass_loop` ordering conditions, then emit the evidence tokens.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`+CHK-SEP_SEP_WDT-FRONTDOOR+` |first retired PC is the boot-ROM reset vector, and both boot-ROM and ICCM execution were seen
+|`+CHK-SEP_SEP_WDT-VERDICT+` |the pass loop was reached and no fail loop was entered
+|`CHK-NONVAC` |`boot_rom < iccm < pass_loop` ordering holds
+|===
+
+*Pass Criteria*: every checker above holds and the run reports zero errors. Evidence tokens: `SEP_REAL_FW_WDT_OK`, `SEP_WDT_CSR_PATH_OK`. Enrolled in: `all`, `sep_real_fw`, `all_with_sep_exec`.
+
+'''''
+[[sec-069-smu_sep_dma_test]]
+===== 69 `smu_sep_dma_test`
+
+*Source Module*: `smu_sep_dma_test`
+
+*BFM / Model*: the SEP DV image `hw/sys/sep/dv/fw/tests/sep_smu_dma` (on-chip verdict), classified by the terminal-loop PC the SEP settles on; loop addresses come from the staged `.sym`, so the contract survives a relink
+
+*Objective*: The SEP DMA engine register path clears on-chip.
+
+*Test Coverage*:
+
+* The firmware exercises the SEP DMA engine register path and parks in its own pass or fail loop.
+* The verdict is the firmware's; the testbench only watches which loop the SEP settles on.
+* A DMA that actually moves data and is observed doing so is `smu_sep_rom_tcm_load_test`; this leaf is the register path.
+
+*Test Procedure*:
+
+[arabic]
+. Require the staged ITCM image and the `.sym` to name the same firmware -- sibling images share a crt0 layout, so loop addresses collide and a mismatched pair would give a confident, wrong PASS.
+. Resolve the pass loop and the fail loops (`dma`) from the symbol table; a fail symbol the linker dropped is reported as a path not covered, not as passed.
+. Run the SEP, sampling `sep_trace_valid_o` / `sep_pc_o` each `clk_smu` edge, and stop at the first terminal loop entered.
+. Assert the boot-ROM, ICCM and `boot_rom < iccm < pass_loop` ordering conditions, then emit the evidence tokens.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`+CHK-SEP_SEP_DMA-FRONTDOOR+` |first retired PC is the boot-ROM reset vector, and both boot-ROM and ICCM execution were seen
+|`+CHK-SEP_SEP_DMA-VERDICT+` |the pass loop was reached and no fail loop was entered
+|`CHK-NONVAC` |`boot_rom < iccm < pass_loop` ordering holds
+|===
+
+*Pass Criteria*: every checker above holds and the run reports zero errors. Evidence tokens: `SEP_REAL_FW_DMA_OK`, `SEP_DMA_CSR_PATH_OK`. Enrolled in: `all`, `sep_real_fw`, `all_with_sep_exec`.
+
+'''''
+[[sec-070-smu_sep_spi_test]]
+===== 70 `smu_sep_spi_test`
+
+*Source Module*: `smu_sep_spi_test`
+
+*BFM / Model*: the SEP DV image `hw/sys/sep/dv/fw/tests/sep_smu_spi` (on-chip verdict), classified by the terminal-loop PC the SEP settles on; loop addresses come from the staged `.sym`, so the contract survives a relink
+
+*Objective*: A command / address / read-back sequence completes on the SEP's OpenTitan `spi_controller`.
+
+*Test Coverage*:
+
+* The image is written for exactly this configuration: it needs no external flash model and programs no pad mux, because the open DUT has neither.
+* This is the SPI path that survives into OSS. The Cadence xSPI wrapper and the SPI flash device models are excluded from the build, so anything routed through those cannot run here -- but `spi_controller` itself is present and this image exercises it.
+* The image parks in one of six per-stage fail loops mirroring its `SPI_ERR_*` codes, so a failure names the point in the transfer that stalled.
+* A seventh catch-all fail loop exists for an `rc` outside the enumerated codes; the compiler can prove it unreachable and drop it, in which case it is reported as a path not covered.
+
+*Test Procedure*:
+
+[arabic]
+. Require the staged ITCM image and the `.sym` to name the same firmware -- sibling images share a crt0 layout, so loop addresses collide and a mismatched pair would give a confident, wrong PASS.
+. Resolve the pass loop and the fail loops (`wait_ready_cmd`, `wait_idle_cmd`, `wait_ready_addr`, `wait_ready_rx`, `wait_idle_rx`, `error_status`, `unclassified`) from the symbol table; a fail symbol the linker dropped is reported as a path not covered, not as passed.
+. Run the SEP, sampling `sep_trace_valid_o` / `sep_pc_o` each `clk_smu` edge, and stop at the first terminal loop entered.
+. Assert the boot-ROM, ICCM and `boot_rom < iccm < pass_loop` ordering conditions, then emit the evidence tokens.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`+CHK-SEP_SEP_SPI-FRONTDOOR+` |first retired PC is the boot-ROM reset vector, and both boot-ROM and ICCM execution were seen
+|`+CHK-SEP_SEP_SPI-VERDICT+` |the pass loop was reached and no fail loop was entered
+|`CHK-NONVAC` |`boot_rom < iccm < pass_loop` ordering holds
+|===
+
+*Pass Criteria*: every checker above holds and the run reports zero errors. Evidence tokens: `SEP_REAL_FW_SPI_OK`, `SEP_SPI_CONTROLLER_TXRX_OK`. Enrolled in: `all`, `sep_real_fw`, `all_with_sep_exec`.
+
+'''''
+[[sec-071-smu_sep_remap_test]]
+===== 71 `smu_sep_remap_test`
+
+*Source Module*: `smu_sep_remap_test`
+
+*BFM / Model*: the SEP DV image `hw/sys/sep/dv/fw/tests/sep_smu_remap` as a *stimulus generator*; the verdict is the testbench's read of the remap datapath
+
+*Objective*: The AP and STEE output-remap region-0 offsets end up at the goldens the firmware names.
+
+*Test Coverage*:
+
+* Unlike the other real-firmware anchors this image is not self-checking: the remap writes are write-only, so `program_output_remap()` cannot fail and the compiler proves its fail loop dead (the linker then drops the symbol).
+* Reaching the pass loop therefore proves only that the firmware ran to completion. The verdict has to come from the testbench.
+* The testbench reads the offsets the remap datapath ended up with and compares them against the goldens named in the firmware. Both halves are required: park in the pass loop AND land the goldens.
+* Non-vacuity is a real delta: the pre-run offsets are sampled and must differ from the goldens, so a datapath that was already at the golden value cannot pass.
+
+*Test Procedure*:
+
+[arabic]
+. Sample the AP and STEE region-0 offsets before the firmware runs and record them.
+. Run the image and observe boot-ROM execution, ICCM execution and the pass loop.
+. Re-read both offsets and compare each against the golden named in the firmware.
+. Require both to have changed from their pre-run values, then emit the tokens.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SEP-REMAP-PROGRAM` |AP and STEE region-0 offsets both match their goldens and both changed from their pre-run values
+|`CHK-SEP-REMAP-FRONTDOOR` |boot-ROM and ICCM execution seen and the pass loop reached
+|`CHK-NONVAC` |the pre-run offsets differed from the goldens, so the compare could have failed
+|===
+
+*Pass Criteria*: every checker above holds and the run reports zero errors. Evidence tokens: `SEP_REAL_FW_REMAP_OK`, `SEP_OUTPUT_REMAP_GOLDEN_OK`. Enrolled in: `all`, `sep_real_fw`, `all_with_sep_exec`.
+
+'''''
+[[sec-072-smu_sep_smc_notify_test]]
+===== 72 `smu_sep_smc_notify_test`
+
+*Source Module*: `smu_sep_smc_notify_test`
+
+*BFM / Model*: the SEP DV image `hw/sys/sep/dv/fw/tests/sep_smc_notify`; SEP outbound AW counters and the SMU-boundary write counters as observables
+
+*Objective*: The SEP outbound egress path is proven segment by segment, not inferred from the arriving magic.
+
+*Test Coverage*:
+
+* The image is minimal for exactly this: it opens the outbound filter over the mailbox, writes the two-word PASS magic, and does nothing else.
+* `smu_sep_sanity_test` also ends in that magic, but only after HMAC and KMAC, so a failure there has several possible homes. Here the egress path is the only thing under test.
+* The magic alone would not prove the path: it is decoded at the SMU boundary, and seeing it says the bytes arrived without saying how far they travelled as bus traffic.
+* So the chain is walked instead -- SEP issues an outbound AW, the crossbar delivers a write at the SMU boundary, and only then the mailbox decodes PASS. Each segment is a separate assertion, so a break names the segment.
+
+*Test Procedure*:
+
+[arabic]
+. Boot the image and observe boot-ROM then ICCM execution.
+. Count SEP outbound AW beats and require the count to advance.
+. Count writes observed at the SMU boundary and require them to advance.
+. Read the mailbox and require `TEST_MAGIC_PASS`, then emit the tokens.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SEP-EGRESS-CHAIN` |SEP outbound AW count advanced, SMU-boundary writes advanced, and the mailbox then decoded `TEST_MAGIC_PASS` -- each segment observed, not inferred from the magic alone
+|`CHK-SEP-EGRESS-FRONTDOOR` |boot-ROM and ICCM execution both seen
+|===
+
+*Pass Criteria*: every checker above holds and the run reports zero errors. Evidence tokens: `SEP_REAL_FW_NOTIFY_OK`, `SEP_OUTBOUND_EGRESS_CHAIN_OK`. Enrolled in: `all`, `sep_real_fw`, `all_with_sep_exec`.
+
+'''''
+[[sec-073-smu_sep_bidirect_test]]
+===== 73 `smu_sep_bidirect_test`
+
+*Source Module*: `smu_sep_bidirect_test`
+
+*BFM / Model*: two real firmwares against each other -- SEP `hw/sys/sep/dv/fw/tests/sep_smu_bidirect` and SMC `hw/sys/smu/dv/fw/tests/smu_sep_bidirect_arm`; SEP verdict classified by the terminal-loop PC the SEP settles on; loop addresses come from the staged `.sym`, so the contract survives a relink
+
+*Objective*: SEP and SMC complete a bidirectional handshake across the SMU crossbar, with both directions load-bearing.
+
+*Test Coverage*:
+
+* The SEP half programs the SMU xbar SEP aperture, opens its outbound and inbound filter windows, read/write-checks SMC scratch8..11 across the crossbar, then trades four patterns with the SMC.
+* The SMC half is the counterpart and also records how far it got in SMC scratch0.
+* Both directions have to work for the SEP to reach its pass loop: SEP->SMC is proven by the scratch read/write checks and by the SMC observing `SEP_READY` and `SEP_ACK`; SMC->SEP by the SEP observing the two reply patterns in its own cold scratch. A one-way failure parks the SEP in its fail loop instead.
+* The SMC phase marker is read for *diagnosis only* -- it answers "which side stopped", which a PC profile of the SEP alone cannot.
+* On failure the sequence also reports the SEP aperture geometry, because SMC->SEP writes at `0x1080_2000` only fall inside it once the firmware has widened `SEP_REGION_SIZE`; at the reset value the crossbar silently delivers the reply to `ext_out` instead.
+
+*Test Procedure*:
+
+[arabic]
+. Run both images; classify the SEP by its terminal-loop PC as in the rest of the real-firmware suite.
+. On an assertion failure, attribute the stall by reading the SMC phase marker and the SEP aperture/inbound-AW state before re-raising.
+. On success, re-read the phase marker and aperture state and record them alongside the handshake token.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`+CHK-SEP_BIDIRECT-FRONTDOOR+` |first retired PC is the boot-ROM reset vector, boot-ROM and ICCM execution both seen
+|`+CHK-SEP_BIDIRECT-VERDICT+` |the SEP reached its pass loop, which requires both handshake directions to have completed
+|`CHK-SEP-SMC-HANDSHAKE` |both directions completed, reported together with the SMC phase marker and the SEP aperture/inbound-AW state
+|`CHK-NONVAC` |`boot_rom < iccm < pass_loop` ordering holds
+|===
+
+*Pass Criteria*: every checker above holds and the run reports zero errors. Evidence tokens: `SEP_REAL_FW_BIDIRECT_OK`, `SEP_SMC_HANDSHAKE_OK`. Enrolled in: `all`, `sep_real_fw`, `all_with_sep_exec`.
+
+'''''
+[[sec-074-smu_sep_smc_xbar_test]]
+===== 74 `smu_sep_smc_xbar_test`
+
+*Source Module*: `smu_sep_smc_xbar_test`
+
+*BFM / Model*: SEP `hw/sys/sep/dv/fw/tests/sep_smc_xbar` as primary plus an SMC image backdoored into SMC SRAM via `+smc_scratch_ram_hex` (72-bit `.ecc.hex` through `hw/sys/smc/dv/models/smc_cpu_mem_dv.sv`)
+
+*Objective*: The SEP brings the SMC up by itself and then trades scratch tokens with it across the crossbar.
+
+*Test Coverage*:
+
+* Unlike `smu_sep_bidirect_test` the SEP is the primary and the SMC does not boot on its own.
+* The SEP firmware programs its SMU aperture and inbound window so SMC->SEP writes are routable, opens its outbound egress window over the SEP->SMC region, waits for SMC fuse-sense-done and then for the image cookie in SMC SRAM, re-vectors all four SMC cores to the image entry and pulses their reset, and only then trades scratch tokens with the now-running SMC.
+* The cookie and entry are contract values shared by both halves (`smc_sep_xbar_protocol.h`) and are reconciled against the built SMC image up front, so a relink that moves the entry fails loudly instead of hanging in bring-up.
+* Enrolled only in `sep_smc_sram_blocked`, a group the testlist itself documents as never reporting PASS; it is not in `all` and not in `sep0_all`.
+
+*Test Procedure*:
+
+[arabic]
+. Reconcile the SMC image: resolve `smc_sep_xbar_entry` from the SMC symbol table and require it to equal `XBAR_SMC_ENTRY`; read the first word of the SRAM preload and require its low 32 data bits to equal the image cookie.
+. Run both halves and classify the SEP by its terminal-loop PC.
+. Assert the boot-ROM, ICCM and ordering conditions, then emit the tokens.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`+CHK-SEP_SMC_XBAR-FRONTDOOR+` |first retired PC is the boot-ROM reset vector, boot-ROM and ICCM execution both seen
+|`+CHK-SEP_SMC_XBAR-VERDICT+` |the SEP reached its pass loop, which requires the SMC to have been brought up and to have answered
+|`CHK-NONVAC` |`boot_rom < iccm < pass_loop` ordering holds
+|===
+
+*Pass Criteria*: every checker above holds and the run reports zero errors. Evidence tokens: `SEP_REAL_FW_SMC_XBAR_OK`, `SEP_DRIVEN_SMC_BRINGUP_OK`. Enrolled in: `sep_smc_sram_blocked`.
+
+'''''
+[[sec-075-smu_sep_ext_axi_test]]
+===== 75 `smu_sep_ext_axi_test`
+
+*Source Module*: `smu_sep_ext_axi_test`
+
+*BFM / Model*: three parties -- SEP `hw/sys/sep/dv/fw/tests/sep_smu_ext_axi`, SMC `hw/sys/smc/dv/fw/tests/smu_sep_ext_axi`, and this sequence as the external AXI master on the flat `ext_in_*` pins (`ocah_axi_vip`); `ocah_jtag_vip` for the SMC core re-vector
+
+*Objective*: An external AXI master reaches both the SEP and the SMC through the sys-inbound path, with the deny leg and its recovery proven.
+
+*Test Coverage*:
+
+* This is the three-party test the sys-inbound path exists for. Before the flat `ext_in_*` pins existed `smu_axi_in_req` was tied off, so this half had no way to exist and the test could not be enrolled.
+* Protocol and every address come from the firmwares' own shared header `hw/sys/sep/dv/fw/tests/common/smu_sep_ext_axi_protocol.h`; the globals are the local addresses seen through each subsystem's aperture (SEP base `0x0400_0000`, SMC base `0x0200_0000`).
+* Ordering is carried by the handshake, not by delays: the master writes GO only after *both* firmwares have published READY, which is also the point at which their apertures and inbound filter windows are known to be programmed -- so no `ext_in` access is ever made against a route that does not yet exist.
+* ROUTE_DONE is written only after all four legal legs plus the DECERR leg and its recovery have been proven.
+* The SEP verdict is its own terminal loop; the SMC half publishes PASS to its scratch10, which the master reads back through the same aperture it used throughout.
+* Enrolled only in `sep_smc_sram_blocked`; it is not in `all` and not in `sep0_all`.
+
+*Test Procedure*:
+
+[arabic]
+. Wait for both firmwares to publish READY, then write GO.
+. Read back the four legal routing legs through the `ext_in_*` pins.
+. Issue the unmapped access and require the DECERR response, then run the recovery leg and require it to succeed.
+. Publish ROUTE_DONE, read the SMC PASS word back from scratch10, and classify the SEP by its terminal-loop PC.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-EXT-IN-ROUTING` |GO issued only after both READYs; four legal legs read back; the unmapped address answered with the expected response; the recovery leg succeeded; ROUTE_DONE published and the SMC PASS word read back
+|`+CHK-SEP_EXT_AXI-FRONTDOOR+` |first retired PC is the boot-ROM reset vector, boot-ROM and ICCM execution both seen
+|`+CHK-SEP_EXT_AXI-VERDICT+` |the SEP reached its pass loop and no fail loop was entered
+|`CHK-NONVAC` |`boot_rom < iccm < pass_loop` ordering holds
+|===
+
+*Pass Criteria*: every checker above holds and the run reports zero errors. Evidence tokens: `SEP_REAL_FW_EXT_AXI_OK`, `SMU_EXT_IN_ROUTING_OK`. Enrolled in: `sep_smc_sram_blocked`.
+
+'''''
+[[sec-076-smu_sep_lcc_flow_test]]
+===== 76 `smu_sep_lcc_flow_test`
+
+*Source Module*: `smu_sep_lcc_flow_test`
+
+*BFM / Model*: the SEP DV image `hw/sys/sep/dv/fw/tests/sep_smu_lcc_flow` driving the DEMOTE registers; consumer-side observables at the SMC (`lc_state`), the DTP (`dbg_disable`) and `feat_ctrl`
+
+*Objective*: The SEP lifecycle posture is driven by firmware and traced to every consumer, as a delta off the pre-sense baseline.
+
+*Test Coverage*:
+
+* The SEP LCC decides the chiplet posture and three consumers act on it: `lc_state` -> SMC, `dbg_disable` -> DTP, and `feat_ctrl`.
+* A single static sample of `lc_state_o` proves the wire exists; it does not prove the LCC responds to anything and says nothing about the other two legs. This anchor adds the hardware half for each firmware stage.
+* The lock stage is what makes the rest non-vacuous: a register that simply stored whatever software wrote would satisfy every demote check. Only a *refused* write after lock shows the block implements the policy.
+* The consumer contract is the profile of the eFuse shadow image the `sep_rtl` run mode supplies (`assets/default_sep_efuse_shadow_reg.preload`, LC word clear, so raw `0x0` and therefore TEST_DEV), and the sequence asserts that image is the one in play before applying the contract.
+* Before the posture is sampled `lc_state` reads `0x0f`, which is not a state, and `dbg_disable` is asserted whatever the image says. Each consumer leg is therefore both a delta off that pre-sense baseline and a compare against the contracted value -- `lc_state` `0xf0` at the SMC, `dbg_disable` clear at the DTP.
+* *Not claimed*: a demote is not required to move `feat_ctrl`. In TEST_DEV the baseline is already `~(sip_dis | sys_dis)`, so the bits a demote forces high are high already and the write is a no-op. `feat_ctrl` is reported, not asserted on; the demote's effect is checked at `lcc_demote_state_*_o`, where it is unambiguous.
+
+*Test Procedure*:
+
+[arabic]
+. Assert the eFuse shadow image in play is the one whose contract this entry applies.
+. Sample the pre-sense baseline at all three consumers.
+. Run the firmware through its four stages -- FEAT_CTRL readable, DEMOTE_1 accepted and read back, DEMOTE_2 accepted and read back, and a later clear refused by the DEMOTE_1 lock.
+. Re-read each consumer and compare it both as a delta off the baseline and against this image's contracted value.
+. Require the firmware to have reached its pass loop, then emit the tokens.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SEP-LCC-FW-STAGES` |the firmware cleared all four stages on-chip: FEAT_CTRL readable, DEMOTE_1 and DEMOTE_2 each accepted and read back, and the DEMOTE_1 lock refused a later clear
+|`CHK-SEP-LCC-FANOUT` |demote1 and demote2 both moved at `lcc_demote_state_*_o`; SMC `lc_state` moved off `0x0f` to the contracted value and DTP `dbg_disable` to its contracted value; `feat_ctrl` is reported, not asserted on
+|`CHK-SEP-LCC-NONVAC` |every consumer claim is a delta against the pre-sense reset posture *and* a compare against this eFuse image's contracted value, and the write-once lock rules out plain storage
+|===
+
+*Pass Criteria*: every checker above holds and the run reports zero errors. Evidence tokens: `SEP_LCC_FW_FLOW_OK`, `SEP_LCC_FANOUT_TO_SMC_DTP_OK`. Enrolled in: `all`, `sep_real_fw`, `all_with_sep_exec`.
+
+'''''
+[[sec-077-smu_sep_lcc_state_test_dev_test]]
+===== 77 `smu_sep_lcc_state_test_dev_test`
+
+*Source Module*: `smu_sep_lcc_state_matrix_test`
+
+*BFM / Model*: the SEP DV image `hw/sys/sep/dv/fw/tests/sep_smu_lcc_flow` driving the DEMOTE registers; eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload` supplied by the testbench
+
+*Objective*: Lifecycle decode for this state: `lc_state` must reach `0xf0` at the SMC, with `dbg_disable` clear at the DTP.
+
+*Test Coverage*:
+
+* `smu_sep_lcc_flow_test` proves the firmware-driven demote reaches every consumer, but it runs in one lifecycle state, so it cannot tell a real decode from a wire. This family runs the same firmware against different eFuse images.
+* The eFuse image is the one LCC input firmware cannot drive -- it is sampled before the CPU runs -- so it comes from the testbench side; everything downstream of it is still driven by the firmware.
+* Expectations arrive as plusargs rather than being derived in the sequence, so each testlist entry states the contract for its own image: `+lcc_expect_lc_state`, `+lcc_expect_demote_effective`, `+lcc_expect_dbg_disabled`.
+* Per Table 50 the demotes gate `feat_ctrl[15:0]` and `feat_ctrl[31:16]` in TEST_DEV and PROD but have no entry in PROD_END. The check that can fail is a delta against the reset baseline.
+* TEST_DEV's baseline `feat_ctrl` is already `~(sip_dis | sys_dis)`, so demote-open is *not* a delta here; the sequence says so explicitly and PROD / PROD_END are the discriminating cases.
+* This entry's contract: `+lcc_expect_lc_state=0xf0`, `+lcc_expect_demote_effective=1`, `+lcc_expect_dbg_disabled=0`.
+* Runs in the `sep_rtl_no_shadow` mode so the entry's own preload -- not the default shadow image -- is the one sampled.
+
+*Test Procedure*:
+
+[arabic]
+. Preload the SEP eFuse shadow registers from this entry's image, before the CPU runs.
+. Sample the reset baseline of `feat_ctrl[31:0]`, `lc_state` and `dbg_disable`.
+. Run the same `sep_smu_lcc_flow` firmware and require it to reach its pass loop.
+. Compare `lc_state` against `0xf0`, the post-run `feat_ctrl[31:0]` state against `+lcc_expect_demote_effective=1`, and `dbg_disable` against `+lcc_expect_dbg_disabled=0`.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SEP-LCC-STATE-DECODE` |this eFuse image produced SMC `lc_state` `0xf0` as contracted -- the LCC is decoding the image, not passing a fixed value
+|`CHK-SEP-LCC-STATE-PROFILE` |`feat_ctrl[31:0]` and `dbg_disable` `0` match Table 50 for this state, with the demote asserted at the boundary either way
+|===
+
+*Pass Criteria*: every checker above holds and the run reports zero errors. Enrolled in: `all`, `sep_lifecycle`, `all_with_sep_exec`.
+
+'''''
+[[sec-078-smu_sep_lcc_state_prod_test]]
+===== 78 `smu_sep_lcc_state_prod_test`
+
+*Source Module*: `smu_sep_lcc_state_matrix_test`
+
+*BFM / Model*: the SEP DV image `hw/sys/sep/dv/fw/tests/sep_smu_lcc_flow` driving the DEMOTE registers; eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_prod.preload` supplied by the testbench
+
+*Objective*: Lifecycle decode for this state: `lc_state` must reach `0xe1` at the SMC, with `dbg_disable` clear at the DTP.
+
+*Test Coverage*:
+
+* `smu_sep_lcc_flow_test` proves the firmware-driven demote reaches every consumer, but it runs in one lifecycle state, so it cannot tell a real decode from a wire. This family runs the same firmware against different eFuse images.
+* The eFuse image is the one LCC input firmware cannot drive -- it is sampled before the CPU runs -- so it comes from the testbench side; everything downstream of it is still driven by the firmware.
+* Expectations arrive as plusargs rather than being derived in the sequence, so each testlist entry states the contract for its own image: `+lcc_expect_lc_state`, `+lcc_expect_demote_effective`, `+lcc_expect_dbg_disabled`.
+* Per Table 50 the demotes gate `feat_ctrl[15:0]` and `feat_ctrl[31:16]` in TEST_DEV and PROD but have no entry in PROD_END. The check that can fail is a delta against the reset baseline.
+* PROD is one of the two discriminating cases: the baseline starts closed and the demote must open `feat_ctrl[15:0]`, so this is a real closed-to-open delta.
+* This entry's contract: `+lcc_expect_lc_state=0xe1`, `+lcc_expect_demote_effective=1`, `+lcc_expect_dbg_disabled=0`.
+* Runs in the `sep_rtl_no_shadow` mode so the entry's own preload -- not the default shadow image -- is the one sampled.
+
+*Test Procedure*:
+
+[arabic]
+. Preload the SEP eFuse shadow registers from this entry's image, before the CPU runs.
+. Sample the reset baseline of `feat_ctrl[31:0]`, `lc_state` and `dbg_disable`.
+. Run the same `sep_smu_lcc_flow` firmware and require it to reach its pass loop.
+. Compare `lc_state` against `0xe1`, the post-run `feat_ctrl[31:0]` state against `+lcc_expect_demote_effective=1`, and `dbg_disable` against `+lcc_expect_dbg_disabled=0`.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SEP-LCC-STATE-DECODE` |this eFuse image produced SMC `lc_state` `0xe1` as contracted -- the LCC is decoding the image, not passing a fixed value
+|`CHK-SEP-LCC-STATE-PROFILE` |`feat_ctrl[31:0]` and `dbg_disable` `0` match Table 50 for this state, with the demote asserted at the boundary either way
+|===
+
+*Pass Criteria*: every checker above holds and the run reports zero errors. Enrolled in: `all`, `sep_lifecycle`, `all_with_sep_exec`.
+
+'''''
+[[sec-079-smu_sep_lcc_state_prod_end_test]]
+===== 79 `smu_sep_lcc_state_prod_end_test`
+
+*Source Module*: `smu_sep_lcc_state_matrix_test`
+
+*BFM / Model*: the SEP DV image `hw/sys/sep/dv/fw/tests/sep_smu_lcc_flow` driving the DEMOTE registers; eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_prod_end.preload` supplied by the testbench
+
+*Objective*: Lifecycle decode for this state: `lc_state` must reach `0x78` at the SMC, with `dbg_disable` asserted at the DTP.
+
+*Test Coverage*:
+
+* `smu_sep_lcc_flow_test` proves the firmware-driven demote reaches every consumer, but it runs in one lifecycle state, so it cannot tell a real decode from a wire. This family runs the same firmware against different eFuse images.
+* The eFuse image is the one LCC input firmware cannot drive -- it is sampled before the CPU runs -- so it comes from the testbench side; everything downstream of it is still driven by the firmware.
+* Expectations arrive as plusargs rather than being derived in the sequence, so each testlist entry states the contract for its own image: `+lcc_expect_lc_state`, `+lcc_expect_demote_effective`, `+lcc_expect_dbg_disabled`.
+* Per Table 50 the demotes gate `feat_ctrl[15:0]` and `feat_ctrl[31:16]` in TEST_DEV and PROD but have no entry in PROD_END. The check that can fail is a delta against the reset baseline.
+* PROD_END is the other discriminating case: Table 50 has no demote entry, so the same firmware must leave `feat_ctrl` closed, and `dbg_disable` is expected to assert.
+* This entry's contract: `+lcc_expect_lc_state=0x78`, `+lcc_expect_demote_effective=0`, `+lcc_expect_dbg_disabled=1`.
+* Runs in the `sep_rtl_no_shadow` mode so the entry's own preload -- not the default shadow image -- is the one sampled.
+
+*Test Procedure*:
+
+[arabic]
+. Preload the SEP eFuse shadow registers from this entry's image, before the CPU runs.
+. Sample the reset baseline of `feat_ctrl[31:0]`, `lc_state` and `dbg_disable`.
+. Run the same `sep_smu_lcc_flow` firmware and require it to reach its pass loop.
+. Compare `lc_state` against `0x78`, the post-run `feat_ctrl[31:0]` state against `+lcc_expect_demote_effective=0`, and `dbg_disable` against `+lcc_expect_dbg_disabled=1`.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SEP-LCC-STATE-DECODE` |this eFuse image produced SMC `lc_state` `0x78` as contracted -- the LCC is decoding the image, not passing a fixed value
+|`CHK-SEP-LCC-STATE-PROFILE` |`feat_ctrl[31:0]` and `dbg_disable` `1` match Table 50 for this state, with the demote asserted at the boundary either way
+|===
+
+*Pass Criteria*: every checker above holds and the run reports zero errors. Enrolled in: `all`, `sep_lifecycle`, `all_with_sep_exec`.
+
+'''''
+[[sec-080-smu_sep_lcc_state_rma_chiplet_test]]
+===== 80 `smu_sep_lcc_state_rma_chiplet_test`
+
+*Source Module*: `smu_sep_lcc_state_matrix_test`
+
+*BFM / Model*: the SEP DV image `hw/sys/sep/dv/fw/tests/sep_smu_lcc_flow` driving the DEMOTE registers; eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_rma_chiplet.preload` supplied by the testbench
+
+*Objective*: Lifecycle decode for this state: `lc_state` must reach `0x96` at the SMC, with `dbg_disable` clear at the DTP.
+
+*Test Coverage*:
+
+* `smu_sep_lcc_flow_test` proves the firmware-driven demote reaches every consumer, but it runs in one lifecycle state, so it cannot tell a real decode from a wire. This family runs the same firmware against different eFuse images.
+* The eFuse image is the one LCC input firmware cannot drive -- it is sampled before the CPU runs -- so it comes from the testbench side; everything downstream of it is still driven by the firmware.
+* Expectations arrive as plusargs rather than being derived in the sequence, so each testlist entry states the contract for its own image: `+lcc_expect_lc_state`, `+lcc_expect_demote_effective`, `+lcc_expect_dbg_disabled`.
+* Per Table 50 the demotes gate `feat_ctrl[15:0]` and `feat_ctrl[31:16]` in TEST_DEV and PROD but have no entry in PROD_END. The check that can fail is a delta against the reset baseline.
+* RMA_CHIPLET's `feat_ctrl` is all-ones by state, so like TEST_DEV it cannot show a closed-to-open demote; a post-run open low-32 does not prove the write did anything here. The `lc_state` decode is the load-bearing half.
+* This entry's contract: `+lcc_expect_lc_state=0x96`, `+lcc_expect_demote_effective=1`, `+lcc_expect_dbg_disabled=0`.
+* Runs in the `sep_rtl_no_shadow` mode so the entry's own preload -- not the default shadow image -- is the one sampled.
+
+*Test Procedure*:
+
+[arabic]
+. Preload the SEP eFuse shadow registers from this entry's image, before the CPU runs.
+. Sample the reset baseline of `feat_ctrl[31:0]`, `lc_state` and `dbg_disable`.
+. Run the same `sep_smu_lcc_flow` firmware and require it to reach its pass loop.
+. Compare `lc_state` against `0x96`, the post-run `feat_ctrl[31:0]` state against `+lcc_expect_demote_effective=1`, and `dbg_disable` against `+lcc_expect_dbg_disabled=0`.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SEP-LCC-STATE-DECODE` |this eFuse image produced SMC `lc_state` `0x96` as contracted -- the LCC is decoding the image, not passing a fixed value
+|`CHK-SEP-LCC-STATE-PROFILE` |`feat_ctrl[31:0]` and `dbg_disable` `0` match Table 50 for this state, with the demote asserted at the boundary either way
+|===
+
+*Pass Criteria*: every checker above holds and the run reports zero errors. Enrolled in: `all`, `sep_lifecycle`, `all_with_sep_exec`.
+
+'''''
+[[sec-081-smu_sep_dbg_gating_test_dev_test]]
+===== 81 `smu_sep_dbg_gating_test_dev_test`
+
+*Source Module*: `smu_sep_dbg_gating_test`
+
+*BFM / Model*: `ocah_jtag_vip` on the primary TAP; the SEP runs the `hello_world` DV image; eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_test_dev.preload`
+
+*Objective*: Debug is open in this state: the JTAG2AXI bridge must launch the transaction on the debug AXI port.
+
+*Test Coverage*:
+
+* `smu_sep_lcc_state_prod_end_test` proves `dbg_disable` asserts in PROD_END. That is the signal, not the effect. This family closes the gap by issuing a real JTAG2AXI transaction and counting whether the bridge launched it on the DTP -> SMC debug AXI port.
+* Per `jtag2axi.sv` the bridge's update is gated by `!security_disable_i`, and `jtag_intf_unit.sv` wires that from `dbg_disable.smc_jtag2axi`. So with debug disabled the transaction must never reach AXI at all -- not merely be answered with an error.
+* Both polarities are needed and each entry states its own via `+dbg_expect_gated`.
+* TEST_DEV leaves debug open with a blank eFuse because `feat_ctrl` is `~(sip_dis | sys_dis)` there, so `sip_debug` is already set. This is the permissive polarity.
+* The permissive entry is what makes the gated one meaningful: on its own, "no AXI transaction" is equally consistent with a TAP that never worked, a wrong scan payload, or a probe watching the wrong port.
+
+*Test Procedure*:
+
+[arabic]
+. Preload the SEP eFuse shadow registers from this entry's image.
+. Bring the primary TAP up and sample the DTP -> SMC debug AXI AW and AR counts.
+. Issue a JTAG2AXI single-op over the TAP.
+. Re-sample the counts and compare the movement against `+dbg_expect_gated=0`, alongside `lc_state` and `dbg_disable`.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SEP-DBG-OPEN` |`lc_state` reads as TEST_DEV expects, `dbg_disable` is clear, and the bridge launched the transaction: AW and AR both advanced
+|===
+
+*Pass Criteria*: every checker above holds and the run reports zero errors. Enrolled in: `all`, `sep_lifecycle`, `all_with_sep_exec`.
+
+'''''
+[[sec-082-smu_sep_dbg_gating_prod_end_test]]
+===== 82 `smu_sep_dbg_gating_prod_end_test`
+
+*Source Module*: `smu_sep_dbg_gating_test`
+
+*BFM / Model*: `ocah_jtag_vip` on the primary TAP; the SEP runs the `hello_world` DV image; eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_prod_end.preload`
+
+*Objective*: Debug is gated in this state: the JTAG2AXI bridge must not launch the transaction at all.
+
+*Test Coverage*:
+
+* `smu_sep_lcc_state_prod_end_test` proves `dbg_disable` asserts in PROD_END. That is the signal, not the effect. This family closes the gap by issuing a real JTAG2AXI transaction and counting whether the bridge launched it on the DTP -> SMC debug AXI port.
+* Per `jtag2axi.sv` the bridge's update is gated by `!security_disable_i`, and `jtag_intf_unit.sv` wires that from `dbg_disable.smc_jtag2axi`. So with debug disabled the transaction must never reach AXI at all -- not merely be answered with an error.
+* Both polarities are needed and each entry states its own via `+dbg_expect_gated`.
+* PROD does *not* leave debug open -- its `feat_ctrl` is zero except `func_reserved` until a demote opens the window -- so PROD with a payload that never demotes has debug disabled, same as PROD_END. This entry is the gated polarity.
+* The permissive entry is what makes the gated one meaningful: on its own, "no AXI transaction" is equally consistent with a TAP that never worked, a wrong scan payload, or a probe watching the wrong port.
+
+*Test Procedure*:
+
+[arabic]
+. Preload the SEP eFuse shadow registers from this entry's image.
+. Bring the primary TAP up and sample the DTP -> SMC debug AXI AW and AR counts.
+. Issue a JTAG2AXI single-op over the TAP.
+. Re-sample the counts and compare the movement against `+dbg_expect_gated=1`, alongside `lc_state` and `dbg_disable`.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-SEP-DBG-GATED` |`lc_state` and `dbg_disable` read as PROD_END expects and the bridge launched nothing: AW and AR both unchanged
+|===
+
+*Pass Criteria*: every checker above holds and the run reports zero errors. Enrolled in: `all`, `sep_lifecycle`, `all_with_sep_exec`.
+
+'''''
+[[sec-083-smu_dtp_sep_smc_chain_prod_test]]
+===== 83 `smu_dtp_sep_smc_chain_prod_test`
+
+*Source Module*: `smu_dtp_sep_smc_chain_test`
+
+*BFM / Model*: three subsystems live: SMC firmware from ROM, SEP `hw/sys/sep/dv/fw/tests/sep_smu_lcc_flow`, and `ocah_jtag_vip` driving a JTAG2AXI single-op; eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_prod.preload`
+
+*Objective*: SEP decides, DTP enforces, SMC serves: the demote opens debug and the JTAG2AXI read returns the SMC's live scratch value.
+
+*Test Coverage*:
+
+* The other anchors each cover part of this. `smu_sep_lcc_flow_test` has the SEP firmware drive the posture but only reads the DTP- and SMC-facing signals. `smu_sep_dbg_gating_*` proves the DTP acts on the posture, but its SEP payload is `hello_world` and its SMC end is only a transaction count. Neither has all three subsystems doing something.
+* Here they all do: the SMC boots from ROM and writes its scratch0 marker; the SEP firmware sets DEMOTE_1/2; the DTP is asked for a JTAG2AXI single-op read of that SMC scratch address; and the SMC answers.
+* Causality comes from running the identical firmware and the identical JTAG operation under two eFuse images, one per entry in this pair.
+* PROD: Table 50 lets the demote open `feat_ctrl[15:0]`, so debug opens and the read must complete and return the SMC's live scratch value.
+* The returned data is compared against the testbench's own view of SMC scratch0 rather than a hard-coded constant, so the check follows whatever the SMC firmware actually wrote.
+* This entry's contract: `+chain_expect_served=1`.
+
+*Test Procedure*:
+
+[arabic]
+. Preload the SEP eFuse shadow registers from this entry's image.
+. Let the SMC boot from ROM and write its scratch0 marker; read that marker on the testbench side.
+. Run the SEP firmware so it sets DEMOTE_1/2.
+. Issue the JTAG2AXI single-op read of the SMC scratch address over the primary TAP.
+. Require the read to complete and compare the returned word against the marker the testbench read.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-DTP-SEP-SMC-CHAIN` |SEP demote cleared `dbg_disable`, the DTP launched the read, and the SMC answered OKAY with the value its own firmware wrote
+|===
+
+*Pass Criteria*: every checker above holds and the run reports zero errors. Enrolled in: `all`, `sep_chain`, `all_with_sep_exec`.
+
+'''''
+[[sec-084-smu_dtp_sep_smc_chain_prod_end_test]]
+===== 84 `smu_dtp_sep_smc_chain_prod_end_test`
+
+*Source Module*: `smu_dtp_sep_smc_chain_test`
+
+*BFM / Model*: three subsystems live: SMC firmware from ROM, SEP `hw/sys/sep/dv/fw/tests/sep_smu_lcc_flow`, and `ocah_jtag_vip` driving a JTAG2AXI single-op; eFuse shadow preload `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_prod_end.preload`
+
+*Objective*: The same firmware and the same JTAG operation under an eFuse image that ignores the demote: debug stays disabled and the read must not reach AXI.
+
+*Test Coverage*:
+
+* The other anchors each cover part of this. `smu_sep_lcc_flow_test` has the SEP firmware drive the posture but only reads the DTP- and SMC-facing signals. `smu_sep_dbg_gating_*` proves the DTP acts on the posture, but its SEP payload is `hello_world` and its SMC end is only a transaction count. Neither has all three subsystems doing something.
+* Here they all do: the SMC boots from ROM and writes its scratch0 marker; the SEP firmware sets DEMOTE_1/2; the DTP is asked for a JTAG2AXI single-op read of that SMC scratch address; and the SMC answers.
+* Causality comes from running the identical firmware and the identical JTAG operation under two eFuse images, one per entry in this pair.
+* PROD_END: Table 50 has no demote entry, so the same demote changes nothing, debug stays disabled and the read must not reach AXI at all. With the demote ignored the chain breaks, which is what makes the SEP's participation load-bearing in the PROD half.
+* The returned data is compared against the testbench's own view of SMC scratch0 rather than a hard-coded constant, so the check follows whatever the SMC firmware actually wrote.
+* This entry's contract: `+chain_expect_served=0`.
+
+*Test Procedure*:
+
+[arabic]
+. Preload the SEP eFuse shadow registers from this entry's image.
+. Let the SMC boot from ROM and write its scratch0 marker; read that marker on the testbench side.
+. Run the SEP firmware so it sets DEMOTE_1/2.
+. Issue the JTAG2AXI single-op read of the SMC scratch address over the primary TAP.
+. Require the bridge to have launched nothing -- the debug AXI AW/AR counts must not move.
+
+*Checkers*:
+
+[cols="1,2",options="header",]
+|===
+|Checker |Description
+|`CHK-DTP-SEP-SMC-CHAIN-BLOCKED` |same firmware and same JTAG operation, but PROD_END ignores the demote: `dbg_disable` stays asserted and the bridge launched nothing
+|===
+
+*Pass Criteria*: every checker above holds and the run reports zero errors. Enrolled in: `all`, `sep_chain`, `all_with_sep_exec`.
+
+'''''
+=== Regression Groups
 
 [cols=",",options="header",]
 |===
-|Population |Count
-|Live test bodies (`cocotb_wrapper/tests/*.py`) |79
-|Enrolled in `all` |81
-|Enrolled in `sep0_all` (nightly) |53
-|Non-enrolled bodies (`cocotb/tests_deferred/`) |28
+|Group |Notes
+|`all` |Unique enrolled bodies in `testlists/wrapper.toml`
+|`smoke` |PR gate (`sim.yml` uses `smoke_sep0`)
+|`smoke_sep0` |Hosted-runner PR tier
+|`build_smoke` |Elaboration only
+|`sep0_all` |Feature-credit regression set
+|`migrated_fabric` |Fabric leaves brought onto the wrapper
+|`migrated_smc` |SMC-facing leaves brought onto the wrapper
+|`migrated_dtp` |DTP-facing leaves brought onto the wrapper
+|`sep_real_fw` |Wrapper leaves that boot real SEP firmware images
+|`sep_smc_sram_blocked` |SRAM-private cookie poll, including the dual-firmware leaves
+|`sep_smc_dual` |The dual-firmware leaves alone; not in `all`
+|`sep_probe` |Wrapper probe leaves that keep SEP instruction retirement live
+|`sep_chain` |Lifecycle-gated JTAG-to-SMC chain leaves
+|`sep_lifecycle` |Wrapper leaves that change SEP lifecycle state
+|`sep_entropy` |SEP entropy-routing leaves
+|`sep_rtl_only` |Wrapper leaves that require the real SEP RTL profile
+|`all_with_sep_exec` |`all` members that compile under the real-SEP profile
 |===
 
-=== Regression Groups
+[[smu-coverage-model]]
+=== Coverage Model
 
-[cols=",,",options="header",]
+`cov/README.md` is the authority; this section says only what the plan may and
+may not claim from it.
+
+[cols="2,3",options="header",]
 |===
-|Group |Tests |Notes
-|`all` |81 |Unique enrolled bodies in `testlists/wrapper.toml`
-|`smoke` |4 |PR gate (`sim.yml` uses `smoke_sep0`)
-|`smoke_sep0` |4 |Hosted-runner PR tier
-|`build_smoke` |2 |Elaboration only
-|`sep0_all` |53 |Nightly / weekly enrollment. No scored run on this unified group is checked in; the retained artifact is the pre-unification 51 PASS / 1 FAIL on 52 (`SMU_RELEASE_MATRIX.adoc`)
-|`migrated_fabric` |14 |Fabric leaves brought onto the wrapper
-|`migrated_smc` |12 |SMC-facing leaves brought onto the wrapper
-|`migrated_dtp` |27 |DTP-facing leaves brought onto the wrapper
+|Module |Intent it makes real
+|`cov/sv/smu_boot_fcov.sv` |`smc_boot_cg` bring-up: reset-release edges, boot-stall sources and release, lifecycle broadcast
+|`cov/sv/smu_xbar_fcov.sv` |`xbar_route_cg` filter and `reg_access_cg` outcome: window programming and reprogramming, inbound AXI handshake, all four response encodings, forwarded vs not-forwarded routing
 |===
 
+Those modules are instantiated in the shared `tb/tb_top.sv` and land in the
+`user` metric family, so `cov_merge`, `cov_report` and the coverage policy can
+consume them.
+
+Three limits decide what this plan is allowed to say:
+
+. *No per-testcase coverage attribution is made here, on purpose.* The points are
+  free-running cover properties on DUT signals, not per-scenario covergroups, so
+  which testcase lights which point is a property of a run, not of the source.
+  Naming bins per entry without a run would be a claim nobody measured.
+. *`smu_fcov.py` is not coverage.* Its `TEST_FCOV_HITS` is a static table mapping a
+  test class name to bins it is *claimed* to hit; running the test marks the bins
+  and no signal is observed. It is scenario intent, and no entry in this plan
+  sources a coverage claim from it.
+. *No scored SMU coverage database is claimed here.* Hit percentages, policy holes
+  and any threshold need a run that carries this configuration.
+
+Scope and metric choice -- toggle plus user, and why line/branch/expression measure
+nothing at this integration level -- are argued in `cov/README.md` and not repeated
+here.
+
+[[smu-known-limitations]]
 === Known Limitations
 
 * *`smoke` is not a subset of `sep0_all`.* `smoke` is the two elaboration
@@ -2283,22 +3472,23 @@ complete plan: `CHK-SEP-BOOT-HEALTH-VERDICT`, `CHK-SEP-DBG-GATED`,
   `smu_ext_boot_seq_gate_test` is in `sep0_all` and `smoke_sep0`, not in
   `smoke`.
 
-* *`all` includes SEP=1 leaves.* Twenty-eight of the 81 names in `all` compile
-  under the real-SEP profile (`all_with_sep_exec` is that subset). The
-  SEP=0 credit set is `sep0_all`. Dual-firmware SRAM-bring-up leaves stay in
-  `sep_smc_sram_blocked` and are not in `all`.
+* *`all` includes SEP=1 leaves.* The names in `all` that compile under the
+  real-SEP profile are the `all_with_sep_exec` group. The SEP=0 credit set
+  is `sep0_all`. Dual-firmware SRAM-bring-up leaves are in
+  `sep_smc_sram_blocked` and not in `all`.
 * *The wrapper is the surface.* `--dut smu` is the wrapper bench and carries
   `sep0_all` itself; its PASSes are labelled `DUT_TAG=WRAPPER` and are the
   density evidence. The bare block bench is `--dut smu_block`, whose PASSes
   carry `DUT_TAG=BARE` and are not feature credit.
-* *The deferred catalog still has 123 names.* Nine of them are also enrolled
-  in wrapper `all` on the SEP=1 track (`smu_sep_smoke_test` plus eight
-  `sep_real_fw` images) and are not in `sep0_all`. The rest are not in any
-  wrapper regression. Per-entry bucket, owner, and reintroduction trigger
-  are in `SMU_DEFERRED_DISPOSITION.adoc`. None of those names is a v0.5.0
-  restore.
-* *Cross-trigger and iJTAG have no OCAH-local model yet*, so the coverage those
-  interfaces get is whatever the DTP-under-SMU tests reach through JTAG.
+* *The OUT catalog is `SMU_DEFERRED_DISPOSITION.adoc`.* Some of its names
+  are also enrolled in wrapper `all` on the SEP=1 track
+  (`smu_sep_smoke_test` and `sep_real_fw` images) and are not in
+  `sep0_all`; the rest are in no wrapper regression. The per-entry bucket
+  and the condition each name needs are in that document.
+* *Cross-trigger and iJTAG have no OCAH-local model*, so the coverage those
+  interfaces get is what the DTP-under-SMU tests reach through JTAG.
 * *No functional coverage closure target is set.* `smu_fcov.py` records
-  scenario intent, but there is no agreed bin list to close against and no RTL
-  code-coverage configuration checked in for this DUT.
+  scenario intent, and the checked-in configuration is
+  `cov/config/verilator/smu_cov_scope.vlt` plus
+  `smu_block_coverage_policy.toml`; the wrapper `--dut smu` has no policy
+  file of its own.

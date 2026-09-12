@@ -129,12 +129,12 @@ await master.write(0x0000_0000, 0x1)
 value = await master.read(0x0000_0000)
 ```
 
-Compatibility helpers:
+Plain-value helpers:
 
 | Method | Return | Use |
 |---|---|---|
-| `await write(addr, data, ...)` | `int` response code | Existing tests that only need BRESP |
-| `await read(addr, ...)` | `int` data | Existing tests that expect OKAY reads |
+| `await write(addr, data, ...)` | `int` response code | Tests that only need BRESP |
+| `await read(addr, ...)` | `int` data | Tests that expect OKAY reads |
 
 Result helpers:
 
@@ -189,7 +189,7 @@ data = await master.burst_read(0x2000, length=4, size=3)
 ```
 
 `size` is AXI `AxSIZE`, the log2 transfer size in bytes. For example, `size=2`
-is a 4-byte beat and `size=3` is an 8-byte beat. The compatibility API accepts
+is a 4-byte beat and `size=3` is an 8-byte beat. The sequence API accepts
 `id` as an alias for `awid`/`arid`.
 
 ## Result Object Semantics
@@ -455,7 +455,7 @@ the monitors or DUT-side pulse counters. Multi-stream use: one scoreboard,
 `min_checks_per_stream` to reject silently-dead streams. Finalize exactly
 once after drain.
 
-A simulator-free self-test (positive flow + the A-R fail-closed negative suite)
+A simulator-free self-test (positive flow + the fail-closed negative suite)
 lives at `cocotb/examples/example_axi_scoreboard_selftest.py`:
 
 ```bash
@@ -516,8 +516,8 @@ modules simply do not elaborate. Its contents:
   one-shot error injection tables), `ocah_axi_slave_driver` (reactive
   memory-backed responder; samples via `mon_cb`, drives the responder-side vif signals
   procedurally), `ocah_axi_slave_sequence` (test-facing backdoor/inject
-  API), and `ocah_axi_slave_agent` (reactive bundle: no sequencer, by
-  design). Master side: `ocah_axi_master_config` (vif, geometry, handshake
+  API), and `ocah_axi_slave_agent` (reactive bundle without a
+  sequencer). Master side: `ocah_axi_master_config` (vif, geometry, handshake
   watchdog), `ocah_axi_master_driver` (active initiator: sequential AW/W/B
   and AR/R engines, single transaction outstanding; samples via `mon_cb`,
   drives the initiator-side vif signals procedurally), the standard
@@ -582,8 +582,8 @@ scenario.
 
 ## UVM Env Surface Convention
 
-Both shipped OCAH VIPs (`ocah_jtag_vip`, `ocah_axi_vip`) follow one surface
-convention, with the JTAG master env as the reference template:
+The OCAH VIPs with an SV-UVM layer (`ocah_jtag_vip`, `ocah_axi_vip`) follow
+one surface convention, with the JTAG master env as the reference template:
 
 - **Side tokens.** Side-specific components — config, driver, sequencer,
   sequence, agent, env, and agent-attached monitors — carry the side token
@@ -618,32 +618,13 @@ Do not add this file to Verilator default filelists.
 
 ## DTP Usage
 
-DTP JTAG2AXI responders construct the shared agents directly —
-`OcahAxiSlaveAgent.from_prefix(...).sequence` for the debug AXI4 port and
-`OcahAxiLiteSlaveAgent.from_prefix(...).sequence` for the SMC/SEP OTP
-AXI-Lite ports — and program faults and backpressure through the
-`OcahAxi[Lite]SlaveSequence` API. There is no DTP-local adapter layer.
+The DTP env's `DtpAxiAgent` builds the shared agents from `tb_if` bus
+handles — `OcahAxiSlaveAgent(tb.axi_bus("smc_axi"), ...).sequence` for the
+debug AXI4 port and `OcahAxiLiteSlaveAgent(tb.axi_bus(...), ...).sequence`
+for the SMC/SEP OTP AXI-Lite ports — and programs faults and backpressure
+through the `OcahAxi[Lite]SlaveSequence` API.
 
-## SEP Compatibility Reference
-
-SEP cocotbext usage is the compatibility checklist for the wrapper:
-
-| SEP pattern | OCAH wrapper support |
-|---|---|
-| `init_read` / `init_write` | Provided by `OcahAxiMasterAgent` and `OcahAxiLiteMasterAgent` |
-| Explicit timeout around event wait | `timeout_ns` and event helpers |
-| `allow_timeout` negative checks | `read_result` / `write_result` support `allow_timeout=True` |
-| Exact response-code assertions | `resp`, `resp_list`, and `ok` fields |
-| Error-expected probes | Use `raise_on_error=False`, `check_response=False` |
-
-## Migration Notes
-
-| Legacy/backend pattern | OCAH wrapper pattern |
-|---|---|
-| `AxiLiteMaster(...).read(...)` | `OcahAxiLiteMasterAgent(...).read_result(...)` |
-| `AxiMaster(...).init_read(...)` | `OcahAxiMasterAgent(...).init_read(...)` |
-| Backend response enum imports | `RESP_OKAY`, `RESP_SLVERR`, `RESP_DECERR` |
-| DTP-local fault RAM subclasses | `OcahAxiSlaveAgent` / `OcahAxiLiteSlaveAgent` fault APIs |
+## Extending The Wrapper
 
 If a test needs an AXI sideband or non-contiguous strobe pattern that the wrapper
 does not expose, extend this package first so the public API stays stable.

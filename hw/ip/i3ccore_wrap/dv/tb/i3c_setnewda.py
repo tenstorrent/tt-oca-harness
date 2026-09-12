@@ -2,13 +2,13 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 """
-I3C SETNEWDA  (Test Plan #26)
+I3C SETNEWDA
 
 Assigns a dynamic address via SETDASA, then re-assigns it with SETNEWDA
 (CCC 0x88) and confirms a private transfer still works on the new address.
 
 Constrained-random: the *new* dynamic address is randomized (shared framework,
-seed from +seed/SEED/default) instead of a fixed 0x20 — it is constrained to be
+seed from +seed/SEED/default) — it is constrained to be
 a legal, non-reserved 7-bit address and distinct from the original SETDASA
 address, so the DAT `dynamic_address` field and target address-match logic see a
 wider value space. The verify payload is random bytes. The private write on the

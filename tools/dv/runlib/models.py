@@ -42,15 +42,14 @@ class Dut:
     path: Path
     raw: dict[str, Any]
     # Frameworks this DUT implements: the declared `[frameworks.<fw>]` tables in its sim config
-    # (`framework` above is the selected one). Legacy single-framework configs get a one-item list.
+    # (`framework` above is the selected one). Single-framework configs get a one-item list.
     frameworks: list[str] = field(default_factory=list)
     # The framework selected when no --framework is given; bare-string testlist `module` values
     # bind this framework only.
     default_framework: str = ""
 
 
-# Back-compat alias: much of the runner/dashboard still annotates and imports `Flow`. The concept
-# is now a DUT; keeping the alias avoids churning ~150 call sites for no functional change.
+# Alias: the runner and dashboard import and annotate a Dut as `Flow`.
 Flow = Dut
 
 

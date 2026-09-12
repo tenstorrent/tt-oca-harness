@@ -17,11 +17,11 @@ Both polarities are needed and each entry states its own:
                        appear on the debug AXI port
   +dbg_expect_gated=1  the image disables debug; the count must not move
 
-Which states qualify is not obvious and is worth stating: TEST_DEV leaves debug
-open with a blank eFuse because feat_ctrl is ~(sip_dis | sys_dis) there, so
-sip_debug is already set. PROD does not -- its feat_ctrl is zero except
-func_reserved until a demote opens the window -- so PROD with a payload that
-never demotes has debug disabled, same as PROD_END.
+Which states qualify: TEST_DEV leaves debug open with a blank eFuse because
+feat_ctrl is ~(sip_dis | sys_dis) there, so sip_debug is already set. PROD does
+not -- its feat_ctrl is zero except func_reserved until a demote opens the
+window -- so PROD with a payload that never demotes has debug disabled, same as
+PROD_END.
 
 The permissive entry is what makes the gated one meaningful. On its own, "no AXI
 transaction" is equally consistent with a TAP that never worked, a wrong scan

@@ -31,10 +31,6 @@ def _tool(name: str) -> str:
     candidate = shutil.which(f"riscv64-unknown-elf-{name}")
     if candidate:
         return str(candidate)
-    tools_soc = Path("/tools_soc/opensrc/riscv-gnu-toolchain/2025.01.20-rhel-8.10/bin")
-    candidate = tools_soc / f"riscv64-unknown-elf-{name}"
-    if candidate.is_file():
-        return str(candidate)
     raise FileNotFoundError(
         f"riscv64-unknown-elf-{name} not found; set RISCV_TOOLCHAIN or RISCV_{name.upper()}"
     )

@@ -58,10 +58,10 @@ common_bender_targets = [
 ]
 # smu pulls smc+dtp; sep+sep_el2 supply sep_* packages / EL2 (needed by sep_pkg
 # even when SEP=0 — the sep module is not instantiated).
-# No `simulation` target: the sep×simulation bender slice hard-references
-# /tech and /vendor_ip absolute paths that exist only on internal hosts, and
-# none of its files (padring/pad/SPI/DLL-PHY sim models, OTBN tracer) are in
-# the SMU SEP=0 `smu_uvm_top` hierarchy. Mirrors smu_sim_cfg.toml.
+# No `simulation` target: the sep×simulation bender slice references simulation
+# models by absolute paths outside the repository, and none of its files
+# (padring/pad/SPI/DLL-PHY sim models, OTBN tracer) are in the SMU SEP=0
+# `smu_uvm_top` hierarchy. Mirrors smu_sim_cfg.toml.
 bender_targets = ["smu", "smc", "dtp", "sep", "sep_el2"]
 # Prepend SEP prim shims so `include` of prim_* resolves to the OSS overlays
 # (upstream OT leaves ASSUME live under VERILATOR and breaks on sha3pad `##[1:$]`).
@@ -71,11 +71,12 @@ incdirs = [
   # ocah_fcov_macros.svh, included by the cov/sv functional-coverage modules.
   "hw/common/assert",
 ]
-# Licensed Cadence xSPI is pulled by the sep bender graph but unused under SEP=0 /
-# OpenTitan SPI path. Mirror SEP OSS exclude so VCS stays vendor-clean.
-# Samsung GPIO/ESD + padring_dv_wrapper + SPI flash models come from the same
-# sep×simulation slice but are not in the SMU SEP=0 hierarchy — drop them so
-# Verilator is not forced to parse unsupported constructs (pmos/rmos/highz).
+# Vendor simulation collateral that an overlay of the sep bender graph can pull
+# in and that the SMU SEP=0 hierarchy never instantiates (the SPI path is the
+# OpenTitan spi_controller): a licensed SPI controller wrapper and its DLL PHY,
+# the pad and ESD libraries, padring_dv_wrapper and the SPI flash models.
+# Excluded so Verilator is not made to parse their switch-level primitives
+# (pmos/rmos/highz).
 exclude_files = [
   "sep_cdns_spi_wrap.sv",
   "cdn_ip6184_19e8_dll_phy",
@@ -88,7 +89,9 @@ exclude_files = [
   "tt_spi_devices.sv",
   "tt_bidir_delay.sv",
   "meta/models/spi",
-  # Mirror OSS SMC i3c-core rebase: drop stale deps/i3c-core vs vendor upstream.
+  # Bender.lock resolves Package(i3c-core) to deps/i3c-core while smc also lists
+  # vendor/chipsalliance/i3c-core; both define i3c_pkg, so only the vendor copy
+  # is compiled, as in hw/sys/smc/dv.
   "deps/i3c-core",
 ]
 stubs = [
@@ -112,15 +115,13 @@ build_jobs = 8
 # `--coverage` (which enables all forms).
 #
 # WHY TOGGLE AND NOT LINE/BRANCH/EXPRESSION. This DUT is the bare
-# `smu #(.SEP(0))` interconnect. smu.sv is 1326 lines carrying two always
-# blocks, 79 continuous assigns and one if/case, and it wires SMC, DTP, SEP
-# and the AXI crossbar together. Verilator emits ZERO line, branch or
-# expression instrumentation sites for anything under hw/sys/smu/rtl/ --
-# counted on the built model, not assumed. Every one of the 1350556 sites
-# the previous argument list produced belonged to somebody else: 65.6%
-# vendored, 20.2% the chipyard-generated CPU cluster, 9.8% hw/ip, 3.6%
-# hw/common, 0.7% SMC. Those three families cannot grade SMU because there
-# is nothing of SMU's for them to instrument.
+# `smu #(.SEP(0))` interconnect: smu.sv wires SMC, DTP, SEP and the AXI
+# crossbar together and carries almost no procedural code, so Verilator emits
+# no line, branch or expression instrumentation site for anything under
+# hw/sys/smu/rtl/. Every site an unscoped line/branch/expression build produces
+# (on the order of a million) belongs to vendored IP, the generated CPU
+# cluster, hw/ip, hw/common or SMC, and those families cannot grade SMU
+# because there is nothing of SMU's for them to instrument.
 #
 # Toggle instruments nets, which is what an integration level owns: whether
 # the interconnect it wires up was actually exercised. That is the question
@@ -135,7 +136,7 @@ build_jobs = 8
 # --output-groups 0 compiles the generated .cpp files one by one instead of
 # in --build-jobs groups. Verilator groups by file count, and on a
 # coverage-instrumented model one group can become a translation unit of
-# several hundred MB that a hosted runner cannot compile (measured on SMC).
+# several hundred MB that a hosted runner cannot compile.
 build_args = [
   "--coverage-toggle",
   "--coverage-user",
@@ -148,7 +149,7 @@ build_args = [
 # `smu_block` share one hw/sys/smu/dv tree: the canonical path resolves
 # identically for both, and whichever DUT the file does not name fails
 # `--validate-configs` on the dut mismatch. A DUT-qualified filename lets
-# the wrapper `--dut smu` add its own later without collision.
+# the wrapper `--dut smu` carry its own without collision.
 policy_file = "hw/sys/smu/dv/cov/config/verilator/smu_block_coverage_policy.toml"
 
 [frameworks.cocotb]
@@ -159,12 +160,10 @@ python_paths = [
   # Shared PyUVM env (smu_dv_env) and the merged seq_lib, outside both cocotb
   # trees so neither DUT owns them. `env` and `seq_lib` can each resolve to only
   # one package -- a regular package wins the import over a namespace one at any
-  # path position -- so sharing them meant giving them a single home.
+  # path position -- so each has a single home.
   "hw/sys/smu/dv/common",
   # Reuse DTP JTAG helpers (types / tap device / IDCODE decode) without copying.
   "hw/sys/dtp/dv/cocotb",
-  # Raise-stub deferred bodies (importable if someone runs deferred items).
-  "hw/sys/smu/dv/cocotb/tests_deferred",
 ]
 results_dir = "{run_dir}/{item}/results"
 cocotb_log = "{run_dir}/{item}/logs/{item}.log"

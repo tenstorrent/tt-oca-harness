@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Composable JTAG2AXI command library for future DTP random/stress tests."""
+"""Composable JTAG2AXI command library; operations execute through a parent DTP sequence."""
 
 from __future__ import annotations
 

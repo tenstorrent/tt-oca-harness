@@ -16,8 +16,7 @@ testbenches. Tests import OCAH classes and plain dataclasses; backend
 | `OcahJtagSlaveDriver` | Pure OCAH reactive TAP device (no backend dependency) |
 | `OcahJtagChecker` | OCAH item-level checker |
 
-`cocotbext-jtag` is pinned in `pyproject.toml` as `>=0.4.0,<0.5`. Installed
-package metadata for version 0.4.0 reports license `MIT`.
+`cocotbext-jtag` is pinned in `pyproject.toml` as `>=0.4.0,<0.5`.
 
 ## Pin Timing
 
@@ -31,7 +30,7 @@ simulator-dependent stale reads.
 
 ## Cocotb Checker Evidence
 
-`OcahJtagChecker` retains its IEEE 1149.1 item checks and composes the shared
+`OcahJtagChecker` carries the IEEE 1149.1 item checks and composes the shared
 `ocah_checker` evidence/finalization core:
 
 ```python
@@ -55,8 +54,8 @@ checker.expect_equal(
 checker.finalize()
 ```
 
-`check_item()` continues to check scan width, IDCODE marker shape, and BYPASS
-record shape. `expect_equal()`/`expect_true()` add named exact-value evidence.
+`check_item()` checks scan width, IDCODE marker shape, and BYPASS record
+shape. `expect_equal()`/`expect_true()` add named exact-value evidence.
 `finalize()` fails on retained protocol errors, failed evidence, zero checks, or
 missing required IDs.
 
@@ -201,8 +200,8 @@ selection, gating, and recovery through `check_last_update`,
 
 This VIP is the TEMPLATE for OCAH SV-UVM VIPs. DUT environments instantiate
 `ocah_<proto>_env` — the VIP-level environment is the reuse AND override
-unit, matching the delivery granularity of commercial VIPs (e.g. Synopsys
-`svt_axi_system_env` is an env, not an agent). Its frozen surface is:
+unit, matching the delivery granularity of commercial VIPs (a commercial VIP
+ships a system env, not a bare agent). Its frozen surface is:
 
 | Surface | Role |
 |---|---|
@@ -225,14 +224,14 @@ template does not hide the integration work; it gives it exactly one home
 per protocol:
 
 1. **Inherit the env (and agent if needed).** Subclass `ocah_<proto>_env`;
-   build the vendor system env (e.g. `svt_axi_system_env` +
-   `svt_axi_system_configuration` via `cfg.vendor_cfg`) instead of the OCAH
-   agent path. Select it with a single factory override:
+   build the vendor system env (its system configuration object travels in
+   `cfg.vendor_cfg`) instead of the OCAH agent path. Select it with a single
+   factory override:
    `ocah_jtag_master_env::type_id::set_type_override(<vendor>_jtag_env::get_type())`.
 2. **Implement the API wrapper.** The vendor env owns all driving and
    monitoring. The integration implements translation (WR/RD-style tasks or
    a translator driver): convert each incoming `ocah_<proto>_item` into the
-   vendor's transactions (e.g. `svt_axi_master_transaction`), start them on
+   vendor's transaction type, start them on
    the vendor sequencer, and fill the item's response fields before
    `item_done`. The OCAH driver's protocol tasks are `virtual` for
    fine-grained reuse where helpful.
@@ -252,11 +251,11 @@ per protocol:
 5. **Flow.** Everything above rides one adopter overlay config
    (`run_dv.py --overlay <path>`, see the runner manual's "Adopter overlay
    layer"): the vendor package's sources/incdirs (`[build]`), the
-   `OCAH_<PROTO>_VENDOR_IF` gate define and vendor tool flags (e.g.
-   `-ntb_opts svt`) in the target tables, and the factory override
+   `OCAH_<PROTO>_VENDOR_IF` gate define and the vendor package's simulator
+   flags in the target tables, and the factory override
    (`+uvm_set_type_override=ocah_<proto>_master_env,<vendor>_env`) in
    `[sim].args` — no checked-in config changes; license-env gating is
-   already part of the commercial profile contract.
+   part of the commercial profile contract.
 
 ## Quick Start
 

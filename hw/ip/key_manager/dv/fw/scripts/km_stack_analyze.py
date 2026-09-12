@@ -31,7 +31,7 @@ Soundness model
   tears down the caller frame first, so additive never under-counts).
 * The PicoRV32 IRQ handler switches to a dedicated IRQ stack before calling the
   C ISR (see crt0.s), so interrupts do not deepen the main stack and the ISR is
-  intentionally *not* part of the ``_start_init`` tree.
+  not part of the ``_start_init`` tree.
 * The ROM is required to have a fully *static* stack: any function containing a
   dynamic ``sp`` adjustment (``sub sp,sp,<reg>`` / ``add sp,sp,<reg>``, i.e. a
   VLA/alloca) is a hard error.  Replace VLAs with fixed-size or file-scope
@@ -66,7 +66,7 @@ _INSN_RE = re.compile(r"^\s*[0-9a-fA-F]+:\s+(\S+)(?:\s+(.*?))?\s*$")
 # A target operand may carry an objdump comment: "196 <sym+0xNN>" or with "# ..".
 _TARGET_RE = re.compile(r"<([^>+]+)(?:\+0x[0-9a-fA-F]+)?>")
 
-# GCC clone suffixes to strip when matching the dynamic-budget table.
+# GCC clone suffixes to strip when comparing function names.
 _CLONE_SUFFIX_RE = re.compile(r"\.(?:constprop|isra|part|lto_priv|cold)\.\d+$")
 
 _REGS = {

@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Sequence for smu_ext_boot_seq_gate_test (SMU_006 rev 2).
+"""Sequence for smu_ext_boot_seq_gate_test (SMU_006).
 
-Observes fuse_reset_n_delayed_o — the RTL consumer gated by ext_boot_seq_done_i
+Observes smc_fuse_reset_n_delayed_o — the RTL consumer gated by ext_boot_seq_done_i
 (port_table: gates reset release). rst_primary_smc_clk_no is NOT gated by this pin
 (negative control CHK-PRIMARY-NOT-GATED).
 """
@@ -18,7 +18,7 @@ from seq_lib.smu_tb_pins import smc_primary_reset
 
 
 class smu_ext_boot_seq_gate_test_seq:
-    """SMU_006 rev2: ext_boot_seq_done_i gates fuse_reset release."""
+    """SMU_006: ext_boot_seq_done_i gates fuse_reset release."""
 
     GATED_SAMPLES = 64
     RELEASE_BOUND = 2000
@@ -88,18 +88,18 @@ class smu_ext_boot_seq_gate_test_seq:
 
         self._mark_step(
             "S2",
-            "GATED: ext_boot_seq_done_i=0 holds fuse_reset_n_delayed_o low",
+            "GATED: ext_boot_seq_done_i=0 holds smc_fuse_reset_n_delayed_o low",
         )
         gated_samples = 0
         for _ in range(self.GATED_SAMPLES):
             await RisingEdge(dut.clk_smu_i)
-            fuse = self._sample(dut.fuse_reset_n_delayed_o, "fuse_reset_n_delayed_o")
+            fuse = self._sample(dut.smc_fuse_reset_n_delayed_o, "smc_fuse_reset_n_delayed_o")
             gate = self._sample(dut.ext_boot_seq_done_i, "ext_boot_seq_done_i")
             if gate != 0:
                 raise AssertionError(f"ext_boot_seq_done_i not 0 during S2: {gate}")
             if fuse != 0:
                 raise AssertionError(
-                    f"fuse_reset_n_delayed_o released while gated at sample {gated_samples}"
+                    f"smc_fuse_reset_n_delayed_o released while gated at sample {gated_samples}"
                 )
             gated_samples += 1
 
@@ -116,8 +116,8 @@ class smu_ext_boot_seq_gate_test_seq:
         )
         chk_primary = (
             "CHK-PRIMARY-NOT-GATED: rst_primary_smc_clk_no releases to 1'b1 while "
-            f"ext_boot_seq_done_i=0, distinguishing this card's gated signal from "
-            f"the prior rev 1 card's (incorrect) target (primary={primary})"
+            "ext_boot_seq_done_i=0; only fuse_reset_n_delayed_o is boot-gated "
+            f"(primary={primary})"
         )
         self._log(chk_primary)
         # Soft wait + live compare (expires with primary!=1 → FAIL).
@@ -134,7 +134,7 @@ class smu_ext_boot_seq_gate_test_seq:
         )
         dut.ext_boot_seq_done_i.value = 1
         released = await self._wait_eq(
-            dut.fuse_reset_n_delayed_o,
+            dut.smc_fuse_reset_n_delayed_o,
             1,
             clk=dut.clk_smu_i,
             bound=self.RELEASE_BOUND,
@@ -142,9 +142,9 @@ class smu_ext_boot_seq_gate_test_seq:
         )
 
         chk_gate = (
-            "CHK-BOOT-SEQ-GATE: with ext_boot_seq_done_i=0, fuse_reset_n_delayed_o "
+            "CHK-BOOT-SEQ-GATE: with ext_boot_seq_done_i=0, smc_fuse_reset_n_delayed_o "
             f"remains 1'b0 across >={self.GATED_SAMPLES} samples; after "
-            f"ext_boot_seq_done_i=1, fuse_reset_n_delayed_o becomes 1'b1 within the "
+            f"ext_boot_seq_done_i=1, smc_fuse_reset_n_delayed_o becomes 1'b1 within the "
             f"bounded release window (gated_samples={gated_samples} released={released})"
         )
         self._log(chk_gate)

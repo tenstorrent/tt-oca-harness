@@ -2,16 +2,15 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 """
-I3C IBI Payload-Size Variants  (Test Plan #33)
+I3C IBI Payload-Size Variants
 
 Target issues IBIs with varying payload sizes and the controller verifies the
 received MDB + payload for each.
 
 Constrained-random: each IBI uses a random MDB and a random payload length/bytes
 (shared framework, seed from +seed/SEED/default), bounded by the configured IBI
-payload size. The directed boundary sizes (0, 1, full) are still covered first,
-then random ones are added. The received MDB is self-checked against what was
-sent.
+payload size. The directed boundary sizes (0, 1, full) run first, then random
+ones. The received MDB is self-checked against what was sent.
 """
 
 import cocotb

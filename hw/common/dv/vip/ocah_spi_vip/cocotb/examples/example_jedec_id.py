@@ -85,7 +85,7 @@ async def example_jedec_id(dut):
     # -----------------------------------------------------------------
     # Step 1: configure and start the flash BFM
     # -----------------------------------------------------------------
-    TARGET_JEDEC_ID = 0xEF4018  # 24-bit generic NOR JEDEC ID (no brand)
+    TARGET_JEDEC_ID = 0xEF4018  # 24-bit JEDEC ID: manufacturer, type, capacity
 
     flash = OcahSpiFlash(
         cs_n=dut.spi_cs_n,

@@ -51,7 +51,7 @@ class SmuSmcBootScoreboard(uvm_component):
         if self.max_scratch_writes == 0:
             errors.append("SMC scratch SRAM had no write activity")
         assert not errors, "SMC boot scoreboard: " + "; ".join(errors)
-        # aidv tokens for wrapper firmware smoke (distinct from DUT cocotb smoke)
+        # Evidence tokens of the wrapper firmware smoke (distinct from the bare-DUT smoke)
         self._log_evidence(self.logger, "SMC_ROM_READ_OK")
         self._log_evidence(self.logger, "SMC_SCRATCH_WRITE_OK")
         self._log_evidence(self.logger, "SMC_TEST_PASS_OK")
@@ -61,9 +61,9 @@ class SmuSmcBootScoreboard(uvm_component):
 class SmuSepBootScoreboard(uvm_component):
     """Require real SEP reset, boot-ROM fetch, ICCM execution, and DCCM stores.
 
-    This is the boot-readiness bar of the SMU-level SEP smoke (mirroring the
-    internal `smu_sep_smoke_test` contract): SEP must be observed fetching
-    from the boot-ROM entry window and then executing firmware from ICCM.
+    This is the boot-readiness bar of the SMU-level SEP smoke: SEP must be
+    observed fetching from the boot-ROM entry window and then executing
+    firmware from ICCM.
     Console/STDOUT checking over the external AXI path is out of scope here.
     """
 
