@@ -44,13 +44,51 @@ which map key words into the sideload structures expected by the OpenTitan
 cores. These buses are independently isolated so that they drain before either
 the Key Manager or the destination accelerator enters software reset.
 
-Alerts from all crypto components are collected by 11 `prim_alert_receiver`
-instances within `sep_crypto` and aggregated into a single `crypto_alert_o`
-output. Each accelerator except Adams Bridge has its own software-controllable
+Each accelerator except Adams Bridge has its own software-controllable
 reset. The SEP Reset Controller drains and isolates both its host and Key Manager
 paths before asserting reset; a Key Manager reset similarly drains all of its
 key paths. The entropy source, CSRNG, and EDN share one coordinated reset. See
 <<sep-reset-controller>> and <<sep-trng-reset>>.
+
+[[sep-crypto-alert-policy]]
+==== OpenTitan Alert Termination
+
+SEP does not instantiate OpenTitan's `alert_handler`. Each OpenTitan crypto
+alert channel is terminated locally by a `prim_alert_receiver` in `sep_crypto`.
+Alert ping is disabled (`ping_req_i` tied 0); `ping_ok_o` is unused.
+
+The eleven channels belong to six blocks. A given accelerator's alerts are not
+mixed with another accelerator's at the receiver:
+
+[cols="12%,18%,70%",options="header"]
+|===
+|Index |Block |Channels
+|`[0]` |HMAC |1 fatal
+|`[2:1]` |OTBN |2
+|`[4:3]` |AES |recoverable, fatal
+|`[6:5]` |KMAC |2
+|`[8:7]` |CSRNG |2
+|`[10:9]` |EDN |2
+|===
+
+Adams Bridge has no OpenTitan alert channel; it reports through PIC sources 35
+and 36. The entropy source reports through PIC source 16, not an OpenTitan
+alert.
+
+Each receiver produces an alert pulse and an integrity-fail. Those bits from
+every receiver combine onto `crypto_alert_o`, which is PIC source 33
+(<<sep-cpu-interrupt-vector-map>>).
+
+[[sep-crypto-bridge-faults]]
+==== Register-Bridge Faults
+
+HMAC, AES, KMAC, OTBN, CSRNG, and EDN convert isolated AXI4-Lite to TL-UL
+through `axi_lite_to_tlul`. That bridge's `err_o` is a sticky fault, held until
+the matching per-block clear, and is the wrapper's `bus_err_o`. Firmware
+identifies the block in `PERIPH_BUS_ERR_STATUS` and acknowledges it with
+`PERIPH_BUS_ERR_CLEAR`. PIC source 43 is the OR of those bits together with the
+watchdog timer's bridge fault; clears are per-block so acknowledging one cannot
+discard another. Adams Bridge has no TL-UL bridge.
 
 The crypto complex uses whole-instance Class 2 scan boundaries so all
 sequential key, round-key, digest-working, seed, and random-distribution state
@@ -89,7 +127,7 @@ masks to a 13-bit window (8 KB), accommodating both the register space and the
 message FIFO window at offset `0x1000`. The Key Manager provides an
 8-word-per-share key through the `hmac_wrapper_key_reg` block, which maps
 directly to the `keymgr_key_i` sideload input. HMAC exposes a single fatal
-alert channel (index [0] in the `sep_crypto` aggregation), three interrupts
+alert channel (index `[0]` in <<sep-crypto-alert-policy>>), three interrupts
 (`done`, `fifo_empty`, `err`), and an `idle_o` status output. Unlike the other
 crypto wrappers, HMAC has no EDN connection.
 
@@ -157,8 +195,8 @@ domain into per-client EDN responses. The adapter forwards the per-beat FIPS
 provenance through a generic AXI-Stream `tuser` sideband so OTBN RND observes
 compliant entropy and does not assert `rnd_fips_chk_fail`. The OTP scramble key
 handshake is tied to fixed values. Life-cycle escalation and RMA request
-signals are tied to their inactive state. OTBN occupies alert indices [2:1] in
-the crypto aggregation and exports a single `intr_done_o` interrupt.
+signals are tied to their inactive state. OTBN occupies alert indices `[2:1]`
+in <<sep-crypto-alert-policy>> and exports a single `intr_done_o` interrupt.
 
 Consult the
 https://opentitan.org/book/hw/ip/otbn/doc/otbn_intro.html[OpenTitan OTBN
@@ -199,8 +237,9 @@ for the crypto sink domain into AES's native-protocol EDN response. The adapter
 forwards the per-beat FIPS bit from the stream's `tuser` sideband into
 `edn_fips`; AES itself does not consume the flag. The AES core uses `rst_ni` for
 both the main and shadow reset domains. Life-cycle escalation is tied to its
-inactive state. AES occupies alert indices [4:3] in the crypto aggregation and
-exports an `idle_o` status output but no interrupt.
+inactive state. AES occupies alert indices `[4:3]` in
+<<sep-crypto-alert-policy>> and exports an `idle_o` status output but no
+interrupt.
 
 Consult the
 https://opentitan.org/book/hw/ip/aes/index.html[OpenTitan AES
@@ -229,7 +268,7 @@ arbitrated by `u_axis_edn_crypto_s3c_scan` (the shared
 `drbg_axis_edn_adapter`), served from the same post-CSRNG DRBG AXI-Stream feed.
 The `app_i` application interface is tied off since the SEP does not use the
 KMAC hardware application path. Life-cycle escalation is inactive. KMAC
-occupies alert indices [6:5] in the crypto aggregation and exports three
+occupies alert indices `[6:5]` in <<sep-crypto-alert-policy>> and exports three
 interrupts: `done`, `fifo_empty`, and `err`.
 
 Consult the
