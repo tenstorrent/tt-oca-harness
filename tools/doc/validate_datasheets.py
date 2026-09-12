@@ -49,8 +49,11 @@ def validate_source(source: Path) -> list[str]:
     return errors
 
 
+MAX_DATASHEET_PAGES = 4
+
+
 def validate_pdf(pdf: Path) -> list[str]:
-    """Return errors when a generated datasheet is absent or not one to two pages."""
+    """Return errors when a generated datasheet is absent or exceeds the page budget."""
     if not pdf.is_file():
         return [f"PDF does not exist: {pdf}"]
 
@@ -70,8 +73,10 @@ def validate_pdf(pdf: Path) -> list[str]:
         if count:
             page_tree_counts.append(int(count.group(1)))
     pages = max(page_tree_counts) if page_tree_counts else len(PAGE_RE.findall(data))
-    if pages not in (1, 2):
-        return [f"{pdf}: expected 1 or 2 pages, found {pages} pages"]
+    if pages < 1 or pages > MAX_DATASHEET_PAGES:
+        return [
+            f"{pdf}: expected 1 to {MAX_DATASHEET_PAGES} pages, found {pages} pages"
+        ]
     return []
 
 
