@@ -74,13 +74,13 @@ mixed with another accelerator's at the receiver:
 |`[10:9]` |EDN |2
 |===
 
-Adams Bridge has no OpenTitan alert channel; it reports through PIC sources 35
-and 36. The entropy source reports through PIC source 16, not an OpenTitan
-alert.
+Adams Bridge has no OpenTitan alert channel; it reports by interrupt. The
+entropy source reports by interrupt, not an OpenTitan alert. Both are in
+<<sep-cpu-interrupt-vector-map>>.
 
 Each receiver produces an alert pulse and an integrity-fail. Those bits from
-every receiver combine onto `crypto_alert_o`, which is PIC source 33
-(<<sep-cpu-interrupt-vector-map>>).
+every receiver combine onto `crypto_alert_o`, the Crypto alert source in
+<<sep-cpu-interrupt-vector-map>>.
 
 [[sep-crypto-bridge-faults]]
 ==== Register-Bridge Faults
@@ -89,9 +89,9 @@ HMAC, AES, KMAC, OTBN, CSRNG, and EDN convert isolated AXI4-Lite to TL-UL
 through `axi_lite_to_tlul`. That bridge's `err_o` is a sticky fault, held until
 the matching per-block clear, and is the wrapper's `bus_err_o`. Firmware
 identifies the block in `PERIPH_BUS_ERR_STATUS` and acknowledges it with
-`PERIPH_BUS_ERR_CLEAR`. PIC source 43 is the OR of those bits together with the
-watchdog timer's bridge fault; clears are per-block so acknowledging one cannot
-discard another. Adams Bridge has no TL-UL bridge.
+`PERIPH_BUS_ERR_CLEAR`. The combined interrupt is Peripheral register-bridge
+fault in <<sep-cpu-interrupt-vector-map>>; clears are per-block so acknowledging
+one cannot discard another. Adams Bridge has no TL-UL bridge.
 
 The crypto complex uses whole-instance Class 2 scan boundaries so all
 sequential key, round-key, digest-working, seed, and random-distribution state
@@ -327,8 +327,8 @@ macros versus nine, plus a second NTT. That choice changes ABR internal behavior
 (sequencing, SCA, memory topology), not merely throughput.
 
 ABR has no alert channel -- it is the only crypto accelerator that reports faults
-solely by interrupt, contributing PIC sources 35 (error) and 36 (notification)
-per <<sep-cpu-interrupt-vector-map>>, plus a gated ML-KEM shared-key interrupt
+solely by interrupt (Adams Bridge error and notification in
+<<sep-cpu-interrupt-vector-map>>), plus a gated ML-KEM shared-key interrupt
 consumed directly by the Key Manager. Whether the block is present in a build is
 controlled by `SEP_ABR_EN`, which always implies the vendored RTL's `CALIPTRA`
 define; when it is absent, both the crypto crossbar port and the Key Manager key
@@ -405,13 +405,8 @@ one per sink domain:
   fan-out;
 * endpoint `[2]` feeds the fabric-level entropy-pool FIFO (`u_entropy_fifo` in
   `sep.sv`) through `u_axis_edn_pool_s3c_scan`. The pool generates three
-  dedicated interrupts on adjacent PIC slots: SEP IRQ 37
-  (`entropy_pool_low`, pool level below watermark), IRQ 38
-  (`entropy_pool_fill_stall`, fill path not making progress) and IRQ 39
-  (`entropy_pool_err`, pool pointer integrity fault, inert in the current
-  configuration). PIC source ids are assigned in
-  <<sep-cpu-interrupt-vector-map>>, which is authoritative; quote it rather
-  than restating the numbers here.
+  dedicated interrupts (`entropy_pool_low`, `entropy_pool_fill_stall`, and
+  `entropy_pool_err`) listed in <<sep-cpu-interrupt-vector-map>>.
 
 FIPS provenance is carried per-beat on a generic AXI-Stream `tuser`
 sideband. The adapter forwards this bit into each client's `edn_fips` so
