@@ -63,6 +63,14 @@ tags = ["smoke", "ci", "axi_geometry"]
 run_modes = ["smoke"]
 
 [[tests]]
+name = "ocah_axi_timeout_test"
+module = { cocotb = "ocah_axi_timeout_test" }
+seed = 1
+timeout_sec = 600
+tags = ["smoke", "ci", "axi_timeout"]
+run_modes = ["smoke"]
+
+[[tests]]
 name = "ocah_axi_struct_bridge_test"
 module = { cocotb = "ocah_axi_struct_bridge_test", uvm = "ocah_axi_struct_bridge_test" }
 seed = 1
@@ -80,7 +88,14 @@ tests = [
     "ocah_axi_lite_partial_strobe_test",
     "ocah_axi_lite_geometry_test",
     "ocah_axi_geometry_test",
+    "ocah_axi_timeout_test",
     "ocah_axi_struct_bridge_test",
+]
+
+[[groups]]
+name = "axi_timeout"
+tests = [
+    "ocah_axi_timeout_test",
 ]
 
 [[groups]]
