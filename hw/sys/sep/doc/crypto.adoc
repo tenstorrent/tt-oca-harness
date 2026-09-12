@@ -74,9 +74,9 @@ which are not.
 |KMAC |`[6:5]` |OR into Crypto alert |dedicated PIC |STATUS bit; OR into Peripheral register-bridge fault
 |CSRNG |`[8:7]` |OR into Crypto alert |dedicated PIC |STATUS bit; OR into Peripheral register-bridge fault
 |EDN |`[10:9]` |OR into Crypto alert |dedicated PIC |STATUS bit; OR into Peripheral register-bridge fault
-|Adams Bridge |none |— |dedicated PIC |no TL-UL bridge
-|Entropy source |none |— |dedicated PIC |native AXI-Lite; no `axi_lite_to_tlul`
 |===
+
+Adams Bridge and the entropy source do not go through this conversion.
 
 [[sep-crypto-bridge-faults]]
 The Crypto alert source is the OR of every receiver pulse and integrity-fail, so
