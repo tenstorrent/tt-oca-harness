@@ -144,8 +144,7 @@ class smc_cluster_beu_test_seq(SmcCsrSeq):
                     f"returned 0x{via_beu:08x} but the address the local-fabric "
                     f"fold maps it to, 0x{mapped:08x}, returned "
                     f"0x{via_mapped:08x}. If these have diverged the fold has "
-                    f"changed -- see #1237 / #1249 -- and this testcase's premise "
-                    f"needs revisiting."
+                    f"changed and this testcase's premise needs revisiting."
                 )
                 self.alias_pairs.append((beu_addr, mapped, via_beu))
                 if via_beu != 0:
@@ -180,7 +179,7 @@ class smc_cluster_beu_test_seq(SmcCsrSeq):
             "smc_local_fabric.sv:66-78 folds it to (LOCAL_BASE reset 0x%08x); "
             "each pair returned the same word, %d of them a non-zero one. "
             "Write co-residency: hysteresis 0x%x written at 0x%08x read back as "
-            "0x%08x at 0x%08x. This testcase locks the #1237 / #1249 aliasing; "
+            "0x%08x at 0x%08x. This testcase locks the local-fabric fold aliasing; "
             "it proves NO BEU property, because no access reaches a BEU.",
             len(self.alias_pairs),
             LOCAL_BASE_RESET,

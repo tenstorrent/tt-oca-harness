@@ -29,10 +29,9 @@ class smc_cpu_ctrl_scratch_window_test(smc_base_test):
         # `assert_all_reachable(39, ...)` already pinned three lines earlier, so
         # `csr_accesses >= min_csr_accesses` is `39 >= 39` on every run and
         # cannot fail; changing the number does not change that
-        # ([NO-ALWAYS-PASS-CHECKER]). The floor stays because
-        # `record_protocol_vip` requires a scenario-recorded item to declare its
-        # stimulus, and it is written out here rather than read back from the
-        # sequence.
+        # ([NO-ALWAYS-PASS-CHECKER]). `record_protocol_vip` requires a
+        # scenario-recorded item to declare its stimulus floor, written out
+        # here rather than read back from the sequence.
         #
         # `expected_bytes` is DUMMY_ROM_0's reset word read by symbol from the
         # generated `cpu_ctrl.h`; `observed_bytes` is the word the DUT returned

@@ -2,13 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """I2C INTR_ENABLE output-mask reproducer.
 
-EXPECTED TO FAIL against current RTL. Enrolled in the `rtl_issue` group only --
-no `ci` tag, not in `smoke`, held out of `all`. Move it into the `i2c` group
-when it passes.
-
-Issue #1635: the interrupt enable gates the set path instead of masking the
-output. This is the third IP with that shape, after gpio.sv (#1602) and
-log_engine.sv.
+Fails against the RTL as shipped: the interrupt enable gates the set path
+instead of masking the output, so an interrupt that arrives while disabled
+never latches. gpio.sv and log_engine.sv share the same shape. Enrolled in the
+`rtl_issue` group.
 """
 
 from __future__ import annotations

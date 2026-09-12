@@ -402,8 +402,8 @@ int main(void) {
 
     reset_injection_config(&ctx);
 
-    /* Validate the SMC status buffer before cooldown */
-    // unpredictable and no fixed code for CRC error so let's just skip this
+    /* CRC-error entries carry no fixed status code, so the SMC status buffer is not
+     * validated here. */
 
     /* Cool-down valid commands to ensure recovery */
     execute_random_commands(&ctx, 5);

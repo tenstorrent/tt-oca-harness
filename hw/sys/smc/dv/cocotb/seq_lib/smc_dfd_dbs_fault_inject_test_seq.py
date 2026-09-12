@@ -14,7 +14,7 @@ from cocotb.triggers import ClockCycles, RisingEdge
 from .smc_addr_map import smc_addr
 from .smc_csr_seq_utils import SmcCsrSeq
 
-# Keep a diagnostic CSR touch so the test still exercises SEP_IN.
+# One diagnostic CSR read so the test exercises SEP_IN as well as the TB ports.
 VERSION_LO = smc_addr("SMC_TOP_SMC_MISC_WRAP_CHIP_CONFIG_VERSION_LO_BASE_ADDR")
 
 

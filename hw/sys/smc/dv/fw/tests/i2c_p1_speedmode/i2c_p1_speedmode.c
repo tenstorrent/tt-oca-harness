@@ -154,7 +154,6 @@ static int test_speed_mode(uint8_t speed_mode, const char *mode_name) {
         return ret;
     }
 
-    // Note: For internal loopback, just verify we received some data (like i2c_p1_fifo_stress)
     simputs("  Received ");
     simputshex32("", received_len);
     simputs(" bytes\n");

@@ -1,16 +1,17 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Log-engine `INTR_ENABLE` placement -- reproducer for the same defect as #1602.
+"""Log-engine `INTR_ENABLE` placement -- reproducer for the enable-on-set-path defect.
 
-**This sequence is expected to FAIL against current RTL.** It exists to convert
-an unverified transition into tracked evidence, not to pass.
+**This sequence fails on an RTL that gates the interrupt set path with
+``INTR_ENABLE`` instead of the output**; it scores both consequences of that
+placement as evidence.
 
 The RDL states the intent, and the RTL does not implement it.
 `hw/ip/uart/log_engine/regs/log_engine.rdl:159-161` carries the two
 `INTR_STATUS.<field>->hwenable = INTR_ENABLE.<field>` assignments commented
 out, deferred by a note citing a PeakRDL bug. In SystemRDL `hwenable` on an
-`intr` field masks the **output**; the workaround put the enable on the **set**
-path instead, which is not the same thing.
+`intr` field masks the **output**; the RTL gates the **set** path instead,
+which is not the same thing.
 `hw/ip/uart/log_engine/rtl/log_engine.sv:489-496`::
 
     assign reg_in.INTR_STATUS.LOG_FETCH_ERR.next =
@@ -34,8 +35,7 @@ Two distinct consequences follow, and this sequence scores both:
   is the more serious of the two: an interrupt is silently dropped rather than
   spuriously held.
 
-`hw/ip/i2c/rtl/i2c_core.sv:981` and `:995-1010` have the identical shape, which
-is why this is filed as a pattern rather than one IP's bug.
+`hw/ip/i2c/rtl/i2c_core.sv:981` and `:995-1010` have the identical shape.
 
 Stimulus. `INTR_TEST` is `sw = w` with `singlepulse` (log_engine.rdl), so a
 write is a one-cycle event and needs no bus traffic or log region -- the
@@ -251,7 +251,7 @@ class smc_log_engine_intr_mask_test_seq(SmcCsrSeq):
                 f"out, and log_engine.sv:496 drives "
                 f"`irq_o = reg_out.INTR_STATUS.intr` with no enable term. "
                 f"prim_intr_hw.sv:99 masks the output instead. Same shape as "
-                f"#1602 and as i2c_core.sv:981"
+                f"i2c_core.sv:981"
             )
         self.chk_seen.add("CHK-LOG-ENGINE-INTR-MASK-DEASSERT")
 

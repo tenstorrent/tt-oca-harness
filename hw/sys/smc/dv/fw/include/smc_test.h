@@ -178,21 +178,20 @@ static inline bool error_on_bad_cab1e(int hartid, uint32_t val) {
 }
 
 static inline bool gpio_bad_cab1e_check(int hartid, int gpio_num, uint32_t val) {
-    // There is currently a mismatch between RDL and physical GPIO numbering to work around how
-    // demux select is done in padring Physical GPIOs 68-77 are for JTAG and are NOT APB-accessible
-    // There are 3 more APB targets -- refclk ctrl + POC & PBIAS Ctrl + Dummy 'ERR Slave'
-    // In the demux, they are contiguous with GPIOs 0-67, so we should treat them like that here
-    // GPIO [] is ERR slv and is expected to return 0x0badcab1e
-    // Therefore treat JTAG GPIOs as GPIOs 71-80
+    // RDL and physical GPIO numbering differ because of how the padring demux selects targets:
+    // physical GPIOs 68-77 are JTAG and not APB-accessible, and three more APB targets (refclk
+    // ctrl, POC & PBIAS ctrl, dummy ERR slave) sit contiguous with GPIOs 0-67 in the demux, so
+    // the JTAG GPIOs map to indices 71-80 here and index 74 is the ERR slave, which returns
+    // 0x0badcab1e.
     if (val == 0x0badcab1e) {
-        if (gpio_num == 74) { // TODO update index once gpio_shim err_slv added
+        if (gpio_num == 74) { // ERR slave
             return false;
         } else {
             raise_error_s(hartid, "Bad Cable detected!");
             return true;
         }
     } else {
-        if (gpio_num == 74) { // TODO update index once gpio_shim err_slv added
+        if (gpio_num == 74) { // ERR slave
             raise_error_s(hartid, "Should be Bad Cable!");
             info_msg_hex32_s(hartid, "Instead received: ", val);
             return true;

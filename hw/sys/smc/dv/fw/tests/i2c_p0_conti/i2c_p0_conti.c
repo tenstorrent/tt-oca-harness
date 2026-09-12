@@ -9,12 +9,12 @@
  * Test Mode Selection
  * =============================================================================
  *
- * This test supports three modes (configured via TEST_MODE constant):
+ * This test supports three modes, selected at run time through scratch[3]
+ * (0 = ALL_WRITE, 1 = ALL_READ, 2 = ALTERNATING; any other value selects
+ * ALTERNATING):
  *   - I2C_TEST_MODE_ALL_WRITE:    All transactions are Write
  *   - I2C_TEST_MODE_ALL_READ:    All transactions are Read
  *   - I2C_TEST_MODE_ALTERNATING: Alternating Write/Read pattern
- *
- * Change TEST_MODE in main() to select the desired test mode.
  *
  * =============================================================================
  * Test Architecture: Two-Level I2C Control
@@ -226,7 +226,7 @@ int main(void) {
 
     // Parse test mode from scratch[3]
     // 0 = ALL_WRITE, 1 = ALL_READ, 2 = ALTERNATING
-    // If scratch[3] is 0 or invalid, default to ALTERNATING (backward compatibility)
+    // Any other value selects ALTERNATING
     if (test_mode_raw == 0) {
         TEST_MODE = I2C_TEST_MODE_ALL_WRITE;
     } else if (test_mode_raw == 1) {
@@ -234,16 +234,9 @@ int main(void) {
     } else if (test_mode_raw == 2) {
         TEST_MODE = I2C_TEST_MODE_ALTERNATING;
     } else {
-        // Default to ALTERNATING for backward compatibility (when scratch[3] is unset or invalid)
+        // Any other value selects ALTERNATING
         TEST_MODE = I2C_TEST_MODE_ALTERNATING;
     }
-
-    //-------------//
-    // RESET & PLL //
-    //-------------//
-
-    // Note: peripherals_out_of_reset() is no longer needed as peripherals
-    // are automatically released from reset
 
     simputs("\n");
     simputs("################################################\n");
@@ -365,9 +358,6 @@ int main(void) {
 
     write_scratch(1, 0x00000031);
 
-    //=========================================================================
-    // Step 4: Continuous Transactions with Repeated START
-    //=========================================================================
     write_scratch(1, 0x00000040);
     //=========================================================================
     // Step 4: Continuous transactions with Repeated START
@@ -381,7 +371,7 @@ int main(void) {
     const uint32_t DATA_SIZE = 1;
 
     // Test data: Transaction 0 = 0x5A, Transaction 1 = 0x5B
-    // Use single variables like i2c_p0_cwr, update value in each loop iteration
+    // One data byte per transaction, updated each iteration
     uint8_t write_data;
     uint8_t read_data;
     uint8_t read_recv_buffer[2]; // Buffer to receive read data
@@ -410,7 +400,6 @@ int main(void) {
         if (is_write) {
             // ==================================================================
             // Write Transaction (Controller -> Target)
-            // Reference: i2c_p0_cwr - Use i2c_controller_write() function
             // ==================================================================
             // Set data value for this transaction (0x5A for txn 0, 0x5B for txn 1)
             write_data = (txn == 0) ? 0x5A : 0x5B;
@@ -426,8 +415,7 @@ int main(void) {
                 simputs(" [NO STOP - Repeated START]\n");
             }
 
-            // Use basic i2c_controller_write function from i2c_opentitan.c (exactly like
-            // i2c_p0_cwr)
+            // Blocking i2c_controller_write(); send_stop selects STOP vs repeated START
             ret = i2c_controller_write(CONTROLLER_IDX, TARGET_ADDR, &write_data, DATA_SIZE,
                                        send_stop);
 
@@ -456,7 +444,7 @@ int main(void) {
         } else {
             // ==================================================================
             // Read Transaction (Controller <- Target)
-            // Reference: i2c_read_sanity - Pre-load TX FIFO, then use i2c_controller_read()
+            // Pre-load the target TX FIFO, then issue the read
             //
             // CRITICAL for Auto Stretch Mode (tx_stretch_ctrl = false):
             //   - In auto stretch mode, target automatically stretches clock when TX FIFO is empty

@@ -17,7 +17,7 @@ from smc_base_test import smc_base_test
 @pyuvm.test()
 class smc_cg_zeroer_activity_bringup_test(smc_base_test):
     """LIVE Zeroer axi_clk + reg_clk activity-driven gate/ungate, single zero
-    operation (Skill 1.5)."""
+    operation."""
 
     auto_protocol_vip = False
     protocol_vip_kind = SmcProtocolVipKind.ZEROER_DMA

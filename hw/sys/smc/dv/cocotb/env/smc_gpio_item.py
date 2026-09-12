@@ -29,13 +29,12 @@ GPIO_VECTOR_FIELDS = ("core2pad_vec", "core2pad_en_vec")
 # cross-sample equality on it is a real property.
 #
 # `core2pad_vec` is NOT here. It is the pad *value* bus, and it
-# carries free-running DUT outputs -- tb_top.sv:818-821 takes the AVSBus clock
-# from `core2pad_o[49]` and the OCTS strobes from `[55]`/`[56]` -- so it changes
-# with no GPIO stimulus at all (measured: 0x...6001550000000 -> 0x...4001550000000
-# between two samples 80 clk_ref_i apart, i.e. bit 49 toggling). An exact
-# cross-sample expectation on it would be a flaky check, not a proof, so it stays
-# an OBSERVED-ONLY diagnostic in the stability sequences. It remains a *credited*
-# probe because the pad-bus positive control does prove it moves under real CSR
+# carries free-running DUT outputs -- tb_top.sv takes the AVSBus clock from
+# `core2pad_o[49]` and the OCTS strobes from `[55]`/`[56]` -- so bit 49
+# toggles between two samples with no GPIO stimulus at all. An exact
+# cross-sample expectation on it would be a flaky check, not a proof, so it is
+# an OBSERVED-ONLY diagnostic in the stability sequences. It is a *credited*
+# probe because the pad-bus positive control proves it moves under real CSR
 # programming, which is what a per-pad masked compare (e.g.
 # smc_gpio_output_driveback_test) needs.
 GPIO_STABLE_VECTOR_FIELDS = ("core2pad_en_vec",)
@@ -79,7 +78,7 @@ class SmcGpioItem(uvm_sequence_item):
         # --- Optional exact expectations (None = "not checked here") ---------
         # Aggregates: unbackable, so a stated expectation on one of these is
         # REFUSED by SmcScoreboard._check_gpio (see GPIO_SAMPLE_FIELDS above).
-        # The attributes are kept so the refusal is a loud AssertionError naming
+        # The attributes exist so the refusal is a loud AssertionError naming
         # the rule rather than an AttributeError.
         self.expect_core2pad_any: int | None = None
         self.expect_core2pad_en_any: int | None = None

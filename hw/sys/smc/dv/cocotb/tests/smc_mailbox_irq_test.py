@@ -22,9 +22,8 @@ from smc_base_test import smc_base_test
 #   6  WIRQT / RIRQT / IRQEN write + read-back pairs
 #   6  the same three restored to 0, write + read-back pairs
 #   2  CLOCK_GATE_CONTROL restore write + read-back
-# The floor stays at 19 (a minimum, not the exact count): the sequence's own end
-# gate asserts the exact 20 (`EXPECTED_ACCESSES`, seq:109/193-196), so raising
-# this to 20 would duplicate that verdict here.
+# The floor is a minimum, not the exact count: the sequence's own end gate
+# asserts the exact 20 (`EXPECTED_ACCESSES`).
 MAILBOX_IRQ_MIN_CSR_ACCESSES = 19
 
 

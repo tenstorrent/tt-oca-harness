@@ -807,8 +807,6 @@ static int test_acq_fifo_fill_and_reset(uint32_t ctrl_idx, uint32_t tgt_idx) {
 int main(void) {
     int ret;
 
-    // System initialization
-
     simputs("\n");
     simputs("################################################\n");
     simputs("##      I2C FIFO Fill/Reset Status Test       ##\n");

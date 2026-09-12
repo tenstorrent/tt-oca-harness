@@ -83,7 +83,7 @@
 // question (unqualified error flag on the log-fetch master).  It is never
 // asserted as a golden expectation by this test.
 //
-// Uses test_fail(0) directly (noreturn) instead of raise_error + end_test.
+// Failures call test_fail(0) (noreturn).
 
 #include <stdint.h>
 
@@ -551,14 +551,9 @@ int main(void) {
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
     write_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF, GOOD_XFER_LEN);
 
-    // There is deliberately no bounded poll for BIT_WRITE_ERR here. By the
-    // analysis above it can never succeed -- the fetch DECERRs first, so the
-    // write master is never engaged -- so such a poll could only ever expire
-    // into a warning. A wait that can neither fail nor pass is not a check.
-    //
-    // What this scenario does still exercise, and the only thing it claims:
-    // the fetch-error path with WRITE_ERR unmasked, i.e. the INTR_ENABLE
-    // WRITE datapath and the log_write FSM IDLE/REQ arms. Assert that much.
+    // No poll for BIT_WRITE_ERR: the fetch DECERRs first, so the write master is
+    // never engaged and WRITE_ERR cannot set. Assert the fetch-error latch with
+    // WRITE_ERR unmasked, and that WRITE_ERR stays clear.
     {
         uint32_t t = RELATCH_POLLS;
         while (t > 0u && (read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & BIT_FETCH_ERR) == 0u) {

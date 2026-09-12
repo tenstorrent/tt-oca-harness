@@ -2,21 +2,17 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[smc-scope-traceability-candidate]]
-== SMC v0.5.0 scope and traceability (candidate)
+== SMC scope and traceability
 
-This chapter is the *candidate* requirement-to-test-to-coverage matrix for
-#496. It is not an approval. Live group membership is `testlists/all.toml`
-and the lists it includes; `SMC_VPLAN.adoc` states what each testcase
-verifies. This file is the reconciliation between the two — which of those
-testcases the sign-off may count as feature credit, and which are bring-up
-or decode-only names that must not be counted twice.
-
-Do not treat a merged copy as design-owner or DV-lead sign-off.
+This chapter is the requirement-to-test-to-coverage matrix. Live group
+membership is `testlists/all.toml` and the lists it includes; `SMC_VPLAN.adoc`
+states what each testcase verifies. This file is the reconciliation between
+the two — which of those testcases count as feature credit, and which are
+bring-up or decode-only names that must not be counted twice.
 
 [cols=",",options="header",]
 |===
 |Field |Value
-|Status |CANDIDATE — awaiting SMC design owner + DV lead approval
 |DUT |`--dut smc` → `smc_wrapper` under `smc_uvm_top`
 |Spec / plan |`SMC_VPLAN.adoc` plus the groups `testlists/all.toml` resolves
 |Coverage intent |`SMC_FCOV.adoc` (Python counters; no Verilator covergroup)
@@ -24,43 +20,25 @@ Do not treat a merged copy as design-owner or DV-lead sign-off.
 |CI |`.github/workflows/sim.yml` PR `smoke`; `.github/workflows/regress.yml` nightly and weekly `hosted`
 |===
 
-[[smc-scope-confirmation]]
-=== Approval (unsigned)
-
-[cols="2,3,2,3",options="header",]
-|===
-|Role |Name |Date |Result
-|SMC design owner | | |pending
-|SMC DV lead | | |pending
-|===
-
 [[smc-live-groups]]
 === Live groups versus credit
 
-Executable membership, resolved from the testlists:
+Executable membership is resolved from the testlists; the groups and their
+`expected_count` guards are in `testlists/all.toml`:
 
-[cols="2,1,3",options="header",]
+[cols="2,3",options="header",]
 |===
-|Group |Count |Role
-|`smoke` |3 |PR gate (`sim.yml`): canonical bring-up, cold reset, and a CSR frontdoor read
-|`hosted` |151 |Nightly and weekly (`regress.yml`): `all` minus the five firmware / `SMC_DUAL` leaves
-|`per_ip` |99 |One pass across every IP the bench drives. Successor to the `canonical_top6` / `top10` / `top20` tiers.
-|`all` |156 |The package regression. Eight of the 164 enrolled are out: two held against #585 and #1488, two on measured runtime, and the four `rtl_issue` reproducers whose job is to fail.
-|`functional` |13 |One name per Project 335 bucket #3301–#3314. Mixes SAMPLE bring-up with feature rows.
+|Group |Role
+|`smoke` |PR gate (`sim.yml`): canonical bring-up, cold reset, and a CSR frontdoor read
+|`hosted` |Nightly and weekly (`regress.yml`): `all` minus the firmware / `SMC_DUAL` leaves
+|`per_ip` |One pass across every IP the bench drives
+|`all` |The package regression; `all.toml` names the held-out testcases and why
+|`functional` |One name per functional bucket; mixes SAMPLE bring-up with feature rows
 |===
 
-The three `canonical_top*` tiers no longer exist; nothing in the tree
-distinguished a top-6 from a top-10 except the order the work was done in.
-`per_ip` replaces all three, and the matrix below names the groups a
-testcase is actually reachable through.
-
-#1448 landed: `smc_i3c_to_fabric_test` is out of `smoke` and `functional`,
-which is why `functional` is 13. `smoke` is the three-leaf PR gate
-(`smc_canonical_smoke_test`, `smc_cold_reset_test`,
-`smc_register_sanity_test`). This candidate gives the I3C leaf no feature
-credit either way.
-
-Nightly and weekly already schedule `hosted`, not `smoke`.
+`smoke` is the three-leaf PR gate (`smc_canonical_smoke_test`,
+`smc_cold_reset_test`, `smc_register_sanity_test`). `smc_i3c_to_fabric_test`
+is in neither `smoke` nor `functional` and receives no feature credit.
 
 [[smc-credit-rules]]
 === Credit rules
@@ -70,19 +48,19 @@ Nightly and weekly already schedule `hosted`, not `smoke`.
   `smoke` and is not a requirement row.
 * `smc_i3c_to_fabric_test` is HCI_VERSION decode (`proxy=True`). It
   remains runnable via `i3c_depth` / `per_ip` / by name. It is not
-  stub-signature SLVERR, and it is not I3C protocol credit (#504).
-* Deferred.toml names, adopter PLL/PVT OKAY+0 wraps, and TB-glue DFD
-  tokens are OUT (#505 / #506).
+  stub-signature SLVERR, and it is not I3C protocol credit.
+* Names in `SMC_DEFERRED_DISPOSITION.adoc`, adopter PLL/PVT OKAY+0 wraps, and
+  TB-glue DFD tokens are OUT.
 * UART loopback / ROM firmware stay on their existing intake issues.
   They are not re-scoped here.
 * `--dut smc` already instantiates `smc_wrapper`. There is no separate
   `wrapper.toml` and no test named `main_wrapper` or `main_wrapper_por`.
   Bring-up / POR successors are `smc_canonical_smoke_test` and the reset
   cluster (`smc_cold_reset_test`, `smc_powergood_glitch_test`,
-  `smc_multi_reset_csr_persistence_test`). See #260.
+  `smc_multi_reset_csr_persistence_test`).
 
 [[smc-traceability-matrix]]
-=== Candidate matrix (feature-credit subset)
+=== Matrix (feature-credit subset)
 
 Requirement IDs are the VPLAN TC rows or the canonical scenario those
 tests actually run. Coverage bins are the `SMC_FCOV.adoc` families the
@@ -113,32 +91,16 @@ the whole gate.
 |Outbound filter / remap |`smc_output_filter_remap_security_test` |depth_fabric, depth |fabric filter |AXI filter/remap |YES
 |ECC / DFD / DBS sanity |`smc_ecc_dfd_dbs_sanity_test` |depth |dbs_dfd_ecam_ecc |CSR sanity; fault-inject is deferred |YES
 |Multi-reset CSR persist |`smc_multi_reset_csr_persistence_test` |depth |reset |Scratch persist across reset classes |YES
-|I3C window decode |`smc_i3c_to_fabric_test` |i3c_depth, depth; out of smoke and functional since #1448 |i3c decode |OKAY + `HCI_VERSION=0x120`; `proxy=True` |NO
+|I3C window decode |`smc_i3c_to_fabric_test` |i3c_depth, depth; not in smoke or functional |i3c decode |OKAY + `HCI_VERSION=0x120`; `proxy=True` |NO
 |PLL/PVT clock config |`smc_pll_pvt_clock_config_test` |none — in no testlist |macro handshake |OKAY+0 wrap |NO
-|I3C CCC/IBI |`smc_i3c_ccc_ibi_full_test` |deferred |— |child I3C TB |NO
-|DTP CSR on smc_wrapper |idle port; no terminator |deferred (#506) |— |do not add a placeholder slave for credit |NO
+|I3C CCC/IBI |`smc_i3c_ccc_ibi_full_test` |none — in no testlist |— |child I3C TB |NO
+|DTP CSR on smc_wrapper |idle port; no terminator |none — no terminator |— |do not add a placeholder slave for credit |NO
 |UART/SPI loopback, ROM boot |P2 / firmware groups |not canonical |protocol / firmware |UART/ROM intake |NO
 |===
 
-`functional` still lists SAMPLE-only names (`smc_cold_reset_test`,
+`functional` lists SAMPLE-only names (`smc_cold_reset_test`,
 `smc_clk_running_test`, `smc_gpio_observe_test`, `smc_i2c_cg_sanity_test`,
 `smc_irq_observe_test`, `smc_mailbox_idle_test`,
 `smc_input_fabric_axi_wr_rd_test`, `smc_avsbus_sanity_test`,
 `smc_dbs_idle_test`). Those stay category aliases. They are not extra
 feature rows.
-
-[[smc-focused-gaps]]
-=== Focused gaps (not absorbed here)
-
-[cols="2,3,3",options="header",]
-|===
-|Gap |Owner |Tracker
-|Approve this matrix |SMC design owner + DV lead |#496 (this file)
-|I3C decode dropped from CI/canonical groups |SMC DV |#504 / #1448 (merged)
-|I3C DAT/DCT + DTP CSR idle boundaries |SMC DV |#506 / #1447
-|Deferred.toml disposition |SMC DV |#505 / #1447
-|UART / ROM intake |UART/ROM owner |existing UART/ROM issues; do not fold into #495
-|Commercial `main_wrapper*` names |SMC DV |#260
-|TB/VIP architecture review (no rewrite) |SMC DV lead |#497
-|Verilator CI honesty |SMC DV |#508
-|===

@@ -1,10 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""eFuse READ_STATUS-on-timeout reproducer for issue #1603.
+"""eFuse READ_STATUS on a timed-out read.
 
-EXPECTED TO FAIL against current RTL. Enrolled in the `rtl_issue` group only --
-no `ci` tag, not in `smoke`. When #1603 is fixed this belongs in the eFuse
-testlist with the `ci` tag; until then it holds the evidence in runnable form.
+A timed-out eFuse read must set EFUSE_READ_CTRL.READ_STATUS. The read
+interface's timeout arm never assigns the error flag, so the RTL reports
+`read_done=1, read_status=0` after a timeout and this testcase fails against
+it; it is enrolled in the `rtl_issue` group.
 """
 
 from __future__ import annotations
@@ -18,7 +19,7 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_efuse_read_timeout_status_test(smc_base_test):
-    """#1603: a timed-out eFuse read must set EFUSE_READ_CTRL.READ_STATUS."""
+    """A timed-out eFuse read must set EFUSE_READ_CTRL.READ_STATUS."""
 
     auto_protocol_vip = False
 

@@ -1,15 +1,13 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""SMC OSS PyUVM FLR recovery-half sanity test (Batch D).
+"""SMC OSS PyUVM FLR recovery-half sanity test.
 
-Scope is a deliberate choice, not a TB limitation: this test covers only the
-*downstream* half of an FLR -- the cool reset itself and the SEP_IN AXI CSR path
-across it -- and drives it from the ``rst_cool_ni`` pin, asserting
-``tb_cfg_flr_pf_active`` stays inactive so the observed cool reset is
-attributable to that pin. The FLR *trigger* path
+This test covers only the *downstream* half of an FLR -- the cool reset itself
+and the SEP_IN AXI CSR path across it -- and drives it from the ``rst_cool_ni``
+pin, asserting ``tb_cfg_flr_pf_active`` stays inactive so the observed cool
+reset is attributable to that pin. The FLR *trigger* path
 (``cfg_flr_pf_active_i`` -> isolate-req CSR -> FLR delay/hold counters ->
-``rst_cool_no``) is available in this TB and is driven by the enrolled sibling
-``smc_cool_reset_from_pcie_test``.
+``rst_cool_no``) is driven by the sibling ``smc_cool_reset_from_pcie_test``.
 
 Proof: bounded assert/release handshakes on the cool reset, then
 ``SCRATCH_COLD_WARM_0`` read before any rewrite must equal its mapped reset

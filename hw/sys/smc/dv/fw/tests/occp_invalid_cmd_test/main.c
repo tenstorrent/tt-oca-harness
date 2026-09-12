@@ -7,10 +7,9 @@
  * This test sends commands with invalid OCCP command codes to verify
  * that the ROM properly rejects them and reports appropriate error status.
  *
- * IMPORTANT NOTE: The ROM status buffer only preserves the low byte of
- * invalid commands due to the SMC_OCCP_ERROR_WITH_DATA macro limitation.
- * Multi-byte commands (e.g., 0xDEAD) are stored as (0x101 | 0xAD = 0x1AD).
- * This is per ROM specification and is expected behavior.
+ * The ROM status buffer preserves only the low byte of an invalid command
+ * (SMC_OCCP_ERROR_WITH_DATA): a multi-byte command such as 0xDEAD is stored as
+ * 0x101 | 0xAD = 0x1AD.
  */
 
 #include "occp_test_common.h"

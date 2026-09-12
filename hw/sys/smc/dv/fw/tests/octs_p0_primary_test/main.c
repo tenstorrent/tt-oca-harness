@@ -39,13 +39,11 @@ static void timer_init(void) {
     // Writability probe, before the operational value is programmed.
     //
     // The operational value below (0x0001020A) is STEP=0x1, PULSE_WIDTH=0x2,
-    // CREDIT_VAL=0xA -- which is exactly this register's generated reset
-    // default (SYSTEM_TIMER_OCTS__CTRL__{STEP,PULSE_WIDTH,CREDIT_VAL}_reset).
-    // Writing it and reading it back therefore proved nothing: a CTRL that
-    // ignores writes entirely reads back the same word. Write a value that
-    // differs in all three fields first, confirm it took, and only then
-    // program the value the rest of the test depends on. The probe happens
-    // before the timer is started, so it changes no behaviour downstream.
+    // CREDIT_VAL=0xA -- exactly this register's generated reset default
+    // (SYSTEM_TIMER_OCTS__CTRL__{STEP,PULSE_WIDTH,CREDIT_VAL}_reset), so a
+    // read-back of that word cannot tell a writable CTRL from one that ignores
+    // writes. The probe value differs from the reset default in all three
+    // fields and must read back before the operational value is programmed.
     {
         const uint32_t probe =
             (((SYSTEM_TIMER_OCTS__CTRL__STEP_reset ^ 0x2u) << SYSTEM_TIMER_OCTS__CTRL__STEP_bp) &
@@ -335,9 +333,6 @@ int main(void) {
     //-------------//
     write_scratch(1, 0xcccccccc);
     simputs("octs_p0_primary_test_start\n");
-
-    // Release timer from reset
-    // Note: peripherals_out_of_reset() is no longer available
 
     // Wait for reset to propagate
     wait_cycles(100);

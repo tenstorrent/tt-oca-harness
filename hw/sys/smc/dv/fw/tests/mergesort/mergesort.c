@@ -105,9 +105,7 @@ void fill_array(int arr[], int size) {
  *
  * Ordering alone is satisfied by a sort that drops or duplicates elements, so
  * the sum carried in from before the sort is what makes this a permutation
- * check rather than a monotonicity check. merge() allocates its scratch as VLAs
- * inside a recursion 11 deep, so a corrupted merge is a realistic failure here
- * and not a theoretical one. */
+ * check rather than a monotonicity check. */
 static void check_sorted(int arr[], int size, int expect_sum, int size_log, int iter) {
     int sum = 0;
 

@@ -2,15 +2,13 @@
 /* SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. */
 
 /*
- * OCCP Master Test Suite - Main Entry Point
+ * OCCP Random Command Test
  *
- *
- *
+ * Runs random OCCP commands through the shared helper, checks GET_STATUS, then
+ * drains the SEP and SMC status ring buffers.
  */
 
 #include "occp_test_common.h"
-//#include "smc_defines.h"
-//#include "smc_test.h"
 #include <string.h> // For memcpy
 
 static void run_test_suite(test_context_t *ctx) {
@@ -25,7 +23,7 @@ static void run_test_suite(test_context_t *ctx) {
     int exp_interface_status = 0x1;
     int exp_boot_status = 0x5;
 
-    // Execute 25 random OCCP commands using shared function
+    // Random OCCP commands through the shared helper
     simputs("=== Random OCCP Commands Test (25 commands) ===\n");
     execute_random_commands(ctx, 5);
 

@@ -5,8 +5,7 @@
 //
 // One definition, used by every backdoor that reaches the scratch macros: the
 // +smc_scratch_ram_hex image loader in smc_cpu_mem_dv.sv and the peek decodes
-// in tb_top.sv. Three copies of an address map would be three chances to be
-// wrong in different ways, and a wrong copy is silent: it loads firmware into
+// in tb_top.sv. A wrong copy of this map is silent: it loads firmware into
 // banks the CPU never fetches from, and every testcase that does not execute
 // that firmware still passes.
 //
@@ -29,8 +28,8 @@
 // So the interleave granularity is 64 bytes across FOUR banks -- a 256-byte
 // cycle -- and the other three bits of bank index come from the top of the
 // 1 MB window, not from the stripe counter. A flat "round-robin across all 32
-// banks every 64 bytes" model agrees with this only for the first 256 bytes,
-// which is exactly why the disagreement first shows up at offset 0x100.
+// banks every 64 bytes" model agrees with this only for the first 256 bytes
+// and diverges from offset 0x100 onward.
 package smc_scratch_map_pkg;
 
   // 64 data bits + 8 SECDED bits per entry; addresses are byte addresses.

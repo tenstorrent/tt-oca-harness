@@ -596,15 +596,13 @@ static int uart_test_break_and_framing(uint32_t uart_idx) {
 }
 
 int main(void) {
-    // v010c: parity error is DETECTED on the target (receiver). Swap so the
-    // target is UART0 (replica[0], the only coverage-counted replica) instead
-    // of UART3 (waived). UART3 transmits with mismatched parity; UART0 receives
-    // and flags LSR.PE / rx_parity_err_o -> closes replica[0] parity CODE
-    // coverage. Overrun/break already use UART0 single-ended loopback.
-    const uint32_t uart_ctrl_idx = 3u;    // controller (TX) for parity tests (UART3, waived)
-    const uint32_t uart_tgt_idx = 0u;     // target (RX, PE detected here) = UART0 = replica[0]
-    const uint32_t uart_overrun_idx = 0u; // UART0 used for loopback overrun test
-    const uint32_t uart_break_idx = 0u;   // UART0 also used for break tests
+    // The parity error is detected on the receiver, so UART0 (replica[0]) is the
+    // target and UART3 transmits with mismatched parity. Overrun and break use
+    // the UART0 single-ended loopback.
+    const uint32_t uart_ctrl_idx = 3u;    // controller (TX) for the parity test
+    const uint32_t uart_tgt_idx = 0u;     // target (RX, PE detected here)
+    const uint32_t uart_overrun_idx = 0u; // loopback overrun test
+    const uint32_t uart_break_idx = 0u;   // break test
 
     simputs("\n");
     simputs("========================================\n");

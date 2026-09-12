@@ -25,8 +25,8 @@ _CSR_BOUND = 64
 #
 # All of these are `sw = rw; hw = r` with reset 0x0 in
 # hw/sys/smc/regs/blocks/reset_unit/reset_unit.rdl -- plain software-owned
-# storage whose only consumer is a TOP-LEVEL OUTPUT. Verified before writing
-# them, because a write that fed back into the DUT would reset the bench:
+# storage whose only consumer is a TOP-LEVEL OUTPUT, so no write feeds back into
+# the DUT and resets the bench:
 #   * `ss_reset_ctrl_o [31:0]` (smc.sv:191) reaches tb_top as
 #     `ss_reset_ctrl [31:0]` (tb_top.sv:1184,1279) and only
 #     `ss_reset_ctrl[0].warm_reset_n` is tapped out (tb_top.sv:1400).
@@ -43,12 +43,11 @@ _SS_SWEEP_REGS = (
     "SS_DEBUG_HOLD",
     "SS_FORCE_TO_REF_CLK",
 )
-# The `external` keyword is NOT the criterion for inclusion. It says where a
-# register lives, not whether it stores what software writes: `SS_CONFIG` @0x20
-# and `SS_COLD_RESET_N` @0x40 are `external` (reset_unit.rdl:227,230) and both
-# sweep and pass. The criterion is "`sw = rw`, reset 0x0, reversible, and no
-# path back into the bench", and each register outside the tuple above fails it
-# for a reason of its own:
+# The inclusion criterion is "`sw = rw`, reset 0x0, reversible, and no path back
+# into the bench". The `external` keyword only says where a register lives:
+# `SS_CONFIG` @0x20 and `SS_COLD_RESET_N` @0x40 are `external`
+# (reset_unit.rdl:227,230) and meet the criterion. Each register outside the
+# tuple above fails it for a reason of its own:
 #
 #   * `SS_WARM_RESET_N` @0x44 -- `sw = rw; hw = r` like the swept seven, but its
 #     reset is 0xFFFFFFFF (reset_unit.rdl:44-50), so the sweep's `expected=0`
@@ -62,8 +61,8 @@ _SS_SWEEP_REGS = (
 #     sweep's.
 #   * `SS_CONFIG_LOCK` @0x24 and `SS_COLD_RESET_LOCK` @0x70 -- `onwrite = woset`,
 #     irreversible until a cold reset, and the latter removes SS_COLD_RESET_N's
-#     writability. They are provable, but leaving irreversible state behind in a
-#     shared regression is not worth one register each.
+#     writability, so the sweep's restore leg cannot apply;
+#     `smc_reset_unit_lock_test_seq` covers them.
 #   * `ISOLATE_REQ_VIS` @0xC0 -- `sw = r; hw = w` pin visibility
 #     (reset_unit.rdl:146-152).
 #   * `ISOLATE_REQ_SMC_REG` @0xB8 -- hardware-set, software-cleared, and one bit
@@ -198,9 +197,7 @@ class smc_reset_unit_sanity_test_seq(SmcCsrSeq):
             got_w,
         )
         await self._ss_sweep(dut)
-        # No summary token: every value at this line is a module literal or a
-        # value a raising compare already pinned, so a summary would print
-        # constants ([NO-ALWAYS-PASS-CHECKER]); the two per-leg tokens above
-        # carry the evidence, and the fail-capable legs are
-        # `csr_read(expected=...)`, `_await_warm_cleared`'s expiry, and
-        # `_ss_sweep`'s CSR-to-pin check on `tb_isolate_req_o`.
+        # The two per-leg tokens above carry the evidence; the fail-capable legs
+        # are `csr_read(expected=...)`, `_await_warm_cleared`'s expiry, and
+        # `_ss_sweep`'s CSR-to-pin check on `tb_isolate_req_o`
+        # ([NO-ALWAYS-PASS-CHECKER]).

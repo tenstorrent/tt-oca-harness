@@ -82,12 +82,10 @@ void fill_array(int arr[], int size) {
     }
 }
 
-/* Require the array to be non-decreasing, and its element sum to be unchanged.
+/* Require the array to be non-decreasing and its element sum to be unchanged.
  *
- * Ordering alone is satisfied by a sort that drops or duplicates elements, so
- * the sum carried in from before the sort is what makes this a permutation
- * check rather than a monotonicity check. Without both, the run below is a
- * timing harness whose result nothing looks at. */
+ * Ordering alone is satisfied by a sort that drops or duplicates elements; the
+ * sum carried in from before the sort makes this a permutation check. */
 static void check_sorted(int arr[], int size, int expect_sum, int size_log, int iter) {
     int sum = 0;
 
@@ -122,7 +120,6 @@ int main() {
             int size = (int)int_pow(2, size_log);
             start_counter();
             for (int i = 0; i < N_ITER; i++) {
-                // Measure the time taken for merge sort
                 fill_array(arr, size);
                 int expect_sum = 0;
                 for (int j = 0; j < size; j++) {

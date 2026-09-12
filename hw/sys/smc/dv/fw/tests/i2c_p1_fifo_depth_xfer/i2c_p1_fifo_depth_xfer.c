@@ -13,8 +13,7 @@
  * this suite moves 1 to 5 bytes -- with the controller pushing while the target
  * drains, then compares length and every byte.
  *
- * No DMA is involved: the body below records that the DMA-driven form of this
- * transfer cannot work on this interface, so the payload is moved by the CPU.
+ * No DMA is involved; the CPU moves the payload through the FMT FIFO.
  *
  * Test Objective:
  * - Verify I2C can perform a full-FIFO-depth data transfer
@@ -24,9 +23,6 @@
  * Expected Result:
  * - The transfer completes and every byte matches
  * - I2C protocol compliance throughout transfer
- *
- * Note: This is a simplified test focusing on large data transfer capability.
- * Full DMA integration testing requires additional DMA controller setup.
  *
  * =============================================================================
  */
@@ -241,7 +237,7 @@ int main(void) {
     write_scratch(1, 0x00000030);
     simputs("Step 3: Large Data Transfer (DMA-like)\n");
 
-    // Prepare Target for data reception - following best practices from i2c_sanity test
+    // Prepare the target for reception: flush and reset the ACQ FIFO
     simputs("  Flushing and resetting ACQ FIFO...\n");
     uint32_t target_base = i2c_get_base(TARGET_IDX);
 

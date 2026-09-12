@@ -5,14 +5,13 @@ DV-CARD: SMC_ZEROER_REGCLK_CG_TEST ANCHOR: smc_zeroer_regclk_cg_test
 
 DV-CARD: SMC_CG_P2_003 ANCHOR: smc_zeroer_regclk_cg_test
 
-The P2 card extends this same anchor (additive): the P1 steps/checkers above
-are UNCHANGED (their evidence tokens must keep appearing verbatim for the
-closed P1 grade); the P2 extension below (_p2_extension) sweeps the
+The P2 card shares this anchor: the P1 steps and checkers run first and emit
+their evidence tokens verbatim; `_p2_extension` sweeps the
 pending-access-while-gated race across 3 required cells (immediately after
-gate, long after gate, back-to-back across the gate boundary), per SF-004
-(answered): register_activity asserts on any AXI4-Lite access; pending-access
-service must complete within the card's own declared bounded wait (there is
-no separate SPEC max-wait constant).
+gate, long after gate, back-to-back across the gate boundary), per SF-004:
+register_activity asserts on any AXI4-Lite access; pending-access service must
+complete within the card's own declared bounded wait (there is no separate SPEC
+max-wait constant).
 """
 
 from __future__ import annotations
@@ -37,7 +36,7 @@ CG_HYST_SHIFT = _addr.CG_HYST_SHIFT
 CG_HYST_MASK = _addr.CG_HYST_MASK
 ZEROER_CTRL_DEST_ADDR = _addr.ZEROER_CTRL_DEST_ADDR
 
-# P2 (SMC_CG_P2_003) additions: pending-access-while-gated race sweep.
+# P2 (SMC_CG_P2_003) cells: pending-access-while-gated race sweep.
 P2_LONG_IDLE_CYCLES = 40
 P2_UNGATE_BOUND_SMC = 32
 P2_SERVICE_BOUND_SMC = 128
@@ -458,37 +457,24 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
 
         expected_p2_pre_pass = ["SETUP", "REG_CLK-GATED-BASELINE", "ACCESS-SWEEP(3-cells)"]
         p2_fence = [(t, ts) for t, ts in self.fence if t in expected_p2_pre_pass]
-        # Order PLUS strictly increasing simulation timestamps: unlike the bare
-        # order check (which a straight-line body satisfies by construction),
-        # this fails if a P2 phase consumed no DUT time.
+        # `assert_fence_progress` requires strictly increasing simulation
+        # timestamps, so a P2 phase that consumed no DUT time fails here.
         p2_times = cg.assert_fence_progress(p2_fence, expected_p2_pre_pass)
-        # Loop integrity only -- `len(results) == 3` over three straight-line
-        # cells and a non-empty `resume_deltas` are true by construction and are
-        # NOT what makes this leg non-vacuous ([NO-ALWAYS-PASS-CHECKER]). They
-        # are guards against an editing mistake that dropped a cell; the
-        # measured contrast asserted below is the checker's fail path.
-        #
-        # The DUT-sensitive, fail-capable content of the P2 sweep is:
-        #   * `meas["delta"] <= P2_UNGATE_BOUND_SMC` per cell (4 sites) -- a DUT
-        #     that failed to ungate reg_clk on a pending access fails these;
-        #   * the three `expected=`-bearing readbacks, enforced by the
-        #     scoreboard exact 64-bit compare, each carrying a value unique to
-        #     its cell (0xA5A5_0001 / _0002 / _0004, last-write-wins _0004 for
-        #     back-to-back), so a register that dropped a write across the gate
-        #     boundary fails on that cell alone;
-        #   * `not state["done"] -> raise` in `_p2_timed_access` plus the
-        #     `max(service_used) <= P2_SERVICE_BOUND_SMC` assert above, which
-        #     together enforce the service bound the token advertises;
-        #   * the gated-baseline versus in-access enable contrast asserted
-        #     below, which catches a clock that re-gates mid-access.
+        # Loop-integrity guards: `len(results) == 3` and a non-empty
+        # `resume_deltas` hold by construction over three straight-line cells
+        # and catch an edit that drops a cell ([NO-ALWAYS-PASS-CHECKER]). The
+        # DUT-sensitive content is the per-cell `delta <= P2_UNGATE_BOUND_SMC`
+        # asserts, the three `expected=` readbacks (cell-unique values, last
+        # write wins for back-to-back), the service-bound assert above, and the
+        # gated-baseline versus in-access contrast below.
         assert len(results) == 3, f"P2 sweep observed {len(results)}/3 cells"
         resume_deltas = [
             v for r in results.values() for k, v in r.items() if k.startswith("resume_delta")
         ]
         assert resume_deltas, "P2 sweep recorded no reg_clk resume measurement"
 
-        # THE FAIL PATH OF THIS CHECKER, and a contrast measured on one probe
-        # (`tb_zeroer_gated_reg_clk`) across two windows of the same sweep:
+        # Contrast measured on one probe (`tb_zeroer_gated_reg_clk`) across two
+        # windows of the same sweep:
         #   * gated baseline -- `p2_baseline_enabled` enabled samples over a
         #     `baseline_window`-cycle window with the bus idle;
         #   * in-access -- `enabled_hits` over `post_resume_cycles` samples,
@@ -497,8 +483,7 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
         # A gater that never gates makes the baseline non-zero; a clock that
         # resumes and then re-gates mid-access makes `enabled_hits` fall short
         # of `post_resume_cycles` (and sets the `glitch` flag with the cycle
-        # index). Neither number is pinned by any earlier assert in this
-        # sequence, so this is where a mid-access re-gate is caught.
+        # index).
         post_resume = [
             v for r in results.values() for k, v in r.items() if k.startswith("post_resume_cycles")
         ]
@@ -660,18 +645,11 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
             raise AssertionError("TIMEOUT waiting rst_primary_smc_clk_no assert")
         edges = await cg.count_enabled_at_smc_rise(dut, "tb_zeroer_gated_reg_clk", IDLE_OBSERVE)
         assert edges == IDLE_OBSERVE, f"reg_clk gated during reset: edges={edges}"
-        # The token carries the two measured edge counts. A field such as
-        # `int(edges == IDLE_OBSERVE)` would be a literal 1 in the kept log,
-        # since the assert two lines above already establishes it
-        # ([NO-ALWAYS-PASS-CHECKER]); a derived inequality between the two
-        # counts would be no better, because both
-        # sides are already pinned by exact asserts (`idle_enabled == 0` in S1,
-        # `edges == IDLE_OBSERVE` here), so any `edges > idle_enabled` check
-        # would be arithmetically implied and could not fail on any RTL. The
-        # fail-capability of this leg is the exact `edges == IDLE_OBSERVE`
-        # compare: a DUT that kept reg_clk gated through reset, with cg_en=1
-        # and the bus idle exactly as in S1, returns 0 here and fails it. The
-        # token carries both counts so the contrast is auditable from the log.
+        # The token carries the two measured edge counts: S4 with reset
+        # asserted against S1's gated idle window, under the same cg_en=1 /
+        # bus-idle programming. The fail-capable compare is the exact
+        # `edges == IDLE_OBSERVE` above: a DUT that kept reg_clk gated through
+        # reset returns 0 there ([NO-ALWAYS-PASS-CHECKER]).
         cg.emit_chk(
             self.chk_seen,
             "CHK-ZREG-RESET-OVERRIDE",
@@ -701,10 +679,9 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
             )
         await ClockCycles(dut.clk_smc_i, 32)
 
-        # Order PLUS strictly increasing simulation timestamps. The bare order
-        # check is satisfied by construction in a straight-line body and cannot
-        # fail on any RTL; `assert_fence_progress` adds the DUT-time claim and
-        # returns the timestamps so they can be carried in the token below.
+        # `assert_fence_progress` requires strictly increasing simulation
+        # timestamps across the listed phases (order alone holds by
+        # construction) and returns them for the token below.
         fence_times = cg.assert_fence_progress(
             self.fence,
             [
@@ -714,15 +691,13 @@ class smc_zeroer_regclk_cg_test_seq(SmcCsrSeq):
                 "reset-override-observed",
             ],
         )
-        # The four conjuncts below are refactor GUARDS, not this checker's fail
-        # path: `idle_enabled == 0` restates S1's assert, `disable_cg_enabled ==
-        # IDLE_OBSERVE` restates S3's, and `post_resume > 0` /
-        # `enabled_hits == post_resume` restate S2's, so a DUT that violated any
-        # of them died 100+ lines earlier and cannot reach this line. They are
-        # kept so a future refactor that drops an upstream assert still fails.
-        # What a reader falsifies the non-vacuity claim from is the measured
-        # contrast those same values carry into the token: idle 0/IDLE_OBSERVE
-        # against disable_cg IDLE_OBSERVE/IDLE_OBSERVE on one probe.
+        # Refactor guards: `idle_enabled == 0` restates S1's assert,
+        # `disable_cg_enabled == IDLE_OBSERVE` restates S3's, and
+        # `post_resume > 0` / `enabled_hits == post_resume` restate S2's. They
+        # fail if a refactor drops an upstream assert; the non-vacuity claim
+        # rests on the measured contrast those values carry into the token:
+        # idle 0/IDLE_OBSERVE against disable_cg IDLE_OBSERVE/IDLE_OBSERVE on
+        # one probe.
         assert idle_enabled == 0 and disable_cg_enabled == IDLE_OBSERVE, (
             f"NONVAC contrast absent on tb_zeroer_gated_reg_clk: "
             f"idle_enabled={idle_enabled}/{IDLE_OBSERVE} "

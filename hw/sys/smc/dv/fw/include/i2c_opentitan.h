@@ -460,8 +460,6 @@ int i2c_controller_write_with_header(uint32_t idx, uint8_t target_addr, const ui
  * It does NOT wait for the I2C bus transaction to complete.
  * The hardware FSM will execute the transaction in the background.
  *
- * Similar to legacy test's ctrlr_send_write() function.
- *
  * @param idx I2C instance index
  * @param target_addr 7-bit target address
  * @param data Pointer to data buffer
@@ -521,8 +519,6 @@ int i2c_target_wait_acq_fifo_data(uint32_t idx, uint32_t required_entries, uint3
  * clears the target's ACQ FIFO and TARGET_EVENTS. This is useful for preventing
  * stretch_tx issues in repeated START scenarios.
  *
- * Reference: i2c_read_sanity/src/main.c:434-459
- *
  * @param controller_idx Controller I2C instance index
  * @param target_idx Target I2C instance index (for ACQ FIFO cleanup)
  * @param target_addr 7-bit target address
@@ -540,8 +536,6 @@ int i2c_write_with_clear(uint32_t controller_idx, uint32_t target_idx, uint8_t t
  * This function performs a controller read operation and then automatically
  * drains the target's ACQ FIFO. This is useful for preventing stretch_tx
  * issues in repeated START scenarios.
- *
- * Reference: i2c_read_sanity/src/main.c:518-558
  *
  * @param controller_idx Controller I2C instance index
  * @param target_idx Target I2C instance index (for ACQ FIFO cleanup)
@@ -1220,9 +1214,7 @@ int i2c_controller_wait_fmt_fifo_space_easy(uint32_t idx, uint32_t timeout);
 int i2c_controller_wait_rx_fifo_data_easy(uint32_t idx, uint32_t level, uint32_t timeout);
 
 // ============================================================================
-// OpenTitan Compliance Enhancement Functions
-// ============================================================================
-// Added for full OpenTitan I2C DIF API compliance
+// OpenTitan I2C DIF API equivalents
 // ============================================================================
 
 /**
