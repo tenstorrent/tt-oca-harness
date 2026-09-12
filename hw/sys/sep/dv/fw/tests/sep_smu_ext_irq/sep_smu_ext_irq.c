@@ -104,9 +104,9 @@ static int wr_rd32(uint32_t addr, uint32_t expect) {
 
 static int arm_pic_disabled(void) {
     uint32_t src = EXT_IRQ_PIC_SOURCE;
-    uint32_t meipl_addr = SEP_PIC_MEIPL_0 + (src - 1u) * 4u;
-    uint32_t gw_addr = SEP_PIC_MEIGWCTRL_0 + (src - 1u) * 4u;
-    uint32_t meie_addr = SEP_PIC_MEIE_0 + (src - 1u) * 4u;
+    uint32_t meipl_addr = _pic_meipl_addr(src);
+    uint32_t gw_addr = _pic_meigwctrl_addr(src);
+    uint32_t meie_addr = _pic_meie_addr(src);
 
     pic_register_handler(src, sep_smu_ext_irq_isr);
     if (wr_rd32(meipl_addr, EXT_IRQ_MEIPL) != 0) {
@@ -133,7 +133,7 @@ static int arm_pic_disabled(void) {
 
 static int run_ext_irq(void) {
     uint32_t src = EXT_IRQ_PIC_SOURCE;
-    uint32_t meie_addr = SEP_PIC_MEIE_0 + (src - 1u) * 4u;
+    uint32_t meie_addr = _pic_meie_addr(src);
     uint32_t start_count;
 
     sep_smc_open_window();
