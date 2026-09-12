@@ -10,8 +10,8 @@ from seq_lib.dtp_jtag2axi_robustness_test_seq import dtp_jtag2axi_robustness_tes
 
 @pyuvm.test()
 class dtp_jtag2axi_decode_error_decerr_read_test(dtp_base_test):
-    # Directed one-pass scenario: the DECERR decode path is exercised on all
-    # three JTAG2AXI targets with recovery ops; randomized address/data/series
+    # The DECERR decode path is exercised on all three JTAG2AXI targets with
+    # recovery ops; randomized address/data/series
     # coverage of the same bridge lives in the jtag2axi random/mixed sibling
     # scenarios (e.g. dtp_jtag2axi_decode_error_mixed_test).
     #

@@ -1063,7 +1063,7 @@ module dtp_uvm_top
   // interface carries the connection: the TB wires only the master-driven
   // signals in, and the responder drives the responder-side signals,
   // routed back to the DUT below. Error injection is programmed by
-  // sequences via the responder's slave sequence, not TB error ports.
+  // sequences via the responder's slave sequence.
   assign u_smc_otp_slave_if.awaddr   = 64'(smc_otp_axil_awaddr);
   assign u_smc_otp_slave_if.awprot   = smc_otp_axil_awprot;
   assign u_smc_otp_slave_if.awvalid  = smc_otp_axil_awvalid;
@@ -1106,7 +1106,7 @@ module dtp_uvm_top
   assign smc_otp_axil_rresp   = u_smc_otp_slave_if.rresp;
   assign smc_otp_axil_rvalid  = u_smc_otp_slave_if.rvalid;
 
-  // SEP OTP AXI-Lite responder: a third shared ocah_axi_vip responder
+  // SEP OTP AXI-Lite responder: the shared ocah_axi_vip responder
   // (same pattern as the SMC OTP port) answers JTAG2AXI SEP OTP traffic.
   assign u_sep_otp_slave_if.awaddr   = 64'(sep_otp_axil_awaddr);
   assign u_sep_otp_slave_if.awprot   = sep_otp_axil_awprot;
@@ -1156,7 +1156,7 @@ module dtp_uvm_top
   // master-driven signals in, and the responder drives the responder-side
   // signals, routed back to the DUT below. Error injection and backdoor
   // memory access are programmed by sequences via the responder's slave
-  // sequence, not TB error ports.
+  // sequence.
   assign u_smc_axi_slave_if.awid     = 16'(m_axi_awid);
   assign u_smc_axi_slave_if.awaddr   = 64'(m_axi_awaddr);
   assign u_smc_axi_slave_if.awlen    = m_axi_awlen;
