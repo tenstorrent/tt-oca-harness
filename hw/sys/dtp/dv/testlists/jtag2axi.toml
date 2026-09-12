@@ -4,10 +4,10 @@
 schema_version = 1
 
 # SMC fabric JTAG2AXI scenarios.
-# The legacy aggregate tests are compatibility aliases for the scenario-specific
-# single_write/single_write_read tests: selectable by explicit --items name or
-# --tag legacy only, and members of no group, so regressions run each scenario
-# once.
+# dtp_jtag2axi_smc_axi_wr_test / _rd_test are aliases of the single_write /
+# single_write_read scenario tests (the names the README example commands use).
+# They are reachable only by explicit --items name or --tag legacy and belong to
+# no group, so a regression runs each scenario once.
 
 [[tests]]
 name = "dtp_jtag2axi_smc_axi_wr_test"

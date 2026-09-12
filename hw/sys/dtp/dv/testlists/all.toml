@@ -3,8 +3,8 @@
 
 schema_version = 1
 
-# Aggregate testlist: merges the smoke and functional testlists. This is the file the DTP DUT
-# points at, so `--items smoke` and `--items functional` both resolve.
+# Aggregate testlist: merges the per-area testlists. This is the file dtp_sim_cfg.toml points
+# at, so every group name below resolves as an --items target.
 includes = ["jtag.toml", "jtag2axi.toml", "debug_tdr.toml", "scan.toml", "xtrig.toml"]
 
 [[groups]]
