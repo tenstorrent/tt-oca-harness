@@ -4,7 +4,7 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_rom_prng.c
- * @brief xoshiro128++ PRNG unit tests (T018)
+ * @brief xoshiro128++ PRNG unit tests
  *
  * Verifies rom_prng_next() produces non-zero, non-repeating output
  * for known state, and that rom_prng_seed() escapes the all-zero

@@ -2,8 +2,7 @@
 
 SPDX-License-Identifier: Apache-2.0
 
-This manual describes the released OCAH IEEE 1149.1 JTAG TAP VIP for OSS
-cocotb tests.
+This manual describes the OCAH IEEE 1149.1 JTAG TAP VIP for cocotb tests.
 
 ## Design Boundary
 
@@ -291,8 +290,8 @@ two-state rules run there. Its contents:
 
 ## UVM Env Surface Convention
 
-Both shipped OCAH VIPs (`ocah_jtag_vip`, `ocah_axi_vip`) follow one surface
-convention, with the JTAG master env as the reference template:
+The OCAH VIPs with an SV-UVM layer (`ocah_jtag_vip`, `ocah_axi_vip`) follow one
+surface convention, with the JTAG master env as the reference template:
 
 - **Side tokens.** Side-specific components — config, driver, sequencer,
   sequence, agent, env, and agent-attached monitors — carry the side token
@@ -316,12 +315,11 @@ convention, with the JTAG master env as the reference template:
   `ocah_axi_master_env`, `m_checker` on `ocah_axi_env`) rather than
   letting consumers reach through its children.
 
-## Backend And License Status
+## Backend Boundary
 
-The package depends on `cocotbext-jtag>=0.4.0,<0.5`. The installed 0.4.0 package
-metadata reports license `MIT`. The active OCAH driver does not expose backend
-transaction objects; advanced users may inspect `backend_bus` or call
-`create_backend_driver()`, but those are debug-only escape hatches.
+The package depends on `cocotbext-jtag>=0.4.0,<0.5`. The active OCAH driver
+does not expose backend transaction objects; `backend_bus` and
+`create_backend_driver()` are debug-only escape hatches.
 
 ## DTP Validation
 

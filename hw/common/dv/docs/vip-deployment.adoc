@@ -99,7 +99,7 @@ await monitor.stop()
 checker.assert_clean()
 ----
 
-Monitor callbacks deliberately catch and log subscriber exceptions so one
+Monitor callbacks catch and log subscriber exceptions so one
 subscriber cannot terminate observation. A checker attached to a monitor must
 retain findings before raising, and the owning test or scoreboard must finalize
 after traffic. Named evidence should be finalized through the per-protocol
@@ -271,7 +271,8 @@ python3 tools/dv/run_dv.py \
 ----
 
 Retain the run-level `result.json`, structured test result, relevant log, tool
-versions, seed, and commit SHA as qualification evidence.
+versions, seed, and commit SHA as qualification evidence in the tracker and the
+CI artifact store.
 
 [[shared-vip-deployment-troubleshooting]]
 === Troubleshooting

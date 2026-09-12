@@ -97,9 +97,7 @@ class OcahSpiFlash:
     SCLK; this BFM samples incoming data on MOSI/DQ and drives response data
     back on MISO/DQ.
 
-    This class does NOT depend on any external cocotb extension package.
-    Internally it implements a minimal SPI protocol engine using cocotb
-    triggers.
+    The protocol engine is built on cocotb triggers alone.
 
     Parameters
     ----------
@@ -124,8 +122,7 @@ class OcahSpiFlash:
     mode : str or SpiMode
         ``"single"`` (default), ``"quad"``, or ``"octal"``.
     jedec_id : int
-        3-byte JEDEC ID returned for command 0x9F.  Default 0x20BA18
-        (a publicly-documented NOR-flash geometry; no brand association).
+        3-byte JEDEC ID returned for command 0x9F.  Default 0x20BA18.
     flash_size : int
         Flash capacity in bytes.  Default 16 MB (128 Mbit).
     addr_bytes : int

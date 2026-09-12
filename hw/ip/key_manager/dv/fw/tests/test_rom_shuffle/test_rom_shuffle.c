@@ -4,7 +4,7 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_rom_shuffle.c
- * @brief Fisher-Yates shuffle unit tests (T019)
+ * @brief Fisher-Yates shuffle unit tests
  *
  * Verifies rom_shuffle_index() bounds, rom_shuffle_array() permutation
  * integrity, and bit-pool refill behaviour.

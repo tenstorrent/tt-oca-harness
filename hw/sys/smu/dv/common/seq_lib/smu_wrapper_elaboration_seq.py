@@ -151,8 +151,8 @@ class SmuWrapperElaborationSeq:
         """Prove SMC/SEP/DTP/xbar instances via hierarchical clk identity.
 
         Missing elaboration fails as X/Z (allow_xz=False) or as a stuck
-        constant that cannot track both edges of clk_smu_i. Does not use
-        hardwired obs_compose_*_present_o constants (FIND-001).
+        constant that cannot track both edges of clk_smu_i. The hardwired
+        obs_compose_*_present_o constants cannot report a missing instance.
         """
         seen_top: set[int] = set()
         mismatches = 0

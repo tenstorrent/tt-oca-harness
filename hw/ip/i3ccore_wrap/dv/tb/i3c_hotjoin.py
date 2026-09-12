@@ -2,12 +2,12 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 """
-I3C Hot-Join  (Test Plan #35)
+I3C Hot-Join
 
 Skeleton for the Hot-Join flow: a target requests to join the bus and the
 controller observes an IBI with status_type = HotJoin.
-Compile-only: target hot-join support is design-dependent (see GAP Q-005);
-this scaffolds the sequence and decodes the IBI status type.
+Target hot-join support is design-dependent; this scaffolds the sequence and
+decodes the IBI status type.
 """
 
 import cocotb

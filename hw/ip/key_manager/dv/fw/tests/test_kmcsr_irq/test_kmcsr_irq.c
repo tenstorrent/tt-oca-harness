@@ -178,7 +178,6 @@ void rom_irq(rom_irq_frame_t *frame) {
         /* Read KMCSR IRQ_STATUS to identify the source */
         uint32_t current_status = rom_kmcsr_irq_status_read();
 
-        /* Debug: print status to see what we got */
         printf("  [ISR] KMCSR status=0x%08X\n", current_status);
 
         /* Record the status for test verification */
@@ -204,7 +203,7 @@ void rom_irq(rom_irq_frame_t *frame) {
  *===========================================================================*/
 
 /**
- * Test 1: Software-triggered ROM parity error interrupt
+ * Software-triggered ROM parity error interrupt
  */
 static int test_sw_rom_parity_irq(void) {
     TEST_SUBTEST_START("Software-triggered ROM parity IRQ");
@@ -256,7 +255,7 @@ static int test_sw_rom_parity_irq(void) {
 }
 
 /**
- * Test 2: Software-triggered SRAM parity error interrupt
+ * Software-triggered SRAM parity error interrupt
  */
 static int test_sw_sram_parity_irq(void) {
     TEST_SUBTEST_START("Software-triggered SRAM parity IRQ");
@@ -308,7 +307,7 @@ static int test_sw_sram_parity_irq(void) {
 }
 
 /**
- * Test 3: Software-triggered ROM write error interrupt
+ * Software-triggered ROM write error interrupt
  */
 static int test_sw_rom_write_irq(void) {
     TEST_SUBTEST_START("Software-triggered ROM write IRQ");
@@ -360,7 +359,7 @@ static int test_sw_rom_write_irq(void) {
 }
 
 /**
- * Test: Software-triggered SRAM write-lock interrupt
+ * Software-triggered SRAM write-lock interrupt
  */
 static int test_sw_sram_write_lock_irq(void) {
     TEST_SUBTEST_START("Software-triggered SRAM write-lock IRQ");
@@ -412,7 +411,7 @@ static int test_sw_sram_write_lock_irq(void) {
 }
 
 /**
- * Test: Multiple IRQ sources simultaneously
+ * Multiple IRQ sources simultaneously
  */
 static int test_multiple_irq_sources(void) {
     TEST_SUBTEST_START("Multiple IRQ sources");
@@ -475,7 +474,7 @@ static int test_multiple_irq_sources(void) {
 }
 
 /**
- * Test 4: IRQ masking (disabled IRQ should not trigger ISR)
+ * IRQ masking (disabled IRQ should not trigger ISR)
  */
 static int test_irq_masking(void) {
     TEST_SUBTEST_START("IRQ masking");
@@ -535,7 +534,7 @@ static int test_irq_masking(void) {
 }
 
 /**
- * Test 5: IRQ enable toggle
+ * IRQ enable toggle
  */
 static int test_irq_enable_toggle(void) {
     TEST_SUBTEST_START("IRQ enable toggle");
@@ -582,7 +581,7 @@ static int test_irq_enable_toggle(void) {
 }
 
 /**
- * Test 7: Software-triggered AXI SLVERR error interrupt
+ * Software-triggered AXI SLVERR error interrupt
  */
 static int test_sw_axi_slverr_irq(void) {
     TEST_SUBTEST_START("Software-triggered AXI SLVERR IRQ");
@@ -634,7 +633,7 @@ static int test_sw_axi_slverr_irq(void) {
 }
 
 /**
- * Test 8: Software-triggered AXI DECERR error interrupt
+ * Software-triggered AXI DECERR error interrupt
  */
 static int test_sw_axi_decerr_irq(void) {
     TEST_SUBTEST_START("Software-triggered AXI DECERR IRQ");
@@ -686,7 +685,7 @@ static int test_sw_axi_decerr_irq(void) {
 }
 
 /**
- * Test 9: Software-triggered DRBG Sampler error interrupt
+ * Software-triggered DRBG Sampler error interrupt
  */
 static int test_sw_drbg_err_irq(void) {
     TEST_SUBTEST_START("Software-triggered DRBG error IRQ");
@@ -738,7 +737,7 @@ static int test_sw_drbg_err_irq(void) {
 }
 
 /**
- * Test 10: Software-triggered wipe state interrupt
+ * Software-triggered wipe state interrupt
  */
 static int test_sw_wipe_state_irq(void) {
     TEST_SUBTEST_START("Software-triggered wipe state IRQ");
@@ -796,7 +795,7 @@ static int test_sw_wipe_state_irq(void) {
 int main(void) {
     TEST_INIT();
 
-    /* Set timeout to accommodate all 11 interrupt tests (needs ~300k cycles) */
+    /* Timeout covers the whole sub-test sequence */
     if (!tb_set_timeout(300000)) {
         TEST_FAIL("Failed to set testbench timeout");
     }

@@ -4,7 +4,7 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_km_keygen.c
- * @brief T043 - Key generation success test
+ * @brief Key generation success test
  *
  * Boots the KM firmware and sends CMD_KEY_GENERATE with a valid payload
  * through the full messaging pipeline.  Verifies:

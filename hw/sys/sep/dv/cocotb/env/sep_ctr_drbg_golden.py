@@ -3,12 +3,11 @@
 """CTR_DRBG (AES-256, no derivation function) golden model for the SEP OSS flow.
 
 Implements NIST SP 800-90A Section 10.2.1 CTR_DRBG with **no derivation
-function**. Cross-checked against the synthesizable
-RTL ``vendor/lowRISC/opentitan/upstream/hw/ip/csrng/rtl/csrng_ctr_drbg.sv`` (no-df, AES-256, CtrLen < BlkLen).
+function** (AES-256, no-df).
 
 Self-contained: includes a minimal pure-Python AES (128/192/256 ECB encrypt) so
 this has no dependency on pycryptodome/cryptography. Because the reference is
-derived from the spec/RTL -- not from observed DUT output -- a genbits mismatch
+the published NIST construction -- not observed DUT output -- a genbits mismatch
 is a real failure, not a tautology.
 
 Determined parameters:
@@ -493,8 +492,8 @@ class SepCtrDrbgGolden:
     # chain, but WHERE that trailing Update lands depends on the command
     # boundaries -- and those are set by EDN endpoint demand, which the golden
     # cannot predict on its own. So model one block at a time and take the
-    # boundary from the RTL's own gen_last, exactly as the upstream SV
-    # scoreboard does (ctr_drbg_generate_one + gen_last -> ctr_drbg_generate_done).
+    # boundary from the observed gen_last strobe
+    # (ctr_drbg_generate_one + gen_last -> ctr_drbg_generate_done).
     # Assuming a fixed glen instead desynchronises the whole chain the moment a
     # second Generate runs on one seed -- the normal case once every EDN
     # endpoint is live.

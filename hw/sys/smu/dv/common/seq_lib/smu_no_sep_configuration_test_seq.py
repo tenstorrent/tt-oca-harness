@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Sequence for smu_no_sep_configuration_test (SMU_005 rev 3).
+"""Sequence for smu_no_sep_configuration_test (SMU_005).
 
 Proves SEP=0 lc_state_o==8'hf0 only. The direct SMN→SMC path is not covered: SYS_IN
 BlockByDefault + gated JTAG2AXI prevent a frontdoor SMC hit under SEP=0.
@@ -17,7 +17,7 @@ SEP0_LC_STATE = 0xF0
 
 
 class smu_no_sep_configuration_test_seq:
-    """SMU_005 rev3: SEP=0 lc_state composition."""
+    """SMU_005: SEP=0 lc_state composition."""
 
     LC_STABLE_CYCLES = 16
     EXPECTED_TIMEOUT_PATHS = 1

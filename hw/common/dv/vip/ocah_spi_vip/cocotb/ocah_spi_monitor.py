@@ -332,13 +332,11 @@ def _fire_callbacks(callbacks: list, *args) -> None:
 
 
 async def _first_of(*triggers):
-    """Await the first of multiple triggers and return the trigger that fired.
+    """Await the first of several triggers.
 
-    This is a minimal alternative to cocotb.triggers.First which is not
-    available in all cocotb versions supported by this project.
+    Uses ``cocotb.triggers.First`` when it imports; otherwise races the
+    triggers as tasks and polls them once per simulator step.
     """
-    # Use cocotb.triggers.First if available, otherwise fall back to a
-    # simple sequential poll pattern.
     try:
         from cocotb.triggers import First  # type: ignore[attr-defined]  # noqa: PLC0415
 

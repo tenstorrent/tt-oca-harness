@@ -11,36 +11,34 @@ See [`docs/index.adoc`](docs/index.adoc) for the chapter set:
 architecture, [`docs/SMU_VPLAN.adoc`](docs/SMU_VPLAN.adoc) for the
 verification plan, and
 [`docs/SMU_FEATURE_LIST.adoc`](docs/SMU_FEATURE_LIST.adoc) for the
-candidate v0.5.0 SEP=0 feature subset (unsigned; #487),
+SEP=0 feature subset,
 [`docs/SMU_SCOPE_TRACEABILITY.adoc`](docs/SMU_SCOPE_TRACEABILITY.adoc)
-for the candidate requirement-to-test matrix (unsigned; #479), and
+for the requirement-to-test matrix,
 [`docs/SMU_DEFERRED_DISPOSITION.adoc`](docs/SMU_DEFERRED_DISPOSITION.adoc)
-for the v0.5.0 deferred/OUT classification of the 123-entry catalog,
+for the deferred/OUT classification of every catalogued name,
 [`docs/SMU_RELEASE_MATRIX.adoc`](docs/SMU_RELEASE_MATRIX.adoc) for the
-v0.5.0 release regression matrix (#485),
+release regression matrix,
 [`docs/SMU_COVERAGE_POLICY.adoc`](docs/SMU_COVERAGE_POLICY.adoc) for the
-candidate coverage-target and waiver-field decision (#484), and
+coverage-target and waiver-field policy, and
 [`docs/SMU_SEP0_COMPONENT_SIGNOFF.adoc`](docs/SMU_SEP0_COMPONENT_SIGNOFF.adoc)
-for the SEP=0 component signoff record (#481 / #482 / #483 / #490 / #491).
+for the SEP=0 component scope.
 
-**Executable contract:** enrolled groups in
-[`testlists/wrapper.toml`](testlists/wrapper.toml) — live green `all` **81**,
-`sep0_all` **53** (no Force; product-pin CTM). `--dut smu` is the DUT;
-[`testlists/all.toml`](testlists/all.toml) holds the two bare-`smu` leaves that
-stayed, for the reasons recorded there.
+**Executable contract:** the enrolled groups in
+[`testlists/wrapper.toml`](testlists/wrapper.toml) (no Force; product-pin
+CTM). `--dut smu` is the DUT; [`testlists/all.toml`](testlists/all.toml)
+holds the bare-`smu_block` leaves the wrapper cannot run, for the reasons
+recorded there.
 **Green / signoff policy:** no DUT Force / no TB placeholder.
-Raise-stub bodies live under `cocotb/tests_deferred/` and are not ported —
-**not** reportable as PASS.
 
 **Group ladder:** `build_smoke` ⊂ `smoke` ⊂ `all`, and `sep0_all` ⊂ `all`
 (see `testlists/wrapper.toml`). `sep0_all` and `smoke` are siblings, not nested:
 `sep0_all` is the toolchain-free SEP=0 set CI runs, while `smoke` reaches the
 SEP=1 elaboration and both firmware smokes and so needs the RISC-V toolchain.
 `all` is the union plus the SEP=1 firmware set.
-**OUT / deferred** (SEP=1 / interop / toggle / `needs_real_lcc`): not ported.
-Every named entry is classified in
-[`docs/SMU_DEFERRED_DISPOSITION.adoc`](docs/SMU_DEFERRED_DISPOSITION.adoc).
-None of those names is a v0.5.0 restore; raise stubs are not reportable as PASS.
+**OUT / deferred** (SEP=1 / interop / toggle / `needs_real_lcc`): every such
+name is classified in
+[`docs/SMU_DEFERRED_DISPOSITION.adoc`](docs/SMU_DEFERRED_DISPOSITION.adoc)
+and none is reportable as PASS.
 
 ```
 smu_<scenario>_test
@@ -56,15 +54,14 @@ smu_<scenario>_test
 | `tb/tb_top.sv` | `smu_uvm_top` — bare `smu #(.SEP(0))` density TB; one module, two shapes (cocotb pins by default, SV-UVM harness under `UVM`) |
 | `tb/smu_tb_signal_list.svh`, `tb/smu_tb_if.sv` | The TB signals declared once for both shapes; the SMU-local TB interface of the SV-UVM view |
 | `uvm/{env,seq_lib,tests}/` | SV-UVM realization (`--framework uvm`, VCS) |
-| `cocotb/tests/` | The residual bare-`smu` test bodies plus their base test |
+| `cocotb/tests/` | The `--dut smu_block` test bodies plus their base test |
 | `common/{smu_dv_env,seq_lib}/` | The PyUVM env and sequence library, shared by both DUTs |
-| `cocotb/tests_deferred/` | Force-era raise stubs (catalog only); each body's docstring carries its blocker |
-| `testlists/all.toml` | Residual `--dut smu_block` leaves (2) |
+| `testlists/all.toml` | The `--dut smu_block` leaves and groups |
 | `smu_block_sim_cfg.toml` | `--dut smu_block` sim defaults |
 | `smu_sim_cfg.toml` | `--dut smu` sim defaults (`smu_wrapper` is a registered alias) |
 | `tb/tb_wrapper_top.sv` | `smu_wrapper_uvm_top` — `hw/top/smu_wrapper` harness |
 | `cocotb_wrapper/{env,tests}/` | PyUVM tests on this DUT |
-| `testlists/wrapper.toml` | The SMU regression (`all` = 81, `sep0_all` = 53) |
+| `testlists/wrapper.toml` | The SMU regression (`sep0_all` and `all`) |
 | `fw/`, `tools/` | Firmware, readiness |
 
 ## BFM Policy
@@ -75,7 +72,7 @@ smu_<scenario>_test
 | External SMN AXI4 | `ocah_axi_vip`: `OcahAxiSlaveAgent` on the outbound boundary (struct port bridged by `ocah_axi_struct_bridge`), master on the inbound pins |
 | SMC OTP AXI-Lite (over JTAG2AXI) | `ocah_axi_vip` AXI-Lite |
 | SMC scratch / mailbox | Backdoor + cocotb polling |
-| Cross-trigger / iJTAG | OCAH-local BFM |
+| Cross-trigger / iJTAG | product-pin stimulus from the sequences; no dedicated VIP |
 
 ## Running
 
@@ -93,14 +90,15 @@ python3 tools/dv/run_dv.py --dut smu --items sep0_all
 # toolchain; the firmware c_compiles dominate the wall time).
 python3 tools/dv/run_dv.py --dut smu --items all
 
-# The residual bare block bench: two leaves (see testlists/all.toml for why).
+# The bare block bench (see testlists/all.toml for its leaves and why).
 python3 tools/dv/run_dv.py --dut smu_block --items all
 ```
 
-Groups (`testlists/wrapper.toml`): `build_smoke` (2), `smoke` (4),
-`sep0_all` (53), `all` (81), `migrated_fabric` (14), `migrated_smc` (12),
-`migrated_dtp` (27), `sep_real_fw` (14), `sep_lifecycle` (6), `sep_chain` (2),
-`sep_entropy` (1), `sep_rtl_only` (2).
+Groups (`testlists/wrapper.toml`): `build_smoke`, `smoke`, `smoke_sep0`,
+`sep0_all`, `all`, `migrated_fabric`, `migrated_smc`, `migrated_dtp`,
+`migrated_dtp_pending`, `sep_real_fw`, `sep_lifecycle`, `sep_chain`,
+`sep_entropy`, `sep_probe`, `sep_rtl_only`, `sep_smc_sram_blocked`,
+`all_with_sep_exec`.
 ### SystemVerilog UVM framework (`--framework uvm`)
 
 The SV-UVM view shares this DV root, sim config, and testlist with the cocotb
@@ -167,7 +165,7 @@ feature reuses that IP bench's reference model and scoreboard through
 
 | Source | DUT | Signoff role |
 |--------|-----|--------------|
-| `--dut smu` (alias `smu_wrapper`) | `tb/tb_wrapper_top.sv` (`DUT_TAG=WRAPPER`) | The SMU regression: SEP=0 density / CSR / fabric / DTP (`sep0_all` = 53) plus the SEP=1 firmware set (`all` = 81) |
+| `--dut smu` (alias `smu_wrapper`) | `tb/tb_wrapper_top.sv` (`DUT_TAG=WRAPPER`) | The SMU regression: SEP=0 density / CSR / fabric / DTP (`sep0_all`) plus the SEP=1 firmware set (`all`) |
 | `--dut smu_block` | `tb/tb_top.sv` (`DUT_TAG=BARE`) | Two leaves: `smu_dtp_jtag2axi_abort_mid_op_test`, which needs an unterminated OTP interface, and `smu_dtp_jtag_smoke_test`, which carries the SV-UVM binding (the SV-UVM harness is this TB's `UVM` shape) |
 
 One signoff source: the wrapper is the same `smu` with the open-source IP
@@ -187,10 +185,9 @@ target) with two compile profiles:
 - `compile_smu_chiplet_sep_rtl`: wrapper with `DefaultCfg`, `SEP=1` and the
   real SEP EL2 CPU.
 
-OSS ships `hw/sys/sep/rtl/sep_tcm_wrapper.sv` (Bender) and needs no DV TCM
-shim: the `ram_<depth>x39` ICCM/DCCM macros it instantiates come from the
-upstream VeeR `mem_lib.sv` already on the `sep_el2` Bender closure (the sim-cfg
-exclude of `hw/sep/sep_tcm_wrapper.sv` is a stale path). Those macros have no
+The `ram_<depth>x39` ICCM/DCCM macros that `hw/sys/sep/rtl/sep_tcm_wrapper.sv`
+instantiates come from the upstream VeeR `mem_lib.sv` on the `sep_el2` Bender
+closure. Those macros have no
 init-file hook, so `tb/tb_wrapper_top.sv` backdoor-loads `+sep_itcm_hex` /
 `+sep_dtcm_hex` into their `ram_core` arrays at time zero — de-interleaved into
 the EL2 bank/row layout with per-word Hsiao ECC — and counts qualified bank
@@ -198,7 +195,7 @@ writes at the `sep_tcm_wrapper` request port for the DCCM-store evidence. This
 mirrors the SEP DV TB backdoor (`hw/sys/sep/dv/tb/tb_top.sv`, `` `BD_ICCM ``
 / `` `BD_DCCM ``). A missing image is fatal at t=0 rather than a boot timeout.
 Verilator tooling shims (`prim_sync2/3`) are shared from
-`hw/sys/smc/dv/tb/verilator_stubs/` (see SMC README B1/B2).
+`hw/sys/smc/dv/tb/verilator_stubs/` (see `hw/sys/smc/dv/README.md`, `tb/verilator_stubs/`).
 
 ### Readiness gates
 
@@ -223,10 +220,10 @@ python3 hw/sys/smu/dv/tools/smu_wrapper_tb_readiness_test.py \
 
 ### Real SEP DV firmware (`--items sep_real_fw`)
 
-These boot the images from `hw/sys/sep/dv/fw/tests/`, the same ones the internal
-SMU suite uses, rather than this DV root's minimal freestanding smoke. They need
-the toolchain container (see `[c_build.sep_dv_fw]`), so they are enrolled in
-`sep_real_fw` rather than the merge gate.
+These boot the images from `hw/sys/sep/dv/fw/tests/` rather than this DV root's
+minimal freestanding smoke. They need the toolchain container (see
+`[c_build.sep_dv_fw]`), so they are enrolled in `sep_real_fw` rather than in
+`smoke`.
 
 The verdict is always the firmware's own — a named terminal loop, or the STDOUT
 mailbox handshake — and the testbench only observes. `seq_lib/sep_fw_common.py`
@@ -262,17 +259,18 @@ backdoor matches what the OSS SEP DV testbench does. `rom_no_tcm_preload_mem_ini
 is the one image that boots from ROM and loads its own TCM, so it covers the
 step the backdoor hides. Its boot ROM is loaded exactly as the SEP DV testbench
 loads one — `+sep_boot_rom_hex` into `u_sep_boot_rom.mem` — and
-`+sep_no_tcm_preload` leaves the TCM zeroed at reset. That plusarg is opt-in on
-purpose: for every other test a missing TCM image stays fatal, because silently
-booting a zeroed ICCM is the exact failure the loader exists to prevent.
+`+sep_no_tcm_preload` leaves the TCM zeroed at reset. The plusarg is opt-in:
+without it a missing TCM image is fatal at t=0, so no test boots a zeroed ICCM
+unnoticed.
 
-Two images build but are not enrolled, each blocked on a prerequisite rather
-than on a test defect — see the notes on their testlist entries:
+The images in `sep_smc_sram_blocked` are enrolled outside `all` because of a
+structural limit rather than a test defect (see the notes on their testlist
+entries):
 
-| Test | Group | Blocked on |
-|------|-------|-----------|
-| `smu_sep_smc_xbar_test` | `sep_smc_sram_blocked` | SEP-driven SMC bring-up polls SMC SRAM for an image cookie, but that RAM sits on the CPU-private memory interface, so a master arriving through sys-inbound cannot see it. Also blocks `sep_smc_interop` and `sep_smc_mbox_irq`. |
-| `smu_sep_ext_axi_test` | `sep_smc_sram_blocked` | Tile reset is taken and released, then no core fetches: neither the ROM nor the scratch read counter moves again. The preload and re-vector both land. |
+| Test | Group | Limit |
+|------|-------|-------|
+| `smu_sep_smc_xbar_test` | `sep_smc_sram_blocked` | SEP-driven SMC bring-up polls SMC SRAM for an image cookie, but that RAM is on the CPU-private memory interface (`scratch_ram_intf_req_o` leaves `smc.sv` as a port; `smc.sv` exposes no AXI aperture onto it), so a master arriving through sys-inbound has no path to it. The `sep_smc_interop` and `sep_smc_mbox_irq` SEP firmware images share the limit. |
+| `smu_sep_ext_axi_test` | `sep_smc_sram_blocked` | The SMC core leaves the ROM carrying the ROM's `mtvec`, so `seq_lib/smc_cpu_revector.py` programs `RESET_VECTOR` and pulses a tile reset over JTAG2AXI; after the release no core fetches from the re-vectored image. |
 
 `smu_sep_modules_test` and `sep_smu_aes` are enrolled in `sep_real_fw`: the
 entropy stack is brought up by firmware (`sep_entropy_bringup()` in
@@ -280,11 +278,10 @@ entropy stack is brought up by firmware (`sep_entropy_bringup()` in
 `+esrc_noise_force` supplying the raw noise the ring oscillators cannot generate
 under Verilator. `sep_smu_otbn` only writes CSRs and needs no entropy.
 
-`smu_sep_ext_axi_test` is built end to end. Its three parties all exist: the SEP
-and SMC firmware halves, and an ext_in AXI master played by the sequence on the
-flat `ext_in_*` pins the testbench exposes for `cocotbext.axi`. The ext_in
-master drives real AXI and gets real responses, including the DECERR the
-closed SMC aperture correctly returns.
+`smu_sep_ext_axi_test` has three parties: the SEP and SMC firmware halves, and
+an ext_in AXI master played by the sequence on the flat `ext_in_*` pins the
+testbench exposes for `cocotbext.axi`; the ext_in master drives real AXI and
+gets real responses, including the DECERR the closed SMC aperture returns.
 
 The SMC boot path's MEM_ZERO FSM writes every word of scratch RAM (4096 bus
 writes, exactly the RAM depth) after the time-zero backdoor load unless held
@@ -294,29 +291,17 @@ Handing over by jumping from the ROM leaves the core carrying the ROM's
 `mtvec`; `seq_lib/smc_cpu_revector.py` programs `RESET_VECTOR` on all
 four cores and forces a tile-reset pulse over the DTP's JTAG2AXI instead, the
 way `hw/sys/smc/dv/cocotb/seq_lib/smc_cpu_vip_utils.py` does it over its CSR
-agent.
+agent. `RESET_VECTOR` resets to its own default, so the re-vector is issued
+after the SMC has left reset; the cluster never drains, so the `RESET_TIMEOUT`
+force is what applies the reset.
 
-That sequence is applied, not merely issued, and was checked against the
-design's own gating rather than its own return codes. A JTAG2AXI write to
-CPU_CTRL lands: writing `SCRATCH_0` moves the value observed on
-`smc_scratch_0_o` off the `0xACAFACA1` the ROM left. Issued at the right time —
-after the SMC has left reset, since `RESET_VECTOR` resets to its own default and
-vectors programmed earlier are simply thrown away — `smc_cpu_ctrl_wrap` reaches
-`force_apply=1` / `withhold=0`, and all four cores go to `core_reset_n=0` and
-back to 1. The cluster never drains, so the `RESET_TIMEOUT` force is what
-applies the reset, which is what that register exists for. The tile reset really
-is taken and released.
+SMC scratch RAM is on the CPU-private memory interface (`scratch_ram_intf_req_o`
+leaves `smc.sv` as a port, and `smc.sv` exposes no AXI aperture onto it), so a
+master arriving through sys-inbound has no path to it; the
+`sep_smc_sram_blocked` group never reports PASS.
 
-What still blocks it is that nothing follows the release: neither the ROM nor
-the scratch read counter moves again and no further instruction retires, so the
-cores issue no fetch at all rather than fetching the wrong thing. The image
-itself is present; the backdoor reports its stripe load. Whatever answers that
-also answers `smu_sep_smc_xbar_test`, blocked on the CPU-private-SRAM limit, and
-both tests sit in the `sep_smc_sram_blocked` group until then.
-
-The SEP smoke is a boot-readiness anchor mirroring the internal
-`smu_sep_smoke_test` contract; console/STDOUT checking over the external AXI
-path is out of scope.
+The SEP smoke is a boot-readiness anchor; console/STDOUT checking over the
+external AXI path is out of scope.
 
 ### Entropy stack (`--items sep_entropy`)
 
@@ -340,16 +325,15 @@ Two things this needs that the rest of the suite does not:
 * **`+esrc_noise_force`** drives the 12 `dcor.noise_i` lanes from a per-lane
   LFSR, because the ring oscillators do not self-oscillate under Verilator.
   This is the one forced signal, it is inert without the plusarg, and the
-  downstream taps are read-only. `hw/sys/sep/dv` takes the same exception.
-  Its other shortcut, `+sep_crypto_edn_force`, is **not** adopted
-  here: it would skip the logic these tests exist to exercise.
+  downstream taps are read-only. `hw/sys/sep/dv` takes the same exception;
+  its other shortcut, `+sep_crypto_edn_force`, has no counterpart here.
 
 ### Lifecycle and the DTP → SEP → SMC chain
 
-| Group | Tests | Pass evidence |
-|-------|-------|---------------|
-| `sep_lifecycle` | 6 | per-LC-state feature profile (Table 50): `lc_state` to the SMC, `dbg_disable` to the DTP, `feat_ctrl`, across `TEST_DEV` / `PROD` / `PROD_END` / `RMA_CHIPLET`, plus JTAG debug gating in the two extreme states |
-| `sep_chain` | 2 | the full lifecycle path end to end in `PROD` and `PROD_END`: eFuse shadow → SEP lifecycle controller → `dbg_disable` gating the DTP's JTAG2AXI → `lc_state` observed by the SMC, with the SMC's own firmware marker confirming it got there |
+| Group | Pass evidence |
+|-------|---------------|
+| `sep_lifecycle` | per-LC-state feature profile (Table 50): `lc_state` to the SMC, `dbg_disable` to the DTP, `feat_ctrl`, across `TEST_DEV` / `PROD` / `PROD_END` / `RMA_CHIPLET`, plus JTAG debug gating in the two extreme states |
+| `sep_chain` | the full lifecycle path end to end in `PROD` and `PROD_END`: eFuse shadow → SEP lifecycle controller → `dbg_disable` gating the DTP's JTAG2AXI → `lc_state` observed by the SMC, with the SMC's own firmware marker confirming it got there |
 
 LC states are supplied by `hw/sys/smu/dv/assets/sep_efuse_shadow_lc_*.preload`,
 which set the diff-encoded state word (`{~x, x}`, so `TEST_DEV` raw `0x0` is
@@ -376,23 +360,24 @@ python3 tools/dv/run_dv.py --dut smu --items smu_sep_smoke_test \
 Firmware images are built by `fw/build_firmware.py` into `build/firmware/`
 (declared per test as `[c_build.*].outputs`, then staged into each per-test
 run directory). Results land under `build/runs/<ts>__<tool>__<label>/` with
-per-test `result.json` / `results.xml`; record issue evidence as commands,
-seeds, and those run paths on the tracking GitHub issue.
+per-test `result.json` / `results.xml`.
 
 ## Enrollment
 
-`smu_wrapper` carries the regression: 81 enrolled leaves green, of which 53 are
-the toolchain-free SEP=0 set CI runs (`.github/workflows/regress.yml`, nightly
-at one seed per test, weekly at three) and the rest are the SEP=1 firmware
-tests. 28 non-enrolled bodies remain under `cocotb/tests_deferred/`.
+`--dut smu` carries the regression: `all` is the enrolled set, `sep0_all` is
+the toolchain-free SEP=0 subset CI runs (`.github/workflows/regress.yml`,
+nightly at one seed per test, weekly at three), and the rest of `all` is the
+SEP=1 firmware set. Names outside both are classified in
+`docs/SMU_DEFERRED_DISPOSITION.adoc`.
 
-Three leaves are enrolled but not in the wrapper's `all`, each with its reason
-on its own group: the two `sep_smc_sram_blocked` images, and
-`smu_dtp_jtag2axi_abort_mid_op_test`, which stayed on the bare DUT along with
-`smu_dtp_jtag_smoke_test` (there for the SV-UVM binding; its cocotb side is
-enrolled here in `migrated_dtp`).
+Leaves enrolled outside the wrapper's `all` carry their reason on their own
+group: the `sep_smc_sram_blocked` images, and
+`smu_dtp_jtag2axi_abort_mid_op_test` (`migrated_dtp_pending`), which runs on
+the bare DUT because it needs an unterminated OTP interface.
+`smu_dtp_jtag_smoke_test` also runs there for its SV-UVM binding; its cocotb
+side is enrolled here in `migrated_dtp`.
 
-Two bodies under `cocotb/tests/` predate the migration, are enrolled nowhere,
+Two bodies under `cocotb/tests/` are enrolled nowhere
 and have no wrapper twin: `smu_ext_axi_global_addr_smoke_test` (the OSS `s_axi`
 is a LOCAL aperture, so `GLOBAL_BASE + offset` DECERRs) and
 `smu_smc_gpio_strap_sanity_test`. Their docstrings carry the reasons.

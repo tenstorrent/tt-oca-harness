@@ -96,7 +96,7 @@ args = ["+skip_fuse_sense"]
 # external smn_inbound can fill it and CPU-LSU can pop the value through outbound_mailbox_0.
 # Keep this rep scoped to the reference suite TX mailbox-data intent; put peer-path closure in a
 # separate fabric/mailbox testcase if it becomes permanent.
-# Distinct from #8 (->PIC->CPU delivery). no_cpu; +skip_fuse_sense (local mailbox, no OTP dep).
+# Distinct from sep_mailbox_plic_test (PIC-to-CPU delivery). no_cpu; +skip_fuse_sense (local mailbox, no OTP dep).
 name = "sep_axil_mailbox_iface_rand_test"
 module = "system.sep_axil_mailbox_iface_rand_test"
 seed = 1

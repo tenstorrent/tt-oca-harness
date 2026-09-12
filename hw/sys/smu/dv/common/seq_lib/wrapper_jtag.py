@@ -4,14 +4,9 @@
 
 The wrapper testbench exposes the same `jtag_tck/tms/trst/tdi/tdo` pins the
 bare `--dut smu_block` harness does, so `OcahJtagMasterDriver` binds to either DUT
-unchanged. This module is deliberately a small local copy of the binding rather
-than an import from the bare tree's `seq_lib`: the wrapper flow keeps its own
-PyUVM root precisely so module names do not collide with that catalog, and both
-trees define `seq_lib`.
-
-Only what a wrapper test needs lives here -- the TAP factory and the IR opcodes
-read from RTL. The full register map the bare DTP suite builds is not
-replicated; a wrapper test that needs one of those registers should add it.
+unchanged. This module carries the wrapper-side binding: the TAP factory and
+the IR opcodes read from RTL. The full DTP register map is `make_smu_jtag_tap`
+in `seq_lib/smu_jtag_helpers.py`.
 """
 
 from __future__ import annotations
@@ -49,9 +44,9 @@ def single_op_payload(
     """Pack a SINGLE_OP DR, LSB-first: OP2 | SIZE2 | WSTRB8 | DATA64 | ADDR56.
 
     `op` sits in the LOWEST bits -- architecture.adoc lists it at [1:0] -- and
-    the address at the top. This matches pack_single_op() in the bare
-    `--dut smu` helpers, which the DTP suite exercises; the field offsets are
-    not obvious from the document's relative "(...) +: width" notation alone.
+    the address at the top. This matches pack_single_op() in
+    `seq_lib/smu_jtag_helpers.py`; the field offsets are not obvious from the
+    document's relative "(...) +: width" notation alone.
     """
     return (
         (op & 0x3)

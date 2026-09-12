@@ -11,7 +11,7 @@
 7. [Corner Cases and Error Conditions](#7-corner-cases-and-error-conditions)
 8. [Key Operational Details](#8-key-operational-details)
 9. [Test Execution Examples](#9-test-execution-examples)
-10. [Limitations and Future Work](#10-limitations-and-future-work)
+10. [Limitations](#10-limitations)
 
 ---
 
@@ -74,7 +74,7 @@ tb/
 
 ### Key Components
 
-#### tb_i3ccore.sv (228 lines)
+#### tb_i3ccore.sv
 
 **Purpose**: SystemVerilog testbench top-level that instantiates the I3C core wrapper and provides simulation infrastructure.
 
@@ -97,7 +97,7 @@ tb/
 - **Interrupt Signals**: `irq[NUM_I3C-1:0]`
 - **Waveform Support**: FSDB dumping when `+waves` and `+WAVE_FILE` plusargs are provided
 
-#### i3c_api.py (1600+ lines)
+#### i3c_api.py
 
 **Purpose**: Core Python API providing reusable classes for all I3C operations.
 
@@ -111,26 +111,26 @@ This API abstracts the complexity of register programming, command descriptor fo
 
 #### Test Modules
 
-| File | Purpose | Lines | Complexity |
-|------|---------|-------|------------|
-| `test_i3ccore.py` | Register verification, connectivity | 400+ | Low |
-| `test_i3c_setdasa.py` | Reference: SETDASA + read/write | 600+ | Medium |
-| `i3c_write_read_sanity.py` | Basic 4-byte transfers | 100+ | Low |
-| `i3c_long_write_sanity.py` | 500-byte write test | 80+ | Medium |
-| `i3c_long_read_sanity.py` | 500-byte read test | 80+ | Medium |
-| `i3c_immediate_write_sanity.py` | Immediate data in descriptors | 120+ | Medium |
-| `i3c_direct_ccc_sanity.py` | CCC command sequences | 120+ | Medium |
-| `i3c_ibi_sanity.py` | IBI with payload | 200+ | High |
-| `i3c_error_sanity.py` | Error handling | 250+ | High |
+| File | Purpose | Complexity |
+|------|---------|------------|
+| `test_i3ccore.py` | Register verification, connectivity | Low |
+| `test_i3c_setdasa.py` | Large private write/read with FIFO refill and drain | Medium |
+| `i3c_write_read_sanity.py` | Basic 4-byte transfers | Low |
+| `i3c_long_write_sanity.py` | 500-byte write test | Medium |
+| `i3c_long_read_sanity.py` | 500-byte read test | Medium |
+| `i3c_immediate_write_sanity.py` | Immediate data in descriptors | Medium |
+| `i3c_direct_ccc_sanity.py` | CCC command sequences | Medium |
+| `i3c_ibi_sanity.py` | IBI with payload | High |
+| `i3c_error_sanity.py` | Error handling | High |
 
-#### Makefile (286 lines)
+#### Makefile
 
 **Purpose**: Test orchestration, compilation, waveform management.
 
 **Key Features**:
 
 - Single test execution: `make MODULE=<name>`
-- Regression suite: `make all_tests` (runs all 9 test modules)
+- Regression suite: `make all_tests` (runs every module in ALL_TEST_MODULES)
 - Waveform control: `make WAVES=1` enables FSDB dumping
 - Filelist generation: `make filelist` (from bender)
 - Cleanup: `make clean` (artifacts), `make clean_all` (+ waveforms)
@@ -233,9 +233,11 @@ AssertionError: Expected 0xDEADBEEF, got 0xDEADBEE0
 **Regression Summary** (from `make all_tests`):
 
 ```
-=== Test Summary ===
-PASSED: 9
-FAILED: 0
+TEST SUMMARY
+========================================
+Total:  <n>
+Passed: <n>
+Failed: 0
 ```
 
 ---
@@ -429,7 +431,7 @@ await helper.write(0x098, queue_thld)
 
 **Purpose**: Sets thresholds for when TX/RX FIFO interrupts fire.
 
-**Complete Initialization Code** (from `i3c_api.py` lines 204-290):
+**Complete Initialization Code** (from `i3c_api.py`, simplified):
 
 ```python
 async def initialize(self):
@@ -517,7 +519,7 @@ await helper.write(0x11D4, tti_intr_enable)
 
 Use the same timing configuration as the controller (mirror the values).
 
-**Complete Target Initialization Code** (from `i3c_api.py` lines 1062-1138):
+**Complete Target Initialization Code** (from `i3c_api.py`, simplified):
 
 ```python
 async def initialize(self, static_addr):
@@ -628,7 +630,7 @@ if err_status != 0:
 
 The target automatically receives the dynamic address by polling the RX descriptor queue.
 
-**Complete SETDASA Code** (from `i3c_api.py` lines 419-436):
+**Complete SETDASA Code** (from `i3c_api.py`, simplified):
 
 ```python
 async def send_setdasa(self, static_addr, dynamic_addr, dat_idx=0):
@@ -750,7 +752,7 @@ rx_desc = await helper.read(0x11DC)
 # Extract byte count, command, etc.
 ```
 
-**Complete Private Write Code** (from `i3c_api.py` lines 438-576, simplified):
+**Complete Private Write Code** (from `i3c_api.py`, simplified):
 
 ```python
 async def private_write(self, data_bytes, target, dat_idx=0):
@@ -879,7 +881,7 @@ response = await helper.read(0x08C)
 err_status = (response >> 27) & 0x3
 ```
 
-**Complete Private Read Code** (from `i3c_api.py` lines 578-713, simplified):
+**Complete Private Read Code** (from `i3c_api.py`, simplified):
 
 ```python
 async def private_read(self, target, tx_data, dat_idx=0):
@@ -1239,7 +1241,7 @@ async def write_ibi(self, mdb, payload_bytes):
     await self.helper.poll_field(0x11CC, TtiIntrStatus, 'ibi_done_stat')
 ```
 
-**Complete Target IBI Code** (from `i3c_ibi_sanity.py` lines 199-203):
+**Complete Target IBI Code** (from `i3c_ibi_sanity.py`):
 
 ```python
 # Example: Send IBI with MDB=0xAA and 8-byte payload
@@ -1319,7 +1321,7 @@ async def read_ibi(self):
     return True, ibi_id, mdb, payload
 ```
 
-**Complete Controller IBI Reception Code** (from `i3c_ibi_sanity.py` lines 212-221):
+**Complete Controller IBI Reception Code** (from `i3c_ibi_sanity.py`):
 
 ```python
 # Controller waits for IBI
@@ -1719,7 +1721,7 @@ Tests are organized into 5 levels of complexity, from basic register access to a
 
 ### Level 1: Basic Functionality
 
-#### test_i3ccore.py (400+ lines)
+#### test_i3ccore.py
 
 **Purpose**: Register verification, AXI-Lite connectivity, reset value checks.
 
@@ -1745,15 +1747,13 @@ Tests are organized into 5 levels of complexity, from basic register access to a
    - CMD, RESP, IBI, TX, RX queue sizes
    - Ensures FIFO sizes match spec (8 entries each)
 
-**Lines of Code**: 400+
-
 **Registers Tested**: 100+ across 7 register regions
 
 **Coverage**: Basic register access, reset values, writable bit masks
 
 ### Level 2: Data Transfers
 
-#### i3c_write_read_sanity.py (100+ lines)
+#### i3c_write_read_sanity.py
 
 **Purpose**: Basic 4-byte bidirectional transfer validation.
 
@@ -1767,7 +1767,7 @@ Tests are organized into 5 levels of complexity, from basic register access to a
 
 **Coverage**: Basic data path, SETDASA, private read/write
 
-#### i3c_long_write_sanity.py (80+ lines)
+#### i3c_long_write_sanity.py
 
 **Purpose**: 500-byte write test to validate FIFO queue handling.
 
@@ -1781,7 +1781,7 @@ Tests are organized into 5 levels of complexity, from basic register access to a
 
 **Coverage**: Large transfer handling, TX/RX FIFO management, queue overflow prevention
 
-#### i3c_long_read_sanity.py (80+ lines)
+#### i3c_long_read_sanity.py
 
 **Purpose**: 500-byte read test to validate RX FIFO capacity.
 
@@ -1795,7 +1795,7 @@ Tests are organized into 5 levels of complexity, from basic register access to a
 
 **Coverage**: Extended reads, FIFO thresholds, descriptor management
 
-#### i3c_immediate_write_sanity.py (120+ lines)
+#### i3c_immediate_write_sanity.py
 
 **Purpose**: Immediate data transfer (data embedded in command descriptor).
 
@@ -1811,7 +1811,7 @@ Tests are organized into 5 levels of complexity, from basic register access to a
 
 ### Level 3: CCC Commands
 
-#### i3c_direct_ccc_sanity.py (120+ lines)
+#### i3c_direct_ccc_sanity.py
 
 **Purpose**: Full CCC command sequence validation.
 
@@ -1832,7 +1832,7 @@ Tests are organized into 5 levels of complexity, from basic register access to a
 
 ### Level 4: IBI (In-Band Interrupt)
 
-#### i3c_ibi_sanity.py (200+ lines)
+#### i3c_ibi_sanity.py
 
 **Purpose**: IBI transmission and reception with payload.
 
@@ -1863,7 +1863,7 @@ Tests are organized into 5 levels of complexity, from basic register access to a
 
 ### Level 5: Error Handling
 
-#### i3c_error_sanity.py (250+ lines)
+#### i3c_error_sanity.py
 
 **Purpose**: Error condition validation and recovery.
 
@@ -1998,7 +1998,7 @@ Tests are organized into 5 levels of complexity, from basic register access to a
 | T_SU_PP | 1 cycle |
 | T_HD_PP | 1 cycle |
 
-**Tests**: `configure_timing_pp()` available but not extensively used
+**Tests**: `configure_timing_pp()` in every bring-up; `i3c_pp_timing_transfer.py`, `i3c_od_pp_mode_switch.py`
 
 **Coverage**: Push-pull mode configuration
 
@@ -2026,7 +2026,7 @@ Tests are organized into 5 levels of complexity, from basic register access to a
 | **Errors** | Wrong target address (NACK) | i3c_error_sanity.py |
 | **Errors** | Non-zero error status | All tests verify |
 | **Timing** | Open-drain parameters | All tests |
-| **Timing** | Push-pull parameters | Available in API |
+| **Timing** | Push-pull parameters | i3c_pp_timing_transfer.py |
 | **IBI** | IBI with payload | i3c_ibi_sanity.py |
 | **IBI** | IBI during broadcast | i3c_ibi_sanity.py |
 
@@ -2241,46 +2241,10 @@ make verdi
 make all_tests
 ```
 
-**Progress Output**:
 
-```
-Running test module: test_i3ccore
-  ✓ test_base_registers PASSED
-  ✓ test_pio_registers PASSED
-  ✓ test_ec_registers PASSED
-  ✓ test_dat_dct_memory PASSED
-  ✓ test_queue_sizes PASSED
-
-Running test module: test_i3c_setdasa
-  ✓ test_setdasa PASSED
-
-Running test module: i3c_write_read_sanity
-  ✓ test_write_read_sanity PASSED
-
-Running test module: i3c_long_write_sanity
-  ✓ test_long_write_sanity PASSED
-
-Running test module: i3c_long_read_sanity
-  ✓ test_long_read_sanity PASSED
-
-Running test module: i3c_immediate_write_sanity
-  ✓ test_immediate_write_sanity PASSED
-
-Running test module: i3c_direct_ccc_sanity
-  ✓ test_direct_ccc_sanity PASSED
-
-Running test module: i3c_ibi_sanity
-  ✓ test_ibi_sanity PASSED
-  ✓ test_ibi_during_broadcast PASSED
-
-Running test module: i3c_error_sanity
-  ✓ i3c_error_wrong_addr PASSED
-  ✓ i3c_fifo_overflow PASSED
-
-=== Test Summary ===
-PASSED: 14
-FAILED: 0
-```
+**Progress Output**: each module runs in its own simulation; the Makefile prints
+`[PASS] <module> (TESTS=.. PASS=.. FAIL=.. SKIP=..)` or `[FAIL] <module>` per
+module, then a `TEST SUMMARY` block with `Total`, `Passed` and `Failed` counts.
 
 ### Running Specific Test Function
 
@@ -2345,9 +2309,9 @@ Also removes `.fsdb` waveform files.
 
 ---
 
-## 10. Limitations and Future Work
+## 10. Limitations
 
-### Currently Tested
+### Tested
 
 The testbench provides solid coverage of core I3C functionality:
 
@@ -2359,9 +2323,9 @@ The testbench provides solid coverage of core I3C functionality:
 - **Register Interface**: 100+ registers verified across controller and target modes
 - **Dual-Instance Testing**: Controller and target tested simultaneously
 
-### Not Currently Tested
+### Not Tested
 
-The following features are not yet validated and represent opportunities for expanding test coverage:
+The following features are not covered by the testbench:
 
 #### HDR Modes (High Data Rate)
 
@@ -2369,7 +2333,6 @@ The following features are not yet validated and represent opportunities for exp
 - **HDR-TSL**: Ternary Symbol Legacy mode (3-level signaling)
 - **HDR-BT**: Bulk Transfer mode (higher throughput)
 - **Impact**: HDR modes provide faster data rates for performance-critical applications
-- **Recommendation**: Add HDR mode tests if the I3C core supports these modes
 
 #### Multi-Master Arbitration
 
@@ -2377,74 +2340,42 @@ The following features are not yet validated and represent opportunities for exp
 - **Arbitration**: Resolving conflicts when multiple controllers try to initiate transfers
 - **Master Request**: Target requesting controller role
 - **Impact**: Multi-master scenarios are common in complex systems
-- **Recommendation**: Add tests with multiple active controllers if the design supports multi-master
 
 #### Hot-Join Sequences
 
 - **Hot-Join**: New devices joining the I3C bus after initialization
 - **Dynamic Address Assignment**: Assigning addresses to newly joined devices
 - **Impact**: Allows plug-and-play device discovery
-- **Recommendation**: Add tests for dynamic device addition if supported
 
 #### Legacy I2C Compatibility Mode
 
 - **I2C Compatibility**: I3C controller communicating with legacy I2C devices
 - **Mixed Bus**: I3C and I2C devices on the same bus
 - **Impact**: Important for systems with existing I2C peripherals
-- **Recommendation**: Add I2C compatibility tests if legacy support is required
 
 #### Vendor-Specific CCC Commands
 
 - **Extended CCCs**: Vendor-defined CCC codes beyond standard MIPI spec
 - **Custom Configuration**: Device-specific configuration and status commands
 - **Impact**: Allows custom features beyond standard I3C
-- **Recommendation**: Add vendor CCC tests if custom commands are implemented
 
 #### Power Mode Transitions
 
 - **Low-Power Modes**: Bus sleep, device suspend/resume
 - **Power State Transitions**: Entering and exiting low-power states
 - **Impact**: Critical for battery-powered systems
-- **Recommendation**: Add power mode tests for low-power designs
 
 #### Randomized CCC Sequences
 
 - **Random CCC Order**: Non-deterministic command sequences
 - **Stress Testing**: Back-to-back CCCs with varying targets
 - **Impact**: Validates state machine robustness
-- **Recommendation**: Add constrained-random CCC tests for thorough validation
 
 #### Recovery Interface
 
 - **Recovery Payload**: Secure firmware recovery image activation
 - **Recovery Signals**: `reset_payload_avail`, `image_activated`
 - **Impact**: Critical for secure boot and firmware updates
-- **Recommendation**: Add recovery tests if recovery interface is functional
-
-### Test Gaps
-
-Based on code review, these specific gaps were identified:
-
-1. **Clock Stretching**: I3C targets cannot stretch clocks, so not applicable
-2. **Arbitration Loss**: Single controller tested; no arbitration loss scenarios
-3. **Multi-Instance Conflicts**: No tests for bus conflicts between instances
-4. **Timeout Scenarios**: No explicit timeout/watchdog tests
-5. **Broadcast CCC Commands**: Limited broadcast CCC testing (only SETDASA)
-6. **Secondary Controller**: No tests for standby controller promotion to active
-7. **Target Read Abort**: No tests for target aborting read mid-transfer
-8. **Parity/CRC Errors**: No error injection for parity or CRC failures
-
-### Recommendations for Production
-
-For production-grade verification, consider adding:
-
-1. **UVM Testbench**: Constrained-random stimulus with functional coverage
-2. **Formal Verification**: Property checking for protocol compliance
-3. **Coverage Metrics**: Code coverage, functional coverage, assertion coverage
-4. **Stress Tests**: Long-running tests with randomized scenarios
-5. **Performance Tests**: Throughput, latency, bus utilization measurements
-6. **Corner Case Expansion**: More error injection, edge case timing
-7. **Compliance Suite**: MIPI I3C conformance test suite integration
 
 ---
 
@@ -2454,11 +2385,11 @@ This I3C DV Guide provides a comprehensive reference for understanding and using
 
 - **Software Interface**: Detailed register programming sequences for controller and target initialization, CCC commands, private transfers, and IBI
 - **Python API**: High-level API (`I3CHelper`, `I3CController`, `I3CTarget`) simplifies test writing
-- **Test Coverage**: 9 test modules covering basic functionality, data transfers, CCC commands, IBI, and error handling
+- **Test Coverage**: test modules covering basic functionality, data transfers, CCC commands, IBI, and error handling
 - **Corner Cases**: Validates address boundaries, FIFO thresholds, large transfers, and error conditions
 - **Execution**: Simple Makefile targets for running individual tests or full regression
 
-The testbench demonstrates **solid coverage of core I3C functionality** suitable for regression testing. For production deployment, consider expanding coverage to include HDR modes, multi-master scenarios, and formal verification.
+The testbench covers the core I3C functionality listed above and runs as a regression via `make all_tests`.
 
 ---
 
@@ -2516,11 +2447,3 @@ make clean_all                  # Remove artifacts + waveforms
 | 0x8A | SETMRL | Direct SET | 2-3 |
 | 0x9A | RSTACT | Direct | 1 |
 
----
-
-**Document Version**: 1.0
-**Last Updated**: 2026-04-22
-**Author**: Anshul Shah
-**Contact**: DV Team
-
----

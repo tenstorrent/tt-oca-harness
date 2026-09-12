@@ -21,7 +21,7 @@ hard_fail_patterns = [
   "\\bImportError\\b",
   # Match $fatal only when it appears alongside a runtime fatal marker; the
   # bare token also appears in RTL source echoed by Xcelium under -showcfg /
-  # *W,STRINT warning context and was causing false-positive ERRORs.
+  # *W,STRINT warning context, where it is not a failure.
   "\\*F[,:].*\\$fatal\\b",
   "%Error[:\\-]",
   "make(?:\\[\\d+\\])?: \\*\\*\\*",
@@ -47,7 +47,7 @@ required_patterns = ["UVM Report Summary"]
 hard_fail_patterns = [
   # Match $fatal only when it appears alongside a runtime fatal marker; the
   # bare token also appears in RTL source echoed by Xcelium under -showcfg /
-  # *W,STRINT warning context and was causing false-positive ERRORs.
+  # *W,STRINT warning context, where it is not a failure.
   "\\*F[,:].*\\$fatal\\b",
   "Error-\\[",
   "%Error[:\\-]",
@@ -66,7 +66,7 @@ required_patterns = []
 hard_fail_patterns = [
   # Match $fatal only when it appears alongside a runtime fatal marker; the
   # bare token also appears in RTL source echoed by Xcelium under -showcfg /
-  # *W,STRINT warning context and was causing false-positive ERRORs.
+  # *W,STRINT warning context, where it is not a failure.
   "\\*F[,:].*\\$fatal\\b",
   "%Error[:\\-]",
   "Error-\\[",

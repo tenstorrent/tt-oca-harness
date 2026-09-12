@@ -140,8 +140,8 @@ def required_path(cfg: dict[str, Any], key: str, section: str, where: str) -> st
     """Return a required build-output path from `cfg`, or fail loud.
 
     Build/run output directories are per-DUT policy and must be declared in the flow's sim_cfg;
-    the runner never invents one. Mirrors the existing ``[build].top_module`` requirement so a
-    missing path is a config error, not a silent fallback to a runner-owned default.
+    the runner never invents one. A missing path is a config error, as it is for
+    ``[build].top_module``.
     """
     value = cfg.get(key)
     if not isinstance(value, str) or not value.strip():
@@ -206,7 +206,7 @@ def _bender_sources_fingerprint(root: Path, build: dict[str, Any]) -> list[str]:
     not resolve contributes ``<missing>`` so a deleted file still moves the
     digest instead of failing the build.
 
-    Cost is one read of the named sources -- about 900 files and 11 MB for SEP, ~0.3 s.
+    Cost is one read of every named source.
     """
     sources = _bender_filelist_sources(root, build)
     if not sources:
@@ -819,13 +819,12 @@ def get_cocotb_runner():
 
 @contextmanager
 def cocotb_make_jobs(jobs: int):
-    """Temporary WA: map runlib build jobs onto cocotb runner's generated-model make.
+    """Map runlib build jobs onto the cocotb runner's generated-model make.
 
-    cocotb's Python runner hardcodes its generated Verilator model build through
-    MAX_PARALLEL_BUILD_JOBS (default 4) and does not currently expose a
-    per-build jobs argument. Keep the user-visible policy in config/CLI
-    (`[build.options].build_jobs` / `--build-jobs`) and adapt that value here until
-    cocotb grows a supported build_jobs API.
+    cocotb's Python runner drives its generated Verilator model build through
+    MAX_PARALLEL_BUILD_JOBS (default 4) and exposes no per-build jobs argument.
+    The user-visible policy lives in config/CLI
+    (`[build.options].build_jobs` / `--build-jobs`); this maps that value onto the constant.
     """
     patched: list[tuple[Any, int]] = []
     if jobs > 1:
@@ -860,9 +859,7 @@ def cocotb_public_scope(vlt_path: str):
     cocotb only needs the testbench top public (its root handle plus top-level ports
     such as clocks/reset/the AXI bus); internal probes/splices are implemented SV-side
     in tb_top. So we drop the global flag and add a scoped config that exposes only the
-    tb top, leaving the DUT fabric optimisable. Measured on SEP: SCCs ~951 -> ~61, ICO
-    Input region ~3.2M -> ~160K, and the smoke test runs to completion instead of
-    wedging at the timeout.
+    tb top, leaving the DUT fabric optimisable.
 
     This wraps ``Verilator._build_command`` at runtime rather than editing the
     installed ``cocotb_tools/runner.py``, which ``uv sync`` recreates.
@@ -933,9 +930,8 @@ def generate_filelist(
     for target in [*common_targets, *targets]:
         target_args.extend(["-t", target])
 
-    # FIXME(transition): drop licensed-IP wrappers the bender graph pulls in this sandbox (e.g.
-    # SEP's Cadence sep_cdns_spi_wrap). Remove `build.exclude_files` support once those sources are
-    # absent from the OSS checkout upstream.
+    # `build.exclude_files` names sources the bender graph pulls in that this checkout cannot
+    # compile; a filelist line containing any of them is dropped after generation.
     exclude_files = as_str_list(build.get("exclude_files"), "build.exclude_files")
 
     checkout_cmd = ["bender", "checkout"]
@@ -991,8 +987,8 @@ def generate_filelist(
             if proc.returncode:
                 return proc.returncode
 
-            # Drop the licensed-IP wrappers named in build.exclude_files from the generated bender
-            # filelist before it feeds the compile (see the FIXME above; substring match per line).
+            # Drop the sources named in build.exclude_files from the generated bender filelist
+            # before it feeds the compile (substring match per line).
             if exclude_files and bender_out.exists():
                 kept: list[str] = []
                 for line in bender_out.read_text(encoding="utf-8").splitlines():
@@ -1008,8 +1004,6 @@ def generate_filelist(
     # `stubs` are DUT-local OVERRIDE sources that replace the real RTL for a module. `sources` are
     # ADDITIVE tb components (e.g. SEP's mem responders) that may reference DUT package types, so they
     # go AFTER the bender filelist where those packages are already declared.
-    # FIXME(transition): `stubs` is a transitional alias kept for DTP/SMC/SEP; remove it (and the
-    # `build.exclude_files` filter above) once the licensed/non-Verilator sources are gone upstream.
     stubs = [repo_path(root, value) for value in as_str_list(build.get("stubs"), "build.stubs")]
     sources = [
         repo_path(root, value) for value in as_str_list(build.get("sources"), "build.sources")
@@ -1019,14 +1013,12 @@ def generate_filelist(
     # differs and because some stubs shadow real RTL that IS present in the bender graph:
     #   * Verilator (-Wno-MODDUP, FIRST-wins): keep ALL stubs and emit them BEFORE the bender
     #     filelist so they override the real RTL. The stubs exist to dodge Verilator RTL-codegen
-    #     defects (e.g. PeakRDL nested structs in smc_reset_unit), so they MUST win here.
+    #     defects, so they MUST win here.
     #   * VCS (LAST-wins): a stub that also has real RTL in the bender graph would OVERRIDE it, and
-    #     the checked-in stubs can lag the real port list (e.g. smc_reset_unit gained test_en_i /
-    #     scan_rst_ni / rst_warm_smc_clk_no) -> a stale stub silently binds and elaboration fails
-    #     with undefined-port errors. So for VCS keep ONLY the stubs that have NO real counterpart in
-    #     the bender graph (OSS-absent modules like smc_dft_ctrl_status_wrap) and emit them AFTER the
-    #     bender filelist, where the DUT packages they reference are already declared. Everything with
-    #     real RTL is compiled from the bender graph instead.
+    #     a checked-in stub whose port list lags the real RTL binds silently and elaboration fails
+    #     with undefined-port errors. So for VCS keep ONLY stubs that have NO real counterpart in
+    #     the bender graph and emit them AFTER the bender filelist, where the DUT packages they
+    #     reference are already declared. Everything with real RTL compiles from the bender graph.
     # A real counterpart is detected by matching the stub's file basename against the bender sources
     # (repo convention: one module per file, file named after the module).
     stubs_after = False
@@ -1111,8 +1103,7 @@ def verilator_compile(
 
 
 # cocotb is the single test framework across simulators, and every simulator goes through
-# cocotb's Python runner (``cocotb_tools.runner``): one cocotb version, one launch path. The
-# classic Makefile flow is not used anywhere.
+# cocotb's Python runner (``cocotb_tools.runner``): one cocotb version, one launch path.
 COCOTB_RUNNER_TOOLS = {"verilator", "xcelium", "vcs"}
 
 
@@ -1584,7 +1575,7 @@ def cocotb_build(
     )
     # Parallelize the cocotb-driven `make` C++ compile. The `build_jobs` option only
     # reaches Verilator's own codegen via `--build-jobs`; the cocotb runner invokes
-    # `make -f Vtop.mk` separately. Until cocotb exposes a real per-build jobs API,
+    # `make -f Vtop.mk` separately. cocotb exposes no per-build jobs API, so
     # cocotb_make_jobs() maps the same config/CLI value onto that backend's make -j.
     _build_jobs = effective_build_jobs(options, _build_jobs_arg(args))
     if _build_jobs and _build_jobs > 1:
@@ -1657,8 +1648,8 @@ def _run_sim_prestage(
     (smc/dtp) is a no-op, so this never affects other flows.
 
     ``sim_args`` (the test's rendered plusargs) and ``root`` are passed as keyword
-    args ONLY if the hook's ``stage`` accepts them, so a hook with the original
-    ``stage(item, seed, cwd)`` signature still works. SEP uses ``sim_args`` to honor
+    args ONLY if the hook's ``stage`` accepts them, so a hook that takes only
+    ``(item, seed, cwd)`` also works. SEP uses ``sim_args`` to honor
     a ``+sep_efuse_preload`` override at t=0 the same way the test honors it at
     runtime.
     """
@@ -1814,11 +1805,10 @@ def cocotb_sim(
     if not args.dry_run:
         results_dir.mkdir(parents=True, exist_ok=True)
         _stage_firmware_outputs(root, sim_cfg, test, item_dir)
-        # Temporary compatibility bridge: some legacy behavioral responders still
-        # $readmemh/$fopen flat image names from the sim CWD at time 0, while cocotb
-        # now runs each test from its per-test run dir. Stage source test-dir
-        # images until those responders/tests use explicit configured image paths.
-        # Per-test boot_firmware staging still overwrites the TCM images it owns.
+        # Behavioral responders that $readmemh/$fopen flat image names read them from the
+        # sim CWD at time 0, and the cocotb runner runs each test from its per-test run
+        # dir, so the source test-dir images are copied there. Per-test boot_firmware
+        # staging overwrites the TCM images it owns.
         src_test_dir = repo_path(root, str(cocotb_data.get("test_dir", "")))
         if src_test_dir.is_dir():
             for pattern in ("*.hex", "*.parhex"):
@@ -3170,8 +3160,7 @@ def run_stage(
         "target": target_name,
         "item": item or "",
         "seed": str(seed),
-        # Keep `jobs` as a template alias for existing configs while exposing the
-        # clearer `sim_jobs` name to new stage templates.
+        # `jobs` is an alias of `sim_jobs` in stage templates.
         "jobs": str(args.sim_jobs),
         "sim_jobs": str(args.sim_jobs),
         "run_dir": str(run_dir),
@@ -3280,9 +3269,8 @@ def run_stage(
                 env_path,
             )
         elif kind in {"bender_filelist", "verilator_filelist"}:
-            # The `native` profile's cocotb framework maps the logical `flist` stage to `bender_filelist` for
-            # every tool (VCS runs via cocotb's classic make, not the dedicated vcs_* stages), so the
-            # tool-dependent stub ordering has to key off the actual target tool here.
+            # The cocotb framework maps the logical `flist` stage to `bender_filelist` for every
+            # tool, so the tool-dependent stub ordering keys off the actual target tool here.
             rc = generate_filelist(
                 flow,
                 root,

@@ -33,8 +33,8 @@ class ocah_jtag_checker extends ocah_checker;
   endfunction
 
   // ------------------------------------------------------------------
-  // TAP reference model (owned ocah_jtag_ref_model; thin forwarders keep
-  // the checker's public API stable).
+  // TAP reference model (owned ocah_jtag_ref_model); the checker's public
+  // API forwards to it.
   // ------------------------------------------------------------------
 
   function ocah_jtag_tap_state_e model_state();

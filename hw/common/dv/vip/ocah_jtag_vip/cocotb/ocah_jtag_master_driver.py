@@ -201,8 +201,6 @@ class OcahJtagMasterDriver:
             def __getattr__(self, signal_name: str):
                 return getattr(dut, f"{prefix}_{signal_name}")
 
-        # The `trst_signal in (None, "trst")` branch above already returned,
-        # so reaching here means it's some other non-default name.
         assert trst_signal is not None
         return cls(
             _PrefixedNamespace(),

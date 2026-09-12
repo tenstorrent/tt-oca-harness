@@ -4,7 +4,7 @@
 /* Copyright 2026 Tenstorrent Inc. */
 /**
  * @file test_km_xfer_err.c
- * @brief T048 - Key transfer error cases test
+ * @brief Key transfer error cases test
  *
  * Boots the KM firmware, generates a key with dest_valid = AES only,
  * then tests three transfer failure paths:

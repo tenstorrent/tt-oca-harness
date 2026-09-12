@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 """
-I3C Back-to-Back Transactions  (Test Plan #31)
+I3C Back-to-Back Transactions
 
 Issues a stream of transactions with minimal inter-transaction gap to stress
 command/response queue turnaround and bus-free timing.

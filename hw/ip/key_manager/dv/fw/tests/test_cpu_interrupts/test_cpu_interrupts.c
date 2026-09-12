@@ -6,8 +6,8 @@
  * @file test_cpu_interrupts.c
  * @brief CPU Interrupt Test - Tests PicoRV32 internal interrupt sources
  *
- * This test verifies the two internal interrupt sources available with
- * the current PicoRV32 configuration (ENABLE_IRQ_TIMER=0):
+ * This test verifies the two internal interrupt sources available when
+ * PicoRV32 is built with ENABLE_IRQ_TIMER=0:
  *
  *   IRQ 1 - EBREAK/ECALL/Illegal Instruction
  *   IRQ 2 - Bus Error (Misaligned Memory Access)
