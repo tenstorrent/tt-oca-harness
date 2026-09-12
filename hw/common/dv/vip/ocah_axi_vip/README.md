@@ -38,7 +38,10 @@ The released AXI master and responder BFMs are backed by `cocotbext-axi`
 
 Every driver zeroes its source-channel payload signals at construction
 (`init_signals()`, also callable explicitly), overriding the backend's all-X
-payload init so a bus idles clean from time 0 on 4-state simulators. No
+payload init so a bus idles clean from time 0 on 4-state simulators. The
+slave drivers also hold their channel endpoints in reset until the reset
+input reads a defined inactive level, so a responder built at time 0 never
+samples a handshake the DUT has not driven yet (X on 4-state simulators). No
 process-global cocotb or `cocotbext-axi` state is touched.
 
 ---
