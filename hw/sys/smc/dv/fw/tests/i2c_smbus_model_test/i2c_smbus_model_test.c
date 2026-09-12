@@ -3,14 +3,14 @@
 
 /**
  * @file main.c
- * @brief I2C SMBus Alert/Suspend Test - OpenTitan I2C Version
+ * @brief I2C SMBus Alert/Suspend Test
  *
  * =============================================================================
  * Test Purpose
  * =============================================================================
  *
- * This test verifies SMBus Alert and Suspend functionality using the new
- * OpenTitan I2C IP:
+ * This test verifies SMBus Alert and Suspend functionality of the OpenTitan
+ * I2C IP:
  *   - SMBus Alert (SMBALERT#): Device -> Host signal propagation
  *   - Alert Response Address (ARA): Host reads alert source
  *   - SMBus Suspend (SMBSUS#): Host -> Device signal propagation
@@ -157,10 +157,10 @@ static bool wait_until(bool (*cond_fn)(uint32_t), uint32_t idx, bool expected,
 //=============================================================================
 
 /**
- * @brief Check SMBus Alert status (Controller mode) - Enhanced for new model
+ * @brief Check SMBus Alert status (Controller mode)
  *
- * Uses multiple reads with delay to ensure stable reading from new model.
- * Workaround for potential timing issues in new I2C model.
+ * Samples SMBUS_STATUS.SMBALERT three times with a short delay between reads and
+ * reports active when at least two samples agree.
  *
  * @param idx I2C instance index
  * @return true if SMBALERT# is active (low), false otherwise
@@ -175,7 +175,7 @@ static bool smbus_get_alert_status(uint32_t idx) {
                               SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
     status1 = smbus_status1.f.SMBALERT ? true : false;
 
-    // Small delay for signal stabilization in new model
+    // Settle between samples
     for (volatile int i = 0; i < 100; i++)
         ;
 
@@ -185,7 +185,7 @@ static bool smbus_get_alert_status(uint32_t idx) {
                               SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
     status2 = smbus_status2.f.SMBALERT ? true : false;
 
-    // Another small delay
+    // Settle between samples
     for (volatile int i = 0; i < 100; i++)
         ;
 
@@ -195,17 +195,15 @@ static bool smbus_get_alert_status(uint32_t idx) {
                               SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
     status3 = smbus_status3.f.SMBALERT ? true : false;
 
-    // Return true only if at least 2 out of 3 reads show alert active
-    // This provides more reliable detection for new model
+    // Majority of the three samples
     int active_count = (status1 ? 1 : 0) + (status2 ? 1 : 0) + (status3 ? 1 : 0);
     return active_count >= 2;
 }
 
 /**
- * @brief Check SMBus Alert interrupt status - Enhanced for new model
+ * @brief Check SMBus Alert interrupt status
  *
- * Enhanced interrupt checking to handle new model's interrupt logic issues.
- * Uses multiple verification methods and retry logic.
+ * Reads INTR_STATE.SMBALERT twice and also accepts SMBUS_STATUS.SMBALERT.
  *
  * @param idx I2C instance index
  * @return true if alert interrupt is pending, false otherwise
@@ -220,11 +218,11 @@ static bool smbus_irq_alert_stat(uint32_t idx) {
                               SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
     intr1 = intr_state.f.SMBALERT ? true : false;
 
-    // Small delay for new model
+    // Settle between reads
     for (volatile int i = 0; i < 50; i++)
         ;
 
-    // Method 2: Re-read for confirmation (workaround for new model interrupt logic)
+    // Method 2: Re-read for confirmation
     i2c__INTR_STATE_t intr_state2 = {
         .w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR(0) -
                               SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
@@ -233,8 +231,7 @@ static bool smbus_irq_alert_stat(uint32_t idx) {
     // Also check if SMBus status indicates alert (as backup verification)
     bool smbus_alert_active = smbus_get_alert_status(idx);
 
-    // Return true if either interrupt read shows alert OR if SMBus status shows alert
-    // This provides redundancy for new model's potential interrupt logic issues
+    // Either INTR_STATE read or the SMBUS_STATUS sample counts as alert
     return intr1 || intr2 || smbus_alert_active;
 }
 
@@ -278,10 +275,8 @@ static bool smbus_get_suspend_status(uint32_t idx) {
  */
 static bool smbus_irq_suspend_stat(uint32_t idx) {
     (void)idx; // Suppress unused parameter warning
-    // Note: OpenTitan I2C may not have separate suspend interrupt
-    // Check if interrupt exists, otherwise return false
-    // For now, we'll check suspend status directly
-    return false; // Suspend interrupt may not be implemented
+    // The I2C IP has no SMBSUS interrupt; SMBUS_STATUS.SMBSUS is the only observe path.
+    return false;
 }
 
 /**
@@ -292,8 +287,6 @@ static bool smbus_irq_suspend_stat(uint32_t idx) {
 static void smbus_clear_suspend_irq(uint32_t idx) {
     uint32_t base = i2c_get_base(idx);
     i2c__INTR_STATE_t intr_clear = {.w = 0};
-    // Note: Suspend interrupt may not be implemented in OpenTitan I2C
-    // This is a placeholder for future implementation
     write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR(0) -
                       SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
               intr_clear.w);
@@ -319,7 +312,6 @@ int main(void) {
     simputs("################################################\n");
     simputs("\n");
     simputs("[MAIN] Firmware main() started\n");
-    // Note: peripherals_out_of_reset() is no longer available
     simputs("[MAIN] Test initialization complete\n");
 
     //=========================================================================
@@ -412,7 +404,6 @@ int main(void) {
     simputs("[MAIN] Controller initialized successfully\n");
 
     // Enable SMBus Alert interrupt for Controller mode
-    // Note: Even though we use polling, the hardware may need interrupt enable to detect SMBALERT#
     base = i2c_get_base(CONTROLLER_IDX);
     i2c__INTR_ENABLE_t intr_en = {
         .w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_ENABLE_BASE_ADDR(0) -
@@ -507,10 +498,8 @@ int main(void) {
     // Checker 4: Firmware detects alert status
     // Checker 5: Firmware detects alert interrupt
     // ======================================================================
-    // [IMPROVED LOGIC - Scheme 3] Use smbus_get_alert_status() instead of smbus_irq_alert_stat()
-    // Reason: SMBUS_STATUS.SMBALERT register may respond faster than INTR_STATE.SMBALERT
-    // due to hardware synchronization delays. SMBUS_STATUS is the direct status register
-    // and should be more reliable than the interrupt-based flag.
+    // SMBUS_STATUS.SMBALERT is the direct pad-state register; INTR_STATE.SMBALERT lags it
+    // by the synchroniser delay.
     if (!wait_until(smbus_get_alert_status, CONTROLLER_IDX, true, 50000)) {
         simputs("  ERROR: SMBus ALERT status not confirmed on Host\n");
         simputs("  [CHECKER 3 FAILED] Alert interrupt was not triggered (hardware)\n");
@@ -606,7 +595,6 @@ int main(void) {
 
     // ======================================================================
     // Checker 11: Firmware clears interrupt
-    // [IMPROVED] Also use smbus_get_alert_status() for consistency
     // ======================================================================
     simputs("  [ALERT] Clearing alert interrupt...\n");
     smbus_clear_alert_irq(CONTROLLER_IDX);

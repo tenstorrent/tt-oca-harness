@@ -15,11 +15,9 @@
  * source IDs are the interrupt line plus one because the RISC-V PLIC reserves
  * ID 0, and smc_base.sv:251 puts ext_interrupts at the bottom of the vector.
  *
- * It is source 1 rather than 23 because bit 0 is the only external interrupt
- * this testbench can drive -- tb_top.sv:1181 ties ext_interrupts_i[255:1] to
- * zero and exposes bit 0 as tb_ext_interrupt_0_i. Source 23 would be
- * ext_interrupts_i[22], which nothing can raise, so the handler would never
- * run and the testcase would time out instead of measuring anything.
+ * Bit 0 is the only external interrupt this testbench drives: tb_top.sv ties
+ * the upper ext_interrupts_i bits to zero and exposes bit 0 as
+ * tb_ext_interrupt_0_i.
  */
 #define TEST_INTERRUPT_ID 1
 

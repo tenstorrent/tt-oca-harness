@@ -2,10 +2,11 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Shared bring-up for the dual-SMC OCCP tests.
 
-Thinner than hw/sys/smc/dv/cocotb/tests/smc_base_test.py: that
-harness builds the whole single-instance SmcEnv against tb_top.sv's ~400-port
-surface, none of which exists on tb_top.sv (SMC_DUAL half). Here both instances share one
-clock/reset bring-up and each gets its own inbound AXI master.
+Thinner than hw/sys/smc/dv/cocotb/tests/smc_base_test.py: that harness builds
+the whole single-instance SmcEnv against tb_top.sv's single-instance port
+surface, none of which exists on the SMC_DUAL half of tb_top.sv. Here both
+instances share one clock/reset bring-up and each gets its own inbound AXI
+master.
 """
 
 from __future__ import annotations
@@ -47,7 +48,7 @@ AXI_TIMEOUT_NS = 20_000
 
 # Bytes per bulk AXI transaction. One 64-byte scratch-bank stripe, and small
 # enough that the AXI-to-TileLink bridge into the CPU cluster carries it; see
-# DualCsr.write_bytes for the 256-beat burst that did not.
+# DualCsr.write_bytes for the burst length that does not.
 BULK_CHUNK_BYTES = 64
 
 
@@ -180,11 +181,10 @@ class DualCsr:
 
         Chunked at BULK_CHUNK_BYTES rather than handed to the VIP as one
         transfer. Letting cocotbext-axi size the burst itself produces
-        awlen=255, and a 256-beat burst into the cluster's front port never
-        completes -- measured: the write went out at 377760ns and no response
-        ever came back. The AXI-to-TileLink bridge does not carry bursts that
-        long, so keep each transaction inside one 64-byte line, which is also
-        the scratch banks' stripe granularity.
+        awlen=255, and the AXI-to-TileLink bridge does not carry a 256-beat
+        burst into the cluster's front port: the write never completes. Each
+        transaction therefore stays inside one 64-byte line, which is also the
+        scratch banks' stripe granularity.
         """
         for off in range(0, len(data), BULK_CHUNK_BYTES):
             chunk = data[off : off + BULK_CHUNK_BYTES]

@@ -278,13 +278,10 @@ void test_gpio_mux_functionality(uint32_t gpio_num) {
 }
 
 int main(void) {
-    // Initialize peripherals
-
-    // Test all GPIOs (0-63), skipping GPIO 64 (cool_reset_in) which is out of range
+    // Walk the BP_GPIO array (indices 0-60)
     for (uint32_t gpio_num = 0; gpio_num < TOTAL_GPIOS; gpio_num++) {
         if (gpio_num == GPIO_SKIP_COOL_RESET) {
-            // Skip GPIO 64 as it is cool_reset_in and will reset chip if toggled
-            // Note: GPIO 64 is already out of range for BP_GPIO array
+            // cool_reset_in resets the chip when toggled
             continue;
         }
 

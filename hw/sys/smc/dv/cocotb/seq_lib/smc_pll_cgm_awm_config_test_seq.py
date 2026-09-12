@@ -1,9 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""P1 coverage-gap: PLL CGM_0/1 + AWM_0/1 CSR precheck (TC_SMC_P1CG_06).
+"""PLL CGM_0/1 + AWM_0/1 CSR precheck (TC_SMC_P1CG_06).
 
-Existing PLL tests only touch PLL_CNTL at 0xC000_3000. RTL exposes
-CGM 0/1 + AWM 0/1 at 0xC000_3100/3200 and 0xC000_3400/3A00. Under
+RTL exposes CGM 0/1 + AWM 0/1 at 0xC000_3100/3200 and 0xC000_3400/3A00. Under
 ``smc_wrapper``, ``pll_wrap`` completes every access with OKAY + 0.
 """
 

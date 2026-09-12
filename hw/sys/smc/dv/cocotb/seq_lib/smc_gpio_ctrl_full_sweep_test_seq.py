@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""P1 coverage-gap: GPIO_CTRL window routing sweep (TC_SMC_P1CG_07).
+"""GPIO_CTRL window routing sweep (TC_SMC_P1CG_07).
 
 Sweeps every bootrom ``EXTERNAL_MANDATORY_GPIO_CTRL_N`` CONTROL address.
 ``smc_ip_integration`` terminates that window with DECERR + 0.

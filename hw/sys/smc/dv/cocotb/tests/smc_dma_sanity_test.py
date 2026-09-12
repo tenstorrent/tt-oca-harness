@@ -22,11 +22,10 @@ class smc_dma_sanity_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.ZEROER_DMA,
             type(self).__name__,
-            # Conservative stimulus floor: the directed body (output-fabric
-            # pass-all programming plus the DMA descriptor writes and trigger)
-            # issued 23 accesses in the retained regression run, of which the
-            # DMA-DONE completion poll is a timing-dependent remainder, so the
-            # floor is set below the observed count. Literal here, not read from
+            # Stimulus floor set below the run-to-run minimum: the directed body
+            # (output-fabric pass-all programming plus the DMA descriptor writes
+            # and trigger) is fixed, and the DMA-DONE completion poll is a
+            # timing-dependent remainder. Literal here, not read from
             # `seq.accesses`: a floor that shrinks with the sequence cannot
             # catch a sequence that silently stops short.
             min_csr_accesses=18,

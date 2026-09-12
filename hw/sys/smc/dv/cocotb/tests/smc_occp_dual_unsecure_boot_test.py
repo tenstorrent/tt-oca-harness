@@ -16,10 +16,9 @@ the two CPUs. Everything after that -- ENTDAA, the
 chunked WRITEs, the JUMP -- is firmware talking to firmware over a shared I3C
 bus.
 
-Staging is a front-door AXI write, per the design doc's "Seeding the
-controller". It needs the controller's cluster boundary open, which needs all
-four of its cores released, so the staging window is held open instead by keeping
-the controller parked on its target-ready handshake.
+Staging is a front-door AXI write. It needs the controller's cluster boundary
+open, which needs all four of its cores released, so the staging window is held
+open by keeping the controller parked on its target-ready handshake.
 smc_dual_axi_sram_probe_test is the measurement that the AXI path into the
 scratch window works at all.
 
@@ -97,8 +96,8 @@ from smc_occp_dual_defs import (
     required_plusarg,
 )
 
-# Target ROM boot to its OCCP command loop. Measured at ~250 us of sim time in
-# the single-instance smc_prod_rom_occp_ready_test; this bound is ~10x that.
+# Target ROM boot to its OCCP command loop; this bound is ~10x the boot time the
+# single-instance path (smc_prod_rom_occp_ready_test) takes.
 ROM_POLL_ITERS = 2000
 ROM_POLL_CYCLES = 200
 
@@ -239,8 +238,8 @@ async def _scan_for_payload(dut, signature: int, limit: int = 0x10_0000) -> str:
                             write-back data cache, where volatile byte stores
                             would still be sitting dirty.
 
-    Distinguishing those last two needs a read that goes *through* the cache --
-    see the report; it is not something this peek can do.
+    Distinguishing those last two needs a read that goes *through* the cache,
+    which this peek cannot do.
     """
     hits = []
     for offset in range(0, limit, 8):
@@ -665,8 +664,8 @@ async def smc_occp_dual_unsecure_boot_test(_dut) -> None:
     else:
         cocotb.log.info(
             "NOTE: controller had not printed its terminal line when the test "
-            "ended. Expected today -- the grace window bounds how long we wait "
-            "for a rejection, not for completion."
+            "ended; the grace window bounds how long the test waits for a "
+            "rejection, not for completion."
         )
 
     # ------------------------------------------------------------------

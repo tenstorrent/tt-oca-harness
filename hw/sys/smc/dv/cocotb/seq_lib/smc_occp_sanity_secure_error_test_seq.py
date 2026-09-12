@@ -2,8 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """P2-2 / U7-6: public secure-error negative via OTP program-fail + signature gate.
 
-Proprietary OCCP is ROM firmware on the chiplet TB. On the OSS smc_wrapper unit TB the
-public security hooks that are reachable without proprietary OCCP ROM are:
+The OCCP command path is ROM firmware; this sequence uses only the security
+hooks reachable on the smc_wrapper unit TB without running the ROM:
 
   1. OTP PROGRAM failure injection (secure programming error).
   2. CHIP_CONFIG / EFUSE_MAP signature word mismatch (negative gate).
@@ -75,7 +75,7 @@ class smc_occp_sanity_secure_error_test_seq(SmcCsrSeq):
             prog_before,
             prog_after,
         )
-        # MODEL-BACKED, NOT DUT-EARNED. Read this before citing it as evidence.
+        # MODEL-BACKED, NOT DUT-EARNED.
         #
         # With +smc_efuse_prog_fail_count set, hw/ip/efuse/dv/models/
         # efuse_bank_model.sv:120 drives the bank macro as
@@ -85,18 +85,11 @@ class smc_occp_sanity_secure_error_test_seq(SmcCsrSeq):
         # therefore cannot change, and this compare holds no matter what the
         # controller did: the testbench chooses the value the checker reads.
         #
-        # It is kept as a consistency check on the injection hook, not as proof
+        # The compare is a consistency check on the injection hook, not proof
         # of the controller's fail-path behaviour. What IS DUT-earned in this
         # scenario: PROGRAM_DONE is reported on the failing attempt (polled
-        # above, expiry raises), and the recovery burn below really does
-        # sticky-OR bit0 through the unmodified pwdata path.
-        #
-        # The real fix belongs in the model: reject the burn at the APB
-        # handshake (pslverr, with the macro write suppressed) instead of
-        # rewriting the data, so a controller that ignored the failure would be
-        # observable. That changes shared SEP+SMC model behaviour, so it is
-        # recorded as a gap in this testcase's VPLAN entry rather than done
-        # here.
+        # above, expiry raises), and the recovery burn below sticky-ORs bit0
+        # through the unmodified pwdata path.
         assert prog_after == prog_before, (
             "injected program-failure hook inconsistent: word0 moved "
             f"0x{prog_before:08x} -> 0x{prog_after:08x} even though the DV "

@@ -2,21 +2,17 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Cluster PLIC CSR and pending-path test.
 
-The cluster PLIC had no enrolled coverage at all. Nothing in the package read
-one of its registers: `smc_hang_detector_plic_route_test` checks the IRQ route
-through testbench probes and reads no PLIC register, and `smc_clint_csr_test`
-is a CLINT test and is not enrolled. The aperture is `0xC400_0000`, 2 MB
-(`smc_reg.py` `SMC_CLUSTER_PLIC_REG_MAP_*`), and it is reachable over SEP_IN
-AXI -- it is not inside the `0xC8xx_xxxx` cluster-local window that #1237
-folds, which is why this is a plain CSR test and not a deferred one.
+The aperture is `0xC400_0000`, 2 MB (`smc_reg.py` `SMC_CLUSTER_PLIC_REG_MAP_*`),
+reachable over SEP_IN AXI: it sits outside the `0xC8xx_xxxx` cluster-local
+window that the local-fabric fold aliases onto SMC_BASE_CONFIG.
 
 Four properties, and the last one is what makes the others worth having.
 
 **Context independence.** The PLIC has eight interrupt contexts -- four cores
 times MEIP/SEIP -- each with its own threshold register one 4 KB page apart.
 Writing one context's threshold must leave the other seven alone. This design
-has two filed aliasing defects already (#585 unmapped registers aliasing onto
-live ones, #1237 a whole window folding onto another), so eight same-shaped
+has two known aliasing defects (unmapped registers aliasing onto live ones, and
+a whole window folding onto another), so eight same-shaped
 registers a page apart is a place where aliasing is plausible rather than
 hypothetical. Each context is given a *distinct* value so a readback cannot be
 satisfied by the wrong page.
@@ -269,8 +265,7 @@ class smc_cluster_plic_csr_test_seq(SmcCsrSeq):
             "CHK-PLIC-CTX-INDEPENDENT: eight interrupt contexts one 4 KB page "
             "apart did not each hold their own threshold — "
             + "; ".join(mismatched)
-            + ". Each was given a distinct value, so this is aliasing between "
-            "context pages, the same class as #585 and #1237"
+            + ". Each was given a distinct value, so this is aliasing between context pages"
         )
         cocotb.log.info(
             "CHK-PLIC-CTX-INDEPENDENT: all %d contexts held their own distinct threshold (%s)",

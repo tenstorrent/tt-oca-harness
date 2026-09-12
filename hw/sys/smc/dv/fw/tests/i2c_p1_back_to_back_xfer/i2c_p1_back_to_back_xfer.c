@@ -14,10 +14,10 @@
  * that a single-shot transfer cannot is FIFO and state recovery *between*
  * transactions.
  *
- * The FIFO levels stay far from full by design: each transaction carries 4 data
- * bytes against a target RX FIFO depth of 268 and an FMT depth of 64, and no
- * overflow or error path is reached. FIFO-depth and overflow behaviour belong to
- * a separate test; nothing in this suite covers them yet.
+ * The FIFO levels stay far from full: each transaction carries 4 data bytes
+ * against a target RX FIFO depth of 268 and an FMT depth of 64, and no
+ * overflow or error path is reached. FIFO-depth and overflow behaviour are
+ * outside this test's scope.
  *
  * Expected Result:
  * - All 8 transactions complete successfully

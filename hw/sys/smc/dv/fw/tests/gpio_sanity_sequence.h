@@ -92,7 +92,7 @@ void test_rw_chip2pad(int hartid, uint32_t gpio_num) {
     write_scratch(1, expected_val);
     write_scratch(2, read_data_control_updated);
 
-    if (gpio_num == 74) // TODO update when err slv added
+    if (gpio_num == 74)
     {
         if (read_data_control_updated != BLOCKED_REQUEST) {
             raise_error_s(hartid, "GPIO index 74 is err slv, should return 0x0badcab1e");
@@ -131,8 +131,8 @@ void test_read_filter(int hartid, uint32_t gpio_num) {
     gpio_bad_cab1e_check(hartid, gpio_num, read_data);
     write_scratch(3, read_data);
 
-    if ((read_data == BLOCKED_REQUEST) && (gpio_num != 74)) // TODO update when err slv added
-    { // index 74 is dummy "error slv" and is expected to return 0x0badcab1e
+    if ((read_data == BLOCKED_REQUEST) && (gpio_num != 74))
+    { // index 74 decodes to the error slave and returns 0x0badcab1e
         raise_error_s(hartid, "test_read_filter: First Read was blocked");
     }
 
@@ -156,7 +156,7 @@ void test_read_filter(int hartid, uint32_t gpio_num) {
     gpio_bad_cab1e_check(hartid, gpio_num, read_data);
     write_scratch(5, read_data);
 
-    if ((gpio_num == 74)) // TODO update when err slv added
+    if ((gpio_num == 74))
     {
         if (read_data != BLOCKED_REQUEST) {
             raise_error_s(hartid, "GPIO index 74 is err slv, should return 0x0badcab1e");
@@ -206,7 +206,7 @@ void test_write_filter(int hartid, uint32_t gpio_num) {
     uint32_t read_data_allowed = read_gpio(gpio_num, GPIO_INTF_DATA_CTRL_OFFSET);
     gpio_bad_cab1e_check(hartid, gpio_num, read_data_allowed);
 
-    if (gpio_num == 74) // TODO update when err slv added
+    if (gpio_num == 74)
     {
         if (read_data_allowed != BLOCKED_REQUEST) {
             raise_error_s(hartid, "test_write_filter: GPIO index 74 should return 0x0badcab1e");
@@ -233,7 +233,7 @@ void test_write_filter(int hartid, uint32_t gpio_num) {
     uint32_t read_data_unchanged = read_gpio(gpio_num, GPIO_INTF_DATA_CTRL_OFFSET);
     gpio_bad_cab1e_check(hartid, gpio_num, read_data_unchanged);
 
-    if ((gpio_num == 74)) // TODO update when err slv added
+    if ((gpio_num == 74))
     {
         if (read_data_unchanged != BLOCKED_REQUEST) {
             raise_error_s(hartid, "GPIO index 74 is err slv, should return 0x0badcab1e");
@@ -268,8 +268,8 @@ int gpio_sanity_sequence(int hartid) {
     write_gpio(gpio_num, GPIO_INTF_DATA_CTRL_OFFSET, gpio_data_control.w);
 
     // Test the read filter, positive and negative tests by changing the prot value
-    // Randomly pick a GPIO to test, GPI0 67 (cool_reset_in) can be safely read so no need to check
-    // for skip
+    // Randomly pick a GPIO; reads are safe on every GPIO, including cool_reset_in, so no skip
+    // list applies here
     random_num = get_random_int();
     gpio_num = random_num % NUM_GPIOS;
     test_read_filter(hartid, gpio_num);

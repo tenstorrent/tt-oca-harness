@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""eFuse READ_STATUS on a timed-out read -- reproducer for issue #1603.
+"""eFuse READ_STATUS on a timed-out read.
 
-**Expected to FAIL against current RTL.** It exists to hold the evidence for
-#1603 in runnable form, and is enrolled in the `rtl_issue` group only.
+**Fails while the read timeout arm leaves READ_STATUS clear.** The sequence
+holds that defect in runnable form.
 
 `hw/ip/efuse/regs/efuse_interface_ctrl.rdl` documents
 ``EFUSE_READ_CTRL.READ_STATUS`` as the read interface's error report, and
@@ -26,9 +26,6 @@ required clear, because `efuse_interface_controller.sv:612` gates
 ``read_enable`` with ``&& ~efuse_req_err`` and would route a sticky req-err
 down the ``!read_enable_i`` branch, setting ``READ_STATUS`` for a reason that is
 not the timeout.
-
-Sibling reproducer: ``smc_efuse_read_noen_data_test``, for the stale-READ_DATA
-arm of the same state machine.
 """
 
 from __future__ import annotations
@@ -56,7 +53,7 @@ _POLL = 10_000
 
 
 class smc_efuse_read_timeout_status_test_seq(SmcCsrSeq):
-    """#1603: a timed-out eFuse read must set READ_STATUS."""
+    """A timed-out eFuse read must set READ_STATUS."""
 
     def __init__(self, name: str = "smc_efuse_read_timeout_status_test_seq") -> None:
         super().__init__(name)
@@ -131,7 +128,7 @@ class smc_efuse_read_timeout_status_test_seq(SmcCsrSeq):
             )
             + f". The only difference software can see is READ_DATA: "
             f"0x{data_tmo:x} here against 0x{data_ok:x} there, and 0 is a "
-            f"legitimate fuse value. This is issue #1603: "
+            f"legitimate fuse value. Defect: "
             f"efuse_read_interface.sv's ST_WAIT_RESP timeout arm never assigns "
             f"read_err_d, whose always_comb default is a hold, while "
             f"efuse_program_interface.sv sets program_err_d on the identical "

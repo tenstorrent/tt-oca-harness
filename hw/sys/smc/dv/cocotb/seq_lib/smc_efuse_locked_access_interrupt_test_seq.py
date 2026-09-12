@@ -36,28 +36,24 @@ WRITE_LOCK = smc_efuse_map_u32("SMC_EFUSE_MAP__LOCKS__CHIPLET_ID_WRITE_LOCK_bm")
 READ_LOCK = smc_efuse_map_u32("SMC_EFUSE_MAP__LOCKS__CHIPLET_ID_READ_LOCK_bm")
 
 # Exact expectation for the LOCKS shadow word, derived from the preload asset
-# plus the generated map at run time. It travels the real path -- sense FSM ->
-# shadow registers -> access control -> SEP_IN AXI -- so it is a transport proof
-# of the register the whole scenario depends on, and it moves with the asset
-# instead of rotting into a hand-copied literal.
+# plus the generated map at run time so it follows a regenerated asset. It
+# travels the real path -- sense FSM -> shadow registers -> access control ->
+# SEP_IN AXI -- so it is a transport proof of the register the whole scenario
+# depends on.
 LOCKS_PRELOAD = efuse_preload_word_at(LOCKS)
 #: Host-side truth about whether the asset read-locks CHIPLET_ID.
 CHIPLET_ID_READ_LOCKED = efuse_map_read_locked("SMC_EFUSE_MAP__LOCKS__CHIPLET_ID_READ_LOCK_bm")
 #: Fuse content behind CHIPLET_ID, i.e. the word a leaking gate would disclose.
 CHIPLET_ID_CONTENT = efuse_preload_word_at(CHIPLET_ID)
 
-# Data a blocked shadow-register read returns. TRANSCRIBED FROM THE
-# IMPLEMENTATION, and recorded as such: `hw/ip/efuse/doc/architecture.adoc:297-
-# 299` fixes `0xbadcab1e` for the JTAG lifecycle-demux error slave, which is a
-# different mechanism, and no section of that document states what a read-LOCKED
-# shadow register returns. The matching RTL literals are
-# `hw/ip/efuse/rtl/efuse_shadow_reg_access_control.sv:151,159`. This compare
-# therefore pins the sentinel the design emits and CANNOT catch the design
-# emitting a different one; it is a DV-derived expectation, not a SPEC-derived
-# one. The SPEC-derived half of the read-lock claim is the non-disclosure assert
-# in `body` -- architecture.adoc:196-199 defines `lock[0] = 1` as read-locked, so
-# whatever the gate returns it must not be the CHIPLET_ID content -- and that
-# half holds whatever sentinel the design chooses.
+# Data a blocked shadow-register read returns, taken from the RTL literals in
+# `hw/ip/efuse/rtl/efuse_shadow_reg_access_control.sv:151,159`:
+# `hw/ip/efuse/doc/architecture.adoc:297-299` fixes `0xbadcab1e` for the JTAG
+# lifecycle-demux error slave only and does not state what a read-LOCKED shadow
+# register returns. This compare pins the sentinel the design emits; the
+# SPEC-derived half of the read-lock claim is the non-disclosure assert in
+# `body` (architecture.adoc:196-199 defines `lock[0] = 1` as read-locked), which
+# holds for any sentinel.
 READ_LOCKED_VALUE = 0xBADCAB1E
 _UNLOCKED_PAT = 0xCAFE0001
 _DRAIN = 8

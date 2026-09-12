@@ -77,10 +77,6 @@ int main(void) {
     uint16_t read_value = 0;           // Data read back from register
     int ret;
 
-    //-------------//
-    // RESET & PLL //
-    //-------------//
-
     simputs("\n");
     simputs("################################################\n");
     simputs("##   I2C P0 Read-Write Test - Internal I2C    ##\n");
@@ -175,7 +171,7 @@ int main(void) {
 
     write_scratch(1, 0x00000031);
 
-    // Explicitly set ACQ_START_STOP_EN via generated field (not a bit literal)
+    // Enable ACQ START/STOP capture on the target.
     uint32_t base = i2c_get_base(TARGET_IDX);
     i2c__CTRL_t ctrl = {.w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) -
                                               SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
@@ -321,9 +317,8 @@ int main(void) {
     write_scratch(1, 0x00000050);
     simputs("\nStep 5: Prepare Target for Read Operation\n");
 
-    // CRITICAL: Follow i2c_target_test.c correct sequence to prevent unhandled_tx_stretch_event
-    // Reference: i2c_target_test/src/main.c:418-459, RTL i2c_target_fsm.sv:666-667
-    // Correct order per OpenTitan RTL (to avoid unhandled_tx_stretch_event_i = 1):
+    // Order that keeps unhandled_tx_stretch_event_i = 0 before the read request
+    // (i2c_target_fsm.sv stretch_tx term):
     // 1. Pre-load TX FIFO FIRST
     // 2. Clear TARGET_EVENTS (clears events from TX FIFO pre-load)
     // 3. Reset ACQ FIFO
@@ -356,7 +351,6 @@ int main(void) {
     // Step 2: Clear TARGET_EVENTS AFTER TX FIFO pre-load
     // CRITICAL: Pre-loading TX FIFO may generate TARGET_EVENTS
     // These must be cleared to prevent unhandled_tx_stretch_event_i = 1
-    // Reference: i2c_target_test/src/main.c:434-442
     uint32_t target_events = i2c_get_target_events(TARGET_IDX);
     if (target_events != 0) {
         simputs("  Clearing unhandled TARGET_EVENTS: 0x");
