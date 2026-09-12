@@ -25,6 +25,7 @@ from runlib.cli import (  # noqa: E402
 from runlib.config import (  # noqa: E402
     OverlayFrameworkMismatch,
     _merge_framework_config,
+    activate_adopter_overlay_env,
     apply_adopter_overlay,
     load_dut,
     load_test_catalog,
@@ -34,6 +35,7 @@ from runlib.config import (  # noqa: E402
 )
 from runlib.duts import load_dut_registry  # noqa: E402
 from runlib.models import ConfigError, Dut, TestCatalog, TestEntry  # noqa: E402
+from runlib.results import result_payload  # noqa: E402
 
 
 def make_dut(raw: dict, path: Path = Path("test_sim_cfg.toml")) -> Dut:
@@ -296,6 +298,101 @@ class AdopterOverlayLayer(unittest.TestCase):
             self.apply(data, '[build]\nincdirs = ["$VENDOR_VIP_HOME/include"]\n')
         self.assertEqual(data["build"]["incdirs"], ["/opt/vip/include"])
 
+    def test_env_table_is_recorded_and_feeds_path_expansion(self):
+        data = {"framework": "uvm"}
+        with mock.patch.dict(os.environ, {"VENDOR_VIP_HOME": "/ambient/vip"}):
+            self.apply(
+                data,
+                '[env]\nVENDOR_VIP_HOME = "/opt/vip"\nVENDOR_VIP_LOG = "quiet"\n'
+                '[build]\nincdirs = ["$VENDOR_VIP_HOME/include"]\n',
+            )
+            # Loading records the table and resolves paths against it, and leaves the
+            # process environment to the run path.
+            self.assertEqual(os.environ["VENDOR_VIP_HOME"], "/ambient/vip")
+            self.assertNotIn("VENDOR_VIP_LOG", os.environ)
+        self.assertEqual(data["build"]["incdirs"], ["/opt/vip/include"])
+        self.assertEqual(
+            data["adopter_overlay_env"],
+            {"VENDOR_VIP_HOME": "/opt/vip", "VENDOR_VIP_LOG": "quiet"},
+        )
+
+    def test_env_table_absent_or_empty_leaves_no_record(self):
+        for toml in ('[sim]\nargs = ["+x"]\n', "[env]\n"):
+            data = {"framework": "uvm"}
+            self.apply(data, toml)
+            self.assertNotIn("adopter_overlay_env", data)
+
+    def test_env_table_rejects_bad_names_and_non_string_values(self):
+        for toml, named in (
+            ("[env]\nPORT = 5\n", "PORT"),
+            ('[env]\n"BAD NAME" = "x"\n', "BAD NAME"),
+            ('[env]\n"1ST" = "x"\n', "1ST"),
+            ('[env.nested]\nX = "x"\n', "nested"),
+            ('env = "VENDOR_VIP_HOME=/opt/vip"\n', "[env]"),
+        ):
+            with self.assertRaises(ConfigError) as ctx:
+                self.apply({"framework": "uvm"}, toml)
+            self.assertNotIsInstance(ctx.exception, OverlayFrameworkMismatch)
+            self.assertIn(named, str(ctx.exception))
+
+
+class AdopterOverlayEnvActivation(unittest.TestCase):
+    """The run-path step that puts an overlay's [env] into the process environment."""
+
+    def test_overlay_values_replace_ambient_ones(self):
+        environ = {"KEEP": "1", "VENDOR_VIP_HOME": "/ambient/vip"}
+        table = {"VENDOR_VIP_HOME": "/opt/vip", "VENDOR_VIP_LOG": "quiet"}
+        applied = activate_adopter_overlay_env({"adopter_overlay_env": table}, environ)
+        self.assertEqual(applied, table)
+        self.assertEqual(
+            environ, {"KEEP": "1", "VENDOR_VIP_HOME": "/opt/vip", "VENDOR_VIP_LOG": "quiet"}
+        )
+
+    def test_view_without_overlay_env_is_a_no_op(self):
+        environ = {"KEEP": "1"}
+        for data in ({}, {"adopter_overlay": "adopter_overlay.toml"}, {"adopter_overlay_env": {}}):
+            self.assertEqual(activate_adopter_overlay_env(data, environ), {})
+        self.assertEqual(environ, {"KEEP": "1"})
+
+    def test_defaults_to_the_process_environment(self):
+        with mock.patch.dict(os.environ):
+            os.environ.pop("OCAH_UNIT_PROBE", None)
+            activate_adopter_overlay_env({"adopter_overlay_env": {"OCAH_UNIT_PROBE": "on"}})
+            self.assertEqual(os.environ["OCAH_UNIT_PROBE"], "on")
+
+
+class AdopterOverlayResultRecording(unittest.TestCase):
+    """result.json carries the overlay path and its [env] table side by side."""
+
+    def payload(self, raw: dict) -> dict:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            return result_payload(
+                flow=make_dut(raw),
+                root=root,
+                tool="verilator",
+                run_dir=root / "run",
+                stages=[],
+                dry_run=True,
+                versions={},
+                git_metadata={},
+            )
+
+    def test_overlay_env_recorded_beside_overlay_path(self):
+        payload = self.payload(
+            {
+                "adopter_overlay": "adopter_overlay.toml",
+                "adopter_overlay_env": {"VENDOR_VIP_HOME": "/opt/vip"},
+            }
+        )
+        self.assertEqual(payload["overlay"], "adopter_overlay.toml")
+        self.assertEqual(payload["overlay_env"], {"VENDOR_VIP_HOME": "/opt/vip"})
+
+    def test_no_overlay_means_no_overlay_keys(self):
+        payload = self.payload({})
+        self.assertNotIn("overlay", payload)
+        self.assertNotIn("overlay_env", payload)
+
 
 class AdopterOverlayLoadDut(unittest.TestCase):
     """load_dut integration: explicit activation only, and source_lists expansion ordering."""
@@ -309,10 +406,22 @@ class AdopterOverlayLoadDut(unittest.TestCase):
         return load_dut(cfg, root, root=root, name="unit", root_rel=".", adopter_overlay=overlay)
 
     def test_config_set_reserved_key_rejected(self):
+        for line in ('adopter_overlay = "sneaky.toml"\n', 'adopter_overlay_env = { X = "1" }\n'):
+            with tempfile.TemporaryDirectory() as tmp:
+                with self.assertRaises(ConfigError) as ctx:
+                    self.load(Path(tmp), line)
+                self.assertIn("--overlay", str(ctx.exception))
+
+    def test_overlay_env_survives_load(self):
         with tempfile.TemporaryDirectory() as tmp:
-            with self.assertRaises(ConfigError) as ctx:
-                self.load(Path(tmp), 'adopter_overlay = "sneaky.toml"\n')
-            self.assertIn("--overlay", str(ctx.exception))
+            root = Path(tmp)
+            overlay = root / "adopter_overlay.toml"
+            overlay.write_text('[env]\nVENDOR_VIP_HOME = "/opt/vip"\n')
+            with mock.patch.dict(os.environ):
+                os.environ.pop("VENDOR_VIP_HOME", None)
+                flow = self.load(root, overlay=overlay)
+                self.assertNotIn("VENDOR_VIP_HOME", os.environ)
+            self.assertEqual(flow.raw["adopter_overlay_env"], {"VENDOR_VIP_HOME": "/opt/vip"})
 
     def test_overlay_source_lists_expand_after_dut_own_entries(self):
         with tempfile.TemporaryDirectory() as tmp:

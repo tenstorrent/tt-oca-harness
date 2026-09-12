@@ -466,14 +466,24 @@ package needs.
 |Runtime args, e.g. the commercial-VIP factory override
 `+uvm_set_type_override=ocah_axi_master_env,<vendor>_axi_env` — run-mode,
 test, and CLI args still append after it.
+
+|`[env]` `NAME = "value"`
+|applied to the runner's process environment at run start; an overlay value
+replaces an ambient one
+|Runtime environment the vendor package needs, e.g. the install-root
+variable a commercial VIP refuses to start without. Values are literal
+strings. Every build and sim subprocess, stage `env/` snapshot, and
+in-process tool runner inherits the table; `--validate-configs` and `--list`
+accept it without applying it.
 |===
 
 Merge position: after the profile/DUT `[frameworks.<fw>]` merge (the overlay
 extends the selected view) and before `[build].source_lists` expansion. Any
-other key is rejected, as is `adopter_overlay` appearing in a sim config or
-profile (the recorded key is reserved for the runner). Application is
-deterministic and repeatable: list order is preserved, the dedup rules make
-re-application a no-op, and the applied path is recorded as `overlay` in
+other key is rejected, as are `adopter_overlay` and `adopter_overlay_env`
+appearing in a sim config or profile (the recorded keys are reserved for the
+runner). Application is deterministic and repeatable: list order is
+preserved, the dedup rules make re-application a no-op, and the applied path
+and `[env]` table are recorded as `overlay` and `overlay_env` in
 `result.json` so a result is attributable to its exact config layers.
 
 A typical commercial-VIP overlay:
@@ -495,17 +505,30 @@ defines = ["OCAH_AXI_VENDOR_IF"]
 
 [sim]
 args = ["+uvm_set_type_override=ocah_axi_master_env,vendor_ocah_axi_env"]
+
+[env]
+VENDOR_VIP_HOME = "/opt/vendor/vip"             # the install root the VIP starts from
 ----
 
 Paths resolve repo-relative inside the checkout the overlay extends, or
 absolute. `$VAR` and `+${VAR}+` in the overlay's own `[build]` entries expand
-from the environment of the `run_dv.py` process at config load, so the
-emitted filelist carries the expanded path and one overlay file serves every
-site that exports the variable. An unset variable is a hard config error
+at config load from the environment of the `run_dv.py` process with the
+overlay's `[env]` table applied on top, so the emitted filelist carries the
+expanded path and one overlay file serves every site, whether the site
+exports the variable or the overlay declares it. An unset variable is a hard config error
 naming the variable and the overlay file; `--validate-configs` reports it as
 `FAIL` on each view the overlay targets. Expansion covers only the overlay's
 own entries: the paths listed inside a `source_lists` manifest and every
-checked-in config stay literal, repo-relative or absolute. The
+checked-in config stay literal, repo-relative or absolute.
+
+The `[env]` table reaches the stages through the runner's own process
+environment: the run path applies it once, before the tool probes and the
+first stage, and every build and sim subprocess, stage `env/` snapshot, and
+in-process tool runner copies that environment. An overlay value replaces an
+ambient one, so the `overlay_env` recorded in `result.json` is exactly the
+environment the run saw; export the variable in the shell instead when the
+site, not the overlay, should decide its value. The run log lists the
+applied pairs on a `config overlay_env=...` line. The
 `OCAH_<PROTO>_VENDOR_IF` defines activate the guarded
 `+"`include`"+` hooks inside the shipped `ocah_<proto>_if` interfaces, which
 pull `ocah_<proto>_vendor_if.svh` from an overlay incdir — the OSS tree
@@ -1110,8 +1133,9 @@ keys, or authentication data.
 executor, selected items, CLI overrides, test/coverage summary, Git metadata,
 tool versions, and per-stage details. It is the authoritative run result.
 When an adopter overlay was applied, its path is recorded under `overlay`
-(repo-relative when inside the checkout, absolute otherwise) in both the
-run-level `result.json` and `regression.json`.
+(repo-relative when inside the checkout, absolute otherwise) and its `[env]`
+table, when present, under `overlay_env` in both the run-level `result.json`
+and `regression.json`.
 
 === Interrupted-run checkpoints
 
