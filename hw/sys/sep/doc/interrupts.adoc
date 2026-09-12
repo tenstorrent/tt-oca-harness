@@ -179,7 +179,10 @@ not here; see <<sep-non-pic-paths>>.
 
 |`33`
 |Crypto alert
-|Aggregated crypto subsystem alert (fault)
+|Combined OpenTitan crypto alert. SEP has no `alert_handler`; each
+accelerator has its own `prim_alert_receiver` channel(s) with ping
+disabled, and those pulses plus integrity-fails share this source. See
+<<sep-crypto-alert-policy>>.
 
 |`34`
 |Locked field access
@@ -239,7 +242,8 @@ Cleared by the same `DMA_BUS_ERR_CLEAR.clr` write.
 |The OR of the per-block register-bridge error bits for AES, HMAC, KMAC, OTBN,
 CSRNG, EDN and the watchdog timer. Read `PERIPH_BUS_ERR_STATUS` to identify
 which block faulted, and clear that block's bit in `PERIPH_BUS_ERR_CLEAR`;
-clears are per-block so acknowledging one cannot discard another block's fault.
+clears are per-block so acknowledging one cannot discard another block's
+fault. See <<sep-crypto-bridge-faults>>.
 
 |`[44–255]`
 |Reserved (external band)
