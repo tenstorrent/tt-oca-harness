@@ -325,12 +325,20 @@ class RepositoryContractTests(unittest.TestCase):
         root = Path(__file__).resolve().parents[3]
         source = (root / "doc/datasheets/src/smu.adoc").read_text(encoding="utf-8")
 
-        self.assertIn("Hosted cocotb/PyUVM smoke and regression use the bare `smu`", source)
-        self.assertIn("This does not credit the full 3-by-3", source)
-        self.assertIn("A separate `smu_wrapper` catalog", source)
-        self.assertIn("Wrapper results are not combined", source)
+        # PR #1560 review: drop internal DUT/config names from prose and credit
+        # the SEP-present configuration too (verification exists for SEP=1).
+        # Keep both verification surfaces described and the reference-wrapper
+        # examples caveat.
+        self.assertIn(
+            "Hosted cocotb/PyUVM smoke and regression exercise the no-SEP "
+            "configuration",
+            source,
+        )
+        self.assertIn("The SEP-present configuration is also verified", source)
         self.assertIn("examples only", source)
         self.assertIn("current verification and maturity status", source.lower())
+        # Verification status now links the live dashboard.
+        self.assertIn("dashboard.html", source)
 
 
 if __name__ == "__main__":
