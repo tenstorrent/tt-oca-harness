@@ -25,12 +25,17 @@ distinguish:
 
 Copy `template.adoc` when starting a product. Retain its section markers, set
 the status to `Beta`, cite evidence in `content-readiness.md`, and do not put
-unresolved placeholders in a release source. Keep the rendered result to one or
-two US Letter pages.
+unresolved placeholders in a release source. Keep the rendered result to at most
+four US Letter pages.
 
-Use `Feature` and `Defaults` as the column headings in **At a Glance** tables,
+Use `Feature` and `Description` as the column headings in **At a Glance** tables,
 and `Feature` and `Integration options` in **Interfaces and configuration**
 tables. State the reference configuration in the accompanying text.
+
+Define non-universal acronyms on first use and list the specialized ones in a
+**Terms** section, using the canonical expansion from the acronym registry
+(`styles/config/scripts/AcronymDefinitions.tengo`). Include a blank
+**Document control** revision table for completion at release.
 
 Build and validate all available sheets from the repository root:
 

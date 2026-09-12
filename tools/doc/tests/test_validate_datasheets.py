@@ -69,12 +69,15 @@ class SourceValidationTests(unittest.TestCase):
 
 
 class PdfValidationTests(unittest.TestCase):
-    def test_accepts_one_or_two_pages(self) -> None:
+    def test_accepts_up_to_four_pages(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            pdf = Path(directory) / "datasheet.pdf"
-            pdf.write_bytes(b"%PDF-1.4\n/Type /Page\n/Type /Page\n%%EOF")
+            for page_count in (1, 2, 3, 4):
+                pdf = Path(directory) / f"datasheet-{page_count}.pdf"
+                pdf.write_bytes(
+                    b"%PDF-1.4\n" + b"/Type /Page\n" * page_count + b"%%EOF"
+                )
 
-            self.assertEqual(validate_pdf(pdf), [])
+                self.assertEqual(validate_pdf(pdf), [])
 
     def test_rejects_missing_pdf(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -82,12 +85,12 @@ class PdfValidationTests(unittest.TestCase):
 
             self.assertTrue(any("does not exist" in error for error in errors))
 
-    def test_rejects_more_than_two_pages(self) -> None:
+    def test_rejects_more_than_four_pages(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             pdf = Path(directory) / "datasheet.pdf"
-            pdf.write_bytes(b"%PDF-1.4\n" + b"/Type /Page\n" * 3 + b"%%EOF")
+            pdf.write_bytes(b"%PDF-1.4\n" + b"/Type /Page\n" * 5 + b"%%EOF")
 
-            self.assertTrue(any("3 pages" in error for error in validate_pdf(pdf)))
+            self.assertTrue(any("5 pages" in error for error in validate_pdf(pdf)))
 
     def test_does_not_count_page_tree_as_a_page(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -150,7 +153,15 @@ class RepositoryContractTests(unittest.TestCase):
         self.assertNotIn("IC_RESET slice", source)
         self.assertNotIn("IC_RESET slice", diagram)
         self.assertIn("reset-control outputs", source)
-        self.assertIn("`IC_RESET` in the RTL", source)
+        # Internal RTL signal names do not belong in the datasheet prose
+        # (PR #1542 review); keep them out of the integrator-facing text. The
+        # `IC_RESET` reset-signal reference and the `dbg_disable_i` port name
+        # are removed. Build-time *parameter* names such as
+        # `JTAG_IC_RESET_SMC_ENABLE` are integrator-facing configuration knobs
+        # and are intentionally retained in the configurability section.
+        self.assertNotIn("`IC_RESET`", source)
+        self.assertNotIn("IC_RESET in the RTL", source)
+        self.assertNotIn("`dbg_disable_i`", source)
 
     def test_dtp_port_table_matches_current_debug_disable_interface(self) -> None:
         root = Path(__file__).resolve().parents[3]
@@ -224,9 +235,16 @@ class RepositoryContractTests(unittest.TestCase):
         source = (root / "doc/datasheets/src/dtp.adoc").read_text(encoding="utf-8")
 
         self.assertIn("current verification and maturity status", source.lower())
-        self.assertIn("OCAH documentation website", source)
+        # Verification and maturity status is published on the live dashboard
+        # rather than as hardcoded counts (PR #1542/#1560 review).
+        self.assertIn("dashboard.html", source)
         self.assertNotIn("OCAH DTP is beta RTL.", source)
-        resources = source.split("RESOURCES", maxsplit=1)[1]
+        # The RESOURCES links must render full size. Scope the check to the
+        # RESOURCES section itself; the TERMS and DOCUMENT CONTROL sections that
+        # follow it legitimately use [.datasheet-small].
+        resources = source.split("RESOURCES", maxsplit=1)[1].split(
+            "// datasheet-section:", maxsplit=1
+        )[0]
         self.assertNotIn("[.datasheet-small]", resources)
 
 

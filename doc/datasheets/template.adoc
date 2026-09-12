@@ -68,7 +68,7 @@ and peer chiplets on the right. Show adopter-owned connections explicitly.
 [.datasheet-section]
 AT A GLANCE
 
-Use a compact table with columns "Feature" and "Defaults" for stable
+Use a compact table with columns "Feature" and "Description" for stable
 architectural capacities and interface widths.
 Label reference-configuration values and do not present uncharacterized
 frequency, area, or power as product specifications.
@@ -120,4 +120,22 @@ RESOURCES
 Documentation: link to the current OCAH documentation website. List stable
 repository paths for detailed documentation, RTL, verification, and synthesis
 collateral.
-|===
+
+// datasheet-section: terms
+[.datasheet-section]
+TERMS
+
+Define non-universal acronyms on first use in prose, and list the specialized
+ones here. Use the canonical expansion from the repository acronym registry
+(`styles/config/scripts/AcronymDefinitions.tengo`). Omit universally understood
+terms such as AXI, CPU, RTL, JTAG, ROM, SRAM, and UART.
+
+// datasheet-section: document-control
+[.datasheet-section]
+DOCUMENT CONTROL
+
+[cols="18,20,30,32",options="header"]
+!===
+!Version !Date !Author !Change
+! ! ! !
+!===
