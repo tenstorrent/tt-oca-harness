@@ -55,7 +55,10 @@ key paths. The entropy source, CSRNG, and EDN share one coordinated reset. See
 
 SEP does not instantiate OpenTitan's `alert_handler`. Each OpenTitan crypto
 alert channel is terminated locally by a `prim_alert_receiver` in `sep_crypto`.
-Alert ping is disabled (`ping_req_i` tied 0); `ping_ok_o` is unused.
+That primitive decodes the sender's differential `alert_p`/`alert_n` handshake
+and pulses `alert_o` when the handshake starts; a malformed encoding raises
+`integ_fail_o`. Alert ping is disabled (`ping_req_i` tied 0); `ping_ok_o` is
+unused.
 
 The eleven channels belong to six blocks. A given accelerator's alerts are not
 mixed with another accelerator's at the receiver:
