@@ -17,8 +17,8 @@
 
 #define SMU_SEP_DV_CLA_ARM_TOKEN 0x02200100u
 
-/* Scratch register allocation. These indices ALIAS, deliberately recorded
- * because the aliasing is not obvious from the names and the TB relies on it.
+/* Scratch register allocation. These indices ALIAS; recorded because the
+ * aliasing is not obvious from the names and the TB relies on it.
  *
  *   0  TEST_STATUS_SCRATCH -- the pass/fail verdict. monitor_test() polls it
  *      against TEST_PASS / TEST_FAIL / TEST_ROM_PASS, so anything else written

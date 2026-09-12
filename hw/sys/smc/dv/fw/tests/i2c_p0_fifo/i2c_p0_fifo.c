@@ -70,8 +70,7 @@
 /* One accessor for every register in this file. The per-instance stride is the
  * same 0x200 in SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR() and in every per-register
  * macro (smc_addr.h:54,631...), so indexing the register macro directly is both
- * shorter and correct for idx != 0, unlike the base-plus-offset(0) expression
- * this file used to re-spell inline. */
+ * shorter and correct for idx != 0, unlike a base-plus-offset(0) expression. */
 #define I2C_REG(idx, REG) (SMC_TOP_SMC_I2C_WRAP_I2C_##REG##_BASE_ADDR(idx))
 
 /* Poll bounds, in loop iterations.
@@ -155,7 +154,7 @@ static int rx_arm(uint32_t idx, uint32_t threshold_n) {
 
     /* Starting state of the observer. Nothing is on the bus yet -- the ready
      * marker has not been published -- so all of these are checkable facts, not
-     * races. They used to be read and printed only. */
+     * races. */
     i2c__CTRL_t ctrl = {.w = read_reg(I2C_REG(idx, CTRL))};
     if (!ctrl.f.ENABLETARGET) {
         simputs("  ERROR: CTRL.ENABLETARGET is 0 -- target will not answer the VIP\n");
@@ -327,8 +326,7 @@ static int rx_observe(uint32_t idx, uint32_t threshold_n) {
 
     /* The negative half of the boundary, observed on the way up. Each ACQ level
      * persists for a byte period (90 us at 100 kHz) against a poll of a couple
-     * of microseconds, so missing it means the observer was armed late, which
-     * is exactly what this leg used to do silently. */
+     * of microseconds, so missing it means the observer was armed late. */
     if (!boundary_seen) {
         simputs("  ERROR: never sampled ACQLVL == threshold (");
         simputshex32("", threshold_n);

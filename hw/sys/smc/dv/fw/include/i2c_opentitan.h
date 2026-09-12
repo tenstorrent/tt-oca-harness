@@ -63,11 +63,11 @@ extern "C" {
 // Timeout values (in system clock cycles)
 /* Default poll bound for driver waits, in loop iterations.
  *
- * This was I2C_TIMEOUT_INFINITE (0xFFFFFFFF), i.e. a bound that cannot expire
- * inside any simulation: every driver wait that used it -- controller read,
- * controller write completion, wait_idle -- could only ever end by the harness
- * killing the run, so the NACK / arbitration-lost / bus-timeout diagnostics
- * behind those waits, and the callers' failure branches, were unreachable.
+ * Finite by design: a bound that cannot expire inside a simulation lets every
+ * driver wait -- controller read, controller write completion, wait_idle --
+ * end only when the harness kills the run, which makes the NACK /
+ * arbitration-lost / bus-timeout diagnostics behind those waits, and the
+ * callers' failure branches, unreachable.
  *
  * Derived, not guessed: a poll iteration costs ~1.15 us of simulation (measured
  * over the instruction trace), and the longest legitimate single I2C operation

@@ -522,10 +522,9 @@ int main(void) {
     // Checker 5: Firmware detects alert interrupt
     // ======================================================================
     // These two checkers assert an interrupt fact, so they wait on INTR_STATE.
-    // They used to reuse smbus_get_alert_status() -- the identical predicate
-    // CHECKERs 1/2 had just satisfied a few lines above, reading only
-    // SMBUS_STATUS -- which made the wait return immediately and printed both
-    // PASSED lines on a DUT whose SMBALERT interrupt never fired at all.
+    // smbus_get_alert_status() reads only SMBUS_STATUS -- the predicate
+    // CHECKERs 1/2 have just satisfied -- and would return immediately on a
+    // DUT whose SMBALERT interrupt never fired.
     if (!wait_until(smbus_intr_alert_only, CONTROLLER_IDX, true, 50000)) {
         simputs("  ERROR: INTR_STATE.SMBALERT never asserted on Host\n");
         simputs("  [CHECKER 3 FAILED] Alert interrupt was not triggered (hardware)\n");
@@ -622,12 +621,9 @@ int main(void) {
     // ======================================================================
     // Checker 11: Firmware clears interrupt
     //
-    // Both legs, on INTR_STATE. The previous version waited for
-    // smbus_get_alert_status()==false, which CHECKER 10 had just established
-    // one statement earlier and which nothing in between could change: the wait
-    // returned true on its first iteration no matter what the write-1-to-clear
-    // did, including if it had been dropped entirely. It also sampled
-    // SMBUS_STATUS rather than the interrupt this checker is named for.
+    // Both legs, on INTR_STATE: SMBUS_STATUS is what CHECKER 10 has just
+    // established and nothing in between can change it, so a wait on it would
+    // return on its first iteration whatever the write-1-to-clear did.
     // ======================================================================
     if (!smbus_intr_alert_only(CONTROLLER_IDX)) {
         simputs("  ERROR: INTR_STATE.SMBALERT not set before the clear\n");

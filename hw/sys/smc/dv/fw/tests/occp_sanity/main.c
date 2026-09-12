@@ -20,13 +20,6 @@
  * job of smc_occp_register_access_test (OCCP write/readback against external
  * registers) and the smc_occp_random_command_test family (SRAM write/read
  * against a scoreboard).
- *
- * The header this file used to carry -- "Simple Write and Readback ... verify
- * basic OCCP communication and memory access" -- described traffic that was
- * never generated here, together with test-context fields (test_base_addr,
- * test_upper_addr_bound, cmd_count, exp_occp_last_error, sram_scoreboard_idx)
- * that were assigned and never read. Both are gone; a reader of the header,
- * the entry name, or a PASS line now gets the scope that actually ran.
  */
 
 #include "occp_test_common.h"
@@ -44,9 +37,8 @@
  * 1.0.0 is therefore 0x00000001.
  *
  * occp_commands.c:1775-1779 assembles the same value from
- * exp_occp_version_{major,minor,patch} = 1/0/0. This file used to repeat the
- * bare literal 0x1 with no citation at all; it is named and sourced here so a
- * ROM version bump has one place to look in this test.
+ * exp_occp_version_{major,minor,patch} = 1/0/0; it is named and sourced here so
+ * a ROM version bump has one place to look in this test.
  */
 #define OCCP_EXPECTED_VERSION 0x00000001u
 
@@ -172,8 +164,8 @@ static void finalize_test_results(test_context_t *ctx) {
                                 (uint8_t *)&result_code, sizeof(result_code));
     if (retval != OCCP_SUCCESS) {
         /* The verdict write is the only thing that puts a result in front of
-         * the testbench. Its return value used to be discarded, so a verdict
-         * that never landed was indistinguishable from a hang. */
+         * the testbench; a discarded return value makes a verdict that never
+         * landed indistinguishable from a hang. */
         report_occp_failure("verdict OCCP WRITE to DUT SCRATCH[0]", retval);
         ctx->overall_result = false;
     }

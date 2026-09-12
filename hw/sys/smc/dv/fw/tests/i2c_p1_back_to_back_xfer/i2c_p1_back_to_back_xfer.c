@@ -258,12 +258,11 @@ int main(void) {
             seen_data++;
             /* A NACKed byte is not payload.
              *
-             * is_start/is_stop alone did not exclude it: the entry classifier
+             * is_start/is_stop alone do not exclude it: the entry classifier
              * maps NACK and NACK_START onto its default leg, which leaves both
-             * flags false, so this filter used to accept a byte the target
-             * NACKed and copy it into recv_buffer as ordinary data. The same
-             * filter in i2c_p1_dma had the same hole; is_nack was added to the
-             * driver for exactly this. A NACK means the transfer did not carry
+             * flags false, so without is_nack this filter would accept a byte
+             * the target NACKed and copy it into recv_buffer as ordinary data.
+             * A NACK means the transfer did not carry
              * what the comparison below assumes, so it fails rather than being
              * silently folded into the payload. */
             if (e.is_nack) {

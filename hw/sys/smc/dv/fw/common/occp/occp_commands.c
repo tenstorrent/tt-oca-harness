@@ -1072,24 +1072,17 @@ static int occp_send_generic_get_command(test_context_t *ctx, uint64_t i3c_addr,
     }
 
     /* Response carried an error, so no body was read and statusBuff holds
-     * nothing. Control used to fall off the end of this non-void function
-     * here: undefined behaviour, and the caller then branched on whatever was
-     * in the return register while reading an unwritten status word. The
-     * compiler did not object because toolchain.mk has -Wall -Wextra but no
-     * -Werror=return-type.
+     * nothing.
      *
      * Reachable only when the caller expected an error: occp_get_response_header
      * already returns OCCP_ERR for an unexpected one, so a non-injection test
      * never arrives here.
      *
-     * Returning OCCP_ERR rather than the sibling's OCCP_SUCCESS is deliberate --
-     * no status value was produced, and a caller that treats this as success
-     * reads a zero it cannot distinguish from a real zero. statusBuff is
-     * defined anyway so nothing downstream can read the old indeterminate word.
-     *
-     * OWNER: the previous behaviour was undefined, so this is a decision, not a
-     * restoration. Injection tests that expected a value here may need their
-     * expectation stated explicitly.
+     * Returns OCCP_ERR rather than the sibling's OCCP_SUCCESS: no status value
+     * was produced, and a caller that treats this as success reads a zero it
+     * cannot distinguish from a real zero. statusBuff is defined anyway so
+     * nothing downstream can read an indeterminate word. Injection tests that
+     * expect a value here state that expectation explicitly.
      */
     *statusBuff = 0;
     return OCCP_ERR;

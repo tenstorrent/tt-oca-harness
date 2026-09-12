@@ -102,11 +102,11 @@ static int drain_acq(uint32_t tgt_idx, uint8_t *rx, uint32_t rx_size, uint32_t *
  * ACQ_STRETCH interrupt as asserted "while the target is stretching the clock
  * because the Target RX FIFO is full" (i2c.rdl:116-122).
  *
- * The previous structure pushed all 64 bytes and only then waited for the
- * controller to finish. Nothing drained the target in between, so the target
- * stretched at 62 entries, the controller could never retire its FMT entries,
- * and the wait burned its whole budget. The kept log recorded exactly that:
- * ACQ Level 0x3e (= 62, the threshold) with Idle: NO. It is not an RTL defect.
+ * Pushing all 64 bytes and only then waiting for the controller cannot
+ * complete: nothing drains the target in between, so it stretches at 62
+ * entries, the controller can never retire its FMT entries, and the wait burns
+ * its whole budget (ACQ Level 0x3e = 62, the threshold, with Idle: NO). That is
+ * flow control, not an RTL defect.
  *
  * So push a byte at a time and drain whatever the target has accepted after each
  * push, keeping ACQ far below the stretch threshold. Bytes are collected here
@@ -259,14 +259,9 @@ int main(void) {
     simputs("  ACQ FIFO reset completed\n");
 
     /* Wait for the target to become idle -- and fail if it never does.
-     *
-     * This loop used to have no expiry detection at all: exhausting
-     * IDLE_WAIT_TIMEOUT and observing TARGETIDLE left it the same way, and
-     * "Target ready for data reception" was printed either way, so the strongest
-     * available signal that the target was not ready could not fail the test.
-     * The two `for (volatile int i = 0; ...)` spins that used to pad this loop
-     * are gone with it: TARGETIDLE is the real ready handshake, so there is
-     * nothing left for a fixed delay tied to no spec bound to stand in for.
+     * TARGETIDLE is the real ready handshake, so it is polled to a bound rather
+     * than stood in for by a fixed delay tied to no spec bound, and expiry fails
+     * the test instead of printing "ready" either way.
      */
     simputs("  Waiting for Target to become idle...\n");
     bool target_idle_seen = false;
@@ -320,9 +315,8 @@ int main(void) {
     simputs(status_pre.f.TARGETIDLE ? "YES" : "NO");
     simputs("\n");
 
-    // Interleaved push/drain. Replaces "push all 64 bytes, then wait": that
-    // structure could not complete, because the target stretches at ACQ depth 62
-    // and nothing was draining it (see push_and_drain above).
+    // Interleaved push/drain: the target stretches at ACQ depth 62, so a bulk
+    // push with nothing draining could not complete (see push_and_drain above).
     simputs("  Transferring 64 bytes with interleaved ACQ drain...\n");
     ret = push_and_drain(CONTROLLER_IDX, TARGET_IDX, TARGET_ADDR, write_data, LARGE_DATA_SIZE,
                          read_buffer, sizeof(read_buffer), &received_len);

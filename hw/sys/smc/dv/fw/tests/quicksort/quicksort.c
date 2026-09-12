@@ -48,7 +48,7 @@ int partition(int arr[], int low, int high) {
 // low  --> Starting index,
 // high  --> Ending index
 //
-// HAZARD, left as-is deliberately: recursion depth here is unbounded and can
+// HAZARD, left as-is: recursion depth here is unbounded and can
 // exceed the stack. Lomuto partition degrades to depth n when the pivot is
 // always extremal, and the frame is 48 bytes (see the prologue in the built
 // .dis), so ARRAY_SIZES-1 = 2048 elements needs ~98 KB against

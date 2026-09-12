@@ -9,32 +9,31 @@
  *
  * I2C_0 = Controller, I2C_1 = Target (ACK peer). Evidence is AXI CSR frontdoor only.
  *
- * Audit round 1 (smc_i2c_sanity_test_GRADE.md) rewrote the checkers here. What
- * changed and why, because each one is a property that used to be unfalsifiable:
+ * Each checker is a property the DUT can fail:
  *
  *  - CHK-TIMING-BEFORE-ENABLE compares the TIMING0-4 readback field by field
- *    against the values i2c_compute_timing_from_physical() produced, instead of
- *    testing them for "not zero" (FIND-011).
+ *    against the values i2c_compute_timing_from_physical() produced, not
+ *    merely for "not zero".
  *  - CHK-FIFO-RESET-ENABLE proves the hardware FMT reset on a FIFO it first
  *    fills and observes non-empty, driving FIFO_CTRL directly with no repairing
  *    helper in between, and then asserts that i2c_reset_fifos() needed no
- *    software repair (FIND-005).
+ *    software repair.
  *  - CHK-TIMEOUT-PATHS reports the iteration count each bounded wait actually
  *    consumed, and runs a wait that is *expected* to expire, so the expiry leg
- *    executes at least once per run (FIND-004).
+ *    executes at least once per run.
  *  - The CMD_COMPLETE lifecycle "observed" leg reads the PLIC pending bit for
  *    this instance -- a downstream consumer of i2c irq_o -- across 0 -> 1,
- *    rather than recomputing INTR_STATE & INTR_ENABLE, which the firmware had
- *    already asserted (FIND-006).
- *  - CHK-CTRL-HALT-CONTROL is new: it provokes a NACK against an address no
- *    target answers and observes INTR_STATE.CONTROLLER_HALT go 1 then back to 0,
- *    so the CONTROLLER_HALT == 0 term in CHK-CTRL-WRITE-COMPLETE is read against
- *    a demonstrated one rather than against a possibly stuck-at-0 bit (FIND-008).
+ *    rather than recomputing INTR_STATE & INTR_ENABLE from values the firmware
+ *    itself wrote.
+ *  - CHK-CTRL-HALT-CONTROL provokes a NACK against an address no target
+ *    answers and observes INTR_STATE.CONTROLLER_HALT go 1 then back to 0, so
+ *    the CONTROLLER_HALT == 0 term in CHK-CTRL-WRITE-COMPLETE is read against
+ *    a demonstrated one rather than against a possibly stuck-at-0 bit.
  *  - Every bound is sized to expire inside the enclosing cocotb budget, so a
  *    hang produces this firmware's 0xBAD______ diagnostics rather than a bare
- *    harness timeout (FIND-007).
- *  - CHK-NONVAC is retired: it ordered a software counter against itself and was
- *    true by construction on any RTL, including a dead one (FIND-003).
+ *    harness timeout.
+ *  - There is no CHK-NONVAC: ordering a software counter against itself is
+ *    true by construction on any RTL, including a dead one.
  */
 
 #include <stdint.h>
@@ -58,7 +57,7 @@
 #define UNUSED_ADDR 0x55u
 
 /* Distinct payload bytes, so the byte-for-byte compare in S3 can tell a
- * reordering or a duplication from a correct transfer (FIND-010). */
+ * reordering or a duplication from a correct transfer. */
 #define REG_ADDR 0x5Au
 #define TEST_DATA_LO 0xA3u
 #define TEST_DATA_HI 0x1Cu
@@ -78,11 +77,9 @@
  * (START+addr, length header, three data bytes) at roughly 0.5 ms, i.e. about
  * 450-1150 iterations, so this is a 3-8x margin over the real need and still
  * expires inside the harness window. smc_i2c_sanity.py documents the other half
- * of that arithmetic.
- *
- * The old value was I2C_TIMEOUT_DEFAULT (200000 iterations, ~90-230 ms), which
- * is ~46x the harness budget: every fail-on-expiry leg below it was dead code,
- * because the cocotb SimTimeoutError always fired first (FIND-007). */
+ * of that arithmetic. A bound of I2C_TIMEOUT_DEFAULT (200000 iterations,
+ * ~90-230 ms) would be ~46x the harness budget and make every fail-on-expiry
+ * leg below dead code, because the cocotb SimTimeoutError fires first. */
 #define I2C_WAIT_BOUND 4000u
 
 /* Deliberate-expiry control (S5). Long enough that a genuinely pending
@@ -243,12 +240,11 @@ static void step_s1_timing_before_enable(uint32_t idx, const i2c_timing_config_t
 /**
  * @brief Prove FMTRST empties a FIFO that was observed non-empty.
  *
- * The old CHK-FIFO-RESET-ENABLE read HOST_FIFO_STATUS after i2c_reset_fifos()
- * and asserted the levels were zero. They always were: when the hardware reset
- * leaves entries behind, the helper drains or re-applies it before returning,
- * so the post-condition was the helper's, not the DUT's (FIND-005). And with an
- * already-empty FIFO the level would read zero even if RXRST/FMTRST did nothing
- * at all.
+ * Reading HOST_FIFO_STATUS after i2c_reset_fifos() and asserting zero proves
+ * nothing: when the hardware reset leaves entries behind, the helper drains or
+ * re-applies it before returning, so that post-condition is the helper's, not
+ * the DUT's, and an already-empty FIFO reads zero even if RXRST/FMTRST did
+ * nothing at all.
  *
  * So: fill the FMT FIFO while ENABLEHOST is 0 (the FSM cannot pop it -- the
  * FDATA write path is not gated by ENABLEHOST, but fmt_fifo_rready is), require
@@ -432,7 +428,7 @@ static void init_target_peer(const i2c_timing_config_t *timing) {
  * The token deliberately does not claim a STOP was observed on the target side.
  * i2c_target_receive_transaction() returns as soon as the length header's worth
  * of data bytes has arrived, before the ACQ STOP entry is read, so saw_stop is
- * never set on this path (FIND-009). What is proven is HOSTIDLE plus
+ * never set on this path. What is proven is HOSTIDLE plus
  * STATUS.FMTEMPTY == 1: the controller consumed every FDATA entry including the
  * STOP-flagged one.
  */
@@ -593,12 +589,10 @@ static void step_s4_s5_cmd_complete_life(void) {
     }
     simputs("  lifecycle set: INTR_STATE.CMD_COMPLETE=1 after transfer\n");
 
-    /* observed — the interrupt as a downstream consumer sees it.
-     *
-     * This used to recompute (INTR_ENABLE.CMD_COMPLETE && INTR_STATE.CMD_COMPLETE)
-     * from values the firmware had just asserted and had itself written, so it
-     * could not fail for any interrupt-delivery defect (FIND-006). The PLIC
-     * pending bit is the first software-visible point past irq_o. */
+    /* observed — the interrupt as a downstream consumer sees it. The PLIC
+     * pending bit is the first software-visible point past irq_o; recomputing
+     * INTR_ENABLE.CMD_COMPLETE && INTR_STATE.CMD_COMPLETE from values the
+     * firmware itself wrote could not fail for any interrupt-delivery defect. */
     for (i = 0; i < PLIC_PENDING_BOUND; i++) {
         g_plic_pending_set = plic_pending_bit(CONTROLLER_PLIC_ID);
         if (g_plic_pending_set != 0u) {
@@ -655,9 +649,7 @@ static void step_s4_s5_cmd_complete_life(void) {
 
     /* Deliberate-expiry control for the bounded-wait machinery.
      *
-     * CHK-TIMEOUT-PATHS used to be emitted only on the path where nothing timed
-     * out, with the loop bound printed back as its evidence (FIND-004). This
-     * wait is expected to expire: the bus is idle and CMD_COMPLETE was just
+     * This wait is expected to expire: the bus is idle and CMD_COMPLETE was just
      * cleared, so it must stay 0 for the whole window. That runs the expiry leg
      * on every passing run, and a spurious CMD_COMPLETE while idle fails it. */
     for (i = 0; i < IDLE_HOLD_BOUND; i++) {
@@ -695,7 +687,7 @@ static void step_s4_s5_cmd_complete_life(void) {
  * STEP S6 — positive control for CONTROLLER_HALT.
  *
  * S3 asserts INTR_STATE.CONTROLLER_HALT == 0. On its own that is
- * indistinguishable from an unwired or stuck-at-0 bit (FIND-008), so this step
+ * indistinguishable from an unwired or stuck-at-0 bit, so this step
  * makes the same bit go to 1: a START + address for an address no target on
  * this bus answers is NACKed, which sets CONTROLLER_EVENTS.NACK and halts the
  * FSM (i2c_core.sv:395-402). Clearing CONTROLLER_EVENTS clears the halt --

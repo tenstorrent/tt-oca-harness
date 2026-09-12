@@ -29,18 +29,17 @@
  * Why the RX and ACQ legs transfer at all: i2c_reset_fifos() repairs a FIFO that
  * the hardware reset failed to empty, by popping RDATA/ACQDATA in software. So
  * "the FIFO is empty after the reset" is a post-condition the helper itself can
- * manufacture, and asserting it straight after the helper -- which is what this
- * test used to do for RX and ACQ -- cannot fail on any RTL. Two things fix that:
- * the level is made non-zero by a transfer the helper cannot fake, and
- * g_i2c_rx_reset_needed_drain / g_i2c_acq_reset_needed_drain are read back so a
- * repaired FIFO is reported as a failure rather than laundered into a PASS.
+ * manufacture, and asserting it straight after the helper cannot fail on any
+ * RTL. Two things fix that: the level is made non-zero by a transfer the helper
+ * cannot fake, and g_i2c_rx_reset_needed_drain / g_i2c_acq_reset_needed_drain
+ * are read back so a repaired FIFO is reported as a failure rather than
+ * laundered into a PASS.
  *
  * Leg markers in scratch[1] and the 0xBAD000xx codes in scratch[0] identify the
- * FIFO, not the execution order: FMT 0x40, RX 0x50, TX 0x60, ACQ 0x70. TX and
- * ACQ moved off 0x80/0x90, which the shared driver publishes from inside
- * i2c_target_transmit() and i2c_controller_read() (i2c_opentitan.c) -- this test
- * now calls into that path, so a hang parked at 0x80 would otherwise be
- * ambiguous.
+ * FIFO, not the execution order: FMT 0x40, RX 0x50, TX 0x60, ACQ 0x70. 0x80 and
+ * 0x90 are avoided because the shared driver publishes them from inside
+ * i2c_target_transmit() and i2c_controller_read() (i2c_opentitan.c), which this
+ * test calls, so a hang parked there would be ambiguous.
  *
  * The two bus legs run first, while both instances are in their post-init state.
  * The two software fill legs run last and stop their FIFO's hardware consumer --
@@ -78,8 +77,7 @@
 /* One accessor for every register in this file. The per-instance stride is the
  * same 0x200 in SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR() and in every per-register
  * macro (smc_addr.h:54,631...), so indexing the generated register macro is both
- * shorter and correct for idx != 0, unlike the base-plus-offset(0) expression
- * this file used to re-spell at every access. */
+ * shorter and correct for idx != 0, unlike a base-plus-offset(0) expression. */
 #define I2C_REG(idx, REG) (SMC_TOP_SMC_I2C_WRAP_I2C_##REG##_BASE_ADDR(idx))
 
 /* Poll bounds, in loop iterations.
@@ -256,7 +254,7 @@ static int test_fmt_fifo_full_empty(uint32_t idx) {
     /* Two independent statements about the same fill: how many entries this test
      * stored, and what the DUT says it holds. The flag alone cannot distinguish
      * a FIFO that filled to the configured depth from one that reported full at
-     * some other depth, which is what this leg used to record. */
+     * some other depth. */
     if (pushed != FMT_FIFO_DEPTH) {
         simputshex32("  ERROR: FMTFULL asserted after ", pushed);
         simputshex32(" stores, expected the configured depth ", (uint32_t)FMT_FIFO_DEPTH);
@@ -423,8 +421,7 @@ static int test_rx_fifo_fill_and_reset(uint32_t ctrl_idx, uint32_t tgt_idx) {
         return I2C_ERROR_TIMEOUT;
     }
 
-    /* The empty flag with a known non-empty FIFO: the positive control the RX leg
-     * used to be missing entirely. */
+    /* The empty flag with a known non-empty FIFO: the RX leg's positive control. */
     i2c__STATUS_t status_filled = {.w = read_reg(I2C_REG(ctrl_idx, STATUS))};
     if (status_filled.f.RXEMPTY) {
         simputshex32("  ERROR: STATUS.RXEMPTY is set while RXLVL is ", level);
@@ -726,8 +723,7 @@ static int test_acq_fifo_fill_and_reset(uint32_t ctrl_idx, uint32_t tgt_idx) {
         return I2C_ERROR_TIMEOUT;
     }
 
-    /* The empty flag with a known non-empty FIFO: the positive control the ACQ
-     * leg used to be missing entirely. */
+    /* The empty flag with a known non-empty FIFO: the ACQ leg's positive control. */
     i2c__STATUS_t status_filled = {.w = read_reg(I2C_REG(tgt_idx, STATUS))};
     if (status_filled.f.ACQEMPTY) {
         simputshex32("  ERROR: STATUS.ACQEMPTY is set while ACQLVL is ", level);

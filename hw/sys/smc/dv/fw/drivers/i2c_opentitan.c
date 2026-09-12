@@ -269,19 +269,16 @@ void i2c_config_timing(uint32_t idx, const i2c_timing_config_t *config) {
  *
  * Cleared at the top of every i2c_reset_fifos() call, so it describes only the
  * most recent one -- which is what the header promises and what a test asserting
- * immediately after the call needs. It used to be write-only and sticky, so a
- * test reading it would have seen "did any reset, ever, need repair". */
+ * immediately after the call needs. */
 /* Driver-internal scratch tracing, off by default.
  *
- * These calls used to be plain write_scratch(). scratch[1] is the FW<->cocotb
- * handshake channel that most testcases in this suite poll, and scratch[0] is
- * the pass/fail channel -- so a driver call made while a handshake was pending
- * overwrote the testcase's own marker with a debug value, and the four
- * write_scratch(0, debug_info) calls wrote over the verdict word. The failure
- * that results looks like the testcase hanging or reporting the wrong state,
- * with nothing pointing at the driver.
+ * scratch[1] is the FW<->cocotb handshake channel that most testcases in this
+ * suite poll, and scratch[0] is the pass/fail channel, so a driver write to
+ * either while a handshake is pending overwrites the testcase's own marker or
+ * verdict with a debug value, and the failure looks like the testcase hanging
+ * or reporting the wrong state with nothing pointing at the driver.
  *
- * Nothing depends on these values -- all 42 were markers -- so they are
+ * Nothing depends on these values -- all 42 are markers -- so they are
  * compiled out unless a debugger asks for them. Define I2C_DRIVER_SCRATCH_TRACE
  * to get them back, and only in a build whose testcase does not use the
  * scratch handshake. */
@@ -393,10 +390,8 @@ void i2c_reset_fifos(uint32_t idx, bool reset_rx, bool reset_fmt, bool reset_tx,
             g_i2c_rx_reset_residual = host_status.f.RXLVL;
         }
 
-        /* FMT: re-apply the reset, then actually re-read the level.
-         *
-         * The retry used to write FMTRST, spin 100 and return without looking,
-         * so a second failure was invisible and the caller was told nothing. */
+        /* FMT: re-apply the reset, then re-read the level, so a second failure
+         * is reported to the caller rather than assumed away. */
         if (reset_fmt && host_status.f.FMTLVL != 0) {
             g_i2c_fmt_reset_needed_retry = 1;
             fifo_ctrl.w = 0;
@@ -419,16 +414,9 @@ void i2c_reset_fifos(uint32_t idx, bool reset_rx, bool reset_fmt, bool reset_tx,
             .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TARGET_FIFO_STATUS_BASE_ADDR(0) -
                                       SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
-        /* TX: re-apply the reset, then actually re-read the level.
-         *
-         * Same defect the FMT branch had, and missed when that one was fixed:
-         * this wrote TXRST a second time, spun 100 and returned without
-         * looking, so a second failure was invisible and the caller was told
-         * nothing. Callers assert "TXLVL is 0 after reset" on their setup path,
-         * and against the old code that post-condition was the blind retry's
-         * doing rather than the hardware's. Found by the smc_i2c_p0_fifo fix
-         * pass, which noticed the ACQ branch had been made honest and this one
-         * had not. */
+        /* TX: re-apply the reset, then re-read the level. Callers assert
+         * "TXLVL is 0 after reset" on their setup path, so that post-condition
+         * has to be the hardware's, not a blind retry's. */
         if (reset_tx && target_status.f.TXLVL != 0) {
             g_i2c_tx_reset_needed_retry = 1;
             fifo_ctrl.w = 0;
@@ -446,13 +434,9 @@ void i2c_reset_fifos(uint32_t idx, bool reset_rx, bool reset_fmt, bool reset_tx,
 
         /* Verify ACQ FIFO Level = 0 -- and report, rather than repair.
          *
-         * This used to drain the FIFO by hand in an unbounded `while` whenever
-         * ACQRST had left entries behind, so ACQLVL == 0 afterwards was
-         * manufactured by the helper regardless of whether the hardware reset
-         * worked. Any caller checking "the FIFO is empty after a reset" was
-         * therefore checking this loop, not the DUT. The loop was also
-         * unbounded: on a target that never drains it could only end in a
-         * simulator timeout.
+         * A drain by hand would make ACQLVL == 0 the helper's doing regardless
+         * of whether the hardware reset worked, and any caller checking "the
+         * FIFO is empty after a reset" would be checking this loop, not the DUT.
          *
          * The drain stays, because callers depend on the FIFO being empty when
          * this returns, but it is bounded and the fact that repair was needed is
@@ -653,9 +637,8 @@ int i2c_controller_wait_idle(uint32_t idx, uint32_t timeout_cycles) {
  *
  * The RTL exposes STATUS.FMTFULL (= !fmt_fifo_wready, i2c_core.sv:258) and the
  * FDATA write is not gated on wready, so a push into a full FMT FIFO is simply
- * dropped. i2c_controller_write() used to push 1 + len entries unconditionally;
- * with CONTROLLER_TX_FIFO_DEPTH = 64 (smc_config_pkg.sv:23) a 64-byte write is
- * 65 entries and at least one was lost every time, silently.
+ * dropped: with CONTROLLER_TX_FIFO_DEPTH = 64 (smc_config_pkg.sv:23) an
+ * unconditional 64-byte write is 65 entries and loses at least one.
  *
  * Returns I2C_ERROR_TIMEOUT if space never appears, so callers can tell a
  * dropped byte from a delivered one.
@@ -732,13 +715,11 @@ int i2c_controller_write(uint32_t idx, uint8_t target_addr, const uint8_t *data,
         }
 
         if (wait_count >= MAX_WAIT) {
-            // Report it. This block used to hold only comments, so control fell
-            // through to `return I2C_OK` below and a caller could not tell
-            // "every FMT entry was transmitted" from "the FIFO never drained in
-            // 10000 polls" -- which made every caller's `if (ret != I2C_OK)`
-            // branch dead for this failure mode. It is not a hypothetical: the
-            // wait expired in a passing smc_i2c_p1_dma_test run, burning 4.35 ms
-            // of simulation, and the test still reported PASS.
+            // Report the expiry: without it control falls through to the
+            // `return I2C_OK` below and a caller cannot tell "every FMT entry
+            // was transmitted" from "the FIFO never drained in 10000 polls",
+            // which makes every caller's `if (ret != I2C_OK)` branch dead for
+            // this failure mode.
             return I2C_ERROR_TIMEOUT;
         }
     } else {
@@ -762,10 +743,9 @@ int i2c_controller_read(uint32_t idx, uint8_t target_addr, uint8_t *data, uint32
     // Debug marker: Enter function
     i2c_trace_scratch(1, 0x00000090); // Enter i2c_controller_read
 
-    // CRITICAL FIX: Support Repeated START
-    // In Repeated START scenarios, controller stays busy between transactions.
-    // Only wait for idle if controller was previously stopped (hostidle=1).
-    // If controller is already busy (hostidle=0), assume Repeated START sequence.
+    // Repeated START: the controller stays busy between the transactions of a
+    // repeated-START sequence, so wait for idle only when hostidle=1 (the
+    // previous transaction sent STOP); hostidle=0 means continue directly.
     i2c_trace_scratch(1, 0x00000091); // Before idle check
     i2c__STATUS_t status = {.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
                                                       SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
@@ -1559,10 +1539,9 @@ uint32_t i2c_target_transmit(uint32_t idx, const uint8_t *data, uint32_t len) {
 
         // TXLVL below the FIFO depth means space is available.
         uint32_t tx_level = fifo_status.f.TXLVL;
-        /* The target TX FIFO is 64 deep (smc_config_pkg::I2C_TARGET_TX_FIFO_DEPTH),
-         * not 256. With the old bound this break was unreachable, so the caller's
-         * "did every byte get pushed?" guard could never fire -- and a TXDATA
-         * write into a full FIFO is silently dropped. */
+        /* The target TX FIFO is 64 deep (smc_config_pkg::I2C_TARGET_TX_FIFO_DEPTH).
+         * A TXDATA write into a full FIFO is silently dropped, so stop here and
+         * let the caller's "did every byte get pushed?" guard fire. */
         if (tx_level >= I2C_TARGET_TX_FIFO_DEPTH) break;
 
         // Debug marker: Before writing TXDATA
@@ -1741,15 +1720,9 @@ int i2c_target_receive_transaction_framed(uint32_t idx, uint8_t *buffer, uint32_
                 count++;
             }
 
-            /* Inter-byte expiry is a timeout, not a completion.
-             *
-             * This used to `break` under the comment "consider transaction
-             * complete (may have missed STOP)", landing on the same
-             * `return I2C_OK` as a clean STOP. A truncated or stalled transfer
-             * was therefore reported to the caller as a successful one, and
-             * every caller's `if (ret != I2C_OK)` was a dead branch for it --
-             * which is how smc_i2c_p1_fifo_stress_test reported PASS having
-             * received zero bytes. */
+            /* Inter-byte expiry is a timeout, not a completion: a truncated or
+             * stalled transfer must reach the caller as an error, or every
+             * caller's `if (ret != I2C_OK)` is a dead branch for it. */
             if (status.f.ACQEMPTY) {
                 *received_len = len;
                 return I2C_ERROR_TIMEOUT;
@@ -1793,10 +1766,10 @@ int i2c_target_receive_transaction_framed(uint32_t idx, uint8_t *buffer, uint32_
                         return I2C_ERROR_OVERFLOW;
                     }
 
-                    // CRITICAL FIX: For repeated START scenarios (no STOP)
-                    // If we've received all data bytes specified by length header,
-                    // return immediately even without STOP signal
-                    // This allows i2c_target_receive_transaction() to work with repeated START
+                    // Repeated START (no STOP): once every data byte named by the
+                    // length header has arrived, return without waiting for STOP so
+                    // i2c_target_receive_transaction() works inside a repeated-START
+                    // sequence.
                     if (expect_length_header && length_header != 0xFFFFFFFF &&
                         len >= length_header) {
                         // All data bytes received according to length header

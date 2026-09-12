@@ -197,15 +197,11 @@ int main(void) {
     //--------------------------------------------------------------------------
     info_msg_s(0, "scenario B: multi-entry simultaneous trigger");
 
-/* From the generated map, not a hand-written base.
- *
- * This was `(0u + (i)*4u)`, i.e. offsets 0/4/8/12 from LOG_ENGINE_BASE. The
- * LOG_CTRL array actually starts at 0x40 (LOG_ENGINE_BASE = 0xC0006200,
- * LOG_CTRL[j] = 0xC0006240 + j*4), so offset 0 is the CTRL register: scenario B
- * wrote 16 into CTRL -- clearing EN and disabling the engine it had just
- * enabled -- then polled CTRL for zero, which never came. The 500000-poll wait
- * meant the harness timeout fired before the test's own FAIL message could.
- */
+/* From the generated map, not a hand-written base: the LOG_CTRL array starts
+ * at 0x40 (LOG_ENGINE_BASE = 0xC0006200, LOG_CTRL[j] = 0xC0006240 + j*4) and
+ * offset 0 is the CTRL register, so a hand-written `(i)*4u` would write the
+ * length into CTRL -- clearing EN -- and then poll CTRL for a zero that never
+ * comes. */
 #define LE_LOG_CTRL_I_OFF(i) \
     (SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_LOG_CTRL_BASE_ADDR(0, (i)) - \
      SMC_TOP_SMC_UART_WRAP_UART_LOG_ENGINE_WRAP_LOG_ENGINE_BASE_ADDR(0))

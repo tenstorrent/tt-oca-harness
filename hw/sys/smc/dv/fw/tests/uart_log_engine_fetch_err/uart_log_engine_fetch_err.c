@@ -19,12 +19,9 @@
 //
 //   [S1] hw/ip/uart/log_engine/regs/log_engine.rdl
 //        @ revision ffc8cdcc3 ("hw: Reorganize hw/ip and hw/common taxonomy")
-//   [S2] hw/sys/smc/dv/tb/doc/testplan/uart_log_engine/UART_LOG_ENGINE_REGISTERS.md
-//        @ revision 9fe804d ("Nboettcher/populate smc dv"),
-//        section "Region 3: Log Engine" -> INTR_STATUS / INTR_ENABLE / INTR_TEST
-//   [S3] hw/sys/smc/regs/gen/c/smc_addr.h (generated SMC address map)
+//   [S2] hw/sys/smc/regs/gen/c/smc_addr.h (generated SMC address map)
 //
-// From [S1]/[S2]:
+// From [S1]:
 //   INTR_STATUS @0x14 -- LOG_FETCH_ERR[0], LOG_WRITE_ERR[4].
 //       sw=rw, hw=w, `level intr`, `woclr`.  So: hardware SETS the bit while
 //       its cause is asserted; software clears by writing 1 (W1C); and
@@ -39,17 +36,14 @@
 //       therefore the DUT's own statement that the transfer finished, and one
 //       that reads back nonzero is its statement that it did not.  [S1]:118-128
 //
-// SPEC-OPEN -- routed to the SF ledger, deliberately NOT settled from RTL:
+// SPEC-OPEN -- not settled from RTL:
 //   [S1]:148-150 leaves the two enable properties commented out:
 //       // TODO // INTR_STATUS.LOG_FETCH_ERR->hwenable = INTR_ENABLE.LOG_FETCH_ERR;
 //       // TODO // INTR_STATUS.LOG_WRITE_ERR->hwenable = INTR_ENABLE.LOG_WRITE_ERR;
-//   and [S2] records the same gap: "RDL TODO: INTR_STATUS.*->hwenable =
-//   INTR_ENABLE.* is commented out pending PeakRDL fix. Behavior of `level
-//   intr` while ENABLE=0 is unverified."
 //   So the RDL DECLARES the intent -- a masked interrupt must not capture
 //   into its status bit -- but does not yet express it as a generated
 //   property.  The ENABLE-gating arms below check that DECLARED INTENT and
-//   nothing more.  Open spec question for the SF ledger:
+//   nothing more.  Open spec question:
 //       "Does INTR_ENABLE gate INTR_STATUS capture, or only the IRQ output?"
 //   If the answer comes back "IRQ output only", the two gating arms below are
 //   the checks that must change, and they are marked so a reader can find them.
@@ -312,7 +306,7 @@ int main(void) {
     // `woclr`.  So a one-cycle INTR_TEST pulse must SET the corresponding
     // status bit, and because the cause self-retires after that cycle the bit
     // is then plainly clearable by W1C.  That expectation is observable, and
-    // scenario 0 now observes it rather than only stimulating.
+    // scenario 0 observes it rather than only stimulating.
     //
     // Running first matters: INTR_TEST is the only fetch/write error cause
     // this firmware can raise AND retire on demand, so it is also the cleanest

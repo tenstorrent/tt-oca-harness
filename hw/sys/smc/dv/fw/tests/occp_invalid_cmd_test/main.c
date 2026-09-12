@@ -192,8 +192,8 @@ static void run_test_suite(test_context_t *ctx) {
 
 /* test_pass()/test_fail() are noreturn (dv/fw/include/smc_test.h): they publish the
  * verdict on the master-BFM scratch register the cocotb monitor polls, then wfi
- * forever.  Nothing may follow them here -- an OCCP write-back of the result code
- * used to sit after this if/else and could never run. */
+ * forever.  Nothing may follow them here: anything after this if/else can never
+ * run. */
 static __attribute__((noreturn)) void finalize_test_results(test_context_t *ctx) {
     if (ctx->overall_result) {
         simputs("ALL TESTS PASSED!\n");

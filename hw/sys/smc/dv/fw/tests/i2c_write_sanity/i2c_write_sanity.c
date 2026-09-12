@@ -43,8 +43,8 @@
 /* Iteration budget for each ACQ FIFO drain loop. The FIFO is 64 entries deep
  * and each iteration is one register read, so 100 is comfortably above any
  * legitimate drain while still bounding the loop. Each loop gets its own
- * copy -- they used to share one counter, which made the post-reset retry a
- * no-op whenever the first drain had already spent it. */
+ * copy: a counter shared with an earlier drain makes the post-reset retry a
+ * no-op whenever the first drain has already spent it. */
 #define ACQ_DRAIN_LOOP_LIMIT 100u
 
 //=============================================================================
@@ -119,11 +119,9 @@ static uint32_t i2c_target_check_and_clear_acq_fifo(uint32_t target_idx) {
         simputs("  [ACQ FIFO] WARNING: ACQ FIFO still not empty after draining, resetting...\n");
         i2c_reset_fifos(target_idx, false, false, false, true);
 
-        // Drain again after reset if still not empty.
-        //
-        // This loop used to share drain_timeout with the one above, so once
-        // the first drain had spent the budget this one ran zero iterations
-        // and the reset path was silently a no-op. Give it its own.
+        // Drain again after reset if still not empty, with its own budget: a
+        // counter shared with the loop above runs zero iterations once the first
+        // drain has spent it, and the reset path becomes a silent no-op.
         uint32_t retry_timeout = ACQ_DRAIN_LOOP_LIMIT;
         if (!i2c_target_acq_fifo_empty(target_idx)) {
             while (!i2c_target_acq_fifo_empty(target_idx) && retry_timeout > 0) {

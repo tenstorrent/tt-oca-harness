@@ -77,16 +77,13 @@
 #define BIT_WRITE_ERR (1u << 4)
 
 #define LOG_BUFFER_BASE (SMC_TOP_SPM_MEMORY_BASE_ADDR + 0x40000u)
-// Scenario C's log_write target. It was chosen as an "undefined offset" that would
-// decode-error; that premise is FALSE and is left in place only so the scenario is
-// not silently re-armed with another guessed address:
-//   - 0x20 is DEFINED. The generated map places ECR at 0x20 and ITR at 0x24
-//     (hw/ip/uart/uart_16550/regs/gen/svh/uart_16550_main_reg.svh:48-51), so the
-//     write is decoded and answered normally. The old comment's "real regs end at
-//     0x1C" is stale.
-//   - Even an out-of-range offset would not error: the generated UART register
-//     block ties its write-error output to 0, so every write to this block returns
-//     OKAY (GAP_ANALYSIS TP-002 / gap [G3] above).
+// Scenario C's log_write target. 0x20 is a DEFINED offset: the generated map
+// places ECR at 0x20 and ITR at 0x24
+// (hw/ip/uart/uart_16550/regs/gen/svh/uart_16550_main_reg.svh:48-51), so the
+// write is decoded and answered normally. Nor would an out-of-range offset
+// error: the generated UART register block ties its write-error output to 0, so
+// every write to this block returns OKAY. The address stays only so the scenario
+// is not silently re-armed with another guessed one.
 // TODO(log-engine DV owner): scenario C cannot reach LOG_WRITE_ERR by any address.
 // Decide between dropping it and re-arming it with a TB fault hook on the log_write
 // B-channel. Do NOT "repair" it by picking a different offset.

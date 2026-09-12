@@ -429,12 +429,10 @@ int main(void) {
         simputs("\n");
         i2c_clear_target_events(TARGET_IDX, 0xFFFFFFFF); // Clear all events
     }
-    /* Re-read and print what the register actually holds now. The previous line
-     * here printed "TARGET_EVENTS cleared (unhandled_tx_stretch_event_i = 0)"
-     * unconditionally, without re-reading and without ever observing
-     * unhandled_tx_stretch_event_i (an internal RTL signal this firmware cannot
-     * see), so it asserted a DUT state one line after a non-zero value had been
-     * written away. The value below is sampled at the instant it is printed. */
+    /* Re-read and print what the register holds at this instant: an
+     * unconditional "cleared" line would assert a DUT state one line after a
+     * non-zero value was written away, and unhandled_tx_stretch_event_i is an
+     * internal RTL signal this firmware cannot see. */
     target_events = i2c_get_target_events(TARGET_IDX);
     simputshex32("  TARGET_EVENTS after clear (sampled): ", target_events);
     simputs("\n");
@@ -454,10 +452,10 @@ int main(void) {
      * so a non-zero value cannot reach this print -- it is recorded as evidence
      * that the empty state below came from ACQRST).
      *
-     * Second, a still-occupied ACQ FIFO is now a testcase failure. It used to be
-     * a WARNING followed by an unbounded software drain -- which both hid
-     * exactly the class of RTL defect this step exists to catch, and could only
-     * end in the harness timeout on a target whose FIFO never drains. */
+     * Second, a still-occupied ACQ FIFO is a testcase failure, not a warning
+     * followed by a software drain: that would hide exactly the class of RTL
+     * defect this step exists to catch, and on a target whose FIFO never drains
+     * could only end in the harness timeout. */
     simputshex32("  ACQRST needed software repair (0 = hardware reset took): ",
                  g_i2c_acq_reset_needed_drain);
     simputs("\n");
@@ -509,13 +507,9 @@ int main(void) {
     }
 
     /* Final check: the three preconditions Step 5 exists to establish, each
-     * sampled here and each able to fail.
-     *
-     * A non-zero TARGET_EVENTS at this point used to be demoted to a WARNING,
-     * cleared, and followed by an unconditional "all conditions satisfied" -- so
-     * the precondition the whole step is for was reported green on both paths.
-     * It is now a testcase failure, and the summary line is replaced by the
-     * three quantities it used to stand for, read at this instant. */
+     * sampled here and each able to fail. A non-zero TARGET_EVENTS at this point
+     * is a testcase failure, and the three quantities are printed as read at
+     * this instant rather than summarised as "all conditions satisfied". */
     target_events = i2c_get_target_events(TARGET_IDX);
     uint32_t acq_level_pre_read = 0;
     i2c_target_get_fifo_status(TARGET_IDX, NULL, &acq_level_pre_read);

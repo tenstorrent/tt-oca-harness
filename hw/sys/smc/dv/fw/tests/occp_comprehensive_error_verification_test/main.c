@@ -38,9 +38,9 @@
  *       address report VALIDATE_ADDRESS_FAILED (0x141) with Invalid_Address.
  *   hw/sys/smc/bootrom/prod/include/smc_rom_defs.h - the memory map.
  *
- * Two scenarios named by the previous revision of this test are NOT presented
- * here, because the OCCP request encoding cannot express them and issuing them
- * anyway only produced a malformed short packet:
+ * Two scenarios are NOT presented here, because the OCCP request encoding
+ * cannot express them and issuing them anyway only produces a malformed short
+ * packet:
  *   - WRITE_OVERFLOW by oversize length. occp_send_write_command() advertises
  *     byte_length + 12 in an 11-bit header field, so a write_size above
  *     MAX_OCCP_WRITE_SIZE (2035) cannot be advertised coherently. The only
@@ -421,10 +421,10 @@ static bool test_jump_security_violations(comprehensive_error_test_context_t *ct
 /*
  * Test 4 - invalid command injection.
  *
- * Uses the shared framework's invalid-header injection. The previous revision
- * hand-rolled a raw byte burst through ctx->drv.i2c_drv, which is a union
- * member: on the I3C path that pointer holds an I3C_Driver and the call went
- * through a function pointer read out of the wrong struct.
+ * Uses the shared framework's invalid-header injection rather than a raw byte
+ * burst through ctx->drv.i2c_drv: that pointer is a union member, and on the
+ * I3C path it holds an I3C_Driver, so a call through it would go through a
+ * function pointer read out of the wrong struct.
  */
 static bool test_invalid_command_injection(comprehensive_error_test_context_t *ctx) {
     simputs("\n=== Test 4: Invalid Command Injection ===\n");
@@ -709,8 +709,7 @@ static bool test_permitted_range_boundary(comprehensive_error_test_context_t *ct
  * The ROM's WRITE/READ handlers use write64_reg/read64_reg for 8-byte
  * transfers, write_reg/read_reg for 4-byte transfers, and a byte loop
  * otherwise. All three preserve byte order, so a round trip must return the
- * bytes in the order they were sent. The previous revision expected the
- * reversed order and would have scored a correct target as defective.
+ * bytes in the order they were sent.
  */
 static bool test_byte_order_preservation(comprehensive_error_test_context_t *ctx) {
     simputs("\n=== Test 9: Byte Order Preservation ===\n");
@@ -758,8 +757,7 @@ static bool test_byte_order_preservation(comprehensive_error_test_context_t *ctx
  * Test 10 - back-to-back command sequence.
  *
  * Issues writes with no intervening traffic to exercise the interface latch,
- * then reads every one of them back. The previous revision discarded each
- * result and checked nothing.
+ * then reads every one of them back and compares each result.
  */
 static bool test_back_to_back_commands(comprehensive_error_test_context_t *ctx) {
     simputs("\n=== Test 10: Back-to-Back Command Sequence ===\n");

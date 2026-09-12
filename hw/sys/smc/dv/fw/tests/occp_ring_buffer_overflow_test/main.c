@@ -24,14 +24,10 @@
  *   Struct layout and the 512-entry constant come from the header that both the ROM and this
  *   test compile against: smc_ring_buffer.h (smc_ring_buffer_t, SMC_RING_BUFFER_SIZE).
  *
- * NOTE ON A PREVIOUS EXPECTATION THAT WAS REMOVED
- *   Earlier revisions of this test graded the ROM against "status messages must leave 2 empty
- *   entries / warnings must leave 1 / errors may fill the last", attributed to a document that
- *   does not exist in this repository. No authoritative source states a message-type-aware
- *   reservation policy; status-coordination.adoc states the opposite (overwrite-oldest, quoted
- *   above) and the ROM implements what the document states. That expectation is gone. If a
- *   reservation policy is genuinely wanted it is a specification change request, not a test
- *   finding.
+ * No message-type-aware reservation policy is graded: no authoritative source states one,
+ *   status-coordination.adoc states overwrite-oldest (quoted above), and the ROM implements
+ *   what the document states. A reservation policy, if wanted, is a specification change
+ *   request, not a test finding.
  *
  * CHECKS
  *   C1 The ROM publishes the ring-buffer location: scratch 9 bit 2 is set and the scratch 11

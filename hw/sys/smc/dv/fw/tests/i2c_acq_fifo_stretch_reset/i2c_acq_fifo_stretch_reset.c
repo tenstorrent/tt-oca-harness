@@ -120,19 +120,15 @@ static int tb_sync(uint32_t marker) {
 
 /* Wait until the target itself says it has no room left.
  *
- * The gate is STATUS.ACQFULL alone. It used to be
- * `status.f.ACQFULL || acqlvl >= ACQ_STRETCH_LEVEL`, with ACQ_STRETCH_LEVEL
- * defined as 64 - 2 -- both halves of that constant copied out of the RTL
- * (smc_config_pkg::I2C_TARGET_RX_FIFO_DEPTH and the `remainder > 2` margin in
- * i2c_target_fsm.sv:271). The disjunction looked like a cross-check and was the
- * same expression twice: STATUS.ACQFULL is driven from
+ * The gate is STATUS.ACQFULL alone. It is driven from
  * acq_fifo_full = !acq_fifo_plenty_space (i2c_core.sv:274,
- * i2c_target_fsm.sv:1043), which *is* `remainder <= 2`. Both terms therefore
- * move together under any change of depth or margin, and the hand-copied depth
- * added nothing but a second place to be wrong. What is left is the DUT's own
- * statement that it is out of room; the level is reported, not used as a gate.
+ * i2c_target_fsm.sv:1043), which is `remainder <= 2` against
+ * smc_config_pkg::I2C_TARGET_RX_FIFO_DEPTH, so a level threshold copied out of
+ * the RTL would be the same expression twice and move with it under any change
+ * of depth or margin. What is left is the DUT's own statement that it is out
+ * of room; the level is reported, not used as a gate.
  *
- * INTR_STATE.ACQ_STRETCH is deliberately not used here: INTR_STATE bits are
+ * INTR_STATE.ACQ_STRETCH is not used here: INTR_STATE bits are
  * ANDed with INTR_ENABLE (i2c_core.sv:986,992) and this test runs with target
  * interrupts disabled, so that bit reads 0 whatever the FIFO is doing.
  */
@@ -313,11 +309,9 @@ static int send_long_write_until_target_stretches(uint32_t *acqlvl_out) {
     int ret = i2c_controller_write_with_header_nonblock(CONTROLLER_IDX, TARGET_ADDR, long_data,
                                                         LONG_WRITE_LEN);
     if (ret != I2C_OK) {
-        /* This used to be demoted to a log line and the run carried on. The
-         * ACQ level observed downstream is then graded against an unknown
-         * number of offered bytes, which is exactly the reconciliation the
-         * level check needs. Fail here so "70 bytes were offered" is a fact the
-         * later check can rest on. */
+        /* Fail here rather than log and continue: the ACQ level observed
+         * downstream is graded against the number of offered bytes, so "70
+         * bytes were offered" has to be a fact the later check can rest on. */
         simputshex32("  ERROR: Long write enqueue failed, ret=", (uint32_t)ret);
         simputs("\n");
         return ret;
@@ -367,11 +361,10 @@ static int release_stretch_and_discard_long_write_tail(uint32_t acqlvl_at_stretc
     simputs("  ACQ reset (stretch release) then controller disable...\n");
     /* Bracket the reset that is actually under test.
      *
-     * Nothing used to observe it: the only post-reset level read came after five
-     * further resets, a target disable and a full re-init, and i2c_reset_fifos()
-     * itself drains the FIFO by hand when ACQRST leaves entries behind -- so
-     * "ACQLVL == 0 afterwards" was produced by the helper, not by the hardware.
-     * g_i2c_acq_reset_needed_drain distinguishes the two.
+     * i2c_reset_fifos() drains the FIFO by hand when ACQRST leaves entries
+     * behind, so a level read taken after the helper alone would be the
+     * helper's doing, not the hardware's. g_i2c_acq_reset_needed_drain
+     * distinguishes the two.
      */
     {
         i2c__STATUS_t status_before = get_i2c_status(TARGET_IDX);
@@ -455,14 +448,12 @@ static int release_stretch_and_discard_long_write_tail(uint32_t acqlvl_at_stretc
          * window 2 proves it can read 1, so neither window can pass on a dead
          * or stuck net.
          *
-         * The old comment here said the reset and the disable had to be
-         * back-to-back because "any simputs gap lets FMT drain more bytes into
-         * ACQ and keep targetidle clear". The recovery below does not depend on
-         * that: it force-disables the target when the tail is still in flight,
-         * which is the path the reference run already took with ~24 us of
-         * simputs in the gap. The window costs ~282 us more, i.e. about 3 of
-         * the ~10 bytes still queued in FMT go out before the disable, and the
-         * discard path handles them the same way. */
+         * The reset and the disable need not be back-to-back: the recovery
+         * below force-disables the target when the tail is still in flight,
+         * which is the path taken with ~24 us of simputs in the gap. The window
+         * costs ~282 us more, i.e. about 3 of the ~10 bytes still queued in FMT
+         * go out before the disable, and the discard path handles them the
+         * same way. */
         ret = publish_release_observation(lvl_before, lvl_after);
         if (ret != I2C_OK) {
             return ret;

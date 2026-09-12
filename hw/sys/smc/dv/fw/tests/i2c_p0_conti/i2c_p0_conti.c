@@ -184,11 +184,11 @@ static int target_verify_acq_data_and_clear(uint32_t target_idx, uint8_t expecte
 
     /* No second drain here.
      *
-     * This used to be an unbounded `while` that emptied the ACQ FIFO by hand
-     * whenever ACQRST left entries behind -- re-creating, one frame up, exactly
-     * the software repair the driver was changed to refuse. It made "ACQ empty
-     * after reset" this loop's doing rather than the hardware's, and on a target
-     * that never drains it could only end in a simulator timeout.
+     * Emptying the ACQ FIFO by hand whenever ACQRST leaves entries behind would
+     * re-create, one frame up, the software repair the driver refuses: it would
+     * make "ACQ empty after reset" this loop's doing rather than the hardware's,
+     * and on a target that never drains it could only end in a simulator
+     * timeout.
      *
      * A non-empty ACQ after ACQRST is a real DUT observation, so report it. */
     if (!i2c_target_acq_fifo_empty(target_idx)) {
@@ -545,13 +545,9 @@ int main(void) {
     simputs("################################################\n");
     simputs("\n");
     simputs("Summary:\n");
-    /* Print the bases actually used, not literals.
-     *
-     * These lines used to read 0xC0009000/0xC0009200, which is
-     * SMC_TOP_SMC_TELEMETRY_RECEIVER_WRAP -- the I2C bases are 0xC0005000 and
-     * 0xC0005200. The accesses were always symbol-derived and correct, so only
-     * the retained evidence asserted a false register identity; deriving the
-     * printed value from the same symbol keeps the two from drifting again. */
+    /* Print the bases actually used, not literals: the printed value is derived
+     * from the same symbol as the accesses, so the retained evidence cannot
+     * name a register the test did not touch. */
     simputshex32("  - I2C_0 (Target):     Addr 0x10 @ ", i2c_get_base(TARGET_IDX));
     simputs("\n");
     simputshex32("  - I2C_1 (Controller): @ ", i2c_get_base(CONTROLLER_IDX));

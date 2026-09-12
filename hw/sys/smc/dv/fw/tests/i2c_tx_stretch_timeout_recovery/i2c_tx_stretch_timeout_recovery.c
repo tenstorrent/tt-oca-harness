@@ -64,10 +64,9 @@ static int wait_for_target_idle(uint32_t idx) {
 }
 
 /* Last INTR_STATE sampled by clear_controller_events_and_wait() before it
- * cleared. The timeout used to be written away with a blanket 0xFFFFFFFF and
- * only read back to confirm the clear succeeded, so the one sample that could
- * have carried the property under test was destroyed before anybody looked at
- * it. Callers that provoke a timeout read this. */
+ * cleared: the sample that carries the property under test has to be taken
+ * before the blanket 0xFFFFFFFF clear destroys it. Callers that provoke a
+ * timeout read this. */
 static uint32_t g_last_intr_state_before_clear;
 
 static int clear_controller_events_and_wait(uint32_t idx) {
