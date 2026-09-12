@@ -127,10 +127,10 @@ ocah_jtag_vip/
 
 | Component | Role |
 |---|---|
-| `ocah_jtag_item` | Stimulus item: `TAP_RESET`, `IR_SCAN`, `DR_SCAN`, `RAW_TMS`; driver fills observed TDO in-place |
+| `ocah_jtag_item` | Stimulus item: `TAP_RESET`, `TRST_LEVEL`, `IR_SCAN`, `DR_SCAN`, `RAW_TMS`; driver fills observed TDO in-place |
 | `ocah_jtag_master_config` | vif, `is_active`, TCK half-period, TRST reset cycles, `en_cov` (file: `ocah_jtag_master_config.svh`) |
 | `ocah_jtag_ref_model` | IEEE 1149.1 TAP controller reference model (state tracking, BYPASS TDO prediction, one-hot helpers) |
-| `ocah_jtag_master_sequence` | VIP-level stimulus API: raw steps/walks, IR/DR scans (incl. wide), TAP reset, and tracked-state navigation (`goto_state`, `goto_random_state`, `random_tms_walk`, `current_state`, `sync_model`) — DUT sequence libraries extend it |
+| `ocah_jtag_master_sequence` | VIP-level stimulus API: raw steps/walks, IR/DR scans (incl. wide), TAP reset, TRST level control (`assert_trst`/`release_trst`), and tracked-state navigation (`goto_state`, `goto_random_state`, `random_tms_walk`, `current_state`, `sync_model`) — DUT sequence libraries extend it |
 | `ocah_jtag_master_driver` | Pin-level TCK bit-bang; scans navigate RTI -> scan leg -> RTI |
 | `ocah_jtag_master_monitor` | Passive: per-TCK `STEP` events (published on the falling edge) + async `TRST` events via `event_ap` |
 | `ocah_jtag_scan_builder` | Subscriber reconstructing IR/DR scans from the step stream (reference-FSM walk); publishes `ocah_jtag_scan_item` on `scan_ap` with bounded history |
@@ -301,7 +301,9 @@ tap = OcahJtagMasterDriver(
 | `from_bus(bus, ...)` | Construct from an existing `JTAGBus` |
 | `init_signals()` | Drive idle values before traffic |
 | `await reset_tap(cycles=10)` | Drive TAP to Test-Logic-Reset |
-| `await step_tms(tms)` / `await tms_step(tms)` | Drive one raw TMS cycle |
+| `await assert_trst(tck_cycles=1)` / `await release_trst(tck_cycles=0)` | Drive the bound TRST net, then hold TMS high for `tck_cycles`; asserting re-baselines the tracked state to Test-Logic-Reset |
+| `await step(tms, tdi=0)` / `await step_tms(tms)` | Drive one TCK cycle with the given TMS and TDI and return sampled TDO |
+| `sync_model(state, instruction=None)` | Declare the TAP state after movement the driver did not drive (a power-on reset, a reset pin outside the bound TAP) |
 | `await shift_ir(value, width=None, back_to_rti=False)` | Shift IR, return captured TDO |
 | `await shift_dr(value, width, back_to_rti=False)` | Shift DR, return captured TDO |
 | `await read_idcode()` | Read 32-bit IDCODE |
@@ -311,6 +313,14 @@ tap = OcahJtagMasterDriver(
 
 `reset_tap()` leaves the tracked TAP state in `TEST_LOGIC_RESET`; step
 `TMS=0` afterwards to reach `RUN_TEST_IDLE`.
+
+No driver operation waits on the DUT: every reset, step, walk, and scan runs
+a fixed number of TCK cycles, so the driver carries no timeout bound.
+
+Deprecated aliases, each logging one warning per driver instance:
+`tms_step()` (use `step_tms()`), `move_to_state()` (use `goto_state()`),
+`reset_finished()` (does nothing; drop the call), and the `timeout_cycles`
+constructor argument (ignored).
 
 ## Device Maps
 
