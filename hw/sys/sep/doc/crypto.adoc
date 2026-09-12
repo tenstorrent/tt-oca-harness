@@ -60,38 +60,33 @@ and pulses `alert_o` when the handshake starts; a malformed encoding raises
 `integ_fail_o`. Alert ping is disabled (`ping_req_i` tied 0); `ping_ok_o` is
 unused.
 
-The eleven channels belong to six blocks. A given accelerator's alerts are not
-mixed with another accelerator's at the receiver:
+PIC sources are in <<sep-cpu-interrupt-vector-map>>. A receiver's pulse and
+integrity-fail stay per-block at the receiver. The table shows which of those,
+the native error IRQs, and the bridge faults are OR'd onto a PIC source and
+which are not.
 
-[cols="12%,18%,70%",options="header"]
+[cols="14%,18%,22%,16%,30%",options="header"]
 |===
-|Index |Block |Channels
-|`[0]` |HMAC |1 fatal
-|`[2:1]` |OTBN |2
-|`[4:3]` |AES |recoverable, fatal
-|`[6:5]` |KMAC |2
-|`[8:7]` |CSRNG |2
-|`[10:9]` |EDN |2
+|Block |OT alert channels |Alert PIC |Native error IRQ |Bridge `err_o`
+|HMAC |`[0]` fatal |OR into Crypto alert |dedicated PIC |STATUS bit; OR into Peripheral register-bridge fault
+|OTBN |`[2:1]` |OR into Crypto alert |none |STATUS bit; OR into Peripheral register-bridge fault
+|AES |`[4:3]` recoverable, fatal |OR into Crypto alert |none |STATUS bit; OR into Peripheral register-bridge fault
+|KMAC |`[6:5]` |OR into Crypto alert |dedicated PIC |STATUS bit; OR into Peripheral register-bridge fault
+|CSRNG |`[8:7]` |OR into Crypto alert |dedicated PIC |STATUS bit; OR into Peripheral register-bridge fault
+|EDN |`[10:9]` |OR into Crypto alert |dedicated PIC |STATUS bit; OR into Peripheral register-bridge fault
+|Adams Bridge |none |— |dedicated PIC |no TL-UL bridge
+|Entropy source |none |— |dedicated PIC |native AXI-Lite; no `axi_lite_to_tlul`
 |===
-
-Adams Bridge has no OpenTitan alert channel; it reports by interrupt. The
-entropy source reports by interrupt, not an OpenTitan alert. Both are in
-<<sep-cpu-interrupt-vector-map>>.
-
-Each receiver produces an alert pulse and an integrity-fail. Those bits from
-every receiver combine onto `crypto_alert_o`, the Crypto alert source in
-<<sep-cpu-interrupt-vector-map>>.
 
 [[sep-crypto-bridge-faults]]
-==== Register-Bridge Faults
-
-HMAC, AES, KMAC, OTBN, CSRNG, and EDN convert isolated AXI4-Lite to TL-UL
-through `axi_lite_to_tlul`. That bridge's `err_o` is a sticky fault, held until
-the matching per-block clear, and is the wrapper's `bus_err_o`. Firmware
-identifies the block in `PERIPH_BUS_ERR_STATUS` and acknowledges it with
-`PERIPH_BUS_ERR_CLEAR`. The combined interrupt is Peripheral register-bridge
-fault in <<sep-cpu-interrupt-vector-map>>; clears are per-block so acknowledging
-one cannot discard another. Adams Bridge has no TL-UL bridge.
+The Crypto alert source is the OR of every receiver pulse and integrity-fail, so
+that interrupt does not name the block. Native error IRQs are not OR'd. HMAC,
+AES, KMAC, OTBN, CSRNG, and EDN convert isolated AXI4-Lite to TL-UL through
+`axi_lite_to_tlul`; each bridge's sticky `err_o` is that wrapper's `bus_err_o`,
+visible as one bit in `PERIPH_BUS_ERR_STATUS` and cleared with the matching
+`PERIPH_BUS_ERR_CLEAR` bit. The Peripheral register-bridge fault source is the OR
+of those bits and the watchdog timer's bridge fault. Acknowledging one STATUS
+bit cannot discard another.
 
 The crypto complex uses whole-instance Class 2 scan boundaries so all
 sequential key, round-key, digest-working, seed, and random-distribution state
