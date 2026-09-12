@@ -179,7 +179,7 @@ class sep_backup_manifest_fail_base(sep_base_test):
         self.check_efuse(image)
         self.write_efuse_image(image)
         self.logger.info(
-            "CHK-STIMULUS-EFUSE: LC raw=0x%x, BL1_VERSION=0x%x, PUBK_REVOKE=0x%x",
+            "CHK-STIMULUS-EFUSE PASS: LC raw=0x%x, BL1_VERSION=0x%x, PUBK_REVOKE=0x%x",
             lc,
             image.field_int("BL1_VERSION"),
             image.field_int("CHIPLET_PUBK_REVOKE"),

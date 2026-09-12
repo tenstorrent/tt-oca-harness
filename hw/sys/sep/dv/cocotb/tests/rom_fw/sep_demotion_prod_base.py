@@ -383,7 +383,7 @@ class sep_demotion_prod_base(_demotion_prod_mixin, sep_demotion_decision_base):
         # boot, so a stale hash would reject the primary before the [S25] block.
         mm.verify_layout(buf, "primary")
         self.logger.info(
-            "CHK-STIMULUS-DEMOTION: outcome %s -- primary demotion_control=0x%04x "
+            "CHK-STIMULUS-DEMOTION PASS: outcome %s -- primary demotion_control=0x%04x "
             "(BL1_VALID=%d BL1_ENABLE=%d BL2 request=%d), secure_boot_control=0 "
             "(enforcement not requested), signature_type=%d (NO_SIGNATURE), chiplet "
             "lifecycle_states=0x%08x, manifest hash valid. This slot can only boot "

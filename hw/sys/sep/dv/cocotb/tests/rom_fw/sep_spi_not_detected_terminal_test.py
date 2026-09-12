@@ -115,7 +115,7 @@ class sep_spi_not_detected_terminal_test(sep_base_test):
                 f"{slot} slot is not fully erased after erase_slot()"
             )
         self.logger.info(
-            "CHK-STIMULUS-SPI: both slots erased to 0x%02x -- primary "
+            "CHK-STIMULUS-SPI PASS: both slots erased to 0x%02x -- primary "
             "0x%06x..0x%06x, backup 0x%06x..0x%06x",
             mm.ERASED_BYTE,
             spans["primary"][0],

@@ -195,7 +195,7 @@ class _primary_revoked_slot_mixin:
         )
         self._assert_outcome_shape(buf)
         self.logger.info(
-            "CHK-STIMULUS-REVOKED-SLOT: primary public_key_sel=0x%04x (ROM key slot "
+            "CHK-STIMULUS-REVOKED-SLOT PASS: primary public_key_sel=0x%04x (ROM key slot "
             "%d, revoked by CHIPLET_PUBK_REVOKE bit %d); primary manifest %s, and "
             "fully sealed either way -- authorized, valid, and refused only by the fuse",
             got,

@@ -187,7 +187,7 @@ class _chiplet_key_mixin:
             f"slots selecting the same fused key"
         )
         self.logger.info(
-            "CHK-STIMULUS-FUSED-KEY: both slots public_key_sel=0x%04x "
+            "CHK-STIMULUS-FUSED-KEY PASS: both slots public_key_sel=0x%04x "
             "(PUBK_SEL_FUSE_KEY_%d, index 0), re-signed with dev0 and re-verified "
             "sealed; the digest the ROM will compare against is CHIPLET_PUBK_HASH%d",
             p_sel,
