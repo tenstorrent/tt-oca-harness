@@ -1,0 +1,15 @@
+{
+  "date": "2026-09-12",
+  "regress_run_id": "34710181048",
+  "status": "FAIL",
+  "leaves": {
+    "total": 0,
+    "pass": 0
+  },
+  "failures": {
+    "infra": 0,
+    "design": 0,
+    "unknown": 0
+  },
+  "flaky_tests": []
+}
