@@ -94,7 +94,7 @@
  * 4000 iterations is ~1.8-4.6 ms: 2-5x that worst case, and it expires well
  * inside the testbench's 20 ms completion bound
  * (tb_wrap_cocotb/tests/smc_i2c_fifo_full.py:97), so the diagnostics behind
- * these bounds are reachable instead of being pre-empted by the harness.
+ * these bounds are reachable instead of being preempted by the harness.
  *
  * I2C_TIMEOUT_DEFAULT is deliberately not used here: it is 200000 iterations
  * (~90-230 ms), an order of magnitude past the harness bound, so a failure
