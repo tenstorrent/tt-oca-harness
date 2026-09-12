@@ -45,7 +45,7 @@ static void run_validate_boot_rejection_test(test_context_t *ctx) {
         return;
     }
 
-    // TODO: Define this error code once OCCP spec is finalized
+    // TODO: confirm this expected last-error code against the OCCP spec
     ctx->exp_occp_last_error = 0x5;
     int exp_interface_status = 0x1;
     int exp_boot_status = 0x5;

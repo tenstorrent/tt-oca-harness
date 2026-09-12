@@ -245,11 +245,8 @@ int main(void) {
         // Each of the 8 byte-writes to the undefined offset SLVERRs, pulsing
         // log_write_err during the burst. INTR_STATUS.LOG_WRITE_ERR follows
         // .next and is not sticky once the burst completes, so polling status
-        // races with the fast burst. Instead,
-        // poll LOG_CTRL hwclr, which reliably indicates the write completed —
-        // the SLVERR write FSM still advances on each resp and asserts
-        // log_write_done. (If status happens to still read set, fine; if not,
-        // the cond bin was covered anyway.)
+        // races with the fast burst. Poll LOG_CTRL hwclr instead: the write FSM
+        // advances on each SLVERR response and asserts log_write_done.
         if (wait_log_done(LE_LOG_CTRL0_OFF, 200000u) != 0) {
             info_msg_s(0, "FAIL: scenario C: write did not complete");
             test_fail(0);

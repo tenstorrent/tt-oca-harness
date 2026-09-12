@@ -29,6 +29,7 @@ from .compat import UTC
 from .config import (
     CANONICAL_STAGES,
     OverlayFrameworkMismatch,
+    activate_adopter_overlay_env,
     as_str_list,
     cocotb_cfg,
     coverage_cfg,
@@ -231,7 +232,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         metavar="PATH",
         help=(
             "Adopter overlay config applied append-only on top of the merged DUT view "
-            "(extra build sources/incdirs/source_lists, target defines/flags, [sim].args); "
+            "(extra build sources/incdirs/source_lists, target defines/flags, [sim].args, "
+            "[env]); "
             "also read from OCAH_DV_OVERLAY, never auto-activated"
         ),
     )
@@ -2383,6 +2385,9 @@ def run_flow(
     args: argparse.Namespace,
 ) -> int:
     reset_stage_cancellation()
+    # Before the tool probes and the first stage, so every subprocess environment, env
+    # snapshot, and in-process tool runner inherits the overlay's [env].
+    overlay_env = activate_adopter_overlay_env(flow.raw)
     replay_run_dir, existing_result = _existing_run_result(root, flow, args)
     tool = selected_tool(flow, args, simulators)
     executor = selected_executor(flow, args)
@@ -2526,6 +2531,11 @@ def run_flow(
 
     console = Console(args.ui, quiet=args.quiet, verbose=args.verbose)
     args._ui_console = console
+    if overlay_env:
+        console.event(
+            "config",
+            "overlay_env=" + " ".join(f"{name}={value}" for name, value in overlay_env.items()),
+        )
     args._ui_leaf_mode = "compact" if scheduler else "full"
     skipped_unimplemented = list(getattr(args, "_skipped_unimplemented", []) or [])
     if skipped_unimplemented:

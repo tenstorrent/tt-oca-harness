@@ -12,10 +12,9 @@
 //     (verified indirectly: re-enabling and re-triggering with a small length
 //     completes cleanly without prior leftovers corrupting it).
 //
-// Per RDL the engine's "CTRL.EN=0 resets all FSMs, flops, and FIFOs" — exact
-// behavior of LOG_CTRL[i] under EN=0 is documented as a designer question
-// (DS-008/Q-001). This test captures the LOG_CTRL[0] value at multiple points
-// for later inspection but does not pin its expected value.
+// Per RDL the engine's "CTRL.EN=0 resets all FSMs, flops, and FIFOs"; the value
+// LOG_CTRL[i] reads under EN=0 is not specified, so this test logs LOG_CTRL[0]
+// at several points and does not pin its expected value.
 
 #include <stdint.h>
 
@@ -55,9 +54,6 @@
 
 #define LOG_BUFFER_BASE (SMC_TOP_SPM_MEMORY_BASE_ADDR + 0x40000u) // SRAM scratch area
 #define LOG_REGION_SIZE 0x100u // 256 bytes (slot 0 covers 256/16 = 16 bytes)
-#define LONG_XFER_LEN \
-    0x200u // intentionally larger than slot 0 — will fault?
-           // Use a smaller value for sanity; pick 16 = slot 0 size.
 
 int main(void) {
     info_msg_s(0, "smc_uart_log_engine_disable_during_xfer_test start");
@@ -129,12 +125,10 @@ int main(void) {
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
     write_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF, 16u);
 
-    // Poll LOG_CTRL[0] for hwclr (timeout ~200000 polls)
+    // Poll LOG_CTRL[0] for hwclr (bounded)
     {
-        /* Measured ~4 us per register read in this TB, so 200000 polls is
-         * ~800 ms of sim -- the harness timeout always fired first and this
-         * test_fail() could never be reached. 200 polls (~0.8 ms) is still
-         * far more than a 16-byte entry needs, and it fits the budget. */
+        /* Poll bound: a 16-byte entry completes in far fewer than 200 register
+         * reads, and the bound must expire before the harness timeout. */
         uint32_t timeout = 200u;
         while (timeout > 0u && (read_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF) & 0xFFFFu) != 0u) {
             timeout--;
@@ -231,9 +225,8 @@ int main(void) {
     {
         uint32_t s = read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & 0x11u;
         info_msg_hex32_s(0, "scenario C INTR_STATUS=", s);
-        // No assertion: spec says disable cleanly halts; status MAY or MAY NOT
-        // be 0 depending on whether an in-flight beat raised an error first.
-        // Just record for waveform inspection.
+        // INTR_STATUS after an abort in WAIT is not pinned: an in-flight beat
+        // may or may not have raised an error before the disable took effect.
     }
 
     for (volatile int i = 0; i < 1000; i++) { /* settle */
@@ -243,10 +236,9 @@ int main(void) {
     }
 
     //--------------------------------------------------------------------------
-    // SCENARIO D: alternate replica wrap (UART_LOG_ENGINE_WRAP_1) — covers
-    // the gen_uart_log_engine_wraps[1] replica's FSM (which the single-replica
-    // existing test never reached). This drives stimulus into the [1] slot's
-    // log_fetch_fsm IDLE → REQ → ... → IDLE path.
+    // SCENARIO D: alternate replica wrap (UART_LOG_ENGINE_WRAP_1) — drives the
+    // gen_uart_log_engine_wraps[1] replica's log_fetch_fsm IDLE → REQ → ... →
+    // IDLE path.
     //--------------------------------------------------------------------------
     info_msg_s(0, "scenario D: drive replica[1] log_engine");
 
@@ -273,10 +265,8 @@ int main(void) {
 
     // Let replica[1] complete naturally
     {
-        /* Measured ~4 us per register read in this TB, so 200000 polls is
-         * ~800 ms of sim -- the harness timeout always fired first and this
-         * test_fail() could never be reached. 200 polls (~0.8 ms) is still
-         * far more than a 16-byte entry needs, and it fits the budget. */
+        /* Poll bound: a 16-byte entry completes in far fewer than 200 register
+         * reads, and the bound must expire before the harness timeout. */
         uint32_t timeout = 200u;
         while (timeout > 0u && (read_reg(WRAP1_LE_BASE + WRAP1_LE_LOG_CTRL0) & 0xFFFFu) != 0u) {
             timeout--;

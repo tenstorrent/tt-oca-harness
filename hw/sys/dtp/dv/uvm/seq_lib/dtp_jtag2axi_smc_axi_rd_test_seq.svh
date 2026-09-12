@@ -20,7 +20,7 @@
 //                                    the observation path is alive
 //   read_security_gating_no_axi_activity  same must-not-happen property,
 //                                    banner-scoped to the no-activity window
-//                                    (kept as a distinct VPLAN scenario)
+//                                    (VPLAN 3.6a)
 //
 // Series read-data pipeline: a SERIES_DATA shift in READ mode launches the
 // bus read for the programmed address and RETURNS THE PREVIOUS shift's data,

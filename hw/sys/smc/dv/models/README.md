@@ -15,7 +15,7 @@ On `--dut smc`, I3C DAT/DCT and DTP CSR boundaries are **not**
 TB-terminated (no placeholder mem/err_slv). DTP CSR idle is smc_wrapper-only:
 SMU wires DTP internally.
 
-CPU ROM/scratch/L1$ live in `hw/top/smc_cpu_mem_integration.sv` (smc_wrapper,
+CPU ROM/scratch/L1$ live in `hw/top/smc_ip_integration.sv` (smc_wrapper,
 smu_wrapper TB, and bare SMU TB).
 
 Bender consumes only `regs/gen/sv/*_addrmap_pkg.sv` from the PeakRDL tree.

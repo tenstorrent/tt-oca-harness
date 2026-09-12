@@ -129,7 +129,7 @@ static int test_rx_fifo_threshold(uint32_t idx, uint32_t threshold_n) {
         simputs("  Target is already idle (ready to accept transactions)\n");
     } else {
         // Wait for target to become idle with timeout
-        uint32_t idle_timeout = 0x100000; // Reduced timeout (16M cycles)
+        uint32_t idle_timeout = 0x100000; // idle-wait bound, in poll iterations
         uint32_t idle_count = 0;
         bool target_idle = false;
 
@@ -148,7 +148,7 @@ static int test_rx_fifo_threshold(uint32_t idx, uint32_t threshold_n) {
                 ;
 
             idle_count++;
-            // More frequent status output for debugging (every 10000 cycles)
+            // Periodic status output every 10000 polls
             if ((idle_count % 10000) == 0) {
                 simputs("  [Waiting] Target idle=");
                 simputshex32("", status_check.f.TARGETIDLE ? 1 : 0);
@@ -427,13 +427,6 @@ static int test_tx_fifo_threshold(uint32_t idx, uint32_t threshold_m) {
     simputshex32("", initial_intr_state.f.TX_THRESHOLD ? 1 : 0);
     simputs("\n");
 
-    // Step 1: Write M-1 bytes where M-1 >= threshold (should NOT trigger interrupt)
-    // For threshold = 5, write 4 bytes (4 < 5, so interrupt should be triggered)
-    // Actually, we need to write enough bytes so that level >= threshold to NOT trigger interrupt
-    // Then write one more byte that makes level still >= threshold, verify no interrupt
-    // Then wait for FIFO to be consumed below threshold to trigger interrupt
-
-    // Better approach: Write bytes incrementally and check interrupt state
     simputs("  Step 1: Writing bytes incrementally to test threshold behavior\n");
 
     uint8_t test_data[32];
@@ -577,8 +570,6 @@ static int test_tx_fifo_threshold(uint32_t idx, uint32_t threshold_m) {
 
 int main(void) {
     int ret;
-
-    // System initialization
 
     simputs("\n");
     simputs("################################################\n");

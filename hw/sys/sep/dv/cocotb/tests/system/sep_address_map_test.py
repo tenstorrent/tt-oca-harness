@@ -147,6 +147,11 @@ class sep_address_map_test(sep_base_test):
         named = CPU_CTRL_INTERIOR_HOLES[1]
         wr = await self._access(SepAxiOp.WRITE, named, wdata=0xFFFF_FFFF)
         assert not wr.timed_out, f"CHK-CPU-CTRL-HOLE FAIL: write 0x{named:08x} timed out"
+        assert wr.resp_code == RESP_OKAY, (
+            f"CHK-CPU-CTRL-HOLE FAIL: write 0x{named:08x} resp={wr.resp_code}, "
+            "expected OKAY -- memory_map.adoc says a unit accepts an offset "
+            "inside its extent that owns no register"
+        )
         sw_after = (await self._access(SepAxiOp.READ, sw_addr)).rdata & MASK32
         assert sw_after == probe, (
             f"CHK-CPU-CTRL-HOLE FAIL: write 0x{named:08x} changed SEP_SW_DEBUG "
@@ -155,7 +160,8 @@ class sep_address_map_test(sep_base_test):
         await self._access(SepAxiOp.WRITE, sw_addr, wdata=sw_restore)
 
         self.logger.info(
-            "CHK-CPU-CTRL-HOLE PASS: %d hole word(s) read OKAY with zero and none "
-            "aliases SEP_SW_DEBUG (control write proved it writable)",
+            "CHK-CPU-CTRL-HOLE PASS: %d hole word(s) read OKAY with zero, "
+            "the hole write retired OKAY, and none aliases SEP_SW_DEBUG "
+            "(control write proved it writable)",
             hole_ok,
         )

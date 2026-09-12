@@ -22,14 +22,13 @@ schema_version = 1
 # RISC-V toolchain. The per-PR gate is `smoke`; nightly and weekly schedule
 # `hosted` (`all` minus this pair and the three SMC_DUAL leaves).
 #
-# In the `all` group. Measured on Verilator 5.050: the pass magic 0xACAFACA1
-# appears in CPU_CTRL SCRATCH_0, with 612 scratch reads and 8 scratch writes,
-# and the image lands in scratch banks 0-3 only -- which is what the decode in
+# In the `all` group. The pass magic 0xACAFACA1 lands in CPU_CTRL SCRATCH_0 and
+# the image occupies scratch banks 0-3 only -- what the decode in
 # smc_scratch_map_pkg predicts for a 9 KB image, since the other 28 banks serve
-# addresses at least 128 KB up. That bank distribution is worth checking in the
-# log when this test fails: an image spread across all 32 banks means the
-# loader's decode disagrees with the cluster's, and the CPU is fetching from
-# somewhere the image was never written.
+# addresses at least 128 KB up. Check that bank distribution in the log when
+# this test fails: an image spread across all 32 banks means the loader's
+# decode disagrees with the cluster's, and the CPU is fetching from somewhere
+# the image was never written.
 
 [[tests]]
 # The cheapest end-to-end proof that the firmware path works at all:
@@ -40,8 +39,7 @@ schema_version = 1
 #
 # +smc_hold_cpu_boot holds boot_stall from t=0 so the sequence programs
 # RESET_VECTOR before any core fetches. Real fuse sense: no +skip_fuse_sense,
-# which dv_policy 1.6 names as the testbench supplying state the DUT should
-# have produced.
+# which would have the testbench supply state the DUT should have produced.
 name = "smc_fw_hello_world_test"
 module = "smc_fw_hello_world_test"
 seed = 1

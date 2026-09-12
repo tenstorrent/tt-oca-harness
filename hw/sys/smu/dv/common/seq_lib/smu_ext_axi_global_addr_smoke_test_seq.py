@@ -7,7 +7,7 @@ SEP=0 honest scope (no sep_in / no Force):
       write_local(J2A)→read_global(s_axi) and write_global→read_local on SPM.
   S2  Move GLOBAL_BASE; prove offset preservation on the same SPM offset.
 
-Commercial used sep_in (local) + ext_in (global); OSS uses J2A + s_axi.
+Local-side traffic goes over J2A and global-side traffic over s_axi.
 """
 
 from __future__ import annotations

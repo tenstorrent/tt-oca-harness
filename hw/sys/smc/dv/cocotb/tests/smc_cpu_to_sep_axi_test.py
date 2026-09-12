@@ -40,8 +40,8 @@ class smc_cpu_to_sep_axi_test(smc_base_test):
             # that tolerate a no-response (`csr_read_bounded` /
             # `csr_short_timeout`, seq_lib/smc_csr_seq_utils.py); this sequence
             # calls neither, so `seq.timeouts` is structurally 0 and reporting it
-            # as "measured" advertised a timeout statistic that was never taken
-            # ([NO-DUMMY-DEAD-CODE]). Every access here IS
+            # as "measured" would advertise a timeout statistic that is never
+            # taken ([NO-DUMMY-DEAD-CODE]). Every access here IS
             # bounded -- `csr_read`/`csr_write` leave `allow_timeout` False, and
             # the driver applies `cfg.axi_timeout_ns` and raises on expiry, so
             # [TIMEOUT-MUST-FAIL] is satisfied by the driver, not by this field.

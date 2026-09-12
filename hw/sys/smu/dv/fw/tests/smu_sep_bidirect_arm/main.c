@@ -5,8 +5,8 @@
 // (hw/sys/sep/dv/fw/tests/sep_smu_bidirect). That image drives the SEP half;
 // without this one it stalls at its first wait and reports -100.
 //
-// Protocol, as defined by the SEP-side firmware (patterns and addresses are
-// copied from it, not invented here):
+// Protocol, as defined by the SEP-side firmware; the patterns and addresses
+// below must match it:
 //
 //   SEP   programs its SMU xbar aperture to [0, 0x2000_0000) so SMC->SEP writes
 //         reach SEP cold scratch, opens its outbound/inbound filter windows,

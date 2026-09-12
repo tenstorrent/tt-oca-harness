@@ -95,9 +95,9 @@ async def smc_occp_sanity_test(_dut) -> None:
 
     # Target first: the controller's initialize_interface() spins on the
     # target-ready pad forever, so releasing the target first is what lets the
-    # controller past its own bring-up. No staging window is needed here --
-    # unlike the boot test, nothing has to be written into the controller's
-    # SRAM before it runs.
+    # controller past its own bring-up. Nothing has to be written into the
+    # controller's SRAM before it runs, so the controller follows immediately
+    # (the boot test stages a payload first).
     await harness.release_cpu(dut_csr, "dut", CPU_RESET_VECTOR_ROM)
     await harness.release_cpu(bfm_csr, "bfm", CPU_RESET_VECTOR_ROM)
 

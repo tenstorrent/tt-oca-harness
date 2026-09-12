@@ -34,7 +34,6 @@ void beu_interrupt_handler(int id, void *priv_data) {
         write_scratch(0, dcache_doublebit_done); // to sync with coco_tb
         serviced_double_bit_interrupt = true;
     } else if (cause == METAL_BUSERROR_EVENT_LOAD_STORE_ERROR) {
-        // write correct value to memory and write to scratch to indicate interrupt done
         write_scratch(0, sram_int_done); // to sync with coco_tb
         serviced_sram_error = true;
     } else {
@@ -76,10 +75,10 @@ static int calculate_parity_u64(uint64_t n) {
  * for 64-bit data words (SiFive E2/E3 Core Complex Manual — ECC / Bus Error
  * Unit data encoding; open-source rocket-chip util/ECC Hsiao construction).
  * Rows are the published H-matrix over data[63:0]; overall parity is XOR of
- * all data bits and check bits cb0..cb6. Independent of DUT RTL net names.
+ * all data bits and check bits cb0..cb6.
  *
- * Approved fixed-vector KAT (data -> ECC byte) below is computed from this
- * matrix definition (not from RTL dumps) and spot-checks the encoder.
+ * The fixed-vector KAT (data -> ECC byte) below is computed from this matrix
+ * definition and spot-checks the encoder.
  */
 static const uint64_t ECC64_HSIAO_H_ROW[7] = {
     0xAB55555556AAAD5BULL, /* cb0 — H-matrix row 0 */
@@ -128,7 +127,7 @@ uint8_t generate_ecc_bits_for_64bit_data(uint64_t data_input) {
     ecc_output |= (check_bits[1] & 1) << 1; // Bit 65
     ecc_output |= (check_bits[0] & 1) << 0; // Bit 64 (LSB of ECC byte)
 
-    // One-shot KAT self-check against the approved fixed-vector table
+    // One-shot KAT self-check against the fixed-vector table
     if (!kat_checked) {
         kat_checked = 1;
         for (unsigned k = 0; k < sizeof(ECC64_KAT) / sizeof(ECC64_KAT[0]); k++) {

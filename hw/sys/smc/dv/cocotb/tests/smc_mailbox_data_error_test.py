@@ -32,13 +32,12 @@ class smc_mailbox_data_error_test(smc_base_test):
             min_csr_accesses=22,
             csr_accesses=seq.accesses,
             proxy=False,
-            # Narrowed: the IRQ leg observes the aggregate
-            # `tb_mailbox_irq_any` (an OR of peripheral_interrupts[7:0],
-            # tb_top.sv:1363), so it proves assert/clear on the aggregate, not
-            # that mask 0x2 is the source that raised it ([MERGED-EVIDENCE];
-            # per-source decode needs a per-bit probe in
-            # seq_lib/smc_mailbox_vip_utils.py, shared with
-            # smc_mailbox_irq_test / smc_mailbox_event_irq_test).
+            # The IRQ leg observes the aggregate `tb_mailbox_irq_any` (an OR of
+            # peripheral_interrupts[7:0] in tb_top.sv), so it proves assert/clear
+            # on the aggregate, not that mask 0x2 is the source that raised it
+            # ([MERGED-EVIDENCE]): seq_lib/smc_mailbox_vip_utils.py, shared with
+            # smc_mailbox_irq_test / smc_mailbox_event_irq_test, has no per-bit
+            # probe.
             details=(
                 "Mailbox FIFO data flow (outbound->inbound and inbound->"
                 "outbound payloads compared) and illegal-access SLVERR "

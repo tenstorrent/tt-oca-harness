@@ -30,14 +30,12 @@ uint16_t pll_init(bool bl0_pll_clk_strap) {
     const uint32_t smc_base = sep_get_smc_base();
     simputshex32("SMC_BASE=", smc_base);
 
-    // smu_pll_sysclk is an 11-bit field holding the configured sysclk frequency in
-    // MHz. It lives inside the SEP_SPI_CTRL_FIELD_EN fuse word -- that register is
-    // simply where the RDL places the field, not a separate enable. Sensing
-    // completed in [S08]. Zero means the fuses are blank; fall back to refclk.
-    uint32_t spi_ctrl = mmio_read32(OCH_SEP_TOP_SEP_EFUSE_MAP_SEP_SPI_CTRL_FIELD_EN_BASE_ADDR);
+    // Read sysclk frequency: 11-bit fuse field indicates configured sysclk PLL frequency in MHz.
+    // If 0 (fuses blank), fall back to REF_CLK.
+    uint32_t sysclk_fuse = mmio_read32(OCH_SEP_TOP_SEP_EFUSE_MAP_SYSCLK_FREQ_MHZ_BASE_ADDR);
     uint16_t pll_freq_mhz =
-        (uint16_t)((spi_ctrl & SEP_EFUSE_MAP__SEP_SPI_CTRL_FIELD_EN__SMU_PLL_SYSCLK_bm) >>
-                   SEP_EFUSE_MAP__SEP_SPI_CTRL_FIELD_EN__SMU_PLL_SYSCLK_bp);
+        (uint16_t)((sysclk_fuse & SEP_EFUSE_MAP__SYSCLK_FREQ_MHZ__SYSCLK_FREQ_MHZ_bm) >>
+                   SEP_EFUSE_MAP__SYSCLK_FREQ_MHZ__SYSCLK_FREQ_MHZ_bp);
     if (pll_freq_mhz == 0u) {
         report_status(STATUS_TYPE_WARN, SEP_MSG_PLL_FUSES_BLANK);
         simputs("PLL_FUSES_BLANK\n");

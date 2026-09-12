@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
-// dtp_sanity_test — VPLAN 0.1 (`--items dtp_sanity_test`): runs
+// dtp_sanity_test — VPLAN 0.1: runs
 // dtp_sanity_test_seq on the shared ocah_jtag_vip agent's sequencer, then
 // asserts full FSM state/edge closure via the env checker (this scenario's
 // closure obligation — the per-cycle legality check is always on). Also

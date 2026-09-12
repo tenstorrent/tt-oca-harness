@@ -109,7 +109,6 @@ int main(void) {
     return 0;
 }
 
-/* secondary_main is intentionally not defined here.
- * The weak default in crt0.S routes the boot hart to main() and
- * spins non-boot harts, preventing multi-core write races on the
- * shared scratch registers used by the test protocol. */
+/* secondary_main is not defined here: the weak default in crt0.S routes the
+ * boot hart to main() and spins non-boot harts, so no second core can write
+ * the shared scratch registers used by the test protocol. */

@@ -97,22 +97,21 @@ typedef union {
 
 // addrmap - el2_pic
 typedef struct __attribute__ ((__packed__)) {
-    uint8_t RESERVED_0_3[0x4];
-    el2_pic__MEIPL_t meipl[32];
-    uint8_t RESERVED_84_fff[0xf7c];
-    el2_pic__MEIP_t meip[2];
-    uint8_t RESERVED_1008_2003[0xffc];
-    el2_pic__MEIE_t meie[32];
-    uint8_t RESERVED_2084_2fff[0xf7c];
+    el2_pic__MEIPL_t meipl[256];
+    uint8_t RESERVED_400_fff[0xc00];
+    el2_pic__MEIP_t meip[8];
+    uint8_t RESERVED_1020_1fff[0xfe0];
+    el2_pic__MEIE_t meie[256];
+    uint8_t RESERVED_2400_2fff[0xc00];
     el2_pic__MPICCFG_t mpiccfg;
-    uint8_t RESERVED_3004_4003[0x1000];
-    el2_pic__MEIGWCTRL_t meigwctrl[32];
-    uint8_t RESERVED_4084_5003[0xf80];
-    el2_pic__MEIGWCLR_t meigwclr[32];
+    uint8_t RESERVED_3004_3fff[0xffc];
+    el2_pic__MEIGWCTRL_t meigwctrl[256];
+    uint8_t RESERVED_4400_4fff[0xc00];
+    el2_pic__MEIGWCLR_t meigwclr[256];
 } el2_pic_t;
 
 
-static_assert(sizeof(el2_pic_t) == 0x5084, "Packing error");
+static_assert(sizeof(el2_pic_t) == 0x5400, "Packing error");
 
 #ifdef __cplusplus
 }

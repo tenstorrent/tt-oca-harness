@@ -16,8 +16,6 @@ from ocah_lib import OcahKnobs
 
 from .dtp_base_test_seq import dtp_base_test_seq
 
-# Pin map for the passive scan monitor (shared by every family-checked test).
-
 
 class dtp_jtag_base_test_seq(dtp_base_test_seq):
     """Helpers for TAP FSM navigation, scan loopback, and BYPASS checks."""

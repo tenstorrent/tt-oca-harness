@@ -4,10 +4,10 @@
 
 SEP=0 honest scope (no sep_in / no Force / no ext_out peer):
   S1  J2A program then readback on instances 0/1/8/15 (DECODE independence)
-  S2  not covered: identical_struct_in_vs_out needs ext_out (SF-239)
-  S3  not covered: outbound pairwise isolation needs ext_out (SF-239)
+  S2  not covered: identical_struct_in_vs_out needs an ext_out peer
+  S3  not covered: outbound pairwise isolation needs an ext_out peer
 
-Distinct signature ranges stand in for the commercial SPM/global egress windows;
+Distinct signature ranges stand in for the SPM/global egress windows;
 S1 proves CSR addressing/aliasing only, not egress traffic.
 """
 
@@ -61,13 +61,13 @@ S1_SIGNATURES = {
 
 DEFERRED_S2_TEXT = (
     "SMCF-FILTER-OUT-INSTANCES.S2 (identical_struct_in_vs_out) "
-    "NOT-REACHABLE-AT-THIS-LEVEL (SF-239). identical_struct_in_vs_out LIVE "
+    "NOT-REACHABLE-AT-THIS-LEVEL. identical_struct_in_vs_out LIVE "
     "requires ext_out consumer — do not invent DECODE substitute under SEP=0."
 )
 
 DEFERRED_S3_TEXT = (
     "SMCF-FILTER-OUT-INSTANCES.S3 (outbound_instance_isolation_pairwise) "
-    "NOT-REACHABLE-AT-THIS-LEVEL (SF-239). outbound_instance_isolation_pairwise "
+    "NOT-REACHABLE-AT-THIS-LEVEL. outbound_instance_isolation_pairwise "
     "LIVE requires ext_out beats under SEP=0."
 )
 
@@ -86,7 +86,7 @@ def _pack_cfg(*, allow_ns: bool, src_id: int) -> int:
 
 
 class smu_axi_filter_out_instance_matrix_test_seq:
-    """Outbound filter instance matrix S1 LIVE; S2/S3 deferred notes."""
+    """Outbound filter instance matrix S1; S2/S3 logged as needing an ext_out peer."""
 
     def __init__(self, test) -> None:
         self.test = test
@@ -203,7 +203,7 @@ class smu_axi_filter_out_instance_matrix_test_seq:
         )
         sb.expect_eq("CHK-FILTER-OUT-INSTANCES-S1", True, True)
 
-        # S2/S3 are explicit deferrals (need ext_out) — log only; no always-true CHK.
+        # S2/S3 need an ext_out peer: log the not-reachable notes without a CHK token.
         self._log(f"DEFERRED-NOTE(S2): {DEFERRED_S2_TEXT}")
         self.s2_deferred = True
         self._log(f"DEFERRED-NOTE(S3): {DEFERRED_S3_TEXT}")

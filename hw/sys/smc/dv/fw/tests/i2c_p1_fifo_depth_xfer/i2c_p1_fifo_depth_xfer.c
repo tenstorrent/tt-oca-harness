@@ -13,8 +13,7 @@
  * this suite moves 1 to 5 bytes -- with the controller pushing while the target
  * drains, then compares length and every byte.
  *
- * No DMA is involved: the body below records that the DMA-driven form of this
- * transfer cannot work on this interface, so the payload is moved by the CPU.
+ * No DMA is involved; the CPU moves the payload through the FMT FIFO.
  *
  * Test Objective:
  * - Verify I2C can perform a full-FIFO-depth data transfer
@@ -24,9 +23,6 @@
  * Expected Result:
  * - The transfer completes and every byte matches
  * - I2C protocol compliance throughout transfer
- *
- * Note: This is a simplified test focusing on large data transfer capability.
- * Full DMA integration testing requires additional DMA controller setup.
  *
  * =============================================================================
  */
@@ -130,7 +126,7 @@ int main(void) {
     write_scratch(1, 0x00000040);
     simputs("Step 4: Large Data Transfer (DMA-like)\n");
 
-    // Prepare Target for data reception - following best practices from i2c_sanity test
+    // Prepare the target for reception: flush and reset the ACQ FIFO
     simputs("  Flushing and resetting ACQ FIFO...\n");
     uint32_t target_base = i2c_get_base(TARGET_IDX);
 
@@ -171,9 +167,8 @@ int main(void) {
     }
     simputs("  Target ready for data reception\n");
 
-    // FIX: Use standard write format instead of header format
-    // Header format creates: START(1) + Length(1) + Data(64) = 66 entries > FIFO capacity(64)
-    // Standard format uses internal FMT sequence without separate length header
+    // Standard write format: the header format would need START + length + 64 data =
+    // 66 FMT entries, above the 64-entry FMT FIFO.
     simputs("  Writing 64 bytes (standard format)...\n");
 
     // DEBUG: Check status before write
@@ -190,8 +185,7 @@ int main(void) {
     simputs(status_pre.f.TARGETIDLE ? "YES" : "NO");
     simputs("\n");
 
-    // FIX: Use non-blocking write (send_stop=false) to avoid waiting for idle
-    // The test will manually wait for transaction completion instead
+    // send_stop=false returns without waiting for idle; completion is polled below.
     simputs("  [DEBUG] Calling i2c_controller_write with send_stop=false (non-blocking)...\n");
     ret = i2c_controller_write(CONTROLLER_IDX, TARGET_ADDR, write_data, LARGE_DATA_SIZE, false);
     if (ret != I2C_OK) {

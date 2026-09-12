@@ -2,24 +2,20 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[smu-coverage-policy]]
-== SMU v0.5.0 coverage targets and closure policy
+== SMU coverage targets and closure policy
 
-This chapter records the #484 decision. It approves *what* the SMU
-release group is graded on and *how* a hole is waived. It does not
-install a CI fail-on-hole gate; that is #492, after the first measured
-database exists. Project-wide collection mechanics stay on #528.
-
-Do not treat a merged copy as design-owner or DV-lead sign-off.
+This chapter defines *what* the SMU release group is graded on and *how*
+a hole is waived. It does not install a CI fail-on-hole gate; that gate
+needs a measured database first.
 
 [cols=",",options="header",]
 |===
 |Field |Value
-|Status |CANDIDATE — awaiting SMU design owner + DV lead approval
 |Release group |`--dut smu --items sep0_all` (live size in
 `SMU_RELEASE_MATRIX.adoc`)
-|Public metric |toggle (the #484 decision). Weekly `--cov` on this
-tree does not collect it — see below
-|Numeric target |none until an owner signs a measured number
+|Public metric |toggle. Weekly `--cov` on this tree does not collect it —
+see below
+|Numeric target |none; a target is set only from a measured database
 |===
 
 [[smu-cov-paths]]
@@ -31,13 +27,13 @@ tree does not collect it — see below
 |Public Verilator |line / expr / user, because wrapper
 `smu_sim_cfg.toml` `[coverage.verilator]` leaves toggle off
 (the DUT elaborates real SEP/SMC/DTP; unscoped toggle is the 0.5 GB
-case) |weekly `--cov` only when `DV_LARGE_RUNNER` is set
-(`regress.yml`). Nightly does not collect.
+case) |weekly `--cov` on the large runner (`regress.yml`). Nightly does
+not collect.
 |Intended public metric |toggle on the SMU interconnect after
-compile-time scope |#1662 turned that on for the bare bench, now
-`--dut smu_block`, over `smu_cov_scope.vlt`. The release group's
-weekly `--cov` still runs `--dut smu` and therefore still writes
-line / expr / user, not toggle.
+compile-time scope |`--dut smu_block` collects it over
+`smu_cov_scope.vlt` (`smu_block_sim_cfg.toml`). The release group's
+weekly `--cov` runs `--dut smu` and writes line / expr / user, not
+toggle.
 |Commercial |toggle / code / assertion databases under the licensed
 flow |not a public CI job; not a substitute for the public weekly
 |===
@@ -45,10 +41,8 @@ flow |not a public CI job; not a substitute for the public weekly
 The DUT is an integration shell: `smu.sv` is wiring, and Verilator
 emits no line / branch / expression sites under `hw/sys/smu/rtl/`.
 That is why the intended metric is toggle rather than the families
-today's weekly run actually writes. A Python `smu_fcov.py` sampler is
+the weekly run writes. A Python `smu_fcov.py` sampler is
 not the release metric and is not a gate.
-
-There is no checked-in 98%-after-waiver figure. Do not invent one.
 
 [[smu-cov-out]]
 === Structural OUT versus a waiver hole
@@ -57,7 +51,7 @@ Two mechanisms. Do not mix them.
 
 [cols="2,3,3",options="header",]
 |===
-|Kind |Effect |Carrier once #492 lands
+|Kind |Effect |Carrier
 |Structural OUT |the point never enters the database |`coverage_off`
 file patterns (SMC, DTP, SEP, `hw/ip`, `hw/common`, CPU cluster, TB,
 vendor trees the file pattern can reach)
@@ -74,11 +68,11 @@ ConfigError on the first run.
 [[smu-cov-waiver]]
 === Waiver fields
 
-Every `[[holes]]` row that #492 writes must carry:
+Every `[[holes]]` row must carry:
 
-* `tool`, `metric_family` (the family that database actually holds:
-line / expr / user on `--dut smu`; `toggle` on `--dut smu_block` after
-#1662), `hierarchy` or file selector
+* `tool`, `metric_family` (the family that database holds: line / expr
+/ user on `--dut smu`; `toggle` on `--dut smu_block`), `hierarchy` or
+file selector
 * `category` (`out_of_scope` / `excluded` / `waived` / `open`)
 * `disposition`
 * `owner`
@@ -86,8 +80,8 @@ line / expr / user on `--dut smu`; `toggle` on `--dut smu_block` after
 * `issue` when the disposition is actionable
 
 `max_unclassified_points = 0` is the fail-on-new-hole knob. It is not
-set here. #492 sets it after the first weekly `--cov` database exists
-and the owner signs the threshold.
+set here; it is set together with the threshold, from a measured weekly
+`--cov` database.
 
 A waiver reaches a finished run without a simulator:
 `python3 tools/dv/run_dv.py --dut smu --run-dir <run> --waive` re-grades
@@ -95,13 +89,3 @@ the run's report against this policy and rewrites its coverage grade in
 place. A dispatch of `dashboard.yml` with the weekly's regress run id does
 the same for the published weekly. Both are described on the runner and
 dashboard pages under `tools/dv/doc/`.
-
-[[smu-cov-approval]]
-=== Component approval (unsigned)
-
-[cols="2,3,2,3",options="header",]
-|===
-|Role |Name |Date |Result
-|SMU DV lead |ahsiao | |pending
-|SMU design owner | | |pending
-|===

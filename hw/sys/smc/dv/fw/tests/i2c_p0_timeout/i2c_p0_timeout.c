@@ -8,8 +8,8 @@
  * I2C_1 (controller) issues a READ while I2C_0 (target) leaves TX FIFO empty,
  * causing automatic TX clock stretch. Firmware fail-closed waits for
  * INTR_STATE.stretch_timeout on the controller, then disables both sides for
- * a clean end. Recovery/verify-write is covered by
- * smc_i2c_tx_stretch_timeout_recovery_test.
+ * a clean end. Controller recovery after the timeout is exercised by the
+ * i2c_tx_stretch_timeout_recovery firmware test.
  */
 
 #include <stdint.h>
@@ -213,7 +213,7 @@ int main(void) {
         test_fail(0);
     }
 
-    /* Release bus for a clean end (full recovery covered elsewhere) */
+    /* Release the bus for a clean end (recovery is exercised by i2c_tx_stretch_timeout_recovery) */
     write_scratch(1, 0x00000040);
     i2c_target_disable(TARGET_IDX);
     i2c_controller_disable(CONTROLLER_IDX);

@@ -22,8 +22,8 @@
 //
 // PLL/PVT/adopter-extension/GPIO-ctrl AXI-Lite macros, eFuse, I3C DAT/DCT/RLT
 // table memories and CPU ROM/scratch/L1$ macros live inside
-// smc_ip_integration. DTP CSR remains a smc_wrapper boundary port (resp idle —
-// no TB placeholder; smc_wrapper-only DTP CSR gap — SMU wires DTP internally).
+// smc_ip_integration. DTP CSR is a smc_wrapper boundary port whose response is
+// tied idle (no TB placeholder): SMU wires DTP internally, this DUT does not.
 // smc_cpu_mem_dv.sv binds into the integration for the CPU-memory DV hooks.
 //
 // Additive elaboration-alias outputs (dut_present_o / powergood_o / ...) sit
@@ -463,7 +463,7 @@ module smc_uvm_top
     smc_axil_32_32_req_t  axil_dtp_csr_req;
     smc_axil_32_32_resp_t axil_dtp_csr_resp;
 
-    // Direct smc_wrapper boundary ports (top-level outputs -- no XMR needed).
+    // Direct smc_wrapper boundary ports (top-level outputs).
     logic sync_irq;
     logic [smc_pkg::NUM_GPIO_WRAPS-1:0]    gpio_interrupt;
     logic [smc_config_pkg::NUM_UART-1:0]   uart_interrupt;
@@ -1050,7 +1050,7 @@ module smc_uvm_top
     assign tb_cluster_ded      = cpu_cluster_ded;
     assign tb_cluster_ded_seen = cpu_cluster_ded_seen_q;
 
-    // Bound-instance observability -> the cocotb pins (names unchanged).
+    // Bound-instance observability -> the cocotb pins.
     `define CPU_MEM_DV u_dut.u_smc_ip_integration.u_smc_cpu_mem_dv
     assign tb_cpu_rom_read_count      = `CPU_MEM_DV.rom_read_count_q;
     assign tb_cpu_scratch_read_count  = `CPU_MEM_DV.scratch_ram_read_count_q;
@@ -1215,8 +1215,8 @@ module smc_uvm_top
         .efuse_debug_bus_o          ()
     );
 
-    // Sense-done + sensed shadow probe (XMR into controller shadow regs, one
-    // level deeper than bare tb_top: u_dut.u_smc.u_smc_peripherals...).
+    // Sense-done pin and the sensed eFuse shadow (XMR into the controller
+    // shadow regs under u_dut.u_smc.u_smc_peripherals).
     assign tb_fuse_sense_done = smc_fuse_sense_done_o;
     // Warm domain leave-reset (post sync). Hierarchical observe for CSR waits.
     assign tb_rst_warm_smc_clk_n = u_dut.u_smc.rst_warm_smc_clk_n;
@@ -1259,11 +1259,11 @@ module smc_uvm_top
     assign tb_zeroer_busy = u_dut.u_smc.u_smc_base.zeroer_busy;
     assign tb_zeroer_bus_active = u_dut.u_smc.u_smc_base.zeroer_bus_active;
 
-    // State-corruption hooks use the established clock-reissued force/release
-    // convention above because no legal transaction can create an unused FSM
-    // encoding or make the bank model return an error. Requests and output
-    // checks stay on the real DUT paths; forcing is limited to the state flops
-    // and read-error inputs, and every force is released by its enable.
+    // State-corruption hooks force the state flops from the TB because no legal
+    // transaction can create an unused FSM encoding or make the bank model
+    // return an error. Requests and output checks stay on the real DUT paths;
+    // forcing is limited to the state flops and read-error inputs, and every
+    // force is released by its enable.
 `define SMC_ZEROER u_dut.u_smc.u_smc_base.u_smc_data_accelerator_wrap.u_zeroer
     assign tb_zeroer_state = `SMC_ZEROER.cur_state;
     assign tb_zeroer_intp = `SMC_ZEROER.zeroer_intp_o;
@@ -1356,7 +1356,7 @@ module smc_uvm_top
     assign tb_core2pad_o           = u_dut.u_smc.core2pad_o;
     assign tb_core2pad_en_o        = u_dut.u_smc.core2pad_en_o;
 
-    // Per-interface idle observability -- drives Batch B per-module sanity
+    // Per-interface idle observability -- drives the per-module sanity
     // tests. Sample all four external-macro masters from real smc ports so
     // the active pulse is visible even when a wrapper/TB wire does not track
     // the same cycle as the cocotb latch.
@@ -1454,8 +1454,8 @@ module smc_uvm_top
     // signal, so no hierarchical reference and no smc_public_scope.vlt
     // change is needed.
     //
-    // Single-instance body only: the SMC_DUAL port surface is deliberately
-    // narrower and does not carry these observables.
+    // Single-instance body only: the SMC_DUAL port surface is narrower and
+    // does not carry these observables.
     // ------------------------------------------------------------------
     smc_reset_fcov #(
         .CpuClusterCount ($bits(tb_ndmreset_request))
@@ -1667,8 +1667,6 @@ module smc_uvm_top
     // wait_for_target_up_gpio() (fw/common/occp/occp_interfaces.c), and the
     // target's production ROM drives it from set_gpio_status(OCCP_ERROR_NONE)
     // (bootrom/prod/lib/src/occp.c) on the success path of OCCP init.
-    // It uses the pad number directly rather than the SMC_STATUS_GPIO macro,
-    // which is why that macro looks unused.
     //
     // The undriven value is 0, matching the reference environment's pulldown
     // on this pad. It must NOT default high: a target that never asserts
@@ -1796,8 +1794,7 @@ module smc_uvm_top
     //      -> I3C_RECOVERY_CONTROLLER_ID 0 / I3C_CONTROLLER_ID 1 /
     //      I3C_BACKUP_CONTROLLER_ID 3)
     // Wiring only channel 0 would make the test pass or hang depending on the
-    // firmware's RNG. Forcing the choice would be weakening the test, so all
-    // three selectable channels are wired instead.
+    // firmware's RNG, so all three selectable channels are wired.
     //
     // Channel-to-pad mapping is smc_padring.sv's, not smc_rom_defs.h's:
     //   I3C[0] -> 27/28, I3C[1] -> 63/64, I3C[2] -> 29/30, I3C[3] -> 31/32.
@@ -1992,10 +1989,8 @@ module smc_uvm_top
     // The two SMC instances.
     //
     // Every constant tie-off lives once, in smc_dual_inst at the bottom of
-    // this file, instead of being repeated per instance or hidden in a
-    // multi-line macro (whose positional argument binding is both hard to read
-    // and hard to debug when it goes wrong). Only the signals that genuinely
-    // differ between the controller and the target are ports of that helper.
+    // this file. Only the signals that differ between the controller and the
+    // target are ports of that helper.
     // ------------------------------------------------------------------
     smc_dual_inst u_dut (
         .clk_smc_i            (clk_smc_i),
@@ -2216,7 +2211,7 @@ module smc_uvm_top
     // distinguish them. +bfm_rom_hex re-loads u_bfm's array afterwards so the
     // controller runs the OCCP master image while the target keeps the
     // production ROM. Sequenced at #0.3, after both the rom_ext load (#0.1) and
-    // smc_cpu_mem_integration's backdoor (#0.2), so this override always wins.
+    // smc_cpu_mem_dv's backdoor (#0.2), so this override always wins.
     // ------------------------------------------------------------------
     initial begin : bfm_rom_override
         string bfm_rom_path;
@@ -2626,8 +2621,7 @@ endmodule : smc_uvm_top
 //-----------------------------------------------------------------------------
 // One SMC instance with every constant tie-off applied.
 //
-// Exists so the dual configuration instantiates it twice instead of repeating
-// ~130 tie-off connections per instance. Each tie-off value matches the
+// The dual configuration instantiates it twice. Each tie-off value matches the
 // single-instance half of smc_uvm_top above, so a behavioural difference
 // between the two configurations cannot come from a stray default. Only the
 // ports below differ per instance.

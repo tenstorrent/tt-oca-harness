@@ -26,7 +26,7 @@
 // pulsing won't clear: status re-latches immediately. The test therefore
 // MUST disable CTRL.EN before W1C to let the source go low.
 //
-// Uses test_fail(0) directly (noreturn) instead of raise_error + end_test.
+// Failures call test_fail(0) (noreturn).
 
 #include <stdint.h>
 
@@ -115,7 +115,7 @@ int main(void) {
     }
 
     //--------------------------------------------------------------------------
-    // SCENARIO 0 (v013) — INTR_TEST self-test term, run FIRST (before any real
+    // SCENARIO 0 — INTR_TEST self-test term, run FIRST (before any real
     // fetch error). log_engine.sv:457/460:
     //   INTR_STATUS.LOG_xxx_ERR.next = (log_xxx_err || INTR_TEST.LOG_xxx_ERR) && ENABLE
     // Scenarios A-D drive the `log_xxx_err` real-error term. To cover the
@@ -165,16 +165,13 @@ int main(void) {
     }
 
     //--------------------------------------------------------------------------
-    // Clear the level interrupt. NOTE (v013, found via waveform debug):
-    // log_fetch_err (= axil_lite_from_log_fetch_fsm.mem_rsp_error_o) stays
-    // ASSERTED after the engine is disabled — the last DECERR response is held
-    // and there is no new transaction to clear it. So as long as
-    // INTR_ENABLE.LOG_FETCH_ERR=1, INTR_STATUS.next = (log_fetch_err||TEST) &&
-    // ENABLE re-latches every cycle and W1C can never stick (the old retry
-    // loop here spun forever and the test hit the cocotb watchdog). The
-    // correct way to clear a level interrupt whose source is stuck is to MASK
-    // it first (disable ENABLE → next gated to 0), then W1C. See ticket on
-    // the stuck-log_fetch_err behavior.
+    // Clear the level interrupt. log_fetch_err (= axil_lite_from_log_fetch_fsm
+    // .mem_rsp_error_o) stays ASSERTED after the engine is disabled — the last
+    // DECERR response is held and there is no new transaction to clear it. So
+    // as long as INTR_ENABLE.LOG_FETCH_ERR=1, INTR_STATUS.next =
+    // (log_fetch_err||TEST) && ENABLE re-latches every cycle and W1C cannot
+    // stick. A level interrupt whose source is stuck is cleared by MASKING it
+    // first (ENABLE=0 gates next to 0), then W1C.
     //--------------------------------------------------------------------------
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);                   // disable engine
     write_reg(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, 0u);            // mask → gate next to 0
@@ -184,13 +181,8 @@ int main(void) {
     }
 
     //--------------------------------------------------------------------------
-    // ENABLE gating: positive arm first, then the negative one.
-    //
-    // The negative check alone ("ENABLE=0 and the bit stays clear") passes
-    // identically on a DUT whose source is dead -- nothing would latch under
-    // any setting. So first prove the source is live: with ENABLE=1 the
-    // stuck log_fetch_err MUST re-latch the status bit. Only then does
-    // ENABLE=0 keeping it clear mean anything.
+    // ENABLE gating: positive arm first (ENABLE=1, the stuck log_fetch_err must
+    // re-latch the status bit), then the negative arm (ENABLE=0 keeps it clear).
     //--------------------------------------------------------------------------
     clear_intr_or_fail(WRAP0_LE_BASE, BIT_FETCH_ERR, BIT_FETCH_ERR,
                        "FAIL: could not clear before ENABLE-gating check");
@@ -214,19 +206,15 @@ int main(void) {
     }
 
     //--------------------------------------------------------------------------
-    // SCENARIO B (v004) — sustained fetch-error sequence with a larger log
+    // SCENARIO B — sustained fetch-error sequence with a larger log
     // region so the fetch FSM spends multiple cycles in WAIT before the
     // DECERR resolves. Exercises log_fetch_fsm REQ → WAIT → REQ multi-beat
     // and WAIT → IDLE error transitions.
     //--------------------------------------------------------------------------
     info_msg_s(0, "scenario B: sustained DECERR fetch on large region");
 
-    // Re-arming INTR_ENABLE and then W1C cannot stick while the source is
-    // stuck, which would let the poll below return on its first iteration
-    // reading the bit scenario A left set, whether or not the 0x1000-byte
-    // region produced a single AXI beat. Clear it the only way that works
-    // (mask, W1C, read back) and fail if it did not clear, so the poll starts
-    // from a status this code has proven to be 0.
+    // W1C cannot stick while the source is stuck and INTR_ENABLE is set, so the
+    // poll below must start from a status proven clear: mask, W1C, read back.
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
     clear_intr_or_fail(WRAP0_LE_BASE, BIT_FETCH_ERR, BIT_FETCH_ERR,
                        "FAIL: scenario B could not start from a clear status");
@@ -258,31 +246,18 @@ int main(void) {
                        "FAIL: scenario B status would not clear after abort");
 
     //--------------------------------------------------------------------------
-    // SCENARIO C (v013) — log_write FSM error path, write to BAD addr.
+    // SCENARIO C — log_write FSM error path with WRITE_ERR unmasked.
     //
-    // Goal was to land the REAL-error term of log_engine.sv:460
+    // The real-error term of log_engine.sv:460
     //   INTR_STATUS.LOG_WRITE_ERR.next = (log_write_err || INTR_TEST) && ENABLE
-    // i.e. log_write_err=1 from an actual write DECERR. (scenario 0 already
-    // covers the INTR_TEST term of that cond.)
-    //
-    // FINDING (v013): a firmware-driven good-fetch/bad-write does NOT cleanly
-    // produce log_write_err. Reads to an unmapped fabric address DECERR fine
-    // (scenarios B/D prove this on the log_FETCH master), but a WRITE to the
-    // same unmapped address via the log_WRITE master gets no write-side error
-    // response and HANGS the shared SMC fabric — the next CPU CSR access then
-    // never returns and the test hits the cocotb watchdog. Confirmed by:
-    //   - replica[2] (pristine) good-fetch + write→UNMAPPED → CPU CSR read
-    //     after the write never returns (no status dump printed, watchdog).
-    // On replica[0] this never surfaced earlier only because the FETCH errored
-    // first, so the write master was never engaged.
-    //
-    // Net: the log_write_err real-error term is NOT reachable by firmware
-    // stimulus (it needs a TB-level fabric write-error injector, or is a
-    // design gap — the log_write master has no DECERR timeout). Documented in
-    // the coverage report + ticket. Here we keep the bounded, NON-hanging
-    // replica[0] form: the fetch DECERRs (so no write is ever issued → no
-    // fabric hang), which still exercises the log_write FSM IDLE/REQ arms and
-    // the INTR_ENABLE(WRITE) datapath. WARN-not-fail.
+    // is not reachable from firmware: a WRITE to an unmapped fabric address via
+    // the log_WRITE master gets no write-side error response and hangs the
+    // shared SMC fabric (the log_write master has no DECERR timeout), so the
+    // next CPU CSR access never returns. Reads to the same address DECERR
+    // (scenarios B/D). This scenario therefore keeps the fetch target unmapped
+    // so the fetch DECERRs before any write is issued, and asserts the
+    // fetch-error path with WRITE_ERR unmasked: the INTR_ENABLE WRITE datapath
+    // and the log_write FSM IDLE/REQ arms.
     //--------------------------------------------------------------------------
     info_msg_s(0, "scenario C: log_write FSM error-path exercise");
 
@@ -304,14 +279,9 @@ int main(void) {
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 1u);
     write_reg(WRAP0_LE_BASE + LE_LOG_CTRL0_OFF, 16u);
 
-    // There is deliberately no bounded poll for BIT_WRITE_ERR here. By the
-    // analysis above it can never succeed -- the fetch DECERRs first, so the
-    // write master is never engaged -- so such a poll could only ever expire
-    // into a warning. A wait that can neither fail nor pass is not a check.
-    //
-    // What this scenario does still exercise, and the only thing it claims:
-    // the fetch-error path with WRITE_ERR unmasked, i.e. the INTR_ENABLE
-    // WRITE datapath and the log_write FSM IDLE/REQ arms. Assert that much.
+    // No poll for BIT_WRITE_ERR: the fetch DECERRs first, so the write master is
+    // never engaged and WRITE_ERR cannot set. Assert the fetch-error latch with
+    // WRITE_ERR unmasked, and that WRITE_ERR stays clear.
     {
         uint32_t t = RELATCH_POLLS;
         while (t > 0u && (read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & BIT_FETCH_ERR) == 0u) {
@@ -326,16 +296,13 @@ int main(void) {
                     "issued (fetch errors first) -- expectation is stale");
         }
     }
-    // The real log_write_err term stays uncovered by firmware stimulus; it
-    // needs a TB-level fabric write-error injector. Tracked as a coverage gap,
-    // NOT silently warned about here.
     // Abort, then clear provably.
     write_reg(WRAP0_LE_BASE + LE_CTRL_OFF, 0u);
     clear_intr_or_fail(WRAP0_LE_BASE, BIT_FETCH_ERR | BIT_WRITE_ERR, 0u,
                        "FAIL: scenario C status would not clear after abort");
 
     //--------------------------------------------------------------------------
-    // SCENARIO D (v004) — fetch error on replica [1] to exercise the
+    // SCENARIO D — fetch error on replica [1] to exercise the
     // gen_uart_log_engine_wraps[1].log_engine fetch FSM specifically.
     //--------------------------------------------------------------------------
     info_msg_s(0, "scenario D: replica[1] fetch DECERR");

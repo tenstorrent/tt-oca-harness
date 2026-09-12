@@ -10,8 +10,8 @@
 
 #include "occp_test_common.h"
 #include "smc_defines.h"
-/* smc_top_regs.h in the reference; this test needs nothing from it here, and the
- * dv_rom build force-includes vendor I3C shims whose types collide with it. */
+/* smc_top_regs.h is not included: the dv_rom build force-includes I3C shims whose
+ * types collide with it. */
 #include "smc_strap.h"
 
 typedef enum { IFACE_I2C0 = 0, IFACE_I2C1 = 1 } iface_id_t;
@@ -69,7 +69,6 @@ static bool get_status_and_check_cmd_count(test_context_t *ctx, uint8_t expected
         ctx->overall_result = false;
         return false;
     }
-    /* we want interface status 0x1 and boot status 0x5 per helpers */
     uint8_t actual_cmd_count = status_data & 0xFF;
     if (actual_cmd_count != expected_cmd_count) {
         simputshex16("FAIL: cmd_count mismatch after status, expected ", expected_cmd_count);
@@ -108,8 +107,7 @@ int main(void) {
     simputs("Waiting for target to be ready...\n");
     // Reuse the helper sequence from interface init: just poll the same GPIO
     {
-        /* Native generated type; the reference spells this GPIO_INTF_DATA_CTRL_reg_u
-         * with a .val raw word. Same layout, and DATA_CTRL is at offset 0. */
+        /* DATA_CTRL is at offset 0 of the GPIO interface register block. */
         gpio_intf__DATA_CTRL_t gpio_control;
         gpio_control.w = read_gpio(58, 0x0u);
         gpio_control.f.interface_enable = 1;

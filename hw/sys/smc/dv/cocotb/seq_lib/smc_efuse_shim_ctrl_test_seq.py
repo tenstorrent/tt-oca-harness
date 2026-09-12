@@ -1,11 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""P1 coverage-gap: EFUSE_INTERFACE_CTRL + EFUSE_SHIM_CTRL (TC_SMC_P1CG_05).
+"""EFUSE_INTERFACE_CTRL + EFUSE_SHIM_CTRL reachability (TC_SMC_P1CG_05).
 
-Existing eFuse tests touch chip_config + permission boundary but the
-Samsung eFuse shim interface control registers
-(EFUSE_INTERFACE_CTRL + EXTERNAL_MANDATORY EFUSE_SHIM_CTRL) are otherwise
-unreached.
+Reads the eFuse shim interface control registers (EFUSE_INTERFACE_CTRL and the
+EXTERNAL_MANDATORY EFUSE_SHIM_CTRL window) over SEP_IN AXI.
 """
 
 from __future__ import annotations
@@ -34,11 +32,8 @@ class smc_efuse_shim_ctrl_test_seq(SmcCsrSeq):
         # EFUSE_SHIM_CTRL answers on this bench: the eFuse-bank model backs the
         # window, and both smc_efuse_vip_utils.prove_efuse_bank_axil_activity()
         # and smc_probe_positive_control read this same address with a strict
-        # csr_read and this same expected value while asserting the AXI-Lite
-        # activity probe goes high. So gate on it too, with the generated reset
-        # value as the expectation -- a bounded read here would pass on a
-        # timeout, on an error response, and on any data, which is no check at
-        # all.
+        # csr_read and this same expected value. Gate on it with the generated
+        # reset value as the expectation.
         await self.csr_read(
             "EFUSE_SHIM_CTRL_EFUSE_BANK_INIT_TIME",
             EFUSE_SHIM_CTRL,

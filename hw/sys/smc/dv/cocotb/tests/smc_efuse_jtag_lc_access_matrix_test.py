@@ -421,11 +421,11 @@ class smc_efuse_jtag_lc_access_matrix_test(smc_base_test):
                 f"[{label}] {cls} read @0x{addr:08x} expected ALLOW but was blocked (DECERR)"
             )
         elif expect_block and rdata != BLOCK_SIGNATURE:
-            # architecture.adoc:297-299. Note this compare cannot discriminate
-            # on the current bench (every access returns the signature); it is
-            # retained because it is the SPEC'd blocked-read data and would fire
-            # if the error slave's RESP_DATA override were ever changed. It is
-            # NOT presented as a verified property in `details=`.
+            # architecture.adoc:297-299. This compare cannot discriminate on
+            # this bench (every access returns the signature); it holds the
+            # SPEC'd blocked-read data and fires if the error slave's RESP_DATA
+            # override changes. It is NOT presented as a verified property in
+            # `details=`.
             self.errors.append(
                 f"[{label}] {cls} read @0x{addr:08x} blocked but data "
                 f"0x{rdata:08x} != SPEC err-slv signature "

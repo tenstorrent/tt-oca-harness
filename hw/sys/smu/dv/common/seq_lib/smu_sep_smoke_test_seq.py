@@ -4,7 +4,7 @@
 
 DV-CARD:          SMU_ALL_007   ANCHOR: smu_sep_smoke_test
 
-Allocated (narrowed Option B; SEP=0 bare tb_top):
+Allocated (SEP=0 bare tb_top):
   SMC-RST-PRIMARY-EXPORT.S1 / S2
   DTP-XTRIG-CTM.S2 / S3
 No Force/deposit. No SEP-sysif/LC/SEC_DIS/mem/fuse/WDT/alias/CTM.S1/CTP/DTP-CSR.
@@ -290,7 +290,6 @@ class smu_sep_smoke_test_seq:
         await ClockCycles(dut.clk_smu_i, self.SETTLE)
 
         # Observe DTP mode[1:0] hierarchically; Failed/X/Z = unobservable.
-        # No DefaultCfg inference / skip-to-pass on the proof path.
         mode_sig = smu_scope(dut).DTP_XTRIG_INT_CT_MODE
         mode_val = self._sample(mode_sig, "DTP_XTRIG_INT_CT_MODE")
         expected_mode = CFG_INT_CT_MODE << 2

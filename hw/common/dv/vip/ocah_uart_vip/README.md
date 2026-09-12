@@ -216,6 +216,29 @@ See `cocotb/examples/example_loopback.py` for four annotated examples:
 3. Passive monitoring with `OcahUartMonitor` alongside a console driver.
 4. Mid-test baud-rate reconfiguration.
 
+## Limitations
+
+| Limitation | Note |
+|---|---|
+| Frame format | `OcahUartConsole` is 8-N-1 only. The line engines accept `bits` and `stop_bits` (1, 1.5, or 2) but model no parity bit |
+| Flow control | No RTS/CTS or XON/XOFF modeling |
+| Break | A break condition is neither generated nor classified; a low stop bit counts as a framing error |
+| Checker evidence | The package emits no `CHK-*` evidence; the owning test compares console bytes and emits its own evidence |
+| High baud rates | The bit period is `round(1e9 / baud)` ns, so rates at or above 1 Mbaud depend on the DUT clock and the simulation time resolution |
+| Maturity | Experimental: SMC `smc_uart_loopback_test` is the consumer. Promotion requires `CHK-*` evidence in that test and a timeout/no-data negative case |
+
+## Validation
+
+Validate changes against the SMC consumer:
+
+```bash
+python3 tools/dv/run_dv.py --doctor --dut smc
+python3 tools/dv/run_dv.py --dut smc --items smc_uart_loopback_test --tool verilator
+```
+
+The shared DV maintainers own this package; SMC owns the pad binding in
+`hw/sys/smc/dv/cocotb/seq_lib/smc_uart_protocol_vip.py`.
+
 ## Hierarchical VIP Layout
 
 This package follows the OCAH hierarchical VIP convention (see

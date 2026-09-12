@@ -114,7 +114,8 @@ static int test_fmt_fifo_full_empty(uint32_t idx) {
 
 /**
  * @brief Test RX FIFO empty state
- * Note: RX FIFO requires I2C read transaction to fill, which is skipped per requirement
+ * Note: the RX FIFO fills only through an I2C read; this test drives no bus traffic,
+ * so only the empty state is checked
  */
 static int test_rx_fifo_empty(uint32_t idx) {
     uint32_t base = i2c_get_base(idx);
@@ -224,7 +225,8 @@ static int test_tx_fifo_full_empty(uint32_t idx) {
 
 /**
  * @brief Test ACQ FIFO empty state
- * Note: ACQ FIFO requires I2C write transaction to fill, which is skipped per requirement
+ * Note: the ACQ FIFO fills only through an I2C write; this test drives no bus traffic,
+ * so only the empty state is checked
  */
 static int test_acq_fifo_empty(uint32_t idx) {
     uint32_t base = i2c_get_base(idx);
@@ -263,8 +265,6 @@ static int test_acq_fifo_empty(uint32_t idx) {
 
 int main(void) {
     int ret;
-
-    // System initialization
 
     simputs("\n");
     simputs("################################################\n");
@@ -342,7 +342,7 @@ int main(void) {
     }
     write_scratch(1, 0x00000035);
 
-    // Explicitly set ACQ_START_STOP_EN via generated field (not hand bit index).
+    // Enable ACQ START/STOP capture on the target.
     uint32_t base = i2c_get_base(TARGET_IDX);
     i2c__CTRL_t ctrl = {.w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_CTRL_BASE_ADDR(0) -
                                               SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};

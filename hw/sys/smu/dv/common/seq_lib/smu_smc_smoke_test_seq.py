@@ -10,9 +10,9 @@ Owns:
 
 Bare tb_top SEP=0: hierarchical CONNECTIVITY observe only (no Force/deposit).
 
-Independent expects from pinned hw/sys/smc/doc/fabric.adoc
+Independent expects from hw/sys/smc/doc/fabric.adoc
   §Network Characteristics / §AXI Common Signal Widths / §AXI ID Widths /
-  §Traffic Subordinates (AXI4-Lite Low-Performance rows) @ffc8cdcc…
+  §Traffic Subordinates (AXI4-Lite Low-Performance rows).
 """
 
 from __future__ import annotations

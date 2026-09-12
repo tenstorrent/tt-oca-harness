@@ -7,9 +7,9 @@ address / read-back sequence on the SEP's OpenTitan `spi_controller`. The image
 is written for exactly this configuration: it needs no external flash model and
 programs no pad mux, because the open DUT has neither.
 
-This is the SPI path that survives into OSS. The Cadence xSPI wrapper and the
-SPI flash device models are excluded from the build, so anything routed through
-those cannot run here -- but `spi_controller` itself is present, and this image
+The SEP's third-party SPI host wrapper and the SPI flash device models are
+excluded from the build (smu_sim_cfg.toml `exclude_files`), so nothing routed
+through them can run here; `spi_controller` itself is compiled, and this image
 exercises it.
 
 The image parks in one of six per-stage fail loops, so a failure names the point
