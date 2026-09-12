@@ -252,6 +252,24 @@ works for both flash types.
 | 4-byte (32-bit) address mode | Default is 3-byte; set `addr_bytes=4` in the constructor |
 | Dual-SPI (1-1-2 read) | Out of scope; MOSI returns at the read-data phase |
 | SPI Mode 1/2/3 (CPOL/CPHA variants) | Only Mode 0 (CPOL=0 CPHA=0) |
+| SEP-named pad-bundle class | `OcahSepSpiFlash` carries the xSPI pad-bundle binding (chip-select, clock, DQ out/in, DQ output-enable, REBAR) under the SEP name; SMC binds the same class to its lifted SPI pads |
+
+## Validation
+
+Validate changes against the DUT consumers:
+
+```bash
+python3 tools/dv/run_dv.py --doctor --dut sep
+python3 tools/dv/run_dv.py --dut sep --items sep_spi_flash_jedec_smoke_test --tool verilator
+python3 tools/dv/run_dv.py --dut sep --items sep_spi_ot_flash_cmd_rand_test --tool verilator
+python3 tools/dv/run_dv.py --dut smc --items smc_spi_pad_bfm_test --tool verilator
+```
+
+`sep_spi_flash_jedec_smoke_test` is the gating regression and needs no
+firmware. `sep_spi_ot_flash_cmd_rand_test` runs in the `cpu` mode with its
+firmware image, so it needs the RISC-V toolchain described in
+`hw/sys/sep/dv/README.md`. The shared DV maintainers own this package; SEP and
+SMC own their pad bindings.
 
 ## Hierarchical VIP Layout
 
