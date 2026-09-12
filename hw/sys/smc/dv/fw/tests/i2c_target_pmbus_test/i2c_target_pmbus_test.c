@@ -206,8 +206,8 @@ static void tx_push(uint8_t b) {
 
 static uint32_t pack_framing(uint8_t start_sig, uint8_t addr_byte, uint8_t stop_sig,
                              uint32_t n_data) {
-    return ((uint32_t)start_sig << 24) | ((uint32_t)addr_byte << 16) |
-           ((uint32_t)stop_sig << 8) | (n_data & 0xFFu);
+    return ((uint32_t)start_sig << 24) | ((uint32_t)addr_byte << 16) | ((uint32_t)stop_sig << 8) |
+           (n_data & 0xFFu);
 }
 
 static uint32_t pack_bytes(const uint8_t *buf, uint32_t n) {

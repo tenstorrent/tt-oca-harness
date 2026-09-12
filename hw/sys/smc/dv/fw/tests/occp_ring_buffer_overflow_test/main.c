@@ -100,9 +100,8 @@ _Static_assert((int)OCCP_FW_ID_SMC_BL0 == SMC_STATUS_FW_ID_SMC_BL0,
 #define RB_HEAD_ADDR(base) ((base) + (uint64_t)offsetof(smc_ring_buffer_t, head))
 #define RB_TAIL_ADDR(base) ((base) + (uint64_t)offsetof(smc_ring_buffer_t, tail))
 #define RB_NUM_ENTRIES_ADDR(base) ((base) + (uint64_t)offsetof(smc_ring_buffer_t, num_entries))
-#define RB_ENTRY_ADDR(base, idx)                     \
-    ((base) + (uint64_t)offsetof(smc_ring_buffer_t, entries) + \
-     ((uint64_t)(idx) * sizeof(uint32_t)))
+#define RB_ENTRY_ADDR(base, idx) \
+    ((base) + (uint64_t)offsetof(smc_ring_buffer_t, entries) + ((uint64_t)(idx) * sizeof(uint32_t)))
 
 typedef struct {
     test_context_t *occp;
@@ -356,8 +355,8 @@ static bool check_drain_semantics(rb_test_context_t *t) {
 
     /* "A read returns the oldest unread entry and advances the tail": one tail step per
      * non-empty read, and no read may move the head. */
-    ok &= expect_eq32("tail after drain", tail_after,
-                      (tail_before + popped) % SMC_RING_BUFFER_SIZE);
+    ok &=
+        expect_eq32("tail after drain", tail_after, (tail_before + popped) % SMC_RING_BUFFER_SIZE);
     ok &= expect_eq32("head unchanged by reads", head_after, head_before);
     ok &= expect_eq32("empty buffer has head == tail", tail_after, head_after);
     ok &= expect_eq32("occupancy after drain", rb_occupancy(head_after, tail_after), 0);
@@ -394,8 +393,7 @@ static bool check_single_report(rb_test_context_t *t) {
         return false;
     }
 
-    ok &= expect_eq32("head advanced by one", head_after,
-                      (head_before + 1) % SMC_RING_BUFFER_SIZE);
+    ok &= expect_eq32("head advanced by one", head_after, (head_before + 1) % SMC_RING_BUFFER_SIZE);
     ok &= expect_eq32("tail untouched (buffer not full)", tail_after, tail_before);
     ok &= expect_eq32("occupancy after one report", rb_occupancy(head_after, tail_after), 1);
 
@@ -477,8 +475,7 @@ static bool check_overflow_behaviour(rb_test_context_t *t) {
         return false;
     }
 
-    ok &= expect_eq32("head advanced by one", head_after,
-                      (head_before + 1) % SMC_RING_BUFFER_SIZE);
+    ok &= expect_eq32("head advanced by one", head_after, (head_before + 1) % SMC_RING_BUFFER_SIZE);
     ok &= expect_eq32("tail advanced by one (write to a full buffer)", tail_after,
                       (tail_before + 1) % SMC_RING_BUFFER_SIZE);
     ok &= expect_eq32("occupancy stays at capacity", rb_occupancy(head_after, tail_after),
@@ -569,9 +566,9 @@ static void finalize_test_results(rb_test_context_t *t) {
         simputs("RING BUFFER OVERFLOW CHECKS FAILED\n");
     }
 
-    int result = occp_send_write_command(t->occp, t->occp->slave_addr,
-                                         SMC_CPU_CTRL_SCRATCH_0__REG_ADDR,
-                                         (uint8_t *)&result_code, sizeof(result_code));
+    int result =
+        occp_send_write_command(t->occp, t->occp->slave_addr, SMC_CPU_CTRL_SCRATCH_0__REG_ADDR,
+                                (uint8_t *)&result_code, sizeof(result_code));
     increment_cmd_count(t->occp);
     if (result != OCCP_SUCCESS) {
         simputs("FAIL: could not publish the result code to the DUT scratch register\n");

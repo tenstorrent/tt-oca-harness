@@ -70,7 +70,7 @@ static void read_and_validate_smc_status_buffer(test_context_t *ctx) {
         return;
     }
     uint32_t status_data = 0xdeadbeef;
-    int num_reject_entries = 0;    /* 0x101|id and 0x111 entries */
+    int num_reject_entries = 0;     /* 0x101|id and 0x111 entries */
     int num_cmd_failed_entries = 0; /* exactly 0x111 */
     int num_unexpected_errors = 0;  /* any other SMC BL0 error entry */
 

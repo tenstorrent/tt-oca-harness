@@ -320,8 +320,7 @@ int main(void) {
     //--------------------------------------------------------------------------
     info_msg_s(0, "scenario 0: INTR_TEST self-test term (FETCH_ERR + WRITE_ERR)");
     write_reg(WRAP0_LE_BASE + LE_INTR_ENABLE_OFF, BIT_FETCH_ERR | BIT_WRITE_ERR);
-    clear_intr_or_fail(WRAP0_LE_BASE, BIT_FETCH_ERR | BIT_WRITE_ERR,
-                       BIT_FETCH_ERR | BIT_WRITE_ERR,
+    clear_intr_or_fail(WRAP0_LE_BASE, BIT_FETCH_ERR | BIT_WRITE_ERR, BIT_FETCH_ERR | BIT_WRITE_ERR,
                        "FAIL: scenario 0 could not start from a clear status");
 
     {
@@ -335,8 +334,8 @@ int main(void) {
         };
         for (uint32_t c = 0; c < 3u; c++) {
             write_reg(WRAP0_LE_BASE + LE_INTR_TEST_OFF, cases[c].pulse);
-            uint32_t s = read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) &
-                         (BIT_FETCH_ERR | BIT_WRITE_ERR);
+            uint32_t s =
+                read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & (BIT_FETCH_ERR | BIT_WRITE_ERR);
             if (s != cases[c].pulse) {
                 info_msg_s(0, cases[c].name);
                 info_msg_hex32_s(0, "FAIL: INTR_TEST pulse, expected status=", cases[c].pulse);
@@ -374,8 +373,7 @@ int main(void) {
         write_reg(WRAP0_LE_BASE + LE_INTR_TEST_OFF, BIT_FETCH_ERR);
         uint32_t s = read_reg(WRAP0_LE_BASE + LE_INTR_STATUS_OFF) & BIT_FETCH_ERR;
         if (s != BIT_FETCH_ERR) {
-            info_msg_hex32_s(0, "FAIL: ENABLE=1 INTR_TEST pulse did not set status, observed=",
-                             s);
+            info_msg_hex32_s(0, "FAIL: ENABLE=1 INTR_TEST pulse did not set status, observed=", s);
             test_fail(0);
         }
         chk_ok("CHK-ENABLE-GATE-POSITIVE: ENABLE=1 + INTR_TEST pulse -> "

@@ -196,8 +196,7 @@ static void step_s1_timing_before_enable(uint32_t idx, const i2c_timing_config_t
     if (t0.f.THIGH != (timing->thigh & 0x1FFFu) || t0.f.TLOW != (timing->tlow & 0x1FFFu) ||
         t1.f.T_R != (timing->t_r & 0x3FFu) || t1.f.T_F != (timing->t_f & 0x1FFu) ||
         t2.f.TSU_STA != (timing->tsu_sta & 0x1FFFu) ||
-        t2.f.THD_STA != (timing->thd_sta & 0x1FFFu) ||
-        t3.f.TSU_DAT != (timing->tsu_dat & 0x1FFu) ||
+        t2.f.THD_STA != (timing->thd_sta & 0x1FFFu) || t3.f.TSU_DAT != (timing->tsu_dat & 0x1FFu) ||
         t3.f.THD_DAT != (timing->thd_dat & 0x1FFFu) ||
         t4.f.TSU_STO != (timing->tsu_sto & 0x1FFFu) || t4.f.T_BUF != (timing->t_buf & 0x1FFFu)) {
         simputs("  ERROR: TIMING readback != computed. read t0=");

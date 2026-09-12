@@ -70,11 +70,11 @@ static int drain_acq(uint32_t tgt_idx, uint8_t *rx, uint32_t rx_size, uint32_t *
     while (!i2c_target_acq_fifo_empty(tgt_idx)) {
         i2c_acq_entry_t e;
         if (i2c_target_receive_entry(tgt_idx, &e) != I2C_OK) {
-            break;      /* FIFO emptied between the poll and the read */
+            break; /* FIFO emptied between the poll and the read */
         }
         if (e.signal == I2C_ACQ_SIGNAL_START || e.signal == I2C_ACQ_SIGNAL_RESTART ||
             e.signal == I2C_ACQ_SIGNAL_STOP) {
-            continue;   /* framing, not payload */
+            continue; /* framing, not payload */
         }
         if (e.signal != I2C_ACQ_SIGNAL_DATA) {
             simputs("  ERROR: target recorded a protocol-error ACQ entry, signal 0x");
@@ -328,9 +328,8 @@ int main(void) {
     // structure could not complete, because the target stretches at ACQ depth 62
     // and nothing was draining it (see push_and_drain above).
     simputs("  Transferring 64 bytes with interleaved ACQ drain...\n");
-    ret = push_and_drain(CONTROLLER_IDX, TARGET_IDX, TARGET_ADDR, write_data,
-                         LARGE_DATA_SIZE, read_buffer, sizeof(read_buffer),
-                         &received_len);
+    ret = push_and_drain(CONTROLLER_IDX, TARGET_IDX, TARGET_ADDR, write_data, LARGE_DATA_SIZE,
+                         read_buffer, sizeof(read_buffer), &received_len);
     if (ret != I2C_OK) {
         simputs("  ERROR: interleaved transfer failed\n");
         write_scratch(0, 0xBAD00040);

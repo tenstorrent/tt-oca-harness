@@ -93,9 +93,8 @@ static i2c__STATUS_t get_i2c_status(uint32_t idx) {
  * from the programmed hardware rather than from a constant transcribed here. */
 static uint32_t get_timing_tlow(uint32_t idx) {
     uint32_t base = i2c_get_base(idx);
-    i2c__TIMING0_t timing0 = {
-        .w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TIMING0_BASE_ADDR(0) -
-                              SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
+    i2c__TIMING0_t timing0 = {.w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_TIMING0_BASE_ADDR(0) -
+                                                    SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
 
     return timing0.f.TLOW;
 }

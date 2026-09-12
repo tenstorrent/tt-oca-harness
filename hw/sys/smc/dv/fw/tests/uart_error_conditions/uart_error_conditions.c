@@ -550,8 +550,7 @@ static int uart_test_break_and_framing(uint32_t uart_idx) {
         }
     }
     if (!saw_line_status_intr) {
-        simputs(
-            "  [ERROR] Case3: Break condition occurred but no Line Status interrupt seen\n");
+        simputs("  [ERROR] Case3: Break condition occurred but no Line Status interrupt seen\n");
         return 22; // A break event should generate a line status interrupt.
     }
 
@@ -606,7 +605,6 @@ int main(void) {
     const uint32_t uart_tgt_idx = 0u;     // target (RX, PE detected here) = UART0 = replica[0]
     const uint32_t uart_overrun_idx = 0u; // UART0 used for loopback overrun test
     const uint32_t uart_break_idx = 0u;   // UART0 also used for break tests
-
 
     simputs("\n");
     simputs("========================================\n");

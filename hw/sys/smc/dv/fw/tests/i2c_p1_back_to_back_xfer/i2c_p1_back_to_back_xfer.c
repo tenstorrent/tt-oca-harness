@@ -213,7 +213,7 @@ int main(void) {
         uint32_t i;
         int stopped = 0;
         for (i = 0; i < 200000u; i++) {
-            if (i2c_get_target_events(TARGET_IDX) & (1u << 4)) {   /* STOP_DETECT */
+            if (i2c_get_target_events(TARGET_IDX) & (1u << 4)) { /* STOP_DETECT */
                 stopped = 1;
                 break;
             }
@@ -278,7 +278,7 @@ int main(void) {
                 continue;
             }
             if (!header_taken) {
-                header_taken = 1;      /* length header, not payload */
+                header_taken = 1; /* length header, not payload */
                 continue;
             }
             if (received_len < sizeof(recv_buffer)) {

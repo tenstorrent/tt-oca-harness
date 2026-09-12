@@ -81,8 +81,8 @@ extern "C" {
  * defaults (268) are overridden at the SMC level and must not be assumed. */
 #define I2C_CONTROLLER_TX_FIFO_DEPTH 64u
 #define I2C_CONTROLLER_RX_FIFO_DEPTH 64u
-#define I2C_TARGET_TX_FIFO_DEPTH     64u
-#define I2C_TARGET_RX_FIFO_DEPTH     64u
+#define I2C_TARGET_TX_FIFO_DEPTH 64u
+#define I2C_TARGET_RX_FIFO_DEPTH 64u
 
 /* Sized against the worst legitimate wait, which is not a plain transfer.
  * Several tests here deliberately provoke clock stretching, where the target
@@ -347,16 +347,16 @@ extern uint32_t g_i2c_acq_reset_needed_drain;
  * read, so an expired bound is reported as a failure naming the level it gave
  * up at, rather than as an unbounded spin that can only end in a simulator
  * timeout with no cause attached. */
-extern uint32_t g_i2c_acq_reset_residual;      /* ACQLVL left when the drain gave up */
+extern uint32_t g_i2c_acq_reset_residual; /* ACQLVL left when the drain gave up */
 /* Entries the drain removed: near the pre-reset level means ACQRST did nothing,
  * a small count means it worked and a live controller refilled the FIFO. */
 extern uint32_t g_i2c_acq_reset_drained;
-extern uint32_t g_i2c_rx_reset_needed_drain;   /* RXRST needed a software drain */
-extern uint32_t g_i2c_rx_reset_residual;       /* RXLVL left when the drain gave up */
-extern uint32_t g_i2c_fmt_reset_needed_retry;  /* FMTRST needed a second attempt */
-extern uint32_t g_i2c_fmt_reset_residual;      /* FMTLVL after that second attempt */
-extern uint32_t g_i2c_tx_reset_needed_retry;   /* TXRST needed a second attempt */
-extern uint32_t g_i2c_tx_reset_residual;       /* TXLVL after that second attempt */
+extern uint32_t g_i2c_rx_reset_needed_drain;  /* RXRST needed a software drain */
+extern uint32_t g_i2c_rx_reset_residual;      /* RXLVL left when the drain gave up */
+extern uint32_t g_i2c_fmt_reset_needed_retry; /* FMTRST needed a second attempt */
+extern uint32_t g_i2c_fmt_reset_residual;     /* FMTLVL after that second attempt */
+extern uint32_t g_i2c_tx_reset_needed_retry;  /* TXRST needed a second attempt */
+extern uint32_t g_i2c_tx_reset_residual;      /* TXLVL after that second attempt */
 
 /* i2c_reset_fifos() fails the test outright when a reset does not take and it
  * has to repair the FIFO in software, because the "level is 0 after reset"

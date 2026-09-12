@@ -61,8 +61,8 @@
  * The ROM-owned region is denied to OCCP in BOTH secure and unsecure mode by
  * smc_occp_check_addr_access_allowed(); OCCP_TEST_BASE_ADDR is the first
  * address the ROM will serve. */
-#define ROM_PROTECTED_BASE SMC_SRAM_BASE_ADDR  /* 0xC0060000 */
-#define ROM_PROTECTED_END OCCP_TEST_BASE_ADDR  /* 0xC0066400 */
+#define ROM_PROTECTED_BASE SMC_SRAM_BASE_ADDR /* 0xC0060000 */
+#define ROM_PROTECTED_END OCCP_TEST_BASE_ADDR /* 0xC0066400 */
 
 /* Addresses used for the positive controls and the round-trip phases. Both are
  * 8-byte aligned and well inside [OCCP_TEST_BASE_ADDR, safe upper bound). */
@@ -295,9 +295,9 @@ static bool test_memory_access_violations(comprehensive_error_test_context_t *ct
     uint8_t test_data[8] = {0xDE, 0xAD, 0xBE, 0xEF, 0x12, 0x34, 0x56, 0x78};
 
     const uint64_t denied_addrs[] = {
-        ROM_PROTECTED_BASE,           /* first ROM-owned word */
-        ROM_PROTECTED_BASE + 0x1000,  /* mid ROM-owned region */
-        ROM_PROTECTED_END - 8,        /* last ROM-owned word */
+        ROM_PROTECTED_BASE,          /* first ROM-owned word */
+        ROM_PROTECTED_BASE + 0x1000, /* mid ROM-owned region */
+        ROM_PROTECTED_END - 8,       /* last ROM-owned word */
     };
 
     for (int i = 0; i < (int)(sizeof(denied_addrs) / sizeof(denied_addrs[0])); i++) {
@@ -397,10 +397,10 @@ static bool test_jump_security_violations(comprehensive_error_test_context_t *ct
     } else {
         simputs("SPEC: unsecure mode refuses NULL/misaligned/denied JUMP -> JUMP_READ_FAILED\n");
         const uint64_t denied_jumps[] = {
-            0x0ULL,                      /* NULL address */
-            0xFFFFFFFFFFFFFFFFULL,       /* not 4-byte aligned */
-            ROM_PROTECTED_BASE,          /* ROM-owned region */
-            ROM_PROTECTED_END - 4,       /* last ROM-owned word */
+            0x0ULL,                /* NULL address */
+            0xFFFFFFFFFFFFFFFFULL, /* not 4-byte aligned */
+            ROM_PROTECTED_BASE,    /* ROM-owned region */
+            ROM_PROTECTED_END - 4, /* last ROM-owned word */
         };
         for (int i = 0; i < (int)(sizeof(denied_jumps) / sizeof(denied_jumps[0])); i++) {
             if (!expect_jump_error(ctx, denied_jumps[i], OCCP_INVALID_ADDRESS, "JUMP refused")) {
@@ -554,9 +554,9 @@ static bool test_validate_boot_security(comprehensive_error_test_context_t *ctx)
     bool test_passed = true;
 
     const uint64_t denied_manifests[] = {
-        0x0ULL,                 /* NULL manifest address */
-        0xFFFFFFFFFFFFFFFFULL,  /* not 4-byte aligned */
-        ROM_PROTECTED_BASE,     /* ROM-owned region */
+        0x0ULL,                /* NULL manifest address */
+        0xFFFFFFFFFFFFFFFFULL, /* not 4-byte aligned */
+        ROM_PROTECTED_BASE,    /* ROM-owned region */
     };
 
     for (int i = 0; i < (int)(sizeof(denied_manifests) / sizeof(denied_manifests[0])); i++) {
@@ -676,8 +676,8 @@ static bool test_permitted_range_boundary(comprehensive_error_test_context_t *ct
     if (!relatch(ctx)) test_passed = false;
 
     memset(readback, 0, sizeof(readback));
-    int rc = occp_send_write_command(c, c->slave_addr, OCCP_TEST_BASE_ADDR, pattern,
-                                     sizeof(pattern));
+    int rc =
+        occp_send_write_command(c, c->slave_addr, OCCP_TEST_BASE_ADDR, pattern, sizeof(pattern));
     increment_cmd_count(c);
     if (rc != OCCP_SUCCESS) {
         simputs("FAIL: WRITE at the first permitted address was refused\n");
@@ -876,13 +876,13 @@ static bool verify_error_reporting(comprehensive_error_test_context_t *ctx) {
         } else if (occp_status_matches_expected(status, OCCP_FW_ID_SMC_BL0, OCCP_STATUS_MSG_ERROR,
                                                 (uint16_t)OCCP_SPEC_ERROR_READ_OVERFLOW, false)) {
             n_read_overflow++;
-        } else if (occp_status_matches_expected(
-                       status, OCCP_FW_ID_SMC_BL0, OCCP_STATUS_MSG_ERROR,
-                       (uint16_t)OCCP_SPEC_ERROR_WRITE_ACCESS_DENIED, false)) {
+        } else if (occp_status_matches_expected(status, OCCP_FW_ID_SMC_BL0, OCCP_STATUS_MSG_ERROR,
+                                                (uint16_t)OCCP_SPEC_ERROR_WRITE_ACCESS_DENIED,
+                                                false)) {
             n_write_denied++;
-        } else if (occp_status_matches_expected(
-                       status, OCCP_FW_ID_SMC_BL0, OCCP_STATUS_MSG_ERROR,
-                       (uint16_t)OCCP_SPEC_ERROR_READ_ACCESS_DENIED, false)) {
+        } else if (occp_status_matches_expected(status, OCCP_FW_ID_SMC_BL0, OCCP_STATUS_MSG_ERROR,
+                                                (uint16_t)OCCP_SPEC_ERROR_READ_ACCESS_DENIED,
+                                                false)) {
             n_read_denied++;
         } else if (occp_status_matches_expected(status, OCCP_FW_ID_SMC_BL0, OCCP_STATUS_MSG_ERROR,
                                                 (uint16_t)OCCP_SPEC_ERROR_JUMP_READ_FAILED,
@@ -891,9 +891,9 @@ static bool verify_error_reporting(comprehensive_error_test_context_t *ctx) {
         } else if (occp_status_matches_expected(status, OCCP_FW_ID_SMC_BL0, OCCP_STATUS_MSG_ERROR,
                                                 (uint16_t)OCCP_SPEC_ERROR_JUMP_SECURITY, false)) {
             n_jump_security++;
-        } else if (occp_status_matches_expected(
-                       status, OCCP_FW_ID_SMC_BL0, OCCP_STATUS_MSG_ERROR,
-                       (uint16_t)OCCP_SPEC_ERROR_VALIDATE_ADDRESS_FAILED, false)) {
+        } else if (occp_status_matches_expected(status, OCCP_FW_ID_SMC_BL0, OCCP_STATUS_MSG_ERROR,
+                                                (uint16_t)OCCP_SPEC_ERROR_VALIDATE_ADDRESS_FAILED,
+                                                false)) {
             n_validate_failed++;
         } else if (occp_status_matches_expected(status, OCCP_FW_ID_SMC_BL0, OCCP_STATUS_MSG_ERROR,
                                                 (uint16_t)OCCP_SPEC_ERROR_CMD_FAILED, false)) {

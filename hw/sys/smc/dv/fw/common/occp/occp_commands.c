@@ -1899,8 +1899,9 @@ void execute_random_commands(test_context_t *ctx, int num_commands) {
                 } else {
                     simputshex32("SEP Status: ", status_data);
                     simputshex32("GET_SEP_STATUS value (not checked): ", status_data);
-                simputs("GET_SEP_STATUS: transport OK, value unchecked -- no expected value is defined "
-                        "for this command; see occp-protocol.adoc\n");
+                    simputs("GET_SEP_STATUS: transport OK, value unchecked -- no expected value is "
+                            "defined "
+                            "for this command; see occp-protocol.adoc\n");
                 }
             } else {
                 if (ctx->invalid_len_err_inject_enable) {
@@ -1923,8 +1924,9 @@ void execute_random_commands(test_context_t *ctx, int num_commands) {
                 } else {
                     simputshex32("SMC Status: ", status_data);
                     simputshex32("GET_SMC_STATUS value (not checked): ", status_data);
-                simputs("GET_SMC_STATUS: transport OK, value unchecked -- no expected value is defined "
-                        "for this command; see occp-protocol.adoc\n");
+                    simputs("GET_SMC_STATUS: transport OK, value unchecked -- no expected value is "
+                            "defined "
+                            "for this command; see occp-protocol.adoc\n");
                 }
             } else {
                 if (ctx->invalid_len_err_inject_enable) {
@@ -1942,7 +1944,8 @@ void execute_random_commands(test_context_t *ctx, int num_commands) {
                     return;
                 }
                 simputshex32("GET_OCCP_BOOT_STATUS value (not checked): ", status_data);
-                simputs("GET_OCCP_BOOT_STATUS: transport OK, value unchecked -- no expected value is defined "
+                simputs("GET_OCCP_BOOT_STATUS: transport OK, value unchecked -- no expected value "
+                        "is defined "
                         "for this command; see occp-protocol.adoc\n");
             } else {
                 if (ctx->invalid_len_err_inject_enable) {
@@ -1986,7 +1989,8 @@ void execute_random_commands(test_context_t *ctx, int num_commands) {
                     return;
                 }
                 simputshex32("GET_OCCP_INTERFACE_STATUS value (not checked): ", status_data);
-                simputs("GET_OCCP_INTERFACE_STATUS: transport OK, value unchecked -- no expected value is defined "
+                simputs("GET_OCCP_INTERFACE_STATUS: transport OK, value unchecked -- no expected "
+                        "value is defined "
                         "for this command; see occp-protocol.adoc\n");
             } else {
                 if (ctx->invalid_len_err_inject_enable) {
@@ -2014,8 +2018,7 @@ void execute_random_commands(test_context_t *ctx, int num_commands) {
                  * 0x0A Oversized transport frame, 0xFF General error), so the
                  * low byte is the whole field. */
                 if (!ctx->check_occp_last_error) {
-                    simputshex32("GET_OCCP_ERROR_CODE value (not checked): ",
-                                 status_data & 0xFF);
+                    simputshex32("GET_OCCP_ERROR_CODE value (not checked): ", status_data & 0xFF);
                     simputs("GET_OCCP_ERROR_CODE: transport OK, value unchecked -- set "
                             "ctx->check_occp_last_error to compare it\n");
                 } else if ((status_data & 0xFF) != (uint32_t)ctx->exp_occp_last_error) {

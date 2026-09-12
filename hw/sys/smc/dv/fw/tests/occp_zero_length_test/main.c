@@ -203,8 +203,8 @@ static void test_zero_length_write(test_context_t *ctx, uint64_t addr) {
     ctx->exp_occp_last_error = OCCP_INTERNAL_ERROR_BUFFER_OVERFLOW;
     ctx->exp_response_code = OCCP_INVALID_HEADER;
     // needs to be 8-byte aligned
-    result = occp_send_write_command(ctx, ctx->slave_addr, addr & 0xfffffffffffffff8ULL,
-                                     &dummy_data, 0);
+    result =
+        occp_send_write_command(ctx, ctx->slave_addr, addr & 0xfffffffffffffff8ULL, &dummy_data, 0);
     ctx->exp_response_code = OCCP_ERROR_NONE;
 
     if (result == OCCP_SUCCESS) {
@@ -226,8 +226,8 @@ static void test_zero_length_read(test_context_t *ctx, uint64_t addr) {
     ctx->exp_occp_last_error = OCCP_INTERNAL_ERROR_BUFFER_OVERFLOW;
     ctx->exp_response_code = OCCP_INVALID_HEADER;
     // needs to be 8-byte aligned
-    result = occp_send_read_command(ctx, ctx->slave_addr, addr & 0xfffffffffffffff8ULL,
-                                    dummy_buffer, 0);
+    result =
+        occp_send_read_command(ctx, ctx->slave_addr, addr & 0xfffffffffffffff8ULL, dummy_buffer, 0);
     ctx->exp_response_code = OCCP_ERROR_NONE;
 
     if (result == OCCP_SUCCESS) {

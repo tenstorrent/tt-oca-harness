@@ -250,8 +250,8 @@ static int rx_observe(uint32_t idx, uint32_t threshold_n) {
              * have grown since, so a level <= threshold here means the DUT
              * asserted the interrupt below its threshold. That is a failure,
              * not a warning to keep spinning on. */
-            i2c__TARGET_FIFO_STATUS_t fifo_after = {
-                .w = read_reg(I2C_REG(idx, TARGET_FIFO_STATUS))};
+            i2c__TARGET_FIFO_STATUS_t fifo_after = {.w =
+                                                        read_reg(I2C_REG(idx, TARGET_FIFO_STATUS))};
             if ((uint32_t)fifo_after.f.ACQLVL <= threshold_n) {
                 simputs("  ERROR: ACQ_THRESHOLD asserted at ACQLVL ");
                 simputshex32("", fifo_after.f.ACQLVL);

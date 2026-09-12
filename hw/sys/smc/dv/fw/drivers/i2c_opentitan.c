@@ -292,7 +292,7 @@ void i2c_config_timing(uint32_t idx, const i2c_timing_config_t *config) {
 #endif
 
 uint32_t g_i2c_acq_reset_needed_drain;
-uint32_t g_i2c_acq_reset_residual;      /* ACQLVL still left when the drain gave up */
+uint32_t g_i2c_acq_reset_residual; /* ACQLVL still left when the drain gave up */
 
 /* How many entries the drain actually removed. This separates the two causes
  * that g_i2c_acq_reset_needed_drain alone cannot tell apart: a count near the
@@ -305,11 +305,11 @@ uint32_t g_i2c_acq_reset_drained;
 /* Same idea for the controller-side FIFOs: RXRST needing a software drain, and
  * FMTRST needing a second attempt (with the level left behind after it). */
 uint32_t g_i2c_rx_reset_needed_drain;
-uint32_t g_i2c_rx_reset_residual;       /* RXLVL still left when the drain gave up */
+uint32_t g_i2c_rx_reset_residual; /* RXLVL still left when the drain gave up */
 uint32_t g_i2c_fmt_reset_needed_retry;
 uint32_t g_i2c_fmt_reset_residual;
-uint32_t g_i2c_tx_reset_needed_retry;   /* TXRST needed a second attempt */
-uint32_t g_i2c_tx_reset_residual;       /* TXLVL after that second attempt */
+uint32_t g_i2c_tx_reset_needed_retry; /* TXRST needed a second attempt */
+uint32_t g_i2c_tx_reset_residual;     /* TXLVL after that second attempt */
 
 /* Fail-closed by default. When a FIFO reset does not take, the code below
  * repairs the FIFO by hand, and the caller's "level is 0 after reset" check is
@@ -663,9 +663,8 @@ int i2c_controller_wait_idle(uint32_t idx, uint32_t timeout_cycles) {
 static int fdata_push_wait_space(uint32_t base, uint32_t word, uint32_t bound) {
     uint32_t i;
     for (i = 0; i < bound; i++) {
-        i2c__STATUS_t st = {
-            .w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
-                                      SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
+        i2c__STATUS_t st = {.w = i2c_read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_STATUS_BASE_ADDR(0) -
+                                                      SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
         if (!st.f.FMTFULL) {
             i2c_write_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_FDATA_BASE_ADDR(0) -
                                   SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)),
@@ -1721,7 +1720,7 @@ int i2c_target_receive_transaction_framed(uint32_t idx, uint8_t *buffer, uint32_
     uint32_t len = 0;
     uint32_t length_header = 0xFFFFFFFF;
     int in_txn = 0;
-    int saw_stop = 0;      /* the only clean way out of the drain loop */
+    int saw_stop = 0; /* the only clean way out of the drain loop */
 
     // msho fix: Hybrid strategy - Optimize for actual scenario while maintaining OpenTitan standard
     //           Step 1: Quick check if FIFO already has data (non-blocking)
@@ -1887,7 +1886,7 @@ int i2c_target_receive_transaction_framed(uint32_t idx, uint8_t *buffer, uint32_
 }
 
 int i2c_target_receive_transaction(uint32_t idx, uint8_t *buffer, uint32_t buffer_size,
-                                  uint32_t *received_len, uint32_t timeout_cycles) {
+                                   uint32_t *received_len, uint32_t timeout_cycles) {
     /* Unchanged behaviour for existing callers: first data byte is a length
      * header. New callers that send raw bytes should call
      * i2c_target_receive_transaction_framed(..., false) instead. */
@@ -2481,9 +2480,9 @@ int smbus_alert_response(uint32_t idx, uint8_t *alert_addr) {
     i2c_trace_scratch(1, 0x00000088); // After i2c_controller_read returned
 
     if (ret == I2C_OK) {
-        i2c_trace_scratch(1, 0x00000089);   // Before extracting address
-        *alert_addr = (addr_byte >> 1); // Extract 7-bit address
-        i2c_trace_scratch(1, 0x0000008A);   // After extracting address
+        i2c_trace_scratch(1, 0x00000089); // Before extracting address
+        *alert_addr = (addr_byte >> 1);   // Extract 7-bit address
+        i2c_trace_scratch(1, 0x0000008A); // After extracting address
     } else {
         i2c_trace_scratch(1, 0x0000008B); // Error path
         // On error, set alert_addr to 0xFF to indicate failure

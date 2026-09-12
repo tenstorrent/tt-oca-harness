@@ -255,7 +255,8 @@ static bool smbus_irq_alert_stat(uint32_t idx) {
  */
 static bool smbus_intr_alert_only(uint32_t idx) {
     uint32_t base = i2c_get_base(idx);
-    i2c__INTR_STATE_t intr_state = {.w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR(0) -
+    i2c__INTR_STATE_t intr_state = {
+        .w = read_reg(base + (SMC_TOP_SMC_I2C_WRAP_I2C_INTR_STATE_BASE_ADDR(0) -
                               SMC_TOP_SMC_I2C_WRAP_I2C_BASE_ADDR(0)))};
     return intr_state.f.SMBALERT ? true : false;
 }

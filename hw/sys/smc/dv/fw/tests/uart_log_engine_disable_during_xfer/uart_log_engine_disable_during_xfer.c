@@ -325,11 +325,11 @@ int main(void) {
      * scenario-A setup): LOG_WRITE_ADDR below points at UART offset 0, which is
      * THR only while DLAB=0. Only MCR was written here, so the log bytes went to
      * the divisor latch and the transfer never completed. */
-    write_reg(WRAP1_UART_BASE + UART_LCR_OFF, 0x80u); // DLAB=1
-    write_reg(WRAP1_UART_BASE + UART_RBR_OFF, 0x01u); // DLL = 1
-    write_reg(WRAP1_UART_BASE + UART_IER_OFF, 0x00u); // DLM = 0
-    write_reg(WRAP1_UART_BASE + UART_LCR_OFF, 0x03u); // DLAB=0, 8-bit
-    write_reg(WRAP1_UART_BASE + UART_IIR_OFF, 0x01u); // FCR: FIFOs on
+    write_reg(WRAP1_UART_BASE + UART_LCR_OFF, 0x80u);   // DLAB=1
+    write_reg(WRAP1_UART_BASE + UART_RBR_OFF, 0x01u);   // DLL = 1
+    write_reg(WRAP1_UART_BASE + UART_IER_OFF, 0x00u);   // DLM = 0
+    write_reg(WRAP1_UART_BASE + UART_LCR_OFF, 0x03u);   // DLAB=0, 8-bit
+    write_reg(WRAP1_UART_BASE + UART_IIR_OFF, 0x01u);   // FCR: FIFOs on
     write_reg(WRAP1_UART_BASE + WRAP1_UART_MCR, 0x10u); // MCR.LOOP = 1 (see wrap 0)
     write_reg(WRAP1_LE_BASE + WRAP1_LE_REGION_SIZE, LOG_REGION_SIZE);
     write_reg(WRAP1_LE_BASE + WRAP1_LE_REGION_ADDR, LOG_BUFFER_BASE);

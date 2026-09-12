@@ -160,8 +160,7 @@ static void read_and_validate_smc_status_buffer(test_context_t *ctx) {
         if (occp_status_matches_expected(status_data, OCCP_FW_ID_SMC_BL0, OCCP_STATUS_MSG_ERROR,
                                          (uint16_t)OCCP_SPEC_ERROR_CMD_FAILED, false)) {
             num_cmd_failed_errors++;
-            if (occp_status_matches_expected(status_data, OCCP_FW_ID_SMC_BL0,
-                                             OCCP_STATUS_MSG_ERROR,
+            if (occp_status_matches_expected(status_data, OCCP_FW_ID_SMC_BL0, OCCP_STATUS_MSG_ERROR,
                                              OCCP_CMD_FAILED_CORRUPT_HEADER, true)) {
                 num_corrupt_header_reports++;
             }
