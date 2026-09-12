@@ -145,7 +145,7 @@ appears.
 |CPU-LSU AXI (no_cpu) |`ocah_axi_vip` via `SepAxiAgent` on the LSU splice
 |SMN-inbound AXI |Second `SepAxiAgent` on the real inbound port
 |SPI flash |`ocah_spi_vip` `OcahSpiFlash`
-|JTAG (eFuse mux path) |`ocah_jtag_vip` where the test uses it
+|JTAG (eFuse mux path) |`ocah_axi_vip` AXI-Lite master on the OTP JTAG2AXIL port (`j_axi_*`)
 |Entropy noise / goldens |TB noise port + pure-Python goldens in `cocotb/env/`
 |eFuse / OTP |Generic OSS eFuse model (no foundry OTP)
 |Memories |Wrapper macros + signed-off sim-time image load
@@ -275,7 +275,7 @@ appears.
 |Proves the CPU-side address alias window remaps both data and instruction accesses to physical SRAM.
 |`sep_efuse_jtag_axil_el2_cpu_mux_test`
 |cpu, real fuse sense
-|ocah_axi_vip, ocah_jtag_vip, CPU FW
+|ocah_axi_vip, CPU FW
 |The debug-port counterpart to the two-processor coexistence test. After sense-done both OTP JTAG2AXIL `dbg_disable` bits read 0.
 |`sep_nmi_sanity_test`
 |cpu
@@ -2257,7 +2257,7 @@ remapped routes to the error slave and never executes.
 
 *Source Module*: `sep_efuse_jtag_axil_el2_cpu_mux_test`
 
-*BFM / Model*: ocah_axi_vip, ocah_jtag_vip, CPU FW
+*BFM / Model*: ocah_axi_vip, CPU FW
 
 *Objective*: The debug-port counterpart to the two-processor coexistence test.
 
