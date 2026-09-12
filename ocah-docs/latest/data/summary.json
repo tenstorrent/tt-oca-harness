@@ -2,20 +2,15 @@
   "dut_status": [
     {
       "flow": "dtp",
-      "pass_rate": 100.0,
-      "tests_total": 151
+      "pass_rate": null,
+      "tests_total": 0
     }
   ],
-  "generated_at": "2026-09-05T22:36:30+00:00",
+  "generated_at": "2026-09-12T19:51:40+00:00",
   "results": [
     {
       "coverage": {
-        "effective_metrics": {
-          "branch": 82.7608,
-          "expression": 82.9774,
-          "line": 71.2451,
-          "user": 95.7447
-        }
+        "effective_metrics": {}
       },
       "flow": "dtp"
     }
