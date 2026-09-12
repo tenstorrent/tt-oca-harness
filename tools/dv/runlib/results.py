@@ -745,6 +745,9 @@ def regression_payload(
     overlay = flow.raw.get("adopter_overlay")
     if overlay:
         payload["overlay"] = overlay
+    overlay_env = flow.raw.get("adopter_overlay_env")
+    if overlay_env:
+        payload["overlay_env"] = dict(overlay_env)
     if progress is not None:
         payload["progress"] = progress
     if interruption is not None:
@@ -806,6 +809,9 @@ def result_payload(
         # The adopter overlay applied to this run (--overlay / OCAH_DV_OVERLAY), so the
         # result records the exact config layers that produced it.
         payload["overlay"] = overlay
+    overlay_env = flow.raw.get("adopter_overlay_env")
+    if overlay_env:
+        payload["overlay_env"] = dict(overlay_env)
     skipped = list(getattr(args, "_skipped_unimplemented", []) or []) if args is not None else []
     if skipped:
         payload["selection"] = {"skipped_unimplemented": skipped}
