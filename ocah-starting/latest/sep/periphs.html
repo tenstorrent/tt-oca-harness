@@ -351,20 +351,14 @@ downstream logic during test.</p>
 field is split across two RDL registers because PeakRDL requires power-of-2
 <code>regwidth</code>; all 96 bits are physically fused and mapped 1-to-1 to OTP words 0–2:</p>
 <p class="tableblock">* <code>LOCKS</code> (64-bit <code>@0x0</code>): slots 0–31 — two bits per field, write-lock at bit 2n, read-lock at 2n+1
-* <code>LOCKS_SPARE</code> (32-bit <code>@0x8</code>): slots 32–39 in bits [15:0]; slots 40–47 (unassigned) in bits [31:16]</p>
+* <code>LOCKS_SPARE</code> (32-bit <code>@0x8</code>): slots 32–40 in bits [17:0]; slots 41–47 (unassigned) in bits [31:18]</p>
 <p class="tableblock">Firmware reads the complete 96-bit lock state as three consecutive 32-bit APB words.
-There are 40 lockable fields (slots 0–39). LOCK is not one of them: <strong><em>the 96-bit
+There are 41 lockable fields (slots 0–40). LOCK is not one of them: <strong><em>the 96-bit
 lock field has no lock-bit pair of its own</em></strong>, and no lock bit may write-lock or
 read-lock <code>LOCKS</code> or <code>LOCKS_SPARE</code>. When write-locked, the corresponding
 shadow register is not writable. When read-locked, neither software nor JTAG can
 read the corresponding shadow register or fuse field. The fuse-sensing FSM is
-<em>always</em> able to read the fuses in order to populate the shadow registers.</p>
-<p class="tableblock">Per-field lock slots (v0.5.22):
-[none]
-* Slots  0–28: original fields (LC_STATE through SIP_PUBK_PQC_HASH1) — LOCKS[57:0]
-* Slots 29–31: v0.5.22 identity fuses (SEP_CHIPLET_ID, SEP_SIP_ID, SEP_SYS_ID) — LOCKS[63:58]
-* Slots 32–39: v0.5.22 spare fields (spare0–spare7) — LOCKS_SPARE[15:0]
-* Slots 40–47: unassigned — LOCKS_SPARE[31:16] (reserved for future fields)</p></td>
+<em>always</em> able to read the fuses in order to populate the shadow registers.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">LC_STATE</p></td>
@@ -569,25 +563,14 @@ ROM_CTL[5:1]: row-swap control; swaps ROM slices when set. ROM_CTL[31:6]:
 reserved.</p></td>
 </tr>
 <tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SPI_CONFIG</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">SYSCLK_FREQ_MHZ</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">19</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">288</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">32 (11 used)</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">SPI discovery has 8 configuration values
-as well as 1 enable bitfield. Each word is 32-bits in length: [0]
-SPI_CONFIG_EN Enable for each of the following 8 SPI_CONFIG field words.
-SPI_CONFIG_EN[7:0] corresponds to registers 1-8 below. When bit N is set
-in this field, then configuration register N+1 is valid in fuses and
-that value will be read from fuses and written into the specified SPI
-configuration register during the SPI controller initialization.
-SPI_CONFIG_EN[31:8] are reserved. [1] SPI_CTRL_DISCOVERY_CTRL_REG [2]
-SPI_CTRL_INIT_PHY_DQ_TIMING_REG_ADDR phy_dq_timing_reg [3]
-SPI_CTRL_INIT_PHY_DQS_TIMING_REG_ADDR phy_dqs_timing_reg [4]
-SPI_CTRL_INIT_PHY_GATE_LPBK_CTRL_REG_ADDR phy_gate_lpbk_ctrl_reg [5]
-SPI_CTRL_INIT_PHY_DLL_SLAVE_CTRL_REG_ADDR phy_dll_slave_ctrl_reg [6]
-SPI_CTRL_INIT_PHY_DLL_MASTER_CTRL_REG_ADDR phy_dll_master_ctrl_reg [7]
-SEP_SPI_PHY_MISC [8] INIT_RB_VALID_TIME</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Configured sysclk PLL frequency
+in MHz (<code>sysclk_freq_mhz[10:0]</code>). Ignored when 0. Consumed by boot ROM clock
+math (PLL selection and SPI <code>CLKDIV</code> derivation).</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">CHIPLET_PUBK_HASH0</p></td>
@@ -737,7 +720,7 @@ protection required. Lock slot 31 in LOCKS.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Spare field 0 for future use (v0.5.22). Lock slot 32 in LOCKS_SPARE[1:0].</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Spare field 0 for future use.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">spare1</p></td>
@@ -745,7 +728,7 @@ protection required. Lock slot 31 in LOCKS.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Spare field 1 for future use (v0.5.22). Lock slot 33 in LOCKS_SPARE[3:2].</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Spare field 1 for future use.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">spare2</p></td>
@@ -753,7 +736,7 @@ protection required. Lock slot 31 in LOCKS.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Spare field 2 for future use (v0.5.22). Lock slot 34 in LOCKS_SPARE[5:4].</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Spare field 2 for future use.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">spare3</p></td>
@@ -761,7 +744,7 @@ protection required. Lock slot 31 in LOCKS.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Spare field 3 for future use (v0.5.22). Lock slot 35 in LOCKS_SPARE[7:6].</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Spare field 3 for future use.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">spare4</p></td>
@@ -769,7 +752,7 @@ protection required. Lock slot 31 in LOCKS.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Spare field 4 for future use (v0.5.22). Lock slot 36 in LOCKS_SPARE[9:8].</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Spare field 4 for future use.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">spare5</p></td>
@@ -777,7 +760,7 @@ protection required. Lock slot 31 in LOCKS.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Spare field 5 for future use (v0.5.22). Lock slot 37 in LOCKS_SPARE[11:10].</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Spare field 5 for future use.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">spare6</p></td>
@@ -785,7 +768,7 @@ protection required. Lock slot 31 in LOCKS.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Spare field 6 for future use (v0.5.22). Lock slot 38 in LOCKS_SPARE[13:12].</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Spare field 6 for future use.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock">spare7</p></td>
@@ -793,7 +776,15 @@ protection required. Lock slot 31 in LOCKS.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Spare field 7 for future use (v0.5.22). Lock slot 39 in LOCKS_SPARE[15:14].</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Spare field 7 for future use.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">spare8</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">41</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">256</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">true</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Spare field 8 for future use.</p></td>
 </tr>
 </tbody>
 </table>
