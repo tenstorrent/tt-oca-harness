@@ -7,11 +7,13 @@ Run from the repository root:
     python3 -m unittest discover tools/dv/tests
 """
 
+import os
 import sys
 import tempfile
 import unittest
 from argparse import Namespace
 from pathlib import Path
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -257,6 +259,43 @@ class AdopterOverlayLayer(unittest.TestCase):
         self.apply(data, '[sim]\nargs = ["+x"]\n')
         self.assertEqual(data["adopter_overlay"], "adopter_overlay.toml")
 
+    def test_build_paths_expand_environment_variables(self):
+        data = {"framework": "uvm", "build": {"incdirs": ["dut/inc"]}}
+        with mock.patch.dict(os.environ, {"VENDOR_VIP_HOME": "/opt/vip", "VIP_MANIFEST": "vip"}):
+            self.apply(
+                data,
+                '[build]\nincdirs = ["$VENDOR_VIP_HOME/include"]\n'
+                'sources = ["${VENDOR_VIP_HOME}/src/vip_pkg.sv"]\n'
+                'source_lists = ["$VENDOR_VIP_HOME/${VIP_MANIFEST}/sources.toml"]\n',
+            )
+        self.assertEqual(data["build"]["incdirs"], ["dut/inc", "/opt/vip/include"])
+        self.assertEqual(data["build"]["sources"], ["/opt/vip/src/vip_pkg.sv"])
+        self.assertEqual(data["build"]["source_lists"], ["/opt/vip/vip/sources.toml"])
+
+    def test_unset_environment_variable_names_variable_and_overlay(self):
+        with mock.patch.dict(os.environ):
+            os.environ.pop("OCAH_UNSET_VIP_HOME", None)
+            with self.assertRaises(ConfigError) as ctx:
+                self.apply(
+                    {"framework": "uvm"}, '[build]\nincdirs = ["$OCAH_UNSET_VIP_HOME/include"]\n'
+                )
+        self.assertNotIsInstance(ctx.exception, OverlayFrameworkMismatch)
+        message = str(ctx.exception)
+        self.assertIn("OCAH_UNSET_VIP_HOME", message)
+        self.assertIn("adopter_overlay.toml", message)
+        self.assertIn("build.incdirs", message)
+
+    def test_paths_without_variables_pass_through_unchanged(self):
+        data = {"framework": "uvm"}
+        self.apply(data, '[build]\nincdirs = ["vendor/inc", "/abs/inc", "~/inc"]\n')
+        self.assertEqual(data["build"]["incdirs"], ["vendor/inc", "/abs/inc", "~/inc"])
+
+    def test_expanded_path_dedups_against_dut_entry(self):
+        data = {"framework": "uvm", "build": {"incdirs": ["/opt/vip/include"]}}
+        with mock.patch.dict(os.environ, {"VENDOR_VIP_HOME": "/opt/vip"}):
+            self.apply(data, '[build]\nincdirs = ["$VENDOR_VIP_HOME/include"]\n')
+        self.assertEqual(data["build"]["incdirs"], ["/opt/vip/include"])
+
 
 class AdopterOverlayLoadDut(unittest.TestCase):
     """load_dut integration: explicit activation only, and source_lists expansion ordering."""
@@ -297,6 +336,30 @@ class AdopterOverlayLoadDut(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             flow = self.load(Path(tmp))
             self.assertNotIn("adopter_overlay", flow.raw)
+
+    def test_overlay_manifest_path_expands_environment_variable(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            vendor = root / "vendor_install"
+            (vendor / "inc").mkdir(parents=True)
+            (vendor / "vip_pkg.sv").write_text("// vendor\n")
+            # Entries inside the manifest stay literal, so a manifest outside the checkout
+            # lists its own files by absolute path.
+            (vendor / "sources.toml").write_text(
+                f'incdirs = ["{vendor / "inc"}"]\nsources = ["{vendor / "vip_pkg.sv"}"]\n'
+            )
+            overlay = root / "adopter_overlay.toml"
+            overlay.write_text('[build]\nsource_lists = ["$VENDOR_VIP_HOME/sources.toml"]\n')
+            with mock.patch.dict(os.environ, {"VENDOR_VIP_HOME": str(vendor)}):
+                flow = self.load(root, overlay=overlay)
+            self.assertEqual(flow.raw["build"]["sources"], [str(vendor / "vip_pkg.sv")])
+            self.assertEqual(flow.raw["build"]["incdirs"], [str(vendor / "inc")])
+
+    def test_checked_in_config_paths_stay_literal(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.dict(os.environ, {"VENDOR_VIP_HOME": "/opt/vip"}):
+                flow = self.load(Path(tmp), '[build]\nincdirs = ["$VENDOR_VIP_HOME/include"]\n')
+            self.assertEqual(flow.raw["build"]["incdirs"], ["$VENDOR_VIP_HOME/include"])
 
 
 class GroupMemberValidation(unittest.TestCase):

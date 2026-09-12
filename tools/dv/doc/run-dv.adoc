@@ -448,10 +448,12 @@ hard error on the run path; `--validate-configs` validates non-listed views
 without the overlay and labels them `[overlay skipped: frameworks guard]`.
 
 |`[build]` `incdirs` / `sources` / `source_lists`
-|dedup-append after the DUT's own entries
-|Extra compile inputs. An overlay-supplied `source_lists` manifest expands
-exactly like a DUT-owned one (component entries ahead of DUT sources), so a
-vendor package can own its manifest the way the shipped VIPs do.
+|`$VAR` expansion, then dedup-append after the DUT's own entries
+|Extra compile inputs. `$VAR` / `+${VAR}+` in an entry expands from the process
+environment at config load; an unset variable is a hard config error naming
+the variable and the overlay file. An overlay-supplied `source_lists`
+manifest expands exactly like a DUT-owned one (component entries ahead of DUT
+sources), so a vendor package can own its manifest the way the shipped VIPs do.
 
 |`[target_defaults.<t>]` / `[targets.<t>]` `defines` / `flags`,
 `[...tools.<tool>].flags`
@@ -482,7 +484,10 @@ description = "Vendor AXI VIP integration for ocah_axi_vip consumers"
 frameworks = ["uvm"]
 
 [build]
-incdirs = ["hw/common/dv/vip/axi/uvm"]          # supplies ocah_axi_vendor_if.svh
+incdirs = [
+  "hw/common/dv/vip/axi/uvm",                   # supplies ocah_axi_vendor_if.svh
+  "$VENDOR_VIP_HOME/include",                   # headers inside the vendor install
+]
 source_lists = ["hw/common/dv/vip/axi/uvm/sources.toml"]
 
 [target_defaults.default]
@@ -492,8 +497,16 @@ defines = ["OCAH_AXI_VENDOR_IF"]
 args = ["+uvm_set_type_override=ocah_axi_master_env,vendor_ocah_axi_env"]
 ----
 
-(paths resolve repo-relative inside the checkout the overlay extends, or
-absolute). The `OCAH_<PROTO>_VENDOR_IF` defines activate the guarded
+Paths resolve repo-relative inside the checkout the overlay extends, or
+absolute. `$VAR` and `+${VAR}+` in the overlay's own `[build]` entries expand
+from the environment of the `run_dv.py` process at config load, so the
+emitted filelist carries the expanded path and one overlay file serves every
+site that exports the variable. An unset variable is a hard config error
+naming the variable and the overlay file; `--validate-configs` reports it as
+`FAIL` on each view the overlay targets. Expansion covers only the overlay's
+own entries: the paths listed inside a `source_lists` manifest and every
+checked-in config stay literal, repo-relative or absolute. The
+`OCAH_<PROTO>_VENDOR_IF` defines activate the guarded
 `+"`include`"+` hooks inside the shipped `ocah_<proto>_if` interfaces, which
 pull `ocah_<proto>_vendor_if.svh` from an overlay incdir — the OSS tree
 ships no copy of those files.

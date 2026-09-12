@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import ast
 import copy
+import os
 import re
 from pathlib import Path
 from typing import Any
@@ -1046,6 +1047,28 @@ def _append_unique(target: dict[str, Any], key: str, extra: list[str], where: st
         target[key] = combined
 
 
+_ENV_VAR_RE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}|\$([A-Za-z_][A-Za-z0-9_]*)")
+
+
+def expand_env_vars(text: str, where: str) -> str:
+    """Expand ``$VAR`` / ``${VAR}`` in one adopter-overlay path from the process environment.
+
+    Only overlay-supplied ``[build]`` entries pass through here: checked-in configs and the
+    entries inside a ``source_lists`` manifest stay literal (repo-relative or absolute). An unset
+    variable is a :class:`ConfigError` naming the variable and the entry under ``where`` (the
+    overlay file and key). A set-but-empty variable expands to the empty string, as in a shell.
+    """
+
+    def substitute(match: re.Match[str]) -> str:
+        name = match.group(1) or match.group(2)
+        value = os.environ.get(name)
+        if value is None:
+            raise ConfigError(f"{where}: environment variable `{name}` is not set (entry `{text}`)")
+        return value
+
+    return _ENV_VAR_RE.sub(substitute, text)
+
+
 def apply_adopter_overlay(data: dict[str, Any], root: Path, overlay_path: Path) -> None:
     """Apply one adopter overlay file on top of the merged DUT view (append-only).
 
@@ -1059,7 +1082,9 @@ def apply_adopter_overlay(data: dict[str, Any], root: Path, overlay_path: Path) 
     before `[build].source_lists` expansion, so an overlay-supplied manifest expands like a
     DUT-owned one):
 
-    - `[build]` `incdirs`/`sources`/`source_lists`: dedup-append AFTER the DUT's own entries.
+    - `[build]` `incdirs`/`sources`/`source_lists`: `$VAR`/`${VAR}` expand from the process
+      environment (an unset variable is a config error), then dedup-append AFTER the DUT's own
+      entries.
     - `[sim].args`: append after the merged `[sim].args` (still before run-mode/test/CLI args).
     - `[target_defaults.<t>]`/`[targets.<t>]` `defines`/`flags` and `[...tools.<tool>].flags`:
       dedup-append into the matching table (created when absent).
@@ -1095,7 +1120,11 @@ def apply_adopter_overlay(data: dict[str, Any], root: Path, overlay_path: Path) 
         if not isinstance(build, dict):
             raise ConfigError(f"{where}: merged [build] is not a table")
         for key in ("incdirs", "sources", "source_lists"):
-            extra = as_str_list(build_overlay.get(key), f"{where} build.{key}")
+            key_where = f"{where} build.{key}"
+            extra = [
+                expand_env_vars(text, key_where)
+                for text in as_str_list(build_overlay.get(key), key_where)
+            ]
             if extra:
                 _append_unique(build, key, extra, f"{where} merged build")
 
