@@ -9,6 +9,7 @@ import ast
 import copy
 import os
 import re
+from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 from typing import Any
 
@@ -162,8 +163,9 @@ TOP_LEVEL_KEYS = {
     "dut",
     "tb",
     # Injected by load_dut when --overlay/OCAH_DV_OVERLAY is active; a sim config or profile
-    # may never set it (overlays are explicit-activation only — see apply_adopter_overlay).
+    # may never set them (overlays are explicit-activation only — see apply_adopter_overlay).
     "adopter_overlay",
+    "adopter_overlay_env",
 }
 
 BUILD_KEYS = {
@@ -190,10 +192,18 @@ SOURCE_LIST_KEYS = {"description", "incdirs", "sources"}
 
 # Keys an adopter overlay file (--overlay / OCAH_DV_OVERLAY) may carry (see
 # apply_adopter_overlay). The layer is append-only: every allowed key ADDS to the
-# merged DUT view (build inputs, target defines/flags, run args) and none can replace or
-# remove what the checked-in configs declare — so a run with an overlay differs from the
-# baseline only by the overlay's own additions.
-ADOPTER_OVERLAY_KEYS = {"description", "frameworks", "build", "sim", "target_defaults", "targets"}
+# merged DUT view (build inputs, target defines/flags, run args, process environment) and
+# none can replace or remove what the checked-in configs declare — so a run with an overlay
+# differs from the baseline only by the overlay's own additions.
+ADOPTER_OVERLAY_KEYS = {
+    "description",
+    "frameworks",
+    "build",
+    "sim",
+    "env",
+    "target_defaults",
+    "targets",
+}
 ADOPTER_OVERLAY_BUILD_KEYS = {"incdirs", "sources", "source_lists"}
 ADOPTER_OVERLAY_SIM_KEYS = {"args"}
 ADOPTER_OVERLAY_TARGET_KEYS = {"defines", "flags", "tools"}
@@ -1050,23 +1060,65 @@ def _append_unique(target: dict[str, Any], key: str, extra: list[str], where: st
 _ENV_VAR_RE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}|\$([A-Za-z_][A-Za-z0-9_]*)")
 
 
-def expand_env_vars(text: str, where: str) -> str:
-    """Expand ``$VAR`` / ``${VAR}`` in one adopter-overlay path from the process environment.
+def expand_env_vars(text: str, where: str, environ: Mapping[str, str] | None = None) -> str:
+    """Expand ``$VAR`` / ``${VAR}`` in one adopter-overlay path from ``environ``.
 
-    Only overlay-supplied ``[build]`` entries pass through here: checked-in configs and the
-    entries inside a ``source_lists`` manifest stay literal (repo-relative or absolute). An unset
-    variable is a :class:`ConfigError` naming the variable and the entry under ``where`` (the
-    overlay file and key). A set-but-empty variable expands to the empty string, as in a shell.
+    ``environ`` defaults to the process environment; the overlay applier passes that environment
+    with the overlay's own ``[env]`` table applied on top. Only overlay-supplied ``[build]``
+    entries pass through here: checked-in configs and the entries inside a ``source_lists``
+    manifest stay literal (repo-relative or absolute). An unset variable is a
+    :class:`ConfigError` naming the variable and the entry under ``where`` (the overlay file and
+    key). A set-but-empty variable expands to the empty string, as in a shell.
     """
+    source = os.environ if environ is None else environ
 
     def substitute(match: re.Match[str]) -> str:
         name = match.group(1) or match.group(2)
-        value = os.environ.get(name)
+        value = source.get(name)
         if value is None:
             raise ConfigError(f"{where}: environment variable `{name}` is not set (entry `{text}`)")
         return value
 
     return _ENV_VAR_RE.sub(substitute, text)
+
+
+_ENV_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def _overlay_env_table(overlay: dict[str, Any], where: str) -> dict[str, str]:
+    """Validate an overlay's ``[env]`` table: shell-legal variable names, string values."""
+    table = overlay.get("env")
+    if table is None:
+        return {}
+    if not isinstance(table, dict):
+        raise ConfigError(f'{where}: [env] must be a table of NAME = "value" pairs')
+    env: dict[str, str] = {}
+    for name, value in table.items():
+        if not _ENV_NAME_RE.match(name):
+            raise ConfigError(f"{where} [env]: `{name}` is not a valid environment variable name")
+        if not isinstance(value, str):
+            raise ConfigError(f"{where} [env].{name}: value must be a string")
+        env[name] = value
+    return env
+
+
+def activate_adopter_overlay_env(
+    data: dict[str, Any], environ: MutableMapping[str, str] | None = None
+) -> dict[str, str]:
+    """Apply the overlay's ``[env]`` table to ``environ`` (the process environment by default).
+
+    Every stage subprocess, ``env/`` snapshot, and in-process tool runner copies the process
+    environment, so one application at run start reaches build and sim alike. An overlay value
+    replaces an ambient one. Returns the applied table, empty when the view carries no overlay
+    ``[env]``.
+    """
+    target = os.environ if environ is None else environ
+    env = data.get("adopter_overlay_env")
+    if not isinstance(env, dict) or not env:
+        return {}
+    applied = {str(name): str(value) for name, value in env.items()}
+    target.update(applied)
+    return applied
 
 
 def apply_adopter_overlay(data: dict[str, Any], root: Path, overlay_path: Path) -> None:
@@ -1083,8 +1135,12 @@ def apply_adopter_overlay(data: dict[str, Any], root: Path, overlay_path: Path) 
     DUT-owned one):
 
     - `[build]` `incdirs`/`sources`/`source_lists`: `$VAR`/`${VAR}` expand from the process
-      environment (an unset variable is a config error), then dedup-append AFTER the DUT's own
-      entries.
+      environment with the overlay's `[env]` applied on top (an unset variable is a config
+      error), then dedup-append AFTER the DUT's own entries.
+    - `[env]` (string values): validated and recorded under the reserved `adopter_overlay_env`
+      key; the run path applies it to the process environment once, at run start, through
+      :func:`activate_adopter_overlay_env`, where an overlay value replaces an ambient one.
+      Loading never touches the environment, so `--validate-configs` and `--list` stay pure.
     - `[sim].args`: append after the merged `[sim].args` (still before run-mode/test/CLI args).
     - `[target_defaults.<t>]`/`[targets.<t>]` `defines`/`flags` and `[...tools.<tool>].flags`:
       dedup-append into the matching table (created when absent).
@@ -1092,8 +1148,9 @@ def apply_adopter_overlay(data: dict[str, Any], root: Path, overlay_path: Path) 
       view whose selected framework is not listed raises :class:`OverlayFrameworkMismatch`.
 
     Applying the same overlay to the same view is deterministic and repeatable: list order is
-    preserved and the dedup rules make a re-application a no-op. The applied path is recorded
-    under the reserved `adopter_overlay` key (surfaced in result.json).
+    preserved and the dedup rules make a re-application a no-op. The applied path and `[env]`
+    table are recorded under the reserved `adopter_overlay` / `adopter_overlay_env` keys
+    (surfaced in result.json as `overlay` / `overlay_env`).
     """
     where = f"adopter overlay {overlay_path}"
     if not overlay_path.is_file():
@@ -1113,6 +1170,11 @@ def apply_adopter_overlay(data: dict[str, Any], root: Path, overlay_path: Path) 
                 f"is `{selected or '<none>'}`"
             )
 
+    overlay_env = _overlay_env_table(overlay, where)
+    # Path expansion resolves against the environment the stages run with once the table is
+    # activated.
+    expansion_env: dict[str, str] = {**os.environ, **overlay_env}
+
     build_overlay = config_section(overlay, "build")
     if build_overlay:
         validate_allowed_keys(build_overlay, ADOPTER_OVERLAY_BUILD_KEYS, f"{where} [build]")
@@ -1122,7 +1184,7 @@ def apply_adopter_overlay(data: dict[str, Any], root: Path, overlay_path: Path) 
         for key in ("incdirs", "sources", "source_lists"):
             key_where = f"{where} build.{key}"
             extra = [
-                expand_env_vars(text, key_where)
+                expand_env_vars(text, key_where, expansion_env)
                 for text in as_str_list(build_overlay.get(key), key_where)
             ]
             if extra:
@@ -1172,6 +1234,8 @@ def apply_adopter_overlay(data: dict[str, Any], root: Path, overlay_path: Path) 
                     _append_unique(tools.setdefault(tool_name, {}), "flags", extra, tool_where)
 
     data["adopter_overlay"] = repo_rel(root, overlay_path)
+    if overlay_env:
+        data["adopter_overlay_env"] = overlay_env
 
 
 def load_dut(
@@ -1226,11 +1290,12 @@ def load_dut(
             if combined_sim_args:
                 data["sim"] = {**config_section(data, "sim"), "args": combined_sim_args}
 
-    if "adopter_overlay" in data:
-        raise ConfigError(
-            f"{path}: `adopter_overlay` may not be set in a sim config or profile — the adopter "
-            "overlay layer activates only via --overlay or OCAH_DV_OVERLAY"
-        )
+    for reserved in ("adopter_overlay", "adopter_overlay_env"):
+        if reserved in data:
+            raise ConfigError(
+                f"{path}: `{reserved}` may not be set in a sim config or profile — the adopter "
+                "overlay layer activates only via --overlay or OCAH_DV_OVERLAY"
+            )
     if adopter_overlay is not None:
         # After the framework merge (the overlay extends the selected view) and before
         # source-list expansion (an overlay-supplied manifest expands like a DUT-owned one).
