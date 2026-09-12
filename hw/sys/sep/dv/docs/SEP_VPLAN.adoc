@@ -534,7 +534,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |`sep_efuse_set_only_monotonicity_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip
-|Every `periphs.adoc` fuse-field row except `LC_STATE` is walked. Set-only rows OR-merge; SW-writable rows overwrite. `LOCK` is both RDL windows (`LOCKS` word 0, `LOCKS` word 1, `LOCKS_SPARE`) after the other rows. The lifecycle nibble stays with the LC W1S leaves. `REQUIRED_SIGNERS` write-0 does not clear; see <<known-limitations>>.
+|Every `periphs.adoc` fuse-field row except `LC_STATE` is walked. Set-only rows OR-merge; SW-writable rows overwrite. `LOCK` is both RDL windows (`LOCKS` word 0, `LOCKS` word 1, `LOCKS_SPARE`) after the other rows. The lifecycle nibble stays with the LC W1S leaves.
 |`sep_lcc_lc_state_w1s_prod_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip, LCC golden
@@ -772,8 +772,8 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_sec_dis_override_test`. `FEAT_CTRL` match / mismatch / restore after sense. `CHK-SENSE-GATED-RESET` grades that a match before sense-done leaves the reset held (issue 1462: release is a DTP TDR step).
 
 |eFuse set-only (anti-rollback)
-|PARTIAL
-|`sep_efuse_set_only_monotonicity_test`. Set-only OR-merge is walked on the six non-`LOCK` set-only rows and on both `LOCK` RDL windows (`LOCKS` word 0, `LOCKS` word 1, `LOCKS_SPARE`) after those other rows. Unproven: `REQUIRED_SIGNERS` write-0 does not clear bits the specification marks SW-writable — see <<known-limitations>>. The owning leaf fails that contrast and is not a green vehicle.
+|PROVEN
+|`sep_efuse_set_only_monotonicity_test`. Set-only OR-merge is walked on the six non-`LOCK` set-only rows and on both `LOCK` RDL windows (`LOCKS` word 0, `LOCKS` word 1, `LOCKS_SPARE`) after those other rows. SW-writable rows, `REQUIRED_SIGNERS` included, overwrite and then a write of 0 clears.
 
 |eFuse per-spare write-lock slot numbering
 |PROVEN
@@ -5095,7 +5095,7 @@ watermark together; no vehicle asserts that pair today.
 
 *Objective*: Proves the eFuse shadow-register write path on every `periphs.adoc` fuse-field row except `LC_STATE`: set-only rows OR-merge so a bit that is already set cannot be cleared by a write of zero, and SW-writable rows overwrite. Randomization is RANDCFG — every walked row is visited every seed, word index and bit patterns come from the run seed, and the write-policy contract itself is directed.
 
-*Test Coverage*: Every walked fuse-field row follows its specification write policy. The lifecycle nibble stays with the LC W1S leaves. `REQUIRED_SIGNERS` write-0 is a known spec-vs-DUT red (<<known-limitations>>); the checker stays and the leaf fails it.
+*Test Coverage*: Every walked fuse-field row follows its specification write policy. The lifecycle nibble stays with the LC W1S leaves.
 
 *Test Procedure*:
 
@@ -5120,12 +5120,12 @@ watermark together; no vehicle asserts that pair today.
 |CHK-OR-MERGE
 |A later write of 0 cannot clear the OR.
 |CHK-WRITABLE-CONTRAST
-|Every SW-writable row overwrites, then a write of 0 clears, so the OR is field-local. `REQUIRED_SIGNERS` fails the write-0 half (<<known-limitations>>).
+|Every SW-writable row overwrites, then a write of 0 clears, so the OR is field-local.
 |CHK-RANDCFG
-|Forty fuse-field rows walked in one invocation: six early set-only cells (`SIP_DIS`, `SYS_DIS`, `CHIPLET_PUBK_REVOKE`, `BL1_VERSION`, `BL2_VERSION`, `REQUIRED_ALGS`), three late `LOCK` cells (`LOCKS` word 0, `LOCKS` word 1, `LOCKS_SPARE`), and the 33 SW-writable rows. `LOCK` is counted only when both RDL windows are written. `LC_STATE` is not this leaf. `SIP_DIS` and `SYS_DIS` stay on their function-group word so the walk does not OR `sep_debug`, `chiplet_dbg` or `sip_debug` into `FEAT_CTRL`. This test drives the CPU-LSU master, which has no inbound filter.
+|Forty-one fuse-field rows walked in one invocation: six early set-only cells (`SIP_DIS`, `SYS_DIS`, `CHIPLET_PUBK_REVOKE`, `BL1_VERSION`, `BL2_VERSION`, `REQUIRED_ALGS`), three late `LOCK` cells (`LOCKS` word 0, `LOCKS` word 1, `LOCKS_SPARE`), and the 34 SW-writable rows. `LOCK` is counted only when both RDL windows are written. `LC_STATE` is not this leaf. `SIP_DIS` and `SYS_DIS` stay on their function-group word so the walk does not OR `sep_debug`, `chiplet_dbg` or `sip_debug` into `FEAT_CTRL`. This test drives the CPU-LSU master, which has no inbound filter.
 |===
 
-*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0. The leaf does not meet this while `REQUIRED_SIGNERS` write-0 leaves a nonzero value.
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
 '''''
 
@@ -5899,8 +5899,8 @@ contracts owned by the vault test, and the wipe security contract.
 |Phase 2 tests |62
 |Cocotb total |94 (`testlists/all.toml` `expected_count`)
 |Phase 3 |1 SV-UVM scenario bound (`sep_axi_smoke_test`)
-|Iconic scorecard rows |59 in-scope: 58 PROVEN, 1 PARTIAL (see <<iconic-scorecard>>)
-|Coded and failing |1 (`sep_efuse_set_only_monotonicity_test`; `CHK-WRITABLE-CONTRAST` on `REQUIRED_SIGNERS` write-0, red pending an RTL-versus-specification ruling, not expected-fail)
+|Iconic scorecard rows |59 in-scope: 59 PROVEN (see <<iconic-scorecard>>)
+|Coded and failing |none
 |===
 
 === Regression Groups
@@ -6002,9 +6002,6 @@ This row is about the AP/STEE bank only. The local-master aliaser is a different
 
 |Lifecycle codes with no owner
 |Closed for the encodings, narrowed for the mechanism. `sep_efuse_lcc_lc_state_stitch_test` walks four of the seven named codes on the OTP-program path (`LC_TEST_DEV`, `LC_PROD`, `LC_RMA_SIP_1`, `LC_RMA_CHIP_1`); the `LC_STATE` write-1-to-set leaves add `LC_RMA_SIP_0`, `LC_RMA_CHIP_0` and `LC_PROD_END` as sensed starting states with a `FEAT_CTRL` claim on each, plus two codes outside the named set. What remains unowned is the *pairing*: `LC_RMA_SIP_0`, `LC_RMA_CHIP_0` and `LC_PROD_END` are sensed but never reached by programming a fuse bit, because the OTP image is a t=0 deposit and a fuse survives reset — from a given image only a W1S superset is reachable in one leaf.
-
-|`REQUIRED_SIGNERS` shadow write-0 (spec vs DUT)
-|`hw/sys/sep/doc/periphs.adoc` marks `REQUIRED_SIGNERS` SW-writable `true` (two used bits) and says firmware may update the shadow for each manifest. `sep_efuse_set_only_monotonicity_test` `CHK-WRITABLE-CONTRAST` writes a nonempty pattern and then 0. The write of 0 leaves the bits set. The checker stays; the leaf fails it. Do not XFAIL.
 
 |Contracts not claimed (no vehicle in `all`)
 |KM emergency wipe (`KM_WIPE_CTRL.wipe_state`); CPU-firmware AES SRAM round-trip; AES CTR DECRYPT; ABR sign/verify, ML-KEM-1024, and key-vault seed; entropy-pool drain-under-fill / stall-duration; isolate drain-before-reset on the four accelerator domains (the shared TRNG drain is proven); locked-field CPU PIC/ISR; ESRC health-test quality and `prim_count` redundancy fault inject; inbound-filter negative product; non-identity inbound global remap; eleven-output `dbg_disable` gate test; named negative matrices (`sep_cpu_lsu_*_matrix_test`, `sep_fabric_gap_matrix_test`, `sep_irq_extended_connectivity_test`, `sep_efuse_uvm_permission_matrix_test`); KMAC sideload fail-closed + recovery (`ErrKeyNotValid` / `CMD.err_processed`).
