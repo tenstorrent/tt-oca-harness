@@ -635,10 +635,13 @@ module smu_wrapper_uvm_top (
   // powergood_stable is the SMC reset controller's stretched and synchronized
   // view of powergood_i (smc_reset_ctrl.sv), so it rises only once the DUT's own
   // synchronizer chain has clocked it through. The sticky low record carries no
-  // reset: it must survive the cold-reset window in which it is set.
+  // reset: it must survive the cold-reset window in which it is set, so its
+  // declaration initialiser is the only zeroing, and a variable with an
+  // initialiser may not be an always_ff target (IEEE 1800-2017 9.2.2.4, an
+  // error on VCS).
   assign obs_powergood_stable_o = u_dut.u_smu.powergood_stable;
   logic obs_powergood_stable_low_seen_q = 1'b0;
-  always_ff @(posedge clk_ref_i) begin
+  always @(posedge clk_ref_i) begin
     if (!obs_powergood_stable_o) begin
       obs_powergood_stable_low_seen_q <= 1'b1;
     end
