@@ -3577,7 +3577,7 @@ Drive `smc_efuse_otp_clock_test_seq`. Each checker below is a named compare the 
 
 *Test Coverage*:
 
-* DEFENDS: the five eFuse-derived chip-config registers decode and read their generated reset values, and the eFuse-bank AXI-Lite probe is observed going 0 -> 1 -> 0 (positive control then idle leg).
+* DEFENDS: the four eFuse-derived chip-config registers decode; `VERSION_LO`, `VERSION_HI` and `CHIP_ID` read their generated reset values, `LC_STATE` is decode-only because its value is simulator-divergent in the OSS bench; and the eFuse-bank AXI-Lite probe is observed going 0 -> 1 -> 0 (positive control then idle leg).
 * DOES NOT DEFEND: eFuse permission or boundary semantics of any kind. This testcase runs the same `smc_efuse_chip_config_read_test_seq` body as testcase 86 -- it programs no lock, drives no lifecycle transition, attempts no denied access, and touches no raw OTP window, because the SMC CSR boundary exposes none of that in the OSS bench.
 * GAP, no tracking issue yet: raw OTP permission-path coverage needs either a responder at the raw OTP window on `smc_wrapper` or an explicit OUT disposition. Until one exists this testcase is a named placeholder, not evidence.
 
