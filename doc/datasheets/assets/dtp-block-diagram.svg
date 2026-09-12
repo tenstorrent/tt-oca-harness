@@ -24,7 +24,7 @@
     </style>
   </defs>
 
-  <text class="title" x="500" y="27" text-anchor="middle">DTP in an OCAH multi-chiplet system</text>
+  <text class="title" x="500" y="27" text-anchor="middle">OCAH DTP in an OCA multi-chiplet system</text>
 
   <rect class="external" x="15" y="125" width="175" height="145"/>
   <text class="label" x="102" y="158" text-anchor="middle">External debug / test</text>
@@ -62,20 +62,22 @@
   <text class="small" x="495" y="425" text-anchor="middle">Adopter supplies pads, policy, clocks, resets, scan chains, and permitted mappings</text>
 
   <rect class="chiplet" x="805" y="86" width="180" height="300"/>
-  <text class="label" x="895" y="118" text-anchor="middle">Peer OCAH chiplet</text>
+  <text class="label" x="895" y="118" text-anchor="middle">Peer OCA chiplet</text>
   <rect class="dtp" x="829" y="145" width="132" height="76"/>
-  <text class="label" x="895" y="177" text-anchor="middle">DTP</text>
+  <text class="label" x="895" y="177" text-anchor="middle">Debug/Test</text>
   <text class="small" x="895" y="201" text-anchor="middle">JTAG + triggers</text>
   <rect class="core" x="829" y="264" width="132" height="76"/>
   <text class="label" x="895" y="296" text-anchor="middle">Internal functions</text>
   <text class="small" x="895" y="320" text-anchor="middle">management · IP</text>
 
-  <path class="both" d="M190 184 H270"/>
-  <text class="small" x="228" y="173" text-anchor="middle">JTAG / scan</text>
-  <path class="both" d="M190 236 H510"/>
-  <text class="small" x="228" y="251" text-anchor="middle">triggers</text>
-  <path class="both" d="M720 188 H829"/>
-  <text class="small" x="774" y="176" text-anchor="middle">cross-trigger</text>
+  <path class="both" d="M190 172 H270"/>
+  <text class="small" x="228" y="161" text-anchor="middle">JTAG / scan</text>
+  <path class="both" d="M190 210 H210 V276 H615 V236"/>
+  <text class="small" x="270" y="269" text-anchor="middle">Peer STAP &#8594; OCAH PTAP / triggers</text>
+  <path class="both" d="M720 172 H829"/>
+  <text class="small" x="774" y="161" text-anchor="middle">OCAH STAP &#8594; Peer PTAP</text>
+  <path class="both" d="M720 205 H774 V300 H961 V221"/>
+  <text class="small" x="835" y="293" text-anchor="middle">cross-trigger</text>
   <path class="both" d="M480 188 H510"/>
   <path class="both" d="M375 236 V286"/>
   <path class="bus" d="M301 286 H688"/>
