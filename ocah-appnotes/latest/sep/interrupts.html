@@ -169,8 +169,9 @@
 <div class="paragraph">
 <p>The SEP integrates a VeeR EL2 core with a built-in
 <strong>Programmable Interrupt Controller (PIC)</strong>. All maskable external interrupt
-sources feed a single <code>extintsrc_req</code> bus; the core&#8217;s <code>meipl</code>, <code>meie</code>, and
-<code>meigwctrl</code> CSRs configure priority, enable, and gateway polarity per source.</p>
+sources feed a single <code>extintsrc_req</code> bus; the memory-mapped <code>meipl</code>, <code>meie</code>,
+and <code>meigwctrl</code> registers configure priority, enable, and gateway polarity per
+source.</p>
 </div>
 <div class="paragraph">
 <p>The PIC base address is <code>0xC008_0000</code>; its register layout is described in the
@@ -178,8 +179,35 @@ sources feed a single <code>extintsrc_req</code> bus; the core&#8217;s <code>mei
 </div>
 <div class="paragraph">
 <p>Interrupt source IDs are <strong>1-based</strong> inside the PIC. Source 0 is permanently
-tied to zero inside the core. Firmware programs source <code>N</code> by writing the
-<code>meipl[N]</code> and <code>meie[N]</code> CSR entries and reading/clearing <code>meip[N]</code>.</p>
+tied to zero inside the core. Firmware programs source <code>N</code> through the
+per-source arrays, each indexed at an offset of <code>N * 4</code> from its region base:
+<code>meipl</code> at PIC base <code>+0x0000</code>, <code>meie</code> at <code>+0x2000</code>, <code>meigwctrl</code> at <code>+0x4000</code>
+and <code>meigwclr</code> at <code>+0x5000</code>. Pending status is the exception&#8201;&#8212;&#8201;<code>meip</code> at
+<code>+0x1000</code> is a bitmap rather than a per-source array, so source <code>N</code> is bit
+<code>N % 32</code> of <code>meip[N / 32]</code>.</p>
+</div>
+<div class="paragraph">
+<p>Each per-source array carries an entry 0, so that the array index is the source
+ID and no off-by-one applies: <code>meipl[7]</code> is source 7. That entry is reserved and
+has no hardware behind it&#8201;&#8212;&#8201;the PIC decodes the address but ties the register
+off, so <code>+0x0000</code>, <code>+0x2000</code>, <code>+0x4000</code> and <code>+0x5000</code> read as zero and discard
+writes. It appears in the RDL, the generated headers and the UVM RAL only to
+preserve the indexing; firmware must never program it.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Register tests that walk the whole PIC map must skip index 0 of <code>meipl</code>,
+<code>meie</code>, <code>meigwctrl</code> and <code>meigwclr</code>. The register model declares those entries
+read-write like every other element, but the hardware treats them as reserved,
+so a read-write check on them fails.
+</td>
+</tr>
+</table>
 </div>
 <div class="sect3">
 <h4 id="sep-cpu-interrupt-vector-map"><a class="anchor" href="#sep-cpu-interrupt-vector-map"></a><a class="link" href="#sep-cpu-interrupt-vector-map">1.1. SEP CPU Interrupt Vector Map</a></h4>
@@ -639,6 +667,11 @@ a delivery path, so software must not rely on sampling them; use the CSRs above.
 <p>The EL2 PIC register block (<code>meipl</code>, <code>meie</code>, <code>meigwctrl</code>, <code>meigwclr</code>, and
 related registers) is documented with the full SEP address map in
 <a href="memory_map.html#sep-detailed-register-map" class="xref page">Memory Map — Detailed Register Map</a>.</p>
+</div>
+<div class="paragraph">
+<p>The per-source arrays in that table are listed from index 0. Index 0 is the
+reserved entry described in <a href="#sep-interrupts">Interrupts</a>: it exists so the array index
+equals the interrupt source ID, and the first programmable source is index 1.</p>
 </div>
 </div>
 </div>

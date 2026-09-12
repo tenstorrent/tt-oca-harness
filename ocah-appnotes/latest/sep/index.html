@@ -2237,35 +2237,35 @@ corresponds to a unit in the SEP memory map above.</p>
 <h2>Address Map: el2_pic</h2>
 <p><strong>Register Arrays:</strong></p>
 <ul>
-<li><strong>meipl[32]</strong>: 32 registers, base 0x4, stride 0x4</li>
-<li><strong>meip[2]</strong>: 2 registers, base 0x1000, stride 0x4</li>
-<li><strong>meie[32]</strong>: 32 registers, base 0x2004, stride 0x4</li>
-<li><strong>meigwctrl[32]</strong>: 32 registers, base 0x4004, stride 0x4</li>
-<li><strong>meigwclr[32]</strong>: 32 registers, base 0x5004, stride 0x4</li>
+<li><strong>meipl[256]</strong>: 256 registers, base 0x0, stride 0x4</li>
+<li><strong>meip[8]</strong>: 8 registers, base 0x1000, stride 0x4</li>
+<li><strong>meie[256]</strong>: 256 registers, base 0x2000, stride 0x4</li>
+<li><strong>meigwctrl[256]</strong>: 256 registers, base 0x4000, stride 0x4</li>
+<li><strong>meigwclr[256]</strong>: 256 registers, base 0x5000, stride 0x4</li>
 </ul>
 <h2>Register List:</h2>
 <table>
 <tr><th>Address</th><th>Name</th><th>Access</th><th>Description</th></tr>
-<tr><td>0x4 - 0x80</td><td><a href="#meipl_32_">meipl[32]</a></td><td>RW</td><td>External Interrupt Priority Level Register. Sets the priority level for an interrupt source.</td></tr>
-<tr><td>0x1000 - 0x1004</td><td><a href="#meip_2_">meip[2]</a></td><td>R</td><td>External Interrupt Pending Register. Reports pending status of up to 32 interrupt sources.</td></tr>
-<tr><td>0x2004 - 0x2080</td><td><a href="#meie_32_">meie[32]</a></td><td>RW</td><td>External Interrupt Enable Register. Controls interrupt enable for a single source.</td></tr>
+<tr><td>0x0 - 0x3FC</td><td><a href="#meipl_256_">meipl[256]</a></td><td>RW</td><td>External Interrupt Priority Level Register. Sets the priority level for an interrupt source.</td></tr>
+<tr><td>0x1000 - 0x101C</td><td><a href="#meip_8_">meip[8]</a></td><td>R</td><td>External Interrupt Pending Register. Reports pending status of up to 32 interrupt sources.</td></tr>
+<tr><td>0x2000 - 0x23FC</td><td><a href="#meie_256_">meie[256]</a></td><td>RW</td><td>External Interrupt Enable Register. Controls interrupt enable for a single source.</td></tr>
 <tr><td>0x3000</td><td><a href="#mpiccfg">mpiccfg</a></td><td>RW</td><td>PIC Configuration Register. Used to select the operational parameters of the PIC.</td></tr>
-<tr><td>0x4004 - 0x4080</td><td><a href="#meigwctrl_32_">meigwctrl[32]</a></td><td>RW</td><td>External Interrupt Gateway Configuration Register. Controls interrupt type and polarity.</td></tr>
-<tr><td>0x5004 - 0x5080</td><td><a href="#meigwclr_32_">meigwclr[32]</a></td><td>W</td><td>External Interrupt Gateway Clear Register. Writing any value clears the gateway&#x27;s<br>interrupt pending (IP) bit for edge-triggered interrupts.</td></tr>
+<tr><td>0x4000 - 0x43FC</td><td><a href="#meigwctrl_256_">meigwctrl[256]</a></td><td>RW</td><td>External Interrupt Gateway Configuration Register. Controls interrupt type and polarity.</td></tr>
+<tr><td>0x5000 - 0x53FC</td><td><a href="#meigwclr_256_">meigwclr[256]</a></td><td>W</td><td>External Interrupt Gateway Clear Register. Writing any value clears the gateway&#x27;s<br>interrupt pending (IP) bit for edge-triggered interrupts.</td></tr>
 </table>
 <h2>Register Details:</h2>
-<h3 id="meipl_32_">meipl[32]</h3>
+<h3 id="meipl_256_">meipl[256]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:4</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>3:0</td><td>intpriority</td><td>RW</td><td>0x0</td><td>External interrupt priority level:<br>RISC-V standard order: 0=Never interrupt, 1..15=Priority (1 lowest, 15 highest)<br>Reverse order: 15=Never interrupt, 14..0=Priority (14 lowest, 0 highest)</td></tr>
 </table>
-<h3 id="meip_2_">meip[2]</h3>
+<h3 id="meip_8_">meip[8]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:0</td><td>intpend</td><td>R</td><td>0x0</td><td>External interrupt pending bits. Bit Y indicates pending status for source X*32+Y.<br>0: Interrupt not pending<br>1: Interrupt pending</td></tr>
 </table>
-<h3 id="meie_32_">meie[32]</h3>
+<h3 id="meie_256_">meie[256]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -2277,14 +2277,14 @@ corresponds to a unit in the SEP memory map above.</p>
 <tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>0</td><td>priord</td><td>RW</td><td>0x0</td><td>Priority order:<br>0: RISC-V standard compliant priority order (0=lowest to 15=highest)<br>1: Reverse priority order (15=lowest to 0=highest)</td></tr>
 </table>
-<h3 id="meigwctrl_32_">meigwctrl[32]</h3>
+<h3 id="meigwctrl_256_">meigwctrl[256]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:2</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
 <tr><td>1</td><td>irq_type</td><td>RW</td><td>0x0</td><td>External interrupt type:<br>0: Level-triggered interrupt<br>1: Edge-triggered interrupt</td></tr>
 <tr><td>0</td><td>polarity</td><td>RW</td><td>0x0</td><td>External interrupt polarity:<br>0: Active-high interrupt<br>1: Active-low interrupt</td></tr>
 </table>
-<h3 id="meigwclr_32_">meigwclr[32]</h3>
+<h3 id="meigwclr_256_">meigwclr[256]</h3>
 <table>
 <tr><th>Bits</th><th>Field</th><th>Access</th><th>Reset</th><th>Description</th></tr>
 <tr><td>31:1</td><td>Reserved</td><td>-</td><td>-</td><td>Reserved</td></tr>
@@ -8117,8 +8117,9 @@ SEP</p>
 <div class="paragraph">
 <p>The SEP integrates a VeeR EL2 core with a built-in
 <strong>Programmable Interrupt Controller (PIC)</strong>. All maskable external interrupt
-sources feed a single <code>extintsrc_req</code> bus; the core&#8217;s <code>meipl</code>, <code>meie</code>, and
-<code>meigwctrl</code> CSRs configure priority, enable, and gateway polarity per source.</p>
+sources feed a single <code>extintsrc_req</code> bus; the memory-mapped <code>meipl</code>, <code>meie</code>,
+and <code>meigwctrl</code> registers configure priority, enable, and gateway polarity per
+source.</p>
 </div>
 <div class="paragraph">
 <p>The PIC base address is <code>0xC008_0000</code>; its register layout is described in the
@@ -8126,8 +8127,35 @@ sources feed a single <code>extintsrc_req</code> bus; the core&#8217;s <code>mei
 </div>
 <div class="paragraph">
 <p>Interrupt source IDs are <strong>1-based</strong> inside the PIC. Source 0 is permanently
-tied to zero inside the core. Firmware programs source <code>N</code> by writing the
-<code>meipl[N]</code> and <code>meie[N]</code> CSR entries and reading/clearing <code>meip[N]</code>.</p>
+tied to zero inside the core. Firmware programs source <code>N</code> through the
+per-source arrays, each indexed at an offset of <code>N * 4</code> from its region base:
+<code>meipl</code> at PIC base <code>+0x0000</code>, <code>meie</code> at <code>+0x2000</code>, <code>meigwctrl</code> at <code>+0x4000</code>
+and <code>meigwclr</code> at <code>+0x5000</code>. Pending status is the exception&#8201;&#8212;&#8201;<code>meip</code> at
+<code>+0x1000</code> is a bitmap rather than a per-source array, so source <code>N</code> is bit
+<code>N % 32</code> of <code>meip[N / 32]</code>.</p>
+</div>
+<div class="paragraph">
+<p>Each per-source array carries an entry 0, so that the array index is the source
+ID and no off-by-one applies: <code>meipl[7]</code> is source 7. That entry is reserved and
+has no hardware behind it&#8201;&#8212;&#8201;the PIC decodes the address but ties the register
+off, so <code>+0x0000</code>, <code>+0x2000</code>, <code>+0x4000</code> and <code>+0x5000</code> read as zero and discard
+writes. It appears in the RDL, the generated headers and the UVM RAL only to
+preserve the indexing; firmware must never program it.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+Register tests that walk the whole PIC map must skip index 0 of <code>meipl</code>,
+<code>meie</code>, <code>meigwctrl</code> and <code>meigwclr</code>. The register model declares those entries
+read-write like every other element, but the hardware treats them as reserved,
+so a read-write check on them fails.
+</td>
+</tr>
+</table>
 </div>
 <div class="sect3">
 <h4 id="sep-cpu-interrupt-vector-map"><a class="anchor" href="#sep-cpu-interrupt-vector-map"></a><a class="link" href="#sep-cpu-interrupt-vector-map">1.8.1. SEP CPU Interrupt Vector Map</a></h4>
@@ -8587,6 +8615,11 @@ a delivery path, so software must not rely on sampling them; use the CSRs above.
 <p>The EL2 PIC register block (<code>meipl</code>, <code>meie</code>, <code>meigwctrl</code>, <code>meigwclr</code>, and
 related registers) is documented with the full SEP address map in
 <a href="memory_map.html#sep-detailed-register-map" class="xref page">Memory Map — Detailed Register Map</a>.</p>
+</div>
+<div class="paragraph">
+<p>The per-source arrays in that table are listed from index 0. Index 0 is the
+reserved entry described in <a href="#sep-interrupts">Interrupts</a>: it exists so the array index
+equals the interrupt source ID, and the first programmable source is index 1.</p>
 </div>
 </div>
 </div>
