@@ -421,6 +421,16 @@ def rom_status_for_result(boot_error: int) -> int:
     the only bridge, so it is parsed rather than mirrored -- masking the console
     code and calling the low half a status is how a test ends up asserting on a
     value the ROM never reports.
+
+    Only the RESULT range crosses that bridge. rom_manifest_boot() re-reports a
+    slot's verdict through status_for_result() under
+    ``(last_err & 0xFFFFFF00) == OCA_BOOT_ERR_BASE``, so the ROM's own
+    ``0x000301xx`` codes -- no BL1 in the TOC, a BL1 placement outside SRAM, a
+    refused storage read -- skip it entirely and reach the ring only as the
+    generic ``SEP_MSG_MANIFEST_LOAD_FAILED`` that follows. This mirrors that
+    guard rather than reproducing the arithmetic: a 0x000301xx code has no
+    oca_result_t to look up, and looking one up anyway is what made this raise
+    on sep_bl1_entry_invalid_test.
     """
     import re
 
@@ -431,7 +441,13 @@ def rom_status_for_result(boot_error: int) -> int:
     if m is None:
         raise AssertionError("status_for_result() not found in oca_boot.c")
 
-    want = boot_error & 0xFFFF
+    # The ROM's guard, in the ROM's own terms. Masked with 0xFF like oca_boot.c,
+    # not 0xFFFF: the low BYTE is the oca_result_t, and the byte above it is what
+    # separates a library verdict from one of the ROM's own codes.
+    if (boot_error & 0xFFFFFF00) != _c_define(_OCA_BOOT_H, "OCA_BOOT_ERR_BASE"):
+        return _c_define(_STATUS_VALUES_H, "SEP_MSG_MANIFEST_LOAD_FAILED")
+
+    want = boot_error & 0xFF
     pending: list[str] = []
     for line in m.group(1).splitlines():
         case = re.search(r"case\s+(OCA_FAIL_[A-Z0-9_]+)\s*:", line)
@@ -1168,6 +1184,31 @@ def _selftest() -> int:
             print(f"  FAIL {img.name}: {exc}")
             bad += 1
     print(f"\n{len(images)} image(s): {classic} classic, {pqc} pqc, {bad} failure(s)")
+
+    # Both MANIFEST_ERR spaces reach the ring. A library verdict crosses
+    # status_for_result() to its own SEP_MSG_*; one of the ROM's own 0x000301xx
+    # codes does not cross at all and reaches the ring only as the generic
+    # SEP_MSG_MANIFEST_LOAD_FAILED. Checked here because a test that asserts the
+    # wrong one still looks plausible -- the two agree on OCA_FAIL_SIGNATURE.
+    load_failed = _c_define(_STATUS_VALUES_H, "SEP_MSG_MANIFEST_LOAD_FAILED")
+    print("\nstatus ring mapping:")
+    for name in ("OCA_FAIL_SIGNATURE", "OCA_FAIL_ROOT_KEY_REVOKED", "OCA_FAIL_SECURITY_VERSION"):
+        got = rom_status_for_result(boot_err(name))
+        if got == load_failed:
+            print(f"  FAIL {name}: mapped to the generic code, not its own SEP_MSG_*")
+            bad += 1
+        else:
+            print(f"  ok   {name} -> SEP_MSG 0x{got:02x}")
+    for name in ("OCA_BOOT_ERR_BL1_BAD_ADDR", "OCA_BOOT_ERR_NO_BL1", "OCA_BOOT_ERR_DMA"):
+        got = rom_status_for_result(rom_boot_err(name))
+        if got != load_failed:
+            print(
+                f"  FAIL {name}: mapped to SEP_MSG 0x{got:02x}, expected the generic 0x{load_failed:02x}"
+            )
+            bad += 1
+        else:
+            print(f"  ok   {name} -> generic SEP_MSG_MANIFEST_LOAD_FAILED")
+
     return 1 if bad else 0
 
 
