@@ -16,6 +16,9 @@ Layout
 * `cocotb/tests/` — test modules; `ctp_base_test.py` carries the shared
   bench helpers (bring-up, register access, pulse/window measurement).
 * `testlists/all.toml` — testlist and groups (`smoke`, `all`).
+* `formal/` — formal properties for `cross_trigger_port_core` (`props/`),
+  the open-path SymbiYosys task file (`fpv/sby/`), and the generated
+  filelist and work directories (`build/`).
 
 The RTL closure comes from the `cross_trigger` Bender target plus the shared
 `axi_rtl`/`common_cells_rtl` dependency targets; register addresses and reset
@@ -54,3 +57,12 @@ Expected behavior is taken from `../doc/architecture.adoc`,
 `../doc/interface.adoc`, and `../regs/cross_trigger_port.rdl`. The subsystem
 integration of the CTP is additionally exercised at the DTP level by the
 `dtp_xtrig_*`/`dtp_ctm_*` scenarios (`--dut dtp`).
+
+Formal
+------
+
+`formal/` is the reference implementation of the property style in
+`hw/common/dv/docs/formal-property-style.adoc`: a bound property module in
+the boolean subset both the open-source frontend and the licensed backends
+elaborate, with `bmc`, `cover` and `prove` tasks. That chapter carries the
+filelist generation and `sby` invocation.
