@@ -177,8 +177,9 @@ class sep_base_test(uvm_test):
     # Both default to off. They tighten a leaf that already emits records; they
     # do not replace the unconditional floor in `_finalize_evidence`. A leaf
     # whose `own` count is zero fails unless it is named in NO_OWN_EVIDENCE.
-    # Graded contracts log `CHK-<ID> PASS` (or OK) after the check. A colon-only
-    # `CHK-<ID>:` line is a report and does not count.
+    # Graded contracts the floor accepts log `CHK-<ID> PASS` (or OK) after the
+    # check. A colon-only `CHK-<ID>:` line does not match the counter, even when
+    # an assert already sat in front of it.
     required_evidence: tuple[str, ...] = ()
     min_evidence = 0
 
