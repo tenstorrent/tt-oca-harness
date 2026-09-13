@@ -24,6 +24,7 @@ endif::backend-pdf[]
 
 include::memory_map.adoc[leveloffset=0]
 include::cpu.adoc[leveloffset=0]
+include::rom.adoc[leveloffset=0]
 include::interrupts.adoc[leveloffset=0]
 include::crypto.adoc[leveloffset=0]
 include::periphs.adoc[leveloffset=0]
