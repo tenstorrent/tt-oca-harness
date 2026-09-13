@@ -2839,11 +2839,10 @@ Drive `smc_ecc_codeword_ded_test_seq`. Each checker below is a named compare the
 |===
 |Checker |Description
 |`CHK-ECC-CODEWORD-DED` |Named compare in `smc_ecc_codeword_corrupt_test_seq.py`; the run fails if it mismatches
-|`CHK-ECC-CODEWORD-SEC` |Named compare in `smc_ecc_codeword_corrupt_test_seq.py`; the run fails if it mismatches
 |===
 
 
-*Pass Criteria*: `CHK-ECC-CODEWORD-DED`, `CHK-ECC-CODEWORD-SEC` hold after their compares. Enrolled in: `all`, `coverage_closure`.
+*Pass Criteria*: `CHK-ECC-CODEWORD-DED` hold after their compares. Enrolled in: `all`, `coverage_closure`.
 '''''
 
 [[sec-073-smc_ecc_codeword_sec_test]]
@@ -2869,12 +2868,11 @@ Drive `smc_ecc_codeword_sec_test_seq`. Each checker below is a named compare the
 [cols="1,2",options="header",]
 |===
 |Checker |Description
-|`CHK-ECC-CODEWORD-DED` |Named compare in `smc_ecc_codeword_corrupt_test_seq.py`; the run fails if it mismatches
 |`CHK-ECC-CODEWORD-SEC` |Named compare in `smc_ecc_codeword_corrupt_test_seq.py`; the run fails if it mismatches
 |===
 
 
-*Pass Criteria*: `CHK-ECC-CODEWORD-DED`, `CHK-ECC-CODEWORD-SEC` hold after their compares. Enrolled in: `all`, `coverage_closure`.
+*Pass Criteria*: `CHK-ECC-CODEWORD-SEC` hold after their compares. Enrolled in: `all`, `coverage_closure`.
 '''''
 
 [[sec-074-smc_ecc_dfd_dbs_sanity_test]]
@@ -3981,18 +3979,12 @@ Drive `smc_gpio_observe_test_seq`. Each checker below is a named compare the DUT
 |===
 |Checker |Description
 |`CHK-GPIO-PAD-BUS-STABLE` |Named compare in `smc_probe_positive_control.py`; the run fails if it mismatches
-|`CHK-PROBE-AXIL-EFUSE-BANK-ALIVE` |Named compare in `smc_probe_positive_control.py`; the run fails if it mismatches
-|`CHK-PROBE-AXIL-EXTERNAL-ALIVE` |Named compare in `smc_probe_positive_control.py`; the run fails if it mismatches
 |`CHK-PROBE-CONTROLS` |Named compare in `smc_probe_positive_control.py`; the run fails if it mismatches
-|`CHK-PROBE-GPIO-IRQ-ALIVE` |Named compare in `smc_probe_positive_control.py`; the run fails if it mismatches
 |`CHK-PROBE-GPIO-PAD-BUS-ALIVE` |Named compare in `smc_probe_positive_control.py`; the run fails if it mismatches
-|`CHK-PROBE-I2C-CG-EN-ALIVE` |Named compare in `smc_probe_positive_control.py`; the run fails if it mismatches
-|`CHK-PROBE-SYNC-IRQ-ALIVE` |Named compare in `smc_probe_positive_control.py`; the run fails if it mismatches
-|`CHK-PROBE-UART-IRQ-ALIVE` |Named compare in `smc_probe_positive_control.py`; the run fails if it mismatches
 |===
 
 
-*Pass Criteria*: `CHK-GPIO-PAD-BUS-STABLE`, `CHK-PROBE-AXIL-EFUSE-BANK-ALIVE`, `CHK-PROBE-AXIL-EXTERNAL-ALIVE`, `CHK-PROBE-CONTROLS`, `CHK-PROBE-GPIO-IRQ-ALIVE`, `CHK-PROBE-GPIO-PAD-BUS-ALIVE` (and 3 more) hold after their compares. Enrolled in: `all`, `per_ip`, `gpio`, `functional`, `functional_depth`, `pyuvm`, `smoke`.
+*Pass Criteria*: `CHK-GPIO-PAD-BUS-STABLE`, `CHK-PROBE-CONTROLS`, `CHK-PROBE-GPIO-PAD-BUS-ALIVE` hold after their compares. Enrolled in: `all`, `per_ip`, `gpio`, `functional`, `functional_depth`, `pyuvm`, `smoke`.
 '''''
 
 [[sec-105-smc_gpio_output_driveback_test]]
