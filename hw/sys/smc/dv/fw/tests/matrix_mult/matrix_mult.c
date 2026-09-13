@@ -7,8 +7,12 @@
 #include "virt_console.h"
 #include "cpu_perf.h"
 
-#define MAX_DIM 5
 #define MATRIX_SIZES 5
+/* MATRIX_SIZES counts size classes; the loop walks dim_log over
+ * [0, MATRIX_SIZES) with dim = 2^dim_log, so the widest matrix edge is
+ * 2^(MATRIX_SIZES-1). The arrays are sized from that bound so a change to
+ * the class count cannot leave them short. */
+#define MAX_DIM (1 << (MATRIX_SIZES - 1))
 #define N_ITER 5
 
 static double A[MAX_DIM][MAX_DIM];

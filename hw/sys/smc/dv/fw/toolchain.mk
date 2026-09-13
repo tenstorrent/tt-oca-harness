@@ -17,6 +17,7 @@ FW_OPT ?= \
 
 FW_WARNINGS ?= \
   -Wall -Wextra -Wstrict-prototypes \
+  -Werror=return-type \
   -Wno-address-of-packed-member -Wno-missing-braces
 
 FW_CFLAGS ?= \
