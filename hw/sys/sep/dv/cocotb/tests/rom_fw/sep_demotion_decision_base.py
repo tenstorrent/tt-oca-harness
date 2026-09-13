@@ -134,8 +134,8 @@ from pathlib import Path
 
 import cocotb
 from cocotb.triggers import RisingEdge
-from env import sep_oca_mutate as mm
-from env import sep_oca_payload as pm
+from env import sep_manifest_mutate as mm
+from env import sep_payload_mutate as pm
 from env import sep_spi_slot_evidence as ev
 from rom_fw.sep_rom_ot_dma_boot_test import (
     SECURE_FLASH_IMAGE,

@@ -249,3 +249,23 @@ Backend upgrades may change implementation internals but must preserve:
 
 Breaking changes require an explicit migration plan, adopter updates, and
 requalification of named consumer regressions.
+
+[[shared-vip-deprecation]]
+=== Deprecation
+
+This rule covers public API names: the classes, methods, constructor
+arguments, config fields, and plusargs that a package README documents.
+
+A name that a tagged release has shipped is renamed or removed in two steps:
+
+. Ship the replacement. Keep the old name as an alias that calls the
+  replacement and logs one warning per instance, telling the caller which
+  name to use instead.
+. Remove the alias after every consumer in this repository uses the new name
+  and at least one tagged release has shipped with the alias in place.
+
+Removing an alias is a breaking change under the versioning rule above. Each
+package README lists the aliases the package carries.
+
+A name that no tagged release has shipped and that no consumer in this
+repository uses is removed in one step, without an alias.

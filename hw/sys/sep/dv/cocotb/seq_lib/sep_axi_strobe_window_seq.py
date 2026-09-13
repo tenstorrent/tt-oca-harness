@@ -40,18 +40,16 @@ RESP_OKAY = 0
 SIZE_BYTES = {0: 1, 1: 2, 2: 4}
 
 # Scratch words are plain RW storage in the SEP local map. Not restored:
-# the sweep overwrites them and nothing downstream reads them back, so a
-# restore would be ceremony rather than a contract.
+# nothing downstream reads them back.
 SCRATCH_COLD_0 = sym("SEP_SCRATCH_COLD_SCRATCH_0__REG_ADDR")
 SCRATCH_WARM_0 = sym("SEP_SCRATCH_WARM_SCRATCH_0__REG_ADDR")
 
 # Memory-mapped windows. These are the apertures that sit behind an SRAM-style
 # adapter rather than a register adapter, which is the class the read-mask
 # defect affects.
-# KMAC STATE is absent: the Keccak state window is gated by the engine's own
-# configuration and refuses a bare CSR-path write, so a probe there tests KMAC
-# bring-up rather than the read mask. A test that brings KMAC up first can
-# cover it.
+# The KMAC STATE window is gated by the engine's own configuration and refuses
+# a bare CSR-path write, so a probe there tests KMAC bring-up rather than the
+# read mask; it is not a target here.
 WINDOWS: tuple[tuple[str, int], ...] = (
     ("otbn_dmem", sym("OTBN_DMEM_MEM_BASE_ADDR")),
     ("otbn_imem", sym("OTBN_IMEM_MEM_BASE_ADDR")),
@@ -140,11 +138,11 @@ class SepAxiStrobeWindow:
         self.window_skipped: dict[str, str] = {}
 
     # The readback masks to 32 bits, which is the whole of the addressed
-    # register. Every generated SEP C header was walked for a 4-byte-adjacent
-    # register pair: there are none. A 32-bit register therefore owns its
-    # 64-bit beat and bytes 4-7 are unimplemented, not a neighbour. A strobe
-    # widened past the addressed lanes has no second register to corrupt, and
-    # the addressed-word compare below is the whole contract.
+    # register. No addressed register has a 4-byte-adjacent neighbour, so a
+    # 32-bit register owns its 64-bit beat and bytes 4-7 are unimplemented, not
+    # a neighbour. A strobe widened past the addressed lanes has no second
+    # register to corrupt, and the addressed-word compare below is the whole
+    # contract.
     async def _rd(self, addr: int, *, size: int = 2) -> tuple[int, int]:
         seq = SepAxiAccessSeq(
             f"sw_rd_0x{addr:08x}",

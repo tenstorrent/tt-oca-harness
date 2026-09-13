@@ -9,9 +9,6 @@
  *   1) Generate non-zero KMAC state from a SHA3 operation.
  *   2) Assert and release KMAC SW reset (poll idle; timeout FAIL).
  *   3) Prove post-reset STATE zeros + exact recovery digest.
- *
- * Execution:
- *   make test-sep TEST_NAME=sep_kmac_p2_emergency_wipe_test STACK=cgen,sim
  */
 
 #include <stdint.h>

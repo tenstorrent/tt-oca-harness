@@ -33,7 +33,7 @@ Configuration (set by the env after construction, like the agent's ``axi_prefix`
     master). Set to ``m_axi`` for the external SMN-inbound master.
   * ``fail_decerr`` -- whether a DECERR beat fails the test. True for the CPU-LSU
     bus (no inbound filter, a DECERR is a real decode bug); False for the external
-    bus, whose inbound filter *intentionally* routes blocked accesses to
+    bus, whose inbound filter routes blocked accesses to
     axi_err_slv with DECERR (the inbound-filter-gating test asserts that).
 
 It tallies beats + response codes so a clean run reports positive evidence.

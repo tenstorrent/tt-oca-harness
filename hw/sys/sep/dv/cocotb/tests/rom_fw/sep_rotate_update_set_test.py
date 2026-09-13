@@ -33,7 +33,7 @@ is the whole test, and it is asserted three independent ways:
 actually read, so the run is attributable to this stimulus and not to a strap
 that happened to be set some other way.
 
-The image is the unsigned one and the OTP is the inherited TEST_DEV, on purpose.
+The image is the unsigned one and the OTP is the inherited TEST_DEV.
 Slot selection is upstream of the crypto chain, so adding secure boot here would
 only introduce failure modes that say nothing about rotation.
 """
@@ -41,7 +41,7 @@ only introduce failure modes that say nothing about rotation.
 from __future__ import annotations
 
 import pyuvm
-from env import sep_oca_mutate as mm
+from env import sep_manifest_mutate as mm
 from env import sep_spi_slot_evidence as ev
 from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
 

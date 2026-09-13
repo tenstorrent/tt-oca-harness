@@ -15,13 +15,12 @@ non-demoted and locked, additionally locks DEMOTE_2, and boots. The demotion fla
 being SET rather than clear is what makes this a test of the override rather than of
 the default.
 
-**THIS IS ONE OF FIVE TRACKER ITEMS THAT SHARE THIS OUTCOME.** ``+AUTH_FLAG_0``,
+**THIS IS ONE OF FIVE STIMULI THAT SHARE THIS OUTCOME.** ``+AUTH_FLAG_0``,
 ``+UNAUTH_FLAG_0`` and ``+SET_SELECTOR_BIT_17`` are all unobservable at PROD_END for
 the same structural reason, so ``no_flag_prod_end``, ``no_flag_prod_end_sel_bit_set``,
 ``auth_flag_0_prod_end``, ``unauth_flag_0_prod_end`` and ``unauth_flag_30_prod_end``
-are five stimuli on one observable. This item is the one the tracker assigned to this
-batch; the other four are covered-by-O1 and batch R4 should report them that way with
-the base cited, not as four more coverage points.
+are five stimuli on one observable. The other four are covered-by-O1, not four more
+coverage points.
 
 FIRST PROD_END BOOT IN THIS TESTLIST. Before this testcase every rom_fw eFuse preload
 selected TEST_DEV (raw 0x0) or PROD (raw 0x1); nothing exercised raw 0x8. That makes
@@ -64,7 +63,7 @@ so a full RSA-3072 modexp runs on OTBN. The RSA assertions are untouched.
 from __future__ import annotations
 
 import pyuvm
-from env import sep_oca_mutate as mm
+from env import sep_manifest_mutate as mm
 from rom_fw.sep_demotion_decision_base import (
     EFUSE_DIR,
     narrow_life_cycle_states,
@@ -160,7 +159,7 @@ class sep_firmware_demotion_decision_auth_flag_0_prod_end_test(sep_demotion_deci
         assert sel_bit == 0 and bl2 == 0, (
             f"primary demotion_control=0x{dc:04x} has BL1_VALID={sel_bit} and BL2 "
             f"request={bl2}; both must be 0 so "
-            f"this run drives the AUTH flag alone, as the tracker row names it"
+            f"this run drives the AUTH flag alone"
         )
         lcs = mm.lifecycle_states(buf, "primary", "chiplet")
         assert lcs == _LC_STATES_PROD_END_ONLY, (

@@ -10,9 +10,9 @@ u_lsu/u_ifu/u_dbg axi_window_remap): an access to 0xD000_xxxx is remapped to
 physical 0x1000_xxxx (SEP SRAM), while accesses outside the window pass through.
 The window is a fixed 768 MiB (`hw/sys/sep/doc/memory_map.adoc` SEP Local
 Alias row) positioned by the base CSR only, with target `0x1000_0000`;
-REGION_SIZE does not size this window. The IFU proof actually
-fetches+executes an instruction through the alias (stronger than the reference suite's synthetic
-IFU-port write).
+REGION_SIZE does not size this window. The IFU proof fetches and executes
+an instruction through the alias (the reference suite writes the IFU port
+synthetically).
 
 This MUST be a CPU-firmware test: the OSS no_cpu AXI splice is POST-remap, so a
 no_cpu driver would bypass the CPU-side remapper entirely. Firmware-self-checking; start.S emits the

@@ -6,9 +6,8 @@ Outcome **O4** of the [S25] decision table in
 ``rom_fw/sep_demotion_decision_base.py``; the PROD stimulus it shares with the
 other three PROD members is in ``rom_fw/sep_demotion_prod_base.py``.
 
-**THIS IS THE HIGHEST-VALUE ROW OF THE WHOLE DEMOTION GROUP, and both the VP half
-and batch R3 said so before it was written**. It is the only one of the seven outcomes
-where:
+**THIS IS THE HIGHEST-VALUE ROW OF THE WHOLE DEMOTION GROUP.** It is the only one
+of the seven outcomes where:
 
   * ``lock_demotion`` goes false (``rom_main.c``) -- on every other path it
     keeps its initialiser;

@@ -5,8 +5,7 @@
 """Generate abr_nist_vectors.h from NIST ACVP-Server ML-DSA-87 vectors.
 
 The golden inputs/outputs are the official NIST ACVP "internalProjection" files
-(they contain both inputs and expected outputs). Download them first (the dev
-machine has network access):
+(they contain both inputs and expected outputs). Download them first:
 
   base=https://raw.githubusercontent.com/usnistgov/ACVP-Server/master/gen-val/json-files
   curl -sSL -o /tmp/mldsa_keygen.json $base/ML-DSA-keyGen-FIPS204/internalProjection.json

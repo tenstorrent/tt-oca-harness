@@ -75,7 +75,7 @@ trivially satisfied by an unusable backup.
 WHAT THE SHARED SKELETON DOES NOT COVER
 ============================================================================
 
-``sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test`` (batch R3's O2a
+``sep_firmware_demotion_decision_auth_flag_0_prod_sel_bit_set_test`` (the O2a
 member) predates this module and performs the same three ``mm`` calls inline. It is
 deliberately NOT refactored onto :func:`apply_secure_boot_dis`: it is an approved,
 passing row whose docstring is its own evidence record, and rewriting it would put that
@@ -87,7 +87,7 @@ silently.
 
 from __future__ import annotations
 
-from env import sep_oca_mutate as mm
+from env import sep_manifest_mutate as mm
 from rom_fw.sep_demotion_decision_base import (
     EFUSE_DIR,
     narrow_life_cycle_states,

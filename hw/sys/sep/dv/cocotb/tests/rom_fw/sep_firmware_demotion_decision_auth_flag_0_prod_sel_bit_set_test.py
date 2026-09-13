@@ -73,7 +73,7 @@ rather than silently start needing the shortcut.
 from __future__ import annotations
 
 import pyuvm
-from env import sep_oca_mutate as mm
+from env import sep_manifest_mutate as mm
 from rom_fw.sep_demotion_decision_base import (
     EFUSE_DIR,
     narrow_life_cycle_states,

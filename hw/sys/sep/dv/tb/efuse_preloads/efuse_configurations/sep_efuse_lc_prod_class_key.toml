@@ -4,12 +4,12 @@
 # PROD lifecycle carrying the encrypted-payload class key.
 #
 # sep_efuse_class_key.toml is the TEST_DEV version of this file, used by
-# sep_rom_oca_encrypted_boot_test. That test picks TEST_DEV deliberately, so a
+# sep_rom_oca_encrypted_boot_test. That test picks TEST_DEV so a
 # signature failure cannot mask a decryption failure.
 #
 # sep_decryption_failure_terminal_test needs the opposite trade. Its stimulus is a
 # corrupted CIPHERTEXT, and the manifest is re-hashed and re-signed with the dev0
-# key afterwards (cocotb/env/sep_oca_payload.py), so the signature is valid by
+# key afterwards (cocotb/env/sep_payload_mutate.py), so the signature is valid by
 # construction and cannot mask anything. PROD then buys the stronger precondition:
 # plat_is_secure_boot_active() enforces the crypto chain from the LIFECYCLE
 # (oca_platform.c) rather than from a manifest flag, so the run cannot silently

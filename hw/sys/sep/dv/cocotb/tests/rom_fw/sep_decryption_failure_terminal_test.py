@@ -6,7 +6,7 @@ Procedure variant (b): "corrupt the encrypted payload so the decrypted plaintext
 does not match the TOC magic". One ciphertext bit of the PRIMARY slot is flipped
 in AES-CBC block 0, and the manifest is re-hashed and re-signed with the dev0 key
 so that the only thing wrong with the image is the ciphertext itself
-(``env/sep_oca_payload.py``).
+(``env/sep_payload_mutate.py``).
 
 THE FALSE-PASS THIS TESTCASE IS BUILT TO AVOID. AES-CBC decryption is a
 permutation: it never reports an error for the wrong input, and the ROM's own
@@ -35,7 +35,7 @@ engine status fail via the AES model". There is no AES model on RTL -- the AES i
 real RTL -- so the engine's ``ALERT_FATAL_FAULT`` / ``ALERT_RECOV_CTRL_UPDATE_ERR``
 status (``aes_driver.c:57``) could only be produced by forcing a status bit, which
 is a forbidden sim-only shortcut. A pass here therefore covers the post-decrypt
-detection arm of F027 and NOT the engine-status arm.
+detection arm and not the engine-status arm.
 
 THE NO-BACKUP-RETRY EXPECTATION. Procedure step 5 requires that a decryption
 failure is terminal and NOT backup-eligible, and its Expected Results say "no
@@ -52,8 +52,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyuvm
-from env import sep_oca_mutate as mm
-from env import sep_oca_payload as pm
+from env import sep_manifest_mutate as mm
+from env import sep_payload_mutate as pm
 from rom_fw.sep_backup_manifest_fail_base import sep_backup_manifest_fail_base
 
 _SEP_ROOT = Path(__file__).resolve().parents[4]
@@ -126,7 +126,7 @@ class sep_decryption_failure_terminal_test(sep_backup_manifest_fail_base):
         )
 
     def corrupt_backup(self, buf: bytearray) -> None:
-        """Deliberately a no-op: the procedure corrupts the PRIMARY only.
+        """A no-op: the procedure corrupts the PRIMARY only.
 
         Step 5 requires that a decryption failure is terminal and not
         backup-eligible, so leaving the backup healthy is what makes
@@ -242,7 +242,7 @@ class sep_decryption_failure_terminal_test(sep_backup_manifest_fail_base):
         )
 
         # CHK-NO-BACKUP-RETRY: procedure step 5 and its "no backup address read"
-        # expected result. Left at full strength deliberately -- see the module
+        # expected result. Left at full strength -- see the module
         # docstring. rom_manifest_boot() has no per-error retry class, so a failure
         # here is a real procedure-versus-ROM disagreement, not a test defect.
         i_backup = index_of(_BACKUP_SRC)

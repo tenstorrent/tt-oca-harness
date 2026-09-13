@@ -11,7 +11,7 @@
 // run modes: under `+cpu_boot` the EL2 owns the bus and the flat request ports
 // are idle, so a port-side sampler would see no firmware traffic at all. The
 // external inbound master is the real `m_axi_*` DUT port. Everything else is an
-// already-signed-off probe port of tb_top. No new hierarchy reach.
+// named probe port of tb_top. No new hierarchy reach.
 //
 // WHAT A BIN MEANS. A bin records an interface event: a completed AXI
 // handshake, a decoded CTRL/CFG write, a readback that matches what was
@@ -379,9 +379,8 @@ module sep_fcov (
   // Reading a STATE share back is the completion event BOTH drivers produce.
   // `keyed_mac` -- the only path the KM sideload KAT takes -- polls STATUS and
   // reads the shares, and never touches INTR_STATE, so an INTR_STATE-only
-  // anchor could not sample a sideloaded operation at all: measured
-  // `cp_sideload.km_key` 0 hits against `sw_key` 13, because the leaf's single
-  // INTR_STATE read lands at EOT after the last SW-key leg.
+  // anchor could not sample a sideloaded operation at all: the leaf's single
+  // INTR_STATE read lands at EOT, after the last SW-key leg.
   wire       kmac_digest_rd = rd_ev && in_win(ar_addr_q, KMAC_STATE_MEM_BASE_ADDR,
       KMAC_STATE_MEM_BASE_ADDR + KMAC_STATE_MEM_SIZE);
 
@@ -527,7 +526,7 @@ module sep_fcov (
 
   logic [31:0] m_aw_addr_q, m_ar_addr_q;
   // Same pairing contract as the LSU side: sep_axi_order_sweep_m_axi_test
-  // deliberately runs several inbound transactions at once, and a plain
+  // runs several inbound transactions at once, and a plain
   // last-write latch would pair one access's response with another's address.
   logic [3:0] m_aw_out_q, m_ar_out_q;
 
@@ -547,10 +546,10 @@ module sep_fcov (
   // --- eFuse program x write-lock ----------------------------------------
   // Programming a write-locked field is a LEGAL software action with a
   // specified outcome (refused), not a fault injection -- the same class as a
-  // read-only register, so it belongs here and not with the Phase 2 error
-  // groups. sep_efuse_program_lock_matrix_test walks unlocked-program then
-  // lock-then-reject on EACH of SPARE0..SPARE7 in order, so the whole cross is
-  // filled by ONE seed; only the bit offset inside a spare is seeded.
+  // read-only register. sep_efuse_program_lock_matrix_test walks
+  // unlocked-program then lock-then-reject on EACH of SPARE0..SPARE7 in order,
+  // so the whole cross is filled by ONE seed; only the bit offset inside a
+  // spare is seeded.
   //
   // Every operation is frontdoor on EFUSE_PROGRAM_CTRL: the write carries the
   // OTP bit index in EFUSE_ADDR plus PROGRAM_GO, and the outcome reads back as
@@ -1044,8 +1043,8 @@ module sep_fcov (
     }
     // Each cross cell is one configured mode/key size/operation that reached
     // OUTPUT_VALID and returned a data word. The suite walks nine ENC cells
-    // plus the ECB/CBC decrypt legs of the round-trip; CTR DECRYPT is Phase 2
-    // and is excluded rather than left as a permanently empty cell.
+    // plus the ECB/CBC decrypt legs of the round-trip; no suite test issues CTR
+    // DECRYPT, so that cell is excluded rather than left permanently empty.
     x_mode_key_op: cross cp_mode, cp_key, cp_op{
       ignore_bins ctr_decrypt = binsof (cp_mode.ctr) && binsof (cp_op.dec);
     }

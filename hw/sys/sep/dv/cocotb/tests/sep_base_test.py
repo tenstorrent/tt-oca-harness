@@ -41,8 +41,6 @@ from cocotb.triggers import (
     Timer,
     with_timeout,
 )
-
-# Intentional OSS exception: this JTAG AXI-Lite helper must run on the public
 from ocah_axi_vip import OcahAxiLiteMasterAgent, OcahAxiSlaveAgent
 from pyuvm import ConfigDB, uvm_test
 
@@ -376,12 +374,10 @@ class sep_base_test(uvm_test):
     async def _wait_fuse_sense(self, max_cycles: int) -> None:
         """Poll sep_fuse_sense_done_o until it asserts (or time out), then settle.
 
-        This is the canonical "fabric released" gate for every bring-up. It is
-        correct in both modes: with +skip_fuse_sense the RTL asserts the done
-        flop ~1 cycle after reset release (no wasted time), and without it we sit
-        through the real 256-word sense and compare the sensed shadow against the
-        staged eFuse image. Gating on the DUT's actual done signal is more robust
-        than a guessed fixed cycle count.
+        Every bring-up gates on this signal. With +skip_fuse_sense the RTL asserts
+        the done flop ~1 cycle after reset release; without it the real 256-word
+        sense runs and the sensed shadow is compared against the staged eFuse
+        image.
         """
         dut = cocotb.top
         for cycle in range(max_cycles):
@@ -528,8 +524,7 @@ class sep_base_test(uvm_test):
             self._jtag_sw_rst_hold(park, False)
 
     async def bring_up_and_wait_fuse_sense(self, *, max_cycles: int = 20_000) -> None:
-        """Alias for bring_up_no_cpu, kept for eFuse-test intent. Both gate on
-        real fuse-sense-done."""
+        """Alias for ``bring_up_no_cpu``; both gate on real fuse-sense-done."""
         await self.bring_up_no_cpu(max_cycles=max_cycles)
 
     async def resense(self, *, hold_cycles: int = 20, max_cycles: int = 20_000) -> None:
@@ -644,9 +639,8 @@ class sep_base_test(uvm_test):
         The SW_RESET_N CSR stays at reset 0x3E.
 
         The TCM responder backdoor-loads ``sep_itcm.hex`` / ``sep_dtcm.hex`` from
-        the sim CWD, so the images are staged there. (CWD-shared: only one CPU
-        firmware test runs per sim, so they do not collide; a future per-run path
-        would need a responder plusarg like the eFuse model's +sep_efuse_hex.)
+        the sim CWD, so the images are staged there. (CWD-shared: one CPU firmware
+        test runs per sim, so the images do not collide.)
         """
         dut = cocotb.top
         for src, dst in ((itcm_hex, "sep_itcm.hex"), (dtcm_hex, "sep_dtcm.hex")):
@@ -709,7 +703,7 @@ class sep_base_test(uvm_test):
         """Sample boot observables into the boot scoreboard ``sb`` until the
         firmware signals completion (or the no-boot/max-run bounds trip).
 
-        Split out of ``boot_firmware`` so a test that must do work CONCURRENTLY
+        ``boot_firmware`` calls this last; a test that must do work CONCURRENTLY
         with the running firmware (e.g. drive a second master while the CPU loops)
         can ``bring_up_cpu_boot`` itself, ``cocotb.start_soon(self.poll_boot(...))``,
         and run its own stimulus alongside.
@@ -847,11 +841,6 @@ class sep_base_test(uvm_test):
         """Run a sequence on the primary CPU-LSU AXI sequencer (s_axi)."""
         await seq.start(self.env.axi_agent.sequencer)
 
-    # No spi_mux helper on the Python side. The SPI pad mux sits in a nonfree
-    # wrapper, so a pure-open SEP has no mux: pads come straight off the
-    # wrapper's struct port. Firmware that programs that mux lives with the
-    # wrapper, not in this tree.
-
     async def start_ext_seq(self, seq) -> None:
         """Run a sequence on the SMN-inbound EXTERNAL AXI sequencer (m_axi).
 
@@ -865,8 +854,7 @@ class sep_base_test(uvm_test):
     # The DUT's real axil_sep_otp_jtag port, brought out flat as j_axi_* in
     # tb_top: the debug/JTAG path into the eFuse interface controller (arbitrates
     # with the CPU eFuse-MMR path at the eFuse AXI-Lite mux; LC-state-gated).
-    # Driving a real DUT port is frontdoor, not a backdoor. Shared here so any
-    # JTAG/eFuse test reuses one master + op helper rather than re-rolling them.
+    # One master and one op helper, shared by every JTAG/eFuse test.
     def jtag_axil_master(self):
         """Construct (once) and return the AXI-Lite master sequence on j_axi."""
         if getattr(self, "_jtag_axil", None) is None:
@@ -953,13 +941,11 @@ class sep_base_test(uvm_test):
         # Frontdoor status: FIFO level and health-test result decide whether the
         # ESRC itself is stuck or the DRBG side is not draining.
         #
-        # Every read is BOUNDED and failure-tolerant. One plausible cause of the
-        # stall is a fabric that never released, in which case these reads would
-        # never retire -- and an unbounded diagnostic would turn an attributed
-        # failure into a bare sim timeout, the exact outcome a bounded wait exists
-        # to prevent. The strobe counts above always survive, so a wedged CSR path
-        # degrades to "counts logged, CSR unreadable" instead of taking the whole
-        # report down with it.
+        # Every read is bounded and failure-tolerant: a fabric that never released
+        # is one cause of the stall, and an unbounded read here would turn the
+        # attributed failure into a bare sim timeout. The strobe counts above are
+        # already logged, so a wedged CSR path degrades to "counts logged, CSR
+        # unreadable".
         from env.sep_axi_agent import SepAxiOp
         from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
         from seq_lib.sep_esrc_bringup_seq import (
@@ -1186,13 +1172,11 @@ class sep_base_test(uvm_test):
         raise NotImplementedError
 
     def _log_run_identity(self) -> None:
-        """Record what built and ran this, in the log itself.
+        """Record the commit, tree state and run directory in the log.
 
-        A log that names no commit and no build directory cannot be bound to
-        the sources it is offered as evidence for -- the freshness question
-        becomes unanswerable rather than answered, and unlike other gaps it
-        cannot be retrofitted: if the run never recorded its identity, no
-        later effort recovers it. Cheap here, impossible later.
+        A log that names no commit cannot be bound to the sources it is
+        offered as evidence for, and the identity cannot be recovered after
+        the run.
         """
         import os
         import subprocess

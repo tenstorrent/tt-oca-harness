@@ -48,7 +48,7 @@ status ring carries only the generic terminal code and the debug console token i
 only per-reason evidence available.
 
 ``signature_type`` is one byte at manifest offset 165, INSIDE the hashed TBS
-(field order; ``sep_oca_mutate.OFF_SIGNATURE_TYPE``), so the
+(field order; ``sep_manifest_mutate.OFF_SIGNATURE_TYPE``), so the
 helper re-hashes. It cannot be a signature-region patch: the field is covered by
 ``manifest_hash``, so an un-rehashed write dies in the manifest loop as a hash
 mismatch and never reaches the type check. No re-sign is needed or possible -- the
@@ -66,7 +66,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyuvm
-from env import sep_oca_mutate as mm
+from env import sep_manifest_mutate as mm
 from rom_fw.sep_primary_fail_backup_boot_base import (
     MANIFEST_ERR_SIG_TYPE_INVALID,
     sep_primary_fail_backup_boot_base,

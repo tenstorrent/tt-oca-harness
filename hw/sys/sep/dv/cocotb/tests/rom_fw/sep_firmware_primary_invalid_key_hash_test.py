@@ -3,7 +3,7 @@
 """Primary manifest fails the public-key hash bind; the backup boots.
 
 STIMULUS. One bit of the primary manifest's RSA-3072 modulus is flipped
-(``sep_oca_mutate.corrupt_public_key``) and the TBS is re-hashed, so the
+(``sep_manifest_mutate.corrupt_public_key``) and the TBS is re-hashed, so the
 slot is structurally perfect and fails at exactly one place: the comparison of
 SHA-256(modulus) against the digest the ROM has compiled in for the selected slot
 . The backup is untouched and still binds
@@ -59,7 +59,7 @@ import os
 from pathlib import Path
 
 import pyuvm
-from env import sep_oca_mutate as mm
+from env import sep_manifest_mutate as mm
 from env import sep_spi_slot_evidence as ev
 from rom_fw.sep_rom_ot_dma_boot_test import SECURE_FLASH_IMAGE, sep_rom_ot_dma_boot_test
 

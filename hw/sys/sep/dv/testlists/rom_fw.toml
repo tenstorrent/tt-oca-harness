@@ -455,7 +455,8 @@ args = [
 # the SRAM macro's storage array is already public_flat_rw (sep_public_scope.vlt:38)
 # and is therefore readable and writable from cocotb over VPI.
 #
-# TWO THINGS A READER SHOULD KNOW BEFORE TREATING A GREEN RUN AS F038 COVERAGE.
+# TWO THINGS A READER SHOULD KNOW BEFORE TREATING A GREEN RUN AS FULL TP080
+# COVERAGE.
 #
 # 1. It covers the EXT SRAM half of TP080 only, and the reason the other half is
 #    missing is NOT that someone forgot a memset. sep-boot-flow.puml asks for
@@ -472,10 +473,8 @@ args = [
 #    (CHK-SCOPE).
 # 2. It is one of the slower members of this group, and almost all of that is
 #    INHERITED rather than added here. The failover clear it asserts is 65536 CPU
-#    stores: measured in run 20260829_111100, MANIFEST_ERR=0x00030002 at 2154352 ns
-#    to MANIFEST_BACKUP at 18963904 ns is about 1.05M of that run's ~1.62M clocks.
-#    sep_spi_primary_fail_backup_test above pays the same cost in CYCLES -- it just
-#    does not assert anything about it. What this entry adds on top is the
+#    stores (about 1.05M clocks), which sep_spi_primary_fail_backup_test above
+#    pays as well without asserting on it. What this entry adds on top is the
 #    scoreboard's VPI traffic (one 32768-word fill plus its read-back, and one
 #    32768-word scan).
 #
@@ -1285,7 +1284,7 @@ args = [
 # security_version 0 in both slots, so the primary is refused untouched and the
 # backup is raised to 1 and RE-SEALED with the dev0 key that ships in this tree.
 # Re-signing keeps the ROM's signature check enabled and passing on a
-# legitimately signed image, and env/sep_oca_payload.verify_signing_key proves
+# legitimately signed image, and env/sep_payload_mutate.verify_signing_key proves
 # the local
 # signer reproduces the shipped signature byte for byte first.
 #
@@ -1949,12 +1948,9 @@ args = [
 
 
 # =============================================================================
-# Batch R4 -- the remaining six [S25] demotion-decision items.
-#
-# Outcomes O4, O5, O3a and O2b are new here; the two PROD_END rows are
-# covered-by-O1 and say so in their own docstrings and status rows. The seventh
-# outcome, O3b (unauth_flag_0_prod_sel_bit_set, tracker row 116), is in no
-# batch's assignment and is the group's one remaining gap. The collapse map and
+# [S25] demotion-decision items: outcomes O4, O5, O3a and O2b, plus two PROD_END
+# rows covered by O1 (their docstrings say so). The seventh outcome, O3b
+# (unauth_flag_0_prod_sel_bit_set), has no testcase. The collapse map and
 # the mechanism are in rom_fw/sep_demotion_decision_base.py; the shared PROD
 # stimulus is in rom_fw/sep_demotion_prod_base.py and the PROD_END one in
 # rom_fw/sep_demotion_prod_end_base.py.
@@ -1964,8 +1960,8 @@ args = [
 # PROD_END, no demotion request at all -> not demoted, both registers locked.
 #
 # COVERED-BY-O1 AND ADDS NO ROM PATH, stated up front. rom_main.c returns
-# before any manifest demotion input is read, so all five PROD_END tracker rows
-# share one observable; R3's auth_flag_0_prod_end already covers it. This row
+# before any manifest demotion input is read, so every PROD_END row shares one
+# observable; auth_flag_0_prod_end covers it. This row
 # drives the baseline combination -- all three inputs clear -- which is the one
 # for which the short-circuit is not even load-bearing, so unlike its sel_bit_set
 # sibling it is not an ordering control either. What it does assert per run is
@@ -2054,7 +2050,7 @@ args = [
 # No +esrc_noise_force: secure boot is off, so OTBN is never driven and
 # RSA_EXEC is forbidden.
 #
-# COLLAPSE NOTE: no_flag_prod (tracker row 111, not in this batch) drives
+# COLLAPSE NOTE: no_flag_prod (no testcase) drives
 # (0, 0, 0) and produces this same O5 outcome; the two differ only in the
 # artefact, which this row asserts before the run.
 #
@@ -2094,7 +2090,7 @@ args = [
 #
 # No +esrc_noise_force: secure boot is off.
 #
-# COLLAPSE NOTE: unauth_flag_0_prod (tracker row 112, not in this batch) drives
+# COLLAPSE NOTE: unauth_flag_0_prod (no testcase) drives
 # (0, 0, 1) and produces this same O4 outcome.
 #
 # Scope: the demotion decision only, as for every member of this group.
@@ -2132,8 +2128,8 @@ args = [
 # +SECURE_BOOT_DIS is ported on both surfaces; see the O5 entry above. No
 # +esrc_noise_force: secure boot is off.
 #
-# COLLAPSE NOTE: unauth_flag_30_prod_sel_bit_set (tracker row 119, not in this
-# batch) drives the same three demotion inputs and differs only on the
+# COLLAPSE NOTE: unauth_flag_30_prod_sel_bit_set (no testcase) drives the same
+# three demotion inputs and differs only on the
 # skip_SHA256 path, which is not a demotion input, so it is covered-by-O3a.
 #
 # Scope: the demotion decision only, as for every member of this group.
@@ -2218,9 +2214,6 @@ args = [
 # between "boots" and "refused" is two fuse words. CHIPLET_PUBK_REVOKE bits 16/17
 # are CLEAR and PUBK_REVOKE=0x00000001 is required twice, so the revocation check
 # provably ran and PERMITTED the key: the digest is the sole cause.
-#
-# NO TRACKER ROW AND NO STATUS IS CLAIMED. This is not one of batch R4's six
-# assigned items; it is R07's remedy. The Coordinator owns testcase_tracker.csv.
 #
 # No +esrc_noise_force: the digest bind precedes rsa_3072_verify
 #, so OTBN is never driven and RSA_EXEC

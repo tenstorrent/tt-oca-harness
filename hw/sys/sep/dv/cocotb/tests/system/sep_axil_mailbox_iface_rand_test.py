@@ -17,15 +17,15 @@ predicts the visible STATUS bits + the write-threshold IRQ from the TX occupancy
 logged; regression mode can sweep this via TOML ``reseed = N``.
 
 reference refs: fabric sep_mailbox_64bit_data_test, sep_mailbox_misc_regs_test,
-sep_fabric_mailbox_fifo_closure_test. Mapping: MERGED_INTO (one rep subsumes the TX FIFO/IRQ/error/flush family).
+sep_fabric_mailbox_fifo_closure_test (one rep subsumes the TX FIFO/IRQ/error/flush family).
 RUN-MODE: no_cpu (CPU-LSU master). FUSE-MODE: +skip_fuse_sense (the local mailbox has
 no OTP/LC dependency).
 
-ACCEPTED DELTAS: (1) data round-trip readback and (2) read-threshold (RIRQT) need the
+Not covered here: (1) data round-trip readback and (2) read-threshold (RIRQT) need the
 RX FIFO filled from the peer side, which this aperture cannot do, so the read half of
-the threshold pair has no vehicle here. This rep stays TX-focused, matching the
-TX-focused reference test it ports; a peer-path closure needs the external
-smn_inbound master and its own checker contract.
+the threshold pair has no vehicle on this master. The rep is TX-only, like the
+reference test it ports; the peer path is reachable only from the external
+smn_inbound master.
 """
 
 from __future__ import annotations

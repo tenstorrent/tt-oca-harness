@@ -108,6 +108,8 @@ class StageResult:
     parser: dict[str, Any] | None = None
     metadata: dict[str, Any] | None = None
     target: str | None = None
+    # Proof totals and per-task statuses of a graded formal stage; None on every other stage.
+    formal: dict[str, Any] | None = None
 
 
 @dataclass

@@ -24,7 +24,7 @@ run would still end on the same ``MANIFEST_ERR_BL1_BAD_ADDR`` code.
 from __future__ import annotations
 
 import pyuvm
-from env import sep_oca_payload as pm
+from env import sep_payload_mutate as pm
 from rom_fw.sep_bl1_image_invalid_base import sep_bl1_image_invalid_base
 
 

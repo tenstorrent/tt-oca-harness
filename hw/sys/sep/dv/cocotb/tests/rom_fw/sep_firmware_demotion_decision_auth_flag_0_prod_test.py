@@ -27,7 +27,7 @@ there a register written At all. R3's O2a member sets both bits, so its ``demote
 is correct under either reading, and the three PROD_END members never reach.
 
 **Collapse note, stated because the honest claim is narrower than the tracker's
-row count.** ``no_flag_prod`` (tracker row 111, not in this batch) drives
+row count.** ``no_flag_prod`` (no testcase) drives
 (sel, auth, bl2) = (0, 0, 0) and produces this same O5 outcome, so it is
 covered-by-O5. On the DEMOTION inputs the two differ only in
 ``demotion_control`` BL1_DEMOTION_ENABLE -- which this member asserts from the packed

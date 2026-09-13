@@ -31,7 +31,7 @@ zero class is exercised here.** The other two would have to reach the ROM's
 placement arm, which needs ``length > 0x40000`` against the shipped
 ``load_addr``; the library rejects ``offset + length > payload_length`` first, so
 the payload would have to grow past 128 KiB -- roughly 80 ms of extra simulated
-SPI transfer per slot, on both slots. ``sep_oca_payload.set_bl1_zero_length``'s
+SPI transfer per slot, on both slots. ``sep_payload_mutate.set_bl1_zero_length``'s
 docstring records the analysis. A pass here does not cover those two.
 
 ATTRIBUTION. The rejection carries no dedicated console token, so the exact
@@ -44,8 +44,8 @@ from the outside.
 from __future__ import annotations
 
 import pyuvm
-from env import sep_oca_mutate as mm
-from env import sep_oca_payload as pm
+from env import sep_manifest_mutate as mm
+from env import sep_payload_mutate as pm
 from rom_fw.sep_bl1_image_invalid_base import sep_bl1_image_invalid_base
 
 MANIFEST_ERR_PAYLOAD_TOC = mm.boot_err("OCA_FAIL_PAYLOAD_TOC")

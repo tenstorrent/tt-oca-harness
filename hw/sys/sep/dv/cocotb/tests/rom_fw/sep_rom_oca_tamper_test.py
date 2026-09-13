@@ -34,7 +34,7 @@ tampering visible next to the assertion it justifies.
 from __future__ import annotations
 
 import pyuvm
-from env import sep_oca_mutate as mm
+from env import sep_manifest_mutate as mm
 from rom_fw.sep_rom_ot_dma_boot_test import sep_rom_ot_dma_boot_test
 from rom_fw.sep_rom_ot_secure_boot_test import sep_rom_ot_secure_boot_test
 

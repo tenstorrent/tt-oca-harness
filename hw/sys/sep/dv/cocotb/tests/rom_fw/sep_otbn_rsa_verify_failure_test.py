@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """TP061E -- a corrupted RSA signature is rejected by the OTBN verify itself.
 
-PROCEDURE. ``procedure_manifest.md`` Test 18 (``TP061E``): generate a primary
+PROCEDURE (``TP061E``): generate a primary
 manifest with a corrupted RSA signature (single bit flip), boot BL0, watch it
 complete the OTBN RSA verify, watch the hash OTBN recovers from the signature
 disagree with ``manifest_hash``, watch it fail over to the backup, and require a
@@ -73,7 +73,7 @@ RUNTIME. Both slots run a full RSA-3072 modular exponentiation on OTBN
 ``rom_fw``. See the ``[[tests]]`` entry in ``testlists/rom_fw.toml``.
 
 NOTE ON PASS COUNT, for anyone reading this next to TP061G. The OTBN execution
-count observed per boot is LOGGED here but deliberately NOT asserted to be one
+count observed per boot is LOGGED here but NOT asserted to be one
 per slot. The ROM as built performs a single pass (``rsa_verify.c:162`` is the
 only ``otbn_execute()`` call site in the linked image), and pinning that number
 would turn this testcase into a guard against the double-pass FI mitigation
@@ -87,8 +87,8 @@ import hashlib
 from pathlib import Path
 
 import pyuvm
-from env import sep_oca_mutate as mm
-from env import sep_oca_payload as pm
+from env import sep_manifest_mutate as mm
+from env import sep_payload_mutate as pm
 from env import sep_spi_slot_evidence as ev
 from rom_fw.sep_backup_manifest_fail_base import (
     MANIFEST_ERR_SIG_FAILED,

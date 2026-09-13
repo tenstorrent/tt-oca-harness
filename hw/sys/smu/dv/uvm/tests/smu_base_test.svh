@@ -88,7 +88,6 @@ class smu_base_test extends ocah_test;
       `uvm_fatal(get_type_name(), "scenario sequence is not a smu_base_test_seq")
     smu_seq.tb_vif     = m_env.tb_vif;
     smu_seq.dtp_tb_vif = m_env.dtp_tb_vif;
-    smu_seq.jtag_vif   = m_env.m_jtag_cfg.vif;
     smu_seq.test_cfg   = test_cfg;
     smu_seq.env_cfg    = env_cfg;
     smu_seq.evidence   = m_env.m_jtag_checker;

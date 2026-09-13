@@ -14,8 +14,8 @@ registers as well. ``memory_map.adoc`` states the rule: the fabric refuses an
 address past the extent a unit allocates, and such an access never
 reaches a unit. It names no response flavour.
 
-Keep the full probe set. Do not XFAIL. Do not drop the addresses that
-already wrap.
+Every probe in the set is asserted, the wrapping anchors included; the
+contract is not carried by a probe that is logged or waived.
 
 CHK-DEADSPACE-BURST asserts the same refusal on a beat a single-beat probe
 cannot reach: AXI decodes the request address only, so an INCR begun in a
@@ -108,9 +108,8 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
         # last live words carries its later beats past REG_MAP_SIZE because AXI
         # decodes the request address only.
         #
-        # Those later beats must be refused too.
-        # Do not XFAIL and do not demote to a log line --
-        # the same rule as the wrap anchors above.
+        # Those later beats must be refused too, and the refusal is asserted,
+        # not logged, like the wrap anchors above.
         burst_audited: list[str] = []
         burst_skipped: list[str] = []
         beat_audited: list[str] = []

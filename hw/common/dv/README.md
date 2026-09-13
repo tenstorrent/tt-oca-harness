@@ -98,8 +98,8 @@ already represented here; extend the existing stable wrapper.
 | Package | Maturity | Public example | Gating consumer / disposition |
 |---------|----------|----------------|-------------------------------|
 | `ocah_axi_vip` | **Promoted** (both sides) | `ocah_axi_vip/cocotb/examples/example_register_access.py`, `example_axi_scoreboard_selftest.py` | DTP, SEP, SMC, and SMU use the shared AXI/AXI-Lite master and slave agents through the per-side `*Sequence` APIs; the checker/reference-model/scoreboard stack is gated by the DTP jtag2axi decode-error, security-gating, and SLVERR/DECERR injection tests; DUT-local agents retain address and scoreboard policy. SV layer (interface/struct bridge/SVA/passive UVM stack/UVM slave agent) is consumed by `--dut dtp --framework uvm`, where the UVM slave agent answers the SMC OTP AXI-Lite port; the UVM master side is consumed by the `--dut ocah_axi_vip --framework uvm` selftests |
-| `ocah_jtag_vip` | **Promoted** for IEEE 1149.1 (master side) | `ocah_jtag_vip/cocotb/examples/example_idcode.py`, `example_slave_selftest.py` | DTP, SMC, and SMU consume the master TAP API; the slave side (reactive TAP device) is selftest-validated and consumed by the DTP STAP-selection scenarios behind its `jtag_stap_*_host` ports; iJTAG, boundary-scan, and DUT TDR maps remain local |
-| `ocah_spi_vip` | **Promoted** for single-SPI flash | `ocah_spi_vip/cocotb/examples/example_jedec_id.py` | SEP is the gating DUT consumer (`sep_spi_flash_jedec_smoke_test`; `sep_spi_ot_flash_cmd_rand_test` with firmware) and the SMC SPI pad test `smc_spi_pad_bfm_test` binds the same flash model through `OcahSepSpiFlash`; true quad/octal lanes, DDR, and vendor timing are out of scope |
+| `ocah_jtag_vip` | **Promoted** for IEEE 1149.1 (master side) | `ocah_jtag_vip/cocotb/examples/example_idcode.py`, `example_slave_selftest.py` | The `--dut ocah_jtag_vip` wire-harness selftests (both frameworks) prove the master, the reactive device, the monitor, and the checker against each other under the protocol SVA; DTP, SMC, and SMU consume the master TAP API; the slave side (reactive TAP device) is selftest-validated and consumed by the DTP STAP-selection scenarios behind its `jtag_stap_*_host` ports; iJTAG, boundary-scan, and DUT TDR maps remain local |
+| `ocah_spi_vip` | **Promoted** for single-SPI flash | `ocah_spi_vip/cocotb/examples/example_jedec_id.py` | The `--dut ocah_spi_vip` wire-harness selftests prove the flash device, the controller engine, the monitor, and the flash checker against each other with in-band must-fail probes; SEP is the gating DUT consumer (`sep_spi_flash_jedec_smoke_test`; `sep_spi_ot_flash_cmd_rand_test` with firmware); the SMC SPI pad test `smc_spi_pad_bfm_test` binds the same flash model through `OcahSepSpiFlash`; true quad/octal lanes, DDR, vendor timing, and vendor commands are out of scope and earn no checker credit |
 | `ocah_uart_vip` | Experimental | `ocah_uart_vip/cocotb/examples/example_loopback.py` | SMC consumes it through its UART protocol model (`hw/sys/smc/dv/cocotb/seq_lib/smc_uart_protocol_vip.py`) in `smc_uart_loopback_test`; the backend is native to the package. Promotion requires `CHK-*` evidence in that test and a timeout/no-data negative case |
 
 ### Capabilities without a promoted shared package
@@ -260,3 +260,18 @@ packages instead of directly importing backend packages. Notes:
 - `ocah_axi_vip.OcahAxiMonitor` and `OcahAxiLiteMonitor` are OCAH-owned
   passive samplers that emit plain item dataclasses. The released
   master/responder BFMs remain cocotbext-backed.
+
+### Backend escapes
+
+A backend escape is a public method or attribute that hands a consumer an
+object from the backend engine (`cocotbext-axi` or `cocotbext-jtag`) instead
+of a plain OCAH value. The table lists every escape, what it is for, and the
+rule a consumer follows. An escape is removed together with the engine it
+belongs to, under the deprecation rule in `docs/vip-architecture.adoc`.
+
+| Escape | Purpose | Rule for consumers |
+|--------|---------|--------------------|
+| `OcahAxiReadResult.raw`, `OcahAxiWriteResult.raw` | The engine's transaction object, for debugging the backend | Debug only. Tests, sequences, and scoreboards do not read it. |
+| `OcahAxiConfig.bus(scope, prefix=...)` | Binds an interface scope or a flat signal bundle at the configured geometry and returns the engine's bus object | Pass the returned object unchanged into this package's agents, monitors, and watchers. Do not import the backend package. |
+| `OcahJtagDevice.to_backend()` | Converts a plain device map into the engine's device type | Used inside the package by `create_backend_driver()`. |
+| `OcahJtagMasterDriver.backend_bus()`, `create_backend_driver()` | The engine's bus and driver objects, for debugging the backend | Debug only. Tests do not drive the TAP through them. |

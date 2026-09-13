@@ -5,12 +5,12 @@
 Combined-per-group CSR R/W sweep over the SEP "System block" fabric banks, driven
 over the CPU-LSU AXI master (no_cpu). Proves field R/W + 64-bit upper-word access +
 the FILTER write-once-set lock (FILTER_CONFIG locked[63]) + the RO data_bus_width
-field. RTL finding: the alias-remap REGION_ATTRS valid[63] is plain R/W (clearable),
+field. The alias-remap REGION_ATTRS valid[63] is plain R/W (clearable),
 NOT write-once-set -- only the filter locked bit is woset. CSR layer only --
 live remap translation and outbound-filter drop are not claimed here.
 
-All banks need the fabric clocks ungated first (CLOCK_GATE_CTRL); the existing
-sep_address_map_seq already does this with the same value.
+All banks need the fabric clocks ungated first (CLOCK_GATE_CTRL);
+sep_address_map_seq writes the same value.
 
 Bank map (see `hw/sys/sep/regs/gen/svh/sep_reg.svh`):
   Local-master alias-remap : base 0x10A1_0000, stride 0x20, 16 regions

@@ -29,7 +29,7 @@ Platform adaptation -- The backup is re-SIGNED. ``security_version`` is at offse
 inside the TBS, so raising it invalidates ``manifest_hash`` and the signature. The
 backup has to BOOT, so a stale signature is not survivable the way it is for the
 negative testcases: it is re-sealed with the dev0 key that ships in this tree
-(``env/sep_oca_payload.reseal``), whose modulus digest is the ROM's own key slot 0
+(``env/sep_payload_mutate.reseal``), whose modulus digest is the ROM's own key slot 0
 (``bootrom/prod/src/key_digests.c:18-21``). ``verify_signing_key`` proves the local
 signer reproduces the shipped signature byte for byte before any mutation, and the
 shared base re-runs ``verify_sealed`` afterwards, so the re-seal is established rather
@@ -47,8 +47,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyuvm
-from env import sep_oca_mutate as mm
-from env import sep_oca_payload as pm
+from env import sep_manifest_mutate as mm
+from env import sep_payload_mutate as pm
 from rom_fw.sep_primary_fail_backup_boot_base import (
     MANIFEST_ERR_VERSION_ROLLBACK,
     sep_primary_fail_backup_boot_base,

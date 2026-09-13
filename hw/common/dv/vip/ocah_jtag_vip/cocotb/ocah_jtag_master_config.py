@@ -25,7 +25,6 @@ class OcahJtagMasterConfig:
     tap_type: str = "ptap"
     signal_map: dict[str, str] = field(default_factory=dict)
     time_unit: str = "ns"
-    timeout_cycles: int = 10_000
     trst_active_high: bool = False
     # Passive monitor bound (retained scan items).
     max_history: int = 2000
@@ -39,7 +38,6 @@ class OcahJtagMasterConfig:
             "tap_type": self.tap_type,
             "signal_map": dict(self.signal_map) or None,
             "time_unit": self.time_unit,
-            "timeout_cycles": self.timeout_cycles,
             "trst_active_high": self.trst_active_high,
         }
 

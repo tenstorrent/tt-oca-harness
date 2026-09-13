@@ -40,7 +40,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyuvm
-from env import sep_oca_mutate as mm
+from env import sep_manifest_mutate as mm
 from rom_fw.sep_backup_manifest_fail_base import (
     MANIFEST_ERR_KEY_UNAUTHORIZED,
     sep_backup_manifest_fail_base,

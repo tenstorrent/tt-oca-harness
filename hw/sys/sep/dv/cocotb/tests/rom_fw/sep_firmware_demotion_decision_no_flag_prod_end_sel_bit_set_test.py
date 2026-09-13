@@ -9,9 +9,9 @@ sibling is in ``rom_fw/sep_demotion_prod_end_base.py``.
 **COVERED-BY-O1 ON THE OUTCOME, BUT NOT ON WHAT A FAILURE WOULD MEAN, and the
 difference is this row's entire justification.** ``rom_main.c`` returns before
 any manifest demotion input is read, so at PROD_END every combination of the three
-produces the same observable and batch R3 already covered it with
-``sep_firmware_demotion_decision_auth_flag_0_prod_end_test``. This row adds no ROM
-path. What it adds is a **negative control on the short-circuit ORDER**:
+produces the same observable, which
+``sep_firmware_demotion_decision_auth_flag_0_prod_end_test`` covers. This row adds
+no ROM path. What it adds is a **negative control on the short-circuit ORDER**:
 
   * BL1_DEMOTION_VALID is SET. If did not preempt, the
     ROM would take the first arm of the ``else``, copy ``demotion_control``

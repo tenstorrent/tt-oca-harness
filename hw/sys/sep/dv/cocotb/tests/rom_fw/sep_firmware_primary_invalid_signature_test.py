@@ -41,7 +41,7 @@ the console token ``RSA_PKCS1_FAIL`` (``rsa_verify.c:175``, reached only when th
 recovered padding and digest do not match) is the per-reason evidence.
 
 The signature field sits OUTSIDE the region the manifest hash covers
-(``sep_oca_mutate.OFF_SIGNATURE`` == ``SIGNED_REGION_END``), so this needs neither
+(``sep_manifest_mutate.OFF_SIGNATURE`` == ``SIGNED_REGION_END``), so this needs neither
 a re-hash nor a re-sign -- and ``mm.verify_layout`` is asserted afterwards to prove
 the hash is still intact, because a mutation that invalidated it would be rejected
 before the verifier ever ran.
@@ -58,7 +58,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyuvm
-from env import sep_oca_mutate as mm
+from env import sep_manifest_mutate as mm
 from rom_fw.sep_primary_fail_backup_boot_base import (
     MANIFEST_ERR_SIG_FAILED,
     sep_primary_fail_backup_boot_base,

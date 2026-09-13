@@ -13,7 +13,7 @@
 #    (bootrom/prod/tests/signing_keys/rsa_private_key.rom_key0.pem). The tree
 #    ships rom_key0 through rom_key5, so a dedicated fused key is available if
 #    this member is ever tightened. The reference generates a DEDICATED
-#    key per fused slot (tt_sep/tb/scripts/generate_rsa3072_key.sh:10-25) and signs
+#    key per fused slot (generate_rsa3072_key.sh) and signs
 #    with it, so its fused digest differs from its ROM-slot digest. Here they are
 #    equal, and the consequence is stated in the testcase docstring: the digest
 #    comparison alone cannot prove which arm of validate_signature ran. Items 2 and
@@ -43,9 +43,8 @@
 #
 # Bits 16 and 17 revoke CHIPLET_PUBK_HASH0 and HASH1 (sep_efuse_map.rdl:727). They
 # are disjoint from the ROM-slot bits [7:0]; nothing here is derived by counting
-# past ROM slot 5. The reference uses bits 6 and 7
-# (tt_sep/tb/uvm_tests/sep_firmware_pubkey_test.sv:124-129), which are unused
-# ROM-slot bits in THIS map -- do not copy them.
+# past ROM slot 5. The reference uses bits 6 and 7, which are unused ROM-slot
+# bits in THIS map -- do not copy them.
 #
 # BL1_VERSION and SBOOT_DIS stay 0: the rollback check runs before key selection
 # (manifest_crypto.c) and SBOOT_DIS would skip the crypto chain

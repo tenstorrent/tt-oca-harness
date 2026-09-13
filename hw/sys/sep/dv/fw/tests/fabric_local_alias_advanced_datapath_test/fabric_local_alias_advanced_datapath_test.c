@@ -71,7 +71,6 @@ static int test_advanced_local_alias_datapath_matrix(void) {
                 // AXI Burst type variations
                 int burst_type = axi_combo % 3; // FIXED, INCR, WRAP
 
-                // Execute with specific AXI attributes
                 test_axi_transaction_with_attributes(test_addr, access_size, AXI_READ, axi_id,
                                                      burst_type);
                 test_axi_transaction_with_attributes(test_addr + 0x1000, access_size, AXI_WRITE,
@@ -498,7 +497,6 @@ int main(void) {
     printf("Local Alias Advanced Datapath Test\n");
     printf("Strategy: Advanced local-alias datapath; deep signal coverage\n\n");
 
-    // Initialize fabric system
     if (init_sep_fabric() != 0) {
         test_fail("fabric_local_alias_advanced_datapath_test");
         return TEST_FAIL;

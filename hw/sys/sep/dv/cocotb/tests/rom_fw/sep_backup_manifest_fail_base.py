@@ -35,7 +35,7 @@ from pathlib import Path
 
 import cocotb
 from cocotb.triggers import RisingEdge
-from env import sep_oca_mutate as mm
+from env import sep_manifest_mutate as mm
 from env.sep_esrc_noise import esrc_noise_task
 from env.sep_rom_console import log_scratch_cold, rom_console_task
 from env.sep_verdict import decode_verdict

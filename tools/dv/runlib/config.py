@@ -134,6 +134,39 @@ ALL_PLACEHOLDERS = COMMON_PLACEHOLDERS | {
     "image",
 }
 
+# Placeholders of a formal launch template: the `argv` array on a `kind = "formal"` tool table
+# in simulators.toml, or the `argv` override on an `[formal.apps.<app>.<tool>]` table. Scalar
+# placeholders render inside any element.
+FORMAL_SCALAR_PLACEHOLDERS = {"binary", "script", "cwd", "run_dir", "item"}
+# A list placeholder is an element on its own and splices zero or more argv tokens.
+FORMAL_LIST_PLACEHOLDERS = {"args", "formal_args"}
+# An optional placeholder has a value only when the CLI supplies one; it sits inside an optional
+# group (a nested array), which renders whole or not at all.
+FORMAL_OPTIONAL_PLACEHOLDERS = {"proof_depth"}
+FORMAL_PLACEHOLDERS = (
+    FORMAL_SCALAR_PLACEHOLDERS | FORMAL_LIST_PLACEHOLDERS | FORMAL_OPTIONAL_PLACEHOLDERS
+)
+FormalArgvTemplate = list[str | list[str]]
+
+# `[formal.apps.<app>.<tool>.evidence]`: the summary file a backend without a native task
+# summary writes, and the line patterns that grade it. `summary` renders these placeholders and
+# resolves against the app's `cwd` when relative.
+FORMAL_EVIDENCE_KEYS = {
+    "summary",
+    "pass_patterns",
+    "fail_patterns",
+    "inconclusive_patterns",
+    "cover_patterns",
+    "unreached_patterns",
+}
+FORMAL_EVIDENCE_REQUIRED_PATTERNS = ("pass_patterns", "fail_patterns")
+FORMAL_EVIDENCE_PLACEHOLDERS = {"run_dir", "item", "cwd"}
+
+# Tool-table keys that describe one deployment rather than the tool: a site file
+# (runlib.site) supplies them and the checked-in registry rejects them.
+SITE_ONLY_TOOL_KEYS = {"launcher", "extra_env", "setup_hook"}
+TOOL_KINDS = {"simulation", "formal"}
+
 TOP_LEVEL_KEYS = {
     "schema_version",
     "name",
@@ -543,6 +576,158 @@ def validate_placeholders_in_value(
             validate_placeholders_in_value(item, f"{where}.{key}", allowed)
 
 
+def _validate_formal_argv_element(text: str, where: str, *, in_group: bool) -> None:
+    names = PLACEHOLDER_RE.findall(text)
+    unknown = sorted(set(names) - FORMAL_PLACEHOLDERS)
+    if unknown:
+        raise ConfigError(
+            f"{where}: unsupported placeholder(s): {', '.join('{' + name + '}' for name in unknown)}"
+        )
+    for name in names:
+        if name in FORMAL_LIST_PLACEHOLDERS:
+            if in_group:
+                raise ConfigError(
+                    f"{where}: list placeholder {{{name}}} cannot sit inside an optional group"
+                )
+            if text != "{" + name + "}":
+                raise ConfigError(
+                    f"{where}: list placeholder {{{name}}} must be an element on its own"
+                )
+        elif name in FORMAL_OPTIONAL_PLACEHOLDERS and not in_group:
+            raise ConfigError(
+                f"{where}: optional placeholder {{{name}}} must sit inside an optional group, "
+                f'for example ["-depth", "{{{name}}}"]'
+            )
+
+
+def validate_formal_argv_template(value: Any, where: str) -> FormalArgvTemplate:
+    """Check a formal launch template and return it.
+
+    A template is a non-empty array whose elements are strings or optional groups (nested arrays
+    of strings). Every placeholder is one of FORMAL_PLACEHOLDERS; a list placeholder is an
+    element on its own outside any group; an optional placeholder appears only inside a group,
+    and every group references one.
+    """
+    if not isinstance(value, list) or not value:
+        raise ConfigError(f"{where}: `argv` must be a non-empty list")
+    template: FormalArgvTemplate = []
+    for idx, element in enumerate(value):
+        label = f"{where}[{idx}]"
+        if isinstance(element, str):
+            _validate_formal_argv_element(element, label, in_group=False)
+            template.append(element)
+        elif isinstance(element, list):
+            if not element or not all(isinstance(sub, str) for sub in element):
+                raise ConfigError(f"{label}: an optional group must be a non-empty list of strings")
+            for sub_idx, sub in enumerate(element):
+                _validate_formal_argv_element(sub, f"{label}[{sub_idx}]", in_group=True)
+            if not FORMAL_OPTIONAL_PLACEHOLDERS & _template_placeholders([element]):
+                raise ConfigError(
+                    f"{label}: an optional group must reference an optional placeholder "
+                    f"({', '.join('{' + n + '}' for n in sorted(FORMAL_OPTIONAL_PLACEHOLDERS))})"
+                )
+            template.append(list(element))
+        else:
+            raise ConfigError(f"{label}: `argv` elements are strings or optional groups")
+    return template
+
+
+def _template_placeholders(template: FormalArgvTemplate) -> set[str]:
+    names: set[str] = set()
+    for element in template:
+        for text in element if isinstance(element, list) else [element]:
+            names.update(PLACEHOLDER_RE.findall(text))
+    return names
+
+
+def formal_template_placeholders(template: FormalArgvTemplate) -> set[str]:
+    """Every placeholder a validated template references."""
+    return _template_placeholders(template)
+
+
+def render_formal_argv(
+    template: FormalArgvTemplate,
+    scalars: dict[str, str],
+    lists: dict[str, list[str]],
+    optional: dict[str, str | None],
+) -> list[str]:
+    """Render a validated formal launch template into argv.
+
+    A list placeholder element splices its tokens; an optional group renders when every optional
+    placeholder it references has a value and is dropped otherwise.
+    """
+    values = dict(scalars)
+    values.update({name: value for name, value in optional.items() if value is not None})
+
+    def render(text: str) -> str:
+        rendered = text
+        for key, value in values.items():
+            rendered = rendered.replace("{" + key + "}", value)
+        return rendered
+
+    argv: list[str] = []
+    for element in template:
+        if isinstance(element, list):
+            needed = _template_placeholders([element]) & set(optional)
+            if any(optional[name] is None for name in needed):
+                continue
+            argv.extend(render(sub) for sub in element)
+            continue
+        names = PLACEHOLDER_RE.findall(element)
+        if len(names) == 1 and names[0] in lists and element == "{" + names[0] + "}":
+            argv.extend(lists[names[0]])
+            continue
+        argv.append(render(element))
+    return argv
+
+
+def validate_formal_evidence_hook(table: Any, where: str) -> dict[str, Any]:
+    """Check an app's `evidence` table and return it."""
+    if not isinstance(table, dict):
+        raise ConfigError(f"{where}: `evidence` must be a table")
+    validate_allowed_keys(table, FORMAL_EVIDENCE_KEYS, where)
+    summary = table.get("summary")
+    if not isinstance(summary, str) or not summary.strip():
+        raise ConfigError(f"{where}: `summary` must name the summary file")
+    unknown = sorted(set(PLACEHOLDER_RE.findall(summary)) - FORMAL_EVIDENCE_PLACEHOLDERS)
+    if unknown:
+        allowed = ", ".join("{" + name + "}" for name in sorted(FORMAL_EVIDENCE_PLACEHOLDERS))
+        raise ConfigError(
+            f"{where}.summary: unknown placeholder(s) {', '.join('{' + n + '}' for n in unknown)}"
+            f"; allowed: {allowed}"
+        )
+    for key in sorted(FORMAL_EVIDENCE_KEYS - {"summary"}):
+        patterns = as_str_list(table.get(key), f"{where}.{key}")
+        if key in FORMAL_EVIDENCE_REQUIRED_PATTERNS and not patterns:
+            raise ConfigError(f"{where}: `{key}` must list at least one pattern")
+        for pattern in patterns:
+            try:
+                re.compile(pattern)
+            except re.error as exc:
+                raise ConfigError(f"{where}.{key}: invalid regex `{pattern}`: {exc}") from exc
+    return table
+
+
+def validate_formal_apps(formal: Any, where: str) -> None:
+    """Check every `argv` override and `evidence` table under `[formal.apps.<app>.<tool>]`."""
+    if not isinstance(formal, dict):
+        return
+    apps = formal.get("apps", {})
+    if not isinstance(apps, dict):
+        return
+    for app_name, app in apps.items():
+        if not isinstance(app, dict):
+            continue
+        for tool, tool_cfg in app.items():
+            if not isinstance(tool_cfg, dict):
+                continue
+            table_where = f"{where} [formal.apps.{app_name}.{tool}]"
+            if "argv" in tool_cfg:
+                validate_formal_argv_template(tool_cfg["argv"], f"{table_where}.argv")
+            if "evidence" in tool_cfg:
+                validate_formal_evidence_hook(tool_cfg["evidence"], f"{table_where}.evidence")
+
+
 def validate_coverage_tool_table(
     table: dict[str, Any],
     where: str,
@@ -725,7 +910,11 @@ def validate_native_config_shape(flow: Dut, root: Path) -> None:
     for section_name in ("coverage", "c_build", "formal", "sim"):
         section = data.get(section_name, {})
         if isinstance(section, dict):
-            validate_placeholders_in_value(section, f"{flow.path} [{section_name}]")
+            allowed = ALL_PLACEHOLDERS
+            if section_name == "formal":
+                allowed = ALL_PLACEHOLDERS | FORMAL_PLACEHOLDERS
+            validate_placeholders_in_value(section, f"{flow.path} [{section_name}]", allowed)
+    validate_formal_apps(data.get("formal"), str(flow.path))
     coverage = data.get("coverage", {})
     if isinstance(coverage, dict):
         for tool, table in coverage.items():
@@ -1086,21 +1275,25 @@ def expand_env_vars(text: str, where: str, environ: Mapping[str, str] | None = N
 _ENV_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
-def _overlay_env_table(overlay: dict[str, Any], where: str) -> dict[str, str]:
-    """Validate an overlay's ``[env]`` table: shell-legal variable names, string values."""
-    table = overlay.get("env")
+def validate_env_table(table: Any, where: str) -> dict[str, str]:
+    """Validate a ``NAME = "value"`` environment table: shell-legal names, string values."""
     if table is None:
         return {}
     if not isinstance(table, dict):
-        raise ConfigError(f'{where}: [env] must be a table of NAME = "value" pairs')
+        raise ConfigError(f'{where}: must be a table of NAME = "value" pairs')
     env: dict[str, str] = {}
     for name, value in table.items():
         if not _ENV_NAME_RE.match(name):
-            raise ConfigError(f"{where} [env]: `{name}` is not a valid environment variable name")
+            raise ConfigError(f"{where}: `{name}` is not a valid environment variable name")
         if not isinstance(value, str):
-            raise ConfigError(f"{where} [env].{name}: value must be a string")
+            raise ConfigError(f"{where}.{name}: value must be a string")
         env[name] = value
     return env
+
+
+def _overlay_env_table(overlay: dict[str, Any], where: str) -> dict[str, str]:
+    """Validate an overlay's ``[env]`` table: shell-legal variable names, string values."""
+    return validate_env_table(overlay.get("env"), f"{where} [env]")
 
 
 def activate_adopter_overlay_env(
@@ -1346,73 +1539,114 @@ def load_dut(
     )
 
 
-def load_simulators(root: Path) -> dict[str, Any]:
-    path = configs_root(root) / "simulators.toml"
-    if not path.is_file():
-        raise ConfigError(f"missing simulator registry: {path}")
-    data = load_toml(path)
-    simulators = {key: value for key, value in data.items() if key != "schema_version"}
+def validate_simulator_registry(simulators: dict[str, Any], where: str) -> None:
+    """Validate a tool registry: checked-in, or checked-in with a site layer merged in."""
     for tool, table in simulators.items():
         if not isinstance(table, dict):
-            raise ConfigError(f"{path}: [{tool}] must be a table")
-        frameworks = as_str_list(table.get("frameworks"), f"{path} [{tool}].frameworks")
+            raise ConfigError(f"{where}: [{tool}] must be a table")
+        kind = table.get("kind")
+        if kind not in TOOL_KINDS:
+            raise ConfigError(
+                f"{where}: [{tool}].kind must be one of {', '.join(sorted(TOOL_KINDS))}"
+            )
+        if not isinstance(table.get("binary", tool), str) or not table.get("binary", tool):
+            raise ConfigError(f"{where}: [{tool}].binary must be a non-empty string")
+        frameworks = as_str_list(table.get("frameworks"), f"{where} [{tool}].frameworks")
         if not frameworks:
             raise ConfigError(
-                f"{path}: [{tool}] must declare `frameworks` (the frameworks this tool can run)"
+                f"{where}: [{tool}] must declare `frameworks` (the frameworks this tool can run)"
+            )
+        if "license_env" not in table:
+            raise ConfigError(
+                f"{where}: [{tool}] must declare `license_env` ([] for a license-free tool)"
+            )
+        as_str_list(table.get("license_env"), f"{where} [{tool}].license_env")
+        if kind == "formal":
+            if "argv" not in table:
+                raise ConfigError(
+                    f"{where}: [{tool}] is a formal backend and must carry an `argv` launch template"
+                )
+            validate_formal_argv_template(table["argv"], f"{where} [{tool}].argv")
+        elif "argv" in table:
+            raise ConfigError(
+                f"{where}: [{tool}].argv is a formal launch template; `{tool}` is kind `{kind}`"
             )
         coverage_defaults = table.get("coverage_defaults")
         if coverage_defaults is None:
             continue
         if not isinstance(coverage_defaults, dict):
-            raise ConfigError(f"{path}: [{tool}.coverage_defaults] must be a table")
+            raise ConfigError(f"{where}: [{tool}.coverage_defaults] must be a table")
         validate_coverage_tool_table(
             coverage_defaults,
-            f"{path} [{tool}.coverage_defaults]",
+            f"{where} [{tool}.coverage_defaults]",
             require_complete=True,
         )
-        supported = as_str_list(table.get("supports_cov"), f"{path} [{tool}].supports_cov")
+        supported = as_str_list(table.get("supports_cov"), f"{where} [{tool}].supports_cov")
         if not any(
             metric in {"line", "toggle", "branch", "fsm", "functional"} for metric in supported
         ):
             raise ConfigError(
-                f"{path}: [{tool}] declares coverage defaults but no normalized coverage metric"
+                f"{where}: [{tool}] declares coverage defaults but no normalized coverage metric"
+            )
+
+
+def load_simulators(root: Path) -> dict[str, Any]:
+    """The checked-in tool registry; ``runlib.site.merged_simulators`` layers a site file on it."""
+    path = configs_root(root) / "simulators.toml"
+    if not path.is_file():
+        raise ConfigError(f"missing simulator registry: {path}")
+    data = load_toml(path)
+    simulators = {key: value for key, value in data.items() if key != "schema_version"}
+    validate_simulator_registry(simulators, str(path))
+    for tool, table in simulators.items():
+        site_only = sorted(set(table) & SITE_ONLY_TOOL_KEYS)
+        if site_only:
+            raise ConfigError(
+                f"{path}: [{tool}] carries deployment key(s) {', '.join(site_only)}; "
+                "they belong in the site layer (site.local.toml)"
             )
     return simulators
 
 
+def validate_executor_registry(executors: dict[str, Any], where: str) -> None:
+    """Validate an executor registry: checked-in, or checked-in with a site layer merged in."""
+    if "local" not in executors:
+        raise ConfigError(f"{where}: missing required [local] executor")
+    for name, cfg in executors.items():
+        if not isinstance(cfg, dict):
+            raise ConfigError(f"{where}: [{name}] must be a table")
+        kind = cfg.get("kind")
+        if kind == "local":
+            validate_allowed_keys(cfg, {"kind", "submit_argv", "wait_mode"}, f"{where} [{name}]")
+            if cfg.get("submit_argv") not in ([], None):
+                raise ConfigError(f"{where}: [local].submit_argv must be []")
+            if cfg.get("wait_mode") != "inline":
+                raise ConfigError(f"{where}: [local].wait_mode must be `inline`")
+        elif kind == "cluster":
+            validate_allowed_keys(
+                cfg,
+                {"kind", "binary", "submit_argv", "wait_mode", "env_passthrough", "defaults"},
+                f"{where} [{name}]",
+            )
+            if not isinstance(cfg.get("binary"), str) or not cfg.get("binary"):
+                raise ConfigError(f"{where}: [{name}].binary must be a non-empty string")
+            as_str_list(cfg.get("submit_argv"), f"{name}.submit_argv")
+            as_str_list(cfg.get("env_passthrough"), f"{name}.env_passthrough")
+            validate_placeholders_in_value(
+                cfg.get("submit_argv", []), f"{where} [{name}].submit_argv"
+            )
+        else:
+            raise ConfigError(f"{where}: [{name}].kind must be `local` or `cluster`")
+
+
 def load_executors(root: Path) -> dict[str, Any]:
+    """The checked-in executor registry; ``runlib.site.merged_executors`` layers a site file on it."""
     path = configs_root(root) / "executors.toml"
     if not path.is_file():
         raise ConfigError(f"missing executor registry: {path}")
     data = load_toml(path)
     executors = {key: value for key, value in data.items() if key != "schema_version"}
-    if "local" not in executors:
-        raise ConfigError(f"{path}: missing required [local] executor")
-    for name, cfg in executors.items():
-        if not isinstance(cfg, dict):
-            raise ConfigError(f"{path}: [{name}] must be a table")
-        kind = cfg.get("kind")
-        if kind == "local":
-            validate_allowed_keys(cfg, {"kind", "submit_argv", "wait_mode"}, f"{path} [{name}]")
-            if cfg.get("submit_argv") not in ([], None):
-                raise ConfigError(f"{path}: [local].submit_argv must be []")
-            if cfg.get("wait_mode") != "inline":
-                raise ConfigError(f"{path}: [local].wait_mode must be `inline`")
-        elif kind == "cluster":
-            validate_allowed_keys(
-                cfg,
-                {"kind", "binary", "submit_argv", "wait_mode", "env_passthrough", "defaults"},
-                f"{path} [{name}]",
-            )
-            if not isinstance(cfg.get("binary"), str) or not cfg.get("binary"):
-                raise ConfigError(f"{path}: [{name}].binary must be a non-empty string")
-            as_str_list(cfg.get("submit_argv"), f"{name}.submit_argv")
-            as_str_list(cfg.get("env_passthrough"), f"{name}.env_passthrough")
-            validate_placeholders_in_value(
-                cfg.get("submit_argv", []), f"{path} [{name}].submit_argv"
-            )
-        else:
-            raise ConfigError(f"{path}: [{name}].kind must be `local` or `cluster`")
+    validate_executor_registry(executors, str(path))
     return executors
 
 

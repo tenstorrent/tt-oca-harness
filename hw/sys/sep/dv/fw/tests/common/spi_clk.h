@@ -6,14 +6,14 @@
  *
  * The OT spi_host generates SCLK = core_clk / (2 * (clkdiv + 1)), and its clk_i
  * is the SEP core clock. A hardcoded clkdiv therefore makes SCLK scale with the
- * core clock (e.g. clkdiv=9 gave 40 MHz @800 but only 5 MHz @100).
+ * core clock (e.g. clkdiv=9 gives 40 MHz @800 but only 5 MHz @100).
  *
  * The source of truth for the active DV core clock is the directed eFuse
  * preload content in SYSCLK_FREQ_MHZ.sysclk_freq_mhz.
  *
  * Target = 25 MHz. The divider is coarse at a 100 MHz core (only clkdiv=0 -> 50
- * MHz or clkdiv=1 -> 25 MHz are reachable, nothing between), and 50 MHz proved
- * too fast @800: spi_ot_dual_spi read the RX FIFO while rdata_o was still X
+ * MHz or clkdiv=1 -> 25 MHz are reachable, nothing between), and 50 MHz is too
+ * fast @800: spi_ot_dual_spi reads the RX FIFO while rdata_o is X
  * (prim_fifo_sync DataKnown_A). 25 MHz is the highest CONSTANT SCLK that is safe
  * for all OT tests at both frequencies: clkdiv=15 -> 800/32 = 25 MHz @800,
  * clkdiv=1 -> 100/4 = 25 MHz @100. Well within the modeled flash devices'

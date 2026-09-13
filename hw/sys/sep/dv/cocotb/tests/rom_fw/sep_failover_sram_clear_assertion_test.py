@@ -50,7 +50,7 @@ EXT SRAM **and** SMC SRAM. Only the first exists in this ROM.
     destroy the ROM's own reporting channel.
     Second, independent reason the window does not exist there: the only path whose
     manifest comes from SMC SRAM runs ``num_retries = 0``, so it has no backup retry at all. This test asserts nothing about SMC
-    SRAM and must not be booked as covering that half of F038.
+    SRAM.
 
 DO NOT confuse this clear with ``rom_clear_ext_sram()``. That is a DIFFERENT,
 one-time, pre-manifest scrub (``rom_main.c`` -> ``rom_mem_clear.c``) gated
@@ -107,7 +107,7 @@ import pyuvm
 from cocotb.handle import Immediate
 from cocotb.triggers import ClockCycles
 from cocotb.utils import get_sim_time
-from env import sep_oca_mutate as mm
+from env import sep_manifest_mutate as mm
 from env.sep_rom_console import rom_console_task
 from rom_fw.sep_spi_primary_fail_backup_test import sep_spi_primary_fail_backup_test
 from sep_reg_meta import sym
@@ -294,21 +294,17 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
         word changes only after every other one has.
 
         WHY "residue" TRIGGERS ON THE VALUE AND NOT ON "IT CHANGED". The macro is
-        64 bits wide with a per-bit write mask (``hw/top/sep_ip_integration.sv:150-195``:
+        64 bits wide with a per-bit write mask (``hw/top/sep_ip_integration.sv``:
         ``SRAM_DATA_WIDTH = 64``, ``wmask_i``), and the manifest DMA fills it in
         narrower beats, so one macro word is legitimately half-written for a
-        while. The first version of this test triggered on "word[0] != poison" and
-        sampled ``0xa5a5_0000_ffff_ffff`` -- the low half already carrying the
-        erased slot's 0xFF bytes, the high half still poison -- and failed against
-        an expected ``0xFFFF_FFFF_FFFF_FFFF``
-        (run 20260829_090953, t=1521584 ns). The expected value was right and the
-        trigger was wrong. Triggering on the settled value removes the race
-        without weakening anything: if the DMA never puts exactly
-        ``0xFFFF_FFFF_FFFF_FFFF`` there, this event never fires and
-        CHK-SRAM-RESIDUE fails. The word settles 1600 ns after it is first
-        touched and then stands until the clear starts -- 631 us, i.e. from the
-        settled value at 1523184 ns to ``MANIFEST_ERR`` at 2154352 ns, which is
-        ~39400 clocks of a 16 ns period against a 100-clock sampling interval.
+        while: a trigger on "word[0] != poison" can sample the low half already
+        carrying the erased slot's 0xFF bytes and the high half its poison value.
+        Triggering on the settled value avoids that race without weakening
+        anything: if the DMA never puts exactly ``0xFFFF_FFFF_FFFF_FFFF`` there,
+        this event never fires and CHK-SRAM-RESIDUE fails. The word settles within
+        a few hundred clocks of being first touched and then stands until the clear
+        starts, tens of thousands of clocks later, against a 100-clock sampling
+        interval.
         """
         clk = cocotb.top.clk_i
         try:
@@ -518,7 +514,7 @@ class sep_failover_sram_clear_assertion_test(sep_spi_primary_fail_backup_test):
             "assert against. Consistently, boot_rom.dis has no store loop over "
             "sep_get_smc_sram_base() (0x40060000) -- which is also where this ROM's "
             "own status ring lives. A green run here does "
-            "NOT cover the SMC SRAM half of F038."
+            "NOT cover the SMC SRAM half of TP080."
         )
 
 

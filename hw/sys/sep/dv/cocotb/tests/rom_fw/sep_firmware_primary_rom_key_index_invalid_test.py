@@ -66,7 +66,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyuvm
-from env import sep_oca_mutate as mm
+from env import sep_manifest_mutate as mm
 from rom_fw.sep_primary_fail_backup_boot_base import (
     MANIFEST_ERR_KEY_UNAUTHORIZED,
     sep_primary_fail_backup_boot_base,

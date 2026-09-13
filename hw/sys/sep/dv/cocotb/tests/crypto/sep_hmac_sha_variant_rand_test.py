@@ -3,17 +3,16 @@
 """Standalone HMAC SHA-variant breadth, RAND-REP (HMAC SHA-variant breadth).
 
 Drives the OpenTitan HMAC engine directly over the CPU-LSU AXI master (no_cpu, no
-firmware) across the full standalone SW-key matrix that the Phase-1 KM->HMAC
+firmware) across the full standalone SW-key matrix that the KM->HMAC
 sideload KAT (`sep_km_hmac_sideload_kat_test`, SHA-256 keyed via keymgr_key_i)
 does not reach:
 
     {SHA-256, SHA-384, SHA-512} x {keyed HMAC, plain SHA} x legal key-length.
 
-reference parity: this is a GAP (basic) rep -- the reference SEP tb has no SHA-384/512 HMAC
-or key-length coverage (OCAH HMAC tests cover SHA-256 only). So the
-independent stdlib golden (env/sep_hmac_golden.py, HMAC-SHA256/384/512 RFC 4231 +
-plain SHA FIPS-180 self-tested) IS the reference and this rep is STRONGER than the
-directed reference suite set it merges. DISTINCT from
+Reference parity: the reference SEP tb has no SHA-384/512 HMAC or key-length
+coverage (OCAH HMAC tests cover SHA-256 only), so the independent stdlib golden
+(env/sep_hmac_golden.py, HMAC-SHA256/384/512 RFC 4231 + plain SHA FIPS-180
+self-tested) IS the reference. DISTINCT from
 `sep_km_hmac_sideload_kat_test` (SHA-256 via SIDELOAD) and the CPU
 crypto smoke (SHA-256): HMAC SHA-variant breadth is standalone SW-key across variants.
 
@@ -143,10 +142,9 @@ class sep_hmac_sha_variant_rand_test(sep_base_test):
     # secret_key_i[1023:768] for a 256-bit key. Writing KEY_0..KEY_7 in order therefore
     # lays the key down MSB-first and needs NO word reversal.
     #
-    # The RTL agrees -- hmac.sv assigns the key registers in reverse index order -- but
-    # the RTL is deliberately NOT the citation here. An expectation transcribed from the
-    # thing it measures cannot disagree with it, which is the rule the lifecycle golden
-    # note states, and it applies to a register convention just as much as to a decode.
+    # The RTL agrees (hmac.sv assigns the key registers in reverse index order), but
+    # the specification is the citation: an expectation transcribed from the thing it
+    # measures cannot disagree with it.
     #
     # Do not confuse this with the SIDELOAD path, where
     # vendor/lowRISC/opentitan/upstream/hw/ip/hmac/rtl/hmac.sv packs
@@ -232,12 +230,6 @@ class sep_hmac_sha_variant_rand_test(sep_base_test):
             f"{mode} DIGEST != golden:\n  digest={[hex(w) for w in digest]}\n"
             f"  golden={[hex(w) for w in golden]}"
         )
-
-        # No golden-vs-golden guards here. With the DUT result already pinned
-        # bit-exact against the golden above, any further comparison between that
-        # result and another golden-model output reduces to a property of the model
-        # alone -- it holds with the simulator switched off. Model sanity belongs in
-        # the golden's import-time KAT block, not in a per-cell DUT check.
 
         await self.hmac.check_status_clean(mode)  # CHK-ERR
         self.logger.info(

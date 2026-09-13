@@ -229,13 +229,11 @@ static int test_region_boundary_crossing(void) {
             uint32_t region_end = region_base + 0x800000 - 1;
             uint32_t next_region_start = region_base + 0x800000;
 
-            // Program current region
             if (setup_output_remap_region(region, region_base, OUTPUT_DEST_BASE + region * 0x800000,
                                           1, region % 2) != 0) {
                 continue;
             }
 
-            // Program next region
             if (setup_output_remap_region(region + 1, next_region_start,
                                           OUTPUT_DEST_BASE + (region + 1) * 0x800000, 1,
                                           (region + 1) % 2) != 0) {
@@ -261,7 +259,6 @@ int main(void) {
     printf("Output Remap Datapath Test\n");
     printf("Strategy: AP/STEE remap traffic covers every region index; full datapath matrix\n\n");
 
-    // Initialize fabric system
     if (init_sep_fabric() != 0) {
         test_fail("fabric_output_remap_datapath_p3_test");
         return TEST_FAIL;

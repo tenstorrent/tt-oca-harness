@@ -51,9 +51,10 @@ DTP, SMC, and SMU are consumers.
 |`ocah_spi_vip`
 |Promoted for single SPI
 |OCAH-native cocotb model
-|NOR flash responder and passive monitor. Quad/octal personalities use
-single-bit data timing; DDR and vendor timing are out of scope. SEP and SMC
-are consumers.
+|NOR flash responder, Mode-0 controller engine, passive monitor, and flash
+checker with a wire-rebuilt reference model. Quad/octal personalities use
+single-bit data timing; DDR, vendor timing, and vendor commands are out of
+scope and earn no checker credit. SEP and SMC are consumers.
 
 |`ocah_uart_vip`
 |Experimental
@@ -152,13 +153,23 @@ DUT-local.
 Package: `hw/common/dv/vip/ocah_spi_vip/`
 
 `OcahSpiFlash` is a deterministic NOR-flash responder with JEDEC ID, READ, FAST
-READ, status, WREN/WDIS, page program, and sector erase support.
+READ, status, WREN/WDIS, page program, and sector erase support; a program or
+erase issued with the write-enable latch clear is refused and recorded as such.
 `OcahSpiMonitor` passively records command/address/data activity.
+`OcahSpiMasterBfm` and `OcahSpiMasterSequence` drive the link from the
+controller side for benches without an SPI host IP.
+`OcahSpiFlashChecker` replays the device records through
+`OcahSpiFlashRefModel`, a flash array and latch rebuilt from the wire, and
+records `CHK-SPI-*` evidence for identifier, status, write-enable ordering,
+readback, host readback, opcode order, memory golden, source-image compare,
+and non-vacuity; an out-of-scope opcode is counted and never credited.
 `OcahSepSpiFlash` is the subclass mapped to the SEP xSPI pad bundle; the SMC SPI
 pad test binds the same class to its lifted pads.
 
-The personality is single-SPI Mode 0. True QSPI/OSPI lane turnaround, DDR,
-vendor-accurate BUSY timing, and vendor-specific commands are out of scope.
+The `--dut ocah_spi_vip` wire-harness selftests prove the four components
+against each other, each with an in-band must-fail probe. The personality is
+single-SPI Mode 0. True QSPI/OSPI lane turnaround, DDR, vendor-accurate BUSY
+timing, and vendor-specific commands are out of scope.
 
 [[shared-vip-i2c]]
 === I2C

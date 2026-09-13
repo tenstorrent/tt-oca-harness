@@ -10,7 +10,7 @@
  * pt/ct chunk pair (CHUNK_BLOCKS each) is reused across many chunks, so the
  * total processed payload reaches MB scale while DCCM usage stays ~8 KiB.
  *
- * Why it matters: at AES masking-PRNG reseed cadence the engine reseeds from
+ * At the AES masking-PRNG reseed cadence the engine reseeds from
  * real EDN entropy; a sustained MB run exercises the reseed/EDN endurance path
  * and long-run data integrity that a 64 KiB run does not reach.
  *

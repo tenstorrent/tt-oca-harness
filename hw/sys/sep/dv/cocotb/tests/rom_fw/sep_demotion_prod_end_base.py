@@ -49,7 +49,7 @@ WHAT THE MEMBERS SHARE
     the required ``LC=PROD_END``. Discrimination in the other direction is the
     PROD members' job and they forbid ``LC=PROD_END``.
 
-``sep_firmware_demotion_decision_auth_flag_0_prod_end_test`` (batch R3's O1
+``sep_firmware_demotion_decision_auth_flag_0_prod_end_test`` (the O1
 member) predates this module and carries the same skeleton inline. It is
 deliberately NOT refactored onto this base: it is an approved, passing row whose
 docstring is its own evidence record. The duplication is named here and there.
@@ -57,7 +57,7 @@ docstring is its own evidence record. The duplication is named here and there.
 
 from __future__ import annotations
 
-from env import sep_oca_mutate as mm
+from env import sep_manifest_mutate as mm
 from rom_fw.sep_demotion_decision_base import (
     EFUSE_DIR,
     narrow_life_cycle_states,

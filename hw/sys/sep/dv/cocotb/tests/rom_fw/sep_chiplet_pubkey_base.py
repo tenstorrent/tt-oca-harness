@@ -53,8 +53,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from env import sep_oca_mutate as mm
-from env import sep_oca_payload as pm
+from env import sep_manifest_mutate as mm
+from env import sep_payload_mutate as pm
 from env import sep_spi_slot_evidence as ev
 from rom_fw.sep_backup_manifest_fail_base import (
     MANIFEST_ERR_KEY_REVOKED,
@@ -87,7 +87,7 @@ def select_chiplet_fuse_key(buf: bytearray, key_index: int) -> tuple[int, int]:
     the write invalidates ``manifest_hash`` and the shipped signature. Unlike the ROM-slot families of R1/R2 this family must leave a
     manifest that would BOOT -- a revocation test whose image was independently
     unbootable would prove nothing about revocation -- so each slot is re-sealed
-    (``env/sep_oca_payload.reseal``: payload_hash -> manifest_hash -> signature)
+    (``env/sep_payload_mutate.reseal``: payload_hash -> manifest_hash -> signature)
     and then re-checked with ``verify_sealed``.
 
     ``verify_signing_key`` runs FIRST, on the untouched slot, so the local signer is

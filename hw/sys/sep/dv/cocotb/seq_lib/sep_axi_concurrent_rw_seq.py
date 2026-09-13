@@ -12,9 +12,7 @@ half is pending, and accepts a read only when neither write half is pending.
 register access (`drbg.sv` u_csrng_axil_adapter / u_edn_axil_adapter, fed from
 `sep_crypto.sv` csrng_axil / edn_axil), so this is ordinary CSR traffic.
 
-Three orderings. Only one of them is presentable through the SEP fabric, and
-the module keeps all three definitions so the reason is recorded rather than
-lost:
+Three orderings. Only one of them is presentable through the SEP fabric:
 
 * **aw-then-ar.** AW arrives, THEN AR while W is still outstanding.
   Presentable, and the one the leaves drive.
@@ -32,13 +30,11 @@ lost:
 
 The two orderings the fabric cannot present are covered at the module's own
 port by `sep_drbg_axil_adapter_port_arbitration_test`, which drives a
-TB-instantiated instance of the same adapter directly. So nothing here is
-uncovered -- the split is fabric-reachable versus port-only, not covered
-versus skipped.
+TB-instantiated instance of the same adapter directly.
 
-Calibration also shows the overlap needs no timing manipulation: plain
-untimed traffic arrives aw=6, ar=6, w=7, so AW and AR already land in the same
-cycle whenever a store and a load are in flight together.
+Calibration also shows the overlap needs no timing manipulation: with plain
+untimed traffic AW and AR land in the same cycle whenever a store and a load
+are in flight together.
 
 ONE ordering per lane per simulation so a wedge cannot contaminate a later
 cell. Driving one scenario per leaf is what makes each verdict independent.
@@ -301,7 +297,7 @@ class SepAxiConcurrentRw:
         `allow_timeout` is accepted and ignored -- see the note below on why
         this path cannot meet a wedged adapter.
 
-        Deliberately the sequencer path rather than the VIP master directly:
+        The sequencer path rather than the VIP master directly:
         the scoreboard is fed from the agent's analysis port, and a test whose
         every access bypassed it would finish with no positive evidence and
         could never report a pass, whatever the DUT did. Only the OVERLAPPING
@@ -316,7 +312,7 @@ class SepAxiConcurrentRw:
             length=4,
             size=2,
         )
-        # No allow_timeout on this path, and none needed: every sequencer
+        # No allow_timeout on this path: every sequencer
         # access this walk makes -- calibration, prime, readback -- happens
         # BEFORE the overlapping pair, so none of them can meet a wedged
         # adapter. A hang here would mean the lane was already stuck on

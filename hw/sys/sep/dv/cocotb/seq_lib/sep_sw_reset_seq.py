@@ -10,7 +10,7 @@ releases KM first and the target crypto engine later.
 The shadow is seeded with the generated HW reset default:
 km_sw_rst_n=0 (held), otbn/aes/hmac/kmac/trng=1 (released) => 0x3E.
 A test that wants the crypto engines parked (e.g. to dedicate entropy to the KM)
-must park() them explicitly; do not rely on a wrong all-parked assumption.
+must park() them explicitly; the reset default leaves them released.
 
 Bit map (hw/sys/sep/regs/blocks/sep_reset_ctrl/sep_reset_ctrl.rdl):
   km=0, otbn=1, aes=2, hmac=3, kmac=4, trng=5

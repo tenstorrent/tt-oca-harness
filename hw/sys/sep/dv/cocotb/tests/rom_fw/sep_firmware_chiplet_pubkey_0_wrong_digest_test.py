@@ -6,12 +6,6 @@
 ``rom_fw/sep_chiplet_pubkey_base.py`` leaves open**, and it does so without a
 second private key.
 
-**IT HAS NO TRACKER ROW AND NO STATUS IS CLAIMED FOR IT.** It is not one of batch
-R4's six assigned items; it is the remedy R07 assigns to R4 or to a follow-up.
-The Coordinator owns ``testcase_tracker.csv`` and this batch does not write there,
-so the testcase exists, runs and is reported in the run journal, and its result
-appears in no status CSV row.
-
 ============================================================================
 THE GAP, AND WHY IT DOES NOT NEED A SECOND SIGNING KEY
 ============================================================================
@@ -112,8 +106,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyuvm
-from env import sep_oca_mutate as mm
-from env import sep_oca_payload as pm
+from env import sep_manifest_mutate as mm
+from env import sep_payload_mutate as pm
 from env import sep_spi_slot_evidence as ev
 from rom_fw.sep_backup_manifest_fail_base import (
     MANIFEST_ERR_KEY_HASH_MISMATCH,

@@ -4,13 +4,12 @@
 
 sep_irq_simultaneous_fanin_no_alias_test drives SEVERAL IP interrupts at
 once and proves the sep_internal_interrupts[8:33] OR-packing assembles exactly the
-driven bits with NO neighbor aliasing -- the same packing-bug class that caught the
-mailbox 8->1 truncation, re-run for the crypto/KM region. This asserts several
+driven bits with NO neighbor aliasing, for the crypto/KM region. This asserts several
 sources at once (vs sep_irq_ip_to_aggregator_test, which asserts one at a time).
 
 Reuses the generic INTR_TEST driver (SepIrqIp) and IrqSrc from
 sep_irq_aggregator_seq -- the OpenTitan INTR_STATE/ENABLE/TEST layout is identical
-across these IPs, so no new driver is needed. The CROSS-IP set spans four different
+across these IPs. The CROSS-IP set spans four different
 IPs (HMAC, KMAC, CSRNG, EDN) at non-adjacent aggregator bits so the anti-alias
 check exercises a real OR-network fan-in, not adjacent bits of one IP.
 

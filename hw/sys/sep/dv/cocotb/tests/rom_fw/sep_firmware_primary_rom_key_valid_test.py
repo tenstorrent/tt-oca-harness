@@ -94,7 +94,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pyuvm
-from env import sep_oca_mutate as mm
+from env import sep_manifest_mutate as mm
 from env import sep_spi_slot_evidence as ev
 from rom_fw.sep_pubkey_rom_revoked_primary_base import select_primary_rom_slot
 from rom_fw.sep_rom_ot_dma_boot_test import (
