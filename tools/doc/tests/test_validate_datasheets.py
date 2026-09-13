@@ -308,16 +308,16 @@ class RepositoryContractTests(unittest.TestCase):
         diagram = (root / "doc/datasheets/assets/smu-block-diagram.svg").read_text(encoding="utf-8")
 
         for label in (
-            "External system",
+            "External",
             "OCAH chiplet",
-            "Peer OCAH chiplet",
+            "Peer OCA-",
             "System Management Unit (SMU)",
+            "SMU AXI crossbar",
             "DTP",
             "SMC",
             "SEP",
-            "SMU AXI fabric (with SEP)",
-            "Adopter IP / system services",
-            "Technology implementation",
+            "User subsystem",
+            "AoU bridge",
         ):
             self.assertIn(label, diagram)
 

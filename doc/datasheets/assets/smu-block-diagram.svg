@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc. -->
-<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="500" viewBox="0 0 1240 500">
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="560" viewBox="0 0 1100 560">
   <defs>
     <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
       <path d="M0,0 L8,4 L0,8 z" fill="#484848"/>
@@ -11,78 +11,156 @@
     </marker>
     <style>
       text { font-family: Arial, sans-serif; }
-      .title { font-weight: bold; font-size: 24px; fill: #103525; }
-      .label { font-weight: bold; font-size: 17px; fill: #103525; }
-      .text { font-size: 15px; fill: #484848; }
-      .small { font-size: 14px; fill: #484848; }
-      .chiplet { fill: #ffffff; stroke: #77736b; stroke-width: 2; stroke-dasharray: 8 5; rx: 12; }
-      .smu { fill: #f8f4eb; stroke: #103525; stroke-width: 2.5; rx: 10; }
-      .core { fill: #ffffff; stroke: #937027; stroke-width: 2; rx: 8; }
-      .optional { fill: #ffffff; stroke: #937027; stroke-width: 2; stroke-dasharray: 6 4; rx: 8; }
-      .external { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; rx: 8; }
-      .line { fill: none; stroke: #484848; stroke-width: 2; marker-end: url(#arrow); }
-      .both { fill: none; stroke: #484848; stroke-width: 2; marker-start: url(#arrow-start); marker-end: url(#arrow); }
-      .bus { fill: none; stroke: #484848; stroke-width: 2; }
+      .title    { font-weight: bold; font-size: 22px; fill: #103525; }
+      .label    { font-weight: bold; font-size: 14px; fill: #103525; }
+      .text     { font-size: 13px; fill: #484848; }
+      .small    { font-size: 11px; fill: #484848; }
+      .chiplet  { fill: #ffffff; stroke: #77736b; stroke-width: 2; stroke-dasharray: 8 5; }
+      .smu      { fill: #f8f4eb; stroke: #103525; stroke-width: 2.5; }
+      .smn      { fill: #e8f0e8; stroke: #336633; stroke-width: 1.5; }
+      .xbar     { fill: #f0f0e0; stroke: #937027; stroke-width: 1.5; }
+      .core     { fill: #ffffff; stroke: #937027; stroke-width: 1.5; }
+      .optional { fill: #ffffff; stroke: #937027; stroke-width: 1.5; stroke-dasharray: 6 4; }
+      .external { fill: #ffffff; stroke: #77736b; stroke-width: 1.5; }
+      .user     { fill: #f0e8f8; stroke: #664488; stroke-width: 1.5; }
+      .line  { fill: none; stroke: #484848; stroke-width: 1.8; marker-end: url(#arrow); }
+      .both  { fill: none; stroke: #484848; stroke-width: 1.8; marker-start: url(#arrow-start); marker-end: url(#arrow); }
+      .bus   { fill: none; stroke: #484848; stroke-width: 1.8; }
     </style>
   </defs>
 
-  <text class="title" x="620" y="27" text-anchor="middle">SMU integration boundary</text>
+  <text class="title" x="550" y="28" text-anchor="middle">SMU in an OCAH multi-chiplet system</text>
 
-  <rect class="external" x="10" y="105" width="200" height="215"/>
-  <text class="label" x="110" y="138" text-anchor="middle">External system</text>
-  <text class="text" x="110" y="173" text-anchor="middle">SMN / SoC fabric</text>
-  <text class="text" x="110" y="199" text-anchor="middle">JTAG / scan tools</text>
-  <text class="text" x="110" y="225" text-anchor="middle">clocks / reset / power</text>
-  <text class="text" x="110" y="251" text-anchor="middle">interrupts / telemetry</text>
-  <text class="small" x="110" y="288" text-anchor="middle">adopter-owned policy</text>
+  <!-- OCAH chiplet boundary -->
+  <rect class="chiplet" x="170" y="48" width="750" height="490" rx="10"/>
+  <text class="label" x="190" y="72">OCAH chiplet</text>
 
-  <rect class="chiplet" x="320" y="48" width="600" height="430"/>
-  <text class="label" x="345" y="77">OCAH chiplet</text>
+  <!-- User subsystem (top of chiplet) -->
+  <rect class="user" x="190" y="88" width="440" height="110" rx="6"/>
+  <text class="label" x="410" y="112" text-anchor="middle">User subsystem</text>
+  <text class="text"  x="410" y="135" text-anchor="middle">application IP · NoC · accelerators</text>
+  <text class="small" x="410" y="158" text-anchor="middle">adopter-owned logic; connected through SMU AXI fabric</text>
 
-  <rect class="smu" x="345" y="94" width="550" height="250"/>
-  <text class="label" x="620" y="121" text-anchor="middle">System Management Unit (SMU)</text>
-  <rect class="core" x="365" y="145" width="150" height="78"/>
-  <text class="label" x="440" y="177" text-anchor="middle">DTP</text>
-  <text class="small" x="440" y="201" text-anchor="middle">debug · scan · trigger</text>
-  <rect class="core" x="550" y="145" width="150" height="78"/>
-  <text class="label" x="625" y="177" text-anchor="middle">SMC</text>
-  <text class="small" x="625" y="201" text-anchor="middle">management · reset</text>
-  <rect class="optional" x="735" y="145" width="140" height="78"/>
-  <text class="label" x="805" y="177" text-anchor="middle">SEP</text>
-  <text class="small" x="805" y="201" text-anchor="middle">optional security</text>
-  <rect class="core" x="400" y="260" width="445" height="70"/>
-  <text class="label" x="622" y="282" text-anchor="middle">SMU AXI fabric (with SEP)</text>
-  <text class="small" x="622" y="302" text-anchor="middle">3 inputs × 3 outputs</text>
-  <text class="small" x="622" y="320" text-anchor="middle">Memory apertures · ID conversion</text>
+  <!-- AoU / D2D (top-right of chiplet) -->
+  <rect class="core" x="648" y="88" width="252" height="110" rx="6"/>
+  <text class="label" x="774" y="112" text-anchor="middle">AoU bridge / D2D</text>
+  <text class="text"  x="774" y="135" text-anchor="middle">AXI-over-UCIe (AoU)</text>
+  <text class="small" x="774" y="155" text-anchor="middle">die-to-die traffic to/from</text>
+  <text class="small" x="774" y="170" text-anchor="middle">peer chiplets via UCIe PHY</text>
 
-  <rect class="core" x="345" y="385" width="250" height="76"/>
-  <text class="label" x="470" y="410" text-anchor="middle">Adopter IP / system services</text>
-  <text class="small" x="470" y="440" text-anchor="middle">only through connected mappings</text>
-  <rect class="core" x="615" y="385" width="280" height="76"/>
-  <text class="label" x="755" y="410" text-anchor="middle">Technology implementation</text>
-  <text class="small" x="755" y="432" text-anchor="middle">memories · OTP · pads</text>
-  <text class="small" x="755" y="450" text-anchor="middle">clocks · entropy</text>
+  <!-- SMN bar -->
+  <rect class="smn" x="190" y="218" width="710" height="36" rx="4"/>
+  <text class="label" x="545" y="241" text-anchor="middle">System Management Network (SMN)</text>
 
-  <rect class="chiplet" x="1030" y="105" width="200" height="250"/>
-  <text class="label" x="1130" y="138" text-anchor="middle">Peer OCAH chiplet</text>
-  <rect class="core" x="1045" y="190" width="170" height="120"/>
-  <text class="label" x="1130" y="227" text-anchor="middle">SMU / adopter IP</text>
-  <text class="small" x="1130" y="253" text-anchor="middle">routed by system</text>
+  <!-- SMU boundary -->
+  <rect class="smu" x="190" y="270" width="710" height="240" rx="8"/>
+  <text class="label" x="545" y="293" text-anchor="middle">System Management Unit (SMU)</text>
 
-  <path class="both" d="M210 175 H365"/>
-  <text class="small" x="265" y="164" text-anchor="middle">JTAG</text>
-  <path class="both" d="M210 280 H400"/>
-  <text class="small" x="265" y="267" text-anchor="middle">AXI4</text>
-  <path class="line" d="M210 239 H532 V210 H550"/>
-  <text class="small" x="265" y="227" text-anchor="middle">clocks / reset</text>
-  <path class="both" d="M515 184 H550"/>
-  <path class="both" d="M700 184 H735"/>
-  <path class="both" d="M440 223 V260"/>
-  <path class="both" d="M625 223 V260"/>
-  <path class="both" d="M805 223 V260"/>
-  <path class="both" d="M845 288 H1045"/>
-  <text class="small" x="965" y="276" text-anchor="middle">system fabric</text>
-  <path class="bus" d="M470 344 V367 H755"/>
-  <path class="both" d="M470 367 V385"/>
-  <path class="both" d="M755 330 V385"/>
+  <!-- AXI crossbar -->
+  <rect class="xbar" x="208" y="304" width="674" height="44" rx="4"/>
+  <text class="label" x="545" y="328" text-anchor="middle">SMU AXI crossbar  —  fully-connected, point-to-point  —  3 × 3 paths</text>
+
+  <!-- DTP -->
+  <rect class="core" x="208" y="366" width="190" height="124" rx="6"/>
+  <text class="label" x="303" y="390" text-anchor="middle">DTP</text>
+  <text class="text"  x="303" y="410" text-anchor="middle">Debug &amp; Test Ports</text>
+  <text class="small" x="303" y="430" text-anchor="middle">JTAG · scan · iJTAG</text>
+  <text class="small" x="303" y="447" text-anchor="middle">cross-trigger network</text>
+  <text class="small" x="303" y="464" text-anchor="middle">JTAG-to-AXI bridges</text>
+  <text class="small" x="303" y="479" text-anchor="middle">lifecycle disable inputs</text>
+
+  <!-- SEP (optional) -->
+  <rect class="optional" x="414" y="366" width="190" height="124" rx="6"/>
+  <text class="label" x="509" y="390" text-anchor="middle">SEP  (optional)</text>
+  <text class="text"  x="509" y="410" text-anchor="middle">Security Processor</text>
+  <text class="small" x="509" y="430" text-anchor="middle">root of trust · crypto</text>
+  <text class="small" x="509" y="447" text-anchor="middle">key management · OTBN</text>
+  <text class="small" x="509" y="464" text-anchor="middle">lifecycle controller</text>
+  <text class="small" x="509" y="479" text-anchor="middle">secure boot · attestation</text>
+
+  <!-- SMC -->
+  <rect class="core" x="620" y="366" width="262" height="124" rx="6"/>
+  <text class="label" x="751" y="390" text-anchor="middle">SMC</text>
+  <text class="text"  x="751" y="410" text-anchor="middle">System Management Controller</text>
+  <text class="small" x="751" y="430" text-anchor="middle">Rocket RV64GC · management firmware</text>
+  <text class="small" x="751" y="447" text-anchor="middle">clock · reset · power · peripherals</text>
+  <text class="small" x="751" y="464" text-anchor="middle">AXI fabric · mailboxes · DMA</text>
+  <text class="small" x="751" y="479" text-anchor="middle">GPIO · I2C · UART · AVSBus</text>
+
+  <!-- Technology macros (bottom of chiplet, outside SMU) -->
+  <rect class="core" x="190" y="530" width="710" height="0" rx="6"/>
+
+  <!-- External / left side -->
+  <rect class="external" x="8" y="105" width="148" height="220" rx="8"/>
+  <text class="label" x="82" y="130" text-anchor="middle">External</text>
+  <text class="label" x="82" y="147" text-anchor="middle">system</text>
+  <text class="text"  x="82" y="174" text-anchor="middle">JTAG / scan tools</text>
+  <text class="text"  x="82" y="198" text-anchor="middle">clocks · reset</text>
+  <text class="text"  x="82" y="222" text-anchor="middle">power / power-good</text>
+  <text class="text"  x="82" y="246" text-anchor="middle">interrupts</text>
+  <text class="text"  x="82" y="270" text-anchor="middle">telemetry</text>
+  <text class="small" x="82" y="302" text-anchor="middle">adopter-supplied</text>
+
+  <!-- Peer OCA-compliant chiplet (right) -->
+  <rect class="external" x="944" y="105" width="148" height="220" rx="8"/>
+  <text class="label" x="1018" y="130" text-anchor="middle">Peer OCA-</text>
+  <text class="label" x="1018" y="147" text-anchor="middle">compliant chiplet</text>
+  <rect class="core"  x="958" y="168" width="120" height="100" rx="5"/>
+  <text class="label" x="1018" y="195" text-anchor="middle">SMU / SMN</text>
+  <text class="small" x="1018" y="215" text-anchor="middle">management</text>
+  <text class="small" x="1018" y="232" text-anchor="middle">endpoint</text>
+  <text class="small" x="1018" y="252" text-anchor="middle">via D2D link</text>
+
+  <!-- Technology macros note at bottom -->
+  <text class="small" x="545" y="550" text-anchor="middle">Adopter supplies: technology macros (memories · OTP · entropy · pads · clocks), UCIe PHY, lifecycle policy, and management firmware</text>
+
+  <!-- ═══ Connections ═══ -->
+
+  <!-- External JTAG → DTP -->
+  <path class="both" d="M156 155 H208"/>
+  <text class="small" x="182" y="147" text-anchor="middle">JTAG</text>
+
+  <!-- External clocks/reset → SMU (clocks go to SMC primarily) -->
+  <path class="line" d="M156 210 H190"/>
+  <text class="small" x="173" y="202" text-anchor="middle">clk/rst</text>
+
+  <!-- External AXI → SMN (system fabric inbound) -->
+  <path class="both" d="M156 245 H190 V230"/>
+  <text class="small" x="173" y="238" text-anchor="middle">AXI</text>
+
+  <!-- User subsystem ↔ SMN -->
+  <path class="both" d="M410 198 V218"/>
+
+  <!-- AoU ↔ SMN -->
+  <path class="both" d="M774 198 V218"/>
+
+  <!-- SMN ↔ AXI crossbar -->
+  <path class="both" d="M303 254 V304"/>
+  <path class="both" d="M545 254 V304"/>
+  <path class="both" d="M751 254 V304"/>
+
+  <!-- AXI crossbar ↔ DTP -->
+  <path class="both" d="M303 348 V366"/>
+
+  <!-- AXI crossbar ↔ SEP -->
+  <path class="both" d="M509 348 V366"/>
+
+  <!-- AXI crossbar ↔ SMC -->
+  <path class="both" d="M751 348 V366"/>
+
+  <!-- DTP ↔ SEP (STAP connection) -->
+  <path class="both" d="M398 428 H414"/>
+  <text class="small" x="406" y="421" text-anchor="middle">STAP</text>
+
+  <!-- SEP ↔ SMC (mailbox / extension port) -->
+  <path class="both" d="M604 428 H620"/>
+  <text class="small" x="612" y="421" text-anchor="middle">mailbox</text>
+
+  <!-- AoU / D2D ↔ peer chiplet -->
+  <path class="both" d="M900 143 H944"/>
+  <text class="small" x="922" y="135" text-anchor="middle">UCIe D2D</text>
+
+  <!-- SMN ↔ peer chiplet (SMN spans to D2D) -->
+  <path class="both" d="M900 236 H944 V218"/>
+  <text class="small" x="922" y="230" text-anchor="middle">SMN</text>
 </svg>
