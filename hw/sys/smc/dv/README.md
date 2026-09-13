@@ -1,9 +1,26 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 # SMC OSS DV
 
-Open-source DV environment for the SMC (System Management Controller) subsystem.
-Flow = cocotb/PyUVM on Verilator (functional backend) and VCS/Xcelium (coverage),
-driven by `tools/dv/run_dv.py`. See `docs/index.adoc` for the chapter set:
+Open-source DV environment for the SMC (System Management Controller) subsystem,
+built on cocotb/PyUVM and driven by `tools/dv/run_dv.py --dut smc`, with a
+SystemVerilog UVM realization of the same testbench top selected by
+`--framework uvm` (VCS).
+
+**DUT** = `smc_wrapper` (`hw/top/smc_wrapper.sv`) — the `smc` core plus
+`smc_ip_integration` (pll/pvt/eFuse/pad macros, I3C DAT-DCT-RLT) and
+`smc_cpu_mem_integration` (the CPU ROM and scratch memories).
+**What the bench verifies** = the SMC CSR surface and fabric decode reached over
+the SEP_IN AXI port, the SYS_OUT boundary, reset / clock / interrupt behaviour
+observed on the wrapper pins, the I2C / I3C / UART / GPIO / JTAG peripherals
+through pin-level VIPs, and firmware-boot scenarios that run OSS-owned images
+on the SMC CPU. `docs/SMC_VPLAN.adoc` carries the per-test contracts.
+**Stimulus** = an `ocah_axi_vip` master on SEP_IN, a slave agent answering
+SYS_OUT, pin-level protocol VIPs, and the firmware images under `fw/`.
+**Backend** = Verilator is the acceptance backend (CI and nightly); VCS runs
+the SV-UVM shape and `--cov` coverage. Xcelium builds the model but has no
+coverage configuration in this tree.
+
+See `docs/index.adoc` for the chapter set:
 `docs/SMC_TB_ARCH.adoc` for test development, environment setup and run
 recipes, `docs/SMC_VPLAN.adoc` for the verification plan,
 `docs/SMC_FCOV.adoc` for the coverage pipeline, and
@@ -35,8 +52,9 @@ it, and why that is still a real DUT path). The helpers that set it live in
 | Verilator 5.050 | the functional acceptance backend | 5.050 specifically: 5.046 miscompiles the C++ init of nested unpacked structs this TB elaborates |
 | g++ 13.2.1 | C++20 for cocotb `-fcoroutines` | an older g++ fails with `unrecognized command line option '-fcoroutines'` |
 | Python ≥ 3.11 | launcher | `tools/dv/run_dv.py` bootstraps the locked uv-managed DV env itself (root `uv.lock`, `dv` group → cocotb + pyuvm + cocotbext-axi) |
-| RISC-V bare-metal GCC | firmware-boot tests only (`fw/`) | not needed for the `smoke` tag or any CSR-only test |
-| VCS | `--framework uvm`, and `--cov` coverage | Verilator has no SV-UVM support; see `frameworks` in `simulators.toml` |
+| Bender | filelist (`--stage flist`) | must be on `PATH` |
+| RISC-V GCC with picolibc, or a container engine | firmware images for `all` (`fw/`) | `docker` or `podman` for `scripts/docker-run.sh`, which builds the images in the `ocah-toolchain` container; not needed for `smoke` or `hosted` |
+| VCS | `--framework uvm`, and `--cov` coverage | Verilator has no SV-UVM support; see `frameworks` in `hw/common/dv/configs/simulators.toml` |
 
 Environment variables the DV code itself reads (all optional — every one has a
 default, and the runner sets the first three):
@@ -119,7 +137,6 @@ to this one.
 ```
 hw/sys/smc/dv/
 ├── cocotb/                 # flow-first: PyUVM env + stimulus + tests
-│   ├── assertions/         #   cocotb Python checkers
 │   ├── env/                #   agents, scoreboard, monitors, env cfg
 │   ├── seq_lib/            #   sequences (the VPLAN scenarios) + shared VIP helpers
 │   └── tests/              #   @pyuvm.test() entries, one per VPLAN testcase
@@ -127,16 +144,18 @@ hw/sys/smc/dv/
 │   ├── env/                #   smc_env_pkg: types, cfgs, ref model, scoreboard, env
 │   ├── seq_lib/            #   smc_seq_lib_pkg: operations + scenario sequences
 │   └── tests/              #   thin test classes + smc_tests.sv include manifest
-├── cov/                    # coverage collateral: cov/config/<tool>/ (questa,
-│                           #   vcs, verilator, xcelium) and cov/sv/. --cov is
-│                           #   graded on VCS; see docs/SMC_FCOV.adoc
+├── cov/                    # coverage collateral: cov/config/{vcs,verilator}/
+│                           #   and cov/sv/. --cov is graded on VCS; see
+│                           #   docs/SMC_FCOV.adoc
 ├── docs/                   # index.adoc plus the role chapters: TB_ARCH (test
 │                           #   development, environment, run recipes), VPLAN,
 │                           #   FCOV, and the scope/disposition/signoff records
 ├── models/                 # SMC-local sim models: axil_okay_slv.sv,
 │                           #   smc_cpu_mem_dv.sv (observability counters + the
-│                           #   time-0 ROM/scratch image backdoors), the pll/pvt
-│                           #   adopter placeholder wraps, and models/regs/ their
+│                           #   time-0 ROM/scratch image backdoors),
+│                           #   smc_scratch_map_pkg.sv (the scratch-bank decode
+│                           #   the backdoors share), the pll/pvt adopter
+│                           #   placeholder wraps, and models/regs/ their
 │                           #   PeakRDL sources + generated views.
 │                           #   Each stand-in is declared in models/README.md
 ├── fw/                     # OSS-owned SMC firmware built into the CPU-boot
@@ -170,11 +189,16 @@ hw/sys/smc/dv/
 │                           #   consumer; run_dv.py does not parse it
 ├── build/                  # generated: per-tool models and build/runs/<run-id>/
 │                           #   logs (gitignored, never committed)
+├── .gitignore              # DV-local ignores for simulator temporaries that
+│                           #   land beside the sources (Xcelium tmpdir, waves,
+│                           #   coverage databases); the root .gitignore owns
+│                           #   build/
 └── README.md
 ```
 
-`assets/`, `fw/`, `models/` and `uvm/` are additional to the shared DV
-directory set; each is held here because:
+`assets/`, `efuse_preload/`, `fw/`, `models/`, `uvm/`, `smc_sim.core` and
+`.gitignore` are additional to the shared DV directory set (`cocotb/`, `docs/`,
+`tb/`, `testlists/` plus the launch config); each is held here because:
 
 * `assets/` — a preload image is an input to a scenario, so it belongs beside
   the testlist that names it rather than in a shared pool where a rebuild for
@@ -187,6 +211,14 @@ directory set; each is held here because:
   not fit.
 * `uvm/` — the SV-UVM shape of the same scenarios, selected by
   `--framework uvm`; it shares `tb/tb_top.sv` with the cocotb shape.
+* `efuse_preload/` — the schema and generator that produce the eFuse images in
+  `assets/`; keeping the generator beside its output is what lets a reviewer
+  regenerate an image and diff it against the committed one.
+* `smc_sim.core` — a FuseSoC/CAPI-2 view of the same Bender targets for an
+  external consumer; `run_dv.py` does not read it, and it is kept here so the
+  two descriptions of the build sit in one directory.
+* `.gitignore` — the simulator temporaries some tools write next to the
+  sources rather than under `build/`.
 
 `tb/tb_top.sv` is ONE module with two shapes: the cocotb pin port list by
 default, and under the bare `+define+UVM` (set by the native profile's
@@ -202,15 +234,82 @@ single-instance and the dual bench run; a failing test ends with its dump in
 the log. `cocotb/env/smc_virt_console.py` decodes the firmware virtual console
 on scratch register 2 for both benches.
 
-## Run
+## Quick start
 
 ```bash
-# verilator 5.050 and g++ >= 13 (C++20 for cocotb -fcoroutines) on PATH; 5.046 miscompiles nested unpacked-struct init
 PY=tools/dv/run_dv.py
-python3 $PY --dut smc --items smoke --tool verilator
-python3 $PY --dut smc --items smc_cold_reset_test --stage flist --stage hdl_compile --stage sim
-python3 $PY --dut smc --items all --stage sim --regress
+
+# What tests exist (testlists/ is the authoritative index).
+python3 $PY --dut smc --items all --list
 ```
+
+Every command below builds what it needs: with no `--stage` the runner
+resolves the filelist, elaborates the Verilator model, builds any firmware the
+selected leaves need, then simulates. On a fresh checkout, do not pass
+`--stage sim` alone — it reuses whatever model is on disk and there is none.
+
+### CI `smoke` group
+
+The pull-request and push gate (`.github/workflows/sim.yml`, tier `smoke`)
+runs the `smoke` group on Verilator through `.github/actions/dv-run`. No
+firmware toolchain is needed:
+
+```bash
+python3 tools/dv/run_dv.py --dut smc --items smoke --tool verilator
+```
+
+That group is `smc_canonical_smoke_test`, `smc_cold_reset_test` and
+`smc_register_sanity_test`, all three members of `all`.
+
+### Nightly `hosted` group
+
+The scheduled nightly and weekly (`.github/workflows/regress.yml`) run the
+`hosted` group on Verilator with three seeds per leaf. `hosted` is `all` minus
+the five leaves that need a RISC-V toolchain or an `SMC_DUAL` elaboration,
+which the hosted GitHub runners do not have; `testlists/all.toml` names the
+five and guards the set with `expected_count`.
+
+```bash
+python3 tools/dv/run_dv.py --dut smc --items hosted --tool verilator --regress --reseed 3
+```
+
+One seed per leaf (`--reseed 1`) is the quick local form of the same run.
+
+### Package `all` group
+
+`all` is every test the VPLAN grades. It includes the firmware-boot leaves, so
+the firmware images must exist before the run. With no site RISC-V toolchain,
+build them once in the toolchain container (`docker` or `podman` on `PATH`):
+
+```bash
+./scripts/docker-run.sh run-here make -f ocah.mk ocah-dv-fw-tests TARGET=smc
+python3 tools/dv/run_dv.py --dut smc --items all --tool verilator --regress
+```
+
+Not every test the package defines is in `all` — `testlists/all.toml` names
+the held-out testcases and why.
+
+### One named test
+
+Include `--stage flist --stage hdl_compile`: `--stage sim` alone reuses whatever
+model is on disk, and a stale one can report a pass that the current RTL would
+not give.
+
+```bash
+python3 tools/dv/run_dv.py --dut smc --items smc_cold_reset_test \
+  --stage flist --stage hdl_compile --stage sim
+```
+
+Reproduce a single failing leaf from a regression with `--stage sim --seed N`
+against the model that regression built.
+
+## Results and evidence
+
+Per-run logs land in `build/runs/<run-id>/` (gitignored). PASS/FAIL is read
+from cocotb's `results.xml`, and the scoreboard's `check_phase` fails a run
+whose sequence produced no compared item at all. A test passing is the entry
+condition for reading its checkers, never a substitute for them: every graded
+contract in `docs/SMC_VPLAN.adoc` names the `CHK-*` line the run must carry.
 
 ### SystemVerilog UVM framework (`--framework uvm`)
 
@@ -228,19 +327,17 @@ conventions it follows are in `hw/common/dv/docs/uvm-framework.adoc`.
 
 The first bound scenario is `smc_register_sanity_test`:
 SEP_IN AXI4 idle-read / write / readback / restore of the `SCRATCH_COLD` and
-`SCRATCH_COLD_WARM` registers over 16 seeded passes, every scratch read
-predicted by `smc_scratch_csr_ref_model` and paired by the always-on
-`smc_scoreboard`, and every access recorded as named `CHK-*` evidence
-(`CHECKER_SUMMARY name=smc_csr`).
+`SCRATCH_COLD_WARM` registers over 16 seeded passes. In the SV-UVM shape every
+scratch read is predicted by `smc_scratch_csr_ref_model`, paired by the
+always-on `smc_scoreboard`, and recorded as named `CHK-*` evidence
+(`CHECKER_SUMMARY name=smc_csr`). The cocotb shape of the same scenario grades
+through the scoreboard's `expected=` compares on each read and emits no
+`CHK-*` line of its own.
 
 ```bash
 # SV-UVM build only (VCS). --skip-unimplemented (or an --items selection) is required:
 # without it the runner selects the cocotb-only scenarios and stops before compiling.
 python3 tools/dv/run_dv.py --dut smc --framework uvm --build-only --skip-unimplemented
-
-# Package regression: the `all` group. Not every test the package defines --
-# `testlists/all.toml` names the held-out testcases and why.
-python3 tools/dv/run_dv.py --dut smc --items all --tool verilator --regress
 
 # PyUVM (cocotb) and SV-UVM, same logical scenario name
 python3 tools/dv/run_dv.py --dut smc --items smc_register_sanity_test --tool verilator
