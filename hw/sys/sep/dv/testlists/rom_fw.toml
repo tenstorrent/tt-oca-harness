@@ -826,7 +826,13 @@ module = "rom_fw.sep_decryption_failure_terminal_test"
 target = "rom_boot"
 firmware = { name = "boot_rom_ot", mode = "boot_rom_ot" }
 seed = 1
-timeout_sec = 14400
+# 21600 rather than 14400: an encrypted payload pays an AES decrypt on top of the
+# RSA verify each slot already costs, and run 20260912_201006 capped it at
+# 71.4 Mns of simulated time -- further than either passing comparable
+# (backup_invalid_signature 55.2 Mns, bl1_size_invalid 61.2 Mns) and still inside
+# RSA_EXEC. At the 4,959 ns/s it sustained, the verify and its tail need roughly
+# 1,000-1,600 s more, so this matches the cap the other two-modexp members carry.
+timeout_sec = 21600
 tags = ["boot", "rom", "spi", "secure", "crypto", "encrypted", "error", "cpu", "subsystem", "dv_shortcut"]
 run_modes = ["cpu"]
 args = [
