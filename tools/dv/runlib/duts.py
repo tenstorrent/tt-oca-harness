@@ -22,6 +22,7 @@ and the runner agree on what counts as a DUT root.
 
 from __future__ import annotations
 
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from .config import load_dut, load_toml
@@ -112,6 +113,33 @@ def discover_dut_roots(root: Path) -> dict[str, Path]:
     return found
 
 
+# Where a config path came from: the site layer's `[duts.<name>]` pointer, the registry's
+# `sim_cfg`/`formal_cfg` override, or the `<name>_<mode>_cfg.toml` naming convention.
+_SOURCE_LABEL = {"site": "the site layer", "registry": "duts.toml", "convention": "convention"}
+
+
+@dataclass(frozen=True)
+class FormalView:
+    """The formal config one DUT loads with ``--mode formal``, and the pointer that named it.
+
+    ``flow`` is the loaded config once :func:`load_formal_views` resolved it; a view whose
+    file is absent stays unavailable with ``flow`` None.
+    """
+
+    name: str
+    path: Path
+    source: str
+    flow: Dut | None = None
+
+    @property
+    def available(self) -> bool:
+        return self.path.is_file()
+
+    @property
+    def reason(self) -> str:
+        return f"formal config not found: {self.path} (named by {_SOURCE_LABEL[self.source]})"
+
+
 def _cfg_for(
     dv_root: Path,
     name: str,
@@ -119,17 +147,36 @@ def _cfg_for(
     entry: dict,
     root: Path,
     site_formal_cfg: str | None = None,
-) -> Path:
+) -> tuple[Path, str]:
+    """(config path, source) for ``mode``; the path may not exist."""
     if mode not in {"sim", "formal"}:
         raise ConfigError(f"unsupported verification mode `{mode}`")
     if mode == "formal" and site_formal_cfg:
-        return dv_path(root, site_formal_cfg)
+        return dv_path(root, site_formal_cfg), "site"
     override_key = "formal_cfg" if mode == "formal" else "sim_cfg"
     override = entry.get(override_key)
     if override:
-        return dv_path(root, override)
+        return dv_path(root, override), "registry"
     suffix = "formal_cfg" if mode == "formal" else "sim_cfg"
-    return dv_root / f"{name}_{suffix}.toml"
+    return dv_root / f"{name}_{suffix}.toml", "convention"
+
+
+def _locate(root: Path, name: str) -> tuple[str, Path, dict]:
+    """(canonical name, DUT DV root, registry entry) for a selectable DUT name."""
+    registry = load_dut_registry(root)
+    # An `alias_of` entry is a second selectable name for one DUT, not a second
+    # DUT: it resolves to the canonical config and identity, so the two names
+    # share one build cache and one build manifest instead of compiling the
+    # same model twice under different names.
+    canonical = str(registry.get(name, {}).get("alias_of") or name)
+    if name in registry:
+        entry = registry[name]
+        return canonical, dv_path(root, entry["root"]), entry
+    discovered = discover_dut_roots(root)
+    if name not in discovered:
+        known = ", ".join(sorted(set(registry) | set(discovered))) or "<none>"
+        raise ConfigError(f"unknown DUT `{name}` (known: {known})")
+    return canonical, discovered[name], {}
 
 
 def resolve_dut(
@@ -148,26 +195,12 @@ def resolve_dut(
     layer is inactive. ``site`` is the active site layer; its ``[duts.<name>].formal_cfg``
     wins over the registry's ``formal_cfg`` and the ``<name>_formal_cfg.toml`` convention.
     """
-    registry = load_dut_registry(root)
-    # An `alias_of` entry is a second selectable name for one DUT, not a second
-    # DUT: it resolves to the canonical config and identity, so the two names
-    # share one build cache and one build manifest instead of compiling the
-    # same model twice under different names.
-    canonical = str(registry.get(name, {}).get("alias_of") or name)
+    canonical, dv_root, entry = _locate(root, name)
     site_formal_cfg = site.formal_cfg((name, canonical)) if site is not None else None
-    if name in registry:
-        entry = registry[name]
-        dv_root = dv_path(root, entry["root"])
-        cfg = _cfg_for(dv_root, canonical, mode, entry, root, site_formal_cfg)
-    else:
-        discovered = discover_dut_roots(root)
-        if name not in discovered:
-            known = ", ".join(sorted(set(registry) | set(discovered))) or "<none>"
-            raise ConfigError(f"unknown DUT `{name}` (known: {known})")
-        dv_root = discovered[name]
-        cfg = _cfg_for(dv_root, name, mode, {}, root, site_formal_cfg)
+    cfg, source = _cfg_for(dv_root, canonical, mode, entry, root, site_formal_cfg)
     if not cfg.is_file():
-        raise ConfigError(f"DUT `{name}`: {mode} config not found: {cfg}")
+        named = "" if source == "convention" else f" (named by {_SOURCE_LABEL[source]})"
+        raise ConfigError(f"DUT `{name}`: {mode} config not found: {cfg}{named}")
     return load_dut(
         cfg,
         configs_root(root),
@@ -192,3 +225,39 @@ def list_dut_names(root: Path) -> list[str]:
 def load_duts(root: Path) -> dict[str, Dut]:
     """Resolve and load every selectable DUT (used by --list / --validate-configs / --doctor)."""
     return {name: resolve_dut(root, name) for name in list_dut_names(root)}
+
+
+def formal_view(root: Path, name: str, site: SiteLayer | None = None) -> FormalView | None:
+    """The formal view of one selectable DUT, or None when nothing names a formal config.
+
+    A site or registry pointer yields a view whether or not its file exists; the naming
+    convention yields one only for a file that exists.
+    """
+    canonical, dv_root, entry = _locate(root, name)
+    site_formal_cfg = site.formal_cfg((name, canonical)) if site is not None else None
+    path, source = _cfg_for(dv_root, canonical, "formal", entry, root, site_formal_cfg)
+    if source == "convention" and not path.is_file():
+        return None
+    return FormalView(name=name, path=path, source=source)
+
+
+def discover_formal_views(root: Path, site: SiteLayer | None = None) -> dict[str, FormalView]:
+    """Every selectable DUT's formal view, unloaded (used by --validate-configs)."""
+    views: dict[str, FormalView] = {}
+    for name in list_dut_names(root):
+        view = formal_view(root, name, site)
+        if view is not None:
+            views[name] = view
+    return views
+
+
+def load_formal_views(root: Path, site: SiteLayer | None = None) -> dict[str, FormalView]:
+    """Every formal view with the available ones loaded; an absent file stays unavailable."""
+    return {
+        name: (
+            replace(view, flow=resolve_dut(root, name, mode="formal", site=site))
+            if view.available
+            else view
+        )
+        for name, view in discover_formal_views(root, site).items()
+    }
