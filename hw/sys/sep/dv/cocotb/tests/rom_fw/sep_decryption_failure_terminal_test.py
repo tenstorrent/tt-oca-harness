@@ -262,7 +262,7 @@ class sep_decryption_failure_terminal_test(sep_backup_manifest_fail_base):
         assert not fw_pass, (
             "ROM signalled PASS: it booted an image whose payload it could not decrypt"
         )
-        log.info("CHK-TERMINAL: %s, mailbox FAIL (fw_pass=0)", _ALL_FAILED)
+        log.info("CHK-TERMINAL PASS: %s, mailbox FAIL (fw_pass=0)", _ALL_FAILED)
 
         # CHK-NO-BOOT: nothing downstream of the rejection ran.
         for marker in _BL1_PROGRESS:
