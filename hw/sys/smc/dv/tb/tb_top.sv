@@ -2442,6 +2442,23 @@ module smc_uvm_top
         .rready  (s_axi_rready)
     );
 
+    // Clean-room JTAG protocol SVA on the CPU TAP pins. The SMC exports no
+    // one-hot TAP state, so the state rules are off; the TAP reset pin is
+    // active-high, and the TAP drives TDO whenever it is selected, so the
+    // reset is inverted and the output enable is tied high.
+    ocah_jtag_sva #(
+        .EN_STATE_RULES(1'b0)
+    ) u_cpu_jtag_sva (
+        .tck         (tb_cpu_jtag_tck),
+        .tms         (tb_cpu_jtag_tms),
+        .tdi         (tb_cpu_jtag_tdi),
+        .trst_n      (~tb_cpu_jtag_reset),
+        .tdo         (tb_cpu_jtag_tdo),
+        .tdo_oen     (1'b1),
+        .en_i        (u_tb_if.jtag_sva_en),
+        .tap_state_i ('0)
+    );
+
     // ------------------------------------------------------------------
     // Quiescent tie-offs: every other cocotb-driven stimulus pin at the idle
     // value the cocotb smc_base_test bring-up sets. A scenario that needs

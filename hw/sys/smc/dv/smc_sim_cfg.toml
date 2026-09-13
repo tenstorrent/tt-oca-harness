@@ -464,16 +464,15 @@ sources = [
   # DUT-support primitives the Bender `smc` targets reach only through their exported +incdir
   # paths: Verilator searches include directories for unresolved modules, VCS compiles only
   # what a filelist names. This is the set Verilator's dependency file records for the cocotb
-  # build (macro headers excluded: they arrive through +incdir in both flows). prim_cipher_pkg
-  # leads: prim_prince and prim_subst_perm import it, and VCS resolves package scopes at
-  # analysis time (Verilator never elaborates those two, so it never loaded the package).
+  # build, minus the primitives the Bender filelist names itself (a module listed in both
+  # places is a duplicate declaration on VCS); macro headers arrive through +incdir in both
+  # flows. prim_cipher_pkg leads: prim_prince and prim_subst_perm import it, and VCS resolves
+  # package scopes at analysis time (Verilator never elaborates those two, so it never loaded
+  # the package).
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_cipher_pkg.sv",
-  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_arbiter_tree.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_cdc_rand_delay.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_diff_encode.sv",
-  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_fifo_async.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_prince.sv",
-  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_rst_sync.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_22_16_dec.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_22_16_enc.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_39_32_dec.sv",
@@ -482,13 +481,13 @@ sources = [
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_hamming_22_16_enc.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_hamming_39_32_dec.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_secded_inv_hamming_39_32_enc.sv",
-  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_subreg.sv",
-  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_subreg_arb.sv",
-  "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_subreg_ext.sv",
   "vendor/lowRISC/opentitan/upstream/hw/ip/prim/rtl/prim_subst_perm.sv",
   "vendor/tenstorrent/tt-hw-debug/upstream/dependencies/common/generic_mem_model.sv",
   "vendor/tenstorrent/tt-hw-debug/upstream/rtl/trace/trace_mem.sv",
   "vendor/tenstorrent/tt-hw-debug/upstream/rtl/trace/trace_mem_sink.sv",
+  # The JTAG protocol SVA on the CPU TAP pins: the SMC bench carries no JTAG VIP
+  # agent, so the module comes from the package file directly.
+  "hw/common/dv/vip/ocah_jtag_vip/sva/ocah_jtag_sva.sv",
   # TB collateral shared with the cocotb flow.
   "hw/sys/smc/dv/models/smc_scratch_map_pkg.sv",
   "hw/sys/smc/dv/models/smc_cpu_mem_dv.sv",
