@@ -266,7 +266,9 @@ the `bmc` depth is set to the same value.
   2026-05 on). `read_slang` reads the filelist with `--single-unit`, as the
   slang lint flow does, so packages and macros carry across files.
 * SymbiYosys (`sby`) with `yosys-smtbmc` and `yosys-abc`. The `cover` task
-  needs an SMT solver (`yices` in the task files); `abc pdr` needs none.
+  needs an SMT solver (`yices` in the task files); `abc pdr` needs none. The
+  runner's tool registry names this backend `sby`, the default of the
+  `native-formal` profile (`tools/dv/doc/run-dv.adoc`).
 * Bender, to generate the DUT filelist.
 
 [[formal-style-example]]

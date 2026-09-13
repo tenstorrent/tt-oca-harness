@@ -2,15 +2,19 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 # Shared profile for formal tasks launched by the native runner.
+#
+# `license` describes the default backend, which needs none; `--list` marks each licensed
+# backend `(licensed)` from its registry `license_env`, and those backends stay selectable
+# with `--tool` where a site supplies them.
 
 kind = "fv"
 framework = "formal"
-visibility = "maintainer"
-runnability = "maintainer"
-license = "required-commercial"
+visibility = "public"
+runnability = "contributor"
+license = "none"
 
-default_tool = "jasper"
-tools = ["jasper", "vcf"]
+default_tool = "sby"
+tools = ["sby", "jasper", "vcf"]
 
 [scheduler]
 default_executor = "local"
