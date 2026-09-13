@@ -17,6 +17,7 @@ from typing import Any
 
 from .buildcache import binary_version
 from .compat import UTC
+from .formal import formal_summary
 from .models import Flow, StageResult
 from .paths import repo_rel
 from .waves import WAVE_DEFAULT, same_seed_replay_command
@@ -141,11 +142,21 @@ def _stage_dict(stage: StageResult) -> dict[str, Any]:
     }
     if stage.target:
         payload["target"] = stage.target
+    if stage.formal is not None:
+        payload["formal"] = stage.formal
     return payload
 
 
+# One executed formal item counts as one test item, beside the simulation leaves.
+ITEM_STAGES = {"sim", "regress", "formal"}
+
+
+def _has_formal(flow: Flow, stages: list[StageResult]) -> bool:
+    return flow.framework == "formal" or any(stage.formal is not None for stage in stages)
+
+
 def _tests_summary(stages: list[StageResult]) -> dict[str, Any]:
-    runs = [stage for stage in stages if stage.stage in {"sim", "regress"}]
+    runs = [stage for stage in stages if stage.stage in ITEM_STAGES]
     total = len(runs)
     passing = sum(1 for stage in runs if stage.status == "PASS")
     failing = sum(1 for stage in runs if stage.status in {"FAIL", "ERROR", "TIMEOUT", "UNKNOWN"})
@@ -742,6 +753,8 @@ def regression_payload(
         ],
         "jobs": jobs,
     }
+    if _has_formal(flow, stages):
+        payload["formal"] = formal_summary(stages)
     overlay = flow.raw.get("adopter_overlay")
     if overlay:
         payload["overlay"] = overlay
@@ -804,6 +817,8 @@ def result_payload(
     targets = _targets_summary(stages)
     if targets:
         payload["targets"] = targets
+    if _has_formal(flow, stages):
+        payload["formal"] = formal_summary(stages)
     overlay = flow.raw.get("adopter_overlay")
     if overlay:
         # The adopter overlay applied to this run (--overlay / OCAH_DV_OVERLAY), so the
@@ -860,6 +875,8 @@ def fragment_payload(
             payload["attempt"] = result.metadata["attempt"]
     if result.target:
         payload["target"] = result.target
+    if result.formal is not None:
+        payload["formal"] = result.formal
     target_build = (result.metadata or {}).get("target_build")
     if isinstance(target_build, dict):
         payload["target_build"] = target_build
@@ -901,6 +918,8 @@ def rollup_payload(
     target = next((result.target for _, result in runs if result.target), None)
     if target:
         payload["target"] = target
+    if any(result.formal is not None for result in leaves):
+        payload["formal"] = formal_summary(leaves)
     return payload
 
 

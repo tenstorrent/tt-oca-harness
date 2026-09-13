@@ -312,4 +312,7 @@ sby --prefix ../../build/dtp -f dtp.sby
 ----
 
 Each task writes `<workdir>/status` (`PASS`, `FAIL`, `UNKNOWN`, `ERROR`) and a
-JUnit file `<workdir>/<workdir-name>.xml` with one `testcase` per label.
+JUnit file `<workdir>/<sby-name>_<task>.xml` with one `testcase` per label.
+The runner's formal stage grades an item from these files and the `DONE`
+lines in its log, never from the exit code (`tools/dv/doc/run-dv.adoc`, Formal
+result grading).

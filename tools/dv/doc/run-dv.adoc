@@ -282,7 +282,8 @@ these formal backends:
 frontend, `yosys-smtbmc`, `yosys-abc`, and an SMT solver on the same `PATH`.
 The property subset and task-file layout are in the Formal Property Style
 and Layout chapter of `hw/common/dv/docs/index.adoc`; the launch shape is in
-<<runner-formal-templates>>.
+<<runner-formal-templates>> and the `sby-summary` policy grades its runs
+(<<runner-formal-grading>>).
 |Jasper |`jg` |commercial |Site-supplied.
 |VC Formal |`vcf` |commercial |Site-supplied.
 |===
@@ -396,7 +397,8 @@ build/coverage defaults, and formal launch templates.
 |Executor declarations. Only `local` dispatch is implemented.
 
 |`hw/common/dv/configs/parsers.toml`
-|Shared positive-evidence and failure-detection policies.
+|Shared positive-evidence and failure-detection policies for simulation
+logs, and the `grader = "formal"` policies that grade formal tasks.
 
 |`<dut-dv-root>/<dut>_sim_cfg.toml`
 |DUT identity, profile selection, test-list pointer, source/build intent,
@@ -501,6 +503,97 @@ depth from the task file, so its template has no `{proof_depth}` group. The
 licensed backends' registry templates are
 `{binary} {args} {script} {formal_args}`; a site supplies a tool's own flags
 through an app-table `argv`.
+
+[[runner-formal-grading]]
+=== Formal result grading
+
+A formal backend's exit code is not evidence: batch tools exit zero with
+failed or inconclusive properties, and SymbiYosys encodes only the match
+against each task's `expect` option. The `formal` stage grades an item from
+what the backend wrote, through one of two sources.
+
+*Task status lines.* The tool's registry entry names a `parser_policy` whose
+`parsers.toml` table carries `grader = "formal"`. Its `task_status_patterns`
+match one line per finished task in the stage log, with a `(?P<status>...)`
+group and optional `(?P<workdir>...)` and `(?P<rc>...)` groups. Each task's
+work directory supplies the `status` file, the task `mode` from
+`config.sby`, and, with `task_results = "sby-junit"`, the JUnit report whose
+`ASSERT` and `COVER` test cases are counted per property. Work directories
+under the stage directory named `<item>` or `<item>_<task>` are read even
+when the log carries no status line. `evidence_patterns` copy matching log
+lines into `parser.evidence`; a `hard_fail_patterns` match grades the item
+`ERROR`. The `sby` entry names `sby-summary`.
+
+*Summary file.* An app table sets `[formal.apps.<app>.<tool>.evidence]` for
+a backend without a native task summary. `summary` names the file the tool
+script writes; it renders `{run_dir}`, `{item}`, and `{cwd}`, and a relative
+path resolves against the app's `cwd`. `pass_patterns` and `fail_patterns`
+are required; `inconclusive_patterns`, `cover_patterns`, and
+`unreached_patterns` are optional. Every matching line feeds the property
+counter of its list. The `evidence` table wins over the tool's
+`parser_policy`, and `--validate-configs` rejects an app backend that has
+neither.
+
+[source,toml]
+----
+[formal.apps.conn.<tool>]
+script = "run_conn.tcl"
+
+[formal.apps.conn.<tool>.evidence]
+summary = "{run_dir}/stages/formal/{item}/summary.txt"
+pass_patterns = ["^\\S+ proven$", "^\\S+ covered$"]
+fail_patterns = ["^\\S+ cex$"]
+inconclusive_patterns = ["^\\S+ undetermined$"]
+cover_patterns = ["^\\S+ covered$"]
+unreached_patterns = ["^\\S+ unreachable$"]
+----
+
+The item status is the worst task status in the order
+`ERROR > TIMEOUT > FAIL > UNKNOWN > PASS`, and then:
+
+* an unreached cover statement is `FAIL`, whatever the task status says;
+* no task status line, status file, or summary file is `UNKNOWN`;
+* an inconclusive summary line is `UNKNOWN`;
+* a non-zero exit code beside passing evidence is `UNKNOWN`.
+
+`FAIL` lands in the `formal_fail` failure bucket; `ERROR`, `TIMEOUT`, and
+`UNKNOWN` use `tool_error`, `timeout`, and `unknown`. Every executed formal
+item counts as one item in `tests`.
+
+Property totals count each property once across tasks: an assertion is
+`failed` if any task failed it, else `inconclusive` if any task left it open
+(an induction counterexample inside an `UNKNOWN` task is inconclusive), else
+`proven`; a cover statement is `covered` if a cover task reached it, else
+`unreached`. A task counts only the property kind its mode checks. The
+stage record and the leaf `result.json` carry the totals and the task list in
+a `formal` object:
+
+[source,json]
+----
+"formal": {
+  "grader": "sby-summary",
+  "tasks": [
+    {"name": "bmc", "mode": "bmc", "status": "PASS", "return_code": 0,
+     "workdir": "hw/sys/dtp/dv/build/runs/<run>/stages/formal/dtp_fpv_bmc",
+     "proven": 11, "failed": 0, "inconclusive": 0, "covered": 0, "unreached": 0}
+  ],
+  "proven": 11, "failed": 0, "inconclusive": 0, "covered": 6, "unreached": 0
+}
+----
+
+The run-level `result.json` and `regression.json` of a formal run sum the
+counters over their items and add task totals:
+
+[source,json]
+----
+"formal": {
+  "proven": 11, "failed": 0, "inconclusive": 0, "covered": 6, "unreached": 0,
+  "tasks": {"total": 3, "passing": 3, "failing": 0}
+}
+----
+
+The `formal` object is additive: no simulation key changes, `tests` keeps
+its item-status meaning, and `coverage` keeps its simulation meaning.
 
 === Adopter overlay layer
 
@@ -1191,6 +1284,7 @@ leaf output:
 ├── stages/
 │   ├── flist/{scripts,env,logs}/
 │   ├── hdl_compile/{scripts,env,logs}/
+│   ├── formal/{scripts,env,logs}/  # formal mode; sby tasks in <item>_<task>/
 │   └── regress/regression.json
 ├── <test>/                         # flat single-test invocation
 │   ├── result.json
@@ -1221,6 +1315,8 @@ keys, or authentication data.
 `result.json` uses schema version `1` and records the resolved flow, tool,
 executor, selected items, CLI overrides, test/coverage summary, Git metadata,
 tool versions, and per-stage details. It is the authoritative run result.
+A formal run adds a `formal` object with proof totals
+(<<runner-formal-grading>>).
 When an adopter overlay was applied, its path is recorded under `overlay`
 (repo-relative when inside the checkout, absolute otherwise) and its `[env]`
 table, when present, under `overlay_env` in both the run-level `result.json`
@@ -1282,6 +1378,10 @@ For simulation, return code zero is not sufficient for `PASS`. The selected
 parser policy examines structured XML, hard-failure markers, required and
 failure patterns, framework summaries, and positive pass evidence. Missing or
 ambiguous positive evidence produces `UNKNOWN`, which should fail CI closed.
+
+For formal mode, the exit code is never the status source: task status lines,
+status files, and JUnit reports, or the app's summary file, are
+(<<runner-formal-grading>>). Missing evidence produces `UNKNOWN`.
 
 == Continuous integration
 
@@ -1468,6 +1568,16 @@ coverage utilities, or every firmware toolchain.
 Inspect the leaf `result.json` fields `reason` and `parser.evidence`, then check
 the recorded log and `results/results.xml`. A missing, empty, or malformed
 structured result and absent positive log summary correctly fail closed.
+
+=== A formal run with exit code zero is FAIL or UNKNOWN
+
+The formal stage is graded from the backend's task status lines, status
+files, and JUnit reports, or from the app's summary file, never from the exit
+code (<<runner-formal-grading>>). Inspect the stage record's `reason`,
+`parser.evidence`, and `formal.tasks`. `UNKNOWN` with "no formal task
+evidence" means the log carried no task status line and the stage directory
+held no task work directory: check the launch template's `--prefix` and the
+app's `cwd`.
 
 === An explicit sim-only run cannot find build or firmware output
 

@@ -155,6 +155,8 @@ license_env = []
 supports_waves = []
 supports_cov = ["formal"]
 default_waves = ""
+# The `grader = "formal"` policy in parsers.toml that grades a run from the task status lines.
+parser_policy = "sby-summary"
 # sby resolves the task file's [files] entries against its working directory, so the app's `cwd`
 # is the directory holding the task file. `-f` clears a work directory left by an earlier run into
 # the same run directory; `--prefix` places one work directory per task under the run's formal
