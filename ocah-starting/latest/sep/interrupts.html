@@ -435,7 +435,10 @@ not here; see <a href="#sep-non-pic-paths">Non-PIC Interrupt Paths</a>.</p></td>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>33</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Crypto alert</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Aggregated crypto subsystem alert (fault)</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Combined OpenTitan crypto alert. SEP has no <code>alert_handler</code>; each
+accelerator has its own <code>prim_alert_receiver</code> channel(s) with ping
+disabled, and those pulses plus integrity-fails share this source. See
+<a href="#sep-crypto-alert-policy">[sep-crypto-alert-policy]</a>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>34</code></p></td>
@@ -505,7 +508,8 @@ Cleared by the same <code>DMA_BUS_ERR_CLEAR.clr</code> write.</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">The OR of the per-block register-bridge error bits for AES, HMAC, KMAC, OTBN,
 CSRNG, EDN and the watchdog timer. Read <code>PERIPH_BUS_ERR_STATUS</code> to identify
 which block faulted, and clear that block&#8217;s bit in <code>PERIPH_BUS_ERR_CLEAR</code>;
-clears are per-block so acknowledging one cannot discard another block&#8217;s fault.</p></td>
+clears are per-block so acknowledging one cannot discard another block&#8217;s
+fault. See <a href="#sep-crypto-bridge-faults">[sep-crypto-bridge-faults]</a>.</p></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>[44–255]</code></p></td>
