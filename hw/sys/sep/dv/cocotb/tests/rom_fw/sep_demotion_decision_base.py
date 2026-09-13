@@ -630,7 +630,7 @@ class sep_demotion_decision_base(sep_rom_ot_dma_boot_test):
         # members of this family jointly prove the DEMOTE_2 probe is live in both
         # directions. Neither member proves it alone.
         self.logger.info(
-            "CHK-DEMOTE-REGISTERS: DEMOTE_1 demote=%d lock=%d, DEMOTE_2 demote=%d "
+            "CHK-DEMOTE-REGISTERS PASS: DEMOTE_1 demote=%d lock=%d, DEMOTE_2 demote=%d "
             "lock=%d -- read from the lifecycle controller, matching the expected "
             "[C15] outcome",
             got_1[0],

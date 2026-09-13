@@ -91,7 +91,7 @@ class sep_warm_reset_unarmed_cold_boot_test(sep_warm_dispatch_base):
             f"(BOOTROM_PRESTART_DONE) within {self.max_run_cycles} cycles; "
             f"observed {status_hex}"
         )
-        self.logger.info("CHK-COLD-PROGRESS: BOOTROM_START then PRESTART_DONE")
+        self.logger.info("CHK-COLD-PROGRESS PASS: BOOTROM_START then PRESTART_DONE")
 
         # CHK-NO-WARM-DECISION: neither warm arm was taken. A ROM that jumped to
         # address 0, or that treated 0 as out-of-range and hung, would leave one

@@ -124,7 +124,6 @@ class _EvidenceFilter(logging.Filter):
         "sep_efuse_km_axil_cpu_mux_coexist_test": "in-leaf asserts, unlabelled",
         "sep_km_mem_smoke_test": "in-leaf asserts, unlabelled",
         "sep_otbn_mem_smoke_test": "in-leaf asserts, unlabelled",
-        "sep_rom_sanity_test": "in-leaf asserts, unlabelled",
         "sep_spi_flash_jedec_smoke_test": "in-leaf asserts, unlabelled",
         # Checks live in the sequence the leaf starts.
         "sep_axi_smoke_test": "sequence-level compares plus AXI scoreboard check_phase",
@@ -175,13 +174,11 @@ class sep_base_test(uvm_test):
     #   min_evidence      -- fewest distinct IDs of the test's OWN (records the
     #                        base class emits do not count). 0 disables it.
     #
-    # Both default to off, and the default is deliberate rather than timid. A
-    # floor applied centrally is wrong in both directions here: `rom_fw` leaves
-    # report a passing check as `CHK-UNARMED:` with no PASS token and would be
-    # rejected for a logging convention, while 18 of the 92 `all` leaves grade
-    # through a firmware verdict rather than a CHK line and would need an
-    # exemption each. So every run REPORTS its evidence and a leaf opts in to
-    # having it graded.
+    # Both default to off. They tighten a leaf that already emits records; they
+    # do not replace the unconditional floor in `_finalize_evidence`. A leaf
+    # whose `own` count is zero fails unless it is named in NO_OWN_EVIDENCE.
+    # Graded contracts log `CHK-<ID> PASS` (or OK) after the check. A colon-only
+    # `CHK-<ID>:` line is a report and does not count.
     required_evidence: tuple[str, ...] = ()
     min_evidence = 0
 
