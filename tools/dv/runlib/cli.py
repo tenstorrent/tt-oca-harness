@@ -11,7 +11,6 @@ import importlib.metadata
 import json
 import os
 import secrets
-import shutil
 import signal
 import subprocess
 import sys
@@ -20,6 +19,7 @@ import threading
 import time
 import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed, wait
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from re import compile
@@ -63,7 +63,7 @@ from .coverage_policy import (
     load_coverage_policy,
     native_policy_manifest,
 )
-from .duts import load_duts, resolve_dut
+from .duts import list_dut_names, load_duts, resolve_dut
 from .junit import materialize_stage_junit
 from .logparse import validate_parser_extensions, validate_parser_registry
 from .models import ConfigError, Flow, StageResult, TestCatalog
@@ -79,6 +79,18 @@ from .results import (
     rollup_payload,
     tool_versions,
     write_result,
+)
+from .site import (
+    SiteLayer,
+    launch_env,
+    load_site_layer,
+    locate_tool,
+    merged_executors,
+    merged_simulators,
+    site_summary,
+    tool_launch,
+    tool_source,
+    validate_site_duts,
 )
 from .stages import (
     cocotb_python_paths,
@@ -758,16 +770,51 @@ def validate_flow(
     return policy_warnings
 
 
-def validate_all(
-    root: Path,
-) -> tuple[dict[str, Flow], dict[str, Any], dict[str, Any], dict[str, Any]]:
-    duts = load_duts(root)
+@dataclass(frozen=True)
+class Registries:
+    """The tool, executor, and parser registries one command resolves against."""
+
+    simulators: dict[str, Any]
+    executors: dict[str, Any]
+    policies: dict[str, Any]
+    site: SiteLayer | None
+    # Tools simulators.toml declares; the rest of `simulators` came from the site layer.
+    checked_in_tools: frozenset[str]
+
+    def tool_source(self, tool: str) -> str:
+        return tool_source(self.site, tool, tool in self.checked_in_tools)
+
+    def site_summary(self) -> str:
+        return site_summary(self.site, self.checked_in_tools) if self.site is not None else ""
+
+
+def load_registries(root: Path) -> Registries:
+    """Load the registries and merge the active site layer over them.
+
+    Every command resolves its registries here, so validation, --doctor, --dry-run, and the run
+    path see one merged view, and no command reaches a tool table the others do not.
+    """
     simulators = load_simulators(root)
     executors = load_executors(root)
     policies = validate_parser_registry(root)
+    site = load_site_layer(root)
+    if site is not None:
+        validate_site_duts(site, list_dut_names(root))
+    return Registries(
+        simulators=merged_simulators(simulators, site),
+        executors=merged_executors(executors, site),
+        policies=policies,
+        site=site,
+        checked_in_tools=frozenset(simulators),
+    )
+
+
+def validate_all(root: Path) -> tuple[dict[str, Flow], Registries]:
+    registries = load_registries(root)
+    duts = load_duts(root)
     for flow in duts.values():
-        validate_flow(flow, root, simulators, policies, executors)
-    return duts, simulators, policies, executors
+        validate_flow(flow, root, registries.simulators, registries.policies, registries.executors)
+    return duts, registries
 
 
 def adopter_overlay_path(args: Any) -> Path | None:
@@ -798,16 +845,21 @@ def cmd_validate_configs(root: Path, overlay: Path | None = None) -> int:
     # The registries are structural: per-flow validation cannot run without them, so a failure here
     # is reported on its own and stops the report.
     try:
-        simulators = load_simulators(root)
-        executors = load_executors(root)
-        policies = validate_parser_registry(root)
+        registries = load_registries(root)
     except ConfigError as exc:
         print(f"  registries       FAIL: {exc}")
         print("\nResult: registry error — fix it before flows can be validated")
         return 2
+    simulators, executors, policies = (
+        registries.simulators,
+        registries.executors,
+        registries.policies,
+    )
     print("  simulators.toml  OK")
     print("  executors.toml   OK")
     print("  parsers.toml     OK")
+    if registries.site is not None:
+        print(f"  site layer       OK ({registries.site_summary()})")
 
     try:
         duts = load_duts(root)
@@ -1145,9 +1197,12 @@ def cmd_doctor(root: Path, args: argparse.Namespace) -> int:
     here?" — it confirms configs load, then probes tool binaries and license-env presence.
     """
     try:
-        simulators = load_simulators(root)
-        executors = load_executors(root)
-        policies = validate_parser_registry(root)
+        registries = load_registries(root)
+        simulators, executors, policies = (
+            registries.simulators,
+            registries.executors,
+            registries.policies,
+        )
         duts = load_duts(root)
         for candidate_flow in duts.values():
             validate_flow(candidate_flow, root, simulators, policies, executors)
@@ -1156,6 +1211,7 @@ def cmd_doctor(root: Path, args: argparse.Namespace) -> int:
         print("\nResult: fix config errors first (run --validate-configs for the full list)")
         return 2
     print("configs : OK")
+    print(f"site    : {registries.site.label if registries.site is not None else 'none'}")
 
     flow: Flow | None = None
     if args.dut:
@@ -1166,6 +1222,7 @@ def cmd_doctor(root: Path, args: argparse.Namespace) -> int:
                 mode=args.mode,
                 framework=args.framework,
                 adopter_overlay=adopter_overlay_path(args),
+                site=registries.site,
             )
             validate_flow(flow, root, simulators, policies, executors)
         except ConfigError as exc:
@@ -1188,7 +1245,7 @@ def cmd_doctor(root: Path, args: argparse.Namespace) -> int:
     print(f"checking: {scope}\n")
     python_failed = _doctor_python_environment(root, flow)
 
-    print(f"  {'tool':<10} {'binary':<12} {'status':<26} licenses")
+    print(f"  {'tool':<10} {'binary':<12} {'status':<26} {'licenses':<14} source")
     missing_required = False
     for tool in tools:
         cfg = simulators.get(tool)
@@ -1197,21 +1254,38 @@ def cmd_doctor(root: Path, args: argparse.Namespace) -> int:
             if tool == required:
                 missing_required = True
             continue
-        binary = str(cfg.get("binary", tool))
-        found = shutil.which(binary)
-        status = f"found: {found}" if found else "MISSING from PATH"
+        launch = tool_launch(simulators, tool)
+        hook_error = ""
+        try:
+            env = launch_env(launch)
+        except ConfigError as exc:
+            env = dict(os.environ)
+            hook_error = str(exc)
+        found = None if hook_error else locate_tool(launch, env)
+        if hook_error:
+            status = "setup_hook FAILED"
+        elif launch.launcher:
+            status = (
+                f"launcher found: {found}" if found else f"launcher `{launch.executable}` MISSING"
+            )
+        else:
+            status = f"found: {found}" if found else "MISSING from PATH"
         lic_env = as_str_list(cfg.get("license_env"), f"{tool}.license_env")
         if not lic_env:
             lic = "none needed"
         else:
-            set_count = sum(1 for var in lic_env if os.environ.get(var))
+            set_count = sum(1 for var in lic_env if env.get(var))
             lic = f"{set_count}/{len(lic_env)} env set"
         note = ""
         if not found:
             note = "  <- required" if tool == required else "  (optional)"
             if tool == required:
                 missing_required = True
-        print(f"  {tool:<10} {binary:<12} {status:<26} {lic}{note}")
+        print(
+            f"  {tool:<10} {launch.binary:<12} {status:<26} {lic:<14} {registries.tool_source(tool)}{note}"
+        )
+        if hook_error:
+            print(f"  {'':<10} {hook_error}")
 
     print()
     if required is None:
@@ -1939,13 +2013,13 @@ def validate_selected_tool_available(
 ) -> None:
     if args.dry_run:
         return
-    cfg = simulators.get(tool, {})
-    binary = str(cfg.get("binary", tool)) if isinstance(cfg, dict) else tool
-    if shutil.which(binary):
+    launch = tool_launch(simulators, tool)
+    if locate_tool(launch, launch_env(launch)):
         return
     hint = license_hint(flow, simulators, tool)
+    what = f"launcher `{launch.executable}`" if launch.launcher else f"`{launch.binary}`"
     raise ConfigError(
-        f"selected tool `{tool}` requires `{binary}` in PATH. "
+        f"selected tool `{tool}` requires {what} in PATH. "
         f"Load the simulator environment or run `--doctor --tool {tool}` for details."
         + (f" {hint}." if hint else "")
     )
@@ -2358,11 +2432,15 @@ def run_flow(
     *,
     root: Path,
     flow: Flow,
-    simulators: dict[str, Any],
-    policies: dict[str, Any],
+    registries: Registries,
     args: argparse.Namespace,
 ) -> int:
     reset_stage_cancellation()
+    simulators, policies = registries.simulators, registries.policies
+    if registries.site is not None:
+        # result.json records the site file beside the overlay, so a result is attributable
+        # to every config layer that produced it.
+        setattr(args, "_site_layer", registries.site.label)
     # Before the tool probes and the first stage, so every subprocess environment, env
     # snapshot, and in-process tool runner inherits the overlay's [env].
     overlay_env = activate_adopter_overlay_env(flow.raw)
@@ -2508,6 +2586,8 @@ def run_flow(
 
     console = Console(args.ui, quiet=args.quiet, verbose=args.verbose)
     args._ui_console = console
+    if registries.site is not None:
+        console.event("config", registries.site_summary())
     if overlay_env:
         console.event(
             "config",
@@ -3259,7 +3339,12 @@ def main(argv: list[str] | None = None) -> int:
         if args.doctor:
             return cmd_doctor(root, args)
 
-        duts, simulators, policies, executors = validate_all(root)
+        duts, registries = validate_all(root)
+        simulators, executors, policies = (
+            registries.simulators,
+            registries.executors,
+            registries.policies,
+        )
 
         if args.list:
             if args.dut:
@@ -3269,6 +3354,7 @@ def main(argv: list[str] | None = None) -> int:
                     mode=args.mode,
                     framework=args.framework,
                     adopter_overlay=adopter_overlay_path(args),
+                    site=registries.site,
                 )
                 validate_flow(flow, root, simulators, policies, executors)
                 if args.json:
@@ -3296,9 +3382,10 @@ def main(argv: list[str] | None = None) -> int:
             mode=args.mode,
             framework=args.framework,
             adopter_overlay=adopter_overlay_path(args),
+            site=registries.site,
         )
         validate_flow(flow, root, simulators, policies, executors)
-        return run_flow(root=root, flow=flow, simulators=simulators, policies=policies, args=args)
+        return run_flow(root=root, flow=flow, registries=registries, args=args)
     except ConfigError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2

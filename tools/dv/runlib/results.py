@@ -86,6 +86,14 @@ def primary_tool_version(tool: str, versions: dict[str, str]) -> str:
     return versions.get(version_key, "unknown")
 
 
+def _site_layer_label(args: Any | None) -> str | None:
+    """The site file the run applied (recorded on args by run_flow), or None."""
+    if args is None:
+        return None
+    label = getattr(args, "_site_layer", None)
+    return str(label) if label else None
+
+
 def cli_overrides(args: Any | None) -> dict[str, Any]:
     if args is None:
         return {}
@@ -761,6 +769,9 @@ def regression_payload(
     overlay_env = flow.raw.get("adopter_overlay_env")
     if overlay_env:
         payload["overlay_env"] = dict(overlay_env)
+    site = _site_layer_label(args)
+    if site:
+        payload["site"] = site
     if progress is not None:
         payload["progress"] = progress
     if interruption is not None:
@@ -827,6 +838,9 @@ def result_payload(
     overlay_env = flow.raw.get("adopter_overlay_env")
     if overlay_env:
         payload["overlay_env"] = dict(overlay_env)
+    site = _site_layer_label(args)
+    if site:
+        payload["site"] = site
     skipped = list(getattr(args, "_skipped_unimplemented", []) or []) if args is not None else []
     if skipped:
         payload["selection"] = {"skipped_unimplemented": skipped}

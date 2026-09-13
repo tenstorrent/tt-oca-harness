@@ -94,6 +94,7 @@ from .junit import ensure_leaf_junit
 from .logparse import parse_stage_result
 from .models import ConfigError, Flow, StageResult, StageTimeoutError, TestCatalog, TestEntry
 from .paths import repo_path, repo_rel
+from .site import ToolLaunch, launch_argv, launch_env, tool_launch
 from .ui import Console
 from .waves import (
     build_wave_metadata,
@@ -712,7 +713,16 @@ def run_subprocess(
     env: dict[str, str] | None = None,
     verbose: bool = False,
     timeout_sec: int | None = None,
+    launch: ToolLaunch | None = None,
 ) -> int:
+    """Run ``argv`` with its output in ``log_path`` and a replay script beside it.
+
+    ``launch`` is the site-resolved launch of the tool behind ``argv``: its launcher prefixes
+    the command and its environment exports join ``env`` before the snapshot is written.
+    """
+    if launch is not None:
+        argv = launch_argv(launch, argv)
+        env = launch_env(launch, env)
     workdir = cwd or root
     if dry_run or verbose:
         print("CMD  : " + " ".join(shlex.quote(part) for part in argv), flush=True)
@@ -807,6 +817,86 @@ def run_subprocess(
         finally:
             with _ACTIVE_SUBPROCESS_LOCK:
                 _ACTIVE_SUBPROCESSES.discard(proc)
+
+
+def stage_tool_launch(args: argparse.Namespace, tool: str) -> ToolLaunch:
+    """The site-resolved launch of ``tool`` from the registry run_stage attaches to ``args``."""
+    simulators = getattr(args, "_simulators", None)
+    return tool_launch(simulators if isinstance(simulators, dict) else {}, tool)
+
+
+# The executable cocotb's Python runner probes on PATH per tool, and the runner class.
+COCOTB_DEFAULT_BINARY = {"verilator": "verilator", "xcelium": "xrun", "vcs": "vcs"}
+COCOTB_RUNNER_CLASS = {"verilator": "Verilator", "xcelium": "Xcelium", "vcs": "Vcs"}
+
+
+def reject_cocotb_launcher(launch: ToolLaunch) -> None:
+    """cocotb's Python runner starts the simulator itself, so a launcher cannot wrap it."""
+    if launch.launcher:
+        raise ConfigError(
+            f"site `launcher` for `{launch.tool}` does not apply on the cocotb path: cocotb's "
+            "Python runner starts the simulator from the runner's own process. Run run_dv.py "
+            "inside the launcher's environment, or drop the launcher and keep `binary`, "
+            "`extra_env`, and `setup_hook`"
+        )
+
+
+def _rename_commands(commands: Any, default: str, binary: str) -> list[Any]:
+    renamed: list[Any] = []
+    for cmd in commands:
+        if isinstance(cmd, (list, tuple)) and cmd and cmd[0] == default:
+            renamed.append([binary, *cmd[1:]])
+        else:
+            renamed.append(cmd)
+    return renamed
+
+
+@contextmanager
+def cocotb_tool_binary(tool: str, binary: str):
+    """Point cocotb's runner at the site ``binary`` when it differs from the name it probes.
+
+    Verilator's runner records the probed executable and runs it through perl; the Xcelium
+    and VCS runners spell the executable into each command. The PATH probe is replaced so a
+    renamed binary passes it, and the commands are renamed as they are built.
+    """
+    default = COCOTB_DEFAULT_BINARY.get(tool)
+    if default is None or binary == default:
+        yield
+        return
+    module = importlib.import_module("cocotb_tools.runner")
+    cls = getattr(module, COCOTB_RUNNER_CLASS[tool], None)
+    if cls is None:
+        raise ConfigError(
+            f"site binary `{binary}` for `{tool}` but no cocotb {tool} runner was found"
+        )
+
+    def probe(self: Any) -> None:
+        found = shutil.which(binary)
+        if found is None:
+            raise SystemExit(f"ERROR: {binary} executable not found!")
+        self.executable = found
+
+    def make_wrapper(orig: Any) -> Any:
+        def wrapper(self: Any) -> Any:
+            return _rename_commands(orig(self), default, binary)
+
+        return wrapper
+
+    saved: dict[str, Any] = {}
+    if tool == "verilator":
+        saved["_simulator_in_path_build_only"] = cls._simulator_in_path_build_only
+        cls._simulator_in_path_build_only = probe
+    else:
+        saved["_simulator_in_path"] = cls._simulator_in_path
+        cls._simulator_in_path = probe
+        for name in ("_build_command", "_test_command"):
+            saved[name] = getattr(cls, name)
+            setattr(cls, name, make_wrapper(saved[name]))
+    try:
+        yield
+    finally:
+        for name, original in saved.items():
+            setattr(cls, name, original)
 
 
 def get_cocotb_runner():
@@ -1073,7 +1163,8 @@ def verilator_compile(
     compile_target = selected_compile_target(sim_cfg)
     work_dir = required_path(build, "work_dir", "build", str(flow.path))
     mdir = repo_path(root, str(tool_cfg.get("mdir", work_dir)))
-    argv = ["verilator", "--cc"]
+    launch = stage_tool_launch(args, tool)
+    argv = [launch.binary, "--cc"]
     argv.extend(
         as_str_list(verilator_cfg.get("compile_args"), "build.verilator.compile_args")
         or ["--timing", "-sv", "--language", "1800-2023"]
@@ -1104,6 +1195,7 @@ def verilator_compile(
         env=env,
         verbose=args.verbose,
         timeout_sec=args.timeout,
+        launch=launch,
     )
 
 
@@ -1568,6 +1660,8 @@ def cocotb_build(
         raise ConfigError(f"cocotb build supports tool verilator|xcelium|vcs, got `{tool}`")
 
     console = console_from_args(args)
+    launch = stage_tool_launch(args, tool)
+    reject_cocotb_launcher(launch)
     info = _cocotb_build_info(flow, root, sim_cfg, args, tool)
     build = info["build"]
     target_name = info["target_name"]
@@ -1586,6 +1680,7 @@ def cocotb_build(
     if _build_jobs and _build_jobs > 1:
         env["MAKEFLAGS"] = f"-j{_build_jobs}"
         console.artifact("cocotb_make_jobs", str(_build_jobs))
+    env = launch_env(launch, env)
     # Verilator-only: scope cocotb's global --public-flat-rw to the tb top (see
     # cocotb_public_scope). Empty/absent config -> cocotb's default behaviour is kept.
     public_scope_vlt = ""
@@ -1618,6 +1713,7 @@ def cocotb_build(
                     scoped_environ(env),
                     cocotb_make_jobs(_build_jobs),
                     cocotb_public_scope(public_scope_vlt),
+                    cocotb_tool_binary(tool, launch.binary),
                 ):
                     runner.build(
                         sources=[],
@@ -1781,6 +1877,8 @@ def cocotb_sim(
             )
             test_args += ["-ucli", "-i", str(ucli_path)]
 
+    launch = stage_tool_launch(args, tool)
+    reject_cocotb_launcher(launch)
     python_paths = cocotb_python_paths(root, cocotb_data)
     env = os.environ.copy()
     env["PYTHONPATH"] = os.pathsep.join(str(path) for path in python_paths if str(path))
@@ -1796,6 +1894,7 @@ def cocotb_sim(
     )
     if tool == "vcs" and wave_format:
         env = _vcs_wave_env(env, wave_format, bool(args.dry_run))
+    env = launch_env(launch, env)
     public_scope_vlt = ""
     if tool == "verilator":
         _scope_rel = str(build_verilator_cfg(build).get("public_scope") or "").strip()
@@ -1855,6 +1954,9 @@ def cocotb_sim(
         "rebuild": bool(rebuild),
         "python_paths": [str(path) for path in python_paths if str(path)],
         "public_scope_vlt": public_scope_vlt,
+        "binary": launch.binary,
+        "default_binary": COCOTB_DEFAULT_BINARY.get(tool, tool),
+        "runner_class": COCOTB_RUNNER_CLASS.get(tool, ""),
     }
     runner_body = f"""#!/usr/bin/env python3
 import os
@@ -1968,9 +2070,55 @@ def scoped_verilator_wave_format(tool, wave_format):
             cls._build_command = original_build
             cls._test_command = original_test
 
+@contextmanager
+def scoped_tool_binary(tool, runner_class, default, binary):
+    if not runner_class or binary == default:
+        yield
+        return
+    import importlib
+    import shutil
+    module = importlib.import_module("cocotb_tools.runner")
+    cls = getattr(module, runner_class)
+
+    def probe(self):
+        found = shutil.which(binary)
+        if found is None:
+            raise SystemExit(f"ERROR: {{binary}} executable not found!")
+        self.executable = found
+
+    def rename(commands):
+        renamed = []
+        for cmd in commands:
+            if isinstance(cmd, (list, tuple)) and cmd and cmd[0] == default:
+                renamed.append([binary, *cmd[1:]])
+            else:
+                renamed.append(cmd)
+        return renamed
+
+    def make_wrapper(orig):
+        def wrapper(self):
+            return rename(orig(self))
+        return wrapper
+
+    saved = {{}}
+    if tool == "verilator":
+        saved["_simulator_in_path_build_only"] = cls._simulator_in_path_build_only
+        cls._simulator_in_path_build_only = probe
+    else:
+        saved["_simulator_in_path"] = cls._simulator_in_path
+        cls._simulator_in_path = probe
+        for name in ("_build_command", "_test_command"):
+            saved[name] = getattr(cls, name)
+            setattr(cls, name, make_wrapper(saved[name]))
+    try:
+        yield
+    finally:
+        for name, original in saved.items():
+            setattr(cls, name, original)
+
 print(f"# cocotb {{payload['tool']}} runner", flush=True)
 runner = get_runner(payload["tool"])
-with scoped_public_scope(payload["public_scope_vlt"]), scoped_verilator_wave_format(payload["tool"], payload["wave_format"]):
+with scoped_public_scope(payload["public_scope_vlt"]), scoped_verilator_wave_format(payload["tool"], payload["wave_format"]), scoped_tool_binary(payload["tool"], payload["runner_class"], payload["default_binary"], payload["binary"]):
     if payload["do_build"]:
         print(f"# cocotb {{payload['tool']}} build model", flush=True)
         runner.build(
@@ -2222,6 +2370,7 @@ def vcs_analyze(
     """Three-step `compile` stage: analyze sources into the work library with vlogan."""
     info = _vcs_resolve_build(flow, root, sim_cfg, args)
     vcs_cfg = info["vcs_cfg"]
+    launch = stage_tool_launch(args, "vcs")
     analyze_argv = [
         "vlogan",
         *_vcs_preamble(vcs_cfg, flow.framework),
@@ -2259,6 +2408,7 @@ def vcs_analyze(
         cwd=info["build_dir"],
         verbose=args.verbose,
         timeout_sec=args.timeout,
+        launch=launch,
     )
 
 
@@ -2278,15 +2428,16 @@ def vcs_build(
     info = _vcs_resolve_build(flow, root, sim_cfg, args)
     build_dir = info["build_dir"]
     vcs_cfg = info["vcs_cfg"]
+    launch = stage_tool_launch(args, "vcs")
     if include_filelist:
-        argv = ["vcs", *info["elab_args"]]
+        argv = [launch.binary, *info["elab_args"]]
         argv += ["-f", str(info["filelist"])]
     else:
         # UUM consumes the work library produced by vlogan. Source-language,
         # timescale, defines, and target flags are parse-only options and VCS
         # rejects them when no source file is present.
         argv = [
-            "vcs",
+            launch.binary,
             *_vcs_uum_elab_args(
                 vcs_cfg,
                 flow.framework,
@@ -2317,6 +2468,7 @@ def vcs_build(
         cwd=build_dir,
         verbose=args.verbose,
         timeout_sec=args.timeout,
+        launch=launch,
     )
 
 
@@ -2409,6 +2561,7 @@ def vcs_sim(
         env=env,
         verbose=args.verbose,
         timeout_sec=timeout_sec,
+        launch=stage_tool_launch(args, "vcs"),
     )
 
 
@@ -2532,6 +2685,7 @@ def xcelium_analyze(
         cwd=info["build_dir"],
         verbose=args.verbose,
         timeout_sec=args.timeout,
+        launch=stage_tool_launch(args, "xcelium"),
     )
 
 
@@ -2550,9 +2704,10 @@ def xcelium_build(
     (`xrun -elaborate -f <filelist>`); `False` is the three-step `xmelab` after analysis."""
     info = _xcelium_resolve_build(flow, root, sim_cfg, args)
     build_dir = info["build_dir"]
+    launch = stage_tool_launch(args, "xcelium")
     if include_filelist:
         argv = [
-            "xrun",
+            launch.binary,
             "-elaborate",
             "-sv",
             *info["elab_args"],
@@ -2587,6 +2742,7 @@ def xcelium_build(
         cwd=build_dir,
         verbose=args.verbose,
         timeout_sec=args.timeout,
+        launch=launch,
     )
 
 
@@ -2654,6 +2810,7 @@ def xcelium_sim(
         cwd=item_dir,
         verbose=args.verbose,
         timeout_sec=timeout_sec,
+        launch=stage_tool_launch(args, "xcelium"),
     )
 
 
@@ -2822,6 +2979,7 @@ def coverage_stage(
     template = as_str_list(tool_cov.get(key), f"coverage.{tool}.{key}")
     if not template:
         raise ConfigError(f"coverage.{tool}.{key} must not be empty")
+    launch = stage_tool_launch(args, tool)
 
     if args.dry_run:
         dry_inputs = [str(run_dir / "<coverage-input>")] if phase == "merge" else []
@@ -2844,6 +3002,7 @@ def coverage_stage(
             cwd=cov_dir,
             verbose=args.verbose,
             timeout_sec=args.timeout,
+            launch=launch,
         )
 
     cov_dir.mkdir(parents=True, exist_ok=True)
@@ -2918,6 +3077,7 @@ def coverage_stage(
             cwd=cov_dir,
             verbose=args.verbose,
             timeout_sec=args.timeout,
+            launch=launch,
         )
         manifest["status"] = "ERROR" if rc else "PASS"
         manifest["merge_return_code"] = rc
@@ -2956,6 +3116,7 @@ def coverage_stage(
         cwd=cov_dir,
         verbose=args.verbose,
         timeout_sec=args.timeout,
+        launch=launch,
     )
     if rc != 0:
         manifest["status"] = "ERROR"
@@ -3101,7 +3262,8 @@ def formal_run_stage(
     sim_tool = simulators.get(tool, {})
     if not isinstance(sim_tool, dict):
         sim_tool = {}
-    binary = str(sim_tool.get("binary", tool))
+    launch = tool_launch(simulators, tool)
+    binary = launch.binary
     script = str(tool_cfg.get("script", "")).strip()
     where = f"{flow.path} [formal.apps.{app.name}.{tool}]"
     if "argv" in tool_cfg:
@@ -3157,6 +3319,7 @@ def formal_run_stage(
         cwd=cwd,
         verbose=args.verbose,
         timeout_sec=args.timeout,
+        launch=launch,
     )
 
 

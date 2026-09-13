@@ -88,14 +88,24 @@ class FormalRegistryTest(RegistryFixture):
         self.assertEqual(self.simulators[self.profile["default_tool"]]["license_env"], [])
 
 
+def which_from(found: dict[str, str]):
+    """A `shutil.which` stand-in that answers from `found` whatever PATH it is asked to search."""
+
+    def which(executable: str, mode: int = 0, path: str | None = None) -> str | None:
+        return found.get(executable)
+
+    return which
+
+
 class DoctorToolTableTest(RegistryFixture):
     def run_doctor(self, tool: str, found: dict[str, str]) -> tuple[int, str]:
         args = Namespace(dut=None, tool=tool, mode="sim", framework=None, overlay=None)
         out = io.StringIO()
         with (
             mock.patch.object(cli, "load_duts", return_value={}),
+            mock.patch.object(cli, "load_site_layer", return_value=None),
             mock.patch.object(cli, "_doctor_python_environment", return_value=False),
-            mock.patch.object(cli.shutil, "which", side_effect=found.get),
+            mock.patch("shutil.which", side_effect=which_from(found)),
             redirect_stdout(out),
         ):
             rc = cli.cmd_doctor(REPO_ROOT, args)
@@ -127,7 +137,7 @@ class SelectedToolAvailabilityTest(RegistryFixture):
     def check(self, tool: str) -> str:
         flow = formal_flow([tool], tool)
         with (
-            mock.patch.object(cli.shutil, "which", return_value=None),
+            mock.patch("shutil.which", side_effect=which_from({})),
             self.assertRaises(ConfigError) as ctx,
         ):
             cli.validate_selected_tool_available(
