@@ -35,9 +35,10 @@ each pin, whatever the DUT or its padring wrapper names it.
 from typing import Any, Optional
 
 import cocotb
-from cocotb.triggers import FallingEdge, RisingEdge
+from cocotb.triggers import FallingEdge, First, RisingEdge
 
-from .ocah_spi_flash import OcahSpiFlash, OcahSpiFlashError, SpiMode
+from .ocah_spi_flash import OcahSpiFlash, OcahSpiFlashError, SpiMode, _cancel_task
+from .ocah_spi_types import SR1_WEL
 
 __all__ = ["OcahSepSpiFlash", "OcahSepSpiFlashError"]
 
@@ -184,7 +185,7 @@ class OcahSepSpiFlash(OcahSpiFlash):
     async def stop(self) -> None:
         """Stop the SEP flash BFM."""
         if self._rebar_task is not None:
-            self._rebar_task.kill()
+            _cancel_task(self._rebar_task)
             self._rebar_task = None
         await super().stop()
 
@@ -210,8 +211,7 @@ class OcahSepSpiFlash(OcahSpiFlash):
     def _on_rebar_assert(self) -> None:
         """Reset internal state machine (not flash contents) on REBAR."""
         self._wel = False
-        self._sr1 = self._sr1 & ~0x02  # clear WEL bit in SR1
-        # Note: flash memory contents are preserved across REBAR (NOR semantics)
+        self._sr1 = self._sr1 & ~SR1_WEL
         if self._rebar_i is not None:
             self._rebar_i.value = 0
 
@@ -219,7 +219,7 @@ class OcahSepSpiFlash(OcahSpiFlash):
     # OE-aware drive helper (overrides base for SEP DQ bus)
     # ------------------------------------------------------------------
 
-    async def _send_byte_single(self, byte_val: int) -> None:
+    async def _send_byte_single(self, byte_val: int) -> bool:
         """Send one byte on DQ, respecting dq_oe_n if provided.
 
         If ``dq_oe_n`` is connected, this BFM only drives DQ when the
@@ -227,17 +227,16 @@ class OcahSepSpiFlash(OcahSpiFlash):
         This prevents bus contention during the turnaround phase.
 
         If ``dq_oe_n`` is not connected, DQ is driven unconditionally
-        (same as base class behaviour).
+        (same as base class behaviour).  Returns True when all eight bit
+        slots passed, False when chip-select rose first.
         """
-        from cocotb.triggers import FallingEdge as _FallingEdge  # noqa: PLC0415
-
         sclk = self._sclk
         cs_n = self._cs_n
 
         for bit_idx in range(7, -1, -1):
-            await _FallingEdge(sclk)
+            await First(FallingEdge(sclk), RisingEdge(cs_n))
             if int(cs_n.value) != 0:
-                return
+                return False
 
             # Only drive if controller is not driving the DQ bus.
             if self._dq_oe_n is not None:
@@ -252,3 +251,4 @@ class OcahSepSpiFlash(OcahSpiFlash):
             dq_in = self._dq_in if self._dq_in is not None else self._miso
             if dq_in is not None:
                 dq_in.value = bit
+        return True

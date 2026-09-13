@@ -318,13 +318,11 @@ class sep_spi_ot_flash_cmd_rand_test(sep_base_test):
                 f"saw {len(pp_txns)}"
             )
         wp_pp = pp_txns[cfg.WP_PP_NTH - 1]
-        # The device must have taken NO payload from it. Note what this can and
-        # cannot show: on WEL=0 the model drains to CS-high without decoding the
-        # address phase, so a refused program records addr=0 and "the controller
-        # truncated the command" is NOT distinguishable here. The memory compare
-        # below carries the real weight.
+        # The device must have refused it and taken NO payload. On WEL=0 the
+        # model decodes the address, drains to CS-high, and records the frame
+        # with ok=False; the memory compare below carries the real weight.
         wp_taken = bytes(wp_pp.get("data_in") or b"")
-        if wp_taken:
+        if wp_taken or wp_pp.get("ok", True):
             self.logger.error(
                 "SPI flash command breadth GOLDEN FAIL: the WEL-clear PAGE PROGRAM was "
                 "accepted, device took %d payload byte(s): %s",

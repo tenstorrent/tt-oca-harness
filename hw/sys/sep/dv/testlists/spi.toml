@@ -17,6 +17,23 @@ target = "lsu_stub_all_live"
 args = ["+skip_fuse_sense"]
 
 [[tests]]
+# Firmware-free flash datapath: the AXI master drives the OT SPI host through
+# JEDEC, the write-enable latch walk, a refused unprotected program, page
+# program with READ/FAST_READ readback, a neighbour-sector program, sector
+# erase, and the blank/intact readback; the shared flash checker judges the
+# device records, the host readback, the memory golden, the opcode order, and
+# non-vacuity. SEP_SPI_FLASH_CHECKER_NEGATIVE=1|2 is the must-fail knob.
+name = "sep_spi_flash_program_readback_test"
+module = "spi.sep_spi_flash_program_readback_test"
+seed = 1
+reseed = 3
+timeout_sec = 1800
+tags = ["spi", "flash", "subsystem"]
+run_modes = ["no_cpu"]
+target = "lsu_stub_all_live"
+args = ["+skip_fuse_sense"]
+
+[[tests]]
 # OT SPI flash command breadth (the reference suite spi_ot flash_write_read + sector_erase).
 # cpu-firmware port: the OT spi_host multi-command flash sequence runs from the
 # CPU, like every reference-suite spi_ot flash test. [RAND-REP] -- the cocotb test seeds

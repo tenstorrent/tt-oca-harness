@@ -52,6 +52,11 @@ root = "hw/common/dv/vip/ocah_axi_vip/dv"
 [duts.ocah_jtag_vip]
 root = "hw/common/dv/vip/ocah_jtag_vip/dv"
 
+# Shared SPI VIP wire-harness selftests: the shared controller engine and the
+# shared flash device exercise each other on passive tb nets (no DUT RTL).
+[duts.ocah_spi_vip]
+root = "hw/common/dv/vip/ocah_spi_vip/dv"
+
 # Cross-trigger IP-level benches: the family nests one level below the
 # hw/ip/<name>/dv convention (hw/ip/cross_trigger/<name>/dv), so each IP is
 # registered here.

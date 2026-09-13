@@ -473,6 +473,10 @@ appears.
 |cpu
 |ocah_axi_vip, ocah_spi_vip, CPU FW
 |JEDEC, WREN/RDSR, WRDI, page program, FAST_READ, and sector erase against the flash BFM, with a neighbour-sector intact check, write-protect and status-register breadth, and the three host `ERROR_STATUS` classes with recovery.
+|`sep_spi_flash_program_readback_test`
+|no_cpu
+|ocah_axi_vip, ocah_spi_vip
+|Firmware-free flash datapath: the AXI master drives the OpenTitan SPI host through JEDEC, the write-enable latch walk, a refused unprotected program, page program with READ and FAST_READ readback, a neighbour-sector program, sector erase, and the blank/intact readback; the shared flash checker judges device records, host readback, memory golden, opcode order, and non-vacuity, with two in-band must-fail probes.
 |`sep_dma_basic_test`
 |cpu
 |ocah_axi_vip, CPU FW
@@ -706,7 +710,7 @@ later test could hit it too — credit once, at the earliest phase that proved i
 |`sep_lcc_lc_state_w1s_prod_test`, `sep_lcc_lc_state_w1s_prod_demote_test`, `sep_lcc_lc_state_w1s_rma_sip_test`, `sep_lcc_lc_state_w1s_rma_chiplet_test`, `sep_lcc_lc_state_w1s_prod_end_test`, `sep_lcc_lc_state_w1s_transient_test` — six leaves on one module, one sensed starting state each. The other writer of `LC_STATE`: the frontdoor shadow write, which the stitch walk (OTP program + re-sense) never exercises.
 
 |SPI-OT flash command set
-|`sep_spi_ot_flash_cmd_rand_test` — JEDEC, WREN/RDSR, WRDI, page program, FAST_READ and sector erase against the flash BFM, with a neighbour-sector intact check, write-protect and status-register breadth, and the three host `ERROR_STATUS` classes with recovery. The BFM golden requires the exact observed opcode sequence, not a floor. `sep_spi_flash_jedec_smoke_test` is the reachability vehicle and keeps its own phase's credit. The DMA-to-SPI path is graded on the `DMA copy + inline SHA-256 + LSIO` row and is not re-credited here.
+|`sep_spi_ot_flash_cmd_rand_test` — JEDEC, WREN/RDSR, WRDI, page program, FAST_READ and sector erase against the flash BFM, with a neighbour-sector intact check, write-protect and status-register breadth, and the three host `ERROR_STATUS` classes with recovery. The BFM golden requires the exact observed opcode sequence, not a floor. `sep_spi_flash_program_readback_test` — the same flash datapath without firmware, driven over the CPU-LSU AXI splice and judged by the shared `OcahSpiFlashChecker` (device records against a wire-rebuilt reference model, host readback, memory golden, source image, opcode order, non-vacuity), with in-band wrong-pattern and wrong-order probes and a must-fail knob. `sep_spi_flash_jedec_smoke_test` is the reachability vehicle and keeps its own phase's credit. The DMA-to-SPI path is graded on the `DMA copy + inline SHA-256 + LSIO` row and is not re-credited here.
 
 |WDT bark → NMI, pet, lock
 |`sep_nmi_sanity_test`, `sep_reset_wdt_sanity_test`, `sep_wdt_aon_timer_internals_test`
@@ -1282,12 +1286,12 @@ guard is proven.
 [cols="2,5",options="header"]
 |===
 |Checker |Contract
-|CHK-JEDEC-ID
-|The received identifier equals the flash model's device identifier.
-|CHK-RESP
-|Every read beat returns `OKAY` and no access decodes to `DECERR`. The cited tally covers read beats only — write responses are counted but their code is inspected for `DECERR` alone, so an `SLVERR` on a write would leave that line unchanged. Write responses are enforced separately, by the scoreboard line quoted under CHK-NONVAC.
-|CHK-NONVAC
-|The scoreboard performed a non-zero number of checks.
+|CHK-SPI-JEDEC-ID
+|The flash device streamed its configured identifier in answer to READ JEDEC ID (device record, judged by `OcahSpiFlashChecker`).
+|CHK-SPI-HOST-JEDEC
+|The identifier the OpenTitan SPI host received through `RXDATA` equals the bytes the device sent.
+|CHK-SPI-CMD-ORDER
+|The device saw exactly one in-scope command, READ JEDEC ID, and nothing else.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
@@ -3423,6 +3427,71 @@ poll and yields the same pass.
 
 '''''
 
+[[sep_spi_flash_program_readback_test]]
+===== `sep_spi_flash_program_readback_test`
+
+*Phase*: 2
+
+*Bucket*: SPI and DMA
+
+*Run mode*: `no_cpu`, 3 seeds
+
+*Source Module*: `sep_spi_flash_program_readback_test`
+
+*BFM / Model*: ocah_axi_vip, ocah_spi_vip
+
+*Objective*: Firmware-free flash datapath: the AXI master drives the OpenTitan SPI host through JEDEC, the write-enable latch walk, a refused unprotected program, page program with READ and FAST_READ readback, a neighbour-sector program, sector erase, and the blank/intact readback; the shared flash checker judges device records, host readback, memory golden, opcode order, and non-vacuity.
+
+*Test Coverage*: JEDEC, status, write-enable ordering, program, read, erase, memory golden, non-vacuity, and checker must-fail probes without firmware.
+
+*Test Procedure*:
+
+[arabic]
+. Bring up in `no_cpu` mode; configure the SPI host (clock divider, chip-select timing, enable) through `sep_spi_flash_ops_seq`.
+. READ JEDEC ID; READ STATUS REGISTER 1 around WRITE ENABLE and WRITE DISABLE.
+. PAGE PROGRAM the seeded span without WRITE ENABLE and read it back blank.
+. WRITE ENABLE, PAGE PROGRAM the span, READ and FAST_READ it back, READ STATUS REGISTER 1.
+. WRITE ENABLE, PAGE PROGRAM the same span in the neighbouring sector, read it back.
+. WRITE ENABLE, SECTOR ERASE the first sector; read the first span blank and the neighbour intact; READ STATUS REGISTER 1; `ERROR_STATUS` reads zero.
+. Replay the device records through `OcahSpiFlashChecker`, pair the host responses, judge the memory and the opcode order, and run the two in-band probes.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-SPI-JEDEC-ID / CHK-SPI-HOST-JEDEC
+|The device streamed its configured identifier and the host received the same bytes.
+|CHK-SPI-STATUS-WEL / CHK-SPI-HOST-STATUS
+|Every READ STATUS REGISTER 1 reported the latch the reference model predicts (set after WRITE ENABLE, clear after WRITE DISABLE and after each accepted program or erase), and the host received the same byte.
+|CHK-SPI-WREN-ORDER
+|The program without WRITE ENABLE was refused and took no payload; every accepted program and erase followed a WRITE ENABLE.
+|CHK-SPI-READ-DATA / CHK-SPI-HOST-READBACK
+|Every READ and FAST_READ streamed the reference model's bytes, and the host's `RXDATA` words carry the same bytes.
+|CHK-SPI-CMD-ORDER
+|The in-scope opcode sequence the device saw is exactly the one the sequence drives.
+|CHK-SPI-REFUSED-BLANK
+|The span reads blank after the unprotected program.
+|CHK-SPI-PROGRAM-READBACK / CHK-SPI-FAST-READBACK
+|READ and FAST_READ of the programmed span return the seeded payload through the host.
+|CHK-SPI-ERASE-BLANK / CHK-SPI-ERASE-NEIGHBOUR
+|After the sector erase the first span reads blank and the neighbour span still reads its payload.
+|CHK-SPI-MEM-GOLDEN / CHK-SPI-MEM-SOURCE
+|The device array equals the reference model over every touched byte, and the reference equals the seeded neighbour payload.
+|CHK-SPI-NONVAC-PROGRAM / -READ / -ERASE
+|A program cleared bits, a read returned non-erased data, and the erase returned programmed bytes to `0xFF`; an erase of a blank sector would fail the erase rule.
+|CHK-SPI-HOST-ERROR-STATUS
+|The OpenTitan SPI host `ERROR_STATUS` is zero after the sequence.
+|CHK-SPI-NEG-PATTERN / CHK-SPI-NEG-ORDER
+|A probe checker handed a corrupted source image, and one handed a rotated expected opcode order, each reject the recorded traffic.
+|===
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Must-fail*: `SEP_SPI_FLASH_CHECKER_NEGATIVE=1` hands the test's own checker a corrupted source image (`CHK-SPI-MEM-SOURCE` fails); `=2` skips the WRITE ENABLE before the functional program, so the device refuses it, the readback stays blank (`CHK-SPI-PROGRAM-READBACK` fails), and the erase flips no programmed byte (`CHK-SPI-NONVAC-ERASE`).
+
+'''''
+
 [[sep_spi_ot_flash_cmd_rand_test]]
 ===== `sep_spi_ot_flash_cmd_rand_test`
 
@@ -3470,7 +3539,7 @@ poll and yields the same pass.
 |CHK-WEL-AUTOCLR
 |The erase consumes the write-enable latch. The latch is state of the SPI flash device model, not of SEP: what this grades is that the controller drove a well-formed erase the device accepted and retired, and it fails if the controller leaves the device armed. It is not RTL coverage of a SEP register, and takes no feature credit as such.
 |CHK-WP-PP
-|A page program issued with the write-enable latch clear does not land. The firmware reads the sector back over SPI and sees all-ones; the golden then reads the device model's stored array directly, off the SPI read path, so a program that landed while the read path returned a stuck all-ones value fails. The model records no payload on that transaction. The model drains to chip-select-high without decoding the address phase when the latch is clear, so this cannot separate a device refusal from a truncated command.
+|A page program issued with the write-enable latch clear does not land. The firmware reads the sector back over SPI and sees all-ones; the golden then reads the device model's stored array directly, off the SPI read path, so a program that landed while the read path returned a stuck all-ones value fails. The model records no payload on that transaction: with the latch clear it decodes the address, drains to chip-select-high, and marks the frame refused.
 |CHK-RDSR2
 |Opcode `0x35` returns the seeded non-zero status-register-2 value. A decode that folds `0x35` onto `0x05` returns the write-enable SR1 encoding (`0x02`) and fails. A receive path that returns all-zero also fails. The firmware does not re-read SR1 on this step; the fail cases are the two wrong bytes, not a live SR1 compare.
 |CHK-ERR-UNDERFLOW
