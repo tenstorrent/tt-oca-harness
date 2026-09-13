@@ -49,11 +49,11 @@ module cross_trigger_port_core_props (
 );
 
   // Encodings of the module-local sender_state_e and receiver_state_e enums in ctp_handshake_ctrl.
-  localparam logic [1:0] SENDER_IDLE                = 2'd0;
-  localparam logic [1:0] SENDER_REQ_ASSERTED        = 2'd1;
-  localparam logic [1:0] SENDER_WAIT_ACK_DEASSERT   = 2'd2;
-  localparam logic [1:0] RECEIVER_IDLE              = 2'd0;
-  localparam logic [1:0] RECEIVER_ACK_ASSERTED      = 2'd1;
+  localparam logic [1:0] SENDER_IDLE = 2'd0;
+  localparam logic [1:0] SENDER_REQ_ASSERTED = 2'd1;
+  localparam logic [1:0] SENDER_WAIT_ACK_DEASSERT = 2'd2;
+  localparam logic [1:0] RECEIVER_IDLE = 2'd0;
+  localparam logic [1:0] RECEIVER_ACK_ASSERTED = 2'd1;
   localparam logic [1:0] RECEIVER_WAIT_REQ_DEASSERT = 2'd2;
 
   logic p2p;
