@@ -144,7 +144,7 @@ def scenario_rng(label: str) -> random.Random:
 
 def negative_armed() -> bool:
     """Whether the must-fail knob of the run is set."""
-    return OcahKnobs.is_set(NEGATIVE_KNOB)
+    return bool(OcahKnobs.is_set(NEGATIVE_KNOB))
 
 
 def random_page_span(rng: random.Random, *, max_len: int = 64) -> tuple[int, int]:

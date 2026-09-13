@@ -15,7 +15,7 @@ from __future__ import annotations
 import logging
 
 import cocotb
-from ocah_spi_vip import OcahSpiOpcode
+from ocah_spi_vip import OcahSpiFlashChecker, OcahSpiOpcode
 from ocah_spi_vip_harness import JEDEC_ID, build_stack, rejects, scenario_rng
 
 log = logging.getLogger("cocotb.tb.ocah_spi_jedec_test")
@@ -80,11 +80,12 @@ async def ocah_spi_jedec_test(dut) -> None:
     )
 
     records = harness.flash.get_transactions()
-    rejected = rejects(
-        "jedec",
-        harness.flash,
-        lambda probe: (setattr(probe, "jedec_id", JEDEC_ID ^ 0x01), probe.replay(records)),
-    )
+
+    def _replay_with_wrong_id(probe: OcahSpiFlashChecker) -> None:
+        probe.jedec_id = JEDEC_ID ^ 0x01
+        probe.replay(records)
+
+    rejected = rejects("jedec", harness.flash, _replay_with_wrong_id)
     checker.expect_true(
         "CHK-SPI-NEG-JEDEC", rejected, context="a different expected identifier must be rejected"
     )

@@ -224,8 +224,8 @@ class sep_spi_flash_ops_seq(uvm_sequence):
             await self._write(CMD, _CMD_DIR_RX | (rx_len - 1))
             await self._wait_idle()
             for offset in range(0, rx_len, 4):
-                word = await self._read(RXDATA)
-                received += word.to_bytes(4, "little")[: min(4, rx_len - offset)]
+                rx_word = await self._read(RXDATA)
+                received += rx_word.to_bytes(4, "little")[: min(4, rx_len - offset)]
             self._responses.setdefault(int(opcode), []).append(bytes(received))
         else:
             await self._wait_idle()
@@ -248,7 +248,7 @@ class sep_spi_flash_ops_seq(uvm_sequence):
         item.expected = expected
         await self.start_item(item)
         await self.finish_item(item)
-        return item.rdata
+        return int(item.rdata)
 
     async def _wait_ready(self) -> int:
         for _ in range(_READY_POLLS):

@@ -434,11 +434,11 @@ class OcahSpiFlashChecker:
         self, check_id: str, observed: Any, expected: Any, *, context: str = ""
     ) -> bool:
         """Emit one exact-value evidence record through the common core."""
-        return self.evidence.expect_equal(check_id, observed, expected, context=context)
+        return bool(self.evidence.expect_equal(check_id, observed, expected, context=context))
 
     def expect_true(self, check_id: str, condition: Any, *, context: str = "") -> bool:
         """Emit one boolean evidence record through the common core."""
-        return self.evidence.expect_true(check_id, condition, context=context)
+        return bool(self.evidence.expect_true(check_id, condition, context=context))
 
     def finalize(self) -> None:
         """Log the opcode tally and finalize the evidence; raises on failed or missing records."""
@@ -524,6 +524,9 @@ class OcahSpiFlashChecker:
         )
 
     def _check_golden(self, context: str) -> bool:
+        flash = self.flash
+        if flash is None:
+            raise ValueError(f"{self.name}: the memory golden needs an attached flash")
         spans = self.ref_model.spans()
         if not spans:
             return self.expect_true(
@@ -533,7 +536,7 @@ class OcahSpiFlashChecker:
         first: str = "-"
         total = 0
         for start, end in spans:
-            device = bytes(self.flash.read_memory(start, end - start))
+            device = bytes(flash.read_memory(start, end - start))
             model = self.ref_model.read(start, end - start)
             total += end - start
             for offset, (got, want) in enumerate(zip(device, model)):

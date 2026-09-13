@@ -15,7 +15,7 @@ The engine has no SV-UVM twin: the package ships the cocotb realization only.
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, Final
 
 from cocotb.triggers import Timer
 
@@ -24,7 +24,7 @@ from .ocah_spi_types import OcahSpiOpcode
 __all__ = ["OcahSpiMasterBfm"]
 
 _DEFAULT_HALF_PERIOD_NS = 10
-_TIME_UNIT = "ns"
+_TIME_UNIT: Final = "ns"
 
 
 class OcahSpiMasterBfm:
