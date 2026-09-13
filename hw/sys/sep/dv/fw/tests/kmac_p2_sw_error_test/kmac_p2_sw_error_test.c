@@ -6,9 +6,6 @@
  *
  *   1) Hashing without entropy_ready -> ErrSwHashingWithoutEntropyReady
  *   2) Unsupported mode/strength -> ErrUnexpectedModeStrength
- *
- * Execution:
- *   make test-sep TEST_NAME=sep_kmac_p2_sw_error_test STACK=cgen,sim
  */
 
 #include <stdint.h>

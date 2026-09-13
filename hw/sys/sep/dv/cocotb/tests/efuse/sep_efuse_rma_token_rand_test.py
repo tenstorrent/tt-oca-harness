@@ -16,7 +16,7 @@ status, sticky bit / IRQ survive a valid-token retry, and
 ``sep_internal_interrupts[39]`` (PIC source 40). Collapse and disagreement
 have no frontdoor; the tb injects them on the RMA_SIP comparator rails.
 
-Does not stretch the Phase 1 stitch e2e. Real fuse sense. Starts in PROD
+Does not stretch the stitch e2e. Real fuse sense. Starts in PROD
 so the SIP then CHIPLET walk is W1S-legal.
 """
 
@@ -69,7 +69,7 @@ class sep_efuse_rma_token_rand_test(sep_base_test):
         # The image pins SEC_DISABLE clear and no SEC_DIS token is presented, so
         # the value is known ahead of the read. Feeding the probe into the golden
         # would let a spuriously asserted security-disable move the expectation
-        # with it instead of failing (AGENTS.md section 7).
+        # with it instead of failing.
         sec_dis = int(cocotb.top.lcc_security_disable_probe_o.value) & 0x1
         assert sec_dis == 0, (
             f"SEC_DIS asserted ({sec_dis}) but this test presents no token; the "

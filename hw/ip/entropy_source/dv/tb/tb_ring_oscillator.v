@@ -5,7 +5,7 @@
 // Entropy Noise Source iverilog Testbench
 //
 // Description:
-// Enhanced Verilog testbench with frequency measurement and metastability detection
+// Verilog testbench with frequency measurement and metastability detection
 // Tests the entropy_noise_source module which instantiates a ring oscillator and
 // performs sampling with metastable D flip-flops
 //------------------------------------------------------------------------------
@@ -149,7 +149,7 @@ module tb_ring_oscillator ();
     $display("Time=%0t: Extended monitoring for frequency measurement and metastability...", $time);
 
     // Extended monitoring to capture frequency and metastable events
-    // Run for ~4ms to get at least 1000 edges on synchronized output (doubled simulation time)
+    // Run for ~4ms to get at least 1000 edges on the synchronized output
     repeat (400000) begin
       #10;
       if ($time % 100000 == 0) begin

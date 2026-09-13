@@ -75,7 +75,7 @@ class smc_irq_during_powergood_glitch_test_seq(smc_base_test_seq):
     # quantity -- expiry is a failure.
     GLITCH_EFFECT_BOUND_REF_CYCLES = 64
     # Recovery re-qualifies power-good and walks the cold-reset extender before
-    # primary release (observed a few hundred clk_ref_i edges). Ceiling only.
+    # primary release, which takes a few hundred clk_ref_i edges. Ceiling only.
     RECOVER_BOUND_REF_CYCLES = 2000
     # Mid-window dispatched SAMPLEs and their cadence. The continuous watcher
     # (not this cadence) is what catches a transient assert; these exist so the

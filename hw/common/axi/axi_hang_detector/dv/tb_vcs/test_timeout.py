@@ -36,16 +36,10 @@ async def wait_for_irq(dut, max_cycles: int):
     return None
 
 
-# Core datapath sanity, walked as one sequence:
-#   1. a read hang fires after the threshold (and NOT before threshold-2) and then
-#      HOLDS irq_o high while the bus stays hung (irq_o is a level, not a pulse),
-#   2. completing the read drains the outstanding tx -> irq_o drops,
-#   3. a write hang then fires too -- a fresh hang re-arms the detector and proves
-#      it tracks writes (B completion), not just reads,
-#   4. asserting reset while a hang is in progress clears the counter + irq_o, and
-#      the detector comes up disabled afterwards (config wires re-init to 0).
-# The precise corners (threshold edges, latching, periodic completions) live in
-# the dedicated tests below.
+# Core datapath sanity, walked as one sequence: read hang, completion, write hang,
+# reset. irq_o is a level, not a pulse: it holds while the bus stays hung. The
+# precise corners (threshold edges, latching, periodic completions) live in the
+# dedicated tests below.
 @cocotb.test()
 async def test_core_sanity(dut):
     THRESH = 32
@@ -79,17 +73,12 @@ async def test_core_sanity(dut):
 
 
 # Config-corner behaviours -- each pokes one config field to an edge value against
-# a real hang and checks fire/no-fire (a reset re-inits between cases):
-#   - threshold = 0 is degenerate -> the detector is effectively DISABLED and never
-#     fires despite a real hang (firmware must use >= 1).
-#   - threshold = 1 is the smallest useful value -> a single stalled cycle fires.
-#   - irq_en = 0 gates the output -> the counter still runs but irq_o stays low
-#     (the SMC system test always runs irq_en=1, so this gating is only checked here).
+# a real hang and checks fire/no-fire (a reset re-inits between cases).
 @cocotb.test()
 async def test_config_corners(dut):
     await setup_dut(dut)
 
-    # threshold = 0: disabled -> must never fire even with a real hang present.
+    # threshold = 0 disables the detector: no fire despite a real hang (firmware must use >= 1).
     await configure(dut, 0)
     await issue_read(dut)
     res = await wait_for_irq(dut, 64)

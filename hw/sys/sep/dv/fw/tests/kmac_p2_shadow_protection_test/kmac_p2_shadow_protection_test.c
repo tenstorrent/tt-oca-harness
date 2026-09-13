@@ -8,9 +8,6 @@
  *   1) Matching double-write commits a valid configuration.
  *   2) Mismatched double-write does not commit the second value.
  *   3) Recoverable shadow update alert status is observed when exposed.
- *
- * Execution:
- *   make test-sep TEST_NAME=sep_kmac_p2_shadow_protection_test STACK=cgen,sim
  */
 
 #include <stdint.h>

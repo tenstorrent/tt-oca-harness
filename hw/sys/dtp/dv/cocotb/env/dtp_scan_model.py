@@ -3,8 +3,7 @@
 """Small DTP-local scan-chain model for basic JTAG scenarios.
 
 The OSS DTP top loops BSR/iJTAG scan inputs back from DUT scan outputs. This
-model captures the expected public behavior at the scenario level without
-introducing a reusable protocol VIP.
+model captures the expected public behavior at the scenario level.
 
 The zero-length external chain returns TDI through the DUT's IEEE 1149.1
 falling-edge TDO retimer (jtag_ptap `tdo_retimed`), so the observed DR stream

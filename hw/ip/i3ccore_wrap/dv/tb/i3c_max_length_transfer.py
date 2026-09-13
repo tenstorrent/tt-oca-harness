@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 """
-I3C Max-Length / Boundary Transfer  (Test Plan #30)
+I3C Max-Length / Boundary Transfer
 
 Private write/read at boundary lengths around the FIFO capacity and large
 transfers, after raising MWL/MRL. Validates multi-descriptor / FIFO-refill
@@ -36,7 +36,7 @@ async def test_max_length_transfer(dut):
     lengths = list(BOUNDARY_LENGTHS) + [rand_len(r, MWL) for _ in range(N_RANDOM)]
 
     for n in lengths:
-        wr = rand_bytes(r, n)  # random data (was a fixed pattern)
+        wr = rand_bytes(r, n)
         ok, resp, rx = await ctrl.private_write(wr, tgt, dat_idx=0)
         assert ok, f"{n}B write failed resp=0x{resp:08X}"
         assert rx == wr, f"{n}B write data mismatch"

@@ -2,13 +2,13 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP OpenTitan-SPI DMA-TX test (PyUVM, cpu-firmware, randomized).
 
-SPI-subsystem Phase-2 rep SPI DMA-TX breadth: the TX complement of
+SPI DMA-TX breadth: the TX complement of
 `sep_spi_ot_dma_rx_test` (SPI RX FIFO -> DMA -> SRAM). Here SRAM -> Secure DMA (hardware
 handshake) -> OT SPI host TX FIFO -> flash: the OT SPI TX watermark drives
 lsio_trigger, which refills the TX FIFO from SRAM a 16-byte chunk at a time. RX is
 held quiescent so the single lsio_trigger (= tx_wm | rx_wm) is TX-watermark-driven.
 
-COVERED_STRONGER vs the reference spi_ot_dma_tx_test (raw-byte stream, done+no-error
+Beyond the reference spi_ot_dma_tx_test (raw-byte stream, done+no-error
 only): the DMA feeds a REAL flash PAGE PROGRAM stream (opcode 0x02 + 24-bit addr +
 data) from SRAM; the firmware then reads the flash back over SPI and value-checks
 it; and an independent cocotb BFM golden confirms the flash memory == the SRAM
@@ -35,8 +35,8 @@ Checks:
     CHK-ERR-OVERFLOW : a TXDATA write past STATUS.TXFULL latches exactly
                     ERROR_STATUS.OVERFLOW; CTRL.SW_RST + W1C releases the host and
                     a flash RDSR round trip proves it runs again. This is the TX
-                    flow-control edge the watermark-paced DMA deliberately never
-                    reaches, so nothing else in the test proves the host reports it.
+                    flow-control edge the watermark-paced DMA never reaches, so
+                    nothing else in the test proves the host reports it.
   cocotb golden cross-check:
     CHK-TRIGGER/BFM : the BFM saw WREN then PAGE PROGRAM at the random addr with the
                       random data; BFM memory == the SRAM source pattern.

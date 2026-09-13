@@ -8,8 +8,8 @@ Two legs, and only the first is a closure claim:
    pattern, read back under a mask, restore, and re-read against the saved
    value. Evidence: ``CHK-EFUSE-CLOCK-GATE-DEPTH``.
 2. **CHIP_CONFIG proxy reads** -- fuse-derived mirror registers. ``VERSION_LO`` /
-   ``VERSION_HI`` carry their generated RDL resets; the remaining three are
-   observed only (see below).
+   ``VERSION_HI`` carry their generated RDL resets; ``CHIP_ID`` and ``LC_STATE``
+   are observed only (see below).
 
 This sequence also runs :func:`prove_efuse_bank_axil_activity` before the
 bounded OTP work. Without it the test's ``tb_axil_efuse_bank_active == 0``
@@ -45,8 +45,7 @@ VERSION_HI_RESET = _field_mask(_CHIP_CONFIG_H, "CHIP_CONFIG__VERSION_HI__VERSION
 # CHIP_ID / LC_STATE are fuse-derived mirrors whose expected
 # content is not published in any artifact this bench can read, so they carry no
 # expectation and are OBSERVED ONLY -- they prove decode/reachability, nothing
-# about their content. The testcase's `details=` is narrowed accordingly rather
-# than claiming "fuse-derived semantics checked" ([EXACT-EXPECTATION]).
+# about their content ([EXACT-EXPECTATION]).
 EFUSE_PROXY_READS = [
     ("CHIP_CONFIG_VERSION_LO", _CHIP_CONFIG, VERSION_LO_RESET),
     ("CHIP_CONFIG_VERSION_HI", _CHIP_CONFIG + 0x4, VERSION_HI_RESET),

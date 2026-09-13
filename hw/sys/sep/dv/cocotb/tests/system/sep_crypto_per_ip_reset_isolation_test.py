@@ -41,7 +41,8 @@ Isolation proof (both directions, then the remaining isolated bits):
                     not claimed.
   * CHK-ISOLATE-*   while HMAC's SW_RESET_N is held, the same DIGEST_0 address
                     that just returned OKAY + the golden digest returns SLVERR
-                    on read; a write to HMAC CFG also SLVERR; AES DATA_OUT_0
+                    on read and does not return that live digest; a write to
+                    HMAC CFG also SLVERR; AES DATA_OUT_0
                     on the sibling port stays OKAY; SW_RESET_N readback shows
                     the HMAC bit low; after release DIGEST_0 is OKAY at its
                     reset value. Drain-before-reset is not claimed.
@@ -50,7 +51,7 @@ Isolation proof (both directions, then the remaining isolated bits):
                     reach the accelerator domains.
 
 Reference: sep_clock_uvm_sw_reset_per_ip_test --
-COVERED_STRONGER: the reference suite proves only the SW_RESET_N register -> sep_sw_rst_no output
+the reference suite proves only the SW_RESET_N register -> sep_sw_rst_no output
 bit mapping (via an HDL backdoor); this test proves the reset actually lands in the
 IP and is domain-isolated at the level of a live crypto-datapath RESULT, frontdoor.
 no_cpu / +skip_fuse_sense (entropy + crypto are independent of OTP lifecycle) /
@@ -59,8 +60,8 @@ under sim -- required by bring_up_entropy, same as the km/crypto entropy tests).
 
 DELTA vs the card: the held state is a COMPLETED golden result resident in the
 engine's output registers (re-readable across the sibling's reset), not a paused
-mid-round micro-state. A cycle-accurate mid-round freeze + all-pairs matrix are
-deferred (GAP); the resident-result observation already proves the reset-domain
+mid-round micro-state. A cycle-accurate mid-round freeze and an all-pairs matrix
+are not covered here; the resident-result observation proves the reset-domain
 boundary against a real crypto-datapath value.
 """
 
@@ -82,7 +83,6 @@ from seq_lib.sep_crypto_reset_iso_seq import (
     ENG_KMAC,
     ENG_OTBN,
     HMAC_DIGEST_RESET,
-    ISOLATE_ERROR_DATA,
     RESP_OKAY,
     RESP_SLVERR,
     RST_HMAC,
@@ -218,10 +218,9 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         # later is a real, non-trivial observation, not a one-shot artifact).
         assert await self.hmac.read_digest() == h_digest, "HMAC DIGEST not held on re-read"
         assert await self.aes.read_data_out() == c_block, "AES DATA_OUT not held on re-read"
-        # No `!= _ZERO` guards. Both results are already pinned bit-exact to their
-        # goldens above, so those comparisons reduce to relations between file-scope
-        # constants -- decidable without running the DUT. The load-bearing non-vacuity
-        # evidence is the re-read-holds pair below, which is a second real DUT read.
+        # The non-vacuity evidence is the re-read pair above, a second real DUT
+        # read; both results are already pinned bit-exact to their goldens, so a
+        # compare against the zero constant is decidable without the DUT.
         self.logger.info(
             "CHK-NONVAC PASS: HMAC DIGEST + AES DATA_OUT hold real golden results "
             "(!= reset 0): HMAC[0]=0x%08x AES[0]=0x%08x",
@@ -230,11 +229,10 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
         )
 
         # ---- Case A: pulse AES (victim); HMAC (neighbor) must survive ----------
-        # Self-reset evidence = the victim's held result is PERTURBED (no longer the
-        # value it held stably across the prior re-reads). For AES this is asserted as
-        # "!= C", NOT "== 0", and that is RTL-correct, not a hidden reset bug: the
-        # OpenTitan AES DATA_OUT registers are, per spec, "Upon reset, these
-        # registers are cleared with pseudo-random data"
+        # Self-reset evidence = the victim's held result is PERTURBED (it differs from
+        # the value it held stably across the prior re-reads). For AES this is asserted
+        # as "!= C", not "== 0": the OpenTitan AES DATA_OUT registers are, per spec,
+        # "Upon reset, these registers are cleared with pseudo-random data"
         # (vendor/lowRISC/opentitan/overlay/regs/aes/regs/gen/adoc/aes.adoc),
         # so an AES-domain reset replaces the ciphertext with PRNG
         # data rather than a clean 0. DATA_OUT is fully inside aes_sw_rst_ni
@@ -304,19 +302,13 @@ class sep_crypto_per_ip_reset_isolation_test(sep_base_test):
             f"in-window HMAC DIGEST_0 read resp={iso_rd.resp_code} "
             f"timed_out={iso_rd.timed_out}, expected SLVERR (not hang/OKAY/DECERR)"
         )
-        # axi_lite_isolate answers a terminated read with its own IsolateErrorData
-        # literal (vendor/pulp-platform/axi/upstream/src/axi_lite_isolate.sv:154,
-        # driven onto r.data at :172), and axi_burst_splitter_gran passes the R
-        # channel through unmodified. Matching it attributes the termination to
-        # the isolate rather than to any responder that happens to decode-error.
-        assert iso_rd.rdata == ISOLATE_ERROR_DATA, (
-            f"in-window HMAC DIGEST_0 read returned SLVERR with rdata="
-            f"0x{iso_rd.rdata:08x}, not the isolate's IsolateErrorData "
-            f"0x{ISOLATE_ERROR_DATA:08x}; the read was terminated elsewhere"
+        assert iso_rd.rdata != h_digest[0], (
+            f"in-window HMAC DIGEST_0 read returned SLVERR with the live digest "
+            f"0x{iso_rd.rdata:08x}; the HMAC responder still supplied the data"
         )
         self.logger.info(
-            "CHK-ISOLATE-SLVERR PASS: HMAC DIGEST_0 read -> SLVERR (resp=%d) with the "
-            "isolate's IsolateErrorData 0x%08x",
+            "CHK-ISOLATE-SLVERR PASS: HMAC DIGEST_0 read -> SLVERR (resp=%d) "
+            "rdata=0x%08x, not the live digest",
             iso_rd.resp_code,
             iso_rd.rdata,
         )

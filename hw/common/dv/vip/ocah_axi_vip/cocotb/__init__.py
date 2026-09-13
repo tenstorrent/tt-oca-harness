@@ -48,6 +48,8 @@ Quick-start
 See ``examples/example_register_access.py`` for a more complete example.
 """
 
+from typing import Any
+
 from .ocah_axi_checker import OcahAxiChecker, OcahAxiCheckerError
 from .ocah_axi_item import (
     OcahAxiItem,
@@ -65,6 +67,7 @@ from .ocah_axi_ref_model import (
 )
 from .ocah_axi_scoreboard import OcahAxiScoreboard
 from .ocah_axi_types import (
+    DEFAULT_TIMEOUT_NS,
     PROT_INSTRUCTION,
     PROT_NONSECURE,
     PROT_PRIVILEGED,
@@ -74,6 +77,7 @@ from .ocah_axi_types import (
     RESP_SLVERR,
     RESP_TIMEOUT,
     OcahAxiProtocol,
+    default_timeout_ns,
     resp_name,
     worst_resp,
 )
@@ -96,7 +100,7 @@ def _unavailable_class(class_name: str, backend: str):
 
 
 try:
-    from .ocah_axi_config import OcahAxiConfig
+    from .ocah_axi_config import OcahAxiBus, OcahAxiConfig
     from .ocah_axi_lite_master_agent import OcahAxiLiteMasterAgent
     from .ocah_axi_lite_master_config import OcahAxiLiteMasterConfig
     from .ocah_axi_lite_master_driver import OcahAxiLiteMasterDriver
@@ -122,6 +126,7 @@ except ModuleNotFoundError as exc:
     if "cocotbext" not in str(exc):
         raise
     OcahAxiConfig = _unavailable_class("OcahAxiConfig", "cocotbext-axi")
+    OcahAxiBus = Any  # type: ignore[misc,assignment]
     OcahAxiMasterAgent = _unavailable_class("OcahAxiMasterAgent", "cocotbext-axi")
     OcahAxiMasterConfig = _unavailable_class("OcahAxiMasterConfig", "cocotbext-axi")
     OcahAxiMasterDriver = _unavailable_class("OcahAxiMasterDriver", "cocotbext-axi")
@@ -201,6 +206,7 @@ __all__ = [
     "OcahAxiLiteSlaveDriver",
     "OcahAxiLiteSlaveSequence",
     # Passive monitors
+    "OcahAxiBus",
     "OcahAxiConfig",
     "OcahAxiMonitor",
     "OcahAxiLiteMonitor",
@@ -233,6 +239,8 @@ __all__ = [
     "RESP_SLVERR",
     "RESP_DECERR",
     "RESP_TIMEOUT",
+    "DEFAULT_TIMEOUT_NS",
+    "default_timeout_ns",
     "resp_name",
     "worst_resp",
     # AxPROT bit values

@@ -32,8 +32,8 @@ FW_C_SRCS += \
 # I3C controller half of the OCCP master BFM: the MIPI-HCI driver for the
 # vendored OCA i3c-core this tree instantiates.  Its body is gated by
 # I3C_USE_HCI_CORE, which also selects the OCA core's GPIO LSIO pad routing over
-# the Cadence hw2_ovrd path in occp_interfaces.c; a build that leaves the define
-# undefined supplies these symbols from a platform driver instead.
+# the gpio_shim hw2_ovrd path in occp_interfaces.c; a build that leaves the
+# define undefined supplies these symbols from a platform driver instead.
 # FW_EXTRA_CFLAGS reaches both the library objects and the per-test objects, so
 # the driver body and everything keying off it see the same setting.
 FW_C_SRCS += $(FW_DIR)/common/occp/i3c_controller_driver.c
@@ -43,7 +43,7 @@ FW_EXTRA_CFLAGS += -DI3C_USE_HCI_CORE
 # ROM tests never return so it just spins in WFI).
 FW_C_SRCS += $(FW_DIR)/startup/exit_stub.c
 
-# The one deliberate edge from DV into the boot ROM, and it points at an
+# The one edge from DV into the boot ROM, and it points at an
 # interface rather than an implementation: smc_occp_error_codes.h is the OCCP
 # status contract the ROM produces and these tests assert against, so the two
 # must not drift. Dependencies run this way only -- the ROM never includes DV.
@@ -64,8 +64,8 @@ FW_TEST_EXTRA_SRCS_coremark := $(FW_DIR)/tests/core_portme.c
 FW_TEST_INCLUDES := \
   -I$(FW_DIR)/tests \
   -I$(OCAH_ROOT)/hw/sys/sep/dv/fw/tests/common
-# Test sources predate strict prototypes / native register headers; keep these
-# relaxations so they compile unchanged.
+# The test sources rely on implicit declarations and loose pointer/int
+# conversions, so these warnings must stay off for them to compile.
 FW_TEST_EXTRA_CFLAGS += \
   -Wno-incompatible-pointer-types \
   -Wno-implicit-function-declaration \

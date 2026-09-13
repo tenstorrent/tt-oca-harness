@@ -40,7 +40,7 @@ from rom_fw.sep_warm_dispatch_base import (
     sep_warm_dispatch_base,
 )
 
-# In range, and deliberately not the address sep_scratch_7_test pokes an
+# In range, and not the address sep_scratch_7_test pokes an
 # instruction into (0xC0000100), so a stale poke cannot make this run pass.
 _BAD_TARGET = 0xC000_0200
 # mcause for an illegal instruction (RISC-V privileged spec). An all-zero fetch.

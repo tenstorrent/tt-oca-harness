@@ -2,12 +2,12 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 //
 // SMU Verilator coverage scope. Passed to Verilator at compile time from
-// [coverage.verilator].build_args in smu_sim_cfg.toml, so what it drops never
-// enters the coverage database. Edit then `--rebuild`.
+// [coverage.verilator].build_args in smu_block_sim_cfg.toml, so what it drops
+// never enters the coverage database. Edit then `--rebuild`.
 //
-// Same compile-time rule SEP measured (hw/sys/sep/dv/cov/config/vcs/README.md):
-// a report-time filter prunes the report pages and still grades the whole
-// database.
+// Compile-time scope is the only way to change the denominator: a report-time
+// filter prunes the report pages and grades the whole database
+// (hw/sys/sep/dv/cov/config/vcs/README.md).
 //
 // The rule for an integration level is that each level grades what it owns.
 // SMU instantiates SMC, DTP and SEP, each of which has its own DV package and
@@ -32,7 +32,6 @@
 coverage_off -file "*hw/sys/smu/dv/tb/tb_top.sv"
 coverage_off -file "*hw/sys/smu/dv/tb/tb_wrapper_top.sv"
 coverage_off -file "*hw/sys/smu/dv/tb/smu_tb_if.sv"
-coverage_off -file "*hw/sys/smu/dv/tb/smu_axi_out_sim_slave.sv"
 
 // ---------------------------------------------------------------------------
 // Subsystems that carry their own DV package and their own coverage.
@@ -49,18 +48,16 @@ coverage_off -file "*chipyard_generated_files/*"
 coverage_off -file "*hw/ip/*"
 coverage_off -file "*hw/common/*"
 
-// KNOWN GAP. This file takes the toggle denominator from 1350556 sites to
-// 19611, but 18591 of what remains is still vendored: axi_lite_demux.sv
-// (12886) and the tt-hw-debug generic_dff family (5705). Every one of those
-// sites sits under `.u_smc` or `.u_dtp` -- none is under SMU's own crossbar
-// -- so the intent is unambiguous and only the mechanism falls short. No file
-// pattern reaches them: `*vendor/*`, `*pulp-platform/*`, `*tt-hw-debug/*` and
-// the bare `*axi_lite_demux.sv` / `*generic_dff.sv` forms were each built and
-// counted, on this DUT and on SMC, and every one left the numbers unchanged.
-// Do not add those patterns back -- they look like scope and do nothing.
+// KNOWN GAP. Two vendored trees survive this file and hold the large majority
+// of the remaining toggle sites: axi_lite_demux.sv (vendor/pulp-platform/axi)
+// and the tt-hw-debug generic_dff family. Every one of those sites sits under
+// `.u_smc` or `.u_dtp` -- none is under SMU's own crossbar -- so the intent is
+// unambiguous and only the mechanism falls short. No file pattern reaches
+// them: `*vendor/*`, `*pulp-platform/*`, `*tt-hw-debug/*` and the bare
+// `*axi_lite_demux.sv` / `*generic_dff.sv` forms all leave the site count
+// unchanged. Do not add those patterns -- they look like scope and do nothing.
 //
-// What is left after this file: 1020 of 19611 sites (5.2%) are SMU's own
-// smu.sv. Closing the rest needs a hierarchy selector, which `coverage_off`
-// does not have and the coverage policy does; cov/config/verilator/
-// coverage_policy.toml records the two selectors to use and why they cannot
-// be written until a run produces the database counts they must match.
+// Closing the gap needs a hierarchy selector, which `coverage_off` does not
+// have and the coverage policy does; cov/config/verilator/
+// smu_block_coverage_policy.toml records the two selectors and why their
+// `expected_matches` can only come from a coverage database.

@@ -33,9 +33,9 @@ class smc_deadspace_decode_test(smc_base_test):
             # 0: every access goes through `_xfer` (`allow_timeout = False`) or
             # `csr_read`, and `SmcCsrSeq.timeouts` is bumped only by
             # `csr_read_bounded` / `csr_short_timeout`, which this sequence
-            # never calls. Printing `seq.timeouts` advertised a statistic that
-            # was structurally 0. Timeout discipline is
-            # carried by the driver, which raises on a no-response.
+            # never calls. Printing `seq.timeouts` would advertise a statistic
+            # that is structurally 0. Timeout discipline is carried by the
+            # driver, which raises on a no-response.
             timeouts=None,
             proxy=False,
             details=(

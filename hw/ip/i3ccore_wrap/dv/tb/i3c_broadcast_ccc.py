@@ -2,13 +2,13 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 """
-I3C Broadcast CCC  (Test Plan #32)
+I3C Broadcast CCC
 
 Exercises broadcast CCCs beyond SETDASA: ENEC / DISEC (enable/disable events)
 and RSTDAA (via RSTACT defining byte 0x01).
 
 Constrained-random: the ENEC/DISEC *event defining byte* is randomized (shared
-framework, seed from +seed/SEED/default) instead of a fixed 0x01. Per MIPI I3C
+framework, seed from +seed/SEED/default). Per MIPI I3C
 the defined event bits are ENINT/IBI (bit0), ENCR (bit1) and ENHJ (bit3); a
 random subset (at least one bit, only legal bits) is generated so the broadcast
 defining-byte datapath sees the full event-mask space. DISEC mirrors whatever

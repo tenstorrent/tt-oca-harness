@@ -11,10 +11,9 @@
 //   * Toggle N times: read-backs match writes
 //   * Reserved bits [31:1] stay 0
 //
-// The pad-mux side-effect (uart_en_o pin observation) is not visible from FW
-// and must be checked by the cocotb wrapper (TODO: add a top-level pin check).
-// The wrapper's `ASSERT_KNOWN(UartEnKnownO_A, uart_en_o)` SVA fires if the
-// output ever becomes X during this sequence.
+// The pad-mux side-effect (uart_en_o) is not visible from FW. The wrapper's
+// `ASSERT_KNOWN(UartEnKnownO_A, uart_en_o)` SVA fires if the output ever
+// becomes X during this sequence.
 
 #include <stdint.h>
 

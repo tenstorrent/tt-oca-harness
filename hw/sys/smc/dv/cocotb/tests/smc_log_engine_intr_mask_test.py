@@ -2,13 +2,10 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Log-engine INTR_ENABLE output-mask reproducer.
 
-EXPECTED TO FAIL against current RTL. Enrolled in the `rtl_issue` group only --
-no `ci` tag, not in `smoke`. Its purpose is to hold the evidence in a runnable
-form; when the RTL is fixed it should move into the `uart` group.
-
-Issue #1635: the interrupt enable gates the set path instead of masking the
-output. log_engine.rdl:159-161 records the intended `hwenable` binding as
-commented out. #1602 is the GPIO instance of the same pattern.
+Fails against the RTL as shipped: the interrupt enable gates the set path
+instead of masking the output. log_engine.rdl:159-161 carries the intended
+`hwenable` binding commented out; gpio.sv and the I2C core share the same shape.
+Enrolled in the `rtl_issue` group.
 """
 
 from __future__ import annotations

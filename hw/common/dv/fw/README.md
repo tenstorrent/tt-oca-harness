@@ -30,9 +30,9 @@ goal out to selected recursive sub-makes. Keeping that logic in `dispatch.mk`
 lets another tree reuse the same fan-out machinery while keeping its own
 entrypoint target names and help text in its own `fw.mk`.
 
-So `fw.mk` is still the right name when the file is the makefile an integrator or
-subsystem includes/runs for firmware. `dispatch.mk` names the private helper
-layer, not another firmware build entrypoint.
+`fw.mk` names the makefile an integrator or subsystem includes/runs for
+firmware. `dispatch.mk` names the private helper layer, not another firmware
+build entrypoint.
 
 ## Build commands
 
@@ -81,8 +81,8 @@ macros from the generated address headers).
   modeled with open CSRs:
   - *PLL wrap* — placeholder footprint; no generated `SMC_PLL_WRAP_*` / `PLL_CNTL_*`
     / `CGM_*` / `AWM_*` definitions.
-  - *I3C wrap* — open surface is `oca_i3c_wrap`; vendor Cadence wrap names are not
-    emitted.
+  - *I3C wrap* — open surface is `oca_i3c_wrap`; the vendor controller's wrap
+    names are not emitted.
 
   Adopter overlay headers can be force-included locally without committing them:
 

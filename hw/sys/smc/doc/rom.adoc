@@ -11,7 +11,7 @@ The SMC maps a 128 KiB read-only region at `0xC004_0000` through
 
 In the current four-core implementation, the CPU reaches the ROM over its
 internal TileLink memory path. `smc_cpu_wrapper` converts that path to the
-macro-facing `rom_intf_req_o` and `rom_intf_rsp_i` interface. Requests carry a
+macro-facing `smc_rom_intf_req_o` and `smc_rom_intf_rsp_i` interface. Requests carry a
 clock, enable, and 14-bit 64-bit-word address; the write controls are tied to
 read mode. Responses return one 64-bit word. The ROM macro boundary is not an
 AXI-Lite interface and is separate from the CPU MMIO AXI and SMC peripheral

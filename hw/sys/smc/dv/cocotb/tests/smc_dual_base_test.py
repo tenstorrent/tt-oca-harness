@@ -2,10 +2,11 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Shared bring-up for the dual-SMC OCCP tests.
 
-Thinner than hw/sys/smc/dv/cocotb/tests/smc_base_test.py: that
-harness builds the whole single-instance SmcEnv against tb_top.sv's ~400-port
-surface, none of which exists on tb_top.sv (SMC_DUAL half). Here both instances share one
-clock/reset bring-up and each gets its own inbound AXI master.
+Thinner than hw/sys/smc/dv/cocotb/tests/smc_base_test.py: that harness builds
+the whole single-instance SmcEnv against tb_top.sv's single-instance port
+surface, none of which exists on the SMC_DUAL half of tb_top.sv. Here both
+instances share one clock/reset bring-up and each gets its own inbound AXI
+master.
 """
 
 from __future__ import annotations
@@ -20,7 +21,8 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles, with_timeout
 from env.smc_cpu_trace_monitor import SmcCpuTraceState, symbol_file_for_image, watch_cpu_trace
-from ocah_axi_vip import OcahAxiMasterAgent
+from env.smc_env_cfg import SYS_OUT_AXI_GEOMETRY, SYS_OUT_MEM_SIZE
+from ocah_axi_vip import OcahAxiMasterAgent, OcahAxiSlaveAgent, OcahAxiSlaveSequence
 
 # This file lives at hw/sys/smc/dv/cocotb/tests/<this>.py, so the DV root is six
 # levels up from the file and one below the repo root. Anchored on the DV root
@@ -46,7 +48,7 @@ AXI_TIMEOUT_NS = 20_000
 
 # Bytes per bulk AXI transaction. One 64-byte scratch-bank stripe, and small
 # enough that the AXI-to-TileLink bridge into the CPU cluster carries it; see
-# DualCsr.write_bytes for the 256-beat burst that did not.
+# DualCsr.write_bytes for the burst length that does not.
 BULK_CHUNK_BYTES = 64
 
 
@@ -179,11 +181,10 @@ class DualCsr:
 
         Chunked at BULK_CHUNK_BYTES rather than handed to the VIP as one
         transfer. Letting cocotbext-axi size the burst itself produces
-        awlen=255, and a 256-beat burst into the cluster's front port never
-        completes -- measured: the write went out at 377760ns and no response
-        ever came back. The AXI-to-TileLink bridge does not carry bursts that
-        long, so keep each transaction inside one 64-byte line, which is also
-        the scratch banks' stripe granularity.
+        awlen=255, and the AXI-to-TileLink bridge does not carry a 256-beat
+        burst into the cluster's front port: the write never completes. Each
+        transaction therefore stays inside one 64-byte line, which is also the
+        scratch banks' stripe granularity.
         """
         for off in range(0, len(data), BULK_CHUNK_BYTES):
             chunk = data[off : off + BULK_CHUNK_BYTES]
@@ -221,6 +222,9 @@ class SmcDualHarness:
         self.cpu_trace = {
             inst: SmcCpuTraceState(f"{inst}-hart0", cocotb.log) for inst in ("dut", "bfm")
         }
+        # One SYS_OUT responder per instance, bound in bring_up before the
+        # clocks start; the slave sequences give backdoor access and faults.
+        self.sys_out_mem: dict[str, OcahAxiSlaveSequence] = {}
 
     def _attach_cpu_symbols(self) -> None:
         """Attach the staged listings of each instance's image, when present.
@@ -297,6 +301,19 @@ class SmcDualHarness:
         # rst_ni, so this is the last point at which the contents can still be
         # chosen for this run.
         regenerate_efuse_image(random_seed())
+
+        # Each responder follows its instance's primary reset so a cool reset
+        # drops the outstanding responses instead of returning them into the
+        # reset CPU cluster.
+        for inst in ("dut", "bfm"):
+            self.sys_out_mem[inst] = OcahAxiSlaveAgent(
+                SYS_OUT_AXI_GEOMETRY.bus(getattr(dut, f"u_{inst}_output_axi_if")),
+                dut.clk_smc_i,
+                getattr(dut, f"{inst}_rst_primary_smc_clk_no"),
+                reset_active_level=False,
+                size=SYS_OUT_MEM_SIZE,
+                name=f"smc_{inst}_sys_out",
+            ).sequence
 
         cocotb.start_soon(Clock(dut.clk_ref_i, REF_CLK_PERIOD_NS, unit="ns").start())
         cocotb.start_soon(Clock(dut.clk_smc_i, SMC_CLK_PERIOD_NS, unit="ns").start())

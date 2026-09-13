@@ -2,25 +2,18 @@
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 [[smc-coverage-policy]]
-== SMC v0.5.0 coverage targets and closure policy
+== SMC coverage targets and closure policy
 
-This chapter records the #501 decision. It approves *what* the SMC
-release group is graded on and *how* a hole is waived. It does not
-install a CI fail-on-hole gate; that is #507, after a measured
-database exists and the owner signs a number. Collection of a native
-`user` family is #1638. Project-wide collection mechanics stay on
-#528.
-
-Do not treat a merged copy as design-owner or DV-lead sign-off.
+This chapter defines *what* the SMC release group is graded on and *how* a
+hole is waived. It does not install a CI fail-on-hole gate; that follows a
+measured database and an owner-signed number.
 
 [cols=",",options="header",]
 |===
 |Field |Value
-|Status |CANDIDATE — awaiting SMC design owner + DV lead approval
-|Release group |`--dut smc --items smoke` (live size in
-`SMC_RELEASE_MATRIX.adoc`). `--dut smc` already instantiates
+|Release group |`--dut smc --items hosted` (nightly and weekly, `regress.yml`). `--dut smc` already instantiates
 `smc_wrapper`; there is no second wrapper job.
-|Public metrics |line, branch, and (once #1638 merges) native `user`
+|Public metrics |line, branch, expression, and the native `user` family
 |Numeric target |none until an owner signs a measured number
 |===
 
@@ -30,11 +23,10 @@ Do not treat a merged copy as design-owner or DV-lead sign-off.
 [cols="2,3,3",options="header",]
 |===
 |Path |What it collects |Where it runs
-|Public Verilator |line + branch today (`--coverage-line`,
-`--coverage-user` with no cover point on `main`). #1638 adds
-`--coverage-expr`, compile-time scope, and `cov/sv/` cover properties
-so the `user` family is real |weekly `smoke` already sets
-`coverage: true`. That is collection, not a signed gate.
+|Public Verilator |line, branch and expression (`--coverage-line`,
+`--coverage-expr`) plus the `user` family from the `cov/sv/` cover
+properties, scoped at compile time by `smc_cov_scope.vlt` |weekly `hosted`
+with `coverage: true`. That is collection, not a signed gate.
 |Commercial |code + assertion + covergroups under `ifndef VERILATOR`
 |licensed VCS / Xcelium; not a public CI job
 |===
@@ -61,7 +53,7 @@ scope (`coverage_off` / VCS hier). Vendored RTL and the
 chipyard-generated CPU cluster are SMC-level OUT; they are not this
 package's to close.
 |Waiver hole |the point exists and is not hit |`coverage_policy.toml`
-`[[holes]]` once #1638 lands the file and #507 fills it from a run
+`[[holes]]`, written from a measured run
 |===
 
 Do not write `[[holes]]` or `[[thresholds]]` before a database exists.
@@ -70,7 +62,7 @@ Do not write `[[holes]]` or `[[thresholds]]` before a database exists.
 [[smc-cov-waiver]]
 === Waiver fields
 
-Every `[[holes]]` row that #507 writes must carry:
+Every `[[holes]]` row must carry:
 
 * `tool`, `metric_family`, hierarchy or file selector
 * `category` (`out_of_scope` / `excluded` / `waived` / `open`)
@@ -79,16 +71,13 @@ Every `[[holes]]` row that #507 writes must carry:
 * `review_date`
 * `issue` when the disposition is actionable
 
-`max_unclassified_points = 0` is the fail-on-new-hole knob. #507 sets
-it after the owner signs. Weekly `coverage: true` without that knob
+`max_unclassified_points = 0` is the fail-on-new-hole knob; it is set
+once the owner signs a measured number. Weekly `coverage: true` without that knob
 is not a release coverage gate.
 
-[[smc-cov-approval]]
-=== Component approval (unsigned)
-
-[cols="2,3,2,3",options="header",]
-|===
-|Role |Name |Date |Result
-|SMC DV lead | | |pending
-|SMC design owner | | |pending
-|===
+A waiver reaches a finished run without a simulator:
+`python3 tools/dv/run_dv.py --dut smc --run-dir <run> --waive` re-grades
+the run's report against this policy and rewrites its coverage grade in
+place. A dispatch of `dashboard.yml` with the weekly's regress run id does
+the same for the published weekly. Both are described on the runner and
+dashboard pages under `tools/dv/doc/`.

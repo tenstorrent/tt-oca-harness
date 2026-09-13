@@ -9,8 +9,15 @@ directory convention (``hw/<name>/dv``, ``hw/{sys,ip,comp,periph}/<name>/dv``, o
 ``hw/common/prim/<name>/dv`` under the active DV root). Either way the resolved DUT DV root must contain
 a ``<name>_sim_cfg.toml``, which is loaded (and merged with its ``profile``) into a :class:`Dut`.
 
-The convention rules deliberately mirror ``tools/dv/sync_python_namespace.py`` so the import-name
-bridge and the runner agree on what counts as a DUT root.
+A registry entry may instead carry ``alias_of = "<canonical>"``, which makes the
+name a second way to select an existing DUT rather than a DUT of its own: the
+canonical config is loaded and the resolved :class:`Dut` carries the canonical
+identity, so both names share one build cache and one build manifest. Aliases
+are one hop deep, and the ``sim_cfg``/``formal_cfg`` default path follows the
+canonical name.
+
+The convention rules mirror ``tools/dv/sync_python_namespace.py`` so the import-name bridge
+and the runner agree on what counts as a DUT root.
 """
 
 from __future__ import annotations
@@ -21,12 +28,13 @@ from .config import load_dut, load_toml
 from .models import ConfigError, Dut
 from .paths import configs_root, dv_path, repo_rel
 from .paths import dv_root as active_dv_root
+from .site import SiteLayer
 
 # Direct children of hw/ that are namespaces, not DUTs.
 _DIRECT_HW_EXCLUDES = {"common", "dv", "ip", "comp", "periph", "sys"}
 # Grouping dirs whose children may carry a dv/ root.
 _NESTED_HW_GROUPS = ("sys", "ip", "comp", "periph")
-_REGISTRY_KEYS = {"root", "sim_cfg", "formal_cfg"}
+_REGISTRY_KEYS = {"root", "sim_cfg", "formal_cfg", "alias_of"}
 
 
 def registry_path(root: Path) -> Path:
@@ -49,7 +57,21 @@ def load_dut_registry(root: Path) -> dict[str, dict]:
         unknown = sorted(set(entry) - _REGISTRY_KEYS)
         if unknown:
             raise ConfigError(f"{path}: [duts.{name}] unsupported key(s): {', '.join(unknown)}")
+        alias = entry.get("alias_of")
+        if alias is not None and (not isinstance(alias, str) or not alias):
+            raise ConfigError(f"{path}: [duts.{name}] `alias_of` must be a non-empty string")
+        if alias == name:
+            raise ConfigError(f"{path}: [duts.{name}] `alias_of` cannot point at itself")
         out[name] = entry
+    for name, entry in out.items():
+        alias = entry.get("alias_of")
+        # One hop only: a chain would make the resolved identity depend on
+        # traversal order.
+        if alias is not None and out.get(alias, {}).get("alias_of") is not None:
+            raise ConfigError(
+                f"{path}: [duts.{name}] `alias_of` = `{alias}`, which is itself an alias; "
+                "point both at the canonical DUT instead"
+            )
     return out
 
 
@@ -90,9 +112,18 @@ def discover_dut_roots(root: Path) -> dict[str, Path]:
     return found
 
 
-def _cfg_for(dv_root: Path, name: str, mode: str, entry: dict, root: Path) -> Path:
+def _cfg_for(
+    dv_root: Path,
+    name: str,
+    mode: str,
+    entry: dict,
+    root: Path,
+    site_formal_cfg: str | None = None,
+) -> Path:
     if mode not in {"sim", "formal"}:
         raise ConfigError(f"unsupported verification mode `{mode}`")
+    if mode == "formal" and site_formal_cfg:
+        return dv_path(root, site_formal_cfg)
     override_key = "formal_cfg" if mode == "formal" else "sim_cfg"
     override = entry.get(override_key)
     if override:
@@ -107,33 +138,41 @@ def resolve_dut(
     mode: str = "sim",
     framework: str | None = None,
     adopter_overlay: Path | None = None,
+    site: SiteLayer | None = None,
 ) -> Dut:
     """Resolve ``--dut <name>`` to a loaded :class:`Dut` (registry first, then convention).
 
     ``framework`` is the CLI ``--framework`` request; ``None`` selects the DUT's default.
     ``adopter_overlay`` is the resolved ``--overlay``/``OCAH_DV_OVERLAY`` path applied on top
     of the merged view (see :func:`runlib.config.apply_adopter_overlay`); ``None`` when the
-    layer is inactive.
+    layer is inactive. ``site`` is the active site layer; its ``[duts.<name>].formal_cfg``
+    wins over the registry's ``formal_cfg`` and the ``<name>_formal_cfg.toml`` convention.
     """
     registry = load_dut_registry(root)
+    # An `alias_of` entry is a second selectable name for one DUT, not a second
+    # DUT: it resolves to the canonical config and identity, so the two names
+    # share one build cache and one build manifest instead of compiling the
+    # same model twice under different names.
+    canonical = str(registry.get(name, {}).get("alias_of") or name)
+    site_formal_cfg = site.formal_cfg((name, canonical)) if site is not None else None
     if name in registry:
         entry = registry[name]
         dv_root = dv_path(root, entry["root"])
-        cfg = _cfg_for(dv_root, name, mode, entry, root)
+        cfg = _cfg_for(dv_root, canonical, mode, entry, root, site_formal_cfg)
     else:
         discovered = discover_dut_roots(root)
         if name not in discovered:
             known = ", ".join(sorted(set(registry) | set(discovered))) or "<none>"
             raise ConfigError(f"unknown DUT `{name}` (known: {known})")
         dv_root = discovered[name]
-        cfg = _cfg_for(dv_root, name, mode, {}, root)
+        cfg = _cfg_for(dv_root, name, mode, {}, root, site_formal_cfg)
     if not cfg.is_file():
         raise ConfigError(f"DUT `{name}`: {mode} config not found: {cfg}")
     return load_dut(
         cfg,
         configs_root(root),
         root=root,
-        name=name,
+        name=canonical,
         root_rel=str(repo_rel(root, dv_root)),
         framework=framework,
         adopter_overlay=adopter_overlay,

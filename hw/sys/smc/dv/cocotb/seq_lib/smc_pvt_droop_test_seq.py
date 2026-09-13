@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""P1 coverage-gap: SMC_PVT_WRAP_DROOP sweep (TC_SMC_P1CG_22).
+"""SMC_PVT_WRAP_DROOP sweep (TC_SMC_P1CG_22).
 
 Droop-monitor sub-block at 0xC000_7400. Under ``smc_wrapper``,
 ``pvt_wrap`` returns OKAY + 0 for the whole PVT window.

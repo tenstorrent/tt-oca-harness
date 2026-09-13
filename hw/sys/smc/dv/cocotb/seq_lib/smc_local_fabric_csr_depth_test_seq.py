@@ -44,10 +44,9 @@ from smc_reg import (  # noqa: E402
 )
 
 # Local-fabric CSR windows backed by real register blocks. Addresses and
-# expected values are imported from the generated PeakRDL map (G3
-# spec-anchored). Each read verifies decode + route AND the reset value,
-# not merely an OKAY response. 64-bit RDL windows use length=8; 32-bit
-# UART/log-engine windows use length=4.
+# expected values are imported from the generated PeakRDL map. Each read
+# verifies decode + route AND the reset value, not merely an OKAY response.
+# 64-bit RDL windows use length=8; 32-bit UART/log-engine windows use length=4.
 # MAILBOX STATUS.empty is a live FIFO wire (RDL REG_DEFAULT 0x0 disagrees with
 # empty-at-reset); this sweep samples ERROR_FLAGS instead (clean RDL reset).
 # I3C HCI windows are covered by smc_i3c_to_fabric_test at 0xC000_5000.
@@ -118,11 +117,10 @@ LOCAL_FABRIC_READS = [
 ]
 
 
-# Independent floor, written out here rather than computed from the table the
-# body walks. Every entry of LOCAL_FABRIC_READS carries a non-null `expected`, so
-# each read must book one scoreboard VALUE compare -- not merely one access.
-# Other testcases lean on this sweep for their own `covered_by_live` claims,
-# which is exactly why its own gate may not be a self-count.
+# Independent floor: a literal, not computed from the table the body walks.
+# Every entry of LOCAL_FABRIC_READS carries a non-null `expected`, so each read
+# must book one scoreboard VALUE compare, not merely one access; other
+# testcases' `covered_by_live` claims rest on this sweep.
 LOCAL_FABRIC_MIN_VALUE_CHECKS = 12
 
 
@@ -142,12 +140,10 @@ class smc_local_fabric_csr_depth_test_seq(SmcCsrSeq):
         # own is a counter this sequence bumps unconditionally and cannot see a
         # mis-bound analysis path ([NO-ZERO-ACTIVITY-PASS]).
         self.assert_all_reachable(len(LOCAL_FABRIC_READS), "local_fabric_csr")
-        # The read-back proof itself lives in SmcScoreboard._check_sys_axi, which
-        # books a value check only after an exact rdata compare has PASSED.
-        # Reconciling that measured tally against the stimulus this sweep issued
-        # is what makes "the twelve registers were read back correctly" a claim
-        # the run can fail: an `expected` that went None, a partial analysis-path
-        # loss, or an item-type change all land here instead of passing silently.
+        # SmcScoreboard._check_sys_axi books a value check only after an exact
+        # rdata compare has PASSED, so an `expected` that went None, a partial
+        # analysis-path loss, or an item-type change all land here instead of
+        # passing silently.
         self.value_checks = sb.sys_axi_value_checks_seen - before
         assert self.value_checks >= LOCAL_FABRIC_MIN_VALUE_CHECKS, (
             f"local_fabric_csr: the scoreboard performed {self.value_checks} "

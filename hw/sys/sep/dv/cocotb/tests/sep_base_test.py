@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -40,9 +41,7 @@ from cocotb.triggers import (
     Timer,
     with_timeout,
 )
-
-# Intentional OSS exception: this JTAG AXI-Lite helper must run on the public
-from ocah_axi_vip import OcahAxiLiteMasterAgent
+from ocah_axi_vip import OcahAxiLiteMasterAgent, OcahAxiSlaveAgent
 from pyuvm import ConfigDB, uvm_test
 
 # The cocotb runner only puts the test dir on sys.path. Make the cocotb root
@@ -59,6 +58,7 @@ from env.sep_cpu_trace_monitor import SepCpuTraceMonitor
 from env.sep_efuse_image import SepEfuseImage
 from env.sep_env import SepEnv
 from env.sep_env_cfg import SepEnvCfg
+from env.sep_smc_mem import SMC_AXI_GEOMETRY, SMC_MEM_SIZE, preload_smc_mem
 from env.sep_verdict import decode_verdict
 
 # Committed default OTP image loaded when a test passes `+sep_efuse_preload` with
@@ -72,6 +72,78 @@ _DEFAULT_EFUSE_PRELOAD = (
 # AXI round trip (which is tens of ns) but finite, so a wedged fabric cannot turn
 # the diagnostic itself into a sim timeout.
 _STALL_CSR_TIMEOUT_NS = 50_000
+
+
+class _EvidenceFilter(logging.Filter):
+    """Collect the named evidence a test emits, by watching its own log.
+
+    Tests already report each graded contract as ``CHK-<ID> PASS``. Reading the
+    records as they pass keeps that the single source of the ID -- a separate
+    call to register the check could drift from the line the log actually
+    carries, and then the summary would describe a check nobody ran.
+
+    Never filters: every record is returned unchanged.
+    """
+
+    _CHK = re.compile(r"\b(CHK-[A-Z0-9_-]+)\b\s*(?:\([^)]*\)\s*)?(PASS|OK)\b")
+
+    # Emitted by sep_base_test itself on every bring-up, so it says nothing
+    # about the leaf. Counted in `observed` but excluded from `own`, which is
+    # what a floor grades: 18 of the 92 `all` leaves would otherwise satisfy a
+    # floor of one on this record alone.
+    BASE_IDS = frozenset({"CHK-OTP-JTAG2AXI-UNGATED"})
+
+    # Leaves that emit no CHK-* record of their own, with the reason each one
+    # does not. Every entry is a LOGGING gap, not a verification gap: these are
+    # thin shells whose checks live further down the proof path -- in the
+    # sequence they start, or in a base-class golden compare -- and none of them
+    # is a clean exit that checks nothing. Naming them is what lets the floor
+    # below be unconditional for every other leaf.
+    #
+    # This list may only shrink. To remove an entry, make the check that already
+    # runs log `CHK-<ID> PASS` where it actually happens (in the sequence, not
+    # here -- a record emitted by sep_base_test lands in BASE_IDS and is
+    # excluded from `own`).
+    NO_OWN_EVIDENCE = {
+        # Verdict comes from the firmware console PASS/FAIL magic, not from a
+        # leaf-side check. Real grading, wrong channel for this counter.
+        "sep_boot_rom_lsu_read_test": "firmware console verdict",
+        "sep_cpu_ifu_lsu_alias_remap_matrix_test": "firmware console verdict",
+        "sep_dma_cpu_contention_test": "firmware console verdict",
+        "sep_dma_hash_test": "firmware console verdict",
+        "sep_hello_world_test": "firmware console verdict",
+        "sep_hmac_kmac_cpu_crypto_smoke_test": "firmware console verdict",
+        "sep_mailbox_plic_test": "firmware console verdict",
+        "sep_nmi_sanity_test": "firmware console verdict",
+        "sep_spi_ot_dma_rx_test": "firmware console verdict",
+        # Asserts in the leaf itself, but the log line carries no CHK- ID.
+        # These are the cheapest entries to retire: label the existing assert.
+        "sep_clock_uvm_wdt_rst_input_reset_path_test": "in-leaf asserts, unlabelled",
+        "sep_efuse_km_axil_cpu_mux_coexist_test": "in-leaf asserts, unlabelled",
+        "sep_km_mem_smoke_test": "in-leaf asserts, unlabelled",
+        "sep_otbn_mem_smoke_test": "in-leaf asserts, unlabelled",
+        "sep_rom_sanity_test": "in-leaf asserts, unlabelled",
+        "sep_spi_flash_jedec_smoke_test": "in-leaf asserts, unlabelled",
+        # Checks live in the sequence the leaf starts.
+        "sep_axi_smoke_test": "sequence-level compares plus AXI scoreboard check_phase",
+        "sep_sram_smoke_test": "sequence-level compares",
+        # Backdoor leaf: the golden compare is
+        # sep_base_test._check_efuse_shadow_after_sense.
+        "sep_efuse_sense_test": "base-class eFuse shadow golden compare",
+    }
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.seen: set[str] = set()
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        try:
+            message = record.getMessage()
+        except Exception:  # a broken format string is the caller's failure, not ours
+            return True
+        for check_id, _status in self._CHK.findall(message):
+            self.seen.add(check_id)
+        return True
 
 
 class sep_base_test(uvm_test):
@@ -91,6 +163,25 @@ class sep_base_test(uvm_test):
     # concludes it passed. Flipping it for firmware that never writes
     # cold_scratch[0] does not fail loudly -- the test never completes.
     verdict_source = "mailbox"
+
+    # Evidence gate. A clean exit is not a pass: a test whose stimulus stopped
+    # reaching the DUT compares nothing, asserts nothing, and returns normally.
+    # Every leaf reports its graded contracts as `CHK-<ID> PASS`, so the base
+    # class counts what this run actually emitted and fails a silent one.
+    #
+    #   required_evidence -- IDs this test must emit. Missing any one fails.
+    #   min_evidence      -- fewest distinct IDs of the test's OWN (records the
+    #                        base class emits do not count). 0 disables it.
+    #
+    # Both default to off, and the default is deliberate rather than timid. A
+    # floor applied centrally is wrong in both directions here: `rom_fw` leaves
+    # report a passing check as `CHK-UNARMED:` with no PASS token and would be
+    # rejected for a logging convention, while 18 of the 92 `all` leaves grade
+    # through a firmware verdict rather than a CHK line and would need an
+    # exemption each. So every run REPORTS its evidence and a leaf opts in to
+    # having it graded.
+    required_evidence: tuple[str, ...] = ()
+    min_evidence = 0
 
     @staticmethod
     def random_seed() -> int:
@@ -138,6 +229,9 @@ class sep_base_test(uvm_test):
             pass
 
     def build_phase(self) -> None:
+        # Installed before anything can log, so no evidence predates the filter.
+        self._evidence = _EvidenceFilter()
+        self.logger.addFilter(self._evidence)
         self.cfg = SepEnvCfg("cfg")
         self._efuse_compare_image: SepEfuseImage | None = None
         self.cfg.randomize_timing(self.random_seed())
@@ -147,6 +241,7 @@ class sep_base_test(uvm_test):
             self.random_seed(),
         )
         ConfigDB().set(None, "*", "cfg", self.cfg)
+        self.bind_smc_responder(cocotb.top)
         # Processor-state monitor on the EL2 retirement trace. Built for every
         # test (concrete tests build their scoreboards after super().build_phase(),
         # so the ConfigDB entry is in place); it self-idles unless the +cpu_boot
@@ -165,6 +260,28 @@ class sep_base_test(uvm_test):
         cocotb.start_soon(
             Clock(dut.entropy_rosc_sample_clk_i, self.cfg.entropy_clk_period_ns, units="ns").start()
         )
+
+    def bind_smc_responder(self, dut) -> None:
+        """Attach the shared AXI slave agent to the SEP->SMC boundary.
+
+        Only the ``rom_boot`` target instantiates ``u_smc_axi_if``; every other
+        build leaves ``cfg.smc_mem`` at None. Bound in ``build_phase`` so the
+        responder exists before the first clock edge (the boundary's READY
+        signals are driven from time zero) and before any test-owned monitor
+        that samples its memory starts; the preload here means the Boot ROM's
+        first fetch already sees the scratch, status, strap, and image words.
+        """
+        if self.cfg.smc_mem is not None or not hasattr(dut, "u_smc_axi_if"):
+            return
+        self.cfg.smc_mem = OcahAxiSlaveAgent(
+            SMC_AXI_GEOMETRY.bus(dut.u_smc_axi_if),
+            dut.clk_i,
+            dut.rst_ni,
+            reset_active_level=False,
+            size=SMC_MEM_SIZE,
+            name="sep_smc_mem",
+        ).sequence
+        preload_smc_mem(self.cfg.smc_mem, cocotb.plusargs, self.logger)
 
     def drive_idle_defaults(self, dut=None, *, cpu_run: bool = False, rst_vec: int = 0) -> None:
         """Drive stable top-level controls before reset is released."""
@@ -196,6 +313,7 @@ class sep_base_test(uvm_test):
         self._set_if_exists(dut, "lc_sigint_inject_i", 0)
         self._set_if_exists(dut, "token_cmp_fault_inject_i", 0)
         self._set_if_exists(dut, "token_cmp_fault_sel_i", 0)
+        self._set_if_exists(dut, "token_digest_test_en_inject_i", 0)
         self._set_if_exists(dut, "dma_host_intg_inject_i", 0)
         # Idle the master strobes from t=0 (valid=0, ready=1) so a test that
         # does not construct OcahAxiMasterAgent still presents a resolved idle
@@ -258,12 +376,10 @@ class sep_base_test(uvm_test):
     async def _wait_fuse_sense(self, max_cycles: int) -> None:
         """Poll sep_fuse_sense_done_o until it asserts (or time out), then settle.
 
-        This is the canonical "fabric released" gate for every bring-up. It is
-        correct in both modes: with +skip_fuse_sense the RTL asserts the done
-        flop ~1 cycle after reset release (no wasted time), and without it we sit
-        through the real 256-word sense and compare the sensed shadow against the
-        staged eFuse image. Gating on the DUT's actual done signal is more robust
-        than a guessed fixed cycle count.
+        Every bring-up gates on this signal. With +skip_fuse_sense the RTL asserts
+        the done flop ~1 cycle after reset release; without it the real 256-word
+        sense runs and the sensed shadow is compared against the staged eFuse
+        image.
         """
         dut = cocotb.top
         for cycle in range(max_cycles):
@@ -410,8 +526,7 @@ class sep_base_test(uvm_test):
             self._jtag_sw_rst_hold(park, False)
 
     async def bring_up_and_wait_fuse_sense(self, *, max_cycles: int = 20_000) -> None:
-        """Alias for bring_up_no_cpu, kept for eFuse-test intent. Both gate on
-        real fuse-sense-done."""
+        """Alias for ``bring_up_no_cpu``; both gate on real fuse-sense-done."""
         await self.bring_up_no_cpu(max_cycles=max_cycles)
 
     async def resense(self, *, hold_cycles: int = 20, max_cycles: int = 20_000) -> None:
@@ -526,9 +641,8 @@ class sep_base_test(uvm_test):
         The SW_RESET_N CSR stays at reset 0x3E.
 
         The TCM responder backdoor-loads ``sep_itcm.hex`` / ``sep_dtcm.hex`` from
-        the sim CWD, so the images are staged there. (CWD-shared: only one CPU
-        firmware test runs per sim, so they do not collide; a future per-run path
-        would need a responder plusarg like the eFuse model's +sep_efuse_hex.)
+        the sim CWD, so the images are staged there. (CWD-shared: one CPU firmware
+        test runs per sim, so the images do not collide.)
         """
         dut = cocotb.top
         for src, dst in ((itcm_hex, "sep_itcm.hex"), (dtcm_hex, "sep_dtcm.hex")):
@@ -591,7 +705,7 @@ class sep_base_test(uvm_test):
         """Sample boot observables into the boot scoreboard ``sb`` until the
         firmware signals completion (or the no-boot/max-run bounds trip).
 
-        Split out of ``boot_firmware`` so a test that must do work CONCURRENTLY
+        ``boot_firmware`` calls this last; a test that must do work CONCURRENTLY
         with the running firmware (e.g. drive a second master while the CPU loops)
         can ``bring_up_cpu_boot`` itself, ``cocotb.start_soon(self.poll_boot(...))``,
         and run its own stimulus alongside.
@@ -729,11 +843,6 @@ class sep_base_test(uvm_test):
         """Run a sequence on the primary CPU-LSU AXI sequencer (s_axi)."""
         await seq.start(self.env.axi_agent.sequencer)
 
-    # No spi_mux helper on the Python side. The SPI pad mux sits in a nonfree
-    # wrapper, so a pure-open SEP has no mux: pads come straight off the
-    # wrapper's struct port. Firmware that programs that mux lives with the
-    # wrapper, not in this tree.
-
     async def start_ext_seq(self, seq) -> None:
         """Run a sequence on the SMN-inbound EXTERNAL AXI sequencer (m_axi).
 
@@ -747,8 +856,7 @@ class sep_base_test(uvm_test):
     # The DUT's real axil_sep_otp_jtag port, brought out flat as j_axi_* in
     # tb_top: the debug/JTAG path into the eFuse interface controller (arbitrates
     # with the CPU eFuse-MMR path at the eFuse AXI-Lite mux; LC-state-gated).
-    # Driving a real DUT port is frontdoor, not a backdoor. Shared here so any
-    # JTAG/eFuse test reuses one master + op helper rather than re-rolling them.
+    # One master and one op helper, shared by every JTAG/eFuse test.
     def jtag_axil_master(self):
         """Construct (once) and return the AXI-Lite master sequence on j_axi."""
         if getattr(self, "_jtag_axil", None) is None:
@@ -835,13 +943,11 @@ class sep_base_test(uvm_test):
         # Frontdoor status: FIFO level and health-test result decide whether the
         # ESRC itself is stuck or the DRBG side is not draining.
         #
-        # Every read is BOUNDED and failure-tolerant. One plausible cause of the
-        # stall is a fabric that never released, in which case these reads would
-        # never retire -- and an unbounded diagnostic would turn an attributed
-        # failure into a bare sim timeout, the exact outcome a bounded wait exists
-        # to prevent. The strobe counts above always survive, so a wedged CSR path
-        # degrades to "counts logged, CSR unreadable" instead of taking the whole
-        # report down with it.
+        # Every read is bounded and failure-tolerant: a fabric that never released
+        # is one cause of the stall, and an unbounded read here would turn the
+        # attributed failure into a bare sim timeout. The strobe counts above are
+        # already logged, so a wedged CSR path degrades to "counts logged, CSR
+        # unreadable".
         from env.sep_axi_agent import SepAxiOp
         from seq_lib.sep_axi_access_seq import SepAxiAccessSeq
         from seq_lib.sep_esrc_bringup_seq import (
@@ -1068,13 +1174,11 @@ class sep_base_test(uvm_test):
         raise NotImplementedError
 
     def _log_run_identity(self) -> None:
-        """Record what built and ran this, in the log itself.
+        """Record the commit, tree state and run directory in the log.
 
-        A log that names no commit and no build directory cannot be bound to
-        the sources it is offered as evidence for -- the freshness question
-        becomes unanswerable rather than answered, and unlike other gaps it
-        cannot be retrofitted: if the run never recorded its identity, no
-        later effort recovers it. Cheap here, impossible later.
+        A log that names no commit cannot be bound to the sources it is
+        offered as evidence for, and the identity cannot be recovered after
+        the run.
         """
         import os
         import subprocess
@@ -1111,8 +1215,54 @@ class sep_base_test(uvm_test):
             os.environ.get("SEP_DV_RUN_DIR") or os.getcwd(),
         )
 
+    def _finalize_evidence(self) -> None:
+        """Report the evidence this run produced, and grade it if the leaf asked.
+
+        Runs only after run_scenario() returns normally. A test that already
+        failed raised, and this must not turn that into a different complaint.
+
+        `own` excludes the records sep_base_test emits itself, so a declared
+        floor grades what the leaf proved rather than what bring-up logged.
+        """
+        seen = sorted(getattr(self, "_evidence", _EvidenceFilter()).seen)
+        own = [c for c in seen if c not in _EvidenceFilter.BASE_IDS]
+        required = tuple(self.required_evidence)
+        missing = [check_id for check_id in required if check_id not in seen]
+
+        self.logger.info(
+            "EVIDENCE_SUMMARY test=%s observed=%d own=%d required=%d missing=%d ids=%s",
+            self.get_type_name(),
+            len(seen),
+            len(own),
+            len(required),
+            len(missing),
+            ",".join(seen) or "-",
+        )
+
+        problems: list[str] = []
+        if not own and self.get_type_name() not in _EvidenceFilter.NO_OWN_EVIDENCE:
+            problems.append(
+                "no CHK-* PASS record of its own -- a run that grades nothing cannot "
+                "be a pass. If this leaf's checks live in its sequence, log them "
+                "there; if it genuinely checks nothing, that is the finding"
+            )
+        if self.min_evidence and len(own) < self.min_evidence:
+            problems.append(
+                f"{len(own)} distinct CHK-* PASS record(s) of its own, "
+                f"expected at least {self.min_evidence}"
+            )
+        if missing:
+            problems.append("never emitted: " + ", ".join(missing))
+        if problems:
+            raise AssertionError(
+                f"EVIDENCE FAIL {self.get_type_name()}: "
+                + "; ".join(problems)
+                + " -- the run exited cleanly without grading what it claims to grade"
+            )
+
     async def run_phase(self) -> None:
         self.raise_objection()
         self._log_run_identity()
         await self.run_scenario()
+        self._finalize_evidence()
         self.drop_objection()

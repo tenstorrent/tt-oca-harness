@@ -19,10 +19,6 @@
  * 4. Dual RX: SPEED=1, DIRECTION=1, LEN=3 (4 bytes), CSAAT=0
  * 5. CMDINVAL test: SPEED=1 + DIRECTION=3 (bidirectional) must fail
  * 6. Verify bidirectional (DIRECTION=3) accepted at Standard speed (SPEED=0)
- *
- * Execution:
- * make test-sep TEST_NAME=sep_spi_ot_dual_spi_test STACK=sim
- *
  */
 
 #include <stdint.h>

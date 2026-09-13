@@ -12,11 +12,8 @@
  * - verify ERR_BITS/INSN_CNT
  *
  * NOTE:
- * OTBN DMEM frontdoor readback is temporarily disabled in this testcase.
- * In the current TB configuration, host-visible OTBN memory reads can stall or
- * return invalid data. We still write the DMEM inputs and exercise the full
- * EXECUTE path here, but final functional result checking must be restored once
- * a reliable OTBN memory readback path is available.
+ * This testcase does not read OTBN DMEM back through the frontdoor: it writes
+ * the DMEM inputs, runs the EXECUTE path, and checks ERR_BITS and INSN_CNT only.
  */
 
 #include <stdint.h>

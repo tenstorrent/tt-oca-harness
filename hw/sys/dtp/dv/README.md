@@ -22,13 +22,14 @@ Tests inherit `dtp_base_test` (env build + clock/reset + `start_seq` helper);
 sequences inherit `dtp_base_test_seq` (common TAP building blocks). Each test has
 its own sequence file: `tests/<name>.py` runs `seq_lib/<name>_seq.py`.
 
-- `docs/` — public verification plan, TB architecture, and functional-coverage plan. The design specification and the register maps are designer-owned: `../doc/` (DTP integration plus the JTAG and cross-trigger IP chapters) and the SystemRDL under `hw/ip/cross_trigger/*/regs/`.
+- `docs/` — public verification plan, TB architecture, functional-coverage plan, and the requirement-to-test matrix (`docs/DTP_SCOPE_TRACEABILITY.adoc`). The design specification and the register maps are designer-owned: `../doc/` (DTP integration plus the JTAG and cross-trigger IP chapters) and the SystemRDL under `hw/ip/cross_trigger/*/regs/`.
 - `tb/` — SystemVerilog testbench top (`dtp_uvm_top`, one framework-neutral core shared by the cocotb and SV-UVM flows) and the `dtp_tb_if`, `dtp_scan_if`, and `dtp_xtrig_if` TB interfaces.
 - `env/` — UVM env: config, JTAG agent, AXI memory agent, scoreboard, TDR encoders.
 - `seq_lib/` — reusable UVM sequences (the VPLAN scenarios).
 - `tests/` — `uvm_test` classes (one `@pyuvm.test()` per file, VPLAN-named).
 - `testlists/` — native TOML testlists.
 - `dtp_sim_cfg.toml` — `tt-oca`-local simulation defaults, modes, bender targets, tool knobs.
+- `formal/` — formal properties on the TAP controller (`props/`), the open-path SymbiYosys task file and reset environment (`fpv/sby/`), and the generated filelist and work directories (`build/`); see `hw/common/dv/docs/formal-property-style.adoc`.
 
 ## BFM Policy
 
@@ -101,6 +102,15 @@ line. `dtp_tb_if.jtag_sva_en` / `axi_sva_en` are the runtime suppress knobs
 TAP controller's effective reset. A new rule with two-state-safe operands goes on
 `OCAH_SVA_ASSERT`; one that needs `$isunknown` or X-propagation goes on
 `OCAH_ASSERT`.
+
+## Formal
+
+`formal/` is the reference implementation of the property style in
+`hw/common/dv/docs/formal-property-style.adoc`: a bound property module on the
+IEEE 1149.1 TAP controller in the boolean subset that the open-source frontend
+and the licensed backends both elaborate, with `bmc` and `cover` tasks run
+against `dtp` as the formal top. That chapter carries the filelist generation
+and the `sby` invocation.
 
 ## Running
 
@@ -372,21 +382,13 @@ An overlay is three adopter-owned files, kept outside this repository
    same work library before `dtp_uvm_compile.f`, then both tops elaborated
    (`dtp_uvm_top` plus the wiring top).
 
-Synopsys VIP (svt) integration notes for the AMBA AXI suite: every analysis
-step, including the UVM library pre-analysis, must carry the same
-`+define+UVM_PACKER_MAX_BYTES` value the suite expects, or the suite exits
-fatally at time zero; the suite package's compile unit must see
-`uvm_macros.svh` before the suite package (include the macros header, not
-`uvm_pkg.sv`, which resolves to a simulator wrapper) so the suite's
-methodology detection engages; `DESIGNWARE_HOME` points at the VIP
-installation root, with the suite's include and source directories on the
-include path. A healthy overlaid run shows the vendor license checkout and
-the vendor monitor's transaction tracking alongside the unchanged `CHK-*`
-evidence and the `UVM TEST PASSED` banner.
+A vendor library brings its own compile-unit requirements (packer-size
+defines applied to every analysis step, macro-header ordering, an
+installation-root variable); those live in the overlay's build recipe.
 
 ## Scope
 
-The DTP public testbench covers the 19-test Smoke and Basic JTAG group:
+The DTP public testbench covers the Smoke and Basic JTAG groups:
 TAP FSM, IDCODE, BYPASS variants, undefined-instruction fallback, RUNBIST,
 BSR-oriented instructions, TMP CLAMP_HOLD/RELEASE, TRST/POR/TLR reset behavior,
 and AC EXTEST train/pulse smoke checks. JTAG2AXI, iJTAG/3DCR, and cross-trigger

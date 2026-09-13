@@ -29,8 +29,8 @@ from env.sep_boot_scoreboard import SepBootScoreboard
 from sep_base_test import sep_base_test
 from sep_reg_meta import sym
 
-# OSS-owned firmware lives under the DV tree (sibling of cocotb/) so it migrates
-# with the env. parents[3] of .../cocotb/tests/cpu/<file> == the DV root.
+# Firmware lives under the DV tree (sibling of cocotb/); parents[3] of
+# .../cocotb/tests/cpu/<file> is the DV root.
 _DV_ROOT = str(Path(__file__).resolve().parents[3])
 _FW_DIR = os.path.join(_DV_ROOT, "fw", "build", "tests", "hello_world")
 _ITCM_HEX = os.path.join(_FW_DIR, "hello_world.itcm.hex")

@@ -16,7 +16,7 @@ from smc_base_test import smc_base_test
 
 @pyuvm.test()
 class smc_zeroer_regclk_cg_test(smc_base_test):
-    """LIVE Zeroer reg_clk gating (Skill 1.5)."""
+    """LIVE Zeroer reg_clk gating."""
 
     auto_protocol_vip = False
     protocol_vip_kind = SmcProtocolVipKind.ZEROER_DMA
@@ -40,10 +40,8 @@ class smc_zeroer_regclk_cg_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.ZEROER_DMA,
             type(self).__name__,
-            # Conservative stimulus floor: 23 accesses observed in the retained
-            # regression run; the zeroer-DONE poll is a timing-dependent
-            # remainder, so the floor is set below it. Literal here, not read
-            # from `seq.accesses`.
+            # Stimulus floor, literal here rather than read from `seq.accesses`: it sits below the
+            # run-to-run minimum because the zeroer-DONE poll is timing-dependent.
             min_csr_accesses=18,
             csr_accesses=seq.accesses,
             timeouts=seq.timeouts,

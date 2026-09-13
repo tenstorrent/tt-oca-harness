@@ -18,10 +18,8 @@
 |Architecture reference |`hw/sys/sep/doc/`
 |Register export |`hw/sys/sep/regs/gen/` (via `env/sep_reg_meta.py`)
 |How to run |`README.md` in this DV tree (`tools/dv/run_dv.py --dut sep`)
-|Phase 1 test cases |32
-|Phase 2 test cases |59
-|Cocotb total |91 (`testlists/all.toml` `expected_count`)
-|Phase 3 |SV-UVM bench bring-up; 1 bound scenario (`sep_axi_smoke_test`)
+|Cocotb tests |Every member of the `all` group in `testlists/all.toml`; its `expected_count` is the authoritative number
+|SV-UVM realization |`sep_axi_smoke_test` (`--framework uvm`)
 |===
 
 This VPLAN is the technical contract for the open-source SEP DV
@@ -53,7 +51,7 @@ One DUT. Two environments across three phases.
 
 |Phase 3
 |SystemVerilog UVM realization of the same testbench top
-|Bring-up + smoke first (`sep_axi_smoke_test` is bound in both realizations; see that procedure). Coverage-driven corners and code-coverage close-out follow, with low overlap with Phase 1 / Phase 2. The UVM class library and run recipes are in link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_TB_ARCH]. Contracts this plan does not claim yet are listed in <<phase-3>>.
+|The same scenario names on the same testbench top; `sep_axi_smoke_test` is bound in both realizations (see that procedure). The UVM class library and run recipes are in link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_TB_ARCH]. Contracts this plan does not claim are listed in <<phase-3>>.
 |===
 
 [arabic]
@@ -69,9 +67,10 @@ One DUT. Two environments across three phases.
   when the test does not need real OTP sense; hold the CPU off for
   `no_cpu` runs.
 . *Coverage*: iconic feature scorecard (<<iconic-scorecard>>) for the
-  cocotb phases; RTL code coverage is collected under Verilator and
-  closed out in Phase 3. SystemVerilog covergroups are not used on the
-  Verilator acceptance path.
+  cocotb phases. VCS Phase 1 functional-coverage bins live in
+  link:SEP_FCOV.adoc[SEP_FCOV] (`u_sep_fcov`). SystemVerilog covergroups
+  are not compiled on the Verilator acceptance path. RTL code coverage
+  is a separate, unthresholded number (`README.md`, Code coverage).
 Randomization contract: the *same* config object programs the DUT and the
 golden. Pin the datapath directed first, then upgrade that test to randomized —
 do not ship a one-point stand-in for a matrix. Skip randomization only when the
@@ -132,7 +131,8 @@ appears.
 |Multi-scenario / RAND-REP |One leaf test walks every required discrete cell in one invocation; do not silently ship a one-point stand-in for a matrix
 |Open-source files |PyUVM test under `cocotb/tests/`, stimulus in `cocotb/seq_lib/`, shared helpers on `sep_base_test` / `cocotb/env/`
 |Testlist enrollment |Leaf entry in the owning `testlists/*.toml` and in `testlists/all.toml`
-|Evidence |Every checker needs a positive log line naming the contract
+|Evidence |Every checker needs a positive log line naming the contract, as `CHK-<ID> PASS`
+|Evidence gate |`sep_base_test` counts the distinct `CHK-<ID> PASS` records a run emitted and fails a run that produced none, so a clean exit cannot stand in for a graded contract. A leaf may raise its own floor with `min_evidence = N`, or name the IDs it owes with `required_evidence = ("CHK-A", ...)`; both default to off. Each run logs `EVIDENCE_SUMMARY test=... observed=N required=N missing=N ids=...`
 |===
 
 === Open-Source BFM Policy
@@ -143,10 +143,10 @@ appears.
 |CPU-LSU AXI (no_cpu) |`ocah_axi_vip` via `SepAxiAgent` on the LSU splice
 |SMN-inbound AXI |Second `SepAxiAgent` on the real inbound port
 |SPI flash |`ocah_spi_vip` `OcahSpiFlash`
-|JTAG (eFuse mux path) |`ocah_jtag_vip` where the test uses it
+|JTAG (eFuse mux path) |`ocah_axi_vip` AXI-Lite master on the OTP JTAG2AXIL port (`j_axi_*`)
 |Entropy noise / goldens |TB noise port + pure-Python goldens in `cocotb/env/`
 |eFuse / OTP |Generic OSS eFuse model (no foundry OTP)
-|Memories |Wrapper macros + signed-off sim-time image load
+|Memories |Wrapper macros + sim-time image load
 |===
 
 === Scenario-Expanded Test Summary
@@ -273,7 +273,7 @@ appears.
 |Proves the CPU-side address alias window remaps both data and instruction accesses to physical SRAM.
 |`sep_efuse_jtag_axil_el2_cpu_mux_test`
 |cpu, real fuse sense
-|ocah_axi_vip, ocah_jtag_vip, CPU FW
+|ocah_axi_vip, CPU FW
 |The debug-port counterpart to the two-processor coexistence test. After sense-done both OTP JTAG2AXIL `dbg_disable` bits read 0.
 |`sep_nmi_sanity_test`
 |cpu
@@ -351,7 +351,7 @@ appears.
 |`sep_esrc_fips_lock_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, entropy golden
-|The FIPS lock makes ESRC configuration write-once: a pre-lock write moves the field off reset, the same field rejects a poke after `LOCK=1`, write-0 cannot clear the lock, and `rst_ni` is the only way back, with the BIW observe enable still writable under the lock. The advisory RCT/APT cutoffs derived from `MIN_ENTROPY_H` are graded against an SP 800-90B oracle. Scope: health-test *quality* stays Phase 3.
+|The FIPS lock makes ESRC configuration write-once: a pre-lock write moves the field off reset, the same field rejects a poke after `LOCK=1`, write-0 cannot clear the lock, and `rst_ni` is the only way back, with the BIW observe enable still writable under the lock. The advisory RCT/APT cutoffs derived from `MIN_ENTROPY_H` are graded against an SP 800-90B oracle. Scope: health-test *quality* is not claimed.
 |`sep_esrc_alert_delivery_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip, entropy golden
@@ -382,7 +382,7 @@ appears.
 |`sep_fabric_deadspace_decode_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|Negative control on intra-block dead space. Each block owns an address window and populates only part of it; an access past the allocated size owns no register and must be refused. Window ends come from `hw/sys/sep/doc/memory_map.adoc`, which states the rule: within an aperture only the unit's register extent responds and the remainder returns DECERR. Landing on a live register instead is a hard failure. A later beat of a burst that ends past the window's extent must be refused on the same terms as a single beat.
+|Negative control on intra-block dead space. Each block owns an address window and populates only part of it; an access past the allocated size owns no register and must be refused. Window ends come from `hw/sys/sep/doc/memory_map.adoc`, which states the rule: the fabric refuses an address past the extent a unit allocates, and such an access never reaches a unit. Landing on a live register instead is a hard failure. A later beat of a burst that ends past the window's extent must be refused on the same terms as a single beat.
 |`sep_fabric_local_alias_datapath_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
@@ -398,17 +398,17 @@ appears.
 |`sep_drbg_axil_adapter_port_arbitration_test`
 |no_cpu, +skip_fuse_sense
 |TB-instantiated `drbg_axil64_lane_adapter`
-|All three legal AW/W/AR orderings at a `drbg_axil64_lane_adapter` port. AW, W and AR are independent channels (IHI 0022 A3.3) and a master may not deassert a VALID before its handshake completes (A3.2.1), so an adapter that gates its write side on `ar_valid` while gating its read side on `aw_valid`/`w_valid` can hold all three readys low with no way out. The DUT's own adapters cannot be presented every ordering from the fabric -- the crossbar delivers W one cycle after AW and re-serializes to that order whatever the master does -- so this leaf drives a TB-owned second instance of the same module at its port, with its own reset so a wedged cell is cleared between orderings. A lone write and a lone read are required to retire first, which is what makes a stall attributable to the channel overlap. Grades the MODULE; the two leaves below grade the SEP integration. *Parked on an RTL fix*: red -- see <<known-limitations>>.
+|All three legal AW/W/AR orderings at a `drbg_axil64_lane_adapter` port. Write address, write data, and read address are independent channels (IHI 0022 A3.3). The adapter accepts each write half independently until that half is pending, and accepts a read only when neither write half is pending; both accesses must retire under every ordering. The DUT's own adapters cannot be presented every ordering from the fabric -- the crossbar delivers W one cycle after AW and re-serializes to that order whatever the master does -- so this leaf drives a TB-owned second instance of the same module at its port, with its own reset so cells are independent. A lone write and a lone read are required to retire first. Grades the MODULE; the two leaves below grade the SEP integration.
 
 |`sep_drbg_axil_concurrent_csrng_aw_then_ar_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|The same arbitration contract on the DUT's own CSRNG lane adapter, reached as ordinary CSR traffic over the SEP fabric. AR is presented while a write is half committed. Calibration measures where each channel arrives at the adapter port, so the overlap is placed from measured latency rather than guessed -- on broken RTL the first overlap is terminal and cannot be retried. Overlap is confirmed at the adapter's own port, not at the TB master. *Parked on an RTL fix*: red -- see <<known-limitations>>.
+|The same arbitration contract on the DUT's own CSRNG lane adapter, reached as ordinary CSR traffic over the SEP fabric. AR is presented while a write is half committed. Calibration measures where each channel arrives at the adapter port, so the overlap is placed from measured latency rather than guessed. Overlap is confirmed at the adapter's own port, not at the TB master.
 
 |`sep_drbg_axil_concurrent_edn_aw_then_ar_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|The same contract on the second DUT lane adapter, the EDN control path. `drbg.sv` instantiates `drbg_axil64_lane_adapter` twice, so a defect in one instance is not evidence about the other. *Parked on an RTL fix*: red -- see <<known-limitations>>.
+|The same contract on the second DUT lane adapter, the EDN control path. `drbg.sv` instantiates `drbg_axil64_lane_adapter` twice, so a defect in one instance is not evidence about the other.
 
 |`sep_axi_strobe_window_test`
 |no_cpu, +skip_fuse_sense
@@ -421,7 +421,7 @@ appears.
 |`sep_axi_map_refuse_test`
 |no_cpu, +skip_fuse_sense
 |ocah_axi_vip
-|Inter-block reserved space: rows marked `_RSV_` in `hw/sys/sep/doc/memory_map.adoc` allocate nothing, so an access there must not answer OKAY. The refusal expectation comes from the map, never from the RTL. The crossbar decode table is parsed both as a logged cross-check and as a stimulus filter: an address the crossbar routes is left out of the probe set, because whether the fabric must refuse a routed-but-reserved span is an open specification question. Walks the gaps BETWEEN block windows; `sep_fabric_deadspace_decode_test` walks the dead tail INSIDE one.
+|Inter-block reserved space: reserved rows in the DV-owned table in `env/sep_axi_decode_map.py` allocate nothing, so an access there must not answer OKAY. The refusal expectation comes from that table. Named reserved spans whose refuse flavour is unnamed are excluded from the probe set. Walks the gaps BETWEEN block windows; `sep_fabric_deadspace_decode_test` walks the dead tail INSIDE one.
 |===
 
 [[phase2-mailbox-irq-pic]]
@@ -450,6 +450,10 @@ appears.
 |no_cpu, real fuse sense
 |ocah_axi_vip
 |Stage the spare field's lock bits in the OTP image (same spare-slot geometry as <<sep_efuse_program_lock_matrix_test>>), sense at `LC_PROD`, then access the *shadow* aperture.
+|`sep_efuse_secure_tm_write_lock_test`
+|no_cpu, real fuse sense
+|ocah_axi_vip
+|Prove the field map's `SECURE_TM_LOCK` fields refuse a shadow write while the latched TEST_EN strap is high, and that the same write lands with the strap low.
 |`sep_efuse_token_match_fault_pic_test`
 |cpu, +skip_fuse_sense
 |ocah_axi_vip, CPU FW
@@ -528,7 +532,7 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |`sep_efuse_set_only_monotonicity_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip
-|The walked fields are metal `WRITE_SET_ONLY` in `sep_efuse_pkg::EfuseFieldMap`: `BL1_VERSION`, `BL2_VERSION`, `CHIPLET_PUBK_REVOKE`, `REQUIRED_SIGNERS`, `REQUIRED_ALGS`, plus the Class-1 fields `SIP_DIS` and `SYS_DIS`.
+|Every `periphs.adoc` fuse-field row except `LC_STATE` is walked. Set-only rows OR-merge; SW-writable rows overwrite. `LOCK` is both RDL windows (`LOCKS` word 0, `LOCKS` word 1, `LOCKS_SPARE`) after the other rows. The lifecycle nibble stays with the LC W1S leaves.
 |`sep_lcc_lc_state_w1s_prod_test`
 |no_cpu, real fuse sense
 |ocah_axi_vip, LCC golden
@@ -557,6 +561,10 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_spi_
 |no_cpu, real fuse sense
 |ocah_axi_vip
 |A match is reachable because `tb_top` binds `SEP_SEC_DISABLE_TOKEN` to SHA-256 of the all-zero token. `CHK-SENSE-GATED-RESET` requires that the match alone does NOT release the sense-gated reset.
+|`sep_efuse_illegal_state_fail_closed_test`
+|no_cpu, real fuse sense
+|DUT probes and a one-cycle state force
+|The eFuse read and program interfaces fail closed from an illegal state encoding, and the read-error flag is set by a failed or timed-out read and cleared by the next legal request.
 |===
 
 Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_locked_field_access_irq_path_test>> and <<sep_efuse_token_match_fault_pic_test>> reach eFuse state, but their contract is the IRQ/PIC delivery path. They are graded there so each test has one owning bucket.
@@ -593,256 +601,198 @@ Also relevant, owned by <<phase2-mailbox-irq-pic,Mailbox, IRQ, PIC>>: <<sep_lock
 
 The architecture docs under `hw/sys/sep/doc/` define the feature set. An
 *iconic* row is the mode, command, or contract that makes that IP itself.
-Excluded from the count: proprietary IPs in nonfree, peripherals outside
-bare SEP, and deferred items (AGP, local UART/GPIO, ROM patch, next-gen
-DMA-AES, DCLS-in-SEP, PCR vault, ROM-FW contracts).
+Excluded from the count: IP that is not part of the open-source build,
+peripherals outside bare SEP, and features with no vehicle in this suite (AGP,
+local UART/GPIO, ROM patch, DMA-AES, DCLS-in-SEP, PCR vault, ROM-FW contracts).
 
-Feature grades are independent of per-test checkers. `GAP` means no
-vehicle yet. `PARTIAL` means a vehicle exists and proves part of the feature,
-with the unproven part named in the row — it is not a softer `PROVEN`, and a
-row may not sit at `PARTIAL` without saying which part is unclaimed and why.
-A known RTL defect that the suite still exercises is called out in
-<<known-limitations>>, not as a feature credit.
+Feature rows are independent of per-test checkers. A row names the tests whose
+checkers prove that feature and states, in the row, any part of the feature
+those tests leave unproven. A known RTL defect that the suite exercises is
+called out in <<known-limitations>>, not as a feature credit.
 The architecture spec under `hw/sys/sep/doc/` is the scorecard denominator: a
-feature that spec does not define is not a row. A backlog *name* is not a
-credit, and a `FAILED` spec-gap is honest but is not a feature credit either.
+feature that spec does not define is not a row.
 A feature an earlier phase already proves stays that phase's credit even if a
 later test could hit it too — credit once, at the earliest phase that proved it.
 
-[cols="3,2,4",options="header"]
+[cols="3,6",options="header"]
 |===
-|Iconic feature |Grade |Owning test(s) / note
+|Iconic feature |Owning test(s) / note
 
 |Fabric reachability / address map
-|PROVEN
 |`sep_axi_smoke_test`, `sep_address_map_test` (`sep_cpu_ctrl` + one CSR per LSU-reachable block, including ABR and entropy pool)
 
 |Inbound filter (block-by-default, allow, `SEP_DBG`)
-|PROVEN
 |`sep_lcc_uvm_inbound_filter_gating_test`, `sep_fabric_inbound_filter_rule_matrix_test`. Firmware must keep CFG outside allow windows; the hardware applies the rules it is given and is correct as built.
 
 |Outbound filter / live remap
-|PROVEN
 |`sep_fabric_output_remap_datapath_proxy_test` (live); CSR bank on `sep_fabric_remap_filter_csr_bank_test`
 
 |CPU alias window (LSU + IFU)
-|PROVEN
 |`sep_cpu_ifu_lsu_alias_remap_matrix_test`
 
 |Mailbox → PIC
-|PROVEN
 |`sep_mailbox_plic_test`
 
 |EL2 boot + ROM fetch / LSU
-|PROVEN
 |`sep_hello_world_test`, `sep_cpu_trace_diag_test`, `sep_boot_rom_smoke_test`, `sep_boot_rom_lsu_read_test`, `sep_rom_sanity_test`
 
 |PIC source map
-|PROVEN
 |`sep_pic_irq_source_map_delivery_test`
 
 |DMA copy + inline SHA-256 + LSIO
-|PROVEN
 |`sep_dma_hash_test`, `sep_dma_cpu_contention_test`, `sep_spi_ot_dma_rx_test`, `sep_spi_ot_dma_tx_test`
 
 |DMA address modes × width
-|PROVEN
 |`sep_dma_basic_test`
 
 |DMA host-path command integrity
-|PROVEN
 |`sep_dma_basic_test`. A DMA-issued command under `dma_host_intg_inject_i` raises exclusive `host_path_err` and aggregator bit 41; a DMA transfer whose destination sits past the DMA CSR window raises the same bit with the pin low (fabric DECERR). `DMA_BUS_ERR_CLEAR` returns both status bits and the aggregator bit to 0; a legal copy then matches the source.
 
 |SRAM datapath
-|PROVEN
 |`sep_sram_smoke_test`, `sep_sram_datapath_breadth_test`
 
 |AES mode × key-size
-|PROVEN
-|`sep_aes_mode_keysize_rand_test` (9-cell). CTR DECRYPT opcode is Phase 3.
+|`sep_aes_mode_keysize_rand_test` (9-cell). CTR DECRYPT opcode is not claimed (<<phase-3>>).
 
 |HMAC SHA variants
-|PROVEN
 |`sep_hmac_sha_variant_rand_test`
 
 |KMAC / SHA3 / SHAKE
-|PROVEN
 |`sep_kmac_mode_strength_rand_test`
 
 |OTBN as compute
-|PROVEN
 |`sep_otbn_compute_rand_test`
 
 |KM sideload consume (AES/HMAC/KMAC/OTBN)
-|PROVEN
-|`sep_km_*_sideload_kat_test`, `sep_drbg_real_sink_multi_km_aes_test`. Fail-closed START without a valid key is proven on `sep_km_command_set_rand_test` CHK-GONE: after the engine's key is shredded it produces no output in a bounded window. Post-error recovery is Phase 3.
+|`sep_km_*_sideload_kat_test`, `sep_drbg_real_sink_multi_km_aes_test`. Fail-closed START without a valid key is proven on `sep_km_command_set_rand_test` CHK-GONE: after the engine's key is shredded it produces no output in a bounded window. Post-error recovery is not claimed.
 
 |KM mailbox command set
-|PROVEN
-|`sep_km_command_set_rand_test`. Generate, transfer, revoke and engine-shred on the real KM firmware, with AES as the consume witness; the three framing rejections with the values they carry; illegal-command and bad-length refusals; and a shredded engine refusing to start. The DRBG fault SOURCE stays Phase 3 -- its organic conditions cannot be provoked from the SEP fabric and the KM halts rather than answering -- but the interrupt plumbing for that bit is graded on the vault vehicle through the architected `IRQ_SET` inject. The mailbox's own register surface is a separate entry, `sep_km_mailbox_protocol_rand_test`.
+|`sep_km_command_set_rand_test`. Generate, transfer, revoke and engine-shred on the real KM firmware, with AES as the consume witness; the three framing rejections with the values they carry; illegal-command and bad-length refusals; and a shredded engine refusing to start. The DRBG fault SOURCE is not claimed -- its organic conditions cannot be provoked from the SEP fabric and the KM halts rather than answering -- but the interrupt plumbing for that bit is graded on the vault vehicle through the architected `IRQ_SET` inject. The mailbox's own register surface is a separate entry, `sep_km_mailbox_protocol_rand_test`.
 
 |KM mailbox protocol (FIFO status, over/underflow, flush)
-|PROVEN
 |`sep_km_mailbox_protocol_rand_test`. Empty-FIFO read and inbound overrun, both `SEP_CTRL` response modes, STATUS depth/full/empty against a golden, `IRQ_STATUS` / `IRQ_ENABLE` gating onto aggregator `[14]`, and flush that empties both FIFOs without clearing the stickies. KM is held so firmware cannot drain or fault the FIFOs. The command-set vehicle stays the transport and is not re-credited here. KM-peer events (`flushed_by_km`, inbound underflow, outbound overflow, separators) stay on the KM IP mailbox vehicles.
 
 |KM key/policy vault (extent + write-lock + seal)
-|PROVEN
 |`sep_km_key_policy_vault_test`. The seal walk lives here rather than on the command set: no mailbox command seals a slot, so over the command set an erase always frees and the retire path has no vehicle there.
 
 |ESRC → DRBG → EDN consume
-|PROVEN
 |`sep_esrc_e2e_smoke_test`, `sep_drbg_gen_segmentation_test`, pool sink coverage
 
 |ESRC lock and alert delivery
-|PROVEN
-|`sep_esrc_fips_lock_test`, `sep_esrc_alert_delivery_test`. HT quality is Phase 3, as is the health-test counter-redundancy countermeasure (`es_cntr_err` -> `MAIN_SM_STATUS.ERR`), which no stimulus can reach and which needs fault injection.
+|`sep_esrc_fips_lock_test`, `sep_esrc_alert_delivery_test`. HT quality is not claimed, nor is the health-test counter-redundancy countermeasure (`es_cntr_err` -> `MAIN_SM_STATUS.ERR`), which no stimulus can reach and which needs fault injection.
 
 |ESRC health-test watermark arming
-|PROVEN
 |`sep_esrc_ht_watermark_arming_test`
 
 |Crypto EDN arbitration (two live clients)
-|PROVEN
 |`sep_crypto_edn_multisink_arbitration_test`, `sep_crypto_edn_round_robin_grant_test`
 
 |eFuse sense + shadow + persist
-|PROVEN
 |`sep_efuse_sense_test`, `sep_efuse_image_test`
 
 |eFuse program × lock
-|PROVEN
 |`sep_efuse_program_lock_matrix_test`
 
 |Lifecycle `feat_ctrl` vs `LC_STATE`
-|PROVEN
 |`sep_efuse_lcc_lc_state_stitch_test`
 
 |Lifecycle demote
-|PROVEN
 |`sep_lcc_demote_feat_ctrl_matrix_test`
 
 |RMA token match → LC update
-|PROVEN
 |`sep_efuse_rma_token_rand_test`
 
 |LC_STATE next state (shadow write-1-to-set)
-|PROVEN
 |`sep_lcc_lc_state_w1s_prod_test`, `sep_lcc_lc_state_w1s_prod_demote_test`, `sep_lcc_lc_state_w1s_rma_sip_test`, `sep_lcc_lc_state_w1s_rma_chiplet_test`, `sep_lcc_lc_state_w1s_prod_end_test`, `sep_lcc_lc_state_w1s_transient_test` — six leaves on one module, one sensed starting state each. The other writer of `LC_STATE`: the frontdoor shadow write, which the stitch walk (OTP program + re-sense) never exercises.
 
 |SPI-OT flash command set
-|PROVEN
-|`sep_spi_ot_flash_cmd_rand_test` — JEDEC, WREN/RDSR, WRDI, page program, FAST_READ and sector erase against the flash BFM, with a neighbour-sector intact check, write-protect and status-register breadth, and the three host `ERROR_STATUS` classes with recovery. The BFM golden requires the exact observed opcode sequence, not a floor. `sep_spi_flash_jedec_smoke_test` is the Phase-1 reachability vehicle and keeps its own phase's credit. The DMA-to-SPI path is graded on the `DMA copy + inline SHA-256 + LSIO` row and is not re-credited here.
+|`sep_spi_ot_flash_cmd_rand_test` — JEDEC, WREN/RDSR, WRDI, page program, FAST_READ and sector erase against the flash BFM, with a neighbour-sector intact check, write-protect and status-register breadth, and the three host `ERROR_STATUS` classes with recovery. The BFM golden requires the exact observed opcode sequence, not a floor. `sep_spi_flash_jedec_smoke_test` is the reachability vehicle and keeps its own phase's credit. The DMA-to-SPI path is graded on the `DMA copy + inline SHA-256 + LSIO` row and is not re-credited here.
 
 |WDT bark → NMI, pet, lock
-|PROVEN
 |`sep_nmi_sanity_test`, `sep_reset_wdt_sanity_test`, `sep_wdt_aon_timer_internals_test`
 
 |Per-IP `SW_RESET_N` isolation
-|GAP
-|`sep_crypto_per_ip_reset_isolation_test` is red, so this feature has no passing vehicle and cannot hold a credit. Isolated read and write must complete SLVERR, and the isolated read must carry the isolate's own error-data payload. The leaf stays red until the vendored isolate modules emit SLVERR on a terminating response; see <<known-limitations>>. The row returns to `PROVEN` when the vehicle is green. Drain-before-reset for the four accelerator domains stays Phase 3. Drain-before-reset for the shared TRNG domain is on the `Coordinated TRNG reset and ordered recovery` row.
+|`sep_crypto_per_ip_reset_isolation_test`. Each engine holds a golden-checked result; a neighbour reset leaves it bit-exact. While HMAC is held, the same `DIGEST_0` read and a `CFG` write complete SLVERR, the read does not return the live digest, and AES stays OKAY. Drain-before-reset for the four accelerator domains is not claimed. Drain-before-reset for the shared TRNG domain is on the `Coordinated TRNG reset and ordered recovery` row.
 
 |Scratch bank reset domains (warm vs cold)
-|PROVEN
 |`sep_warm_cold_reset_scratch_test`. The graded contract is the reset-domain split across every implemented register: a warm reset clears all eight warm registers while all eight cold registers retain, and only a cold reset clears both banks. Distinct per-index patterns prove the registers do not alias. Read over the CPU-LSU AXI splice with a `scratch_cold_probe_o` cross-check; the cross-check catches a read-mux fault and is not an independent confirmation, since both sides come from the same flops. The bank *size* the specification asks for is not graded here — see <<known-limitations>>.
 
 |Coordinated TRNG reset and ordered recovery
-|PROVEN
-|`sep_trng_reset_recovery_test`. One `SW_RESET_N` bit resets ESRC, CSRNG and EDN together, and the reset waits for all three converted AXI-Lite paths to report isolated, so drain-before-reset is covered here rather than deferred. Also covers the pool scrub, SLVERR while isolated, the external source-select register staying outside the domain, and the JTAG hold/release pair. The external TRNG aperture is a permanent DECERR error slave in this build, so its own domain membership is not claimed. The isolate-response flavour follows the vendored isolate modules; see <<known-limitations>>.
+|`sep_trng_reset_recovery_test`. One `SW_RESET_N` bit resets ESRC, CSRNG and EDN together, and the reset waits for all three converted AXI-Lite paths to report isolated, so drain-before-reset is covered here rather than deferred. Also covers the pool scrub, SLVERR while isolated, the external source-select register staying outside the domain, and the JTAG hold/release pair. Intra-window decode of the adopter TRNG passthrough is not graded.
 
 |Clock-gate CSR
-|PROVEN
 |`sep_clock_gate_control_test` (storage / reachability). Live per-IP gate is not in this RTL.
 
 |JTAG vs CPU vs KM eFuse mux
-|PROVEN
 |`sep_efuse_jtag_axil_el2_cpu_mux_test`, `sep_efuse_km_axil_cpu_mux_coexist_test`
 
 |SEC_DIS override
-|PROVEN
-|`sep_sec_dis_override_test`. `FEAT_CTRL` match / mismatch / restore after sense. `CHK-SENSE-GATED-RESET` grades that a match before sense-done leaves the reset held (issue 1462: release is a DTP TDR step).
+|`sep_sec_dis_override_test`. `FEAT_CTRL` match / mismatch / restore after sense. `CHK-SENSE-GATED-RESET` grades that a match before sense-done leaves the reset held (release is a DTP TDR step).
 
 |eFuse set-only (anti-rollback)
-|PROVEN
-|`sep_efuse_set_only_monotonicity_test`
+|`sep_efuse_set_only_monotonicity_test`. Set-only OR-merge is walked on the six non-`LOCK` set-only rows and on both `LOCK` RDL windows (`LOCKS` word 0, `LOCKS` word 1, `LOCKS_SPARE`) after those other rows. SW-writable rows, `REQUIRED_SIGNERS` included, overwrite and then a write of 0 clears.
 
 |eFuse per-spare write-lock slot numbering
-|PROVEN
 |`sep_efuse_program_lock_matrix_test`. Every run walks `SPARE0..SPARE7`: each spare is programmed while unlocked, then its own `LOCKS_SPARE` bit is set and a second bit in the same spare is rejected. The spares are walked in order after each preceding lock, so a lock bit wired past its own slot fails the next spare's unlocked-program cell. Slot coverage does not depend on the seed; only the bit offsets within a spare do.
 
 |Token comparator fail-closed at the lifecycle gate
-|PROVEN
 |`sep_lcc_lc_state_w1s_prod_test` (`CHK-GATE-SIP-FAULT`). A redundancy fault forces the reserved error code onto the token status, and the `LC_STATE` bit[1] advance must not land — the gate compares for equality with the match code, so a gate written as "not a mismatch" would let the fault code through. The cell that follows presents the same token with the fault removed and does advance, so the pair is a contrast rather than a lone negative.
 
 |Token comparator fault latch cleared by reset
-|PROVEN
 |`sep_efuse_rma_token_rand_test` (`CHK-FAULT-RESET`). The set-only phases prove the fault bits survive a valid retry; only this one separates that from a latch that never clears. After the two zeros it re-arms once, so the phase ends on a zero-to-one transition rather than on a wedged detector that stays at 0.
 
 |Debug-disable gating ladder (`dbg_disable`)
-|PROVEN
 |`sep_lcc_demote_feat_ctrl_matrix_test` (`CHK-DBG-DISABLE`, `CHK-FUSE-DFT-DIS`). All eleven `dbg_disable` bits match the DTP gating ladder for the same `FEAT_CTRL` the cell just verified, across the whole demote matrix. `dft_secure` is Case 3 and `dfd` is Case 1. The DFT-inserted fuse-path ports are separate DUT outputs, not members of `dbg_disable`: `sep_fuse_dft_disable` is Case 3 AND `sep_fuse_dbg`, inverted; `smc_fuse_dft_disable` is Case 2 AND `smc_fuse_dbg`, inverted. The compose cell closes those two bits while Case 2 and Case 3 stay open.
 
 |Local-master alias remap datapath
-|PROVEN
 |`sep_fabric_local_alias_datapath_test`
 
 |CSR reset / RW / RO / reserved
-|PROVEN
 |`sep_reg_bit_bash_rand_test`
 
 |AXI AW/W channel ordering, write landing and neighbour displacement
-|PROVEN
-|`sep_axi_order_sweep_test` (s_axi, 318 cells over 27 blocks, 106 per ordering) and `sep_axi_order_sweep_m_axi_test` (m_axi, 222 over 11, 74 per ordering), all three orderings presented and asserted by `CHK-ORDER-STIM`. Both pass on VCS and on the Verilator merge gate. `m_axi` grants a true W-first handshake; `s_axi` holds `wready` until AW, so its W-first presentation completes same-cycle at the slave, which is the slave's contract and not a stimulus failure.
+|`sep_axi_order_sweep_test` (s_axi, 318 cells over 27 blocks, 106 per ordering) and `sep_axi_order_sweep_m_axi_test` (m_axi, 222 over 11, 74 per ordering), all three orderings presented and asserted by `CHK-ORDER-STIM`. `m_axi` grants a true W-first handshake; `s_axi` holds `wready` until AW, so its W-first presentation completes same-cycle at the slave, which is the slave's contract and not a stimulus failure.
 
 |AXI narrow-write strobe and memory windows
-|PROVEN
-|`sep_axi_strobe_window_test`, passing on VCS and on the Verilator merge gate.
+|`sep_axi_strobe_window_test`.
 
 |AXI narrow-read lane extraction and repeatability
-|PROVEN
 |`sep_axi_partial_lane_read_test`: all 36 byte-run slices, all 14 aligned narrow-ARSIZE cells and the CSR extremes exact and repeatable around a checked disturb. `CHK-RANDCFG` holds the walked counts against those floors.
 
 |Reserved inter-block address space
-|PROVEN
-|`sep_axi_map_refuse_test`, passing on VCS and on the Verilator merge gate.
+|`sep_axi_map_refuse_test`.
 
 |Dead-space decode
-|PROVEN
 |`sep_fabric_deadspace_decode_test` — single-beat refuse, no-alias, and per-beat refusal inside a burst. `CHK-DEADSPACE-BEAT` reads each beat's `RRESP` off the bus and fails any beat past an extent that answers OKAY. It also requires at least one window that serves its in-extent beats and refuses only the tail, which is what shows the refusal is per beat rather than per burst. The counts a given run reaches are reported, not graded. Read bursts only — one `BRESP` covers a write burst, so per-beat write refusal is not observable at the protocol level; see <<known-limitations>>.
 
 |Adams Bridge ML-DSA-87 keyGen
-|PROVEN
-|`sep_abr_mldsa_keygen_kat_test`. Sign/verify/ML-KEM/key-vault seed are Phase 3.
+|`sep_abr_mldsa_keygen_kat_test`. Sign/verify/ML-KEM/key-vault seed are not claimed.
 
 |Entropy pool aperture + PIC sources
-|PROVEN
-|`sep_entropy_pool_aperture_test`. Drain-under-fill / stall-duration are Phase 3.
+|`sep_entropy_pool_aperture_test`. Drain-under-fill / stall-duration are not claimed.
 
 |KM CRC engine (PCPI)
-|PROVEN
 |`sep_km_crc_pcpi_kat_test`. All three modes against an independent golden, plus a hardware-only word-versus-byte chaining cross-check that holds if the golden is wrong.
 
 |KM KPV scrambler
-|PROVEN
 |`sep_km_kpv_scrambler_test`. Data transform, address tweak and keying, all frontdoor: the vault passes through while disabled, so the raw stored words are readable without a hierarchical peek.
 
 |Mailbox outbox FIFO, threshold interrupt and error flags
-|PROVEN
-|`sep_axil_mailbox_iface_rand_test`. The SEP-host side of the outbound aperture: native 64-bit pushes at one FIFO entry per beat, a 4-byte `WRITE_DATA` beat as a complete push, STATUS compared field-by-field against a golden occupancy model after every push, the write-threshold interrupt gated by its enable and level-held across write-one-to-clear, read-from-empty and write-to-full each answered with their documented response and error flag, control flush, and the write-only decode of the push register. `Mailbox -> PIC` grades delivery on `sep_mailbox_plic_test` and is not re-credited here. The spec's two-word read of an incoming 64-bit message, and the read half of the threshold pair, need the peer side — see <<known-limitations>>.
+|`sep_axil_mailbox_iface_rand_test`. The SEP-host side of the outbound aperture: native 64-bit pushes at one FIFO entry per beat, STATUS compared field-by-field against a golden occupancy model after every push, the write-threshold interrupt gated by its enable and level-held across write-one-to-clear, read-from-empty and write-to-full each answered with their documented response and error flag, control flush, and the write-only decode of the push register. `Mailbox -> PIC` grades delivery on `sep_mailbox_plic_test` and is not re-credited here. The spec's two-word read of an incoming 64-bit message, and the read half of the threshold pair, need the peer side — see <<known-limitations>>.
 
 |Interrupt aggregator packing under simultaneous fan-in
-|PROVEN
 |`sep_irq_simultaneous_fanin_no_alias_test`. Several cross-IP sources asserted at once must produce exactly their own bits in `sep_internal_interrupts[8:33]`, with every bit of that region resolved rather than floating. `PIC source map` grades the source-to-PIC-id map and CPU delivery on `sep_pic_irq_source_map_delivery_test`; this row is the aggregation itself — the place a one-hot map can smear onto a neighbour — and is a distinct contract from delivery.
 
 |SPI host control plane (CSR, interrupt, error status, watermark, enable)
-|PROVEN
 |`sep_spi_ot_host_csr_irq_rand_test`. Documented resets, per-register write/readback with unimplemented bits proven to hold no storage, the interrupt-test path with its enable mask in both directions, all six `ERROR_STATUS` conditions each induced by its own trigger and exclusive of the others, the transmit watermark polarity at the exact threshold, and the enable gate against a calibrated negative window. `SPI-OT flash command set` grades the flash datapath and `CSR reset / RW / RO / reserved` is the generic bit-bash vehicle; neither covers this control plane.
 
+|SECURE_TM shadow-write lock
+|`sep_efuse_secure_tm_write_lock_test`. Each of `LOCKS`, `LOCKS_SPARE`, `LC_STATE`, `SIP_DIS` and `SYS_DIS` takes the same seeded payload twice: with the strap low the write lands and the readback is the OR-merge, and after the strap is raised and the image re-sensed the stored value does not move, `sep_internal_interrupts[33]` pulses and the response stays OKAY. A `SECURE_TM_UNLOCK` spare still takes a write with the strap up, so the refusal is the lock rather than a dead write path. Real fuse sense at `LC_PROD`.
+
 |eFuse locked-field access violation interrupt
-|PROVEN
 |`sep_locked_field_access_irq_path_test`. A write to a write-locked spare and a read of a read-locked spare each raise `sep_internal_interrupts[33]` (PIC source 34) for the duration of the access, answer OKAY rather than an error response, leave the stored value unchanged, and drop the line after the access retires, with an unlocked spare in the same OTP image as the negative control. Real fuse sense at `LC_PROD`.
 
 |Token comparator redundancy fault delivery to the CPU
-|PROVEN
 |`sep_efuse_token_match_fault_pic_test`. EL2 claims PIC source 40, reads the sticky `TOKEN_MATCH_FAULT` bit, and masks `meie[40]`; because the fault bits are software-read-only and clear only on reset, the check requires the source to be still requesting across the quiet window, which is what makes the mask the reason for the quiet. `RMA token match -> LC update` grades the comparator matrix on `sep_efuse_rma_token_rand_test` and is not re-credited here.
 |===
 
@@ -920,9 +870,9 @@ recipes: link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_
 
 *BFM / Model*: ocah_axi_vip
 
-*Objective*: Prove the CPU-LSU decodes `sep_cpu_ctrl` and one safe CSR in every LSU-reachable CSR block (including Adams Bridge and the entropy pool).
+*Objective*: Prove the CPU-LSU decodes `sep_cpu_ctrl` and one safe CSR in every LSU-reachable CSR block (including Adams Bridge and the entropy pool), and that the unpopulated hole inside `sep_cpu_ctrl` reads OKAY with zero and is not a live alias.
 
-*Test Coverage*: One safe CSR in every LSU-reachable CSR block, plus a `sep_cpu_ctrl` sweep.
+*Test Coverage*: One safe CSR in every LSU-reachable CSR block, plus a `sep_cpu_ctrl` sweep and the interior hole.
 
 *Test Procedure*:
 
@@ -933,6 +883,7 @@ recipes: link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_
 . Write/readback/restore the SEP base/size CSRs and the pure-RW storage registers (masked).
 . Write the implemented `CLOCK_GATE_CTRL` bits, read them back, then restore reset after the fabric walk.
 . Walk one readable CSR per LSU-reachable block (DMA, WDT, scratch, reset, OTBN, AES, HMAC, KMAC, CSRNG, EDN, ESRC, ABR NAME, entropy-pool STATUS, lifecycle, KM mailbox, eFuse shadow, AXI mailbox, inbound filter CFG, alias remap, outbound remap, SPI) and require OKAY (value-check where reset is known).
+. Read three words in the hole after `SEP_FUSE_SENSE_STATUS` and before `SEP_SW_DEBUG` (including `0x10A3_0170`). Require OKAY with zero data, which `hw/sys/sep/doc/memory_map.adoc` states as the contract for an offset inside a unit's extent that owns no register. Prove `SEP_SW_DEBUG` writable, then require a hole write to leave it unchanged.
 
 *Checkers*:
 
@@ -945,10 +896,10 @@ recipes: link:SEP_TB_ARCH.adoc#_systemverilog_uvm_realization_framework_uvm[SEP_
 |Every pure read/write register returns exactly what was written, masked to its implemented bits, and is restored afterwards.
 |CHK-BASEADDR-RW
 |The base and size registers accept a write, read back, and restore cleanly.
-|CHK-NONVAC
-|The sweep performed a large, non-zero number of value comparisons.
 |CHK-FABRIC-WALK
-|Every LSU-reachable CSR block in the walk returns OKAY on its chosen register; value-checked entries match the exported or seq-derived expectation.
+|Every LSU-reachable CSR block in the walk returns OKAY on its chosen register; value-checked entries match the exported or seq-derived expectation. The logged count must be non-zero.
+|CHK-CPU-CTRL-HOLE
+|Each `sep_cpu_ctrl` word in the hole after `SEP_FUSE_SENSE_STATUS` and before `SEP_SW_DEBUG` reads OKAY with zero data, and a write to `0x10A3_0170` does not change `SEP_SW_DEBUG` -- whose writability a control write proves first, since `SEP_FUSE_SENSE_STATUS` is `sw = r` and no AXI write can move it. `hw/sys/sep/doc/memory_map.adoc` states both halves: a unit accepts such an offset with zero/OKAY, and non-aliasing follows from exact-match register decode rather than from refusal.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
@@ -1235,7 +1186,7 @@ covers that rejection.
 |CHK-SENSE-DONE
 |The sense sequence completes rather than hanging.
 |CHK-IMAGE-MATCH
-|Every sensed shadow word equals the staged image, and the comparison is required to span the whole image — the word count is asserted, so an empty field table could not report "0 words, 0 error(s)" and pass. The compare is a passive hierarchical read of the shadow-register output — read-only observation, no write, force or deposit — rather than the software-visible register path. That path is proven separately by `sep_efuse_image_test`, which reads the same registers over the bus. Recorded here because the evidence rules require a backdoor proof to name its frontdoor counterpart.
+|Every sensed shadow word equals the staged image, and the comparison is required to span the whole image — the word count is asserted, so an empty field table could not report "0 words, 0 error(s)" and pass. The compare is a passive hierarchical read of the shadow-register output — read-only observation, no write, force or deposit — rather than the software-visible register path. That path is proven separately by `sep_efuse_image_test`, which reads the same registers over the bus.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
@@ -1294,12 +1245,12 @@ names cannot be represented; and persistence across cold reset comes from the
 model having no reset on its storage. What the checkers do prove against real
 logic is that each program reached its addressed bit through the real programming
 path, and that the sense FSM re-reads the array after reset and the shadow tracks
+it.
+
 *Not claimed*: the `final_sec_disable` half of
 `fuse_sense_done_i || final_sec_disable` — exposing the shadow before
 sense-done — is not exercised here. Only the `fuse_sense_done_i` half of that
 guard is proven.
-
-it.
 
 '''''
 
@@ -1494,7 +1445,7 @@ starved it to a handful of writes fails.
 
 *BFM / Model*: ocah_axi_vip, KM path / golden
 
-*Objective*: Proves the full key-distribution chain from the real entropy datapath to a real cryptographic consumer: the OpenTitan entropy stack seeds the Key Manager, the Key Manager's firmware accepts a known 384-bit key over its mailbox and sideloads it to OTBN over the dedicated key bus, and an OTBN program running on the real core reconstructs the key from its two shares and writes it to data memory, where the host reads it back and compares against the known value. The known-key form is deliberate and is stronger than generating a key and reading the shares out of the wrapper: nothing on the key's own proof path is forced or read through a backdoor, so an exact data-memory match is unforgeable evidence that the key physically traversed the sideload bus and was consumed. Key-bus isolation is proven by construction — only the Key Manager and OTBN are released from reset, with AES, HMAC and KMAC held parked for the whole transfer.
+*Objective*: Proves the full key-distribution chain from the real entropy datapath to a real cryptographic consumer: the OpenTitan entropy stack seeds the Key Manager, the Key Manager's firmware accepts a known 384-bit key over its mailbox and sideloads it to OTBN over the dedicated key bus, and an OTBN program running on the real core reconstructs the key from its two shares and writes it to data memory, where the host reads it back and compares against the known value. The known-key form is stronger than generating a key and reading the shares out of the wrapper: nothing on the key's own proof path is forced or read through a backdoor, so an exact data-memory match is unforgeable evidence that the key physically traversed the sideload bus and was consumed. Key-bus isolation is proven by construction — only the Key Manager and OTBN are released from reset, with AES, HMAC and KMAC held parked for the whole transfer.
 
 *Test Coverage*: Known-key Key Manager to OTBN sideload; DMEM reconstruct equals the key.
 
@@ -1554,7 +1505,7 @@ starved it to a handful of writes fails.
 
 *Objective*: Walks the device through four lifecycle states — one preloaded, three programmed for real into one-time-programmable memory — and proves each reaches the lifecycle controller and produces the expected feature-control decode.
 
-*Test Coverage*: Four lifecycle states via OTP program and resense; feature-control decode.
+*Test Coverage*: Four lifecycle states via OTP program and resense; feature-control decode; `dft_secure` Case 3 vs the TEST_EN strap.
 
 *Test Procedure*:
 
@@ -1563,7 +1514,7 @@ starved it to a handful of writes fails.
 . Program the production state through the ungated write-one-to-set bit, handling injected physical failures by clearing status and retrying; cold reset and re-sense.
 . Pin the two disable overrides to distinct non-zero vectors so each decoded feature-control word is a different non-trivial value; check the state reached the controller and that feature control matches the golden model.
 . Repeat for the two token-gated return-material-authorisation states.
-. After the initial TEST_DEV check with TEST_EN=0, raise the strap, re-sense, and prove `secure_tm_o` follows the strap while `FEAT_CTRL` stays on the same golden. The strap is then lowered again; the rest of the walk runs at `secure_tm=0`.
+. After the initial TEST_DEV check with TEST_EN=0, raise the strap, re-sense, and prove `secure_tm_o` follows the strap while `FEAT_CTRL` stays on the same golden. Score `dbg_disable.dft_secure` on both legs against Case 3 (not the strap). The strap is then lowered again; the rest of the walk runs at `secure_tm=0`.
 . Inject a broken LC_STATE pair at the LCC decoder input; prove fail-closed FEAT_CTRL=0; release and restore.
 
 *Checkers*:
@@ -1581,26 +1532,30 @@ starved it to a handful of writes fails.
 |The pinned overrides break all-ones symmetry: the four expected feature-control words are mutually distinct, so a decode that ignored its inputs would differ from the golden at three of the four states.
 |CHK-SECURE-TM
 |The TEST_EN strap is driven frontdoor. After the initial TEST_DEV sense with the strap at 0, `secure_tm_o` is 0 and `FEAT_CTRL` matches the TEST_DEV golden. After the strap is raised and the image is re-sensed, `secure_tm_o` is 1 and `FEAT_CTRL` still matches that same golden. SECURE_TM does not qualify feature control.
+|CHK-DFT-SECURE
+|`dbg_disable.dft_secure` matches Case 3 of the DTP ladder (`SIP_DBG & CHIPLET_DBG & SEP_DBG`, inverted) for the same `FEAT_CTRL` each stitch check just verified, at both strap polarities and at every later state of the walk. The TEST_EN strap is not a term: a formula of `!secure_tm` fails when Case 3 and the strap disagree (TEST_DEV with the pinned DIS vectors keeps Case 3 closed at `secure_tm=1`; `RMA_CHIPLET` opens Case 3 at `secure_tm=0`). Dump refusal on the secure chain is a DFT command-class rule, not this SIB.
 |CHK-SECRET-BLANK
-|The Class-1a secret disconnect, proven as a transition on one image rather than as a single observation. With the strap at 0 the staged `CLASS_KEY` is present in the sensed shadow; with it raised the same field reads 0 (`sep_efuse_pkg.sv` `SecretShadowRanges`). The staged value is asserted non-zero first, so a DUT that never sensed the secret at all cannot satisfy the blanked half.
+|KM-secret disconnect, proven as a transition on one image rather than as a single observation. With the strap at 0 each of `CHIPLET_UID`, `SIP_UID`, `SYS_UID` and `CLASS_KEY` is present in the sensed shadow; with it raised the same four fields do not read back their staged values. `periphs.adoc` names those four Key Manager fields and the TEST_EN disconnect of fuse-bank outputs; it does not require a zero readback. Each staged value is asserted non-zero first, so a DUT that never sensed a field cannot satisfy that field's disconnected half.
 |CHK-SECURE-TM-PROG-BLOCK
 |While `secure_tm` is asserted, a program of LC_STATE bit 96 must complete with `PROGRAM_DONE`+`PROGRAM_ERR` (`PROGRAM_CTRL` bits 25 and 26), not succeed and not starve DONE. That is the software-visible refusal. Unique “the command never reached the OTP bank” is not claimed: fail-injection credit re-arms on every `rst_ni`, and the walk must `resense()` to drop the latched strap, so a later retry cannot witness whether the blocked attempt consumed credit.
 |CHK-SIGINT
-|A signed-off force breaks the LC_STATE pair at the LCC decoder input. Observation is the DUT `lc_sigint_err_o` probe plus an AXI `FEAT_CTRL` readback of 0 (fail-closed, `SEC_DIS` observed 0). Release restores both.
+|A force gated by the tb_top `lc_sigint_inject_i` port breaks the LC_STATE pair at the LCC decoder input. Observation is the DUT `lc_sigint_err_o` probe plus an AXI `FEAT_CTRL` readback of 0 (fail-closed, `SEC_DIS` observed 0). Release restores both.
 |CHK-SECURE-TM-OFF / CHK-SECURE-TM-ON
 |The two legs of the strap walk, taken as a transition on one image: with the TEST_EN strap at 0, `secure_tm_o` is 0; after the strap is raised and the image is re-sensed, `secure_tm_o` is 1. `FEAT_CTRL` equals the same TEST_DEV golden on both legs.
 |CHK-SIGINT-RELEASE
-|Releasing the signed-off force returns `lcc_sigint_err_probe_o` to 0, so the fail-closed state is recoverable and the probe is not stuck high.
+|Releasing the force returns `lcc_sigint_err_probe_o` to 0, so the fail-closed state is recoverable and the probe is not stuck high.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Evidence*: Verilator `20260911_123206` seed 1. Named `CHK-* PASS` for LC-INPUT, GOLDEN, NONVAC, OTP-RETRY, SECURE-TM (parent plus OFF/ON), SECRET-BLANK, SECURE-TM-PROG-BLOCK, DFT-SECURE, SIGINT and SIGINT-RELEASE.
 
 [[lcc-golden-from-spec]]
 [NOTE]
 ====
 The lifecycle golden is derived from the specification, not from the RTL.
 
-`cocotb/env/sep_lcc_golden.py` reads `hw/sys/sep/doc/lifecycle_controller.adoc` (the
+`cocotb/env/sep_lcc_golden.py` is transcribed from `hw/sys/sep/doc/lifecycle_controller.adoc` (the
 per-LC-state feature-control profile). Under that decode a PROD demotion relaxes its
 debug group to `~(SIP_DIS | SYS_DIS)`, Function always takes both vectors, and
 `DEMOTE_1` / `DEMOTE_2` act independently on `[23:0]` and `[47:24]`. The import-time
@@ -2078,7 +2033,7 @@ fixed, so no contract is seed-selected and every checker runs every seed.
 
 *Not claimed*: fail-closed `CFG.sideload=1` START with no valid Key Manager key
 (`ErrKeyNotValid`), and a later software-key digest after `CMD.err_processed`
-recovery. Those sit on the Phase 3 holding note <<phase-3>>.
+recovery. Those are listed in <<phase-3>>.
 
 '''''
 
@@ -2238,7 +2193,7 @@ remapped routes to the error slave and never executes.
 
 *Source Module*: `sep_efuse_jtag_axil_el2_cpu_mux_test`
 
-*BFM / Model*: ocah_axi_vip, ocah_jtag_vip, CPU FW
+*BFM / Model*: ocah_axi_vip, CPU FW
 
 *Objective*: The debug-port counterpart to the two-processor coexistence test.
 
@@ -2425,7 +2380,7 @@ entry requires exactly two.
 |CHK-PROD-BLOCK
 |The external read is refused with a specific decode error, not a timeout.
 |CHK-DEMOTE-INDEP
-|`DEMOTE_2` alone opens DBG_2 `[47:24]` and leaves DBG_1 `[23:0]` closed, so the two demote registers act per-group rather than sharing a priority. `sep_debug` is bit 0, inside DBG_1, so it must still read 0 — and the external port must still be blocked, which is a second, independent consequence of the same property. `DEMOTE_2` is driven first deliberately: the demote field is write-once-set and cannot be cleared, so this is the only order in which this DUT can show one group opening without the other. Before this row existed, `DEMOTE_2` was never written by any test here — it appeared only in the golden, so the specification's DEMOTE_2 column rested on the golden's import-time KAT comparing the model against itself.
+|`DEMOTE_2` alone opens DBG_2 `[47:24]` and leaves DBG_1 `[23:0]` closed, so the two demote registers act per-group rather than sharing a priority. `sep_debug` is bit 0, inside DBG_1, so it must still read 0 — and the external port must still be blocked, which is a second, independent consequence of the same property. `DEMOTE_2` is driven first: the demote field is write-once-set and cannot be cleared, so this is the only order in which this DUT can show one group opening without the other. This row is the only writer of `DEMOTE_2` in the package, so without it the specification's DEMOTE_2 column would rest on the golden's import-time KAT comparing the model against itself.
 |CHK-DEMOTE
 |The demote register accepts a write and reads back.
 |CHK-DBG-FEAT
@@ -2636,13 +2591,15 @@ on this path.
 |CHK-RAND-REP
 |Every cell ran, each producing a distinct digest. The walk covers the complete legal SHA3 strength set (224/256/384/512) and all five KMAC key lengths. As on the AES sweep, the key and message are re-drawn per cell, so distinctness alone does not prove the cells programmed different modes — the per-cell golden compare is what proves that.
 |CHK-ERR
-|`ERR_CODE` and the error interrupt bit read zero across the walk. Passive observation only: nothing in this entry induces an error, so there is no positive control that the register can ever be non-zero on this path. None of the twelve error codes `kmac_pkg.sv` defines is provoked.
+|`ERR_CODE` and the error interrupt bit read zero across the walk. Passive observation only: nothing in this entry induces an error, so there is no positive control that the register can ever be non-zero on this path.
 |CHK1..CHK4
 |Strict entropy scoreboard: the decorrelator, compress, seed and genbits stages each match the chained golden bit-exactly. OTBN, AES and HMAC are parked, so KMAC is the only crypto EDN client.
 |CHK5_kmac
-|Each post-adapter KMAC beat equals the next AXIS1 word — the single-sink routing golden. The Key Manager is unused on this path. The minimum-evidence floor is 3 scored beats, a 2x margin under an observed run of six: KMAC draws entropy once per operation rather than per block, so this walk scores about six routed beats where the AES sweep scores over a hundred.
+|Each post-adapter KMAC beat equals the next AXIS1 word — the single-sink routing golden. The Key Manager is unused on this path. The minimum-evidence floor is 3 scored beats: KMAC draws entropy once per operation rather than per block, so this walk scores on the order of six routed beats where the AES sweep scores over a hundred.
 |===
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Evidence*: Verilator `20260911_123224` seed 1. Thirteen `CHK-CELL` / `CHK-DONE-RW1C` / `CHK-ERR` lines, `CHK-RAND-REP` over the full walk, CHK1..CHK4 mismatch=0, and `CHK5_kmac` match=6.
 
 *Shared-code limit*: the SP800-185 encoders (`right_encode`, `encode_string`) are
 shared between the stimulus and the golden, so an encoder error would program the
@@ -2687,7 +2644,7 @@ NIST samples.
 |CHK-BOTH-BEATS
 |Both crypto sinks took real post-adapter EDN beats during the contention window.
 |CHK-OVERLAP
-|The two sinks' beat windows overlap in time, so one DRBG time-multiplexed two live clients. This is interval-span containment, *not* interleaving: it is satisfied when one client's entire burst falls in a gap between two of the other's beats, which is what the kept runs actually show. Same-cycle dual `edn_req` and alternating grants are <<sep_crypto_edn_round_robin_grant_test>>, not this entry.
+|The two sinks' beat windows overlap in time, so one DRBG time-multiplexed two live clients. This is interval-span containment, *not* interleaving: it is satisfied when one client's entire burst falls in a gap between two of the other's beats. Same-cycle dual `edn_req` and alternating grants are <<sep_crypto_edn_round_robin_grant_test>>, not this entry.
 |CHK-ROUTING
 |Each AES post-adapter beat and each KMAC post-adapter beat equals the AXIS1 word the adapter granted that cycle. Unscored clients (OTBN wipe) still consume AXIS1 words; those grants are popped so AES/KMAC stay aligned.
 |CHK-MEMBERSHIP
@@ -2696,12 +2653,6 @@ NIST samples.
 |The entropy stack matches its golden bit-exactly at each stage, in strict mode, with `report()` called. Generate segmentation is `sep_drbg_gen_segmentation_test`, not this budget. CHK1's golden initial state is seeded from the live RTL shift register after reset, so CHK1 verifies the *recurrence* rather than the reset phase, and CHK2..CHK4 take the previous verified stage's DUT output as their input.
 |===
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
-
-*Chain of custody*: CHK1's golden initial state is seeded from the live RTL
-shift-register after reset, so CHK1 verifies the *recurrence* rather than the
-reset phase, and CHK2..CHK4 take the previous verified stage's DUT output as
-their input. That is the standard chained-stage methodology, recorded here so the
-custody chain is explicit.
 
 '''''
 
@@ -2858,7 +2809,7 @@ one word and parks, which is enough for the legality check to execute.
 |CHK-ISOLATE-LANDED
 |`SW_RESET_N` readback shows the HMAC bit held, so a refusal cannot be a missed write.
 |CHK-ISOLATE-SLVERR
-|During the window a read of the same `DIGEST_0` completes SLVERR, not OKAY, DECERR, or hang, and carries `axi_lite_isolate`'s own error-data payload, scraped from that module at import. The payload is what attributes the termination to the isolate rather than to any responder that happens to slave-error.
+|During the window a read of the same `DIGEST_0` completes SLVERR, not OKAY, DECERR, or hang, and the beat does not carry the live digest. `periphs.adoc` names SLVERR for a transaction presented while isolated; it does not name the error data.
 |CHK-ISOLATE-WR
 |During the window a write to HMAC `CFG` completes SLVERR. The write target is the RW `CFG` register, not the RO digest.
 |CHK-ISOLATE-SIBLING
@@ -2874,11 +2825,6 @@ one word and parks, which is enough for the legality check to execute.
 
 *Scope limit*: scope walks AES, HMAC, KMAC and OTBN. The Key Manager bit stays at
 its reset default (a different mechanism) and is not claimed.
-
-*Parked on an RTL fix* (DV-lead decision): the isolate checkers stay red
-until the vendored isolate modules emit SLVERR on a terminating response.
-The matching test update lands with that RTL change. The leaf is not
-converted to an expected failure.
 
 *Not claimed*: drain-before-reset for these four domains. The `CHK-ISOLATE-*`
 rows cover in-window SLVERR and sibling OKAY only. The shared TRNG domain
@@ -2912,14 +2858,15 @@ source path stays outside the domain, and recovery admits only fresh entropy.
 [arabic]
 . Bring the internal chain up and fill the fabric entropy pool through
   ESRC → CSRNG → EDN, recording the pool level and that `FIPS_LOCK` is set.
-. Select every external-source mux leg and sample the external TRNG CSR
-  response, establishing the pre-reset baseline for the paths that must survive.
+. Write a source-select value that is not the RDL reset and confirm the write
+  took. That non-reset value is the pre-reset baseline the later check must
+  still see.
 . Hold every entropy consumer (KM, OTBN, AES, KMAC), then request the TRNG reset
   while concurrent reads are in flight on all three internal CSR ports.
 . Through the reset, observe the isolate probe, the fate of the in-flight
   accesses, and the pool's packer depth.
-. With the domain in reset, read the three internal ports, the external CSR and
-  the source-select register; then exercise the JTAG reset pair to hold and
+. With the domain in reset, read the three internal ports and the
+  source-select register; then exercise the JTAG reset pair to hold and
   release the same coordinated reset.
 . Reinitialize ESRC, CSRNG and EDN with consumers still held, require a fresh
   seed and fresh pool progress, and only then restore the consumer resets.
@@ -2940,15 +2887,15 @@ source path stays outside the domain, and recovery admits only fresh entropy.
 |CHK-TRNG-SLVERR
 |All three internal CSR ports answer SLVERR while isolated.
 |CHK-TRNG-EXTERNAL
-|The source-select register still reads all three legs selected after the internal reset, so the source-select CSR is outside the TRNG reset domain. The external TRNG aperture itself is terminated by a permanent DECERR error slave in this build (`hw/top/sep_ip_integration.sv`, `u_ext_trng_axil_err_slv`) and its passthrough leg carries no isolate unit (`hw/sys/sep/rtl/sep_crypto_axi_interconnect.sv`), so the before/after DECERR pair is a build invariant kept as the liveness baseline for that read, not as reset-domain evidence. Domain membership for the aperture needs a real responder behind it and is not claimed.
+|After the packer is parked the test writes a source-select value that is not the RDL reset of `sel[2:0]` (`0x7` in `sep_cpu_ctrl.rdl`), confirms the write took, then asserts the same value after the internal reset. A match on the reset value would be vacuous. The `0x1091_7000` passthrough is an adopter aperture; intra-window decode is not graded.
 |CHK-TRNG-JTAG
 |The JTAG override holds the coordinated reset asserted and releases it again, the same pair used for the other domains.
 |CHK-TRNG-CONSUMERS-HELD
 |The `SW_RESET_N` readback shows the four consumers still held and the TRNG bit released, so the recovery ordering is observed rather than assumed.
 |CHK-TRNG-CSR-RESET
-|After the reset `FIPS_LOCK` is clear, the CSRNG and EDN interrupt enables return to zero from the non-zero masks written before the reset, and reserved ESRC `CTRL[0]` reads zero and ignores writes — the domain returned to its register-map reset rather than partially. The interrupt enables are driven off reset first, so this is a 1->0 traversal rather than a read of two registers that were never written.
+|After the reset `FIPS_LOCK` is clear, the CSRNG and EDN interrupt enables return to zero from the non-zero masks written before the reset, and reserved ESRC `CTRL[0]` reads zero before a write of 1 and still reads zero after — RAZ and WI, not write-ignore alone. The interrupt enables are driven off reset first, so this is a 1->0 traversal rather than a read of two registers that were never written.
 |CHK-TRNG-STALE
-|A pop from the empty pool answers SLVERR with zero data, so pre-reset entropy cannot be read back. `sep_entropy_fifo.sv` drives SLVERR on both the empty-pop and the pending-read-during-clear paths; a DECERR here would mean the aperture had fallen into the reset domain, which is the opposite of what this proves, so the response is pinned rather than tested as any non-OKAY.
+|A pop from the empty pool answers SLVERR with zero data, so pre-reset entropy cannot be read back. A DECERR here would mean the aperture had fallen into the reset domain, which is the opposite of what this proves, so the response is pinned rather than tested as any non-OKAY.
 |CHK-TRNG-FRESH
 |ESRC produces a fresh seed, `FIPS_LOCK` sets again, and a pool read succeeds, all before the consumer resets are restored to their saved value.
 |CHK-TRNG-RECOVERY
@@ -2956,6 +2903,8 @@ source path stays outside the domain, and recovery admits only fresh entropy.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Evidence*: Verilator `20260911_120722` seed `650837049`. Named `CHK-TRNG-* PASS` for fill, isolate, drain, packer, SLVERR, external non-reset source-select, JTAG, consumers-held, CSR reset including CTRL[0] RAZ/WI, stale empty-pop, fresh seed, and recovery.
 
 *Why the pool is checked from outside the domain*: the entropy pool's AXI
 responder is not in the TRNG reset domain, which is what makes the scrub
@@ -3051,9 +3000,9 @@ green keyGen closes none of them. This leaf writes the seed window over the bus.
 
 *BFM / Model*: ocah_axi_vip, entropy golden
 
-*Randomization*: RANDCFG — extra pops past the watermark come from the run seed (`SepEntropyPoolCfg`). The alias set and all three unique-dead offsets are walked every seed, so the decode coverage is seed-independent.
+*Randomization*: RANDCFG — extra accepted pops come from the run seed (`SepEntropyPoolCfg`). The alias set and all three unique-dead offsets are walked every seed, so the decode coverage is seed-independent.
 
-*Objective*: The fabric entropy pool answers only its three live registers. Occupancy, low-watermark and fill-stall status reach software and the interrupt aggregator, a pop drains one word, an empty pop is refused, and every write and every unmapped offset inside the 64 KB window is refused with zero data.
+*Objective*: The fabric entropy pool answers only its three live registers. Occupancy, the live `pool_low` flag and fill-stall status reach software and the interrupt aggregator, a pop drains one word, an empty pop is refused, and every write and every unmapped offset inside the 64 KB window is refused with zero data.
 
 *Test Coverage*: Three live pool registers; pop, empty-refuse, and unmapped refuse.
 
@@ -3062,9 +3011,8 @@ green keyGen closes none of them. This leaf writes the seed window over the bus.
 [arabic]
 . Every seed walks the high-bit mirrors of the three live registers, plus all three unique-dead offsets, so a truncated decode cannot hide behind a seeded pick.
 . The block is a 64 KB crossbar target at `entropy_fifo.main` (`0x1095_0000`).
-  Depth 32, `LowWatermark` 8, and `StallThresh` 4096 are independent goldens
-  in the sequence (the `sep_entropy_fifo` defaults). They are not scraped
-  from RTL.
+  Fill waits on the live `pool_low` flag, not on an occupancy watermark.
+  `StallThresh` is the wait bound for the fill-stall flag.
 . It fills from the native EDN endpoint after the shared entropy bring-up.
 
 *Checkers*:
@@ -3077,7 +3025,7 @@ green keyGen closes none of them. This leaf writes the seed window over the bus.
 |CHK-IRQ-CAUSE-LOW
 |`0x08=0x1` at empty (`pool_low`), not a copy of status `0x40`.
 |CHK-POOL-FILL
-|`fifo_level` at or above the watermark. `pool_err` reads 0, but the pool FIFO is instantiated with `Secure=0` (`sep_entropy_fifo.sv`), and `prim_fifo_sync` then ties `err_o` low, so `status[8]`, irq-cause[2] and aggregate `[38]` are tied off in this build. The zero is not a fault-free claim and no pool integrity fault is claimed.
+|`pool_low` clears after fill and `fifo_level` is greater than 0. `pool_err` reads 0. `interrupts.adoc` source 39 says the pointer-integrity check is not built in the current configuration, so that source is tied to zero; the zero is not a fault-free claim and no pool integrity fault is claimed.
 |CHK-POOL-LOW-LOW
 |Aggregate `[36]` low after fill.
 |CHK-IRQ-CAUSE-IDLE
@@ -3089,7 +3037,7 @@ green keyGen closes none of them. This leaf writes the seed window over the bus.
 |CHK-STALL-ASSERT
 |`[37]` high after `StallThresh` with the pool not full.
 |CHK-IRQ-CAUSE-STALL
-|`0x08=0x2` at stall from level vs `LowWatermark` (`fill_stall`, not `pool_low`), not `{status[7], status[6]}`.
+|`0x08=0x2` at stall (`fill_stall`, `pool_low` still clear after the fill). Must not copy the raw status word.
 |CHK-STALL-CLEAR
 |`[37]` low after EDN and ESRC re-enable.
 |CHK-POP-DATA
@@ -3097,11 +3045,7 @@ green keyGen closes none of them. This leaf writes the seed window over the bus.
 |CHK-POOL-LOW-REHIGH
 |`[36]` high again after drain (high-low-high).
 |CHK-POOL-LOW-EDGE
-|On every status read the test makes, `status[6]` agrees with `level <
-LowWatermark` and the `[36]` aggregate agrees with `status[6]`. The fill lands on
-the watermark and the drain steps through the level below it, so the comparator
-boundary itself is sampled -- an off-by-one there survives a test that only looks
-at a filled pool and an empty one.
+|On every status read the test makes, the `[36]` aggregate agrees with `status[6]`. Occupancy is not compared against a FIFO watermark. The high-low-high walk of `[36]` is the live-flag evidence.
 |CHK-EMPTY-SLVERR
 |Pop at `0x10` on empty returns SLVERR, after an accepted pop.
 |CHK5_pool
@@ -3111,7 +3055,9 @@ at a filled pool and an empty one.
 |===
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Anti-vacuity*: fill is observed at or above the watermark before any refusal is
+*Evidence*: Verilator `20260911_123310` seed 1, plus RANDCFG three-seed `20260911_121800`. Named `CHK-* PASS` for the live `pool_low` walk, fill, stall, refuse, pop, and `CHK5_pool`.
+
+*Anti-vacuity*: fill is observed as `pool_low` clear and `fifo_level` greater than 0 before any refusal is
 scored. An accepted pop happens before the empty-pop SLVERR. `[36]` is seen
 high, then low, then high. `[37]` is the first fill-stall after the fill path is
 starved for `StallThresh` with the pool not full. At least one popped word is
@@ -3293,24 +3239,24 @@ immediate neighbour, and nothing records which indices a regression covered.
 |CHK-WIRQT
 |The write-threshold interrupt state matches the golden prediction, the pending register is gated by the enable (IRQP drops when IRQEN is cleared, IRQS stays), and the interrupt re-asserts after write-one-to-clear while still above threshold.
 |CHK-ERR-RD
-|A read of the empty FIFO returns SLVERR, the vendor block's `0xFEEDDEAD` sentinel (PULP `vendor/pulp-platform/axi/upstream/src/axi_lite_mailbox.sv` line 377), and a sticky read-error flag with read-clear semantics. The `read_error` flag is the documented contract (`hw/ip/axi_lite_mailbox_unit/doc/interface.adoc`); the sentinel value is a vendor constant with no TT-side specification, so the golden traces it to that source. Deny is distinguished three ways.
+|A read of the empty FIFO returns SLVERR, the `0xFEEDDEAD` sentinel, and a sticky read-error flag with read-clear semantics. Both the sentinel and the `read_error` flag are the documented contract (`hw/ip/axi_lite_mailbox_unit/doc/interface.adoc`). The golden takes those values from `env/sep_spec_tables.py`. Deny is distinguished three ways.
 |CHK-ERR-IRQ / CHK-ERR-WR / CHK-ERR-WR-IRQ
 |The error interrupt sets and clears on write-one-to-clear; a write to the full FIFO returns SLVERR and sets the write-error flag, with its own interrupt.
 |CHK-FLUSH
 |The control flush drains the transmit FIFO below the write threshold: not-full afterwards, and the threshold interrupt clears. Occupancy to empty is not observable on this aperture.
-|CHK-SUBWORD-PUSH
-|Write-side contract: a 4-byte `WRITE_DATA` beat is a whole push. Two 4-byte beats, at `+0x00` and then `+0x04`, are each answered OKAY and each occupy their own FIFO entry, so occupancy advances by two. `+0x04` is the same 8-byte register, not a high half. STATUS carries no exact depth, so occupancy is read through the write threshold programmed to 1: `write_level_above` must be clear after the first beat and set after the second. This does not grade the spec's two-word read of an incoming 64-bit message — see <<known-limitations>>.
 |CHK-WDATA-RD
-|The push register is write-only: a read of it returns the vendor block's `0xFEEDC0DE` constant (PULP `vendor/pulp-platform/axi/upstream/src/axi_lite_mailbox.sv` line 370, inherited through `axi_lite_mailbox_unit.sv`) with an OKAY response — not a FIFO entry and not an error — and leaves the transmit occupancy unchanged, re-compared against the golden afterwards.
+|The push register is write-only: a read of it returns the documented `0xFEEDC0DE` constant (`hw/ip/axi_lite_mailbox_unit/doc/interface.adoc`) with an OKAY response — not a FIFO entry and not an error — and leaves the transmit occupancy unchanged, re-compared against the golden afterwards. The golden takes the sentinel from `env/sep_spec_tables.py`.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Deferred*: the read half of the threshold pair. `RIRQT` and
+*Evidence*: Verilator `20260911_123341` seed 1, plus RANDCFG three-seed `20260911_121800`. Named `CHK-* PASS` for NONVAC, 64B, WIRQT, ERR-RD, ERR-IRQ, ERR-WR, ERR-WR-IRQ, FLUSH, and WDATA-RD.
+
+*Not claimed*: the read half of the threshold pair. `RIRQT` and
 `STATUS.read_level_above` need the receive FIFO filled from the peer side,
 which this aperture cannot do, so the golden predicts `read_level_above` as
-constant false and no vehicle grades it. Data round-trip readback is deferred
-for the same reason. Both need the external inbound master — see
+constant false and no vehicle grades it. Data round-trip readback is not
+claimed for the same reason. Both need the external inbound master — see
 <<known-limitations>>.
 
 '''''
@@ -3360,7 +3306,7 @@ for the same reason. Both need the external inbound master — see
 smear that clears before a later sample would pass. The checker wording reads as
 an always-property; it is not one.
 
-*Deferred*: CPU-ISR delivery of the simultaneous set, and the full 32-source
+*Not claimed*: CPU-ISR delivery of the simultaneous set, and the full 32-source
 cross-product. One seed asserts one subset of at least two of the four
 cross-IP sources; the `[8:33]` contract is identical for every subset, but no
 single run covers every combination.
@@ -3585,7 +3531,7 @@ feature-scorecard hole.
 |CHK-RESET
 |Eight control registers read their documented reset values and the status register reads idle. Five of the eight expect zero, which a tied-off decode would also return — mitigated within this entry by the writability, interrupt and error checks below, each of which drives a register non-zero.
 |CHK-REG-RW
-|Each read/write register accepts a write and reads it back exactly. Each register that HAS unimplemented bits additionally has those bits driven to one and confirmed to read back zero, with the writable bits undisturbed. The probe pattern is derived from the register's implemented mask, not from the walk mask: `CTRL.SW_RST` is implemented and deliberately outside the walk, and driving it would soft-reset the core mid-walk. `CSID` implements all 32 bits and so has no unimplemented half to probe.
+|Each read/write register accepts a write and reads it back exactly. Each register that HAS unimplemented bits additionally has those bits driven to one and confirmed to read back zero, with the writable bits undisturbed. The probe pattern is derived from the register's implemented mask, not from the walk mask: `CTRL.SW_RST` is implemented and outside the walk, since driving it would soft-reset the core mid-walk. `CSID` implements all 32 bits and so has no unimplemented half to probe.
 |CHK-NONVAC
 |EVERY walked register's readback differs from its own observed pre-write value. Where a seeded value happens to equal what the register already holds, the test flips the lowest writable bit instead, so no register on any seed can satisfy this by writing back what was already there.
 |CHK-INTR
@@ -3643,8 +3589,8 @@ feature-scorecard hole.
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
 *Infrastructure gate*: non-contiguous byte strobes are not checked — the AXI
-extension derives the strobe from address and length — and are recorded as
-deferred rather than covered.
+extension derives the strobe from address and length — and are not
+claimed.
 
 '''''
 
@@ -3844,7 +3790,7 @@ claimed: the pin has no netlist path to either observable in this build.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*No scorecard row, deliberately.* The denominator rule is that the architecture
+*No scorecard row.* The denominator rule is that the architecture
 documents define the feature set. `dbg_rstb_i` is named in them — a port-table
 line in `hw/sys/sep/doc/port_table.adoc` and a sentence in the integrator guide
 describing a separate reset for the EL2 CPU debug module — but neither states a
@@ -4050,6 +3996,9 @@ per-IP clock gate.
 
 *Test Coverage*: Locked-field write refuse and the matching interrupt path.
 
+The shared config draws four distinct spares and stages `SIP_DIS` /
+`SYS_DIS` at 0. That is this leaf's seed-to-image map.
+
 *Test Procedure*:
 
 [arabic]
@@ -4101,9 +4050,77 @@ high. The denial conjunct (unchanged write-lock readback / sentinel on read-lock
 attributes `[33]` to the locked path.
 
 *Not claimed*: end-to-end delivery to the CPU — PIC claim, masking and ISR entry
-— which needs `cpu` mode and a firmware image. The full per-locked-field ×
-`secure_tm` matrix is not claimed either. This entry is generate-and-deassert on
-both lock flavours of one seed-selected spare.
+— which needs `cpu` mode and a firmware image. This entry is
+generate-and-deassert on both lock flavours of one seed-selected spare; the
+`SECURE_TM_LOCK` fields are graded by <<sep_efuse_secure_tm_write_lock_test>>.
+
+'''''
+
+[[sep_efuse_secure_tm_write_lock_test]]
+===== `sep_efuse_secure_tm_write_lock_test`
+
+*Phase*: 2
+
+*Bucket*: Mailbox, IRQ, PIC
+
+*Run mode*: `no_cpu`, real fuse sense (no `+skip_fuse_sense`), `LC_PROD`
+
+*Source Module*: `sep_locked_field_access_irq_path_test` (`+secure_tm_lock`)
+
+*BFM / Model*: ocah_axi_vip
+
+*Objective*: Prove the field map's `SECURE_TM_LOCK` term refuses a shadow write while the latched TEST_EN strap is high, and that the identical write lands with the strap low.
+
+*Test Coverage*: The `secure_tm` arm of the shadow-write lock, on the five apertures the lifecycle chapter names: `LOCKS`, `LOCKS_SPARE`, `LC_STATE`, `SIP_DIS` and `SYS_DIS`.
+
+*Test Procedure*:
+
+[arabic]
+. Sense at `LC_PROD` with the TEST_EN strap low.
+. Write a seeded payload to `LOCKS`, `LOCKS_SPARE`, `LC_STATE`, `SIP_DIS` and `SYS_DIS` and read each back: the strap-low half, where every write must land.
+. Raise `test_en_strap_i` and re-sense, so the strap is latched into `secure_tm`. The re-sense reloads every shadow word from the OTP image, so each field's pre-write value in the half below is the sensed value again, not what the half above wrote.
+. Write the same payload to the same five fields, watching the interrupt probe across each beat, and read each back.
+. Write a `SECURE_TM_UNLOCK` spare with the strap still up.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-SECTM-CONTROL
+|With the strap low, the readback is the OR-merge of the pre-write value and the payload, the value actually moves, and `[33]` stays low.
+|CHK-SECTM-BLOCK
+|With the strap high, the stored value is unchanged, `[33]` pulses during the beat and is low after it retires, and the response is OKAY rather than SLVERR.
+|CHK-SECTM-CONTRAST
+|A `SECURE_TM_UNLOCK` spare still takes a write with the strap high, and its readback equals what was written.
+|===
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Datapath facts that decide the checkers*: the write-lock term is
+`secure_tm_i & lock[3]` in `efuse_shadow_reg_access_control`
+(`hw/ip/efuse/rtl/efuse_shadow_reg_access_control.sv`), where `lock` is the
+static per-field entry of the compile-time field map in
+`hw/sys/sep/rtl/efuse/sep_efuse_pkg.sv`, not a fuse bit. `LOCKS` and
+`LOCKS_SPARE` are one map entry, so a refusal on either is the same lock.
+A refused write is terminated in the access-control block itself, so it never
+reaches the shadow storage and the response carries no error. `LC_STATE` is
+written in bytes [31:8], which OR-merge as ordinary shadow bytes and leave the
+lifecycle nibble alone.
+
+*Anti-vacuity*: each field takes the same address and the same payload in both
+conditions within one run, so a write path that never worked would fail the
+strap-low half, and a lock that never engaged would fail the strap-high half.
+The strap-low half additionally asserts that the value moved, so a payload that
+sets no new bit fails as a test bug rather than passing as a refusal. The
+`SECURE_TM_UNLOCK` contrast separates the lock from a bus that stopped
+accepting writes when the strap went up.
+
+*Not claimed*: the JTAG and TRoot writers of the same registers — this entry
+drives the frontdoor only. Nor is this a walk of every `SECURE_TM_LOCK` entry
+in the compiled field map: the map also marks `RMA_CHIPLET_TOKEN_DIGEST` and
+`RMA_SIP_TOKEN_DIGEST`, each carrying a source note that the lifecycle chapter
+does not list them. The five apertures here are the set the chapter names; the
+specification does not state which list is normative.
 
 '''''
 
@@ -4223,6 +4240,136 @@ both lock flavours of one seed-selected spare.
 |CHK-FAULT-RESET
 |A cold-reset re-sense clears `TOKEN_MATCH_FAULT` and releases `sep_internal_interrupts[39]`. The earlier sticky checks cannot tell a resettable latch from one that never clears. After the two zeros the detector is re-armed once, so the phase ends on a zero-to-one transition.
 |===
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+'''''
+
+[[sep_efuse_illegal_state_fail_closed_test]]
+===== `sep_efuse_illegal_state_fail_closed_test`
+
+*Phase*: 2
+
+*Bucket*: eFuse, lifecycle, SEC_DIS, locked-field
+
+*Run mode*: `no_cpu` (`lsu_stub_all_live`), real fuse sense
+
+*Source Module*: `sep_efuse_illegal_state_fail_closed_test`
+
+*BFM / Model*: none; DUT probes and a one-cycle state force
+
+*Objective*: The eFuse read and program interfaces fail closed. Two contracts: from an illegal state encoding an accepted command is withdrawn rather than carried to the fuse bank (shown on the read interface; see the recorded gap for the program interface), and the machine retires reporting an error rather than resuming; and `read_error_o` is set by a failed or timed-out read and cleared by the next legal request. The word is `cleared by`, not `cleared only by`: the leaf shows the flag is still set once the timeout budget and the enable have been dropped, so the clear is attributable to the request, but it does not enumerate everything that cannot clear it. An interface that resumed from a corrupted state, or that carried a stale error into the next read, could return or mislabel fuse data it never legitimately fetched.
+
+*Test Coverage*: Both FSMs, both illegal encodings: retirement on both, and request suppression on the read interface only. Plus the read error lifecycle across success, timeout, re-request and guard refusal.
+
+*Test Procedure*:
+
+[arabic]
+. Sense an `LC_PROD` image and wait for fuse sense to complete.
+. Positive controls: a frontdoor OTP read and a frontdoor OTP program must each present a command to the fuse bank, on the same signals the refusal checks grade. Fuse sense does not drive either interface, so it is not a control for them.
+. Measure the read interface's in-flight window: start a real read and count the cycles its bank request stays asserted. The injection below is only evidence if a machine left alone would have kept the request high across the same edge.
+. For each of `2'b00` and `2'b11`, and for each of the read and program machines: force the state register for one cycle. The read injection lands while a real read is in flight with its bank request asserted, so the request must drop because of the injection. The program injection lands in an idle window, and therefore claims NOTHING about request suppression -- see the observation below. It grades the program interface's retirement only.
+. While the injected encoding is held, require the read interface's in-flight command to be withdrawn.
+. Release, and on the next edge require no command issued, `error_o` and `done_o` set, `busy_o` clear, and the read-back data not equal to the sensed control-word value, on both interfaces. The state register value is logged, not asserted.
+. Repeat the live-read control after all injections, so a machine left wedged by the recovery is caught.
+. Read error lifecycle, on the same interface. A completed read reports done with no error. A read given a four-cycle timeout budget -- too short for the SHIM to answer inside -- retires with the error set. A fresh legal request then clears it. Finally, with the `TEST_EN` strap latched and the image re-sensed, a read refused by the guard retires with the error set and zero data.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-READ-ALIVE
+|A frontdoor OTP read drives the read machine out of idle, before and after the injections. Fuse sense does not use this machine, so only a real `EFUSE_READ_CTRL` read is a control.
+|CHK-PROGRAM-ALIVE
+|A frontdoor OTP program presents a command on the program interface, before and after the injections. Every `SPARE7` bit used as program stimulus is already set in the golden image. The interface issues its bank command either way -- that is the only thing these legs grade -- and the array cannot change, so an aborted operation cannot leave the OTP image disagreeing with the golden the end-of-test resense compares against. Both controls are load-bearing: every suppression check below holds on an interface that never issues a command.
+|CHK-READ-HELD
+|Control for CHK-READ-SUPPRESS. A real read holds its bank request asserted for the whole bank latency, measured on unforced outputs and required to be more than one cycle. Without it, "no command" could hold because the request had fallen on its own across the injection edge, which is true on any RTL.
+|CHK-READ-SUPPRESS
+|The read interface presents no command to the fuse bank while `read_state_q` holds an illegal encoding. The encoding is injected while a real read is IN FLIGHT with its request asserted, so the request drops as a consequence of the injection: a design that carried an accepted command through a corrupted state fails here. Graded on that interface's own request, because the two interfaces drive separate requests.
+|CHK-READ-FAILCLOSED
+|One edge after the illegal encoding the read interface issues no bank command, reports done and not busy with the error set, and does not return the sensed control-word value. The state register's value is logged, not asserted, for the reason given below.
+|CHK-PROGRAM-FAILCLOSED
+|One edge after the illegal encoding the program interface issues no bank command, reports done and not busy with the error set, and does not return the sensed control-word value -- the same retirement the read leg grades. The state register's value is logged, not asserted: no document states its encodings, so an expected value taken from the enum would only show the design agreeing with itself.
+|CHK-READ-ERR-CLEAR-SUCCESS
+|A read that completes normally reports done, not busy, and no error.
+|CHK-READ-ERR-TIMEOUT
+|A read that outlives its configured timeout budget retires with done set, busy clear and the error set, rather than hanging or reporting success.
+|CHK-READ-ERR-CLEAR-REQUEST
+|A fresh legal request clears the error left by the timed-out read. Two controls make the attribution real: the preceding check establishes an error was actually set, and the flag is re-read after the timeout budget and the enable are dropped and required to be STILL set, because either of those writes could otherwise be the thing that cleared it.
+|CHK-READ-ERR-BLOCKED
+|A read refused by the guard while `secure_tm` is latched retires with the error set and returns zero, never fuse content.
+|===
+
+The waits in the error legs observe `read_done_o` on the interface rather than
+polling the `EFUSE_READ_CTRL` status field. The legs grade interface outputs, so
+the wait has to watch the same signals; a status poll would let a read that
+never retired look like one that did.
+
+Both illegal encodings are walked rather than one. `2'b00` and `2'b11` fail the legal-set test for different reasons, and a decoder written as a comparison against a single value would recover from that value only.
+
+*Gap, recorded not waived*: request suppression is NOT verified on the program
+interface. Showing it needs the illegal encoding injected while a program is in
+flight, and aborting a program the SHIM has already accepted parks the SHIM
+write FSM in its APB wait state until the next fuse resense, so every later leg
+would resense across a stalled transaction. The cause is in
+`efuse_interface_shim` alone: its read path copies the bank address into a
+register at acceptance and drives APB from that copy, and its write path instead
+tracks the live request for the whole transfer. That is why aborting a read is
+harmless. Both interfaces behave the same, so there is nothing here for the
+controller, and `efuse_interface_shim` is an example shim, so the behaviour is
+not pursued. Injecting into an idle program interface was considered and
+rejected: the graded request is already low, so the check would pass with the
+RTL's suppression term deleted. An unverifiable property is left unclaimed
+rather than covered by a check that cannot fail.
+
+*Scope limit*: the illegal encoding is reached by forcing the state register, which no frontdoor stimulus can do -- that unreachability is the property the design relies on, so the behaviour asserted for it cannot otherwise be provoked. The force targets the state register only, for one cycle, and never the error, data, busy or request outputs the checkers read; the recovery those checkers observe is the design's own.
+
+*Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
+
+*Evidence*: Verilator `20260911_121524` seed 1. Named `CHK-* PASS` for both alive controls, the read hold window, both illegal encodings on read suppress and fail-closed, program fail-closed, and the four read-error lifecycle legs. Recovery data is not the sensed SPARE0 control word.
+
+'''''
+
+[[sep_efuse_digest_latch_fault_test]]
+===== `sep_efuse_digest_latch_fault_test`
+
+*Phase*: 2
+
+*Bucket*: eFuse, lifecycle, SEC_DIS, locked-field
+
+*Run mode*: `no_cpu` (`lsu_stub_all_live`), real fuse sense
+
+*Source Module*: `sep_efuse_digest_latch_fault_test`
+
+*BFM / Model*: ocah_axi_vip; `SepRmaTokenMatchSeq` drives the frontdoor token compare
+
+*Objective*: The RMA-SIP token digest latch captures a frontdoor hash, holds it while idle, and stops capturing while the DFT test-enable is asserted -- so a scan-visible sticky register cannot be loaded with a real token digest during test.
+
+*Test Coverage*: Digest latch capture, idle hold, and the test-enable freeze on both the digest and its valid bit.
+
+*Test Procedure*:
+
+[arabic]
+. Sense a `LC_PROD` image carrying the seeded RMA_SIP token.
+. Present the correct token over the frontdoor. Watch `digest_latch_en_pre` and `vld_latch_en_pre` -- the pre-gate antecedents -- and require both to activate, then record the sticky digest and its valid bit.
+. Hold for two idle cycles: both post-gate latch enables stay low and neither sticky field moves.
+. Assert the DFT test-enable through the `token_digest_test_en_inject_i` hook and present a *mutated* token, so a capture would land a different digest than the one recorded.
+. Throughout that presentation require the pre-gate antecedents to fire while both post-gate enables stay low and both sticky fields keep their recorded values.
+. Release the test-enable.
+
+*Checkers*:
+
+[cols="2,5",options="header"]
+|===
+|Checker |Contract
+|CHK-DIGEST-LATCH
+|A frontdoor hash captures into the sticky digest and its valid bit; two idle cycles leave both unchanged; and while the DFT test-enable is asserted the two `prim_and2` gates hold `digest_latch_en` and `vld_latch_en` low, so a second frontdoor operation -- proven to have run by the pre-gate antecedents -- neither latches its own digest nor clears the valid bit.
+|===
+
+The freeze leg is falsifiable in both fields, which is what makes it evidence rather than a quiet pass. Without the valid gate, `start_i` clears the sticky valid bit at the start of the second operation; without the digest gate, the mutated token latches a digest that differs from the recorded one. The pre-gate antecedents are the positive control: they show the operation genuinely ran, so the frozen outputs are not frozen because nothing happened.
+
+*Scope limit*: the test-enable is asserted through a testbench force on `u_sha256_rma_sip_token.test_en_i`, which is DFT stimulus with no frontdoor path and is tied low at the SEP boundary. The force targets the enable only -- never the latch enables or the sticky outputs the checker reads.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
@@ -4371,7 +4518,7 @@ selector and both low-mode falls.
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
 *Not claimed*: the shared TRNG reset path. It clears the selector and the
-watermark together; no vehicle asserts that pair today.
+watermark together; no vehicle asserts that pair.
 
 '''''
 
@@ -4450,7 +4597,7 @@ watermark together; no vehicle asserts that pair today.
 
 [arabic]
 . Take the register inventory and the exclusion reasons from `sep_reg_bit_bash_seq`: `write_reason() is None` for the no-side-effect blocks, plus `touch_reason() is None` restricted to `TOUCH_BLOCKS` for plain RW storage inside the other major IPs. A second list would let two sweeps disagree about which registers are safe to write.
-. Drop the blocks where the access itself would decide the result. `WDT_TIMER` is the one today: aon_timer runs on a clock 1000 times slower than the system clock, so the AXI timeout spans about ten of its edges and whether a round trip fits depends on the phase the access arrives on. A probe there measures CDC latency against the timeout rather than channel delivery. `sep_reg_bit_bash_rand_test` covers that block's storage.
+. Drop the blocks where the access itself would decide the result. `WDT_TIMER` is that block: aon_timer runs on a clock 1000 times slower than the system clock, so the AXI timeout spans about ten of its edges and whether a round trip fits depends on the phase the access arrives on. A probe there measures CDC latency against the timeout rather than channel delivery. `sep_reg_bit_bash_rand_test` covers that block's storage.
 . Prime the register with the complement under its write mask at default timing, and read it back, so a write that never lands reads as the prime rather than looking plausible.
 . Apply the cell's timing profile through the VIP master (`AxiTimingProfile`, `ocah_axi_master_config`) to hold AW or W back, write the staged value, and read it back at default timing so the compare tests the write and not the read.
 . Read a second register in the same block, write it back with one software-usable bit flipped at default timing, read it again, then re-read the swept register. Deriving the value from the current contents keeps a write that never arrived from reading back correct.
@@ -4585,7 +4732,7 @@ watermark together; no vehicle asserts that pair today.
 
 *Randomization*: none. The three orderings are fixed and all three run on every seed; the contract is a cycle alignment, not a data pattern.
 
-*Objective*: AW, W and AR are independent AXI channels (IHI 0022 A3.3), and a master may not deassert a VALID before its handshake completes (A3.2.1). `drbg_axil64_lane_adapter` computes, in `StIdle`, `aw_ready` and `w_ready` gated on `!ar_valid` and `ar_ready` gated on `!aw_valid && !w_valid`. A presentation that puts AR alongside a write therefore leaves every ready low with no channel able to go first and neither side able to withdraw, so the port is held until reset. This leaf presents all three legal orderings at the port and requires both accesses to retire under each.
+*Objective*: AW, W and AR are independent AXI channels (IHI 0022 A3.3). In idle the adapter accepts each write half independently until that half is pending, and accepts a read only when neither write half is pending. This leaf presents all three legal orderings at the port and requires both accesses to retire under each.
 
 *Test Coverage*: All three legal AW/W/AR orderings at the TB-owned adapter port.
 
@@ -4614,14 +4761,12 @@ watermark together; no vehicle asserts that pair today.
 |The ordering the port actually presented, read off `tbadp_chan_o` rather than taken from the offsets requested. A cell whose presentation does not match is a stimulus failure and is reported as one, never scored as coverage -- a cell that did not overlap says nothing about the arbitration in either direction.
 
 |CHK-PORT-PROGRESS
-|Both accesses retire: BVALID and RVALID are both seen within a bounded cycle count. The stall this bounds is a stable, legal `1'b0` on all three readys, which no X-check and no protocol assertion can see, so the check also records the longest run of held-valids-with-every-ready-low, which is the stall signature itself.
+|Both accesses retire: BVALID and RVALID are both seen within a bounded cycle count. The bound also records the longest run of held-valids-with-every-ready-low, so a hang that `ASSERT_KNOWN` would miss (a stable `1'b0` is not X) still fails the leaf.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Parked on an RTL fix*: `CHK-PORT-PROGRESS` fails on all three orderings while `CHK-PORT-CONTROL` passes. The lone write retires with `aw`/`w` handshaking on the first cycle and BVALID at cycle 3 carrying OKAY; the lone read retires with RVALID at cycle 3, also OKAY; the gapped write handshakes AW at cycle 0 and W at cycle 4 and retires with BVALID at cycle 7, OKAY; all three show zero stalled cycles. The response code is part of the control, not decoration: an access the adapter rejects as unsupported is answered SLVERR straight out of `StIdle` with nothing forwarded, and retires just as promptly, so a control that watched only the valid would accept a dead forwarding leg. The cycle count matters for the same reason -- a forwarded write cannot answer before the downstream leg has taken it. The three overlap cells then hold the port with every ready low for the whole bound -- the same-cycle cell with no handshake at all, the AW-first cell after AW alone has handshaked, and the W-first cell after W alone has handshaked. Those last two are the partially-committed states the arbitration analysis predicts. Reported to the open issue that raised concurrent AW/W/AR arbitration on this adapter. Recorded as a real failure and deliberately not converted to an expected failure.
-
-*Not claimed*: the SEP integration. That a fabric master can drive this adapter into the stall is proven separately, and only for the one ordering the fabric can present.
+*Not claimed*: the SEP integration. That a fabric master can present the one ordering the fabric can produce is proven separately.
 
 '''''
 
@@ -4640,7 +4785,7 @@ watermark together; no vehicle asserts that pair today.
 
 *Randomization*: RANDCFG -- the seed varies the staged register value only. The channel placement is measured per build, not drawn, so a seed replays the cell without pinning it to a latency the fabric may have changed.
 
-*Objective*: The same arbitration contract as <<sep_drbg_axil_adapter_port_arbitration_test>>, but on the DUT's own CSRNG lane adapter and reached the way software reaches it. The two lane adapters sit on the CSRNG and EDN control buses (`drbg.sv` `u_csrng_axil_adapter` / `u_edn_axil_adapter`, fed from `sep_crypto.sv` `csrng_axil` / `edn_axil`), which is the path every SEP-level CSRNG and EDN register access already takes, so the stall is reachable by ordinary CSR traffic rather than by a corner the fabric cannot present. The cell writes the block's `INTR_ENABLE` and reads its `INTR_STATE` concurrently, so both accesses are behind the same adapter.
+*Objective*: The same arbitration contract as <<sep_drbg_axil_adapter_port_arbitration_test>>, but on the DUT's own CSRNG lane adapter and reached the way software reaches it. The two lane adapters sit on the CSRNG and EDN control buses (`drbg.sv` `u_csrng_axil_adapter` / `u_edn_axil_adapter`, fed from `sep_crypto.sv` `csrng_axil` / `edn_axil`), which is the path every SEP-level CSRNG and EDN register access already takes. The cell writes the block's `INTR_ENABLE` and reads its `INTR_STATE` concurrently, so both accesses are behind the same adapter.
 
 *Test Coverage*: One AW-then-AR overlap at the DUT CSRNG lane adapter.
 
@@ -4660,20 +4805,18 @@ watermark together; no vehicle asserts that pair today.
 |Checker |Contract
 
 |CHK-CONCURRENT-CAL
-|The register's writable width is measured, not assumed: all-ones is written and read back, and the seed's pattern is narrowed to the bits that stick. The two blocks implement different interrupt counts, so a hardcoded width is wrong for one of them and a non-existent bit reads back 0 -- indistinguishable from a dropped write. A lone write and a lone read, neither of which can deadlock, then measure when AW, W and AR arrive at the adapter port through the crossbar. The overlap is then placed from those measured latencies: on broken RTL the first overlap is terminal, so the placement cannot be retried and must not be guessed, and a placement the measured latency cannot reach is reported unreachable rather than fired blind. The same measurement records the AW-to-W gap at the master and at the port and states which side introduced it -- master 0 cycles, port 1 cycle, so the stagger is the fabric's. That is also the evidence that plain untimed traffic already puts AW and AR in the same cycle whenever a store and a load are in flight together.
+|The register's writable width is measured, not assumed: all-ones is written and read back, and the seed's pattern is narrowed to the bits that stick. The two blocks implement different interrupt counts, so a hardcoded width is wrong for one of them and a non-existent bit reads back 0 -- indistinguishable from a dropped write. A lone write and a lone read then measure when AW, W and AR arrive at the adapter port through the crossbar. The overlap is placed from those measured latencies: a placement the measured latency cannot reach is reported unreachable rather than fired blind. The same measurement records the AW-to-W gap at the master and at the port and states which side introduced it -- master 0 cycles, port 1 cycle, so the stagger is the fabric's. Plain untimed traffic already puts AW and AR in the same cycle whenever a store and a load are in flight together.
 
 |CHK-CONCURRENT-STIM
 |The ordering the ADAPTER PORT presented, read off `drbg_csrng_axil_chan_o`, not the ordering requested and not the presentation at `s_axi`. The crossbar restaggers the channels, so a presentation at the TB master is not evidence of one at the arbitration point. The leaf is covered only when that presentation is the named ordering. A different overlap, or a cell that missed its overlap, is reported unreachable and does not count as this leaf.
 
 |CHK-CONCURRENT-LAND
-|Both accesses retire and the write lands. The stall is a stable legal `1'b0` on all three readys, so the check is a bounded timeout plus a data compare against a complement prime; the prime makes a dropped write read back as the prime rather than as a plausible value. The check also records the longest run of held-valids-with-every-ready-low.
+|Both accesses retire and the write lands. The check is a bounded timeout plus a data compare against a complement prime; the prime makes a dropped write read back as the prime rather than as a plausible value. The check also records the longest run of held-valids-with-every-ready-low, so a hang that `ASSERT_KNOWN` would miss still fails the leaf.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Parked on an RTL fix*: `CHK-CONCURRENT-LAND` fails. With AW presented and AR arriving while W is still outstanding, the CSRNG lane adapter port holds its valids for the whole bound with `aw_ready`, `w_ready` and `ar_ready` all low and no channel ever handshaking. The stall is permanent: nothing in the adapter can clear it, since neither side may withdraw a VALID and no ready ever rises. That a following access to the same lane also fails to retire was observed while developing the vehicle and is not re-asserted by this leaf, whose cell ends at the wedge. Reported to the open issue that raised this. Recorded as a real failure and deliberately not converted to an expected failure.
-
-*Not claimed*: the other two orderings in that analysis. A true same-cycle AW+W+AR presentation and a W-before-AW presentation are not reachable at a DUT adapter port from a SEP master, for the reason `CHK-CONCURRENT-CAL` measures. They are graded on <<sep_drbg_axil_adapter_port_arbitration_test>> instead, at the module's port. `CHK-CONCURRENT-CAL` logs the measured arrivals, so a fabric change that closes the stagger would make them placeable here and visible.
+*Not claimed*: the other two orderings. A true same-cycle AW+W+AR presentation and a W-before-AW presentation are not reachable at a DUT adapter port from a SEP master, for the reason `CHK-CONCURRENT-CAL` measures. They are graded on <<sep_drbg_axil_adapter_port_arbitration_test>> instead, at the module's port. `CHK-CONCURRENT-CAL` logs the measured arrivals, so a fabric change that closes the stagger would make them placeable here and visible.
 
 '''''
 
@@ -4720,8 +4863,6 @@ watermark together; no vehicle asserts that pair today.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
-
-*Parked on an RTL fix*: `CHK-CONCURRENT-LAND` fails identically -- the EDN lane adapter port holds its valids to the bound with all three readys low. That both instances fail the same way, and that the TB-instantiated third instance does too, is what shows the defect is in the module rather than in one integration.
 
 
 [[sep_axi_partial_lane_read_test]]
@@ -4788,17 +4929,17 @@ watermark together; no vehicle asserts that pair today.
 
 *BFM / Model*: ocah_axi_vip
 
-*Randomization*: RANDCFG — every directed anchor that falls outside all crossbar routes runs on every seed, plus seed-selected addresses from the reserved rows. Anchors and rows the crossbar routes are skipped with a counted reason, and a row that could not yield its full quota is reported in the per-row shortfall line.
+*Randomization*: RANDCFG — every directed anchor that is not on the unnamed-refuse exclude list runs on every seed, plus seed-selected addresses from the reserved rows. Excluded spans are skipped with a counted reason, and a row that could not yield its full quota is reported in the per-row shortfall line.
 
-*Objective*: Rows marked `_RSV_` in `hw/sys/sep/doc/memory_map.adoc` allocate nothing, so an access there must not answer OKAY. The refusal expectation is taken from the map, never from the RTL — asking the decoder what the decoder should do would pass on any decoder. `env/sep_axi_decode_map.py` parses the crossbar `AddrMap` for two distinct purposes: it reports every span the fabric routes that the map calls reserved, and it filters those spans out of the probe set. The filter is deliberate. Whether the fabric must refuse a routed-but-reserved span is an open specification question, and the scoreboard has no outcome-unknown mode, so driving one would assert the open question by the back door. The asserted contract therefore covers the reserved addresses no decode rule reaches; the rest are enumerated and logged. Scope is the gaps BETWEEN block windows; `sep_fabric_deadspace_decode_test` walks the dead tail INSIDE one, and neither subsumes the other.
+*Objective*: Rows marked reserved in the DV-owned table in `env/sep_axi_decode_map.py` allocate nothing, so an access there must not answer OKAY. The refusal expectation is taken from that table. Named reserved spans whose refuse flavour is unnamed are excluded from the probe set. Scope is the gaps BETWEEN block windows; `sep_fabric_deadspace_decode_test` walks the dead tail INSIDE one, and neither subsumes the other.
 
 *Test Coverage*: Unmapped / refuse addresses complete with the specified error response.
 
 *Test Procedure*:
 
 [arabic]
-. Parse the allocation table in `hw/sys/sep/doc/memory_map.adoc`; a row marked `_RSV_`, and any address in no row at all, allocates nothing.
-. Parse the crossbar `AddrMap` and report every span the fabric routes that the map calls reserved. Two rules state their bounds as `och_sep_top_addrmap_pkg` symbols rather than hex literals and are resolved against the generated package, so no rule falls out of the cross-check silently.
+. Classify from the DV-owned table in `env/sep_axi_decode_map.py`; a reserved row, and any address in no row at all, allocates nothing.
+. Drop the named unnamed-refuse spans from the probe set.
 . Read and write the surviving anchors and the seed-selected reserved addresses, and report the per-row shortfall where a row yielded fewer probes than its quota.
 
 *Checkers*:
@@ -4807,7 +4948,7 @@ watermark together; no vehicle asserts that pair today.
 |===
 |Checker |Contract
 |CHK-MAP-REFUSE
-|Every probed address is refused. The map does not mandate which flavour, so DECERR and SLVERR both satisfy it and the line reports the split. The probe set is the map-reserved addresses that no crossbar decode rule covers; addresses the crossbar routes are excluded before the walk with a counted reason and are not asserted on. Spans the crossbar routes that the map calls reserved are enumerated statically and logged as MAP-AUDIT, so the disagreement between the map and the RTL is visible without either side being asserted.
+|Every probed address is refused. The map does not mandate which flavour, so DECERR and SLVERR both satisfy it and the line reports the split. The probe set is the map-reserved addresses this test asserts; unnamed-refuse spans are excluded before the walk with a counted reason.
 |CHK-NONVAC
 |The DECERR beats the monitor observed on the bus equal the count the master reported, so the refusals are evidence from the pins and not only from the driver.
 |CHK-OKAY
@@ -4835,7 +4976,7 @@ watermark together; no vehicle asserts that pair today.
 
 *Randomization*: RANDCFG — the twelve directed wrap offsets on every seed, plus two seed-selected dead offsets per block window.
 
-*Objective*: Negative control on intra-block dead space. Each block owns an address window and populates only part of it; an access past the allocated size owns no register and must be refused. Window ends come from `hw/sys/sep/doc/memory_map.adoc`, which states the rule: within an aperture only the unit's register extent responds and the remainder returns DECERR. Landing on a live register instead is a hard failure. A later beat of a burst that ends past the window's extent must be refused on the same terms as a single beat.
+*Objective*: Negative control on intra-block dead space. Each block owns an address window and populates only part of it; an access past the allocated size owns no register and must be refused. Window ends come from `hw/sys/sep/doc/memory_map.adoc`, which states the rule: the fabric refuses an address past the extent a unit allocates, and such an access never reaches a unit. Landing on a live register instead is a hard failure. A later beat of a burst that ends past the window's extent must be refused on the same terms as a single beat.
 
 *Test Coverage*: Dead-space decode refuses with zero data.
 
@@ -4844,7 +4985,7 @@ watermark together; no vehicle asserts that pair today.
 [arabic]
 . Each block owns an address window and populates only part of it.
 . An access past the allocated size owns no register and must be refused.
-. Window ends come from `hw/sys/sep/doc/memory_map.adoc`, which states the rule: within an aperture only the unit's register extent responds, the remainder returns DECERR, and an access there never reaches the unit.
+. Window ends come from `hw/sys/sep/doc/memory_map.adoc`, which states the rule: the fabric refuses an address past the extent a unit allocates, and such an access never reaches a unit.
 . A refusal that still writes the register is a failure, so every probe reads back the window's live registers as well as the response.
 . A later beat of a burst that ends past the extent is held to the same rule as a single beat.
 
@@ -4858,7 +4999,7 @@ watermark together; no vehicle asserts that pair today.
 |CHK-DEADSPACE-REFUSE
 |Every probed address past the allocated size is refused (not OKAY), including the directed wrap anchors (KM `0x10920ff8`, DMA `0x108008a8`). A single accepted probe fails the checker; there is no tolerated count.
 |CHK-DEADSPACE-NO-ALIAS
-|No allocated register in that window changes across a probe, the directed wrap anchors included, and a read of a dead offset never returns a live register's value. The alias compare is not gated on the response: `memory_map.adoc` says an access to the reserved remainder never reaches the unit, so a refused read that still hands back live data has reached it. A single aliased probe fails the checker.
+|No allocated register in that window changes across a probe, the directed wrap anchors included, and a read of a dead offset never returns a live register's value. The alias compare is not gated on the response: `memory_map.adoc` says an access past a unit's extent never reaches a unit, so a refused read that still hands back live data has reached it. Inside the extent the same passage grounds non-aliasing in exact-match register decode rather than in refusal, so an accepted read that returns a live value is the failure there. A single aliased probe fails the checker.
 |CHK-DEADSPACE-BURST
 |A burst that ends past the window's allocated extent and answers OKAY, where the same address is refused as a single beat, fails. A beat inside the extent is also compared against the value the single-beat path reads. A burst that times out fails the audit rather than passing. A window whose dead space is 4KB-aligned, or that has no live words before it, carries no legal burst into it: it is named as not auditable rather than counted as a pass, and a run where no window was auditable fails.
 |CHK-DEADSPACE-BEAT
@@ -4882,18 +5023,18 @@ watermark together; no vehicle asserts that pair today.
 
 *BFM / Model*: ocah_axi_vip
 
-*Objective*: Proves the eFuse shadow-register write path OR-merges new data with the stored value, so a bit that is already set cannot be cleared by a write of zero, while a genuinely writable field still overwrites. Randomization is RANDCFG — every legal set-only field is walked every seed, word index and bit patterns come from the run seed, and the OR-merge contract itself is directed.
+*Objective*: Proves the eFuse shadow-register write path on every `periphs.adoc` fuse-field row except `LC_STATE`: set-only rows OR-merge so a bit that is already set cannot be cleared by a write of zero, and SW-writable rows overwrite. Randomization is RANDCFG — every walked row is visited every seed, word index and bit patterns come from the run seed, and the write-policy contract itself is directed.
 
-*Test Coverage*: eFuse set-only fields never clear a burned bit.
+*Test Coverage*: Every walked fuse-field row follows its specification write policy. The lifecycle nibble stays with the LC W1S leaves.
 
 *Test Procedure*:
 
 [arabic]
-. Scope is the shadow-register write path that OR-merges new data with the stored value.
-. The walked fields are metal `WRITE_SET_ONLY` in `sep_efuse_pkg::EfuseFieldMap`: `BL1_VERSION`, `BL2_VERSION`, `CHIPLET_PUBK_REVOKE`, `REQUIRED_SIGNERS`, `REQUIRED_ALGS`.
-. That is the field map, not the `hw/sys/sep/doc/periphs.adoc` SW-writable column (`REQUIRED_SIGNERS` is `true` there; firmware may update the shadow per manifest).
-. A write of zero cannot clear a set bit.
-. Program × lock is a different mechanism; never program `LC_STATE`.
+. Scope is the shadow-register write path.
+. Every `hw/sys/sep/doc/periphs.adoc` fuse-field row except `LC_STATE` is walked. Set-only rows OR-merge. SW-writable `true` rows overwrite, then a write of 0 clears.
+. `LOCK` is both RDL windows: `LOCKS` word 0, `LOCKS` word 1, and `LOCKS_SPARE`. Assigned lock slots stay 0 at sense and are written after every other row so they do not write-lock a field this invocation still writes. `LOCKS_SPARE` stages ones only in the unassigned half; the assigned half is set from zero in that same late cell.
+. `SIP_DIS` and `SYS_DIS` stay on their function-group word.
+. Program × lock is a different mechanism.
 
 *Checkers*:
 
@@ -4901,17 +5042,17 @@ watermark together; no vehicle asserts that pair today.
 |===
 |Checker |Contract
 |CHK-SENSE
-|A known 1 is sensed into each legal set-only word.
+|The staged value is read back. Staged set-only words carry a known 1. Assigned `LOCKS` words sense 0.
 |CHK-CLEAR-REJECT
-|A frontdoor write of 0 leaves that bit 1.
+|A frontdoor write of 0 leaves a sensed 1. Assigned `LOCKS` words start at 0, so this cell is not claimed there; `LOCKS_SPARE` claims it on the unassigned half.
 |CHK-SET-STICKS
-|A write that sets a previously-0 bit sticks; readback is the OR.
+|A write that sets a previously-0 bit sticks; readback is the OR. Both `LOCKS` words and the assigned `LOCKS_SPARE` half take this cell from zero.
 |CHK-OR-MERGE
 |A later write of 0 cannot clear the OR.
 |CHK-WRITABLE-CONTRAST
-|A WRITE_UNLOCK spare still overwrites, so the OR is field-local.
+|Every SW-writable row overwrites, then a write of 0 clears, so the OR is field-local.
 |CHK-RANDCFG
-|Seven set-only fields walked in one invocation, including `SIP_DIS` and `SYS_DIS` -- the Class-1 members, whose shadow OR-merge takes the `class1_shadow_storage_idx` arm of `efuse_shadow_regs.sv` that the non-Class-1 fields never reach. Both are pinned to their function-group word so the walk does not OR `sep_debug`, `chiplet_dbg` or `sip_debug` into `FEAT_CTRL`. This test drives the CPU-LSU master, which has no inbound filter.
+|Forty-one fuse-field rows walked in one invocation: six early set-only cells (`SIP_DIS`, `SYS_DIS`, `CHIPLET_PUBK_REVOKE`, `BL1_VERSION`, `BL2_VERSION`, `REQUIRED_ALGS`), three late `LOCK` cells (`LOCKS` word 0, `LOCKS` word 1, `LOCKS_SPARE`), and the 34 SW-writable rows. `LOCK` is counted only when both RDL windows are written. `LC_STATE` is not this leaf. `SIP_DIS` and `SYS_DIS` stay on their function-group word so the walk does not OR `sep_debug`, `chiplet_dbg` or `sip_debug` into `FEAT_CTRL`. This test drives the CPU-LSU master, which has no inbound filter.
 |===
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
@@ -4933,7 +5074,7 @@ watermark together; no vehicle asserts that pair today.
 
 *Randomization*: RANDCFG — every certified-configuration class every seed; pre-lock value and rejected poke come from the run seed.
 
-*Objective*: The FIPS lock makes ESRC configuration write-once: a pre-lock write moves the field off reset, the same field rejects a poke after `LOCK=1`, write-0 cannot clear the lock, and `rst_ni` is the only way back, with the BIW observe enable still writable under the lock. The advisory RCT/APT cutoffs derived from `MIN_ENTROPY_H` are graded against an SP 800-90B oracle. Scope: health-test *quality* stays Phase 3.
+*Objective*: The FIPS lock makes ESRC configuration write-once: a pre-lock write moves the field off reset, the same field rejects a poke after `LOCK=1`, write-0 cannot clear the lock, and `rst_ni` is the only way back, with the BIW observe enable still writable under the lock. The advisory RCT/APT cutoffs derived from `MIN_ENTROPY_H` are graded against an SP 800-90B oracle. Scope: health-test *quality* is not claimed.
 
 *Test Coverage*: FIPS lock and the matching entropy-source status.
 
@@ -4941,7 +5082,7 @@ watermark together; no vehicle asserts that pair today.
 
 [arabic]
 . One of two vehicles on the ESRC lock-and-alert scorecard row.
-. Health-test *quality* stays Phase 3.
+. Health-test *quality* is not claimed.
 . `FIPS_LOCK.LOCK` is write-1-only.
 . Observe FIFOs stay writable under lock.
 . Walks every field `entropy_source.sv` marks `swwel = fips_lock`, one target
@@ -5024,7 +5165,7 @@ and the alert bookkeeping the RDL defines is read at that trip. An opening
 . From the clean pre-trip state, pulse each `INTR_TEST` source on its own.
 . A short window plus stuck forced noise trips `ALERT_THRESHOLD`.
 . Read the alert counters and the health-test latch at the trip.
-. Health-test *quality* stays Phase 3.
+. Health-test *quality* is not claimed.
 
 *Checkers*:
 
@@ -5073,8 +5214,7 @@ repetition [0], APT [3], Markov high [4] and Markov low [5], leaving [1:2] and
 [6:7] reserved.
 |CHK-GEN-HEALTH
 |All twelve `GENERATOR_n_HEALTH_STATUS` registers are read at the trip. At least
-one latches a failing lane, and none latches a reserved bit. These twelve
-registers had no DV coverage before.
+one latches a failing lane, and none latches a reserved bit.
 |CHK-W1C
 |After leaving AlertHang, W1C clears both bits and the PIC line.
 |===
@@ -5086,8 +5226,8 @@ counter-redundancy countermeasure: `prim_count` holds each count twice, up and
 down, and reports an error only when `cnt_q[0] + cnt_q[1]` stops equalling the
 counter maximum. No stimulus can break that invariant — both copies take the same
 enable and the same step — so the path is reachable by a physical fault and by
-nothing else. Proving it therefore requires fault injection, which is Phase 3 —
-see the holding note in <<phase-3>>.
+nothing else. Proving it therefore requires fault injection, which no vehicle
+in `all` performs — see <<phase-3>>.
 CHK-SM-ERR-ZERO proves the bit is 0 on the alert path, which is what makes
 PERSISTENT_FAILURE attributable to the threshold trip; it does not claim the
 error path works.
@@ -5109,7 +5249,7 @@ error path works.
 
 *Randomization*: RAND-NONE — directed match / mismatch / restore.
 
-*Objective*: A match is reachable because `tb_top` binds `SEP_SEC_DISABLE_TOKEN` to SHA-256 of the all-zero token. A match before sense-done must not release the sense-gated reset (`hw/ip/efuse/rtl/efuse_interface_controller.sv`, issue 1462).
+*Objective*: A match is reachable because `tb_top` binds `SEP_SEC_DISABLE_TOKEN` to SHA-256 of the all-zero token. A match before sense-done must not release the sense-gated reset (`hw/ip/efuse/rtl/efuse_interface_controller.sv`).
 
 *Test Coverage*: Security-disable match, mismatch, restore, and sense-gated reset hold.
 
@@ -5219,7 +5359,6 @@ error path works.
 . The seal walk lives here rather than on the command set because no mailbox command seals a slot: over that surface an erase always frees, so the retire path has no vehicle there.
 . PicoRV32 is RV32E (`x0`–`x15` only).
 . A legal slot in 0..63 takes `CTRL.lock_write`; a store past `KM_KPV_SIZE` (`0x13108`, still inside the 8 KB KPV window) raises AXI SLVERR or DECERR; a write to a write-locked SRAM region (never region 0 or 15) is dropped and raises `SRAM_WRITE_LOCK_VIOLATION` plus `IRQ_STATUS.SRAM_WRITE_LOCK_ERR`, then both W1C-clear to 0.
-. [cols="1,2,2,1",options="header"]
 
 *Checkers*:
 
@@ -5318,8 +5457,8 @@ out-of-policy destination, and the undefined command IDs, which always include
 the four IDs immediately outside the defined runs.
 
 *Scope*: sideload KATs stay consume proofs; this vehicle owns the mailbox command
-set. The plan left open whether the mailbox PROTOCOL folds in here or splits
-out. It splits out: see `sep_km_mailbox_protocol_rand_test`. The seal
+set. The mailbox PROTOCOL is its own entry: see
+`sep_km_mailbox_protocol_rand_test`. The seal
 walk is on `sep_km_key_policy_vault_test`, not here: no mailbox command seals a
 slot, so over this surface an erase always frees.
 
@@ -5474,7 +5613,7 @@ flush) walks in one invocation.
 
 *Pass Criteria*: Every named checker PASSes. UVM_ERROR == 0.
 
-*Accepted scope deltas*: `inbound_underflow`, `outbound_overflow`, and
+*Not claimed*: `inbound_underflow`, `outbound_overflow`, and
 `flushed_by_km` need the KM CPU as the peer. `STATUS.inbound_separator`
 updates only when the KM pops the inbound FIFO, and `STATUS.outbound_separator`
 only when the SEP pops a KM-pushed word, so both stay on the KM IP mailbox
@@ -5660,7 +5799,7 @@ is a required conjunct, so a scrambler that destroys data cannot pass by looking
 scrambled. The plaintext is chosen with mixed nibbles because the substitution
 is nibble-wise and a uniform value would weaken the difference signal.
 
-CHK-ADDR is deliberately "not all of them" rather than "each of them". The
+CHK-ADDR is "not all of them" rather than "each of them". The
 address transform is a bijection on the 1024 indices, and a bijection may have
 fixed points, so a single index mapping to itself is legal; an identity mapping
 across three seeded indices is not.
@@ -5677,19 +5816,6 @@ contracted behaviour.
 contracts owned by the vault test, and the wipe security contract.
 
 '''''
-
-=== Counts
-
-[cols=",",options="header"]
-|===
-|Item |Count
-|Phase 1 tests |32
-|Phase 2 tests |59
-|Cocotb total |91
-|Phase 3 |1 SV-UVM scenario bound (`sep_axi_smoke_test`)
-|Iconic scorecard rows |58 in-scope: 57 PROVEN, 1 GAP (see <<iconic-scorecard>>)
-|Coded and failing |4 (`sep_crypto_per_ip_reset_isolation_test`; `sep_drbg_axil_adapter_port_arbitration_test`; `sep_drbg_axil_concurrent_csrng_aw_then_ar_test`; `sep_drbg_axil_concurrent_edn_aw_then_ar_test`; parked on RTL, not expected-fail; see <<known-limitations>>)
-|===
 
 === Regression Groups
 
@@ -5722,74 +5848,41 @@ constraint is not an open defect.
 |===
 |Topic |Contract
 
-|`drbg_axil64_lane_adapter` concurrent AW/W/AR arbitration (hardware)
-|The adapter arbitrates its write channels against `ar_valid` and its read channel against `aw_valid`/`w_valid`. In `StIdle` it computes `aw_ready = !aw_pending_q && !ar_valid`, `w_ready = !w_pending_q && !ar_valid` and `ar_ready = !aw_pending_q && !w_pending_q && !aw_valid && !w_valid`, so a presentation that puts AR alongside a write leaves every ready low. No channel can go first, no pending bit is set, the state does not advance, and AXI forbids either side deasserting a VALID before its handshake completes (IHI 0022 A3.2.1), so the port is held until reset. Three vehicles reproduce it: the two DUT lane adapters over the SEP fabric (<<sep_drbg_axil_concurrent_csrng_aw_then_ar_test>>, <<sep_drbg_axil_concurrent_edn_aw_then_ar_test>>) and a TB-instantiated third instance driven at its port (<<sep_drbg_axil_adapter_port_arbitration_test>>), which reaches all three legal orderings and passes a lone-write / lone-read control first.
-
-The stall is invisible to the checks the module already carries: the `ASSERT_KNOWN` checks at the bottom of the file confirm the ready signals are not X, and a stalled-but-stable `1'b0` satisfies that. It needs no exotic alignment either -- `CHK-CONCURRENT-CAL` measures plain untimed traffic arriving with AW and AR in the same cycle, so any store and load in flight together can reach it.
-
-Two of the three orderings are not reachable at a DUT adapter port from a SEP
-master, and the cause is the fabric rather than the stimulus. Two independent
-lines of evidence agree.
-
-Structurally, `axi_demux_simple.sv` gates W forwarding on the AW handshake --
-`w_select_valid = w_cnt_up | (|w_open)` at line 312, consumed at line 497 --
-so W can never be forwarded to a downstream port before its own AW has been
-accepted. A W-before-AW presentation therefore cannot exist at the adapter
-port.
-
-The same-cycle AW+W gap is empirical, not a spill-parameter argument.
-`sep_crypto_axi_interconnect` sets both `SpillAw` and `SpillW` to 1, so it
-does not explain a one-cycle stagger. `CHK-CONCURRENT-CAL` measures master
-gap 0 / port gap 1 on both DUT lanes. A write-only sweep of thirteen master
-timing profiles (write-only, so no cell can deadlock) produced port AW-to-W
-gaps of 1, 2, 3, 4, 5, 7 and 9 cycles and never 0. `aw_delay=N` shifts AW
-and W together and leaves the gap at 1, because the profile releases the
-trailing write channel off the leading one rather than placing either
-absolutely; `w_delay=N` only widens the gap. A master-side profile can
-delay a channel, never advance one, so the minimum reachable gap is the
-fabric's own.
-
-Both orderings are graded on the port-driven vehicle instead, which is why that
-vehicle exists rather than being a convenience. All three leaves are red and are deliberately not converted to expected failures. Reported to the open issue that raised the concurrent arbitration question; the RTL fix is owned there, not here.
-
 |Token-comparator collapse inject (`3'b001`)
-|`tb_top` mode `3'b001` forces instance 0 to a collapsed pair and leaves instances 1 and 2 as a legal match. The fault output is the OR of collapse and disagree, so `CHK-COLLAPSE` does not prove the collapse detector exists. Isolating that term needs all three pairs alike and `compute_comparison_vld_i=1`. SEC_DISABLE's valid is the sticky digest valid, not the RMA `digest_vld && fuse_sense_done` term, so an all-alike force with SEC valid still 0 is expected not to raise that rail. The inject stays at `3'b001` until a kept run isolates the term.
+|`tb_top` mode `3'b001` forces instance 0 to a collapsed pair and leaves instances 1 and 2 as a legal match. The fault output is the OR of collapse and disagree, so `CHK-COLLAPSE` does not prove the collapse detector exists. Isolating that term needs all three pairs alike and `compute_comparison_vld_i=1`. SEC_DISABLE's valid is the sticky digest valid, not the RMA `digest_vld && fuse_sense_done` term, so an all-alike force with SEC valid still 0 is expected not to raise that rail.
 
 |Inbound CFG allow-list (firmware constraint)
 |Hardware does not hard-block allow-listing the inbound-filter CFG window, outbound CFG, the remap banks, or `SEP_GLOBAL_BASE_ADDR` / `SEP_REGION_SIZE`, and is correct as built: the filter applies the rules it is given. Firmware must keep those CSRs outside every allow window — allow-listing them is a programming error, not a hardware defect, and nothing is expected to change in the RTL. The suite proves ownership under correct programming (`CHK-OWNERSHIP`).
 
 |Routed-but-reserved spans (specification)
-|`sep_axi_map_refuse_test` drives only reserved addresses the crossbar does not route. An address the crossbar routes but `memory_map.adoc` marks `_RSV_` is counted as a skip and reported by `MAP-AUDIT`, not asserted: whether the fabric must refuse a routed reserved span is an open specification question, and `expect_error` would settle it by the back door. A fabric that answers OKAY there therefore passes this vehicle.
+|`sep_axi_map_refuse_test` drives reserved addresses whose refuse flavour the map names. Named reserved spans whose refuse flavour is unnamed are excluded and are not asserted.
 
 |Dead-space per-beat refusal on writes (AXI)
 |Read bursts are proven per beat: the bus monitor keeps each beat's `RRESP` in order, so `CHK-DEADSPACE-BEAT` can name the beat that answered. Write bursts cannot be, and no tooling will change it — AXI returns one `BRESP` for a whole write burst, so a write burst that refused only its tail is indistinguishable from one that refused every beat. The write contract stays at burst granularity: the burst is refused and no live register moves.
 
 |Mailbox 32-bit read of a 64-bit entry (specification, unproven)
-|`fabric.adoc` says each 64-bit input word is mapped to two 32-bit words the SEP host can access. That is the consume path: a 32-bit host reads the low word and the high word of an incoming message. This aperture cannot fill RX, so pop-per-read and high-half loss are not graded here. RTL pops the whole 64-bit entry on any successful `READ_DATA` access (`mbox_r_pop_o`), so a 4-byte read would consume the message and drop the other half; that consequence has no DUT log. `CHK-SUBWORD-PUSH` is the write-side contract only (a 4-byte `WRITE_DATA` beat is a complete push). Closing the spec claim needs a peer-path vehicle that places a known 64-bit value in RX and issues two 4-byte `READ_DATA` beats: occupancy must drop by one on the first, and the second must not return the high half of the same entry.
+|`fabric.adoc` says each 64-bit input word is mapped to two 32-bit words the SEP host can access. That is the consume path: a 32-bit host reads the low word and the high word of an incoming message. This aperture cannot fill RX, so pop-per-read and high-half loss are not graded here. A 4-byte write-side push is not a documented contract and is not graded. Closing the spec claim needs a peer-path vehicle that places a known 64-bit value in RX and issues two 4-byte `READ_DATA` beats: occupancy must drop by one on the first, and the second must not return the high half of the same entry.
 
 |Mailbox read threshold and data round-trip (testbench reach)
 |`RIRQT` and `STATUS.read_level_above` are the read half of the mailbox threshold pair, and a data round-trip readback needs a value in the receive FIFO. Both require the peer side to write the inbound aperture, which the SEP-host aperture `sep_axil_mailbox_iface_rand_test` drives cannot do; the golden therefore predicts `read_level_above` as constant false. The hardware is not suspected — the gap is testbench reach. Closing it needs the external inbound master at the inbound aperture and belongs in its own peer-path vehicle, not in the TX-path rep.
 
 |Entropy pool pointer fault, PIC source 39 (hardware not built)
-|`sep_internal_interrupts[38]` was given to the entropy pool FIFO's pointer-integrity error so that enabling the check later does not renumber the map. The check is not built in the current configuration, so the source is tied to zero and can never assert, and no vehicle grades it. `interrupts.adoc` documents the same. When it is built it is level-sensitive with no write-one-to-clear, so firmware must mask the source or scrub the pool rather than acknowledge it, and a vehicle will need a pool scrub to clear it.
+|`sep_internal_interrupts[38]` is reserved for the entropy pool FIFO's pointer-integrity error. The check is not built in this configuration, so the source is tied to zero, can never assert, and no vehicle grades it. `interrupts.adoc` documents the same. A built check is level-sensitive with no write-one-to-clear, so firmware must mask the source or scrub the pool rather than acknowledge it.
 
 |Dead-space refusal flavour (specification)
-|`memory_map.adoc` names DECERR for the reserved remainder inside an aperture. `spi_controller` refuses a dead-space write with SLVERR. The access is refused either way, which is the contract `sep_fabric_deadspace_decode_test` asserts, so the flavour is reported as `DEADSPACE-FLAVOUR` for the design owner and is not failed. Which error responses are permitted is the open question.
-
-|Terminating isolate response is SLVERR (hardware)
-|While a crypto or TRNG domain is held in software reset, a new access of an isolated aperture must complete SLVERR, not OKAY, DECERR, or hang. An isolated crypto read must also carry the isolate's own error-data literal, scraped from `axi_lite_isolate` at import. `sep_crypto_per_ip_reset_isolation_test` stays red until the vendored isolate modules emit SLVERR; it is not converted to an expected failure. `sep_trng_reset_recovery_test` remains the passing coordinated-reset vehicle; its isolate-response flavour follows the same vendor change. Key Manager isolate termination and SMC CPU-MMIO isolate are not claimed.
+|`memory_map.adoc` says the fabric refuses an address past the extent a unit allocates, and names no response flavour for it. `spi_controller` refuses a dead-space write with SLVERR. The access is refused either way, which is the contract `sep_fabric_deadspace_decode_test` asserts, so the flavour is reported as `DEADSPACE-FLAVOUR` for the design owner and is not failed. Which error responses are permitted is the open question.
 
 |OSS hygiene exclusions
 |No licensed/proprietary IP in the build. Bender targets stay `sep` / `sep_el2` / `sep_wrapper` only.
 
 |Verilator covergroups
-|SystemVerilog covergroups are not available under Verilator. Feature coverage is the iconic scorecard; RTL code coverage is collected separately and thresholded in Phase 3.
+|SystemVerilog covergroups are not available under Verilator. Feature coverage is the iconic scorecard; VCS Phase 1 bins are in link:SEP_FCOV.adoc[SEP_FCOV]. RTL code coverage is a separate, unthresholded number (`README.md`, Code coverage).
 
 |ROM-FW ownership
 |Boot-ROM firmware contracts are out of this VPLAN (separate owner / `rom_fw` class).
 
-|Signed-off observation probes
-|A small set of TB observation/inject ports is documented with the DV house rules. New backdoors need explicit sign-off.
+|Observation probes
+|The TB observation/inject ports are the closed set enumerated in link:SEP_TB_ARCH.adoc[SEP_TB_ARCH].
 |Behavioural OTP array
 |The array behind the fuse-command interface is a simulation-only behavioural bank, not an OTP macro. Two properties the eFuse programming entries appear to establish are properties of that model rather than of hardware: write-one-to-set additivity is OR-only by construction, so a bank that overwrote instead of OR-ing cannot be represented and no-clobber is not a failable contract; and persistence across cold reset comes from the model having no reset on its storage. What is proven against real logic is that each program reached its addressed bit through the real programming path, and that the sense FSM re-reads the array after reset with the shadow tracking it.
 
@@ -5799,10 +5892,10 @@ vehicle exists rather than being a convenience. All three leaves are red and are
 |What participates depends on the backend. Under Verilator, `prim_assert.sv`, `abr_prim_assert.sv` and `ocah_assert.svh` all gate their macros on `VERILATOR`, so design and vendored-IP SVA expand to nothing, and the SEP Verilator targets pass no `--assert`, so the two-state `ocah_axi_sva` rules are dropped as well. Under VCS those macros are live. The shared native profile also defines `COMMON_CELLS_ASSERTS_OFF`, so the PULP `common_cells` inline assertions are off on every backend. Where a checker proves a property, that checker is the whole of the proof on Verilator; no assertion layer sits underneath it there.
 
 |Entropy-pool interrupt numbering (spec)
-|`hw/sys/sep/doc/crypto.adoc` numbers the two entropy-pool interrupts one lower than the canonical table in `hw/sys/sep/doc/interrupts.adoc`. PIC source IDs are 1-based, so aggregation index 36/37 is PIC source 37/38; firmware following `crypto.adoc` would enable and mask the wrong two sources. No checker asserts this today; do not XFAIL it.
+|`hw/sys/sep/doc/crypto.adoc` numbers the two entropy-pool interrupts one lower than the canonical table in `hw/sys/sep/doc/interrupts.adoc`. PIC source IDs are 1-based, so aggregation index 36/37 is PIC source 37/38; firmware following `crypto.adoc` would enable and mask the wrong two sources. No checker asserts this; do not XFAIL it.
 
 |CPU reset-vector TDR (spec)
-|`hw/sys/sep/doc/cpu.adoc` documents a CPU reset-vector TDR selected by a JTAG opcode. The vendored tap implements no such register — the vector reaches the CPU through a direct wrapper input. The testbench shifts that opcode on every CPU-boot run and the sequence is inert: stimulus that reads as coverage and cannot fail. Remove it or give the claim an owner.
+|`hw/sys/sep/doc/cpu.adoc` documents a CPU reset-vector TDR selected by a JTAG opcode. The vendored tap implements no such register — the vector reaches the CPU through a direct wrapper input. The testbench shifts that opcode on every CPU-boot run and the sequence is inert; it is not evidence of the TDR.
 
 |Scratch bank register count (spec vs RTL)
 |`hw/sys/sep/doc/cpu.adoc` requires "two sets of 16 x 32-bit scratch register banks". `hw/sys/sep/regs/blocks/sep_scratch/sep_scratch.rdl` declares `SCRATCH[8]`, so each bank implements eight registers, not sixteen. The reset-domain behaviour of the banks that exist is proven; the count is not, and no test asserts it. This row is the record of the difference, not a claimed contract. Do not XFAIL.

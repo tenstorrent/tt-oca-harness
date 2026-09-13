@@ -7,38 +7,33 @@ driven by `tools/dv/run_dv.py`. See `docs/index.adoc` for the chapter set:
 `docs/SMC_TB_ARCH.adoc` for test development, environment setup and run
 recipes, `docs/SMC_VPLAN.adoc` for the verification plan,
 `docs/SMC_FCOV.adoc` for the coverage pipeline, and
-`docs/SMC_SCOPE_TRACEABILITY.adoc` for the candidate v0.5.0
-requirement-to-test matrix (unsigned; #496),
+`docs/SMC_SCOPE_TRACEABILITY.adoc` for the requirement-to-test matrix,
 `docs/SMC_CANONICAL_BRINGUP_SIGNOFF.adoc` for the canonical bring-up /
-CSR signoff record (#498),
-`docs/SMC_FABRIC_PERIPH_SIGNOFF.adoc` for the fabric / peripheral
-honesty record (#500),
-`docs/SMC_RELEASE_MATRIX.adoc` for the v0.5.0 release regression
-matrix (#502),
-`docs/SMC_COVERAGE_POLICY.adoc` for the candidate coverage-target
-and waiver-field decision (#501), and
-`docs/SMC_RESET_CLOCK_IRQ_SIGNOFF.adoc` for the reset / clock / IRQ
-signoff record (#499).
+CSR signoff, `docs/SMC_FABRIC_PERIPH_SIGNOFF.adoc` for the fabric /
+peripheral honesty signoff, `docs/SMC_RELEASE_MATRIX.adoc` for the release
+regression matrix, `docs/SMC_COVERAGE_POLICY.adoc` for the coverage-target
+and waiver-field policy, and `docs/SMC_RESET_CLOCK_IRQ_SIGNOFF.adoc` for the
+reset / clock / IRQ signoff.
 
 **Green / signoff policy:** only claim **real DUT RTL paths**.
 I3C CCC/IBI / real-core protocol, adopter PLL/PVT OKAY wraps, and TB-glue
-demos (e.g. hardcoded DFD capture token) are not ported
-— not reportable as feature PASS. `smc_i3c_to_fabric_test` is
+demos (e.g. hardcoded DFD capture token) are not enrolled and are not
+reportable as feature PASS. `smc_i3c_to_fabric_test` is
 **decode only** (fabric → real OCA core `HCI_VERSION`) and is **not**
 in `smoke` or `functional`. Run it via `i3c_depth`
-or by name. Checklist:
+or by name.
 
 **`allow_timeout` review gate:** default `False`. New `allow_timeout=True`
 call sites need a one-line rationale comment at the call (what hangs without
-it, and why that is still a real DUT path). Inventory: `smc_*_utils.py` /
-cluster helpers — do not add silently in PRs.
+it, and why that is still a real DUT path). The helpers that set it live in
+`smc_*_utils.py` and the cluster helpers.
 
 ## Prerequisites
 
 | Need | Why | Notes |
 |---|---|---|
-| Verilator 5.050 | the functional acceptance backend | `module load verilator/5.050`. 5.050 specifically: 5.046 miscompiles the C++ init of nested unpacked structs this TB elaborates |
-| g++ 13.2.1 | C++20 for cocotb `-fcoroutines` | `module load gcc/13.2.1`. RHEL-8's default g++ 8.5 fails with `unrecognized command line option '-fcoroutines'` |
+| Verilator 5.050 | the functional acceptance backend | 5.050 specifically: 5.046 miscompiles the C++ init of nested unpacked structs this TB elaborates |
+| g++ 13.2.1 | C++20 for cocotb `-fcoroutines` | an older g++ fails with `unrecognized command line option '-fcoroutines'` |
 | Python ≥ 3.11 | launcher | `tools/dv/run_dv.py` bootstraps the locked uv-managed DV env itself (root `uv.lock`, `dv` group → cocotb + pyuvm + cocotbext-axi) |
 | RISC-V bare-metal GCC | firmware-boot tests only (`fw/`) | not needed for the `smoke` tag or any CSR-only test |
 | VCS | `--framework uvm`, and `--cov` coverage | Verilator has no SV-UVM support; see `frameworks` in `simulators.toml` |
@@ -59,11 +54,11 @@ not environment variables — see the `--framework uvm` section.
 
 ## Present but not enrolled
 
-These 12 modules exist under `cocotb/tests/` and are in no testlist, so they
-are not in `all`. The blocker tag lives in each file's docstring
+These modules exist under `cocotb/tests/` and are in no testlist, so they are
+not in `all`. Where a blocker tag applies it lives in the file's docstring
 (`# deferred: <reason>`); `testlists/all.toml` carries the same list beside the
 `all` group, and `docs/SMC_DEFERRED_DISPOSITION.adoc` is the disposition of
-record. SMU's matching catalog is `hw/sys/smu/dv/cocotb/tests_deferred/`.
+record. SMU's matching catalog is `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`.
 
 | Test | Reason |
 |------|--------|
@@ -79,9 +74,11 @@ record. SMU's matching catalog is `hw/sys/smu/dv/cocotb/tests_deferred/`.
 | `smc_dfd_dbs_fault_inject_test` | `tb_glue` — hardcoded capture token, not `smc_dfd_wrap` |
 | `smc_captured_straps_test` | `no_dut_port` — `smc_wrapper` declares no `captured_straps_i`, so there is no tap to drive |
 | `smc_clint_csr_test` | the `0xC8xx_xxxx` cluster-local window folds onto `0xC0xx_xxxx` on SEP_IN, so the reads never reach the CLINT |
+| `smc_cluster_plic_csr_test` | the `0xC400_0000` PLIC aperture accepts SEP_IN writes with OKAY and stores nothing, and its `+2 MB` context pages return non-OKAY |
 
-One enrolled carve-out keeps its measured reason next to the stimulus:
-`HYST_LEGAL_LO` in `smc_clk_multi_window_test_seq.py` (0..7, #1235).
+One enrolled carve-out keeps its reason next to the stimulus:
+`HYST_LEGAL_LO` in `smc_clk_multi_window_test_seq.py` (hysteresis encodings
+0..8 are never programmed by that testcase).
 
 ## Single DUT
 
@@ -100,7 +97,7 @@ so the bare DUT name selects the wrapper-based TB.
 | testlist | `testlists/all.toml` |
 | macros | inside `smc_ip_integration` (pll/pvt/efuse/pads/I3C DAT-DCT-RLT) |
 | CPU mem | inside wrapper via `smc_cpu_mem_integration` |
-| in TB | SYS_OUT=`axi_sim_mem` (pulp VIP); DTP CSR **idle** on `smc_wrapper` (no TB terminator; DTP CSR is a smc_wrapper-only boundary) |
+| in TB | SYS_OUT=`ocah_axi_vip` slave agent behind `ocah_axi_struct_bridge`; DTP CSR **idle** on `smc_wrapper` (no TB terminator; DTP CSR is a smc_wrapper-only boundary) |
 
 ## Verilator stubs policy
 
@@ -176,8 +173,8 @@ hw/sys/smc/dv/
 └── README.md
 ```
 
-`assets/`, `fw/`, `models/` and `uvm/` are outside the five directories the DV
-sign-off checklist names at 6.1, and are held here deliberately:
+`assets/`, `fw/`, `models/` and `uvm/` are additional to the shared DV
+directory set; each is held here because:
 
 * `assets/` — a preload image is an input to a scenario, so it belongs beside
   the testlist that names it rather than in a shared pool where a rebuild for
@@ -208,7 +205,7 @@ on scratch register 2 for both benches.
 ## Run
 
 ```bash
-module load verilator/5.050 gcc/13.2.1   # C++20 for cocotb -fcoroutines; 5.050 fixes bad C++ init of nested unpacked structs seen with 5.046
+# verilator 5.050 and g++ >= 13 (C++20 for cocotb -fcoroutines) on PATH; 5.046 miscompiles nested unpacked-struct init
 PY=tools/dv/run_dv.py
 python3 $PY --dut smc --items smoke --tool verilator
 python3 $PY --dut smc --items smc_cold_reset_test --stage flist --stage hdl_compile --stage sim
@@ -241,10 +238,8 @@ predicted by `smc_scratch_csr_ref_model` and paired by the always-on
 # without it the runner selects the cocotb-only scenarios and stops before compiling.
 python3 tools/dv/run_dv.py --dut smc --framework uvm --build-only --skip-unimplemented
 
-# Full single-instance regression: the `all` group, 149 of the 156 enrolled
-# testcases. Not every test the package defines -- 5 build a different DUT
-# (`dual_all` / `dual_smoke` / `occp_dual` / `occp_boot`) and 2 are held out
-# against a filed RTL issue. `testlists/all.toml` names all 7 and why.
+# Package regression: the `all` group. Not every test the package defines --
+# `testlists/all.toml` names the held-out testcases and why.
 python3 tools/dv/run_dv.py --dut smc --items all --tool verilator --regress
 
 # PyUVM (cocotb) and SV-UVM, same logical scenario name
