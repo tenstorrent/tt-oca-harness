@@ -2630,7 +2630,7 @@ def run_flow(
         result: StageResult,
         result_json: str | None = None,
     ) -> dict[str, Any]:
-        return {
+        job = {
             "stage": stage,
             "item": item,
             "target": result.target or target_by_item.get(item),
@@ -2649,6 +2649,9 @@ def run_flow(
             "metadata": result.metadata or {},
             "result_json": result_json,
         }
+        if result.formal is not None:
+            job["formal"] = result.formal
+        return job
 
     def run_wave_debug_leaf(
         stage: str,

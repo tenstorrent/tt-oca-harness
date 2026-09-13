@@ -134,6 +134,34 @@ ALL_PLACEHOLDERS = COMMON_PLACEHOLDERS | {
     "image",
 }
 
+# Placeholders of a formal launch template: the `argv` array on a `kind = "formal"` tool table
+# in simulators.toml, or the `argv` override on an `[formal.apps.<app>.<tool>]` table. Scalar
+# placeholders render inside any element.
+FORMAL_SCALAR_PLACEHOLDERS = {"binary", "script", "cwd", "run_dir", "item"}
+# A list placeholder is an element on its own and splices zero or more argv tokens.
+FORMAL_LIST_PLACEHOLDERS = {"args", "formal_args"}
+# An optional placeholder has a value only when the CLI supplies one; it sits inside an optional
+# group (a nested array), which renders whole or not at all.
+FORMAL_OPTIONAL_PLACEHOLDERS = {"proof_depth"}
+FORMAL_PLACEHOLDERS = (
+    FORMAL_SCALAR_PLACEHOLDERS | FORMAL_LIST_PLACEHOLDERS | FORMAL_OPTIONAL_PLACEHOLDERS
+)
+FormalArgvTemplate = list[str | list[str]]
+
+# `[formal.apps.<app>.<tool>.evidence]`: the summary file a backend without a native task
+# summary writes, and the line patterns that grade it. `summary` renders these placeholders and
+# resolves against the app's `cwd` when relative.
+FORMAL_EVIDENCE_KEYS = {
+    "summary",
+    "pass_patterns",
+    "fail_patterns",
+    "inconclusive_patterns",
+    "cover_patterns",
+    "unreached_patterns",
+}
+FORMAL_EVIDENCE_REQUIRED_PATTERNS = ("pass_patterns", "fail_patterns")
+FORMAL_EVIDENCE_PLACEHOLDERS = {"run_dir", "item", "cwd"}
+
 TOP_LEVEL_KEYS = {
     "schema_version",
     "name",
@@ -542,6 +570,158 @@ def validate_placeholders_in_value(
             validate_placeholders_in_value(item, f"{where}.{key}", allowed)
 
 
+def _validate_formal_argv_element(text: str, where: str, *, in_group: bool) -> None:
+    names = PLACEHOLDER_RE.findall(text)
+    unknown = sorted(set(names) - FORMAL_PLACEHOLDERS)
+    if unknown:
+        raise ConfigError(
+            f"{where}: unsupported placeholder(s): {', '.join('{' + name + '}' for name in unknown)}"
+        )
+    for name in names:
+        if name in FORMAL_LIST_PLACEHOLDERS:
+            if in_group:
+                raise ConfigError(
+                    f"{where}: list placeholder {{{name}}} cannot sit inside an optional group"
+                )
+            if text != "{" + name + "}":
+                raise ConfigError(
+                    f"{where}: list placeholder {{{name}}} must be an element on its own"
+                )
+        elif name in FORMAL_OPTIONAL_PLACEHOLDERS and not in_group:
+            raise ConfigError(
+                f"{where}: optional placeholder {{{name}}} must sit inside an optional group, "
+                f'for example ["-depth", "{{{name}}}"]'
+            )
+
+
+def validate_formal_argv_template(value: Any, where: str) -> FormalArgvTemplate:
+    """Check a formal launch template and return it.
+
+    A template is a non-empty array whose elements are strings or optional groups (nested arrays
+    of strings). Every placeholder is one of FORMAL_PLACEHOLDERS; a list placeholder is an
+    element on its own outside any group; an optional placeholder appears only inside a group,
+    and every group references one.
+    """
+    if not isinstance(value, list) or not value:
+        raise ConfigError(f"{where}: `argv` must be a non-empty list")
+    template: FormalArgvTemplate = []
+    for idx, element in enumerate(value):
+        label = f"{where}[{idx}]"
+        if isinstance(element, str):
+            _validate_formal_argv_element(element, label, in_group=False)
+            template.append(element)
+        elif isinstance(element, list):
+            if not element or not all(isinstance(sub, str) for sub in element):
+                raise ConfigError(f"{label}: an optional group must be a non-empty list of strings")
+            for sub_idx, sub in enumerate(element):
+                _validate_formal_argv_element(sub, f"{label}[{sub_idx}]", in_group=True)
+            if not FORMAL_OPTIONAL_PLACEHOLDERS & _template_placeholders([element]):
+                raise ConfigError(
+                    f"{label}: an optional group must reference an optional placeholder "
+                    f"({', '.join('{' + n + '}' for n in sorted(FORMAL_OPTIONAL_PLACEHOLDERS))})"
+                )
+            template.append(list(element))
+        else:
+            raise ConfigError(f"{label}: `argv` elements are strings or optional groups")
+    return template
+
+
+def _template_placeholders(template: FormalArgvTemplate) -> set[str]:
+    names: set[str] = set()
+    for element in template:
+        for text in element if isinstance(element, list) else [element]:
+            names.update(PLACEHOLDER_RE.findall(text))
+    return names
+
+
+def formal_template_placeholders(template: FormalArgvTemplate) -> set[str]:
+    """Every placeholder a validated template references."""
+    return _template_placeholders(template)
+
+
+def render_formal_argv(
+    template: FormalArgvTemplate,
+    scalars: dict[str, str],
+    lists: dict[str, list[str]],
+    optional: dict[str, str | None],
+) -> list[str]:
+    """Render a validated formal launch template into argv.
+
+    A list placeholder element splices its tokens; an optional group renders when every optional
+    placeholder it references has a value and is dropped otherwise.
+    """
+    values = dict(scalars)
+    values.update({name: value for name, value in optional.items() if value is not None})
+
+    def render(text: str) -> str:
+        rendered = text
+        for key, value in values.items():
+            rendered = rendered.replace("{" + key + "}", value)
+        return rendered
+
+    argv: list[str] = []
+    for element in template:
+        if isinstance(element, list):
+            needed = _template_placeholders([element]) & set(optional)
+            if any(optional[name] is None for name in needed):
+                continue
+            argv.extend(render(sub) for sub in element)
+            continue
+        names = PLACEHOLDER_RE.findall(element)
+        if len(names) == 1 and names[0] in lists and element == "{" + names[0] + "}":
+            argv.extend(lists[names[0]])
+            continue
+        argv.append(render(element))
+    return argv
+
+
+def validate_formal_evidence_hook(table: Any, where: str) -> dict[str, Any]:
+    """Check an app's `evidence` table and return it."""
+    if not isinstance(table, dict):
+        raise ConfigError(f"{where}: `evidence` must be a table")
+    validate_allowed_keys(table, FORMAL_EVIDENCE_KEYS, where)
+    summary = table.get("summary")
+    if not isinstance(summary, str) or not summary.strip():
+        raise ConfigError(f"{where}: `summary` must name the summary file")
+    unknown = sorted(set(PLACEHOLDER_RE.findall(summary)) - FORMAL_EVIDENCE_PLACEHOLDERS)
+    if unknown:
+        allowed = ", ".join("{" + name + "}" for name in sorted(FORMAL_EVIDENCE_PLACEHOLDERS))
+        raise ConfigError(
+            f"{where}.summary: unknown placeholder(s) {', '.join('{' + n + '}' for n in unknown)}"
+            f"; allowed: {allowed}"
+        )
+    for key in sorted(FORMAL_EVIDENCE_KEYS - {"summary"}):
+        patterns = as_str_list(table.get(key), f"{where}.{key}")
+        if key in FORMAL_EVIDENCE_REQUIRED_PATTERNS and not patterns:
+            raise ConfigError(f"{where}: `{key}` must list at least one pattern")
+        for pattern in patterns:
+            try:
+                re.compile(pattern)
+            except re.error as exc:
+                raise ConfigError(f"{where}.{key}: invalid regex `{pattern}`: {exc}") from exc
+    return table
+
+
+def validate_formal_apps(formal: Any, where: str) -> None:
+    """Check every `argv` override and `evidence` table under `[formal.apps.<app>.<tool>]`."""
+    if not isinstance(formal, dict):
+        return
+    apps = formal.get("apps", {})
+    if not isinstance(apps, dict):
+        return
+    for app_name, app in apps.items():
+        if not isinstance(app, dict):
+            continue
+        for tool, tool_cfg in app.items():
+            if not isinstance(tool_cfg, dict):
+                continue
+            table_where = f"{where} [formal.apps.{app_name}.{tool}]"
+            if "argv" in tool_cfg:
+                validate_formal_argv_template(tool_cfg["argv"], f"{table_where}.argv")
+            if "evidence" in tool_cfg:
+                validate_formal_evidence_hook(tool_cfg["evidence"], f"{table_where}.evidence")
+
+
 def validate_coverage_tool_table(
     table: dict[str, Any],
     where: str,
@@ -724,7 +904,11 @@ def validate_native_config_shape(flow: Dut, root: Path) -> None:
     for section_name in ("coverage", "c_build", "formal", "sim"):
         section = data.get(section_name, {})
         if isinstance(section, dict):
-            validate_placeholders_in_value(section, f"{flow.path} [{section_name}]")
+            allowed = ALL_PLACEHOLDERS
+            if section_name == "formal":
+                allowed = ALL_PLACEHOLDERS | FORMAL_PLACEHOLDERS
+            validate_placeholders_in_value(section, f"{flow.path} [{section_name}]", allowed)
+    validate_formal_apps(data.get("formal"), str(flow.path))
     coverage = data.get("coverage", {})
     if isinstance(coverage, dict):
         for tool, table in coverage.items():
@@ -1359,6 +1543,12 @@ def load_simulators(root: Path) -> dict[str, Any]:
             raise ConfigError(
                 f"{path}: [{tool}] must declare `frameworks` (the frameworks this tool can run)"
             )
+        if table.get("kind") == "formal":
+            if "argv" not in table:
+                raise ConfigError(
+                    f"{path}: [{tool}] is a formal backend and must carry an `argv` launch template"
+                )
+            validate_formal_argv_template(table["argv"], f"{path} [{tool}].argv")
         coverage_defaults = table.get("coverage_defaults")
         if coverage_defaults is None:
             continue
