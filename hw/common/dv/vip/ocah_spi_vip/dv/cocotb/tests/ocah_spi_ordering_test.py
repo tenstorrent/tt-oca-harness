@@ -142,10 +142,10 @@ async def ocah_spi_ordering_test(dut) -> None:
     await host.page_program(faulty_addr, other)
     flash.unregister_command_callback(OcahSpiOpcode.PAGE_PROGRAM)
     await harness.stop()
-    rejected_wel = rejects("wel", flash, lambda probe: probe.replay(flash.get_transactions()))
+    rejected_latch = rejects("latch", flash, lambda probe: probe.replay(flash.get_transactions()))
     checker.expect_true(
         "CHK-SPI-NEG-WEL",
-        rejected_wel,
+        rejected_latch,
         context=f"a device that programmed 0x{faulty_addr:06x} without WRITE ENABLE must be rejected",
     )
     checker.finalize()

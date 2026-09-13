@@ -104,13 +104,13 @@ class OcahSpiFlashRefModel:
         self.flash_size = flash_size
         self.status_reg1_base = status_reg1 & 0xFF & ~SR1_WEL
         self.status_reg2 = status_reg2 & 0xFF
-        self.wel = False
+        self.write_enabled = False
         self._mem: dict[int, int] = {}
         self.touched: set[int] = set()
 
     def clear(self) -> None:
         """Forget every programmed byte and clear the latch."""
-        self.wel = False
+        self.write_enabled = False
         self._mem.clear()
         self.touched.clear()
 
@@ -126,13 +126,13 @@ class OcahSpiFlashRefModel:
 
     def status1(self) -> int:
         """READ STATUS REGISTER 1 value the device must report at this point of the replay."""
-        return self.status_reg1_base | (SR1_WEL if self.wel else 0)
+        return self.status_reg1_base | (SR1_WEL if self.write_enabled else 0)
 
     def write_enable(self) -> None:
-        self.wel = True
+        self.write_enabled = True
 
     def write_disable(self) -> None:
-        self.wel = False
+        self.write_enabled = False
 
     def page_program(self, addr: int, data: bytes) -> int:
         """Apply an accepted PAGE PROGRAM; return how many bytes changed value.
@@ -151,7 +151,7 @@ class OcahSpiFlashRefModel:
             self._mem[target] = after
             self.touched.add(target)
             changed += int(after != before)
-        self.wel = False
+        self.write_enabled = False
         return changed
 
     def sector_erase(self, addr: int) -> int:
@@ -164,7 +164,7 @@ class OcahSpiFlashRefModel:
                 flipped += 1
             self._mem[target] = ERASED_BYTE
             self.touched.add(target)
-        self.wel = False
+        self.write_enabled = False
         return flipped
 
     def spans(self) -> list[tuple[int, int]]:
@@ -280,7 +280,7 @@ class OcahSpiFlashChecker:
                 "CHK-SPI-STATUS-WEL",
                 rec.data_out[:1],
                 bytes([self.ref_model.status1()]),
-                context=f"latch={'set' if self.ref_model.wel else 'clear'}",
+                context=f"latch={'set' if self.ref_model.write_enabled else 'clear'}",
             )
         elif opcode == OcahSpiOpcode.READ_SR2:
             self.expect_equal(
@@ -472,16 +472,16 @@ class OcahSpiFlashChecker:
         )
 
     def _check_write_gate(self, rec: OcahSpiFlashRecord, what: str) -> bool:
-        latch = "set" if self.ref_model.wel else "clear"
+        latch = "set" if self.ref_model.write_enabled else "clear"
         if rec.ok:
             return self.expect_true(
                 "CHK-SPI-WREN-ORDER",
-                self.ref_model.wel,
+                self.ref_model.write_enabled,
                 context=f"{what} accepted addr=0x{rec.addr:06x} latch={latch}",
             )
         return self.expect_true(
             "CHK-SPI-WREN-ORDER",
-            not self.ref_model.wel and rec.reason == "wel_clear" and not rec.data_in,
+            not self.ref_model.write_enabled and rec.reason == "wel_clear" and not rec.data_in,
             context=(
                 f"{what} refused addr=0x{rec.addr:06x} latch={latch} reason={rec.reason} "
                 f"payload_taken={len(rec.data_in)}"
