@@ -31,30 +31,26 @@ includes = [
 
 [[groups]]
 name = "all"
-# The single-instance regression, so a reviewer can run it without knowing which
-# feature lists exist.
-#
-# It is not every test the package defines, and the difference is deliberate.
+# The package regression, so a reviewer can run it without knowing which
+# feature lists exist. It is not every test the package defines.
 #
 # The three `target = "dual"` bring-up scenarios are in: the runner builds both
 # targets in one invocation and schedules each testcase against its own, so a
 # second SMC_DUAL elaboration is the only extra cost and it is paid once.
 #
-# Two testcases are held out on measured runtime alone. Both are correct and
-# both are green; putting them here would turn a four-minute package run into a
-# multi-hour one, and nothing about them needs to gate every review:
+# Two testcases are held out on runtime alone; each runs in its own group:
 #
-#   smc_occp_dual_unsecure_boot_test  ~2.1 h. A full sram image crosses a
-#                                     ~2.6 MHz serial bus that Verilator
-#                                     simulates cycle by cycle. Runs as
-#                                     `dual_all` / `occp_dual`.
+#   smc_occp_dual_unsecure_boot_test  hours of wall clock: a full sram image
+#                                     crosses a ~2.6 MHz serial bus that
+#                                     Verilator simulates cycle by cycle. Runs
+#                                     as `dual_all` / `occp_dual`.
 #   smc_prod_rom_occp_ready_test      the production ROM's whole reset-to-OCCP
 #                                     path, `run_modes = ["prod_rom"]`. Runs as
 #                                     `occp_boot`, and carries the `ci` tag.
 #
-# 13 test modules under cocotb/tests/ are in no testlist. Each carries its
-# deferral reason in its own docstring, on a leading `# deferred: <tag>` line
-# where one applies:
+# The test modules under cocotb/tests/ that are in no testlist each carry the
+# reason in their own docstring, on a leading `# deferred: <tag>` line where
+# one applies:
 #
 #   smc_pll_awm_freq_sweep_test        smc_pvt_analog_sensor_test
 #   smc_pll_cgm_awm_config_test        smc_pvt_droop_test
@@ -69,8 +65,7 @@ name = "all"
 #                                 captured_straps_i, so there is no tap to drive
 #   smc_clint_csr_test            the 0xC8xx_xxxx cluster-local window folds onto
 #                                 0xC0xx_xxxx on SEP_IN, so the reads never reach
-#                                 the CLINT. Bit-27 scope of #1237; the
-#                                 MTIME-monotonic leg turns green when it is fixed
+#                                 the CLINT and the MTIME-monotonic leg cannot pass
 #   smc_dfd_dbs_fault_inject_test tb_glue: the TB latches a hardcoded
 #                                 0xDB5C_AFE1; real DFD is smc_dfd_wrap
 #   smc_sideband_avsbus_octs_bfm_test
@@ -79,41 +74,24 @@ name = "all"
 #   smc_cluster_plic_csr_test     no_sep_in_write_path: the PLIC aperture at
 #                                 0xC400_0000 accepts writes with OKAY and
 #                                 stores nothing, and its +2 MB context pages
-#                                 return non-OKAY. Measured; see the docstring
-#                                 and SMC_VPLAN Known Limitations
+#                                 return non-OKAY. See the docstring and
+#                                 SMC_VPLAN Known Limitations
 #
-# Four enrolled tests are also held out of this group, all red for a filed RTL
-# reason rather than a test defect. They keep their own [[tests]] entries and
-# run on demand; holding them out is a dv_policy §2 LINKED-ISSUE disposition,
-# not a waiver, and none should be re-added until its issue closes.
+# Two enrolled tests are also held out of this group: each fails on an RTL
+# defect rather than a test defect. They keep their own [[tests]] entries and
+# run on demand.
 #
-#   smc_remap_cla_test          -- its CLA reset sweep passes (82 registers, 6
-#                                  with discriminating non-zero resets), but the
-#                                  deny leg never completes: the SEP_IN read at
-#                                  0xC016_0038 times out. That is #1488, the CLA
-#                                  aperture hang, not this test.
-#                                  STALE AS OF 2026-09-08: #1488 was closed as
-#                                  completed on 2026-09-07, so the condition
-#                                  above ("not re-added until its issue closes")
-#                                  is met. Run the test and re-enrol it here if
-#                                  the deny leg now completes; if it still times
-#                                  out, #1488 needs reopening. Do not leave it
-#                                  held out against a closed issue -- that is a
-#                                  waiver wearing a LINKED-ISSUE label.
-#   smc_deadspace_decode_test   -- measures the DUT aliasing deadspace onto live
-#                                  registers (wrap_to_live=7 read_alias=6). That
-#                                  is #585. Already recorded as held out in
-#                                  depth.toml.
+#   smc_remap_cla_test          -- its CLA reset sweep passes, but the deny leg
+#                                  never completes: the SEP_IN read at
+#                                  0xC016_0038 times out (CLA aperture hang).
+#   smc_deadspace_decode_test   -- the DUT aliases deadspace onto live
+#                                  registers (wrap_to_live=7 read_alias=6).
+#                                  Also listed in depth.toml.
 #
 # The `rtl_issue` group is also out, and being red is its whole purpose -- it is
 # the runnable evidence for filed RTL defects. rtl_issue.toml is included above
 # so the names resolve and the file is reachable; the group is how they are run.
-# See that file for the conventions.
-#
-#   smc_gpio_irq_mask_deassert_test    #1602
-#   smc_efuse_read_timeout_status_test #1603
-#   smc_log_engine_intr_mask_test      #1635, the pattern behind #1602
-#   smc_i2c_intr_mask_test             #1635, third IP
+# See that file for the conventions and the members.
 # Guarded by expected_count, as dtp, sep and rtl_issue already are: the loader
 # errors when this list and the count diverge, so a leaf cannot be added to a
 # feature testlist and silently miss the regression.
@@ -440,18 +418,15 @@ tests = [
 
 [[groups]]
 name = "smoke"
-# The per-PR gate, and deliberately small.
-#
-# sim.yml runs `--items smoke` on each pull request. It was 37 leaves, which
-# made it a regression wearing a gate's name -- dtp gates on 2 and sep on 1.
+# The per-PR gate. sim.yml runs `--items smoke` on each pull request.
 #
 # Three leaves, one each for something the bench cannot come up without:
 # canonical bring-up, the reset path, and a CSR frontdoor read. Toolchain-free
 # and about a second each.
 #
-# The 34 leaves that left this group stay in `all` and in `hosted`. Nightly
-# and weekly schedule `hosted` (`all` minus the five firmware / SMC_DUAL
-# leaves) so cutting the gate does not take them off the scheduled tiers.
+# Nightly and weekly schedule `hosted` (`all` minus the five firmware /
+# SMC_DUAL leaves), so the gate stays small without taking any leaf off the
+# scheduled tiers.
 tests = [
     "smc_canonical_smoke_test",
     "smc_cold_reset_test",
@@ -562,12 +537,10 @@ tests = [
 
 [[groups]]
 # Balanced-IP regression: one slot per distinct proven property, per IP.
-# Selected from the 147 enrolled by (a) removing testcases that share a sequence
-# class with a stronger sibling, (b) removing testcases whose only assert is a
-# self-count or a Verilator-invariant resolvability gate, then (c) ranking what
-# remains by proof strength inside each IP and applying a per-IP budget.
-# Reaches 100% of the register-symbol and TB-probe coverage the full 147 reach
-# that is carried by a fail-capable testcase.
+# Selection (a) removes testcases that share a sequence class with a stronger
+# sibling, (b) removes testcases whose only assert is a self-count or a
+# Verilator-invariant resolvability gate, then (c) ranks what remains by proof
+# strength inside each IP under a per-IP budget.
 name = "per_ip"
 tests = [
     # --- avsbus (2) ---
@@ -603,8 +576,8 @@ tests = [
     # is DUT RTL (smc_efuse_wrapper.sv:86-89 identity decode, :129-135 lc-gated
     # demux, :145 RESP_DATA 32'hbadcab1e) and the scored value has NO
     # efuse_bank_model dependence -- the sequence explicitly refuses to score
-    # rdata on the ALLOW path. Enrolled here as the honest counterpart to
-    # smc_efuse_otp_burn_shadow_test, whose proof does rest on the adopter model.
+    # rdata on the ALLOW path. By contrast, smc_efuse_otp_burn_shadow_test scores
+    # against the adopter efuse_bank_model.
     "smc_efuse_jtag_lc_negative_test",
     "smc_efuse_locked_access_interrupt_test",
     "smc_efuse_map_read_test",

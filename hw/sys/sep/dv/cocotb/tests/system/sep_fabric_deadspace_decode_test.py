@@ -10,9 +10,9 @@ or SLVERR; the specification does not mandate which), and no live
 register in that block may change. A checker that only inspects the
 response would pass the day the RTL starts answering DECERR while
 still writing the register, so every probe reads back the window's live
-registers as well. ``memory_map.adoc`` states the rule: within an
-aperture only the unit's register extent responds, the remainder
-returns DECERR, and an access there never reaches the unit.
+registers as well. ``memory_map.adoc`` states the rule: the fabric refuses an
+address past the extent a unit allocates, and such an access never
+reaches a unit. It names no response flavour.
 
 Every probe in the set is asserted, the wrapping anchors included; the
 contract is not carried by a probe that is logged or waived.
@@ -102,8 +102,8 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
                 )
 
         # Burst reachability of the refused span, and a HARD FAIL when a beat
-        # lands there. `memory_map.adoc` says the span past a unit's extent
-        # returns DECERR and never reaches the unit; it draws no distinction
+        # lands there. `memory_map.adoc` says an address past a unit's extent
+        # is refused at the fabric and never reaches a unit; it draws no distinction
         # between a single beat and a later beat of a burst. An INCR begun in the
         # last live words carries its later beats past REG_MAP_SIZE because AXI
         # decodes the request address only.
@@ -234,9 +234,9 @@ class sep_fabric_deadspace_decode_test(sep_base_test):
             len(DEADSPACE_ANCHORS),
             cfg.seed,
         )
-        # Reported, not asserted: memory_map.adoc names DECERR for the reserved
-        # remainder inside an aperture and does not say whether another error
-        # response is also permitted.
+        # Reported, not asserted: memory_map.adoc says such an access is
+        # refused but names no response flavour, and which error responses are
+        # permitted is a specification question for the design owner.
         for line in dead.flavour_findings:
             self.logger.info("DEADSPACE-FLAVOUR: %s", line)
         if dead.flavour_findings:

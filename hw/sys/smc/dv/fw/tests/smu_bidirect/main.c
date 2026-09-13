@@ -58,12 +58,9 @@ int main(void) {
     open_smc_outbound_sep_shared_window();
 
     /*
-     * The old SEP_READY scratch-12 sideband was unreliable under the current
-     * SMU wrapper reset/handoff and gated SMC before it made any outbound
-     * write, so it is dropped here (matches the sibling smc_sep_xbar SMC
-     * firmware). The cocotb harness now enforces ordering via
-     * +SMC_SEP_PREWAIT_SEP_INST, releasing SMC only after SEP has finished
-     * its CSR/filter setup and is polling the shared address.
+     * No SEP_READY rendezvous here: the harness releases the SMC only after
+     * the SEP has finished its CSR/filter setup and is polling the shared
+     * address.
      */
     write32(SEP_SHARED_ADDR, SMC_TO_SEP_PATTERN);
     __asm__ volatile("fence iorw, iorw" ::: "memory");

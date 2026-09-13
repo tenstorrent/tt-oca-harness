@@ -5,7 +5,7 @@ APB-based cocotb testbench for the entropy_source RTL with behavioral ring oscil
 ## Prerequisites
 
 ```bash
-cd $OCH_ROOT   # TT-OCAH repository root
+cd $OCH_ROOT   # repository root
 source bin/setup_env.sh
 ```
 
@@ -15,7 +15,7 @@ source bin/setup_env.sh
 cd sim
 ./run.sh --list              # List all tests
 ./run.sh -t test_reg_walk    # Run a single test
-./run.sh --regre             # Run full regression suite (53 tests)
+./run.sh --regre             # Run the regression suite
 cat latest_regr.log          # View latest regression report
 ```
 
@@ -31,10 +31,10 @@ tb_vcs/
 ├── test/                    # Test suite (Python/Cocotb)
 │   ├── test_base.py        # Common infrastructure & helpers
 │   ├── test_config.py      # Test configuration
-│   ├── test_decorrelator_modes.py  # 16 decorrelator tests
-│   ├── test_entropy_fifo.py        # 16 FIFO tests
-│   ├── test_health_tests.py        # 13 health monitor tests
-│   ├── test_debug_monitor.py       # 5 debug monitor tests
+│   ├── test_decorrelator_modes.py  # Decorrelator tests
+│   ├── test_entropy_fifo.py        # FIFO tests
+│   ├── test_health_tests.py        # Health monitor tests
+│   ├── test_debug_monitor.py       # Debug monitor tests
 │   ├── test_reg_walk.py            # Register walking test
 │   └── test_entropy_sanity.py      # End-to-end sanity
 ├── apb_vip/                 # APB4 Verification IP
@@ -45,8 +45,6 @@ tb_vcs/
 └── regs/          # SystemRDL sources & generated files
     ├── rdl/                # SystemRDL source files
     └── reg_update.sh       # RDL regeneration script
-
-Total: 53 tests across 6 test suites
 ```
 
 ## Regression Testing
@@ -73,12 +71,12 @@ The `latest_regr.log` symlink automatically points to the most recent regression
 Edit `sim/regression.list` to control which test suites run:
 
 ```bash
-test_entropy_sanity          # Sanity test (1 test)
-test_reg_walk                # Register walk (1 test)
-test_decorrelator_modes      # Decorrelator suite (16 tests)
-test_entropy_fifo            # FIFO suite (16 tests)
-test_health_tests            # Health test suite (13 tests)
-test_debug_monitor           # Debug monitor suite (5 tests)
+test_entropy_sanity          # Sanity test
+test_reg_walk                # Register walk
+test_decorrelator_modes      # Decorrelator suite
+test_entropy_fifo            # FIFO suite
+test_health_tests            # Health test suite
+test_debug_monitor           # Debug monitor suite
 #test_misc                   # Comment out to skip
 ```
 
@@ -111,13 +109,6 @@ Four independent checkers verify correctness:
 | **COMP** | Compressor RTL vs GF(2^8) reference model | `[COMP CHECK]` |
 | **FIFO** | FIFO readout vs golden queue | `[FIFO CHECK]` |
 | **IRQ** | Interrupt assertion/deassertion | `[IRQ CHECK]` |
-
-**Current Coverage (53 tests):**
-
-- DECOR: 18/18 tests alive
-- COMP: 15/15 tests alive
-- FIFO: 20/20 tests alive (3 manual verification)
-- IRQ: 12/12 tests alive
 
 **Usage in tests:**
 
@@ -270,7 +261,7 @@ async def test_my_feature(dut):
 
 | File | Description |
 |------|-------------|
-| `TEST_PLAN.txt` | Test plan with 53 tests and pass criteria |
+| `TEST_PLAN.txt` | Test plan with pass criteria |
 | `REGISTER_MAP.md` | Complete register documentation |
 | `regression.list` | Test suite selection for regression |
 | `latest_regr.log` | Symlink to most recent regression.log |
@@ -302,19 +293,19 @@ cd ../regs && ./reg_update.sh
 
 ## Test Suites
 
-### Suite 0: Sanity & Basic Tests (2 tests)
+### Suite 0: Sanity & Basic Tests
 
 - test_entropy_sanity: End-to-end sanity check
 - test_reg_walk: Register default value and access verification
 
-### Suite 1: Decorrelator Modes (16 tests)
+### Suite 1: Decorrelator Modes
 
 - Pure modes: Full decorrelation, full bypass, fast/slow sampling
 - Mixed modes: Partial bypass configurations, dynamic reconfiguration
 - Compressor bypass: Raw decorrelator output (3 words per sample)
 - Byte mask: Decorrelator output masking
 
-### Suite 2: Entropy FIFO (16 tests)
+### Suite 2: Entropy FIFO
 
 - Basic: Reset, push/pop, fill/drain, simultaneous operations
 - Pointer management: Wraparound testing
@@ -324,7 +315,7 @@ cd ../regs && ./reg_update.sh
 - Interrupts: INTR_TEST injection for FIFO interrupts
 - Security: Parity generation, error detection, pointer fault detection
 
-### Suite 3: Health Tests (13 tests)
+### Suite 3: Health Tests
 
 - CSR interface: Enable/disable, threshold configuration, counter monitoring
 - Pipeline integration: Health tests with full decorrelation
@@ -334,13 +325,13 @@ cd ../regs && ./reg_update.sh
 - Interrupt verification: INTR_TEST injection
 - Detune feature: Manual detune, autotune for each health test
 
-### Suite 4: Debug Monitor (5 tests)
+### Suite 4: Debug Monitor
 
 - CSR interface: DEBUG_CTRL register access
 - Signal selection: Index boundary values
 - Frequency selection: Divider boundary values
 
-### Suite 5: Miscellaneous (1 test)
+### Suite 5: Miscellaneous
 
 - Downsample rate configuration
 - Startup delay

@@ -77,7 +77,7 @@ module sep_wrapper
 
   input logic                      timer_int,
   input logic                      soft_int,
-  input logic [sep_pkg::NUM_EXTERNAL_IRQS-1:0] extintsrc_req,
+  input logic [sep_pkg::NUM_EXTERNAL_IRQS-1:0] sep_ext_interrupts_i,
 
   output sep_pkg::sep_system_peripherals_outbound_axi_req_t  smn_outbound_axi_req_o,
   input  sep_pkg::sep_system_peripherals_outbound_axi_resp_t smn_outbound_axi_resp_i,
@@ -189,6 +189,7 @@ module sep_wrapper
   ) u_sep (
     .*,
 
+    .extintsrc_req       (sep_ext_interrupts_i),
 
     .wdt_timer_rst_req_o (wdt_timer_rst_req),
 

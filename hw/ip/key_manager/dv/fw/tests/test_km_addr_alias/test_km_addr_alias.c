@@ -24,8 +24,6 @@
  * which decodes every offset in the window, so holding that invariant needs no
  * per-block register list.
  *
- * Requirements: KM fabric address decode (#592)
- *
  * Run with:
  *   make run_fw FW_TEST=test_km_addr_alias
  */

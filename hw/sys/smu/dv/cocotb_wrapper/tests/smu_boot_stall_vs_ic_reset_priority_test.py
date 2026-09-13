@@ -49,7 +49,7 @@ class smu_boot_stall_vs_ic_reset_priority_test(smu_base_test):
 
         sb.expect_eq(
             "fuse_reset after bring-up",
-            int(dut.fuse_reset_n_delayed_o.value),
+            int(dut.smc_fuse_reset_n_delayed_o.value),
             1,
         )
 
@@ -87,7 +87,7 @@ class smu_boot_stall_vs_ic_reset_priority_test(smu_base_test):
         )
         sb.expect_eq(
             "fuse_reset gated while stall sticky",
-            int(dut.fuse_reset_n_delayed_o.value),
+            int(dut.smc_fuse_reset_n_delayed_o.value),
             0,
         )
 
@@ -117,7 +117,7 @@ class smu_boot_stall_vs_ic_reset_priority_test(smu_base_test):
         )
         sb.expect_eq(
             "fuse still gated during warm ovrd",
-            int(dut.fuse_reset_n_delayed_o.value),
+            int(dut.smc_fuse_reset_n_delayed_o.value),
             0,
         )
 
@@ -146,7 +146,7 @@ class smu_boot_stall_vs_ic_reset_priority_test(smu_base_test):
         )
         sb.expect_eq(
             "fuse still gated during cold ovrd",
-            int(dut.fuse_reset_n_delayed_o.value),
+            int(dut.smc_fuse_reset_n_delayed_o.value),
             0,
         )
 
@@ -165,7 +165,7 @@ class smu_boot_stall_vs_ic_reset_priority_test(smu_base_test):
         )
         sb.expect_eq(
             "fuse still gated after IC_RESET DEFAULT",
-            int(dut.fuse_reset_n_delayed_o.value),
+            int(dut.smc_fuse_reset_n_delayed_o.value),
             0,
         )
 
@@ -193,14 +193,14 @@ class smu_boot_stall_vs_ic_reset_priority_test(smu_base_test):
             0,
         )
         await wait_signal_high(
-            dut.fuse_reset_n_delayed_o,
+            dut.smc_fuse_reset_n_delayed_o,
             dut.clk_smu_i,
             timeout_cycles=2000,
             name="fuse_reset after TRST",
         )
         sb.expect_eq(
             "fuse_reset high after TRST",
-            int(dut.fuse_reset_n_delayed_o.value),
+            int(dut.smc_fuse_reset_n_delayed_o.value),
             1,
         )
 

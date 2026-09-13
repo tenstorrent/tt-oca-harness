@@ -175,7 +175,7 @@ class SmcCsrSeq(smc_base_test_seq):
         """Bounded read: tolerates DECERR **and** timeout (no-decode).
 
         Intended for coverage-gap CSR probes where the block may be
-        clock-gated or absent from the current bring-up and there is no
+        clock-gated or absent from this bench and there is no
         AXI responder to send back OKAY/DECERR. Increments `timeouts` on
         no-response, `accesses` unconditionally.
         """
@@ -209,7 +209,7 @@ class SmcCsrSeq(smc_base_test_seq):
         item.op = SmcSysAxiOp.READ
         item.addr = addr
         item.length = 4
-        item.allow_timeout = True  # intentional: assert timed_out below
+        item.allow_timeout = True  # the assert below requires timed_out
         item.timeout_ns = timeout_ns
         await self.start_item(item)
         await self.finish_item(item)
@@ -239,8 +239,8 @@ class SmcCsrSeq(smc_base_test_seq):
     # CSR write ack (clk_smc) -> i2c_wrap OVRD -> GPIO pad mux -> the tb_top
     # open-drain resolver (tb_top.sv:635-638), i.e. a handful of clk_smc cycles
     # plus the AXI-Lite write completion the caller already awaited. The bound is
-    # generous (~30x the observed settle) purely so a slow build cannot flake;
-    # expiry is a FAILURE, never a pass ([TIMEOUT-MUST-FAIL]).
+    # generous so a slow build cannot flake; expiry is a FAILURE, never a pass
+    # ([TIMEOUT-MUST-FAIL]).
     _I2C0_PAD_SETTLE_TIMEOUT_CYCLES = 400
     _I2C0_PAD_POLL_CYCLES = 2
     # After the expected level is first seen, require it to still hold this many
@@ -438,7 +438,7 @@ class SmcCsrSeq(smc_base_test_seq):
         self, expected_accesses: int, block: str, gated_note: str
     ) -> None:
         """Reachability gate for windows that are clock-gated or
-        absent in the current OSS bring-up (e.g. the CPU cluster before firmware
+        absent in this OSS bench (e.g. the CPU cluster before firmware
         boot, a Verilator/vendor-stubbed macro).
 
         Unlike ``assert_all_reachable`` this does not hard-fail on a no-response,
@@ -452,9 +452,9 @@ class SmcCsrSeq(smc_base_test_seq):
         * the reachable subset is response-gated (those reads DID get an AXI
           answer), giving genuine decode coverage for whatever is present.
 
-        Any gated window is logged (not silently swallowed) so the deferred
-        register-level coverage is visible rather than hidden behind a green
-        vacuous ``accesses == N``.
+        Any gated window is logged (not silently swallowed) so the register-level
+        coverage this bench cannot take is visible rather than hidden behind a
+        green vacuous ``accesses == N``.
         """
         assert self.accesses == expected_accesses, (
             f"{block}: issued {self.accesses} accesses, expected "

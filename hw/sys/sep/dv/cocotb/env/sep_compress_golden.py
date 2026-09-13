@@ -4,14 +4,8 @@
 # sep_compress_golden.py
 #
 # Pure-Python golden model for the SEP DRBG entropy compression / conditioning
-# datapath. Cross-checked against the public RTL:
-#
-#   * BIW compressor (GF(2^8) multiply-add extractor):
-#       hw/ip/entropy_source/rtl/entropy_generator_complex.sv
-#       hw/ip/entropy_source/rtl/gf_muladd.sv
-#
-#   * SHA-256 conditioner / whitener:
-#       hw/ip/entropy_source/rtl/entropy_sha256_whitener.sv
+# datapath. The architecture is ``hw/ip/entropy_source/doc/architecture.adoc``:
+# BIW compressor (GF(2^8) multiply-add) and SHA-256 conditioner.
 #
 # ----------------------------------------------------------------------------
 # SHA-256 primitive
@@ -98,8 +92,9 @@ class SepSha256Conditioner:
     """SHA-256 entropy conditioner / whitener.
 
     Accumulates `block_words` 32-bit compressor words; when full, hashes the
-    block and exposes the 256-bit digest as 8 x 32-bit words. This mirrors
-    `entropy_sha256_whitener.sv` (16 words -> 512-bit block -> 8 digest words).
+    block and exposes the 256-bit digest as 8 x 32-bit words, matching
+    the SHA-256 conditioner in ``hw/ip/entropy_source/doc/architecture.adoc``
+    (16 words -> 512-bit block -> 8 digest words).
 
     Each accumulated 32-bit word is serialized BIG-ENDIAN
     (w>>24, w>>16, w>>8, w) into the SHA input stream. This matches the RTL

@@ -9,18 +9,17 @@ the lifecycle controller and decoded into the right feature-control vector:
 
   * the LC_STATE shadow register reads back the differential-encoded state, and
   * FEAT_CTRL reads back exactly ``feat_ctrl_expected(...)`` from the LCC golden
-    model (the spec/RTL decode of lc_state x SIP_DIS x SYS_DIS).
+    model (the spec-derived decode of lc_state x SIP_DIS x SYS_DIS).
 
 After the initial preload, state advances are driven through EFUSE_PROGRAM_CTRL
 and a resense. The RMA_SIP/RMA_CHIPLET steps first perform the matching token
-operation so the RTL LC_STATE token gates authorize the OTP bit program. SIP_DIS
+operation so the LC_STATE token gates authorize the OTP bit program. SIP_DIS
 and SYS_DIS are pinned to distinct non-zero vectors so the decoded FEAT_CTRL
 differs per state and the golden check cannot pass vacuously.
 
 The observed lc_state sequence is also validated against the LCC encoding /
-W1S-monotonic / valid-transition rules (the test-level mirror of the RTL SVA
-state checker); the fixed monotonic chain covers the SVA forward-only and
-terminal-stability properties implicitly.
+W1S-monotonic / valid-transition rules; the fixed monotonic chain covers the
+forward-only and terminal-stability properties.
 
 After the initial TEST_DEV sense (TEST_EN strap = 0) the test raises the
 frontdoor ``test_en_strap_i``, re-senses, and proves the latched
@@ -46,6 +45,7 @@ import cocotb
 import pyuvm
 from cocotb.triggers import ClockCycles
 from env.sep_axi_agent import SepAxiItem, SepAxiOp
+from env.sep_efuse_field_map import spec_secret_regs
 from env.sep_efuse_image import LC_WORD_IDX, SepEfuseImage
 from env.sep_lcc_golden import (
     LC_PROD,
@@ -65,8 +65,10 @@ from seq_lib.sep_lcc_stitch_check_seq import sep_lcc_stitch_check_seq
 
 _MAX_SENSE_CYCLES = 20_000
 
-# Every Class-1a secret the map disconnects while the strap is high.
-_SECRET_FIELDS = ("CHIPLET_UID", "SIP_UID", "SYS_UID", "CLASS_KEY")
+# KM-secret fields named in periphs.adoc (Key Manager subset). The
+# SECURE_TM block list is LOCK / LC_STATE / SIP_DIS / SYS_DIS; these four
+# are the secrets the stitch grades for disconnect.
+_SECRET_FIELDS = spec_secret_regs()
 
 # Monotonic lifecycle chain exercised (matches the reference test's PROD/RMA walk).
 _LC_CHAIN = (LC_TEST_DEV, LC_PROD, LC_RMA_SIP_1, LC_RMA_CHIP_1)
@@ -87,7 +89,7 @@ _TOKEN_MATCH = 0x15
 
 _RMA_SIP_TOKEN_DIGEST = sym("SEP_EFUSE_MAP_RMA_SIP_TOKEN_DIGEST_REG_ADDR")
 _RMA_CHIPLET_TOKEN_DIGEST = sym("SEP_EFUSE_MAP_RMA_CHIPLET_TOKEN_DIGEST_REG_ADDR")
-# sep_pkg::LC_STATE_BIT_POSITION -- efuse_guard gates program addresses BASE+1
+# periphs.adoc: LC_STATE starts at bit 96. efuse_guard gates program addresses BASE+1
 # (RMA_SIP token) and BASE+2 (RMA_CHIPLET token) on a token match.
 # LC_WORD_IDX * 32 so the program address tracks the generated LC_STATE word.
 _LC_STATE_BIT_BASE = LC_WORD_IDX * 32
@@ -303,7 +305,7 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
         )
 
     def _sensed_secret(self, image: SepEfuseImage, name: str) -> int:
-        """Read one Class-1a secret field out of the sensed shadow array by backdoor."""
+        """Read one KM-secret field out of the sensed shadow array by backdoor."""
         sensed = int(cocotb.top.efuse_shadow_probe_o.value)
         fld = image.field(name)
         val = 0
@@ -341,6 +343,8 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
         assert seq.observed_feat is not None, "sequence did not publish AXI FEAT_CTRL"
         feat = seq.observed_feat
         self._last_observed_feat = feat
+        if not sigint_err:
+            self._feat_by_state[raw] = feat
 
         if raw == LC_TEST_DEV and not sigint_err:
             if secure_tm:
@@ -385,10 +389,15 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
                 f"{lc_state_name(observed)} (as observed on the DUT)"
             )
         self.logger.info(
-            "[lcc] observed LC code 0x%x (%s) after programming %s",
-            observed,
+            "CHK-LC-INPUT PASS: %s observed LC code 0x%x reached the "
+            "controller (legal encoding, legal transition)",
             lc_state_name(observed),
+            observed,
+        )
+        self.logger.info(
+            "CHK-GOLDEN PASS: %s FEAT_CTRL=0x%016x matches the golden decode",
             lc_state_name(raw),
+            feat,
         )
         return observed
 
@@ -405,6 +414,7 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
         # never exercised -- asserted at the end so the retry check is non-vacuous.
         self._total_program_retries = 0
         self._secure_tm_prog_blocked = False
+        self._feat_by_state: dict[int, int] = {}
         prev_raw: int | None = None
 
         for i, raw in enumerate(_LC_CHAIN):
@@ -418,16 +428,16 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
                     prev_raw=prev_raw,
                 )
                 # CHK-SECRET-BLANK, first half: with the strap low every
-                # Class-1a secret must be present in the sensed shadow.
-                # Captured BEFORE the strap goes up so the blanking below is
+                # KM-secret field must be present in the sensed shadow.
+                # Captured BEFORE the strap goes up so the disconnect below is
                 # a transition on one image rather than an observation that
                 # could also be satisfied by a DUT that never sensed them.
                 open_secrets: dict[str, int] = {}
                 for name in _SECRET_FIELDS:
                     staged = image.field_int(name)
                     assert staged != 0, (
-                        f"test bug: staged {name} is zero, so the blanking check "
-                        f"below would pass on a DUT that ignores secure_tm"
+                        f"test bug: staged {name} is zero, so the disconnect "
+                        f"check below would pass on a DUT that ignores secure_tm"
                     )
                     sensed = self._sensed_secret(image, name)
                     assert sensed == staged, (
@@ -445,18 +455,21 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
                     secure_tm=1,
                     prev_raw=prev_raw,
                 )
-                # Second half: the same image, every Class-1a field, strap high.
+                # Second half: the same image, every KM-secret field, strap high.
+                # periphs.adoc names the four fields and the TEST_EN disconnect
+                # of fuse-bank outputs; it does not require a zero readback.
                 for name in _SECRET_FIELDS:
                     blanked = self._sensed_secret(image, name)
-                    assert blanked == 0, (
-                        f"{name} must read 0 while secure_tm=1 "
-                        f"(sep_efuse_pkg SecretShadowRanges), got 0x{blanked:x}"
+                    assert blanked != open_secrets[name], (
+                        f"{name} still reads the staged secret 0x{open_secrets[name]:x} "
+                        f"while secure_tm=1 (got 0x{blanked:x})"
                     )
                     self.logger.info(
-                        "CHK-SECRET-BLANK PASS: %s sensed 0x%x at secure_tm=0 and 0 at "
-                        "secure_tm=1 (Class-1a secret disconnected)",
+                        "CHK-SECRET-BLANK PASS: %s sensed 0x%x at secure_tm=0 and "
+                        "0x%x at secure_tm=1 (not the staged secret)",
                         name,
                         open_secrets[name],
+                        blanked,
                     )
 
                 # CHK-SECURE-TM-PROG-BLOCK: while the strap is up, efuse_guard
@@ -551,6 +564,15 @@ class sep_efuse_lcc_lc_state_stitch_test(sep_base_test):
             "would pass vacuously."
         )
 
+        feats = [self._feat_by_state[r] for r in _LC_CHAIN]
+        assert len(set(feats)) == len(_LC_CHAIN), (
+            f"CHK-NONVAC FAIL: pinned overrides did not produce distinct FEAT_CTRL words: {feats}"
+        )
+        self.logger.info(
+            "CHK-NONVAC PASS: four FEAT_CTRL words are mutually distinct (%s)",
+            ", ".join(f"{lc_state_name(r)}=0x{self._feat_by_state[r]:016x}" for r in _LC_CHAIN),
+        )
+        self.logger.info("CHK-SECURE-TM PASS: TEST_DEV FEAT_CTRL identical at secure_tm=0 and 1")
         self.logger.info(
             "LCC stitch: walked %d states (%s); FEAT_CTRL matched golden at each; "
             "secure_tm off/on and lc_sigint inject proven; "

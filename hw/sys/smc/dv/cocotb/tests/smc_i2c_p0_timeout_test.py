@@ -23,10 +23,7 @@ class smc_i2c_p0_timeout_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.I2C,
             type(self).__name__,
-            # Conservative stimulus floor: 34-35 accesses observed across the
-            # retained regression runs (STRETCH_TIMEOUT polls vary with timing),
-            # so the floor is set below the minimum observed. Literal here, not
-            # read from `seq.accesses`.
+            # Stimulus floor, literal here rather than read from `seq.accesses`.
             # STIMULUS DECLARATION, not a check: the scoreboard evaluates
             # `csr_accesses >= min_csr_accesses` against the sequence's own
             # counter, so once the number is accurate it is `N >= N` and cannot

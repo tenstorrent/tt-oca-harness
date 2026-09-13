@@ -18,7 +18,7 @@ timeout_sec = 1800
 tags = ["ci", "i2c", "pyuvm"]
 run_modes = ["smoke"]
 
-# Nightly Tier A: commercial smc_i2c_p0_rdwr BFM rebuild (I2C0↔I2C1).
+# BFM rebuild of commercial smc_i2c_p0_rdwr (I2C0↔I2C1).
 # Requires tb_top +smc_i2c_shared_bus.
 [[tests]]
 name = "smc_i2c_p0_rdwr_test"
@@ -29,7 +29,7 @@ tags = ["ci", "i2c", "depth", "pyuvm"]
 run_modes = ["smoke"]
 args = ["+smc_i2c_shared_bus"]
 
-# Nightly Tier A: commercial smc_i2c_p0_nack BFM (allow-path + VIP NACK legs).
+# BFM rebuild of commercial smc_i2c_p0_nack (allow-path + VIP NACK legs).
 [[tests]]
 name = "smc_i2c_p0_nack_test"
 module = "smc_i2c_p0_nack_test"
@@ -39,7 +39,7 @@ tags = ["ci", "i2c", "depth", "pyuvm"]
 run_modes = ["smoke"]
 args = ["+smc_i2c_shared_bus"]
 
-# Nightly Tier A: three-phase I2C0/1/2 shared-bus multiplex.
+# Three-phase I2C0/1/2 shared-bus multiplex.
 [[tests]]
 name = "smc_i2c_p0_multictrl_test"
 module = "smc_i2c_p0_multictrl_test"
@@ -49,7 +49,7 @@ tags = ["ci", "i2c", "depth", "pyuvm"]
 run_modes = ["smoke"]
 args = ["+smc_i2c_shared_bus"]
 
-# Nightly Tier A: ACQ/TX FIFO threshold IRQs.
+# ACQ/TX FIFO threshold IRQs.
 [[tests]]
 name = "smc_i2c_p0_fifo_test"
 module = "smc_i2c_p0_fifo_test"
@@ -59,7 +59,7 @@ tags = ["ci", "i2c", "depth", "pyuvm"]
 run_modes = ["smoke"]
 args = ["+smc_i2c_shared_bus"]
 
-# Nightly Tier A: stretch-timeout observation (commercial timeout body).
+# Stretch-timeout observation (commercial timeout body).
 [[tests]]
 name = "smc_i2c_p0_timeout_test"
 module = "smc_i2c_p0_timeout_test"
@@ -69,7 +69,7 @@ tags = ["ci", "i2c", "depth", "pyuvm"]
 run_modes = ["smoke"]
 args = ["+smc_i2c_shared_bus"]
 
-# Nightly Tier A: TX stretch recover + RSTART read/write.
+# TX stretch recover + RSTART read/write.
 [[tests]]
 name = "smc_i2c_p0_stretch_test"
 module = "smc_i2c_p0_stretch_test"
@@ -79,7 +79,7 @@ tags = ["ci", "i2c", "depth", "pyuvm"]
 run_modes = ["smoke"]
 args = ["+smc_i2c_shared_bus"]
 
-# Nightly Tier A: controller FMT empty-threshold IRQ.
+# Controller FMT empty-threshold IRQ.
 [[tests]]
 name = "smc_i2c_p0_cfifo_test"
 module = "smc_i2c_p0_cfifo_test"
@@ -88,7 +88,7 @@ timeout_sec = 1800
 tags = ["ci", "i2c", "depth", "pyuvm"]
 run_modes = ["smoke"]
 
-# Nightly Tier A: alternating write/read pairs.
+# Alternating write/read pairs.
 [[tests]]
 name = "smc_i2c_p0_conti_test"
 module = "smc_i2c_p0_conti_test"

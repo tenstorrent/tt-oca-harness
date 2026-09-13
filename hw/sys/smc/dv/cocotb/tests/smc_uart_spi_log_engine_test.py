@@ -41,18 +41,13 @@ class smc_uart_spi_log_engine_test(smc_base_test):
             SmcProtocolVipKind.UART_LOG,
             type(self).__name__,
             csr_accesses=seq.accesses,
-            # Not measured on this path -- and NOT because the reads are
-            # unbounded. `csr_read` IS bounded: it leaves `allow_timeout` False,
-            # and `SmcSysAxiDriver._timed_event` applies
-            # `cfg.axi_timeout_ns` (50_000 ns) and raises on expiry
-            # (env/smc_sys_axi_agent.py), so [TIMEOUT-MUST-FAIL] is satisfied by
-            # the driver. `seq.timeouts` stays 0 only because it is incremented
-            # exclusively by the two no-response-tolerating helpers
-            # (`csr_read_bounded` / `csr_short_timeout`,
-            # seq_lib/smc_csr_seq_utils.py), which this sequence never calls.
-            # So this path takes no timeout reading at all and `n/a` is the
-            # honest rendering: reporting a bound of zero would claim a
-            # measurement this path never takes.
+            # No timeout statistic is published. `csr_read` leaves `allow_timeout`
+            # False and `SmcSysAxiDriver._timed_event` raises on expiry after
+            # `cfg.axi_timeout_ns` (env/smc_sys_axi_agent.py), so
+            # [TIMEOUT-MUST-FAIL] is carried by the driver; `seq.timeouts` is
+            # incremented only by `csr_read_bounded` / `csr_short_timeout`
+            # (seq_lib/smc_csr_seq_utils.py), which this sequence never calls, so
+            # `None` renders `n/a` rather than an unmeasured 0.
             timeouts=None,
             min_csr_accesses=UART_LOG_MIN_CSR_ACCESSES,
             details=(

@@ -69,10 +69,10 @@ module smu_wrapper_uvm_top (
   output logic        sep_enabled_o,
   output logic        rst_cold_n_o,
   output logic        powergood_o,
-  output logic        fuse_sense_done_o,
-  output logic        fuse_reset_n_delayed_o,
+  output logic        smc_fuse_sense_done_o,
+  output logic        smc_fuse_reset_n_delayed_o,
   output logic        rst_primary_smc_clk_n_o,
-  output logic        init_mem_done_o,
+  output logic        smc_init_mem_done_o,
   output logic        sep_fuse_sense_done_o,
   // State of the SEP efuse shadow-register sim_skip_fuse_sense flag, i.e.
   // whether the SEP fuse-sense sequence is replaced by the shadow preload in
@@ -166,9 +166,8 @@ module smu_wrapper_uvm_top (
   input  wire logic [2:0]  ext_in_awsize,
   input  wire logic [1:0]  ext_in_awburst,
   input  wire logic [11:0] ext_in_awuser,
-  // AXI4 qualifiers. axi_56_64_aw_chan_t carries all of these; the TB used to
-  // tie them off, which left the wrapper unable to verify AxPROT and friends
-  // at all -- a coverage hole, not only a migration blocker.
+  // AXI4 qualifiers. axi_56_64_aw_chan_t carries all of these; they are real
+  // ports so the wrapper can verify AxPROT and the other qualifiers.
   input  wire logic        ext_in_awlock,
   input  wire logic [3:0]  ext_in_awcache,
   input  wire logic [2:0]  ext_in_awprot,
@@ -199,9 +198,7 @@ module smu_wrapper_uvm_top (
   input  wire logic [3:0]  ext_in_arqos,
   input  wire logic [3:0]  ext_in_arregion,
   output logic [11:0]      ext_in_ruser,
-  // Observables the migrated bare-smu leaves read. Every one is already a
-  // smu_wrapper.sv output that this TB was discarding into an empty
-  // connection; the bare TB has exposed them all along.
+  // Observables the shared seq_lib reads by name, matching tb/tb_top.sv.
   output jtag_tap_pkg::tap_state_e                      jtag_ptap_state,
   output jtag_inst_reg_pkg::jtag_instruction_decoded_e  jtag_ptap_inst_decoded,
   output logic [55:0]                                   sep_global_base_o,
@@ -241,8 +238,7 @@ module smu_wrapper_uvm_top (
   output logic                                          dtp_cla_clock_stop_en,
   // SMC eFuse shadow map. seq_lib.smu_jtag_helpers.shadow_map_word32 reads
   // this by name to cross-check an OTP write against the shadow copy the SMC
-  // actually sees; with the port unconnected it returned None and the two OTP
-  // leaves could not score.
+  // actually sees; the OTP leaves cannot score without it.
   output smc_efuse_pkg::efuse_map_t                     smc_shadow_regs,
   output logic                                          tb_stap_io_tck,
   output logic                                          tb_stap_smc_tck,
@@ -333,8 +329,8 @@ module smu_wrapper_uvm_top (
 
   // Same override tb_top.sv applies: exercise the most-significant configured
   // DTP cross-trigger mode bit while [1:0] stay SMC-reserved. Without it lane 7
-  // is wire-OR here and point-to-point there, so the migrated CTM leaves would
-  // be scoring a different design than the one they were written against.
+  // is wire-OR here and point-to-point there, so the CTM leaves would score a
+  // different design on the two DUTs.
   function automatic smu_pkg::smu_cfg_t make_tb_cfg();
     smu_pkg::smu_cfg_t cfg = SMU_BASE_CFG;
     cfg.XTRIG_INT_CT_MODE = 8'h80;
@@ -509,7 +505,6 @@ module smu_wrapper_uvm_top (
   smu_axi_xbar_pkg::axi_out_req_t     smu_axi_out_req;
   smu_axi_xbar_pkg::axi_out_resp_t    smu_axi_out_resp;
   logic [7:0] lc_state;
-  // Matches smu_wrapper XTRIG_NUM_INT_CT (= DEFAULT_NUM_INT_CT - 2).
 
   // smc_4core_cpu zeroes the whole scratch RAM at boot to establish valid ECC
   // (its MEM_ZERO FSM, gated by this input). That runs after the time-zero
@@ -640,10 +635,13 @@ module smu_wrapper_uvm_top (
   // powergood_stable is the SMC reset controller's stretched and synchronized
   // view of powergood_i (smc_reset_ctrl.sv), so it rises only once the DUT's own
   // synchronizer chain has clocked it through. The sticky low record carries no
-  // reset: it must survive the cold-reset window in which it is set.
+  // reset: it must survive the cold-reset window in which it is set, so its
+  // declaration initialiser is the only zeroing, and a variable with an
+  // initialiser may not be an always_ff target (IEEE 1800-2017 9.2.2.4, an
+  // error on VCS).
   assign obs_powergood_stable_o = u_dut.u_smu.powergood_stable;
   logic obs_powergood_stable_low_seen_q = 1'b0;
-  always_ff @(posedge clk_ref_i) begin
+  always @(posedge clk_ref_i) begin
     if (!obs_powergood_stable_o) begin
       obs_powergood_stable_low_seen_q <= 1'b1;
     end
@@ -1099,15 +1097,9 @@ module smu_wrapper_uvm_top (
 
   // ------------------------------------------------------------------
   // DTP / JTAG observation taps -- SEP-independent, so outside the
-  // `ifndef SMU_NO_SEP` block above.
-  //
-  // These lived inside that block. The block's `else` re-drives only the
-  // sep_* observables, so under +define+SMU_NO_SEP -- the profile every
-  // migrated DTP leaf runs -- each pin below was left with no driver and read
-  // a constant 0. That is what the "reads 0 through three observation points"
-  // symptom was: not the design, not Verilator collapsing a net, just an
-  // `ifndef` that swallowed more than it meant to. The tap_ctrl structs
-  // themselves were correct at every point along the path.
+  // `ifndef SMU_NO_SEP` block above: that block's `else` re-drives only the
+  // sep_* observables, and a pin left inside it reads a constant 0 under
+  // +define+SMU_NO_SEP.
   // ------------------------------------------------------------------
   assign rst_cold_stable_ref_clk_no = rst_cold_stable_ref_clk_n;
   assign jtag_boot_stall          = smu_scope_boot_stall_val;
@@ -1128,18 +1120,14 @@ module smu_wrapper_uvm_top (
   assign tb_stap_smc_tdi     = u_dut.u_smu.u_smc.smc_cpu_jtag_TDI_i;
   assign tb_stap_smc_tdo_oen = u_dut.u_smu.u_dtp.jtag_stap_smc_host_tdo_oen_o;
   // Boot-stall GPIO pad (smc_padring: boot_stall_o = lsio_pad2core_data[57]).
-  // The port existed but nothing drove the pad, so asserting it did nothing
-  // and smu_dft_gpio_boot_stall_test saw fuse_reset ungated.
-  //
   // Unlike tb_top.sv, which ORs the TB value into a pad2core vector at the
   // smu boundary, smu_wrapper brings out a real bidirectional pad bus --
   // smc_ip_integration puts a prim_pad_shim on every pin -- so the drive goes
   // onto the wire itself, weak (pull) elsewhere so a core output still wins.
   assign gpio_pad_io[57] = gpio_boot_stall_drive_i ? 1'b1 : 1'bz;
 
-  // smu.sv no longer forwards the peripheral-domain primary reset to its own
-  // boundary, so read it off the SMC the way tb_top.sv does. Declared but
-  // undriven here until smu_smc_reset_ctrl_test came across.
+  // smu.sv does not forward the peripheral-domain primary reset to its own
+  // boundary, so read it off the SMC the way tb_top.sv does.
   assign rst_primary_periph_clk_no = u_dut.u_smu.u_smc.rst_primary_periph_clk_no;
 
   assign dtp_cla_clock_stop_en = u_dut.u_smu.dtp_cla_clock_stop_en;
@@ -1327,8 +1315,6 @@ module smu_wrapper_uvm_top (
     end
   end
 
-  // CPU ROM/scratch/L1$ macros (same module smc_wrapper embeds).
-
   // ------------------------------------------------------------------
   // DUT: hw/top/smu_wrapper (logical ports)
   // ------------------------------------------------------------------
@@ -1434,25 +1420,25 @@ module smu_wrapper_uvm_top (
     .telemetry_afvalid_o (),
     .telemetry_afready_i ('0),
 
-    .cluster_ded_o (),
-    .wdt_first_timeout_o (),
-    .wdt_second_timeout_o (),
+    .smc_cluster_ded_o (),
+    .smc_wdt_first_timeout_o (),
+    .smc_wdt_second_timeout_o (),
 
     .smc_global_base_o (smc_global_base_o),
     .smc_region_size_o (smc_region_size_o),
     .sep_global_base_o (sep_global_base_o),
     .sep_region_size_o (sep_region_size_o),
 
-    .ext_interrupts_i ('0),
-    .fuse_sense_done_o,
-    .fuse_reset_n_delayed_o,
+    .smc_ext_interrupts_i ('0),
+    .smc_fuse_sense_done_o,
+    .smc_fuse_reset_n_delayed_o,
     .skip_mem_repair_o (),
     .ext_boot_seq_done_i (ext_boot_seq_done_i),
     .lc_state_o (lc_state),
     .lc_sigint_err_o (lc_sigint_err_o),
-    .ndmreset_request_i ('0),
-    .ndmreset_process_o (),
-    .ext_mailbox_interrupts_o (ext_mailbox_interrupts),
+    .smc_ndmreset_request_i ('0),
+    .smc_ndmreset_process_o (),
+    .smc_ext_mailbox_interrupts_o (ext_mailbox_interrupts),
 
     .cfg_flr_pf_active_i (1'b0),
     .isolate_req_o (),
@@ -1461,8 +1447,8 @@ module smu_wrapper_uvm_top (
     .ss_reset_ctrl_o (),
     .sync_irq_o (),
 
-    .disable_sram_auto_init_i (smc_disable_sram_auto_init),
-    .init_mem_done_o,
+    .smc_disable_sram_auto_init_i (smc_disable_sram_auto_init),
+    .smc_init_mem_done_o,
     .chiplet_is_primary_i (1'b1),
     .timer_count_o (tb_timer_count),
 
@@ -1479,7 +1465,7 @@ module smu_wrapper_uvm_top (
     .mbist_abort_i (1'b0),
 
     .sep_cpu_trace_o (sep_cpu_trace),
-    .sep_extintsrc_req_i ('0),
+    .sep_ext_interrupts_i ('0),
     .lcc_demote_state_1_o (),
     .lcc_demote_state_2_o (),
     .sep_fuse_dft_disable_o (),

@@ -11,7 +11,16 @@
 // in RISC-V CSR address space and NOT included in this memory-mapped RDL file.
 
 addrmap el2_pic #(
-    longint unsigned PIC_TOTAL_INT = 32
+    longint unsigned PIC_TOTAL_INT = 255,
+    // Tracks the RTL's INTPEND_SIZE/32: the pending bitmap covers PIC_TOTAL_INT+1
+    // sources rounded up to a power of two (min 32), so the word count steps in
+    // powers of two rather than by ceil(sources/32).
+    longint unsigned PIC_INTPEND_WORDS =
+        (PIC_TOTAL_INT + 1) <= 32  ? 1 :
+        (PIC_TOTAL_INT + 1) <= 64  ? 2 :
+        (PIC_TOTAL_INT + 1) <= 128 ? 4 :
+        (PIC_TOTAL_INT + 1) <= 256 ? 8 :
+        (PIC_TOTAL_INT + 1) <= 512 ? 16 : 32
 ) {
     name = "EL2_PIC";
     desc = "VeeR EL2 Programmable Interrupt Controller (PIC) memory-mapped registers.
@@ -112,7 +121,7 @@ addrmap el2_pic #(
     // Memory-mapped register layout per VeeR EL2 PIC specification:
     //   +0x0000:            Reserved (source ID 0 is not valid)
     //   +0x0004 to +S*4:    meiplS priority registers (S=1..PIC_TOTAL_INT)
-    //   +0x1000 to +0x1000+X*4: meipX pending registers (X=0..(PIC_TOTAL_INT+31)/32-1)
+    //   +0x1000 to +0x1000+X*4: meipX pending registers (X=0..PIC_INTPEND_WORDS-1)
     //   +0x2000:            Reserved
     //   +0x2004 to +0x2000+S*4: meieS enable registers (S=1..PIC_TOTAL_INT)
     //   +0x3000:            mpiccfg configuration register
@@ -120,25 +129,30 @@ addrmap el2_pic #(
     //   +0x4004 to +0x4000+S*4: meigwctrlS gateway config (S=1..PIC_TOTAL_INT)
     //   +0x5000:            Reserved
     //   +0x5004 to +0x5000+S*4: meigwclrS gateway clear (S=1..PIC_TOTAL_INT)
+    //
+    // The per-source arrays are sized PIC_TOTAL_INT+1 and anchored on the reserved
+    // word so the array index equals the interrupt source ID (meipl[7] is source 7).
+    // SystemRDL arrays are always 0-based, so element [0] models the reserved word
+    // and must be excluded from any full-map RAL access test.
     ////////////////////////////////////////////////////////////////////////////
 
-    // Priority Level Registers (offset 0x0004 for S=1, 0x0000 is reserved)
-    MEIPL           meipl[PIC_TOTAL_INT]            @0x0004;
+    // Priority Level Registers (index == source ID; [0] is the reserved word)
+    MEIPL           meipl[PIC_TOTAL_INT + 1]        @0x0000;
 
-    // Pending Registers (2 registers for up to 64 sources)
-    MEIP            meip[2]                         @0x1000;
+    // Pending Registers (bit Y of word X is source X*32+Y; genuinely 0-based)
+    MEIP            meip[PIC_INTPEND_WORDS]         @0x1000;
 
-    // Enable Registers (offset 0x2004 for S=1, 0x2000 is reserved)
-    MEIE            meie[PIC_TOTAL_INT]             @0x2004;
+    // Enable Registers (index == source ID; [0] is the reserved word)
+    MEIE            meie[PIC_TOTAL_INT + 1]         @0x2000;
 
     // Configuration Register
     MPICCFG         mpiccfg                         @0x3000;
 
-    // Gateway Configuration Registers (offset 0x4004 for S=1, 0x4000 is reserved)
-    MEIGWCTRL       meigwctrl[PIC_TOTAL_INT]        @0x4004;
+    // Gateway Configuration Registers (index == source ID; [0] is the reserved word)
+    MEIGWCTRL       meigwctrl[PIC_TOTAL_INT + 1]    @0x4000;
 
-    // Gateway Clear Registers (offset 0x5004 for S=1, 0x5000 is reserved)
-    MEIGWCLR        meigwclr[PIC_TOTAL_INT]         @0x5004;
+    // Gateway Clear Registers (index == source ID; [0] is the reserved word)
+    MEIGWCLR        meigwclr[PIC_TOTAL_INT + 1]     @0x5000;
 
 };
 

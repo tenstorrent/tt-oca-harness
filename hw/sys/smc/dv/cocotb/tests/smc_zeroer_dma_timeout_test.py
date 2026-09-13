@@ -5,15 +5,6 @@
 Provenance: this test is enrolled against ``smc_zeroer_dma_timeout_test`` in
 ``hw/sys/smc/dv/docs/SMC_VPLAN.adoc`` (row "Zeroer / DMA / utility", P1-16
 ``zeroer_dma_utility``).
-
-NO DV-CARD RECORD-SHA256 IS CLAIMED HERE. No header is stamped here; one citing
-``DV-CARD: SMC_006 / RECORD-SHA256: 8434b588... / DV-CARD-SOURCE:
-hw/sys/smc/dv/tb/SMC_VPLAN_DETAIL.md @ artifact_revision 1``. That file does not
-exist anywhere in the repository and SMC_VPLAN.adoc defines no ``SMC_006`` id and
-no record hashes, so the digest attested a record nobody can produce -- a
-provenance line that reads like verified traceability while being unverifiable. Restore a DV-CARD block here only when a real testcase
-record exists to hash; the auditor found the same fabricated header on ~8 further
-SMC cocotb tests.
 """
 
 from __future__ import annotations

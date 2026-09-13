@@ -455,7 +455,7 @@ module sep_uvm_top
         // Interrupts (idle)
         .timer_int                    (1'b0),
         .soft_int                     (1'b0),
-        .extintsrc_req                ('0),
+        .sep_ext_interrupts_i         ('0),
 
         // SMN external AXI (outbound captured by the mailbox responder; inbound
         // driven by the flat m_axi_* master when live).
@@ -492,7 +492,7 @@ module sep_uvm_top
         .secure_tm_o                  (secure_tm_o),
         .km_unrecoverable_err_o       (),
         .km_recoverable_err_o         (),
-        .efuse_debug_bus_o            (),
+        .efuse_debug_bus_o            (efuse_debug_bus_o),
 
         // Mailbox interrupts
         .smc_mailbox_interrupt_o      (),
@@ -1228,6 +1228,67 @@ module sep_uvm_top
             release `DIGEST_SIP.test_en_i;
         end
     end
+    // ------------------------------------------------------------------
+    // eFuse read/program FSM fail-closed observability and fault injection.
+    //
+    // Forcing an illegal FSM encoding is the only way to provoke the
+    // fail-closed behaviour `efuse_read_interface` and
+    // `efuse_program_interface` assert on it. Both states are two bits whose
+    // legal encodings are 2'b01 and 2'b10, and no frontdoor stimulus can
+    // produce 2'b00 or 2'b11 -- the design is what guarantees that. The force
+    // targets the state register only, for one cycle, and never the error,
+    // data or request outputs the checker reads: the recovery is the DUT's.
+    // Same clock-reissued force/release convention as the digest hook above.
+    // ------------------------------------------------------------------
+`define EFUSE_CTRL `SEP_CORE.sep_crypto.u_sep_efuse_wrapper.u_efuse_interface_controller
+`define EFUSE_RD `EFUSE_CTRL.u_efuse_read_interface
+`define EFUSE_PG `EFUSE_CTRL.u_efuse_program_interface
+    assign efuse_read_state_o = `EFUSE_RD.read_state_q;
+    assign efuse_program_state_o = `EFUSE_PG.program_state_q;
+    assign efuse_read_error_o = `EFUSE_RD.read_error_o;
+    assign efuse_read_done_o = `EFUSE_RD.read_done_o;
+    assign efuse_read_busy_o = `EFUSE_RD.read_busy_o;
+    assign efuse_read_back_data_o = `EFUSE_RD.read_back_data_o;
+    assign efuse_read_cmd_req_valid_o = `EFUSE_RD.fuse_command_req_o.valid;
+    assign efuse_program_cmd_req_valid_o = `EFUSE_PG.fuse_command_req_o.valid;
+    assign efuse_program_error_o = `EFUSE_PG.program_error_o;
+    assign efuse_program_done_o = `EFUSE_PG.program_done_o;
+    assign efuse_program_busy_o = `EFUSE_PG.program_busy_o;
+    assign efuse_program_read_back_data_o = `EFUSE_PG.program_read_back_data_o;
+    // SIGNED OFF 2026-09-11 by yenhenglai, SEP TB owner.
+    // ------------------------------------------------------------------
+    // Only legal encodings of these two FSMs are 2'b01 and 2'b10, and the
+    // sense and frontdoor paths can never present another, so the fail-closed
+    // recovery the RTL specifies for 2'b00 and 2'b11 has no frontdoor
+    // stimulus. Scope: the two state registers named below, for one cycle at
+    // a time, and no other signal -- never the error, data, busy or request
+    // outputs the checkers read, so the recovery they observe is the design's
+    // own. Owner: sep_efuse_illegal_state_fail_closed_test. Review at the next
+    // change to the state encoding in efuse_read_interface.sv or
+    // efuse_program_interface.sv.
+    //
+    // The registers are enum-typed and the injected encodings are, by
+    // construction, not members of those enums -- that is the property under
+    // test. The conversion is therefore deliberate and scoped to these two
+    // forces rather than waived file-wide.
+    /* verilator lint_off ENUMVALUE */
+    always @(posedge clk_i) begin
+        if (efuse_read_state_inject_en_i === 1'b1) begin
+            force `EFUSE_RD.read_state_q = efuse_read_state_inject_i;
+        end else begin
+            release `EFUSE_RD.read_state_q;
+        end
+        if (efuse_program_state_inject_en_i === 1'b1) begin
+            force `EFUSE_PG.program_state_q = efuse_program_state_inject_i;
+        end else begin
+            release `EFUSE_PG.program_state_q;
+        end
+    end
+    /* verilator lint_on ENUMVALUE */
+`undef EFUSE_RD
+`undef EFUSE_PG
+`undef EFUSE_CTRL
+
 `undef DIGEST_SIP
 `undef CMP_SIP
 `undef CMP_CHIP
@@ -2132,6 +2193,8 @@ module sep_uvm_top
         // RMA_CHIP_0 at all.
         .efuse_lc_raw_i        (efuse_shadow_probe_o[
             32 * efuse_pkg::SHADOW_IDX_LC_STATE +: 4]),
+        .efuse_read_state_i    (efuse_read_state_o),
+        .efuse_program_state_i  (efuse_program_state_o),
         .secure_tm_i           (secure_tm_o),
         .sec_dis_i             (lcc_security_disable_probe_o),
         .demote_1_i            (lcc_demote_state_1_probe_o),

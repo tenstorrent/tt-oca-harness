@@ -167,7 +167,7 @@ int main(void) {
     }
     TEST_SUBTEST_PASS();
 
-    /* 6. OTP_CHANGE_STATUS: read and W1C-clear */
+    /* 7. OTP_CHANGE_STATUS: read and W1C-clear */
     TEST_SUBTEST_START("OTP_CHANGE_STATUS read and W1C clear");
     {
         uint32_t cs = rom_otp_get_change_status();

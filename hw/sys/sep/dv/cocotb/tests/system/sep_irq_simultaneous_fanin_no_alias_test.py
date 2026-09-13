@@ -4,7 +4,7 @@
 
 With the CPU held off, the host asserts SEVERAL IP interrupts at once (HMAC done,
 KMAC done, CSRNG cmd_req_done, EDN cmd_req_done -> sep_internal_interrupts bits
-17/20/23/27, per the map in hw/sys/sep/rtl/sep.sv) via each IP's real INTR_TEST
+17/20/23/27, per hw/sys/sep/doc/interrupts.adoc) via each IP's real INTR_TEST
 register, then reads the aggregate vector (tb_top sep_internal_interrupts_probe_o,
 the observation-only mirror) and proves the OR-packing assembled EXACTLY those bits
 -- a 1:1 source->bit map with NO non-driven neighbor in [8:33] aliasing, and no

@@ -58,7 +58,7 @@ CPU_RESET_CTRL_HOLD_CORES = 0x0000_0100
 # Pulse-start bits [7:4] for cores 0-3.
 CPU_RESET_CTRL_PULSE_ALL = CPU_RESET_CTRL_DEFAULT | 0x0000_00F0  # 0x1FF
 # debug_reset_n_n0_scan[24] defaults to 0 (DM held in reset). DMI/dmstatus
-# needs this bit set; FW and U7-3 release it explicitly.
+# needs this bit set.
 CPU_RESET_CTRL_DEBUG_RELEASE = CPU_RESET_CTRL_DEFAULT | (1 << 24)  # 0x0100_010F
 
 # RESET_TIMEOUT: timeout_value[15:0]=32, timeout_mode[16]=1 (force apply).
@@ -72,16 +72,8 @@ CPU_FW_FAIL_VALUE = 0xBAD0_0000
 # failures actually leave behind.
 CPU_FW_TEST_FAIL = 0xFFFF_FFFF
 
-# Name kept for callers. min_pass posts 0xACAFACA1 to CPU_CTRL SCRATCH_0
-# (0xC0039080), not to scratch SRAM. The boot verdict reads that CSR.
-CPU_FW_SRAM_MAILBOX = CPU_CTRL_SCRATCH_0
-
 # boot_stall is an lsio pad; smc_padring.sv holds the assignment.
 BOOT_STALL_PAD = 57
-
-# Backward-compatible aliases.
-CPU_RESET_VECTOR = CPU_RESET_VECTOR_ROM
-CPU_RESET_RELEASE_ALL = CPU_RESET_CTRL_PULSE_ALL
 
 
 # Bound for the post-bring-up observability state this helper claims to observe.
@@ -172,8 +164,8 @@ async def _release_held_cpu_boot(seq, reset_vector: int, *, settle_cycles: int =
     the scratch (or ROM) vector.
 
     Note: full Freedom-metal applications can barrier on cluster-local CLINT
-    MSIP (0xC800_0000), which SEP-IN AXI cannot reach. The U3 contract uses the
-    sync-free hello_world C test built by the run_dv c_compile stage.
+    MSIP (0xC800_0000), which SEP-IN AXI cannot reach. The boot contract uses
+    the sync-free hello_world C test built by the c_compile stage.
     """
     await seq.csr_write(
         "CPU_BOOT_RESET_TIMEOUT_FORCE",
@@ -249,7 +241,7 @@ async def _compare_image_in_memory(seq, boot_from_scratch: bool, reset_vector: i
     decode internal to smc_cpu_mem_dv.
 
     A MISMATCH means the AXI view of scratch and the built image disagree, which
-    now points at the loader: `smc_dual_axi_sram_probe_test` requires the same
+    points at the loader: `smc_dual_axi_sram_probe_test` requires the same
     decode to agree with AXI across both stripe bits, the wrap of the four-bank
     cycle and a group boundary, so a decode that is wrong in any of those fields
     fails there first. It stays a report rather than an assertion because it
@@ -391,7 +383,7 @@ async def check_cpu_firmware_boot_contract(
     armed = arm_value is None
     # The boot image is short; poll the CSR the firmware actually writes.
     #
-    # tb_cpu_fw_mailbox is deliberately NOT part of the verdict. It is driven by
+    # tb_cpu_fw_mailbox is not part of the verdict. It is driven by
     # the FW_MAGIC snoop in models/smc_cpu_mem_dv.sv, which watches the scratch
     # RAM and L1 D-cache *write ports* -- not the CPU_CTRL SCRATCH CSR that
     # test_pass() stores to. So for any image that reports through smc_test.h it

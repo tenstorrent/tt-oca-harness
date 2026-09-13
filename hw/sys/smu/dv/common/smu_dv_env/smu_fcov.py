@@ -312,7 +312,7 @@ class SmuFcov:
 
     def hit(self, covergroup: str, coverpoint: str, bin_name: str) -> None:
         key = (covergroup, coverpoint, bin_name)
-        # Unknown bins still count (forward-compatible) but preferred from FCOV_BINS.
+        # Keys are not validated against FCOV_BINS; any (cg, cp, bin) triple is counted.
         self._hits[key] += 1
 
     def hit_many(self, items: Iterable[tuple[str, str, str]]) -> None:

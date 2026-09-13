@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 
 """
-I3C Full CCC Matrix  (Test Plan #25)
+I3C Full CCC Matrix
 
 Exercises the supported CCC set with read-back verification where a GET
 counterpart exists: GETBCR, GET/SET MWL, GET/SET MRL, RSTACT.
@@ -59,12 +59,12 @@ async def test_full_ccc_matrix(dut):
     assert ok, f"RSTACT(0x01) failed resp=0x{resp:08X}"
 
     # RSTACT defining byte 0x02 (peripheral/whole-target reset) — observe only.
-    # The OCA target currently NACKs this (err=5 Nack); reset-action support per
-    # defining byte is design-dependent (see I3C_GAP_ANALYSIS.md). Do not fail.
+    # The OCA target NACKs this defining byte (err=5 Nack): reset-action support per
+    # defining byte is design-dependent, so the result is logged, not asserted.
     ok2, resp2 = await ctrl.rstact(0x02, dat_idx=0)
     tb.log.info(
         f"RSTACT(0x02) ok={ok2} resp=0x{resp2:08X} "
-        f"(observe-only; target NACK is a known limitation)"
+        f"(observe-only; per-defining-byte reset support is design-dependent)"
     )
 
     tb.log.info(f"Full CCC matrix complete (seed=0x{r.seed:08X})")

@@ -5,10 +5,8 @@
  * OCCP Comprehensive Error Verification Test
  *
  * **SPECIFICATION COMPLIANCE TEST**
- * Comprehensive test covering ALL OCCP error codes from specification Section 10.3.2
- *
- * **CONSOLIDATION**: This test replaces 6 separate repetitive tests to provide
- * complete coverage of all OCCP error scenarios in a single, maintainable test.
+ * Comprehensive test covering the OCCP error codes in
+ * hw/sys/smc/bootrom/prod/include/smc_occp_error_codes.h
  *
  * **VERIFICATION GOAL**: Validate ALL OCCP error code detection and reporting
  * - Bus/Command Errors (0x100-0x11F): CMD_READ, CMD_UNKNOWN, CMD_FAILED
@@ -25,7 +23,7 @@
 #include <string.h>
 #include "smc_status.h"
 
-// OCCP Error Codes from specification Section 10.3.2
+// OCCP error codes
 // Bus/Command Errors (0x100-0x11F)
 #define SMC_OCCP_ERROR_CMD_READ 0x100    /* Command read error from bus */
 #define SMC_OCCP_ERROR_CMD_UNKNOWN 0x101 /* Unknown command */
@@ -47,24 +45,14 @@
 #define SMC_OCCP_ERROR_JUMP_SECURITY 0x201    /* JUMP blocked by security */
 #define SMC_OCCP_ERROR_JUMP_READ_FAILED 0x202 /* JUMP failed due to read error */
 
-// // Status message format constants
-// #define SMC_STATUS_FW_ID_SMC_BL0        0x3
-// #define SMC_STATUS_TYPE_STATUS          0x0
-// #define SMC_STATUS_TYPE_WARNING         0x1
-// #define SMC_STATUS_TYPE_ERROR           0x2
-
 // Memory protection boundaries
 #define ROM_PROTECTED_SRAM_BASE 0xC0060000   /* ROM protected region start */
 #define ROM_PROTECTED_SRAM_END 0xC0066000    /* ROM protected region end */
 #define OCCP_ACCESSIBLE_SRAM_BASE 0xC0066000 /* OCCP accessible region start */
 
 // Test configuration
-#define COMPREHENSIVE_ERROR_SCENARIOS 45 /* Total error scenarios (enhanced) */
 #define MAX_STATUS_BUFFER_READS 200      /* Maximum status reads */
 #define MAX_INVALID_COMMANDS 16          /* Maximum invalid commands to test */
-
-// Additional bug detection scenarios
-#define CRITICAL_BUG_SCENARIOS 10 /* Critical bug detection tests */
 
 typedef struct {
     test_context_t *occp_ctx;
@@ -667,7 +655,7 @@ int main(void) {
     init_test(0);
 
     simputs("=== OCCP Comprehensive Error Verification Test ===\n");
-    simputs("Mission: Complete verification of ALL OCCP error codes from Section 10.3.2\n");
+    simputs("Mission: Complete verification of the OCCP error codes\n");
     simputs("Coverage: CMD, READ, WRITE, SECURITY, JUMP errors\n");
 
     if (!initialize_interface(&occp_ctx)) {

@@ -158,10 +158,10 @@ args = ["+skip_fuse_sense"]
 [[tests]]
 # CPU IFU/LSU local-alias-remap (the reference suite's
 # sep_cpu_ifu_lsu_alias_remap_matrix_test). EL2 firmware uses SEP_LOCAL_BASE
-# reset 0xD000_0000 and the fixed 768 MiB window
-# (sep_pkg::SEP_LOCAL_ALIAS_REGION_SIZE); REGION_SIZE is not programmed. Proves
-# the CPU-side IFU + LSU local-alias-remap
-# (sep_cpu.sv u_lsu/u_ifu_local_alias_remap): a fabric access to 0xD000_xxxx
+# reset 0xD000_0000 and the fixed 768 MiB window in memory_map.adoc;
+# REGION_SIZE is not programmed. Proves
+# the CPU-side IFU + LSU local-alias-remap:
+# a fabric access to 0xD000_xxxx
 # remaps to physical SRAM 0x1000_xxxx. MUST be cpu mode -- the no_cpu AXI splice
 # is post-remap and would bypass the remap. +skip_fuse_sense (the alias remap
 # does not depend on sensed OTP). CPU complex (real CPU IFU/LSU).

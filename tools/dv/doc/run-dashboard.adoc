@@ -15,9 +15,9 @@ or serve the generated pages.
 
 [NOTE]
 ====
-The product-facing dashboard page in the OCAH TRM is a separate visual
-placeholder. Repository CI publishes normalized weekly data for the external
-website pipeline, but it does not render or host dashboard HTML.
+Repository CI publishes normalized weekly data for the external website
+pipeline that renders the product-facing dashboard; this repository does not
+render or host dashboard HTML.
 ====
 
 == Architecture
@@ -181,7 +181,7 @@ There are two aggregation levels:
 . `dashboard` aggregates normalized DUT/flow records into flow and test
   summaries.
 
-The collector intentionally reduces the native status vocabulary:
+The collector reduces the native status vocabulary:
 
 [cols="<2,<3,<3",options="header"]
 |===
@@ -283,7 +283,7 @@ Typical forms are:
 |Display the score but mark detailed hole analysis unavailable.
 |===
 
-Coverage remains per DUT. The aggregate dashboard deliberately does not
+Coverage remains per DUT. The aggregate dashboard does not
 average percentages across DUTs or tools.
 
 [[dashboard-worked-example]]
@@ -384,7 +384,7 @@ passing, and each DUT's coverage separately. It does not report `(84.2 +
 [NOTE]
 ====
 This example has no retries, skipped tests, or unknown tests. See
-<<dashboard-counter-semantics,test-counter semantics>> for the current
+<<dashboard-counter-semantics,test-counter semantics>> for the
 skip/unknown caveat.
 ====
 
@@ -899,7 +899,7 @@ percentages, and each metric is duplicated as a top-level
 first simulation log), and `coverage_`-prefixed keys mirroring the staged
 coverage paths above. Paths inside the checkout are repository-relative;
 paths in an explicit out-of-tree download root are absolute.
-`artifacts.run_dir` is the exception: it intentionally remains the native
+`artifacts.run_dir` is the exception: it remains the native
 recorded identity rather than the selected download path.
 
 `run_metadata` keys: `run_dir`, `result_json`, `run_json`, `label`, `items`,
@@ -1206,8 +1206,7 @@ Operational rules:
   the dashboard pipeline do not interact.
 * An email digest is sent per weekly publication when the
   `OCAH_MAIL_USERNAME`/`OCAH_MAIL_PASSWORD`/`OCAH_MAIL_TO` secrets are
-  provisioned; the step self-disables while they are absent, and GitHub's
-  native scheduled-workflow failure notification covers the interim.
+  provisioned; the step self-disables while they are absent.
 * A `workflow_dispatch` accepts `dry_run=true`: the job collects and
   aggregates but skips the data-branch push, the bundle upload, and the
   digest email, and the Actions list labels it `dashboard dry run`. Use it to
@@ -1275,7 +1274,7 @@ actually absent or the input is no longer a complete run tree.
 
 Check that `--run-dir` resolves from the current directory and contains
 `result.json`, or pass the full path to that file. Also confirm that the JSON is
-an object with a `status` field. Collection deliberately creates an UNKNOWN
+an object with a `status` field. Collection creates an UNKNOWN
 record when no native result can be consumed.
 
 === Collection failed with a framework mispairing error
@@ -1301,14 +1300,13 @@ those artifacts separately or avoid presenting the bundle as self-contained.
 
 === A DUT name is not linked to its report
 
-This is a current integration gap. `report` does not write the generated HTML
-path back into the normalized result, while `dashboard` links only
-`artifacts.report` or `artifacts.html`.
+`report` does not write the generated HTML path back into the normalized
+result, while `dashboard` links only `artifacts.report` or `artifacts.html`.
 
 [[dashboard-current-limitations]]
-== Current limitations and roadmap boundary
+== Limitations
 
-Treat these as implementation constraints, not intended architecture:
+The pipeline has these constraints:
 
 * Collection is one DUT per command; automatic registry-wide collection and CI
   orchestration remain external.
@@ -1333,9 +1331,7 @@ Treat these as implementation constraints, not intended architecture:
 * Local publication does not constrain name/timestamp paths; all publication
   replaces destination trees non-atomically and has no secret scan.
 
-There is no implemented database service or live dashboard server. Repository
-CI integration and retention are provided by `.github/workflows/dashboard.yml`
-(see <<Continuous integration>>): CI trims trend history and per-night
-archives to 90 entries; the tool itself still has no retention policy. Add
-further capabilities only after defining their ownership and preserving the
-file contracts documented here.
+There is no database service or live dashboard server. Retention is a CI
+concern: `.github/workflows/dashboard.yml` (see <<Continuous integration>>)
+trims trend history and per-run archives to 90 entries; the tool itself has no
+retention policy.

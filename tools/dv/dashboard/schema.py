@@ -3,10 +3,10 @@
 
 """Normalized DV/FV result schemas.
 
-The dashboard intentionally consumes plain JSON records so it can be generated
-without EDA tools or a database server. Keep this schema tool-neutral: a DV
-simulation, a Verilator compile smoke, and an FV connectivity run should all fit
-in the same envelope.
+The dashboard consumes plain JSON records so it can be generated without EDA
+tools or a database server. Keep this schema tool-neutral: a DV simulation, a
+Verilator compile smoke, and an FV connectivity run should all fit in the same
+envelope.
 """
 
 from __future__ import annotations
@@ -386,7 +386,7 @@ def make_result(
 
 
 def make_result_from_run_result(run_result: Any, repo_root: Path) -> dict[str, Any]:
-    """Convert a `dvfv.launcher.RunResult` into normalized dashboard data."""
+    """Convert a launcher ``RunResult`` into one normalized dashboard result record."""
     flow = run_result.command.flow
     status = STATUS_PASS if run_result.passed else STATUS_FAIL
     artifacts = {}
@@ -454,7 +454,7 @@ def make_summary(results: list[dict[str, Any]]) -> dict[str, Any]:
                 for test in result.get("tests_detail") or []
             ]
             counts = _status_count(detail_statuses)
-            # Prefer detailed skip/unknown counts when available; older collected records only had
+            # Prefer detailed skip/unknown counts when available; a record may carry only
             # total/passing/failing.
             test_skipped += counts["skipped"] if not tests.get("skipped") else 0
             test_unknown += counts["unknown"] if not tests.get("unknown") else 0

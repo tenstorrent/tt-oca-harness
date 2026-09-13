@@ -8,7 +8,7 @@ override idle, GPIO stall is sticky across cold reset until cleared.
 Stimulus uses TB ``gpio_boot_stall_drive_i`` (OR into pad2core).
 
 Real checkers:
-  1. Drive pad bit[57]=1 across cold reset -> fuse_reset_n_delayed_o stays 0
+  1. Drive pad bit[57]=1 across cold reset -> smc_fuse_reset_n_delayed_o stays 0
   2. Clear pad -> fuse_reset rises
   3. Re-assert pad after release does not re-gate (sticky)
 """
@@ -25,7 +25,7 @@ from smu_base_test import smu_base_test
 
 @pyuvm.test()
 class smu_dft_gpio_boot_stall_test(smu_base_test):
-    """GPIO boot-stall sticky gating of fuse_reset_n_delayed_o."""
+    """GPIO boot-stall sticky gating of smc_fuse_reset_n_delayed_o."""
 
     use_shared_env = True
 
@@ -38,18 +38,17 @@ class smu_dft_gpio_boot_stall_test(smu_base_test):
         # Bounded wait, not an instant sample: smu_wrapper runs the real SMC
         # eFuse model from smc_ip_integration, whose sense sequence releases
         # fuse_reset_n_delayed_o a handful of clk_smu cycles after the primary
-        # resets the base test blocks on (measured: 9). The bare DUT ties that
-        # interface off, so there it is already high. This stays falsifiable --
-        # a fuse_reset that never rises fails on the expect_eq below.
+        # resets the base test blocks on. The bare DUT ties that interface off,
+        # so there it is already high.
         await wait_signal_high(
-            dut.fuse_reset_n_delayed_o,
+            dut.smc_fuse_reset_n_delayed_o,
             dut.clk_smu_i,
             timeout_cycles=2000,
             name="fuse_reset after bring-up",
         )
         sb.expect_eq(
             "fuse_reset high after bring-up",
-            int(dut.fuse_reset_n_delayed_o.value),
+            int(dut.smc_fuse_reset_n_delayed_o.value),
             1,
         )
 
@@ -74,21 +73,21 @@ class smu_dft_gpio_boot_stall_test(smu_base_test):
 
         sb.expect_eq(
             "fuse_reset gated by GPIO boot-stall",
-            int(dut.fuse_reset_n_delayed_o.value),
+            int(dut.smc_fuse_reset_n_delayed_o.value),
             0,
             evidence="STALL_COLD_STICKY",
         )
 
         stall.value = 0
         await wait_signal_high(
-            dut.fuse_reset_n_delayed_o,
+            dut.smc_fuse_reset_n_delayed_o,
             dut.clk_smu_i,
             timeout_cycles=2000,
             name="fuse_reset after GPIO clear",
         )
         sb.expect_eq(
             "fuse_reset released after GPIO clear",
-            int(dut.fuse_reset_n_delayed_o.value),
+            int(dut.smc_fuse_reset_n_delayed_o.value),
             1,
         )
 
@@ -97,7 +96,7 @@ class smu_dft_gpio_boot_stall_test(smu_base_test):
         await ClockCycles(dut.clk_smu_i, 64)
         sb.expect_eq(
             "fuse_reset stays high on sticky re-assert",
-            int(dut.fuse_reset_n_delayed_o.value),
+            int(dut.smc_fuse_reset_n_delayed_o.value),
             1,
             evidence="STALL_REASSERT_STICKY",
         )

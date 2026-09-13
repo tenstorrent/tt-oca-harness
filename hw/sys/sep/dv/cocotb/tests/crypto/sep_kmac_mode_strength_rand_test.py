@@ -45,31 +45,35 @@ from __future__ import annotations
 import pyuvm
 from env.sep_kmac_golden import kmac_family_words
 from env.sep_seeded_rng import SepSeededRng
+from env.sep_spec_tables import (
+    KMAC_KEY_LENGTHS,
+    KMAC_SHA3_DIGEST_BYTES,
+    KMAC_SHA3_STRENGTHS,
+    KMAC_XOF_STRENGTHS,
+)
 from sep_base_test import sep_base_test
 from seq_lib.sep_kmac_seq import SepKmac, SepKmacCfg
 
-# (mode, sec/strength, output bytes, key_bits[kmac only], customization S)
-CELLS = [
-    # kmac_errchk.sv declares SHA3 legal at all four strengths, and
-    # KMAC_STRENGTH maps every one of them.
-    ("sha3", 224, 28, None, b""),
-    ("sha3", 256, 32, None, b""),
-    ("sha3", 384, 48, None, b""),
-    ("sha3", 512, 64, None, b""),
-    ("shake", 128, 32, None, b""),
-    ("shake", 256, 32, None, b""),
-    # cSHAKE is only defined with a non-empty customization; with N=S="" SP800-185
-    # collapses it to SHAKE (0x1F), but the engine in CShake mode always applies the
-    # cSHAKE 0x04 domain -- so exercise cSHAKE with a real customization string.
-    ("cshake", 128, 32, None, b"OSS DV cSHAKE"),
-    ("cshake", 256, 32, None, b"Email Signature"),
-    ("kmac", 128, 32, 128, b""),
-    ("kmac", 256, 64, 256, b"My Tagged Application"),
-    # KMAC_KEYLEN defines five key lengths; every one is walked.
-    ("kmac", 256, 32, 192, b""),
-    ("kmac", 256, 32, 384, b"Key384"),
-    ("kmac", 256, 32, 512, b"Key512"),
-]
+# Walk set: FIPS 202 SHA-3 family + kmac.adoc/RDL SHAKE/cSHAKE 128/256 +
+# keyed KMAC (cSHAKE + kmac_en) at those XOF strengths. XOF output lengths
+# and customization strings are the test instance. KEY_LEN widths are the
+# DV-owned walk (RDL has no enum).
+# cSHAKE needs a non-empty customization; N=S="" collapses to SHAKE in
+# SP800-185, so those cells use a real S.
+CELLS = (
+    [("sha3", s, KMAC_SHA3_DIGEST_BYTES[s], None, b"") for s in KMAC_SHA3_STRENGTHS]
+    + [("shake", s, 32, None, b"") for s in KMAC_XOF_STRENGTHS]
+    + [
+        ("cshake", 128, 32, None, b"OSS DV cSHAKE"),
+        ("cshake", 256, 32, None, b"Email Signature"),
+        ("kmac", 128, 32, 128, b""),
+        ("kmac", 256, 64, 256, b"My Tagged Application"),
+        ("kmac", 256, 32, 192, b""),
+        ("kmac", 256, 32, 384, b"Key384"),
+        ("kmac", 256, 32, 512, b"Key512"),
+    ]
+)
+assert {c[3] for c in CELLS if c[0] == "kmac"} == set(KMAC_KEY_LENGTHS)
 
 
 @pyuvm.test()

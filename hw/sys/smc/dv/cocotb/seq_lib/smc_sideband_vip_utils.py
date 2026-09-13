@@ -54,18 +54,15 @@ async def check_sideband_observability() -> None:
     Shared by ``octs_sanity_test``, ``smc_avsbus_sanity_test``,
     ``smc_avsbus_clock_config_proxy_test`` and ``smc_avsbus_status_depth_test``.
 
-    ``is_resolvable`` asserts alone cannot carry this function. Verilator is a
-    2-state simulator, so nothing is ever unresolvable there and such asserts
-    are constant-true, leaving the four testcases that cite this as their
-    sideband observability proof with nothing that can fail
-    ([NO-ALWAYS-PASS-CHECKER]). The ``is_resolvable`` guards below are retained
-    because they do carry weight on a 4-state run (VCS / Xcelium); the checks
-    are the one-hot, quiescence and encoding compares that follow them.
+    ``is_resolvable`` asserts are constant-true under Verilator (a 2-state
+    simulator) and carry weight only on a 4-state run (VCS / Xcelium); the
+    fail-capable checks are the one-hot, quiescence and encoding compares that
+    follow them ([NO-ALWAYS-PASS-CHECKER]).
     """
     dut = cocotb.top
 
     await ClockCycles(dut.clk_smc_i, 16)
-    # 4-state-only guards. No-ops under Verilator; retained for VCS/Xcelium.
+    # 4-state-only guards: constant-true under Verilator, fail-capable on VCS/Xcelium.
     assert dut.tb_avsbus_irq.value.is_resolvable, "AVSBus IRQ bit is not resolvable"
     assert dut.tb_telemetry_irq_any.value.is_resolvable, "Telemetry IRQ aggregate is not resolvable"
     assert dut.tb_avsbus_cur_state_debug.value.is_resolvable, (

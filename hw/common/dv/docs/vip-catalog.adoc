@@ -4,7 +4,7 @@
 [[shared-vip-catalog]]
 == VIP Package Catalog
 
-This chapter summarizes the public package surface and qualification state.
+This chapter summarizes the public package surface and maturity level.
 Package READMEs remain authoritative for detailed arguments and methods.
 
 [[shared-vip-maturity]]
@@ -23,13 +23,13 @@ error behavior, and a named real DUT consumer.
 consumer is missing. Experimental VIP cannot be the sole evidence for a
 release gate.
 
-|Deferred
-|Capability is intentionally out of scope for the current release. It must
-not block baseline transaction BFMs or portable checker work.
+|Out of scope
+|Capability the package does not model. It must not block baseline
+transaction BFMs or portable checker work.
 |===
 
 [[shared-vip-catalog-summary]]
-=== Current Summary
+=== Package Summary
 
 [cols="<2,<2,<3,<5",options="header"]
 |===
@@ -39,25 +39,27 @@ not block baseline transaction BFMs or portable checker work.
 |Promoted
 |`cocotbext-axi`
 |AXI4/AXI4-Lite masters, responders/RAMs, results, items, monitors, and checker.
-DTP, SEP, and SMC are consumers.
+DTP, SEP, SMC, and SMU are consumers.
 
 |`ocah_jtag_vip`
 |Promoted for IEEE 1149.1
 |`cocotbext-jtag` plus OCAH raw TAP helpers
 |Active TAP, device/register maps, items, monitor, checker, state/path helpers,
 shared SV interface, and UVM agent. iJTAG and DUT TDR maps remain local.
+DTP, SMC, and SMU are consumers.
 
 |`ocah_spi_vip`
 |Promoted for single SPI
 |OCAH-native cocotb model
-|NOR flash responder and passive monitor. Quad/octal personalities currently
-use single-bit data timing; DDR and vendor timing are deferred.
+|NOR flash responder and passive monitor. Quad/octal personalities use
+single-bit data timing; DDR and vendor timing are out of scope. SEP and SMC
+are consumers.
 
 |`ocah_uart_vip`
 |Experimental
 |OCAH-native cocotb model
 |Console wrapper, native 8-N-1 line driver/sampler, and passive monitor. No
-external UART library.
+external UART library. SMC is the consumer.
 
 |`ocah_checker`
 |Shared infrastructure
@@ -74,8 +76,7 @@ Package: `hw/common/dv/vip/ocah_axi_vip/`
 Primary classes:
 
 * `OcahAxiMasterAgent`, `OcahAxiLiteMasterAgent`;
-* `OcahAxiSlaveAgent`, `OcahAxiSlaveAgent`, `OcahAxiSlaveAgent`;
-* `OcahAxiLiteSlaveAgent`, `OcahAxiLiteSlaveAgent`, `OcahAxiLiteSlaveAgent`;
+* `OcahAxiSlaveAgent`, `OcahAxiLiteSlaveAgent`;
 * `OcahAxiReadResult`, `OcahAxiWriteResult`;
 * `OcahAxiItem` and direction/protocol-specific item subclasses;
 * `OcahAxiMonitor`, `OcahAxiLiteMonitor`, `OcahAxiChecker`;
@@ -90,7 +91,7 @@ build lists the interface and the `sva/` checker too):
 descriptions), the struct-port bridge beside the interface, and the
 passive `uvm/ocah_axi_uvm_pkg.sv` (monitor, reference model, scoreboard with
 `CHK-*`/`CHECKER_SUMMARY` evidence, optional coverage subscriber, env).
-The DTP SV-UVM flow is the first consumer.
+The DTP SV-UVM flow consumes it.
 
 Use compatibility `read()`/`write()` methods for positive paths. Use
 `read_result()`/`write_result()` when checking responses, expected errors, or
@@ -118,9 +119,11 @@ sequence items and scoreboards.
 [[shared-vip-apb]]
 === APB
 
-No shared APB package ships. No DUT exposes an APB surface to a testbench
-today; a shared APB VIP is introduced only when a DUT regression gates real
-APB traffic.
+No shared APB package ships. No DUT exposes an APB surface to a testbench;
+a shared APB VIP is introduced only when a DUT regression gates real APB
+traffic. The APB master under `hw/ip/entropy_source/dv/tb_vcs/apb_vip/`
+belongs to that IP's standalone VCS bench, outside the native runner, and is not
+a shared package.
 
 [[shared-vip-jtag]]
 === JTAG
@@ -136,8 +139,8 @@ The cocotb API provides:
 * `OcahJtagState`, `next_jtag_state()`, and `jtag_tms_path()`.
 
 The SystemVerilog UVM layer provides a pin-level interface, item, config,
-driver, monitor, sequencer, agent, and VIP environment. DTP is the first UVM
-consumer.
+driver, monitor, sequencer, agent, and VIP environment. DTP consumes the UVM
+layer.
 
 The shared scope is IEEE 1149.1. DTP/SMC/SMU instruction maps, JTAG2AXI TDR
 packing, iJTAG, STAP/3DCR, and boundary-scan fixture models remain domain- or
@@ -151,10 +154,11 @@ Package: `hw/common/dv/vip/ocah_spi_vip/`
 `OcahSpiFlash` is a deterministic NOR-flash responder with JEDEC ID, READ, FAST
 READ, status, WREN/WDIS, page program, and sector erase support.
 `OcahSpiMonitor` passively records command/address/data activity.
-`OcahSepSpiFlash` retains compatibility with a legacy SEP xSPI pin shape.
+`OcahSepSpiFlash` is the subclass mapped to the SEP xSPI pad bundle; the SMC SPI
+pad test binds the same class to its lifted pads.
 
-The released personality is single-SPI Mode 0. True QSPI/OSPI lane turnaround,
-DDR, vendor-accurate BUSY timing, and vendor-specific commands are deferred.
+The personality is single-SPI Mode 0. True QSPI/OSPI lane turnaround, DDR,
+vendor-accurate BUSY timing, and vendor-specific commands are out of scope.
 
 [[shared-vip-i2c]]
 === I2C
@@ -179,9 +183,9 @@ a gating DUT smoke test.
 Package: `hw/common/dv/vip/ocah_uart_vip/`
 
 `OcahUartConsole` provides source/sink console traffic and `OcahUartMonitor`
-provides passive byte observation. The optional backend is omitted from the
-locked environment pending a canonical version/license decision; callers must
-handle `OcahUartImportError`.
+provides passive byte observation. The backend is native to the package (no
+external UART library); `OcahUartImportError` is exported but never raised by
+it.
 
 [[shared-vip-entropy]]
 === Entropy Stream
@@ -190,6 +194,14 @@ No shared entropy package ships. SEP-local models drive `esrc_noise_ext_i` and
 check the ESRC-to-DRBG-to-EDN chain; a shared entropy VIP is introduced only
 when a second subsystem needs one and gates it with a real regression.
 
+[[shared-vip-octs]]
+=== OCTS Sync
+
+No shared OCTS package ships. The SMC-local
+`hw/sys/smc/dv/cocotb/seq_lib/smc_octs_sync_bfm.py` drives and observes the
+PRIMARY/SECONDARY sync-load and credit pads; a shared package is introduced only
+when a second subsystem drives OCTS pads.
+
 [[shared-vip-checker]]
 === Common Checker Evidence
 
@@ -197,8 +209,8 @@ Package: `hw/common/dv/vip/ocah_checker/`
 
 `OcahChecker` implements named comparisons, required-ID tracking, timeout
 expectations, retained findings, and strict finalization. It does not implement
-protocol legality. Each protocol checker composes this core, beginning with
-`OcahJtagChecker`.
+protocol legality. Each protocol checker (`OcahJtagChecker`, `OcahAxiChecker`)
+composes this core.
 
 See <<shared-checker-model-contract,Checker, Model, and Scoreboard Contracts>>
 for the evidence and model data flow.

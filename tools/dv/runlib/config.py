@@ -7,7 +7,9 @@ from __future__ import annotations
 
 import ast
 import copy
+import os
 import re
+from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 from typing import Any
 
@@ -161,8 +163,9 @@ TOP_LEVEL_KEYS = {
     "dut",
     "tb",
     # Injected by load_dut when --overlay/OCAH_DV_OVERLAY is active; a sim config or profile
-    # may never set it (overlays are explicit-activation only — see apply_adopter_overlay).
+    # may never set them (overlays are explicit-activation only — see apply_adopter_overlay).
     "adopter_overlay",
+    "adopter_overlay_env",
 }
 
 BUILD_KEYS = {
@@ -188,11 +191,19 @@ BUILD_KEYS = {
 SOURCE_LIST_KEYS = {"description", "incdirs", "sources"}
 
 # Keys an adopter overlay file (--overlay / OCAH_DV_OVERLAY) may carry (see
-# apply_adopter_overlay). The layer is append-only by design: every allowed key ADDS to the
-# merged DUT view (build inputs, target defines/flags, run args) and none can replace or
-# remove what the checked-in configs declare — so a run with an overlay differs from the
-# baseline only by the overlay's own additions.
-ADOPTER_OVERLAY_KEYS = {"description", "frameworks", "build", "sim", "target_defaults", "targets"}
+# apply_adopter_overlay). The layer is append-only: every allowed key ADDS to the
+# merged DUT view (build inputs, target defines/flags, run args, process environment) and
+# none can replace or remove what the checked-in configs declare — so a run with an overlay
+# differs from the baseline only by the overlay's own additions.
+ADOPTER_OVERLAY_KEYS = {
+    "description",
+    "frameworks",
+    "build",
+    "sim",
+    "env",
+    "target_defaults",
+    "targets",
+}
 ADOPTER_OVERLAY_BUILD_KEYS = {"incdirs", "sources", "source_lists"}
 ADOPTER_OVERLAY_SIM_KEYS = {"args"}
 ADOPTER_OVERLAY_TARGET_KEYS = {"defines", "flags", "tools"}
@@ -436,7 +447,7 @@ def _assign_toml_value(
 def _load_toml_subset(path: Path) -> dict[str, Any]:
     """Small TOML reader for the repo's DV configs when Python lacks tomllib/tomli.
 
-    It intentionally covers only the constructs used by these configs: tables, arrays of tables,
+    It covers only the constructs used by these configs: tables, arrays of tables,
     strings, booleans, integers, floats, and arrays.
     """
     data: dict[str, Any] = {}
@@ -905,7 +916,7 @@ def _merge_framework_config(
     # layers, matching the `target_defaults` -> `targets` append in selected_target(): a
     # framework overlay contributes its gate define (e.g. the profile's `UVM`) on top of the
     # shared simulation set instead of replacing the list. Tool `flags` keep the plain
-    # overlay-wins semantics — an overlay may deliberately zero a tool's flag list (the uvm
+    # overlay-wins semantics — an overlay may zero a tool's flag list (the uvm
     # overlay relies on the vcs stage preamble for its flags).
     for section_name in ("target_defaults", "targets"):
         section = merged.get(section_name)
@@ -1046,6 +1057,70 @@ def _append_unique(target: dict[str, Any], key: str, extra: list[str], where: st
         target[key] = combined
 
 
+_ENV_VAR_RE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}|\$([A-Za-z_][A-Za-z0-9_]*)")
+
+
+def expand_env_vars(text: str, where: str, environ: Mapping[str, str] | None = None) -> str:
+    """Expand ``$VAR`` / ``${VAR}`` in one adopter-overlay path from ``environ``.
+
+    ``environ`` defaults to the process environment; the overlay applier passes that environment
+    with the overlay's own ``[env]`` table applied on top. Only overlay-supplied ``[build]``
+    entries pass through here: checked-in configs and the entries inside a ``source_lists``
+    manifest stay literal (repo-relative or absolute). An unset variable is a
+    :class:`ConfigError` naming the variable and the entry under ``where`` (the overlay file and
+    key). A set-but-empty variable expands to the empty string, as in a shell.
+    """
+    source = os.environ if environ is None else environ
+
+    def substitute(match: re.Match[str]) -> str:
+        name = match.group(1) or match.group(2)
+        value = source.get(name)
+        if value is None:
+            raise ConfigError(f"{where}: environment variable `{name}` is not set (entry `{text}`)")
+        return value
+
+    return _ENV_VAR_RE.sub(substitute, text)
+
+
+_ENV_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def _overlay_env_table(overlay: dict[str, Any], where: str) -> dict[str, str]:
+    """Validate an overlay's ``[env]`` table: shell-legal variable names, string values."""
+    table = overlay.get("env")
+    if table is None:
+        return {}
+    if not isinstance(table, dict):
+        raise ConfigError(f'{where}: [env] must be a table of NAME = "value" pairs')
+    env: dict[str, str] = {}
+    for name, value in table.items():
+        if not _ENV_NAME_RE.match(name):
+            raise ConfigError(f"{where} [env]: `{name}` is not a valid environment variable name")
+        if not isinstance(value, str):
+            raise ConfigError(f"{where} [env].{name}: value must be a string")
+        env[name] = value
+    return env
+
+
+def activate_adopter_overlay_env(
+    data: dict[str, Any], environ: MutableMapping[str, str] | None = None
+) -> dict[str, str]:
+    """Apply the overlay's ``[env]`` table to ``environ`` (the process environment by default).
+
+    Every stage subprocess, ``env/`` snapshot, and in-process tool runner copies the process
+    environment, so one application at run start reaches build and sim alike. An overlay value
+    replaces an ambient one. Returns the applied table, empty when the view carries no overlay
+    ``[env]``.
+    """
+    target = os.environ if environ is None else environ
+    env = data.get("adopter_overlay_env")
+    if not isinstance(env, dict) or not env:
+        return {}
+    applied = {str(name): str(value) for name, value in env.items()}
+    target.update(applied)
+    return applied
+
+
 def apply_adopter_overlay(data: dict[str, Any], root: Path, overlay_path: Path) -> None:
     """Apply one adopter overlay file on top of the merged DUT view (append-only).
 
@@ -1059,7 +1134,13 @@ def apply_adopter_overlay(data: dict[str, Any], root: Path, overlay_path: Path) 
     before `[build].source_lists` expansion, so an overlay-supplied manifest expands like a
     DUT-owned one):
 
-    - `[build]` `incdirs`/`sources`/`source_lists`: dedup-append AFTER the DUT's own entries.
+    - `[build]` `incdirs`/`sources`/`source_lists`: `$VAR`/`${VAR}` expand from the process
+      environment with the overlay's `[env]` applied on top (an unset variable is a config
+      error), then dedup-append AFTER the DUT's own entries.
+    - `[env]` (string values): validated and recorded under the reserved `adopter_overlay_env`
+      key; the run path applies it to the process environment once, at run start, through
+      :func:`activate_adopter_overlay_env`, where an overlay value replaces an ambient one.
+      Loading never touches the environment, so `--validate-configs` and `--list` stay pure.
     - `[sim].args`: append after the merged `[sim].args` (still before run-mode/test/CLI args).
     - `[target_defaults.<t>]`/`[targets.<t>]` `defines`/`flags` and `[...tools.<tool>].flags`:
       dedup-append into the matching table (created when absent).
@@ -1067,8 +1148,9 @@ def apply_adopter_overlay(data: dict[str, Any], root: Path, overlay_path: Path) 
       view whose selected framework is not listed raises :class:`OverlayFrameworkMismatch`.
 
     Applying the same overlay to the same view is deterministic and repeatable: list order is
-    preserved and the dedup rules make a re-application a no-op. The applied path is recorded
-    under the reserved `adopter_overlay` key (surfaced in result.json).
+    preserved and the dedup rules make a re-application a no-op. The applied path and `[env]`
+    table are recorded under the reserved `adopter_overlay` / `adopter_overlay_env` keys
+    (surfaced in result.json as `overlay` / `overlay_env`).
     """
     where = f"adopter overlay {overlay_path}"
     if not overlay_path.is_file():
@@ -1088,6 +1170,11 @@ def apply_adopter_overlay(data: dict[str, Any], root: Path, overlay_path: Path) 
                 f"is `{selected or '<none>'}`"
             )
 
+    overlay_env = _overlay_env_table(overlay, where)
+    # Path expansion resolves against the environment the stages run with once the table is
+    # activated.
+    expansion_env: dict[str, str] = {**os.environ, **overlay_env}
+
     build_overlay = config_section(overlay, "build")
     if build_overlay:
         validate_allowed_keys(build_overlay, ADOPTER_OVERLAY_BUILD_KEYS, f"{where} [build]")
@@ -1095,7 +1182,11 @@ def apply_adopter_overlay(data: dict[str, Any], root: Path, overlay_path: Path) 
         if not isinstance(build, dict):
             raise ConfigError(f"{where}: merged [build] is not a table")
         for key in ("incdirs", "sources", "source_lists"):
-            extra = as_str_list(build_overlay.get(key), f"{where} build.{key}")
+            key_where = f"{where} build.{key}"
+            extra = [
+                expand_env_vars(text, key_where, expansion_env)
+                for text in as_str_list(build_overlay.get(key), key_where)
+            ]
             if extra:
                 _append_unique(build, key, extra, f"{where} merged build")
 
@@ -1143,6 +1234,8 @@ def apply_adopter_overlay(data: dict[str, Any], root: Path, overlay_path: Path) 
                     _append_unique(tools.setdefault(tool_name, {}), "flags", extra, tool_where)
 
     data["adopter_overlay"] = repo_rel(root, overlay_path)
+    if overlay_env:
+        data["adopter_overlay_env"] = overlay_env
 
 
 def load_dut(
@@ -1185,9 +1278,9 @@ def load_dut(
                     f"{path}: profile `{profile}` declares no [frameworks.<name>] sections, so "
                     "this DUT cannot declare frameworks"
                 )
-            # Legacy single-framework profile: `[sim].args` appends across profile->DUT
-            # inheritance (every other inherited array replaces). Capture both lists before
-            # deep_merge clobbers the DUT's, then re-join.
+            # Single-framework profile (no [frameworks.<name>] sections): `[sim].args` appends
+            # across profile->DUT inheritance (every other inherited array replaces). Capture both
+            # lists before deep_merge clobbers the DUT's, then re-join.
             dut_sim_args = as_str_list(config_section(data, "sim").get("args"), "sim.args")
             profile_sim_args = as_str_list(
                 config_section(profile_cfg, "sim").get("args"), "sim.args"
@@ -1197,11 +1290,12 @@ def load_dut(
             if combined_sim_args:
                 data["sim"] = {**config_section(data, "sim"), "args": combined_sim_args}
 
-    if "adopter_overlay" in data:
-        raise ConfigError(
-            f"{path}: `adopter_overlay` may not be set in a sim config or profile — the adopter "
-            "overlay layer activates only via --overlay or OCAH_DV_OVERLAY"
-        )
+    for reserved in ("adopter_overlay", "adopter_overlay_env"):
+        if reserved in data:
+            raise ConfigError(
+                f"{path}: `{reserved}` may not be set in a sim config or profile — the adopter "
+                "overlay layer activates only via --overlay or OCAH_DV_OVERLAY"
+            )
     if adopter_overlay is not None:
         # After the framework merge (the overlay extends the selected view) and before
         # source-list expansion (an overlay-supplied manifest expands like a DUT-owned one).
@@ -1322,7 +1416,7 @@ def load_executors(root: Path) -> dict[str, Any]:
 
 
 def load_sim_cfg(flow: Dut, root: Path) -> dict[str, Any]:
-    # The flow and sim_cfg are now one merged file; the loaded DUT already holds it.
+    # The sim_cfg tables live in the DUT config file, so the loaded DUT already holds them.
     return flow.raw
 
 
@@ -1384,8 +1478,7 @@ def resolved_target_name(sim_cfg: dict[str, Any], test: TestEntry | None) -> str
 def selected_target(sim_cfg: dict[str, Any], name: str | None = None) -> dict[str, Any]:
     """The active `[targets.<name>]` table (defines + per-tool flags + build_dir).
 
-    OD-19 merged the former `[compile_targets]`/`[run_targets]` split into one `[targets]` table
-    keyed by `[defaults].target`.
+    One `[targets]` table serves compile and run; `[defaults].target` selects the entry.
     """
     name = name or default_target_name(sim_cfg)
     target_defaults = (
@@ -1456,8 +1549,8 @@ def targeted_sim_cfg(
     """Return a cloned config resolved for one target.
 
     Stage implementations consume source-selection fields from `[build]`, while target policy lives
-    under `[targets.<name>]`. Keep the existing stage API by copying target-owned source selectors
-    into the cloned `[build]` table and overriding `[defaults].target`.
+    under `[targets.<name>]`; the clone copies target-owned source selectors into `[build]` and
+    sets `[defaults].target`.
     """
     cfg = copy.deepcopy(sim_cfg)
     cfg.setdefault("defaults", {})["target"] = target_name
@@ -1478,8 +1571,8 @@ def targeted_sim_cfg(
 
     # These source lists are additive: DUT-wide sources from `[build]` plus target-owned shims/stubs.
     # `exclude_files` is likewise additive: DUT-wide drops from `[build]` plus target-owned drops
-    # (e.g. the lsu_stub target excludes the real hw/sep/sep_cpu.sv so its appended stub is the
-    # only definition, with all DUT packages already declared ahead of it).
+    # (e.g. a CPU-stub target excludes the real hw/sys/sep/rtl/sep_cpu.sv so its appended stub
+    # is the only definition, with all DUT packages already declared ahead of it).
     for key in ("stubs", "sources", "exclude_files"):
         if key in target:
             build[key] = _merge_unique_strings(
@@ -1503,10 +1596,9 @@ def targeted_sim_cfg(
         if not isinstance(build_dir, str) or not build_dir:
             raise ConfigError(f"`targets.{target_name}.build_dir` must be a non-empty string")
         # Per-target subdir so targets that share one build_dir do not clobber each other's
-        # generated filelist (last-writer-wins): without the target_name key, every target derived
-        # the SAME filelists/{bender,files}.f and a later target's flist overwrote an earlier one,
-        # so a multi-target regression compiled the wrong source set (e.g. lsu_stub built with the
-        # real sep_cpu instead of the stub). Keying on target_name gives each its own filelist.
+        # generated filelist: a shared filelists/{bender,files}.f is last-writer-wins, so a
+        # multi-target regression would compile a later target's source set (e.g. the real
+        # sep_cpu in place of a CPU-stub target's stub).
         filelist_root = Path(build_dir) / "filelists" / target_name
         work_dir = target.get("work_dir", build_dir)
         if not isinstance(work_dir, str) or not work_dir:
@@ -1553,8 +1645,8 @@ def target_flags(target: dict[str, Any], tool: str) -> list[str]:
     return flags
 
 
-# The compile/run target split is gone; both accessors now resolve the one merged target table so
-# the existing stage code (which still distinguishes compile vs run locally) keeps working.
+# One target table serves both compile and run; these accessors let stage code that distinguishes
+# compile from run resolve the same target.
 def selected_compile_target(sim_cfg: dict[str, Any]) -> dict[str, Any]:
     return selected_target(sim_cfg)
 
@@ -1582,7 +1674,7 @@ def selected_run_mode(sim_cfg: dict[str, Any], test: TestEntry | None, args: Any
         requested = test.run_modes[0]
         where = f"test `{test.name}` run_modes"
     if not requested:
-        # The implicit fallback is optional by design: a DUT whose tests all carry run_modes
+        # The implicit fallback is optional: a DUT whose tests all carry run_modes
         # never consults it, and a DUT without a `smoke` mode must still resolve (to no mode).
         requested = defaults_cfg(sim_cfg).get("run_mode", "smoke")
         mode = run_modes_cfg(sim_cfg).get(str(requested), {})
@@ -1754,8 +1846,7 @@ def load_test_catalog(flow: Flow, root: Path) -> TestCatalog:
         raw_path = Path(str(testlist["path"])).expanduser()
         path = raw_path if raw_path.is_absolute() else root / raw_path
         if not path.is_file() and not raw_path.is_absolute():
-            # The clean contract says testlist paths are DUT-local. The sandbox configs still use
-            # repo-relative paths, so accept both while preferring the existing repo-relative form.
+            # A relative testlist path may be repo-relative or DUT-local; repo-relative wins.
             path = flow.path.parent / raw_path
         tests, groups, group_sources = _merge_testlist_data(
             load_toml(path), path, path.parent, root, [path]

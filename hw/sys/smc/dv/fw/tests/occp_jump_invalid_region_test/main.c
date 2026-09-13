@@ -5,7 +5,7 @@
  * OCCP Jump Invalid Region Test
  *
  * This test verifies that the JUMP command properly handles addresses in the
- * protected region (0xC0060000 to 0xC0066000) for unsecure mode only.
+ * protected region (SMC_SRAM_BASE_ADDR to OCCP_TEST_BASE_ADDR) for unsecure mode only.
  * The ROM should log an error for invalid addresses and not jump to them.
  * After the invalid command, additional commands are sent to verify the ROM
  * is still responsive and in the OCCP processing loop.

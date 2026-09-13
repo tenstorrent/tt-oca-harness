@@ -16,10 +16,9 @@
 |Primary simulator |Verilator
 |Design specification |`hw/sys/dtp/doc/index.adoc` (designer-owned; includes the `jtag_intf_unit`, `jtag_ptap`, `jtag_stap`, and cross-trigger IP chapters)
 |Register sources |`hw/ip/cross_trigger/cross_trigger_port/regs/cross_trigger_port.rdl`, `hw/ip/cross_trigger/cross_trigger_matrix/regs/cross_trigger_matrix.rdl` (SystemRDL); JTAG TDR layouts in the `jtag_ptap` IP documentation
-|Open-source scenario-expanded test cases |151
 |===
 
-This standalone VPLAN defines 151 public scenario-level test cases. The
+This standalone VPLAN defines the public scenario-level test cases below. The
 implementation uses unified OCAH BFM wrappers for standard protocols and
 OCAH-local DTP BFMs for DTP-specific protocols.
 
@@ -58,7 +57,7 @@ selectable in the public testlists.
 |Single-scenario module |Use the module name, for example `dtp_jtag_idcode_test`
 |Multi-scenario module |Use `+dtp_<feature>_<scenario>_test+`, for example `dtp_ctm_p2p_cla_to_ctp_test`
 |Scenario names |Use descriptive lower-snake-case names that encode operation, mode, direction, or coverage target
-|Legacy non-DTP names |Normalize to `+dtp_*+`, for example the legacy SMC AXI error single-write scenario becomes `dtp_jtag2axi_smc_axi_error_single_write_test`
+|Scenario prefix |Every scenario name starts with `dtp_`, for example `dtp_jtag2axi_smc_axi_error_single_write_test`
 |Open-source files |Add one PyUVM test class in `tests/` and one sequence in `seq_lib/` per scenario-expanded test case
 |===
 
@@ -85,7 +84,7 @@ selectable in the public testlists.
 [cols=",,,",options="header",]
 |===
 |Test Case |Source Module |VIP / Model |Description
-|`dtp_sanity_test` |`dtp_sanity_test` |`ocah_jtag_vip` |TAP FSM coverage: reset, DR/IR/pause path traversal, randomized state navigation, all IEEE 1149.1 states visited (IDCODE moved to `dtp_jtag_idcode_test`)
+|`dtp_sanity_test` |`dtp_sanity_test` |`ocah_jtag_vip` |TAP FSM coverage: reset, DR/IR/pause path traversal, randomized state navigation, all IEEE 1149.1 states visited
 |`dtp_jtag_bypass_test` |`dtp_jtag_bypass_test` |`ocah_jtag_vip` |BYPASS `0x00` and `0x3F`
 |`dtp_jtag_undef_instr_test` |`dtp_jtag_undef_instr_test` |`ocah_jtag_vip` |Undefined instructions select BYPASS
 |`dtp_jtag_idcode_test` |`dtp_jtag_idcode_test` |`ocah_jtag_vip` |IDCODE field verification
@@ -258,7 +257,7 @@ selectable in the public testlists.
 |`dtp_xtrig_rand_test` |`dtp_xtrig_rand_test` |`ocah_axi_vip`, OCAH-local CTP/CTM BFMs |Random CTP configuration
 |`dtp_xtrig_rand_deterministic_csr_sweep_test` |`dtp_xtrig_rand_test` |`ocah_axi_vip`, OCAH-local CTP BFM |CTP CSR deterministic sweep
 |`dtp_xtrig_rand_deterministic_dst_port_sweep_test` |`dtp_xtrig_rand_test` |`ocah_axi_vip`, OCAH-local CTP/CTM BFMs |Destination-port toggle sweep
-|`dtp_xtrig_reg_stall_test` |`dtp_xtrig_reg_stall_test` |`ocah_axi_vip`, OCAH-local XTRIG monitor |Regblock stall documentation
+|`dtp_xtrig_reg_stall_test` |`dtp_xtrig_reg_stall_test` |`ocah_axi_vip`, OCAH-local XTRIG monitor |XTRIG regblock accepted-access path
 |`dtp_xtrig_axi_channel_skew_test` |`dtp_xtrig_axi_channel_skew_test` |`ocah_axi_vip`, OCAH-local XTRIG monitor |Manual AXI-Lite channel skew
 |`dtp_xtrig_axi_channel_skew_demux_aw_lock_release_test` |`dtp_xtrig_axi_channel_skew_test` |`ocah_axi_vip`, OCAH-local XTRIG monitor |Demux AW-lock release
 |`dtp_xtrig_axi_channel_skew_read_decode_backpressure_test` |`dtp_xtrig_axi_channel_skew_test` |`ocah_axi_vip`, OCAH-local XTRIG monitor |Read decode backpressure
@@ -300,7 +299,7 @@ procedure ends by checking scoreboard/reference-model errors are zero.
 
 *BFM / Model*: `ocah_jtag_vip`
 
-*Objective*: TAP FSM coverage: reset, DR/IR/pause path traversal, randomized state navigation, all IEEE 1149.1 states visited (IDCODE moved to `dtp_jtag_idcode_test`)
+*Objective*: TAP FSM coverage: reset, DR/IR/pause path traversal, randomized state navigation, all IEEE 1149.1 states visited
 
 *Test Coverage*:
 
@@ -4538,7 +4537,7 @@ a. Verify no AXI-Lite transaction is issued on `axil_sep_otp_jtag_req_o` and no 
 * Maximum AW/W channel skew on the JTAG2AXI single-op write path with AW ready asserted while W ready is held low
 * Reachable `AXI_SEND_ADDR_W -++>++ AXI_WAIT_BRESP` FSM transition on `axi_state_q_tclk`
 * AXI-Lite `aw_valid_stable` / `w_valid_stable` and payload-stability assertions while ready is low
-* Intended to support a documented waiver for `AXI_SEND_DATA_W` should that state remain structurally unreachable (AW{plus}W are pushed atomically through the per-channel `axi_cdc_clearable` FIFOs, so the FSM history is expected to skip it)
+* `AXI_SEND_DATA_W` is structurally unreachable: AW{plus}W are pushed atomically through the per-channel `axi_cdc_clearable` FIFOs, so the FSM history skips it
 
 *Test Procedure*:
 
@@ -4563,7 +4562,7 @@ c. While W ready is low, confirm AW/W valid and payload remain stable and do not
 |`j2a_bp_status_chk` |Final JTAG2AXI completion status is OKAY and read-back data matches the written value
 |===
 
-*Pass Criteria*: The reachable maximum-skew path and AXI-Lite stable assertions are exercised, the observed FSM history supports a waiver for the (expected structurally-unreachable) `AXI_SEND_DATA_W` state, and the write completes correctly with zero scoreboard/reference-model errors.
+*Pass Criteria*: The reachable maximum-skew path and AXI-Lite stable assertions are exercised, and the write completes correctly with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -5797,35 +5796,33 @@ d. Exercise the internal CT ack toggle for that destination.
 
 *BFM / Model*: `ocah_axi_vip`, OCAH-local XTRIG monitor
 
-*Objective*: Regblock stall documentation
+*Objective*: XTRIG regblock accepted-access path
 
 *Test Coverage*:
 
-* Targets the XTRIG regblock local stall paths, expected to be structurally unreachable in this integration; intended to support a documented waiver rather than additional stimulus
+* The upstream AXI-Lite path always presents the XTRIG regblock a ready interface, so the regblock local stall (back-pressure) paths are unreachable in the DTP integration
 * Confirms XTRIG CSR writes and reads complete without corruption when the register interface is exercised
 * No trigger state changes occur until an access is accepted
-* Records the integration rationale so any residual stall coverage holes can be resolved by waiver review rather than additional cocotb stimulus
 
 *Test Procedure*:
 
 [arabic]
-. Record, in the test header, the integration rationale that the XTRIG generated-regblock local stall (back-pressure) paths are expected to be structurally unreachable in this DTP integration because the upstream AXI-Lite path always presents the regblock with a ready interface; if confirmed, they are resolved by a documented waiver rather than additional stimulus.
 . Exercise representative XTRIG CSR writes and reads through `OcahAxiLiteMasterAgent` to confirm the reachable accepted-access path.
 a. Verify each write/read completes without corruption.
 b. Verify no trigger state changes until the access is accepted by the regblock.
-. Capture the XTRIG monitor trace as supporting evidence that the local stall condition is not asserted under the exercised stimulus, to back the waiver entry.
+. Confirm through the XTRIG monitor trace that the regblock local stall condition is never asserted under the exercised accesses.
 
 *Checkers*:
 
 [cols=",",options="header",]
 |===
 |Checker |Description
-|`xtrig_reg_stall_unreachable_chk` |Records the regblock local stall path as expected-unreachable to support a waiver entry
+|`xtrig_reg_stall_unreachable_chk` |The regblock local stall condition is never asserted under the exercised accesses
 |`xtrig_reg_stall_csr_chk` |Accepted XTRIG CSR writes/reads read back without corruption
 |`xtrig_reg_stall_no_premature_chk` |No trigger state changes until the access is accepted
 |===
 
-*Pass Criteria*: Accepted XTRIG CSR accesses complete uncorrupted, and the (expected structurally-unreachable) stall path is documented to support a waiver, with zero scoreboard/reference-model errors.
+*Pass Criteria*: Accepted XTRIG CSR accesses complete uncorrupted and the regblock local stall condition is never observed, with zero scoreboard/reference-model errors.
 
 '''''
 
@@ -6714,17 +6711,8 @@ d. Confirm the written value affects only this source register and no neighborin
 
 '''''
 
-=== Counts
-
-[cols=",",options="header",]
-|===
-|Metric |Count
-|Scenario-expanded open-source test cases |149
-|===
-
 SMC fabric write/read scenarios map to the source modules recorded in the
-scenario tables. GitHub issues should track implementation sequencing and any
-temporary testlist aliases.
+scenario tables.
 
 === Regression Groups
 
@@ -6733,9 +6721,9 @@ temporary testlist aliases.
 |Group |Tests |Purpose
 |`smoke` |`dtp_sanity_test`, `dtp_jtag_idcode_test` |Fast TAP bring-up gate
 |`functional` |Smoke plus the JTAG2AXI `single_write` and `single_write_read` scenarios |Fast functional regression
-|`basic_jtag` |All 19 Smoke and Basic JTAG scenarios |TAP, instruction, reset, BSR-loopback, and TMP smoke coverage
-|`debug_tdr` |12 TMP_STATUS, IC_RESET, DEBUG_CONTROL, and CAPS tests |Debug TDR coverage
-|`all` |All 149 scenario-expanded tests (`expected_count`-pinned in `all.toml`) |Full OCAH DTP regression; the nightly CI tier runs this group
+|`basic_jtag` |The Smoke and Basic JTAG scenarios |TAP, instruction, reset, BSR-loopback, and TMP smoke coverage
+|`debug_tdr` |The TMP_STATUS, IC_RESET, DEBUG_CONTROL, and CAPS tests |Debug TDR coverage
+|`all` |Every scenario-expanded test (`expected_count`-pinned in `testlists/all.toml`) |Full OCAH DTP regression
 |`jtag2axi` |All JTAG2AXI write/read/error/robustness scenarios |AXI/AXI-Lite bridge coverage
 |`scan` |STAP, 3DCR, and iJTAG scenarios |IEEE 1838 and IEEE 1687 coverage
 |`dbg_disable` |The two debug-disable matrix tests plus every resource-specific directed gating test |Per-field `dbg_disable_t` closure (22-cell coverage contract)
@@ -6744,12 +6732,11 @@ temporary testlist aliases.
 
 === Known Limitations
 
-[cols=",,",options="header",]
+[cols=",",options="header",]
 |===
-|Limitation |Impact |Resolution Path
-|iJTAG scan chains are looped back (`scan_in <- scan_out`) in `tb_top` |iJTAG scenarios validate the DTP-side SIB plumbing, not an external instrument network |Attach an iJTAG instrument model behind the SIBs when integration scenarios need one
-|The downstream STAP TAPs are behavioral `ocah_jtag_vip` devices (5-bit IR, IDCODE, one writable TDR) attached only by the STAP-selection scenarios |Other scan scenarios see the STAP host ports as wire loopbacks |Attach the devices in further scenarios (for example `dtp_3dcr_tms_hold_test`) as their evidence needs grow
-|The SV-UVM harness ties off the XTRIG CSR port, `xtrig_clk_stop_req`, and SEP OTP AXI-Lite |XTRIG and SEP-OTP scenarios run in the cocotb framework only |Extend the UVM harness as the SV-UVM flow grows beyond smoke
-|The bring-up startup vector clears all debug disables |Gating behavior is only observable under explicit disable stimulus |The `dbg_disable` group drives directed and seeded disable vectors and closes the 22-cell coverage contract
-|SV covergroups are not supported by Verilator |Functional coverage must be Python-side or commercial-sim |See `DTP_FCOV.adoc`
+|Limitation |Impact
+|iJTAG scan chains are looped back (`scan_in <- scan_out`) in `tb_top` |iJTAG scenarios validate the DTP-side SIB plumbing, not an external instrument network
+|The downstream STAP TAPs are behavioral `ocah_jtag_vip` devices (5-bit IR, IDCODE, one writable TDR) attached only by the STAP-selection scenarios |Other scan scenarios see the STAP host ports as wire loopbacks
+|The bring-up startup vector clears all debug disables |Gating behavior is only observable under explicit disable stimulus; the `dbg_disable` group drives directed and seeded disable vectors and closes the 22-cell coverage contract
+|SV covergroups are not supported by Verilator |Functional coverage is collected by the `cov/sv/` cover-property modules under Verilator and by covergroups on commercial simulators (see `DTP_FCOV.adoc`)
 |===

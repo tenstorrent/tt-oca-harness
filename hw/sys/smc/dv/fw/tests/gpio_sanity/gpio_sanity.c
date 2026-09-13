@@ -20,7 +20,7 @@
 #define GPIO_CTRL_CONTROL_OFF \
     (SMC_TOP_GPIO_CTRL_CONTROL_BASE_ADDR(0) - SMC_TOP_GPIO_CTRL_BASE_ADDR(0))
 
-/* Approved GPIO_SANITY exact expects. */
+/* Reset-default expectations for the GPIO_SANITY checks. */
 #define EXP_ACCESS_FILTER 0x00010100u
 #define EXP_DATA_CTRL 0x00000000u
 #define EXP_CONTROL 0x00100002u
@@ -368,7 +368,7 @@ void test_rx_tx(void) {
     write_gpio(24, (SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)),
                gpio_intf_24.w);
 
-    /* CHK-PAD-IN: both pad2core levels must match driven core2pad (can-fail MSB compare). */
+    /* CHK-PAD-IN: pad2core must follow the driven core2pad at both levels. */
     for (level = 0; level < 2; level++) {
         gpio_intf_11.f.core2pad = (uint32_t)level;
         write_gpio(11, (SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)),
@@ -378,7 +378,6 @@ void test_rx_tx(void) {
             24, (SMC_TOP_GPIO_INTF_DATA_CTRL_BASE_ADDR(0) - SMC_TOP_GPIO_INTF_BASE_ADDR(0)));
         pad2core_bit = read_data_24 & PAD2SOC_MASK;
 
-        /* Vacuous bug was `(… & 0x80000000) == 1` — and-result is never 1. */
         if (level == 0) {
             if (pad2core_bit != 0u) {
                 write_scratch(2, read_data_24);
@@ -401,15 +400,15 @@ int main(void) {
     test_rst_defaults();
 
     /*
-     * Legacy all-GPIO DATA_CTRL walk + filters must run before PAD-IN/DIR leave
-     * GPIO11/24 in enable_rx_tx=10; that mode makes core2pad writeback mismatch
-     * in test_rw_core2pad (observed FW Status 0x80010021 @ gpio 24).
+     * The all-GPIO DATA_CTRL walk and the filter checks run before PAD-IN/DIR:
+     * those leave GPIO11/24 in enable_rx_tx=10, and in that mode the core2pad
+     * writeback in test_rw_core2pad does not read back.
      */
     test_rw_core2pad();
     test_read_filter();
     test_write_filter();
 
-    /* Contract S4–S7 producers (LIVE REG-OUT/DIR tokens still need TB). */
+    /* S4-S7 producers; the LIVE REG-OUT/DIR tokens require the TB pad observer. */
     test_reg_out_program();
     test_rx_tx();
     test_dir_switch_csr();

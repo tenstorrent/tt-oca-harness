@@ -2,13 +2,6 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """Mailbox CTRL.wflush empties the write FIFO it claims to flush.
 
-`OUTBOUND_MAILBOX_0.CTRL` @0x48 had no enrolled coverage. The reason it was
-missed is structural rather than accidental: `smc_mailbox_field_sweep_test_seq`
-walks the port by offset and its list stops at IRQEN @0x38, so CTRL @0x48 and
-IRQP @0x40 fall off the end. IRQP is accounted for -- `smc_mailbox_multi_
-instance_test_seq` records it as `irqs_q & irqen_q`, read-only derived -- and
-CTRL was not.
-
 CTRL cannot be a readback test at all. `axil_mailbox.rdl:195-208` makes both
 its fields `sw = w; hw = r`: they are flush strobes, not storage, so a
 write/read-back pair would compare against whatever the register file returns

@@ -7,7 +7,7 @@ MSG FIFO, waits for done, and reads the digest -- mirroring the reference suite
 sep_km_hmac_sideload_kat_test_seq op helpers (RAL there; direct AXI here, like
 SepAes/SepOtbn). 32-bit beats (size=2) via the wrapper's 64->32 dw-converter.
 
-HMAC register map (base 0x1091_1000; vendor/lowRISC/opentitan/upstream/hw/ip/hmac/rtl/hmac_reg_pkg.sv):
+HMAC register map (base from the generated SEP header; offsets from hmac.adoc):
   INTR_STATE @ 0x000 (RW1C: bit0 hmac_done, bit2 hmac_err)
   CFG        @ 0x010   CMD @ 0x014   STATUS @ 0x018   ERR_CODE @ 0x01C
   KEY_0..31  @ 0x024..0x0A0   DIGEST_0..7 @ 0x0A4..0x0C0
@@ -54,12 +54,10 @@ HMAC_STATUS_FIFO_FULL = 1 << 2
 HMAC_INTR_DONE = 1 << 0
 HMAC_INTR_ERR = 1 << 2
 
-# CFG field encodings (prim_sha2_pkg.sv digest_mode_e / key_length_e, one-hot;
-# hmac.sv CFG layout: hmac_en[0] sha_en[1] endian_swap[2] digest_swap[3]
-# key_swap[4] digest_size[8:5] key_length[14:9]).
+# CFG field encodings (hmac.adoc digest_size / key_length, one-hot).
 HMAC_DIGEST_SIZE = {256: 0x1, 384: 0x2, 512: 0x4}  # SHA2_256/384/512
 HMAC_KEY_LENGTH = {128: 0x1, 256: 0x2, 384: 0x4, 512: 0x8, 1024: 0x10}
-# Valid 32-bit DIGEST_* words exposed per SHA-2 variant (hmac.sv:265-277).
+# Valid 32-bit DIGEST_* words exposed per SHA-2 variant (hmac.adoc).
 HMAC_DIGEST_WORDS = {256: 8, 384: 12, 512: 16}
 # Illegal keyed combo: SHA-256 supports keys up to 512-bit only (hmac.sv:819).
 HMAC_ILLEGAL_KEYED = {(256, 1024)}

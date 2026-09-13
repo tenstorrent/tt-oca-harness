@@ -2,7 +2,8 @@
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 """SEP DRBG entropy-decorrelator golden model.
 
-The model mirrors ``hw/ip/entropy_source/rtl/entropy_decorrelator.sv``.
+Independent model of the 12-lane 29-stage XOR-feedback decorrelator
+in ``hw/ip/entropy_source/doc/architecture.adoc``.
 
 The decorrelator reduces serial correlation in ring-oscillator noise. Each of
 12 lanes owns a 29-bit shift register (a prime length) with MSB->LSB XOR

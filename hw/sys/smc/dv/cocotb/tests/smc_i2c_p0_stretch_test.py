@@ -27,8 +27,8 @@ class smc_i2c_p0_stretch_test(smc_base_test):
             type(self).__name__,
             # The straight-line count the body must reach: every unconditional
             # access plus one iteration of each of the three polling loops
-            # (TX_PENDING, RX_STATUS, HOST_IDLE). Measured 34 on seeds 1-4; the
-            # extra beats are poll iterations that vary with timing.
+            # (TX_PENDING, RX_STATUS, HOST_IDLE); anything above it is poll
+            # iterations that vary with timing.
             min_csr_accesses=30,
             csr_accesses=seq.accesses,
             proxy=False,

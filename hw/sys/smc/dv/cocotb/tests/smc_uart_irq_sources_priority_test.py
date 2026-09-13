@@ -71,9 +71,8 @@ class smc_uart_irq_sources_priority_test(smc_base_test):
         await self.record_protocol_vip(
             SmcProtocolVipKind.UART_LOG,
             type(self).__name__,
-            # Conservative stimulus floor: 185-188 accesses observed across the
-            # retained regression runs (the bounded IIR polls vary with timing),
-            # so the floor is set below the minimum observed.
+            # Stimulus floor: it sits below the run-to-run minimum because the bounded IIR polls are
+            # timing-dependent.
             min_csr_accesses=150,
             csr_accesses=measured_csr,
             proxy=False,

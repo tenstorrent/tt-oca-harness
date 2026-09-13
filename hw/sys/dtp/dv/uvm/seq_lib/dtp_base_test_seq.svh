@@ -369,9 +369,7 @@ class dtp_base_test_seq extends ocah_sequence;
   // ------------------------------------------------------------------
 
   // System-clock cycles: the sequence layer holds no clock handle, so the
-  // wait is derived from the period the env published on tb_if (the one
-  // time-derived wait in DTP class code outside drivers and the reset
-  // ladder).
+  // wait is derived from the period the env published on tb_if.
   task wait_sys_cycles(int unsigned cycles = 4);
     if (tb_vif.clk_period_ns == 0)
       `uvm_fatal(get_type_name(), "tb_if.clk_period_ns is 0; the env did not publish it")

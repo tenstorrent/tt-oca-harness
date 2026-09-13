@@ -45,7 +45,7 @@ link:SEP_VPLAN.adoc[SEP_VPLAN.adoc].
 |CPU-LSU AXI (no_cpu) |`ocah_axi_vip` via `SepAxiAgent` (`s_axi`) |Unified OCAH BFM |Primary stimulus; no inbound filter on this path
 |SMN-inbound AXI |Second `SepAxiAgent` (`m_axi`) |Unified OCAH BFM |Real DUT inbound port; traverses inbound filter (block-by-default)
 |SPI flash pads |`ocah_spi_vip` `OcahSpiFlash` |Unified OCAH BFM |Pads are scalar ports on `tb_top`; no pad mux in the open build
-|JTAG (eFuse mux path) |`ocah_axi_vip` AXI-Lite / `ocah_jtag_vip` where used |Unified OCAH BFM |eFuse JTAG–AXI-Lite coexistence tests
+|JTAG (eFuse mux path) |`ocah_axi_vip` AXI-Lite master on the OTP JTAG2AXIL port (`j_axi_*`) |Unified OCAH BFM |eFuse JTAG–AXI-Lite coexistence tests
 |Entropy raw noise |`esrc_noise_ext_i` + Python goldens |DUT-local |Deterministic noise shared with the decorrelator golden
 |eFuse / OTP |Generic OSS eFuse bank model |Shared OSS model |No foundry OTP macros; staged via `+sep_efuse_hex`
 |Memories |Wrapper `prim_ram_1p` / `prim_rom` / EL2 TCM |RTL macros + backdoor init |`tb_backdoor_mem` loads images at t=0
@@ -138,7 +138,7 @@ shape by the `SEP_TB_*` macros; see <<sep-uvm-realization>>.
 |Entropy noise |`esrc_noise_ext_i` forces the decorrelator input (deterministic)
 |FW console |`sep_outbound_mbx` watches outbound mailbox stores (PASS/FAIL magic)
 |CPU trace |Exports EL2 `el2_trace_pkt_t` fields for `SepCpuTraceMonitor`
-|Observation probes |eFuse shadow, scratch, KM/OTBN counters, entropy CHK probes, IRQ aggregate, AXI-Lite split handshakes, DRBG lane-adapter channel packs (`drbg_csrng_axil_chan_o` / `drbg_edn_axil_chan_o`), KM internal AXI-Lite SVA bind — observation-only unless listed as an inject exception
+|Observation probes |eFuse shadow, scratch, KM/OTBN counters, entropy CHK probes, IRQ aggregate, AXI-Lite split handshakes, DRBG lane-adapter channel packs (`drbg_csrng_axil_chan_o` / `drbg_edn_axil_chan_o`), KM internal AXI-Lite SVA bind, eFuse read/program interface retirement outputs and bank-request valids, eFuse SHIM `efuse_debug_bus_o` — observation-only unless listed as an inject exception
 |===
 
 Exceptions (a closed set):
@@ -147,6 +147,13 @@ Exceptions (a closed set):
 * *ESRC noise force* — `esrc_noise_ext_i` into the decorrelator.
 * *LC differential / token-comparator fault inject* — fail-closed paths with no
   legal OTP frontdoor.
+* *eFuse read/program FSM state inject* — `efuse_read_state_inject_i` /
+  `efuse_program_state_inject_i` with their enables force `read_state_q` /
+  `program_state_q` for one cycle at a time. The only legal encodings are
+  2'b01 and 2'b10, so the fail-closed recovery specified for 2'b00 and 2'b11
+  has no frontdoor. Scope is those two registers and nothing else — never the
+  error, data, busy or request outputs the checkers read. Owner:
+  `sep_efuse_illegal_state_fail_closed_test`; signed off 2026-09-11.
 * *`tb_backdoor_mem` image init* — power-up / hex load into public macro arrays
   (not runtime pass-faking).
 * *Observation-only XMR probe ports* — continuous assigns out of the DUT for

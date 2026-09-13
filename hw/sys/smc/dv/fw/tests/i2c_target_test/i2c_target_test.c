@@ -236,7 +236,7 @@ int main(void) {
     }
 
     // Validate secondary address if used (address1 != 0)
-    // Note: Currently address1 is set to 0 (not used), but validate for future use
+    // A non-zero secondary address must lie in the same 0x08-0x77 range
     const uint8_t TARGET_ADDR1 = 0; // Secondary address (not used in this test)
     if (TARGET_ADDR1 != 0 && (TARGET_ADDR1 < 0x08 || TARGET_ADDR1 > 0x77)) {
         simputs("  ERROR: Invalid I2C secondary target address\n");
@@ -402,10 +402,8 @@ int main(void) {
     write_scratch(1, 0x00000070);
     simputs("\nStep 7: Preparing TX FIFO for Read Response\n");
 
-    // CRITICAL: Use hardware reset (ACQRST) to ensure ACQ FIFO is completely empty
-    // Software drain may miss entries or have timing issues. Hardware reset is more reliable.
-    // Reference: OpenTitan Issue #18510 - ACQ FIFO may contain unexpected data
-    // This ensures acq_fifo_depth_i = 0 before read request arrives
+    // ACQRST empties the ACQ FIFO so acq_fifo_depth_i is 0 before the read request
+    // arrives; a software drain can leave entries behind.
     i2c_reset_fifos(TARGET_IDX, false, false, false, true);
     simputs("  ACQ FIFO reset using ACQRST\n");
 
@@ -448,10 +446,8 @@ int main(void) {
         i2c_clear_target_events(TARGET_IDX, 0xFFFFFFFF); // Clear all events
     }
 
-    // CRITICAL: Use hardware reset (ACQRST) to ensure ACQ FIFO is completely empty before read
-    // request This prevents acq_fifo_depth_i > 1 which would trigger stretch_tx Reference:
-    // OpenTitan I2C RTL comment - stretch_tx triggers when acq_fifo_depth_i > 1 Even if
-    // acq_fifo_plenty_space = 1, if depth > 1, stretch_tx will be asserted
+    // ACQRST again: the target FSM (hw/ip/i2c/rtl/i2c_target_fsm.sv) asserts stretch_tx
+    // whenever acq_fifo_depth_i > 1, even with acq_fifo_plenty_space set.
     i2c_reset_fifos(TARGET_IDX, false, false, false, true);
 
     // Verify ACQ FIFO is empty after reset
@@ -567,12 +563,10 @@ int main(void) {
 
     //=========================================================================
     // Test Complete - Signal to testbench
-    // Signal completion immediately after read transaction completes
-    // This allows testbench to proceed without waiting for additional delays
     //=========================================================================
     write_scratch(1, 0x00000090);
 
-    // Signal test complete to testbench (moved earlier to prevent hang)
+    // Signal test complete to testbench
     write_scratch(1, 0xEBEDEBE4);
     simputs("\n");
     simputs("################################################\n");

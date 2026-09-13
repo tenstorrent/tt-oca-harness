@@ -23,7 +23,7 @@ class CoverageToolTable(unittest.TestCase):
         with self.assertRaisesRegex(ConfigError, "unsupported key\\(s\\): waiver_files"):
             validate_coverage_tool_table({"waiver_files": ["w.txt"]}, "coverage.vcs")
 
-    def test_exclude_files_remains_a_list_key(self):
+    def test_exclude_files_is_a_list_key(self):
         validate_coverage_tool_table({"exclude_files": ["x.el"]}, "coverage.vcs")
         with self.assertRaisesRegex(ConfigError, "must be a list of strings"):
             validate_coverage_tool_table({"exclude_files": "x.el"}, "coverage.vcs")

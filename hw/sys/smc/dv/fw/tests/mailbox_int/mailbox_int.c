@@ -144,7 +144,6 @@ int main(void) {
             simputs("Failed to register interrupt handler");
             test_fail(0);
         }
-        // Enable the same PLIC ID that was registered (not interrupt_id - 1).
         metal_interrupt_enable(plic_controller, interrupt_id);
 
         __metal_interrupt_global_enable();
@@ -167,7 +166,7 @@ int main(void) {
         // Send interrupt to mailbox 0
         simputs("Sent interrupt to mailbox 0\n");
 
-        // Wait until mailbox-3 handler ran with validated data (not bare WFI→pass).
+        // Wait until the mailbox-3 handler has run and validated the payload.
         while (metal_atomic_add(&handler_ran[0], 0) == 0) {
             __asm__ volatile("wfi");
         }

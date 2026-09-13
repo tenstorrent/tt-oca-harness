@@ -64,16 +64,13 @@ module smc_cpu_mem_dv
   localparam int unsigned GROUP_BYTES = smc_scratch_map_pkg::SCRATCH_GROUP_BYTES;
   // Staging depth for the +smc_scratch_ram_hex backdoor, in 64-bit words.
   //
-  // 4096 words is 32 KB, and firmware images in this tree already exceed it --
-  // the largest occp_* rom image is over 5000 words. Anything past the end of
-  // this array is dropped by $readmemh, and a truncated image boots into
-  // whatever the tail of it happened to be, so the cap has to sit above the
-  // largest image rather than near it. 32768 words is 256 KB, a quarter of the
-  // 1 MB scratch (NUM_SRAM_BANKS * SCRATCH_WORDS * BYTES_PER_ENTRY), and the
-  // array is per-bank so raising it further costs NUM_SRAM_BANKS times as much
-  // simulator memory.
-  //
-  // Over-length is reported below rather than left silent.
+  // Anything past the end of this array is dropped by $readmemh, and a
+  // truncated image boots into whatever the tail of it happened to be, so the
+  // cap has to sit well above the largest firmware image in this tree rather
+  // than near it. 32768 words is 256 KB, a quarter of the 1 MB scratch
+  // (NUM_SRAM_BANKS * SCRATCH_WORDS * BYTES_PER_ENTRY), and the array is
+  // per-bank so raising it further costs NUM_SRAM_BANKS times as much
+  // simulator memory. Over-length is reported below rather than left silent.
   localparam int unsigned MAX_LINEAR_WORDS = 32768;
 
   logic        magic_hit_scratch;

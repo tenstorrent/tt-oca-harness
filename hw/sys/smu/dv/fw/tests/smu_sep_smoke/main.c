@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
 // Real SEP boot-readiness smoke firmware: execute from ICCM and store a
-// deterministic result trail into DCCM. Self-contained on purpose — the
-// external AXI console path is tracked separately (issue #3939).
+// deterministic result trail into DCCM, with no external-bus dependency.
 
 #include <stdint.h>
 

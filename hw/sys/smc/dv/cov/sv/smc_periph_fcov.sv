@@ -132,7 +132,7 @@ module smc_periph_fcov #(
   `OCAH_FCOV_COVER(c_i2c0_smbalert_asserted, i2c0_smbalert_asserted_e, clk_periph_i, in_reset)
 
   // ------------------------------------------------------------------
-  // I3C0 bus activity, SMC side. Scope is deliberately shallow: the CCC
+  // I3C0 bus activity, SMC side. Scope is shallow: the CCC
   // and IBI protocol coverage is owned by IP-level DV per SMC_FCOV.adoc.
   // ------------------------------------------------------------------
   logic i3c0_scl_q;

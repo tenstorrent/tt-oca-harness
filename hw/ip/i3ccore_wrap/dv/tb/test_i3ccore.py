@@ -7,20 +7,18 @@ I3C Core Wrapper Cocotb Test
 This test verifies basic functionality of the i3ccore_wrapper module:
 - Reset release and initialization
 - AXI-Lite register access
-- Basic I3C bus activity (future)
 
-The register survey explicitly forces only the DAT/DCT backing SRAM arrays to
-zero because those arrays power up unknown and cannot be initialized through
-the surveyed register path. All DUT checks still use frontdoor AXI-Lite reads
-and writes.
+The register survey forces the DAT/DCT backing SRAM arrays to zero because those
+arrays power up unknown and cannot be initialized through the surveyed register
+path; DUT checks use frontdoor AXI-Lite reads and writes.
 """
 
 import os
 
 # Reading an un-written DAT/DCT SRAM entry (or other reset-X register) returns X,
 # which the cocotbext AXI master refuses to resolve by default and raises
-# ValueError. Real SRAM powers up undefined, so treat X as 0 for these register
-# read/write tests (build-independent, unlike a backdoor force of the array).
+# ValueError. Real SRAM powers up undefined, so X reads as 0 in these register
+# read/write tests.
 os.environ.setdefault("COCOTB_RESOLVE_X", "ZEROS")
 
 import logging
@@ -185,14 +183,11 @@ class TB:
         This uses hierarchical access to directly write the memory arrays.
         Must be called after simulation starts but can be before or after reset.
 
-        Hierarchy (from Verdi):
-        tb_i3ccore.u_dut.gen_i3c_inst[0].u_i3c_wrapper.gen_dat_dct_memory.
-            {dat,dct}_memory.u_mem.gen_generic.u_impl_generic.mem
+        Hierarchy:
+        tb_i3ccore.gen_i3c_mem[0].i3c_{dat,dct}_memory.u_mem.gen_generic.u_impl_generic.mem
         """
         # Path variants to try - sim_handle can resolve VCS-style paths.
-        # Current TB models the DAT/DCT SRAM at the tb_i3ccore top level as
-        # gen_i3c_mem[gi].i3c_{dat,dct}_memory (see tb_i3ccore.sv). The older
-        # u_dut.* variants are kept for backward compatibility.
+        # tb_i3ccore models the DAT/DCT SRAM at top level as gen_i3c_mem[gi].i3c_{dat,dct}_memory.
         dat_paths = [
             "gen_i3c_mem[0].i3c_dat_memory.u_mem.gen_generic.u_impl_generic.mem",
             "u_dut.u_i3c_wrapper.gen_dat_dct_memory.dat_memory.u_mem.gen_generic.u_impl_generic.mem",
@@ -219,12 +214,9 @@ class TB:
                 for i in range(depth):
                     # Force the backing SRAM to 0 to clear the power-on X so AXI
                     # reads of un-written DAT/DCT entries don't choke the cocotb
-                    # AXI master. (Release reverts to X on this no-driver array,
-                    # and a plain deposit doesn't stick, so Force is used.) The
-                    # register_write_read test consequently sees these entries as
-                    # read-only-0, which its writable-bit auto-detection handles;
-                    # DAT/DCT writability is covered functionally elsewhere
-                    # (set_dat_entry + SETDASA + transfers).
+                    # AXI master. Release reverts to X on this no-driver array,
+                    # and a plain deposit doesn't stick, so Force is used. The
+                    # forced entries read back as 0 regardless of writes.
                     dat_mem[i].value = Force(0)
                 # Debug: read after write
                 self.log.info(f"DAT[0] after write: {dat_mem[0].value}")
@@ -454,10 +446,7 @@ async def test_register_access(dut):
 @cocotb.test(skip=True)
 async def test_i3c_loopback(dut):
     """
-    Test I3C bus loopback (placeholder for future I3C protocol tests).
-
-    This test requires the cocotbext-i3c target model.
-    Currently skipped - enable when I3C target model is integrated.
+    I3C bus loopback through the cocotbext-i3c target model.
     """
     tb = TB(dut)
 
@@ -475,8 +464,6 @@ async def test_i3c_loopback(dut):
     await tb.reset_dut()
 
     # TODO: Add I3C target model setup
-    # from cocotbext_i3c.i3c_target import I3cTarget
-    # target = I3cTarget(...)
 
     # TODO: Configure I3C controller via registers
     # TODO: Send I3C transactions
@@ -744,12 +731,11 @@ async def test_register_write_read(dut):
             await ClockCycles(tb.dut.clk, 2)
             reads.append(await tb.read_register(addr))
 
-        # Bits that actually flipped between the two complementary patterns are
-        # the truly writable bits. This automatically excludes read-only bits
-        # (which don't change) and value-clamped field positions (which a static
-        # bit mask cannot represent), and is intersected with the register's
-        # declared writable mask. Verification still confirms every writable bit
-        # holds the value we wrote.
+        # Bits that flip between the two complementary patterns are the writable
+        # bits: read-only bits do not change and value-clamped field positions
+        # (which a static bit mask cannot represent) drop out. The result is
+        # intersected with the register's declared writable mask, and every
+        # writable bit must hold the value written.
         writable = (reads[0] ^ reads[1]) & mask
 
         test_passed = True
