@@ -317,11 +317,6 @@ tap = OcahJtagMasterDriver(
 No driver operation waits on the DUT: every reset, step, walk, and scan runs
 a fixed number of TCK cycles, so the driver carries no timeout bound.
 
-Deprecated aliases, each logging one warning per driver instance:
-`tms_step()` (use `step_tms()`), `move_to_state()` (use `goto_state()`),
-`reset_finished()` (does nothing; drop the call), and the `timeout_cycles`
-constructor argument (ignored).
-
 ## Device Maps
 
 Use `OcahJtagDevice` when a test wants named `read()` / `write()` register

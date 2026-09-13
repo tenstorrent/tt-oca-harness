@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import logging
-import warnings
 from random import Random
 from typing import Any
 
@@ -115,16 +114,12 @@ class OcahJtagMasterDriver:
         tap_type: str = "ptap",
         signal_map: dict[str, str] | None = None,
         time_unit: str = "ns",
-        timeout_cycles: int | None = None,
         trst_active_high: bool = False,
     ) -> None:
         self.name = name
         self.tap_type = tap_type
         self.log = logging.getLogger(name)
         self._time_unit = time_unit
-        self._deprecations_logged: set[str] = set()
-        if timeout_cycles is not None:
-            self._warn_deprecated("timeout_cycles", "ignored: no TAP operation waits on the DUT")
         # IEEE 1149.1 TRST* is active-low by default. Some TBs (e.g. SMC CPU
         # TAP ``*_reset``) expose an active-high reset; invert drive polarity.
         self._trst_active_high = bool(trst_active_high)
@@ -253,15 +248,7 @@ class OcahJtagMasterDriver:
             driver.add_device(device.to_backend())
         return driver
 
-    def _warn_deprecated(self, name: str, guidance: str) -> None:
-        """Log one deprecation warning per instance for a retired name."""
-        if name in self._deprecations_logged:
-            return
-        self._deprecations_logged.add(name)
-        self.log.warning("%s: %s is deprecated: %s", self.name, name, guidance)
-        warnings.warn(f"{name} is deprecated: {guidance}", DeprecationWarning, stacklevel=3)
-
-    def _drive_trst(self, asserted: bool) -> None:
+    def _drive_trst(self, *, asserted: bool) -> None:
         """Drive the optional TRST/reset net with configured polarity."""
         if not hasattr(self.bus, "trst"):
             return
@@ -291,11 +278,6 @@ class OcahJtagMasterDriver:
             raise TypeError("add_device expects OcahJtagDevice")
         self._devices.append(device)
 
-    async def reset_finished(self) -> None:
-        """Deprecated: does nothing."""
-        self._warn_deprecated("reset_finished()", "it does nothing; drop the call")
-        await _timer(0, self._time_unit)
-
     async def reset_tap(self, cycles: int = 10) -> None:
         """Drive the TAP to Test-Logic-Reset deterministically."""
         cycles = max(int(cycles), 5)
@@ -319,11 +301,6 @@ class OcahJtagMasterDriver:
     async def step_tms(self, tms: int) -> int:
         """Drive one TCK cycle with TDI low and return the sampled TDO."""
         return await self.step(tms, 0)
-
-    async def tms_step(self, tms: int) -> int:
-        """Deprecated alias of `step_tms()`."""
-        self._warn_deprecated("tms_step()", "use step_tms()")
-        return await self.step_tms(tms)
 
     def sync_model(self, state: OcahJtagState | str, *, instruction: int | None = None) -> None:
         """Declare the TAP state after movement this driver did not drive.
@@ -371,11 +348,6 @@ class OcahJtagMasterDriver:
         )
         for tms in path:
             await self.step_tms(tms)
-
-    async def move_to_state(self, state) -> None:
-        """Deprecated alias of `goto_state()`."""
-        self._warn_deprecated("move_to_state()", "use goto_state()")
-        await self.goto_state(state)
 
     async def random_tms_walk(self, cycles: int, rng: Random) -> OcahJtagState:
         """Drive a reproducible random TMS walk."""

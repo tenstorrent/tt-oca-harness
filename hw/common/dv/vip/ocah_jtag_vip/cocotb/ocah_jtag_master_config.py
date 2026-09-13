@@ -25,8 +25,6 @@ class OcahJtagMasterConfig:
     tap_type: str = "ptap"
     signal_map: dict[str, str] = field(default_factory=dict)
     time_unit: str = "ns"
-    # No TAP operation waits on the DUT; no component consumes this bound.
-    timeout_cycles: int = 10_000
     trst_active_high: bool = False
     # Passive monitor bound (retained scan items).
     max_history: int = 2000
