@@ -306,10 +306,39 @@ against the model that regression built.
 ## Results and evidence
 
 Per-run logs land in `build/runs/<run-id>/` (gitignored). PASS/FAIL is read
-from cocotb's `results.xml`, and the scoreboard's `check_phase` fails a run
-whose sequence produced no compared item at all. A test passing is the entry
-condition for reading its checkers, never a substitute for them: every graded
-contract in `docs/SMC_VPLAN.adoc` names the `CHK-*` line the run must carry.
+from cocotb's `results.xml`. A test passing is the entry condition for reading
+its checkers, never a substitute for them: every graded contract in
+`docs/SMC_VPLAN.adoc` names the `CHK-*` line the run must carry.
+
+### The evidence gate
+
+A test that exits cleanly without checking anything is not a pass, and
+`smc_base_test` is the mechanism that makes such a run fail. Every graded
+check logs a `CHK-<ID>: ...` line; the base class reads the IDs off the log
+records as they are emitted (sequences log through `cocotb.log`, components
+through their pyuvm logger, and the record factory sees both) and prints one
+line per test:
+
+```
+EVIDENCE_SUMMARY test=<name> observed=N own=N required=N missing=N ids=...
+```
+
+`own` excludes the lines `smc_base_test` emits during bring-up (the model
+identity line and the `CHK-PROBE-*` positive controls), so a leaf cannot
+satisfy the gate on infrastructure alone. A leaf whose `own` count is zero
+**fails** — unless it is named in `_EvidenceRecorder.NO_OWN_EVIDENCE`, which
+lists the leaves that grade through another channel (sequence-level asserts,
+the scoreboard's `expected=` compares, a protocol-VIP record with a stimulus
+floor) together with the reason for each. That list may only shrink; retire
+an entry by making the check that already runs log a `CHK-` line where it
+happens.
+
+Leaves may also declare more: `min_evidence = N` sets a floor on `own`, and
+`required_evidence = ("CHK-A", ...)` names IDs that must appear.
+
+The gate proves a check ran. It does not prove the check was right. The
+scoreboard's `check_phase` is the second gate: it fails a run whose sequence
+produced no compared item at all.
 
 ### SystemVerilog UVM framework (`--framework uvm`)
 
