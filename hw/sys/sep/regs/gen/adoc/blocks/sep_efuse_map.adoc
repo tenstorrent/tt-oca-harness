@@ -25,36 +25,29 @@
 | 0x14C | SYS_UID | R a| -
 | 0x16C | STATUS_RPT | R a| -
 | 0x170 | ROM_CTL | R a| -
-| 0x174 | SEP_SPI_CTRL_FIELD_EN | R a| -
-| 0x178 | SPI_DISCOVERY_CTRL | R a| -
-| 0x17C | SPI_PHY_DQ_TIMING | R a| -
-| 0x180 | SPI_PHY_DQS_TIMING | R a| -
-| 0x184 | SPI_PHY_GATE_LPBK | R a| -
-| 0x188 | SPI_PHY_DLL_SLAVE | R a| -
-| 0x18C | SPI_PHY_DLL_MASTER | R a| -
-| 0x190 | SPI_PHY_MISC | R a| -
-| 0x194 | SPI_RB_VALID_TIME | R a| -
-| 0x198 | CHIPLET_PUBK_HASH0 | R a| -
-| 0x1B8 | CHIPLET_PUBK_HASH1 | R a| -
-| 0x1D8 | REQUIRED_SIGNERS | RW a| -
-| 0x1DC | REQUIRED_ALGS | RW a| -
-| 0x1E0 | CHIPLET_PUBK_PQC_HASH0 | R a| -
-| 0x200 | CHIPLET_PUBK_PQC_HASH1 | R a| -
-| 0x220 | SIP_PUBK_PQC_HASH0 | R a| -
-| 0x240 | SYS_PUBK_PQC_HASH | R a| -
-| 0x260 | SIP_PUBK_HASH1 | R a| -
-| 0x280 | SIP_PUBK_PQC_HASH1 | R a| -
-| 0x2A0 | SEP_CHIPLET_ID | R a| -
-| 0x2C0 | SEP_SIP_ID | R a| -
-| 0x2E0 | SEP_SYS_ID | R a| -
-| 0x300 | spare0 | R a| -
-| 0x320 | spare1 | R a| -
-| 0x340 | spare2 | R a| -
-| 0x360 | spare3 | R a| -
-| 0x380 | spare4 | R a| -
-| 0x3A0 | spare5 | R a| -
-| 0x3C0 | spare6 | R a| -
-| 0x3E0 | spare7 | R a| -
+| 0x174 | SYSCLK_FREQ_MHZ | R a| -
+| 0x178 | CHIPLET_PUBK_HASH0 | R a| -
+| 0x198 | CHIPLET_PUBK_HASH1 | R a| -
+| 0x1B8 | REQUIRED_SIGNERS | RW a| -
+| 0x1BC | REQUIRED_ALGS | RW a| -
+| 0x1C0 | CHIPLET_PUBK_PQC_HASH0 | R a| -
+| 0x1E0 | CHIPLET_PUBK_PQC_HASH1 | R a| -
+| 0x200 | SIP_PUBK_PQC_HASH0 | R a| -
+| 0x220 | SYS_PUBK_PQC_HASH | R a| -
+| 0x240 | SIP_PUBK_HASH1 | R a| -
+| 0x260 | SIP_PUBK_PQC_HASH1 | R a| -
+| 0x280 | SEP_CHIPLET_ID | R a| -
+| 0x2A0 | SEP_SIP_ID | R a| -
+| 0x2C0 | SEP_SYS_ID | R a| -
+| 0x2E0 | spare0 | R a| -
+| 0x300 | spare1 | R a| -
+| 0x320 | spare2 | R a| -
+| 0x340 | spare3 | R a| -
+| 0x360 | spare4 | R a| -
+| 0x380 | spare5 | R a| -
+| 0x3A0 | spare6 | R a| -
+| 0x3C0 | spare7 | R a| -
+| 0x3E0 | spare8 | R a| -
 |===
 
 [cols="1,3,1,1,6", options="header"]
@@ -87,8 +80,8 @@
 | 40 | `CHIPLET_PUBK_HASH1_WRITE_LOCK` | RW | 0x0 a| chiplet_pubk_hash1_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 | 39 | `CHIPLET_PUBK_HASH0_READ_LOCK` | RW | 0x0 a| chiplet_pubk_hash0_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 | 38 | `CHIPLET_PUBK_HASH0_WRITE_LOCK` | RW | 0x0 a| chiplet_pubk_hash0_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
-| 37 | `SPI_CONFIG_EN_READ_LOCK` | RW | 0x0 a| spi_config_en_read_lock, when set, the SPI_CONFIG group is not read-able (neither the eFuse nor the shadow register)
-| 36 | `SPI_CONFIG_EN_WRITE_LOCK` | RW | 0x0 a| spi_config_en_write_lock, when set, the SPI_CONFIG group is not write-able (neither the eFuse nor the shadow register)
+| 37 | `SYSCLK_FREQ_MHZ_READ_LOCK` | RW | 0x0 a| sysclk_freq_mhz_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
+| 36 | `SYSCLK_FREQ_MHZ_WRITE_LOCK` | RW | 0x0 a| sysclk_freq_mhz_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 | 35 | `ROM_CTL_READ_LOCK` | RW | 0x0 a| rom_ctl_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
 | 34 | `ROM_CTL_WRITE_LOCK` | RW | 0x0 a| rom_ctl_write_lock, when set, this field is not write-able (neither the eFuse nor the shadow register)
 | 33 | `STATUS_RPT_READ_LOCK` | RW | 0x0 a| status_rpt_read_lock, when set, this field is not read-able (neither the eFuse nor the shadow register)
@@ -131,7 +124,9 @@
 .LOCKS_SPARE Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:16 | `SPARE_LOCK_RSVD` | RW | 0x0 a| Unassigned lock slots 40-47. Reserved for future field lock assignments.
+| 31:18 | `SPARE_LOCK_RSVD` | RW | 0x0 a| Unassigned lock slots 41-47. Reserved for future field lock assignments.
+| 17 | `SPARE8_READ_LOCK` | RW | 0x0 a| spare8_read_lock (slot 40): when set, spare8 is not read-able.
+| 16 | `SPARE8_WRITE_LOCK` | RW | 0x0 a| spare8_write_lock (slot 40): when set, spare8 is not write-able.
 | 15 | `SPARE7_READ_LOCK` | RW | 0x0 a| spare7_read_lock (slot 39): when set, spare7 is not read-able.
 | 14 | `SPARE7_WRITE_LOCK` | RW | 0x0 a| spare7_write_lock (slot 39): when set, spare7 is not write-able.
 | 13 | `SPARE6_READ_LOCK` | RW | 0x0 a| spare6_read_lock (slot 38): when set, spare6 is not read-able.
@@ -297,68 +292,11 @@
 |===
 
 [cols="1,3,1,1,6", options="header"]
-.SEP_SPI_CTRL_FIELD_EN Register
+.SYSCLK_FREQ_MHZ Register
 |===
 | Bits | Field | Access | Reset | Description
-| 31:19 | `spi_control_field_en_rsvd` | R | 0x0 a| Reserved 13 bits
-| 18:8 | `smu_pll_sysclk` | R | 0x0 a| 11 bits that indicates the configured sysclk PLL frequency in MHz; ignored if 0
-| 7:0 | `spi_control_field_en` | R | 0x0 a| 8 bit which indicates the following 8 spi config regs are enabled or not. SPI_CONFIG_EN[7:0] corresponds to SPI config words 1-8. When bit N is set, configuration register N+1 is valid in fuses and will be written into the specified SPI configuration register during SPI controller initialization. 1->enabled; 0->disabled
-|===
-
-[cols="1,3,1,1,6", options="header"]
-.SPI_DISCOVERY_CTRL Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `discovery` | R | 0x0 a| spi discovery control reg
-|===
-
-[cols="1,3,1,1,6", options="header"]
-.SPI_PHY_DQ_TIMING Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `dq_timing` | R | 0x0 a| spi phy dq timing reg
-|===
-
-[cols="1,3,1,1,6", options="header"]
-.SPI_PHY_DQS_TIMING Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `dqs_timing` | R | 0x0 a| spi phy dqs timing reg
-|===
-
-[cols="1,3,1,1,6", options="header"]
-.SPI_PHY_GATE_LPBK Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `gate_lpbk` | R | 0x0 a| spi phy gate lpbk ctrl reg
-|===
-
-[cols="1,3,1,1,6", options="header"]
-.SPI_PHY_DLL_SLAVE Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `dll_slave` | R | 0x0 a| spi phy dll slv ctrl reg
-|===
-
-[cols="1,3,1,1,6", options="header"]
-.SPI_PHY_DLL_MASTER Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `dll_master` | R | 0x0 a| spi phy dll mst ctrl reg
-|===
-
-[cols="1,3,1,1,6", options="header"]
-.SPI_PHY_MISC Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `misc` | R | 0x0 a| spi init phy misc
-|===
-
-[cols="1,3,1,1,6", options="header"]
-.SPI_RB_VALID_TIME Register
-|===
-| Bits | Field | Access | Reset | Description
-| 31:0 | `rb_valid_time` | R | 0x0 a| spi init rb valid time
+| 31:11 | `rsvd` | R | 0x0 a| Reserved
+| 10:0 | `sysclk_freq_mhz` | R | 0x0 a| Configured sysclk PLL frequency in MHz; ignored if 0. Consumed by boot ROM clock math.
 |===
 
 [cols="1,3,1,1,6", options="header"]
@@ -460,54 +398,61 @@
 .spare0 Register
 |===
 | Bits | Field | Access | Reset | Description
-| 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).
+| 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .spare1 Register
 |===
 | Bits | Field | Access | Reset | Description
-| 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).
+| 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .spare2 Register
 |===
 | Bits | Field | Access | Reset | Description
-| 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).
+| 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .spare3 Register
 |===
 | Bits | Field | Access | Reset | Description
-| 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).
+| 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .spare4 Register
 |===
 | Bits | Field | Access | Reset | Description
-| 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).
+| 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .spare5 Register
 |===
 | Bits | Field | Access | Reset | Description
-| 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).
+| 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .spare6 Register
 |===
 | Bits | Field | Access | Reset | Description
-| 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).
+| 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).
 |===
 
 [cols="1,3,1,1,6", options="header"]
 .spare7 Register
 |===
 | Bits | Field | Access | Reset | Description
-| 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-39).
+| 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).
+|===
+
+[cols="1,3,1,1,6", options="header"]
+.spare8 Register
+|===
+| Bits | Field | Access | Reset | Description
+| 255:0 | `rsvd` | R | 0x0 a| Spare region for future use. Individually lockable via LOCKS_SPARE (slots 32-40).
 |===

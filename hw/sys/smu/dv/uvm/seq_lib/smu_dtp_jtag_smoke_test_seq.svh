@@ -182,7 +182,7 @@ class smu_dtp_jtag_smoke_test_seq extends smu_base_test_seq;
     pre_por = tap_state();
     if (pre_por === onehot(OCAH_JTAG_TEST_LOGIC_RESET))
       `uvm_error(get_type_name(), "pre-POR already Test-Logic-Reset; cannot prove the POR effect")
-    if (jtag_vif.trst_n !== 1'b1) `uvm_error(get_type_name(), "POR path requires TRST released")
+    if (!trst_released()) `uvm_error(get_type_name(), "POR path requires TRST released")
     drop_powergood();
     wait_tap_eq_ref(OCAH_JTAG_TEST_LOGIC_RESET, "s4_por_tlr", tlr_por);
     restore_powergood();

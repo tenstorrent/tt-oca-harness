@@ -127,10 +127,10 @@ ocah_jtag_vip/
 
 | Component | Role |
 |---|---|
-| `ocah_jtag_item` | Stimulus item: `TAP_RESET`, `IR_SCAN`, `DR_SCAN`, `RAW_TMS`; driver fills observed TDO in-place |
+| `ocah_jtag_item` | Stimulus item: `TAP_RESET`, `TRST_LEVEL`, `IR_SCAN`, `DR_SCAN`, `RAW_TMS`; driver fills observed TDO in-place |
 | `ocah_jtag_master_config` | vif, `is_active`, TCK half-period, TRST reset cycles, `en_cov` (file: `ocah_jtag_master_config.svh`) |
 | `ocah_jtag_ref_model` | IEEE 1149.1 TAP controller reference model (state tracking, BYPASS TDO prediction, one-hot helpers) |
-| `ocah_jtag_master_sequence` | VIP-level stimulus API: raw steps/walks, IR/DR scans (incl. wide), TAP reset, and tracked-state navigation (`goto_state`, `goto_random_state`, `random_tms_walk`, `current_state`, `sync_model`) — DUT sequence libraries extend it |
+| `ocah_jtag_master_sequence` | VIP-level stimulus API: raw steps/walks, IR/DR scans (incl. wide), TAP reset, TRST level control (`assert_trst`/`release_trst`), and tracked-state navigation (`goto_state`, `goto_random_state`, `random_tms_walk`, `current_state`, `sync_model`) — DUT sequence libraries extend it |
 | `ocah_jtag_master_driver` | Pin-level TCK bit-bang; scans navigate RTI -> scan leg -> RTI |
 | `ocah_jtag_master_monitor` | Passive: per-TCK `STEP` events (published on the falling edge) + async `TRST` events via `event_ap` |
 | `ocah_jtag_scan_builder` | Subscriber reconstructing IR/DR scans from the step stream (reference-FSM walk); publishes `ocah_jtag_scan_item` on `scan_ap` with bounded history |
@@ -301,7 +301,9 @@ tap = OcahJtagMasterDriver(
 | `from_bus(bus, ...)` | Construct from an existing `JTAGBus` |
 | `init_signals()` | Drive idle values before traffic |
 | `await reset_tap(cycles=10)` | Drive TAP to Test-Logic-Reset |
-| `await step_tms(tms)` / `await tms_step(tms)` | Drive one raw TMS cycle |
+| `await assert_trst(tck_cycles=1)` / `await release_trst(tck_cycles=0)` | Drive the bound TRST net, then hold TMS high for `tck_cycles`; asserting re-baselines the tracked state to Test-Logic-Reset |
+| `await step(tms, tdi=0)` / `await step_tms(tms)` | Drive one TCK cycle with the given TMS and TDI and return sampled TDO |
+| `sync_model(state, instruction=None)` | Declare the TAP state after movement the driver did not drive (a power-on reset, a reset pin outside the bound TAP) |
 | `await shift_ir(value, width=None, back_to_rti=False)` | Shift IR, return captured TDO |
 | `await shift_dr(value, width, back_to_rti=False)` | Shift DR, return captured TDO |
 | `await read_idcode()` | Read 32-bit IDCODE |
@@ -311,6 +313,9 @@ tap = OcahJtagMasterDriver(
 
 `reset_tap()` leaves the tracked TAP state in `TEST_LOGIC_RESET`; step
 `TMS=0` afterwards to reach `RUN_TEST_IDLE`.
+
+No driver operation waits on the DUT: every reset, step, walk, and scan runs
+a fixed number of TCK cycles, so the driver carries no timeout bound.
 
 ## Device Maps
 
@@ -354,15 +359,49 @@ Callbacks receive `OcahJtagScanItem` objects. The item also supports
 
 ## Validation
 
-Validate changes against the DTP consumer:
+Validate changes against the DTP consumer first, then the SMC and SMU
+consumers:
 
 ```bash
 python3 tools/dv/run_dv.py --doctor --dut dtp
-python3 tools/dv/run_dv.py --dut dtp --items dtp_sanity_test --tool verilator
-python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_idcode_test --tool verilator
-python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_bypass_test --tool verilator
-python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_sample_preload_test --tool vcs
+python3 tools/dv/run_dv.py --dut dtp --items dtp_sanity_test dtp_jtag_idcode_test dtp_jtag_bypass_test --tool verilator
+python3 tools/dv/run_dv.py --dut dtp --items basic_jtag --tool verilator --cov
+python3 tools/dv/run_dv.py --dut dtp --framework uvm --items smoke --skip-unimplemented --tool vcs
+python3 tools/dv/run_dv.py --dut smc --items smc_jtag_dmi_smoke_test smc_ijtag_basic_test --tool verilator
+python3 tools/dv/run_dv.py --dut smu --items smu_dtp_jtag_smoke_test smu_jtag_chain_enhanced_test --tool verilator
 ```
+
+Must-fail checks; each command exits non-zero:
+
+```bash
+# cocotb: the TAP reference model is desynchronized, so CHK-TAP-STATE fails.
+DTP_JTAG_TAP_CHECKER_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_tlr_reset_test --tool verilator
+# SV-UVM: a wrong expected IDCODE is armed, so CHK-TAP-TLR-IDCODE fails.
+python3 tools/dv/run_dv.py --dut dtp --framework uvm --items dtp_jtag_tlr_reset_test \
+    --skip-unimplemented --tool vcs --plusarg=+DTP_JTAG_TAP_CHECKER_NEGATIVE
+```
+
+The reactive slave device is judged by the master-side model without a
+simulator:
+
+```bash
+PYTHONPATH=hw/common/dv/vip python3 hw/common/dv/vip/ocah_jtag_vip/cocotb/examples/example_slave_selftest.py
+```
+
+## Supported behavior and limitations
+
+| Area | This package provides | Outside this package |
+|---|---|---|
+| TAP control | `reset_tap()` (TMS walk into Test-Logic-Reset), `assert_trst()` / `release_trst()` on a bound TRST net, `goto_state()` along the shortest legal TMS path, `step()` for one raw TCK, `sync_model()` to re-seat the tracked state | TAP state changes the driver did not cause (a DUT-side reset); the test re-seats the model with `sync_model()` |
+| Scans | `shift_ir()` / `shift_dr()` at any width, returning the captured bits; SV-UVM wide scans through `ocah_jtag_scan_item`; IDCODE and BYPASS helpers; named registers through `OcahJtagDevice` | iJTAG (IEEE 1687) networks, boundary-scan cell models, DTP TDR packing and polling (DUT-local) |
+| Timing | TMS and TDI driven while TCK is low, TDO sampled in that low phase; `tck_period_ns` per driver | TCK-to-TDO skew or hold-time modeling |
+| Reset semantics | Optional TRST with `trst_active_high`; every reset lands the tracked state in Test-Logic-Reset and clears the current instruction | — |
+| Timeout | No operation waits on the DUT, so none can time out; the driver carries no timeout knob | — |
+| Errors and evidence | Monitors hold callback exceptions and re-raise them; `OcahJtagChecker.finalize()` fails on a held error, a failed check, zero checks, or a missing required ID; `DTP_JTAG_TAP_CHECKER_NEGATIVE` in the DTP bench forces a failing run in both flows | — |
+| Slave side | Reactive TAP device with IDCODE, BYPASS, undefined instructions as BYPASS, and a register map that latches on Update-DR; simulator-free selftest | A DUT-specific register decode beyond the map |
+| Protocol checking | `sva/ocah_jtag_sva.sv` (TDO falling-edge timing, TLR via TMS and TRST, one-hot state legality with an exported state, X-hygiene on four-state simulators), bound in the DTP and SMU benches | A package-owned selftest DUT; the SMC bench binds no JTAG SVA |
+| Coverage | `cov/ocah_jtag_cov.sv` covergroups through the SV-UVM `ocah_jtag_cov` subscriber (`en_cov`); SVA cover properties on four-state simulators; Verilator line and branch coverage of the SVA through the DTP bench | Covergroups on Verilator |
+| Simulators | Verilator (cocotb, through the DTP, SMC, and SMU benches) and VCS (SV-UVM, through the DTP and SMU benches) | Xcelium |
 
 ## Scope
 
