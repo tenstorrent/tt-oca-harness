@@ -410,19 +410,52 @@ def slot_signing_key(buf, slot: str) -> tuple[int, int, int]:
     return load_rsa_private_key(rom_signing_key(mm.get_public_key_sel(buf, slot)))
 
 
-def verify_signing_key(buf, slot: str) -> int:
-    """Prove the slot's signature verifies under the key it selects. Returns the slot.
+def signing_key_for_slot(buf, slot: str) -> int:
+    """The ROM key slot whose private key signed this slot, found from the modulus.
 
-    Two things at once, and both matter for a re-seal. The modulus in the manifest
-    has to hash to the provisioned digest for the ROM slot the manifest names --
-    otherwise the ROM refuses the key regardless of the signature -- and the
-    signature has to verify under that same modulus over the signed region.
+    Not from ``public_key_sel``. A manifest names the anchor the CONSUMER should
+    check it against, which is not always a ROM slot: a fused-key manifest selects
+    slot 16 or 17, where the anchor is a digest in a chiplet fuse and no private
+    key exists in the tree. The modulus the slot carries is what a re-seal has to
+    sign with, and it is a ROM key in every image this tree packs.
+
+    So this matches the embedded modulus against the ROM signing keys rather than
+    trusting the selector, which is correct for both: for a ROM-slot manifest the
+    two agree, and for a fused-key manifest only this one has an answer.
     """
-    key_slot = mm.get_public_key_sel(buf, slot)
-    if key_slot >= NUM_ROM_SIGNING_KEYS:
+    modulus = mm.public_key_modulus(buf, slot)
+    digest = hashlib.sha256(modulus).digest()
+    for index in range(NUM_ROM_SIGNING_KEYS):
+        if digest == mm.rom_key_digest(index):
+            return index
+    raise AssertionError(
+        f"{slot} carries a modulus matching none of the ROM signing keys "
+        f"0..{NUM_ROM_SIGNING_KEYS - 1}, so nothing in this tree can re-sign it. "
+        f"sha256(modulus)={digest.hex()}"
+    )
+
+
+def verify_signing_key(buf, slot: str) -> int:
+    """Prove the slot's signature verifies under the key that signed it. Returns the slot.
+
+    Two things at once, and both matter for a re-seal: the signature has to verify
+    under the modulus the manifest carries, and -- when the manifest names a ROM
+    slot -- that modulus has to hash to the provisioned digest for it, or the ROM
+    refuses the key regardless of the signature.
+
+    The digest half is skipped for a manifest selecting a FUSED key (slot 16 or
+    17). There the anchor is a digest in a chiplet fuse, which the testcase
+    programs through its eFuse preload rather than the generated key_digests.c,
+    so comparing against a ROM digest would assert something the ROM never checks
+    on that path. The signature half still applies and is what this returns on.
+    """
+    sel = mm.get_public_key_sel(buf, slot)
+    key_slot = signing_key_for_slot(buf, slot)
+    rom_anchored = sel < NUM_ROM_SIGNING_KEYS
+    if rom_anchored and sel != key_slot:
         raise AssertionError(
-            f"{slot} selects key slot {key_slot}, which is not one of the ROM keys "
-            f"0..{NUM_ROM_SIGNING_KEYS - 1}; only those have a private key in the tree"
+            f"{slot} selects ROM slot {sel} but carries rom_key{key_slot}'s modulus; "
+            f"the image and the selector disagree about which key signed this manifest"
         )
     n, e, _d = load_rsa_private_key(rom_signing_key(key_slot))
     modulus = n.to_bytes(RSA_KEY_BYTES, "big")
@@ -431,7 +464,7 @@ def verify_signing_key(buf, slot: str) -> int:
             f"{slot} embedded modulus is not rom_key{key_slot}'s; the PEM and the "
             f"image disagree about which key signed this manifest"
         )
-    if hashlib.sha256(modulus).digest() != mm.rom_key_digest(key_slot):
+    if rom_anchored and hashlib.sha256(modulus).digest() != mm.rom_key_digest(key_slot):
         raise AssertionError(
             f"rom_key{key_slot}.pem does not hash to digest_rom_key{key_slot} in the "
             f"generated key_digests.c; the ROM would refuse this key"
@@ -481,7 +514,9 @@ def reseal(buf: bytearray, slot: str, *, check_toc: bool = True) -> int:
 
     mm.rehash(buf, slot)
 
-    key_slot = mm.get_public_key_sel(buf, slot)
+    # From the modulus, not the selector: a fused-key manifest selects slot 16 or
+    # 17, which names a chiplet fuse rather than a key this tree holds.
+    key_slot = signing_key_for_slot(buf, slot)
     n, _e, d = load_rsa_private_key(rom_signing_key(key_slot))
     signed = bytes(buf[base : base + mm.SIGNED_REGION_END])
     sig = sign_pkcs1v15_sha256(signed, n, d)
