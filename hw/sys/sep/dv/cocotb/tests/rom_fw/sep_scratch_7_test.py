@@ -292,7 +292,7 @@ class _WarmDispatchObserver:
             f"did not arrive there. Distinct PCs seen: "
             f"{sorted(hex(p) for p in self.pcs)[:32]}"
         )
-        log.info("CHK-WARM-JUMP: retired at 0x%08x", _HANDLER_ADDR)
+        log.info("CHK-WARM-JUMP PASS: retired at 0x%08x", _HANDLER_ADDR)
 
         # CHK-RETAINED: the slot is left ALONE, which is the opposite of what
         # this check used to require and is what the spec asks for.
