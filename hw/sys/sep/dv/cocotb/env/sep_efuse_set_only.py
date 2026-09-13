@@ -241,7 +241,7 @@ def _selftest() -> None:
     assert [n for n, *_ in LOCK_FIELDS] == ["LOCKS", "LOCKS", "LOCKS_SPARE"]
     # Both specification disable vectors must be walked.
     assert {"SIP_DIS", "SYS_DIS"} <= {n for n, _, _ in SET_ONLY_FIELDS}
-    assert len(WRITABLE_FIELDS) == 33
+    assert len(WRITABLE_FIELDS) == 34
     assert "REQUIRED_SIGNERS" in {n for n, _ in WRITABLE_FIELDS}
     assert spec_walked_rows() == {f.spec_name for f in spec_fields()} - {"LC_STATE"}
 
@@ -269,8 +269,9 @@ def _selftest() -> None:
     assert all(f.sensed == 0 for f in locks)
     spare = next(f for f in cfg.lock_fields if f.name == "LOCKS_SPARE")
     assert spare.word_idx == 0
-    assert spare.sensed and spare.sensed == (spare.sensed & 0xFFFF_0000)
-    assert spare.set_bits and spare.set_bits == (spare.set_bits & 0x0000_FFFF)
+    _spare_sensed, _spare_set = LOCK_FIELDS[-1][3], LOCK_FIELDS[-1][4]
+    assert spare.sensed and spare.sensed == (spare.sensed & _spare_sensed)
+    assert spare.set_bits and spare.set_bits == (spare.set_bits & _spare_set)
     pins = cfg.image_fixed()
     assert pins["LOCKS"] == 0
     assert pins["LOCKS_SPARE"] == spare.field_int

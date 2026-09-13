@@ -344,10 +344,9 @@ def _selftest() -> int:
     )
     ok(
         "the reference suite's stray regwidth key is ignored",
-        "[SEP_SPI_CTRL_FIELD_EN]\nregwidth = 288\n"
-        "  [SEP_SPI_CTRL_FIELD_EN.fields.smu_pll_sysclk]\n  value = 0x320\n",
-        0x320 << 8,
-        lambda i: i.field_int("SEP_SPI_CTRL_FIELD_EN"),
+        "[SYSCLK_FREQ_MHZ]\n  [SYSCLK_FREQ_MHZ.fields.sysclk_freq_mhz]\n  value = 0x320\n",
+        0x320,
+        lambda i: i.field_int("SYSCLK_FREQ_MHZ"),
     )
 
     # Registers no live config sets. A name here that the RDL no longer has makes
@@ -363,8 +362,8 @@ def _selftest() -> int:
         "[RMA_CHIPLET_TOKEN_DIGEST]\n  [RMA_CHIPLET_TOKEN_DIGEST.fields.token]\n"
         "  value = 0x66687aadf862bd776c8fc18b8e9f8e20089714856ee233b3902a591d0d5f2925\n"
         "[CHIPLET_UID]\n  [CHIPLET_UID.fields.uid]\n  value = 0xdeadbeef\n"
-        "[SEP_SPI_CTRL_FIELD_EN]\n"
-        "  [SEP_SPI_CTRL_FIELD_EN.fields.smu_pll_sysclk]\n  value = 0x320\n"
+        "[SYSCLK_FREQ_MHZ]\n"
+        "  [SYSCLK_FREQ_MHZ.fields.sysclk_freq_mhz]\n  value = 0x320\n"
     )
     for reg, want in (
         ("TRANSIENT_RMA_EN", 0x1),
@@ -376,8 +375,7 @@ def _selftest() -> int:
             0x66687AADF862BD776C8FC18B8E9F8E20089714856EE233B3902A591D0D5F2925,
         ),
         ("CHIPLET_UID", 0xDEADBEEF),
-        # 800 MHz in smu_pll_sysclk[18:8], so the register value is shifted.
-        ("SEP_SPI_CTRL_FIELD_EN", 0x320 << 8),
+        ("SYSCLK_FREQ_MHZ", 0x320),
     ):
         ok(f"{reg} round-trips", wide, want, lambda i, r=reg: i.field_int(r))
 

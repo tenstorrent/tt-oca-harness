@@ -18,8 +18,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from cocotbext.axi import AxiBus, AxiLiteBus
-from ocah_axi_vip import OcahAxiConfig, OcahAxiProtocol
+from ocah_axi_vip import OcahAxiBus, OcahAxiConfig, OcahAxiProtocol
 
 from .dtp_dbg_disable import (
     DBG_DISABLE_FIELDS,
@@ -157,8 +156,8 @@ class DtpTbIf:
         self.ctrl.dbg_disable.value = pack_dbg_disable(full_dbg_disable(values))
 
     # --- shared AXI VIP binding -----------------------------------------------
-    def axi_bus(self, target: str, *, passive: bool = False) -> AxiBus | AxiLiteBus:
-        """cocotbext bus over one DTP AXI interface at the bus's real geometry.
+    def axi_bus(self, target: str, *, passive: bool = False) -> OcahAxiBus:
+        """Shared-VIP bus handle over one DTP AXI interface at the bus's real geometry.
 
         ``target`` is ``smc_axi``, ``smc_otp``, ``sep_otp``, or ``xtrig``; the
         active instance carries the responder or initiator connection, the
