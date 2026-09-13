@@ -145,6 +145,17 @@ extra_fail_patterns = [
   "\\*E,",
 ]
 
+[sby]
+kind = "formal"
+binary = "sby"
+# SymbiYosys drives Yosys with the yosys-slang frontend, `yosys-smtbmc`, `yosys-abc`, and the
+# SMT solver named in the task file; the doctor probes `sby` alone, so those must share its PATH.
+frameworks = ["formal"]
+license_env = []
+supports_waves = []
+supports_cov = ["formal"]
+default_waves = ""
+
 [jasper]
 kind = "formal"
 binary = "jg"
