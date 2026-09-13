@@ -274,7 +274,7 @@ class _WarmDispatchObserver:
             f"did not arrive there. Distinct PCs seen: "
             f"{sorted(hex(p) for p in self.pcs)[:32]}"
         )
-        log.info("CHK-WARM-JUMP: retired at 0x%08x", _HANDLER_ADDR)
+        log.info("CHK-WARM-JUMP PASS: retired at 0x%08x", _HANDLER_ADDR)
 
         # CHK-RETAINED: the slot is left ALONE, as the spec asks.
         # sep-boot-flow.puml:46-48 branches to the address and writes nothing;

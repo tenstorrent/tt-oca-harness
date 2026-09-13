@@ -267,7 +267,7 @@ class sep_warm_reset_invalid_hang_test(sep_base_test):
             f"cold_scratch[1] never reached 0x{_STATUS_WARM_HANG:08x} within "
             f"{_MAX_RUN_CYCLES} cycles; observed {status_hex}"
         )
-        self.logger.info("CHK-WARM-REJECT: cold_scratch[1] = 0x%08x", _STATUS_WARM_HANG)
+        self.logger.info("CHK-WARM-REJECT PASS: cold_scratch[1] = 0x%08x", _STATUS_WARM_HANG)
 
         # CHK-NO-JUMP: the accept arm did not run. Two independent witnesses,
         # because either alone is weak: the ROM announces the jump in

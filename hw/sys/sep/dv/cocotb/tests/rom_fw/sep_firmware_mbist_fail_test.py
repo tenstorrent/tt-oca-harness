@@ -364,7 +364,7 @@ class sep_firmware_mbist_fail_test(sep_base_test):
             f"reported the failure and then carried on executing"
         )
         self.logger.info(
-            "CHK-DFT-TERMINAL: cold_scratch[1] = 0x%08x, then spinning across "
+            "CHK-DFT-TERMINAL PASS: cold_scratch[1] = 0x%08x, then spinning across "
             "%d byte(s) at %s for %d cycles",
             _STATUS_DFT_GATE_BLOCKED,
             post_span,

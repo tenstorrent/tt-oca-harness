@@ -227,7 +227,7 @@ class sep_rom_ot_dma_boot_test(sep_base_test):
             assert any(marker in line for line in console), (
                 f"ROM never printed {marker}. Console: {console}"
             )
-            self.logger.info("CHK-ROM-PATH: required marker observed: %s", marker)
+            self.logger.info("CHK-ROM-PATH PASS: required marker observed: %s", marker)
         for marker in self.forbidden_markers:
             assert not any(marker in line for line in console), (
                 f"ROM printed {marker}, which means it did not take the intended "

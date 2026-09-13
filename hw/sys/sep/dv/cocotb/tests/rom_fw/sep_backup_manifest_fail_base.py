@@ -407,7 +407,7 @@ class sep_backup_manifest_fail_base(sep_base_test):
         )
         assert not fw_pass, "ROM signalled PASS: it booted an image it was supposed to reject"
         log.info(
-            "CHK-TERMINAL: %s, cold_scratch[1]=0x%08x, mailbox FAIL (fw_pass=0)",
+            "CHK-TERMINAL PASS: %s, cold_scratch[1]=0x%08x, mailbox FAIL (fw_pass=0)",
             crypto_fail,
             expected_status,
         )
