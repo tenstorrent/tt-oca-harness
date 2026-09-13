@@ -48,9 +48,9 @@ approved release group or carried as a classified hole in the coverage policy
 |Functional coverage (observation) |Every `FUNC_COV_VALUE` bin named below is
 hit by the enrolled `smoke` / `per_ip` suite |Python-side counters in `SmcScoreboard`
 |Line/branch/FSM/condition coverage |Collected for signoff in the commercial
-flow |VCS/Xcelium coverage databases (`--cov`)
+flow |VCS native coverage databases (`--cov --tool vcs`)
 |Assertion coverage |Collected for enabled assertions in the commercial flow
-|Xcelium UCIS / IMC
+|VCS `-cm assert` under the same `-cm_common_hier` scope, read in URG
 |===
 
 No numeric threshold is committed here.
@@ -241,10 +241,10 @@ and the coverage policy act on
 below, not a gateable metric
 |Aggregator |Scan one or more run dirs and report unique events per bin plus
 the union across runs
-|Commercial simulation |`--cov` on Xcelium emits UCIS under
-`<run_dir>/<test>/coverage/scope/`; `cov_merge` / `cov_report` call Cadence IMC
-|Code coverage |VCS/Xcelium line, branch, condition, FSM, toggle, assertion
-coverage
+|Commercial simulation |`--cov --tool vcs` writes one native database per test
+leaf (`coverage/simv.vdb`); `cov_merge` / `cov_report` merge and report it with
+`urg`
+|Code coverage |VCS line, branch, condition, FSM, toggle, assertion coverage
 |Closure triage |Grow SAMPLE-only bins with an active driver; keep PLL/PVT
 placeholder windows out of feature PASS
 |===
@@ -339,21 +339,24 @@ if __name__ == "__main__":
 [[sec-4-simulator-side-coverage]]
 ==== Commercial simulator collection
 
-With `--cov` on Xcelium the runner instructs `xrun` to emit UCIS coverage data
-per test under `<run_dir>/<test>/coverage/scope/`:
+`--cov --tool vcs` instruments the build with
+`-cm line+cond+tgl+fsm+branch+assert`, scoped at compile time by
+`cov/config/vcs/smc_cov_scope.hier` (`-cm_hier` plus `-cm_common_hier`, so one
+scope file governs code and assertion coverage), and writes one native
+database per test leaf:
 
 ....
-coverage/scope/icc_<hash>.ucm        # design model
-coverage/scope/test/icc_<hash>.ucd   # per-test data
+<run_dir>/<test>/coverage/simv.vdb
 ....
 
-The `cov_merge` / `cov_report` stages call Cadence IMC. Where IMC is not
-installed, both stages report ERROR while the per-test `.ucd` files remain on
-disk for offline merge.
+The `cov_merge` / `cov_report` stages merge the per-leaf databases with `urg`
+into `<run_dir>/cov/merged.vdb` and report from there.
+`cov/config/vcs/README.md` carries the VCS bring-up checklist and how to
+measure a scope change.
 
-The runner passes `-covworkdir <abs path>` and `-covoverwrite` to `xrun -R`;
-without them xrun writes `./cov_work` relative to the cocotb test cwd and a
-second run fails with `*F,C58EXS` ("database already exists").
+`smc_sim_cfg.toml` has `[coverage.vcs]` and `[coverage.verilator]` tables and
+no `[coverage.xcelium]`: Xcelium builds and runs the same tests, but there is
+no SMC coverage scope for it and no Xcelium number is graded.
 
 === Exclusions and Limitations
 

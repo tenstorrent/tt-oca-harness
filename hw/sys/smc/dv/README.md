@@ -20,17 +20,18 @@ SYS_OUT, pin-level protocol VIPs, and the firmware images under `fw/`.
 the SV-UVM shape and `--cov` coverage. Xcelium builds the model but has no
 coverage configuration in this tree.
 
-See `docs/index.adoc` for the chapter set:
-`docs/SMC_TB_ARCH.adoc` for test development, environment setup and run
-recipes, `docs/SMC_VPLAN.adoc` for the verification plan,
-`docs/SMC_FCOV.adoc` for the coverage pipeline, and
-`docs/SMC_SCOPE_TRACEABILITY.adoc` for the requirement-to-test matrix,
-`docs/SMC_CANONICAL_BRINGUP_SIGNOFF.adoc` for the canonical bring-up /
-CSR signoff, `docs/SMC_FABRIC_PERIPH_SIGNOFF.adoc` for the fabric /
-peripheral honesty signoff, `docs/SMC_RELEASE_MATRIX.adoc` for the release
-regression matrix, `docs/SMC_COVERAGE_POLICY.adoc` for the coverage-target
-and waiver-field policy, and `docs/SMC_RESET_CLOCK_IRQ_SIGNOFF.adoc` for the
-reset / clock / IRQ signoff.
+See `docs/index.adoc` for the chapter set: `docs/SMC_TB_ARCH.adoc` for test
+development, environment setup and run recipes, `docs/SMC_VPLAN.adoc` for the
+verification plan, and `docs/SMC_FCOV.adoc` for the coverage pipeline. The
+sign-off records that read against those chapters are under
+`hw/sys/smc/doc/dv/`: `SMC_SCOPE_TRACEABILITY.adoc` (requirement-to-test
+matrix), `SMC_CANONICAL_BRINGUP_SIGNOFF.adoc` (canonical bring-up / CSR
+signoff), `SMC_FABRIC_PERIPH_SIGNOFF.adoc` (fabric / peripheral honesty
+signoff), `SMC_RELEASE_MATRIX.adoc` (release regression matrix),
+`SMC_COVERAGE_POLICY.adoc` (coverage-target and waiver-field policy),
+`SMC_RESET_CLOCK_IRQ_SIGNOFF.adoc` (reset / clock / IRQ signoff) and
+`SMC_DEFERRED_DISPOSITION.adoc` (disposition of the tests that are present but
+not enrolled).
 
 **Green / signoff policy:** only claim **real DUT RTL paths**.
 I3C CCC/IBI / real-core protocol, adopter PLL/PVT OKAY wraps, and TB-glue
@@ -75,8 +76,9 @@ not environment variables — see the `--framework uvm` section.
 These modules exist under `cocotb/tests/` and are in no testlist, so they are
 not in `all`. Where a blocker tag applies it lives in the file's docstring
 (`# deferred: <reason>`); `testlists/all.toml` carries the same list beside the
-`all` group, and `docs/SMC_DEFERRED_DISPOSITION.adoc` is the disposition of
-record. SMU's matching catalog is `hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`.
+`all` group, and `hw/sys/smc/doc/dv/SMC_DEFERRED_DISPOSITION.adoc` is the
+disposition of record. SMU's matching catalog is
+`hw/sys/smu/dv/docs/SMU_DEFERRED_DISPOSITION.adoc`.
 
 | Test | Reason |
 |------|--------|
@@ -147,9 +149,11 @@ hw/sys/smc/dv/
 ├── cov/                    # coverage collateral: cov/config/{vcs,verilator}/
 │                           #   and cov/sv/. --cov is graded on VCS; see
 │                           #   docs/SMC_FCOV.adoc
-├── docs/                   # index.adoc plus the role chapters: TB_ARCH (test
-│                           #   development, environment, run recipes), VPLAN,
-│                           #   FCOV, and the scope/disposition/signoff records
+├── docs/                   # index.adoc plus the three role chapters it
+│                           #   includes: SMC_TB_ARCH.adoc (test development,
+│                           #   environment, run recipes), SMC_VPLAN.adoc and
+│                           #   SMC_FCOV.adoc. The scope/disposition/signoff
+│                           #   records are under hw/sys/smc/doc/dv/
 ├── models/                 # SMC-local sim models: axil_okay_slv.sv,
 │                           #   smc_cpu_mem_dv.sv (observability counters + the
 │                           #   time-0 ROM/scratch image backdoors),

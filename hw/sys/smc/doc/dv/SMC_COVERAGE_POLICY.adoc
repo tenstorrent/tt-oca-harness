@@ -24,11 +24,11 @@ measured database and an owner-signed number.
 |===
 |Path |What it collects |Where it runs
 |Public Verilator |line, branch and expression (`--coverage-line`,
-`--coverage-expr`) plus the `user` family from the `cov/sv/` cover
-properties, scoped at compile time by `smc_cov_scope.vlt` |weekly `hosted`
+`--coverage-expr`) plus the `user` family from the `hw/sys/smc/dv/cov/sv/`
+cover properties, scoped at compile time by `smc_cov_scope.vlt` |weekly `hosted`
 with `coverage: true`. That is collection, not a signed gate.
 |Commercial |code + assertion + covergroups under `ifndef VERILATOR`
-|licensed VCS / Xcelium; not a public CI job
+|licensed VCS; not a public CI job
 |===
 
 `FUNC_COV_VALUE` log text from `SmcScoreboard` is not a mergeable
