@@ -105,10 +105,17 @@ def select_chiplet_fuse_key(buf: bytearray, key_index: int) -> tuple[int, int]:
         pm.verify_signing_key(buf, slot)
 
         mm.set_public_key_sel(buf, slot, selection=selection, index=0)
-        expected = (selection & 0x7) << 4
+        # Ask the mutator which slot that pair names rather than repacking the
+        # field here. ``public_key_select`` is a BITMAP under OCA -- one bit per
+        # key slot -- and :func:`mm.get_public_key_sel` returns the slot NUMBER,
+        # not a packed field. The two agree for CHIPLET_PUBK_HASH0 (slot 16 ==
+        # the old ``selection << 4``), which is why only the HASH1 members caught
+        # the hand-rolled expectation: slot 17 asserted against 0x20.
+        expected = mm.key_slot_for(selection, 0)
         sel = mm.get_public_key_sel(buf, slot)
         assert sel == expected, (
-            f"{slot} public_key_sel encoded as 0x{sel:04x}, expected 0x{expected:04x} "
+            f"{slot} public_key_sel names slot {sel} (0x{sel:04x}), expected slot "
+            f"{expected} (0x{expected:04x}) "
             f"(selection=PUBK_SEL_FUSE_KEY_{key_index}, index=0)"
         )
         pm.reseal(buf, slot)
@@ -159,8 +166,10 @@ class _chiplet_key_mixin:
             f"testcase yet"
         )
         selection = (mm.PUBK_SEL_FUSE_KEY_0, mm.PUBK_SEL_FUSE_KEY_1)[key]
-        cls._PUBK_SEL_VALUE = (selection & 0x7) << 4
-        #  -- simputshex32("PUBK_SEL=", public_key_sel.value).
+        # The SLOT number, because that is what the ROM echoes:
+        # ``simputshex32("PUBK_SEL=", (uint32_t)slot)`` (``oca_platform.c``), not
+        # the bitmap word and not a packed selection nibble.
+        cls._PUBK_SEL_VALUE = mm.key_slot_for(selection, 0)
         cls._PUBK_SEL_ECHO = f"PUBK_SEL=0x{cls._PUBK_SEL_VALUE:08x}"
         cls._REVOKE_BIT = PUBK_REVOKE_BIT_CHIPLET_HASH[key]
         # Bit 0 -- ROM development key 0 -- is blown in EVERY member of this family
