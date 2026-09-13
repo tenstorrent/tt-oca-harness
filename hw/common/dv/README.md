@@ -263,14 +263,15 @@ packages instead of directly importing backend packages. Notes:
 
 ### Backend escapes
 
-These are the only places where an engine object crosses a package root. Each
-row states what the escape is for and the boundary a consumer must respect;
-an escape leaves with the engine it belongs to, under the deprecation rule in
-the shared DV guide.
+A backend escape is a public method or attribute that hands a consumer an
+object from the backend engine (`cocotbext-axi` or `cocotbext-jtag`) instead
+of a plain OCAH value. The table lists every escape, what it is for, and the
+rule a consumer follows. An escape is removed together with the engine it
+belongs to, under the deprecation rule in `docs/vip-architecture.adoc`.
 
-| Escape | Purpose | Boundary |
-|--------|---------|----------|
-| `OcahAxiReadResult.raw`, `OcahAxiWriteResult.raw` | The engine's transaction object, for backend debugging | Debug only. No test, sequence, or scoreboard reads it. Present while the AXI engine is `cocotbext-axi`. |
-| `OcahAxiConfig.bus(scope, prefix=...)` | Binds an interface scope or flat bundle at the configured geometry and returns the engine's bus object | Consumers pass the returned object unchanged into this package's agents, monitors, and watchers and never import the backend package. Present while the AXI engine is `cocotbext-axi`. |
-| `OcahJtagDevice.to_backend()` | Converts a plain device map into the engine's device type | Used inside the package by `create_backend_driver()`. Present while the JTAG bus binds through `cocotbext-jtag`. |
-| `OcahJtagMasterDriver.backend_bus()`, `create_backend_driver()` | The engine's bus and driver objects, for backend debugging | Debug only. No test drives the TAP through them. Present while the JTAG bus binds through `cocotbext-jtag`. |
+| Escape | Purpose | Rule for consumers |
+|--------|---------|--------------------|
+| `OcahAxiReadResult.raw`, `OcahAxiWriteResult.raw` | The engine's transaction object, for debugging the backend | Debug only. Tests, sequences, and scoreboards do not read it. |
+| `OcahAxiConfig.bus(scope, prefix=...)` | Binds an interface scope or a flat signal bundle at the configured geometry and returns the engine's bus object | Pass the returned object unchanged into this package's agents, monitors, and watchers. Do not import the backend package. |
+| `OcahJtagDevice.to_backend()` | Converts a plain device map into the engine's device type | Used inside the package by `create_backend_driver()`. |
+| `OcahJtagMasterDriver.backend_bus()`, `create_backend_driver()` | The engine's bus and driver objects, for debugging the backend | Debug only. Tests do not drive the TAP through them. |
