@@ -267,11 +267,13 @@ sources = [
   # The same two functional-coverage modules the [build] sources list carries.
   "hw/sys/smu/dv/cov/sv/smu_boot_fcov.sv",
   "hw/sys/smu/dv/cov/sv/smu_xbar_fcov.sv",
-  # The embedded DTP's bench layer: its TB interface (the reference models and the TAP
-  # checker read the DTP observables through it), the generated cross-trigger port address
-  # map dtp_types reads (the Bender DUT layer carries only the regblock), and the DTP
-  # environment package.
+  # The embedded DTP's bench layer: its three TB interface partitions (the reference
+  # models and the TAP checker read the DTP observables through them; dtp_env binds
+  # all three), the generated cross-trigger port address map dtp_types reads (the
+  # Bender DUT layer carries only the regblock), and the DTP environment package.
   "hw/sys/dtp/dv/tb/dtp_tb_if.sv",
+  "hw/sys/dtp/dv/tb/dtp_scan_if.sv",
+  "hw/sys/dtp/dv/tb/dtp_xtrig_if.sv",
   "hw/ip/cross_trigger/cross_trigger_port/regs/gen/sv/cross_trigger_port_addrmap_pkg.sv",
   "hw/sys/dtp/dv/uvm/env/dtp_env_pkg.sv",
   # The SMU bench.
