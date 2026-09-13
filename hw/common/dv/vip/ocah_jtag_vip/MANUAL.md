@@ -348,3 +348,10 @@ For broader coverage, run the full `basic_jtag` group:
 ```bash
 python3 tools/dv/run_dv.py --dut dtp --items basic_jtag --tool verilator
 ```
+
+`DTP_JTAG_TAP_CHECKER_NEGATIVE` is the must-fail hook of both flows: as an
+environment variable it desynchronizes the cocotb TAP reference model so
+`CHK-TAP-STATE` fails; as a plusarg (`--plusarg=+DTP_JTAG_TAP_CHECKER_NEGATIVE`)
+it arms a wrong expected IDCODE in the SV-UVM `dtp_jtag_tlr_reset_test` and
+`dtp_sanity_test` so `CHK-TAP-TLR-IDCODE` fails. `cocotb/examples/example_slave_selftest.py`
+judges the reactive slave device by the master-side model with no simulator.
