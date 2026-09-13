@@ -53,11 +53,14 @@ from .config import (
     coverage_cfg,
     default_target_name,
     flow_stages,
+    formal_template_placeholders,
+    render_formal_argv,
     selected_compile_target,
     selected_run_mode,
     selected_run_target,
     sim_global_args,
     target_flags,
+    validate_formal_argv_template,
 )
 from .coverage import (
     CANONICAL_METRICS,
@@ -3034,10 +3037,17 @@ def formal_run_stage(
     args: argparse.Namespace,
     tool: str,
     simulators: dict[str, Any],
+    ctx: dict[str, str],
     log_path: Path,
     script_path: Path,
     env_path: Path,
 ) -> int:
+    """Launch one formal app through the tool's `argv` template.
+
+    The template comes from the app table's `argv` when set, else from the tool's registry entry.
+    `--proof-depth` and `--formal-arg` reach the command line only through their placeholders,
+    so a template without the placeholder rejects the option instead of dropping it.
+    """
     if item is None:
         raise ConfigError("formal_run stage requires a formal task item")
     formal = sim_cfg.get("formal", {})
@@ -3059,16 +3069,53 @@ def formal_run_stage(
             raise ConfigError(f"{flow.path}: formal app `{app_name}` has no `{tool}` backend")
         tool = default_tool
     sim_tool = simulators.get(tool, {})
-    binary = str(sim_tool.get("binary", tool)) if isinstance(sim_tool, dict) else tool
+    if not isinstance(sim_tool, dict):
+        sim_tool = {}
+    binary = str(sim_tool.get("binary", tool))
     cwd = _repo_or_dut_path(root, flow, str(tool_cfg.get("cwd", ".")))
     script = str(tool_cfg.get("script", "")).strip()
-    argv = [binary]
-    argv += as_str_list(tool_cfg.get("args"), f"formal.apps.{app_name}.{tool}.args")
-    if args.proof_depth is not None:
-        argv += ["--proof-depth", str(args.proof_depth)]
-    if script:
-        argv.append(script)
-    argv += args.formal_arg or []
+    where = f"{flow.path} [formal.apps.{app_name}.{tool}]"
+    if "argv" in tool_cfg:
+        template = validate_formal_argv_template(tool_cfg["argv"], f"{where}.argv")
+    elif "argv" in sim_tool:
+        template = validate_formal_argv_template(sim_tool["argv"], f"simulators.toml [{tool}].argv")
+    else:
+        raise ConfigError(
+            f"{where}: no launch template; simulators.toml [{tool}] carries no `argv` "
+            "and the app table sets none"
+        )
+    used = formal_template_placeholders(template)
+    if "script" in used and not script:
+        raise ConfigError(
+            f"{where}: the launch template uses {{script}} but the app table sets no `script`"
+        )
+    proof_depth = None if args.proof_depth is None else str(args.proof_depth)
+    if proof_depth is not None and "proof_depth" not in used:
+        raise ConfigError(
+            f"--proof-depth is not routed: the `{tool}` launch template for formal app "
+            f"`{app_name}` has no {{proof_depth}} placeholder"
+        )
+    formal_args = list(args.formal_arg or [])
+    if formal_args and "formal_args" not in used:
+        raise ConfigError(
+            f"--formal-arg is not routed: the `{tool}` launch template for formal app "
+            f"`{app_name}` has no {{formal_args}} placeholder"
+        )
+    argv = render_formal_argv(
+        template,
+        scalars={
+            "binary": binary,
+            "script": script,
+            "cwd": str(cwd),
+            "run_dir": ctx.get("run_dir", ""),
+            "item": item,
+        },
+        lists={
+            "args": as_str_list(tool_cfg.get("args"), f"formal.apps.{app_name}.{tool}.args"),
+            "formal_args": formal_args,
+        },
+        optional={"proof_depth": proof_depth},
+    )
     console_from_args(args).artifact("formal_app", f"{app_name} ({tool})")
     return run_subprocess(
         argv,
@@ -3264,6 +3311,7 @@ def run_stage(
                 args,
                 tool,
                 simulators,
+                ctx,
                 log_path,
                 script_path,
                 env_path,

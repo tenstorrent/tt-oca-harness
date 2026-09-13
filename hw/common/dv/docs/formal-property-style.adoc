@@ -243,8 +243,9 @@ repository's `**/build/` ignore rule.
 The `.sby` file names its inputs in `[files]` relative to the directory sby is
 started from, and sby copies them into each task's `src/` directory. The
 generated filelist therefore uses absolute paths, and sby runs from the `.sby`
-file's directory with `--prefix ../../build/<top>`, which is what the runner's
-`[formal.apps.<app>.<tool>] cwd` field expresses.
+file's directory with `--prefix ../../build/<top>`. The runner's `sby` launch
+template (`tools/dv/doc/run-dv.adoc`) starts sby from the app's `cwd`, the
+same directory, and places the work directories under the run directory.
 
 [[formal-style-reachability]]
 === Cover reachability after assumption changes

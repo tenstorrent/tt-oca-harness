@@ -281,7 +281,8 @@ these formal backends:
 |SymbiYosys |`sby` |none |Profile default. Yosys with the yosys-slang
 frontend, `yosys-smtbmc`, `yosys-abc`, and an SMT solver on the same `PATH`.
 The property subset and task-file layout are in the Formal Property Style
-and Layout chapter of `hw/common/dv/docs/index.adoc`.
+and Layout chapter of `hw/common/dv/docs/index.adoc`; the launch shape is in
+<<runner-formal-templates>>.
 |Jasper |`jg` |commercial |Site-supplied.
 |VC Formal |`vcf` |commercial |Site-supplied.
 |===
@@ -388,8 +389,8 @@ Configuration ownership is split:
 |Shared framework, tool allowlist, scheduler policy, defaults, and stage graph.
 
 |`hw/common/dv/configs/simulators.toml`
-|Tool binaries, capabilities, wave formats, parser extensions, and common
-build/coverage defaults.
+|Tool binaries, capabilities, wave formats, parser extensions, common
+build/coverage defaults, and formal launch templates.
 
 |`hw/common/dv/configs/executors.toml`
 |Executor declarations. Only `local` dispatch is implemented.
@@ -432,6 +433,74 @@ Some domains have more specific rules:
 CLI overrides are curated rather than arbitrary TOML replacement. Stable
 settings belong in checked-in configuration; pass-through flags are intended
 for one-off debugging.
+
+[[runner-formal-templates]]
+=== Formal launch templates
+
+A formal backend is launched from an `argv` template. The registry entry of
+every `kind = "formal"` tool carries one, and an app table
+(`[formal.apps.<app>.<tool>]` in the DUT's formal configuration) may set its
+own `argv` in its place. The app table also supplies `cwd` (the launch
+directory, repo- or DUT-relative, default `.`), `script` (the tool script,
+passed as written), and `args` (tokens spliced at `{args}`). A formal test
+item's `module` names the app; `--app` overrides it.
+
+A template is an array of strings. Each string renders these placeholders:
+
+[cols="<2,<5",options="header"]
+|===
+|Placeholder |Value
+
+|`{binary}` |The tool's registry `binary`.
+|`{script}` |The app's `script`, as written. A template that uses it fails
+when the app sets none.
+|`{cwd}` |The resolved launch directory.
+|`{run_dir}` |The run directory.
+|`{item}` |The formal test item being run.
+|`{args}` |The app's `args`, spliced in place. The placeholder is an element
+on its own.
+|`{formal_args}` |Every `--formal-arg` value, spliced in place. The
+placeholder is an element on its own.
+|`{proof_depth}` |The `--proof-depth` value. The placeholder sits inside an
+optional group.
+|===
+
+A nested array is an optional group: it renders whole when `--proof-depth` is
+given and is dropped otherwise, so a two-token flag stays intact.
+
+[source,toml]
+----
+[formal.apps.fpv.sby]
+cwd = "formal/fpv/sby"
+script = "dtp.sby"
+args = ["bmc", "cover"]
+
+[formal.apps.fpv.<tool>]
+argv = ["{binary}", ["-depth", "{proof_depth}"], "{script}", "{formal_args}"]
+----
+
+`--validate-configs` rejects a template that names an unknown placeholder,
+embeds a list placeholder in a longer string or in a group, places an
+optional placeholder outside a group, or is empty. A run rejects
+`--proof-depth` or `--formal-arg` when the selected template has no
+`{proof_depth}` or `{formal_args}` placeholder to carry it. `--dry-run`
+prints the rendered command on the `CMD  :` line.
+
+The SymbiYosys registry template is:
+
+[source,toml]
+----
+argv = ["{binary}", "-f", "--prefix", "{run_dir}/stages/formal/{item}", "{script}", "{args}", "{formal_args}"]
+----
+
+sby resolves the task file's `[files]` entries against its working
+directory, so the app's `cwd` is the directory holding the task file. Each
+task's work directory lands under the run's formal stage directory as
+`<item>_<task>`, and the app's `args` name the tasks to run. sby takes its
+depth from the task file, so its template has no `{proof_depth}` group. The
+licensed backends' registry templates are
+`{binary} {args} {script} {formal_args}`; a site supplies a tool's own flags
+through an app-table `argv`.
 
 === Adopter overlay layer
 
@@ -1084,10 +1153,13 @@ coverage grade alone. See <<runner-waive>>.
 `--plusarg +FOO=1`.
 
 |`--proof-depth N`
-|Formal bounded-proof depth override.
+|Formal bounded-proof depth, rendered where the selected launch template
+places `{proof_depth}`; rejected when the template has no such placeholder.
+See <<runner-formal-templates>>.
 
 |`--formal-arg ARG`
-|Repeatable formal backend argument.
+|Repeatable formal backend argument, spliced at the launch template's
+`{formal_args}`; rejected when the template has none.
 
 |`--app NAME`
 |Formal app/task override.

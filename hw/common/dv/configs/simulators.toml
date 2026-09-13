@@ -155,6 +155,11 @@ license_env = []
 supports_waves = []
 supports_cov = ["formal"]
 default_waves = ""
+# sby resolves the task file's [files] entries against its working directory, so the app's `cwd`
+# is the directory holding the task file. `-f` clears a work directory left by an earlier run into
+# the same run directory; `--prefix` places one work directory per task under the run's formal
+# stage directory as `<item>_<task>`; the app's `args` name the tasks to run.
+argv = ["{binary}", "-f", "--prefix", "{run_dir}/stages/formal/{item}", "{script}", "{args}", "{formal_args}"]
 
 [jasper]
 kind = "formal"
@@ -164,6 +169,7 @@ license_env = ["CDS_LIC_FILE", "LM_LICENSE_FILE"]
 supports_waves = []
 supports_cov = ["formal"]
 default_waves = ""
+argv = ["{binary}", "{args}", "{script}", "{formal_args}"]
 
 [vcf]
 kind = "formal"
@@ -173,3 +179,4 @@ license_env = ["SNPSLMD_LICENSE_FILE", "LM_LICENSE_FILE"]
 supports_waves = []
 supports_cov = ["formal"]
 default_waves = ""
+argv = ["{binary}", "{args}", "{script}", "{formal_args}"]
