@@ -1,12 +1,19 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
-"""Primary manifest names an unassigned public-key source; the backup boots.
+"""Primary manifest names two public keys at once; the backup boots.
 
-The PRIMARY's ``public_key_sel.selection`` is set to 3 -- one of the three
-encodings (3, 6, 7) that name no key source,  assigning only
-0, 1, 2, 4 and 5. All three fall through the same ``default:`` arm, which prints ``PUBK_SEL_AMBIGUOUS`` and returns
-``MANIFEST_ERR_SIG_FAILED``; a fixed value makes the run reproducible and lets the
-test assert the exact ``PUBK_SEL=`` the ROM echoed.
+The PRIMARY's ``public_key_select_classic`` names ROM key slots 0 AND 1. Under OCA
+the field is a 128-bit BITMAP, not a packed selection value, and
+[SEP-ROM-SB-045] requires it to resolve to exactly one slot: a bitmap with more
+than one bit set is ambiguous about which anchor applies, so the ROM refuses it
+rather than resolving to either. Both named slots are individually valid and
+provisioned, which is what makes the ambiguity itself the sole possible cause.
+
+``plat_is_key_authorized`` (``oca_platform.c``) prints ``PUBK_SEL_AMBIGUOUS`` and
+returns ``OCA_FAIL_ROOT_KEY_UNAUTHORIZED`` -- a key-AUTHORIZATION verdict, not a
+signature one. The refusal happens inside the resolution loop, before any slot
+number is echoed, so the primary contributes no ``PUBK_SEL=`` line and the single
+``PUBK_SEL=`` in the console is the backup's.
 
 THE PRIMARY MUST NOT BE BROKEN ANY OTHER WAY, and that is the whole difference between
 this testcase and its backup-side sibling. So there is no BAD_MAGIC failover trigger
@@ -19,7 +26,7 @@ Platform adaptation -- MARKER. This ROM *defines* that code
 (``bootrom/prod/include/status_values.h:12``) but never EMITS it: there is no
 ``report_status`` call for it anywhere under ``bootrom/prod/src``, so the architected
 status ring carries only the generic terminal code and the debug console token is the
-only per-reason evidence available. Hence the unassigned-source arm's
+only per-reason evidence available. Hence the ambiguity arm's
 ``PUBK_SEL_AMBIGUOUS`` is required here instead. ``PUBK_SLOT_RESERVED`` -- a bad ROM key
 INDEX, a different arm -- is forbidden below so the two cannot be confused.
 
@@ -40,7 +47,7 @@ from pathlib import Path
 import pyuvm
 from env import sep_manifest_mutate as mm
 from rom_fw.sep_primary_fail_backup_boot_base import (
-    MANIFEST_ERR_SIG_FAILED,
+    MANIFEST_ERR_KEY_UNAUTHORIZED,
     sep_primary_fail_backup_boot_base,
 )
 
@@ -61,10 +68,10 @@ _BACKUP_SEL_ECHO = "PUBK_SEL=0x00000000"
 
 @pyuvm.test()
 class sep_firmware_primary_invalid_public_key_selection_test(sep_primary_fail_backup_boot_base):
-    """Primary names key source 3 -> rejected -> backup boots."""
+    """Primary names two key slots at once -> refused -> backup boots."""
 
     primary_defect_marker = "PUBK_SEL_AMBIGUOUS"
-    primary_expected_error = MANIFEST_ERR_SIG_FAILED
+    primary_expected_error = MANIFEST_ERR_KEY_UNAUTHORIZED
     efuse_preload = _EFUSE_PRELOAD
     # Only the backup's selector is echoed. The primary's is refused inside the
     # resolution loop, before any slot number is printed, so exactly one
