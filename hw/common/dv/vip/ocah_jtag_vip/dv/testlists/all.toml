@@ -1,0 +1,54 @@
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 Tenstorrent USA, Inc.
+
+schema_version = 1
+
+[[tests]]
+name = "ocah_jtag_idcode_test"
+module = { cocotb = "ocah_jtag_idcode_test", uvm = "ocah_jtag_idcode_test" }
+seed = 1
+timeout_sec = 600
+tags = ["smoke", "ci", "jtag_idcode"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "ocah_jtag_bypass_test"
+module = { cocotb = "ocah_jtag_bypass_test", uvm = "ocah_jtag_bypass_test" }
+seed = 1
+timeout_sec = 600
+tags = ["smoke", "ci", "jtag_bypass"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "ocah_jtag_register_test"
+module = { cocotb = "ocah_jtag_register_test", uvm = "ocah_jtag_register_test" }
+seed = 1
+timeout_sec = 600
+tags = ["smoke", "ci", "jtag_register"]
+run_modes = ["smoke"]
+
+[[tests]]
+name = "ocah_jtag_tap_reset_test"
+module = { cocotb = "ocah_jtag_tap_reset_test", uvm = "ocah_jtag_tap_reset_test" }
+seed = 1
+timeout_sec = 600
+tags = ["smoke", "ci", "jtag_tap_reset"]
+run_modes = ["smoke"]
+
+[[groups]]
+name = "smoke"
+tests = [
+    "ocah_jtag_idcode_test",
+    "ocah_jtag_bypass_test",
+    "ocah_jtag_register_test",
+    "ocah_jtag_tap_reset_test",
+]
+
+[[groups]]
+name = "all"
+tests = [
+    "ocah_jtag_idcode_test",
+    "ocah_jtag_bypass_test",
+    "ocah_jtag_register_test",
+    "ocah_jtag_tap_reset_test",
+]

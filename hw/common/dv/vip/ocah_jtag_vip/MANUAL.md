@@ -281,7 +281,10 @@ its `[frameworks.uvm.build].source_lists` and the runner expands it ahead of
 the DUT's own sources — never hand-copy these paths into a DUT sim config, and
 never add them to Bender filelists. The one entry a cocotb/Verilator build
 lists directly in its `[build].sources` is `sva/ocah_jtag_sva.sv`, whose
-two-state rules run there. Its contents:
+two-state rules run there. The package's own `dv/` harness binds it in both
+shapes: the cocotb shape mirrors the reactive device's TAP state onto the
+one-hot input so the state rules run; the SV-UVM shape ties that input off
+and runs the pin rules. Its contents:
 
 - `interface/ocah_jtag_if.sv` — shared pin-level IEEE 1149.1 interface
   (JTAG pins only; reused by any DUT).
