@@ -106,9 +106,11 @@ ocah_axi_vip/
                                    (master <-> fault slave: response-ID
                                    observation and corruption proofs; master
                                    <-> struct bridge <-> slave agent: the
-                                   struct-port boundary), one scenario set for
-                                   both frameworks:
+                                   struct-port boundary; sva/ocah_axi_sva.sv
+                                   bound to every VIP-driven bundle), one
+                                   scenario set for both frameworks:
                                    python3 tools/dv/run_dv.py --dut ocah_axi_vip --items smoke
+                                   python3 tools/dv/run_dv.py --dut ocah_axi_vip --items all --cov
                                    python3 tools/dv/run_dv.py --dut ocah_axi_vip \
                                        --framework uvm --tool vcs --items smoke
 ```
@@ -432,6 +434,21 @@ A warning is emitted each time `enable_random_delays` is forwarded so that
 test logs make non-determinism visible.  Tests that use random delays should
 also set a fixed cocotb seed via `COCOTB_RANDOM_SEED` to allow deterministic
 replay of failures.
+
+---
+
+## Supported behavior and limitations
+
+| Area | This package provides | Outside this package |
+|---|---|---|
+| Transfers | AXI4 single-beat and burst reads and writes (`INCR`, `FIXED`, `WRAP`, up to 256 beats) at any `size` up to the bus width; byte-granular ranges through `write_bytes_result` / `read_bytes_result`; AXI4-Lite single-beat access with a contiguous partial `strb` | An explicit partial or non-contiguous `strb` on the AXI4 master (`check_strb` rejects it); exclusive (`LOCK`) transactions; `QOS`, `CACHE`, `REGION`, and `USER` values other than their idle defaults; more than one outstanding transaction on the SV-UVM master |
+| Responses | `OKAY`, `EXOKAY`, `SLVERR`, `DECERR` on every result; a typed exception or an inspectable `resp` per `raise_on_error`; responders inject a one-shot `SLVERR`/`DECERR` per address and, on AXI4, a one-shot response-ID corruption | Persistent error regions on a responder; address policy belongs to the adopter's reference model (`OcahAxiRegionExpectation`) |
+| Backpressure | Responder READY stalls per channel (`enable_backpressure`); master `b_ready_*` / `r_ready_*` delay knobs; every stall bounded and deterministic | Random delays (opt-in, logged as a warning) |
+| Reset | `reset_active_level`, `wait_for_reset()`, idle payload from construction (`init_signals()`), responder channels held in reset until the reset input reads inactive | A transaction cut by a mid-flight reset is the DUT bench's scenario; the VIP neither aborts nor replays it |
+| Timeout | Every blocking operation is bounded (`timeout_ns`, else `DEFAULT_TIMEOUT_NS` or `+OCAH_AXI_TIMEOUT_NS`); `allow_timeout=True` returns `RESP_TIMEOUT` | — |
+| Protocol checking | `OcahAxiChecker` item rules, the cycle-level watchers, and `sva/ocah_axi_sva.sv`, which the `dv/` harness binds to every VIP-driven bundle | Rules beyond the IHI 0022 A3/A5/A7/B1 subset listed in `MANUAL.md` |
+| Coverage | `cov/ocah_axi_cov.sv` covergroups on commercial simulators; `--cov` on `--dut ocah_axi_vip` collects native Verilator coverage of the SV collateral | Python components carry no simulator coverage metric; their evidence is the `CHK-*` matrix of `dv/` and the scoreboard selftest |
+| Simulators and protocols | Verilator (cocotb selftests) and VCS (SV-UVM selftests); AXI4 and AXI4-Lite | Xcelium; AXI-Stream; AXI5-only features |
 
 ---
 

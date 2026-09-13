@@ -496,7 +496,9 @@ modules simply do not elaborate. Its contents:
   FIXED<=16, WRAP length+alignment, 4KB), WLAST/RLAST position, strobe
   lane-window, B/R ordering and ID matching, EXOKAY-exclusive, and the Lite
   response-legality rules. `IS_LITE` selects the subset; `en_i` is the
-  runtime suppress knob. Rules are implemented from IHI 0022 rule
+  runtime suppress knob. The `dv/` harness binds it to every VIP-driven
+  bundle; the response-ID corruption bundles stay unbound because the
+  ID-ordering rules fire there by design. Rules are implemented from IHI 0022 rule
   descriptions only — no third-party checker source was consulted. Two
   trees by simulator capability: the two-state rules use `OCAH_SVA_ASSERT`
   (`hw/common/assert/ocah_sva_macros.svh`) and run on every simulator,
