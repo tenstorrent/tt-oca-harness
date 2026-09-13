@@ -18,10 +18,6 @@
  *
  * Note: Without a flash model MISO is 0xFF, so RX words will be 0xFFFFFFFF.
  * The test verifies FIFO behavior (RXQD, RXEMPTY, RXWM), not data content.
- *
- * Execution:
- * make test-sep TEST_NAME=sep_spi_ot_rx_fifo_test STACK=cgen,sim
- *
  */
 
 #include <stdint.h>

@@ -19,9 +19,9 @@ exactly the config's ``encryption_key_input``;
 :meth:`build_efuse_image` asserts it rather than trusting the file.
 
 ENTROPY. AES is EDN client 0 and OTBN is 2/3 (``sep_crypto.sv:513,542``), so the
-testlist's ``+sep_crypto_edn_force`` had to be extended to cover client 0 --
-without it the AES masking PRNG never leaves its reseed state and the run hangs
-with ``DECRYPT_START`` and no verdict.
+testlist's ``+sep_crypto_edn_force`` must cover client 0 -- without it the AES
+masking PRNG never leaves its reseed state and the run hangs with
+``DECRYPT_START`` and no verdict.
 """
 
 from __future__ import annotations

@@ -12,9 +12,8 @@ exercises the two OpenTitan crypto engines over the real CPU->fabric path on bar
     no done-timeout and HMAC ERR_CODE == 0.
   * KMAC (KMAC128/cSHAKE): masked hash of "test" with a zero key using SOFTWARE
     entropy (no EDN, cannot hang) -- checks done, ERR_CODE == 0, and the unmasked
-    digest (share0 ^ share1) is non-zero. The exact KMAC reference is a documented
-    smoke-only delta (no bare-metal Keccak model); the HMAC side carries exact
-    digests.
+    digest (share0 ^ share1) is non-zero. The KMAC side is smoke-only (no
+    bare-metal Keccak model); the HMAC side carries exact digests.
 
 Firmware-self-checking: main() returns the error count and start.S emits the PASS
 (0xCAFEBABE) / FAIL (0xDEADBEEF) magic on the 0x8000_0000 mailbox, which the boot

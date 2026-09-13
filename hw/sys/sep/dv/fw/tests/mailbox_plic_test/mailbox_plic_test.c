@@ -22,10 +22,10 @@
 //   * the mailbox asserted the WRITE-threshold IRQ (IRQP & IRQS write bit set
 //     when the ISR captured them);
 //   * full clear contract: after raising WIRQT above the FIFO usage and writing
-//     1-to-clear IRQS, both IRQS and IRQP read back 0 (W1C proven, §7); and
+//     1-to-clear IRQS, both IRQS and IRQP read back 0 (W1C); and
 //   * no interrupt storm -- the ISR count stays put once the line is deasserted.
 //
-// Deliberate strengthening vs the reference suite original (documented, not a silent skip):
+// Delta vs the reference suite:
 // the reference suite sprays a candidate PIC-source set {1,2,3} and passes if ANY fires; this
 // port registers ONLY source 1 and asserts the claim id == 1, so a regression of
 // the mailbox->PIC wiring fails the test. the reference suite deasserts by masking IRQEN and

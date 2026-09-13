@@ -44,7 +44,7 @@ uninitialised memory to zero it would also pass on a file that was never
 written. The round-trip is a required conjunct, so a scrambler that destroys
 data cannot pass by looking scrambled.
 
-CHK-ADDR is deliberately "not all of them" rather than "each of them". The
+CHK-ADDR asserts "not all of them" rather than "each of them". The
 address transform is a bijection on the 1024 indices and a bijection may have
 fixed points, so a single index mapping to itself is legal; an identity mapping
 across three seeded indices is not.
@@ -89,9 +89,8 @@ class sep_km_kpv_scrambler_test(sep_base_test):
         rep = await kpv.collect()
 
         # --- CHK-COUNT --------------------------------------------------------
-        # The collector already raises on a wrong count, before it drains the
-        # pair list that a wrong count would flood. This restates the contract
-        # at the point the plan names it, so the checker is visible here.
+        # The collector raises on a wrong count before it drains the pair list a
+        # wrong count would flood; this assertion carries the CHK-COUNT tag.
         assert rep.count == N_TEST_INDICES, (
             f"CHK-COUNT FAIL: {rep.count} of the 1024 key-entry words differ from the "
             f"zeroed setup, expected exactly {N_TEST_INDICES}. Fewer means a write "

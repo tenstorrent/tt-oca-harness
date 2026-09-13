@@ -24,8 +24,8 @@
  *       → VeeR EL2 extintsrc_req[30] → PIC source 30
  *
  * Note: PIC source = sep_internal_interrupts index + 1 (extintsrc_req is 1-based;
- * bit 0 is the tied no-interrupt source). After the DMA/WDT alert reallocation
- * (hw/sys/sep/rtl/sep.sv), OTBN done is internal index 29 -> PIC source 30. This test
+ * bit 0 is the tied no-interrupt source). OTBN done is internal index 29 -> PIC
+ * source 30 (hw/sys/sep/rtl/sep.sv). This test
  * REQUIRES the ISR to fire (no INTR_STATE poll fallback):
  * polling INTR_STATE only proves the IP status register, not CPU delivery.
  */

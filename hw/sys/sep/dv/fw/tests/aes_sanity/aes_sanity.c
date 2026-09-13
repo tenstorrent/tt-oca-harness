@@ -43,7 +43,6 @@ int main(void) {
     uint32_t aes_ct_expect[4] = {[0 ... 3] = 0xFFFFFFFF};
     uint32_t aes_iv[4] = {[0 ... 3] = 0xDEADBEEF};
 
-    // uint32_t aes_reg_ctrl;
     aes__CTRL_SHADOWED_t aes_ctrl = {.w = 0};
 
     printf("\n----------------------------------------------------------------\n");

@@ -32,7 +32,7 @@ required, and none of them is boot completion:
     forbidden;
   * ``RSA_VERIFY_START`` then ``SIG_VALID`` then ``CRYPTO_VALIDATE_OK``, in that
     order and after the selector echo -- the modulus reached the verifier and the
-    signature really verified (``manifest_crypto.c``,), which only
+    signature really verified (``manifest_crypto.c``), which only
     happens once the index bound, the revocation check and the digest bind have all
     passed;
   * the DEVICE side: not one read inside the backup slot's span. The console says
@@ -61,7 +61,7 @@ also sets ``FLAG_ARGS_BIT_SECURE_BOOT`` (visible as ``secure_boot_bit=1`` in the
 stimulus log line), so under PROD both conditions of ``secure_boot_enabled()``
 (``manifest_load.c``) hold at once and no observable separates them.
 Attributing enforcement to the lifecycle alone needs the manifest flag CLEARED,
-which is ``sep_firmware_enforced_secure_boot_flow_test``'s job, not this one's.
+which is ``sep_firmware_cntl_secure_boot_flow_test``'s job, not this one's.
 Second, ``sep_rom_ot_secure_boot_test`` asserts that the crypto chain reached
 ``SIG_VALID`` and nothing at all about key selection; this one adds the selector and
 revocation echoes with exact counts and their ordering against the verifier. Third,

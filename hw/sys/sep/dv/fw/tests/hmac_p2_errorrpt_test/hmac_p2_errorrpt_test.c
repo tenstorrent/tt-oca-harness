@@ -9,9 +9,6 @@
  *   2) hash_start while engine is already active -> SwHashStartWhenActive.
  *   3) Safe MSG_FIFO accept via MSG_LENGTH (CPU MMIO; capacity/full is UVM scope),
  *      then process/drain recovery.
- *
- * Execution:
- *   make test-sep TEST_NAME=sep_hmac_p2_errorrpt_test STACK=cgen,sim
  */
 
 #include <stdint.h>

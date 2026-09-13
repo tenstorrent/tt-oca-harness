@@ -5,10 +5,6 @@
  * HMAC CFG Digest Size Test
  *
  * Verifies CFG.digest_size field for all SHA variants and CFG field independence.
- *
- * Execution:
- * make test-sep TEST_NAME=sep_hmac_cfg_digest_size_test STACK=sim
- *
  */
 
 #include <stdint.h>
