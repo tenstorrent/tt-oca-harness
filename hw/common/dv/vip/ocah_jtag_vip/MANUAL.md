@@ -61,6 +61,15 @@ await tap.reset_tap()
 await tap.step_tms(0)  # enter RUN_TEST_IDLE
 ```
 
+`assert_trst(tck_cycles=1)` asserts the bound TRST net and holds TMS high for
+`tck_cycles`, re-baselining the tracked state to `TEST_LOGIC_RESET`.
+`release_trst(tck_cycles=0)` releases the net.
+After a reset applied outside the TAP pins (a power-on reset, a reset pin
+that is not bound as TRST), declare the resulting state with
+`sync_model(OcahJtagState.TEST_LOGIC_RESET)` so `goto_state()` plans from the
+true controller state. `step(tms, tdi)` drives one TCK cycle with both bits
+for bit-serial shifting under the tracked state.
+
 Use `goto_state()` for deterministic shortest-path navigation:
 
 ```python
@@ -177,7 +186,8 @@ seq.finalize()
 `OcahJtagMasterSequence` is the VIP's test-facing stimulus surface: tests drive the
 TAP through it (or a DUT sequence layer built on it), never through the raw
 driver. Besides the checked operations above it exposes the pass-through scan
-API (`step_tms`, `goto_state`, `shift_ir`, `shift_dr`); missing operations
+API (`step`, `step_tms`, `goto_state`, `shift_ir`, `shift_dr`, `assert_trst`,
+`release_trst`, `sync_model`); missing operations
 get added here first, never inlined in tests. The checker argument is
 optional — one is constructed when omitted.
 

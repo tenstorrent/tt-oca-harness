@@ -380,13 +380,12 @@ class smu_clock_stop_coordination_test_seq:
         re_ovrd = self._sample(dut.jtag_ic_reset_smc_ovrd, "jtag_ic_reset_smc_ovrd")
         if re_ovrd != 1:
             raise AssertionError(f"IC-RESET.S3 re-assert fail: smc_ovrd={re_ovrd}")
-        dut.jtag_trst.value = 0
+        await jtag.assert_trst(tck_cycles=0)
         for _ in range(self.TRST_CYCLES):
             await RisingEdge(dut.clk_ref_i)
-        dut.jtag_trst.value = 1
+        await jtag.release_trst()
         await ClockCycles(dut.clk_ref_i, 8)
-        jtag._state = OcahJtagState.TEST_LOGIC_RESET
-        jtag._current_instruction = None
+        jtag.sync_model(OcahJtagState.TEST_LOGIC_RESET)
         await jtag.reset_tap()
         await ClockCycles(dut.clk_smu_i, 16)
         trst_ovrd = self._sample(dut.jtag_ic_reset_smc_ovrd, "jtag_ic_reset_smc_ovrd")
