@@ -29,6 +29,7 @@ its own sequence file: `tests/<name>.py` runs `seq_lib/<name>_seq.py`.
 - `tests/` — `uvm_test` classes (one `@pyuvm.test()` per file, VPLAN-named).
 - `testlists/` — native TOML testlists.
 - `dtp_sim_cfg.toml` — `tt-oca`-local simulation defaults, modes, bender targets, tool knobs.
+- `formal/` — formal properties on the TAP controller (`props/`), the open-path SymbiYosys task file and reset environment (`fpv/sby/`), and the generated filelist and work directories (`build/`); see `hw/common/dv/docs/formal-property-style.adoc`.
 
 ## BFM Policy
 
@@ -101,6 +102,15 @@ line. `dtp_tb_if.jtag_sva_en` / `axi_sva_en` are the runtime suppress knobs
 TAP controller's effective reset. A new rule with two-state-safe operands goes on
 `OCAH_SVA_ASSERT`; one that needs `$isunknown` or X-propagation goes on
 `OCAH_ASSERT`.
+
+## Formal
+
+`formal/` is the reference implementation of the property style in
+`hw/common/dv/docs/formal-property-style.adoc`: a bound property module on the
+IEEE 1149.1 TAP controller in the boolean subset that the open-source frontend
+and the licensed backends both elaborate, with `bmc` and `cover` tasks run
+against `dtp` as the formal top. That chapter carries the filelist generation
+and the `sby` invocation.
 
 ## Running
 

@@ -8,7 +8,8 @@ This chapter fixes how formal properties are written, attached, labelled and
 placed so that one property file elaborates on the open-source path and on the
 licensed backends alike. The open-source path is SymbiYosys (`sby`) driving
 Yosys with the yosys-slang frontend (`read_slang`). Licensed backends run from
-the `nonfree` companion and read the same property files.
+the `nonfree` companion and read the same property files. The DTP DV root is
+the adopter of this style; no other DUT DV root carries formal collateral.
 
 [IMPORTANT]
 ====
@@ -150,14 +151,16 @@ include path, as the yosys synthesis flow does, and the shim there governs.
 [[formal-style-attachment]]
 === Attaching a property module
 
-Properties live in `<top>_props.sv`, a module with input ports only, attached
-by one `bind` statement in `<top>_bind.sv`. The RTL carries no properties and
-is not edited for formal. Internal signals reach the module through the bind
-port list, downward hierarchical references such as
-`u_handshake_ctrl.sender_state_q` included; the frontend accepts them when it
-elaborates without `--keep-hierarchy`, so the `.sby` script does not pass that
-option. Module-local enum states are compared against `localparam` encodings
-declared in the property module.
+Properties live in `<top>_<block>_props.sv`, a module with input ports only,
+attached by one `bind` statement in `<top>_<block>_bind.sv`. `<top>` is the
+formal top, the DUT itself, and `<block>` the module the properties describe;
+the bind names that module, so every instance under the top is checked. The
+RTL carries no properties and is not edited for formal. Internal signals reach
+the module through the bind port list, downward hierarchical references and
+struct members included; the frontend accepts them when it elaborates without
+`--keep-hierarchy`, so the `.sby` script does not pass that option. Enum types
+from a package are imported into the property module; module-local enums are
+compared against `localparam` encodings declared there.
 
 A formal wrapper, a top that instantiates the DUT next to the properties, is
 not used: it duplicates the DUT interface, needs internal signals exposed
@@ -170,9 +173,9 @@ simulation.
 
 `ast_` for an assertion, `asm_` for an assumption, `cov_` for a cover, then
 `<feature>_<behavior>` in lower snake case, for example
-`ast_hs_req_out_falls_on_ack_or_reset`. The label is the check name in every
-report: sby prints `Assert failed in <top>: u_<top>_props.ast_...` and writes
-the JUnit `id` `u_<top>_props.ast_...`; licensed backends report the same
+`ast_tap_five_tms_high_reach_tlr`. The label is the check name in every
+report: sby prints `Assert failed in <top>: <instance path>.ast_...` and
+writes the same path as the JUnit `id`; licensed backends report the same
 hierarchical name. Every `ast_` whose antecedent is not trivially reachable
 has a companion `cov_` on the antecedent, and every `asm_` carries a one-line
 rationale naming the protocol or design fact that makes it legal.
@@ -196,17 +199,38 @@ Registered outputs reflect their inputs from the second cycle after reset
 release, so a property comparing them against configuration inputs is guarded
 with `$past(rst_ni)` as well.
 
+[[formal-style-clocks]]
+=== Clock modelling
+
+sby's default abstraction advances every clock on each step and turns
+asynchronous resets into step-synchronous ones; it refuses a design that
+clocks flops on both edges of one clock. The JTAG logic in DTP does, so the DTP
+task files set `multiclock on`: every step is a time point, a `tck` cycle costs
+at least two steps of depth, and the asynchronous resets are free inputs.
+Under that model a reset that changes at a sampling edge, or between two edges,
+lands in the state register without the sampled `disable iff` seeing it, so
+the open path needs a reset environment. It lives in
+`<app>/sby/<top>_sby_env.sv`, a module bound to the top and read only by the
+task file: it is the open-path counterpart of the clock and reset commands a
+licensed backend's script issues, and it holds `asm_env_` assumptions on the
+top's input ports only. The DTP environment releases every reset once, after
+the first `tck` posedge where the property modules pin the reset low. With
+the clocks modelled, a negedge-clocked flag sampled at a `tck` posedge has
+already taken the value derived from the state sampled at that same edge, and
+a property can state that equality directly.
+
 [[formal-style-layout]]
 === Layout under the DUT DV root
 
 ----
 <dut-dv-root>/
-  <dut>_formal_cfg.toml        runner launch fields (--mode formal)
+  <dut>_formal_cfg.toml            runner launch fields (--mode formal)
   formal/
-    props/<top>_props.sv       property module
-    props/<top>_bind.sv        bind statement
-    <app>/sby/<top>.sby        open-path task file, one per app and top
-    build/                     generated: bender filelist, sby work directories
+    props/<top>_<block>_props.sv   property module, one per described block
+    props/<top>_<block>_bind.sv    bind statement
+    <app>/sby/<top>.sby            open-path task file, one per app and top
+    <app>/sby/<top>_sby_env.sv     open-path clock and reset environment
+    build/                         generated: bender filelist, sby work directories
 ----
 
 `<app>` names the check the tasks implement: `fpv` for property checking; the
@@ -239,45 +263,49 @@ the `bmc` depth is set to the same value.
 
 * Yosys with the yosys-slang plugin (`plugin -i slang`), from a build that
   includes the concurrent-assertion lowering (yosys-slang releases from
-  2026-05 on).
+  2026-05 on). `read_slang` reads the filelist with `--single-unit`, as the
+  slang lint flow does, so packages and macros carry across files.
 * SymbiYosys (`sby`) with `yosys-smtbmc` and `yosys-abc`. The `cover` task
   needs an SMT solver (`yices` in the task files); `abc pdr` needs none.
 * Bender, to generate the DUT filelist.
 
 [[formal-style-example]]
-=== Worked example: cross_trigger_port_core
+=== Worked example: the DTP TAP controller
 
-`hw/ip/cross_trigger/cross_trigger_port/dv/formal/` holds the reference
-implementation for the core of the cross trigger port (CTP). It sits in the
-DTP cone, has a four-phase handshake, a pulse stretcher and pad synchronizers,
-and elaborates in seconds.
+`hw/sys/dtp/dv/formal/` holds the reference implementation, with `dtp` as the
+formal top and the IEEE 1149.1 TAP controller inside the primary TAP as the
+described block.
 
-* `props/cross_trigger_port_core_props.sv`: assertions, assumptions and covers
-  over the handshake controller, the pulse stretcher and the pad control
-  outputs, all in the boolean subset. The assumptions model a four-phase
-  partner on the pads and hold the configuration static. The inverted-pad
-  configuration is excluded: the pad synchronizers reset to the non-inverted
-  idle level, so with inversion on the core reads an active request for the
-  two cycles after reset and needs its own reset window.
-* `props/cross_trigger_port_core_bind.sv`: binds the module and connects the
-  handshake states, the synchronizer outputs and the stretcher counter.
-* `fpv/sby/cross_trigger_port_core.sby`: `bmc` and `cover` on `smtbmc` with
-  yices at depth 24, `prove` on `abc pdr`.
+* `props/dtp_tap_props.sv`: assertions and covers on the TAP state register
+  and its outputs, all in the boolean subset: one-hot state, the rule that
+  five consecutive `tms`-high cycles reach Test-Logic-Reset from any state,
+  the entry and hold conditions of the reset, idle, shift and update states,
+  the exclusivity of the DR and IR scan selects, and the Moore and
+  negedge-clocked scan-control flags following the state. Enum states come
+  from `jtag_tap_pkg`.
+* `props/dtp_tap_bind.sv`: binds the module to `jtag_tap_ctrlr` and connects
+  the TAP control struct, the state, the `tms` counter and the scan-control
+  struct members.
+* `fpv/sby/dtp_sby_env.sv`: the open-path reset environment
+  (<<formal-style-clocks>>).
+* `fpv/sby/dtp.sby`: `bmc` and `cover` on `smtbmc` with yices at depth 30 and
+  `prove` on `abc pdr`, all under `multiclock on`.
 
 Generate the filelist from the repository root, then run the tasks from the
 `.sby` directory:
 
 [source,bash]
 ----
-mkdir -p hw/ip/cross_trigger/cross_trigger_port/dv/formal/build
+mkdir -p hw/sys/dtp/dv/formal/build
 {
   echo "+incdir+$PWD/hw/common/assert/yosys"
   echo "+incdir+$PWD/hw/common/assert"
-  bender script flist-plus -D SYNTHESIS=1 -t axi_rtl -t common_cells_rtl -t cross_trigger
-} > hw/ip/cross_trigger/cross_trigger_port/dv/formal/build/cross_trigger_port_core.f
+  bender script flist-plus -D SYNTHESIS=1 -t axi_rtl -t apb_rtl -t common_cells_rtl \
+    -t common_cell_sync_shim -t register_interface_l1 -t dtp
+} > hw/sys/dtp/dv/formal/build/dtp.f
 
-cd hw/ip/cross_trigger/cross_trigger_port/dv/formal/fpv/sby
-sby --prefix ../../build/cross_trigger_port_core -f cross_trigger_port_core.sby
+cd hw/sys/dtp/dv/formal/fpv/sby
+sby --prefix ../../build/dtp -f dtp.sby
 ----
 
 Each task writes `<workdir>/status` (`PASS`, `FAIL`, `UNKNOWN`, `ERROR`) and a
