@@ -260,3 +260,18 @@ packages instead of directly importing backend packages. Notes:
 - `ocah_axi_vip.OcahAxiMonitor` and `OcahAxiLiteMonitor` are OCAH-owned
   passive samplers that emit plain item dataclasses. The released
   master/responder BFMs remain cocotbext-backed.
+
+### Backend escapes
+
+A backend escape is a public method or attribute that hands a consumer an
+object from the backend engine (`cocotbext-axi` or `cocotbext-jtag`) instead
+of a plain OCAH value. The table lists every escape, what it is for, and the
+rule a consumer follows. An escape is removed together with the engine it
+belongs to, under the deprecation rule in `docs/vip-architecture.adoc`.
+
+| Escape | Purpose | Rule for consumers |
+|--------|---------|--------------------|
+| `OcahAxiReadResult.raw`, `OcahAxiWriteResult.raw` | The engine's transaction object, for debugging the backend | Debug only. Tests, sequences, and scoreboards do not read it. |
+| `OcahAxiConfig.bus(scope, prefix=...)` | Binds an interface scope or a flat signal bundle at the configured geometry and returns the engine's bus object | Pass the returned object unchanged into this package's agents, monitors, and watchers. Do not import the backend package. |
+| `OcahJtagDevice.to_backend()` | Converts a plain device map into the engine's device type | Used inside the package by `create_backend_driver()`. |
+| `OcahJtagMasterDriver.backend_bus()`, `create_backend_driver()` | The engine's bus and driver objects, for debugging the backend | Debug only. Tests do not drive the TAP through them. |
