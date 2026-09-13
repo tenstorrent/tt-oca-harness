@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import os
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -290,6 +291,92 @@ def log_build_model_identity() -> str:
     return line
 
 
+class _EvidenceRecorder:
+    """Collect the named evidence a run emits, by watching every log record.
+
+    Sequences report each graded contract as a ``CHK-<ID>: ...`` line. Most log
+    it through ``cocotb.log``; tests and env components log through their pyuvm
+    logger, which does not propagate to the root handler, so a filter on any one
+    logger would miss part of the run. The log-record factory sees every record
+    regardless of logger, so that is where the IDs are read. Reading them from
+    the records keeps the log line the single source of the ID -- a separate
+    registration call could drift from what the log actually carries.
+
+    Only a token at the start of the message counts: prose that mentions a
+    check ("... the byte verdict is CHK-I2C-...") is not an emission.
+    """
+
+    _CHK = re.compile(r"^\s*(CHK-[A-Za-z0-9][A-Za-z0-9_-]*)\b")
+
+    # Emitted by smc_base_test on every run, before the scenario: the model
+    # identity line and the probe positive controls ``run_phase`` executes.
+    # Counted in ``observed`` but excluded from ``own``, so a leaf cannot satisfy
+    # the gate on bring-up alone.
+    BASE_IDS = frozenset({"CHK-BUILD-MODEL-IDENTITY"})
+    BASE_PREFIXES = ("CHK-PROBE-",)
+
+    # Leaves that emit no CHK-* line of their own, with the channel each one
+    # grades through instead. Every entry is a LOGGING gap, not a verification
+    # gap: each grades through sequence-level asserts, the scoreboard's
+    # ``expected=`` compares, or a protocol-VIP record with a stimulus floor,
+    # and none is a clean exit that checks nothing. Naming them is what lets the
+    # gate below be unconditional for every other leaf.
+    #
+    # This list may only shrink. To remove an entry, make the check that already
+    # runs log a ``CHK-<ID>:`` line where it happens -- in the sequence, not
+    # here.
+    NO_OWN_EVIDENCE = {
+        # Scoreboard protocol-VIP record with a stimulus floor, plus expected=
+        # compares on every CSR read the sequence issues.
+        "smc_dma_sanity_test": "protocol-VIP floor and scoreboard compares",
+        "smc_filter_field_sweep_test": "protocol-VIP floor and scoreboard compares",
+        "smc_gpio_ctrl_full_sweep_test": "protocol-VIP floor and scoreboard compares",
+        "smc_gpio_intf_full_sweep_test": "protocol-VIP floor and scoreboard compares",
+        "smc_i2c_multi_instance_test": "protocol-VIP floor and scoreboard compares",
+        "smc_mailbox_inbound_test": "protocol-VIP floor and scoreboard compares",
+        "smc_mailbox_multi_instance_test": "protocol-VIP floor and scoreboard compares",
+        "smc_occp_sanity_secure_error_test": "protocol-VIP floor and sequence asserts",
+        "smc_register_boundary_depth_test": "protocol-VIP floor and scoreboard compares",
+        "smc_register_sanity_test": "protocol-VIP floor and scoreboard compares",
+        "smc_spi_pad_bfm_test": "protocol-VIP floor and sequence asserts",
+        "smc_uart_loopback_test": "protocol-VIP floor and sequence asserts",
+        "smc_xvisor_remap_test": "protocol-VIP floor and scoreboard compares",
+        # Asserts in the sequence the leaf starts; the log line carries no ID.
+        "smc_flr_sanity_test": "sequence asserts, unlabelled",
+        "smc_gpio_irq_type_matrix_test": "sequence asserts, unlabelled",
+        "smc_gpio_output_driveback_test": "sequence asserts, unlabelled",
+        "smc_smbus_alert_ara_test": "in-leaf asserts on sequence flags, unlabelled",
+        # Asserts in the leaf on the scoreboard's memory-model compare counters.
+        "smc_output_fabric_slverr_inject_test": "in-leaf asserts, unlabelled",
+        "smc_output_fabric_wr_rd_responder_test": "in-leaf asserts, unlabelled",
+        # Sequence asserts; the protocol-VIP record it books is an activity
+        # stamp (csr_accesses=0, auto_evidence=True) and is not evidence.
+        "smc_octs_dual_sync_test": "sequence asserts, unlabelled",
+    }
+
+    def __init__(self) -> None:
+        self.seen: set[str] = set()
+        self._previous_factory = logging.getLogRecordFactory()
+
+    def install(self) -> None:
+        logging.setLogRecordFactory(self._factory)
+
+    def _factory(self, *args, **kwargs) -> logging.LogRecord:
+        record = self._previous_factory(*args, **kwargs)
+        try:
+            message = record.getMessage()
+        except Exception:  # a broken format string is the caller's failure, not ours
+            return record
+        match = self._CHK.match(message)
+        if match:
+            self.seen.add(match.group(1))
+        return record
+
+    @classmethod
+    def is_base(cls, check_id: str) -> bool:
+        return check_id in cls.BASE_IDS or check_id.startswith(cls.BASE_PREFIXES)
+
+
 class smc_base_test(uvm_test):
     """Shared SMC OSS test: env build, clock/reset bring-up, scenario hook.
 
@@ -322,11 +409,25 @@ class smc_base_test(uvm_test):
     # Probe positive controls to run before run_scenario (see class docstring).
     probe_positive_controls: tuple[str, ...] = ()
 
+    # Evidence gate. A clean exit is not a pass: a scenario whose stimulus
+    # stopped reaching the DUT compares nothing, asserts nothing, and returns
+    # normally. Every graded contract is reported as a ``CHK-<ID>:`` line, so
+    # the base class counts what this run actually emitted and fails a silent
+    # one (see ``_finalize_evidence``).
+    #
+    #   required_evidence -- IDs this test must emit. Missing any one fails.
+    #   min_evidence      -- fewest distinct IDs of the test's OWN (lines the
+    #                        base class emits do not count). 0 disables it.
+    required_evidence: tuple[str, ...] = ()
+    min_evidence = 0
+
     @staticmethod
     def random_seed() -> int:
         return int(os.environ.get("RANDOM_SEED", "1"), 0)
 
     def build_phase(self) -> None:
+        self._evidence = _EvidenceRecorder()
+        self._evidence.install()
         self.cfg = SmcEnvCfg("cfg")
         self.cfg.randomize_timing(self.random_seed())
         self.logger.info(
@@ -736,4 +837,53 @@ class smc_base_test(uvm_test):
                     "scenario; no protocol-level assertion performed here"
                 ),
             )
+        self._finalize_evidence()
         self.drop_objection()
+
+    def _finalize_evidence(self) -> None:
+        """Report the evidence this run produced, and grade it.
+
+        Runs only after run_scenario() returns normally. A test that already
+        failed raised, and this must not turn that into a different complaint.
+
+        ``own`` excludes the lines smc_base_test emits itself (the model
+        identity line and the probe positive controls), so the gate grades what
+        the leaf proved rather than what bring-up logged.
+        """
+        recorder = getattr(self, "_evidence", None)
+        seen = sorted(recorder.seen) if recorder else []
+        own = [check_id for check_id in seen if not _EvidenceRecorder.is_base(check_id)]
+        required = tuple(self.required_evidence)
+        missing = [check_id for check_id in required if check_id not in seen]
+        test_name = type(self).__name__
+
+        self.logger.info(
+            "EVIDENCE_SUMMARY test=%s observed=%d own=%d required=%d missing=%d ids=%s",
+            test_name,
+            len(seen),
+            len(own),
+            len(required),
+            len(missing),
+            ",".join(seen) or "-",
+        )
+
+        problems: list[str] = []
+        if not own and test_name not in _EvidenceRecorder.NO_OWN_EVIDENCE:
+            problems.append(
+                "no CHK-* line of its own -- a run that grades nothing cannot be a "
+                "pass. If this leaf's checks live in its sequence, log them there; "
+                "if it genuinely checks nothing, that is the finding"
+            )
+        if self.min_evidence and len(own) < self.min_evidence:
+            problems.append(
+                f"{len(own)} distinct CHK-* line(s) of its own, "
+                f"expected at least {self.min_evidence}"
+            )
+        if missing:
+            problems.append("never emitted: " + ", ".join(missing))
+        if problems:
+            raise AssertionError(
+                f"EVIDENCE FAIL {test_name}: "
+                + "; ".join(problems)
+                + " -- the run exited cleanly without grading what it claims to grade"
+            )
