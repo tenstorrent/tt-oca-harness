@@ -250,7 +250,8 @@ python3 tools/dv/run_dv.py --help
 `hw/common/prim/<name>/dv`.
 
 Simulation mode, the default, loads `<name>_sim_cfg.toml`. Formal mode loads
-`<name>_formal_cfg.toml` or the registry's `formal_cfg` override:
+`<name>_formal_cfg.toml`, the registry's `formal_cfg` override, or the
+`[duts.<name>].formal_cfg` pointer of the site layer (<<runner-site-layer>>):
 
 [source,bash]
 ----
@@ -395,6 +396,11 @@ build/coverage defaults, and formal launch templates.
 
 |`hw/common/dv/configs/executors.toml`
 |Executor declarations. Only `local` dispatch is implemented.
+
+|`hw/common/dv/configs/site.local.toml` (git-ignored), or the file `OCAH_DV_SITE` names
+|One deployment's tool binaries, launcher prefixes, environment hooks, added
+tool tables, and companion-owned formal config pointers, merged over the two
+registries above. See <<runner-site-layer>>.
 
 |`hw/common/dv/configs/parsers.toml`
 |Shared positive-evidence and failure-detection policies for simulation
@@ -712,6 +718,124 @@ applied pairs on a `config overlay_env=...` line. The
 `+"`include`"+` hooks inside the shipped `ocah_<proto>_if` interfaces, which
 pull `ocah_<proto>_vendor_if.svh` from an overlay incdir — the OSS tree
 ships no copy of those files.
+
+[[runner-site-layer]]
+=== Site-local override layer
+
+The checked-in registries name each tool by its default executable and find
+it on `PATH`. A deployment whose tools carry other names, need an environment
+hook before they start, or run inside a container describes that in one
+git-ignored file, `hw/common/dv/configs/site.local.toml`, or in the file the
+`OCAH_DV_SITE` environment variable names (the variable wins). The layer is
+active exactly when one of those files exists; a companion checkout beside
+the tree changes nothing. `site.local.example.toml` in the same directory is
+a template to copy.
+
+The file merges over `simulators.toml` and `executors.toml` before any
+command reads them, so `--validate-configs`, `--doctor`, `--dry-run`, and the
+run path resolve one merged registry, for simulation and formal tools alike:
+
+[cols="<2,<1,<3",options="header"]
+|===
+|Key |Merge |Purpose
+
+|`[simulators.<tool>]` `binary`
+|replaces
+|The executable to run, found on `PATH` after `setup_hook` has been sourced.
+
+|`[simulators.<tool>]` `launcher = ["podman", "exec", "-i", "eda"]`
+|replaces
+|An argv prefix in front of every command of the tool: the container case.
+`--doctor` and the run-path probe check the prefix's first token on `PATH`,
+because the tool itself lives behind it.
+
+|`[simulators.<tool>]` `argv`
+|replaces
+|A formal launch template (<<runner-formal-templates>>) for a formal tool;
+rejected on a simulation tool.
+
+|`[simulators.<tool>]` `license_env`
+|replaces
+|The license variables `--list`, `--doctor`, and the launcher hint consult.
+
+|`[simulators.<tool>]` `extra_env = { NAME = "value" }`
+|replaces
+|Variables added to the tool's process environment.
+
+|`[simulators.<tool>]` `setup_hook = "path"`
+|replaces
+|A shell file `bash` sources once per run before the tool's first command;
+the variables it exports, changes, or unsets apply to every command of the
+tool. A relative path resolves against the site file; the file must exist.
+
+|`[simulators.<new-tool>]` (complete table)
+|adds
+|A tool the checked-in registry lacks. The registry schema validates it
+(`kind`, `frameworks`, `license_env`, and `argv` for a formal tool); a DUT
+selects it through its config's `tools` and `default_tool`.
+
+|`[executors.<name>]` `binary` / `submit_argv`, or a complete table
+|replaces / adds
+|The same over `executors.toml`.
+
+|`[duts.<dut>]` `formal_cfg = "path"`
+|replaces
+|The formal config `--mode formal` loads for that DUT, ahead of the
+registry's `formal_cfg` and the `<name>_formal_cfg.toml` convention: how a
+companion-owned formal view is reached without editing `duts.toml`. The DUT
+must be selectable and the file must exist; the path is repo-relative or
+absolute.
+|===
+
+Any other key fails validation, as does a checked-in registry that carries
+`launcher`, `extra_env`, or `setup_hook`. Inside one command the stage's own
+variables (`PYTHONPATH`, `RANDOM_SEED`, the coverage and wave knobs) keep
+their values; below them the `setup_hook` exports win over `extra_env`,
+which wins over the ambient environment. The stage's `env/` snapshot records
+the result.
+
+Where the keys reach:
+
+* Every stage rendered from argv — the formal launch, the SV-UVM `vlogan`,
+  `vcs`, and `simv` adapters, the Xcelium adapters, the standalone Verilator
+  compile, and the coverage merge and report commands — runs
+  `launcher + command` with the merged environment and `binary` in place of
+  the tool's own executable.
+* The cocotb path (`cocotb_build`, `cocotb_sim`) honours `binary`,
+  `extra_env`, and `setup_hook`: cocotb's Python runner probes and spells the
+  simulator executable itself, and the runner substitutes `binary` through
+  the same command hook it uses for the Verilator public scope. A `launcher`
+  on a tool used through cocotb is a hard error, because that runner starts
+  the simulator from the `run_dv.py` process; run `run_dv.py` inside the
+  container instead.
+
+`--doctor` prints the active site file on its `site` line and a `source`
+column per tool (`simulators.toml`, `simulators.toml + <site> (binary,
+launcher)`, or `<site> (added)`); it sources the tool's `setup_hook` and
+reports a failing hook on the tool's row. `--validate-configs` reports the
+merged registries on a `site layer` line and never runs a hook. The run log
+carries a `config site=...` line, and `result.json` records the file under
+`site`.
+
+A container deployment:
+
+[source,toml]
+----
+schema_version = 1
+
+[simulators.vcs]
+launcher = ["podman", "exec", "-i", "-w", "/work", "eda"]
+license_env = ["SNPSLMD_LICENSE_FILE"]
+extra_env = { VCS_HOME = "/opt/vcs" }
+
+[simulators.sby]
+launcher = ["podman", "exec", "-i", "-w", "/work", "eda"]
+----
+
+The container sees the checkout and the run directory at the same paths as
+the host, so the rendered command, the replay script under `scripts/`, and
+the paths the tool prints hold on both sides. `--doctor --tool vcs` then
+checks `podman`, not `vcs`.
 
 == Stage planning
 
@@ -1102,13 +1226,14 @@ tool serves, are marked `(licensed)`. The per-DUT detail view adds the
 `license` and `runnability` fields from the merged config.
 
 |`--validate-configs`
-|Validate registries and every selectable simulation DUT. Exit `2` if any
-fail. With `--overlay`, every framework view is additionally validated with
-the overlay applied (guard-excluded views fall back to base validation).
+|Validate registries (with the site layer merged in when one is active) and
+every selectable simulation DUT. Exit `2` if any fail. With `--overlay`,
+every framework view is additionally validated with the overlay applied
+(guard-excluded views fall back to base validation).
 
 |`--doctor`
-|Report configuration and tool availability. With no selected DUT/tool it is
-an informational survey.
+|Report configuration and tool availability; each tool row names the file
+that supplied it. With no selected DUT/tool it is an informational survey.
 
 |`--dry-run`
 |Render commands and artifacts without executing backend tools or writing
@@ -1320,7 +1445,8 @@ A formal run adds a `formal` object with proof totals
 When an adopter overlay was applied, its path is recorded under `overlay`
 (repo-relative when inside the checkout, absolute otherwise) and its `[env]`
 table, when present, under `overlay_env` in both the run-level `result.json`
-and `regression.json`.
+and `regression.json`. When a site layer was active, its path is recorded
+under `site` in the same two files (<<runner-site-layer>>).
 
 === Interrupted-run checkpoints
 
@@ -1542,8 +1668,11 @@ Run:
 python3 tools/dv/run_dv.py --doctor --dut <dut> --tool <tool>
 ----
 
-`--doctor` checks configured binaries on `PATH`, supported Python packages, and
-the presence count of configured license environment variables. When the
+`--doctor` checks configured binaries on `PATH` (the launcher's first token
+when the site layer wraps the tool, after sourcing the tool's `setup_hook`),
+supported Python packages, and the presence count of configured license
+environment variables, and names the file that supplied each tool
+(<<runner-site-layer>>). When the
 required tool is absent and needs a license, the result points at the
 `(licensed)` marking in `--list`. For a cocotb
 DUT it also imports every testlist module in a child interpreter whose
@@ -1608,7 +1737,8 @@ The following behaviors are not part of the runner contract:
 * Only the `local` executor dispatches work. Queue, core, memory, and wall-time
   flags are metadata; there is no LSF/SLURM or other non-local dispatch.
 * Formal CLI and stage plumbing exist, but this checkout contains no
-  `*_formal_cfg.toml`; a DUT cannot run formal mode without one.
+  `*_formal_cfg.toml`; a DUT cannot run formal mode without one, whether its
+  own or one the site layer points at.
 * The runner writes no `run.json` and has no background execution or job
   lifecycle/status commands.
 * `--dry-run` avoids backend execution and result writes, but bootstrap may
@@ -1624,5 +1754,4 @@ The following behaviors are not part of the runner contract:
   skips every scheduler leaf. The aggregate reports `PASS` and exits `0`
   despite running no tests; use a positive threshold.
 * Exact waveform range enforcement is limited to Xcelium SHM and VCS FSDB/VPD.
-* There are no site-local TOML overrides and no automatically discovered
-  formal flows.
+* Formal flows are not discovered automatically.
