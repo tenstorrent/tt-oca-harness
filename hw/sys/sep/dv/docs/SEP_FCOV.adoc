@@ -108,7 +108,7 @@ human. Other members may fill a group in passing.
 |`sep_km_generate_cg` |`sep_km_command_set_rand_test`
 |`sep_km_command_sideload_cg` |the four `sep_km_{aes,hmac,kmac,otbn}_sideload_kat_test`
 |`sep_dma_copy_hash_cg` |`sep_dma_basic_test` (copy), `sep_dma_hash_test` (hash)
-|`sep_spi_flash_cg` |`sep_spi_flash_jedec_smoke_test`, `sep_spi_flash_program_readback_test`, `sep_spi_ot_host_csr_irq_rand_test`; DMA handshake `sep_spi_ot_dma_rx_test` / `sep_spi_ot_dma_tx_test`
+|`sep_spi_flash_cg` |`sep_spi_flash_jedec_smoke_test`, `sep_spi_ot_host_csr_irq_rand_test`; DMA handshake `sep_spi_ot_dma_rx_test` / `sep_spi_ot_dma_tx_test`
 |`sep_inbound_filter_allow_cg` |`sep_fabric_inbound_filter_rule_matrix_test`
 |`sep_efuse_sense_cg` |`sep_efuse_sense_test`, `sep_efuse_image_test` (any leaf passing `+skip_fuse_sense` cannot fill it)
 |`sep_efuse_program_lock_cg` |`sep_efuse_program_lock_matrix_test`

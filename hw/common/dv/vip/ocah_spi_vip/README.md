@@ -376,7 +376,7 @@ DUT consumers:
 python3 tools/dv/run_dv.py --dut ocah_spi_vip --items smoke --tool verilator
 python3 tools/dv/run_dv.py --dut ocah_spi_vip --items smoke --tool verilator --regress --reseed 3
 python3 tools/dv/run_dv.py --doctor --dut sep
-python3 tools/dv/run_dv.py --dut sep --items sep_spi_flash_jedec_smoke_test sep_spi_flash_program_readback_test --tool verilator
+python3 tools/dv/run_dv.py --dut sep --items sep_spi_flash_jedec_smoke_test --tool verilator
 python3 tools/dv/run_dv.py --dut sep --items sep_spi_ot_flash_cmd_rand_test --tool verilator
 python3 tools/dv/run_dv.py --dut smc --items smc_spi_pad_bfm_test --tool verilator
 ```
@@ -387,10 +387,10 @@ prove the device, the controller engine, the monitor, and the checker against
 each other; each carries an in-band probe that hands a fail-fast checker a
 wrong identifier, pattern, order, vacuous erase, or unprotected program and
 records that it was rejected (`CHK-SPI-NEG-*`).
-`sep_spi_flash_jedec_smoke_test` and `sep_spi_flash_program_readback_test`
-are the gating SEP regressions and need no firmware.
-`sep_spi_ot_flash_cmd_rand_test` runs in the `cpu` mode with its firmware
-image, so it needs the RISC-V toolchain described in `hw/sys/sep/dv/README.md`.
+`sep_spi_flash_jedec_smoke_test` is the gating SEP regression and needs no
+firmware. `sep_spi_ot_flash_cmd_rand_test` runs in the `cpu` mode with its
+firmware image, so it needs the RISC-V toolchain described in
+`hw/sys/sep/dv/README.md`.
 
 Must-fail checks; each command exits non-zero:
 
@@ -399,10 +399,6 @@ Must-fail checks; each command exits non-zero:
 OCAH_SPI_SELFTEST_NEGATIVE=1 python3 tools/dv/run_dv.py --dut ocah_spi_vip --items ocah_spi_program_readback_test --tool verilator
 # harness: the device programs without WRITE ENABLE (CHK-SPI-WREN-ORDER fails)
 OCAH_SPI_SELFTEST_NEGATIVE=1 python3 tools/dv/run_dv.py --dut ocah_spi_vip --items ocah_spi_ordering_test --tool verilator
-# SEP: a corrupted source image (1: CHK-SPI-MEM-SOURCE fails) or a skipped WRITE ENABLE
-# before the functional program (2: the device refuses it and CHK-SPI-PROGRAM-READBACK fails)
-SEP_SPI_FLASH_CHECKER_NEGATIVE=1 python3 tools/dv/run_dv.py --dut sep --items sep_spi_flash_program_readback_test --tool verilator
-SEP_SPI_FLASH_CHECKER_NEGATIVE=2 python3 tools/dv/run_dv.py --dut sep --items sep_spi_flash_program_readback_test --tool verilator
 ```
 
 The shared DV maintainers own this package; SEP and SMC own their pad

@@ -123,6 +123,7 @@ class _EvidenceFilter(logging.Filter):
         "sep_km_mem_smoke_test": "in-leaf asserts, unlabelled",
         "sep_otbn_mem_smoke_test": "in-leaf asserts, unlabelled",
         "sep_rom_sanity_test": "in-leaf asserts, unlabelled",
+        "sep_spi_flash_jedec_smoke_test": "in-leaf asserts, unlabelled",
         # Checks live in the sequence the leaf starts.
         "sep_axi_smoke_test": "sequence-level compares plus AXI scoreboard check_phase",
         "sep_sram_smoke_test": "sequence-level compares",
