@@ -1222,11 +1222,9 @@ def cmd_doctor(root: Path, args: argparse.Namespace) -> int:
         return 2
     if missing_required:
         print(f"Result: required tool `{required}` is NOT available — this flow cannot run here")
-        if flow is not None and flow.license == "required-commercial":
-            print(
-                f"Note: `{flow.name}` needs a commercially licensed simulator; "
-                "`--list` marks such flows (licensed) — the others run on open-source tools"
-            )
+        hint = license_hint(flow, simulators, required)
+        if hint:
+            print(f"Note: {hint}")
         return 2
     print(f"Result: required tool `{required}` is available")
     return 0
@@ -1906,6 +1904,33 @@ def selected_executor(flow: Flow, args: argparse.Namespace) -> str:
     return executor
 
 
+def tool_needs_license(simulators: dict[str, Any], tool: str) -> bool:
+    """True when the registry lists license environment variables for ``tool``."""
+    cfg = simulators.get(tool)
+    if not isinstance(cfg, dict):
+        return False
+    return bool(as_str_list(cfg.get("license_env"), f"{tool}.license_env"))
+
+
+def license_hint(flow: Flow | None, simulators: dict[str, Any], tool: str) -> str:
+    """The `(licensed)` pointer for an absent tool, or "" when no license is involved.
+
+    A flow marked `required-commercial` cannot run on open-source tools at all; any other flow
+    draws the pointer only when the selected tool itself is a licensed backend.
+    """
+    if flow is not None and flow.license == "required-commercial":
+        return (
+            f"`{flow.name}` needs a commercially licensed simulator; "
+            "`--list` marks such flows (licensed) — the others run on open-source tools"
+        )
+    if tool_needs_license(simulators, tool):
+        return (
+            f"`{tool}` needs a commercial license; `--list` marks such tools (licensed) — "
+            "select an unmarked one with `--tool` or load the license environment"
+        )
+    return ""
+
+
 def validate_selected_tool_available(
     tool: str,
     simulators: dict[str, Any],
@@ -1918,15 +1943,11 @@ def validate_selected_tool_available(
     binary = str(cfg.get("binary", tool)) if isinstance(cfg, dict) else tool
     if shutil.which(binary):
         return
-    hint = ""
-    if flow is not None and flow.license == "required-commercial":
-        hint = (
-            f" DUT `{flow.name}` needs a commercially licensed simulator; "
-            "`--list` marks such flows (licensed) — the others run on open-source tools."
-        )
+    hint = license_hint(flow, simulators, tool)
     raise ConfigError(
         f"selected tool `{tool}` requires `{binary}` in PATH. "
-        f"Load the simulator environment or run `--doctor --tool {tool}` for details.{hint}"
+        f"Load the simulator environment or run `--doctor --tool {tool}` for details."
+        + (f" {hint}." if hint else "")
     )
 
 

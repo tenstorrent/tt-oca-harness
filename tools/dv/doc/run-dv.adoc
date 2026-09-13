@@ -91,9 +91,9 @@ is supplied by the resolved configuration and recorded as `framework` in
 Tool::
 A simulator or formal engine registered in
 `hw/common/dv/configs/simulators.toml` (for example `verilator`, `vcs`,
-`xcelium`) and selected with `--tool`. The words _backend_ and _simulator_ in
-this guide refer to the same axis: "backend" names the stage implementation
-that renders and executes the tool's commands.
+`xcelium`, `sby`) and selected with `--tool`. The words _backend_ and
+_simulator_ in this guide refer to the same axis: "backend" names the stage
+implementation that renders and executes the tool's commands.
 
 Test::
 One entry in a DUT testlist. Its `module` field names the code that
@@ -271,9 +271,26 @@ The shared cocotb profile allows these simulation backends:
 |Xcelium |`xrun` |SHM |IMC
 |===
 
-The simulator registry also defines Jasper (`jg`) and VC Formal (`vcf`) as
-formal backends. A DUT still needs a formal configuration before either can be
-selected.
+The shared `native-formal` profile (`kind = "fv"`, framework `formal`) allows
+these formal backends:
+
+[cols="<2,<2,<2,<5",options="header"]
+|===
+|Tool |Binary |License |Toolchain
+
+|SymbiYosys |`sby` |none |Profile default. Yosys with the yosys-slang
+frontend, `yosys-smtbmc`, `yosys-abc`, and an SMT solver on the same `PATH`.
+The property subset and task-file layout are in the Formal Property Style
+and Layout chapter of `hw/common/dv/docs/index.adoc`.
+|Jasper |`jg` |commercial |Site-supplied.
+|VC Formal |`vcf` |commercial |Site-supplied.
+|===
+
+The profile carries `license = "none"` because its default backend needs no
+license; `--list` marks each licensed backend `(licensed)` from its registry
+`license_env`, and `--doctor` and the launcher point at that marking when the
+selected backend is absent. A DUT selects a backend only through its formal
+configuration (`<name>_formal_cfg.toml`).
 
 The shared `native` profile's `uvm` framework (SystemVerilog UVM) is a
 maintainer flow whose tool allowlist is VCS only; it carries
@@ -918,9 +935,9 @@ view; also read from `OCAH_DV_OVERLAY`. See "Adopter overlay layer".
 
 |`--list`
 |List selectable DUTs, or details for `--dut`. Each row shows the DUT's
-default tool; flows that cannot run on open-source tools are marked
-`(licensed)`. The per-DUT detail view adds the `license` and `runnability`
-fields from the merged config.
+default tool; tools that need a license, and frameworks that no open-source
+tool serves, are marked `(licensed)`. The per-DUT detail view adds the
+`license` and `runnability` fields from the merged config.
 
 |`--validate-configs`
 |Validate registries and every selectable simulation DUT. Exit `2` if any
@@ -1354,7 +1371,9 @@ python3 tools/dv/run_dv.py --doctor --dut <dut> --tool <tool>
 ----
 
 `--doctor` checks configured binaries on `PATH`, supported Python packages, and
-the presence count of configured license environment variables. For a cocotb
+the presence count of configured license environment variables. When the
+required tool is absent and needs a license, the result points at the
+`(licensed)` marking in `--list`. For a cocotb
 DUT it also imports every testlist module in a child interpreter whose
 `PYTHONPATH` is rebuilt from the DUT config exactly as a run rebuilds it
 (`test_dir`, `python_root`, `python_paths`, and the generated namespace
