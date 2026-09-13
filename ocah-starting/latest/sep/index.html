@@ -7630,17 +7630,11 @@ recovery mode versus normal mode.</p>
 <div class="sect3">
 <h4 id="cpu-reset-vector"><a class="anchor" href="#cpu-reset-vector"></a><a class="link" href="#cpu-reset-vector">1.7.3. Reset Vector</a></h4>
 <div class="paragraph">
-<p>The SEP CPU reset vector is held in a test data register (TDR) in the EL2
-debug TAP, selected by JTAG instruction opcode 0x18. The TDR resets to the
-Boot ROM base address (<code>SEP_BOOT_ROM_MEM_BASE_ADDR</code>) on JTAG reset
-(TRST assertion or the Test-Logic-Reset TAP state), so the CPU executes the
-BL0 Root-of-Trust code after any cold boot.</p>
-</div>
-<div class="paragraph">
-<p>A debugger may redirect the first instruction fetch by shifting an alternate
-address into the TDR through JTAG while the SEP CPU is held in reset. The
-programmed value persists until the TAP is reset. This supports bring-up and
-failure analysis flows that execute from a memory other than the Boot ROM.</p>
+<p>The SEP CPU wrapper sets the VeeR EL2 <code>RESET_VEC</code> parameter to the Boot ROM
+base address, <code>SEP_BOOT_ROM_MEM_BASE_ADDR</code>. The current CPU therefore fetches
+BL0 from that address after reset. The vendored VeeR EL2 debug TAP has no
+reset-vector test data register, so JTAG cannot redirect the reset vector in
+the current integration.</p>
 </div>
 </div>
 <div class="sect3">
@@ -7663,19 +7657,19 @@ features:</p>
 <div class="ulist">
 <ul>
 <li>
-<p>64 kB capacity</p>
+<p>64 KiB CPU-visible address aperture</p>
 </li>
 <li>
-<p>SECDED Error Correction - single error detect double error correct</p>
-<div class="ulist">
-<ul>
+<p>Dedicated CPU memory path outside the SEP local AXI crossbar</p>
+</li>
 <li>
-<p>32-bit data + 7-bit ECC tag</p>
+<p>Read-only behavior; stores receive a response but do not modify the ROM</p>
 </li>
 </ul>
 </div>
-</li>
-</ul>
+<div class="paragraph">
+<p>The open integration uses a 64-bit generic ROM without an ECC error sideband.
+See <a href="#sep-rom">Boot ROM</a> for the hardware and firmware-image layout.</p>
 </div>
 <div class="paragraph">
 <p>There is no ROM patching facility in the first generation
@@ -7686,163 +7680,23 @@ and will use OTP as the backup storage.</p>
 <div class="sect3">
 <h4 id="bl0-secure-boot-and-bl1-execution-unlock"><a class="anchor" href="#bl0-secure-boot-and-bl1-execution-unlock"></a><a class="link" href="#bl0-secure-boot-and-bl1-execution-unlock">1.7.6. BL0 Secure Boot and BL1 Execution Unlock</a></h4>
 <div class="paragraph">
-<p>The SEP CPU Boot ROM firmware AKA BL0 is responsible for bringing the
-SEP system into a runnable state after power on reset (PoR) and running
-the first stage of external firmware AKA BL1. Below is a summary of the
-steps involved.</p>
+<p>The SEP CPU Boot ROM firmware, BL0, establishes the execution environment,
+selects a boot source, validates a manifest and its payload, and transfers
+control to SEP BL1. A primary chiplet normally reads from SPI flash; recovery
+and secondary-chiplet boots wait for an image staged by the SMC.</p>
 </div>
-<div class="ulist">
-<ul>
-<li>
-<p>SEP initialization</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Read configuration strap values from GPIO registers</p>
-</li>
-<li>
-<p>Determine boot options, if any</p>
-</li>
-</ul>
+<div class="paragraph">
+<p>Secure boot binds the manifest public key to a ROM or eFuse digest, checks key
+revocation and the BL1 security version, verifies the RSA-3072 signature with
+OTBN, and verifies the payload before execution. The validated BL1 image is
+copied to ICCM with the secure DMA and entered at its manifest-specified entry
+point. A failed check either selects the other SPI slot or terminates in a
+reset-only failure loop.</p>
 </div>
-</li>
-<li>
-<p>Configure CPU CSRs</p>
-<div class="ulist">
-<ul>
-<li>
-<p>PMP</p>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p>Configure peripherals</p>
-<div class="ulist">
-<ul>
-<li>
-<p>SPI host controller</p>
-</li>
-<li>
-<p>OTP controller</p>
-</li>
-<li>
-<p>DMA controller</p>
-</li>
-<li>
-<p>HMAC-SHA256</p>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p>Start C runtime and execute the following boot tasks</p>
-</li>
-<li>
-<p>Load second stage bootloader firmware BL1</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Instruct SPI host controller to fetch BL1 firmware from an attached
-external SPI flash memory device. Stream image from SPI to TCM memory
-via DMA controller.</p>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p>Verify integrity of BL1 firmware image via RSA digital signature
-verification algorithm</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Read manifest and extract firmware signature, RSA public key (n, e)
-and OTP personality mask</p>
-</li>
-<li>
-<p>Run SHA256 firmware to generate the hash digest ``h'' of \{BL1
-firmware, OTP fuse profile}</p>
-</li>
-<li>
-<p>Configure OTBN PK cryptographic accelerator image and parameters</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Extract the RSA3k digital signature verification firmware from BL0
-and load into the OTBN Imem, i.e. the instruction memory</p>
-</li>
-<li>
-<p>Provision the BL1 manifest&#8217;s public key (n, e) into Key Manager via
-software write port.</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Exponent e is expected to be a short value such as 2**16+1, so we
-don&#8217;t need 3k bits even if RSA3k is being used, only 17 bits</p>
-</li>
-<li>
-<p>Modulus n would still be the full 3k bits for RSA3k</p>
-</li>
-</ul>
-</div>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p>Run RSA firmware to verify the BL1 signature stored in its manifest
-using its public key also stored in the manifest</p>
-</li>
-<li>
-<p>Compare hash digest ``h'' with the decrypted signature. This is to
-guard against fault attacks.</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Read decrypted signature from OTBN Dmem.</p>
-</li>
-<li>
-<p>Remove any padding from digest (e.g. PKCS#1) to produce h'</p>
-</li>
-<li>
-<p>Perform comparison PASS := (h==h')</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Repeat this operation at least twice with a random delay in between
-and only pass verification check if individual checks pass. This is a
-guard against fault injection attacks.</p>
-</li>
-</ul>
-</div>
-</li>
-</ul>
-</div>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p>Anti-rollback checks are completed at this point: security version of
-manifest is compared to security version in OTP</p>
-</li>
-<li>
-<p>Verification of the integrity of SEP / SMC BL1 payload image based on
-payload hash/length</p>
-</li>
-<li>
-<p>Execution unlock logic in the CPU PMP to enable BL1 code execution if
-hash comparisons have passed.</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Failure to complete any of the above checks will result in processor
-entering fail loop requiring a reset event to exit</p>
-</li>
-</ul>
-</div>
-</li>
-</ul>
+<div class="paragraph">
+<p>The complete hardware contract is in <a href="#sep-rom">Boot ROM</a>. Detailed firmware ordering,
+manifest processing, lifecycle policy, and BL1 handoff are in the production
+ROM firmware documentation under <code>hw/sys/sep/bootrom/prod/doc/</code>.</p>
 </div>
 <div class="paragraph">
 <p>Future versions of the SEP will also have additional hardware redundancy
@@ -8070,7 +7924,68 @@ SEP</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="sep-interrupts"><a class="anchor" href="#sep-interrupts"></a><a class="link" href="#sep-interrupts">1.8. Interrupts</a></h3>
+<h3 id="sep-rom"><a class="anchor" href="#sep-rom"></a><a class="link" href="#sep-rom">1.8. Boot ROM</a></h3>
+<div class="paragraph">
+<p>The SEP maps a 64 KiB immutable Boot ROM aperture at <code>0x1004_0000</code> through
+<code>0x1004_FFFF</code>. The SEP CPU wrapper sets the VeeR EL2 <code>RESET_VEC</code> parameter to
+the base of this region, so a cold boot begins in the BL0 Root-of-Trust
+firmware.</p>
+</div>
+<div class="sect3">
+<h4 id="rom-architecture"><a class="anchor" href="#rom-architecture"></a><a class="link" href="#rom-architecture">1.8.1. ROM architecture</a></h4>
+<div class="paragraph">
+<p>The CPU instruction-fetch and load/store interfaces reach the Boot ROM over a
+dedicated path outside the SEP local AXI crossbar. The SEP ROM interface shim
+converts the CPU memory request into the request, 64-bit word address, and
+read-data signals used by the ROM macro. Stores receive a response but are not
+forwarded to the macro and do not modify the ROM.</p>
+</div>
+<div class="paragraph">
+<p>The open integration instantiates a 16K-by-64-bit generic ROM, a physical
+128 KiB array. The generated SEP address map and production linker expose only
+the first 64 KiB. The unused physical capacity is not part of the BL0 software
+address contract.</p>
+</div>
+<div class="paragraph">
+<p>The ROM stores executable code, immutable metadata, read-only data, and the
+initial image of writable data. The production linker script,
+<code>hw/sys/sep/bootrom/prod/link/rom.ld</code>, places <code>.text</code>, <code>.metadata</code>, and
+<code>.rodata</code> in the ROM. It gives <code>.data</code> a runtime address in the 128 KiB DCCM at
+<code>0xC004_0000</code>, with its initial image in ROM; reset code copies that image and
+clears <code>.bss</code> before entering C. The stack also occupies DCCM, below a reserved
+BL0-to-BL1 state block at the top of the memory.</p>
+</div>
+<div class="paragraph">
+<p>BL0 stages the selected manifest and payload in SEP SRAM beginning at
+<code>0x1000_0000</code>. A validated SEP BL1 image is copied by the secure DMA to the
+256 KiB ICCM at <code>0xC000_0000</code>, where the instruction-fetch unit executes it.
+The CPU load/store unit cannot access ICCM, so BL0 cannot populate it with an
+ordinary software copy.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="integrity-features"><a class="anchor" href="#integrity-features"></a><a class="link" href="#integrity-features">1.8.2. Integrity features</a></h4>
+<div class="paragraph">
+<p>The open generic ROM model has a 64-bit data path and no ECC or integrity-error
+sideband. Technology-specific integrity behavior is therefore outside this
+integration&#8217;s visible hardware contract. The first-generation SEP has no ROM
+patching facility.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="firmware-behavior"><a class="anchor" href="#firmware-behavior"></a><a class="link" href="#firmware-behavior">1.8.3. Firmware behavior</a></h4>
+<div class="paragraph">
+<p>The production BL0 firmware selects SPI flash or an SMC-staged image from the
+captured boot straps. It validates the manifest, applies the lifecycle and
+secure-boot policy, checks the payload, locks sensitive fuse reads, and
+transfers control to BL1. The production ROM firmware documentation under
+<code>hw/sys/sep/bootrom/prod/doc/</code> describes that behavior and its build artifacts
+in detail.</p>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="sep-interrupts"><a class="anchor" href="#sep-interrupts"></a><a class="link" href="#sep-interrupts">1.9. Interrupts</a></h3>
 <div class="paragraph">
 <p>The SEP integrates a VeeR EL2 core with a built-in
 <strong>Programmable Interrupt Controller (PIC)</strong>. All maskable external interrupt
@@ -8115,7 +8030,7 @@ so a read-write check on them fails.
 </table>
 </div>
 <div class="sect3">
-<h4 id="sep-cpu-interrupt-vector-map"><a class="anchor" href="#sep-cpu-interrupt-vector-map"></a><a class="link" href="#sep-cpu-interrupt-vector-map">1.8.1. SEP CPU Interrupt Vector Map</a></h4>
+<h4 id="sep-cpu-interrupt-vector-map"><a class="anchor" href="#sep-cpu-interrupt-vector-map"></a><a class="link" href="#sep-cpu-interrupt-vector-map">1.9.1. SEP CPU Interrupt Vector Map</a></h4>
 <div class="paragraph">
 <p>The PIC supports 255 external sources. Slots 1–43 are individually assigned to
 specific peripherals and subsystems connected to the SEP, including both
@@ -8386,7 +8301,7 @@ fault. See <a href="#sep-crypto-bridge-faults">[sep-crypto-bridge-faults]</a>.</
 </table>
 </div>
 <div class="sect3">
-<h4 id="sep-non-pic-paths"><a class="anchor" href="#sep-non-pic-paths"></a><a class="link" href="#sep-non-pic-paths">1.8.2. Non-PIC Interrupt Paths</a></h4>
+<h4 id="sep-non-pic-paths"><a class="anchor" href="#sep-non-pic-paths"></a><a class="link" href="#sep-non-pic-paths">1.9.2. Non-PIC Interrupt Paths</a></h4>
 <div class="paragraph">
 <p>Three CPU interrupt pins bypass the EL2 PIC entirely. The core also reports its
 own memory errors through a path that is neither a pin nor a PIC source; see
@@ -8571,7 +8486,7 @@ a delivery path, so software must not rely on sampling them; use the CSRs above.
 </div>
 </div>
 <div class="sect3">
-<h4 id="sep-pic-registers"><a class="anchor" href="#sep-pic-registers"></a><a class="link" href="#sep-pic-registers">1.8.3. Register Interfaces</a></h4>
+<h4 id="sep-pic-registers"><a class="anchor" href="#sep-pic-registers"></a><a class="link" href="#sep-pic-registers">1.9.3. Register Interfaces</a></h4>
 <div class="paragraph">
 <p>The EL2 PIC register block (<code>meipl</code>, <code>meie</code>, <code>meigwctrl</code>, <code>meigwclr</code>, and
 related registers) is documented with the full SEP address map in
@@ -8585,7 +8500,7 @@ equals the interrupt source ID, and the first programmable source is index 1.</p
 </div>
 </div>
 <div class="sect2">
-<h3 id="cryptographic-subsystem"><a class="anchor" href="#cryptographic-subsystem"></a><a class="link" href="#cryptographic-subsystem">1.9. Cryptographic Subsystem</a></h3>
+<h3 id="cryptographic-subsystem"><a class="anchor" href="#cryptographic-subsystem"></a><a class="link" href="#cryptographic-subsystem">1.10. Cryptographic Subsystem</a></h3>
 <div class="paragraph">
 <p>The cryptographic subsystem is composed of hardware and software. The
 hardware subsystem has a number of accelerators interconnected by two
@@ -8661,7 +8576,7 @@ key paths. The entropy source, CSRNG, and EDN share one coordinated reset. See
 <a href="#sep-reset-controller">SEP Reset Controller</a> and <a href="#sep-trng-reset">Resetting the TRNG</a>.</p>
 </div>
 <div class="sect3">
-<h4 id="sep-crypto-alert-policy"><a class="anchor" href="#sep-crypto-alert-policy"></a><a class="link" href="#sep-crypto-alert-policy">1.9.1. OpenTitan Alert Termination</a></h4>
+<h4 id="sep-crypto-alert-policy"><a class="anchor" href="#sep-crypto-alert-policy"></a><a class="link" href="#sep-crypto-alert-policy">1.10.1. OpenTitan Alert Termination</a></h4>
 <div class="paragraph">
 <p>SEP does not instantiate OpenTitan&#8217;s <code>alert_handler</code>. Each OpenTitan crypto
 alert channel is terminated locally by a <code>prim_alert_receiver</code> in <code>sep_crypto</code>.
@@ -8764,7 +8679,7 @@ infrastructure, and combinational entropy muxes are not Class 2 roots.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="crypto-single-beat-only"><a class="anchor" href="#crypto-single-beat-only"></a><a class="link" href="#crypto-single-beat-only">1.9.2. Single-Beat Access Only</a></h4>
+<h4 id="crypto-single-beat-only"><a class="anchor" href="#crypto-single-beat-only"></a><a class="link" href="#crypto-single-beat-only">1.10.2. Single-Beat Access Only</a></h4>
 <div class="paragraph">
 <p>The <code>sep_crypto</code> demux accepts single-beat transactions only. Any access whose
 <code>AxLEN</code> is non-zero is routed to the internal error slave and answered with
@@ -8773,7 +8688,7 @@ Software must access the whole crypto region with single-beat transactions.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="hmac-sha2"><a class="anchor" href="#hmac-sha2"></a><a class="link" href="#hmac-sha2">1.9.3. HMAC-SHA2</a></h4>
+<h4 id="hmac-sha2"><a class="anchor" href="#hmac-sha2"></a><a class="link" href="#hmac-sha2">1.10.3. HMAC-SHA2</a></h4>
 <div class="paragraph">
 <p>The HMAC component is based on the
 <a href="https://opentitan.org/book/hw/ip/hmac/index.html">OpenTitan HMAC</a> design.</p>
@@ -8811,7 +8726,7 @@ register map is reported in <a href="#sep-detailed-register-map">Detailed Regist
 </div>
 </div>
 <div class="sect3">
-<h4 id="otbn-pka-public-key-accelerator"><a class="anchor" href="#otbn-pka-public-key-accelerator"></a><a class="link" href="#otbn-pka-public-key-accelerator">1.9.4. OTBN PKA Public Key Accelerator</a></h4>
+<h4 id="otbn-pka-public-key-accelerator"><a class="anchor" href="#otbn-pka-public-key-accelerator"></a><a class="link" href="#otbn-pka-public-key-accelerator">1.10.4. OTBN PKA Public Key Accelerator</a></h4>
 <div class="paragraph">
 <p>The module is based on the
 <a href="https://opentitan.org/book/hw/ip/otbn/doc/otbn_intro.html">OpenTitan
@@ -8934,7 +8849,7 @@ register map is reported in <a href="#sep-detailed-register-map">Detailed Regist
 </div>
 </div>
 <div class="sect3">
-<h4 id="aes-cipher"><a class="anchor" href="#aes-cipher"></a><a class="link" href="#aes-cipher">1.9.5. AES Cipher</a></h4>
+<h4 id="aes-cipher"><a class="anchor" href="#aes-cipher"></a><a class="link" href="#aes-cipher">1.10.5. AES Cipher</a></h4>
 <div class="paragraph">
 <p>The module is based on the
 <a href="https://opentitan.org/book/hw/ip/aes/index.html">OpenTitan AES</a> design.</p>
@@ -8998,7 +8913,7 @@ register map is reported in <a href="#sep-detailed-register-map">Detailed Regist
 </div>
 </div>
 <div class="sect3">
-<h4 id="kmac-sha3"><a class="anchor" href="#kmac-sha3"></a><a class="link" href="#kmac-sha3">1.9.6. KMAC-SHA3</a></h4>
+<h4 id="kmac-sha3"><a class="anchor" href="#kmac-sha3"></a><a class="link" href="#kmac-sha3">1.10.6. KMAC-SHA3</a></h4>
 <div class="paragraph">
 <p>The module is based on the
 <a href="https://opentitan.org/book/hw/ip/kmac/index.html">OpenTitan KMAC</a> design.</p>
@@ -9038,7 +8953,7 @@ register map is reported in <a href="#sep-detailed-register-map">Detailed Regist
 </div>
 </div>
 <div class="sect3">
-<h4 id="adams-bridge-abr"><a class="anchor" href="#adams-bridge-abr"></a><a class="link" href="#adams-bridge-abr">1.9.7. Adams Bridge (ABR)</a></h4>
+<h4 id="adams-bridge-abr"><a class="anchor" href="#adams-bridge-abr"></a><a class="link" href="#adams-bridge-abr">1.10.7. Adams Bridge (ABR)</a></h4>
 <div class="paragraph">
 <p>The module is a post-quantum accelerator based on the
 <a href="https://github.com/chipsalliance/adams-bridge">Caliptra Adams Bridge</a> design.</p>
@@ -9137,7 +9052,7 @@ source, so unlike the other accelerators they do not appear in
 </div>
 </div>
 <div class="sect3">
-<h4 id="true-random-number-generator-trng-true-random-number-generator-trng"><a class="anchor" href="#true-random-number-generator-trng-true-random-number-generator-trng"></a><a class="link" href="#true-random-number-generator-trng-true-random-number-generator-trng">1.9.8. True Random Number Generator (TRNG)</a></h4>
+<h4 id="true-random-number-generator-trng-true-random-number-generator-trng"><a class="anchor" href="#true-random-number-generator-trng-true-random-number-generator-trng"></a><a class="link" href="#true-random-number-generator-trng-true-random-number-generator-trng">1.10.8. True Random Number Generator (TRNG)</a></h4>
 <div class="paragraph">
 <p>Entropy bits are fundamental data for key generation as well as for
 attack countermeasure implementations. The entropy source must be high
@@ -9345,7 +9260,7 @@ integer width</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="fuse-controller-otp-fuse-controller-otp"><a class="anchor" href="#fuse-controller-otp-fuse-controller-otp"></a><a class="link" href="#fuse-controller-otp-fuse-controller-otp">1.9.9. OTP Fuse Controller</a></h4>
+<h4 id="fuse-controller-otp-fuse-controller-otp"><a class="anchor" href="#fuse-controller-otp-fuse-controller-otp"></a><a class="link" href="#fuse-controller-otp-fuse-controller-otp">1.10.9. OTP Fuse Controller</a></h4>
 <div class="imageblock">
 <div class="content">
 <img src="_images/SEP_OTP_Fuse_Bank.png" alt="SEP_OTP_Fuse_Bank">
@@ -9980,7 +9895,7 @@ here.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="peripheral-subsystem"><a class="anchor" href="#peripheral-subsystem"></a><a class="link" href="#peripheral-subsystem">1.10. Peripheral Subsystem</a></h3>
+<h3 id="peripheral-subsystem"><a class="anchor" href="#peripheral-subsystem"></a><a class="link" href="#peripheral-subsystem">1.11. Peripheral Subsystem</a></h3>
 <div class="paragraph">
 <p>SEP will primarily rely on external serial IO peripherals resident in
 the SMC complex. SEP has an AXI4 extension port which has unfettered
@@ -10004,7 +9919,7 @@ to the SEP BL0 functionality.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="serial-peripheral-interface-spi-serial-peripheral-interface-spi"><a class="anchor" href="#serial-peripheral-interface-spi-serial-peripheral-interface-spi"></a><a class="link" href="#serial-peripheral-interface-spi-serial-peripheral-interface-spi">1.10.1. Serial Peripheral Interface (SPI)</a></h4>
+<h4 id="serial-peripheral-interface-spi-serial-peripheral-interface-spi"><a class="anchor" href="#serial-peripheral-interface-spi-serial-peripheral-interface-spi"></a><a class="link" href="#serial-peripheral-interface-spi-serial-peripheral-interface-spi">1.11.1. Serial Peripheral Interface (SPI)</a></h4>
 <div class="paragraph">
 <p>SEP will have one SPI host to support access to external NOR flash
 devices which are the primary BL1 image source. Modern devices are MT35
@@ -10082,7 +9997,7 @@ register map is reported in <a href="#sep-detailed-register-map">Detailed Regist
 </div>
 </div>
 <div class="sect3">
-<h4 id="watchdog-timer-wdt-watchdog-timer-wdt"><a class="anchor" href="#watchdog-timer-wdt-watchdog-timer-wdt"></a><a class="link" href="#watchdog-timer-wdt-watchdog-timer-wdt">1.10.2. Watchdog Timer (WDT)</a></h4>
+<h4 id="watchdog-timer-wdt-watchdog-timer-wdt"><a class="anchor" href="#watchdog-timer-wdt-watchdog-timer-wdt"></a><a class="link" href="#watchdog-timer-wdt-watchdog-timer-wdt">1.11.2. Watchdog Timer (WDT)</a></h4>
 <div class="paragraph">
 <p>The Watchdog timer is a component used to enhance reliability and ensure
 that the system is notified if the SEP subsystem is ``hanging''. The SEP
@@ -10108,7 +10023,7 @@ register map is reported in <a href="#sep-detailed-register-map">Detailed Regist
 </div>
 </div>
 <div class="sect3">
-<h4 id="sep-reset-controller"><a class="anchor" href="#sep-reset-controller"></a><a class="link" href="#sep-reset-controller">1.10.3. SEP Reset Controller</a></h4>
+<h4 id="sep-reset-controller"><a class="anchor" href="#sep-reset-controller"></a><a class="link" href="#sep-reset-controller">1.11.3. SEP Reset Controller</a></h4>
 <div class="paragraph">
 <p>The SEP Reset Controller provides software-controllable resets for the Key Manager, crypto accelerators, and internal TRNG complex. It is accessible via AXI4 at generated base address <code>0x1080_3000</code>.
 Adams Bridge is the exception: it has no software-reset bit and resets with
@@ -10241,7 +10156,7 @@ Consumers are released only after fresh endpoint/pool progress is observed.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="token-processing"><a class="anchor" href="#token-processing"></a><a class="link" href="#token-processing">1.10.4. Token Processing</a></h4>
+<h4 id="token-processing"><a class="anchor" href="#token-processing"></a><a class="link" href="#token-processing">1.11.4. Token Processing</a></h4>
 <div class="paragraph">
 <p>Maintaining a known, measurable state of the SEP system is a core
 requirement to ensure trust and security. Consequently, changing the
@@ -10507,7 +10422,7 @@ described in <em>OTP fuse controller</em> in this chapter.</p>
 </div>
 </div>
 <div class="sect3">
-<h4 id="security-disable-sec_dis"><a class="anchor" href="#security-disable-sec_dis"></a><a class="link" href="#security-disable-sec_dis">1.10.5. Security Disable (SEC_DIS)</a></h4>
+<h4 id="security-disable-sec_dis"><a class="anchor" href="#security-disable-sec_dis"></a><a class="link" href="#security-disable-sec_dis">1.11.5. Security Disable (SEC_DIS)</a></h4>
 <div class="paragraph">
 <p>Security Disable (SEC_DIS) is an emergency bring-up bypass for early (A0)
 silicon. On deassertion of power-on reset, the fuse sense logic runs before
@@ -10585,7 +10500,7 @@ post-layout extracted netlist with <strong><em>gate-level simulation</em></stron
 </div>
 </div>
 <div class="sect3">
-<h4 id="life-cycle-controller-lcc-life-cycle-controller-lcc"><a class="anchor" href="#life-cycle-controller-lcc-life-cycle-controller-lcc"></a><a class="link" href="#life-cycle-controller-lcc-life-cycle-controller-lcc">1.10.6. Life Cycle Controller (LCC)</a></h4>
+<h4 id="life-cycle-controller-lcc-life-cycle-controller-lcc"><a class="anchor" href="#life-cycle-controller-lcc-life-cycle-controller-lcc"></a><a class="link" href="#life-cycle-controller-lcc-life-cycle-controller-lcc">1.11.6. Life Cycle Controller (LCC)</a></h4>
 <div class="paragraph">
 <p>The Life Cycle Controller (LCC) supports multiple security domains in
 chiplet-based systems. It manages the device life cycle: it decodes the
@@ -12090,7 +12005,7 @@ in a future revision of this specification.
 </div>
 </div>
 <div class="sect2">
-<h3 id="test-mode-entry"><a class="anchor" href="#test-mode-entry"></a><a class="link" href="#test-mode-entry">1.11. Test Mode Entry</a></h3>
+<h3 id="test-mode-entry"><a class="anchor" href="#test-mode-entry"></a><a class="link" href="#test-mode-entry">1.12. Test Mode Entry</a></h3>
 <div class="paragraph">
 <p>Chiplets shall implement a strap TEST_EN for test mode entry. TEST_EN is
 latched when SEP fuse sensing is done if SEC_DIS is not asserted.

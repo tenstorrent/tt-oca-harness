@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Untitled :: Open Chiplet Atlas Harness (OCAH) Documentation</title>
+    <meta name="generator" content="Antora 3.1.15">
+    <link rel="stylesheet" href="../../../_/css/site.css">
+    <link rel="stylesheet" href="../../../_/css/extra.css">
+    <link rel="stylesheet" href="../../../_/css/image-zoom.css">
+  </head>
+  <body class="article">
+<header class="header">
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <a class="navbar-item" href="/">Open Chiplet Atlas Harness (OCAH) Documentation</a>
+      <div class="navbar-item oca-title-text">Open Chiplet Atlas&#174; (OCA&#174;) Documentation</div>
+      <div class="navbar-item search hide-for-print">
+        <div id="search-field" class="field">
+          <input id="search-input" type="text" placeholder="Search the docs">
+        </div>
+      </div>
+      <button class="navbar-burger" aria-controls="topbar-nav" aria-expanded="false" aria-label="Toggle main menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+    <div id="topbar-nav" class="navbar-menu">
+      <div class="navbar-end">
+        <div class="navbar-item has-dropdown is-hoverable guides-menu">
+          <a class="navbar-link" href="#">Guides</a>
+          <div class="navbar-dropdown">
+            <!-- One entry per book. Add a line here whenever a new book's
+                 antora.yml/nav.adoc scaffolding lands -- these are plain
+                 static links
+
+                 All five books now build as ONE Antora site
+                 (antora-playbook.yml), so ../../.. already
+                 resolves directly to the one shared root. -->
+            <a class="navbar-item" href="../../../ocah-starting/latest/index.html">Starting with OCAH</a>
+            <a class="navbar-item" href="../../../ocah-docs/latest/index.html">Technical Reference Manual</a>
+            <a class="navbar-item" href="../../../ocah-integrator-guide/latest/index.html">Integrator Guide</a>
+            <a class="navbar-item" href="../../../ocah-programmer-guide/latest/index.html">Programmer's Guide</a>
+            <a class="navbar-item" href="../../../ocah-appnotes/latest/index.html">Application Notes</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable downloads-menu">
+          <a class="navbar-link" href="#">Downloads</a>
+          <div class="navbar-dropdown">
+            <!-- Add a line here as each book's PDF becomes real.-->
+            <a class="navbar-item" href="../../../downloads/ocah-trm.pdf">Technical Reference Manual (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-integrator-guide.pdf">Integrator Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-programmer-guide.pdf">Programmer's Guide (PDF)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-appnotes.pdf">Application Notes (PDF)</a>
+          </div>
+        </div>
+        <div class="navbar-item has-dropdown is-hoverable datasheets-menu">
+          <a class="navbar-link" href="#">Datasheets</a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="../../../downloads/ocah-smu-datasheet.pdf">System Management Unit (SMU)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-dtp-datasheet.pdf">Debug &amp; Test Ports (DTP)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-sep-datasheet.pdf">Security Processor (SEP)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-smc-datasheet.pdf">System Management Controller (SMC)</a>
+            <a class="navbar-item" href="../../../downloads/ocah-aou-datasheet.pdf">AXI-over-UCIe Bridge (AoU)</a>
+          </div>
+        </div>
+		<div class="navbar-item tt-link">
+		  <a href="https://tenstorrent.com/" target="_blank" rel="noopener" title="Tenstorrent">
+			<img src="../../../_/img/tt_logo_color-yellow-black.png" alt="Tenstorrent" style="height: 24px;">
+		  </a>
+		</div>
+      </div>
+    </div>
+  </nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="ocah-integrator-guide" data-version="latest">
+  <aside class="nav">
+    <div class="panels">
+<div class="nav-panel-menu is-active" data-panel="menu">
+  <nav class="nav-menu">
+    <button class="nav-menu-toggle" aria-label="Toggle expand/collapse all" style="display: none"></button>
+    <h3 class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Integrator Guide</a></h3>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="0">
+<ul class="nav-list">
+  <li class="nav-item" data-depth="1">
+    <button class="nav-item-toggle"></button>
+    <a class="nav-link" href="../index.html">Integrator Guide</a>
+<ul class="nav-list">
+  <li class="nav-item" data-depth="2">
+    <a class="nav-link" href="../revision.html">Revision History</a>
+  </li>
+</ul>
+  </li>
+</ul>
+  </li>
+</ul>
+  </nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+  <div class="context">
+    <span class="title">Open Chiplet Atlas Harness (OCAH) Integrator Guide</span>
+    <span class="version">latest</span>
+  </div>
+  <ul class="components">
+    <li class="component">
+      <div class="title"><a href="../../../ocah-home/latest/index.html">Open Chiplet Atlas Harness (OCAH)</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-home/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <div class="title"><a href="../../../ocah-appnotes/latest/index.html">Open Chiplet Atlas Harness (OCAH) Application Notes</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-appnotes/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <div class="title"><a href="../../../ocah-starting/latest/index.html">Open Chiplet Atlas Harness (OCAH) Getting Started and Contributing Guide</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-starting/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component is-current">
+      <div class="title"><a href="../index.html">Open Chiplet Atlas Harness (OCAH) Integrator Guide</a></div>
+      <ul class="versions">
+        <li class="version is-current is-latest">
+          <a href="../index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <div class="title"><a href="../../../ocah-programmer-guide/latest/index.html">Open Chiplet Atlas Harness (OCAH) Programmer's Guide</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-programmer-guide/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+    <li class="component">
+      <div class="title"><a href="../../../ocah-docs/latest/index.html">Open Chiplet Atlas Harness (OCAH) Technical Reference Manual</a></div>
+      <ul class="versions">
+        <li class="version is-latest">
+          <a href="../../../ocah-docs/latest/index.html">latest</a>
+        </li>
+      </ul>
+    </li>
+  </ul>
+</div>
+    </div>
+  </aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<button class="nav-toggle"></button>
+  <a href="../../../ocah-home/latest/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+</nav>
+</div>
+  <div class="content">
+<aside class="toc sidebar" data-title="Contents" data-levels="2">
+  <div class="toc-menu"></div>
+</aside>
+<article class="doc">
+<div class="sect2">
+<h3 id="sep-rom"><a class="anchor" href="#sep-rom"></a><a class="link" href="#sep-rom">1. Boot ROM</a></h3>
+<div class="paragraph">
+<p>The SEP maps a 64 KiB immutable Boot ROM aperture at <code>0x1004_0000</code> through
+<code>0x1004_FFFF</code>. The SEP CPU wrapper sets the VeeR EL2 <code>RESET_VEC</code> parameter to
+the base of this region, so a cold boot begins in the BL0 Root-of-Trust
+firmware.</p>
+</div>
+<div class="sect3">
+<h4 id="rom-architecture"><a class="anchor" href="#rom-architecture"></a><a class="link" href="#rom-architecture">1.1. ROM architecture</a></h4>
+<div class="paragraph">
+<p>The CPU instruction-fetch and load/store interfaces reach the Boot ROM over a
+dedicated path outside the SEP local AXI crossbar. The SEP ROM interface shim
+converts the CPU memory request into the request, 64-bit word address, and
+read-data signals used by the ROM macro. Stores receive a response but are not
+forwarded to the macro and do not modify the ROM.</p>
+</div>
+<div class="paragraph">
+<p>The open integration instantiates a 16K-by-64-bit generic ROM, a physical
+128 KiB array. The generated SEP address map and production linker expose only
+the first 64 KiB. The unused physical capacity is not part of the BL0 software
+address contract.</p>
+</div>
+<div class="paragraph">
+<p>The ROM stores executable code, immutable metadata, read-only data, and the
+initial image of writable data. The production linker script,
+<code>hw/sys/sep/bootrom/prod/link/rom.ld</code>, places <code>.text</code>, <code>.metadata</code>, and
+<code>.rodata</code> in the ROM. It gives <code>.data</code> a runtime address in the 128 KiB DCCM at
+<code>0xC004_0000</code>, with its initial image in ROM; reset code copies that image and
+clears <code>.bss</code> before entering C. The stack also occupies DCCM, below a reserved
+BL0-to-BL1 state block at the top of the memory.</p>
+</div>
+<div class="paragraph">
+<p>BL0 stages the selected manifest and payload in SEP SRAM beginning at
+<code>0x1000_0000</code>. A validated SEP BL1 image is copied by the secure DMA to the
+256 KiB ICCM at <code>0xC000_0000</code>, where the instruction-fetch unit executes it.
+The CPU load/store unit cannot access ICCM, so BL0 cannot populate it with an
+ordinary software copy.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="integrity-features"><a class="anchor" href="#integrity-features"></a><a class="link" href="#integrity-features">1.2. Integrity features</a></h4>
+<div class="paragraph">
+<p>The open generic ROM model has a 64-bit data path and no ECC or integrity-error
+sideband. Technology-specific integrity behavior is therefore outside this
+integration&#8217;s visible hardware contract. The first-generation SEP has no ROM
+patching facility.</p>
+</div>
+</div>
+<div class="sect3">
+<h4 id="firmware-behavior"><a class="anchor" href="#firmware-behavior"></a><a class="link" href="#firmware-behavior">1.3. Firmware behavior</a></h4>
+<div class="paragraph">
+<p>The production BL0 firmware selects SPI flash or an SMC-staged image from the
+captured boot straps. It validates the manifest, applies the lifecycle and
+secure-boot policy, checks the payload, locks sensitive fuse reads, and
+transfers control to BL1. The production ROM firmware documentation under
+<code>hw/sys/sep/bootrom/prod/doc/</code> describes that behavior and its build artifacts
+in detail.</p>
+</div>
+</div>
+</div>
+</article>
+  </div>
+</main>
+</div>
+<footer class="footer">
+  <div class="footer-inner">
+    <img src="../../../_/img/oca_white.svg" alt="Open Chiplet Atlas" class="footer-oca-logo">
+    <div class="footer-main">
+      <p class="oca-footer-text">
+        The Open Chiplet Atlas&#174; has been developed by
+        <a href="https://tenstorrent.com/" target="_blank" rel="noopener" class="footer-tt-link">
+          <img src="../../../_/img/tt_logo_color-yellow-white.png" alt="Tenstorrent" class="footer-tt-icon">
+        </a>
+        as an open standard.
+      </p>
+      <p class="oca-footer-fineprint">This page was built using the Antora default UI, licensed under the terms of the MPL-2.0 license.</p>
+    </div>
+  </div>
+</footer>
+<script src="../../../_/js/keyboard-shortcuts.js"></script>
+<script src="../../../_/js/a11y-patches.js"></script>
+<script id="site-script" src="../../../_/js/site.js" data-ui-root-path="../../../_"></script>
+<script async src="../../../_/js/vendor/highlight.js"></script>
+<script src="../../../_/js/vendor/lunr.js"></script>
+<script src="../../../_/js/search-ui.js" id="search-ui-script" data-site-root-path="../../.." data-snippet-length="100" data-stylesheet="../../../_/css/search.css"></script>
+<script async src="../../../search-index.js"></script>
+  </body>
+</html>

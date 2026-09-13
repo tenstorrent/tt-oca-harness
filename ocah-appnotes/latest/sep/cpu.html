@@ -265,17 +265,11 @@ recovery mode versus normal mode.</p>
 <div class="sect3">
 <h4 id="cpu-reset-vector"><a class="anchor" href="#cpu-reset-vector"></a><a class="link" href="#cpu-reset-vector">1.3. Reset Vector</a></h4>
 <div class="paragraph">
-<p>The SEP CPU reset vector is held in a test data register (TDR) in the EL2
-debug TAP, selected by JTAG instruction opcode 0x18. The TDR resets to the
-Boot ROM base address (<code>SEP_BOOT_ROM_MEM_BASE_ADDR</code>) on JTAG reset
-(TRST assertion or the Test-Logic-Reset TAP state), so the CPU executes the
-BL0 Root-of-Trust code after any cold boot.</p>
-</div>
-<div class="paragraph">
-<p>A debugger may redirect the first instruction fetch by shifting an alternate
-address into the TDR through JTAG while the SEP CPU is held in reset. The
-programmed value persists until the TAP is reset. This supports bring-up and
-failure analysis flows that execute from a memory other than the Boot ROM.</p>
+<p>The SEP CPU wrapper sets the VeeR EL2 <code>RESET_VEC</code> parameter to the Boot ROM
+base address, <code>SEP_BOOT_ROM_MEM_BASE_ADDR</code>. The current CPU therefore fetches
+BL0 from that address after reset. The vendored VeeR EL2 debug TAP has no
+reset-vector test data register, so JTAG cannot redirect the reset vector in
+the current integration.</p>
 </div>
 </div>
 <div class="sect3">
@@ -298,19 +292,19 @@ features:</p>
 <div class="ulist">
 <ul>
 <li>
-<p>64 kB capacity</p>
+<p>64 KiB CPU-visible address aperture</p>
 </li>
 <li>
-<p>SECDED Error Correction - single error detect double error correct</p>
-<div class="ulist">
-<ul>
+<p>Dedicated CPU memory path outside the SEP local AXI crossbar</p>
+</li>
 <li>
-<p>32-bit data + 7-bit ECC tag</p>
+<p>Read-only behavior; stores receive a response but do not modify the ROM</p>
 </li>
 </ul>
 </div>
-</li>
-</ul>
+<div class="paragraph">
+<p>The open integration uses a 64-bit generic ROM without an ECC error sideband.
+See <a href="#sep-rom">[sep-rom]</a> for the hardware and firmware-image layout.</p>
 </div>
 <div class="paragraph">
 <p>There is no ROM patching facility in the first generation
@@ -321,163 +315,23 @@ and will use OTP as the backup storage.</p>
 <div class="sect3">
 <h4 id="bl0-secure-boot-and-bl1-execution-unlock"><a class="anchor" href="#bl0-secure-boot-and-bl1-execution-unlock"></a><a class="link" href="#bl0-secure-boot-and-bl1-execution-unlock">1.6. BL0 Secure Boot and BL1 Execution Unlock</a></h4>
 <div class="paragraph">
-<p>The SEP CPU Boot ROM firmware AKA BL0 is responsible for bringing the
-SEP system into a runnable state after power on reset (PoR) and running
-the first stage of external firmware AKA BL1. Below is a summary of the
-steps involved.</p>
+<p>The SEP CPU Boot ROM firmware, BL0, establishes the execution environment,
+selects a boot source, validates a manifest and its payload, and transfers
+control to SEP BL1. A primary chiplet normally reads from SPI flash; recovery
+and secondary-chiplet boots wait for an image staged by the SMC.</p>
 </div>
-<div class="ulist">
-<ul>
-<li>
-<p>SEP initialization</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Read configuration strap values from GPIO registers</p>
-</li>
-<li>
-<p>Determine boot options, if any</p>
-</li>
-</ul>
+<div class="paragraph">
+<p>Secure boot binds the manifest public key to a ROM or eFuse digest, checks key
+revocation and the BL1 security version, verifies the RSA-3072 signature with
+OTBN, and verifies the payload before execution. The validated BL1 image is
+copied to ICCM with the secure DMA and entered at its manifest-specified entry
+point. A failed check either selects the other SPI slot or terminates in a
+reset-only failure loop.</p>
 </div>
-</li>
-<li>
-<p>Configure CPU CSRs</p>
-<div class="ulist">
-<ul>
-<li>
-<p>PMP</p>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p>Configure peripherals</p>
-<div class="ulist">
-<ul>
-<li>
-<p>SPI host controller</p>
-</li>
-<li>
-<p>OTP controller</p>
-</li>
-<li>
-<p>DMA controller</p>
-</li>
-<li>
-<p>HMAC-SHA256</p>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p>Start C runtime and execute the following boot tasks</p>
-</li>
-<li>
-<p>Load second stage bootloader firmware BL1</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Instruct SPI host controller to fetch BL1 firmware from an attached
-external SPI flash memory device. Stream image from SPI to TCM memory
-via DMA controller.</p>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p>Verify integrity of BL1 firmware image via RSA digital signature
-verification algorithm</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Read manifest and extract firmware signature, RSA public key (n, e)
-and OTP personality mask</p>
-</li>
-<li>
-<p>Run SHA256 firmware to generate the hash digest ``h'' of \{BL1
-firmware, OTP fuse profile}</p>
-</li>
-<li>
-<p>Configure OTBN PK cryptographic accelerator image and parameters</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Extract the RSA3k digital signature verification firmware from BL0
-and load into the OTBN Imem, i.e. the instruction memory</p>
-</li>
-<li>
-<p>Provision the BL1 manifest&#8217;s public key (n, e) into Key Manager via
-software write port.</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Exponent e is expected to be a short value such as 2**16+1, so we
-don&#8217;t need 3k bits even if RSA3k is being used, only 17 bits</p>
-</li>
-<li>
-<p>Modulus n would still be the full 3k bits for RSA3k</p>
-</li>
-</ul>
-</div>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p>Run RSA firmware to verify the BL1 signature stored in its manifest
-using its public key also stored in the manifest</p>
-</li>
-<li>
-<p>Compare hash digest ``h'' with the decrypted signature. This is to
-guard against fault attacks.</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Read decrypted signature from OTBN Dmem.</p>
-</li>
-<li>
-<p>Remove any padding from digest (e.g. PKCS#1) to produce h'</p>
-</li>
-<li>
-<p>Perform comparison PASS := (h==h')</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Repeat this operation at least twice with a random delay in between
-and only pass verification check if individual checks pass. This is a
-guard against fault injection attacks.</p>
-</li>
-</ul>
-</div>
-</li>
-</ul>
-</div>
-</li>
-</ul>
-</div>
-</li>
-<li>
-<p>Anti-rollback checks are completed at this point: security version of
-manifest is compared to security version in OTP</p>
-</li>
-<li>
-<p>Verification of the integrity of SEP / SMC BL1 payload image based on
-payload hash/length</p>
-</li>
-<li>
-<p>Execution unlock logic in the CPU PMP to enable BL1 code execution if
-hash comparisons have passed.</p>
-<div class="ulist">
-<ul>
-<li>
-<p>Failure to complete any of the above checks will result in processor
-entering fail loop requiring a reset event to exit</p>
-</li>
-</ul>
-</div>
-</li>
-</ul>
+<div class="paragraph">
+<p>The complete hardware contract is in <a href="#sep-rom">[sep-rom]</a>. Detailed firmware ordering,
+manifest processing, lifecycle policy, and BL1 handoff are in the production
+ROM firmware documentation under <code>hw/sys/sep/bootrom/prod/doc/</code>.</p>
 </div>
 <div class="paragraph">
 <p>Future versions of the SEP will also have additional hardware redundancy
