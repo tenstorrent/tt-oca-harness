@@ -72,6 +72,13 @@ class sep_firmware_backup_invalid_security_version_test(sep_backup_manifest_fail
 
     def check_efuse(self, image) -> None:
         bl1_ver = image.field_int("BL1_VERSION")
+        # The RAW word, kept for the console assertion below. The ROM echoes the
+        # fuse bit set itself, not a decoded count -- ``plat`` reads the bank and
+        # prints ``oca_flags_low32`` of it (``oca_platform.c``), because OCA's
+        # rollback test is the bit-superset ``manifest & device == device`` and
+        # eFuse bits only ever go 0 -> 1. So "no thermometer-to-count conversion
+        # belongs here", and the marker must be 0xff rather than 8.
+        self._fuse_version_word = bl1_ver
         popcount = bin(bl1_ver).count("1")
         assert popcount == _FUSE_SECURITY_VERSION, (
             f"BL1_VERSION 0x{bl1_ver:x} has thermometer count {popcount}, expected "
@@ -91,7 +98,7 @@ class sep_firmware_backup_invalid_security_version_test(sep_backup_manifest_fail
         # The two values the ROM actually compared. Without these the test would
         # accept a VERSION_ROLLBACK produced by any version pair, including one
         # this stimulus did not create.
-        fuse_marker = f"FUSE_VER=0x{_FUSE_SECURITY_VERSION:08x}"
+        fuse_marker = f"FUSE_VER=0x{self._fuse_version_word:08x}"
         mfst_marker = f"MFST_VER=0x{_BACKUP_SECURITY_VERSION:08x}"
         for marker in (fuse_marker, mfst_marker):
             assert any(marker in line for line in console), (
