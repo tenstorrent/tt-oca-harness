@@ -23,6 +23,9 @@ run that must fail (the reference model is desynchronized before the walk).
 
 ``clk`` is a free-running reference clock this module drives so the
 simulator always holds a timed event while the master bit-bangs TCK.
+``jtag_tap_state`` carries the device's TAP controller state as the one-hot a
+DUT exports, mirrored after every falling TCK edge and every TRST edge, so
+the SVA state rules judge the connection.
 
 The seed accessor and the salted scenario RNG live here: these selftests are
 plain cocotb tests without a base test class.
@@ -39,6 +42,7 @@ from typing import Any
 
 import cocotb
 from cocotb.clock import Clock
+from cocotb.triggers import Edge, FallingEdge, First, Timer
 from ocah_checker import OcahCheckerError
 from ocah_jtag_vip import (
     IDCODE_OPCODE,
@@ -148,11 +152,31 @@ async def build_stack(
         checker.attach_monitor(monitor)
     await slave_agent.start()
     await monitor.start()
+    cocotb.start_soon(_mirror_device_state(dut, slave_agent.responder))
     master = OcahJtagMasterSequence(tap, checker, monitor=monitor)
     slave = OcahJtagSlaveSequence(slave_agent.responder, checker=checker)
     return JtagHarness(
         master=master, slave=slave, slave_agent=slave_agent, monitor=monitor, checker=checker
     )
+
+
+async def _mirror_device_state(dut: Any, responder: Any) -> None:
+    """Drive ``jtag_tap_state`` with the device's TAP state.
+
+    ``OcahJtagState`` values are the IEEE one-hot encoding the SVA consumes.
+    The device advances its state on the rising TCK edge and resets it on a
+    TRST edge; the mirror follows at the falling edge and one nanosecond after
+    a TRST edge, after the device has acted on it.
+    """
+    tck = getattr(dut, f"{PREFIX}_tck")
+    trst = getattr(dut, f"{PREFIX}_trst")
+    state_net = getattr(dut, f"{PREFIX}_tap_state")
+    state_net.value = int(responder.device_state())
+    while True:
+        trigger = await First(FallingEdge(tck), Edge(trst))
+        if trigger is not None and getattr(trigger, "signal", None) is trst:
+            await Timer(1, "ns")
+        state_net.value = int(responder.device_state())
 
 
 def base_seed() -> int:

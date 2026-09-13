@@ -119,6 +119,14 @@ ocah_jtag_vip/
     ocah_jtag_sva.sv     - clean-room IEEE 1149.1 protocol assertions
   uvm/
     ocah_jtag_uvm_pkg.sv - SV-UVM agent package (see below)
+  dv/                    - simulated VIP selftests on a wire harness (the shared
+                           master against the shared reactive TAP device, the
+                           protocol SVA on the nets), one scenario set for both
+                           frameworks:
+                           python3 tools/dv/run_dv.py --dut ocah_jtag_vip --items smoke
+                           python3 tools/dv/run_dv.py --dut ocah_jtag_vip --items all --cov
+                           python3 tools/dv/run_dv.py --dut ocah_jtag_vip \
+                               --framework uvm --tool vcs --items smoke --skip-unimplemented
 ```
 
 ## SV-UVM Agent (`uvm/`)
@@ -359,10 +367,13 @@ Callbacks receive `OcahJtagScanItem` objects. The item also supports
 
 ## Validation
 
-Validate changes against the DTP consumer first, then the SMC and SMU
-consumers:
+Validate changes on the package's own wire harness first, then against the
+DTP, SMC, and SMU consumers:
 
 ```bash
+python3 tools/dv/run_dv.py --dut ocah_jtag_vip --items smoke --tool verilator
+python3 tools/dv/run_dv.py --dut ocah_jtag_vip --items all --tool verilator --cov
+python3 tools/dv/run_dv.py --dut ocah_jtag_vip --framework uvm --items smoke --skip-unimplemented --tool vcs
 python3 tools/dv/run_dv.py --doctor --dut dtp
 python3 tools/dv/run_dv.py --dut dtp --items dtp_sanity_test dtp_jtag_idcode_test dtp_jtag_bypass_test --tool verilator
 python3 tools/dv/run_dv.py --dut dtp --items basic_jtag --tool verilator --cov
@@ -374,6 +385,11 @@ python3 tools/dv/run_dv.py --dut smu --items smu_dtp_jtag_smoke_test smu_jtag_ch
 Must-fail checks; each command exits non-zero:
 
 ```bash
+# harness, both flows: the reference model is desynchronized before the TMS
+# walk (cocotb) or a wrong expected IDCODE is armed (SV-UVM).
+OCAH_JTAG_SELFTEST_NEGATIVE=1 python3 tools/dv/run_dv.py --dut ocah_jtag_vip --items ocah_jtag_tap_reset_test --tool verilator
+python3 tools/dv/run_dv.py --dut ocah_jtag_vip --framework uvm --items ocah_jtag_idcode_test \
+    --skip-unimplemented --tool vcs --plusarg=+OCAH_JTAG_SELFTEST_NEGATIVE
 # cocotb: the TAP reference model is desynchronized, so CHK-TAP-STATE fails.
 DTP_JTAG_TAP_CHECKER_NEGATIVE=1 python3 tools/dv/run_dv.py --dut dtp --items dtp_jtag_tlr_reset_test --tool verilator
 # SV-UVM: a wrong expected IDCODE is armed, so CHK-TAP-TLR-IDCODE fails.
@@ -397,11 +413,11 @@ PYTHONPATH=hw/common/dv/vip python3 hw/common/dv/vip/ocah_jtag_vip/cocotb/exampl
 | Timing | TMS and TDI driven while TCK is low, TDO sampled in that low phase; `tck_period_ns` per driver | TCK-to-TDO skew or hold-time modeling |
 | Reset semantics | Optional TRST with `trst_active_high`; every reset lands the tracked state in Test-Logic-Reset and clears the current instruction | — |
 | Timeout | No operation waits on the DUT, so none can time out; the driver carries no timeout knob | — |
-| Errors and evidence | Monitors hold callback exceptions and re-raise them; `OcahJtagChecker.finalize()` fails on a held error, a failed check, zero checks, or a missing required ID; `DTP_JTAG_TAP_CHECKER_NEGATIVE` in the DTP bench forces a failing run in both flows | — |
+| Errors and evidence | Monitors hold callback exceptions and re-raise them; `OcahJtagChecker.finalize()` fails on a held error, a failed check, zero checks, or a missing required ID; every harness selftest carries an in-band negative probe (cocotb), and `OCAH_JTAG_SELFTEST_NEGATIVE` (harness) or `DTP_JTAG_TAP_CHECKER_NEGATIVE` (DTP bench) forces a failing run in both flows | — |
 | Slave side | Reactive TAP device with IDCODE, BYPASS, undefined instructions as BYPASS, and a register map that latches on Update-DR; simulator-free selftest | A DUT-specific register decode beyond the map |
-| Protocol checking | `sva/ocah_jtag_sva.sv` (TDO falling-edge timing, TLR via TMS and TRST, one-hot state legality with an exported state, X-hygiene on four-state simulators), bound in the DTP and SMU benches | A package-owned selftest DUT; the SMC bench binds no JTAG SVA |
-| Coverage | `cov/ocah_jtag_cov.sv` covergroups through the SV-UVM `ocah_jtag_cov` subscriber (`en_cov`); SVA cover properties on four-state simulators; Verilator line and branch coverage of the SVA through the DTP bench | Covergroups on Verilator |
-| Simulators | Verilator (cocotb, through the DTP, SMC, and SMU benches) and VCS (SV-UVM, through the DTP and SMU benches) | Xcelium |
+| Protocol checking | `sva/ocah_jtag_sva.sv` (TDO falling-edge timing, TLR via TMS and TRST, one-hot state legality with an exported state, X-hygiene on four-state simulators), bound in the `dv/` harness (state rules from the device's mirrored state in the cocotb shape, pin rules in the SV-UVM shape) and in the DTP, SMU, and SMC benches | State rules in the SV-UVM harness shape, where the device state stays inside the slave driver |
+| Coverage | `cov/ocah_jtag_cov.sv` covergroups through the SV-UVM `ocah_jtag_cov` subscriber (`en_cov`); SVA cover properties on four-state simulators; Verilator line and branch coverage of the SVA through `--dut ocah_jtag_vip --cov` and the DTP bench | Covergroups on Verilator |
+| Simulators | Verilator (cocotb: the `dv/` harness and the DTP, SMC, and SMU benches) and VCS (SV-UVM: the `dv/` harness and the DTP and SMU benches) | Xcelium |
 
 ## Scope
 

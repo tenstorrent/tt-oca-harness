@@ -11,10 +11,11 @@
 //            OcahJtagSlaveSequence) samples TCK, TMS, TDI, and TRST and
 //            drives TDO and its output enable.
 //
-// ocah_jtag_sva watches the connection with EN_STATE_RULES=0: the device
-// tracks its TAP controller state in Python and exports no one-hot state
-// net, so the pin-level rules run here and the state rules run in the DTP
-// and SMU benches, whose DUTs export that state.
+// ocah_jtag_sva watches the connection. In the cocotb shape the harness
+// mirrors the device's TAP controller state onto jtag_tap_state as the
+// one-hot a DUT exports, so the state rules run as well; in the SV-UVM shape
+// the device state stays inside the slave driver, so EN_STATE_RULES is 0 and
+// the pin-level rules run alone.
 //
 // clk is a free-running reference clock the cocotb harness drives so the
 // simulator always holds a timed event while the master bit-bangs TCK.
@@ -39,11 +40,12 @@ module ocah_jtag_vip_tb_top;
   logic jtag_tdo;
   logic jtag_trst;
   logic jtag_tdo_oen;
+  logic [15:0] jtag_tap_state;
   /* verilator lint_on UNUSEDSIGNAL */
   /* verilator lint_on UNDRIVEN */
 
   ocah_jtag_sva #(
-    .EN_STATE_RULES(1'b0)
+    .EN_STATE_RULES(1'b1)
   ) u_jtag_sva (
     .tck        (jtag_tck),
     .tms        (jtag_tms),
@@ -52,7 +54,7 @@ module ocah_jtag_vip_tb_top;
     .tdo        (jtag_tdo),
     .tdo_oen    (jtag_tdo_oen),
     .en_i       (1'b1),
-    .tap_state_i('0)
+    .tap_state_i(jtag_tap_state)
   );
 `endif
 
